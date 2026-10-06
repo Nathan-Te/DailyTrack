@@ -6,6 +6,8 @@
 - Contrôles : clavier (flèches, ZQSD/WASD — même touche physique), manette standard (stick ou croix, RT/A accélère, LT/B freine), **R** ou Y/Start pour recommencer.
 - Scénario `?scenario=plat` (le seul pour l'instant) : sol à damier infini, slalom, cercle de cônes et blocs repères. Aucune collision (cônes et blocs sont décoratifs).
 
+**Aperçu en ligne (GitHub Pages)** : le workflow `.github/workflows/pages.yml` publie chaque push sur la branche `gh-pages` : `main` à la racine, chaque branche sous `/b/<branche>/`. À activer une fois : *Settings → Pages → Source : Deploy from a branch → `gh-pages` / `/ (root)`*. Lien de la branche du lot : `https://nathan-te.github.io/DailyTrack/b/ccr-9cb88ba0-62npko/?scenario=plat` (aussi affiché dans le résumé du job).
+
 **À tester** : ouvrir l'aperçu avec `?scenario=plat` et conduire. La conduite est-elle agréable ? Les réglages à ajuster sont dans `CAR` (`packages/sim/src/car.ts`) : `accel`, `turnRate`, `grip`, `steerIn/steerOut`, `maxSpeed`.
 
 **Garde-fous** (tests Vitest)

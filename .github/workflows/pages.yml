@@ -1,0 +1,62 @@
+name: Pages
+# Publie le jeu sur GitHub Pages (branche gh-pages) :
+#   main     → https://<utilisateur>.github.io/<dépôt>/
+#   branche  → https://<utilisateur>.github.io/<dépôt>/b/<branche>/
+on:
+  push:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.ref_name != 'gh-pages'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: Récupérer la branche gh-pages (ou la créer)
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
+            git clone --depth 1 --branch gh-pages "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" site
+          else
+            mkdir site && cd site && git init -q -b gh-pages
+            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          fi
+
+      - name: Copier le build
+        run: |
+          slug="$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then
+            # La racine est remplacée, les aperçus de branches (b/) sont conservés.
+            find site -mindepth 1 -maxdepth 1 ! -name .git ! -name b -exec rm -rf {} +
+            cp -R apps/web/dist/. site/
+            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
+          else
+            rm -rf "site/b/${slug}"
+            mkdir -p "site/b/${slug}"
+            cp -R apps/web/dist/. "site/b/${slug}/"
+            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/?scenario=plat"
+          fi
+          touch site/.nojekyll
+          echo "### Aperçu : ${url}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Publier
+        working-directory: site
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -q -m "Aperçu de ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          git push origin gh-pages
