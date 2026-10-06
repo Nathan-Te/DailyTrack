@@ -11,6 +11,7 @@ import {
   createTestTrack,
   dailyCircuit,
   isDefaultParams,
+  parseTrack,
   ReplayPlayer,
   decodeReplay,
   encodeReplay,
@@ -34,6 +35,8 @@ import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName } from "./identity";
 import { Controls, isTyping } from "./input";
+import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
+import { mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareText, shareUrl, type ShareResult } from "./share";
@@ -46,7 +49,16 @@ const params = new URLSearchParams(location.search);
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7)
 // et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
-const scenario = requested === "plat" || requested === "essai" || requested === "pilotage" ? requested : "jour";
+// `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
+let customTrack: ReturnType<typeof parseTrack> | null = null;
+if (params.has("debug") && params.has("spec")) {
+  try {
+    customTrack = parseTrack("test", params.get("spec")!);
+  } catch (e) {
+    console.error("spec invalide", e);
+  }
+}
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 const todayUtc = fakeToday ?? Math.floor(Date.now() / 86_400_000);
@@ -54,7 +66,7 @@ const seedParam = params.get("seed");
 const seedDay = seedParam === null ? null : parseDay(seedParam);
 let daily: DailyCircuit | null = null;
 if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc);
-const track = scenario === "plat" ? null : daily ? daily.track : scenario === "pilotage" ? createPilotageTrack() : createTestTrack();
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -115,14 +127,44 @@ if (daily) {
 }
 function updateInfo() {
   $("info").textContent = track
-    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · G : fantôme${online.enabled ? " · L : classement" : ""}`
+    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme${online.enabled ? " · L : classement" : ""}`
     : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer · C : caméra";
 }
 
 // --- État de la partie ----------------------------------------------------------------------
 type Phase = "countdown" | "racing" | "finished";
 
-const controls = new Controls();
+// Commandes tactiles : appareil tactile (`pointer: coarse`) ou `?touch=1`. Mêmes axes que le clavier et la manette.
+const touchMode = wantsTouch(params, matchMedia("(pointer: coarse)").matches);
+const touchPad = touchMode ? new TouchPad(loadTouchSettings()) : null;
+const controls = new Controls(window, touchPad);
+if (touchMode) document.body.classList.add("touch");
+let paused = false;
+const touchUi = touchPad
+  ? mountTouchUi(touchPad, {
+      onPause: () => setPaused(!paused),
+      onRespawn: () => controls.requestRespawn(),
+      onRestart: () => controls.requestRestart(),
+    })
+  : null;
+// Outil de test (`?debug`) : « pas à pas ». La simulation n'avance plus avec l'horloge mais d'un nombre exact de pas
+// à chaque `__cdj.advance(n)` ; les commandes sont lues comme d'habitude (clavier, doigts…). Un test ne dépend ainsi
+// plus de la vitesse de la machine.
+let manual = false;
+let manualTicks = 0;
+let manualWaiters: (() => void)[] = [];
+/** Dernière commande appliquée à la simulation (outil de test : `__cdj.input`). */
+let lastInput: CarInput = { steer: 0, throttle: 0, brake: 0, respawn: 0 };
+let lastImpactAt = -1e9;
+
+function setPaused(value: boolean) {
+  if (value && phase === "finished") return;
+  paused = value;
+  document.body.classList.toggle("paused", paused);
+  touchUi?.setPaused(paused);
+}
+$("pause-resume").addEventListener("click", () => setPaused(false));
+$("pause-restart").addEventListener("click", () => controls.requestRestart());
 let best: BestRun | null = track ? loadBest(track.id) : null;
 // Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
 let ghostMode: GhostMode = params.get("ghost") === "off" ? "off" : "mine";
@@ -195,6 +237,8 @@ function startAttempt() {
   copyCar(car, previous);
   updateInfo();
   updateGhostInfo();
+  setPaused(false);
+  touchPad?.releaseAll();
   tunedRun = !isDefaultParams(carParams);
   updateTunedLabel();
   autoplay = null;
@@ -588,22 +632,40 @@ function cycleCamera() {
 }
 
 function stepOnce(input: CarInput) {
+  lastInput = input;
+  const respawnsBefore = race ? race.respawns : 0;
   if (session) {
     session.step(input); // course + enregistrement des commandes + fantôme, ensemble
   } else {
     copyCar(car, previous);
     stepCar(car, input, FLAT_WORLD, carParams);
   }
+  // Vibration au choc : lecture seule de la vitesse avant / après le pas (jamais d'effet sur la simulation).
+  if (touchPad && (!race || race.respawns === respawnsBefore) && impactFelt(carSpeed(previous), carSpeed(car))) {
+    const t = performance.now();
+    if (t - lastImpactAt > IMPACT_COOLDOWN_MS) {
+      lastImpactAt = t;
+      vibrate(touchPad.settings, 40);
+    }
+  }
 }
 
 function frame(now: number) {
-  const elapsed = Math.min((now - last) / 1000, 0.25) * timeScale; // borne : pas de spirale après un onglet en pause
+  // Gelé : pause, ou (au toucher) une fenêtre ouverte — avec l'accélérateur automatique, la voiture ne doit pas
+  // rouler pendant qu'on lit les archives ou qu'on règle les commandes. Le temps de course compte des pas : exact.
+  const frozen = paused || (touchMode && (!hudArchive.hidden || !!touchUi?.settingsOpen()));
+  const manualTicksNow = manual ? manualTicks : 0;
+  manualTicks = 0;
+  const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.25) * timeScale; // borne : pas de spirale après un onglet en pause
   last = now;
 
-  const { input, restart, camera: nextCamera } = controls.poll();
+  const { input, restart, camera: nextCamera, pause: togglePause } = controls.poll();
+  if (togglePause) setPaused(!paused);
   if (nextCamera) cycleCamera();
   if (restart) startAttempt();
-  else if (input.respawn) {
+  else if (input.respawn && frozen) {
+    /* pas de reprise pendant la pause : elle s'appliquerait en reprenant */
+  } else if (input.respawn) {
     if (race) pendingRespawn = true;
     else startAttempt(); // sol plat : « reprise » = retour au départ
   }
@@ -617,6 +679,12 @@ function frame(now: number) {
     } else {
       showBanner(String(Math.ceil(countdown)), 0.2);
     }
+  } else if (manual) {
+    for (let i = 0; i < manualTicksNow && !frozen; i++) {
+      stepOnce(autoplay ? autoplay.next() : pendingRespawn ? input : { ...input, respawn: 0 });
+      pendingRespawn = false;
+    }
+    accumulator = 0;
   } else {
     accumulator += elapsed;
     while (accumulator >= DT) {
@@ -634,6 +702,7 @@ function frame(now: number) {
       const ms = race.splits[shownSplits - 1]!;
       const ref = (ghostSource ?? best)?.splits[shownSplits - 1];
       showBanner(ref !== undefined ? `CP${shownSplits}  ${formatDelta(ms - ref)}` : `CP${shownSplits}  ${formatTime(ms)}`, 1.6, true);
+      if (touchPad) vibrate(touchPad.settings, 25);
     }
     if (race.respawns !== lastRespawns) {
       lastRespawns = race.respawns;
@@ -700,9 +769,14 @@ function frame(now: number) {
 
   view.followGround(x, z);
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
-  renderer.render(view.scene, camera);
+  if (!manual) renderer.render(view.scene, camera); // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
   splash?.remove(); // premier rendu fait : on retire l'écran de chargement
   splash = null;
+  if (manualWaiters.length) {
+    const waiters = manualWaiters;
+    manualWaiters = [];
+    for (const done of waiters) done();
+  }
 }
 
 renderer.setAnimationLoop(frame);
@@ -719,6 +793,25 @@ if (params.has("debug")) {
       },
       get phase() {
         return phase;
+      },
+      /** Dernière commande appliquée à la simulation. */
+      get input() {
+        return lastInput;
+      },
+      get paused() {
+        return paused;
+      },
+      /** Pas à pas : la simulation n'avance plus qu'avec `advance`. */
+      manual(on: boolean) {
+        manual = on;
+      },
+      /** Avance de `n` pas de simulation (mode pas à pas) ; rendu une fois fait, la promesse se résout. */
+      advance(n: number) {
+        manualTicks += n;
+        return new Promise<void>((resolve) => manualWaiters.push(resolve));
+      },
+      get touch() {
+        return touchMode;
       },
       get ghost() {
         return session?.ghost?.race.car ?? null;
