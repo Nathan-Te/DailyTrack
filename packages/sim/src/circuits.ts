@@ -10,3 +10,15 @@ export const TEST_TRACK_SPEC =
 export function createTestTrack() {
   return parseTrack("essai", TEST_TRACK_SPEC);
 }
+
+/**
+ * Scénario `pilotage` (lot 7) : de quoi juger la conduite en un tour. Longue ligne droite et plaque, grande courbe
+ * (L2) prise à fond où l'on frôle le rebord extérieur, chicane rapide, épingle, bosses, tremplin avec réception,
+ * second virage large, montée et descente.
+ */
+export const PILOTAGE_TRACK_SPEC =
+  "S@start S S S S S P S L2 S S R S@cp L R S S L S B B S S J S S S@cp R2 S S U S D S R L L S@cp S S S@finish";
+
+export function createPilotageTrack() {
+  return parseTrack("pilotage", PILOTAGE_TRACK_SPEC);
+}

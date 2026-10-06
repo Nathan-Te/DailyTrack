@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LAUNCH_DAY, formatDay } from "@cdj/sim";
+import { GENERATOR_VERSION as G, LAUNCH_DAY, SIM_VERSION, formatDay } from "@cdj/sim";
 import { archiveDays, archiveHref } from "../src/archive";
 import { listDayBests, type DayBest } from "../src/records";
 
@@ -51,20 +51,21 @@ describe("listDayBests", () => {
   it("une entrée illisible, même au milieu, ne masque pas les autres", () => {
     const m = listDayBests(
       store({
-        "cdj:best:jour-2026-10-05-g1": JSON.stringify({ ms: 50000, splits: [] }),
-        "cdj:best:jour-2026-10-06-g1": "pas du json",
-        "cdj:best:jour-2026-10-07-g1": JSON.stringify({ ms: 39000, splits: [] }),
+        [`cdj:best:jour-2026-10-05-g${G}`]: JSON.stringify({ ms: 50000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-06-g${G}`]: "pas du json",
+        [`cdj:best:jour-2026-10-07-g${G}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
       }),
     );
     expect([...m.keys()].sort()).toEqual(["2026-10-05", "2026-10-07"]);
   });
 
-  it("retrouve les records des circuits du jour, et seulement ceux du générateur actuel", () => {
+  it("retrouve les records des circuits du jour, et seulement ceux du générateur et de la simulation actuels", () => {
     const m = listDayBests(
       store({
-        "cdj:best:jour-2026-10-06-g1": JSON.stringify({ ms: 40123, splits: [], medal: "silver" }),
-        "cdj:best:jour-2026-10-07-g1": JSON.stringify({ ms: 39000, splits: [] }),
-        "cdj:best:jour-2026-10-08-g99": JSON.stringify({ ms: 1, splits: [] }), // autre générateur : autre circuit
+        [`cdj:best:jour-2026-10-06-g${G}`]: JSON.stringify({ ms: 40123, splits: [], medal: "silver", simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-07-g${G}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-08-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION - 1 }), // ancienne physique
+        "cdj:best:jour-2026-10-08-g99": JSON.stringify({ ms: 1, splits: [], simVersion: SIM_VERSION }), // autre générateur : autre circuit
         "cdj:best:essai": JSON.stringify({ ms: 35000, splits: [] }), // circuit d'essai : pas une archive
         "cdj:name": "Alice",
       }),

@@ -30,7 +30,7 @@ function compute(code: string): Omit<Golden, "code" | "simVersion" | "trackId"> 
 }
 
 if (process.env.UPDATE_GOLDEN) {
-  const { replay } = recordAutopilot(track, 120, { curveSpeed: 26 });
+  const { replay } = recordAutopilot(track, 120, { grip: 0.9 });
   const code = encodeReplay(replay);
   const golden: Golden = { simVersion: SIM_VERSION, trackId: track.id, code, ...compute(code) };
   writeFileSync(FILE, JSON.stringify(golden, null, 2) + "\n");

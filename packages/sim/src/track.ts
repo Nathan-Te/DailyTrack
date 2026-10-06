@@ -19,12 +19,13 @@ export const BOOST_HALF_LENGTH = 4;
 /** Hauteur « sans sol » : le vide. */
 export const NO_GROUND = -1e9;
 
-export type BlockKind = "straight" | "curveL" | "curveR" | "up" | "down" | "bump" | "jump" | "boost";
+export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "up" | "down" | "bump" | "jump" | "boost";
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
 export interface Block {
   index: number;
+  /** Cellule d'entrée du bloc (un virage large occupe aussi des cellules voisines : voir `blockCells`). */
   cx: number;
   cz: number;
   /** Cap d'entrée : 0 = +z, 1 = +x, 2 = −z, 3 = −x (quart de tour vers la gauche à chaque pas). */
@@ -69,6 +70,8 @@ export const BLOCK_LETTERS: Record<string, BlockKind> = {
   S: "straight",
   L: "curveL",
   R: "curveR",
+  L2: "wideL",
+  R2: "wideR",
   U: "up",
   D: "down",
   B: "bump",
@@ -81,7 +84,58 @@ const DIR_X = [0, 1, 0, -1] as const;
 const DIR_Z = [1, 0, -1, 0] as const;
 const DIR_YAW = [0, HALF_PI, PI, -HALF_PI] as const;
 
-export const isCurve = (k: BlockKind) => k === "curveL" || k === "curveR";
+export const isCurve = (k: BlockKind) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+export const isWide = (k: BlockKind) => k === "wideL" || k === "wideR";
+export const turnsLeft = (k: BlockKind) => k === "curveL" || k === "wideL";
+
+/** Rayon de l'axe d'un virage large (2 × 2 cellules). */
+export const WIDE_RADIUS = CELL + CELL / 2;
+
+/**
+ * Géométrie d'un virage dans le repère du bloc : arc de rayon `r` centré en (`cp`, q = 0).
+ * Virage serré : rayon CELL/2, centré sur un coin de la cellule. Virage large : rayon 1,5 CELL, il déborde
+ * sur la colonne voisine (à gauche ou à droite) et sur la rangée suivante.
+ */
+export function curveCenter(k: BlockKind): { cp: number; r: number } {
+  switch (k) {
+    case "curveL":
+      return { cp: CELL, r: CELL / 2 };
+    case "curveR":
+      return { cp: 0, r: CELL / 2 };
+    case "wideL":
+      return { cp: CELL / 2 + WIDE_RADIUS, r: WIDE_RADIUS };
+    default:
+      return { cp: CELL / 2 - WIDE_RADIUS, r: WIDE_RADIUS };
+  }
+}
+
+/** Cellules occupées par un bloc posé en (cx, cz) avec le cap `dir`, et la cellule (et le cap) du bloc suivant. */
+export function blockCells(cx: number, cz: number, dir: Dir, kind: BlockKind): { cells: [number, number][]; next: { cx: number; cz: number; dir: Dir } } {
+  const left = ((dir + 1) & 3) as Dir;
+  // (i, j) : décalage canonique en cellules, i vers la gauche, j vers l'avant.
+  const at = (i: number, j: number): [number, number] => [cx + i * DIR_X[left] + j * DIR_X[dir], cz + i * DIR_Z[left] + j * DIR_Z[dir]];
+  let cells: [number, number][];
+  let exit: [number, number];
+  let nextDir: Dir = dir;
+  if (kind === "wideL" || kind === "wideR") {
+    const s = kind === "wideL" ? 1 : -1;
+    cells = [at(0, 0), at(s, 0), at(0, 1), at(s, 1)];
+    exit = at(2 * s, 1);
+    nextDir = (kind === "wideL" ? left : (dir + 3) & 3) as Dir;
+  } else if (kind === "curveL") {
+    cells = [at(0, 0)];
+    exit = at(1, 0);
+    nextDir = left;
+  } else if (kind === "curveR") {
+    cells = [at(0, 0)];
+    exit = at(-1, 0);
+    nextDir = ((dir + 3) & 3) as Dir;
+  } else {
+    cells = [at(0, 0)];
+    exit = at(0, 1);
+  }
+  return { cells, next: { cx: exit[0], cz: exit[1], dir: nextDir } };
+}
 
 export function cellKey(cx: number, cz: number): number {
   return (cx + 1024) * 4096 + (cz + 1024);
@@ -182,7 +236,7 @@ export function exitDelta(kind: BlockKind): number {
  * Construit un circuit à partir d'un texte : des blocs séparés par des espaces, posés l'un après l'autre
  * à partir de la cellule (0, 0), cap +z.
  *
- * Blocs : S droit · L virage à gauche · R virage à droite · U montée · D descente · B bosse ·
+ * Blocs : S droit · L virage à gauche · R virage à droite · L2 / R2 virage large (2 × 2 cellules) · U montée · D descente · B bosse ·
  * J tremplin · P plaque d'accélération. Repères : `@start` (premier bloc), `@cp` (point de contrôle,
  * sur un S), `@finish` (dernier bloc). Départ et arrivée sont sur des blocs S.
  */
@@ -209,16 +263,16 @@ export function parseTrack(id: string, spec: string): Track {
     if (mark === "finish" && index !== tokens.length - 1) throw new Error("L'arrivée doit être le dernier bloc");
 
     const block: Block = { index, cx, cz, dir, kind, y0: y, ...(mark ? { mark } : {}) };
-    const key = cellKey(cx, cz);
-    if (cells.has(key)) throw new Error(`Le bloc ${index} (« ${token} ») retombe sur la cellule (${cx}, ${cz})`);
-    cells.set(key, block);
+    const placed = blockCells(cx, cz, dir, kind);
+    for (const [x, z] of placed.cells) {
+      const key = cellKey(x, z);
+      if (cells.has(key)) throw new Error(`Le bloc ${index} (« ${token} ») retombe sur la cellule (${x}, ${z})`);
+      cells.set(key, block);
+    }
     blocks.push(block);
 
     y += exitDelta(kind);
-    if (kind === "curveL") dir = ((dir + 1) & 3) as Dir;
-    else if (kind === "curveR") dir = ((dir + 3) & 3) as Dir;
-    cx += DIR_X[dir];
-    cz += DIR_Z[dir];
+    ({ cx, cz, dir } = placed.next);
   });
 
   const first = blocks[0]!;
@@ -274,18 +328,18 @@ export function trackCenterline(track: Track): Centerline {
     out.y.push(blockHeight(b, q));
     out.block.push(b.index);
   };
-  const R = CELL / 2;
   for (const b of track.blocks) {
-    if (b.kind === "curveL" || b.kind === "curveR") {
-      // Arc de rayon CELL/2 centré sur un coin de la cellule.
-      for (let i = 0; i <= CURVE_STEPS; i++) {
-        const a = (HALF_PI * i) / CURVE_STEPS; // 0 → π/2
-        if (b.kind === "curveL") push(b, CELL - R * cos(a), R * sin(a));
-        else push(b, R * cos(a), R * sin(a));
+    if (isCurve(b.kind)) {
+      const { cp, r } = curveCenter(b.kind);
+      const side = turnsLeft(b.kind) ? -1 : 1;
+      const steps = isWide(b.kind) ? 3 * CURVE_STEPS : CURVE_STEPS;
+      for (let i = 0; i <= steps; i++) {
+        const a = (HALF_PI * i) / steps; // 0 → π/2
+        push(b, cp + side * r * cos(a), r * sin(a));
       }
     } else {
       const steps = b.kind === "bump" || b.kind === "jump" ? 8 : 2;
-      for (let i = 0; i <= steps; i++) push(b, R, (CELL * i) / steps);
+      for (let i = 0; i <= steps; i++) push(b, CELL / 2, (CELL * i) / steps);
     }
   }
   return out;
