@@ -223,7 +223,12 @@ export function createApi(options: ApiOptions) {
     } catch (e) {
       throw new HttpError(400, "invalid_replay", e instanceof ReplayError ? e.message : "Rediffusion illisible");
     }
-    if (replay.simVersion !== SIM_VERSION) throw new HttpError(409, "sim_version", "Version de la simulation différente : recharge le jeu");
+    if (replay.simVersion !== SIM_VERSION) {
+      // Course enregistrée avec une autre physique (jeu resté ouvert pendant une mise à jour, vieux record) : elle
+      // ne donnerait pas le même temps ici. Pas de migration : on la refuse en disant pourquoi.
+      const why = replay.simVersion < SIM_VERSION ? "une ancienne version du jeu" : "une version du jeu plus récente que le serveur";
+      throw new HttpError(409, "sim_version", `Course enregistrée avec ${why} (simulation v${replay.simVersion}, serveur v${SIM_VERSION}) : recharge la page et refais un temps`);
+    }
     const circuit = await getCircuit(day);
     if (replay.trackId !== circuit.trackId) throw new HttpError(409, "track_mismatch", "Cette rediffusion n'est pas celle du circuit de ce jour");
 

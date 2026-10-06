@@ -26,9 +26,11 @@ describe("manette", () => {
     expect(gamepadAxes(pad([-0.56])).steer).toBeCloseTo(-0.5, 2);
   });
 
-  it("lit les gâchettes analogiques", () => {
-    const a = gamepadAxes(pad([0], { 7: 0.6, 6: 0.25 }));
-    expect(a.throttle).toBeCloseTo(0.6);
-    expect(a.brake).toBeCloseTo(0.25);
+  it("gâchettes tout-ou-rien (seuil 0,3), direction analogique", () => {
+    const a = gamepadAxes(pad([0.5], { 7: 0.6, 6: 0.25 }));
+    expect(a.throttle).toBe(1);
+    expect(a.brake).toBe(0);
+    expect(a.steer).toBeGreaterThan(0.4);
+    expect(a.steer).toBeLessThan(0.5);
   });
 });

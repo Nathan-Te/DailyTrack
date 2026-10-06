@@ -4,10 +4,10 @@ import { DAY, DAY_MS, NOON, circuitOf, makeApi, pilotReplay, playerId } from "./
 
 const DATE = formatDay(DAY);
 // Quatre rediffusions valides de vitesses différentes : 30 est la plus rapide, 18 la plus lente.
-const fast = pilotReplay(DAY, 30);
-const mid = pilotReplay(DAY, 26);
-const slow = pilotReplay(DAY, 22);
-const slowest = pilotReplay(DAY, 18);
+const fast = pilotReplay(DAY, 1);
+const mid = pilotReplay(DAY, 0.9);
+const slow = pilotReplay(DAY, 0.78);
+const slowest = pilotReplay(DAY, 0.65);
 
 const submit = (t: Awaited<ReturnType<typeof makeApi>>, n: number, name: string, code: string, extra: Record<string, unknown> = {}) =>
   t.call("POST", "/api/submit", { playerId: playerId(n), name, date: DATE, replay: code, ...extra });
@@ -108,6 +108,12 @@ describe("POST /api/submit", () => {
     expect((await submit(t, 1, "Alice", fast.code.slice(0, 30))).body.error).toBe("invalid_replay");
     const other = encodeReplay({ ...fast.replay, simVersion: SIM_VERSION + 1 });
     expect((await submit(t, 1, "Alice", other)).body.error).toBe("sim_version");
+    // Ancienne version (avant la refonte de la conduite du lot 7) : refus clair, rien d'enregistré.
+    const old = await submit(t, 1, "Alice", encodeReplay({ ...fast.replay, simVersion: SIM_VERSION - 1 }));
+    expect(old.status).toBe(409);
+    expect(old.body.error).toBe("sim_version");
+    expect(old.body.message).toMatch(/ancienne version du jeu.*recharge la page/);
+    expect((await t.call("GET", `/api/day/${DATE}/leaderboard`)).body.participants).toBe(0);
     const otherTrack = encodeReplay({ ...fast.replay, trackId: dailyTrackId(DAY - 1) });
     const r = await submit(t, 1, "Alice", otherTrack);
     expect(r.status).toBe(409);

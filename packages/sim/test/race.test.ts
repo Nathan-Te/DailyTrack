@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  CAR,
+  DEFAULT_CAR_PARAMS as CAR,
   CELL,
   NO_INPUT,
   TICK_RATE,
@@ -22,7 +22,7 @@ function runFor(race: RaceState, input = GAS, seconds = 1) {
 }
 
 describe("course complète (pilote automatique)", () => {
-  const run = runAutopilot(track, 120, { curveSpeed: 26 });
+  const run = runAutopilot(track, 120, { grip: 0.9 });
 
   it("finit le circuit d'essai dans une durée plausible, sans chute ni retour", () => {
     expect(run.race.finishMs).toBeGreaterThan(28_000);
@@ -44,17 +44,17 @@ describe("course complète (pilote automatique)", () => {
   });
 
   it("est déterministe, et le temps de référence ne change pas sans raison", () => {
-    const again = runAutopilot(track, 120, { curveSpeed: 26 });
+    const again = runAutopilot(track, 120, { grip: 0.9 });
     expect(again.race.finishMs).toBe(run.race.finishMs);
     expect(again.race.car).toEqual(run.race.car);
     // Référence : si ce test casse, la physique ou le circuit d'essai ont changé.
     expect({ finishMs: run.race.finishMs, splits: run.race.splits }).toMatchInlineSnapshot(`
       {
-        "finishMs": 35219,
+        "finishMs": 34127,
         "splits": [
-          9961,
-          23407,
-          31257,
+          9298,
+          22634,
+          30227,
         ],
       }
     `);
@@ -65,7 +65,7 @@ describe("rebords et vide", () => {
   it("la voiture braquée à fond reste sur la route", () => {
     const race = createRace(track);
     runFor(race, makeInput(1, 1, 0), 6);
-    expect(race.car.y).toBe(0);
+    expect(Math.abs(race.car.y)).toBeLessThan(0.2);
     expect(race.respawns).toBe(0);
     expect(Math.abs(race.car.x - CELL / 2)).toBeLessThanOrEqual(7 + 1e-9);
   });
@@ -91,14 +91,21 @@ describe("rebords et vide", () => {
 });
 
 describe("reprise au point de contrôle", () => {
-  it("le bouton de reprise ramène au dernier point de contrôle franchi, à l'arrêt", () => {
+  it("le bouton de reprise ramène au dernier point de contrôle franchi, avec la vitesse et le cap du passage", () => {
     const race = createRace(track);
     expect(runAutopilotUntilSplit(race, 1)).toBe(true);
+    const passage = { ...race.checkpoints[0]! };
     const gate = track.gates[0]!;
+    const along = (passage.x - gate.x) * gate.fx + (passage.z - gate.z) * gate.fz;
+    expect(along).toBeGreaterThanOrEqual(0); // pris juste après la porte
+    expect(along).toBeLessThan(1);
+    runFor(race, makeInput(1, 0, 1), 1.5); // on s'égare
+    const tick = race.car.tick;
     stepRace(race, makeInput(0, 1, 0, true));
     expect(race.respawns).toBe(1);
-    expect([race.car.x, race.car.z, race.car.yaw]).toEqual([gate.x, gate.z, gate.yaw]);
-    expect(Math.hypot(race.car.vx, race.car.vz)).toBe(0);
+    expect([race.car.x, race.car.z, race.car.yaw, race.car.vx, race.car.vz]).toEqual([passage.x, passage.z, passage.yaw, passage.vx, passage.vz]);
+    expect(Math.hypot(race.car.vx, race.car.vz)).toBeGreaterThan(20);
+    expect(race.car.tick).toBe(tick + 1); // le chrono continue
     expect(race.splits).toHaveLength(1); // le temps intermédiaire déjà pris reste acquis
   });
 
@@ -107,6 +114,7 @@ describe("reprise au point de contrôle", () => {
     runFor(race, GAS, 2);
     stepRace(race, makeInput(0, 0, 0, true));
     expect([race.car.x, race.car.z]).toEqual([track.spawn.x, track.spawn.z]);
+    expect(Math.hypot(race.car.vx, race.car.vz)).toBe(0); // départ arrêté
   });
 
   it("une porte franchie dans le désordre ne compte pas", () => {
@@ -125,7 +133,7 @@ describe("reprise au point de contrôle", () => {
 });
 
 function runAutopilotUntilSplit(race: RaceState, count: number): boolean {
-  const drive = createAutopilot(race.track, { curveSpeed: 26 });
+  const drive = createAutopilot(race.track, { grip: 0.9 });
   for (let i = 0; i < 60 * TICK_RATE && race.splits.length < count; i++) stepRace(race, drive(race));
   return race.splits.length >= count;
 }
@@ -200,7 +208,7 @@ describe("tremplin, pente et arrivée", () => {
   });
 
   it("l'arrivée fige le temps et la voiture s'arrête", () => {
-    const run = runAutopilot(track, 120, { curveSpeed: 26 });
+    const run = runAutopilot(track, 120, { grip: 0.9 });
     const t = run.race.finishMs;
     for (let i = 0; i < 10 * TICK_RATE; i++) stepRace(run.race, GAS);
     expect(run.race.finishMs).toBe(t);

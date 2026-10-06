@@ -15,6 +15,7 @@ const KEYS = {
   right: ["ArrowRight", "KeyD"],
   respawn: ["KeyR"], // dernier point de contrôle
   restart: ["Enter"], // depuis le départ
+  camera: ["KeyC"], // caméra proche / loin
 };
 
 /** Vrai si la touche est tapée dans un champ de saisie (le pseudo). */
@@ -41,15 +42,18 @@ function deadzone(v: number): number {
   return Math.sign(v) * Math.min(1, (a - DEADZONE) / (1 - DEADZONE));
 }
 
-/** Manette « standard » : stick gauche ou croix pour tourner, RT/A accélère, LT/B freine. */
+/** Gâchette enfoncée au-delà de ce seuil = appuyée : accélérateur et frein sont tout-ou-rien. */
+const TRIGGER_ON = 0.3;
+
+/** Manette « standard » : stick gauche (analogique) ou croix pour tourner, RT/A accélère, LT/B freine. */
 export function gamepadAxes(pad: Pick<Gamepad, "axes" | "buttons">): Axes {
   const btn = (i: number) => pad.buttons[i]?.value ?? 0;
   const dpad = btn(15) - btn(14);
   const stick = deadzone(pad.axes[0] ?? 0);
   return {
     steer: Math.abs(dpad) > Math.abs(stick) ? dpad : stick,
-    throttle: Math.max(btn(7), btn(0)),
-    brake: Math.max(btn(6), btn(1)),
+    throttle: Math.max(btn(7), btn(0)) > TRIGGER_ON ? 1 : 0,
+    brake: Math.max(btn(6), btn(1)) > TRIGGER_ON ? 1 : 0,
   };
 }
 
@@ -58,14 +62,18 @@ export interface ControlsState {
   input: CarInput;
   /** Vrai une fois quand le joueur demande à recommencer depuis le départ. */
   restart: boolean;
+  /** Vrai une fois quand le joueur change de caméra (C, ou bouton Vue/Select de la manette). */
+  camera: boolean;
 }
 
 export class Controls {
   private readonly down = new Set<string>();
   private respawnLatch = false;
   private restartLatch = false;
+  private cameraLatch = false;
   private padRespawnHeld = false;
   private padRestartHeld = false;
+  private padCameraHeld = false;
 
   constructor(target: Window = window) {
     target.addEventListener("keydown", (e) => {
@@ -74,6 +82,7 @@ export class Controls {
       this.down.add(e.code);
       if (KEYS.respawn.includes(e.code)) this.respawnLatch = true;
       if (KEYS.restart.includes(e.code)) this.restartLatch = true;
+      if (KEYS.camera.includes(e.code)) this.cameraLatch = true;
     });
     target.addEventListener("keyup", (e) => this.down.delete(e.code));
     target.addEventListener("blur", () => this.down.clear());
@@ -91,17 +100,24 @@ export class Controls {
     if (padRestart && !this.padRestartHeld) this.restartLatch = true;
     this.padRespawnHeld = padRespawn;
     this.padRestartHeld = padRestart;
+    // Vue/Select (bouton 8) : caméra suivante.
+    const padCamera = !!pad && (pad.buttons[8]?.pressed ?? false);
+    if (padCamera && !this.padCameraHeld) this.cameraLatch = true;
+    this.padCameraHeld = padCamera;
 
     const respawn = this.respawnLatch;
     const restart = this.restartLatch;
+    const camera = this.cameraLatch;
     this.respawnLatch = false;
     this.restartLatch = false;
+    this.cameraLatch = false;
 
     // Le clavier gagne s'il est utilisé ; sinon la manette (analogique).
     const steer = k.steer !== 0 ? k.steer : g.steer;
     return {
       input: makeInput(steer, Math.max(k.throttle, g.throttle), Math.max(k.brake, g.brake), respawn),
       restart,
+      camera,
     };
   }
 }

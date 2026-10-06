@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
+import { SIM_VERSION, dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
 
 // Téléphone : rien ne se chevauche et tout reste dans l'écran, en portrait comme en paysage.
 // (Le rendu 3D demande WebGL : Chromium seulement.)
@@ -8,7 +8,7 @@ test.setTimeout(150_000);
 
 const day = Math.floor(Date.now() / 86_400_000);
 const circuit = dailyCircuit(day);
-const pilot = runPilot(circuit.track, { curveSpeed: 26 });
+const pilot = runPilot(circuit.track, { grip: 0.9 });
 const code = encodeReplay(pilot.replay);
 // API simulée : ces tests ne doivent rien envoyer au vrai serveur (les rangs des autres tests en dépendent).
 const API = "http://api.test";
@@ -55,8 +55,8 @@ for (const viewport of [
     const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     // Un fantôme et un classement : le bandeau est au complet.
     await context.addInitScript(
-      ([id, replay, ms]) => localStorage.setItem(`cdj:best:${id}`, JSON.stringify({ ms, splits: [9000, 18000, 27000], replay, simVersion: 1 })),
-      [circuit.track.id, code, pilot.finishMs] as const,
+      ([id, replay, ms, simVersion]) => localStorage.setItem(`cdj:best:${id}`, JSON.stringify({ ms, splits: [9000, 18000, 27000], replay, simVersion })),
+      [circuit.track.id, code, pilot.finishMs, SIM_VERSION] as const,
     );
     await context.route(`${API}/**`, async (route) => {
       const url = new URL(route.request().url());

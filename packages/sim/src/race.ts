@@ -1,5 +1,5 @@
 import { TICK_RATE } from "./constants";
-import { AXIS_MAX, createCar, stepCar, type CarInput, type CarState } from "./car";
+import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpeed, stepCar, type CarInput, type CarParams, type CarState } from "./car";
 import { HALF_ROAD, type Gate, type Track } from "./track";
 import { trackWorld, type World } from "./world";
 
@@ -15,9 +15,13 @@ export interface RaceState {
   finishMs: number;
   /** Nombre de retours au point de contrôle (volontaires ou chutes). */
   respawns: number;
+  /** État de la voiture au passage de chaque point de contrôle : la reprise repart avec cette vitesse et ce cap. */
+  checkpoints: CarState[];
+  /** Réglages de la voiture (par défaut : ceux du classement ; le panneau `?tune` en passe d'autres). */
+  params: Readonly<CarParams>;
 }
 
-export function createRace(track: Track): RaceState {
+export function createRace(track: Track, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS): RaceState {
   const s = track.spawn;
   return {
     car: createCar(s.x, s.z, s.yaw, s.y),
@@ -27,42 +31,30 @@ export function createRace(track: Track): RaceState {
     splits: [],
     finishMs: -1,
     respawns: 0,
+    checkpoints: [],
+    params,
   };
-}
-
-export function copyRace(from: RaceState, to: RaceState): void {
-  // Utilisé pour l'interpolation à l'affichage : seul l'état de la voiture compte.
-  to.car.x = from.car.x;
-  to.car.y = from.car.y;
-  to.car.z = from.car.z;
-  to.car.yaw = from.car.yaw;
-  to.car.vx = from.car.vx;
-  to.car.vy = from.car.vy;
-  to.car.vz = from.car.vz;
-  to.car.steer = from.car.steer;
-  to.car.tick = from.car.tick;
-  to.car.grounded = from.car.grounded;
-  to.car.boost = from.car.boost;
 }
 
 const FINISH_BRAKE: CarInput = { steer: 0, throttle: 0, brake: AXIS_MAX, respawn: 0 };
 
-/** Dernier point de reprise : le dernier point de contrôle franchi, ou le départ. */
+/**
+ * Reprise : au dernier point de contrôle franchi, avec la vitesse et le cap du passage (comme si on venait de
+ * le franchir) ; sans point de contrôle franchi, au départ, à l'arrêt.
+ */
 function respawn(race: RaceState): void {
   const car = race.car;
-  const lastCheckpoint = race.splits.length - 1;
-  const spot = lastCheckpoint >= 0 ? race.track.gates[lastCheckpoint]! : race.track.spawn;
-  car.x = spot.x;
-  car.y = spot.y;
-  car.z = spot.z;
-  car.yaw = spot.yaw;
-  car.vx = 0;
-  car.vy = 0;
-  car.vz = 0;
-  car.steer = 0;
-  car.grounded = 1;
-  car.boost = 0;
-  car.tick += 1; // le chrono continue de tourner
+  const tick = car.tick;
+  const saved = race.checkpoints[race.checkpoints.length - 1];
+  if (saved) {
+    copyCar(saved, car);
+    car.boost = 0;
+    car.drift = 0;
+  } else {
+    const s = race.track.spawn;
+    copyCar(createCar(s.x, s.z, s.yaw, s.y), car);
+  }
+  car.tick = tick + 1; // le chrono continue de tourner
   race.respawns += 1;
 }
 
@@ -85,7 +77,8 @@ function crossingTime(race: RaceState, gate: Gate, px: number, pz: number): numb
 export function stepRace(race: RaceState, input: CarInput): void {
   const car = race.car;
   if (race.finishMs >= 0) {
-    stepCar(car, FINISH_BRAKE, race.world); // la voiture s'arrête après la ligne
+    // La voiture s'arrête après la ligne (frein tant qu'elle avance, puis plus rien : elle ne recule pas).
+    stepCar(car, forwardSpeed(car) > 0.5 ? FINISH_BRAKE : NO_INPUT, race.world, race.params);
     return;
   }
   if (input.respawn) {
@@ -95,7 +88,7 @@ export function stepRace(race: RaceState, input: CarInput): void {
 
   const px = car.x;
   const pz = car.z;
-  stepCar(car, input, race.world);
+  stepCar(car, input, race.world, race.params);
 
   const gate = race.track.gates[race.nextGate];
   if (gate) {
@@ -103,7 +96,12 @@ export function stepRace(race: RaceState, input: CarInput): void {
     if (t >= 0) {
       race.nextGate += 1;
       if (gate.kind === "finish") race.finishMs = t;
-      else race.splits.push(t);
+      else {
+        race.splits.push(t);
+        const snapshot = createCar();
+        copyCar(car, snapshot);
+        race.checkpoints.push(snapshot);
+      }
     }
   }
   if (car.y < race.world.voidY) respawn(race);

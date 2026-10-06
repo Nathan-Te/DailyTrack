@@ -3,12 +3,13 @@ import { circuitNumber, formatDay } from "./calendar";
 import { bestPilotRun } from "./autopilot";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
-import { BLOCK_LETTERS, cellKey, dirX, dirZ, exitDelta, parseTrack, type Dir, type Track } from "./track";
+import { BLOCK_LETTERS, blockCells, cellKey, exitDelta, parseTrack, type Dir, type Track } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
 // 1. Construction : on enchaîne des « segments » (courts motifs de blocs) en alternant calme (lignes droites,
-//    plaques, bosses, côtes) et virages, avec un ou deux passages marquants (tremplin, chicane, épingle).
+//    plaques, bosses, côtes) et virages (serrés, ou larges sur 2 × 2 cellules), avec un ou deux passages
+//    marquants (tremplin, chicane, épingle).
 //    On place chaque segment sur la grille en refusant les croisements.
 // 2. Validation : un pilote automatique parcourt le circuit avec la même physique. S'il ne le finit pas, ou si
 //    sa durée sort de la fenêtre visée, on recommence avec une graine voisine (tentative suivante).
@@ -77,18 +78,18 @@ function place(w: Walk, tokens: readonly string[]): boolean {
   const added: number[] = [];
   for (const t of tokens) {
     const kind = BLOCK_LETTERS[t.split("@")[0]!]!;
-    const key = cellKey(cx, cz);
-    if (w.cells.has(key)) {
-      for (const k of added) w.cells.delete(k);
-      return false;
+    const placed = blockCells(cx, cz, dir, kind);
+    for (const [x, z] of placed.cells) {
+      const key = cellKey(x, z);
+      if (w.cells.has(key)) {
+        for (const k of added) w.cells.delete(k);
+        return false;
+      }
+      w.cells.add(key);
+      added.push(key);
     }
-    w.cells.add(key);
-    added.push(key);
     y += exitDelta(kind);
-    if (kind === "curveL") dir = ((dir + 1) & 3) as Dir;
-    else if (kind === "curveR") dir = ((dir + 3) & 3) as Dir;
-    cx += dirX(dir);
-    cz += dirZ(dir);
+    ({ cx, cz, dir } = placed.next);
   }
   w.cx = cx;
   w.cz = cz;
@@ -145,8 +146,16 @@ export function composeSpec(day: number, attempt: number): string | null {
     const left = rng.chance(50);
     const L = left ? "L" : "R";
     const R = left ? "R" : "L";
+    // Virage simple : serré, ou large (2 × 2 cellules) une fois sur quatre.
+    const wide = !turnHighlight && rng.chance(25);
     const segments: string[][] =
-      turnHighlight === "chicane" ? [[L, R], [R, L]] : turnHighlight === "hairpin" ? [[L, L], [R, R]] : [[L], [R]];
+      turnHighlight === "chicane"
+        ? [[L, R], [R, L]]
+        : turnHighlight === "hairpin"
+          ? [[L, L], [R, R]]
+          : wide
+            ? [[L + "2"], [R + "2"], [L], [R]]
+            : [[L], [R]];
     // Sens bloqué : on essaie l'autre ; pour un virage simple, puis l'autre virage. Un passage marquant, lui,
     // ne se remplace pas (la tentative échoue et la graine voisine prend le relais).
     if (!segments.some((seg) => place(w, seg))) return null;

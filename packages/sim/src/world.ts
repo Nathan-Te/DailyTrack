@@ -11,12 +11,35 @@ import {
   canonQ,
   canonVecToWorld,
   cellKey,
+  curveCenter,
   dirX,
   dirZ,
   isCurve,
   type Block,
   type Track,
 } from "./track";
+
+/** Revêtements. Une seule surface au lot 7 ; terre, glace et herbe arrivent au lot 8. */
+export type SurfaceKind = "road";
+
+/** Comportement d'un revêtement, lu sous chaque roue (multiplicateurs : 1 = la route, la référence). */
+export interface SurfaceParams {
+  /** Adhérence latérale. */
+  grip: number;
+  /** Motricité et freinage. */
+  traction: number;
+  /** Résistance au roulement ajoutée (m/s²). */
+  rolling: number;
+}
+
+export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = Object.freeze({
+  road: Object.freeze({ grip: 1, traction: 1, rolling: 0 }),
+});
+
+/** Comportement du revêtement d'un échantillon de sol. */
+export function surfaceAt(sample: Surface): Readonly<SurfaceParams> {
+  return SURFACES[sample.kind];
+}
 
 /** Ce que la voiture « sent » sous elle en un point. */
 export interface Surface {
@@ -26,6 +49,8 @@ export interface Surface {
   gx: number;
   gz: number;
   boost: boolean;
+  /** Revêtement (voir `surfaceAt`). */
+  kind: SurfaceKind;
 }
 
 /** Contact avec un rebord : normale (vers l'intérieur de la route) et profondeur d'enfoncement. */
@@ -43,7 +68,7 @@ export interface World {
   readonly voidY: number;
 }
 
-export const createSurface = (): Surface => ({ height: 0, gx: 0, gz: 0, boost: false });
+export const createSurface = (): Surface => ({ height: 0, gx: 0, gz: 0, boost: false, kind: "road" });
 export const createWallHit = (): WallHit => ({ nx: 0, nz: 0, depth: 0 });
 
 /** Sol plat infini, sans rebord (scénario `plat`). */
@@ -89,9 +114,10 @@ export function trackWorld(track: Track): World {
 
       let onRoad: boolean;
       if (isCurve(b.kind)) {
-        const dp = p - (b.kind === "curveL" ? CELL : 0);
+        const c = curveCenter(b.kind);
+        const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);
-        onRoad = r >= CELL / 2 - HALF_ROAD && r <= CELL / 2 + HALF_ROAD;
+        onRoad = q >= 0 && r >= c.r - HALF_ROAD && r <= c.r + HALF_ROAD;
       } else {
         const lat = p - CELL / 2;
         onRoad = lat >= -HALF_ROAD && lat <= HALF_ROAD;
@@ -124,11 +150,12 @@ export function trackWorld(track: Track): World {
       let nq = 0;
       let depth = 0;
       if (isCurve(b.kind)) {
-        const dp = p - (b.kind === "curveL" ? CELL : 0);
+        const c = curveCenter(b.kind);
+        const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);
         if (r < 1e-6) return false;
-        const inner = CELL / 2 - HALF_ROAD + radius;
-        const outer = CELL / 2 + HALF_ROAD - radius;
+        const inner = c.r - HALF_ROAD + radius;
+        const outer = c.r + HALF_ROAD - radius;
         if (r < inner) {
           depth = inner - r;
           np = dp / r;

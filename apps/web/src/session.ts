@@ -8,6 +8,7 @@ import {
   decodeReplay,
   stepRace,
   type CarInput,
+  type CarParams,
   type CarState,
   type RaceState,
   type Replay,
@@ -41,7 +42,11 @@ export function loadGhost(track: Track, best: BestRun | null): Ghost | null {
   }
 }
 
-/** Une tentative : la course, l'enregistrement de ses commandes et le fantôme éventuel, avancés ensemble. */
+/**
+ * Une tentative : la course, l'enregistrement de ses commandes et le fantôme éventuel, avancés ensemble.
+ * `params` : réglages de la voiture du joueur (panneau `?tune`) ; le fantôme roule toujours avec ceux par défaut,
+ * ceux avec lesquels sa rediffusion a été enregistrée.
+ */
 export class RunSession {
   readonly race: RaceState;
   /** État de la voiture au pas précédent, pour interpoler l'affichage. */
@@ -52,8 +57,9 @@ export class RunSession {
   constructor(
     readonly track: Track,
     best: BestRun | null,
+    params?: Readonly<CarParams>,
   ) {
-    this.race = createRace(track);
+    this.race = createRace(track, params);
     copyCar(this.race.car, this.previous);
     this.ghost = loadGhost(track, best);
   }

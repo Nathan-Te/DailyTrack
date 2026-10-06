@@ -9,8 +9,8 @@ import { DAY, NOON, circuitOf, pilotReplay, playerId } from "./helpers";
 
 // Le vrai serveur HTTP Node (celui du conteneur Docker), de bout en bout : deux « appareils », deux temps, un classement.
 const DATE = formatDay(DAY);
-const fast = pilotReplay(DAY, 30);
-const slow = pilotReplay(DAY, 22);
+const fast = pilotReplay(DAY, 1);
+const slow = pilotReplay(DAY, 0.78);
 
 let base = "";
 let close: () => Promise<void>;

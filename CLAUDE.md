@@ -25,7 +25,7 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 ## Circuit du jour (lot 4)
 - `dailyCircuit(jour)` (`generator.ts`) : graine = jour UTC (`parseDay`/`formatDay`, calendrier sans `Date`) ; `composeSpec` construit le texte, `bestPilotRun` (`autopilot.ts`) valide et donne le temps de l'auteur, d'où `medalsFor`. Id du circuit : `jour-AAAA-MM-JJ-g<GENERATOR_VERSION>`.
 - **`GENERATOR_VERSION`** (constants.ts) : à incrémenter dès que le circuit d'une date change (règles, pilote, fenêtre de durée) ; puis régénérer `fixtures/daily-golden.json` (`UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden-daily.test.ts`).
-- Web : `?seed=AAAA-MM-JJ`, `?scenario=essai|plat`. Palettes dans `apps/web/src/trackMesh.ts` (`PALETTE_DEFS`).
+- Web : `?seed=AAAA-MM-JJ`, `?scenario=essai|pilotage|plat`, `?debug&tune` (réglages), touche **C** (caméra). Palettes dans `apps/web/src/trackMesh.ts` (`PALETTE_DEFS`).
 
 ## Classement (lot 5)
 - `apps/api` : `createApi({ db, now })` (`src/api.ts`) ne dépend que de `Request`/`Response` et de `SqlDb` ; adaptateurs : Node + SQLite (`server.ts`, Docker) et Cloudflare Workers + D1 (`worker.ts`). **Le serveur ne fait jamais confiance à un temps annoncé** : il rejoue la rediffusion (`replayRace`) et enregistre son propre résultat.
@@ -38,9 +38,18 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - Mise en page : un seul `index.html` avec media queries (`max-width: 900px` / `max-height: 520px`). Test `e2e/mobile.spec.ts` : aucun chevauchement sur 3 formats de téléphone. Poids : budget dans `e2e/perf.spec.ts` ; Three.js reste dans son propre chunk (`vite.config.ts`).
 - Outil de test : `?debug&today=AAAA-MM-JJ`.
 
+## Conduite (lot 7)
+- `packages/sim/src/car.ts` : modèle **bicyclette** (deux essieux, force latérale saturée par `tireCurve`) + **4 ressorts** posés sur `world` (hauteur, tangage, roulis en pentes ; charge → adhérence ; butée) + **balistique** en l'air (réception à plat / de travers). 2 sous-pas fixes par pas. Rebords : deux disques, impulsion avec rebond et frottement. Dérapage au frein (`car.drift`). Détail et mesures : `docs/lots/lot-7-conduite.md`.
+- **`CarParams`** (`DEFAULT_CAR_PARAMS`) passé à `stepCar(car, input, world, params)` et `createRace(track, params)` ; le serveur et les rediffusions utilisent toujours les défauts. **`SurfaceParams`** `{ grip, traction, rolling }` lu sous chaque roue par `surfaceAt(échantillon)` (`world.ts`, table `SURFACES`, « route » seulement).
+- Reprise = état de la voiture au passage du dernier point de contrôle (`race.checkpoints`). Virage large `L2`/`R2` (2 × 2 cellules, `blockCells`).
+- Pilote (`autopilot.ts`) : trajectoire lissée (`racingLine`), vitesses par courbure, freinage anticipé ; `PILOT_GRIPS`.
+- Web : panneau `?debug&tune` (`apps/web/src/tune.ts`) — une course avec réglages modifiés n'est **jamais** enregistrée ni classée ; caméras proche/loin (touche **C**, bouton Vue de la manette) ; `?scenario=pilotage`.
+- Tests de comportement chiffrés : `packages/sim/test/conduite.test.ts` (seuils recopiés dans le README du lot).
+
 ## Règles de la simulation (déterminisme)
 - Pas fixe (`TICK_RATE` = 120 Hz), jamais de `dt` variable ; interpolation à l'affichage seulement.
-- Pas de moteur physique externe. Pas de `Math.sin/cos/exp/pow/…` dans `sim` : implémentations maison ou tables.
+- Pas de moteur physique externe. Pas de `Math.sin/cos/exp/pow/tanh/atan2/…` dans `sim` : implémentations maison ou tables (`sin`/`cos` de `math.ts` ; saturation rationnelle `tireCurve` = t / ⁴√(1 + t⁴) ; angles de glissement, tangage et roulis gardés en **pentes** (rapports), jamais convertis en angles ; amortissements en `x * (1 − k·dt)`).
+- Modifier une valeur par défaut de `CarParams` (ou la géométrie de `car.ts`) = incrémenter `SIM_VERSION` + régénérer les références (et `GENERATOR_VERSION` si le temps du pilote change, ce qui est presque toujours le cas).
 - Commandes de la voiture = entiers (`makeInput`) ; l'état de référence de `car.test.ts` ne change que si la physique change volontairement.
 - Pas de `Math.random` ni `Date` dans `sim` : PRNG à graine explicite.
 - Une course = la suite des commandes du joueur ; le même code la rejoue côté serveur.

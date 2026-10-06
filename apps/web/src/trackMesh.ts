@@ -25,7 +25,10 @@ import {
   WALL_HEIGHT,
   blockHeight,
   blockPoint,
+  curveCenter,
   isCurve,
+  isWide,
+  turnsLeft,
   type Block,
   type PaletteName,
   type Track,
@@ -158,23 +161,30 @@ function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: 
   return rows;
 }
 
-function curveRows(b: Block, steps = 10): Row[] {
-  const R = CELL / 2;
+/** Point (rayon `r`, angle `a` depuis l'entrée) d'un virage, serré ou large. */
+function arcPoint(b: Block, r: number, a: number, y: number): V3 {
+  const { cp } = curveCenter(b.kind);
+  const side = turnsLeft(b.kind) ? -1 : 1;
+  return world(b, cp + side * r * Math.cos(a), r * Math.sin(a), y);
+}
+
+function curveRows(b: Block): Row[] {
+  const { r: R } = curveCenter(b.kind);
+  const steps = isWide(b.kind) ? 24 : 10;
   const rows: Row[] = [];
-  const left = b.kind === "curveL";
+  const left = turnsLeft(b.kind);
   for (let i = 0; i <= steps; i++) {
     const a = (Math.PI / 2) * (i / steps);
-    const at = (r: number): V3 => {
-      const p = left ? CELL - r * Math.cos(a) : r * Math.cos(a);
-      return world(b, p, r * Math.sin(a), b.y0);
-    };
+    const at = (r: number) => arcPoint(b, r, a, b.y0);
     // Dans le repère canonique p augmente vers la gauche : le bord intérieur d'un virage à gauche est à gauche.
     rows.push(left ? { left: at(R - HALF_ROAD), right: at(R + HALF_ROAD) } : { left: at(R + HALF_ROAD), right: at(R - HALF_ROAD) });
   }
   return rows;
 }
 
-let stripe = 0;
+// Bandes rouges et blanches, comptées par côté : partagé, le compteur donnerait une seule couleur à chaque rebord
+// quand chaque tranche ne fait qu'une bande (virages).
+const stripes = { left: 0, right: 0 };
 
 function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean) {
   for (let i = 0; i + 1 < rows.length; i++) {
@@ -205,7 +215,7 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         const t0 = k / pieces;
         const t1 = (k + 1) / pieces;
         const at = (t: number, up: number): V3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t + up, p[2] + (q[2] - p[2]) * t];
-        const wallColor = stripe++ % 2 === 0 ? pal.wallA : pal.wallB;
+        const wallColor = stripes[side]++ % 2 === 0 ? pal.wallA : pal.wallB;
         g.quad(at(t0, 0), at(t1, 0), at(t1, WALL_HEIGHT), at(t0, WALL_HEIGHT), wallColor);
         const c0 = at(t0, WALL_HEIGHT);
         const c1 = at(t1, WALL_HEIGHT);
@@ -219,15 +229,12 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
 function addDashes(g: Builder, pal: Palette, b: Block) {
   const w = 0.25;
   if (isCurve(b.kind)) {
-    const R = CELL / 2;
-    const left = b.kind === "curveL";
-    const at = (r: number, a: number): V3 => {
-      const p = left ? CELL - r * Math.cos(a) : r * Math.cos(a);
-      return world(b, p, r * Math.sin(a), b.y0 + 0.04);
-    };
-    for (let k = 0; k < 4; k++) {
-      const a0 = ((k + 0.2) / 4) * (Math.PI / 2);
-      const a1 = ((k + 0.65) / 4) * (Math.PI / 2);
+    const { r: R } = curveCenter(b.kind);
+    const at = (r: number, a: number) => arcPoint(b, r, a, b.y0 + 0.04);
+    const n = isWide(b.kind) ? 12 : 4; // un tiret tous les ~6 m
+    for (let k = 0; k < n; k++) {
+      const a0 = ((k + 0.2) / n) * (Math.PI / 2);
+      const a1 = ((k + 0.65) / n) * (Math.PI / 2);
       g.quad(at(R - w, a0), at(R + w, a0), at(R + w, a1), at(R - w, a1), pal.dash);
     }
     return;

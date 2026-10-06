@@ -1,6 +1,6 @@
 # Circuit du Jour — synthèse pour l'agent orchestrateur
 
-Document de **reprise** : il résume les lots 0 à 6, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 6 (06/10/2026).
+Document de **reprise** : il résume les lots 0 à 7, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 7 (06/10/2026).
 
 ## 1. Le projet en trois lignes
 Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même pour tout le monde**, généré à partir de la date, joué dans le navigateur. Le **temps est une preuve** : la physique est déterministe, une course est la suite des commandes du joueur, et le serveur la **rejoue** pour valider le temps. Pas de compte : un pseudo et un identifiant aléatoire dans le navigateur. Partage en une ligne : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812`.
@@ -16,7 +16,8 @@ Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même 
 | 4 Circuit du jour | Générateur à partir de la date, pilote de validation, temps d'auteur, médailles, palettes | #8 | 3 dates = 3 circuits jouables |
 | 5 Classement | API (Node/SQLite + Workers/D1), rejeu serveur, pseudo, classement, fantômes du premier et du joueur devant | #9 | deux appareils, deux temps, un classement |
 | 6 Arrivée & archives | Ligne à partager, boutons, archives, menu cliquable, chargement et mise en page mobile | #10 | copier le résultat ; archives ; mobile |
-| (correctif) | CI rouge du lot 6 : fantôme annoncé en pleine course, mise en page robuste à la police | #11 (ouverte) | — |
+| (correctif) | CI rouge du lot 6 : fantôme annoncé en pleine course, mise en page robuste à la police | #11 | — |
+| 7 Conduite | Modèle bicyclette + 4 ressorts + balistique, dérapage au frein, rebords par impulsion, reprise avec la vitesse, virage large L2/R2, `CarParams`/`SurfaceParams`, panneau `?debug&tune`, caméras C, pilote sur trajectoire de course ; versions 2/2 | #13 | la sensation sur `?scenario=pilotage`, puis réglages au panneau → ⏸ retouche 7b |
 
 Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : le *jalon* « une semaine de circuits joués par Nathan et quelques amis », et « Ensuite » du seed (commandes tactiles, thèmes visuels, circuit du dimanche, portail de jeux).
 
@@ -44,7 +45,7 @@ docs/          seed.md (source de vérité), lots/ (un README par lot), ce docum
 3. **Deux numéros de version** (`packages/sim/src/constants.ts`), à incrémenter dès que le résultat d'une course ou le circuit d'une date change :
    - `SIM_VERSION` (physique, blocs, circuit d'essai) → régénérer la rediffusion de référence : `UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden.test.ts`
    - `GENERATOR_VERSION` (règles du générateur, pilote, fenêtre de durée 28–48 s) → `UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden-daily.test.ts`
-   Valeurs actuelles : **1 et 1**. L'id d'un circuit du jour est `jour-AAAA-MM-JJ-g<GENERATOR_VERSION>`. Les tests « golden » comparent **au bit près** : s'ils cassent, quelque chose a changé la physique ou les circuits.
+   Valeurs actuelles : **2 et 2** (lot 7). L'id d'un circuit du jour est `jour-AAAA-MM-JJ-g<GENERATOR_VERSION>`. Les tests « golden » comparent **au bit près** : s'ils cassent, quelque chose a changé la physique ou les circuits.
 4. **Une seule vérité pour le temps** : le chrono est en pas de simulation affiné par interpolation, en millisecondes entières.
 5. **Sécurité de l'API** : requêtes SQL paramétrées, pseudo validé et affiché en `textContent`, corps de requête borné, limitation de débit avant tout rejeu, adresses hachées. Voir `docs/lots/lot-5-classement.md`.
 6. **Le jeu marche sans API** (pas d'adresse configurée = pas de classement, rien d'autre ne change).
@@ -76,14 +77,15 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 
 **Décidé**
 - Monorepo npm workspaces, TypeScript, Three.js ; physique **maison** (pas de moteur externe) ; cellules de 32 m, route de 14 m ; blocs : droit, virages, montée/descente, bosse, tremplin, plaque ; pas de banquettes ni de boucles (hors premier jalon).
-- Générateur par segments + validation par pilote (4 vitesses de virage essayées) ; fenêtre de durée du pilote 28–48 s ; médailles : or ×1,08, argent ×1,20, bronze ×1,40 du temps de l'auteur.
+- Générateur par segments + validation par pilote ; fenêtre de durée du pilote 28–48 s ; médailles : or ×1,08, argent ×1,20, bronze ×1,40 du temps de l'auteur.
+- **Lot 7** : vitesse de pointe gardée à 42 m/s (échelles du générateur inchangées) ; adhérence ≈ 40 m/s² puis glisse ; pas de migration des anciennes courses (aucun joueur réel) : l'API refuse une autre `SIM_VERSION` avec un message clair, les records locaux d'une autre version sont ignorés ; format de rediffusion inchangé (direction déjà analogique). Le pilote suit une trajectoire de course et essaie 4 niveaux d'adhérence (`PILOT_GRIPS`) ; virage large L2/R2 ajouté (le générateur en met une fois sur quatre). Les réglages par défaut sont provisoires : la retouche 7b appliquera ceux de Nathan.
 - Classement : meilleur temps par joueur et par jour, égalité départagée par l'ordre d'arrivée ; seul le jour courant (UTC) accepte des temps, avec 10 min de grâce après minuit ; jours passés consultables et figés.
 - Identité : identifiant aléatoire + pseudo dans `localStorage` (changer de navigateur = nouveau joueur, accepté).
 - Touche **H** pour les archives (**A** sert à tourner à gauche).
 
 **Ouvert — à trancher par Nathan**
-1. **Hébergement de l'API.** Le seed suppose que le gratuit suffit ; **faux sur Cloudflare Workers** : l'offre gratuite limite à 10 ms de calcul par requête, or rejouer une course coûte ≈ 6 ms et générer un circuit 35–500 ms. Options : serveur de Nathan en Docker (recommandé, aucune limite) ou Workers Paid (5 $/mois). Rien n'est déployé ; pour brancher le jeu : variable GitHub `VITE_API_URL`. Détails et commandes : `docs/lots/lot-5-classement.md`.
-2. **Seuils des médailles** : non calibrés sur de vrais joueurs (le pilote suit la ligne médiane et peut être battu). `MEDAL_FACTORS` et la fenêtre de durée se règlent d'un coup (`generator.ts`), à faire après quelques circuits joués ; toute modification impose d'incrémenter `GENERATOR_VERSION`.
+1. **Hébergement de l'API.** Le seed suppose que le gratuit suffit ; **faux sur Cloudflare Workers** : l'offre gratuite limite à 10 ms de calcul par requête, or rejouer une course coûte ≈ 10–12 ms depuis le lot 7 (≈ 6 ms avant) et générer un circuit ~100 ms en moyenne. Options : serveur de Nathan en Docker (recommandé, aucune limite) ou Workers Paid (5 $/mois). Rien n'est déployé ; pour brancher le jeu : variable GitHub `VITE_API_URL`. Détails et commandes : `docs/lots/lot-5-classement.md`.
+2. **Seuils des médailles** : non calibrés sur de vrais joueurs (depuis le lot 7 le pilote suit une trajectoire de course, mais ne dérape pas : un bon joueur le bat de quelques %). `MEDAL_FACTORS` et la fenêtre de durée se règlent d'un coup (`generator.ts`), à faire après quelques circuits joués ; toute modification impose d'incrémenter `GENERATOR_VERSION`.
 3. **Commandes tactiles** : non faites (« Ensuite » du plan). **Sur téléphone, le jeu se charge et s'affiche bien mais on ne peut pas conduire sans clavier ni manette.** Prérequis du jalon si des amis jouent sur mobile.
 
 ## 8. Pièges rencontrés (à éviter)
@@ -96,6 +98,12 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 - **Tests de classement et horloge réelle** : les e2e utilisent la date UTC du jour ; le serveur de test est neuf à chaque lancement (`reuseExistingServer: false`) ; les tests qui n'ont pas à toucher au vrai serveur simulent l'API (`page.route`) pour ne pas fausser les rangs.
 - **Shell du conteneur** : `pkill -f <motif>` peut tuer le shell lui-même si le motif apparaît dans la commande ; tuer par PID.
 - **Génération du circuit du jour** : coûteuse au premier appel (jusqu'à ~0,5 s) ; le serveur la met en cache en base.
+
+- **Physique (lot 7)** : un modèle bicyclette part en tête-à-queue à la limite si l'arrière accroche moins que l'avant — garder l'arrière un peu plus fort (47 / 44). Un dérapage obtenu seulement en baissant l'adhérence arrière finit en toupie : l'angle de dérive est tenu par un rappel amorti (`DRIFT_SPRING` / `DRIFT_DAMPING`).
+- **Restes flottants** : sans seuil, une voiture « arrêtée » garde 1e-18 m/s de glisse ; à l'arrêt sur le plat sans commande, on remet tout à 0. Après l'arrivée, le frein à fond faisait reculer : on freine tant qu'on avance, puis plus rien.
+- **Mesurer le coût du rejeu** : 2 sous-pas × 4 roues l'ont doublé (≈ 10–12 ms par course) ; les échantillons de sol de fin de sous-pas sont réutilisés au suivant, et la trajectoire du pilote est calculée une fois par circuit (`WeakMap`).
+- **Bandeau pendant le décompte** : il est réécrit à chaque image (3, 2, 1) ; un test qui attend un message dans `#banner` doit attendre `phase === "racing"`.
+- **Branche imposée** : l'environnement de session peut imposer un nom de branche différent de celui du prompt de lot (lot 7 : `claude/bold-thompson-ank8u1`) ; le lien d'aperçu suit le nom réel (`/b/<branche avec - au lieu de />/`).
 
 ## 9. Suite proposée (à confirmer avec Nathan)
 
