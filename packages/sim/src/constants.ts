@@ -15,3 +15,10 @@ export function ticksToMs(ticks: number): number {
  * (le fantôme est alors ignoré, et le serveur les refuse).
  */
 export const SIM_VERSION = 1;
+
+/**
+ * Version du générateur de circuits du jour. À incrémenter dès que le circuit d'une date change
+ * (règles de construction, pilote de validation, fenêtre de durée) : elle fait partie de l'identifiant du circuit,
+ * donc les records et rediffusions d'un autre générateur ne se mélangent pas.
+ */
+export const GENERATOR_VERSION = 1;

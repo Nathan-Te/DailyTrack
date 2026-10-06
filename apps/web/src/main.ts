@@ -8,11 +8,16 @@ import {
   copyCar,
   createCar,
   createTestTrack,
+  dailyCircuit,
   encodeReplay,
+  medalFor,
+  parseDay,
   raceElapsedMs,
   stepCar,
   wrapAngle,
   type CarInput,
+  type DailyCircuit,
+  type Medal,
   type CarState,
   type RaceState,
 } from "@cdj/sim";
@@ -22,18 +27,26 @@ import { formatDelta, formatTime } from "./format";
 import { Controls } from "./input";
 import { loadBest, saveBest, type BestRun } from "./records";
 import { RunSession } from "./session";
-import { buildTrackScene } from "./trackMesh";
+import { PALETTE_DEFS, buildTrackScene } from "./trackMesh";
 
 const params = new URLSearchParams(location.search);
-const scenario = params.get("scenario") === "plat" ? "plat" : "essai";
-const track = scenario === "essai" ? createTestTrack() : null;
+// Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
+// `essai` (le circuit écrit à la main des lots 2-3) et `plat` (le terrain d'essai du lot 1).
+const requested = params.get("scenario");
+const scenario = requested === "plat" ? "plat" : requested === "essai" ? "essai" : "jour";
+const todayUtc = Math.floor(Date.now() / 86_400_000);
+const seedParam = params.get("seed");
+const seedDay = seedParam === null ? null : parseDay(seedParam);
+let daily: DailyCircuit | null = null;
+if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc);
+const track = scenario === "plat" ? null : daily ? daily.track : createTestTrack();
 const COUNTDOWN_S = 3;
 
 const renderer = new WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-const view = track ? buildTrackScene(track) : buildFlatArena();
+const view = track ? buildTrackScene(track, daily?.palette ?? "desert") : buildFlatArena();
 const carMesh = createCarMesh();
 view.scene.add(carMesh);
 const ghostMesh = createCarMesh(true);
@@ -59,6 +72,19 @@ const hudTimer = $("timer");
 const hudSplits = $("splits");
 const hudBanner = $("banner");
 const hudFinish = $("finish");
+
+const MEDAL_ICON: Record<Medal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
+const MEDAL_NAME: Record<Medal, string> = { author: "Meilleur que l'auteur !", gold: "Médaille d'or", silver: "Médaille d'argent", bronze: "Médaille de bronze" };
+
+// Titre du circuit et seuils des médailles.
+if (daily) {
+  const m = daily.medals;
+  const invalidSeed = seedParam !== null && seedDay === null;
+  $("meta").textContent = `Circuit du Jour${daily.number >= 1 ? ` #${daily.number}` : ""} · ${daily.date} · ${PALETTE_DEFS[daily.palette].label}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`;
+  $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
+} else if (track) {
+  $("meta").textContent = "Circuit d'essai";
+}
 function updateInfo() {
   $("info").textContent = track
     ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start${session?.ghost ? " · G : fantôme" : ""}`
@@ -132,6 +158,13 @@ function renderSplits() {
   );
 }
 
+function medalLines(ms: number): [string, string][] {
+  if (!daily) return [];
+  const medal = medalFor(ms, daily.medals);
+  if (medal) return [["medal", `${MEDAL_ICON[medal]} ${MEDAL_NAME[medal]}`]];
+  return [["", `Pas de médaille · bronze à ${formatTime(daily.medals.bronze)}`]];
+}
+
 function finishRun() {
   if (!race || !track || !session) return;
   phase = "finished";
@@ -144,6 +177,7 @@ function finishRun() {
   }
   const lines: [string, string][] = [
     ["big", formatTime(ms)],
+    ...medalLines(ms),
     [isRecord ? "record" : "", isRecord ? (previousBest ? `Nouveau record ! (${formatDelta(ms - previousBest.ms)})` : "Premier temps enregistré") : `Record : ${formatTime(best!.ms)} (${formatDelta(ms - best!.ms)})`],
     ["", race.respawns > 0 ? `${race.respawns} reprise${race.respawns > 1 ? "s" : ""} au point de contrôle` : "Sans reprise"],
     ["hint", "Entrée : rejouer"],

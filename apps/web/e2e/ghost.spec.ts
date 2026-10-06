@@ -8,13 +8,6 @@ const golden = JSON.parse(readFileSync(new URL("../../../packages/sim/test/fixtu
   simVersion: number;
 };
 
-type Debug = { phase: string; ghost: { z: number; tick: number } | null; car: { z: number }; race: unknown };
-declare global {
-  interface Window {
-    __cdj: Debug;
-  }
-}
-
 // Le rendu 3D demande WebGL : on ne le vérifie que dans Chromium (rendu logiciel). La simulation, elle, est
 // vérifiée dans tous les navigateurs par replay.spec.ts.
 test.describe("fantôme (rendu 3D)", () => {
@@ -30,7 +23,7 @@ test.describe("fantôme (rendu 3D)", () => {
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(String(e)));
 
-    await page.goto("/?debug");
+    await page.goto("/?debug&scenario=essai");
     await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 });
     const z0 = await page.evaluate(() => window.__cdj.ghost?.z);
     expect(z0).toBeDefined();
@@ -48,7 +41,7 @@ test.describe("fantôme (rendu 3D)", () => {
 
   test("sans rediffusion enregistrée (ancien record), il n'y a pas de fantôme mais le jeu marche", async ({ page }) => {
     await page.addInitScript(() => localStorage.setItem("cdj:best:essai", JSON.stringify({ ms: 50_000, splits: [1, 2, 3] })));
-    await page.goto("/?debug");
+    await page.goto("/?debug&scenario=essai");
     await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 });
     expect(await page.evaluate(() => window.__cdj.ghost)).toBeNull();
   });
@@ -58,7 +51,7 @@ test.describe("enregistrement du record (rendu 3D)", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 
   test("à l'arrivée, le temps est enregistré avec sa rediffusion", async ({ page }) => {
-    await page.goto("/?debug");
+    await page.goto("/?debug&scenario=essai");
     await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 });
     // On se téléporte juste avant la ligne d'arrivée : on teste l'enregistrement, pas la conduite
     // (la rediffusion de cette course truquée n'est donc pas rejouable, seule sa présence compte).

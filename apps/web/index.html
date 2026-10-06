@@ -11,6 +11,9 @@
       canvas { display: block; width: 100%; height: 100%; }
       .hud { position: fixed; color: #fff; font: 600 14px system-ui, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.55); pointer-events: none; font-variant-numeric: tabular-nums; }
       #info { left: 16px; bottom: 14px; opacity: .75; font-size: 12px; max-width: 60vw; }
+      #meta { left: 16px; top: 12px; font-size: 15px; }
+      #medals { left: 16px; top: 34px; font-size: 13px; opacity: .9; white-space: pre; }
+      #finish .medal { font-size: 22px; font-weight: 700; }
       #speed { right: 20px; bottom: 16px; font-size: 40px; }
       #timer { left: 50%; top: 10px; transform: translateX(-50%); font-size: 34px; }
       #splits { right: 16px; top: 12px; text-align: right; line-height: 1.5; font-size: 15px; }
@@ -25,6 +28,8 @@
     </style>
   </head>
   <body>
+    <div id="meta" class="hud"></div>
+    <div id="medals" class="hud"></div>
     <div id="info" class="hud"></div>
     <div id="timer" class="hud"></div>
     <div id="splits" class="hud"></div>
