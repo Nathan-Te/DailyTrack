@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DT, TICK_RATE, ticksToMs } from "../src/index";
 
-describe("sim", () => {
+describe("constantes", () => {
   it("utilise un pas fixe de 120 Hz", () => {
     expect(TICK_RATE).toBe(120);
     expect(DT * TICK_RATE).toBeCloseTo(1, 12);
