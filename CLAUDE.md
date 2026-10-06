@@ -46,6 +46,12 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - Web : panneau `?debug&tune` (`apps/web/src/tune.ts`) — une course avec réglages modifiés n'est **jamais** enregistrée ni classée ; caméras proche/loin (touche **C**, bouton Vue de la manette) ; `?scenario=pilotage`.
 - Tests de comportement chiffrés : `packages/sim/test/conduite.test.ts` (seuils recopiés dans le README du lot).
 
+## Commandes tactiles (lot 10)
+- `apps/web/src/touch.ts` (logique pure, testée : `TouchPad` = doigts → axes, `dragSteer`, `zoneAt`, réglages `cdj:touch`, seuil de choc) ; `touchUi.ts` (DOM : zones, aides, boutons, réglages, invitation portrait, plein écran) ; `input.ts` (`Controls` fusionne clavier, manette et doigts). Mode actif si `pointer: coarse`, ou `?touch=1` (la souris simule le doigt) ; `?touch=0` le coupe.
+- Disposition paysage : moitié gauche = direction (glissement relatif au point de pose, ou boutons ← →), moitié droite = frein ; accélérateur **automatique** par défaut (ou bouton gaz) ; boutons pause / reprise / départ / réglages / plein écran ; **P** = pause (aussi au clavier).
+- **Règle : le tactile produit les mêmes commandes entières que les autres entrées** (axes flottants → `makeInput`) ; rien dans `sim`, rediffusions identiques. Vibration (point de contrôle, choc) = présentation seule, lecture de la vitesse sans effet sur la simulation.
+- Tests : `apps/web/test/touch.test.ts` ; e2e `tactile.spec.ts` (vrais événements tactiles via `Input.dispatchTouchEvent`, gabarits Android et iPhone) ; outils `?debug` : `spec=<blocs>`, `__cdj.input`, `__cdj.manual(true)` + `__cdj.advance(n)` (pas à pas, sans rendu). Aides de mise en page : `e2e/layout.ts`.
+
 ## Règles de la simulation (déterminisme)
 - Pas fixe (`TICK_RATE` = 120 Hz), jamais de `dt` variable ; interpolation à l'affichage seulement.
 - Pas de moteur physique externe. Pas de `Math.sin/cos/exp/pow/tanh/atan2/…` dans `sim` : implémentations maison ou tables (`sin`/`cos` de `math.ts` ; saturation rationnelle `tireCurve` = t / ⁴√(1 + t⁴) ; angles de glissement, tangage et roulis gardés en **pentes** (rapports), jamais convertis en angles ; amortissements en `x * (1 − k·dt)`).

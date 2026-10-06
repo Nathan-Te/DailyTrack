@@ -1,6 +1,6 @@
 # Circuit du Jour — synthèse pour l'agent orchestrateur
 
-Document de **reprise** : il résume les lots 0 à 7, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 7 (06/10/2026).
+Document de **reprise** : il résume les lots 0 à 7 et 10, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 10 (06/10/2026).
 
 ## 1. Le projet en trois lignes
 Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même pour tout le monde**, généré à partir de la date, joué dans le navigateur. Le **temps est une preuve** : la physique est déterministe, une course est la suite des commandes du joueur, et le serveur la **rejoue** pour valider le temps. Pas de compte : un pseudo et un identifiant aléatoire dans le navigateur. Partage en une ligne : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812`.
@@ -18,8 +18,9 @@ Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même 
 | 6 Arrivée & archives | Ligne à partager, boutons, archives, menu cliquable, chargement et mise en page mobile | #10 | copier le résultat ; archives ; mobile |
 | (correctif) | CI rouge du lot 6 : fantôme annoncé en pleine course, mise en page robuste à la police | #11 | — |
 | 7 Conduite | Modèle bicyclette + 4 ressorts + balistique, dérapage au frein, rebords par impulsion, reprise avec la vitesse, virage large L2/R2, `CarParams`/`SurfaceParams`, panneau `?debug&tune`, caméras C, pilote sur trajectoire de course ; versions 2/2 | #13 | la sensation sur `?scenario=pilotage`, puis réglages au panneau → ⏸ retouche 7b |
+| 10 Tactile (fait **avant** les lots 8 et 9, à la demande de Nathan) | Commandes tactiles : glissement ou boutons ← →, frein à droite, accélérateur auto ou bouton gaz, pause, reprise / départ, réglages mémorisés, invitation portrait, plein écran, vibrations ; `?touch=1` ; outils de test pas à pas | (PR du lot 10) | finir un tour au doigt sur téléphone |
 
-Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : le *jalon* « une semaine de circuits joués par Nathan et quelques amis », et « Ensuite » du seed (commandes tactiles, thèmes visuels, circuit du dimanche, portail de jeux).
+Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : la retouche 7b (réglages de Nathan), les lots 8 (surfaces, blocs à effet, thèmes) et 9 (voiture modélisée, effets, sons, `?demo`), le lot 11 (historique, `?api=demo`), puis mise en ligne, calibrage et le *jalon* « une semaine de circuits joués par Nathan et quelques amis ». Les lots 8 et 9 restent **à faire** même si le 10 est livré : les prompts du seed (§ 12) gardent leur ordre, le lot 10 ne dépend que du lot 7.
 
 ## 3. Architecture
 
@@ -86,7 +87,7 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 **Ouvert — à trancher par Nathan**
 1. **Hébergement de l'API.** Le seed suppose que le gratuit suffit ; **faux sur Cloudflare Workers** : l'offre gratuite limite à 10 ms de calcul par requête, or rejouer une course coûte ≈ 10–12 ms depuis le lot 7 (≈ 6 ms avant) et générer un circuit ~100 ms en moyenne. Options : serveur de Nathan en Docker (recommandé, aucune limite) ou Workers Paid (5 $/mois). Rien n'est déployé ; pour brancher le jeu : variable GitHub `VITE_API_URL`. Détails et commandes : `docs/lots/lot-5-classement.md`.
 2. **Seuils des médailles** : non calibrés sur de vrais joueurs (depuis le lot 7 le pilote suit une trajectoire de course, mais ne dérape pas : un bon joueur le bat de quelques %). `MEDAL_FACTORS` et la fenêtre de durée se règlent d'un coup (`generator.ts`), à faire après quelques circuits joués ; toute modification impose d'incrémenter `GENERATOR_VERSION`.
-3. **Commandes tactiles** : non faites (« Ensuite » du plan). **Sur téléphone, le jeu se charge et s'affiche bien mais on ne peut pas conduire sans clavier ni manette.** Prérequis du jalon si des amis jouent sur mobile.
+3. ~~**Commandes tactiles**~~ **résolue au lot 10** : on conduit au doigt (glissement + frein, accélérateur automatique). **À confirmer sur un vrai téléphone** (aucun testé : gestes synthétiques seulement).
 
 ## 8. Pièges rencontrés (à éviter)
 
@@ -103,6 +104,8 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 - **Restes flottants** : sans seuil, une voiture « arrêtée » garde 1e-18 m/s de glisse ; à l'arrêt sur le plat sans commande, on remet tout à 0. Après l'arrivée, le frein à fond faisait reculer : on freine tant qu'on avance, puis plus rien.
 - **Mesurer le coût du rejeu** : 2 sous-pas × 4 roues l'ont doublé (≈ 10–12 ms par course) ; les échantillons de sol de fin de sous-pas sont réutilisés au suivant, et la trajectoire du pilote est calculée une fois par circuit (`WeakMap`).
 - **Bandeau pendant le décompte** : il est réécrit à chaque image (3, 2, 1) ; un test qui attend un message dans `#banner` doit attendre `phase === "racing"`.
+- **Tests tactiles** : `Input.dispatchTouchEvent` de type `touchEnd` attend **le doigt qu'on lève**, pas ceux qui restent posés (sinon on lève le mauvais). Un test « boucle fermée » (lire l'état, pousser le pouce) ne doit pas dépendre de l'horloge : sous charge, le jeu avance moins vite que le temps réel (rendu logiciel). Utiliser `__cdj.manual(true)` + `__cdj.advance(n)` (pas à pas, sans rendu) : 22 s, stable avec 3 navigateurs en parallèle, contre un échec sur trois en temps réel. Ne pas exiger un nombre exact d'événements dont l'occurrence dépend du glissement (chocs successifs le long d'un rebord).
+- **Mise en page tactile** : les boutons de menu passent à 44 px, ce qui a fait déborder la pile d'infos en portrait (médailles, chrono, fantôme, temps intermédiaires) : `mobile.spec.ts` l'a vu avant moi. En mode tactile, l'accélérateur automatique oblige à **figer** le jeu quand une fenêtre (archives, réglages) est ouverte, sinon la voiture roule pendant qu'on lit.
 - **Branche imposée** : l'environnement de session peut imposer un nom de branche différent de celui du prompt de lot (lot 7 : `claude/bold-thompson-ank8u1`) ; le lien d'aperçu suit le nom réel (`/b/<branche avec - au lieu de />/`).
 
 ## 9. Suite proposée (à confirmer avec Nathan)
