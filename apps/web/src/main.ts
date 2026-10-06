@@ -9,6 +9,8 @@ import {
   createCar,
   createTestTrack,
   dailyCircuit,
+  ReplayPlayer,
+  decodeReplay,
   encodeReplay,
   medalFor,
   parseDay,
@@ -24,7 +26,10 @@ import {
 import { buildFlatArena } from "./arena";
 import { createCarMesh } from "./carMesh";
 import { formatDelta, formatTime } from "./format";
-import { Controls } from "./input";
+import type { Leaderboard } from "./api";
+import { isValidName, normalizeName } from "./identity";
+import { Controls, isTyping } from "./input";
+import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import { loadBest, saveBest, type BestRun } from "./records";
 import { RunSession } from "./session";
 import { PALETTE_DEFS, buildTrackScene } from "./trackMesh";
@@ -52,10 +57,14 @@ view.scene.add(carMesh);
 const ghostMesh = createCarMesh(true);
 ghostMesh.visible = false;
 view.scene.add(ghostMesh);
-let showGhost = params.get("ghost") !== "off";
-window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyG" && !e.repeat) showGhost = !showGhost;
-});
+
+// Classement : seulement pour le circuit du jour, et si une adresse d'API est configurée (`?api=` ou VITE_API_URL).
+const online = new Online(track ? track.id : null, daily ? daily.date : null);
+// On ne peut classer que le circuit d'aujourd'hui (un jour passé est figé : le serveur refuse).
+const submitAllowed = !!daily && daily.day === todayUtc;
+// Outils de test (`?debug`) : accélérer le temps et jouer une rediffusion à la place du clavier.
+const timeScale = params.has("debug") ? Math.max(1, Number(params.get("timescale")) || 1) : 1;
+let autoplay: ReplayPlayer | null = null;
 
 const camera = new PerspectiveCamera(65, 1, 0.1, 500);
 function resize() {
@@ -72,6 +81,7 @@ const hudTimer = $("timer");
 const hudSplits = $("splits");
 const hudBanner = $("banner");
 const hudFinish = $("finish");
+const hudBoard = $("board");
 
 const MEDAL_ICON: Record<Medal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
 const MEDAL_NAME: Record<Medal, string> = { author: "Meilleur que l'auteur !", gold: "Médaille d'or", silver: "Médaille d'argent", bronze: "Médaille de bronze" };
@@ -87,7 +97,7 @@ if (daily) {
 }
 function updateInfo() {
   $("info").textContent = track
-    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start${session?.ghost ? " · G : fantôme" : ""}`
+    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · G : fantôme${online.enabled ? " · L : classement" : ""}`
     : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer";
 }
 
@@ -96,7 +106,12 @@ type Phase = "countdown" | "racing" | "finished";
 
 const controls = new Controls();
 let best: BestRun | null = track ? loadBest(track.id) : null;
-let session: RunSession | null = track ? new RunSession(track, best) : null;
+// Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
+let ghostMode: GhostMode = params.get("ghost") === "off" ? "off" : "mine";
+let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
+let ghostLabel = "ton record";
+let ghostBusy = false;
+let session: RunSession | null = track ? new RunSession(track, ghostSource) : null;
 let race: RaceState | null = session ? session.race : null;
 let car: CarState = race ? race.car : createCar();
 let previous: CarState = session ? session.previous : createCar();
@@ -112,7 +127,7 @@ let lastRespawns = 0;
 
 function startAttempt() {
   if (track) {
-    session = new RunSession(track, best);
+    session = new RunSession(track, ghostSource);
     race = session.race;
     car = race.car;
     previous = session.previous;
@@ -124,6 +139,8 @@ function startAttempt() {
   }
   copyCar(car, previous);
   updateInfo();
+  updateGhostInfo();
+  autoplay = null;
   accumulator = 0;
   pendingRespawn = false;
   shownSplits = 0;
@@ -140,13 +157,182 @@ function showBanner(text: string, seconds: number, small = false) {
   bannerTimer = seconds;
 }
 
+function updateGhostInfo() {
+  $("ghostinfo").textContent = session?.ghost && ghostSource ? `Fantôme : ${ghostLabel} · ${formatTime(ghostSource.ms)}` : "";
+}
+
+function setGhost(mode: GhostMode, source: BestRun | null, label: string) {
+  ghostMode = mode;
+  ghostSource = source;
+  ghostLabel = label;
+  if (phase === "racing") showBanner(`Fantôme : ${label} (au prochain départ)`, 2, true);
+  else {
+    startAttempt(); // pas de course en cours : on repart tout de suite avec le nouveau fantôme
+    showBanner(`Fantôme : ${label}`, 1.6, true);
+  }
+}
+
+/** `G` : fantôme suivant (son record → le premier → le joueur devant → aucun), en sautant ceux qui n'existent pas. */
+async function cycleGhost() {
+  if (!track || ghostBusy) return;
+  ghostBusy = true;
+  try {
+    const modes = ghostModes(!!best?.replay, online.enabled);
+    let mode = ghostMode;
+    for (let i = 0; i < modes.length; i++) {
+      mode = nextGhostMode(mode, modes);
+      if (mode === "off") return setGhost("off", null, "aucun");
+      if (mode === "mine") return setGhost("mine", best, "ton record");
+      const choice = await online.remoteGhost(mode);
+      if (choice) return setGhost(choice.mode, choice.source, choice.label);
+      showBanner(mode === "first" ? "Pas encore de premier" : "Personne devant toi", 1.4, true);
+    }
+  } finally {
+    ghostBusy = false;
+  }
+}
+
+// --- Classement -----------------------------------------------------------------------------
+let boardVisible = false;
+
+function renderBoard(lb: Leaderboard) {
+  const row = (r: { rank: number; name: string; ms: number; medal: string | null }, me: boolean) => {
+    const d = document.createElement("div");
+    d.className = me ? "row me" : "row";
+    const icon = r.medal ? MEDAL_ICON[r.medal as Medal] : "";
+    for (const [cls, text] of [["rank", `${r.rank}`], ["who", r.name], ["time", formatTime(r.ms)], ["icon", icon]] as const) {
+      const span = document.createElement("span");
+      span.className = cls;
+      span.textContent = text;
+      d.append(span);
+    }
+    return d;
+  };
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = lb.participants === 0 ? "Classement du jour : personne encore" : `Classement du jour · ${lb.participants} pilote${lb.participants > 1 ? "s" : ""}`;
+  const rows = lb.top.map((r) => row(r, lb.me !== null && r.rank === lb.me.rank && r.name === lb.me.name));
+  if (lb.me && lb.me.rank > lb.top.length) {
+    const gap = document.createElement("div");
+    gap.className = "gap";
+    gap.textContent = "…";
+    rows.push(gap, row(lb.me, true));
+  }
+  hudBoard.replaceChildren(title, ...rows);
+}
+
+async function refreshBoard() {
+  if (!online.enabled) return;
+  const r = await online.leaderboard();
+  if (r.ok) renderBoard(r.data);
+  else hudBoard.textContent = r.message;
+}
+
+function setBoardVisible(visible: boolean) {
+  boardVisible = visible && online.enabled;
+  hudBoard.hidden = !boardVisible;
+  if (boardVisible) void refreshBoard();
+}
+
+window.addEventListener("keydown", (e) => {
+  if (e.repeat || isTyping(e)) return;
+  if (e.code === "KeyG") void cycleGhost();
+  if (e.code === "KeyL") setBoardVisible(!boardVisible);
+});
+
+/** Envoi du meilleur temps au classement, et affichage du rang dans le panneau d'arrivée. */
+function startOnlineFlow(box: HTMLElement) {
+  const text = (msg: string, cls = "") => {
+    const d = document.createElement("div");
+    d.className = cls;
+    d.textContent = msg;
+    return d;
+  };
+  const button = (label: string, onClick: () => void) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "link";
+    b.textContent = label;
+    b.addEventListener("click", onClick);
+    return b;
+  };
+
+  const showRank = (rank: number, participants: number, extra = "") => {
+    box.replaceChildren(text(`Rang ${rank} / ${participants}${extra}`, "rank"), button("Changer de pseudo", () => nameForm()));
+    setBoardVisible(true);
+  };
+
+  const send = async () => {
+    const name = online.name;
+    if (!best || !name) return nameForm();
+    box.replaceChildren(text("Envoi au classement…", "status"));
+    const r = await online.submit(best, name);
+    if (r.ok) {
+      const gap = r.data.bestMs !== best.ms ? ` · temps du serveur : ${formatTime(r.data.bestMs)}` : "";
+      showRank(r.data.rank, r.data.participants, gap);
+    } else {
+      box.replaceChildren(text(r.message, "error"), button("Réessayer", () => void send()));
+    }
+  };
+
+  const nameForm = () => {
+    const form = document.createElement("form");
+    const input = document.createElement("input");
+    input.type = "text";
+    input.maxLength = 20;
+    input.placeholder = "Ton pseudo";
+    input.autocomplete = "off";
+    input.value = online.name ?? "";
+    const ok = document.createElement("button");
+    ok.type = "submit";
+    ok.textContent = "OK";
+    const error = text("", "error");
+    form.append(text(online.name ? "Nouveau pseudo" : "Choisis ton pseudo pour entrer au classement", "label"), input, ok, error);
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = normalizeName(input.value);
+      if (!isValidName(name)) {
+        error.textContent = "1 à 20 caractères : lettres, chiffres, espace . _ ' -";
+        return;
+      }
+      ok.disabled = true;
+      const pending = online.needsSubmit(best);
+      await online.rename(name, !pending); // pas encore classé : le pseudo part avec la course
+      if (pending) await send();
+      else {
+        box.replaceChildren(text(`Pseudo : ${name}`, "status"));
+        setBoardVisible(true);
+      }
+    });
+    box.replaceChildren(form);
+    input.focus();
+    input.select();
+  };
+
+  if (!submitAllowed) {
+    box.replaceChildren(text("Classement figé : ce jour est terminé", "status"));
+    setBoardVisible(true);
+  } else if (online.needsSubmit(best)) {
+    void send();
+  } else {
+    // Ce temps n'améliore pas le record, déjà classé : on affiche simplement la place actuelle.
+    box.replaceChildren(text("Chargement du classement…", "status"));
+    void online.leaderboard().then((r) => {
+      if (r.ok && r.data.me) showRank(r.data.me.rank, r.data.participants);
+      else if (r.ok) box.replaceChildren();
+      else box.replaceChildren(text(r.message, "error"));
+      if (r.ok) setBoardVisible(true);
+    });
+  }
+}
+
 function renderSplits() {
   if (!race) return;
   hudSplits.replaceChildren(
     ...race.splits.map((ms, i) => {
       const line = document.createElement("div");
       line.textContent = `CP${i + 1}  ${formatTime(ms)}`;
-      const ref = best?.splits[i];
+      const ref = (ghostSource ?? best)?.splits[i];
       if (ref !== undefined) {
         const d = document.createElement("span");
         d.className = ms <= ref ? "down" : "up";
@@ -174,23 +360,28 @@ function finishRun() {
   if (isRecord) {
     best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION };
     saveBest(track.id, best);
+    if (ghostMode === "mine") ghostSource = best; // le prochain fantôme sera ce nouveau record
   }
   const lines: [string, string][] = [
     ["big", formatTime(ms)],
     ...medalLines(ms),
     [isRecord ? "record" : "", isRecord ? (previousBest ? `Nouveau record ! (${formatDelta(ms - previousBest.ms)})` : "Premier temps enregistré") : `Record : ${formatTime(best!.ms)} (${formatDelta(ms - best!.ms)})`],
     ["", race.respawns > 0 ? `${race.respawns} reprise${race.respawns > 1 ? "s" : ""} au point de contrôle` : "Sans reprise"],
-    ["hint", "Entrée : rejouer"],
   ];
-  hudFinish.replaceChildren(
-    ...lines.map(([cls, text]) => {
-      const d = document.createElement("div");
-      d.className = cls;
-      d.textContent = text;
-      return d;
-    }),
-  );
+  const rows = lines.map(([cls, text]) => {
+    const d = document.createElement("div");
+    d.className = cls;
+    d.textContent = text;
+    return d;
+  });
+  const onlineBox = document.createElement("div");
+  onlineBox.className = "online";
+  const hint = document.createElement("div");
+  hint.className = "hint";
+  hint.textContent = "Entrée : rejouer";
+  hudFinish.replaceChildren(...rows, ...(online.enabled ? [onlineBox] : []), hint);
   hudFinish.hidden = false;
+  if (online.enabled) startOnlineFlow(onlineBox);
   showBanner("ARRIVÉE", 2.5);
 }
 
@@ -212,7 +403,7 @@ function stepOnce(input: CarInput) {
 }
 
 function frame(now: number) {
-  const elapsed = Math.min((now - last) / 1000, 0.25); // borne : pas de spirale après un onglet en pause
+  const elapsed = Math.min((now - last) / 1000, 0.25) * timeScale; // borne : pas de spirale après un onglet en pause
   last = now;
 
   const { input, restart } = controls.poll();
@@ -234,7 +425,7 @@ function frame(now: number) {
   } else {
     accumulator += elapsed;
     while (accumulator >= DT) {
-      stepOnce(pendingRespawn ? input : { ...input, respawn: 0 });
+      stepOnce(autoplay ? autoplay.next() : pendingRespawn ? input : { ...input, respawn: 0 });
       pendingRespawn = false;
       accumulator -= DT;
     }
@@ -246,7 +437,7 @@ function frame(now: number) {
       shownSplits = race.splits.length;
       renderSplits();
       const ms = race.splits[shownSplits - 1]!;
-      const ref = best?.splits[shownSplits - 1];
+      const ref = (ghostSource ?? best)?.splits[shownSplits - 1];
       showBanner(ref !== undefined ? `CP${shownSplits}  ${formatDelta(ms - ref)}` : `CP${shownSplits}  ${formatTime(ms)}`, 1.6, true);
     }
     if (race.respawns !== lastRespawns) {
@@ -280,8 +471,8 @@ function frame(now: number) {
 
   // Fantôme : la rediffusion du meilleur temps, interpolée comme la voiture.
   const ghost = session?.ghost;
-  ghostMesh.visible = !!ghost && showGhost;
-  if (ghost && showGhost) {
+  ghostMesh.visible = !!ghost;
+  if (ghost) {
     const gc = ghost.race.car;
     const gp = ghost.previous;
     const gh = Math.hypot(gc.vx, gc.vz);
@@ -328,6 +519,12 @@ if (params.has("debug")) {
       },
       get ghost() {
         return session?.ghost?.race.car ?? null;
+      },
+      /** Joue une rediffusion à la place du clavier (tests de navigateur). */
+      autoplay(code: string) {
+        const player = new ReplayPlayer(decodeReplay(code));
+        startAttempt(); // repart d'un décompte neuf : la rediffusion commence au pas 0
+        autoplay = player;
       },
     },
   });

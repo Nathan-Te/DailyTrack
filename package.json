@@ -15,7 +15,7 @@
     "build": "npm run build -w @cdj/web",
     "test": "vitest run",
     "typecheck": "tsc -b",
-    "test:e2e": "npm run build && npm run e2e -w @cdj/web"
+    "test:e2e": "npm run build && npm run build:node -w @cdj/api && npm run e2e -w @cdj/web"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

@@ -17,6 +17,12 @@ const KEYS = {
   restart: ["Enter"], // depuis le départ
 };
 
+/** Vrai si la touche est tapée dans un champ de saisie (le pseudo). */
+export function isTyping(e: Event): boolean {
+  const t = e.target;
+  return t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
+}
+
 const anyDown = (down: ReadonlySet<string>, codes: readonly string[]) => codes.some((c) => down.has(c));
 
 export function keyboardAxes(down: ReadonlySet<string>): Axes {
@@ -63,7 +69,7 @@ export class Controls {
 
   constructor(target: Window = window) {
     target.addEventListener("keydown", (e) => {
-      if (e.repeat) return;
+      if (e.repeat || isTyping(e)) return; // on tape son pseudo : les touches ne sont pas des commandes
       if (Object.values(KEYS).some((codes) => codes.includes(e.code))) e.preventDefault();
       this.down.add(e.code);
       if (KEYS.respawn.includes(e.code)) this.respawnLatch = true;

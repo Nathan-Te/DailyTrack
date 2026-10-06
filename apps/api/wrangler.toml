@@ -1,0 +1,16 @@
+# Déploiement sur Cloudflare Workers + D1 (voir docs/lots/lot-5-classement.md).
+#   npx wrangler d1 create circuit-du-jour     → recopier le database_id ci-dessous
+#   npm run deploy:worker -w @cdj/api
+# Les tables sont créées automatiquement au premier appel.
+name = "circuit-du-jour-api"
+main = "src/worker.ts"
+compatibility_date = "2026-10-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "circuit-du-jour"
+database_id = "REMPLACER-PAR-L-IDENTIFIANT-DE-LA-BASE"
+
+[vars]
+# Origine autorisée à appeler l'API (ex. "https://nathan-te.github.io") ; "*" par défaut.
+ALLOW_ORIGIN = "*"
