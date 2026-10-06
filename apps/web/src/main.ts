@@ -122,6 +122,10 @@ let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
 let ghostLabel = "ton record";
 let ghostBusy = false;
 let session: RunSession | null = track ? new RunSession(track, ghostSource) : null;
+// Le fantôme qui roule vraiment dans cette tentative, et celui choisi en cours de course (effectif au prochain départ).
+type GhostLabel = { label: string; ms: number | null };
+let activeGhost: GhostLabel | null = session?.ghost && ghostSource ? { label: ghostLabel, ms: ghostSource.ms } : null;
+let pendingGhost: GhostLabel | null = null;
 let race: RaceState | null = session ? session.race : null;
 let car: CarState = race ? race.car : createCar();
 let previous: CarState = session ? session.previous : createCar();
@@ -167,6 +171,8 @@ hudArchive.addEventListener("click", (e) => {
 function startAttempt() {
   if (track) {
     session = new RunSession(track, ghostSource);
+    activeGhost = session.ghost && ghostSource ? { label: ghostLabel, ms: ghostSource.ms } : null;
+    pendingGhost = null;
     race = session.race;
     car = race.car;
     previous = session.previous;
@@ -199,16 +205,27 @@ function showBanner(text: string, seconds: number, small = false) {
   bannerTimer = seconds;
 }
 
+/** Ligne du fantôme : celui qui roule, et — si on en a choisi un autre en pleine course — celui du prochain départ. */
 function updateGhostInfo() {
-  $("ghostinfo").textContent = session?.ghost && ghostSource ? `Fantôme : ${ghostLabel} · ${formatTime(ghostSource.ms)}` : "";
+  const el = $("ghostinfo");
+  if (!activeGhost && !pendingGhost) return el.replaceChildren();
+  const prefix = document.createElement("span");
+  prefix.className = "long"; // « Fantôme : » est masqué sur petit écran, faute de place
+  prefix.textContent = "Fantôme : ";
+  const now = activeGhost ? `${activeGhost.label}${activeGhost.ms !== null ? ` · ${formatTime(activeGhost.ms)}` : ""}` : "aucun";
+  const next = pendingGhost ? ` → ${pendingGhost.label}` : "";
+  el.replaceChildren(prefix, now + next);
 }
 
 function setGhost(mode: GhostMode, source: BestRun | null, label: string) {
   ghostMode = mode;
   ghostSource = source;
   ghostLabel = label;
-  if (phase === "racing") showBanner(`Fantôme : ${label} (au prochain départ)`, 2, true);
-  else {
+  if (phase === "racing") {
+    pendingGhost = { label, ms: source ? source.ms : null };
+    updateGhostInfo();
+    showBanner(`Fantôme : ${label} (au prochain départ)`, 2, true);
+  } else {
     startAttempt(); // pas de course en cours : on repart tout de suite avec le nouveau fantôme
     showBanner(`Fantôme : ${label}`, 1.6, true);
   }

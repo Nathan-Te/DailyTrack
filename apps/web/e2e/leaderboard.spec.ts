@@ -78,10 +78,17 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
   // --- Fantômes des autres : Bob passe de « son record » au « premier » (Alice), qui roule à sa place ---
   await bob.keyboard.press("KeyG");
   await expect(bob.locator("#ghostinfo")).toContainText("premier : Alice");
-  await bob.waitForFunction(() => window.__cdj.phase === "countdown" || window.__cdj.phase === "racing");
+  await bob.waitForFunction(() => window.__cdj.phase === "racing"); // la course est lancée : le fantôme ne peut plus changer sur place
   expect(await bob.evaluate(() => window.__cdj.ghost !== null)).toBe(true);
+
+  // Un autre choix en pleine course est annoncé comme « au prochain départ » (et non plus ignoré en silence)…
   await bob.keyboard.press("KeyG");
+  await expect(bob.locator("#ghostinfo")).toContainText("premier : Alice");
+  await expect(bob.locator("#ghostinfo")).toContainText("→ devant toi : Alice");
+  // …puis devient celui qui roule dès qu'on repart.
+  await bob.keyboard.press("Enter");
   await expect(bob.locator("#ghostinfo")).toContainText("devant toi : Alice");
+  await expect(bob.locator("#ghostinfo")).not.toContainText("→");
 
   await alice.context().close();
   await bob.context().close();

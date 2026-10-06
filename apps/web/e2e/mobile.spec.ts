@@ -74,6 +74,9 @@ for (const viewport of [
     const page = await context.newPage();
     await page.goto(`/?debug&timescale=4&api=${encodeURIComponent(API)}`);
     await page.waitForFunction(() => window.__cdj?.phase);
+    // Police large imposée : la police par défaut change d'une machine à l'autre (étroite en local, DejaVu Sans sur la CI)
+    // et c'est la plus large qui décide si une ligne déborde.
+    await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
     await page.evaluate((c) => window.__cdj.autoplay(c), code);
 
     // En course, après deux points de contrôle : bandeau complet (titre, médailles, chrono, intermédiaires, fantôme, menu, vitesse).
