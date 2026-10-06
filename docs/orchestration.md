@@ -17,7 +17,7 @@ Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même 
 | 5 Classement | API (Node/SQLite + Workers/D1), rejeu serveur, pseudo, classement, fantômes du premier et du joueur devant | #9 | deux appareils, deux temps, un classement |
 | 6 Arrivée & archives | Ligne à partager, boutons, archives, menu cliquable, chargement et mise en page mobile | #10 | copier le résultat ; archives ; mobile |
 | (correctif) | CI rouge du lot 6 : fantôme annoncé en pleine course, mise en page robuste à la police | #11 | — |
-| 7 Conduite | Modèle bicyclette + 4 ressorts + balistique, dérapage au frein, rebords par impulsion, reprise avec la vitesse, virage large L2/R2, `CarParams`/`SurfaceParams`, panneau `?debug&tune`, caméras C, pilote sur trajectoire de course ; versions 2/2 | (PR du lot 7) | la sensation sur `?scenario=pilotage`, puis réglages au panneau → ⏸ retouche 7b |
+| 7 Conduite | Modèle bicyclette + 4 ressorts + balistique, dérapage au frein, rebords par impulsion, reprise avec la vitesse, virage large L2/R2, `CarParams`/`SurfaceParams`, panneau `?debug&tune`, caméras C, pilote sur trajectoire de course ; versions 2/2 | #13 | la sensation sur `?scenario=pilotage`, puis réglages au panneau → ⏸ retouche 7b |
 
 Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : le *jalon* « une semaine de circuits joués par Nathan et quelques amis », et « Ensuite » du seed (commandes tactiles, thèmes visuels, circuit du dimanche, portail de jeux).
 
