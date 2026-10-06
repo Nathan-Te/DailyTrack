@@ -88,7 +88,9 @@
         #medals { top: 44px; font-size: 11px; }
         #timer { top: 60px; font-size: 28px; }
         #splits { top: 64px; right: 12px; font-size: 12px; }
-        #ghostinfo { top: 98px; font-size: 11px; }
+        /* La ligne du fantôme ne doit jamais atteindre les temps intermédiaires, à droite : largeur plafonnée, coupée par « … ». */
+        #ghostinfo { top: 98px; font-size: 11px; max-width: calc(100vw - 200px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #ghostinfo .long { display: none; }
         /* Le classement devient une fenêtre qu'on ouvre (bouton 🏆) et qu'on ferme en la touchant : pas de place pour l'afficher à côté. */
         #board { left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; width: min(320px, calc(100vw - 24px)); max-height: 72vh; overflow: auto; box-sizing: border-box; background: rgba(19,26,51,.97); box-shadow: 0 10px 40px rgba(0,0,0,.5); cursor: pointer; }
         #info { display: none; }
@@ -114,9 +116,15 @@
         #timer { top: 44px; }
         #splits { top: 48px; }
         #ghostinfo { top: 82px; }
-        #finish { left: auto; right: 12px; top: auto; bottom: 8px; transform: none; width: min(380px, 46vw); max-height: calc(100vh - 100px); }
-        #finish .big { font-size: 28px; }
+        #finish { left: auto; right: 12px; top: auto; bottom: 8px; transform: none; width: min(380px, 46vw); max-height: calc(100vh - 100px); display: flex; flex-direction: column; font-size: 14px; line-height: 1.35; padding: 10px 14px; }
+        #finish .big { font-size: 26px; }
+        #finish .medal { font-size: 18px; }
         #finish .hint { display: none; }
+        /* Peu de hauteur : les boutons passent juste après le résultat, et ce qui est secondaire (rang, ligne à partager) après eux. */
+        #finish .actions { order: 1; margin-top: 8px; }
+        #finish .online { order: 2; margin-top: 6px; font-size: 13px; }
+        #finish .share { order: 3; margin-top: 6px; font-size: 12px; }
+        #finish button { font-size: 14px; padding: 6px 12px; }
         #board { width: min(250px, 40vw); }
       }
     </style>
