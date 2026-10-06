@@ -28,9 +28,19 @@ export default defineConfig({
   reporter: "list",
   use: { baseURL: "http://localhost:4173" },
   projects,
-  webServer: {
-    command: "npx vite preview --port 4173 --strictPort",
-    url: "http://localhost:4173",
-    reuseExistingServer: true,
-  },
+  webServer: [
+    {
+      command: "npx vite preview --port 4173 --strictPort",
+      url: "http://localhost:4173",
+      reuseExistingServer: true,
+    },
+    {
+      // Le vrai serveur du classement (celui du conteneur Docker), avec une base SQLite en mémoire : neuve à
+      // chaque lancement, pour que les tests de classement partent d'un jour vierge.
+      command: "node ../api/dist/server.mjs",
+      url: "http://127.0.0.1:8787/api/health",
+      reuseExistingServer: false,
+      env: { PORT: "8787", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1" },
+    },
+  ],
 });

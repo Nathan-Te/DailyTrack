@@ -26,6 +26,12 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - **`GENERATOR_VERSION`** (constants.ts) : à incrémenter dès que le circuit d'une date change (règles, pilote, fenêtre de durée) ; puis régénérer `fixtures/daily-golden.json` (`UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden-daily.test.ts`).
 - Web : `?seed=AAAA-MM-JJ`, `?scenario=essai|plat`. Palettes dans `apps/web/src/trackMesh.ts` (`PALETTE_DEFS`).
 
+## Classement (lot 5)
+- `apps/api` : `createApi({ db, now })` (`src/api.ts`) ne dépend que de `Request`/`Response` et de `SqlDb` ; adaptateurs : Node + SQLite (`server.ts`, Docker) et Cloudflare Workers + D1 (`worker.ts`). **Le serveur ne fait jamais confiance à un temps annoncé** : il rejoue la rediffusion (`replayRace`) et enregistre son propre résultat.
+- Le client est dans `apps/web/src/{api,identity,online}.ts` ; adresse de l'API : `?api=` ou `VITE_API_URL`. Sans elle, aucun classement.
+- Tests : `apps/api/test` (SQLite en mémoire, horloge injectée) ; e2e `leaderboard.spec.ts` (Playwright lance le vrai serveur : `npm run test:e2e` construit aussi `apps/api`). Outils `?debug` : `timescale=N`, `__cdj.autoplay(code)`.
+- Le Worker ne tient pas dans les 10 ms de calcul de l'offre gratuite de Cloudflare (voir docs/lots/lot-5-classement.md).
+
 ## Règles de la simulation (déterminisme)
 - Pas fixe (`TICK_RATE` = 120 Hz), jamais de `dt` variable ; interpolation à l'affichage seulement.
 - Pas de moteur physique externe. Pas de `Math.sin/cos/exp/pow/…` dans `sim` : implémentations maison ou tables.

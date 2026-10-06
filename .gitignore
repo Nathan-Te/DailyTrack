@@ -8,3 +8,4 @@ test-results/
 dist-types/
 *.tsbuildinfo
 dist-types-e2e/
+data/

@@ -4,6 +4,7 @@ interface CdjDebug {
   ghost: { z: number; tick: number } | null;
   car: { x: number; z: number };
   race: unknown;
+  autoplay(code: string): void;
 }
 
 interface Window {

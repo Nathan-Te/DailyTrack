@@ -32,6 +32,8 @@ jobs:
           cache: npm
       - if: steps.cfg.outputs.ok == 'true'
         run: npm ci && npm run build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
       - name: Déployer l'aperçu
         if: steps.cfg.outputs.ok == 'true'
         run: >
