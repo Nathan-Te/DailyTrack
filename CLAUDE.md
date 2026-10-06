@@ -14,6 +14,7 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 ## Règles de la simulation (déterminisme)
 - Pas fixe (`TICK_RATE` = 120 Hz), jamais de `dt` variable ; interpolation à l'affichage seulement.
 - Pas de moteur physique externe. Pas de `Math.sin/cos/exp/pow/…` dans `sim` : implémentations maison ou tables.
+- Commandes de la voiture = entiers (`makeInput`) ; l'état de référence de `car.test.ts` ne change que si la physique change volontairement.
 - Pas de `Math.random` ni `Date` dans `sim` : PRNG à graine explicite.
 - Une course = la suite des commandes du joueur ; le même code la rejoue côté serveur.
 
