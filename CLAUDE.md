@@ -7,6 +7,7 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - `apps/web` — le jeu (Vite + Three.js) ; affiche ce que calcule `sim`.
 - `apps/api` — classement (lot 5) ; importe le même `sim` pour rejouer les courses.
 - `docs/lots/` — un README d'une page par lot.
+- `docs/orchestration.md` — synthèse des lots, règles à ne pas casser, méthode et suite (pour l'agent orchestrateur).
 
 ## Commandes
 - `npm install` · `npm run dev` · `npm test` (Vitest) · `npm run typecheck` · `npm run build`
