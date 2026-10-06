@@ -336,3 +336,65 @@ test("vibration au point de contrôle et au choc, désactivable", async ({ brows
   expect(await second.page.evaluate(() => (window as unknown as { __vibrations: unknown[] }).__vibrations)).toEqual([]);
   await second.context.close();
 });
+
+// Chaque bouton dessiné doit être entièrement « chaud » : toucher son centre ou l'un de ses coins déclenche la commande
+// qu'il annonce (et pas celle du voisin). Les zones tactiles sont des fractions de l'écran ; si le dessin ne les suit pas,
+// une partie du bouton déclenche le mauvais bouton (défaut vu sur téléphone en paysage).
+const COMBOS = [
+  { steerMode: "drag", autoThrottle: true },
+  { steerMode: "buttons", autoThrottle: true },
+  { steerMode: "buttons", autoThrottle: false },
+  { steerMode: "drag", autoThrottle: false },
+] as const;
+const SCREENS = [
+  { name: "paysage Android", viewport: { width: 851, height: 393 } },
+  { name: "paysage iPhone", viewport: { width: 844, height: 390 } },
+  { name: "paysage petit", viewport: { width: 667, height: 375 } },
+  { name: "portrait", viewport: { width: 390, height: 844 } },
+  { name: "petit portrait", viewport: { width: 360, height: 640 } },
+] as const;
+
+for (const screen of SCREENS) {
+  test(`zones tactiles = boutons dessinés : ${screen.name}`, async ({ browser }) => {
+    const { context, page } = await phone(browser, { viewport: screen.viewport });
+    const wrong: string[] = [];
+    let first = true;
+    for (const combo of COMBOS) {
+      await page.addInitScript((c) => localStorage.setItem("cdj:touch", JSON.stringify(c)), combo);
+      await racing(page, first ? "/?debug&scenario=plat" : "/?debug&scenario=plat&r=" + Math.random());
+      first = false;
+      await page.evaluate(() => window.__cdj.manual(true)); // pas à pas : on lit la commande juste après le toucher, sans attendre
+      await page.getByRole("button", { name: "Jouer quand même" }).click({ timeout: 500 }).catch(() => undefined); // portrait : invitation
+      const f = await fingersOf(page);
+      const expected: Record<string, (i: { steer: number; throttle: number; brake: number }) => boolean> = {
+        "steer-left": (i) => i.steer === -64,
+        "steer-right": (i) => i.steer === 64,
+        "pedal-brake": (i) => i.brake === 64,
+        "pedal-gas": (i) => i.throttle === 64 && i.brake === 0,
+      };
+      for (const [cls, ok] of Object.entries(expected)) {
+        const el = page.locator(`#touch .${cls}`);
+        if (!(await el.isVisible())) continue;
+        const b = (await el.boundingBox())!;
+        const m = 6; // un doigt n'est pas au pixel près : on teste le centre et les coins, rentrés de 6 px
+        const points = [
+          [b.x + b.width / 2, b.y + b.height / 2],
+          [b.x + m, b.y + m],
+          [b.x + b.width - m, b.y + m],
+          [b.x + m, b.y + b.height - m],
+          [b.x + b.width - m, b.y + b.height - m],
+        ] as const;
+        for (const [x, y] of points) {
+          await f.down(1, x, y);
+          await page.evaluate(() => window.__cdj.advance(1));
+          const got = await input(page);
+          if (!ok(got)) wrong.push(`${combo.steerMode}/${combo.autoThrottle ? "auto" : "manuel"} : ${cls} touché en (${Math.round(x)}, ${Math.round(y)}) → ${JSON.stringify(got)}`);
+          await f.up(1);
+          await page.evaluate(() => window.__cdj.advance(1));
+        }
+      }
+    }
+    expect(wrong, `commandes inattendues sur ${screen.name}`).toEqual([]);
+    await context.close();
+  });
+}

@@ -99,13 +99,18 @@
       #touch .ring { width: 96px; height: 96px; left: 0; top: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.55); background: rgba(255,255,255,.08); }
       #touch .knob { width: 46px; height: 46px; left: 0; top: 0; border-radius: 50%; background: rgba(255,210,46,.9); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
       #touch [hidden] { display: none; }
-      #touch .tbtn { display: flex; align-items: center; justify-content: center; min-width: 88px; height: 88px; padding: 0 10px; box-sizing: border-box; border-radius: 20px; background: rgba(11,16,32,.45); border: 2px solid rgba(255,255,255,.35); color: #fff; font: 800 18px system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(0,0,0,.55); bottom: calc(120px + env(safe-area-inset-bottom, 0px)); }
+      /* Les boutons dessinés suivent EXACTEMENT les zones tactiles (voir `zoneAt`, touch.ts), en parts de la largeur :
+         ◀ 0–25 %, ▶ 25–50 %, frein 50–100 % (ou 50–75 % avec le bouton gaz), gaz 75–100 %. Chacun reste dans sa zone, avec une
+         marge de 2 % : toucher n'importe où sur un bouton déclenche ce bouton, jamais celui d'à côté. */
+      #touch .tbtn { display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 88px; border-radius: 20px; background: rgba(11,16,32,.45); border: 2px solid rgba(255,255,255,.35); color: #fff; font: 800 18px system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(0,0,0,.55); bottom: calc(120px + env(safe-area-inset-bottom, 0px)); width: 21%; }
       #touch .tbtn.on { background: rgba(255,210,46,.55); border-color: #ffd22e; }
-      #touch .steer-left { left: 5%; } #touch .steer-right { left: calc(5% + 100px); }
-      #touch .pedal-brake { right: 4%; } #touch .pedal-gas { right: 4%; }
-      #touch[data-throttle=manual] .pedal-brake { right: calc(4% + 104px); }
+      #touch .steer-left { left: 2%; } #touch .steer-right { left: 27%; }
+      #touch .pedal-brake { left: 54%; width: 44%; } #touch .pedal-gas { left: 77%; }
+      #touch[data-throttle=manual] .pedal-brake { left: 52%; width: 21%; }
       #touch[data-throttle=auto] .pedal-gas { display: none; }
       #touch[data-mode=drag] .steer-left, #touch[data-mode=drag] .steer-right { display: none; }
+      /* Paysage : écran large et peu haut, les boutons sont larges (le pouce y tombe sans viser) mais bas et transparents : on voit la route. */
+      @media (orientation: landscape) { #touch .tbtn { height: clamp(84px, 24vh, 110px); bottom: calc(112px + env(safe-area-inset-bottom, 0px)); background: rgba(11,16,32,.32); } #touch .tbtn.on { background: rgba(255,210,46,.5); } }
       #touch .hint { left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.7); padding: 4px 10px; border-radius: 8px; }
       #tsettings { position: fixed; inset: 0; z-index: 5; background: rgba(5,8,20,.62); align-items: center; justify-content: center; }
       body.touch #tsettings:not([hidden]) { display: flex; }
