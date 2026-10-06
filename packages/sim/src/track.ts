@@ -64,7 +64,8 @@ export interface Track {
   voidY: number;
 }
 
-const LETTERS: Record<string, BlockKind> = {
+/** Lettre → type de bloc, dans la notation texte des circuits. */
+export const BLOCK_LETTERS: Record<string, BlockKind> = {
   S: "straight",
   L: "curveL",
   R: "curveR",
@@ -170,7 +171,8 @@ export function blockSlope(b: Block, q: number): number {
   }
 }
 
-function exitDelta(kind: BlockKind): number {
+/** Dénivelé d'un bloc, de son entrée à sa sortie. */
+export function exitDelta(kind: BlockKind): number {
   return kind === "up" ? SLOPE_RISE : kind === "down" ? -SLOPE_RISE : 0;
 }
 
@@ -195,7 +197,7 @@ export function parseTrack(id: string, spec: string): Track {
 
   tokens.forEach((token, index) => {
     const [letter = "", markName] = token.split("@");
-    const kind = LETTERS[letter];
+    const kind = BLOCK_LETTERS[letter];
     if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
     let mark: Mark | undefined;
     if (markName !== undefined) {

@@ -158,9 +158,15 @@ describe("rejeu", () => {
 
   it("une commande falsifiée ne donne pas le temps annoncé", () => {
     const tampered: Replay = { ...live.replay, runs: live.replay.runs.map((r) => ({ ...r })) };
-    // Un coup de volant en plein virage.
-    const mid = Math.floor(tampered.runs.length / 3);
-    tampered.runs[mid]!.steer = tampered.runs[mid]!.steer > 0 ? -AXIS_MAX : AXIS_MAX;
+    // Un grand coup de volant pendant la plus longue série de commandes de la moitié centrale de la course.
+    const n = tampered.runs.length;
+    let target = Math.floor(n / 4);
+    for (let i = Math.floor(n / 4); i < Math.floor((3 * n) / 4); i++) {
+      if (tampered.runs[i]!.count > tampered.runs[target]!.count) target = i;
+    }
+    const run = tampered.runs[target]!;
+    expect(run.count).toBeGreaterThan(10);
+    run.steer = run.steer > 0 ? -AXIS_MAX : AXIS_MAX;
     const r = replayRace(track, tampered);
     expect(r.finishMs).not.toBe(live.race.finishMs);
   });

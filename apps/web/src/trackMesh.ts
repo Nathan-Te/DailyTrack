@@ -27,27 +27,72 @@ import {
   blockPoint,
   isCurve,
   type Block,
+  type PaletteName,
   type Track,
 } from "@cdj/sim";
 
 type V3 = [number, number, number];
 
-/** Palette d'un jour : le thème « désert » pour l'instant (une palette par jour viendra au lot 4). */
-export const DESERT = {
-  sky: 0xf2b27a,
-  floorA: "#d9a35f",
-  floorB: "#c78f4c",
-  road: [0x9a9da8, 0x8a8d98],
-  dash: 0xf4f1e6,
-  skirt: 0x5b4a3a,
-  wallA: 0xe8283a,
-  wallB: 0xf4f4f4,
-  boost: 0xffd22e,
-  boostMark: 0xe39b00,
-  checkpoint: 0x2e7dff,
-  finish: 0xf4f4f4,
-  finishDark: 0x16181f,
-} as const;
+/** Couleurs et éclairage d'un thème. Une palette différente par jour : `paletteForDay` (sim) choisit laquelle. */
+export interface Palette {
+  label: string;
+  sky: number;
+  fogNear: number;
+  fogFar: number;
+  ambient: [color: number, intensity: number];
+  sun: [color: number, intensity: number];
+  floorA: string;
+  floorB: string;
+  road: [number, number];
+  dash: number;
+  skirt: number;
+  wallA: number;
+  wallB: number;
+  boost: number;
+  boostMark: number;
+  checkpoint: number;
+  finish: number;
+  finishDark: number;
+}
+
+export const PALETTE_DEFS: Record<PaletteName, Palette> = {
+  desert: {
+    label: "désert",
+    sky: 0xf2b27a, fogNear: 90, fogFar: 320,
+    ambient: [0xfff0e0, 0.9], sun: [0xffffff, 2.2],
+    floorA: "#d9a35f", floorB: "#c78f4c",
+    road: [0x9a9da8, 0x8a8d98], dash: 0xf4f1e6, skirt: 0x5b4a3a,
+    wallA: 0xe8283a, wallB: 0xf4f4f4,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
+  },
+  neige: {
+    label: "neige",
+    sky: 0xcfe3f2, fogNear: 80, fogFar: 300,
+    ambient: [0xeaf4ff, 1.0], sun: [0xffffff, 2.0],
+    floorA: "#f4f8fb", floorB: "#e1ebf3",
+    road: [0x6f7a8c, 0x646f82], dash: 0xffffff, skirt: 0x8a97ab,
+    wallA: 0x2f6fd0, wallB: 0xffffff,
+    boost: 0xffc414, boostMark: 0xe08a00, checkpoint: 0x1fb6a6, finish: 0xffffff, finishDark: 0x16181f,
+  },
+  nuit: {
+    label: "nuit",
+    sky: 0x0b1030, fogNear: 60, fogFar: 260,
+    ambient: [0x8fa0ff, 0.75], sun: [0xaab8ff, 1.1],
+    floorA: "#1a1f3d", floorB: "#141935",
+    road: [0x434863, 0x3a3f58], dash: 0xe9e6ff, skirt: 0x1b1d2e,
+    wallA: 0xff5a36, wallB: 0xffe9c4,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x39c0ff, finish: 0xf4f4f4, finishDark: 0x16181f,
+  },
+  neon: {
+    label: "néon",
+    sky: 0x120024, fogNear: 70, fogFar: 280,
+    ambient: [0xd8b0ff, 0.85], sun: [0xff9af0, 1.3],
+    floorA: "#2a0a4a", floorB: "#210840",
+    road: [0x2d2250, 0x261c45], dash: 0x00f0ff, skirt: 0x14092b,
+    wallA: 0xff2bd6, wallB: 0x00f0ff,
+    boost: 0xfff200, boostMark: 0xff7a00, checkpoint: 0x00ff9c, finish: 0xffffff, finishDark: 0x16181f,
+  },
+};
 
 class Builder {
   readonly pos: number[] = [];
@@ -130,7 +175,7 @@ function curveRows(b: Block, steps = 10): Row[] {
 
 let stripe = 0;
 
-function addRoad(g: Builder, rows: Row[], color: number, floorY: number, skirt: boolean) {
+function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean) {
   for (let i = 0; i + 1 < rows.length; i++) {
     const a = rows[i]!;
     const b = rows[i + 1]!;
@@ -140,7 +185,7 @@ function addRoad(g: Builder, rows: Row[], color: number, floorY: number, skirt: 
       for (const side of ["left", "right"] as const) {
         const p = a[side];
         const q = b[side];
-        g.quad(p, q, [q[0], floorY, q[2]], [p[0], floorY, p[2]], DESERT.skirt);
+        g.quad(p, q, [q[0], floorY, q[2]], [p[0], floorY, p[2]], pal.skirt);
       }
     }
     // Rebords : une face intérieure et un chapeau, en bandes rouges et blanches d'environ 4 m.
@@ -159,7 +204,7 @@ function addRoad(g: Builder, rows: Row[], color: number, floorY: number, skirt: 
         const t0 = k / pieces;
         const t1 = (k + 1) / pieces;
         const at = (t: number, up: number): V3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t + up, p[2] + (q[2] - p[2]) * t];
-        const wallColor = stripe++ % 2 === 0 ? DESERT.wallA : DESERT.wallB;
+        const wallColor = stripe++ % 2 === 0 ? pal.wallA : pal.wallB;
         g.quad(at(t0, 0), at(t1, 0), at(t1, WALL_HEIGHT), at(t0, WALL_HEIGHT), wallColor);
         const c0 = at(t0, WALL_HEIGHT);
         const c1 = at(t1, WALL_HEIGHT);
@@ -170,7 +215,7 @@ function addRoad(g: Builder, rows: Row[], color: number, floorY: number, skirt: 
 }
 
 /** Tirets blancs au centre de la route : ils donnent l'échelle et la sensation de vitesse. */
-function addDashes(g: Builder, b: Block) {
+function addDashes(g: Builder, pal: Palette, b: Block) {
   const w = 0.25;
   if (isCurve(b.kind)) {
     const R = CELL / 2;
@@ -182,7 +227,7 @@ function addDashes(g: Builder, b: Block) {
     for (let k = 0; k < 4; k++) {
       const a0 = ((k + 0.2) / 4) * (Math.PI / 2);
       const a1 = ((k + 0.65) / 4) * (Math.PI / 2);
-      g.quad(at(R - w, a0), at(R + w, a0), at(R + w, a1), at(R - w, a1), DESERT.dash);
+      g.quad(at(R - w, a0), at(R + w, a0), at(R + w, a1), at(R - w, a1), pal.dash);
     }
     return;
   }
@@ -191,32 +236,32 @@ function addDashes(g: Builder, b: Block) {
     const q1 = q0 + 4;
     const y0 = blockHeight(b, q0) + 0.04;
     const y1 = blockHeight(b, q1) + 0.04;
-    g.quad(world(b, CELL / 2 - w, q0, y0), world(b, CELL / 2 + w, q0, y0), world(b, CELL / 2 + w, q1, y1), world(b, CELL / 2 - w, q1, y1), DESERT.dash);
+    g.quad(world(b, CELL / 2 - w, q0, y0), world(b, CELL / 2 + w, q0, y0), world(b, CELL / 2 + w, q1, y1), world(b, CELL / 2 - w, q1, y1), pal.dash);
   }
 }
 
-function addBoostPad(g: Builder, b: Block) {
+function addBoostPad(g: Builder, pal: Palette, b: Block) {
   const y = b.y0 + 0.04;
   const p0 = CELL / 2 - BOOST_HALF_WIDTH;
   const p1 = CELL / 2 + BOOST_HALF_WIDTH;
   const q0 = CELL / 2 - BOOST_HALF_LENGTH;
   const q1 = CELL / 2 + BOOST_HALF_LENGTH;
-  g.quad(world(b, p0, q0, y), world(b, p1, q0, y), world(b, p1, q1, y), world(b, p0, q1, y), DESERT.boost);
+  g.quad(world(b, p0, q0, y), world(b, p1, q0, y), world(b, p1, q1, y), world(b, p0, q1, y), pal.boost);
   // Deux chevrons dans le sens de la marche.
   for (const dq of [-1.6, 1.4]) {
     const qc = CELL / 2 + dq;
     const h = y + 0.02;
-    g.tri(world(b, CELL / 2, qc + 1.3, h), world(b, p1 - 0.6, qc - 0.9, h), world(b, CELL / 2, qc - 0.2, h), DESERT.boostMark);
-    g.tri(world(b, CELL / 2, qc + 1.3, h), world(b, CELL / 2, qc - 0.2, h), world(b, p0 + 0.6, qc - 0.9, h), DESERT.boostMark);
+    g.tri(world(b, CELL / 2, qc + 1.3, h), world(b, p1 - 0.6, qc - 0.9, h), world(b, CELL / 2, qc - 0.2, h), pal.boostMark);
+    g.tri(world(b, CELL / 2, qc + 1.3, h), world(b, CELL / 2, qc - 0.2, h), world(b, p0 + 0.6, qc - 0.9, h), pal.boostMark);
   }
 }
 
-function addGate(g: Builder, b: Block, finish: boolean) {
+function addGate(g: Builder, pal: Palette, b: Block, finish: boolean) {
   const y = b.y0;
   const post = HALF_ROAD + 0.9;
   const q = CELL / 2;
   const h = 6;
-  const color = finish ? DESERT.finish : DESERT.checkpoint;
+  const color = finish ? pal.finish : pal.checkpoint;
   for (const side of [-1, 1]) {
     blockPoint(b, CELL / 2 + side * post, q, pt);
     g.box(pt.x - 0.4, y, pt.z - 0.4, pt.x + 0.4, y + h, pt.z + 0.4, color);
@@ -230,7 +275,7 @@ function addGate(g: Builder, b: Block, finish: boolean) {
     const cols = 14;
     for (let i = 0; i < cols; i++) {
       for (let j = 0; j < 2; j++) {
-        const col = (i + j) % 2 === 0 ? DESERT.finish : DESERT.finishDark;
+        const col = (i + j) % 2 === 0 ? pal.finish : pal.finishDark;
         const p0 = CELL / 2 - HALF_ROAD + i;
         const q0 = q - 1 + j;
         g.quad(world(b, p0, q0, y + 0.04), world(b, p0 + 1, q0, y + 0.04), world(b, p0 + 1, q0 + 1, y + 0.04), world(b, p0, q0 + 1, y + 0.04), col);
@@ -239,7 +284,7 @@ function addGate(g: Builder, b: Block, finish: boolean) {
   } else {
     const p0 = CELL / 2 - HALF_ROAD;
     const p1 = CELL / 2 + HALF_ROAD;
-    g.quad(world(b, p0, q - 0.4, y + 0.04), world(b, p1, q - 0.4, y + 0.04), world(b, p1, q + 0.4, y + 0.04), world(b, p0, q + 0.4, y + 0.04), DESERT.checkpoint);
+    g.quad(world(b, p0, q - 0.4, y + 0.04), world(b, p1, q - 0.4, y + 0.04), world(b, p1, q + 0.4, y + 0.04), world(b, p0, q + 0.4, y + 0.04), pal.checkpoint);
   }
 }
 
@@ -267,29 +312,30 @@ export interface TrackScene {
 }
 
 /** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
-export function buildTrackScene(track: Track): TrackScene {
+export function buildTrackScene(track: Track, paletteName: PaletteName = "desert"): TrackScene {
+  const pal = PALETTE_DEFS[paletteName];
   const floorY = track.voidY;
   const g = new Builder();
 
   for (const b of track.blocks) {
-    const color = DESERT.road[b.index % 2]!;
+    const color = pal.road[b.index % 2]!;
     if (isCurve(b.kind)) {
-      addRoad(g, curveRows(b), color, floorY, true);
+      addRoad(g, pal, curveRows(b), color, floorY, true);
     } else if (b.kind === "jump") {
       // Rampe jusqu'au bord, face verticale, puis route plate.
-      addRoad(g, straightRows(b, 0, JUMP_LIP, 1, (q) => blockHeight(b, q)), color, floorY, true);
+      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, 1, (q) => blockHeight(b, q)), color, floorY, true);
       const lipL = world(b, CELL / 2 + HALF_ROAD, JUMP_LIP, b.y0 + JUMP_RISE);
       const lipR = world(b, CELL / 2 - HALF_ROAD, JUMP_LIP, b.y0 + JUMP_RISE);
-      g.quad(lipL, lipR, [lipR[0], b.y0, lipR[2]], [lipL[0], b.y0, lipL[2]], DESERT.skirt);
-      addRoad(g, straightRows(b, JUMP_LIP, CELL, 1, () => b.y0), color, floorY, true);
+      g.quad(lipL, lipR, [lipR[0], b.y0, lipR[2]], [lipL[0], b.y0, lipL[2]], pal.skirt);
+      addRoad(g, pal, straightRows(b, JUMP_LIP, CELL, 1, () => b.y0), color, floorY, true);
     } else {
       const steps = b.kind === "bump" ? 16 : 1;
-      addRoad(g, straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q)), color, floorY, true);
+      addRoad(g, pal, straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q)), color, floorY, true);
     }
-    if (b.kind !== "boost" && b.kind !== "jump" && b.kind !== "bump") addDashes(g, b);
-    if (b.kind === "boost") addBoostPad(g, b);
-    if (b.mark === "checkpoint") addGate(g, b, false);
-    if (b.mark === "finish") addGate(g, b, true);
+    if (b.kind !== "boost" && b.kind !== "jump" && b.kind !== "bump") addDashes(g, pal, b);
+    if (b.kind === "boost") addBoostPad(g, pal, b);
+    if (b.mark === "checkpoint") addGate(g, pal, b, false);
+    if (b.mark === "finish") addGate(g, pal, b, true);
   }
 
   // Bouts fermés : un mur en travers de la route au départ et derrière l'arrivée.
@@ -299,15 +345,15 @@ export function buildTrackScene(track: Track): TrackScene {
     const y = blockHeight(b, q);
     const l = world(b, CELL / 2 + HALF_ROAD, q, y);
     const r = world(b, CELL / 2 - HALF_ROAD, q, y);
-    g.quad(l, r, [r[0], y + WALL_HEIGHT, r[2]], [l[0], y + WALL_HEIGHT, l[2]], DESERT.wallA);
+    g.quad(l, r, [r[0], y + WALL_HEIGHT, r[2]], [l[0], y + WALL_HEIGHT, l[2]], pal.wallA);
   }
 
-  const sky = new Color(DESERT.sky);
+  const sky = new Color(pal.sky);
   const scene = new Scene();
   scene.background = sky;
-  scene.fog = new Fog(sky, 90, 320);
-  scene.add(new AmbientLight(0xfff0e0, 0.9));
-  const sun = new DirectionalLight(0xffffff, 2.2);
+  scene.fog = new Fog(sky, pal.fogNear, pal.fogFar);
+  scene.add(new AmbientLight(pal.ambient[0], pal.ambient[1]));
+  const sun = new DirectionalLight(pal.sun[0], pal.sun[1]);
   sun.position.set(40, 80, -30);
   scene.add(sun);
 
@@ -317,7 +363,7 @@ export function buildTrackScene(track: Track): TrackScene {
   const tile = 8;
   const floor = new Mesh(
     new PlaneGeometry(size, size),
-    new MeshStandardMaterial({ map: checkerTexture(DESERT.floorA, DESERT.floorB, size / (2 * tile)), flatShading: true }),
+    new MeshStandardMaterial({ map: checkerTexture(pal.floorA, pal.floorB, size / (2 * tile)), flatShading: true }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = floorY;

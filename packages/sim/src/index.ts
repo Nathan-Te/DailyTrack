@@ -9,3 +9,7 @@ export * from "./world";
 export * from "./race";
 export * from "./circuits";
 export * from "./replay";
+export * from "./rng";
+export * from "./calendar";
+export * from "./autopilot";
+export * from "./generator";
