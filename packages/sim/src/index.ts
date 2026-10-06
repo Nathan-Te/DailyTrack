@@ -8,3 +8,4 @@ export * from "./track";
 export * from "./world";
 export * from "./race";
 export * from "./circuits";
+export * from "./replay";

@@ -15,6 +15,9 @@ describe("voiture", () => {
     expect(makeInput(1, 1, 0)).toEqual({ steer: 64, throttle: 64, brake: 0, respawn: 0 });
     expect(makeInput(-5, 2, -1)).toEqual({ steer: -64, throttle: 64, brake: 0, respawn: 0 });
     expect(Number.isInteger(makeInput(0.3333, 0.777, 0.1).steer)).toBe(true);
+    // Jamais de −0 : une commande enregistrée doit rester identique une fois encodée puis décodée.
+    const zero = makeInput(-0.001, -0, -0.2);
+    expect([zero.steer, zero.throttle, zero.brake].every((v) => Object.is(v, 0))).toBe(true);
   });
 
   it("reste immobile sans commande", () => {

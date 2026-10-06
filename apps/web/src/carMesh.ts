@@ -1,15 +1,16 @@
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial } from "three";
 
-/** Voiture low-poly : modèle orienté vers +z (cap 0), origine au sol. */
-export function createCarMesh(): Group {
+/** Voiture low-poly : modèle orienté vers +z (cap 0), origine au sol. `ghost` : version bleue translucide. */
+export function createCarMesh(ghost = false): Group {
   const car = new Group();
-  const mat = (color: number) => new MeshStandardMaterial({ color, flatShading: true });
+  const mat = (color: number) =>
+    new MeshStandardMaterial({ color, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.42, depthWrite: false } : {}) });
 
-  const body = new Mesh(new BoxGeometry(1.8, 0.55, 4.0), mat(0xe8283a));
+  const body = new Mesh(new BoxGeometry(1.8, 0.55, 4.0), mat(ghost ? 0x57b4ff : 0xe8283a));
   body.position.y = 0.6;
-  const cabin = new Mesh(new BoxGeometry(1.4, 0.5, 1.8), mat(0x1c2540));
+  const cabin = new Mesh(new BoxGeometry(1.4, 0.5, 1.8), mat(ghost ? 0x2a4f7a : 0x1c2540));
   cabin.position.set(0, 1.1, -0.2);
-  const spoiler = new Mesh(new BoxGeometry(1.7, 0.1, 0.5), mat(0x1c2540));
+  const spoiler = new Mesh(new BoxGeometry(1.7, 0.1, 0.5), mat(ghost ? 0x2a4f7a : 0x1c2540));
   spoiler.position.set(0, 1.15, -1.85);
   car.add(body, cabin, spoiler);
 

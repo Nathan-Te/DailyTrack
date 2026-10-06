@@ -19,10 +19,11 @@ export interface CarInput {
 
 /** Quantifie des axes flottants (steer ∈ [-1, 1], throttle/brake ∈ [0, 1]) en commandes entières. */
 export function makeInput(steer: number, throttle: number, brake: number, respawn = false): CarInput {
+  // « + 0 » transforme −0 en 0 : une commande enregistrée doit être identique à sa version décodée.
   return {
-    steer: Math.round(clamp(steer, -1, 1) * AXIS_MAX),
-    throttle: Math.round(clamp(throttle, 0, 1) * AXIS_MAX),
-    brake: Math.round(clamp(brake, 0, 1) * AXIS_MAX),
+    steer: Math.round(clamp(steer, -1, 1) * AXIS_MAX) + 0,
+    throttle: Math.round(clamp(throttle, 0, 1) * AXIS_MAX) + 0,
+    brake: Math.round(clamp(brake, 0, 1) * AXIS_MAX) + 0,
     respawn: respawn ? 1 : 0,
   };
 }

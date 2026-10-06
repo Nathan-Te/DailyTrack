@@ -2,6 +2,7 @@ import {
   TICK_RATE,
   createRace,
   isCurve,
+  ReplayRecorder,
   makeInput,
   stepRace,
   trackCenterline,
@@ -90,4 +91,19 @@ export function runAutopilot(track: Track, maxSeconds = 120, opts?: Parameters<t
     maxSpeed = Math.max(maxSpeed, Math.hypot(race.car.vx, race.car.vz));
   }
   return { race, ticks, maxY, minY, airTicks, maxSpeed };
+}
+
+/** Comme `runAutopilot`, en enregistrant les commandes appliquées (pour fabriquer des rediffusions de test). */
+export function recordAutopilot(track: Track, maxSeconds = 120, opts?: Parameters<typeof createAutopilot>[1]) {
+  const race = createRace(track);
+  const drive = createAutopilot(track, opts);
+  const recorder = new ReplayRecorder();
+  let ticks = 0;
+  while (race.finishMs < 0 && ticks < maxSeconds * TICK_RATE) {
+    const input = drive(race);
+    recorder.record(input);
+    stepRace(race, input);
+    ticks++;
+  }
+  return { race, replay: recorder.toReplay(track.id) };
 }
