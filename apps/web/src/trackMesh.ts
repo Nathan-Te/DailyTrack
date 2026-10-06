@@ -30,6 +30,7 @@ import {
   type PaletteName,
   type Track,
 } from "@cdj/sim";
+import { PALETTE_LABELS } from "./labels";
 
 type V3 = [number, number, number];
 
@@ -57,7 +58,7 @@ export interface Palette {
 
 export const PALETTE_DEFS: Record<PaletteName, Palette> = {
   desert: {
-    label: "désert",
+    label: PALETTE_LABELS.desert,
     sky: 0xf2b27a, fogNear: 90, fogFar: 320,
     ambient: [0xfff0e0, 0.9], sun: [0xffffff, 2.2],
     floorA: "#d9a35f", floorB: "#c78f4c",
@@ -66,7 +67,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
   },
   neige: {
-    label: "neige",
+    label: PALETTE_LABELS.neige,
     sky: 0xcfe3f2, fogNear: 80, fogFar: 300,
     ambient: [0xeaf4ff, 1.0], sun: [0xffffff, 2.0],
     floorA: "#f4f8fb", floorB: "#e1ebf3",
@@ -75,7 +76,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     boost: 0xffc414, boostMark: 0xe08a00, checkpoint: 0x1fb6a6, finish: 0xffffff, finishDark: 0x16181f,
   },
   nuit: {
-    label: "nuit",
+    label: PALETTE_LABELS.nuit,
     sky: 0x0b1030, fogNear: 60, fogFar: 260,
     ambient: [0x8fa0ff, 0.75], sun: [0xaab8ff, 1.1],
     floorA: "#1a1f3d", floorB: "#141935",
@@ -84,7 +85,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x39c0ff, finish: 0xf4f4f4, finishDark: 0x16181f,
   },
   neon: {
-    label: "néon",
+    label: PALETTE_LABELS.neon,
     sky: 0x120024, fogNear: 70, fogFar: 280,
     ambient: [0xd8b0ff, 0.85], sun: [0xff9af0, 1.3],
     floorA: "#2a0a4a", floorB: "#210840",

@@ -32,6 +32,11 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - Tests : `apps/api/test` (SQLite en mémoire, horloge injectée) ; e2e `leaderboard.spec.ts` (Playwright lance le vrai serveur : `npm run test:e2e` construit aussi `apps/api`). Outils `?debug` : `timescale=N`, `__cdj.autoplay(code)`.
 - Le Worker ne tient pas dans les 10 ms de calcul de l'offre gratuite de Cloudflare (voir docs/lots/lot-5-classement.md).
 
+## Arrivée, partage, archives, mobile (lot 6)
+- `apps/web/src/share.ts` (`shareLine`, ligne façon Wordle), `clipboard.ts`, `archive.ts` (liste des jours, liens `?seed=`), `records.ts` (`listDayBests`, médaille gardée avec le record). Touches : **H** archives, **L** classement, **G** fantôme (A est pris : il tourne à gauche).
+- Mise en page : un seul `index.html` avec media queries (`max-width: 900px` / `max-height: 520px`). Test `e2e/mobile.spec.ts` : aucun chevauchement sur 3 formats de téléphone. Poids : budget dans `e2e/perf.spec.ts` ; Three.js reste dans son propre chunk (`vite.config.ts`).
+- Outil de test : `?debug&today=AAAA-MM-JJ`.
+
 ## Règles de la simulation (déterminisme)
 - Pas fixe (`TICK_RATE` = 120 Hz), jamais de `dt` variable ; interpolation à l'affichage seulement.
 - Pas de moteur physique externe. Pas de `Math.sin/cos/exp/pow/…` dans `sim` : implémentations maison ou tables.

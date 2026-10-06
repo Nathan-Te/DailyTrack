@@ -1,0 +1,40 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
+import { expect, test } from "@playwright/test";
+
+// Chargement rapide sur mobile : budgets de poids (déterministes) et de temps (larges, la CI est variable).
+const dist = new URL("../dist/assets/", import.meta.url);
+
+test("le jeu pèse peu : budget de poids compressé", () => {
+  const files = readdirSync(dist).filter((f) => f.endsWith(".js"));
+  const gz = Object.fromEntries(files.map((f) => [f, gzipSync(readFileSync(new URL(f, dist))).length]));
+  const total = Object.values(gz).reduce((a, b) => a + b, 0);
+  const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
+  expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(165_000); // ≈ 150 ko aujourd'hui
+  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(40_000); // ≈ 19 ko aujourd'hui
+});
+
+test.describe("chargement sur un téléphone simulé", () => {
+  test.skip(({ browserName }) => browserName !== "chromium", "CDP : Chromium seulement");
+
+  test("écran de chargement immédiat, jeu prêt en quelques secondes (processeur ×4, 4G lente)", async ({ browser }) => {
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Network.enable");
+    await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 150, downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8 });
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const t0 = Date.now();
+    await page.goto("/?debug", { waitUntil: "commit" });
+    await page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 30_000 });
+    const readyMs = Date.now() - t0;
+    const fcp = await page.evaluate(() => performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? -1);
+    test.info().annotations.push({ type: "mesure", description: `FCP ${Math.round(fcp)} ms, prêt ${readyMs} ms` });
+    expect(fcp, "le premier affichage (écran de chargement) ne doit pas attendre le JavaScript").toBeGreaterThan(0);
+    expect(fcp).toBeLessThan(2500);
+    expect(readyMs).toBeLessThan(8000); // ≈ 1,9 s mesuré en local
+    await expect(page.locator("#splash")).toHaveCount(0); // retiré après le premier rendu
+    await context.close();
+  });
+});

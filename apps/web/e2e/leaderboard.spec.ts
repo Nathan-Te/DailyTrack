@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
-import { dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
+import { dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
+import { shareLine } from "../src/share";
 
 // Deux « appareils » (deux contextes de navigateur isolés : chacun son identité) jouent chacun une course
 // complète du circuit d'aujourd'hui, en accéléré (`?debug&timescale=6`) avec la rediffusion d'un pilote à la place du
@@ -45,6 +46,10 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
   await alice.locator("#finish .online button[type=submit]").click();
   await expect(alice.locator("#finish .online .rank")).toHaveText("Rang 1 / 1");
   await expect(alice.locator("#board")).toContainText("Alice");
+  // La ligne à partager reprend le rang donné par le serveur.
+  await expect(alice.locator("#finish .share")).toHaveText(
+    shareLine({ number: circuit.number, date: circuit.date, ms: fast.finishMs, medal: medalFor(fast.finishMs, circuit.medals), rank: 1, participants: 1 }),
+  );
 
   // --- Appareil de Bob : un temps plus lent, une autre identité ---
   const bob = await newDevice(browser);
