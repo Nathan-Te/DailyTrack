@@ -8,3 +8,10 @@ export const DT = 1 / TICK_RATE;
 export function ticksToMs(ticks: number): number {
   return Math.round((ticks * 1000) / TICK_RATE);
 }
+
+/**
+ * Version de la simulation. À incrémenter dès que la physique, un bloc ou le circuit d'essai change le
+ * résultat d'une course : les rediffusions enregistrées avec une autre version ne sont plus rejouables
+ * (le fantôme est alors ignoré, et le serveur les refuse).
+ */
+export const SIM_VERSION = 1;

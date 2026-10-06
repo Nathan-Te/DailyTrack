@@ -1,6 +1,10 @@
 export interface BestRun {
   ms: number;
   splits: number[];
+  /** Rediffusion du meilleur temps (base64url) : sert de fantôme. Absente avant le lot 3. */
+  replay?: string;
+  /** Version de la simulation avec laquelle `replay` a été enregistrée. */
+  simVersion?: number;
 }
 
 const key = (trackId: string) => `cdj:best:${trackId}`;

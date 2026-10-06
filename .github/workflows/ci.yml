@@ -16,3 +16,24 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  # Même rediffusion rejouée dans Chromium, Firefox et WebKit : le résultat doit être identique à celui de Node.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+        working-directory: apps/web
+      - run: npm run test:e2e
+        env:
+          E2E_ALL_BROWSERS: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: apps/web/test-results/

@@ -3,14 +3,14 @@ import {
   CAR,
   DT,
   FLAT_WORLD,
+  SIM_VERSION,
   carSpeed,
   copyCar,
   createCar,
-  createRace,
   createTestTrack,
+  encodeReplay,
   raceElapsedMs,
   stepCar,
-  stepRace,
   wrapAngle,
   type CarInput,
   type CarState,
@@ -21,6 +21,7 @@ import { createCarMesh } from "./carMesh";
 import { formatDelta, formatTime } from "./format";
 import { Controls } from "./input";
 import { loadBest, saveBest, type BestRun } from "./records";
+import { RunSession } from "./session";
 import { buildTrackScene } from "./trackMesh";
 
 const params = new URLSearchParams(location.search);
@@ -35,6 +36,13 @@ document.body.appendChild(renderer.domElement);
 const view = track ? buildTrackScene(track) : buildFlatArena();
 const carMesh = createCarMesh();
 view.scene.add(carMesh);
+const ghostMesh = createCarMesh(true);
+ghostMesh.visible = false;
+view.scene.add(ghostMesh);
+let showGhost = params.get("ghost") !== "off";
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyG" && !e.repeat) showGhost = !showGhost;
+});
 
 const camera = new PerspectiveCamera(65, 1, 0.1, 500);
 function resize() {
@@ -51,37 +59,45 @@ const hudTimer = $("timer");
 const hudSplits = $("splits");
 const hudBanner = $("banner");
 const hudFinish = $("finish");
-$("info").textContent = track
-  ? "ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start"
-  : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer";
+function updateInfo() {
+  $("info").textContent = track
+    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start${session?.ghost ? " · G : fantôme" : ""}`
+    : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer";
+}
 
 // --- État de la partie ----------------------------------------------------------------------
 type Phase = "countdown" | "racing" | "finished";
 
 const controls = new Controls();
-let race: RaceState | null = track ? createRace(track) : null;
+let best: BestRun | null = track ? loadBest(track.id) : null;
+let session: RunSession | null = track ? new RunSession(track, best) : null;
+let race: RaceState | null = session ? session.race : null;
 let car: CarState = race ? race.car : createCar();
-const previous: CarState = createCar();
+let previous: CarState = session ? session.previous : createCar();
 copyCar(car, previous); // sinon la voiture s'afficherait à l'origine pendant le décompte
+updateInfo();
 let phase: Phase = track ? "countdown" : "racing";
 let countdown = COUNTDOWN_S;
 let bannerTimer = 0;
 let accumulator = 0;
 let pendingRespawn = false;
-let best: BestRun | null = track ? loadBest(track.id) : null;
 let shownSplits = 0;
 let lastRespawns = 0;
 
 function startAttempt() {
   if (track) {
-    race = createRace(track);
+    session = new RunSession(track, best);
+    race = session.race;
     car = race.car;
+    previous = session.previous;
     phase = "countdown";
     countdown = COUNTDOWN_S;
   } else {
     car = createCar();
+    previous = createCar();
   }
   copyCar(car, previous);
+  updateInfo();
   accumulator = 0;
   pendingRespawn = false;
   shownSplits = 0;
@@ -117,13 +133,13 @@ function renderSplits() {
 }
 
 function finishRun() {
-  if (!race || !track) return;
+  if (!race || !track || !session) return;
   phase = "finished";
   const ms = race.finishMs;
   const isRecord = !best || ms < best.ms;
   const previousBest = best;
   if (isRecord) {
-    best = { ms, splits: [...race.splits] };
+    best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION };
     saveBest(track.id, best);
   }
   const lines: [string, string][] = [
@@ -153,8 +169,12 @@ let snapCamera = true;
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 function stepOnce(input: CarInput) {
-  if (race) stepRace(race, input);
-  else stepCar(car, input, FLAT_WORLD);
+  if (session) {
+    session.step(input); // course + enregistrement des commandes + fantôme, ensemble
+  } else {
+    copyCar(car, previous);
+    stepCar(car, input, FLAT_WORLD);
+  }
 }
 
 function frame(now: number) {
@@ -180,7 +200,6 @@ function frame(now: number) {
   } else {
     accumulator += elapsed;
     while (accumulator >= DT) {
-      copyCar(car, previous);
       stepOnce(pendingRespawn ? input : { ...input, respawn: 0 });
       pendingRespawn = false;
       accumulator -= DT;
@@ -198,7 +217,7 @@ function frame(now: number) {
     }
     if (race.respawns !== lastRespawns) {
       lastRespawns = race.respawns;
-      copyCar(car, previous); // pas d'interpolation à travers une téléportation
+      session?.cutInterpolation(); // pas d'interpolation à travers une téléportation
       snapCamera = true;
     }
     if (race.finishMs >= 0 && phase === "racing") finishRun();
@@ -224,6 +243,17 @@ function frame(now: number) {
   carPitch = snapCamera ? pitchTarget : carPitch + (pitchTarget - carPitch) * (1 - Math.exp(-12 * elapsed));
   carMesh.position.set(x, y, z);
   carMesh.rotation.set(carPitch, yaw, car.steer * (speed / CAR.maxSpeed) * 0.08, "YXZ");
+
+  // Fantôme : la rediffusion du meilleur temps, interpolée comme la voiture.
+  const ghost = session?.ghost;
+  ghostMesh.visible = !!ghost && showGhost;
+  if (ghost && showGhost) {
+    const gc = ghost.race.car;
+    const gp = ghost.previous;
+    const gh = Math.hypot(gc.vx, gc.vz);
+    ghostMesh.position.set(lerp(gp.x, gc.x, alpha), lerp(gp.y, gc.y, alpha), lerp(gp.z, gc.z, alpha));
+    ghostMesh.rotation.set(gh > 1 ? -Math.atan2(gc.vy, gh) : 0, gp.yaw + wrapAngle(gc.yaw - gp.yaw) * alpha, 0, "YXZ");
+  }
 
   // Caméra poursuite : cap et hauteur suivent la voiture avec un peu de retard.
   if (snapCamera) {
@@ -261,6 +291,9 @@ if (params.has("debug")) {
       },
       get phase() {
         return phase;
+      },
+      get ghost() {
+        return session?.ghost?.race.car ?? null;
       },
     },
   });
