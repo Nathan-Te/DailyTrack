@@ -13,7 +13,8 @@ const KEYS = {
   brake: ["ArrowDown", "KeyS"],
   left: ["ArrowLeft", "KeyA"],
   right: ["ArrowRight", "KeyD"],
-  restart: ["KeyR"],
+  respawn: ["KeyR"], // dernier point de contrôle
+  restart: ["Enter"], // depuis le départ
 };
 
 const anyDown = (down: ReadonlySet<string>, codes: readonly string[]) => codes.some((c) => down.has(c));
@@ -47,15 +48,17 @@ export function gamepadAxes(pad: Pick<Gamepad, "axes" | "buttons">): Axes {
 }
 
 export interface ControlsState {
-  /** Commande à appliquer à chaque pas de simulation de cette image. */
+  /** Commande à appliquer à chaque pas de simulation de cette image (`respawn` n'est vrai qu'une fois). */
   input: CarInput;
-  /** Vrai une fois quand le joueur demande à recommencer. */
+  /** Vrai une fois quand le joueur demande à recommencer depuis le départ. */
   restart: boolean;
 }
 
 export class Controls {
   private readonly down = new Set<string>();
+  private respawnLatch = false;
   private restartLatch = false;
+  private padRespawnHeld = false;
   private padRestartHeld = false;
 
   constructor(target: Window = window) {
@@ -63,6 +66,7 @@ export class Controls {
       if (e.repeat) return;
       if (Object.values(KEYS).some((codes) => codes.includes(e.code))) e.preventDefault();
       this.down.add(e.code);
+      if (KEYS.respawn.includes(e.code)) this.respawnLatch = true;
       if (KEYS.restart.includes(e.code)) this.restartLatch = true;
     });
     target.addEventListener("keyup", (e) => this.down.delete(e.code));
@@ -74,18 +78,23 @@ export class Controls {
     const pad = navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected);
     const g = pad ? gamepadAxes(pad) : { steer: 0, throttle: 0, brake: 0 };
 
-    // Bouton Y / Start de la manette = recommencer (sur front montant).
-    const padRestart = !!pad && ((pad.buttons[3]?.pressed ?? false) || (pad.buttons[9]?.pressed ?? false));
+    // Manette : Y = dernier point de contrôle, Start = depuis le départ (sur front montant).
+    const padRespawn = !!pad && (pad.buttons[3]?.pressed ?? false);
+    const padRestart = !!pad && (pad.buttons[9]?.pressed ?? false);
+    if (padRespawn && !this.padRespawnHeld) this.respawnLatch = true;
     if (padRestart && !this.padRestartHeld) this.restartLatch = true;
+    this.padRespawnHeld = padRespawn;
     this.padRestartHeld = padRestart;
 
+    const respawn = this.respawnLatch;
     const restart = this.restartLatch;
+    this.respawnLatch = false;
     this.restartLatch = false;
 
     // Le clavier gagne s'il est utilisé ; sinon la manette (analogique).
     const steer = k.steer !== 0 ? k.steer : g.steer;
     return {
-      input: makeInput(steer, Math.max(k.throttle, g.throttle), Math.max(k.brake, g.brake)),
+      input: makeInput(steer, Math.max(k.throttle, g.throttle), Math.max(k.brake, g.brake), respawn),
       restart,
     };
   }

@@ -4,3 +4,7 @@
 export * from "./constants";
 export * from "./math";
 export * from "./car";
+export * from "./track";
+export * from "./world";
+export * from "./race";
+export * from "./circuits";
