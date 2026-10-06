@@ -46,7 +46,7 @@ jobs:
             rm -rf "site/b/${slug}"
             mkdir -p "site/b/${slug}"
             cp -R apps/web/dist/. "site/b/${slug}/"
-            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/?scenario=plat"
+            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/"
           fi
           touch site/.nojekyll
           echo "### Aperçu : ${url}" >> "$GITHUB_STEP_SUMMARY"
