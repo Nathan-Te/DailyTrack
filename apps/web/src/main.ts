@@ -23,14 +23,17 @@ import {
   type CarState,
   type RaceState,
 } from "@cdj/sim";
+import { archiveDays, renderArchive } from "./archive";
 import { buildFlatArena } from "./arena";
+import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { createCarMesh } from "./carMesh";
 import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName } from "./identity";
 import { Controls, isTyping } from "./input";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
-import { loadBest, saveBest, type BestRun } from "./records";
+import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
+import { MEDAL_ICON, shareLine, shareText, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { PALETTE_DEFS, buildTrackScene } from "./trackMesh";
 
@@ -39,7 +42,9 @@ const params = new URLSearchParams(location.search);
 // `essai` (le circuit écrit à la main des lots 2-3) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 const scenario = requested === "plat" ? "plat" : requested === "essai" ? "essai" : "jour";
-const todayUtc = Math.floor(Date.now() / 86_400_000);
+// `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
+const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
+const todayUtc = fakeToday ?? Math.floor(Date.now() / 86_400_000);
 const seedParam = params.get("seed");
 const seedDay = seedParam === null ? null : parseDay(seedParam);
 let daily: DailyCircuit | null = null;
@@ -82,15 +87,20 @@ const hudSplits = $("splits");
 const hudBanner = $("banner");
 const hudFinish = $("finish");
 const hudBoard = $("board");
+const hudArchive = $("archive");
+let splash: HTMLElement | null = document.getElementById("splash");
 
-const MEDAL_ICON: Record<Medal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
 const MEDAL_NAME: Record<Medal, string> = { author: "Meilleur que l'auteur !", gold: "Médaille d'or", silver: "Médaille d'argent", bronze: "Médaille de bronze" };
 
 // Titre du circuit et seuils des médailles.
 if (daily) {
   const m = daily.medals;
   const invalidSeed = seedParam !== null && seedDay === null;
-  $("meta").textContent = `Circuit du Jour${daily.number >= 1 ? ` #${daily.number}` : ""} · ${daily.date} · ${PALETTE_DEFS[daily.palette].label}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`;
+  // « Circuit du Jour » est masqué sur petit écran (`.long`) : il reste « #1 · 2026-10-06 · neige ».
+  const long = document.createElement("span");
+  long.className = "long";
+  long.textContent = "Circuit du Jour ";
+  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${PALETTE_DEFS[daily.palette].label}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
   $("meta").textContent = "Circuit d'essai";
@@ -125,6 +135,35 @@ let pendingRespawn = false;
 let shownSplits = 0;
 let lastRespawns = 0;
 
+// --- Partage et archives --------------------------------------------------------------------
+let lastRank: { rank: number; participants: number } | null = null;
+let shareEl: HTMLElement | null = null;
+
+/** Le résultat à partager : le meilleur temps du jour, avec sa médaille et son rang si le serveur l'a donné. */
+function currentShare(): ShareResult | null {
+  if (!daily || !best) return null;
+  return { number: daily.number, date: daily.date, ms: best.ms, medal: medalFor(best.ms, daily.medals), rank: lastRank?.rank ?? null, participants: lastRank?.participants ?? null };
+}
+
+function updateShareLine() {
+  const share = currentShare();
+  if (shareEl && share) shareEl.textContent = shareLine(share);
+}
+
+const shareLink = () => shareUrl(location, daily!.date, daily!.day === todayUtc);
+
+function openArchive() {
+  renderArchive(hudArchive.querySelector(".panel")!, archiveDays(todayUtc, listDayBests()), location.search, daily?.date ?? null, closeArchive);
+  hudArchive.hidden = false;
+}
+
+function closeArchive() {
+  hudArchive.hidden = true;
+}
+hudArchive.addEventListener("click", (e) => {
+  if (e.target === hudArchive) closeArchive(); // clic à côté du panneau
+});
+
 function startAttempt() {
   if (track) {
     session = new RunSession(track, ghostSource);
@@ -141,6 +180,8 @@ function startAttempt() {
   updateInfo();
   updateGhostInfo();
   autoplay = null;
+  lastRank = null;
+  shareEl = null;
   accumulator = 0;
   pendingRespawn = false;
   shownSplits = 0;
@@ -148,6 +189,7 @@ function startAttempt() {
   snapCamera = true;
   hudSplits.textContent = "";
   hudFinish.hidden = true;
+  document.body.classList.remove("finished");
   bannerTimer = 0;
 }
 
@@ -210,7 +252,8 @@ function renderBoard(lb: Leaderboard) {
   };
   const title = document.createElement("div");
   title.className = "title";
-  title.textContent = lb.participants === 0 ? "Classement du jour : personne encore" : `Classement du jour · ${lb.participants} pilote${lb.participants > 1 ? "s" : ""}`;
+  const label = submitAllowed ? "Classement du jour" : `Classement figé · ${lb.date}`;
+  title.textContent = lb.participants === 0 ? `${label} : personne` : `${label} · ${lb.participants} pilote${lb.participants > 1 ? "s" : ""}`;
   const rows = lb.top.map((r) => row(r, lb.me !== null && r.rank === lb.me.rank && r.name === lb.me.name));
   if (lb.me && lb.me.rank > lb.top.length) {
     const gap = document.createElement("div");
@@ -234,11 +277,36 @@ function setBoardVisible(visible: boolean) {
   if (boardVisible) void refreshBoard();
 }
 
+const compactScreen = () => matchMedia("(max-width: 900px), (max-height: 520px)").matches;
+
+/** À l'arrivée, le classement s'affiche tout seul à côté du panneau ; sur petit écran, il se demande (🏆) et ne le recouvre pas. */
+function autoShowBoard() {
+  if (!compactScreen()) setBoardVisible(true);
+}
+hudBoard.addEventListener("click", () => {
+  if (compactScreen()) setBoardVisible(false); // fenêtre : un toucher la ferme
+});
+
 window.addEventListener("keydown", (e) => {
   if (e.repeat || isTyping(e)) return;
   if (e.code === "KeyG") void cycleGhost();
   if (e.code === "KeyL") setBoardVisible(!boardVisible);
+  if (e.code === "KeyH") (hudArchive.hidden ? openArchive : closeArchive)();
+  if (e.code === "Escape") closeArchive();
 });
+
+// Boutons du menu (tactile et souris) : mêmes actions que les touches.
+const menuButton = (id: string, onClick: () => void) => {
+  const b = $(id) as HTMLButtonElement;
+  b.addEventListener("click", () => {
+    b.blur();
+    onClick();
+  });
+  return b;
+};
+menuButton("btn-board", () => setBoardVisible(!boardVisible)).hidden = !online.enabled;
+menuButton("btn-ghost", () => void cycleGhost()).hidden = !track;
+menuButton("btn-archive", () => (hudArchive.hidden ? openArchive() : closeArchive()));
 
 /** Envoi du meilleur temps au classement, et affichage du rang dans le panneau d'arrivée. */
 function startOnlineFlow(box: HTMLElement) {
@@ -258,8 +326,10 @@ function startOnlineFlow(box: HTMLElement) {
   };
 
   const showRank = (rank: number, participants: number, extra = "") => {
+    lastRank = { rank, participants };
+    updateShareLine();
     box.replaceChildren(text(`Rang ${rank} / ${participants}${extra}`, "rank"), button("Changer de pseudo", () => nameForm()));
-    setBoardVisible(true);
+    autoShowBoard();
   };
 
   const send = async () => {
@@ -301,7 +371,7 @@ function startOnlineFlow(box: HTMLElement) {
       if (pending) await send();
       else {
         box.replaceChildren(text(`Pseudo : ${name}`, "status"));
-        setBoardVisible(true);
+        autoShowBoard();
       }
     });
     box.replaceChildren(form);
@@ -311,7 +381,7 @@ function startOnlineFlow(box: HTMLElement) {
 
   if (!submitAllowed) {
     box.replaceChildren(text("Classement figé : ce jour est terminé", "status"));
-    setBoardVisible(true);
+    autoShowBoard();
   } else if (online.needsSubmit(best)) {
     void send();
   } else {
@@ -321,7 +391,7 @@ function startOnlineFlow(box: HTMLElement) {
       if (r.ok && r.data.me) showRank(r.data.me.rank, r.data.participants);
       else if (r.ok) box.replaceChildren();
       else box.replaceChildren(text(r.message, "error"));
-      if (r.ok) setBoardVisible(true);
+      if (r.ok) autoShowBoard();
     });
   }
 }
@@ -358,7 +428,7 @@ function finishRun() {
   const isRecord = !best || ms < best.ms;
   const previousBest = best;
   if (isRecord) {
-    best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION };
+    best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION, medal: daily ? medalFor(ms, daily.medals) : null };
     saveBest(track.id, best);
     if (ghostMode === "mine") ghostSource = best; // le prochain fantôme sera ce nouveau record
   }
@@ -378,9 +448,48 @@ function finishRun() {
   onlineBox.className = "online";
   const hint = document.createElement("div");
   hint.className = "hint";
-  hint.textContent = "Entrée : rejouer";
-  hudFinish.replaceChildren(...rows, ...(online.enabled ? [onlineBox] : []), hint);
+  hint.textContent = "Entrée : rejouer · H : archives";
+
+  // Ligne à partager (circuits du jour) et boutons : tout est cliquable, pour le tactile.
+  shareEl = daily ? document.createElement("div") : null;
+  if (shareEl) shareEl.className = "share";
+  updateShareLine();
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const action = (label: string, onClick: (b: HTMLButtonElement) => void | Promise<void>, cls = "") => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = cls;
+    b.textContent = label;
+    b.addEventListener("click", async () => {
+      b.blur(); // sinon la touche Entrée (rejouer) déclencherait aussi ce bouton
+      await onClick(b);
+    });
+    actions.append(b);
+    return b;
+  };
+  const flash = (b: HTMLButtonElement, text: string) => {
+    const label = b.textContent;
+    b.textContent = text;
+    setTimeout(() => (b.textContent = label), 1600);
+  };
+  action("Rejouer", () => startAttempt(), "primary");
+  if (daily) {
+    action("Copier le résultat", async (b) => {
+      const share = currentShare();
+      if (share) flash(b, (await copyText(shareText(share, shareLink()))) ? "Copié ✓" : "Copie impossible");
+    });
+    if (canNativeShare()) {
+      action("Partager", async () => {
+        const share = currentShare();
+        if (share) await nativeShare({ text: shareLine(share), url: shareLink() });
+      });
+    }
+  }
+  action("Archives", () => openArchive());
+  hudFinish.replaceChildren(...rows, ...(online.enabled ? [onlineBox] : []), ...(shareEl ? [shareEl] : []), actions, hint);
   hudFinish.hidden = false;
+  document.body.classList.add("finished");
   if (online.enabled) startOnlineFlow(onlineBox);
   showBanner("ARRIVÉE", 2.5);
 }
@@ -500,6 +609,8 @@ function frame(now: number) {
   view.followGround(x, z);
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
   renderer.render(view.scene, camera);
+  splash?.remove(); // premier rendu fait : on retire l'écran de chargement
+  splash = null;
 }
 
 renderer.setAnimationLoop(frame);

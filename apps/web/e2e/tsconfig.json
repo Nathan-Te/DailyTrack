@@ -9,6 +9,6 @@
     "noEmit": false,
     "emitDeclarationOnly": true
   },
-  "include": ["./*.ts", "../playwright.config.ts", "../src/verify.ts"],
+  "include": ["./*.ts", "../playwright.config.ts", "../src/verify.ts", "../src/share.ts", "../src/format.ts"],
   "references": [{ "path": "../../../packages/sim" }]
 }
