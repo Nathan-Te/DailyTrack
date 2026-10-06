@@ -1,1 +1,0 @@
-import{a as e,o as t,r as n}from"./src-DmvYbh2B.js";window.__verify=r=>{let i=e(t(),n(r)),a=i.finalCar;return{finishMs:i.finishMs,splits:i.splits,respawns:i.respawns,ticks:i.ticks,final:{x:a.x,y:a.y,z:a.z,yaw:a.yaw,vx:a.vx,vy:a.vy,vz:a.vz}}},document.documentElement.dataset.ready=`true`;
