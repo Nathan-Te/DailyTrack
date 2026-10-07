@@ -27,6 +27,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["surfaces", "Surfaces"],
   ["largeurs", "Largeurs"],
   ["vitesse", "Vitesse"],
+  ["glace", "Glace"],
   ["plat", "Terrain plat"],
 ];
 

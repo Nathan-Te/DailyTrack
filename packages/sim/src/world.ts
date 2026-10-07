@@ -36,20 +36,27 @@ export interface SurfaceParams {
   traction: number;
   /** Résistance au roulement ajoutée (m/s²). */
   rolling: number;
+  /**
+   * Part du comportement « glace » (0 = aucun, 1 = plein) : pointe plus haute, roue libre qui glisse peu, adhérence
+   * rendue en roue libre et réalignement de la vitesse sur le cap. Les valeurs de ce comportement sont les clés
+   * `ice*` de `CarParams` (réglables dans le panneau `?debug&tune`).
+   */
+  slick: number;
 }
 
 /**
  * Les revêtements. Nouveau revêtement ou nouvelle valeur = `SIM_VERSION` +1.
  * - route : la référence ;
  * - terre : l'arrière glisse facilement et se rattrape, accélération un peu molle ;
- * - glace : grip très faible, freinage long, motricité faible : on anticipe tout ;
+ * - glace (lot 16) : grip très faible à l'accélérateur et au frein, motricité faible, aucun roulement : plus rapide en
+ *   ligne droite ; en roue libre l'adhérence revient et la vitesse se réaligne sur le cap (`slick`, clés `ice*`) ;
  * - herbe : ralentit nettement (roulement 7 m/s²) et glisse.
  */
 export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = Object.freeze({
-  road: Object.freeze({ grip: 1, traction: 1, rolling: 0 }),
-  dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5 }),
-  ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0.3 }),
-  grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7 }),
+  road: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),
+  dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5, slick: 0 }),
+  ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0, slick: 1 }),
+  grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7, slick: 0 }),
 });
 
 /** Comportement du revêtement d'un échantillon de sol. */

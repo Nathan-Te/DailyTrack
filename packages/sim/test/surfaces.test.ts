@@ -72,7 +72,7 @@ describe("notation des blocs", () => {
 
 describe("revêtements : grip, freinage, vitesse en virage", () => {
   it("la table est ordonnée : route > terre > herbe > glace en adhérence, et seule l'herbe freine vraiment", () => {
-    expect(SURFACES.road).toEqual({ grip: 1, traction: 1, rolling: 0 });
+    expect(SURFACES.road).toEqual({ grip: 1, traction: 1, rolling: 0, slick: 0 });
     expect(SURFACES.dirt.grip).toBeLessThan(SURFACES.road.grip);
     expect(SURFACES.grass.grip).toBeLessThan(SURFACES.dirt.grip);
     expect(SURFACES.ice.grip).toBeLessThan(SURFACES.grass.grip);
@@ -100,11 +100,11 @@ describe("revêtements : grip, freinage, vitesse en virage", () => {
     expect(d.dirt).toBeGreaterThan(d.road * 1.05);
   });
 
-  /** Accélération latérale tenue (m/s²) à braquage plein, à 20 m/s : la limite du virage, d'où la vitesse de passage. */
+  /** Accélération latérale tenue (m/s²) à braquage plein, accélérateur appuyé, vers 20 m/s : la limite du virage (en roue libre la glace en tient plus : lot 16). */
   const lateralLimit = (kind: SurfaceKind) => {
     const car = createCar();
     car.vz = 20;
-    for (let i = 0; i < 3 * TICK_RATE; i++) stepCar(car, makeInput(1, carSpeed(car) < 20 ? 1 : 0, 0), flatOf(kind));
+    for (let i = 0; i < 3 * TICK_RATE; i++) stepCar(car, makeInput(1, 1, 0), flatOf(kind));
     return carSpeed(car) * Math.abs(car.yawRate);
   };
 
