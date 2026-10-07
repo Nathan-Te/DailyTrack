@@ -125,6 +125,10 @@ export interface CarParams {
   boostMaxSpeed: number;
   /** Retour progressif à la vitesse de pointe une fois la plaque épuisée (m/s²). */
   overspeedDrag: number;
+  /** Super turbo (bloc T) : durée (pas), poussée (m/s²) et vitesse plafond (m/s) — plus fort et plus long que la plaque. */
+  turboTicks: number;
+  turboAccel: number;
+  turboMaxSpeed: number;
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
@@ -165,6 +169,9 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   boostAccel: 30,
   boostMaxSpeed: 58,
   overspeedDrag: 14,
+  turboTicks: 180,
+  turboAccel: 42,
+  turboMaxSpeed: 68,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -228,6 +235,10 @@ export interface CarState {
   air: number;
   /** Pas restants d'accélération de plaque. */
   boost: number;
+  /** Pas restants de super turbo. */
+  turbo: number;
+  /** 1 tant que le moteur est coupé (jusqu'au prochain point de contrôle) : l'accélérateur n'agit plus. */
+  cut: number;
   /** Dérapage déclenché au frein, ∈ [0, 1] (0 = adhérence normale). */
   drift: number;
 }
@@ -235,7 +246,7 @@ export interface CarState {
 export function createCar(x = 0, z = 0, yaw = 0, y = 0): CarState {
   return {
     x, z, yaw, vx: 0, vz: 0, yawRate: 0, steer: 0, tick: 0, y, vy: 0,
-    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, drift: 0,
+    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0,
   };
 }
 
@@ -283,6 +294,8 @@ const gH = [0, 0, 0, 0];
 const gX = [0, 0, 0, 0];
 const gZ = [0, 0, 0, 0];
 const gBoost = [false, false, false, false];
+const gTurbo = [false, false, false, false];
+const gCut = [false, false, false, false];
 /** Revêtement sous chaque roue : adhérence, motricité, roulement (`surfaceAt`). */
 const gGrip = [1, 1, 1, 1];
 const gTraction = [1, 1, 1, 1];
@@ -298,6 +311,8 @@ function sampleWheels(car: CarState, world: World, fx: number, fz: number): void
     gX[i] = surface.gx;
     gZ[i] = surface.gz;
     gBoost[i] = surface.boost;
+    gTurbo[i] = surface.turbo;
+    gCut[i] = surface.cut;
     const m = surfaceAt(surface);
     gGrip[i] = m.grip;
     gTraction[i] = m.traction;
@@ -311,7 +326,8 @@ export function stepCar(car: CarState, input: CarInput, world: World = FLAT_WORL
   const target = clamp(input.steer, -AXIS_MAX, AXIS_MAX) / AXIS_MAX;
   const steerStep = params.steerSpeed * DT;
   car.steer += clamp(target - car.steer, -steerStep, steerStep);
-  const throttle = clamp(input.throttle, 0, AXIS_MAX) / AXIS_MAX;
+  // Moteur coupé : l'accélérateur n'agit plus (le frein, si).
+  const throttle = car.cut ? 0 : clamp(input.throttle, 0, AXIS_MAX) / AXIS_MAX;
   const brake = clamp(input.brake, 0, AXIS_MAX) / AXIS_MAX;
 
   // Dérapage : un coup de frein en virage rapide fait décrocher l'arrière ; on le tient à la direction.
@@ -321,6 +337,7 @@ export function stepCar(car: CarState, input: CarInput, world: World = FLAT_WORL
   samplesValid = false; // d'autres voitures (le fantôme) partagent les tampons d'échantillons
   for (let s = 0; s < SUBSTEPS; s++) substep(car, throttle, brake, target, world, params);
   if (car.boost > 0) car.boost -= 1;
+  if (car.turbo > 0) car.turbo -= 1;
   car.tick += 1;
 }
 
@@ -352,6 +369,9 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   let contacts = 0;
   let slope = 0;
   let onBoost = false;
+  let onTurbo = false;
+  let onCut = false;
+  let slopeSide = 0;
   let traction = 0;
   let rolling = 0;
   for (let i = 0; i < 4; i++) {
@@ -366,13 +386,17 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     load[i] = force > 0 ? force : 0;
     contacts++;
     slope += gX[i]! * fx + gZ[i]! * fz;
+    slopeSide += gX[i]! * lx + gZ[i]! * lz;
     traction += gTraction[i]!;
     rolling += gRolling[i]!;
     if (gBoost[i]) onBoost = true;
+    if (gTurbo[i]) onTurbo = true;
+    if (gCut[i]) onCut = true;
   }
   const grounded = contacts > 0;
   if (grounded) {
     slope /= contacts;
+    slopeSide /= contacts;
     traction /= contacts;
     rolling /= contacts;
   }
@@ -382,6 +406,8 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   car.air = grounded ? 0 : car.air + 1;
   car.grounded = grounded ? 1 : 0;
   if (onBoost) car.boost = p.boostTicks;
+  if (onTurbo) car.turbo = p.turboTicks;
+  if (onCut) car.cut = 1;
 
   let ax = 0; // accélérations le long du cap et vers la gauche
   let ay = 0;
@@ -429,7 +455,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
 
     // --- Moteur, freins, pente ------------------------------------------------------------------
     const grip = clamp(1 + p.loadSensitivity * ((loadF + loadR) / 2 - 1), 0, 1) * traction;
-    const top = car.boost > 0 ? p.boostMaxSpeed : p.maxSpeed;
+    const top = car.turbo > 0 ? p.turboMaxSpeed : car.boost > 0 ? p.boostMaxSpeed : p.maxSpeed;
     let drive = 0;
     if (throttle > 0) {
       if (u < -0.5) drive += p.brake * throttle;
@@ -445,10 +471,13 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     }
     if (throttle === 0 && brake === 0) drive -= u > 0 ? p.coast : u < 0 ? -p.coast : 0;
     if (car.boost > 0 && u < p.boostMaxSpeed) drive += p.boostAccel;
+    if (car.turbo > 0 && u < p.turboMaxSpeed) drive += p.turboAccel;
     ax += drive * grip;
     ax -= u > 0 ? rolling : u < 0 ? -rolling : 0;
-    if (u > p.maxSpeed && car.boost <= 0) ax -= p.overspeedDrag;
+    if (u > p.maxSpeed && car.boost <= 0 && car.turbo <= 0) ax -= p.overspeedDrag;
     ax -= p.slopeGravity * slope;
+    // Pente latérale (virage relevé) : la pesanteur pousse vers le bas de la pente, donc vers l'intérieur du virage.
+    ay -= p.gravity * slopeSide;
     // Une glisse coûte de la vitesse, en proportion de son angle (dérive = vitesse latérale ÷ vitesse).
     const drift = v / U;
     ax -= p.slideDrag * (drift < 0 ? -drift : drift) * (u > 0 ? 1 : u < 0 ? -1 : 0);

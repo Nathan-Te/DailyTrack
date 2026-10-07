@@ -24,3 +24,15 @@ export const PILOTAGE_TRACK_SPEC =
 export function createPilotageTrack() {
   return parseTrack("pilotage", PILOTAGE_TRACK_SPEC);
 }
+
+/**
+ * Scénario `surfaces` (lot 8) : chaque revêtement (terre, glace, herbe), un super turbo (cinq lignes droites pour
+ * freiner ensuite), un moteur coupé (point de contrôle deux blocs plus loin), un virage relevé serré (R/b, L/b) et un
+ * virage relevé large (L2/b), puis une plaque d'accélération.
+ */
+export const SURFACES_TRACK_SPEC =
+  "S@start S S S/t S/t R/t S/t S@cp S/g S/g S/g L/g S/g S/h S/h S/h S S T S S S S S L2/b S S S R/b S S C S S@cp S L/b S S P S S S L2 S S@finish";
+
+export function createSurfacesTrack() {
+  return parseTrack("surfaces", SURFACES_TRACK_SPEC);
+}

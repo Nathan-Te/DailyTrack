@@ -7,7 +7,11 @@ import {
   carSpeed,
   copyCar,
   createCar,
+  THEMES,
   createPilotageTrack,
+  createSurface,
+  createSurfacesTrack,
+  themeByName,
   createTestTrack,
   dailyCircuit,
   isDefaultParams,
@@ -41,7 +45,7 @@ import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareText, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
-import { PALETTE_DEFS, buildTrackScene } from "./trackMesh";
+import { buildTrackScene } from "./trackMesh";
 import { loadTunedParams, mountTunePanel } from "./tune";
 
 const params = new URLSearchParams(location.search);
@@ -58,15 +62,18 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 const todayUtc = fakeToday ?? Math.floor(Date.now() / 86_400_000);
 const seedParam = params.get("seed");
 const seedDay = seedParam === null ? null : parseDay(seedParam);
 let daily: DailyCircuit | null = null;
-if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc);
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : createTestTrack());
+// `?theme=<nom>` force le thème du jour (essais) : autre circuit, jamais classé.
+const themeParam = params.get("theme");
+const forcedTheme = themeByName(themeParam);
+if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc, forcedTheme?.name);
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -84,9 +91,9 @@ ghostMesh.visible = false;
 view.scene.add(ghostMesh);
 
 // Classement : seulement pour le circuit du jour, et si une adresse d'API est configurée (`?api=` ou VITE_API_URL).
-const online = new Online(track ? track.id : null, daily ? daily.date : null);
+const online = new Online(track ? track.id : null, daily && !daily.forcedTheme ? daily.date : null);
 // On ne peut classer que le circuit d'aujourd'hui (un jour passé est figé : le serveur refuse).
-const submitAllowed = !!daily && daily.day === todayUtc;
+const submitAllowed = !!daily && daily.day === todayUtc && !daily.forcedTheme;
 // Outils de test (`?debug`) : accélérer le temps et jouer une rediffusion à la place du clavier.
 const timeScale = params.has("debug") ? Math.max(1, Number(params.get("timescale")) || 1) : 1;
 let autoplay: ReplayPlayer | null = null;
@@ -120,10 +127,10 @@ if (daily) {
   const long = document.createElement("span");
   long.className = "long";
   long.textContent = "Circuit du Jour ";
-  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${PALETTE_DEFS[daily.palette].label}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
+  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${daily.forcedTheme ? " (thème forcé : essai, non classé)" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
@@ -631,6 +638,32 @@ function cycleCamera() {
   showBanner(`Caméra ${CAMERAS[cameraIndex]!.name}`, 1, true);
 }
 
+// Indicateur d'effets (HUD) : super turbo, turbo, moteur coupé, et revêtement quand ce n'est pas la route.
+const hudFx = $("fx");
+const fxSample = createSurface();
+const SURFACE_HUD: Record<string, string> = { dirt: "TERRE", ice: "GLACE", grass: "HERBE" };
+let fxShown = "";
+function updateEffects() {
+  const parts: string[] = [];
+  if (race && phase !== "countdown") {
+    const c = race.car;
+    if (c.cut) parts.push("⛔ MOTEUR COUPÉ");
+    if (c.turbo > 0) parts.push("🔥 SUPER TURBO");
+    else if (c.boost > 0) parts.push("⚡ TURBO");
+    if (c.grounded) {
+      race.world.sample(c.x, c.z, fxSample);
+      const name = SURFACE_HUD[fxSample.kind];
+      if (name) parts.push(name);
+    }
+  }
+  const text = parts.join(" · ");
+  if (text !== fxShown) {
+    fxShown = text;
+    hudFx.textContent = text;
+    hudFx.dataset.cut = parts.some((p) => p.includes("COUPÉ")) ? "1" : "0";
+  }
+}
+
 function stepOnce(input: CarInput) {
   lastInput = input;
   const respawnsBefore = race ? race.respawns : 0;
@@ -769,6 +802,7 @@ function frame(now: number) {
 
   view.followGround(x, z);
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
+  updateEffects();
   if (!manual) renderer.render(view.scene, camera); // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
   splash?.remove(); // premier rendu fait : on retire l'écran de chargement
   splash = null;

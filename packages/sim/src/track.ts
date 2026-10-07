@@ -19,7 +19,15 @@ export const BOOST_HALF_LENGTH = 4;
 /** Hauteur « sans sol » : le vide. */
 export const NO_GROUND = -1e9;
 
-export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "up" | "down" | "bump" | "jump" | "boost";
+export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "up" | "down" | "bump" | "jump" | "boost" | "turbo" | "cut";
+
+/**
+ * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
+ * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
+ */
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass";
+/** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
+export const SURFACE_LETTERS: Record<string, SurfaceKind> = { t: "dirt", g: "ice", h: "grass" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
@@ -34,6 +42,10 @@ export interface Block {
   /** Hauteur de la route à l'entrée du bloc. */
   y0: number;
   mark?: Mark;
+  /** Revêtement du bloc. */
+  surface: SurfaceKind;
+  /** Virage relevé : la route s'incline vers l'extérieur (voir `bankAt`). */
+  banked: boolean;
 }
 
 export interface Gate {
@@ -77,6 +89,8 @@ export const BLOCK_LETTERS: Record<string, BlockKind> = {
   B: "bump",
   J: "jump",
   P: "boost",
+  T: "turbo",
+  C: "cut",
 };
 const MARKS: Record<string, Mark> = { start: "start", cp: "checkpoint", finish: "finish" };
 
@@ -232,12 +246,93 @@ export function exitDelta(kind: BlockKind): number {
 
 // --- Construction -----------------------------------------------------------------------------
 
+export interface ParsedToken {
+  kind: BlockKind;
+  surface: SurfaceKind;
+  banked: boolean;
+  mark?: Mark;
+}
+
+/**
+ * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe
+ * (un seul revêtement), `b` virage relevé (virages seulement). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`.
+ */
+export function parseToken(token: string, index = 0): ParsedToken {
+  const [body = "", markName] = token.split("@");
+  const [letter = "", mods = ""] = body.split("/");
+  const kind = BLOCK_LETTERS[letter];
+  if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
+  let mark: Mark | undefined;
+  if (markName !== undefined) {
+    mark = MARKS[markName];
+    if (!mark) throw new Error(`Repère inconnu « ${token} » (position ${index})`);
+  }
+  let surface: SurfaceKind = "road";
+  let banked = false;
+  for (const m of mods) {
+    if (m === "b") banked = true;
+    else if (SURFACE_LETTERS[m]) {
+      if (surface !== "road") throw new Error(`Deux revêtements sur « ${token} » (position ${index})`);
+      surface = SURFACE_LETTERS[m]!;
+    } else throw new Error(`Modificateur inconnu « ${m} » dans « ${token} » (position ${index})`);
+  }
+  if (banked && !isCurve(kind)) throw new Error(`Seul un virage peut être relevé (${token})`);
+  return { kind, surface, banked, ...(mark ? { mark } : {}) };
+}
+
+// --- Virages relevés --------------------------------------------------------------------------
+
+/** Pente du relevé, de l'axe vers l'extérieur : virage serré (rayon 16 m) et virage large (rayon 48 m). */
+export const BANK_SLOPE_TIGHT = 0.3;
+export const BANK_SLOPE_WIDE = 0.22;
+/** Le relevé monte progressivement sur cette distance (m) depuis l'entrée et la sortie du virage. */
+export const BANK_RAMP = 8;
+
+export interface BankSample {
+  /** Hauteur ajoutée par le relevé. */
+  h: number;
+  /** Gradient dans le repère canonique (p, q). */
+  gp: number;
+  gq: number;
+}
+
+/**
+ * Relevé d'un virage au point canonique (p, q) : la route monte vers l'extérieur de `pente × (r − rayon de l'axe)`,
+ * en rampe à l'entrée et à la sortie (la hauteur redevient celle de la route plate aux bords du bloc).
+ */
+export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
+  out.h = 0;
+  out.gp = 0;
+  out.gq = 0;
+  if (!b.banked) return;
+  const { cp, r: R } = curveCenter(b.kind);
+  const dp = p - cp;
+  const r = Math.sqrt(dp * dp + q * q);
+  if (r < 1e-6 || q < 0) return;
+  const slope = isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT;
+  const adp = dp < 0 ? -dp : dp;
+  const m = q < adp ? q : adp;
+  let f = 1;
+  let dfp = 0;
+  let dfq = 0;
+  if (m < BANK_RAMP) {
+    f = m / BANK_RAMP;
+    if (q < adp) dfq = 1 / BANK_RAMP;
+    else dfp = (dp < 0 ? -1 : 1) / BANK_RAMP;
+  }
+  const off = r - R;
+  out.h = slope * f * off;
+  out.gp = slope * ((f * dp) / r + off * dfp);
+  out.gq = slope * ((f * q) / r + off * dfq);
+}
+
 /**
  * Construit un circuit à partir d'un texte : des blocs séparés par des espaces, posés l'un après l'autre
  * à partir de la cellule (0, 0), cap +z.
  *
  * Blocs : S droit · L virage à gauche · R virage à droite · L2 / R2 virage large (2 × 2 cellules) · U montée · D descente · B bosse ·
- * J tremplin · P plaque d'accélération. Repères : `@start` (premier bloc), `@cp` (point de contrôle,
+ * J tremplin · P plaque d'accélération · T super turbo · C moteur coupé (jusqu'au prochain point de contrôle). Modificateurs
+ * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé. Repères : `@start` (premier bloc), `@cp` (point de contrôle,
  * sur un S), `@finish` (dernier bloc). Départ et arrivée sont sur des blocs S.
  */
 export function parseTrack(id: string, spec: string): Track {
@@ -250,19 +345,12 @@ export function parseTrack(id: string, spec: string): Track {
   let y = 0;
 
   tokens.forEach((token, index) => {
-    const [letter = "", markName] = token.split("@");
-    const kind = BLOCK_LETTERS[letter];
-    if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
-    let mark: Mark | undefined;
-    if (markName !== undefined) {
-      mark = MARKS[markName];
-      if (!mark) throw new Error(`Repère inconnu « ${token} » (position ${index})`);
-    }
+    const { kind, surface, banked, mark } = parseToken(token, index);
     if (mark && kind !== "straight") throw new Error(`Un repère n'est permis que sur un bloc S (${token})`);
     if (mark === "start" && index !== 0) throw new Error("Le départ doit être le premier bloc");
     if (mark === "finish" && index !== tokens.length - 1) throw new Error("L'arrivée doit être le dernier bloc");
 
-    const block: Block = { index, cx, cz, dir, kind, y0: y, ...(mark ? { mark } : {}) };
+    const block: Block = { index, cx, cz, dir, kind, y0: y, surface, banked, ...(mark ? { mark } : {}) };
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
       const key = cellKey(x, z);

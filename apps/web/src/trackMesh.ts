@@ -19,18 +19,22 @@ import {
   BOOST_HALF_LENGTH,
   BOOST_HALF_WIDTH,
   CELL,
+  CUT_HALF_LENGTH,
   HALF_ROAD,
   JUMP_LIP,
   JUMP_RISE,
   WALL_HEIGHT,
+  bankAt,
   blockHeight,
   blockPoint,
   curveCenter,
   isCurve,
   isWide,
   turnsLeft,
+  type BankSample,
   type Block,
   type PaletteName,
+  type SurfaceKind,
   type Track,
 } from "@cdj/sim";
 import { PALETTE_LABELS } from "./labels";
@@ -87,6 +91,15 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     wallA: 0xff5a36, wallB: 0xffe9c4,
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x39c0ff, finish: 0xf4f4f4, finishDark: 0x16181f,
   },
+  campagne: {
+    label: PALETTE_LABELS.campagne,
+    sky: 0x9fd4ff, fogNear: 100, fogFar: 340,
+    ambient: [0xf2fff0, 0.95], sun: [0xfff6dd, 2.1],
+    floorA: "#6fbf4f", floorB: "#63b044",
+    road: [0x80838c, 0x777a83], dash: 0xf4f1e6, skirt: 0x5a6b3c,
+    wallA: 0xd9402a, wallB: 0xf6f6f0,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
+  },
   neon: {
     label: PALETTE_LABELS.neon,
     sky: 0x120024, fogNear: 70, fogFar: 280,
@@ -97,6 +110,18 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     boost: 0xfff200, boostMark: 0xff7a00, checkpoint: 0x00ff9c, finish: 0xffffff, finishDark: 0x16181f,
   },
 };
+
+/** Couleurs de la route selon le revêtement (deux tons en alternance, comme la route) : lisibles d'un coup d'œil. */
+const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, number]> = {
+  dirt: [0x8f6b43, 0x82603b],
+  ice: [0xc4e9f7, 0xb2dff1],
+  grass: [0x58a340, 0x4e9638],
+};
+/** Motifs légers par revêtement (traces, éclats, brins) : une teinte plus sombre ou plus claire. */
+const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26 };
+/** Blocs à effet : couleurs propres, indépendantes de la palette (la lisibilité d'abord). */
+const TURBO_COLOR = { base: 0xff3b30, mark: 0xffe14d };
+const CUT_COLOR = { base: 0x2b1b45, mark: 0xffd22e };
 
 class Builder {
   readonly pos: number[] = [];
@@ -161,16 +186,24 @@ function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: 
   return rows;
 }
 
-/** Point (rayon `r`, angle `a` depuis l'entrée) d'un virage, serré ou large. */
+const bank: BankSample = { h: 0, gp: 0, gq: 0 };
+
+/** Point (rayon `r`, angle `a` depuis l'entrée) d'un virage, serré ou large ; la hauteur suit le relevé éventuel. */
 function arcPoint(b: Block, r: number, a: number, y: number): V3 {
   const { cp } = curveCenter(b.kind);
   const side = turnsLeft(b.kind) ? -1 : 1;
-  return world(b, cp + side * r * Math.cos(a), r * Math.sin(a), y);
+  const p = cp + side * r * Math.cos(a);
+  const q = r * Math.sin(a);
+  if (b.banked) {
+    bankAt(b, p, q, bank);
+    y += bank.h;
+  }
+  return world(b, p, q, y);
 }
 
 function curveRows(b: Block): Row[] {
   const { r: R } = curveCenter(b.kind);
-  const steps = isWide(b.kind) ? 24 : 10;
+  const steps = (isWide(b.kind) ? 24 : 10) + (b.banked ? 8 : 0);
   const rows: Row[] = [];
   const left = turnsLeft(b.kind);
   for (let i = 0; i <= steps; i++) {
@@ -264,6 +297,76 @@ function addBoostPad(g: Builder, pal: Palette, b: Block) {
   }
 }
 
+/** Plaque de super turbo : rouge, trois chevrons jaunes (la plaque d'accélération normale en a deux, sur fond jaune). */
+function addTurboPad(g: Builder, b: Block) {
+  const y = b.y0 + 0.04;
+  const p0 = CELL / 2 - BOOST_HALF_WIDTH;
+  const p1 = CELL / 2 + BOOST_HALF_WIDTH;
+  const q0 = CELL / 2 - BOOST_HALF_LENGTH;
+  const q1 = CELL / 2 + BOOST_HALF_LENGTH;
+  g.quad(world(b, p0, q0, y), world(b, p1, q0, y), world(b, p1, q1, y), world(b, p0, q1, y), TURBO_COLOR.base);
+  for (const dq of [-2.6, -0.1, 2.4]) {
+    const qc = CELL / 2 + dq;
+    const h = y + 0.02;
+    g.tri(world(b, CELL / 2, qc + 1.4, h), world(b, p1 - 0.5, qc - 0.9, h), world(b, CELL / 2, qc - 0.2, h), TURBO_COLOR.mark);
+    g.tri(world(b, CELL / 2, qc + 1.4, h), world(b, CELL / 2, qc - 0.2, h), world(b, p0 + 0.5, qc - 0.9, h), TURBO_COLOR.mark);
+  }
+}
+
+/** Bande de moteur coupé : en travers de toute la route, damier sombre et jaune (un avertissement, pas un bonus). */
+function addCutStrip(g: Builder, b: Block) {
+  const y = b.y0 + 0.04;
+  const q0 = CELL / 2 - CUT_HALF_LENGTH;
+  const cols = 14;
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < 2; j++) {
+      const color = (i + j) % 2 === 0 ? CUT_COLOR.base : CUT_COLOR.mark;
+      const pa = CELL / 2 - HALF_ROAD + i;
+      const qa = q0 + 2 * j;
+      g.quad(world(b, pa, qa, y), world(b, pa + 1, qa, y), world(b, pa + 1, qa + 2, y), world(b, pa, qa + 2, y), color);
+    }
+  }
+}
+
+/** Point du bloc : `lat` mètres à gauche de l'axe, `t` ∈ [0, 1] le long du bloc, à `lift` au-dessus de la route. */
+function onBlock(b: Block, lat: number, t: number, lift: number): V3 {
+  if (isCurve(b.kind)) {
+    const { r: R } = curveCenter(b.kind);
+    return arcPoint(b, turnsLeft(b.kind) ? R - lat : R + lat, t * (Math.PI / 2), b.y0 + lift);
+  }
+  const q = t * CELL;
+  return world(b, CELL / 2 + lat, q, blockHeight(b, q) + lift);
+}
+
+/** Motif léger d'un revêtement : traces de roues (terre), éclats (glace), brins (herbe). Pas de texture. */
+function addSurfaceMarks(g: Builder, b: Block) {
+  if (b.surface === "road") return;
+  const color = SURFACE_MARKS[b.surface];
+  const lift = 0.05;
+  if (b.surface === "dirt") {
+    for (const lat of [-2.6, 2.6]) {
+      for (let k = 0; k < 6; k++) {
+        const t0 = (k + 0.1) / 6;
+        const t1 = (k + 0.8) / 6;
+        g.quad(onBlock(b, lat - 0.3, t0, lift), onBlock(b, lat + 0.3, t0, lift), onBlock(b, lat + 0.3, t1, lift), onBlock(b, lat - 0.3, t1, lift), color);
+      }
+    }
+  } else if (b.surface === "ice") {
+    for (let k = 0; k < 5; k++) {
+      const t0 = (k + 0.2) / 5;
+      const t1 = t0 + 0.06;
+      const lat = (k % 2 === 0 ? -1 : 1) * (2.5 + (k % 3));
+      g.quad(onBlock(b, lat, t0, lift), onBlock(b, lat + 0.4, t0, lift), onBlock(b, lat + 1.8, t1, lift), onBlock(b, lat + 1.4, t1, lift), color);
+    }
+  } else {
+    for (let k = 0; k < 9; k++) {
+      const lat = (((k * 5 + b.index * 3) % 11) - 5) * 1.1;
+      const t = (k + 0.5) / 9;
+      g.tri(onBlock(b, lat - 0.35, t, lift), onBlock(b, lat + 0.35, t, lift), onBlock(b, lat, t + 0.01, 0.65), color);
+    }
+  }
+}
+
 function addGate(g: Builder, pal: Palette, b: Block, finish: boolean) {
   const y = b.y0;
   const post = HALF_ROAD + 0.9;
@@ -326,7 +429,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const g = new Builder();
 
   for (const b of track.blocks) {
-    const color = pal.road[b.index % 2]!;
+    const color = b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!;
     if (isCurve(b.kind)) {
       addRoad(g, pal, curveRows(b), color, floorY, true);
     } else if (b.kind === "jump") {
@@ -340,8 +443,12 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       const steps = b.kind === "bump" ? 16 : 1;
       addRoad(g, pal, straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q)), color, floorY, true);
     }
-    if (b.kind !== "boost" && b.kind !== "jump" && b.kind !== "bump") addDashes(g, pal, b);
+    const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";
+    if (b.surface === "road" && !effect && b.kind !== "jump" && b.kind !== "bump") addDashes(g, pal, b);
+    addSurfaceMarks(g, b);
     if (b.kind === "boost") addBoostPad(g, pal, b);
+    if (b.kind === "turbo") addTurboPad(g, b);
+    if (b.kind === "cut") addCutStrip(g, b);
     if (b.mark === "checkpoint") addGate(g, pal, b, false);
     if (b.mark === "finish") addGate(g, pal, b, true);
   }

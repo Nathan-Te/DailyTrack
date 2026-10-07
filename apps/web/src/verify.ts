@@ -17,6 +17,7 @@ export interface DailyResult {
   spec: string;
   authorMs: number;
   palette: string;
+  theme: string;
 }
 
 declare global {
@@ -43,7 +44,7 @@ window.__daily = (date) => {
   const day = parseDay(date);
   if (day === null) throw new Error(`Date invalide : ${date}`);
   const c = dailyCircuit(day);
-  return { number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette };
+  return { number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette, theme: c.theme };
 };
 
 document.documentElement.dataset.ready = "true";

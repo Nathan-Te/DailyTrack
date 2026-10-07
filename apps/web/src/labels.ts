@@ -6,4 +6,5 @@ export const PALETTE_LABELS: Record<PaletteName, string> = {
   neige: "neige",
   nuit: "nuit",
   neon: "néon",
+  campagne: "campagne",
 };

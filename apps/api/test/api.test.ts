@@ -4,10 +4,10 @@ import { DAY, DAY_MS, NOON, circuitOf, makeApi, pilotReplay, playerId } from "./
 
 const DATE = formatDay(DAY);
 // Quatre rediffusions valides de vitesses différentes : 30 est la plus rapide, 18 la plus lente.
-const fast = pilotReplay(DAY, 1);
-const mid = pilotReplay(DAY, 0.9);
-const slow = pilotReplay(DAY, 0.78);
-const slowest = pilotReplay(DAY, 0.65);
+const fast = pilotReplay(DAY, 0.9);
+const mid = pilotReplay(DAY, 0.78);
+const slow = pilotReplay(DAY, 0.65);
+const slowest = pilotReplay(DAY, 0.55);
 
 const submit = (t: Awaited<ReturnType<typeof makeApi>>, n: number, name: string, code: string, extra: Record<string, unknown> = {}) =>
   t.call("POST", "/api/submit", { playerId: playerId(n), name, date: DATE, replay: code, ...extra });

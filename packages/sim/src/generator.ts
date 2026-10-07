@@ -3,7 +3,8 @@ import { circuitNumber, formatDay } from "./calendar";
 import { bestPilotRun } from "./autopilot";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
-import { BLOCK_LETTERS, blockCells, cellKey, exitDelta, parseTrack, type Dir, type Track } from "./track";
+import { themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { blockCells, cellKey, exitDelta, isCurve, parseToken, parseTrack, type Dir, type SurfaceKind, type Track } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
@@ -14,9 +15,6 @@ import { BLOCK_LETTERS, blockCells, cellKey, exitDelta, parseTrack, type Dir, ty
 // 2. Validation : un pilote automatique parcourt le circuit avec la même physique. S'il ne le finit pas, ou si
 //    sa durée sort de la fenêtre visée, on recommence avec une graine voisine (tentative suivante).
 // 3. Le temps du pilote est le temps de l'auteur ; les médailles en découlent.
-
-export const PALETTES = ["desert", "neige", "nuit", "neon"] as const;
-export type PaletteName = (typeof PALETTES)[number];
 
 /** Durée visée du pilote : un humain mettra un peu plus (≈ 30 à 60 s). */
 export const AUTHOR_MIN_MS = 28_000;
@@ -53,12 +51,9 @@ export function medalFor(ms: number, medals: Medals): Medal | null {
   return null;
 }
 
-export function paletteForDay(day: number): PaletteName {
-  return PALETTES[new Rng(mixSeed(day, 0x70a1)).int(PALETTES.length)]!;
-}
-
-export function dailyTrackId(day: number): string {
-  return `jour-${formatDay(day)}-g${GENERATOR_VERSION}`;
+/** Identifiant du circuit d'un jour ; avec un thème forcé (essais), le nom du thème s'y ajoute : un autre circuit. */
+export function dailyTrackId(day: number, forcedTheme?: ThemeName): string {
+  return `jour-${formatDay(day)}-g${GENERATOR_VERSION}${forcedTheme ? `-${forcedTheme}` : ""}`;
 }
 
 // --- Construction -----------------------------------------------------------------------------
@@ -77,7 +72,7 @@ function place(w: Walk, tokens: readonly string[]): boolean {
   let { cx, cz, dir, y } = w;
   const added: number[] = [];
   for (const t of tokens) {
-    const kind = BLOCK_LETTERS[t.split("@")[0]!]!;
+    const kind = parseToken(t).kind;
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
       const key = cellKey(x, z);
@@ -100,13 +95,49 @@ function place(w: Walk, tokens: readonly string[]): boolean {
 }
 
 const MAX_HILLS = 2;
-/** Lignes droites obligatoires après une plaque d'accélération, avant le virage suivant. */
+/**
+ * Lignes droites obligatoires après une plaque d'accélération, avant le virage suivant : elle pousse la voiture
+ * pendant ~0,9 s, et pendant ce temps le frein (40 m/s²) lutte contre la poussée (30 m/s²). Avec une pointe à
+ * 48 m/s, une plaque suivie d'un virage serré à moins de ~80 m ne se prend pas (mesuré au 7b : le pilote ne
+ * finissait que 28 circuits sur 91).
+ */
 const PAD_RUNOUT = 2;
+/** Idem pour un super turbo (poussée 42 m/s² pendant 1,5 s, jusqu'à 68 m/s) : bien plus de dégagement. */
+const TURBO_RUNOUT = 5;
 
 type Highlight = "jump" | "chicane" | "hairpin";
 
-/** Texte d'un circuit pour (jour, tentative), ou `null` si la construction s'est coincée. */
-export function composeSpec(day: number, attempt: number): string | null {
+/** Ajoute un modificateur (`g`, `t`, `h`, `b`) à un bloc de la notation, avant son repère éventuel. */
+function withMod(token: string, mod: string): string {
+  const [body, mark] = token.split("@");
+  const next = body!.includes("/") ? body + mod : `${body}/${mod}`;
+  return mark === undefined ? next : `${next}@${mark}`;
+}
+
+const SURFACE_MOD: Record<SurfaceKind, string> = { road: "", dirt: "t", ice: "g", grass: "h" };
+const surfaceOnly = (tokens: string[], surface: SurfaceKind) => tokens.map((t) => withMod(t, SURFACE_MOD[surface]));
+
+/**
+ * Passages signature : (créneau calme, virages possibles à la suite). `L` / `R` : le sens tiré pour ce virage.
+ * Un passage signature ne se remplace pas : s'il ne tient pas sur la grille, la tentative échoue.
+ */
+function signatureParts(sig: Signature, L: string, R: string): { calm: string[]; turn?: string[][] } {
+  switch (sig) {
+    case "turboBank": // super turbo sur une ligne droite, puis grand virage relevé
+      return { calm: ["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")], turn: [[withMod(L + "2", "b")], [withMod(R + "2", "b")]] };
+    case "dirtJump": // tremplin sur la terre
+      return { calm: ["S/t", "J/t", "S/t", "S/t"] };
+    case "iceChicane": // chicane sur la glace, après une ligne droite verglacée
+      return { calm: ["S/g", "S/g"], turn: [[`${L}/g`, `${R}/g`], [`${R}/g`, `${L}/g`]] };
+    case "cutRun": // moteur coupé, puis point de contrôle deux blocs plus loin (voir composeSpec)
+      return { calm: ["S", "S", "C", "S", "S"] };
+    case "dirtHairpin": // épingle sur la terre
+      return { calm: ["S/t", "S/t"], turn: [[`${L}/t`, `${L}/t`], [`${R}/t`, `${R}/t`]] };
+  }
+}
+
+/** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée. */
+export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day)): string | null {
   const rng = new Rng(mixSeed(day, attempt + 1));
   const turns = 8 + rng.int(4); // 8 à 11 virages ou passages serrés
   // Créneaux : calme, virage, calme, virage, …, calme final. Les passages marquants prennent des créneaux distincts.
@@ -120,48 +151,58 @@ export function composeSpec(day: number, attempt: number): string | null {
     for (let tries = 0; tries < turns && slots.has(i); tries++) i = (i + 1) % limit;
     slots.set(i, h);
   }
+  // Passage signature du thème : un créneau (calme + virage) qui ne porte aucun autre passage marquant.
+  let signatureSlot = 1 + rng.int(turns - 2);
+  for (let tries = 0; tries < turns && (calmSlot.has(signatureSlot) || turnSlot.has(signatureSlot)); tries++) {
+    signatureSlot = signatureSlot >= turns - 2 ? 1 : signatureSlot + 1;
+  }
 
   const w: Walk = { cx: 0, cz: 0, dir: 0, y: 0, cells: new Set(), tokens: [] };
   place(w, ["S"]);
   let hills = 0;
 
   for (let i = 0; i < turns; i++) {
+    const left = rng.chance(50);
+    const L = left ? "L" : "R";
+    const R = left ? "R" : "L";
+    const banked = rng.chance(theme.bankChance); // virage relevé ce tour-ci
+    const bank = (seg: string[]) => (banked ? seg.map((t) => (isCurve(parseToken(t).kind) ? withMod(t, "b") : t)) : seg);
+    const signature = i === signatureSlot ? signatureParts(theme.signature, L, R) : null;
+
     // Créneau calme.
     const calmHighlight = calmSlot.get(i);
     const calm: string[][] = [];
-    if (calmHighlight === "jump") {
+    if (signature) {
+      calm.push(signature.calm);
+    } else if (calmHighlight === "jump") {
       calm.push(["S", "J", "S", "S"]);
     } else {
-      // Une plaque laisse PAD_RUNOUT lignes droites derrière elle : elle pousse la voiture pendant ~0,9 s, et pendant
-      // ce temps le frein (40 m/s²) lutte contre la poussée (30 m/s²). Avec une pointe à 48 m/s, une plaque suivie
-      // d'un virage serré à moins de ~80 m ne se prend pas (mesuré : le pilote ne finissait que 28 circuits sur 91).
-      const run = Array<string>(PAD_RUNOUT).fill("S");
-      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...run], ["S", "B", "S"], ["P", ...run]]);
+      const pad = Array<string>(PAD_RUNOUT).fill("S");
+      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...pad], ["S", "B", "S"], ["P", ...pad]]);
       if (hills < MAX_HILLS && rng.chance(35)) {
         options.unshift(rng.pick<string[]>([["U", "S", "D"], ["U", "S", "S", "D"], ["D", "S", "U"]]));
       }
+      if (rng.chance(theme.turboChance)) options.unshift(["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")]);
       calm.push(...options);
     }
     // Repli sur une ligne droite simple, sauf pour un passage marquant : s'il ne tient pas, la tentative échoue.
-    if (!calmHighlight) calm.push(["S"], ["S", "S"]);
+    if (!calmHighlight && !signature) calm.push(["S"], ["S", "S"]);
     if (!calm.some((seg) => place(w, seg))) return null;
     if (w.tokens[w.tokens.length - 1] === "D" || w.tokens[w.tokens.length - 1] === "U") hills++;
 
     // Créneau de virage.
     const turnHighlight = turnSlot.get(i);
-    const left = rng.chance(50);
-    const L = left ? "L" : "R";
-    const R = left ? "R" : "L";
     // Virage simple : serré, ou large (2 × 2 cellules) une fois sur quatre.
     const wide = !turnHighlight && rng.chance(25);
-    const segments: string[][] =
-      turnHighlight === "chicane"
-        ? [[L, R], [R, L]]
+    const segments: string[][] = signature?.turn
+      ? signature.turn
+      : turnHighlight === "chicane"
+        ? bankAll([[L, R], [R, L]], bank)
         : turnHighlight === "hairpin"
-          ? [[L, L], [R, R]]
+          ? bankAll([[L, L], [R, R]], bank)
           : wide
-            ? [[L + "2"], [R + "2"], [L], [R]]
-            : [[L], [R]];
+            ? bankAll([[L + "2"], [R + "2"], [L], [R]], bank)
+            : bankAll([[L], [R]], bank);
     // Sens bloqué : on essaie l'autre ; pour un virage simple, puis l'autre virage. Un passage marquant, lui,
     // ne se remplace pas (la tentative échoue et la graine voisine prend le relais).
     if (!segments.some((seg) => place(w, seg))) return null;
@@ -173,23 +214,64 @@ export function composeSpec(day: number, attempt: number): string | null {
   if (!place(w, finish)) return null;
   w.tokens[0] = "S@start";
 
-  // Points de contrôle (2 à 4), répartis le long du circuit, sur des lignes droites.
+  // Points de contrôle (2 à 4), répartis le long du circuit, sur des lignes droites. Un moteur coupé est suivi d'un
+  // point de contrôle deux blocs plus loin : « on vit sur son élan » ~1 s, pas jusqu'à la fin du circuit.
   const n = w.tokens.length;
   const eligible = (i: number) => i > 0 && i < n - 1 && w.tokens[i] === "S";
-  const count = 2 + rng.int(3);
   const used = new Set<number>();
-  for (let k = 1; k <= count; k++) {
+  const cutAt = w.tokens.indexOf("C");
+  if (cutAt >= 0) {
+    if (w.tokens[cutAt + 1] !== "S" || w.tokens[cutAt + 2] !== "S" || cutAt + 2 >= n - 1) return null;
+    used.add(cutAt + 2);
+  }
+  const count = used.size > 0 ? 2 + rng.int(2) : 2 + rng.int(3); // le point de contrôle du moteur coupé compte
+  for (let k = 1; used.size < count; k++) {
     const target = Math.round((k * (n - 1)) / (count + 1));
     for (let d = 0; d < n; d++) {
-      const c = [target + d, target - d].find((i) => eligible(i) && !used.has(i));
+      const c = [target + d, target - d].find((i) => eligible(i) && !used.has(i) && ![...used].some((u) => Math.abs(u - i) < 3));
       if (c !== undefined) {
         used.add(c);
         break;
       }
     }
+    if (k > count + 3) break;
   }
   for (const i of used) w.tokens[i] = "S@cp";
+
+  // Zones de revêtement : des suites de 3 à 6 blocs d'un même revêtement (terre, glace, herbe) sur les blocs ordinaires.
+  if (theme.zones) assignZones(w.tokens, theme.zones, rng);
   return w.tokens.join(" ");
+}
+
+const bankAll = (segments: string[][], bank: (seg: string[]) => string[]): string[][] => segments.map(bank);
+
+/** Blocs qui reçoivent un revêtement : droites, virages, côtes (pas les effets, bosses, tremplins ni le départ / l'arrivée). */
+function surfaceable(token: string, index: number, n: number): boolean {
+  if (index === 0 || index >= n - 1 || token.includes("/")) return false;
+  const k = parseToken(token).kind;
+  return k === "straight" || isCurve(k) || k === "up" || k === "down";
+}
+
+function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: Rng): void {
+  const n = tokens.length;
+  const count = zones.count[0] + rng.int(zones.count[1] - zones.count[0] + 1);
+  const total = zones.surfaces.reduce((a, [, w]) => a + w, 0);
+  for (let z = 0; z < count; z++) {
+    let roll = rng.int(total);
+    let surface: SurfaceKind = zones.surfaces[0]![0];
+    for (const [sf, wgt] of zones.surfaces) {
+      if (roll < wgt) {
+        surface = sf;
+        break;
+      }
+      roll -= wgt;
+    }
+    const length = 3 + rng.int(4);
+    const start = 1 + rng.int(Math.max(1, n - 2 - length));
+    for (let i = start; i < Math.min(n - 1, start + length); i++) {
+      if (surfaceable(tokens[i]!, i, n)) tokens[i] = withMod(tokens[i]!, SURFACE_MOD[surface]);
+    }
+  }
 }
 
 // --- Circuit du jour --------------------------------------------------------------------------
@@ -207,14 +289,21 @@ export interface DailyCircuit {
   authorMs: number;
   medals: Medals;
   palette: PaletteName;
+  /** Thème du circuit (celui du jour, ou le thème forcé pour les essais). */
+  theme: ThemeName;
+  /** Vrai si le thème a été forcé (`?theme=`) : un circuit d'essai, jamais envoyé au classement. */
+  forcedTheme: boolean;
   /** Vrai si aucune tentative n'a abouti et que le circuit d'essai a servi de secours (ne doit jamais arriver). */
   fallback: boolean;
 }
 
-export function dailyCircuit(day: number): DailyCircuit {
-  const id = dailyTrackId(day);
+/** Le circuit du jour ; `forced` impose un thème (essais : id et circuit propres, jamais classés). */
+export function dailyCircuit(day: number, forced?: ThemeName | null): DailyCircuit {
+  const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day);
+  const forcedTheme = !!forced && !!themeByName(forced);
+  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const spec = composeSpec(day, attempt);
+    const spec = composeSpec(day, attempt, theme);
     if (!spec) continue;
     const track = parseTrack(id, spec);
     const pilot = bestPilotRun(track);
@@ -228,7 +317,9 @@ export function dailyCircuit(day: number): DailyCircuit {
       track,
       authorMs: pilot.finishMs,
       medals: medalsFor(pilot.finishMs),
-      palette: paletteForDay(day),
+      palette: theme.palette,
+      theme: theme.name,
+      forcedTheme,
       fallback: false,
     };
   }
@@ -245,7 +336,9 @@ export function dailyCircuit(day: number): DailyCircuit {
     track: t,
     authorMs,
     medals: medalsFor(authorMs),
-    palette: paletteForDay(day),
+    palette: theme.palette,
+    theme: theme.name,
+    forcedTheme,
     fallback: true,
   };
 }

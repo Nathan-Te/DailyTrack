@@ -12,4 +12,5 @@ export * from "./replay";
 export * from "./rng";
 export * from "./calendar";
 export * from "./autopilot";
+export * from "./themes";
 export * from "./generator";

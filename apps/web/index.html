@@ -28,6 +28,10 @@
       #ghostinfo:empty { display: none; }
       #info { left: 16px; bottom: 14px; opacity: .75; font-size: 12px; max-width: 78vw; }
       #speed { right: 20px; bottom: 16px; font-size: 40px; }
+      /* Effets en cours (super turbo, moteur coupé) et revêtement : en bas à gauche. */
+      #fx { left: 16px; bottom: 40px; font-size: 18px; font-weight: 800; letter-spacing: .03em; color: #ffd22e; background: rgba(11,16,32,.55); padding: 2px 10px; border-radius: 8px; }
+      #fx[data-cut="1"] { color: #ff8a80; }
+      #fx:empty { display: none; }
       #timer { left: 50%; top: 10px; transform: translateX(-50%); font-size: 34px; }
       #splits { right: 16px; top: 44px; text-align: right; line-height: 1.5; font-size: 15px; background: rgba(11,16,32,.5); padding: 2px 9px; border-radius: 8px; }
       #splits:empty { display: none; }
@@ -89,6 +93,7 @@
       body.touch.finished #touch, body.touch.finished #tbar { display: none; }
       body.touch #info { display: none; }
       body.touch #speed { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+      body.touch #fx { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); font-size: 15px; }
       body.touch #menu button { min-height: 44px; min-width: 44px; }
       body.touch #splits { top: 60px; }
       /* Portrait : les boutons de menu font 44 px (et non 34), la pile d'infos à gauche descend d'autant. */
@@ -224,6 +229,7 @@
     <div id="finish" hidden></div>
     <div id="archive" hidden><div class="panel"></div></div>
     <div id="speed" class="hud">0 km/h</div>
+    <div id="fx" class="hud"></div>
     <div id="tbar"></div>
     <div id="tsettings" hidden></div>
     <div id="rotate"></div>

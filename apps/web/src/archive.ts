@@ -1,6 +1,5 @@
-import { LAUNCH_DAY, circuitNumber, formatDay, paletteForDay } from "@cdj/sim";
+import { LAUNCH_DAY, circuitNumber, formatDay, themeForDay } from "@cdj/sim";
 import { formatTime } from "./format";
-import { PALETTE_LABELS } from "./labels";
 import type { DayBest } from "./records";
 import { MEDAL_ICON } from "./share";
 
@@ -18,7 +17,7 @@ export function archiveDays(today: number, bests: Map<string, DayBest>, max = 12
   const days: ArchiveDay[] = [];
   for (let day = today; day >= LAUNCH_DAY && days.length < max; day--) {
     const date = formatDay(day);
-    days.push({ day, date, number: circuitNumber(day), theme: PALETTE_LABELS[paletteForDay(day)], isToday: day === today, best: bests.get(date) ?? null });
+    days.push({ day, date, number: circuitNumber(day), theme: themeForDay(day).label, isToday: day === today, best: bests.get(date) ?? null });
   }
   return days;
 }
