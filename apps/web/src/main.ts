@@ -18,6 +18,7 @@ import {
   THEMES,
   createPilotageTrack,
   createSurface,
+  createLargeursTrack,
   createSurfacesTrack,
   themeByName,
   createTestTrack,
@@ -65,8 +66,8 @@ import { loadTunedParams, mountTunePanel } from "./tune";
 
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
-// `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7)
-// et `plat` (le terrain d'essai du lot 1).
+// `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
+// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
@@ -77,7 +78,7 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -91,7 +92,7 @@ let daily: DailyCircuit | null = null;
 const themeParam = params.get("theme");
 const forcedTheme = themeByName(themeParam);
 if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc, forcedTheme?.name);
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -183,7 +184,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${daily.forcedTheme ? " (thème forcé : essai, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track

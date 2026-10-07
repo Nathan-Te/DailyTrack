@@ -36,3 +36,15 @@ export const SURFACES_TRACK_SPEC =
 export function createSurfacesTrack() {
   return parseTrack("surfaces", SURFACES_TRACK_SPEC);
 }
+
+/**
+ * Scénario `largeurs` (lot 12) : les trois largeurs de route (14, 20 et 26 m) et leurs transitions, un virage ample (R3),
+ * un S large (R2 L2), un virage large, un rétrécissement progressif de la route large à l'étroite juste avant un virage
+ * serré, un élargissement, une plaque sur la route large.
+ */
+export const LARGEURS_TRACK_SPEC =
+  "S/e@start S S/e>n S S/n>l S S/l@cp R3 S R2 L2 S S P S S S/l>n S/n>e S L S@cp S S/e>n S S/n>l S L2 S S@finish";
+
+export function createLargeursTrack() {
+  return parseTrack("largeurs", LARGEURS_TRACK_SPEC);
+}
