@@ -5,6 +5,7 @@ import {
   HALF_ROAD,
   NO_GROUND,
   WALL_HEIGHT,
+  bankAt,
   blockHeight,
   blockSlope,
   canonP,
@@ -15,12 +16,16 @@ import {
   dirX,
   dirZ,
   isCurve,
+  type BankSample,
   type Block,
+  type SurfaceKind,
   type Track,
 } from "./track";
 
-/** Revêtements. Une seule surface au lot 7 ; terre, glace et herbe arrivent au lot 8. */
-export type SurfaceKind = "road";
+export type { SurfaceKind } from "./track";
+
+/** Le moteur est coupé par une bande de cette demi-longueur (m) en travers de toute la route. */
+export const CUT_HALF_LENGTH = 2;
 
 /** Comportement d'un revêtement, lu sous chaque roue (multiplicateurs : 1 = la route, la référence). */
 export interface SurfaceParams {
@@ -32,8 +37,18 @@ export interface SurfaceParams {
   rolling: number;
 }
 
+/**
+ * Les revêtements. Nouveau revêtement ou nouvelle valeur = `SIM_VERSION` +1.
+ * - route : la référence ;
+ * - terre : l'arrière glisse facilement et se rattrape, accélération un peu molle ;
+ * - glace : grip très faible, freinage long, motricité faible : on anticipe tout ;
+ * - herbe : ralentit nettement (roulement 7 m/s²) et glisse.
+ */
 export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = Object.freeze({
   road: Object.freeze({ grip: 1, traction: 1, rolling: 0 }),
+  dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5 }),
+  ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0.3 }),
+  grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7 }),
 });
 
 /** Comportement du revêtement d'un échantillon de sol. */
@@ -49,6 +64,9 @@ export interface Surface {
   gx: number;
   gz: number;
   boost: boolean;
+  /** Plaque de super turbo / bande de moteur coupé sous ce point. */
+  turbo: boolean;
+  cut: boolean;
   /** Revêtement (voir `surfaceAt`). */
   kind: SurfaceKind;
 }
@@ -68,7 +86,7 @@ export interface World {
   readonly voidY: number;
 }
 
-export const createSurface = (): Surface => ({ height: 0, gx: 0, gz: 0, boost: false, kind: "road" });
+export const createSurface = (): Surface => ({ height: 0, gx: 0, gz: 0, boost: false, turbo: false, cut: false, kind: "road" });
 export const createWallHit = (): WallHit => ({ nx: 0, nz: 0, depth: 0 });
 
 /** Sol plat infini, sans rebord (scénario `plat`). */
@@ -79,6 +97,9 @@ export const FLAT_WORLD: World = {
     out.gx = 0;
     out.gz = 0;
     out.boost = false;
+    out.turbo = false;
+    out.cut = false;
+    out.kind = "road";
   },
   collide() {
     return false;
@@ -86,6 +107,7 @@ export const FLAT_WORLD: World = {
 };
 
 const wv = { x: 0, z: 0 };
+const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 
 /** Le monde d'un circuit : route, pentes, rebords, plaques d'accélération. Hors route, c'est le vide. */
 export function trackWorld(track: Track): World {
@@ -103,6 +125,8 @@ export function trackWorld(track: Track): World {
       out.gx = 0;
       out.gz = 0;
       out.boost = false;
+      out.turbo = false;
+      out.cut = false;
       if (!b) {
         out.height = NO_GROUND;
         return;
@@ -126,14 +150,23 @@ export function trackWorld(track: Track): World {
         out.height = NO_GROUND;
         return;
       }
+      out.kind = b.surface;
       out.height = blockHeight(b, q);
       const slope = blockSlope(b, q);
       out.gx = slope * dirX(b.dir);
       out.gz = slope * dirZ(b.dir);
-      out.boost =
-        b.kind === "boost" &&
-        Math.abs(p - CELL / 2) <= BOOST_HALF_WIDTH &&
-        Math.abs(q - CELL / 2) <= BOOST_HALF_LENGTH;
+      if (b.banked) {
+        // Virage relevé : la hauteur monte vers l'extérieur ; le gradient (p, q) devient un gradient du monde.
+        bankAt(b, p, q, bank);
+        out.height += bank.h;
+        canonVecToWorld(b.dir, bank.gp, bank.gq, wv);
+        out.gx += wv.x;
+        out.gz += wv.z;
+      }
+      const onPad = Math.abs(p - CELL / 2) <= BOOST_HALF_WIDTH && Math.abs(q - CELL / 2) <= BOOST_HALF_LENGTH;
+      out.boost = b.kind === "boost" && onPad;
+      out.turbo = b.kind === "turbo" && onPad;
+      out.cut = b.kind === "cut" && Math.abs(q - CELL / 2) <= CUT_HALF_LENGTH;
     },
 
     collide(x, z, y, radius, out) {
@@ -143,8 +176,13 @@ export function trackWorld(track: Track): World {
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
       const q = canonQ(b.dir, u, v);
-      // Au-dessus des rebords, on les survole.
-      if (y - blockHeight(b, q) > WALL_HEIGHT) return false;
+      // Au-dessus des rebords, on les survole (en virage relevé, le rebord extérieur est plus haut).
+      let floor = blockHeight(b, q);
+      if (b.banked) {
+        bankAt(b, p, q, bank);
+        floor += bank.h;
+      }
+      if (y - floor > WALL_HEIGHT) return false;
 
       let np = 0;
       let nq = 0;
