@@ -31,6 +31,8 @@ test.describe("pas à pas sur le circuit de pilotage", () => {
     const e = await page.evaluate(() => window.__cdj.fx.emitted);
     expect(e.smoke).toBeGreaterThan(0);
     expect(e.skid).toBeGreaterThan(0);
+    // les traces sont réellement posées au sol (segments de ruban), pas seulement comptées
+    expect(await page.evaluate(() => window.__cdj.fx.marks)).toBeGreaterThan(3);
   });
 
   test("rebord : étincelles et son de choc ; réception : poussière, secousse et son", async ({ page }) => {

@@ -176,65 +176,123 @@ class Pool {
   }
 }
 
-/** Traces de pneus : un ruban de quadrilatères en tampon circulaire, posé sur la route. */
+/** Couleur (r, g, b) et opacité maximale des traces selon le revêtement : gomme noire, sillon brun, herbe arrachée, rayures claires. */
+const SKID_STYLE: Record<SurfaceKind, { c: [number, number, number]; a: number }> = {
+  road: { c: [0.04, 0.04, 0.05], a: 0.7 },
+  dirt: { c: [0.22, 0.14, 0.07], a: 0.65 },
+  grass: { c: [0.1, 0.26, 0.07], a: 0.55 },
+  ice: { c: [0.96, 0.99, 1], a: 0.7 },
+};
+const SKID_WIDTH = 0.14; // demi-largeur d'une trace (m) : un pneu fait 0,3 m
+const SKID_STEP = 1.1; // distance minimale entre deux segments (m)
+
+/**
+ * Traces de pneus : un ruban de quadrilatères en tampon circulaire, posé sur la route, une trace par roue (4).
+ * Chaque sommet porte sa transparence : la trace **s'estompe** à son début et à sa fin, et prend la teinte du revêtement.
+ * Seule la partie modifiée du tampon part au processeur graphique.
+ */
 class Skids {
   readonly mesh: Mesh;
   private readonly pos: Float32Array;
+  private readonly col: Float32Array;
   private head = 0;
-  private readonly last = [
-    { ok: false, x: 0, y: 0, z: 0 },
-    { ok: false, x: 0, y: 0, z: 0 },
-  ];
+  /** Segments posés depuis le début (outil de test). */
+  created = 0;
+  private readonly last = [0, 1, 2, 3].map(() => ({ ok: false, x: 0, y: 0, z: 0, a: 0, seg: -1 }));
 
   constructor(readonly segments: number) {
     this.pos = new Float32Array(segments * 6 * 3);
+    this.col = new Float32Array(segments * 6 * 4);
     const g = new BufferGeometry();
-    g.setAttribute("position", new Float32BufferAttribute(this.pos, 3).setUsage(DynamicDrawUsage));
-    this.mesh = new Mesh(g, new MeshBasicMaterial({ color: 0x0c0c10, transparent: true, opacity: 0.42, depthWrite: false }));
+    // BufferAttribute (et non Float32BufferAttribute, qui copie le tableau) : on écrit directement dans `pos` et `col`.
+    g.setAttribute("position", new BufferAttribute(this.pos, 3).setUsage(DynamicDrawUsage));
+    g.setAttribute("color", new BufferAttribute(this.col, 4).setUsage(DynamicDrawUsage));
+    this.mesh = new Mesh(
+      g,
+      new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
+    );
     this.mesh.frustumCulled = false;
+    this.mesh.renderOrder = 1;
   }
 
-  /** Une roue arrière (`w` 0 ou 1) laisse (`mark` vrai) ou non une trace, au point (x, y, z) ; `heading` = cap (rad). */
-  wheel(w: 0 | 1, mark: boolean, x: number, y: number, z: number, heading: number) {
+  /** Fait mourir la trace de la roue `w` : le dernier segment s'estompe. */
+  private end(w: number) {
     const l = this.last[w]!;
-    if (!mark) {
-      l.ok = false;
+    if (l.ok && l.seg >= 0) {
+      for (const v of [2, 4, 5]) this.col[l.seg * 24 + v * 4 + 3] = 0;
+      this.touch(l.seg);
+    }
+    l.ok = false;
+    l.seg = -1;
+  }
+
+  private touch(seg: number) {
+    (this.mesh.geometry.getAttribute("position") as BufferAttribute).addUpdateRange(seg * 18, 18);
+    (this.mesh.geometry.getAttribute("position") as BufferAttribute).needsUpdate = true;
+    (this.mesh.geometry.getAttribute("color") as BufferAttribute).addUpdateRange(seg * 24, 24);
+    (this.mesh.geometry.getAttribute("color") as BufferAttribute).needsUpdate = true;
+  }
+
+  /** La roue `w` (0-3) pose une trace d'intensité `level` ∈ [0, 1] (0 : elle n'en pose plus) au point (x, y, z). */
+  wheel(w: number, level: number, kind: SurfaceKind, x: number, y: number, z: number) {
+    const l = this.last[w]!;
+    if (level <= 0.02) {
+      this.end(w);
       return;
     }
-    if (l.ok) {
-      const dx = x - l.x;
-      const dz = z - l.z;
-      const d = Math.sqrt(dx * dx + dz * dz);
-      if (d > 0.45 && d < 6) {
-        // Ruban d'une largeur de 0,26 m, perpendiculaire au déplacement.
-        const px = (-dz / d) * 0.13;
-        const pz = (dx / d) * 0.13;
-        const i = this.head * 18;
-        const v = [l.x - px, l.y, l.z - pz, l.x + px, l.y, l.z + pz, x + px, y, z + pz, l.x - px, l.y, l.z - pz, x + px, y, z + pz, x - px, y, z - pz];
-        for (let k = 0; k < 18; k++) this.pos[i + k] = v[k]!;
-        this.head = (this.head + 1) % this.segments;
-        (this.mesh.geometry.getAttribute("position") as BufferAttribute).needsUpdate = true;
-        l.x = x;
-        l.y = y;
-        l.z = z;
-      } else if (d >= 6) {
-        l.ok = false;
-      }
-    }
+    const style = SKID_STYLE[kind];
+    const alpha = Math.min(1, level * 1.4) * style.a;
     if (!l.ok) {
       l.ok = true;
       l.x = x;
       l.y = y;
       l.z = z;
+      l.a = 0; // début de trace : on part de transparent
+      l.seg = -1;
+      return;
     }
-    void heading;
+    const dx = x - l.x;
+    const dz = z - l.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d >= 8) {
+      this.end(w);
+      return;
+    }
+    if (d < SKID_STEP) return;
+    const px = (-dz / d) * SKID_WIDTH;
+    const pz = (dx / d) * SKID_WIDTH;
+    const seg = this.head;
+    const i = seg * 18;
+    const v = [l.x - px, l.y, l.z - pz, l.x + px, l.y, l.z + pz, x + px, y, z + pz, l.x - px, l.y, l.z - pz, x + px, y, z + pz, x - px, y, z - pz];
+    for (let k = 0; k < 18; k++) this.pos[i + k] = v[k]!;
+    const j = seg * 24;
+    for (let k = 0; k < 6; k++) {
+      const a = k === 0 || k === 1 || k === 3 ? l.a : alpha;
+      this.col[j + k * 4] = style.c[0];
+      this.col[j + k * 4 + 1] = style.c[1];
+      this.col[j + k * 4 + 2] = style.c[2];
+      this.col[j + k * 4 + 3] = a;
+    }
+    this.touch(seg);
+    this.head = (this.head + 1) % this.segments;
+    this.created++;
+    l.x = x;
+    l.y = y;
+    l.z = z;
+    l.a = alpha;
+    l.seg = seg;
   }
 
   clear() {
     this.pos.fill(0);
+    this.col.fill(0);
     this.head = 0;
-    for (const l of this.last) l.ok = false;
+    for (const l of this.last) {
+      l.ok = false;
+      l.seg = -1;
+    }
     (this.mesh.geometry.getAttribute("position") as BufferAttribute).needsUpdate = true;
+    (this.mesh.geometry.getAttribute("color") as BufferAttribute).needsUpdate = true;
   }
 }
 
@@ -251,7 +309,11 @@ const DUST: Record<Exclude<SurfaceKind, "road">, { c: [number, number, number]; 
 export class Effects {
   readonly smoke = new Pool(420, false);
   readonly glow = new Pool(320, true);
-  private readonly skids = new Skids(260);
+  private readonly skids = new Skids(2400);
+  /** Segments de traces posés (outil de test). */
+  get marks(): number {
+    return this.skids.created;
+  }
   quality: Quality = 2;
   enabled = true;
   /** Particules émises (outil de test : pour vérifier qu'un effet se déclenche). */
@@ -303,18 +365,17 @@ export class Effects {
     const speed = tel.speed;
     const grounded = tel.grounded;
 
-    // Fumée de pneus et traces : les roues arrière en glisse (dérive franche ou freinage appuyé).
-    const skid = skidLevel(tel.slide, speed, f.braking, grounded);
+    // Fumée de pneus et traces : dérive franche, dérapage au frein (`drift`) ou freinage appuyé à bonne vitesse.
+    // Les roues arrière marquent le plus ; les avant ne marquent qu'au freinage.
+    const slip = skidLevel(tel.slide, speed, f.braking, grounded);
+    const hardBrake = f.braking && grounded && speed > 14 ? 0.55 * Math.min(1, speed / 32) : 0;
+    const skid = Math.max(slip, tel.drift * 0.9 * (grounded ? 1 : 0), hardBrake);
     const rear = [tel.wheels[2]!, tel.wheels[3]!] as const;
-    if (this.quality > 0) {
-      for (const w of [0, 1] as const) {
-        const wheel = rear[w];
-        if (skid > 0.15 && wheel.ground > NO_GROUND / 2) this.emitted.skid++;
-        this.skids.wheel(w, skid > 0.15 && wheel.ground > NO_GROUND / 2, wheel.x, wheel.ground + 0.035, wheel.z, f.yaw);
-      }
-    } else {
-      this.skids.wheel(0, false, 0, 0, 0, 0);
-      this.skids.wheel(1, false, 0, 0, 0, 0);
+    for (let w = 0; w < 4; w++) {
+      const wheel = tel.wheels[w]!;
+      const level = this.quality === 0 || wheel.ground < NO_GROUND / 2 ? 0 : w >= 2 ? skid : hardBrake > 0 || tel.drift > 0.3 ? skid * 0.6 : 0;
+      if (level > 0.12) this.emitted.skid++;
+      this.skids.wheel(w, level > 0.12 ? level : 0, wheel.surface, wheel.x, wheel.ground + 0.03, wheel.z);
     }
     if (skid > 0.08) {
       for (let k = this.rate("smoke", 55 * skid * 2, dt); k > 0; k--) {

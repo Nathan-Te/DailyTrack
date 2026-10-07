@@ -44,7 +44,7 @@ import { buildFlatArena } from "./arena";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { volumeIcon } from "./audioLogic";
-import { WHEEL_RADIUS, createCarMesh, type WheelPose } from "./carMesh";
+import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
 import { Effects, QualityGovernor, type Quality } from "./fx";
 import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
@@ -99,6 +99,8 @@ const view = track ? buildTrackScene(track, daily?.palette ?? "desert") : buildF
 const carModel = createCarMesh();
 const carMesh = carModel.group;
 view.scene.add(carMesh);
+const carShadow = createShadow();
+view.scene.add(carShadow);
 const ghostModel = createCarMesh(true);
 const ghostMesh = ghostModel.group;
 ghostMesh.visible = false;
@@ -126,6 +128,7 @@ const hudLines = document.getElementById("lines")!;
 const hudFlash = document.getElementById("flash")!;
 let demoClock = 0;
 let shake = 0;
+let lastGround = 0;
 let fovKick = 0;
 let flash = 0;
 let lastCountdown = 0;
@@ -861,6 +864,17 @@ function frame(now: number) {
   wheelPose.braking = phase !== "countdown" && lastInput.brake > 0;
   wheelPose.dt = elapsed;
   carModel.update(wheelPose);
+  let groundSum = 0;
+  let groundN = 0;
+  for (const w of tel.wheels) {
+    if (w.ground > NO_GROUND / 2) {
+      groundSum += w.ground;
+      groundN++;
+    }
+  }
+  const groundY = groundN ? groundSum / groundN : lastGround;
+  lastGround = groundY;
+  placeShadow(carShadow, x, z, yaw, groundY, y - groundY);
 
   // Fantôme : la rediffusion du meilleur temps, interpolée comme la voiture.
   const ghost = session?.ghost;
@@ -934,7 +948,7 @@ function frame(now: number) {
     active: phase === "racing" && !frozen && !manual,
   });
   // Lignes de vitesse au-delà de 75 % de la pointe, éclair du point de contrôle.
-  const lines = Math.min(1, Math.max(0, (speedRatio - 0.75) / 0.35)) * 0.55 + (car.turbo > 0 ? 0.25 : 0);
+  const lines = Math.min(1, Math.max(0, (speedRatio - 0.75) / 0.35)) * 0.38 + (car.turbo > 0 ? 0.12 : 0);
   hudLines.style.opacity = phase === "countdown" ? "0" : lines.toFixed(2);
   flash = Math.max(0, flash - elapsed * 2.2);
   hudFlash.style.opacity = flash.toFixed(2);
@@ -987,7 +1001,7 @@ if (params.has("debug")) {
       },
       /** Effets : particules émises, qualité, particules vivantes (tests de navigateur). */
       get fx() {
-        return { emitted: effects.emitted, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, wheelDroop: [...wheelDroop], tel };
+        return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, wheelDroop: [...wheelDroop], tel };
       },
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {

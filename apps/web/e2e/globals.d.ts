@@ -16,6 +16,8 @@ interface CdjDebug {
   /** Effets visuels (lot 9) : particules émises par type, qualité, secousse, débattement des roues. */
   fx: {
     emitted: Record<"smoke" | "surface" | "spark" | "flame" | "land" | "confetti" | "flash" | "skid", number>;
+    /** Segments de traces de pneus posés. */
+    marks: number;
     quality: number;
     particles: number;
     enabled: boolean;

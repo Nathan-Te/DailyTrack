@@ -32,6 +32,8 @@ export interface Telemetry {
   /** Dérive : vitesse latérale ÷ vitesse (≈ tangente de l'angle de dérive, signée : positive vers la gauche). */
   slide: number;
   grounded: boolean;
+  /** Dérapage déclenché au frein ∈ [0, 1] (état de la simulation, lu seulement). */
+  drift: number;
   /** Avant gauche, avant droit, arrière gauche, arrière droit. */
   wheels: WheelTelemetry[];
   /** Contact avec un rebord : point de contact et normale (vers l'intérieur de la route), ou `null`. */
@@ -49,6 +51,7 @@ export function createTelemetry(): Telemetry {
     forward: 0,
     slide: 0,
     grounded: true,
+    drift: 0,
     wheels: [0, 1, 2, 3].map(() => ({ x: 0, z: 0, ground: 0, surface: "road" as SurfaceKind })),
     wall: null,
     surface: "road",
@@ -75,6 +78,7 @@ export function readTelemetry(car: CarState, world: World, out: Telemetry): Tele
   out.forward = forwardSpeed(car);
   out.slide = slideOf(car);
   out.grounded = car.grounded === 1;
+  out.drift = car.drift;
   for (let i = 0; i < 4; i++) {
     const w = out.wheels[i]!;
     w.x = car.x + WHEEL_F[i]! * fx + WHEEL_L[i]! * lx;
