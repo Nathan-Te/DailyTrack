@@ -197,11 +197,15 @@ type Phase = "countdown" | "racing" | "finished";
 // Commandes tactiles : appareil tactile (`pointer: coarse`) ou `?touch=1`. Mêmes axes que le clavier et la manette.
 const touchMode = wantsTouch(params, matchMedia("(pointer: coarse)").matches);
 const touchPad = touchMode ? new TouchPad(loadTouchSettings()) : null;
+// `?steer=boutons|glisser` force le mode de direction (essais et diagnostic) ; `?zones=1` dessine les zones actives.
+const steerParam = params.get("steer");
+if (touchPad && (steerParam === "boutons" || steerParam === "glisser")) touchPad.settings.steerMode = steerParam === "boutons" ? "buttons" : "drag";
 const controls = new Controls(window, touchPad);
 if (touchMode) document.body.classList.add("touch");
 let paused = false;
 const touchUi = touchPad
   ? mountTouchUi(touchPad, {
+      showZones: params.get("zones") === "1",
       onPause: () => setPaused(!paused),
       onRespawn: () => controls.requestRespawn(),
       onRestart: () => controls.requestRestart(),

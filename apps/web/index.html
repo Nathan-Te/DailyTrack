@@ -101,8 +101,9 @@
       /* Commandes tactiles (lot 10) : tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`). */
       #touch, #tbar, #tsettings, #rotate, #pause { display: none; }
       body.touch #touch { display: block; position: fixed; inset: 0; z-index: 0; touch-action: none; -webkit-user-select: none; user-select: none; }
-      body.touch #tbar { display: flex; position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); gap: 8px; }
-      body.touch #tbar button { font: 600 22px system-ui, sans-serif; line-height: 1; color: #fff; background: rgba(11,16,32,.62); border: 1px solid rgba(255,255,255,.22); border-radius: 12px; width: 48px; height: 48px; padding: 0; cursor: pointer; touch-action: manipulation; }
+      /* Barre d'actions compacte et centrée (entre les pouces : de 36 % à 64 % de la largeur sur un écran de 844 px) : un bouton attire les appuis voisins (le navigateur « corrige » le toucher vers lui), donc elle ne touche ni la frontière ← | → (25 %) ni frein | gaz (75 %). */
+      body.touch #tbar { pointer-events: none; display: flex; position: fixed; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); gap: 2px; }
+      body.touch #tbar button { font: 600 19px system-ui, sans-serif; line-height: 1; color: #fff; background: rgba(11,16,32,.62); border: 1px solid rgba(255,255,255,.22); border-radius: 10px; width: 44px; height: 44px; padding: 0; cursor: pointer; touch-action: manipulation; pointer-events: auto; }
       body.touch #tbar button[hidden] { display: none; }
       body.touch.finished #touch, body.touch.finished #tbar { display: none; }
       body.touch #info { display: none; }
@@ -121,15 +122,15 @@
       /* Les boutons dessinés suivent EXACTEMENT les zones tactiles (voir `zoneAt`, touch.ts), en parts de la largeur :
          ◀ 0–25 %, ▶ 25–50 %, frein 50–100 % (ou 50–75 % avec le bouton gaz), gaz 75–100 %. Chacun reste dans sa zone, avec une
          marge de 2 % : toucher n'importe où sur un bouton déclenche ce bouton, jamais celui d'à côté. */
-      #touch .tbtn { display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 88px; border-radius: 20px; background: rgba(11,16,32,.45); border: 2px solid rgba(255,255,255,.35); color: #fff; font: 800 18px system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(0,0,0,.55); bottom: calc(120px + env(safe-area-inset-bottom, 0px)); width: 21%; }
-      #touch .tbtn.on { background: rgba(255,210,46,.55); border-color: #ffd22e; }
-      #touch .steer-left { left: 2%; } #touch .steer-right { left: 27%; }
-      #touch .pedal-brake { left: 54%; width: 44%; } #touch .pedal-gas { left: 77%; }
-      #touch[data-throttle=manual] .pedal-brake { left: 52%; width: 21%; }
-      #touch[data-throttle=auto] .pedal-gas { display: none; }
-      #touch[data-mode=drag] .steer-left, #touch[data-mode=drag] .steer-right { display: none; }
-      /* Paysage : écran large et peu haut, les boutons sont larges (le pouce y tombe sans viser) mais bas et transparents : on voit la route. */
-      @media (orientation: landscape) { #touch .tbtn { height: clamp(84px, 24vh, 110px); bottom: calc(112px + env(safe-area-inset-bottom, 0px)); background: rgba(11,16,32,.32); } #touch .tbtn.on { background: rgba(255,210,46,.5); } }
+      /* Les boutons dessinés sont placés et dimensionnés par `buttonRects` (touch.ts) ; la zone active, elle, couvre tout l'écran. */
+      #touch .tbtn { display: flex; align-items: center; justify-content: center; box-sizing: border-box; border-radius: 20px; background: rgba(11,16,32,.32); border: 2px solid rgba(255,255,255,.35); color: #fff; font: 800 18px system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(0,0,0,.55); }
+      #touch .tbtn[hidden] { display: none; }
+      #touch .tbtn.on { background: rgba(255,210,46,.5); border-color: #ffd22e; }
+      /* Diagnostic `?zones=1` : zones actives et un point par doigt. */
+      #touch .zones { inset: 0; }
+      #touch .zspan { position: absolute; top: 0; bottom: 0; box-sizing: border-box; border: 2px dashed; font: 700 13px system-ui, sans-serif; color: #fff; text-shadow: 0 1px 3px #000; padding: 6px; }
+      .fdot { position: fixed; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; z-index: 9; pointer-events: none; opacity: .9; }
+      .safe-probe { position: fixed; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
       #touch .hint { left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.7); padding: 4px 10px; border-radius: 8px; }
       #tsettings { position: fixed; inset: 0; z-index: 5; background: rgba(5,8,20,.62); align-items: center; justify-content: center; }
       body.touch #tsettings:not([hidden]) { display: flex; }
