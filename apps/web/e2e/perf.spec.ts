@@ -11,8 +11,8 @@ test("le jeu pèse peu : budget de poids compressé", () => {
   const total = Object.values(gz).reduce((a, b) => a + b, 0);
   const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
   expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
-  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(165_000); // ≈ 150 ko aujourd'hui
-  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(40_000); // ≈ 19 ko aujourd'hui
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(185_000); // ≈ 167 ko aujourd'hui (lot 9 : +8 ko ; budget du lot 9 : ≤ 300 ko ajoutés)
+  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(50_000); // ≈ 37 ko aujourd'hui
 });
 
 test.describe("chargement sur un téléphone simulé", () => {

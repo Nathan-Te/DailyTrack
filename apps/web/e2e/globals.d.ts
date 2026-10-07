@@ -13,6 +13,19 @@ interface CdjDebug {
   /** Pas à pas : la simulation n'avance plus qu'avec `advance`. */
   manual(on: boolean): void;
   advance(ticks: number): Promise<void>;
+  /** Effets visuels (lot 9) : particules émises par type, qualité, secousse, débattement des roues. */
+  fx: {
+    emitted: Record<"smoke" | "surface" | "spark" | "flame" | "land" | "confetti" | "flash" | "skid", number>;
+    quality: number;
+    particles: number;
+    enabled: boolean;
+    shake: number;
+    fovKick: number;
+    wheelDroop: number[];
+    tel: { wall: unknown };
+  };
+  /** Sons (lot 9) : derniers sons joués, contexte démarré, réglages. */
+  audio: { log: string[]; running: boolean; settings: { volume: number; last: number } };
 }
 
 interface Window {

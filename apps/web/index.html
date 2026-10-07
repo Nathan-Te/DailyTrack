@@ -39,6 +39,14 @@
       #banner { left: 50%; top: 18%; transform: translate(-50%, -50%); font-size: 72px; font-weight: 800; letter-spacing: .02em; text-align: center; }
       #banner.small { font-size: 34px; }
 
+      /* Lot 9 : lignes de vitesse sur les bords, éclair de point de contrôle (présentation seule, jamais d'événement) */
+      #lines, #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; }
+      #lines { background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(255,255,255,.55) 0deg .35deg, transparent .35deg 7deg); -webkit-mask-image: radial-gradient(ellipse at 50% 52%, transparent 38%, #000 80%); mask-image: radial-gradient(ellipse at 50% 52%, transparent 38%, #000 80%); }
+      #flash { background: radial-gradient(ellipse at center, rgba(120,200,255,0) 40%, rgba(120,200,255,.55) 100%); }
+      #finish .medal { position: relative; overflow: hidden; }
+      #finish .medal::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%); transform: translateX(-100%); animation: glint 1.4s ease-out .5s 2; pointer-events: none; }
+      @keyframes glint { to { transform: translateX(100%); } }
+      @media (prefers-reduced-motion: reduce) { #finish .medal::after { animation: none; } }
       #menu { position: fixed; right: 12px; top: 10px; display: flex; gap: 6px; }
       #menu button { font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.6); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 6px 10px; cursor: pointer; min-height: 32px; }
       #menu button[hidden] { display: none; }
@@ -177,7 +185,7 @@
         #speed { font-size: 28px; right: 14px; bottom: 12px; }
         #banner { font-size: 44px; top: 30%; }
         #banner.small { font-size: 24px; }
-        #menu { right: 8px; top: 6px; }
+        #menu { right: 8px; top: 6px; gap: 4px; }
         #menu .txt { display: none; }
         #menu .ico { display: inline; font-size: 16px; }
         #menu button { padding: 4px 8px; min-height: 34px; min-width: 38px; }
@@ -219,6 +227,7 @@
     <div id="menu">
       <button id="btn-board" type="button" title="Classement (L)" hidden><span class="ico">🏆</span><span class="txt">Classement</span></button>
       <button id="btn-ghost" type="button" title="Fantôme (G)"><span class="ico">👻</span><span class="txt">Fantôme</span></button>
+      <button id="btn-sound" type="button" title="Son (M)"><span class="ico">🔊</span><span class="txt">Son</span></button>
       <button id="btn-archive" type="button" title="Archives (H)"><span class="ico">📅</span><span class="txt">Archives</span></button>
     </div>
     <div id="board" hidden></div>
@@ -230,6 +239,8 @@
     <div id="archive" hidden><div class="panel"></div></div>
     <div id="speed" class="hud">0 km/h</div>
     <div id="fx" class="hud"></div>
+    <div id="lines"></div>
+    <div id="flash"></div>
     <div id="tbar"></div>
     <div id="tsettings" hidden></div>
     <div id="rotate"></div>

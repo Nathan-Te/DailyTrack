@@ -1,6 +1,6 @@
 # Circuit du Jour — synthèse pour l'agent orchestrateur
 
-Document de **reprise** : il résume les lots 0 à 8 et 10, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 8 (06/10/2026).
+Document de **reprise** : il résume les lots 0 à 10, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 9 (07/10/2026).
 
 ## 1. Le projet en trois lignes
 Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même pour tout le monde**, généré à partir de la date, joué dans le navigateur. Le **temps est une preuve** : la physique est déterministe, une course est la suite des commandes du joueur, et le serveur la **rejoue** pour valider le temps. Pas de compte : un pseudo et un identifiant aléatoire dans le navigateur. Partage en une ligne : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812`.
@@ -20,9 +20,10 @@ Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même 
 | 7 Conduite | Modèle bicyclette + 4 ressorts + balistique, dérapage au frein, rebords par impulsion, reprise avec la vitesse, virage large L2/R2, `CarParams`/`SurfaceParams`, panneau `?debug&tune`, caméras C, pilote sur trajectoire de course ; versions 2/2 | #13 | la sensation sur `?scenario=pilotage`, puis réglages au panneau → ⏸ retouche 7b |
 | 7b Réglages | Les réglages de Nathan (copiés du panneau) deviennent les valeurs par défaut de `CarParams` (pointe 48 m/s, dérapage plus doux, rebords plus durs) ; règle « deux droites derrière une plaque » dans le générateur, marge du pilote ; versions 3/3 | #15 | la sensation sur `?scenario=pilotage` |
 | 8 Surfaces & thèmes | Revêtements terre / glace / herbe (attribut du bloc), blocs à effet super turbo et moteur coupé, virages relevés (serré et large), 5 thèmes tirés de la date (palette, zones de revêtement, effets, passage signature), `?scenario=surfaces`, `?theme=` (essai, jamais classé), pilote conscient des revêtements ; versions 4/4 | #16 | `?scenario=surfaces` et un circuit par thème |
+| 9 Feel & juice | Voiture low-poly originale (4 roues, suspension visible, feux stop, fantôme bleu), effets (fumée, traces, particules par revêtement, étincelles, flammes, réception, secousse, coup de FOV, lignes de vitesse, éclair, confettis), sons Web Audio procéduraux (moteur à rapports simulés, crissement, roulement, vent, impacts…), touche M, qualité automatique, `?demo` ; **aucun changement de `sim`** | (même PR que le lot 8 : #16) | `?scenario=surfaces&demo`, puis `?scenario=pilotage` à la main |
 | 10 Tactile (fait **avant** les lots 8 et 9, à la demande de Nathan) | Commandes tactiles : glissement ou boutons ← →, frein à droite, accélérateur auto ou bouton gaz, pause, reprise / départ, réglages mémorisés, invitation portrait, plein écran, vibrations ; `?touch=1` ; outils de test pas à pas | #14 | finir un tour au doigt sur téléphone |
 
-Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : le lot 9 (voiture modélisée, effets, sons, `?demo`), le lot 11 (historique, `?api=demo`), puis mise en ligne, calibrage et le *jalon* « une semaine de circuits joués par Nathan et quelques amis ». Le lot 10 ne dépend que du lot 7 ; le lot 9 reste à faire (prompt au seed § 12).
+Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : le lot 11 (historique, `?api=demo`), puis mise en ligne, calibrage et le *jalon* « une semaine de circuits joués par Nathan et quelques amis ». Le lot 10 ne dépend que du lot 7.
 
 ## 3. Architecture
 
@@ -61,7 +62,7 @@ npm run test:e2e         # construit web + api, lance Playwright (Chromium) ; d�
   CHROMIUM_PATH=/opt/pw-browsers/chromium   # Chromium déjà installé (conteneur)
   E2E_ALL_BROWSERS=1                         # + Firefox et WebKit (ce que fait la CI)
 API en local : npm run build:node -w @cdj/api && DB_PATH=:memory: npm start -w @cdj/api   → jeu avec ?api=http://localhost:8787
-Réglages d'URL du jeu : ?seed=AAAA-MM-JJ · ?scenario=essai|plat · ?api=… · ?ghost=off
+Réglages d'URL du jeu : ?seed=AAAA-MM-JJ · ?scenario=essai|plat · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
 Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cdj.autoplay(code)
 ```
 
@@ -116,6 +117,7 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 - **Après l'arrivée**, une plaque sous la voiture à l'arrêt la relançait (frein 40 contre plaque 30 : équilibre à 0,5 m/s) : couper les effets à la ligne (`withoutEffects`).
 - **Un test de comparaison doit donner à chaque camp les mêmes essais** : « dérapage plus rapide que grip » comparait un dérapage à sept essais de grip.
 - **Branche imposée** : l'environnement de session peut imposer un nom de branche différent de celui du prompt de lot (lot 7 : `claude/bold-thompson-ank8u1`) ; le lien d'aperçu suit le nom réel (`/b/<branche avec - au lieu de />/`).
+- **Lot 9 — perf et audio** : en CI et en conteneur le rendu est **logiciel** (SwiftShader, ~8 images/s) : les images par seconde ne disent rien, mesurer le **temps de fil principal par image** (CDP `Performance.getMetrics`, `Emulation.setCPUThrottlingRate`) avant / après avec le même script et les mêmes rediffusions. Un test d'effet en pas à pas doit avancer par **petits paquets de pas** (`advance(8)`) : les effets lisent l'état de chaque *image*, un saut de 120 pas ne montre que l'état final (le dérapage a fini). Le contexte audio n'existe pas avant un geste : tests et code doivent tolérer `running = false` ; on vérifie ce qui est *joué* (`__cdj.audio.log`), jamais comment ça sonne. Pas de `pkill -f` (voir plus haut).
 
 ## 9. Suite proposée (à confirmer avec Nathan)
 
