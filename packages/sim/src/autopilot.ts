@@ -11,7 +11,8 @@ import { SURFACES } from "./world";
 // 1. une trajectoire de course : la ligne médiane, relâchée dans la largeur de la route (corde des virages,
 //    sorties larges) en lissant sa courbure ;
 // 2. un profil de vitesse : vitesse de passage de chaque point selon la courbure (adhérence × `grip`), puis
-//    points de freinage par une passe arrière (on doit pouvoir freiner à temps pour le point suivant) ;
+//    points de freinage par une passe arrière (on doit pouvoir freiner à temps pour le point suivant) ; sur glace la
+//    vitesse de passage est celle de la roue libre (le pilote lâche l'accélérateur pour tourner) ;
 // 3. une conduite : poursuite d'un point devant soi pour la direction, gaz / frein tout-ou-rien pour la vitesse.
 // Il n'utilise que les opérations déterministes de la simulation : mêmes décisions partout.
 
@@ -34,6 +35,8 @@ export interface RacingLine {
   speed: number[];
   /** Pente du relevé en chaque point (0 hors virage relevé). */
   bank: number[];
+  /** Part de glace sous chaque point (0 = aucune, 1 = glace) : le pilote lâche l'accélérateur pour tourner dessus. */
+  slick: number[];
 }
 
 const SPACING = 2;
@@ -114,6 +117,7 @@ interface Path {
   rolling: number[];
   /** Pente du relevé en chaque point (0 hors virage relevé). */
   bank: number[];
+  slick: number[];
 }
 const paths = new WeakMap<Track, Path>();
 
@@ -144,15 +148,17 @@ function racingPath(track: Track): Path {
   const traction: number[] = [];
   const rolling: number[] = [];
   const bank: number[] = [];
+  const slick: number[] = [];
   for (let i = 0; i < n; i++) {
     const b = track.blocks[c.blk[i]!]!;
     const m = SURFACES[b.surface];
     grip.push(m.grip);
     traction.push(m.traction);
     rolling.push(m.rolling);
+    slick.push(m.slick);
     bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : 0);
   }
-  const path = { x, z, s, grip, traction, rolling, bank };
+  const path = { x, z, s, grip, traction, rolling, bank, slick };
   paths.set(track, path);
   return path;
 }
@@ -162,8 +168,15 @@ function racingPath(track: Track): Path {
  * chaque point la module par son revêtement et par son relevé (`gravity` × pente), et le freinage par la motricité
  * du revêtement (plus le roulement, qui aide à ralentir).
  */
-export function racingLine(track: Track, gripAccel: number, brakeAccel: number, topSpeed: number, gravity = 24.6): RacingLine {
-  const { x, z, s, grip, traction, rolling, bank } = racingPath(track);
+export function racingLine(
+  track: Track,
+  gripAccel: number,
+  brakeAccel: number,
+  topSpeed: number,
+  gravity = 24.6,
+  iceCoastGrip = DEFAULT_CAR_PARAMS.iceCoastGrip,
+): RacingLine {
+  const { x, z, s, grip, traction, rolling, bank, slick } = racingPath(track);
   const n = x.length;
   // Vitesse de passage : courbure sur une corde de ±2 points (≈ 8 m), v = √(adhérence / courbure).
   const speed = new Array<number>(n).fill(topSpeed);
@@ -178,7 +191,7 @@ export function racingLine(track: Track, gripAccel: number, brakeAccel: number, 
     const cross = ax * bz - az * bx;
     const den = Math.sqrt((ax * ax + az * az) * (bx * bx + bz * bz) * (cx * cx + cz * cz));
     const k = den > 0 ? (2 * (cross < 0 ? -cross : cross)) / den : 0;
-    if (k > 1e-6) speed[i] = Math.min(topSpeed, Math.sqrt((gripAccel * grip[i]! + gravity * bank[i]!) / k));
+    if (k > 1e-6) speed[i] = Math.min(topSpeed, Math.sqrt((gripAccel * (slick[i]! > 0 ? grip[i]! + slick[i]! * (iceCoastGrip - grip[i]!) : grip[i]!) + gravity * bank[i]!) / k));
   }
   // Points de freinage : en remontant, on doit pouvoir freiner à temps pour la vitesse du point suivant.
   for (let i = n - 2; i >= 0; i--) {
@@ -186,7 +199,7 @@ export function racingLine(track: Track, gripAccel: number, brakeAccel: number, 
     const reach = Math.sqrt(speed[i + 1]! * speed[i + 1]! + 2 * (brakeAccel * traction[i]! + rolling[i]!) * ds);
     if (reach < speed[i]!) speed[i] = reach;
   }
-  return { x, z, s, speed, bank };
+  return { x, z, s, speed, bank, slick };
 }
 
 /** Pilote : renvoie, à chaque pas, la commande à appliquer. */
@@ -195,7 +208,7 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
   const grip = opts.grip ?? 0.9;
   const look = opts.look ?? 0.3;
   const lateral = ((params.gripFront + params.gripRear) / 2) * 0.85 * grip;
-  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity);
+  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip);
   const n = line.x.length;
   let idx = 0;
 
@@ -248,7 +261,9 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
     const tooFast = speed > target + 0.5;
     // Pas de coup de frein braqué (il déclencherait un dérapage) : on lâche seulement les gaz.
     const brake = tooFast && steer < 0.5 && steer > -0.5 && car.grounded;
-    const throttle = !tooFast && speed < target;
+    // Sur glace, l'accélérateur ôte l'adhérence : on le lâche pour tourner (roue libre), on le rend en ligne droite.
+    const turning = line.slick[idx]! > 0 && (steer > 0.12 || steer < -0.12);
+    const throttle = !tooFast && speed < target && !turning;
     return makeInput(steer, throttle ? 1 : 0, brake ? 1 : 0);
   };
 }

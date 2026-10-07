@@ -129,6 +129,16 @@ export interface CarParams {
   turboTicks: number;
   turboAccel: number;
   turboMaxSpeed: number;
+  /** Glace (lot 16), pour un revêtement dont `slick` vaut 1. Pointe sur glace, en multiple de la pointe du plat (traînée de roulement nulle, roue libre presque sans perte). */
+  iceTop: number;
+  /** Décélération en roue libre sur glace, en fraction de celle de la route. */
+  iceCoast: number;
+  /** Adhérence latérale en roue libre sur glace (multiplicateur de route : à l'accélérateur c'est `grip` de `SURFACES.ice`). */
+  iceCoastGrip: number;
+  /** Réalignement de la vitesse sur le cap en roue libre sur glace (1/s) : la vitesse latérale s'éteint à ce rythme. */
+  iceRealign: number;
+  /** Adhérence latérale sous le frein sur glace, en fraction de celle de l'accélérateur : la voiture part en glisse. */
+  iceBrakeGrip: number;
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
@@ -172,6 +182,11 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   turboTicks: 180,
   turboAccel: 42,
   turboMaxSpeed: 88,
+  iceTop: 1.2,
+  iceCoast: 0.3,
+  iceCoastGrip: 0.75,
+  iceRealign: 3,
+  iceBrakeGrip: 0.5,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -300,6 +315,7 @@ const gCut = [false, false, false, false];
 const gGrip = [1, 1, 1, 1];
 const gTraction = [1, 1, 1, 1];
 const gRolling = [0, 0, 0, 0];
+const gSlick = [0, 0, 0, 0];
 const load = [0, 0, 0, 0];
 
 function sampleWheels(car: CarState, world: World, fx: number, fz: number): void {
@@ -317,6 +333,7 @@ function sampleWheels(car: CarState, world: World, fx: number, fz: number): void
     gGrip[i] = m.grip;
     gTraction[i] = m.traction;
     gRolling[i] = m.rolling;
+    gSlick[i] = m.slick;
   }
 }
 
@@ -374,6 +391,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   let slopeSide = 0;
   let traction = 0;
   let rolling = 0;
+  let slick = 0;
   for (let i = 0; i < 4; i++) {
     const f = WHEEL_F[i]!;
     const l = WHEEL_L[i]!;
@@ -389,6 +407,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     slopeSide += gX[i]! * lx + gZ[i]! * lz;
     traction += gTraction[i]!;
     rolling += gRolling[i]!;
+    slick += gSlick[i]!;
     if (gBoost[i]) onBoost = true;
     if (gTurbo[i]) onTurbo = true;
     if (gCut[i]) onCut = true;
@@ -399,6 +418,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     slopeSide /= contacts;
     traction /= contacts;
     rolling /= contacts;
+    slick /= contacts;
   }
 
   // Réception : premier contact après un vol. À plat (caisse alignée sur le sol) on garde la vitesse.
@@ -434,8 +454,22 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
       if (car.drift < 0) car.drift = 0;
     }
     // Adhérence de chaque essieu : réglage × revêtement sous ses deux roues × charge.
-    const surfF = (gGrip[0]! + gGrip[1]!) / 2;
-    const surfR = (gGrip[2]! + gGrip[3]!) / 2;
+    // Glace : à l'accélérateur le grip est celui du revêtement ; en roue libre il revient à `iceCoastGrip` (la voiture
+    // pivote et se redresse), sous le frein il tombe à une fraction (elle part en glisse).
+    const coasting = throttle === 0 && brake === 0;
+    let surfF = (gGrip[0]! + gGrip[1]!) / 2;
+    let surfR = (gGrip[2]! + gGrip[3]!) / 2;
+    if (slick > 0) {
+      const slickF = (gSlick[0]! + gSlick[1]!) / 2;
+      const slickR = (gSlick[2]! + gSlick[3]!) / 2;
+      if (coasting) {
+        surfF += slickF * (p.iceCoastGrip - surfF);
+        surfR += slickR * (p.iceCoastGrip - surfR);
+      } else if (brake > 0) {
+        surfF -= slickF * (1 - p.iceBrakeGrip) * surfF;
+        surfR -= slickR * (1 - p.iceBrakeGrip) * surfR;
+      }
+    }
     const rearGrip = p.gripRear * (1 - (1 - p.driftGrip) * car.drift);
     const peakF = ((p.gripFront * AXLE_REAR) / WHEELBASE) * surfF * kf;
     const peakR = ((rearGrip * AXLE_FRONT) / WHEELBASE) * surfR * kr;
@@ -455,7 +489,8 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
 
     // --- Moteur, freins, pente ------------------------------------------------------------------
     const grip = clamp(1 + p.loadSensitivity * ((loadF + loadR) / 2 - 1), 0, 1) * traction;
-    const top = car.turbo > 0 ? p.turboMaxSpeed : car.boost > 0 ? p.boostMaxSpeed : p.maxSpeed;
+    const flatTop = p.maxSpeed * (1 + slick * (p.iceTop - 1));
+    const top = car.turbo > 0 ? p.turboMaxSpeed : car.boost > 0 ? p.boostMaxSpeed : flatTop;
     let drive = 0;
     if (throttle > 0) {
       if (u < -0.5) drive += p.brake * throttle;
@@ -469,20 +504,25 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
       if (u > 0.5) drive -= p.brake * brake;
       else if (u > -p.reverseMax) drive -= p.reverseAccel * brake;
     }
-    if (throttle === 0 && brake === 0) drive -= u > 0 ? p.coast : u < 0 ? -p.coast : 0;
+    if (throttle === 0 && brake === 0) {
+      const coast = p.coast * (1 - slick * (1 - p.iceCoast));
+      drive -= u > 0 ? coast : u < 0 ? -coast : 0;
+    }
     if (car.boost > 0 && u < p.boostMaxSpeed) drive += p.boostAccel;
     if (car.turbo > 0 && u < p.turboMaxSpeed) drive += p.turboAccel;
     ax += drive * grip;
     ax -= u > 0 ? rolling : u < 0 ? -rolling : 0;
     // Au-delà de la pointe (descente, plaque, turbo) : une traînée en cube du rapport vitesse ÷ pointe, nulle à la pointe.
     // Ce n'est plus un plafond dur : la gravité et les poussées vont plus haut, et la voiture retombe progressivement.
-    if (u > p.maxSpeed) {
-      const ratio = u / p.maxSpeed;
+    if (u > flatTop) {
+      const ratio = u / flatTop;
       ax -= p.overspeedDrag * (ratio * ratio * ratio - 1);
     }
     ax -= p.slopeGravity * slope;
     // Pente latérale (virage relevé) : la pesanteur pousse vers le bas de la pente, donc vers l'intérieur du virage.
     ay -= p.gravity * slopeSide;
+    // Glace en roue libre : la vitesse latérale s'éteint (le vecteur vitesse se réaligne sur le cap), sans freiner.
+    if (coasting && slick > 0) ay -= p.iceRealign * slick * v;
     // Une glisse coûte de la vitesse, en proportion de son angle (dérive = vitesse latérale ÷ vitesse).
     const drift = v / U;
     ax -= p.slideDrag * (drift < 0 ? -drift : drift) * (u > 0 ? 1 : u < 0 ? -1 : 0);

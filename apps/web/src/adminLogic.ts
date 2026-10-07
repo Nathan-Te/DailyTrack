@@ -1,7 +1,7 @@
 // Page /admin : construit l'adresse du jeu à partir de choix de test. Logique pure (testée par Vitest) ; le DOM est dans
 // `admin.ts`. Rien de tout cela ne touche à la simulation : ce ne sont que les paramètres d'adresse que le jeu connaît déjà.
 
-export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "plat";
+export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "plat";
 
 export interface AdminState {
   scenario: Scenario;
@@ -92,7 +92,7 @@ export function parseAdmin(raw: string | null): AdminState {
   if (!raw) return s;
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof AdminState, unknown>>;
-    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "plat") s.scenario = o.scenario;
+    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && ["", "stade", "rallye", "banquise", "nuit", "campagne"].includes(o.theme)) s.theme = o.theme;
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
@@ -118,6 +118,7 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Réglage de la voiture", hint: "circuit de pilotage + panneau de réglages", state: { scenario: "pilotage", tune: true } },
   { label: "Revêtements et blocs", hint: "terre, glace, herbe, turbo, relevés, plaque", state: { scenario: "surfaces" } },
   { label: "Largeurs de route", hint: "14, 20 et 26 m, transitions, courbe ample, S large, rétrécissement avant un virage", state: { scenario: "largeurs" } },
+  { label: "Glace", hint: "ligne droite de glace après une de route, deux virages en roue libre, slalom", state: { scenario: "glace" } },
   { label: "Vitesse", hint: "plaque et longue descente, turbos enchaînés, grande courbe relevée à fond, freinage avant un virage serré", state: { scenario: "vitesse" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },

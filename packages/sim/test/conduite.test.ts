@@ -402,7 +402,7 @@ describe("revêtement (accroche du lot 8)", () => {
     const sample = createSurface();
     trackWorld(STRAIGHT).sample(16, 40, sample);
     expect(sample.kind).toBe("road");
-    expect(surfaceAt(sample)).toEqual({ grip: 1, traction: 1, rolling: 0 });
+    expect(surfaceAt(sample)).toEqual({ grip: 1, traction: 1, rolling: 0, slick: 0 });
     expect(Object.keys(SURFACES)).toEqual(["road", "dirt", "ice", "grass"]);
   });
 });

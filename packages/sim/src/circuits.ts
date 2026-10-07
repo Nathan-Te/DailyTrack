@@ -60,3 +60,14 @@ export const VITESSE_TRACK_SPEC =
 export function createVitesseTrack() {
   return parseTrack("vitesse", VITESSE_TRACK_SPEC);
 }
+
+/**
+ * Scénario `glace` (lot 16) : une ligne droite de route (pour la comparer), une longue ligne droite de glace, deux virages
+ * (gauche puis droite) à prendre en roue libre, puis un slalom de deux S larges sur la glace.
+ */
+export const GLACE_TRACK_SPEC =
+  "S@start S S S S S S S@cp S/g S/g S/g S/g S/g S/g S/g S/g@cp L/g S/g S/g R/g S/g S/g@cp L2/g R2/g S/g L2/g R2/g S/g S/g@cp S S@finish";
+
+export function createGlaceTrack() {
+  return parseTrack("glace", GLACE_TRACK_SPEC);
+}
