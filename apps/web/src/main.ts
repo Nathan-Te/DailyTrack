@@ -1,3 +1,4 @@
+import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
 import { PerspectiveCamera, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
@@ -19,6 +20,7 @@ import {
   createPilotageTrack,
   createSurface,
   createLargeursTrack,
+  createVitesseTrack,
   createSurfacesTrack,
   themeByName,
   createTestTrack,
@@ -73,7 +75,7 @@ import { loadTunedParams, mountTunePanel } from "./tune";
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
-// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions) et `plat` (le terrain d'essai du lot 1).
+// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
@@ -84,7 +86,7 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -122,7 +124,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -215,7 +217,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
@@ -1022,30 +1024,32 @@ function frame(now: number) {
   // Caméra poursuite : cap, hauteur et position suivent la voiture avec un léger retard ; le champ de vision
   // s'ouvre avec la vitesse (sensation de vitesse).
   const rig = CAMERAS[cameraIndex]!;
-  const speedRatio = Math.min(speed / DEFAULT_CAR_PARAMS.maxSpeed, 1.4);
+  // Au-delà de la pointe du plat (lot 15) : champ de vision plus ouvert, caméra plus basse et plus en retard, petite vibration.
+  const speedRatio = flatRatio(speed);
+  const fastCam = speedCamera(speed);
   if (snapCamera) {
     camYaw = yaw;
     camBaseY = y;
   }
   camYaw += wrapAngle(yaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
   camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
-  const back = rig.back + speedRatio * rig.backAtSpeed;
+  const back = rig.back + speedRatio * rig.backAtSpeed + fastCam.back;
   const tx = x - Math.sin(camYaw) * back;
-  const ty = camBaseY + rig.height;
+  const ty = camBaseY + rig.height - fastCam.lower;
   const tz = z - Math.cos(camYaw) * back;
-  const follow = snapCamera ? 1 : 1 - Math.exp(-rig.posLag * elapsed);
+  const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - fastCam.lag) * elapsed);
   camPos.x += (tx - camPos.x) * follow;
   camPos.y += (ty - camPos.y) * follow;
   camPos.z += (tz - camPos.z) * follow;
   snapCamera = false;
   // Secousse (chocs, réceptions) : décalage de la caméra qui s'éteint vite ; coupée avec `?shake=0`.
   shake *= Math.max(0, 1 - 7 * elapsed);
-  const sh = SHAKE * shake * 0.22;
+  const sh = SHAKE * shake * 0.22 + (buzzAllowed(governor.level) ? SHAKE * buzzAmplitude(speed) * 2 : 0);
   camera.position.set(camPos.x + (Math.random() - 0.5) * sh, camPos.y + (Math.random() - 0.5) * sh, camPos.z + (Math.random() - 0.5) * sh);
   camera.lookAt(x + Math.sin(camYaw) * rig.ahead, camBaseY + rig.lookHeight, z + Math.cos(camYaw) * rig.ahead);
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
-  fovKick += ((car.turbo > 0 ? 12 : car.boost > 0 ? 7 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
-  const fov = rig.fov + speedRatio * rig.fovAtSpeed + fovKick;
+  fovKick += ((car.turbo > 0 ? 7 : car.boost > 0 ? 4 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
+  const fov = rig.fov + speedRatio * rig.fovAtSpeed + fastCam.fov + fovKick;
   if (Math.abs(camera.fov - fov) > 0.01) {
     camera.fov = fov;
     camera.updateProjectionMatrix();
@@ -1067,11 +1071,12 @@ function frame(now: number) {
     active: phase === "racing" && !frozen && !manual,
   });
   // Lignes de vitesse au-delà de 75 % de la pointe, éclair du point de contrôle.
-  const lines = Math.min(1, Math.max(0, (speedRatio - 0.75) / 0.35)) * 0.38 + (car.turbo > 0 ? 0.12 : 0);
+  const lines = speedLinesOpacity(speed, car.turbo > 0);
   hudLines.style.opacity = phase === "countdown" ? "0" : lines.toFixed(2);
   flash = Math.max(0, flash - elapsed * 2.2);
   hudFlash.style.opacity = flash.toFixed(2);
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
+  hudSpeed.dataset.level = String(speedLevel(speed)); // jaune, orange puis rouge au-delà de la pointe
   updateEffects();
   if (!manual) renderer.render(view.scene, camera); // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
   splash?.remove(); // premier rendu fait : on retire l'écran de chargement
@@ -1128,7 +1133,7 @@ if (params.has("debug")) {
       },
       /** Effets : particules émises, qualité, particules vivantes (tests de navigateur). */
       get fx() {
-        return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, wheelDroop: [...wheelDroop], tel };
+        return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, fov: camera.fov, wheelDroop: [...wheelDroop], tel };
       },
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {

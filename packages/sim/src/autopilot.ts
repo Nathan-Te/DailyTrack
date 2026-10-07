@@ -260,6 +260,9 @@ export interface PilotRun {
   ticks: number;
   respawns: number;
   replay: Replay;
+  /** Vitesse horizontale maximale atteinte (m/s) et nombre de pas passés au-delà de la pointe du plat (lot 15). */
+  maxSpeed: number;
+  fastTicks: number;
 }
 
 /** Fait rouler un pilote jusqu'à l'arrivée (ou `maxSeconds`, ou jusqu'à ce qu'il soit bloqué). */
@@ -270,6 +273,9 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   const maxTicks = maxSeconds * TICK_RATE;
   let ticks = 0;
   let stuck = 0;
+  let maxV2 = 0;
+  let fastTicks = 0;
+  const flatTop = (opts.params ?? DEFAULT_CAR_PARAMS).maxSpeed;
   while (race.finishMs < 0 && ticks < maxTicks && race.respawns === 0) {
     const input = drive(race);
     recorder.record(input);
@@ -277,6 +283,8 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     ticks++;
     // Bloqué : presque à l'arrêt pendant 3 s après le départ.
     const v2 = race.car.vx * race.car.vx + race.car.vz * race.car.vz;
+    if (v2 > maxV2) maxV2 = v2;
+    if (v2 > flatTop * flatTop) fastTicks++;
     stuck = v2 < 0.25 && ticks > 2 * TICK_RATE ? stuck + 1 : 0;
     if (stuck > 3 * TICK_RATE) break;
   }
@@ -286,6 +294,8 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     ticks,
     respawns: race.respawns,
     replay: recorder.toReplay(track.id),
+    maxSpeed: Math.sqrt(maxV2),
+    fastTicks,
   };
 }
 

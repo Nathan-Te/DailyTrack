@@ -54,9 +54,9 @@ export const SURFACE_SOUNDS: Record<SurfaceKind, SurfaceSound> = {
   ice: { rollFreq: 2400, rollGain: 0.025, skidFreq: 2600 },
 };
 
-/** Vent : volume ∈ [0, 0.12] en fonction de la vitesse (au carré, il ne se fait entendre qu'à haute vitesse). */
+/** Vent : volume ∈ [0, 0.2] en fonction de la vitesse (au carré, il ne se fait entendre qu'à haute vitesse ; il continue de monter au-delà de la pointe, lot 15). */
 export function windGain(speed: number): number {
-  const r = Math.min(1.5, speed / 48);
+  const r = Math.min(1.9, speed / 48);
   return 0.12 * r * r * 0.6;
 }
 

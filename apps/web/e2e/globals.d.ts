@@ -26,6 +26,7 @@ interface CdjDebug {
     enabled: boolean;
     shake: number;
     fovKick: number;
+    fov: number;
     wheelDroop: number[];
     tel: { wall: unknown };
   };

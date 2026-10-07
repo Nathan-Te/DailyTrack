@@ -48,3 +48,15 @@ export const LARGEURS_TRACK_SPEC =
 export function createLargeursTrack() {
   return parseTrack("largeurs", LARGEURS_TRACK_SPEC);
 }
+
+/**
+ * Scénario `vitesse` (lot 15) : départ, plaque en haut d'une longue descente (six blocs), deux super turbos enchaînés sur
+ * une ligne droite (le second prolonge le premier, jusqu'à 88 m/s), grande courbe relevée (R3/b) prise à fond, puis un
+ * freinage appuyé avant un virage serré.
+ */
+export const VITESSE_TRACK_SPEC =
+  "S@start S S P D D D D D D S S@cp S S T S S T S S S S S S@cp S T S S S S R3/b S S S S@cp S S S S L S S@finish";
+
+export function createVitesseTrack() {
+  return parseTrack("vitesse", VITESSE_TRACK_SPEC);
+}
