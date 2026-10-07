@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { PREMIER_JOUR, createLargeursTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
+import { PREMIER_JOUR, createLargeursTrack, createReliefTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel, replaceProblem } from "../src/adminPlan";
-import { circuitStats, effectsText, widthsText } from "../src/circuitStats";
+import { circuitStats, effectsText, reliefText, widthsText } from "../src/circuitStats";
 import { DemoAdmin, TOKEN_KEY, loadToken, parseOverview, saveToken } from "../src/adminBackend";
 import { DEMO_PLAN_KEY, NO_PLAN, isReplaced, loadDemoPlan, parseDemoPlan, parsePlanEntry, saveDemoPlan } from "../src/planning";
 import { DEFAULT_ADMIN, buildQuery, parseAdmin } from "../src/adminLogic";
@@ -82,6 +82,14 @@ describe("chiffres d'un circuit", () => {
     expect(s.widths).toEqual([14, 20, 26]);
     expect(widthsText(s.widths)).toBe("14 · 20 · 26 m");
     expect(effectsText({ pads: 0, turbos: 0, cuts: 0 })).toBe("aucun");
+  });
+  it("le circuit du relief (lot 17) : dénivelé, sauts, blocs sans rebords", () => {
+    const s = circuitStats(createReliefTrack());
+    expect(s.relief).toBe(24);
+    expect(s.jumps).toBe(2);
+    expect(s.open).toBe(4);
+    expect(reliefText(s)).toBe("24 m de dénivelé · 2 sauts · 4 blocs sans rebords");
+    expect(reliefText({ relief: 12, jumps: 0, open: 0 })).toBe("12 m de dénivelé");
   });
 });
 

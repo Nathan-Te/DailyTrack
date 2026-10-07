@@ -228,9 +228,12 @@ function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
     if (last && last.b === line.block[i]) last.to = i;
     else ranges.push({ b: line.block[i]!, from: i, to: i });
   }
-  for (const r of ranges) stroke(r.from, r.to, css(pal.wallA), widthOf(r.b) * k + Math.max(2, WALL_HEIGHT * k * 1.6));
+  // Un vide (lot 17) n'a ni route ni rebords : on ne dessine que ses deux bords (la rampe et la réception).
+  const isGap = (i: number) => circuit.track.blocks[i]!.kind === "gap";
+  for (const r of ranges) if (!isGap(r.b)) stroke(r.from, r.to, css(pal.wallA), widthOf(r.b) * k + Math.max(2, WALL_HEIGHT * k * 1.6));
   for (const r of ranges) {
     const b = circuit.track.blocks[r.b]!;
+    if (b.kind === "gap") continue;
     stroke(r.from, r.to, css(b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!), widthOf(r.b) * k * 0.98);
   }
   // Blocs à effet et portes : une barre en travers de la route, au milieu du bloc.
@@ -259,6 +262,8 @@ function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
     else if (b.kind === "turbo") bar(mid, "#ff3b30", HALF_ROAD * 0.5, 6);
     else if (b.kind === "cut") bar(mid, "#2b1b45", HALF_ROAD * 0.5, 6);
     else if (b.kind === "jump") bar(mid, "#ffd22e", HALF_ROAD * 0.9, 3);
+    else if (b.kind === "kick") bar(r.to, "#ffd22e", HALF_ROAD * 0.95, 3.4); // le bord de la rampe, juste avant le vide
+    if (circuit.track.blocks[r.b - 1]?.kind === "gap") bar(r.from, "#2fd37b", HALF_ROAD * 0.95, 3.4); // le bord d'en face
     if (b.mark === "checkpoint") bar(mid, css(pal.checkpoint), HALF_ROAD, 1.6);
     if (b.mark === "finish") bar(mid, css(pal.finish), HALF_ROAD, 2.4);
   }

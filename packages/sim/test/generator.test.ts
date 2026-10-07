@@ -127,9 +127,9 @@ describe("circuit du jour : construction", () => {
     }
   });
 
-  it("varie les blocs : pentes, bosses, plaques et tremplins apparaissent sur la période", () => {
+  it("varie les blocs : pentes, bosses, plaques, rampes de saut et vides apparaissent sur la période (le tremplin J cède la place aux vrais sauts, lot 17)", () => {
     const seen = new Set(DAYS.flatMap((d) => circuit(d).track.blocks.map((b) => b.kind)));
-    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "grandL", "grandR", "up", "down", "bump", "jump", "boost", "turbo", "cut"]) expect(seen.has(k as never), k).toBe(true);
+    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "grandL", "grandR", "up", "down", "bump", "kick", "gap", "boost", "turbo", "cut"]) expect(seen.has(k as never), k).toBe(true);
   });
 
   it("construit vite : temps de génération mesuré sur 60 jours consécutifs (moyenne < 0,5 s, pire < 1,5 s)", () => {
@@ -307,7 +307,7 @@ describe("thèmes du jour", () => {
     expect(stade.some((b) => b.kind === "turbo")).toBe(true);
     expect(stade.every((b) => b.surface === "road")).toBe(true);
     expect(blocksOf("rallye").some((b) => b.surface === "dirt")).toBe(true);
-    expect(blocksOf("rallye").some((b) => b.kind === "jump" && b.surface === "dirt")).toBe(true); // tremplin sur la terre
+    expect(blocksOf("rallye").some((b) => b.kind === "kick" && b.surface === "dirt")).toBe(true); // saut sur la terre
     expect(blocksOf("banquise").some((b) => b.surface === "ice")).toBe(true);
     expect(blocksOf("nuit").some((b) => b.kind === "cut")).toBe(true);
     const campagne = blocksOf("campagne");

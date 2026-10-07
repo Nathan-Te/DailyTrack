@@ -3,6 +3,12 @@ import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpee
 import type { Gate, Track } from "./track";
 import { trackWorld, type World } from "./world";
 
+/**
+ * Chute (lot 17) : sous `track.voidY` la voiture est perdue ; elle continue de tomber, sans commande, pendant ce délai
+ * (0,5 s, soit ≈ 1 s depuis qu'elle a quitté la route), puis reprend au dernier point de contrôle. Le chrono ne s'arrête pas.
+ */
+export const FALL_TICKS = TICK_RATE / 2;
+
 export interface RaceState {
   car: CarState;
   track: Track;
@@ -15,6 +21,8 @@ export interface RaceState {
   finishMs: number;
   /** Nombre de retours au point de contrôle (volontaires ou chutes). */
   respawns: number;
+  /** Pas écoulés depuis que la voiture a quitté le monde par le bas (0 = elle roule) ; la reprise a lieu à `FALL_TICKS`. */
+  fallTicks: number;
   /** État de la voiture au passage de chaque point de contrôle : la reprise repart avec cette vitesse et ce cap. */
   checkpoints: CarState[];
   /** Réglages de la voiture (par défaut : ceux du classement ; le panneau `?tune` en passe d'autres). */
@@ -31,6 +39,7 @@ export function createRace(track: Track, params: Readonly<CarParams> = DEFAULT_C
     splits: [],
     finishMs: -1,
     respawns: 0,
+    fallTicks: 0,
     checkpoints: [],
     params,
   };
@@ -71,6 +80,7 @@ function respawn(race: RaceState): void {
   }
   car.tick = tick + 1; // le chrono continue de tourner
   race.respawns += 1;
+  race.fallTicks = 0;
 }
 
 /** Temps (ms) auquel la voiture a franchi la porte pendant le pas qui vient de s'achever. */
@@ -101,6 +111,13 @@ export function stepRace(race: RaceState, input: CarInput): void {
     respawn(race);
     return;
   }
+  if (race.fallTicks > 0) {
+    // Perdue : elle tombe sans rien commander (rien ne la ramène avant le délai, sauf une reprise volontaire ci-dessus).
+    stepCar(car, NO_INPUT, race.world, race.params);
+    race.fallTicks += 1;
+    if (race.fallTicks >= FALL_TICKS) respawn(race);
+    return;
+  }
 
   const px = car.x;
   const pz = car.z;
@@ -126,7 +143,7 @@ export function stepRace(race: RaceState, input: CarInput): void {
       }
     }
   }
-  if (car.y < race.world.voidY) respawn(race);
+  if (car.y < race.world.voidY) race.fallTicks = 1;
 }
 
 /** Durée écoulée, en ms (pour l'affichage du chrono en cours de course). */

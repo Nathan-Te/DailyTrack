@@ -12,8 +12,12 @@ import type { SqlDb } from "../src/db";
 import { openSqlite } from "../src/node-sqlite";
 
 export const DAY_MS = 86_400_000;
-/** Jour de test : le 13/10/2026 (fixe : indépendant de `PREMIER_JOUR`, qui ne change que la numérotation). L'horloge de l'API est réglée sur midi UTC de ce jour. */
-export const DAY = daysFromCivil(2026, 10, 13);
+/**
+ * Jour de test : le 09/10/2026 (fixe : indépendant de `PREMIER_JOUR`, qui ne change que la numérotation). L'horloge de l'API est
+ * réglée sur midi UTC de ce jour. Choisi au lot 17 (le 13/10 de ce jour-là donnait des temps non monotones selon le niveau du pilote) :
+ * un circuit où plus le pilote est prudent, plus il est lent (les tests de classement comptent sur cet ordre).
+ */
+export const DAY = daysFromCivil(2026, 10, 9);
 export const NOON = DAY * DAY_MS + 12 * 3_600_000;
 
 const circuits = new Map<number, DailyCircuit>();

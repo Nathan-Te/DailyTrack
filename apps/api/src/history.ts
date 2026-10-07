@@ -1,10 +1,12 @@
 import {
   AXIS_MAX,
+  CELL,
   GENERATOR_VERSION,
   PREMIER_JOUR,
   ReplayRecorder,
   Rng,
   SIM_VERSION,
+  cellKey,
   circuitNumber,
   createAutopilot,
   createRace,
@@ -14,6 +16,7 @@ import {
   makeInput,
   mixSeed,
   stepRace,
+  trackJumps,
   type Track,
 } from "@cdj/sim";
 import { createApi } from "./api";
@@ -121,6 +124,9 @@ export function styleFor(skill: number): PilotStyle {
 /** Fait rouler le pilote automatique avec ce style ; `null` s'il ne finit pas (sorti de la route, bloqué, repris). */
 export function runFictional(track: Track, style: PilotStyle, seed: number, maxSeconds = 150): { code: string; finishMs: number } | null {
   const race = createRace(track);
+  // Sauts (lot 17) : même un pilote prudent accélère avant une rampe, il sait qu'un saut se prend avec de la vitesse. Dans les quatre
+  // blocs qui précèdent la rampe (et sur elle), il ne lève plus le pied et met plein gaz comme le pilote automatique.
+  const jumps = trackJumps(track).map((j) => ({ from: j.kick - 4, to: j.kick }));
   const drive = createAutopilot(track, { grip: style.grip, look: style.look });
   const rec = new ReplayRecorder();
   const rng = new Rng(seed);
@@ -132,7 +138,9 @@ export function runFictional(track: Track, style: PilotStyle, seed: number, maxS
     wob += ((rng.int(2001) - 1000) / 1000 - wob) * 0.04; // bruit lissé
     const steer = Math.max(-1, Math.min(1, base.steer / AXIS_MAX + wob * style.wobble));
     const speed = Math.sqrt(race.car.vx * race.car.vx + race.car.vz * race.car.vz);
-    const gas = speed > style.topSpeed ? 0 : (base.throttle / AXIS_MAX) * style.throttleCap;
+    const here = track.cells.get(cellKey(Math.floor(race.car.x / CELL), Math.floor(race.car.z / CELL)))?.index ?? -1;
+    const approach = jumps.find((j) => here >= j.from && here <= j.to);
+    const gas = approach ? base.throttle / AXIS_MAX : speed > style.topSpeed ? 0 : (base.throttle / AXIS_MAX) * style.throttleCap;
     const input = makeInput(steer, gas, base.brake / AXIS_MAX);
     rec.record(input);
     stepRace(race, input);

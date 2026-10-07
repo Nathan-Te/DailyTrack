@@ -3,7 +3,8 @@ import { COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInp
 import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, blockHalfWidth, blockPoint, curveCenter, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { trackJumps, type JumpInfo } from "./jump";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, blockHalfWidth, blockPoint, blockSlope, curveCenter, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { SURFACES } from "./world";
 
 // Pilote automatique (lot 7) : il sert à valider un circuit généré (« est-il finissable ? ») et donne le temps de
@@ -40,6 +41,10 @@ export interface RacingLine {
 }
 
 const SPACING = 2;
+/** Marge aux rebords en plus (m) sur une section sans rebords : sortir de la route, c'est tomber. */
+const OPEN_EXTRA_MARGIN = 1;
+/** Réglage de la gravité sur pente de la voiture (m/s² par unité de pente), pour le freinage du pilote. */
+const SLOPE_GRAVITY = DEFAULT_CAR_PARAMS.slopeGravity;
 const SMOOTH_ITERATIONS = 400;
 /** Écart latéral permis (m) du pilote en virage relevé. */
 const BANKED_ROOM = 1.5;
@@ -56,10 +61,12 @@ interface Centerline {
   room: number[];
   /** Bloc de chaque point. */
   blk: number[];
+  /** Pente de la route (montée par mètre, dans le sens de la marche). */
+  slope: number[];
 }
 
 function denseCenterline(track: Track): Centerline {
-  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], blk: [] };
+  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], blk: [], slope: [] };
   const pt = { x: 0, z: 0 };
   const push = (p: number, q: number, b: Block, room: number) => {
     blockPoint(b, p, q, pt);
@@ -67,14 +74,16 @@ function denseCenterline(track: Track): Centerline {
     out.z.push(pt.z);
     out.room.push(room);
     out.blk.push(b.index);
+    out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
   };
   // Écart latéral permis : la demi-largeur de la route (qui varie d'un bloc à l'autre, et dans une transition) moins la marge.
   // Sur une route large, la trajectoire peut donc prendre une corde plus ouverte : c'est la relaxation ci-dessous qui s'en sert.
   for (const b of track.blocks) {
     const first = b.index === 0 ? 0 : 1; // le premier point d'un bloc est le dernier du précédent
-    // Sur un tremplin et la ligne droite qui suit, on reste au milieu : en l'air, on ne tourne pas.
+    // Sur un tremplin, une rampe de saut, un vide et la réception qui suit, on reste au milieu : en l'air, on ne tourne pas.
     const prev = track.blocks[b.index - 1];
-    const calm = b.kind === "jump" || prev?.kind === "jump";
+    const calm = b.kind === "jump" || b.kind === "kick" || b.kind === "gap" || prev?.kind === "jump" || prev?.kind === "gap";
+    const open = b.open ? OPEN_EXTRA_MARGIN : 0;
     if (isCurve(b.kind)) {
       const { cp, r } = curveCenter(b.kind);
       const side = turnsLeft(b.kind) ? -1 : 1;
@@ -82,13 +91,13 @@ function denseCenterline(track: Track): Centerline {
       for (let i = first; i <= n; i++) {
         const a = (HALF_PI * i) / n;
         // Virage relevé : le bord intérieur est en contrebas et la rampe d'entrée y est raide ; on reste près de l'axe.
-        push(cp + side * r * cos(a), r * sin(a), b, b.banked ? BANKED_ROOM : b.w0 / 2 - WALL_MARGIN);
+        push(cp + side * r * cos(a), r * sin(a), b, b.banked ? BANKED_ROOM : b.w0 / 2 - WALL_MARGIN - open);
       }
     } else {
       const n = Math.round(CELL / SPACING);
       for (let i = first; i <= n; i++) {
         const q = (CELL * i) / n;
-        push(CELL / 2, q, b, calm ? 0.5 : blockHalfWidth(b, q) - WALL_MARGIN);
+        push(CELL / 2, q, b, calm ? 0.5 : blockHalfWidth(b, q) - WALL_MARGIN - open);
       }
     }
   }
@@ -118,6 +127,10 @@ interface Path {
   /** Pente du relevé en chaque point (0 hors virage relevé). */
   bank: number[];
   slick: number[];
+  /** Pente de la route en chaque point (montée par mètre). */
+  slope: number[];
+  /** Vrai là où la voiture est (ou peut être) en l'air à cause d'un saut : on n'y freine pas, la vitesse doit être bonne avant. */
+  airborne: boolean[];
 }
 const paths = new WeakMap<Track, Path>();
 
@@ -158,7 +171,11 @@ function racingPath(track: Track): Path {
     slick.push(m.slick);
     bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : 0);
   }
-  const path = { x, z, s, grip, traction, rolling, bank, slick };
+  // Zone de saut : de la rampe à la fin du bloc qui suit la réception. Elle commence au bloc `K` et finit un bloc après la réception.
+  const zone = new Set<number>();
+  for (const j of trackJumps(track)) for (let i = j.kick; i <= j.landing + 1; i++) zone.add(i);
+  const airborne = c.blk.map((b) => zone.has(b));
+  const path = { x, z, s, grip, traction, rolling, bank, slick, slope: c.slope, airborne };
   paths.set(track, path);
   return path;
 }
@@ -175,8 +192,9 @@ export function racingLine(
   topSpeed: number,
   gravity = 24.6,
   iceCoastGrip = DEFAULT_CAR_PARAMS.iceCoastGrip,
+  slopeGravity = SLOPE_GRAVITY,
 ): RacingLine {
-  const { x, z, s, grip, traction, rolling, bank, slick } = racingPath(track);
+  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne } = racingPath(track);
   const n = x.length;
   // Vitesse de passage : courbure sur une corde de ±2 points (≈ 8 m), v = √(adhérence / courbure).
   const speed = new Array<number>(n).fill(topSpeed);
@@ -194,9 +212,16 @@ export function racingLine(
     if (k > 1e-6) speed[i] = Math.min(topSpeed, Math.sqrt((gripAccel * (slick[i]! > 0 ? grip[i]! + slick[i]! * (iceCoastGrip - grip[i]!) : grip[i]!) + gravity * bank[i]!) / k));
   }
   // Points de freinage : en remontant, on doit pouvoir freiner à temps pour la vitesse du point suivant.
+  // Pas de freinage en l'air : sur la zone d'un saut, la vitesse visée ne peut pas baisser, donc elle doit être bonne avant.
+  // La pente aide ou gêne le freinage : en descente, la pesanteur pousse (`slopeGravity` × pente), en montée elle freine.
   for (let i = n - 2; i >= 0; i--) {
+    if (airborne[i]! && speed[i + 1]! < speed[i]!) {
+      speed[i] = speed[i + 1]!;
+      continue;
+    }
     const ds = s[i + 1]! - s[i]!;
-    const reach = Math.sqrt(speed[i + 1]! * speed[i + 1]! + 2 * (brakeAccel * traction[i]! + rolling[i]!) * ds);
+    const decel = brakeAccel * traction[i]! + rolling[i]! + slopeGravity * slope[i]!;
+    const reach = Math.sqrt(speed[i + 1]! * speed[i + 1]! + 2 * (decel > 2 ? decel : 2) * ds);
     if (reach < speed[i]!) speed[i] = reach;
   }
   return { x, z, s, speed, bank, slick };
@@ -208,7 +233,7 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
   const grip = opts.grip ?? 0.9;
   const look = opts.look ?? 0.3;
   const lateral = ((params.gripFront + params.gripRear) / 2) * 0.85 * grip;
-  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip);
+  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip, params.slopeGravity);
   const n = line.x.length;
   let idx = 0;
 
@@ -278,7 +303,20 @@ export interface PilotRun {
   /** Vitesse horizontale maximale atteinte (m/s) et nombre de pas passés au-delà de la pointe du plat (lot 15). */
   maxSpeed: number;
   fastTicks: number;
+  /** Vitesse du pilote au bord de chaque rampe de saut (lot 17), avec la fenêtre du saut. */
+  jumps: JumpPass[];
+  /** Vrai si chaque saut a été pris dans sa fenêtre de vitesse avec la marge `JUMP_ENTRY_MARGIN` (aucun saut = vrai). */
+  jumpsOk: boolean;
 }
+
+export interface JumpPass {
+  jump: JumpInfo;
+  /** Vitesse au passage du bord de la rampe (m/s), ou 0 si le pilote n'y est pas arrivé. */
+  speed: number;
+}
+
+/** Le pilote doit aborder chaque saut avec cette marge au-dessus de la vitesse minimale de sa fenêtre (un joueur correct doit pouvoir faire de même). */
+export const JUMP_ENTRY_MARGIN = 1.08;
 
 /** Fait rouler un pilote jusqu'à l'arrivée (ou `maxSeconds`, ou jusqu'à ce qu'il soit bloqué). */
 export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds = 120): PilotRun {
@@ -291,6 +329,14 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   let maxV2 = 0;
   let fastTicks = 0;
   const flatTop = (opts.params ?? DEFAULT_CAR_PARAMS).maxSpeed;
+  // Bord de chaque rampe de saut : on note la vitesse au moment où la voiture franchit ce plan.
+  const jumps: JumpPass[] = trackJumps(track, opts.params).map((jump) => ({ jump, speed: 0 }));
+  const lips = jumps.map(({ jump }) => {
+    const b = track.blocks[jump.kick]!;
+    const pt = { x: 0, z: 0 };
+    blockPoint(b, CELL / 2, CELL, pt);
+    return { x: pt.x, z: pt.z, fx: dirX(b.dir), fz: dirZ(b.dir) };
+  });
   while (race.finishMs < 0 && ticks < maxTicks && race.respawns === 0) {
     const input = drive(race);
     recorder.record(input);
@@ -298,6 +344,14 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     ticks++;
     // Bloqué : presque à l'arrêt pendant 3 s après le départ.
     const v2 = race.car.vx * race.car.vx + race.car.vz * race.car.vz;
+    for (let j = 0; j < jumps.length; j++) {
+      const lip = lips[j]!;
+      if (jumps[j]!.speed > 0) continue;
+      const dx = race.car.x - lip.x;
+      const dz = race.car.z - lip.z;
+      // Le plan du bord, mais seulement près de la rampe (une autre partie du circuit peut passer du bon côté du plan).
+      if (dx * dx + dz * dz < 400 && dx * lip.fx + dz * lip.fz >= 0) jumps[j]!.speed = Math.sqrt(v2);
+    }
     if (v2 > maxV2) maxV2 = v2;
     if (v2 > flatTop * flatTop) fastTicks++;
     stuck = v2 < 0.25 && ticks > 2 * TICK_RATE ? stuck + 1 : 0;
@@ -311,6 +365,8 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     replay: recorder.toReplay(track.id),
     maxSpeed: Math.sqrt(maxV2),
     fastTicks,
+    jumps,
+    jumpsOk: jumps.every(({ jump, speed }) => speed >= jump.minSpeed * JUMP_ENTRY_MARGIN && speed <= jump.maxSpeed),
   };
 }
 
@@ -322,7 +378,7 @@ export function bestPilotRun(track: Track): PilotRun | null {
   let best: PilotRun | null = null;
   for (const grip of PILOT_GRIPS) {
     const run = runPilot(track, { grip });
-    if (run.valid && (!best || run.finishMs < best.finishMs)) best = run;
+    if (run.valid && run.jumpsOk && (!best || run.finishMs < best.finishMs)) best = run;
   }
   return best;
 }

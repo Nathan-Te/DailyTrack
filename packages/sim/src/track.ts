@@ -23,12 +23,18 @@ export const BUMP_HEIGHT = 1;
 export const BUMP_HALF_LENGTH = 8;
 export const JUMP_RISE = 3; // hauteur du tremplin
 export const JUMP_LIP = 12; // position du bord du tremplin (le sol retombe d'un coup après)
+/** Un niveau de relief, en mètres : montées et descentes se comptent en niveaux (lot 17). */
+export const LEVEL = SLOPE_RISE;
+/** Rampe de saut (bloc K) : plate jusqu'à cette abscisse, puis monte de `LEVEL` sur le reste de la cellule (pente 0,25, comme le tremplin J). */
+export const KICK_START = 16;
 export const BOOST_HALF_WIDTH = 3.5;
 export const BOOST_HALF_LENGTH = 4;
+/** Profondeur sous la route la plus basse à partir de laquelle la voiture est perdue (m). */
+export const FALL_DEPTH = 4;
 /** Hauteur « sans sol » : le vide. */
 export const NO_GROUND = -1e9;
 
-export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "boost" | "turbo" | "cut";
+export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "kick" | "gap" | "boost" | "turbo" | "cut";
 
 /**
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
@@ -50,6 +56,10 @@ export interface Block {
   kind: BlockKind;
   /** Hauteur de la route à l'entrée du bloc. */
   y0: number;
+  /** Dénivelé du bloc, de son entrée à sa sortie (m) : `LEVEL` × niveaux pour une montée ou une descente (lot 17), celui du vide pour un `gap`. */
+  rise: number;
+  /** Sans rebords (modificateur `o`) : la voiture peut quitter la route par le côté et tomber. */
+  open: boolean;
   mark?: Mark;
   /** Revêtement du bloc. */
   surface: SurfaceKind;
@@ -104,9 +114,25 @@ export const BLOCK_LETTERS: Record<string, BlockKind> = {
   D: "down",
   B: "bump",
   J: "jump",
+  K: "kick",
+  G: "gap",
   P: "boost",
   T: "turbo",
   C: "cut",
+};
+/**
+ * Blocs de relief plus marqués (lot 17), `lettre → (type, dénivelé en m)` : `U2` / `U3` montent de 2 / 3 niveaux (8 / 12 m) sur
+ * une cellule, `D2` / `D3` descendent d'autant. `GU` / `GD` / `GD2` sont un vide (`G`) dont l'autre bord est 1 niveau plus haut,
+ * 1 niveau plus bas, 2 niveaux plus bas : le « saut avec changement de niveau ».
+ */
+export const RISE_LETTERS: Record<string, { kind: BlockKind; rise: number }> = {
+  U2: { kind: "up", rise: 2 * SLOPE_RISE },
+  U3: { kind: "up", rise: 3 * SLOPE_RISE },
+  D2: { kind: "down", rise: -2 * SLOPE_RISE },
+  D3: { kind: "down", rise: -3 * SLOPE_RISE },
+  GU: { kind: "gap", rise: SLOPE_RISE },
+  GD: { kind: "gap", rise: -SLOPE_RISE },
+  GD2: { kind: "gap", rise: -2 * SLOPE_RISE },
 };
 const MARKS: Record<string, Mark> = { start: "start", cp: "checkpoint", finish: "finish" };
 
@@ -209,9 +235,9 @@ export function blockHeight(b: Block, q: number): number {
   const qq = q < 0 ? 0 : q > CELL ? CELL : q;
   switch (b.kind) {
     case "up":
-      return b.y0 + (SLOPE_RISE * qq) / CELL;
     case "down":
-      return b.y0 - (SLOPE_RISE * qq) / CELL;
+    case "gap": // pas de sol : la droite qui relie les deux bords sert à la caméra et aux vues d'ensemble
+      return b.y0 + (b.rise * qq) / CELL;
     case "bump": {
       const t = (qq - CELL / 2) / BUMP_HALF_LENGTH;
       if (t <= -1 || t >= 1) return b.y0;
@@ -220,6 +246,8 @@ export function blockHeight(b: Block, q: number): number {
     }
     case "jump":
       return qq < JUMP_LIP ? b.y0 + (JUMP_RISE * qq) / JUMP_LIP : b.y0;
+    case "kick":
+      return qq > KICK_START ? b.y0 + (b.rise * (qq - KICK_START)) / (CELL - KICK_START) : b.y0;
     default:
       return b.y0;
   }
@@ -230,9 +258,9 @@ export function blockSlope(b: Block, q: number): number {
   const qq = q < 0 ? 0 : q > CELL ? CELL : q;
   switch (b.kind) {
     case "up":
-      return SLOPE_RISE / CELL;
     case "down":
-      return -SLOPE_RISE / CELL;
+    case "gap":
+      return b.rise / CELL;
     case "bump": {
       const t = (qq - CELL / 2) / BUMP_HALF_LENGTH;
       if (t <= -1 || t >= 1) return 0;
@@ -240,14 +268,20 @@ export function blockSlope(b: Block, q: number): number {
     }
     case "jump":
       return qq < JUMP_LIP ? JUMP_RISE / JUMP_LIP : 0;
+    case "kick":
+      return qq > KICK_START ? b.rise / (CELL - KICK_START) : 0;
     default:
       return 0;
   }
 }
 
-/** Dénivelé d'un bloc, de son entrée à sa sortie. */
-export function exitDelta(kind: BlockKind): number {
-  return kind === "up" ? SLOPE_RISE : kind === "down" ? -SLOPE_RISE : 0;
+/**
+ * Dénivelé d'un bloc, de son entrée à sa sortie : celui qu'on lui a écrit (`rise`, pour `U2`, `GD`…), sinon celui de son type
+ * (une montée ou une rampe de saut : un niveau ; une descente : un niveau en moins ; tout le reste : plat).
+ */
+export function exitDelta(kind: BlockKind, rise?: number): number {
+  if (rise !== undefined) return rise;
+  return kind === "up" || kind === "kick" ? SLOPE_RISE : kind === "down" ? -SLOPE_RISE : 0;
 }
 
 // --- Largeurs ---------------------------------------------------------------------------------
@@ -284,6 +318,10 @@ export interface ParsedToken {
   mark?: Mark;
   /** Largeur écrite sur le bloc (entrée, sortie), en mètres ; absente : le bloc garde la largeur du précédent. */
   width?: { w0: number; w1: number };
+  /** Dénivelé écrit sur le bloc (`U2`, `D3`, `GD`…), en mètres ; absent : celui du type (voir `exitDelta`). */
+  rise?: number;
+  /** Sans rebords (modificateur `o`) ; absent = avec rebords. */
+  open?: true;
 }
 
 /**
@@ -295,7 +333,8 @@ export interface ParsedToken {
 export function parseToken(token: string, index = 0): ParsedToken {
   const [body = "", markName] = token.split("@");
   const [letter = "", mods = ""] = body.split("/");
-  const kind = BLOCK_LETTERS[letter];
+  const shaped = RISE_LETTERS[letter];
+  const kind = shaped ? shaped.kind : BLOCK_LETTERS[letter];
   if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
   let mark: Mark | undefined;
   if (markName !== undefined) {
@@ -305,8 +344,10 @@ export function parseToken(token: string, index = 0): ParsedToken {
   let surface: SurfaceKind = "road";
   let banked = false;
   let width: { w0: number; w1: number } | undefined;
+  let open = false;
   for (const m of mods.match(/[enl]>[enl]|./g) ?? []) {
     if (m === "b") banked = true;
+    else if (m === "o") open = true;
     else if (SURFACE_LETTERS[m]) {
       if (surface !== "road") throw new Error(`Deux revêtements sur « ${token} » (position ${index})`);
       surface = SURFACE_LETTERS[m]!;
@@ -319,7 +360,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
     } else throw new Error(`Modificateur inconnu « ${m} » dans « ${token} » (position ${index})`);
   }
   if (banked && !isCurve(kind)) throw new Error(`Seul un virage peut être relevé (${token})`);
-  return { kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}) };
+  if (open && kind === "gap") throw new Error(`Un vide n'a pas de rebords à ouvrir (${token})`);
+  return { kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}) };
 }
 
 // --- Virages relevés --------------------------------------------------------------------------
@@ -374,7 +416,8 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
  *
  * Blocs : S droit · L virage à gauche · R virage à droite · L2 / R2 virage large (2 × 2 cellules) · L3 / R3 virage ample (3 × 3) · U montée · D descente · B bosse ·
  * J tremplin · P plaque d'accélération · T super turbo · C moteur coupé (jusqu'au prochain point de contrôle). Modificateurs
- * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé. Repères : `@start` (premier bloc), `@cp` (point de contrôle,
+ * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé, `o` sans rebords. Relief (lot 17) : `U2` `U3` `D2` `D3`
+ * (2 ou 3 niveaux sur une cellule), `K` rampe de saut, `G` vide (`GU` `GD` `GD2` : l'autre bord plus haut ou plus bas). Repères : `@start` (premier bloc), `@cp` (point de contrôle,
  * sur un S), `@finish` (dernier bloc). Départ et arrivée sont sur des blocs S.
  */
 export function parseTrack(id: string, spec: string): Track {
@@ -388,7 +431,7 @@ export function parseTrack(id: string, spec: string): Track {
   let width: number = ROAD_WIDTH;
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -400,8 +443,10 @@ export function parseTrack(id: string, spec: string): Track {
     if (mark && kind !== "straight") throw new Error(`Un repère n'est permis que sur un bloc S (${token})`);
     if (mark === "start" && index !== 0) throw new Error("Le départ doit être le premier bloc");
     if (mark === "finish" && index !== tokens.length - 1) throw new Error("L'arrivée doit être le dernier bloc");
+    if (open && (mark === "start" || mark === "finish")) throw new Error(`Le départ et l'arrivée gardent leurs rebords (${token})`);
 
-    const block: Block = { index, cx, cz, dir, kind, y0: y, surface, banked, w0, w1, ...(mark ? { mark } : {}) };
+    const delta = exitDelta(kind, rise);
+    const block: Block = { index, cx, cz, dir, kind, y0: y, rise: delta, open: open === true, surface, banked, w0, w1, ...(mark ? { mark } : {}) };
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
       const key = cellKey(x, z);
@@ -410,7 +455,7 @@ export function parseTrack(id: string, spec: string): Track {
     }
     blocks.push(block);
 
-    y += exitDelta(kind);
+    y += delta;
     ({ cx, cz, dir } = placed.next);
   });
 
@@ -441,8 +486,8 @@ export function parseTrack(id: string, spec: string): Track {
   const spawn: Spawn = { x: pt.x, y: first.y0, z: pt.z, yaw: DIR_YAW[first.dir] };
 
   let minY = 0;
-  for (const b of blocks) minY = Math.min(minY, b.y0, b.y0 + exitDelta(b.kind));
-  return { id, blocks, cells, gates, spawn, voidY: minY - 8 };
+  for (const b of blocks) minY = Math.min(minY, b.y0, b.y0 + b.rise);
+  return { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH };
 }
 
 // --- Ligne médiane ----------------------------------------------------------------------------
@@ -478,7 +523,7 @@ export function trackCenterline(track: Track): Centerline {
         push(b, cp + side * r * cos(a), r * sin(a));
       }
     } else {
-      const steps = b.kind === "bump" || b.kind === "jump" ? 8 : 2;
+      const steps = b.kind === "bump" || b.kind === "jump" || b.kind === "kick" ? 8 : 2;
       for (let i = 0; i <= steps; i++) push(b, CELL / 2, (CELL * i) / steps);
     }
   }

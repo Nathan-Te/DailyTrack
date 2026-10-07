@@ -7,6 +7,7 @@ export * from "./car";
 export * from "./track";
 export * from "./world";
 export * from "./race";
+export * from "./jump";
 export * from "./circuits";
 export * from "./replay";
 export * from "./rng";
