@@ -123,7 +123,7 @@ export interface CarParams {
   boostAccel: number;
   /** Vitesse plafond sous l'effet d'une plaque (m/s). */
   boostMaxSpeed: number;
-  /** Retour progressif à la vitesse de pointe une fois la plaque épuisée (m/s²). */
+  /** Traînée au-delà de la pointe (m/s²) : `overspeedDrag × ((vitesse ÷ pointe)³ − 1)`. Pas de plafond dur : retombée progressive après une plaque ou un turbo. */
   overspeedDrag: number;
   /** Super turbo (bloc T) : durée (pas), poussée (m/s²) et vitesse plafond (m/s) — plus fort et plus long que la plaque. */
   turboTicks: number;
@@ -157,7 +157,7 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   suspDamping: 5,
   cgHeight: 0.35,
   gravity: 24.6,
-  slopeGravity: 10,
+  slopeGravity: 40,
   airDamping: 6,
   airLevel: 9,
   landTolerance: 0.15,
@@ -167,11 +167,11 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   wallFriction: 0.3,
   boostTicks: 108,
   boostAccel: 30,
-  boostMaxSpeed: 58,
-  overspeedDrag: 14,
+  boostMaxSpeed: 66,
+  overspeedDrag: 2.5,
   turboTicks: 180,
   turboAccel: 42,
-  turboMaxSpeed: 68,
+  turboMaxSpeed: 88,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -474,7 +474,12 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     if (car.turbo > 0 && u < p.turboMaxSpeed) drive += p.turboAccel;
     ax += drive * grip;
     ax -= u > 0 ? rolling : u < 0 ? -rolling : 0;
-    if (u > p.maxSpeed && car.boost <= 0 && car.turbo <= 0) ax -= p.overspeedDrag;
+    // Au-delà de la pointe (descente, plaque, turbo) : une traînée en cube du rapport vitesse ÷ pointe, nulle à la pointe.
+    // Ce n'est plus un plafond dur : la gravité et les poussées vont plus haut, et la voiture retombe progressivement.
+    if (u > p.maxSpeed) {
+      const ratio = u / p.maxSpeed;
+      ax -= p.overspeedDrag * (ratio * ratio * ratio - 1);
+    }
     ax -= p.slopeGravity * slope;
     // Pente latérale (virage relevé) : la pesanteur pousse vers le bas de la pente, donc vers l'intérieur du virage.
     ay -= p.gravity * slopeSide;

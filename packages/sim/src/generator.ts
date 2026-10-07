@@ -1,6 +1,7 @@
 import { GENERATOR_VERSION } from "./constants";
 import { circuitNumber, formatDay } from "./calendar";
 import { bestPilotRun } from "./autopilot";
+import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
 import { themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
@@ -22,6 +23,11 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 export const AUTHOR_MIN_MS = 30_000;
 export const AUTHOR_MAX_MS = 40_000;
 export const MAX_ATTEMPTS = 40;
+/**
+ * Vitesse que le pilote doit dépasser au moins une fois (lot 15) : 30 % au-dessus de la pointe du plat. Un circuit sans
+ * portion rapide (descente, turbos, grande courbe prise à fond) est refusé, graine voisine.
+ */
+export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
 
 /** Seuils des médailles, en multiples du temps de l'auteur. */
 export const MEDAL_FACTORS = { gold: 1.08, silver: 1.2, bronze: 1.4 } as const;
@@ -116,13 +122,34 @@ const MAX_HILLS = 2;
 const PAD_RUNOUT = 2;
 /** Idem pour un super turbo (poussée 42 m/s² pendant 1,5 s, jusqu'à 68 m/s) : bien plus de dégagement. */
 const TURBO_RUNOUT = 5;
-/** Créneaux calme + virage d'un circuit : 5 à 7 (8 à 11 avant le lot 12, quand presque tous les virages étaient serrés). */
-const TURNS_MIN = 5;
+/** Créneaux calme + virage d'un circuit : 4 à 6 (5 à 7 au lot 12, 8 à 11 avant : les portions rapides du lot 15 allongent le circuit en cellules, donc un créneau de moins). */
+const TURNS_MIN = 4;
 const TURNS_SPAN = 3;
 /** Virages serrés (une cellule, rayon 16 m) : au plus 2 par circuit passage signature compris, jamais deux d'affilée. */
 const MAX_TIGHT = 2;
 
 type Highlight = "jump" | "chicane" | "hairpin";
+
+/**
+ * Portions rapides (lot 15) : un créneau calme qui lance la voiture bien au-delà de la pointe du plat.
+ * - `chain` : deux super turbos à trois blocs d'écart sur une ligne droite (le second prolonge le premier) ;
+ * - `drop` : une plaque en haut d'une longue descente (six blocs) ;
+ * - `bank` : un super turbo, puis une grande courbe relevée prise à fond (virage de la même case).
+ * Chacune garde assez de lignes droites derrière elle pour freiner (`TURBO_RUNOUT`, `PAD_RUNOUT`).
+ */
+type Fast = "chain" | "drop" | "bank";
+const FAST_KINDS: readonly Fast[] = ["chain", "drop", "bank"];
+
+function fastCalm(kind: Fast): string[] {
+  switch (kind) {
+    case "chain":
+      return ["S", "T", "S", "S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")];
+    case "drop":
+      return ["S", "P", "D", "D", "D", "D", "D", "D", ...Array<string>(PAD_RUNOUT).fill("S")];
+    case "bank":
+      return ["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")];
+  }
+}
 
 /** Ajoute un modificateur (`g`, `t`, `h`, `b`) à un bloc de la notation, avant son repère éventuel. */
 function withMod(token: string, mod: string): string {
@@ -209,9 +236,16 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     for (let tries = 0; tries < turns && slots.has(i); tries++) i = (i + 1) % limit;
     slots.set(i, h);
   }
+  // Portions rapides : un ou deux créneaux calmes de plus, distincts du tremplin (un décollage coupe tout freinage).
+  const fastSlot = new Map<number, Fast>();
+  for (const kind of rng.shuffle<Fast>([...FAST_KINDS]).slice(0, 1 + rng.int(2))) {
+    let i = rng.int(turns - 1);
+    for (let tries = 0; tries < turns && (fastSlot.has(i) || calmSlot.has(i)); tries++) i = (i + 1) % (turns - 1);
+    if (!fastSlot.has(i) && !calmSlot.has(i)) fastSlot.set(i, kind);
+  }
   // Passage signature du thème : un créneau (calme + virage) qui ne porte aucun autre passage marquant.
   let signatureSlot = 1 + rng.int(turns - 2);
-  for (let tries = 0; tries < turns && (calmSlot.has(signatureSlot) || turnSlot.has(signatureSlot)); tries++) {
+  for (let tries = 0; tries < turns && (calmSlot.has(signatureSlot) || turnSlot.has(signatureSlot) || fastSlot.has(signatureSlot)); tries++) {
     signatureSlot = signatureSlot >= turns - 2 ? 1 : signatureSlot + 1;
   }
 
@@ -238,12 +272,15 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     const banked = rng.chance(theme.bankChance); // virage relevé ce tour-ci
     const bank = (seg: string[]) => (banked ? seg.map((t) => (isCurve(parseToken(t).kind) ? withMod(t, "b") : t)) : seg);
     const signature = i === signatureSlot ? signatureParts(theme.signature, L, R, width) : null;
+    const fast = signature ? undefined : fastSlot.get(i);
 
     // Créneau calme.
     const calmHighlight = calmSlot.get(i);
     const calm: string[][] = [];
     if (signature) {
       calm.push(signature.calm);
+    } else if (fast) {
+      calm.push(fastCalm(fast));
     } else if (calmHighlight === "jump") {
       calm.push(["S", "J", "S", "S"]);
     } else {
@@ -261,7 +298,7 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     const candidates = target ? calm.map((seg) => [transition(width, target), ...seg]) : [];
     candidates.push(...calm);
     // Repli sur une ligne droite simple, sauf pour un passage marquant : s'il ne tient pas, la tentative échoue.
-    if (!calmHighlight && !signature) candidates.push(["S"], ["S", "S"]);
+    if (!calmHighlight && !signature && !fast) candidates.push(["S"], ["S", "S"]);
     const calmChoice = candidates.find((seg) => place(w, seg));
     if (!calmChoice) return null;
     if (w.tokens[w.tokens.length - 1] === "D" || w.tokens[w.tokens.length - 1] === "U") hills++;
@@ -281,6 +318,7 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     if (signature?.turn) segments = signature.turn;
     else if (turnHighlight === "chicane") segments = bankAll(wideS, bank); // S large
     else if (turnHighlight === "hairpin") segments = bankAll([[L + "2", L + "2"], [R + "2", R + "2"]], bank); // demi-tour large
+    else if (fast === "bank") segments = [[L + "3/b"], [R + "3/b"], [L + "2/b"], [R + "2/b"]]; // grande courbe relevée prise à fond
     else {
       // Virage simple : le plus souvent large (2 × 2 cellules) ou ample (3 × 3), parfois un S large ou, rarement, serré.
       const roll = rng.int(100);
@@ -401,7 +439,7 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     if (!spec) continue;
     const track = parseTrack(id, spec);
     const pilot = bestPilotRun(track);
-    if (!pilot || pilot.finishMs < AUTHOR_MIN_MS || pilot.finishMs > AUTHOR_MAX_MS) continue;
+    if (!pilot || pilot.finishMs < AUTHOR_MIN_MS || pilot.finishMs > AUTHOR_MAX_MS || pilot.maxSpeed < FAST_PEAK) continue;
     return {
       day,
       date: formatDay(day),

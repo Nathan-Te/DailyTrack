@@ -387,12 +387,13 @@ describe("plaque d'accélération", () => {
     }
     expect(peak).toBeGreaterThan(P.maxSpeed + 8);
     expect(peak).toBeLessThanOrEqual(P.boostMaxSpeed + 0.5);
-    // Retour : 1 s après le pic on est encore au-dessus de la pointe, puis on y revient.
+    // Retour : 1 s après le pic on est encore très au-dessus de la pointe, puis la traînée ramène progressivement vers elle
+    // (plus de plafond dur : lot 15).
     const after = createRace(track);
     for (let i = 0; i <= peakAt + TICK_RATE; i++) stepRace(after, GAS);
-    expect(carSpeed(after.car)).toBeGreaterThan(P.maxSpeed + 1);
-    for (let i = 0; i < 3 * TICK_RATE; i++) stepRace(after, GAS);
-    expect(carSpeed(after.car)).toBeLessThan(P.maxSpeed + 0.5);
+    expect(carSpeed(after.car)).toBeGreaterThan(P.maxSpeed + 8);
+    for (let i = 0; i < 11 * TICK_RATE; i++) stepRace(after, GAS);
+    expect(carSpeed(after.car)).toBeLessThan(P.maxSpeed * 1.1);
   });
 });
 

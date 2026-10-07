@@ -48,6 +48,7 @@ import {
   type Track,
 } from "@cdj/sim";
 import { PALETTE_LABELS } from "./labels";
+import { fastZones, postFractions } from "./speedFeel";
 
 type V3 = [number, number, number];
 
@@ -474,6 +475,70 @@ function onBlock(b: Block, lat: number, t: number, lift: number): V3 {
   return world(b, CELL / 2 + lat, q, blockHeight(b, q) + lift);
 }
 
+
+// --- Sensation de vitesse (lot 15) : poteaux, arches, chevrons ---------------------------------------------------
+// Des éléments réguliers qui défilent au bord de la piste (décor seulement : aucune collision, rien dans `sim`). Plus serrés
+// dans une portion rapide (`fastZones`), où s'ajoutent des arches et des chevrons peints au sol. Rangés dans le décor
+// « lourd » : masqués à la qualité basse, absents des miniatures.
+
+/** Poutre entre deux points `a` et `b` (à la même hauteur), épaisse de `y1 - y0`, profonde de `2 × depth` le long de `fwd`. */
+function beam(g: Builder, a: V3, b: V3, fwd: [number, number], depth: number, y0: number, y1: number, color: number) {
+  const pt = (e: V3, f: number, y: number): V3 => [e[0] + fwd[0] * f * depth, y, e[2] + fwd[1] * f * depth];
+  const c = (f: number, y: number): [V3, V3] => [pt(a, f, y), pt(b, f, y)];
+  const [fa0, fb0] = c(1, y0);
+  const [fa1, fb1] = c(1, y1);
+  const [ba0, bb0] = c(-1, y0);
+  const [ba1, bb1] = c(-1, y1);
+  g.quad(fa0, fb0, fb1, fa1, color);
+  g.quad(bb0, ba0, ba1, bb1, color);
+  g.quad(fa1, fb1, bb1, ba1, shade(color, 1.15));
+  g.quad(ba0, bb0, fb0, fa0, shade(color, 0.7));
+  g.quad(ba0, fa0, fa1, ba1, color);
+  g.quad(fb0, bb0, bb1, fb1, color);
+}
+
+/** Demi-largeur de la route au point `t` du bloc. */
+const halfWidthAt = (b: Block, t: number) => (isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, t * CELL));
+
+/** Poteaux des deux rives (sur le chapeau du rebord), et, dans une portion rapide, arches et chevrons. */
+function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean) {
+  if (b.kind === "jump") return;
+  const top = fast ? 3.4 : 2.4;
+  for (const t of postFractions(fast)) {
+    const hw = halfWidthAt(b, t) + 0.3;
+    for (const side of [-1, 1]) {
+      const p = onBlock(b, side * hw, t, WALL_HEIGHT);
+      g.prism(p[0], p[1], p[2], 0.16, 0.12, top, 4, shade(pal.wallB, 0.95), fast ? pal.boostMark : pal.wallA, 0.78);
+    }
+  }
+  if (!fast) return;
+  // Arche au milieu d'un bloc sur deux : deux piliers et une poutre en travers, haute de 7 m.
+  if (b.index % 2 === 0) {
+    const hw = halfWidthAt(b, 0.5) + 0.4;
+    const l = onBlock(b, hw, 0.5, WALL_HEIGHT);
+    const r = onBlock(b, -hw, 0.5, WALL_HEIGHT);
+    const ahead = onBlock(b, 0, 0.52, 0);
+    const behind = onBlock(b, 0, 0.48, 0);
+    const len = Math.hypot(ahead[0] - behind[0], ahead[2] - behind[2]) || 1;
+    const fwd: [number, number] = [(ahead[0] - behind[0]) / len, (ahead[2] - behind[2]) / len];
+    const h = 7.2;
+    for (const e of [l, r]) g.prism(e[0], e[1], e[2], 0.34, 0.26, h, 4, shade(pal.wallB, 0.85), pal.wallA, 0.78);
+    beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.4, l[1] + h - 0.5, l[1] + h + 0.3, pal.wallA);
+    beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.42, l[1] + h - 0.12, l[1] + h + 0.06, pal.boostMark);
+  }
+  // Chevrons peints au centre, tous les 8 m, entre les tirets (route droite ou pente, sans effet de piste).
+  if (b.surface === "road" && !isCurve(b.kind) && (b.kind === "straight" || b.kind === "down" || b.kind === "up")) {
+    const hw = Math.min(3.2, blockHalfWidth(b, CELL / 2) * 0.35);
+    for (const qc of [8, 16, 24]) {
+      const y = blockHeight(b, qc) + 0.05;
+      g.tri(world(b, CELL / 2, qc + 1.5, y), world(b, CELL / 2 + hw, qc - 1, y), world(b, CELL / 2 + hw * 0.55, qc - 1.2, y), pal.dash);
+      g.tri(world(b, CELL / 2, qc + 1.5, y), world(b, CELL / 2 + hw * 0.55, qc - 1.2, y), world(b, CELL / 2, qc + 0.1, y), pal.dash);
+      g.tri(world(b, CELL / 2, qc + 1.5, y), world(b, CELL / 2, qc + 0.1, y), world(b, CELL / 2 - hw * 0.55, qc - 1.2, y), pal.dash);
+      g.tri(world(b, CELL / 2, qc + 1.5, y), world(b, CELL / 2 - hw * 0.55, qc - 1.2, y), world(b, CELL / 2 - hw, qc - 1, y), pal.dash);
+    }
+  }
+}
+
 /** Motif léger d'un revêtement : traces de roues (terre), éclats (glace), brins (herbe). Pas de texture. */
 function addSurfaceMarks(g: Builder, b: Block) {
   if (b.surface === "road") return;
@@ -844,6 +909,8 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const pal = PALETTE_DEFS[paletteName];
   const floorY = track.voidY;
   const g = new Builder();
+  const speedG = new Builder();
+  const fast = fastZones(track);
 
   for (const b of track.blocks) {
     const color = b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!;
@@ -867,6 +934,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
     if (b.kind === "boost") addBoostPad(g, pal, b);
     if (b.kind === "turbo") addTurboPad(g, b);
     if (b.kind === "cut") addCutStrip(g, b);
+    if (!options.aerial) addSpeedMarks(speedG, pal, b, fast[b.index] ?? false);
     if (b.mark === "checkpoint") addGate(g, pal, b, false);
     if (b.mark === "finish") addGate(g, pal, b, true);
   }
@@ -914,8 +982,9 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   scene.add(new Mesh(g.geometry(), mat));
   const decorMesh = new Mesh(decorG.geometry(), mat);
   const glowMesh = new Mesh(glowG.geometry(), new MeshBasicMaterial({ vertexColors: true }));
-  decorMesh.userData.heavy = glowMesh.userData.heavy = true;
-  scene.add(decorMesh, glowMesh);
+  const speedMesh = new Mesh(speedG.geometry(), mat);
+  decorMesh.userData.heavy = glowMesh.userData.heavy = speedMesh.userData.heavy = true;
+  scene.add(decorMesh, glowMesh, speedMesh);
 
   // Ciel et montagnes suivent la caméra (donc la voiture) : toujours à l'horizon.
   const backdrop = new Group();

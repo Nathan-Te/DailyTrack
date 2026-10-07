@@ -1,10 +1,12 @@
 import {
   AUTHOR_MAX_MS,
   AUTHOR_MIN_MS,
+  FAST_PEAK,
   GENERATOR_VERSION,
   MAX_ATTEMPTS,
   SIM_VERSION,
   THEME_NAMES,
+  DEFAULT_CAR_PARAMS,
   bestPilotRun,
   composeSpec,
   dailyCircuit,
@@ -65,7 +67,7 @@ console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION
 
 // --- 1. Soixante dates -------------------------------------------------------------------------
 
-const rows: { c: DailyCircuit; genMs: number; tight: { total: number; run: number }; widths: number[]; replayMs: number }[] = [];
+const rows: { c: DailyCircuit; genMs: number; tight: { total: number; run: number }; widths: number[]; replayMs: number; maxSpeed: number; fastShare: number }[] = [];
 for (let i = 0; i < DAYS; i++) {
   const t0 = performance.now();
   const c = dailyCircuit(FIRST_DAY + i);
@@ -75,7 +77,15 @@ for (let i = 0; i < DAYS; i++) {
   const reps = pilot ? 3 : 0;
   for (let k = 0; k < reps; k++) replayRace(c.track, pilot!.replay);
   const replayMs = reps ? (performance.now() - t1 - 0) / reps : 0;
-  rows.push({ c, genMs, tight: tightTurns(c.track.blocks), widths: widthsOf(c.track.blocks), replayMs });
+  rows.push({
+    c,
+    genMs,
+    tight: tightTurns(c.track.blocks),
+    widths: widthsOf(c.track.blocks),
+    replayMs,
+    maxSpeed: pilot?.maxSpeed ?? 0,
+    fastShare: pilot ? pilot.fastTicks / pilot.ticks : 0,
+  });
 }
 const times = rows.map((r) => r.c.authorMs);
 const inWindow = times.filter((t) => t >= 30_000 && t <= 40_000).length;
@@ -89,6 +99,11 @@ console.log(`tentative retenue : moyenne ${mean(rows.map((r) => r.c.attempt)).to
 console.log(`blocs : moyenne ${mean(rows.map((r) => r.c.track.blocks.length)).toFixed(1)} · virages larges (L2/R2) : ${mean(rows.map((r) => r.c.track.blocks.filter((b) => isWide(b.kind)).length)).toFixed(1)} par circuit`);
 console.log(`largeurs : au moins deux par circuit : ${rows.filter((r) => r.widths.length >= 2).length}/${rows.length} ; largeurs vues : ${[...new Set(rows.flatMap((r) => r.widths))].sort((a, b) => a - b).join(", ")} m`);
 console.log(`virages serrés : moyenne ${mean(rows.map((r) => r.tight.total)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.tight.total))} ; deux d'affilée : ${rows.filter((r) => r.tight.run >= 2).length} circuit(s)`);
+const peaks = rows.map((r) => r.maxSpeed);
+const flat = DEFAULT_CAR_PARAMS.maxSpeed;
+console.log(`vitesse maximale du pilote : min ${Math.min(...peaks).toFixed(1)} · moyenne ${mean(peaks).toFixed(1)} · max ${Math.max(...peaks).toFixed(1)} m/s (pointe du plat ${flat} m/s) ; ≥ +30 % (${FAST_PEAK.toFixed(1)} m/s) : ${peaks.filter((v) => v >= FAST_PEAK).length}/${rows.length}`);
+const shares = rows.map((r) => r.fastShare);
+console.log(`part du temps au-delà de la pointe du plat : moyenne ${(100 * mean(shares)).toFixed(0)} % · min ${(100 * Math.min(...shares)).toFixed(0)} % · max ${(100 * Math.max(...shares)).toFixed(0)} %`);
 const gen = rows.map((r) => r.genMs);
 console.log(`génération : moyenne ${mean(gen).toFixed(0)} ms · max ${Math.max(...gen).toFixed(0)} ms`);
 const rep = rows.map((r) => r.replayMs).filter((x) => x > 0);
@@ -103,7 +118,7 @@ console.log(`par thème (du jour) : ${THEME_NAMES.map((n) => `${n} ${byTheme.get
 // --- 2. Taux de validation par thème -----------------------------------------------------------
 
 console.log(`\n## Taux de validation par thème (${VALIDATION_DAYS} dates × ${VALIDATION_ATTEMPTS} tentatives, thème forcé)`);
-console.log("thème      | construit | pilote finit | dans la fenêtre | durée moyenne | génération/tentative");
+console.log("thème      | construit | pilote finit | dans la fenêtre | portion rapide | durée moyenne | vitesse max | génération/tentative");
 for (const name of THEME_NAMES) {
   const theme = themeByName(name)!;
   let total = 0;
@@ -111,6 +126,8 @@ for (const name of THEME_NAMES) {
   let finished = 0;
   let accepted = 0;
   const durations: number[] = [];
+  const peaksTheme: number[] = [];
+  let accepted2 = 0; // dans la fenêtre ET au moins une portion rapide
   const t0 = performance.now();
   for (let d = 0; d < VALIDATION_DAYS; d++) {
     for (let a = 0; a < VALIDATION_ATTEMPTS; a++) {
@@ -122,12 +139,16 @@ for (const name of THEME_NAMES) {
       if (!pilot) continue;
       finished++;
       durations.push(pilot.finishMs);
-      if (pilot.finishMs >= AUTHOR_MIN_MS && pilot.finishMs <= AUTHOR_MAX_MS) accepted++;
+      peaksTheme.push(pilot.maxSpeed);
+      if (pilot.finishMs >= AUTHOR_MIN_MS && pilot.finishMs <= AUTHOR_MAX_MS) {
+        accepted++;
+        if (pilot.maxSpeed >= FAST_PEAK) accepted2++;
+      }
     }
   }
   const per = (performance.now() - t0) / total;
   console.log(
-    `${name.padEnd(10)} | ${pct(composed, total).padStart(9)} | ${pct(finished, composed).padStart(12)} | ${pct(accepted, composed).padStart(15)} | ${durations.length ? sec(mean(durations)).padStart(10) + " s" : "—".padStart(12)} | ${per.toFixed(0)} ms`,
+    `${name.padEnd(10)} | ${pct(composed, total).padStart(9)} | ${pct(finished, composed).padStart(12)} | ${pct(accepted, composed).padStart(15)} | ${pct(accepted2, composed).padStart(14)} | ${durations.length ? sec(mean(durations)).padStart(10) + " s" : "—".padStart(12)} | ${peaksTheme.length ? mean(peaksTheme).toFixed(0).padStart(7) + " m/s" : "—".padStart(11)} | ${per.toFixed(0)} ms`,
   );
 }
-console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits.)`);
+console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits ; « portion rapide » : dans la fenêtre ET pilote ≥ +30 % de la pointe du plat, sur les circuits construits.)`);

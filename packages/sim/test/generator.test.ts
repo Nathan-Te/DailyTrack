@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTHOR_MAX_MS,
   AUTHOR_MIN_MS,
+  FAST_PEAK,
   GENERATOR_VERSION,
   daysFromCivil,
   PALETTES,
@@ -222,8 +223,9 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
       const widths = DAYS.map((d) => circuit(d)).filter((c) => c.theme === theme).flatMap((c) => c.track.blocks.map((b) => (b.w0 + b.w1) / 2));
       return widths.reduce((a, b) => a + b, 0) / widths.length;
     };
-    expect(mean("stade")).toBeGreaterThan(mean("rallye") + 3);
-    expect(mean("banquise")).toBeGreaterThan(mean("campagne") + 3);
+    // Écart d'au moins 2 m (3 m au lot 12 : les circuits du lot 15 ont un créneau de moins, donc moins de changements de largeur).
+    expect(mean("stade")).toBeGreaterThan(mean("rallye") + 2);
+    expect(mean("banquise")).toBeGreaterThan(mean("campagne") + 2);
     expect(mean("nuit")).toBeGreaterThan(mean("rallye"));
     expect(mean("nuit")).toBeLessThan(mean("stade"));
   });
@@ -327,7 +329,7 @@ describe("thèmes du jour", () => {
     }
   });
 
-  it("un super turbo laisse cinq blocs sans virage derrière lui (il pousse 1,5 s jusqu'à 68 m/s)", () => {
+  it("un super turbo laisse cinq blocs sans virage derrière lui (il pousse 1,5 s jusqu'à 88 m/s)", () => {
     const curve = (k?: string) => k !== undefined && isCurve(k as never);
     for (const c of all) {
       const kinds = c.track.blocks.map((b) => b.kind);
@@ -355,5 +357,34 @@ describe("thèmes du jour", () => {
     expect(forced.authorMs).toBeLessThanOrEqual(AUTHOR_MAX_MS);
     // Un nom inconnu est ignoré : on retombe sur le circuit du jour.
     expect(dailyCircuit(day, 0, "inconnu" as never).spec).toBe(natural.spec);
+  });
+});
+
+describe("circuit du jour : portions rapides (lot 15)", () => {
+  it("sur 60 dates, le pilote dépasse la pointe du plat de 30 % ou plus au moins une fois par circuit", () => {
+    for (const day of DAYS.slice(0, 60)) {
+      const c = circuit(day);
+      const run = bestPilotRun(c.track)!;
+      expect(run.maxSpeed, `${c.date} ${c.spec}`).toBeGreaterThanOrEqual(FAST_PEAK);
+      expect(run.finishMs, c.date).toBe(c.authorMs);
+    }
+  }, 120_000);
+
+  it("chaque circuit porte une portion rapide dans son texte : un super turbo ou une plaque (66 m/s, +37 % de la pointe)", () => {
+    for (const day of DAYS) {
+      const c = circuit(day);
+      const tokens = c.spec.split(" ").map((t) => t.split("@")[0]!.split("/")[0]!);
+      expect(tokens.includes("T") || tokens.includes("P"), c.spec).toBe(true);
+    }
+  });
+
+  it("une plaque suivie d'une descente laisse deux blocs droits après la descente (pas de virage dans la poussée)", () => {
+    for (const day of DAYS) {
+      const kinds = circuit(day).track.blocks.map((b) => b.kind);
+      kinds.forEach((k, i) => {
+        if (k !== "boost") return;
+        for (let j = 1; j <= 2; j++) if (kinds[i + j] !== undefined) expect(isCurve(kinds[i + j]!), `${formatDay(day)} @${i + j}`).toBe(false);
+      });
+    }
   });
 });
