@@ -19,6 +19,10 @@ export interface AdminState {
   shakeOff: boolean;
   ghostOff: boolean;
   touch: "" | "1" | "0";
+  /** Mode de direction tactile forcé ("" : celui des réglages). */
+  steer: "" | "boutons" | "glisser";
+  /** Dessine les zones tactiles actives (`?zones=1`). */
+  zones: boolean;
   /** Accélération du temps (outil `debug`), "" : normal. */
   timescale: string;
   /** Adresse de l'API de classement ("" : aucune). */
@@ -37,6 +41,8 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   shakeOff: false,
   ghostOff: false,
   touch: "",
+  steer: "",
+  zones: false,
   timescale: "",
   api: "",
 });
@@ -60,6 +66,8 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.shakeOff) p.set("shake", "0");
   if (s.ghostOff) p.set("ghost", "off");
   if (s.touch !== "") p.set("touch", s.touch);
+  if (s.steer !== "") p.set("steer", s.steer);
+  if (s.zones) p.set("zones", "1");
   if (s.api.trim() !== "") p.set("api", s.api.trim());
   return p.toString().replace(/=(?=&|$)/g, "");
 }
@@ -79,8 +87,9 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && ["", "stade", "rallye", "banquise", "nuit", "campagne"].includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
+    if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
@@ -102,4 +111,5 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },
   { label: "Archives de démonstration", hint: "14 jours passés, classements figés et fantômes (?api=demo)", state: { api: "demo" } },
   { label: "Essai tactile (souris = doigt)", hint: "interface mobile sur ordinateur", state: { touch: "1" } },
+  { label: "Zones tactiles (boutons)", hint: "boutons ← → et frein, zones actives dessinées", state: { scenario: "pilotage", touch: "1", steer: "boutons", zones: true } },
 ];

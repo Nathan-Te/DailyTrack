@@ -1,5 +1,11 @@
 import { isTyping } from "./input";
 import {
+  buttonRects,
+  zoneAt,
+  zoneSpans,
+  type ButtonSize,
+  type Insets,
+  type Zone,
   DEADZONE_RANGE,
   DEFAULT_TOUCH_SETTINGS,
   SENSITIVITY_RANGE,
@@ -14,6 +20,8 @@ import {
 // pas en mode tactile (`body.touch`).
 
 export interface TouchHooks {
+  /** `?zones=1` : dessine les zones actives et un point par doigt (diagnostic). */
+  showZones?: boolean;
   onPause(): void;
   onRespawn(): void;
   onRestart(): void;
@@ -84,7 +92,49 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const brake = el("div", "tbtn pad pedal-brake", "FREIN");
   const gas = el("div", "tbtn pad pedal-gas", "GAZ");
   const hint = el("div", "hint");
-  zone.replaceChildren(ring, knob, left, right, brake, gas, hint);
+  const buttonEls: Record<string, HTMLElement> = { left, right, brake, gas };
+  // Zones actives (diagnostic `?zones=1`) : une tranche par zone, de bord à bord, avec son nom.
+  const overlay = el("div", "zones");
+  overlay.hidden = !hooks.showZones;
+  const dots = new Map<number, HTMLElement>();
+  zone.replaceChildren(overlay, ring, knob, left, right, brake, gas, hint);
+
+  // Zones sûres (encoche, barre d'accueil) : lues par une sonde CSS `env(safe-area-inset-*)`.
+  const probe = el("div", "safe-probe");
+  document.body.append(probe);
+  const insets = (): Insets => {
+    const c = getComputedStyle(probe);
+    return { left: parseFloat(c.paddingLeft) || 0, right: parseFloat(c.paddingRight) || 0, top: parseFloat(c.paddingTop) || 0, bottom: parseFloat(c.paddingBottom) || 0 };
+  };
+  const ZONE_COLORS: Record<Zone, string> = { steer: "#4cc9f0", left: "#4cc9f0", right: "#7bd88f", brake: "#ff6b6b", gas: "#ffd22e" };
+
+  function layout() {
+    const w = zone.clientWidth;
+    const h = zone.clientHeight;
+    const rects = buttonRects(w, h, pad.settings, insets());
+    for (const b of Object.values(buttonEls)) b.hidden = true;
+    for (const r of rects) {
+      const b = buttonEls[r.zone];
+      if (!b) continue;
+      b.hidden = false;
+      b.style.left = `${r.x}px`;
+      b.style.top = `${r.y}px`;
+      b.style.width = `${r.w}px`;
+      b.style.height = `${r.h}px`;
+    }
+    overlay.replaceChildren(
+      ...zoneSpans(pad.settings).map((sp) => {
+        const d = el("div", "zspan", sp.zone);
+        d.style.left = `${sp.x0 * 100}%`;
+        d.style.width = `${(sp.x1 - sp.x0) * 100}%`;
+        d.style.background = ZONE_COLORS[sp.zone] + "33";
+        d.style.borderColor = ZONE_COLORS[sp.zone];
+        return d;
+      }),
+    );
+  }
+  window.addEventListener("resize", layout);
+  window.addEventListener("orientationchange", layout);
 
   const put = (e: HTMLElement, x: number, y: number) => e.style.setProperty("transform", `translate(${x}px, ${y}px) translate(-50%, -50%)`);
 
@@ -105,6 +155,29 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     hint.hidden = pad.touched;
   }
 
+  // Un point par doigt (`?zones=1`), de la couleur de la zone touchée ; rouge si le doigt est tombé hors de la zone de jeu.
+  if (hooks.showZones) {
+    const dot = (e: PointerEvent) => {
+      let d = dots.get(e.pointerId);
+      if (!d) {
+        d = el("div", "fdot");
+        dots.set(e.pointerId, d);
+        document.body.append(d);
+      }
+      const box = zone.getBoundingClientRect();
+      const inside = e.target instanceof Node && zone.contains(e.target);
+      d.style.background = inside ? ZONE_COLORS[zoneAt(e.clientX - box.left, box.width, pad.settings)] : "#e5322d";
+      d.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
+    };
+    const gone = (e: PointerEvent) => {
+      dots.get(e.pointerId)?.remove();
+      dots.delete(e.pointerId);
+    };
+    document.addEventListener("pointerdown", dot, true);
+    document.addEventListener("pointermove", (e) => dots.has(e.pointerId) && dot(e), true);
+    for (const t of ["pointerup", "pointercancel"] as const) document.addEventListener(t, gone, true);
+  }
+
   const localX = (e: PointerEvent) => e.clientX - zone.getBoundingClientRect().left;
   zone.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -121,12 +194,16 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     pad.move(e.pointerId, localX(e), e.clientY);
     render();
   });
-  for (const type of ["pointerup", "pointercancel", "lostpointercapture"] as const) {
+  // Pas de `lostpointercapture` : il arrive après `pointerup`, parfois après la pose du doigt suivant quand le système
+  // réutilise le même identifiant, et lèverait ce nouveau doigt (appui « perdu »).
+  for (const type of ["pointerup", "pointercancel"] as const) {
     zone.addEventListener(type, (e) => {
       pad.up(e.pointerId);
       render();
     });
   }
+  // Aucun toucher perdu : le navigateur ne doit ni faire défiler, ni zoomer, ni attendre un double-tap.
+  for (const type of ["touchstart", "touchmove"] as const) zone.addEventListener(type, (e) => e.preventDefault(), { passive: false });
   // Pas de menu d'appui long, de zoom par pincement (iOS) ni de double-tap.
   const block = (e: Event) => {
     if (!isTyping(e)) e.preventDefault(); // le champ du pseudo garde son menu (copier / coller)
@@ -166,6 +243,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     saveTouchSettings(pad.settings);
     pad.releaseAll();
     renderSettings();
+    layout();
     render();
   };
   const row = (label: string, ...controls: HTMLElement[]) => {
@@ -211,6 +289,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${v.toFixed(2)}`);
   const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${Math.round(v * 100)} %`);
   const throttle = segmented<boolean>([[true, "Automatique"], [false, "Bouton gaz"]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }));
+  const size = segmented<ButtonSize>([["small", "Petits"], ["medium", "Moyens"], ["large", "Grands"]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }));
   const vibration = segmented<boolean>([[true, "Oui"], [false, "Non"]], () => pad.settings.vibration, (v) => apply({ vibration: v }));
   const reset = el("button", "reset", "Par défaut");
   reset.type = "button";
@@ -228,6 +307,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   inner.append(
     head,
     row("Direction", steerMode.box),
+    row("Taille des boutons", size.box),
     row("Sensibilité", sensitivity.wrap),
     row("Zone morte", deadzone.wrap),
     row("Accélérateur", throttle.box),
@@ -239,7 +319,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   });
 
   function renderSettings() {
-    for (const c of [steerMode, sensitivity, deadzone, throttle, vibration]) c.sync();
+    for (const c of [steerMode, size, sensitivity, deadzone, throttle, vibration]) c.sync();
   }
   function setSettingsOpen(open: boolean) {
     panel.hidden = !open;
@@ -257,6 +337,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   rotate.replaceChildren(card);
 
   renderSettings();
+  layout();
   render();
   return {
     settingsOpen: () => !panel.hidden,
@@ -265,6 +346,9 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
       pauseBtn.title = paused ? "Reprendre" : "Pause";
       pauseBtn.setAttribute("aria-label", pauseBtn.title);
     },
-    refresh: render,
+    refresh() {
+      layout();
+      render();
+    },
   };
 }
