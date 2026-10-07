@@ -20,10 +20,10 @@ Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même 
 | 7 Conduite | Modèle bicyclette + 4 ressorts + balistique, dérapage au frein, rebords par impulsion, reprise avec la vitesse, virage large L2/R2, `CarParams`/`SurfaceParams`, panneau `?debug&tune`, caméras C, pilote sur trajectoire de course ; versions 2/2 | #13 | la sensation sur `?scenario=pilotage`, puis réglages au panneau → ⏸ retouche 7b |
 | 7b Réglages | Les réglages de Nathan (copiés du panneau) deviennent les valeurs par défaut de `CarParams` (pointe 48 m/s, dérapage plus doux, rebords plus durs) ; règle « deux droites derrière une plaque » dans le générateur, marge du pilote ; versions 3/3 | #15 | la sensation sur `?scenario=pilotage` |
 | 8 Surfaces & thèmes | Revêtements terre / glace / herbe (attribut du bloc), blocs à effet super turbo et moteur coupé, virages relevés (serré et large), 5 thèmes tirés de la date (palette, zones de revêtement, effets, passage signature), `?scenario=surfaces`, `?theme=` (essai, jamais classé), pilote conscient des revêtements ; versions 4/4 | #16 | `?scenario=surfaces` et un circuit par thème |
-| 9 Feel & juice | Voiture low-poly originale (4 roues, suspension visible, feux stop, fantôme bleu), effets (fumée, traces, particules par revêtement, étincelles, flammes, réception, secousse, coup de FOV, lignes de vitesse, éclair, confettis), sons Web Audio procéduraux (moteur à rapports simulés, crissement, roulement, vent, impacts…), touche M, qualité automatique, `?demo` ; **aucun changement de `sim`** | (même PR que le lot 8 : #16) | `?scenario=surfaces&demo`, puis `?scenario=pilotage` à la main |
-| 9b Visuels | Traces de pneus par roue (enfin visibles), voiture refaite (sections lissées, bandes, roues à branches, freins), ombre, ciel dégradé, soleil / lune, montagnes, décor par thème, tribune, lignes de rive ; **aucun changement de `sim`** | (même PR : #16) | une course sur chaque thème, freiner en braquant |
-| 11 Historique | `PREMIER_JOUR` (n° 1, provisoirement 22/09/2026, remplace `LAUNCH_DAY`), pilotes fictifs `npm run history:seed` (14 jours × 8–15 pilotes, courses validées par le vrai code de l'API, joueurs `demo`), mode `?api=demo` (jeu de données statique, lecture seule), `?day=`, archives enrichies (médailles, pilotes, ta place figée), ouverture d'un jour avec fantôme du premier et classement figé ; **aucun changement de `sim`** hors la constante | (cette PR) | `?api=demo`, touche H, `?api=demo&day=2026-09-30` |
+| 9 Feel & juice | Voiture low-poly originale (4 roues, suspension visible, feux stop, fantôme bleu), effets (fumée, traces, particules par revêtement, étincelles, flammes, réception, secousse, coup de FOV, lignes de vitesse, éclair, confettis), sons Web Audio procéduraux (moteur à rapports simulés, crissement, roulement, vent, impacts…), touche M, qualité automatique, `?demo` ; **aucun changement de `sim`** | #16 | `?scenario=surfaces&demo`, puis `?scenario=pilotage` à la main |
+| 9b Visuels | Traces de pneus aux roues arrière (enfin visibles), voiture refaite (sections lissées, bandes, roues à branches, freins), ombre, ciel dégradé, soleil / lune, montagnes, décor par thème, tribune, lignes de rive ; **aucun changement de `sim`** | #16, #18 | une course sur chaque thème, freiner en braquant ; `/admin/` ; touches N (circuit au hasard) et T (thème suivant) ; tremplin lisible |
 | 10 Tactile (fait **avant** les lots 8 et 9, à la demande de Nathan) | Commandes tactiles : glissement ou boutons ← →, frein à droite, accélérateur auto ou bouton gaz, pause, reprise / départ, réglages mémorisés, invitation portrait, plein écran, vibrations ; `?touch=1` ; outils de test pas à pas | #14 | finir un tour au doigt sur téléphone |
+| 11 Historique | `PREMIER_JOUR` (n° 1, provisoirement 22/09/2026, remplace `LAUNCH_DAY`), pilotes fictifs `npm run history:seed` (14 jours × 8–15 pilotes, courses validées par le vrai code de l'API, joueurs `demo`), mode `?api=demo` (jeu de données statique, lecture seule), `?day=`, archives enrichies (médailles, pilotes, ta place figée), ouverture d'un jour avec fantôme du premier et classement figé ; **aucun changement de `sim`** hors la constante | #21 | `?api=demo`, touche H, `?api=demo&day=2026-09-30` |
 
 Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : mise en ligne, calibrage et le *jalon* « une semaine de circuits joués par Nathan et quelques amis ». Le lot 10 ne dépend que du lot 7.
 
@@ -40,7 +40,9 @@ docs/          seed.md (source de vérité), lots/ (un README par lot), ce docum
 
 **`apps/web`** : `main.ts` (boucle à pas fixe, rendu interpolé, HUD), `session.ts` (`RunSession` : course + enregistrement + fantôme), `trackMesh.ts` (rendu du circuit, 4 palettes), `input.ts` (clavier ZQSD/WASD, flèches, manette), `online.ts` / `api.ts` / `identity.ts` (classement, pseudo, fantômes distants), `share.ts` / `clipboard.ts` / `archive.ts` / `records.ts` (partage, archives, records locaux), `verify.html` (rejeu sans rendu, pour les tests de navigateur).
 
-**`apps/api`** : `api.ts` (cœur : n'utilise que `Request`/`Response` et l'interface `SqlDb`), adaptateurs Node + SQLite (`server.ts`, `Dockerfile`) et Cloudflare Workers + D1 (`worker.ts`, `wrangler.toml`).
+**`apps/api`** : `api.ts` (cœur : n'utilise que `Request`/`Response` et l'interface `SqlDb`), adaptateurs Node + SQLite (`server.ts`, `Dockerfile`) et Cloudflare Workers + D1 (`worker.ts`, `wrangler.toml`). `history.ts` + `scripts/history-seed.ts` (lot 11 : pilotes fictifs et jeu de données de démonstration, `npm run history:seed`).
+
+**Depuis les lots 9 à 11 (`apps/web`)** : `carMesh.ts` (voiture, ombre), `fx.ts` (particules, traces de pneus, `QualityGovernor`), `telemetry.ts`, `audio.ts` + `audioLogic.ts` (sons procéduraux), décor et ciel dans `trackMesh.ts`, `demo.ts` (`DemoApi`, mode `?api=demo`) et `archiveExtras.ts` (archives enrichies), page `admin/` (`admin.ts`, `adminLogic.ts`), données statiques `public/demo/` (générées, ne pas éditer à la main).
 
 **Flux d'une course** : le joueur conduit → `RunSession` applique et enregistre une commande entière par pas de 1/120 s → à l'arrivée, le record local est gardé avec sa rediffusion → envoi à `POST /api/submit` → le serveur régénère le circuit du jour (mis en cache en base), **rejoue** la rediffusion, enregistre **son** temps → rang, classement, fantômes.
 
@@ -55,16 +57,18 @@ docs/          seed.md (source de vérité), lots/ (un README par lot), ce docum
 4. **Une seule vérité pour le temps** : le chrono est en pas de simulation affiné par interpolation, en millisecondes entières.
 5. **Sécurité de l'API** : requêtes SQL paramétrées, pseudo validé et affiché en `textContent`, corps de requête borné, limitation de débit avant tout rejeu, adresses hachées. Voir `docs/lots/lot-5-classement.md`.
 6. **Le jeu marche sans API** (pas d'adresse configurée = pas de classement, rien d'autre ne change).
+7. **Les joueurs `demo` n'existent jamais en production** (lot 11) : les pilotes fictifs vivent dans un jeu de données statique (`apps/web/public/demo/`), fabriqué par `npm run history:seed` dans une base en mémoire et validé par le vrai code de l'API ; **relancer le script après tout changement de `SIM_VERSION` ou `GENERATOR_VERSION`** (un test le rappelle). `PREMIER_JOUR` ne change que la numérotation des circuits.
 
 ## 5. Commandes
 
 ```
-npm install · npm run dev · npm test (Vitest, ~180 tests) · npm run typecheck · npm run build
+npm install · npm run dev · npm test (Vitest, ~300 tests) · npm run typecheck · npm run build
 npm run test:e2e         # construit web + api, lance Playwright (Chromium) ; démarre le vrai serveur de classement
   CHROMIUM_PATH=/opt/pw-browsers/chromium   # Chromium déjà installé (conteneur)
   E2E_ALL_BROWSERS=1                         # + Firefox et WebKit (ce que fait la CI)
 API en local : npm run build:node -w @cdj/api && DB_PATH=:memory: npm start -w @cdj/api   → jeu avec ?api=http://localhost:8787
-Page d'outils de test : `<base>/admin/` (menu qui construit l'adresse du jeu). Réglages d'URL du jeu : ?seed=AAAA-MM-JJ · ?scenario=essai|plat · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
+npm run history:seed     # (re)fabrique les archives de démonstration (apps/web/public/demo/), ≈ 10 s, déterministe
+Page d'outils de test : `<base>/admin/` (menu qui construit l'adresse du jeu). Réglages d'URL du jeu : ?seed=AAAA-MM-JJ (ou ?day=) · ?api=demo (archives de démonstration) · ?scenario=essai|plat · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
 Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cdj.autoplay(code)
 ```
 
@@ -126,18 +130,22 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 
 ## 9. Suite proposée (à confirmer avec Nathan)
 
-| Lot | Objet | Critères d'arrêt |
+Tous les lots du plan du seed (0 à 11) sont livrés. Reste :
+
+| Étape | Objet | Critères d'arrêt |
 |---|---|---|
-| 7 Tactile | Commandes tactiles (volant glissé ou boutons, frein, reprise) + réglages de sensibilité | on finit un tour au doigt sur téléphone (test Playwright avec événements tactiles + essai réel) ; la mise en page reste sans chevauchement |
-| 8 Mise en ligne | Hébergement de l'API (selon décision 1), `VITE_API_URL`, sauvegarde de la base, surveillance minimale, nom de domaine | `/api/health` répond en HTTPS ; deux vrais appareils classés ; la CI reste verte |
-| 9 Calibrage | Régler médailles et durées d'après des courses réelles, tableau des temps de la semaine | médailles atteignables mais exigeantes ; `GENERATOR_VERSION` incrémenté et fixtures régénérées |
+| Mise en ligne | Hébergement de l'API (selon la décision 1 du § 7), `VITE_API_URL`, sauvegarde de la base, surveillance minimale, nom de domaine, **`PREMIER_JOUR` réglé sur la vraie date de lancement** (puis `UPDATE_GOLDEN=1` sur `golden-daily.test.ts` pour les numéros, et `history:seed` si l'historique doit suivre) | `/api/health` répond en HTTPS ; deux vrais appareils classés ; la CI reste verte |
+| Calibrage | Régler médailles et durées d'après des courses réelles, tableau des temps de la semaine | médailles atteignables mais exigeantes ; `GENERATOR_VERSION` incrémenté, fixtures et `history:seed` régénérés |
 | Jalon | Une semaine de circuits joués par Nathan et quelques amis | retours consignés dans `docs/` |
-| Ensuite | Thèmes visuels (décor), circuit dessiné du dimanche, éditeur, portail de jeux web | à définir |
+| Ensuite | Circuit dessiné du dimanche, éditeur, portail de jeux web | à définir |
+
+À vérifier sur un **vrai téléphone** (rien n'a été essayé hors navigateur simulé) : commandes tactiles (lot 10), rendu et fluidité du décor (lot 9b), sons sur iOS (lot 9), archives (lot 11).
 
 **Modèle de prompt de lot** : *Contexte* (lien vers ce document et vers `docs/seed.md`, lot précédent fusionné) · *Objet* (une phrase) · *À livrer* (liste courte) · *Critères d'arrêt* (tests verts + « À tester » pour Nathan) · *Modifications de `CLAUDE.md`* (sections à ajouter ou changer) · *Hors périmètre* · *Règles rappelées* (§ 4 : déterminisme, versions, confiance) · *Rapport attendu* (vérifié / non vérifié / décisions pour Nathan).
 
 ## 10. Index
 - `docs/seed.md` — vision, piliers, plan en lots (source de vérité)
-- `docs/lots/lot-0-socle.md` … `lot-6-arrivee-et-archives.md` — le détail de chaque lot (livré, à tester, garde-fous, limites)
+- `docs/lots/lot-0-socle.md` … `lot-11-historique.md` — le détail de chaque lot (livré, à tester, garde-fous, limites) ; `lot-7b-reglages.md`, `lot-9b-visuels.md` pour les retouches
+- `docs/credits.md` — crédits (sons procéduraux, voiture originale, bibliothèques)
 - `CLAUDE.md` — consignes courtes de l'agent (structure, commandes, règles de déterminisme, sections par lot)
 - `apps/api/wrangler.toml`, `apps/api/Dockerfile` — déploiement de l'API
