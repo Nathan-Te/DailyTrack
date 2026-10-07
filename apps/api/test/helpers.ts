@@ -24,9 +24,9 @@ export function circuitOf(day: number): DailyCircuit {
   return c;
 }
 
-/** Une rediffusion valide du jour, avec le pilote réglé sur `curveSpeed` (vitesse en virage : plus bas = plus lent). */
-export function pilotReplay(day: number, curveSpeed: number): { code: string; replay: Replay; finishMs: number } {
-  const run = runPilot(circuitOf(day).track, { curveSpeed });
+/** Une rediffusion valide du jour, avec le pilote réglé sur `grip` (part de l'adhérence utilisée : plus bas = plus lent). */
+export function pilotReplay(day: number, grip: number): { code: string; replay: Replay; finishMs: number } {
+  const run = runPilot(circuitOf(day).track, { grip });
   if (!run.valid) throw new Error("le pilote ne finit pas ce circuit");
   return { code: encodeReplay(run.replay), replay: run.replay, finishMs: run.finishMs };
 }

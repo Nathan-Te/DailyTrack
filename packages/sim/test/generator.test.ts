@@ -20,17 +20,24 @@ import {
   type DailyCircuit,
 } from "../src/index";
 
-// Une cinquantaine de jours consécutifs depuis le lancement, puis une soixantaine d'autres espacés sur ~3 ans.
+// Soixante jours consécutifs depuis le lancement, puis une soixantaine d'autres espacés sur ~3 ans.
 const DAYS = [
-  ...Array.from({ length: 50 }, (_, i) => LAUNCH_DAY + i),
-  ...Array.from({ length: 60 }, (_, i) => LAUNCH_DAY + 50 + i * 17),
+  ...Array.from({ length: 60 }, (_, i) => LAUNCH_DAY + i),
+  ...Array.from({ length: 60 }, (_, i) => LAUNCH_DAY + 60 + i * 17),
 ];
 const circuits = new Map<number, DailyCircuit>();
+/** Temps de génération (ms) de chaque jour, mesuré au premier appel. */
+const buildMs = new Map<number, number>();
 const circuit = (day: number) => {
   let c = circuits.get(day);
-  if (!c) circuits.set(day, (c = dailyCircuit(day)));
+  if (!c) {
+    const t0 = performance.now();
+    circuits.set(day, (c = dailyCircuit(day)));
+    buildMs.set(day, performance.now() - t0);
+  }
   return c;
 };
+const isWideKind = (k: string) => k === "wideL" || k === "wideR";
 
 describe("circuit du jour : construction", () => {
   it("est déterministe : même jour, même circuit, au caractère près", () => {
@@ -43,7 +50,8 @@ describe("circuit du jour : construction", () => {
     }
   });
 
-  it("donne des circuits différents d'un jour à l'autre", () => {
+  // Premier test qui génère les 120 jours (mis en cache pour les suivants) : temps large.
+  it("donne des circuits différents d'un jour à l'autre", { timeout: 120_000 }, () => {
     const specs = new Set(DAYS.map((d) => circuit(d).spec));
     expect(specs.size).toBe(DAYS.length);
   });
@@ -63,18 +71,31 @@ describe("circuit du jour : construction", () => {
       expect(checkpoints).toBeLessThanOrEqual(4);
       expect(blocks.length).toBeGreaterThanOrEqual(25);
       expect(blocks.length).toBeLessThanOrEqual(60);
-      expect(track.cells.size).toBe(blocks.length); // une cellule par bloc : pas d'auto-intersection
+      // Une cellule par bloc (quatre pour un virage large) : pas d'auto-intersection.
+      expect(track.cells.size).toBe(blocks.length + 3 * blocks.filter((b) => isWideKind(b.kind)).length);
     }
   });
 
   it("alterne les rythmes : jamais plus de deux virages d'affilée, jamais de plaque juste avant un virage", () => {
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);
-      const curve = (k?: string) => k === "curveL" || k === "curveR";
+      const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
       for (let i = 0; i < kinds.length; i++) {
         if (curve(kinds[i]) && curve(kinds[i + 1])) expect(curve(kinds[i + 2]), `${day} @${i}`).toBe(false);
         if (kinds[i] === "boost") expect(curve(kinds[i + 1]), `${day} @${i}`).toBe(false);
       }
+    }
+  });
+
+  it("laisse deux lignes droites derrière chaque plaque d'accélération (sinon le virage suivant ne se prend pas à 48 m/s)", () => {
+    const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+    for (const day of DAYS) {
+      const kinds = circuit(day).track.blocks.map((b) => b.kind);
+      kinds.forEach((k, i) => {
+        if (k !== "boost") return;
+        // Les deux blocs qui suivent : des lignes droites ou, au pire, la fin du circuit.
+        for (const next of [kinds[i + 1], kinds[i + 2]]) if (next !== undefined) expect(curve(next), `${day} @${i}`).toBe(false);
+      });
     }
   });
 
@@ -95,13 +116,16 @@ describe("circuit du jour : construction", () => {
 
   it("varie les blocs : pentes, bosses, plaques et tremplins apparaissent sur la période", () => {
     const seen = new Set(DAYS.flatMap((d) => circuit(d).track.blocks.map((b) => b.kind)));
-    for (const k of ["straight", "curveL", "curveR", "up", "down", "bump", "jump", "boost"]) expect(seen.has(k as never), k).toBe(true);
+    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "up", "down", "bump", "jump", "boost"]) expect(seen.has(k as never), k).toBe(true);
   });
 
-  it("construit vite : moins d'une seconde par jour en moyenne", () => {
-    const t0 = performance.now();
-    for (let i = 0; i < 10; i++) dailyCircuit(LAUNCH_DAY + 1000 + i);
-    expect((performance.now() - t0) / 10).toBeLessThan(1000);
+  it("construit vite : temps de génération mesuré sur 60 jours consécutifs (moyenne < 0,5 s, pire < 1,5 s)", () => {
+    const times = DAYS.slice(0, 60).map((d) => (circuit(d), buildMs.get(d)!));
+    const mean = times.reduce((a, b) => a + b, 0) / times.length;
+    const worst = Math.max(...times);
+    console.info(`[générateur] 60 jours consécutifs : moyenne ${mean.toFixed(0)} ms, pire ${worst.toFixed(0)} ms`);
+    expect(mean).toBeLessThan(500);
+    expect(worst).toBeLessThan(1500);
   });
 
   it("recommence avec une graine voisine quand une tentative échoue : la première tentative n'est pas toujours retenue", () => {

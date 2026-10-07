@@ -3,12 +3,13 @@ import { circuitNumber, formatDay } from "./calendar";
 import { bestPilotRun } from "./autopilot";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
-import { BLOCK_LETTERS, cellKey, dirX, dirZ, exitDelta, parseTrack, type Dir, type Track } from "./track";
+import { BLOCK_LETTERS, blockCells, cellKey, exitDelta, parseTrack, type Dir, type Track } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
 // 1. Construction : on enchaîne des « segments » (courts motifs de blocs) en alternant calme (lignes droites,
-//    plaques, bosses, côtes) et virages, avec un ou deux passages marquants (tremplin, chicane, épingle).
+//    plaques, bosses, côtes) et virages (serrés, ou larges sur 2 × 2 cellules), avec un ou deux passages
+//    marquants (tremplin, chicane, épingle).
 //    On place chaque segment sur la grille en refusant les croisements.
 // 2. Validation : un pilote automatique parcourt le circuit avec la même physique. S'il ne le finit pas, ou si
 //    sa durée sort de la fenêtre visée, on recommence avec une graine voisine (tentative suivante).
@@ -77,18 +78,18 @@ function place(w: Walk, tokens: readonly string[]): boolean {
   const added: number[] = [];
   for (const t of tokens) {
     const kind = BLOCK_LETTERS[t.split("@")[0]!]!;
-    const key = cellKey(cx, cz);
-    if (w.cells.has(key)) {
-      for (const k of added) w.cells.delete(k);
-      return false;
+    const placed = blockCells(cx, cz, dir, kind);
+    for (const [x, z] of placed.cells) {
+      const key = cellKey(x, z);
+      if (w.cells.has(key)) {
+        for (const k of added) w.cells.delete(k);
+        return false;
+      }
+      w.cells.add(key);
+      added.push(key);
     }
-    w.cells.add(key);
-    added.push(key);
     y += exitDelta(kind);
-    if (kind === "curveL") dir = ((dir + 1) & 3) as Dir;
-    else if (kind === "curveR") dir = ((dir + 3) & 3) as Dir;
-    cx += dirX(dir);
-    cz += dirZ(dir);
+    ({ cx, cz, dir } = placed.next);
   }
   w.cx = cx;
   w.cz = cz;
@@ -99,6 +100,8 @@ function place(w: Walk, tokens: readonly string[]): boolean {
 }
 
 const MAX_HILLS = 2;
+/** Lignes droites obligatoires après une plaque d'accélération, avant le virage suivant. */
+const PAD_RUNOUT = 2;
 
 type Highlight = "jump" | "chicane" | "hairpin";
 
@@ -129,7 +132,11 @@ export function composeSpec(day: number, attempt: number): string | null {
     if (calmHighlight === "jump") {
       calm.push(["S", "J", "S", "S"]);
     } else {
-      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", "S"], ["S", "B", "S"], ["P", "S"]]);
+      // Une plaque laisse PAD_RUNOUT lignes droites derrière elle : elle pousse la voiture pendant ~0,9 s, et pendant
+      // ce temps le frein (40 m/s²) lutte contre la poussée (30 m/s²). Avec une pointe à 48 m/s, une plaque suivie
+      // d'un virage serré à moins de ~80 m ne se prend pas (mesuré : le pilote ne finissait que 28 circuits sur 91).
+      const run = Array<string>(PAD_RUNOUT).fill("S");
+      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...run], ["S", "B", "S"], ["P", ...run]]);
       if (hills < MAX_HILLS && rng.chance(35)) {
         options.unshift(rng.pick<string[]>([["U", "S", "D"], ["U", "S", "S", "D"], ["D", "S", "U"]]));
       }
@@ -145,8 +152,16 @@ export function composeSpec(day: number, attempt: number): string | null {
     const left = rng.chance(50);
     const L = left ? "L" : "R";
     const R = left ? "R" : "L";
+    // Virage simple : serré, ou large (2 × 2 cellules) une fois sur quatre.
+    const wide = !turnHighlight && rng.chance(25);
     const segments: string[][] =
-      turnHighlight === "chicane" ? [[L, R], [R, L]] : turnHighlight === "hairpin" ? [[L, L], [R, R]] : [[L], [R]];
+      turnHighlight === "chicane"
+        ? [[L, R], [R, L]]
+        : turnHighlight === "hairpin"
+          ? [[L, L], [R, R]]
+          : wide
+            ? [[L + "2"], [R + "2"], [L], [R]]
+            : [[L], [R]];
     // Sens bloqué : on essaie l'autre ; pour un virage simple, puis l'autre virage. Un passage marquant, lui,
     // ne se remplace pas (la tentative échoue et la graine voisine prend le relais).
     if (!segments.some((seg) => place(w, seg))) return null;

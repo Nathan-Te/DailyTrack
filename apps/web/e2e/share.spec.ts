@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
+import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
 import { shareLine } from "../src/share";
 
 // Écran d'arrivée : ligne à partager, copie, archives. Le rendu 3D demande WebGL : Chromium seulement.
@@ -8,7 +8,7 @@ test.setTimeout(120_000);
 
 const day = Math.floor(Date.now() / 86_400_000);
 const circuit = dailyCircuit(day);
-const run = runPilot(circuit.track, { curveSpeed: 26 });
+const run = runPilot(circuit.track, { grip: 0.9 });
 const code = encodeReplay(run.replay);
 const medal = medalFor(run.finishMs, circuit.medals);
 
@@ -50,8 +50,9 @@ test.describe("archives", () => {
   const url = `/?debug&today=${TODAY}&seed=${TODAY}`;
 
   test("listent les jours du lancement à aujourd'hui, avec le meilleur temps de chacun, et ouvrent le jour choisi", async ({ page }) => {
-    await page.addInitScript(() =>
-      localStorage.setItem("cdj:best:jour-2026-10-08-g1", JSON.stringify({ ms: 40123, splits: [], medal: "gold" })),
+    await page.addInitScript(
+      ([g, simVersion]) => localStorage.setItem(`cdj:best:jour-2026-10-08-g${g}`, JSON.stringify({ ms: 40123, splits: [], medal: "gold", simVersion })),
+      [GENERATOR_VERSION, SIM_VERSION] as const,
     );
     await page.goto(url);
     await page.waitForFunction(() => window.__cdj?.phase);
@@ -99,7 +100,7 @@ test.describe("archives", () => {
   test("un jour passé se joue sans envoyer de temps au classement", async ({ page }) => {
     const past = "2026-10-07";
     const c = dailyCircuit(Math.floor(Date.parse(past) / 86_400_000));
-    const pastCode = encodeReplay(runPilot(c.track, { curveSpeed: 26 }).replay);
+    const pastCode = encodeReplay(runPilot(c.track, { grip: 0.9 }).replay);
     let submissions = 0;
     page.on("request", (r) => r.url().includes("/api/submit") && submissions++);
     await page.goto(`/?debug&timescale=6&today=${TODAY}&seed=${past}&api=${encodeURIComponent("http://127.0.0.1:8787")}`);

@@ -13,8 +13,8 @@ test.setTimeout(180_000);
 const API = "http://127.0.0.1:8787";
 const day = Math.floor(Date.now() / 86_400_000);
 const circuit = dailyCircuit(day);
-const fast = runPilot(circuit.track, { curveSpeed: 30 });
-const slow = runPilot(circuit.track, { curveSpeed: 22 });
+const fast = runPilot(circuit.track, { grip: 1 });
+const slow = runPilot(circuit.track, { grip: 0.78 });
 const fastCode = encodeReplay(fast.replay);
 const slowCode = encodeReplay(slow.replay);
 

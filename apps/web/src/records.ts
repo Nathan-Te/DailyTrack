@@ -1,4 +1,4 @@
-import { GENERATOR_VERSION, type Medal } from "@cdj/sim";
+import { GENERATOR_VERSION, SIM_VERSION, type Medal } from "@cdj/sim";
 
 export interface BestRun {
   ms: number;
@@ -18,9 +18,14 @@ export interface DayBest {
   medal: Medal | null;
 }
 
+/** Un record d'une autre version de la simulation ne vaut plus rien : la même course ne donnerait plus ce temps. */
+function current(r: BestRun | null): r is BestRun {
+  return !!r && typeof r.ms === "number" && Array.isArray(r.splits) && r.simVersion === SIM_VERSION;
+}
+
 /**
  * Meilleurs temps locaux de tous les circuits du jour joués dans ce navigateur, par date. Seuls comptent ceux du
- * générateur actuel : avec une autre version, le circuit de la même date n'est plus le même.
+ * générateur et de la simulation actuels : avec une autre version, le circuit ou la conduite ne sont plus les mêmes.
  */
 export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"> = localStorage): Map<string, DayBest> {
   const out = new Map<string, DayBest>();
@@ -35,7 +40,7 @@ export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"
       const m = /^cdj:best:jour-(\d{4}-\d{2}-\d{2})-g(\d+)$/.exec(storage.key(i) ?? "");
       if (!m || Number(m[2]) !== GENERATOR_VERSION) continue;
       const r = JSON.parse(storage.getItem(m[0]) ?? "null") as BestRun | null;
-      if (r && typeof r.ms === "number") out.set(m[1]!, { date: m[1]!, ms: r.ms, medal: r.medal ?? null });
+      if (current(r)) out.set(m[1]!, { date: m[1]!, ms: r.ms, medal: r.medal ?? null });
     } catch {
       /* une entrée illisible ne doit pas masquer les autres */
     }
@@ -45,13 +50,16 @@ export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"
 
 const key = (trackId: string) => `cdj:best:${trackId}`;
 
-/** Meilleur temps local (le classement du jour arrive au lot 5). Sans stockage disponible, on ignore. */
+/**
+ * Meilleur temps local, ou `null` (aucun, illisible, ou d'une ancienne version de la simulation : ignoré).
+ * Sans stockage disponible, on ignore.
+ */
 export function loadBest(trackId: string): BestRun | null {
   try {
     const raw = localStorage.getItem(key(trackId));
     if (!raw) return null;
     const r = JSON.parse(raw) as BestRun;
-    return typeof r.ms === "number" && Array.isArray(r.splits) ? r : null;
+    return current(r) ? r : null;
   } catch {
     return null;
   }

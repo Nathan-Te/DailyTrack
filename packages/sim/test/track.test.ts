@@ -7,6 +7,7 @@ import {
   TEST_TRACK_SPEC,
   blockHeight,
   createSurface,
+  createPilotageTrack,
   createTestTrack,
   createWallHit,
   parseTrack,
@@ -67,6 +68,38 @@ describe("parseTrack", () => {
       const prevEnd = line.block.lastIndexOf(i - 1);
       const start = line.block.indexOf(i);
       expect(Math.hypot(line.x[prevEnd]! - line.x[start]!, line.z[prevEnd]! - line.z[start]!)).toBeLessThan(1e-9);
+    }
+  });
+
+  it("lit le circuit de pilotage, avec ses deux virages larges (2 × 2 cellules)", () => {
+    const pilotage = createPilotageTrack();
+    const wide = pilotage.blocks.filter((b) => b.kind === "wideL" || b.kind === "wideR");
+    expect(wide).toHaveLength(2);
+    expect(pilotage.cells.size).toBe(pilotage.blocks.length + 3 * wide.length);
+    for (const b of wide) expect([...pilotage.cells.values()].filter((c) => c === b)).toHaveLength(4);
+  });
+
+  it("virage large : on ressort tourné d'un quart de tour, deux colonnes de côté et une rangée plus loin", () => {
+    for (const [letter, dir, exit] of [["L2", 1, [2, 2]], ["R2", 3, [-2, 2]]] as const) {
+      const t = parseTrack("x", `S@start ${letter} S@finish`);
+      const after = t.blocks[2]!;
+      expect(after.dir).toBe(dir);
+      expect([after.cx, after.cz]).toEqual(exit);
+      // La ligne médiane est continue et reste sur la route, rebords compris.
+      const line = trackCenterline(t);
+      const world = trackWorld(t);
+      const surf = createSurface();
+      const hit = createWallHit();
+      // (Le dernier point, au bord extérieur de l'arrivée, est déjà hors du circuit.)
+      for (let i = 1; i < line.x.length - 1; i++) {
+        expect(Math.hypot(line.x[i]! - line.x[i - 1]!, line.z[i]! - line.z[i - 1]!)).toBeLessThanOrEqual(CELL / 2);
+        world.sample(line.x[i]!, line.z[i]!, surf);
+        expect(surf.height).toBe(0);
+        expect(world.collide(line.x[i]!, line.z[i]!, 0, 1, hit)).toBe(false);
+      }
+      // Hors de l'anneau de route du virage : le vide.
+      world.sample(CELL / 2 + (letter === "L2" ? 1 : -1) * 24, CELL + 4, surf);
+      expect(surf.height).toBe(NO_GROUND);
     }
   });
 

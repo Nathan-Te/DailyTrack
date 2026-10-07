@@ -2,14 +2,14 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1020" />
     <meta name="description" content="Un circuit court par jour, le même pour tout le monde : une minute dans le navigateur, un fantôme à battre, un résultat à partager." />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23e8283a'/%3E%3C/svg%3E" />
     <title>Circuit du Jour</title>
     <style>
       html, body { margin: 0; height: 100%; background: #0b1020; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
-      body { user-select: none; -webkit-user-select: none; }
+      body { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
       input { user-select: text; -webkit-user-select: text; }
       canvas { display: block; width: 100%; height: 100%; }
 
@@ -80,6 +80,81 @@
       #archive .best { min-width: 92px; text-align: right; }
       #archive .note { opacity: .6; font-size: 12px; margin-top: 10px; }
 
+      /* Commandes tactiles (lot 10) : tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`). */
+      #touch, #tbar, #tsettings, #rotate, #pause { display: none; }
+      body.touch #touch { display: block; position: fixed; inset: 0; z-index: 0; touch-action: none; -webkit-user-select: none; user-select: none; }
+      body.touch #tbar { display: flex; position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); gap: 8px; }
+      body.touch #tbar button { font: 600 22px system-ui, sans-serif; line-height: 1; color: #fff; background: rgba(11,16,32,.62); border: 1px solid rgba(255,255,255,.22); border-radius: 12px; width: 48px; height: 48px; padding: 0; cursor: pointer; touch-action: manipulation; }
+      body.touch #tbar button[hidden] { display: none; }
+      body.touch.finished #touch, body.touch.finished #tbar { display: none; }
+      body.touch #info { display: none; }
+      body.touch #speed { bottom: calc(66px + env(safe-area-inset-bottom, 0px)); }
+      body.touch #menu button { min-height: 44px; min-width: 44px; }
+      body.touch #splits { top: 60px; }
+      /* Portrait : les boutons de menu font 44 px (et non 34), la pile d'infos à gauche descend d'autant. */
+      @media (orientation: portrait) { body.touch #medals { top: 52px; } body.touch #timer { top: 68px; } body.touch #ghostinfo { top: 106px; } body.touch #splits { top: 70px; } }
+      body.touch #finish button { min-height: 44px; }
+      /* Aides à l'écran : le toucher passe au travers (tout est géré par #touch). */
+      #touch > * { pointer-events: none; position: absolute; }
+      #touch .ring { width: 96px; height: 96px; left: 0; top: 0; border-radius: 50%; border: 3px solid rgba(255,255,255,.55); background: rgba(255,255,255,.08); }
+      #touch .knob { width: 46px; height: 46px; left: 0; top: 0; border-radius: 50%; background: rgba(255,210,46,.9); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
+      #touch [hidden] { display: none; }
+      /* Les boutons dessinés suivent EXACTEMENT les zones tactiles (voir `zoneAt`, touch.ts), en parts de la largeur :
+         ◀ 0–25 %, ▶ 25–50 %, frein 50–100 % (ou 50–75 % avec le bouton gaz), gaz 75–100 %. Chacun reste dans sa zone, avec une
+         marge de 2 % : toucher n'importe où sur un bouton déclenche ce bouton, jamais celui d'à côté. */
+      #touch .tbtn { display: flex; align-items: center; justify-content: center; box-sizing: border-box; height: 88px; border-radius: 20px; background: rgba(11,16,32,.45); border: 2px solid rgba(255,255,255,.35); color: #fff; font: 800 18px system-ui, sans-serif; letter-spacing: .04em; text-shadow: 0 1px 3px rgba(0,0,0,.55); bottom: calc(120px + env(safe-area-inset-bottom, 0px)); width: 21%; }
+      #touch .tbtn.on { background: rgba(255,210,46,.55); border-color: #ffd22e; }
+      #touch .steer-left { left: 2%; } #touch .steer-right { left: 27%; }
+      #touch .pedal-brake { left: 54%; width: 44%; } #touch .pedal-gas { left: 77%; }
+      #touch[data-throttle=manual] .pedal-brake { left: 52%; width: 21%; }
+      #touch[data-throttle=auto] .pedal-gas { display: none; }
+      #touch[data-mode=drag] .steer-left, #touch[data-mode=drag] .steer-right { display: none; }
+      /* Paysage : écran large et peu haut, les boutons sont larges (le pouce y tombe sans viser) mais bas et transparents : on voit la route. */
+      @media (orientation: landscape) { #touch .tbtn { height: clamp(84px, 24vh, 110px); bottom: calc(112px + env(safe-area-inset-bottom, 0px)); background: rgba(11,16,32,.32); } #touch .tbtn.on { background: rgba(255,210,46,.5); } }
+      #touch .hint { left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.7); padding: 4px 10px; border-radius: 8px; }
+      #tsettings { position: fixed; inset: 0; z-index: 5; background: rgba(5,8,20,.62); align-items: center; justify-content: center; }
+      body.touch #tsettings:not([hidden]) { display: flex; }
+      #tsettings .panel { width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; background: #131a33; color: #fff; font: 600 14px system-ui, sans-serif; border-radius: 14px; padding: 12px 16px 16px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+      #tsettings .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      #tsettings .tools { display: flex; gap: 8px; }
+      #tsettings .title { font-size: 18px; font-weight: 800; }
+      #tsettings .close, #tsettings .reset { font: inherit; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; min-width: 44px; min-height: 44px; cursor: pointer; }
+      #tsettings .reset { padding: 0 12px; font-size: 13px; }
+      #tsettings .row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center; margin-top: 6px; }
+      #tsettings .seg { display: flex; gap: 6px; }
+      #tsettings .seg button { flex: 1; font: inherit; color: #fff; background: rgba(255,255,255,.1); border: 1px solid transparent; border-radius: 10px; min-height: 44px; padding: 0 8px; cursor: pointer; }
+      #tsettings .seg button.on { background: #ffd22e; color: #111; }
+      #tsettings .slider { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+      #tsettings .slider input { flex: 1; min-width: 0; }
+      #tsettings .slider .value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+      #rotate { position: fixed; left: 0; right: 0; top: 42%; z-index: 2; justify-content: center; pointer-events: none; }
+      #rotate .card { pointer-events: auto; width: min(300px, calc(100vw - 32px)); box-sizing: border-box; text-align: center; background: rgba(19,26,51,.94); color: #fff; font: 600 15px system-ui, sans-serif; line-height: 1.4; border-radius: 14px; padding: 12px 16px 14px; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
+      #rotate .icon { font-size: 34px; display: inline-block; transform: rotate(90deg); }
+      #rotate button { margin-top: 8px; font: inherit; color: #111; background: #ffd22e; border: 0; border-radius: 10px; min-height: 44px; padding: 0 16px; cursor: pointer; }
+      @media (orientation: portrait) { body.touch:not(.rotate-ok):not(.finished) #rotate { display: flex; } }
+      #pause { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; background: rgba(11,16,32,.9); color: #fff; font: 600 16px system-ui, sans-serif; padding: 16px 22px; border-radius: 14px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+      body.paused #pause { display: block; }
+      #pause .big { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
+      #pause .actions { display: flex; gap: 8px; justify-content: center; }
+      #pause button { font: inherit; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; min-height: 44px; }
+      #pause button.primary { background: #ffd22e; color: #111; }
+
+      /* Panneau de réglage de la conduite (`?debug&tune`) : outil de mise au point, à droite sous les temps. */
+      #tune { position: fixed; right: 12px; top: 150px; z-index: 3; width: 290px; max-height: calc(100vh - 220px); overflow: auto; background: rgba(11,16,32,.86); color: #fff; font: 600 12px system-ui, sans-serif; border-radius: 10px; padding: 8px 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; }
+      #tune[hidden] { display: none; }
+      #tune .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      #tune .head button { font: inherit; color: #fff; background: rgba(255,255,255,.14); border: 0; border-radius: 6px; width: 26px; height: 22px; cursor: pointer; }
+      #tune.folded .body { display: none; }
+      #tune .row { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; margin-top: 6px; }
+      #tune .row input { grid-column: 1 / 3; width: 100%; margin: 2px 0 0; }
+      #tune .row.changed { color: #ffd22e; }
+      #tune .status { margin-top: 8px; opacity: .8; }
+      #tune .actions { display: flex; gap: 6px; margin-top: 6px; }
+      #tune .actions button { font: inherit; padding: 5px 8px; border-radius: 6px; border: 0; cursor: pointer; background: #ffd22e; color: #111; }
+      #tune .actions button + button { background: rgba(255,255,255,.14); color: #fff; }
+      #tuned { left: 50%; top: 48px; transform: translateX(-50%); font-size: 12px; color: #ffd22e; background: rgba(11,16,32,.6); padding: 1px 8px; border-radius: 6px; }
+      #tuned:empty { display: none; }
+
       /* Petits écrans (téléphone) : bandeau resserré, menu en icônes, panneaux plus étroits. */
       @media (max-width: 900px), (max-height: 520px) {
         #meta { top: 8px; font-size: 12px; }
@@ -132,6 +207,7 @@
   <body>
     <div id="splash"><div>Circuit du Jour</div><div class="bar"></div></div>
     <noscript><p style="color:#fff;font:16px system-ui;padding:24px">Circuit du Jour a besoin de JavaScript.</p></noscript>
+    <div id="touch"></div>
     <div id="meta" class="hud"></div>
     <div id="medals" class="hud"></div>
     <div id="ghostinfo" class="hud"></div>
@@ -148,6 +224,15 @@
     <div id="finish" hidden></div>
     <div id="archive" hidden><div class="panel"></div></div>
     <div id="speed" class="hud">0 km/h</div>
+    <div id="tbar"></div>
+    <div id="tsettings" hidden></div>
+    <div id="rotate"></div>
+    <div id="pause">
+      <div class="big">Pause</div>
+      <div class="actions"><button id="pause-resume" class="primary" type="button">Reprendre</button><button id="pause-restart" type="button">Recommencer</button></div>
+    </div>
+    <div id="tuned" class="hud"></div>
+    <div id="tune" hidden></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

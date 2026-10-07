@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CAR, NO_INPUT, TICK_RATE, carSpeed, createCar, makeInput, stepCar, type CarInput, type CarState } from "../src/index";
+import { DEFAULT_CAR_PARAMS as CAR, NO_INPUT, TICK_RATE, carSpeed, createCar, makeInput, stepCar, type CarInput, type CarState } from "../src/index";
 
 function run(car: CarState, input: CarInput, seconds: number): CarState {
   const n = Math.round(seconds * TICK_RATE);
@@ -121,15 +121,19 @@ describe("déterminisme", () => {
     // Valeur de référence : si ce test casse, la physique a changé → toutes les rediffusions
     // enregistrées sont invalides. À ne mettre à jour qu'en connaissance de cause.
     const c = scriptedRun();
-    expect({ x: c.x, z: c.z, yaw: c.yaw, vx: c.vx, vz: c.vz, steer: c.steer, tick: c.tick }).toMatchInlineSnapshot(`
+    expect({ x: c.x, z: c.z, yaw: c.yaw, vx: c.vx, vz: c.vz, yawRate: c.yawRate, steer: c.steer, tick: c.tick, y: c.y, pitch: c.pitch, roll: c.roll }).toMatchInlineSnapshot(`
       {
+        "pitch": -0.0025065989331671374,
+        "roll": -0.00017311603146455193,
         "steer": 0,
         "tick": 1670,
-        "vx": 33.548352925443965,
-        "vz": 4.090447464068155,
-        "x": 61.15080086622217,
-        "yaw": 1.4494554117469587,
-        "z": 82.717072701484,
+        "vx": 40.48867524259874,
+        "vz": -4.510471276870662,
+        "x": 85.39194522187576,
+        "y": -2.666536939330431e-18,
+        "yaw": 1.681611940300952,
+        "yawRate": 0.00012910466199669192,
+        "z": 111.45829126972916,
       }
     `);
   });

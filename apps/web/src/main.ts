@@ -1,14 +1,17 @@
 import { PerspectiveCamera, WebGLRenderer } from "three";
 import {
-  CAR,
+  DEFAULT_CAR_PARAMS,
   DT,
   FLAT_WORLD,
   SIM_VERSION,
   carSpeed,
   copyCar,
   createCar,
+  createPilotageTrack,
   createTestTrack,
   dailyCircuit,
+  isDefaultParams,
+  parseTrack,
   ReplayPlayer,
   decodeReplay,
   encodeReplay,
@@ -18,6 +21,7 @@ import {
   stepCar,
   wrapAngle,
   type CarInput,
+  type CarParams,
   type DailyCircuit,
   type Medal,
   type CarState,
@@ -31,17 +35,30 @@ import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName } from "./identity";
 import { Controls, isTyping } from "./input";
+import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
+import { mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareText, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { PALETTE_DEFS, buildTrackScene } from "./trackMesh";
+import { loadTunedParams, mountTunePanel } from "./tune";
 
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
-// `essai` (le circuit écrit à la main des lots 2-3) et `plat` (le terrain d'essai du lot 1).
+// `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7)
+// et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
-const scenario = requested === "plat" ? "plat" : requested === "essai" ? "essai" : "jour";
+// `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
+let customTrack: ReturnType<typeof parseTrack> | null = null;
+if (params.has("debug") && params.has("spec")) {
+  try {
+    customTrack = parseTrack("test", params.get("spec")!);
+  } catch (e) {
+    console.error("spec invalide", e);
+  }
+}
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 const todayUtc = fakeToday ?? Math.floor(Date.now() / 86_400_000);
@@ -49,7 +66,10 @@ const seedParam = params.get("seed");
 const seedDay = seedParam === null ? null : parseDay(seedParam);
 let daily: DailyCircuit | null = null;
 if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc);
-const track = scenario === "plat" ? null : daily ? daily.track : createTestTrack();
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : createTestTrack());
+// Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
+const tuning = params.has("debug") && params.has("tune");
+const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
 const COUNTDOWN_S = 3;
 
 const renderer = new WebGLRenderer({ antialias: true });
@@ -103,25 +123,57 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${PALETTE_DEFS[daily.palette].label}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
-    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · G : fantôme${online.enabled ? " · L : classement" : ""}`
-    : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer";
+    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme${online.enabled ? " · L : classement" : ""}`
+    : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer · C : caméra";
 }
 
 // --- État de la partie ----------------------------------------------------------------------
 type Phase = "countdown" | "racing" | "finished";
 
-const controls = new Controls();
+// Commandes tactiles : appareil tactile (`pointer: coarse`) ou `?touch=1`. Mêmes axes que le clavier et la manette.
+const touchMode = wantsTouch(params, matchMedia("(pointer: coarse)").matches);
+const touchPad = touchMode ? new TouchPad(loadTouchSettings()) : null;
+const controls = new Controls(window, touchPad);
+if (touchMode) document.body.classList.add("touch");
+let paused = false;
+const touchUi = touchPad
+  ? mountTouchUi(touchPad, {
+      onPause: () => setPaused(!paused),
+      onRespawn: () => controls.requestRespawn(),
+      onRestart: () => controls.requestRestart(),
+    })
+  : null;
+// Outil de test (`?debug`) : « pas à pas ». La simulation n'avance plus avec l'horloge mais d'un nombre exact de pas
+// à chaque `__cdj.advance(n)` ; les commandes sont lues comme d'habitude (clavier, doigts…). Un test ne dépend ainsi
+// plus de la vitesse de la machine.
+let manual = false;
+let manualTicks = 0;
+let manualWaiters: (() => void)[] = [];
+/** Dernière commande appliquée à la simulation (outil de test : `__cdj.input`). */
+let lastInput: CarInput = { steer: 0, throttle: 0, brake: 0, respawn: 0 };
+let lastImpactAt = -1e9;
+
+function setPaused(value: boolean) {
+  if (value && phase === "finished") return;
+  paused = value;
+  document.body.classList.toggle("paused", paused);
+  touchUi?.setPaused(paused);
+}
+$("pause-resume").addEventListener("click", () => setPaused(false));
+$("pause-restart").addEventListener("click", () => controls.requestRestart());
 let best: BestRun | null = track ? loadBest(track.id) : null;
 // Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
 let ghostMode: GhostMode = params.get("ghost") === "off" ? "off" : "mine";
 let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
 let ghostLabel = "ton record";
 let ghostBusy = false;
-let session: RunSession | null = track ? new RunSession(track, ghostSource) : null;
+let session: RunSession | null = track ? new RunSession(track, ghostSource, carParams) : null;
+// Vrai si cette tentative a roulé, ne serait-ce qu'un instant, avec des réglages modifiés : ni record, ni classement.
+let tunedRun = !isDefaultParams(carParams);
 // Le fantôme qui roule vraiment dans cette tentative, et celui choisi en cours de course (effectif au prochain départ).
 type GhostLabel = { label: string; ms: number | null };
 let activeGhost: GhostLabel | null = session?.ghost && ghostSource ? { label: ghostLabel, ms: ghostSource.ms } : null;
@@ -170,7 +222,7 @@ hudArchive.addEventListener("click", (e) => {
 
 function startAttempt() {
   if (track) {
-    session = new RunSession(track, ghostSource);
+    session = new RunSession(track, ghostSource, carParams);
     activeGhost = session.ghost && ghostSource ? { label: ghostLabel, ms: ghostSource.ms } : null;
     pendingGhost = null;
     race = session.race;
@@ -185,6 +237,10 @@ function startAttempt() {
   copyCar(car, previous);
   updateInfo();
   updateGhostInfo();
+  setPaused(false);
+  touchPad?.releaseAll();
+  tunedRun = !isDefaultParams(carParams);
+  updateTunedLabel();
   autoplay = null;
   lastRank = null;
   shareEl = null;
@@ -198,6 +254,19 @@ function startAttempt() {
   document.body.classList.remove("finished");
   bannerTimer = 0;
 }
+
+/** Bandeau « réglages modifiés » : rappelle qu'une course réglée n'est ni classée ni enregistrée. */
+function updateTunedLabel() {
+  $("tuned").textContent = tunedRun ? "Réglages modifiés : course non classée" : "";
+}
+
+if (tuning) {
+  mountTunePanel($("tune"), carParams, () => {
+    if (phase !== "finished") tunedRun = true; // la course en cours a roulé avec ces réglages
+    updateTunedLabel();
+  });
+}
+updateTunedLabel();
 
 function showBanner(text: string, seconds: number, small = false) {
   hudBanner.textContent = text;
@@ -442,7 +511,9 @@ function finishRun() {
   if (!race || !track || !session) return;
   phase = "finished";
   const ms = race.finishMs;
-  const isRecord = !best || ms < best.ms;
+  // Réglages modifiés : le temps s'affiche, mais n'est ni enregistré ni envoyé (ce n'est pas la voiture de tout le monde).
+  const counted = !tunedRun;
+  const isRecord = counted && (!best || ms < best.ms);
   const previousBest = best;
   if (isRecord) {
     best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION, medal: daily ? medalFor(ms, daily.medals) : null };
@@ -452,7 +523,9 @@ function finishRun() {
   const lines: [string, string][] = [
     ["big", formatTime(ms)],
     ...medalLines(ms),
-    [isRecord ? "record" : "", isRecord ? (previousBest ? `Nouveau record ! (${formatDelta(ms - previousBest.ms)})` : "Premier temps enregistré") : `Record : ${formatTime(best!.ms)} (${formatDelta(ms - best!.ms)})`],
+    !counted
+      ? ["record", "Réglages modifiés : course non classée ni enregistrée"]
+      : [isRecord ? "record" : "", isRecord ? (previousBest ? `Nouveau record ! (${formatDelta(ms - previousBest.ms)})` : "Premier temps enregistré") : `Record : ${formatTime(best!.ms)} (${formatDelta(ms - best!.ms)})`],
     ["", race.respawns > 0 ? `${race.respawns} reprise${race.respawns > 1 ? "s" : ""} au point de contrôle` : "Sans reprise"],
   ];
   const rows = lines.map(([cls, text]) => {
@@ -504,10 +577,11 @@ function finishRun() {
     }
   }
   action("Archives", () => openArchive());
-  hudFinish.replaceChildren(...rows, ...(online.enabled ? [onlineBox] : []), ...(shareEl ? [shareEl] : []), actions, hint);
+  const showOnline = online.enabled && counted;
+  hudFinish.replaceChildren(...rows, ...(showOnline ? [onlineBox] : []), ...(shareEl && best ? [shareEl] : []), actions, hint);
   hudFinish.hidden = false;
   document.body.classList.add("finished");
-  if (online.enabled) startOnlineFlow(onlineBox);
+  if (showOnline) startOnlineFlow(onlineBox);
   showBanner("ARRIVÉE", 2.5);
 }
 
@@ -515,26 +589,83 @@ function finishRun() {
 let last = performance.now();
 let camYaw = 0;
 let camBaseY = 0;
-let carPitch = 0;
 let snapCamera = true;
+const camPos = { x: 0, y: 0, z: 0 };
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
+// Caméras poursuite (touche C / bouton Vue de la manette) : proche, ou loin pour mieux lire le circuit.
+interface CameraRig {
+  name: string;
+  /** Distance derrière la voiture, à l'arrêt puis en plus à la vitesse de pointe. */
+  back: number;
+  backAtSpeed: number;
+  height: number;
+  /** Point visé : devant la voiture, à cette hauteur. */
+  ahead: number;
+  lookHeight: number;
+  /** Champ de vision à l'arrêt, et ouverture en plus à pleine vitesse. */
+  fov: number;
+  fovAtSpeed: number;
+  /** Rapidité (1/s) avec laquelle la caméra rattrape le cap de la voiture et sa position : un léger retard. */
+  yawLag: number;
+  posLag: number;
+}
+const CAMERAS: CameraRig[] = [
+  { name: "proche", back: 5.6, backAtSpeed: 1.4, height: 2.3, ahead: 5, lookHeight: 1, fov: 68, fovAtSpeed: 20, yawLag: 7, posLag: 14 },
+  { name: "loin", back: 9.5, backAtSpeed: 2.2, height: 4.2, ahead: 8, lookHeight: 1.3, fov: 62, fovAtSpeed: 16, yawLag: 5, posLag: 10 },
+];
+let cameraIndex = 0;
+try {
+  cameraIndex = Math.max(0, CAMERAS.findIndex((c) => c.name === localStorage.getItem("cdj:camera")));
+} catch {
+  /* stockage indisponible : caméra proche */
+}
+
+function cycleCamera() {
+  cameraIndex = (cameraIndex + 1) % CAMERAS.length;
+  try {
+    localStorage.setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
+  } catch {
+    /* tant pis */
+  }
+  showBanner(`Caméra ${CAMERAS[cameraIndex]!.name}`, 1, true);
+}
+
 function stepOnce(input: CarInput) {
+  lastInput = input;
+  const respawnsBefore = race ? race.respawns : 0;
   if (session) {
     session.step(input); // course + enregistrement des commandes + fantôme, ensemble
   } else {
     copyCar(car, previous);
-    stepCar(car, input, FLAT_WORLD);
+    stepCar(car, input, FLAT_WORLD, carParams);
+  }
+  // Vibration au choc : lecture seule de la vitesse avant / après le pas (jamais d'effet sur la simulation).
+  if (touchPad && (!race || race.respawns === respawnsBefore) && impactFelt(carSpeed(previous), carSpeed(car))) {
+    const t = performance.now();
+    if (t - lastImpactAt > IMPACT_COOLDOWN_MS) {
+      lastImpactAt = t;
+      vibrate(touchPad.settings, 40);
+    }
   }
 }
 
 function frame(now: number) {
-  const elapsed = Math.min((now - last) / 1000, 0.25) * timeScale; // borne : pas de spirale après un onglet en pause
+  // Gelé : pause, ou (au toucher) une fenêtre ouverte — avec l'accélérateur automatique, la voiture ne doit pas
+  // rouler pendant qu'on lit les archives ou qu'on règle les commandes. Le temps de course compte des pas : exact.
+  const frozen = paused || (touchMode && (!hudArchive.hidden || !!touchUi?.settingsOpen()));
+  const manualTicksNow = manual ? manualTicks : 0;
+  manualTicks = 0;
+  const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.25) * timeScale; // borne : pas de spirale après un onglet en pause
   last = now;
 
-  const { input, restart } = controls.poll();
+  const { input, restart, camera: nextCamera, pause: togglePause } = controls.poll();
+  if (togglePause) setPaused(!paused);
+  if (nextCamera) cycleCamera();
   if (restart) startAttempt();
-  else if (input.respawn) {
+  else if (input.respawn && frozen) {
+    /* pas de reprise pendant la pause : elle s'appliquerait en reprenant */
+  } else if (input.respawn) {
     if (race) pendingRespawn = true;
     else startAttempt(); // sol plat : « reprise » = retour au départ
   }
@@ -548,6 +679,12 @@ function frame(now: number) {
     } else {
       showBanner(String(Math.ceil(countdown)), 0.2);
     }
+  } else if (manual) {
+    for (let i = 0; i < manualTicksNow && !frozen; i++) {
+      stepOnce(autoplay ? autoplay.next() : pendingRespawn ? input : { ...input, respawn: 0 });
+      pendingRespawn = false;
+    }
+    accumulator = 0;
   } else {
     accumulator += elapsed;
     while (accumulator >= DT) {
@@ -565,6 +702,7 @@ function frame(now: number) {
       const ms = race.splits[shownSplits - 1]!;
       const ref = (ghostSource ?? best)?.splits[shownSplits - 1];
       showBanner(ref !== undefined ? `CP${shownSplits}  ${formatDelta(ms - ref)}` : `CP${shownSplits}  ${formatTime(ms)}`, 1.6, true);
+      if (touchPad) vibrate(touchPad.settings, 25);
     }
     if (race.respawns !== lastRespawns) {
       lastRespawns = race.respawns;
@@ -588,12 +726,9 @@ function frame(now: number) {
   const yaw = previous.yaw + wrapAngle(car.yaw - previous.yaw) * alpha;
   const speed = carSpeed(car);
 
-  // Voiture : suit la pente (tangage) et s'incline un peu dans les virages.
-  const horizontal = Math.hypot(car.vx, car.vz);
-  const pitchTarget = horizontal > 1 ? -Math.atan2(car.vy, horizontal) : 0;
-  carPitch = snapCamera ? pitchTarget : carPitch + (pitchTarget - carPitch) * (1 - Math.exp(-12 * elapsed));
+  // Voiture : tangage et roulis de la caisse calculés par la simulation (suspension), en pentes → angles.
   carMesh.position.set(x, y, z);
-  carMesh.rotation.set(carPitch, yaw, car.steer * (speed / CAR.maxSpeed) * 0.08, "YXZ");
+  carMesh.rotation.set(-Math.atan(lerp(previous.pitch, car.pitch, alpha)), yaw, Math.atan(lerp(previous.roll, car.roll, alpha)), "YXZ");
 
   // Fantôme : la rediffusion du meilleur temps, interpolée comme la voiture.
   const ghost = session?.ghost;
@@ -601,23 +736,32 @@ function frame(now: number) {
   if (ghost) {
     const gc = ghost.race.car;
     const gp = ghost.previous;
-    const gh = Math.hypot(gc.vx, gc.vz);
     ghostMesh.position.set(lerp(gp.x, gc.x, alpha), lerp(gp.y, gc.y, alpha), lerp(gp.z, gc.z, alpha));
-    ghostMesh.rotation.set(gh > 1 ? -Math.atan2(gc.vy, gh) : 0, gp.yaw + wrapAngle(gc.yaw - gp.yaw) * alpha, 0, "YXZ");
+    ghostMesh.rotation.set(-Math.atan(lerp(gp.pitch, gc.pitch, alpha)), gp.yaw + wrapAngle(gc.yaw - gp.yaw) * alpha, Math.atan(lerp(gp.roll, gc.roll, alpha)), "YXZ");
   }
 
-  // Caméra poursuite : cap et hauteur suivent la voiture avec un peu de retard.
+  // Caméra poursuite : cap, hauteur et position suivent la voiture avec un léger retard ; le champ de vision
+  // s'ouvre avec la vitesse (sensation de vitesse).
+  const rig = CAMERAS[cameraIndex]!;
+  const speedRatio = Math.min(speed / DEFAULT_CAR_PARAMS.maxSpeed, 1.4);
   if (snapCamera) {
     camYaw = yaw;
     camBaseY = y;
-    snapCamera = false;
   }
-  camYaw += wrapAngle(yaw - camYaw) * (1 - Math.exp(-6 * elapsed));
+  camYaw += wrapAngle(yaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
   camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
-  const back = 7.5 + (speed / CAR.maxSpeed) * 1.5;
-  camera.position.set(x - Math.sin(camYaw) * back, camBaseY + 3.2, z - Math.cos(camYaw) * back);
-  camera.lookAt(x + Math.sin(camYaw) * 6, camBaseY + 1.2, z + Math.cos(camYaw) * 6);
-  const fov = 65 + Math.min(speed / CAR.maxSpeed, 1.4) * 22; // l'élargissement donne la sensation de vitesse
+  const back = rig.back + speedRatio * rig.backAtSpeed;
+  const tx = x - Math.sin(camYaw) * back;
+  const ty = camBaseY + rig.height;
+  const tz = z - Math.cos(camYaw) * back;
+  const follow = snapCamera ? 1 : 1 - Math.exp(-rig.posLag * elapsed);
+  camPos.x += (tx - camPos.x) * follow;
+  camPos.y += (ty - camPos.y) * follow;
+  camPos.z += (tz - camPos.z) * follow;
+  snapCamera = false;
+  camera.position.set(camPos.x, camPos.y, camPos.z);
+  camera.lookAt(x + Math.sin(camYaw) * rig.ahead, camBaseY + rig.lookHeight, z + Math.cos(camYaw) * rig.ahead);
+  const fov = rig.fov + speedRatio * rig.fovAtSpeed;
   if (Math.abs(camera.fov - fov) > 0.01) {
     camera.fov = fov;
     camera.updateProjectionMatrix();
@@ -625,9 +769,14 @@ function frame(now: number) {
 
   view.followGround(x, z);
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
-  renderer.render(view.scene, camera);
+  if (!manual) renderer.render(view.scene, camera); // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
   splash?.remove(); // premier rendu fait : on retire l'écran de chargement
   splash = null;
+  if (manualWaiters.length) {
+    const waiters = manualWaiters;
+    manualWaiters = [];
+    for (const done of waiters) done();
+  }
 }
 
 renderer.setAnimationLoop(frame);
@@ -644,6 +793,25 @@ if (params.has("debug")) {
       },
       get phase() {
         return phase;
+      },
+      /** Dernière commande appliquée à la simulation. */
+      get input() {
+        return lastInput;
+      },
+      get paused() {
+        return paused;
+      },
+      /** Pas à pas : la simulation n'avance plus qu'avec `advance`. */
+      manual(on: boolean) {
+        manual = on;
+      },
+      /** Avance de `n` pas de simulation (mode pas à pas) ; rendu une fois fait, la promesse se résout. */
+      advance(n: number) {
+        manualTicks += n;
+        return new Promise<void>((resolve) => manualWaiters.push(resolve));
+      },
+      get touch() {
+        return touchMode;
       },
       get ghost() {
         return session?.ghost?.race.car ?? null;

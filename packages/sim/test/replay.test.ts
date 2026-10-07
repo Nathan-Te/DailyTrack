@@ -24,7 +24,7 @@ import {
 import { recordAutopilot } from "./helpers/autopilot";
 
 const track = createTestTrack();
-const live = recordAutopilot(track, 120, { curveSpeed: 26 });
+const live = recordAutopilot(track, 120, { grip: 0.9 });
 
 describe("enregistrement", () => {
   it("regroupe les pas consécutifs identiques en séries", () => {

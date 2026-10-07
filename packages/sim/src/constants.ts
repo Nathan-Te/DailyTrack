@@ -14,11 +14,11 @@ export function ticksToMs(ticks: number): number {
  * résultat d'une course : les rediffusions enregistrées avec une autre version ne sont plus rejouables
  * (le fantôme est alors ignoré, et le serveur les refuse).
  */
-export const SIM_VERSION = 1;
+export const SIM_VERSION = 3;
 
 /**
  * Version du générateur de circuits du jour. À incrémenter dès que le circuit d'une date change
  * (règles de construction, pilote de validation, fenêtre de durée) : elle fait partie de l'identifiant du circuit,
  * donc les records et rediffusions d'un autre générateur ne se mélangent pas.
  */
-export const GENERATOR_VERSION = 1;
+export const GENERATOR_VERSION = 3;
