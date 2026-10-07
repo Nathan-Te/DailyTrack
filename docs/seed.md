@@ -2,82 +2,84 @@
 
 Source de vérité du projet. Vit dans `docs/seed.md`, n'est modifié que par Nathan. Projet **web, court**, conçu pour être développé **entièrement dans le cloud** (Claude Code sur le web), sans PC.
 
-*Version 2 (06/10/2026) : lots 0 à 6 livrés ; plan des lots 7 à 11 et leurs prompts ajoutés (§ 10 et § 12) ; surfaces, blocs à effet, virages relevés et thèmes intégrés au jeu ; hébergement corrigé (§ 7).*
+*Version 3 (07/10/2026) : lots 0 à 11 livrés (avec les retouches 7b et 9b). Ajoutés : courses de 30 à 45 s, largeurs de piste variables, miniatures dans les archives, panneau d'admin avec planning et remplacement de circuits, correction des zones tactiles. Prompts au § 12.*
 
 ---
 
 ## 1. Le jeu en une phrase
-Chaque jour, un nouveau circuit court, le même pour tout le monde : on le parcourt en une minute dans le navigateur, on retente pour battre son temps et le fantôme du meilleur, et on partage son résultat en une ligne, comme un score de Wordle.
+Chaque jour, un nouveau circuit court, le même pour tout le monde : on le parcourt en 30 à 45 secondes dans le navigateur, on retente pour battre son temps et le fantôme du meilleur, et on partage son résultat en une ligne, comme un score de Wordle.
 
 ## 2. Les piliers
-1. **Une minute par jour.** Un circuit de 30 à 60 secondes. On joue en pause café ; on revient demain.
-2. **Le même circuit pour tous.** Un circuit par jour, généré à partir de la date, identique pour chaque joueur. C'est ce qui rend le classement et le partage intéressants.
+1. **Moins d'une minute par jour.** Une course de **30 à 45 secondes, grand maximum**. On joue en pause café ; on revient demain.
+2. **Le même circuit pour tous.** Un circuit par jour, généré à partir de la date (ou une variante choisie à l'avance, § 5), identique pour chaque joueur. C'est ce qui rend le classement et le partage intéressants.
 3. **Zéro friction.** Un lien, ça démarre. Pas de compte, pas d'installation : un pseudo choisi au premier temps, mémorisé dans le navigateur.
 4. **Un temps est une preuve.** La physique est **déterministe** : une course est entièrement décrite par la suite des commandes du joueur. Le serveur rejoue la course pour valider le temps, et la même rediffusion sert de fantôme.
-5. **Lisible et nerveux.** Low-poly coloré, caméra derrière la voiture, sensations de vitesse ; un circuit se lit en un coup d'œil. **La conduite doit avoir la tenue de route et le mordant d'un Trackmania.**
+5. **Lisible et nerveux.** Low-poly coloré, caméra derrière la voiture, sensations de vitesse ; un circuit se lit en un coup d'œil. **La conduite a la tenue de route et le mordant d'un Trackmania.**
 
 ## 3. Le jeu
-- **La voiture** : une seule, arcade, au comportement inspiré de Trackmania — accélération franche, direction immédiate, adhérence forte avec une limite lisible, dérapage volontaire au frein, suspension qui suit le relief, réceptions qui récompensent un atterrissage propre, rebords qu'on peut frôler. Commandes : accélérer, freiner/reculer, tourner (analogique à la manette), **recommencer au dernier point de contrôle** (avec la vitesse du passage), **recommencer depuis le départ**. Clavier et manette, puis tactile.
-- **Le circuit** : des **blocs** posés sur une grille, à la Trackmania — lignes droites, virages, **virages relevés**, pentes, bosses, tremplins ; un départ, des points de contrôle, une arrivée. Pas de boucles ni de murs verticaux au premier jalon.
-- **Les surfaces** : **route** (référence), **terre** (glisse et se rattrape), **glace** (on anticipe tout), **herbe** (lente et glissante, à éviter).
+- **La voiture** : une seule, arcade, inspirée de Trackmania — accélération franche, direction immédiate, adhérence forte avec une limite lisible, dérapage au frein, suspension qui suit le relief, réceptions qui récompensent un atterrissage propre, rebords qu'on peut frôler. Commandes : accélérer, freiner/reculer, tourner (analogique à la manette), **recommencer au dernier point de contrôle** (avec la vitesse du passage), **recommencer depuis le départ**. Clavier, manette et tactile (glissement ou boutons).
+- **Le circuit** : des **blocs** posés sur une grille, à la Trackmania — lignes droites, virages serrés, **courbes amples**, **virages relevés**, pentes, bosses, tremplins ; un départ, des points de contrôle, une arrivée. **La largeur de la piste varie** (étroite, normale, large, avec des transitions) ; les virages serrés restent rares. Pas de boucles ni de murs verticaux au premier jalon.
+- **Les revêtements** (par bloc) : **route** (référence), **terre** (glisse et se rattrape), **glace** (on anticipe tout), **herbe** (lente et glissante).
 - **Les blocs à effet** : **plaque d'accélération**, **super turbo**, **moteur coupé** (l'accélérateur n'agit plus jusqu'au point de contrôle suivant).
 - **La course** : chronomètre au millième, temps intermédiaires aux points de contrôle (comparés à son meilleur et au fantôme), essais illimités dans la journée.
 - **Les médailles** : bronze, argent, or et **temps de l'auteur**, calculés pour chaque circuit (§ 5).
 - **Les fantômes** : son propre meilleur temps, et au choix celui du premier du classement ou du joueur juste devant soi.
 - **L'écran d'arrivée** : temps, médaille, rang du jour, et la **ligne à partager** :
-  `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812`
-- **Les archives** : rejouer les circuits des jours précédents, avec le classement figé du jour et le fantôme du premier.
+  `Circuit du Jour #142 — 37,312 s — 🥇 — 23e/812`
+- **Les archives** : la liste des jours passés, chacun avec une **miniature en vue aérienne** d'une portion marquante du circuit, son thème, ses médailles et ta place figée ; on rejoue un jour avec le fantôme du premier et le classement figé.
 
 ## 4. Direction artistique
-Low-poly coloré et propre : blocs aux couleurs vives par type (route grise, plaques d'accélération jaunes, points de contrôle bleus, arrivée à damier), chaque surface et chaque bloc à effet reconnaissable au premier coup d'œil, ciel dégradé, quelques éléments de décor posés autour du circuit. **Un thème par jour** (§ 5) avec sa palette, pour que chaque circuit ait une identité. Une voiture low-poly **originale** et animée (roues, suspension, caisse), des effets (fumée, traces, particules par surface, turbo, étincelles) et des sons procéduraux. Pas de textures lourdes : le jeu doit se charger en quelques secondes, sur mobile aussi.
+Low-poly coloré et propre : blocs aux couleurs vives par type (route grise, plaques d'accélération jaunes, points de contrôle bleus, arrivée à damier), chaque revêtement et chaque bloc à effet reconnaissable au premier coup d'œil, ciel dégradé, soleil ou lune, montagnes et décor propres à chaque thème. **Un thème par jour** (§ 5) avec sa palette. Une voiture low-poly **originale** et animée (roues, suspension, caisse), des effets (fumée, traces, particules par revêtement, turbo, étincelles) et des sons procéduraux. Pas de textures lourdes : le jeu doit se charger en quelques secondes, sur mobile aussi.
 
 ## 5. Le circuit du jour
-- **Généré à partir de la date** (graine = date en UTC), par un générateur qui enchaîne des blocs selon des règles : pas d'auto-intersection, longueur cible, rythme (alternance de lignes droites et de virages), un ou deux passages marquants (tremplin, enchaînement serré), nombre de points de contrôle.
-- **Un thème par jour**, tiré de la date : palette + poids des surfaces + règles de blocs à effet + un passage signature. Thèmes de départ : *Stade* (route, turbos, virages relevés), *Rallye* (terre), *Banquise* (glace), *Nuit* (route, moteur coupé, super turbos), *Campagne* (terre et herbe).
-- **Validé par un pilote automatique** : un petit bot qui parcourt le circuit avec la même physique. S'il ne finit pas, le générateur recommence avec une graine voisine. Le temps du bot donne le **temps de l'auteur**, d'où découlent les autres médailles. Le bot doit approcher le niveau d'un bon joueur.
+- **Généré à partir de la date** (graine = date en UTC), par un générateur qui enchaîne des blocs selon des règles : pas d'auto-intersection, rythme (alternance de lignes droites et de courbes), **au moins deux largeurs de piste**, peu de virages serrés, un ou deux passages marquants, nombre de points de contrôle.
+- **Durée** : le temps de l'auteur tombe entre **30 et 40 s**, pour qu'une course correcte tienne en 30 à 45 s.
+- **Un thème par jour**, tiré de la date : palette + décor + poids des revêtements + largeurs dominantes + règles de blocs à effet + un passage signature. Thèmes : *Stade*, *Rallye*, *Banquise*, *Nuit*, *Campagne*.
+- **Validé par un pilote automatique** qui parcourt le circuit avec la même physique. S'il ne finit pas, le générateur recommence avec une graine voisine. Le temps du pilote donne le **temps de l'auteur**, d'où découlent les autres médailles.
+- **Planning et remplacement** : le panneau d'admin montre les circuits des jours à venir. Si l'un ne plaît pas, Nathan le remplace par une **variante** (même date, autre graine, thème au choix). Un jour commencé ou passé est **figé** : on ne remplace que les jours à venir.
 - **Plus tard, peut-être** : un circuit dessiné à la main le dimanche ; un éditeur.
 
 ## 6. Le classement
 - Un **classement par jour** : meilleur temps de chaque joueur, rang, nombre de participants.
-- **Validation par rediffusion** : le navigateur envoie la suite de commandes de la course ; le serveur **rejoue la course avec le même code de simulation** et n'enregistre que le temps qu'il a lui-même recalculé. Un temps falsifié ne passe pas.
+- **Validation par rediffusion** : le navigateur envoie la suite de commandes de la course ; le serveur **rejoue la course avec le même code de simulation** (et la variante du planning) et n'enregistre que le temps qu'il a lui-même recalculé. Un temps falsifié ne passe pas.
 - **Identité légère** : un identifiant aléatoire stocké dans le navigateur et un pseudo modifiable ; pas d'e-mail, pas de mot de passe. (Changer de navigateur = nouveau joueur, c'est accepté au premier jalon.)
 - **Fantômes** : le serveur sert la rediffusion du premier et des voisins de classement.
+- **Administration** : un jeton secret donne accès au planning ; aucun compte.
 
 ## 7. Technique
 - **TypeScript partout**, en monorepo :
-  - `packages/sim` — la **simulation pure** (physique de la voiture, blocs, surfaces, collisions, chronométrage, générateur, bot) : **aucune dépendance au rendu ni au navigateur**, testée par Vitest en ligne de commande ;
-  - `apps/web` — le jeu (Vite + **Three.js**), qui affiche ce que calcule `sim` ;
-  - `apps/api` — le classement, qui importe le **même** `sim` pour rejouer les courses.
-- **Déterminisme** : pas de temps fixe (120 par seconde, sous-pas fixes autorisés, interpolation à l'affichage) ; **pas de moteur physique externe** ; pas de `Math.sin`, `Math.cos`, `Math.exp`, `Math.atan2`, `Math.tanh` ni de fonctions dont le résultat peut varier d'un navigateur à l'autre dans la simulation — des implémentations à soi, ou des tables. Un test vérifie qu'une même rediffusion donne **exactement** le même temps dans Node et dans les navigateurs. Le rendu, les effets et les sons ne modifient **jamais** un résultat de `sim`.
-- **Hébergement de l'API — à trancher avant la mise en ligne** : l'offre gratuite de Cloudflare Workers **ne suffit pas** (10 ms de calcul par requête, alors qu'un rejeu coûte ≈ 6 ms et une génération de circuit jusqu'à 500 ms). Options : **serveur de Nathan en Docker** (comme Vitrine, aucune limite) ou **Workers payant** (5 $/mois). Le jeu statique reste sur GitHub Pages / Cloudflare Pages, avec un aperçu par branche.
-- **Tests** : Vitest pour la simulation (déterminisme, comportements de conduite chiffrés, générateur, validation par rediffusion) ; Playwright pour le jeu (rediffusion, rendu, mobile, tactile).
+  - `packages/sim` — la **simulation pure** (physique, blocs, revêtements, collisions, chronométrage, générateur, pilote) : **aucune dépendance au rendu ni au navigateur**, testée par Vitest ;
+  - `apps/web` — le jeu (Vite + **Three.js**), les archives et le panneau d'admin ;
+  - `apps/api` — le classement et le planning, qui importe le **même** `sim` pour rejouer les courses.
+- **Déterminisme** : pas de temps fixe (120 par seconde, sous-pas fixes autorisés, interpolation à l'affichage) ; **pas de moteur physique externe** ; pas de `Math.sin`, `Math.cos`, `Math.exp`, `Math.atan2`, `Math.tanh`, `Math.random`, `Date` dans la simulation — des implémentations à soi, ou des tables. Un test vérifie qu'une même rediffusion donne **exactement** le même temps dans Node et dans les navigateurs. Le rendu, les effets, les sons et les miniatures ne modifient **jamais** un résultat de `sim`.
+- **Sans API**, le jeu reste jouable (circuit par défaut de la date, course non classée).
+- **Hébergement de l'API — à trancher avant la mise en ligne** : l'offre gratuite de Cloudflare Workers **ne suffit pas** (10 ms de calcul par requête ; un rejeu coûte ≈ 10–12 ms, une génération de circuit ≈ 100 ms). Options : **serveur de Nathan en Docker** (comme Vitrine, aucune limite, mise en route manuelle) ou **Workers payant** (5 $/mois, déploiement par la CI, 100 % cloud). Le jeu statique reste sur GitHub Pages / Cloudflare Pages, avec un aperçu par branche.
+- **Tests** : Vitest pour la simulation (déterminisme, comportements de conduite chiffrés, générateur, validation par rediffusion) ; Playwright pour le jeu (rediffusion, rendu, mobile, tactile, archives, admin) ; scripts de mesure pour le générateur (durées, taux de validation par thème).
 - **Intégration continue** : GitHub Actions lance les tests à chaque push et publie l'aperçu.
 
 ## 8. Méthode : le développer dans le cloud
-- **Claude Code sur le web** (claude.ai/code, ou l'onglet Code de l'application mobile) : chaque lot est une **session cloud** sur le dépôt GitHub du projet. La session tourne même si on ferme le navigateur ou le téléphone, et propose ses changements sous forme de branche et de pull request.
-- **Tester un lot en deux clics** : chaque lot a son **aperçu en ligne** (une URL par branche) et un **scénario d'essai** dans l'URL (`?scenario=pilotage`, `?seed=2026-10-06`, `?demo`…). Le README du lot commence par le lien direct. On teste depuis n'importe quel appareil, puis on fusionne la pull request.
-- **Les règles habituelles** : un lot = une session neuve = une branche = une PR ; README d'une page dans `docs/lots/` ; chaque prompt de lot indique les modifications du `CLAUDE.md` que l'agent applique lui-même ; l'agent s'arrête quand les critères sont verts.
+- **Claude Code sur le web** : chaque lot est une **session cloud** sur le dépôt GitHub du projet. La session tourne même si on ferme le navigateur ou le téléphone, et propose ses changements sous forme de branche et de pull request.
+- **Tester un lot en deux clics** : chaque lot a son **aperçu en ligne** (une URL par branche) et un **scénario d'essai** dans l'URL. Le README du lot commence par le lien direct. On teste depuis n'importe quel appareil, puis on fusionne la pull request.
+- **Les règles habituelles** : un lot = une session neuve = une branche = une PR (si l'environnement impose un autre nom de branche, le garder et adapter le lien d'aperçu) ; README d'une page dans `docs/lots/` ; chaque prompt de lot indique les modifications du `CLAUDE.md` que l'agent applique lui-même ; l'agent met à jour `docs/orchestration.md` et s'arrête quand les critères sont verts.
 - **Enchaîner les lots** : pour lancer le lot suivant, Nathan ouvre une **session neuve** avec simplement :
   > *Lis `docs/seed.md` § 8 et § 12, puis fais le prochain lot.*
 
-  L'agent détermine le prochain lot ainsi : c'est le **premier lot du § 12 dont la PR n'est pas fusionnée** dans `main` (voir le tableau § 2 de `docs/orchestration.md` et l'historique Git). Si la PR du lot précédent est encore ouverte, il **ne démarre rien** et le signale. S'il rencontre un **point d'arrêt** (marqué ⏸ au § 12), il s'arrête et attend Nathan. Il exécute ensuite le prompt du lot tel qu'il est écrit, et un seul lot par session.
-- **Le quota** : Sonnet en effort moyen suffit pour la plupart des lots ; Opus effort élevé seulement pour la physique (lot 7).
+  Le prochain lot est le **premier lot du § 12 dont la PR n'est pas fusionnée** dans `main` (voir le tableau § 2 de `docs/orchestration.md` et l'historique Git). Si la PR du lot précédent est encore ouverte, l'agent **ne démarre rien** et le signale. À un **point d'arrêt** (⏸), il s'arrête et attend Nathan. Un seul lot par session.
+- **Le quota** : Sonnet en effort moyen pour la plupart des lots ; Opus quand la physique ou le générateur résistent.
 
 ## 9. Hors du jeu
 Multijoueur en direct, comptes, éditeur de circuits, plusieurs voitures, réglages de voiture par le joueur, personnalisation, monétisation, musique, boucles et murs verticaux (au premier jalon).
 
 ## 10. Plan en lots
 
-**Livrés** (détail dans `docs/orchestration.md` et `docs/lots/`) :
-- **Lot 0 — Le socle** (#1) · **Lot 1 — La voiture** (#3) · **Lot 2 — Les blocs** (#6) · **Lot 3 — La rediffusion et le fantôme** (#7) · **Lot 4 — Le circuit du jour** (#8) · **Lot 5 — Le classement** (#9) · **Lot 6 — L'arrivée et le partage** (#10) · correctif CI (#11).
+**Livrés** (détail dans `docs/orchestration.md` et `docs/lots/`) : 0 Socle · 1 Voiture · 2 Blocs · 3 Rediffusion · 4 Circuit du jour · 5 Classement · 6 Arrivée & archives · 7 Conduite (+ 7b réglages) · 10 Tactile · 8 Surfaces & thèmes · 9 Feel & juice (+ 9b visuels) · 11 Historique.
 
 **À venir** (prompts au § 12) :
-- **Lot 7 — Refonte de la conduite.** Modèle à deux essieux, suspension, réceptions, rebords, dérapage, direction analogique, caméras, panneau de réglage en direct, pilote adapté. **À tester** : la sensation sur `?scenario=pilotage`, puis réglages au panneau. ⏸ Retouche **7b** avec les réglages de Nathan.
-- **Lot 8 — Surfaces, blocs à effet, thèmes.** Route, terre, glace, herbe ; super turbo, moteur coupé ; virages relevés ; un thème par jour. **À tester** : `?scenario=surfaces` et un circuit par thème.
-- **Lot 9 — Feel & juice.** Voiture modélisée et animée, effets visuels, sons, mode `?demo`. **À tester** : `?scenario=surfaces&demo`, puis conduire soi-même.
-- **Lot 10 — Tactile.** Direction au glissé, frein, accélérateur automatique, réglages. **À tester** : finir un tour au doigt sur téléphone.
-- **Lot 11 — Historique.** Deux semaines de circuits passés avec pilotes fictifs, mode démo des archives. **À tester** : `?api=demo`, touche H.
-- **Ensuite** : mise en ligne (hébergement de l'API, nom de domaine, `PREMIER_JOUR` réel) ; calibrage des médailles sur courses réelles ; **jalon** : une semaine de circuits joués par Nathan et quelques amis ; puis décor par thème, circuit dessiné du dimanche, publication sur un portail de jeux web.
+- **Retouche 10b — Zones tactiles.** Les boutons ← → et gaz / frein en paysage répondent là où on les touche. **À tester** : sur ton téléphone, mode boutons, avec l'affichage des zones.
+- **Lot 12 — Circuits plus amples.** Courses de 30 à 45 s, largeurs de piste variables, courbes amples, peu de virages serrés. **À tester** : `?scenario=largeurs`, puis un circuit par thème.
+- **Lot 13 — Miniatures.** Vue aérienne d'une portion de chaque circuit dans les archives. **À tester** : `?api=demo`, touche H.
+- **Lot 14 — Admin et planning.** Panneau refait, planning des jours à venir, remplacement d'un circuit par une variante. **À tester** : `/admin/?api=demo`, remplacer un jour, le jouer.
+- ⏸ **Ensuite** : mise en ligne (hébergement de l'API, nom de domaine, `PREMIER_JOUR` réel, `ADMIN_TOKEN`) ; calibrage des médailles sur courses réelles ; **jalon** : une semaine de circuits joués par Nathan et quelques amis ; puis circuit dessiné du dimanche, portail de jeux web.
 
 ## 11. Concurrence
 **Trackmania** propose déjà un « circuit du jour » (Track of the Day) ; **PolyTrack**, un jeu de course low-poly dans le navigateur, a trouvé son public. La différence visée : le **format quotidien très court**, sans compte et sans installation, et le **partage en une ligne**.
@@ -86,252 +88,177 @@ Multijoueur en direct, comptes, éditeur de circuits, plusieurs voitures, régla
 
 ## 12. Prompts des lots
 
-Chaque prompt se suffit à lui-même. L'agent exécute le prompt du prochain lot (règle d'enchaînement au § 8), dans une session neuve.
+Chaque prompt se suffit à lui-même. L'agent exécute le prompt du prochain lot (règle d'enchaînement au § 8), dans une session neuve. Les prompts des lots 7 à 11, livrés, ont été retirés (historique Git et `docs/lots/`).
 
-### Lot 7 — Refonte de la conduite (tenue de route « à la Trackmania »)
+### Retouche 10b — Zones de toucher en paysage
 
-**Modèle conseillé : Opus, effort élevé** (physique déterministe).
+**Modèle conseillé : Sonnet, effort moyen.**
 
 #### Contexte
-- Lis `docs/orchestration.md` (état des lots 0–6, règles § 4, pièges § 8).
-- Lots 0 à 6 et correctif #11 fusionnés. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-7-conduite origin/main`.
-- Retour de Nathan après avoir joué : la conduite actuelle fait **archaïque et bon marché**. On veut une vraie sensation Trackmania : tenue de route, handling, dérapage, réceptions, contacts avec les rebords. Constat annexe : sur le circuit du 06/10, Nathan a fait 37,903 s pour un temps d'auteur de 39,188 s — le pilote automatique est nettement plus lent qu'un humain correct.
+- Lis `docs/orchestration.md` (§ 8 : pièges des tests tactiles) et `docs/lots/lot-10-tactile.md`.
+- Lot 11 fusionné. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-10b-zones-tactiles origin/main`.
+- Retour de Nathan **sur un vrai téléphone, en paysage** : en mode boutons (pas le glissement), les boutons **← →** et **gaz / frein** n'ont pas de bonnes zones de toucher — des appuis ne sont pas pris ou tombent sur la mauvaise commande. Causes possibles : zones plus petites que le visuel ou décalées, trous entre deux zones, doigt qui glisse hors du bouton et relâche la commande, encoche et bandes de gestes système, comportement par défaut du navigateur.
 
 #### Objet
-Remplacer le modèle de voiture de `packages/sim` par un modèle arcade plus riche, réglable en direct, sans rien perdre du déterminisme.
-
-#### Comportements visés (ce que Nathan doit ressentir)
-1. **Accélération franche** : départ vif, courbe qui s'aplatit en approchant la vitesse de pointe. Garde la vitesse de pointe du même ordre que l'actuelle (mesure-la d'abord) pour ne pas casser les échelles du générateur, ou assume l'écart et retouche le générateur.
-2. **Direction immédiate** : réponse sans mollesse ; angle de braquage qui diminue avec la vitesse ; la voiture pivote autour de son centre, pas de sous-virage pâteux.
-3. **Adhérence avec une limite lisible** : grip latéral fort jusqu'à un seuil, puis **glisse contrôlée** ; une glisse coûte de la vitesse en proportion de son angle.
-4. **Dérapage volontaire** : frein bref en virage à haute vitesse → l'arrière décroche, on tient la glisse à la direction, sortie propre en relâchant. Sur route, une trajectoire propre en grip reste plus rapide qu'un dérapage ; le dérapage sert dans les virages serrés.
-5. **Freinage puissant**, marche arrière.
-6. **Suspension** : la caisse suit les pentes et les bosses (4 points de contact), roulis et tangage ; une réception à plat garde la vitesse, une réception de travers en coûte et peut faire rebondir.
-7. **En l'air** : gravité un peu appuyée pour des sauts lisibles ; pas de contrôle aérien (au plus un léger maintien de l'orientation).
-8. **Rebords** : contact rasant = la voiture longe le rebord avec une petite perte ; choc de face = grosse perte et rebond ; **jamais coincé**.
-9. **Plaque d'accélération** : poussée qui dépasse temporairement la vitesse de pointe, puis retour progressif.
-10. **Reprise au point de contrôle** avec la vitesse et le cap du passage, départ arrêté pour « recommencer depuis le départ ».
+Que chaque appui tombe là où le joueur l'attend, sans avoir à viser.
 
 #### À livrer
-- **Modèle** : plan horizontal en modèle « bicyclette » (deux essieux, forces latérales avant/arrière selon le glissement : c'est l'équilibre entre les deux qui donne le caractère), hauteur et inclinaison par 4 points de contact sur `world`, balistique en l'air. Si la raideur de la suspension l'exige : **sous-pas fixes** dans `stepCar` (ex. 2 × 240 Hz), jamais variables.
-- **Paramètres regroupés** dans un objet `CarParams` (valeurs par défaut dans `packages/sim`), passé à la simulation. **Prévoir l'accroche du lot 8** : l'adhérence et la résistance au roulement se lisent par roue via une fonction `surfaceAt(...)` qui renvoie des `SurfaceParams` (une seule surface « route » pour l'instant).
-- **Direction analogique** : si la direction est aujourd'hui tout-ou-rien, la passer en entier analogique (ex. −64…64) ; manette = axe analogique avec zone morte ; clavier = plein braquage avec une montée très courte. Accélérateur et frein restent tout-ou-rien. Encodage de rediffusion mis à jour (version de format), toujours sans `-0`.
-- **Caméra** (dans `apps/web`) : poursuite avec léger retard, champ de vision qui s'ouvre avec la vitesse, deux caméras (proche / loin) sur la touche **C** (et un bouton manette libre).
-- **Panneau de réglage** `?debug&tune` : curseurs pour une quinzaine de paramètres clés (grip avant/arrière, seuil et perte de glisse, braquage, accélération, freinage, raideur et amortissement, gravité, perte sur rebord…), effet immédiat, bouton **« Copier les réglages »** (JSON). Une course jouée avec des réglages non par défaut **n'est jamais envoyée au classement** (et le dit à l'écran).
-- **Scénario** `?scenario=pilotage` : circuit écrit à la main avec longue ligne droite, épingle, chicane rapide, grande courbe, bosses, tremplin avec réception, rebord à frôler, plaque d'accélération.
-- **Pilote automatique** adapté au nouveau modèle (vitesses cibles par virage, points de freinage) pour que chaque circuit du jour reste validé dans la fenêtre 28–48 s ; il doit se rapprocher d'un humain correct.
-- **Versions** : `SIM_VERSION` → 2, `GENERATOR_VERSION` → 2, rediffusions de référence régénérées. Aucun joueur réel : pas de migration, mais l'API refuse proprement une rediffusion d'une ancienne version (message clair), et les records locaux d'une ancienne version sont ignorés.
+- **Diagnostic d'abord** : affichage `?zones=1` qui dessine les zones actives (semi-transparentes, avec leur nom) et un point par doigt posé, de la couleur de la zone touchée, rouge si aucune. Le rapport dit quelles causes ont été trouvées.
+- **Grandes zones, petit visuel** : en mode boutons, l'écran est découpé en grandes zones **sans trou** (ex. moitié gauche en deux colonnes ← | →, moitié droite en frein | gaz, ou gaz en haut et frein en bas selon la disposition retenue) ; les boutons dessinés restent compacts, la zone active s'étend jusqu'aux bords et aux zones voisines.
+- **Glisser d'une zone à l'autre** sans lever le doigt change la commande (← vers →, frein vers gaz) ; suivi par identifiant de doigt (événements pointeur), plusieurs doigts à la fois (diriger et accélérer ou freiner en même temps).
+- **Bords et encoche** : respecter `env(safe-area-inset-*)` pour le **visuel** (encoche, barre d'accueil iOS) sans réduire la zone active ; le visuel s'écarte des bandes de gestes système (retour Android).
+- **Aucun toucher perdu** : `touch-action: none` sur la couche de jeu, `preventDefault` sur `touchstart` / `touchmove`, pas de délai de clic, pas de sélection de texte, pas de menu d'appui long, pas de zoom.
+- **Réglage « taille des boutons »** (petite / moyenne / grande), mémorisé. Paramètre d'URL `?steer=boutons|glisser` pour forcer le mode.
+- Le mode glissement ne régresse pas ; rien ne change dans `sim`.
 
 #### Critères d'arrêt
-- `npm run typecheck && npm test` et `npm run test:e2e` verts (déterminisme Node ↔ Chromium/Firefox/WebKit inclus).
-- **Tests de comportement chiffrés** dans `packages/sim/test/` (fixe les seuils, écris-les dans le README) : temps 0 → 100 km/h ; vitesse conservée dans la grande courbe en grip ; dérapage déclenché par un coup de frein en virage rapide ; contact rasant sur rebord ≥ 85 % de vitesse conservée ; réception à plat ≥ 95 % ; sortie d'un rebord de face en moins de 2 s ; 60 dates consécutives générées et validées par le pilote, avec le temps de génération mesuré.
-- README `docs/lots/lot-7-conduite.md` (une page) qui **commence par le lien direct de l'aperçu de la branche** avec `?scenario=pilotage`, puis un second lien avec `?scenario=pilotage&debug&tune`.
+- `npm run typecheck && npm test` et `npm run test:e2e` verts, références golden inchangées.
+- Tests Playwright tactiles, en **paysage**, gabarits iPhone (avec encoche) et Android : un appui en n'importe quel point de chaque zone (coins compris, à 8 px du bord) déclenche la bonne commande ; glisser de ← à → sans lever change la direction ; direction et gaz en même temps ; aucun point de l'écran de jeu hors zone dans la moitié basse. Utiliser le pas à pas (`__cdj.manual(true)` + `advance`) comme au lot 10.
+- README `docs/lots/lot-10b-zones-tactiles.md` qui **commence par le lien à ouvrir sur le téléphone** : `?scenario=pilotage&touch=1&steer=boutons&zones=1`, puis le même sans `zones=1`.
 
 #### Modifications de `CLAUDE.md` (à appliquer toi-même à la livraison)
-- Nouvelle section **« Conduite »** : modèle (bicyclette + 4 contacts + balistique), fichiers concernés, `CarParams` et `SurfaceParams`, panneau `?tune`, tests de comportement.
-- Section déterminisme : ajouter les fonctions mathématiques maison éventuellement créées (saturations en fonctions rationnelles, approximation d'angle…) et rappeler : pas de `Math.tanh/atan2/exp` ; modifier une valeur par défaut de `CarParams` = incrémenter `SIM_VERSION` + régénérer les références.
-- Commandes : `?scenario=pilotage`, `?tune`, touche C.
+- Section **« Commandes tactiles »** complétée : découpage des zones, glissement entre zones, zones actives vs visuel et zones sûres, `?zones=1`, `?steer=`, réglage de taille.
 
 #### Mettre aussi à jour
-`docs/orchestration.md` : ligne du lot 7 dans le tableau § 2, décisions § 7, pièges nouveaux § 8.
+`docs/orchestration.md` (§ 2, § 5 commandes, § 8 pièges).
 
 #### Hors périmètre
-Nouvelles surfaces et blocs à effet (lot 8), modèle 3D de la voiture, sons, particules (lot 9), tactile (lot 10). Pas de moteur physique externe.
+Gyroscope, nouvelle disposition en portrait.
 
 #### Règles rappelées
-Déterminisme strict de `sim` ; seul le temps rejoué par le serveur compte ; le jeu marche sans API ; ne jamais désactiver un test pour être vert.
+Le tactile produit les mêmes commandes entières que les autres entrées ; déterminisme strict de `sim` ; ne jamais désactiver un test.
 
 #### Rapport attendu
-Vérifié (et comment) / non vérifié / **décisions pour Nathan**, dont les 3–4 réglages qui changent le plus la sensation et ce que tu lui conseilles d'essayer en premier dans le panneau.
+Causes trouvées, ce qui a changé, vérifié / non vérifié (vrai téléphone : à faire par Nathan, avec `zones=1`).
 
-### ⏸ Point d'arrêt — retouche 7b (réglages de Nathan)
+### Lot 12 — Circuits plus amples : durée et largeurs
 
-Après la fusion du lot 7, l'agent ne démarre **pas** le lot 8 tant que Nathan n'a pas fourni ses réglages. Nathan lance alors une session neuve (**Sonnet, effort moyen**) avec :
-> *Lis `docs/seed.md` § 12, retouche 7b. Réglages : `{ …JSON copié depuis le panneau… }`*
-
-**Objet** : appliquer ce JSON comme valeurs par défaut de `CarParams`, réajuster le pilote si besoin, `SIM_VERSION` et `GENERATOR_VERSION` +1, références régénérées, tests de comportement mis à jour. README `docs/lots/lot-7b-reglages.md` qui commence par le lien `?scenario=pilotage`. `CLAUDE.md` : mettre à jour les valeurs citées dans la section « Conduite ». Si Nathan écrit « pas de retouche », la 7b est considérée faite : noter-le dans `docs/orchestration.md` § 2.
-
-### Lot 8 — Surfaces, blocs à effet et circuits à thèmes
-
-**Modèle conseillé : Sonnet, effort moyen** (Opus si le pilote automatique résiste sur glace).
+**Modèle conseillé : Opus, effort moyen** (générateur et géométrie de la piste ; cf. pièges des lots 7b et 8).
 
 #### Contexte
-- Lis `docs/orchestration.md`, puis `docs/lots/lot-7-conduite.md` (et `lot-7b-reglages.md` s'il existe).
-- Lot 7 et retouche 7b fusionnés. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-8-surfaces origin/main`.
-- Le lot 7 a prévu l'accroche : `surfaceAt(...)` renvoie des `SurfaceParams` par roue, aujourd'hui une seule surface « route ».
+- Lis `docs/orchestration.md` (§ 7 décisions, § 8 pièges : **mesurer le taux de circuits validés par thème**, plaques et virages, décollages), `docs/lots/lot-8-surfaces-themes.md` et `docs/lots/lot-7b-reglages.md`.
+- Retouche 10b fusionnée. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-12-circuits-amples origin/main`.
+- Retour de Nathan : les courses sont trop longues ; tout se joue sur une piste peu large (14 m) avec des virages relativement serrés, c'est monotone.
 
 #### Objet
-Varier les circuits à la Trackmania : plusieurs surfaces au comportement distinct, quelques blocs à effet, virages relevés, et un **thème par jour** qui oriente le générateur.
+Des circuits de 30 à 45 s qui alternent les largeurs de piste et privilégient des courbes amples.
 
 #### À livrer
-- **Surfaces** (attribut d'un bloc), chacune lisible au premier coup d'œil (couleur + motif léger, pas de texture lourde) :
-  - **route** — la référence ;
-  - **terre** — grip réduit, la voiture glisse facilement et se rattrape, accélération un peu plus molle ;
-  - **glace** — grip très faible, direction lente à mordre, freinage long : on anticipe ;
-  - **herbe** — ralentit nettement et glisse : à éviter, sert de raccourci risqué ou de bas-côté.
-- **Blocs à effet** (couleur dédiée, effet lisible dans le HUD) :
-  - **super turbo** (plus fort et plus long que la plaque actuelle) ;
-  - **moteur coupé** : l'accélérateur n'agit plus jusqu'au prochain point de contrôle (on vit sur son élan).
-  L'état de l'effet vit dans l'état de course, rejoué à l'identique.
-- **Virages relevés**, au moins deux rayons, qui permettent de passer vite.
-- **Thèmes** tirés de la date (§ 5), chacun = palette (réutilise et étends les 4 existantes) + poids des surfaces + règles de blocs à effet + un **passage signature** : *Stade*, *Rallye*, *Banquise*, *Nuit*, *Campagne*. Le nom du thème s'affiche dans l'en-tête comme aujourd'hui.
-- **Générateur et pilote** : le pilote tient compte de la surface pour ses vitesses cibles et ses points de freinage ; chaque thème produit des circuits validés dans la fenêtre 28–48 s ; temps de génération mesuré (rester sous ~1 s au pire, le serveur met en cache).
-- **Scénarios** :
-  - `?scenario=surfaces` — circuit écrit à la main qui enchaîne chaque surface, chaque bloc à effet et un virage relevé ;
-  - `?seed=AAAA-MM-JJ&theme=<nom>` — force un thème pour les essais. Une course avec thème forcé n'est **jamais** envoyée au classement.
-- **Versions** : `SIM_VERSION` +1, `GENERATOR_VERSION` +1, références régénérées.
+- **Durée** : fenêtre du temps de l'auteur ramenée à **30–40 s** (au lieu de 28–48), pour qu'une course correcte tienne en 30–45 s (or ≈ ×1,08 de l'auteur). Le rapport donne la répartition obtenue.
+- **Largeur variable** : trois largeurs de route en attribut de bloc (indicatif : étroite 14 m, normale ≈ 20 m, large ≈ 26 m, dans une cellule de 32 m) ; **blocs de transition** (élargissement / rétrécissement progressifs, rebords continus, sans marche ni angle vif) ; départ, arrivée et portes de points de contrôle adaptés à la largeur ; revêtements et blocs à effet disponibles dans chaque largeur où c'est géométriquement possible (documenter ce qui ne l'est pas, ex. virage serré en large).
+- **Courbes amples** : davantage de virages larges (L2/R2), et une courbe encore plus ample (3 cellules) si la grille le permet ; **virages serrés limités** (indicatif : au plus 2 par circuit, jamais deux d'affilée) ; enchaînements rapides (S larges).
+- **Générateur** : chaque circuit mélange **au moins deux largeurs** ; la largeur dominante dépend du thème (indicatif : *Stade* et *Banquise* plutôt larges, *Rallye* et *Campagne* plus étroits, *Nuit* mélangé) ; un rétrécissement peut servir de passage signature.
+- **Pilote** : sa trajectoire de course exploite la largeur (corde plus ouverte), marge aux rebords adaptée.
+- **Scénario** `?scenario=largeurs` écrit à la main : les trois largeurs, les transitions, une courbe ample, un S large, un rétrécissement avant un virage.
+- **Versions** : `SIM_VERSION` +1, `GENERATOR_VERSION` +1, références régénérées, **`npm run history:seed` relancé**.
 
 #### Critères d'arrêt
 - `npm run typecheck && npm test` et `npm run test:e2e` verts.
-- Tests chiffrés : distance de freinage glace > terre > route ; vitesse de passage d'un même virage route > terre > glace ; le moteur coupé s'arrête exactement au point de contrôle suivant ; sur 60 dates, chaque thème apparaît et tous les circuits sont validés par le pilote.
-- README `docs/lots/lot-8-surfaces-themes.md` qui **commence par le lien direct de l'aperçu** avec `?scenario=surfaces`, puis un lien par thème (`?seed=…&theme=…`).
+- **Script de mesure** versionné dans le dépôt, résultats dans le README : sur 60 dates, temps d'auteur tous dans [30, 40] s ; au moins deux largeurs par circuit ; nombre de virages serrés dans la limite ; **taux de validation par thème** (pas de chute silencieuse : comparer à l'avant-lot) ; temps de génération moyen et maximal ; coût d'un rejeu.
+- README `docs/lots/lot-12-circuits-amples.md` qui **commence par le lien direct de l'aperçu** avec `?scenario=largeurs`, puis un lien `?seed=…` par thème (choisis des dates qui montrent bien la variété).
 
 #### Modifications de `CLAUDE.md` (à appliquer toi-même à la livraison)
-- Nouvelle section **« Surfaces et blocs à effet »** : liste, `SurfaceParams` de chacune, où les ajouter, règle « nouvelle surface ou nouveau bloc = `SIM_VERSION` +1 ».
-- Nouvelle section **« Thèmes »** : comment un thème est choisi à partir de la date, ce qu'il règle, comment en ajouter un, règle « changer un thème = `GENERATOR_VERSION` +1 ».
-- Commandes : `?scenario=surfaces`, `?theme=`.
+- Section **« Thèmes »** (ou nouvelle section **« Circuits »**) : largeurs, transitions, limite de virages serrés, fenêtre 30–40 s, largeur dominante par thème.
+- Règle ajoutée : « toute règle de générateur se valide par le script de mesure (durées, taux de validation par thème), pas seulement par les tests ».
+- Commandes : `?scenario=largeurs`, script de mesure.
 
 #### Mettre aussi à jour
-`docs/orchestration.md` (§ 2 ; § 7 : la décision « pas de banquettes » est levée ; § 8).
+`docs/orchestration.md` (§ 2, § 4 versions actuelles, § 7 décisions, § 8 pièges).
 
 #### Hors périmètre
-Particules, sons et effets de surface visuels poussés (lot 9) ; décor riche autour du circuit ; boucles et murs verticaux ; éditeur.
+Miniatures (lot 13), admin et planning (lot 14), calibrage des médailles.
 
 #### Règles rappelées
-Déterminisme strict de `sim` ; seul le temps rejoué par le serveur compte ; le jeu marche sans API ; ne jamais désactiver un test.
+Déterminisme strict de `sim` ; versions incrémentées dès qu'un résultat ou un circuit change ; seul le temps rejoué par le serveur compte ; ne jamais désactiver un test.
 
 #### Rapport attendu
-Vérifié / non vérifié / décisions pour Nathan (thèmes retenus, fréquence de chacun, l'herbe doit-elle rester une surface jouable ou seulement un bas-côté).
+Vérifié / non vérifié / décisions pour Nathan : largeurs retenues, durées obtenues, et si le bronze (×1,40) dépasse trop les 45 s (proposer des facteurs pour le futur calibrage, sans les appliquer).
 
-### Lot 9 — Feel & juice : voiture, effets visuels, sons
+### Lot 13 — Miniatures des circuits dans les archives
 
 **Modèle conseillé : Sonnet, effort moyen.**
 
 #### Contexte
-- Lis `docs/orchestration.md`, `docs/lots/lot-7-conduite.md` et `docs/lots/lot-8-surfaces-themes.md` ; direction artistique au § 4 de ce document.
-- Lot 8 fusionné. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-9-juice origin/main`.
-- Aujourd'hui la voiture est un assemblage de boîtes, sans son ni effet.
+- Lis `docs/orchestration.md` (§ 8 : pièges du lot 9b — un effet visuel se vérifie sur une **capture**), `docs/lots/lot-11-historique.md` et `docs/lots/lot-9b-visuels.md`.
+- Lot 12 fusionné. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-13-miniatures origin/main`.
 
 #### Objet
-Rendre chaque course vivante et nerveuse **sans toucher au résultat d'une course** : tout se passe dans `apps/web`.
+Chaque jour des archives montre une miniature : une vue aérienne d'une portion marquante de son circuit.
 
 #### À livrer
-- **Voiture** : modèle low-poly **original** construit en code (pas de copie de la voiture Stadium ni d'aucun véhicule existant) — carrosserie profilée, habitacle, aileron, **4 roues séparées** qui tournent selon la vitesse et braquent, suspension visible (les roues suivent les points de contact), roulis et tangage de la caisse, feux stop au freinage. Fantôme visuellement distinct (translucide, teinte froide).
-- **Effets visuels** :
-  - fumée de pneus en glisse ; **traces de pneus** au sol (rubans en nombre limité, recyclés) ;
-  - particules par surface : poussière (terre), éclats (glace), brins (herbe) ;
-  - flamme / traînée sur turbo et super turbo, indicateur « moteur coupé » ;
-  - étincelles au contact d'un rebord, poussière et petite secousse de caméra à la réception ;
-  - lignes de vitesse au-delà d'un seuil, coup de champ de vision au turbo ;
-  - flash au point de contrôle, confettis à l'arrivée, éclat de médaille.
-- **Sons** (Web Audio, **procéduraux de préférence**, sinon fichiers CC0 listés avec leur licence dans `docs/credits.md`) : moteur (régime lié à la vitesse, rapports simulés côté son seulement), crissement selon le glissement, roulement selon la surface, vent, impacts, turbo, bip de point de contrôle, décompte, arrivée, médaille. Le son démarre au premier geste du joueur (règle des navigateurs). **Volume + muet** (touche **M**), mémorisés.
-- **Télémétrie en lecture seule** : si le rendu a besoin d'infos de `sim` (glissement par roue, contact, surface, impact, réception), expose-les **sans modifier aucun résultat** : les tests golden doivent passer **sans régénération** et `SIM_VERSION` ne bouge pas.
-- **Performance** : mesure le coût image par image (Playwright, Chromium, profil mobile avec CPU ralenti ×4) ; qualité automatique qui réduit particules et traces si l'image dépasse le budget ; poids ajouté au chargement ≤ 300 Ko compressés.
-- **Scénario démo** `?demo` : le pilote automatique conduit le circuit (du jour, ou celui de `?scenario=`/`?seed=`) en boucle, toutes les caméras et effets actifs — pour juger le rendu en un clic (et servir plus tard de bande-annonce).
+- **Fonction réutilisable** `renderThumbnail(circuit, options)` dans `apps/web` (le panneau d'admin du lot 14 s'en servira) : un seul moteur de rendu partagé hors écran ; caméra aérienne légèrement inclinée ou d'aplomb (choisis sur captures et justifie) ; cadrée sur la portion la plus parlante (le passage signature, sinon la zone la plus sinueuse) ; palette, revêtements, blocs à effet et décor du thème ; format 16:9 (ex. 320 × 180, ×2 sur écran haute densité).
+- **À la demande** : rendue quand la ligne apparaît à l'écran (au fil du défilement), étalée dans le temps, **jamais pendant une course** ; mise en **cache** en mémoire et dans le navigateur (IndexedDB ou Cache Storage, toujours sous try/catch), clé = id du circuit (versions et variante incluses).
+- **Repli** sans WebGL : tracé 2D du circuit vu de dessus (canvas), aux couleurs du thème.
+- **Archives** : chaque ligne montre la miniature, le numéro, la date, le thème, les médailles, ta médaille et ta place figée. La même miniature apparaît à l'ouverture d'un jour.
+- **Performance mesurée** : ms par miniature (bureau, profil mobile CPU ×4), mémoire ; l'ouverture des archives ne gèle pas l'interface.
 
 #### Critères d'arrêt
-- `npm run typecheck && npm test` et `npm run test:e2e` verts, **références golden inchangées**, aucune modification de résultat dans `packages/sim`.
-- Mesure de performance consignée dans le README (ms par image avant/après, profil mobile).
-- README `docs/lots/lot-9-juice.md` qui **commence par le lien direct de l'aperçu** avec `?scenario=surfaces&demo`, puis `?scenario=pilotage` pour conduire soi-même.
+- `npm run typecheck && npm test` et `npm run test:e2e` verts, références golden inchangées, aucune modification de `sim`.
+- Test e2e en `?api=demo` : les 14 miniatures apparaissent (contenu non vide vérifié par l'image, pas seulement un compteur) ; **une capture de la liste jointe au README**.
+- README `docs/lots/lot-13-miniatures.md` qui **commence par le lien direct de l'aperçu** avec `?api=demo` (puis touche H ou bouton Archives).
 
 #### Modifications de `CLAUDE.md` (à appliquer toi-même à la livraison)
-- Nouvelle section **« Rendu, effets et sons »** : fichiers, budget de performance, qualité automatique, règle « le rendu ne modifie jamais un résultat de `sim` ; la télémétrie est en lecture seule », sons procéduraux ou CC0 crédités.
-- Commandes : `?demo`, touche M.
+- Nouvelle section **« Miniatures »** : fonction, cadrage, cache et clé, repli 2D, règle « jamais de rendu de miniature pendant une course ».
 
 #### Mettre aussi à jour
-`docs/orchestration.md` (§ 2, § 8 si pièges, notamment perf et audio).
+`docs/orchestration.md` (§ 2, § 3 architecture, § 8 si pièges).
 
 #### Hors périmètre
-Commandes tactiles (lot 10), décor riche autour du circuit, personnalisation de la voiture, musique.
+Image d'aperçu pour les liens partagés (à proposer dans le rapport), panneau d'admin.
 
 #### Règles rappelées
-Déterminisme strict de `sim` ; le jeu marche sans API ; ne jamais désactiver un test ; mesurer plutôt que supposer.
+Le rendu ne modifie jamais un résultat de `sim` ; le jeu marche sans API ; mesurer plutôt que supposer ; ne jamais désactiver un test.
 
 #### Rapport attendu
-Vérifié / non vérifié (dont : rendu réel sur téléphone, son sur iOS) / décisions pour Nathan (style des sons, intensité des secousses).
+Vérifié / non vérifié (vrai téléphone) / décisions pour Nathan (cadrage, inclinaison).
 
-### Lot 10 — Commandes tactiles
+### Lot 14 — Panneau d'admin et planning des circuits
 
 **Modèle conseillé : Sonnet, effort moyen.**
 
 #### Contexte
-- Lis `docs/orchestration.md` (§ 7 question 3 : sur téléphone on ne peut pas conduire), `docs/lots/lot-7-conduite.md` (direction analogique entière) et `docs/lots/lot-9-juice.md`.
-- Lot 9 fusionné. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-10-tactile origin/main`.
+- Lis `docs/orchestration.md` (§ 4 règles, dont la sécurité de l'API), `docs/lots/lot-5-classement.md`, `docs/lots/lot-11-historique.md` (page `admin/`, mode `?api=demo`), `docs/lots/lot-12-circuits-amples.md` et `docs/lots/lot-13-miniatures.md`.
+- Lot 13 fusionné. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-14-admin-planning origin/main`.
+- Retour de Nathan : la page `/admin/` actuelle est trop sommaire et peu pratique ; il veut voir les circuits à venir et **remplacer** un circuit qui ne lui plaît pas.
 
 #### Objet
-Pouvoir finir un tour au doigt sur téléphone, avec une conduite aussi fine qu'à la manette.
+Un panneau d'admin clair qui montre le planning et permet de remplacer un circuit à venir, sans casser « le même circuit pour tous » ni la validation par rejeu.
 
 #### À livrer
-- **Détection** : interface tactile si l'appareil est tactile (`pointer: coarse`), forçable sur ordinateur avec `?touch=1` (la souris simule le doigt).
-- **Disposition (paysage)** :
-  - moitié gauche : **direction par glissement horizontal** relatif au point de pose (analogique, zone morte, sensibilité réglable) ; option « deux boutons ← → » ;
-  - moitié droite : **frein / marche arrière** ; **accélérateur automatique** par défaut, option « accélérateur manuel » (bouton) ;
-  - boutons **reprise au point de contrôle**, **recommencer**, **pause** ; menus (fantôme, archives, partage) en cibles d'au moins 44 px ;
-  - multi-doigts : diriger et freiner en même temps.
-- **Confort** : en portrait, invitation à tourner le téléphone ; bouton plein écran quand le navigateur le permet ; pas de zoom, de défilement, de menu d'appui long ni de double-tap ; vibration courte au point de contrôle et au choc si disponible (désactivable).
-- **Réglages** mémorisés : mode de direction, sensibilité, zone morte, accélérateur auto, vibration.
-- Le tactile passe par la **même chaîne de commandes** que le clavier et la manette : commandes entières, rediffusions identiques, rien ne change dans `sim`.
+- **Variantes** : `dailyCircuit(jour, variante = 0, theme?)`. La variante 0 donne **exactement** les circuits actuels (références golden inchangées, versions inchangées) ; une variante n change la graine (date + n) ; le thème peut être imposé. Id : `jour-AAAA-MM-JJ-g<G>-v<n>` (plus le thème s'il est imposé).
+- **Planning côté API** : table `planning` (date → variante, thème, date du choix) ; `GET /api/day/AAAA-MM-JJ` (public) renvoie la variante en vigueur ; le serveur **rejoue toujours avec la variante du planning** ; remplacement **refusé pour aujourd'hui et le passé** (UTC, grâce de minuit comprise) : un jour commencé est figé.
+- **Accès admin** : jeton secret `ADMIN_TOKEN` (variable d'environnement, jamais dans le dépôt), comparaison à temps constant, limitation de débit ; saisi une fois dans le panneau et gardé dans le navigateur.
+- **Jeu** : au lancement, il demande la variante du jour à l'API (délai court). Sans API ou en cas d'échec : variante 0, course jouable mais **marquée « hors ligne, non classée »** (mettre à jour la règle 6 de l'orchestration).
+- **Panneau `/admin/` refait**, en français, simple, utilisable sur téléphone :
+  - **Aujourd'hui** : miniature, thème, médailles, nombre de joueurs, meilleur temps, répartition des temps (petit histogramme) ;
+  - **Planning** (14 prochains jours) : une carte par jour — miniature, thème, temps de l'auteur, largeurs, revêtements, blocs à effet, nombre de virages serrés ; boutons **Jouer**, **Regarder le pilote** (`?demo`), **Remplacer** ;
+  - **Remplacer** : génère **dans le navigateur** 4 à 6 variantes (même thème par défaut, thème modifiable), chacune avec miniature, chiffres, Jouer et Regarder ; **Choisir** avec confirmation ; **Revenir à l'original** ;
+  - **Historique** : jours passés en lecture seule (joueurs, meilleur temps, variante utilisée) ;
+  - **Outils** : l'actuel constructeur d'adresses du jeu, repris.
+- **Mode démo** : `/admin/?api=demo` fonctionne sans serveur — remplacements gardés dans ce navigateur seulement (bandeau explicite), et le jeu en `?api=demo` les respecte, pour tester en deux clics.
 
 #### Critères d'arrêt
 - `npm run typecheck && npm test` et `npm run test:e2e` verts, références golden inchangées.
-- Test Playwright en émulation mobile (`hasTouch`, gabarits téléphone Android et iPhone) : des gestes tactiles synthétiques produisent les commandes attendues et **terminent le circuit `?scenario=plat`** ; mise en page sans chevauchement (police DejaVu Sans imposée, cf. piège § 8 de l'orchestration) en paysage et en portrait.
-- README `docs/lots/lot-10-tactile.md` qui **commence par le lien direct de l'aperçu à ouvrir sur le téléphone** avec `?scenario=pilotage`, puis le lien du circuit du jour.
+- Tests API : remplacement d'un jour futur accepté ; aujourd'hui et passé refusés ; sans jeton ou mauvais jeton refusé ; une course sur un jour remplacé est rejouée avec la bonne variante.
+- Test e2e : dans `/admin/?api=demo`, remplacer le jour J+2, puis ouvrir le jeu sur ce jour → c'est bien la variante choisie (même id de circuit).
+- README `docs/lots/lot-14-admin-planning.md` qui **commence par le lien direct** `/admin/?api=demo`, puis le lien du jeu `?api=demo&day=<J+2>` ; il explique aussi comment définir `ADMIN_TOKEN` pour l'API locale.
 
 #### Modifications de `CLAUDE.md` (à appliquer toi-même à la livraison)
-- Nouvelle section **« Commandes tactiles »** : fichiers, disposition, réglages, `?touch=1`, règle « le tactile produit les mêmes commandes entières que les autres entrées ».
-- Retirer la mention « tactile non fait » si elle y figure.
+- Nouvelle section **« Admin et planning »** : variantes et id, table `planning`, routes, jeton, règle « un jour commencé est figé », mode démo.
+- Règle « le jeu marche sans API » mise à jour : variante 0, course non classée.
 
 #### Mettre aussi à jour
-`docs/orchestration.md` (§ 2 ; § 7 question 3 marquée résolue).
+`docs/orchestration.md` (§ 2, § 3, § 4 règles nouvelles ou modifiées, § 5 commandes, § 7 décisions).
 
 #### Hors périmètre
-Gyroscope (inclinaison du téléphone) — à proposer dans le rapport si tu le juges utile ; application installable.
+Déploiement réel (mise en ligne), plusieurs comptes admin, éditeur de circuits.
 
 #### Règles rappelées
-Déterminisme strict de `sim` ; le jeu marche sans API ; ne jamais désactiver un test.
+Ne jamais faire confiance à un temps annoncé ; sécurité de l'API (requêtes paramétrées, corps bornés, débit limité) ; déterminisme strict de `sim` ; ne jamais désactiver un test.
 
 #### Rapport attendu
-Vérifié / non vérifié (un vrai téléphone n'a pas été testé par toi : le dire) / décisions pour Nathan (mode de direction par défaut, accélérateur auto ou non).
-
-### Lot 11 — Historique de circuits et mode démo des archives
-
-**Modèle conseillé : Sonnet, effort moyen.**
-
-#### Contexte
-- Lis `docs/orchestration.md`, `docs/lots/lot-5-classement.md` et `docs/lots/lot-6-arrivee-et-archives.md`.
-- Lot 10 fusionné. Pars de `main` à jour : `git fetch origin main && git checkout -B lot-11-historique origin/main`.
-- Problème : le circuit #1 est celui du 06/10/2026, les archives sont donc vides ; et l'aperçu de branche n'a pas d'API (hébergement pas encore décidé), donc aucun classement visible en deux clics.
-
-#### Objet
-Disposer d'un historique de circuits passés, avec classements et fantômes crédibles, consultable depuis les archives — en local comme dans l'aperçu — **sans jamais polluer un futur classement réel**.
-
-#### À livrer
-- **Premier jour configurable** : une constante unique `PREMIER_JOUR` (numéro #1), réglée **provisoirement sur 2026-09-22** pour avoir deux semaines d'archives ; elle sera fixée à la vraie date de lancement à la mise en ligne. Les circuits ne changent pas (graine = date), seule la numérotation bouge.
-- **Pilotes fictifs** : script `npm run history:seed` qui, pour chaque jour passé, fait courir 8 à 15 pilotes au pseudo manifestement fictif, conduits par le pilote automatique avec des niveaux variés (bruit de trajectoire, vitesses de virage) pour obtenir des temps étalés autour des médailles. Leurs courses **passent par le même chemin de validation** que les vraies (rejeu serveur, aucune voie de contournement). Joueurs marqués `demo` en base ; le script refuse de tourner sur une base de production.
-- **Mode démo** `?api=demo` : le jeu lit un jeu de données statique généré par le script (`apps/web/public/demo/…`, classements + rediffusions des premiers) à la place de l'API, pour que l'aperçu de branche montre des archives complètes. Taille du jeu de données mesurée et raisonnable.
-- **Archives** : liste des jours (numéro, date, thème, médailles, ton meilleur temps et ta médaille s'il existe, rang figé du jour) ; ouvrir un jour = le rejouer avec le fantôme du premier et le classement figé affiché ; accès direct `?day=AAAA-MM-JJ`.
-- **Régénérable** : après chaque changement de `SIM_VERSION` ou `GENERATOR_VERSION`, relancer `history:seed` suffit ; un test vérifie que le jeu de données démo correspond aux versions actuelles (sinon message clair : « relancer history:seed »).
-
-#### Critères d'arrêt
-- `npm run typecheck && npm test` et `npm run test:e2e` verts, références golden inchangées.
-- Test e2e : avec `?api=demo`, les archives listent 14 jours, l'ouverture d'un jour affiche son classement figé et charge le fantôme du premier.
-- README `docs/lots/lot-11-historique.md` qui **commence par le lien direct de l'aperçu** avec `?api=demo` (puis touche H ou bouton Archives), et un second lien `?api=demo&day=2026-09-30`.
-
-#### Modifications de `CLAUDE.md` (à appliquer toi-même à la livraison)
-- Nouvelle section **« Historique et mode démo »** : `PREMIER_JOUR` et sa valeur provisoire, `npm run history:seed`, `?api=demo`, `?day=`, règle « les joueurs `demo` n'existent jamais en production ; relancer le script après tout changement de version ».
-
-#### Mettre aussi à jour
-`docs/orchestration.md` (§ 2 ; § 7 : décision `PREMIER_JOUR` provisoire à revoir à la mise en ligne).
-
-#### Hors périmètre
-Hébergement réel de l'API, calibrage des médailles, circuit dessiné du dimanche.
-
-#### Règles rappelées
-Ne jamais faire confiance à un temps annoncé (même pour les pilotes fictifs) ; déterminisme strict de `sim` ; le jeu marche sans API.
-
-#### Rapport attendu
-Vérifié / non vérifié / décisions pour Nathan (nombre de jours d'historique, faut-il garder le mode démo après la mise en ligne).
+Vérifié / non vérifié / décisions pour Nathan (nombre de jours de planning affichés, comportement si l'API tombe le jour même).
 
 ### ⏸ Fin des lots écrits
 
-Après le lot 11, l'agent s'arrête : les lots suivants (mise en ligne, calibrage, jalon) seront rédigés avec Nathan.
+Après le lot 14, l'agent s'arrête : la mise en ligne (hébergement à choisir), le calibrage et le jalon seront rédigés avec Nathan.
