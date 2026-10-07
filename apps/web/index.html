@@ -84,18 +84,32 @@
       #archive .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
       #archive .title { font-size: 20px; font-weight: 800; }
       #archive .close { font: inherit; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 8px; width: 36px; height: 36px; cursor: pointer; }
-      #archive .day { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 10px; align-items: center; padding: 9px 8px; border-radius: 8px; color: #fff; text-decoration: none; font-variant-numeric: tabular-nums; }
+      #archive .day { display: grid; grid-template-columns: 120px 1fr auto; grid-template-areas: "thumb what best" "sub sub sub"; gap: 4px 12px; align-items: center; padding: 8px; border-radius: 8px; color: #fff; text-decoration: none; font-variant-numeric: tabular-nums; }
       #archive .day:hover, #archive .day:focus-visible { background: rgba(255,255,255,.1); outline: none; }
       #archive .day.current { background: rgba(255,210,46,.16); }
-      #archive .sub { grid-column: 2 / -1; font-size: 11px; font-weight: 500; opacity: .6; white-space: pre-wrap; margin-top: -6px; }
-      #archive .num { opacity: .7; text-align: right; }
-      #archive .theme { opacity: .6; font-size: 12px; }
-      #archive .best { min-width: 92px; text-align: right; }
+      #archive .thumb { grid-area: thumb; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,.07); position: relative; }
+      #archive .thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+      #archive .thumb[data-state=wait]::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 20%, rgba(255,255,255,.14) 50%, transparent 80%); transform: translateX(-100%); animation: thumbwait 1.2s ease-in-out infinite; }
+      @keyframes thumbwait { to { transform: translateX(100%); } }
+      @media (prefers-reduced-motion: reduce) { #archive .thumb[data-state=wait]::after { animation: none; transform: none; opacity: .5; } }
+      #archive .what { grid-area: what; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; min-width: 0; }
+      #archive .sub { grid-area: sub; font-size: 11px; font-weight: 500; opacity: .6; white-space: pre-wrap; }
+      #archive .num { font-weight: 800; }
+      #archive .date { opacity: .9; }
+      #archive .theme { flex-basis: 100%; opacity: .6; font-size: 12px; }
+      #archive .best { grid-area: best; min-width: 80px; text-align: right; }
+      @media (max-width: 520px) {
+        #archive .day { grid-template-columns: 104px 1fr; grid-template-areas: "thumb what" "thumb best" "sub sub"; }
+        #archive .best { text-align: left; min-width: 0; }
+      }
       #archive .tools { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 10px; }
       #archive .dice { font: inherit; color: #131a33; background: #ffd22e; border: 0; border-radius: 10px; padding: 10px 14px; cursor: pointer; min-height: 44px; }
       #archive .chips { display: flex; flex-wrap: wrap; gap: 6px; }
       #archive .chips a { color: #fff; text-decoration: none; background: rgba(255,255,255,.12); border-radius: 999px; padding: 8px 12px; font-size: 13px; min-height: 20px; }
       #archive .chips a.on { background: #ffd22e; color: #131a33; }
+      #daycard { position: fixed; left: 50%; bottom: calc(18% + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 1; width: min(240px, 44vw); aspect-ratio: 16 / 9; border-radius: 10px; overflow: hidden; border: 2px solid rgba(255,255,255,.6); box-shadow: 0 6px 24px rgba(0,0,0,.45); pointer-events: none; background: rgba(11,16,32,.6); }
+      #daycard[hidden] { display: none; }
+      #daycard img { display: block; width: 100%; height: 100%; object-fit: cover; }
       #archive .note { opacity: .6; font-size: 12px; margin-top: 10px; }
 
       /* Commandes tactiles (lot 10) : tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`). */
@@ -244,6 +258,7 @@
     <div id="banner" class="hud"></div>
     <div id="finish" hidden></div>
     <div id="archive" hidden><div class="panel"></div></div>
+    <div id="daycard" hidden></div>
     <div id="speed" class="hud">0 km/h</div>
     <div id="fx" class="hud"></div>
     <div id="lines"></div>

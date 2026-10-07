@@ -134,7 +134,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
 };
 
 /** Couleurs de la route selon le revêtement (deux tons en alternance, comme la route) : lisibles d'un coup d'œil. */
-const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, number]> = {
+export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, number]> = {
   dirt: [0x8f6b43, 0x82603b],
   ice: [0xc4e9f7, 0xb2dff1],
   grass: [0x58a340, 0x4e9638],
@@ -149,8 +149,11 @@ class Builder {
   readonly pos: number[] = [];
   readonly col: number[] = [];
   private readonly c = new Color();
+  /** Muet : les formes ne sont pas construites (mais l'appelant a tiré ses nombres au hasard comme d'habitude). */
+  mute = false;
 
   tri(a: V3, b: V3, c: V3, color: number) {
+    if (this.mute) return;
     this.c.set(color);
     for (const p of [a, b, c]) {
       this.pos.push(p[0], p[1], p[2]);
@@ -159,12 +162,14 @@ class Builder {
   }
 
   quad(a: V3, b: V3, c: V3, d: V3, color: number) {
+    if (this.mute) return;
     this.tri(a, b, c, color);
     this.tri(a, c, d, color);
   }
 
   /** Boîte alignée sur les axes. */
   box(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: number) {
+    if (this.mute) return;
     const p = (x: number, y: number, z: number): V3 => [x, y, z];
     this.quad(p(x0, y0, z0), p(x1, y0, z0), p(x1, y1, z0), p(x0, y1, z0), color);
     this.quad(p(x0, y0, z1), p(x0, y1, z1), p(x1, y1, z1), p(x1, y0, z1), color);
@@ -179,6 +184,7 @@ class Builder {
    * supérieur prend la couleur `top` (neige sur un sapin, sommet clair d'une montagne, dessus d'un feuillage).
    */
   prism(cx: number, y0: number, cz: number, r0: number, r1: number, h: number, sides: number, color: number, top = color, twist = 0) {
+    if (this.mute) return;
     const ring = (r: number, y: number, k: number): V3 => {
       const a = twist + (k / sides) * Math.PI * 2;
       return [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
@@ -668,7 +674,7 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
 }
 
 /** Décor au bord de la piste : dans les cellules vides à moins de 2 cellules d'un bloc, selon le style de la palette. */
-function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number) {
+function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number, keep?: (cx: number, cz: number) => boolean) {
   const wanted = new Set<number>();
   const span = 2;
   for (const b of track.blocks) {
@@ -695,11 +701,13 @@ function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floor
   }
   let count = 0;
   for (const [cx, cz] of cells) {
+    g.mute = glow.mute = keep ? !keep(cx, cz) : false; // hors du cadre : mêmes tirages au sort, aucune forme
     const n = 1 + Math.floor(rnd() * 3);
     for (let i = 0; i < n && count < 650; i++, count++) {
       addProp(g, glow, pal.scenery, pal, cx * CELL + 3 + rnd() * (CELL - 6), floorY, cz * CELL + 3 + rnd() * (CELL - 6), rnd);
     }
   }
+  g.mute = glow.mute = false;
 }
 
 /** Dégradé du ciel : de l'horizon (couleur du brouillard) au zénith. Fond d'écran de la scène : une seule passe, bien moins chère qu'un dôme. */
@@ -798,12 +806,41 @@ function buildMountains(pal: Palette, rnd: () => number): Mesh {
 export interface TrackScene {
   scene: Scene;
   followGround(x: number, z: number): void;
+  /** Libère géométries, matériaux et textures (scènes jetables, comme celles des miniatures). */
+  dispose(): void;
   /** Décor allégé (qualité basse) : montagnes, soleil, étoiles et décor de bord de piste masqués ; ciel et route restent. */
   setLite(on: boolean): void;
 }
 
+/** Libère tout ce que la scène tient côté carte graphique (géométries, matériaux, textures, fond). */
+export function disposeScene(scene: Scene) {
+  const texture = (t: unknown) => (t as { dispose?: () => void } | null)?.dispose?.();
+  scene.traverse((o) => {
+    const m = o as Mesh;
+    m.geometry?.dispose();
+    for (const mat of Array.isArray(m.material) ? m.material : m.material ? [m.material] : []) {
+      texture((mat as MeshStandardMaterial).map);
+      mat.dispose();
+    }
+  });
+  texture(scene.background);
+}
+
+export interface TrackSceneOptions {
+  /**
+   * Vue aérienne (miniatures, lot 13) : ni ciel, ni montagnes, ni brouillard ; la route, le décor de bord de piste et le sol
+   * suffisent. Le reste de la scène (et son tirage au sort) est le même que dans le jeu.
+   */
+  aerial?: boolean;
+  /**
+   * Avec `aerial` : seule la portion [from, to] des blocs est vue. Le décor n'est construit qu'autour d'elle (il est tiré au sort
+   * en entier, donc il est le même que dans le jeu) : une miniature coûte une fraction d'une scène complète.
+   */
+  near?: { from: number; to: number };
+}
+
 /** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
-export function buildTrackScene(track: Track, paletteName: PaletteName = "desert"): TrackScene {
+export function buildTrackScene(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackScene {
   const pal = PALETTE_DEFS[paletteName];
   const floorY = track.voidY;
   const g = new Builder();
@@ -849,17 +886,27 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const first0 = track.blocks[0]!;
   const decorG = new Builder();
   const glowG = new Builder();
+  const near = options.aerial ? options.near : undefined;
+  const NEAR_CELLS = 4;
+  const windowBlocks = near ? track.blocks.slice(near.from, near.to + 1) : [];
+  const nearCell = (cx: number, cz: number) => windowBlocks.some((b) => Math.abs(b.cx - cx) <= NEAR_CELLS && Math.abs(b.cz - cz) <= NEAR_CELLS);
+  decorG.mute = !!near && !nearCell(first0.cx, first0.cz);
   addGrandstand(decorG, pal, first0, rnd);
-  addScenery(decorG, glowG, pal, track, floorY, rnd);
+  decorG.mute = false;
+  addScenery(decorG, glowG, pal, track, floorY, rnd, near ? nearCell : undefined);
 
   const sky = new Color(pal.sky);
   const scene = new Scene();
-  scene.background = skyGradient(pal);
-  scene.fog = new Fog(sky, pal.fogNear, pal.fogFar);
+  if (!options.aerial) {
+    scene.background = skyGradient(pal);
+    scene.fog = new Fog(sky, pal.fogNear, pal.fogFar);
+  }
   // Lumière : hémisphérique (ciel au-dessus, sol en dessous : les faces hautes sont plus claires que les flancs) + soleil.
-  scene.add(new HemisphereLight(mix(pal.ambient[0], pal.zenith, 0.35), new Color(pal.floorB).getHex(), pal.ambient[1] * 0.45));
-  scene.add(new AmbientLight(pal.ambient[0], pal.ambient[1] * 0.12));
-  const sun = new DirectionalLight(pal.sun[0], pal.sun[1] * 0.85);
+  // Miniatures des thèmes de nuit : lues en petit, elles doivent rester lisibles (le jeu, lui, garde sa nuit).
+  const lift = options.aerial && new Color(pal.floorA).getHSL({ h: 0, s: 0, l: 0 }).l < 0.25 ? 2.2 : 1;
+  scene.add(new HemisphereLight(mix(pal.ambient[0], pal.zenith, 0.35), new Color(pal.floorB).getHex(), pal.ambient[1] * 0.45 * lift));
+  scene.add(new AmbientLight(pal.ambient[0], pal.ambient[1] * 0.12 * lift));
+  const sun = new DirectionalLight(pal.sun[0], pal.sun[1] * 0.85 * (lift > 1 ? 1.4 : 1));
   sun.position.set(40, 80, -30);
   scene.add(sun);
 
@@ -872,7 +919,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
 
   // Ciel et montagnes suivent la caméra (donc la voiture) : toujours à l'horizon.
   const backdrop = new Group();
-  backdrop.add(buildSky(pal, rnd), buildMountains(pal, rnd));
+  if (!options.aerial) backdrop.add(buildSky(pal, rnd), buildMountains(pal, rnd));
   scene.add(backdrop);
 
   const size = 1200;
@@ -887,6 +934,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
 
   return {
     scene,
+    dispose: () => disposeScene(scene),
     setLite(on) {
       scene.traverse((o) => {
         if (o.userData.heavy) o.visible = !on;
