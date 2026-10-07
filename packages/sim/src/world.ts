@@ -1,11 +1,12 @@
 import {
   BOOST_HALF_LENGTH,
-  BOOST_HALF_WIDTH,
   CELL,
-  HALF_ROAD,
   NO_GROUND,
   WALL_HEIGHT,
   bankAt,
+  blockHalfWidth,
+  blockHalfWidthSlope,
+  blockPadHalfWidth,
   blockHeight,
   blockSlope,
   canonP,
@@ -141,10 +142,12 @@ export function trackWorld(track: Track): World {
         const c = curveCenter(b.kind);
         const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);
-        onRoad = q >= 0 && r >= c.r - HALF_ROAD && r <= c.r + HALF_ROAD;
+        const hw = b.w0 / 2; // un virage garde sa largeur
+        onRoad = q >= 0 && r >= c.r - hw && r <= c.r + hw;
       } else {
         const lat = p - CELL / 2;
-        onRoad = lat >= -HALF_ROAD && lat <= HALF_ROAD;
+        const hw = blockHalfWidth(b, q);
+        onRoad = lat >= -hw && lat <= hw;
       }
       if (!onRoad) {
         out.height = NO_GROUND;
@@ -163,7 +166,8 @@ export function trackWorld(track: Track): World {
         out.gx += wv.x;
         out.gz += wv.z;
       }
-      const onPad = Math.abs(p - CELL / 2) <= BOOST_HALF_WIDTH && Math.abs(q - CELL / 2) <= BOOST_HALF_LENGTH;
+      // Les plaques font la moitié de la largeur de la route (3,5 m de demi-largeur sur 14 m, comme avant le lot 12).
+      const onPad = Math.abs(p - CELL / 2) <= blockPadHalfWidth(b) && Math.abs(q - CELL / 2) <= BOOST_HALF_LENGTH;
       out.boost = b.kind === "boost" && onPad;
       out.turbo = b.kind === "turbo" && onPad;
       out.cut = b.kind === "cut" && Math.abs(q - CELL / 2) <= CUT_HALF_LENGTH;
@@ -192,8 +196,9 @@ export function trackWorld(track: Track): World {
         const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);
         if (r < 1e-6) return false;
-        const inner = c.r - HALF_ROAD + radius;
-        const outer = c.r + HALF_ROAD - radius;
+        const hw = b.w0 / 2;
+        const inner = c.r - hw + radius;
+        const outer = c.r + hw - radius;
         if (r < inner) {
           depth = inner - r;
           np = dp / r;
@@ -205,13 +210,28 @@ export function trackWorld(track: Track): World {
         }
       } else {
         const lat = p - CELL / 2;
-        const limit = HALF_ROAD - radius;
-        if (lat > limit) {
-          depth = lat - limit;
-          np = -1;
-        } else if (lat < -limit) {
-          depth = -limit - lat;
-          np = 1;
+        const hw = blockHalfWidth(b, q);
+        const slope = blockHalfWidthSlope(b, q);
+        if (slope === 0) {
+          const limit = hw - radius;
+          if (lat > limit) {
+            depth = lat - limit;
+            np = -1;
+          } else if (lat < -limit) {
+            depth = -limit - lat;
+            np = 1;
+          }
+        } else {
+          // Bloc de transition : les rebords sont inclinés (pente `slope`) ; distance du centre au rebord = écart / √(1 + pente²),
+          // normale inclinée du même angle (vers l'intérieur : (−1, pente) à gauche, (+1, pente) à droite).
+          const k = Math.sqrt(1 + slope * slope);
+          const side = lat >= 0 ? lat : -lat;
+          const dist = (hw - side) / k;
+          if (dist < radius) {
+            depth = radius - dist;
+            np = (lat >= 0 ? -1 : 1) / k;
+            nq = slope / k;
+          }
         }
         // Bouts de piste : on ne sort pas du circuit par le départ ni par derrière l'arrivée.
         if (b.index === 0 && q < radius && radius - q > depth) {

@@ -8,6 +8,8 @@ import {
   THEMES,
   THEME_NAMES,
   bestPilotRun,
+  isCurve,
+  isWide,
   composeSpec,
   dailyCircuit,
   dailyTrackId,
@@ -44,7 +46,9 @@ const circuit = (day: number) => {
   }
   return c;
 };
-const isWideKind = (k: string) => k === "wideL" || k === "wideR";
+/** Cellules occupées par un bloc : une pour un virage serré ou une droite, quatre pour un virage large, huit pour un virage ample. */
+const cellsOf = (k: Parameters<typeof isCurve>[0]) => (k === "grandL" || k === "grandR" ? 8 : k === "wideL" || k === "wideR" ? 4 : 1);
+const isTight = (k: Parameters<typeof isCurve>[0]) => isCurve(k) && !isWide(k);
 
 describe("circuit du jour : construction", () => {
   it("est déterministe : même jour, même circuit, au caractère près", () => {
@@ -76,17 +80,17 @@ describe("circuit du jour : construction", () => {
       const checkpoints = blocks.filter((b) => b.mark === "checkpoint").length;
       expect(checkpoints).toBeGreaterThanOrEqual(2);
       expect(checkpoints).toBeLessThanOrEqual(4);
-      expect(blocks.length).toBeGreaterThanOrEqual(25);
-      expect(blocks.length).toBeLessThanOrEqual(75);
-      // Une cellule par bloc (quatre pour un virage large) : pas d'auto-intersection.
-      expect(track.cells.size).toBe(blocks.length + 3 * blocks.filter((b) => isWideKind(b.kind)).length);
+      expect(blocks.length).toBeGreaterThanOrEqual(20);
+      expect(blocks.length).toBeLessThanOrEqual(60);
+      // Une cellule par bloc (quatre pour un virage large, huit pour un virage ample) : pas d'auto-intersection.
+      expect(track.cells.size).toBe(blocks.reduce((n, b) => n + cellsOf(b.kind), 0));
     }
   });
 
   it("alterne les rythmes : jamais plus de deux virages d'affilée, jamais de plaque juste avant un virage", () => {
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);
-      const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+      const curve = (k?: string) => k !== undefined && isCurve(k as never);
       for (let i = 0; i < kinds.length; i++) {
         if (curve(kinds[i]) && curve(kinds[i + 1])) expect(curve(kinds[i + 2]), `${day} @${i}`).toBe(false);
         if (kinds[i] === "boost") expect(curve(kinds[i + 1]), `${day} @${i}`).toBe(false);
@@ -96,7 +100,7 @@ describe("circuit du jour : construction", () => {
   });
 
   it("laisse deux lignes droites derrière chaque plaque d'accélération (sinon le virage suivant ne se prend pas à 48 m/s)", () => {
-    const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+    const curve = (k?: string) => k !== undefined && isCurve(k as never);
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);
       kinds.forEach((k, i) => {
@@ -107,11 +111,11 @@ describe("circuit du jour : construction", () => {
     }
   });
 
-  it("a toujours un passage marquant (tremplin, chicane ou épingle) et, si tremplin, deux lignes droites pour atterrir", () => {
+  it("a toujours un passage marquant (tremplin, S large ou demi-tour) et, si tremplin, deux lignes droites pour atterrir", () => {
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);
       const hasJump = kinds.includes("jump");
-      const hasPair = kinds.some((k, i) => (k === "curveL" || k === "curveR") && (kinds[i + 1] === "curveL" || kinds[i + 1] === "curveR"));
+      const hasPair = kinds.some((k, i) => isCurve(k) && kinds[i + 1] !== undefined && isCurve(kinds[i + 1]!));
       expect(hasJump || hasPair, circuit(day).spec).toBe(true);
       kinds.forEach((k, i) => {
         if (k === "jump") {
@@ -124,7 +128,7 @@ describe("circuit du jour : construction", () => {
 
   it("varie les blocs : pentes, bosses, plaques et tremplins apparaissent sur la période", () => {
     const seen = new Set(DAYS.flatMap((d) => circuit(d).track.blocks.map((b) => b.kind)));
-    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "up", "down", "bump", "jump", "boost", "turbo", "cut"]) expect(seen.has(k as never), k).toBe(true);
+    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "grandL", "grandR", "up", "down", "bump", "jump", "boost", "turbo", "cut"]) expect(seen.has(k as never), k).toBe(true);
   });
 
   it("construit vite : temps de génération mesuré sur 60 jours consécutifs (moyenne < 0,5 s, pire < 1,5 s)", () => {
@@ -162,6 +166,74 @@ describe("circuit du jour : validation par le pilote", () => {
       const result = replayRace(c.track, decodeReplay(encodeReplay(run.replay)));
       expect(result.finishMs).toBe(c.authorMs);
       expect(result.respawns).toBe(0);
+    }
+  });
+});
+
+describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () => {
+  const widthsOf = (c: DailyCircuit) => new Set(c.track.blocks.flatMap((b) => [b.w0, b.w1]));
+
+  it("alterne au moins deux largeurs par circuit, toutes parmi 14, 20 et 26 m", () => {
+    for (const day of DAYS) {
+      const c = circuit(day);
+      const widths = widthsOf(c);
+      expect(widths.size, c.spec).toBeGreaterThanOrEqual(2);
+      for (const w of widths) expect([14, 20, 26], c.spec).toContain(w);
+    }
+  });
+
+  it("n'a jamais de marche de largeur : chaque bloc commence où le précédent finit ; seules les droites s'élargissent ou se resserrent", () => {
+    for (const day of DAYS) {
+      const { track, spec } = circuit(day);
+      track.blocks.forEach((b, i) => {
+        if (i > 0) expect(b.w0, `${spec} @${i}`).toBe(track.blocks[i - 1]!.w1);
+        if (b.w0 !== b.w1) {
+          expect(b.kind, `${spec} @${i}`).toBe("straight");
+          expect(Math.abs(b.w1 - b.w0), `${spec} @${i}`).toBeLessThanOrEqual(6); // un seul cran à la fois : 14 ↔ 20 ↔ 26 m
+        }
+      });
+    }
+  });
+
+  it("limite les virages serrés : deux au plus par circuit, jamais deux de suite, jamais sur la route large", () => {
+    for (const day of DAYS) {
+      const { track, spec } = circuit(day);
+      const tight = track.blocks.filter((b) => isTight(b.kind));
+      expect(tight.length, spec).toBeLessThanOrEqual(2);
+      for (const b of tight) {
+        expect(b.w0, `${spec} @${b.index}`).toBeLessThan(26);
+        const next = track.blocks[b.index + 1];
+        if (next) expect(isTight(next.kind), `${spec} @${b.index}`).toBe(false);
+      }
+    }
+  });
+
+  it("préfère les courbes amples : en moyenne, plus de virages larges ou amples que de virages serrés", () => {
+    const blocks = DAYS.flatMap((d) => circuit(d).track.blocks);
+    const wide = blocks.filter((b) => isWide(b.kind)).length;
+    const tight = blocks.filter((b) => isTight(b.kind)).length;
+    expect(wide).toBeGreaterThan(5 * tight);
+    expect(blocks.some((b) => b.kind === "grandL")).toBe(true);
+    expect(blocks.some((b) => b.kind === "grandR")).toBe(true);
+  });
+
+  it("la largeur dominante dépend du thème : Stade et Banquise plutôt larges, Rallye et Campagne plus étroits", () => {
+    const mean = (theme: string) => {
+      const widths = DAYS.map((d) => circuit(d)).filter((c) => c.theme === theme).flatMap((c) => c.track.blocks.map((b) => (b.w0 + b.w1) / 2));
+      return widths.reduce((a, b) => a + b, 0) / widths.length;
+    };
+    expect(mean("stade")).toBeGreaterThan(mean("rallye") + 3);
+    expect(mean("banquise")).toBeGreaterThan(mean("campagne") + 3);
+    expect(mean("nuit")).toBeGreaterThan(mean("rallye"));
+    expect(mean("nuit")).toBeLessThan(mean("stade"));
+  });
+
+  it("le passage signature de Campagne est un étranglement : la route se resserre jusqu'à 14 m avant un virage serré sur la terre", () => {
+    const campagne = DAYS.map((d) => circuit(d)).filter((c) => c.theme === "campagne");
+    expect(campagne.length).toBeGreaterThan(0);
+    for (const c of campagne) {
+      const pinch = c.track.blocks.find((b) => isTight(b.kind) && b.surface === "dirt" && b.w0 === 14);
+      expect(pinch, c.spec).toBeDefined();
     }
   });
 });
@@ -256,7 +328,7 @@ describe("thèmes du jour", () => {
   });
 
   it("un super turbo laisse cinq blocs sans virage derrière lui (il pousse 1,5 s jusqu'à 68 m/s)", () => {
-    const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+    const curve = (k?: string) => k !== undefined && isCurve(k as never);
     for (const c of all) {
       const kinds = c.track.blocks.map((b) => b.kind);
       kinds.forEach((k, i) => {

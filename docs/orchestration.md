@@ -1,9 +1,9 @@
 # Circuit du Jour — synthèse pour l'agent orchestrateur
 
-Document de **reprise** : il résume les lots 0 à 11, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 11 (07/10/2026).
+Document de **reprise** : il résume les lots 0 à 12, l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 12 (07/10/2026).
 
 ## 1. Le projet en trois lignes
-Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même pour tout le monde**, généré à partir de la date, joué dans le navigateur. Le **temps est une preuve** : la physique est déterministe, une course est la suite des commandes du joueur, et le serveur la **rejoue** pour valider le temps. Pas de compte : un pseudo et un identifiant aléatoire dans le navigateur. Partage en une ligne : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812`.
+Jeu web de course quotidien : **un circuit court (30–45 s) par jour, le même pour tout le monde**, généré à partir de la date, joué dans le navigateur. Le **temps est une preuve** : la physique est déterministe, une course est la suite des commandes du joueur, et le serveur la **rejoue** pour valider le temps. Pas de compte : un pseudo et un identifiant aléatoire dans le navigateur. Partage en une ligne : `Circuit du Jour #142 — 37,312 s — 🥇 — 23e/812`.
 
 ## 2. État des lots
 
@@ -25,6 +25,7 @@ Jeu web de course quotidien : **un circuit court (30–60 s) par jour, le même 
 | 10 Tactile (fait **avant** les lots 8 et 9, à la demande de Nathan) | Commandes tactiles : glissement ou boutons ← →, frein à droite, accélérateur auto ou bouton gaz, pause, reprise / départ, réglages mémorisés, invitation portrait, plein écran, vibrations ; `?touch=1` ; outils de test pas à pas | #14 | finir un tour au doigt sur téléphone |
 | 10b Zones tactiles | Zones actives sans trou définies une fois (`zoneSpans`, `buttonRects`), boutons dessinés compacts et écartés des zones sûres, barre d'actions compacte hors des frontières (elle volait les appuis), `lostpointercapture` retiré, réglage taille des boutons, `?steer=`, `?zones=1` ; **aucun changement de `sim`** | (cette PR) | boutons ← → et frein sur ton téléphone, avec `zones=1` |
 | 11 Historique | `PREMIER_JOUR` (n° 1, provisoirement 22/09/2026, remplace `LAUNCH_DAY`), pilotes fictifs `npm run history:seed` (14 jours × 8–15 pilotes, courses validées par le vrai code de l'API, joueurs `demo`), mode `?api=demo` (jeu de données statique, lecture seule), `?day=`, archives enrichies (médailles, pilotes, ta place figée), ouverture d'un jour avec fantôme du premier et classement figé ; **aucun changement de `sim`** hors la constante | #21 | `?api=demo`, touche H, `?api=demo&day=2026-09-30` |
+| 12 Circuits amples | Trois largeurs de route (14 / 20 / 26 m, attribut de bloc `e` `n` `l`) et **blocs de transition** (`S/e>l`, rebords lissés, sans marche), **virage ample** `L3` / `R3` (3 × 3 cellules), générateur refait : courbes larges ou amples, **au plus 2 virages serrés** (jamais deux de suite, jamais sur la route large), **au moins deux largeurs** par circuit selon le thème, temps de l'auteur **30–40 s** ; pilote sur la largeur (corde plus ouverte) ; `?scenario=largeurs` ; **script de mesure** `npm run measure:generator` ; versions 5/5, `history:seed` relancé | #24 | `?scenario=largeurs`, puis un circuit par thème |
 
 Un PR à part : #5 (aperçu GitHub Pages par branche). **Reste à faire du plan** : mise en ligne, calibrage et le *jalon* « une semaine de circuits joués par Nathan et quelques amis ». Le lot 10 ne dépend que du lot 7.
 
@@ -37,7 +38,7 @@ apps/api       Le classement : importe le MÊME sim pour rejouer les courses
 docs/          seed.md (source de vérité), lots/ (un README par lot), ce document
 ```
 
-**`packages/sim`** (TypeScript, testé par Vitest) : `math` (sin/cos maison), `car` (physique, `stepCar`), `track` (blocs, grille, `parseTrack`), `world` (sol, pentes, rebords), `race` (portes, chrono, reprises : `stepRace`), `replay` (enregistrer / encoder base64url / décoder / `replayRace`), `rng` + `calendar` (graine et dates sans `Date`), `autopilot` (pilote de validation), `generator` (`dailyCircuit(jour)`), `circuits` (circuit d'essai écrit à la main).
+**`packages/sim`** (TypeScript, testé par Vitest) : `math` (sin/cos maison), `car` (physique, `stepCar`), `track` (blocs, grille, largeurs de route et transitions, `parseTrack`), `world` (sol, pentes, rebords), `race` (portes, chrono, reprises : `stepRace`), `replay` (enregistrer / encoder base64url / décoder / `replayRace`), `rng` + `calendar` (graine et dates sans `Date`), `autopilot` (pilote de validation), `generator` (`dailyCircuit(jour)` : largeurs, courbes amples, virages serrés limités), `themes` (poids de largeur par thème), `circuits` (circuit d'essai écrit à la main).
 
 **`apps/web`** : `main.ts` (boucle à pas fixe, rendu interpolé, HUD), `session.ts` (`RunSession` : course + enregistrement + fantôme), `trackMesh.ts` (rendu du circuit, 4 palettes), `input.ts` (clavier ZQSD/WASD, flèches, manette), `online.ts` / `api.ts` / `identity.ts` (classement, pseudo, fantômes distants), `share.ts` / `clipboard.ts` / `archive.ts` / `records.ts` (partage, archives, records locaux), `verify.html` (rejeu sans rendu, pour les tests de navigateur).
 
@@ -53,8 +54,8 @@ docs/          seed.md (source de vérité), lots/ (un README par lot), ce docum
 2. **Ne jamais faire confiance à un temps annoncé** : seul le résultat d'un rejeu serveur compte. Un joueur n'existe qu'après une course valide.
 3. **Deux numéros de version** (`packages/sim/src/constants.ts`), à incrémenter dès que le résultat d'une course ou le circuit d'une date change :
    - `SIM_VERSION` (physique, blocs, circuit d'essai) → régénérer la rediffusion de référence : `UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden.test.ts`
-   - `GENERATOR_VERSION` (règles du générateur, pilote, fenêtre de durée 28–48 s) → `UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden-daily.test.ts`
-   Valeurs actuelles : **4 et 4** (lot 8). L'id d'un circuit du jour est `jour-AAAA-MM-JJ-g<GENERATOR_VERSION>`. Les tests « golden » comparent **au bit près** : s'ils cassent, quelque chose a changé la physique ou les circuits.
+   - `GENERATOR_VERSION` (règles du générateur, pilote, fenêtre de durée 30–40 s) → `UPDATE_GOLDEN=1 npx vitest run packages/sim/test/golden-daily.test.ts`
+   Valeurs actuelles : **5 et 5** (lot 12 : largeurs de route, virage ample, générateur refait, fenêtre 30–40 s). L'id d'un circuit du jour est `jour-AAAA-MM-JJ-g<GENERATOR_VERSION>`. Les tests « golden » comparent **au bit près** : s'ils cassent, quelque chose a changé la physique ou les circuits. **Après tout changement de `SIM_VERSION` ou `GENERATOR_VERSION` : golden, `npm run history:seed` et `npm run measure:generator`** (toute règle de générateur se valide par le script de mesure, pas seulement par les tests).
 4. **Une seule vérité pour le temps** : le chrono est en pas de simulation affiné par interpolation, en millisecondes entières.
 5. **Sécurité de l'API** : requêtes SQL paramétrées, pseudo validé et affiché en `textContent`, corps de requête borné, limitation de débit avant tout rejeu, adresses hachées. Voir `docs/lots/lot-5-classement.md`.
 6. **Le jeu marche sans API** (pas d'adresse configurée = pas de classement, rien d'autre ne change).
@@ -69,7 +70,8 @@ npm run test:e2e         # construit web + api, lance Playwright (Chromium) ; d�
   E2E_ALL_BROWSERS=1                         # + Firefox et WebKit (ce que fait la CI)
 API en local : npm run build:node -w @cdj/api && DB_PATH=:memory: npm start -w @cdj/api   → jeu avec ?api=http://localhost:8787
 npm run history:seed     # (re)fabrique les archives de démonstration (apps/web/public/demo/), ≈ 10 s, déterministe
-Page d'outils de test : `<base>/admin/` (menu qui construit l'adresse du jeu). Réglages d'URL du jeu : ?seed=AAAA-MM-JJ (ou ?day=) · ?api=demo (archives de démonstration) · ?scenario=essai|plat · ?touch=1 · ?steer=boutons|glisser · ?zones=1 · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
+npm run measure:generator  # lot 12 : durées d'auteur, largeurs, virages serrés, génération, rejeu (60 dates) + taux de validation par thème ; FAST=1 pour aller vite, ≈ 25 s sinon
+Page d'outils de test : `<base>/admin/` (menu qui construit l'adresse du jeu). Réglages d'URL du jeu : ?seed=AAAA-MM-JJ (ou ?day=) · ?api=demo (archives de démonstration) · ?scenario=essai|pilotage|surfaces|largeurs|plat · ?touch=1 · ?steer=boutons|glisser · ?zones=1 · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
 Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cdj.autoplay(code)
 ```
 
@@ -88,13 +90,14 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 
 **Décidé**
 - Monorepo npm workspaces, TypeScript, Three.js ; physique **maison** (pas de moteur externe) ; cellules de 32 m, route de 14 m ; blocs : droit, virages (serrés, larges, **relevés** depuis le lot 8), montée/descente, bosse, tremplin, plaque, super turbo, moteur coupé ; revêtements route / terre / glace / herbe ; **la décision « pas de banquettes » est levée** (virages relevés au lot 8) ; toujours pas de boucles ni de murs verticaux (hors premier jalon).
-- Générateur par segments + validation par pilote ; fenêtre de durée du pilote 28–48 s ; médailles : or ×1,08, argent ×1,20, bronze ×1,40 du temps de l'auteur.
+- Générateur par segments + validation par pilote ; fenêtre de durée du pilote **30–40 s** (lot 12, était 28–48 s) ; médailles : or ×1,08, argent ×1,20, bronze ×1,40 du temps de l'auteur.
 - **Lot 8** : un revêtement est un attribut de **bloc** entier (pas de revêtement par zone de la route : l'herbe n'est donc pas un bas-côté, mais une surface lente que le circuit traverse) ; le thème vient de la date avec la même graine que l'ancienne palette (5 thèmes au lieu de 4 palettes : les circuits d'une date changent, `GENERATOR_VERSION` 4) ; un thème forcé (`?theme=`) est un autre circuit, jamais classé ; le moteur coupé est toujours suivi d'un point de contrôle deux blocs plus loin ; un super turbo laisse cinq blocs sans virage derrière lui.
 - **Lot 7b** : les réglages de Nathan remplacent les défauts du lot 7 (`lot-7b-reglages.md`) ; pointe **48 m/s**. Une plaque d'accélération doit être suivie de deux blocs sans virage (générateur et circuit d'essai) ; marge du pilote aux rebords 3,6 m (`WALL_MARGIN`). Les lots 8 et suivants partent de ces valeurs.
 - **Lot 7** (valeurs du lot 7, avant la 7b) : vitesse de pointe 42 m/s (échelles du générateur inchangées) ; adhérence ≈ 40 m/s² puis glisse ; pas de migration des anciennes courses (aucun joueur réel) : l'API refuse une autre `SIM_VERSION` avec un message clair, les records locaux d'une autre version sont ignorés ; format de rediffusion inchangé (direction déjà analogique). Le pilote suit une trajectoire de course et essaie 4 niveaux d'adhérence (`PILOT_GRIPS`) ; virage large L2/R2 ajouté (le générateur en met une fois sur quatre). Les réglages par défaut sont provisoires : la retouche 7b appliquera ceux de Nathan.
 - Classement : meilleur temps par joueur et par jour, égalité départagée par l'ordre d'arrivée ; seul le jour courant (UTC) accepte des temps, avec 10 min de grâce après minuit ; jours passés consultables et figés.
 - Identité : identifiant aléatoire + pseudo dans `localStorage` (changer de navigateur = nouveau joueur, accepté).
 - Touche **H** pour les archives (**A** sert à tourner à gauche).
+- **Lot 12 — largeurs de route et circuits amples** : trois largeurs **14 / 20 / 26 m** (étroite = la largeur d'avant, donc les circuits écrits à la main et leurs références sont **inchangés au bit près**) ; la largeur est un attribut de bloc **chaîné** (un bloc sans largeur garde la précédente) et ne change que par un **bloc de transition** d'une cellule (lissage cubique, un cran à la fois dans le générateur) ; un virage garde sa largeur. Plaques à la moitié de la largeur. **Virage ample L3 / R3** (rayon 80 m, 3 × 3 cellules, 8 cellules réservées). **Virages serrés** : au plus 2 par circuit (signature comprise), jamais deux de suite, **jamais sur la route large** (géométriquement possible jusqu'à 26 m, rayon intérieur 3 m, mais sans intérêt de jeu). Les ex-« épingle » et « chicane » serrées deviennent **demi-tour large** (`L2 L2`) et **S large** (`L2 R2`) ; signatures *Banquise* = chicane large sur glace, *Campagne* = étranglement (14 m) suivi d'un virage serré sur la terre. Largeurs par thème : *Stade* et *Banquise* larges, *Rallye* et *Campagne* étroits, *Nuit* mélangé. Marge du pilote aux rebords **conservée** (3,6 m) : la corde s'ouvre seule avec la largeur.
 - **Lot 11 — `PREMIER_JOUR` provisoire (22/09/2026)** : il fixe le numéro n° 1 pour avoir deux semaines d'archives avant la mise en ligne ; **à régler sur la vraie date de lancement à la mise en ligne** (une ligne de `calendar.ts`, puis régénérer les numéros du golden des circuits et, si l'on veut, `history:seed`). Les pilotes `demo` n'existent que dans le jeu de données statique (`apps/web/public/demo/`), jamais dans une base de production ; en démo « aujourd'hui » est figé à `DEMO_TODAY` (lendemain de l'historique).
 
 **Ouvert — à trancher par Nathan**
@@ -129,10 +132,15 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 - **Lot 9 — perf et audio** : en CI et en conteneur le rendu est **logiciel** (SwiftShader, ~8 images/s) : les images par seconde ne disent rien, mesurer le **temps de fil principal par image** (CDP `Performance.getMetrics`, `Emulation.setCPUThrottlingRate`) avant / après avec le même script et les mêmes rediffusions. Un test d'effet en pas à pas doit avancer par **petits paquets de pas** (`advance(8)`) : les effets lisent l'état de chaque *image*, un saut de 120 pas ne montre que l'état final (le dérapage a fini). Le contexte audio n'existe pas avant un geste : tests et code doivent tolérer `running = false` ; on vérifie ce qui est *joué* (`__cdj.audio.log`), jamais comment ça sonne. Pas de `pkill -f` (voir plus haut).
 - **9b — un effet « compté » n'est pas un effet « vu »** : les traces de pneus du lot 9 n'ont jamais été visibles (`Float32BufferAttribute` copie le tableau passé : on écrivait à côté), alors que le compteur d'émission et les tests passaient. Pour un effet visuel, **regarder une capture** (en mode pas à pas `?debug`, `manual(true)` ne rend pas : mettre en pause avec P, repasser `manual(false)`, attendre une image, capturer) et tester l'état réel (`__cdj.fx.marks`).
 - **Lot 11 — un test ancré sur `PREMIER_JOUR` change de circuit quand on déplace la constante** : les tests du générateur et de l'API valident des dates précises avec un pilote ; les ancrer sur des dates fixes (06/10 et 13/10/2026) plutôt que sur le premier jour. Seul le champ `number` du golden suit la constante. Un jeu de données généré doit être **déterministe** (graine fixe, aucune date ni `Math.random`), sinon chaque régénération salit le dépôt de fichiers « modifiés ».
+- **Lot 12 — chaque règle de génération doit se compter** : un budget de virages serrés décrémenté seulement pour les virages « ordinaires » laissait passer un 3ᵉ virage serré dans un créneau signature **sans virage propre** (Nuit, Rallye) ; le script de mesure (`virages serrés : max 3`) l'a vu tout de suite. Écrire la règle (au plus 2) comme **test** *et* regarder le maximum mesuré.
+- **Mesurer l'écart à une ligne brisée, pas au sommet le plus proche** : la ligne médiane d'une droite n'a un sommet que tous les 16 m ; « distance au point le plus proche » donnait 8 m d'écart pour une trajectoire pourtant bien centrée.
+- **Comparer à l'ancien comportement** : avant de toucher aux rebords, vérifier qu'un circuit de 14 m rejoue **au bit près** (la référence `essai-autopilot.json` n'a changé que de numéro de version) ; le contact sur un rebord droit garde exactement l'ancienne formule (branche « pente nulle »).
+- **`pkill -f` tue le shell** (vu encore au lot 12 en voulant arrêter `vite preview`) : repérer le PID avec `ps -eo pid,args | grep "[v]ite"` puis `kill <pid>`.
+- **Un `main` local en retard** ne dit rien de l'état des PR : après `git fetch`, regarder `origin/main` (`git log origin/main`), pas le `main` local, pour savoir ce qui est fusionné.
 
 ## 9. Suite proposée (à confirmer avec Nathan)
 
-Tous les lots du plan du seed (0 à 11) sont livrés. Reste :
+Les lots 0 à 12 du plan du seed sont livrés ; restent les lots 13 (miniatures) et 14 (admin et planning), puis la mise en ligne. Reste :
 
 | Étape | Objet | Critères d'arrêt |
 |---|---|---|
@@ -147,7 +155,7 @@ Tous les lots du plan du seed (0 à 11) sont livrés. Reste :
 
 ## 10. Index
 - `docs/seed.md` — vision, piliers, plan en lots (source de vérité)
-- `docs/lots/lot-0-socle.md` … `lot-11-historique.md` — le détail de chaque lot (livré, à tester, garde-fous, limites) ; `lot-7b-reglages.md`, `lot-9b-visuels.md`, `lot-10b-zones-tactiles.md` pour les retouches
+- `docs/lots/lot-0-socle.md` … `lot-12-circuits-amples.md` — le détail de chaque lot (livré, à tester, garde-fous, limites) ; `lot-7b-reglages.md`, `lot-9b-visuels.md`, `lot-10b-zones-tactiles.md` pour les retouches
 - `docs/credits.md` — crédits (sons procéduraux, voiture originale, bibliothèques)
 - `CLAUDE.md` — consignes courtes de l'agent (structure, commandes, règles de déterminisme, sections par lot)
 - `apps/api/wrangler.toml`, `apps/api/Dockerfile` — déploiement de l'API

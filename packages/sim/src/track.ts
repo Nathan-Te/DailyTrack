@@ -6,8 +6,17 @@ import { HALF_PI, PI, cos, sin } from "./math";
 // Aucune trigonométrie sur les cellules : les rotations sont des quarts de tour, donc exactes.
 
 export const CELL = 32; // mètres
+/** Largeur de la route étroite (la largeur d'origine) ; la route des anciens circuits écrits à la main. */
 export const ROAD_WIDTH = 14;
 export const HALF_ROAD = ROAD_WIDTH / 2;
+/**
+ * Les trois largeurs de route (lot 12), en mètres, dans une cellule de 32 m. Attribut de bloc (`S/n`, `S/e>l`…) :
+ * `e` étroite, `n` normale, `l` large. Un bloc sans largeur garde celle du bloc précédent (14 m au départ).
+ */
+export const ROAD_WIDTHS = { e: 14, n: 20, l: 26 } as const;
+export type WidthLetter = keyof typeof ROAD_WIDTHS;
+/** La plus large des routes : toujours dans la cellule (26 < 32), et la limite d'un virage serré (rayon intérieur 3 m). */
+export const MAX_ROAD_WIDTH = ROAD_WIDTHS.l;
 export const WALL_HEIGHT = 1.4; // les rebords arrêtent la voiture sous cette hauteur
 export const SLOPE_RISE = 4; // dénivelé d'un bloc de pente
 export const BUMP_HEIGHT = 1;
@@ -19,7 +28,7 @@ export const BOOST_HALF_LENGTH = 4;
 /** Hauteur « sans sol » : le vide. */
 export const NO_GROUND = -1e9;
 
-export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "up" | "down" | "bump" | "jump" | "boost" | "turbo" | "cut";
+export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "boost" | "turbo" | "cut";
 
 /**
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
@@ -46,6 +55,9 @@ export interface Block {
   surface: SurfaceKind;
   /** Virage relevé : la route s'incline vers l'extérieur (voir `bankAt`). */
   banked: boolean;
+  /** Largeur de la route (m) à l'entrée et à la sortie du bloc ; différentes seulement sur un bloc de transition. */
+  w0: number;
+  w1: number;
 }
 
 export interface Gate {
@@ -58,6 +70,8 @@ export interface Gate {
   fx: number;
   fz: number;
   yaw: number;
+  /** Demi-largeur de la route à la porte (m). */
+  halfWidth: number;
 }
 
 export interface Spawn {
@@ -84,6 +98,8 @@ export const BLOCK_LETTERS: Record<string, BlockKind> = {
   R: "curveR",
   L2: "wideL",
   R2: "wideR",
+  L3: "grandL",
+  R3: "grandR",
   U: "up",
   D: "down",
   B: "bump",
@@ -98,9 +114,12 @@ const DIR_X = [0, 1, 0, -1] as const;
 const DIR_Z = [1, 0, -1, 0] as const;
 const DIR_YAW = [0, HALF_PI, PI, -HALF_PI] as const;
 
-export const isCurve = (k: BlockKind) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
-export const isWide = (k: BlockKind) => k === "wideL" || k === "wideR";
-export const turnsLeft = (k: BlockKind) => k === "curveL" || k === "wideL";
+export const isCurve = (k: BlockKind) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR" || k === "grandL" || k === "grandR";
+/** Virage large ou ample (2 ou 3 cellules de côté) : tout ce qui n'est pas le virage serré d'une cellule. */
+export const isWide = (k: BlockKind) => k === "wideL" || k === "wideR" || k === "grandL" || k === "grandR";
+export const turnsLeft = (k: BlockKind) => k === "curveL" || k === "wideL" || k === "grandL";
+/** Côté d'un virage, en cellules : 1 serré, 2 large (L2 / R2), 3 ample (L3 / R3). */
+export const curveSize = (k: BlockKind): 1 | 2 | 3 => (k === "curveL" || k === "curveR" ? 1 : k === "wideL" || k === "wideR" ? 2 : 3);
 
 /** Rayon de l'axe d'un virage large (2 × 2 cellules). */
 export const WIDE_RADIUS = CELL + CELL / 2;
@@ -108,47 +127,34 @@ export const WIDE_RADIUS = CELL + CELL / 2;
 /**
  * Géométrie d'un virage dans le repère du bloc : arc de rayon `r` centré en (`cp`, q = 0).
  * Virage serré : rayon CELL/2, centré sur un coin de la cellule. Virage large : rayon 1,5 CELL, il déborde
- * sur la colonne voisine (à gauche ou à droite) et sur la rangée suivante.
+ * sur la colonne voisine (à gauche ou à droite) et sur la rangée suivante. Virage ample : rayon 2,5 CELL, 3 × 3 cellules.
  */
 export function curveCenter(k: BlockKind): { cp: number; r: number } {
-  switch (k) {
-    case "curveL":
-      return { cp: CELL, r: CELL / 2 };
-    case "curveR":
-      return { cp: 0, r: CELL / 2 };
-    case "wideL":
-      return { cp: CELL / 2 + WIDE_RADIUS, r: WIDE_RADIUS };
-    default:
-      return { cp: CELL / 2 - WIDE_RADIUS, r: WIDE_RADIUS };
-  }
+  const r = CELL * (curveSize(k) - 0.5);
+  return { cp: turnsLeft(k) ? CELL / 2 + r : CELL / 2 - r, r };
 }
 
-/** Cellules occupées par un bloc posé en (cx, cz) avec le cap `dir`, et la cellule (et le cap) du bloc suivant. */
+/**
+ * Cellules occupées par un bloc posé en (cx, cz) avec le cap `dir`, et la cellule (et le cap) du bloc suivant.
+ * Un virage de côté n occupe n × n cellules, sauf la cellule du coin intérieur d'un virage ample, que la route
+ * (rayon 67 à 93 m du coin) n'atteint jamais.
+ */
 export function blockCells(cx: number, cz: number, dir: Dir, kind: BlockKind): { cells: [number, number][]; next: { cx: number; cz: number; dir: Dir } } {
   const left = ((dir + 1) & 3) as Dir;
   // (i, j) : décalage canonique en cellules, i vers la gauche, j vers l'avant.
   const at = (i: number, j: number): [number, number] => [cx + i * DIR_X[left] + j * DIR_X[dir], cz + i * DIR_Z[left] + j * DIR_Z[dir]];
-  let cells: [number, number][];
-  let exit: [number, number];
-  let nextDir: Dir = dir;
-  if (kind === "wideL" || kind === "wideR") {
-    const s = kind === "wideL" ? 1 : -1;
-    cells = [at(0, 0), at(s, 0), at(0, 1), at(s, 1)];
-    exit = at(2 * s, 1);
-    nextDir = (kind === "wideL" ? left : (dir + 3) & 3) as Dir;
-  } else if (kind === "curveL") {
-    cells = [at(0, 0)];
-    exit = at(1, 0);
-    nextDir = left;
-  } else if (kind === "curveR") {
-    cells = [at(0, 0)];
-    exit = at(-1, 0);
-    nextDir = ((dir + 3) & 3) as Dir;
-  } else {
-    cells = [at(0, 0)];
-    exit = at(0, 1);
+  if (!isCurve(kind)) return { cells: [at(0, 0)], next: (([x, z]) => ({ cx: x, cz: z, dir }))(at(0, 1)) };
+  const n = curveSize(kind);
+  const s = turnsLeft(kind) ? 1 : -1;
+  const cells: [number, number][] = [];
+  for (let j = 0; j < n; j++) {
+    for (let i = 0; i < n; i++) {
+      if (n === 3 && i === 2 && j === 0) continue;
+      cells.push(at(i * s, j));
+    }
   }
-  return { cells, next: { cx: exit[0], cz: exit[1], dir: nextDir } };
+  const exit = at(n * s, n - 1);
+  return { cells, next: { cx: exit[0], cz: exit[1], dir: (turnsLeft(kind) ? left : (dir + 3) & 3) as Dir } };
 }
 
 export function cellKey(cx: number, cz: number): number {
@@ -244,6 +250,31 @@ export function exitDelta(kind: BlockKind): number {
   return kind === "up" ? SLOPE_RISE : kind === "down" ? -SLOPE_RISE : 0;
 }
 
+// --- Largeurs ---------------------------------------------------------------------------------
+
+/** Fonction de lissage d'une transition de largeur (pente nulle aux deux bouts : pas de marche, pas d'angle vif). */
+const smooth = (t: number) => t * t * (3 - 2 * t);
+
+/** Largeur de la route (m) au point d'avance q du bloc : constante, sauf sur un bloc de transition (entre `w0` et `w1`). */
+export function blockWidth(b: Block, q: number): number {
+  if (b.w0 === b.w1) return b.w0;
+  const t = (q < 0 ? 0 : q > CELL ? CELL : q) / CELL;
+  return b.w0 + (b.w1 - b.w0) * smooth(t);
+}
+
+/** Demi-largeur de la route au point d'avance q du bloc. */
+export const blockHalfWidth = (b: Block, q: number): number => blockWidth(b, q) / 2;
+
+/** Demi-largeur d'une plaque (accélération, super turbo) : la moitié de la demi-largeur de la route au milieu du bloc (3,5 m sur 14 m). */
+export const blockPadHalfWidth = (b: Block): number => blockHalfWidth(b, CELL / 2) / 2;
+
+/** Pente des rebords d'un bloc de transition : d(demi-largeur)/dq (0 si la largeur est constante). */
+export function blockHalfWidthSlope(b: Block, q: number): number {
+  if (b.w0 === b.w1 || q <= 0 || q >= CELL) return 0;
+  const t = q / CELL;
+  return ((b.w1 - b.w0) * 6 * t * (1 - t)) / (2 * CELL);
+}
+
 // --- Construction -----------------------------------------------------------------------------
 
 export interface ParsedToken {
@@ -251,11 +282,15 @@ export interface ParsedToken {
   surface: SurfaceKind;
   banked: boolean;
   mark?: Mark;
+  /** Largeur écrite sur le bloc (entrée, sortie), en mètres ; absente : le bloc garde la largeur du précédent. */
+  width?: { w0: number; w1: number };
 }
 
 /**
  * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe
- * (un seul revêtement), `b` virage relevé (virages seulement). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`.
+ * (un seul revêtement), `b` virage relevé (virages seulement), et la largeur de la route : `e` étroite (14 m),
+ * `n` normale (20 m), `l` large (26 m), ou `a>b` pour un bloc de transition (`n>l` : de la normale à la large, en un bloc
+ * droit). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`, `S/n`, `S/e>l`, `L3/lb`.
  */
 export function parseToken(token: string, index = 0): ParsedToken {
   const [body = "", markName] = token.split("@");
@@ -269,15 +304,22 @@ export function parseToken(token: string, index = 0): ParsedToken {
   }
   let surface: SurfaceKind = "road";
   let banked = false;
-  for (const m of mods) {
+  let width: { w0: number; w1: number } | undefined;
+  for (const m of mods.match(/[enl]>[enl]|./g) ?? []) {
     if (m === "b") banked = true;
     else if (SURFACE_LETTERS[m]) {
       if (surface !== "road") throw new Error(`Deux revêtements sur « ${token} » (position ${index})`);
       surface = SURFACE_LETTERS[m]!;
+    } else if (m in ROAD_WIDTHS || (m.length === 3 && m[1] === ">")) {
+      if (width) throw new Error(`Deux largeurs sur « ${token} » (position ${index})`);
+      const w0 = ROAD_WIDTHS[m[0] as WidthLetter];
+      const w1 = ROAD_WIDTHS[m[m.length - 1] as WidthLetter];
+      if (w0 !== w1 && isCurve(kind)) throw new Error(`Un virage garde sa largeur : pas de transition sur « ${token} » (position ${index})`);
+      width = { w0, w1 };
     } else throw new Error(`Modificateur inconnu « ${m} » dans « ${token} » (position ${index})`);
   }
   if (banked && !isCurve(kind)) throw new Error(`Seul un virage peut être relevé (${token})`);
-  return { kind, surface, banked, ...(mark ? { mark } : {}) };
+  return { kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}) };
 }
 
 // --- Virages relevés --------------------------------------------------------------------------
@@ -330,7 +372,7 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
  * Construit un circuit à partir d'un texte : des blocs séparés par des espaces, posés l'un après l'autre
  * à partir de la cellule (0, 0), cap +z.
  *
- * Blocs : S droit · L virage à gauche · R virage à droite · L2 / R2 virage large (2 × 2 cellules) · U montée · D descente · B bosse ·
+ * Blocs : S droit · L virage à gauche · R virage à droite · L2 / R2 virage large (2 × 2 cellules) · L3 / R3 virage ample (3 × 3) · U montée · D descente · B bosse ·
  * J tremplin · P plaque d'accélération · T super turbo · C moteur coupé (jusqu'au prochain point de contrôle). Modificateurs
  * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé. Repères : `@start` (premier bloc), `@cp` (point de contrôle,
  * sur un S), `@finish` (dernier bloc). Départ et arrivée sont sur des blocs S.
@@ -343,14 +385,23 @@ export function parseTrack(id: string, spec: string): Track {
   let cz = 0;
   let dir: Dir = 0;
   let y = 0;
+  let width: number = ROAD_WIDTH;
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written } = parseToken(token, index);
+    // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
+    // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
+    if (written && index > 0 && written.w0 !== width) {
+      throw new Error(`Marche de largeur au bloc ${index} (« ${token} ») : la route précédente finit à ${width} m, celle-ci commence à ${written.w0} m`);
+    }
+    const w0 = written ? written.w0 : width;
+    const w1 = written ? written.w1 : width;
+    width = w1;
     if (mark && kind !== "straight") throw new Error(`Un repère n'est permis que sur un bloc S (${token})`);
     if (mark === "start" && index !== 0) throw new Error("Le départ doit être le premier bloc");
     if (mark === "finish" && index !== tokens.length - 1) throw new Error("L'arrivée doit être le dernier bloc");
 
-    const block: Block = { index, cx, cz, dir, kind, y0: y, surface, banked, ...(mark ? { mark } : {}) };
+    const block: Block = { index, cx, cz, dir, kind, y0: y, surface, banked, w0, w1, ...(mark ? { mark } : {}) };
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
       const key = cellKey(x, z);
@@ -382,6 +433,7 @@ export function parseTrack(id: string, spec: string): Track {
       fx: DIR_X[b.dir],
       fz: DIR_Z[b.dir],
       yaw: DIR_YAW[b.dir],
+      halfWidth: blockHalfWidth(b, CELL / 2),
     });
   }
 
@@ -420,7 +472,7 @@ export function trackCenterline(track: Track): Centerline {
     if (isCurve(b.kind)) {
       const { cp, r } = curveCenter(b.kind);
       const side = turnsLeft(b.kind) ? -1 : 1;
-      const steps = isWide(b.kind) ? 3 * CURVE_STEPS : CURVE_STEPS;
+      const steps = CURVE_STEPS * (curveSize(b.kind) === 1 ? 1 : 3 * (curveSize(b.kind) - 1));
       for (let i = 0; i <= steps; i++) {
         const a = (HALF_PI * i) / steps; // 0 → π/2
         push(b, cp + side * r * cos(a), r * sin(a));

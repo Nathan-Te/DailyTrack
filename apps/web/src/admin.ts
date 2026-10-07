@@ -20,6 +20,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["essai", "Essai (tremplin)"],
   ["pilotage", "Pilotage"],
   ["surfaces", "Surfaces"],
+  ["largeurs", "Largeurs"],
   ["plat", "Terrain plat"],
 ];
 

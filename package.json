@@ -16,7 +16,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b",
     "test:e2e": "npm run build && npm run build:node -w @cdj/api && npm run e2e -w @cdj/web",
-    "history:seed": "npm run history:seed -w @cdj/api"
+    "history:seed": "npm run history:seed -w @cdj/api",
+    "measure:generator": "npm run measure:generator -w @cdj/api"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
