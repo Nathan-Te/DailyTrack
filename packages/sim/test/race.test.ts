@@ -50,11 +50,11 @@ describe("course complète (pilote automatique)", () => {
     // Référence : si ce test casse, la physique ou le circuit d'essai ont changé.
     expect({ finishMs: run.race.finishMs, splits: run.race.splits }).toMatchInlineSnapshot(`
       {
-        "finishMs": 34127,
+        "finishMs": 32937,
         "splits": [
-          9298,
-          22634,
-          30227,
+          8897,
+          21901,
+          29397,
         ],
       }
     `);

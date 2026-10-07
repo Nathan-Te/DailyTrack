@@ -87,6 +87,18 @@ describe("circuit du jour : construction", () => {
     }
   });
 
+  it("laisse deux lignes droites derrière chaque plaque d'accélération (sinon le virage suivant ne se prend pas à 48 m/s)", () => {
+    const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+    for (const day of DAYS) {
+      const kinds = circuit(day).track.blocks.map((b) => b.kind);
+      kinds.forEach((k, i) => {
+        if (k !== "boost") return;
+        // Les deux blocs qui suivent : des lignes droites ou, au pire, la fin du circuit.
+        for (const next of [kinds[i + 1], kinds[i + 2]]) if (next !== undefined) expect(curve(next), `${day} @${i}`).toBe(false);
+      });
+    }
+  });
+
   it("a toujours un passage marquant (tremplin, chicane ou épingle) et, si tremplin, deux lignes droites pour atterrir", () => {
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);

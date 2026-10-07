@@ -87,7 +87,7 @@ export interface CarParams {
   driftMinSpeed: number;
   /** Durée de vie d'un dérapage tenu (s) : il s'éteint plus vite si on relâche la direction. */
   driftHold: number;
-  /** Angle de dérive tenu en dérapage, braquage à fond (tangente : 0,42 ≈ 23°). */
+  /** Angle de dérive tenu en dérapage, braquage à fond (tangente : 0,32 ≈ 18°). */
   driftAngle: number;
   /** En dérapage, la vitesse est ramenée vers le nez (m/s² par unité de dérive) : on tourne plus serré qu'en grip, en perdant de la vitesse. */
   driftPull: number;
@@ -128,39 +128,39 @@ export interface CarParams {
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
-  maxSpeed: 42,
+  maxSpeed: 48,
   accel: 22,
   accelCurve: 0.6,
   brake: 40,
   reverseAccel: 14,
   reverseMax: 12,
   coast: 3,
-  steerMax: 0.55,
-  steerAtLimit: 1.15,
-  steerSpeed: 12,
+  steerMax: 0.5,
+  steerAtLimit: 1.2,
+  steerSpeed: 14,
   gripFront: 44,
   gripRear: 47,
-  slipPeak: 0.11,
-  slideGrip: 0.78,
+  slipPeak: 0.14,
+  slideGrip: 0.82,
   slideDrag: 6,
-  driftGrip: 0.45,
+  driftGrip: 0.6,
   driftMinSpeed: 15,
   driftHold: 3,
-  driftAngle: 0.42,
-  driftPull: 45,
+  driftAngle: 0.32,
+  driftPull: 33,
   loadSensitivity: 0.5,
   suspStiffness: 62,
   suspDamping: 5,
   cgHeight: 0.35,
-  gravity: 22,
+  gravity: 24.6,
   slopeGravity: 10,
   airDamping: 6,
   airLevel: 9,
   landTolerance: 0.15,
   landLoss: 1,
   landBounce: 0.4,
-  wallBounce: 0.25,
-  wallFriction: 0.22,
+  wallBounce: 0.6,
+  wallFriction: 0.3,
   boostTicks: 108,
   boostAccel: 30,
   boostMaxSpeed: 58,

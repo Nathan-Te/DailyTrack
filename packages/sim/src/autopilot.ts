@@ -36,7 +36,7 @@ export interface RacingLine {
 const SPACING = 2;
 const SMOOTH_ITERATIONS = 400;
 /** Marge aux rebords (m) : demi-largeur de la voiture et un peu d'air. */
-const WALL_MARGIN = COLLIDER_RADIUS + 0.9;
+const WALL_MARGIN = COLLIDER_RADIUS + 2.6;
 
 interface Centerline {
   x: number[];
