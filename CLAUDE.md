@@ -44,7 +44,9 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - Reprise = état de la voiture au passage du dernier point de contrôle (`race.checkpoints`). Virage large `L2`/`R2` (2 × 2 cellules, `blockCells`).
 - Pilote (`autopilot.ts`) : trajectoire lissée (`racingLine`), vitesses par courbure, freinage anticipé ; `PILOT_GRIPS`.
 - Web : panneau `?debug&tune` (`apps/web/src/tune.ts`) — une course avec réglages modifiés n'est **jamais** enregistrée ni classée ; caméras proche/loin (touche **C**, bouton Vue de la manette) ; `?scenario=pilotage`.
-- Tests de comportement chiffrés : `packages/sim/test/conduite.test.ts` (seuils recopiés dans le README du lot).
+- **Réglages par défaut = ceux de Nathan (retouche 7b, `docs/lots/lot-7b-reglages.md`)** : pointe 48 m/s, grip 44 / 47, seuil de glisse 0,14, dérapage doux (angle 0,32, serrage 33), gravité 24,6, rebords durs (rebond 0,6, frottement 0,3). `SIM_VERSION` et `GENERATOR_VERSION` valent **3**.
+- Générateur : **deux lignes droites derrière chaque plaque** (`PAD_RUNOUT`, generator.ts) — à 48 m/s, une plaque suivie d'un virage serré ne se prend pas (frein 40 contre poussée 30 pendant 0,9 s). Le circuit d'essai suit la même règle. Pilote : marge aux rebords de 3,6 m (`WALL_MARGIN`).
+- Tests de comportement chiffrés : `packages/sim/test/conduite.test.ts` (seuils recopiés dans le README du lot, mis à jour au 7b).
 
 ## Commandes tactiles (lot 10)
 - `apps/web/src/touch.ts` (logique pure, testée : `TouchPad` = doigts → axes, `dragSteer`, `zoneAt`, réglages `cdj:touch`, seuil de choc) ; `touchUi.ts` (DOM : zones, aides, boutons, réglages, invitation portrait, plein écran) ; `input.ts` (`Controls` fusionne clavier, manette et doigts). Mode actif si `pointer: coarse`, ou `?touch=1` (la souris simule le doigt) ; `?touch=0` le coupe.

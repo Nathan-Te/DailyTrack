@@ -1,5 +1,7 @@
 # Lot 7 — Refonte de la conduite
 
+> **Les valeurs par défaut citées ci-dessous sont celles du lot 7 ; la retouche 7b les a remplacées par les réglages de Nathan (pointe 48 m/s, etc.) : voir `lot-7b-reglages.md`.**
+
 **Essayer** : https://nathan-te.github.io/DailyTrack/b/claude-bold-thompson-ank8u1/?scenario=pilotage
 **Régler** : https://nathan-te.github.io/DailyTrack/b/claude-bold-thompson-ank8u1/?scenario=pilotage&debug&tune
 

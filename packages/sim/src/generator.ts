@@ -100,6 +100,8 @@ function place(w: Walk, tokens: readonly string[]): boolean {
 }
 
 const MAX_HILLS = 2;
+/** Lignes droites obligatoires après une plaque d'accélération, avant le virage suivant. */
+const PAD_RUNOUT = 2;
 
 type Highlight = "jump" | "chicane" | "hairpin";
 
@@ -130,7 +132,11 @@ export function composeSpec(day: number, attempt: number): string | null {
     if (calmHighlight === "jump") {
       calm.push(["S", "J", "S", "S"]);
     } else {
-      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", "S"], ["S", "B", "S"], ["P", "S"]]);
+      // Une plaque laisse PAD_RUNOUT lignes droites derrière elle : elle pousse la voiture pendant ~0,9 s, et pendant
+      // ce temps le frein (40 m/s²) lutte contre la poussée (30 m/s²). Avec une pointe à 48 m/s, une plaque suivie
+      // d'un virage serré à moins de ~80 m ne se prend pas (mesuré : le pilote ne finissait que 28 circuits sur 91).
+      const run = Array<string>(PAD_RUNOUT).fill("S");
+      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...run], ["S", "B", "S"], ["P", ...run]]);
       if (hills < MAX_HILLS && rng.chance(35)) {
         options.unshift(rng.pick<string[]>([["U", "S", "D"], ["U", "S", "S", "D"], ["D", "S", "U"]]));
       }

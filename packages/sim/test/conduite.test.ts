@@ -45,7 +45,7 @@ function steps(race: RaceState, input = GAS, seconds = 1) {
 }
 
 describe("accélération et freinage", () => {
-  it("0 → 100 km/h entre 1,4 et 2,2 s, vitesse de pointe ≈ 42 m/s (151 km/h, comme avant le lot 7)", () => {
+  it("0 → 100 km/h entre 1,4 et 2,2 s, vitesse de pointe 48 m/s (173 km/h, réglage de Nathan, retouche 7b)", () => {
     const car = createCar();
     let ticks = 0;
     while (carSpeed(car) < 100 / 3.6) {
@@ -73,16 +73,16 @@ describe("accélération et freinage", () => {
     expect(third).toBeLessThan(first / 2.5);
   });
 
-  it("freine fort : de 150 km/h à l'arrêt en moins de 25 m, puis recule", () => {
+  it("freine fort : de la vitesse de pointe à l'arrêt en moins de 32 m, puis recule", () => {
     const car = createCar();
-    car.vz = 42;
+    car.vz = P.maxSpeed;
     let ticks = 0;
     while (forwardSpeed(car) > 0) {
       stepCar(car, makeInput(0, 0, 1));
       ticks++;
     }
-    expect(car.z).toBeLessThan(25);
-    expect(ticks / TICK_RATE).toBeLessThan(1.2);
+    expect(car.z).toBeLessThan(32);
+    expect(ticks / TICK_RATE).toBeLessThan(1.4);
     for (let i = 0; i < 4 * TICK_RATE; i++) stepCar(car, makeInput(0, 0, 1));
     expect(forwardSpeed(car)).toBeCloseTo(-P.reverseMax, 6);
   });
@@ -90,7 +90,7 @@ describe("accélération et freinage", () => {
 
 describe("direction et adhérence", () => {
   it("braquage à fond tenu : virage serré à basse vitesse, limite d'adhérence ~40 m/s² à haute vitesse, sans tête-à-queue", () => {
-    for (const speed of [20, 30, 42]) {
+    for (const speed of [20, 30, 42, 48]) {
       const car = createCar();
       car.vz = speed;
       for (let i = 0; i < 3 * TICK_RATE; i++) stepCar(car, makeInput(1, carSpeed(car) < speed ? 1 : 0, 0));
@@ -183,20 +183,26 @@ describe("dérapage", () => {
     expect(Math.abs(car.yawRate)).toBeLessThan(0.2);
   });
 
-  it("un dérapage coûte de la vitesse, mais fait un demi-tour plus vite qu'en grip (freinage puis braquage)", () => {
-    const uTurn = (policy: (t: number, car: CarState) => ReturnType<typeof makeInput>) => {
+  it("en épingle, le meilleur dérapage fait demi-tour plus vite que la meilleure trajectoire en grip, à toutes les vitesses d'approche", () => {
+    const uTurn = (speed: number, policy: (t: number, car: CarState) => ReturnType<typeof makeInput>) => {
       const car = createCar();
-      car.vz = 38;
+      car.vz = speed;
       let t = 0;
       while (!(car.vz < 0 && Math.abs(car.vx) < 0.05 * -car.vz) && t < 10 * TICK_RATE) stepCar(car, policy(t++, car));
       return t / TICK_RATE;
     };
-    const drift = uTurn((t) => (t < 12 ? makeInput(1, 1, 0) : t < 42 ? makeInput(1, 0, 1) : makeInput(1, 1, 0)));
-    let bestGrip = Infinity;
-    for (const v of [14, 16, 18, 20, 22, 24, 26]) {
-      bestGrip = Math.min(bestGrip, uTurn((_, car) => (carSpeed(car) > v && car.vz > 0 && Math.abs(car.vx) < 1 ? makeInput(0, 0, 1) : makeInput(1, carSpeed(car) < v ? 1 : 0, 0))));
+    for (const speed of [38, 44, 48]) {
+      // Chaque camp a droit à ses meilleurs essais : durée du frein braqué pour le dérapage, vitesse de freinage pour le grip.
+      let drift = Infinity;
+      for (const brakeTicks of [18, 30, 40, 55]) {
+        drift = Math.min(drift, uTurn(speed, (t) => (t < brakeTicks ? makeInput(1, 0, 1) : makeInput(1, 1, 0))));
+      }
+      let grip = Infinity;
+      for (const v of [12, 14, 16, 18, 20, 22, 24, 26, 28]) {
+        grip = Math.min(grip, uTurn(speed, (_, car) => (carSpeed(car) > v && car.vz > 0 && Math.abs(car.vx) < 1 ? makeInput(0, 0, 1) : makeInput(1, carSpeed(car) < v ? 1 : 0, 0))));
+      }
+      expect(drift, `${speed} m/s`).toBeLessThan(grip);
     }
-    expect(drift).toBeLessThan(bestGrip);
   });
 });
 
