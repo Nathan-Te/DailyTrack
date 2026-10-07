@@ -17,6 +17,8 @@ interface Look {
   /** Couleurs distinctes (canaux sur 4 bits) et part de la couleur dominante : une image vide ou unie sort de ces bornes. */
   colors: number;
   dominant: number;
+  /** Part de pixels presque noirs : un sol qui s'arrête (le sol doit suivre la portion montrée) en ferait beaucoup. */
+  black: number;
   /** Signature de l'image : deux jours différents doivent donner deux images différentes. */
   sig: string;
 }
@@ -35,12 +37,14 @@ async function looks(page: Page): Promise<Look[]> {
       const px = ctx.getImageData(0, 0, c.width, c.height).data;
       const counts = new Map<number, number>();
       let sig = 0;
+      let black = 0;
       for (let i = 0; i < px.length; i += 4) {
         const k = ((px[i]! >> 4) << 8) | ((px[i + 1]! >> 4) << 4) | (px[i + 2]! >> 4);
+        if (px[i]! < 8 && px[i + 1]! < 8 && px[i + 2]! < 8) black++;
         counts.set(k, (counts.get(k) ?? 0) + 1);
         if ((i / 4) % 97 === 0) sig = (Math.imul(sig, 31) + px[i]! + 7 * px[i + 1]! + 13 * px[i + 2]!) | 0;
       }
-      out.push({ w: c.width, h: c.height, colors: counts.size, dominant: Math.max(...counts.values()) / (px.length / 4), sig: String(sig) });
+      out.push({ w: c.width, h: c.height, colors: counts.size, dominant: Math.max(...counts.values()) / (px.length / 4), black: black / (px.length / 4), sig: String(sig) });
     }
     return out;
   });
@@ -65,6 +69,7 @@ function expectGoodImages(list: Look[], count: number) {
     expect(l.h).toBeGreaterThanOrEqual(180);
     expect(l.colors, "une vraie image : plusieurs couleurs").toBeGreaterThanOrEqual(10);
     expect(l.dominant, "pas une image unie").toBeLessThan(0.97);
+    expect(l.black, "le sol couvre toute l'image").toBeLessThan(0.05);
   }
   expect(new Set(list.map((l) => l.sig)).size, "chaque jour a sa miniature").toBe(count);
 }

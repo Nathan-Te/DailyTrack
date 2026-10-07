@@ -24,18 +24,20 @@ import {
 } from "three";
 import {
   BOOST_HALF_LENGTH,
-  BOOST_HALF_WIDTH,
   CELL,
   CUT_HALF_LENGTH,
   cellKey,
-  HALF_ROAD,
   JUMP_LIP,
   JUMP_RISE,
   WALL_HEIGHT,
   bankAt,
   blockHeight,
   blockPoint,
+  blockHalfWidth,
+  blockPadHalfWidth,
+  blockWidth,
   curveCenter,
+  curveSize,
   isCurve,
   isWide,
   turnsLeft,
@@ -264,7 +266,8 @@ function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: 
   for (let i = 0; i <= steps; i++) {
     const q = q0 + ((q1 - q0) * i) / steps;
     const y = yOf(q);
-    rows.push({ left: world(b, CELL / 2 + HALF_ROAD, q, y), right: world(b, CELL / 2 - HALF_ROAD, q, y) });
+    const hw = blockHalfWidth(b, q); // varie dans un bloc de transition
+    rows.push({ left: world(b, CELL / 2 + hw, q, y), right: world(b, CELL / 2 - hw, q, y) });
   }
   return rows;
 }
@@ -286,14 +289,15 @@ function arcPoint(b: Block, r: number, a: number, y: number): V3 {
 
 function curveRows(b: Block): Row[] {
   const { r: R } = curveCenter(b.kind);
-  const steps = (isWide(b.kind) ? 24 : 10) + (b.banked ? 8 : 0);
+  const hw = b.w0 / 2; // un virage garde sa largeur
+  const steps = (curveSize(b.kind) === 1 ? 10 : curveSize(b.kind) === 2 ? 24 : 40) + (b.banked ? 8 : 0);
   const rows: Row[] = [];
   const left = turnsLeft(b.kind);
   for (let i = 0; i <= steps; i++) {
     const a = (Math.PI / 2) * (i / steps);
     const at = (r: number) => arcPoint(b, r, a, b.y0);
     // Dans le repère canonique p augmente vers la gauche : le bord intérieur d'un virage à gauche est à gauche.
-    rows.push(left ? { left: at(R - HALF_ROAD), right: at(R + HALF_ROAD) } : { left: at(R + HALF_ROAD), right: at(R - HALF_ROAD) });
+    rows.push(left ? { left: at(R - hw), right: at(R + hw) } : { left: at(R + hw), right: at(R - hw) });
   }
   return rows;
 }
@@ -307,7 +311,8 @@ function across(r: Row, t: number, up: number): V3 {
   return [r.left[0] + (r.right[0] - r.left[0]) * t, r.left[1] + (r.right[1] - r.left[1]) * t + up, r.left[2] + (r.right[2] - r.left[2]) * t];
 }
 
-const ROAD_W = HALF_ROAD * 2;
+/** Largeur d'une tranche de route (m). */
+const rowWidth = (r: Row) => Math.hypot(r.left[0] - r.right[0], r.left[2] - r.right[2]) || 1;
 
 function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean, paved = false, skirtColor = pal.skirt) {
   for (let i = 0; i + 1 < rows.length; i++) {
@@ -316,13 +321,19 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
     g.quad(a.left, a.right, b.right, b.left, color);
     if (paved) {
       // Bitume : deux sillons plus sombres (usure des roues) et deux lignes de rive blanches.
+      // Distances en mètres convertis en fractions de la largeur de chaque tranche (la route peut s'élargir d'une tranche à l'autre).
       const worn = shade(color, 0.9);
-      for (const c of [0.5 - 2.6 / ROAD_W, 0.5 + 2.6 / ROAD_W]) {
-        const w = 0.9 / ROAD_W;
-        g.quad(across(a, c - w, 0.02), across(a, c + w, 0.02), across(b, c + w, 0.02), across(b, c - w, 0.02), worn);
+      const wa = rowWidth(a);
+      const wb = rowWidth(b);
+      for (const c of [-2.6, 2.6]) {
+        const w = 0.9;
+        g.quad(across(a, 0.5 + (c - w) / wa, 0.02), across(a, 0.5 + (c + w) / wa, 0.02), across(b, 0.5 + (c + w) / wb, 0.02), across(b, 0.5 + (c - w) / wb, 0.02), worn);
       }
-      for (const [t0, t1] of [[0.45 / ROAD_W, 0.75 / ROAD_W], [1 - 0.75 / ROAD_W, 1 - 0.45 / ROAD_W]] as const) {
-        g.quad(across(a, t0, 0.03), across(a, t1, 0.03), across(b, t1, 0.03), across(b, t0, 0.03), shade(pal.dash, 0.92));
+      for (const [d0, d1] of [[0.45, 0.75], [-0.75, -0.45]] as const) {
+        // lignes de rive : de 0,45 à 0,75 m de chaque bord (distances négatives : depuis le bord droit)
+        const fa = (d: number) => (d >= 0 ? d / wa : 1 + d / wa);
+        const fb = (d: number) => (d >= 0 ? d / wb : 1 + d / wb);
+        g.quad(across(a, fa(d0), 0.03), across(a, fa(d1), 0.03), across(b, fb(d1), 0.03), across(b, fb(d0), 0.03), shade(pal.dash, 0.92));
       }
     }
     // Jupe : la route repose sur un « remblai » jusqu'au sol, pour qu'on lise qu'au-delà du bord c'est le vide.
@@ -384,8 +395,9 @@ function addDashes(g: Builder, pal: Palette, b: Block) {
 
 function addBoostPad(g: Builder, pal: Palette, b: Block) {
   const y = b.y0 + 0.04;
-  const p0 = CELL / 2 - BOOST_HALF_WIDTH;
-  const p1 = CELL / 2 + BOOST_HALF_WIDTH;
+  const ph = blockPadHalfWidth(b); // la plaque suit la largeur de la route (la moitié)
+  const p0 = CELL / 2 - ph;
+  const p1 = CELL / 2 + ph;
   const q0 = CELL / 2 - BOOST_HALF_LENGTH;
   const q1 = CELL / 2 + BOOST_HALF_LENGTH;
   g.quad(world(b, p0, q0, y), world(b, p1, q0, y), world(b, p1, q1, y), world(b, p0, q1, y), pal.boost);
@@ -401,8 +413,9 @@ function addBoostPad(g: Builder, pal: Palette, b: Block) {
 /** Plaque de super turbo : rouge, trois chevrons jaunes (la plaque d'accélération normale en a deux, sur fond jaune). */
 function addTurboPad(g: Builder, b: Block) {
   const y = b.y0 + 0.04;
-  const p0 = CELL / 2 - BOOST_HALF_WIDTH;
-  const p1 = CELL / 2 + BOOST_HALF_WIDTH;
+  const ph = blockPadHalfWidth(b);
+  const p0 = CELL / 2 - ph;
+  const p1 = CELL / 2 + ph;
   const q0 = CELL / 2 - BOOST_HALF_LENGTH;
   const q1 = CELL / 2 + BOOST_HALF_LENGTH;
   g.quad(world(b, p0, q0, y), world(b, p1, q0, y), world(b, p1, q1, y), world(b, p0, q1, y), TURBO_COLOR.base);
@@ -426,10 +439,10 @@ function addJumpMarks(g: Builder, b: Block) {
       g.quad(world(b, p0, qc + 1.4, y(qc + 1.4)), world(b, p0, qc + 0.5, y(qc + 0.5)), world(b, p1, qc - 0.9, y(qc - 0.9)), world(b, p1, qc, y(qc)), 0xf4f1e6);
     }
   }
-  const cols = 14;
+  const cols = Math.round(blockWidth(b, JUMP_LIP)); // une colonne de 1 m par mètre de route
   const q0 = JUMP_LIP - 1.4;
   for (let i = 0; i < cols; i++) {
-    const pa = CELL / 2 - HALF_ROAD + i;
+    const pa = CELL / 2 - cols / 2 + i;
     g.quad(world(b, pa, q0, y(q0) + 0.01), world(b, pa + 1, q0, y(q0) + 0.01), world(b, pa + 1, JUMP_LIP, y(JUMP_LIP) + 0.01), world(b, pa, JUMP_LIP, y(JUMP_LIP) + 0.01), WARN[i % 2]!);
     const top = b.y0 + JUMP_RISE;
     g.quad(world(b, pa, JUMP_LIP, top), world(b, pa + 1, JUMP_LIP, top), world(b, pa + 1, JUMP_LIP + 0.01, b.y0), world(b, pa, JUMP_LIP + 0.01, b.y0), WARN[(i + 1) % 2]!);
@@ -440,11 +453,11 @@ function addJumpMarks(g: Builder, b: Block) {
 function addCutStrip(g: Builder, b: Block) {
   const y = b.y0 + 0.04;
   const q0 = CELL / 2 - CUT_HALF_LENGTH;
-  const cols = 14;
+  const cols = Math.round(blockWidth(b, CELL / 2));
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < 2; j++) {
       const color = (i + j) % 2 === 0 ? CUT_COLOR.base : CUT_COLOR.mark;
-      const pa = CELL / 2 - HALF_ROAD + i;
+      const pa = CELL / 2 - cols / 2 + i;
       const qa = q0 + 2 * j;
       g.quad(world(b, pa, qa, y), world(b, pa + 1, qa, y), world(b, pa + 1, qa + 2, y), world(b, pa, qa + 2, y), color);
     }
@@ -492,7 +505,8 @@ function addSurfaceMarks(g: Builder, b: Block) {
 
 function addGate(g: Builder, pal: Palette, b: Block, finish: boolean) {
   const y = b.y0;
-  const post = HALF_ROAD + 0.9;
+  const hw = blockHalfWidth(b, CELL / 2); // la porte s'adapte à la largeur de la route
+  const post = hw + 0.9;
   const q = CELL / 2;
   const h = 6;
   const color = finish ? pal.finish : pal.checkpoint;
@@ -506,18 +520,18 @@ function addGate(g: Builder, pal: Palette, b: Block, finish: boolean) {
   g.box(Math.min(a[0], c[0]) - 0.4, y + h - 0.8, Math.min(a[2], c[2]) - 0.4, Math.max(a[0], c[0]) + 0.4, y + h, Math.max(a[2], c[2]) + 0.4, color);
   if (finish) {
     // Damier au sol, sur toute la largeur.
-    const cols = 14;
+    const cols = Math.round(hw * 2);
     for (let i = 0; i < cols; i++) {
       for (let j = 0; j < 2; j++) {
         const col = (i + j) % 2 === 0 ? pal.finish : pal.finishDark;
-        const p0 = CELL / 2 - HALF_ROAD + i;
+        const p0 = CELL / 2 - hw + i;
         const q0 = q - 1 + j;
         g.quad(world(b, p0, q0, y + 0.04), world(b, p0 + 1, q0, y + 0.04), world(b, p0 + 1, q0 + 1, y + 0.04), world(b, p0, q0 + 1, y + 0.04), col);
       }
     }
   } else {
-    const p0 = CELL / 2 - HALF_ROAD;
-    const p1 = CELL / 2 + HALF_ROAD;
+    const p0 = CELL / 2 - hw;
+    const p1 = CELL / 2 + hw;
     g.quad(world(b, p0, q - 0.4, y + 0.04), world(b, p1, q - 0.4, y + 0.04), world(b, p1, q + 0.4, y + 0.04), world(b, p0, q + 0.4, y + 0.04), pal.checkpoint);
   }
 }
@@ -554,7 +568,8 @@ const CROWD = [0xff4b4b, 0xffd22e, 0x4bd0ff, 0xf4f4f4, 0x6bff8a, 0xff8a3d, 0xc08
 /** Tribune au départ : trois gradins en escalier, de la foule en petites boîtes de couleur, un toit léger. */
 function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number) {
   const side = turnsLeft(b.kind) ? 1 : -1; // du côté opposé à un éventuel virage : à gauche par défaut (p grand)
-  const base = side > 0 ? CELL / 2 + HALF_ROAD + 3.5 : CELL / 2 - HALF_ROAD - 3.5;
+  const hw = blockHalfWidth(b, CELL / 2);
+  const base = side > 0 ? CELL / 2 + hw + 3.5 : CELL / 2 - hw - 3.5;
   const dir = side > 0 ? 1 : -1;
   const y0 = b.y0;
   const q0 = 5;
@@ -838,11 +853,12 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       // Rampe jusqu'au bord, face verticale, puis route plate.
       // Le tremplin se lit comme un tremplin : rampe plus claire, flancs clairs (pas un mur brun), chevrons blancs,
       // bande d'alerte jaune et noire au bord, face de chute rayée jaune et noire.
-      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, 1, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.9));
+      const swell = b.w0 !== b.w1 ? 8 : 1; // un bloc de transition : rebords en courbe, donc plusieurs tranches
+      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, swell, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.9));
       addJumpMarks(g, b);
-      addRoad(g, pal, straightRows(b, JUMP_LIP, CELL, 1, () => b.y0), color, floorY, true, b.surface === "road");
+      addRoad(g, pal, straightRows(b, JUMP_LIP, CELL, swell, () => b.y0), color, floorY, true, b.surface === "road");
     } else {
-      const steps = b.kind === "bump" ? 16 : 1;
+      const steps = b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1; // 16 tranches : bosse, ou rebords d'une transition de largeur
       addRoad(g, pal, straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q)), color, floorY, true, b.surface === "road");
     }
     const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";
@@ -860,8 +876,9 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const last = track.blocks[track.blocks.length - 1]!;
   for (const [b, q] of [[first, 0], [last, CELL]] as const) {
     const y = blockHeight(b, q);
-    const l = world(b, CELL / 2 + HALF_ROAD, q, y);
-    const r = world(b, CELL / 2 - HALF_ROAD, q, y);
+    const hw = blockHalfWidth(b, q);
+    const l = world(b, CELL / 2 + hw, q, y);
+    const r = world(b, CELL / 2 - hw, q, y);
     g.quad(l, r, [r[0], y + WALL_HEIGHT, r[2]], [l[0], y + WALL_HEIGHT, l[2]], pal.wallA);
   }
 

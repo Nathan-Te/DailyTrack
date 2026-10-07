@@ -29,10 +29,11 @@ describe("passage signature des miniatures", () => {
     const t = track(`S@start S S C S S@cp S S@finish`);
     expect(signatureBlocks(t, "cutRun")).toEqual([3, 6]);
   });
-  it("épingle sur la terre : deux virages serrés de même sens", () => {
-    const t = track(`S@start S S/t L/t L/t S S S@finish`);
-    expect(signatureBlocks(t, "dirtHairpin")).toEqual([3, 4]);
-    expect(signatureBlocks(track("S@start S L/t R/t S S@finish"), "dirtHairpin")).toBeNull();
+  it("étranglement puis virage serré sur la terre, route étroite", () => {
+    const t = track(`S@start S/e>n S/n>e S/t L/t S S S@finish`);
+    expect(signatureBlocks(t, "dirtPinch")).toEqual([1, 4]);
+    expect(signatureBlocks(track("S@start S L/t S S@finish"), "dirtPinch")).not.toBeNull(); // déjà étroit : le virage lui-même
+    expect(signatureBlocks(track("S@start S/e>l S/l L/t S S@finish"), "dirtPinch")).toBeNull(); // route large : pas un étranglement
   });
 });
 

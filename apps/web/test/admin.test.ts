@@ -9,6 +9,11 @@ describe("adresse du jeu construite par /admin", () => {
   it("circuit du jour : date et thème", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, date: "2026-10-07", theme: "nuit" })).toBe("seed=2026-10-07&theme=nuit");
   });
+  it("le scénario des largeurs (lot 12) a son adresse et son raccourci", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "largeurs" })).toBe("scenario=largeurs");
+    expect(parseAdmin(JSON.stringify({ scenario: "largeurs" })).scenario).toBe("largeurs");
+    expect(PRESETS.some((p) => p.state.scenario === "largeurs")).toBe(true);
+  });
   it("les autres scénarios ignorent date et thème", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "surfaces", date: "2026-10-07", theme: "nuit" })).toBe("scenario=surfaces");
   });

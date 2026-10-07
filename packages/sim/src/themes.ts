@@ -1,8 +1,9 @@
 import { Rng, mixSeed } from "./rng";
-import type { SurfaceKind } from "./track";
+import type { SurfaceKind, WidthLetter } from "./track";
 
 // Les thèmes du jour (lot 8). Le thème est tiré de la date (même graine que la palette avant le lot 8) ; il règle :
 // - la palette (couleurs de la scène) ;
+// - les largeurs de route (lot 12) : poids de l'étroite, de la normale et de la large, et nombre de changements de largeur ;
 // - les zones de revêtement (terre, glace, herbe) : nombre de zones et poids de chaque revêtement ;
 // - les virages relevés (chance qu'un virage le soit) et les blocs à effet (super turbo, moteur coupé) ;
 // - un passage signature, qui s'ajoute aux passages marquants ordinaires (tremplin, chicane, épingle).
@@ -15,7 +16,7 @@ export const THEME_NAMES = ["stade", "rallye", "banquise", "nuit", "campagne"] a
 export type ThemeName = (typeof THEME_NAMES)[number];
 
 /** Passages signature : voir `composeSpec` (generator.ts) pour les blocs de chacun. */
-export type Signature = "turboBank" | "dirtJump" | "iceChicane" | "cutRun" | "dirtHairpin";
+export type Signature = "turboBank" | "dirtJump" | "iceChicane" | "cutRun" | "dirtPinch";
 
 export interface Theme {
   name: ThemeName;
@@ -24,6 +25,8 @@ export interface Theme {
   palette: PaletteName;
   /** Zones de revêtement : nombre (min, max) et poids de chaque revêtement ; `null` = route partout. */
   zones: { count: [number, number]; surfaces: [SurfaceKind, number][] } | null;
+  /** Largeurs de route : poids de chacune (la largeur de départ et chaque changement s'en tirent) et nombre de changements (min, max). */
+  widths: { weights: Record<WidthLetter, number>; changes: [number, number] };
   /** Chance (%) qu'un virage soit relevé. */
   bankChance: number;
   /** Chance (%) d'un super turbo dans un créneau calme. */
@@ -34,11 +37,11 @@ export interface Theme {
 }
 
 export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
-  stade: { name: "stade", label: "Stade", palette: "neon", zones: null, bankChance: 70, turboChance: 30, cut: false, signature: "turboBank" },
-  rallye: { name: "rallye", label: "Rallye", palette: "desert", zones: { count: [2, 3], surfaces: [["dirt", 1]] }, bankChance: 10, turboChance: 0, cut: false, signature: "dirtJump" },
-  banquise: { name: "banquise", label: "Banquise", palette: "neige", zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, bankChance: 15, turboChance: 0, cut: false, signature: "iceChicane" },
-  nuit: { name: "nuit", label: "Nuit", palette: "nuit", zones: null, bankChance: 20, turboChance: 25, cut: true, signature: "cutRun" },
-  campagne: { name: "campagne", label: "Campagne", palette: "campagne", zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, bankChance: 10, turboChance: 0, cut: false, signature: "dirtHairpin" },
+  stade: { name: "stade", label: "Stade", palette: "neon", zones: null, widths: { weights: { e: 1, n: 3, l: 6 }, changes: [1, 2] }, bankChance: 70, turboChance: 30, cut: false, signature: "turboBank" },
+  rallye: { name: "rallye", label: "Rallye", palette: "desert", zones: { count: [2, 3], surfaces: [["dirt", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, signature: "dirtJump" },
+  banquise: { name: "banquise", label: "Banquise", palette: "neige", zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, widths: { weights: { e: 1, n: 3, l: 5 }, changes: [1, 2] }, bankChance: 15, turboChance: 0, cut: false, signature: "iceChicane" },
+  nuit: { name: "nuit", label: "Nuit", palette: "nuit", zones: null, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [2, 3] }, bankChance: 20, turboChance: 25, cut: true, signature: "cutRun" },
+  campagne: { name: "campagne", label: "Campagne", palette: "campagne", zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, signature: "dirtPinch" },
 };
 
 /** Thème de la journée : tiré de la date (graine = jour UTC), identique pour tout le monde. */

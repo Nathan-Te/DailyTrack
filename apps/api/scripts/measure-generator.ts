@@ -1,0 +1,133 @@
+import {
+  AUTHOR_MAX_MS,
+  AUTHOR_MIN_MS,
+  GENERATOR_VERSION,
+  MAX_ATTEMPTS,
+  SIM_VERSION,
+  THEME_NAMES,
+  bestPilotRun,
+  composeSpec,
+  dailyCircuit,
+  daysFromCivil,
+  isCurve,
+  isWide,
+  parseTrack,
+  replayRace,
+  themeByName,
+  type Block,
+  type DailyCircuit,
+} from "@cdj/sim";
+
+// `npm run measure:generator` : mesure le générateur de circuits (lot 12). À relancer après toute règle de
+// générateur, toute modification du pilote ou de la physique : « toute règle de générateur se valide par ce script
+// (durées, taux de validation par thème), pas seulement par les tests ».
+//   - durées d'auteur, largeurs, virages serrés, temps de génération, coût d'un rejeu : 60 dates consécutives ;
+//   - taux de validation par thème : 12 dates × 6 tentatives, chaque thème forcé.
+// Variables : `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
+
+const DAYS = Number(process.env.DAYS ?? (process.env.FAST ? 20 : 60));
+const VALIDATION_DAYS = Number(process.env.VALIDATION_DAYS ?? (process.env.FAST ? 6 : 12));
+const VALIDATION_ATTEMPTS = Number(process.env.VALIDATION_ATTEMPTS ?? 6);
+const [fy = 2026, fm = 10, fd = 6] = (process.env.FROM ?? "2026-10-06").split("-").map(Number);
+const FIRST_DAY = daysFromCivil(fy, fm, fd);
+
+const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(0)} %` : "—");
+const sec = (ms: number) => (ms / 1000).toFixed(1);
+
+/** Largeurs (m) distinctes d'un circuit : avant le lot 12, une seule (14 m). */
+function widthsOf(blocks: Block[]): number[] {
+  const set = new Set<number>();
+  for (const b of blocks) {
+    const w = b as Block & { w0?: number; w1?: number };
+    set.add(w.w0 ?? 14);
+    set.add(w.w1 ?? 14);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+/** Virages serrés (rayon d'une cellule, hors virages larges) : total et plus longue suite d'affilée. */
+function tightTurns(blocks: Block[]): { total: number; run: number } {
+  let total = 0;
+  let run = 0;
+  let best = 0;
+  for (const b of blocks) {
+    if (isCurve(b.kind) && !isWide(b.kind)) {
+      total++;
+      run++;
+      best = Math.max(best, run);
+    } else run = 0;
+  }
+  return { total, run: best };
+}
+
+console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
+
+// --- 1. Soixante dates -------------------------------------------------------------------------
+
+const rows: { c: DailyCircuit; genMs: number; tight: { total: number; run: number }; widths: number[]; replayMs: number }[] = [];
+for (let i = 0; i < DAYS; i++) {
+  const t0 = performance.now();
+  const c = dailyCircuit(FIRST_DAY + i);
+  const genMs = performance.now() - t0;
+  const t1 = performance.now();
+  const pilot = c.fallback ? null : bestPilotRun(c.track);
+  const reps = pilot ? 3 : 0;
+  for (let k = 0; k < reps; k++) replayRace(c.track, pilot!.replay);
+  const replayMs = reps ? (performance.now() - t1 - 0) / reps : 0;
+  rows.push({ c, genMs, tight: tightTurns(c.track.blocks), widths: widthsOf(c.track.blocks), replayMs });
+}
+const times = rows.map((r) => r.c.authorMs);
+const inWindow = times.filter((t) => t >= 30_000 && t <= 40_000).length;
+console.log(`## ${DAYS} dates à partir du ${rows[0]!.c.date}`);
+console.log(`temps d'auteur : min ${sec(Math.min(...times))} s · moyen ${sec(mean(times))} s · max ${sec(Math.max(...times))} s ; dans [30 ; 40] s : ${inWindow}/${rows.length}`);
+const hist = new Map<number, number>();
+for (const t of times) hist.set(Math.floor(t / 2000) * 2, (hist.get(Math.floor(t / 2000) * 2) ?? 0) + 1);
+console.log(`répartition (tranches de 2 s) : ${[...hist.entries()].sort((a, b) => a[0] - b[0]).map(([k, n]) => `${k}–${k + 2} s : ${n}`).join(" · ")}`);
+console.log(`circuits de secours (aucune tentative n'a abouti) : ${rows.filter((r) => r.c.fallback).length}`);
+console.log(`tentative retenue : moyenne ${mean(rows.map((r) => r.c.attempt)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.c.attempt))}`);
+console.log(`blocs : moyenne ${mean(rows.map((r) => r.c.track.blocks.length)).toFixed(1)} · virages larges (L2/R2) : ${mean(rows.map((r) => r.c.track.blocks.filter((b) => isWide(b.kind)).length)).toFixed(1)} par circuit`);
+console.log(`largeurs : au moins deux par circuit : ${rows.filter((r) => r.widths.length >= 2).length}/${rows.length} ; largeurs vues : ${[...new Set(rows.flatMap((r) => r.widths))].sort((a, b) => a - b).join(", ")} m`);
+console.log(`virages serrés : moyenne ${mean(rows.map((r) => r.tight.total)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.tight.total))} ; deux d'affilée : ${rows.filter((r) => r.tight.run >= 2).length} circuit(s)`);
+const gen = rows.map((r) => r.genMs);
+console.log(`génération : moyenne ${mean(gen).toFixed(0)} ms · max ${Math.max(...gen).toFixed(0)} ms`);
+const rep = rows.map((r) => r.replayMs).filter((x) => x > 0);
+console.log(`rejeu d'une course d'auteur : moyenne ${mean(rep).toFixed(1)} ms · max ${Math.max(...rep).toFixed(1)} ms`);
+console.log(`médailles : bronze (×1,40 de l'auteur) : ${sec(Math.min(...times) * 1.4)} s (min) → ${sec(Math.max(...times) * 1.4)} s (max) ; au-dessus de 45 s : ${times.filter((t) => t * 1.4 > 45_000).length}/${times.length}`);
+console.log(`facteurs candidats (non appliqués) : part des circuits dont la médaille tient en 45 s — ${[1.4, 1.3, 1.25, 1.2, 1.15, 1.1, 1.08].map((f) => `×${f.toFixed(2).replace(".", ",")} : ${pct(times.filter((t) => t * f <= 45_000).length, times.length)}`).join(" · ")}`);
+
+const byTheme = new Map<string, number[]>();
+for (const r of rows) byTheme.set(r.c.theme, [...(byTheme.get(r.c.theme) ?? []), r.c.authorMs]);
+console.log(`par thème (du jour) : ${THEME_NAMES.map((n) => `${n} ${byTheme.get(n)?.length ?? 0} jours, ${byTheme.get(n) ? sec(mean(byTheme.get(n)!)) : "—"} s`).join(" · ")}`);
+
+// --- 2. Taux de validation par thème -----------------------------------------------------------
+
+console.log(`\n## Taux de validation par thème (${VALIDATION_DAYS} dates × ${VALIDATION_ATTEMPTS} tentatives, thème forcé)`);
+console.log("thème      | construit | pilote finit | dans la fenêtre | durée moyenne | génération/tentative");
+for (const name of THEME_NAMES) {
+  const theme = themeByName(name)!;
+  let total = 0;
+  let composed = 0;
+  let finished = 0;
+  let accepted = 0;
+  const durations: number[] = [];
+  const t0 = performance.now();
+  for (let d = 0; d < VALIDATION_DAYS; d++) {
+    for (let a = 0; a < VALIDATION_ATTEMPTS; a++) {
+      total++;
+      const spec = composeSpec(FIRST_DAY + d, a, theme);
+      if (!spec) continue;
+      composed++;
+      const pilot = bestPilotRun(parseTrack("mesure", spec));
+      if (!pilot) continue;
+      finished++;
+      durations.push(pilot.finishMs);
+      if (pilot.finishMs >= AUTHOR_MIN_MS && pilot.finishMs <= AUTHOR_MAX_MS) accepted++;
+    }
+  }
+  const per = (performance.now() - t0) / total;
+  console.log(
+    `${name.padEnd(10)} | ${pct(composed, total).padStart(9)} | ${pct(finished, composed).padStart(12)} | ${pct(accepted, composed).padStart(15)} | ${durations.length ? sec(mean(durations)).padStart(10) + " s" : "—".padStart(12)} | ${per.toFixed(0)} ms`,
+  );
+}
+console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits.)`);

@@ -398,3 +398,159 @@ for (const screen of SCREENS) {
     await context.close();
   });
 }
+
+// --- Retouche 10b : zones de toucher en paysage -------------------------------------------------
+// Mode boutons, accélérateur manuel : découpage ← | → | frein | gaz, quatre quarts de la largeur, sur toute la hauteur.
+type Cmd = { steer: number; throttle: number; brake: number };
+const QUARTERS: [string, (i: Cmd) => boolean][] = [
+  ["←", (i) => i.steer === -64],
+  ["→", (i) => i.steer === 64],
+  ["frein", (i) => i.brake === 64 && i.throttle === 0],
+  ["gaz", (i) => i.throttle === 64 && i.brake === 0],
+];
+async function settle(page: Page, ok: (i: Cmd) => boolean): Promise<Cmd> {
+  let got = await input(page);
+  for (let n = 0; n < 20 && !ok(got); n++) {
+    await page.waitForTimeout(50);
+    await page.evaluate(() => window.__cdj.advance(1));
+    got = await input(page);
+  }
+  return got;
+}
+const BUTTONS_URL = "/?debug&scenario=plat&touch=1&steer=boutons&r=";
+
+for (const p of PHONES) {
+  test.describe(`${p.name} — zones 10b`, () => {
+    test("un appui en n'importe quel point de chaque zone (coins à 8 px du bord compris) déclenche la bonne commande", async ({ browser }) => {
+      const { context, page } = await phone(browser, p);
+      await page.addInitScript(() => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: false })));
+      await racing(page, BUTTONS_URL + Math.random());
+      await page.evaluate(() => window.__cdj.manual(true));
+      const { width: W, height: H } = p.viewport;
+      const f = await fingersOf(page);
+      const wrong: string[] = [];
+      const m = 8;
+      // Les petits boutons d'action (barre du bas, menu du haut) attirent les appuis voisins (le navigateur corrige le toucher
+      // vers eux, ~12 px) : on ne teste pas sous leurs doigts, mais la barre doit rester loin des frontières entre zones.
+      const buttons = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("#tbar button, #menu button")].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect().toJSON() as { x: number; y: number; width: number; height: number }),
+      );
+      const nearButton = (x: number, y: number) => buttons.some((b) => x > b.x - 14 && x < b.x + b.width + 14 && y > b.y - 14 && y < b.y + b.height + 14);
+      const bar = (await page.locator("#tbar").boundingBox())!;
+      for (const border of [0.25, 0.5, 0.75]) expect(bar.x + bar.width < W * border - 8 || bar.x > W * border + 8 || border === 0.5, `la barre d'actions chevauche la frontière à ${border * 100} %`).toBe(true);
+      for (let q = 0; q < 4; q++) {
+        const x0 = (W * q) / 4;
+        const x1 = (W * (q + 1)) / 4;
+        // les bords entre deux zones sont exacts : on reste à 2 px de chaque côté de la frontière intérieure
+        const xs = [q === 0 ? m : x0 + 2, (x0 + x1) / 2, q === 3 ? W - m : x1 - 2];
+        const ys = [m, H * 0.25, H * 0.5, H * 0.75, H - m];
+        for (const x of xs) {
+          for (const y of ys) {
+            if (nearButton(x, y)) continue;
+            await f.down(1, x, y);
+            // l'événement tactile arrive au jeu un peu après le retour du protocole : on avance pas à pas jusqu'à le voir (≤ 1 s)
+            let got = await settle(page, QUARTERS[q]![1]);
+            if (!QUARTERS[q]![1](got)) {
+              const under = await page.evaluate(([px, py]) => { const t = document.elementFromPoint(px!, py!); return t ? `${t.tagName}#${t.id}.${t.className}` : "rien"; }, [x, y]);
+              wrong.push(`${QUARTERS[q]![0]} touché en (${Math.round(x)}, ${Math.round(y)}) sous ${under} → ${JSON.stringify(got)}`);
+            }
+            await f.up(1);
+            await page.evaluate(() => window.__cdj.advance(1));
+          }
+        }
+      }
+      expect(wrong).toEqual([]);
+      await context.close();
+    });
+
+    test("aucun point de la moitié basse de l'écran de jeu n'est hors zone (la couche tactile reçoit le toucher partout)", async ({ browser }) => {
+      const { context, page } = await phone(browser, p);
+      await page.addInitScript(() => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: false })));
+      await racing(page, BUTTONS_URL + Math.random());
+      const { width: W, height: H } = p.viewport;
+      const holes = await page.evaluate(
+        ({ W, H }) => {
+          const bad: string[] = [];
+          for (let x = 4; x < W; x += 20) {
+            for (let y = Math.floor(H / 2); y < H; y += 12) {
+              const t = document.elementFromPoint(x, y);
+              // les petits boutons du menu (pause, réglages…) reçoivent leur propre toucher : seuls eux ont le droit d'être là
+              if (!t || (!t.closest("#touch") && !t.closest("#tbar button"))) bad.push(`(${x}, ${y}) → ${t?.id || t?.tagName}`);
+            }
+          }
+          return bad;
+        },
+        { W, H },
+      );
+      expect(holes).toEqual([]);
+      await context.close();
+    });
+
+    test("glisser de ← à → sans lever le doigt change la direction ; diriger et accélérer en même temps", async ({ browser }) => {
+      const { context, page } = await phone(browser, p);
+      await page.addInitScript(() => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: false })));
+      await racing(page, BUTTONS_URL + Math.random());
+      await page.evaluate(() => window.__cdj.manual(true));
+      const { width: W } = p.viewport;
+      const f = await fingersOf(page);
+      const step = async () => {
+        await page.evaluate(() => window.__cdj.advance(1));
+        return input(page);
+      };
+      await f.down(1, W * 0.12, 250);
+      expect((await step()).steer).toBe(-64);
+      await f.move(1, W * 0.38, 250);
+      expect((await step()).steer).toBe(64);
+      await f.move(1, W * 0.12, 250);
+      expect((await step()).steer).toBe(-64);
+      // second doigt sur le gaz : on dirige et on accélère en même temps ; glisser du gaz au frein change la pédale
+      await f.down(2, W * 0.9, 250);
+      let i = await step();
+      expect(i.steer).toBe(-64);
+      expect(i.throttle).toBe(64);
+      await f.move(2, W * 0.6, 250);
+      i = await step();
+      expect(i).toMatchObject({ steer: -64, brake: 64, throttle: 0 });
+      await context.close();
+    });
+
+    test("?zones=1 dessine les zones et un point par doigt, de la couleur de la zone ; rouge hors de la zone de jeu", async ({ browser }) => {
+      const { context, page } = await phone(browser, p);
+      await racing(page, "/?debug&scenario=plat&touch=1&steer=boutons&zones=1&r=" + Math.random());
+      await expect(page.locator("#touch .zspan")).toHaveCount(3); // ←, →, frein (accélérateur automatique)
+      const f = await fingersOf(page);
+      await f.down(1, 40, 200);
+      await expect(page.locator(".fdot")).toHaveCount(1);
+      expect(await page.locator(".fdot").evaluate((e) => (e as HTMLElement).style.background)).toContain("76, 201, 240"); // couleur de ←
+      await f.up(1);
+      await expect(page.locator(".fdot")).toHaveCount(0);
+      // un doigt sur un bouton du menu (hors zone de jeu) : point rouge
+      const b = (await page.getByRole("button", { name: "Pause" }).boundingBox())!;
+      await f.down(2, b.x + b.width / 2, b.y + b.height / 2);
+      expect(await page.locator(".fdot").evaluate((e) => (e as HTMLElement).style.background)).toContain("229, 50, 45");
+      await f.up(2);
+      await context.close();
+    });
+
+    test("taille des boutons : réglage mémorisé, boutons plus grands, zone active inchangée ; ?steer= force le mode", async ({ browser }) => {
+      const { context, page } = await phone(browser, p);
+      await racing(page, BUTTONS_URL + Math.random());
+      await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // forcé par ?steer=boutons
+      const width = async () => (await page.locator("#touch .steer-left").boundingBox())!.width;
+      const medium = await width();
+      await page.getByRole("button", { name: "Réglages des commandes" }).click();
+      await page.getByRole("button", { name: "Grands" }).click();
+      await page.getByRole("button", { name: "Fermer" }).click();
+      expect(await width()).toBeGreaterThan(medium);
+      expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).buttonSize)).toBe("large");
+      await page.getByRole("button", { name: "Réglages des commandes" }).click();
+      await page.getByRole("button", { name: "Petits" }).click();
+      await page.getByRole("button", { name: "Fermer" }).click();
+      expect(await width()).toBeLessThan(medium);
+      // le visuel respecte les marges des bords (bandes de gestes système)
+      const b = (await page.locator("#touch .steer-left").boundingBox())!;
+      expect(b.x).toBeGreaterThanOrEqual(24);
+      await context.close();
+    });
+  });
+}

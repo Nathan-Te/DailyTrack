@@ -1,12 +1,12 @@
-import { HALF_ROAD, THEMES, isCurve, trackCenterline, turnsLeft, type Block, type Signature, type ThemeName, type Track } from "@cdj/sim";
+import { THEMES, isCurve, trackCenterline, turnsLeft, type Block, type Signature, type ThemeName, type Track } from "@cdj/sim";
 
 // Cadrage des miniatures (lot 13) : quelle portion du circuit montrer, et comment l'orienter. Logique pure (aucun DOM, aucun
 // Three.js), donc testée par Vitest ; `thumbnail.ts` s'en sert pour la caméra 3D comme pour le repli 2D.
 
 /** Nombre de blocs montrés : de quoi lire un enchaînement (≈ 250 m de route) sans réduire la route à un fil. */
 export const FOCUS_BLOCKS = 8;
-/** Marge autour de la route (m) : demi-largeur de piste, rebords et un peu de décor. */
-export const FOCUS_MARGIN = HALF_ROAD + 4;
+/** Marge autour de la route (m), en plus de sa demi-largeur (qui varie : 14, 20 ou 26 m) : rebords et un peu de décor. */
+export const FOCUS_MARGIN = 4;
 
 export interface Focus {
   /** Premier et dernier bloc de la portion (inclus). */
@@ -26,8 +26,8 @@ const isTight = (b: Block) => b.kind === "curveL" || b.kind === "curveR";
 
 /**
  * Blocs du passage signature du thème (voir `signatureParts`, generator.ts), ou `null` s'ils n'y sont pas :
- * super turbo puis grand virage relevé · tremplin sur la terre · chicane sur la glace · moteur coupé et point de contrôle ·
- * épingle sur la terre.
+ * super turbo puis grand virage relevé · tremplin sur la terre · chicane large sur la glace · moteur coupé et point de
+ * contrôle · étranglement puis virage serré sur la terre.
  */
 export function signatureBlocks(track: Track, sig: Signature): [number, number] | null {
   const bs = track.blocks;
@@ -51,9 +51,13 @@ export function signatureBlocks(track: Track, sig: Signature): [number, number] 
       const c = find((b) => b.kind === "cut");
       return c < 0 ? null : [c, Math.min(bs.length - 1, c + 3)];
     }
-    case "dirtHairpin": {
-      const c = find((b, i) => isTight(b) && b.surface === "dirt" && i + 1 < bs.length && bs[i + 1]!.kind === b.kind);
-      return c < 0 ? null : [c, c + 1];
+    case "dirtPinch": {
+      // virage serré sur la terre, sur la route étroite (14 m) ; l'étranglement qui y mène (blocs de transition) est inclus
+      const c = find((b) => isTight(b) && b.surface === "dirt" && b.w0 <= 14);
+      if (c < 0) return null;
+      let from = c;
+      while (from > 0 && c - from < 4 && (bs[from - 1]!.w0 !== bs[from - 1]!.w1 || bs[from - 1]!.surface === "dirt")) from--;
+      return [from, c];
     }
   }
 }
@@ -104,12 +108,13 @@ export function pickFocus(track: Track, theme: ThemeName, size = FOCUS_BLOCKS): 
   const sig = signatureBlocks(track, THEMES[theme].signature);
   const [from, to] = sig ? windowAround(n, sig[0], sig[1], size) : windiestWindow(track, size);
   const line = trackCenterline(track);
-  const m = FOCUS_MARGIN;
   const points: [number, number, number][] = [];
   const path: [number, number][] = [];
   for (let k = 0; k < line.x.length; k++) {
     const b = line.block[k]!;
     if (b < from || b > to) continue;
+    const blk = track.blocks[b]!;
+    const m = Math.max(blk.w0, blk.w1) / 2 + FOCUS_MARGIN;
     const x = line.x[k]!;
     const y = line.y[k]!;
     const z = line.z[k]!;

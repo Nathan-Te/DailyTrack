@@ -4,12 +4,15 @@ import {
   DEFAULT_TOUCH_SETTINGS,
   FULL_LOCK_PX,
   IMPACT_DROP,
+  GESTURE_MARGIN_PX,
   TouchPad,
+  buttonRects,
   dragSteer,
   impactFelt,
   parseTouchSettings,
   wantsTouch,
   zoneAt,
+  zoneSpans,
   type TouchSettings,
 } from "../src/touch";
 
@@ -73,6 +76,81 @@ describe("zones", () => {
   it("boutons + accélérateur manuel : quarts ← → frein gaz", () => {
     const s = settings({ steerMode: "buttons", autoThrottle: false });
     expect([50, 250, 500, 700].map((x) => zoneAt(x, W, s))).toEqual(["left", "right", "brake", "gas"]);
+  });
+});
+
+describe("zones actives et boutons dessinés (10b)", () => {
+  const combos = [false, true].flatMap((autoThrottle) => (["drag", "buttons"] as const).map((steerMode) => settings({ autoThrottle, steerMode })));
+
+  it("les zones couvrent l'écran de bord à bord, sans trou ni recouvrement", () => {
+    for (const s of combos) {
+      const spans = zoneSpans(s);
+      expect(spans[0]!.x0).toBe(0);
+      expect(spans[spans.length - 1]!.x1).toBe(1);
+      for (let i = 1; i < spans.length; i++) expect(spans[i]!.x0).toBe(spans[i - 1]!.x1);
+      // chaque pixel (bords compris) tombe dans une zone, et zoneAt en est cohérent
+      for (let x = 0; x <= W; x++) {
+        const f = x / W;
+        const expected = spans.find((sp) => f < sp.x1) ?? spans[spans.length - 1]!;
+        expect(zoneAt(x, W, s)).toBe(expected.zone);
+      }
+    }
+  });
+
+  it("chaque bouton dessiné est dans sa zone active et loin des bords (zones sûres + gestes système)", () => {
+    const insets = { left: 47, right: 47, top: 0, bottom: 21 };
+    for (const [w, h] of [[844, 390], [851, 393], [667, 375]] as const) {
+      for (const s of combos) {
+        for (const size of ["small", "medium", "large"] as const) {
+          const spans = zoneSpans(s);
+          for (const r of buttonRects(w, h, { ...s, buttonSize: size }, insets)) {
+            const sp = spans.find((q) => q.zone === r.zone)!;
+            expect(r.x).toBeGreaterThanOrEqual(sp.x0 * w);
+            expect(r.x + r.w).toBeLessThanOrEqual(sp.x1 * w);
+            expect(r.x).toBeGreaterThanOrEqual(insets.left + GESTURE_MARGIN_PX);
+            expect(r.x + r.w).toBeLessThanOrEqual(w - insets.right - GESTURE_MARGIN_PX);
+            expect(r.y + r.h).toBeLessThanOrEqual(h - insets.bottom);
+            expect(r.y).toBeGreaterThan(0);
+            // le centre du bouton tombe dans la bonne zone
+            expect(zoneAt(r.x + r.w / 2, w, s)).toBe(r.zone);
+          }
+        }
+      }
+    }
+  });
+
+  it("la taille change le visuel : petits < moyens < grands", () => {
+    const s = settings({ steerMode: "buttons" });
+    const w = (size: "small" | "medium" | "large") => buttonRects(844, 390, { ...s, buttonSize: size })[0]!.w;
+    expect(w("small")).toBeLessThan(w("medium"));
+    expect(w("medium")).toBeLessThan(w("large"));
+  });
+
+  it("la taille est mémorisée ; valeur inconnue : moyenne", () => {
+    expect(parseTouchSettings('{"buttonSize":"large"}').buttonSize).toBe("large");
+    expect(parseTouchSettings('{"buttonSize":"énorme"}').buttonSize).toBe("medium");
+  });
+
+  it("glisser de ← à → sans lever le doigt change la direction ; de frein à gaz aussi", () => {
+    const p = pad({ steerMode: "buttons", autoThrottle: false });
+    p.down(1, 100, 300);
+    expect(p.axes().steer).toBe(-1);
+    p.move(1, 300, 300);
+    expect(p.axes().steer).toBe(1);
+    p.move(1, 395, 300);
+    expect(p.axes().steer).toBe(1);
+    p.up(1);
+    p.down(2, 450, 300);
+    expect(p.axes()).toMatchObject({ brake: 1, throttle: 0 });
+    p.move(2, 700, 300);
+    expect(p.axes()).toMatchObject({ brake: 0, throttle: 1 });
+  });
+
+  it("diriger et accélérer / freiner en même temps (deux doigts)", () => {
+    const p = pad({ steerMode: "buttons", autoThrottle: false });
+    p.down(1, 100, 300);
+    p.down(2, 780, 300);
+    expect(p.axes()).toEqual({ steer: -1, throttle: 1, brake: 0 });
   });
 });
 
@@ -202,7 +280,7 @@ describe("réglages", () => {
 
   it("relit ce qui est valide, borne les nombres, ignore le reste", () => {
     const s = parseTouchSettings(JSON.stringify({ steerMode: "buttons", sensitivity: 99, deadzone: -1, autoThrottle: false, vibration: "oui", inconnu: 1 }));
-    expect(s).toEqual({ steerMode: "buttons", sensitivity: 2, deadzone: 0, autoThrottle: false, vibration: true });
+    expect(s).toEqual({ steerMode: "buttons", sensitivity: 2, deadzone: 0, autoThrottle: false, vibration: true, buttonSize: "medium" });
     expect(parseTouchSettings(JSON.stringify({ steerMode: "volant", sensitivity: "x" }))).toEqual(DEFAULT_TOUCH_SETTINGS);
   });
 });

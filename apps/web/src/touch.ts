@@ -12,6 +12,7 @@ import type { Axes } from "./input";
 // - plusieurs doigts à la fois : on dirige et on freine en même temps.
 
 export type SteerMode = "drag" | "buttons";
+export type ButtonSize = "small" | "medium" | "large";
 
 export interface TouchSettings {
   steerMode: SteerMode;
@@ -23,6 +24,8 @@ export interface TouchSettings {
   autoThrottle: boolean;
   /** Vibration courte au point de contrôle et au choc (si le téléphone sait vibrer). */
   vibration: boolean;
+  /** Taille des boutons dessinés (la zone active ne change pas : elle va toujours jusqu'aux bords). */
+  buttonSize: ButtonSize;
 }
 
 export const DEFAULT_TOUCH_SETTINGS: Readonly<TouchSettings> = Object.freeze({
@@ -31,6 +34,7 @@ export const DEFAULT_TOUCH_SETTINGS: Readonly<TouchSettings> = Object.freeze({
   deadzone: 0.08,
   autoThrottle: true,
   vibration: true,
+  buttonSize: "medium",
 });
 
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.05 } as const;
@@ -54,6 +58,7 @@ export function parseTouchSettings(raw: string | null): TouchSettings {
     if (typeof o.deadzone === "number" && Number.isFinite(o.deadzone)) s.deadzone = clamp(o.deadzone, DEADZONE_RANGE.min, DEADZONE_RANGE.max);
     if (typeof o.autoThrottle === "boolean") s.autoThrottle = o.autoThrottle;
     if (typeof o.vibration === "boolean") s.vibration = o.vibration;
+    if (o.buttonSize === "small" || o.buttonSize === "medium" || o.buttonSize === "large") s.buttonSize = o.buttonSize;
   } catch {
     /* réglages illisibles : valeurs par défaut */
   }
@@ -98,15 +103,78 @@ export function dragSteer(dx: number, s: Pick<TouchSettings, "sensitivity" | "de
 
 export type Zone = "steer" | "left" | "right" | "brake" | "gas";
 
-/** Zone touchée par un doigt posé à l'abscisse `x` d'un écran de largeur `width`. */
-export function zoneAt(x: number, width: number, s: Pick<TouchSettings, "steerMode" | "autoThrottle">): Zone {
-  const f = width > 0 ? x / width : 0;
-  if (f < 0.5) return s.steerMode === "drag" ? "steer" : f < 0.25 ? "left" : "right";
-  if (!s.autoThrottle) return f < 0.75 ? "brake" : "gas";
-  return "brake";
+/** Une zone active : tranche verticale de l'écran, de la largeur `x0`–`x1` (parts de la largeur), sur toute la hauteur. */
+export interface ZoneSpan {
+  zone: Zone;
+  x0: number;
+  x1: number;
 }
 
-/** Un doigt qui reste dans sa famille de boutons (← → à gauche, frein / gaz à droite) peut glisser de l'un à l'autre. */
+/**
+ * Découpage de l'écran en zones actives, **sans trou** : les tranches se touchent et couvrent [0, 1] de bord à bord
+ * (le visuel est plus petit, jamais la zone). Moitié gauche : direction (glissement, ou ← | →) ; moitié droite :
+ * frein (ou frein | gaz avec l'accélérateur manuel).
+ */
+export function zoneSpans(s: Pick<TouchSettings, "steerMode" | "autoThrottle">): ZoneSpan[] {
+  const out: ZoneSpan[] = s.steerMode === "drag" ? [{ zone: "steer", x0: 0, x1: 0.5 }] : [{ zone: "left", x0: 0, x1: 0.25 }, { zone: "right", x0: 0.25, x1: 0.5 }];
+  if (s.autoThrottle) out.push({ zone: "brake", x0: 0.5, x1: 1 });
+  else out.push({ zone: "brake", x0: 0.5, x1: 0.75 }, { zone: "gas", x0: 0.75, x1: 1 });
+  return out;
+}
+
+/** Zone touchée par un doigt posé à l'abscisse `x` d'un écran de largeur `width` (hors de l'écran : la zone du bord). */
+export function zoneAt(x: number, width: number, s: Pick<TouchSettings, "steerMode" | "autoThrottle">): Zone {
+  const f = width > 0 ? x / width : 0;
+  const spans = zoneSpans(s);
+  for (const sp of spans) if (f < sp.x1) return sp.zone;
+  return spans[spans.length - 1]!.zone;
+}
+
+/** Marge minimale entre un bouton dessiné et le bord de l'écran : bandes de gestes système (retour Android, barre iOS). */
+export const GESTURE_MARGIN_PX = 24;
+
+const SIZE_FACTOR: Record<ButtonSize, number> = { small: 0.72, medium: 1, large: 1.3 };
+
+export interface Insets {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+export interface ButtonRect {
+  zone: Zone;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Boutons dessinés (en pixels) : compacts, centrés dans leur zone, écartés des bords par les zones sûres (encoche,
+ * barre d'accueil) et par les bandes de gestes système. Ne sert qu'à l'affichage : le toucher se décide par
+ * `zoneSpans`, sur tout l'écran.
+ */
+export function buttonRects(width: number, height: number, s: Pick<TouchSettings, "steerMode" | "autoThrottle" | "buttonSize">, insets: Insets = { left: 0, right: 0, top: 0, bottom: 0 }): ButtonRect[] {
+  const k = SIZE_FACTOR[s.buttonSize];
+  const bh = Math.round(Math.min(130, Math.max(72, height * 0.24)) * k);
+  const left = Math.max(insets.left, 0) + GESTURE_MARGIN_PX;
+  const right = width - Math.max(insets.right, 0) - GESTURE_MARGIN_PX;
+  const bottom = height - Math.max(insets.bottom, 0) - Math.max(GESTURE_MARGIN_PX, 112);
+  const out: ButtonRect[] = [];
+  for (const sp of zoneSpans(s)) {
+    if (sp.zone === "steer") continue; // le glissement n'a pas de bouton : la bague apparaît sous le doigt
+    const zx0 = Math.max(sp.x0 * width, left);
+    const zx1 = Math.min(sp.x1 * width, right);
+    const gap = Math.min(12, (zx1 - zx0) * 0.05);
+    const bw = Math.min((zx1 - zx0 - 2 * gap) * Math.min(1, 0.7 * k + 0.1), 260 * k);
+    const cx = (zx0 + zx1) / 2;
+    out.push({ zone: sp.zone, x: Math.round(cx - bw / 2), y: Math.round(bottom - bh), w: Math.round(bw), h: bh });
+  }
+  return out;
+}
+
+/** Un doigt qui reste dans sa famille de boutons (← → à gauche, frein / gaz à droite) peut glisser de l'un à l'autre, même hors de l'écran ou hors de la moitié. */
 function regroup(zone: Zone, x: number, width: number, s: Pick<TouchSettings, "autoThrottle">): Zone {
   const f = width > 0 ? x / width : 0;
   if (zone === "left" || zone === "right") return f < 0.25 ? "left" : "right";

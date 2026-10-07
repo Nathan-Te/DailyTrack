@@ -1,6 +1,6 @@
 import { TICK_RATE } from "./constants";
 import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpeed, stepCar, type CarInput, type CarParams, type CarState } from "./car";
-import { HALF_ROAD, type Gate, type Track } from "./track";
+import type { Gate, Track } from "./track";
 import { trackWorld, type World } from "./world";
 
 export interface RaceState {
@@ -80,7 +80,8 @@ function crossingTime(race: RaceState, gate: Gate, px: number, pz: number): numb
   const s1 = (car.x - gate.x) * gate.fx + (car.z - gate.z) * gate.fz;
   if (!(s0 < 0 && s1 >= 0)) return -1;
   const lateral = (car.x - gate.x) * gate.fz - (car.z - gate.z) * gate.fx;
-  if (lateral > HALF_ROAD + 2 || lateral < -(HALF_ROAD + 2)) return -1;
+  const reach = gate.halfWidth + 2;
+  if (lateral > reach || lateral < -reach) return -1;
   const f = s0 / (s0 - s1); // fraction du pas écoulée au moment du passage
   return Math.round(((car.tick - 1 + f) * 1000) / TICK_RATE);
 }

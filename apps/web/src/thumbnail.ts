@@ -1,5 +1,5 @@
 import { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
-import { HALF_ROAD, WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
+import { WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
 import { PALETTE_DEFS, SURFACE_COLORS, buildTrackScene } from "./trackMesh";
 import { pickFocus, type Focus } from "./thumbFocus";
 
@@ -146,7 +146,8 @@ function render3d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
   const renderer = sharedRenderer();
   if (!renderer) return false;
   const t0 = performance.now();
-  const { scene, dispose } = buildTrackScene(circuit.track, circuit.palette, { aerial: true, near: { from: focus.from, to: focus.to } });
+  const { scene, dispose, followGround } = buildTrackScene(circuit.track, circuit.palette, { aerial: true, near: { from: focus.from, to: focus.to } });
+  followGround(focus.center[0], focus.center[1]); // le sol suit la portion montrée (les circuits s'éloignent de l'origine)
   const t1 = performance.now();
   try {
     renderer.setSize(out.width, out.height, false);
@@ -198,7 +199,11 @@ function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
   };
 
   const line = trackCenterline(circuit.track);
-  const roadPx = HALF_ROAD * 2 * k;
+  // La largeur varie d'un bloc à l'autre (14, 20, 26 m ; moyenne sur une transition).
+  const widthOf = (blockIndex: number) => {
+    const b = circuit.track.blocks[blockIndex]!;
+    return (b.w0 + b.w1) / 2;
+  };
   const stroke = (from: number, to: number, color: string, width: number) => {
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
@@ -221,11 +226,10 @@ function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
     if (last && last.b === line.block[i]) last.to = i;
     else ranges.push({ b: line.block[i]!, from: i, to: i });
   }
-  const wallPx = roadPx + Math.max(2, WALL_HEIGHT * k * 1.6);
-  for (const r of ranges) stroke(r.from, r.to, css(pal.wallA), wallPx);
+  for (const r of ranges) stroke(r.from, r.to, css(pal.wallA), widthOf(r.b) * k + Math.max(2, WALL_HEIGHT * k * 1.6));
   for (const r of ranges) {
     const b = circuit.track.blocks[r.b]!;
-    stroke(r.from, r.to, css(b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!), roadPx * 0.98);
+    stroke(r.from, r.to, css(b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!), widthOf(r.b) * k * 0.98);
   }
   // Blocs à effet et portes : une barre en travers de la route, au milieu du bloc.
   const bar = (i: number, color: string, half: number, width: number) => {
@@ -248,6 +252,7 @@ function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
   for (const r of ranges) {
     const b = circuit.track.blocks[r.b]!;
     const mid = Math.floor((r.from + r.to) / 2);
+    const HALF_ROAD = widthOf(r.b) / 2;
     if (b.kind === "boost") bar(mid, css(pal.boost), HALF_ROAD * 0.5, 6);
     else if (b.kind === "turbo") bar(mid, "#ff3b30", HALF_ROAD * 0.5, 6);
     else if (b.kind === "cut") bar(mid, "#2b1b45", HALF_ROAD * 0.5, 6);

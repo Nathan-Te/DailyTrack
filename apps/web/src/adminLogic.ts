@@ -1,7 +1,7 @@
 // Page /admin : construit l'adresse du jeu à partir de choix de test. Logique pure (testée par Vitest) ; le DOM est dans
 // `admin.ts`. Rien de tout cela ne touche à la simulation : ce ne sont que les paramètres d'adresse que le jeu connaît déjà.
 
-export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "plat";
+export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "plat";
 
 export interface AdminState {
   scenario: Scenario;
@@ -21,6 +21,10 @@ export interface AdminState {
   touch: "" | "1" | "0";
   /** Miniatures des archives : "" normales (3D inclinée), "top" d'aplomb, "2d" repli sans WebGL, "off" aucune. */
   thumbs: "" | "top" | "2d" | "off";
+  /** Mode de direction tactile forcé ("" : celui des réglages). */
+  steer: "" | "boutons" | "glisser";
+  /** Dessine les zones tactiles actives (`?zones=1`). */
+  zones: boolean;
   /** Accélération du temps (outil `debug`), "" : normal. */
   timescale: string;
   /** Adresse de l'API de classement ("" : aucune). */
@@ -40,6 +44,8 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   ghostOff: false,
   touch: "",
   thumbs: "",
+  steer: "",
+  zones: false,
   timescale: "",
   api: "",
 });
@@ -64,6 +70,8 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.ghostOff) p.set("ghost", "off");
   if (s.touch !== "") p.set("touch", s.touch);
   if (s.thumbs !== "") p.set("thumbs", s.thumbs);
+  if (s.steer !== "") p.set("steer", s.steer);
+  if (s.zones) p.set("zones", "1");
   if (s.api.trim() !== "") p.set("api", s.api.trim());
   return p.toString().replace(/=(?=&|$)/g, "");
 }
@@ -80,12 +88,13 @@ export function parseAdmin(raw: string | null): AdminState {
   if (!raw) return s;
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof AdminState, unknown>>;
-    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "plat") s.scenario = o.scenario;
+    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && ["", "stade", "rallye", "banquise", "nuit", "campagne"].includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
+    if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
@@ -103,8 +112,10 @@ export function gameKeys(keys: string[]): string[] {
 export const PRESETS: { label: string; hint: string; state: Partial<AdminState> }[] = [
   { label: "Réglage de la voiture", hint: "circuit de pilotage + panneau de réglages", state: { scenario: "pilotage", tune: true } },
   { label: "Revêtements et blocs", hint: "terre, glace, herbe, turbo, relevés, plaque", state: { scenario: "surfaces" } },
+  { label: "Largeurs de route", hint: "14, 20 et 26 m, transitions, courbe ample, S large, rétrécissement avant un virage", state: { scenario: "largeurs" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },
   { label: "Archives de démonstration", hint: "14 jours passés, classements figés et fantômes (?api=demo)", state: { api: "demo" } },
   { label: "Essai tactile (souris = doigt)", hint: "interface mobile sur ordinateur", state: { touch: "1" } },
+  { label: "Zones tactiles (boutons)", hint: "boutons ← → et frein, zones actives dessinées", state: { scenario: "pilotage", touch: "1", steer: "boutons", zones: true } },
 ];

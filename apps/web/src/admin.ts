@@ -20,6 +20,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["essai", "Essai (tremplin)"],
   ["pilotage", "Pilotage"],
   ["surfaces", "Surfaces"],
+  ["largeurs", "Largeurs"],
   ["plat", "Terrain plat"],
 ];
 
@@ -61,9 +62,10 @@ $<HTMLInputElement>("date").addEventListener("change", (e) => set({ date: (e.tar
 $("today").addEventListener("click", () => set({ date: "" }));
 $("random").addEventListener("click", () => set({ date: formatDay(PREMIER_JOUR + Math.floor(Math.random() * RANDOM_SPAN)) }));
 
-const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff"] as const;
+const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const;
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));
+$<HTMLSelectElement>("steer").addEventListener("change", (e) => set({ steer: (e.target as HTMLSelectElement).value as AdminState["steer"] }));
 $<HTMLSelectElement>("touch").addEventListener("change", (e) => set({ touch: (e.target as HTMLSelectElement).value as AdminState["touch"] }));
 $<HTMLSelectElement>("thumbs").addEventListener("change", (e) => set({ thumbs: (e.target as HTMLSelectElement).value as AdminState["thumbs"] }));
 $<HTMLInputElement>("timescale").addEventListener("input", (e) => set({ timescale: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
@@ -127,6 +129,7 @@ function render() {
   $<HTMLSelectElement>("quality").value = state.quality;
   $<HTMLSelectElement>("touch").value = state.touch;
   $<HTMLSelectElement>("thumbs").value = state.thumbs;
+  $<HTMLSelectElement>("steer").value = state.steer;
   $<HTMLInputElement>("timescale").value = state.timescale;
   $<HTMLInputElement>("api").value = state.api;
   const href = gameHref(state);

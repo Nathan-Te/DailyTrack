@@ -3,7 +3,7 @@ import { COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInp
 import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, HALF_ROAD, blockPoint, curveCenter, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, blockHalfWidth, blockPoint, curveCenter, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { SURFACES } from "./world";
 
 // Pilote automatique (lot 7) : il sert à valider un circuit généré (« est-il finissable ? ») et donne le temps de
@@ -65,7 +65,8 @@ function denseCenterline(track: Track): Centerline {
     out.room.push(room);
     out.blk.push(b.index);
   };
-  const free = HALF_ROAD - WALL_MARGIN;
+  // Écart latéral permis : la demi-largeur de la route (qui varie d'un bloc à l'autre, et dans une transition) moins la marge.
+  // Sur une route large, la trajectoire peut donc prendre une corde plus ouverte : c'est la relaxation ci-dessous qui s'en sert.
   for (const b of track.blocks) {
     const first = b.index === 0 ? 0 : 1; // le premier point d'un bloc est le dernier du précédent
     // Sur un tremplin et la ligne droite qui suit, on reste au milieu : en l'air, on ne tourne pas.
@@ -78,11 +79,14 @@ function denseCenterline(track: Track): Centerline {
       for (let i = first; i <= n; i++) {
         const a = (HALF_PI * i) / n;
         // Virage relevé : le bord intérieur est en contrebas et la rampe d'entrée y est raide ; on reste près de l'axe.
-        push(cp + side * r * cos(a), r * sin(a), b, b.banked ? BANKED_ROOM : free);
+        push(cp + side * r * cos(a), r * sin(a), b, b.banked ? BANKED_ROOM : b.w0 / 2 - WALL_MARGIN);
       }
     } else {
       const n = Math.round(CELL / SPACING);
-      for (let i = first; i <= n; i++) push(CELL / 2, (CELL * i) / n, b, calm ? 0.5 : free);
+      for (let i = first; i <= n; i++) {
+        const q = (CELL * i) / n;
+        push(CELL / 2, q, b, calm ? 0.5 : blockHalfWidth(b, q) - WALL_MARGIN);
+      }
     }
   }
   // Normales (vers la gauche) par différence centrée.
