@@ -49,9 +49,19 @@ Trois circuits du jour choisis pour leur relief :
 
 ## Mesures (`npm run measure:generator`, 60 dates à partir du 06/10/2026)
 
-MESURES
+| | moyenne | min | max |
+|---|---|---|---|
+| temps d'auteur | 35,6 s (34,5 avant) | 30,1 s | 39,9 s |
+| dénivelé | 17,9 m | 12 m | 36 m |
+| blocs par circuit | 40,9 (38,0 avant) | | |
 
-**Coût d'un rejeu** (même machine, `main` mesuré en début de session) : COUT.
+- Dans la fenêtre 30–40 s : 60/60 ; circuits de secours : 0 ; tentative retenue : moyenne 2,0, max 12.
+- Dénivelé ≥ 12 m : 60/60 ; pentes : 6,7 blocs par circuit dont 1,6 raides ; dos d'âne : 9 circuits.
+- Vrai saut : Stade 15/15, Rallye 13/13, Nuit 14/14, Banquise 6/14, Campagne 3/4. Types : 32 m bord −4 m × 26, 32 m même niveau × 14, 64 m × 7, bord +4 m × 6, 64 m bord −4 m × 2.
+- Vitesse du pilote au bord de la rampe : au moins 1,14 × le plancher (exigé 1,08), moyenne 1,40. Sections sans rebords : 17/60 circuits (Rallye 8/13, Nuit 8/14, Campagne 1/4). Chutes du pilote : 0.
+- Génération : moyenne 163 ms, max 529 ms (107 / 322 avant).
+
+**Coût d'un rejeu** (même machine, `main` mesuré en début de session) : **38,3 ms** en moyenne (max 53,5) contre **34,6 ms** (max 54,0) avant le lot, soit +11 % ; l'hébergement n'en est pas changé.
 
 ## Garde-fous
 
@@ -63,7 +73,7 @@ MESURES
 ## Choix à connaître
 
 - Le plancher d'un saut se lit **au bord de la rampe** : la pente coûte ≈ 2 à 4 m/s et l'accélérateur en rend. Au même niveau, un vide de 32 m demande 40 m/s : c'est trop près de la pointe du plat pour un saut « libre », donc il part d'une plaque.
-- **Les circuits sont un peu plus longs** (les sauts et les reliefs ajoutent des blocs) : durée d'auteur moyenne MOYENNE contre 34,5 s ; 40 à 50 % des tentatives tombent dans la fenêtre 30–40 s (55–60 % avant). Pas de souci de génération (moyenne GEN ms).
+- **Les circuits sont un peu plus longs** (les sauts et les reliefs ajoutent des blocs) : durée d'auteur moyenne 35,6 s contre 34,5 s ; 40 à 50 % des tentatives tombent dans la fenêtre 30–40 s (55–60 % avant). Pas de souci de génération (moyenne 163 ms).
 - Les tests de classement de l'API sont ancrés sur le **09/10/2026** (le 13/10 donnait des temps non monotones selon le niveau du pilote).
 - Le jeu de démo (`history:seed`) : les pilotes fictifs mettent plein gaz avant une rampe (un pilote prudent ne passe aucun saut) ; 8 à 15 pilotes classés par jour comme avant.
 
@@ -71,5 +81,5 @@ MESURES
 
 - Pont à deux niveaux (croisement) : non fait, voir plus haut.
 - Le Rallye signe un **saut sur la terre** : la terre ralentit un peu ; le plancher du saut court (33 m/s) laisse de la marge.
-- Les montées de trois niveaux sur la terre restent possibles dans le générateur seulement par un bloc `U` simple (une montée raide n'a jamais de revêtement) : à trancher si l'on veut du relief raide sur la terre.
+- Une montée raide (`U2`, `U3`) reste toujours sur la route (sur l'herbe, la voiture cale) : à trancher si l'on veut du relief raide sur la terre.
 - Vrai téléphone : l'ombre d'atterrissage et le voile de chute n'ont été vus que sur le rendu logiciel du conteneur.
