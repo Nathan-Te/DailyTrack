@@ -85,9 +85,9 @@ for (const p of PHONES) {
       await polled(page, (i) => i.steer).toBeGreaterThan(25);
       expect((await input(page)).steer).toBeLessThan(45); // (40/70 − 0,08) / 0,92 ≈ 0,54 → ≈ 34
       await f.move(1, 120 + 25, 250);
-      const half = (await input(page)).steer;
-      expect(half).toBeGreaterThan(5);
-      expect(half).toBeLessThan(25);
+      // La commande n'est relue qu'à l'image suivante : on attend qu'elle ait changé (le rendu logiciel de la CI est lent).
+      await polled(page, (i) => i.steer).toBeLessThan(25);
+      expect((await input(page)).steer).toBeGreaterThan(5);
       // À gauche : négatif. Très loin : plein braquage seulement (le point de pose suit le doigt).
       await f.move(1, 120 - 30, 250);
       await polled(page, (i) => i.steer).toBeLessThan(-15);

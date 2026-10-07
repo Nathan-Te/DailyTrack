@@ -115,6 +115,7 @@ const qualityParam = params.get("quality");
 const governor = new QualityGovernor(26, 19, qualityParam === "0" || qualityParam === "1" || qualityParam === "2");
 if (governor.locked) governor.level = Number(qualityParam) as Quality;
 effects.quality = governor.level;
+view.setLite(governor.level === 0);
 const SHAKE = params.get("shake") === "0" ? 0 : 1;
 const demo = params.has("demo");
 const tel = createTelemetry();
@@ -180,7 +181,7 @@ if (daily) {
 }
 function updateInfo() {
   $("info").textContent = track
-    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : circuit au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
+    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
     : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer · C : caméra";
 }
 
@@ -768,10 +769,13 @@ function frame(now: number) {
   const frozen = paused || (touchMode && (!hudArchive.hidden || !!touchUi?.settingsOpen()));
   const manualTicksNow = manual ? manualTicks : 0;
   manualTicks = 0;
-  const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.25) * timeScale; // borne : pas de spirale après un onglet en pause
+  const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.5) * timeScale; // borne : pas de spirale après un onglet en pause ; 0,5 s : la course reste à l'heure jusqu'à 2 images/s (téléphone lent, rendu logiciel)
   const frameMs = now - last;
   last = now;
-  if (!frozen && !manual && governor.observe(frameMs)) effects.quality = governor.level;
+  if (!frozen && !manual && governor.observe(frameMs)) {
+    effects.quality = governor.level;
+    view.setLite(governor.level === 0); // qualité basse : décor allégé (téléphone lent)
+  }
 
   const { input, restart, camera: nextCamera, pause: togglePause } = controls.poll();
   if (togglePause) setPaused(!paused);
@@ -1008,6 +1012,10 @@ if (params.has("debug")) {
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {
         return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings };
+      },
+      /** Scène 3D (mesures de performance). */
+      get scene() {
+        return view.scene;
       },
       get touch() {
         return touchMode;

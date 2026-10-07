@@ -29,7 +29,8 @@ test.describe("fantôme (rendu 3D)", () => {
     expect(z0).toBeDefined();
 
     // Le joueur ne touche à rien : seul le fantôme avance.
-    await page.waitForTimeout(3000);
+    // (on attend qu'il ait avancé plutôt qu'un temps fixe : la CI rend en logiciel, plus ou moins vite)
+    await page.waitForFunction((z) => (window.__cdj.ghost?.z ?? 0) > z + 10, z0!, { timeout: 30_000 });
     const after = await page.evaluate(() => ({ ghost: window.__cdj.ghost, car: window.__cdj.car.z }));
     expect(after.ghost!.tick).toBeGreaterThan(30);
     expect(after.ghost!.z).toBeGreaterThan(z0! + 10);

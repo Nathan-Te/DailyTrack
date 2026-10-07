@@ -9,7 +9,7 @@ Demande de Nathan : améliorer globalement les visuels, la voiture, et avoir des
 Les traces existaient dans le code mais **ne s'affichaient jamais** : `Float32BufferAttribute` **copie** le tableau qu'on lui donne, alors que le code écrivait dans le tableau d'origine — le processeur graphique ne voyait que des zéros. Corrigé (`BufferAttribute`, qui garde la référence). Je n'avais vérifié que le *compteur* d'émission, pas l'image : le nouveau test e2e vérifie les segments réellement posés (`__cdj.fx.marks`), et j'ai regardé des captures.
 
 ## Traces de pneus (`fx.ts`, `Skids`)
-- **Une trace par roue** (4), tampon circulaire de 2400 segments recyclés (≈ 15 s de traces à pleine vitesse) ; seule la partie modifiée du tampon part au GPU.
+- **Roues arrière seulement** (deux traces), tampon circulaire de 2400 segments recyclés (≈ 15 s de traces à pleine vitesse) ; seule la partie modifiée du tampon part au GPU.
 - Déclenchées par la dérive franche, le **dérapage au frein** (`car.drift`, lu) ou un **freinage appuyé** à plus de 14 m/s ; les roues arrière marquent le plus, les avant seulement au freinage.
 - La trace **s'estompe** à son début et à sa fin (transparence par sommet) et **prend la teinte du revêtement** : gomme noire sur la route, sillon brun sur la terre, herbe arrachée, rayures claires sur la glace.
 - Coupées au niveau de qualité 0 et avec `?fx=off`.
@@ -29,6 +29,9 @@ Le tremplin avait sa face de chute et ses flancs peints en brun foncé (couleur 
 - Touche **N** : un circuit tiré au hasard (une date quelconque dans les dix ans après le lancement) ; touche **T** : thème suivant (thème du jour → stade → rallye → banquise → nuit → campagne → thème du jour).
 - Le panneau **Archives** (H, ou le bouton 📅 au toucher) propose en haut **🎲 Circuit au hasard** et les puces de thème.
 - Ces circuits sont des essais : jours passés ou futurs et thèmes forcés ne sont **jamais classés ni envoyés**. Les réglages de test de l'adresse (`debug`, etc.) sont conservés. Lien direct : `?seed=AAAA-MM-JJ&theme=<nom>`.
+
+## Page /admin
+`<url du jeu>/admin/` : menu des outils de test (circuit, date, thème, au hasard, panneau de réglages, démo, effets, qualité, tactile, temps accéléré, API, effacement des données locales, raccourcis, rappel des touches). Il construit l'adresse du jeu et la lance ; choix mémorisés. Aucune protection : ce sont des paramètres d'adresse que n'importe qui peut taper, sans effet sur le classement (courses de test jamais classées).
 
 ## Mesures
 Fil principal par image (même script que le lot 9, profil mobile) : 3,5 / 12,7 ms (pilotage), 3,2 / 13,6 ms (surfaces) à CPU ×1 / ×4, contre 3,2 / 12,0 et 3,3 / 12,0 au lot 9. Poids JS gzip : jeu 42,1 ko (+4,6), three.js 130,3 ko (+0,4) : **≈ +5 ko**. En rendu logiciel le nombre d'images par seconde baisse (ciel et montagnes remplissent l'écran) : sans signification pour un GPU, à confirmer sur un vrai téléphone.

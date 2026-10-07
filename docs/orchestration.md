@@ -63,7 +63,7 @@ npm run test:e2e         # construit web + api, lance Playwright (Chromium) ; d�
   CHROMIUM_PATH=/opt/pw-browsers/chromium   # Chromium déjà installé (conteneur)
   E2E_ALL_BROWSERS=1                         # + Firefox et WebKit (ce que fait la CI)
 API en local : npm run build:node -w @cdj/api && DB_PATH=:memory: npm start -w @cdj/api   → jeu avec ?api=http://localhost:8787
-Réglages d'URL du jeu : ?seed=AAAA-MM-JJ · ?scenario=essai|plat · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
+Page d'outils de test : `<base>/admin/` (menu qui construit l'adresse du jeu). Réglages d'URL du jeu : ?seed=AAAA-MM-JJ · ?scenario=essai|plat · ?api=… · ?ghost=off · ?demo · ?fx=off · ?quality=0|1|2 · ?shake=0 · touche M (son)
 Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cdj.autoplay(code)
 ```
 

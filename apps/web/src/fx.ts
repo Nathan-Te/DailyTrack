@@ -187,7 +187,7 @@ const SKID_WIDTH = 0.14; // demi-largeur d'une trace (m) : un pneu fait 0,3 m
 const SKID_STEP = 1.1; // distance minimale entre deux segments (m)
 
 /**
- * Traces de pneus : un ruban de quadrilatères en tampon circulaire, posé sur la route, une trace par roue (4).
+ * Traces de pneus : un ruban de quadrilatères en tampon circulaire, posé sur la route, une trace par roue arrière (2 emplacements de roue utilisés sur 4).
  * Chaque sommet porte sa transparence : la trace **s'estompe** à son début et à sa fin, et prend la teinte du revêtement.
  * Seule la partie modifiée du tampon part au processeur graphique.
  */
@@ -366,14 +366,14 @@ export class Effects {
     const grounded = tel.grounded;
 
     // Fumée de pneus et traces : dérive franche, dérapage au frein (`drift`) ou freinage appuyé à bonne vitesse.
-    // Les roues arrière marquent le plus ; les avant ne marquent qu'au freinage.
+    // Seules les roues arrière marquent.
     const slip = skidLevel(tel.slide, speed, f.braking, grounded);
     const hardBrake = f.braking && grounded && speed > 14 ? 0.55 * Math.min(1, speed / 32) : 0;
     const skid = Math.max(slip, tel.drift * 0.9 * (grounded ? 1 : 0), hardBrake);
     const rear = [tel.wheels[2]!, tel.wheels[3]!] as const;
     for (let w = 0; w < 4; w++) {
       const wheel = tel.wheels[w]!;
-      const level = this.quality === 0 || wheel.ground < NO_GROUND / 2 ? 0 : w >= 2 ? skid : hardBrake > 0 || tel.drift > 0.3 ? skid * 0.6 : 0;
+      const level = this.quality === 0 || w < 2 || wheel.ground < NO_GROUND / 2 ? 0 : skid; // roues arrière seulement
       if (level > 0.12) this.emitted.skid++;
       this.skids.wheel(w, level > 0.12 ? level : 0, wheel.surface, wheel.x, wheel.ground + 0.03, wheel.z);
     }
