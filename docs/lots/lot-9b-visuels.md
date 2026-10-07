@@ -22,6 +22,14 @@ Caisse par **sections lissées** (au lieu de boîtes) : épaules, bas de caisse 
 - **Décor au bord de la piste**, fusionné en un maillage, graine = identifiant du circuit (le même pour tout le monde) : cactus et rochers (stade, rallye), sapins enneigés (banquise), lampadaires lumineux et sapins sombres (nuit), arbres et bottes de foin (campagne), pylônes néon ; **tribune** avec foule colorée au départ.
 - **Route** : sillons d'usure et **lignes de rive** blanches sur le bitume ; éclairage hémisphérique (les faces hautes plus claires que les flancs) au lieu d'une lumière ambiante unie.
 
+## Tremplin lisible
+Le tremplin avait sa face de chute et ses flancs peints en brun foncé (couleur du remblai) : de côté ou de près, on lisait un **mur**. Maintenant : rampe plus claire que la route, flancs clairs, trois **chevrons blancs**, **bande d'alerte jaune et noire** au bord, face de chute **rayée jaune et noire** (`addJumpMarks`, trackMesh.ts).
+
+## Essayer d'autres circuits et thèmes
+- Touche **N** : un circuit tiré au hasard (une date quelconque dans les dix ans après le lancement) ; touche **T** : thème suivant (thème du jour → stade → rallye → banquise → nuit → campagne → thème du jour).
+- Le panneau **Archives** (H, ou le bouton 📅 au toucher) propose en haut **🎲 Circuit au hasard** et les puces de thème.
+- Ces circuits sont des essais : jours passés ou futurs et thèmes forcés ne sont **jamais classés ni envoyés**. Les réglages de test de l'adresse (`debug`, etc.) sont conservés. Lien direct : `?seed=AAAA-MM-JJ&theme=<nom>`.
+
 ## Mesures
 Fil principal par image (même script que le lot 9, profil mobile) : 3,5 / 12,7 ms (pilotage), 3,2 / 13,6 ms (surfaces) à CPU ×1 / ×4, contre 3,2 / 12,0 et 3,3 / 12,0 au lot 9. Poids JS gzip : jeu 42,1 ko (+4,6), three.js 130,3 ko (+0,4) : **≈ +5 ko**. En rendu logiciel le nombre d'images par seconde baisse (ciel et montagnes remplissent l'écran) : sans signification pour un GPU, à confirmer sur un vrai téléphone.
 

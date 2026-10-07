@@ -39,7 +39,7 @@ import {
   type CarState,
   type RaceState,
 } from "@cdj/sim";
-import { archiveDays, renderArchive } from "./archive";
+import { archiveDays, nextTheme, randomSeedHref, renderArchive, themeHref } from "./archive";
 import { buildFlatArena } from "./arena";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
@@ -180,7 +180,7 @@ if (daily) {
 }
 function updateInfo() {
   $("info").textContent = track
-    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme${online.enabled ? " · L : classement" : ""}`
+    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : circuit au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
     : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer · C : caméra";
 }
 
@@ -263,7 +263,7 @@ function updateShareLine() {
 const shareLink = () => shareUrl(location, daily!.date, daily!.day === todayUtc);
 
 function openArchive() {
-  renderArchive(hudArchive.querySelector(".panel")!, archiveDays(todayUtc, listDayBests()), location.search, daily?.date ?? null, closeArchive);
+  renderArchive(hudArchive.querySelector(".panel")!, archiveDays(todayUtc, listDayBests()), location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null);
   hudArchive.hidden = false;
 }
 
@@ -436,6 +436,8 @@ window.addEventListener("keydown", (e) => {
   if (e.repeat || isTyping(e)) return;
   if (e.code === "KeyG") void cycleGhost();
   if (e.code === "KeyM") gameAudio.mute();
+  if (e.code === "KeyN" && track && scenario === "jour") location.assign(randomSeedHref(location.search)); // circuit au hasard (essai, jamais classé)
+  if (e.code === "KeyT" && track && scenario === "jour") location.assign(themeHref(location.search, nextTheme(forcedTheme?.name ?? null))); // thème suivant
   if (e.code === "KeyL") setBoardVisible(!boardVisible);
   if (e.code === "KeyH") (hudArchive.hidden ? openArchive : closeArchive)();
   if (e.code === "Escape") closeArchive();

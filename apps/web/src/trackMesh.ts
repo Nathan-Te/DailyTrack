@@ -305,7 +305,7 @@ function across(r: Row, t: number, up: number): V3 {
 
 const ROAD_W = HALF_ROAD * 2;
 
-function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean, paved = false) {
+function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean, paved = false, skirtColor = pal.skirt) {
   for (let i = 0; i + 1 < rows.length; i++) {
     const a = rows[i]!;
     const b = rows[i + 1]!;
@@ -326,7 +326,7 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
       for (const side of ["left", "right"] as const) {
         const p = a[side];
         const q = b[side];
-        g.quad(p, q, [q[0], floorY, q[2]], [p[0], floorY, p[2]], pal.skirt);
+        g.quad(p, q, [q[0], floorY, q[2]], [p[0], floorY, p[2]], skirtColor);
       }
     }
     // Rebords : une face intérieure et un chapeau, en bandes rouges et blanches d'environ 4 m.
@@ -407,6 +407,28 @@ function addTurboPad(g: Builder, b: Block) {
     const h = y + 0.02;
     g.tri(world(b, CELL / 2, qc + 1.4, h), world(b, p1 - 0.5, qc - 0.9, h), world(b, CELL / 2, qc - 0.2, h), TURBO_COLOR.mark);
     g.tri(world(b, CELL / 2, qc + 1.4, h), world(b, CELL / 2, qc - 0.2, h), world(b, p0 + 0.5, qc - 0.9, h), TURBO_COLOR.mark);
+  }
+}
+
+/** Marques d'un tremplin : chevrons, bande d'alerte au bord, face de chute rayée. */
+function addJumpMarks(g: Builder, b: Block) {
+  const WARN = [0xffc21a, 0x16181f] as const;
+  const y = (q: number) => blockHeight(b, q) + 0.05;
+  for (const qc of [2.6, 5.6, 8.6]) {
+    for (const s of [-1, 1]) {
+      // Un chevron « ^ » vers l'avant : deux bras épais.
+      const p0 = CELL / 2;
+      const p1 = CELL / 2 + s * 4;
+      g.quad(world(b, p0, qc + 1.4, y(qc + 1.4)), world(b, p0, qc + 0.5, y(qc + 0.5)), world(b, p1, qc - 0.9, y(qc - 0.9)), world(b, p1, qc, y(qc)), 0xf4f1e6);
+    }
+  }
+  const cols = 14;
+  const q0 = JUMP_LIP - 1.4;
+  for (let i = 0; i < cols; i++) {
+    const pa = CELL / 2 - HALF_ROAD + i;
+    g.quad(world(b, pa, q0, y(q0) + 0.01), world(b, pa + 1, q0, y(q0) + 0.01), world(b, pa + 1, JUMP_LIP, y(JUMP_LIP) + 0.01), world(b, pa, JUMP_LIP, y(JUMP_LIP) + 0.01), WARN[i % 2]!);
+    const top = b.y0 + JUMP_RISE;
+    g.quad(world(b, pa, JUMP_LIP, top), world(b, pa + 1, JUMP_LIP, top), world(b, pa + 1, JUMP_LIP + 0.01, b.y0), world(b, pa, JUMP_LIP + 0.01, b.y0), WARN[(i + 1) % 2]!);
   }
 }
 
@@ -771,10 +793,10 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       addRoad(g, pal, curveRows(b), color, floorY, true, b.surface === "road");
     } else if (b.kind === "jump") {
       // Rampe jusqu'au bord, face verticale, puis route plate.
-      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, 1, (q) => blockHeight(b, q)), color, floorY, true, b.surface === "road");
-      const lipL = world(b, CELL / 2 + HALF_ROAD, JUMP_LIP, b.y0 + JUMP_RISE);
-      const lipR = world(b, CELL / 2 - HALF_ROAD, JUMP_LIP, b.y0 + JUMP_RISE);
-      g.quad(lipL, lipR, [lipR[0], b.y0, lipR[2]], [lipL[0], b.y0, lipL[2]], pal.skirt);
+      // Le tremplin se lit comme un tremplin : rampe plus claire, flancs clairs (pas un mur brun), chevrons blancs,
+      // bande d'alerte jaune et noire au bord, face de chute rayée jaune et noire.
+      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, 1, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.9));
+      addJumpMarks(g, b);
       addRoad(g, pal, straightRows(b, JUMP_LIP, CELL, 1, () => b.y0), color, floorY, true, b.surface === "road");
     } else {
       const steps = b.kind === "bump" ? 16 : 1;

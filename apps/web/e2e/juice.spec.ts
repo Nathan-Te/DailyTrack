@@ -148,3 +148,20 @@ test("la qualité peut être figée (?quality=) et la secousse coupée (?shake=0
   await racing(page, "/?debug&scenario=pilotage&quality=1&shake=0");
   expect(await page.evaluate(() => window.__cdj.fx.quality)).toBe(1);
 });
+
+test("circuits d'essai : N tire un circuit au hasard, T change de thème, le panneau des archives propose les deux", async ({ page }) => {
+  await racing(page, "/?debug&seed=2026-10-07");
+  await page.keyboard.press("KeyT");
+  await page.waitForURL(/theme=stade/);
+  await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 30_000 });
+  await expect(page.locator("#meta")).toContainText("thème forcé");
+  await page.keyboard.press("KeyN");
+  await page.waitForURL((u) => u.searchParams.get("seed") !== "2026-10-07" && u.searchParams.get("theme") === "stade");
+  await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 30_000 });
+  // panneau : bouton « au hasard » et puces de thème
+  await page.keyboard.press("KeyH");
+  await expect(page.locator("#archive .dice")).toBeVisible();
+  await expect(page.locator("#archive .chips a")).toHaveCount(6);
+  await page.locator("#archive .chips a", { hasText: "Nuit" }).click();
+  await page.waitForURL(/theme=nuit/);
+});
