@@ -1,7 +1,6 @@
 import {
   AdditiveBlending,
   AmbientLight,
-  BackSide,
   BufferGeometry,
   CanvasTexture,
   Color,
@@ -17,7 +16,6 @@ import {
   MeshStandardMaterial,
   Points,
   PointsMaterial,
-  SphereGeometry,
   NearestFilter,
   PlaneGeometry,
   RepeatWrapping,
@@ -689,25 +687,28 @@ function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floor
   }
 }
 
-/** Ciel : dégradé de l'horizon (couleur du brouillard) au zénith, disque de soleil / lune, étoiles pour les nuits. */
+/** Dégradé du ciel : de l'horizon (couleur du brouillard) au zénith. Fond d'écran de la scène : une seule passe, bien moins chère qu'un dôme. */
+function skyGradient(pal: Palette): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 2;
+  canvas.height = 256;
+  const ctx = canvas.getContext("2d")!;
+  const hex = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, hex(pal.zenith));
+  grad.addColorStop(0.5, hex(mix(pal.zenith, pal.sky, 0.78)));
+  grad.addColorStop(0.62, hex(pal.sky)); // l'horizon, un peu sous le milieu de l'écran
+  grad.addColorStop(1, hex(pal.sky));
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 2, 256);
+  const tex = new CanvasTexture(canvas);
+  tex.colorSpace = SRGBColorSpace;
+  return tex;
+}
+
+/** Ciel : disque de soleil / lune et étoiles pour les nuits (le dégradé est le fond de la scène). */
 function buildSky(pal: Palette, rnd: () => number): Group {
   const group = new Group();
-  const geo = new SphereGeometry(420, 20, 12);
-  const horizon = new Color(pal.sky);
-  const zenith = new Color(pal.zenith);
-  const col: number[] = [];
-  const tmp = new Color();
-  const posAttr = geo.getAttribute("position");
-  for (let i = 0; i < posAttr.count; i++) {
-    const t = Math.max(0, posAttr.getY(i) / 420);
-    tmp.copy(horizon).lerp(zenith, Math.pow(t, 0.6));
-    col.push(tmp.r, tmp.g, tmp.b);
-  }
-  geo.setAttribute("color", new F32(col, 3));
-  const dome = new Mesh(geo, new MeshBasicMaterial({ vertexColors: true, side: BackSide, fog: false, depthWrite: false }));
-  dome.renderOrder = -3;
-  group.add(dome);
-
   if (pal.disc !== null) {
     const size = 128;
     const canvas = document.createElement("canvas");
@@ -735,6 +736,7 @@ function buildSky(pal: Palette, rnd: () => number): Group {
     sprite.scale.set(scale, scale, 1);
     sprite.position.set(-90, night ? 170 : 150, 380); // bas sur l'horizon, dans une direction fixe du monde
     sprite.renderOrder = -2;
+    sprite.userData.heavy = true;
     sprite.lookAt(0, 0, 0);
     group.add(sprite);
   }
@@ -750,6 +752,7 @@ function buildSky(pal: Palette, rnd: () => number): Group {
     g.setAttribute("position", new F32(stars, 3));
     const points = new Points(g, new PointsMaterial({ color: pal.scenery === "pylons" ? 0xffd9fb : 0xffffff, size: 2.2, sizeAttenuation: false, fog: false, depthWrite: false, transparent: true, opacity: 0.85 }));
     points.renderOrder = -2;
+    points.userData.heavy = true;
     group.add(points);
   }
   return group;
@@ -773,12 +776,15 @@ function buildMountains(pal: Palette, rnd: () => number): Mesh {
   }
   const mesh = new Mesh(g.geometry(), new MeshBasicMaterial({ vertexColors: true, fog: false, side: DoubleSide }));
   mesh.renderOrder = -1;
+  mesh.userData.heavy = true;
   return mesh;
 }
 
 export interface TrackScene {
   scene: Scene;
   followGround(x: number, z: number): void;
+  /** Décor allégé (qualité basse) : montagnes, soleil, étoiles et décor de bord de piste masqués ; ciel et route restent. */
+  setLite(on: boolean): void;
 }
 
 /** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
@@ -831,7 +837,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
 
   const sky = new Color(pal.sky);
   const scene = new Scene();
-  scene.background = sky;
+  scene.background = skyGradient(pal);
   scene.fog = new Fog(sky, pal.fogNear, pal.fogFar);
   // Lumière : hémisphérique (ciel au-dessus, sol en dessous : les faces hautes sont plus claires que les flancs) + soleil.
   scene.add(new HemisphereLight(mix(pal.ambient[0], pal.zenith, 0.35), new Color(pal.floorB).getHex(), pal.ambient[1] * 0.45));
@@ -842,8 +848,10 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
 
   const mat = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide });
   scene.add(new Mesh(g.geometry(), mat));
-  scene.add(new Mesh(decorG.geometry(), mat));
-  scene.add(new Mesh(glowG.geometry(), new MeshBasicMaterial({ vertexColors: true })));
+  const decorMesh = new Mesh(decorG.geometry(), mat);
+  const glowMesh = new Mesh(glowG.geometry(), new MeshBasicMaterial({ vertexColors: true }));
+  decorMesh.userData.heavy = glowMesh.userData.heavy = true;
+  scene.add(decorMesh, glowMesh);
 
   // Ciel et montagnes suivent la caméra (donc la voiture) : toujours à l'horizon.
   const backdrop = new Group();
@@ -862,6 +870,11 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
 
   return {
     scene,
+    setLite(on) {
+      scene.traverse((o) => {
+        if (o.userData.heavy) o.visible = !on;
+      });
+    },
     followGround(x, z) {
       backdrop.position.set(x, floorY, z);
       floor.position.x = Math.round(x / (2 * tile)) * 2 * tile;
