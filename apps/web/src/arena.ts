@@ -41,6 +41,8 @@ export interface Arena {
   scene: Scene;
   /** Garde le sol « infini » : à appeler chaque image avec la position de la voiture. */
   followGround(x: number, z: number): void;
+  /** Décor allégé (qualité basse) : sans effet ici, il n'y a pas de décor. */
+  setLite(on: boolean): void;
 }
 
 /** Scénario `plat` : un grand sol à damier, quelques cônes de repère, aucune collision. */
@@ -90,6 +92,7 @@ export function buildFlatArena(): Arena {
 
   return {
     scene,
+    setLite() {},
     followGround(x, z) {
       // Par pas de deux cases, pour que le damier ne « saute » pas.
       ground.position.x = Math.round(x / (2 * TILE)) * 2 * TILE;

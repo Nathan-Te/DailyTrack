@@ -20,6 +20,7 @@ interface Entry {
   spec: string;
   authorMs: number;
   palette: string;
+  theme: string;
 }
 interface Golden {
   simVersion: number;
@@ -29,7 +30,7 @@ interface Golden {
 
 const compute = (date: string): Entry => {
   const c = dailyCircuit(parseDay(date)!);
-  return { date, number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette };
+  return { date, number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette, theme: c.theme };
 };
 
 if (process.env.UPDATE_GOLDEN) {
@@ -46,7 +47,7 @@ describe("circuits du jour de référence", () => {
   });
 
   for (const entry of golden.circuits) {
-    it(`${entry.date} : même circuit, même temps d'auteur, même palette`, () => {
+    it(`${entry.date} : même circuit, même temps d'auteur, même thème et palette`, () => {
       expect(compute(entry.date)).toEqual(entry);
     });
   }

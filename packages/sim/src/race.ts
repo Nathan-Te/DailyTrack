@@ -36,6 +36,20 @@ export function createRace(track: Track, params: Readonly<CarParams> = DEFAULT_C
   };
 }
 
+/** Le même monde sans plaques, turbo ni moteur coupé (la voiture qui s'arrête après l'arrivée). */
+function withoutEffects(world: World): World {
+  return {
+    voidY: world.voidY,
+    sample(x, z, out) {
+      world.sample(x, z, out);
+      out.boost = false;
+      out.turbo = false;
+      out.cut = false;
+    },
+    collide: (x, z, y, radius, out) => world.collide(x, z, y, radius, out),
+  };
+}
+
 const FINISH_BRAKE: CarInput = { steer: 0, throttle: 0, brake: AXIS_MAX, respawn: 0 };
 
 /**
@@ -49,6 +63,7 @@ function respawn(race: RaceState): void {
   if (saved) {
     copyCar(saved, car);
     car.boost = 0;
+    car.turbo = 0;
     car.drift = 0;
   } else {
     const s = race.track.spawn;
@@ -95,7 +110,13 @@ export function stepRace(race: RaceState, input: CarInput): void {
     const t = crossingTime(race, gate, px, pz);
     if (t >= 0) {
       race.nextGate += 1;
-      if (gate.kind === "finish") race.finishMs = t;
+      car.cut = 0; // le point de contrôle rend le moteur (et la reprise repart donc moteur rendu)
+      if (gate.kind === "finish") {
+        race.finishMs = t;
+        race.world = withoutEffects(race.world); // après la ligne, une plaque ne doit plus relancer la voiture à l'arrêt
+        car.boost = 0;
+        car.turbo = 0;
+      }
       else {
         race.splits.push(t);
         const snapshot = createCar();

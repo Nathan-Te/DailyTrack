@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GENERATOR_VERSION as G, LAUNCH_DAY, SIM_VERSION, formatDay } from "@cdj/sim";
-import { archiveDays, archiveHref } from "../src/archive";
+import { RANDOM_SPAN, archiveDays, archiveHref, nextTheme, randomSeedHref, themeHref } from "../src/archive";
 import { listDayBests, type DayBest } from "../src/records";
 
 describe("archiveDays", () => {
@@ -38,6 +38,27 @@ describe("archiveHref", () => {
   it("aujourd'hui : pas de seed, et l'adresse nue s'il ne reste rien", () => {
     expect(archiveHref("?seed=2026-10-01", "2026-10-06", true)).toBe("./");
     expect(archiveHref("?seed=2026-10-01&debug", "2026-10-06", true)).toBe("?debug=");
+  });
+});
+
+describe("circuits d'essai", () => {
+  it("au hasard : une date valide entre le lancement et la borne, réglages conservés", () => {
+    expect(randomSeedHref("?debug", () => 0)).toBe(`?debug=&seed=${formatDay(LAUNCH_DAY)}`);
+    expect(randomSeedHref("?theme=nuit&seed=2026-10-07", () => 0.9999)).toBe(`?theme=nuit&seed=${formatDay(LAUNCH_DAY + RANDOM_SPAN - 1)}`);
+  });
+  it("thème : posé, retiré, adresse nue", () => {
+    expect(themeHref("?seed=2026-10-07", "nuit")).toBe("?seed=2026-10-07&theme=nuit");
+    expect(themeHref("?seed=2026-10-07&theme=nuit", "rallye")).toBe("?seed=2026-10-07&theme=rallye");
+    expect(themeHref("?theme=nuit", null)).toBe("./");
+  });
+  it("thème suivant : fait le tour puis revient au thème du jour", () => {
+    const seen: (string | null)[] = [];
+    let t: string | null = null;
+    for (let i = 0; i < 6; i++) {
+      t = nextTheme(t);
+      seen.push(t);
+    }
+    expect(seen).toEqual(["stade", "rallye", "banquise", "nuit", "campagne", null]);
   });
 });
 

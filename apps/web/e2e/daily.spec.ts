@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 
 // Circuits du jour de référence calculés par Node (packages/sim/test/golden-daily.test.ts).
 const golden = JSON.parse(readFileSync(new URL("../../../packages/sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as {
-  circuits: { date: string; number: number; attempt: number; spec: string; authorMs: number; palette: string }[];
+  circuits: { date: string; number: number; attempt: number; spec: string; authorMs: number; palette: string; theme: string }[];
 };
 
 test("le navigateur régénère les circuits du jour de référence : même texte, même temps d'auteur, même palette", async ({ page }) => {

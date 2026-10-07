@@ -3,7 +3,8 @@ import { COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInp
 import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
-import { CELL, HALF_ROAD, blockPoint, curveCenter, isCurve, turnsLeft, type Block, type Track } from "./track";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, HALF_ROAD, blockPoint, curveCenter, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { SURFACES } from "./world";
 
 // Pilote automatique (lot 7) : il sert à valider un circuit généré (« est-il finissable ? ») et donne le temps de
 // l'auteur. Il conduit comme un bon joueur :
@@ -31,10 +32,14 @@ export interface RacingLine {
   s: number[];
   /** Vitesse visée (m/s). */
   speed: number[];
+  /** Pente du relevé en chaque point (0 hors virage relevé). */
+  bank: number[];
 }
 
 const SPACING = 2;
 const SMOOTH_ITERATIONS = 400;
+/** Écart latéral permis (m) du pilote en virage relevé. */
+const BANKED_ROOM = 1.5;
 /** Marge aux rebords (m) : demi-largeur de la voiture et un peu d'air. */
 const WALL_MARGIN = COLLIDER_RADIUS + 2.6;
 
@@ -46,16 +51,19 @@ interface Centerline {
   nz: number[];
   /** Écart latéral permis de part et d'autre. */
   room: number[];
+  /** Bloc de chaque point. */
+  blk: number[];
 }
 
 function denseCenterline(track: Track): Centerline {
-  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [] };
+  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], blk: [] };
   const pt = { x: 0, z: 0 };
   const push = (p: number, q: number, b: Block, room: number) => {
     blockPoint(b, p, q, pt);
     out.x.push(pt.x);
     out.z.push(pt.z);
     out.room.push(room);
+    out.blk.push(b.index);
   };
   const free = HALF_ROAD - WALL_MARGIN;
   for (const b of track.blocks) {
@@ -69,7 +77,8 @@ function denseCenterline(track: Track): Centerline {
       const n = Math.round((HALF_PI * r) / SPACING);
       for (let i = first; i <= n; i++) {
         const a = (HALF_PI * i) / n;
-        push(cp + side * r * cos(a), r * sin(a), b, free);
+        // Virage relevé : le bord intérieur est en contrebas et la rampe d'entrée y est raide ; on reste près de l'axe.
+        push(cp + side * r * cos(a), r * sin(a), b, b.banked ? BANKED_ROOM : free);
       }
     } else {
       const n = Math.round(CELL / SPACING);
@@ -91,9 +100,20 @@ function denseCenterline(track: Track): Centerline {
 }
 
 /** Tracé de la trajectoire (indépendant des réglages), calculé une fois par circuit. */
-const paths = new WeakMap<Track, { x: number[]; z: number[]; s: number[] }>();
+interface Path {
+  x: number[];
+  z: number[];
+  s: number[];
+  /** Revêtement sous chaque point : adhérence, motricité, roulement. */
+  grip: number[];
+  traction: number[];
+  rolling: number[];
+  /** Pente du relevé en chaque point (0 hors virage relevé). */
+  bank: number[];
+}
+const paths = new WeakMap<Track, Path>();
 
-function racingPath(track: Track): { x: number[]; z: number[]; s: number[] } {
+function racingPath(track: Track): Path {
   const cached = paths.get(track);
   if (cached) return cached;
   const c = denseCenterline(track);
@@ -116,14 +136,30 @@ function racingPath(track: Track): { x: number[]; z: number[]; s: number[] } {
     const dz = z[i]! - z[i - 1]!;
     s.push(s[i - 1]! + Math.sqrt(dx * dx + dz * dz));
   }
-  const path = { x, z, s };
+  const grip: number[] = [];
+  const traction: number[] = [];
+  const rolling: number[] = [];
+  const bank: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const b = track.blocks[c.blk[i]!]!;
+    const m = SURFACES[b.surface];
+    grip.push(m.grip);
+    traction.push(m.traction);
+    rolling.push(m.rolling);
+    bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : 0);
+  }
+  const path = { x, z, s, grip, traction, rolling, bank };
   paths.set(track, path);
   return path;
 }
 
-/** Trajectoire de course du circuit et profil de vitesse pour une adhérence latérale `gripAccel` (m/s²). */
-export function racingLine(track: Track, gripAccel: number, brakeAccel: number, topSpeed: number): RacingLine {
-  const { x, z, s } = racingPath(track);
+/**
+ * Trajectoire de course du circuit et profil de vitesse pour une adhérence latérale `gripAccel` (m/s², sur route) :
+ * chaque point la module par son revêtement et par son relevé (`gravity` × pente), et le freinage par la motricité
+ * du revêtement (plus le roulement, qui aide à ralentir).
+ */
+export function racingLine(track: Track, gripAccel: number, brakeAccel: number, topSpeed: number, gravity = 24.6): RacingLine {
+  const { x, z, s, grip, traction, rolling, bank } = racingPath(track);
   const n = x.length;
   // Vitesse de passage : courbure sur une corde de ±2 points (≈ 8 m), v = √(adhérence / courbure).
   const speed = new Array<number>(n).fill(topSpeed);
@@ -138,15 +174,15 @@ export function racingLine(track: Track, gripAccel: number, brakeAccel: number, 
     const cross = ax * bz - az * bx;
     const den = Math.sqrt((ax * ax + az * az) * (bx * bx + bz * bz) * (cx * cx + cz * cz));
     const k = den > 0 ? (2 * (cross < 0 ? -cross : cross)) / den : 0;
-    if (k > 1e-6) speed[i] = Math.min(topSpeed, Math.sqrt(gripAccel / k));
+    if (k > 1e-6) speed[i] = Math.min(topSpeed, Math.sqrt((gripAccel * grip[i]! + gravity * bank[i]!) / k));
   }
   // Points de freinage : en remontant, on doit pouvoir freiner à temps pour la vitesse du point suivant.
   for (let i = n - 2; i >= 0; i--) {
     const ds = s[i + 1]! - s[i]!;
-    const reach = Math.sqrt(speed[i + 1]! * speed[i + 1]! + 2 * brakeAccel * ds);
+    const reach = Math.sqrt(speed[i + 1]! * speed[i + 1]! + 2 * (brakeAccel * traction[i]! + rolling[i]!) * ds);
     if (reach < speed[i]!) speed[i] = reach;
   }
-  return { x, z, s, speed };
+  return { x, z, s, speed, bank };
 }
 
 /** Pilote : renvoie, à chaque pas, la commande à appliquer. */
@@ -155,7 +191,7 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
   const grip = opts.grip ?? 0.9;
   const look = opts.look ?? 0.3;
   const lateral = ((params.gripFront + params.gripRear) / 2) * 0.85 * grip;
-  const line = racingLine(track, lateral, params.brake * 0.8, params.boostMaxSpeed);
+  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity);
   const n = line.x.length;
   let idx = 0;
 
@@ -191,7 +227,11 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
     if (car.grounded) {
       if (fwd <= 0) steer = left > 0 ? -1 : 1;
       else {
-        const curvature = (2 * left) / (fwd * fwd + left * left);
+        let curvature = (2 * left) / (fwd * fwd + left * left);
+        // Virage relevé : la pesanteur fait déjà une part du travail (g × pente), le volant n'a pas à la refaire.
+        const relief = (params.gravity * line.bank[idx]!) / Math.max(speed * speed, 100);
+        const mag = curvature < 0 ? -curvature : curvature;
+        curvature = (curvature < 0 ? -1 : 1) * Math.max(0, mag - relief);
         steer = clamp((-1.25 * curvature * 2.6) / steerLimit(u, params), -1, 1);
       }
     }

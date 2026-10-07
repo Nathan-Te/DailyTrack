@@ -5,6 +5,8 @@ import {
   GENERATOR_VERSION,
   LAUNCH_DAY,
   PALETTES,
+  THEMES,
+  THEME_NAMES,
   bestPilotRun,
   composeSpec,
   dailyCircuit,
@@ -16,6 +18,7 @@ import {
   medalsFor,
   paletteForDay,
   parseDay,
+  themeForDay,
   replayRace,
   type DailyCircuit,
 } from "../src/index";
@@ -70,7 +73,7 @@ describe("circuit du jour : construction", () => {
       expect(checkpoints).toBeGreaterThanOrEqual(2);
       expect(checkpoints).toBeLessThanOrEqual(4);
       expect(blocks.length).toBeGreaterThanOrEqual(25);
-      expect(blocks.length).toBeLessThanOrEqual(60);
+      expect(blocks.length).toBeLessThanOrEqual(75);
       // Une cellule par bloc (quatre pour un virage large) : pas d'auto-intersection.
       expect(track.cells.size).toBe(blocks.length + 3 * blocks.filter((b) => isWideKind(b.kind)).length);
     }
@@ -83,6 +86,7 @@ describe("circuit du jour : construction", () => {
       for (let i = 0; i < kinds.length; i++) {
         if (curve(kinds[i]) && curve(kinds[i + 1])) expect(curve(kinds[i + 2]), `${day} @${i}`).toBe(false);
         if (kinds[i] === "boost") expect(curve(kinds[i + 1]), `${day} @${i}`).toBe(false);
+        if (kinds[i] === "turbo") expect(curve(kinds[i + 1]), `${day} @${i}`).toBe(false);
       }
     }
   });
@@ -116,7 +120,7 @@ describe("circuit du jour : construction", () => {
 
   it("varie les blocs : pentes, bosses, plaques et tremplins apparaissent sur la période", () => {
     const seen = new Set(DAYS.flatMap((d) => circuit(d).track.blocks.map((b) => b.kind)));
-    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "up", "down", "bump", "jump", "boost"]) expect(seen.has(k as never), k).toBe(true);
+    for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "up", "down", "bump", "jump", "boost", "turbo", "cut"]) expect(seen.has(k as never), k).toBe(true);
   });
 
   it("construit vite : temps de génération mesuré sur 60 jours consécutifs (moyenne < 0,5 s, pire < 1,5 s)", () => {
@@ -193,5 +197,87 @@ describe("palette et identifiant", () => {
     expect(id).toBe(`jour-2026-10-06-g${GENERATOR_VERSION}`);
     expect(id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(formatDay(LAUNCH_DAY)).toBe("2026-10-06");
+  });
+});
+
+describe("thèmes du jour", () => {
+  const all = DAYS.map((d) => circuit(d));
+
+  it("le thème vient de la date : même jour, même thème, et la palette est celle du thème", () => {
+    for (const day of DAYS.slice(0, 20)) {
+      expect(circuit(day).theme).toBe(themeForDay(day).name);
+      expect(circuit(day).palette).toBe(THEMES[circuit(day).theme].palette);
+      expect(paletteForDay(day)).toBe(circuit(day).palette);
+    }
+  });
+
+  it("sur 60 jours consécutifs, chaque thème apparaît ; aucun circuit de secours, tous validés par le pilote dans la fenêtre", () => {
+    const seen = new Set(DAYS.slice(0, 60).map((d) => circuit(d).theme));
+    expect([...seen].sort()).toEqual([...THEME_NAMES].sort());
+    for (const c of all) {
+      expect(c.fallback, c.date).toBe(false);
+      expect(c.authorMs, c.date).toBeGreaterThanOrEqual(AUTHOR_MIN_MS);
+      expect(c.authorMs, c.date).toBeLessThanOrEqual(AUTHOR_MAX_MS);
+    }
+  });
+
+  const blocksOf = (theme: string) => all.filter((c) => c.theme === theme).flatMap((c) => c.track.blocks);
+
+  it("chaque thème a sa signature : virages relevés et turbos (stade), terre (rallye), glace (banquise), moteur coupé (nuit), herbe et terre (campagne)", () => {
+    const stade = blocksOf("stade");
+    expect(stade.some((b) => b.banked)).toBe(true);
+    expect(stade.some((b) => b.kind === "turbo")).toBe(true);
+    expect(stade.every((b) => b.surface === "road")).toBe(true);
+    expect(blocksOf("rallye").some((b) => b.surface === "dirt")).toBe(true);
+    expect(blocksOf("rallye").some((b) => b.kind === "jump" && b.surface === "dirt")).toBe(true); // tremplin sur la terre
+    expect(blocksOf("banquise").some((b) => b.surface === "ice")).toBe(true);
+    expect(blocksOf("nuit").some((b) => b.kind === "cut")).toBe(true);
+    const campagne = blocksOf("campagne");
+    expect(campagne.some((b) => b.surface === "dirt")).toBe(true);
+    expect(campagne.some((b) => b.surface === "grass")).toBe(true);
+    // Pas de glace ni d'herbe là où le thème n'en veut pas.
+    expect(blocksOf("stade").concat(blocksOf("nuit")).every((b) => b.surface === "road")).toBe(true);
+    expect(blocksOf("rallye").every((b) => b.surface === "road" || b.surface === "dirt")).toBe(true);
+  });
+
+  it("un moteur coupé est suivi d'un point de contrôle deux blocs plus loin (on vit sur son élan, pas jusqu'à l'arrivée)", () => {
+    for (const c of all) {
+      const blocks = c.track.blocks;
+      blocks.forEach((b, i) => {
+        if (b.kind !== "cut") return;
+        expect(blocks[i + 1]!.kind, c.date).toBe("straight");
+        expect(blocks[i + 2]!.mark, c.date).toBe("checkpoint");
+      });
+    }
+  });
+
+  it("un super turbo laisse cinq blocs sans virage derrière lui (il pousse 1,5 s jusqu'à 68 m/s)", () => {
+    const curve = (k?: string) => k === "curveL" || k === "curveR" || k === "wideL" || k === "wideR";
+    for (const c of all) {
+      const kinds = c.track.blocks.map((b) => b.kind);
+      kinds.forEach((k, i) => {
+        if (k !== "turbo") return;
+        for (let j = 1; j <= 5; j++) if (kinds[i + j] !== undefined) expect(curve(kinds[i + j]), `${c.date} @${i + j}`).toBe(false);
+      });
+    }
+  });
+
+  it("un thème forcé donne un autre circuit, identifié à part, marqué comme essai, et reproductible", () => {
+    const day = DAYS[3]!;
+    const natural = circuit(day);
+    const other = THEME_NAMES.find((n) => n !== natural.theme)!;
+    const forced = dailyCircuit(day, other);
+    expect(forced.theme).toBe(other);
+    expect(forced.forcedTheme).toBe(true);
+    expect(natural.forcedTheme).toBe(false);
+    expect(forced.track.id).toBe(`${dailyTrackId(day)}-${other}`);
+    expect(forced.track.id).toMatch(/^[a-z0-9_-]{1,32}$/);
+    expect(forced.palette).toBe(THEMES[other].palette);
+    expect(dailyCircuit(day, other).spec).toBe(forced.spec);
+    expect(forced.spec).not.toBe(natural.spec);
+    expect(forced.authorMs).toBeGreaterThanOrEqual(AUTHOR_MIN_MS);
+    expect(forced.authorMs).toBeLessThanOrEqual(AUTHOR_MAX_MS);
+    // Un nom inconnu est ignoré : on retombe sur le circuit du jour.
+    expect(dailyCircuit(day, "inconnu" as never).spec).toBe(natural.spec);
   });
 });
