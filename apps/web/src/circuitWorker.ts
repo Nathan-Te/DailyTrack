@@ -8,6 +8,8 @@ export interface GenRequest {
   seq: number;
   day: number;
   theme: ThemeName | null;
+  /** Variante du planning (lot 14) ; 0 = le circuit d'origine. */
+  variant?: number;
 }
 export interface GenReply {
   seq: number;
@@ -15,16 +17,17 @@ export interface GenReply {
   palette: string;
   theme: ThemeName;
   fallback: boolean;
+  authorMs: number;
   error?: string;
 }
 
 const ctx = self as unknown as { onmessage: ((e: MessageEvent<GenRequest>) => void) | null; postMessage(m: GenReply): void };
 ctx.onmessage = (e) => {
-  const { seq, day, theme } = e.data;
+  const { seq, day, theme, variant } = e.data;
   try {
-    const c = dailyCircuit(day, theme);
-    ctx.postMessage({ seq, spec: c.spec, palette: c.palette, theme: c.theme, fallback: c.fallback });
+    const c = dailyCircuit(day, variant ?? 0, theme);
+    ctx.postMessage({ seq, spec: c.spec, palette: c.palette, theme: c.theme, fallback: c.fallback, authorMs: c.authorMs });
   } catch (err) {
-    ctx.postMessage({ seq, spec: "", palette: "", theme: "stade", fallback: true, error: String(err) });
+    ctx.postMessage({ seq, spec: "", palette: "", theme: "stade", fallback: true, authorMs: 0, error: String(err) });
   }
 };

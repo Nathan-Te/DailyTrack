@@ -1,19 +1,25 @@
 import {
   GENERATOR_VERSION,
+  MAX_VARIANT,
   PREMIER_JOUR,
   ReplayError,
   SIM_VERSION,
   circuitNumber,
   dailyCircuit,
+  dailyTrackId,
   decodeReplay,
   formatDay,
+  isVariant,
   medalFor,
   medalsFor,
   parseDay,
   parseTrack,
   replayRace,
+  themeByName,
+  themeForDay,
   type Medal,
   type PaletteName,
+  type ThemeName,
   type Track,
 } from "@cdj/sim";
 import { MIGRATIONS, SCHEMA, type SqlDb } from "./db";
@@ -45,7 +51,19 @@ export interface ApiOptions {
    * pilotes fictifs par le même chemin de validation que les vrais. Le serveur de production ne le règle jamais.
    */
   demoPlayers?: boolean;
+  /**
+   * Jeton de l'admin (lot 14) : donne accès à `/api/admin/*` (planning des circuits). Variable d'environnement `ADMIN_TOKEN`,
+   * jamais dans le dépôt. Absent ou de moins de `ADMIN_TOKEN_MIN` caractères : l'admin est désactivé (les routes n'existent pas).
+   */
+  adminToken?: string;
 }
+
+/** Longueur minimale du jeton d'admin : un jeton court se devine. */
+export const ADMIN_TOKEN_MIN = 16;
+/** Jours d'avance au plus pour remplacer un circuit. */
+export const PLANNING_HORIZON = 60;
+/** Mauvais jetons tolérés par fenêtre de débit et par adresse, avant de bloquer (même avec le bon jeton). */
+export const ADMIN_MAX_FAILURES = 10;
 
 export interface RequestInfo {
   /** Identifie l'appelant pour la limitation de débit (adresse IP) ; fournie par l'hébergeur. */
@@ -55,6 +73,9 @@ export interface RequestInfo {
 interface Circuit {
   day: number;
   trackId: string;
+  /** Variante du planning (0 = d'origine) et thème imposé (`null` = celui de la date). */
+  variant: number;
+  theme: ThemeName | null;
   spec: string;
   authorMs: number;
   attempt: number;
@@ -96,19 +117,34 @@ export function createApi(options: ApiOptions) {
 
   const today = () => Math.floor(now() / DAY_MS);
 
-  // --- Circuit du jour (cache : le générateur est coûteux, le résultat est figé) ----------------------------
+  // --- Planning et circuit du jour (cache : le générateur est coûteux, le résultat est figé) -----------------
+  /** Variante et thème imposé du planning pour un jour (`{ 0, null }` : le circuit d'origine). */
+  async function planOf(day: number): Promise<{ variant: number; theme: ThemeName | null }> {
+    const row = await db.first<{ variant: number; theme: string | null }>("SELECT variant, theme FROM planning WHERE day = ?", [day]);
+    if (!row) return { variant: 0, theme: null };
+    return { variant: isVariant(row.variant) ? row.variant : 0, theme: themeByName(row.theme)?.name ?? null };
+  }
+
+  /**
+   * Le circuit en vigueur ce jour-là : celui du planning s'il y en a un, sinon l'original. Toujours celui-là qui sert au
+   * rejeu : une ligne ou une mémoire d'une autre variante (ou d'une autre version du générateur) est ignorée.
+   */
   async function getCircuit(day: number): Promise<Circuit> {
+    const { variant, theme } = await planOf(day);
+    const expected = dailyTrackId(day, theme, variant);
     const memo = circuits.get(day);
-    if (memo) return memo;
+    if (memo && memo.trackId === expected) return memo;
     const row = await db.first<{ track_id: string; spec: string; author_ms: number; attempt: number; palette: string }>(
       "SELECT track_id, spec, author_ms, attempt, palette FROM circuits WHERE day = ?",
       [day],
     );
     let circuit: Circuit;
-    if (row) {
+    if (row && row.track_id === expected) {
       circuit = {
         day,
         trackId: row.track_id,
+        variant,
+        theme,
         spec: row.spec,
         authorMs: row.author_ms,
         attempt: row.attempt,
@@ -116,17 +152,29 @@ export function createApi(options: ApiOptions) {
         track: parseTrack(row.track_id, row.spec),
       };
     } else {
-      const c = dailyCircuit(day);
-      if (c.fallback) throw new HttpError(503, "circuit_unavailable", "Circuit indisponible, réessaie plus tard");
-      circuit = { day, trackId: c.track.id, spec: c.spec, authorMs: c.authorMs, attempt: c.attempt, palette: c.palette, track: c.track };
-      await db.run(
-        "INSERT OR IGNORE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [day, circuit.trackId, circuit.spec, circuit.authorMs, circuit.attempt, circuit.palette, now()],
-      );
+      circuit = generate(day, variant, theme);
+      await storeCircuit(circuit);
     }
     circuits.set(day, circuit);
     return circuit;
   }
+
+  function generate(day: number, variant: number, theme: ThemeName | null): Circuit {
+    const c = dailyCircuit(day, variant, theme);
+    if (c.fallback) throw new HttpError(503, "circuit_unavailable", "Circuit indisponible, réessaie plus tard");
+    return { day, trackId: c.track.id, variant, theme, spec: c.spec, authorMs: c.authorMs, attempt: c.attempt, palette: c.palette, track: c.track };
+  }
+
+  const storeCircuit = (c: Circuit) =>
+    db.run("INSERT OR REPLACE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+      c.day,
+      c.trackId,
+      c.spec,
+      c.authorMs,
+      c.attempt,
+      c.palette,
+      now(),
+    ]);
 
   // --- Limitation de débit ----------------------------------------------------------------------------------
   async function hashKey(prefix: string, value: string): Promise<string> {
@@ -297,7 +345,131 @@ export function createApi(options: ApiOptions) {
   async function dayInfo(date: string): Promise<unknown> {
     const day = dayOf(date);
     const c = await getCircuit(day);
-    return { date: formatDay(day), number: circuitNumber(day), trackId: c.trackId, authorMs: c.authorMs, attempt: c.attempt, palette: c.palette, simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION };
+    return {
+      date: formatDay(day),
+      number: circuitNumber(day),
+      trackId: c.trackId,
+      variant: c.variant,
+      theme: c.theme,
+      authorMs: c.authorMs,
+      attempt: c.attempt,
+      palette: c.palette,
+      simVersion: SIM_VERSION,
+      generatorVersion: GENERATOR_VERSION,
+    };
+  }
+
+  /** Public : les jours (jusqu'à aujourd'hui) dont le circuit n'est pas l'original. Les jours à venir ne sont pas révélés. */
+  async function publicPlanning(): Promise<unknown> {
+    const rows = await db.all<{ day: number; variant: number; theme: string | null }>("SELECT day, variant, theme FROM planning WHERE day <= ? ORDER BY day", [today()]);
+    return { today: formatDay(today()), days: rows.map((r) => ({ date: formatDay(r.day), variant: r.variant, theme: themeByName(r.theme)?.name ?? null })) };
+  }
+
+  // --- Admin (jeton) ------------------------------------------------------------------------------------------
+  const adminToken = options.adminToken && options.adminToken.length >= ADMIN_TOKEN_MIN ? options.adminToken : null;
+
+  /** Comparaison à temps constant : on compare les empreintes SHA-256 (de longueur fixe), octet par octet sans s'arrêter. */
+  async function sameToken(given: string, expected: string): Promise<boolean> {
+    const enc = new TextEncoder();
+    const [x, y] = await Promise.all([crypto.subtle.digest("SHA-256", enc.encode(given)), crypto.subtle.digest("SHA-256", enc.encode(expected))]);
+    const a = new Uint8Array(x);
+    const b = new Uint8Array(y);
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
+    return diff === 0;
+  }
+
+  async function requireAdmin(req: Request, info: RequestInfo): Promise<void> {
+    if (!adminToken) throw new HttpError(404, "not_found", "Route inconnue"); // admin désactivé : la route n'existe pas
+    const key = await hashKey("adm", info.clientKey ?? "inconnu");
+    const bucket = Math.floor(now() / limits.windowMs);
+    const failures = (await db.first<{ count: number }>("SELECT count FROM rate WHERE key = ? AND bucket = ?", [key, bucket]))?.count ?? 0;
+    if (failures >= ADMIN_MAX_FAILURES) {
+      const retry = Math.max(1, Math.ceil(((bucket + 1) * limits.windowMs - now()) / 1000));
+      throw new HttpError(429, "rate_limited", "Trop d'essais de jeton, réessaie plus tard", { "Retry-After": String(retry) });
+    }
+    const header = req.headers.get("authorization") ?? "";
+    const given = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+    if (!(await sameToken(given, adminToken))) {
+      await hit(key, ADMIN_MAX_FAILURES); // compte l'échec (et refuse net au-delà de la limite)
+      throw new HttpError(401, "unauthorized", "Jeton d'admin manquant ou incorrect");
+    }
+  }
+
+  /** Vue d'ensemble pour le panneau : planning, quatorze jours passés (joueurs, meilleur temps) et temps du jour. */
+  async function adminOverview(): Promise<unknown> {
+    const t = today();
+    const first = Math.max(PREMIER_JOUR, t - 14); // aujourd'hui et les quatorze jours passés
+    const plan = await db.all<{ day: number; variant: number; theme: string | null; chosen_at: number }>("SELECT day, variant, theme, chosen_at FROM planning ORDER BY day");
+    const stats = await db.all<{ day: number; n: number; best: number }>("SELECT day, COUNT(*) AS n, MIN(ms) AS best FROM results WHERE day >= ? AND day <= ? GROUP BY day", [first, t]);
+    const known = await db.all<{ day: number; track_id: string; author_ms: number }>("SELECT day, track_id, author_ms FROM circuits WHERE day >= ? AND day <= ?", [first, t]);
+    const times = await db.all<{ ms: number }>("SELECT ms FROM results WHERE day = ? ORDER BY ms ASC LIMIT 5000", [t]);
+    const planBy = new Map(plan.map((r) => [r.day, r]));
+    const days = [];
+    for (let day = t; day >= first; day--) {
+      const s = stats.find((r) => r.day === day);
+      const c = known.find((r) => r.day === day);
+      const p = planBy.get(day);
+      days.push({
+        date: formatDay(day),
+        number: circuitNumber(day),
+        participants: s?.n ?? 0,
+        bestMs: s?.best ?? null,
+        authorMs: c?.author_ms ?? null,
+        trackId: c?.track_id ?? null,
+        variant: p?.variant ?? 0,
+        theme: themeByName(p?.theme)?.name ?? null,
+      });
+    }
+    return {
+      today: formatDay(t),
+      simVersion: SIM_VERSION,
+      generatorVersion: GENERATOR_VERSION,
+      plan: plan.map((r) => ({ date: formatDay(r.day), variant: r.variant, theme: themeByName(r.theme)?.name ?? null, chosenAt: r.chosen_at })),
+      days,
+      times: times.map((r) => r.ms),
+    };
+  }
+
+  /** Le jour doit être strictement dans le futur (UTC) : un jour commencé est figé, ses joueurs ont déjà couru dessus. */
+  function plannableDay(date: string): number {
+    const day = parseDay(date);
+    if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
+    if (day <= today()) throw new HttpError(409, "day_started", "Ce jour a déjà commencé : son circuit est figé");
+    if (day > today() + PLANNING_HORIZON) throw new HttpError(400, "too_far", `Pas plus de ${PLANNING_HORIZON} jours à l'avance`);
+    return day;
+  }
+
+  async function replaceCircuit(req: Request, date: string): Promise<unknown> {
+    const day = plannableDay(date);
+    const body = await readJson(req);
+    if (!isVariant(body.variant)) throw new HttpError(400, "invalid_variant", `Variante attendue : un entier de 0 à ${MAX_VARIANT}`);
+    let theme: ThemeName | null = null;
+    if (body.theme !== undefined && body.theme !== null) {
+      const t = typeof body.theme === "string" ? themeByName(body.theme) : null;
+      if (!t) throw new HttpError(400, "invalid_theme", "Thème inconnu");
+      theme = t.name;
+    }
+    if (theme === themeForDay(day).name) theme = null; // le thème de la date n'est pas « imposé »
+    if (body.variant === 0 && theme === null) return revertCircuit(date);
+    // Le circuit doit exister : le pilote doit le finir dans la fenêtre. Sinon la course du jour n'aurait pas de circuit.
+    const circuit = generate(day, body.variant, theme);
+    const chosenAt = now();
+    await db.run(
+      "INSERT INTO planning (day, variant, theme, chosen_at) VALUES (?, ?, ?, ?) ON CONFLICT (day) DO UPDATE SET variant = excluded.variant, theme = excluded.theme, chosen_at = excluded.chosen_at",
+      [day, body.variant, theme, chosenAt],
+    );
+    await storeCircuit(circuit);
+    circuits.delete(day);
+    return { date: formatDay(day), variant: body.variant, theme, chosenAt, trackId: circuit.trackId, authorMs: circuit.authorMs };
+  }
+
+  async function revertCircuit(date: string): Promise<unknown> {
+    const day = plannableDay(date);
+    await db.run("DELETE FROM planning WHERE day = ?", [day]);
+    await db.run("DELETE FROM circuits WHERE day = ?", [day]); // régénéré à la demande, avec le circuit d'origine
+    circuits.delete(day);
+    return { date: formatDay(day), variant: 0, theme: null, chosenAt: null };
   }
 
   async function leaderboard(date: string, url: URL): Promise<unknown> {
@@ -346,8 +518,8 @@ export function createApi(options: ApiOptions) {
   // --- Entrée -----------------------------------------------------------------------------------------------
   const cors = {
     "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
     "Access-Control-Max-Age": "86400",
   };
   const reply = (status: number, body: unknown, extra: Record<string, string> = {}) =>
@@ -373,6 +545,25 @@ export function createApi(options: ApiOptions) {
       if (path === "/api/player") {
         if (req.method !== "PUT") throw new HttpError(405, "method_not_allowed", "PUT attendu");
         return reply(200, await renamePlayer(req, info));
+      }
+      if (path === "/api/planning") {
+        if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+        return reply(200, await publicPlanning());
+      }
+      if (path.startsWith("/api/admin/")) {
+        await requireAdmin(req, info);
+        if (path === "/api/admin/overview") {
+          if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+          return reply(200, await adminOverview());
+        }
+        const pm = /^\/api\/admin\/planning\/([^/]+)$/.exec(path);
+        if (pm) {
+          const date = decodeURIComponent(pm[1]!);
+          if (req.method === "PUT") return reply(200, await replaceCircuit(req, date));
+          if (req.method === "DELETE") return reply(200, await revertCircuit(date));
+          throw new HttpError(405, "method_not_allowed", "PUT ou DELETE attendu");
+        }
+        throw new HttpError(404, "not_found", "Route inconnue");
       }
       const m = /^\/api\/day\/([^/]+)(?:\/(leaderboard|ghost))?$/.exec(path);
       if (m) {

@@ -9,8 +9,8 @@ import { THUMB_H, THUMB_W, releaseThumbnailRenderer, renderThumbnail, type Thumb
 export const THUMB_VERSION = 1;
 
 /** Clé de cache : l'id du circuit (version du générateur, thème forcé, et plus tard variante) + la taille + les versions. */
-export function thumbKey(day: number, theme: ThemeName | null, scale: number): string {
-  return `${dailyTrackId(day, theme ?? undefined)}|s${SIM_VERSION}|t${THUMB_VERSION}|x${scale}`;
+export function thumbKey(day: number, theme: ThemeName | null, scale: number, variant = 0): string {
+  return `${dailyTrackId(day, theme, variant)}|s${SIM_VERSION}|t${THUMB_VERSION}|x${scale}`;
 }
 
 /** Densité de pixels des miniatures : 2 sur écran haute densité (au plus). */
@@ -81,6 +81,8 @@ export interface ThumbJob {
   day: number;
   /** Thème forcé (jamais pour les archives : un jour a son thème). */
   theme?: ThemeName | null;
+  /** Variante du planning (lot 14) ; 0 ou absente : le circuit d'origine. */
+  variant?: number;
   /** Circuit déjà construit (le jeu a le sien : inutile de le générer une seconde fois). */
   circuit?: ThumbnailCircuit;
 }
@@ -165,7 +167,7 @@ export class ThumbnailService {
   }
 
   keyOf(job: ThumbJob): string {
-    return thumbKey(job.day, job.theme ?? null, this.scale);
+    return thumbKey(job.day, job.theme ?? null, this.scale, job.variant ?? 0);
   }
 
   /** Adresse de l'image si elle est déjà en mémoire (aucune attente) : pour qu'une liste redessinée ne clignote pas. */
@@ -274,7 +276,7 @@ export class ThumbnailService {
     const { now } = this.deps;
     try {
       const t0 = now();
-      const circuit = entry.job.circuit ?? (await this.deps.make?.(entry.job.day, entry.job.theme ?? null)) ?? null;
+      const circuit = entry.job.circuit ?? (await this.deps.make?.(entry.job.day, entry.job.theme ?? null, entry.job.variant ?? 0)) ?? null;
       if (!circuit) return null;
       const t1 = now();
       if (!(await this.gate(entry))) return null; // le fil de travail a pu être long : une course a peut-être commencé

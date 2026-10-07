@@ -40,7 +40,7 @@ export default defineConfig({
       command: "node ../api/dist/server.mjs",
       url: "http://127.0.0.1:8787/api/health",
       reuseExistingServer: false,
-      env: { PORT: "8787", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1" },
+      env: { PORT: "8787", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", ADMIN_TOKEN: "e2e-admin-token-0123456789" },
     },
   ],
 });

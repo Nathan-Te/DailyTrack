@@ -9,6 +9,8 @@ export interface AdminState {
   date: string;
   /** Thème forcé ("" : celui du jour). Seulement pour le scénario `jour`. */
   theme: string;
+  /** Variante du planning à essayer ("" : celle en vigueur ; `?variant=N`, jamais classée). Seulement pour le scénario `jour`. */
+  variant: string;
   /** Panneau de réglages de la voiture (`debug` + `tune`). */
   tune: boolean;
   /** Outils de test (`debug`). */
@@ -35,6 +37,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   scenario: "jour",
   date: "",
   theme: "",
+  variant: "",
   tune: false,
   debug: false,
   demo: false,
@@ -56,6 +59,7 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.scenario !== "jour") p.set("scenario", s.scenario);
   if (s.scenario === "jour") {
     if (s.date) p.set("seed", s.date);
+    if (s.variant !== "") p.set("variant", s.variant);
     if (s.theme) p.set("theme", s.theme);
   }
   // `tune` et `timescale` ne marchent qu'avec `debug` : on le sous-entend.
@@ -96,6 +100,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
     if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
+    if (typeof o.variant === "string" && /^\d{0,2}$/.test(o.variant)) s.variant = o.variant;
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
   } catch {
@@ -104,9 +109,9 @@ export function parseAdmin(raw: string | null): AdminState {
   return s;
 }
 
-/** Clés de stockage du jeu (`cdj:…`) : records, réglages, caméra, son. */
+/** Clés de stockage du jeu (`cdj:…`) : records, réglages, caméra, son, planning de démonstration. Le jeton d'admin et les choix de l'admin (`cdj:admin…`) restent. */
 export function gameKeys(keys: string[]): string[] {
-  return keys.filter((k) => k.startsWith("cdj:") && k !== "cdj:admin").sort();
+  return keys.filter((k) => k.startsWith("cdj:") && !k.startsWith("cdj:admin")).sort();
 }
 
 export const PRESETS: { label: string; hint: string; state: Partial<AdminState> }[] = [

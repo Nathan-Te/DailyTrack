@@ -342,18 +342,18 @@ describe("thèmes du jour", () => {
     const day = DAYS[3]!;
     const natural = circuit(day);
     const other = THEME_NAMES.find((n) => n !== natural.theme)!;
-    const forced = dailyCircuit(day, other);
+    const forced = dailyCircuit(day, 0, other);
     expect(forced.theme).toBe(other);
     expect(forced.forcedTheme).toBe(true);
     expect(natural.forcedTheme).toBe(false);
     expect(forced.track.id).toBe(`${dailyTrackId(day)}-${other}`);
     expect(forced.track.id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(forced.palette).toBe(THEMES[other].palette);
-    expect(dailyCircuit(day, other).spec).toBe(forced.spec);
+    expect(dailyCircuit(day, 0, other).spec).toBe(forced.spec);
     expect(forced.spec).not.toBe(natural.spec);
     expect(forced.authorMs).toBeGreaterThanOrEqual(AUTHOR_MIN_MS);
     expect(forced.authorMs).toBeLessThanOrEqual(AUTHOR_MAX_MS);
     // Un nom inconnu est ignoré : on retombe sur le circuit du jour.
-    expect(dailyCircuit(day, "inconnu" as never).spec).toBe(natural.spec);
+    expect(dailyCircuit(day, 0, "inconnu" as never).spec).toBe(natural.spec);
   });
 });

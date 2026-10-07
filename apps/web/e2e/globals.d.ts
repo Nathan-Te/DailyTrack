@@ -7,6 +7,9 @@ interface CdjDebug {
   /** Dernière commande appliquée à la simulation. */
   input: { steer: number; throttle: number; brake: number; respawn: number };
   paused: boolean;
+  /** Identifiant du circuit joué et planning en vigueur (lot 14) : variante, thème imposé, planning connu, essai, classement permis. */
+  trackId: string | null;
+  plan: { variant: number; theme: string | null; known: boolean; trial: boolean; ranked: boolean };
   /** Interface tactile active. */
   touch: boolean;
   autoplay(code: string): void;

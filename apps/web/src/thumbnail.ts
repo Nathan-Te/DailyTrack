@@ -14,6 +14,8 @@ export interface ThumbnailCircuit {
   track: Track;
   palette: PaletteName;
   theme: ThemeName;
+  /** Temps de l'auteur (ms), quand la génération le donne : le panneau d'admin l'affiche. */
+  authorMs?: number;
 }
 
 export interface ThumbnailOptions {

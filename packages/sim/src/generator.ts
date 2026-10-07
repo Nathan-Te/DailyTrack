@@ -53,9 +53,19 @@ export function medalFor(ms: number, medals: Medals): Medal | null {
   return null;
 }
 
-/** Identifiant du circuit d'un jour ; avec un thème forcé (essais), le nom du thème s'y ajoute : un autre circuit. */
-export function dailyTrackId(day: number, forcedTheme?: ThemeName): string {
-  return `jour-${formatDay(day)}-g${GENERATOR_VERSION}${forcedTheme ? `-${forcedTheme}` : ""}`;
+/** Plus grand numéro de variante accepté (lot 14) : au-delà, la graine déborderait sur celle des tentatives. */
+export const MAX_VARIANT = 99;
+
+/** Vrai pour un numéro de variante valide : entier de 0 à `MAX_VARIANT`. */
+export const isVariant = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= MAX_VARIANT;
+
+/**
+ * Identifiant du circuit d'un jour. La variante 0 (le circuit d'origine) n'a pas de suffixe : les circuits d'avant le lot 14
+ * gardent leur identifiant (rediffusions et références inchangées) ; une variante n ≥ 1 ajoute `-v<n>`. Un thème imposé
+ * (essais, ou remplacement du planning) ajoute son nom : un autre circuit.
+ */
+export function dailyTrackId(day: number, theme?: ThemeName | null, variant = 0): string {
+  return `jour-${formatDay(day)}-g${GENERATOR_VERSION}${variant > 0 ? `-v${variant}` : ""}${theme ? `-${theme}` : ""}`;
 }
 
 // --- Construction -----------------------------------------------------------------------------
@@ -183,8 +193,10 @@ function signatureParts(sig: Signature, L: string, R: string, width: WidthLetter
 }
 
 /** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée. */
-export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day)): string | null {
-  const rng = new Rng(mixSeed(day, attempt + 1));
+export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): string | null {
+  // Variante 0 : la graine d'avant le lot 14 (circuits inchangés). Variante n : une autre graine, décalée de n × 1000
+  // tentatives (au plus `MAX_ATTEMPTS` = 40 sont tirées : jamais de recoupement entre variantes).
+  const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
   const turns = TURNS_MIN + rng.int(TURNS_SPAN);
   // Créneaux : calme, virage, calme, virage, …, calme final. Les passages marquants prennent des créneaux distincts.
   const pickHighlights = rng.shuffle<Highlight>(["jump", "chicane", "hairpin"]).slice(0, 1 + rng.int(2));
@@ -360,6 +372,8 @@ export interface DailyCircuit {
   number: number;
   /** Tentative retenue (0 = la première graine a convenu ; plus = graines voisines). */
   attempt: number;
+  /** Variante du planning (0 = le circuit d'origine ; n ≥ 1 : un remplacement choisi à l'avance, lot 14). */
+  variant: number;
   spec: string;
   track: Track;
   authorMs: number;
@@ -367,19 +381,23 @@ export interface DailyCircuit {
   palette: PaletteName;
   /** Thème du circuit (celui du jour, ou le thème forcé pour les essais). */
   theme: ThemeName;
-  /** Vrai si le thème a été forcé (`?theme=`) : un circuit d'essai, jamais envoyé au classement. */
+  /** Vrai si le thème a été imposé (essai `?theme=`, ou remplacement du planning) : l'id porte le nom du thème. */
   forcedTheme: boolean;
   /** Vrai si aucune tentative n'a abouti et que le circuit d'essai a servi de secours (ne doit jamais arriver). */
   fallback: boolean;
 }
 
-/** Le circuit du jour ; `forced` impose un thème (essais : id et circuit propres, jamais classés). */
-export function dailyCircuit(day: number, forced?: ThemeName | null): DailyCircuit {
+/**
+ * Le circuit du jour. `variant` : 0 = le circuit d'origine (identique à celui d'avant le lot 14), n ≥ 1 = une variante du
+ * planning ; `forced` impose un thème (id et circuit propres). Un thème imposé par un essai (`?theme=`) n'est jamais classé ;
+ * celui du planning l'est (c'est le jeu qui sait d'où il vient).
+ */
+export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null): DailyCircuit {
   const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day);
   const forcedTheme = !!forced && !!themeByName(forced);
-  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined);
+  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const spec = composeSpec(day, attempt, theme);
+    const spec = composeSpec(day, attempt, theme, variant);
     if (!spec) continue;
     const track = parseTrack(id, spec);
     const pilot = bestPilotRun(track);
@@ -389,6 +407,7 @@ export function dailyCircuit(day: number, forced?: ThemeName | null): DailyCircu
       date: formatDay(day),
       number: circuitNumber(day),
       attempt,
+      variant,
       spec,
       track,
       authorMs: pilot.finishMs,
@@ -408,6 +427,7 @@ export function dailyCircuit(day: number, forced?: ThemeName | null): DailyCircu
     date: formatDay(day),
     number: circuitNumber(day),
     attempt: MAX_ATTEMPTS,
+    variant,
     spec: "",
     track: t,
     authorMs,
