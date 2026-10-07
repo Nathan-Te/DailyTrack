@@ -1,5 +1,6 @@
 import { PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN } from "./archive";
+import { mountPlanning } from "./adminPlanning";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin, type AdminState, type Scenario } from "./adminLogic";
 
 // Page /admin : menu des outils de test. Choix mémorisés (`cdj:admin`), adresse du jeu recalculée à chaque changement.
@@ -14,6 +15,10 @@ let state: AdminState = (() => {
     return { ...DEFAULT_ADMIN };
   }
 })();
+
+// `/admin/?api=demo` (ou une adresse d'API) : l'adresse de l'URL prime et se retrouve dans les liens du constructeur.
+const urlApi = new URLSearchParams(location.search).get("api");
+if (urlApi) state = { ...state, api: urlApi.slice(0, 300) };
 
 const SCENARIOS: [Scenario, string][] = [
   ["jour", "Circuit du jour"],
@@ -58,6 +63,7 @@ theme.append(new Option("Thème du jour", ""));
 for (const name of THEME_NAMES) theme.append(new Option(THEMES[name].label, name));
 theme.addEventListener("change", () => set({ theme: theme.value }));
 
+$<HTMLInputElement>("variant").addEventListener("input", (e) => set({ variant: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
 $<HTMLInputElement>("date").addEventListener("change", (e) => set({ date: (e.target as HTMLInputElement).value }));
 $("today").addEventListener("click", () => set({ date: "" }));
 $("random").addEventListener("click", () => set({ date: formatDay(PREMIER_JOUR + Math.floor(Math.random() * RANDOM_SPAN)) }));
@@ -123,7 +129,9 @@ function render() {
   const isDay = state.scenario === "jour";
   $("dayrow").hidden = !isDay;
   $("themerow").hidden = !isDay;
+  $("variantrow").hidden = !isDay;
   $<HTMLInputElement>("date").value = state.date;
+  $<HTMLInputElement>("variant").value = state.variant;
   theme.value = state.theme;
   for (const id of checks) $<HTMLInputElement>(id).checked = state[id];
   $<HTMLSelectElement>("quality").value = state.quality;
@@ -140,3 +148,4 @@ function render() {
 
 render();
 renderKeys();
+mountPlanning(() => state.api);

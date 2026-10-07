@@ -72,7 +72,7 @@ test("?seed=…&theme=… : chaque thème se charge et s'annonce dans l'en-tête
     await racing(page, `/?debug&seed=2026-10-07&theme=${name}`);
     await expect(page.locator("#meta")).toContainText(THEMES[name].label);
     await expect(page.locator("#meta")).toContainText("thème forcé");
-    const c = dailyCircuit(parseDay("2026-10-07")!, name);
+    const c = dailyCircuit(parseDay("2026-10-07")!, 0, name);
     expect(await page.evaluate(() => (window.__cdj.race as unknown as { track: { id: string } }).track.id)).toBe(c.track.id);
   }
   expect(errors).toEqual([]);

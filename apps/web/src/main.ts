@@ -23,6 +23,8 @@ import {
   themeByName,
   createTestTrack,
   dailyCircuit,
+  dailyTrackId,
+  formatDay,
   isDefaultParams,
   parseTrack,
   ReplayPlayer,
@@ -30,6 +32,7 @@ import {
   encodeReplay,
   medalFor,
   parseDay,
+  isVariant,
   raceElapsedMs,
   stepCar,
   wrapAngle,
@@ -44,6 +47,7 @@ import { archiveDays, disposeArchive, nextTheme, randomSeedHref, renderArchive, 
 import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
 import { DEMO_TODAY } from "./demo";
+import { NO_PLAN, fetchDayPlan, fetchPlanning, loadDemoPlan, type PlanEntry } from "./planning";
 import { buildFlatArena } from "./arena";
 import { createThumbnailService, type ThumbJob } from "./thumbnails";
 import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
@@ -93,7 +97,31 @@ let daily: DailyCircuit | null = null;
 // `?theme=<nom>` force le thème du jour (essais) : autre circuit, jamais classé.
 const themeParam = params.get("theme");
 const forcedTheme = themeByName(themeParam);
-if (scenario === "jour") daily = dailyCircuit(seedDay ?? todayUtc, forcedTheme?.name);
+// `?variant=N` (avec `?seed=`) : une variante du planning pour l'essayer (l'admin l'ouvre ainsi) ; comme un thème forcé, jamais classée.
+const variantParam = params.get("variant") === null ? null : Number(params.get("variant"));
+const trialVariant = variantParam !== null && isVariant(variantParam) ? variantParam : null;
+const trial = !!forcedTheme || trialVariant !== null; // circuit d'essai : choisi par l'adresse, jamais classé
+// Planning (lot 14) : le circuit en vigueur ce jour-là peut avoir été remplacé par l'admin. On le demande à l'API (délai court) ;
+// sans API, ou si elle ne répond pas, c'est le circuit d'origine, course jouable mais non classée.
+const planDay = seedDay ?? todayUtc;
+let plan: PlanEntry = NO_PLAN;
+let planKnown = false;
+if (scenario === "jour" && !trial) {
+  const base = apiBase();
+  if (base === DEMO_BASE) {
+    plan = loadDemoPlan().get(formatDay(planDay)) ?? NO_PLAN; // mode démo : remplacements gardés dans ce navigateur
+    planKnown = true;
+  } else if (base) {
+    const r = await fetchDayPlan(base, formatDay(planDay));
+    if (r.ok && r.data.trackId === dailyTrackId(planDay, r.data.theme, r.data.variant)) {
+      plan = { variant: r.data.variant, theme: r.data.theme };
+      planKnown = true;
+    }
+  }
+}
+if (scenario === "jour") {
+  daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
+}
 const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
@@ -146,9 +174,10 @@ let demoReplay: ReturnType<typeof bestPilotRun> = null;
 let demoTimer = 0;
 
 // Classement : seulement pour le circuit du jour, et si une adresse d'API est configurée (`?api=` ou VITE_API_URL).
-const online = new Online(track ? track.id : null, daily && !daily.forcedTheme ? daily.date : null);
+// Sans le planning de l'API (hors ligne, serveur muet, version différente) on ne sait pas quel circuit le serveur rejouera : pas de classement.
+const online = new Online(track ? track.id : null, daily && !trial && planKnown ? daily.date : null);
 // On ne peut classer que le circuit d'aujourd'hui (un jour passé est figé : le serveur refuse).
-const submitAllowed = !!daily && daily.day === todayUtc && !daily.forcedTheme && !online.demo;
+const submitAllowed = !!daily && daily.day === todayUtc && !trial && planKnown && !online.demo;
 // Outils de test (`?debug`) : accélérer le temps et jouer une rediffusion à la place du clavier.
 const timeScale = params.has("debug") ? Math.max(1, Number(params.get("timescale")) || 1) : 1;
 let autoplay: ReplayPlayer | null = null;
@@ -183,7 +212,7 @@ if (daily) {
   const long = document.createElement("span");
   long.className = "long";
   long.textContent = "Circuit du Jour ";
-  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${daily.forcedTheme ? " (thème forcé : essai, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
+  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
   $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : "Circuit d'essai";
@@ -283,16 +312,40 @@ const thumbService = createThumbnailService(() => phase !== "racing" || isFrozen
   webgl: thumbsParam !== "2d",
   view: thumbsParam === "top" ? "top" : "tilted",
 });
-const dayJob = (d: { day: number }): ThumbJob => ({ day: d.day });
+// Les jours remplacés par l'admin ont une autre miniature : le planning public est demandé à l'ouverture des archives
+// (les miniatures attendent son arrivée ; sans lui on ne montrerait que le circuit d'origine).
+let archivePlan: Map<string, PlanEntry> = new Map();
+let archivePlanReady = apiBase() === null;
+let archivePlanLoad: Promise<void> | null = null;
+function loadArchivePlan(): Promise<void> {
+  const base = apiBase();
+  if (!base) return Promise.resolve();
+  return (archivePlanLoad ??= (async () => {
+    archivePlan = base === DEMO_BASE ? loadDemoPlan() : ((await fetchPlanning(base)) ?? new Map());
+    archivePlanReady = true;
+  })());
+}
+const dayJob = (d: { day: number }): ThumbJob => {
+  const p = archivePlan.get(formatDay(d.day));
+  return { day: d.day, ...(p ? { variant: p.variant, theme: p.theme } : {}) };
+};
 const thumbSource: ThumbSource | null =
-  thumbsParam === "off" ? null : { peek: (d) => thumbService.peek(dayJob(d)), request: (d, wanted) => thumbService.request(dayJob(d), wanted) };
+  thumbsParam === "off"
+    ? null
+    : {
+        peek: (d) => (archivePlanReady ? thumbService.peek(dayJob(d)) : null),
+        request: async (d, wanted) => {
+          await loadArchivePlan();
+          return wanted() ? thumbService.request(dayJob(d), wanted) : null;
+        },
+      };
 
 // Ouvrir un jour passé (ou un circuit d'essai) : sa miniature s'affiche pendant le décompte, jamais une fois la course lancée.
 const hudDayCard = $("daycard");
 let dayCardShown = false;
 if (daily && !daily.fallback && daily.day !== todayUtc && thumbsParam !== "off") {
   const circuit = { track: daily.track, palette: daily.palette, theme: daily.theme };
-  void thumbService.request({ day: daily.day, theme: daily.forcedTheme ? daily.theme : null, circuit }, () => phase === "countdown").then((url) => {
+  void thumbService.request({ day: daily.day, theme: daily.forcedTheme ? daily.theme : null, variant: daily.variant, circuit }, () => phase === "countdown").then((url) => {
     if (!url) return;
     const img = new Image();
     img.alt = `Vue aérienne du circuit du ${daily!.date}`;
@@ -304,10 +357,14 @@ if (daily && !daily.fallback && daily.day !== todayUtc && thumbsParam !== "off")
 
 function openArchive() {
   const days = archiveDays(todayUtc, listDayBests());
+  let shownExtras: Parameters<typeof renderArchive>[6] = null;
   const draw = (extras: Parameters<typeof renderArchive>[6]) =>
-    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, extras, thumbSource);
+    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, (shownExtras = extras ?? shownExtras), thumbSource);
   draw(null);
   hudArchive.hidden = false;
+  void loadArchivePlan().then(() => {
+    if (!hudArchive.hidden) draw(null); // les miniatures des jours remplacés sont maintenant connues
+  });
   // Seuils de médailles, nombre de pilotes et ta place figée : chargés après coup (jeu de données de démo ou API).
   void loadArchiveExtras(days).then((extras) => {
     if (extras && !hudArchive.hidden) draw(extras);
@@ -1079,7 +1136,7 @@ if (params.has("debug")) {
       },
       /** Dessine tout de suite la miniature d'un jour (outil de test : cadrage, vues, repli 2D) ; adresse de l'image. */
       thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {
-        const c = dailyCircuit(parseDay(date)!, themeByName(options.theme ?? null)?.name);
+        const c = dailyCircuit(parseDay(date)!, 0, themeByName(options.theme ?? null)?.name);
         const timing = { build: 0, draw: 0 };
         const url = renderThumbnail({ track: c.track, palette: c.palette, theme: c.theme }, { ...options, timing }).toDataURL("image/png");
         return { url, timing };
@@ -1094,6 +1151,13 @@ if (params.has("debug")) {
       },
       get touch() {
         return touchMode;
+      },
+      /** Identifiant du circuit joué, variante du planning en vigueur et classement permis (lot 14). */
+      get trackId() {
+        return track ? track.id : null;
+      },
+      get plan() {
+        return { variant: daily?.variant ?? 0, theme: plan.theme, known: planKnown, trial, ranked: submitAllowed };
       },
       get ghost() {
         return session?.ghost?.race.car ?? null;

@@ -3,13 +3,13 @@ import type { GenReply, GenRequest } from "./circuitWorker";
 import type { ThumbnailCircuit } from "./thumbnail";
 
 /** Génère le circuit d'un jour pour une miniature ; `null` si le générateur n'a pas abouti (circuit de secours : pas de miniature). */
-export type CircuitMaker = (day: number, theme?: ThemeName | null) => Promise<ThumbnailCircuit | null>;
+export type CircuitMaker = (day: number, theme?: ThemeName | null, variant?: number) => Promise<ThumbnailCircuit | null>;
 
 const later = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-function build(day: number, theme: ThemeName | null, r: { spec: string; palette: string; theme: ThemeName; fallback: boolean }): ThumbnailCircuit | null {
+function build(day: number, theme: ThemeName | null, variant: number, r: { spec: string; palette: string; theme: ThemeName; fallback: boolean; authorMs: number }): ThumbnailCircuit | null {
   if (r.fallback || !r.spec) return null;
-  return { track: parseTrack(dailyTrackId(day, theme ?? undefined), r.spec), palette: r.palette as PaletteName, theme: r.theme };
+  return { track: parseTrack(dailyTrackId(day, theme, variant), r.spec), palette: r.palette as PaletteName, theme: r.theme, authorMs: r.authorMs };
 }
 
 /**
@@ -46,23 +46,23 @@ export function createCircuitMaker(onMainThread?: () => void): CircuitMaker {
     return worker;
   };
 
-  return async (day, theme = null) => {
+  return async (day, theme = null, variant = 0) => {
     const w = start();
     if (w) {
       try {
         const reply = await new Promise<GenReply>((resolve, reject) => {
           const id = ++seq;
           waiting.set(id, { resolve, reject });
-          w.postMessage({ seq: id, day, theme } satisfies GenRequest);
+          w.postMessage({ seq: id, day, theme, variant } satisfies GenRequest);
         });
-        if (!reply.error) return build(day, theme, reply);
+        if (!reply.error) return build(day, theme, variant, reply);
       } catch {
         // le fil de travail est tombé : on continue sur le fil principal
       }
     }
     onMainThread?.();
     await later();
-    const c = dailyCircuit(day, theme);
-    return build(day, theme, c);
+    const c = dailyCircuit(day, variant, theme);
+    return build(day, theme, variant, c);
   };
 }

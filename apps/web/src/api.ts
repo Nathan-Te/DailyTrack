@@ -50,14 +50,15 @@ export function apiBase(search = location.search, env = import.meta.env.VITE_API
 
 const TIMEOUT_MS = 8000;
 
-async function call<T>(base: string, method: string, path: string, body?: unknown): Promise<ApiResult<T>> {
+async function call<T>(base: string, method: string, path: string, body?: unknown, timeoutMs = TIMEOUT_MS, headers?: Record<string, string>): Promise<ApiResult<T>> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(base + path, {
       method,
       signal: controller.signal,
-      ...(body !== undefined ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}),
+      ...(body !== undefined || headers ? { headers: { ...(body !== undefined ? { "Content-Type": "application/json" } : {}), ...headers } } : {}),
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     const json = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
     if (res.ok) return { ok: true, data: json as T };
@@ -69,6 +70,9 @@ async function call<T>(base: string, method: string, path: string, body?: unknow
     clearTimeout(timer);
   }
 }
+
+/** Appel brut à l'API (planning, admin) : même gestion des erreurs et du délai que les routes du classement. */
+export const apiCall = call;
 
 /** Ce que le jeu demande à un classement : l'API réelle (`LeaderboardApi`) ou le jeu de données statique du mode démo. */
 export interface LeaderboardSource {

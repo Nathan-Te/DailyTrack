@@ -32,6 +32,14 @@ export const SCHEMA: string[] = [
      palette TEXT NOT NULL,
      created_at INTEGER NOT NULL
    )`,
+  // Planning (lot 14) : les jours dont le circuit a été remplacé à l'avance par l'admin. Pas de ligne = circuit d'origine
+  // (variante 0, thème de la date). `theme` : thème imposé, ou NULL pour celui de la date.
+  `CREATE TABLE IF NOT EXISTS planning (
+     day INTEGER PRIMARY KEY,
+     variant INTEGER NOT NULL,
+     theme TEXT,
+     chosen_at INTEGER NOT NULL
+   )`,
   // Meilleur temps de chaque joueur pour chaque jour, avec la rediffusion qui l'a produit (sert de fantôme).
   `CREATE TABLE IF NOT EXISTS results (
      day INTEGER NOT NULL,
