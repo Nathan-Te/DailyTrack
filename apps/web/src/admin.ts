@@ -65,6 +65,7 @@ const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff"] as con
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));
 $<HTMLSelectElement>("touch").addEventListener("change", (e) => set({ touch: (e.target as HTMLSelectElement).value as AdminState["touch"] }));
+$<HTMLSelectElement>("thumbs").addEventListener("change", (e) => set({ thumbs: (e.target as HTMLSelectElement).value as AdminState["thumbs"] }));
 $<HTMLInputElement>("timescale").addEventListener("input", (e) => set({ timescale: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
 $<HTMLInputElement>("api").addEventListener("input", (e) => set({ api: (e.target as HTMLInputElement).value }));
 
@@ -125,6 +126,7 @@ function render() {
   for (const id of checks) $<HTMLInputElement>(id).checked = state[id];
   $<HTMLSelectElement>("quality").value = state.quality;
   $<HTMLSelectElement>("touch").value = state.touch;
+  $<HTMLSelectElement>("thumbs").value = state.thumbs;
   $<HTMLInputElement>("timescale").value = state.timescale;
   $<HTMLInputElement>("api").value = state.api;
   const href = gameHref(state);

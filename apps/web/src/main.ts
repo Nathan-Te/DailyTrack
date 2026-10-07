@@ -39,11 +39,13 @@ import {
   type CarState,
   type RaceState,
 } from "@cdj/sim";
-import { archiveDays, nextTheme, randomSeedHref, renderArchive, themeHref } from "./archive";
+import { archiveDays, disposeArchive, nextTheme, randomSeedHref, renderArchive, themeHref, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
 import { DEMO_TODAY } from "./demo";
 import { buildFlatArena } from "./arena";
+import { createThumbnailService, type ThumbJob } from "./thumbnails";
+import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { volumeIcon } from "./audioLogic";
@@ -269,10 +271,36 @@ function updateShareLine() {
 
 const shareLink = () => shareUrl(location, daily!.date, daily!.day === todayUtc);
 
+// Miniatures (lot 13) : fabriquées à la demande, une par une, jamais pendant une course (sauf si tout est gelé : pause, ou
+// fenêtre ouverte au toucher). `?thumbs=2d|top` : repli 2D / vue d'aplomb (essais) ; `?thumbs=off` les coupe.
+const thumbsParam = params.get("thumbs");
+const thumbService = createThumbnailService(() => phase !== "racing" || isFrozen(), window.devicePixelRatio, {
+  webgl: thumbsParam !== "2d",
+  view: thumbsParam === "top" ? "top" : "tilted",
+});
+const dayJob = (d: { day: number }): ThumbJob => ({ day: d.day });
+const thumbSource: ThumbSource | null =
+  thumbsParam === "off" ? null : { peek: (d) => thumbService.peek(dayJob(d)), request: (d, wanted) => thumbService.request(dayJob(d), wanted) };
+
+// Ouvrir un jour passé (ou un circuit d'essai) : sa miniature s'affiche pendant le décompte, jamais une fois la course lancée.
+const hudDayCard = $("daycard");
+let dayCardShown = false;
+if (daily && !daily.fallback && daily.day !== todayUtc && thumbsParam !== "off") {
+  const circuit = { track: daily.track, palette: daily.palette, theme: daily.theme };
+  void thumbService.request({ day: daily.day, theme: daily.forcedTheme ? daily.theme : null, circuit }, () => phase === "countdown").then((url) => {
+    if (!url) return;
+    const img = new Image();
+    img.alt = `Vue aérienne du circuit du ${daily!.date}`;
+    img.src = url;
+    hudDayCard.replaceChildren(img);
+    dayCardShown = true;
+  });
+}
+
 function openArchive() {
   const days = archiveDays(todayUtc, listDayBests());
   const draw = (extras: Parameters<typeof renderArchive>[6]) =>
-    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, extras);
+    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, extras, thumbSource);
   draw(null);
   hudArchive.hidden = false;
   // Seuils de médailles, nombre de pilotes et ta place figée : chargés après coup (jeu de données de démo ou API).
@@ -283,6 +311,8 @@ function openArchive() {
 
 function closeArchive() {
   hudArchive.hidden = true;
+  disposeArchive(); // plus de miniature demandée ; ce qui n'a pas commencé est abandonné
+  thumbService.clearQueue();
 }
 hudArchive.addEventListener("click", (e) => {
   if (e.target === hudArchive) closeArchive(); // clic à côté du panneau
@@ -776,10 +806,18 @@ function stepOnce(input: CarInput) {
   }
 }
 
+/**
+ * Gelé : pause, archives ouvertes, ou (au toucher) réglages ouverts. Avec l'accélérateur automatique, la voiture ne doit pas
+ * rouler pendant qu'on lit une fenêtre ; et aux archives (lot 13) on ne dessine des miniatures que si la course ne tourne pas :
+ * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
+ */
+function isFrozen(): boolean {
+  return paused || !hudArchive.hidden || (touchMode && !!touchUi?.settingsOpen());
+}
+
 function frame(now: number) {
-  // Gelé : pause, ou (au toucher) une fenêtre ouverte — avec l'accélérateur automatique, la voiture ne doit pas
-  // rouler pendant qu'on lit les archives ou qu'on règle les commandes. Le temps de course compte des pas : exact.
-  const frozen = paused || (touchMode && (!hudArchive.hidden || !!touchUi?.settingsOpen()));
+  const frozen = isFrozen();
+  if (dayCardShown) hudDayCard.hidden = phase !== "countdown";
   const manualTicksNow = manual ? manualTicks : 0;
   manualTicks = 0;
   const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.5) * timeScale; // borne : pas de spirale après un onglet en pause ; 0,5 s : la course reste à l'heure jusqu'à 2 images/s (téléphone lent, rendu logiciel)
@@ -1033,6 +1071,17 @@ if (params.has("debug")) {
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {
         return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings };
+      },
+      /** Dessine tout de suite la miniature d'un jour (outil de test : cadrage, vues, repli 2D) ; adresse de l'image. */
+      thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {
+        const c = dailyCircuit(parseDay(date)!, themeByName(options.theme ?? null)?.name);
+        const timing = { build: 0, draw: 0 };
+        const url = renderThumbnail({ track: c.track, palette: c.palette, theme: c.theme }, { ...options, timing }).toDataURL("image/png");
+        return { url, timing };
+      },
+      /** Miniatures (lot 13) : compteurs, durées de fabrication, file d'attente. */
+      get thumbs() {
+        return { stats: thumbService.stats, pending: thumbService.pending };
       },
       /** Scène 3D (mesures de performance). */
       get scene() {

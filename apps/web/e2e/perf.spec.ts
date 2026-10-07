@@ -8,11 +8,14 @@ const dist = new URL("../dist/assets/", import.meta.url);
 test("le jeu pèse peu : budget de poids compressé", () => {
   const files = readdirSync(dist).filter((f) => f.endsWith(".js"));
   const gz = Object.fromEntries(files.map((f) => [f, gzipSync(readFileSync(new URL(f, dist))).length]));
-  const total = Object.values(gz).reduce((a, b) => a + b, 0);
+  // Le fil de travail des miniatures (lot 13) ne se charge qu'à l'ouverture des archives : budget à part, hors du chargement initial.
+  const worker = Object.entries(gz).find(([f]) => f.startsWith("circuitWorker-"))?.[1] ?? 0;
+  const total = Object.values(gz).reduce((a, b) => a + b, 0) - worker;
   const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
   expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
-  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(185_000); // ≈ 167 ko aujourd'hui (lot 9 : +8 ko ; budget du lot 9 : ≤ 300 ko ajoutés)
-  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(50_000); // ≈ 37 ko aujourd'hui
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(188_000); // ≈ 183 ko aujourd'hui (lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
+  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(56_000); // ≈ 52 ko aujourd'hui
+  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(14_000); // ≈ 10 ko
 });
 
 test.describe("chargement sur un téléphone simulé", () => {

@@ -21,6 +21,11 @@ describe("adresse du jeu construite par /admin", () => {
       "demo&fx=off&quality=1&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
     );
   });
+  it("miniatures des archives", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, thumbs: "2d" })).toBe("thumbs=2d");
+    expect(parseAdmin('{"thumbs":"top"}').thumbs).toBe("top");
+    expect(parseAdmin('{"thumbs":"x"}').thumbs).toBe("");
+  });
   it("chaque raccourci produit une adresse que le jeu sait lire", () => {
     for (const p of PRESETS) expect(gameHref({ ...DEFAULT_ADMIN, ...p.state })).toMatch(/^\.\.\/(\?[a-z=&0-9]+)?$/);
   });

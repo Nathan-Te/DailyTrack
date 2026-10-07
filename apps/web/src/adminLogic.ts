@@ -19,6 +19,8 @@ export interface AdminState {
   shakeOff: boolean;
   ghostOff: boolean;
   touch: "" | "1" | "0";
+  /** Miniatures des archives : "" normales (3D inclinée), "top" d'aplomb, "2d" repli sans WebGL, "off" aucune. */
+  thumbs: "" | "top" | "2d" | "off";
   /** Accélération du temps (outil `debug`), "" : normal. */
   timescale: string;
   /** Adresse de l'API de classement ("" : aucune). */
@@ -37,6 +39,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   shakeOff: false,
   ghostOff: false,
   touch: "",
+  thumbs: "",
   timescale: "",
   api: "",
 });
@@ -60,6 +63,7 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.shakeOff) p.set("shake", "0");
   if (s.ghostOff) p.set("ghost", "off");
   if (s.touch !== "") p.set("touch", s.touch);
+  if (s.thumbs !== "") p.set("thumbs", s.thumbs);
   if (s.api.trim() !== "") p.set("api", s.api.trim());
   return p.toString().replace(/=(?=&|$)/g, "");
 }
@@ -81,6 +85,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (typeof o.theme === "string" && ["", "stade", "rallye", "banquise", "nuit", "campagne"].includes(o.theme)) s.theme = o.theme;
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
+    if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);

@@ -26,6 +26,13 @@ interface CdjDebug {
     wheelDroop: number[];
     tel: { wall: unknown };
   };
+  /** Miniatures (lot 13) : compteurs et durées de fabrication, images en attente. */
+  thumbs: {
+    stats: { memoryHits: number; storeHits: number; made: number; generateMs: number[]; renderMs: number[]; encodeMs: number[]; bytes: number; ranWhileBlocked: number; mainThreadGenerations: number };
+    pending: number;
+  };
+  /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
+  thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): { url: string; timing: { build: number; draw: number } };
   /** Sons (lot 9) : derniers sons joués, contexte démarré, réglages. */
   audio: { log: string[]; running: boolean; settings: { volume: number; last: number } };
 }
