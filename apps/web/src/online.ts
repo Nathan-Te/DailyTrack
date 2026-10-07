@@ -1,7 +1,8 @@
 import { SIM_VERSION } from "@cdj/sim";
-import { LeaderboardApi, apiBase, type ApiResult, type GhostData, type Leaderboard, type SubmitResult } from "./api";
+import { DEMO_BASE, LeaderboardApi, apiBase, type ApiResult, type GhostData, type Leaderboard, type LeaderboardSource, type SubmitResult } from "./api";
+import { DemoApi } from "./demo";
 import { getName, getPlayerId, getSubmittedBest, normalizeName, setName, setSubmittedBest } from "./identity";
-import type { BestRun } from "./records";
+import { listDayBests, type BestRun } from "./records";
 
 export type GhostMode = "mine" | "first" | "ahead" | "off";
 
@@ -17,7 +18,9 @@ export interface GhostChoice {
  * Sans adresse d'API (ou hors circuit du jour), `enabled` est faux et rien n'est jamais envoyé.
  */
 export class Online {
-  readonly api: LeaderboardApi | null;
+  readonly api: LeaderboardSource | null;
+  /** Mode démo (`?api=demo`) : classements figés lus dans un jeu de données statique, rien n'est envoyé. */
+  readonly demo: boolean;
   readonly playerId = getPlayerId();
 
   constructor(
@@ -26,7 +29,8 @@ export class Online {
     readonly date: string | null,
     base = apiBase(),
   ) {
-    this.api = base && date && trackId ? new LeaderboardApi(base) : null;
+    this.demo = base === DEMO_BASE;
+    this.api = base && date && trackId ? (this.demo ? new DemoApi((d) => listDayBests().get(d) ?? null) : new LeaderboardApi(base)) : null;
   }
 
   get enabled(): boolean {

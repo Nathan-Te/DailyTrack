@@ -4,7 +4,7 @@
   "circuits": [
     {
       "date": "2026-10-06",
-      "number": 1,
+      "number": 15,
       "attempt": 3,
       "spec": "S@start S P S S L2/b S L S S R2 S T S S@cp S S S L2/b U S D L/b R/b S S R2/b S T S@cp S S S S L/b P S S L2/b S S R S S@finish",
       "authorMs": 37371,
@@ -13,7 +13,7 @@
     },
     {
       "date": "2026-10-07",
-      "number": 2,
+      "number": 16,
       "attempt": 0,
       "spec": "S@start S T S S S S S L2 U S S D L/b S R R S S@cp C S S@cp L S P S S L/b S B S L S B S R S T S S S S S L D S U R/b S T S S S S S L S S@finish",
       "authorMs": 46656,
@@ -22,7 +22,7 @@
     },
     {
       "date": "2026-10-08",
-      "number": 3,
+      "number": 17,
       "attempt": 0,
       "spec": "S@start U S S D R S R2 S L S S R S T S@cp S S S S R2/b S J S S R S S C S S@cp R/b U S D R S P S S R S S@finish",
       "authorMs": 37222,
@@ -31,7 +31,7 @@
     },
     {
       "date": "2026-12-25",
-      "number": 81,
+      "number": 95,
       "attempt": 3,
       "spec": "S@start P S S R U S D R S B S@cp L/b S B S/t L/t S/t J/t S/t S/t L U S@cp D R S/t P S/t S/t@cp R L S B S R S R S S@finish",
       "authorMs": 35247,
@@ -40,7 +40,7 @@
     },
     {
       "date": "2027-02-28",
-      "number": 146,
+      "number": 160,
       "attempt": 2,
       "spec": "S@start U S D L2 S P S S L S T S S S S@cp S L/b R/b S S C S S@cp R/b U S S D R P S S L L S R2 S S R P S S R S S@finish",
       "authorMs": 38726,
@@ -49,7 +49,7 @@
     },
     {
       "date": "2028-02-29",
-      "number": 512,
+      "number": 526,
       "attempt": 0,
       "spec": "S@start S R S P S S L2 P S@cp S R S/t J S/t S L/t D/t S/t@cp U L/b P S S@cp R S/t J/t S/t S/t R U S/t D/t R2/t S S@finish",
       "authorMs": 33259,
@@ -58,7 +58,7 @@
     },
     {
       "date": "2030-01-01",
-      "number": 1184,
+      "number": 1198,
       "attempt": 2,
       "spec": "S@start S B S R S J S/g@cp S/g L/g S/g@cp R/b L/b S/g S/g R/g L/g D S@cp U L D S/g U/g L/g S/g B S@cp L S L S S@finish",
       "authorMs": 37295,

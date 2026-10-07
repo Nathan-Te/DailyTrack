@@ -42,10 +42,14 @@ export function parseDay(text: string): number | null {
   return formatDay(day) === text ? day : null; // refuse 2025-02-30, 2025-13-01…
 }
 
-/** Premier circuit du jour : le n° 1. */
-export const LAUNCH_DAY = daysFromCivil(2026, 10, 6);
+/**
+ * Premier jour : le circuit n° 1. **Provisoirement le 22/09/2026**, pour avoir deux semaines d'archives avant la mise
+ * en ligne ; à fixer à la vraie date de lancement le jour J (voir `docs/orchestration.md` § 7). Seule la numérotation
+ * en dépend : le circuit d'un jour ne vient que de sa date (graine = date).
+ */
+export const PREMIER_JOUR = daysFromCivil(2026, 9, 22);
 
-/** Numéro du « Circuit du Jour » (n° 1 le jour du lancement ; ≤ 0 avant). */
+/** Numéro du « Circuit du Jour » (n° 1 le premier jour ; ≤ 0 avant). */
 export function circuitNumber(day: number): number {
-  return day - LAUNCH_DAY + 1;
+  return day - PREMIER_JOUR + 1;
 }

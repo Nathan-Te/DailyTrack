@@ -1,4 +1,4 @@
-import { LAUNCH_DAY, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
+import { PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN } from "./archive";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin, type AdminState, type Scenario } from "./adminLogic";
 
@@ -59,7 +59,7 @@ theme.addEventListener("change", () => set({ theme: theme.value }));
 
 $<HTMLInputElement>("date").addEventListener("change", (e) => set({ date: (e.target as HTMLInputElement).value }));
 $("today").addEventListener("click", () => set({ date: "" }));
-$("random").addEventListener("click", () => set({ date: formatDay(LAUNCH_DAY + Math.floor(Math.random() * RANDOM_SPAN)) }));
+$("random").addEventListener("click", () => set({ date: formatDay(PREMIER_JOUR + Math.floor(Math.random() * RANDOM_SPAN)) }));
 
 const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff"] as const;
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));

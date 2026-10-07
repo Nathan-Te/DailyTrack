@@ -46,7 +46,7 @@ test("le record garde sa médaille pour la liste des archives", async ({ page })
 });
 
 test.describe("archives", () => {
-  const TODAY = "2026-10-09"; // 3 jours après le lancement : 4 circuits jouables
+  const TODAY = "2026-10-09"; // 17 jours après le premier jour (22/09, circuit n° 1) : 18 circuits jouables
   const url = `/?debug&today=${TODAY}&seed=${TODAY}`;
 
   test("listent les jours du lancement à aujourd'hui, avec le meilleur temps de chacun, et ouvrent le jour choisi", async ({ page }) => {
@@ -58,18 +58,18 @@ test.describe("archives", () => {
     await page.waitForFunction(() => window.__cdj?.phase);
     await page.locator("#btn-archive").click();
     const days = page.locator("#archive .day");
-    await expect(days).toHaveCount(4);
-    await expect(days.nth(0)).toContainText("#4");
+    await expect(days).toHaveCount(18);
+    await expect(days.nth(0)).toContainText("#18");
     await expect(days.nth(0)).toContainText("aujourd'hui");
     await expect(days.nth(0)).toHaveClass(/current/);
     await expect(days.nth(1)).toContainText("2026-10-08");
     await expect(days.nth(1)).toContainText("🥇 40,123 s");
-    await expect(days.nth(3)).toContainText("#1");
-    await expect(days.nth(3)).toContainText("2026-10-06");
+    await expect(days.nth(17)).toContainText("#1");
+    await expect(days.nth(17)).toContainText("2026-09-22");
 
-    await days.nth(2).click(); // 2026-10-07 = circuit #2
+    await days.nth(2).click(); // 2026-10-07 = circuit #16
     await page.waitForFunction(() => window.__cdj?.phase);
-    await expect(page.locator("#meta")).toContainText("#2");
+    await expect(page.locator("#meta")).toContainText("#16");
     await expect(page.locator("#meta")).toContainText("2026-10-07");
     expect(new URL(page.url()).searchParams.get("seed")).toBe("2026-10-07");
     expect(new URL(page.url()).searchParams.get("today")).toBe(TODAY); // les réglages de test sont conservés

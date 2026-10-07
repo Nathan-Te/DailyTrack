@@ -87,6 +87,7 @@
       #archive .day { display: grid; grid-template-columns: 44px 1fr auto auto; gap: 10px; align-items: center; padding: 9px 8px; border-radius: 8px; color: #fff; text-decoration: none; font-variant-numeric: tabular-nums; }
       #archive .day:hover, #archive .day:focus-visible { background: rgba(255,255,255,.1); outline: none; }
       #archive .day.current { background: rgba(255,210,46,.16); }
+      #archive .sub { grid-column: 2 / -1; font-size: 11px; font-weight: 500; opacity: .6; white-space: pre-wrap; margin-top: -6px; }
       #archive .num { opacity: .7; text-align: right; }
       #archive .theme { opacity: .6; font-size: 12px; }
       #archive .best { min-width: 92px; text-align: right; }
@@ -175,7 +176,7 @@
 
       /* Petits écrans (téléphone) : bandeau resserré, menu en icônes, panneaux plus étroits. */
       @media (max-width: 900px), (max-height: 520px) {
-        #meta { top: 8px; font-size: 12px; }
+        #meta { top: 8px; font-size: 11px; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* deux chiffres au numéro du circuit : ne jamais passer sous le menu */
         #meta .long { display: none; }
         /* Portrait : les boutons du menu occupent le coin droit sur 34 px de haut, le bandeau passe dessous. */
         #medals { top: 44px; font-size: 11px; }
