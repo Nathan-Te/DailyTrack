@@ -184,8 +184,8 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   turboMaxSpeed: 88,
   iceTop: 1.2,
   iceCoast: 0.3,
-  iceCoastGrip: 0.75,
-  iceRealign: 3,
+  iceCoastGrip: 0.38,
+  iceRealign: 0.8,
   iceBrakeGrip: 0.5,
 });
 

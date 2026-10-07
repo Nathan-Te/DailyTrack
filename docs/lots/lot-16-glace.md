@@ -8,18 +8,21 @@
 
 (Si l'environnement impose un autre nom de branche, remplacer `lot-16-glace` dans le lien ; une fois fusionné, les mêmes adresses marchent sur https://nathan-te.github.io/DailyTrack/ et le menu `/admin/` propose « Glace ».)
 
+## Retouche (retour de Nathan)
+Relâcher les gaz était trop simple : `iceCoastGrip` 0,75 → **0,38** et `iceRealign` 3 → **0,8 /s**. La roue libre aide encore (rayon 24 m contre 84 m à gaz, dérive divisée par deux en 0,31 s) mais ne suffit plus à tout rattraper : il faut anticiper, doser le volant et compter sur la distance. Banquise : le pilote finit 87 % des circuits construits (98 % avant), taux dans la fenêtre inchangé (58 %). Curseurs `?debug&tune` pour aller plus loin.
+
 ## Livré
 La glace n'est plus « une route avec peu d'adhérence » : elle a trois comportements selon ce que fait le pied (`car.ts`, `SurfaceParams.slick` = 1 sur la glace, 0 ailleurs ; les valeurs sont les clés `ice*` de `CarParams`, donc dans `?debug&tune` et « Copier les réglages »).
 
 | | Accélérateur appuyé | Roue libre | Frein |
 |---|---|---|---|
-| Adhérence latérale | `grip` 0,3 de la table `SURFACES.ice` : sous-vire et glisse largement | `iceCoastGrip` **0,75** : la voiture pivote volontiers | `iceBrakeGrip` **×0,5** de l'adhérence : part en glisse |
+| Adhérence latérale | `grip` 0,3 de la table `SURFACES.ice` : sous-vire et glisse largement | `iceCoastGrip` **0,38** : la voiture pivote volontiers | `iceBrakeGrip` **×0,5** de l'adhérence : part en glisse |
 | Vitesse | pointe du plat × `iceTop` **1,2** (57,6 m/s) ; motricité 0,4 (patinage au départ) | décélération × `iceCoast` **0,3** (0,9 m/s² au lieu de 3) ; plus aucun roulement (`rolling` 0,3 → 0) | motricité 0,4 : freinage de 16 m/s² |
-| Redirection | — | `iceRealign` **3 /s** : la vitesse latérale s'éteint (le vecteur vitesse se réaligne sur le cap) sans freiner | — |
+| Redirection | — | `iceRealign` **0,8 /s** : la vitesse latérale s'éteint (le vecteur vitesse se réaligne sur le cap) sans freiner | — |
 
 - **Ligne droite** : résistance au roulement nulle, roue libre presque sans perte, pointe plus haute (`flatTop` remplace `maxSpeed` dans la courbe d'accélération et dans la traînée au-delà de la pointe, pondéré par `slick`). Rien ne change sur les autres revêtements.
 - **Pilote** (`autopilot.ts`) : la vitesse de passage sur glace est celle de la **roue libre** (`iceCoastGrip`) ; il **lâche l'accélérateur dès qu'il braque** (|volant| > 0,12) sur glace et le rend en ligne droite (`line.slick`). Il finit `?scenario=glace` aux quatre niveaux d'adhérence, sans reprise.
-- **Générateur** : aucune règle ajoutée. Le pilote prenait déjà la glace en roue libre ; le taux de circuits validés de *Banquise* est resté celui d'avant (58 % dans la fenêtre, 98 % de finitions du pilote, voir la mesure). Les signatures et zones de glace n'ont pas bougé.
+- **Générateur** : aucune règle ajoutée. Le pilote prenait déjà la glace en roue libre ; le taux de circuits validés de *Banquise* est resté celui d'avant (58 % dans la fenêtre, 87 % de finitions du pilote, voir la mesure). Les signatures et zones de glace n'ont pas bougé.
 - **Scénario** `?scenario=glace` (`GLACE_TRACK_SPEC`, `circuits.ts`) et raccourci « Glace » de `/admin/`.
 - **Versions** : `SIM_VERSION` **7**, `GENERATOR_VERSION` **7** ; golden (`essai-autopilot.json`, `daily-golden.json`) régénérés, `npm run history:seed` relancé.
 
@@ -30,13 +33,13 @@ La glace n'est plus « une route avec peu d'adhérence » : elle a trois comport
 | 2 s depuis l'arrêt | 32,5 m/s | 16,3 m/s (patinage) |
 | Roue libre 3 s depuis 40 m/s | 31,0 m/s | **38,9 m/s** |
 | Rayon d'un virage à 30 m/s, volant à fond, gaz | 36 m | **84 m** |
-| Rayon du même virage en roue libre | — | **9,5 m** (gaz ÷ roue libre ≈ 8,8) |
+| Rayon du même virage en roue libre | — | **24,1 m** (gaz ÷ roue libre ≈ 3,5) |
 | Freinage de 30 m/s | 11,2 m | **28,1 m** (×2,5) et glisse |
-| Dérive 0,27 → ½ en roue libre, braquage dans le bon sens | — | **0,12 s**, vitesse 36,4 → 35,1 m/s (−3,6 %) |
+| Dérive 0,27 → ½ en roue libre, braquage dans le bon sens | — | **0,31 s**, vitesse 36,4 → 34,8 m/s (−4,4 %) |
 
 Rejeu d'une course d'auteur (`npm run measure:generator`) : **37,9 ms en moyenne** contre **38,3 ms** sur `main` mesuré sur la même machine : aucun surcoût (les 21 ms du lot 15 venaient d'une autre machine ; ne comparer que sur une même machine).
 
-Taux de validation par thème (12 dates × 6 tentatives) : stade 55 %, rallye 57 %, **banquise 58 %** (76 % construit, 98 % de finitions du pilote, 33,0 s en moyenne), nuit 60 %, campagne 54 % — inchangés depuis le lot 15. 60 dates : 60/60 dans [30 ; 40] s, aucun circuit de secours, vitesse max du pilote 84 m/s en moyenne.
+Taux de validation par thème (12 dates × 6 tentatives) : stade 55 %, rallye 57 %, **banquise 58 %** (76 % construit, 87 % de finitions du pilote, 33,0 s en moyenne), nuit 60 %, campagne 54 % — inchangés depuis le lot 15. 60 dates : 60/60 dans [30 ; 40] s, aucun circuit de secours, vitesse max du pilote 84 m/s en moyenne.
 
 ## Tests (seuils recopiés de `glace.test.ts` ; s'ils changent, la sensation a changé)
 - Droite lancée 30 m/s, 20 s : vitesse et distance de la glace > route ; 2 s depuis l'arrêt : glace < 60 % de la route ; roue libre 3 s depuis 40 m/s : glace > route + 4 m/s.
@@ -47,7 +50,7 @@ Taux de validation par thème (12 dates × 6 tentatives) : stade 55 %, rallye 57
 - e2e `glace.spec.ts` : le jeu rejoue le pilote au temps de Node.
 
 ## Décisions et limites pour Nathan
-- **Ressenti non vérifié** : tout est jugé sur des mesures. À essayer à la main : `iceCoastGrip` (0,75) et `iceRealign` (3 /s) font le « gauche-droite en roue libre » ; `iceBrakeGrip` (0,5) la glisse au frein ; `iceTop` (1,2) la vitesse. Le panneau `?debug&tune` les règle en direct.
+- **Ressenti non vérifié** : tout est jugé sur des mesures. À essayer à la main : `iceCoastGrip` (0,38) et `iceRealign` (0,8 /s) font le « gauche-droite en roue libre » ; `iceBrakeGrip` (0,5) la glisse au frein ; `iceTop` (1,2) la vitesse. Le panneau `?debug&tune` les règle en direct.
 - **Roue libre = ni gaz ni frein.** Un léger appui sur le frein (ou le gaz) en virage retire le bonus ; sur téléphone l'accélérateur est automatique par défaut : pour utiliser la roue libre sur glace il faut l'accélérateur manuel (bouton gaz) ou que le jeu le lâche tout seul sur glace. **À trancher** : veux-tu que le gaz automatique se coupe sur glace quand on braque ? (non fait : ça change la manière de jouer au doigt.)
 - **Pas de capture** jointe : le lot ne crée aucun effet visuel (la glace se reconnaît déjà à sa couleur et à ses éclats).
 - Aucun autre revêtement n'a été retouché ; Firefox et WebKit : le déterminisme est éprouvé par la CI.
