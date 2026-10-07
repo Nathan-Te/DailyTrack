@@ -1,6 +1,6 @@
 import {
   GENERATOR_VERSION,
-  LAUNCH_DAY,
+  PREMIER_JOUR,
   ReplayError,
   SIM_VERSION,
   circuitNumber,
@@ -16,7 +16,7 @@ import {
   type PaletteName,
   type Track,
 } from "@cdj/sim";
-import { SCHEMA, type SqlDb } from "./db";
+import { MIGRATIONS, SCHEMA, type SqlDb } from "./db";
 import { PLAYER_ID, cleanName } from "./validate";
 
 // API du classement. Elle ne fait confiance à aucun temps annoncé : elle reçoit la rediffusion (la suite des
@@ -40,6 +40,11 @@ export interface ApiOptions {
   /** Sel pour hacher les adresses IP avant de les compter (on ne stocke jamais d'IP en clair). */
   rateSalt?: string;
   limits?: { windowMs: number; perClient: number; perPlayer: number };
+  /**
+   * Marque `demo` les joueurs créés par cette instance : réservé au script `history:seed` (lot 11), qui fait courir des
+   * pilotes fictifs par le même chemin de validation que les vrais. Le serveur de production ne le règle jamais.
+   */
+  demoPlayers?: boolean;
 }
 
 export interface RequestInfo {
@@ -80,6 +85,13 @@ export function createApi(options: ApiOptions) {
 
   const ensureSchema = () => (schemaReady ??= (async () => {
     for (const sql of SCHEMA) await db.run(sql);
+    for (const sql of MIGRATIONS) {
+      try {
+        await db.run(sql);
+      } catch {
+        /* colonne déjà là */
+      }
+    }
   })());
 
   const today = () => Math.floor(now() / DAY_MS);
@@ -176,7 +188,7 @@ export function createApi(options: ApiOptions) {
   function dayOf(date: unknown, mustBeOpen = false): number {
     const day = typeof date === "string" ? parseDay(date) : null;
     if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
-    if (day < LAUNCH_DAY || day > today()) throw new HttpError(404, "unknown_day", "Ce jour n'a pas (encore) de circuit");
+    if (day < PREMIER_JOUR || day > today()) throw new HttpError(404, "unknown_day", "Ce jour n'a pas (encore) de circuit");
     if (mustBeOpen) {
       const sinceMidnight = now() - today() * DAY_MS;
       const open = day === today() || (day === today() - 1 && sinceMidnight < GRACE_MS);
@@ -238,8 +250,8 @@ export function createApi(options: ApiOptions) {
     const t = now();
     if (suppliedName) {
       await db.run(
-        "INSERT INTO players (id, name, created_at, updated_at) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at",
-        [playerId, suppliedName, t, t],
+        "INSERT INTO players (id, name, created_at, updated_at, demo) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at",
+        [playerId, suppliedName, t, t, options.demoPlayers ? 1 : 0],
       );
     }
     const previous = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, playerId]);

@@ -70,7 +70,18 @@ async function call<T>(base: string, method: string, path: string, body?: unknow
   }
 }
 
-export class LeaderboardApi {
+/** Ce que le jeu demande à un classement : l'API réelle (`LeaderboardApi`) ou le jeu de données statique du mode démo. */
+export interface LeaderboardSource {
+  submit(playerId: string, name: string | null, date: string, replay: string): Promise<ApiResult<SubmitResult>>;
+  rename(playerId: string, name: string): Promise<ApiResult<{ name: string }>>;
+  leaderboard(date: string, playerId: string, limit?: number): Promise<ApiResult<Leaderboard>>;
+  ghost(date: string, kind: "first" | "ahead", playerId: string): Promise<ApiResult<GhostData>>;
+}
+
+/** `?api=demo` : le jeu lit le jeu de données statique de `public/demo/` au lieu d'une API (voir `demo.ts`). */
+export const DEMO_BASE = "demo";
+
+export class LeaderboardApi implements LeaderboardSource {
   constructor(private readonly base: string) {}
 
   submit(playerId: string, name: string | null, date: string, replay: string) {

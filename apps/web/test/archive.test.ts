@@ -1,29 +1,29 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION as G, LAUNCH_DAY, SIM_VERSION, formatDay } from "@cdj/sim";
+import { GENERATOR_VERSION as G, PREMIER_JOUR, SIM_VERSION, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN, archiveDays, archiveHref, nextTheme, randomSeedHref, themeHref } from "../src/archive";
 import { listDayBests, type DayBest } from "../src/records";
 
 describe("archiveDays", () => {
   it("liste les jours d'aujourd'hui au lancement, du plus récent au plus ancien", () => {
-    const days = archiveDays(LAUNCH_DAY + 3, new Map());
-    expect(days.map((d) => d.date)).toEqual([formatDay(LAUNCH_DAY + 3), formatDay(LAUNCH_DAY + 2), formatDay(LAUNCH_DAY + 1), formatDay(LAUNCH_DAY)]);
+    const days = archiveDays(PREMIER_JOUR + 3, new Map());
+    expect(days.map((d) => d.date)).toEqual([formatDay(PREMIER_JOUR + 3), formatDay(PREMIER_JOUR + 2), formatDay(PREMIER_JOUR + 1), formatDay(PREMIER_JOUR)]);
     expect(days.map((d) => d.number)).toEqual([4, 3, 2, 1]);
     expect(days.map((d) => d.isToday)).toEqual([true, false, false, false]);
     expect(days.every((d) => d.theme.length > 0)).toBe(true);
   });
 
   it("le jour du lancement n'a qu'une ligne ; avant le lancement, aucune", () => {
-    expect(archiveDays(LAUNCH_DAY, new Map())).toHaveLength(1);
-    expect(archiveDays(LAUNCH_DAY - 1, new Map())).toHaveLength(0);
+    expect(archiveDays(PREMIER_JOUR, new Map())).toHaveLength(1);
+    expect(archiveDays(PREMIER_JOUR - 1, new Map())).toHaveLength(0);
   });
 
   it("plafonne la liste", () => {
-    expect(archiveDays(LAUNCH_DAY + 500, new Map(), 30)).toHaveLength(30);
+    expect(archiveDays(PREMIER_JOUR + 500, new Map(), 30)).toHaveLength(30);
   });
 
   it("rattache à chaque jour son meilleur temps local", () => {
-    const best: DayBest = { date: formatDay(LAUNCH_DAY + 1), ms: 41000, medal: "gold" };
-    const days = archiveDays(LAUNCH_DAY + 2, new Map([[best.date, best]]));
+    const best: DayBest = { date: formatDay(PREMIER_JOUR + 1), ms: 41000, medal: "gold" };
+    const days = archiveDays(PREMIER_JOUR + 2, new Map([[best.date, best]]));
     expect(days.find((d) => d.date === best.date)!.best).toEqual(best);
     expect(days.find((d) => d.isToday)!.best).toBeNull();
   });
@@ -43,8 +43,8 @@ describe("archiveHref", () => {
 
 describe("circuits d'essai", () => {
   it("au hasard : une date valide entre le lancement et la borne, réglages conservés", () => {
-    expect(randomSeedHref("?debug", () => 0)).toBe(`?debug=&seed=${formatDay(LAUNCH_DAY)}`);
-    expect(randomSeedHref("?theme=nuit&seed=2026-10-07", () => 0.9999)).toBe(`?theme=nuit&seed=${formatDay(LAUNCH_DAY + RANDOM_SPAN - 1)}`);
+    expect(randomSeedHref("?debug", () => 0)).toBe(`?debug=&seed=${formatDay(PREMIER_JOUR)}`);
+    expect(randomSeedHref("?theme=nuit&seed=2026-10-07", () => 0.9999)).toBe(`?theme=nuit&seed=${formatDay(PREMIER_JOUR + RANDOM_SPAN - 1)}`);
   });
   it("thème : posé, retiré, adresse nue", () => {
     expect(themeHref("?seed=2026-10-07", "nuit")).toBe("?seed=2026-10-07&theme=nuit");

@@ -40,6 +40,9 @@ import {
   type RaceState,
 } from "@cdj/sim";
 import { archiveDays, nextTheme, randomSeedHref, renderArchive, themeHref } from "./archive";
+import { loadArchiveExtras } from "./archiveExtras";
+import { DEMO_BASE, apiBase } from "./api";
+import { DEMO_TODAY } from "./demo";
 import { buildFlatArena } from "./arena";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
@@ -77,8 +80,11 @@ if (params.has("debug") && params.has("spec")) {
 const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
-const todayUtc = fakeToday ?? Math.floor(Date.now() / 86_400_000);
-const seedParam = params.get("seed");
+// `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
+const demoApiMode = apiBase() === DEMO_BASE;
+const todayUtc = fakeToday ?? (demoApiMode ? DEMO_TODAY : Math.floor(Date.now() / 86_400_000));
+// `?day=AAAA-MM-JJ` : accès direct à un jour (même chose que `?seed=`).
+const seedParam = params.get("seed") ?? params.get("day");
 const seedDay = seedParam === null ? null : parseDay(seedParam);
 let daily: DailyCircuit | null = null;
 // `?theme=<nom>` force le thème du jour (essais) : autre circuit, jamais classé.
@@ -139,7 +145,7 @@ let demoTimer = 0;
 // Classement : seulement pour le circuit du jour, et si une adresse d'API est configurée (`?api=` ou VITE_API_URL).
 const online = new Online(track ? track.id : null, daily && !daily.forcedTheme ? daily.date : null);
 // On ne peut classer que le circuit d'aujourd'hui (un jour passé est figé : le serveur refuse).
-const submitAllowed = !!daily && daily.day === todayUtc && !daily.forcedTheme;
+const submitAllowed = !!daily && daily.day === todayUtc && !daily.forcedTheme && !online.demo;
 // Outils de test (`?debug`) : accélérer le temps et jouer une rediffusion à la place du clavier.
 const timeScale = params.has("debug") ? Math.max(1, Number(params.get("timescale")) || 1) : 1;
 let autoplay: ReplayPlayer | null = null;
@@ -174,7 +180,7 @@ if (daily) {
   const long = document.createElement("span");
   long.className = "long";
   long.textContent = "Circuit du Jour ";
-  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${daily.forcedTheme ? " (thème forcé : essai, non classé)" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
+  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${daily.forcedTheme ? " (thème forcé : essai, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
   $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : "Circuit d'essai";
@@ -264,8 +270,15 @@ function updateShareLine() {
 const shareLink = () => shareUrl(location, daily!.date, daily!.day === todayUtc);
 
 function openArchive() {
-  renderArchive(hudArchive.querySelector(".panel")!, archiveDays(todayUtc, listDayBests()), location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null);
+  const days = archiveDays(todayUtc, listDayBests());
+  const draw = (extras: Parameters<typeof renderArchive>[6]) =>
+    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, extras);
+  draw(null);
   hudArchive.hidden = false;
+  // Seuils de médailles, nombre de pilotes et ta place figée : chargés après coup (jeu de données de démo ou API).
+  void loadArchiveExtras(days).then((extras) => {
+    if (extras && !hudArchive.hidden) draw(extras);
+  });
 }
 
 function closeArchive() {
@@ -970,6 +983,14 @@ function frame(now: number) {
   }
 }
 
+// Un jour passé, avec un classement (API ou mode démo) : on l'ouvre comme une archive — le fantôme du premier au départ, le
+// classement figé affiché. `G` change de fantôme comme d'habitude.
+if (online.enabled && daily && !submitAllowed && params.get("ghost") !== "off") {
+  void online.remoteGhost("first").then((choice) => {
+    if (choice && phase !== "finished" && !tuning) setGhost(choice.mode, choice.source, choice.label);
+    autoShowBoard();
+  });
+}
 if (demo && track) {
   demoReplay = bestPilotRun(track);
   if (demoReplay) startAttempt();

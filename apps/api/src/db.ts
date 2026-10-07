@@ -7,13 +7,20 @@ export interface SqlDb {
   all<T>(sql: string, params?: SqlValue[]): Promise<T[]>;
 }
 
+/**
+ * Ajouts de colonnes pour les bases créées avant : chaque requête est tentée, et refusée sans conséquence si la colonne
+ * existe déjà. `players.demo` : 1 pour les pilotes fictifs de l'historique (lot 11) ; un serveur de production n'en crée jamais.
+ */
+export const MIGRATIONS: string[] = ["ALTER TABLE players ADD COLUMN demo INTEGER NOT NULL DEFAULT 0"];
+
 /** Tables de l'API. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
 export const SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS players (
      id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
      created_at INTEGER NOT NULL,
-     updated_at INTEGER NOT NULL
+     updated_at INTEGER NOT NULL,
+     demo INTEGER NOT NULL DEFAULT 0
    )`,
   // Cache des circuits du jour : calculés une fois (générateur + pilote de validation, coûteux), puis figés.
   `CREATE TABLE IF NOT EXISTS circuits (

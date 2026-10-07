@@ -1,4 +1,4 @@
-import { LAUNCH_DAY, THEMES, THEME_NAMES, circuitNumber, formatDay, themeForDay } from "@cdj/sim";
+import { PREMIER_JOUR, THEMES, THEME_NAMES, circuitNumber, formatDay, medalsFor, themeForDay } from "@cdj/sim";
 import { formatTime } from "./format";
 import type { DayBest } from "./records";
 import { MEDAL_ICON } from "./share";
@@ -15,7 +15,7 @@ export interface ArchiveDay {
 /** Jours jouables : d'aujourd'hui au lancement, du plus récent au plus ancien (`max` au plus). */
 export function archiveDays(today: number, bests: Map<string, DayBest>, max = 120): ArchiveDay[] {
   const days: ArchiveDay[] = [];
-  for (let day = today; day >= LAUNCH_DAY && days.length < max; day--) {
+  for (let day = today; day >= PREMIER_JOUR && days.length < max; day--) {
     const date = formatDay(day);
     days.push({ day, date, number: circuitNumber(day), theme: themeForDay(day).label, isToday: day === today, best: bests.get(date) ?? null });
   }
@@ -37,7 +37,7 @@ export const RANDOM_SPAN = 3650;
 /** Adresse d'un circuit tiré au hasard (une date quelconque ; thème et réglages de test conservés). Jamais classé. */
 export function randomSeedHref(search: string, rnd: () => number = Math.random): string {
   const params = new URLSearchParams(search);
-  params.set("seed", formatDay(LAUNCH_DAY + Math.floor(rnd() * RANDOM_SPAN)));
+  params.set("seed", formatDay(PREMIER_JOUR + Math.floor(rnd() * RANDOM_SPAN)));
   return `?${params.toString()}`;
 }
 
@@ -56,8 +56,19 @@ export function nextTheme(current: string | null): string | null {
   return i + 1 >= THEME_NAMES.length ? null : THEME_NAMES[i + 1]!;
 }
 
+/** Ce qu'on sait de plus d'un jour (chargé après coup : mode démo ou API) : seuils de médailles, nombre de pilotes, ta place figée. */
+export interface ArchiveExtras {
+  meta: Map<string, { authorMs: number; participants: number }>;
+  ranks: Map<string, { rank: number; participants: number }>;
+}
+
+/** « 1ᵉʳ », « 4ᵉ » : le rang en français. */
+export function ordinal(rank: number): string {
+  return rank === 1 ? "1ᵉʳ" : `${rank}ᵉ`;
+}
+
 /** Remplit le panneau des archives : une ligne-lien par jour. */
-export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, onClose: () => void, currentTheme: string | null = null) {
+export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, onClose: () => void, currentTheme: string | null = null, extras: ArchiveExtras | null = null) {
   const head = document.createElement("div");
   head.className = "head";
   const title = document.createElement("div");
@@ -102,13 +113,21 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
       ["num", d.number >= 1 ? `#${d.number}` : "—"],
       ["date", d.isToday ? `${d.date} · aujourd'hui` : d.date],
       ["theme", d.theme],
-      ["best", d.best ? `${d.best.medal ? MEDAL_ICON[d.best.medal] + " " : ""}${formatTime(d.best.ms)}` : "—"],
+      ["best", d.best ? `${d.best.medal ? MEDAL_ICON[d.best.medal] + " " : ""}${formatTime(d.best.ms)}${extras?.ranks.get(d.date) ? ` · ${ordinal(extras.ranks.get(d.date)!.rank)}/${extras.ranks.get(d.date)!.participants}` : ""}` : "—"],
     ];
     for (const [cls, text] of cells) {
       const span = document.createElement("span");
       span.className = cls;
       span.textContent = text;
       a.append(span);
+    }
+    const meta = extras?.meta.get(d.date);
+    if (meta) {
+      const m = medalsFor(meta.authorMs);
+      const sub = document.createElement("span");
+      sub.className = "sub";
+      sub.textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}  · ${meta.participants} pilotes`;
+      a.append(sub);
     }
     list.append(a);
   }

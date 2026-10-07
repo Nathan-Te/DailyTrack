@@ -3,7 +3,7 @@ import {
   AUTHOR_MAX_MS,
   AUTHOR_MIN_MS,
   GENERATOR_VERSION,
-  LAUNCH_DAY,
+  daysFromCivil,
   PALETTES,
   THEMES,
   THEME_NAMES,
@@ -23,10 +23,14 @@ import {
   type DailyCircuit,
 } from "../src/index";
 
+// Jours de test : ancrés sur le 06/10/2026, la date des essais des lots 4 à 8 (60 jours consécutifs validés par le pilote).
+// Ils ne suivent pas `PREMIER_JOUR`, qui ne change que la numérotation : les circuits testés restent les mêmes.
+const JOUR_TEST = daysFromCivil(2026, 10, 6);
+
 // Soixante jours consécutifs depuis le lancement, puis une soixantaine d'autres espacés sur ~3 ans.
 const DAYS = [
-  ...Array.from({ length: 60 }, (_, i) => LAUNCH_DAY + i),
-  ...Array.from({ length: 60 }, (_, i) => LAUNCH_DAY + 60 + i * 17),
+  ...Array.from({ length: 60 }, (_, i) => JOUR_TEST + i),
+  ...Array.from({ length: 60 }, (_, i) => JOUR_TEST + 60 + i * 17),
 ];
 const circuits = new Map<number, DailyCircuit>();
 /** Temps de génération (ms) de chaque jour, mesuré au premier appel. */
@@ -44,7 +48,7 @@ const isWideKind = (k: string) => k === "wideL" || k === "wideR";
 
 describe("circuit du jour : construction", () => {
   it("est déterministe : même jour, même circuit, au caractère près", () => {
-    for (const day of [LAUNCH_DAY, LAUNCH_DAY + 1, LAUNCH_DAY + 400]) {
+    for (const day of [JOUR_TEST, JOUR_TEST + 1, JOUR_TEST + 400]) {
       const a = dailyCircuit(day);
       const b = dailyCircuit(day);
       expect(b.spec).toBe(a.spec);
@@ -137,7 +141,7 @@ describe("circuit du jour : construction", () => {
     expect(attempts.some((a) => a > 0)).toBe(true);
     expect(Math.max(...attempts)).toBeLessThan(25);
     // composeSpec est lui-même déterministe et peut échouer proprement (null) sans lever d'erreur.
-    expect(composeSpec(LAUNCH_DAY, 0)).toBe(composeSpec(LAUNCH_DAY, 0));
+    expect(composeSpec(JOUR_TEST, 0)).toBe(composeSpec(JOUR_TEST, 0));
   });
 });
 
@@ -151,7 +155,7 @@ describe("circuit du jour : validation par le pilote", () => {
   });
 
   it("le temps de l'auteur se rejoue exactement : la rediffusion du pilote redonne ce temps", () => {
-    for (const day of [LAUNCH_DAY, LAUNCH_DAY + 3, LAUNCH_DAY + 29]) {
+    for (const day of [JOUR_TEST, JOUR_TEST + 3, JOUR_TEST + 29]) {
       const c = circuit(day);
       const run = bestPilotRun(c.track)!;
       expect(run.finishMs).toBe(c.authorMs);
@@ -187,16 +191,16 @@ describe("médailles", () => {
 
 describe("palette et identifiant", () => {
   it("la palette dépend du jour, et toutes servent sur un mois", () => {
-    const palettes = new Set(Array.from({ length: 40 }, (_, i) => paletteForDay(LAUNCH_DAY + i)));
+    const palettes = new Set(Array.from({ length: 40 }, (_, i) => paletteForDay(JOUR_TEST + i)));
     expect([...palettes].sort()).toEqual([...PALETTES].sort());
-    expect(paletteForDay(LAUNCH_DAY)).toBe(paletteForDay(LAUNCH_DAY));
+    expect(paletteForDay(JOUR_TEST)).toBe(paletteForDay(JOUR_TEST));
   });
 
   it("l'identifiant du circuit est une date et la version du générateur, accepté par les rediffusions", () => {
     const id = dailyTrackId(parseDay("2026-10-06")!);
     expect(id).toBe(`jour-2026-10-06-g${GENERATOR_VERSION}`);
     expect(id).toMatch(/^[a-z0-9_-]{1,32}$/);
-    expect(formatDay(LAUNCH_DAY)).toBe("2026-10-06");
+    expect(formatDay(JOUR_TEST)).toBe("2026-10-06");
   });
 });
 

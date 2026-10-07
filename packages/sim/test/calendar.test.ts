@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { LAUNCH_DAY, circuitNumber, civilFromDays, daysFromCivil, formatDay, parseDay } from "../src/index";
+import { PREMIER_JOUR, circuitNumber, civilFromDays, daysFromCivil, formatDay, parseDay } from "../src/index";
 
 describe("calendrier", () => {
   it("compte les jours depuis le 1er janvier 1970", () => {
@@ -17,7 +17,7 @@ describe("calendrier", () => {
   });
 
   it("lit et écrit AAAA-MM-JJ, et refuse les dates impossibles", () => {
-    expect(parseDay("2026-10-06")).toBe(LAUNCH_DAY);
+    expect(parseDay("2026-09-22")).toBe(PREMIER_JOUR);
     expect(formatDay(parseDay("2026-10-06")!)).toBe("2026-10-06");
     for (const bad of ["2025-02-29", "2026-13-01", "2026-00-10", "2026-10-32", "26-10-06", "2026/10/06", "", "demain", "2026-10-06 "]) {
       expect(parseDay(bad), bad).toBeNull();
@@ -25,8 +25,8 @@ describe("calendrier", () => {
     expect(parseDay("2024-02-29")).not.toBeNull();
   });
 
-  it("numérote les circuits à partir du lancement", () => {
-    expect(circuitNumber(LAUNCH_DAY)).toBe(1);
-    expect(circuitNumber(LAUNCH_DAY + 141)).toBe(142);
+  it("numérote les circuits à partir du premier jour (provisoirement le 22/09/2026)", () => {
+    expect(circuitNumber(PREMIER_JOUR)).toBe(1);
+    expect(circuitNumber(PREMIER_JOUR + 141)).toBe(142);
   });
 });

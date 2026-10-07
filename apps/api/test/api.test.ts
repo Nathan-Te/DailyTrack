@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION, LAUNCH_DAY, SIM_VERSION, TICK_RATE, dailyTrackId, decodeReplay, encodeReplay, formatDay, medalsFor, replayRace } from "@cdj/sim";
+import { GENERATOR_VERSION, PREMIER_JOUR, SIM_VERSION, TICK_RATE, dailyTrackId, decodeReplay, encodeReplay, formatDay, medalsFor, replayRace } from "@cdj/sim";
 import { DAY, DAY_MS, NOON, circuitOf, makeApi, pilotReplay, playerId } from "./helpers";
 
 const DATE = formatDay(DAY);
@@ -152,7 +152,7 @@ describe("jours ouverts et fermés", () => {
   it("refuse un jour futur, un jour avant le lancement, et un jour passé une fois le délai de grâce écoulé", async () => {
     const t = await makeApi();
     expect((await t.call("POST", "/api/submit", { playerId: playerId(1), name: "A", date: formatDay(DAY + 1), replay: fast.code })).status).toBe(404);
-    expect((await t.call("POST", "/api/submit", { playerId: playerId(1), name: "A", date: formatDay(LAUNCH_DAY - 1), replay: fast.code })).status).toBe(404);
+    expect((await t.call("POST", "/api/submit", { playerId: playerId(1), name: "A", date: formatDay(PREMIER_JOUR - 1), replay: fast.code })).status).toBe(404);
     // Le lendemain à 00:30 UTC : le classement de DAY est figé.
     t.clock.now = (DAY + 1) * DAY_MS + 30 * 60_000;
     const r = await submit(t, 1, "Alice", fast.code);

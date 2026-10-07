@@ -100,5 +100,6 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Revêtements et blocs", hint: "terre, glace, herbe, turbo, relevés, plaque", state: { scenario: "surfaces" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },
+  { label: "Archives de démonstration", hint: "14 jours passés, classements figés et fantômes (?api=demo)", state: { api: "demo" } },
   { label: "Essai tactile (souris = doigt)", hint: "interface mobile sur ordinateur", state: { touch: "1" } },
 ];
