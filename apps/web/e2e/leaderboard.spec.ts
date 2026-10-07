@@ -95,7 +95,18 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
 });
 
 test("un classement injoignable ne gêne pas le jeu : message clair et bouton pour réessayer", async ({ browser }) => {
-  const page = await newDevice(browser, "http://127.0.0.1:9"); // personne n'écoute
+  // Le planning du jour répond (sinon le jeu est « hors ligne, non classé », lot 14) ; ensuite plus personne n'écoute.
+  const context = await browser.newContext({ viewport: { width: 1000, height: 560 } });
+  const info = { date: circuit.date, variant: 0, theme: null, trackId: circuit.track.id };
+  await context.route("http://api.test/**", (route) => {
+    const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
+    if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+    if (new URL(route.request().url()).pathname === `/api/day/${circuit.date}`) return route.fulfill({ status: 200, headers: cors, contentType: "application/json", body: JSON.stringify(info) });
+    return route.abort();
+  });
+  const page = await context.newPage();
+  await page.goto(`/?debug&timescale=6&api=${encodeURIComponent("http://api.test")}`);
+  await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   await race(page, slowCode);
