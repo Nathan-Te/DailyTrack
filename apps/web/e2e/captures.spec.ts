@@ -43,7 +43,6 @@ async function shoot(page: import("@playwright/test").Page, url: string, code: s
   await page.evaluate(() => window.__cdj.manual(false));
   await page.waitForTimeout(500);
   await page.evaluate(() => (document.getElementById("pause")!.style.visibility = "hidden"));
-  console.info(file, tick, await page.evaluate(() => JSON.stringify({ x: window.__cdj.car.x, z: window.__cdj.car.z, t: (window.__cdj.car as unknown as { tick: number }).tick, phase: window.__cdj.phase })));
   writeFileSync(join(OUT, file), await page.screenshot());
 }
 
@@ -55,7 +54,7 @@ test("une capture par thème, et le scénario bas-cotes", async ({ page }) => {
     const c = dailyCircuit(day);
     const run = bestPilotRun(c.track)!;
     expect(run).toBeTruthy();
-    const tick = momentOf(c.track, run);
+    const tick = name === "banquise" ? momentOf(c.track, run, 45, 2) : momentOf(c.track, run);
     await shoot(page, `/?debug&seed=${formatDay(day)}&quality=2&ghost=off&shake=0&fx=off`, encodeReplay(run.replay), tick, `lot-21-${name}.png`);
     console.info(`${name} : ?seed=${formatDay(day)}`);
   }

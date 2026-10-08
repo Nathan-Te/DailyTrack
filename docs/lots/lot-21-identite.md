@@ -87,7 +87,11 @@ Les figures obligatoires ne sont jamais au repos (comme la signature).
 
 **Couper par le bas-côté** (même pilote, 46 circuits à bas-côtés) : 0,5 m → plus rapide sur 14, plus lent sur 30 ; 1 m → 3 / 41 ; 3 m → 2 / 42 : couper paie rarement, et seulement de peu (sauf une épingle abordée trop vite).
 
-**Coût d'un rejeu** : voir la section « Vérifications » de la PR (mesuré en alternance avec `main` sur la même machine).
+**Coût d'un rejeu** (même machine, en alternance avec `main`, 3 passages chacun) : par pas, **inchangé sans bas-côté** (circuit d'essai : 5,6–6,4 µs dans les deux cas) et **+8 % sur les circuits du jour** (6,05 → 6,53 µs/pas : faces de bout et bande dans `world.sample` / `collide`) ; par course, 49,7 → 57,5 ms en moyenne sur 20 dates (les circuits ne sont plus les mêmes). Toujours loin des 10 ms du Workers gratuit, déjà exclu.
+
+**Génération** : la coupe du pilote d'auteur n'est essayée que sur la tentative retenue (`withCut`), pas sur chaque tentative : pire jour sur 60 identique à `main` (1,68–1,69 s contre 1,58–1,77 s, même machine), alors qu'une course de plus par tentative faisait échouer le budget de la CI (3,6 s pour 2,5 s).
+
+**Bande étroite sur route large** : sur 26 m de route la bande ne fait que 2 m (8 m sur 14 m). Stade et Banquise, plutôt larges, ont donc des bas-côtés plus minces que Rallye et Campagne, plutôt étroits : la coupe y est rare (voir les virages coupables). À revoir si Nathan veut plus de bas-côté sur la route large (il faudrait sortir la bande de la cellule).
 
 ## Pièges
 

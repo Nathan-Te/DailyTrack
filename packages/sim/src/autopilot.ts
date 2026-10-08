@@ -643,7 +643,7 @@ export const PILOT_CUT = 0.5;
  * La meilleure course valide parmi plusieurs réglages du pilote, ou `null` si aucun ne finit le circuit. Sur un circuit dont un virage est
  * bordé d'un bas-côté, le meilleur réglage est refait en coupant (`PILOT_CUT`) : la coupe n'est gardée que si elle est plus rapide.
  */
-export function bestPilotRun(track: Track): PilotRun | null {
+export function bestPilotRun(track: Track, opts: { cut?: boolean } = {}): PilotRun | null {
   let best: PilotRun | null = null;
   // Avec un virage en cuve, on essaie aussi de le prendre sur le fond : la paroi n'est utile que si elle fait gagner du temps.
   const walls = track.blocks.some((b) => b.cuve) ? [false, true] : [false];
@@ -653,9 +653,15 @@ export function bestPilotRun(track: Track): PilotRun | null {
       if (run.valid && run.jumpsOk && (!best || run.finishMs < best.finishMs)) best = run;
     }
   }
-  if (best && track.blocks.some((b) => b.shoulder && isCurve(b.kind))) {
-    const run = runPilot(track, { grip: best.grip, wall: best.wall, cut: PILOT_CUT });
-    if (run.valid && run.jumpsOk && run.finishMs < best.finishMs) best = run;
-  }
-  return best;
+  return best && opts.cut !== false ? withCut(track, best) : best;
+}
+
+/**
+ * La course `best` refaite en coupant (`PILOT_CUT`) sur un circuit dont un virage est bordé d'un bas-côté ; gardée seulement si elle est
+ * valide, plus rapide, et (si `minMs` est donné) pas plus courte que ça. Le générateur ne l'appelle que pour la tentative retenue.
+ */
+export function withCut(track: Track, best: PilotRun, minMs = 0): PilotRun {
+  if (!track.blocks.some((b) => b.shoulder && isCurve(b.kind))) return best;
+  const run = runPilot(track, { grip: best.grip, wall: best.wall, cut: PILOT_CUT });
+  return run.valid && run.jumpsOk && run.finishMs < best.finishMs && run.finishMs >= minMs ? run : best;
 }

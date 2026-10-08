@@ -17,27 +17,28 @@ test("?scenario=cuves : le pilote finit au temps de Node, sur le fond comme sur 
   for (const wall of [false, true]) {
     const run = runPilot(track, { grip: 1, wall });
     expect(run.valid).toBe(true);
+    // Pas à pas (sans rendu) : la normale sous la voiture est lue tous les 30 pas. À vitesse ×6 en rendu logiciel, une image avance
+    // jusqu'à 3 s de course et un échantillonnage au minuteur ratait le passage sur la paroi (lot 21).
+    await page.evaluate(() => window.__cdj.manual(true));
     await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
-    await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
-    // La normale de la surface sous la voiture, échantillonnée pendant la course : la paroi se lit dans l'état de la voiture.
-    await page.evaluate(() => {
-      const w = window as unknown as { __minNy: number; __timer?: number };
-      w.__minNy = 1;
-      w.__timer = window.setInterval(() => {
-        w.__minNy = Math.min(w.__minNy, window.__cdj.car.ny);
-      }, 20);
-    });
-    await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 120_000 });
+    let minNy = 1;
+    for (let guard = 0; guard < 2000; guard++) {
+      const state = await page.evaluate(async () => {
+        await window.__cdj.advance(30);
+        return { phase: window.__cdj.phase, ny: window.__cdj.car.ny };
+      });
+      if (state.phase === "racing") minNy = Math.min(minNy, state.ny);
+      if (state.phase === "finished") break;
+    }
     const end = await page.evaluate(() => {
-      const w = window as unknown as { __minNy: number; __timer: number };
-      window.clearInterval(w.__timer);
       const r = window.__cdj.race as unknown as { finishMs: number; respawns: number };
-      return { finishMs: r.finishMs, respawns: r.respawns, minNy: w.__minNy };
+      return { finishMs: r.finishMs, respawns: r.respawns };
     });
+    await page.evaluate(() => window.__cdj.manual(false));
     expect(end.finishMs).toBe(run.finishMs);
     expect(end.respawns).toBe(0);
     // Sur le fond, le pilote ne monte pas ; sur la paroi, la voiture s'incline nettement.
-    if (wall) expect(end.minNy).toBeLessThan(0.85);
+    if (wall) expect(minNy).toBeLessThan(0.85);
   }
   expect(errors).toEqual([]);
 });

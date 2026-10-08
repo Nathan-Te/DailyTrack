@@ -1,6 +1,6 @@
 import { GENERATOR_VERSION } from "./constants";
 import { circuitNumber, formatDay } from "./calendar";
-import { bestPilotRun } from "./autopilot";
+import { bestPilotRun, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
@@ -707,8 +707,10 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     const estimate = estimateSeconds(spec.split(" "));
     if (estimate < ESTIMATE_MIN || estimate > ESTIMATE_MAX) continue;
     const track = parseTrack(id, spec);
-    const pilot = bestPilotRun(track);
-    if (!pilot || pilot.finishMs < AUTHOR_MIN_MS || pilot.finishMs > AUTHOR_MAX_MS || pilot.maxSpeed < FAST_PEAK) continue;
+    // La coupe par le bas-côté (lot 21) n'est essayée que sur la tentative retenue : une course de plus, pas une par tentative.
+    const uncut = bestPilotRun(track, { cut: false });
+    if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
+    const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
     return {
       day,
       date: formatDay(day),
