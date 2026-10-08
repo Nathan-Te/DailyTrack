@@ -1,3 +1,4 @@
+import { buildFigure, figureByName } from "./figures";
 import { parseTrack } from "./track";
 
 /**
@@ -108,4 +109,33 @@ export const AIR_TRACK_SPEC =
 
 export function createAirTrack() {
   return parseTrack("air", AIR_TRACK_SPEC);
+}
+
+/**
+ * Scénario `figures` (lot 20) : un tour de onze figures marquantes de la bibliothèque (figures.ts), écrit à la main, dans cet ordre :
+ * S serré-large, turbo puis courbe relevée, rétrécissement et virage, saut vers un virage relevé, slalom de glace, descente-cuve-saut,
+ * plaque puis épingle, virage aveugle en haut d'une montée, double saut, moteur coupé avant un virage, turbos enchaînés et S large.
+ * Un point de contrôle environ tous les dix blocs ; la reprise repart de là.
+ */
+export const FIGURES_TRACK_SPEC =
+  "S/n@start S S S L R2 S T S S S@cp S S L3/b S S/n>e L S P S K G D S@cp S R2/b S S/g L2/g R2/g L2/g S/g S@cp D S V V V S K GD S@cp S S P S S S L S U U U L2 D D D S P S K G D S@cp S K GD S S S R2 S@cp S C S S@cp R2 S T S S@cp T S S S S S L2 R2 S S S@finish";
+
+export function createFiguresTrack() {
+  return parseTrack("figures", FIGURES_TRACK_SPEC);
+}
+
+/**
+ * Scénario `figure` (lot 20) : une seule figure, avec cinq droites de lancement (un point de contrôle juste avant), pour l'essayer en boucle.
+ * `variant` (0 par défaut, borné) et `mirror` (le premier virage à droite) choisissent la variante ; `null` si le nom est inconnu ou si la
+ * variante est impossible sur une route normale. Le circuit n'est jamais classé (c'est un essai, comme `?scenario=air`).
+ */
+export function createFigureTrack(name: string, variant = 0, mirror = false) {
+  const figure = figureByName(name);
+  if (!figure) return null;
+  const body = buildFigure(figure, !mirror, "n", Math.max(0, Math.min(figure.variants - 1, Math.floor(variant))));
+  if (!body) return null;
+  const tokens = ["S/n@start", "S", "S", "S", "S", "S@cp", ...body.slice(body[0] === "S" ? 1 : 0), "S", "S@finish"];
+  const cut = tokens.indexOf("C");
+  if (cut >= 0) tokens[cut + 2] = "S@cp"; // un moteur coupé rend le moteur au point de contrôle deux blocs plus loin
+  return parseTrack(`figure-${figure.name}`, tokens.join(" "));
 }

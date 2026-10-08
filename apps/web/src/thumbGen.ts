@@ -7,9 +7,9 @@ export type CircuitMaker = (day: number, theme?: ThemeName | null, variant?: num
 
 const later = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-function build(day: number, theme: ThemeName | null, variant: number, r: { spec: string; palette: string; theme: ThemeName; fallback: boolean; authorMs: number }): ThumbnailCircuit | null {
+function build(day: number, theme: ThemeName | null, variant: number, r: { spec: string; palette: string; theme: ThemeName; fallback: boolean; authorMs: number; figures?: readonly ({ name: string } | string)[] }): ThumbnailCircuit | null {
   if (r.fallback || !r.spec) return null;
-  return { track: parseTrack(dailyTrackId(day, theme, variant), r.spec), palette: r.palette as PaletteName, theme: r.theme, authorMs: r.authorMs };
+  return { track: parseTrack(dailyTrackId(day, theme, variant), r.spec), palette: r.palette as PaletteName, theme: r.theme, authorMs: r.authorMs, figures: (r.figures ?? []).map((f) => (typeof f === "string" ? f : f.name)) };
 }
 
 /**

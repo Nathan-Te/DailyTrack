@@ -16,6 +16,8 @@ export interface ThumbnailCircuit {
   theme: ThemeName;
   /** Temps de l'auteur (ms), quand la génération le donne : le panneau d'admin l'affiche. */
   authorMs?: number;
+  /** Noms des figures du circuit, dans l'ordre (lot 20) : le panneau d'admin les liste. */
+  figures?: string[];
 }
 
 export interface ThumbnailOptions {

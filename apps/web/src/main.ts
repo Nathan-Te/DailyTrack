@@ -23,6 +23,9 @@ import {
   createVitesseTrack,
   FALL_TICKS,
   createAirTrack,
+  createFigureTrack,
+  createFiguresTrack,
+  figureByName,
   createCuvesTrack,
   createGlaceTrack,
   createReliefTrack,
@@ -82,7 +85,7 @@ import { loadTunedParams, mountTunePanel } from "./tune";
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
-// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords), `cuves` (lot 18 : cuve droite, mur latéral, virage en cuve à pleine vitesse puis abordé trop lentement), `air` (lot 19 : dos d'âne, tremplin, long saut, saut vers un virage relevé, chute de trois niveaux, mur latéral quitté en l'air) et `plat` (le terrain d'essai du lot 1).
+// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords), `cuves` (lot 18 : cuve droite, mur latéral, virage en cuve à pleine vitesse puis abordé trop lentement), `air` (lot 19 : dos d'âne, tremplin, long saut, saut vers un virage relevé, chute de trois niveaux, mur latéral quitté en l'air), `figures` (lot 20 : onze figures marquantes de la bibliothèque), `figure` (lot 20 : une seule figure, `&f=<nom>` avec `&v=<variante>` et `&m=1` pour le miroir) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
@@ -93,7 +96,9 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" ? requested : "jour";
+// `?scenario=figure&f=<nom>` : une seule figure (lot 20). Un nom inconnu, ou une variante impossible, ramène au circuit d'essai.
+const figureTrack = !customTrack && requested === "figure" ? createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1") : null;
+const scenario = customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -131,7 +136,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -228,7 +233,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : scenario === "figures" ? "Les figures" : scenario === "figure" ? `Figure : ${figureByName(params.get("f"))?.label ?? ""}` : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track

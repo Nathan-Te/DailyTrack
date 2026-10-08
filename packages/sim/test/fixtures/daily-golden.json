@@ -1,67 +1,67 @@
 {
   "simVersion": 11,
-  "generatorVersion": 11,
+  "generatorVersion": 12,
   "circuits": [
     {
       "date": "2026-10-06",
       "number": 15,
       "attempt": 1,
-      "spec": "S/n@start S/n>l S V V V V V V S S S@cp S L2 R2 S T S S S S S@cp R2/b S T S S K GU S S S S@cp S L2 R2 U3 S D2 D R2/b S S@finish",
-      "authorMs": 34412,
+      "spec": "S/l@start D D D L2/b S U U U S@cp U3 D3 S S S T S S S@cp S S R2/b S S ML ML ML ML ML S@cp K GD S S S S/l>n S@cp P S S S S R S S S@finish",
+      "authorMs": 34784,
       "palette": "neon",
       "theme": "stade"
     },
     {
       "date": "2026-10-07",
       "number": 16,
-      "attempt": 5,
-      "spec": "S/n@start S P D/o D/o D/o D/o D D S S R2 S P S@cp K G D S S S L2 L2 S/n>e S V V V V V V S S S S L2/b S S C S S@cp L S S@finish",
-      "authorMs": 33452,
+      "attempt": 0,
+      "spec": "S/n@start U U U/o L2/o D/o D D S S/n>e S R S T S S@cp T S S S S S R2 S MR MR MR MR MR S K GD S S S S/e>n S S C S S@cp L2/b S S S@finish",
+      "authorMs": 33849,
       "palette": "nuit",
       "theme": "nuit"
     },
     {
       "date": "2026-10-08",
       "number": 17,
-      "attempt": 6,
-      "spec": "S/n@start S/n>e S V V V V V V S S@cp S S L3/b S S C S S@cp L2 R2 S@cp P S K G D S S S L2 R2 S/e>n U2 S D D D L2 L2 S S@finish",
-      "authorMs": 37112,
+      "attempt": 0,
+      "spec": "S/n@start S/n>l S/l>n S P S S S L S S/n>e S P S@cp K G D S V V V V V V S S S S@cp U U U/o S/o D/o D D S S T S S T S S S S S L2/b S S C S S@cp L2 R2 S S S@finish",
+      "authorMs": 39379,
       "palette": "nuit",
       "theme": "nuit"
     },
     {
       "date": "2026-12-25",
       "number": 95,
-      "attempt": 11,
-      "spec": "S/e@start S P D/o D/o D/o D/o D D S S@cp R S/t S/t S/t K/t GD S/t S/t S/t L S/e>n U3 S/t@cp D2 D/t R2/t R2/t S/n>e U S@cp D L2 R2 P S S R2 S S@finish",
-      "authorMs": 36314,
+      "attempt": 0,
+      "spec": "S/n@start P S S S L S S/t S/t S/t K/t GD S/t S/t S/t R2 S@cp R2 L2/t S/t S S/n>e S/t@cp T S/t S/t T S S S S S R2 S@cp U U U S D D D S S@finish",
+      "authorMs": 33584,
       "palette": "desert",
       "theme": "rallye"
     },
     {
       "date": "2027-02-28",
       "number": 160,
-      "attempt": 3,
-      "spec": "S/e@start S/e>n S T S S S S S@cp R2 R2 S P S K G D S S@cp S R2 L2 S S C S S@cp L S/n>l U3 D3 S S S L3/c S S@finish",
-      "authorMs": 31587,
+      "attempt": 1,
+      "spec": "S/n@start T S S T S S S S S R2 L2 S S@cp B S S S/n>e L S S/e>n S MR MR MR MR MR S@cp K GD S S/o S/o S/o C/o S/o S@cp R2 L2 S S/n>l S D D D L2 S U U U S S@finish",
+      "authorMs": 39802,
       "palette": "nuit",
       "theme": "nuit"
     },
     {
       "date": "2028-02-29",
       "number": 526,
-      "attempt": 1,
-      "spec": "S/n@start U U U S@cp D D D R2 S/t S/t S/t K/t GD S/t S/t S/t R2/t S/n>l S/t@cp T S S@cp S S S/t L2/b L2/b U3 D3 S@cp S S R2 S S@finish",
-      "authorMs": 32537,
+      "attempt": 7,
+      "spec": "S/n@start U U/t U/t R2/to D/to D/to D S@cp S/n>e S/t S/t S/t K/t GD S/t S/t S/t R2 S@cp S/e>n S/t S/n>e S/t R/t S S P S@cp S S T S S T S S/t S/t S/t@cp S/t L2/t S D L2 S U S S@finish",
+      "authorMs": 38625,
       "palette": "desert",
       "theme": "rallye"
     },
     {
       "date": "2030-01-01",
       "number": 1198,
-      "attempt": 4,
-      "spec": "S/l@start S T S/t S/t T S S S@cp S S L2 S T S/g S/g S/g S/g@cp S/g L2/g R2 S/g S/g L2/g R2/g S/l>n S@cp S L S S L2 S/n>l U U U S@cp D D D L2 S S@finish",
-      "authorMs": 37257,
+      "attempt": 3,
+      "spec": "S/l@start S/l>n S/t S/t R2/t L2 S S/n>e S R S S/t S/t@cp T S S S S S S L S S/g L2/g R2/g L2/g S/g S/g@cp D/g D/g D R2 S U U U S S@finish",
+      "authorMs": 38614,
       "palette": "neige",
       "theme": "banquise"
     }

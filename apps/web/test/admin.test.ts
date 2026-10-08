@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { FIGURE_NAMES } from "@cdj/sim";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin } from "../src/adminLogic";
 
 describe("adresse du jeu construite par /admin", () => {
@@ -24,6 +25,19 @@ describe("adresse du jeu construite par /admin", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "air" })).toBe("scenario=air");
     expect(parseAdmin(JSON.stringify({ scenario: "air" })).scenario).toBe("air");
     expect(PRESETS.some((p) => p.state.scenario === "air")).toBe(true);
+  });
+
+  it("les scénarios des figures (lot 20) : le tour, et une figure avec sa variante et son miroir", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "figures" })).toBe("scenario=figures");
+    expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "figure" })).toBe(`scenario=figure&f=${FIGURE_NAMES[0]}`);
+    expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "figure", figure: "slalom-glace", figureVariant: "1", figureMirror: true })).toBe("scenario=figure&f=slalom-glace&v=1&m=1");
+    // le choix d'une figure n'a de sens que pour le scénario « une figure »
+    expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "figures", figure: "slalom-glace" })).toBe("scenario=figures");
+    expect(parseAdmin(JSON.stringify({ scenario: "figure", figure: "pincement", figureVariant: "2", figureMirror: true }))).toMatchObject({ scenario: "figure", figure: "pincement", figureVariant: "2", figureMirror: true });
+    // une figure inconnue ou une variante illisible retombent sur les valeurs par défaut
+    expect(parseAdmin(JSON.stringify({ figure: "n-importe-quoi", figureVariant: "abc" }))).toMatchObject({ figure: "", figureVariant: "" });
+    expect(PRESETS.some((p) => p.state.scenario === "figures")).toBe(true);
+    expect(PRESETS.some((p) => p.state.scenario === "figure")).toBe(true);
   });
 
   it("le scénario des cuves (lot 18) a son adresse et son raccourci", () => {
@@ -61,7 +75,7 @@ describe("adresse du jeu construite par /admin", () => {
     expect(parseAdmin('{"thumbs":"x"}').thumbs).toBe("");
   });
   it("chaque raccourci produit une adresse que le jeu sait lire", () => {
-    for (const p of PRESETS) expect(gameHref({ ...DEFAULT_ADMIN, ...p.state })).toMatch(/^\.\.\/(\?[a-z=&0-9]+)?$/);
+    for (const p of PRESETS) expect(gameHref({ ...DEFAULT_ADMIN, ...p.state })).toMatch(/^\.\.\/(\?[a-z=&0-9-]+)?$/);
   });
 });
 

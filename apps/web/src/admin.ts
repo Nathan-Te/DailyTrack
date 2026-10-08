@@ -1,4 +1,4 @@
-import { PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
+import { FIGURES, PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN } from "./archive";
 import { mountPlanning } from "./adminPlanning";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin, type AdminState, type Scenario } from "./adminLogic";
@@ -31,6 +31,8 @@ const SCENARIOS: [Scenario, string][] = [
   ["relief", "Relief"],
   ["cuves", "Cuves"],
   ["air", "Air"],
+  ["figures", "Figures (tour)"],
+  ["figure", "Une figure"],
   ["plat", "Terrain plat"],
 ];
 
@@ -67,6 +69,14 @@ const theme = $<HTMLSelectElement>("theme");
 theme.append(new Option("Thème du jour", ""));
 for (const name of THEME_NAMES) theme.append(new Option(THEMES[name].label, name));
 theme.addEventListener("change", () => set({ theme: theme.value }));
+
+// Figures (lot 20)
+const figureSel = $<HTMLSelectElement>("figure");
+figureSel.append(new Option("(première de la liste)", ""));
+for (const f of FIGURES) figureSel.append(new Option(`${f.label} (${f.category})`, f.name));
+figureSel.addEventListener("change", () => set({ figure: figureSel.value, figureVariant: "" }));
+$<HTMLInputElement>("figurevariant").addEventListener("input", (e) => set({ figureVariant: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
+$<HTMLInputElement>("figuremirror").addEventListener("change", (e) => set({ figureMirror: (e.target as HTMLInputElement).checked }));
 
 $<HTMLInputElement>("variant").addEventListener("input", (e) => set({ variant: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
 $<HTMLInputElement>("date").addEventListener("change", (e) => set({ date: (e.target as HTMLInputElement).value }));
@@ -135,6 +145,10 @@ function render() {
   $("dayrow").hidden = !isDay;
   $("themerow").hidden = !isDay;
   $("variantrow").hidden = !isDay;
+  $("figurerow").hidden = state.scenario !== "figure";
+  figureSel.value = state.figure;
+  $<HTMLInputElement>("figurevariant").value = state.figureVariant;
+  $<HTMLInputElement>("figuremirror").checked = state.figureMirror;
   $<HTMLInputElement>("date").value = state.date;
   $<HTMLInputElement>("variant").value = state.variant;
   theme.value = state.theme;

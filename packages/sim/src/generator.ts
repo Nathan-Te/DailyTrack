@@ -5,19 +5,17 @@ import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
 import { themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type Dir, type SurfaceKind, type Track, type WidthLetter } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
-// 1. Construction : on enchaîne des « segments » (courts motifs de blocs) en alternant calme (lignes droites,
-//    plaques, bosses, côtes) et virages (le plus souvent larges : 2 × 2 cellules, ou amples : 3 × 3 ; au plus deux
-//    virages serrés, jamais l'un derrière l'autre), avec un ou deux passages marquants (tremplin, S large, demi-tour).
-//    La largeur de la route change par des blocs de transition (au moins deux largeurs par circuit, dominantes selon
-//    le thème) ; un virage serré ne se pose pas sur la route large.
-//    Relief (lot 17) : des collines de un à trois niveaux (montées, crêtes, descentes plus ou moins raides), un vrai saut
-//    (rampe, vide, réception) selon le thème, des sections sans rebords sur les parties surélevées.
-//    Cuves (lot 18) : une cuve droite (demi-tube), un mur latéral ou un virage en cuve, selon le thème.
-//    On place chaque segment sur la grille en refusant les croisements.
+// 1. Construction (lot 20) : on assemble 5 à 7 **figures** de la bibliothèque (figures.ts) — techniques, sauts techniques, portions rapides,
+//    combinaisons, cuves, reliefs — choisies selon le thème (signature, favorites, interdites, saut et cuve selon ses chances), jamais deux
+//    fois la même, sans les figures « au repos » ce jour-là (voir `isRested`), puis posées sur la grille en refusant les croisements.
+//    Le détail est dans `composeFigures`. Règles gardées des lots précédents : au plus deux virages serrés, jamais l'un derrière l'autre ni
+//    sur la route large ; au moins deux largeurs de route ; dénivelé d'au moins 12 m ; sections sans rebords sur les parties surélevées
+//    (lot 17) ; zones de revêtement (lot 8).
 // 2. Validation : un pilote automatique parcourt le circuit avec la même physique. S'il ne le finit pas, ou si
 //    sa durée sort de la fenêtre visée, on recommence avec une graine voisine (tentative suivante).
 // 3. Le temps du pilote est le temps de l'auteur ; les médailles en découlent.
@@ -31,6 +29,13 @@ export const MAX_ATTEMPTS = 40;
  * portion rapide (descente, turbos, grande courbe prise à fond) est refusé, graine voisine.
  */
 export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
+
+/**
+ * Écart-type de l'estimation (`estimateSeconds`) autour de la durée du pilote (≈ 0,95 × l'estimation sur 60 jours) : un circuit estimé au-delà de
+ * `ESTIMATE_MAX` ou en deçà de `ESTIMATE_MIN` n'a aucune chance d'entrer dans la fenêtre 30–40 s, on le refuse sans faire rouler le pilote (4 courses).
+ */
+const ESTIMATE_MIN = 30;
+const ESTIMATE_MAX = 44;
 
 /** Seuils des médailles, en multiples du temps de l'auteur. */
 export const MEDAL_FACTORS = { gold: 1.08, silver: 1.2, bronze: 1.4 } as const;
@@ -124,173 +129,39 @@ export const MIN_RELIEF = 12;
 /** Une section sans rebords ne se pose que sur une route au moins aussi haute (m au-dessus du point le plus bas) : le risque de tomber doit être réel. */
 const OPEN_MIN_HEIGHT = 6;
 
-/**
- * Lignes droites obligatoires après une plaque d'accélération, avant le virage suivant : elle pousse la voiture
- * pendant ~0,9 s, et pendant ce temps le frein (40 m/s²) lutte contre la poussée (30 m/s²). Avec une pointe à
- * 48 m/s, une plaque suivie d'un virage serré à moins de ~80 m ne se prend pas (mesuré au 7b : le pilote ne
- * finissait que 28 circuits sur 91).
- */
-const PAD_RUNOUT = 2;
-/** Idem pour un super turbo (poussée 42 m/s² pendant 1,5 s, jusqu'à 68 m/s) : bien plus de dégagement. */
-const TURBO_RUNOUT = 5;
-/** Créneaux calme + virage d'un circuit : 4 à 6 (5 à 7 au lot 12, 8 à 11 avant : les portions rapides du lot 15 allongent le circuit en cellules, donc un créneau de moins). */
-const TURNS_MIN = 4;
-const TURNS_SPAN = 3;
-/** Virages serrés (une cellule, rayon 16 m) : au plus 2 par circuit passage signature compris, jamais deux d'affilée. */
+/** Virages serrés (une cellule, rayon 16 m) : au plus 2 par circuit, jamais deux d'affilée. */
 const MAX_TIGHT = 2;
-
-type Highlight = "chicane" | "hairpin";
-
 /**
- * Reliefs (créneaux calmes), du plus doux au plus raide. `U` / `D` : un niveau (4 m) sur une cellule ; `U2` / `D2` et `U3` / `D3` :
- * deux et trois niveaux sur une cellule (pente 0,25 et 0,375). Un dos d'âne (`U2 D2`) fait décoller à haute vitesse : trois
- * lignes droites derrière lui pour atterrir (`CREST_RUNOUT`). Chaque motif revient en général à son niveau de départ.
+ * Figures par circuit : 5 à 7 (lot 20), dans un budget de durée : chaque figure pèse sa durée estimée (`figureSeconds`, figures.ts : un virage
+ * large coûte deux fois une droite), et on n'en ajoute (au-delà de cinq) que tant que le total reste sous `FIGURE_BUDGET`. Sans cela, sept
+ * figures donneraient un circuit de 50 s ; la fenêtre visée (30–40 s) correspond à ≈ 38 unités (le pilote met 3,9 s + 0,78 × l'estimation).
  */
-const CREST_RUNOUT = 3;
-const crest = (up: string, down: string) => [up, down, ...Array<string>(CREST_RUNOUT).fill("S")];
-const HILLS_GENTLE: readonly (readonly string[])[] = [
-  ["U", "U", "S", "D", "D"], // montée de deux niveaux, crête, descente
-  ["U", "S", "D"],
-  ["D", "S", "U"], // creux
-  ["D", "D", "S", "U", "U"],
-  ["U", "U", "U", "S", "D", "D", "D"], // trois niveaux, long
-];
-const HILLS_STEEP: readonly (readonly string[])[] = [
-  ["U2", "S", "D2"],
-  ["U3", "S", "D3"],
-  ["U2", "S", "D", "D", "D"], // montée raide, longue descente (rend un niveau de moins)
-  ["U", "U", "S", "D2", "D"],
-  ["D2", "S", "U2"],
-  crest("U2", "D2"),
-  crest("U3", "D3"),
-  ["U3", "S", "D2", "D"],
-  ["U2", "S", "S", "S", "D2"], // plateau surélevé : de la place pour une section sans rebords
-  ["U3", "S", "S", "S", "D3"],
-];
-/** Hauteurs extrêmes atteintes par une suite de blocs partie de 0 (m), et son dénivelé net. */
-function extent(seg: readonly string[]): { hi: number; lo: number; net: number } {
-  let y = 0;
-  let hi = 0;
-  let lo = 0;
-  for (const t of seg) {
-    const p = parseToken(t);
-    y += exitDelta(p.kind, p.rise);
-    if (y > hi) hi = y;
-    if (y < lo) lo = y;
-  }
-  return { hi, lo, net: y };
-}
-/** Dénivelé d'un relief (m) : sa hauteur la plus haute moins la plus basse. */
-const hillRise = (seg: readonly string[]): number => {
-  const e = extent(seg);
-  return e.hi - e.lo;
-};
+const FIGURES_MIN = 5;
+const FIGURES_SPAN = 3;
+const FIGURE_BUDGET = 28;
+/** Durée estimée maximale des figures d'un circuit : au-delà, on retire d'autres figures (jusqu'à `SELECTION_TRIES` fois). */
+const FIGURE_TOTAL_MAX = 31;
+const SELECTION_TRIES = 8;
+
 /** Dénivelé d'un circuit (m, du point le plus bas au plus haut de la route) : le critère `MIN_RELIEF`. */
 export function reliefOf(tokens: readonly string[]): number {
   return hillRise(tokens);
 }
 
-/**
- * Sauts (lot 17) : rampe `K`, vide `G` (32 m par cellule), réception. `GD` : le bord d'en face est un niveau plus bas que le bord de
- * la rampe. La voiture doit atteindre une vitesse minimale au bord de la rampe (voir `jumpMinSpeed`, jump.ts), faute de quoi
- * elle tombe ; les sauts longs partent d'une plaque (66 m/s) ou d'un super turbo (88 m/s). Trois lignes droites au moins derrière
- * un saut court, cinq derrière un saut long, pour freiner avant le virage suivant.
- * - court : de la rampe au vide, atterrissage un niveau plus bas (fenêtre ≥ 33 m/s) ;
- * - plat : vide au niveau de la rampe, réception en descente, après une plaque (fenêtre ≥ 40 m/s : la plaque en donne plus de 60) ;
- * - long : deux cellules de vide après un super turbo (fenêtre ≥ 58 m/s) ;
- * - long bas : deux cellules, atterrissage plus bas, après une plaque (fenêtre ≥ 52 m/s) ;
- * - haut : le bord d'en face est un niveau plus haut, après un super turbo (fenêtre ≥ 54 m/s).
- */
-type JumpKind = "short" | "flat" | "long" | "longDown" | "up";
-const JUMP_KINDS: readonly JumpKind[] = ["short", "flat", "long", "longDown", "up"];
-const JUMP_WEIGHTS: Record<JumpKind, number> = { short: 3, flat: 3, long: 2, longDown: 2, up: 1 };
-const JUMP_LANDING = 3;
-const JUMP_LANDING_LONG = 5;
-function jumpCalm(kind: JumpKind, surface = ""): string[] {
-  const s = (t: string) => (surface ? withMod(t, surface) : t);
-  const land = (n: number) => Array<string>(n).fill("S").map(s);
-  switch (kind) {
-    case "short":
-      return [...["S", "S", "S"].map(s), s("K"), "GD", ...land(JUMP_LANDING)];
-    case "flat":
-      return [s("S"), "P", s("S"), s("K"), "G", s("D"), ...land(JUMP_LANDING)];
-    case "long":
-      return ["S", "T", "S", "S", "K", "G", "G", s("D"), ...land(JUMP_LANDING_LONG)];
-    case "longDown":
-      return ["S", "P", "S", "K", "G", "GD", s("D"), ...land(JUMP_LANDING_LONG - 1)];
-    case "up":
-      return ["S", "T", "S", "S", "K", "GU", ...land(JUMP_LANDING_LONG)];
+/** Vrai si la suite de blocs, posée à la hauteur `y`, reste entre `Y_MIN` et `Y_MAX`. */
+function fits(y: number, seg: readonly string[]): boolean {
+  let h = y;
+  for (const t of seg) {
+    const p = parseToken(t);
+    h += exitDelta(p.kind, p.rise);
+    if (h > Y_MAX || h < Y_MIN) return false;
   }
+  return y <= Y_MAX && y >= Y_MIN;
 }
-
-/**
- * Cuves (lot 18) : une paroi qui se relève d'un côté de la route (voir cuve.ts). Trois motifs, tirés selon les poids :
- * - `bowl` : cuve droite (demi-tube), six blocs `V` entre deux lignes droites ;
- * - `wall` : mur latéral, six blocs `ML` ou `MR` entre deux lignes droites ;
- * - `turn` : virage en cuve (`L2/c`, `L3/c`) : la paroi extérieure monte, le pilote la prend.
- * Une cuve a besoin de ses rampes (16 m sur une droite) : les blocs voisins sont des droites ordinaires.
- */
-type CuveKind = "bowl" | "wall" | "turn";
-const CUVE_KINDS: readonly CuveKind[] = ["bowl", "wall", "turn"];
-const CUVE_WEIGHTS: Record<CuveKind, number> = { bowl: 3, wall: 2, turn: 3 };
-const CUVE_RUN = 6;
-/** Lignes droites derrière une cuve (lot 18b) : on en sort à plus de 55 m/s. Une cuve droite les compte dans son motif, un virage en cuve dans le créneau calme qui suit. */
-const CUVE_RUNOUT = 4;
-
-function cuveCalm(kind: "bowl" | "wall", left: boolean): string[] {
-  const block = kind === "bowl" ? "V" : left ? "ML" : "MR";
-  return ["S", ...Array<string>(CUVE_RUN).fill(block), ...Array<string>(CUVE_RUNOUT).fill("S")];
-}
-
-/**
- * Portions rapides (lot 15) : un créneau calme qui lance la voiture bien au-delà de la pointe du plat.
- * - `chain` : deux super turbos à trois blocs d'écart sur une ligne droite (le second prolonge le premier) ;
- * - `drop` : une plaque en haut d'une longue descente (six blocs) ;
- * - `bank` : un super turbo, puis une grande courbe relevée prise à fond (virage de la même case).
- * Chacune garde assez de lignes droites derrière elle pour freiner (`TURBO_RUNOUT`, `PAD_RUNOUT`).
- */
-type Fast = "chain" | "drop" | "bank";
-const FAST_KINDS: readonly Fast[] = ["chain", "drop", "bank"];
-
-function fastCalm(kind: Fast): string[] {
-  switch (kind) {
-    case "chain":
-      return ["S", "T", "S", "S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")];
-    case "drop":
-      return ["S", "P", "D", "D", "D", "D", "D", "D", ...Array<string>(PAD_RUNOUT).fill("S")];
-    case "bank":
-      return ["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")];
-  }
-}
-
-/** Ajoute un modificateur (`g`, `t`, `h`, `b`) à un bloc de la notation, avant son repère éventuel. */
-function withMod(token: string, mod: string): string {
-  const [body, mark] = token.split("@");
-  const next = body!.includes("/") ? body + mod : `${body}/${mod}`;
-  return mark === undefined ? next : `${next}@${mark}`;
-}
-
-const SURFACE_MOD: Record<SurfaceKind, string> = { road: "", dirt: "t", ice: "g", grass: "h" };
-const surfaceOnly = (tokens: string[], surface: SurfaceKind) => tokens.map((t) => withMod(t, SURFACE_MOD[surface]));
-
-// --- Largeurs ---------------------------------------------------------------------------------
 
 const WIDTH_LETTERS: readonly WidthLetter[] = ["e", "n", "l"];
 /** Une transition passe à la largeur voisine (14 ↔ 20 ↔ 26 m) : jamais de saut de 12 m en un bloc. */
 const NEXT_WIDTHS: Record<WidthLetter, readonly WidthLetter[]> = { e: ["n"], n: ["e", "l"], l: ["n"] };
-
-/** Bloc de transition de largeur (une ligne droite de 32 m dont les rebords s'écartent ou se resserrent en douceur). */
-const transition = (from: WidthLetter, to: WidthLetter) => `S/${from}>${to}`;
-
-/** Largeur de la route à la fin d'une suite de blocs (les seuls blocs qui écrivent une largeur sont les transitions). */
-function widthAfter(tokens: readonly string[], width: WidthLetter): WidthLetter {
-  let w = width;
-  for (const t of tokens) {
-    const m = /\/[^@]*?[enl]>([enl])/.exec(t);
-    if (m) w = m[1] as WidthLetter;
-  }
-  return w;
-}
 
 function pickWidth(rng: Rng, weights: Record<WidthLetter, number>, among: readonly WidthLetter[]): WidthLetter {
   let roll = rng.int(among.reduce((sum, w) => sum + weights[w], 0));
@@ -307,224 +178,286 @@ const tightCount = (tokens: readonly string[]) => tokens.filter((t) => {
   return isCurve(k) && !isWide(k);
 }).length;
 
+// --- Composition par figures (lot 20) ---------------------------------------------------------
+
+/** Figure du passage signature de chaque thème : le circuit la contient toujours. */
+export const SIGNATURE_FIGURE: Readonly<Record<Signature, string>> = {
+  turboBank: "turbo-courbe",
+  dirtJump: "saut-terre",
+  iceChicane: "chicane-glace",
+  cutRun: "coupe-virage",
+  dirtPinch: "etranglement-terre",
+};
+
+/** Une figure posée dans un circuit : blocs `[from, to)` de la liste du circuit. */
+export interface PlacedFigure {
+  name: string;
+  variant: number;
+  /** Vrai si le premier virage est à gauche (le miroir de la variante d'origine sinon). */
+  left: boolean;
+  from: number;
+  to: number;
+}
+
+export interface Composition {
+  spec: string;
+  figures: PlacedFigure[];
+}
+
+/** Plafonds de composition : pas plus de deux sauts, une cuve, un moteur coupé ; au plus quatre techniques, deux de chaque autre catégorie. */
+const CAP_JUMPS = 2;
+const CAP_CUVES = 1;
+const CAP_CUTS = 1;
+const CAP_CATEGORY: Record<FigureCategory, number> = { technique: 4, saut: 2, rapide: 2, combo: 1, cuve: 1, relief: 2 };
+/** Au moins deux techniques par circuit (signature comprise) : c'est là que le pilote lâche l'accélérateur et freine. */
+const MIN_TECHNIQUES = 2;
+const FAVOR = 4;
+/** Une figure favorite peut dépasser le budget de durée de ce que vaut un virage large : c'est la couleur du thème. */
+const FAVORITE_SLACK = 4;
+/** Au moins une figure à freinage franc par circuit (signature comprise), et elles sont tirées deux fois plus souvent. */
+const MIN_BRAKING = 1;
+
+/** Empreinte stable d'un nom (FNV-1a) : sert à répartir les figures en trois groupes pour la rotation par jour. */
+function nameHash(name: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h ^ name.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
 /**
- * Passages signature : (créneau calme, virages possibles à la suite). `L` / `R` : le sens tiré pour ce virage ; `width` :
- * la largeur au début du créneau. Un passage signature ne se remplace pas : s'il ne tient pas sur la grille, la tentative échoue.
+ * Rotation par jour, sans générer les jours précédents : chaque figure appartient à l'un de trois groupes (par son nom) ; le jour `d`
+ * laisse « au repos » le groupe `d mod 3`. Deux jours de suite n'ont donc en commun que le tiers des figures, et chaque figure reprend
+ * du service au bout de deux jours. La figure signature d'un thème n'est jamais au repos.
  */
-function signatureParts(sig: Signature, L: string, R: string, width: WidthLetter): { calm: string[]; turn?: string[][] } {
-  switch (sig) {
-    case "turboBank": // super turbo sur une ligne droite, puis grand virage relevé
-      return { calm: ["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")], turn: [[withMod(L + "2", "b")], [withMod(R + "2", "b")]] };
-    case "dirtJump": // saut court sur la terre : rampe de terre, vide, réception de terre
-      return { calm: jumpCalm("short", SURFACE_MOD.dirt) };
-    case "iceChicane": // chicane large sur la glace, après une ligne droite verglacée
-      return { calm: ["S/g", "S/g"], turn: [[`${L}2/g`, `${R}2/g`], [`${R}2/g`, `${L}2/g`]] };
-    case "cutRun": // moteur coupé, puis point de contrôle deux blocs plus loin (voir composeSpec)
-      return { calm: ["S", "S", "C", "S", "S"] };
-    case "dirtPinch": {
-      // étranglement : la route se resserre jusqu'à 14 m, puis un virage serré sur la terre, au bout de la ligne droite étroite
-      const narrowing: string[] = [];
-      if (width === "l") narrowing.push(withMod(transition("l", "n"), "t"));
-      if (width !== "e") narrowing.push(withMod(transition("n", "e"), "t"));
-      return { calm: ["S/t", ...narrowing, "S/t"], turn: [[`${L}/t`], [`${R}/t`]] };
-    }
-  }
+export const isRested = (name: string, day: number): boolean => nameHash(name) % 3 === (((day % 3) + 3) % 3);
+
+/** Poids d'une figure dans le tirage : favorite du thème ×4, super turbo et virages relevés selon les chances du thème. */
+function figureWeight(f: Figure, theme: Theme): number {
+  let w = f.weight ?? 10;
+  if (theme.figures.favor.includes(f.name)) w *= FAVOR;
+  if (f.braking) w *= 2;
+  if (f.turbo) w += Math.round(theme.turboChance / 3);
+  if (f.banked) w += Math.round(theme.bankChance / 4);
+  return w;
 }
 
-/** Vrai si la suite de blocs, posée à la hauteur `y`, reste entre `Y_MIN` et `Y_MAX`. */
-function fits(y: number, seg: readonly string[]): boolean {
-  const e = extent(seg);
-  return y + e.hi <= Y_MAX && y + e.lo >= Y_MIN;
-}
+const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
-/** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée. */
-export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): string | null {
-  // Variante 0 : la graine d'avant le lot 14 (circuits inchangés). Variante n : une autre graine, décalée de n × 1000
-  // tentatives (au plus `MAX_ATTEMPTS` = 40 sont tirées : jamais de recoupement entre variantes).
-  const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
-  let turns = TURNS_MIN + rng.int(TURNS_SPAN);
-  // Créneaux : calme, virage, calme, virage, …, calme final. Les passages marquants prennent des créneaux distincts, dans cet ordre
-  // de priorité : passage signature, saut, cuve, virages marquants, portions rapides (celles-là se perdent si la place manque : le pilote
-  // refuse alors le circuit faute de portion rapide, et la graine voisine prend le relais).
-  const freeSlot = (from: number, to: number, taken: (i: number) => boolean): number => {
-    const start = from + rng.int(to - from + 1);
-    for (let k = 0; k <= to - from; k++) {
-      const i = from + ((start - from + k) % (to - from + 1));
-      if (!taken(i)) return i;
+/** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }): Figure[] | null {
+  const banned = new Set(theme.figures.ban);
+  const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
+  const chosen: Figure[] = [signature];
+  const names = new Set([signature.name]);
+  const pool = FIGURES.filter((f) => !banned.has(f.name) && !isRested(f.name, day));
+  const count_ = (pred: (f: Figure) => boolean) => chosen.filter(pred).length;
+  const allowed = (f: Figure) =>
+    !names.has(f.name) &&
+    (!f.jump || count_((g) => !!g.jump) < CAP_JUMPS) &&
+    (!f.cuve || count_((g) => !!g.cuve) < CAP_CUVES) &&
+    (!f.cut || count_((g) => !!g.cut) < CAP_CUTS) &&
+    chosen.reduce((sum, g) => sum + minTightTurns(g), 0) + minTightTurns(f) <= MAX_TIGHT &&
+    count_((g) => g.category === f.category) < CAP_CATEGORY[f.category];
+  const pick = (pred: (f: Figure) => boolean): Figure | null => {
+    const list = pool.filter((f) => allowed(f) && pred(f));
+    if (list.length === 0) return null;
+    let roll = rng.int(list.reduce((sum, f) => sum + figureWeight(f, theme), 0));
+    for (const f of list) {
+      const w = figureWeight(f, theme);
+      if (roll < w) return f;
+      roll -= w;
     }
-    return -1;
+    return list[0]!;
   };
-  const signatureSlot = freeSlot(1, turns - 2, () => false);
-  // Vrai saut (lot 17) : un créneau calme au milieu du circuit (ni le premier, où la voiture part de zéro, ni le dernier : pas de
-  // saut juste avant l'arrivée), du type tiré selon les poids.
-  const jumpSlot = new Map<number, JumpKind>();
-  if (rng.chance(theme.jumpChance)) {
-    let roll = rng.int(JUMP_KINDS.reduce((sum, k) => sum + JUMP_WEIGHTS[k], 0));
-    let kind = JUMP_KINDS[0]!;
-    for (const k of JUMP_KINDS) {
-      if (roll < JUMP_WEIGHTS[k]) {
-        kind = k;
-        break;
-      }
-      roll -= JUMP_WEIGHTS[k];
-    }
-    const slot = freeSlot(1, turns - 2, (i) => i === signatureSlot);
-    if (slot >= 0) jumpSlot.set(slot, kind);
+  const add = (f: Figure | null): boolean => {
+    if (!f) return false;
+    chosen.push(f);
+    names.add(f.name);
+    return true;
+  };
+  // Un vrai saut et une cuve (selon le thème) : quand le thème veut les deux, une figure qui fait les deux à la fois (saut dans une cuve,
+  // saut en sortie de paroi…) tient en moins de blocs que deux figures, et elle est préférée un peu plus d'une fois sur deux.
+  const wantsJump = !signature.jump && wants.jump;
+  const wantsCuve = wants.cuve;
+  if (wantsJump && wantsCuve && rng.chance(55)) add(pick((f) => !!f.jump && !!f.cuve));
+  if (wantsCuve && !chosen.some((f) => f.cuve) && !add(pick((f) => f.category === "cuve")) && !add(pick((f) => !!f.cuve)) && theme.cuveChance >= 100) return null;
+  if (wantsJump && !chosen.some((f) => f.jump) && !add(pick((f) => !!f.jump && !f.cuve)) && !add(pick((f) => !!f.jump)) && theme.jumpChance >= 100) return null;
+  // Du dénivelé : une figure qui en fait (colline, virage en descente, crête…), la raide plus souvent dans les thèmes de relief marqué.
+  if (!chosen.some((f) => f.relief)) {
+    const hill = rng.chance(theme.relief.steep) ? "colline-raide" : "colline-douce";
+    // De préférence un virage dans le dénivelé (virage aveugle, en descente, crête) : une colline seule se prend à plein gaz.
+    if (!add(pick((f) => !!f.relief && f.category !== "relief")) && !add(pick((f) => f.name === hill)) && !add(pick((f) => !!f.relief))) return null;
   }
-  // Cuve (lot 18) : un créneau calme (cuve droite, mur latéral) ou un créneau de virage (virage en cuve), selon le thème. Rien n'est tiré
-  // pour un thème sans cuve : ses circuits gardent la même suite de tirages.
-  let cuveKind: CuveKind | null = null;
-  let cuveSlot = -1;
-  if (theme.cuveChance > 0 && rng.chance(theme.cuveChance)) {
-    let roll = rng.int(CUVE_KINDS.reduce((sum, k) => sum + CUVE_WEIGHTS[k], 0));
-    cuveKind = CUVE_KINDS[0]!;
-    for (const k of CUVE_KINDS) {
-      if (roll < CUVE_WEIGHTS[k]) {
-        cuveKind = k;
-        break;
-      }
-      roll -= CUVE_WEIGHTS[k];
-    }
-    // Une cuve droite ou un mur latéral ajoute dix cellules : un créneau de moins pour garder la durée visée.
-    if (cuveKind !== "turn" && turns > TURNS_MIN) turns -= 1;
-    if (cuveKind !== "turn") cuveSlot = freeSlot(0, turns - 1, (i) => i === signatureSlot || jumpSlot.has(i));
-    if (cuveSlot < 0) {
-      // Pas de créneau calme libre : un virage en cuve (créneau de virage) fait l'affaire.
-      cuveKind = "turn";
-      // Le créneau calme qui suit garde sa ligne droite pour freiner : ni saut ni passage marquant juste derrière.
-      cuveSlot = freeSlot(0, turns - 1, (i) => i === signatureSlot || jumpSlot.has(i + 1) || i + 1 === signatureSlot);
-    }
-    if (cuveSlot < 0) {
-      if (theme.cuveChance >= 100) return null; // un thème qui garantit sa cuve ne s'en passe pas
-      cuveKind = null;
-    }
+  // Un freinage franc (élan de plus de 60 m/s, puis un virage) : c'est ce qui fait lâcher l'accélérateur ; il fait aussi la portion rapide.
+  while (chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking))) return null;
+  if (!chosen.some(isFast) && !add(pick(isFast))) return null;
+  // Une figure favorite du thème (en plus de la signature), si elle tient dans le budget : c'est ce qui donne au thème sa couleur.
+  const seconds = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
+  if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= FIGURE_BUDGET + FAVORITE_SLACK));
+  while (count_((f) => f.category === "technique") < MIN_TECHNIQUES) if (!add(pick((f) => f.category === "technique"))) return null;
+  // Le reste, au poids : jusqu'à cinq figures quoi qu'il arrive (les plus courtes si le budget est dépassé), puis tant que le budget le permet.
+  const total = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
+  while (chosen.length < count) {
+    const room = FIGURE_BUDGET - total();
+    const fitting = pick((f) => figureSeconds(f) <= room);
+    if (fitting) add(fitting);
+    else if (chosen.length < FIGURES_MIN) {
+      const pool_ = pool.filter(allowed).sort((a, b) => figureSeconds(a) - figureSeconds(b));
+      if (!add(pool_[0] ?? null)) break;
+    } else break;
   }
-  const pickHighlights = rng.shuffle<Highlight>(["chicane", "hairpin"]).slice(0, 1 + rng.int(2));
-  const turnSlot = new Map<number, Highlight>();
-  for (const h of pickHighlights) {
-    const slot = freeSlot(0, turns - 1, (i) => turnSlot.has(i) || i === signatureSlot || (cuveKind === "turn" && i === cuveSlot));
-    if (slot >= 0) turnSlot.set(slot, h);
-  }
-  // Portions rapides : un ou deux créneaux calmes de plus, distincts du saut (un décollage coupe tout freinage).
-  const fastSlot = new Map<number, Fast>();
-  for (const kind of rng.shuffle<Fast>([...FAST_KINDS]).slice(0, 1 + rng.int(2))) {
-    const slot = freeSlot(0, turns - 2, (i) => fastSlot.has(i) || jumpSlot.has(i) || i === signatureSlot || (cuveKind !== "turn" && i === cuveSlot) || (cuveKind === "turn" && i === cuveSlot + 1));
-    if (slot >= 0) fastSlot.set(slot, kind);
-  }
-  // Reliefs : des créneaux calmes libres (ni saut, ni portion rapide, ni signature, ni cuve). Le premier relief d'un circuit est toujours
-  // d'au moins deux niveaux : c'est lui qui garantit le dénivelé minimal.
-  const hillSlot = new Set<number>();
-  const hillCount = theme.relief.hills[0] + rng.int(theme.relief.hills[1] - theme.relief.hills[0] + 1);
-  for (let tries = 0; hillSlot.size < hillCount && tries < 3 * turns; tries++) {
-    const i = rng.int(turns);
-    if (!jumpSlot.has(i) && !fastSlot.has(i) && i !== signatureSlot && !(cuveKind !== "turn" && i === cuveSlot) && !(cuveKind === "turn" && i === cuveSlot + 1)) hillSlot.add(i);
-  }
-  let majorHill = false;
+  return chosen;
+}
 
-  // Largeurs : la route démarre à une largeur tirée selon le thème, et change aux créneaux calmes tirés d'avance.
+/** Ordre des figures : le tirage au hasard, avec un saut ni en tête (la voiture part de zéro) ni en queue (pas de saut juste avant l'arrivée). */
+function orderFigures(rng: Rng, figures: Figure[]): Figure[] | null {
+  for (let tries = 0; tries < 12; tries++) {
+    const order = rng.shuffle(figures);
+    if (!order[0]!.jump && !order[order.length - 1]!.jump) return order;
+  }
+  return null;
+}
+
+/** Blocs droits ordinaires (ni effet, ni saut, ni relief, ni cuve ; revêtement, largeur et point de contrôle permis). */
+const isPlainStraight = (token: string) => /^S(\/[a-z>]*)?(@cp)?$/.test(token);
+
+/** Plus longue suite de droites ordinaires d'un circuit (blocs) : la « ligne droite sans figure » que le générateur plafonne à `MAX_PLAIN_STRAIGHT`. */
+export function longestPlainStraight(tokens: readonly string[]): number {
+  let best = 0;
+  let run = 0;
+  for (const t of tokens) {
+    run = isPlainStraight(t) ? run + 1 : 0;
+    if (run > best) best = run;
+  }
+  return best;
+}
+
+/** Droites ordinaires à la fin d'une liste de blocs. */
+function trailingStraights(tokens: readonly string[]): number {
+  let n = 0;
+  while (n < tokens.length && isPlainStraight(tokens[tokens.length - 1 - n]!)) n++;
+  return n;
+}
+
+/** Plus longue ligne droite sans figure, en blocs (6 = 192 m ; 5 avant le lot 20) : les dégagements derrière un turbo ou une cuve (5 et 4) se suivent d'une droite d'amorce, pas de deux. */
+export const MAX_PLAIN_STRAIGHT = 6;
+
+/** Relève les virages larges et amples ordinaires d'une figure (`L2` → `L2/b`) : le virage relevé se prend sur une trajectoire plus serrée, donc plus lentement. */
+const bankTurns = (tokens: readonly string[]): string[] => tokens.map((t) => (/^[LR][23]$/.test(t) ? withMod(t, "b") : t));
+
+/** Liaisons entre deux figures : le plus souvent rien ou une droite ; parfois une plaque ou une bosse. */
+const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], ["S", "P", "S", "S"], ["S", "B", "S"]];
+
+/**
+ * Texte d'un circuit pour (jour, tentative, thème), avec ses figures, ou `null` si la construction s'est coincée.
+ * Les figures sont tirées dans une bibliothèque (figures.ts) : signature du thème, relief, saut, cuve, portion rapide, au moins deux
+ * techniques, le tout au poids du thème (favorites ×4, interdites exclues) et sans les figures « au repos » ce jour-là ; jamais la même
+ * figure deux fois. Chacune est posée dans un sens (miroir) et avec une variante tirés au sort, la première qui tient sur la grille
+ * (sans croisement, sans dépasser les hauteurs permises, dans le budget de virages serrés) l'emporte.
+ */
+export function composeFigures(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): Composition | null {
+  // Variante 0 : la graine d'origine. Variante n : une autre graine, décalée de n × 1000 tentatives (au plus `MAX_ATTEMPTS` = 40 sont
+  // tirées : jamais de recoupement entre variantes).
+  const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
+  const count = FIGURES_MIN + rng.int(FIGURES_SPAN);
+  // Plusieurs tirages de figures, le premier dont la durée estimée tient dans le budget l'emporte (sinon le plus court) : les figures
+  // obligatoires d'un thème (saut, cuve, signature) pèsent lourd, et sept tirages sur dix donneraient un circuit trop long.
+  // Un saut et une cuve, selon les chances du thème : tirés une fois pour toutes (les tirages de figures ne les écartent pas).
+  const wants = { jump: rng.chance(theme.jumpChance), cuve: theme.cuveChance > 0 && rng.chance(theme.cuveChance) };
+  let picked: Figure[] | null = null;
+  let best = -Infinity;
+  for (let tries = 0; tries < SELECTION_TRIES; tries++) {
+    const candidate = selectFigures(rng, theme, day, count, wants);
+    if (!candidate) continue;
+    const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
+    // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
+    const score = (seconds <= FIGURE_TOTAL_MAX ? 1000 : -seconds) + candidate.reduce((sum, f) => sum + f.off, 0);
+    if (score > best) {
+      best = score;
+      picked = candidate;
+    }
+  }
+  if (!picked) return null;
+  const order = orderFigures(rng, picked);
+  if (!order) return null;
+
+  // Largeurs : la route démarre à une largeur tirée selon le thème, et change avant certaines figures tirées d'avance.
   const weights = theme.widths.weights;
   const startWidth = pickWidth(rng, weights, WIDTH_LETTERS);
   let width = startWidth;
-  const used = new Set<WidthLetter>([width]);
+  const usedWidths = new Set<WidthLetter>([width]);
   const changeCount = theme.widths.changes[0] + rng.int(theme.widths.changes[1] - theme.widths.changes[0] + 1);
   const changeSlots = new Set<number>();
-  for (let tries = 0; changeSlots.size < changeCount && tries < 40; tries++) changeSlots.add(rng.int(turns));
-  let mustChange = false; // après un étranglement, la route s'élargit à nouveau
-  // Virages serrés : un budget de 0 à 2, dont le passage signature (étranglement) prend un.
-  let tightLeft = Math.min(rng.int(MAX_TIGHT + 1), MAX_TIGHT - (theme.signature === "dirtPinch" ? 1 : 0));
+  for (let tries = 0; changeSlots.size < changeCount && tries < 40; tries++) changeSlots.add(rng.int(order.length));
 
   const w: Walk = { cx: 0, cz: 0, dir: 0, y: 0, cells: new Set(), tokens: [] };
   place(w, [`S/${width}`]);
+  const placed: PlacedFigure[] = [];
+  let tightLeft = MAX_TIGHT;
+  let majorHill = false;
+  const names = new Set(order.map((f) => f.name));
+  const signatureName = SIGNATURE_FIGURE[theme.signature];
 
-  for (let i = 0; i < turns; i++) {
-    const left = rng.chance(50);
-    const L = left ? "L" : "R";
-    const R = left ? "R" : "L";
-    const banked = rng.chance(theme.bankChance); // virage relevé ce tour-ci
-    const bank = (seg: string[]) => (banked ? seg.map((t) => (isCurve(parseToken(t).kind) ? withMod(t, "b") : t)) : seg);
-    const signature = i === signatureSlot ? signatureParts(theme.signature, L, R, width) : null;
-    const fast = signature ? undefined : fastSlot.get(i);
-
-    // Créneau calme.
-    const jump = signature ? undefined : jumpSlot.get(i);
-    const calm: string[][] = [];
-    if (signature) {
-      calm.push(signature.calm);
-    } else if (fast) {
-      calm.push(fastCalm(fast));
-    } else if (jump) {
-      calm.push(jumpCalm(jump));
-    } else if (cuveKind && cuveKind !== "turn" && i === cuveSlot) {
-      calm.push(cuveCalm(cuveKind, left));
-    } else if (cuveKind === "turn" && i === cuveSlot + 1) {
-      calm.push(Array<string>(CUVE_RUNOUT).fill("S")); // derrière un virage en cuve pris à fond, de quoi freiner
-    } else {
-      const pad = Array<string>(PAD_RUNOUT).fill("S");
-      const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...pad], ["S", "B", "S"], ["P", ...pad]]);
-      if (rng.chance(theme.turboChance)) options.unshift(["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")]);
-      if (hillSlot.has(i)) {
-        // Un relief : les motifs raides ou doux selon le thème, mélangés ; le premier relief du circuit fait au moins 2 niveaux.
-        const steep = rng.chance(theme.relief.steep);
-        const pool = rng.shuffle<readonly string[]>([...(steep ? HILLS_STEEP : HILLS_GENTLE), ...(steep ? HILLS_GENTLE : HILLS_STEEP)]);
-        const fitting = pool.filter((seg) => (majorHill ? true : hillRise(seg) >= MIN_RELIEF) && fits(w.y, seg));
-        options.unshift(...fitting.map((seg) => [...seg]));
+  for (let i = 0; i < order.length; i++) {
+    // Une figure qui ne tient pas est remplacée par une autre de la même catégorie (même nature : saut, cuve, moteur coupé) ;
+    // la signature, elle, ne se remplace pas : la tentative échoue et la graine voisine prend le relais.
+    const alternatives = [order[i]!];
+    if (order[i]!.name !== signatureName) {
+      const f0 = order[i]!;
+      const banned = new Set(theme.figures.ban);
+      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && !isRested(f.name, day));
+      alternatives.push(...rng.shuffle(subs).slice(0, 3));
+    }
+    let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number } | null = null;
+    for (const figure of alternatives) {
+      // Pas de liaison derrière une longue ligne droite (le dégagement d'une figure suffit), ni avant le premier.
+      const connector = i === 0 || trailingStraights(w.tokens) > 1 ? [] : [...CONNECTORS[rng.int(CONNECTORS.length)]!];
+      const target = changeSlots.has(i) ? pickWidth(rng, weights, NEXT_WIDTHS[width]) : null;
+      const variants = rng.shuffle(Array.from({ length: figure.variants }, (_, v) => v));
+      const banked = rng.chance(theme.bankChance); // virages relevés dans cette figure (selon le thème), sauf si elle n'a pas de virage ordinaire
+      const mirrors = rng.chance(50) ? [true, false] : [false, true];
+      outer: for (const withChange of target ? [true, false] : [false]) {
+        const entry = withChange ? target! : width;
+        const prefix = withChange ? [transition(width, target!)] : [];
+        for (const v of variants) {
+          for (const left of mirrors) {
+            const plain = buildFigure(figure, left, entry, v);
+            if (!plain) continue;
+            const body = banked && !figure.cuve ? bankTurns(plain) : plain;
+            // La droite d'amorce d'une figure est celle qui termine la précédente (ou le départ) : on ne la pose pas deux fois.
+            const lead = connector.length === 0 && prefix.length === 0 && body[0] === "S" && /^S(\/[a-z]*)?(@start)?$/.test(w.tokens[w.tokens.length - 1] ?? "") ? 1 : 0;
+            const tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...body.slice(lead)];
+            if (tightCount(tokens) > tightLeft || !fits(w.y, tokens)) continue;
+            // Le premier relief d'un circuit fait au moins deux niveaux : c'est lui qui garantit le dénivelé minimal.
+            if (figure.relief && !majorHill && hillRise(body) < MIN_RELIEF) continue;
+            const before = w.tokens.length;
+            if (!place(w, tokens)) continue;
+            done = { figure, tokens, variant: v, left, before };
+            break outer;
+          }
+        }
       }
-      calm.push(...options);
+      if (done) break;
     }
-    // Changement de largeur : un bloc de transition en tête du créneau (sauf passage signature). Si aucun motif ne tient avec lui,
-    // le créneau se pose sans changement.
-    const target = !signature && (mustChange || changeSlots.has(i)) ? pickWidth(rng, weights, NEXT_WIDTHS[width]) : null;
-    const candidates = target ? calm.map((seg) => [transition(width, target), ...seg]) : [];
-    candidates.push(...calm);
-    // Repli sur une ligne droite simple, sauf pour un passage marquant : s'il ne tient pas, la tentative échoue.
-    if (!jump && !signature && !fast && !(cuveKind && cuveKind !== "turn" && i === cuveSlot) && !(cuveKind === "turn" && i === cuveSlot + 1)) candidates.push(["S"], ["S", "S"]);
-    const calmChoice = candidates.find((seg) => fits(w.y, seg) && place(w, seg));
-    if (!calmChoice) return null;
-    if (hillSlot.has(i) && !signature && !fast && !jump && hillRise(calmChoice) >= MIN_RELIEF) majorHill = true;
-    const after = widthAfter(calmChoice, width);
-    if (!signature && after !== width) mustChange = false;
-    width = after;
-    used.add(width);
-
-    // Créneau de virage.
-    const turnHighlight = turnSlot.get(i);
-    const tightOk = tightLeft > 0 && width !== "l";
-    const wide = [[L + "2"], [R + "2"]];
-    const grand = [[L + "3"], [R + "3"]];
-    const wideS = [[L + "2", R + "2"], [R + "2", L + "2"]];
-    const tight = tightOk ? [[L], [R]] : [];
-    let segments: string[][];
-    if (signature?.turn) segments = signature.turn;
-    else if (cuveKind === "turn" && i === cuveSlot) {
-      // Virage en cuve : large ou ample (le serré est exclu : la paroi n'y gagne pas de temps, voir lot 18b).
-      const roll = rng.int(100);
-      const w2 = [[L + "2/c"], [R + "2/c"]];
-      const w3 = [[L + "3/c"], [R + "3/c"]];
-      segments = (roll < 25 ? [w2, w3] : [w3, w2]).flat(); // pas de virage serré : la paroi n'y gagne pas de temps (lot 18b)
-    } else if (turnHighlight === "chicane") segments = bankAll(wideS, bank); // S large
-    else if (turnHighlight === "hairpin") segments = bankAll([[L + "2", L + "2"], [R + "2", R + "2"]], bank); // demi-tour large
-    else if (fast === "bank") segments = [[L + "3/b"], [R + "3/b"], [L + "2/b"], [R + "2/b"]]; // grande courbe relevée prise à fond
-    else {
-      // Virage simple : le plus souvent large (2 × 2 cellules) ou ample (3 × 3), parfois un S large ou, rarement, serré.
-      const roll = rng.int(100);
-      const order = roll < 25 && tightOk ? [tight, wide, grand] : roll < 42 ? [grand, wide] : roll < 60 ? [wideS, wide, grand] : [wide, grand, wideS];
-      segments = bankAll(order.flat(), bank);
+    if (!done) return null;
+    if (done.figure.name !== order[i]!.name) {
+      names.delete(order[i]!.name);
+      names.add(done.figure.name);
     }
-    // Sens bloqué : on essaie l'autre, puis un autre virage. Un passage marquant, lui, ne se remplace pas (la tentative échoue
-    // et la graine voisine prend le relais).
-    const turnChoice = segments.find((seg) => place(w, seg));
-    if (!turnChoice) return null;
-    if (!signature?.turn) tightLeft -= tightCount(turnChoice); // le virage d'un passage signature a son propre budget
-    if (signature && theme.signature === "dirtPinch") mustChange = true;
+    tightLeft -= tightCount(done.tokens);
+    if (done.figure.relief && hillRise(done.tokens) >= MIN_RELIEF) majorHill = true;
+    placed.push({ name: done.figure.name, variant: done.variant, left: done.left, from: done.before, to: w.tokens.length });
+    width = widthAfter(done.tokens, width);
+    usedWidths.add(width);
   }
 
   // Dernière ligne droite puis arrivée.
   if (!place(w, ["S"]) && !place(w, ["S", "S"])) return null;
-  const finish = ["S@finish"];
-  if (!place(w, finish)) return null;
-  if (used.size < 2) return null; // au moins deux largeurs par circuit
-  if (cuveKind && !w.tokens.some((t) => parseToken(t).cuve)) return null; // la cuve prévue doit être posée
+  if (!place(w, ["S@finish"])) return null;
+  if (usedWidths.size < 2) return null; // au moins deux largeurs par circuit
+  if (placed.some((p) => figureByName(p.name)!.cuve) && !w.tokens.some((t) => parseToken(t).cuve)) return null;
   w.tokens[0] = `S/${startWidth}@start`;
+  if (longestPlainStraight(w.tokens) > MAX_PLAIN_STRAIGHT) return null;
 
   // Points de contrôle (2 à 4), répartis le long du circuit, sur des lignes droites. Un moteur coupé est suivi d'un
   // point de contrôle deux blocs plus loin : « on vit sur son élan » ~1 s, pas jusqu'à la fin du circuit.
@@ -536,9 +469,9 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     if (w.tokens[cutAt + 1] !== "S" || w.tokens[cutAt + 2] !== "S" || cutAt + 2 >= n - 1) return null;
     used2.add(cutAt + 2);
   }
-  const count = used2.size > 0 ? 2 + rng.int(2) : 2 + rng.int(3); // le point de contrôle du moteur coupé compte
-  for (let k = 1; used2.size < count; k++) {
-    const target = Math.round((k * (n - 1)) / (count + 1));
+  const cpCount = used2.size > 0 ? 2 + rng.int(2) : 2 + rng.int(3); // le point de contrôle du moteur coupé compte
+  for (let k = 1; used2.size < cpCount; k++) {
+    const target = Math.round((k * (n - 1)) / (cpCount + 1));
     for (let d = 0; d < n; d++) {
       const c = [target + d, target - d].find((i) => eligible(i) && !used2.has(i) && ![...used2].some((u) => Math.abs(u - i) < 3));
       if (c !== undefined) {
@@ -546,19 +479,23 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
         break;
       }
     }
-    if (k > count + 3) break;
+    if (k > cpCount + 3) break;
   }
   for (const i of used2) w.tokens[i] = "S@cp";
 
-  // Zones de revêtement : des suites de 3 à 6 blocs d'un même revêtement (terre, glace, herbe) sur les blocs ordinaires.
-  if (theme.zones) assignZones(w.tokens, theme.zones, rng);
+  // Zones de revêtement : des suites de 3 à 6 blocs d'un même revêtement (terre, glace, herbe) sur les blocs ordinaires, sauf autour
+  // d'un moteur coupé (il veut deux droites ordinaires derrière lui).
+  if (theme.zones) assignZones(w.tokens, theme.zones, rng, cutAt >= 0 ? new Set([cutAt, cutAt + 1, cutAt + 2, cutAt + 3]) : undefined);
   // Dénivelé minimal, puis sections sans rebords sur les parties surélevées.
   if (reliefOf(w.tokens) < MIN_RELIEF) return null;
   if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng);
-  return w.tokens.join(" ");
+  return { spec: w.tokens.join(" "), figures: placed };
 }
 
-const bankAll = (segments: string[][], bank: (seg: string[]) => string[]): string[][] => segments.map(bank);
+/** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée (voir `composeFigures`). */
+export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): string | null {
+  return composeFigures(day, attempt, theme, variant)?.spec ?? null;
+}
 
 /** Blocs qui reçoivent un revêtement : droites, virages, côtes d'un niveau (pas les effets, bosses, rampes, vides, côtes raides ni le départ / l'arrivée). */
 function surfaceable(token: string, index: number, n: number): boolean {
@@ -614,7 +551,7 @@ function openSection(tokens: string[], rng: Rng): void {
   for (let i = start; i < start + length; i++) tokens[i] = withMod(tokens[i]!, "o");
 }
 
-function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: Rng): void {
+function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: Rng, protect?: ReadonlySet<number>): void {
   const n = tokens.length;
   const count = zones.count[0] + rng.int(zones.count[1] - zones.count[0] + 1);
   const total = zones.surfaces.reduce((a, [, w]) => a + w, 0);
@@ -629,9 +566,10 @@ function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: 
       roll -= wgt;
     }
     const length = 3 + rng.int(4);
-    const start = 1 + rng.int(Math.max(1, n - 2 - length));
+    const last = Math.max(1, n - 2 - length);
+    const start = 1 + rng.int(last);
     for (let i = start; i < Math.min(n - 1, start + length); i++) {
-      if (surfaceable(tokens[i]!, i, n)) tokens[i] = withMod(tokens[i]!, SURFACE_MOD[surface]);
+      if (!protect?.has(i) && surfaceable(tokens[i]!, i, n)) tokens[i] = withMod(tokens[i]!, surfaceMod(surface));
     }
   }
 }
@@ -649,6 +587,8 @@ export interface DailyCircuit {
   /** Variante du planning (0 = le circuit d'origine ; n ≥ 1 : un remplacement choisi à l'avance, lot 14). */
   variant: number;
   spec: string;
+  /** Figures du circuit, dans l'ordre (lot 20) ; vide pour le circuit de secours. */
+  figures: PlacedFigure[];
   track: Track;
   authorMs: number;
   medals: Medals;
@@ -671,8 +611,11 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
   const forcedTheme = !!forced && !!themeByName(forced);
   const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant);
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const spec = composeSpec(day, attempt, theme, variant);
-    if (!spec) continue;
+    const composed = composeFigures(day, attempt, theme, variant);
+    if (!composed) continue;
+    const { spec } = composed;
+    const estimate = estimateSeconds(spec.split(" "));
+    if (estimate < ESTIMATE_MIN || estimate > ESTIMATE_MAX) continue;
     const track = parseTrack(id, spec);
     const pilot = bestPilotRun(track);
     if (!pilot || pilot.finishMs < AUTHOR_MIN_MS || pilot.finishMs > AUTHOR_MAX_MS || pilot.maxSpeed < FAST_PEAK) continue;
@@ -683,6 +626,7 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
       attempt,
       variant,
       spec,
+      figures: composed.figures,
       track,
       authorMs: pilot.finishMs,
       medals: medalsFor(pilot.finishMs),
@@ -703,6 +647,7 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     attempt: MAX_ATTEMPTS,
     variant,
     spec: "",
+    figures: [],
     track: t,
     authorMs,
     medals: medalsFor(authorMs),

@@ -1,7 +1,9 @@
+import { FIGURE_NAMES } from "@cdj/sim";
+
 // Page /admin : construit l'adresse du jeu à partir de choix de test. Logique pure (testée par Vitest) ; le DOM est dans
 // `admin.ts`. Rien de tout cela ne touche à la simulation : ce ne sont que les paramètres d'adresse que le jeu connaît déjà.
 
-export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "plat";
+export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "figures" | "figure" | "plat";
 
 export interface AdminState {
   scenario: Scenario;
@@ -9,6 +11,10 @@ export interface AdminState {
   date: string;
   /** Thème forcé ("" : celui du jour). Seulement pour le scénario `jour`. */
   theme: string;
+  /** Figure à essayer en boucle (`?scenario=figure&f=…`, lot 20) : son nom, sa variante ("" : la première) et le miroir. Seulement pour le scénario `figure`. */
+  figure: string;
+  figureVariant: string;
+  figureMirror: boolean;
   /** Variante du planning à essayer ("" : celle en vigueur ; `?variant=N`, jamais classée). Seulement pour le scénario `jour`. */
   variant: string;
   /** Panneau de réglages de la voiture (`debug` + `tune`). */
@@ -38,6 +44,9 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   date: "",
   theme: "",
   variant: "",
+  figure: "",
+  figureVariant: "",
+  figureMirror: false,
   tune: false,
   debug: false,
   demo: false,
@@ -61,6 +70,11 @@ export function buildQuery(s: Readonly<AdminState>): string {
     if (s.date) p.set("seed", s.date);
     if (s.variant !== "") p.set("variant", s.variant);
     if (s.theme) p.set("theme", s.theme);
+  }
+  if (s.scenario === "figure") {
+    p.set("f", s.figure || FIGURE_NAMES[0]!);
+    if (s.figureVariant !== "") p.set("v", s.figureVariant);
+    if (s.figureMirror) p.set("m", "1");
   }
   // `tune` et `timescale` ne marchent qu'avec `debug` : on le sous-entend.
   const debug = s.debug || s.tune || s.timescale !== "";
@@ -92,7 +106,7 @@ export function parseAdmin(raw: string | null): AdminState {
   if (!raw) return s;
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof AdminState, unknown>>;
-    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "plat") s.scenario = o.scenario;
+    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && ["", "stade", "rallye", "banquise", "nuit", "campagne"].includes(o.theme)) s.theme = o.theme;
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
@@ -100,6 +114,9 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
     if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;
+    if (typeof o.figure === "string" && (o.figure === "" || (FIGURE_NAMES as readonly string[]).includes(o.figure))) s.figure = o.figure;
+    if (typeof o.figureVariant === "string" && /^\d{0,2}$/.test(o.figureVariant)) s.figureVariant = o.figureVariant;
+    if (typeof o.figureMirror === "boolean") s.figureMirror = o.figureMirror;
     if (typeof o.variant === "string" && /^\d{0,2}$/.test(o.variant)) s.variant = o.variant;
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
@@ -122,6 +139,8 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Vitesse", hint: "plaque et longue descente, turbos enchaînés, grande courbe relevée à fond, freinage avant un virage serré", state: { scenario: "vitesse" } },
   { label: "Relief et sauts", hint: "montées de deux niveaux, longue descente, saut court et long saut au-dessus du vide, section surélevée sans rebords", state: { scenario: "relief" } },
   { label: "Air et atterrissages", hint: "dos d'âne à haute vitesse, tremplin pris en braquant, long saut, saut vers un virage relevé, chute de trois niveaux, mur quitté en l'air ; le frein fige la caisse en l'air", state: { scenario: "air" } },
+  { label: "Les figures", hint: "onze figures marquantes de la bibliothèque (lot 20) : S serré-large, turbo et courbe, saut vers un virage relevé, slalom de glace, double saut…", state: { scenario: "figures" } },
+  { label: "Une figure en boucle", hint: "la figure choisie, cinq droites de lancement, point de contrôle juste avant (touche R pour recommencer)", state: { scenario: "figure" } },
   { label: "Cuves et murs", hint: "cuve droite, mur latéral, virage en cuve à pleine vitesse, puis le même virage abordé trop lentement", state: { scenario: "cuves" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },
