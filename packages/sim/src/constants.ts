@@ -21,4 +21,4 @@ export const SIM_VERSION = 11;
  * (règles de construction, pilote de validation, fenêtre de durée) : elle fait partie de l'identifiant du circuit,
  * donc les records et rediffusions d'un autre générateur ne se mélangent pas.
  */
-export const GENERATOR_VERSION = 11;
+export const GENERATOR_VERSION = 12;

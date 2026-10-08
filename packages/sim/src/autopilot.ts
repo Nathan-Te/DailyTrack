@@ -1,5 +1,5 @@
 import { TICK_RATE } from "./constants";
-import { COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInput, type CarParams, type CarState } from "./car";
+import { AXIS_MAX, COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInput, type CarParams, type CarState } from "./car";
 import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
@@ -466,12 +466,17 @@ export interface PilotRun {
   /** Vitesse horizontale maximale atteinte (m/s) et nombre de pas passés au-delà de la pointe du plat (lot 15). */
   maxSpeed: number;
   fastTicks: number;
+  /** Lot 20 (mesure seule) : pas passés à plein gaz sans frein et moteur en marche (un moteur coupé n'est pas à plein gaz), et nombre de freinages ou relâchements (au moins 0,1 s sans plein gaz, au-delà de 10 m/s). */
+  fullThrottleTicks: number;
+  liftEvents: number;
   /** Vitesse du pilote au bord de chaque rampe de saut (lot 17), avec la fenêtre du saut. */
   jumps: JumpPass[];
   /** Vrai si chaque saut a été pris dans sa fenêtre de vitesse avec la marge `JUMP_ENTRY_MARGIN` (aucun saut = vrai). */
   jumpsOk: boolean;
   /** Vrai si les virages en cuve ont été pris sur la paroi (réglage `wall`), faux sur le fond. */
   wall: boolean;
+  /** Fraction d'adhérence de ce pilote (voir `PILOT_GRIPS`). */
+  grip: number;
 }
 
 export interface JumpPass {
@@ -493,6 +498,9 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   let stuck = 0;
   let maxV2 = 0;
   let fastTicks = 0;
+  let fullThrottleTicks = 0;
+  let liftEvents = 0;
+  let offRun = 0;
   const flatTop = (opts.params ?? DEFAULT_CAR_PARAMS).maxSpeed;
   // Bord de chaque rampe de saut : on note la vitesse au moment où la voiture franchit ce plan.
   const jumps: JumpPass[] = trackJumps(track, opts.params).map((jump) => ({ jump, speed: 0 }));
@@ -519,6 +527,10 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     }
     if (v2 > maxV2) maxV2 = v2;
     if (v2 > flatTop * flatTop) fastTicks++;
+    if (input.throttle >= AXIS_MAX && input.brake === 0 && !race.car.cut) {
+      fullThrottleTicks++;
+      offRun = 0;
+    } else if (v2 > 100 && ++offRun === 12) liftEvents++;
     stuck = v2 < 0.25 && ticks > 2 * TICK_RATE ? stuck + 1 : 0;
     if (stuck > 3 * TICK_RATE) break;
   }
@@ -530,9 +542,12 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     replay: recorder.toReplay(track.id),
     maxSpeed: Math.sqrt(maxV2),
     fastTicks,
+    fullThrottleTicks,
+    liftEvents,
     jumps,
     jumpsOk: jumps.every(({ jump, speed }) => speed >= jump.minSpeed * JUMP_ENTRY_MARGIN && speed <= jump.maxSpeed),
     wall: opts.wall ?? false,
+    grip: opts.grip ?? 0.9,
   };
 }
 

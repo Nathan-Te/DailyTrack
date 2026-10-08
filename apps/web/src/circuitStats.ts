@@ -1,4 +1,4 @@
-import { ROAD_WIDTHS, isCurve, isWide, type SurfaceKind, type Track } from "@cdj/sim";
+import { ROAD_WIDTHS, figureByName, isCurve, isWide, type SurfaceKind, type Track } from "@cdj/sim";
 
 // Chiffres d'un circuit pour le panneau d'admin (lot 14) : tout se lit sur la piste construite, sans rien simuler.
 
@@ -99,4 +99,12 @@ export function cuvesText(s: Pick<CircuitStats, "cuves" | "walls" | "cuveTurns">
   add(s.walls, "bloc de mur latéral", "blocs de mur latéral");
   add(s.cuveTurns, "virage en cuve", "virages en cuve");
   return parts.length ? parts.join(" · ") : "aucune";
+}
+
+/** Les figures d'un circuit (lot 20), dans l'ordre, avec leur catégorie : « Moteur coupé avant un virage (technique) · … » (aide au remplacement). */
+export function figuresText(names: readonly string[]): string {
+  return names.map((n) => {
+    const f = figureByName(n);
+    return f ? `${f.label} (${f.category})` : n;
+  }).join(" · ");
 }

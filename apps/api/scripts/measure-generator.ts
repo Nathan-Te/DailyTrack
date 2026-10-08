@@ -9,6 +9,17 @@ import {
   DEFAULT_CAR_PARAMS,
   bestPilotRun,
   composeSpec,
+  longestPlainStraight,
+  estimateSeconds,
+  CELL,
+  cellKey,
+  createAutopilot,
+  createRace,
+  stepRace,
+  AXIS_MAX,
+  FIGURES,
+  FIGURE_CATEGORIES,
+  figureByName,
   dailyCircuit,
   daysFromCivil,
   isCurve,
@@ -28,7 +39,7 @@ import {
 // (durées, taux de validation par thème), pas seulement par les tests ».
 //   - durées d'auteur, largeurs, virages serrés, temps de génération, coût d'un rejeu : 60 dates consécutives ;
 //   - taux de validation par thème : 12 dates × 6 tentatives, chaque thème forcé.
-// Variables : `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
+// Variables : `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
 
 const DAYS = Number(process.env.DAYS ?? (process.env.FAST ? 20 : 60));
 const VALIDATION_DAYS = Number(process.env.VALIDATION_DAYS ?? (process.env.FAST ? 6 : 12));
@@ -101,7 +112,7 @@ console.log(`circuits de secours (aucune tentative n'a abouti) : ${rows.filter((
 console.log(`tentative retenue : moyenne ${mean(rows.map((r) => r.c.attempt)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.c.attempt))}`);
 console.log(`blocs : moyenne ${mean(rows.map((r) => r.c.track.blocks.length)).toFixed(1)} · virages larges (L2/R2) : ${mean(rows.map((r) => r.c.track.blocks.filter((b) => isWide(b.kind)).length)).toFixed(1)} par circuit`);
 // Relief et sauts (lot 17).
-const reliefs = rows.map((r) => reliefOf(r.c.spec.split(" ")));
+const reliefs = rows.map((r) => (r.c.fallback ? 0 : reliefOf(r.c.spec.split(" "))));
 console.log(`dénivelé (point le plus haut − le plus bas de la route) : min ${Math.min(...reliefs)} · moyen ${mean(reliefs).toFixed(1)} · max ${Math.max(...reliefs)} m ; au moins ${MIN_RELIEF} m : ${reliefs.filter((x) => x >= MIN_RELIEF).length}/${rows.length}`);
 const slopeBlocks = rows.map((r) => r.c.track.blocks.filter((b) => b.kind === "up" || b.kind === "down").length);
 const steepBlocks = rows.map((r) => r.c.track.blocks.filter((b) => (b.kind === "up" || b.kind === "down") && Math.abs(b.rise) > 4).length);
@@ -133,6 +144,59 @@ const flat = DEFAULT_CAR_PARAMS.maxSpeed;
 console.log(`vitesse maximale du pilote : min ${Math.min(...peaks).toFixed(1)} · moyenne ${mean(peaks).toFixed(1)} · max ${Math.max(...peaks).toFixed(1)} m/s (pointe du plat ${flat} m/s) ; ≥ +30 % (${FAST_PEAK.toFixed(1)} m/s) : ${peaks.filter((v) => v >= FAST_PEAK).length}/${rows.length}`);
 const shares = rows.map((r) => r.fastShare);
 console.log(`part du temps au-delà de la pointe du plat : moyenne ${(100 * mean(shares)).toFixed(0)} % · min ${(100 * Math.min(...shares)).toFixed(0)} % · max ${(100 * Math.max(...shares)).toFixed(0)} %`);
+// Lot 20 : rythme. Part du temps à plein gaz, freinages ou relâchements, plus longue ligne droite sans rien.
+const fullShares = pilots.map((p) => (p ? p.fullThrottleTicks / p.ticks : 0));
+console.log(`part du temps à plein gaz (sans frein) : moyenne ${(100 * mean(fullShares)).toFixed(0)} % · min ${(100 * Math.min(...fullShares)).toFixed(0)} % · max ${(100 * Math.max(...fullShares)).toFixed(0)} %`);
+const lifts = pilots.map((p) => p?.liftEvents ?? 0);
+console.log(`freinages ou relâchements par circuit (≥ 0,1 s, > 10 m/s) : moyenne ${mean(lifts).toFixed(1)} · min ${Math.min(...lifts)} · max ${Math.max(...lifts)}`);
+const plainRuns = rows.map((r) => (r.c.fallback ? 0 : longestPlainStraight(r.c.spec.split(" "))));
+console.log(`plus longue ligne droite sans rien (blocs « S » consécutifs, revêtement et largeur sans effet) : moyenne ${mean(plainRuns).toFixed(1)} · max ${Math.max(...plainRuns)} blocs (${Math.max(...plainRuns) * 32} m)`);
+// Lot 20 : figures.
+const figNames = rows.map((r) => r.c.figures.map((f) => f.name));
+const perCircuit = figNames.map((f) => f.length);
+console.log(`figures par circuit : moyenne ${mean(perCircuit).toFixed(1)} · min ${Math.min(...perCircuit)} · max ${Math.max(...perCircuit)} ; répétition d'une figure dans un circuit : ${figNames.filter((f) => new Set(f).size !== f.length).length} circuit(s)`);
+const usedFigs = new Map<string, number>();
+for (const f of figNames.flat()) usedFigs.set(f, (usedFigs.get(f) ?? 0) + 1);
+console.log(`figures utilisées sur ${DAYS} dates : ${usedFigs.size}/${FIGURES.length} (jamais : ${FIGURES.filter((f) => !usedFigs.has(f.name)).map((f) => f.name).join(", ") || "—"})`);
+console.log(`  emplois : ${[...usedFigs.entries()].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(" · ")}`);
+const catCount = (r: string[], cat: string) => r.filter((n) => figureByName(n)!.category === cat).length;
+console.log(`répartition par catégorie (moyenne par circuit) : ${FIGURE_CATEGORIES.map((c) => `${c} ${mean(figNames.map((r) => catCount(r, c))).toFixed(1)}`).join(" · ")}`);
+const techniques = figNames.map((r) => catCount(r, "technique"));
+console.log(`techniques par circuit : min ${Math.min(...techniques)} · moyenne ${mean(techniques).toFixed(1)} ; circuits à moins de deux : ${techniques.filter((t) => t < 2).length}`);
+const common: number[] = [];
+for (let i = 1; i < figNames.length; i++) common.push(figNames[i]!.filter((n) => figNames[i - 1]!.includes(n)).length);
+console.log(`figures en commun entre deux jours consécutifs : moyenne ${mean(common).toFixed(2)} · max ${Math.max(...common)} (${common.filter((c) => c === 0).length} paires sans aucune)`);
+// Estimation de durée (`estimateSeconds`) : sert à refuser un circuit trop long avant de faire rouler le pilote, et à choisir les figures.
+const estErr = rows.filter((r) => !r.c.fallback).map((r) => 0.95 * estimateSeconds(r.c.spec.split(" ")) - r.c.authorMs / 1000);
+console.log(`estimation de durée (0,95 × estimateSeconds − temps d'auteur) : écart moyen ${mean(estErr.map(Math.abs)).toFixed(1)} s · biais ${mean(estErr).toFixed(1)} s · pire ${Math.max(...estErr.map(Math.abs)).toFixed(1)} s`);
+// Rythme par figure (`RHYTHM=1`, plus long) : secondes hors plein gaz par passage, dans les circuits mesurés. Ces nombres sont le champ `off` de chaque figure.
+if (process.env.RHYTHM) {
+  const acc = new Map<string, { n: number; t: number; off: number }>();
+  for (const r of rows) {
+    if (r.c.fallback) continue;
+    const best = bestPilotRun(r.c.track)!;
+    const race = createRace(r.c.track);
+    const drive = createAutopilot(r.c.track, { grip: best.grip, wall: best.wall });
+    const owner = (bi: number) => r.c.figures.find((f) => bi >= f.from && bi < f.to)?.name ?? "(liaison)";
+    const seen = new Set<string>();
+    for (let g = 0; race.finishMs < 0 && g < 120 * 120; g++) {
+      const input = drive(race);
+      const b = r.c.track.cells.get(cellKey(Math.floor(race.car.x / CELL), Math.floor(race.car.z / CELL)));
+      const name = b ? owner(b.index) : "hors";
+      const e = acc.get(name) ?? { n: 0, t: 0, off: 0 };
+      if (!seen.has(name)) {
+        seen.add(name);
+        e.n++;
+      }
+      e.t++;
+      if (!(input.throttle >= AXIS_MAX && input.brake === 0 && !race.car.cut)) e.off++;
+      acc.set(name, e);
+      stepRace(race, input);
+    }
+  }
+  console.log("rythme par figure (passages · durée · hors plein gaz par passage) :");
+  for (const [k, e] of [...acc].sort((a, b) => b[1].off / b[1].n - a[1].off / a[1].n)) console.log(`  ${k.padEnd(24)} ${String(e.n).padStart(3)} · ${(e.t / e.n / 120).toFixed(1).padStart(5)} s · ${(e.off / e.n / 120).toFixed(2)} s`);
+}
 const gen = rows.map((r) => r.genMs);
 console.log(`génération : moyenne ${mean(gen).toFixed(0)} ms · max ${Math.max(...gen).toFixed(0)} ms`);
 const rep = rows.map((r) => r.replayMs).filter((x) => x > 0);
@@ -143,6 +207,7 @@ console.log(`facteurs candidats (non appliqués) : part des circuits dont la mé
 const byTheme = new Map<string, number[]>();
 for (const r of rows) byTheme.set(r.c.theme, [...(byTheme.get(r.c.theme) ?? []), r.c.authorMs]);
 console.log(`par thème (du jour) : ${THEME_NAMES.map((n) => `${n} ${byTheme.get(n)?.length ?? 0} jours, ${byTheme.get(n) ? sec(mean(byTheme.get(n)!)) : "—"} s`).join(" · ")}`);
+console.log(`plein gaz par thème (du jour) : ${THEME_NAMES.map((n) => { const ix = rows.map((r, i) => (r.c.theme === n ? i : -1)).filter((i) => i >= 0); return `${n} ${ix.length ? (100 * mean(ix.map((i) => fullShares[i]!))).toFixed(0) : "—"} % (${ix.length ? mean(ix.map((i) => lifts[i]!)).toFixed(1) : "—"} relâchements)`; }).join(" · ")}`);
 
 // --- 2. Taux de validation par thème -----------------------------------------------------------
 

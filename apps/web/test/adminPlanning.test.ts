@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { PREMIER_JOUR, createCuvesTrack, createLargeursTrack, createReliefTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
+import { PREMIER_JOUR, dailyCircuit, createCuvesTrack, createLargeursTrack, createReliefTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel, replaceProblem } from "../src/adminPlan";
-import { circuitStats, cuvesText, effectsText, reliefText, widthsText } from "../src/circuitStats";
+import { circuitStats, cuvesText, effectsText, figuresText, reliefText, widthsText } from "../src/circuitStats";
 import { DemoAdmin, TOKEN_KEY, loadToken, parseOverview, saveToken } from "../src/adminBackend";
 import { DEMO_PLAN_KEY, NO_PLAN, isReplaced, loadDemoPlan, parseDemoPlan, parsePlanEntry, saveDemoPlan } from "../src/planning";
 import { DEFAULT_ADMIN, buildQuery, parseAdmin } from "../src/adminLogic";
@@ -194,4 +194,17 @@ describe("outils : option variante", () => {
     expect(parseAdmin('{"variant":"12"}').variant).toBe("12");
     expect(parseAdmin('{"variant":"abc"}').variant).toBe("");
   });
+});
+
+describe("carte d'un jour : les figures du circuit (lot 20)", () => {
+  it("figuresText liste les figures dans l'ordre, avec leur catégorie ; un nom inconnu reste tel quel", () => {
+    expect(figuresText(["pincement", "saut-releve"])).toBe("Rétrécissement et virage (technique) · Saut vers un virage relevé (saut)");
+    expect(figuresText(["inconnue"])).toBe("inconnue");
+    expect(figuresText([])).toBe("");
+  });
+  it("le circuit du jour donne ses figures, que la carte peut afficher", () => {
+    const c = dailyCircuit(PREMIER_JOUR + 20);
+    expect(c.figures.length).toBeGreaterThanOrEqual(5);
+    expect(figuresText(c.figures.map((f) => f.name)).split(" · ")).toHaveLength(c.figures.length);
+  }, 20_000);
 });

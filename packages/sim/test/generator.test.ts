@@ -5,6 +5,7 @@ import {
   FAST_PEAK,
   GENERATOR_VERSION,
   daysFromCivil,
+  figureByName,
   PALETTES,
   THEMES,
   THEME_NAMES,
@@ -88,12 +89,12 @@ describe("circuit du jour : construction", () => {
     }
   });
 
-  it("alterne les rythmes : jamais plus de deux virages d'affilée, jamais de plaque juste avant un virage", () => {
+  it("alterne les rythmes : jamais plus de quatre virages d'affilée (le slalom en a quatre), jamais de plaque juste avant un virage", () => {
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);
       const curve = (k?: string) => k !== undefined && isCurve(k as never);
       for (let i = 0; i < kinds.length; i++) {
-        if (curve(kinds[i]) && curve(kinds[i + 1])) expect(curve(kinds[i + 2]), `${day} @${i}`).toBe(false);
+        if (curve(kinds[i]) && curve(kinds[i + 1]) && curve(kinds[i + 2]) && curve(kinds[i + 3])) expect(curve(kinds[i + 4]), `${day} @${i}`).toBe(false);
         if (kinds[i] === "boost") expect(curve(kinds[i + 1]), `${day} @${i}`).toBe(false);
         if (kinds[i] === "turbo") expect(curve(kinds[i + 1]), `${day} @${i}`).toBe(false);
       }
@@ -112,12 +113,11 @@ describe("circuit du jour : construction", () => {
     }
   });
 
-  it("a toujours un passage marquant (tremplin, S large ou demi-tour) et, si tremplin, deux lignes droites pour atterrir", () => {
+  it("a toujours un passage marquant (au lot 20 : au moins trois figures techniques, rapides ou sautées) et, si tremplin, deux lignes droites pour atterrir", () => {
     for (const day of DAYS) {
       const kinds = circuit(day).track.blocks.map((b) => b.kind);
-      const hasJump = kinds.includes("jump");
-      const hasPair = kinds.some((k, i) => isCurve(k) && kinds[i + 1] !== undefined && isCurve(kinds[i + 1]!));
-      expect(hasJump || hasPair, circuit(day).spec).toBe(true);
+      const marquantes = circuit(day).figures.filter((f) => ["technique", "saut", "rapide", "combo"].includes(figureByName(f.name)!.category));
+      expect(marquantes.length, circuit(day).spec).toBeGreaterThanOrEqual(3);
       kinds.forEach((k, i) => {
         if (k === "jump") {
           expect(kinds[i + 1]).toBe("straight");
@@ -211,11 +211,11 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
     }
   });
 
-  it("préfère les courbes amples : en moyenne, plus de virages larges ou amples que de virages serrés", () => {
+  it("préfère les courbes amples : en moyenne, plus de trois fois plus de virages larges ou amples que de virages serrés (cinq fois avant les figures du lot 20 : les techniques en ont plus)", () => {
     const blocks = DAYS.flatMap((d) => circuit(d).track.blocks);
     const wide = blocks.filter((b) => isWide(b.kind)).length;
     const tight = blocks.filter((b) => isTight(b.kind)).length;
-    expect(wide).toBeGreaterThan(5 * tight);
+    expect(wide).toBeGreaterThan(3 * tight);
     expect(blocks.some((b) => b.kind === "grandL")).toBe(true);
     expect(blocks.some((b) => b.kind === "grandR")).toBe(true);
   });

@@ -18,6 +18,8 @@ export interface GenReply {
   theme: ThemeName;
   fallback: boolean;
   authorMs: number;
+  /** Noms des figures du circuit, dans l'ordre (lot 20). */
+  figures: string[];
   error?: string;
 }
 
@@ -26,8 +28,8 @@ ctx.onmessage = (e) => {
   const { seq, day, theme, variant } = e.data;
   try {
     const c = dailyCircuit(day, variant ?? 0, theme);
-    ctx.postMessage({ seq, spec: c.spec, palette: c.palette, theme: c.theme, fallback: c.fallback, authorMs: c.authorMs });
+    ctx.postMessage({ seq, spec: c.spec, palette: c.palette, theme: c.theme, fallback: c.fallback, authorMs: c.authorMs, figures: c.figures.map((f) => f.name) });
   } catch (err) {
-    ctx.postMessage({ seq, spec: "", palette: "", theme: "stade", fallback: true, authorMs: 0, error: String(err) });
+    ctx.postMessage({ seq, spec: "", palette: "", theme: "stade", fallback: true, authorMs: 0, figures: [], error: String(err) });
   }
 };
