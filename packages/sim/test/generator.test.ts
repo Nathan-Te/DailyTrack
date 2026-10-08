@@ -268,7 +268,8 @@ describe("médailles", () => {
 describe("palette et identifiant", () => {
   it("la palette dépend du jour, et toutes servent sur un mois", () => {
     const palettes = new Set(Array.from({ length: 40 }, (_, i) => paletteForDay(JOUR_TEST + i)));
-    expect([...palettes].sort()).toEqual([...PALETTES].sort());
+    // Lot 21 : Stade a sa palette de plein jour ; « neon » ne sert plus à aucun thème (gardée pour les essais).
+    expect([...palettes].sort()).toEqual(PALETTES.filter((p) => p !== "neon").sort());
     expect(paletteForDay(JOUR_TEST)).toBe(paletteForDay(JOUR_TEST));
   });
 
@@ -388,5 +389,61 @@ describe("circuit du jour : portions rapides (lot 15)", () => {
         for (let j = 1; j <= 2; j++) if (kinds[i + j] !== undefined) expect(isCurve(kinds[i + j]!), `${formatDay(day)} @${i + j}`).toBe(false);
       });
     }
+  });
+});
+
+describe("identité des thèmes (lot 21)", () => {
+  /** Circuits de chaque thème : ceux du jour sur 60 dates, plus 4 dates au thème imposé. */
+  const byTheme = new Map<string, DailyCircuit[]>();
+  const of = (name: string) => {
+    let list = byTheme.get(name);
+    if (!list) {
+      list = DAYS.slice(0, 60).map(circuit).filter((c) => c.theme === name);
+      for (let k = 0; k < 4; k++) list.push(dailyCircuit(JOUR_TEST + 200 + k, 0, name as (typeof THEME_NAMES)[number]));
+      byTheme.set(name, list);
+    }
+    return list;
+  };
+
+  it("chaque thème a ses bas-côtés (et seulement les siens), jamais sur un bloc qui ne peut pas en porter", { timeout: 120_000 }, () => {
+    for (const name of THEME_NAMES) {
+      const theme = THEMES[name];
+      for (const c of of(name)) {
+        const blocks = c.track.blocks;
+        const shoulders = new Set(blocks.flatMap((b) => (b.shoulder ? [b.shoulder] : [])));
+        if (theme.shoulder.kind === "void") {
+          expect(shoulders.size, c.spec).toBe(0);
+          expect(blocks.some((b) => b.open), c.spec).toBe(true);
+        } else {
+          expect([...shoulders], c.spec).toEqual([theme.shoulder.kind]);
+        }
+        for (const b of blocks.filter((x) => x.shoulder)) {
+          expect(b.mark === "start" || b.mark === "finish" || b.cuve > 0 || b.banked).toBe(false);
+          expect(["up", "kick", "gap", "jump", "bump"]).not.toContain(b.kind);
+        }
+      }
+    }
+  });
+
+  it("Rallye : route bosselée et une épingle large ; Campagne : une crête suivie d'un virage ; Stade et Nuit : saut et cuve", { timeout: 120_000 }, () => {
+    for (const c of of("rallye")) {
+      expect(c.track.blocks.some((b) => b.bumpy), c.spec).toBe(true);
+      expect(c.figures.some((f) => ["epingle-terre", "demi-tour-large"].includes(f.name)), c.spec).toBe(true);
+    }
+    for (const c of of("campagne")) expect(c.figures.some((f) => ["crete-virage", "virage-aveugle"].includes(f.name)), c.spec).toBe(true);
+    for (const name of ["stade", "nuit"]) {
+      for (const c of of(name)) {
+        expect(c.track.blocks.some((b) => b.cuve > 0), c.spec).toBe(true);
+        expect(c.track.blocks.some((b) => b.kind === "gap"), c.spec).toBe(true);
+      }
+    }
+    // La route bosselée est la marque du Rallye.
+    for (const name of THEME_NAMES.filter((n) => n !== "rallye")) for (const c of of(name)) expect(c.track.blocks.some((b) => b.bumpy)).toBe(false);
+  });
+
+  it("Stade n'a plus la palette de Nuit : chaque thème a la sienne", () => {
+    const palettes = THEME_NAMES.map((n) => THEMES[n].palette);
+    expect(new Set(palettes).size).toBe(THEME_NAMES.length);
+    expect(THEMES.stade.palette).toBe("stade");
   });
 });

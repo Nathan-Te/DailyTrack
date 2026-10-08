@@ -1,8 +1,13 @@
 import {
   BOOST_HALF_LENGTH,
   CELL,
+  KERB_WIDTH,
   NO_GROUND,
+  SHOULDER_EDGE,
   WALL_HEIGHT,
+  blockReachAt,
+  rippleAt,
+  type Ripple,
   bankAt,
   blockHalfWidth,
   blockHalfWidthSlope,
@@ -53,13 +58,20 @@ export interface SurfaceParams {
  * - terre : l'arrière glisse facilement et se rattrape, accélération un peu molle ;
  * - glace (lot 16) : grip très faible à l'accélérateur et au frein, motricité faible, aucun roulement : plus rapide en
  *   ligne droite ; en roue libre l'adhérence revient et la vitesse se réaligne sur le cap (`slick`, clés `ice*`) ;
- * - herbe : ralentit nettement (roulement 7 m/s²) et glisse.
+ * - herbe : ralentit nettement (roulement 7 m/s²) et glisse ;
+ * - terre et gravier (lot 21, bas-côté seulement) : ralentit moins que l'herbe, glisse un peu ;
+ * - neige poudreuse (lot 21, bas-côté seulement) : la plus lente (roulement 8 m/s², pointe ≈ 20 m/s à plat), peu d'adhérence ;
+ * - vibreur (lot 21, bords d'un virage sur route) : exactement la route (seuls le son et la vibration changent).
+ * Ordre des bas-côtés, du moins au plus lent : terre et gravier, herbe, neige poudreuse (`basCotes.test.ts`).
  */
 export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = Object.freeze({
   road: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),
   dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5, slick: 0 }),
   ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0, slick: 1 }),
   grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7, slick: 0 }),
+  gravel: Object.freeze({ grip: 0.6, traction: 0.65, rolling: 4.5, slick: 0 }),
+  snow: Object.freeze({ grip: 0.42, traction: 0.5, rolling: 8, slick: 0 }),
+  kerb: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),
 });
 
 /** Comportement du revêtement d'un échantillon de sol. */
@@ -124,6 +136,67 @@ export const FLAT_WORLD: World = {
 
 const wv = { x: 0, z: 0 };
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
+const ripple: Ripple = { h: 0, dq: 0 };
+
+/** Contact le plus profond d'un disque avec les faces de bout (lot 21), dans le repère canonique du bloc. */
+const face = { depth: 0, np: 0, nq: 0 };
+
+/**
+ * Disque (centre (p, q), rayon `radius`) contre le segment (ap, aq)–(bp, bq) : garde le contact s'il est plus profond que celui de `face`.
+ * `fp`, `fq` : normale de repli si le centre est exactement sur le segment.
+ */
+function segment(p: number, q: number, radius: number, ap: number, aq: number, bp: number, bq: number, fp: number, fq: number): void {
+  const sx = bp - ap;
+  const sz = bq - aq;
+  const len2 = sx * sx + sz * sz;
+  let t = len2 > 0 ? ((p - ap) * sx + (q - aq) * sz) / len2 : 0;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  const dx = p - (ap + sx * t);
+  const dz = q - (aq + sz * t);
+  const d = Math.sqrt(dx * dx + dz * dz);
+  if (d >= radius || radius - d <= face.depth) return;
+  face.depth = radius - d;
+  if (d > 1e-9) {
+    face.np = dx / d;
+    face.nq = dz / d;
+  } else {
+    face.np = fp;
+    face.nq = fq;
+  }
+}
+
+/** Étendue de ce qui porte la voiture chez un voisin, à son bout qui touche `b` ; `Infinity` s'il n'y a pas de face (vide : on tombe). */
+function neighborReach(n: Block | undefined, end: 0 | 1): number {
+  if (!n || n.open) return Infinity;
+  return blockReachAt(n, end);
+}
+
+/**
+ * Faces de bout d'un bloc à bas-côtés (lot 21) : là où le voisin ne porte pas la voiture aussi loin (rebords à la demi-largeur de sa
+ * route), la bande s'arrête contre un mur en travers, de son bord de route jusqu'au rebord du bas-côté, avec un nez arrondi (un disque
+ * qui frôle le bout du rebord est dévié, pas arrêté net).
+ */
+function endFaces(b: Block, prev: Block | undefined, next: Block | undefined, p: number, q: number, radius: number): void {
+  const mid = CELL / 2;
+  const E = SHOULDER_EDGE;
+  const ein = neighborReach(prev, 1);
+  if (ein < E) {
+    segment(p, q, radius, mid + ein, 0, mid + E, 0, 0, 1);
+    segment(p, q, radius, mid - E, 0, mid - ein, 0, 0, 1);
+  }
+  const eout = neighborReach(next, 0);
+  if (eout < E) {
+    if (isCurve(b.kind)) {
+      const c = curveCenter(b.kind);
+      const back = c.cp > mid ? 1 : -1; // la sortie est la droite p = cp ; le virage est du côté du centre de la cellule d'entrée
+      segment(p, q, radius, c.cp, c.r + eout, c.cp, c.r + E, -back, 0);
+      segment(p, q, radius, c.cp, c.r - E, c.cp, c.r - eout, -back, 0);
+    } else {
+      segment(p, q, radius, mid + eout, CELL, mid + E, CELL, 0, -1);
+      segment(p, q, radius, mid - E, CELL, mid - eout, CELL, 0, -1);
+    }
+  }
+}
 
 /** Le monde d'un circuit : route, pentes, rebords, plaques d'accélération. Hors route, c'est le vide. */
 export function trackWorld(track: Track): World {
@@ -156,6 +229,8 @@ export function trackWorld(track: Track): World {
       const q = canonQ(b.dir, u, v);
 
       let onRoad: boolean;
+      let side = false; // sur le bas-côté (lot 21)
+      let kerb = false; // sur un vibreur
       let cuveH = 0;
       if (b.cuve) {
         // Cuve : un sol approché (paroi tronquée à ≈ 80°) pour les lecteurs de hauteur ; la voiture, elle, suit `shell`.
@@ -169,18 +244,27 @@ export function trackWorld(track: Track): World {
         const r = Math.sqrt(dp * dp + q * q);
         const hw = b.w0 / 2; // un virage garde sa largeur
         onRoad = q >= 0 && r >= c.r - hw && r <= c.r + hw;
+        if (!onRoad) side = b.shoulder !== null && q >= 0 && r >= c.r - SHOULDER_EDGE && r <= c.r + SHOULDER_EDGE;
+        else kerb = b.surface === "road" && (r < c.r - hw + KERB_WIDTH || r > c.r + hw - KERB_WIDTH);
       } else {
         const lat = p - CELL / 2;
         const hw = blockHalfWidth(b, q);
         onRoad = lat >= -hw && lat <= hw;
+        if (!onRoad) side = b.shoulder !== null && lat >= -SHOULDER_EDGE && lat <= SHOULDER_EDGE;
       }
-      if (!onRoad) {
+      if (!onRoad && !side) {
         out.height = NO_GROUND;
         return;
       }
-      out.kind = b.surface;
+      // Le revêtement dépend de la position en travers (lot 21) : bas-côté, vibreur, ou celui du bloc.
+      out.kind = side ? b.shoulder! : kerb ? "kerb" : b.surface;
       out.height = blockHeight(b, q) + cuveH;
-      const slope = blockSlope(b, q);
+      let slope = blockSlope(b, q);
+      if (b.bumpy) {
+        rippleAt(q, ripple);
+        out.height += ripple.h;
+        slope += ripple.dq;
+      }
       out.gx = slope * dirX(b.dir);
       out.gz = slope * dirZ(b.dir);
       if (b.banked) {
@@ -223,7 +307,7 @@ export function trackWorld(track: Track): World {
         const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);
         if (r < 1e-6) return false;
-        const hw = b.w0 / 2;
+        const hw = b.shoulder ? SHOULDER_EDGE : b.w0 / 2; // bas-côtés : le rebord est au bout de la bande
         const inner = c.r - hw + radius;
         const outer = c.r + hw - radius;
         if (r < inner) {
@@ -237,8 +321,8 @@ export function trackWorld(track: Track): World {
         }
       } else {
         const lat = p - CELL / 2;
-        const hw = blockHalfWidth(b, q);
-        const slope = blockHalfWidthSlope(b, q);
+        const hw = b.shoulder ? SHOULDER_EDGE : blockHalfWidth(b, q);
+        const slope = b.shoulder ? 0 : blockHalfWidthSlope(b, q);
         if (slope === 0) {
           const limit = hw - radius;
           if (lat > limit) {
@@ -270,6 +354,15 @@ export function trackWorld(track: Track): World {
           np = 0;
           nq = -1;
         }
+      }
+      if (b.shoulder) {
+        face.depth = depth;
+        face.np = np;
+        face.nq = nq;
+        endFaces(b, track.blocks[b.index - 1], track.blocks[b.index + 1], p, q, radius);
+        depth = face.depth;
+        np = face.np;
+        nq = face.nq;
       }
       if (depth <= 0) return false;
       canonVecToWorld(b.dir, np, nq, wv);

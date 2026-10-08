@@ -52,7 +52,21 @@ export const SURFACE_SOUNDS: Record<SurfaceKind, SurfaceSound> = {
   dirt: { rollFreq: 380, rollGain: 0.11, skidFreq: 800 },
   grass: { rollFreq: 600, rollGain: 0.1, skidFreq: 500 },
   ice: { rollFreq: 2400, rollGain: 0.025, skidFreq: 2600 },
+  // Bas-côtés (lot 21) : gravier qui crépite, neige poudreuse étouffée ; vibreur : grondement grave et appuyé (voir `kerbRumble`).
+  gravel: { rollFreq: 520, rollGain: 0.14, skidFreq: 700 },
+  snow: { rollFreq: 300, rollGain: 0.08, skidFreq: 420 },
+  kerb: { rollFreq: 140, rollGain: 0.16, skidFreq: 1500 },
 };
+
+/**
+ * Vibreur (lot 21) : voix du roulement quand au moins une roue est sur un vibreur, sinon celle du revêtement sous la voiture. Le vibreur
+ * gronde (140 Hz) d'autant plus fort que les roues y sont nombreuses.
+ */
+export function rollVoice(surface: SurfaceKind, kerbWheels: number): SurfaceSound {
+  if (kerbWheels <= 0) return SURFACE_SOUNDS[surface];
+  const k = SURFACE_SOUNDS.kerb;
+  return { ...k, rollGain: k.rollGain * (0.6 + 0.2 * Math.min(2, kerbWheels)) };
+}
 
 /** Vent : volume ∈ [0, 0.2] en fonction de la vitesse (au carré, il ne se fait entendre qu'à haute vitesse ; il continue de monter au-delà de la pointe, lot 15). */
 export function windGain(speed: number): number {

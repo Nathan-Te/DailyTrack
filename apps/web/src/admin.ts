@@ -31,6 +31,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["relief", "Relief"],
   ["cuves", "Cuves"],
   ["air", "Air"],
+  ["bas-cotes", "Bas-côtés"],
   ["figures", "Figures (tour)"],
   ["figure", "Une figure"],
   ["plat", "Terrain plat"],

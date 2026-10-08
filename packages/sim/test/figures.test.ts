@@ -287,12 +287,13 @@ describe("rotation par jour (sans générer les jours précédents)", () => {
     expect(b.spec).toBe(a.spec);
   });
 
-  it("respecte le repos : une figure au repos ne sert que si elle est la signature du thème", () => {
+  it("respecte le repos : une figure au repos ne sert que si elle est la signature ou une figure obligatoire du thème (lot 21)", () => {
     for (const day of DAYS) {
       const c = composeFigures(day, 0);
       if (!c) continue;
-      const sig = SIGNATURE_FIGURE[themeForDay(day).signature];
-      for (const f of c.figures) if (isRested(f.name, day)) expect(f.name, `jour ${day}`).toBe(sig);
+      const theme = themeForDay(day);
+      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? [])];
+      for (const f of c.figures) if (isRested(f.name, day)) expect(exempt, `jour ${day} : ${f.name}`).toContain(f.name);
     }
   });
 });

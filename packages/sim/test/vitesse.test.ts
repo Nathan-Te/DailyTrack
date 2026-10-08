@@ -128,6 +128,30 @@ describe("pas de traversée à la vitesse maximale", () => {
   it("à 88 m/s, le rebord arrête la voiture même d'un virage serré et d'une transition de largeur", () => {
     ride("S/n@start S S/n>e S L S S S S@finish", 88, () => 0, 5);
   });
+
+  it("lot 21 : à 88 m/s, ni le rebord au bout d'un bas-côté ni la face où la bande s'arrête ne se traversent", () => {
+    ride("S@start S/~h S S S S S S S S S S S/~r S@finish", 88, (_race, tick) => (Math.floor(tick / 40) % 2 === 0 ? 1 : -1), 6);
+    ride("S@start S S/~h S L2 S S S/~r S S S@finish", 88, () => 0, 5);
+    ride("S/n@start S S/~t S R S/~r S S S S@finish", 88, () => 0, 5);
+    // Lancée sur la bande, droit dans la face d'un bloc à rebords (et dans celle d'une cuve).
+    for (const spec of ["S@start S/~h S S S/~r S S S@finish", "S@start S/~p S S V V S S S@finish"]) {
+      const track = parseTrack("face", spec);
+      const world = trackWorld(track);
+      const race = createRace(track);
+      race.car.x = 16 + 11;
+      race.car.z = 32 + 4; // sur la bande (le départ garde ses rebords)
+      race.car.vz = 88;
+      let peak = 0;
+      for (let i = 0; i < 3 * TICK_RATE; i++) {
+        stepRace(race, GAS);
+        world.sample(race.car.x, race.car.z, surface);
+        expect(surface.height, `${spec} pas ${i}`).not.toBe(NO_GROUND);
+        expect(race.car.z).toBeLessThan(4 * 32);
+        peak = Math.max(peak, race.car.z);
+      }
+      expect(peak).toBeGreaterThan(4 * 32 - 4); // elle a bien atteint la face
+    }
+  });
 });
 
 describe("scénario vitesse", () => {

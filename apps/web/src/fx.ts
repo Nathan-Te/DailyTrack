@@ -182,6 +182,9 @@ const SKID_STYLE: Record<SurfaceKind, { c: [number, number, number]; a: number }
   dirt: { c: [0.22, 0.14, 0.07], a: 0.65 },
   grass: { c: [0.1, 0.26, 0.07], a: 0.55 },
   ice: { c: [0.96, 0.99, 1], a: 0.7 },
+  gravel: { c: [0.3, 0.26, 0.2], a: 0.6 },
+  snow: { c: [0.7, 0.78, 0.88], a: 0.6 },
+  kerb: { c: [0.04, 0.04, 0.05], a: 0.5 },
 };
 const SKID_WIDTH = 0.14; // demi-largeur d'une trace (m) : un pneu fait 0,3 m
 const SKID_STEP = 1.1; // distance minimale entre deux segments (m)
@@ -311,6 +314,10 @@ const DUST: Record<Exclude<SurfaceKind, "road">, { c: [number, number, number]; 
   dirt: { c: [0.64, 0.5, 0.34], a: 0.5, size: 0.7, grow: 1.4, life: 0.85, up: 1.6 },
   ice: { c: [0.85, 0.96, 1], a: 0.7, size: 0.28, grow: 0.2, life: 0.5, up: 2.6 },
   grass: { c: [0.35, 0.62, 0.22], a: 0.8, size: 0.24, grow: 0.1, life: 0.6, up: 3.2 },
+  // Bas-côtés (lot 21) : gerbe de gravillons gris-brun, nuage de neige poudreuse ; le vibreur ne projette rien (il vibre).
+  gravel: { c: [0.55, 0.5, 0.42], a: 0.7, size: 0.32, grow: 0.6, life: 0.7, up: 2.2 },
+  snow: { c: [0.95, 0.97, 1], a: 0.8, size: 0.6, grow: 1.8, life: 0.9, up: 2.4 },
+  kerb: { c: [0, 0, 0], a: 0, size: 0, grow: 0, life: 0, up: 0 },
 };
 
 export class Effects {
@@ -396,12 +403,12 @@ export class Effects {
     }
 
     // Particules du revêtement : poussière (terre), éclats (glace), brins (herbe).
-    if (grounded && speed > 5 && tel.surface !== "road") {
+    if (grounded && speed > 5 && tel.surface !== "road" && tel.surface !== "kerb") {
       const d = DUST[tel.surface];
       for (let k = this.rate("surface", speed * 2.2, dt); k > 0; k--) {
         const wheel = rear[k % 2]!;
         this.emitted.surface++;
-        this.smoke.spawn(wheel.x, wheel.ground + 0.15, wheel.z, rnd(-1.4, 1.4) - sinY * speed * 0.12, rnd(0.5, 1) * d.up, rnd(-1.4, 1.4) - cosY * speed * 0.12, d.life * rnd(0.7, 1.2), d.size, d.grow, d.c[0], d.c[1], d.c[2], d.a, tel.surface === "dirt" ? 0 : 9, tel.surface === "dirt" ? 1.2 : 0.3);
+        this.smoke.spawn(wheel.x, wheel.ground + 0.15, wheel.z, rnd(-1.4, 1.4) - sinY * speed * 0.12, rnd(0.5, 1) * d.up, rnd(-1.4, 1.4) - cosY * speed * 0.12, d.life * rnd(0.7, 1.2), d.size, d.grow, d.c[0], d.c[1], d.c[2], d.a, tel.surface === "dirt" || tel.surface === "snow" ? 0 : 9, tel.surface === "dirt" || tel.surface === "snow" ? 1.2 : 0.3);
       }
     }
 

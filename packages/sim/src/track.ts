@@ -45,6 +45,20 @@ export const BOOST_HALF_LENGTH = 4;
 export const FALL_DEPTH = 4;
 /** Hauteur « sans sol » : le vide. */
 export const NO_GROUND = -1e9;
+/**
+ * Bas-côtés (lot 21) : sur un bloc qui en a, la bande de revêtement du thème (herbe, terre et gravier, neige poudreuse) va du bord de
+ * la route jusqu'à `SHOULDER_EDGE` m de l'axe (1 m avant le bord de la cellule), où un rebord ordinaire arrête la voiture. Sa largeur
+ * dépend donc de la route : 8 m de chaque côté sur 14 m, 5 m sur 20 m, 2 m sur 26 m.
+ */
+export const SHOULDER_EDGE = CELL / 2 - 1;
+/** Vibreurs (lot 21) : bandes de cette largeur (m) au bord intérieur et extérieur de la route dans un virage sur route ; même adhérence que la route. */
+export const KERB_WIDTH = 1.5;
+/**
+ * Route bosselée (lot 21, modificateur `u`) : une « tôle ondulée » en travers de la route, des bosses de `RIPPLE_HEIGHT` m tous les
+ * `RIPPLE_LENGTH` m, qui s'effacent sur la première et la dernière période du bloc (aucune marche avec le voisin).
+ */
+export const RIPPLE_HEIGHT = 0.15;
+export const RIPPLE_LENGTH = 6;
 
 export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "grandL" | "grandR" | "up" | "down" | "bump" | "jump" | "kick" | "gap" | "boost" | "turbo" | "cut";
 
@@ -52,9 +66,20 @@ export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
  * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
  */
-export type SurfaceKind = "road" | "dirt" | "ice" | "grass";
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "gravel" | "snow" | "kerb";
+/** Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. */
+export type BlockSurface = "road" | "dirt" | "ice" | "grass";
+/** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse. */
+export type ShoulderKind = "grass" | "gravel" | "snow";
+/**
+ * Bord de la route (lot 21), attribut chaîné comme la largeur (`~h`, `~t`, `~p`, `~v`, `~r`) : un bas-côté (`ShoulderKind`), le vide
+ * (`void` : sans rebords, comme le modificateur `o`) ou les rebords (`wall`, le défaut).
+ */
+export type EdgeKind = ShoulderKind | "void" | "wall";
+/** Lettre de chaque bord dans la notation (`S/~h` : bas-côtés d'herbe à partir de ce bloc). */
+export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", v: "void", r: "wall" };
 /** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
-export const SURFACE_LETTERS: Record<string, SurfaceKind> = { t: "dirt", g: "ice", h: "grass" };
+export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
@@ -70,11 +95,15 @@ export interface Block {
   y0: number;
   /** Dénivelé du bloc, de son entrée à sa sortie (m) : `LEVEL` × niveaux pour une montée ou une descente (lot 17), celui du vide pour un `gap`. */
   rise: number;
-  /** Sans rebords (modificateur `o`) : la voiture peut quitter la route par le côté et tomber. */
+  /** Sans rebords (modificateur `o`, ou bord `~v`) : la voiture peut quitter la route par le côté et tomber. */
   open: boolean;
+  /** Bas-côtés (lot 21) : bande de ce revêtement de chaque côté de la route, jusqu'à `SHOULDER_EDGE` ; `null` = rebords ou vide. */
+  shoulder: ShoulderKind | null;
+  /** Route bosselée (lot 21, modificateur `u`) : tôle ondulée en travers (voir `rippleAt`). */
+  bumpy: boolean;
   mark?: Mark;
   /** Revêtement du bloc. */
-  surface: SurfaceKind;
+  surface: BlockSurface;
   /** Virage relevé : la route s'incline vers l'extérieur (voir `bankAt`). */
   banked: boolean;
   /** Largeur de la route (m) à l'entrée et à la sortie du bloc ; différentes seulement sur un bloc de transition. */
@@ -328,11 +357,60 @@ export function blockHalfWidthSlope(b: Block, q: number): number {
   return ((b.w1 - b.w0) * 6 * t * (1 - t)) / (2 * CELL);
 }
 
+// --- Route bosselée (lot 21) -----------------------------------------------------------------
+
+export interface Ripple {
+  /** Hauteur ajoutée (m) et sa pente le long du bloc (dh/dq). */
+  h: number;
+  dq: number;
+}
+
+/**
+ * Tôle ondulée d'un bloc bosselé au point d'avance q : bosses `RIPPLE_HEIGHT` × 16 t²(1 − t)² (t = fraction de période), pente nulle en
+ * creux, effacées en lissage cubique sur la première et la dernière période (hauteur et pente nulles aux bouts du bloc). Polynômes
+ * seulement : déterministe partout.
+ */
+export function rippleAt(q: number, out: Ripple): void {
+  out.h = 0;
+  out.dq = 0;
+  if (q <= 0 || q >= CELL) return;
+  const k = Math.floor(q / RIPPLE_LENGTH);
+  const t = q / RIPPLE_LENGTH - k;
+  const u = t * (1 - t);
+  const bump = 16 * u * u;
+  const dbump = (32 * u * (1 - 2 * t)) / RIPPLE_LENGTH;
+  // Enveloppe : 0 → 1 sur la première période, 1 → 0 sur la dernière.
+  let env = 1;
+  let denv = 0;
+  if (q < RIPPLE_LENGTH) {
+    const e = q / RIPPLE_LENGTH;
+    env = e * e * (3 - 2 * e);
+    denv = (6 * e * (1 - e)) / RIPPLE_LENGTH;
+  } else if (q > CELL - RIPPLE_LENGTH) {
+    const e = (CELL - q) / RIPPLE_LENGTH;
+    env = e * e * (3 - 2 * e);
+    denv = (-6 * e * (1 - e)) / RIPPLE_LENGTH;
+  }
+  out.h = RIPPLE_HEIGHT * env * bump;
+  out.dq = RIPPLE_HEIGHT * (denv * bump + env * dbump);
+}
+
+// --- Bas-côtés (lot 21) -----------------------------------------------------------------------
+
+/**
+ * Étendue latérale (m, depuis l'axe) de ce qui porte la voiture à un bout du bloc (`end` = 0 entrée, 1 sortie) : `SHOULDER_EDGE` avec des
+ * bas-côtés, sinon la demi-largeur de la route. Sert aux faces de bout : un bas-côté qui s'arrête contre un bloc à rebords finit par un mur.
+ */
+export function blockReachAt(b: Block, end: 0 | 1): number {
+  if (b.shoulder) return SHOULDER_EDGE;
+  return (end === 0 ? b.w0 : b.w1) / 2;
+}
+
 // --- Construction -----------------------------------------------------------------------------
 
 export interface ParsedToken {
   kind: BlockKind;
-  surface: SurfaceKind;
+  surface: BlockSurface;
   banked: boolean;
   mark?: Mark;
   /** Largeur écrite sur le bloc (entrée, sortie), en mètres ; absente : le bloc garde la largeur du précédent. */
@@ -343,6 +421,10 @@ export interface ParsedToken {
   open?: true;
   /** Cuve (lot 18) : côtés de la paroi (`V`, `ML`, `MR`, ou `/c` sur un virage) ; absent = pas de cuve. */
   cuve?: number;
+  /** Bord écrit sur le bloc (`~h`…, lot 21) : il vaut pour ce bloc et les suivants ; absent = celui du bloc précédent. */
+  edge?: EdgeKind;
+  /** Route bosselée (`u`). */
+  bumpy?: true;
 }
 
 /**
@@ -363,13 +445,21 @@ export function parseToken(token: string, index = 0): ParsedToken {
     mark = MARKS[markName];
     if (!mark) throw new Error(`Repère inconnu « ${token} » (position ${index})`);
   }
-  let surface: SurfaceKind = "road";
+  let surface: BlockSurface = "road";
   let banked = false;
+  let edge: EdgeKind | undefined;
+  let bumpy = false;
   let width: { w0: number; w1: number } | undefined;
   let open = false;
   let outerWall = false;
-  for (const m of mods.match(/[enl]>[enl]|./g) ?? []) {
-    if (m === "b") banked = true;
+  for (const m of mods.match(/[enl]>[enl]|~.|./g) ?? []) {
+    if (m[0] === "~") {
+      const e = EDGE_LETTERS[m[1] ?? ""];
+      if (!e) throw new Error(`Bord inconnu « ${m} » dans « ${token} » (position ${index}) : ~h herbe, ~t terre et gravier, ~p neige poudreuse, ~v vide, ~r rebords`);
+      if (edge) throw new Error(`Deux bords sur « ${token} » (position ${index})`);
+      edge = e;
+    } else if (m === "u") bumpy = true;
+    else if (m === "b") banked = true;
     else if (m === "o") open = true;
     else if (m === "c") outerWall = true;
     else if (SURFACE_LETTERS[m]) {
@@ -384,6 +474,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     } else throw new Error(`Modificateur inconnu « ${m} » dans « ${token} » (position ${index})`);
   }
   if (banked && !isCurve(kind)) throw new Error(`Seul un virage peut être relevé (${token})`);
+  if (bumpy && !RIPPLE_KINDS.has(kind)) throw new Error(`Seule une droite (S, U, D, P, T, C) peut être bosselée (${token})`);
   if (open && kind === "gap") throw new Error(`Un vide n'a pas de rebords à ouvrir (${token})`);
   if (outerWall && !isCurve(kind)) throw new Error(`Seul un virage prend un mur extérieur « /c » (${token}) : pour une droite, V, ML ou MR`);
   let cuve = cuveSides ?? 0;
@@ -394,7 +485,26 @@ export function parseToken(token: string, index = 0): ParsedToken {
     if (mark) throw new Error(`Pas de repère sur une cuve (${token})`);
     if (width && width.w0 !== width.w1) throw new Error(`Pas de transition de largeur sur une cuve (${token})`);
   }
-  return { kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}) };
+  return {
+    kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
+    ...(edge ? { edge } : {}), ...(bumpy ? { bumpy: true as const } : {}),
+  };
+}
+
+/** Blocs qui peuvent être bosselés : les droites, pentes et blocs à effet (pas les virages, bosses, sauts ni cuves). */
+const RIPPLE_KINDS: ReadonlySet<BlockKind> = new Set<BlockKind>(["straight", "up", "down", "boost", "turbo", "cut"]);
+
+/**
+ * Bord effectif d'un bloc dont la chaîne demande `edge` : un bloc qui ne peut pas porter de bas-côté garde ses rebords sans casser la
+ * chaîne — départ et arrivée, cuve, virage relevé, vide, rampe de saut, tremplin, montée (on y calerait : la poussée ne vaut pas le
+ * roulement d'un bas-côté plus la pente). Le vide (`void`) se pose sur les mêmes blocs que le modificateur `o`, sauf montée permise.
+ */
+function effectiveEdge(edge: EdgeKind, kind: BlockKind, cuve: number, banked: boolean, mark: Mark | undefined, rise: number): EdgeKind {
+  if (edge === "wall") return edge;
+  if (mark === "start" || mark === "finish" || cuve || kind === "gap" || kind === "kick" || kind === "jump") return "wall";
+  if (edge === "void") return edge;
+  if (banked || kind === "up" || (kind === "down" && rise < -2 * SLOPE_RISE)) return "wall";
+  return edge;
 }
 
 // --- Virages relevés --------------------------------------------------------------------------
@@ -449,7 +559,9 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
  *
  * Blocs : S droit · L virage à gauche · R virage à droite · L2 / R2 virage large (2 × 2 cellules) · L3 / R3 virage ample (3 × 3) · U montée · D descente · B bosse ·
  * J tremplin · P plaque d'accélération · T super turbo · C moteur coupé (jusqu'au prochain point de contrôle). Modificateurs
- * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé, `o` sans rebords. Relief (lot 17) : `U2` `U3` `D2` `D3`
+ * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé, `o` sans rebords, `u` route bosselée (lot 21). Bords (lot 21,
+ * chaînés comme la largeur : valent pour ce bloc et les suivants) : `~h` bas-côtés d'herbe, `~t` de terre et gravier, `~p` de neige
+ * poudreuse, `~v` le vide, `~r` retour aux rebords (`S/n~h`, `L2/~t`) ; un bloc qui ne peut pas en porter garde ses rebords. Relief (lot 17) : `U2` `U3` `D2` `D3`
  * (2 ou 3 niveaux sur une cellule), `K` rampe de saut, `G` vide (`GU` `GD` `GD2` : l'autre bord plus haut ou plus bas). Repères : `@start` (premier bloc), `@cp` (point de contrôle,
  * sur un S), `@finish` (dernier bloc). Départ et arrivée sont sur des blocs S.
  */
@@ -462,9 +574,10 @@ export function parseTrack(id: string, spec: string): Track {
   let dir: Dir = 0;
   let y = 0;
   let width: number = ROAD_WIDTH;
+  let edgeChain: EdgeKind = "wall";
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written, rise, open, cuve } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open, cuve, edge: writtenEdge, bumpy } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -479,7 +592,16 @@ export function parseTrack(id: string, spec: string): Track {
     if (open && (mark === "start" || mark === "finish")) throw new Error(`Le départ et l'arrivée gardent leurs rebords (${token})`);
 
     const delta = exitDelta(kind, rise);
-    const block: Block = { index, cx, cz, dir, kind, y0: y, rise: delta, open: open === true, surface, banked, w0, w1, cuve: cuve ?? 0, cuveIn: 0, cuveOut: 0, ...(mark ? { mark } : {}) };
+    // Bord (lot 21) : chaîné comme la largeur ; `o` met ce bloc seul sans rebords (le vide), quelle que soit la chaîne.
+    if (writtenEdge) edgeChain = writtenEdge;
+    const isLast = index === tokens.length - 1;
+    const edge = open ? "void" : effectiveEdge(edgeChain, kind, cuve ?? 0, banked, isLast ? (mark ?? "finish") : mark, delta);
+    if (writtenEdge && writtenEdge !== "wall" && edge === "wall" && (mark === "start" || mark === "finish")) throw new Error(`Le départ et l'arrivée gardent leurs rebords (${token})`);
+    const shoulder = edge === "grass" || edge === "gravel" || edge === "snow" ? edge : null;
+    const block: Block = {
+      index, cx, cz, dir, kind, y0: y, rise: delta, open: edge === "void", shoulder, bumpy: bumpy === true, surface, banked, w0, w1, cuve: cuve ?? 0, cuveIn: 0, cuveOut: 0,
+      ...(mark ? { mark } : {}),
+    };
     if (cuve && (index === 0 || index === tokens.length - 1)) throw new Error(`Le départ et l'arrivée gardent leurs rebords : pas de cuve (${token})`);
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
@@ -521,7 +643,8 @@ export function parseTrack(id: string, spec: string): Track {
       fx: DIR_X[b.dir],
       fz: DIR_Z[b.dir],
       yaw: DIR_YAW[b.dir],
-      halfWidth: blockHalfWidth(b, CELL / 2),
+      // Avec des bas-côtés, la porte couvre toute la bande : on peut passer le point de contrôle en coupant.
+      halfWidth: b.shoulder ? SHOULDER_EDGE : blockHalfWidth(b, CELL / 2),
     });
   }
 

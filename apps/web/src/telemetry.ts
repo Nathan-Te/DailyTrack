@@ -48,6 +48,8 @@ export interface Telemetry {
   tilt: number;
   /** Sur une paroi franchement inclinée (≥ 30°), les pneus frottent : vrai (étincelles et traces sur la paroi). */
   onWall: boolean;
+  /** Roues sur un vibreur (lot 21) : 0 à 4 (son grave, petite vibration). */
+  kerb: number;
 }
 
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR] as const;
@@ -66,6 +68,7 @@ export function createTelemetry(): Telemetry {
     normal: { x: 0, y: 1, z: 0 },
     tilt: 0,
     onWall: false,
+    kerb: 0,
   };
 }
 
@@ -111,6 +114,7 @@ export function readTelemetry(car: CarState, world: World, out: Telemetry): Tele
     out.tilt = Math.sqrt(Math.max(0, 1 - car.ny * car.ny));
     out.onWall = out.grounded && out.tilt >= 0.5;
     out.wall = null;
+    out.kerb = 0;
     return out;
   }
   out.normal.x = 0;
@@ -118,6 +122,7 @@ export function readTelemetry(car: CarState, world: World, out: Telemetry): Tele
   out.normal.z = 0;
   out.tilt = 0;
   out.onWall = false;
+  out.kerb = 0;
   for (let i = 0; i < 4; i++) {
     const w = out.wheels[i]!;
     w.x = car.x + WHEEL_F[i]! * fx + WHEEL_L[i]! * lx;
@@ -125,6 +130,7 @@ export function readTelemetry(car: CarState, world: World, out: Telemetry): Tele
     world.sample(w.x, w.z, sample);
     w.ground = sample.height;
     w.surface = sample.kind;
+    if (sample.kind === "kerb" && out.grounded) out.kerb++;
   }
   world.sample(car.x, car.z, sample);
   out.surface = sample.kind;

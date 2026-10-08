@@ -1,4 +1,4 @@
-import { exitDelta, parseToken, type SurfaceKind, type WidthLetter } from "./track";
+import { exitDelta, parseToken, type BlockSurface, type WidthLetter } from "./track";
 
 // Bibliothèque de figures (lot 20). Une figure est une courte suite de blocs avec une intention, un nom et une catégorie ;
 // le générateur (generator.ts) assemble 5 à 7 figures par circuit, jamais deux fois la même. Chaque figure a des variantes :
@@ -91,8 +91,8 @@ export function widthAfter(tokens: readonly string[], width: WidthLetter): Width
   return w;
 }
 
-const SURFACE_MOD: Record<SurfaceKind, string> = { road: "", dirt: "t", ice: "g", grass: "h" };
-export const surfaceMod = (s: SurfaceKind) => SURFACE_MOD[s];
+const SURFACE_MOD: Record<BlockSurface, string> = { road: "", dirt: "t", ice: "g", grass: "h" };
+export const surfaceMod = (s: BlockSurface) => SURFACE_MOD[s];
 const on = (tokens: string[], mod: string) => tokens.map((t) => withMod(t, mod));
 const rep = (token: string, n: number) => Array<string>(n).fill(token);
 
@@ -688,7 +688,7 @@ const KIND_SECONDS: Record<string, number> = {
   straight: 0.7, curveL: 0.9, curveR: 0.9, wideL: 1.75, wideR: 1.75, grandL: 2.7, grandR: 2.7,
   up: 0.7, down: 0.6, bump: 0.7, jump: 0.7, kick: 0.7, gap: 0.65, boost: 0.6, turbo: 0.45, cut: 0.7,
 };
-const SURFACE_FACTOR: Record<SurfaceKind, number> = { road: 1, dirt: 1.1, ice: 1.6, grass: 1.4 };
+const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 1.6, grass: 1.4 };
 
 /** Durée estimée (s) d'une suite de blocs. */
 export function estimateSeconds(tokens: readonly string[]): number {

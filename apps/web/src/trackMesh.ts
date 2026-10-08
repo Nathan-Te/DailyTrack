@@ -33,7 +33,11 @@ import {
   cellKey,
   JUMP_LIP,
   JUMP_RISE,
+  KERB_WIDTH,
+  SHOULDER_EDGE,
   WALL_HEIGHT,
+  blockReachAt,
+  rippleAt,
   bankAt,
   blockHeight,
   blockPoint,
@@ -84,8 +88,15 @@ export interface Palette {
   disc: number | null;
   mountain: number;
   mountainTop: number;
-  /** Décor au bord de la piste : cactus et rochers, sapins, lampadaires, arbres, pylônes lumineux. */
-  scenery: "desert" | "pine" | "lamps" | "trees" | "pylons";
+  /** Décor au bord de la piste : cactus et rochers, sapins, lampadaires, arbres, pylônes lumineux, drapeaux et haies (Stade). */
+  scenery: "desert" | "pine" | "lamps" | "trees" | "pylons" | "flags";
+  /**
+   * Lumière (lot 21) : hauteur du soleil (0 = à l'horizon, 1 = au zénith : la lumière vient d'en haut, le disque monte) et rebord au bout
+   * d'un bas-côté (couleurs alternées : muret, clôture de bois, filet…). `neon` : bordure lumineuse au bord du vide (Nuit).
+   */
+  sunHeight: number;
+  fence: [number, number];
+  neon?: [number, number];
 }
 
 export const PALETTE_DEFS: Record<PaletteName, Palette> = {
@@ -98,16 +109,19 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     wallA: 0xe8283a, wallB: 0xf4f4f4,
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
     zenith: 0x6ea6d8, disc: 0xfff2c9, mountain: 0xc7794a, mountainTop: 0xe9a06a, scenery: "desert",
+    sunHeight: 0.45, fence: [0x2a2a2e, 0xe8e0d0], // pneus empilés et bande claire
   },
   neige: {
     label: PALETTE_LABELS.neige,
-    sky: 0xcfe3f2, fogNear: 80, fogFar: 300,
-    ambient: [0xeaf4ff, 1.0], sun: [0xffffff, 2.0],
+    // Jour blanc (lot 21) : ciel laiteux presque uni, brume claire et proche, lumière diffuse plutôt qu'un soleil franc.
+    sky: 0xe6edf3, fogNear: 60, fogFar: 260,
+    ambient: [0xf2f7ff, 1.25], sun: [0xffffff, 1.5],
     floorA: "#f4f8fb", floorB: "#e1ebf3",
     road: [0x6f7a8c, 0x646f82], dash: 0xffffff, skirt: 0x8a97ab,
     wallA: 0x2f6fd0, wallB: 0xffffff,
     boost: 0xffc414, boostMark: 0xe08a00, checkpoint: 0x1fb6a6, finish: 0xffffff, finishDark: 0x16181f,
-    zenith: 0x7fb4e3, disc: 0xffffff, mountain: 0x9fb4cc, mountainTop: 0xffffff, scenery: "pine",
+    zenith: 0xbfd2e4, disc: 0xffffff, mountain: 0x9fb4cc, mountainTop: 0xffffff, scenery: "pine",
+    sunHeight: 0.6, fence: [0x2f6fd0, 0xffffff],
   },
   nuit: {
     label: PALETTE_LABELS.nuit,
@@ -118,16 +132,19 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     wallA: 0xff5a36, wallB: 0xffe9c4,
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x39c0ff, finish: 0xf4f4f4, finishDark: 0x16181f,
     zenith: 0x02030f, disc: 0xdfe8ff, mountain: 0x1a2145, mountainTop: 0x2b3566, scenery: "lamps",
+    sunHeight: 0.5, fence: [0xff5a36, 0xffe9c4], neon: [0x00e5ff, 0xff2bd6],
   },
   campagne: {
     label: PALETTE_LABELS.campagne,
-    sky: 0x9fd4ff, fogNear: 100, fogFar: 340,
-    ambient: [0xf2fff0, 0.95], sun: [0xfff6dd, 2.1],
+    // Fin d'après-midi (lot 21) : horizon doré, soleil bas et chaud.
+    sky: 0xf6cf96, fogNear: 100, fogFar: 340,
+    ambient: [0xffe8cc, 0.9], sun: [0xffcf8a, 2.1],
     floorA: "#6fbf4f", floorB: "#63b044",
     road: [0x80838c, 0x777a83], dash: 0xf4f1e6, skirt: 0x5a6b3c,
     wallA: 0xd9402a, wallB: 0xf6f6f0,
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
-    zenith: 0x4a90d9, disc: 0xfffbe0, mountain: 0x5f9a63, mountainTop: 0x7db681, scenery: "trees",
+    zenith: 0x5b8fd2, disc: 0xffd27a, mountain: 0x5f9a63, mountainTop: 0x7db681, scenery: "trees",
+    sunHeight: 0.18, fence: [0x7a5230, 0x9a6a3e], // clôture de bois
   },
   neon: {
     label: PALETTE_LABELS.neon,
@@ -138,6 +155,19 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     wallA: 0xff2bd6, wallB: 0x00f0ff,
     boost: 0xfff200, boostMark: 0xff7a00, checkpoint: 0x00ff9c, finish: 0xffffff, finishDark: 0x16181f,
     zenith: 0x06000f, disc: 0xff4fd8, mountain: 0x2a0b55, mountainTop: 0x7a2bff, scenery: "pylons",
+    sunHeight: 0.5, fence: [0xff2bd6, 0x00f0ff], neon: [0x00f0ff, 0xff2bd6],
+  },
+  stade: {
+    label: PALETTE_LABELS.stade,
+    // Plein jour ensoleillé (lot 21) : ciel bleu franc, soleil haut et chaud, herbe verte, route d'asphalte sombre.
+    sky: 0xb4dcff, fogNear: 140, fogFar: 420,
+    ambient: [0xfff4e0, 1.0], sun: [0xfff1d2, 2.7],
+    floorA: "#5cb544", floorB: "#51a83b",
+    road: [0x5f636d, 0x585c66], dash: 0xffffff, skirt: 0x8b8f99,
+    wallA: 0xe8283a, wallB: 0xf4f4f4,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
+    zenith: 0x2f7fe0, disc: 0xfffbe8, mountain: 0x6f9fca, mountainTop: 0xdfeefa, scenery: "flags",
+    sunHeight: 0.85, fence: [0x2e7dff, 0xf4f4f4], // muret bleu et blanc
   },
 };
 
@@ -146,9 +176,15 @@ export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, numbe
   dirt: [0x8f6b43, 0x82603b],
   ice: [0xc4e9f7, 0xb2dff1],
   grass: [0x58a340, 0x4e9638],
+  // Bas-côtés (lot 21) et vibreur : gravier gris-brun, neige poudreuse presque blanche ; le vibreur est dessiné à part (rouge et blanc).
+  gravel: [0x9b8a72, 0x8f7f68],
+  snow: [0xf4f8fc, 0xe9f0f7],
+  kerb: [0xe8283a, 0xf4f4f4],
 };
 /** Motifs légers par revêtement (traces, éclats, brins) : une teinte plus sombre ou plus claire. */
-const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26 };
+const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, snow: 0xc9d8e8, kerb: 0xffffff };
+/** Bas-côtés de l'herbe haute de Campagne : une herbe plus sombre et plus jaune que celle du Stade (lot 21). */
+const TALL_GRASS: [number, number] = [0x6f9a3a, 0x668f34];
 /** Blocs à effet : couleurs propres, indépendantes de la palette (la lisibilité d'abord). */
 const TURBO_COLOR = { base: 0xff3b30, mark: 0xffe14d };
 const CUT_COLOR = { base: 0x2b1b45, mark: 0xffd22e };
@@ -268,13 +304,13 @@ interface Row {
   right: V3;
 }
 
-/** Tranches d'un intervalle [q0, q1] du bloc droit, avec `steps` subdivisions. `yOf` donne la hauteur. */
-function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: number) => number): Row[] {
+/** Tranches d'un intervalle [q0, q1] du bloc droit, avec `steps` subdivisions. `yOf` donne la hauteur, `half` la demi-largeur (la route par défaut). */
+function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: number) => number, half?: number): Row[] {
   const rows: Row[] = [];
   for (let i = 0; i <= steps; i++) {
     const q = q0 + ((q1 - q0) * i) / steps;
     const y = yOf(q);
-    const hw = blockHalfWidth(b, q); // varie dans un bloc de transition
+    const hw = half ?? blockHalfWidth(b, q); // varie dans un bloc de transition
     rows.push({ left: world(b, CELL / 2 + hw, q, y), right: world(b, CELL / 2 - hw, q, y) });
   }
   return rows;
@@ -295,15 +331,16 @@ function arcPoint(b: Block, r: number, a: number, y: number): V3 {
   return world(b, p, q, y);
 }
 
-function curveRows(b: Block): Row[] {
+/** Tranches d'un virage : la route (demi-largeur `half` par défaut), relevée de `lift` m. */
+function curveRows(b: Block, half = b.w0 / 2, lift = 0): Row[] {
   const { r: R } = curveCenter(b.kind);
-  const hw = b.w0 / 2; // un virage garde sa largeur
+  const hw = half; // un virage garde sa largeur
   const steps = (curveSize(b.kind) === 1 ? 10 : curveSize(b.kind) === 2 ? 24 : 40) + (b.banked ? 8 : 0);
   const rows: Row[] = [];
   const left = turnsLeft(b.kind);
   for (let i = 0; i <= steps; i++) {
     const a = (Math.PI / 2) * (i / steps);
-    const at = (r: number) => arcPoint(b, r, a, b.y0);
+    const at = (r: number) => arcPoint(b, r, a, b.y0 + lift);
     // Dans le repère canonique p augmente vers la gauche : le bord intérieur d'un virage à gauche est à gauche.
     rows.push(left ? { left: at(R - hw), right: at(R + hw) } : { left: at(R + hw), right: at(R - hw) });
   }
@@ -330,6 +367,12 @@ const SLAB = 1.3;
 interface RoadStyle {
   /** Sans rebords (modificateur `o`) : à la place, une bordure plate rouge et blanche, pour qu'on voie où la route s'arrête. */
   open?: boolean;
+  /** Surface seule (lot 21 : la route posée sur ses bas-côtés) : ni rebords ni bordure. */
+  bare?: boolean;
+  /** Couleurs du rebord (lot 21 : au bout d'un bas-côté, muret ou clôture du thème) ; sinon le rouge et blanc de la palette. */
+  fence?: [number, number];
+  /** Bordure lumineuse au bord du vide (lot 21, Nuit) : dessinée dans ce calque sans éclairage. */
+  glow?: Builder;
   /** Route sur piliers : dalle mince au lieu d'un remblai plein jusqu'au sol. */
   pillars?: boolean;
 }
@@ -370,8 +413,12 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         g.quad([a.left[0], a.left[1] - SLAB, a.left[2]], [a.right[0], a.right[1] - SLAB, a.right[2]], [b.right[0], b.right[1] - SLAB, b.right[2]], [b.left[0], b.left[1] - SLAB, b.left[2]], shade(skirtColor, 0.7));
       }
     }
+    if (style.bare) continue;
     if (style.open) {
       // Bordure plate de chaque côté : des bandes alternées de ~4 m larges de 0,5 m, juste au-dessus de la route.
+      // Nuit (lot 21) : un néon au bord du vide, dans le calque lumineux.
+      const neon = pal.neon && style.glow ? pal.neon : null;
+      const target = neon ? style.glow! : g;
       for (const side of ["left", "right"] as const) {
         const p = a[side];
         const q = b[side];
@@ -383,8 +430,8 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         const pieces = Math.max(1, Math.round(Math.hypot(q[0] - p[0], q[2] - p[2]) / 4));
         for (let k = 0; k < pieces; k++) {
           const at = (t: number, inward: number): V3 => [p[0] + (q[0] - p[0]) * t + ix * inward, p[1] + (q[1] - p[1]) * t + 0.06, p[2] + (q[2] - p[2]) * t + iz * inward];
-          const color = stripes[side]++ % 2 === 0 ? pal.wallA : pal.wallB;
-          g.quad(at(k / pieces, 0), at(k / pieces, 1), at((k + 1) / pieces, 1), at((k + 1) / pieces, 0), color);
+          const color = neon ? neon[side === "left" ? 0 : 1] : stripes[side]++ % 2 === 0 ? pal.wallA : pal.wallB;
+          target.quad(at(k / pieces, 0), at(k / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, 0), color);
         }
       }
       continue;
@@ -405,7 +452,7 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         const t0 = k / pieces;
         const t1 = (k + 1) / pieces;
         const at = (t: number, up: number): V3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t + up, p[2] + (q[2] - p[2]) * t];
-        const wallColor = stripes[side]++ % 2 === 0 ? pal.wallA : pal.wallB;
+        const wallColor = stripes[side]++ % 2 === 0 ? (style.fence?.[0] ?? pal.wallA) : (style.fence?.[1] ?? pal.wallB);
         g.quad(at(t0, 0), at(t1, 0), at(t1, WALL_HEIGHT), at(t0, WALL_HEIGHT), wallColor);
         const c0 = at(t0, WALL_HEIGHT);
         const c1 = at(t1, WALL_HEIGHT);
@@ -415,6 +462,79 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
   }
 }
 
+
+// --- Bas-côtés et vibreurs (lot 21) -------------------------------------------------------------------------------------------
+
+/** Couleurs d'un bas-côté : l'herbe haute de la Campagne est plus sombre que la pelouse du Stade. */
+function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: number): number {
+  if (kind === "grass" && pal.scenery === "trees") return TALL_GRASS[i % 2]!;
+  return SURFACE_COLORS[kind][i % 2]!;
+}
+
+/** Vibreurs d'un virage (lot 21) : bandes rouges et blanches de `KERB_WIDTH` m aux deux bords de la route, une couleur par tranche. */
+function addKerbs(g: Builder, rows: Row[]) {
+  for (let i = 0; i + 1 < rows.length; i++) {
+    const a = rows[i]!;
+    const b = rows[i + 1]!;
+    const fa = KERB_WIDTH / rowWidth(a);
+    const fb = KERB_WIDTH / rowWidth(b);
+    const color = i % 2 === 0 ? 0xe8283a : 0xf4f4f4;
+    g.quad(across(a, 0, 0.05), across(a, fa, 0.05), across(b, fb, 0.05), across(b, 0, 0.05), color);
+    g.quad(across(a, 1 - fa, 0.05), across(a, 1, 0.05), across(b, 1, 0.05), across(b, 1 - fb, 0.05), color);
+  }
+}
+
+/** Brins, cailloux ou congères sur un bas-côté : quelques touches de couleur, tirées du numéro du bloc (aucun hasard partagé). */
+function addShoulderMarks(g: Builder, b: Block, rows: Row[], hw: number) {
+  const color = SURFACE_MARKS[b.shoulder!];
+  for (let k = 0; k < 14; k++) {
+    const row = rows[Math.min(rows.length - 1, Math.floor(((k * 7 + b.index * 3) % 14) / 14 * rows.length))]!;
+    const width = rowWidth(row);
+    const side = k % 2 === 0 ? 0 : 1;
+    const off = (hw + 0.6 + ((k * 13 + b.index * 5) % 10) / 10 * (SHOULDER_EDGE - hw - 1.2)) ;
+    const t = side === 0 ? 0.5 - off / width : 0.5 + off / width;
+    const p = across(row, t, 0.04);
+    const s = b.shoulder === "snow" ? 0.9 : 0.35;
+    g.tri([p[0] - s, p[1], p[2]], [p[0] + s, p[1], p[2]], [p[0], p[1] + (b.shoulder === "grass" ? 0.5 : 0.12), p[2] + s * 0.4], color);
+  }
+}
+
+/**
+ * Faces de bout (lot 21) : là où un bas-côté s'arrête contre un bloc qui ne porte pas la voiture aussi loin, un mur en travers de la bande,
+ * du bord de la route du voisin au rebord de la bande (le même mur que la simulation : `world.ts`).
+ */
+function addBandEnd(g: Builder, pal: Palette, b: Block, end: 0 | 1, reach: number) {
+  const fence = pal.fence;
+  for (const side of [1, -1]) {
+    if (isCurve(b.kind) && end === 1) {
+      const c = curveCenter(b.kind);
+      const y = b.y0;
+      const p0 = world(b, c.cp, c.r + side * reach, y);
+      const p1 = world(b, c.cp, c.r + side * SHOULDER_EDGE, y);
+      g.quad(p0, p1, [p1[0], y + WALL_HEIGHT, p1[2]], [p0[0], y + WALL_HEIGHT, p0[2]], fence[0]);
+    } else {
+      const q = end === 0 ? 0 : CELL;
+      const y = blockHeight(b, q);
+      const p0 = world(b, CELL / 2 + side * reach, q, y);
+      const p1 = world(b, CELL / 2 + side * SHOULDER_EDGE, q, y);
+      g.quad(p0, p1, [p1[0], y + WALL_HEIGHT, p1[2]], [p0[0], y + WALL_HEIGHT, p0[2]], fence[0]);
+    }
+  }
+}
+
+/** Étendue de ce qui porte la voiture chez un voisin, à son bout qui touche ce bloc (comme `world.ts`) ; `Infinity` : pas de face. */
+function neighborReach(n: Block | undefined, end: 0 | 1): number {
+  if (!n || n.open) return Infinity;
+  return blockReachAt(n, end);
+}
+
+/** Hauteur de la route d'un bloc droit, tôle ondulée comprise (route bosselée, lot 21). */
+function roadHeight(b: Block, q: number): number {
+  if (!b.bumpy) return blockHeight(b, q);
+  rippleAt(q, ripple);
+  return blockHeight(b, q) + ripple.h;
+}
+const ripple = { h: 0, dq: 0 };
 
 // --- Cuves (lot 18) -----------------------------------------------------------------------------------------------------------
 
@@ -924,6 +1044,23 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
       const r = 0.7 + rnd() * 0.6;
       g.prism(x, y, z, r, r * 0.4, r * 0.8, 6, mix(0x3f9a3a, 0x6fc45a, rnd()));
     }
+  } else if (style === "flags") {
+    // Stade (lot 21) : mâts à drapeaux de couleur, haies taillées, panneaux publicitaires.
+    if (k < 0.4) {
+      const h = (6 + rnd() * 3) * jitter;
+      const flag = [0xe8283a, 0x2e7dff, 0xffd22e, 0x21b35a, 0xffffff][Math.floor(rnd() * 5)]!;
+      g.box(x - 0.08, y, z - 0.08, x + 0.08, y + h, z + 0.08, 0xe9edf2);
+      g.box(x + 0.08, y + h - 1.4, z - 0.04, x + 2.2, y + h - 0.1, z + 0.04, flag);
+    } else if (k < 0.8) {
+      const len = (3 + rnd() * 4) * jitter;
+      const green = mix(0x2f8a3a, 0x3fa646, rnd());
+      g.box(x - len / 2, y, z - 0.6, x + len / 2, y + 1.3, z + 0.6, green);
+    } else {
+      const w = 4 + rnd() * 2;
+      const c = [0xe8283a, 0x2e7dff, 0xffd22e][Math.floor(rnd() * 3)]!;
+      g.box(x - w / 2, y, z - 0.15, x + w / 2, y + 1.6, z + 0.15, c);
+      g.box(x - w / 2 + 0.3, y + 0.4, z - 0.17, x + w / 2 - 0.3, y + 1.2, z + 0.17, 0xffffff);
+    }
   } else {
     // pylônes lumineux : un mât sombre, un tube lumineux, des cubes qui flottent
     const h = (5 + rnd() * 6) * jitter;
@@ -1019,7 +1156,8 @@ function buildSky(pal: Palette, rnd: () => number): Group {
     const night = pal.scenery === "lamps" || pal.scenery === "pylons";
     const scale = night ? 70 : 110;
     sprite.scale.set(scale, scale, 1);
-    sprite.position.set(-90, night ? 170 : 150, 380); // bas sur l'horizon, dans une direction fixe du monde
+    // Dans une direction fixe du monde ; sa hauteur suit l'heure du thème (lot 21 : haut pour le Stade, bas pour la Campagne).
+    sprite.position.set(-90, night ? 170 : 40 + 280 * pal.sunHeight, 380);
     sprite.renderOrder = -2;
     sprite.userData.heavy = true;
     sprite.lookAt(0, 0, 0);
@@ -1107,13 +1245,14 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
   const g = new Builder();
   const speedG = new Builder();
+  const neonG = new Builder(); // bordures néon au bord du vide (lot 21, Nuit) : lisibles, jamais masquées par la qualité
   const fast = fastZones(track);
 
   for (const b of track.blocks) {
     const color = b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!;
     // Route sur piliers (lot 17) : très au-dessus du sol lointain, une dalle mince et des piliers, au lieu d'un remblai plein.
     const pillars = Math.min(b.y0, b.y0 + b.rise) - floorY > PILLAR_MIN;
-    const style: RoadStyle = { open: b.open, pillars };
+    const style: RoadStyle = { open: b.open, pillars, glow: neonG };
     const prev = track.blocks[b.index - 1];
     const next = track.blocks[b.index + 1];
     let rows: Row[] = [];
@@ -1122,8 +1261,18 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
     } else if (b.kind === "gap") {
       // Le vide d'un saut : ni route ni rebords. On ne voit que le sol lointain, loin en dessous.
     } else if (isCurve(b.kind)) {
-      rows = curveRows(b);
-      addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
+      if (b.shoulder) {
+        const band = curveRows(b, SHOULDER_EDGE);
+        addRoad(g, pal, band, shoulderColor(pal, b.shoulder, b.index), floorY, true, false, pal.skirt, { pillars, fence: pal.fence });
+        addShoulderMarks(g, b, band, b.w0 / 2);
+        rows = curveRows(b, b.w0 / 2, 0.03);
+        addRoad(g, pal, rows, color, floorY, false, b.surface === "road", pal.skirt, { bare: true });
+      } else {
+        rows = curveRows(b);
+        addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
+      }
+      // Vibreurs (lot 21) : aux deux bords d'un virage sur route.
+      if (b.surface === "road") addKerbs(g, rows);
     } else if (b.kind === "jump") {
       // Rampe jusqu'au bord, face verticale, puis route plate.
       // Le tremplin se lit comme un tremplin : rampe plus claire, flancs clairs (pas un mur brun), chevrons blancs,
@@ -1139,10 +1288,25 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       addRoad(g, pal, rows.slice(0, 9), color, floorY, true, b.surface === "road", pal.skirt, style);
       addRoad(g, pal, rows.slice(8), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.5), style);
       addKickMarks(g, b);
+    } else if (b.shoulder) {
+      // Bas-côtés (lot 21) : la bande (jusqu'au rebord du bout) porte la jupe et le rebord ; la route est posée dessus, sans rebord.
+      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1;
+      const band = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q), SHOULDER_EDGE);
+      addRoad(g, pal, band, shoulderColor(pal, b.shoulder, b.index), floorY, true, false, pal.skirt, { pillars, fence: pal.fence });
+      addShoulderMarks(g, b, band, b.w0 / 2);
+      rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q) + 0.03);
+      addRoad(g, pal, rows, color, floorY, false, b.surface === "road", pal.skirt, { bare: true });
     } else {
-      const steps = b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1; // 16 tranches : bosse, ou rebords d'une transition de largeur
-      rows = straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q));
+      // 16 tranches : bosse, ou rebords d'une transition de largeur ; 48 : la tôle ondulée d'une route bosselée (lot 21).
+      const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1;
+      rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q));
       addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
+    }
+    if (b.shoulder) {
+      const ein = neighborReach(prev, 1);
+      const eout = neighborReach(next, 0);
+      if (ein < SHOULDER_EDGE) addBandEnd(g, pal, b, 0, ein);
+      if (eout < SHOULDER_EDGE) addBandEnd(g, pal, b, 1, eout);
     }
     // Au bord d'un vide : la route se termine par une face pleine (jusqu'au sol, ou la dalle d'une route sur piliers).
     if (rows.length > 0 && next?.kind === "gap") addEndFace(g, rows[rows.length - 1]!, floorY, shade(pal.skirt, 1.25), pillars);
@@ -1152,7 +1316,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
     }
     if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY);
     const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";
-    if (b.surface === "road" && !effect && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") addDashes(g, pal, b);
+    if (b.surface === "road" && !effect && !b.bumpy && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") addDashes(g, pal, b);
     addSurfaceMarks(g, b);
     if (b.kind === "boost") addBoostPad(g, pal, b);
     if (b.kind === "turbo") addTurboPad(g, b);
@@ -1198,7 +1362,8 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   scene.add(new HemisphereLight(mix(pal.ambient[0], pal.zenith, 0.35), new Color(pal.floorB).getHex(), pal.ambient[1] * 0.45 * lift));
   scene.add(new AmbientLight(pal.ambient[0], pal.ambient[1] * 0.12 * lift));
   const sun = new DirectionalLight(pal.sun[0], pal.sun[1] * 0.85 * (lift > 1 ? 1.4 : 1));
-  sun.position.set(40, 80, -30);
+  // Soleil (lot 21) : plus il est haut, plus la lumière vient d'en haut (ombres courtes) ; bas, elle rase les flancs.
+  sun.position.set(40 * (1.2 - pal.sunHeight) * 1.4, 30 + 110 * pal.sunHeight, -30 * (1.2 - pal.sunHeight) * 1.4);
   scene.add(sun);
 
   const mat = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide });
@@ -1208,6 +1373,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const speedMesh = new Mesh(speedG.geometry(), mat);
   decorMesh.userData.heavy = glowMesh.userData.heavy = speedMesh.userData.heavy = true;
   scene.add(decorMesh, glowMesh, speedMesh);
+  if (neonG.pos.length > 0) scene.add(new Mesh(neonG.geometry(), new MeshBasicMaterial({ vertexColors: true })));
 
   // Ciel et montagnes suivent la caméra (donc la voiture) : toujours à l'horizon.
   const backdrop = new Group();

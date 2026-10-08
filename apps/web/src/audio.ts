@@ -1,6 +1,6 @@
 import type { SurfaceKind } from "@cdj/sim";
 import {
-  SURFACE_SOUNDS,
+  rollVoice,
   engineSound,
   landingSound,
   noteFreq,
@@ -27,6 +27,8 @@ export interface AudioFrame {
   slide: number;
   grounded: boolean;
   surface: SurfaceKind;
+  /** Roues sur un vibreur (lot 21). */
+  kerb?: number;
   boost: boolean;
   turbo: boolean;
   cut: boolean;
@@ -197,7 +199,7 @@ export class GameAudio {
     this.engine.lp.frequency.setTargetAtTime(350 + e.rpm * 1700, t, k);
     this.engine.gain.gain.setTargetAtTime(on ? e.gain * (f.grounded ? 1 : 0.7) : 0, t, k);
 
-    const voice = SURFACE_SOUNDS[f.surface];
+    const voice = rollVoice(f.surface, f.kerb ?? 0);
     const skid = on ? skidLevel(f.slide, f.speed, f.brake, f.grounded) : 0;
     this.skid.f.frequency.setTargetAtTime(voice.skidFreq, t, k);
     this.skid.gain.gain.setTargetAtTime(skid * 0.2, t, k);

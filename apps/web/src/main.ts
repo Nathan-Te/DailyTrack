@@ -27,6 +27,7 @@ import {
   createFiguresTrack,
   figureByName,
   createCuvesTrack,
+  createBasCotesTrack,
   createGlaceTrack,
   createReliefTrack,
   createSurfacesTrack,
@@ -98,7 +99,7 @@ if (params.has("debug") && params.has("spec")) {
 }
 // `?scenario=figure&f=<nom>` : une seule figure (lot 20). Un nom inconnu, ou une variante impossible, ramène au circuit d'essai.
 const figureTrack = !customTrack && requested === "figure" ? createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1") : null;
-const scenario = customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" || requested === "bas-cotes" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -136,7 +137,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "bas-cotes" ? createBasCotesTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -181,6 +182,7 @@ const hudFlash = document.getElementById("flash")!;
 const hudFall = document.getElementById("fall")!;
 let demoClock = 0;
 let shake = 0;
+let lastKerbBuzz = 0;
 let lastGround = 0;
 let fovKick = 0;
 let flash = 0;
@@ -233,7 +235,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : scenario === "figures" ? "Les figures" : scenario === "figure" ? `Figure : ${figureByName(params.get("f"))?.label ?? ""}` : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : scenario === "bas-cotes" ? "Bas-côtés et vibreurs" : scenario === "figures" ? "Les figures" : scenario === "figure" ? `Figure : ${figureByName(params.get("f"))?.label ?? ""}` : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
@@ -843,7 +845,7 @@ function cycleCamera() {
 // Indicateur d'effets (HUD) : super turbo, turbo, moteur coupé, et revêtement quand ce n'est pas la route.
 const hudFx = $("fx");
 const fxSample = createSurface();
-const SURFACE_HUD: Record<string, string> = { dirt: "TERRE", ice: "GLACE", grass: "HERBE" };
+const SURFACE_HUD: Record<string, string> = { dirt: "TERRE", ice: "GLACE", grass: "HERBE", gravel: "GRAVIER", snow: "NEIGE POUDREUSE" };
 let fxShown = "";
 function updateEffects() {
   const parts: string[] = [];
@@ -1011,6 +1013,14 @@ function frame(now: number) {
   // Voiture : tangage et roulis de la caisse calculés par la simulation (suspension), en pentes → angles ;
   // roues : chacune suit le sol sous elle (lecture seule du monde), tourne avec la vitesse et braque.
   readTelemetry(car, race ? race.world : FLAT_WORLD, tel);
+  // Vibreur (lot 21) : petite vibration (téléphone) et frémissement de la caméra tant qu'une roue roule dessus ; présentation seule.
+  if (tel.kerb > 0 && tel.speed > 8 && phase === "racing" && !frozen) {
+    shake = Math.max(shake, 0.08 + 0.03 * tel.kerb);
+    if (touchPad && now - lastKerbBuzz > 160) {
+      lastKerbBuzz = now;
+      vibrate(touchPad.settings, 12);
+    }
+  }
   const pitchS = lerp(previous.pitch, car.pitch, alpha);
   const rollS = lerp(previous.roll, car.roll, alpha);
   carMesh.position.set(x, y, z);
@@ -1127,6 +1137,7 @@ function frame(now: number) {
     slide: tel.slide,
     grounded: tel.grounded,
     surface: tel.surface,
+    kerb: tel.kerb,
     boost: car.boost > 0,
     turbo: car.turbo > 0,
     cut: car.cut > 0,

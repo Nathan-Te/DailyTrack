@@ -23,12 +23,16 @@ export interface CircuitStats {
   cuves: number;
   walls: number;
   cuveTurns: number;
+  /** Bas-côtés (lot 21) : blocs bordés de chaque revêtement, virages bordés (on peut les couper), blocs de route bosselée. */
+  shoulders: Partial<Record<"grass" | "gravel" | "snow", number>>;
+  cuttable: number;
+  bumpy: number;
   /** Nombre de blocs et de points de contrôle (arrivée non comprise). */
   blocks: number;
   checkpoints: number;
 }
 
-export const SURFACE_LABEL: Record<SurfaceKind, string> = { road: "route", dirt: "terre", ice: "glace", grass: "herbe" };
+export const SURFACE_LABEL: Record<SurfaceKind, string> = { road: "route", dirt: "terre", ice: "glace", grass: "herbe", gravel: "terre et gravier", snow: "neige poudreuse", kerb: "vibreur" };
 
 const SURFACE_ORDER: SurfaceKind[] = ["road", "dirt", "ice", "grass"];
 
@@ -37,7 +41,7 @@ export function circuitStats(track: Track): CircuitStats {
   const surfaces = new Set<SurfaceKind>();
   let lo = 0;
   let hi = 0;
-  const s: CircuitStats = { widths: [], surfaces: [], pads: 0, turbos: 0, cuts: 0, tight: 0, banked: 0, jumps: 0, relief: 0, open: 0, cuves: 0, walls: 0, cuveTurns: 0, blocks: track.blocks.length, checkpoints: track.gates.filter((g) => g.kind === "checkpoint").length };
+  const s: CircuitStats = { widths: [], surfaces: [], pads: 0, turbos: 0, cuts: 0, tight: 0, banked: 0, jumps: 0, relief: 0, open: 0, cuves: 0, walls: 0, cuveTurns: 0, shoulders: {}, cuttable: 0, bumpy: 0, blocks: track.blocks.length, checkpoints: track.gates.filter((g) => g.kind === "checkpoint").length };
   for (const b of track.blocks) {
     widths.add(b.w0);
     widths.add(b.w1);
@@ -47,6 +51,11 @@ export function circuitStats(track: Track): CircuitStats {
     else if (b.kind === "cut") s.cuts++;
     else if (b.kind === "jump" || b.kind === "kick") s.jumps++;
     if (b.open) s.open++;
+    if (b.shoulder) {
+      s.shoulders[b.shoulder] = (s.shoulders[b.shoulder] ?? 0) + 1;
+      if (isCurve(b.kind)) s.cuttable++;
+    }
+    if (b.bumpy) s.bumpy++;
     if (b.cuve) {
       if (isCurve(b.kind)) s.cuveTurns++;
       else if (b.cuve === 3) s.cuves++;
@@ -86,6 +95,18 @@ export function reliefText(s: Pick<CircuitStats, "relief" | "jumps" | "open">): 
   if (s.jumps > 0) parts.push(`${s.jumps} ${s.jumps > 1 ? "sauts" : "saut"}`);
   if (s.open > 0) parts.push(`${s.open} ${s.open > 1 ? "blocs sans rebords" : "bloc sans rebords"}`);
   return parts.join(" · ");
+}
+
+/** Une ligne pour les bas-côtés (lot 21) : « 18 blocs d'herbe · 4 virages à couper · 3 blocs bosselés », ou « rebords partout ». */
+export function sidesText(s: Pick<CircuitStats, "shoulders" | "cuttable" | "bumpy" | "open">): string {
+  const parts: string[] = [];
+  for (const k of ["grass", "gravel", "snow"] as const) {
+    const n = s.shoulders[k] ?? 0;
+    if (n > 0) parts.push(`${n} ${n > 1 ? "blocs" : "bloc"} bordés de ${SURFACE_LABEL[k]}`);
+  }
+  if (s.cuttable > 0) parts.push(`${s.cuttable} ${s.cuttable > 1 ? "virages à couper" : "virage à couper"}`);
+  if (s.bumpy > 0) parts.push(`${s.bumpy} ${s.bumpy > 1 ? "blocs bosselés" : "bloc bosselé"}`);
+  return parts.length ? parts.join(" · ") : s.open > 0 ? "le vide (sans rebords)" : "rebords partout";
 }
 
 /** Toutes les largeurs possibles (pour vérifier qu'une valeur lue est bien l'une des trois). */

@@ -6,7 +6,7 @@ import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
 import { themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
-import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type Dir, type SurfaceKind, type Track, type WidthLetter } from "./track";
+import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
@@ -249,7 +249,9 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
   const names = new Set([signature.name]);
-  const pool = FIGURES.filter((f) => !banned.has(f.name) && !isRested(f.name, day));
+  const required = new Set(theme.figures.require ?? []);
+  // Les figures obligatoires du thème (lot 21) ne sont jamais au repos, comme la signature.
+  const pool = FIGURES.filter((f) => !banned.has(f.name) && (required.has(f.name) || !isRested(f.name, day)));
   const count_ = (pred: (f: Figure) => boolean) => chosen.filter(pred).length;
   const allowed = (f: Figure) =>
     !names.has(f.name) &&
@@ -275,6 +277,8 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     names.add(f.name);
     return true;
   };
+  // La règle propre du thème (lot 21) : l'une de ses figures obligatoires, si la signature n'en est pas une.
+  if (required.size > 0 && !required.has(signature.name) && !add(pick((f) => required.has(f.name)))) return null;
   // Un vrai saut et une cuve (selon le thème) : quand le thème veut les deux, une figure qui fait les deux à la fois (saut dans une cuve,
   // saut en sortie de paroi…) tient en moins de blocs que deux figures, et elle est préférée un peu plus d'une fois sur deux.
   const wantsJump = !signature.jump && wants.jump;
@@ -319,7 +323,7 @@ function orderFigures(rng: Rng, figures: Figure[]): Figure[] | null {
 }
 
 /** Blocs droits ordinaires (ni effet, ni saut, ni relief, ni cuve ; revêtement, largeur et point de contrôle permis). */
-const isPlainStraight = (token: string) => /^S(\/[a-z>]*)?(@cp)?$/.test(token);
+const isPlainStraight = (token: string) => /^S(\/[a-z>~]*)?(@cp)?$/.test(token);
 
 /** Plus longue suite de droites ordinaires d'un circuit (blocs) : la « ligne droite sans figure » que le générateur plafonne à `MAX_PLAIN_STRAIGHT`. */
 export function longestPlainStraight(tokens: readonly string[]): number {
@@ -489,6 +493,9 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   // Dénivelé minimal, puis sections sans rebords sur les parties surélevées.
   if (reliefOf(w.tokens) < MIN_RELIEF) return null;
   if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng);
+  // Identité du thème (lot 21) : route bosselée, puis bas-côtés.
+  if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng);
+  assignShoulders(w.tokens, theme.shoulder, rng);
   return { spec: w.tokens.join(" "), figures: placed };
 }
 
@@ -551,13 +558,96 @@ function openSection(tokens: string[], rng: Rng): void {
   for (let i = start; i < start + length; i++) tokens[i] = withMod(tokens[i]!, "o");
 }
 
+/**
+ * Route bosselée (lot 21) : `count` séries de 2 à 4 droites ordinaires (`S`, sur route ou sur terre, point de contrôle permis) prennent
+ * le modificateur `u` (tôle ondulée). Ni départ, ni arrivée, ni bloc à effet, ni les trois blocs avant une rampe de saut.
+ */
+function bumpySections(tokens: string[], count: [number, number], rng: Rng): void {
+  const n = tokens.length;
+  // Jamais dans les trois blocs avant une rampe de saut : il faut y garder sa vitesse (les pilotes prudents du jeu de démo ne passaient plus).
+  const beforeKick = (i: number) => tokens.slice(i + 1, i + 4).some((t) => parseToken(t).kind === "kick");
+  const plain = (i: number) => i > 0 && i < n - 1 && /^S(\/[a-z>]*)?(@cp)?$/.test(tokens[i]!) && !tokens[i]!.includes("u") && !beforeKick(i);
+  const wanted = count[0] + rng.int(count[1] - count[0] + 1);
+  for (let k = 0; k < wanted; k++) {
+    const length = 2 + rng.int(3);
+    // Toutes les places possibles pour une série de cette longueur (une série plus courte si aucune ne convient).
+    for (let len = length; len >= 2; len--) {
+      const starts: number[] = [];
+      for (let i = 1; i + len <= n - 1; i++) {
+        let ok = true;
+        for (let j = i; j < i + len; j++) if (!plain(j)) ok = false;
+        if (ok) starts.push(i);
+      }
+      if (starts.length === 0) continue;
+      const start = starts[rng.int(starts.length)]!;
+      for (let i = start; i < start + len; i++) tokens[i] = withMod(tokens[i]!, "u");
+      break;
+    }
+  }
+}
+
+/** Lettre de chaque bas-côté dans la notation (`~h`…). */
+const EDGE_MOD: Record<Theme["shoulder"]["kind"], string> = { grass: "~h", gravel: "~t", snow: "~p", void: "~v" };
+
+/**
+ * Bas-côtés (lot 21) : sur les blocs qui peuvent en porter (droites, virages non relevés, descentes d'un ou deux niveaux, blocs à effet ;
+ * pas le départ, l'arrivée, une montée, une rampe, un vide, sa réception, une cuve ni un bloc déjà sans rebords ; pour le vide, ni un
+ * virage serré ni les deux blocs qui le suivent), des séries de 3 à 6
+ * blocs prennent le bas-côté du thème avec la probabilité `share`. La notation est chaînée : `~x` sur le premier bloc de la série, `~r`
+ * sur le bloc qui la suit.
+ */
+function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng): void {
+  const n = tokens.length;
+  const parsed = tokens.map((t) => parseToken(t));
+  const eligible = (i: number): boolean => {
+    if (i < 1 || i >= n - 1) return false;
+    const p = parsed[i]!;
+    if (p.open || p.cuve || p.banked || p.kind === "up" || p.kind === "kick" || p.kind === "jump" || p.kind === "gap" || p.kind === "bump") return false;
+    if (p.kind === "down" && p.rise !== undefined && p.rise < -8) return false;
+    const prev = parsed[i - 1]!.kind;
+    const next = parsed[i + 1]!.kind;
+    if (prev === "gap") return false; // la réception d'un saut garde ses rebords (et sa face pleine)
+    // Le vide : comme une section sans rebords, ni juste avant une rampe ni à la réception ; ni sur un virage serré ni sur les deux blocs
+    // qui le suivent (mesuré : le pilote sort large d'un serré et tombait sur un circuit de Nuit sur six).
+    if (shoulder.kind === "void") {
+      if (next === "kick") return false;
+      const tight = (k: number) => k >= 1 && isCurve(parsed[k]!.kind) && !isWide(parsed[k]!.kind);
+      if (tight(i) || tight(i - 1) || tight(i - 2)) return false;
+      if (isCurve(p.kind) && prev === "up") return false; // virage aveugle : la voiture s'allège en haut de la montée
+      // Ni à 88 m/s (cinq blocs après un super turbo), ni juste après un saut (la voiture se pose rarement sur l'axe).
+      for (let k = Math.max(1, i - 5); k <= i; k++) if (parsed[k]!.kind === "turbo" || (k >= i - 3 && parsed[k]!.kind === "gap")) return false;
+    }
+    return true;
+  };
+  const on = new Array<boolean>(n).fill(false);
+  for (let i = 1; i < n - 1; ) {
+    if (!eligible(i)) {
+      i++;
+      continue;
+    }
+    const length = 3 + rng.int(4);
+    const take = rng.chance(shoulder.share);
+    let j = i;
+    while (j < n - 1 && j < i + length && eligible(j)) {
+      on[j] = take;
+      j++;
+    }
+    i = j;
+  }
+  const mod = EDGE_MOD[shoulder.kind];
+  for (let i = 1; i < n; i++) {
+    if (on[i] && !on[i - 1]) tokens[i] = withMod(tokens[i]!, mod);
+    else if (!on[i] && on[i - 1]) tokens[i] = withMod(tokens[i]!, "~r");
+  }
+}
+
 function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: Rng, protect?: ReadonlySet<number>): void {
   const n = tokens.length;
   const count = zones.count[0] + rng.int(zones.count[1] - zones.count[0] + 1);
   const total = zones.surfaces.reduce((a, [, w]) => a + w, 0);
   for (let z = 0; z < count; z++) {
     let roll = rng.int(total);
-    let surface: SurfaceKind = zones.surfaces[0]![0];
+    let surface: BlockSurface = zones.surfaces[0]![0];
     for (const [sf, wgt] of zones.surfaces) {
       if (roll < wgt) {
         surface = sf;
