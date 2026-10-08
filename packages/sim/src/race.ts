@@ -1,7 +1,7 @@
 import { TICK_RATE } from "./constants";
 import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpeed, stepCar, type CarInput, type CarParams, type CarState } from "./car";
 import type { Gate, Track } from "./track";
-import { trackWorld, type World } from "./world";
+import { trackWorld, type ShellHit, type World } from "./world";
 
 /**
  * Chute (lot 17) : sous `track.voidY` la voiture est perdue ; elle continue de tomber, sans commande, pendant ce délai
@@ -56,6 +56,7 @@ function withoutEffects(world: World): World {
       out.cut = false;
     },
     collide: (x, z, y, radius, out) => world.collide(x, z, y, radius, out),
+    ...(world.shell ? { shell: (x: number, z: number, y: number, out: ShellHit) => world.shell!(x, z, y, out) } : {}),
   };
 }
 

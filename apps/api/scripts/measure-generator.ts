@@ -115,6 +115,15 @@ const pilots = rows.map((r) => (r.c.fallback ? null : bestPilotRun(r.c.track)));
 const margins = pilots.flatMap((p) => (p ? p.jumps.map((j) => j.speed / j.jump.minSpeed) : []));
 console.log(`vitesse du pilote au bord de la rampe, en multiple du plancher de la fenêtre : min ${margins.length ? Math.min(...margins).toFixed(2) : "—"} · moyenne ${margins.length ? mean(margins).toFixed(2) : "—"} (exigé ≥ 1,08)`);
 console.log(`sections sans rebords : ${rows.filter((r) => r.c.track.blocks.some((b) => b.open)).length}/${rows.length} circuits (${THEME_NAMES.map((n) => `${n} ${jumpsBy(n).filter((r) => r.c.track.blocks.some((b) => b.open)).length}/${jumpsBy(n).length}`).join(" · ")}) ; chutes du pilote : ${pilots.filter((p) => p && p.respawns > 0).length}`);
+// Cuves (lot 18).
+const cuveKind = (r: { c: DailyCircuit }) => {
+  const bs = r.c.track.blocks.filter((b) => b.cuve);
+  return { bowl: bs.some((b) => !isCurve(b.kind) && b.cuve === 3), wall: bs.some((b) => !isCurve(b.kind) && b.cuve !== 3), turn: bs.some((b) => isCurve(b.kind)) };
+};
+const withCuve = rows.filter((r) => r.c.track.blocks.some((b) => b.cuve));
+console.log(`cuves : ${THEME_NAMES.map((n) => `${n} ${jumpsBy(n).filter((r) => r.c.track.blocks.some((b) => b.cuve)).length}/${jumpsBy(n).length}`).join(" · ")} circuits avec une cuve ; types : cuve droite × ${withCuve.filter((r) => cuveKind(r).bowl).length} · mur latéral × ${withCuve.filter((r) => cuveKind(r).wall).length} · virage en cuve × ${withCuve.filter((r) => cuveKind(r).turn).length}`);
+const turnRows = rows.filter((r) => cuveKind(r).turn);
+console.log(`virages en cuve : pris sur la paroi par le pilote d'auteur (le plus rapide des deux) : ${turnRows.filter((r, i) => pilots[rows.indexOf(r)]?.wall).length}/${turnRows.length}`);
 console.log(`largeurs : au moins deux par circuit : ${rows.filter((r) => r.widths.length >= 2).length}/${rows.length} ; largeurs vues : ${[...new Set(rows.flatMap((r) => r.widths))].sort((a, b) => a - b).join(", ")} m`);
 console.log(`virages serrés : moyenne ${mean(rows.map((r) => r.tight.total)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.tight.total))} ; deux d'affilée : ${rows.filter((r) => r.tight.run >= 2).length} circuit(s)`);
 const peaks = rows.map((r) => r.maxSpeed);

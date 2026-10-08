@@ -84,3 +84,16 @@ export const RELIEF_TRACK_SPEC =
 export function createReliefTrack() {
   return parseTrack("relief", RELIEF_TRACK_SPEC);
 }
+
+/**
+ * Scénario `cuves` (lot 18) : après une ligne droite d'élan, une cuve droite (demi-tube, quatre `V`), un mur latéral à gauche (quatre `ML`,
+ * à prendre vite : sous ≈ 24 m/s on glisse vers le fond), un virage en cuve large (`L2/c`) abordé à pleine vitesse ; puis un demi-tour serré
+ * (`R R`) qui ramène la vitesse bien plus bas, et le même virage en cuve abordé trop lentement : la voiture n'y a plus la vitesse
+ * de monter sur la paroi. Un point de contrôle sépare chaque épreuve.
+ */
+export const CUVES_TRACK_SPEC =
+  "S/n@start S S S V V V V S S@cp ML ML ML ML S S@cp L2/c S S@cp R R L2/c S S S@finish";
+
+export function createCuvesTrack() {
+  return parseTrack("cuves", CUVES_TRACK_SPEC);
+}

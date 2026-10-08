@@ -20,6 +20,12 @@ describe("adresse du jeu construite par /admin", () => {
     expect(PRESETS.some((p) => p.state.scenario === "relief")).toBe(true);
   });
 
+  it("le scénario des cuves (lot 18) a son adresse et son raccourci", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "cuves" })).toBe("scenario=cuves");
+    expect(parseAdmin(JSON.stringify({ scenario: "cuves" })).scenario).toBe("cuves");
+    expect(PRESETS.some((p) => p.state.scenario === "cuves")).toBe(true);
+  });
+
   it("le scénario de la glace (lot 16) a son adresse et son raccourci", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, scenario: "glace" })).toBe("scenario=glace");
     expect(parseAdmin(JSON.stringify({ scenario: "glace" })).scenario).toBe("glace");

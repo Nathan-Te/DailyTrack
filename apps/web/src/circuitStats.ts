@@ -19,6 +19,10 @@ export interface CircuitStats {
   /** Dénivelé du circuit (m), du point le plus bas au plus haut de la route (lot 17), et nombre de blocs sans rebords. */
   relief: number;
   open: number;
+  /** Blocs de cuve (lot 18) : cuve droite (deux parois), mur latéral (une paroi) et virage en cuve. */
+  cuves: number;
+  walls: number;
+  cuveTurns: number;
   /** Nombre de blocs et de points de contrôle (arrivée non comprise). */
   blocks: number;
   checkpoints: number;
@@ -33,7 +37,7 @@ export function circuitStats(track: Track): CircuitStats {
   const surfaces = new Set<SurfaceKind>();
   let lo = 0;
   let hi = 0;
-  const s: CircuitStats = { widths: [], surfaces: [], pads: 0, turbos: 0, cuts: 0, tight: 0, banked: 0, jumps: 0, relief: 0, open: 0, blocks: track.blocks.length, checkpoints: track.gates.filter((g) => g.kind === "checkpoint").length };
+  const s: CircuitStats = { widths: [], surfaces: [], pads: 0, turbos: 0, cuts: 0, tight: 0, banked: 0, jumps: 0, relief: 0, open: 0, cuves: 0, walls: 0, cuveTurns: 0, blocks: track.blocks.length, checkpoints: track.gates.filter((g) => g.kind === "checkpoint").length };
   for (const b of track.blocks) {
     widths.add(b.w0);
     widths.add(b.w1);
@@ -43,6 +47,11 @@ export function circuitStats(track: Track): CircuitStats {
     else if (b.kind === "cut") s.cuts++;
     else if (b.kind === "jump" || b.kind === "kick") s.jumps++;
     if (b.open) s.open++;
+    if (b.cuve) {
+      if (isCurve(b.kind)) s.cuveTurns++;
+      else if (b.cuve === 3) s.cuves++;
+      else s.walls++;
+    }
     lo = Math.min(lo, b.y0, b.y0 + b.rise);
     hi = Math.max(hi, b.y0, b.y0 + b.rise);
     if (isCurve(b.kind)) {
@@ -81,3 +90,13 @@ export function reliefText(s: Pick<CircuitStats, "relief" | "jumps" | "open">): 
 
 /** Toutes les largeurs possibles (pour vérifier qu'une valeur lue est bien l'une des trois). */
 export const KNOWN_WIDTHS: readonly number[] = Object.values(ROAD_WIDTHS);
+
+/** Une ligne de texte pour les cuves (lot 18) : « 4 blocs de cuve droite · 1 virage en cuve », ou « aucune ». */
+export function cuvesText(s: Pick<CircuitStats, "cuves" | "walls" | "cuveTurns">): string {
+  const parts: string[] = [];
+  const add = (n: number, one: string, many: string) => n > 0 && parts.push(`${n} ${n > 1 ? many : one}`);
+  add(s.cuves, "bloc de cuve droite", "blocs de cuve droite");
+  add(s.walls, "bloc de mur latéral", "blocs de mur latéral");
+  add(s.cuveTurns, "virage en cuve", "virages en cuve");
+  return parts.length ? parts.join(" · ") : "aucune";
+}

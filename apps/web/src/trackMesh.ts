@@ -26,6 +26,8 @@ import {
   BOOST_HALF_LENGTH,
   CELL,
   CUT_HALF_LENGTH,
+  CUVE_LEFT,
+  CUVE_RIGHT,
   FALL_DEPTH,
   KICK_START,
   cellKey,
@@ -38,6 +40,9 @@ import {
   blockHalfWidth,
   blockPadHalfWidth,
   blockWidth,
+  cuveAmplitude,
+  cuveRadius,
+  cuveTop,
   curveCenter,
   curveSize,
   isCurve,
@@ -406,6 +411,93 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         const c1 = at(t1, WALL_HEIGHT);
         g.quad(c0, c1, [c1[0] + ox, c1[1], c1[2] + oz], [c0[0] + ox, c0[1], c0[2] + oz], wallColor);
       }
+    }
+  }
+}
+
+
+// --- Cuves (lot 18) -----------------------------------------------------------------------------------------------------------
+
+/** Subdivisions d'un côté de cuve : le quart de cercle, puis la paroi verticale (nombre fixe : les tranches successives se raccordent sommet à sommet). */
+const CUVE_ARC_SEGMENTS = 6;
+const CUVE_WALL_SEGMENTS = 4;
+/** Longueur d'une bande de motif le long de la paroi (m). */
+const CUVE_BAND = 4;
+
+/**
+ * Une tranche de cuve : les points du profil en travers, de la crête de la paroi gauche à celle de la droite, en (écart latéral `lam` positif à gauche,
+ * hauteur au-dessus du fond). La paroi de chaque côté a son amplitude (0 : un simple rebord de 1,4 m).
+ */
+function cuveProfile(W: number, aLeft: number, aRight: number): [number, number][] {
+  const side = (a: number, sign: 1 | -1): [number, number][] => {
+    const R = cuveRadius(W, a);
+    const top = cuveTop(W, a);
+    const f = W - R;
+    const pts: [number, number][] = [];
+    for (let i = CUVE_WALL_SEGMENTS; i >= 0; i--) pts.push([sign * W, R + ((top - R) * i) / CUVE_WALL_SEGMENTS]);
+    for (let i = CUVE_ARC_SEGMENTS - 1; i >= 0; i--) {
+      const phi = (Math.PI / 2) * (i / CUVE_ARC_SEGMENTS);
+      pts.push([sign * (f + R * Math.sin(phi)), R - R * Math.cos(phi)]);
+    }
+    return pts;
+  };
+  return [...side(aLeft, 1), ...side(aRight, -1).reverse()];
+}
+
+/**
+ * Surface d'un bloc de cuve : fond de route à la couleur du revêtement, quarts de cercle et parois en bandes rouges et blanches (damier
+ * avec l'avance), crête biseautée, et un remblai derrière chaque paroi jusqu'au sol lointain. Remplace `addRoad` pour ces blocs.
+ */
+function addCuve(g: Builder, pal: Palette, b: Block, color: number, floorY: number): void {
+  const W = b.w0 / 2;
+  const curve = isCurve(b.kind);
+  const left = curve && turnsLeft(b.kind);
+  const { r: Rc } = curveCenter(b.kind);
+  const rows = curve ? (curveSize(b.kind) === 1 ? 14 : curveSize(b.kind) === 2 ? 30 : 48) : 24;
+  const sections: { pts: V3[]; band: number }[] = [];
+  for (let i = 0; i <= rows; i++) {
+    const t = i / rows;
+    let amp: (bit: number) => number;
+    let at: (lam: number, y: number) => V3;
+    let along: number;
+    if (curve) {
+      const a = (Math.PI / 2) * t;
+      amp = (bit) => cuveAmplitude(b, bit, curveCenter(b.kind).cp + (left ? -1 : 1) * Rc * Math.cos(a), Rc * Math.sin(a));
+      at = (lam, y) => arcPoint(b, left ? Rc - lam : Rc + lam, a, b.y0 + y);
+      along = Rc * a;
+    } else {
+      const q = CELL * t;
+      amp = (bit) => cuveAmplitude(b, bit, CELL / 2, q);
+      at = (lam, y) => world(b, CELL / 2 + lam, q, b.y0 + y);
+      along = q;
+    }
+    sections.push({ pts: cuveProfile(W, amp(CUVE_LEFT), amp(CUVE_RIGHT)).map(([lam, y]) => at(lam, y)), band: Math.floor((along + b.index * 7) / CUVE_BAND) });
+  }
+  for (let i = 0; i < rows; i++) {
+    const A = sections[i]!;
+    const B = sections[i + 1]!;
+    const n = A.pts.length;
+    const mid = (n >> 1) - 1; // le segment du fond, entre les deux pieds de paroi
+    for (let k = 0; k + 1 < n; k++) {
+      const c = k === mid ? color : (k + A.band) % 2 === 0 ? pal.wallA : pal.wallB;
+      g.quad(A.pts[k]!, A.pts[k + 1]!, B.pts[k + 1]!, B.pts[k]!, c);
+    }
+    // Crête : un chapeau qui dépasse vers l'extérieur ; remblai : de la crête au sol lointain.
+    for (const k of [0, n - 1]) {
+      const a = A.pts[k]!;
+      const bb = B.pts[k]!;
+      const inner = A.pts[k === 0 ? n - 1 : 0]!; // l'autre crête : la direction vers l'extérieur (la paroi, verticale, ne la donne pas)
+      const dx = a[0] - inner[0];
+      const dz = a[2] - inner[2];
+      const len = Math.hypot(dx, dz) || 1;
+      const ox = (dx / len) * 0.6;
+      const oz = (dz / len) * 0.6;
+      const cap = A.band % 2 === 0 ? pal.wallA : pal.wallB;
+      g.quad(a, bb, [bb[0] + ox, bb[1], bb[2] + oz], [a[0] + ox, a[1], a[2] + oz], cap);
+      // Remblai : un peu en retrait de la paroi verticale (sinon les deux plans se confondent et scintillent).
+      const sx = (ox / 0.6) * 0.15;
+      const sz = (oz / 0.6) * 0.15;
+      g.quad([a[0] + sx, a[1], a[2] + sz], [bb[0] + sx, bb[1], bb[2] + sz], [bb[0] + sx, floorY, bb[2] + sz], [a[0] + sx, floorY, a[2] + sz], pal.skirt);
     }
   }
 }
@@ -1025,7 +1117,9 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
     const prev = track.blocks[b.index - 1];
     const next = track.blocks[b.index + 1];
     let rows: Row[] = [];
-    if (b.kind === "gap") {
+    if (b.cuve) {
+      addCuve(g, pal, b, color, floorY); // les parois sont dans la surface : ni rebords ni jupe de `addRoad`
+    } else if (b.kind === "gap") {
       // Le vide d'un saut : ni route ni rebords. On ne voit que le sol lointain, loin en dessous.
     } else if (isCurve(b.kind)) {
       rows = curveRows(b);

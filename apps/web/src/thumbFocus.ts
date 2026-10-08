@@ -12,8 +12,8 @@ export interface Focus {
   /** Premier et dernier bloc de la portion (inclus). */
   from: number;
   to: number;
-  /** Pourquoi cette portion : le passage signature du thème, un vrai saut (lot 17), ou la zone la plus sinueuse. */
-  reason: "signature" | "jump" | "winding";
+  /** Pourquoi cette portion : une cuve (lot 18), le passage signature du thème, un vrai saut (lot 17), ou la zone la plus sinueuse. */
+  reason: "signature" | "jump" | "cuve" | "winding";
   /** Points (x, y, z) de la route de la portion, élargis de la marge : tout doit entrer dans l'image. */
   points: [number, number, number][];
   /** Centre de la portion (x, z). */
@@ -118,7 +118,16 @@ export function pickFocus(track: Track, theme: ThemeName, size = FOCUS_BLOCKS): 
     while (track.blocks[end]?.kind === "gap") end++;
     jump = [kick, Math.min(n - 1, end)];
   }
-  const pick = sig ?? jump;
+  // Une cuve (lot 18) se lit de loin, vue d'en haut : elle passe avant le passage signature et le saut (de son premier bloc au dernier de
+  // la série, voisins compris). Stade et Nuit en ont une presque toujours : leur miniature est alors celle de la cuve.
+  let cuve: [number, number] | null = null;
+  const firstCuve = track.blocks.findIndex((b) => b.cuve > 0);
+  if (firstCuve >= 0) {
+    let end = firstCuve;
+    while (track.blocks[end + 1]?.cuve) end++;
+    cuve = [Math.max(0, firstCuve - 1), Math.min(n - 1, end + 1)];
+  }
+  const pick = cuve ?? sig ?? jump;
   const [from, to] = pick ? windowAround(n, pick[0], pick[1], size) : windiestWindow(track, size);
   const line = trackCenterline(track);
   const points: [number, number, number][] = [];
@@ -167,5 +176,5 @@ export function pickFocus(track: Track, theme: ThemeName, size = FOCUS_BLOCKS): 
     rx = -rx;
     rz = -rz;
   }
-  return { from, to, reason: sig ? "signature" : jump ? "jump" : "winding", points, center: [cx, cz], right: [rx, rz] };
+  return { from, to, reason: cuve ? "cuve" : sig ? "signature" : jump ? "jump" : "winding", points, center: [cx, cz], right: [rx, rz] };
 }

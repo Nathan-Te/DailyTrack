@@ -13,9 +13,9 @@ test("le jeu pèse peu : budget de poids compressé", () => {
   const total = Object.values(gz).reduce((a, b) => a + b, 0) - worker;
   const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
   expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
-  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(204_000); // ≈ 197 ko aujourd'hui (lot 17 : +4 ko, relief, sauts, rendu des piliers et ombre d'atterrissage ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
-  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(70_000); // ≈ 67 ko aujourd'hui (lot 17 : +5 ko ; le panneau d'admin du lot 14 pèse ≈ 8 ko, chargé seulement sur /admin/)
-  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(16_000); // ≈ 13,6 ko (lot 17 : +3,6 ko, le générateur et le pilote ont grandi)
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(210_000); // ≈ 203 ko aujourd'hui (lot 18 : +5 ko, cuves : surface paramétrée, contact par la normale, rendu des parois, pilote sur la paroi ; lot 17 : +4 ko, relief, sauts, rendu des piliers et ombre d'atterrissage ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
+  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(76_000); // ≈ 72 ko aujourd'hui (lot 18 : +5 ko ; lot 17 : +5 ko ; le panneau d'admin du lot 14 pèse ≈ 8 ko, chargé seulement sur /admin/)
+  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(19_000); // ≈ 16,7 ko (lot 18 : +3 ko, les cuves du générateur et du pilote ; lot 17 : +3,6 ko, le générateur et le pilote ont grandi)
 });
 
 test.describe("chargement sur un téléphone simulé", () => {

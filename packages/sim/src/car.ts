@@ -1,6 +1,6 @@
 import { DT } from "./constants";
 import { PI, TWO_PI, clamp, cos, sin } from "./math";
-import { FLAT_WORLD, createSurface, createWallHit, surfaceAt, type World } from "./world";
+import { FLAT_WORLD, SURFACES, createShellHit, createSurface, createWallHit, surfaceAt, type ShellHit, type World } from "./world";
 
 // Voiture arcade « à la Trackmania » (lot 7). Trois étages, tous déterministes (+ − × ÷ et √ seulement) :
 //
@@ -139,6 +139,15 @@ export interface CarParams {
   iceRealign: number;
   /** Adhérence latérale sous le frein sur glace, en fraction de celle de l'accélérateur : la voiture part en glisse. */
   iceBrakeGrip: number;
+  /**
+   * Cuves (lot 18). Sur une paroi de cuve droite, la vitesse « colle » la voiture : sous `shellStickLo` (m/s) la pesanteur la fait
+   * glisser vers le fond ; au-dessus de `shellStickHi` elle ne glisse plus (la pesanteur le long de la paroi est annulée), entre les deux
+   * c'est progressif. Une cuve en virage garde la vraie pesanteur : c'est la géométrie qui tient la voiture à sa hauteur d'équilibre.
+   */
+  shellStickLo: number;
+  shellStickHi: number;
+  /** Appui aérodynamique sur une paroi (en multiple de la pesanteur, à pleine adhérence de paroi) : il charge les pneus, donc l'adhérence. */
+  shellDown: number;
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
@@ -187,6 +196,9 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   iceCoastGrip: 0.38,
   iceRealign: 0.8,
   iceBrakeGrip: 0.5,
+  shellStickLo: 24,
+  shellStickHi: 34,
+  shellDown: 1.2,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -256,12 +268,16 @@ export interface CarState {
   cut: number;
   /** Dérapage déclenché au frein, ∈ [0, 1] (0 = adhérence normale). */
   drift: number;
+  /** Normale de la surface sous la voiture (lot 18) : (0, 1, 0) sur la route, inclinée sur la paroi d'une cuve. */
+  nx: number;
+  ny: number;
+  nz: number;
 }
 
 export function createCar(x = 0, z = 0, yaw = 0, y = 0): CarState {
   return {
     x, z, yaw, vx: 0, vz: 0, yawRate: 0, steer: 0, tick: 0, y, vy: 0,
-    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0,
+    pitch: 0, pitchRate: 0, roll: 0, rollRate: 0, grounded: 1, air: 0, boost: 0, turbo: 0, cut: 0, drift: 0, nx: 0, ny: 1, nz: 0,
   };
 }
 
@@ -305,6 +321,8 @@ export function steerLimit(u: number, p: Readonly<CarParams>): number {
 // Échantillons et contacts réutilisés (aucune allocation par pas).
 const surface = createSurface();
 const wall = createWallHit();
+const shell = createShellHit();
+const shell2 = createShellHit();
 const gH = [0, 0, 0, 0];
 const gX = [0, 0, 0, 0];
 const gZ = [0, 0, 0, 0];
@@ -352,7 +370,11 @@ export function stepCar(car: CarState, input: CarInput, world: World = FLAT_WORL
   if (car.grounded && brake > 0 && fwd > params.driftMinSpeed && (target > 0.5 || target < -0.5)) car.drift = 1;
 
   samplesValid = false; // d'autres voitures (le fantôme) partagent les tampons d'échantillons
-  for (let s = 0; s < SUBSTEPS; s++) substep(car, throttle, brake, target, world, params);
+  for (let s = 0; s < SUBSTEPS; s++) {
+    // Dans une cuve (lot 18), le contact suit la normale de la paroi ; partout ailleurs, le modèle à ressorts d'avant.
+    if (world.shell !== undefined && world.shell(car.x, car.z, car.y, shell)) substepShell(car, throttle, brake, target, world, params);
+    else substep(car, throttle, brake, target, world, params);
+  }
   if (car.boost > 0) car.boost -= 1;
   if (car.turbo > 0) car.turbo -= 1;
   car.tick += 1;
@@ -369,6 +391,11 @@ let headX = 0;
 let headZ = 1;
 
 function substep(car: CarState, throttle: number, brake: number, steerTarget: number, world: World, p: Readonly<CarParams>): void {
+  if (car.ny !== 1) {
+    car.nx = 0;
+    car.ny = 1;
+    car.nz = 0;
+  }
   const fx = samplesValid ? headX : sin(car.yaw);
   const fz = samplesValid ? headZ : cos(car.yaw);
   const lx = fz; // gauche = (cos ψ, −sin ψ)
@@ -595,6 +622,259 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   headZ = cos(yaw);
   collideWalls(car, world, p, headX, headZ);
   samplesValid = bumpStop(car, world, prevX, prevZ, headX, headZ);
+}
+
+/** Repère de la voiture dans le plan tangent d'une paroi : `f` = vers l'avant, `l` = vers la gauche (vecteurs unitaires du monde). */
+export interface TangentFrame {
+  fx: number;
+  fy: number;
+  fz: number;
+  lx: number;
+  ly: number;
+  lz: number;
+}
+
+export const createTangentFrame = (): TangentFrame => ({ fx: 0, fy: 0, fz: 1, lx: 1, ly: 0, lz: 0 });
+const frame = createTangentFrame();
+
+/**
+ * Repère de la voiture (cap `yaw`) sur une paroi dont la surface est `h` (normale `n`, avance de la route `eq`, gauche `n × eq`) : le cap
+ * `yaw` est l'angle d'un cap « à plat » ; la voiture tourne de l'angle `yaw − cap de la route` autour de la normale. Sur le sol plat,
+ * `f = (sin yaw, 0, cos yaw)` et `l = (cos yaw, 0, −sin yaw)` : le modèle ordinaire. Lecture seule, partagée avec le rendu.
+ */
+export function tangentFrame(yaw: number, h: Pick<ShellHit, "nx" | "ny" | "nz" | "qx" | "qz">, out: TangentFrame): TangentFrame {
+  const { nx, ny, nz, qx, qz } = h;
+  const elx = ny * qz;
+  const ely = nz * qx - nx * qz;
+  const elz = -ny * qx;
+  const sy = sin(yaw);
+  const cy = cos(yaw);
+  const ca = cy * qz + sy * qx;
+  const sa = sy * qz - cy * qx;
+  out.fx = ca * qx + sa * elx;
+  out.fy = sa * ely;
+  out.fz = ca * qz + sa * elz;
+  out.lx = -sa * qx + ca * elx;
+  out.ly = ca * ely;
+  out.lz = -sa * qz + ca * elz;
+  return out;
+}
+
+/** Une voiture à cette distance (m) de la paroi ou moins la touche (roule dessus). */
+const SHELL_TOUCH = 0.08;
+/** Elle reste collée à la paroi qui s'éloigne de moins que ça en un sous-pas (fin de rampe, creux) : m. */
+const SHELL_SNAP = 0.1;
+/** ... et seulement si elle ne s'en écarte pas plus vite que ça (m/s) : un vrai décollage n'est pas rattrapé. */
+const SHELL_SNAP_SPEED = 2;
+/** Vitesse verticale (m/s) à partir de laquelle la pesanteur reprend ses droits sur une paroi, et largeur de la transition. */
+const SHELL_HOLD_CLIMB = 3;
+const SHELL_HOLD_CLIMB_SPAN = 6;
+
+const smoothstep = (t: number): number => {
+  const c = t < 0 ? 0 : t > 1 ? 1 : t;
+  return c * c * (3 - 2 * c);
+};
+
+/**
+ * Sous-pas dans une cuve (lot 18). La voiture est ici un point posé sur la paroi : on la repère dans le plan tangent (cap `f`, gauche
+ * `l`, normale `n`), les pneus et le moteur donnent les mêmes accélérations qu'à plat (mêmes formules que `substep`), la pesanteur
+ * se projette sur le plan tangent, et la paroi retient la voiture (position repoussée le long de la normale, vitesse normale
+ * rentrante supprimée). En l'air : balistique. Le cap `yaw` reste l'angle d'un cap « à plat » : la voiture tourne autour de la normale.
+ */
+function substepShell(car: CarState, throttle: number, brake: number, steerTarget: number, world: World, p: Readonly<CarParams>): void {
+  const h = shell;
+  const nx = h.nx;
+  const ny = h.ny;
+  const nz = h.nz;
+  tangentFrame(car.yaw, h, frame);
+  const fx = frame.fx;
+  const fy = frame.fy;
+  const fz = frame.fz;
+  const lx = frame.lx;
+  const ly = frame.ly;
+  const lz = frame.lz;
+  const u = car.vx * fx + car.vy * fy + car.vz * fz;
+  const v = car.vx * lx + car.vy * ly + car.vz * lz;
+  const r = car.yawRate;
+  const g = p.gravity;
+  const grounded = h.d < SHELL_TOUCH;
+  const wasGrounded = car.grounded === 1;
+
+  car.pitch = 0;
+  car.pitchRate = 0;
+  car.roll = 0;
+  car.rollRate = 0;
+  car.nx = nx;
+  car.ny = ny;
+  car.nz = nz;
+
+  let ax = 0;
+  let ay = 0;
+  let yawAcc = 0;
+
+  if (grounded) {
+    const m = SURFACES[h.kind];
+    const traction = m.traction;
+    const rolling = m.rolling;
+    const slick = m.slick;
+    // Adhérence : la charge des pneus vient de la pesanteur contre la paroi (ny) et de l'appui de la vitesse.
+    const speed = Math.sqrt(u * u + v * v);
+    const stick = smoothstep((speed - p.shellStickLo) / (p.shellStickHi - p.shellStickLo));
+    const tilt = Math.sqrt(Math.max(0, 1 - ny * ny));
+    const loadRatio = (ny > 0 ? ny : 0) + p.shellDown * stick * tilt;
+    // Sur une paroi, l'adhérence suit la charge presque en proportion (une paroi sans appui n'a pas d'adhérence) : sans cela, un pneu
+    // sans charge garderait la moitié de son adhérence et la voiture ne décrocherait jamais franchement.
+    const ls = p.loadSensitivity + (1 - p.loadSensitivity) * tilt * tilt;
+    const kLoad = loadRatio > 0 ? clamp(1 + ls * (loadRatio - 1), 0, 1.6) : 0;
+
+    const U = u > MIN_SLIP_SPEED ? u : u < -MIN_SLIP_SPEED ? -u : MIN_SLIP_SPEED;
+    const delta = -car.steer * steerLimit(u, p);
+    const slipF = (v + AXLE_FRONT * r - delta * u) / U;
+    const slipR = (v - AXLE_REAR * r) / U;
+    if (car.drift > 0) {
+      const held = (steerTarget > 0.2 || steerTarget < -0.2) && (slipR > 0.06 || slipR < -0.06);
+      car.drift -= (held ? 1 / p.driftHold : 6) * H;
+      if (car.drift < 0) car.drift = 0;
+    }
+    const coasting = throttle === 0 && brake === 0;
+    let surfF = m.grip;
+    let surfR = m.grip;
+    if (slick > 0) {
+      if (coasting) {
+        surfF += slick * (p.iceCoastGrip - surfF);
+        surfR += slick * (p.iceCoastGrip - surfR);
+      } else if (brake > 0) {
+        surfF -= slick * (1 - p.iceBrakeGrip) * surfF;
+        surfR -= slick * (1 - p.iceBrakeGrip) * surfR;
+      }
+    }
+    const rearGrip = p.gripRear * (1 - (1 - p.driftGrip) * car.drift);
+    const peakF = ((p.gripFront * AXLE_REAR) / WHEELBASE) * surfF * kLoad;
+    const peakR = ((rearGrip * AXLE_FRONT) / WHEELBASE) * surfR * kLoad;
+    const forceF = -peakF * tireCurve(slipF / p.slipPeak, p.slideGrip);
+    const forceR = -peakR * tireCurve(slipR / p.slipPeak, p.slideGrip);
+    ay = forceF + forceR;
+    ax = -forceF * delta;
+    yawAcc = (AXLE_FRONT * forceF - AXLE_REAR * forceR) / YAW_INERTIA;
+    if (car.drift > 0) {
+      const beta = v / U;
+      const dBeta = (ay - u * r) / U;
+      yawAcc += car.drift * (-DRIFT_SPRING * (steerTarget * p.driftAngle - beta) + DRIFT_DAMPING * dBeta);
+      ay -= car.drift * p.driftPull * beta;
+    }
+
+    const grip = clamp(1 + ls * (loadRatio - 1), 0, 1) * traction;
+    const flatTop = p.maxSpeed * (1 + slick * (p.iceTop - 1));
+    const top = car.turbo > 0 ? p.turboMaxSpeed : car.boost > 0 ? p.boostMaxSpeed : flatTop;
+    let drive = 0;
+    if (throttle > 0) {
+      if (u < -0.5) drive += p.brake * throttle;
+      else {
+        const ratio = u > 0 ? u / top : 0;
+        const left = ratio < 1 ? 1 - ratio : 0;
+        drive += p.accel * throttle * left * (1 + p.accelCurve * ratio);
+      }
+    }
+    if (brake > 0) {
+      if (u > 0.5) drive -= p.brake * brake;
+      else if (u > -p.reverseMax) drive -= p.reverseAccel * brake;
+    }
+    if (throttle === 0 && brake === 0) {
+      const coast = p.coast * (1 - slick * (1 - p.iceCoast));
+      drive -= u > 0 ? coast : u < 0 ? -coast : 0;
+    }
+    if (car.boost > 0 && u < p.boostMaxSpeed) drive += p.boostAccel;
+    if (car.turbo > 0 && u < p.turboMaxSpeed) drive += p.turboAccel;
+    ax += drive * grip;
+    ax -= u > 0 ? rolling : u < 0 ? -rolling : 0;
+    if (u > flatTop) {
+      const ratio = u / flatTop;
+      ax -= p.overspeedDrag * (ratio * ratio * ratio - 1);
+    }
+    // Pesanteur dans le plan tangent : le long du cap (côte) et sur le côté (la paroi). Sur une cuve droite, la vitesse l'annule.
+    // La vitesse « colle » la voiture à sa hauteur : tant qu'elle ne monte ni ne descend franchement. Au-delà de `SHELL_HOLD_CLIMB` m/s
+    // de vitesse verticale, la pesanteur revient (une voiture lancée vers la crête ralentit et retombe, au lieu de monter sans fin).
+    const climb = smoothstep((Math.abs(car.vy) - SHELL_HOLD_CLIMB) / SHELL_HOLD_CLIMB_SPAN);
+    const gravityLeft = h.straight ? 1 - stick * (1 - climb) : 1;
+    ax -= p.slopeGravity * fy * gravityLeft;
+    ay -= g * ly * gravityLeft;
+    if (coasting && slick > 0) ay -= p.iceRealign * slick * v;
+    const drift = v / U;
+    ax -= p.slideDrag * (drift < 0 ? -drift : drift) * (u > 0 ? 1 : u < 0 ? -1 : 0);
+  }
+
+  // --- Intégration -------------------------------------------------------------------------------
+  const prevU = u;
+  let vx = car.vx;
+  let vy = car.vy;
+  let vz = car.vz;
+  if (grounded) {
+    vx += (ax * fx + ay * lx) * H;
+    vy += (ax * fy + ay * ly) * H;
+    vz += (ax * fz + ay * lz) * H;
+    const nu = vx * fx + vy * fy + vz * fz;
+    if ((prevU > 0 && nu < 0 && throttle === 0) || (prevU < 0 && nu > 0 && brake === 0)) {
+      vx -= nu * fx;
+      vy -= nu * fy;
+      vz -= nu * fz;
+    }
+    if (prevU < -p.reverseMax && brake > 0) {
+      const over = vx * fx + vy * fy + vz * fz + p.reverseMax;
+      if (over < 0) {
+        vx -= over * fx;
+        vy -= over * fy;
+        vz -= over * fz;
+      }
+    }
+  } else vy -= g * H;
+  car.vx = vx;
+  car.vy = vy;
+  car.vz = vz;
+  car.yawRate = grounded ? r + yawAcc * H : r * (1 - p.airDamping * H);
+  if (grounded && throttle === 0 && brake === 0 && vx * vx + vy * vy + vz * vz < 1e-4 && ny === 1) {
+    car.vx = 0;
+    car.vy = 0;
+    car.vz = 0;
+    car.yawRate = 0;
+  }
+
+  car.x += car.vx * H;
+  car.y += car.vy * H;
+  car.z += car.vz * H;
+  let yaw = car.yaw + car.yawRate * H;
+  if (yaw > PI) yaw -= TWO_PI;
+  else if (yaw < -PI) yaw += TWO_PI;
+  car.yaw = yaw;
+
+  // --- Contact : la paroi repousse la voiture et supprime la vitesse qui y entre ----------------------
+  let touching = false;
+  if (world.shell !== undefined && world.shell(car.x, car.z, car.y, shell2)) {
+    const hit = shell2;
+    let d = hit.d;
+    const vn = car.vx * hit.nx + car.vy * hit.ny + car.vz * hit.nz;
+    // Pénétration : repoussée. Tout près et sans vitesse qui s'en éloigne franchement : elle suit la paroi (fin de rampe).
+    if (d < 0 || (wasGrounded && d < SHELL_SNAP && vn < SHELL_SNAP_SPEED)) {
+      car.x += hit.nx * -d;
+      car.y += hit.ny * -d;
+      car.z += hit.nz * -d;
+      d = 0;
+      if (vn < SHELL_SNAP_SPEED) {
+        // La vitesse normale s'annule (impact sans rebond) ; la vitesse le long de la paroi reste.
+        car.vx -= vn * hit.nx;
+        car.vy -= vn * hit.ny;
+        car.vz -= vn * hit.nz;
+      }
+    }
+    touching = d < SHELL_TOUCH;
+    if (touching) {
+      car.nx = hit.nx;
+      car.ny = hit.ny;
+      car.nz = hit.nz;
+    }
+  }
+  car.air = touching ? 0 : car.air + 1;
+  car.grounded = touching ? 1 : 0;
+  samplesValid = false;
 }
 
 /** Réception après un vol : perte et rebond selon l'écart entre l'orientation de la caisse et le sol. */

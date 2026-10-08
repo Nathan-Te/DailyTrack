@@ -29,6 +29,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["vitesse", "Vitesse"],
   ["glace", "Glace"],
   ["relief", "Relief"],
+  ["cuves", "Cuves"],
   ["plat", "Terrain plat"],
 ];
 

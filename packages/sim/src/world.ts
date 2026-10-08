@@ -22,8 +22,11 @@ import {
   type SurfaceKind,
   type Track,
 } from "./track";
+import { cuveHeight, shellAt, type ShellHit } from "./cuve";
 
 export type { SurfaceKind } from "./track";
+export type { ShellHit } from "./cuve";
+export { createShellHit } from "./cuve";
 
 /** Le moteur est coupé par une bande de cette demi-longueur (m) en travers de toute la route. */
 export const CUT_HALF_LENGTH = 2;
@@ -90,6 +93,11 @@ export interface World {
   sample(x: number, z: number, out: Surface): void;
   /** Vrai s'il y a pénétration d'un rebord pour un disque de rayon `radius` ; remplit `out`. */
   collide(x: number, z: number, y: number, radius: number, out: WallHit): boolean;
+  /**
+   * Cuve (lot 18) : si (x, z) est dans un bloc de cuve, remplit `out` (distance signée à la paroi, normale, direction d'avance) pour
+   * un point à la hauteur `y` et renvoie vrai. Faux partout ailleurs : la voiture suit alors le modèle ordinaire (ressorts sur `sample`).
+   */
+  shell?(x: number, z: number, y: number, out: ShellHit): boolean;
   /** Au-dessous de cette hauteur, la voiture est perdue. */
   readonly voidY: number;
 }
@@ -125,8 +133,11 @@ export function trackWorld(track: Track): World {
     return track.cells.get(cellKey(Math.floor(x / CELL), Math.floor(z / CELL)));
   };
 
-  return {
+  const hasCuve = track.blocks.some((b) => b.cuve > 0);
+  const world: World = {
     voidY: track.voidY,
+    // Toujours présent (même forme d'objet pour tous les circuits : les appels `world.sample` restent monomorphes), vide sans cuve.
+    shell: undefined,
 
     sample(x, z, out) {
       const b = blockAt(x, z);
@@ -145,7 +156,12 @@ export function trackWorld(track: Track): World {
       const q = canonQ(b.dir, u, v);
 
       let onRoad: boolean;
-      if (b.kind === "gap") {
+      let cuveH = 0;
+      if (b.cuve) {
+        // Cuve : un sol approché (paroi tronquée à ≈ 80°) pour les lecteurs de hauteur ; la voiture, elle, suit `shell`.
+        cuveH = cuveHeight(b, p, q);
+        onRoad = cuveH === cuveH; // pas NaN
+      } else if (b.kind === "gap") {
         onRoad = false; // le vide d'un saut : rien sous la voiture
       } else if (isCurve(b.kind)) {
         const c = curveCenter(b.kind);
@@ -163,7 +179,7 @@ export function trackWorld(track: Track): World {
         return;
       }
       out.kind = b.surface;
-      out.height = blockHeight(b, q);
+      out.height = blockHeight(b, q) + cuveH;
       const slope = blockSlope(b, q);
       out.gx = slope * dirX(b.dir);
       out.gz = slope * dirZ(b.dir);
@@ -184,7 +200,7 @@ export function trackWorld(track: Track): World {
 
     collide(x, z, y, radius, out) {
       const b = blockAt(x, z);
-      if (!b || b.kind === "gap") return false;
+      if (!b || b.kind === "gap" || b.cuve) return false; // une cuve a ses parois (`shell`)
       const u = x - b.cx * CELL;
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
@@ -263,4 +279,16 @@ export function trackWorld(track: Track): World {
       return true;
     },
   };
+  // Cuves (lot 18) : seul un circuit qui en a une répond à `shell` ; les autres suivent exactement le chemin d'avant (aucun coût de plus).
+  if (hasCuve) {
+    world.shell = (x, z, y, out) => {
+      const b = blockAt(x, z);
+      if (!b || !b.cuve) return false;
+      const u = x - b.cx * CELL;
+      const v = z - b.cz * CELL;
+      shellAt(b, canonP(b.dir, u, v), canonQ(b.dir, u, v), y - b.y0, out);
+      return true;
+    };
+  }
+  return world;
 }

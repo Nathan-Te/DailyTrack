@@ -2,7 +2,7 @@
 interface CdjDebug {
   phase: string;
   ghost: { z: number; tick: number } | null;
-  car: { x: number; z: number; vx: number; vz: number; yaw: number; tick: number };
+  car: { x: number; y: number; z: number; vx: number; vy: number; vz: number; yaw: number; tick: number; nx: number; ny: number; nz: number; grounded: number };
   race: unknown;
   /** Dernière commande appliquée à la simulation. */
   input: { steer: number; throttle: number; brake: number; respawn: number };
@@ -28,7 +28,7 @@ interface CdjDebug {
     fovKick: number;
     fov: number;
     wheelDroop: number[];
-    tel: { wall: unknown };
+    tel: { wall: unknown; tilt: number; onWall: boolean };
   };
   /** Miniatures (lot 13) : compteurs et durées de fabrication, images en attente. */
   thumbs: {
