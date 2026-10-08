@@ -49,7 +49,11 @@ export const TUNE_SLIDERS: readonly Slider[] = [
   { key: "suspStiffness", label: "Raideur suspension", min: 20, max: 150, step: 1 },
   { key: "suspDamping", label: "Amortissement", min: 1, max: 15, step: 0.25 },
   { key: "gravity", label: "Gravité (m/s²)", min: 9.8, max: 35, step: 0.2 },
-  { key: "landLoss", label: "Perte réception de travers", min: 0, max: 3, step: 0.05 },
+  { key: "landAbsorb", label: "Air : absorption à l'impact", min: 0, max: 1, step: 0.01 },
+  { key: "landLoss", label: "Air : perte selon l'alignement", min: 0, max: 3, step: 0.05 },
+  { key: "landTolerance", label: "Air : alignement toléré (pente)", min: 0, max: 0.8, step: 0.01 },
+  { key: "airDamping", label: "Air : amortissement de la rotation (1/s)", min: 0, max: 8, step: 0.1 },
+  { key: "airFreeze", label: "Air : force du frein « figer » (1/s)", min: 0, max: 40, step: 0.5 },
   { key: "wallFriction", label: "Frottement rebord", min: 0, max: 0.8, step: 0.01 },
   { key: "wallBounce", label: "Rebond rebord", min: 0, max: 0.8, step: 0.01 },
 ];

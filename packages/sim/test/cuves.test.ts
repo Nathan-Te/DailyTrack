@@ -464,7 +464,7 @@ describe("générateur : cuves", () => {
   it("le temps de l'auteur est celui de la meilleure ligne (fond ou paroi) : jamais plus lent que le pilote sur le fond", () => {
     for (const c of circuits("stade", 10)) {
       const floor = runPilot(c.track, { grip: 1, wall: false });
-      if (floor.respawns === 0) expect(c.authorMs).toBeLessThanOrEqual(floor.finishMs);
+      if (floor.valid) expect(c.authorMs).toBeLessThanOrEqual(floor.finishMs);
     }
   }, 120_000);
 });

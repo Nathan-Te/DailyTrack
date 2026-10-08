@@ -22,6 +22,7 @@ import {
   createLargeursTrack,
   createVitesseTrack,
   FALL_TICKS,
+  createAirTrack,
   createCuvesTrack,
   createGlaceTrack,
   createReliefTrack,
@@ -59,7 +60,7 @@ import { createThumbnailService, type ThumbJob } from "./thumbnails";
 import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
-import { volumeIcon } from "./audioLogic";
+import { landingQuality, volumeIcon } from "./audioLogic";
 import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
@@ -81,7 +82,7 @@ import { loadTunedParams, mountTunePanel } from "./tune";
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
-// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords), `cuves` (lot 18 : cuve droite, mur latéral, virage en cuve à pleine vitesse puis abordé trop lentement) et `plat` (le terrain d'essai du lot 1).
+// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords), `cuves` (lot 18 : cuve droite, mur latéral, virage en cuve à pleine vitesse puis abordé trop lentement), `air` (lot 19 : dos d'âne, tremplin, long saut, saut vers un virage relevé, chute de trois niveaux, mur latéral quitté en l'air) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
@@ -92,7 +93,7 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -130,7 +131,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -227,7 +228,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
@@ -264,6 +265,8 @@ let manualWaiters: (() => void)[] = [];
 /** Dernière commande appliquée à la simulation (outil de test : `__cdj.input`). */
 let lastInput: CarInput = { steer: 0, throttle: 0, brake: 0, respawn: 0 };
 let lastImpactAt = -1e9;
+/** Dernière réception (force de chute et qualité d'alignement, ∈ [0, 1]) : outil de test `__cdj.air`. */
+let lastLanding = { strength: 0, quality: 1 };
 let lastImpactSoundAt = -1e9;
 
 function setPaused(value: boolean) {
@@ -780,6 +783,11 @@ function finishRun() {
 // --- Boucle : simulation à pas fixe, rendu interpolé ------------------------------------------
 let last = performance.now();
 let camYaw = 0;
+/** Part « en vol » de la caméra ∈ [0, 1] (lissée) : 1 = elle suit la direction du déplacement. */
+let airMix = 0;
+/** En l'air depuis plus de ça (sous-pas), la voiture vole pour de bon (une bosse ou un frôlement de paroi ne compte pas). */
+const AIR_HOP_SUBSTEPS = 12;
+const hudFreeze = $("freeze");
 let camBaseY = 0;
 let snapCamera = true;
 const camPos = { x: 0, y: 0, z: 0 };
@@ -876,10 +884,13 @@ function stepOnce(input: CarInput) {
       }
     }
     if (previous.grounded === 0 && car.grounded === 1 && previous.vy < -3) {
+      // Lot 19 : la qualité de la réception (part de la vitesse gardée au contact) règle le son et la secousse ; lecture seule.
       const strength = Math.min(1, -previous.vy / 14);
+      const quality = landingQuality(carSpeed(previous), carSpeed(car));
+      lastLanding = { strength, quality };
       effects.landing(car.x, car.y, car.z, strength);
-      gameAudio.play("land", strength);
-      shake = Math.max(shake, 0.2 + 0.7 * strength);
+      gameAudio.play("land", strength, quality);
+      shake = Math.max(shake, (0.2 + 0.7 * strength) * (1 + 0.6 * (1 - quality)));
     }
   }
 }
@@ -988,6 +999,9 @@ function frame(now: number) {
   const z = lerp(previous.z, car.z, alpha);
   const yaw = previous.yaw + wrapAngle(car.yaw - previous.yaw) * alpha;
   const speed = carSpeed(car);
+  // Lot 19 : en l'air la caisse garde sa rotation ; le frein la fige. Petit indicateur discret tant que le frein agit (présentation seule).
+  const freezing = phase === "racing" && !frozen && !car.grounded && car.air > AIR_HOP_SUBSTEPS && lastInput.brake > 0;
+  if (freezing !== hudFreeze.classList.contains("on")) hudFreeze.classList.toggle("on", freezing);
 
   // Voiture : tangage et roulis de la caisse calculés par la simulation (suspension), en pentes → angles ;
   // roues : chacune suit le sol sous elle (lecture seule du monde), tourne avec la vitesse et braque.
@@ -1061,11 +1075,15 @@ function frame(now: number) {
   // Au-delà de la pointe du plat (lot 15) : champ de vision plus ouvert, caméra plus basse et plus en retard, petite vibration.
   const speedRatio = flatRatio(speed);
   const fastCam = speedCamera(speed);
+  // Caméra stable en l'air (lot 19) : la caisse peut tourner sur elle-même, la caméra suit alors la direction du déplacement, pas le cap.
+  airMix += ((!car.grounded && car.air > AIR_HOP_SUBSTEPS ? 1 : 0) - airMix) * (1 - Math.exp(-6 * elapsed));
+  const heading = speed > 8 ? Math.atan2(car.vx, car.vz) : yaw;
+  const viewYaw = yaw + wrapAngle(heading - yaw) * airMix;
   if (snapCamera) {
-    camYaw = yaw;
+    camYaw = viewYaw;
     camBaseY = y;
   }
-  camYaw += wrapAngle(yaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
+  camYaw += wrapAngle(viewYaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
   // En chute, la caméra reste où elle est : la voiture s'enfonce dans le vide sous le regard, sans que l'écran plonge avec elle.
   if (!(race && race.fallTicks > 0)) camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
   const back = rig.back + speedRatio * rig.backAtSpeed + fastCam.back;
@@ -1177,6 +1195,10 @@ if (params.has("debug")) {
       /** Effets : particules émises, qualité, particules vivantes (tests de navigateur). */
       get fx() {
         return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, fov: camera.fov, wheelDroop: [...wheelDroop], tel };
+      },
+      /** Air (lot 19) : indicateur « figé » allumé, dernière réception (force, qualité), part « en vol » de la caméra. */
+      get air() {
+        return { frozen: hudFreeze.classList.contains("on"), lastLanding, cameraMix: airMix };
       },
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {

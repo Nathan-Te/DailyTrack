@@ -157,18 +157,21 @@ describe("rejeu", () => {
   });
 
   it("une commande falsifiée ne donne pas le temps annoncé", () => {
-    const tampered: Replay = { ...live.replay, runs: live.replay.runs.map((r) => ({ ...r })) };
-    // Un grand coup de volant pendant la plus longue série de commandes de la moitié centrale de la course.
-    const n = tampered.runs.length;
-    let target = Math.floor(n / 4);
-    for (let i = Math.floor(n / 4); i < Math.floor((3 * n) / 4); i++) {
-      if (tampered.runs[i]!.count > tampered.runs[target]!.count) target = i;
+    // Un grand coup de volant pendant l'une des plus longues séries de commandes de la moitié centrale de la course. Pas n'importe
+    // laquelle : en l'air le volant ne fait rien (lot 19), une série de vol falsifiée redonnerait le même temps.
+    const n = live.replay.runs.length;
+    const candidates: number[] = [];
+    for (let i = Math.floor(n / 4); i < Math.floor((3 * n) / 4); i++) if (live.replay.runs[i]!.count > 10) candidates.push(i);
+    candidates.sort((a, b) => live.replay.runs[b]!.count - live.replay.runs[a]!.count);
+    expect(candidates.length).toBeGreaterThan(0);
+    let changed = 0;
+    for (const target of candidates.slice(0, 5)) {
+      const tampered: Replay = { ...live.replay, runs: live.replay.runs.map((r) => ({ ...r })) };
+      const run = tampered.runs[target]!;
+      run.steer = run.steer > 0 ? -AXIS_MAX : AXIS_MAX;
+      if (replayRace(track, tampered).finishMs !== live.race.finishMs) changed++;
     }
-    const run = tampered.runs[target]!;
-    expect(run.count).toBeGreaterThan(10);
-    run.steer = run.steer > 0 ? -AXIS_MAX : AXIS_MAX;
-    const r = replayRace(track, tampered);
-    expect(r.finishMs).not.toBe(live.race.finishMs);
+    expect(changed).toBeGreaterThan(0);
   });
 
   it("refuse une rediffusion d'un autre circuit ou d'une autre version de la simulation", () => {

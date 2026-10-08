@@ -2,6 +2,7 @@ import type { SurfaceKind } from "@cdj/sim";
 import {
   SURFACE_SOUNDS,
   engineSound,
+  landingSound,
   noteFreq,
   nextVolume,
   parseAudioSettings,
@@ -248,8 +249,8 @@ export class GameAudio {
     src.stop(t0 + dur + 0.05);
   }
 
-  /** `n` : pour le décompte, le chiffre affiché (3, 2, 1) ; pour un impact, sa force ∈ [0, 1] ; pour une médaille, 0–3. */
-  play(what: OneShot, n = 1) {
+  /** `n` : pour le décompte, le chiffre affiché (3, 2, 1) ; pour un impact, sa force ∈ [0, 1] ; pour une médaille, 0–3. `quality` : pour une réception, son alignement (lot 19). */
+  play(what: OneShot, n = 1, quality = 1) {
     this.log.push(what);
     if (this.log.length > 24) this.log.shift();
     if (!this.ensure() || !this.running) return;
@@ -269,10 +270,13 @@ export class GameAudio {
         this.burst(0.18, 900, 0.5 * Math.min(1, 0.4 + n), 0, 200);
         this.tone(90, 0.2, "sine", 0.35 * Math.min(1, 0.4 + n), 0, 40);
         break;
-      case "land":
-        this.burst(0.22, 400, 0.35 * Math.min(1, 0.3 + n), 0, 120);
-        this.tone(70, 0.22, "sine", 0.3 * Math.min(1, 0.3 + n), 0, 35);
+      case "land": {
+        // Lot 19 : la qualité de la réception change le son (un « pof » sourd si elle est propre, un choc craquant sinon).
+        const l = landingSound(n, quality);
+        this.burst(l.noiseDur, l.noiseFreq, l.noiseGain, 0, 120);
+        this.tone(l.thumpFreq, l.thumpDur, "sine", l.thumpGain, 0, 35);
         break;
+      }
       case "turbo":
         this.burst(0.7, 500, 0.4, 0, 3000);
         this.tone(140, 0.7, "sawtooth", 0.12, 0, 520);

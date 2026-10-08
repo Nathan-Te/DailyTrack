@@ -1,5 +1,5 @@
 import { TICK_RATE } from "./constants";
-import { COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInput, type CarParams } from "./car";
+import { COLLIDER_RADIUS, DEFAULT_CAR_PARAMS, makeInput, steerLimit, type CarInput, type CarParams, type CarState } from "./car";
 import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
@@ -377,6 +377,19 @@ export function racingLine(
 }
 
 /** Pilote : renvoie, à chaque pas, la commande à appliquer. */
+/** Le pilote fige la caisse en l'air (frein) dès qu'elle tourne plus vite que ça (pente/s ou rad/s) et que le vol dure depuis `AIR_FREEZE_AFTER` sous-pas. */
+const AIR_SPIN = 0.12;
+const AIR_FREEZE_AFTER = 6;
+
+/** Vrai si la voiture est en vol et que sa caisse tourne : le frein la figerait (ce que fait le pilote, et ce que fait un bon joueur). */
+export function needsFreeze(car: Readonly<CarState>): boolean {
+  return (
+    !car.grounded &&
+    car.air >= AIR_FREEZE_AFTER &&
+    (car.pitchRate > AIR_SPIN || car.pitchRate < -AIR_SPIN || car.rollRate > AIR_SPIN || car.rollRate < -AIR_SPIN || car.yawRate > AIR_SPIN || car.yawRate < -AIR_SPIN)
+  );
+}
+
 export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
   const params = opts.params ?? DEFAULT_CAR_PARAMS;
   const grip = opts.grip ?? 0.9;
@@ -434,7 +447,8 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
     const target = line.speed[k]!;
     const tooFast = speed > target + 0.5;
     // Pas de coup de frein braqué (il déclencherait un dérapage) : on lâche seulement les gaz.
-    const brake = tooFast && steer < 0.5 && steer > -0.5 && car.grounded;
+    // Lot 19 : en l'air, la caisse garde la rotation de son décollage ; tant qu'elle tourne, le frein la fige (il ne ralentit pas la voiture).
+    const brake = (tooFast && steer < 0.5 && steer > -0.5 && car.grounded) || needsFreeze(car);
     // Sur glace, l'accélérateur ôte l'adhérence : on le lâche pour tourner (roue libre), on le rend en ligne droite.
     const turning = line.slick[idx]! > 0 && (steer > 0.12 || steer < -0.12);
     const throttle = !tooFast && speed < target && !turning;

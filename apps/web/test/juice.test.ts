@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createCar } from "@cdj/sim";
-import { DEFAULT_AUDIO, GEAR_SPEEDS, SURFACE_SOUNDS, engineSound, nextVolume, noteFreq, parseAudioSettings, skidLevel, toggleMute, volumeIcon, windGain } from "../src/audioLogic";
+import { DEFAULT_AUDIO, GEAR_SPEEDS, SURFACE_SOUNDS, engineSound, landingQuality, landingSound, nextVolume, noteFreq, parseAudioSettings, skidLevel, toggleMute, volumeIcon, windGain } from "../src/audioLogic";
 import { TRAVEL_DOWN, TRAVEL_UP, clampTravel } from "../src/carMesh";
 import { QualityGovernor } from "../src/fx";
 import { slideOf } from "../src/telemetry";
@@ -124,5 +124,25 @@ describe("qualité automatique", () => {
     const g = new QualityGovernor();
     for (let i = 0; i < 50; i++) g.observe(2000);
     expect(g.level).toBe(2);
+  });
+});
+
+describe("réception (lot 19)", () => {
+  it("la qualité d'une réception est la part de vitesse gardée : 1 bien alignée, 0 au pire", () => {
+    expect(landingQuality(40, 40)).toBe(1);
+    expect(landingQuality(40, 39)).toBeCloseTo(1 - 0.025 / 0.6, 9);
+    expect(landingQuality(40, 16)).toBe(0);
+    expect(landingQuality(40, 8)).toBe(0);
+    expect(landingQuality(0, 0)).toBe(1);
+  });
+
+  it("une mauvaise réception sonne plus fort, plus longtemps et plus craquant qu'une propre, à force de chute égale", () => {
+    const clean = landingSound(0.6, 1);
+    const rough = landingSound(0.6, 0);
+    expect(rough.noiseGain).toBeGreaterThan(clean.noiseGain);
+    expect(rough.thumpGain).toBeGreaterThan(clean.thumpGain);
+    expect(rough.noiseDur).toBeGreaterThan(clean.noiseDur);
+    expect(rough.noiseFreq).toBeGreaterThan(clean.noiseFreq);
+    expect(landingSound(1, 1).thumpGain).toBeGreaterThan(landingSound(0.1, 1).thumpGain);
   });
 });
