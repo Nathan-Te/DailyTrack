@@ -71,3 +71,16 @@ export const GLACE_TRACK_SPEC =
 export function createGlaceTrack() {
   return parseTrack("glace", GLACE_TRACK_SPEC);
 }
+
+/**
+ * Scénario `relief` (lot 17) : montée de deux niveaux (U U), crête, longue descente (D2 D D) ; virage ; saut court (rampe, vide, réception
+ * un niveau plus bas, fenêtre ≥ 33 m/s) ; plaque puis long saut (deux cellules de vide, atterrissage deux niveaux plus bas,
+ * fenêtre ≥ 52 m/s) ; montée de six niveaux en deux blocs raides (U3 U3), section surélevée de quatre blocs sans rebords (o)
+ * à 24 m au-dessus du point le plus bas, descente et arrivée. Un virage large (L2, R2) sépare chaque épreuve.
+ */
+export const RELIEF_TRACK_SPEC =
+  "S@start S S U U S@cp D2 D D S L2 S S S K GD S S S@cp R2 S P S K G GD D S S S@cp U3 U3 S/o S/o S/o S/o S D3 S L2 S S@finish";
+
+export function createReliefTrack() {
+  return parseTrack("relief", RELIEF_TRACK_SPEC);
+}

@@ -21,7 +21,9 @@ import {
   createSurface,
   createLargeursTrack,
   createVitesseTrack,
+  FALL_TICKS,
   createGlaceTrack,
+  createReliefTrack,
   createSurfacesTrack,
   themeByName,
   createTestTrack,
@@ -58,6 +60,7 @@ import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { volumeIcon } from "./audioLogic";
 import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
+import { predictLanding } from "./landing";
 import { Effects, QualityGovernor, type Quality } from "./fx";
 import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
@@ -76,7 +79,7 @@ import { loadTunedParams, mountTunePanel } from "./tune";
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
-// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom) et `plat` (le terrain d'essai du lot 1).
+// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
@@ -87,7 +90,7 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -125,7 +128,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -167,11 +170,15 @@ const wheelPose: WheelPose = { forward: 0, steerAngle: 0, braking: false, droop:
 const ghostPose: WheelPose = { forward: 0, steerAngle: 0, braking: false, droop: [0, 0, 0, 0], dt: 0 };
 const hudLines = document.getElementById("lines")!;
 const hudFlash = document.getElementById("flash")!;
+const hudFall = document.getElementById("fall")!;
 let demoClock = 0;
 let shake = 0;
 let lastGround = 0;
 let fovKick = 0;
 let flash = 0;
+/** Chute en cours (voile sombre qui monte, caméra qui ne suit plus la voiture vers le bas) et opacité du voile. */
+let wasFalling = false;
+let fallVeil = 0;
 let lastCountdown = 0;
 let demoReplay: ReturnType<typeof bestPilotRun> = null;
 let demoTimer = 0;
@@ -218,7 +225,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
@@ -946,10 +953,18 @@ function frame(now: number) {
       gameAudio.play("checkpoint");
       flash = 1;
     }
+    if (race.fallTicks > 0 && !wasFalling) {
+      // Chute (lot 17) : la voiture a quitté la route par le bas ; la reprise suit après FALL_TICKS pas.
+      showBanner("Chute !", 1.1, true);
+      gameAudio.play("fall");
+      if (touchPad) vibrate(touchPad.settings, 60);
+    }
+    wasFalling = race.fallTicks > 0;
     if (race.respawns !== lastRespawns) {
       lastRespawns = race.respawns;
       session?.cutInterpolation(); // pas d'interpolation à travers une téléportation
       snapCamera = true;
+      gameAudio.play("respawn");
     }
     if (race.finishMs >= 0 && phase === "racing") finishRun();
     hudTimer.textContent = phase === "countdown" ? formatTime(0) : formatTime(raceElapsedMs(race));
@@ -996,7 +1011,16 @@ function frame(now: number) {
   }
   const groundY = groundN ? groundSum / groundN : lastGround;
   lastGround = groundY;
-  placeShadow(carShadow, x, z, yaw, groundY, y - groundY);
+  // Ombre : sous la voiture ; en l'air au-dessus d'un vide, à son point de réception prévu (lot 17) — pas d'ombre du tout si elle ne
+  // retombe sur rien : c'est la chute.
+  carShadow.visible = true;
+  if (race && !car.grounded && groundN < 4 && race.fallTicks === 0 && y - groundY > 1.5) {
+    const landing = predictLanding(race.world, car, carParams);
+    if (landing) placeShadow(carShadow, landing.x, landing.z, yaw, landing.y, Math.min(6, 1 + landing.t * 4));
+    else carShadow.visible = false;
+  } else {
+    placeShadow(carShadow, x, z, yaw, groundY, y - groundY);
+  }
 
   // Fantôme : la rediffusion du meilleur temps, interpolée comme la voiture.
   const ghost = session?.ghost;
@@ -1033,7 +1057,8 @@ function frame(now: number) {
     camBaseY = y;
   }
   camYaw += wrapAngle(yaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
-  camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
+  // En chute, la caméra reste où elle est : la voiture s'enfonce dans le vide sous le regard, sans que l'écran plonge avec elle.
+  if (!(race && race.fallTicks > 0)) camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
   const back = rig.back + speedRatio * rig.backAtSpeed + fastCam.back;
   const tx = x - Math.sin(camYaw) * back;
   const ty = camBaseY + rig.height - fastCam.lower;
@@ -1076,6 +1101,10 @@ function frame(now: number) {
   hudLines.style.opacity = phase === "countdown" ? "0" : lines.toFixed(2);
   flash = Math.max(0, flash - elapsed * 2.2);
   hudFlash.style.opacity = flash.toFixed(2);
+  // Voile de la chute : il monte pendant les FALL_TICKS pas de la chute, et s'efface vite à la reprise.
+  const veilTarget = race && race.fallTicks > 0 ? Math.min(1, (race.fallTicks / FALL_TICKS) * 1.25) : 0;
+  fallVeil += (veilTarget - fallVeil) * (1 - Math.exp(-(veilTarget > fallVeil ? 14 : 7) * elapsed));
+  hudFall.style.opacity = fallVeil < 0.01 ? "0" : fallVeil.toFixed(2);
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
   hudSpeed.dataset.level = String(speedLevel(speed)); // jaune, orange puis rouge au-delà de la pointe
   updateEffects();

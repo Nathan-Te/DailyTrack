@@ -2,7 +2,7 @@ import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor,
 import { DEMO_BASE, apiBase, type ApiResult } from "./api";
 import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel } from "./adminPlan";
-import { SURFACE_LABEL, circuitStats, effectsText, widthsText } from "./circuitStats";
+import { SURFACE_LABEL, circuitStats, effectsText, reliefText, widthsText } from "./circuitStats";
 import { formatTime } from "./format";
 import { isReplaced, type PlanEntry } from "./planning";
 import { createCircuitMaker } from "./thumbGen";
@@ -195,6 +195,7 @@ export function mountPlanning(stateApi: () => string): void {
     row("Revêtements", s.surfaces.map((k) => SURFACE_LABEL[k]).join(" · "));
     row("Blocs à effet", effectsText(s));
     row("Virages serrés", String(s.tight));
+    row("Relief", reliefText(s));
     return dl;
   }
 

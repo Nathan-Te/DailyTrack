@@ -145,7 +145,9 @@ export function trackWorld(track: Track): World {
       const q = canonQ(b.dir, u, v);
 
       let onRoad: boolean;
-      if (isCurve(b.kind)) {
+      if (b.kind === "gap") {
+        onRoad = false; // le vide d'un saut : rien sous la voiture
+      } else if (isCurve(b.kind)) {
         const c = curveCenter(b.kind);
         const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);
@@ -182,7 +184,7 @@ export function trackWorld(track: Track): World {
 
     collide(x, z, y, radius, out) {
       const b = blockAt(x, z);
-      if (!b) return false;
+      if (!b || b.kind === "gap") return false;
       const u = x - b.cx * CELL;
       const v = z - b.cz * CELL;
       const p = canonP(b.dir, u, v);
@@ -198,7 +200,9 @@ export function trackWorld(track: Track): World {
       let np = 0;
       let nq = 0;
       let depth = 0;
-      if (isCurve(b.kind)) {
+      if (b.open) {
+        // Section sans rebords : seuls les bouts du circuit arrêtent la voiture (traités plus bas), pas les côtés.
+      } else if (isCurve(b.kind)) {
         const c = curveCenter(b.kind);
         const dp = p - c.cp;
         const r = Math.sqrt(dp * dp + q * q);

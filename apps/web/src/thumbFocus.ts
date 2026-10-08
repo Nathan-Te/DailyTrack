@@ -12,8 +12,8 @@ export interface Focus {
   /** Premier et dernier bloc de la portion (inclus). */
   from: number;
   to: number;
-  /** Pourquoi cette portion : le passage signature du thème, ou la zone la plus sinueuse. */
-  reason: "signature" | "winding";
+  /** Pourquoi cette portion : le passage signature du thème, un vrai saut (lot 17), ou la zone la plus sinueuse. */
+  reason: "signature" | "jump" | "winding";
   /** Points (x, y, z) de la route de la portion, élargis de la marge : tout doit entrer dans l'image. */
   points: [number, number, number][];
   /** Centre de la portion (x, z). */
@@ -26,7 +26,7 @@ const isTight = (b: Block) => b.kind === "curveL" || b.kind === "curveR";
 
 /**
  * Blocs du passage signature du thème (voir `signatureParts`, generator.ts), ou `null` s'ils n'y sont pas :
- * super turbo puis grand virage relevé · tremplin sur la terre · chicane large sur la glace · moteur coupé et point de
+ * super turbo puis grand virage relevé · saut sur la terre (rampe, vide, réception) · chicane large sur la glace · moteur coupé et point de
  * contrôle · étranglement puis virage serré sur la terre.
  */
 export function signatureBlocks(track: Track, sig: Signature): [number, number] | null {
@@ -40,8 +40,12 @@ export function signatureBlocks(track: Track, sig: Signature): [number, number] 
       return [t, bank > t ? bank : t];
     }
     case "dirtJump": {
-      const j = find((b) => b.kind === "jump" && b.surface === "dirt");
-      return j < 0 ? null : [j, j];
+      // rampe de terre (K), vide, réception : trois blocs
+      const k = find((b) => b.kind === "kick" && b.surface === "dirt");
+      if (k < 0) return null;
+      let end = k + 1;
+      while (bs[end]?.kind === "gap") end++;
+      return [k, Math.min(bs.length - 1, end)];
     }
     case "iceChicane": {
       const c = find((b, i) => isCurve(b.kind) && b.surface === "ice" && i + 1 < bs.length && isCurve(bs[i + 1]!.kind) && turnsLeft(b.kind) !== turnsLeft(bs[i + 1]!.kind));
@@ -106,7 +110,16 @@ function windiestWindow(track: Track, size: number): [number, number] {
 export function pickFocus(track: Track, theme: ThemeName, size = FOCUS_BLOCKS): Focus {
   const n = track.blocks.length;
   const sig = signatureBlocks(track, THEMES[theme].signature);
-  const [from, to] = sig ? windowAround(n, sig[0], sig[1], size) : windiestWindow(track, size);
+  // Sinon, un vrai saut : de la rampe à la réception (un vide se lit tout de suite vu d'en haut).
+  const kick = sig ? -1 : track.blocks.findIndex((b) => b.kind === "kick" && track.blocks[b.index + 1]?.kind === "gap");
+  let jump: [number, number] | null = null;
+  if (kick >= 0) {
+    let end = kick + 1;
+    while (track.blocks[end]?.kind === "gap") end++;
+    jump = [kick, Math.min(n - 1, end)];
+  }
+  const pick = sig ?? jump;
+  const [from, to] = pick ? windowAround(n, pick[0], pick[1], size) : windiestWindow(track, size);
   const line = trackCenterline(track);
   const points: [number, number, number][] = [];
   const path: [number, number][] = [];
@@ -154,5 +167,5 @@ export function pickFocus(track: Track, theme: ThemeName, size = FOCUS_BLOCKS): 
     rx = -rx;
     rz = -rz;
   }
-  return { from, to, reason: sig ? "signature" : "winding", points, center: [cx, cz], right: [rx, rz] };
+  return { from, to, reason: sig ? "signature" : jump ? "jump" : "winding", points, center: [cx, cz], right: [rx, rz] };
 }

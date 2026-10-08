@@ -26,6 +26,8 @@ import {
   BOOST_HALF_LENGTH,
   CELL,
   CUT_HALF_LENGTH,
+  FALL_DEPTH,
+  KICK_START,
   cellKey,
   JUMP_LIP,
   JUMP_RISE,
@@ -315,7 +317,19 @@ function across(r: Row, t: number, up: number): V3 {
 /** Largeur d'une tranche de route (m). */
 const rowWidth = (r: Row) => Math.hypot(r.left[0] - r.right[0], r.left[2] - r.right[2]) || 1;
 
-function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean, paved = false, skirtColor = pal.skirt) {
+/** Au-delà de cette hauteur au-dessus du sol lointain (m), une route repose sur des piliers : une dalle mince, et le vide dessous (lot 17). */
+const PILLAR_MIN = 12;
+/** Épaisseur de la dalle d'une route sur piliers (m). */
+const SLAB = 1.3;
+
+interface RoadStyle {
+  /** Sans rebords (modificateur `o`) : à la place, une bordure plate rouge et blanche, pour qu'on voie où la route s'arrête. */
+  open?: boolean;
+  /** Route sur piliers : dalle mince au lieu d'un remblai plein jusqu'au sol. */
+  pillars?: boolean;
+}
+
+function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean, paved = false, skirtColor = pal.skirt, style: RoadStyle = {}) {
   for (let i = 0; i + 1 < rows.length; i++) {
     const a = rows[i]!;
     const b = rows[i + 1]!;
@@ -342,8 +356,33 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
       for (const side of ["left", "right"] as const) {
         const p = a[side];
         const q = b[side];
-        g.quad(p, q, [q[0], floorY, q[2]], [p[0], floorY, p[2]], skirtColor);
+        // Sur piliers : une dalle de `SLAB` m ; sinon un remblai plein jusqu'au sol.
+        const lo = (v: V3) => (style.pillars ? v[1] - SLAB : floorY);
+        g.quad(p, q, [q[0], lo(q), q[2]], [p[0], lo(p), p[2]], skirtColor);
       }
+      // Dessous de la dalle : on le voit en passant dessous (et par les vides).
+      if (style.pillars) {
+        g.quad([a.left[0], a.left[1] - SLAB, a.left[2]], [a.right[0], a.right[1] - SLAB, a.right[2]], [b.right[0], b.right[1] - SLAB, b.right[2]], [b.left[0], b.left[1] - SLAB, b.left[2]], shade(skirtColor, 0.7));
+      }
+    }
+    if (style.open) {
+      // Bordure plate de chaque côté : des bandes alternées de ~4 m larges de 0,5 m, juste au-dessus de la route.
+      for (const side of ["left", "right"] as const) {
+        const p = a[side];
+        const q = b[side];
+        const mx = (a.left[0] + a.right[0]) / 2;
+        const mz = (a.left[2] + a.right[2]) / 2;
+        const len = Math.hypot(mx - p[0], mz - p[2]) || 1;
+        const ix = ((mx - p[0]) / len) * 0.5; // vers l'axe
+        const iz = ((mz - p[2]) / len) * 0.5;
+        const pieces = Math.max(1, Math.round(Math.hypot(q[0] - p[0], q[2] - p[2]) / 4));
+        for (let k = 0; k < pieces; k++) {
+          const at = (t: number, inward: number): V3 => [p[0] + (q[0] - p[0]) * t + ix * inward, p[1] + (q[1] - p[1]) * t + 0.06, p[2] + (q[2] - p[2]) * t + iz * inward];
+          const color = stripes[side]++ % 2 === 0 ? pal.wallA : pal.wallB;
+          g.quad(at(k / pieces, 0), at(k / pieces, 1), at((k + 1) / pieces, 1), at((k + 1) / pieces, 0), color);
+        }
+      }
+      continue;
     }
     // Rebords : une face intérieure et un chapeau, en bandes rouges et blanches d'environ 4 m.
     for (const side of ["left", "right"] as const) {
@@ -450,6 +489,71 @@ function addJumpMarks(g: Builder, b: Block) {
   }
 }
 
+/** Marques d'une rampe de saut (bloc K) : chevrons sur la pente, bande d'alerte au bord, face de départ rayée. */
+function addKickMarks(g: Builder, b: Block) {
+  const WARN = [0xffc21a, 0x16181f] as const;
+  const y = (q: number) => blockHeight(b, q) + 0.05;
+  for (const qc of [KICK_START + 2.2, KICK_START + 5.4, KICK_START + 8.6]) {
+    for (const s of [-1, 1]) {
+      const p0 = CELL / 2;
+      const p1 = CELL / 2 + s * 4;
+      g.quad(world(b, p0, qc + 1.4, y(qc + 1.4)), world(b, p0, qc + 0.5, y(qc + 0.5)), world(b, p1, qc - 0.9, y(qc - 0.9)), world(b, p1, qc, y(qc)), 0xf4f1e6);
+    }
+  }
+  const cols = Math.round(blockWidth(b, CELL)); // une colonne de 1 m par mètre de route
+  const q0 = CELL - 1.4;
+  for (let i = 0; i < cols; i++) {
+    const pa = CELL / 2 - cols / 2 + i;
+    g.quad(world(b, pa, q0, y(q0) + 0.01), world(b, pa + 1, q0, y(q0) + 0.01), world(b, pa + 1, CELL, y(CELL) + 0.01), world(b, pa, CELL, y(CELL) + 0.01), WARN[i % 2]!);
+    // La tranche du bord : une face rayée d'un mètre sous la lèvre, pour qu'on lise « ici, c'est le vide ».
+    g.quad(world(b, pa, CELL, y(CELL) - 0.05), world(b, pa + 1, CELL, y(CELL) - 0.05), world(b, pa + 1, CELL + 0.01, y(CELL) - 1.2), world(b, pa, CELL + 0.01, y(CELL) - 1.2), WARN[(i + 1) % 2]!);
+  }
+}
+
+/** Réception d'un saut : un damier vert et blanc au bord du premier bloc après le vide, et des chevrons vers l'avant. */
+function addLandingMarks(g: Builder, b: Block) {
+  const y = (q: number) => blockHeight(b, q) + 0.05;
+  const cols = Math.round(blockWidth(b, 0));
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < 2; j++) {
+      const pa = CELL / 2 - cols / 2 + i;
+      const qa = j * 1.2;
+      g.quad(world(b, pa, qa, y(qa)), world(b, pa + 1, qa, y(qa)), world(b, pa + 1, qa + 1.2, y(qa + 1.2)), world(b, pa, qa + 1.2, y(qa + 1.2)), (i + j) % 2 === 0 ? 0x2fd37b : 0xf4f1e6);
+    }
+  }
+  for (const qc of [6, 10, 14]) {
+    for (const s of [-1, 1]) {
+      const p0 = CELL / 2;
+      const p1 = CELL / 2 + s * 3.2;
+      g.quad(world(b, p0, qc + 1.2, y(qc + 1.2)), world(b, p0, qc + 0.4, y(qc + 0.4)), world(b, p1, qc - 0.8, y(qc - 0.8)), world(b, p1, qc, y(qc)), 0x2fd37b);
+    }
+  }
+}
+
+/** Face verticale qui ferme le bout d'un bloc au bord d'un vide : elle va de la route jusqu'au sol (ou sous la dalle). */
+function addEndFace(g: Builder, row: Row, floorY: number, color: number, pillars: boolean) {
+  const lo = (v: V3) => (pillars ? v[1] - SLAB : floorY);
+  g.quad(row.left, row.right, [row.right[0], lo(row.right), row.right[2]], [row.left[0], lo(row.left), row.left[2]], color);
+}
+
+/** Piliers sous une route surélevée : un fût central et un chapiteau en T, au milieu du bloc. */
+function addPillar(g: Builder, pal: Palette, b: Block, floorY: number) {
+  const mid = onBlock(b, 0, 0.5, 0);
+  const half = blockHalfWidth(b, CELL / 2);
+  const color = shade(pal.skirt, 1.15);
+  const top = mid[1] - SLAB;
+  const fwd = onBlock(b, 0, 0.56, 0);
+  const back = onBlock(b, 0, 0.44, 0);
+  const dx = fwd[0] - back[0];
+  const dz = fwd[2] - back[2];
+  const len = Math.hypot(dx, dz) || 1;
+  // Fût : 2,2 m de côté ; chapiteau : en travers de la route, aux deux tiers de sa largeur, sous la dalle.
+  g.box(mid[0] - 1.1, floorY, mid[2] - 1.1, mid[0] + 1.1, top - 1.4, mid[2] + 1.1, color);
+  const ax = Math.abs(dx / len) > 0.7 ? 1.6 : half * 0.66;
+  const az = Math.abs(dx / len) > 0.7 ? half * 0.66 : 1.6;
+  g.box(mid[0] - ax, top - 1.4, mid[2] - az, mid[0] + ax, top, mid[2] + az, shade(color, 0.85));
+}
+
 /** Bande de moteur coupé : en travers de toute la route, damier sombre et jaune (un avertissement, pas un bonus). */
 function addCutStrip(g: Builder, b: Block) {
   const y = b.y0 + 0.04;
@@ -502,12 +606,13 @@ const halfWidthAt = (b: Block, t: number) => (isCurve(b.kind) ? b.w0 / 2 : block
 
 /** Poteaux des deux rives (sur le chapeau du rebord), et, dans une portion rapide, arches et chevrons. */
 function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean) {
-  if (b.kind === "jump") return;
+  if (b.kind === "jump" || b.kind === "gap") return;
   const top = fast ? 3.4 : 2.4;
+  const rail = b.open ? 0 : WALL_HEIGHT; // sans rebords : les poteaux se plantent au bord de la route
   for (const t of postFractions(fast)) {
     const hw = halfWidthAt(b, t) + 0.3;
     for (const side of [-1, 1]) {
-      const p = onBlock(b, side * hw, t, WALL_HEIGHT);
+      const p = onBlock(b, side * hw, t, rail);
       g.prism(p[0], p[1], p[2], 0.16, 0.12, top, 4, shade(pal.wallB, 0.95), fast ? pal.boostMark : pal.wallA, 0.78);
     }
   }
@@ -515,8 +620,8 @@ function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean) {
   // Arche au milieu d'un bloc sur deux : deux piliers et une poutre en travers, haute de 7 m.
   if (b.index % 2 === 0) {
     const hw = halfWidthAt(b, 0.5) + 0.4;
-    const l = onBlock(b, hw, 0.5, WALL_HEIGHT);
-    const r = onBlock(b, -hw, 0.5, WALL_HEIGHT);
+    const l = onBlock(b, hw, 0.5, rail);
+    const r = onBlock(b, -hw, 0.5, rail);
     const ahead = onBlock(b, 0, 0.52, 0);
     const behind = onBlock(b, 0, 0.48, 0);
     const len = Math.hypot(ahead[0] - behind[0], ahead[2] - behind[2]) || 1;
@@ -907,29 +1012,53 @@ export interface TrackSceneOptions {
 /** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
 export function buildTrackScene(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackScene {
   const pal = PALETTE_DEFS[paletteName];
-  const floorY = track.voidY;
+  const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
   const g = new Builder();
   const speedG = new Builder();
   const fast = fastZones(track);
 
   for (const b of track.blocks) {
     const color = b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!;
-    if (isCurve(b.kind)) {
-      addRoad(g, pal, curveRows(b), color, floorY, true, b.surface === "road");
+    // Route sur piliers (lot 17) : très au-dessus du sol lointain, une dalle mince et des piliers, au lieu d'un remblai plein.
+    const pillars = Math.min(b.y0, b.y0 + b.rise) - floorY > PILLAR_MIN;
+    const style: RoadStyle = { open: b.open, pillars };
+    const prev = track.blocks[b.index - 1];
+    const next = track.blocks[b.index + 1];
+    let rows: Row[] = [];
+    if (b.kind === "gap") {
+      // Le vide d'un saut : ni route ni rebords. On ne voit que le sol lointain, loin en dessous.
+    } else if (isCurve(b.kind)) {
+      rows = curveRows(b);
+      addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
     } else if (b.kind === "jump") {
       // Rampe jusqu'au bord, face verticale, puis route plate.
       // Le tremplin se lit comme un tremplin : rampe plus claire, flancs clairs (pas un mur brun), chevrons blancs,
       // bande d'alerte jaune et noire au bord, face de chute rayée jaune et noire.
       const swell = b.w0 !== b.w1 ? 8 : 1; // un bloc de transition : rebords en courbe, donc plusieurs tranches
-      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, swell, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.9));
+      addRoad(g, pal, straightRows(b, 0, JUMP_LIP, swell, (q) => blockHeight(b, q)), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.9), style);
       addJumpMarks(g, b);
-      addRoad(g, pal, straightRows(b, JUMP_LIP, CELL, swell, () => b.y0), color, floorY, true, b.surface === "road");
+      rows = straightRows(b, JUMP_LIP, CELL, swell, () => b.y0);
+      addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
+    } else if (b.kind === "kick") {
+      // Rampe de saut : plate, puis une pente de 0,25 jusqu'au bord ; plus claire, avec ses chevrons et sa bande d'alerte.
+      rows = straightRows(b, 0, CELL, 16, (q) => blockHeight(b, q));
+      addRoad(g, pal, rows.slice(0, 9), color, floorY, true, b.surface === "road", pal.skirt, style);
+      addRoad(g, pal, rows.slice(8), shade(color, 1.18), floorY, true, false, shade(pal.skirt, 1.5), style);
+      addKickMarks(g, b);
     } else {
       const steps = b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1; // 16 tranches : bosse, ou rebords d'une transition de largeur
-      addRoad(g, pal, straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q)), color, floorY, true, b.surface === "road");
+      rows = straightRows(b, 0, CELL, steps, (q) => blockHeight(b, q));
+      addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
     }
+    // Au bord d'un vide : la route se termine par une face pleine (jusqu'au sol, ou la dalle d'une route sur piliers).
+    if (rows.length > 0 && next?.kind === "gap") addEndFace(g, rows[rows.length - 1]!, floorY, shade(pal.skirt, 1.25), pillars);
+    if (rows.length > 0 && prev?.kind === "gap") {
+      addEndFace(g, rows[0]!, floorY, shade(pal.skirt, 1.25), pillars);
+      addLandingMarks(g, b);
+    }
+    if (pillars && b.kind !== "gap") addPillar(g, pal, b, floorY);
     const effect = b.kind === "boost" || b.kind === "turbo" || b.kind === "cut";
-    if (b.surface === "road" && !effect && b.kind !== "jump" && b.kind !== "bump") addDashes(g, pal, b);
+    if (b.surface === "road" && !effect && b.kind !== "jump" && b.kind !== "bump" && b.kind !== "kick" && b.kind !== "gap") addDashes(g, pal, b);
     addSurfaceMarks(g, b);
     if (b.kind === "boost") addBoostPad(g, pal, b);
     if (b.kind === "turbo") addTurboPad(g, b);

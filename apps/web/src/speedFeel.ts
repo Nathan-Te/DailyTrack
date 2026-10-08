@@ -65,7 +65,8 @@ export function buzzAllowed(quality: number): boolean {
 
 /**
  * Blocs d'une portion rapide : un super turbo et ses six blocs suivants, une plaque suivie d'une descente (jusqu'à deux blocs
- * après la dernière pente), toute descente d'au moins trois blocs, une plaque seule et les deux blocs suivants.
+ * après la dernière pente), toute descente d'au moins trois niveaux (D2 compte pour deux, D3 pour trois), une plaque seule et les
+ * deux blocs suivants.
  * Même résultat que la lecture du texte du circuit : le décor ne dépend que des blocs.
  */
 export function fastZones(track: Pick<Track, "blocks">): boolean[] {
@@ -83,8 +84,9 @@ export function fastZones(track: Pick<Track, "blocks">): boolean[] {
       mark(i, j > i + 1 ? j + 1 : i + 2);
     } else if (kind === "down") {
       let j = i;
-      while (blocks[j]?.kind === "down") j++;
-      if (j - i >= 3) mark(i, j + 1);
+      let levels = 0;
+      while (blocks[j]?.kind === "down") levels += Math.abs(blocks[j++]!.rise) / 4;
+      if (levels >= 3) mark(i, j + 1);
       i = j - 1;
     }
   }

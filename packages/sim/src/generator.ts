@@ -14,6 +14,8 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 //    virages serrés, jamais l'un derrière l'autre), avec un ou deux passages marquants (tremplin, S large, demi-tour).
 //    La largeur de la route change par des blocs de transition (au moins deux largeurs par circuit, dominantes selon
 //    le thème) ; un virage serré ne se pose pas sur la route large.
+//    Relief (lot 17) : des collines de un à trois niveaux (montées, crêtes, descentes plus ou moins raides), un vrai saut
+//    (rampe, vide, réception) selon le thème, des sections sans rebords sur les parties surélevées.
 //    On place chaque segment sur la grille en refusant les croisements.
 // 2. Validation : un pilote automatique parcourt le circuit avec la même physique. S'il ne le finit pas, ou si
 //    sa durée sort de la fenêtre visée, on recommence avec une graine voisine (tentative suivante).
@@ -90,7 +92,8 @@ function place(w: Walk, tokens: readonly string[]): boolean {
   let { cx, cz, dir, y } = w;
   const added: number[] = [];
   for (const t of tokens) {
-    const kind = parseToken(t).kind;
+    const parsed = parseToken(t);
+    const kind = parsed.kind;
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
       const key = cellKey(x, z);
@@ -101,7 +104,7 @@ function place(w: Walk, tokens: readonly string[]): boolean {
       w.cells.add(key);
       added.push(key);
     }
-    y += exitDelta(kind);
+    y += exitDelta(kind, parsed.rise);
     ({ cx, cz, dir } = placed.next);
   }
   w.cx = cx;
@@ -112,7 +115,14 @@ function place(w: Walk, tokens: readonly string[]): boolean {
   return true;
 }
 
-const MAX_HILLS = 2;
+/** Hauteurs permises (m) de la route par rapport au départ : au-delà, la prochaine colline repart dans l'autre sens ou la tentative échoue. */
+const Y_MIN = -24;
+const Y_MAX = 24;
+/** Dénivelé minimal d'un circuit (m, du point le plus bas au plus haut) : trois niveaux. */
+export const MIN_RELIEF = 12;
+/** Une section sans rebords ne se pose que sur une route au moins aussi haute (m au-dessus du point le plus bas) : le risque de tomber doit être réel. */
+const OPEN_MIN_HEIGHT = 6;
+
 /**
  * Lignes droites obligatoires après une plaque d'accélération, avant le virage suivant : elle pousse la voiture
  * pendant ~0,9 s, et pendant ce temps le frein (40 m/s²) lutte contre la poussée (30 m/s²). Avec une pointe à
@@ -128,7 +138,89 @@ const TURNS_SPAN = 3;
 /** Virages serrés (une cellule, rayon 16 m) : au plus 2 par circuit passage signature compris, jamais deux d'affilée. */
 const MAX_TIGHT = 2;
 
-type Highlight = "jump" | "chicane" | "hairpin";
+type Highlight = "chicane" | "hairpin";
+
+/**
+ * Reliefs (créneaux calmes), du plus doux au plus raide. `U` / `D` : un niveau (4 m) sur une cellule ; `U2` / `D2` et `U3` / `D3` :
+ * deux et trois niveaux sur une cellule (pente 0,25 et 0,375). Un dos d'âne (`U2 D2`) fait décoller à haute vitesse : trois
+ * lignes droites derrière lui pour atterrir (`CREST_RUNOUT`). Chaque motif revient en général à son niveau de départ.
+ */
+const CREST_RUNOUT = 3;
+const crest = (up: string, down: string) => [up, down, ...Array<string>(CREST_RUNOUT).fill("S")];
+const HILLS_GENTLE: readonly (readonly string[])[] = [
+  ["U", "U", "S", "D", "D"], // montée de deux niveaux, crête, descente
+  ["U", "S", "D"],
+  ["D", "S", "U"], // creux
+  ["D", "D", "S", "U", "U"],
+  ["U", "U", "U", "S", "D", "D", "D"], // trois niveaux, long
+];
+const HILLS_STEEP: readonly (readonly string[])[] = [
+  ["U2", "S", "D2"],
+  ["U3", "S", "D3"],
+  ["U2", "S", "D", "D", "D"], // montée raide, longue descente (rend un niveau de moins)
+  ["U", "U", "S", "D2", "D"],
+  ["D2", "S", "U2"],
+  crest("U2", "D2"),
+  crest("U3", "D3"),
+  ["U3", "S", "D2", "D"],
+  ["U2", "S", "S", "S", "D2"], // plateau surélevé : de la place pour une section sans rebords
+  ["U3", "S", "S", "S", "D3"],
+];
+/** Hauteurs extrêmes atteintes par une suite de blocs partie de 0 (m), et son dénivelé net. */
+function extent(seg: readonly string[]): { hi: number; lo: number; net: number } {
+  let y = 0;
+  let hi = 0;
+  let lo = 0;
+  for (const t of seg) {
+    const p = parseToken(t);
+    y += exitDelta(p.kind, p.rise);
+    if (y > hi) hi = y;
+    if (y < lo) lo = y;
+  }
+  return { hi, lo, net: y };
+}
+/** Dénivelé d'un relief (m) : sa hauteur la plus haute moins la plus basse. */
+const hillRise = (seg: readonly string[]): number => {
+  const e = extent(seg);
+  return e.hi - e.lo;
+};
+/** Dénivelé d'un circuit (m, du point le plus bas au plus haut de la route) : le critère `MIN_RELIEF`. */
+export function reliefOf(tokens: readonly string[]): number {
+  return hillRise(tokens);
+}
+
+/**
+ * Sauts (lot 17) : rampe `K`, vide `G` (32 m par cellule), réception. `GD` : le bord d'en face est un niveau plus bas que le bord de
+ * la rampe. La voiture doit atteindre une vitesse minimale au bord de la rampe (voir `jumpMinSpeed`, jump.ts), faute de quoi
+ * elle tombe ; les sauts longs partent d'une plaque (66 m/s) ou d'un super turbo (88 m/s). Trois lignes droites au moins derrière
+ * un saut court, cinq derrière un saut long, pour freiner avant le virage suivant.
+ * - court : de la rampe au vide, atterrissage un niveau plus bas (fenêtre ≥ 33 m/s) ;
+ * - plat : vide au niveau de la rampe, réception en descente, après une plaque (fenêtre ≥ 40 m/s : la plaque en donne plus de 60) ;
+ * - long : deux cellules de vide après un super turbo (fenêtre ≥ 58 m/s) ;
+ * - long bas : deux cellules, atterrissage plus bas, après une plaque (fenêtre ≥ 52 m/s) ;
+ * - haut : le bord d'en face est un niveau plus haut, après un super turbo (fenêtre ≥ 54 m/s).
+ */
+type JumpKind = "short" | "flat" | "long" | "longDown" | "up";
+const JUMP_KINDS: readonly JumpKind[] = ["short", "flat", "long", "longDown", "up"];
+const JUMP_WEIGHTS: Record<JumpKind, number> = { short: 3, flat: 3, long: 2, longDown: 2, up: 1 };
+const JUMP_LANDING = 3;
+const JUMP_LANDING_LONG = 5;
+function jumpCalm(kind: JumpKind, surface = ""): string[] {
+  const s = (t: string) => (surface ? withMod(t, surface) : t);
+  const land = (n: number) => Array<string>(n).fill("S").map(s);
+  switch (kind) {
+    case "short":
+      return [...["S", "S", "S"].map(s), s("K"), "GD", ...land(JUMP_LANDING)];
+    case "flat":
+      return [s("S"), "P", s("S"), s("K"), "G", s("D"), ...land(JUMP_LANDING)];
+    case "long":
+      return ["S", "T", "S", "S", "K", "G", "G", s("D"), ...land(JUMP_LANDING_LONG)];
+    case "longDown":
+      return ["S", "P", "S", "K", "G", "GD", s("D"), ...land(JUMP_LANDING_LONG - 1)];
+    case "up":
+      return ["S", "T", "S", "S", "K", "GU", ...land(JUMP_LANDING_LONG)];
+  }
+}
 
 /**
  * Portions rapides (lot 15) : un créneau calme qui lance la voiture bien au-delà de la pointe du plat.
@@ -203,8 +295,8 @@ function signatureParts(sig: Signature, L: string, R: string, width: WidthLetter
   switch (sig) {
     case "turboBank": // super turbo sur une ligne droite, puis grand virage relevé
       return { calm: ["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")], turn: [[withMod(L + "2", "b")], [withMod(R + "2", "b")]] };
-    case "dirtJump": // tremplin sur la terre
-      return { calm: ["S/t", "J/t", "S/t", "S/t"] };
+    case "dirtJump": // saut court sur la terre : rampe de terre, vide, réception de terre
+      return { calm: jumpCalm("short", SURFACE_MOD.dirt) };
     case "iceChicane": // chicane large sur la glace, après une ligne droite verglacée
       return { calm: ["S/g", "S/g"], turn: [[`${L}2/g`, `${R}2/g`], [`${R}2/g`, `${L}2/g`]] };
     case "cutRun": // moteur coupé, puis point de contrôle deux blocs plus loin (voir composeSpec)
@@ -219,35 +311,67 @@ function signatureParts(sig: Signature, L: string, R: string, width: WidthLetter
   }
 }
 
+/** Vrai si la suite de blocs, posée à la hauteur `y`, reste entre `Y_MIN` et `Y_MAX`. */
+function fits(y: number, seg: readonly string[]): boolean {
+  const e = extent(seg);
+  return y + e.hi <= Y_MAX && y + e.lo >= Y_MIN;
+}
+
 /** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée. */
 export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): string | null {
   // Variante 0 : la graine d'avant le lot 14 (circuits inchangés). Variante n : une autre graine, décalée de n × 1000
   // tentatives (au plus `MAX_ATTEMPTS` = 40 sont tirées : jamais de recoupement entre variantes).
   const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
   const turns = TURNS_MIN + rng.int(TURNS_SPAN);
-  // Créneaux : calme, virage, calme, virage, …, calme final. Les passages marquants prennent des créneaux distincts.
-  const pickHighlights = rng.shuffle<Highlight>(["jump", "chicane", "hairpin"]).slice(0, 1 + rng.int(2));
-  const calmSlot = new Map<number, Highlight>();
+  // Créneaux : calme, virage, calme, virage, …, calme final. Les passages marquants prennent des créneaux distincts, dans cet ordre
+  // de priorité : passage signature, saut, virages marquants, portions rapides (celles-là se perdent si la place manque : le pilote
+  // refuse alors le circuit faute de portion rapide, et la graine voisine prend le relais).
+  const freeSlot = (from: number, to: number, taken: (i: number) => boolean): number => {
+    const start = from + rng.int(to - from + 1);
+    for (let k = 0; k <= to - from; k++) {
+      const i = from + ((start - from + k) % (to - from + 1));
+      if (!taken(i)) return i;
+    }
+    return -1;
+  };
+  const signatureSlot = freeSlot(1, turns - 2, () => false);
+  // Vrai saut (lot 17) : un créneau calme au milieu du circuit (ni le premier, où la voiture part de zéro, ni le dernier : pas de
+  // saut juste avant l'arrivée), du type tiré selon les poids.
+  const jumpSlot = new Map<number, JumpKind>();
+  if (rng.chance(theme.jumpChance)) {
+    let roll = rng.int(JUMP_KINDS.reduce((sum, k) => sum + JUMP_WEIGHTS[k], 0));
+    let kind = JUMP_KINDS[0]!;
+    for (const k of JUMP_KINDS) {
+      if (roll < JUMP_WEIGHTS[k]) {
+        kind = k;
+        break;
+      }
+      roll -= JUMP_WEIGHTS[k];
+    }
+    const slot = freeSlot(1, turns - 2, (i) => i === signatureSlot);
+    if (slot >= 0) jumpSlot.set(slot, kind);
+  }
+  const pickHighlights = rng.shuffle<Highlight>(["chicane", "hairpin"]).slice(0, 1 + rng.int(2));
   const turnSlot = new Map<number, Highlight>();
   for (const h of pickHighlights) {
-    const slots = h === "jump" ? calmSlot : turnSlot;
-    const limit = h === "jump" ? turns - 1 : turns; // pas de tremplin juste avant l'arrivée
-    let i = rng.int(limit);
-    for (let tries = 0; tries < turns && slots.has(i); tries++) i = (i + 1) % limit;
-    slots.set(i, h);
+    const slot = freeSlot(0, turns - 1, (i) => turnSlot.has(i) || i === signatureSlot);
+    if (slot >= 0) turnSlot.set(slot, h);
   }
-  // Portions rapides : un ou deux créneaux calmes de plus, distincts du tremplin (un décollage coupe tout freinage).
+  // Portions rapides : un ou deux créneaux calmes de plus, distincts du saut (un décollage coupe tout freinage).
   const fastSlot = new Map<number, Fast>();
   for (const kind of rng.shuffle<Fast>([...FAST_KINDS]).slice(0, 1 + rng.int(2))) {
-    let i = rng.int(turns - 1);
-    for (let tries = 0; tries < turns && (fastSlot.has(i) || calmSlot.has(i)); tries++) i = (i + 1) % (turns - 1);
-    if (!fastSlot.has(i) && !calmSlot.has(i)) fastSlot.set(i, kind);
+    const slot = freeSlot(0, turns - 2, (i) => fastSlot.has(i) || jumpSlot.has(i) || i === signatureSlot);
+    if (slot >= 0) fastSlot.set(slot, kind);
   }
-  // Passage signature du thème : un créneau (calme + virage) qui ne porte aucun autre passage marquant.
-  let signatureSlot = 1 + rng.int(turns - 2);
-  for (let tries = 0; tries < turns && (calmSlot.has(signatureSlot) || turnSlot.has(signatureSlot) || fastSlot.has(signatureSlot)); tries++) {
-    signatureSlot = signatureSlot >= turns - 2 ? 1 : signatureSlot + 1;
+  // Reliefs : des créneaux calmes libres (ni saut, ni portion rapide, ni signature). Le premier relief d'un circuit est toujours
+  // d'au moins deux niveaux : c'est lui qui garantit le dénivelé minimal.
+  const hillSlot = new Set<number>();
+  const hillCount = theme.relief.hills[0] + rng.int(theme.relief.hills[1] - theme.relief.hills[0] + 1);
+  for (let tries = 0; hillSlot.size < hillCount && tries < 3 * turns; tries++) {
+    const i = rng.int(turns);
+    if (!jumpSlot.has(i) && !fastSlot.has(i) && i !== signatureSlot) hillSlot.add(i);
   }
+  let majorHill = false;
 
   // Largeurs : la route démarre à une largeur tirée selon le thème, et change aux créneaux calmes tirés d'avance.
   const weights = theme.widths.weights;
@@ -263,7 +387,6 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
 
   const w: Walk = { cx: 0, cz: 0, dir: 0, y: 0, cells: new Set(), tokens: [] };
   place(w, [`S/${width}`]);
-  let hills = 0;
 
   for (let i = 0; i < turns; i++) {
     const left = rng.chance(50);
@@ -275,21 +398,25 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     const fast = signature ? undefined : fastSlot.get(i);
 
     // Créneau calme.
-    const calmHighlight = calmSlot.get(i);
+    const jump = signature ? undefined : jumpSlot.get(i);
     const calm: string[][] = [];
     if (signature) {
       calm.push(signature.calm);
     } else if (fast) {
       calm.push(fastCalm(fast));
-    } else if (calmHighlight === "jump") {
-      calm.push(["S", "J", "S", "S"]);
+    } else if (jump) {
+      calm.push(jumpCalm(jump));
     } else {
       const pad = Array<string>(PAD_RUNOUT).fill("S");
       const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...pad], ["S", "B", "S"], ["P", ...pad]]);
-      if (hills < MAX_HILLS && rng.chance(35)) {
-        options.unshift(rng.pick<string[]>([["U", "S", "D"], ["U", "S", "S", "D"], ["D", "S", "U"]]));
-      }
       if (rng.chance(theme.turboChance)) options.unshift(["S", "T", ...Array<string>(TURBO_RUNOUT).fill("S")]);
+      if (hillSlot.has(i)) {
+        // Un relief : les motifs raides ou doux selon le thème, mélangés ; le premier relief du circuit fait au moins 2 niveaux.
+        const steep = rng.chance(theme.relief.steep);
+        const pool = rng.shuffle<readonly string[]>([...(steep ? HILLS_STEEP : HILLS_GENTLE), ...(steep ? HILLS_GENTLE : HILLS_STEEP)]);
+        const fitting = pool.filter((seg) => (majorHill ? true : hillRise(seg) >= MIN_RELIEF) && fits(w.y, seg));
+        options.unshift(...fitting.map((seg) => [...seg]));
+      }
       calm.push(...options);
     }
     // Changement de largeur : un bloc de transition en tête du créneau (sauf passage signature). Si aucun motif ne tient avec lui,
@@ -298,10 +425,10 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     const candidates = target ? calm.map((seg) => [transition(width, target), ...seg]) : [];
     candidates.push(...calm);
     // Repli sur une ligne droite simple, sauf pour un passage marquant : s'il ne tient pas, la tentative échoue.
-    if (!calmHighlight && !signature && !fast) candidates.push(["S"], ["S", "S"]);
-    const calmChoice = candidates.find((seg) => place(w, seg));
+    if (!jump && !signature && !fast) candidates.push(["S"], ["S", "S"]);
+    const calmChoice = candidates.find((seg) => fits(w.y, seg) && place(w, seg));
     if (!calmChoice) return null;
-    if (w.tokens[w.tokens.length - 1] === "D" || w.tokens[w.tokens.length - 1] === "U") hills++;
+    if (hillSlot.has(i) && !signature && !fast && !jump && hillRise(calmChoice) >= MIN_RELIEF) majorHill = true;
     const after = widthAfter(calmChoice, width);
     if (!signature && after !== width) mustChange = false;
     width = after;
@@ -366,16 +493,65 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
 
   // Zones de revêtement : des suites de 3 à 6 blocs d'un même revêtement (terre, glace, herbe) sur les blocs ordinaires.
   if (theme.zones) assignZones(w.tokens, theme.zones, rng);
+  // Dénivelé minimal, puis sections sans rebords sur les parties surélevées.
+  if (reliefOf(w.tokens) < MIN_RELIEF) return null;
+  if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng);
   return w.tokens.join(" ");
 }
 
 const bankAll = (segments: string[][], bank: (seg: string[]) => string[]): string[][] => segments.map(bank);
 
-/** Blocs qui reçoivent un revêtement : droites, virages, côtes (pas les effets, bosses, tremplins ni le départ / l'arrivée). */
+/** Blocs qui reçoivent un revêtement : droites, virages, côtes d'un niveau (pas les effets, bosses, rampes, vides, côtes raides ni le départ / l'arrivée). */
 function surfaceable(token: string, index: number, n: number): boolean {
   if (index === 0 || index >= n - 1 || token.includes("/")) return false;
-  const k = parseToken(token).kind;
-  return k === "straight" || isCurve(k) || k === "up" || k === "down";
+  const p = parseToken(token);
+  // Une montée raide (U2, U3 : pente 0,25 et 0,375) reste sur la route : sur l'herbe, la poussée ne suffit pas à la monter (mesuré :
+  // la voiture cale et recule), et une descente raide sur la glace ne se contrôle pas.
+  if ((p.kind === "up" || p.kind === "down") && p.rise !== undefined && Math.abs(p.rise) > 4) return false;
+  return p.kind === "straight" || isCurve(p.kind) || p.kind === "up" || p.kind === "down";
+}
+
+/**
+ * Sections sans rebords (lot 17) : sur une suite de 3 à 5 blocs ordinaires (droites, virages, montées, descentes) dont la route est
+ * à `OPEN_MIN_HEIGHT` m au moins au-dessus du point le plus bas du circuit, on retire les rebords (modificateur `o`). Rien
+ * si aucune suite n'est assez haute.
+ */
+function openSection(tokens: string[], rng: Rng): void {
+  const n = tokens.length;
+  const entry: number[] = [];
+  const exit: number[] = [];
+  let y = 0;
+  let low = 0;
+  for (const t of tokens) {
+    const p = parseToken(t);
+    entry.push(y);
+    y += exitDelta(p.kind, p.rise);
+    exit.push(y);
+    low = Math.min(low, y, entry[entry.length - 1]!);
+  }
+  const ok = (i: number): boolean => {
+    if (i < 1 || i >= n - 2) return false;
+    const k = parseToken(tokens[i]!).kind;
+    if (k === "kick" || k === "gap" || k === "jump") return false;
+    // Le bloc d'avant un saut garde ses rebords (la rampe commence sur une route fermée), comme la réception.
+    const next = parseToken(tokens[i + 1]!).kind;
+    const prev = parseToken(tokens[i - 1]!).kind;
+    if (next === "kick" || prev === "gap") return false;
+    return Math.min(entry[i]!, exit[i]!) - low >= OPEN_MIN_HEIGHT;
+  };
+  const runs: [number, number][] = [];
+  for (let i = 1; i < n - 2; i++) {
+    if (!ok(i)) continue;
+    let j = i;
+    while (j + 1 < n - 2 && ok(j + 1)) j++;
+    if (j - i + 1 >= 3) runs.push([i, j]);
+    i = j;
+  }
+  if (runs.length === 0) return;
+  const [from, to] = runs[rng.int(runs.length)]!;
+  const length = Math.min(to - from + 1, 3 + rng.int(3));
+  const start = from + rng.int(to - from + 1 - length + 1);
+  for (let i = start; i < start + length; i++) tokens[i] = withMod(tokens[i]!, "o");
 }
 
 function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: Rng): void {

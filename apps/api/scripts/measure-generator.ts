@@ -13,7 +13,10 @@ import {
   daysFromCivil,
   isCurve,
   isWide,
+  MIN_RELIEF,
   parseTrack,
+  reliefOf,
+  trackJumps,
   replayRace,
   themeByName,
   type Block,
@@ -97,6 +100,21 @@ console.log(`répartition (tranches de 2 s) : ${[...hist.entries()].sort((a, b) 
 console.log(`circuits de secours (aucune tentative n'a abouti) : ${rows.filter((r) => r.c.fallback).length}`);
 console.log(`tentative retenue : moyenne ${mean(rows.map((r) => r.c.attempt)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.c.attempt))}`);
 console.log(`blocs : moyenne ${mean(rows.map((r) => r.c.track.blocks.length)).toFixed(1)} · virages larges (L2/R2) : ${mean(rows.map((r) => r.c.track.blocks.filter((b) => isWide(b.kind)).length)).toFixed(1)} par circuit`);
+// Relief et sauts (lot 17).
+const reliefs = rows.map((r) => reliefOf(r.c.spec.split(" ")));
+console.log(`dénivelé (point le plus haut − le plus bas de la route) : min ${Math.min(...reliefs)} · moyen ${mean(reliefs).toFixed(1)} · max ${Math.max(...reliefs)} m ; au moins ${MIN_RELIEF} m : ${reliefs.filter((x) => x >= MIN_RELIEF).length}/${rows.length}`);
+const slopeBlocks = rows.map((r) => r.c.track.blocks.filter((b) => b.kind === "up" || b.kind === "down").length);
+const steepBlocks = rows.map((r) => r.c.track.blocks.filter((b) => (b.kind === "up" || b.kind === "down") && Math.abs(b.rise) > 4).length);
+console.log(`pentes : ${mean(slopeBlocks).toFixed(1)} blocs par circuit dont ${mean(steepBlocks).toFixed(1)} raides (2 ou 3 niveaux) ; circuits avec un dos d'âne (montée raide puis descente raide) : ${rows.filter((r) => /\b[UD][23] [UD][23]\b/.test(r.c.spec)).length}/${rows.length}`);
+const jumpsBy = (name: string) => rows.filter((r) => r.c.theme === name);
+console.log(`sauts : ${THEME_NAMES.map((n) => `${n} ${jumpsBy(n).filter((r) => trackJumps(r.c.track).length > 0).length}/${jumpsBy(n).length}`).join(" · ")} circuits avec au moins un vrai saut`);
+const jumpKinds = new Map<string, number>();
+for (const r of rows) for (const j of trackJumps(r.c.track)) jumpKinds.set(`${j.gapCells * 32} m, bord ${j.rise >= 0 ? "+" : ""}${j.rise} m`, (jumpKinds.get(`${j.gapCells * 32} m, bord ${j.rise >= 0 ? "+" : ""}${j.rise} m`) ?? 0) + 1);
+console.log(`types de saut : ${[...jumpKinds.entries()].sort().map(([k, n]) => `${k} × ${n}`).join(" · ")}`);
+const pilots = rows.map((r) => (r.c.fallback ? null : bestPilotRun(r.c.track)));
+const margins = pilots.flatMap((p) => (p ? p.jumps.map((j) => j.speed / j.jump.minSpeed) : []));
+console.log(`vitesse du pilote au bord de la rampe, en multiple du plancher de la fenêtre : min ${margins.length ? Math.min(...margins).toFixed(2) : "—"} · moyenne ${margins.length ? mean(margins).toFixed(2) : "—"} (exigé ≥ 1,08)`);
+console.log(`sections sans rebords : ${rows.filter((r) => r.c.track.blocks.some((b) => b.open)).length}/${rows.length} circuits (${THEME_NAMES.map((n) => `${n} ${jumpsBy(n).filter((r) => r.c.track.blocks.some((b) => b.open)).length}/${jumpsBy(n).length}`).join(" · ")}) ; chutes du pilote : ${pilots.filter((p) => p && p.respawns > 0).length}`);
 console.log(`largeurs : au moins deux par circuit : ${rows.filter((r) => r.widths.length >= 2).length}/${rows.length} ; largeurs vues : ${[...new Set(rows.flatMap((r) => r.widths))].sort((a, b) => a - b).join(", ")} m`);
 console.log(`virages serrés : moyenne ${mean(rows.map((r) => r.tight.total)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.tight.total))} ; deux d'affilée : ${rows.filter((r) => r.tight.run >= 2).length} circuit(s)`);
 const peaks = rows.map((r) => r.maxSpeed);

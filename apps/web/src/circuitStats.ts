@@ -14,8 +14,11 @@ export interface CircuitStats {
   /** Virages serrés (une cellule) et virages relevés. */
   tight: number;
   banked: number;
-  /** Tremplins. */
+  /** Tremplins (J) et vrais sauts (rampe K suivie d'un vide, lot 17). */
   jumps: number;
+  /** Dénivelé du circuit (m), du point le plus bas au plus haut de la route (lot 17), et nombre de blocs sans rebords. */
+  relief: number;
+  open: number;
   /** Nombre de blocs et de points de contrôle (arrivée non comprise). */
   blocks: number;
   checkpoints: number;
@@ -28,7 +31,9 @@ const SURFACE_ORDER: SurfaceKind[] = ["road", "dirt", "ice", "grass"];
 export function circuitStats(track: Track): CircuitStats {
   const widths = new Set<number>();
   const surfaces = new Set<SurfaceKind>();
-  const s: CircuitStats = { widths: [], surfaces: [], pads: 0, turbos: 0, cuts: 0, tight: 0, banked: 0, jumps: 0, blocks: track.blocks.length, checkpoints: track.gates.filter((g) => g.kind === "checkpoint").length };
+  let lo = 0;
+  let hi = 0;
+  const s: CircuitStats = { widths: [], surfaces: [], pads: 0, turbos: 0, cuts: 0, tight: 0, banked: 0, jumps: 0, relief: 0, open: 0, blocks: track.blocks.length, checkpoints: track.gates.filter((g) => g.kind === "checkpoint").length };
   for (const b of track.blocks) {
     widths.add(b.w0);
     widths.add(b.w1);
@@ -36,12 +41,16 @@ export function circuitStats(track: Track): CircuitStats {
     if (b.kind === "boost") s.pads++;
     else if (b.kind === "turbo") s.turbos++;
     else if (b.kind === "cut") s.cuts++;
-    else if (b.kind === "jump") s.jumps++;
+    else if (b.kind === "jump" || b.kind === "kick") s.jumps++;
+    if (b.open) s.open++;
+    lo = Math.min(lo, b.y0, b.y0 + b.rise);
+    hi = Math.max(hi, b.y0, b.y0 + b.rise);
     if (isCurve(b.kind)) {
       if (!isWide(b.kind)) s.tight++;
       if (b.banked) s.banked++;
     }
   }
+  s.relief = hi - lo;
   s.widths = [...widths].sort((a, b) => a - b);
   s.surfaces = SURFACE_ORDER.filter((k) => surfaces.has(k));
   return s;
@@ -60,6 +69,14 @@ export function effectsText(s: Pick<CircuitStats, "pads" | "turbos" | "cuts">): 
   add(s.turbos, "super turbo", "super turbos");
   add(s.cuts, "moteur coupé", "moteurs coupés");
   return parts.length ? parts.join(" · ") : "aucun";
+}
+
+/** Une ligne de texte pour le relief : « 24 m de dénivelé · 2 sauts · 4 blocs sans rebords ». */
+export function reliefText(s: Pick<CircuitStats, "relief" | "jumps" | "open">): string {
+  const parts = [`${s.relief} m de dénivelé`];
+  if (s.jumps > 0) parts.push(`${s.jumps} ${s.jumps > 1 ? "sauts" : "saut"}`);
+  if (s.open > 0) parts.push(`${s.open} ${s.open > 1 ? "blocs sans rebords" : "bloc sans rebords"}`);
+  return parts.join(" · ");
 }
 
 /** Toutes les largeurs possibles (pour vérifier qu'une valeur lue est bien l'une des trois). */

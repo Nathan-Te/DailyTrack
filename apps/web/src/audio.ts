@@ -33,7 +33,7 @@ export interface AudioFrame {
   active: boolean;
 }
 
-export type OneShot = "countdown" | "go" | "checkpoint" | "finish" | "medal" | "impact" | "land" | "turbo" | "cut";
+export type OneShot = "countdown" | "go" | "checkpoint" | "finish" | "medal" | "impact" | "land" | "turbo" | "cut" | "fall" | "respawn";
 
 export class GameAudio {
   settings: AudioSettings;
@@ -279,6 +279,16 @@ export class GameAudio {
         break;
       case "cut":
         this.tone(300, 0.5, "sawtooth", 0.14, 0, 60);
+        break;
+      case "fall":
+        // Chute (lot 17) : un sifflement qui descend, puis le vent qui s'éloigne.
+        this.tone(880, 0.55, "sine", 0.16, 0, 70);
+        this.burst(0.6, 1400, 0.22, 0, 220);
+        break;
+      case "respawn":
+        // Retour au point de contrôle : une petite montée, nette.
+        this.tone(noteFreq(-2), 0.1, "triangle", 0.12);
+        this.tone(noteFreq(5), 0.16, "triangle", 0.12, 0.08);
         break;
       case "finish":
         [0, 4, 7, 12].forEach((s, i) => this.tone(noteFreq(s), 0.32, "triangle", 0.16, i * 0.11));

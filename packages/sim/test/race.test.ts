@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CAR_PARAMS as CAR,
   CELL,
+  FALL_TICKS,
   NO_INPUT,
   TICK_RATE,
   blockHeight,
@@ -77,16 +78,34 @@ describe("rebords et vide", () => {
     expect(race.respawns).toBe(0);
   });
 
-  it("une chute sous le circuit ramène au départ, chrono qui continue", () => {
+  it("une chute sous le circuit ramène au départ après un court délai, chrono qui continue", () => {
     const race = createRace(track);
     runFor(race, GAS, 1);
     race.car.y = race.world.voidY - 1;
     const tick = race.car.tick;
     stepRace(race, NO_INPUT);
+    // Le pas qui suit le franchissement du seuil lance la chute : la voiture tombe encore, sans rien commander.
+    expect(race.fallTicks).toBe(1);
+    expect(race.respawns).toBe(0);
+    for (let i = 1; i < FALL_TICKS - 1; i++) stepRace(race, makeInput(0, 1, 0));
+    expect(race.respawns).toBe(0);
+    stepRace(race, NO_INPUT);
     expect(race.respawns).toBe(1);
+    expect(race.fallTicks).toBe(0);
     expect(race.car.x).toBe(track.spawn.x);
     expect(race.car.z).toBe(track.spawn.z);
-    expect(race.car.tick).toBe(tick + 2); // pas normal + pas de reprise : le temps ne s'arrête pas
+    expect(race.car.tick).toBe(tick + FALL_TICKS + 1); // le chrono ne s'arrête jamais : un pas par pas, plus le pas de reprise
+  });
+
+  it("la reprise volontaire pendant la chute ramène tout de suite à la reprise", () => {
+    const race = createRace(track);
+    runFor(race, GAS, 1);
+    race.car.y = race.world.voidY - 1;
+    stepRace(race, NO_INPUT);
+    expect(race.fallTicks).toBeGreaterThan(0);
+    stepRace(race, makeInput(0, 0, 0, true));
+    expect(race.respawns).toBe(1);
+    expect(race.fallTicks).toBe(0);
   });
 });
 
