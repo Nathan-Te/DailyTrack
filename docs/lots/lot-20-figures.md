@@ -6,7 +6,9 @@
 
 (Si l'environnement impose un autre nom de branche, remplacer `lot-20-figures` dans les liens ; une fois fusionné, les mêmes adresses marchent sur https://nathan-te.github.io/DailyTrack/ et `/admin/` propose « Les figures » et « Une figure en boucle ».)
 
-![Saut vers un virage relevé : la figure `saut-releve`, la voiture en vol](img/lot-20-saut-releve.png)
+![La figure `saut-releve` : la voiture, à 224 km/h, arrive au bord de la rampe du saut](img/lot-20-saut-releve.png)
+
+![Admin : la carte d'un jour liste ses figures (aide au remplacement)](img/lot-20-admin-figures.png)
 
 ## Ce que fait le lot
 
@@ -95,3 +97,62 @@ Toutes les adresses ci-dessous ouvrent la figure, départ juste avant. `?scenari
 | Colline (`colline-douce`) | 5 | Une montée, une crête, une descente de un à trois niveaux. | [`?scenario=figure&f=colline-douce`](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?scenario=figure&f=colline-douce) |
 | Colline raide (`colline-raide`) | 10 | Des pentes de deux ou trois niveaux : creux, dos d'âne, plateau surélevé. | [`?scenario=figure&f=colline-raide`](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?scenario=figure&f=colline-raide) |
 
+
+## Cinq circuits du jour (un par thème)
+
+| Date | Thème | Auteur | Blocs | Figures |
+|---|---|---|---|---|
+| [2026-10-21](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?seed=2026-10-21) | Stade | 37,0 s | 47 | plaque-virage · turbo-courbe · descente-cuve-saut · coupe-virage · virage-descente |
+| [2026-11-12](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?seed=2026-11-12) | Rallye | 34,3 s | 40 | descente-plaque · pincement · saut-terre · esse-relevee · virage-descente |
+| [2026-11-08](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?seed=2026-11-08) | Banquise | 37,4 s | 33 | plaque-virage · slalom-glace · virage-descente · chicane-glace · colline-raide |
+| [2026-10-18](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?seed=2026-10-18) | Nuit | 36,8 s | 46 | turbo-epingle · s-serre-large · saut-paroi · coupe-virage · virage-descente |
+| [2026-10-16](https://nathan-te.github.io/DailyTrack/b/lot-20-figures/?seed=2026-10-16) | Campagne | 39,8 s | 48 | changement-revetement · virage-descente · pincement · colline-raide · chaine-turbo · etranglement-terre |
+
+## Mesures (`npm run measure:generator`, 60 dates depuis le 06/10/2026 ; `RHYTHM=1` ajoute le rythme par figure)
+
+| | Avant (lot 19) | Après |
+|---|---|---|
+| Figures par circuit | — (créneaux) | 5,0 (5 à 6) |
+| Figures utilisées sur 60 dates | — | **33 / 40** |
+| Figure répétée dans un circuit | — | **0** |
+| Techniques par circuit | — | 2,5 (**min 2**) |
+| Figures en commun, jours consécutifs | — | **0,98 en moyenne** (max 3) |
+| Part du temps à plein gaz | **79 %** | **82 %** ⚠ |
+| — par thème (Stade, Rallye, Banquise, Nuit, Campagne) | 79, 85, 68, 86, 80 | 88, 85, 71, 84, 80 |
+| Freinages ou relâchements par circuit | 9,7 | 10,3 |
+| Plus longue droite ordinaire | 5 blocs | 6 blocs (plafond) |
+| Virages serrés par circuit | 0,3 (max 2) | 1,1 (max 2, jamais deux de suite) |
+| Temps d'auteur | 35,9 s (30,2–40,0) | 37,5 s (dans la fenêtre : 60 / 60) |
+| Génération d'un jour (moyenne · max) | 218 ms · 751 ms | **187 ms** · 868 ms |
+| Circuits de secours | 0 | 0 |
+
+Taux de validation par thème (12 dates × 6 tentatives, thème forcé) — « dans la fenêtre » :
+
+| Thème | Avant | Après |
+|---|---|---|
+| Stade | 50 % | 75 % |
+| Rallye | 45 % | 67 % |
+| Banquise | 41 % | 37 % |
+| Nuit | 55 % | 70 % |
+| Campagne | 50 % | 69 % |
+
+(*Banquise* reste le thème où la glace allonge les circuits ; la génération y tient quand même, 1,1 tentative en moyenne sur les 60 dates.)
+
+Catégories (moyenne par circuit) : technique 2,5 · saut 0,7 · rapide 1,1 · combinaison 0,2 · cuve 0,1 · relief 0,6. Les sauts et les cuves restent au niveau des thèmes (Stade et Nuit : 100 %, Rallye : sauts, Banquise : 1 saut et 4 cuves sur 14).
+
+## Critères d'arrêt
+
+- ✅ Tests verts (604 unitaires ; e2e : 117 verts, `perf.spec` relevé de 7 ko pour la bibliothèque ; `cuves.spec` est instable quand la machine est chargée — il passe seul).
+- ✅ Au moins 20 figures utilisées sur 60 dates (33) · ✅ aucune figure répétée · ✅ au moins deux techniques par circuit · ✅ figures en commun ≤ 2 en moyenne (0,98) · ✅ validation par thème et temps de génération au moins aussi bons qu'avant (sauf Banquise : 37 % contre 41 % ; génération plus rapide en moyenne).
+- ❌ **Part du temps à plein gaz « en baisse nette » : non tenue** (79 % → 82 %).
+
+### Pourquoi le plein gaz n'a pas baissé, et ce qui n'y change rien
+
+Le pilote lâche le gaz sur quatre choses : un virage dont la limite est sous la pointe (un virage large à 48 m/s : 0,3 à 0,5 s ; un serré : 1,2 s), la glace (roue libre), un freinage après un super turbo ou une plaque, et le moteur coupé. Un saut, une cuve ou une colline se prennent à plein gaz (0,1 à 0,3 s hors gaz par passage). Or Stade et Nuit doivent déjà loger un saut et une cuve (≈ 8 à 10 s de plein gaz sur 37), et cinq figures de 7 s remplissent la fenêtre. Essayé sans effet de plus de 2 points : figures « riches » tirées deux fois plus souvent, huit tirages dont on garde le plus riche (c'est ce qui est livré), virages larges relevés, zones de revêtement posées sur les virages, un virage derrière chaque saut ou cuve, trois techniques obligatoires. Un second freinage franc obligatoire fait descendre le plein gaz de Stade à 38 % **mais** sort la moitié des circuits de la fenêtre 30–40 s (7 circuits de secours sur 40). Leviers qui restent, à décider avec Nathan (ils touchent le pilote ou une règle de jeu, pas la composition) : un troisième virage serré par circuit, de la glace ou de la terre dans plus de thèmes, la vitesse visée du pilote en ligne droite (68 m/s : il freine au-delà, d'où des « lâchers » après chaque turbo), une mesure qui ne compte que les moments où le joueur a un choix.
+
+## Limites et décisions
+
+- `saut-cuve` (réception juste devant une cuve) se prend toujours sur le fond : le pilote ne monte pas sur la paroi après un saut ; il est rare à dessein pour que la paroi reste la ligne rapide de la majorité des cuves (`cuves-rapides.test.ts`).
+- Un saut puis un virage veut deux droites de plus (le pilote ne freine pas de la rampe à la réception plus un bloc).
+- Sept figures sur 40 (`epingle-terre`, `saut-releve`, `saut-niveau-epingle`, `double-saut`, `turbo-saut-releve`, `glace-coupe-virage`, `mur-lateral`) n'apparaissent pas sur ces 60 dates : elles dépendent du thème, du repos et des huit tirages ; essayez-les par `?scenario=figure&f=…`.
+- La durée estimée (`estimateSeconds`) et le champ `off` de chaque figure sont **mesurés** : à refaire (`RHYTHM=1 npm run measure:generator`) si la physique ou le pilote changent.
