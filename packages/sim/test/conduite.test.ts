@@ -15,6 +15,7 @@ import {
   createSurface,
   forwardSpeed,
   makeInput,
+  needsFreeze,
   parseTrack,
   stepCar,
   stepRace,
@@ -284,7 +285,8 @@ describe("suspension et réceptions", () => {
     let takeoff = 0;
     let flight = 0;
     for (let i = 0; i < 3 * TICK_RATE; i++) {
-      stepRace(race, GAS);
+      // Lot 19 : la caisse garde sa rotation en l'air ; le frein la fige (ce que fait un bon joueur).
+      stepRace(race, needsFreeze(car) ? makeInput(0, 1, 1) : GAS);
       if (!car.grounded) {
         if (!flight) takeoff = carSpeed(car);
         flight++;
@@ -295,11 +297,13 @@ describe("suspension et réceptions", () => {
     expect(race.respawns).toBe(0);
   });
 
-  it("réception de travers : la vitesse baisse nettement et la voiture rebondit", () => {
+  it("réception de travers (30°) : la vitesse baisse de 15 à 40 %, sans rebond (lot 19)", () => {
     const flat = drop(0, 0);
-    const crooked = drop(0.45, 0);
-    expect(carSpeed(crooked.race.car)).toBeLessThan(carSpeed(flat.race.car) * 0.85);
-    expect(crooked.bounced).toBe(true);
+    const crooked = drop(0.58, 0);
+    const ratio = carSpeed(crooked.race.car) / carSpeed(flat.race.car);
+    expect(ratio).toBeLessThan(0.85);
+    expect(ratio).toBeGreaterThan(0.6);
+    expect(crooked.bounced).toBe(false);
     expect(flat.bounced).toBe(false);
   });
 });

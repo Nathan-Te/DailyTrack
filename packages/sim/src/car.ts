@@ -11,8 +11,9 @@ import { FLAT_WORLD, SURFACES, createShellHit, createSurface, createWallHit, sur
 // 2. Vertical : quatre roues sur ressorts amortis, posées sur `world` (hauteur et pente sous chaque roue) ; la
 //    caisse a une hauteur, un tangage et un roulis (pentes, sans trigonométrie), et la charge de chaque essieu
 //    module son adhérence. Butée de fin de course pour les grosses réceptions.
-// 3. En l'air : balistique, pas de contrôle aérien ; l'orientation est maintenue (rotation amortie). Une
-//    réception à plat garde la vitesse, une réception de travers en coûte et fait rebondir.
+// 3. En l'air : balistique. La caisse garde la rotation que lui a donnée le décollage (amortissement faible, aucun retour à
+//    l'horizontale) ; le frein la **fige** (amortissement fort, sans ralentir la voiture). Une réception absorbe la vitesse
+//    normale au sol (aucun rebond) et garde la vitesse tangentielle selon l'alignement de la caisse (lot 19).
 //
 // Le pas de la course reste 1/120 s ; la voiture le découpe en SUBSTEPS sous-pas fixes (jamais variables).
 
@@ -103,16 +104,16 @@ export interface CarParams {
   gravity: number;
   /** Ralentissement en montée / accélération en descente, par unité de pente (m/s²). */
   slopeGravity: number;
-  /** Maintien de l'orientation en l'air (1/s) : amortit la rotation. */
+  /** Amortissement aérien de la rotation (1/s) : faible, la voiture garde la rotation de son décollage (lot 19). */
   airDamping: number;
-  /** Retour à l'horizontale en l'air (1/s²), léger. */
-  airLevel: number;
-  /** Écart d'orientation toléré à la réception (rad) sans perte. */
+  /** Force du « figer » (1/s, au frein à fond) : amortissement ajouté à la rotation en l'air, sans ralentir la voiture. */
+  airFreeze: number;
+  /** Part de la vitesse normale au sol absorbée à l'impact d'une réception (0–1) : 1 = aucun rebond. */
+  landAbsorb: number;
+  /** Écart d'alignement (pentes de tangage + roulis) toléré à la réception sans perte de vitesse. */
   landTolerance: number;
-  /** Perte de vitesse à la réception par radian d'écart au-delà de la tolérance (fraction). */
+  /** Perte de vitesse tangentielle à la réception par unité d'écart au-delà de la tolérance (fraction). */
   landLoss: number;
-  /** Rebond d'une réception de travers (fraction de la vitesse d'impact). */
-  landBounce: number;
   /** Rebond sur un rebord (coefficient de restitution, 0–1). */
   wallBounce: number;
   /** Frottement contre un rebord (coefficient de Coulomb) : fixe la perte d'un contact rasant. */
@@ -189,11 +190,11 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   cgHeight: 0.35,
   gravity: 24.6,
   slopeGravity: 40,
-  airDamping: 6,
-  airLevel: 9,
-  landTolerance: 0.15,
-  landLoss: 1,
-  landBounce: 0.4,
+  airDamping: 0.4,
+  airFreeze: 14,
+  landAbsorb: 0.95,
+  landTolerance: 0.3,
+  landLoss: 0.7,
   wallBounce: 0.6,
   wallFriction: 0.3,
   boostTicks: 108,
@@ -594,7 +595,9 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   }
   car.vx = vx;
   car.vz = vz;
-  car.yawRate = grounded ? r + yawAcc * H : r * (1 - p.airDamping * H);
+  // En l'air la rotation (lacet compris) est gardée, amortie faiblement ; le frein la fige.
+  const airDamp = airDamping(car.air, brake, p);
+  car.yawRate = grounded ? r + yawAcc * H : r * airDamp;
   if (grounded && throttle === 0 && brake === 0 && vx * vx + vz * vz < 1e-4 && slope === 0) {
     // À l'arrêt sur le plat : on s'arrête vraiment (pas de reste de glissement infinitésimal).
     car.vx = 0;
@@ -617,9 +620,8 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     car.pitchRate += ((pitchM + p.cgHeight * ax) / PITCH_INERTIA) * H;
     car.rollRate += ((rollM + p.cgHeight * ay) / ROLL_INERTIA) * H;
   } else {
-    const damp = 1 - p.airDamping * H;
-    car.pitchRate = car.pitchRate * damp - p.airLevel * car.pitch * H;
-    car.rollRate = car.rollRate * damp - p.airLevel * car.roll * H;
+    car.pitchRate *= airDamp;
+    car.rollRate *= airDamp;
   }
 
   // --- Déplacement -------------------------------------------------------------------------------
@@ -634,6 +636,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   car.y += car.vy * H;
   car.pitch += car.pitchRate * H;
   car.roll += car.rollRate * H;
+  if (!grounded) limitAirTilt(car);
 
   headX = sin(yaw);
   headZ = cos(yaw);
@@ -726,13 +729,21 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
   const grounded = h.d < SHELL_TOUCH;
   const wasGrounded = car.grounded === 1;
 
-  car.pitch = 0;
-  car.pitchRate = 0;
-  car.roll = 0;
-  car.rollRate = 0;
-  car.nx = nx;
-  car.ny = ny;
-  car.nz = nz;
+  // Sur la paroi, la caisse est à plat sur la surface (la pose suit la normale). En vol dans la cuve elle garde sa rotation (lot 19), le
+  // « haut » redevient la verticale du monde.
+  if (grounded) {
+    car.pitch = 0;
+    car.pitchRate = 0;
+    car.roll = 0;
+    car.rollRate = 0;
+    car.nx = nx;
+    car.ny = ny;
+    car.nz = nz;
+  } else {
+    car.nx = 0;
+    car.ny = 1;
+    car.nz = 0;
+  }
 
   let ax = 0;
   let ay = 0;
@@ -879,7 +890,15 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
   car.vx = vx;
   car.vy = vy;
   car.vz = vz;
-  car.yawRate = grounded ? r + yawAcc * H : r * (1 - p.airDamping * H);
+  const airDamp = airDamping(car.air, brake, p);
+  car.yawRate = grounded ? r + yawAcc * H : r * airDamp;
+  if (!grounded) {
+    car.pitchRate *= airDamp;
+    car.rollRate *= airDamp;
+    car.pitch += car.pitchRate * H;
+    car.roll += car.rollRate * H;
+    limitAirTilt(car);
+  }
   if (grounded && throttle === 0 && brake === 0 && vx * vx + vy * vy + vz * vz < 1e-4 && ny === 1) {
     car.vx = 0;
     car.vy = 0;
@@ -897,7 +916,8 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
 
   // --- Contact : la paroi repousse la voiture et supprime la vitesse qui y entre ----------------------
   let touching = false;
-  if (world.shell !== undefined && world.shell(car.x, car.z, car.y, shell2)) {
+  const inShell = world.shell !== undefined && world.shell(car.x, car.z, car.y, shell2);
+  if (inShell) {
     const hit = shell2;
     let d = hit.d;
     const vn = car.vx * hit.nx + car.vy * hit.ny + car.vz * hit.nz;
@@ -919,34 +939,162 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
       car.nx = hit.nx;
       car.ny = hit.ny;
       car.nz = hit.nz;
+      if (car.air >= LANDING_MIN_AIR) landOnShell(car, hit, p);
     }
   }
+  if (wasGrounded && !touching) leaveShell(car, world, h, inShell ? shell2 : null);
   car.air = touching ? 0 : car.air + 1;
   car.grounded = touching ? 1 : 0;
   samplesValid = false;
 }
 
-/** Réception après un vol : perte et rebond selon l'écart entre l'orientation de la caisse et le sol. */
+const frameA = createTangentFrame();
+const frameB = createTangentFrame();
+
+/** Pente du nez (> 0 = levé) et pente du côté gauche (> 0 = levé) d'un repère de paroi, comme `car.pitch` / `car.roll` en l'air. */
+function frameSlopes(f: TangentFrame, out: { pitch: number; roll: number }): void {
+  const hf = Math.sqrt(f.fx * f.fx + f.fz * f.fz);
+  const hl = Math.sqrt(f.lx * f.lx + f.lz * f.lz);
+  out.pitch = hf > 1e-6 ? f.fy / hf : f.fy > 0 ? AIR_TILT_MAX : -AIR_TILT_MAX;
+  out.roll = hl > 1e-6 ? f.ly / hl : f.ly > 0 ? AIR_TILT_MAX : -AIR_TILT_MAX;
+}
+
+const slopesA = { pitch: 0, roll: 0 };
+const slopesB = { pitch: 0, roll: 0 };
+
+/**
+ * La voiture quitte la paroi d'une cuve (lot 19) : elle emporte la vitesse de rotation que lui donnait la courbure de la paroi pendant ce
+ * sous-pas (crête, bord de cuve), qui se poursuit en vol comme au sol. Son inclinaison repart de zéro (voir plus bas).
+ */
+function leaveShell(car: CarState, world: World, from: ShellHit, to: ShellHit | null): void {
+  if (to === null) {
+    // Hors du volume de la cuve : si la route ordinaire est là, juste dessous, la voiture roule (rien à hériter) ; sinon c'est un envol.
+    world.sample(car.x, car.z, surface);
+    if (car.y - surface.height < LEAVE_CLEARANCE) return;
+  }
+  tangentFrame(car.yaw, from, frameA);
+  frameSlopes(frameA, slopesA);
+  if (to !== null) {
+    tangentFrame(car.yaw, to, frameB);
+    frameSlopes(frameB, slopesB);
+  } else {
+    slopesB.pitch = slopesA.pitch;
+    slopesB.roll = slopesA.roll;
+  }
+  // Pas d'inclinaison de départ : une paroi verticale ne doit pas coucher la caisse (ses roues sous la route liraient un mur) et la route
+  // en dessous est plate. Seule la rotation est héritée : celle que donne la courbure de la paroi pendant ce sous-pas (crête, bord de
+  // cuve), bornée à `LEAVE_RATE` pente/s.
+  car.pitch = 0;
+  car.roll = 0;
+  car.pitchRate = clamp((slopesB.pitch - slopesA.pitch) / H, -LEAVE_RATE, LEAVE_RATE);
+  car.rollRate = clamp((slopesB.roll - slopesA.roll) / H, -LEAVE_RATE, LEAVE_RATE);
+  car.nx = 0;
+  car.ny = 1;
+  car.nz = 0;
+}
+
+/** Vitesse de rotation (pente/s) maximale héritée en quittant une paroi. */
+const LEAVE_RATE = 1.5;
+
+/** Hauteur (m) au-dessus de la route ordinaire à partir de laquelle une voiture qui sort d'une cuve vole. */
+const LEAVE_CLEARANCE = 0.6;
+
+/**
+ * Réception sur la paroi d'une cuve (lot 19). La vitesse normale est déjà supprimée sans rebond par le contact ; ici la vitesse restante
+ * (tangentielle) perd `landLoss` par unité d'écart d'alignement entre la caisse (inclinaison héritée du vol) et la paroi, au-delà de
+ * `landTolerance` : de travers ou sur le nez, la perte est graduée comme au sol. La caisse se pose ensuite à plat sur la paroi.
+ */
+function landOnShell(car: CarState, hit: ShellHit, p: Readonly<CarParams>): void {
+  tangentFrame(car.yaw, hit, frameA);
+  frameSlopes(frameA, slopesA);
+  const dp = car.pitch - slopesA.pitch;
+  const dr = car.roll - slopesA.roll;
+  const miss = (dp < 0 ? -dp : dp) + (dr < 0 ? -dr : dr) - p.landTolerance;
+  const keep = miss > 0 ? clamp(1 - p.landLoss * miss, 0.4, 1) : 1;
+  car.vx *= keep;
+  car.vy *= keep;
+  car.vz *= keep;
+  car.yawRate *= keep;
+  car.pitch = 0;
+  car.roll = 0;
+  car.pitchRate = 0;
+  car.rollRate = 0;
+}
+
+/** Un hop plus court que ça (sous-pas : une bosse, un frôlement de paroi) garde l'ancien amortissement fort : seul un vrai vol garde sa rotation. */
+const HOP_SUBSTEPS = 6;
+/** Amortissement d'un hop (1/s). */
+const HOP_DAMPING = 6;
+
+/** Facteur d'amortissement de la rotation pour un sous-pas en l'air, `air` sous-pas après le dernier contact (lot 19). */
+function airDamping(air: number, brake: number, p: Readonly<CarParams>): number {
+  const base = air < HOP_SUBSTEPS ? HOP_DAMPING : p.airDamping;
+  return 1 - (base + p.airFreeze * (brake > 0 ? brake : 0)) * H;
+}
+
+/** Inclinaison maximale (pente) de la caisse en l'air : au-delà, elle bute (la pente n'est pas un angle, elle ne tourne pas sans fin). */
+const AIR_TILT_MAX = 1.6;
+
+function limitAirTilt(car: CarState): void {
+  if (car.pitch > AIR_TILT_MAX) {
+    car.pitch = AIR_TILT_MAX;
+    if (car.pitchRate > 0) car.pitchRate = 0;
+  } else if (car.pitch < -AIR_TILT_MAX) {
+    car.pitch = -AIR_TILT_MAX;
+    if (car.pitchRate < 0) car.pitchRate = 0;
+  }
+  if (car.roll > AIR_TILT_MAX) {
+    car.roll = AIR_TILT_MAX;
+    if (car.rollRate > 0) car.rollRate = 0;
+  } else if (car.roll < -AIR_TILT_MAX) {
+    car.roll = -AIR_TILT_MAX;
+    if (car.rollRate < 0) car.rollRate = 0;
+  }
+}
+
+/**
+ * Réception après un vol (lot 19). La vitesse **normale** au sol est absorbée (`landAbsorb` : la suspension encaisse, aucun rebond) ;
+ * la vitesse **tangentielle** est gardée en entier quand la caisse est alignée sur le sol, et perd `landLoss` par unité d'écart d'alignement
+ * (pentes de tangage et de roulis) au-delà de `landTolerance` quand elle arrive de travers ou sur le nez. Les vitesses de rotation de la
+ * caisse sont amorties de la même façon : la roue qui touche ne la relance pas vers le haut.
+ */
 function land(car: CarState, fx: number, fz: number, lx: number, lz: number, p: Readonly<CarParams>): void {
   let gp = 0;
   let gr = 0;
+  let sx = 0;
+  let sz = 0;
   for (let i = 0; i < 4; i++) {
     gp += gX[i]! * fx + gZ[i]! * fz;
     gr += gX[i]! * lx + gZ[i]! * lz;
+    sx += gX[i]!;
+    sz += gZ[i]!;
   }
   gp /= 4;
   gr /= 4;
+  sx /= 4;
+  sz /= 4;
   const dp = car.pitch - gp;
   const dr = car.roll - gr;
   const miss = (dp < 0 ? -dp : dp) + (dr < 0 ? -dr : dr) - p.landTolerance;
-  if (miss <= 0) return;
-  const keep = clamp(1 - p.landLoss * miss, 0.4, 1);
-  car.vx *= keep;
-  car.vz *= keep;
+  const keep = miss > 0 ? clamp(1 - p.landLoss * miss, 0.4, 1) : 1;
+  // Normale du sol (unitaire) ; la vitesse se décompose en normale (absorbée) et tangentielle (gardée selon l'alignement).
+  const inv = 1 / Math.sqrt(1 + sx * sx + sz * sz);
+  const nx = -sx * inv;
+  const ny = inv;
+  const nz = -sz * inv;
+  const vn = car.vx * nx + car.vy * ny + car.vz * nz;
+  // Une vitesse qui s'éloigne déjà du sol (contact rasant d'une roue) est laissée telle quelle.
+  const rest = vn < 0 ? (1 - p.landAbsorb) * vn : vn;
+  const tx = car.vx - vn * nx;
+  const ty = car.vy - vn * ny;
+  const tz = car.vz - vn * nz;
+  car.vx = tx * keep + rest * nx;
+  car.vy = ty * keep + rest * ny;
+  car.vz = tz * keep + rest * nz;
   car.yawRate *= keep;
-  // Rebond : une partie de la vitesse de chute revient vers le haut.
-  const impact = car.vy < 0 ? -car.vy : 0;
-  car.vy = impact * p.landBounce * clamp(miss / 0.3, 0, 1);
+  const calm = 1 - p.landAbsorb;
+  car.pitchRate *= calm;
+  car.rollRate *= calm;
 }
 
 /** Rebords : deux disques (avant, arrière) ; choc par impulsion avec rebond et frottement de Coulomb. */

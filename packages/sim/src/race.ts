@@ -61,6 +61,8 @@ function withoutEffects(world: World): World {
 }
 
 const FINISH_BRAKE: CarInput = { steer: 0, throttle: 0, brake: AXIS_MAX, respawn: 0 };
+/** Après l'arrivée, une voiture qui repart en arrière (rebord de fin de piste, rebond franc depuis le lot 19) freine aussi : l'accélérateur retient la marche arrière. */
+const FINISH_REVERSE_BRAKE: CarInput = { steer: 0, throttle: AXIS_MAX, brake: 0, respawn: 0 };
 
 /**
  * Reprise : au dernier point de contrôle franchi, avec la vitesse et le cap du passage (comme si on venait de
@@ -105,7 +107,8 @@ export function stepRace(race: RaceState, input: CarInput): void {
   const car = race.car;
   if (race.finishMs >= 0) {
     // La voiture s'arrête après la ligne (frein tant qu'elle avance, puis plus rien : elle ne recule pas).
-    stepCar(car, forwardSpeed(car) > 0.5 ? FINISH_BRAKE : NO_INPUT, race.world, race.params);
+    const fwd = forwardSpeed(car);
+    stepCar(car, fwd > 0.5 ? FINISH_BRAKE : fwd < -0.5 ? FINISH_REVERSE_BRAKE : NO_INPUT, race.world, race.params);
     return;
   }
   if (input.respawn) {

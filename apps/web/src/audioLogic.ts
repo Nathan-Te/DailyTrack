@@ -107,3 +107,38 @@ export function noteFreq(semitones: number): number {
   // 2^(n/12) sans Math.pow : suffit pour un bip (le son n'est pas dans `sim`, mais on garde la même discipline).
   return 440 * Math.exp((semitones * Math.LN2) / 12);
 }
+
+/** Qualité d'une réception ∈ [0, 1] (lot 19) : la part de la vitesse horizontale gardée au contact (1 = bien alignée, ≈ 0,4 = sur le nez ou de travers). */
+export function landingQuality(speedBefore: number, speedAfter: number): number {
+  if (speedBefore < 1) return 1;
+  const kept = speedAfter / speedBefore;
+  return Math.min(1, Math.max(0, (kept - 0.4) / 0.6));
+}
+
+export interface LandingSound {
+  /** Souffle (bruit filtré) : durée (s), fréquence centrale (Hz), volume. */
+  noiseDur: number;
+  noiseFreq: number;
+  noiseGain: number;
+  /** Choc grave : fréquence (Hz), durée (s), volume. */
+  thumpFreq: number;
+  thumpDur: number;
+  thumpGain: number;
+}
+
+/**
+ * Son d'une réception selon sa force (vitesse de chute ∈ [0, 1]) et sa qualité : bien alignée, un « pof » sourd et court (la suspension
+ * encaisse) ; de travers ou sur le nez, un choc plus long, plus fort et plus craquant.
+ */
+export function landingSound(strength: number, quality: number): LandingSound {
+  const n = Math.min(1, Math.max(0, strength));
+  const bad = 1 - Math.min(1, Math.max(0, quality));
+  return {
+    noiseDur: 0.14 + 0.2 * bad,
+    noiseFreq: 360 + 700 * bad,
+    noiseGain: 0.3 * Math.min(1, 0.3 + n) * (0.55 + 0.8 * bad),
+    thumpFreq: 70 + 25 * bad,
+    thumpDur: 0.16 + 0.14 * bad,
+    thumpGain: 0.3 * Math.min(1, 0.3 + n) * (0.8 + 0.5 * bad),
+  };
+}

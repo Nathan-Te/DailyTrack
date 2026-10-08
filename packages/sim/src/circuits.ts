@@ -97,3 +97,15 @@ export const CUVES_TRACK_SPEC =
 export function createCuvesTrack() {
   return parseTrack("cuves", CUVES_TRACK_SPEC);
 }
+
+/**
+ * Scénario `air` (lot 19) : l'air se travaille. Dos d'âne pris à haute vitesse (le nez pique ou se cabre selon la façon de décoller), tremplin
+ * `J` à prendre en braquant (la caisse penche), long saut au super turbo, saut dont la réception est un virage relevé, chute de trois niveaux
+ * (`GD2` puis `D`), mur latéral quitté en l'air. Le frein, en l'air, fige la caisse. Un point de contrôle sépare chaque épreuve.
+ */
+export const AIR_TRACK_SPEC =
+  "S/n@start S S P S S U2 D2 S S L2 S S@cp S S P S J S S S S R2 S S@cp S T S S K G G D S S S S L2 S S@cp S P S S K G D S S L2/b S S R2/b S S@cp S P S K GD2 D S S R2 S S@cp S S P ML ML ML ML S S S@finish";
+
+export function createAirTrack() {
+  return parseTrack("air", AIR_TRACK_SPEC);
+}

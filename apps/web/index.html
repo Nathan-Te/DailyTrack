@@ -42,6 +42,9 @@
       #splits .up { color: #ff8a80; } #splits .down { color: #8dffa8; }
       #banner { left: 50%; top: 18%; transform: translate(-50%, -50%); font-size: 72px; font-weight: 800; letter-spacing: .02em; text-align: center; }
       #banner.small { font-size: 34px; }
+      /* Lot 19 : le frein, en l'air, fige la caisse (indicateur discret, présentation seule). */
+      #freeze { left: 50%; top: 31%; transform: translateX(-50%); font-size: 15px; font-weight: 800; letter-spacing: .08em; color: #bfe6ff; background: rgba(11,16,32,.55); padding: 2px 12px; border-radius: 999px; opacity: 0; transition: opacity .12s; }
+      #freeze.on { opacity: .9; }
 
       /* Lot 9 : lignes de vitesse sur les bords, éclair de point de contrôle (présentation seule, jamais d'événement) */
       #lines, #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; }
@@ -261,6 +264,7 @@
     <div id="timer" class="hud"></div>
     <div id="splits" class="hud"></div>
     <div id="banner" class="hud"></div>
+    <div id="freeze" class="hud" aria-hidden="true">❄ FIGÉ</div>
     <div id="finish" hidden></div>
     <div id="archive" hidden><div class="panel"></div></div>
     <div id="daycard" hidden></div>

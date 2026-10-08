@@ -14,6 +14,7 @@ import {
   jumpLandingDistance,
   jumpMinSpeed,
   makeInput,
+  needsFreeze,
   parseTrack,
   reliefOf,
   stepRace,
@@ -47,7 +48,7 @@ interface Flight {
  * Lance la voiture sur la rampe du saut : à `entry` m/s au début de la rampe, accélérateur à fond, volant droit.
  * `ticks` pas au plus.
  */
-function fly(spec: string, entry: number, throttle = 1): Flight {
+function fly(spec: string, entry: number, throttle = 1, freeze = true): Flight {
   const track = parseTrack("saut", spec);
   const race = createRace(track);
   const k = track.blocks[KICK]!;
@@ -63,7 +64,8 @@ function fly(spec: string, entry: number, throttle = 1): Flight {
   let after = 0;
   let landedZ = Infinity;
   for (let i = 0; i < 20 * 120; i++) {
-    stepRace(race, makeInput(0, throttle, 0));
+    // Lot 19 : la caisse garde sa rotation en l'air ; un bon joueur la fige au frein (`freeze`), comme le pilote.
+    stepRace(race, makeInput(0, throttle, freeze && needsFreeze(race.car) ? 1 : 0));
     const c = race.car;
     if (lipSpeed === 0 && (c.x - lip.x) * dirX(k.dir) + (c.z - lip.z) * dirZ(k.dir) >= 0) lipSpeed = carSpeed(c);
     if (race.fallTicks > 0 || race.respawns > 0) return { fell: true, lip: lipSpeed, after: 0, respawned: race.respawns > 0 };
