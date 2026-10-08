@@ -123,7 +123,9 @@ const cuveKind = (r: { c: DailyCircuit }) => {
 const withCuve = rows.filter((r) => r.c.track.blocks.some((b) => b.cuve));
 console.log(`cuves : ${THEME_NAMES.map((n) => `${n} ${jumpsBy(n).filter((r) => r.c.track.blocks.some((b) => b.cuve)).length}/${jumpsBy(n).length}`).join(" · ")} circuits avec une cuve ; types : cuve droite × ${withCuve.filter((r) => cuveKind(r).bowl).length} · mur latéral × ${withCuve.filter((r) => cuveKind(r).wall).length} · virage en cuve × ${withCuve.filter((r) => cuveKind(r).turn).length}`);
 const turnRows = rows.filter((r) => cuveKind(r).turn);
-console.log(`virages en cuve : pris sur la paroi par le pilote d'auteur (le plus rapide des deux) : ${turnRows.filter((r, i) => pilots[rows.indexOf(r)]?.wall).length}/${turnRows.length}`);
+const straightRows = rows.filter((r) => cuveKind(r).bowl || cuveKind(r).wall);
+const onWall = (list: typeof rows) => list.filter((r) => pilots[rows.indexOf(r)]?.wall).length;
+console.log(`cuves : prises sur la paroi par le pilote d'auteur (le plus rapide des deux) : virages ${onWall(turnRows)}/${turnRows.length} · droites ${onWall(straightRows)}/${straightRows.length} · ensemble ${onWall([...turnRows, ...straightRows])}/${turnRows.length + straightRows.length}`);
 console.log(`largeurs : au moins deux par circuit : ${rows.filter((r) => r.widths.length >= 2).length}/${rows.length} ; largeurs vues : ${[...new Set(rows.flatMap((r) => r.widths))].sort((a, b) => a - b).join(", ")} m`);
 console.log(`virages serrés : moyenne ${mean(rows.map((r) => r.tight.total)).toFixed(1)} · max ${Math.max(...rows.map((r) => r.tight.total))} ; deux d'affilée : ${rows.filter((r) => r.tight.run >= 2).length} circuit(s)`);
 const peaks = rows.map((r) => r.maxSpeed);

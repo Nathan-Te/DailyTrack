@@ -105,7 +105,7 @@ describe("POST /api/submit", () => {
   it("refuse les rediffusions illisibles, d'une autre version ou d'un autre circuit", async () => {
     const t = await makeApi();
     expect((await submit(t, 1, "Alice", "pas une rediffusion !")).body.error).toBe("invalid_replay");
-    expect((await submit(t, 1, "Alice", fast.code.slice(0, 30))).body.error).toBe("invalid_replay");
+    expect((await submit(t, 1, "Alice", fast.code.slice(0, 12))).body.error).toBe("invalid_replay");
     const other = encodeReplay({ ...fast.replay, simVersion: SIM_VERSION + 1 });
     expect((await submit(t, 1, "Alice", other)).body.error).toBe("sim_version");
     // Ancienne version (avant la refonte de la conduite du lot 7) : refus clair, rien d'enregistré.

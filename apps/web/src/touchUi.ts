@@ -288,7 +288,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const steerMode = segmented<TouchSettings["steerMode"]>([["drag", "Glisser"], ["buttons", "Boutons ← →"]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }));
   const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${v.toFixed(2)}`);
   const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${Math.round(v * 100)} %`);
-  const throttle = segmented<boolean>([[true, "Automatique"], [false, "Bouton gaz"]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }));
+  const throttle = segmented<boolean>([[false, "Bouton gaz"], [true, "Automatique"]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }));
   const size = segmented<ButtonSize>([["small", "Petits"], ["medium", "Moyens"], ["large", "Grands"]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }));
   const vibration = segmented<boolean>([[true, "Oui"], [false, "Non"]], () => pad.settings.vibration, (v) => apply({ vibration: v }));
   const reset = el("button", "reset", "Par défaut");

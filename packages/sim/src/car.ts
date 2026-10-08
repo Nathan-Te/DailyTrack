@@ -148,6 +148,18 @@ export interface CarParams {
   shellStickHi: number;
   /** Appui aérodynamique sur une paroi (en multiple de la pesanteur, à pleine adhérence de paroi) : il charge les pneus, donc l'adhérence. */
   shellDown: number;
+  /**
+   * Cuves rapides (lot 18b). La pesanteur le long de la paroi n'est pas symétrique : en montant elle freine `shellClimb` fois ce qu'elle
+   * ferait (< 1), en descendant elle pousse `shellDescent` fois (> 1) : monter puis redescendre fait sortir plus vite. Le surplus
+   * s'éteint en approchant de `shellGainTop` (m/s) : on ne gagne pas de vitesse sans fin en zigzaguant.
+   */
+  shellClimb: number;
+  shellDescent: number;
+  shellGainTop: number;
+  /** Pointe sur la paroi (multiplicateur de `maxSpeed`) : la voiture accélère et ne traîne qu'au-delà, tant qu'elle est franchement sur la paroi. */
+  shellTop: number;
+  /** Poussée supplémentaire sur la paroi (m/s²) tant que la vitesse est sous la pointe de paroi : la paroi est une voie rapide. */
+  shellPush: number;
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
@@ -199,6 +211,11 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   shellStickLo: 24,
   shellStickHi: 34,
   shellDown: 1.2,
+  shellClimb: 0.4,
+  shellDescent: 2.6,
+  shellGainTop: 56,
+  shellTop: 1.15,
+  shellPush: 14,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -667,6 +684,15 @@ const SHELL_SNAP = 0.1;
 /** ... et seulement si elle ne s'en écarte pas plus vite que ça (m/s) : un vrai décollage n'est pas rattrapé. */
 const SHELL_SNAP_SPEED = 2;
 /** Vitesse verticale (m/s) à partir de laquelle la pesanteur reprend ses droits sur une paroi, et largeur de la transition. */
+/** Vitesse verticale (m/s) à partir de laquelle la montée ou la descente compte comme telle pour l'asymétrie du lot 18b, et sa progressivité. */
+const SHELL_PUMP_FROM = 0.5;
+const SHELL_PUMP_SPAN = 2.5;
+/** Largeur (m/s) sous `shellGainTop` sur laquelle le surplus de descente s'éteint. */
+const SHELL_GAIN_SPAN = 6;
+/** Largeur (m/s) sous la pointe de paroi sur laquelle la poussée de paroi s'éteint. */
+const SHELL_PUSH_SPAN = 4;
+/** Traînée (1/s) sur la vitesse au-delà de `shellGainTop` quand la voiture est sur une paroi. */
+const SHELL_LIMIT_DRAG = 3;
 const SHELL_HOLD_CLIMB = 3;
 const SHELL_HOLD_CLIMB_SPAN = 6;
 
@@ -764,7 +790,9 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
     }
 
     const grip = clamp(1 + ls * (loadRatio - 1), 0, 1) * traction;
-    const flatTop = p.maxSpeed * (1 + slick * (p.iceTop - 1));
+    // Lot 18b : sur la paroi (loin de l'horizontale) la pointe monte de `shellTop` : la voiture y reste en accélération là où le sol plafonne.
+    const onWall = smoothstep((0.8 - ny) / 0.4);
+    const flatTop = p.maxSpeed * (1 + slick * (p.iceTop - 1)) * (1 + (p.shellTop - 1) * onWall);
     const top = car.turbo > 0 ? p.turboMaxSpeed : car.boost > 0 ? p.boostMaxSpeed : flatTop;
     let drive = 0;
     if (throttle > 0) {
@@ -785,6 +813,7 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
     }
     if (car.boost > 0 && u < p.boostMaxSpeed) drive += p.boostAccel;
     if (car.turbo > 0 && u < p.turboMaxSpeed) drive += p.turboAccel;
+    if (throttle > 0 && onWall > 0) drive += p.shellPush * onWall * throttle * clamp((flatTop - u) / SHELL_PUSH_SPAN, 0, 1);
     ax += drive * grip;
     ax -= u > 0 ? rolling : u < 0 ? -rolling : 0;
     if (u > flatTop) {
@@ -796,8 +825,19 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
     // de vitesse verticale, la pesanteur revient (une voiture lancée vers la crête ralentit et retombe, au lieu de monter sans fin).
     const climb = smoothstep((Math.abs(car.vy) - SHELL_HOLD_CLIMB) / SHELL_HOLD_CLIMB_SPAN);
     const gravityLeft = h.straight ? 1 - stick * (1 - climb) : 1;
-    ax -= p.slopeGravity * fy * gravityLeft;
-    ay -= g * ly * gravityLeft;
+    // Lot 18b : asymétrie montée / descente. La montée (vitesse verticale > 0) coûte `shellClimb` de la pesanteur ; la descente pousse
+    // `shellDescent` fois, avec un surplus qui s'éteint entre `shellGainTop − SHELL_GAIN_SPAN` et `shellGainTop` (borne du gain).
+    let pull = gravityLeft;
+    if (ny < 1) {
+      const rising = smoothstep((car.vy - SHELL_PUMP_FROM) / SHELL_PUMP_SPAN);
+      const falling = smoothstep((-car.vy - SHELL_PUMP_FROM) / SHELL_PUMP_SPAN);
+      const room = clamp((p.shellGainTop - Math.sqrt(car.vx * car.vx + car.vy * car.vy + car.vz * car.vz)) / SHELL_GAIN_SPAN, 0, 1);
+      // La remise sur la montée s'éteint quand la montée est franche (même seuil que la tenue) : une voiture lancée vers la crête retombe.
+      pull = gravityLeft * (1 - rising * (1 - p.shellClimb) * (1 - climb));
+      pull += falling * (1 + (p.shellDescent - 1) * room - pull);
+    }
+    ax -= p.slopeGravity * fy * pull;
+    ay -= g * ly * pull;
     if (coasting && slick > 0) ay -= p.iceRealign * slick * v;
     const drift = v / U;
     ax -= p.slideDrag * (drift < 0 ? -drift : drift) * (u > 0 ? 1 : u < 0 ? -1 : 0);
@@ -825,6 +865,15 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
         vy -= over * fy;
         vz -= over * fz;
       }
+    }
+    // Lot 18b : la paroi ne stocke pas d'énergie sans fin. Une montée que la poussée de paroi a payée se rend en vitesse à la descente ; au-delà
+    // de `shellGainTop` (vitesse totale), une traînée progressive ramène la voiture : le gain d'un passage est borné, quoi qu'on fasse.
+    const total = Math.sqrt(vx * vx + vy * vy + vz * vz);
+    if (total > p.shellGainTop) {
+      const k = 1 - Math.min(0.5, (SHELL_LIMIT_DRAG * (total - p.shellGainTop) * H) / total);
+      vx *= k;
+      vy *= k;
+      vz *= k;
     }
   } else vy -= g * H;
   car.vx = vx;

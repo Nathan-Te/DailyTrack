@@ -24,9 +24,24 @@ const PHONES = [
   },
 ] as const;
 
-async function phone(browser: Browser, p: (typeof PHONES)[number] | { viewport: { width: number; height: number } }) {
+/**
+ * Un téléphone. Depuis la retouche 18b, le défaut est à deux pédales ; la plupart de ces tests conduisent avec l'accélérateur automatique,
+ * qu'on enregistre donc d'entrée (au premier chargement seulement : un rechargement garde ce que le joueur a choisi). `fresh` : aucun
+ * réglage enregistré, c'est le vrai défaut ; `stored` : un réglage précis.
+ */
+async function phone(browser: Browser, p: (typeof PHONES)[number] | { viewport: { width: number; height: number } }, opts: { fresh?: boolean; stored?: object } = {}) {
   const context = await browser.newContext({ ...p, isMobile: true, hasTouch: true });
   const page = await context.newPage();
+  if (!opts.fresh) {
+    const stored = JSON.stringify(opts.stored ?? { autoThrottle: true, version: 2 });
+    await page.addInitScript((value) => {
+      try {
+        if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", value);
+      } catch {
+        /* stockage indisponible */
+      }
+    }, stored);
+  }
   return { context, page };
 }
 
@@ -108,6 +123,42 @@ for (const p of PHONES) {
       expect((await input(page)).throttle).toBe(64);
       await f.up(1);
       await polled(page, (i) => i.steer).toBe(0);
+      await context.close();
+    });
+
+    test("deux pédales par défaut : sans réglage enregistré, ni gaz ni frein tant qu'on ne touche pas ; gaz et frein dans la moitié droite", async ({ browser }) => {
+      const { context, page } = await phone(browser, p, { fresh: true });
+      await racing(page, "/?debug&scenario=plat");
+      await expect(page.locator("#touch")).toHaveAttribute("data-throttle", "manual");
+      await expect(page.locator("#touch .pedal-gas")).toBeVisible();
+      await polled(page, (i) => i.throttle).toBe(0);
+      const f = await fingersOf(page);
+      await f.down(1, 700 + 60, 250); // quart droit : gaz
+      await polled(page, (i) => i.throttle).toBe(64);
+      await f.up(1);
+      await polled(page, (i) => i.throttle).toBe(0);
+      await f.down(1, 450, 250); // troisième quart : frein
+      await polled(page, (i) => i.brake).toBe(64);
+      await f.up(1);
+      await context.close();
+    });
+
+    test("un réglage enregistré avec l'ancien défaut (automatique) est remis une fois aux deux pédales ; on peut repasser en automatique", async ({ browser }) => {
+      const { context, page } = await phone(browser, p, { stored: { steerMode: "buttons", sensitivity: 1.5, autoThrottle: true } });
+      await racing(page, "/?debug&scenario=plat");
+      await expect(page.locator("#touch")).toHaveAttribute("data-throttle", "manual"); // migré
+      await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // le reste est gardé
+      await polled(page, (i) => i.throttle).toBe(0);
+      // Le joueur choisit l'accélérateur automatique : la sauvegarde porte la version, un rechargement le garde.
+      await page.getByRole("button", { name: "Réglages des commandes" }).click();
+      await page.getByRole("button", { name: "Automatique" }).click();
+      await page.getByRole("button", { name: "Fermer" }).click();
+      await polled(page, (i) => i.throttle).toBe(64);
+      await page.reload();
+      await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
+      await expect(page.locator("#touch")).toHaveAttribute("data-throttle", "auto");
+      const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!));
+      expect(saved).toMatchObject({ autoThrottle: true, version: 2 });
       await context.close();
     });
 
@@ -226,6 +277,10 @@ test("portrait : invitation à tourner le téléphone, qu'on peut écarter ; rie
 });
 
 test("?touch=1 : sur ordinateur, la souris simule le doigt ; ?touch=0 coupe l'interface tactile", async ({ page }) => {
+  // Accélérateur automatique (le défaut est à deux pédales depuis la 18b) : sans doigt, plein gaz.
+  await page.addInitScript(() => {
+    if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", JSON.stringify({ autoThrottle: true, version: 2 }));
+  });
   await racing(page, "/?debug&scenario=plat&touch=1");
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(true);
   await polled(page, (i) => i.throttle).toBe(64);
@@ -323,8 +378,7 @@ test("vibration au point de contrôle et au choc, désactivable", async ({ brows
   await context.close();
 
   // Désactivée dans les réglages : aucune vibration.
-  const second = await phone(browser, PHONES[0]);
-  await second.context.addInitScript(() => localStorage.setItem("cdj:touch", JSON.stringify({ vibration: false })));
+  const second = await phone(browser, PHONES[0], { stored: { vibration: false, autoThrottle: true, version: 2 } });
   await second.page.addInitScript(() => {
     const calls: unknown[] = [];
     (window as unknown as { __vibrations: unknown[] }).__vibrations = calls;
