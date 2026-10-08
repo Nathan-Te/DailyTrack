@@ -15,21 +15,24 @@ test("?scenario=bas-cotes : le pilote finit au temps de Node, et ses roues passe
   await expect(page.locator("#meta")).toHaveText("Bas-côtés et vibreurs");
   const run = runPilot(track, { grip: 1 });
   expect(run.valid).toBe(true);
+  // Pas à pas (sans rendu), les roues sur un vibreur lues tous les 4 pas : à vitesse ×6 en rendu logiciel, un échantillonnage au
+  // minuteur ne voit qu'une image toutes les secondes de course et rate les vibreurs.
+  await page.evaluate(() => window.__cdj.manual(true));
   await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
-  await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
-  await page.evaluate(() => {
-    const w = window as unknown as { __kerb: number; __timer?: number };
-    w.__kerb = 0;
-    w.__timer = window.setInterval(() => {
-      w.__kerb = Math.max(w.__kerb, (window.__cdj.fx as unknown as { tel: { kerb: number } }).tel.kerb);
-    }, 15);
-  });
-  await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 120_000 });
-  const end = await page.evaluate(() => {
-    const w = window as unknown as { __kerb: number; __timer: number };
-    window.clearInterval(w.__timer);
-    return { finishMs: (window.__cdj.race as unknown as { finishMs: number }).finishMs, kerb: w.__kerb };
-  });
+  let kerb = 0;
+  for (let guard = 0; guard < 4000; guard++) {
+    const state = await page.evaluate(async () => {
+      let k = 0;
+      for (let i = 0; i < 8; i++) {
+        await window.__cdj.advance(4);
+        k = Math.max(k, (window.__cdj.fx as unknown as { tel: { kerb: number } }).tel.kerb);
+      }
+      return { phase: window.__cdj.phase, kerb: k };
+    });
+    kerb = Math.max(kerb, state.kerb);
+    if (state.phase === "finished") break;
+  }
+  const end = { finishMs: await page.evaluate(() => (window.__cdj.race as unknown as { finishMs: number }).finishMs), kerb };
   expect(end.finishMs).toBe(run.finishMs);
   expect(end.kerb).toBeGreaterThan(0);
   expect(errors).toEqual([]);
