@@ -234,7 +234,7 @@ class Skids {
   }
 
   /** La roue `w` (0-3) pose une trace d'intensité `level` ∈ [0, 1] (0 : elle n'en pose plus) au point (x, y, z). */
-  wheel(w: number, level: number, kind: SurfaceKind, x: number, y: number, z: number) {
+  wheel(w: number, level: number, kind: SurfaceKind, x: number, y: number, z: number, nx = 0, ny = 1, nz = 0) {
     const l = this.last[w]!;
     if (level <= 0.02) {
       this.end(w);
@@ -252,18 +252,25 @@ class Skids {
       return;
     }
     const dx = x - l.x;
+    const dy = y - l.y;
     const dz = z - l.z;
-    const d = Math.sqrt(dx * dx + dz * dz);
+    const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
     if (d >= 8) {
       this.end(w);
       return;
     }
     if (d < SKID_STEP) return;
-    const px = (-dz / d) * SKID_WIDTH;
-    const pz = (dx / d) * SKID_WIDTH;
+    // Largeur du ruban : perpendiculaire à la marche, dans le plan de la surface (normale n) — sur la route, horizontale ; sur une paroi, le long d'elle.
+    let px = ny * dz - nz * dy;
+    let py = nz * dx - nx * dz;
+    let pz = nx * dy - ny * dx;
+    const pl = Math.sqrt(px * px + py * py + pz * pz) || 1;
+    px = (px / pl) * SKID_WIDTH;
+    py = (py / pl) * SKID_WIDTH;
+    pz = (pz / pl) * SKID_WIDTH;
     const seg = this.head;
     const i = seg * 18;
-    const v = [l.x - px, l.y, l.z - pz, l.x + px, l.y, l.z + pz, x + px, y, z + pz, l.x - px, l.y, l.z - pz, x + px, y, z + pz, x - px, y, z - pz];
+    const v = [l.x - px, l.y - py, l.z - pz, l.x + px, l.y + py, l.z + pz, x + px, y + py, z + pz, l.x - px, l.y - py, l.z - pz, x + px, y + py, z + pz, x - px, y - py, z - pz];
     for (let k = 0; k < 18; k++) this.pos[i + k] = v[k]!;
     const j = seg * 24;
     for (let k = 0; k < 6; k++) {
@@ -369,13 +376,16 @@ export class Effects {
     // Seules les roues arrière marquent.
     const slip = skidLevel(tel.slide, speed, f.braking, grounded);
     const hardBrake = f.braking && grounded && speed > 14 ? 0.55 * Math.min(1, speed / 32) : 0;
-    const skid = Math.max(slip, tel.drift * 0.9 * (grounded ? 1 : 0), hardBrake);
+    // Sur une paroi (lot 18) : les pneus pressés laissent leur trace tant que la voiture va vite.
+    const wallRide = tel.onWall && speed > 12 ? 0.4 : 0;
+    const skid = Math.max(slip, tel.drift * 0.9 * (grounded ? 1 : 0), hardBrake, wallRide);
     const rear = [tel.wheels[2]!, tel.wheels[3]!] as const;
     for (let w = 0; w < 4; w++) {
       const wheel = tel.wheels[w]!;
       const level = this.quality === 0 || w < 2 || wheel.ground < NO_GROUND / 2 ? 0 : skid; // roues arrière seulement
       if (level > 0.12) this.emitted.skid++;
-      this.skids.wheel(w, level > 0.12 ? level : 0, wheel.surface, wheel.x, wheel.ground + 0.03, wheel.z);
+      const n = tel.normal;
+      this.skids.wheel(w, level > 0.12 ? level : 0, wheel.surface, wheel.x + n.x * 0.03, wheel.ground + n.y * 0.03, wheel.z + n.z * 0.03, n.x, n.y, n.z);
     }
     if (skid > 0.08) {
       for (let k = this.rate("smoke", 55 * skid * 2, dt); k > 0; k--) {
@@ -401,6 +411,16 @@ export class Effects {
         this.emitted.spark++;
         const w = tel.wall;
         this.glow.spawn(w.x, f.y + rnd(0.2, 0.9), w.z, w.nx * rnd(1, 5) + rnd(-2, 2) + sinY * speed * 0.15, rnd(1, 5), w.nz * rnd(1, 5) + rnd(-2, 2) + cosY * speed * 0.15, rnd(0.2, 0.45), 0.2, -0.2, 1, rnd(0.7, 0.95), 0.35, 1, 14, 0.5);
+      }
+    }
+
+    // Étincelles sur la paroi d'une cuve : à vitesse, les roues arrière et le bas de caisse frottent (lot 18).
+    if (tel.onWall && speed > 18) {
+      const n = tel.normal;
+      for (let k = this.rate("spark", 60 * Math.min(1.5, speed / 36), dt); k > 0; k--) {
+        const wheel = rear[k % 2]!;
+        this.emitted.spark++;
+        this.glow.spawn(wheel.x + n.x * 0.15, wheel.ground + n.y * 0.15, wheel.z + n.z * 0.15, n.x * rnd(1, 4) + rnd(-2, 2) - sinY * speed * 0.15, n.y * rnd(1, 4) + rnd(0, 3), n.z * rnd(1, 4) + rnd(-2, 2) - cosY * speed * 0.15, rnd(0.2, 0.4), 0.18, -0.2, 1, rnd(0.7, 0.95), 0.35, 1, 14, 0.5);
       }
     }
 

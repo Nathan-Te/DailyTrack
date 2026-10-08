@@ -28,6 +28,16 @@ describe("passage signature des miniatures", () => {
     expect(f.from).toBeLessThanOrEqual(5);
     expect(f.to).toBeGreaterThanOrEqual(7);
   });
+  it("une cuve (lot 18) cadre la miniature, avant le passage signature et le saut", () => {
+    const f = pickFocus(track(`S@start ${FILL} S V V V V S ${FILL} S@finish`), "stade");
+    expect(f.reason).toBe("cuve");
+    expect(f.from).toBeLessThanOrEqual(14);
+    expect(f.to).toBeGreaterThanOrEqual(19);
+    // Même avec un saut sur la terre (signature du Rallye) ailleurs dans le circuit.
+    const g = pickFocus(track(`S@start ${FILL} K/t GD S/t ${FILL} S V V V V S S S S S S S S S S@finish`), "rallye");
+    expect(g.reason).toBe("cuve");
+    expect(g.from).toBeGreaterThan(20);
+  });
   it("chicane sur la glace : deux virages de sens opposés", () => {
     const t = track(`S@start S S/g L/g R/g S S S S@finish`);
     expect(signatureBlocks(t, "iceChicane")).toEqual([3, 4]);
@@ -87,7 +97,8 @@ describe("circuits de référence du générateur", () => {
       const t = track(c.spec);
       expect(signatureBlocks(t, THEMES[c.theme].signature), "le générateur place toujours le passage signature du thème").not.toBeNull();
       const f = pickFocus(t, c.theme);
-      expect(f.reason).toBe("signature");
+      // Une cuve (lot 18) passe avant le passage signature : Stade et Nuit en ont toujours une.
+      expect(f.reason).toBe(t.blocks.some((b) => b.cuve) ? "cuve" : "signature");
       expect(f.from).toBeGreaterThanOrEqual(0);
       expect(f.to).toBeLessThan(t.blocks.length);
       expect(f.to - f.from + 1).toBe(Math.min(FOCUS_BLOCKS, t.blocks.length));

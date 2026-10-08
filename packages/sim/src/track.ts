@@ -27,6 +27,18 @@ export const JUMP_LIP = 12; // position du bord du tremplin (le sol retombe d'un
 export const LEVEL = SLOPE_RISE;
 /** Rampe de saut (bloc K) : plate jusqu'à cette abscisse, puis monte de `LEVEL` sur le reste de la cellule (pente 0,25, comme le tremplin J). */
 export const KICK_START = 16;
+/**
+ * Cuves (lot 18) : un côté de la route se relève en quart de cercle (rayon `CUVE_RATIO` × demi-largeur) puis en paroi verticale
+ * (`CUVE_LIP` m de plus), la route gardant sa largeur. La paroi monte en rampe depuis l'entrée et la sortie d'une cuve (`CUVE_RAMP` m
+ * sur une droite, `CUVE_RAMP_ARC` de l'arc dans un virage), sauf si le bloc voisin la prolonge.
+ */
+export const CUVE_LEFT = 1;
+export const CUVE_RIGHT = 2;
+export const CUVE_RATIO = 0.65;
+export const CUVE_LIP = 8;
+export const CUVE_RAMP = 16;
+/** Dans un virage, la rampe est une fraction de l'arc (la paroi monte sur ce tiers de chaque bout) : elle s'allonge avec la taille du virage. */
+export const CUVE_RAMP_ARC = 0.3;
 export const BOOST_HALF_WIDTH = 3.5;
 export const BOOST_HALF_LENGTH = 4;
 /** Profondeur sous la route la plus basse à partir de laquelle la voiture est perdue (m). */
@@ -68,6 +80,11 @@ export interface Block {
   /** Largeur de la route (m) à l'entrée et à la sortie du bloc ; différentes seulement sur un bloc de transition. */
   w0: number;
   w1: number;
+  /** Cuve (lot 18) : côtés où la paroi monte jusqu'à la verticale, en bits (`CUVE_LEFT` | `CUVE_RIGHT`) ; 0 = pas de cuve. */
+  cuve: number;
+  /** Côtés dont la paroi continue celle du bloc précédent / se prolonge dans le suivant (pas de rampe de ce côté-là). */
+  cuveIn: number;
+  cuveOut: number;
 }
 
 export interface Gate {
@@ -134,6 +151,8 @@ export const RISE_LETTERS: Record<string, { kind: BlockKind; rise: number }> = {
   GD: { kind: "gap", rise: -SLOPE_RISE },
   GD2: { kind: "gap", rise: -2 * SLOPE_RISE },
 };
+/** Blocs de cuve (lot 18), `lettre → côtés` : `V` cuve droite (demi-tube, parois des deux côtés), `ML` / `MR` mur latéral à gauche / à droite. Un virage prend `/c` (son mur extérieur). */
+export const CUVE_LETTERS: Record<string, number> = { V: CUVE_LEFT | CUVE_RIGHT, ML: CUVE_LEFT, MR: CUVE_RIGHT };
 const MARKS: Record<string, Mark> = { start: "start", cp: "checkpoint", finish: "finish" };
 
 const DIR_X = [0, 1, 0, -1] as const;
@@ -322,6 +341,8 @@ export interface ParsedToken {
   rise?: number;
   /** Sans rebords (modificateur `o`) ; absent = avec rebords. */
   open?: true;
+  /** Cuve (lot 18) : côtés de la paroi (`V`, `ML`, `MR`, ou `/c` sur un virage) ; absent = pas de cuve. */
+  cuve?: number;
 }
 
 /**
@@ -334,7 +355,8 @@ export function parseToken(token: string, index = 0): ParsedToken {
   const [body = "", markName] = token.split("@");
   const [letter = "", mods = ""] = body.split("/");
   const shaped = RISE_LETTERS[letter];
-  const kind = shaped ? shaped.kind : BLOCK_LETTERS[letter];
+  const cuveSides = CUVE_LETTERS[letter];
+  const kind: BlockKind | undefined = shaped ? shaped.kind : cuveSides ? "straight" : BLOCK_LETTERS[letter];
   if (!kind) throw new Error(`Bloc inconnu « ${token} » (position ${index})`);
   let mark: Mark | undefined;
   if (markName !== undefined) {
@@ -345,9 +367,11 @@ export function parseToken(token: string, index = 0): ParsedToken {
   let banked = false;
   let width: { w0: number; w1: number } | undefined;
   let open = false;
+  let outerWall = false;
   for (const m of mods.match(/[enl]>[enl]|./g) ?? []) {
     if (m === "b") banked = true;
     else if (m === "o") open = true;
+    else if (m === "c") outerWall = true;
     else if (SURFACE_LETTERS[m]) {
       if (surface !== "road") throw new Error(`Deux revêtements sur « ${token} » (position ${index})`);
       surface = SURFACE_LETTERS[m]!;
@@ -361,7 +385,16 @@ export function parseToken(token: string, index = 0): ParsedToken {
   }
   if (banked && !isCurve(kind)) throw new Error(`Seul un virage peut être relevé (${token})`);
   if (open && kind === "gap") throw new Error(`Un vide n'a pas de rebords à ouvrir (${token})`);
-  return { kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}) };
+  if (outerWall && !isCurve(kind)) throw new Error(`Seul un virage prend un mur extérieur « /c » (${token}) : pour une droite, V, ML ou MR`);
+  let cuve = cuveSides ?? 0;
+  if (outerWall) cuve = turnsLeft(kind) ? CUVE_RIGHT : CUVE_LEFT; // le mur est du côté opposé au centre du virage
+  if (cuve) {
+    if (banked) throw new Error(`Une cuve n'est pas un virage relevé (${token})`);
+    if (open) throw new Error(`Une cuve a ses parois : pas de « o » (${token})`);
+    if (mark) throw new Error(`Pas de repère sur une cuve (${token})`);
+    if (width && width.w0 !== width.w1) throw new Error(`Pas de transition de largeur sur une cuve (${token})`);
+  }
+  return { kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}) };
 }
 
 // --- Virages relevés --------------------------------------------------------------------------
@@ -431,7 +464,7 @@ export function parseTrack(id: string, spec: string): Track {
   let width: number = ROAD_WIDTH;
 
   tokens.forEach((token, index) => {
-    const { kind, surface, banked, mark, width: written, rise, open } = parseToken(token, index);
+    const { kind, surface, banked, mark, width: written, rise, open, cuve } = parseToken(token, index);
     // Largeurs chaînées comme les hauteurs : un bloc sans largeur garde la sortie du précédent ; une largeur écrite doit
     // la prolonger exactement (seul le premier bloc la choisit), sinon la route aurait une marche.
     if (written && index > 0 && written.w0 !== width) {
@@ -446,7 +479,8 @@ export function parseTrack(id: string, spec: string): Track {
     if (open && (mark === "start" || mark === "finish")) throw new Error(`Le départ et l'arrivée gardent leurs rebords (${token})`);
 
     const delta = exitDelta(kind, rise);
-    const block: Block = { index, cx, cz, dir, kind, y0: y, rise: delta, open: open === true, surface, banked, w0, w1, ...(mark ? { mark } : {}) };
+    const block: Block = { index, cx, cz, dir, kind, y0: y, rise: delta, open: open === true, surface, banked, w0, w1, cuve: cuve ?? 0, cuveIn: 0, cuveOut: 0, ...(mark ? { mark } : {}) };
+    if (cuve && (index === 0 || index === tokens.length - 1)) throw new Error(`Le départ et l'arrivée gardent leurs rebords : pas de cuve (${token})`);
     const placed = blockCells(cx, cz, dir, kind);
     for (const [x, z] of placed.cells) {
       const key = cellKey(x, z);
@@ -458,6 +492,15 @@ export function parseTrack(id: string, spec: string): Track {
     y += delta;
     ({ cx, cz, dir } = placed.next);
   });
+
+  // Cuves : une paroi continue celle du voisin de même côté et de même largeur (aucune rampe à ce bord).
+  for (const b of blocks) {
+    if (!b.cuve) continue;
+    const prev = blocks[b.index - 1];
+    const next = blocks[b.index + 1];
+    if (prev && prev.w1 === b.w0) b.cuveIn = b.cuve & prev.cuve;
+    if (next && next.w0 === b.w1) b.cuveOut = b.cuve & next.cuve;
+  }
 
   const first = blocks[0]!;
   const last = blocks[blocks.length - 1]!;

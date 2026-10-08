@@ -5,9 +5,12 @@ import {
   COLLIDER_RADIUS,
   HALF_TRACK,
   carSpeed,
+  createShellHit,
   createSurface,
+  createTangentFrame,
   createWallHit,
   forwardSpeed,
+  tangentFrame,
   type CarState,
   type SurfaceKind,
   type World,
@@ -40,6 +43,11 @@ export interface Telemetry {
   wall: { x: number; z: number; nx: number; nz: number } | null;
   /** Revêtement sous la voiture. */
   surface: SurfaceKind;
+  /** Normale de la surface sous la voiture (lot 18) : (0, 1, 0) à plat, inclinée sur la paroi d'une cuve ; `tilt` = sinus de l'inclinaison (0 à plat, 1 à la verticale). */
+  normal: { x: number; y: number; z: number };
+  tilt: number;
+  /** Sur une paroi franchement inclinée (≥ 30°), les pneus frottent : vrai (étincelles et traces sur la paroi). */
+  onWall: boolean;
 }
 
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR] as const;
@@ -55,6 +63,9 @@ export function createTelemetry(): Telemetry {
     wheels: [0, 1, 2, 3].map(() => ({ x: 0, z: 0, ground: 0, surface: "road" as SurfaceKind })),
     wall: null,
     surface: "road",
+    normal: { x: 0, y: 1, z: 0 },
+    tilt: 0,
+    onWall: false,
   };
 }
 
@@ -67,6 +78,8 @@ export function slideOf(car: Pick<CarState, "vx" | "vz" | "yaw">): number {
 
 const sample = createSurface();
 const hit = createWallHit();
+const shellHit = createShellHit();
+const frame = createTangentFrame();
 
 /** Remplit `out` pour la voiture `car` dans `world` (lecture seule). */
 export function readTelemetry(car: CarState, world: World, out: Telemetry): Telemetry {
@@ -79,6 +92,32 @@ export function readTelemetry(car: CarState, world: World, out: Telemetry): Tele
   out.slide = slideOf(car);
   out.grounded = car.grounded === 1;
   out.drift = car.drift;
+  // Sur la paroi d'une cuve (lot 18), les roues sont posées dans le plan tangent : mêmes formules que la simulation (`tangentFrame`).
+  if (car.ny < 0.999 && world.shell !== undefined && world.shell(car.x, car.z, car.y, shellHit)) {
+    tangentFrame(car.yaw, shellHit, frame);
+    for (let i = 0; i < 4; i++) {
+      const w = out.wheels[i]!;
+      const f = WHEEL_F[i]!;
+      const l = WHEEL_L[i]!;
+      w.x = car.x + f * frame.fx + l * frame.lx;
+      w.z = car.z + f * frame.fz + l * frame.lz;
+      w.ground = car.y + f * frame.fy + l * frame.ly;
+      w.surface = shellHit.kind;
+    }
+    out.surface = shellHit.kind;
+    out.normal.x = car.nx;
+    out.normal.y = car.ny;
+    out.normal.z = car.nz;
+    out.tilt = Math.sqrt(Math.max(0, 1 - car.ny * car.ny));
+    out.onWall = out.grounded && out.tilt >= 0.5;
+    out.wall = null;
+    return out;
+  }
+  out.normal.x = 0;
+  out.normal.y = 1;
+  out.normal.z = 0;
+  out.tilt = 0;
+  out.onWall = false;
   for (let i = 0; i < 4; i++) {
     const w = out.wheels[i]!;
     w.x = car.x + WHEEL_F[i]! * fx + WHEEL_L[i]! * lx;

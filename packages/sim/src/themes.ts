@@ -8,6 +8,7 @@ import type { SurfaceKind, WidthLetter } from "./track";
 // - les virages relevés (chance qu'un virage le soit) et les blocs à effet (super turbo, moteur coupé) ;
 // - le relief (lot 17) : nombre de reliefs marqués (montées, crêtes, descentes) et part des plus raides ;
 // - les sauts : chance d'un vrai saut au-dessus du vide, et chance de sections sans rebords sur les parties surélevées ;
+// - les cuves (lot 18) : chance d'une cuve droite, d'un mur latéral ou d'un virage en cuve ;
 // - un passage signature, qui s'ajoute aux passages marquants ordinaires (chicane, épingle).
 // Changer un thème (ou en ajouter un) change le circuit d'une date : `GENERATOR_VERSION` +1.
 
@@ -41,15 +42,17 @@ export interface Theme {
   jumpChance: number;
   /** Chance (%) qu'une partie surélevée du circuit n'ait pas de rebords. */
   openChance: number;
+  /** Chance (%) d'une cuve (lot 18) : cuve droite, mur latéral ou virage en cuve ; 100 = tous les circuits du thème en ont une. */
+  cuveChance: number;
   signature: Signature;
 }
 
 export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
-  stade: { name: "stade", label: "Stade", palette: "neon", zones: null, widths: { weights: { e: 1, n: 3, l: 6 }, changes: [1, 2] }, bankChance: 70, turboChance: 30, cut: false, relief: { hills: [1, 3], steep: 60 }, jumpChance: 100, openChance: 0, signature: "turboBank" },
-  rallye: { name: "rallye", label: "Rallye", palette: "desert", zones: { count: [2, 3], surfaces: [["dirt", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 50 }, jumpChance: 40, openChance: 40, signature: "dirtJump" },
-  banquise: { name: "banquise", label: "Banquise", palette: "neige", zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, widths: { weights: { e: 1, n: 3, l: 5 }, changes: [1, 2] }, bankChance: 15, turboChance: 0, cut: false, relief: { hills: [1, 3], steep: 30 }, jumpChance: 35, openChance: 0, signature: "iceChicane" },
-  nuit: { name: "nuit", label: "Nuit", palette: "nuit", zones: null, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [2, 3] }, bankChance: 20, turboChance: 25, cut: true, relief: { hills: [2, 3], steep: 60 }, jumpChance: 100, openChance: 70, signature: "cutRun" },
-  campagne: { name: "campagne", label: "Campagne", palette: "campagne", zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 40 }, jumpChance: 40, openChance: 50, signature: "dirtPinch" },
+  stade: { name: "stade", label: "Stade", palette: "neon", zones: null, widths: { weights: { e: 1, n: 3, l: 6 }, changes: [1, 2] }, bankChance: 70, turboChance: 30, cut: false, relief: { hills: [1, 3], steep: 60 }, jumpChance: 100, openChance: 0, cuveChance: 100, signature: "turboBank" },
+  rallye: { name: "rallye", label: "Rallye", palette: "desert", zones: { count: [2, 3], surfaces: [["dirt", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 50 }, jumpChance: 40, openChance: 40, cuveChance: 0, signature: "dirtJump" },
+  banquise: { name: "banquise", label: "Banquise", palette: "neige", zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, widths: { weights: { e: 1, n: 3, l: 5 }, changes: [1, 2] }, bankChance: 15, turboChance: 0, cut: false, relief: { hills: [1, 3], steep: 30 }, jumpChance: 35, openChance: 0, cuveChance: 25, signature: "iceChicane" },
+  nuit: { name: "nuit", label: "Nuit", palette: "nuit", zones: null, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [2, 3] }, bankChance: 20, turboChance: 25, cut: true, relief: { hills: [2, 3], steep: 60 }, jumpChance: 100, openChance: 70, cuveChance: 100, signature: "cutRun" },
+  campagne: { name: "campagne", label: "Campagne", palette: "campagne", zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 40 }, jumpChance: 40, openChance: 50, cuveChance: 0, signature: "dirtPinch" },
 };
 
 /** Thème de la journée : tiré de la date (graine = jour UTC), identique pour tout le monde. */

@@ -4,7 +4,8 @@ import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
 import { trackJumps, type JumpInfo } from "./jump";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, blockHalfWidth, blockPoint, blockSlope, curveCenter, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, CUVE_LEFT, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { cuveAmplitude } from "./cuve";
 import { SURFACES } from "./world";
 
 // Pilote automatique (lot 7) : il sert à valider un circuit généré (« est-il finissable ? ») et donne le temps de
@@ -24,6 +25,8 @@ export interface AutopilotOptions {
   look?: number;
   /** Réglages de la voiture (ceux de la course). */
   params?: Readonly<CarParams>;
+  /** Virages en cuve (lot 18) : monter sur la paroi extérieure, ou (par défaut) rester sur le fond comme sur un virage ordinaire. `bestPilotRun` essaie les deux. */
+  wall?: boolean;
 }
 
 /** Trajectoire de course : points tous les ~2 m, distance cumulée et vitesse visée en chaque point. */
@@ -46,10 +49,21 @@ const OPEN_EXTRA_MARGIN = 1;
 /** Réglage de la gravité sur pente de la voiture (m/s² par unité de pente), pour le freinage du pilote. */
 const SLOPE_GRAVITY = DEFAULT_CAR_PARAMS.slopeGravity;
 const SMOOTH_ITERATIONS = 400;
+const SMOOTH_ITERATIONS_CUVE = 4000;
 /** Écart latéral permis (m) du pilote en virage relevé. */
 const BANKED_ROOM = 1.5;
 /** Marge aux rebords (m) : demi-largeur de la voiture et un peu d'air. */
 const WALL_MARGIN = COLLIDER_RADIUS + 2.6;
+/**
+ * Virage en cuve (lot 18) : le pilote monte sur la paroi extérieure, à cette distance (m) du pied de la paroi verticale selon la taille
+ * du virage. Serré : tout en haut (c'est la paroi qui permet la vitesse) ; large et ample : à mi-pente (le trajet reste court, l'entrée et la sortie douces).
+ */
+const CUVE_INSET = [0, 1, 2, 2.5] as const;
+/** Part de l'amplitude de la paroi à partir de laquelle la trajectoire est clouée à la paroi (avant : libre, elle rejoint ce point). */
+const CUVE_PIN_FROM = 0.4;
+/** Entonnoir (m) avant et après un virage en cuve, et distance (m) au rebord qu'il garde sur les routes ordinaires. */
+const CUVE_FUNNEL = 40;
+const FUNNEL_RIM = 1.5;
 
 interface Centerline {
   x: number[];
@@ -63,10 +77,23 @@ interface Centerline {
   blk: number[];
   /** Pente de la route (montée par mètre, dans le sens de la marche). */
   slope: number[];
+  /** Écart latéral imposé (m, positif à gauche) sur la paroi d'un virage en cuve, ou NaN : la trajectoire y est clouée. */
+  pin: number[];
+  /** Pente de la paroi à l'endroit visé (montée par mètre en travers) : elle aide le virage comme un relevé (g × pente). */
+  wall: number[];
+  /** Vrai sur la rampe de sortie d'un virage en cuve : la paroi s'efface sous la voiture, qui ne freine plus. */
+  wallExit: boolean[];
 }
 
-function denseCenterline(track: Track): Centerline {
-  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], blk: [], slope: [] };
+/** Pente de la paroi d'une cuve de demi-largeur `W` au point visé (à `inset` du pied de la paroi verticale) : tangente de son angle. */
+function cuveWallSlope(W: number, inset: number): number {
+  const R = CUVE_RATIO * W;
+  const dx = R - inset;
+  return dx / Math.sqrt(R * R - dx * dx);
+}
+
+function denseCenterline(track: Track, wall: boolean): Centerline {
+  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], blk: [], slope: [], pin: [], wall: [], wallExit: [] };
   const pt = { x: 0, z: 0 };
   const push = (p: number, q: number, b: Block, room: number) => {
     blockPoint(b, p, q, pt);
@@ -75,6 +102,20 @@ function denseCenterline(track: Track): Centerline {
     out.room.push(room);
     out.blk.push(b.index);
     out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
+    // Virage en cuve : la paroi extérieure est la ligne du pilote ; elle monte en rampe comme la paroi elle-même.
+    if (wall && b.cuve && isCurve(b.kind)) {
+      const bit = b.cuve;
+      const a = cuveAmplitude(b, bit, p, q);
+      const inset = CUVE_INSET[curveSize(b.kind)]!;
+      out.pin.push(NaN); // le cloutage se fait plus bas, une fois les normales connues
+      out.wall.push(a * cuveWallSlope(b.w0 / 2, inset));
+      const adp = Math.abs(p - curveCenter(b.kind).cp);
+      out.wallExit.push(!(b.cuveOut & bit) && q / (q + adp + 1e-9) > 1 - CUVE_RAMP_ARC);
+    } else {
+      out.pin.push(NaN);
+      out.wall.push(0);
+      out.wallExit.push(false);
+    }
   };
   // Écart latéral permis : la demi-largeur de la route (qui varie d'un bloc à l'autre, et dans une transition) moins la marge.
   // Sur une route large, la trajectoire peut donc prendre une corde plus ouverte : c'est la relaxation ci-dessous qui s'en sert.
@@ -97,12 +138,47 @@ function denseCenterline(track: Track): Centerline {
       const n = Math.round(CELL / SPACING);
       for (let i = first; i <= n; i++) {
         const q = (CELL * i) / n;
-        push(CELL / 2, q, b, calm ? 0.5 : blockHalfWidth(b, q) - WALL_MARGIN - open);
+        // Cuve droite : le pilote reste sur le fond (la paroi n'a pas d'intérêt en ligne droite).
+        const floor = b.cuve ? b.w0 / 2 - (b.w0 / 2) * CUVE_RATIO - 0.3 : Infinity;
+        push(CELL / 2, q, b, calm ? 0.5 : Math.min(floor, blockHalfWidth(b, q) - WALL_MARGIN - open));
       }
     }
   }
   // Normales (vers la gauche) par différence centrée.
   const n = out.x.length;
+  // Virage en cuve : la trajectoire est clouée à la paroi, et un entonnoir de `CUVE_FUNNEL` mètres de part et d'autre l'y amène (et l'en ramène)
+  // en douceur, par un lissage cubique de l'écart latéral. Aucune liberté dans cette zone : la courbure y est faible par construction.
+  for (const b of wall ? track.blocks : []) {
+    if (!b.cuve || !isCurve(b.kind)) continue;
+    const sign = b.cuve === CUVE_LEFT ? 1 : -1;
+    const target = b.w0 / 2 - CUVE_INSET[curveSize(b.kind)]!;
+    let first = -1;
+    let last = -1;
+    for (let i = 0; i < n; i++) {
+      if (out.blk[i] !== b.index) continue;
+      if (first < 0) first = i;
+      last = i;
+    }
+    if (first < 0) continue;
+    const reach = Math.min(target, b.w0 / 2 - FUNNEL_RIM);
+    const funnel = CUVE_FUNNEL / SPACING;
+    const set = (i: number, off: number) => {
+      if (i < 0 || i >= n || out.room[i]! < 1) return; // pas de décalage sur une rampe de saut ou sa réception
+      const cur = out.pin[i]!;
+      const v = sign * off;
+      if (cur !== cur || Math.abs(v) > Math.abs(cur)) out.pin[i] = v;
+    };
+    for (let i = first; i <= last; i++) {
+      const a = out.wall[i]! / cuveWallSlope(b.w0 / 2, CUVE_INSET[curveSize(b.kind)]!); // amplitude de la paroi en ce point
+      set(i, a >= CUVE_PIN_FROM ? target : reach + (target - reach) * (a / CUVE_PIN_FROM));
+    }
+    for (let k = 1; k <= funnel; k++) {
+      const t = 1 - k / funnel;
+      const off = reach * t * t * (3 - 2 * t);
+      set(first - k, off);
+      set(last + k, off);
+    }
+  }
   for (let i = 0; i < n; i++) {
     const a = i > 0 ? i - 1 : 0;
     const c = i < n - 1 ? i + 1 : n - 1;
@@ -133,20 +209,25 @@ interface Path {
   airborne: boolean[];
 }
 const paths = new WeakMap<Track, Path>();
+const floorPaths = new WeakMap<Track, Path>();
 
-function racingPath(track: Track): Path {
-  const cached = paths.get(track);
+function racingPath(track: Track, wall = false): Path {
+  const cache = wall ? paths : floorPaths;
+  const cached = cache.get(track);
   if (cached) return cached;
-  const c = denseCenterline(track);
+  const c = denseCenterline(track, wall);
   const n = c.x.length;
   const x = c.x.slice();
   const z = c.z.slice();
   // Relaxation (Gauss-Seidel) : chaque point va vers le milieu de ses voisins, sans sortir de la route.
-  for (let it = 0; it < SMOOTH_ITERATIONS; it++) {
+  // Une cuve en virage demande une trajectoire clouée à la paroi et un entonnoir : la relaxation doit converger plus loin (les autres circuits gardent leur tracé).
+  const iterations = wall && track.blocks.some((b) => b.cuve && isCurve(b.kind)) ? SMOOTH_ITERATIONS_CUVE : SMOOTH_ITERATIONS;
+  for (let it = 0; it < iterations; it++) {
     for (let i = 1; i < n - 1; i++) {
       const mx = (x[i - 1]! + x[i + 1]!) / 2;
       const mz = (z[i - 1]! + z[i + 1]!) / 2;
-      const o = clamp((mx - c.x[i]!) * c.nx[i]! + (mz - c.z[i]!) * c.nz[i]!, -c.room[i]!, c.room[i]!);
+      const pinned = c.pin[i]!;
+      const o = pinned === pinned ? pinned : clamp((mx - c.x[i]!) * c.nx[i]! + (mz - c.z[i]!) * c.nz[i]!, -c.room[i]!, c.room[i]!);
       x[i] = c.x[i]! + o * c.nx[i]!;
       z[i] = c.z[i]! + o * c.nz[i]!;
     }
@@ -169,14 +250,14 @@ function racingPath(track: Track): Path {
     traction.push(m.traction);
     rolling.push(m.rolling);
     slick.push(m.slick);
-    bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : 0);
+    bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : c.wall[i]!);
   }
   // Zone de saut : de la rampe à la fin du bloc qui suit la réception. Elle commence au bloc `K` et finit un bloc après la réception.
   const zone = new Set<number>();
   for (const j of trackJumps(track)) for (let i = j.kick; i <= j.landing + 1; i++) zone.add(i);
-  const airborne = c.blk.map((b) => zone.has(b));
+  const airborne = c.blk.map((b, i) => zone.has(b) || c.wallExit[i]!);
   const path = { x, z, s, grip, traction, rolling, bank, slick, slope: c.slope, airborne };
-  paths.set(track, path);
+  cache.set(track, path);
   return path;
 }
 
@@ -193,8 +274,9 @@ export function racingLine(
   gravity = 24.6,
   iceCoastGrip = DEFAULT_CAR_PARAMS.iceCoastGrip,
   slopeGravity = SLOPE_GRAVITY,
+  wall = false,
 ): RacingLine {
-  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne } = racingPath(track);
+  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne } = racingPath(track, wall);
   const n = x.length;
   // Vitesse de passage : courbure sur une corde de ±2 points (≈ 8 m), v = √(adhérence / courbure).
   const speed = new Array<number>(n).fill(topSpeed);
@@ -233,7 +315,7 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
   const grip = opts.grip ?? 0.9;
   const look = opts.look ?? 0.3;
   const lateral = ((params.gripFront + params.gripRear) / 2) * 0.85 * grip;
-  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip, params.slopeGravity);
+  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip, params.slopeGravity, opts.wall ?? false);
   const n = line.x.length;
   let idx = 0;
 
@@ -307,6 +389,8 @@ export interface PilotRun {
   jumps: JumpPass[];
   /** Vrai si chaque saut a été pris dans sa fenêtre de vitesse avec la marge `JUMP_ENTRY_MARGIN` (aucun saut = vrai). */
   jumpsOk: boolean;
+  /** Vrai si les virages en cuve ont été pris sur la paroi (réglage `wall`), faux sur le fond. */
+  wall: boolean;
 }
 
 export interface JumpPass {
@@ -367,6 +451,7 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     fastTicks,
     jumps,
     jumpsOk: jumps.every(({ jump, speed }) => speed >= jump.minSpeed * JUMP_ENTRY_MARGIN && speed <= jump.maxSpeed),
+    wall: opts.wall ?? false,
   };
 }
 
@@ -376,9 +461,13 @@ export const PILOT_GRIPS = [1.08, 1, 0.9, 0.78] as const;
 /** La meilleure course valide parmi plusieurs réglages du pilote, ou `null` si aucun ne finit le circuit. */
 export function bestPilotRun(track: Track): PilotRun | null {
   let best: PilotRun | null = null;
-  for (const grip of PILOT_GRIPS) {
-    const run = runPilot(track, { grip });
-    if (run.valid && run.jumpsOk && (!best || run.finishMs < best.finishMs)) best = run;
+  // Avec un virage en cuve, on essaie aussi de le prendre sur le fond : la paroi n'est utile que si elle fait gagner du temps.
+  const walls = track.blocks.some((b) => b.cuve && isCurve(b.kind)) ? [false, true] : [false];
+  for (const wall of walls) {
+    for (const grip of PILOT_GRIPS) {
+      const run = runPilot(track, { grip, wall });
+      if (run.valid && run.jumpsOk && (!best || run.finishMs < best.finishMs)) best = run;
+    }
   }
   return best;
 }

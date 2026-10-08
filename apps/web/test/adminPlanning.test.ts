@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { PREMIER_JOUR, createLargeursTrack, createReliefTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
+import { PREMIER_JOUR, createCuvesTrack, createLargeursTrack, createReliefTrack, createSurfacesTrack, formatDay, parseDay, themeForDay, THEME_NAMES } from "@cdj/sim";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel, replaceProblem } from "../src/adminPlan";
-import { circuitStats, effectsText, reliefText, widthsText } from "../src/circuitStats";
+import { circuitStats, cuvesText, effectsText, reliefText, widthsText } from "../src/circuitStats";
 import { DemoAdmin, TOKEN_KEY, loadToken, parseOverview, saveToken } from "../src/adminBackend";
 import { DEMO_PLAN_KEY, NO_PLAN, isReplaced, loadDemoPlan, parseDemoPlan, parsePlanEntry, saveDemoPlan } from "../src/planning";
 import { DEFAULT_ADMIN, buildQuery, parseAdmin } from "../src/adminLogic";
@@ -90,6 +90,16 @@ describe("chiffres d'un circuit", () => {
     expect(s.open).toBe(4);
     expect(reliefText(s)).toBe("24 m de dénivelé · 2 sauts · 4 blocs sans rebords");
     expect(reliefText({ relief: 12, jumps: 0, open: 0 })).toBe("12 m de dénivelé");
+  });
+});
+
+describe("chiffres d'un circuit : cuves (lot 18)", () => {
+  it("le scénario des cuves : cuve droite, mur latéral, virages en cuve", () => {
+    const s = circuitStats(createCuvesTrack());
+    expect([s.cuves, s.walls, s.cuveTurns]).toEqual([4, 4, 2]);
+    expect(cuvesText(s)).toBe("4 blocs de cuve droite · 4 blocs de mur latéral · 2 virages en cuve");
+    expect(cuvesText({ cuves: 0, walls: 0, cuveTurns: 1 })).toBe("1 virage en cuve");
+    expect(cuvesText({ cuves: 0, walls: 0, cuveTurns: 0 })).toBe("aucune");
   });
 });
 

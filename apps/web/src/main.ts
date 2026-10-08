@@ -1,5 +1,5 @@
 import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
-import { PerspectiveCamera, WebGLRenderer } from "three";
+import { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
   AXLE_REAR,
@@ -22,6 +22,7 @@ import {
   createLargeursTrack,
   createVitesseTrack,
   FALL_TICKS,
+  createCuvesTrack,
   createGlaceTrack,
   createReliefTrack,
   createSurfacesTrack,
@@ -60,6 +61,7 @@ import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { volumeIcon } from "./audioLogic";
 import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
+import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
 import { Effects, QualityGovernor, type Quality } from "./fx";
 import { createTelemetry, readTelemetry } from "./telemetry";
@@ -79,7 +81,7 @@ import { loadTunedParams, mountTunePanel } from "./tune";
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
-// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords) et `plat` (le terrain d'essai du lot 1).
+// `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords), `cuves` (lot 18 : cuve droite, mur latéral, virage en cuve à pleine vitesse puis abordé trop lentement) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
@@ -90,7 +92,7 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
-const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" ? requested : "jour";
+const scenario = customTrack ? "essai" : requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -128,7 +130,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : createTestTrack());
+const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -225,7 +227,7 @@ if (daily) {
   $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
   $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
 } else if (track) {
-  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : "Circuit d'essai";
+  $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : "Circuit d'essai";
 }
 function updateInfo() {
   $("info").textContent = track
@@ -781,6 +783,10 @@ let camYaw = 0;
 let camBaseY = 0;
 let snapCamera = true;
 const camPos = { x: 0, y: 0, z: 0 };
+// Orientation de la voiture et du fantôme sur la paroi d'une cuve (lot 18) : normale lissée, caméra qui penche avec elle.
+const carPose = new CarPose();
+const ghostPose3d = new CarPose();
+const camLift = new Vector3();
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
 // Caméras poursuite (touche C / bouton Vue de la manette) : proche, ou loin pour mieux lire le circuit.
@@ -989,11 +995,13 @@ function frame(now: number) {
   const pitchS = lerp(previous.pitch, car.pitch, alpha);
   const rollS = lerp(previous.roll, car.roll, alpha);
   carMesh.position.set(x, y, z);
-  carMesh.rotation.set(-Math.atan(pitchS), yaw, Math.atan(rollS), "YXZ");
+  carPose.follow(car.nx, car.ny, car.nz, elapsed, snapCamera);
+  carPose.apply(carMesh, pitchS, yaw, rollS);
   const wheelFollow = 1 - Math.exp(-30 * elapsed);
   for (let i = 0; i < 4; i++) {
     const ground = tel.wheels[i]!.ground;
-    const target = ground < NO_GROUND / 2 ? 1 : y + WHEEL_F[i]! * pitchS + WHEEL_L[i]! * rollS - ground;
+    // Sur une paroi, les roues sont dans le plan de la caisse : pas de débattement à rendre.
+    const target = tel.tilt > 0 ? 0 : ground < NO_GROUND / 2 ? 1 : y + WHEEL_F[i]! * pitchS + WHEEL_L[i]! * rollS - ground;
     wheelDroop[i] = wheelDroop[i]! + (target - wheelDroop[i]!) * wheelFollow;
   }
   wheelPose.forward = tel.forward;
@@ -1013,7 +1021,7 @@ function frame(now: number) {
   lastGround = groundY;
   // Ombre : sous la voiture ; en l'air au-dessus d'un vide, à son point de réception prévu (lot 17) — pas d'ombre du tout si elle ne
   // retombe sur rien : c'est la chute.
-  carShadow.visible = true;
+  carShadow.visible = car.ny > 0.95; // sur une paroi, une tache posée à plat ne dirait rien
   if (race && !car.grounded && groundN < 4 && race.fallTicks === 0 && y - groundY > 1.5) {
     const landing = predictLanding(race.world, car, carParams);
     if (landing) placeShadow(carShadow, landing.x, landing.z, yaw, landing.y, Math.min(6, 1 + landing.t * 4));
@@ -1029,7 +1037,8 @@ function frame(now: number) {
     const gc = ghost.race.car;
     const gp = ghost.previous;
     ghostMesh.position.set(lerp(gp.x, gc.x, alpha), lerp(gp.y, gc.y, alpha), lerp(gp.z, gc.z, alpha));
-    ghostMesh.rotation.set(-Math.atan(lerp(gp.pitch, gc.pitch, alpha)), gp.yaw + wrapAngle(gc.yaw - gp.yaw) * alpha, Math.atan(lerp(gp.roll, gc.roll, alpha)), "YXZ");
+    ghostPose3d.follow(gc.nx, gc.ny, gc.nz, elapsed);
+    ghostPose3d.apply(ghostMesh, lerp(gp.pitch, gc.pitch, alpha), gp.yaw + wrapAngle(gc.yaw - gp.yaw) * alpha, lerp(gp.roll, gc.roll, alpha));
     ghostPose.forward = forwardSpeed(gc);
     ghostPose.steerAngle = -gc.steer * steerLimit(ghostPose.forward, carParams);
     ghostPose.dt = elapsed;
@@ -1060,9 +1069,12 @@ function frame(now: number) {
   // En chute, la caméra reste où elle est : la voiture s'enfonce dans le vide sous le regard, sans que l'écran plonge avec elle.
   if (!(race && race.fallTicks > 0)) camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
   const back = rig.back + speedRatio * rig.backAtSpeed + fastCam.back;
-  const tx = x - Math.sin(camYaw) * back;
-  const ty = camBaseY + rig.height - fastCam.lower;
-  const tz = z - Math.cos(camYaw) * back;
+  // Sur la paroi d'une cuve, la caméra penche avec la voiture (en partie) : son « haut » est entre la verticale et la normale.
+  const camUp = carPose.cameraUp;
+  camLift.copy(camUp).multiplyScalar(rig.height - fastCam.lower);
+  const tx = x - Math.sin(camYaw) * back + camLift.x;
+  const ty = camBaseY + camLift.y;
+  const tz = z - Math.cos(camYaw) * back + camLift.z;
   const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - fastCam.lag) * elapsed);
   camPos.x += (tx - camPos.x) * follow;
   camPos.y += (ty - camPos.y) * follow;
@@ -1072,7 +1084,8 @@ function frame(now: number) {
   shake *= Math.max(0, 1 - 7 * elapsed);
   const sh = SHAKE * shake * 0.22 + (buzzAllowed(governor.level) ? SHAKE * buzzAmplitude(speed) * 2 : 0);
   camera.position.set(camPos.x + (Math.random() - 0.5) * sh, camPos.y + (Math.random() - 0.5) * sh, camPos.z + (Math.random() - 0.5) * sh);
-  camera.lookAt(x + Math.sin(camYaw) * rig.ahead, camBaseY + rig.lookHeight, z + Math.cos(camYaw) * rig.ahead);
+  camera.up.copy(camUp);
+  camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
   fovKick += ((car.turbo > 0 ? 7 : car.boost > 0 ? 4 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
   const fov = rig.fov + speedRatio * rig.fovAtSpeed + fastCam.fov + fovKick;
