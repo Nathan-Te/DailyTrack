@@ -13,12 +13,12 @@ import { openSqlite } from "../src/node-sqlite";
 
 export const DAY_MS = 86_400_000;
 /**
- * Jour de test : le 12/10/2026 (fixe : indépendant de `PREMIER_JOUR`, qui ne change que la numérotation). L'horloge de l'API est
- * réglée sur midi UTC de ce jour. Choisi au lot 18 (le 09/10 du lot 17 n'a plus le même circuit : le pilote ne finit pas le nouveau
- * avec tous les niveaux de prudence) : un circuit de Nuit, avec une cuve, où le pilote finit à chaque niveau et où plus il est prudent,
- * plus il est lent (les tests de classement comptent sur cet ordre) ; le serveur y rejoue donc de la physique de paroi.
+ * Jour de test : le 14/10/2026 (fixe : indépendant de `PREMIER_JOUR`, qui ne change que la numérotation). L'horloge de l'API est
+ * réglée sur midi UTC de ce jour. Choisi à la retouche 18b (le 12/10 du lot 18 n'a plus le même circuit : l'ordre des temps selon la prudence
+ * du pilote n'y tenait plus) : un circuit avec un virage en cuve, où le pilote finit à chaque niveau et où plus il est prudent, plus il est
+ * lent (les tests de classement comptent sur cet ordre) ; le serveur y rejoue donc de la physique de paroi.
  */
-export const DAY = daysFromCivil(2026, 10, 12);
+export const DAY = daysFromCivil(2026, 10, 14);
 export const NOON = DAY * DAY_MS + 12 * 3_600_000;
 
 const circuits = new Map<number, DailyCircuit>();

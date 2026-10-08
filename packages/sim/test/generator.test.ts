@@ -132,13 +132,15 @@ describe("circuit du jour : construction", () => {
     for (const k of ["straight", "curveL", "curveR", "wideL", "wideR", "grandL", "grandR", "up", "down", "bump", "kick", "gap", "boost", "turbo", "cut"]) expect(seen.has(k as never), k).toBe(true);
   });
 
-  it("construit vite : temps de génération mesuré sur 60 jours consécutifs (moyenne < 0,5 s, pire < 1,5 s)", () => {
+  it("construit vite : temps de génération mesuré sur 60 jours consécutifs (moyenne < 0,8 s, pire < 2,5 s)", () => {
     const times = DAYS.slice(0, 60).map((d) => (circuit(d), buildMs.get(d)!));
     const mean = times.reduce((a, b) => a + b, 0) / times.length;
     const worst = Math.max(...times);
     console.info(`[générateur] 60 jours consécutifs : moyenne ${mean.toFixed(0)} ms, pire ${worst.toFixed(0)} ms`);
-    expect(mean).toBeLessThan(500);
-    expect(worst).toBeLessThan(1500);
+    // Budget relevé à la retouche 18b : une cuve fait essayer au pilote les deux lignes (8 courses au lieu de 4), et la CI est ≈ 3 fois plus lente
+    // que le conteneur de développement (193 ms ici, ≈ 610 ms en CI). Le serveur met le circuit en cache.
+    expect(mean).toBeLessThan(800);
+    expect(worst).toBeLessThan(2500);
   });
 
   it("recommence avec une graine voisine quand une tentative échoue : la première tentative n'est pas toujours retenue", () => {

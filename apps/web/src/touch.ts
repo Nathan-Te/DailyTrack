@@ -8,7 +8,8 @@ import type { Axes } from "./input";
 // - moitié gauche : direction. « Glisser » : glissement horizontal relatif au point de pose (analogique, zone
 //   morte, sensibilité réglable) ; « Boutons » : quart gauche = ←, deuxième quart = →.
 // - moitié droite : frein / marche arrière ; avec l'accélérateur manuel, elle se partage en frein (à gauche) et
-//   gaz (à droite). L'accélérateur est automatique par défaut : il se coupe tant qu'on freine.
+//   gaz (à droite). Depuis la retouche 18b, deux pédales par défaut (gaz et frein) ; l'accélérateur automatique, qui se coupe
+//   tant qu'on freine, reste un réglage.
 // - plusieurs doigts à la fois : on dirige et on freine en même temps.
 
 export type SteerMode = "drag" | "buttons";
@@ -20,7 +21,7 @@ export interface TouchSettings {
   sensitivity: number;
   /** Zone morte, en part du débattement (0–0,3). */
   deadzone: number;
-  /** Accélérateur automatique (sinon : bouton de gaz). */
+  /** Accélérateur automatique (sinon, par défaut : bouton de gaz, donc deux pédales). */
   autoThrottle: boolean;
   /** Vibration courte au point de contrôle et au choc (si le téléphone sait vibrer). */
   vibration: boolean;
@@ -32,10 +33,16 @@ export const DEFAULT_TOUCH_SETTINGS: Readonly<TouchSettings> = Object.freeze({
   steerMode: "drag",
   sensitivity: 1,
   deadzone: 0.08,
-  autoThrottle: true,
+  autoThrottle: false,
   vibration: true,
   buttonSize: "medium",
 });
+
+/**
+ * Version des réglages enregistrés. Passée à 2 à la retouche 18b (deux pédales par défaut) : un réglage enregistré avant (sans numéro
+ * de version) retrouve une fois le nouveau défaut pour l'accélérateur ; ensuite le choix du joueur est respecté.
+ */
+export const TOUCH_SETTINGS_VERSION = 2;
 
 export const SENSITIVITY_RANGE = { min: 0.5, max: 2, step: 0.05 } as const;
 export const DEADZONE_RANGE = { min: 0, max: 0.3, step: 0.01 } as const;
@@ -52,11 +59,12 @@ export function parseTouchSettings(raw: string | null): TouchSettings {
   const s: TouchSettings = { ...DEFAULT_TOUCH_SETTINGS };
   if (!raw) return s;
   try {
-    const o = JSON.parse(raw) as Partial<Record<keyof TouchSettings, unknown>>;
+    const o = JSON.parse(raw) as Partial<Record<keyof TouchSettings | "version", unknown>>;
     if (o.steerMode === "drag" || o.steerMode === "buttons") s.steerMode = o.steerMode;
     if (typeof o.sensitivity === "number" && Number.isFinite(o.sensitivity)) s.sensitivity = clamp(o.sensitivity, SENSITIVITY_RANGE.min, SENSITIVITY_RANGE.max);
     if (typeof o.deadzone === "number" && Number.isFinite(o.deadzone)) s.deadzone = clamp(o.deadzone, DEADZONE_RANGE.min, DEADZONE_RANGE.max);
-    if (typeof o.autoThrottle === "boolean") s.autoThrottle = o.autoThrottle;
+    // L'ancien défaut (accélérateur automatique) est remis une fois au nouveau ; un choix fait depuis la version 2 est gardé.
+    if (typeof o.autoThrottle === "boolean" && o.version === TOUCH_SETTINGS_VERSION) s.autoThrottle = o.autoThrottle;
     if (typeof o.vibration === "boolean") s.vibration = o.vibration;
     if (o.buttonSize === "small" || o.buttonSize === "medium" || o.buttonSize === "large") s.buttonSize = o.buttonSize;
   } catch {
@@ -75,7 +83,7 @@ export function loadTouchSettings(): TouchSettings {
 
 export function saveTouchSettings(s: Readonly<TouchSettings>): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify(s));
+    localStorage.setItem(KEY, JSON.stringify({ ...s, version: TOUCH_SETTINGS_VERSION }));
   } catch {
     /* stockage indisponible : les réglages ne survivront pas à la session */
   }

@@ -50,6 +50,8 @@ const OPEN_EXTRA_MARGIN = 1;
 const SLOPE_GRAVITY = DEFAULT_CAR_PARAMS.slopeGravity;
 const SMOOTH_ITERATIONS = 400;
 const SMOOTH_ITERATIONS_CUVE = 4000;
+/** Blocs de part et d'autre d'une cuve où la trajectoire est relaxée plus longtemps. */
+const CUVE_NEAR = 4;
 /** Écart latéral permis (m) du pilote en virage relevé. */
 const BANKED_ROOM = 1.5;
 /** Marge aux rebords (m) : demi-largeur de la voiture et un peu d'air. */
@@ -58,11 +60,29 @@ const WALL_MARGIN = COLLIDER_RADIUS + 2.6;
  * Virage en cuve (lot 18) : le pilote monte sur la paroi extérieure, à cette distance (m) du pied de la paroi verticale selon la taille
  * du virage. Serré : tout en haut (c'est la paroi qui permet la vitesse) ; large et ample : à mi-pente (le trajet reste court, l'entrée et la sortie douces).
  */
-const CUVE_INSET = [0, 1, 2, 2.5] as const;
+const CUVE_INSET = [0, 1, 1.5, 1.5] as const;
+/** Cuve droite (lot 18b) : le pilote monte presque en haut du quart de cercle (distance en m au pied de la paroi verticale) et y reste : la paroi est une voie rapide. */
+const CUVE_INSET_STRAIGHT = 0.8;
+/** Largeur de la rampe d'entrée et de sortie d'une paroi sur une droite (m) : sur la sortie le pilote ne freine pas, la voiture redescend. */
+const STRAIGHT_RAMP = 16;
+/** Part de la série de droites où le pilote monte, et où il redescend (le reste : il longe la paroi). */
+const STRAIGHT_UP = 0.4;
+const STRAIGHT_DOWN = 0.4;
+/** Part de la série (à chaque bout) où la trajectoire n'est pas imposée. */
+const STRAIGHT_FREE = 0.1;
+/** 0 → 1 en lissage cubique, borné. */
+function smooth01(t: number): number {
+  const x = t < 0 ? 0 : t > 1 ? 1 : t;
+  return x * x * (3 - 2 * x);
+}
+/** Inset (m) du pilote sur la paroi d'un bloc de cuve, selon que c'est un virage ou une droite. */
+function cuveInset(b: Block): number {
+  return isCurve(b.kind) ? CUVE_INSET[curveSize(b.kind)]! : CUVE_INSET_STRAIGHT;
+}
 /** Part de l'amplitude de la paroi à partir de laquelle la trajectoire est clouée à la paroi (avant : libre, elle rejoint ce point). */
 const CUVE_PIN_FROM = 0.4;
 /** Entonnoir (m) avant et après un virage en cuve, et distance (m) au rebord qu'il garde sur les routes ordinaires. */
-const CUVE_FUNNEL = 40;
+const CUVE_FUNNEL = 80;
 const FUNNEL_RIM = 1.5;
 
 interface Centerline {
@@ -103,14 +123,15 @@ function denseCenterline(track: Track, wall: boolean): Centerline {
     out.blk.push(b.index);
     out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
     // Virage en cuve : la paroi extérieure est la ligne du pilote ; elle monte en rampe comme la paroi elle-même.
-    if (wall && b.cuve && isCurve(b.kind)) {
-      const bit = b.cuve;
+    if (wall && b.cuve) {
+      const bit = isCurve(b.kind) ? b.cuve : b.cuve & CUVE_LEFT ? CUVE_LEFT : b.cuve;
       const a = cuveAmplitude(b, bit, p, q);
-      const inset = CUVE_INSET[curveSize(b.kind)]!;
       out.pin.push(NaN); // le cloutage se fait plus bas, une fois les normales connues
-      out.wall.push(a * cuveWallSlope(b.w0 / 2, inset));
-      const adp = Math.abs(p - curveCenter(b.kind).cp);
-      out.wallExit.push(!(b.cuveOut & bit) && q / (q + adp + 1e-9) > 1 - CUVE_RAMP_ARC);
+      out.wall.push(a * cuveWallSlope(b.w0 / 2, cuveInset(b)));
+      if (isCurve(b.kind)) {
+        const adp = Math.abs(p - curveCenter(b.kind).cp);
+        out.wallExit.push(!(b.cuveOut & bit) && q / (q + adp + 1e-9) > 1 - CUVE_RAMP_ARC);
+      } else out.wallExit.push(!(b.cuveOut & bit) && q > CELL - STRAIGHT_RAMP);
     } else {
       out.pin.push(NaN);
       out.wall.push(0);
@@ -139,7 +160,7 @@ function denseCenterline(track: Track, wall: boolean): Centerline {
       for (let i = first; i <= n; i++) {
         const q = (CELL * i) / n;
         // Cuve droite : le pilote reste sur le fond (la paroi n'a pas d'intérêt en ligne droite).
-        const floor = b.cuve ? b.w0 / 2 - (b.w0 / 2) * CUVE_RATIO - 0.3 : Infinity;
+        const floor = b.cuve && !wall ? b.w0 / 2 - (b.w0 / 2) * CUVE_RATIO - 0.3 : Infinity;
         push(CELL / 2, q, b, calm ? 0.5 : Math.min(floor, blockHalfWidth(b, q) - WALL_MARGIN - open));
       }
     }
@@ -148,10 +169,40 @@ function denseCenterline(track: Track, wall: boolean): Centerline {
   const n = out.x.length;
   // Virage en cuve : la trajectoire est clouée à la paroi, et un entonnoir de `CUVE_FUNNEL` mètres de part et d'autre l'y amène (et l'en ramène)
   // en douceur, par un lissage cubique de l'écart latéral. Aucune liberté dans cette zone : la courbure y est faible par construction.
+  // Cuve droite (lot 18b) : la série de blocs est une seule cuve, que le pilote « pompe » : il monte sur la paroi, la longe, puis redescend
+  // vers l'axe avant la fin (la descente pousse, voir `shellDescent`). Le profil en travers est lissé sur la série entière.
+  for (const b of wall ? track.blocks : []) {
+    if (!b.cuve || isCurve(b.kind) || (b.cuveIn & b.cuve) !== 0) continue; // début d'une série de droites
+    const bit = b.cuve & CUVE_LEFT ? CUVE_LEFT : b.cuve;
+    const sign = bit === CUVE_LEFT ? 1 : -1;
+    const chain = [b.index];
+    for (let k = b.index + 1; k < track.blocks.length; k++) {
+      const nb = track.blocks[k]!;
+      if (!nb.cuve || isCurve(nb.kind) || (nb.cuveIn & bit) === 0) break;
+      chain.push(k);
+    }
+    let first = -1;
+    let last = -1;
+    for (let i = 0; i < n; i++) {
+      if (!chain.includes(out.blk[i]!)) continue;
+      if (first < 0) first = i;
+      last = i;
+    }
+    if (first < 0) continue;
+    const target = b.w0 / 2 - cuveInset(b);
+    // Les deux bouts restent libres (la relaxation y raccorde la trajectoire aux blocs voisins sans cassure de courbure).
+    for (let i = first; i <= last; i++) {
+      const f = ((i - first) / (last - first) - STRAIGHT_FREE) / (1 - 2 * STRAIGHT_FREE);
+      if (f <= 0 || f >= 1) continue;
+      const up = smooth01(f / STRAIGHT_UP);
+      const down = smooth01((1 - f) / STRAIGHT_DOWN);
+      out.pin[i] = sign * target * Math.min(up, down);
+    }
+  }
   for (const b of wall ? track.blocks : []) {
     if (!b.cuve || !isCurve(b.kind)) continue;
     const sign = b.cuve === CUVE_LEFT ? 1 : -1;
-    const target = b.w0 / 2 - CUVE_INSET[curveSize(b.kind)]!;
+    const target = b.w0 / 2 - cuveInset(b);
     let first = -1;
     let last = -1;
     for (let i = 0; i < n; i++) {
@@ -169,7 +220,7 @@ function denseCenterline(track: Track, wall: boolean): Centerline {
       if (cur !== cur || Math.abs(v) > Math.abs(cur)) out.pin[i] = v;
     };
     for (let i = first; i <= last; i++) {
-      const a = out.wall[i]! / cuveWallSlope(b.w0 / 2, CUVE_INSET[curveSize(b.kind)]!); // amplitude de la paroi en ce point
+      const a = out.wall[i]! / cuveWallSlope(b.w0 / 2, cuveInset(b)); // amplitude de la paroi en ce point
       set(i, a >= CUVE_PIN_FROM ? target : reach + (target - reach) * (a / CUVE_PIN_FROM));
     }
     for (let k = 1; k <= funnel; k++) {
@@ -220,16 +271,32 @@ function racingPath(track: Track, wall = false): Path {
   const x = c.x.slice();
   const z = c.z.slice();
   // Relaxation (Gauss-Seidel) : chaque point va vers le milieu de ses voisins, sans sortir de la route.
-  // Une cuve en virage demande une trajectoire clouée à la paroi et un entonnoir : la relaxation doit converger plus loin (les autres circuits gardent leur tracé).
-  const iterations = wall && track.blocks.some((b) => b.cuve && isCurve(b.kind)) ? SMOOTH_ITERATIONS_CUVE : SMOOTH_ITERATIONS;
-  for (let it = 0; it < iterations; it++) {
-    for (let i = 1; i < n - 1; i++) {
-      const mx = (x[i - 1]! + x[i + 1]!) / 2;
-      const mz = (z[i - 1]! + z[i + 1]!) / 2;
-      const pinned = c.pin[i]!;
-      const o = pinned === pinned ? pinned : clamp((mx - c.x[i]!) * c.nx[i]! + (mz - c.z[i]!) * c.nz[i]!, -c.room[i]!, c.room[i]!);
-      x[i] = c.x[i]! + o * c.nx[i]!;
-      z[i] = c.z[i]! + o * c.nz[i]!;
+  // Une cuve demande une trajectoire clouée à la paroi et un entonnoir : autour d'elle seulement (`CUVE_NEAR` blocs de part et d'autre),
+  // la relaxation converge plus loin ; le reste du circuit garde le même tracé qu'au sol.
+  const relax = (from: number, to: number, count: number) => {
+    for (let it = 0; it < count; it++) {
+      for (let i = Math.max(1, from); i < Math.min(n - 1, to); i++) {
+        const mx = (x[i - 1]! + x[i + 1]!) / 2;
+        const mz = (z[i - 1]! + z[i + 1]!) / 2;
+        const pinned = c.pin[i]!;
+        const o = pinned === pinned ? pinned : clamp((mx - c.x[i]!) * c.nx[i]! + (mz - c.z[i]!) * c.nz[i]!, -c.room[i]!, c.room[i]!);
+        x[i] = c.x[i]! + o * c.nx[i]!;
+        z[i] = c.z[i]! + o * c.nz[i]!;
+      }
+    }
+  };
+  relax(0, n, SMOOTH_ITERATIONS);
+  if (wall) {
+    const cuves = track.blocks.filter((b) => b.cuve).map((b) => b.index);
+    if (cuves.length > 0) {
+      let from = -1;
+      let to = -1;
+      for (let i = 0; i < n; i++) {
+        const near = cuves.some((k) => Math.abs(c.blk[i]! - k) <= CUVE_NEAR);
+        if (near && from < 0) from = i;
+        if (near) to = i + 1;
+      }
+      relax(from, to, SMOOTH_ITERATIONS_CUVE - SMOOTH_ITERATIONS);
     }
   }
   const s = [0];
@@ -462,7 +529,7 @@ export const PILOT_GRIPS = [1.08, 1, 0.9, 0.78] as const;
 export function bestPilotRun(track: Track): PilotRun | null {
   let best: PilotRun | null = null;
   // Avec un virage en cuve, on essaie aussi de le prendre sur le fond : la paroi n'est utile que si elle fait gagner du temps.
-  const walls = track.blocks.some((b) => b.cuve && isCurve(b.kind)) ? [false, true] : [false];
+  const walls = track.blocks.some((b) => b.cuve) ? [false, true] : [false];
   for (const wall of walls) {
     for (const grip of PILOT_GRIPS) {
       const run = runPilot(track, { grip, wall });

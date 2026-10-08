@@ -1,31 +1,31 @@
 {
-  "simVersion": 9,
-  "generatorVersion": 9,
+  "simVersion": 10,
+  "generatorVersion": 10,
   "circuits": [
     {
       "date": "2026-10-06",
       "number": 15,
       "attempt": 1,
-      "spec": "S/n@start S/n>l S V V V V S L2 R2 S@cp T S S S S S R2/b S T S@cp S K GU S S S S S@cp L2 R2 U3 S D2 D R2/b S S@finish",
-      "authorMs": 31292,
+      "spec": "S/n@start S/n>l S V V V V V V S S S@cp S L2 R2 S T S S S S S@cp R2/b S T S S K GU S S S S@cp S L2 R2 U3 S D2 D R2/b S S@finish",
+      "authorMs": 33908,
       "palette": "neon",
       "theme": "stade"
     },
     {
       "date": "2026-10-07",
       "number": 16,
-      "attempt": 0,
-      "spec": "S/n@start S T S S T S S S S S@cp R3 S/n>e U3 S D2 D R3 S S C S S@cp R2 L2 S@cp P S K G D S S S L2 L2 S/e>n S V V V V S R2 S S@finish",
-      "authorMs": 39588,
+      "attempt": 5,
+      "spec": "S/n@start S P D/o D/o D/o D/o D D S S R2 S P S@cp K G D S S S L2 L2 S/n>e S V V V V V V S S S S L2/b S S C S S@cp L S S@finish",
+      "authorMs": 33433,
       "palette": "nuit",
       "theme": "nuit"
     },
     {
       "date": "2026-10-08",
       "number": 17,
-      "attempt": 1,
-      "spec": "S/l@start U3 S D3 L2 L2 S/l>n S T S S T S S S S@cp S L2 S S C S S@cp R2 S P S K G GD D S S S S L2 R2 S V V V V S L2 S S@finish",
-      "authorMs": 37739,
+      "attempt": 6,
+      "spec": "S/n@start S/n>e S V V V V V V S S@cp S S L3/b S S C S S@cp L2 R2 S@cp P S K G D S S S L2 R2 S/e>n U2 S D D D L2 L2 S S@finish",
+      "authorMs": 37098,
       "palette": "nuit",
       "theme": "nuit"
     },
@@ -41,9 +41,9 @@
     {
       "date": "2027-02-28",
       "number": 160,
-      "attempt": 2,
-      "spec": "S/n@start S/n>l S T S S S S S R2 L2 S S S@cp K GD S S S L2 R2 S MR MR MR MR S R3 S/l>n U U S D2 D R3 S S C S S@cp R3 S S@finish",
-      "authorMs": 39813,
+      "attempt": 3,
+      "spec": "S/e@start S/e>n S T S S S S S@cp R2 R2 S P S K G D S S@cp S R2 L2 S S C S S@cp L S/n>l U3 D3 S S S L3/c S S@finish",
+      "authorMs": 31587,
       "palette": "nuit",
       "theme": "nuit"
     },

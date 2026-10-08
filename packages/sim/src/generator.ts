@@ -225,19 +225,21 @@ function jumpCalm(kind: JumpKind, surface = ""): string[] {
 
 /**
  * Cuves (lot 18) : une paroi qui se relève d'un côté de la route (voir cuve.ts). Trois motifs, tirés selon les poids :
- * - `bowl` : cuve droite (demi-tube), quatre blocs `V` entre deux lignes droites ;
- * - `wall` : mur latéral, quatre blocs `ML` ou `MR` entre deux lignes droites ;
- * - `turn` : virage en cuve (`L2/c`, `L3/c`, parfois le serré `L/c`) : la paroi extérieure monte, le pilote la prend.
+ * - `bowl` : cuve droite (demi-tube), six blocs `V` entre deux lignes droites ;
+ * - `wall` : mur latéral, six blocs `ML` ou `MR` entre deux lignes droites ;
+ * - `turn` : virage en cuve (`L2/c`, `L3/c`) : la paroi extérieure monte, le pilote la prend.
  * Une cuve a besoin de ses rampes (16 m sur une droite) : les blocs voisins sont des droites ordinaires.
  */
 type CuveKind = "bowl" | "wall" | "turn";
 const CUVE_KINDS: readonly CuveKind[] = ["bowl", "wall", "turn"];
 const CUVE_WEIGHTS: Record<CuveKind, number> = { bowl: 3, wall: 2, turn: 3 };
-const CUVE_RUN = 4;
+const CUVE_RUN = 6;
+/** Lignes droites derrière une cuve (lot 18b) : on en sort à plus de 55 m/s. Une cuve droite les compte dans son motif, un virage en cuve dans le créneau calme qui suit. */
+const CUVE_RUNOUT = 4;
 
 function cuveCalm(kind: "bowl" | "wall", left: boolean): string[] {
   const block = kind === "bowl" ? "V" : left ? "ML" : "MR";
-  return ["S", ...Array<string>(CUVE_RUN).fill(block), "S"];
+  return ["S", ...Array<string>(CUVE_RUN).fill(block), ...Array<string>(CUVE_RUNOUT).fill("S")];
 }
 
 /**
@@ -383,13 +385,14 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
       }
       roll -= CUVE_WEIGHTS[k];
     }
-    // Une cuve droite ou un mur latéral ajoute six cellules : un créneau de moins pour garder la durée visée.
+    // Une cuve droite ou un mur latéral ajoute dix cellules : un créneau de moins pour garder la durée visée.
     if (cuveKind !== "turn" && turns > TURNS_MIN) turns -= 1;
     if (cuveKind !== "turn") cuveSlot = freeSlot(0, turns - 1, (i) => i === signatureSlot || jumpSlot.has(i));
     if (cuveSlot < 0) {
       // Pas de créneau calme libre : un virage en cuve (créneau de virage) fait l'affaire.
       cuveKind = "turn";
-      cuveSlot = freeSlot(0, turns - 1, (i) => i === signatureSlot);
+      // Le créneau calme qui suit garde sa ligne droite pour freiner : ni saut ni passage marquant juste derrière.
+      cuveSlot = freeSlot(0, turns - 1, (i) => i === signatureSlot || jumpSlot.has(i + 1) || i + 1 === signatureSlot);
     }
     if (cuveSlot < 0) {
       if (theme.cuveChance >= 100) return null; // un thème qui garantit sa cuve ne s'en passe pas
@@ -405,7 +408,7 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
   // Portions rapides : un ou deux créneaux calmes de plus, distincts du saut (un décollage coupe tout freinage).
   const fastSlot = new Map<number, Fast>();
   for (const kind of rng.shuffle<Fast>([...FAST_KINDS]).slice(0, 1 + rng.int(2))) {
-    const slot = freeSlot(0, turns - 2, (i) => fastSlot.has(i) || jumpSlot.has(i) || i === signatureSlot || (cuveKind !== "turn" && i === cuveSlot));
+    const slot = freeSlot(0, turns - 2, (i) => fastSlot.has(i) || jumpSlot.has(i) || i === signatureSlot || (cuveKind !== "turn" && i === cuveSlot) || (cuveKind === "turn" && i === cuveSlot + 1));
     if (slot >= 0) fastSlot.set(slot, kind);
   }
   // Reliefs : des créneaux calmes libres (ni saut, ni portion rapide, ni signature, ni cuve). Le premier relief d'un circuit est toujours
@@ -414,7 +417,7 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
   const hillCount = theme.relief.hills[0] + rng.int(theme.relief.hills[1] - theme.relief.hills[0] + 1);
   for (let tries = 0; hillSlot.size < hillCount && tries < 3 * turns; tries++) {
     const i = rng.int(turns);
-    if (!jumpSlot.has(i) && !fastSlot.has(i) && i !== signatureSlot && !(cuveKind !== "turn" && i === cuveSlot)) hillSlot.add(i);
+    if (!jumpSlot.has(i) && !fastSlot.has(i) && i !== signatureSlot && !(cuveKind !== "turn" && i === cuveSlot) && !(cuveKind === "turn" && i === cuveSlot + 1)) hillSlot.add(i);
   }
   let majorHill = false;
 
@@ -453,6 +456,8 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
       calm.push(jumpCalm(jump));
     } else if (cuveKind && cuveKind !== "turn" && i === cuveSlot) {
       calm.push(cuveCalm(cuveKind, left));
+    } else if (cuveKind === "turn" && i === cuveSlot + 1) {
+      calm.push(Array<string>(CUVE_RUNOUT).fill("S")); // derrière un virage en cuve pris à fond, de quoi freiner
     } else {
       const pad = Array<string>(PAD_RUNOUT).fill("S");
       const options: string[][] = rng.shuffle<string[]>([["S"], ["S", "S"], ["S", "P", ...pad], ["S", "B", "S"], ["P", ...pad]]);
@@ -472,7 +477,7 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     const candidates = target ? calm.map((seg) => [transition(width, target), ...seg]) : [];
     candidates.push(...calm);
     // Repli sur une ligne droite simple, sauf pour un passage marquant : s'il ne tient pas, la tentative échoue.
-    if (!jump && !signature && !fast && !(cuveKind && cuveKind !== "turn" && i === cuveSlot)) candidates.push(["S"], ["S", "S"]);
+    if (!jump && !signature && !fast && !(cuveKind && cuveKind !== "turn" && i === cuveSlot) && !(cuveKind === "turn" && i === cuveSlot + 1)) candidates.push(["S"], ["S", "S"]);
     const calmChoice = candidates.find((seg) => fits(w.y, seg) && place(w, seg));
     if (!calmChoice) return null;
     if (hillSlot.has(i) && !signature && !fast && !jump && hillRise(calmChoice) >= MIN_RELIEF) majorHill = true;
@@ -491,12 +496,11 @@ export function composeSpec(day: number, attempt: number, theme: Theme = themeFo
     let segments: string[][];
     if (signature?.turn) segments = signature.turn;
     else if (cuveKind === "turn" && i === cuveSlot) {
-      // Virage en cuve : large ou ample le plus souvent, parfois serré (la paroi permet de le prendre vite).
+      // Virage en cuve : large ou ample (le serré est exclu : la paroi n'y gagne pas de temps, voir lot 18b).
       const roll = rng.int(100);
       const w2 = [[L + "2/c"], [R + "2/c"]];
       const w3 = [[L + "3/c"], [R + "3/c"]];
-      const t1 = tightOk ? [[L + "/c"], [R + "/c"]] : [];
-      segments = (roll < 40 ? [w2, w3, t1] : roll < 75 ? [w3, w2, t1] : [t1, w2, w3]).flat();
+      segments = (roll < 25 ? [w2, w3] : [w3, w2]).flat(); // pas de virage serré : la paroi n'y gagne pas de temps (lot 18b)
     } else if (turnHighlight === "chicane") segments = bankAll(wideS, bank); // S large
     else if (turnHighlight === "hairpin") segments = bankAll([[L + "2", L + "2"], [R + "2", R + "2"]], bank); // demi-tour large
     else if (fast === "bank") segments = [[L + "3/b"], [R + "3/b"], [L + "2/b"], [R + "2/b"]]; // grande courbe relevée prise à fond

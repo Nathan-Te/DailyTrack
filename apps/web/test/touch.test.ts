@@ -9,7 +9,10 @@ import {
   buttonRects,
   dragSteer,
   impactFelt,
+  loadTouchSettings,
   parseTouchSettings,
+  saveTouchSettings,
+  TOUCH_SETTINGS_VERSION,
   wantsTouch,
   zoneAt,
   zoneSpans,
@@ -18,8 +21,9 @@ import {
 
 const settings = (patch: Partial<TouchSettings> = {}): TouchSettings => ({ ...DEFAULT_TOUCH_SETTINGS, ...patch });
 const W = 800;
+// Les tests de doigts partent de l'accélérateur automatique (l'ancien défaut) ; les deux pédales, défaut depuis la 18b, ont leurs propres tests.
 const pad = (patch: Partial<TouchSettings> = {}) => {
-  const p = new TouchPad(settings(patch));
+  const p = new TouchPad(settings({ autoThrottle: true, ...patch }));
   p.width = W;
   return p;
 };
@@ -66,7 +70,7 @@ describe("direction au glissement", () => {
 
 describe("zones", () => {
   it("glisser + accélérateur automatique : moitié gauche = direction, moitié droite = frein", () => {
-    const s = settings();
+    const s = settings({ autoThrottle: true });
     expect(zoneAt(10, W, s)).toBe("steer");
     expect(zoneAt(399, W, s)).toBe("steer");
     expect(zoneAt(400, W, s)).toBe("brake");
@@ -282,6 +286,45 @@ describe("réglages", () => {
     const s = parseTouchSettings(JSON.stringify({ steerMode: "buttons", sensitivity: 99, deadzone: -1, autoThrottle: false, vibration: "oui", inconnu: 1 }));
     expect(s).toEqual({ steerMode: "buttons", sensitivity: 2, deadzone: 0, autoThrottle: false, vibration: true, buttonSize: "medium" });
     expect(parseTouchSettings(JSON.stringify({ steerMode: "volant", sensitivity: "x" }))).toEqual(DEFAULT_TOUCH_SETTINGS);
+  });
+});
+
+describe("deux pédales par défaut (retouche 18b)", () => {
+  it("le défaut est l'accélérateur manuel : gaz et frein à droite, rien sans doigt", () => {
+    expect(DEFAULT_TOUCH_SETTINGS.autoThrottle).toBe(false);
+    const p = new TouchPad({ ...DEFAULT_TOUCH_SETTINGS });
+    p.width = W;
+    expect(p.axes()).toEqual({ steer: 0, throttle: 0, brake: 0 });
+    p.down(1, 700, 200); // dernier quart = gaz
+    expect(p.axes()).toMatchObject({ throttle: 1, brake: 0 });
+    p.down(2, 450, 200); // troisième quart = frein
+    expect(p.axes()).toMatchObject({ throttle: 1, brake: 1 });
+  });
+
+  it("un réglage enregistré avant la version 2 retrouve une fois le nouveau défaut ; un choix fait depuis est gardé", () => {
+    const old = parseTouchSettings(JSON.stringify({ steerMode: "buttons", sensitivity: 1.5, autoThrottle: true }));
+    expect(old.autoThrottle).toBe(false);
+    expect(old.steerMode).toBe("buttons"); // le reste est conservé
+    expect(old.sensitivity).toBe(1.5);
+    // Le joueur repasse en automatique : la sauvegarde porte la version, le choix tient.
+    const chosen = parseTouchSettings(JSON.stringify({ autoThrottle: true, version: TOUCH_SETTINGS_VERSION }));
+    expect(chosen.autoThrottle).toBe(true);
+    // Un réglage d'une version future inconnue n'est pas pris pour acquis.
+    expect(parseTouchSettings(JSON.stringify({ autoThrottle: true, version: TOUCH_SETTINGS_VERSION + 1 })).autoThrottle).toBe(false);
+  });
+
+  it("l'enregistrement porte la version (le choix du joueur survit au rechargement)", () => {
+    const store = new Map<string, string>();
+    const real = (globalThis as { localStorage?: unknown }).localStorage;
+    (globalThis as { localStorage?: unknown }).localStorage = { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => void store.set(k, v) };
+    try {
+      saveTouchSettings({ ...DEFAULT_TOUCH_SETTINGS, autoThrottle: true });
+      expect(loadTouchSettings().autoThrottle).toBe(true);
+      saveTouchSettings({ ...DEFAULT_TOUCH_SETTINGS, autoThrottle: false });
+      expect(loadTouchSettings().autoThrottle).toBe(false);
+    } finally {
+      (globalThis as { localStorage?: unknown }).localStorage = real;
+    }
   });
 });
 

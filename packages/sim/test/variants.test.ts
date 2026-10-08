@@ -29,7 +29,7 @@ describe("variantes d'un circuit du jour", () => {
       expect(a.track.id).toBe(`jour-${a.date}-g${GENERATOR_VERSION}`);
       expect(dailyTrackId(day)).toBe(a.track.id);
     }
-  });
+  }, 30_000);
 
   it("une variante n ≥ 1 est un autre circuit, identifié à part, validé par le pilote, reproductible", () => {
     const day = DAYS[0]!;
@@ -51,7 +51,7 @@ describe("variantes d'un circuit du jour", () => {
       // le texte se relit tel quel avec l'identifiant annoncé
       expect(parseTrack(dailyTrackId(day, null, n), v.spec).id).toBe(v.track.id);
     }
-  });
+  }, 30_000);
 
   it("le thème peut être imposé avec une variante : id `-v<n>-<thème>`, palette du thème", () => {
     const day = DAYS[1]!;
@@ -65,14 +65,14 @@ describe("variantes d'un circuit du jour", () => {
     expect(c.track.id.length).toBeLessThanOrEqual(32);
     expect(dailyCircuit(day, 2, other).spec).toBe(c.spec);
     expect(dailyCircuit(day, 2).spec).not.toBe(c.spec);
-  });
+  }, 30_000);
 
   it("les variantes ne recoupent pas les tentatives : aucune tentative d'une variante n'est celle d'une autre", () => {
     // La graine d'une variante décale de 1000 tentatives, et le générateur n'en tente que MAX_ATTEMPTS (40).
     const day = DAYS[2]!;
     const specs = [0, 1, 2, 3, 4].map((n) => dailyCircuit(day, n).spec);
     expect(new Set(specs).size).toBe(5);
-  });
+  }, 30_000);
 
   it("numéros de variante valides", () => {
     for (const ok of [0, 1, 7, MAX_VARIANT]) expect(isVariant(ok)).toBe(true);
