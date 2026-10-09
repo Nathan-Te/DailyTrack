@@ -1521,8 +1521,8 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   decorMesh.userData.heavy = glowMesh.userData.heavy = speedMesh.userData.heavy = true;
   denseMesh.userData.level = denseGlowMesh.userData.level = 2;
   decorMesh.receiveShadow = denseMesh.receiveShadow = true;
-  decorMesh.userData.casts = 2; // projette son ombre à partir de la qualité 2
-  denseMesh.userData.casts = 2;
+  // Le décor reçoit les ombres mais n'en projette pas : le dessiner une seconde fois dans la carte d'ombres coûtait +6 à +12 ms par image
+  // (processeur ×4, Ville et Nuit en qualité 2) pour des ombres lointaines que personne ne regarde ; la voiture et les accessoires en projettent.
   scene.add(decorMesh, glowMesh, speedMesh, denseMesh, denseGlowMesh);
   if (neonG.pos.length > 0) scene.add(new Mesh(neonG.geometry(), new MeshBasicMaterial({ vertexColors: true })));
 
