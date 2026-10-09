@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
+import { NeutralToneMapping, PerspectiveCamera, Vector3, WebGLRenderer } from "three";
 import { WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
 import { PALETTE_DEFS, SURFACE_COLORS, buildTrackScene } from "./trackMesh";
 import { SHOULDER_EDGE } from "@cdj/sim";
@@ -151,11 +151,14 @@ function render3d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
   const renderer = sharedRenderer();
   if (!renderer) return false;
   const t0 = performance.now();
-  const { scene, dispose, followGround } = buildTrackScene(circuit.track, circuit.palette, { aerial: true, near: { from: focus.from, to: focus.to } });
+  const { scene, dispose, followGround, look } = buildTrackScene(circuit.track, circuit.palette, { aerial: true, near: { from: focus.from, to: focus.to } });
   followGround(focus.center[0], focus.center[1]); // le sol suit la portion montrée (les circuits s'éloignent de l'origine)
   const t1 = performance.now();
   try {
     renderer.setSize(out.width, out.height, false);
+    // Lot 23 : la même tonalité que le jeu et l'exposition du thème (coût nul : un réglage du rendu final).
+    renderer.toneMapping = NeutralToneMapping;
+    renderer.toneMappingExposure = look.exposure;
     const camera = frameCamera(focus, out.width / out.height, view);
     renderer.render(scene, camera);
     const ctx = out.getContext("2d")!;

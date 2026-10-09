@@ -1,5 +1,5 @@
 import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
-import { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
+import { NeutralToneMapping, PerspectiveCamera, Vector3, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
   AXLE_REAR,
@@ -64,7 +64,8 @@ import { createThumbnailService, type ThumbJob } from "./thumbnails";
 import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
-import { landingQuality, volumeIcon } from "./audioLogic";
+import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
+import { CAMERAS, cameraIndexOf, nextCameraIndex } from "./cameras";
 import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
@@ -148,9 +149,16 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 const view = track ? buildTrackScene(track, daily?.palette ?? "desert") : buildFlatArena();
+// Rendu (lot 23) : tonalité douce (les hautes lumières ne brûlent pas, les couleurs de la palette restent), exposition propre au thème, ombres portées.
+renderer.toneMapping = NeutralToneMapping;
+renderer.toneMappingExposure = view.look.exposure;
+renderer.shadowMap.enabled = true;
 const carModel = createCarMesh();
 const carMesh = carModel.group;
 view.scene.add(carMesh);
+carMesh.traverse((o) => {
+  o.castShadow = true; // la voiture projette son ombre sur la route (qualité ≥ 1)
+});
 const carShadow = createShadow();
 view.scene.add(carShadow);
 const ghostModel = createCarMesh(true);
@@ -167,11 +175,12 @@ const qualityParam = params.get("quality");
 const governor = new QualityGovernor(26, 19, qualityParam === "0" || qualityParam === "1" || qualityParam === "2");
 if (governor.locked) governor.level = Number(qualityParam) as Quality;
 effects.quality = governor.level;
-view.setLite(governor.level === 0);
+view.setQuality(governor.level);
 const SHAKE = params.get("shake") === "0" ? 0 : 1;
 const demo = params.has("demo");
 const tel = createTelemetry();
 const gameAudio = new GameAudio(() => syncSoundButton());
+gameAudio.setAmbience(track ? ambienceFor(daily?.palette ?? "desert") : null); // ambiance du thème (lot 23)
 const wheelDroop: [number, number, number, number] = [0, 0, 0, 0];
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR];
 const WHEEL_L = [HALF_TRACK, -HALF_TRACK, HALF_TRACK, -HALF_TRACK];
@@ -202,12 +211,13 @@ const submitAllowed = !!daily && daily.day === todayUtc && !trial && planKnown &
 const timeScale = params.has("debug") ? Math.max(1, Number(params.get("timescale")) || 1) : 1;
 let autoplay: ReplayPlayer | null = null;
 
-const camera = new PerspectiveCamera(65, 1, 0.1, 500);
+const camera = new PerspectiveCamera(65, 1, 0.1, 700);
 function resize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio());
+  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
 }
 window.addEventListener("resize", resize);
 resize();
@@ -261,6 +271,7 @@ const touchUi = touchPad
       onPause: () => setPaused(!paused),
       onRespawn: () => controls.requestRespawn(),
       onRestart: () => controls.requestRestart(),
+      onCamera: () => cycleCamera(),
     })
   : null;
 // Outil de test (`?debug`) : « pas à pas ». La simulation n'avance plus avec l'horloge mais d'un nombre exact de pas
@@ -804,36 +815,18 @@ const ghostPose3d = new CarPose();
 const camLift = new Vector3();
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
-// Caméras poursuite (touche C / bouton Vue de la manette) : proche, ou loin pour mieux lire le circuit.
-interface CameraRig {
-  name: string;
-  /** Distance derrière la voiture, à l'arrêt puis en plus à la vitesse de pointe. */
-  back: number;
-  backAtSpeed: number;
-  height: number;
-  /** Point visé : devant la voiture, à cette hauteur. */
-  ahead: number;
-  lookHeight: number;
-  /** Champ de vision à l'arrêt, et ouverture en plus à pleine vitesse. */
-  fov: number;
-  fovAtSpeed: number;
-  /** Rapidité (1/s) avec laquelle la caméra rattrape le cap de la voiture et sa position : un léger retard. */
-  yawLag: number;
-  posLag: number;
-}
-const CAMERAS: CameraRig[] = [
-  { name: "proche", back: 5.6, backAtSpeed: 1.4, height: 2.3, ahead: 5, lookHeight: 1, fov: 68, fovAtSpeed: 20, yawLag: 7, posLag: 14 },
-  { name: "loin", back: 9.5, backAtSpeed: 2.2, height: 4.2, ahead: 8, lookHeight: 1.3, fov: 62, fovAtSpeed: 16, yawLag: 5, posLag: 10 },
-];
+// Caméras (touche C / bouton Vue de la manette / bouton 🎥 du toucher) : proche, loin, capot (`cameras.ts`).
 let cameraIndex = 0;
 try {
-  cameraIndex = Math.max(0, CAMERAS.findIndex((c) => c.name === localStorage.getItem("cdj:camera")));
+  cameraIndex = cameraIndexOf(localStorage.getItem("cdj:camera"));
 } catch {
   /* stockage indisponible : caméra proche */
 }
+// `?camera=proche|loin|capot` (lot 23) : impose la caméra au chargement, sans toucher au choix mémorisé.
+if (params.has("camera")) cameraIndex = cameraIndexOf(params.get("camera"));
 
 function cycleCamera() {
-  cameraIndex = (cameraIndex + 1) % CAMERAS.length;
+  cameraIndex = nextCameraIndex(cameraIndex);
   try {
     localStorage.setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
   } catch {
@@ -921,7 +914,7 @@ function frame(now: number) {
   last = now;
   if (!frozen && !manual && governor.observe(frameMs)) {
     effects.quality = governor.level;
-    view.setLite(governor.level === 0); // qualité basse : décor allégé (téléphone lent)
+    view.setQuality(governor.level); // qualité basse : décor, ombres et halos allégés (téléphone lent)
   }
 
   const { input, restart, camera: nextCamera, pause: togglePause } = controls.poll();
@@ -1079,7 +1072,7 @@ function frame(now: number) {
     demoClock += elapsed;
     if (demoClock > 7) {
       demoClock = 0;
-      cameraIndex = (cameraIndex + 1) % CAMERAS.length;
+      cameraIndex = nextCameraIndex(cameraIndex);
     }
     if (phase === "finished" && demoTimer > 0 && (demoTimer -= elapsed) <= 0) startAttempt();
   }
@@ -1101,14 +1094,17 @@ function frame(now: number) {
   camYaw += wrapAngle(viewYaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
   // En chute, la caméra reste où elle est : la voiture s'enfonce dans le vide sous le regard, sans que l'écran plonge avec elle.
   if (!(race && race.fallTicks > 0)) camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
-  const back = rig.back + speedRatio * rig.backAtSpeed + fastCam.back;
+  const hood = rig.hideCar === true; // capot : la vitesse ne recule ni n'abaisse la caméra (elle est déjà sur la voiture)
+  carMesh.visible = !hood;
+  document.body.classList.toggle("cam-hood", hood);
+  const back = rig.back + speedRatio * rig.backAtSpeed + (hood ? 0 : fastCam.back);
   // Sur la paroi d'une cuve, la caméra penche avec la voiture (en partie) : son « haut » est entre la verticale et la normale.
   const camUp = carPose.cameraUp;
-  camLift.copy(camUp).multiplyScalar(rig.height - fastCam.lower);
+  camLift.copy(camUp).multiplyScalar(rig.height - (hood ? 0 : fastCam.lower));
   const tx = x - Math.sin(camYaw) * back + camLift.x;
   const ty = camBaseY + camLift.y;
   const tz = z - Math.cos(camYaw) * back + camLift.z;
-  const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - fastCam.lag) * elapsed);
+  const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - (hood ? 0 : fastCam.lag)) * elapsed);
   camPos.x += (tx - camPos.x) * follow;
   camPos.y += (ty - camPos.y) * follow;
   camPos.z += (tz - camPos.z) * follow;
@@ -1121,13 +1117,15 @@ function frame(now: number) {
   camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
   fovKick += ((car.turbo > 0 ? 7 : car.boost > 0 ? 4 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
-  const fov = rig.fov + speedRatio * rig.fovAtSpeed + fastCam.fov + fovKick;
+  const fov = rig.fov + speedRatio * rig.fovAtSpeed + (hood ? fastCam.fov * 0.5 : fastCam.fov) + fovKick;
   if (Math.abs(camera.fov - fov) > 0.01) {
     camera.fov = fov;
     camera.updateProjectionMatrix();
   }
 
   view.followGround(x, z);
+  view.followCar(x, y, z, yaw);
+  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
   effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio());
   effects.update({ dt: elapsed, x, y, z, yaw, tel, braking: wheelPose.braking, boost: car.boost > 0, turbo: car.turbo > 0, racing: phase !== "countdown" });
   gameAudio.update({
@@ -1212,13 +1210,24 @@ if (params.has("debug")) {
       get fx() {
         return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, fov: camera.fov, wheelDroop: [...wheelDroop], tel };
       },
+      /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
+      get render() {
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+      },
+      /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
+      get camera() {
+        return { name: CAMERAS[cameraIndex]!.name, carVisible: carMesh.visible, fov: camera.fov };
+      },
+      cycleCamera() {
+        cycleCamera();
+      },
       /** Air (lot 19) : indicateur « figé » allumé, dernière réception (force, qualité), part « en vol » de la caméra. */
       get air() {
         return { frozen: hudFreeze.classList.contains("on"), lastLanding, cameraMix: airMix };
       },
       /** Sons : derniers sons joués, contexte démarré, réglages. */
       get audio() {
-        return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings };
+        return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings, ambience: gameAudio.ambienceKind };
       },
       /** Dessine tout de suite la miniature d'un jour (outil de test : cadrage, vues, repli 2D) ; adresse de l'image. */
       thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {

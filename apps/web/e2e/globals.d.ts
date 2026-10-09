@@ -37,10 +37,15 @@ interface CdjDebug {
   };
   /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
   thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): { url: string; timing: { build: number; draw: number } };
+  /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; programs: number; calls: number; triangles: number };
+  /** Caméra active (lot 23). */
+  camera: { name: string; carVisible: boolean; fov: number };
+  cycleCamera(): void;
   /** Air (lot 19) : indicateur « figé » allumé, dernière réception (force et qualité ∈ [0, 1]), part « en vol » de la caméra. */
   air: { frozen: boolean; lastLanding: { strength: number; quality: number }; cameraMix: number };
   /** Sons (lot 9) : derniers sons joués, contexte démarré, réglages. */
-  audio: { log: string[]; running: boolean; settings: { volume: number; last: number } };
+  audio: { log: string[]; running: boolean; settings: { volume: number; last: number }; ambience: string | null };
 }
 
 interface Window {

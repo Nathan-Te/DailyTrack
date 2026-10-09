@@ -1,6 +1,6 @@
 # Circuit du Jour — synthèse pour l'agent orchestrateur
 
-Document de **reprise** : il résume les lots 0 à 22 (et la retouche 18b), l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 22 (09/10/2026).
+Document de **reprise** : il résume les lots 0 à 23 (et la retouche 18b), l'état du dépôt, les règles à ne pas casser, la méthode de travail et la suite. Il ne remplace pas `docs/seed.md` (source de vérité du projet, modifiée par Nathan seulement) ni les README de lots (`docs/lots/`, un par lot, avec le détail et les critères). Mis à jour à la fin du lot 23 (09/10/2026).
 
 ## 1. Le projet en trois lignes
 Jeu web de course quotidien : **un circuit court (30–45 s) par jour, le même pour tout le monde**, généré à partir de la date, joué dans le navigateur. Le **temps est une preuve** : la physique est déterministe, une course est la suite des commandes du joueur, et le serveur la **rejoue** pour valider le temps. Pas de compte : un pseudo et un identifiant aléatoire dans le navigateur. Partage en une ligne : `Circuit du Jour #142 — 37,312 s — 🥇 — 23e/812`.
@@ -224,6 +224,10 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, __cd
 - **Lot 22 — le jeu de démonstration dépend du circuit d'une date** : le Rallye du 02/10 n'était fini que par les pilotes très sûrs (turbos puis virage relevé) et le classement tombait à 5 pilotes ; `history.ts` pioche maintenant dans toute la liste de pseudos jusqu'à avoir son quota.
 - **Lot 22 — les tests qui parcourent `THEME_NAMES` ont un coût et des attentes par thème** : `surfaces.spec.ts` charge chaque thème (huit : délai relevé), `juice.spec.ts` compte les puces de thème (9), `figures.test.ts` compare les favorites aux figures **permises** (hors figures propres à d'autres thèmes), le test « virages larges ≥ 3 × serrés » compte Ville à part.
 - **Lot 22 — le coût du rejeu ne bouge pas avec une ligne de table** (≈ 11,7 contre ≈ 11,6 ms sur la course d'essai, alterné ×3, avec un `node_modules` propre au worktree) ; une rediffusion de l'ancienne version se rejoue à condition de lui donner la version courante (`simVersion`).
+
+- **Lot 23 — graphismes, ambiance, caméras (rendu seul, `sim` inchangé)** : panneaux calculés à partir du circuit (`signage.ts`, pur), arches et portes (`trackProps.ts`), lumière par palette (`LOOKS`), ombres sur la voiture et les accessoires seulement (le décor en projetait : +6 à +12 ms par image à ×4), halos en un seul `Points`, phares sur Nuit, trois niveaux de qualité (`setQuality`), ambiance sonore procédurale par thème, caméra capot et bouton 🎥 tactile en tête de la barre (loin des frontières de zones, mesuré). Coût mesuré : +1 à +6 ms par image à ×4 en qualité 1 et 2 (Nuit q2 ≈ 22 ms) ; à confirmer sur téléphone.
+
+- **Lot 23 — mesurer le rendu attend le réchauffement** : la première image avec des particules, ou le premier changement de caméra, compile des shaders (0,7 s en rendu logiciel) ; mesurée trop tôt, une scène paraît 5 à 10 fois plus lente. Attendre 9 s, comparer avec la même caméra des deux côtés (la démo en change à 7 s et 14 s), et refaire une mesure aberrante avant d'en tirer une conclusion. Un `userData.level` marque un objet réglé par la qualité : ne jamais forcer `visible = true` sur les autres (effets, voiture, fantôme gèrent la leur). Presser deux fois une touche de caméra sans image entre les deux n'en compte qu'une (verrou booléen) : un test doit avancer d'une image entre les appuis.
 
 ## 9. Suite proposée (à confirmer avec Nathan)
 

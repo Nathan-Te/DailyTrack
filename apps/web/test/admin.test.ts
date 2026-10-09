@@ -65,8 +65,8 @@ describe("adresse du jeu construite par /admin", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, timescale: "4" })).toBe("debug&timescale=4");
   });
   it("les options d'effets, de tactile et d'API", () => {
-    expect(buildQuery({ ...DEFAULT_ADMIN, demo: true, fxOff: true, quality: "1", shakeOff: true, ghostOff: true, touch: "1", api: " http://x " })).toBe(
-      "demo&fx=off&quality=1&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
+    expect(buildQuery({ ...DEFAULT_ADMIN, demo: true, fxOff: true, quality: "1", camera: "capot", shakeOff: true, ghostOff: true, touch: "1", api: " http://x " })).toBe(
+      "demo&fx=off&quality=1&camera=capot&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
     );
   });
   it("miniatures des archives", () => {

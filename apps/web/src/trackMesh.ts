@@ -9,6 +9,8 @@ import {
   Float32BufferAttribute,
   Float32BufferAttribute as F32,
   Fog,
+  NeutralToneMapping,
+  SpotLight,
   Group,
   HemisphereLight,
   Mesh,
@@ -59,9 +61,11 @@ import {
   type Track,
 } from "@cdj/sim";
 import { PALETTE_LABELS } from "./labels";
+import { Builder, mix, seeded, shade, world, type V3 } from "./meshKit";
+import { buildHalos } from "./halo";
+import { signsFor } from "./signage";
+import { addCheckpointGate, addFinishArch, addSign, addStartArch, createProps } from "./trackProps";
 import { fastZones, postFractions } from "./speedFeel";
-
-type V3 = [number, number, number];
 
 /** Couleurs et éclairage d'un thème. Une palette différente par jour : `paletteForDay` (sim) choisit laquelle. */
 export interface Palette {
@@ -209,6 +213,31 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
   },
 };
 
+/**
+ * Ambiance d'un thème (lot 23), en plus de la palette : `exposure` (tonalité du rendu), `haze` (brume : > 1 plus dense, < 1 plus claire),
+ * `halo` (force des halos sur néons, lampadaires et portes ; 0 le jour), `headlights` (puissance des phares : 0 le jour),
+ * `shadow` (0–1 : à quel point les ombres portées sont marquées ; la lumière rasante en donne de longues).
+ */
+export interface Look {
+  exposure: number;
+  haze: number;
+  halo: number;
+  headlights: number;
+  shadow: number;
+}
+
+export const LOOKS: Record<PaletteName, Look> = {
+  desert: { exposure: 1.0, haze: 1.0, halo: 0.1, headlights: 0, shadow: 0.8 }, // Rallye : poussière, soleil franc
+  neige: { exposure: 1.06, haze: 1.35, halo: 0, headlights: 0, shadow: 0.35 }, // Banquise : jour blanc, ombres douces, brume laiteuse
+  nuit: { exposure: 1.15, haze: 0.95, halo: 1, headlights: 1, shadow: 0.55 }, // Nuit : lampadaires, phares
+  neon: { exposure: 1.1, haze: 1.0, halo: 1.25, headlights: 1, shadow: 0.5 },
+  campagne: { exposure: 1.0, haze: 1.1, halo: 0, headlights: 0, shadow: 0.9 }, // fin d'après-midi : ombres longues
+  stade: { exposure: 1.02, haze: 0.8, halo: 0.1, headlights: 0, shadow: 1 }, // plein soleil : ombres nettes
+  canyon: { exposure: 1.04, haze: 1.2, halo: 0, headlights: 0, shadow: 1 }, // soleil rasant, air poussiéreux
+  alpin: { exposure: 1.0, haze: 0.7, halo: 0, headlights: 0, shadow: 0.85 }, // air limpide
+  ville: { exposure: 0.96, haze: 1.3, halo: 0.2, headlights: 0, shadow: 0.7 }, // voile de ville
+};
+
 /** Couleurs de la route selon le revêtement (deux tons en alternance, comme la route) : lisibles d'un coup d'œil. */
 export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, number]> = {
   dirt: [0x8f6b43, 0x82603b],
@@ -228,115 +257,6 @@ const TALL_GRASS: [number, number] = [0x6f9a3a, 0x668f34];
 /** Blocs à effet : couleurs propres, indépendantes de la palette (la lisibilité d'abord). */
 const TURBO_COLOR = { base: 0xff3b30, mark: 0xffe14d };
 const CUT_COLOR = { base: 0x2b1b45, mark: 0xffd22e };
-
-class Builder {
-  readonly pos: number[] = [];
-  readonly col: number[] = [];
-  private readonly c = new Color();
-  /** Muet : les formes ne sont pas construites (mais l'appelant a tiré ses nombres au hasard comme d'habitude). */
-  mute = false;
-
-  tri(a: V3, b: V3, c: V3, color: number) {
-    if (this.mute) return;
-    this.c.set(color);
-    for (const p of [a, b, c]) {
-      this.pos.push(p[0], p[1], p[2]);
-      this.col.push(this.c.r, this.c.g, this.c.b);
-    }
-  }
-
-  quad(a: V3, b: V3, c: V3, d: V3, color: number) {
-    if (this.mute) return;
-    this.tri(a, b, c, color);
-    this.tri(a, c, d, color);
-  }
-
-  /** Boîte alignée sur les axes. */
-  box(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, color: number) {
-    if (this.mute) return;
-    const p = (x: number, y: number, z: number): V3 => [x, y, z];
-    this.quad(p(x0, y0, z0), p(x1, y0, z0), p(x1, y1, z0), p(x0, y1, z0), color);
-    this.quad(p(x0, y0, z1), p(x0, y1, z1), p(x1, y1, z1), p(x1, y0, z1), color);
-    this.quad(p(x0, y0, z0), p(x0, y1, z0), p(x0, y1, z1), p(x0, y0, z1), color);
-    this.quad(p(x1, y0, z0), p(x1, y0, z1), p(x1, y1, z1), p(x1, y1, z0), color);
-    this.quad(p(x0, y1, z0), p(x1, y1, z0), p(x1, y1, z1), p(x0, y1, z1), color);
-    this.quad(p(x0, y0, z0), p(x0, y0, z1), p(x1, y0, z1), p(x1, y0, z0), color);
-  }
-
-  /**
-   * Tronc de cône à `sides` facettes (pointe si `r1` ≈ 0), posé en (cx, y0, cz). Si `top` diffère de `color`, le tiers
-   * supérieur prend la couleur `top` (neige sur un sapin, sommet clair d'une montagne, dessus d'un feuillage).
-   */
-  prism(cx: number, y0: number, cz: number, r0: number, r1: number, h: number, sides: number, color: number, top = color, twist = 0) {
-    if (this.mute) return;
-    const ring = (r: number, y: number, k: number): V3 => {
-      const a = twist + (k / sides) * Math.PI * 2;
-      return [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
-    };
-    const split = top === color ? 1 : 0.58;
-    const rm = r0 + (r1 - r0) * split;
-    const ym = y0 + h * split;
-    for (let k = 0; k < sides; k++) {
-      const a0 = ring(r0, y0, k);
-      const a1 = ring(r0, y0, k + 1);
-      const m0 = ring(rm, ym, k);
-      const m1 = ring(rm, ym, k + 1);
-      this.quad(a0, a1, m1, m0, color);
-      if (split < 1) {
-        const t0 = ring(r1, y0 + h, k);
-        const t1 = ring(r1, y0 + h, k + 1);
-        this.quad(m0, m1, t1, t0, top);
-      }
-      if (r1 > 0.001) {
-        const e0 = ring(r1, y0 + h, k);
-        const e1 = ring(r1, y0 + h, k + 1);
-        this.tri([cx, y0 + h, cz], e0, e1, top);
-      }
-    }
-  }
-
-  geometry(): BufferGeometry {
-    const g = new BufferGeometry();
-    g.setAttribute("position", new Float32BufferAttribute(this.pos, 3));
-    g.setAttribute("color", new Float32BufferAttribute(this.col, 3));
-    g.computeVertexNormals();
-    return g;
-  }
-}
-
-/** Éclaircit (`f` > 1) ou assombrit (`f` < 1) une couleur 0xRRGGBB. */
-function shade(hex: number, f: number): number {
-  const c = (v: number) => Math.max(0, Math.min(255, Math.round(v * f)));
-  return (c((hex >> 16) & 255) << 16) | (c((hex >> 8) & 255) << 8) | c(hex & 255);
-}
-
-/** Mélange deux couleurs : `t` = 0 → a, 1 → b. */
-function mix(a: number, b: number, t: number): number {
-  const ch = (s: number) => Math.round(((a >> s) & 255) * (1 - t) + ((b >> s) & 255) * t);
-  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
-}
-
-/** Petit générateur à graine (mulberry32) : le décor est le même pour tout le monde, et ne touche jamais à `sim`. */
-function seeded(text: string): () => number {
-  let h = 1779033703;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 3432918353);
-  let a = (h ^ (h >>> 16)) >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-const pt = { x: 0, z: 0 };
-
-/** Point du monde au repère (p, q) du bloc, à la hauteur `y`. */
-function world(b: Block, p: number, q: number, y: number): V3 {
-  blockPoint(b, p, q, pt);
-  return [pt.x, y, pt.z];
-}
 
 /** Une « tranche » de route : deux bords (gauche, droite) à une avance donnée. */
 interface Row {
@@ -472,6 +392,10 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
           const at = (t: number, inward: number): V3 => [p[0] + (q[0] - p[0]) * t + ix * inward, p[1] + (q[1] - p[1]) * t + 0.06, p[2] + (q[2] - p[2]) * t + iz * inward];
           const color = neon ? neon[side === "left" ? 0 : 1] : stripes[side]++ % 2 === 0 ? pal.wallA : pal.wallB;
           target.quad(at(k / pieces, 0), at(k / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, 0), color);
+          if (neon && k % 2 === 0) {
+            const m = at((k + 0.5) / pieces, 0.25);
+            target.halo(m[0], m[1] + 0.25, m[2], color, 3.4); // halo du néon (lot 23)
+          }
         }
       }
       continue;
@@ -512,16 +436,16 @@ function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: nu
   return SURFACE_COLORS[kind][i % 2]!;
 }
 
-/** Vibreurs d'un virage (lot 21) : bandes rouges et blanches de `KERB_WIDTH` m aux deux bords de la route, une couleur par tranche. */
+/** Vibreurs d'un virage (lot 21) : bandes rouges et blanches de `KERB_WIDTH` m aux deux bords de la route, une couleur par tranche. Lot 23 : sans éclairage (`g` est un constructeur « lumineux »), donc vifs de jour comme de nuit. */
 function addKerbs(g: Builder, rows: Row[]) {
   for (let i = 0; i + 1 < rows.length; i++) {
     const a = rows[i]!;
     const b = rows[i + 1]!;
     const fa = KERB_WIDTH / rowWidth(a);
     const fb = KERB_WIDTH / rowWidth(b);
-    const color = i % 2 === 0 ? 0xe8283a : 0xf4f4f4;
-    g.quad(across(a, 0, 0.05), across(a, fa, 0.05), across(b, fb, 0.05), across(b, 0, 0.05), color);
-    g.quad(across(a, 1 - fa, 0.05), across(a, 1, 0.05), across(b, 1, 0.05), across(b, 1 - fb, 0.05), color);
+    const color = i % 2 === 0 ? 0xff2a3c : 0xffffff;
+    g.quad(across(a, 0, 0.07), across(a, fa, 0.07), across(b, fb, 0.07), across(b, 0, 0.07), color);
+    g.quad(across(a, 1 - fa, 0.07), across(a, 1, 0.07), across(b, 1, 0.07), across(b, 1 - fb, 0.07), color);
   }
 }
 
@@ -926,39 +850,6 @@ function addSurfaceMarks(g: Builder, b: Block) {
   }
 }
 
-function addGate(g: Builder, pal: Palette, b: Block, finish: boolean) {
-  const y = b.y0;
-  const hw = blockHalfWidth(b, CELL / 2); // la porte s'adapte à la largeur de la route
-  const post = hw + 0.9;
-  const q = CELL / 2;
-  const h = 6;
-  const color = finish ? pal.finish : pal.checkpoint;
-  for (const side of [-1, 1]) {
-    blockPoint(b, CELL / 2 + side * post, q, pt);
-    g.box(pt.x - 0.4, y, pt.z - 0.4, pt.x + 0.4, y + h, pt.z + 0.4, color);
-  }
-  // Poutre : on la dessine dans le repère du monde, selon l'orientation du bloc.
-  const a = world(b, CELL / 2 - post, q, y + h);
-  const c = world(b, CELL / 2 + post, q, y + h);
-  g.box(Math.min(a[0], c[0]) - 0.4, y + h - 0.8, Math.min(a[2], c[2]) - 0.4, Math.max(a[0], c[0]) + 0.4, y + h, Math.max(a[2], c[2]) + 0.4, color);
-  if (finish) {
-    // Damier au sol, sur toute la largeur.
-    const cols = Math.round(hw * 2);
-    for (let i = 0; i < cols; i++) {
-      for (let j = 0; j < 2; j++) {
-        const col = (i + j) % 2 === 0 ? pal.finish : pal.finishDark;
-        const p0 = CELL / 2 - hw + i;
-        const q0 = q - 1 + j;
-        g.quad(world(b, p0, q0, y + 0.04), world(b, p0 + 1, q0, y + 0.04), world(b, p0 + 1, q0 + 1, y + 0.04), world(b, p0, q0 + 1, y + 0.04), col);
-      }
-    }
-  } else {
-    const p0 = CELL / 2 - hw;
-    const p1 = CELL / 2 + hw;
-    g.quad(world(b, p0, q - 0.4, y + 0.04), world(b, p1, q - 0.4, y + 0.04), world(b, p1, q + 0.4, y + 0.04), world(b, p0, q + 0.4, y + 0.04), pal.checkpoint);
-  }
-}
-
 function checkerTexture(a: string, b: string, repeat: number): CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = 2;
@@ -1065,6 +956,7 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
       g.box(x - 0.1, y + h - 0.1, z - 0.1, x + 0.9, y + h + 0.05, z + 0.1, 0x20243a);
       glow.box(x + 0.5, y + h - 0.2, z - 0.25, x + 0.95, y + h - 0.08, z + 0.25, 0xffe9a8);
       glow.prism(x + 0.72, y, z, 0.01, 0.01, 0.01, 3, 0xffe9a8);
+      glow.halo(x + 0.72, y + h - 0.15, z, 0xffd98a, 5.5);
     } else {
       const h = (4 + rnd() * 3.5) * jitter;
       const green = mix(0x16303a, 0x20424a, rnd());
@@ -1162,6 +1054,7 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
       g.box(x - 0.1, y, z - 0.1, x + 0.1, y + h, z + 0.1, 0x3a3f4d);
       g.box(x - 0.1, y + h - 0.12, z - 0.1, x + 1.1, y + h + 0.05, z + 0.1, 0x3a3f4d);
       g.box(x + 0.7, y + h - 0.3, z - 0.22, x + 1.15, y + h - 0.12, z + 0.22, 0xf6efd0);
+      glow.halo(x + 0.92, y + h - 0.2, z, 0xfff0c8, 4.5);
     } else {
       const s = (0.9 + rnd() * 1.2) * jitter;
       g.box(x - s, y, z - s, x + s, y + s * 1.1, z + s, mix(0x8f949c, 0xb4b8bf, rnd()));
@@ -1173,12 +1066,72 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
     g.box(x - 0.18, y, z - 0.18, x + 0.18, y + h, z + 0.18, 0x1a0b36);
     glow.box(x - 0.08, y + h * 0.15, z - 0.2, x + 0.08, y + h, z + 0.2, c);
     glow.box(x - 0.2, y + h * 0.15, z - 0.08, x + 0.2, y + h, z + 0.08, c);
+    glow.halo(x, y + h * 0.6, z, c, 6);
     if (rnd() < 0.4) glow.box(x + 1.4, y + h * 0.5, z, x + 2.2, y + h * 0.5 + 0.8, z + 0.8, c);
   }
 }
 
+/**
+ * Décor propre à un thème, seulement dans la passe dense (lot 23) : clôtures et haies de la Campagne, falaises du Canyon, murets de pierre
+ * du Col alpin, rangées de sapins de la Banquise. Renvoie vrai si un élément a été posé (sinon l'appelant pose un élément ordinaire).
+ */
+function addTypedProp(g: Builder, style: Style, x: number, y: number, z: number, rnd: () => number): boolean {
+  const k = rnd();
+  const jitter = 0.9 + rnd() * 0.2;
+  const along = rnd() < 0.5; // le long de x ou de z
+  if (style === "trees" && k < 0.45) {
+    const len = (7 + rnd() * 9) * jitter;
+    const half = len / 2;
+    if (k < 0.25) {
+      // Clôture de bois : poteaux tous les 2 m, deux lisses.
+      for (let t = -half; t <= half; t += 2) along ? g.box(x + t - 0.07, y, z - 0.07, x + t + 0.07, y + 1.15, z + 0.07, 0x7a5230) : g.box(x - 0.07, y, z + t - 0.07, x + 0.07, y + 1.15, z + t + 0.07, 0x7a5230);
+      for (const yy of [0.5, 0.95]) along ? g.box(x - half, y + yy, z - 0.04, x + half, y + yy + 0.1, z + 0.04, 0x9a6a3e) : g.box(x - 0.04, y + yy, z - half, x + 0.04, y + yy + 0.1, z + half, 0x9a6a3e);
+    } else {
+      // Haie taillée.
+      const green = mix(0x2f7a32, 0x3f9a3e, rnd());
+      along ? g.box(x - half, y, z - 0.55, x + half, y + 1.4, z + 0.55, green) : g.box(x - 0.55, y, z - half, x + 0.55, y + 1.4, z + half, green);
+    }
+    return true;
+  }
+  if (style === "canyon" && k < 0.4) {
+    // Falaise : un mur de roche à strates, large et haut, qui ferme l'horizon proche.
+    const w = (10 + rnd() * 14) * jitter;
+    const d = 3 + rnd() * 2.5;
+    const h = (9 + rnd() * 10) * jitter;
+    const rock = mix(0x9a3f26, 0xc4673a, rnd());
+    const bands = 4;
+    for (let i = 0; i < bands; i++) {
+      const y0 = y + (h * i) / bands;
+      const inset = i * 0.35;
+      const c = i % 2 === 0 ? rock : shade(rock, 1.15);
+      along ? g.box(x - w / 2 + inset, y0, z - d / 2 + inset * 0.5, x + w / 2 - inset, y0 + h / bands, z + d / 2 - inset * 0.5, c) : g.box(x - d / 2 + inset * 0.5, y0, z - w / 2 + inset, x + d / 2 - inset * 0.5, y0 + h / bands, z + w / 2 - inset, c);
+    }
+    return true;
+  }
+  if (style === "alpine" && k < 0.3) {
+    // Muret de pierre sèche, bas.
+    const len = (5 + rnd() * 6) * jitter;
+    const stone = mix(0x7d8896, 0x9aa5b2, rnd());
+    along ? g.box(x - len / 2, y, z - 0.35, x + len / 2, y + 0.9, z + 0.35, stone) : g.box(x - 0.35, y, z - len / 2, x + 0.35, y + 0.9, z + len / 2, stone);
+    return true;
+  }
+  if (style === "pine" && k < 0.3) {
+    // Rangée de trois sapins serrés (forêt).
+    for (let t = -1; t <= 1; t++) {
+      const px = along ? x + t * 2.6 : x;
+      const pz = along ? z : z + t * 2.6;
+      const h = (5.5 + rnd() * 3.5) * jitter;
+      const green = mix(0x1f5a3c, 0x2f7a50, rnd());
+      g.box(px - 0.2, y, pz - 0.2, px + 0.2, y + h * 0.2, pz + 0.2, 0x5b3d26);
+      for (let q = 0; q < 3; q++) g.prism(px, y + h * (0.15 + (q / 3) * 0.27), pz, 2 - q * 0.5, 0.05, h * 0.42, 7, green, 0xf6fbff);
+    }
+    return true;
+  }
+  return false;
+}
+
 /** Décor au bord de la piste : dans les cellules vides à moins de 2 cellules d'un bloc, selon le style de la palette. */
-function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number, keep?: (cx: number, cz: number) => boolean) {
+function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number, keep?: (cx: number, cz: number) => boolean, dense = false) {
   const wanted = new Set<number>();
   const span = 2;
   for (const b of track.blocks) {
@@ -1206,9 +1159,12 @@ function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floor
   let count = 0;
   for (const [cx, cz] of cells) {
     g.mute = glow.mute = keep ? !keep(cx, cz) : false; // hors du cadre : mêmes tirages au sort, aucune forme
-    const n = 1 + Math.floor(rnd() * 3);
-    for (let i = 0; i < n && count < 650; i++, count++) {
-      addProp(g, glow, pal.scenery, pal, cx * CELL + 3 + rnd() * (CELL - 6), floorY, cz * CELL + 3 + rnd() * (CELL - 6), rnd);
+    const n = dense ? 1 + Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 3);
+    for (let i = 0; i < n && count < (dense ? 520 : 650); i++, count++) {
+      const x = cx * CELL + 3 + rnd() * (CELL - 6);
+      const z = cz * CELL + 3 + rnd() * (CELL - 6);
+      if (dense && addTypedProp(g, pal.scenery, x, floorY, z, rnd)) continue;
+      addProp(g, glow, pal.scenery, pal, x, floorY, z, rnd);
     }
   }
   g.mute = glow.mute = false;
@@ -1286,35 +1242,49 @@ function buildSky(pal: Palette, rnd: () => number): Group {
   return group;
 }
 
-/** Montagnes lointaines : un anneau de pics à bords nets, teintés vers la couleur de l'horizon (pas de brouillard dessus). */
-function buildMountains(pal: Palette, rnd: () => number): Mesh {
-  const g = new Builder();
+/**
+ * Silhouettes lointaines (lot 23) en trois couches : un anneau de pics (comme avant) ; derrière, une couche plus pâle et plus haute
+ * (la brume la fond dans l'horizon) ; devant, des collines basses et sombres (qualité 2). Teintées vers la couleur de l'horizon, sans
+ * brouillard dessus : plus c'est loin, plus c'est pâle. Ville : des immeubles à toit plat.
+ */
+function buildMountains(pal: Palette, rnd: () => number): Group {
+  const group = new Group();
   const horizon = pal.sky;
-  const body = mix(pal.mountain, horizon, 0.38);
-  const tip = mix(pal.mountainTop, horizon, 0.3);
-  const n = 34;
-  for (let i = 0; i < n; i++) {
-    const a = (i / n) * Math.PI * 2 + rnd() * 0.12;
-    const r = 300 + rnd() * 70;
-    const h = 38 + rnd() * 70;
-    const w = 55 + rnd() * 60;
-    if (pal.scenery === "city") {
-      // Ville (lot 22) : des immeubles lointains à toit plat plutôt que des pics (les tirages restent les mêmes).
-      const bw = w * 0.45;
-      const bh = h * 1.2;
-      const wall = shade(body, 0.9 + rnd() * 0.2);
-      g.box(Math.cos(a) * r - bw, -10, Math.sin(a) * r - bw, Math.cos(a) * r + bw, bh, Math.sin(a) * r + bw, wall);
-      g.box(Math.cos(a) * r - bw * 1.05, bh, Math.sin(a) * r - bw * 1.05, Math.cos(a) * r + bw * 1.05, bh + 2, Math.sin(a) * r + bw * 1.05, tip);
-      continue;
+  const city = pal.scenery === "city";
+  const layer = (n: number, rMin: number, rSpan: number, hMin: number, hSpan: number, wMin: number, wSpan: number, fadeTo: number, darker: number, twoPeaks: boolean) => {
+    const g = new Builder();
+    const body = mix(pal.mountain, horizon, fadeTo);
+    const tip = mix(pal.mountainTop, horizon, fadeTo - 0.08);
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + rnd() * 0.12;
+      const r = rMin + rnd() * rSpan;
+      const h = hMin + rnd() * hSpan;
+      const w = wMin + rnd() * wSpan;
+      if (city) {
+        // Ville (lot 22) : des immeubles lointains à toit plat plutôt que des pics (les tirages restent les mêmes).
+        const bw = w * 0.45;
+        const bh = h * 1.2;
+        const wall = shade(body, (0.9 + rnd() * 0.2) * darker);
+        g.box(Math.cos(a) * r - bw, -10, Math.sin(a) * r - bw, Math.cos(a) * r + bw, bh, Math.sin(a) * r + bw, wall);
+        g.box(Math.cos(a) * r - bw * 1.05, bh, Math.sin(a) * r - bw * 1.05, Math.cos(a) * r + bw * 1.05, bh + 2, Math.sin(a) * r + bw * 1.05, tip);
+        continue;
+      }
+      g.prism(Math.cos(a) * r, -10, Math.sin(a) * r, w, 0.5, h, 5 + Math.floor(rnd() * 2), shade(body, (0.85 + rnd() * 0.25) * darker), tip, rnd() * 3);
+      // un second pic, plus petit, devant
+      if (twoPeaks && rnd() < 0.6) g.prism(Math.cos(a + 0.09) * (r - 28), -10, Math.sin(a + 0.09) * (r - 28), w * 0.6, 0.5, h * 0.55, 5, shade(body, (0.95 + rnd() * 0.2) * darker), tip, rnd() * 3);
     }
-    g.prism(Math.cos(a) * r, -10, Math.sin(a) * r, w, 0.5, h, 5 + Math.floor(rnd() * 2), shade(body, 0.85 + rnd() * 0.25), tip, rnd() * 3);
-    // un second pic, plus petit, devant
-    if (rnd() < 0.6) g.prism(Math.cos(a + 0.09) * (r - 28), -10, Math.sin(a + 0.09) * (r - 28), w * 0.6, 0.5, h * 0.55, 5, shade(body, 0.95 + rnd() * 0.2), tip, rnd() * 3);
-  }
-  const mesh = new Mesh(g.geometry(), new MeshBasicMaterial({ vertexColors: true, fog: false, side: DoubleSide }));
-  mesh.renderOrder = -1;
-  mesh.userData.heavy = true;
-  return mesh;
+    const mesh = new Mesh(g.geometry(), new MeshBasicMaterial({ vertexColors: true, fog: false, side: DoubleSide }));
+    mesh.renderOrder = -1;
+    mesh.userData.heavy = true;
+    return mesh;
+  };
+  // Couche d'origine (mêmes tirages que les lots précédents), puis la lointaine, puis les collines proches.
+  group.add(layer(34, 300, 70, 38, 70, 55, 60, 0.38, 1, true));
+  group.add(layer(26, 440, 40, 60, 80, 90, 80, 0.66, 1.05, false));
+  const hills = layer(22, 205, 40, 9, 16, 38, 40, 0.14, 0.78, false);
+  hills.userData.level = 2;
+  group.add(hills);
+  return group;
 }
 
 export interface TrackScene {
@@ -1324,7 +1294,34 @@ export interface TrackScene {
   dispose(): void;
   /** Décor allégé (qualité basse) : montagnes, soleil, étoiles et décor de bord de piste masqués ; ciel et route restent. */
   setLite(on: boolean): void;
+  /** Niveau de qualité 0–2 (lot 23) : 0 sans décor ni ombres ni halos ; 1 ombres de 512, halos, phares, décor de base ; 2 tout (ombres de 1024, décor dense, silhouettes proches). */
+  setQuality(level: 0 | 1 | 2): void;
+  /** Ambiance du thème (exposition, brume, halos, phares). */
+  look: Look;
+  /** Hauteur de la fenêtre (pixels) et champ de vision (degrés) : taille des halos à l'écran. */
+  setView(heightPx: number, fovDeg: number): void;
+  /** Position de la voiture (m) et cap (rad) : fenêtre des ombres, phares. */
+  followCar(x: number, y: number, z: number, yaw: number): void;
+  /** État du rendu (outil de test `?debug`) : ce que la qualité active, ce que le thème allume. */
+  stats(): SceneStats;
 }
+
+export interface SceneStats {
+  quality: number;
+  /** Taille de la carte d'ombres (0 : coupée). */
+  shadowMap: number;
+  headlights: number;
+  halos: { count: number; visible: boolean };
+  denseDecor: boolean;
+  hills: boolean;
+  signs: number;
+  fog: { near: number; far: number } | null;
+}
+
+/** Demi-largeur (m) de la carte d'ombres autour de la voiture. */
+const SHADOW_HALF = 42;
+/** Intensité des phares (candelas) : à régler à l'œil (capture de nuit). */
+const HEADLIGHT_POWER = 900;
 
 /** Libère tout ce que la scène tient côté carte graphique (géométries, matériaux, textures, fond). */
 export function disposeScene(scene: Scene) {
@@ -1361,6 +1358,13 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const speedG = new Builder();
   const neonG = new Builder(); // bordures néon au bord du vide (lot 21, Nuit) : lisibles, jamais masquées par la qualité
   const fast = fastZones(track);
+  const look = LOOKS[paletteName];
+  const props = createProps(!!options.aerial); // panneaux, arches, portes (lot 23)
+  let signCount = 0;
+  if (!options.aerial) {
+    for (const sign of signsFor(track)) addSign(props, track.blocks[sign.block]!, sign);
+    signCount = signsFor(track).length;
+  }
 
   for (const b of track.blocks) {
     const color = b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!;
@@ -1386,7 +1390,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
         addRoad(g, pal, rows, color, floorY, true, b.surface === "road", pal.skirt, style);
       }
       // Vibreurs (lot 21) : aux deux bords d'un virage sur route.
-      if (b.surface === "road") addKerbs(g, rows);
+      if (b.surface === "road") addKerbs(props.glow, rows);
     } else if (b.kind === "jump") {
       // Rampe jusqu'au bord, face verticale, puis route plate.
       // Le tremplin se lit comme un tremplin : rampe plus claire, flancs clairs (pas un mur brun), chevrons blancs,
@@ -1435,9 +1439,15 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
     if (b.kind === "boost") addBoostPad(g, pal, b);
     if (b.kind === "turbo") addTurboPad(g, b);
     if (b.kind === "cut") addCutStrip(g, b);
+    // Halo sur les plaques et les bandes de moteur coupé (lot 23) : on les repère de loin, de nuit surtout.
+    if (b.kind === "boost" || b.kind === "turbo" || b.kind === "cut") {
+      const c = world(b, CELL / 2, CELL / 2, b.y0 + 0.6);
+      props.glow.halo(c[0], c[1], c[2], b.kind === "boost" ? pal.boost : b.kind === "turbo" ? TURBO_COLOR.base : CUT_COLOR.mark, b.kind === "turbo" ? 9 : 7);
+    }
     if (!options.aerial) addSpeedMarks(speedG, pal, b, fast[b.index] ?? false);
-    if (b.mark === "checkpoint") addGate(g, pal, b, false);
-    if (b.mark === "finish") addGate(g, pal, b, true);
+    if (b.mark === "checkpoint") addCheckpointGate(props, pal, b);
+    if (b.mark === "finish") addFinishArch(props, pal, b);
+    if (b.mark === "start") addStartArch(props, pal, b);
   }
 
   // Bouts fermés : un mur en travers de la route au départ et derrière l'arrivée.
@@ -1463,12 +1473,17 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   addGrandstand(decorG, pal, first0, rnd);
   decorG.mute = false;
   addScenery(decorG, glowG, pal, track, floorY, rnd, near ? nearCell : undefined);
+  // Décor dense (lot 23) : une seconde passe, tirée d'une autre suite de nombres (le décor d'origine ne bouge pas), réservée à la qualité 2.
+  const denseG = new Builder();
+  const denseGlow = new Builder();
+  if (!options.aerial) addScenery(denseG, denseGlow, pal, track, floorY, seeded(`${track.id}:${paletteName}:dense`), undefined, true);
 
   const sky = new Color(pal.sky);
   const scene = new Scene();
   if (!options.aerial) {
     scene.background = skyGradient(pal);
-    scene.fog = new Fog(sky, pal.fogNear, pal.fogFar);
+    // Brume (lot 23) : sa densité est un trait du thème (voile de ville, air limpide du col, jour blanc de la banquise).
+    scene.fog = new Fog(sky, pal.fogNear / look.haze, pal.fogFar / look.haze);
   }
   // Lumière : hémisphérique (ciel au-dessus, sol en dessous : les faces hautes sont plus claires que les flancs) + soleil.
   // Miniatures des thèmes de nuit : lues en petit, elles doivent rester lisibles (le jeu, lui, garde sa nuit).
@@ -1478,18 +1493,55 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   const sun = new DirectionalLight(pal.sun[0], pal.sun[1] * 0.85 * (lift > 1 ? 1.4 : 1));
   // Soleil (lot 21) : plus il est haut, plus la lumière vient d'en haut (ombres courtes) ; bas, elle rase les flancs.
   sun.position.set(40 * (1.2 - pal.sunHeight) * 1.4, 30 + 110 * pal.sunHeight, -30 * (1.2 - pal.sunHeight) * 1.4);
-  scene.add(sun);
+  const sunOffset = sun.position.clone().normalize().multiplyScalar(150);
+  scene.add(sun, sun.target);
+  // Ombres portées (lot 23, qualité ≥ 1) : une carte d'ombres qui suit la voiture (±SHADOW_HALF m) ; voir `setQuality`.
+  sun.shadow.camera.left = -SHADOW_HALF;
+  sun.shadow.camera.right = SHADOW_HALF;
+  sun.shadow.camera.top = SHADOW_HALF;
+  sun.shadow.camera.bottom = -SHADOW_HALF;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 320;
+  sun.shadow.bias = -0.0008;
+  sun.shadow.normalBias = 0.06;
+  sun.shadow.intensity = look.shadow;
+  // Phares (lot 23) : un projecteur devant la voiture sur les thèmes sombres ; intensité 0 le jour (la lampe existe toujours : pas de recompilation).
+  const head = new SpotLight(0xfff1d0, 0, 110, 0.62, 0.8, 1.2);
+  scene.add(head, head.target);
 
   const mat = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide });
-  scene.add(new Mesh(g.geometry(), mat));
+  const roadMesh = new Mesh(g.geometry(), mat);
+  roadMesh.receiveShadow = true;
+  scene.add(roadMesh);
   const decorMesh = new Mesh(decorG.geometry(), mat);
   const glowMesh = new Mesh(glowG.geometry(), new MeshBasicMaterial({ vertexColors: true }));
   const speedMesh = new Mesh(speedG.geometry(), mat);
+  const denseMesh = new Mesh(denseG.geometry(), mat);
+  const denseGlowMesh = new Mesh(denseGlow.geometry(), new MeshBasicMaterial({ vertexColors: true }));
   decorMesh.userData.heavy = glowMesh.userData.heavy = speedMesh.userData.heavy = true;
-  scene.add(decorMesh, glowMesh, speedMesh);
+  denseMesh.userData.level = denseGlowMesh.userData.level = 2;
+  decorMesh.receiveShadow = denseMesh.receiveShadow = true;
+  // Le décor reçoit les ombres mais n'en projette pas : le dessiner une seconde fois dans la carte d'ombres coûtait +6 à +12 ms par image
+  // (processeur ×4, Ville et Nuit en qualité 2) pour des ombres lointaines que personne ne regarde ; la voiture et les accessoires en projettent.
+  scene.add(decorMesh, glowMesh, speedMesh, denseMesh, denseGlowMesh);
   if (neonG.pos.length > 0) scene.add(new Mesh(neonG.geometry(), new MeshBasicMaterial({ vertexColors: true })));
 
-  // Ciel et montagnes suivent la caméra (donc la voiture) : toujours à l'horizon.
+  // Accessoires (lot 23) : panneaux, arches, portes. Toujours visibles (c'est de la lisibilité, pas du décor).
+  const solidMesh = new Mesh(props.solid.geometry(), mat);
+  solidMesh.castShadow = solidMesh.receiveShadow = true;
+  scene.add(solidMesh, new Mesh(props.glow.geometry(), new MeshBasicMaterial({ vertexColors: true, side: DoubleSide })));
+  if (props.curtain.pos.length > 0) {
+    const curtain = new Mesh(props.curtain.geometry(), new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.2, side: DoubleSide, depthWrite: false, blending: AdditiveBlending }));
+    curtain.renderOrder = 4;
+    scene.add(curtain);
+  }
+  for (const banner of props.banners) scene.add(banner);
+
+  // Halos (lot 23) : néons, turbos, lampadaires, portes. Un seul `Points` additif ; qualité ≥ 1.
+  const halos = options.aerial ? null : buildHalos([...g.halos, ...glowG.halos, ...neonG.halos, ...denseGlow.halos, ...props.glow.halos], look.halo);
+  if (halos) scene.add(halos.points);
+
+  // Ciel et silhouettes lointaines suivent la caméra (donc la voiture) : toujours à l'horizon.
   const backdrop = new Group();
   if (!options.aerial) backdrop.add(buildSky(pal, rnd), buildMountains(pal, rnd));
   scene.add(backdrop);
@@ -1502,20 +1554,73 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = floorY;
+  floor.receiveShadow = true;
   scene.add(floor);
+
+  let shadowSize = 0;
+  const setQuality = (level: 0 | 1 | 2) => {
+    currentLevel = level;
+    scene.traverse((o) => {
+      // Seuls les objets marqués (`level`, ou `heavy` = niveau 1) sont touchés : les effets, la voiture et le fantôme gèrent leur visibilité eux-mêmes.
+      const min = (o.userData.level as number | undefined) ?? (o.userData.heavy ? 1 : undefined);
+      if (min !== undefined) o.visible = level >= min;
+      const casts = o.userData.casts as number | undefined;
+      if (casts !== undefined) o.castShadow = level >= casts;
+    });
+    // Ombres : carte de 512 (qualité 1) ou 1024 (qualité 2) ; coupées à la qualité 0 (reste l'ombre douce posée sous la voiture).
+    const want = options.aerial ? 0 : level === 2 ? 1024 : level === 1 ? 512 : 0;
+    if (want !== shadowSize) {
+      shadowSize = want;
+      sun.castShadow = want > 0;
+      if (want > 0) {
+        sun.shadow.mapSize.set(want, want);
+        sun.shadow.map?.dispose();
+        sun.shadow.map = null;
+      }
+    }
+    head.visible = level >= 1 && look.headlights > 0;
+    head.intensity = head.visible ? HEADLIGHT_POWER * look.headlights : 0;
+  };
+  let currentLevel: 0 | 1 | 2 = 2;
+  setQuality(2);
 
   return {
     scene,
+    look,
     dispose: () => disposeScene(scene),
+    setQuality,
     setLite(on) {
-      scene.traverse((o) => {
-        if (o.userData.heavy) o.visible = !on;
+      setQuality(on ? 0 : 2);
+    },
+    setView(heightPx, fovDeg) {
+      halos?.setView(heightPx, fovDeg);
+    },
+    stats() {
+      let hills = false;
+      backdrop.traverse((o) => {
+        if (o.userData.level === 2 && o.visible) hills = true;
       });
+      const fog = scene.fog as Fog | null;
+      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: denseMesh.visible, hills, signs: signCount, fog: fog ? { near: fog.near, far: fog.far } : null };
     },
     followGround(x, z) {
       backdrop.position.set(x, floorY, z);
       floor.position.x = Math.round(x / (2 * tile)) * 2 * tile;
       floor.position.z = Math.round(z / (2 * tile)) * 2 * tile;
+    },
+    followCar(x, y, z, yaw) {
+      // Ombres : la fenêtre de la carte suit la voiture (pas d'un mètre : les bords ne scintillent pas).
+      const tx = Math.round(x);
+      const ty = Math.round(y);
+      const tz = Math.round(z);
+      sun.target.position.set(tx, ty, tz);
+      sun.position.set(tx + sunOffset.x, ty + sunOffset.y, tz + sunOffset.z);
+      if (head.visible) {
+        const s = Math.sin(yaw);
+        const c = Math.cos(yaw);
+        head.position.set(x + s * 1.2, y + 0.75, z + c * 1.2);
+        head.target.position.set(x + s * 24, y - 0.4, z + c * 24);
+      }
     },
   };
 }
