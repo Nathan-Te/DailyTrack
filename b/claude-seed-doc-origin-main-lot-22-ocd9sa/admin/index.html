@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Circuit du Jour — admin</title>
+    <style>:root{--lightningcss-light: ;--lightningcss-dark:initial;color-scheme:dark}[hidden]{display:none!important}body{color:#fff;background:#0b1020;margin:0;font:15px/1.45 system-ui,sans-serif}main{max-width:720px;margin:0 auto;padding:20px 16px 60px}h1{margin:0 0 4px;font-size:24px}h2{text-transform:uppercase;letter-spacing:.06em;opacity:.7;margin:26px 0 8px;font-size:15px}p.lead{opacity:.7;margin:0 0 8px}section{background:#131a33;border-radius:14px;padding:12px 14px}.row{flex-wrap:wrap;align-items:center;gap:8px 14px;padding:6px 0;display:flex}.row>label.name{opacity:.85;min-width:150px}label.opt{align-items:center;gap:6px;display:inline-flex}select,input[type=text],input[type=date],input[type=number]{font:inherit;color:#fff;background:#0b1020;border:1px solid #fff3;border-radius:8px;min-height:20px;padding:7px 9px}input[type=text]{flex:1;min-width:220px}input[type=checkbox],input[type=radio]{accent-color:#ffd22e;width:18px;height:18px}button,a.btn{color:#fff;cursor:pointer;background:#ffffff24;border:0;border-radius:10px;min-height:20px;padding:10px 14px;font:700 14px system-ui,sans-serif;text-decoration:none;display:inline-block}button.go,a.go{color:#131a33;background:#ffd22e;padding:12px 20px;font-size:16px}button.danger{background:#7a2530}.presets{flex-wrap:wrap;gap:8px;display:flex}.presets button small{opacity:.65;font-size:12px;font-weight:500;display:block}#url{word-break:break-all;background:#0b1020;border-radius:8px;margin:8px 0;padding:8px 10px;font:13px ui-monospace,monospace}.hint{opacity:.6;font-size:13px}#keys{opacity:.85;columns:2;font:13px ui-monospace,monospace}table{border-collapse:collapse}td{vertical-align:top;padding:2px 14px 2px 0}nav.jump{flex-wrap:wrap;gap:8px;margin:10px 0 0;display:flex}nav.jump a{color:#ffd22e;background:#ffffff14;border-radius:8px;padding:6px 10px;font-size:13px;text-decoration:none}.banner{background:#4a3a10;border:1px solid #ffd22e;border-radius:12px;margin:14px 0 0;padding:10px 14px}#conn-state[data-kind=error]{color:#ff9aa5}#conn-state{margin:0 0 6px}#token-form{flex-wrap:wrap;gap:8px;margin-top:8px;display:flex}#token-form input{min-width:200px;font:inherit;color:#fff;background:#0b1020;border:1px solid #fff3;border-radius:8px;flex:1;padding:9px 10px}.cards{grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;display:grid}.card,.daycard{background:#131a33;border-radius:14px;flex-direction:column;display:flex;overflow:hidden}.daycard{border-radius:14px;flex-flow:wrap}.daycard .thumb{flex:280px}.daycard .statbox{flex:280px;padding:12px 14px}.thumb{aspect-ratio:16/9;opacity:.9;background:#0b1020 50%/cover;justify-content:center;align-items:center;font-size:12px;display:flex;position:relative}.thumb[data-state=wait]:after{content:"génération…";opacity:.5}.thumb img{object-fit:cover;width:100%;height:100%;display:block}.card .body{flex-direction:column;gap:8px;padding:10px 12px 12px;display:flex}.title{flex-wrap:wrap;align-items:baseline;gap:4px 10px;display:flex}.title .rel{color:#ffd22e;font-weight:800}.title .date,.title .num{opacity:.75;font-variant-numeric:tabular-nums}.title .theme{font-weight:700}.badge{color:#131a33;background:#ffd22e;border-radius:6px;padding:1px 7px;font-size:12px;font-weight:800}dl.stats{grid-template-columns:auto 1fr;gap:2px 12px;margin:0;font-size:13px;display:grid}dl.stats dt{opacity:.6}dl.stats dd{margin:0}.actions{flex-wrap:wrap;align-items:center;gap:8px;display:flex}a.btn.small{padding:6px 10px;font-size:13px}.figures{gap:22px;margin:8px 0;display:flex}.fig .v{font-variant-numeric:tabular-nums;font-size:22px;font-weight:800;display:block}.fig .k{opacity:.6;font-size:12px}.hist .bars{align-items:flex-end;gap:3px;height:64px;display:flex}.hist .bar{background:#ffd22e;border-radius:3px 3px 0 0;flex:1;min-height:3px}.hist .axis{opacity:.6;justify-content:space-between;font-size:11px;display:flex}.hrow{border-bottom:1px solid #ffffff12;flex-wrap:wrap;align-items:center;gap:4px 14px;padding:6px 0;display:flex}.hrow .num{opacity:.6;min-width:34px}.hrow .date{font-variant-numeric:tabular-nums}.hrow .theme{min-width:80px;font-weight:700}.hrow .best{font-variant-numeric:tabular-nums}.hrow .used{opacity:.6;flex:1}#replace{z-index:20;background:#050812d1;padding:16px;position:fixed;inset:0;overflow-y:auto}#replace .sheet{background:#0f1630;border-radius:16px;max-width:1000px;margin:0 auto;padding:14px}#replace .head{justify-content:space-between;align-items:center;gap:10px;display:flex}#replace .head .h{font-size:18px;font-weight:800}.confirmhost{flex-wrap:wrap;align-items:center;gap:8px;display:inline-flex}.confirmhost .ask{font-size:13px}button.go{color:#131a33;background:#ffd22e}#replace-msg[data-kind=error]{color:#ff9aa5}kbd{background:#ffffff24;border-radius:5px;padding:1px 7px;font:600 13px ui-monospace,monospace}</style>
+    <script type="module" crossorigin src="../assets/admin-C8JzEyRq.js"></script>
+    <link rel="modulepreload" crossorigin href="../assets/src-D88WDYYk.js">
+    <link rel="modulepreload" crossorigin href="../assets/three-oYbY24E6.js">
+    <link rel="modulepreload" crossorigin href="../assets/thumbnails-CkSfmFgi.js">
+  </head>
+  <body>
+    <main>
+      <h1>Circuit du Jour — admin</h1>
+      <p class="lead">Outils de test : choisir un circuit, un thème, des réglages, puis lancer le jeu. Ces choix ne sont que des paramètres d'adresse : ils ne changent jamais la simulation, et une course lancée avec eux n'est classée que si c'est le circuit du jour, sans réglage modifié.</p>
+
+      <nav class="jump"><a href="#sec-today">Aujourd'hui</a><a href="#sec-planning">Planning</a><a href="#sec-history">Historique</a><a href="#sec-tools">Outils</a></nav>
+      <div id="demo-banner" class="banner" hidden><strong>Mode démonstration</strong> : pas de serveur. Les remplacements sont gardés dans ce navigateur seulement ; le jeu en <code>?api=demo</code> les respecte, rien n'est envoyé nulle part.</div>
+
+      <section style="margin-top: 14px">
+        <p id="conn-state" class="hint">…</p>
+        <form id="token-form" hidden>
+          <input type="password" id="token" autocomplete="off" spellcheck="false" placeholder="Jeton d'admin" aria-label="Jeton d'admin" />
+          <button type="submit" class="go">Se connecter</button>
+        </form>
+        <div class="actions"><button type="button" id="refresh">Actualiser</button><button type="button" id="logout" hidden>Oublier le jeton</button></div>
+      </section>
+
+      <h2 id="sec-today">Aujourd'hui</h2>
+      <section id="daynow"><p class="hint">Chargement…</p></section>
+
+      <h2 id="sec-planning">Planning · les 14 prochains jours</h2>
+      <p class="lead">Chaque circuit est généré dans ton navigateur, avec le même code que le serveur. Un jour commencé (UTC) ne peut plus être remplacé.</p>
+      <div class="cards" id="planning"></div>
+      <div id="replace" hidden></div>
+
+      <h2 id="sec-history">Historique</h2>
+      <section id="history"></section>
+
+      <h2 id="sec-tools">Outils de test</h2>
+      <h2>Raccourcis</h2>
+      <div class="presets" id="presets"></div>
+
+      <h2>Circuit</h2>
+      <section>
+        <div class="row" id="scenarios"></div>
+        <div class="row" id="dayrow">
+          <label class="name" for="date">Date</label>
+          <input type="date" id="date" />
+          <button type="button" id="today">Aujourd'hui</button>
+          <button type="button" id="random">🎲 Au hasard</button>
+        </div>
+        <div class="row" id="themerow">
+          <label class="name" for="theme">Thème</label>
+          <select id="theme"></select>
+          <span class="hint">un thème forcé donne un autre circuit, jamais classé</span>
+        </div>
+        <div class="row" id="figurerow" hidden>
+          <label class="name" for="figure">Figure</label>
+          <select id="figure"></select>
+          <input type="text" id="figurevariant" inputmode="numeric" placeholder="variante" aria-label="Variante de la figure" style="width: 90px; flex: none; min-width: 0" />
+          <label class="opt"><input type="checkbox" id="figuremirror" /> Miroir</label>
+        </div>
+        <div class="row" id="variantrow">
+          <label class="name" for="variant">Variante</label>
+          <input type="text" id="variant" inputmode="numeric" placeholder="en vigueur" style="width: 110px; flex: none; min-width: 0" />
+          <span class="hint">essayer une variante du planning (0 = circuit d'origine), jamais classée</span>
+        </div>
+      </section>
+
+      <h2>Options</h2>
+      <section>
+        <div class="row"><label class="opt"><input type="checkbox" id="tune" /> Panneau de réglages de la voiture</label></div>
+        <div class="row"><label class="opt"><input type="checkbox" id="debug" /> Outils de test (<code>window.__cdj</code>)</label></div>
+        <div class="row"><label class="opt"><input type="checkbox" id="demo" /> Démo : le pilote automatique boucle</label></div>
+        <div class="row"><label class="opt"><input type="checkbox" id="fxOff" /> Couper les effets (particules, traces)</label></div>
+        <div class="row"><label class="opt"><input type="checkbox" id="shakeOff" /> Couper la secousse de caméra</label></div>
+        <div class="row"><label class="opt"><input type="checkbox" id="ghostOff" /> Sans fantôme</label></div>
+        <div class="row"><label class="name" for="quality">Qualité des effets</label>
+          <select id="quality"><option value="">Automatique</option><option value="2">Haute (figée)</option><option value="1">Moyenne (figée)</option><option value="0">Basse (figée)</option></select></div>
+        <div class="row"><label class="name" for="touch">Commandes tactiles</label>
+          <select id="touch"><option value="">Selon l'appareil</option><option value="1">Forcées (la souris simule le doigt)</option><option value="0">Coupées</option></select></div>
+        <div class="row"><label class="name" for="thumbs">Miniatures des archives</label>
+          <select id="thumbs"><option value="">3D inclinée</option><option value="top">3D d'aplomb</option><option value="2d">Tracé 2D (sans WebGL)</option><option value="off">Aucune</option></select></div>
+        <div class="row"><label class="name" for="steer">Direction tactile</label>
+          <select id="steer"><option value="">Selon les réglages</option><option value="boutons">Boutons ← →</option><option value="glisser">Glisser</option></select></div>
+        <div class="row"><label class="opt"><input type="checkbox" id="zones" /> Afficher les zones tactiles</label></div>
+        <div class="row"><label class="name" for="timescale">Temps accéléré ×</label>
+          <input type="number" id="timescale" min="1" max="20" placeholder="1" style="width: 80px" /><span class="hint">outils de test seulement</span></div>
+        <div class="row"><label class="name" for="api">Adresse de l'API</label>
+          <input type="text" id="api" placeholder="https://… ou demo (archives de démonstration)" /></div>
+      </section>
+
+      <h2>Lancer</h2>
+      <section>
+        <div id="url"></div>
+        <div class="actions">
+          <a class="btn go" id="launch" href="../">Lancer le jeu</a>
+          <button type="button" id="copy">Copier le lien</button>
+          <button type="button" id="reset">Réinitialiser les choix</button>
+        </div>
+      </section>
+
+      <h2>Données locales (ce navigateur)</h2>
+      <section>
+        <p class="hint" style="margin: 4px 0 8px">Records, réglages, caméra et son sont gardés ici. Les effacer n'affecte pas le classement.</p>
+        <div id="keys"></div>
+        <div class="actions" style="margin-top: 10px"><button type="button" class="danger" id="wipe">Effacer les données du jeu</button><span id="wiped" class="hint"></span></div>
+      </section>
+
+      <h2>Touches du jeu</h2>
+      <section>
+        <table>
+          <tr><td><kbd>ZQSD</kbd> / flèches</td><td>conduire</td></tr>
+          <tr><td><kbd>R</kbd> · <kbd>Entrée</kbd></td><td>point de contrôle · départ</td></tr>
+          <tr><td><kbd>C</kbd></td><td>caméra proche / loin</td></tr>
+          <tr><td><kbd>P</kbd></td><td>pause</td></tr>
+          <tr><td><kbd>M</kbd></td><td>son : muet / rétabli</td></tr>
+          <tr><td><kbd>N</kbd></td><td>circuit au hasard (essai)</td></tr>
+          <tr><td><kbd>T</kbd></td><td>thème suivant</td></tr>
+          <tr><td><kbd>H</kbd> · <kbd>L</kbd> · <kbd>G</kbd></td><td>archives · classement · fantôme</td></tr>
+        </table>
+      </section>
+    </main>
+  </body>
+</html>
