@@ -1,6 +1,6 @@
 {
-  "simVersion": 13,
-  "generatorVersion": 14,
+  "simVersion": 14,
+  "generatorVersion": 15,
   "circuits": [
     {
       "date": "2026-10-06",
@@ -16,7 +16,7 @@
       "number": 16,
       "attempt": 1,
       "spec": "S/l@start S/l>n~h S/n>e R S S S T S S S S S@cp L2/b~r S S/e>n S D S/~h V/~r V V V V S/~h@cp K/~r GD S S/~h S L3/b~r R2/~h S S S/n>l S@cp P/~r D D D D S S/~h L2 S S S/~r@finish",
-      "authorMs": 36713,
+      "authorMs": 36717,
       "palette": "stade",
       "theme": "stade"
     },
@@ -25,7 +25,7 @@
       "number": 17,
       "attempt": 0,
       "spec": "S/l@start S/l>n~h S L2/b~r R2/~h S S P S K/~r G D S V V V V V S/~h@cp S S S U/~r U U S/~h D D D S B/~r S/~h S P S@cp S S S L S T S S S S S L2/b~r S/~h S S/~r@finish",
-      "authorMs": 35391,
+      "authorMs": 35306,
       "palette": "stade",
       "theme": "stade"
     },
@@ -34,7 +34,7 @@
       "number": 95,
       "attempt": 0,
       "spec": "S/e@start S/e>n S R2/b L2/b R2/b S/~p@cp U/~r R2/~p U/~r L2/~p U/~r R2/~p S T S S@cp T/~r S S S/o S/o S/o L2/~p R2 S@cp S P S S/g S/g P S/g S/g@cp S L/~r S S/n>e L/~p S S S/~r@finish",
-      "authorMs": 37078,
+      "authorMs": 36623,
       "palette": "alpin",
       "theme": "col"
     },
@@ -43,16 +43,16 @@
       "number": 160,
       "attempt": 2,
       "spec": "S/n@start D/~t D D R2 S/t U/t~r U/t U/t S/t~t@cp S/n>e S L S@cp S/t P S/t K/t~r G D/t S/t~t S/t S/t L2/b~r S/~t S/e>n S/t S/t R3/t R2/t S/tu S/u@cp S/n>eu S/u P D D D D D D/~r S/u@cp S/u R2/~t S S S/~r@finish",
-      "authorMs": 39683,
+      "authorMs": 39687,
       "palette": "desert",
       "theme": "rallye"
     },
     {
       "date": "2028-02-29",
       "number": 526,
-      "attempt": 3,
-      "spec": "S/n@start S/n>e R S U U U/g L2/g D/g D/g D/g S/g@cp S/e>n~p S/g L2/g R2/g L2/g S/g S/t T S/t@cp S/t T S S S S S@cp R2 L2 S U2/~r S S S D2 S S@finish",
-      "authorMs": 38237,
+      "attempt": 2,
+      "spec": "S/n@start S/n>e~p S R/t S/g S/e>n~r S/g R2/g L2/g R2/g S/g S/~p@cp R2/b~r L2/b R2/b S/~p U/~r U U R2/~p D D D S@cp T S S T S@cp S S S/~r S L2 R2 S/~p S S/~r@finish",
+      "authorMs": 39846,
       "palette": "neige",
       "theme": "banquise"
     },
@@ -61,7 +61,7 @@
       "number": 1198,
       "attempt": 2,
       "spec": "S/l@start R2/b L2/b S/t S/t S/l>nt S/n>et~h S/t S/t L/t S@cp S S T S S T S@cp S S S/t S/t L2/t R2 S@cp U3/~r D3 S/~h S S R2 S S/e>n S@cp S S S L S S S/~r@finish",
-      "authorMs": 36302,
+      "authorMs": 36242,
       "palette": "campagne",
       "theme": "campagne"
     }

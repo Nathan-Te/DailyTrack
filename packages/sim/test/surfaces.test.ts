@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CAR_PARAMS as P,
+  BANK_RAMP_ARC,
   FLAT_WORLD,
   NO_INPUT,
   SURFACES,
   THEMES,
   THEME_NAMES,
   TICK_RATE,
+  bankAt,
+  bankFactor,
   carSpeed,
   createAutopilot,
   createCar,
@@ -16,11 +19,13 @@ import {
   forwardSpeed,
   makeInput,
   parseToken,
+  curveCenter,
   parseTrack,
   runPilot,
   stepCar,
   stepRace,
   trackWorld,
+  type BankSample,
   type SurfaceKind,
   type World,
 } from "../src/index";
@@ -240,7 +245,7 @@ describe("virages relevés", () => {
     expect(Math.abs(b.height)).toBeLessThan(0.05);
   });
 
-  it("on y passe plus vite : vitesse minimale dans un virage serré +12 %, dans un virage large +3 % (pilote, mêmes réglages)", () => {
+  it("on y passe plus vite : vitesse minimale dans un virage serré +6 %, dans un virage large +2 % (pilote, mêmes réglages)", () => {
     const minSpeed = (turn: string) => {
       const track = parseTrack("x", `S@start S S S S ${turn} S S S@finish`);
       const race = createRace(track);
@@ -255,27 +260,35 @@ describe("virages relevés", () => {
       expect(race.respawns, turn).toBe(0);
       return min;
     };
-    expect(minSpeed("R/b") / minSpeed("R")).toBeGreaterThan(1.12);
-    expect(minSpeed("R2/b") / minSpeed("R2")).toBeGreaterThan(1.03);
+    expect(minSpeed("R/b") / minSpeed("R")).toBeGreaterThan(1.06);
+    expect(minSpeed("R2/b") / minSpeed("R2")).toBeGreaterThan(1.02);
   });
 
-  it("l'accélération latérale tenue est plus grande en virage relevé : la pesanteur pousse vers l'intérieur", () => {
-    const lateral = (spec: string) => {
-      const race = createRace(parseTrack("x", spec));
-      const drive = createAutopilot(race.track, { grip: 1.08 });
-      let maxLat = 0;
+  it("l'accélération latérale tenue au sommet du virage est plus grande en virage relevé : la pesanteur pousse vers l'intérieur", () => {
+    // Le tiers central de l'arc (fraction d'arc entre 0,38 et 0,62), là où le relevé est presque complet.
+    const lateral = (turn: string) => {
+      const track = parseTrack("x", `S@start S S S S ${turn} S S S@finish`);
+      const race = createRace(track);
+      const drive = createAutopilot(track, { grip: 1.08 });
+      const R = turn.startsWith("R2") ? 48 : 16;
+      const b = track.blocks[5]!;
+      const cx = b.cx * 32 + 16 - R;
+      const cz = b.cz * 32;
+      let mid = 0;
       let touched = 0;
       for (let i = 0; i < 20 * TICK_RATE && race.finishMs < 0; i++) {
         stepRace(race, drive(race));
-        maxLat = Math.max(maxLat, carSpeed(race.car) * Math.abs(race.car.yawRate));
+        const dx = race.car.x - cx;
+        const dz = race.car.z - cz;
+        const t = dz / (dz + dx);
+        if (dz > 0 && dx > 0 && t > 0.38 && t < 0.62) mid = Math.max(mid, carSpeed(race.car) * Math.abs(race.car.yawRate));
         if (race.respawns > 0) touched++;
       }
-      return { maxLat, finished: race.finishMs >= 0 && touched === 0 };
+      expect(race.finishMs >= 0 && touched === 0, turn).toBe(true);
+      return mid;
     };
-    const flat = lateral("S@start S S S S R2 S S S@finish");
-    const banked = lateral("S@start S S S S R2/b S S S@finish");
-    expect(flat.finished && banked.finished).toBe(true);
-    expect(banked.maxLat).toBeGreaterThan(flat.maxLat);
+    expect(lateral("R2/b")).toBeGreaterThan(lateral("R2") + 1);
+    expect(lateral("R/b")).toBeGreaterThan(lateral("R") + 5);
   });
 
   it("le rebord extérieur d'un virage relevé arrête la voiture (on ne le survole pas)", () => {
@@ -288,6 +301,110 @@ describe("virages relevés", () => {
     }
     expect(respawns).toBe(0); // pas tombé dans le vide
     expect(race.car.y).toBeLessThan(5);
+  });
+
+  it("le relevé naît et meurt en douceur : part nulle, pente nulle et courbure nulle à l'entrée et à la sortie, pleine à partir du milieu", () => {
+    const d = { v: 0 };
+    expect(bankFactor(0, d)).toBe(0);
+    expect(d.v).toBeCloseTo(0, 12);
+    expect(bankFactor(1, d)).toBe(0);
+    expect(d.v).toBeCloseTo(0, 12);
+    expect(bankFactor(0.5, d)).toBe(1);
+    expect(d.v).toBeCloseTo(0, 12);
+    expect(BANK_RAMP_ARC).toBeGreaterThanOrEqual(0.5); // la rampe occupe la moitié de l'arc de chaque côté : le relevé est complet au sommet seulement
+    // Symétrique, monotone jusqu'au milieu, et sans marche : la part change peu d'un pas à l'autre.
+    let prev = 0;
+    for (let i = 1; i <= 100; i++) {
+      const t = i / 200;
+      const f = bankFactor(t);
+      expect(bankFactor(1 - t)).toBeCloseTo(f, 12);
+      expect(f).toBeGreaterThanOrEqual(prev);
+      expect(f - prev).toBeLessThan(0.05);
+      prev = f;
+    }
+    // Aux bords du bloc, la route redevient plate et son gradient est nul : pas de marche, pas de tremplin.
+    const turn = parseTrack("x", "S@start R/b S@finish").blocks[1]!;
+    const { cp } = curveCenter(turn.kind);
+    const s: BankSample = { h: 0, gp: 0, gq: 0 };
+    for (const off of [-6.5, 6.5]) {
+      bankAt(turn, cp + 16 + off, 0.05, s); // entrée (sur la droite q = 0)
+      expect(Math.abs(s.h)).toBeLessThan(1e-4);
+      expect(Math.hypot(s.gp, s.gq)).toBeLessThan(2e-3);
+      bankAt(turn, cp + 0.05, 16 + off, s); // sortie (sur la droite p = cp)
+      expect(Math.abs(s.h)).toBeLessThan(1e-4);
+      expect(Math.hypot(s.gp, s.gq)).toBeLessThan(2e-3);
+    }
+  });
+
+  it("le gradient du relevé est la dérivée de sa hauteur (serré et large)", () => {
+    const s: BankSample = { h: 0, gp: 0, gq: 0 };
+    const a: BankSample = { h: 0, gp: 0, gq: 0 };
+    const b: BankSample = { h: 0, gp: 0, gq: 0 };
+    for (const turn of ["R/b", "R2/b", "L/b"]) {
+      const block = parseTrack("x", `S@start ${turn} S@finish`).blocks[1]!;
+      const { cp, r } = curveCenter(block.kind);
+      const side = turn.startsWith("L") ? -1 : 1;
+      for (const [t, off] of [[0.08, 5], [0.2, -4], [0.35, 6], [0.5, 3], [0.7, -6], [0.93, 2]] as const) {
+        // Point à la fraction d'arc t (angle a tel que sin a / (sin a + cos a) = t) et à l'écart `off` de l'axe.
+        const tan = t / (1 - t);
+        const norm = Math.sqrt(1 + tan * tan);
+        const rr = r + off;
+        const p = cp + side * (rr / norm);
+        const q = (rr * tan) / norm;
+        const e = 1e-4;
+        bankAt(block, p, q, s);
+        bankAt(block, p + e, q, a);
+        bankAt(block, p - e, q, b);
+        expect(s.gp, `${turn} gp t=${t}`).toBeCloseTo((a.h - b.h) / (2 * e), 4);
+        bankAt(block, p, q + e, a);
+        bankAt(block, p, q - e, b);
+        expect(s.gq, `${turn} gq t=${t}`).toBeCloseTo((a.h - b.h) / (2 * e), 4);
+      }
+    }
+  });
+
+  it("l'entrée ne décolle pas la voiture : au centre et au bord extérieur, virage serré (25 m/s) et large (48 m/s à l'entrée)", () => {
+    // Un petit pilote automatique suit l'arc à un écart constant de l'axe. Avant la retouche (rampe linéaire de 8 m), le bord extérieur
+    // décollait la voiture : 25 pas en l'air en virage serré à 25 m/s, 54 en virage large à 48 m/s, rampe comprise.
+    const follow = (turn: string, offset: number, speed: number) => {
+      const wide = turn.startsWith("R2");
+      const R = wide ? 48 : 16;
+      const track = parseTrack("x", `S@start S S S ${turn} S S S@finish`);
+      const race = createRace(track);
+      const cz = 4 * 32;
+      const cx = 16 - R;
+      const car = race.car;
+      car.x = 16 + offset;
+      car.z = cz + 0.5;
+      car.vz = speed;
+      let air = 0;
+      for (let steps = 0; car.z < cz + R - 1 && steps < 8 * TICK_RATE && race.respawns === 0; steps++) {
+        const dx = car.x - cx;
+        const dz = car.z - cz;
+        const rr = Math.sqrt(dx * dx + dz * dz);
+        // Cible : 6 m plus loin sur le cercle de rayon R + offset (cos, sin de l'angle par similitude : pas de trigonométrie à écrire ici).
+        const along = 6 / (R + offset);
+        const ca = dx / rr;
+        const sa = dz / rr;
+        const tx = cx + (R + offset) * (ca - sa * along);
+        const tz = cz + (R + offset) * (sa + ca * along);
+        const sp = carSpeed(car);
+        const ux = tx - car.x;
+        const uz = tz - car.z;
+        const un = Math.sqrt(ux * ux + uz * uz);
+        const cross = (car.vx * uz - car.vz * ux) / (Math.max(sp, 1) * un); // sinus de l'angle du cap à la cible
+        stepRace(race, makeInput(2.5 * cross, sp < speed ? 1 : 0, sp > speed + 2 ? 0.5 : 0));
+        if (!car.grounded) air++;
+      }
+      expect(race.respawns, `${turn} ${offset}`).toBe(0);
+      expect(car.z, `${turn} ${offset} : arrivé au bout de l'arc`).toBeGreaterThan(cz + R - 1);
+      return air;
+    };
+    for (const offset of [0, 5.5]) {
+      expect(follow("R/b", offset, 25), `serré ${offset}`).toBe(0);
+      expect(follow("R2/b", offset, 48), `large ${offset}`).toBe(0);
+    }
+    expect(follow("R2/b", -3, 40)).toBe(0);
   });
 });
 

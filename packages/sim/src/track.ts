@@ -512,8 +512,11 @@ function effectiveEdge(edge: EdgeKind, kind: BlockKind, cuve: number, banked: bo
 /** Pente du relevé, de l'axe vers l'extérieur : virage serré (rayon 16 m) et virage large (rayon 48 m). */
 export const BANK_SLOPE_TIGHT = 0.3;
 export const BANK_SLOPE_WIDE = 0.22;
-/** Le relevé monte progressivement sur cette distance (m) depuis l'entrée et la sortie du virage. */
-export const BANK_RAMP = 8;
+/**
+ * Le relevé monte progressivement depuis l'entrée et la sortie du virage, sur cette fraction de l'arc (comme `CUVE_RAMP_ARC` pour les
+ * cuves) : la rampe s'allonge avec le virage. 0,5 = le relevé n'est complet qu'au milieu du virage.
+ */
+export const BANK_RAMP_ARC = 0.5;
 
 export interface BankSample {
   /** Hauteur ajoutée par le relevé. */
@@ -524,8 +527,27 @@ export interface BankSample {
 }
 
 /**
- * Relevé d'un virage au point canonique (p, q) : la route monte vers l'extérieur de `pente × (r − rayon de l'axe)`,
- * en rampe à l'entrée et à la sortie (la hauteur redevient celle de la route plate aux bords du bloc).
+ * Part du relevé (0 → 1) à la fraction `t` de l'arc (0 à l'entrée, 1 à la sortie) : un profil quintique (« smootherstep ») de chaque bout,
+ * dont la pente **et** la courbure sont nulles aux deux extrémités — la route ne fait ni marche ni tremplin. Écrit dans `d` la dérivée
+ * par rapport à `t`.
+ */
+export function bankFactor(t: number, d?: { v: number }): number {
+  const w = t < 0.5 ? t : 1 - t;
+  const x = w / BANK_RAMP_ARC;
+  if (x >= 1) {
+    if (d) d.v = 0;
+    return 1;
+  }
+  if (d) d.v = ((30 * x * x * (x - 1) * (x - 1)) / BANK_RAMP_ARC) * (t < 0.5 ? 1 : -1);
+  return x * x * x * (x * (6 * x - 15) + 10);
+}
+
+const bankD = { v: 0 };
+
+/**
+ * Relevé d'un virage au point canonique (p, q) : la route monte vers l'extérieur de `pente × part × (r − rayon de l'axe)`. La part
+ * (`bankFactor`) ne dépend que de l'angle, par la fraction d'arc t = q / (q + |dp|) : le relevé naît et meurt en douceur, à l'entrée
+ * comme à la sortie (la hauteur redevient celle de la route plate aux bords du bloc).
  */
 export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
   out.h = 0;
@@ -538,19 +560,15 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
   if (r < 1e-6 || q < 0) return;
   const slope = isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT;
   const adp = dp < 0 ? -dp : dp;
-  const m = q < adp ? q : adp;
-  let f = 1;
-  let dfp = 0;
-  let dfq = 0;
-  if (m < BANK_RAMP) {
-    f = m / BANK_RAMP;
-    if (q < adp) dfq = 1 / BANK_RAMP;
-    else dfp = (dp < 0 ? -1 : 1) / BANK_RAMP;
-  }
+  const sum = q + adp;
+  const f = bankFactor(q / sum, bankD);
   const off = r - R;
+  // t = q / (q + |dp|) : dt/dq = |dp| / somme², dt/dp = −q / somme² × signe(dp)
+  const dtq = adp / (sum * sum);
+  const dtp = (dp < 0 ? 1 : -1) * (q / (sum * sum));
   out.h = slope * f * off;
-  out.gp = slope * ((f * dp) / r + off * dfp);
-  out.gq = slope * ((f * q) / r + off * dfq);
+  out.gp = slope * ((f * dp) / r + off * bankD.v * dtp);
+  out.gq = slope * ((f * q) / r + off * bankD.v * dtq);
 }
 
 /**
