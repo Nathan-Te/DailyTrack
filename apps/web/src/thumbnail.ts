@@ -1,6 +1,7 @@
 import { PerspectiveCamera, Vector3, WebGLRenderer } from "three";
 import { WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
 import { PALETTE_DEFS, SURFACE_COLORS, buildTrackScene } from "./trackMesh";
+import { SHOULDER_EDGE } from "@cdj/sim";
 import { pickFocus, type Focus } from "./thumbFocus";
 
 // Miniatures de circuits (lot 13) : une vue aérienne d'une portion marquante. Présentation seule : on lit un `Track` déjà
@@ -232,7 +233,14 @@ function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
   }
   // Un vide (lot 17) n'a ni route ni rebords : on ne dessine que ses deux bords (la rampe et la réception).
   const isGap = (i: number) => circuit.track.blocks[i]!.kind === "gap";
-  for (const r of ranges) if (!isGap(r.b)) stroke(r.from, r.to, css(pal.wallA), widthOf(r.b) * k + Math.max(2, WALL_HEIGHT * k * 1.6));
+  for (const r of ranges) {
+    if (isGap(r.b)) continue;
+    const b = circuit.track.blocks[r.b]!;
+    // Bas-côtés (lot 21) : la bande jusqu'au rebord, de la couleur du revêtement ; le rebord est au bout de la bande.
+    const reach = b.shoulder ? 2 * SHOULDER_EDGE : widthOf(r.b);
+    stroke(r.from, r.to, css(b.shoulder ? pal.fence[0] : pal.wallA), reach * k + Math.max(2, WALL_HEIGHT * k * 1.6));
+    if (b.shoulder) stroke(r.from, r.to, css(SURFACE_COLORS[b.shoulder][b.index % 2]!), reach * k * 0.98);
+  }
   for (const r of ranges) {
     const b = circuit.track.blocks[r.b]!;
     if (b.kind === "gap") continue;

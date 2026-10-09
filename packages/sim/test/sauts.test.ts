@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  parseToken,
   CELL,
   MIN_RELIEF,
   THEME_NAMES,
@@ -189,13 +190,18 @@ describe("sauts et reliefs des circuits du jour (60 dates)", () => {
     expect(share.campagne).toBeLessThan(1);
   });
 
-  it("une section sans rebords est surélevée d'au moins 6 m, hors départ, arrivée, rampes et vides", { timeout: 120_000 }, () => {
+  it("une section sans rebords (`o`) est surélevée d'au moins 6 m, hors départ, arrivée, rampes et vides ; le vide en bas-côté (`~v`, lot 21) aussi hors de ces blocs", { timeout: 120_000 }, () => {
     let sections = 0;
     for (const d of DAYS) {
       const c = circuit(d);
       const blocks = c.track.blocks;
+      const tokens = c.spec.split(" ");
       const low = Math.min(...blocks.flatMap((b) => [b.y0, b.y0 + b.rise]));
       for (const b of blocks.filter((x) => x.open)) {
+        expect(["kick", "gap", "jump"]).not.toContain(b.kind);
+        expect(b.mark).not.toBe("start");
+        expect(b.mark).not.toBe("finish");
+        if (!parseToken(tokens[b.index]!).open) continue; // bas-côté vide d'un thème (Nuit) : à toute hauteur
         sections++;
         expect(Math.min(b.y0, b.y0 + b.rise) - low, c.spec).toBeGreaterThanOrEqual(6);
         expect(["kick", "gap", "jump"]).not.toContain(b.kind);

@@ -30,6 +30,9 @@ import {
   trackJumps,
   replayRace,
   themeByName,
+  choiceMoments,
+  runPilot,
+  type ChoiceMoments,
   type Block,
   type DailyCircuit,
 } from "@cdj/sim";
@@ -203,6 +206,54 @@ const rep = rows.map((r) => r.replayMs).filter((x) => x > 0);
 console.log(`rejeu d'une course d'auteur : moyenne ${mean(rep).toFixed(1)} ms · max ${Math.max(...rep).toFixed(1)} ms`);
 console.log(`médailles : bronze (×1,40 de l'auteur) : ${sec(Math.min(...times) * 1.4)} s (min) → ${sec(Math.max(...times) * 1.4)} s (max) ; au-dessus de 45 s : ${times.filter((t) => t * 1.4 > 45_000).length}/${times.length}`);
 console.log(`facteurs candidats (non appliqués) : part des circuits dont la médaille tient en 45 s — ${[1.4, 1.3, 1.25, 1.2, 1.15, 1.1, 1.08].map((f) => `×${f.toFixed(2).replace(".", ",")} : ${pct(times.filter((t) => t * f <= 45_000).length, times.length)}`).join(" · ")}`);
+
+// Lot 21 : identité des thèmes (bas-côtés, route bosselée, règle propre) et moments de choix.
+const SHOULDER_LABEL: Record<string, string> = { grass: "herbe", gravel: "terre et gravier", snow: "neige poudreuse" };
+console.log("bas-côtés par thème (du jour) : " + THEME_NAMES.map((n) => {
+  const list = jumpsBy(n);
+  if (!list.length) return `${n} —`;
+  const kinds = new Map<string, number>();
+  for (const r of list) for (const b of r.c.track.blocks) {
+    const k = b.shoulder ?? (b.open ? "vide" : null);
+    if (k) kinds.set(k, (kinds.get(k) ?? 0) + 1);
+  }
+  const share = mean(list.map((r) => r.c.track.blocks.filter((b) => b.shoulder || b.open).length / r.c.track.blocks.length));
+  return `${n} ${[...kinds.keys()].map((k) => SHOULDER_LABEL[k] ?? k).join("+") || "aucun"} (${(100 * share).toFixed(0)} % des blocs)`;
+}).join(" · "));
+console.log(`route bosselée : ${THEME_NAMES.map((n) => `${n} ${jumpsBy(n).filter((r) => r.c.track.blocks.some((b) => b.bumpy)).length}/${jumpsBy(n).length}`).join(" · ")} circuits`);
+const REQUIRED: Record<string, string[]> = {};
+for (const n of THEME_NAMES) REQUIRED[n] = [...(themeByName(n)!.figures.require ?? [])];
+console.log(`règle propre (figure obligatoire) : ${THEME_NAMES.filter((n) => REQUIRED[n]!.length).map((n) => `${n} ${jumpsBy(n).filter((r) => r.c.figures.some((f) => REQUIRED[n]!.includes(f.name))).length}/${jumpsBy(n).length} (${REQUIRED[n]!.join(" ou ")})`).join(" · ")}`);
+const choices: (ChoiceMoments | null)[] = rows.map((r, i) => (pilots[i] ? choiceMoments(r.c.track, pilots[i]!) : null));
+const choiceKeys = ["brakes", "coasts", "cuves", "cuttable", "freezes", "total"] as const;
+const CHOICE_LABEL: Record<(typeof choiceKeys)[number], string> = { brakes: "freinages", coasts: "roue libre", cuves: "paroi/fond", cuttable: "virages coupables", freezes: "sauts figés", total: "total" };
+console.log("moments de choix par thème (du jour, moyenne par circuit) :");
+console.log("  thème      | " + choiceKeys.map((k) => CHOICE_LABEL[k].padStart(17)).join(" | "));
+for (const n of [...THEME_NAMES, "ensemble"]) {
+  const list = choices.filter((c, i) => c && (n === "ensemble" || rows[i]!.c.theme === n)) as ChoiceMoments[];
+  if (!list.length) continue;
+  console.log(`  ${n.padEnd(10)} | ` + choiceKeys.map((k) => mean(list.map((c) => c[k])).toFixed(1).padStart(17)).join(" | ") + (n !== "ensemble" ? `   (min total ${Math.min(...list.map((c) => c.total))})` : ""));
+}
+// Couper par le bas-côté (mesure, le pilote d'auteur ne coupe pas) : même pilote, avec 0,5 / 1 / 3 m de plus vers l'intérieur des virages bordés.
+const cutGain: { cut: number; faster: number; slower: number; best: number }[] = [0.5, 1, 3].map((cut) => ({ cut, faster: 0, slower: 0, best: 0 }));
+let cutCircuits = 0;
+for (let i = 0; i < rows.length; i++) {
+  const author = pilots[i];
+  if (!author || !rows[i]!.c.track.blocks.some((b) => b.shoulder)) continue;
+  const p = author.cut ? runPilot(rows[i]!.c.track, { grip: author.grip, wall: author.wall }) : author;
+  cutCircuits++;
+  for (const g of cutGain) {
+    const run = runPilot(rows[i]!.c.track, { grip: p.grip, wall: p.wall, cut: g.cut });
+    if (!run.valid) {
+      g.slower++;
+      continue;
+    }
+    if (run.finishMs < p.finishMs) g.faster++;
+    else if (run.finishMs > p.finishMs) g.slower++;
+    g.best = Math.min(g.best, run.finishMs - p.finishMs);
+  }
+}
+console.log(`couper par le bas-côté (même pilote sans / avec coupe, ${cutCircuits} circuits à bas-côtés ; le pilote d'auteur garde la coupe de 0,5 m sur ${pilots.filter((p) => p?.cut).length}) : ${cutGain.map((g) => `${g.cut} m → plus rapide ${g.faster}, plus lent ${g.slower} (meilleur gain ${(-g.best / 1000).toFixed(2)} s)`).join(" · ")}`);
 
 const byTheme = new Map<string, number[]>();
 for (const r of rows) byTheme.set(r.c.theme, [...(byTheme.get(r.c.theme) ?? []), r.c.authorMs]);

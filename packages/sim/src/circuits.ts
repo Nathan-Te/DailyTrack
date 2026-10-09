@@ -139,3 +139,15 @@ export function createFigureTrack(name: string, variant = 0, mirror = false) {
   if (cut >= 0) tokens[cut + 2] = "S@cp"; // un moteur coupé rend le moteur au point de contrôle deux blocs plus loin
   return parseTrack(`figure-${figure.name}`, tokens.join(" "));
 }
+
+/**
+ * Scénario `bas-cotes` (lot 21) : un virage par bas-côté — herbe (Stade, Campagne), terre et gravier (Rallye), neige poudreuse (Banquise),
+ * vide (Nuit) — chacun avec ses vibreurs, une portion bosselée (tôle ondulée du Rallye), puis un virage serré bordé d'herbe sur route
+ * étroite, à couper (ou pas). Un point de contrôle entre chaque épreuve.
+ */
+export const BAS_COTES_TRACK_SPEC =
+  "S/n@start S S/~h S L2 S S S/~r S@cp S/~t S R2 S S S/~r S/~p S L2 S S S/~r S@cp S/u S/u S/u S S/~v S R2 S S S/~r S@cp S/~h S/n>e S L S S S/~r S@finish";
+
+export function createBasCotesTrack() {
+  return parseTrack("bas-cotes", BAS_COTES_TRACK_SPEC);
+}

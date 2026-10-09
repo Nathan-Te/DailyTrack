@@ -3,7 +3,7 @@ import { FIGURE_NAMES } from "@cdj/sim";
 // Page /admin : construit l'adresse du jeu à partir de choix de test. Logique pure (testée par Vitest) ; le DOM est dans
 // `admin.ts`. Rien de tout cela ne touche à la simulation : ce ne sont que les paramètres d'adresse que le jeu connaît déjà.
 
-export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "figures" | "figure" | "plat";
+export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "bas-cotes" | "figures" | "figure" | "plat";
 
 export interface AdminState {
   scenario: Scenario;
@@ -106,7 +106,7 @@ export function parseAdmin(raw: string | null): AdminState {
   if (!raw) return s;
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof AdminState, unknown>>;
-    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
+    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && ["", "stade", "rallye", "banquise", "nuit", "campagne"].includes(o.theme)) s.theme = o.theme;
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
@@ -141,6 +141,7 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Air et atterrissages", hint: "dos d'âne à haute vitesse, tremplin pris en braquant, long saut, saut vers un virage relevé, chute de trois niveaux, mur quitté en l'air ; le frein fige la caisse en l'air", state: { scenario: "air" } },
   { label: "Les figures", hint: "onze figures marquantes de la bibliothèque (lot 20) : S serré-large, turbo et courbe, saut vers un virage relevé, slalom de glace, double saut…", state: { scenario: "figures" } },
   { label: "Une figure en boucle", hint: "la figure choisie, cinq droites de lancement, point de contrôle juste avant (touche R pour recommencer)", state: { scenario: "figure" } },
+  { label: "Bas-côtés et vibreurs", hint: "un virage par bas-côté (herbe, terre et gravier, neige poudreuse, vide), des vibreurs, une portion bosselée, un serré à couper", state: { scenario: "bas-cotes" } },
   { label: "Cuves et murs", hint: "cuve droite, mur latéral, virage en cuve à pleine vitesse, puis le même virage abordé trop lentement", state: { scenario: "cuves" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },

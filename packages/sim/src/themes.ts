@@ -1,5 +1,5 @@
 import { Rng, mixSeed } from "./rng";
-import type { SurfaceKind, WidthLetter } from "./track";
+import type { BlockSurface, ShoulderKind, WidthLetter } from "./track";
 
 // Les thèmes du jour (lot 8). Le thème est tiré de la date (même graine que la palette avant le lot 8) ; il règle :
 // - la palette (couleurs de la scène) ;
@@ -10,10 +10,12 @@ import type { SurfaceKind, WidthLetter } from "./track";
 // - les sauts : chance d'un vrai saut au-dessus du vide, et chance de sections sans rebords sur les parties surélevées ;
 // - les cuves (lot 18) : chance d'une cuve droite, d'un mur latéral ou d'un virage en cuve ;
 // - un passage signature : une figure (figures.ts) que le circuit du thème contient toujours ;
-// - les figures (lot 20) : celles que le thème favorise (tirées plus souvent) et celles qu'il s'interdit.
+// - les figures (lot 20) : celles que le thème favorise (tirées plus souvent) et celles qu'il s'interdit ;
+// - l'identité (lot 21) : les bas-côtés (herbe, terre et gravier, neige poudreuse ou vide) et leur part, la route bosselée, une figure
+//   obligatoire (sa « règle propre ») ; la lumière est côté jeu (palette, `trackMesh.ts`).
 // Changer un thème (ou en ajouter un) change le circuit d'une date : `GENERATOR_VERSION` +1.
 
-export const PALETTES = ["desert", "neige", "nuit", "neon", "campagne"] as const;
+export const PALETTES = ["desert", "neige", "nuit", "neon", "campagne", "stade"] as const;
 export type PaletteName = (typeof PALETTES)[number];
 
 export const THEME_NAMES = ["stade", "rallye", "banquise", "nuit", "campagne"] as const;
@@ -28,7 +30,7 @@ export interface Theme {
   label: string;
   palette: PaletteName;
   /** Zones de revêtement : nombre (min, max) et poids de chaque revêtement ; `null` = route partout. */
-  zones: { count: [number, number]; surfaces: [SurfaceKind, number][] } | null;
+  zones: { count: [number, number]; surfaces: [BlockSurface, number][] } | null;
   /** Largeurs de route : poids de chacune (la largeur de départ et chaque changement s'en tirent) et nombre de changements (min, max). */
   widths: { weights: Record<WidthLetter, number>; changes: [number, number] };
   /** Chance (%) qu'un virage soit relevé. */
@@ -46,8 +48,18 @@ export interface Theme {
   /** Chance (%) d'une cuve (lot 18) : cuve droite, mur latéral ou virage en cuve ; 100 = tous les circuits du thème en ont une. */
   cuveChance: number;
   signature: Signature;
-  /** Figures (lot 20) : noms des figures favorites (poids ×4) et interdites du thème. */
-  figures: { favor: readonly string[]; ban: readonly string[] };
+  /**
+   * Figures (lot 20) : noms des figures favorites (poids ×4) et interdites du thème ; `require` (lot 21) : le circuit contient toujours
+   * l'une d'elles (jamais au repos, comme la signature) — la règle propre du thème.
+   */
+  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[] };
+  /**
+   * Bas-côtés (lot 21) : revêtement de la bande au bord de la route (ou le vide) et part (%) des blocs qui peuvent en porter, posés par
+   * séries de 3 à 6 blocs (voir `assignShoulders`, generator.ts).
+   */
+  shoulder: { kind: ShoulderKind | "void"; share: number };
+  /** Route bosselée (lot 21) : nombre (min, max) de séries de 2 à 4 droites bosselées. */
+  bumpy: [number, number];
 }
 
 /** Figures qui n'ont de sens que sur de la route (terre, glace) ou de la cuve : interdites là où le thème n'en a pas. */
@@ -56,11 +68,11 @@ const DIRT = ["epingle-terre", "etranglement-terre", "saut-terre", "changement-r
 const CUVES = ["cuve-droite", "mur-lateral", "virage-cuve", "saut-cuve", "descente-cuve-saut", "saut-paroi"];
 
 export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
-  stade: { name: "stade", label: "Stade", palette: "neon", zones: null, widths: { weights: { e: 1, n: 3, l: 6 }, changes: [1, 2] }, bankChance: 70, turboChance: 30, cut: false, relief: { hills: [1, 3], steep: 60 }, jumpChance: 100, openChance: 0, cuveChance: 100, signature: "turboBank", figures: { favor: ["turbo-courbe", "saut-releve", "saut-paroi", "saut-virage", "descente-cuve-saut", "turbo-saut-releve", "plaque-virage", "chaine-turbo", "releve-contre", "esse-relevee"], ban: [...ICE, ...DIRT] } },
-  rallye: { name: "rallye", label: "Rallye", palette: "desert", zones: { count: [2, 3], surfaces: [["dirt", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 50 }, jumpChance: 40, openChance: 40, cuveChance: 0, signature: "dirtJump", figures: { favor: ["saut-terre", "epingle-terre", "changement-revetement", "saut-simple", "virage-aveugle", "crete-virage", "descente-plaque", "virage-descente"], ban: [...ICE, ...CUVES] } },
-  banquise: { name: "banquise", label: "Banquise", palette: "neige", zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, widths: { weights: { e: 1, n: 3, l: 5 }, changes: [1, 2] }, bankChance: 15, turboChance: 0, cut: false, relief: { hills: [1, 3], steep: 30 }, jumpChance: 35, openChance: 0, cuveChance: 25, signature: "iceChicane", figures: { favor: ["slalom-glace", "chicane-glace", "glace-coupe-virage", "changement-revetement", "esse-relevee", "demi-tour-large", "pincement"], ban: ["etranglement-terre", "saut-terre"] } },
-  nuit: { name: "nuit", label: "Nuit", palette: "nuit", zones: null, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [2, 3] }, bankChance: 20, turboChance: 25, cut: true, relief: { hills: [2, 3], steep: 60 }, jumpChance: 100, openChance: 70, cuveChance: 100, signature: "cutRun", figures: { favor: ["descente-cuve-saut", "saut-paroi", "coupe-virage", "saut-virage", "double-saut", "virage-aveugle", "virage-descente"], ban: [...ICE, ...DIRT] } },
-  campagne: { name: "campagne", label: "Campagne", palette: "campagne", zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 40 }, jumpChance: 40, openChance: 50, cuveChance: 0, signature: "dirtPinch", figures: { favor: ["etranglement-terre", "epingle-terre", "changement-revetement", "virage-aveugle", "crete-virage", "virage-descente", "freinage-epingle", "pincement"], ban: [...ICE, ...CUVES] } },
+  stade: { name: "stade", label: "Stade", palette: "stade", shoulder: { kind: "grass", share: 85 }, bumpy: [0, 0], zones: null, widths: { weights: { e: 1, n: 3, l: 6 }, changes: [1, 2] }, bankChance: 35, turboChance: 30, cut: false, relief: { hills: [1, 3], steep: 60 }, jumpChance: 100, openChance: 0, cuveChance: 100, signature: "turboBank", figures: { favor: ["turbo-courbe", "saut-releve", "saut-paroi", "saut-virage", "descente-cuve-saut", "turbo-saut-releve", "plaque-virage", "chaine-turbo", "releve-contre", "esse-relevee"], ban: [...ICE, ...DIRT] } },
+  rallye: { name: "rallye", label: "Rallye", palette: "desert", shoulder: { kind: "gravel", share: 75 }, bumpy: [1, 2], zones: { count: [2, 3], surfaces: [["dirt", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 50 }, jumpChance: 60, openChance: 0, cuveChance: 0, signature: "dirtJump", figures: { require: ["epingle-terre", "demi-tour-large"], favor: ["saut-terre", "epingle-terre", "demi-tour-large", "changement-revetement", "saut-simple", "virage-aveugle", "crete-virage", "descente-plaque", "virage-descente"], ban: [...ICE, ...CUVES] } },
+  banquise: { name: "banquise", label: "Banquise", palette: "neige", shoulder: { kind: "snow", share: 70 }, bumpy: [0, 0], zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, widths: { weights: { e: 1, n: 3, l: 5 }, changes: [1, 2] }, bankChance: 15, turboChance: 0, cut: false, relief: { hills: [1, 3], steep: 30 }, jumpChance: 35, openChance: 0, cuveChance: 25, signature: "iceChicane", figures: { favor: ["slalom-glace", "chicane-glace", "glace-coupe-virage", "changement-revetement", "esse-relevee", "demi-tour-large", "pincement"], ban: ["etranglement-terre", "saut-terre"] } },
+  nuit: { name: "nuit", label: "Nuit", palette: "nuit", shoulder: { kind: "void", share: 30 }, bumpy: [0, 0], zones: null, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [2, 3] }, bankChance: 20, turboChance: 25, cut: true, relief: { hills: [2, 3], steep: 60 }, jumpChance: 100, openChance: 70, cuveChance: 100, signature: "cutRun", figures: { favor: ["descente-cuve-saut", "saut-paroi", "coupe-virage", "saut-virage", "double-saut", "virage-aveugle", "virage-descente", "turbo-epingle", "plaque-epingle"], ban: [...ICE, ...DIRT] } },
+  campagne: { name: "campagne", label: "Campagne", palette: "campagne", shoulder: { kind: "grass", share: 75 }, bumpy: [0, 0], zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 40 }, jumpChance: 40, openChance: 0, cuveChance: 0, signature: "dirtPinch", figures: { require: ["crete-virage", "virage-aveugle"], favor: ["etranglement-terre", "epingle-terre", "changement-revetement", "virage-aveugle", "crete-virage", "virage-descente", "freinage-epingle", "pincement"], ban: [...ICE, ...CUVES] } },
 };
 
 /** Thème de la journée : tiré de la date (graine = jour UTC), identique pour tout le monde. */

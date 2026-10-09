@@ -4,7 +4,7 @@ import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
 import { trackJumps, type JumpInfo } from "./jump";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, CUVE_LEFT, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { cuveAmplitude } from "./cuve";
 import { SURFACES } from "./world";
 
@@ -27,6 +27,11 @@ export interface AutopilotOptions {
   params?: Readonly<CarParams>;
   /** Virages en cuve (lot 18) : monter sur la paroi extérieure, ou (par défaut) rester sur le fond comme sur un virage ordinaire. `bestPilotRun` essaie les deux. */
   wall?: boolean;
+  /**
+   * Coupe (lot 21, mesure) : mètres de plus vers l'intérieur d'un virage bordé d'un bas-côté (au-delà de la marge de la route) (0 = reste sur la route, le
+   * défaut). Le profil de vitesse tient compte du revêtement du bas-côté là où la voiture y passe. Le pilote d'auteur ne coupe pas.
+   */
+  cut?: number;
 }
 
 /** Trajectoire de course : points tous les ~2 m, distance cumulée et vitesse visée en chaque point. */
@@ -56,6 +61,13 @@ const CUVE_NEAR = 4;
 const BANKED_ROOM = 1.5;
 /** Marge aux rebords (m) : demi-largeur de la voiture et un peu d'air. */
 const WALL_MARGIN = COLLIDER_RADIUS + 2.6;
+/**
+ * Marge au bord de la route (m) quand il est bordé d'un bas-côté (lot 21) : pas de rebord à craindre, la voiture peut mordre sur le
+ * vibreur (roues extérieures juste au bord). Plus petite que `WALL_MARGIN` : la corde s'ouvre.
+ */
+const SHOULDER_MARGIN = COLLIDER_RADIUS + 0.1;
+/** Demi-voie (m) : une roue est sur le bas-côté dès que le centre de la voiture est à moins de ça du bord. */
+const WHEEL_REACH = 0.85;
 /**
  * Virage en cuve (lot 18) : le pilote monte sur la paroi extérieure, à cette distance (m) du pied de la paroi verticale selon la taille
  * du virage. Serré : tout en haut (c'est la paroi qui permet la vitesse) ; large et ample : à mi-pente (le trajet reste court, l'entrée et la sortie douces).
@@ -91,8 +103,11 @@ interface Centerline {
   /** Normale vers la gauche. */
   nx: number[];
   nz: number[];
-  /** Écart latéral permis de part et d'autre. */
+  /** Écart latéral permis de part et d'autre (à gauche, à droite). */
   room: number[];
+  roomR: number[];
+  /** Demi-largeur de la route en chaque point (m). */
+  half: number[];
   /** Bloc de chaque point. */
   blk: number[];
   /** Pente de la route (montée par mètre, dans le sens de la marche). */
@@ -112,14 +127,16 @@ function cuveWallSlope(W: number, inset: number): number {
   return dx / Math.sqrt(R * R - dx * dx);
 }
 
-function denseCenterline(track: Track, wall: boolean): Centerline {
-  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], blk: [], slope: [], pin: [], wall: [], wallExit: [] };
+function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
+  const out: Centerline = { x: [], z: [], nx: [], nz: [], room: [], roomR: [], half: [], blk: [], slope: [], pin: [], wall: [], wallExit: [] };
   const pt = { x: 0, z: 0 };
-  const push = (p: number, q: number, b: Block, room: number) => {
+  const push = (p: number, q: number, b: Block, room: number, roomR = room, half = 0) => {
     blockPoint(b, p, q, pt);
     out.x.push(pt.x);
     out.z.push(pt.z);
     out.room.push(room);
+    out.roomR.push(roomR);
+    out.half.push(half);
     out.blk.push(b.index);
     out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
     // Virage en cuve : la paroi extérieure est la ligne du pilote ; elle monte en rampe comme la paroi elle-même.
@@ -146,14 +163,20 @@ function denseCenterline(track: Track, wall: boolean): Centerline {
     const prev = track.blocks[b.index - 1];
     const calm = b.kind === "jump" || b.kind === "kick" || b.kind === "gap" || prev?.kind === "jump" || prev?.kind === "gap";
     const open = b.open ? OPEN_EXTRA_MARGIN : 0;
+    // Bas-côtés (lot 21) : le bord de la route n'est pas un mur, la marge est plus petite.
+    const margin = b.shoulder ? SHOULDER_MARGIN : WALL_MARGIN;
     if (isCurve(b.kind)) {
       const { cp, r } = curveCenter(b.kind);
       const side = turnsLeft(b.kind) ? -1 : 1;
       const n = Math.round((HALF_PI * r) / SPACING);
+      const room = b.banked ? BANKED_ROOM : b.w0 / 2 - margin - open;
+      // Coupe (mesure) : côté intérieur, la trajectoire peut mordre de `cut` m sur le bas-côté (sans approcher son rebord).
+      const inner = b.shoulder && cut > 0 && !b.banked ? Math.min(room + cut, SHOULDER_EDGE - WALL_MARGIN) : room;
       for (let i = first; i <= n; i++) {
         const a = (HALF_PI * i) / n;
         // Virage relevé : le bord intérieur est en contrebas et la rampe d'entrée y est raide ; on reste près de l'axe.
-        push(cp + side * r * cos(a), r * sin(a), b, b.banked ? BANKED_ROOM : b.w0 / 2 - WALL_MARGIN - open);
+        // L'intérieur d'un virage à gauche est à gauche (normale positive).
+        push(cp + side * r * cos(a), r * sin(a), b, side < 0 ? inner : room, side < 0 ? room : inner, b.w0 / 2);
       }
     } else {
       const n = Math.round(CELL / SPACING);
@@ -161,7 +184,8 @@ function denseCenterline(track: Track, wall: boolean): Centerline {
         const q = (CELL * i) / n;
         // Cuve droite : le pilote reste sur le fond (la paroi n'a pas d'intérêt en ligne droite).
         const floor = b.cuve && !wall ? b.w0 / 2 - (b.w0 / 2) * CUVE_RATIO - 0.3 : Infinity;
-        push(CELL / 2, q, b, calm ? 0.5 : Math.min(floor, blockHalfWidth(b, q) - WALL_MARGIN - open));
+        const room = calm ? 0.5 : Math.min(floor, blockHalfWidth(b, q) - margin - open);
+        push(CELL / 2, q, b, room, room, blockHalfWidth(b, q));
       }
     }
   }
@@ -259,14 +283,15 @@ interface Path {
   /** Vrai là où la voiture est (ou peut être) en l'air à cause d'un saut : on n'y freine pas, la vitesse doit être bonne avant. */
   airborne: boolean[];
 }
-const paths = new WeakMap<Track, Path>();
-const floorPaths = new WeakMap<Track, Path>();
+const pathCaches = new Map<string, WeakMap<Track, Path>>();
 
-function racingPath(track: Track, wall = false): Path {
-  const cache = wall ? paths : floorPaths;
+function racingPath(track: Track, wall = false, cut = 0): Path {
+  const key = `${wall ? 1 : 0}:${cut}`;
+  let cache = pathCaches.get(key);
+  if (!cache) pathCaches.set(key, (cache = new WeakMap()));
   const cached = cache.get(track);
   if (cached) return cached;
-  const c = denseCenterline(track, wall);
+  const c = denseCenterline(track, wall, cut);
   const n = c.x.length;
   const x = c.x.slice();
   const z = c.z.slice();
@@ -279,7 +304,7 @@ function racingPath(track: Track, wall = false): Path {
         const mx = (x[i - 1]! + x[i + 1]!) / 2;
         const mz = (z[i - 1]! + z[i + 1]!) / 2;
         const pinned = c.pin[i]!;
-        const o = pinned === pinned ? pinned : clamp((mx - c.x[i]!) * c.nx[i]! + (mz - c.z[i]!) * c.nz[i]!, -c.room[i]!, c.room[i]!);
+        const o = pinned === pinned ? pinned : clamp((mx - c.x[i]!) * c.nx[i]! + (mz - c.z[i]!) * c.nz[i]!, -c.roomR[i]!, c.room[i]!);
         x[i] = c.x[i]! + o * c.nx[i]!;
         z[i] = c.z[i]! + o * c.nz[i]!;
       }
@@ -313,9 +338,19 @@ function racingPath(track: Track, wall = false): Path {
   for (let i = 0; i < n; i++) {
     const b = track.blocks[c.blk[i]!]!;
     const m = SURFACES[b.surface];
-    grip.push(m.grip);
-    traction.push(m.traction);
-    rolling.push(m.rolling);
+    // Sur un bas-côté (coupe), le revêtement des roues qui y passent : mélange selon la part de la voiture hors de la route.
+    const off = b.shoulder ? (x[i]! - c.x[i]!) * c.nx[i]! + (z[i]! - c.z[i]!) * c.nz[i]! : 0;
+    const out = b.shoulder ? clamp(((off < 0 ? -off : off) + WHEEL_REACH - c.half[i]!) / (2 * WHEEL_REACH), 0, 1) : 0;
+    if (out > 0) {
+      const sh = SURFACES[b.shoulder!];
+      grip.push(m.grip + out * (sh.grip - m.grip));
+      traction.push(m.traction + out * (sh.traction - m.traction));
+      rolling.push(m.rolling + out * (sh.rolling - m.rolling));
+    } else {
+      grip.push(m.grip);
+      traction.push(m.traction);
+      rolling.push(m.rolling);
+    }
     slick.push(m.slick);
     bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : c.wall[i]!);
   }
@@ -342,8 +377,9 @@ export function racingLine(
   iceCoastGrip = DEFAULT_CAR_PARAMS.iceCoastGrip,
   slopeGravity = SLOPE_GRAVITY,
   wall = false,
+  cut = 0,
 ): RacingLine {
-  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne } = racingPath(track, wall);
+  const { x, z, s, grip, traction, rolling, bank, slick, slope, airborne } = racingPath(track, wall, cut);
   const n = x.length;
   // Vitesse de passage : courbure sur une corde de ±2 points (≈ 8 m), v = √(adhérence / courbure).
   const speed = new Array<number>(n).fill(topSpeed);
@@ -395,7 +431,7 @@ export function createAutopilot(track: Track, opts: AutopilotOptions = {}) {
   const grip = opts.grip ?? 0.9;
   const look = opts.look ?? 0.3;
   const lateral = ((params.gripFront + params.gripRear) / 2) * 0.85 * grip;
-  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip, params.slopeGravity, opts.wall ?? false);
+  const line = racingLine(track, lateral, params.brake * 0.8, params.turboMaxSpeed, params.gravity, params.iceCoastGrip, params.slopeGravity, opts.wall ?? false, opts.cut ?? 0);
   const n = line.x.length;
   let idx = 0;
 
@@ -469,6 +505,13 @@ export interface PilotRun {
   /** Lot 20 (mesure seule) : pas passés à plein gaz sans frein et moteur en marche (un moteur coupé n'est pas à plein gaz), et nombre de freinages ou relâchements (au moins 0,1 s sans plein gaz, au-delà de 10 m/s). */
   fullThrottleTicks: number;
   liftEvents: number;
+  /**
+   * Lot 21 (mesure des moments de choix) : freinages au sol (au-delà de 10 m/s ; les coups de frein à moins de 0,5 s d'intervalle comptent
+   * pour un), passages en roue libre (au moins 0,1 s sans gaz ni frein, au-delà de 10 m/s) et vols d'au moins 0,25 s où le frein a figé la caisse.
+   */
+  brakeEvents: number;
+  coastEvents: number;
+  freezeEvents: number;
   /** Vitesse du pilote au bord de chaque rampe de saut (lot 17), avec la fenêtre du saut. */
   jumps: JumpPass[];
   /** Vrai si chaque saut a été pris dans sa fenêtre de vitesse avec la marge `JUMP_ENTRY_MARGIN` (aucun saut = vrai). */
@@ -477,6 +520,8 @@ export interface PilotRun {
   wall: boolean;
   /** Fraction d'adhérence de ce pilote (voir `PILOT_GRIPS`). */
   grip: number;
+  /** Coupe par le bas-côté (lot 21, voir `AutopilotOptions.cut`) : 0 si le pilote reste sur la route. */
+  cut: number;
 }
 
 export interface JumpPass {
@@ -487,6 +532,10 @@ export interface JumpPass {
 
 /** Le pilote doit aborder chaque saut avec cette marge au-dessus de la vitesse minimale de sa fenêtre (un joueur correct doit pouvoir faire de même). */
 export const JUMP_ENTRY_MARGIN = 1.08;
+
+/** Deux coups de frein séparés de moins de ça (pas) font un seul freinage ; un vol plus court que ça (pas) n'est pas un saut. */
+const BRAKE_GAP = 60;
+const FREEZE_FLIGHT = 30;
 
 /** Fait rouler un pilote jusqu'à l'arrivée (ou `maxSeconds`, ou jusqu'à ce qu'il soit bloqué). */
 export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds = 120): PilotRun {
@@ -501,6 +550,13 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   let fullThrottleTicks = 0;
   let liftEvents = 0;
   let offRun = 0;
+  let brakeEvents = 0;
+  let coastEvents = 0;
+  let freezeEvents = 0;
+  let sinceBrake = Infinity;
+  let coastRun = 0;
+  let frozeThisFlight = false;
+  let flight = 0;
   const flatTop = (opts.params ?? DEFAULT_CAR_PARAMS).maxSpeed;
   // Bord de chaque rampe de saut : on note la vitesse au moment où la voiture franchit ce plan.
   const jumps: JumpPass[] = trackJumps(track, opts.params).map((jump) => ({ jump, speed: 0 }));
@@ -513,6 +569,25 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   while (race.finishMs < 0 && ticks < maxTicks && race.respawns === 0) {
     const input = drive(race);
     recorder.record(input);
+    {
+      const c = race.car;
+      const sp2 = c.vx * c.vx + c.vz * c.vz;
+      if (input.brake > 0 && c.grounded === 1 && sp2 > 100) {
+        if (sinceBrake > BRAKE_GAP) brakeEvents++;
+        sinceBrake = 0;
+      } else sinceBrake++;
+      if (input.throttle === 0 && input.brake === 0 && c.grounded === 1 && sp2 > 100) {
+        if (++coastRun === 12) coastEvents++;
+      } else coastRun = 0;
+      if (c.grounded === 1) {
+        if (frozeThisFlight && flight >= FREEZE_FLIGHT) freezeEvents++;
+        frozeThisFlight = false;
+        flight = 0;
+      } else {
+        flight++;
+        if (input.brake > 0) frozeThisFlight = true;
+      }
+    }
     stepRace(race, input);
     ticks++;
     // Bloqué : presque à l'arrêt pendant 3 s après le départ.
@@ -544,18 +619,31 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     fastTicks,
     fullThrottleTicks,
     liftEvents,
+    brakeEvents,
+    coastEvents,
+    freezeEvents,
     jumps,
     jumpsOk: jumps.every(({ jump, speed }) => speed >= jump.minSpeed * JUMP_ENTRY_MARGIN && speed <= jump.maxSpeed),
     wall: opts.wall ?? false,
     grip: opts.grip ?? 0.9,
+    cut: opts.cut ?? 0,
   };
 }
 
 /** Fractions d'adhérence essayées : le temps de l'auteur est celui de la meilleure course valide. */
 export const PILOT_GRIPS = [1.08, 1, 0.9, 0.78] as const;
 
-/** La meilleure course valide parmi plusieurs réglages du pilote, ou `null` si aucun ne finit le circuit. */
-export function bestPilotRun(track: Track): PilotRun | null {
+/**
+ * Coupe essayée par le pilote d'auteur (lot 21) : 0,5 m de plus vers l'intérieur des virages bordés d'un bas-côté, les roues intérieures
+ * à 25 cm dessus. Mesuré (`npm run measure:generator`) : plus rapide sur un circuit à bas-côtés sur trois environ, plus lent au-delà d'1 m.
+ */
+export const PILOT_CUT = 0.5;
+
+/**
+ * La meilleure course valide parmi plusieurs réglages du pilote, ou `null` si aucun ne finit le circuit. Sur un circuit dont un virage est
+ * bordé d'un bas-côté, le meilleur réglage est refait en coupant (`PILOT_CUT`) : la coupe n'est gardée que si elle est plus rapide.
+ */
+export function bestPilotRun(track: Track, opts: { cut?: boolean } = {}): PilotRun | null {
   let best: PilotRun | null = null;
   // Avec un virage en cuve, on essaie aussi de le prendre sur le fond : la paroi n'est utile que si elle fait gagner du temps.
   const walls = track.blocks.some((b) => b.cuve) ? [false, true] : [false];
@@ -565,5 +653,15 @@ export function bestPilotRun(track: Track): PilotRun | null {
       if (run.valid && run.jumpsOk && (!best || run.finishMs < best.finishMs)) best = run;
     }
   }
-  return best;
+  return best && opts.cut !== false ? withCut(track, best) : best;
+}
+
+/**
+ * La course `best` refaite en coupant (`PILOT_CUT`) sur un circuit dont un virage est bordé d'un bas-côté ; gardée seulement si elle est
+ * valide, plus rapide, et (si `minMs` est donné) pas plus courte que ça. Le générateur ne l'appelle que pour la tentative retenue.
+ */
+export function withCut(track: Track, best: PilotRun, minMs = 0): PilotRun {
+  if (!track.blocks.some((b) => b.shoulder && isCurve(b.kind))) return best;
+  const run = runPilot(track, { grip: best.grip, wall: best.wall, cut: PILOT_CUT });
+  return run.valid && run.jumpsOk && run.finishMs < best.finishMs && run.finishMs >= minMs ? run : best;
 }

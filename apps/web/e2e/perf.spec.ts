@@ -15,7 +15,7 @@ test("le jeu pèse peu : budget de poids compressé", () => {
   expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
   expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(218_000); // ≈ 210 ko aujourd'hui (lot 20 : +7 ko, la bibliothèque de figures) ; ≈ 203 ko avant ( (lot 18 : +5 ko, cuves : surface paramétrée, contact par la normale, rendu des parois, pilote sur la paroi ; lot 17 : +4 ko, relief, sauts, rendu des piliers et ombre d'atterrissage ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
   expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(84_000); // ≈ 79 ko aujourd'hui (lot 20 : +7 ko) ; ≈ 72 ko avant ( (lot 18 : +5 ko ; lot 17 : +5 ko ; le panneau d'admin du lot 14 pèse ≈ 8 ko, chargé seulement sur /admin/)
-  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(24_000); // ≈ 22,4 ko aujourd'hui (lot 20 : +5,6 ko, les figures) ; ≈ 16,7 ko avant ( (lot 18 : +3 ko, les cuves du générateur et du pilote ; lot 17 : +3,6 ko, le générateur et le pilote ont grandi)
+  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(26_000); // ≈ 24,4 ko aujourd'hui (lot 21 : +2 ko, bas-côtés, route bosselée, règles d'identité des thèmes, moments de choix) ; ≈ 22,4 ko au lot 20 (+5,6 ko, les figures) ; ≈ 16,7 ko avant ( (lot 18 : +3 ko, les cuves du générateur et du pilote ; lot 17 : +3,6 ko, le générateur et le pilote ont grandi)
 });
 
 test.describe("chargement sur un téléphone simulé", () => {
