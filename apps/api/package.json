@@ -9,6 +9,7 @@
     "dev:worker": "wrangler dev",
     "deploy:worker": "wrangler deploy",
     "measure:generator": "esbuild scripts/measure-generator.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-generator.mjs && node dist/measure-generator.mjs",
+    "measure:salon": "esbuild scripts/measure-salon.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-salon.mjs && NODE_NO_WARNINGS=1 node dist/measure-salon.mjs",
     "history:seed": "esbuild scripts/history-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/history-seed.mjs && node dist/history-seed.mjs"
   },
   "dependencies": {
