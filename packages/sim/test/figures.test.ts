@@ -99,8 +99,10 @@ describe("bibliothèque de figures", () => {
   it("n'interdit les figures de glace, de terre ou de cuve que là où le thème n'a ni glace, ni terre, ni cuve", () => {
     expect(THEMES.stade.figures.ban).toContain("slalom-glace");
     expect(THEMES.banquise.figures.favor).toContain("slalom-glace");
-    expect(THEMES.rallye.figures.favor).toContain("saut-terre");
+    expect(THEMES.rallye.figures.favor).toContain("epingle-terre");
     expect(THEMES.rallye.figures.ban).toContain("cuve-droite");
+    expect(THEMES.rallye.figures.ban).toContain("saut-terre"); // lot 25 : la spéciale n'a pas de vide
+    expect(THEMES.col.figures.ban).toContain("slalom-glace");
     expect(THEMES.nuit.figures.favor).toContain("saut-paroi");
   });
 
@@ -186,13 +188,14 @@ describe("scénarios ?scenario=figures et ?scenario=figure", () => {
 });
 
 describe("composition d'un circuit par figures", () => {
-  it("assemble 5 à 7 figures, jamais deux fois la même, toutes dans la bibliothèque, sur des blocs contigus", { timeout: 180_000 }, () => {
+  it("assemble 5 à 7 figures (ou le nombre de la fiche du thème, lot 25), jamais deux fois la même, toutes dans la bibliothèque, sur des blocs contigus", { timeout: 180_000 }, () => {
     for (const day of DAYS) {
       const c = circuit(day);
       expect(c.fallback, `jour ${day}`).toBe(false);
       const names = c.figures.map((f) => f.name);
-      expect(names.length, c.spec).toBeGreaterThanOrEqual(5);
-      expect(names.length, c.spec).toBeLessThanOrEqual(7);
+      const [lo, hi] = THEMES[c.theme].format.count ?? [5, 7];
+      expect(names.length, c.spec).toBeGreaterThanOrEqual(lo - 1); // une figure de moins si le thème n'a plus rien de permis (repos, plafonds)
+      expect(names.length, c.spec).toBeLessThanOrEqual(hi);
       expect(new Set(names).size, `figure répétée : ${names.join(" ")}`).toBe(names.length);
       for (const n of names) expect(figureByName(n), n).not.toBeNull();
       let end = 1; // le bloc 0 est le départ
@@ -205,18 +208,20 @@ describe("composition d'un circuit par figures", () => {
     }
   });
 
-  it("contient au moins deux techniques, une portion rapide, le passage signature du thème et un dénivelé d'au moins 12 m", () => {
+  it("contient au moins deux techniques, une portion rapide, le passage signature du thème et un dénivelé d'au moins 12 m (sauf fiche du thème, lot 25)", () => {
     for (const day of DAYS) {
       const c = circuit(day);
+      const format = THEMES[c.theme].format;
       const figs = c.figures.map((f) => figureByName(f.name)!);
-      expect(figs.filter((f) => f.category === "technique").length, `${c.date} : ${figs.map((f) => f.name).join(" ")}`).toBeGreaterThanOrEqual(2);
-      expect(figs.some(isFast), c.date).toBe(true);
+      expect(figs.filter((f) => f.category === "technique").length, `${c.date} : ${figs.map((f) => f.name).join(" ")}`).toBeGreaterThanOrEqual(format.techniques ?? 2);
+      if (format.fast) expect(figs.some(isFast), c.date).toBe(true);
       expect(c.figures.map((f) => f.name), c.date).toContain(SIGNATURE_FIGURE[THEMES[c.theme].signature]);
-      expect(reliefOf(c.spec.split(" ")), c.date).toBeGreaterThanOrEqual(MIN_RELIEF);
+      expect(reliefOf(c.spec.split(" ")), c.date).toBeGreaterThanOrEqual(format.relief[0]);
+      if (format.relief[0] >= MIN_RELIEF) expect(reliefOf(c.spec.split(" ")), c.date).toBeGreaterThanOrEqual(MIN_RELIEF);
     }
   });
 
-  it("ne met un saut ni en première ni en dernière figure", () => {
+  it("ne met un saut ni en première ni en dernière figure", { timeout: 180_000 }, () => {
     for (const day of DAYS) {
       const figs = circuit(day).figures.map((f) => figureByName(f.name)!);
       expect(figs[0]!.jump, circuit(day).date).toBeFalsy();
@@ -239,7 +244,7 @@ describe("composition d'un circuit par figures", () => {
         expect(run, spec).toBeLessThanOrEqual(1);
       }
       expect(tight, spec).toBeLessThanOrEqual(theme === "ville" ? 4 : 2); // Ville : angles droits (lot 22)
-      expect(longestPlainStraight(spec.split(" ")), spec).toBeLessThanOrEqual(MAX_PLAIN_STRAIGHT);
+      expect(longestPlainStraight(spec.split(" ")), spec).toBeLessThanOrEqual(THEMES[theme].format.plain ?? MAX_PLAIN_STRAIGHT);
     }
   });
 
@@ -260,7 +265,8 @@ describe("composition d'un circuit par figures", () => {
   });
 
   it("estime la durée du circuit à quelques secondes près (de quoi refuser un circuit trop long sans faire rouler le pilote)", () => {
-    const off = DAYS.map((d) => Math.abs(0.95 * estimateSeconds(circuit(d).spec.split(" ")) - circuit(d).authorMs / 1000));
+    // L'allure du thème (lot 25 : `pace`, 0,95 par défaut) ramène l'estimation au temps du pilote.
+    const off = DAYS.map((d) => Math.abs((THEMES[circuit(d).theme].format.pace ?? 0.95) * estimateSeconds(circuit(d).spec.split(" ")) - circuit(d).authorMs / 1000));
     expect(off.filter((x) => x < 4).length / off.length).toBeGreaterThan(0.85);
   });
 });
@@ -310,8 +316,13 @@ describe("thèmes : figures favorites et interdites", () => {
   const samples = (name: (typeof THEME_NAMES)[number]) => {
     const out: string[][] = [];
     for (let d = 0; d < 80; d++) {
-      const c = composeFigures(JOUR_TEST + d, 0, THEMES[name]);
-      if (c) out.push(c.figures.map((f) => f.name));
+      // La première tentative qui aboutit (lot 25 : la spéciale du Rallye échoue plus souvent à la pose, grille encombrée).
+      for (let a = 0; a < 4; a++) {
+        const c = composeFigures(JOUR_TEST + d, a, THEMES[name]);
+        if (!c) continue;
+        out.push(c.figures.map((f) => f.name));
+        break;
+      }
     }
     return out;
   };
@@ -332,6 +343,7 @@ describe("thèmes : figures favorites et interdites", () => {
       const favorites = theme.figures.favor.filter((n) => n !== sig);
       const others = FIGURE_NAMES.filter((n) => n !== sig && !banned.has(n) && !theme.figures.favor.includes(n) && !(figureByName(n)!.only && !figureByName(n)!.only!.includes(name)));
       const mean = (xs: string[]) => xs.reduce((s, n) => s + count(n), 0) / xs.length;
+      if (others.length === 0) return; // le Col alpin n'a que ses figures, toutes favorites (lot 25)
       expect(mean(favorites), name).toBeGreaterThan(mean(others) * 1.3);
     });
   }

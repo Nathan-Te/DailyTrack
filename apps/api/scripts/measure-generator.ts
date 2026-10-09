@@ -8,7 +8,7 @@ import {
   THEME_NAMES,
   DEFAULT_CAR_PARAMS,
   bestPilotRun,
-  composeSpec,
+  composeFigures,
   longestPlainStraight,
   estimateSeconds,
   CELL,
@@ -35,14 +35,16 @@ import {
   type ChoiceMoments,
   type Block,
   type DailyCircuit,
+  circuitFingerprint,
 } from "@cdj/sim";
+import { measureFingerprints } from "./fingerprints";
 
 // `npm run measure:generator` : mesure le générateur de circuits (lot 12). À relancer après toute règle de
 // générateur, toute modification du pilote ou de la physique : « toute règle de générateur se valide par ce script
 // (durées, taux de validation par thème), pas seulement par les tests ».
 //   - durées d'auteur, largeurs, virages serrés, temps de génération, coût d'un rejeu : 60 dates consécutives ;
 //   - taux de validation par thème : 12 dates × 6 tentatives, chaque thème forcé.
-// Variables : `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
+// Variables : `ONLY=empreinte` (seulement l'empreinte des thèmes, lot 25), `PER_THEME` (12 circuits par thème imposé pour l'empreinte), `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
 
 const DAYS = Number(process.env.DAYS ?? (process.env.FAST ? 20 : 60));
 const VALIDATION_DAYS = Number(process.env.VALIDATION_DAYS ?? (process.env.FAST ? 6 : 12));
@@ -81,6 +83,11 @@ function tightTurns(blocks: Block[]): { total: number; run: number } {
 }
 
 console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
+const PER_THEME = Number(process.env.PER_THEME ?? (process.env.FAST ? 6 : 12));
+if (process.env.ONLY === "empreinte") {
+  await measureFingerprints(FIRST_DAY, PER_THEME, []);
+  process.exit(0);
+}
 
 // --- 1. Soixante dates -------------------------------------------------------------------------
 
@@ -263,7 +270,7 @@ console.log(`plein gaz par thème (du jour) : ${THEME_NAMES.map((n) => { const i
 // --- 2. Taux de validation par thème -----------------------------------------------------------
 
 console.log(`\n## Taux de validation par thème (${VALIDATION_DAYS} dates × ${VALIDATION_ATTEMPTS} tentatives, thème forcé)`);
-console.log("thème      | construit | pilote finit | dans la fenêtre | portion rapide | durée moyenne | vitesse max | génération/tentative");
+console.log("thème      | construit | pilote finit | dans la fenêtre | + pointe fiche | durée moyenne | vitesse max | génération/tentative");
 for (const name of THEME_NAMES) {
   const theme = themeByName(name)!;
   let total = 0;
@@ -273,11 +280,13 @@ for (const name of THEME_NAMES) {
   const durations: number[] = [];
   const peaksTheme: number[] = [];
   let accepted2 = 0; // dans la fenêtre ET au moins une portion rapide
+  const refusals = new Map<string, number>();
   const t0 = performance.now();
   for (let d = 0; d < VALIDATION_DAYS; d++) {
     for (let a = 0; a < VALIDATION_ATTEMPTS; a++) {
       total++;
-      const spec = composeSpec(FIRST_DAY + d, a, theme);
+      const composedFig = composeFigures(FIRST_DAY + d, a, theme, 0, (why) => refusals.set(why, (refusals.get(why) ?? 0) + 1));
+      const spec = composedFig?.spec ?? null;
       if (!spec) continue;
       composed++;
       const pilot = bestPilotRun(parseTrack("mesure", spec));
@@ -287,7 +296,7 @@ for (const name of THEME_NAMES) {
       peaksTheme.push(pilot.maxSpeed);
       if (pilot.finishMs >= AUTHOR_MIN_MS && pilot.finishMs <= AUTHOR_MAX_MS) {
         accepted++;
-        if (pilot.maxSpeed >= FAST_PEAK) accepted2++;
+        if (pilot.maxSpeed >= theme.format.speed.peak) accepted2++; // la pointe de la fiche (lot 25 ; 62,4 m/s par défaut)
       }
     }
   }
@@ -295,5 +304,10 @@ for (const name of THEME_NAMES) {
   console.log(
     `${name.padEnd(10)} | ${pct(composed, total).padStart(9)} | ${pct(finished, composed).padStart(12)} | ${pct(accepted, composed).padStart(15)} | ${pct(accepted2, composed).padStart(14)} | ${durations.length ? sec(mean(durations)).padStart(10) + " s" : "—".padStart(12)} | ${peaksTheme.length ? mean(peaksTheme).toFixed(0).padStart(7) + " m/s" : "—".padStart(11)} | ${per.toFixed(0)} ms`,
   );
+  if (refusals.size) console.log(`           refus : ${[...refusals].sort((x, y) => y[1] - x[1]).slice(0, 5).map(([k, n]) => `${k} ×${n}`).join(" · ")}`);
 }
-console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits ; « portion rapide » : dans la fenêtre ET pilote ≥ +30 % de la pointe du plat, sur les circuits construits.)`);
+console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits ; « + pointe fiche » : dans la fenêtre ET pilote ≥ la pointe exigée par la fiche du thème (lot 25 ; +30 % de la pointe du plat par défaut, 70 m/s au Col, rien au Rallye ni à la Banquise), sur les circuits construits.)`);
+
+// --- 3. Empreinte des thèmes (lot 25) ----------------------------------------------------------
+
+await measureFingerprints(FIRST_DAY, PER_THEME, rows.map((r, i) => ({ c: r.c, print: pilots[i] ? circuitFingerprint(r.c.track, pilots[i]!) : null })));

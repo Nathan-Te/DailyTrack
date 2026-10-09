@@ -15,12 +15,11 @@ describe("passage signature des miniatures", () => {
     const t = track(`S@start S S T S S S S S L2/b S S S S@finish`);
     expect(signatureBlocks(t, "turboBank")).toEqual([3, 9]);
   });
-  it("saut sur la terre (lot 17) : de la rampe de terre à la réception", () => {
-    const t = track(`S@start S S/t K/t GD S/t S S S@finish`);
-    expect(signatureBlocks(t, "dirtJump")).toEqual([3, 5]);
-    expect(signatureBlocks(track(`S@start S S K/t G G D/t S S@finish`), "dirtJump")).toEqual([3, 6]); // deux cellules de vide
-    expect(signatureBlocks(track("S@start S K GD S S@finish"), "dirtJump")).toBeNull(); // un saut sur la route n'est pas la signature
-    expect(signatureBlocks(track("S@start S J S S@finish"), "dirtJump")).toBeNull(); // ni le tremplin
+  it("spéciale (lot 25) : trois virages sur la terre en sept blocs", () => {
+    const t = track(`S@start S S/t L2/t S/t R2/t B L2/t S S@finish`);
+    expect(signatureBlocks(t, "dirtStage")).toEqual([3, 7]);
+    expect(signatureBlocks(track("S@start S L2 S R2 S L2 S S@finish"), "dirtStage")).toBeNull(); // sur la route, ce n'est pas la spéciale
+    expect(signatureBlocks(track("S@start S L2/t S S S S S S R2/t S L2/t S@finish"), "dirtStage")).toBeNull(); // trop espacés
   });
   it("sans signature, un vrai saut cadre la miniature (rampe, vide, réception)", () => {
     const f = pickFocus(track(`S@start S S S S K GD S S S S S S S S S S S@finish`), "stade");
@@ -74,12 +73,12 @@ describe("passage signature des miniatures", () => {
 
 describe("portion montrée", () => {
   it("centrée sur le passage signature, de FOCUS_BLOCKS blocs, dans le circuit", () => {
-    const t = track(`S@start ${FILL} K/t GD S/t ${FILL} S@finish`);
+    const t = track(`S@start ${FILL} L2/t S/t R2/t B L2/t ${FILL} S@finish`);
     const f = pickFocus(t, "rallye");
     expect(f.reason).toBe("signature");
     expect(f.to - f.from + 1).toBe(FOCUS_BLOCKS);
     expect(f.from).toBeLessThanOrEqual(13);
-    expect(f.to).toBeGreaterThanOrEqual(13); // le tremplin est le 14ᵉ bloc (indice 13)
+    expect(f.to).toBeGreaterThanOrEqual(17); // la spéciale va du 14ᵉ bloc (indice 13) au 18ᵉ
   });
   it("sans signature : la zone la plus sinueuse", () => {
     // une longue droite, puis une série de virages, puis une droite : la portion doit tomber sur les virages

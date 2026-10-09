@@ -204,7 +204,7 @@ describe("carte d'un jour : les figures du circuit (lot 20)", () => {
   });
   it("le circuit du jour donne ses figures, que la carte peut afficher", () => {
     const c = dailyCircuit(PREMIER_JOUR + 20);
-    expect(c.figures.length).toBeGreaterThanOrEqual(5);
+    expect(c.figures.length).toBeGreaterThanOrEqual(3); // 5 à 7 en général, 4 ou 5 au Canyon et au Col (lot 25 : figures longues)
     expect(figuresText(c.figures.map((f) => f.name)).split(" · ")).toHaveLength(c.figures.length);
   }, 20_000);
 });

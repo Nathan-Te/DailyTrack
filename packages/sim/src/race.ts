@@ -1,10 +1,10 @@
 import { TICK_RATE } from "./constants";
 import { AXIS_MAX, DEFAULT_CAR_PARAMS, NO_INPUT, copyCar, createCar, forwardSpeed, stepCar, type CarInput, type CarParams, type CarState } from "./car";
-import type { Gate, Track } from "./track";
+import { voidYAt, type Gate, type Track } from "./track";
 import { trackWorld, type ShellHit, type World } from "./world";
 
 /**
- * Chute (lot 17) : sous `track.voidY` la voiture est perdue ; elle continue de tomber, sans commande, pendant ce délai
+ * Chute (lot 17) : sous `voidYAt` (lot 25 : 4 m sous la route la plus basse des cellules voisines) la voiture est perdue ; elle continue de tomber, sans commande, pendant ce délai
  * (0,5 s, soit ≈ 1 s depuis qu'elle a quitté la route), puis reprend au dernier point de contrôle. Le chrono ne s'arrête pas.
  */
 export const FALL_TICKS = TICK_RATE / 2;
@@ -147,7 +147,8 @@ export function stepRace(race: RaceState, input: CarInput): void {
       }
     }
   }
-  if (car.y < race.world.voidY) race.fallTicks = 1;
+  // Lot 25 : la chute se décide près de la voiture (route la plus basse des cellules voisines), plus sous la route la plus basse du circuit.
+  if (car.y < voidYAt(race.track, car.x, car.z)) race.fallTicks = 1;
 }
 
 /** Durée écoulée, en ms (pour l'affichage du chrono en cours de course). */

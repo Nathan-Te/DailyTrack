@@ -9,6 +9,7 @@ import {
   rippleAt,
   type Ripple,
   bankAt,
+  curveRelief,
   blockHalfWidth,
   blockHalfWidthSlope,
   blockPadHalfWidth,
@@ -269,8 +270,8 @@ export function trackWorld(track: Track): World {
       }
       out.gx = slope * dirX(b.dir);
       out.gz = slope * dirZ(b.dir);
-      if (b.banked) {
-        // Virage relevé : la hauteur monte vers l'extérieur ; le gradient (p, q) devient un gradient du monde.
+      if (curveRelief(b)) {
+        // Virage relevé ou en pente (lot 25) : la hauteur monte vers l'extérieur ; le gradient (p, q) devient un gradient du monde.
         bankAt(b, p, q, bank);
         out.height += bank.h;
         canonVecToWorld(b.dir, bank.gp, bank.gq, wv);
@@ -293,7 +294,7 @@ export function trackWorld(track: Track): World {
       const q = canonQ(b.dir, u, v);
       // Au-dessus des rebords, on les survole (en virage relevé, le rebord extérieur est plus haut).
       let floor = blockHeight(b, q);
-      if (b.banked) {
+      if (curveRelief(b)) {
         bankAt(b, p, q, bank);
         floor += bank.h;
       }

@@ -3,6 +3,7 @@ import {
   parseToken,
   CELL,
   MIN_RELIEF,
+  THEMES,
   THEME_NAMES,
   bestPilotRun,
   blockPoint,
@@ -152,10 +153,11 @@ const circuit = (d: number) => {
 };
 
 describe("sauts et reliefs des circuits du jour (60 dates)", () => {
-  it("le dénivelé de chaque circuit atteint au moins MIN_RELIEF", { timeout: 120_000 }, () => {
+  it("le dénivelé de chaque circuit atteint au moins MIN_RELIEF (ou le minimum de la fiche du thème, lot 25 : Rallye 4 m, Banquise plate)", { timeout: 120_000 }, () => {
     for (const d of DAYS) {
       const c = circuit(d);
-      expect(reliefOf(c.spec.split(" ")), c.spec).toBeGreaterThanOrEqual(MIN_RELIEF);
+      expect(reliefOf(c.spec.split(" ")), c.spec).toBeGreaterThanOrEqual(Math.min(MIN_RELIEF, THEMES[c.theme].format.relief[0]));
+      expect(reliefOf(c.spec.split(" ")), c.spec).toBeLessThanOrEqual(THEMES[c.theme].format.relief[1]);
     }
   });
 
@@ -175,7 +177,7 @@ describe("sauts et reliefs des circuits du jour (60 dates)", () => {
     expect(jumps).toBeGreaterThan(30); // huit thèmes depuis le lot 22 : Col alpin et Ville ont peu de sauts
   });
 
-  it("Stade, Nuit et Rallye ont toujours au moins un vrai saut ; Banquise et Campagne en ont parfois", { timeout: 120_000 }, () => {
+  it("Stade et Nuit ont toujours au moins un vrai saut, Canyon deux ; Campagne parfois ; Rallye, Banquise et Col jamais (lot 25)", { timeout: 120_000 }, () => {
     const share: Record<string, number> = {};
     for (const name of THEME_NAMES) {
       const days = DAYS.map(circuit).filter((c) => c.theme === name);
@@ -186,9 +188,15 @@ describe("sauts et reliefs des circuits du jour (60 dates)", () => {
     expect(share.stade).toBe(1);
     expect(share.canyon).toBe(1); // longs sauts au-dessus des ravins (lot 22)
     expect(share.nuit).toBe(1);
-    expect(share.rallye).toBe(1);
-    expect(share.banquise).toBeLessThan(1);
+    expect(share.rallye).toBe(0); // la spéciale : petits sauts sur bosse seulement, aucun vide
+    expect(share.banquise).toBe(0); // la patinoire
+    expect(share.col).toBe(0); // la descente : des sections sans rebords, pas de saut
     expect(share.campagne).toBeLessThan(1);
+    for (const c of DAYS.map(circuit).filter((x) => x.theme === "canyon")) {
+      const jumps = trackJumps(c.track);
+      expect(jumps.length, c.spec).toBeGreaterThanOrEqual(2);
+      expect(Math.max(...jumps.map((j) => j.gapCells)), c.spec).toBeGreaterThanOrEqual(2); // dont un long
+    }
   });
 
   it("une section sans rebords (`o`) est surélevée d'au moins 6 m, hors départ, arrivée, rampes et vides ; le vide en bas-côté (`~v`, lot 21) aussi hors de ces blocs", { timeout: 120_000 }, () => {

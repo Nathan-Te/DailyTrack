@@ -38,3 +38,20 @@ export function sin(x: number): number {
 export function cos(x: number): number {
   return sin(x + HALF_PI);
 }
+
+/**
+ * Angle (rad, dans [0, π/2]) du point (x, y) avec x, y ≥ 0 — un `atan2` limité au premier quadrant (lot 25 : avancement dans un virage
+ * en pente). Réduction : au-delà de 45°, π/2 − angle complémentaire ; puis une division de l'argument par deux (atan t = 2 atan(t / (1 + √(1 + t²))))
+ * et la série de Taylor jusqu'à t²¹ : erreur < 1e-10, et seulement + − × ÷ √.
+ */
+export function atanRatio(y: number, x: number): number {
+  if (x <= 0 && y <= 0) return 0;
+  const swap = y > x;
+  const t0 = swap ? x / y : y / x;
+  const t = t0 / (1 + Math.sqrt(1 + t0 * t0));
+  const t2 = t * t;
+  let r = 1 / 21;
+  for (let k = 19; k >= 1; k -= 2) r = 1 / k - t2 * r;
+  const a = 2 * t * r;
+  return swap ? HALF_PI - a : a;
+}

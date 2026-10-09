@@ -305,13 +305,15 @@ describe("thèmes du jour", () => {
 
   const blocksOf = (theme: string) => all.filter((c) => c.theme === theme).flatMap((c) => c.track.blocks);
 
-  it("chaque thème a sa signature : virages relevés et turbos (stade), terre (rallye), glace (banquise), moteur coupé (nuit), herbe et terre (campagne)", () => {
+  it("chaque thème a sa signature : virages relevés et turbos (stade), terre (rallye), glace (banquise), moteur coupé (nuit), herbe et terre (campagne), descente (col)", () => {
     const stade = blocksOf("stade");
     expect(stade.some((b) => b.banked)).toBe(true);
     expect(stade.some((b) => b.kind === "turbo")).toBe(true);
     expect(stade.every((b) => b.surface === "road")).toBe(true);
     expect(blocksOf("rallye").some((b) => b.surface === "dirt")).toBe(true);
-    expect(blocksOf("rallye").some((b) => b.kind === "kick" && b.surface === "dirt")).toBe(true); // saut sur la terre
+    expect(blocksOf("rallye").some((b) => b.kind === "kick")).toBe(false); // lot 25 : la spéciale n'a plus de saut au-dessus du vide
+    expect(blocksOf("rallye").filter((b) => isCurve(b.kind) && b.surface === "dirt").length).toBeGreaterThan(10); // ses virages sur la terre
+    expect(blocksOf("col").some((b) => isCurve(b.kind) && b.rise < 0)).toBe(true); // lot 25 : des virages en pente
     expect(blocksOf("banquise").some((b) => b.surface === "ice")).toBe(true);
     expect(blocksOf("nuit").some((b) => b.kind === "cut")).toBe(true);
     const campagne = blocksOf("campagne");
@@ -365,18 +367,21 @@ describe("thèmes du jour", () => {
 });
 
 describe("circuit du jour : portions rapides (lot 15)", () => {
-  it("sur 60 dates, le pilote dépasse la pointe du plat de 30 % ou plus au moins une fois par circuit", () => {
+  it("sur 60 dates, le pilote dépasse la pointe de la fiche du thème (lot 25 ; 30 % au-dessus de la pointe du plat par défaut) au moins une fois par circuit", () => {
     for (const day of DAYS.slice(0, 60)) {
       const c = circuit(day);
       const run = bestPilotRun(c.track)!;
-      expect(run.maxSpeed, `${c.date} ${c.spec}`).toBeGreaterThanOrEqual(FAST_PEAK);
-      expect(run.finishMs, c.date).toBe(c.authorMs);
+      expect(run.maxSpeed, `${c.date} ${c.spec}`).toBeGreaterThanOrEqual(THEMES[c.theme].format.speed.peak);
+      if (THEMES[c.theme].format.speed.peak >= FAST_PEAK) expect(run.maxSpeed, c.date).toBeGreaterThanOrEqual(FAST_PEAK);
+      // Le temps d'auteur est celui de cette course, sauf quand la coupe la rendrait plus courte que 30 s (`withCut`, minimum `AUTHOR_MIN_MS`).
+      if (run.finishMs !== c.authorMs) expect(run.cut > 0 && run.finishMs < AUTHOR_MIN_MS, c.date).toBe(true);
     }
   }, 120_000);
 
-  it("chaque circuit porte une portion rapide dans son texte : un super turbo ou une plaque (66 m/s, +37 % de la pointe)", () => {
+  it("chaque circuit porte une portion rapide dans son texte : un super turbo ou une plaque (66 m/s, +37 % de la pointe) — sauf la Spéciale, la Patinoire et le Col, où la vitesse vient de la pente (lot 25)", () => {
     for (const day of DAYS) {
       const c = circuit(day);
+      if (THEMES[c.theme].format.speed.peak < FAST_PEAK || THEMES[c.theme].format.descent > 0) continue;
       const tokens = c.spec.split(" ").map((t) => t.split("@")[0]!.split("/")[0]!);
       expect(tokens.includes("T") || tokens.includes("P"), c.spec).toBe(true);
     }

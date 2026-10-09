@@ -408,20 +408,148 @@ export const FIGURES: readonly Figure[] = [
   {
     name: "lacets",
     label: "Descente en lacets",
-    category: "relief",
-    intent: "La route descend en lacets : virages larges et demi-tours qui se suivent, avec la pente qui pousse dans chaque entrée.",
+    category: "technique",
+    intent: "La route descend en lacets (lot 25 : les virages descendent aussi) : courtes descentes et virages larges qui se suivent, la pente pousse dans chaque entrée.",
+    // Lot 25 : chaque descente se raidit par crans (D puis D2) : un cran brutal en sortie de virage fait décoller la voiture, qui ne freine plus.
     off: 1.6,
     variants: 4,
     relief: true,
+    braking: true,
     only: ["col"],
     build: (c) =>
-      c.variant === 3
-        ? ["S", "U", `${c.L}2`, "U", `${c.R}2`, "U", `${c.L}2`, "S"] // la même route, prise en montée : rend de la hauteur quand le circuit est déjà bas
-        : c.variant === 0
-        ? ["S", "D", `${c.L}2`, "D", `${c.R}2`, "D", `${c.L}2`, "S"]
+      c.variant === 0
+        ? ["S", "D", "D2", "D", `${c.L}2/d`, "D", "D2", "D", `${c.R}2/d`, "D", "D", `${c.L}2/d`, "S"]
         : c.variant === 1
-          ? ["S", "D", "D", `${c.L}2`, `${c.L}2`, "D", "D", `${c.R}2`, `${c.R}2`, "S"]
-          : ["S", "D2", "S", `${c.L}2`, `${c.L}2`, "D", "S"],
+          ? ["S", "D", "D2", "D2", `${c.L}2/d`, `${c.L}2/d`, "D", "D2", "D", `${c.R}2/d`, "S"]
+          : c.variant === 2
+            ? ["S", "D", "D2", "D3", "D", `${c.L}2/d`, "D", "D2", "D", `${c.R}2/d`, "D", `${c.L}2/d`, "S"]
+            : ["S", "D", "D", "D", `${c.L}2/d`, "D", "D", "D", `${c.R}2/d`, "D", "D", "D", `${c.L}2/d`, "S"],
+  },
+  // --- Figures du Col alpin (lot 25) : tout descend, les virages aussi (`/d`) ---
+  {
+    name: "grande-descente",
+    label: "Grande descente",
+    category: "rapide",
+    intent: "Une longue descente raide où la voiture dépasse 70 m/s sans turbo, puis une épingle large : le freinage le plus franc du circuit.",
+    off: 2.0,
+    variants: 3,
+    relief: true,
+    braking: true,
+    only: ["col"],
+    // Mesuré : la pente se raidit par crans (D, D2, puis D3) pour que la voiture ne s'envole pas au premier cran (en l'air, la pente ne pousse
+    // plus) ; cinq blocs D3 mènent à 72–75 m/s.
+    build: (c) =>
+      c.variant === 0
+        ? ["S", "D", "D2", "D3", "D3", "D3", "D3", "D3", "D2", "D", `${c.L}3/d`, "S"]
+        : c.variant === 1
+          ? ["S", "D", "D2", "D3", "D3", "D3", "D3", "D3", "D2", "D2", "D", `${c.L}2/d`, `${c.L}2/d`, "S"]
+          : ["S", "D2", "D3", "D3", "D3", "D3", "D3", "D2", "D2", `${c.L}3/d`, "S"],
+  },
+  {
+    name: "descente-epingle",
+    label: "Descente et épingle",
+    category: "technique",
+    intent: "Une descente, puis une épingle large qui descend encore : freiner dans la pente, qui pousse.",
+    off: 1.6,
+    variants: 3,
+    relief: true,
+    braking: true,
+    only: ["col"],
+    build: (c) =>
+      c.variant === 0
+        ? ["S", "D", "D2", "D", "D", `${c.L}2/d`, `${c.L}2/d`, "S"]
+        : c.variant === 1
+          ? ["S", "D", "D2", "D2", "D", "D", `${c.L}2/d`, `${c.L}2/d`, "S"]
+          : ["S", "D", "D", "D", "D", "D", `${c.L}2/d`, `${c.L}2/d`, "S"],
+  },
+  {
+    name: "plongeon",
+    label: "Plongeon",
+    category: "rapide",
+    intent: "Une plaque au sommet, puis la pente la plus raide : plus de 70 m/s, et une épingle large qui descend encore au bout.",
+    off: 2.0,
+    variants: 2,
+    relief: true,
+    braking: true,
+    only: ["col"],
+    build: (c) =>
+      c.variant === 0
+        ? ["S", "P", "D", "D2", "D3", "D3", "D3", "D3", "D2", "D", `${c.L}2/d`, `${c.L}2/d`, "S"]
+        : ["S", "P", "D", "D2", "D3", "D3", "D3", "D3", "D3", "D2", "D", `${c.L}3/d`, "S"],
+  },
+  {
+    name: "descente-releve",
+    label: "Grande courbe relevée dans la descente",
+    category: "technique",
+    intent: "Au milieu de la descente, une grande courbe relevée qui descend aussi : la prendre vite, la pente et le relevé aident.",
+    off: 0.6,
+    variants: 2,
+    relief: true,
+    banked: true,
+    only: ["col"],
+    build: (c) => (c.variant === 0 ? ["S", "D", "D2", "D", `${c.L}3/bd`, "D", "D", "D", "S"] : ["S", "D", "D2", "D2", `${c.L}2/bd`, "D", "D", "S"]),
+  },
+  {
+    name: "descente-s",
+    label: "S dans la descente",
+    category: "technique",
+    intent: "Deux virages larges en sens contraires, en pleine pente : placer la voiture pour la sortie sans perdre l'élan.",
+    off: 0.9,
+    variants: 2,
+    relief: true,
+    only: ["col"],
+    build: (c) => (c.variant === 0 ? ["S", "D", "D2", "D", `${c.L}2/d`, `${c.R}2/d`, "D", "D", "D", "S"] : ["S", "D", "D", "D", `${c.L}2/d`, "D", `${c.R}2/d`, "D", "D", "S"]),
+  },
+  {
+    name: "corniche",
+    label: "Corniche",
+    category: "technique",
+    intent: "La route longe la montagne en descendant, une grande courbe au milieu : souvent sans rebord, avec le vide à côté.",
+    off: 0.5,
+    variants: 2,
+    relief: true,
+    only: ["col"],
+    build: (c) => (c.variant === 0 ? ["S", "D", "D", "D2", `${c.L}3/d`, "D", "D", "D", "S"] : ["S", "D", "D2", "D", `${c.L}3/d`, "D", "D2", "D", `${c.R}2/d`, "S"]),
+  },
+  // --- Figures du Rallye (lot 25) : la spéciale ---
+  {
+    name: "speciale",
+    label: "Spéciale",
+    category: "technique",
+    intent: "Des virages enchaînés sur la terre, une bosse entre deux, jamais plus de deux lignes droites : le rythme d'une spéciale de rallye.",
+    off: 1.2,
+    variants: 4,
+    only: ["rallye"],
+    build: (c) =>
+      c.variant === 0
+        ? ["S/t", `${c.L}2/t`, "S/t", `${c.R}2/t`, "B", `${c.L}2/t`, "S"]
+        : c.variant === 1
+          ? ["S/t", `${c.L}2/t`, `${c.R}2/t`, "S/t", `${c.L}2/t`, `${c.L}2/t`, "S"]
+          : c.variant === 2
+            ? ["S/t", `${c.L}3/t`, `${c.R}2/t`, "B", `${c.L}2/t`, "S"]
+            : ["S/t", `${c.L}2/t`, "B", `${c.R}2/t`, "S/t", `${c.R}2/t`, "S"],
+  },
+  {
+    name: "bosse-virage",
+    label: "Bosse et virage",
+    category: "technique",
+    intent: "Une petite crête ou une bosse fait décoller la voiture juste avant un virage : se poser, puis tourner tout de suite.",
+    off: 0.6,
+    variants: 3,
+    relief: true,
+    only: ["rallye"],
+    build: (c) => (c.variant === 0 ? ["S", "U", "D", `${c.L}2`, "S"] : c.variant === 1 ? ["S", "B", "S", `${c.L}2`, "S"] : ["S", "D", "U", `${c.L}2`, "S"]),
+  },
+  {
+    name: "petit-saut",
+    label: "Petit saut et S",
+    category: "technique",
+    intent: "Une crête d'un niveau, et un S large juste derrière : on se pose déjà en tournant.",
+    off: 0.8,
+    variants: 2,
+    relief: true,
+    only: ["rallye"],
+    build: (c) => (c.variant === 0 ? ["S", "U", "D", `${c.L}2`, `${c.R}2`, "S"] : ["S", "B", "B", `${c.L}2/t`, `${c.R}2/t`, "S"]),
   },
   {
     name: "chicane-angles",

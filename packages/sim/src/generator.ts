@@ -1,12 +1,12 @@
 import { GENERATOR_VERSION } from "./constants";
 import { circuitNumber, formatDay } from "./calendar";
 import { bestPilotRun, withCut } from "./autopilot";
-import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
-import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { DEFAULT_PEAK, MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeFormat, type ThemeName } from "./themes";
+import { blockLength, shapeFingerprint } from "./fingerprint";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
-import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
+import { LEVEL, ROAD_WIDTHS, blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
 // Le circuit du jour : généré à partir de la date (graine = jour UTC), identique pour tout le monde.
 //
@@ -28,13 +28,15 @@ export const MAX_ATTEMPTS = 40;
  * Vitesse que le pilote doit dépasser au moins une fois (lot 15) : 30 % au-dessus de la pointe du plat. Un circuit sans
  * portion rapide (descente, turbos, grande courbe prise à fond) est refusé, graine voisine.
  */
-export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
+export const FAST_PEAK = DEFAULT_PEAK;
 
 /**
  * Écart-type de l'estimation (`estimateSeconds`) autour de la durée du pilote (≈ 0,95 × l'estimation sur 60 jours) : un circuit estimé au-delà de
  * `ESTIMATE_MAX` ou en deçà de `ESTIMATE_MIN` n'a aucune chance d'entrer dans la fenêtre 30–40 s, on le refuse sans faire rouler le pilote (4 courses).
  */
 const ESTIMATE_MIN = 30;
+/** Allure moyenne du pilote : sa durée ÷ la durée estimée (lot 20) ; une fiche de thème peut en donner une autre (lot 25, `pace`). */
+const PACE = 0.95;
 const ESTIMATE_MAX = 44;
 
 /** Seuils des médailles, en multiples du temps de l'auteur. */
@@ -91,11 +93,16 @@ interface Walk {
   y: number;
   cells: Set<number>;
   tokens: string[];
+  /** Lot 25 : hauteurs extrêmes atteintes, montée en cours (m) et blocs sans virage à la suite (fin de la liste). */
+  lo: number;
+  hi: number;
+  climb: number;
+  run: number;
 }
 
 /** Pose des blocs à la suite ; renvoie faux (et ne change rien) si l'un d'eux tombe sur une cellule prise. */
 function place(w: Walk, tokens: readonly string[]): boolean {
-  let { cx, cz, dir, y } = w;
+  let { cx, cz, dir, y, lo, hi, climb, run } = w;
   const added: number[] = [];
   for (const t of tokens) {
     const parsed = parseToken(t);
@@ -110,13 +117,22 @@ function place(w: Walk, tokens: readonly string[]): boolean {
       w.cells.add(key);
       added.push(key);
     }
-    y += exitDelta(kind, parsed.rise);
+    const rise = exitDelta(kind, parsed.rise);
+    y += rise;
+    lo = Math.min(lo, y);
+    hi = Math.max(hi, y);
+    climb = rise > 0 && kind !== "gap" ? climb + rise : 0;
+    run = isCurve(kind) ? 0 : run + 1;
     ({ cx, cz, dir } = placed.next);
   }
   w.cx = cx;
   w.cz = cz;
   w.dir = dir;
   w.y = y;
+  w.lo = lo;
+  w.hi = hi;
+  w.climb = climb;
+  w.run = run;
   w.tokens.push(...tokens);
   return true;
 }
@@ -148,15 +164,42 @@ export function reliefOf(tokens: readonly string[]): number {
   return hillRise(tokens);
 }
 
-/** Vrai si la suite de blocs, posée à la hauteur `y`, reste entre `Y_MIN` et `Y_MAX`. */
-function fits(y: number, seg: readonly string[]): boolean {
+/** Vrai si la suite de blocs, posée à la hauteur `y`, reste entre `Y_MIN` et `Y_MAX` (ou les hauteurs de la fiche du thème, lot 25). */
+function fits(y: number, seg: readonly string[], heights: readonly [number, number] = [Y_MIN, Y_MAX]): boolean {
   let h = y;
   for (const t of seg) {
     const p = parseToken(t);
     h += exitDelta(p.kind, p.rise);
-    if (h > Y_MAX || h < Y_MIN) return false;
+    if (h > heights[1] || h < heights[0]) return false;
   }
-  return y <= Y_MAX && y >= Y_MIN;
+  return y <= heights[1] && y >= heights[0];
+}
+
+/**
+ * Lot 25 : la suite de blocs respecte-t-elle, posée au bout de `w`, la fiche du thème (amplitude du relief, plus haute montée d'une traite,
+ * plus longue suite sans virage, plaques et super turbos) ? Pour les thèmes dont la fiche ne borne rien (bornes larges), toujours vrai.
+ */
+function suits(w: Walk, seg: readonly string[], f: ThemeFormat): boolean {
+  let { y, lo, hi, climb, run } = w;
+  let pads = 0;
+  let turbos = 0;
+  for (const t of [...w.tokens, ...seg]) {
+    const k = parseToken(t).kind;
+    if (k === "boost") pads++;
+    else if (k === "turbo") turbos++;
+  }
+  if (pads > f.pads || turbos > f.turbos) return false;
+  for (const t of seg) {
+    const p = parseToken(t);
+    const rise = exitDelta(p.kind, p.rise);
+    y += rise;
+    lo = Math.min(lo, y);
+    hi = Math.max(hi, y);
+    climb = rise > 0 && p.kind !== "gap" ? climb + rise : 0;
+    run = isCurve(p.kind) ? 0 : run + 1;
+    if (hi - lo > f.relief[1] || climb > f.climb || run > f.straight) return false;
+  }
+  return true;
 }
 
 const WIDTH_LETTERS: readonly WidthLetter[] = ["e", "n", "l"];
@@ -183,7 +226,7 @@ const tightCount = (tokens: readonly string[]) => tokens.filter((t) => {
 /** Figure du passage signature de chaque thème : le circuit la contient toujours. */
 export const SIGNATURE_FIGURE: Readonly<Record<Signature, string>> = {
   turboBank: "turbo-courbe",
-  dirtJump: "saut-terre",
+  dirtStage: "speciale",
   iceChicane: "chicane-glace",
   cutRun: "coupe-virage",
   dirtPinch: "etranglement-terre",
@@ -250,7 +293,11 @@ const ownedBy = (f: Figure, theme: Theme): boolean => !f.only || f.only.includes
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
-function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }): Figure[] | null {
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, why?: { v: string }): Figure[] | null {
+  const no = (v: string): null => {
+    if (why) why.v = v;
+    return null;
+  };
   const banned = new Set(theme.figures.ban);
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
@@ -265,7 +312,7 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     (!f.cuve || count_((g) => !!g.cuve) < CAP_CUVES) &&
     (!f.cut || count_((g) => !!g.cut) < CAP_CUTS) &&
     chosen.reduce((sum, g) => sum + minTightTurns(g), 0) + minTightTurns(f) <= maxTightOf(theme) &&
-    count_((g) => g.category === f.category) < CAP_CATEGORY[f.category];
+    count_((g) => g.category === f.category) < (theme.format.caps?.[f.category] ?? CAP_CATEGORY[f.category]);
   const pick = (pred: (f: Figure) => boolean): Figure | null => {
     const list = pool.filter((f) => allowed(f) && pred(f));
     if (list.length === 0) return null;
@@ -284,35 +331,41 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     return true;
   };
   // La règle propre du thème (lot 21) : l'une de ses figures obligatoires, si la signature n'en est pas une.
-  if (required.size > 0 && !required.has(signature.name) && !add(pick((f) => required.has(f.name)))) return null;
+  if (required.size > 0 && !required.has(signature.name) && !add(pick((f) => required.has(f.name)))) return no("figure obligatoire");
   // Un vrai saut et une cuve (selon le thème) : quand le thème veut les deux, une figure qui fait les deux à la fois (saut dans une cuve,
   // saut en sortie de paroi…) tient en moins de blocs que deux figures, et elle est préférée un peu plus d'une fois sur deux.
   const wantsJump = !signature.jump && wants.jump;
   const wantsCuve = wants.cuve;
   if (wantsJump && wantsCuve && rng.chance(55)) add(pick((f) => !!f.jump && !!f.cuve));
-  if (wantsCuve && !chosen.some((f) => f.cuve) && !add(pick((f) => f.category === "cuve")) && !add(pick((f) => !!f.cuve)) && theme.cuveChance >= 100) return null;
-  if (wantsJump && !chosen.some((f) => f.jump) && !add(pick((f) => !!f.jump && !f.cuve)) && !add(pick((f) => !!f.jump)) && theme.jumpChance >= 100) return null;
+  if (wantsCuve && !chosen.some((f) => f.cuve) && !add(pick((f) => f.category === "cuve")) && !add(pick((f) => !!f.cuve)) && theme.cuveChance >= 100) return no("cuve");
+  if (wantsJump && !chosen.some((f) => f.jump) && !add(pick((f) => !!f.jump && !f.cuve)) && !add(pick((f) => !!f.jump)) && theme.jumpChance >= 100) return no("saut");
+  // Lot 25 : les sauts exigés par la fiche (Canyon : deux, dont celui de la signature).
+  const format = theme.format;
+  while (count_((f) => !!f.jump) < format.jumps.count[0]) if (!add(pick((f) => !!f.jump && !f.cuve)) && !add(pick((f) => !!f.jump))) return no("sauts de la fiche");
   // Du dénivelé : une figure qui en fait (colline, virage en descente, crête…), la raide plus souvent dans les thèmes de relief marqué.
-  if (!chosen.some((f) => f.relief)) {
+  // Lot 25 : rien d'exigé quand la fiche veut un circuit plat (Banquise).
+  if (format.relief[0] > 0 && !chosen.some((f) => f.relief)) {
     const hill = rng.chance(theme.relief.steep) ? "colline-raide" : "colline-douce";
     // De préférence un virage dans le dénivelé (virage aveugle, en descente, crête) : une colline seule se prend à plein gaz.
-    if (!add(pick((f) => !!f.relief && f.category !== "relief")) && !add(pick((f) => f.name === hill)) && !add(pick((f) => !!f.relief))) return null;
+    if (!add(pick((f) => !!f.relief && f.category !== "relief")) && !add(pick((f) => f.name === hill)) && !add(pick((f) => !!f.relief))) return no("relief");
   }
   // Un freinage franc (élan de plus de 60 m/s, puis un virage) : c'est ce qui fait lâcher l'accélérateur ; il fait aussi la portion rapide.
-  while (chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking))) return null;
-  if (!chosen.some(isFast) && !add(pick(isFast))) return null;
+  // Lot 25 : la fiche peut s'en passer (Rallye : pas de plaque à freiner, les virages enchaînés font les freinages ; Banquise : pas de portion rapide).
+  if (format.braking) while (chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking))) return no("freinage franc");
+  if (format.fast && !chosen.some(isFast) && !add(pick(isFast))) return no("portion rapide");
   // Une figure favorite du thème (en plus de la signature), si elle tient dans le budget : c'est ce qui donne au thème sa couleur.
-  const seconds = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
-  if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= FIGURE_BUDGET + FAVORITE_SLACK));
-  while (count_((f) => f.category === "technique") < MIN_TECHNIQUES) if (!add(pick((f) => f.category === "technique"))) return null;
+  const seconds = () => chosen.reduce((sum, f) => sum + secondsIn(f, theme), 0);
+  const budget = format.budget;
+  if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + secondsIn(f, theme) <= budget + FAVORITE_SLACK));
+  while (count_((f) => f.category === "technique") < (format.techniques ?? MIN_TECHNIQUES)) if (!add(pick((f) => f.category === "technique"))) return no("techniques");
   // Le reste, au poids : jusqu'à cinq figures quoi qu'il arrive (les plus courtes si le budget est dépassé), puis tant que le budget le permet.
-  const total = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
+  const total = () => chosen.reduce((sum, f) => sum + secondsIn(f, theme), 0);
   while (chosen.length < count) {
-    const room = FIGURE_BUDGET - total();
-    const fitting = pick((f) => figureSeconds(f) <= room);
+    const room = budget - total();
+    const fitting = pick((f) => secondsIn(f, theme) <= room);
     if (fitting) add(fitting);
-    else if (chosen.length < FIGURES_MIN) {
-      const pool_ = pool.filter(allowed).sort((a, b) => figureSeconds(a) - figureSeconds(b));
+    else if (chosen.length < (format.count?.[0] ?? FIGURES_MIN)) {
+      const pool_ = pool.filter(allowed).sort((a, b) => secondsIn(a, theme) - secondsIn(b, theme));
       if (!add(pool_[0] ?? null)) break;
     } else break;
   }
@@ -320,12 +373,16 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
 }
 
 /** Ordre des figures : le tirage au hasard, avec un saut ni en tête (la voiture part de zéro) ni en queue (pas de saut juste avant l'arrivée). */
-function orderFigures(rng: Rng, figures: Figure[]): Figure[] | null {
+function orderFigures(rng: Rng, figures: Figure[], arrange = false): Figure[] | null {
   for (let tries = 0; tries < 12; tries++) {
     const order = rng.shuffle(figures);
     if (!order[0]!.jump && !order[order.length - 1]!.jump) return order;
   }
-  return null;
+  if (!arrange) return null;
+  // Lot 25 (fiche à deux sauts, Canyon) : les figures sans saut aux deux bouts, les sauts au milieu, dans l'ordre du dernier tirage.
+  const calm = figures.filter((f) => !f.jump);
+  if (calm.length < 2) return null;
+  return [calm[0]!, ...figures.filter((f) => f !== calm[0] && f !== calm[calm.length - 1]), calm[calm.length - 1]!];
 }
 
 /** Blocs droits ordinaires (ni effet, ni saut, ni relief, ni cuve ; revêtement, largeur et point de contrôle permis). */
@@ -355,6 +412,29 @@ export const MAX_PLAIN_STRAIGHT = 6;
 /** Relève les virages larges et amples ordinaires d'une figure (`L2` → `L2/b`) : le virage relevé se prend sur une trajectoire plus serrée, donc plus lentement. */
 const bankTurns = (tokens: readonly string[]): string[] => tokens.map((t) => (/^[LR][23]$/.test(t) ? withMod(t, "b") : t));
 
+/** Lot 25 (Canyon) : les virages larges deviennent amples (`L2` → `L3`, `R2/c` → `R3/c`) : des courbes qui se prennent à fond. */
+const grandTurns = (tokens: readonly string[]): string[] => tokens.map((t) => t.replace(/^([LR])2(?=\/|@|$)/, "$13"));
+
+const grandCache = new Map<string, number>();
+/**
+ * Durée estimée d'une figure dans un thème : `figureSeconds`, sauf pour une fiche aux grandes courbes (Canyon, lot 25) où ses virages larges
+ * sont posés en virages amples (plus longs).
+ */
+function secondsIn(f: Figure, theme: Theme): number {
+  if (!theme.format.grand) return figureSeconds(f);
+  let v = grandCache.get(f.name);
+  if (v === undefined) {
+    const all: number[] = [];
+    for (let k = 0; k < f.variants; k++) {
+      const body = buildFigure(f, true, "n", k);
+      if (body) all.push(estimateSeconds(grandTurns(body).slice(1)));
+    }
+    v = all.length ? all.reduce((a, b) => a + b, 0) / all.length : 0;
+    grandCache.set(f.name, v);
+  }
+  return v;
+}
+
 /** Liaisons entre deux figures : le plus souvent rien ou une droite ; parfois une plaque ou une bosse. */
 const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], ["S", "P", "S", "S"], ["S", "B", "S"]];
 
@@ -365,31 +445,44 @@ const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], [
  * figure deux fois. Chacune est posée dans un sens (miroir) et avec une variante tirés au sort, la première qui tient sur la grille
  * (sans croisement, sans dépasser les hauteurs permises, dans le budget de virages serrés) l'emporte.
  */
-export function composeFigures(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): Composition | null {
+export function composeFigures(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0, trace?: (why: string) => void): Composition | null {
+  // `trace` (mesure) reçoit le motif d'un refus : le script de mesure compte les refus par motif (lot 25).
+  const fail = (why: string): null => {
+    trace?.(why);
+    return null;
+  };
   // Variante 0 : la graine d'origine. Variante n : une autre graine, décalée de n × 1000 tentatives (au plus `MAX_ATTEMPTS` = 40 sont
   // tirées : jamais de recoupement entre variantes).
   const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
-  const count = FIGURES_MIN + rng.int(FIGURES_SPAN);
+  const format = theme.format;
+  const count = format.count ? format.count[0] + rng.int(format.count[1] - format.count[0] + 1) : FIGURES_MIN + rng.int(FIGURES_SPAN);
   // Plusieurs tirages de figures, le premier dont la durée estimée tient dans le budget l'emporte (sinon le plus court) : les figures
   // obligatoires d'un thème (saut, cuve, signature) pèsent lourd, et sept tirages sur dix donneraient un circuit trop long.
   // Un saut et une cuve, selon les chances du thème : tirés une fois pour toutes (les tirages de figures ne les écartent pas).
   const wants = { jump: rng.chance(theme.jumpChance), cuve: theme.cuveChance > 0 && rng.chance(theme.cuveChance) };
   let picked: Figure[] | null = null;
   let best = -Infinity;
+  const why = { v: "" };
   for (let tries = 0; tries < SELECTION_TRIES; tries++) {
-    const candidate = selectFigures(rng, theme, day, count, wants);
+    const candidate = selectFigures(rng, theme, day, count, wants, why);
     if (!candidate) continue;
-    const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
+    const seconds = candidate.reduce((sum, f) => sum + secondsIn(f, theme), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
-    const score = (seconds <= FIGURE_TOTAL_MAX ? 1000 : -seconds) + candidate.reduce((sum, f) => sum + f.off, 0);
+    const score = (seconds <= FIGURE_TOTAL_MAX - FIGURE_BUDGET + theme.format.budget ? 1000 : -seconds) + candidate.reduce((sum, f) => sum + f.off, 0);
     if (score > best) {
       best = score;
       picked = candidate;
     }
   }
-  if (!picked) return null;
-  const order = orderFigures(rng, picked);
-  if (!order) return null;
+  if (!picked) return fail(`sélection : ${why.v}`);
+  const shuffled = orderFigures(rng, picked, format.jumps.count[0] >= 2);
+  if (!shuffled) return fail("ordre des figures");
+  const sig = shuffled.find((f) => f.name === SIGNATURE_FIGURE[theme.signature]);
+  // Lot 25 (Rallye) : la signature ouvre le circuit, sa figure obligatoire suit (la grille est encore libre ; plus loin, une spéciale de quatre
+  // virages ne trouve souvent plus sa place, et une figure obligatoire remplacée à la pose casserait la règle du thème).
+  const req = shuffled.find((f) => theme.figures.require?.includes(f.name) && f !== sig);
+  const first = [sig, req].filter((f): f is Figure => !!f);
+  const order = format.signatureFirst && sig ? [...first, ...shuffled.filter((f) => !first.includes(f))] : shuffled;
 
   // Largeurs : la route démarre à une largeur tirée selon le thème, et change avant certaines figures tirées d'avance.
   const weights = theme.widths.weights;
@@ -399,8 +492,14 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   const changeCount = theme.widths.changes[0] + rng.int(theme.widths.changes[1] - theme.widths.changes[0] + 1);
   const changeSlots = new Set<number>();
   for (let tries = 0; changeSlots.size < changeCount && tries < 40; tries++) changeSlots.add(rng.int(order.length));
+  // Lot 25 : une fiche qui veut une largeur dominante (Rallye, Banquise, Canyon) ne quitte sa largeur que le temps d'une figure, vers la
+  // fin du circuit : l'avant-dernière figure change de largeur, la dernière revient (ou, si elle ne le peut pas, le circuit finit ainsi).
+  if (format.width.share > 0 && changeCount === 2) {
+    changeSlots.clear();
+    changeSlots.add(Math.max(1, order.length - 2)).add(order.length - 1);
+  }
 
-  const w: Walk = { cx: 0, cz: 0, dir: 0, y: 0, cells: new Set(), tokens: [] };
+  const w: Walk = { cx: 0, cz: 0, dir: 0, y: 0, cells: new Set(), tokens: [], lo: 0, hi: 0, climb: 0, run: 0 };
   place(w, [`S/${width}`]);
   const placed: PlacedFigure[] = [];
   let tightLeft = maxTightOf(theme);
@@ -421,7 +520,8 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
     let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number } | null = null;
     for (const figure of alternatives) {
       // Pas de liaison derrière une longue ligne droite (le dégagement d'une figure suffit), ni avant le premier.
-      const connector = i === 0 || trailingStraights(w.tokens) > 1 ? [] : [...CONNECTORS[rng.int(CONNECTORS.length)]!];
+      // Lot 25 : pas de liaison plate dans un thème qui descend (Col alpin), le tirage a lieu quand même (même suite de tirages).
+      const connector = i === 0 || trailingStraights(w.tokens) > 1 ? [] : [...CONNECTORS[rng.int(CONNECTORS.length)]!].filter(() => format.descent === 0);
       const target = changeSlots.has(i) ? pickWidth(rng, weights, NEXT_WIDTHS[width]) : null;
       const variants = rng.shuffle(Array.from({ length: figure.variants }, (_, v) => v));
       const banked = rng.chance(theme.bankChance); // virages relevés dans cette figure (selon le thème), sauf si elle n'a pas de virage ordinaire
@@ -433,13 +533,20 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
           for (const left of mirrors) {
             const plain = buildFigure(figure, left, entry, v);
             if (!plain) continue;
-            const body = banked && !figure.cuve ? bankTurns(plain) : plain;
+            const shaped = format.grand ? grandTurns(plain) : plain;
+            const body = banked && !figure.cuve ? bankTurns(shaped) : shaped;
             // La droite d'amorce d'une figure est celle qui termine la précédente (ou le départ) : on ne la pose pas deux fois.
-            const lead = connector.length === 0 && prefix.length === 0 && body[0] === "S" && /^S(\/[a-z]*)?(@start)?$/.test(w.tokens[w.tokens.length - 1] ?? "") ? 1 : 0;
-            const tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...body.slice(lead)];
-            if (tightCount(tokens) > tightLeft || !fits(w.y, tokens)) continue;
-            // Le premier relief d'un circuit fait au moins deux niveaux : c'est lui qui garantit le dénivelé minimal.
-            if (figure.relief && !majorHill && hillRise(body) < MIN_RELIEF) continue;
+            // Lot 25 : dans un thème aux droites courtes (Rallye), la droite d'amorce saute dès qu'une ligne droite la précède (pente, bosse ou
+            // transition de largeur comprises) : la transition sert alors d'amorce.
+            // Le changement de largeur se fait alors sur la droite d'amorce elle-même (`S/t` → `S/te>n`) : pas de ligne droite de plus.
+            const merge = format.straight < 99 && prefix.length > 0 && isPlainStraight(body[0]!) && !body[0]!.includes(">");
+            const short = format.straight < 99 && !merge && isPlainStraight(body[0]!) && w.run > 0;
+            const lead = merge || short || (connector.length === 0 && prefix.length === 0 && body[0] === "S" && /^S(\/[a-z]*)?(@start)?$/.test(w.tokens[w.tokens.length - 1] ?? "")) ? 1 : 0;
+            const head = merge ? [withMod(body[0]!, `${width}>${target!}`)] : prefix;
+            const tokens = [...(figure.jump || figure.cuve ? [] : connector), ...head, ...body.slice(lead)];
+            if (tightCount(tokens) > tightLeft || !fits(w.y, tokens, format.heights) || !suits(w, tokens, format)) continue;
+            // Le premier relief d'un circuit fait au moins deux niveaux : c'est lui qui garantit le dénivelé minimal (le minimum de la fiche, lot 25).
+            if (figure.relief && !majorHill && hillRise(body) < Math.min(format.relief[0], MIN_RELIEF)) continue;
             const before = w.tokens.length;
             if (!place(w, tokens)) continue;
             done = { figure, tokens, variant: v, left, before };
@@ -449,25 +556,28 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
       }
       if (done) break;
     }
-    if (!done) return null;
+    if (!done) return fail(`pose : ${order[i]!.name}`);
     if (done.figure.name !== order[i]!.name) {
       names.delete(order[i]!.name);
       names.add(done.figure.name);
     }
     tightLeft -= tightCount(done.tokens);
-    if (done.figure.relief && hillRise(done.tokens) >= MIN_RELIEF) majorHill = true;
+    if (done.figure.relief && hillRise(done.tokens) >= Math.min(format.relief[0], MIN_RELIEF)) majorHill = true;
     placed.push({ name: done.figure.name, variant: done.variant, left: done.left, from: done.before, to: w.tokens.length });
+    const before = width;
     width = widthAfter(done.tokens, width);
+    // Lot 25 : un changement de largeur que la figure n'a pas pris est reporté à la suivante (fiche à largeur dominante seulement).
+    if (format.width.share > 0 && changeSlots.has(i) && width === before) changeSlots.add(i + 1);
     usedWidths.add(width);
   }
 
-  // Dernière ligne droite puis arrivée.
-  if (!place(w, ["S"]) && !place(w, ["S", "S"])) return null;
-  if (!place(w, ["S@finish"])) return null;
-  if (usedWidths.size < 2) return null; // au moins deux largeurs par circuit
-  if (placed.some((p) => figureByName(p.name)!.cuve) && !w.tokens.some((t) => parseToken(t).cuve)) return null;
+  // Dernière ligne droite puis arrivée (lot 25 : sans elle si la fiche limite les droites et que la figure en laisse déjà deux).
+  if (!(w.run >= 2 && format.straight < 99) && !place(w, ["S"]) && !place(w, ["S", "S"])) return fail("arrivée");
+  if (!place(w, ["S@finish"])) return fail("arrivée");
+  if (usedWidths.size < 2) return fail("une seule largeur"); // au moins deux largeurs par circuit
+  if (placed.some((p) => figureByName(p.name)!.cuve) && !w.tokens.some((t) => parseToken(t).cuve)) return fail("cuve");
   w.tokens[0] = `S/${startWidth}@start`;
-  if (longestPlainStraight(w.tokens) > MAX_PLAIN_STRAIGHT) return null;
+  if (longestPlainStraight(w.tokens) > (format.plain ?? MAX_PLAIN_STRAIGHT)) return fail("ligne droite sans figure");
 
   // Points de contrôle (2 à 4), répartis le long du circuit, sur des lignes droites. Un moteur coupé est suivi d'un
   // point de contrôle deux blocs plus loin : « on vit sur son élan » ~1 s, pas jusqu'à la fin du circuit.
@@ -476,7 +586,7 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   const used2 = new Set<number>();
   const cutAt = w.tokens.indexOf("C");
   if (cutAt >= 0) {
-    if (w.tokens[cutAt + 1] !== "S" || w.tokens[cutAt + 2] !== "S" || cutAt + 2 >= n - 1) return null;
+    if (w.tokens[cutAt + 1] !== "S" || w.tokens[cutAt + 2] !== "S" || cutAt + 2 >= n - 1) return fail("moteur coupé");
     used2.add(cutAt + 2);
   }
   const cpCount = used2.size > 0 ? 2 + rng.int(2) : 2 + rng.int(3); // le point de contrôle du moteur coupé compte
@@ -497,12 +607,17 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   // d'un moteur coupé (il veut deux droites ordinaires derrière lui).
   if (theme.zones) assignZones(w.tokens, theme.zones, rng, cutAt >= 0 ? new Set([cutAt, cutAt + 1, cutAt + 2, cutAt + 3]) : undefined);
   // Dénivelé minimal, puis sections sans rebords sur les parties surélevées.
-  if (reliefOf(w.tokens) < MIN_RELIEF) return null;
+  if (reliefOf(w.tokens) < format.relief[0]) return fail("dénivelé");
   if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng);
   // Identité du thème (lot 21) : route bosselée, puis bas-côtés.
   if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng);
+  // Revêtements exigés par la fiche (lot 25) : la glace de la Banquise, la terre du Rallye, complétées jusqu'à leur part.
+  for (const [surface, share] of Object.entries(format.surfaces) as [BlockSurface, number][]) fillSurface(w.tokens, surface, share, rng);
   assignShoulders(w.tokens, theme.shoulder, rng);
-  return { spec: w.tokens.join(" "), figures: placed };
+  const spec = w.tokens.join(" ");
+  const violations = formatViolations(parseTrack("format", spec), format);
+  if (violations.length > 0) return fail(`fiche : ${violations[0]!.replace(/[\d.,−-]+/g, "#")}`);
+  return { spec, figures: placed };
 }
 
 /** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée (voir `composeFigures`). */
@@ -647,6 +762,60 @@ function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng
   }
 }
 
+/**
+ * Lot 25 : complète un revêtement jusqu'à sa part `share` de la longueur du circuit (la glace de la Banquise) : on étend d'abord les zones
+ * existantes d'un bloc de chaque côté, puis on en ouvre de nouvelles, sur les blocs qui peuvent en porter (`surfaceable`).
+ */
+function fillSurface(tokens: string[], surface: BlockSurface, share: number, rng: Rng): void {
+  const n = tokens.length;
+  const lengthOf = (t: string) => blockLength(parseToken(t));
+  const total = tokens.reduce((s, t) => s + lengthOf(t), 0);
+  let have = tokens.reduce((s, t) => s + (parseToken(t).surface === surface ? lengthOf(t) : 0), 0);
+  const mod = surfaceMod(surface);
+  for (let guard = 0; have < share * total && guard < n; guard++) {
+    const free: number[] = [];
+    const next: number[] = [];
+    for (let i = 0; i < n; i++) {
+      if (!surfaceable(tokens[i]!, i, n)) continue;
+      free.push(i);
+      if (parseToken(tokens[i - 1] ?? "S").surface === surface || parseToken(tokens[i + 1] ?? "S").surface === surface) next.push(i);
+    }
+    const pool = next.length > 0 ? next : free;
+    if (pool.length === 0) return;
+    const i = pool[rng.int(pool.length)]!;
+    tokens[i] = withMod(tokens[i]!, mod);
+    have += lengthOf(tokens[i]!);
+  }
+}
+
+/**
+ * Lot 25 : ce qui, dans un circuit, contredit la fiche de format de son thème (liste vide : il la respecte). Le générateur refuse la tentative
+ * (graine voisine) ; les tests et le script de mesure s'en servent aussi.
+ */
+export function formatViolations(track: Track, f: ThemeFormat): string[] {
+  const out: string[] = [];
+  const s = shapeFingerprint(track);
+  const inRange = (v: number, [lo, hi]: readonly [number, number]) => v >= lo - 1e-9 && v <= hi + 1e-9;
+  if (!inRange(s.net, f.net)) out.push(`dénivelé net ${s.net} m hors de [${f.net[0]} ; ${f.net[1]}]`);
+  if (!inRange(s.relief, f.relief)) out.push(`amplitude ${s.relief} m hors de [${f.relief[0]} ; ${f.relief[1]}]`);
+  if (s.descent < f.descent) out.push(`descente ${(100 * s.descent).toFixed(0)} % < ${(100 * f.descent).toFixed(0)} %`);
+  if (s.climb > f.climb) out.push(`montée de ${s.climb} m > ${f.climb} m`);
+  if (f.finishLow) {
+    const last = track.blocks[track.blocks.length - 1]!;
+    const lowest = Math.min(...track.blocks.map((b) => Math.min(b.y0, b.y0 + b.rise)));
+    if (last.y0 - lowest > LEVEL) out.push(`arrivée ${last.y0 - lowest} m au-dessus du point le plus bas`);
+  }
+  const main = ROAD_WIDTHS[f.width.main];
+  const mainLen = track.blocks.reduce((sum, b) => sum + ((b.w0 + b.w1) / 2 === main ? blockLength(b) : 0), 0);
+  if (mainLen / s.length < f.width.share) out.push(`route de ${main} m sur ${(100 * mainLen / s.length).toFixed(0)} % < ${(100 * f.width.share).toFixed(0)} %`);
+  if (!inRange(s.turns, f.turns)) out.push(`${s.turns.toFixed(2)} virages / 100 m hors de [${f.turns[0]} ; ${f.turns[1]}]`);
+  if (s.straight > f.straight) out.push(`droite de ${s.straight} blocs > ${f.straight}`);
+  if (!inRange(s.jumps, f.jumps.count)) out.push(`${s.jumps} saut(s) hors de [${f.jumps.count[0]} ; ${f.jumps.count[1]}]`);
+  if (s.longestGap < f.jumps.longGap) out.push(`vide le plus long ${s.longestGap} cellule(s) < ${f.jumps.longGap}`);
+  for (const [k, min] of Object.entries(f.surfaces) as [BlockSurface, number][]) if (s.surfaces[k] < min) out.push(`${k} ${(100 * s.surfaces[k]).toFixed(0)} % < ${(100 * min).toFixed(0)} %`);
+  return out;
+}
+
 function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: Rng, protect?: ReadonlySet<number>): void {
   const n = tokens.length;
   const count = zones.count[0] + rng.int(zones.count[1] - zones.count[0] + 1);
@@ -710,12 +879,14 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     const composed = composeFigures(day, attempt, theme, variant);
     if (!composed) continue;
     const { spec } = composed;
-    const estimate = estimateSeconds(spec.split(" "));
+    // L'estimation, ramenée à l'allure du thème (lot 25 : `pace`, 0,95 par défaut, comme les bornes `ESTIMATE_MIN` / `ESTIMATE_MAX`).
+    const estimate = (estimateSeconds(spec.split(" ")) * (theme.format.pace ?? PACE)) / PACE;
     if (estimate < ESTIMATE_MIN || estimate > ESTIMATE_MAX) continue;
     const track = parseTrack(id, spec);
     // La coupe par le bas-côté (lot 21) n'est essayée que sur la tentative retenue : une course de plus, pas une par tentative.
     const uncut = bestPilotRun(track, { cut: false });
-    if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
+    // La pointe exigée est celle de la fiche du thème (lot 25 ; `FAST_PEAK` = 62,4 m/s par défaut, rien pour le Rallye et la Banquise, 70 pour le Col).
+    if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < theme.format.speed.peak) continue;
     const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
     return {
       day,
