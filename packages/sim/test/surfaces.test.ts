@@ -292,9 +292,9 @@ describe("virages relevés", () => {
 });
 
 describe("thèmes", () => {
-  it("cinq thèmes, chacun avec sa palette, et un nom affichable", () => {
-    expect([...THEME_NAMES].sort()).toEqual(["banquise", "campagne", "nuit", "rallye", "stade"]);
+  it("huit thèmes (lot 22), chacun avec sa palette, et un nom affichable", () => {
+    expect([...THEME_NAMES].sort()).toEqual(["banquise", "campagne", "canyon", "col", "nuit", "rallye", "stade", "ville"]);
     for (const name of THEME_NAMES) expect(THEMES[name].label.length).toBeGreaterThan(2);
-    expect(new Set(THEME_NAMES.map((n) => THEMES[n].palette)).size).toBe(5);
+    expect(new Set(THEME_NAMES.map((n) => THEMES[n].palette)).size).toBe(8);
   });
 });

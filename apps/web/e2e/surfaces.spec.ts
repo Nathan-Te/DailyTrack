@@ -65,7 +65,7 @@ test("?scenario=surfaces : le circuit se charge, chaque revêtement et chaque ef
 });
 
 test("?seed=…&theme=… : chaque thème se charge et s'annonce dans l'en-tête, comme thème forcé et non classé", async ({ page }) => {
-  test.setTimeout(240_000); // cinq chargements (circuit généré et validé dans le navigateur, rendu logiciel de la CI)
+  test.setTimeout(400_000); // huit chargements (lot 22) (circuit généré et validé dans le navigateur, rendu logiciel de la CI)
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   for (const name of THEME_NAMES) {

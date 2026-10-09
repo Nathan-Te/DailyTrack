@@ -63,6 +63,34 @@ export function signatureBlocks(track: Track, sig: Signature): [number, number] 
       while (from > 0 && c - from < 4 && (bs[from - 1]!.w0 !== bs[from - 1]!.w1 || bs[from - 1]!.surface === "dirt")) from--;
       return [from, c];
     }
+    case "rockJump": {
+      // la paroi (cuve) puis la rampe, le ravin et la réception : de la dernière paroi avant la rampe à la réception
+      const k = find((b, i) => b.kind === "kick" && bs.slice(Math.max(0, i - 8), i).some((x) => x.cuve > 0));
+      if (k < 0) return null;
+      let wall = k - 1;
+      while (wall >= 0 && !(bs[wall]!.cuve > 0)) wall--;
+      while (wall > 0 && bs[wall - 1]!.cuve > 0) wall--;
+      let end = k + 1;
+      while (bs[end]?.kind === "gap") end++;
+      return [wall, Math.min(bs.length - 1, end)];
+    }
+    case "switchbacks": {
+      // lacets : des virages larges qui se suivent dans la pente (au moins deux en sept blocs, avec une montée ou une descente)
+      const wideCurve = (b: Block | undefined) => !!b && isCurve(b.kind) && !isTight(b);
+      const c = find((b, i) => {
+        if (!wideCurve(b)) return false;
+        const win = bs.slice(i, i + 7);
+        return win.filter(wideCurve).length >= 2 && bs.slice(Math.max(0, i - 1), i + 7).some((x) => x.kind === "down" || x.kind === "up");
+      });
+      return c < 0 ? null : [Math.max(0, c - 1), Math.min(bs.length - 1, c + 6)];
+    }
+    case "rightAngles": {
+      // angles droits en chicane : un virage serré et le suivant, à trois blocs au plus
+      const c = find((b, i) => isTight(b) && bs.slice(i + 1, i + 4).some(isTight));
+      if (c < 0) return null;
+      const last = c + 1 + bs.slice(c + 1, c + 4).findIndex(isTight);
+      return [c, last];
+    }
   }
 }
 

@@ -53,6 +53,23 @@ describe("passage signature des miniatures", () => {
     expect(signatureBlocks(track("S@start S L/t S S@finish"), "dirtPinch")).not.toBeNull(); // déjà étroit : le virage lui-même
     expect(signatureBlocks(track("S@start S/e>l S/l L/t S S@finish"), "dirtPinch")).toBeNull(); // route large : pas un étranglement
   });
+  it("Canyon : de la paroi à la réception du long saut", () => {
+    const t = track("S@start S S ML ML ML S P S K G G D S S S@finish");
+    expect(signatureBlocks(t, "rockJump")).toEqual([3, 12]);
+    expect(signatureBlocks(track("S@start S S K GD S S@finish"), "rockJump")).toBeNull(); // un saut sans paroi n'est pas la signature
+  });
+  it("Col alpin : des virages larges dans la pente", () => {
+    const t = track("S@start S S S D L2 D R2 D L2 S S S@finish");
+    const [from, to] = signatureBlocks(t, "switchbacks")!;
+    expect(from).toBeLessThanOrEqual(4);
+    expect(to).toBeGreaterThanOrEqual(9);
+    expect(signatureBlocks(track("S@start S S L2 S S S S@finish"), "switchbacks")).toBeNull();
+  });
+  it("Ville : d'un angle droit au suivant", () => {
+    const t = track("S@start S S L S R S S S S@finish");
+    expect(signatureBlocks(t, "rightAngles")).toEqual([3, 5]);
+    expect(signatureBlocks(track("S@start S L S S S S S R S@finish"), "rightAngles")).toBeNull(); // trop loin l'un de l'autre
+  });
 });
 
 describe("portion montrée", () => {

@@ -152,7 +152,7 @@ describe("sortir sur un bas-côté ralentit, dans un ordre documenté, sans fair
   });
 
   it("braquages au hasard (graine fixe) sur des bas-côtés : la voiture ne tombe jamais et ne passe pas le rebord du bout de la bande", () => {
-    for (const sh of ["~h", "~t", "~p"]) {
+    for (const sh of ["~h", "~t", "~p", "~s"]) {
       const track = parseTrack("hasard", `S/e@start S/${sh} S S L2 S S T S S S S S S R S S S L3 S S S/~r S@finish`);
       const world = trackWorld(track);
       const s = createSurface();

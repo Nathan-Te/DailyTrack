@@ -198,11 +198,11 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
     }
   });
 
-  it("limite les virages serrés : deux au plus par circuit, jamais deux de suite, jamais sur la route large", () => {
+  it("limite les virages serrés : deux au plus par circuit (quatre à Ville, lot 22), jamais deux de suite, jamais sur la route large", () => {
     for (const day of DAYS) {
-      const { track, spec } = circuit(day);
+      const { track, spec, theme } = circuit(day);
       const tight = track.blocks.filter((b) => isTight(b.kind));
-      expect(tight.length, spec).toBeLessThanOrEqual(2);
+      expect(tight.length, spec).toBeLessThanOrEqual(theme === "ville" ? 4 : 2);
       for (const b of tight) {
         expect(b.w0, `${spec} @${b.index}`).toBeLessThan(26);
         const next = track.blocks[b.index + 1];
@@ -212,7 +212,8 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
   });
 
   it("préfère les courbes amples : en moyenne, plus de trois fois plus de virages larges ou amples que de virages serrés (cinq fois avant les figures du lot 20 : les techniques en ont plus)", () => {
-    const blocks = DAYS.flatMap((d) => circuit(d).track.blocks);
+    // Ville (lot 22) fait des angles droits son identité : elle est comptée à part.
+    const blocks = DAYS.map(circuit).filter((c) => c.theme !== "ville").flatMap((c) => c.track.blocks);
     const wide = blocks.filter((b) => isWide(b.kind)).length;
     const tight = blocks.filter((b) => isTight(b.kind)).length;
     expect(wide).toBeGreaterThan(3 * tight);
@@ -411,7 +412,9 @@ describe("identité des thèmes (lot 21)", () => {
       for (const c of of(name)) {
         const blocks = c.track.blocks;
         const shoulders = new Set(blocks.flatMap((b) => (b.shoulder ? [b.shoulder] : [])));
-        if (theme.shoulder.kind === "void") {
+        if (theme.shoulder.share === 0) {
+          expect(shoulders.size, c.spec).toBe(0); // Ville : béton, rien au bord de la route
+        } else if (theme.shoulder.kind === "void") {
           expect(shoulders.size, c.spec).toBe(0);
           expect(blocks.some((b) => b.open), c.spec).toBe(true);
         } else {

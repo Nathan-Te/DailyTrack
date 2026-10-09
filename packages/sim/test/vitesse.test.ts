@@ -133,6 +133,9 @@ describe("pas de traversée à la vitesse maximale", () => {
     ride("S@start S/~h S S S S S S S S S S S/~r S@finish", 88, (_race, tick) => (Math.floor(tick / 40) % 2 === 0 ? 1 : -1), 6);
     ride("S@start S S/~h S L2 S S S/~r S S S@finish", 88, () => 0, 5);
     ride("S/n@start S S/~t S R S/~r S S S S@finish", 88, () => 0, 5);
+    // Lot 22 : le sable en bas-côté et en revêtement de bloc se comporte comme les autres bandes.
+    ride("S@start S/~s S S S S S S S S S S S/~r S@finish", 88, (_race, tick) => (Math.floor(tick / 40) % 2 === 0 ? 1 : -1), 6);
+    ride("S/n@start S S/s S/s R/s S S S S@finish", 88, () => 0, 5);
     // Lancée sur la bande, droit dans la face d'un bloc à rebords (et dans celle d'une cuve).
     for (const spec of ["S@start S/~h S S S/~r S S S@finish", "S@start S/~p S S V V S S S@finish"]) {
       const track = parseTrack("face", spec);

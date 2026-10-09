@@ -161,7 +161,7 @@ test("circuits d'essai : N tire un circuit au hasard, T change de thème, le pan
   // panneau : bouton « au hasard » et puces de thème
   await page.keyboard.press("KeyH");
   await expect(page.locator("#archive .dice")).toBeVisible();
-  await expect(page.locator("#archive .chips a")).toHaveCount(6);
+  await expect(page.locator("#archive .chips a")).toHaveCount(9); // « Jour » et les huit thèmes (lot 22)
   await page.locator("#archive .chips a", { hasText: "Nuit" }).click();
   await page.waitForURL(/theme=nuit/);
 });
