@@ -25,6 +25,8 @@ export interface TouchHooks {
   onPause(): void;
   onRespawn(): void;
   onRestart(): void;
+  /** Caméra suivante (proche, loin, capot). */
+  onCamera(): void;
 }
 
 export interface TouchUi {
@@ -229,7 +231,10 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const pauseBtn = button("pause", "⏸", "Pause", () => hooks.onPause());
   const full = button("full", "⛶", "Plein écran", () => void toggleFullscreen());
   full.hidden = !canFullscreen();
+  // Le bouton caméra est le premier de la barre : la barre va de ≈ 34 % à 66 % de la largeur et le bouton tombe à ≈ 34–39 %, loin des
+  // frontières entre zones (25 / 50 / 75 %) ; un test (`cameras.spec.ts`) mesure l'écart avec `?zones=1`.
   bar.replaceChildren(
+    button("camera", "🎥", "Changer de caméra", () => hooks.onCamera()),
     pauseBtn,
     button("respawn", "↺", "Recommencer au dernier point de contrôle", () => hooks.onRespawn()),
     button("restart", "⟲", "Recommencer depuis le départ", () => hooks.onRestart()),

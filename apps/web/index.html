@@ -50,6 +50,11 @@
       #lines, #flash { position: fixed; inset: 0; pointer-events: none; opacity: 0; }
       #lines { background: repeating-conic-gradient(from 0deg at 50% 52%, rgba(255,255,255,.55) 0deg .35deg, transparent .35deg 7deg); -webkit-mask-image: radial-gradient(ellipse at 50% 52%, transparent 38%, #000 80%); mask-image: radial-gradient(ellipse at 50% 52%, transparent 38%, #000 80%); }
       #fall { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at center, rgba(8,10,20,.35) 0%, rgba(4,5,12,.96) 78%); }
+      /* Caméra capot (lot 23) : le museau de la voiture en bas de l'écran (la carrosserie 3D est cachée, la caméra est devant elle). */
+      #hood { display: none; position: fixed; left: 22%; right: 22%; bottom: -3%; height: 17%; pointer-events: none; z-index: 0; background: linear-gradient(180deg, #f08a2a 0%, #c85a12 55%, #7a3408 100%); clip-path: polygon(0 100%, 7% 38%, 24% 10%, 76% 10%, 93% 38%, 100% 100%); box-shadow: inset 0 3px 0 rgba(255,255,255,.25); }
+      #hood::after { content: ""; position: absolute; left: 44%; right: 44%; top: 0; bottom: 0; background: rgba(250,236,200,.85); }
+      body.cam-hood #hood { display: block; }
+      body.finished #hood { display: none; }
       #flash { background: radial-gradient(ellipse at center, rgba(120,200,255,0) 40%, rgba(120,200,255,.55) 100%); }
       #finish .medal { position: relative; overflow: hidden; }
       #finish .medal::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%); transform: translateX(-100%); animation: glint 1.4s ease-out .5s 2; pointer-events: none; }
@@ -272,6 +277,7 @@
     <div id="fx" class="hud"></div>
     <div id="lines"></div>
     <div id="flash"></div>
+    <div id="hood"></div>
     <div id="fall"></div>
     <div id="tbar"></div>
     <div id="tsettings" hidden></div>

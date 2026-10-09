@@ -86,6 +86,7 @@ $("random").addEventListener("click", () => set({ date: formatDay(PREMIER_JOUR +
 
 const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const;
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));
+$<HTMLSelectElement>("camera").addEventListener("change", (e) => set({ camera: (e.target as HTMLSelectElement).value as AdminState["camera"] }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));
 $<HTMLSelectElement>("steer").addEventListener("change", (e) => set({ steer: (e.target as HTMLSelectElement).value as AdminState["steer"] }));
 $<HTMLSelectElement>("touch").addEventListener("change", (e) => set({ touch: (e.target as HTMLSelectElement).value as AdminState["touch"] }));
@@ -155,6 +156,7 @@ function render() {
   theme.value = state.theme;
   for (const id of checks) $<HTMLInputElement>(id).checked = state[id];
   $<HTMLSelectElement>("quality").value = state.quality;
+  $<HTMLSelectElement>("camera").value = state.camera;
   $<HTMLSelectElement>("touch").value = state.touch;
   $<HTMLSelectElement>("thumbs").value = state.thumbs;
   $<HTMLSelectElement>("steer").value = state.steer;

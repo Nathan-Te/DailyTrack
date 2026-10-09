@@ -24,6 +24,8 @@ export interface AdminState {
   demo: boolean;
   fxOff: boolean;
   quality: "" | "0" | "1" | "2";
+  /** Caméra forcée au chargement (`?camera=`, lot 23) : "" celle mémorisée. */
+  camera: "" | "proche" | "loin" | "capot";
   shakeOff: boolean;
   ghostOff: boolean;
   touch: "" | "1" | "0";
@@ -52,6 +54,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   demo: false,
   fxOff: false,
   quality: "",
+  camera: "",
   shakeOff: false,
   ghostOff: false,
   touch: "",
@@ -84,6 +87,7 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.demo) p.set("demo", "");
   if (s.fxOff) p.set("fx", "off");
   if (s.quality !== "") p.set("quality", s.quality);
+  if (s.camera !== "") p.set("camera", s.camera);
   if (s.shakeOff) p.set("shake", "0");
   if (s.ghostOff) p.set("ghost", "off");
   if (s.touch !== "") p.set("touch", s.touch);
@@ -111,6 +115,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
+    if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
     if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;
     if (o.touch === "" || o.touch === "1" || o.touch === "0") s.touch = o.touch;

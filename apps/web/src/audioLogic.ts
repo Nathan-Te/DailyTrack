@@ -1,7 +1,7 @@
 // Logique pure du son (lot 9) : régime du moteur, crissement, bruit de roulement, réglages. Aucun accès à Web Audio
 // ici : testé par Vitest. Rien de tout cela ne touche à la simulation.
 
-import type { SurfaceKind } from "@cdj/sim";
+import type { PaletteName, SurfaceKind } from "@cdj/sim";
 
 /** Vitesses (m/s) de changement de rapport : le son simule six rapports, la voiture n'en a pas. */
 export const GEAR_SPEEDS = [0, 11, 20, 29, 38, 48, 70] as const;
@@ -157,4 +157,59 @@ export function landingSound(strength: number, quality: number): LandingSound {
     thumpDur: 0.16 + 0.14 * bad,
     thumpGain: 0.3 * Math.min(1, 0.3 + n) * (0.8 + 0.5 * bad),
   };
+}
+
+// --- Ambiance sonore par thème (lot 23) ---------------------------------------------------------------------
+
+/** Les sept ambiances : foule (Stade), brise (Rallye), vent (Banquise, Col alpin), vent chaud (Canyon), grillons (Campagne), rumeur urbaine (Ville), bourdonnement électrique (Nuit). */
+export type AmbienceKind = "crowd" | "breeze" | "wind" | "hotwind" | "crickets" | "city" | "hum";
+
+export const AMBIENCE_KINDS: readonly AmbienceKind[] = ["crowd", "breeze", "wind", "hotwind", "crickets", "city", "hum"];
+
+/** L'ambiance de chaque palette (donc de chaque thème). */
+export function ambienceFor(palette: PaletteName): AmbienceKind {
+  switch (palette) {
+    case "stade":
+      return "crowd";
+    case "desert":
+      return "breeze";
+    case "neige":
+    case "alpin":
+      return "wind";
+    case "canyon":
+      return "hotwind";
+    case "campagne":
+      return "crickets";
+    case "ville":
+      return "city";
+    default:
+      return "hum"; // nuit, neon
+  }
+}
+
+/**
+ * Recette d'une ambiance : bruit filtré (`noise`) et / ou notes tenues (`tones`), un balancement lent (`sway` : Hz et profondeur relative,
+ * sur la fréquence du filtre pour les bruits, sur le volume sinon) et un volume de base ∈ [0, 0.2], sous le volume général.
+ */
+export interface AmbienceRecipe {
+  level: number;
+  noise?: { type: "lowpass" | "bandpass" | "highpass"; freq: number; q: number };
+  tones?: { type: "sine" | "sawtooth" | "triangle"; freq: number; gain: number; tremolo?: number }[];
+  sway?: { rate: number; depth: number };
+}
+
+export const AMBIENCE: Record<AmbienceKind, AmbienceRecipe> = {
+  crowd: { level: 0.075, noise: { type: "bandpass", freq: 650, q: 0.6 }, sway: { rate: 0.17, depth: 0.45 } },
+  breeze: { level: 0.05, noise: { type: "lowpass", freq: 520, q: 0.5 }, sway: { rate: 0.12, depth: 0.5 } },
+  wind: { level: 0.085, noise: { type: "bandpass", freq: 900, q: 0.8 }, sway: { rate: 0.22, depth: 0.6 } },
+  hotwind: { level: 0.07, noise: { type: "bandpass", freq: 420, q: 0.5 }, sway: { rate: 0.09, depth: 0.35 } },
+  crickets: { level: 0.03, tones: [{ type: "sine", freq: 4300, gain: 0.5, tremolo: 13 }, { type: "sine", freq: 4750, gain: 0.4, tremolo: 17 }, { type: "sine", freq: 5200, gain: 0.3, tremolo: 11 }] },
+  city: { level: 0.08, noise: { type: "lowpass", freq: 260, q: 0.7 }, sway: { rate: 0.08, depth: 0.25 } },
+  hum: { level: 0.05, tones: [{ type: "sawtooth", freq: 100, gain: 0.5 }, { type: "sine", freq: 200, gain: 0.35 }, { type: "sine", freq: 50, gain: 0.5 }], sway: { rate: 0.4, depth: 0.12 } },
+};
+
+/** Volume de l'ambiance selon la vitesse : le moteur et le vent de la course la couvrent peu à peu (de 100 % à l'arrêt à 40 % à pleine vitesse). */
+export function ambienceLevel(kind: AmbienceKind, speed: number): number {
+  const r = Math.min(1, Math.max(0, speed) / 48);
+  return AMBIENCE[kind].level * (1 - 0.6 * r);
 }

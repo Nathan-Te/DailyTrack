@@ -1,3 +1,4 @@
+import type { Look, SceneStats } from "./trackMesh";
 import {
   AmbientLight,
   BoxGeometry,
@@ -43,6 +44,12 @@ export interface Arena {
   followGround(x: number, z: number): void;
   /** Décor allégé (qualité basse) : sans effet ici, il n'y a pas de décor. */
   setLite(on: boolean): void;
+  /** Qualité, ambiance, halos, ombres et phares (lot 23) : sans objet ici (pas de décor). */
+  setQuality(level: 0 | 1 | 2): void;
+  look: Look;
+  setView(heightPx: number, fovDeg: number): void;
+  followCar(x: number, y: number, z: number, yaw: number): void;
+  stats(): SceneStats;
 }
 
 /** Scénario `plat` : un grand sol à damier, quelques cônes de repère, aucune collision. */
@@ -93,6 +100,11 @@ export function buildFlatArena(): Arena {
   return {
     scene,
     setLite() {},
+    setQuality() {},
+    look: { exposure: 1, haze: 1, halo: 0, headlights: 0, shadow: 0 },
+    setView() {},
+    followCar() {},
+    stats: () => ({ quality: 2, shadowMap: 0, headlights: 0, halos: { count: 0, visible: false }, denseDecor: false, hills: false, signs: 0, fog: null }),
     followGround(x, z) {
       // Par pas de deux cases, pour que le damier ne « saute » pas.
       ground.position.x = Math.round(x / (2 * TILE)) * 2 * TILE;
