@@ -73,7 +73,7 @@ Fil principal par image (CDP `Performance.getMetrics`, profil mobile 844 × 390 
 Après la mesure, le décor a cessé de projeter des ombres (il coûtait le plus : Ville et Nuit en qualité 2) ; nouvelle mesure partielle : nuit 14,1 / 15,8 / 21,6 et ville 14,1 / 23,1 / 14,2 aux qualités 0 / 1 / 2. Lecture : **+1 à +6 ms** en qualité 1 et 2 à ×4 (à 60 i/s le budget est 16,7 ms) ; Nuit en qualité 2 reste le plus lourd (≈ 22 ms) : phares, halos, décor dense. La qualité automatique baisse d'un cran au-delà de 26 ms d'intervalle moyen, donc un téléphone lent perd ombres et décor dense avant de ramer. **À confirmer sur un vrai téléphone.**
 Piège rencontré : une première série donnait 50–90 ms par image sur Canyon : ce n'étaient pas les graphismes mais la **compilation des shaders** des premiers effets et du premier changement de caméra de la démo, tombée dans la fenêtre de mesure (profil : `getShaderInfoLog`). La mesure attend maintenant 9 s.
 
-**Poids ajouté** : voir `perf.spec.ts` (budget relevé) ; code du jeu hors three.js ≈ +9 ko compressés (panneaux, arches, halos, ambiances, caméras), three.js inchangé.
+**Poids ajouté** : ≈ +5,6 ko compressés (code du jeu et de la simulation hors three.js : 85,7 → 91,3 ko ; total 222,6 ko), three.js inchangé ; budgets de `perf.spec.ts` relevés (228 ko au total, 96 ko hors three.js).
 
 **Miniatures** : seule la tonalité et l'exposition du thème s'ajoutent (un réglage du rendu final : coût nul) ; ni ombres, ni halos, ni panneaux, ni bandeaux de texte dans la vue aérienne.
 
