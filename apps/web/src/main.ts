@@ -53,6 +53,7 @@ import {
   type Medal,
   type CarState,
   type RaceState,
+  trackCenterline,
 } from "@cdj/sim";
 import { archiveDays, disposeArchive, nextTheme, randomSeedHref, renderArchive, themeHref, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
@@ -66,6 +67,7 @@ import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, cameraIndexOf, nextCameraIndex } from "./cameras";
+import { PLUNGE, plungeMix, plungeTarget } from "./startView";
 import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
@@ -807,6 +809,12 @@ let airMix = 0;
 const AIR_HOP_SUBSTEPS = 12;
 const hudFreeze = $("freeze");
 let camBaseY = 0;
+/** Lot 25 : point visé par la vue de départ plongeante (thèmes dont l'arrivée est tout en bas : le Col alpin), et sa part à l'image. */
+const plunge = track && daily && THEMES[daily.theme].format.finishLow ? plungeTarget(trackCenterline(track)) : null;
+let plungeNow = 0;
+/** Lot 25 : hauteur minimale de la caméra au-dessus de la route sous elle (m), et l'échantillon qui la lit. */
+const CAMERA_CLEARANCE = 1.6;
+const camGround = createSurface();
 let snapCamera = true;
 const camPos = { x: 0, y: 0, z: 0 };
 // Orientation de la voiture et du fantôme sur la paroi d'une cuve (lot 18) : normale lissée, caméra qui penche avec elle.
@@ -1102,8 +1110,14 @@ function frame(now: number) {
   const camUp = carPose.cameraUp;
   camLift.copy(camUp).multiplyScalar(rig.height - (hood ? 0 : fastCam.lower));
   const tx = x - Math.sin(camYaw) * back + camLift.x;
-  const ty = camBaseY + camLift.y;
+  let ty = camBaseY + camLift.y;
   const tz = z - Math.cos(camYaw) * back + camLift.z;
+  // Lot 25 : dans une descente raide (Col alpin), la route derrière la voiture est plus haute qu'elle ; la caméra reste au-dessus de cette
+  // route (sinon elle passe sous la chaussée et ne montre que son dessous). Lecture seule du monde.
+  if (race && !hood) {
+    race.world.sample(tx, tz, camGround);
+    if (camGround.height > NO_GROUND / 2) ty = Math.max(ty, camGround.height + CAMERA_CLEARANCE);
+  }
   const follow = snapCamera ? 1 : 1 - Math.exp(-(rig.posLag - (hood ? 0 : fastCam.lag)) * elapsed);
   camPos.x += (tx - camPos.x) * follow;
   camPos.y += (ty - camPos.y) * follow;
@@ -1114,7 +1128,20 @@ function frame(now: number) {
   const sh = SHAKE * shake * 0.22 + (buzzAllowed(governor.level) ? SHAKE * buzzAmplitude(speed) * 2 : 0);
   camera.position.set(camPos.x + (Math.random() - 0.5) * sh, camPos.y + (Math.random() - 0.5) * sh, camPos.z + (Math.random() - 0.5) * sh);
   camera.up.copy(camUp);
-  camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
+  const lookX = x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight;
+  const lookY = camBaseY + camUp.y * rig.lookHeight;
+  const lookZ = z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight;
+  // Vue de départ plongeante (lot 25, Col alpin) : haute derrière la voiture, le regard sur la descente, puis la poursuite avant le « go ».
+  plungeNow = plunge && phase === "countdown" ? plungeMix(countdown) : 0;
+  if (plungeNow > 0) {
+    const m = plungeNow;
+    camera.position.set(
+      camera.position.x + (x - Math.sin(camYaw) * PLUNGE.back - camera.position.x) * m,
+      camera.position.y + (y + PLUNGE.up - camera.position.y) * m,
+      camera.position.z + (z - Math.cos(camYaw) * PLUNGE.back - camera.position.z) * m,
+    );
+    camera.lookAt(lookX + (plunge![0] - lookX) * m, lookY + (plunge![1] - lookY) * m, lookZ + (plunge![2] - lookZ) * m);
+  } else camera.lookAt(lookX, lookY, lookZ);
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
   fovKick += ((car.turbo > 0 ? 7 : car.boost > 0 ? 4 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
   const fov = rig.fov + speedRatio * rig.fovAtSpeed + (hood ? fastCam.fov * 0.5 : fastCam.fov) + fovKick;
@@ -1216,7 +1243,7 @@ if (params.has("debug")) {
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {
-        return { name: CAMERAS[cameraIndex]!.name, carVisible: carMesh.visible, fov: camera.fov };
+        return { name: CAMERAS[cameraIndex]!.name, carVisible: carMesh.visible, fov: camera.fov, plunge: plungeNow, y: camera.position.y };
       },
       cycleCamera() {
         cycleCamera();

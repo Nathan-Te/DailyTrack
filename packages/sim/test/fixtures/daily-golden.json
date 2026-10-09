@@ -6,8 +6,8 @@
       "date": "2026-10-06",
       "number": 15,
       "attempt": 0,
-      "spec": "S/l@start P/~s D/o~r D/o D/o D S S L3 S ML ML ML S/~s@cp P S K/~r G GD D S/~s S S S S/l>n S T S@cp S K/~r G G D/s S/s~s S/s S S S R3 S@cp S P S S/~r S/n>l S U3 S S S D3 S/~s S/~r@finish",
-      "authorMs": 33241,
+      "spec": "S/l@start P/~s D/o~r D/o D/so D/so S/s~s S/s L3/s S/s ML/~r ML ML S/~s P S@cp K/~r G GD D S/~s S S S S/l>n S P S K/~r G D S S@cp S L3 S S P S S S/n>l S/~s U2/~r S/~s D D D S S/~r@finish",
+      "authorMs": 33093,
       "palette": "canyon",
       "theme": "canyon"
     },

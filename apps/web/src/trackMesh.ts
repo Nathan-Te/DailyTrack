@@ -41,6 +41,7 @@ import {
   blockReachAt,
   rippleAt,
   bankAt,
+  curveRelief,
   blockHeight,
   blockPoint,
   blockHalfWidth,
@@ -278,13 +279,13 @@ function straightRows(b: Block, q0: number, q1: number, steps: number, yOf: (q: 
 
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 
-/** Point (rayon `r`, angle `a` depuis l'entrée) d'un virage, serré ou large ; la hauteur suit le relevé éventuel. */
+/** Point (rayon `r`, angle `a` depuis l'entrée) d'un virage, serré ou large ; la hauteur suit le relevé et la pente (lot 25) éventuels. */
 function arcPoint(b: Block, r: number, a: number, y: number): V3 {
   const { cp } = curveCenter(b.kind);
   const side = turnsLeft(b.kind) ? -1 : 1;
   const p = cp + side * r * Math.cos(a);
   const q = r * Math.sin(a);
-  if (b.banked) {
+  if (curveRelief(b)) {
     bankAt(b, p, q, bank);
     y += bank.h;
   }
@@ -473,7 +474,7 @@ function addBandEnd(g: Builder, pal: Palette, b: Block, end: 0 | 1, reach: numbe
   for (const side of [1, -1]) {
     if (isCurve(b.kind) && end === 1) {
       const c = curveCenter(b.kind);
-      const y = b.y0;
+      const y = b.y0 + b.rise; // la sortie d'un virage en pente (lot 25) est un niveau plus bas
       const p0 = world(b, c.cp, c.r + side * reach, y);
       const p1 = world(b, c.cp, c.r + side * SHOULDER_EDGE, y);
       g.quad(p0, p1, [p1[0], y + WALL_HEIGHT, p1[2]], [p0[0], y + WALL_HEIGHT, p0[2]], fence[0]);

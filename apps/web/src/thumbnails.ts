@@ -6,7 +6,7 @@ import { THUMB_H, THUMB_W, releaseThumbnailRenderer, renderThumbnail, type Thumb
 // (mémoire + IndexedDB). Tout ce qui touche au navigateur est injectable : la logique se teste sans DOM.
 
 /** À incrémenter quand l'aspect des miniatures change (cadrage, caméra, couleurs) : les anciennes images sont ignorées. */
-export const THUMB_VERSION = 2;
+export const THUMB_VERSION = 3;
 
 /** Clé de cache : l'id du circuit (version du générateur, thème forcé, et plus tard variante) + la taille + les versions. */
 export function thumbKey(day: number, theme: ThemeName | null, scale: number, variant = 0): string {
