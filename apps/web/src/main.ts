@@ -53,6 +53,7 @@ import {
   type Medal,
   type CarState,
   type RaceState,
+  type Track,
 } from "@cdj/sim";
 import { archiveDays, disposeArchive, nextTheme, randomSeedHref, renderArchive, themeHref, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
@@ -73,15 +74,19 @@ import { Effects, QualityGovernor, type Quality } from "./fx";
 import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
-import { isValidName, normalizeName } from "./identity";
+import { isValidName, normalizeName, setName, getName } from "./identity";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
 import { mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
+import { GhostField, type GhostEntry } from "./salonGhosts";
+import { SalonController, bootSalon, isBootError, type SalonHost, type SalonRunResult } from "./salonMode";
+import { modeHref, salonShareLine as salonLine } from "./salon";
+import type { LoadedSalonCircuit } from "./salonEngine";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareText, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
-import { buildTrackScene } from "./trackMesh";
+import { buildTrackScene, type TrackScene } from "./trackMesh";
 import { loadTunedParams, mountTunePanel } from "./tune";
 
 const params = new URLSearchParams(location.search);
@@ -98,9 +103,22 @@ if (params.has("debug") && params.has("spec")) {
     console.error("spec invalide", e);
   }
 }
+// Le Salon (lot 26) : `?mode=salon`. Un circuit qui change toutes les 10 minutes ; il a besoin du serveur (ou de la démonstration
+// `?api=demo`). Sans lui, un message clair et le circuit du jour. Un scénario demandé explicitement l'emporte (outils de test).
+let salon: SalonController | null = null;
+let salonNotice = "";
+if (params.get("mode") === "salon" && !customTrack && requested === null) {
+  const base = apiBase();
+  if (!base) salonNotice = "Le Salon a besoin du serveur : circuit du jour à la place";
+  else {
+    const booted = await bootSalon({ search: location.search, base, startAt: params.has("debug") ? Number(params.get("salonAt")) || null : null });
+    if (isBootError(booted)) salonNotice = `${booted.error} : circuit du jour à la place`;
+    else salon = booted;
+  }
+}
 // `?scenario=figure&f=<nom>` : une seule figure (lot 20). Un nom inconnu, ou une variante impossible, ramène au circuit d'essai.
 const figureTrack = !customTrack && requested === "figure" ? createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1") : null;
-const scenario = customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" || requested === "bas-cotes" ? requested : "jour";
+const scenario = salon ? "salon" : customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" || requested === "bas-cotes" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
@@ -138,7 +156,7 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
-const track = scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "bas-cotes" ? createBasCotesTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
+let track: Track | null = salon ? salon.circuit.track : scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "bas-cotes" ? createBasCotesTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 const carParams: CarParams = tuning ? loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
@@ -148,7 +166,7 @@ const renderer = new WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-const view = track ? buildTrackScene(track, daily?.palette ?? "desert") : buildFlatArena();
+let view = track ? buildTrackScene(track, salon?.circuit.palette ?? daily?.palette ?? "desert") : buildFlatArena();
 // Rendu (lot 23) : tonalité douce (les hautes lumières ne brûlent pas, les couleurs de la palette restent), exposition propre au thème, ombres portées.
 renderer.toneMapping = NeutralToneMapping;
 renderer.toneMappingExposure = view.look.exposure;
@@ -165,6 +183,9 @@ const ghostModel = createCarMesh(true);
 const ghostMesh = ghostModel.group;
 ghostMesh.visible = false;
 view.scene.add(ghostMesh);
+// Fantômes du Salon (lot 26) : plusieurs voitures translucides colorées, avec leur pseudo.
+const ghostField = salon ? new GhostField() : null;
+if (ghostField) view.scene.add(ghostField.group);
 
 // --- Rendu, effets et sons (lot 9) : présentation seule, lecture seule de la simulation --------------------
 // `?fx=off` coupe les effets ; `?quality=0|1|2` fige la qualité (sinon : réglage automatique selon la fluidité) ;
@@ -180,7 +201,7 @@ const SHAKE = params.get("shake") === "0" ? 0 : 1;
 const demo = params.has("demo");
 const tel = createTelemetry();
 const gameAudio = new GameAudio(() => syncSoundButton());
-gameAudio.setAmbience(track ? ambienceFor(daily?.palette ?? "desert") : null); // ambiance du thème (lot 23)
+gameAudio.setAmbience(track ? ambienceFor(salon?.circuit.palette ?? daily?.palette ?? "desert") : null); // ambiance du thème (lot 23)
 const wheelDroop: [number, number, number, number] = [0, 0, 0, 0];
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR];
 const WHEEL_L = [HALF_TRACK, -HALF_TRACK, HALF_TRACK, -HALF_TRACK];
@@ -235,7 +256,10 @@ let splash: HTMLElement | null = document.getElementById("splash");
 const MEDAL_NAME: Record<Medal, string> = { author: "Meilleur que l'auteur !", gold: "Médaille d'or", silver: "Médaille d'argent", bronze: "Médaille de bronze" };
 
 // Titre du circuit et seuils des médailles.
-if (daily) {
+if (salon) {
+  $("meta").textContent = salon.title();
+  salon.dom = { countdown: $("medals"), board: hudBoard, podium: $("podium") };
+} else if (daily) {
   const m = daily.medals;
   const invalidSeed = seedParam !== null && seedDay === null;
   // « Circuit du Jour » est masqué sur petit écran (`.long`) : il reste « #1 · 2026-10-06 · neige ».
@@ -248,7 +272,9 @@ if (daily) {
   $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : scenario === "bas-cotes" ? "Bas-côtés et vibreurs" : scenario === "figures" ? "Les figures" : scenario === "figure" ? `Figure : ${figureByName(params.get("f"))?.label ?? ""}` : "Circuit d'essai";
 }
 function updateInfo() {
-  $("info").textContent = track
+  $("info").textContent = salon
+    ? "ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantômes · Tab : classement"
+    : track
     ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
     : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer · C : caméra";
 }
@@ -295,7 +321,7 @@ function setPaused(value: boolean) {
 }
 $("pause-resume").addEventListener("click", () => setPaused(false));
 $("pause-restart").addEventListener("click", () => controls.requestRestart());
-let best: BestRun | null = track ? loadBest(track.id) : null;
+let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
 // Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
 let ghostMode: GhostMode = params.get("ghost") === "off" ? "off" : "mine";
 let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
@@ -414,8 +440,10 @@ hudArchive.addEventListener("click", (e) => {
 });
 
 function startAttempt() {
+  if (salon && salon.state !== "playing") return; // podium, bascule : pas de nouveau départ
   if (track) {
     session = new RunSession(track, ghostSource, carParams);
+    ghostField?.restart(track); // Salon : les fantômes des autres repartent avec toi
     activeGhost = session.ghost && ghostSource ? { label: ghostLabel, ms: ghostSource.ms } : null;
     pendingGhost = null;
     race = session.race;
@@ -556,6 +584,13 @@ async function refreshBoard() {
 }
 
 function setBoardVisible(visible: boolean) {
+  if (salon) {
+    boardVisible = visible;
+    salon.boardOpen = visible;
+    hudBoard.hidden = !visible;
+    if (visible) salon.renderBoard();
+    return;
+  }
   boardVisible = visible && online.enabled;
   hudBoard.hidden = !boardVisible;
   if (boardVisible) void refreshBoard();
@@ -573,12 +608,19 @@ hudBoard.addEventListener("click", () => {
 
 window.addEventListener("keydown", (e) => {
   if (e.repeat || isTyping(e)) return;
-  if (e.code === "KeyG") void cycleGhost();
+  if (e.code === "KeyG") {
+    if (salon && ghostField) ghostField.setMode(salon.cycleGhostMode());
+    else void cycleGhost();
+  }
+  if (e.code === "Tab" && salon) {
+    e.preventDefault();
+    setBoardVisible(!boardVisible);
+  }
   if (e.code === "KeyM") gameAudio.mute();
   if (e.code === "KeyN" && track && scenario === "jour") location.assign(randomSeedHref(location.search)); // circuit au hasard (essai, jamais classé)
   if (e.code === "KeyT" && track && scenario === "jour") location.assign(themeHref(location.search, nextTheme(forcedTheme?.name ?? null))); // thème suivant
   if (e.code === "KeyL") setBoardVisible(!boardVisible);
-  if (e.code === "KeyH") (hudArchive.hidden ? openArchive : closeArchive)();
+  if (e.code === "KeyH" && !salon) (hudArchive.hidden ? openArchive : closeArchive)();
   if (e.code === "Escape") closeArchive();
 });
 
@@ -591,7 +633,7 @@ const menuButton = (id: string, onClick: () => void) => {
   });
   return b;
 };
-menuButton("btn-board", () => setBoardVisible(!boardVisible)).hidden = !online.enabled;
+menuButton("btn-board", () => setBoardVisible(!boardVisible)).hidden = !online.enabled && !salon;
 menuButton("btn-ghost", () => void cycleGhost()).hidden = !track;
 const soundBtn = menuButton("btn-sound", () => gameAudio.cycle());
 function syncSoundButton() {
@@ -600,7 +642,15 @@ function syncSoundButton() {
   soundBtn.querySelector(".txt")!.textContent = `${icon} Son`;
 }
 syncSoundButton();
-menuButton("btn-archive", () => (hudArchive.hidden ? openArchive() : closeArchive()));
+menuButton("btn-archive", () => (hudArchive.hidden ? openArchive() : closeArchive())).hidden = !!salon; // le Salon n'a pas d'archives
+// Salon ↔ circuit du jour (lot 26) : seulement avec une API (ou la démonstration), le Salon a besoin du serveur.
+const modeBtn = menuButton("btn-mode", () => location.assign(modeHref(location.search, !salon)));
+modeBtn.hidden = apiBase() === null;
+if (salon) {
+  modeBtn.querySelector(".ico")!.textContent = "📅";
+  modeBtn.querySelector(".txt")!.textContent = "Jour";
+  modeBtn.title = "Revenir au circuit du jour";
+}
 
 /** Envoi du meilleur temps au classement, et affichage du rang dans le panneau d'arrivée. */
 function startOnlineFlow(box: HTMLElement) {
@@ -715,7 +765,107 @@ function medalLines(ms: number): [string, string][] {
   return [["", `Pas de médaille · bronze à ${formatTime(daily.medals.bronze)}`]];
 }
 
+/** Salon (lot 26) : l'arrivée d'une course de session. Ni record local, ni classement du jour : seulement la session. */
+function finishSalonRun() {
+  if (!race || !track || !session || !salon) return;
+  const sal = salon;
+  phase = "finished";
+  const ms = race.finishMs;
+  const counted = !tunedRun && !demo; // réglages modifiés ou démo du pilote : jamais classé
+  const sessionNo = sal.session;
+  const result: SalonRunResult = { session: sessionNo, ms, splits: [...race.splits], respawns: race.respawns, replay: encodeReplay(session.toReplay()) };
+  const improved = counted && sal.recordRun(result);
+  const prior = sal.best && !improved ? sal.best.ms : null;
+  const rows: [string, string][] = [
+    ["big", formatTime(ms)],
+    !counted ? ["record", "Réglages modifiés : course non classée"] : improved ? ["record", "Meilleur tour de la session !"] : ["", prior !== null ? `Ton meilleur : ${formatTime(prior)} (${formatDelta(ms - prior)})` : ""],
+    ["", race.respawns > 0 ? `${race.respawns} reprise${race.respawns > 1 ? "s" : ""} au point de contrôle` : "Sans reprise"],
+  ];
+  const nodes = rows.filter(([, t]) => t).map(([cls, t]) => Object.assign(document.createElement("div"), { className: cls, textContent: t }));
+  const box = document.createElement("div");
+  box.className = "online";
+  const share = document.createElement("div");
+  share.className = "share";
+  const refreshShare = () => {
+    const line = sal.shareLine();
+    share.textContent = line ?? "";
+    share.hidden = !line;
+  };
+  const text = (msg: string, cls = "") => Object.assign(document.createElement("div"), { className: cls, textContent: msg });
+  const rankLine = () => {
+    const r = sal.myRank;
+    refreshShare();
+    box.replaceChildren(text(r ? `Rang ${r.rank} / ${r.participants}` : "", "rank"));
+  };
+  const send = async () => {
+    const name = getName();
+    if (!name) return nameForm();
+    box.replaceChildren(text("Envoi au classement de la session…", "status"));
+    const r = await sal.submit(result, name);
+    if (r.ok) {
+      refreshShare();
+      box.replaceChildren(text(`Rang ${r.data.rank} / ${r.data.participants}${r.data.ms !== ms ? ` · temps du serveur : ${formatTime(r.data.ms)}` : ""}`, "rank"));
+    } else {
+      const retry = Object.assign(document.createElement("button"), { type: "button", className: "link", textContent: "Réessayer" });
+      retry.addEventListener("click", () => void send());
+      box.replaceChildren(text(r.message, "error"), ...(sal.canSubmit(sessionNo) ? [retry] : []));
+    }
+  };
+  const nameForm = () => {
+    const form = document.createElement("form");
+    const input = Object.assign(document.createElement("input"), { type: "text", maxLength: 20, placeholder: "Ton pseudo", autocomplete: "off", value: getName() ?? "" });
+    const ok = Object.assign(document.createElement("button"), { type: "submit", textContent: "OK" });
+    const error = text("", "error");
+    form.append(text("Choisis ton pseudo pour entrer au classement du Salon", "label"), input, ok, error);
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      const name = normalizeName(input.value);
+      if (!isValidName(name)) {
+        error.textContent = "1 à 20 caractères : lettres, chiffres, espace . _ ' -";
+        return;
+      }
+      setName(name);
+      ok.disabled = true;
+      void send();
+    });
+    box.replaceChildren(form);
+    input.focus();
+  };
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const action = (label: string, onClick: (b: HTMLButtonElement) => void | Promise<void>, cls = "") => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: cls, textContent: label });
+    b.addEventListener("click", async () => {
+      b.blur();
+      await onClick(b);
+    });
+    actions.append(b);
+  };
+  action("Rejouer", () => startAttempt(), "primary");
+  action("Copier le résultat", async (b) => {
+    const line = sal.shareLine() ?? salonLine(sal.label, ms);
+    const old = b.textContent;
+    b.textContent = (await copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`)) ? "Copié ✓" : "Copie impossible";
+    setTimeout(() => (b.textContent = old), 1600);
+  });
+  action("Classement", () => setBoardVisible(!boardVisible));
+  const hint = text("Entrée : rejouer · Tab : classement", "hint");
+  hudFinish.replaceChildren(...nodes, ...(counted ? [box] : []), share, actions, hint);
+  hudFinish.hidden = false;
+  document.body.classList.add("finished");
+  refreshShare();
+  // Envoi : seulement un meilleur tour de la session (le serveur garde le meilleur), et tant que la session accepte des envois.
+  if (counted && improved) {
+    if (!sal.canSubmit(sessionNo)) box.replaceChildren(text("Trop tard : cette session est terminée", "error"));
+    else void send();
+  } else if (counted) rankLine();
+  showBanner("ARRIVÉE", 2.5);
+  effects.confetti(car.x, car.y, car.z);
+  gameAudio.play("finish");
+}
+
 function finishRun() {
+  if (salon) return finishSalonRun();
   if (!race || !track || !session) return;
   phase = "finished";
   const ms = race.finishMs;
@@ -806,6 +956,8 @@ let airMix = 0;
 /** En l'air depuis plus de ça (sous-pas), la voiture vole pour de bon (une bosse ou un frôlement de paroi ne compte pas). */
 const AIR_HOP_SUBSTEPS = 12;
 const hudFreeze = $("freeze");
+/** Temps passé dans `renderer.render` (ms cumulées, images) : mesure du coût du rendu (`__cdj.render`). */
+const renderCost = { ms: 0, frames: 0 };
 let camBaseY = 0;
 let snapCamera = true;
 const camPos = { x: 0, y: 0, z: 0 };
@@ -866,6 +1018,7 @@ function stepOnce(input: CarInput) {
   const respawnsBefore = race ? race.respawns : 0;
   if (session) {
     session.step(input); // course + enregistrement des commandes + fantôme, ensemble
+    ghostField?.step(); // Salon : les fantômes des autres, au même pas
   } else {
     copyCar(car, previous);
     stepCar(car, input, FLAT_WORLD, carParams);
@@ -901,10 +1054,11 @@ function stepOnce(input: CarInput) {
  * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
  */
 function isFrozen(): boolean {
-  return paused || !hudArchive.hidden || (touchMode && !!touchUi?.settingsOpen());
+  return paused || !hudArchive.hidden || (touchMode && !!touchUi?.settingsOpen()) || salon?.state === "podium" || salon?.state === "switching";
 }
 
 function frame(now: number) {
+  salon?.tick(); // Salon : compte à rebours, fin de session, podium, bascule
   const frozen = isFrozen();
   if (dayCardShown) hudDayCard.hidden = phase !== "countdown";
   const manualTicksNow = manual ? manualTicks : 0;
@@ -933,7 +1087,8 @@ function frame(now: number) {
     if (countdown <= 0) {
       phase = "racing";
       accumulator = 0;
-      showBanner("PARTEZ !", 0.9);
+      showBanner(salonNoticePending || "PARTEZ !", salonNoticePending ? 5 : 0.9, !!salonNoticePending);
+      salonNoticePending = "";
       gameAudio.play("go");
     } else {
       showBanner(String(Math.ceil(countdown)), 0.2);
@@ -1067,6 +1222,9 @@ function frame(now: number) {
     ghostModel.update(ghostPose);
   }
 
+  // Étiquettes des fantômes du Salon : taille constante à l'écran (la caméra de l'image précédente suffit).
+  ghostField?.place(alpha, elapsed, { x: camera.position.x, y: camera.position.y, z: camera.position.z, pixelAtOneMeter: Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight });
+
   // Démo : on change de caméra de temps en temps, et on repart après l'arrivée.
   if (demo) {
     demoClock += elapsed;
@@ -1153,7 +1311,13 @@ function frame(now: number) {
   hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
   hudSpeed.dataset.level = String(speedLevel(speed)); // jaune, orange puis rouge au-delà de la pointe
   updateEffects();
-  if (!manual) renderer.render(view.scene, camera); // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
+  if (!manual) {
+    // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
+    const t0 = performance.now();
+    renderer.render(view.scene, camera);
+    renderCost.ms += performance.now() - t0;
+    renderCost.frames++;
+  }
   splash?.remove(); // premier rendu fait : on retire l'écran de chargement
   splash = null;
   if (manualWaiters.length) {
@@ -1175,6 +1339,88 @@ if (demo && track) {
   demoReplay = bestPilotRun(track);
   if (demoReplay) startAttempt();
 }
+
+// --- Le Salon : changement de circuit sans recharger la page (lot 26) ---------------------------------------------------------
+// Une nouvelle scène par session : la voiture, son ombre, les fantômes et les effets passent de l'ancienne à la nouvelle, puis l'ancienne
+// est libérée (rien ne s'accumule côté carte graphique en une soirée de sessions). Le circuit vient du fil de travail, déjà préparé.
+const salonStats = { buildMs: 0, swapMs: 0, swapAt: 0, prebuilt: 0, builtInSwap: 0 };
+let prebuilt: { id: string; scene: ReturnType<typeof buildTrackScene> } | null = null;
+
+function buildSalonScene(c: LoadedSalonCircuit) {
+  const t0 = performance.now();
+  const next = buildTrackScene(c.track, c.palette);
+  salonStats.buildMs = performance.now() - t0;
+  return next;
+}
+
+function swapSalonCircuit(c: LoadedSalonCircuit) {
+  const t0 = performance.now();
+  salonStats.swapAt = t0;
+  let next: ReturnType<typeof buildTrackScene>;
+  if (prebuilt && prebuilt.id === c.id) {
+    next = prebuilt.scene; // construite pendant le podium
+    salonStats.prebuilt++;
+  } else {
+    prebuilt?.scene.dispose();
+    next = buildSalonScene(c);
+    salonStats.builtInSwap++;
+  }
+  prebuilt = null;
+  const old = view;
+  next.scene.add(carMesh, carShadow, ghostMesh);
+  if (ghostField) next.scene.add(ghostField.group);
+  effects.attach(next.scene);
+  next.setQuality(governor.level);
+  view = next;
+  renderer.toneMappingExposure = view.look.exposure;
+  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
+  (old as Partial<TrackScene>).dispose?.();
+  track = c.track;
+  gameAudio.setAmbience(ambienceFor(c.palette));
+  $("meta").textContent = salon!.title();
+  best = null;
+  ghostSource = null;
+  ghostField?.clear();
+  startAttempt(); // décompte neuf sur le nouveau circuit
+  salonStats.swapMs = performance.now() - t0;
+}
+
+const salonHost: SalonHost = {
+  swapCircuit: swapSalonCircuit,
+  prebuild(c) {
+    if (prebuilt?.id === c.id) return;
+    prebuilt?.scene.dispose();
+    prebuilt = { id: c.id, scene: buildSalonScene(c) };
+  },
+  // « Une course est en cours » : elle roule vraiment (une voiture immobile sur la ligne n'a rien commencé : le podium n'attend pas).
+  isRacing: () => phase === "racing" && !!race && (carSpeed(car) > 2 || race.splits.length > 0),
+  abortRun() {
+    if (phase === "racing") {
+      phase = "finished";
+      hudFinish.replaceChildren(Object.assign(document.createElement("div"), { textContent: "Session terminée : tour abandonné" }));
+      hudFinish.hidden = false;
+    }
+  },
+  banner: showBanner,
+  flash() {
+    flash = 1;
+  },
+  ghostsChanged(entries: GhostEntry[]) {
+    ghostField?.setEntries(entries);
+    // Décompte : les fantômes partent avec ce départ. Course déjà commencée : les premiers fantômes rattrapent ta course tout de suite (le
+    // classement peut arriver après le départ) ; ensuite, un changement de classement attend le prochain départ.
+    if (!track || !ghostField) return;
+    if (phase === "countdown") ghostField.restart(track);
+    else if (phase === "racing" && ghostField.count === 0 && race) ghostField.restart(track, race.car.tick);
+  },
+};
+if (salon) {
+  salon.attachHost(salonHost);
+  if (!compactScreen()) setBoardVisible(true);
+}
+// Salon injoignable (lot 26) : dit dans l'en-tête, et rappelé au départ (le décompte écrase le bandeau jusque-là).
+let salonNoticePending = salonNotice;
+if (salonNotice) $("meta").append(` · ${salonNotice}`);
 renderer.setAnimationLoop(frame);
 
 // Accès de débogage pour les tests de navigateur (`?debug`) : état de la course, sans effet sur le jeu.
@@ -1212,7 +1458,7 @@ if (params.has("debug")) {
       },
       /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
       get render() {
-        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames };
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {
@@ -1256,6 +1502,37 @@ if (params.has("debug")) {
       },
       get ghost() {
         return session?.ghost?.race.car ?? null;
+      },
+      /** Salon (lot 26) : état du déroulé, classement, fantômes, horloge pilotable (essais). */
+      get salon() {
+        if (!salon) return null;
+        const sal = salon;
+        return {
+          state: sal.state,
+          session: sal.session,
+          trackId: sal.circuit.id,
+          theme: sal.circuit.theme,
+          sessionMs: sal.sessionMs,
+          demo: sal.demo,
+          board: sal.board,
+          best: sal.best?.ms ?? null,
+          players: sal.players,
+          lastError: sal.lastError,
+          ghostMode: sal.ghostMode,
+          ghosts: ghostField ? { names: ghostField.names, count: ghostField.count, ...ghostField.stats, cost: { ...ghostField.cost } } : null,
+          podiumVisible: !$("podium").hidden,
+          now: sal.clock.now(),
+          endMs: sal.endMs,
+          stats: { ...sal.stats, ...salonStats },
+          /** Fait valoir `ms` comme heure du Salon (l'horloge continue ensuite à avancer). */
+          setNow: (ms: number) => sal.clock.set(ms),
+          /** Fantômes affichés : `all`, `top` ou `off` (comme la touche G, sans passer par les autres). */
+          setGhostMode(mode: "all" | "top" | "off") {
+            sal.ghostMode = mode;
+            ghostField?.setMode(mode);
+          },
+          refresh: () => sal.refreshBoard(),
+        };
       },
       /** Joue une rediffusion à la place du clavier (tests de navigateur). */
       autoplay(code: string) {

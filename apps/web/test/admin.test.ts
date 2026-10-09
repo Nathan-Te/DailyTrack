@@ -69,13 +69,21 @@ describe("adresse du jeu construite par /admin", () => {
       "demo&fx=off&quality=1&camera=capot&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
     );
   });
+  it("le Salon (lot 26) : ?mode=salon, durée de session, remplace date et thème", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, salon: true, api: "demo" })).toBe("mode=salon&api=demo");
+    expect(buildQuery({ ...DEFAULT_ADMIN, salon: true, salonMinutes: "2", api: "demo", date: "2026-10-07", theme: "nuit" })).toBe("mode=salon&salonMinutes=2&api=demo");
+    expect(buildQuery({ ...DEFAULT_ADMIN, salonMinutes: "2" })).toBe(""); // la durée ne sert qu'au Salon
+    expect(parseAdmin('{"salon":true,"salonMinutes":"2"}')).toMatchObject({ salon: true, salonMinutes: "2" });
+    expect(parseAdmin('{"salonMinutes":"abc"}').salonMinutes).toBe("");
+    expect(PRESETS.some((p) => p.state.salon === true && p.state.api === "demo")).toBe(true);
+  });
   it("miniatures des archives", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, thumbs: "2d" })).toBe("thumbs=2d");
     expect(parseAdmin('{"thumbs":"top"}').thumbs).toBe("top");
     expect(parseAdmin('{"thumbs":"x"}').thumbs).toBe("");
   });
   it("chaque raccourci produit une adresse que le jeu sait lire", () => {
-    for (const p of PRESETS) expect(gameHref({ ...DEFAULT_ADMIN, ...p.state })).toMatch(/^\.\.\/(\?[a-z=&0-9-]+)?$/);
+    for (const p of PRESETS) expect(gameHref({ ...DEFAULT_ADMIN, ...p.state })).toMatch(/^\.\.\/(\?[a-zA-Z=&0-9-]+)?$/);
   });
 });
 

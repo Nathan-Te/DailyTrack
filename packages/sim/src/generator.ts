@@ -697,17 +697,24 @@ export interface DailyCircuit {
   fallback: boolean;
 }
 
+/** Un circuit généré et validé par le pilote (commun au circuit du jour et à ceux du Salon). */
+export interface GeneratedCircuit {
+  attempt: number;
+  spec: string;
+  figures: PlacedFigure[];
+  track: Track;
+  authorMs: number;
+  medals: Medals;
+}
+
 /**
- * Le circuit du jour. `variant` : 0 = le circuit d'origine (identique à celui d'avant le lot 14), n ≥ 1 = une variante du
- * planning ; `forced` impose un thème (id et circuit propres). Un thème imposé par un essai (`?theme=`) n'est jamais classé ;
- * celui du planning l'est (c'est le jeu qui sait d'où il vient).
+ * Cherche, tentative après tentative, un circuit de `seed` (un numéro de jour, ou la graine d'une session du Salon) pour ce thème :
+ * assemblage de figures, durée estimée dans la fenêtre, puis pilote automatique (il finit, dans la fenêtre 30–40 s, à une vitesse de
+ * pointe suffisante). `null` si aucune des `MAX_ATTEMPTS` tentatives n'a abouti.
  */
-export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null): DailyCircuit {
-  const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day);
-  const forcedTheme = !!forced && !!themeByName(forced);
-  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant);
+export function generateCircuit(seed: number, theme: Theme, variant: number, id: string): GeneratedCircuit | null {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const composed = composeFigures(day, attempt, theme, variant);
+    const composed = composeFigures(seed, attempt, theme, variant);
     if (!composed) continue;
     const { spec } = composed;
     const estimate = estimateSeconds(spec.split(" "));
@@ -717,17 +724,33 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     const uncut = bestPilotRun(track, { cut: false });
     if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
     const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
+    return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, medals: medalsFor(pilot.finishMs) };
+  }
+  return null;
+}
+
+/**
+ * Le circuit du jour. `variant` : 0 = le circuit d'origine (identique à celui d'avant le lot 14), n ≥ 1 = une variante du
+ * planning ; `forced` impose un thème (id et circuit propres). Un thème imposé par un essai (`?theme=`) n'est jamais classé ;
+ * celui du planning l'est (c'est le jeu qui sait d'où il vient).
+ */
+export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null): DailyCircuit {
+  const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day);
+  const forcedTheme = !!forced && !!themeByName(forced);
+  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant);
+  const found = generateCircuit(day, theme, variant, id);
+  if (found) {
     return {
       day,
       date: formatDay(day),
       number: circuitNumber(day),
-      attempt,
+      attempt: found.attempt,
       variant,
-      spec,
-      figures: composed.figures,
-      track,
-      authorMs: pilot.finishMs,
-      medals: medalsFor(pilot.finishMs),
+      spec: found.spec,
+      figures: found.figures,
+      track: found.track,
+      authorMs: found.authorMs,
+      medals: found.medals,
       palette: theme.palette,
       theme: theme.name,
       forcedTheme,

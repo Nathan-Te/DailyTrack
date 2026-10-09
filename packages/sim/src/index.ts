@@ -18,3 +18,5 @@ export * from "./choices";
 export * from "./themes";
 export * from "./generator";
 export * from "./figures";
+export * from "./fictional";
+export * from "./salon";

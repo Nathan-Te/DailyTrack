@@ -136,9 +136,20 @@ const bodyRing = (w: number, y0: number, y1: number): [number, number][] => {
   ];
 };
 
-/** Voiture low-poly orientée vers +z. `ghost` : version bleue translucide (teinte froide). */
-export function createCarMesh(ghost = false): CarModel {
-  const look = ghost ? GHOST_LOOK : LOOK;
+const mix = (a: number, b: number, t: number): number => {
+  const ch = (shift: number) => Math.round(((a >> shift) & 255) * (1 - t) + ((b >> shift) & 255) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+};
+
+/** Aspect d'un fantôme de la couleur `tint` (Salon, lot 26) : caisse de cette couleur, détails clairs ou foncés dérivés d'elle. */
+export function tintedGhostLook(tint: number): CarLook & { tire: number; rim: number } {
+  return { body: tint, trim: mix(tint, 0x10141c, 0.62), glass: mix(tint, 0x10141c, 0.6), stripe: mix(tint, 0xffffff, 0.8), accent: mix(tint, 0xffffff, 0.5), tire: mix(tint, 0x10141c, 0.7), rim: mix(tint, 0xffffff, 0.85) };
+}
+
+/** Voiture low-poly orientée vers +z. `ghost` : version bleue translucide (teinte froide) ; `tint` : un fantôme d'une autre couleur (Salon) ; `simple` : une version allégée (caisse, pneus et jantes seulement : une dizaine d'objets au lieu de cinquante, pour les fantômes du Salon). */
+export function createCarMesh(ghost = false, tint?: number, simple = false): CarModel {
+  const tinted = ghost && tint !== undefined ? tintedGhostLook(tint) : null;
+  const look: CarLook = tinted ?? (ghost ? GHOST_LOOK : LOOK);
   const m = new Mesh3();
   const zr = -AXLE_REAR - 0.75;
   const zf = AXLE_FRONT + 0.85;
@@ -238,24 +249,32 @@ export function createCarMesh(ghost = false): CarModel {
     ...(ghost ? { transparent: true, opacity: 0.42, depthWrite: false } : {}),
   });
   const group = new Group();
+  if (simple) {
+    // Fantôme allégé (Salon) : quatre roues pleines fondues dans la caisse, une seule pièce, sans phares : deux appels de dessin au lieu d'une cinquantaine.
+    const tireColor = tinted?.tire ?? 0x2a4f7a;
+    for (const cx of [HALF_TRACK, -HALF_TRACK]) for (const cz of [AXLE_FRONT, -AXLE_REAR]) m.hexa(frustum(WHEEL_RADIUS * 0.1, 0.16, cz - 0.34, cz + 0.34, WHEEL_RADIUS * 1.9, 0.16, cz - 0.3, cz + 0.3).map(([x, y, z]) => [x + cx, y, z] as V3), { top: tireColor, side: tireColor });
+    bodyMat.forceSinglePass = true; // transparent et à double face : sinon dessinée deux fois
+  }
   group.add(new Mesh(m.geometry(), bodyMat));
-  group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) })));
+  if (!simple) group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) })));
 
   // Feux stop : une barrette de chaque côté du coffre, ternes puis rouge vif au freinage, plus un troisième feu central.
   const stopMat = new MeshBasicMaterial({ color: 0x5a0f12, ...(ghost ? { transparent: true, opacity: 0.4 } : {}) });
-  for (const s of [-1, 1]) {
-    const bar = new Mesh(new BoxGeometry(0.46, 0.11, 0.05), stopMat);
-    bar.position.set(s * 0.58, 0.7, zr - 0.02);
-    group.add(bar);
+  if (!simple) {
+    for (const s of [-1, 1]) {
+      const bar = new Mesh(new BoxGeometry(0.46, 0.11, 0.05), stopMat);
+      bar.position.set(s * 0.58, 0.7, zr - 0.02);
+      group.add(bar);
+    }
+    const third = new Mesh(new BoxGeometry(0.5, 0.04, 0.04), stopMat);
+    third.position.set(0, 0.99, zr + 0.14);
+    group.add(third);
   }
-  const third = new Mesh(new BoxGeometry(0.5, 0.04, 0.04), stopMat);
-  third.position.set(0, 0.99, zr + 0.14);
-  group.add(third);
 
   // Quatre roues : pneu à sculptures, jante à cinq branches, moyeu, disque de frein (fixe) et étrier rouge (fixe).
-  const tireMat = new MeshStandardMaterial({ color: ghost ? 0x2a4f7a : 0x16171b, flatShading: true, roughness: 0.9, ...(ghost ? { transparent: true, opacity: 0.45 } : {}) });
-  const rimMat = new MeshStandardMaterial({ color: ghost ? 0xcfe9ff : 0xdfe3ec, flatShading: true, metalness: 0.5, roughness: 0.35, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
-  const hubMat = new MeshStandardMaterial({ color: ghost ? 0x9fd4ff : look.accent, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
+  const tireMat = new MeshStandardMaterial({ color: ghost ? (tinted?.tire ?? 0x2a4f7a) : 0x16171b, flatShading: true, roughness: 0.9, ...(ghost ? { transparent: true, opacity: 0.45 } : {}) });
+  const rimMat = new MeshStandardMaterial({ color: ghost ? (tinted?.rim ?? 0xcfe9ff) : 0xdfe3ec, flatShading: true, metalness: 0.5, roughness: 0.35, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
+  const hubMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : look.accent, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
   const discMat = new MeshStandardMaterial({ color: 0x3a3d46, flatShading: true, metalness: 0.6, ...(ghost ? { transparent: true, opacity: 0.4 } : {}) });
   const tireGeo = new CylinderGeometry(WHEEL_RADIUS, WHEEL_RADIUS, 0.3, 18);
   tireGeo.rotateZ(Math.PI / 2);
@@ -271,30 +290,32 @@ export function createCarMesh(ghost = false): CarModel {
   const discGeo = new CylinderGeometry(WHEEL_RADIUS * 0.58, WHEEL_RADIUS * 0.58, 0.04, 14);
   discGeo.rotateZ(Math.PI / 2);
   const caliperGeo = new BoxGeometry(0.08, 0.14, 0.2);
-  const caliperMat = new MeshStandardMaterial({ color: ghost ? 0x9fd4ff : 0xe02a1a, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
-  const wheels = [0, 1, 2, 3].map((i) => {
+  const caliperMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : 0xe02a1a, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
+  const wheels = (simple ? [] : [0, 1, 2, 3]).map((i) => {
     const holder = new Group(); // braquage (avant) et position
     const spin = new Group(); // rotation autour de l'axe
     const side = i % 2 === 0 ? 1 : -1; // + : roue de gauche, la face extérieure est vers +x
-    spin.add(new Mesh(tireGeo, tireMat), new Mesh(shoulderGeo, tireMat), new Mesh(rimGeo, rimMat));
-    const face = new Mesh(faceGeo, discMat); // fond sombre : les branches se détachent
-    face.position.x = side * 0.004;
-    spin.add(face);
-    for (let k = 0; k < 5; k++) {
-      const spoke = new Mesh(spokeGeo, rimMat);
-      spoke.rotation.x = (k / 5) * Math.PI;
-      spoke.position.x = side * 0.012;
-      spin.add(spoke);
+    {
+      spin.add(new Mesh(tireGeo, tireMat), new Mesh(shoulderGeo, tireMat), new Mesh(rimGeo, rimMat));
+      const face = new Mesh(faceGeo, discMat); // fond sombre : les branches se détachent
+      face.position.x = side * 0.004;
+      spin.add(face);
+      for (let k = 0; k < 5; k++) {
+        const spoke = new Mesh(spokeGeo, rimMat);
+        spoke.rotation.x = (k / 5) * Math.PI;
+        spoke.position.x = side * 0.012;
+        spin.add(spoke);
+      }
+      const hub = new Mesh(hubGeo, hubMat);
+      hub.position.x = side * 0.012;
+      spin.add(hub);
+      holder.add(spin);
+      const disc = new Mesh(discGeo, discMat);
+      disc.position.x = -side * 0.07;
+      const caliper = new Mesh(caliperGeo, caliperMat);
+      caliper.position.set(-side * 0.07, 0.2, -0.12);
+      holder.add(disc, caliper);
     }
-    const hub = new Mesh(hubGeo, hubMat);
-    hub.position.x = side * 0.012;
-    spin.add(hub);
-    holder.add(spin);
-    const disc = new Mesh(discGeo, discMat);
-    disc.position.x = -side * 0.07;
-    const caliper = new Mesh(caliperGeo, caliperMat);
-    caliper.position.set(-side * 0.07, 0.2, -0.12);
-    holder.add(disc, caliper);
     const front = i < 2;
     holder.position.set(i % 2 === 0 ? HALF_TRACK : -HALF_TRACK, WHEEL_RADIUS, front ? AXLE_FRONT : -AXLE_REAR);
     group.add(holder);

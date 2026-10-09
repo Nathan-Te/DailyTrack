@@ -84,7 +84,7 @@ $<HTMLInputElement>("date").addEventListener("change", (e) => set({ date: (e.tar
 $("today").addEventListener("click", () => set({ date: "" }));
 $("random").addEventListener("click", () => set({ date: formatDay(PREMIER_JOUR + Math.floor(Math.random() * RANDOM_SPAN)) }));
 
-const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const;
+const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "salon"] as const;
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));
 $<HTMLSelectElement>("camera").addEventListener("change", (e) => set({ camera: (e.target as HTMLSelectElement).value as AdminState["camera"] }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));
@@ -92,6 +92,7 @@ $<HTMLSelectElement>("steer").addEventListener("change", (e) => set({ steer: (e.
 $<HTMLSelectElement>("touch").addEventListener("change", (e) => set({ touch: (e.target as HTMLSelectElement).value as AdminState["touch"] }));
 $<HTMLSelectElement>("thumbs").addEventListener("change", (e) => set({ thumbs: (e.target as HTMLSelectElement).value as AdminState["thumbs"] }));
 $<HTMLInputElement>("timescale").addEventListener("input", (e) => set({ timescale: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
+$<HTMLInputElement>("salonminutes").addEventListener("input", (e) => set({ salonMinutes: (e.target as HTMLInputElement).value.replace(/\D/g, "").slice(0, 2) }));
 $<HTMLInputElement>("api").addEventListener("input", (e) => set({ api: (e.target as HTMLInputElement).value }));
 
 // Raccourcis : un état complet (les options non citées repartent de zéro).
@@ -162,6 +163,7 @@ function render() {
   $<HTMLSelectElement>("steer").value = state.steer;
   $<HTMLInputElement>("timescale").value = state.timescale;
   $<HTMLInputElement>("api").value = state.api;
+  $<HTMLInputElement>("salonminutes").value = state.salonMinutes;
   const href = gameHref(state);
   $<HTMLAnchorElement>("launch").href = href;
   $("url").textContent = new URL(href, location.href).href;

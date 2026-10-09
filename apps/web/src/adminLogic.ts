@@ -35,6 +35,10 @@ export interface AdminState {
   steer: "" | "boutons" | "glisser";
   /** Dessine les zones tactiles actives (`?zones=1`). */
   zones: boolean;
+  /** Le Salon (`?mode=salon`, lot 26) : un circuit toutes les 10 minutes ; avec `api=demo` ou une API. Remplace le circuit du jour. */
+  salon: boolean;
+  /** Durée d'une session du Salon en minutes (`?salonMinutes=`), "" : 10. Démo et essais seulement. */
+  salonMinutes: string;
   /** Accélération du temps (outil `debug`), "" : normal. */
   timescale: string;
   /** Adresse de l'API de classement ("" : aucune). */
@@ -61,6 +65,8 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   thumbs: "",
   steer: "",
   zones: false,
+  salon: false,
+  salonMinutes: "",
   timescale: "",
   api: "",
 });
@@ -69,7 +75,11 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
 export function buildQuery(s: Readonly<AdminState>): string {
   const p = new URLSearchParams();
   if (s.scenario !== "jour") p.set("scenario", s.scenario);
-  if (s.scenario === "jour") {
+  if (s.salon) {
+    // Le Salon remplace le circuit du jour : ni date, ni thème, ni variante.
+    p.set("mode", "salon");
+    if (s.salonMinutes !== "") p.set("salonMinutes", s.salonMinutes);
+  } else if (s.scenario === "jour") {
     if (s.date) p.set("seed", s.date);
     if (s.variant !== "") p.set("variant", s.variant);
     if (s.theme) p.set("theme", s.theme);
@@ -113,7 +123,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "salon"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
@@ -124,6 +134,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (typeof o.figureMirror === "boolean") s.figureMirror = o.figureMirror;
     if (typeof o.variant === "string" && /^\d{0,2}$/.test(o.variant)) s.variant = o.variant;
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
+    if (typeof o.salonMinutes === "string" && /^\d{0,2}$/.test(o.salonMinutes)) s.salonMinutes = o.salonMinutes;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
   } catch {
     /* état illisible : valeurs par défaut */
@@ -150,6 +161,8 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Cuves et murs", hint: "cuve droite, mur latéral, virage en cuve à pleine vitesse, puis le même virage abordé trop lentement", state: { scenario: "cuves" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },
+  { label: "Le Salon (démonstration)", hint: "un circuit toutes les 10 minutes, joueurs fictifs, fantômes, classement de session, podium (?mode=salon&api=demo)", state: { api: "demo", salon: true } },
+  { label: "Le Salon, sessions de 2 minutes", hint: "pour voir une bascule de circuit en deux minutes (?salonMinutes=2)", state: { api: "demo", salon: true, salonMinutes: "2" } },
   { label: "Archives de démonstration", hint: "14 jours passés, classements figés et fantômes (?api=demo)", state: { api: "demo" } },
   { label: "Essai tactile (souris = doigt)", hint: "interface mobile sur ordinateur", state: { touch: "1" } },
   { label: "Zones tactiles (boutons)", hint: "boutons ← → et frein, zones actives dessinées", state: { scenario: "pilotage", touch: "1", steer: "boutons", zones: true } },
