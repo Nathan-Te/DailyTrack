@@ -35,14 +35,16 @@ import {
   type ChoiceMoments,
   type Block,
   type DailyCircuit,
+  circuitFingerprint,
 } from "@cdj/sim";
+import { measureFingerprints } from "./fingerprints";
 
 // `npm run measure:generator` : mesure le générateur de circuits (lot 12). À relancer après toute règle de
 // générateur, toute modification du pilote ou de la physique : « toute règle de générateur se valide par ce script
 // (durées, taux de validation par thème), pas seulement par les tests ».
 //   - durées d'auteur, largeurs, virages serrés, temps de génération, coût d'un rejeu : 60 dates consécutives ;
 //   - taux de validation par thème : 12 dates × 6 tentatives, chaque thème forcé.
-// Variables : `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
+// Variables : `ONLY=empreinte` (seulement l'empreinte des thèmes, lot 25), `PER_THEME` (12 circuits par thème imposé pour l'empreinte), `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
 
 const DAYS = Number(process.env.DAYS ?? (process.env.FAST ? 20 : 60));
 const VALIDATION_DAYS = Number(process.env.VALIDATION_DAYS ?? (process.env.FAST ? 6 : 12));
@@ -81,6 +83,11 @@ function tightTurns(blocks: Block[]): { total: number; run: number } {
 }
 
 console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
+const PER_THEME = Number(process.env.PER_THEME ?? (process.env.FAST ? 6 : 12));
+if (process.env.ONLY === "empreinte") {
+  await measureFingerprints(FIRST_DAY, PER_THEME, []);
+  process.exit(0);
+}
 
 // --- 1. Soixante dates -------------------------------------------------------------------------
 
@@ -297,3 +304,7 @@ for (const name of THEME_NAMES) {
   );
 }
 console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits ; « portion rapide » : dans la fenêtre ET pilote ≥ +30 % de la pointe du plat, sur les circuits construits.)`);
+
+// --- 3. Empreinte des thèmes (lot 25) ----------------------------------------------------------
+
+await measureFingerprints(FIRST_DAY, PER_THEME, rows.map((r, i) => ({ c: r.c, print: pilots[i] ? circuitFingerprint(r.c.track, pilots[i]!) : null })));

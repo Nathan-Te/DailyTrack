@@ -26,7 +26,7 @@ const isTight = (b: Block) => b.kind === "curveL" || b.kind === "curveR";
 
 /**
  * Blocs du passage signature du thème (voir `signatureParts`, generator.ts), ou `null` s'ils n'y sont pas :
- * super turbo puis grand virage relevé · saut sur la terre (rampe, vide, réception) · chicane large sur la glace · moteur coupé et point de
+ * super turbo puis grand virage relevé · spéciale (virages enchaînés sur la terre, lot 25) · chicane large sur la glace · moteur coupé et point de
  * contrôle · étranglement puis virage serré sur la terre.
  */
 export function signatureBlocks(track: Track, sig: Signature): [number, number] | null {
@@ -39,13 +39,14 @@ export function signatureBlocks(track: Track, sig: Signature): [number, number] 
       const bank = find((b) => b.index > t && b.banked);
       return [t, bank > t ? bank : t];
     }
-    case "dirtJump": {
-      // rampe de terre (K), vide, réception : trois blocs
-      const k = find((b) => b.kind === "kick" && b.surface === "dirt");
-      if (k < 0) return null;
-      let end = k + 1;
-      while (bs[end]?.kind === "gap") end++;
-      return [k, Math.min(bs.length - 1, end)];
+    case "dirtStage": {
+      // la spéciale (lot 25) : trois virages sur la terre en sept blocs au plus
+      const dirtCurve = (b: Block | undefined) => !!b && isCurve(b.kind) && b.surface === "dirt";
+      const c = find((b, i) => dirtCurve(b) && bs.slice(i, i + 7).filter(dirtCurve).length >= 3);
+      if (c < 0) return null;
+      let last = c;
+      for (let i = c; i < Math.min(bs.length, c + 7); i++) if (dirtCurve(bs[i])) last = i;
+      return [c, last];
     }
     case "iceChicane": {
       const c = find((b, i) => isCurve(b.kind) && b.surface === "ice" && i + 1 < bs.length && isCurve(bs[i + 1]!.kind) && turnsLeft(b.kind) !== turnsLeft(bs[i + 1]!.kind));

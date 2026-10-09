@@ -1,4 +1,4 @@
-import { HALF_PI, PI, cos, sin } from "./math";
+import { HALF_PI, PI, atanRatio, cos, sin } from "./math";
 
 // Un circuit est une suite de blocs posés sur une grille de cellules CELL × CELL. Chaque bloc est décrit
 // dans un repère « canonique » (p, q) : q = avance le long du bloc (0 = entrée, CELL = sortie),
@@ -145,6 +145,8 @@ export interface Track {
   spawn: Spawn;
   /** Au-dessous de cette hauteur, la voiture est perdue (retour au dernier point de contrôle). */
   voidY: number;
+  /** Lot 25 : hauteur la plus basse de la route dans chaque cellule occupée (voir `voidYAt`). */
+  floors: Map<number, number>;
 }
 
 /** Lettre → type de bloc, dans la notation texte des circuits. */
@@ -431,7 +433,7 @@ export interface ParsedToken {
  * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe, `s` sable
  * (un seul revêtement), `b` virage relevé (virages seulement), et la largeur de la route : `e` étroite (14 m),
  * `n` normale (20 m), `l` large (26 m), ou `a>b` pour un bloc de transition (`n>l` : de la normale à la large, en un bloc
- * droit). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`, `S/n`, `S/e>l`, `L3/lb`.
+ * droit), `d` virage large ou ample qui descend d'un niveau (lot 25). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`, `S/n`, `S/e>l`, `L3/lb`, `L2/d`.
  */
 export function parseToken(token: string, index = 0): ParsedToken {
   const [body = "", markName] = token.split("@");
@@ -452,6 +454,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
   let width: { w0: number; w1: number } | undefined;
   let open = false;
   let outerWall = false;
+  let sloped = false;
   for (const m of mods.match(/[enl]>[enl]|~.|./g) ?? []) {
     if (m[0] === "~") {
       const e = EDGE_LETTERS[m[1] ?? ""];
@@ -462,6 +465,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     else if (m === "b") banked = true;
     else if (m === "o") open = true;
     else if (m === "c") outerWall = true;
+    else if (m === "d") sloped = true;
     else if (SURFACE_LETTERS[m]) {
       if (surface !== "road") throw new Error(`Deux revêtements sur « ${token} » (position ${index})`);
       surface = SURFACE_LETTERS[m]!;
@@ -477,6 +481,9 @@ export function parseToken(token: string, index = 0): ParsedToken {
   if (bumpy && !RIPPLE_KINDS.has(kind)) throw new Error(`Seule une droite (S, U, D, P, T, C) peut être bosselée (${token})`);
   if (open && kind === "gap") throw new Error(`Un vide n'a pas de rebords à ouvrir (${token})`);
   if (outerWall && !isCurve(kind)) throw new Error(`Seul un virage prend un mur extérieur « /c » (${token}) : pour une droite, V, ML ou MR`);
+  // Virage en pente (lot 25) : un virage large ou ample qui descend d'un niveau sur son arc (les lacets du Col alpin).
+  if (sloped && !isWide(kind)) throw new Error(`Seul un virage large ou ample peut descendre « /d » (${token})`);
+  if (sloped && outerWall) throw new Error(`Un virage en cuve reste plat : pas de « /d » (${token})`);
   let cuve = cuveSides ?? 0;
   if (outerWall) cuve = turnsLeft(kind) ? CUVE_RIGHT : CUVE_LEFT; // le mur est du côté opposé au centre du virage
   if (cuve) {
@@ -486,7 +493,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
     if (width && width.w0 !== width.w1) throw new Error(`Pas de transition de largeur sur une cuve (${token})`);
   }
   return {
-    kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
+    kind, surface, banked, ...(mark ? { mark } : {}), ...(width ? { width } : {}), ...(shaped ? { rise: shaped.rise } : sloped ? { rise: -SLOPE_RISE } : {}), ...(open ? { open: true as const } : {}), ...(cuve ? { cuve } : {}),
     ...(edge ? { edge } : {}), ...(bumpy ? { bumpy: true as const } : {}),
   };
 }
@@ -544,31 +551,46 @@ export function bankFactor(t: number, d?: { v: number }): number {
 
 const bankD = { v: 0 };
 
+/** Virage en pente (lot 25, `L2/d`) : un virage dont la hauteur change d'entrée en sortie. */
+export const isSlopedCurve = (b: Pick<Block, "kind" | "rise">): boolean => b.rise !== 0 && isCurve(b.kind);
+/** Un virage dont la hauteur n'est pas celle de son entrée partout : relevé ou en pente (`bankAt` donne la différence). */
+export const curveRelief = (b: Pick<Block, "kind" | "rise" | "banked">): boolean => b.banked || isSlopedCurve(b);
+
 /**
  * Relevé d'un virage au point canonique (p, q) : la route monte vers l'extérieur de `pente × part × (r − rayon de l'axe)`. La part
  * (`bankFactor`) ne dépend que de l'angle, par la fraction d'arc t = q / (q + |dp|) : le relevé naît et meurt en douceur, à l'entrée
  * comme à la sortie (la hauteur redevient celle de la route plate aux bords du bloc).
+ * Virage en pente (lot 25) : s'y ajoute `dénivelé × angle ÷ (π/2)` (angle depuis l'entrée, `atanRatio`) : une hélice, de pente constante
+ * le long de l'arc, qui part de la hauteur d'entrée et finit à celle de sortie.
  */
 export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
   out.h = 0;
   out.gp = 0;
   out.gq = 0;
-  if (!b.banked) return;
+  if (!b.banked && !isSlopedCurve(b)) return;
   const { cp, r: R } = curveCenter(b.kind);
   const dp = p - cp;
   const r = Math.sqrt(dp * dp + q * q);
   if (r < 1e-6 || q < 0) return;
-  const slope = isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT;
   const adp = dp < 0 ? -dp : dp;
+  if (b.rise !== 0) {
+    // Angle depuis l'entrée a = atan2(q, |dp|) : da/dq = |dp| / r², da/dp = −q × signe(dp) / r².
+    const k = b.rise / HALF_PI;
+    out.h = k * atanRatio(q, adp);
+    out.gp = (k * (dp < 0 ? q : -q)) / (r * r);
+    out.gq = (k * adp) / (r * r);
+  }
+  if (!b.banked) return;
+  const slope = isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT;
   const sum = q + adp;
   const f = bankFactor(q / sum, bankD);
   const off = r - R;
   // t = q / (q + |dp|) : dt/dq = |dp| / somme², dt/dp = −q / somme² × signe(dp)
   const dtq = adp / (sum * sum);
   const dtp = (dp < 0 ? 1 : -1) * (q / (sum * sum));
-  out.h = slope * f * off;
-  out.gp = slope * ((f * dp) / r + off * bankD.v * dtp);
-  out.gq = slope * ((f * q) / r + off * bankD.v * dtq);
+  out.h += slope * f * off;
+  out.gp += slope * ((f * dp) / r + off * bankD.v * dtp);
+  out.gq += slope * ((f * q) / r + off * bankD.v * dtq);
 }
 
 /**
@@ -580,7 +602,7 @@ export function bankAt(b: Block, p: number, q: number, out: BankSample): void {
  * (`S/g`, `L2/b`…) : `t` terre, `g` glace, `h` herbe, `b` virage relevé, `o` sans rebords, `u` route bosselée (lot 21). Bords (lot 21,
  * chaînés comme la largeur : valent pour ce bloc et les suivants) : `~h` bas-côtés d'herbe, `~t` de terre et gravier, `~p` de neige
  * poudreuse, `~v` le vide, `~r` retour aux rebords (`S/n~h`, `L2/~t`) ; un bloc qui ne peut pas en porter garde ses rebords. Relief (lot 17) : `U2` `U3` `D2` `D3`
- * (2 ou 3 niveaux sur une cellule), `K` rampe de saut, `G` vide (`GU` `GD` `GD2` : l'autre bord plus haut ou plus bas). Repères : `@start` (premier bloc), `@cp` (point de contrôle,
+ * (2 ou 3 niveaux sur une cellule), `L2/d` `L3/d` virage en pente qui descend d'un niveau (lot 25), `K` rampe de saut, `G` vide (`GU` `GD` `GD2` : l'autre bord plus haut ou plus bas). Repères : `@start` (premier bloc), `@cp` (point de contrôle,
  * sur un S), `@finish` (dernier bloc). Départ et arrivée sont sur des blocs S.
  */
 export function parseTrack(id: string, spec: string): Track {
@@ -671,7 +693,27 @@ export function parseTrack(id: string, spec: string): Track {
 
   let minY = 0;
   for (const b of blocks) minY = Math.min(minY, b.y0, b.y0 + b.rise);
-  return { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH };
+  const floors = new Map<number, number>();
+  for (const [key, b] of cells) floors.set(key, Math.min(b.y0, b.y0 + b.rise));
+  return { id, blocks, cells, gates, spawn, voidY: minY - FALL_DEPTH, floors };
+}
+
+/**
+ * Hauteur sous laquelle la voiture est perdue à l'endroit (x, z) (lot 25) : `FALL_DEPTH` sous la route la plus basse des cellules voisines
+ * (3 × 3 autour de la voiture), ou `track.voidY` loin de toute route. Avant le lot 25, c'était partout `track.voidY` (la route la plus basse du
+ * circuit) : au Col alpin, 200 m plus bas que le départ, une voiture tombée en haut aurait chuté quatre secondes avant de reprendre.
+ */
+export function voidYAt(track: Track, x: number, z: number): number {
+  const cx = Math.floor(x / CELL);
+  const cz = Math.floor(z / CELL);
+  let floor = Infinity;
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const f = track.floors.get(cellKey(cx + dx, cz + dz));
+      if (f !== undefined && f < floor) floor = f;
+    }
+  }
+  return floor === Infinity ? track.voidY : floor - FALL_DEPTH;
 }
 
 // --- Ligne médiane ----------------------------------------------------------------------------
@@ -690,11 +732,13 @@ const CURVE_STEPS = 8;
 export function trackCenterline(track: Track): Centerline {
   const out: Centerline = { x: [], z: [], y: [], block: [] };
   const pt = { x: 0, z: 0 };
+  const slope: BankSample = { h: 0, gp: 0, gq: 0 };
   const push = (b: Block, p: number, q: number) => {
     blockPoint(b, p, q, pt);
     out.x.push(pt.x);
     out.z.push(pt.z);
-    out.y.push(blockHeight(b, q));
+    if (isSlopedCurve(b)) bankAt(b, p, q, slope); // sur l'axe, le relevé est nul : seule la pente compte
+    out.y.push(blockHeight(b, q) + (isSlopedCurve(b) ? slope.h : 0));
     out.block.push(b.index);
   };
   for (const b of track.blocks) {

@@ -138,7 +138,8 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
     out.roomR.push(roomR);
     out.half.push(half);
     out.blk.push(b.index);
-    out.slope.push(isCurve(b.kind) ? 0 : blockSlope(b, q));
+    // Virage en pente (lot 25) : pente constante le long de l'arc (dénivelé ÷ longueur de l'arc de l'axe).
+    out.slope.push(isCurve(b.kind) ? b.rise / (HALF_PI * curveCenter(b.kind).r) : blockSlope(b, q));
     // Virage en cuve : la paroi extérieure est la ligne du pilote ; elle monte en rampe comme la paroi elle-même.
     if (wall && b.cuve) {
       const bit = isCurve(b.kind) ? b.cuve : b.cuve & CUVE_LEFT ? CUVE_LEFT : b.cuve;
@@ -518,6 +519,8 @@ export interface PilotRun {
   brakeEvents: number;
   coastEvents: number;
   freezeEvents: number;
+  /** Lot 25 (mesure seule) : pas passés en l'air (aucune roue au sol), sauts, bosses et crêtes compris. */
+  airTicks: number;
   /** Vitesse du pilote au bord de chaque rampe de saut (lot 17), avec la fenêtre du saut. */
   jumps: JumpPass[];
   /** Vrai si chaque saut a été pris dans sa fenêtre de vitesse avec la marge `JUMP_ENTRY_MARGIN` (aucun saut = vrai). */
@@ -563,6 +566,7 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
   let coastRun = 0;
   let frozeThisFlight = false;
   let flight = 0;
+  let airTicks = 0;
   const flatTop = (opts.params ?? DEFAULT_CAR_PARAMS).maxSpeed;
   // Bord de chaque rampe de saut : on note la vitesse au moment où la voiture franchit ce plan.
   const jumps: JumpPass[] = trackJumps(track, opts.params).map((jump) => ({ jump, speed: 0 }));
@@ -591,6 +595,7 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
         flight = 0;
       } else {
         flight++;
+        airTicks++;
         if (input.brake > 0) frozeThisFlight = true;
       }
     }
@@ -628,6 +633,7 @@ export function runPilot(track: Track, opts: AutopilotOptions = {}, maxSeconds =
     brakeEvents,
     coastEvents,
     freezeEvents,
+    airTicks,
     jumps,
     jumpsOk: jumps.every(({ jump, speed }) => speed >= jump.minSpeed * JUMP_ENTRY_MARGIN && speed <= jump.maxSpeed),
     wall: opts.wall ?? false,

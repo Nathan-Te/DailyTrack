@@ -217,7 +217,8 @@ describe("Ville : des angles droits", () => {
 
   it("jusqu'à quatre virages serrés (exception documentée), jamais deux de suite, jamais sur la route large, route étroite ou normale seulement", () => {
     expect(maxTightOf(THEMES.ville)).toBe(4);
-    for (const name of THEME_NAMES) if (name !== "ville") expect(maxTightOf(THEMES[name]), name).toBe(2);
+    // Lot 25 : ni le Canyon (grandes courbes à fond) ni la Banquise (grandes courbes en roue libre) n'en ont.
+    for (const name of THEME_NAMES) if (name !== "ville") expect(maxTightOf(THEMES[name]), name).toBe(name === "canyon" || name === "banquise" ? 0 : 2);
     let most = 0;
     for (const c of circuits) {
       const tight = c.track.blocks.filter((b) => isTight(b.kind));
