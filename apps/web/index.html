@@ -64,6 +64,7 @@
       #menu button { font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.6); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 6px 10px; cursor: pointer; min-height: 32px; }
       #menu button[hidden] { display: none; }
       #menu .ico { display: none; }
+      #pause button[hidden] { display: none; }
 
       #board { position: fixed; left: 16px; top: 82px; width: 270px; background: rgba(11,16,32,.78); color: #fff; font: 600 13px system-ui, sans-serif; padding: 10px 12px; border-radius: 10px; font-variant-numeric: tabular-nums; }
       #board[hidden] { display: none; }
@@ -202,6 +203,27 @@
       #tuned { left: 50%; top: 48px; transform: translateX(-50%); font-size: 12px; color: #ffd22e; background: rgba(11,16,32,.6); padding: 1px 8px; border-radius: 6px; }
       #tuned:empty { display: none; }
 
+
+      /* Le Salon (lot 26) : compte à rebours, classement de la session, podium. */
+      #medals.last { color: #ff9c8f; font-weight: 800; }
+      #board.salon { width: 290px; }
+      #board.salon .row { grid-template-columns: 22px 1fr auto 52px; }
+      #board.salon .row .icon { opacity: .7; font-size: 11px; text-align: right; align-self: center; }
+      #board .error { color: #ff8a80; margin-top: 4px; }
+      #podium { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(380px, calc(100vw - 24px)); box-sizing: border-box; background: rgba(19,26,51,.97); color: #fff; font: 600 15px system-ui, sans-serif; padding: 16px 20px; border-radius: 14px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-height: calc(100vh - 24px); overflow: auto; }
+      #podium[hidden] { display: none; }
+      #podium .title { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
+      #podium .place { display: grid; grid-template-columns: 34px 1fr auto; gap: 8px; align-items: center; padding: 5px 4px; font-size: 17px; font-variant-numeric: tabular-nums; text-align: left; }
+      #podium .place .medal { font-size: 24px; text-align: center; }
+      #podium .place .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #podium .place.me { color: #ffd22e; }
+      #podium .none, #podium .next { opacity: .7; font-size: 13px; margin-top: 8px; }
+      #podium .mine { margin-top: 10px; color: #9bd0ff; }
+      #podium .share { margin: 10px 0 0; font-size: 13px; background: rgba(255,255,255,.08); border-radius: 8px; padding: 6px 8px; word-break: break-word; }
+      #podium button { margin-top: 8px; font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 0; cursor: pointer; background: #ffd22e; color: #111; min-height: 38px; }
+      body.touch #podium button { min-height: 44px; }
+      body.podium #finish, body.podium #splits { display: none; }
+
       /* Petits écrans (téléphone) : bandeau resserré, menu en icônes, panneaux plus étroits. */
       @media (max-width: 900px), (max-height: 520px) {
         #meta { top: 8px; font-size: 11px; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* deux chiffres au numéro du circuit : ne jamais passer sous le menu */
@@ -221,6 +243,8 @@
         #banner.small { font-size: 24px; }
         #menu { right: 8px; top: 6px; gap: 4px; }
         #menu .txt { display: none; }
+        /* Le menu est plein : l'accès au Salon (ou au circuit du jour) est dans la fenêtre de pause et sur le panneau d'arrivée. */
+        #menu #btn-mode, #finish .actions .mode { display: none; }
         #menu .ico { display: inline; font-size: 16px; }
         #menu button { padding: 4px 8px; min-height: 34px; min-width: 38px; }
         #finish { padding: 14px 16px; top: 56%; }
@@ -263,6 +287,7 @@
       <button id="btn-ghost" type="button" title="Fantôme (G)"><span class="ico">👻</span><span class="txt">Fantôme</span></button>
       <button id="btn-sound" type="button" title="Son (M)"><span class="ico">🔊</span><span class="txt">Son</span></button>
       <button id="btn-archive" type="button" title="Archives (H)"><span class="ico">📅</span><span class="txt">Archives</span></button>
+      <button id="btn-mode" type="button" title="Salon : un circuit toutes les 10 minutes" hidden><span class="ico">🏁</span><span class="txt">Salon</span></button>
     </div>
     <div id="board" hidden></div>
     <div id="info" class="hud"></div>
@@ -271,6 +296,7 @@
     <div id="banner" class="hud"></div>
     <div id="freeze" class="hud" aria-hidden="true">❄ FIGÉ</div>
     <div id="finish" hidden></div>
+    <div id="podium" hidden></div>
     <div id="archive" hidden><div class="panel"></div></div>
     <div id="daycard" hidden></div>
     <div id="speed" class="hud">0 km/h</div>
@@ -284,7 +310,7 @@
     <div id="rotate"></div>
     <div id="pause">
       <div class="big">Pause</div>
-      <div class="actions"><button id="pause-resume" class="primary" type="button">Reprendre</button><button id="pause-restart" type="button">Recommencer</button></div>
+      <div class="actions"><button id="pause-resume" class="primary" type="button">Reprendre</button><button id="pause-restart" type="button">Recommencer</button><button id="pause-mode" type="button" hidden>Salon</button></div>
     </div>
     <div id="tuned" class="hud"></div>
     <div id="tune" hidden></div>

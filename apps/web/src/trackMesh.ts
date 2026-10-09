@@ -1587,7 +1587,11 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   return {
     scene,
     look,
-    dispose: () => disposeScene(scene),
+    dispose: () => {
+      // Cartes d'ombres des lumières (le Salon change de scène toutes les dix minutes : rien ne doit s'accumuler côté carte graphique).
+      scene.traverse((o) => ((o as { shadow?: { map?: { dispose(): void } | null } }).shadow?.map?.dispose()));
+      disposeScene(scene);
+    },
     setQuality,
     setLite(on) {
       setQuality(on ? 0 : 2);

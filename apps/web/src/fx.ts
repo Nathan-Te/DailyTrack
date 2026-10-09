@@ -338,6 +338,11 @@ export class Effects {
   private acc = { smoke: 0, surface: 0, spark: 0, flame: 0 };
 
   constructor(scene: Scene) {
+    this.attach(scene);
+  }
+
+  /** Place les particules et les traces dans une autre scène (le Salon change de circuit, donc de scène : les pools sont gardés). */
+  attach(scene: Scene) {
     scene.add(this.skids.mesh, this.smoke.points, this.glow.points);
   }
 
