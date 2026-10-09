@@ -198,6 +198,14 @@ test("bouton Salon / Jour : on passe de l'un à l'autre en gardant l'API", async
   await page.waitForFunction(() => !location.search.includes("mode=salon"));
   await page.waitForFunction(() => window.__cdj?.phase);
   await expect(page.locator("#meta")).toContainText("Circuit du Jour");
+  // Même entrée dans la fenêtre de pause (c'est elle qu'on a sur téléphone, où le menu est plein).
+  await page.keyboard.press("KeyP");
+  await expect(page.locator("#pause-mode")).toHaveText("Salon");
+  await page.locator("#pause-mode").click();
+  await page.waitForURL(/mode=salon/);
+  await loaded(page);
+  await page.keyboard.press("KeyP");
+  await expect(page.locator("#pause-mode")).toHaveText("Circuit du jour");
 });
 
 for (const viewport of [
@@ -226,6 +234,19 @@ for (const viewport of [
     expectNoOverlap(await boxes(page, ["#board"]), viewport);
     await page.locator("#board").tap();
     await expect(page.locator("#board")).toBeHidden();
+    // Arrivée d'un tour complet (pas à pas, indépendant de la vitesse de la machine) : le panneau et ses boutons restent dans l'écran.
+    await page.evaluate((n) => localStorage.setItem("cdj:name", n), "Mobile");
+    await page.evaluate(() => window.__cdj.manual(true));
+    await page.evaluate((c) => window.__cdj.autoplay(c), code);
+    for (let guard = 0; guard < 100 && (await page.evaluate(() => window.__cdj.phase)) !== "finished"; guard++) await page.evaluate(() => window.__cdj.advance(240));
+    await page.evaluate(() => window.__cdj.manual(false));
+    await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 30_000 });
+    expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#finish"]), viewport);
+    for (const b of await page.locator("#finish .actions button:visible").all()) {
+      const box = (await b.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(34);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+    }
     // Podium : dans l'écran, boutons de 44 px.
     await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END + 100);
     await expect(page.locator("#podium")).toBeVisible({ timeout: 15_000 });

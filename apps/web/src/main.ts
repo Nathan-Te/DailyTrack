@@ -646,6 +646,11 @@ menuButton("btn-archive", () => (hudArchive.hidden ? openArchive() : closeArchiv
 // Salon ↔ circuit du jour (lot 26) : seulement avec une API (ou la démonstration), le Salon a besoin du serveur.
 const modeBtn = menuButton("btn-mode", () => location.assign(modeHref(location.search, !salon)));
 modeBtn.hidden = apiBase() === null;
+// Petit écran : le bouton du menu est masqué (CSS) ; la fenêtre de pause porte la même entrée.
+const pauseMode = $("pause-mode") as HTMLButtonElement;
+pauseMode.hidden = apiBase() === null;
+pauseMode.textContent = salon ? "Circuit du jour" : "Salon";
+pauseMode.addEventListener("click", () => location.assign(modeHref(location.search, !salon)));
 if (salon) {
   modeBtn.querySelector(".ico")!.textContent = "📅";
   modeBtn.querySelector(".txt")!.textContent = "Jour";
@@ -849,6 +854,7 @@ function finishSalonRun() {
     setTimeout(() => (b.textContent = old), 1600);
   });
   action("Classement", () => setBoardVisible(!boardVisible));
+  if (!compactScreen()) action("Circuit du jour", () => location.assign(modeHref(location.search, false)), "mode");
   const hint = text("Entrée : rejouer · Tab : classement", "hint");
   hudFinish.replaceChildren(...nodes, ...(counted ? [box] : []), share, actions, hint);
   hudFinish.hidden = false;
@@ -935,6 +941,7 @@ function finishRun() {
     }
   }
   action("Archives", () => openArchive());
+  if (apiBase() !== null && !compactScreen()) action("Salon", () => location.assign(modeHref(location.search, true)), "mode"); // le Salon : un circuit toutes les 10 minutes (sur téléphone : dans la fenêtre de pause)
   const showOnline = online.enabled && counted;
   hudFinish.replaceChildren(...rows, ...(showOnline ? [onlineBox] : []), ...(shareEl && best ? [shareEl] : []), actions, hint);
   hudFinish.hidden = false;

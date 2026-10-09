@@ -5,7 +5,7 @@
 1. **Le Salon en démonstration** : [`?mode=salon&api=demo`](https://nathan-te.github.io/DailyTrack/b/claude-ecstatic-mccarthy-c02grk/?mode=salon&api=demo) — circuit de la session en cours, joueurs fictifs qui arrivent au fil du temps (leurs fantômes avec leur pseudo, le classement à gauche, **Tab** pour l'ouvrir ou le fermer, **G** pour les fantômes), compte à rebours en haut à gauche.
 2. **Voir une bascule en deux minutes** : [`?mode=salon&api=demo&salonMinutes=2`](https://nathan-te.github.io/DailyTrack/b/claude-ecstatic-mccarthy-c02grk/?mode=salon&api=demo&salonMinutes=2) — « dernier essai » à 30 s de la fin, podium, puis un autre circuit s'installe tout seul.
 3. **Sur téléphone** : [`?mode=salon&api=demo&touch=1`](https://nathan-te.github.io/DailyTrack/b/claude-ecstatic-mccarthy-c02grk/?mode=salon&api=demo&touch=1) — classement avec le bouton 🏆, tout se joue au doigt.
-4. Le bouton **Salon** (menu en haut à droite, dès qu'une API ou `api=demo` est configurée) mène au Salon ; **Jour** en revient.
+4. Le bouton **Salon** (menu en haut à droite sur grand écran ; sur téléphone : dans la fenêtre de pause ⏸, le menu étant plein, et sur le panneau d'arrivée du grand écran), dès qu'une API ou `api=demo` est configurée, mène au Salon ; **Jour** / « Circuit du jour » en revient.
 
 ![Le Salon en course : cinq fantômes, leurs pseudos, le classement de la session](img/lot-26-salon-course.png)
 ![Le podium de fin de session](img/lot-26-salon-podium.png)
@@ -48,7 +48,7 @@ La voiture d'un fantôme est **une seule pièce** (caisse + quatre roues fondues
 
 - `packages/sim/test/salon.test.ts` : sessions, thème jamais répété (4 époques × 1 000 sessions), les huit thèmes sortent, circuit déterministe et distinct d'un jour, durée 30–40 s sur 16 sessions, pilote fictif rejoué à l'identique.
 - `apps/web/test/salon.test.ts` (30) : horloge, compte à rebours, dernier essai, clôture à +60 s, choix des fantômes (trois premiers, devant, derrière, jamais toi, au plus cinq), dépassement, touche G, ligne à partager, plan des pilotes fictifs, `DemoSalonApi` (joueurs qui arrivent, temps du rejeu, meilleur temps gardé, rediffusion falsifiée / d'un autre circuit refusée, envoi trop tardif refusé), client HTTP, voiture allégée.
-- `e2e/salon.spec.ts` (11, démo, Chromium) : arrivée en cours de session (joueurs fictifs, fantômes avec leur pseudo, étiquettes dessinées), ta course classée (temps du rejeu, aucune clé `cdj:best:` écrite, « Toi » dans les fantômes), dernier essai, **podium puis bascule vers un autre circuit sans calcul sur le fil principal**, **course commencée avant la fin et finie après acceptée**, touches G et Tab, sans API (message et circuit du jour), bouton Salon / Jour, **trois téléphones** sans chevauchement (classement, podium).
+- `e2e/salon.spec.ts` (11, démo, Chromium ; la suite complète : 140 tests e2e) : arrivée en cours de session (joueurs fictifs, fantômes avec leur pseudo, étiquettes dessinées), ta course classée (temps du rejeu, aucune clé `cdj:best:` écrite, « Toi » dans les fantômes), dernier essai, **podium puis bascule vers un autre circuit sans calcul sur le fil principal**, **course commencée avant la fin et finie après acceptée**, touches G et Tab, sans API (message et circuit du jour), bouton Salon / Jour, **trois téléphones** sans chevauchement (classement, podium).
 - Golden inchangés ; `SIM_VERSION` et `GENERATOR_VERSION` inchangées.
 
 ## Décisions et limites
