@@ -23,6 +23,8 @@ import {
   type Track,
 } from "@cdj/sim";
 import { MIGRATIONS, SCHEMA, type SqlDb } from "./db";
+import { HttpError } from "./errors";
+import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
 import { PLAYER_ID, cleanName } from "./validate";
 
 // API du classement. Elle ne fait confiance à aucun temps annoncé : elle reçoit la rediffusion (la suite des
@@ -56,6 +58,13 @@ export interface ApiOptions {
    * jamais dans le dépôt. Absent ou de moins de `ADMIN_TOKEN_MIN` caractères : l'admin est désactivé (les routes n'existent pas).
    */
   adminToken?: string;
+  /**
+   * Durée d'une session du Salon en minutes (0,5 à 60 ; 10 par défaut). Variable d'environnement `SALON_MINUTES` : **tests et
+   * essais locaux seulement**, absente en production (une session n'a pas la même durée pour tous si elle change).
+   */
+  salonMinutes?: number;
+  /** Limites de débit du Salon (voir `DEFAULT_SALON_LIMITS`). */
+  salonLimits?: Partial<SalonLimits>;
 }
 
 /** Longueur minimale du jeton d'admin : un jeton court se devine. */
@@ -83,17 +92,6 @@ interface Circuit {
   track: Track;
 }
 
-class HttpError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    message: string,
-    readonly headers: Record<string, string> = {},
-  ) {
-    super(message);
-  }
-}
-
 const DEFAULT_LIMITS = { windowMs: 10 * 60_000, perClient: 60, perPlayer: 30 };
 
 export function createApi(options: ApiOptions) {
@@ -102,6 +100,7 @@ export function createApi(options: ApiOptions) {
   const allowOrigin = options.allowOrigin ?? "*";
   const limits = options.limits ?? DEFAULT_LIMITS;
   const circuits = new Map<number, Circuit>();
+  const sessionMs = salonSessionMs(options.salonMinutes) ?? 600_000;
   let schemaReady: Promise<void> | null = null;
 
   const ensureSchema = () => (schemaReady ??= (async () => {
@@ -244,6 +243,19 @@ export function createApi(options: ApiOptions) {
     }
     return day;
   }
+
+  // --- Le Salon (lot 27) : voir salon.ts ------------------------------------------------------------------------------
+  const salon = createSalon({
+    db,
+    now,
+    sessionMs,
+    hashKey,
+    hit,
+    readJson,
+    playerIdOf,
+    limits: { ...DEFAULT_SALON_LIMITS, ...options.salonLimits },
+    demoPlayers: options.demoPlayers === true,
+  });
 
   async function playerName(id: string): Promise<string | null> {
     const row = await db.first<{ name: string }>("SELECT name FROM players WHERE id = ?", [id]);
@@ -536,7 +548,7 @@ export function createApi(options: ApiOptions) {
       await ensureSchema();
 
       if (path === "/api/health" && req.method === "GET") {
-        return reply(200, { ok: true, simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: formatDay(today()) });
+        return reply(200, { ok: true, simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: formatDay(today()), salonMinutes: sessionMs / 60_000 });
       }
       if (path === "/api/submit") {
         if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
@@ -565,6 +577,35 @@ export function createApi(options: ApiOptions) {
         }
         throw new HttpError(404, "not_found", "Route inconnue");
       }
+      const sm = /^\/api\/salon\/([^/]+)(?:\/(board|ghosts|submit))?$/.exec(path);
+      if (sm) {
+        const what = sm[2];
+        let key: string;
+        try {
+          key = decodeURIComponent(sm[1]!);
+        } catch {
+          throw new HttpError(400, "invalid_session", "Adresse invalide");
+        }
+        if (!what && key === "now") {
+          if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+          return reply(200, await salon.nowRoute(url, info));
+        }
+        if (!what && key === "podiums") {
+          if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+          return reply(200, await salon.podiumsRoute(url, info));
+        }
+        if (what === "submit") {
+          if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
+          const result = await salon.submitRoute(key, req, info);
+          await salon.maintain().catch((e) => console.error("Salon : entretien impossible :", e)); // jamais au détriment de la réponse
+          return reply(200, result);
+        }
+        if (what === "board" || what === "ghosts") {
+          if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+          return reply(200, what === "board" ? await salon.boardRoute(key, url, info) : await salon.ghostsRoute(key, url, info));
+        }
+        throw new HttpError(404, "not_found", "Route inconnue");
+      }
       const m = /^\/api\/day\/([^/]+)(?:\/(leaderboard|ghost))?$/.exec(path);
       if (m) {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
@@ -581,5 +622,19 @@ export function createApi(options: ApiOptions) {
     }
   }
 
-  return { handle };
+  /**
+   * Tâche périodique du serveur (Node : toutes les 15 s) : prépare à l'avance le circuit du Salon et fait l'entretien (podiums,
+   * purge à 48 h). Facultative : sans elle, le circuit se génère à la première requête qui en a besoin et l'entretien se fait au fil
+   * des envois.
+   */
+  async function tick(): Promise<void> {
+    try {
+      await ensureSchema();
+      await salon.tick();
+    } catch (e) {
+      console.error("Tâche périodique du Salon :", e); // réessayée au prochain passage ; ne doit jamais arrêter le serveur
+    }
+  }
+
+  return { handle, tick, salon };
 }

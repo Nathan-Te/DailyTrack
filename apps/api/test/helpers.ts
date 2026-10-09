@@ -5,7 +5,10 @@ import {
   dailyCircuit,
   runPilot,
   type DailyCircuit,
+  salonCircuit,
+  salonSessionAt,
   type Replay,
+  type SalonCircuit,
 } from "@cdj/sim";
 import { createApi, type ApiOptions } from "../src/api";
 import type { SqlDb } from "../src/db";
@@ -81,3 +84,31 @@ export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } 
 }
 
 export { decodeReplay, encodeReplay };
+
+// --- Le Salon (lot 27) -------------------------------------------------------------------------------------------------
+/** Session du Salon à l'heure de test (12:00 UTC, début de session) : un circuit « col » que les pilotes finissent à tous les niveaux. */
+export const SALON_SESSION = salonSessionAt(NOON);
+export const SESSION_MS = 600_000;
+
+const salonCircuits = new Map<number, SalonCircuit>();
+/** Circuit du Salon pour une session (calculé une fois par fichier de test : le générateur est coûteux). */
+export function salonCircuitOf(session: number): SalonCircuit {
+  let c = salonCircuits.get(session);
+  if (!c) salonCircuits.set(session, (c = salonCircuit(session)));
+  return c;
+}
+
+/** Une rediffusion valide d'une session du Salon, avec le pilote réglé sur `grip` (plus bas = plus lent). */
+export function salonReplay(session: number, grip: number): { code: string; replay: Replay; finishMs: number } {
+  const run = runPilot(salonCircuitOf(session).track, { grip });
+  if (!run.valid) throw new Error("le pilote ne finit pas ce circuit");
+  return { code: encodeReplay(run.replay), replay: run.replay, finishMs: run.finishMs };
+}
+
+/** Amorce le cache des circuits du Salon d'une base (comme le ferait un premier appel) : évite de régénérer le circuit à chaque test. */
+export async function seedSalonCircuit(db: SqlDb, session: number): Promise<void> {
+  const { SCHEMA } = await import("../src/db");
+  for (const sql of SCHEMA) await db.run(sql);
+  const c = salonCircuitOf(session);
+  await db.run("INSERT OR IGNORE INTO salon_circuits (session, track_id, spec, created_at) VALUES (?, ?, ?, ?)", [session, c.id, c.spec, NOON]);
+}

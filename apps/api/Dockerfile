@@ -1,6 +1,8 @@
 # Serveur du classement sur un serveur Docker. Depuis la racine du dépôt :
 #   docker build -f apps/api/Dockerfile -t circuit-du-jour-api .
 #   docker run -d -p 8787:8787 -v cdj-data:/data -e TRUST_PROXY=1 -e RATE_SALT=<une-valeur-secrete> circuit-du-jour-api
+# Le Salon (lot 27) est servi par le même conteneur, sans rien de plus : sessions de 10 minutes, circuits préparés par une tâche interne.
+# Ne jamais régler SALON_MINUTES en production (tests et essais locaux seulement).
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./

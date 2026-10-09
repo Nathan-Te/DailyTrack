@@ -279,7 +279,7 @@ describe("protocole", () => {
   it("répond à /api/health", async () => {
     const t = await makeApi();
     const r = await t.call("GET", "/api/health");
-    expect(r.body).toEqual({ ok: true, simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: DATE });
+    expect(r.body).toEqual({ ok: true, simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: DATE, salonMinutes: 10 });
   });
 
   it("autorise CORS et répond aux requêtes préalables", async () => {
