@@ -4,7 +4,7 @@ import { HALF_PI, clamp, cos, sin } from "./math";
 import { createRace, stepRace, type RaceState } from "./race";
 import { ReplayRecorder, type Replay } from "./replay";
 import { trackJumps, type JumpInfo } from "./jump";
-import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
+import { BANK_SLOPE_TIGHT, BANK_SLOPE_WIDE, CELL, bankFactor, CUVE_LEFT, SHOULDER_EDGE, CUVE_RAMP_ARC, CUVE_RATIO, blockHalfWidth, blockPoint, blockSlope, curveCenter, curveSize, dirX, dirZ, isCurve, isWide, turnsLeft, type Block, type Track } from "./track";
 import { cuveAmplitude } from "./cuve";
 import { SURFACES } from "./world";
 
@@ -151,7 +151,13 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
       } else out.wallExit.push(!(b.cuveOut & bit) && q > CELL - STRAIGHT_RAMP);
     } else {
       out.pin.push(NaN);
-      out.wall.push(0);
+      // Virage relevé : la pente en travers naît et meurt avec le relevé (`bankFactor`), le pilote ne compte dessus que dans la mesure où elle est là.
+      let bankSlope = 0;
+      if (b.banked) {
+        const adp = Math.abs(p - curveCenter(b.kind).cp);
+        bankSlope = (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) * bankFactor(q / (q + adp + 1e-9));
+      }
+      out.wall.push(bankSlope);
       out.wallExit.push(false);
     }
   };
@@ -352,7 +358,7 @@ function racingPath(track: Track, wall = false, cut = 0): Path {
       rolling.push(m.rolling);
     }
     slick.push(m.slick);
-    bank.push(b.banked ? (isWide(b.kind) ? BANK_SLOPE_WIDE : BANK_SLOPE_TIGHT) : c.wall[i]!);
+    bank.push(c.wall[i]!);
   }
   // Zone de saut : de la rampe à la fin du bloc qui suit la réception. Elle commence au bloc `K` et finit un bloc après la réception.
   const zone = new Set<number>();
