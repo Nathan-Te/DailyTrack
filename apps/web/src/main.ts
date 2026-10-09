@@ -1212,7 +1212,7 @@ if (params.has("debug")) {
       },
       /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
       get render() {
-        return view.stats();
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles };
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {

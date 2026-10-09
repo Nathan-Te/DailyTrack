@@ -22,7 +22,7 @@ test("fil principal par image", async ({ browser }) => {
   for (const [name, query] of Object.entries(SCENES)) {
     if (only && !only.includes(name)) continue;
     for (const quality of [0, 1, 2]) {
-      for (const rate of [1, 4]) {
+      for (const rate of (process.env.RATES ?? "1,4").split(",").map(Number)) {
         const context = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
         const page = await context.newPage();
         const cdp = await context.newCDPSession(page);
@@ -31,7 +31,7 @@ test("fil principal par image", async ({ browser }) => {
         await page.addInitScript(() => localStorage.setItem("cdj:camera", "proche"));
         await page.goto(`${BASE}/${query}&debug&quality=${quality}`);
         await page.waitForFunction(() => window.__cdj?.phase);
-        await page.waitForTimeout(8000);
+        await page.waitForTimeout(9000); // après le départ, les premiers effets (compilation des shaders) et le premier changement de caméra de la démo (à 7 s)
         await page.evaluate(() => {
           const w = window as unknown as { __frames: number };
           w.__frames = 0;
@@ -43,7 +43,7 @@ test("fil principal par image", async ({ browser }) => {
         });
         const read = async () => Object.fromEntries((await cdp.send("Performance.getMetrics")).metrics.map((m) => [m.name, m.value]));
         const a = await read();
-        await page.waitForTimeout(5000);
+        await page.waitForTimeout(4500); // finit avant le second changement de caméra de la démo (14 s)
         const b = await read();
         const frames = await page.evaluate(() => (window as unknown as { __frames: number }).__frames);
         const ms = (((b.TaskDuration ?? 0) - (a.TaskDuration ?? 0)) * 1000) / Math.max(1, frames);
