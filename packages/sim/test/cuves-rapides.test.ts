@@ -123,12 +123,14 @@ describe("pas d'exploitation : le gain est borné", () => {
 });
 
 describe("le pilote d'auteur choisit la paroi", () => {
-  it("sur la majorité des circuits Stade et Nuit à cuve des 24 premiers jours, la paroi est la ligne la plus rapide", () => {
+  it("sur la majorité des circuits Stade et Nuit à cuve des 40 premiers jours, la paroi est la ligne la plus rapide", () => {
     const first = daysFromCivil(2026, 10, 6);
     let withCuve = 0;
     let onWall = 0;
-    for (let d = 0; d < 24; d++) {
+    // Stade et Nuit seulement : au Canyon (lot 22) la paroi précède un saut, le pilote d'auteur garde le fond pour s'aligner sur la rampe.
+    for (let d = 0; d < 40; d++) {
       const c = dailyCircuit(first + d);
+      if (c.theme !== "stade" && c.theme !== "nuit") continue;
       if (!c.track.blocks.some((b) => b.cuve)) continue;
       withCuve++;
       if (bestPilotRun(c.track)?.wall) onWall++;

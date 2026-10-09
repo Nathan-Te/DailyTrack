@@ -89,7 +89,7 @@ export interface Palette {
   mountain: number;
   mountainTop: number;
   /** Décor au bord de la piste : cactus et rochers, sapins, lampadaires, arbres, pylônes lumineux, drapeaux et haies (Stade). */
-  scenery: "desert" | "pine" | "lamps" | "trees" | "pylons" | "flags";
+  scenery: "desert" | "pine" | "lamps" | "trees" | "pylons" | "flags" | "canyon" | "alpine" | "city";
   /**
    * Lumière (lot 21) : hauteur du soleil (0 = à l'horizon, 1 = au zénith : la lumière vient d'en haut, le disque monte) et rebord au bout
    * d'un bas-côté (couleurs alternées : muret, clôture de bois, filet…). `neon` : bordure lumineuse au bord du vide (Nuit).
@@ -97,6 +97,8 @@ export interface Palette {
   sunHeight: number;
   fence: [number, number];
   neon?: [number, number];
+  /** Hauteur dessinée des rebords (m) : `WALL_HEIGHT` par défaut ; Ville (lot 22) les dessine hauts (présentation seule : la voiture n'y change rien). */
+  wallHeight?: number;
 }
 
 export const PALETTE_DEFS: Record<PaletteName, Palette> = {
@@ -169,6 +171,42 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     zenith: 0x2f7fe0, disc: 0xfffbe8, mountain: 0x6f9fca, mountainTop: 0xdfeefa, scenery: "flags",
     sunHeight: 0.85, fence: [0x2e7dff, 0xf4f4f4], // muret bleu et blanc
   },
+  canyon: {
+    label: PALETTE_LABELS.canyon,
+    // Soleil rasant orangé (lot 22) : ciel cuivré, ombres longues, sol de sable et parois de roche rouge.
+    sky: 0xf2a463, fogNear: 80, fogFar: 300,
+    ambient: [0xffdcb8, 1.35], sun: [0xff9a4a, 2.4],
+    floorA: "#d49a55", floorB: "#c88c47",
+    road: [0x8a7468, 0x7f6a5e], dash: 0xf6e6c8, skirt: 0x93472a,
+    wallA: 0xb04a2a, wallB: 0xe6a46a,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
+    zenith: 0x6a5aa0, disc: 0xffd89a, mountain: 0xa8452a, mountainTop: 0xe08a52, scenery: "canyon",
+    sunHeight: 0.2, fence: [0xa8472a, 0xdc9a5e], // blocs de roche rouge et ocre
+  },
+  alpin: {
+    label: PALETTE_LABELS.alpin,
+    // Matin clair en montagne (lot 22) : air limpide, ciel bleu profond, alpage vert, cimes enneigées au loin.
+    sky: 0xcde6f7, fogNear: 130, fogFar: 400,
+    ambient: [0xeaf4ff, 1.05], sun: [0xfff6e2, 2.4],
+    floorA: "#8fb67a", floorB: "#84ab70",
+    road: [0x666b75, 0x5e636d], dash: 0xffffff, skirt: 0x7b8794,
+    wallA: 0xe8283a, wallB: 0xf6f6f6,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
+    zenith: 0x3a82d6, disc: 0xfffbe6, mountain: 0x78899e, mountainTop: 0xffffff, scenery: "alpine",
+    sunHeight: 0.5, fence: [0xe8283a, 0xf6f6f6], // glissières rouges et blanches
+  },
+  ville: {
+    label: PALETTE_LABELS.ville,
+    // Jour de ville (lot 22) : béton clair, ciel voilé bleu-gris, route d'asphalte sombre entre des murs hauts de béton.
+    sky: 0xc3d6e6, fogNear: 110, fogFar: 350,
+    ambient: [0xf2f5ff, 1.0], sun: [0xfff3dc, 2.1],
+    floorA: "#9a9da4", floorB: "#8f9298",
+    road: [0x474a52, 0x41444c], dash: 0xf4f1e6, skirt: 0x707680,
+    wallA: 0xbfc2c8, wallB: 0xa4a8af,
+    boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
+    zenith: 0x6f9fd2, disc: 0xfff6dc, mountain: 0x8a95a6, mountainTop: 0xb6c1cf, scenery: "city",
+    sunHeight: 0.7, fence: [0xc4c7cd, 0xa4a8af], wallHeight: 3.4, // murs de béton
+  },
 };
 
 /** Couleurs de la route selon le revêtement (deux tons en alternance, comme la route) : lisibles d'un coup d'œil. */
@@ -179,10 +217,12 @@ export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, numbe
   // Bas-côtés (lot 21) et vibreur : gravier gris-brun, neige poudreuse presque blanche ; le vibreur est dessiné à part (rouge et blanc).
   gravel: [0x9b8a72, 0x8f7f68],
   snow: [0xf4f8fc, 0xe9f0f7],
+  // Sable (lot 22) : beige chaud, un ton plus clair que le sol du Canyon pour que la bande se lise.
+  sand: [0xf2d690, 0xe8ca82],
   kerb: [0xe8283a, 0xf4f4f4],
 };
 /** Motifs légers par revêtement (traces, éclats, brins) : une teinte plus sombre ou plus claire. */
-const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, snow: 0xc9d8e8, kerb: 0xffffff };
+const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
 /** Bas-côtés de l'herbe haute de Campagne : une herbe plus sombre et plus jaune que celle du Stade (lot 21). */
 const TALL_GRASS: [number, number] = [0x6f9a3a, 0x668f34];
 /** Blocs à effet : couleurs propres, indépendantes de la palette (la lisibilité d'abord). */
@@ -453,9 +493,10 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         const t1 = (k + 1) / pieces;
         const at = (t: number, up: number): V3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t + up, p[2] + (q[2] - p[2]) * t];
         const wallColor = stripes[side]++ % 2 === 0 ? (style.fence?.[0] ?? pal.wallA) : (style.fence?.[1] ?? pal.wallB);
-        g.quad(at(t0, 0), at(t1, 0), at(t1, WALL_HEIGHT), at(t0, WALL_HEIGHT), wallColor);
-        const c0 = at(t0, WALL_HEIGHT);
-        const c1 = at(t1, WALL_HEIGHT);
+        const wallTop = pal.wallHeight ?? WALL_HEIGHT;
+        g.quad(at(t0, 0), at(t1, 0), at(t1, wallTop), at(t0, wallTop), wallColor);
+        const c0 = at(t0, wallTop);
+        const c1 = at(t1, wallTop);
         g.quad(c0, c1, [c1[0] + ox, c1[1], c1[2] + oz], [c0[0] + ox, c0[1], c0[2] + oz], wallColor);
       }
     }
@@ -1061,6 +1102,70 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
       g.box(x - w / 2, y, z - 0.15, x + w / 2, y + 1.6, z + 0.15, c);
       g.box(x - w / 2 + 0.3, y + 0.4, z - 0.17, x + w / 2 - 0.3, y + 1.2, z + 0.17, 0xffffff);
     }
+  } else if (style === "canyon") {
+    // Canyon (lot 22) : mesas et aiguilles de roche rouge à strates, cactus, buissons secs.
+    if (k < 0.4) {
+      const r = (2.2 + rnd() * 2.6) * jitter;
+      const h = (7 + rnd() * 11) * jitter;
+      const rock = mix(0xa8452a, 0xc9683c, rnd());
+      g.prism(x, y, z, r, r * 0.8, h * 0.55, 7, rock, shade(rock, 0.86), rnd() * 3);
+      g.prism(x, y + h * 0.55, z, r * 0.8, r * 0.62, h * 0.45, 7, shade(rock, 1.12), mix(0xe3a86d, rock, 0.3), rnd() * 3);
+    } else if (k < 0.62) {
+      const h = (2.6 + rnd() * 2.4) * jitter;
+      const green = mix(0x4a7a3a, 0x6a9a4a, rnd());
+      g.prism(x, y, z, 0.36, 0.3, h, 6, green, shade(green, 1.15));
+      if (rnd() < 0.7) g.box(x + 0.3, y + h * 0.45, z - 0.15, x + 0.95, y + h * 0.45 + 0.3, z + 0.15, green);
+    } else if (k < 0.88) {
+      const r = (0.8 + rnd() * 1.4) * jitter;
+      const rock = mix(0xb86a46, 0xdc9a68, rnd());
+      g.prism(x, y, z, r, r * 0.5, r * 0.85, 5, rock, shade(rock, 1.18), rnd() * 3);
+    } else {
+      const r = 0.7 + rnd() * 0.5;
+      g.prism(x, y, z, r, 0.1, 0.6, 6, mix(0x8a7a40, 0xa89050, rnd())); // buisson sec
+    }
+  } else if (style === "alpine") {
+    // Col alpin (lot 22) : sapins à sommet enneigé, gros blocs gris, chalets de bois au toit blanc.
+    if (k < 0.62) {
+      const h = (6 + rnd() * 5) * jitter;
+      const green = mix(0x1f5a3c, 0x2d7550, rnd());
+      g.box(x - 0.2, y, z - 0.2, x + 0.2, y + h * 0.2, z + 0.2, 0x5b3d26);
+      for (let t = 0; t < 3; t++) {
+        const f = t / 3;
+        g.prism(x, y + h * (0.14 + f * 0.28), z, (2.2 - f) * jitter, 0.05, h * 0.44, 7, green, 0xf6fbff);
+      }
+    } else if (k < 0.88) {
+      const r = (1.2 + rnd() * 2) * jitter;
+      g.prism(x, y, z, r, r * 0.45, r * 0.95, 6, 0x7d8896, 0xdfe7ef, rnd() * 3);
+    } else {
+      const w = (3.4 + rnd() * 1.4) * jitter;
+      g.box(x - w / 2, y, z - w / 2, x + w / 2, y + 2.6, z + w / 2, 0x8a5a36);
+      g.prism(x, y + 2.6, z, w * 0.82, 0.1, 1.6, 4, 0xe8eef4, 0xffffff, Math.PI / 4);
+    }
+  } else if (style === "city") {
+    // Ville (lot 22) : immeubles de béton aux fenêtres sombres, lampadaires, petits cubes de mobilier urbain.
+    if (k < 0.55) {
+      const w = (6 + rnd() * 6) * jitter;
+      const d = (6 + rnd() * 6) * jitter;
+      const h = (10 + rnd() * 24) * jitter;
+      const wall = mix(0xa9adb5, 0xcfd2d8, rnd());
+      g.box(x - w / 2, y, z - d / 2, x + w / 2, y + h, z + d / 2, wall);
+      g.box(x - w / 2 - 0.15, y + h, z - d / 2 - 0.15, x + w / 2 + 0.15, y + h + 0.4, z + d / 2 + 0.15, shade(wall, 0.78)); // acrotère
+      // Bandes de fenêtres sombres sur les quatre faces.
+      for (let f = 3; f < h - 1.5; f += 3.2) {
+        g.box(x - w / 2 + 0.6, y + f, z + d / 2, x + w / 2 - 0.6, y + f + 1.4, z + d / 2 + 0.06, 0x35506b);
+        g.box(x - w / 2 + 0.6, y + f, z - d / 2 - 0.06, x + w / 2 - 0.6, y + f + 1.4, z - d / 2, 0x35506b);
+        g.box(x + w / 2, y + f, z - d / 2 + 0.6, x + w / 2 + 0.06, y + f + 1.4, z + d / 2 - 0.6, 0x35506b);
+        g.box(x - w / 2 - 0.06, y + f, z - d / 2 + 0.6, x - w / 2, y + f + 1.4, z + d / 2 - 0.6, 0x35506b);
+      }
+    } else if (k < 0.85) {
+      const h = (5 + rnd() * 1.5) * jitter;
+      g.box(x - 0.1, y, z - 0.1, x + 0.1, y + h, z + 0.1, 0x3a3f4d);
+      g.box(x - 0.1, y + h - 0.12, z - 0.1, x + 1.1, y + h + 0.05, z + 0.1, 0x3a3f4d);
+      g.box(x + 0.7, y + h - 0.3, z - 0.22, x + 1.15, y + h - 0.12, z + 0.22, 0xf6efd0);
+    } else {
+      const s = (0.9 + rnd() * 1.2) * jitter;
+      g.box(x - s, y, z - s, x + s, y + s * 1.1, z + s, mix(0x8f949c, 0xb4b8bf, rnd()));
+    }
   } else {
     // pylônes lumineux : un mât sombre, un tube lumineux, des cubes qui flottent
     const h = (5 + rnd() * 6) * jitter;
@@ -1193,6 +1298,15 @@ function buildMountains(pal: Palette, rnd: () => number): Mesh {
     const r = 300 + rnd() * 70;
     const h = 38 + rnd() * 70;
     const w = 55 + rnd() * 60;
+    if (pal.scenery === "city") {
+      // Ville (lot 22) : des immeubles lointains à toit plat plutôt que des pics (les tirages restent les mêmes).
+      const bw = w * 0.45;
+      const bh = h * 1.2;
+      const wall = shade(body, 0.9 + rnd() * 0.2);
+      g.box(Math.cos(a) * r - bw, -10, Math.sin(a) * r - bw, Math.cos(a) * r + bw, bh, Math.sin(a) * r + bw, wall);
+      g.box(Math.cos(a) * r - bw * 1.05, bh, Math.sin(a) * r - bw * 1.05, Math.cos(a) * r + bw * 1.05, bh + 2, Math.sin(a) * r + bw * 1.05, tip);
+      continue;
+    }
     g.prism(Math.cos(a) * r, -10, Math.sin(a) * r, w, 0.5, h, 5 + Math.floor(rnd() * 2), shade(body, 0.85 + rnd() * 0.25), tip, rnd() * 3);
     // un second pic, plus petit, devant
     if (rnd() < 0.6) g.prism(Math.cos(a + 0.09) * (r - 28), -10, Math.sin(a + 0.09) * (r - 28), w * 0.6, 0.5, h * 0.55, 5, shade(body, 0.95 + rnd() * 0.2), tip, rnd() * 3);

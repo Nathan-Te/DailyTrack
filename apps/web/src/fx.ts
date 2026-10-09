@@ -182,6 +182,7 @@ const SKID_STYLE: Record<SurfaceKind, { c: [number, number, number]; a: number }
   dirt: { c: [0.22, 0.14, 0.07], a: 0.65 },
   grass: { c: [0.1, 0.26, 0.07], a: 0.55 },
   ice: { c: [0.96, 0.99, 1], a: 0.7 },
+  sand: { c: [0.5, 0.4, 0.22], a: 0.5 },
   gravel: { c: [0.3, 0.26, 0.2], a: 0.6 },
   snow: { c: [0.7, 0.78, 0.88], a: 0.6 },
   kerb: { c: [0.04, 0.04, 0.05], a: 0.5 },
@@ -315,6 +316,8 @@ const DUST: Record<Exclude<SurfaceKind, "road">, { c: [number, number, number]; 
   ice: { c: [0.85, 0.96, 1], a: 0.7, size: 0.28, grow: 0.2, life: 0.5, up: 2.6 },
   grass: { c: [0.35, 0.62, 0.22], a: 0.8, size: 0.24, grow: 0.1, life: 0.6, up: 3.2 },
   // Bas-côtés (lot 21) : gerbe de gravillons gris-brun, nuage de neige poudreuse ; le vibreur ne projette rien (il vibre).
+  // Sable (lot 22) : un long nuage de poussière claire, qui traîne derrière la voiture.
+  sand: { c: [0.86, 0.72, 0.46], a: 0.55, size: 0.8, grow: 1.7, life: 1.15, up: 1.4 },
   gravel: { c: [0.55, 0.5, 0.42], a: 0.7, size: 0.32, grow: 0.6, life: 0.7, up: 2.2 },
   snow: { c: [0.95, 0.97, 1], a: 0.8, size: 0.6, grow: 1.8, life: 0.9, up: 2.4 },
   kerb: { c: [0, 0, 0], a: 0, size: 0, grow: 0, life: 0, up: 0 },

@@ -66,20 +66,20 @@ export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
  * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
  */
-export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "gravel" | "snow" | "kerb";
-/** Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. */
-export type BlockSurface = "road" | "dirt" | "ice" | "grass";
-/** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse. */
-export type ShoulderKind = "grass" | "gravel" | "snow";
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb";
+/** Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. Le sable (lot 22) est les deux. */
+export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand";
+/** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse ; sable (lot 22). */
+export type ShoulderKind = "grass" | "gravel" | "snow" | "sand";
 /**
  * Bord de la route (lot 21), attribut chaîné comme la largeur (`~h`, `~t`, `~p`, `~v`, `~r`) : un bas-côté (`ShoulderKind`), le vide
  * (`void` : sans rebords, comme le modificateur `o`) ou les rebords (`wall`, le défaut).
  */
 export type EdgeKind = ShoulderKind | "void" | "wall";
 /** Lettre de chaque bord dans la notation (`S/~h` : bas-côtés d'herbe à partir de ce bloc). */
-export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", v: "void", r: "wall" };
+export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", s: "sand", v: "void", r: "wall" };
 /** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
-export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass" };
+export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
@@ -428,7 +428,7 @@ export interface ParsedToken {
 }
 
 /**
- * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe
+ * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe, `s` sable
  * (un seul revêtement), `b` virage relevé (virages seulement), et la largeur de la route : `e` étroite (14 m),
  * `n` normale (20 m), `l` large (26 m), ou `a>b` pour un bloc de transition (`n>l` : de la normale à la large, en un bloc
  * droit). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`, `S/n`, `S/e>l`, `L3/lb`.
@@ -455,7 +455,7 @@ export function parseToken(token: string, index = 0): ParsedToken {
   for (const m of mods.match(/[enl]>[enl]|~.|./g) ?? []) {
     if (m[0] === "~") {
       const e = EDGE_LETTERS[m[1] ?? ""];
-      if (!e) throw new Error(`Bord inconnu « ${m} » dans « ${token} » (position ${index}) : ~h herbe, ~t terre et gravier, ~p neige poudreuse, ~v vide, ~r rebords`);
+      if (!e) throw new Error(`Bord inconnu « ${m} » dans « ${token} » (position ${index}) : ~h herbe, ~t terre et gravier, ~p neige poudreuse, ~s sable, ~v vide, ~r rebords`);
       if (edge) throw new Error(`Deux bords sur « ${token} » (position ${index})`);
       edge = e;
     } else if (m === "u") bumpy = true;
@@ -597,7 +597,7 @@ export function parseTrack(id: string, spec: string): Track {
     const isLast = index === tokens.length - 1;
     const edge = open ? "void" : effectiveEdge(edgeChain, kind, cuve ?? 0, banked, isLast ? (mark ?? "finish") : mark, delta);
     if (writtenEdge && writtenEdge !== "wall" && edge === "wall" && (mark === "start" || mark === "finish")) throw new Error(`Le départ et l'arrivée gardent leurs rebords (${token})`);
-    const shoulder = edge === "grass" || edge === "gravel" || edge === "snow" ? edge : null;
+    const shoulder = edge === "grass" || edge === "gravel" || edge === "snow" || edge === "sand" ? edge : null;
     const block: Block = {
       index, cx, cz, dir, kind, y0: y, rise: delta, open: edge === "void", shoulder, bumpy: bumpy === true, surface, banked, w0, w1, cuve: cuve ?? 0, cuveIn: 0, cuveOut: 0,
       ...(mark ? { mark } : {}),

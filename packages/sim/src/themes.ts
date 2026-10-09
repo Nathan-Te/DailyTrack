@@ -13,16 +13,18 @@ import type { BlockSurface, ShoulderKind, WidthLetter } from "./track";
 // - les figures (lot 20) : celles que le thème favorise (tirées plus souvent) et celles qu'il s'interdit ;
 // - l'identité (lot 21) : les bas-côtés (herbe, terre et gravier, neige poudreuse ou vide) et leur part, la route bosselée, une figure
 //   obligatoire (sa « règle propre ») ; la lumière est côté jeu (palette, `trackMesh.ts`).
+// - lot 22 : Canyon, Col alpin et Ville (le sable est leur bas-côté ou leur revêtement) ; les figures propres à un thème (`only`, figures.ts)
+//   ne sortent que chez lui.
 // Changer un thème (ou en ajouter un) change le circuit d'une date : `GENERATOR_VERSION` +1.
 
-export const PALETTES = ["desert", "neige", "nuit", "neon", "campagne", "stade"] as const;
+export const PALETTES = ["desert", "neige", "nuit", "neon", "campagne", "stade", "canyon", "alpin", "ville"] as const;
 export type PaletteName = (typeof PALETTES)[number];
 
-export const THEME_NAMES = ["stade", "rallye", "banquise", "nuit", "campagne"] as const;
+export const THEME_NAMES = ["stade", "rallye", "banquise", "nuit", "campagne", "canyon", "col", "ville"] as const;
 export type ThemeName = (typeof THEME_NAMES)[number];
 
 /** Passages signature : voir `composeSpec` (generator.ts) pour les blocs de chacun. */
-export type Signature = "turboBank" | "dirtJump" | "iceChicane" | "cutRun" | "dirtPinch";
+export type Signature = "turboBank" | "dirtJump" | "iceChicane" | "cutRun" | "dirtPinch" | "rockJump" | "switchbacks" | "rightAngles";
 
 export interface Theme {
   name: ThemeName;
@@ -60,7 +62,13 @@ export interface Theme {
   shoulder: { kind: ShoulderKind | "void"; share: number };
   /** Route bosselée (lot 21) : nombre (min, max) de séries de 2 à 4 droites bosselées. */
   bumpy: [number, number];
+  /** Virages serrés (une cellule) permis par circuit (lot 22) : `MAX_TIGHT` (2) par défaut ; Ville en veut jusqu'à 4 (angles droits). */
+  maxTight?: number;
 }
+
+/** Virages serrés permis par circuit, signature comprise : 2 sauf thème qui en fait son identité (Ville : 4). */
+export const MAX_TIGHT = 2;
+export const maxTightOf = (theme: Theme): number => theme.maxTight ?? MAX_TIGHT;
 
 /** Figures qui n'ont de sens que sur de la route (terre, glace) ou de la cuve : interdites là où le thème n'en a pas. */
 const ICE = ["slalom-glace", "chicane-glace", "glace-coupe-virage"];
@@ -73,8 +81,10 @@ export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
   banquise: { name: "banquise", label: "Banquise", palette: "neige", shoulder: { kind: "snow", share: 70 }, bumpy: [0, 0], zones: { count: [2, 2], surfaces: [["ice", 3], ["dirt", 1]] }, widths: { weights: { e: 1, n: 3, l: 5 }, changes: [1, 2] }, bankChance: 15, turboChance: 0, cut: false, relief: { hills: [1, 3], steep: 30 }, jumpChance: 35, openChance: 0, cuveChance: 25, signature: "iceChicane", figures: { favor: ["slalom-glace", "chicane-glace", "glace-coupe-virage", "changement-revetement", "esse-relevee", "demi-tour-large", "pincement"], ban: ["etranglement-terre", "saut-terre"] } },
   nuit: { name: "nuit", label: "Nuit", palette: "nuit", shoulder: { kind: "void", share: 30 }, bumpy: [0, 0], zones: null, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [2, 3] }, bankChance: 20, turboChance: 25, cut: true, relief: { hills: [2, 3], steep: 60 }, jumpChance: 100, openChance: 70, cuveChance: 100, signature: "cutRun", figures: { favor: ["descente-cuve-saut", "saut-paroi", "coupe-virage", "saut-virage", "double-saut", "virage-aveugle", "virage-descente", "turbo-epingle", "plaque-epingle"], ban: [...ICE, ...DIRT] } },
   campagne: { name: "campagne", label: "Campagne", palette: "campagne", shoulder: { kind: "grass", share: 75 }, bumpy: [0, 0], zones: { count: [2, 3], surfaces: [["dirt", 2], ["grass", 1]] }, widths: { weights: { e: 6, n: 3, l: 1 }, changes: [1, 2] }, bankChance: 10, turboChance: 0, cut: false, relief: { hills: [2, 3], steep: 40 }, jumpChance: 40, openChance: 0, cuveChance: 0, signature: "dirtPinch", figures: { require: ["crete-virage", "virage-aveugle"], favor: ["etranglement-terre", "epingle-terre", "changement-revetement", "virage-aveugle", "crete-virage", "virage-descente", "freinage-epingle", "pincement"], ban: [...ICE, ...CUVES] } },
+  canyon: { name: "canyon", label: "Canyon", palette: "canyon", shoulder: { kind: "sand", share: 80 }, bumpy: [0, 0], zones: { count: [2, 3], surfaces: [["sand", 1]] }, widths: { weights: { e: 3, n: 4, l: 3 }, changes: [1, 2] }, bankChance: 20, turboChance: 25, cut: false, relief: { hills: [1, 3], steep: 60 }, jumpChance: 100, openChance: 35, cuveChance: 85, signature: "rockJump", figures: { favor: ["paroi-long-saut", "demi-tour-large", "crete-virage", "virage-aveugle", "colline-raide", "virage-descente", "esse-relevee", "releve-contre"], ban: [...ICE, ...DIRT, "cuve-droite"] } },
+  col: { name: "col", label: "Col alpin", palette: "alpin", shoulder: { kind: "snow", share: 60 }, bumpy: [0, 0], zones: { count: [0, 2], surfaces: [["ice", 1]] }, widths: { weights: { e: 2, n: 5, l: 3 }, changes: [1, 2] }, bankChance: 30, turboChance: 15, cut: false, relief: { hills: [3, 4], steep: 85 }, jumpChance: 25, openChance: 80, cuveChance: 0, signature: "switchbacks", figures: { favor: ["lacets", "demi-tour-large", "virage-descente", "descente-plaque", "colline-raide", "releve-contre", "esse-relevee", "plaque-epingle", "freinage-epingle"], ban: [...ICE, ...DIRT, ...CUVES] } },
+  ville: { name: "ville", label: "Ville", palette: "ville", shoulder: { kind: "gravel", share: 0 }, bumpy: [0, 0], zones: null, widths: { weights: { e: 5, n: 5, l: 0 }, changes: [1, 2] }, bankChance: 0, turboChance: 20, cut: false, relief: { hills: [1, 2], steep: 30 }, jumpChance: 30, openChance: 0, cuveChance: 0, maxTight: 4, signature: "rightAngles", figures: { require: ["u-urbain", "freinage-epingle", "plaque-epingle", "turbo-epingle", "s-serre-large"], favor: ["chicane-angles", "u-urbain", "freinage-epingle", "plaque-epingle", "turbo-epingle", "s-serre-large", "pincement", "slalom-route", "virage-descente"], ban: [...ICE, ...DIRT, ...CUVES, "saut-etroit"] } },
 };
-
 /** Thème de la journée : tiré de la date (graine = jour UTC), identique pour tout le monde. */
 export function themeForDay(day: number): Theme {
   return THEMES[THEME_NAMES[new Rng(mixSeed(day, 0x70a1)).int(THEME_NAMES.length)]!];

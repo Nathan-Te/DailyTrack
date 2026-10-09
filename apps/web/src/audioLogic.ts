@@ -53,6 +53,8 @@ export const SURFACE_SOUNDS: Record<SurfaceKind, SurfaceSound> = {
   grass: { rollFreq: 600, rollGain: 0.1, skidFreq: 500 },
   ice: { rollFreq: 2400, rollGain: 0.025, skidFreq: 2600 },
   // Bas-côtés (lot 21) : gravier qui crépite, neige poudreuse étouffée ; vibreur : grondement grave et appuyé (voir `kerbRumble`).
+  // Sable (lot 22) : un frottement sourd et large, entre l'herbe et la neige.
+  sand: { rollFreq: 340, rollGain: 0.11, skidFreq: 620 },
   gravel: { rollFreq: 520, rollGain: 0.14, skidFreq: 700 },
   snow: { rollFreq: 300, rollGain: 0.08, skidFreq: 420 },
   kerb: { rollFreq: 140, rollGain: 0.16, skidFreq: 1500 },

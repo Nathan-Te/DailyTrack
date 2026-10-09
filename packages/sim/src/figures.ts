@@ -50,6 +50,8 @@ export interface Figure {
   off: number;
   /** Poids de tirage (10 par défaut) : une figure qu'on veut moins souvent, ou qui ne sert que de complément. */
   weight?: number;
+  /** Figure propre à des thèmes (lot 22) : elle ne sort que chez eux. */
+  only?: readonly string[];
   build(c: FigureContext): string[] | null;
 }
 
@@ -91,7 +93,7 @@ export function widthAfter(tokens: readonly string[], width: WidthLetter): Width
   return w;
 }
 
-const SURFACE_MOD: Record<BlockSurface, string> = { road: "", dirt: "t", ice: "g", grass: "h" };
+const SURFACE_MOD: Record<BlockSurface, string> = { road: "", dirt: "t", ice: "g", grass: "h", sand: "s" };
 export const surfaceMod = (s: BlockSurface) => SURFACE_MOD[s];
 const on = (tokens: string[], mod: string) => tokens.map((t) => withMod(t, mod));
 const rep = (token: string, n: number) => Array<string>(n).fill(token);
@@ -384,6 +386,62 @@ export const FIGURES: readonly Figure[] = [
     variants: 2,
     braking: true,
     build: (c) => [...toTight(c.width), "S", "P", ...rep("S", c.variant === 0 ? 3 : 4), c.L, "S"],
+  },
+
+  // --- Figures propres aux nouveaux thèmes (lot 22) ---
+  {
+    name: "paroi-long-saut",
+    label: "Paroi rocheuse et long saut",
+    category: "saut",
+    intent: "Le mur latéral donne de l'élan, une plaque ou un super turbo le complète, puis la rampe lance la voiture au-dessus du ravin.",
+    off: 0.8,
+    variants: 2,
+    jump: true,
+    cuve: true,
+    only: ["canyon"],
+    build: (c) => {
+      const kind: JumpKind = c.variant === 0 ? "longDown" : "long";
+      const { run, air } = jumpParts(kind);
+      return ["S", ...rep(c.wall, 3), ...run, ...air, ...rep("S", landing(kind))];
+    },
+  },
+  {
+    name: "lacets",
+    label: "Descente en lacets",
+    category: "relief",
+    intent: "La route descend en lacets : virages larges et demi-tours qui se suivent, avec la pente qui pousse dans chaque entrée.",
+    off: 1.6,
+    variants: 4,
+    relief: true,
+    only: ["col"],
+    build: (c) =>
+      c.variant === 3
+        ? ["S", "U", `${c.L}2`, "U", `${c.R}2`, "U", `${c.L}2`, "S"] // la même route, prise en montée : rend de la hauteur quand le circuit est déjà bas
+        : c.variant === 0
+        ? ["S", "D", `${c.L}2`, "D", `${c.R}2`, "D", `${c.L}2`, "S"]
+        : c.variant === 1
+          ? ["S", "D", "D", `${c.L}2`, `${c.L}2`, "D", "D", `${c.R}2`, `${c.R}2`, "S"]
+          : ["S", "D2", "S", `${c.L}2`, `${c.L}2`, "D", "S"],
+  },
+  {
+    name: "chicane-angles",
+    label: "Chicane d'angles droits",
+    category: "technique",
+    intent: "Des angles droits qui se suivent, une ligne droite entre chacun : freiner, tourner, relancer.",
+    off: 2.0,
+    variants: 2,
+    only: ["ville"],
+    build: (c) => [...toTight(c.width), "S", c.L, "S", c.R, ...(c.variant === 0 ? [] : ["S", c.L]), "S"],
+  },
+  {
+    name: "u-urbain",
+    label: "Demi-tour urbain",
+    category: "technique",
+    intent: "Deux angles droits dans le même sens, une ligne droite entre eux : un demi-tour entre deux rangées de murs.",
+    off: 1.6,
+    variants: 2,
+    only: ["ville"],
+    build: (c) => [...toTight(c.width), "S", ...(c.variant === 0 ? ["S", c.L, "S", c.L] : [c.L, "S", "S", c.L]), "S"],
   },
 
   // --- Sauts ---
@@ -688,7 +746,7 @@ const KIND_SECONDS: Record<string, number> = {
   straight: 0.7, curveL: 0.9, curveR: 0.9, wideL: 1.75, wideR: 1.75, grandL: 2.7, grandR: 2.7,
   up: 0.7, down: 0.6, bump: 0.7, jump: 0.7, kick: 0.7, gap: 0.65, boost: 0.6, turbo: 0.45, cut: 0.7,
 };
-const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 1.6, grass: 1.4 };
+const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 1.6, grass: 1.4, sand: 1.3 };
 
 /** Durée estimée (s) d'une suite de blocs. */
 export function estimateSeconds(tokens: readonly string[]): number {

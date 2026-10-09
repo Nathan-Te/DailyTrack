@@ -59,16 +59,18 @@ export interface SurfaceParams {
  * - glace (lot 16) : grip très faible à l'accélérateur et au frein, motricité faible, aucun roulement : plus rapide en
  *   ligne droite ; en roue libre l'adhérence revient et la vitesse se réaligne sur le cap (`slick`, clés `ice*`) ;
  * - herbe : ralentit nettement (roulement 7 m/s²) et glisse ;
+ * - sable (lot 22, revêtement de bloc et bas-côté) : lent mais stable (roulement 6 m/s², motricité 0,7, adhérence 0,8 : il ralentit sans faire glisser) ;
  * - terre et gravier (lot 21, bas-côté seulement) : ralentit moins que l'herbe, glisse un peu ;
  * - neige poudreuse (lot 21, bas-côté seulement) : la plus lente (roulement 8 m/s², pointe ≈ 20 m/s à plat), peu d'adhérence ;
  * - vibreur (lot 21, bords d'un virage sur route) : exactement la route (seuls le son et la vibration changent).
- * Ordre des bas-côtés, du moins au plus lent : terre et gravier, herbe, neige poudreuse (`basCotes.test.ts`).
+ * Ordre des bas-côtés, du moins au plus lent : terre et gravier, sable, herbe, neige poudreuse (`basCotes.test.ts`).
  */
 export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = Object.freeze({
   road: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),
   dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5, slick: 0 }),
   ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0, slick: 1 }),
   grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7, slick: 0 }),
+  sand: Object.freeze({ grip: 0.8, traction: 0.7, rolling: 6, slick: 0 }),
   gravel: Object.freeze({ grip: 0.6, traction: 0.65, rolling: 4.5, slick: 0 }),
   snow: Object.freeze({ grip: 0.42, traction: 0.5, rolling: 8, slick: 0 }),
   kerb: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),

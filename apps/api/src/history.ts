@@ -194,10 +194,13 @@ export async function seedHistory(options: SeedOptions = {}): Promise<DemoDatase
     info.set(day, { authorMs: circuit.authorMs });
     const rng = new Rng(mixSeed(day, 0x11d3));
     const wanted = minPilots + rng.int(maxPilots - minPilots + 1);
-    const names = rng.shuffle(NAMES).slice(0, wanted);
+    // Lot 22 : on pioche dans toute la liste de pseudos jusqu'à avoir `wanted` pilotes classés. Sur un circuit que les pilotes prudents ne
+    // finissent pas (turbos puis virage relevé du Rallye du 02/10), les premiers tirages échouent : on en tente d'autres plutôt que de
+    // servir un classement maigre.
+    const names = rng.shuffle(NAMES);
     let accepted = 0;
     let rejected = 0;
-    for (let p = 0; p < names.length; p++) {
+    for (let p = 0; p < names.length && accepted < wanted; p++) {
       // Niveau de 0 à 1, avec un peu plus de pilotes moyens ou prudents que de très bons.
       const skill = (rng.int(1000) / 1000) ** 1.3;
       let run: { code: string; finishMs: number } | null = null;

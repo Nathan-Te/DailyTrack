@@ -172,7 +172,7 @@ describe("sauts et reliefs des circuits du jour (60 dates)", () => {
         expect(j.speed, `${c.date} saut @${j.jump.kick}`).toBeLessThanOrEqual(j.jump.maxSpeed);
       }
     }
-    expect(jumps).toBeGreaterThan(40);
+    expect(jumps).toBeGreaterThan(30); // huit thèmes depuis le lot 22 : Col alpin et Ville ont peu de sauts
   });
 
   it("Stade, Nuit et Rallye ont toujours au moins un vrai saut ; Banquise et Campagne en ont parfois", { timeout: 120_000 }, () => {
@@ -184,6 +184,7 @@ describe("sauts et reliefs des circuits du jour (60 dates)", () => {
       console.info(`[sauts] ${name} : ${withJump}/${days.length} circuits avec un vrai saut`);
     }
     expect(share.stade).toBe(1);
+    expect(share.canyon).toBe(1); // longs sauts au-dessus des ravins (lot 22)
     expect(share.nuit).toBe(1);
     expect(share.rallye).toBe(1);
     expect(share.banquise).toBeLessThan(1);

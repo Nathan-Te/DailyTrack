@@ -54,11 +54,11 @@ describe("circuits d'essai", () => {
   it("thème suivant : fait le tour puis revient au thème du jour", () => {
     const seen: (string | null)[] = [];
     let t: string | null = null;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 9; i++) {
       t = nextTheme(t);
       seen.push(t);
     }
-    expect(seen).toEqual(["stade", "rallye", "banquise", "nuit", "campagne", null]);
+    expect(seen).toEqual(["stade", "rallye", "banquise", "nuit", "campagne", "canyon", "col", "ville", null]);
   });
 });
 

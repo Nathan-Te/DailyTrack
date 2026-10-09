@@ -8,4 +8,7 @@ export const PALETTE_LABELS: Record<PaletteName, string> = {
   neon: "néon",
   campagne: "campagne",
   stade: "stade",
+  canyon: "canyon",
+  alpin: "col alpin",
+  ville: "ville",
 };

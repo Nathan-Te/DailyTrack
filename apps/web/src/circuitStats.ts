@@ -24,7 +24,7 @@ export interface CircuitStats {
   walls: number;
   cuveTurns: number;
   /** Bas-côtés (lot 21) : blocs bordés de chaque revêtement, virages bordés (on peut les couper), blocs de route bosselée. */
-  shoulders: Partial<Record<"grass" | "gravel" | "snow", number>>;
+  shoulders: Partial<Record<"grass" | "gravel" | "snow" | "sand", number>>;
   cuttable: number;
   bumpy: number;
   /** Nombre de blocs et de points de contrôle (arrivée non comprise). */
@@ -32,9 +32,9 @@ export interface CircuitStats {
   checkpoints: number;
 }
 
-export const SURFACE_LABEL: Record<SurfaceKind, string> = { road: "route", dirt: "terre", ice: "glace", grass: "herbe", gravel: "terre et gravier", snow: "neige poudreuse", kerb: "vibreur" };
+export const SURFACE_LABEL: Record<SurfaceKind, string> = { road: "route", dirt: "terre", ice: "glace", grass: "herbe", sand: "sable", gravel: "terre et gravier", snow: "neige poudreuse", kerb: "vibreur" };
 
-const SURFACE_ORDER: SurfaceKind[] = ["road", "dirt", "ice", "grass"];
+const SURFACE_ORDER: SurfaceKind[] = ["road", "dirt", "ice", "grass", "sand"];
 
 export function circuitStats(track: Track): CircuitStats {
   const widths = new Set<number>();
@@ -100,7 +100,7 @@ export function reliefText(s: Pick<CircuitStats, "relief" | "jumps" | "open">): 
 /** Une ligne pour les bas-côtés (lot 21) : « 18 blocs d'herbe · 4 virages à couper · 3 blocs bosselés », ou « rebords partout ». */
 export function sidesText(s: Pick<CircuitStats, "shoulders" | "cuttable" | "bumpy" | "open">): string {
   const parts: string[] = [];
-  for (const k of ["grass", "gravel", "snow"] as const) {
+  for (const k of ["grass", "gravel", "snow", "sand"] as const) {
     const n = s.shoulders[k] ?? 0;
     if (n > 0) parts.push(`${n} ${n > 1 ? "blocs" : "bloc"} bordés de ${SURFACE_LABEL[k]}`);
   }

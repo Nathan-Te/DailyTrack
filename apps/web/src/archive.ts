@@ -50,7 +50,7 @@ export function themeHref(search: string, theme: string | null): string {
   return q ? `?${q}` : "./";
 }
 
-/** Thème suivant dans l'ordre : auto → stade → … → campagne → auto. */
+/** Thème suivant dans l'ordre : auto → stade → … → ville → auto. */
 export function nextTheme(current: string | null): string | null {
   const i = current === null ? -1 : THEME_NAMES.indexOf(current as (typeof THEME_NAMES)[number]);
   return i + 1 >= THEME_NAMES.length ? null : THEME_NAMES[i + 1]!;

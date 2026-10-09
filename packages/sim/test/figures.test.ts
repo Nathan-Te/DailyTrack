@@ -226,7 +226,7 @@ describe("composition d'un circuit par figures", () => {
 
   it("tient les règles de virages serrés (au plus 2, jamais deux de suite, jamais sur la route large) et de lignes droites", () => {
     for (const day of DAYS) {
-      const { track, spec } = circuit(day);
+      const { track, spec, theme } = circuit(day);
       let run = 0;
       let tight = 0;
       for (const b of track.blocks) {
@@ -238,7 +238,7 @@ describe("composition d'un circuit par figures", () => {
         } else run = 0;
         expect(run, spec).toBeLessThanOrEqual(1);
       }
-      expect(tight, spec).toBeLessThanOrEqual(2);
+      expect(tight, spec).toBeLessThanOrEqual(theme === "ville" ? 4 : 2); // Ville : angles droits (lot 22)
       expect(longestPlainStraight(spec.split(" ")), spec).toBeLessThanOrEqual(MAX_PLAIN_STRAIGHT);
     }
   });
@@ -280,10 +280,18 @@ describe("rotation par jour (sans générer les jours précédents)", () => {
   });
 
   it("ne dépend que de la date : même résultat quel que soit l'ordre des appels", () => {
-    const a = composeFigures(JOUR_TEST + 40, 0)!;
-    composeFigures(JOUR_TEST + 3, 0);
-    composeFigures(JOUR_TEST + 41, 0);
-    const b = composeFigures(JOUR_TEST + 40, 0)!;
+    // La première tentative d'un jour peut échouer (construction coincée) : on compare la première qui aboutit.
+    const first = (day: number) => {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const c = composeFigures(day, attempt);
+        if (c) return c;
+      }
+      throw new Error(`aucune composition le jour ${day}`);
+    };
+    const a = first(JOUR_TEST + 40);
+    first(JOUR_TEST + 3);
+    first(JOUR_TEST + 41);
+    const b = first(JOUR_TEST + 40);
     expect(b.spec).toBe(a.spec);
   });
 
@@ -322,7 +330,7 @@ describe("thèmes : figures favorites et interdites", () => {
       const sig = SIGNATURE_FIGURE[theme.signature];
       const banned = new Set(theme.figures.ban);
       const favorites = theme.figures.favor.filter((n) => n !== sig);
-      const others = FIGURE_NAMES.filter((n) => n !== sig && !banned.has(n) && !theme.figures.favor.includes(n));
+      const others = FIGURE_NAMES.filter((n) => n !== sig && !banned.has(n) && !theme.figures.favor.includes(n) && !(figureByName(n)!.only && !figureByName(n)!.only!.includes(name)));
       const mean = (xs: string[]) => xs.reduce((s, n) => s + count(n), 0) / xs.length;
       expect(mean(favorites), name).toBeGreaterThan(mean(others) * 1.3);
     });

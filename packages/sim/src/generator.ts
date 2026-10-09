@@ -4,7 +4,7 @@ import { bestPilotRun, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, mixSeed } from "./rng";
-import { themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
@@ -129,8 +129,8 @@ export const MIN_RELIEF = 12;
 /** Une section sans rebords ne se pose que sur une route au moins aussi haute (m au-dessus du point le plus bas) : le risque de tomber doit être réel. */
 const OPEN_MIN_HEIGHT = 6;
 
-/** Virages serrés (une cellule, rayon 16 m) : au plus 2 par circuit, jamais deux d'affilée. */
-const MAX_TIGHT = 2;
+/** Virages serrés (une cellule, rayon 16 m) : au plus `MAX_TIGHT` (2) par circuit, 4 dans Ville (lot 22), jamais deux d'affilée. */
+export { MAX_TIGHT };
 /**
  * Figures par circuit : 5 à 7 (lot 20), dans un budget de durée : chaque figure pèse sa durée estimée (`figureSeconds`, figures.ts : un virage
  * large coûte deux fois une droite), et on n'en ajoute (au-delà de cinq) que tant que le total reste sous `FIGURE_BUDGET`. Sans cela, sept
@@ -187,6 +187,9 @@ export const SIGNATURE_FIGURE: Readonly<Record<Signature, string>> = {
   iceChicane: "chicane-glace",
   cutRun: "coupe-virage",
   dirtPinch: "etranglement-terre",
+  rockJump: "paroi-long-saut",
+  switchbacks: "lacets",
+  rightAngles: "chicane-angles",
 };
 
 /** Une figure posée dans un circuit : blocs `[from, to)` de la liste du circuit. */
@@ -241,6 +244,9 @@ function figureWeight(f: Figure, theme: Theme): number {
   return w;
 }
 
+/** Une figure propre à des thèmes (`only`, lot 22) ne sort que chez eux. */
+const ownedBy = (f: Figure, theme: Theme): boolean => !f.only || f.only.includes(theme.name);
+
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
@@ -251,14 +257,14 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   const names = new Set([signature.name]);
   const required = new Set(theme.figures.require ?? []);
   // Les figures obligatoires du thème (lot 21) ne sont jamais au repos, comme la signature.
-  const pool = FIGURES.filter((f) => !banned.has(f.name) && (required.has(f.name) || !isRested(f.name, day)));
+  const pool = FIGURES.filter((f) => !banned.has(f.name) && ownedBy(f, theme) && (required.has(f.name) || !isRested(f.name, day)));
   const count_ = (pred: (f: Figure) => boolean) => chosen.filter(pred).length;
   const allowed = (f: Figure) =>
     !names.has(f.name) &&
     (!f.jump || count_((g) => !!g.jump) < CAP_JUMPS) &&
     (!f.cuve || count_((g) => !!g.cuve) < CAP_CUVES) &&
     (!f.cut || count_((g) => !!g.cut) < CAP_CUTS) &&
-    chosen.reduce((sum, g) => sum + minTightTurns(g), 0) + minTightTurns(f) <= MAX_TIGHT &&
+    chosen.reduce((sum, g) => sum + minTightTurns(g), 0) + minTightTurns(f) <= maxTightOf(theme) &&
     count_((g) => g.category === f.category) < CAP_CATEGORY[f.category];
   const pick = (pred: (f: Figure) => boolean): Figure | null => {
     const list = pool.filter((f) => allowed(f) && pred(f));
@@ -397,7 +403,7 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   const w: Walk = { cx: 0, cz: 0, dir: 0, y: 0, cells: new Set(), tokens: [] };
   place(w, [`S/${width}`]);
   const placed: PlacedFigure[] = [];
-  let tightLeft = MAX_TIGHT;
+  let tightLeft = maxTightOf(theme);
   let majorHill = false;
   const names = new Set(order.map((f) => f.name));
   const signatureName = SIGNATURE_FIGURE[theme.signature];
@@ -409,7 +415,7 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
     if (order[i]!.name !== signatureName) {
       const f0 = order[i]!;
       const banned = new Set(theme.figures.ban);
-      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && !isRested(f.name, day));
+      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && !isRested(f.name, day));
       alternatives.push(...rng.shuffle(subs).slice(0, 3));
     }
     let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number } | null = null;
@@ -587,7 +593,7 @@ function bumpySections(tokens: string[], count: [number, number], rng: Rng): voi
 }
 
 /** Lettre de chaque bas-côté dans la notation (`~h`…). */
-const EDGE_MOD: Record<Theme["shoulder"]["kind"], string> = { grass: "~h", gravel: "~t", snow: "~p", void: "~v" };
+const EDGE_MOD: Record<Theme["shoulder"]["kind"], string> = { grass: "~h", gravel: "~t", snow: "~p", sand: "~s", void: "~v" };
 
 /**
  * Bas-côtés (lot 21) : sur les blocs qui peuvent en porter (droites, virages non relevés, descentes d'un ou deux niveaux, blocs à effet ;
