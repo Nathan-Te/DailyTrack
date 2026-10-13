@@ -2,6 +2,7 @@ import { PREMIER_JOUR, THEMES, THEME_NAMES, circuitNumber, formatDay, medalsFor,
 import { formatTime } from "./format";
 import type { DayBest } from "./records";
 import { MEDAL_ICON } from "./share";
+import { watchHrefFor } from "./watch";
 
 export interface ArchiveDay {
   day: number;
@@ -196,6 +197,24 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
     cell("num", d.number >= 1 ? `#${d.number}` : "—", what);
     cell("date", d.isToday ? `${d.date} · aujourd'hui` : d.date, what);
     cell("theme", d.theme, what);
+    // Revoir le meilleur tour (lot 27b) : seulement pour un jour qui a un classement (connu quand les détails sont arrivés).
+    if ((extras?.meta.get(d.date)?.participants ?? 0) > 0) {
+      const href = watchHrefFor(archiveHref(search, d.date, d.isToday));
+      const watch = document.createElement("span");
+      watch.className = "watch";
+      watch.setAttribute("role", "link");
+      watch.tabIndex = 0;
+      watch.title = "Revoir le tour du premier";
+      watch.textContent = "▶ Revoir le meilleur tour";
+      const go = (e: Event) => {
+        e.preventDefault(); // la ligne est un lien vers le jour : celui-ci mène à sa rediffusion
+        e.stopPropagation();
+        location.assign(href);
+      };
+      watch.addEventListener("click", go);
+      watch.addEventListener("keydown", (e) => (e.key === "Enter" || e.key === " ") && go(e));
+      what.append(watch);
+    }
     a.append(what);
     const rank = extras?.ranks.get(d.date);
     cell("best", d.best ? `${d.best.medal ? MEDAL_ICON[d.best.medal] + " " : ""}${formatTime(d.best.ms)}${rank ? ` · ${ordinal(rank.rank)}/${rank.participants}` : ""}` : "—", a);

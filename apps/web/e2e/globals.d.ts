@@ -34,6 +34,24 @@ interface CdjDebug {
     setGhostMode(mode: "all" | "top" | "off"): void;
     refresh(): Promise<void>;
   } | null;
+  /** Spectateur (lot 27b) : tour regardé, vitesse, pause, pas courant et total, caméra ; `null` hors du mode. */
+  watch: {
+    waiting: boolean;
+    name: string | null;
+    announcedMs: number | null;
+    mode: "first" | "mine" | "salon" | null;
+    speed: number;
+    paused: boolean;
+    tick: number;
+    total: number;
+    finishMs: number;
+    phase: string;
+    free: boolean;
+    label: boolean;
+    carVisible: boolean;
+    orbit: { yaw: number; pitch: number; dist: number };
+    seek(tick: number): void;
+  } | null;
   autoplay(code: string): void;
   /** Pas à pas : la simulation n'avance plus qu'avec `advance`. */
   manual(on: boolean): void;

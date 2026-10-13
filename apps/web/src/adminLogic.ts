@@ -37,6 +37,8 @@ export interface AdminState {
   zones: boolean;
   /** Le Salon (`?mode=salon`, lot 26) : un circuit toutes les 10 minutes ; avec `api=demo` ou une API. Remplace le circuit du jour. */
   salon: boolean;
+  /** Revoir le meilleur tour (`?watch=best`, lot 27b) : mode spectateur sur le circuit du jour ou, avec le Salon, la session en cours. */
+  watch: boolean;
   /** Durée d'une session du Salon en minutes (`?salonMinutes=`), "" : 10. Démo et essais seulement. */
   salonMinutes: string;
   /** Accélération du temps (outil `debug`), "" : normal. */
@@ -66,6 +68,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   steer: "",
   zones: false,
   salon: false,
+  watch: false,
   salonMinutes: "",
   timescale: "",
   api: "",
@@ -75,6 +78,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
 export function buildQuery(s: Readonly<AdminState>): string {
   const p = new URLSearchParams();
   if (s.scenario !== "jour") p.set("scenario", s.scenario);
+  if (s.watch) p.set("watch", "best");
   if (s.salon) {
     // Le Salon remplace le circuit du jour : ni date, ni thème, ni variante.
     p.set("mode", "salon");
@@ -123,7 +127,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "salon"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
@@ -163,6 +167,7 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },
   { label: "Le Salon (démonstration)", hint: "un circuit toutes les 10 minutes, joueurs fictifs, fantômes, classement de session, podium (?mode=salon&api=demo)", state: { api: "demo", salon: true } },
   { label: "Le Salon, sessions de 2 minutes", hint: "pour voir une bascule de circuit en deux minutes (?salonMinutes=2)", state: { api: "demo", salon: true, salonMinutes: "2" } },
+  { label: "Revoir le meilleur tour (démonstration)", hint: "un jour passé du jeu de données de démonstration, en spectateur (?api=demo&day=2026-09-30&watch=best)", state: { api: "demo", date: "2026-09-30", watch: true } },
   { label: "Archives de démonstration", hint: "14 jours passés, classements figés et fantômes (?api=demo)", state: { api: "demo" } },
   { label: "Essai tactile (souris = doigt)", hint: "interface mobile sur ordinateur", state: { touch: "1" } },
   { label: "Zones tactiles (boutons)", hint: "boutons ← → et frein, zones actives dessinées", state: { scenario: "pilotage", touch: "1", steer: "boutons", zones: true } },

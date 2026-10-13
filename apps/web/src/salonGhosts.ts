@@ -66,7 +66,7 @@ function makeSlot(color: number): Slot {
 }
 
 /** Dessine le pseudo (et le rang) sur l'étiquette d'un fantôme. */
-function paintLabel(s: Slot, text: string, color: number) {
+function paintLabel(s: Pick<Slot, "canvas" | "texture" | "shown">, text: string, color: number) {
   if (s.shown === text) return;
   s.shown = text;
   const g = s.canvas.getContext("2d");
@@ -84,6 +84,39 @@ function paintLabel(s: Slot, text: string, color: number) {
   g.fillStyle = css(color);
   g.fillRect(40, 56, 176, 5);
   s.texture.needsUpdate = true;
+}
+
+/**
+ * Étiquette au pseudo d'une voiture regardée en rediffusion (mode spectateur, lot 27b) : le même dessin que celle des fantômes du Salon.
+ * `place` règle sa taille pour qu'elle garde à peu près la même hauteur à l'écran, et la masque tout près de la caméra.
+ */
+export interface NameLabel {
+  sprite: Sprite;
+  set(text: string, color: number): void;
+  place(dist: number, pixelAtOneMeter: number, near?: number): void;
+}
+
+export function createNameLabel(): NameLabel {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 64;
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthWrite: false, fog: false }));
+  sprite.scale.set(8, 2, 1);
+  sprite.position.set(0, 2.5, 0);
+  sprite.renderOrder = 5;
+  const state = { canvas, texture, shown: "" };
+  return {
+    sprite,
+    set: (text, color) => paintLabel(state, text, color),
+    place(dist, pixelAtOneMeter, near = LABEL_NEAR) {
+      const h = LABEL_PX * pixelAtOneMeter * dist * 2;
+      sprite.visible = dist > near && dist < LABEL_FAR;
+      sprite.scale.set(h * 4, h, 1);
+      sprite.position.set(0, 2.2 + h * 0.3, 0);
+    },
+  };
 }
 
 export class GhostField {

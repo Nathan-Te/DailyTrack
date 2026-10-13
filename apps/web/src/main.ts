@@ -39,6 +39,7 @@ import {
   isDefaultParams,
   parseTrack,
   ReplayPlayer,
+  replayTicks,
   decodeReplay,
   encodeReplay,
   medalFor,
@@ -67,7 +68,7 @@ import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
-import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
+import { createCarMesh, createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
 import { Effects, QualityGovernor, type Quality } from "./fx";
@@ -79,7 +80,10 @@ import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
 import { mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
-import { GhostField, type GhostEntry } from "./salonGhosts";
+import { GhostField, createNameLabel, type GhostEntry, type NameLabel } from "./salonGhosts";
+import { GHOST_COLORS, MY_GHOST_COLOR } from "./salon";
+import { ORBIT_MIN_DIST, clampOrbit, nextWatchCamera, orbitOffset, progressOf, seekTick, tickAt, unwatchHref, wantsWatch, watchHref, watchTitle, REWIND_TICKS, WATCH_SPEEDS, type WatchEntry, type WatchSpeed } from "./watch";
+import { mountWatchUi, type WatchUi } from "./watchUi";
 import { SalonController, bootSalon, isBootError, type SalonHost, type SalonRunResult } from "./salonMode";
 import { modeHref, salonShareLine as salonLine } from "./salon";
 import type { LoadedSalonCircuit } from "./salonEngine";
@@ -94,6 +98,8 @@ const params = new URLSearchParams(location.search);
 // `essai` (le circuit écrit à la main des lots 2-3), `pilotage` (le circuit de mise au point de la conduite, lot 7),
 // `surfaces` (lot 8), `largeurs` (lot 12 : les trois largeurs de route et leurs transitions), `vitesse` (lot 15 : portions à plus de 80 m/s), `glace` (lot 16 : ligne droite de glace, virages en roue libre, slalom), `relief` (lot 17 : montées, descentes, deux sauts au-dessus du vide, section surélevée sans rebords), `cuves` (lot 18 : cuve droite, mur latéral, virage en cuve à pleine vitesse puis abordé trop lentement), `air` (lot 19 : dos d'âne, tremplin, long saut, saut vers un virage relevé, chute de trois niveaux, mur latéral quitté en l'air), `figures` (lot 20 : onze figures marquantes de la bibliothèque), `figure` (lot 20 : une seule figure, `&f=<nom>` avec `&v=<variante>` et `&m=1` pour le miroir) et `plat` (le terrain d'essai du lot 1).
 const requested = params.get("scenario");
+// Revoir le meilleur tour (lot 27b) : `?watch=best` (avec `?day=` ou `?mode=salon`). Mode spectateur, voir plus bas.
+const watchWanted = wantsWatch(params);
 // `?debug&spec=<blocs>` : un circuit écrit à la main (notation de `parseTrack`), pour les tests de navigateur.
 let customTrack: ReturnType<typeof parseTrack> | null = null;
 if (params.has("debug") && params.has("spec")) {
@@ -111,7 +117,7 @@ if (params.get("mode") === "salon" && !customTrack && requested === null) {
   const base = apiBase();
   if (!base) salonNotice = "Le Salon a besoin du serveur : circuit du jour à la place";
   else {
-    const booted = await bootSalon({ search: location.search, base, startAt: params.has("debug") ? Number(params.get("salonAt")) || null : null });
+    const booted = await bootSalon({ search: location.search, base, startAt: params.has("debug") ? Number(params.get("salonAt")) || null : null, spectator: watchWanted });
     if (isBootError(booted)) salonNotice = `${booted.error} : circuit du jour à la place`;
     else salon = booted;
   }
@@ -171,12 +177,14 @@ let view = track ? buildTrackScene(track, salon?.circuit.palette ?? daily?.palet
 renderer.toneMapping = NeutralToneMapping;
 renderer.toneMappingExposure = view.look.exposure;
 renderer.shadowMap.enabled = true;
-const carModel = createCarMesh();
-const carMesh = carModel.group;
+let carModel: CarModel = createCarMesh();
+let carMesh = carModel.group;
 view.scene.add(carMesh);
-carMesh.traverse((o) => {
-  o.castShadow = true; // la voiture projette son ombre sur la route (qualité ≥ 1)
-});
+const castShadows = (group: typeof carMesh) =>
+  group.traverse((o) => {
+    o.castShadow = true; // la voiture projette son ombre sur la route (qualité ≥ 1)
+  });
+castShadows(carMesh);
 const carShadow = createShadow();
 view.scene.add(carShadow);
 const ghostModel = createCarMesh(true);
@@ -272,6 +280,10 @@ if (salon) {
   $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : scenario === "bas-cotes" ? "Bas-côtés et vibreurs" : scenario === "figures" ? "Les figures" : scenario === "figure" ? `Figure : ${figureByName(params.get("f"))?.label ?? ""}` : "Circuit d'essai";
 }
 function updateInfo() {
+  if (watch) {
+    $("info").textContent = "Espace ou P : pause · ← : retour 5 s · → : avance 5 s · 1 2 3 4 : vitesse ¼ ½ 1 2 · C : caméra (libre : glisser, molette) · Entrée : depuis le début";
+    return;
+  }
   $("info").textContent = salon
     ? "ZQSD/WASD ou flèches · Espace : frein/drift · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantômes · Tab : classement"
     : track
@@ -291,15 +303,42 @@ if (touchPad && (steerParam === "boutons" || steerParam === "glisser")) touchPad
 const controls = new Controls(window, touchPad);
 if (touchMode) document.body.classList.add("touch");
 let paused = false;
-const touchUi = touchPad
-  ? mountTouchUi(touchPad, {
-      showZones: params.get("zones") === "1",
-      onPause: () => setPaused(!paused),
-      onRespawn: () => controls.requestRespawn(),
-      onRestart: () => controls.requestRestart(),
-      onCamera: () => cycleCamera(),
-    })
-  : null;
+// --- Revoir le meilleur tour (lot 27b) ---------------------------------------------------------------------------------------
+// Le spectateur rejoue une rediffusion avec le même code que le fantôme et que le serveur : la voiture « du joueur » est celle du tour
+// regardé, poussée par les commandes enregistrées (`autoplay`). Rien n'est envoyé au serveur ni enregistré ; `packages/sim` n'a pas bougé.
+interface WatchState {
+  entry: WatchEntry;
+  replay: ReturnType<typeof decodeReplay>;
+  /** Nombre de pas de la rediffusion (le dernier est celui de l'arrivée). */
+  total: number;
+  speed: WatchSpeed;
+  paused: boolean;
+}
+let watch: WatchState | null = null;
+/** Salon : aucun temps dans la session pour l'instant, la lecture commence dès qu'il y en a un. */
+let watchWait = false;
+let watchUi: WatchUi | null = null;
+let nameLabel: NameLabel | null = null;
+/** Caméra libre (autour de la voiture) : lacet, hauteur et distance, réglés au doigt ou à la souris. */
+let freeCam = false;
+const orbit = { yaw: 0, pitch: 0.4, dist: 12 };
+/** Position de la barre de progression à rejouer à la prochaine image (déplacée à la souris : au plus un rejeu par image). */
+let pendingSeek: number | null = null;
+// En spectateur (lot 27b), pas de commandes de conduite : aucune zone tactile, donc aucune frontière entre zones à éviter ; elles sont
+// montées si l'on repart courir (ou si la rediffusion est introuvable).
+let touchUi: ReturnType<typeof mountTouchUi> | null = null;
+function mountDrivingTouch() {
+  if (touchUi || !touchPad) return;
+  touchUi = mountTouchUi(touchPad, {
+    showZones: params.get("zones") === "1",
+    onPause: () => setPaused(!paused),
+    onRespawn: () => controls.requestRespawn(),
+    onRestart: () => controls.requestRestart(),
+    onCamera: () => cycleCamera(),
+  });
+  touchUi.setPaused(paused);
+}
+if (!watchWanted) mountDrivingTouch();
 // Outil de test (`?debug`) : « pas à pas ». La simulation n'avance plus avec l'horloge mais d'un nombre exact de pas
 // à chaque `__cdj.advance(n)` ; les commandes sont lues comme d'habitude (clavier, doigts…). Un test ne dépend ainsi
 // plus de la vitesse de la machine.
@@ -314,6 +353,10 @@ let lastLanding = { strength: 0, quality: 1 };
 let lastImpactSoundAt = -1e9;
 
 function setPaused(value: boolean) {
+  if (watch) {
+    watch.paused = value; // la pause du spectateur : pas de fenêtre, la barre de lecture reste là
+    return;
+  }
   if (value && phase === "finished") return;
   paused = value;
   document.body.classList.toggle("paused", paused);
@@ -440,6 +483,7 @@ hudArchive.addEventListener("click", (e) => {
 });
 
 function startAttempt() {
+  if (watch) return restartWatch(0); // spectateur : « recommencer » = la rediffusion repart du début
   if (salon && salon.state !== "playing") return; // podium, bascule : pas de nouveau départ
   if (track) {
     session = new RunSession(track, ghostSource, carParams);
@@ -503,6 +547,7 @@ function showBanner(text: string, seconds: number, small = false) {
 /** Ligne du fantôme : celui qui roule, et — si on en a choisi un autre en pleine course — celui du prochain départ. */
 function updateGhostInfo() {
   const el = $("ghostinfo");
+  if (watch) return el.replaceChildren(watchTitle(watch.entry.name, watch.entry.ms));
   if (!activeGhost && !pendingGhost) return el.replaceChildren();
   const prefix = document.createElement("span");
   prefix.className = "long"; // « Fantôme : » est masqué sur petit écran, faute de place
@@ -573,7 +618,16 @@ function renderBoard(lb: Leaderboard) {
     gap.textContent = "…";
     rows.push(gap, row(lb.me, true));
   }
-  hudBoard.replaceChildren(title, ...rows);
+  hudBoard.replaceChildren(title, ...rows, ...(lb.participants > 0 && !watch ? [watchLink()] : []));
+}
+
+/** Lien « Revoir le meilleur tour » (classement du jour) : la même page en mode spectateur. */
+function watchLink(): HTMLAnchorElement {
+  const a = document.createElement("a");
+  a.className = "watchlink";
+  a.href = watchHref(location.search);
+  a.textContent = "▶ Revoir le meilleur tour";
+  return a;
 }
 
 async function refreshBoard() {
@@ -608,7 +662,17 @@ hudBoard.addEventListener("click", () => {
 
 window.addEventListener("keydown", (e) => {
   if (e.repeat || isTyping(e)) return;
-  if (e.code === "KeyG") {
+  if (watch) {
+    if (e.code === "Space") {
+      e.preventDefault();
+      setPaused(!watch.paused);
+    }
+    if (e.code === "ArrowLeft") watchSkip(-REWIND_TICKS);
+    if (e.code === "ArrowRight") watchSkip(REWIND_TICKS);
+    const digit = ["Digit1", "Digit2", "Digit3", "Digit4"].indexOf(e.code);
+    if (digit >= 0) watch.speed = WATCH_SPEEDS[digit]!;
+  }
+  if (e.code === "KeyG" && !watch) {
     if (salon && ghostField) ghostField.setMode(salon.cycleGhostMode());
     else void cycleGhost();
   }
@@ -751,7 +815,7 @@ function renderSplits() {
     ...race.splits.map((ms, i) => {
       const line = document.createElement("div");
       line.textContent = `CP${i + 1}  ${formatTime(ms)}`;
-      const ref = (ghostSource ?? best)?.splits[i];
+      const ref = watch ? undefined : (ghostSource ?? best)?.splits[i];
       if (ref !== undefined) {
         const d = document.createElement("span");
         d.className = ms <= ref ? "down" : "up";
@@ -845,6 +909,7 @@ function finishSalonRun() {
       await onClick(b);
     });
     actions.append(b);
+    return b;
   };
   action("Rejouer", () => startAttempt(), "primary");
   action("Copier le résultat", async (b) => {
@@ -853,6 +918,7 @@ function finishSalonRun() {
     b.textContent = (await copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`)) ? "Copié ✓" : "Copie impossible";
     setTimeout(() => (b.textContent = old), 1600);
   });
+  action("Revoir le meilleur tour", () => location.assign(watchHref(location.search))).id = "finish-watch";
   action("Classement", () => setBoardVisible(!boardVisible));
   if (!compactScreen()) action("Circuit du jour", () => location.assign(modeHref(location.search, false)), "mode");
   const hint = text("Entrée : rejouer · Tab : classement", "hint");
@@ -871,6 +937,7 @@ function finishSalonRun() {
 }
 
 function finishRun() {
+  if (watch) return finishWatch();
   if (salon) return finishSalonRun();
   if (!race || !track || !session) return;
   phase = "finished";
@@ -940,6 +1007,7 @@ function finishRun() {
       });
     }
   }
+  action("Revoir le meilleur tour", () => location.assign(watchHref(location.search))).id = "finish-watch";
   action("Archives", () => openArchive());
   if (apiBase() !== null && !compactScreen()) action("Salon", () => location.assign(modeHref(location.search, true)), "mode"); // le Salon : un circuit toutes les 10 minutes (sur téléphone : dans la fenêtre de pause)
   const showOnline = online.enabled && counted;
@@ -953,6 +1021,209 @@ function finishRun() {
   const medal = daily && counted ? medalFor(ms, daily.medals) : null;
   if (medal) gameAudio.play("medal", { bronze: 0, silver: 1, gold: 2, author: 3 }[medal]);
   demoTimer = 6;
+}
+
+
+// --- Revoir le meilleur tour : lecture (lot 27b) -------------------------------------------------------------------------------
+/**
+ * Retour en arrière, mesuré : on **rejoue depuis le départ** jusqu'au pas voulu (aucun instantané en mémoire). Un tour dure ≈ 5 000 pas
+ * et se rejoue en ≈ 15–30 ms (voir `docs/lots/lot-27b-salon-oubli.md`) : un retour de 5 s, ou un saut sur la barre de progression, ne se
+ * remarque pas, et l'on évite un état copié (donc un risque de dérive) en plus. Le temps final reste celui du même code de simulation.
+ */
+function restartWatch(tick: number) {
+  if (!watch || !track) return;
+  session = new RunSession(track, null); // aucune voiture fantôme, réglages par défaut : ceux de la rediffusion
+  race = session.race;
+  car = race.car;
+  previous = session.previous;
+  const player = new ReplayPlayer(watch.replay);
+  for (let i = 0; i < tick && race.finishMs < 0; i++) session.step(player.next()); // silencieux : ni son ni effet pendant le rejeu
+  autoplay = player;
+  session.cutInterpolation();
+  phase = "racing";
+  countdown = 0;
+  accumulator = 0;
+  pendingRespawn = false;
+  shownSplits = race.splits.length;
+  lastRespawns = race.respawns;
+  wasFalling = false;
+  fallVeil = 0;
+  snapCamera = true;
+  effects.reset();
+  shake = 0;
+  flash = 0;
+  lastCountdown = 0;
+  renderSplits();
+  hudFinish.hidden = true;
+  document.body.classList.remove("finished");
+  hudBanner.textContent = "";
+  bannerTimer = 0;
+}
+
+function setFreeCamera(on: boolean) {
+  freeCam = on;
+  renderer.domElement.style.touchAction = on ? "none" : "";
+  if (on) {
+    orbit.yaw = camYaw + Math.PI; // derrière la voiture, comme la caméra de poursuite
+    orbit.pitch = 0.4;
+    orbit.dist = 12;
+  }
+}
+
+const orbitPointers = new Map<number, { x: number; y: number }>();
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (!(watch && freeCam)) return;
+  renderer.domElement.setPointerCapture(e.pointerId);
+  orbitPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+});
+renderer.domElement.addEventListener("pointermove", (e) => {
+  const p = orbitPointers.get(e.pointerId);
+  if (!p || !(watch && freeCam)) return;
+  if (orbitPointers.size === 1) {
+    orbit.yaw -= (e.clientX - p.x) * 0.008;
+    Object.assign(orbit, clampOrbit(orbit.pitch + (e.clientY - p.y) * 0.006, orbit.dist));
+  } else if (orbitPointers.size === 2) {
+    // Pincement : la distance entre les deux doigts règle le zoom.
+    const other = [...orbitPointers.entries()].find(([id]) => id !== e.pointerId)![1];
+    const before = Math.hypot(p.x - other.x, p.y - other.y);
+    const after = Math.hypot(e.clientX - other.x, e.clientY - other.y);
+    if (before > 8 && after > 8) Object.assign(orbit, clampOrbit(orbit.pitch, orbit.dist * (before / after)));
+  }
+  orbitPointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+});
+for (const type of ["pointerup", "pointercancel"] as const) renderer.domElement.addEventListener(type, (e) => orbitPointers.delete(e.pointerId));
+renderer.domElement.addEventListener(
+  "wheel",
+  (e) => {
+    if (!(watch && freeCam)) return;
+    e.preventDefault();
+    Object.assign(orbit, clampOrbit(orbit.pitch, orbit.dist * Math.exp(e.deltaY * 0.0012)));
+  },
+  { passive: false },
+);
+
+const watchSpeedTo = (speed: WatchSpeed) => {
+  if (watch) watch.speed = speed;
+};
+const watchTick = () => (watch ? Math.min(car.tick, watch.total) : 0);
+function watchSkip(deltaTicks: number) {
+  if (watch) restartWatch(seekTick(watchTick(), watch.total, deltaTicks));
+}
+
+/** Passe en mode spectateur sur cette rediffusion. `false` si elle n'est pas rejouable ici (autre circuit, autre version, illisible). */
+function beginWatch(entry: WatchEntry): boolean {
+  if (!track || entry.simVersion !== SIM_VERSION) return false;
+  let replay: ReturnType<typeof decodeReplay>;
+  try {
+    replay = decodeReplay(entry.replay);
+  } catch {
+    return false;
+  }
+  if (replay.trackId !== track.id || replay.simVersion !== SIM_VERSION) return false;
+  watch = { entry, replay, total: replayTicks(replay), speed: 1, paused: false };
+  document.body.classList.add("watch");
+  // La voiture du tour regardé : pleine (pas translucide), à la couleur du fantôme, son pseudo au-dessus.
+  view.scene.remove(carMesh);
+  carModel = createCarMesh(true, entry.color, false, true);
+  carMesh = carModel.group;
+  view.scene.add(carMesh);
+  castShadows(carMesh);
+  nameLabel = createNameLabel();
+  nameLabel.set(entry.name, entry.color);
+  carMesh.add(nameLabel.sprite);
+  watchUi = mountWatchUi($("watchbar"), {
+    onTogglePause: () => setPaused(!watch!.paused),
+    onRewind: () => watchSkip(-REWIND_TICKS),
+    onSpeed: watchSpeedTo,
+    onCamera: () => cycleCamera(),
+    onSeek: (fraction) => (pendingSeek = fraction),
+  });
+  watchUi.show(true);
+  activeGhost = null;
+  pendingGhost = null;
+  ghostMesh.visible = false;
+  updateInfo();
+  updateGhostInfo();
+  restartWatch(0);
+  return true;
+}
+
+/** Quitte le mode spectateur (on repart courir) : voiture d'origine, commandes de conduite, adresse sans `watch`. */
+function endWatch() {
+  document.body.classList.remove("watch", "finished");
+  hudFinish.hidden = true;
+  watchUi?.show(false);
+  watchUi = null;
+  nameLabel = null;
+  setFreeCamera(false);
+  view.scene.remove(carMesh);
+  carModel = createCarMesh();
+  carMesh = carModel.group;
+  view.scene.add(carMesh);
+  castShadows(carMesh);
+  watch = null;
+  autoplay = null;
+  pendingSeek = null;
+  mountDrivingTouch();
+  try {
+    history.replaceState(null, "", unwatchHref(location.search));
+  } catch {
+    /* tant pis : l'adresse garde watch=best */
+  }
+  updateInfo();
+  updateGhostInfo();
+}
+
+/** « Courir contre ce fantôme » : une course normale avec la rediffusion regardée en fantôme (dans le Salon : la session, qui les montre déjà). */
+function raceAgainstWatched() {
+  const w = watch;
+  if (!w) return;
+  if (salon) return location.assign(unwatchHref(location.search));
+  const e = w.entry;
+  endWatch();
+  if (e.mode === "mine" && best) setGhost("mine", best, "ton record");
+  else setGhost("first", { ms: e.ms, splits: e.splits, replay: e.replay, simVersion: e.simVersion }, e.label);
+}
+
+/** Fin de la rediffusion : le temps recalculé par la simulation, puis rejouer ou courir contre ce fantôme. */
+function finishWatch() {
+  if (!race || !watch) return;
+  phase = "finished";
+  const w = watch;
+  w.paused = false; // « Rejouer » repart en lecture, même si l'on avait mis en pause avant de sauter à la fin
+  const text = (cls: string, t: string) => Object.assign(document.createElement("div"), { className: cls, textContent: t });
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  const action = (label: string, onClick: () => void, cls = "") => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: cls, textContent: label });
+    b.addEventListener("click", () => {
+      b.blur();
+      onClick();
+    });
+    actions.append(b);
+    return b;
+  };
+  action("Rejouer la rediffusion", () => restartWatch(0), "primary").id = "watch-replay";
+  action("Courir contre ce fantôme", () => raceAgainstWatched()).id = "watch-race";
+  hudFinish.replaceChildren(text("big", formatTime(race.finishMs)), text("", watchTitle(w.entry.name, w.entry.ms)), actions, text("hint", "Entrée : rejouer la rediffusion"));
+  hudFinish.hidden = false;
+  document.body.classList.add("finished");
+  showBanner("ARRIVÉE", 2.5);
+  gameAudio.play("finish");
+}
+
+/** Le tour à revoir : le premier du classement (jour ou session), sinon ton propre record de ce circuit. */
+async function loadWatchEntry(): Promise<WatchEntry | null> {
+  if (salon) {
+    const g = await salon.bestGhost();
+    return g ? { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: `premier : ${g.name}`, color: GHOST_COLORS[0]! } : null;
+  }
+  if (online.enabled) {
+    const c = await online.remoteGhost("first");
+    if (c?.source?.replay) return { name: c.name ?? "le premier", ms: c.source.ms, splits: c.source.splits, replay: c.source.replay, simVersion: c.source.simVersion ?? 0, mode: "first", label: c.label, color: MY_GHOST_COLOR };
+  }
+  if (best?.replay) return { name: getName() ?? "Toi", ms: best.ms, splits: best.splits, replay: best.replay, simVersion: best.simVersion ?? 0, mode: "mine", label: "ton record", color: MY_GHOST_COLOR };
+  return null;
 }
 
 // --- Boucle : simulation à pas fixe, rendu interpolé ------------------------------------------
@@ -989,6 +1260,14 @@ try {
 if (params.has("camera")) cameraIndex = cameraIndexOf(params.get("camera"));
 
 function cycleCamera() {
+  if (watch) {
+    // Spectateur : proche, loin, capot, puis la caméra libre autour de la voiture.
+    const next = nextWatchCamera(cameraIndex, freeCam, CAMERAS.length);
+    cameraIndex = next.index;
+    setFreeCamera(next.free);
+    showBanner(freeCam ? "Caméra libre : glisse pour tourner, molette ou pincement pour zoomer" : `Caméra ${CAMERAS[cameraIndex]!.name}`, freeCam ? 2.2 : 1, true);
+    return;
+  }
   cameraIndex = nextCameraIndex(cameraIndex);
   try {
     localStorage.setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
@@ -1065,7 +1344,7 @@ function stepOnce(input: CarInput) {
  * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
  */
 function isFrozen(): boolean {
-  return paused || !hudArchive.hidden || (touchMode && !!touchUi?.settingsOpen()) || salon?.state === "podium" || salon?.state === "switching";
+  return paused || !hudArchive.hidden || (touchMode && !!touchUi?.settingsOpen()) || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
 
 function frame(now: number) {
@@ -1074,7 +1353,7 @@ function frame(now: number) {
   if (dayCardShown) hudDayCard.hidden = phase !== "countdown";
   const manualTicksNow = manual ? manualTicks : 0;
   manualTicks = 0;
-  const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.5) * timeScale; // borne : pas de spirale après un onglet en pause ; 0,5 s : la course reste à l'heure jusqu'à 2 images/s (téléphone lent, rendu logiciel)
+  const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.5) * timeScale * (watch ? watch.speed : 1); // borne : pas de spirale après un onglet en pause ; 0,5 s : la course reste à l'heure jusqu'à 2 images/s (téléphone lent, rendu logiciel)
   const frameMs = now - last;
   last = now;
   if (!frozen && !manual && governor.observe(frameMs)) {
@@ -1082,18 +1361,27 @@ function frame(now: number) {
     view.setQuality(governor.level); // qualité basse : décor, ombres et halos allégés (téléphone lent)
   }
 
+  if (pendingSeek !== null && watch) {
+    const target = tickAt(pendingSeek, watch.total);
+    pendingSeek = null;
+    restartWatch(target);
+  }
   const { input, restart, camera: nextCamera, pause: togglePause } = controls.poll();
-  if (togglePause) setPaused(!paused);
+  if (togglePause) setPaused(watch ? !watch.paused : !paused);
   if (nextCamera) cycleCamera();
   if (restart) startAttempt();
-  else if (input.respawn && frozen) {
+  else if (watch) {
+    /* spectateur : aucune commande de conduite (la voiture suit la rediffusion) */
+  } else if (input.respawn && frozen) {
     /* pas de reprise pendant la pause : elle s'appliquerait en reprenant */
   } else if (input.respawn) {
     if (race) pendingRespawn = true;
     else startAttempt(); // sol plat : « reprise » = retour au départ
   }
 
-  if (phase === "countdown") {
+  if (watchWait) {
+    /* Salon, spectateur : on attend le premier temps de la session */
+  } else if (phase === "countdown") {
     countdown -= elapsed;
     if (countdown <= 0) {
       phase = "racing";
@@ -1129,7 +1417,7 @@ function frame(now: number) {
       shownSplits = race.splits.length;
       renderSplits();
       const ms = race.splits[shownSplits - 1]!;
-      const ref = (ghostSource ?? best)?.splits[shownSplits - 1];
+      const ref = watch ? undefined : (ghostSource ?? best)?.splits[shownSplits - 1];
       showBanner(ref !== undefined ? `CP${shownSplits}  ${formatDelta(ms - ref)}` : `CP${shownSplits}  ${formatTime(ms)}`, 1.6, true);
       if (touchPad) vibrate(touchPad.settings, 25);
       effects.checkpoint(car.x, car.y, car.z);
@@ -1263,7 +1551,8 @@ function frame(now: number) {
   camYaw += wrapAngle(viewYaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
   // En chute, la caméra reste où elle est : la voiture s'enfonce dans le vide sous le regard, sans que l'écran plonge avec elle.
   if (!(race && race.fallTicks > 0)) camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
-  const mount = rig.mount; // capot : la caméra est fixée à la carrosserie ; la vitesse ne la recule ni ne l'abaisse
+  const freeActive = !!watch && freeCam; // spectateur : caméra libre autour de la voiture
+  const mount = freeActive ? undefined : rig.mount; // capot : la caméra est fixée à la carrosserie ; la vitesse ne la recule ni ne l'abaisse
   const hood = mount !== undefined;
   document.body.classList.toggle("cam-hood", hood);
   const back = rig.back + speedRatio * rig.backAtSpeed + (hood ? 0 : fastCam.back);
@@ -1303,6 +1592,16 @@ function frame(now: number) {
   } else {
     camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
   }
+  if (freeActive) {
+    // Caméra libre : sur une sphère autour de la voiture (lacet et hauteur au doigt, distance à la molette), le regard sur elle.
+    const o = orbitOffset(orbit.yaw, orbit.pitch, orbit.dist);
+    camera.position.set(x + o.x, y + 1 + o.y, z + o.z);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(x, y + 1, z);
+  }
+  // Étiquette au pseudo du tour regardé : masquée tout près de la caméra (vue capot).
+  if (nameLabel) nameLabel.place(camera.position.distanceTo(carMesh.position), Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight, 3.5);
+  if (watch) watchUi?.update({ paused: watch.paused, speed: watch.speed, progress: progressOf(Math.min(car.tick, watch.total), watch.total), camera: freeCam ? "libre" : CAMERAS[cameraIndex]!.name });
   // Vue capot : un fantôme tout près de l'œil (départ côte à côte, dépassement) n'est pas dessiné, la caméra serait dans sa caisse.
   if (hood && ghostMesh.visible && ghostMesh.position.distanceToSquared(camera.position) < HOOD_GHOST_CLEARANCE * HOOD_GHOST_CLEARANCE) ghostMesh.visible = false;
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
@@ -1386,6 +1685,11 @@ function buildSalonScene(c: LoadedSalonCircuit) {
 }
 
 function swapSalonCircuit(c: LoadedSalonCircuit) {
+  if (watch || watchWait) {
+    // Spectateur : la session regardée est finie. On retourne au Salon normal (la nouvelle session, sans rediffusion).
+    location.assign(unwatchHref(location.search));
+    return;
+  }
   const t0 = performance.now();
   salonStats.swapAt = t0;
   let next: ReturnType<typeof buildTrackScene>;
@@ -1425,7 +1729,7 @@ const salonHost: SalonHost = {
     prebuilt = { id: c.id, scene: buildSalonScene(c) };
   },
   // « Une course est en cours » : elle roule vraiment (une voiture immobile sur la ligne n'a rien commencé : le podium n'attend pas).
-  isRacing: () => phase === "racing" && !!race && (carSpeed(car) > 2 || race.splits.length > 0),
+  isRacing: () => !watch && !watchWait && phase === "racing" && !!race && (carSpeed(car) > 2 || race.splits.length > 0),
   abortRun() {
     if (phase === "racing") {
       phase = "finished";
@@ -1438,6 +1742,7 @@ const salonHost: SalonHost = {
     flash = 1;
   },
   ghostsChanged(entries: GhostEntry[]) {
+    if (watch || watchWait) return; // un spectateur ne court pas : pas de fantômes autour de la voiture regardée
     ghostField?.setEntries(entries);
     // Décompte : les fantômes partent avec ce départ. Course déjà commencée : les premiers fantômes rattrapent ta course tout de suite (le
     // classement peut arriver après le départ) ; ensuite, un changement de classement attend le prochain départ.
@@ -1453,6 +1758,35 @@ if (salon) {
 // Salon injoignable (lot 26) : dit dans l'en-tête, et rappelé au départ (le décompte écrase le bandeau jusque-là).
 let salonNoticePending = salonNotice;
 if (salonNotice) $("meta").append(` · ${salonNotice}`);
+
+// Revoir le meilleur tour (lot 27b) : `?watch=best`. Le tour vient du classement (jour ou session), sinon de ton record local ; s'il n'y
+// en a pas, une course normale (dans le Salon : on attend le premier temps de la session).
+if (watchWanted && track) {
+  const entry = await Promise.race([loadWatchEntry(), new Promise<null>((r) => setTimeout(() => r(null), 4000))]);
+  if (entry && beginWatch(entry)) {
+    /* en lecture */
+  } else if (salon && !entry) {
+    watchWait = true;
+    document.body.classList.add("watch");
+    showBanner("En attente du premier temps de la session…", 3600, true);
+    const waiting = setInterval(() => {
+      void salon!.bestGhost().then((g) => {
+        if (!g || !watchWait) return;
+        clearInterval(waiting);
+        watchWait = false;
+        hudBanner.textContent = "";
+        bannerTimer = 0;
+        const e: WatchEntry = { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: `premier : ${g.name}`, color: GHOST_COLORS[0]! };
+        if (!beginWatch(e)) location.replace(unwatchHref(location.search));
+      });
+    }, 2500);
+  } else if (salon) {
+    location.replace(unwatchHref(location.search)); // tour illisible ici : le Salon normal
+  } else {
+    salonNoticePending = entry ? "Rediffusion illisible : course normale" : "Aucun tour à revoir : course normale";
+    mountDrivingTouch();
+  }
+}
 renderer.setAnimationLoop(frame);
 
 // Accès de débogage pour les tests de navigateur (`?debug`) : état de la course, sans effet sur le jeu.
@@ -1564,6 +1898,27 @@ if (params.has("debug")) {
             ghostField?.setMode(mode);
           },
           refresh: () => sal.refreshBoard(),
+        };
+      },
+      /** Spectateur (lot 27b) : tour regardé, vitesse, pause, pas courant et total, caméra ; `seek(pas)` y saute. */
+      get watch() {
+        if (!watch && !watchWait) return null;
+        return {
+          waiting: watchWait,
+          name: watch?.entry.name ?? null,
+          announcedMs: watch?.entry.ms ?? null,
+          mode: watch?.entry.mode ?? null,
+          speed: watch?.speed ?? 1,
+          paused: watch?.paused ?? false,
+          tick: watch ? watchTick() : 0,
+          total: watch?.total ?? 0,
+          finishMs: race ? race.finishMs : -1,
+          phase,
+          free: freeCam,
+          label: nameLabel ? nameLabel.sprite.visible : false,
+          carVisible: carMesh.visible,
+          orbit: { ...orbit },
+          seek: (tick: number) => watch && restartWatch(tick),
         };
       },
       /** Joue une rediffusion à la place du clavier (tests de navigateur). */

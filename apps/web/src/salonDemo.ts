@@ -56,12 +56,27 @@ export class DemoSalonApi implements SalonApi {
 
   constructor(private readonly o: DemoSalonOptions) {}
 
+  /**
+   * Une session finie est oubliée (lot 27b), comme sur le serveur : une fois la minute de grâce écoulée, ses courses (celles du joueur
+   * comprises), son classement et ses fantômes ne sont plus gardés ni servis. Appelée au début de chaque route.
+   */
+  private forget(): number {
+    const oldest = salonSessionAt(this.o.clock.now() - SUBMIT_GRACE_MS, this.o.sessionMs);
+    for (const s of [...this.sessions.keys()]) if (s < oldest) this.sessions.delete(s);
+    return oldest;
+  }
+
+  /** Session encore servie ? (entre la plus ancienne dont la grâce court et la suivante.) */
+  private served(session: number): boolean {
+    const oldest = this.forget();
+    return session >= oldest && session <= salonSessionAt(this.o.clock.now(), this.o.sessionMs) + 1;
+  }
+
   private data(session: number): SessionData {
     let d = this.sessions.get(session);
     if (!d) {
       d = { plan: demoPlan(session, this.o.sessionMs), computed: new Map(), mine: new Map(), version: 1, signature: "", pumping: false };
       this.sessions.set(session, d);
-      while (this.sessions.size > 4) this.sessions.delete(Math.min(...this.sessions.keys()));
       void this.pump(session, d);
     }
     return d;
@@ -113,21 +128,24 @@ export class DemoSalonApi implements SalonApi {
     return { session, version: d.version, participants: all.length, players: this.present(session, d), rows, me };
   }
 
-  async now(_playerId: string): Promise<ApiResult<SalonNow>> {
+  async now(_playerId: string | null): Promise<ApiResult<SalonNow>> {
+    this.forget();
     const serverMs = this.o.clock.now();
     const session = salonSessionAt(serverMs, this.o.sessionMs);
     this.data(session);
     return { ok: true, data: { serverMs, session, startMs: salonSessionStart(session, this.o.sessionMs), endMs: salonSessionEnd(session, this.o.sessionMs), trackId: salonTrackId(session), players: this.present(session, this.data(session)) } };
   }
 
-  async board(session: number, playerId: string, since?: number): Promise<ApiResult<SalonBoard>> {
+  async board(session: number, playerId: string | null, since?: number): Promise<ApiResult<SalonBoard>> {
+    if (!this.served(session)) return fail(404, "unknown_session", "Cette session n'existe pas (ou plus)");
     const d = this.data(session);
-    const board = this.build(session, d, myRef(session, playerId));
+    const board = this.build(session, d, playerId ? myRef(session, playerId) : "");
     if (since !== undefined && since === board.version) return { ok: true, data: { session, version: board.version, participants: board.participants, players: board.players, rows: [], me: board.me, unchanged: true } };
     return { ok: true, data: board };
   }
 
   async ghosts(session: number, refs: string[]): Promise<ApiResult<{ ghosts: SalonGhost[] }>> {
+    if (!this.served(session)) return fail(404, "unknown_session", "Cette session n'existe pas (ou plus)");
     const d = this.data(session);
     const list = this.entries(session, d);
     const ghosts: SalonGhost[] = [];
@@ -139,6 +157,7 @@ export class DemoSalonApi implements SalonApi {
 
   async submit(session: number, playerId: string, name: string, replay: string): Promise<ApiResult<SalonSubmitResult>> {
     const now = this.o.clock.now();
+    this.forget();
     if (now > salonSessionEnd(session, this.o.sessionMs) + SUBMIT_GRACE_MS) return fail(409, "session_closed", "Trop tard : cette session est terminée");
     if (now < salonSessionStart(session, this.o.sessionMs)) return fail(409, "session_future", "Cette session n'a pas commencé");
     const circuit = await this.o.circuit(session);

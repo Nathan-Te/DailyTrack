@@ -22,7 +22,7 @@ const api = createApi({
   adminToken: process.env.ADMIN_TOKEN,
   salonMinutes,
 });
-// Le Salon : circuit de la session préparé à l'avance (les deux dernières minutes), podiums figés, purge à 48 h.
+// Le Salon : circuit de la session préparé à l'avance (les deux dernières minutes), oubli à la demande des sessions finies (lot 27b).
 void api.tick();
 setInterval(() => void api.tick(), 15_000).unref();
 createNodeServer(api, { trustProxy: process.env.TRUST_PROXY === "1" }).listen(port, () => {

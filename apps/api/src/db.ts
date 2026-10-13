@@ -11,7 +11,11 @@ export interface SqlDb {
  * Ajouts de colonnes pour les bases créées avant : chaque requête est tentée, et refusée sans conséquence si la colonne
  * existe déjà. `players.demo` : 1 pour les pilotes fictifs de l'historique (lot 11) ; un serveur de production n'en crée jamais.
  */
-export const MIGRATIONS: string[] = ["ALTER TABLE players ADD COLUMN demo INTEGER NOT NULL DEFAULT 0"];
+export const MIGRATIONS: string[] = [
+  "ALTER TABLE players ADD COLUMN demo INTEGER NOT NULL DEFAULT 0",
+  // Lot 27b : le Salon n'a plus de podiums gardés (une session finie est oubliée).
+  "DROP TABLE IF EXISTS salon_podiums",
+];
 
 /** Tables de l'API. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
 export const SCHEMA: string[] = [
@@ -60,7 +64,7 @@ export const SCHEMA: string[] = [
    )`,
   // --- Le Salon (lot 27) ---
   // Meilleur temps de chaque joueur pour chaque session, avec la rediffusion qui l'a produit (sert de fantôme). `ref` : référence
-  // publique du joueur pour cette session (empreinte salée : l'identifiant secret ne sort jamais du serveur). Purgé après 48 h.
+  // publique du joueur pour cette session (empreinte salée : l'identifiant secret ne sort jamais du serveur). Effacé à la fin de la session (+ minute de grâce : lot 27b).
   `CREATE TABLE IF NOT EXISTS salon_runs (
      session INTEGER NOT NULL,
      player_id TEXT NOT NULL,
@@ -75,16 +79,6 @@ export const SCHEMA: string[] = [
   `CREATE UNIQUE INDEX IF NOT EXISTS salon_runs_by_ref ON salon_runs (session, ref)`,
   `CREATE INDEX IF NOT EXISTS salon_runs_by_time ON salon_runs (session, ms, submitted_at)`,
   `CREATE INDEX IF NOT EXISTS salon_runs_by_date ON salon_runs (submitted_at)`,
-  // Les trois premiers de chaque session terminée, gardés après la purge des courses.
-  `CREATE TABLE IF NOT EXISTS salon_podiums (
-     session INTEGER NOT NULL,
-     rank INTEGER NOT NULL,
-     name TEXT NOT NULL,
-     ms INTEGER NOT NULL,
-     participants INTEGER NOT NULL,
-     created_at INTEGER NOT NULL,
-     PRIMARY KEY (session, rank)
-   )`,
   // Version du classement d'une session : augmente à chaque temps amélioré ou pseudo changé (le jeu ne recharge que si elle change).
   `CREATE TABLE IF NOT EXISTS salon_sessions (
      session INTEGER PRIMARY KEY,

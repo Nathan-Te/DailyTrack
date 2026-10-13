@@ -10,6 +10,9 @@ import { apiCall, type ApiResult } from "./api";
 // Un joueur n'est jamais désigné par son identifiant secret mais par une **référence publique** (`ref`) propre à la session : les
 // fantômes se demandent par référence. Comme pour le classement du jour, le serveur ne fait jamais confiance à un temps annoncé :
 // il rejoue la rediffusion sur `salonCircuit(session)` et n'enregistre que son propre résultat.
+//
+// **Une session finie est oubliée** (lot 27b) : après sa fin et la minute de grâce, `board` et `ghosts` répondent 404 pour elle (courses,
+// classement, podium : plus rien). Le podium de fin se calcule sur le classement servi pendant la grâce.
 
 export interface SalonNow {
   /** Heure du serveur (ms depuis 1970, UTC). */
@@ -20,7 +23,7 @@ export interface SalonNow {
   endMs: number;
   /** Identifiant du circuit de la session (`salon-<session>-g<G>`). */
   trackId: string;
-  /** Joueurs présents (ayant interrogé le Salon dans les 30 dernières secondes). */
+  /** Joueurs présents (ayant interrogé le Salon dans la dernière minute ; le serveur n'écrit la présence d'un joueur qu'une fois par 30 s). */
   players: number;
 }
 
@@ -70,8 +73,9 @@ export interface SalonSubmitResult {
 }
 
 export interface SalonApi {
-  now(playerId: string): Promise<ApiResult<SalonNow>>;
-  board(session: number, playerId: string, since?: number): Promise<ApiResult<SalonBoard>>;
+  /** `playerId` nul : un spectateur (lot 27b) — il ne compte pas dans la présence du Salon (aucun identifiant n'est envoyé). */
+  now(playerId: string | null): Promise<ApiResult<SalonNow>>;
+  board(session: number, playerId: string | null, since?: number): Promise<ApiResult<SalonBoard>>;
   ghosts(session: number, refs: string[]): Promise<ApiResult<{ ghosts: SalonGhost[] }>>;
   submit(session: number, playerId: string, name: string, replay: string): Promise<ApiResult<SalonSubmitResult>>;
 }
@@ -80,12 +84,13 @@ export interface SalonApi {
 export class HttpSalonApi implements SalonApi {
   constructor(private readonly base: string) {}
 
-  now(playerId: string) {
-    return apiCall<SalonNow>(this.base, "GET", `/api/salon/now?player=${encodeURIComponent(playerId)}`);
+  now(playerId: string | null) {
+    return apiCall<SalonNow>(this.base, "GET", `/api/salon/now${playerId ? `?player=${encodeURIComponent(playerId)}` : ""}`);
   }
 
-  board(session: number, playerId: string, since?: number) {
-    return apiCall<SalonBoard>(this.base, "GET", `/api/salon/${session}/board?player=${encodeURIComponent(playerId)}${since !== undefined ? `&since=${since}` : ""}`);
+  board(session: number, playerId: string | null, since?: number) {
+    const query = [...(playerId ? [`player=${encodeURIComponent(playerId)}`] : []), ...(since !== undefined ? [`since=${since}`] : [])].join("&");
+    return apiCall<SalonBoard>(this.base, "GET", `/api/salon/${session}/board${query ? `?${query}` : ""}`);
   }
 
   ghosts(session: number, refs: string[]) {
