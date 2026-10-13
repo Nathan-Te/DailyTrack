@@ -43,8 +43,9 @@ attribute vec4 aColor;
 varying vec4 vColor;
 uniform float uScale;
 void main() {
-  vColor = aColor;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
+  // Une particule tout près de l'œil (vue capot : poussière des roues avant) s'efface au lieu de masquer l'écran d'une tache.
+  vColor = vec4(aColor.rgb, aColor.a * smoothstep(0.6, 2.4, -mv.z));
   gl_PointSize = aSize * uScale / max(0.5, -mv.z);
   gl_Position = projectionMatrix * mv;
 }`;

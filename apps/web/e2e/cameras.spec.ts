@@ -7,7 +7,7 @@ test.setTimeout(120_000);
 
 const camera = (page: Page) => page.evaluate(() => window.__cdj.camera);
 
-test("C fait défiler proche → loin → capot → proche ; la carrosserie est cachée au capot ; le choix survit au rechargement", async ({ page }) => {
+test("C fait défiler proche → loin → capot → proche ; la voiture reste dessinée au capot ; le choix survit au rechargement", async ({ page }) => {
   await page.goto("/?debug&scenario=pilotage");
   await page.waitForFunction(() => window.__cdj?.phase);
   await page.evaluate(() => localStorage.removeItem("cdj:camera"));
@@ -26,7 +26,7 @@ test("C fait défiler proche → loin → capot → proche ; la carrosserie est 
     await page.keyboard.press("KeyC");
   }
   expect(names).toEqual(["proche", "loin", "capot", "proche"]);
-  expect(visible).toEqual([true, true, false, true]);
+  expect(visible).toEqual([true, true, true, true]); // le vrai capot est celui de la voiture 3D, pas un dessin posé sur l'écran
   expect(hood).toEqual([false, false, true, false]);
 
   // la boucle a fini sur « loin » (le dernier appui n'a pas encore passé une image : le verrou de la touche est un booléen) : un appui de plus donne le capot, mémorisé
@@ -41,7 +41,7 @@ test("C fait défiler proche → loin → capot → proche ; la carrosserie est 
   await page.evaluate(() => window.__cdj.manual(true));
   await page.evaluate(() => window.__cdj.advance(3));
   expect((await camera(page)).name).toBe("capot");
-  await expect(page.locator("#hood")).toBeVisible();
+  await expect(page.locator("#hood")).toHaveCount(0);
 });
 
 test("la vue capot est plus large et plus basse que les vues poursuite (champ de vision)", async ({ page }) => {

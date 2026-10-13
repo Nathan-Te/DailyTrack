@@ -36,6 +36,8 @@ interface Slot {
   canvas: HTMLCanvasElement;
   wheel: WheelPose;
   shown: string;
+  /** Trop près de la caméra capot : cachée (mise à jour à chaque image). */
+  near: boolean;
 }
 
 /** Hauteur de l'étiquette à l'écran (pixels CSS ; le texte en occupe la moitié), et distances (m) hors desquelles elle est masquée. */
@@ -60,7 +62,7 @@ function makeSlot(color: number): Slot {
   label.visible = false;
   label.renderOrder = 5;
   model.group.add(label);
-  return { model, pose: new CarPose(), label, texture, canvas, wheel: { forward: 0, steerAngle: 0, braking: false, droop: [0, 0, 0, 0], dt: 0 }, shown: "" };
+  return { model, pose: new CarPose(), label, texture, canvas, wheel: { forward: 0, steerAngle: 0, braking: false, droop: [0, 0, 0, 0], dt: 0 }, shown: "", near: false };
 }
 
 /** Dessine le pseudo (et le rang) sur l'étiquette d'un fantôme. */
@@ -171,7 +173,7 @@ export class GhostField {
     for (const a of this.active) {
       const s = this.slots[a.slot]!;
       const visible = ghostShown(this.mode, a.entry.rank) && a.finishedTicks < HIDE_AFTER_FINISH_TICKS;
-      s.model.group.visible = visible;
+      s.model.group.visible = visible && !s.near;
       s.label.visible = visible;
       if (visible) used.add(a.slot);
     }
@@ -200,14 +202,14 @@ export class GhostField {
    * Place les voitures et les étiquettes (`alpha` : fraction de pas pour l'interpolation, `dt` : secondes de l'image). `eye` : position de
    * la caméra et taille d'un pixel à un mètre (m) : les étiquettes gardent à peu près la même taille à l'écran, quelle que soit la distance.
    */
-  place(alpha: number, dt: number, eye: { x: number; y: number; z: number; pixelAtOneMeter: number }): void {
+  place(alpha: number, dt: number, eye: { x: number; y: number; z: number; pixelAtOneMeter: number; clearance?: number }): void {
     const t0 = performance.now();
     let shown = 0;
     let hiddenNow = false;
     for (const a of this.active) {
       const s = this.slots[a.slot]!;
       const visible = ghostShown(this.mode, a.entry.rank) && a.finishedTicks < HIDE_AFTER_FINISH_TICKS;
-      if (s.model.group.visible !== visible) hiddenNow = true;
+      if (s.model.group.visible !== (visible && !s.near)) hiddenNow = true;
       if (!visible) continue;
       shown++;
       const c = a.race.car;
@@ -226,6 +228,9 @@ export class GhostField {
       // Hauteur de la ligne de texte : LABEL_PX pixels à l'écran ; masquée tout près (elle cacherait la voiture) et très loin (illisible).
       const h = LABEL_PX * eye.pixelAtOneMeter * dist * 2;
       s.label.visible = dist > LABEL_NEAR && dist < LABEL_FAR;
+      // Vue capot : une voiture à moins de `clearance` de l'œil n'est pas dessinée (la caméra serait dans sa caisse).
+      s.near = dist < (eye.clearance ?? 0);
+      if (s.near) s.model.group.visible = false;
       s.label.scale.set(h * 4, h, 1);
       s.label.position.set(0, 2.2 + h * 0.3, 0);
     }

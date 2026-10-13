@@ -232,7 +232,8 @@ export function createCarMesh(ghost = false, tint?: number, simple = false): Car
   m.hexa(frustum(0.3, W - 0.2, zf - 0.55, zf + 0.12, 0.38, W - 0.16, zf - 0.55, zf + 0.12), { top: look.trim, side: look.trim }); // becquet avant
   m.hexa(frustum(0.28, W - 0.3, zr - 0.04, zr + 0.35, 0.36, W - 0.34, zr - 0.04, zr + 0.35), { top: look.trim, side: look.trim }); // diffuseur
 
-  // Calandre et phares : bandeau sombre, deux blocs optiques clairs qui brillent (matériau sans éclairage).
+  // Calandre et phares : bandeau sombre, deux blocs optiques clairs qui brillent (matériau sans éclairage, à double face : le bloc de droite
+  // est le miroir de celui de gauche, donc à l'envers ; on les voit du dessus en vue capot).
   const lights = new Mesh3();
   m.quad([-0.6, 0.44, zf + 0.001], [0.6, 0.44, zf + 0.001], [0.6, 0.5, zf - 0.04], [-0.6, 0.5, zf - 0.04], 0x0a0a0c);
   for (const s of [-1, 1]) {
@@ -256,7 +257,7 @@ export function createCarMesh(ghost = false, tint?: number, simple = false): Car
     bodyMat.forceSinglePass = true; // transparent et à double face : sinon dessinée deux fois
   }
   group.add(new Mesh(m.geometry(), bodyMat));
-  if (!simple) group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) })));
+  if (!simple) group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) })));
 
   // Feux stop : une barrette de chaque côté du coffre, ternes puis rouge vif au freinage, plus un troisième feu central.
   const stopMat = new MeshBasicMaterial({ color: 0x5a0f12, ...(ghost ? { transparent: true, opacity: 0.4 } : {}) });

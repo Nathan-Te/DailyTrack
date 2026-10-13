@@ -48,7 +48,7 @@ export interface Arena {
   setQuality(level: 0 | 1 | 2): void;
   look: Look;
   setView(heightPx: number, fovDeg: number): void;
-  followCar(x: number, y: number, z: number, yaw: number): void;
+  followCar(x: number, y: number, z: number, yaw: number, hood?: boolean): void;
   stats(): SceneStats;
 }
 

@@ -1,5 +1,5 @@
 import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
-import { NeutralToneMapping, PerspectiveCamera, Vector3, WebGLRenderer } from "three";
+import { NeutralToneMapping, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
   AXLE_REAR,
@@ -66,7 +66,7 @@ import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
 import { canNativeShare, copyText, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
-import { CAMERAS, cameraIndexOf, nextCameraIndex } from "./cameras";
+import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
 import { createCarMesh, createShadow, placeShadow, type WheelPose } from "./carMesh";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
@@ -972,7 +972,11 @@ const camPos = { x: 0, y: 0, z: 0 };
 const carPose = new CarPose();
 const ghostPose3d = new CarPose();
 const camLift = new Vector3();
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+// Vue capot : l'œil dans le repère de la voiture, et le regard « rivé à la caisse » (axe +z de la voiture = −z de la caméra).
+const hoodEye = new Vector3();
+const hoodBody = new Quaternion();
+const FACE_FORWARD = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
+const lerp =(a: number, b: number, t: number) => a + (b - a) * t;
 
 // Caméras (touche C / bouton Vue de la manette / bouton 🎥 du toucher) : proche, loin, capot (`cameras.ts`).
 let cameraIndex = 0;
@@ -1230,7 +1234,7 @@ function frame(now: number) {
   }
 
   // Étiquettes des fantômes du Salon : taille constante à l'écran (la caméra de l'image précédente suffit).
-  ghostField?.place(alpha, elapsed, { x: camera.position.x, y: camera.position.y, z: camera.position.z, pixelAtOneMeter: Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight });
+  ghostField?.place(alpha, elapsed, { x: camera.position.x, y: camera.position.y, z: camera.position.z, pixelAtOneMeter: Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight, clearance: CAMERAS[cameraIndex]!.mount ? HOOD_GHOST_CLEARANCE : 0 });
 
   // Démo : on change de caméra de temps en temps, et on repart après l'arrivée.
   if (demo) {
@@ -1259,8 +1263,8 @@ function frame(now: number) {
   camYaw += wrapAngle(viewYaw - camYaw) * (1 - Math.exp(-rig.yawLag * elapsed));
   // En chute, la caméra reste où elle est : la voiture s'enfonce dans le vide sous le regard, sans que l'écran plonge avec elle.
   if (!(race && race.fallTicks > 0)) camBaseY += (y - camBaseY) * (1 - Math.exp(-8 * elapsed));
-  const hood = rig.hideCar === true; // capot : la vitesse ne recule ni n'abaisse la caméra (elle est déjà sur la voiture)
-  carMesh.visible = !hood;
+  const mount = rig.mount; // capot : la caméra est fixée à la carrosserie ; la vitesse ne la recule ni ne l'abaisse
+  const hood = mount !== undefined;
   document.body.classList.toggle("cam-hood", hood);
   const back = rig.back + speedRatio * rig.backAtSpeed + (hood ? 0 : fastCam.back);
   // Sur la paroi d'une cuve, la caméra penche avec la voiture (en partie) : son « haut » est entre la verticale et la normale.
@@ -1276,10 +1280,31 @@ function frame(now: number) {
   snapCamera = false;
   // Secousse (chocs, réceptions) : décalage de la caméra qui s'éteint vite ; coupée avec `?shake=0`.
   shake *= Math.max(0, 1 - 7 * elapsed);
-  const sh = SHAKE * shake * 0.22 + (buzzAllowed(governor.level) ? SHAKE * buzzAmplitude(speed) * 2 : 0);
+  // Vue capot : la secousse reste bien en deçà du jeu entre l'œil et la carrosserie (`HOOD_CLEARANCE`).
+  const sh = (SHAKE * shake * 0.22 + (buzzAllowed(governor.level) ? SHAKE * buzzAmplitude(speed) * 2 : 0)) * (hood ? 0.3 : 1);
+  if (mount) {
+    // L'œil est un point de la carrosserie : même position que la caisse (pas de retard, tangage et roulis compris), donc jamais à travers.
+    carMesh.updateMatrixWorld();
+    hoodEye.set(mount.x, mount.y, mount.z).applyMatrix4(carMesh.matrixWorld);
+    camPos.x = hoodEye.x;
+    camPos.y = hoodEye.y;
+    camPos.z = hoodEye.z;
+  }
   camera.position.set(camPos.x + (Math.random() - 0.5) * sh, camPos.y + (Math.random() - 0.5) * sh, camPos.z + (Math.random() - 0.5) * sh);
   camera.up.copy(camUp);
-  camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
+  if (mount) {
+    // Regard : le cap lissé de la caméra (horizon stable, en l'air le déplacement), mêlé à l'axe de la caisse (la route monte et descend
+    // avec le capot) puis borné : la caisse peut tourner en l'air, le regard reste à moins de `HOOD_MAX_TILT` de son axe.
+    camera.lookAt(hoodEye.x + Math.sin(camYaw) * rig.ahead, hoodEye.y - 0.35,hoodEye.z + Math.cos(camYaw) * rig.ahead);
+    hoodBody.copy(carMesh.quaternion).multiply(FACE_FORWARD);
+    camera.quaternion.slerp(hoodBody, (rig.bodyFollow ?? 0.6) * (1 - airMix * 0.75));
+    const excess = camera.quaternion.angleTo(hoodBody) - HOOD_MAX_TILT;
+    if (excess > 0) camera.quaternion.rotateTowards(hoodBody, excess);
+  } else {
+    camera.lookAt(x + Math.sin(camYaw) * rig.ahead + camUp.x * rig.lookHeight, camBaseY + camUp.y * rig.lookHeight, z + Math.cos(camYaw) * rig.ahead + camUp.z * rig.lookHeight);
+  }
+  // Vue capot : un fantôme tout près de l'œil (départ côte à côte, dépassement) n'est pas dessiné, la caméra serait dans sa caisse.
+  if (hood && ghostMesh.visible && ghostMesh.position.distanceToSquared(camera.position) < HOOD_GHOST_CLEARANCE * HOOD_GHOST_CLEARANCE) ghostMesh.visible = false;
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
   fovKick += ((car.turbo > 0 ? 7 : car.boost > 0 ? 4 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
   const fov = rig.fov + speedRatio * rig.fovAtSpeed + (hood ? fastCam.fov * 0.5 : fastCam.fov) + fovKick;
@@ -1289,7 +1314,7 @@ function frame(now: number) {
   }
 
   view.followGround(x, z);
-  view.followCar(x, y, z, yaw);
+  view.followCar(x, y, z, yaw, hood);
   view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
   effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio());
   effects.update({ dt: elapsed, x, y, z, yaw, tel, braking: wheelPose.braking, boost: car.boost > 0, turbo: car.turbo > 0, racing: phase !== "countdown" });

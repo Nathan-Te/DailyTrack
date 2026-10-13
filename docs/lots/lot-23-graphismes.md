@@ -46,7 +46,7 @@ La dernière image est la **caméra capot** (Stade).
 
 **Ambiance sonore** (procédurale, aucun fichier : rien à créditer) : foule (Stade), brise (Rallye), vent (Banquise, Col alpin), vent chaud (Canyon), grillons (Campagne), rumeur urbaine (Ville), bourdonnement électrique (Nuit). Sous le volume général (**M** la coupe), couverte peu à peu par la vitesse (100 % → 40 %), silencieuse en pause.
 
-**Caméras** : proche, loin, **capot** (très basse, devant le centre de la voiture, carrosserie cachée, museau dessiné en bas de l'écran). Touche **C**, bouton Vue de la manette, **bouton 🎥 de la barre tactile** (premier de la barre, à ≈ 34–39 % de la largeur : au moins 14 px de toute frontière entre zones, mesuré). Choix mémorisé (`cdj:camera`) ; `?camera=` l'impose ; option « Caméra » dans `/admin`.
+**Caméras** : proche, loin, **capot** (vraie vue : l'œil est un point de la carrosserie, au-dessus du capot et devant le pare-brise ; la voiture 3D reste visible, sans museau dessiné à l'écran ; position rigide avec la caisse, regard mélangé et borné, `test/hoodView.test.ts`). Touche **C**, bouton Vue de la manette, **bouton 🎥 de la barre tactile** (premier de la barre, à ≈ 34–39 % de la largeur : au moins 14 px de toute frontière entre zones, mesuré). Choix mémorisé (`cdj:camera`) ; `?camera=` l'impose ; option « Caméra » dans `/admin`.
 
 **Niveaux de qualité** (`QualityGovernor` → `TrackScene.setQuality`)
 
@@ -78,13 +78,13 @@ Piège rencontré : une première série donnait 50–90 ms par image sur Canyon
 **Miniatures** : seule la tonalité et l'exposition du thème s'ajoutent (un réglage du rendu final : coût nul) ; ni ombres, ni halos, ni panneaux, ni bandeaux de texte dans la vue aérienne.
 
 ## Tests
-- `apps/web/test/graphismes.test.ts` (13) : caméras (ordre, mémoire, capot bas et devant), ambiances (une par palette, six types, volume), lumière (phares seulement la nuit, brume), panneaux (côté, sévérité, cuve, saut, jamais au départ, un par hôte, ≥ 85 % annoncés sur 30 dates).
-- `e2e/cameras.spec.ts` (6) : C fait le tour clavier, carrosserie cachée au capot, choix mémorisé après rechargement ; bouton 🎥 au toucher sur Android et iPhone (gaz automatique et deux pédales) ; écart ≥ 14 px avec chaque frontière ; aucun appui autour des frontières ne change la caméra (`?zones=1`).
+- `apps/web/test/graphismes.test.ts` (13) : caméras (ordre, mémoire, capot monté sur la carrosserie), ambiances (une par palette, six types, volume), lumière (phares seulement la nuit, brume), panneaux (côté, sévérité, cuve, saut, jamais au départ, un par hôte, ≥ 85 % annoncés sur 30 dates).
+- `e2e/cameras.spec.ts` (6) : C fait le tour clavier, voiture toujours dessinée au capot, choix mémorisé après rechargement ; bouton 🎥 au toucher sur Android et iPhone (gaz automatique et deux pédales) ; écart ≥ 14 px avec chaque frontière ; aucun appui autour des frontières ne change la caméra (`?zones=1`).
 - `e2e/graphismes.spec.ts` : ambiance de chacun des huit thèmes, panneaux présents, brume propre au thème, aucune erreur de page ; niveaux de qualité (ombres 0 / 512 / 1024, halos, phares, décor dense, collines) ; M et ambiance.
 - Outils : `e2e/captures-lot23.spec.ts` (`CAPTURES=1`), `e2e/mesure-lot23.spec.ts` (`MESURE=1`).
 
 ## Non vérifié / à décider
 - **Vrai téléphone** : coût des ombres, halos et décor dense (voir mesures) ; lisibilité des panneaux en plein soleil ; position du bouton 🎥 sous le pouce.
 - **Son** : aucun test n'écoute ; les niveaux des ambiances (foule, grillons surtout) sont à juger à l'oreille (`AMBIENCE` dans `audioLogic.ts`). iOS : non vérifié.
-- Goût : puissance des phares (`HEADLIGHT_POWER`), taille des panneaux (2,5 m), densité du décor dense, museau de la caméra capot (un aplat orange, pas la vraie caisse).
+- Goût : puissance des phares (`HEADLIGHT_POWER`), taille des panneaux (2,5 m), densité du décor dense, hauteur et avance de l'œil de la caméra capot (`HOOD_MOUNT`).
 - Les halos s'effacent de près (au-delà de ≈ 190 px) pour éviter un carré sur les petits GPU.
