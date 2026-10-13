@@ -66,6 +66,17 @@ jobs:
             echo "::notice::Déploiement de l'API ignoré (mise en ligne non configurée) :$missing"
             exit 0
           fi
+          # Une valeur mal copiée donne plus tard une erreur obscure de Google (« Invalid value for "audience" ») : on la repère ici.
+          if [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; then
+            if ! printf '%s' "$WIF_PROVIDER" | grep -Eq '^projects/[0-9]+/locations/global/workloadIdentityPools/[A-Za-z0-9._-]+/providers/[A-Za-z0-9._-]+$'; then
+              echo "::error title=Secret GCP_WORKLOAD_IDENTITY_PROVIDER mal formé::Attendu : projects/<NUMÉRO du projet, 12 chiffres, pas son identifiant>/locations/global/workloadIdentityPools/github/providers/github-repo — sans espace, retour à la ligne, guillemets, ni « //iam.googleapis.com/ » devant. Voir docs/mise-en-ligne.md, étape 2.6."
+              exit 1
+            fi
+            if ! printf '%s' "$WIF_SERVICE_ACCOUNT" | grep -Eq '^[A-Za-z0-9._-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$'; then
+              echo "::error title=Secret GCP_SERVICE_ACCOUNT mal formé::Attendu : cdj-deploy@<identifiant du projet>.iam.gserviceaccount.com — sans espace ni guillemets. Voir docs/mise-en-ligne.md, étape 2.6."
+              exit 1
+            fi
+          fi
           region="${GCP_REGION:-europe-west1}"
           service="${GCP_SERVICE:-cdj-api}"
           repo="${GCP_AR_REPO:-cdj}"

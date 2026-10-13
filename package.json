@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "npm run dev -w @cdj/web",
     "build": "npm run build -w @cdj/web",
-    "test": "vitest run",
+    "test": "vitest run --project sqlite && vitest run --project libsql",
     "typecheck": "tsc -b",
     "test:e2e": "npm run build && npm run build:node -w @cdj/api && npm run e2e -w @cdj/web",
     "history:seed": "npm run history:seed -w @cdj/api",
