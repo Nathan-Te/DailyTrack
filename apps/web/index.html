@@ -87,6 +87,20 @@
       #finish .share { margin: 10px 0 0; font-size: 13px; background: rgba(255,255,255,.08); border-radius: 8px; padding: 6px 8px; word-break: break-word; }
       #finish .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 10px; }
 
+      /* Revoir le meilleur tour (lot 27b) : barre de lecture du spectateur. Au-dessus de la ligne d'aide ; masquée à l'arrivée (le panneau porte alors les actions). */
+      #watchbar { position: fixed; left: 50%; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: min(440px, calc(100vw - 24px)); z-index: 4; box-sizing: border-box; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 12px; background: rgba(11,16,32,.74); color: #fff; font: 600 13px system-ui, sans-serif; }
+      #watchbar[hidden] { display: none; }
+      #watchbar input[type=range] { width: 100%; margin: 0; min-height: 24px; accent-color: #ffd22e; cursor: pointer; }
+      #watchbar .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+      #watchbar button { font: inherit; color: #fff; background: rgba(255,255,255,.14); border: 0; border-radius: 8px; min-width: 40px; min-height: 44px; padding: 0 6px; cursor: pointer; }
+      #watchbar button.on { background: #ffd22e; color: #111; }
+      body.finished #watchbar, body.podium #watchbar, body.paused #watchbar { display: none; }
+      body.touch #watchbar { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
+      body.watch #btn-ghost { display: none; }
+      #board .watchlink { display: block; margin-top: 8px; padding: 8px; text-align: center; color: #9bd0ff; font-weight: 700; text-decoration: underline; border-radius: 8px; background: rgba(255,255,255,.08); }
+      #archive .watch { color: #9bd0ff; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 0; }
+      /* La vitesse et les indicateurs passent au-dessus de la barre sur petit écran (elle occupe presque toute la largeur). */
+      @media (max-width: 900px), (max-height: 520px) { body.watch #speed, body.watch.touch #speed { bottom: 118px; } body.watch #fx, body.watch.touch #fx { bottom: 150px; } }
       #archive { position: fixed; inset: 0; z-index: 5; background: rgba(5,8,20,.62); display: flex; align-items: center; justify-content: center; }
       #archive[hidden] { display: none; }
       #archive .panel { width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 40px); overflow: auto; background: #131a33; color: #fff; font: 600 14px system-ui, sans-serif; border-radius: 14px; padding: 14px 16px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
@@ -299,6 +313,7 @@
     <div id="lines"></div>
     <div id="flash"></div>
     <div id="fall"></div>
+    <div id="watchbar" hidden></div>
     <div id="tbar"></div>
     <div id="tsettings" hidden></div>
     <div id="rotate"></div>

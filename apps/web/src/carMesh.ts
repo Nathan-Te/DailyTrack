@@ -146,8 +146,9 @@ export function tintedGhostLook(tint: number): CarLook & { tire: number; rim: nu
   return { body: tint, trim: mix(tint, 0x10141c, 0.62), glass: mix(tint, 0x10141c, 0.6), stripe: mix(tint, 0xffffff, 0.8), accent: mix(tint, 0xffffff, 0.5), tire: mix(tint, 0x10141c, 0.7), rim: mix(tint, 0xffffff, 0.85) };
 }
 
-/** Voiture low-poly orientée vers +z. `ghost` : version bleue translucide (teinte froide) ; `tint` : un fantôme d'une autre couleur (Salon) ; `simple` : une version allégée (caisse, pneus et jantes seulement : une dizaine d'objets au lieu de cinquante, pour les fantômes du Salon). */
-export function createCarMesh(ghost = false, tint?: number, simple = false): CarModel {
+/** Voiture low-poly orientée vers +z. `ghost` : version bleue translucide (teinte froide) ; `tint` : un fantôme d'une autre couleur (Salon) ; `opaque` : avec `ghost`, une voiture pleine à la couleur du fantôme (mode spectateur) ; `simple` : une version allégée (caisse, pneus et jantes seulement : une dizaine d'objets au lieu de cinquante, pour les fantômes du Salon). */
+export function createCarMesh(ghost = false, tint?: number, simple = false, opaque = false): CarModel {
+  const translucent = ghost && !opaque; // `opaque` (lot 27b) : la voiture d'un autre joueur regardée en rediffusion, à sa couleur, pleine
   const tinted = ghost && tint !== undefined ? tintedGhostLook(tint) : null;
   const look: CarLook = tinted ?? (ghost ? GHOST_LOOK : LOOK);
   const m = new Mesh3();
@@ -247,7 +248,7 @@ export function createCarMesh(ghost = false, tint?: number, simple = false): Car
     roughness: 0.55,
     metalness: 0.1,
     side: DoubleSide,
-    ...(ghost ? { transparent: true, opacity: 0.42, depthWrite: false } : {}),
+    ...(translucent ? { transparent: true, opacity: 0.42, depthWrite: false } : {}),
   });
   const group = new Group();
   if (simple) {
@@ -257,10 +258,10 @@ export function createCarMesh(ghost = false, tint?: number, simple = false): Car
     bodyMat.forceSinglePass = true; // transparent et à double face : sinon dessinée deux fois
   }
   group.add(new Mesh(m.geometry(), bodyMat));
-  if (!simple) group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) })));
+  if (!simple) group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) })));
 
   // Feux stop : une barrette de chaque côté du coffre, ternes puis rouge vif au freinage, plus un troisième feu central.
-  const stopMat = new MeshBasicMaterial({ color: 0x5a0f12, ...(ghost ? { transparent: true, opacity: 0.4 } : {}) });
+  const stopMat = new MeshBasicMaterial({ color: 0x5a0f12, ...(translucent ? { transparent: true, opacity: 0.4 } : {}) });
   if (!simple) {
     for (const s of [-1, 1]) {
       const bar = new Mesh(new BoxGeometry(0.46, 0.11, 0.05), stopMat);
@@ -273,10 +274,10 @@ export function createCarMesh(ghost = false, tint?: number, simple = false): Car
   }
 
   // Quatre roues : pneu à sculptures, jante à cinq branches, moyeu, disque de frein (fixe) et étrier rouge (fixe).
-  const tireMat = new MeshStandardMaterial({ color: ghost ? (tinted?.tire ?? 0x2a4f7a) : 0x16171b, flatShading: true, roughness: 0.9, ...(ghost ? { transparent: true, opacity: 0.45 } : {}) });
-  const rimMat = new MeshStandardMaterial({ color: ghost ? (tinted?.rim ?? 0xcfe9ff) : 0xdfe3ec, flatShading: true, metalness: 0.5, roughness: 0.35, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
-  const hubMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : look.accent, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
-  const discMat = new MeshStandardMaterial({ color: 0x3a3d46, flatShading: true, metalness: 0.6, ...(ghost ? { transparent: true, opacity: 0.4 } : {}) });
+  const tireMat = new MeshStandardMaterial({ color: ghost ? (tinted?.tire ?? 0x2a4f7a) : 0x16171b, flatShading: true, roughness: 0.9, ...(translucent ? { transparent: true, opacity: 0.45 } : {}) });
+  const rimMat = new MeshStandardMaterial({ color: ghost ? (tinted?.rim ?? 0xcfe9ff) : 0xdfe3ec, flatShading: true, metalness: 0.5, roughness: 0.35, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) });
+  const hubMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : look.accent, flatShading: true, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) });
+  const discMat = new MeshStandardMaterial({ color: 0x3a3d46, flatShading: true, metalness: 0.6, ...(translucent ? { transparent: true, opacity: 0.4 } : {}) });
   const tireGeo = new CylinderGeometry(WHEEL_RADIUS, WHEEL_RADIUS, 0.3, 18);
   tireGeo.rotateZ(Math.PI / 2);
   const shoulderGeo = new CylinderGeometry(WHEEL_RADIUS * 0.94, WHEEL_RADIUS * 0.94, 0.34, 9); // sculptures : un polygone plus grossier qui dépasse
@@ -291,7 +292,7 @@ export function createCarMesh(ghost = false, tint?: number, simple = false): Car
   const discGeo = new CylinderGeometry(WHEEL_RADIUS * 0.58, WHEEL_RADIUS * 0.58, 0.04, 14);
   discGeo.rotateZ(Math.PI / 2);
   const caliperGeo = new BoxGeometry(0.08, 0.14, 0.2);
-  const caliperMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : 0xe02a1a, flatShading: true, ...(ghost ? { transparent: true, opacity: 0.5 } : {}) });
+  const caliperMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : 0xe02a1a, flatShading: true, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) });
   const wheels = (simple ? [] : [0, 1, 2, 3]).map((i) => {
     const holder = new Group(); // braquage (avant) et position
     const spin = new Group(); // rotation autour de l'axe

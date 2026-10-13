@@ -69,6 +69,14 @@ describe("adresse du jeu construite par /admin", () => {
       "demo&fx=off&quality=1&camera=capot&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
     );
   });
+  it("revoir le meilleur tour (lot 27b) : ?watch=best, avec le jour ou avec le Salon", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, watch: true, api: "demo", date: "2026-09-30" })).toBe("watch=best&seed=2026-09-30&api=demo");
+    expect(buildQuery({ ...DEFAULT_ADMIN, watch: true, salon: true, api: "demo" })).toBe("watch=best&mode=salon&api=demo");
+    expect(parseAdmin('{"watch":true}').watch).toBe(true);
+    expect(parseAdmin('{"watch":"oui"}').watch).toBe(false);
+    expect(PRESETS.some((p) => p.state.watch === true && p.state.api === "demo")).toBe(true);
+  });
+
   it("le Salon (lot 26) : ?mode=salon, durée de session, remplace date et thème", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, salon: true, api: "demo" })).toBe("mode=salon&api=demo");
     expect(buildQuery({ ...DEFAULT_ADMIN, salon: true, salonMinutes: "2", api: "demo", date: "2026-10-07", theme: "nuit" })).toBe("mode=salon&salonMinutes=2&api=demo");

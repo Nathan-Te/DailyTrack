@@ -1,5 +1,7 @@
 # Lot 27 — Le Salon côté serveur
 
+> **Retouche 27b** : les podiums gardés, la purge à 48 h et la présence écrite à chaque lecture ont été remplacés (une session finie est oubliée) — voir [`lot-27b-salon-oubli.md`](lot-27b-salon-oubli.md).
+
 **À essayer**
 
 1. **Le Salon en démonstration, inchangé** (aperçu de la branche) : [`?mode=salon&api=demo`](https://nathan-te.github.io/DailyTrack/b/lot-27-salon-serveur/?mode=salon&api=demo) — joueurs fictifs dans le navigateur, rien n'est envoyé nulle part. Ce lot n'y change rien.
@@ -25,7 +27,7 @@
 | `GET /api/salon/<session>/board?player=<id>&since=<v>` | classement : les 15 premiers + le voisin de devant et de derrière du joueur, sa ligne, la **version** (`unchanged` si inchangée) |
 | `GET /api/salon/<session>/ghosts?refs=a,b` | rediffusions demandées par **référence publique** (au plus 8, 16 hexadécimaux) |
 | `POST /api/salon/<session>/submit` `{ playerId, name, replay }` | **rejeu** sur `salonCircuit(session)` ; temps recalculé, rang, classement à jour |
-| `GET /api/salon/podiums?limit=N` | (en plus du contrat, pas utilisée par le jeu) podiums gardés des dernières sessions |
+| ~~`GET /api/salon/podiums?limit=N`~~ | **retirée au 27b** (le Salon oublie chaque session : voir `lot-27b-salon-oubli.md`) |
 
 - **Validation** : l'envoi est **rejoué** sur `salonCircuit(session)` (même code de simulation que le jeu) ; seul le temps recalculé est enregistré. Refus : session pas commencée (`session_future`) ou terminée depuis plus de 60 s (`session_closed`), rediffusion d'un autre circuit (`track_mismatch`), d'une autre `SIM_VERSION` (`sim_version`), qui ne finit pas (`not_finished`), illisible (`invalid_replay`), pseudo invalide ou manquant. **Meilleur temps par joueur et par session** (un temps égal ne vole pas la place du premier arrivé) ; **un joueur n'existe qu'après une course valide** (même table `players` que le classement du jour : un seul pseudo, `PUT /api/player` marche pour les deux). Un tour plus lent ne change rien ; un pseudo changé change la version du classement.
 - **Données** (`db.ts`, créées au premier appel) : `salon_runs` (session, joueur, **référence**, pseudo, temps, étapes, rediffusion, date), `salon_podiums` (trois premiers de chaque session terminée + nombre de participants), `salon_sessions` (**version** du classement), `salon_circuits` (circuit généré, id et texte), `salon_presence`, `salon_throttle`. **Purge** : courses de plus de **48 h** supprimées (après avoir figé leur podium, même si le serveur est resté arrêté des jours), podiums gardés **30 jours** (choix de ce lot : le seed dit « conservés », sans durée), restes de présence et de débit nettoyés ; au plus une fois par minute, au fil des envois et par la tâche périodique.
@@ -66,7 +68,7 @@
 ## Décisions et limites
 
 - **Lot 25 pas encore fusionné** ([#41](https://github.com/Nathan-Te/DailyTrack/pull/41)) au moment de ce lot : le Salon utilise le générateur tel qu'il est sur `main`. À la fusion, `GENERATOR_VERSION` change : le serveur suit tout seul (`salonTrackId` / `salonCircuit` viennent de `sim`, un circuit gardé par une autre version est régénéré) ; seul le jeu de démonstration (`history:seed`) est à refaire, comme après tout changement de version.
-- Les sessions sont comptées en **UTC** ; le classement d'une session ne se lit plus au-delà de 48 h (404) : seuls les podiums restent (`GET /api/salon/podiums`, 30 jours).
+- Les sessions sont comptées en **UTC** ; **depuis le 27b**, le classement d'une session ne se lit plus au-delà de `fin + 60 s` (404) et rien n'en est gardé (ni courses, ni podium). Ce que dit ce README des podiums, de la purge à 48 h et de la présence « 30 s » est **remplacé** par `lot-27b-salon-oubli.md`.
 - La **présence n'est pas authentifiée** (comme le reste des lectures) : quelqu'un qui connaît des identifiants — ou en invente — peut gonfler le compteur « joueurs présents » ; limité par les 600 lectures par adresse et par 10 minutes, et purement cosmétique (rien ne dépend de ce nombre).
 - Un joueur qui change de navigateur est un autre joueur (même règle que le jour). Pas de modération des pseudos au-delà de la validation existante.
 - Voitures en direct (WebSocket), plusieurs salons, points cumulés : hors périmètre. Le jeu interroge le serveur (classement toutes les 5 s, `now` toutes les 30 s).

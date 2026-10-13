@@ -24,7 +24,7 @@ export function visibleRows(board: Pick<SalonBoard, "rows">): (SalonRow | "gap")
 }
 
 /** Remplit le panneau de classement de la session (`#board`). */
-export function renderSalonBoard(box: HTMLElement, board: SalonBoard | null, label: string): void {
+export function renderSalonBoard(box: HTMLElement, board: SalonBoard | null, label: string, watchHref?: string): void {
   const title = el("div", "title");
   box.classList.add("salon");
   if (!board) {
@@ -39,7 +39,9 @@ export function renderSalonBoard(box: HTMLElement, board: SalonBoard | null, lab
     d.append(el("span", "rank", String(r.rank)), el("span", "who", r.name), el("span", "time", formatTime(r.ms)), el("span", "icon", r.rank === 1 ? "" : formatDelta(r.gap)));
     return d;
   });
-  box.replaceChildren(title, ...rows);
+  // Revoir le meilleur tour de la session en cours (lot 27b).
+  const link = board.participants > 0 && watchHref ? [Object.assign(el("a", "watchlink", "▶ Revoir le meilleur tour"), { href: watchHref })] : [];
+  box.replaceChildren(title, ...rows, ...link);
 }
 
 export interface PodiumView {

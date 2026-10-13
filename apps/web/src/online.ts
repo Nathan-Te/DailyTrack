@@ -11,6 +11,8 @@ export interface GhostChoice {
   mode: GhostMode;
   label: string;
   source: BestRun | null;
+  /** Pseudo du joueur dont c'est la rediffusion (pour la revoir : « Rediffusion de … »). */
+  name?: string;
 }
 
 /**
@@ -82,7 +84,7 @@ export class Online {
 
 function ghostChoice(kind: "first" | "ahead", g: GhostData): GhostChoice {
   const who = kind === "first" ? `premier : ${g.name}` : `devant toi : ${g.name}`;
-  return { mode: kind, label: who, source: { ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion } };
+  return { mode: kind, label: who, name: g.name, source: { ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion } };
 }
 
 /** Modes de fantôme proposés, dans l'ordre où `G` les parcourt. */

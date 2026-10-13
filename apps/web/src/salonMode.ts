@@ -24,6 +24,7 @@ import { DemoSalonApi } from "./salonDemo";
 import { createSalonEngine, type LoadedSalonCircuit, type SalonEngine } from "./salonEngine";
 import type { GhostEntry } from "./salonGhosts";
 import { renderPodium, renderSalonBoard } from "./salonUi";
+import { watchHref } from "./watch";
 
 // Le Salon, côté jeu (lot 26) : tout ce qui vit autour de la course — horloge, déroulé d'une session (compte à rebours, dernier essai,
 // fin, podium, circuit suivant), classement, fantômes à charger, envoi des courses. Le moteur de jeu (`main.ts`) fournit un `SalonHost`
@@ -72,6 +73,8 @@ export interface SalonOptions {
   base: string;
   /** Heure de départ imposée (essais, avec `?debug&salonAt=`). */
   startAt?: number | null;
+  /** Spectateur (`?watch=best`, lot 27b) : ne s'annonce pas au serveur, donc ne compte pas parmi les présents. */
+  spectator?: boolean;
 }
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -96,6 +99,8 @@ export class SalonController {
   host: SalonHost | null = null;
   dom: SalonDom | null = null;
   boardOpen = false;
+  /** Spectateur (lot 27b) : aucune requête ne porte d'identifiant de joueur, donc aucune écriture de présence côté serveur. */
+  spectator = false;
 
   private readonly circuits = new Map<number, Promise<LoadedSalonCircuit | null>>();
   private readonly ghostCache = new Map<string, SalonGhost>();
@@ -135,6 +140,11 @@ export class SalonController {
       while (this.circuits.size > 4) this.circuits.delete(Math.min(...this.circuits.keys()));
     }
     return p;
+  }
+
+  /** Identifiant envoyé au serveur : aucun pour un spectateur. */
+  private get pid(): string | null {
+    return this.spectator ? null : this.playerId;
   }
 
   get label(): string {
@@ -210,7 +220,7 @@ export class SalonController {
   private async syncNow(): Promise<void> {
     this.lastNowPoll = performance.now();
     const t0 = Date.now();
-    const r = await this.api.now(this.playerId);
+    const r = await this.api.now(this.pid);
     if (r.ok) {
       this.clock.sync(r.data.serverMs, t0, Date.now());
       this.players = r.data.players;
@@ -224,7 +234,7 @@ export class SalonController {
     this.stats.boardPolls++;
     try {
       const session = this.session;
-      const r = await this.api.board(session, this.playerId, this.board?.version);
+      const r = await this.api.board(session, this.pid, this.board?.version);
       if (session !== this.session) return;
       if (!r.ok) {
         this.lastError = r.message;
@@ -254,14 +264,14 @@ export class SalonController {
   }
 
   renderBoard(): void {
-    if (this.dom) renderSalonBoard(this.dom.board, this.board, this.label);
+    if (this.dom) renderSalonBoard(this.dom.board, this.board, this.label, this.spectator ? undefined : watchHref(location.search));
     if (this.dom && this.lastError && !this.board) this.dom.board.append(Object.assign(document.createElement("div"), { className: "error", textContent: this.lastError }));
   }
 
   /** Charge les fantômes utiles (trois premiers, devant, derrière) et prévient le jeu quand l'ensemble change. */
   async refreshGhosts(): Promise<void> {
     const board = this.board;
-    if (!board) return;
+    if (!board || this.spectator) return; // un spectateur ne court pas : pas de fantômes à charger
     const session = this.session;
     const picks = pickGhostRefs(board);
     const wanted = picks.map((r) => ({ key: `${r.ref}:${r.ms}`, ref: r.ref, rank: r.rank as number | null }));
@@ -288,6 +298,24 @@ export class SalonController {
     if (signature === this.ghostSignature) return;
     this.ghostSignature = signature;
     this.host?.ghostsChanged(entries);
+  }
+
+  /**
+   * Le meilleur tour de la session en cours (mode spectateur, lot 27b) : la première ligne du classement et sa rediffusion, ou `null`
+   * s'il n'y a pas encore de temps. Lecture seule : rien n'est envoyé.
+   */
+  async bestGhost(): Promise<SalonGhost | null> {
+    if (!this.board || this.board.rows.length === 0) await this.refreshBoard();
+    const first = this.board?.rows[0];
+    if (!first) return null;
+    const key = `${first.ref}:${first.ms}`;
+    let ghost = this.ghostCache.get(key);
+    if (!ghost) {
+      const g = await this.api.ghosts(this.session, [first.ref]);
+      ghost = g.ok ? g.data.ghosts.find((x) => x.ref === first.ref) : undefined;
+      if (ghost) this.ghostCache.set(key, ghost);
+    }
+    return ghost ?? null;
   }
 
   /** Branche le moteur de jeu ; les fantômes déjà chargés au démarrage (avant que le jeu n'existe) lui sont remis. */
@@ -354,7 +382,7 @@ export class SalonController {
     });
     // Un envoi encore en route (course finie après la fin) compte dans le podium : on l'attend un instant.
     if (this.inflight.size > 0) await withTimeout(Promise.allSettled([...this.inflight]), 3000);
-    const r = await withTimeout(this.api.board(this.session, this.playerId), 2500);
+    const r = await withTimeout(this.api.board(this.session, this.pid), 2500);
     if (r?.ok) this.board = r.data;
     this.podiumAt = performance.now();
     this.drawPodium(PODIUM_MS / 1000);
@@ -443,7 +471,7 @@ export async function bootSalon(opts: SalonOptions): Promise<SalonController | S
   } else {
     api = new HttpSalonApi(opts.base);
     const t0 = Date.now();
-    const r = await api.now(getPlayerId());
+    const r = await api.now(opts.spectator ? null : getPlayerId());
     if (!r.ok) return { error: r.status === 404 ? "Le Salon a besoin du serveur (cette API n'a pas de Salon)" : `Salon injoignable : ${r.message}` };
     clock.sync(r.data.serverMs, t0, Date.now());
     sessionMs = r.data.endMs - r.data.startMs; // la durée vient du serveur : on ne triche pas sur le nombre de minutes
@@ -452,6 +480,7 @@ export async function bootSalon(opts: SalonOptions): Promise<SalonController | S
   const circuit = await engine.circuit(session);
   if (!circuit) return { error: "Le circuit de cette session n'a pas pu être préparé" };
   controller = new SalonController(api, engine, clock, sessionMs, circuit, demo);
+  controller.spectator = !!opts.spectator;
   controller.stats.mainThreadGenerations = bootGenerations;
   // Premier classement et premiers fantômes avant le départ (2,5 s au plus : le Salon démarre même si le serveur traîne).
   await withTimeout(controller.refreshBoard(), 2500);
