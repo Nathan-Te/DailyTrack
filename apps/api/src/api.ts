@@ -590,15 +590,9 @@ export function createApi(options: ApiOptions) {
           if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
           return reply(200, await salon.nowRoute(url, info));
         }
-        if (!what && key === "podiums") {
-          if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-          return reply(200, await salon.podiumsRoute(url, info));
-        }
         if (what === "submit") {
           if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
-          const result = await salon.submitRoute(key, req, info);
-          await salon.maintain().catch((e) => console.error("Salon : entretien impossible :", e)); // jamais au détriment de la réponse
-          return reply(200, result);
+          return reply(200, await salon.submitRoute(key, req, info));
         }
         if (what === "board" || what === "ghosts") {
           if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
@@ -623,9 +617,8 @@ export function createApi(options: ApiOptions) {
   }
 
   /**
-   * Tâche périodique du serveur (Node : toutes les 15 s) : prépare à l'avance le circuit du Salon et fait l'entretien (podiums,
-   * purge à 48 h). Facultative : sans elle, le circuit se génère à la première requête qui en a besoin et l'entretien se fait au fil
-   * des envois.
+   * Tâche périodique du serveur (Node : toutes les 15 s) : prépare à l'avance le circuit du Salon. Facultative : sans elle, le
+   * circuit se génère à la première requête qui en a besoin (l'oubli des sessions finies se fait de toute façon à la demande).
    */
   async function tick(): Promise<void> {
     try {

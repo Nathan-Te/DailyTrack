@@ -43,7 +43,33 @@ const replayBytes = replays.reduce((n, r) => n + r.length, 0) / replays.length;
 
 const dir = mkdtempSync(join(tmpdir(), "cdj-salon-"));
 const dbFile = process.env.MEM ? ":memory:" : join(dir, "salon.sqlite");
-const db = openSqlite(dbFile);
+const rawDb = openSqlite(dbFile);
+// Compte les **lignes écrites** (INSERT, UPDATE, DELETE : `changes()` juste après l'instruction), par table : c'est ce que facture Turso
+// (10 millions de lignes écrites par mois en offre gratuite). Un upsert conditionnel qui ne change rien ne compte pas.
+const writes = new Map<string, number>();
+async function counted(sql: string): Promise<void> {
+  if (!/^\s*(INSERT|UPDATE|DELETE)/i.test(sql)) return;
+  const n = (await rawDb.first<{ n: number }>("SELECT changes() AS n"))?.n ?? 0;
+  const table = /^\s*(?:INSERT(?: OR \w+)? INTO|UPDATE|DELETE FROM)\s+(\w+)/i.exec(sql)?.[1] ?? "?";
+  writes.set(table, (writes.get(table) ?? 0) + n);
+}
+const db: typeof rawDb = {
+  ...rawDb,
+  async run(sql, params) {
+    await rawDb.run(sql, params);
+    await counted(sql);
+  },
+  async first<T>(sql: string, params?: (string | number | null)[]) {
+    const r = await rawDb.first<T>(sql, params);
+    await counted(sql);
+    return r;
+  },
+  async all<T>(sql: string, params?: (string | number | null)[]) {
+    const r = await rawDb.all<T>(sql, params);
+    await counted(sql);
+    return r;
+  },
+};
 let clock = START;
 const api = createApi({ db, now: () => clock, rateSalt: "mesure" });
 await api.handle(new Request("http://load.test/api/health")); // crée les tables
@@ -141,6 +167,7 @@ for (const e of events) {
 const wallMs = performance.now() - wall0;
 const cpu = process.cpuUsage(cpu0);
 const mem1 = process.memoryUsage();
+const writesMain = new Map(writes); // avant la salve : le déroulé d'une session ordinaire
 
 // --- Pire cas : tous les joueurs envoient en même temps (fin de session, tout le monde finit son dernier tour) --------------
 clock = START + SESSION_MS + 6000; // juste après la fin (envois encore acceptés) ; plus de 5 s après le dernier envoi de chacun
@@ -189,6 +216,15 @@ const mb = (x: number) => (x / 1048576).toFixed(0);
 console.log(`Mémoire : RSS ${mb(mem0.rss)} → ${mb(mem1.rss)} Mo, tas JS ${mb(mem0.heapUsed)} → ${mb(mem1.heapUsed)} Mo ; base : ${runs} courses gardées${dbBytes ? `, fichier ${(dbBytes / 1048576).toFixed(1)} Mo (≈ ${(replayBytes / 1024).toFixed(1)} ko par rediffusion)` : ""}`);
 if (Object.keys(errors).length) console.log(`Réponses non 200 : ${JSON.stringify(errors)}`);
 console.log(`Génération d'un circuit de session (préparée deux minutes avant) : ${(generateMs / 1000).toFixed(2)} s, pendant lesquelles le serveur ne répond à rien d'autre`);
+
+// --- Écritures en base et requêtes, par joueur et par heure (déroulé ordinaire, sans la salve) ---------------------------------------
+const perHour = 3600_000 / SESSION_MS / PLAYERS; // d'un total de session à « par joueur et par heure »
+const requests = (["submit", "board", "ghosts", "now"] as const).reduce((n, k) => n + samples[k].length, 0);
+const written = [...writesMain.values()].reduce((a, b) => a + b, 0);
+console.log(`\nÉcritures en base (lignes écrites, session ordinaire de ${SESSION_MS / 60_000} min, ${PLAYERS} joueurs) :`);
+for (const [table, n] of [...writesMain].sort((a, b) => b[1] - a[1])) console.log(`  ${table.padEnd(16)} ${String(n).padStart(7)}  ${(n * perHour).toFixed(1).padStart(8)} par joueur et par heure`);
+console.log(`  ${"TOTAL".padEnd(16)} ${String(written).padStart(7)}  ${(written * perHour).toFixed(1).padStart(8)} par joueur et par heure  (≈ ${((written * perHour * 4 * 30) / 1000).toFixed(0)} k lignes par mois pour un joueur présent 4 h par jour)`);
+console.log(`Requêtes : ${requests} (${(requests * perHour).toFixed(0)} par joueur et par heure : ${(["board", "now", "ghosts", "submit"] as const).map((k) => `${k} ${(samples[k].length * perHour).toFixed(0)}`).join(", ")})`);
 
 // --- Estimation ------------------------------------------------------------------------------------------------------------
 const perPlayer = totalMs / PLAYERS / sessionSeconds; // ms de calcul par joueur et par seconde

@@ -21,7 +21,11 @@ import { cleanName } from "./validate";
 //   GET  /api/salon/<session>/board?player=<id>&since=<v>  classement de la session (`unchanged` si la version est la même)
 //   GET  /api/salon/<session>/ghosts?refs=a,b              rediffusions demandées par référence publique
 //   POST /api/salon/<session>/submit { playerId, name, replay }
-//   GET  /api/salon/podiums?limit=N                        (en plus du contrat) les podiums gardés des dernières sessions
+//
+// **Une session finie est oubliée** (lot 27b) : une fois le circuit changé (fin de session + minute de grâce), ses courses, son classement
+// et son circuit sont effacés, sans podium gardé ni route d'historique. Le nettoyage se fait **à la demande** (la première requête qui voit une
+// session terminée), jamais par une tâche de fond : sur Cloud Run, le service peut être éteint. Le podium de fin que le jeu affiche se
+// calcule sur le classement encore servi pendant la grâce.
 //
 // Comme pour le classement du jour : **le serveur ne fait jamais confiance à un temps annoncé**. Il rejoue la rediffusion sur
 // `salonCircuit(session)` (même code de simulation que le jeu) et n'enregistre que son propre résultat. Un joueur n'est jamais
@@ -29,19 +33,22 @@ import { cleanName } from "./validate";
 
 /** Un envoi est accepté jusqu'à 60 s après la fin de la session (une course commencée avant la fin peut se terminer). */
 export const SALON_GRACE_MS = 60_000;
-/** Présent = a interrogé le Salon dans les 30 dernières secondes. */
-export const PRESENCE_MS = 30_000;
-/** Les courses (et leurs rediffusions) sont gardées 48 h ; les podiums, 30 jours. */
-export const SALON_RETENTION_MS = 48 * 3_600_000;
-export const PODIUM_KEEP_MS = 30 * 86_400_000;
+/**
+ * Présence (lot 27b) : au plus **une écriture par joueur et par 30 s** (`PRESENCE_WRITE_MS`) ; la dernière visite enregistrée peut donc
+ * avoir jusqu'à 30 s de retard, d'où une fenêtre de 60 s : est présent un joueur dont la dernière écriture date de moins de 60 s
+ * (un joueur qui lit en continu l'est toujours ; un joueur parti compte au plus 90 s).
+ */
+export const PRESENCE_WRITE_MS = 30_000;
+export const PRESENCE_MS = 60_000;
 /** Le circuit de la session suivante est préparé dans les deux dernières minutes de la session en cours. */
 export const PREPARE_AHEAD_MS = 120_000;
 /** Lignes du classement servies (les premiers), plus le voisin de devant et celui de derrière du joueur. */
 export const BOARD_ROWS = 15;
 /** Références demandées au plus dans une requête de fantômes (le jeu en demande six au plus). */
 export const MAX_GHOST_REFS = 8;
-/** Entretien (purge, podiums) au plus une fois par minute. */
-const MAINTENANCE_EVERY_MS = 60_000;
+
+/** Fenêtre du débit des lectures (10 minutes). */
+const READ_WINDOW_MS = 600_000;
 
 export const MIN_SALON_MINUTES = 0.5;
 export const MAX_SALON_MINUTES = 60;
@@ -117,19 +124,49 @@ export function createSalon(kit: SalonKit) {
   const { db, now, sessionMs, limits } = kit;
   const circuits = new Map<number, SalonTrack>();
   const generating = new Map<number, Promise<SalonTrack>>();
-  let lastMaintenance = 0;
-  /** Sessions gardées en mémoire et en base : 48 h de courses, plus la session en cours et la suivante. */
-  const keepSessions = Math.ceil(SALON_RETENTION_MS / sessionMs) + 1;
+  /** Dernière session oubliée *par cette instance* (le nettoyage ne se refait qu'au changement de session). */
+  let forgotten = Number.NEGATIVE_INFINITY;
+  /** Dernière écriture de présence de chaque joueur (empreinte) vue par cette instance : évite même la requête. */
+  const presenceWritten = new Map<string, number>();
+  /** Débit des lectures (en mémoire, par instance) : une lecture ne coûte aucune écriture en base. */
+  const readBuckets = new Map<string, { bucket: number; count: number }>();
 
   const current = () => salonSessionAt(now(), sessionMs);
+  /** Plus ancienne session encore servie : celle dont la minute de grâce n'est pas écoulée (le podium de fin en a besoin). */
+  const oldestServed = () => salonSessionAt(now() - SALON_GRACE_MS, sessionMs);
 
-  /** Numéro de session d'une adresse : un entier raisonnable, entre la plus ancienne gardée et la prochaine. */
+  /** Numéro de session d'une adresse : un entier raisonnable, entre la plus ancienne servie et la prochaine. */
   function sessionOf(raw: string): number {
     const n = /^\d{1,9}$/.test(raw) ? Number(raw) : NaN;
     if (!Number.isInteger(n)) throw new HttpError(400, "invalid_session", "Numéro de session invalide");
-    const here = current();
-    if (n > here + 1 || n < here - keepSessions) throw new HttpError(404, "unknown_session", "Cette session n'existe pas (ou plus)");
+    if (n > current() + 1 || n < oldestServed()) throw new HttpError(404, "unknown_session", "Cette session n'existe pas (ou plus)");
     return n;
+  }
+
+  // --- L'oubli : à la demande, jamais par une tâche de fond -----------------------------------------------------------
+  /**
+   * Efface tout ce qui reste des sessions terminées (fin + grâce) : courses, version du classement, circuit ; et, au passage, les restes
+   * de présence et de débit d'envoi. Appelée au début de chaque route : une comparaison d'entiers tant que la session n'a pas changé,
+   * quelques DELETE (sans effet s'il n'y a rien) à la première requête qui voit une session terminée. Une instance qui démarre refait
+   * le nettoyage une fois, ce qui rattrape un arrêt prolongé du service.
+   */
+  async function forget(): Promise<void> {
+    const closed = oldestServed() - 1;
+    if (closed <= forgotten) return;
+    const before = forgotten;
+    forgotten = closed; // avant tout await : les requêtes simultanées ne le font pas deux fois
+    try {
+      await db.run("DELETE FROM salon_runs WHERE session <= ?", [closed]);
+      await db.run("DELETE FROM salon_sessions WHERE session <= ?", [closed]);
+      await db.run("DELETE FROM salon_circuits WHERE session <= ?", [closed]);
+      await db.run("DELETE FROM salon_presence WHERE seen_at < ?", [now() - 10 * PRESENCE_MS]);
+      await db.run("DELETE FROM salon_throttle WHERE at < ?", [now() - 3_600_000]);
+    } catch (e) {
+      forgotten = before; // réessayé à la prochaine requête
+      console.error("Salon : oubli impossible :", e);
+      return;
+    }
+    for (const session of [...circuits.keys()]) if (session <= closed) circuits.delete(session);
   }
 
   // --- Circuits (le générateur est coûteux : un par session, préparé à l'avance, puis figé) --------------------------
@@ -160,17 +197,47 @@ export function createSalon(kit: SalonKit) {
   }
 
   // --- Présence et débit ---------------------------------------------------------------------------------------------
+  /**
+   * Note la visite d'un joueur, **au plus une écriture par `PRESENCE_WRITE_MS`** : l'instance se souvient de sa dernière écriture (aucune
+   * requête dans l'intervalle), et l'upsert est conditionnel (il ne change aucune ligne si une autre instance a écrit il y a moins de
+   * 30 s) : le plafond tient aussi avec plusieurs instances.
+   */
   async function touch(playerId: string): Promise<void> {
     const key = await kit.hashKey("pr", playerId);
-    await db.run("INSERT INTO salon_presence (key, seen_at) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET seen_at = excluded.seen_at", [key, now()]);
+    const t = now();
+    const last = presenceWritten.get(key);
+    if (last !== undefined && t - last < PRESENCE_WRITE_MS) return;
+    if (presenceWritten.size > 5000) for (const [k, at] of presenceWritten) if (t - at >= PRESENCE_WRITE_MS) presenceWritten.delete(k);
+    presenceWritten.set(key, t);
+    await db.run(
+      "INSERT INTO salon_presence (key, seen_at) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET seen_at = excluded.seen_at WHERE salon_presence.seen_at <= excluded.seen_at - ?",
+      [key, t, PRESENCE_WRITE_MS],
+    );
   }
 
   async function present(): Promise<number> {
     return (await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_presence WHERE seen_at >= ?", [now() - PRESENCE_MS]))?.n ?? 0;
   }
 
+  /**
+   * Débit des lectures, **en mémoire** (par instance, fenêtre de 10 minutes comme `limits.windowMs` du reste de l'API) : une lecture
+   * d'un jeu ouvert arrive toutes les 5 s, et un compteur en base coûtait une écriture par lecture (le premier poste d'écritures du
+   * lot 27). Une lecture est de toute façon peu coûteuse (< 1 ms) ; avec deux instances la limite réelle est au plus doublée. Les
+   * envois, eux, gardent leur compteur en base (exact, et c'est lui qui protège le rejeu).
+   */
   async function limitReads(info: SalonRequestInfo): Promise<void> {
-    if (info.clientKey) await kit.hit(await kit.hashKey("srd", info.clientKey), limits.readsPerClient);
+    if (!info.clientKey) return;
+    const key = await kit.hashKey("srd", info.clientKey);
+    const bucket = Math.floor(now() / READ_WINDOW_MS);
+    let entry = readBuckets.get(key);
+    if (!entry || entry.bucket !== bucket) {
+      if (readBuckets.size > 5000) for (const [k, e] of readBuckets) if (e.bucket !== bucket) readBuckets.delete(k);
+      readBuckets.set(key, (entry = { bucket, count: 0 }));
+    }
+    if (++entry.count > limits.readsPerClient) {
+      const retry = Math.max(1, Math.ceil(((bucket + 1) * READ_WINDOW_MS - now()) / 1000));
+      throw new HttpError(429, "rate_limited", "Trop de requêtes, réessaie dans un moment", { "Retry-After": String(retry) });
+    }
   }
 
   /** Au plus un envoi toutes les `submitGapMs` par joueur : un seul UPDATE atomique (pas de lecture puis écriture). */
@@ -251,6 +318,7 @@ export function createSalon(kit: SalonKit) {
     const playerParam = url.searchParams.get("player");
     const me = playerParam === null ? null : kit.playerIdOf(playerParam);
     await limitReads(info);
+    await forget();
     if (me) await touch(me);
     const serverMs = now();
     const session = salonSessionAt(serverMs, sessionMs);
@@ -265,6 +333,7 @@ export function createSalon(kit: SalonKit) {
   }
 
   async function boardRoute(sessionRaw: string, url: URL, info: SalonRequestInfo): Promise<unknown> {
+    await forget();
     const session = sessionOf(sessionRaw);
     const playerParam = url.searchParams.get("player");
     const me = playerParam === null ? null : kit.playerIdOf(playerParam);
@@ -280,6 +349,7 @@ export function createSalon(kit: SalonKit) {
   }
 
   async function ghostsRoute(sessionRaw: string, url: URL, info: SalonRequestInfo): Promise<unknown> {
+    await forget();
     const session = sessionOf(sessionRaw);
     const refs = [...new Set((url.searchParams.get("refs") ?? "").split(",").filter((r) => r !== ""))];
     if (refs.length > MAX_GHOST_REFS) throw new HttpError(400, "too_many_refs", `Au plus ${MAX_GHOST_REFS} fantômes à la fois`);
@@ -314,6 +384,7 @@ export function createSalon(kit: SalonKit) {
 
     // Vérifications sans état d'abord (une session qui n'est pas ouverte ne coûte rien à refuser).
     const t = now();
+    await forget();
     if (!/^\d{1,9}$/.test(sessionRaw)) throw new HttpError(400, "invalid_session", "Numéro de session invalide");
     const session = Number(sessionRaw);
     if (t < salonSessionStart(session, sessionMs)) throw new HttpError(409, "session_future", "Cette session n'a pas commencé");
@@ -345,7 +416,7 @@ export function createSalon(kit: SalonKit) {
     const at = now();
     // Le joueur n'existe qu'après une course valide ; son pseudo est celui du classement du jour (même identité).
     await db.run(
-      "INSERT INTO players (id, name, created_at, updated_at, demo) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at",
+      "INSERT INTO players (id, name, created_at, updated_at, demo) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at WHERE players.name <> excluded.name",
       [playerId, name, at, at, kit.demoPlayers ? 1 : 0],
     );
     const ref = await refOf(session, playerId);
@@ -369,60 +440,11 @@ export function createSalon(kit: SalonKit) {
     return { accepted: true, improved, ms: result.finishMs, bestMs: me.ms, rank: me.rank, participants: fresh.participants, board: fresh };
   }
 
-  async function podiumsRoute(url: URL, info: SalonRequestInfo): Promise<unknown> {
-    const limit = Math.min(50, Math.max(1, Math.floor(Number(url.searchParams.get("limit") ?? 10)) || 10));
-    await limitReads(info);
-    await finalizePodiums();
-    const rows = await db.all<{ session: number; rank: number; name: string; ms: number; participants: number }>(
-      "SELECT session, rank, name, ms, participants FROM salon_podiums WHERE session IN (SELECT session FROM salon_podiums GROUP BY session ORDER BY session DESC LIMIT ?) ORDER BY session DESC, rank ASC",
-      [limit],
-    );
-    const bySession = new Map<number, { session: number; startMs: number; participants: number; top: { rank: number; name: string; ms: number }[] }>();
-    for (const r of rows) {
-      let p = bySession.get(r.session);
-      if (!p) bySession.set(r.session, (p = { session: r.session, startMs: salonSessionStart(r.session, sessionMs), participants: r.participants, top: [] }));
-      p.top.push({ rank: r.rank, name: r.name, ms: r.ms });
-    }
-    return { podiums: [...bySession.values()] };
-  }
-
-  // --- Entretien : podiums, purge, circuit de la session suivante -------------------------------------------------------
-  /** Fige le podium (trois premiers) de chaque session terminée (envois clos) qui n'en a pas encore : à faire avant toute purge. */
-  async function finalizePodiums(): Promise<void> {
-    const closed = salonSessionAt(now() - SALON_GRACE_MS, sessionMs) - 1; // dernière session dont l'envoi est clos
-    const todo = await db.all<{ session: number }>(
-      "SELECT DISTINCT session FROM salon_runs WHERE session <= ? AND session NOT IN (SELECT session FROM salon_podiums) ORDER BY session LIMIT 200",
-      [closed],
-    );
-    for (const { session } of todo) {
-      const count = await participants(session);
-      const top = await db.all<{ name: string; ms: number }>(`SELECT name, ms FROM salon_runs WHERE session = ? ORDER BY ${ORDER} LIMIT 3`, [session]);
-      let rank = 1;
-      for (const r of top) {
-        await db.run("INSERT OR IGNORE INTO salon_podiums (session, rank, name, ms, participants, created_at) VALUES (?, ?, ?, ?, ?, ?)", [session, rank++, r.name, r.ms, count, now()]);
-      }
-    }
-  }
-
-  /** Purge : courses de plus de 48 h (après avoir figé leurs podiums), podiums de plus de 30 jours, restes de présence et de débit. */
-  async function maintain(force = false): Promise<void> {
-    const t = now();
-    if (!force && t - lastMaintenance < MAINTENANCE_EVERY_MS) return;
-    lastMaintenance = t;
-    await finalizePodiums();
-    const cutoff = t - SALON_RETENTION_MS;
-    await db.run("DELETE FROM salon_runs WHERE submitted_at < ?", [cutoff]);
-    const oldest = salonSessionAt(cutoff, sessionMs);
-    await db.run("DELETE FROM salon_sessions WHERE session < ?", [oldest]);
-    await db.run("DELETE FROM salon_circuits WHERE session < ?", [oldest]);
-    await db.run("DELETE FROM salon_podiums WHERE created_at < ?", [t - PODIUM_KEEP_MS]);
-    await db.run("DELETE FROM salon_presence WHERE seen_at < ?", [t - 10 * PRESENCE_MS]);
-    await db.run("DELETE FROM salon_throttle WHERE at < ?", [t - 3_600_000]);
-  }
-
+  // --- Circuit de la session suivante ---------------------------------------------------------------------------------
   /**
-   * Tâche périodique (le serveur Node l'appelle toutes les quelques secondes) : garde le circuit de la session en cours et, dans
-   * les deux dernières minutes, prépare celui de la suivante, pour qu'aucun pic de calcul ne tombe au changement de session.
+   * Tâche périodique (le serveur Node l'appelle toutes les quelques secondes ; facultative, rien d'autre n'en dépend : l'oubli se
+   * fait à la demande) : garde le circuit de la session en cours et, dans les deux dernières minutes, prépare celui de la suivante,
+   * pour qu'aucun pic de calcul ne tombe au changement de session.
    * Les erreurs sont journalisées, jamais propagées (la tâche se réessaie au prochain passage).
    */
   async function tick(): Promise<void> {
@@ -431,7 +453,6 @@ export function createSalon(kit: SalonKit) {
       const session = salonSessionAt(t, sessionMs);
       await circuitFor(session);
       if (t >= salonSessionEnd(session, sessionMs) - PREPARE_AHEAD_MS) await circuitFor(session + 1);
-      await maintain();
     } catch (e) {
       console.error("Salon : entretien impossible :", e);
     }
@@ -443,9 +464,8 @@ export function createSalon(kit: SalonKit) {
     boardRoute,
     ghostsRoute,
     submitRoute,
-    podiumsRoute,
     tick,
-    maintain,
+    forget,
     circuitFor,
   };
 }

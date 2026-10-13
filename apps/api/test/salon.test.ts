@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SIM_VERSION, decodeReplay, encodeReplay, replayRace, salonSessionEnd, salonSessionStart, salonTrackId } from "@cdj/sim";
 import { createApi } from "../src/api";
-import { MAX_GHOST_REFS, PRESENCE_MS, SALON_GRACE_MS, SALON_RETENTION_MS } from "../src/salon";
+import { MAX_GHOST_REFS, PRESENCE_MS, PRESENCE_WRITE_MS, SALON_GRACE_MS } from "../src/salon";
 import { NOON, SALON_SESSION, SESSION_MS, makeApi, playerId, salonCircuitOf, salonReplay, seedSalonCircuit, type TestApi } from "./helpers";
 
 // Le Salon côté serveur (lot 27) : mêmes exigences que le classement du jour — seul le temps rejoué compte.
@@ -44,19 +44,63 @@ describe("GET /api/salon/now", () => {
     expect((await t.call("GET", "/api/salon/now")).body).toMatchObject({ serverMs: NOON + 5000, players: 2 }); // sans joueur : n'ajoute personne
   });
 
-  it("compte comme présents les joueurs vus dans les 30 dernières secondes, par empreinte seulement", async () => {
+  it("compte comme présents les joueurs vus dans la minute, par empreinte seulement", async () => {
     const t = await salonApi();
     await t.call("GET", `/api/salon/now?player=${playerId(1)}`);
     t.clock.now += PRESENCE_MS - 1000;
     await t.call("GET", `/api/salon/${S}/board?player=${playerId(2)}`); // le classement compte aussi comme une visite
     expect((await t.call("GET", "/api/salon/now")).body.players).toBe(2);
-    t.clock.now += 2000; // le premier a plus de 30 s : parti
+    t.clock.now += 2000; // le premier a plus d'une minute : parti
     expect((await t.call("GET", "/api/salon/now")).body.players).toBe(1);
     // Rien d'autre n'est conservé : ni identifiant ni adresse en clair.
     const rows = await t.db.all<{ key: string }>("SELECT key FROM salon_presence");
     expect(rows).toHaveLength(2);
     for (const r of rows) expect(r.key).toMatch(/^pr:[0-9a-f]{16}$/);
     expect(JSON.stringify(rows)).not.toContain(playerId(1));
+  });
+
+  it("n'écrit la présence d'un joueur qu'une fois par 30 s, et reste juste pour un joueur qui lit en continu", async () => {
+    const t = await salonApi();
+    const seen = async () => (await t.db.first<{ seen_at: number }>("SELECT seen_at FROM salon_presence"))?.seen_at;
+    // Un joueur lit le classement toutes les 5 s pendant 5 minutes : la ligne ne change qu'une fois par 30 s.
+    const writes = new Set<number>();
+    let present = true;
+    for (let i = 0; i < 60; i++) {
+      await t.call("GET", `/api/salon/${S}/board?player=${playerId(1)}`);
+      writes.add((await seen())!);
+      present &&= (await t.call("GET", "/api/salon/now")).body.players === 1;
+      t.clock.now += 5000;
+    }
+    expect(writes.size).toBe(10); // 300 s / 30 s
+    expect(present).toBe(true); // jamais absent du compte malgré l'écriture espacée
+    expect([...writes].sort()[1]! - [...writes].sort()[0]!).toBe(PRESENCE_WRITE_MS);
+  });
+
+  it("deux instances sur la même base n'écrivent pas plus d'une fois par 30 s non plus (upsert conditionnel)", async () => {
+    const t = await salonApi();
+    const other = createApi({ db: t.db, now: () => t.clock.now });
+    const ask = (api: typeof t.api) => api.handle(new Request(`http://api.test/api/salon/${S}/board?player=${playerId(1)}`), { clientKey: "203.0.113.1" });
+    await ask(t.api);
+    const first = (await t.db.first<{ seen_at: number }>("SELECT seen_at FROM salon_presence"))!.seen_at;
+    t.clock.now += 10_000;
+    await ask(other); // l'autre instance ne sait rien : sa requête arrive mais ne change aucune ligne
+    expect((await t.db.first<{ seen_at: number }>("SELECT seen_at FROM salon_presence"))!.seen_at).toBe(first);
+    t.clock.now += 20_000; // +30 s : l'autre instance se croit à jour depuis +10 s (son upsert n'avait rien changé) et n'écrit pas
+    await ask(other);
+    expect((await t.db.first<{ seen_at: number }>("SELECT seen_at FROM salon_presence"))!.seen_at).toBe(first);
+    t.clock.now += 10_000; // +40 s : elle écrit ; le retard reste sous la fenêtre de présence (60 s)
+    await ask(other);
+    expect((await t.db.first<{ seen_at: number }>("SELECT seen_at FROM salon_presence"))!.seen_at).toBe(first + 40_000);
+  });
+
+  it("une lecture n'écrit rien en base (ni présence répétée, ni compteur de débit)", async () => {
+    const t = await salonApi();
+    await t.call("GET", `/api/salon/${S}/board?player=${playerId(1)}`, undefined, { clientKey: "198.51.100.1" });
+    const rate = await t.db.all("SELECT * FROM rate");
+    t.clock.now += 5000;
+    for (let i = 0; i < 5; i++) await t.call("GET", `/api/salon/${S}/board?player=${playerId(1)}`, undefined, { clientKey: "198.51.100.1" });
+    expect(await t.db.all("SELECT * FROM rate")).toEqual(rate);
+    expect(rate).toEqual([]);
   });
 
   it("refuse un identifiant de joueur invalide et une mauvaise méthode", async () => {
@@ -458,61 +502,76 @@ describe("circuit de la session suivante, purge et podiums", () => {
     ]);
   });
 
-  it("fige le podium des trois premiers d'une session terminée, et le garde quand les courses sont purgées à 48 h", async () => {
+  it("oublie une session finie : courses, classement et circuit effacés après la minute de grâce, le podium servi pendant la grâce", async () => {
     const t = await salonApi();
     await submit(t, 1, "Alice", fast.code);
     await submit(t, 2, "Bob", mid.code);
     await submit(t, 3, "Carole", slow.code);
     await submit(t, 4, "Dave", slowest.code);
-    // Pendant la session : pas de podium.
-    expect((await t.call("GET", "/api/salon/podiums")).body).toEqual({ podiums: [] });
-    // Après la fin et la minute de grâce : le podium est figé (trois premiers, nombre de participants).
-    t.clock.now = END + SALON_GRACE_MS + 1000;
-    const api = createApi({ db: t.db, now: () => t.clock.now });
-    await api.tick();
-    const podium = (await t.call("GET", "/api/salon/podiums")).body.podiums;
-    expect(podium).toEqual([
-      {
-        session: S,
-        startMs: START,
-        participants: 4,
-        top: [
-          { rank: 1, name: "Alice", ms: fast.finishMs },
-          { rank: 2, name: "Bob", ms: mid.finishMs },
-          { rank: 3, name: "Carole", ms: slow.finishMs },
-        ],
-      },
-    ]);
-    // 47 h plus tard : les courses sont toujours là ; 49 h : purgées, le podium reste.
-    t.clock.now = START + 47 * 3_600_000;
-    await api.salon.maintain(true);
+    // La session est finie mais la grâce court : le classement final (le podium) reste servi, avec ses fantômes.
+    t.clock.now = END + SALON_GRACE_MS - 1000;
+    const final = (await t.call("GET", `/api/salon/${S}/board`)).body;
+    expect(final.rows.slice(0, 3).map((r: { name: string }) => r.name)).toEqual(["Alice", "Bob", "Carole"]);
+    expect(final.participants).toBe(4);
+    const refs = final.rows.slice(0, 3).map((r: { ref: string }) => r.ref).join(",");
+    expect((await t.call("GET", `/api/salon/${S}/ghosts?refs=${refs}`)).body.ghosts).toHaveLength(3);
     expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(4);
-    t.clock.now = START + SALON_RETENTION_MS + 3_600_000;
-    await api.salon.maintain(true);
-    expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(0);
-    expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_circuits"))!.n).toBe(0);
-    expect((await t.call("GET", "/api/salon/podiums")).body.podiums).toEqual(podium);
-    // La session purgée n'est plus servie (hors de la fenêtre gardée).
+    // La grâce écoulée, la première requête qui voit la session terminée l'efface ; plus rien n'est servi ni gardé.
+    t.clock.now = END + SALON_GRACE_MS + 1;
+    const next = await t.call("GET", `/api/salon/${S + 1}/board`);
+    expect(next.status).toBe(200);
+    expect(next.body).toMatchObject({ participants: 0, rows: [] });
+    for (const table of ["salon_runs", "salon_sessions"]) expect(await t.db.first(`SELECT session FROM ${table} WHERE session = ?`, [S]), table).toBeNull();
+    expect(await t.db.first("SELECT session FROM salon_circuits WHERE session = ?", [S])).toBeNull();
     expect((await t.call("GET", `/api/salon/${S}/board`)).status).toBe(404);
+    expect((await t.call("GET", `/api/salon/${S}/ghosts?refs=${refs}`)).status).toBe(404);
+    expect((await submit(t, 5, "Eve", fast.code)).status).toBe(409); // session_closed
+    expect((await t.call("GET", "/api/salon/podiums")).status).toBe(404); // plus de route d'historique
+    expect(await t.db.first("SELECT name FROM sqlite_master WHERE name = 'salon_podiums'")).toBeNull();
   });
 
-  it("fige le podium d'une session avant de purger ses courses, même si le serveur est resté arrêté plusieurs jours", async () => {
+  it("n'efface que les sessions terminées : la session en cours et la suivante restent", async () => {
     const t = await salonApi();
+    await seedSalonCircuit(t.db, S + 1);
     await submit(t, 1, "Alice", fast.code);
-    t.clock.now = START + 5 * 86_400_000; // le serveur redémarre cinq jours plus tard
-    const api = createApi({ db: t.db, now: () => t.clock.now });
-    await api.tick();
-    expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(0);
-    expect((await t.call("GET", "/api/salon/podiums")).body.podiums[0]).toMatchObject({ session: S, participants: 1, top: [{ name: "Alice" }] });
-  });
-
-  it("ne purge pas ce qui est récent, ni une session encore ouverte à l'envoi", async () => {
-    const t = await salonApi();
-    await submit(t, 1, "Alice", fast.code);
-    t.clock.now = END + 30_000; // la session est finie, mais on peut encore envoyer : pas de podium figé
-    const api = createApi({ db: t.db, now: () => t.clock.now });
-    await api.salon.maintain(true);
-    expect(await t.db.first("SELECT session FROM salon_podiums")).toBeNull();
+    t.clock.now = END + 30_000; // la session S est finie, la grâce court encore
+    await t.call("GET", "/api/salon/now");
     expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(1);
+    // Un joueur de la session suivante, puis la fin de la grâce : seule S disparaît.
+    await seedSalonCircuit(t.db, S + 1);
+    await submit(t, 2, "Bob", salonReplay(S + 1, 0.9).code, {}, S + 1);
+    t.clock.now = END + SALON_GRACE_MS + 1;
+    await t.call("GET", "/api/salon/now");
+    expect((await t.db.all<{ session: number }>("SELECT session FROM salon_runs")).map((r) => r.session)).toEqual([S + 1]);
+    expect((await t.db.all<{ session: number }>("SELECT session FROM salon_circuits")).map((r) => r.session)).toEqual([S + 1]);
+    expect((await t.call("GET", `/api/salon/${S + 1}/board`)).body.participants).toBe(1);
+  });
+
+  it("rattrape un arrêt prolongé : la première requête efface toutes les sessions anciennes (y compris celles d'une version qui gardait 48 h)", async () => {
+    const t = await salonApi();
+    await submit(t, 1, "Alice", fast.code);
+    for (let i = 0; i < 5; i++) {
+      await t.db.run("INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at) VALUES (?, ?, ?, 'Vieux', 40000, '[]', 'x', ?)", [
+        S - 1 - i,
+        playerId(900 + i),
+        i.toString(16).padStart(16, "0"),
+        NOON,
+      ]);
+    }
+    t.clock.now = START + 5 * 86_400_000; // le serveur est resté arrêté cinq jours
+    const restarted = createApi({ db: t.db, now: () => t.clock.now });
+    await restarted.handle(new Request("http://api.test/api/salon/now"));
+    expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(0);
+  });
+
+  it("l'oubli se fait à la demande : une seule fois par changement de session, sans tâche de fond", async () => {
+    const t = await salonApi();
+    await t.call("GET", "/api/salon/now");
+    await t.db.run("INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at) VALUES (?, ?, ?, 'Vieux', 40000, '[]', 'x', ?)", [S - 3, playerId(900), "0".repeat(16), NOON]);
+    await t.call("GET", "/api/salon/now"); // même session : l'instance ne refait pas le nettoyage (aucune requête SQL)
+    expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(1);
+    t.clock.now = END + 1; // session suivante : le nettoyage repasse
+    await t.call("GET", "/api/salon/now");
+    expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(0);
   });
 });
