@@ -11,7 +11,7 @@ export interface Axes {
 // `event.code` désigne la touche physique : KeyW/KeyA/KeyS/KeyD sont aussi ZQSD sur un clavier AZERTY.
 const KEYS = {
   throttle: ["ArrowUp", "KeyW"],
-  brake: ["ArrowDown", "KeyS"],
+  brake: ["ArrowDown", "KeyS", "Space"], // Espace : frein pour drifter
   left: ["ArrowLeft", "KeyA"],
   right: ["ArrowRight", "KeyD"],
   respawn: ["KeyR"], // dernier point de contrôle

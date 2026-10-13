@@ -8,6 +8,10 @@ describe("clavier", () => {
     expect(keyboardAxes(new Set(["ArrowRight", "ArrowDown"]))).toEqual({ steer: 1, throttle: 0, brake: 1 });
   });
 
+  it("Espace freine comme ↓ / S", () => {
+    expect(keyboardAxes(new Set(["Space"]))).toEqual({ steer: 0, throttle: 0, brake: 1 });
+  });
+
   it("gauche + droite s'annulent", () => {
     expect(keyboardAxes(new Set(["ArrowLeft", "ArrowRight"])).steer).toBe(0);
   });

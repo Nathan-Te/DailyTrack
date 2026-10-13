@@ -273,10 +273,10 @@ if (salon) {
 }
 function updateInfo() {
   $("info").textContent = salon
-    ? "ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantômes · Tab : classement"
+    ? "ZQSD/WASD ou flèches · Espace : frein/drift · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantômes · Tab : classement"
     : track
-    ? `ZQSD/WASD ou flèches · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
-    : "scénario « plat » · ZQSD/WASD ou flèches · R ou Entrée : recommencer · C : caméra";
+    ? `ZQSD/WASD ou flèches · Espace : frein/drift · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
+    : "scénario « plat » · ZQSD/WASD ou flèches · Espace : frein/drift · R ou Entrée : recommencer · C : caméra";
 }
 
 // --- État de la partie ----------------------------------------------------------------------
