@@ -53,7 +53,7 @@ for (const viewport of [
     // En course, après deux points de contrôle : bandeau complet (titre, médailles, chrono, intermédiaires, fantôme, menu, vitesse).
     await expect(page.locator("#splits div")).toHaveCount(2, { timeout: 60_000 });
     await page.waitForTimeout(700); // la bannière de point de contrôle disparaît
-    const racing = ["#meta", "#medals", "#timer", "#splits", "#ghostinfo", "#menu", "#speed", "#tbar"]; // #tbar : boutons tactiles (le téléphone est tactile)
+    const racing = ["#meta", "#medals", "#timer", "#splits", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]; // #tbar : boutons tactiles (le téléphone est tactile)
     const racingBoxes = await boxes(page, racing);
     expect(racingBoxes.map((b) => b.name)).toEqual(expect.arrayContaining(racing));
     expectNoOverlap(racingBoxes, viewport);
@@ -63,17 +63,17 @@ for (const viewport of [
     await page.locator("#finish .online input").fill("Mobile");
     await page.locator("#finish .online button[type=submit]").click();
     await expect(page.locator("#finish .online .rank")).toBeVisible({ timeout: 20_000 });
-    // Sur petit écran, le classement ne recouvre pas le panneau d'arrivée : il s'ouvre au toucher du bouton 🏆.
-    await expect(page.locator("#board")).toBeHidden();
-    await page.waitForTimeout(500);
-    const finished = ["#meta", "#medals", "#timer", "#menu", "#ghostinfo", "#finish"];
-    expectNoOverlap(await boxes(page, finished), viewport);
-    await page.locator("#btn-board").click();
+    // Le classement (lot 29) reste dans son coin, compact, sans recouvrir le panneau d'arrivée ; son en-tête le replie (cible de 44 px).
     await expect(page.locator("#board")).toBeVisible();
     await expect(page.locator("#board .row")).toHaveCount(3);
-    expectNoOverlap(await boxes(page, ["#board"]), viewport); // tient dans l'écran
-    await page.locator("#board").click(); // un toucher la ferme
-    await expect(page.locator("#board")).toBeHidden();
+    await page.waitForTimeout(500);
+    const finished = ["#meta", "#medals", "#timer", "#menu", "#ghostinfo", "#board", "#finish"];
+    expectNoOverlap(await boxes(page, finished), viewport);
+    expect((await page.locator("#board .bhead").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+    await page.locator("#board .bhead").click();
+    await expect(page.locator("#board")).toHaveClass(/folded/);
+    await page.locator("#board .bhead").click();
+    await expect(page.locator("#board")).not.toHaveClass(/folded/);
     for (const b of await page.locator("#finish .actions button").all()) {
       const box = (await b.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(34);

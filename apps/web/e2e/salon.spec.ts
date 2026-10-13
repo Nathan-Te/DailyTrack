@@ -157,11 +157,12 @@ test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le c
   await page.goto(salonUrl(START + 300_000));
   await loaded(page);
   await withRows(page, 3);
-  await expect(page.locator("#board")).toBeVisible(); // grand écran : le classement est ouvert d'office
+  await expect(page.locator("#board")).toBeVisible(); // le classement est affiché d'office (lot 29)
+  await expect(page.locator("#board")).not.toHaveClass(/folded/);
+  await page.keyboard.press("Tab"); // replié : l'en-tête reste, les lignes disparaissent
+  await expect(page.locator("#board")).toHaveClass(/folded/);
   await page.keyboard.press("Tab");
-  await expect(page.locator("#board")).toBeHidden();
-  await page.keyboard.press("Tab");
-  await expect(page.locator("#board")).toBeVisible();
+  await expect(page.locator("#board")).not.toHaveClass(/folded/);
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("all");
   await page.keyboard.press("KeyG");
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("top");
@@ -182,30 +183,29 @@ test("sans API : message clair et circuit du jour", async ({ page }) => {
   await expect(page.locator("#meta")).toContainText("Le Salon a besoin du serveur");
   await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
   await expect(page.locator("#banner")).toContainText("Le Salon a besoin du serveur"); // et rappelé au départ
-  await expect(page.locator("#btn-mode")).toBeHidden(); // pas d'API : pas de bouton Salon
+  await expect(page.locator("#btn-mode")).toHaveCount(0); // plus de bouton Salon dans la barre (lot 29)
 });
 
-test("bouton Salon / Jour : on passe de l'un à l'autre en gardant l'API", async ({ page }) => {
-  await page.goto("/?api=demo&debug");
+test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'accueil", async ({ page }) => {
+  await page.goto("/?api=demo&debug&home=1");
   await page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 30_000 });
-  await expect(page.locator("#btn-mode")).toBeVisible();
-  await page.locator("#btn-mode").click();
+  await page.locator("#home-salon").click();
   await page.waitForURL(/mode=salon/);
   expect(new URL(page.url()).searchParams.get("api")).toBe("demo");
   await loaded(page);
-  await expect(page.locator("#btn-mode .txt")).toHaveText("Jour");
-  await page.locator("#btn-mode").click();
-  await page.waitForFunction(() => !location.search.includes("mode=salon"));
+  await page.locator("#btn-home").click(); // retour à l'accueil depuis le Salon
+  await page.waitForURL(/home=1/);
+  expect(new URL(page.url()).searchParams.get("api")).toBe("demo");
   await page.waitForFunction(() => window.__cdj?.phase);
+  await expect(page.locator("#home")).toBeVisible();
+  await page.locator("#home-daily").click();
   await expect(page.locator("#meta")).toContainText("Circuit du Jour");
-  // Même entrée dans la fenêtre de pause (c'est elle qu'on a sur téléphone, où le menu est plein).
-  await page.keyboard.press("KeyP");
-  await expect(page.locator("#pause-mode")).toHaveText("Salon");
-  await page.locator("#pause-mode").click();
-  await page.waitForURL(/mode=salon/);
+  // La pause du Salon propose aussi l'accueil.
+  await page.goto("/?api=demo&debug&mode=salon");
   await loaded(page);
   await page.keyboard.press("KeyP");
-  await expect(page.locator("#pause-mode")).toHaveText("Circuit du jour");
+  await expect(page.locator("#pause-home")).toBeVisible();
+  await expect(page.locator("#pause-archive")).toBeHidden(); // pas d'archives dans le Salon
 });
 
 for (const viewport of [
@@ -223,17 +223,17 @@ for (const viewport of [
     await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
     await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
     expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#speed"]), viewport);
-    // Classement : une fenêtre qu'on ouvre avec le bouton 🏆 (cible d'au moins 44 px au toucher).
-    const board = page.locator("#btn-board");
-    await expect(board).toBeVisible();
-    const b = await board.boundingBox();
-    expect(b!.width).toBeGreaterThanOrEqual(43);
-    expect(b!.height).toBeGreaterThanOrEqual(43);
-    await board.tap();
+    // Classement : affiché d'office dans le coin, replié par son en-tête (cible d'au moins 44 px au toucher).
+    const board = page.locator("#board .bhead");
     await expect(page.locator("#board")).toBeVisible();
-    expectNoOverlap(await boxes(page, ["#board"]), viewport);
-    await page.locator("#board").tap();
-    await expect(page.locator("#board")).toBeHidden();
+    const b = await board.boundingBox();
+    expect(b!.height).toBeGreaterThanOrEqual(43);
+    await page.addStyleTag({ content: "#banner { display: none !important; }" });
+    expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#speed", "#board"]), viewport);
+    await board.tap();
+    await expect(page.locator("#board")).toHaveClass(/folded/);
+    await board.tap();
+    await expect(page.locator("#board")).not.toHaveClass(/folded/);
     // Arrivée d'un tour complet (pas à pas, indépendant de la vitesse de la machine) : le panneau et ses boutons restent dans l'écran.
     await page.evaluate((n) => localStorage.setItem("cdj:name", n), "Mobile");
     await page.evaluate(() => window.__cdj.manual(true));

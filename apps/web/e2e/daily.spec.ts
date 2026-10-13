@@ -1,3 +1,4 @@
+import { dayShort } from "../src/profile";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
@@ -44,9 +45,9 @@ test.describe("jeu (rendu 3D)", () => {
       await page.goto(`/?debug&seed=${date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
       const expected = golden.circuits.find((c) => c.date === date)!;
-      if (expected.number >= 1) await expect(page.locator("#meta")).toContainText(`#${expected.number}`);
-      else await expect(page.locator("#meta")).not.toContainText("#");
-      await expect(page.locator("#meta")).toContainText(date);
+      if (expected.number >= 1) await expect(page.locator("#meta")).toContainText(`n° ${expected.number}`);
+      else await expect(page.locator("#meta")).not.toContainText("n°");
+      await expect(page.locator("#meta")).toContainText(dayShort(date));
       await expect(page.locator("#medals")).toContainText("🥇");
 
       const z0 = await page.evaluate(() => window.__cdj.car.z);

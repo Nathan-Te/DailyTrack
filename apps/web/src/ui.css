@@ -128,6 +128,16 @@ body.home #rotate, body.home #touch, body.home #tbar { display: none !important;
   .home-wrap { max-width: 1240px; }
   .home-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-areas: "today board profile" "salon board profile"; }
 }
+@media (max-height: 520px) {
+  /* Téléphone en paysage : l'en-tête se réduit pour que « Circuit du jour » se voie sans défiler. */
+  .home-wrap { padding-top: 8px; }
+  .home-head { margin-bottom: 8px; }
+  .home-head h1 { font-size: 28px; }
+  .home-head h1::after, .tagline { display: none; }
+  .medals { grid-template-columns: 1fr 1fr; column-gap: 8px; }
+  .card .when { margin-bottom: 4px; }
+  .btn.big { min-height: 56px; }
+}
 @media (max-width: 760px) {
   .home-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "today" "salon" "profile" "board"; gap: 14px; }
 }

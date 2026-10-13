@@ -38,10 +38,10 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
   await page.waitForURL(/seed=2026-10-21/);
   expect(new URL(page.url()).searchParams.get("api")).toBe("demo"); // le mode démo suit
   await ready(page);
-  await expect(page.locator("#meta")).toContainText("2026-10-21");
+  await expect(page.locator("#meta")).toContainText("21 oct.");
   await expect(page.locator("#ghostinfo")).toContainText("premier : Démo", { timeout: 20_000 });
   await expect(page.locator("#board")).toBeVisible();
-  await expect(page.locator("#board .title")).toContainText("Classement figé · 2026-10-21");
+  await expect(page.locator("#board .btitle")).toContainText("Classement figé · 21 oct.");
   expect(await page.locator("#board .row").count()).toBeGreaterThanOrEqual(8);
   await expect(page.locator("#board .row .who").first()).toContainText("Démo");
   // le fantôme roule : il a avancé pendant que le joueur ne touche à rien
@@ -52,9 +52,9 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
 test("accès direct par ?day= : même jour, même classement figé", async ({ page }) => {
   await page.goto("/?api=demo&day=2026-10-21&debug");
   await ready(page);
-  await expect(page.locator("#meta")).toContainText("2026-10-21");
+  await expect(page.locator("#meta")).toContainText("21 oct.");
   await expect(page.locator("#ghostinfo")).toContainText("premier : Démo", { timeout: 20_000 });
-  await expect(page.locator("#board .title")).toContainText("Classement figé");
+  await expect(page.locator("#board .btitle")).toContainText("Classement figé");
 });
 
 test("ton meilleur temps est placé dans la liste des archives (rang figé parmi les pilotes de démo)", async ({ page }) => {

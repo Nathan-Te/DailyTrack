@@ -26,7 +26,7 @@ test("l'écran d'arrivée donne la ligne à partager, et le bouton la copie avec
   await expect(page.locator("#finish .share")).toHaveText(expected);
   expect(expected).toMatch(/^Circuit du Jour #\d+ — \d+,\d{3} s( — .+)?$/);
 
-  await page.getByRole("button", { name: "Copier le résultat" }).click();
+  await page.getByRole("button", { name: "Partager" }).click();
   await expect(page.getByRole("button", { name: "Copié ✓" })).toBeVisible();
   const pasted = await page.evaluate(() => navigator.clipboard.readText());
   expect(pasted).toBe(`${expected}\n${baseURL}/`);
@@ -56,7 +56,7 @@ test.describe("archives", () => {
     );
     await page.goto(url);
     await page.waitForFunction(() => window.__cdj?.phase);
-    await page.locator("#btn-archive").click();
+    await page.keyboard.press("KeyH");
     const days = page.locator("#archive .day");
     await expect(days).toHaveCount(18);
     await expect(days.nth(0)).toContainText("#18");
@@ -69,8 +69,8 @@ test.describe("archives", () => {
 
     await days.nth(2).click(); // 2026-10-28 = circuit #16
     await page.waitForFunction(() => window.__cdj?.phase);
-    await expect(page.locator("#meta")).toContainText("#16");
-    await expect(page.locator("#meta")).toContainText("2026-10-28");
+    await expect(page.locator("#meta")).toContainText("n° 16");
+    await expect(page.locator("#meta")).toContainText("28 oct.");
     expect(new URL(page.url()).searchParams.get("seed")).toBe("2026-10-28");
     expect(new URL(page.url()).searchParams.get("today")).toBe(TODAY); // les réglages de test sont conservés
   });
@@ -85,7 +85,7 @@ test.describe("archives", () => {
     await page.keyboard.press("KeyH");
     await page.mouse.click(5, 5);
     await expect(page.locator("#archive")).toBeHidden();
-    await page.locator("#btn-archive").click();
+    await page.keyboard.press("KeyH");
     await page.locator("#archive .close").click();
     await expect(page.locator("#archive")).toBeHidden();
   });
@@ -93,7 +93,7 @@ test.describe("archives", () => {
   test("le lien d'aujourd'hui n'a pas de seed", async ({ page }) => {
     await page.goto(`/?debug&today=${TODAY}&seed=2026-10-28`);
     await page.waitForFunction(() => window.__cdj?.phase);
-    await page.locator("#btn-archive").click();
+    await page.keyboard.press("KeyH");
     expect(await page.locator("#archive .day").first().getAttribute("href")).toBe("?debug=&today=2026-10-30");
   });
 

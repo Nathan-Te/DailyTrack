@@ -87,7 +87,7 @@ test("un thème forcé n'est jamais envoyé au classement, même avec une adress
   });
   const today = new Date().toISOString().slice(0, 10);
   await racing(page, `/?debug&seed=${today}&theme=banquise&api=${encodeURIComponent(API)}`);
-  await expect(page.locator("#btn-board")).toBeHidden(); // pas de classement pour un circuit d'essai
+  await expect(page.locator("#board")).toBeHidden(); // pas de classement pour un circuit d'essai
   // On se téléporte avant la ligne d'arrivée : la course finit, rien ne part.
   await page.evaluate(() => {
     const r = window.__cdj.race as unknown as { car: Record<string, number>; nextGate: number; track: { gates: { x: number; y: number; z: number; fx: number; fz: number; yaw: number }[] } };

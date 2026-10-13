@@ -77,9 +77,10 @@ test.describe("l'accueil", () => {
   test("Accueil (barre) : sans confirmation avant le départ, avec confirmation en pleine course ; (pause) idem", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    await open(page, "/?home=1&debug&api=demo&timescale=4");
+    await open(page, "/?home=1&debug&api=demo"); // temps réel : le décompte dure 3 s, le temps de cliquer
     await page.locator("#home-daily").click();
     // Décompte : pas de tour à perdre, on revient tout de suite.
+    expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
     await page.locator("#btn-home").click();
     await expect(page.locator("#home")).toBeVisible();
     expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
@@ -384,9 +385,9 @@ test.describe("pause et touches", () => {
     await expect(page.locator("#pause")).toBeHidden();
     expect(await page.evaluate(() => window.__cdj.paused)).toBe(false);
     await page.keyboard.press("p");
-    expect(await page.evaluate(() => window.__cdj.paused)).toBe(true);
+    await page.waitForFunction(() => window.__cdj.paused === true);
     await page.keyboard.press("p");
-    expect(await page.evaluate(() => window.__cdj.paused)).toBe(false);
+    await page.waitForFunction(() => window.__cdj.paused === false);
     await ctx.close();
   });
 
@@ -407,9 +408,9 @@ test.describe("pause et touches", () => {
       await page.waitForTimeout(150);
     };
     await press(9); // Start
-    expect(await page.evaluate(() => window.__cdj.paused)).toBe(true);
+    await page.waitForFunction(() => window.__cdj.paused === true);
     await press(9);
-    expect(await page.evaluate(() => window.__cdj.paused)).toBe(false);
+    await page.waitForFunction(() => window.__cdj.paused === false);
     await page.waitForTimeout(1500);
     const before = await page.evaluate(() => window.__cdj.car.tick);
     expect(before).toBeGreaterThan(0);
@@ -423,7 +424,8 @@ test.describe("pause et touches", () => {
     const page = await ctx.newPage();
     await open(page, "/?home=1&debug&api=demo&timescale=2");
     await page.waitForTimeout(1500);
-    expect(await page.locator("#timer").textContent()).toBe("");
+    await expect(page.locator("#timer")).toBeHidden(); // à l'accueil, le HUD de course est caché et rien ne tourne
+    expect(await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick)).toBe(0);
     await page.locator("#home-daily").click();
     await page.waitForTimeout(500);
     await expect(page.locator("#timer")).toHaveText("0,000 s"); // décompte : zéro
@@ -449,8 +451,9 @@ test.describe("profil", () => {
   test("pseudo modifiable, statistiques d'après les records, meilleure place retenue", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    const today = formatDay(Math.floor(Date.now() / 86_400_000));
-    const yesterday = formatDay(Math.floor(Date.now() / 86_400_000) - 1);
+    // En démonstration, « aujourd'hui » est figé au 27/10/2026 (le lendemain de l'historique).
+    const today = "2026-10-27";
+    const yesterday = "2026-10-26";
     await page.addInitScript(
       ([t, y]) => {
         if (localStorage.getItem("cdj:player")) return;
@@ -778,6 +781,8 @@ test("plus de bouton Salon ni de ligne d'aide minuscule en course ; « Comment j
   await expect(page.locator("#info")).toHaveText("");
   await expect(page.locator("#helpchip")).toContainText("Comment jouer");
   const labels = await page.locator("#menu button:visible").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") || e.textContent));
-  expect(labels).toEqual(["Accueil", "Réglages", "Fantôme", "Son"]);
+  expect(labels.slice(0, 3)).toEqual(["Accueil", "Réglages", "Fantôme"]);
+  expect(labels).toHaveLength(4);
+  expect(labels[3]).toMatch(/son/i); // « Couper le son (M) » : l'icône du son change avec le muet
   await ctx.close();
 });

@@ -216,7 +216,7 @@
         #banner.small { font-size: 24px; }
         #menu { right: 8px; top: 6px; gap: 4px; }
         #menu .txt { display: none; }
-        #menu button { padding: 0 6px; }
+        #menu button { padding: 0; width: 44px; }
         #finish { padding: 14px 16px; top: 56%; }
         #finish .big { font-size: 32px; }
         /* Une fois la course finie, le panneau d'arrivée prend la place : on masque ce qui le recouvrirait. */
@@ -227,7 +227,8 @@
         #timer { left: 16px; transform: none; }
       }
       /* Étroit : les médailles gardent leur icône et leur temps ; leur nom reste dans l'accueil et l'arrivée. */
-      @media (max-width: 600px) { #medals .nm { display: none; } #medals { max-width: calc(100vw - 32px); } }
+      @media (max-width: 1300px) { #medals .nm { display: none; } }
+      @media (max-width: 600px) { #medals { max-width: calc(100vw - 32px); } }
       /* Téléphone en paysage : peu de hauteur, le panneau d'arrivée se range à droite, sous le bandeau. */
       @media (max-height: 520px) and (orientation: landscape) {
         #medals { top: 26px; }
