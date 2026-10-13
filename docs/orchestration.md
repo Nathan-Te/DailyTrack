@@ -283,5 +283,6 @@ Nathan a essayé le jeu sur téléphone (commandes tactiles du lot 10 : retouche
 - `docs/lots/lot-0-socle.md` … `lot-22-nouveaux-themes.md` (et `lot-18b-cuves-rapides.md`), `lot-26-salon.md`, `lot-27-salon-serveur.md`, `lot-28-mise-en-ligne.md` — le détail de chaque lot (livré, à tester, garde-fous, limites) ; `lot-7b-reglages.md`, `lot-9b-visuels.md`, `lot-10b-zones-tactiles.md` pour les retouches
 - `docs/credits.md` — crédits (sons procéduraux, voiture originale, bibliothèques)
 - `CLAUDE.md` — consignes courtes de l'agent (structure, commandes, règles de déterminisme, sections par lot)
+- `docs/securite-facturation.md` — limiter la facture Google Cloud (plafond de 2 instances, pire cas ≈ 125–130 $/mois calculé, coupure manuelle réversible, coupure automatique par le budget : non installée)
 - `docs/mise-en-ligne.md` — le guide pas à pas de la mise en ligne (Google Cloud, Turso, GitHub), `docs/lots/lot-28-mise-en-ligne.md` — mesures et budget
 - `apps/api/Dockerfile`, `.github/workflows/deploy-api.yml` — déploiement de l'API (`apps/api/wrangler.toml` : repli Workers, non utilisé)

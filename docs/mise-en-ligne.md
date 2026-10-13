@@ -20,7 +20,7 @@ Guide pas à pas pour Nathan, environ **30 minutes**. À la fin : le jeu sur Git
 3. Menu ☰ → **Facturation**. S'il n'y a pas de compte de facturation : **Créer un compte de facturation**, remplis la carte. Puis **associe-le au projet** (« Associer un compte de facturation »).
    - **Tu dois voir** sur la page Facturation du projet : « Ce projet est associé au compte de facturation … ».
 4. **L'alerte à 1 €** : menu ☰ → **Facturation** → **Budgets et alertes** → **Créer un budget**. Nom `alerte-1-euro`, **Montant** : budget ciblé **1 €**, seuils **50 %, 90 % et 100 %**, notifications par e-mail activées. **Terminer**.
-   - **Tu dois voir** le budget dans la liste (« 1,00 € »). **Une alerte ne bloque rien** : elle t'écrit quand la dépense approche 1 €. Le vrai frein est le plafond de 2 instances (étape 5).
+   - **Tu dois voir** le budget dans la liste (« 1,00 € »). **Une alerte ne bloque rien** : elle t'écrit quand la dépense approche 1 €. Le vrai frein est le plafond de 2 instances (étape 5). Pour aller plus loin (pire cas chiffré, coupure manuelle, coupure automatique) : [`docs/securite-facturation.md`](securite-facturation.md).
 
 ---
 
