@@ -1,0 +1,155 @@
+name: Deploy API
+# Déploie l'API (classement, planning, Salon) sur Google Cloud Run à chaque fusion dans main : image Docker → Artifact Registry → Cloud Run.
+# Tant que la mise en ligne n'est pas configurée (variables et secrets ci-dessous), le workflow ne fait rien et le dit dans son résumé.
+# Pas à pas pour Nathan : docs/mise-en-ligne.md.
+#
+# Variables GitHub (Settings → Secrets and variables → Actions → Variables) :
+#   GCP_PROJECT_ID        identifiant du projet Google Cloud
+#   TURSO_DATABASE_URL    adresse de la base (libsql://….turso.io)
+#   GCP_REGION            région Cloud Run (défaut : europe-west1, Belgique, tarif de niveau 1)
+#   GCP_SERVICE           nom du service Cloud Run (défaut : cdj-api)
+#   GCP_AR_REPO           dépôt Artifact Registry (défaut : cdj)
+#   GCP_RUNTIME_SA        compte de service qui exécute l'API (défaut : cdj-api-runtime@<projet>.iam.gserviceaccount.com)
+#   ALLOWED_ORIGINS       origines CORS autorisées en plus du site GitHub Pages (séparées par des points-virgules), facultatif
+# Secrets GitHub : GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT (fédération d'identité, recommandé) ou GCP_SA_KEY (clé JSON).
+# Les secrets de l'API elle-même (ADMIN_TOKEN, TURSO_AUTH_TOKEN, RATE_SALT) vivent dans Secret Manager, jamais ici ni dans le dépôt.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/api/**"
+      - "packages/sim/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/deploy-api.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # fédération d'identité (aucune clé longue durée)
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      TURSO_DATABASE_URL: ${{ vars.TURSO_DATABASE_URL }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      GCP_SERVICE: ${{ vars.GCP_SERVICE }}
+      GCP_AR_REPO: ${{ vars.GCP_AR_REPO }}
+      GCP_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
+      EXTRA_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configuration présente ?
+        id: cfg
+        run: |
+          missing=""
+          [ -n "$GCP_PROJECT_ID" ] || missing="$missing GCP_PROJECT_ID"
+          [ -n "$TURSO_DATABASE_URL" ] || missing="$missing TURSO_DATABASE_URL"
+          if [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
+            [ "$HAS_SA_KEY" = "true" ] || missing="$missing (GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT, ou GCP_SA_KEY)"
+          fi
+          if [ -n "$missing" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Déploiement de l'API ignoré" >> "$GITHUB_STEP_SUMMARY"
+            echo "La mise en ligne n'est pas configurée. Il manque :$missing — voir docs/mise-en-ligne.md." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Déploiement de l'API ignoré (mise en ligne non configurée) :$missing"
+            exit 0
+          fi
+          region="${GCP_REGION:-europe-west1}"
+          service="${GCP_SERVICE:-cdj-api}"
+          repo="${GCP_AR_REPO:-cdj}"
+          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          origins="https://${owner}.github.io"
+          [ -z "$EXTRA_ORIGINS" ] || origins="${origins};${EXTRA_ORIGINS}"
+          {
+            echo "enabled=true"
+            echo "region=$region"
+            echo "service=$service"
+            echo "image=${region}-docker.pkg.dev/${GCP_PROJECT_ID}/${repo}/api:${GITHUB_SHA}"
+            echo "runtime_sa=${GCP_RUNTIME_SA:-cdj-api-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
+            echo "origins=$origins"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Authentification Google Cloud (fédération d'identité)
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Authentification Google Cloud (clé JSON)
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Outils Google Cloud
+        if: steps.cfg.outputs.enabled == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Construire et pousser l'image
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          gcloud auth configure-docker "${{ steps.cfg.outputs.region }}-docker.pkg.dev" --quiet
+          docker build -f apps/api/Dockerfile -t "${{ steps.cfg.outputs.image }}" .
+          docker push "${{ steps.cfg.outputs.image }}"
+
+      - name: Déployer sur Cloud Run
+        id: deploy
+        if: steps.cfg.outputs.enabled == 'true'
+        uses: google-github-actions/deploy-cloudrun@v3
+        with:
+          service: ${{ steps.cfg.outputs.service }}
+          region: ${{ steps.cfg.outputs.region }}
+          image: ${{ steps.cfg.outputs.image }}
+          # Aucune valeur secrète ici : l'adresse de la base et les origines ne sont pas des secrets.
+          env_vars: |
+            TURSO_DATABASE_URL=${{ env.TURSO_DATABASE_URL }}
+            ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }}
+            TRUST_PROXY=1
+            GIT_SHA=${{ github.sha }}
+          # Secrets : Secret Manager → variables d'environnement du conteneur (jamais dans la configuration en clair, ni dans les journaux).
+          secrets: |
+            TURSO_AUTH_TOKEN=cdj-turso-token:latest
+            ADMIN_TOKEN=cdj-admin-token:latest
+            RATE_SALT=cdj-rate-salt:latest
+          # Bornes du coût : 2 instances au plus, 0 au repos (aucun coût sans joueurs). Une instance : 1 vCPU (le calcul est la ressource
+          # qui compte : un rejeu fait 20–40 ms de calcul) et 512 Mo (mesuré dans l'image : 16 Mo au repos, 43 Mo après la génération d'un
+          # circuit et deux rejeux ; le gratuit compte les Go-secondes à part et ne limite pas ici, donc la marge est gratuite). 40 requêtes
+          # à la fois : Node n'a qu'un fil, au-delà elles feraient la queue derrière un rejeu sans rien gagner et la deuxième instance prend
+          # le relais ; une requête ne dure jamais 30 s.
+          flags: >-
+            --allow-unauthenticated
+            --min-instances=0
+            --max-instances=2
+            --cpu=1
+            --memory=512Mi
+            --concurrency=40
+            --timeout=30
+            --port=8080
+            --service-account=${{ steps.cfg.outputs.runtime_sa }}
+
+      - name: Vérifier la santé du service déployé
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          url="${{ steps.deploy.outputs.url }}"
+          curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors "$url/api/health" | tee health.json
+          jq -e '.ok == true and .db == "ok" and .salonOverride == false' health.json
+          {
+            echo "### API déployée"
+            echo "- Adresse : $url"
+            echo "- Santé : \`$url/api/health\`"
+            echo "- Révision : \`${GITHUB_SHA::7}\`"
+            echo "- À renseigner dans la variable GitHub \`VITE_API_URL\` si ce n'est pas déjà fait, puis relancer la publication du site (workflow Pages)."
+          } >> "$GITHUB_STEP_SUMMARY"

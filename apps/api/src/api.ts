@@ -22,8 +22,9 @@ import {
   type ThemeName,
   type Track,
 } from "@cdj/sim";
-import { MIGRATIONS, SCHEMA, type SqlDb } from "./db";
+import { ensureSchemaOn, schemaVersion, type SqlDb } from "./db";
 import { HttpError } from "./errors";
+import { silentLog, type Logger } from "./log";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
 import { PLAYER_ID, cleanName } from "./validate";
 
@@ -45,6 +46,16 @@ export interface ApiOptions {
   now?: () => number;
   /** Valeur de `Access-Control-Allow-Origin` (« * » par défaut : aucune session, l'identité est dans le corps). */
   allowOrigin?: string;
+  /**
+   * Origines autorisées (CORS), variable d'environnement `ALLOWED_ORIGINS` : l'adresse du jeu (`https://<compte>.github.io`, sans chemin :
+   * les aperçus de branche en font partie). Remplace `allowOrigin` : l'origine de la requête est répétée si elle figure dans la liste,
+   * sinon aucun en-tête CORS n'est envoyé (le navigateur refuse). `*` autorise tout le monde.
+   */
+  allowedOrigins?: string[];
+  /** Journal structuré (voir `log.ts`) ; silencieux par défaut (tests). */
+  log?: Logger;
+  /** Identifiant de la version déployée (`GIT_SHA`, `K_REVISION`), répété dans `/api/health`. */
+  revision?: string;
   /** Sel pour hacher les adresses IP avant de les compter (on ne stocke jamais d'IP en clair). */
   rateSalt?: string;
   limits?: { windowMs: number; perClient: number; perPlayer: number };
@@ -98,21 +109,25 @@ export function createApi(options: ApiOptions) {
   const { db } = options;
   const now = options.now ?? Date.now;
   const allowOrigin = options.allowOrigin ?? "*";
+  const allowedOrigins = options.allowedOrigins?.map((o) => o.trim().replace(/\/+$/, "").toLowerCase()).filter(Boolean);
+  const log = options.log ?? silentLog;
   const limits = options.limits ?? DEFAULT_LIMITS;
   const circuits = new Map<number, Circuit>();
+  /** Circuits en cours de calcul (jour + identifiant) : deux requêtes simultanées n'en font qu'un (le générateur coûte ≈ 0,2–0,5 s de calcul). */
+  const generating = new Map<string, Promise<Circuit>>();
   const sessionMs = salonSessionMs(options.salonMinutes) ?? 600_000;
   let schemaReady: Promise<void> | null = null;
 
-  const ensureSchema = () => (schemaReady ??= (async () => {
-    for (const sql of SCHEMA) await db.run(sql);
-    for (const sql of MIGRATIONS) {
-      try {
-        await db.run(sql);
-      } catch {
-        /* colonne déjà là */
-      }
-    }
-  })());
+  /** Schéma créé ou mis à jour une fois par instance (une seule lecture quand la base est déjà à jour). Un échec n'est pas gardé en mémoire. */
+  const ensureSchema = () =>
+    (schemaReady ??= (async () => {
+      const started = performance.now();
+      const upToDate = await ensureSchemaOn(db);
+      log("INFO", upToDate ? "schéma à jour" : "schéma appliqué", { ms: Math.round(performance.now() - started), schema: schemaVersion() });
+    })().catch((e) => {
+      schemaReady = null;
+      throw e;
+    }));
 
   const today = () => Math.floor(now() / DAY_MS);
 
@@ -133,6 +148,20 @@ export function createApi(options: ApiOptions) {
     const expected = dailyTrackId(day, theme, variant);
     const memo = circuits.get(day);
     if (memo && memo.trackId === expected) return memo;
+    const key = `${day}|${expected}`;
+    let pending = generating.get(key);
+    if (!pending) {
+      pending = loadCircuit(day, variant, theme, expected).finally(() => generating.delete(key));
+      generating.set(key, pending);
+    }
+    return pending;
+  }
+
+  /**
+   * Lit le circuit en base, ou le génère et le garde. Avec plusieurs instances, deux d'entre elles peuvent le calculer en même temps :
+   * le résultat est le même (déterministe) et l'écriture identique, donc sans conséquence.
+   */
+  async function loadCircuit(day: number, variant: number, theme: ThemeName | null, expected: string): Promise<Circuit> {
     const row = await db.first<{ track_id: string; spec: string; author_ms: number; attempt: number; palette: string }>(
       "SELECT track_id, spec, author_ms, attempt, palette FROM circuits WHERE day = ?",
       [day],
@@ -151,8 +180,10 @@ export function createApi(options: ApiOptions) {
         track: parseTrack(row.track_id, row.spec),
       };
     } else {
+      const started = performance.now();
       circuit = generate(day, variant, theme);
       await storeCircuit(circuit);
+      log("INFO", "circuit du jour généré", { day: formatDay(day), trackId: circuit.trackId, attempt: circuit.attempt, ms: Math.round(performance.now() - started) });
     }
     circuits.set(day, circuit);
     return circuit;
@@ -255,6 +286,7 @@ export function createApi(options: ApiOptions) {
     playerIdOf,
     limits: { ...DEFAULT_SALON_LIMITS, ...options.salonLimits },
     demoPlayers: options.demoPlayers === true,
+    log,
   });
 
   async function playerName(id: string): Promise<string | null> {
@@ -324,6 +356,7 @@ export function createApi(options: ApiOptions) {
         [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t],
       );
     }
+    log("INFO", "temps du jour", { day: formatDay(day), ms: result.finishMs, improved });
     const bestMs = improved ? result.finishMs : previous!.ms;
     const bestAt = improved ? t : previous!.submitted_at;
     const medals = medalsFor(circuit.authorMs);
@@ -528,28 +561,58 @@ export function createApi(options: ApiOptions) {
   }
 
   // --- Entrée -----------------------------------------------------------------------------------------------
-  const cors = {
-    "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    "Access-Control-Max-Age": "86400",
+  /** En-têtes CORS d'une requête : liste d'origines (`ALLOWED_ORIGINS`) ou, à défaut, la valeur unique `allowOrigin`. */
+  function corsFor(req: Request): Record<string, string> {
+    const common = {
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Max-Age": "86400",
+    };
+    if (!allowedOrigins) return { "Access-Control-Allow-Origin": allowOrigin, ...common };
+    if (allowedOrigins.includes("*")) return { "Access-Control-Allow-Origin": "*", ...common };
+    const origin = req.headers.get("origin");
+    const ok = origin !== null && allowedOrigins.includes(origin.trim().replace(/\/+$/, "").toLowerCase());
+    return { ...(ok ? { "Access-Control-Allow-Origin": origin } : {}), Vary: "Origin", ...common };
+  }
+  const replier = (req: Request) => {
+    const cors = corsFor(req);
+    return (status: number, body: unknown, extra: Record<string, string> = {}) =>
+      new Response(status === 204 ? null : JSON.stringify(body), {
+        status,
+        headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra },
+      });
   };
-  const reply = (status: number, body: unknown, extra: Record<string, string> = {}) =>
-    new Response(status === 204 ? null : JSON.stringify(body), {
-      status,
-      headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra },
-    });
+
+  /** Santé : version, base joignable, durée du Salon. Toujours en 200 si la base répond, en 503 sinon (la sonde de Cloud Run et la CI s'y fient). */
+  async function health(reply: ReturnType<typeof replier>): Promise<Response> {
+    const body = {
+      simVersion: SIM_VERSION,
+      generatorVersion: GENERATOR_VERSION,
+      today: formatDay(today()),
+      salonMinutes: sessionMs / 60_000,
+      /** Vrai si `SALON_MINUTES` est réglée (essais locaux seulement) : doit toujours être faux en production. */
+      salonOverride: options.salonMinutes !== undefined,
+      ...(options.revision ? { revision: options.revision } : {}),
+    };
+    try {
+      await ensureSchema();
+      await db.first("SELECT 1 AS ok");
+      return reply(200, { ok: true, db: "ok", ...body });
+    } catch (e) {
+      log("ERROR", "santé : base injoignable", { error: e instanceof Error ? e.message.slice(0, 200) : "inconnue" });
+      return reply(503, { ok: false, db: "error", ...body });
+    }
+  }
 
   async function handle(req: Request, info: RequestInfo = {}): Promise<Response> {
+    const reply = replier(req);
     try {
       if (req.method === "OPTIONS") return reply(204, null);
       const url = new URL(req.url);
       const path = url.pathname.replace(/\/+$/, "");
+      if (path === "/api/health" && req.method === "GET") return await health(reply);
       await ensureSchema();
 
-      if (path === "/api/health" && req.method === "GET") {
-        return reply(200, { ok: true, simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: formatDay(today()), salonMinutes: sessionMs / 60_000 });
-      }
       if (path === "/api/submit") {
         if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
         return reply(200, await submit(req, info));
@@ -610,8 +673,11 @@ export function createApi(options: ApiOptions) {
       }
       throw new HttpError(404, "not_found", "Route inconnue");
     } catch (e) {
-      if (e instanceof HttpError) return reply(e.status, { error: e.code, message: e.message }, e.headers);
-      console.error("Erreur interne :", e);
+      if (e instanceof HttpError) {
+        if (e.status === 429 || e.status >= 500) log(e.status >= 500 ? "ERROR" : "WARNING", "refus", { status: e.status, code: e.code });
+        return reply(e.status, { error: e.code, message: e.message }, e.headers);
+      }
+      log("ERROR", "erreur interne", { error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 300) : "inconnue" });
       return reply(500, { error: "internal", message: "Erreur interne" });
     }
   }
@@ -625,7 +691,7 @@ export function createApi(options: ApiOptions) {
       await ensureSchema();
       await salon.tick();
     } catch (e) {
-      console.error("Tâche périodique du Salon :", e); // réessayée au prochain passage ; ne doit jamais arrêter le serveur
+      log("ERROR", "tâche périodique du Salon", { error: e instanceof Error ? e.message.slice(0, 200) : "inconnue" }); // réessayée au prochain passage ; ne doit jamais arrêter le serveur
     }
   }
 

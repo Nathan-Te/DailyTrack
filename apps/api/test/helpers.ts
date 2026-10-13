@@ -1,3 +1,6 @@
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   daysFromCivil,
   decodeReplay,
@@ -12,9 +15,27 @@ import {
 } from "@cdj/sim";
 import { createApi, type ApiOptions } from "../src/api";
 import type { SqlDb } from "../src/db";
+import { openLibsql } from "../src/libsql-open";
 import { openSqlite } from "../src/node-sqlite";
 
 export const DAY_MS = 86_400_000;
+
+/** Base sur laquelle tournent les tests d'API : SQLite (`node:sqlite`, défaut) ou libSQL (`CDJ_TEST_DB=libsql` : projet « libsql » de vitest). */
+export const TEST_DB = process.env.CDJ_TEST_DB === "libsql" ? "libsql" : "sqlite";
+
+const libsqlDir = TEST_DB === "libsql" ? mkdtempSync(join(tmpdir(), "cdj-libsql-")) : "";
+let libsqlCount = 0;
+if (libsqlDir) process.on("exit", () => rmSync(libsqlDir, { recursive: true, force: true }));
+
+/**
+ * Une base neuve et vide. libSQL : un fichier temporaire (le client natif de `@libsql/client`, le même moteur que Turso et que le serveur
+ * `sqld`) ; la base est supprimée à la fin du processus. La mémoire (`:memory:`) n'est pas utilisée : le client libSQL peut rouvrir une
+ * connexion et la perdre.
+ */
+export async function openTestDb(): Promise<SqlDb & { close(): void }> {
+  if (TEST_DB === "sqlite") return openSqlite(":memory:");
+  return openLibsql({ url: `file:${join(libsqlDir, `t${libsqlCount++}.db`)}` });
+}
 /**
  * Jour de test : le 14/10/2026 (fixe : indépendant de `PREMIER_JOUR`, qui ne change que la numérotation). L'horloge de l'API est
  * réglée sur midi UTC de ce jour. Choisi à la retouche 18b (le 12/10 du lot 18 n'a plus le même circuit : l'ordre des temps selon la prudence
@@ -50,7 +71,7 @@ export interface TestApi {
 
 /** API de test : SQLite en mémoire, horloge réglable, circuit du jour déjà en cache (sauf `seed: false`). */
 export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } = {}): Promise<TestApi> {
-  const db = options.db ? (options.db as TestApi["db"]) : openSqlite(":memory:");
+  const db = options.db ? (options.db as TestApi["db"]) : await openTestDb();
   const clock = { now: NOON };
   const api = createApi({ db, now: () => clock.now, ...options });
   if (options.seed !== false) {

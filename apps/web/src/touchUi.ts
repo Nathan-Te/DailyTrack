@@ -27,6 +27,8 @@ export interface TouchHooks {
   onRestart(): void;
   /** Caméra suivante (proche, loin, capot). */
   onCamera(): void;
+  /** Ouvre la fenêtre du code de transfert (lot 28) : un bouton en bas des réglages tactiles. */
+  onTransfer?(): void;
 }
 
 export interface TouchUi {
@@ -318,6 +320,17 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     row("Accélérateur", throttle.box),
     row("Vibration", vibration.box),
   );
+  if (hooks.onTransfer) {
+    const transfer = el("button", "reset", "Code de transfert…");
+    transfer.type = "button";
+    transfer.id = "touch-transfer";
+    transfer.style.cssText = "margin-top:10px;width:100%;min-height:44px";
+    transfer.addEventListener("click", () => {
+      setSettingsOpen(false);
+      hooks.onTransfer?.();
+    });
+    inner.append(transfer);
+  }
   panel.replaceChildren(inner);
   panel.addEventListener("click", (e) => {
     if (e.target === panel) setSettingsOpen(false);

@@ -126,13 +126,13 @@ describe("DemoApi (lecture seule)", () => {
   const real = (name: string) => JSON.parse(readFileSync(join(DIR, name), "utf8"));
 
   it("sert le classement et le fantôme du premier, rien d'autre", async () => {
-    stub({ "index.json": index, "2026-09-30.json": real("2026-09-30.json") });
+    stub({ "index.json": index, "2026-10-20.json": real("2026-10-20.json") });
     const api = new DemoApi();
-    const lb = await api.leaderboard("2026-09-30", "p".repeat(32), 5);
+    const lb = await api.leaderboard("2026-10-20", "p".repeat(32), 5);
     expect(lb.ok && lb.data.top).toHaveLength(5);
-    const first = await api.ghost("2026-09-30", "first", "p");
+    const first = await api.ghost("2026-10-20", "first", "p");
     expect(first.ok && first.data.rank).toBe(1);
-    const ahead = await api.ghost("2026-09-30", "ahead", "p");
+    const ahead = await api.ghost("2026-10-20", "ahead", "p");
     expect(ahead.ok).toBe(false);
     const sent = await api.submit();
     expect(sent.ok).toBe(false); // jamais d'envoi : le mode démo ne peut rien polluer
@@ -144,14 +144,14 @@ describe("DemoApi (lecture seule)", () => {
     const empty = await new DemoApi().leaderboard(index.demoToday, "p");
     expect(empty).toEqual({ ok: true, data: { date: index.demoToday, participants: 0, top: [], me: null } });
     stub({ "index.json": { ...index, simVersion: SIM_VERSION - 1 } });
-    const stale = await new DemoApi().leaderboard("2026-09-30", "p");
+    const stale = await new DemoApi().leaderboard("2026-10-20", "p");
     expect(!stale.ok && stale.message).toContain("history:seed");
   });
 
   it("place ton meilleur temps local parmi les pilotes", async () => {
-    stub({ "index.json": index, "2026-09-30.json": real("2026-09-30.json") });
+    stub({ "index.json": index, "2026-10-20.json": real("2026-10-20.json") });
     const api = new DemoApi(() => ({ ms: 1, medal: "author" }));
-    const lb = await api.leaderboard("2026-09-30", "p");
+    const lb = await api.leaderboard("2026-10-20", "p");
     expect(lb.ok && lb.data.me!.rank).toBe(1);
   });
 });

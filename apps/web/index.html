@@ -192,9 +192,30 @@
       #pause { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; background: rgba(11,16,32,.9); color: #fff; font: 600 16px system-ui, sans-serif; padding: 16px 22px; border-radius: 14px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
       body.paused #pause { display: block; }
       #pause .big { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
-      #pause .actions { display: flex; gap: 8px; justify-content: center; }
+      #pause .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
       #pause button { font: inherit; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; min-height: 44px; }
       #pause button.primary { background: #ffd22e; color: #111; }
+
+      /* Fenêtre « Réglages » (code de transfert) : au-dessus de la pause et des réglages tactiles. */
+      #settings { position: fixed; inset: 0; z-index: 6; background: rgba(5,8,20,.66); display: flex; align-items: center; justify-content: center; }
+      #settings[hidden] { display: none; }
+      #settings .panel { width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; background: #131a33; color: #fff; font: 600 14px system-ui, sans-serif; line-height: 1.4; border-radius: 14px; padding: 12px 16px 16px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
+      #settings .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+      #settings .title { font-size: 18px; font-weight: 800; }
+      #settings .close { font: inherit; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; min-width: 44px; min-height: 44px; cursor: pointer; }
+      #settings h3 { margin: 12px 0 4px; font-size: 15px; }
+      #settings .who { margin-top: 6px; opacity: .85; font-weight: 500; }
+      #settings p { margin: 4px 0 8px; font-weight: 500; opacity: .85; }
+      #settings .warn { font-size: 13px; color: #ffd9a0; opacity: 1; }
+      #settings button { font: inherit; color: #fff; background: rgba(255,255,255,.14); border: 0; border-radius: 10px; min-height: 44px; padding: 0 14px; cursor: pointer; }
+      #settings button.primary { background: #ffd22e; color: #111; }
+      #settings textarea { display: block; width: 100%; box-sizing: border-box; margin: 6px 0 8px; font: 12px ui-monospace, monospace; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: 8px; resize: vertical; }
+      #settings .msg { min-height: 20px; margin-top: 8px; font-weight: 600; }
+      #settings .msg.ok { color: #8fe3a3; }
+      #settings .msg.error { color: #ff9c9c; }
+      #settings .confirm { margin-top: 8px; padding: 10px; border-radius: 10px; background: rgba(255,210,46,.12); }
+      #settings .confirm .line { margin-bottom: 6px; font-weight: 500; }
+      #settings .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 
       /* Panneau de réglage de la conduite (`?debug&tune`) : outil de mise au point, à droite sous les temps. */
       #tune { position: fixed; right: 12px; top: 150px; z-index: 3; width: 290px; max-height: calc(100vh - 220px); overflow: auto; background: rgba(11,16,32,.86); color: #fff; font: 600 12px system-ui, sans-serif; border-radius: 10px; padding: 8px 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; }
@@ -316,10 +337,11 @@
     <div id="watchbar" hidden></div>
     <div id="tbar"></div>
     <div id="tsettings" hidden></div>
+    <div id="settings" hidden></div>
     <div id="rotate"></div>
     <div id="pause">
       <div class="big">Pause</div>
-      <div class="actions"><button id="pause-resume" class="primary" type="button">Reprendre</button><button id="pause-restart" type="button">Recommencer</button><button id="pause-mode" type="button" hidden>Salon</button></div>
+      <div class="actions"><button id="pause-resume" class="primary" type="button">Reprendre</button><button id="pause-restart" type="button">Recommencer</button><button id="pause-mode" type="button" hidden>Salon</button><button id="pause-settings" type="button">Réglages</button></div>
     </div>
     <div id="tuned" class="hud"></div>
     <div id="tune" hidden></div>

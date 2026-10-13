@@ -5,6 +5,11 @@ export interface SqlDb {
   run(sql: string, params?: SqlValue[]): Promise<void>;
   first<T>(sql: string, params?: SqlValue[]): Promise<T | null>;
   all<T>(sql: string, params?: SqlValue[]): Promise<T[]>;
+  /**
+   * Facultatif : plusieurs instructions d'écriture en un seul aller-retour réseau, dans une transaction (libSQL / Turso : chaque
+   * instruction seule coûte un aller-retour, ~15 au démarrage pour le schéma). Les bases locales s'en passent.
+   */
+  batch?(statements: { sql: string; params?: SqlValue[] }[]): Promise<void>;
 }
 
 /**
@@ -102,3 +107,44 @@ export const SCHEMA: string[] = [
      at INTEGER NOT NULL
    )`,
 ];
+
+/**
+ * Table de service : empreinte du schéma appliqué. Au démarrage, une seule lecture suffit à savoir que la base est à jour (sur Turso,
+ * chaque instruction est un aller-retour réseau : ne pas rejouer ~20 instructions à chaque réveil du conteneur).
+ */
+export const META_TABLE = "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)";
+
+/** Empreinte (FNV-1a, 32 bits) du schéma et des migrations : change toute seule dès qu'on touche à l'un ou l'autre. */
+export function schemaVersion(): string {
+  let h = 0x811c9dc5;
+  for (const ch of [...SCHEMA, ...MIGRATIONS].join("\n")) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0");
+}
+
+/**
+ * Crée ou met à jour le schéma. Idempotent et sans danger si deux instances démarrent ensemble (`IF NOT EXISTS`, ajouts de colonnes
+ * tentés et ignorés s'ils existent déjà). Rend `true` si la base était déjà à jour (rien n'a été écrit).
+ */
+export async function ensureSchemaOn(db: SqlDb): Promise<boolean> {
+  const version = schemaVersion();
+  try {
+    const row = await db.first<{ value: string }>("SELECT value FROM meta WHERE key = 'schema'");
+    if (row?.value === version) return true;
+  } catch {
+    /* pas encore de table `meta` : base neuve ou d'avant ce lot */
+  }
+  if (db.batch) await db.batch([{ sql: META_TABLE }, ...SCHEMA.map((sql) => ({ sql }))]);
+  else for (const sql of [META_TABLE, ...SCHEMA]) await db.run(sql);
+  for (const sql of MIGRATIONS) {
+    try {
+      await db.run(sql);
+    } catch {
+      /* colonne déjà là */
+    }
+  }
+  await db.run("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [version]);
+  return false;
+}

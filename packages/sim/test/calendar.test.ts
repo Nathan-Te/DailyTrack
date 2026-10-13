@@ -17,7 +17,7 @@ describe("calendrier", () => {
   });
 
   it("lit et écrit AAAA-MM-JJ, et refuse les dates impossibles", () => {
-    expect(parseDay("2026-09-22")).toBe(PREMIER_JOUR);
+    expect(parseDay("2026-10-13")).toBe(PREMIER_JOUR);
     expect(formatDay(parseDay("2026-10-06")!)).toBe("2026-10-06");
     for (const bad of ["2025-02-29", "2026-13-01", "2026-00-10", "2026-10-32", "26-10-06", "2026/10/06", "", "demain", "2026-10-06 "]) {
       expect(parseDay(bad), bad).toBeNull();
@@ -25,7 +25,7 @@ describe("calendrier", () => {
     expect(parseDay("2024-02-29")).not.toBeNull();
   });
 
-  it("numérote les circuits à partir du premier jour (provisoirement le 22/09/2026)", () => {
+  it("numérote les circuits à partir du premier jour (le premier jour est le 13/10/2026, lot 28)", () => {
     expect(circuitNumber(PREMIER_JOUR)).toBe(1);
     expect(circuitNumber(PREMIER_JOUR + 141)).toBe(142);
   });
