@@ -1,5 +1,7 @@
 # Lot 5 — Le classement
 
+> **Mise en ligne (lot 28)** : l'hébergement décrit plus bas (Workers, serveur de Nathan + tunnel) est remplacé par **Cloud Run + Turso + GitHub Pages** — voir [`docs/mise-en-ligne.md`](../mise-en-ligne.md) et [`lot-28-mise-en-ligne.md`](lot-28-mise-en-ligne.md). `GET /api/health` y rend aussi `db`, `salonOverride` et `revision` ; `TRUST_PROXY` est un nombre de proxys ; `ALLOWED_ORIGINS` remplace `ALLOW_ORIGIN`.
+
 **Livré**
 - **API** (`apps/api`) : classement du jour, rejeu des courses côté serveur, pseudo, fantômes du premier et du joueur juste devant. Le cœur (`src/api.ts`) n'utilise que l'API Web standard (`Request`/`Response`) et une petite interface SQL : il tourne tel quel sur **Node + SQLite** (conteneur Docker, `src/server.ts`) et sur **Cloudflare Workers + D1** (`src/worker.ts`). Les tables se créent au premier appel.
 - **Validation par rediffusion** : le jeu envoie la suite de commandes de la course ; le serveur la **rejoue avec le même code de simulation** (`replayRace`) et n'enregistre que le temps qu'il a lui-même recalculé. Un temps annoncé par le client est ignoré. Les courses rejetées (illisibles, non terminées, d'une autre version ou d'un autre jour) ne créent même pas de joueur.
