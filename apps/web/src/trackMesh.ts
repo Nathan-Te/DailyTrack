@@ -1300,8 +1300,11 @@ export interface TrackScene {
   look: Look;
   /** Hauteur de la fenêtre (pixels) et champ de vision (degrés) : taille des halos à l'écran. */
   setView(heightPx: number, fovDeg: number): void;
-  /** Position de la voiture (m) et cap (rad) : fenêtre des ombres, phares. */
-  followCar(x: number, y: number, z: number, yaw: number): void;
+  /**
+   * Position de la voiture (m) et cap (rad) : fenêtre des ombres, phares. `hood` : vue capot, l'œil est au ras du faisceau (la route juste
+   * devant le museau remplirait l'écran d'une tache blanche : les phares sont atténués).
+   */
+  followCar(x: number, y: number, z: number, yaw: number, hood?: boolean): void;
   /** État du rendu (outil de test `?debug`) : ce que la qualité active, ce que le thème allume. */
   stats(): SceneStats;
 }
@@ -1322,6 +1325,8 @@ export interface SceneStats {
 const SHADOW_HALF = 42;
 /** Intensité des phares (candelas) : à régler à l'œil (capture de nuit). */
 const HEADLIGHT_POWER = 900;
+/** Part de la puissance des phares gardée en vue capot. */
+const HOOD_HEADLIGHT = 0.1;
 
 /** Libère tout ce que la scène tient côté carte graphique (géométries, matériaux, textures, fond). */
 export function disposeScene(scene: Scene) {
@@ -1612,7 +1617,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       floor.position.x = Math.round(x / (2 * tile)) * 2 * tile;
       floor.position.z = Math.round(z / (2 * tile)) * 2 * tile;
     },
-    followCar(x, y, z, yaw) {
+    followCar(x, y, z, yaw, hood = false) {
       // Ombres : la fenêtre de la carte suit la voiture (pas d'un mètre : les bords ne scintillent pas).
       const tx = Math.round(x);
       const ty = Math.round(y);
@@ -1624,6 +1629,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
         const c = Math.cos(yaw);
         head.position.set(x + s * 1.2, y + 0.75, z + c * 1.2);
         head.target.position.set(x + s * 24, y - 0.4, z + c * 24);
+        head.intensity = HEADLIGHT_POWER * look.headlights * (hood ? HOOD_HEADLIGHT : 1);
       }
     },
   };

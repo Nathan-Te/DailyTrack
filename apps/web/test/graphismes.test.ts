@@ -24,15 +24,16 @@ describe("caméras (lot 23)", () => {
     expect(cameraIndexOf("n'importe quoi")).toBe(0);
     expect(cameraIndexOf(null)).toBe(0);
   });
-  it("capot : très basse, devant le centre de la voiture, carrosserie cachée ; les autres restent derrière", () => {
+  it("capot : fixée à la carrosserie, devant le centre de la voiture, au-dessus du capot ; les autres restent derrière", () => {
     const hood = CAMERAS[2]!;
-    expect(hood.hideCar).toBe(true);
-    expect(hood.height).toBeLessThan(1);
-    expect(hood.back).toBeLessThan(0);
+    expect(hood.mount).toBeDefined();
+    expect(hood.mount!.z).toBeGreaterThan(0.8); // devant le bas du pare-brise
+    expect(hood.mount!.y).toBeGreaterThan(0.9); // au-dessus du capot
+    expect(hood.mount!.y).toBeLessThan(1.4); // sous la hauteur du toit
     for (const c of CAMERAS.slice(0, 2)) {
-      expect(c.hideCar).toBeFalsy();
+      expect(c.mount).toBeUndefined();
       expect(c.back).toBeGreaterThan(3);
-      expect(c.height).toBeGreaterThan(hood.height);
+      expect(c.height).toBeGreaterThan(hood.mount!.y);
     }
   });
 });
