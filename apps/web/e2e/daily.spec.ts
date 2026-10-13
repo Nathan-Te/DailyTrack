@@ -1,6 +1,9 @@
-import { dayShort } from "../src/profile";
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
+
+/** « 2026-10-13 » → « 13 oct. » (même format que l'en-tête du jeu, `src/profile.ts` : non importé ici, le projet de test ne compile pas `src`). */
+const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const dayShort = (d: string) => `${Number(d.slice(8))} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
 
 // Circuits du jour de référence calculés par Node (packages/sim/test/golden-daily.test.ts).
 const golden = JSON.parse(readFileSync(new URL("../../../packages/sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as {
