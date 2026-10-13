@@ -47,6 +47,8 @@ export class GameAudio {
   readonly log: OneShot[] = [];
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  /** Trois voix (lot 29) : moteur, effets, ambiance — chacune son niveau, avant le volume général. */
+  private bus: { engine: GainNode; effects: GainNode; ambience: GainNode } | null = null;
   private engine: { o1: OscillatorNode; o2: OscillatorNode; lp: BiquadFilterNode; gain: GainNode } | null = null;
   private skid: { f: BiquadFilterNode; gain: GainNode } | null = null;
   private roll: { f: BiquadFilterNode; gain: GainNode } | null = null;
@@ -112,7 +114,12 @@ export class GameAudio {
   }
 
   private apply() {
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.settings.volume, this.ctx.currentTime, 0.04);
+    if (!this.master || !this.ctx || !this.bus) return;
+    const t = this.ctx.currentTime;
+    this.master.gain.setTargetAtTime(this.settings.volume, t, 0.04);
+    this.bus.engine.gain.setTargetAtTime(this.settings.engine, t, 0.04);
+    this.bus.effects.gain.setTargetAtTime(this.settings.effects, t, 0.04);
+    this.bus.ambience.gain.setTargetAtTime(this.settings.ambience, t, 0.04);
   }
 
   /** Crée le contexte (une fois), ou le réveille. Sans Web Audio, ne fait rien. */
@@ -129,6 +136,13 @@ export class GameAudio {
       this.master = ctx.createGain();
       this.master.gain.value = this.settings.volume;
       this.master.connect(ctx.destination);
+      const voice = (level: number) => {
+        const g = ctx.createGain();
+        g.gain.value = level;
+        g.connect(this.master!);
+        return g;
+      };
+      this.bus = { engine: voice(this.settings.engine), effects: voice(this.settings.effects), ambience: voice(this.settings.ambience) };
       // Bruit blanc de 2 s, lu en boucle par le crissement, le roulement et le vent.
       this.noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
       const data = this.noise.getChannelData(0);
@@ -165,7 +179,7 @@ export class GameAudio {
     const recipe = AMBIENCE[kind];
     const out = ctx.createGain();
     out.gain.value = 0;
-    out.connect(this.master);
+    out.connect(this.bus!.ambience);
     const nodes: (AudioScheduledSourceNode | AudioNode)[] = [out];
     const sources: AudioScheduledSourceNode[] = [];
     const mix = ctx.createGain(); // somme du bruit et des notes
@@ -265,7 +279,7 @@ export class GameAudio {
   }
 
   private buildEngine(ctx: AudioContext) {
-    const master = this.master!;
+    const master = this.bus!.effects;
     const o1 = ctx.createOscillator();
     o1.type = "sawtooth";
     const o2 = ctx.createOscillator();
@@ -276,7 +290,7 @@ export class GameAudio {
     gain.gain.value = 0;
     o1.connect(lp);
     o2.connect(lp);
-    lp.connect(gain).connect(master);
+    lp.connect(gain).connect(this.bus!.engine);
     o1.start();
     o2.start();
     this.engine = { o1, o2, lp, gain };
@@ -349,7 +363,7 @@ export class GameAudio {
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(gain, t0 + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g).connect(this.master!);
+    o.connect(g).connect(this.bus!.effects);
     o.start(t0);
     o.stop(t0 + dur + 0.05);
   }
@@ -367,7 +381,7 @@ export class GameAudio {
     const g = ctx.createGain();
     g.gain.setValueAtTime(gain, t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    src.connect(f).connect(g).connect(this.master!);
+    src.connect(f).connect(g).connect(this.bus!.effects);
     src.start(t0);
     src.stop(t0 + dur + 0.05);
   }

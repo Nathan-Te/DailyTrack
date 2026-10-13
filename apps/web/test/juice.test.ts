@@ -59,13 +59,13 @@ describe("volume et sourdine (touche M)", () => {
     expect(parseAudioSettings('{"volume":-1,"last":0.3}').volume).toBe(0);
   });
   it("M coupe puis rétablit le dernier volume", () => {
-    const muted = toggleMute({ volume: 0.25, last: 0.25 });
+    const muted = toggleMute({ ...DEFAULT_AUDIO, volume: 0.25, last: 0.25 });
     expect(muted.volume).toBe(0);
     expect(toggleMute(muted).volume).toBe(0.25);
-    expect(toggleMute({ volume: 0, last: 0 }).volume).toBe(DEFAULT_AUDIO.last);
+    expect(toggleMute({ ...DEFAULT_AUDIO, volume: 0, last: 0 }).volume).toBe(DEFAULT_AUDIO.last);
   });
   it("le bouton fait le tour des crans", () => {
-    let s = { volume: 0, last: 0.55 };
+    let s = { ...DEFAULT_AUDIO, volume: 0, last: 0.55 };
     const seen: number[] = [];
     for (let i = 0; i < 4; i++) {
       s = nextVolume(s);

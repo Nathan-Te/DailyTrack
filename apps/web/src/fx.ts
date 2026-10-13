@@ -334,6 +334,9 @@ export class Effects {
   }
   quality: Quality = 2;
   enabled = true;
+  /** Réglages du joueur (lot 29) : particules (fumée, éclats, flammes, bouquets) et traces de pneus, chacun séparément. */
+  particlesOn = true;
+  skidMarksOn = true;
   /** Particules émises (outil de test : pour vérifier qu'un effet se déclenche). */
   readonly emitted = { smoke: 0, surface: 0, spark: 0, flame: 0, land: 0, confetti: 0, flash: 0, skid: 0 };
   private acc = { smoke: 0, surface: 0, spark: 0, flame: 0 };
@@ -398,11 +401,12 @@ export class Effects {
     const rear = [tel.wheels[2]!, tel.wheels[3]!] as const;
     for (let w = 0; w < 4; w++) {
       const wheel = tel.wheels[w]!;
-      const level = this.quality === 0 || w < 2 || wheel.ground < NO_GROUND / 2 ? 0 : skid; // roues arrière seulement
+      const level = this.quality === 0 || !this.skidMarksOn || w < 2 || wheel.ground < NO_GROUND / 2 ? 0 : skid; // roues arrière seulement
       if (level > 0.12) this.emitted.skid++;
       const n = tel.normal;
       this.skids.wheel(w, level > 0.12 ? level : 0, wheel.surface, wheel.x + n.x * 0.03, wheel.ground + n.y * 0.03, wheel.z + n.z * 0.03, n.x, n.y, n.z);
     }
+    if (!this.particlesOn) return;
     if (skid > 0.08) {
       for (let k = this.rate("smoke", 55 * skid * 2, dt); k > 0; k--) {
         const wheel = rear[k % 2]!;
@@ -456,6 +460,7 @@ export class Effects {
 
   /** Réception d'un saut : couronne de poussière, d'autant plus grande que l'impact est fort ∈ [0, 1]. */
   landing(x: number, y: number, z: number, strength: number) {
+    if (!this.particlesOn) return;
     const n = Math.round(10 + 22 * strength * QUALITY_RATE[this.quality]);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2;
@@ -467,6 +472,7 @@ export class Effects {
 
   /** Point de contrôle : gerbe d'étincelles bleues et blanches autour de la voiture. */
   checkpoint(x: number, y: number, z: number) {
+    if (!this.particlesOn) return;
     const n = Math.round(46 * QUALITY_RATE[this.quality]) + 8;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2;
@@ -478,6 +484,7 @@ export class Effects {
 
   /** Arrivée : une pluie de confettis autour de la voiture. */
   confetti(x: number, y: number, z: number) {
+    if (!this.particlesOn) return;
     const n = Math.round(150 * QUALITY_RATE[this.quality]) + 20;
     for (let i = 0; i < n; i++) {
       const [r, g, b] = rgb(CONFETTI[i % CONFETTI.length]!);

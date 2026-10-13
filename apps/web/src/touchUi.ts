@@ -1,3 +1,4 @@
+import { el as makeEl, row, segmented, slider, type Control } from "./dom";
 import { isTyping } from "./input";
 import {
   buttonRects,
@@ -27,13 +28,11 @@ export interface TouchHooks {
   onRestart(): void;
   /** Caméra suivante (proche, loin, capot). */
   onCamera(): void;
-  /** Ouvre la fenêtre du code de transfert (lot 28) : un bouton en bas des réglages tactiles. */
-  onTransfer?(): void;
+  /** Ouvre les réglages (lot 29 : un seul panneau, onglet « Commandes »). */
+  onSettings(): void;
 }
 
 export interface TouchUi {
-  /** La fenêtre des réglages est ouverte (le jeu se met alors en pause). */
-  settingsOpen(): boolean;
   /** Montre l'état de pause sur le bouton. */
   setPaused(paused: boolean): void;
   /** Redessine les aides (après un changement de réglage, d'écran ou de phase). */
@@ -81,11 +80,48 @@ async function toggleFullscreen(): Promise<void> {
   }
 }
 
+/**
+ * Réglages des commandes tactiles (mode de direction, taille des boutons, sensibilité, zone morte, accélérateur, vibration), appliqués tout de
+ * suite et mémorisés (`cdj:touch`). Montés dans Réglages › Commandes ; `onChange` redessine les aides à l'écran.
+ */
+export function touchSettingsControls(pad: TouchPad, onChange: () => void): Control {
+  const apply = (patch: Partial<TouchSettings>) => {
+    Object.assign(pad.settings, patch);
+    saveTouchSettings(pad.settings);
+    pad.releaseAll();
+    sync();
+    onChange();
+  };
+  const steerMode = segmented<TouchSettings["steerMode"]>([["drag", "Glisser"], ["buttons", "Boutons ← →"]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }), "Direction");
+  const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${v.toFixed(2)}`, "Sensibilité");
+  const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${Math.round(v * 100)} %`, "Zone morte");
+  const throttle = segmented<boolean>([[false, "Bouton gaz"], [true, "Automatique"]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }), "Accélérateur");
+  const size = segmented<ButtonSize>([["small", "Petits"], ["medium", "Moyens"], ["large", "Grands"]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }), "Taille des boutons");
+  const vibration = segmented<boolean>([[true, "Oui"], [false, "Non"]], () => pad.settings.vibration, (v) => apply({ vibration: v }), "Vibration");
+  const reset = makeEl("button", "btn small", "Réglages tactiles par défaut");
+  reset.type = "button";
+  reset.addEventListener("click", () => apply({ ...DEFAULT_TOUCH_SETTINGS }));
+  const box = makeEl("div", "touchset");
+  box.append(
+    row("Direction", steerMode.box, "Glisser le pouce, ou deux boutons ◀ ▶."),
+    row("Taille des boutons", size.box),
+    row("Sensibilité", sensitivity.box, "Glisser : plus c'est haut, moins il faut de mouvement."),
+    row("Zone morte", deadzone.box),
+    row("Accélérateur", throttle.box, "Automatique : la voiture accélère seule, tu ne touches que le frein."),
+    row("Vibration", vibration.box, "Au point de contrôle et aux chocs, si ton téléphone sait vibrer."),
+    reset,
+  );
+  function sync() {
+    for (const c of [steerMode, size, sensitivity, deadzone, throttle, vibration]) c.sync();
+  }
+  sync();
+  return { box, sync };
+}
+
 /** Construit l'interface tactile dans les conteneurs de la page et branche les doigts sur `pad`. */
 export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const zone = document.getElementById("touch")!;
   const bar = document.getElementById("tbar")!;
-  const panel = document.getElementById("tsettings")!;
   const rotate = document.getElementById("rotate")!;
 
   // --- Aides à l'écran (aucune ne reçoit de toucher : tout passe par `zone`) ------------------------
@@ -240,111 +276,9 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     pauseBtn,
     button("respawn", "↺", "Recommencer au dernier point de contrôle", () => hooks.onRespawn()),
     button("restart", "⟲", "Recommencer depuis le départ", () => hooks.onRestart()),
-    button("gear", "⚙", "Réglages des commandes", () => setSettingsOpen(true)),
+    button("gear", "⚙", "Réglages", () => hooks.onSettings()),
     full,
   );
-
-  // --- Réglages -----------------------------------------------------------------------------------
-  const apply = (patch: Partial<TouchSettings>) => {
-    Object.assign(pad.settings, patch);
-    saveTouchSettings(pad.settings);
-    pad.releaseAll();
-    renderSettings();
-    layout();
-    render();
-  };
-  const row = (label: string, ...controls: HTMLElement[]) => {
-    const r = el("div", "row");
-    r.append(el("span", "label", label), ...controls);
-    return r;
-  };
-  const segmented = <T extends string | boolean>(options: [T, string][], current: () => T, set: (v: T) => void) => {
-    const box = el("div", "seg");
-    const buttons = options.map(([value, label]) => {
-      const b = el("button", "", label);
-      b.type = "button";
-      b.addEventListener("click", () => {
-        b.blur();
-        set(value);
-      });
-      box.append(b);
-      return [value, b] as const;
-    });
-    return { box, sync: () => buttons.forEach(([v, b]) => b.classList.toggle("on", v === current())) };
-  };
-  const slider = (range: { min: number; max: number; step: number }, get: () => number, set: (v: number) => void, format: (v: number) => string) => {
-    const wrap = el("div", "slider");
-    const input = el("input");
-    input.type = "range";
-    input.min = String(range.min);
-    input.max = String(range.max);
-    input.step = String(range.step);
-    const value = el("span", "value");
-    input.addEventListener("input", () => set(Number(input.value)));
-    input.addEventListener("change", () => input.blur());
-    wrap.append(input, value);
-    return {
-      wrap,
-      sync: () => {
-        input.value = String(get());
-        value.textContent = format(get());
-      },
-    };
-  };
-
-  const steerMode = segmented<TouchSettings["steerMode"]>([["drag", "Glisser"], ["buttons", "Boutons ← →"]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }));
-  const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${v.toFixed(2)}`);
-  const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${Math.round(v * 100)} %`);
-  const throttle = segmented<boolean>([[false, "Bouton gaz"], [true, "Automatique"]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }));
-  const size = segmented<ButtonSize>([["small", "Petits"], ["medium", "Moyens"], ["large", "Grands"]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }));
-  const vibration = segmented<boolean>([[true, "Oui"], [false, "Non"]], () => pad.settings.vibration, (v) => apply({ vibration: v }));
-  const reset = el("button", "reset", "Par défaut");
-  reset.type = "button";
-  reset.addEventListener("click", () => apply({ ...DEFAULT_TOUCH_SETTINGS }));
-  const close = el("button", "close", "✕");
-  close.type = "button";
-  close.setAttribute("aria-label", "Fermer");
-  close.addEventListener("click", () => setSettingsOpen(false));
-
-  const head = el("div", "head");
-  const tools = el("div", "tools");
-  tools.append(reset, close);
-  head.append(el("div", "title", "Commandes tactiles"), tools);
-  const inner = el("div", "panel");
-  inner.append(
-    head,
-    row("Direction", steerMode.box),
-    row("Taille des boutons", size.box),
-    row("Sensibilité", sensitivity.wrap),
-    row("Zone morte", deadzone.wrap),
-    row("Accélérateur", throttle.box),
-    row("Vibration", vibration.box),
-  );
-  if (hooks.onTransfer) {
-    const transfer = el("button", "reset", "Code de transfert…");
-    transfer.type = "button";
-    transfer.id = "touch-transfer";
-    transfer.style.cssText = "margin-top:10px;width:100%;min-height:44px";
-    transfer.addEventListener("click", () => {
-      setSettingsOpen(false);
-      hooks.onTransfer?.();
-    });
-    inner.append(transfer);
-  }
-  panel.replaceChildren(inner);
-  panel.addEventListener("click", (e) => {
-    if (e.target === panel) setSettingsOpen(false);
-  });
-
-  function renderSettings() {
-    for (const c of [steerMode, size, sensitivity, deadzone, throttle, vibration]) c.sync();
-  }
-  function setSettingsOpen(open: boolean) {
-    panel.hidden = !open;
-    pad.releaseAll();
-    renderSettings();
-    render();
-  }
 
   // --- Invitation à tourner le téléphone (portrait) ----------------------------------------------
   const card = el("div", "card");
@@ -354,11 +288,9 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   card.append(el("div", "icon", "📱"), el("div", "", "Tourne ton téléphone : on conduit mieux en paysage."), dismiss);
   rotate.replaceChildren(card);
 
-  renderSettings();
   layout();
   render();
   return {
-    settingsOpen: () => !panel.hidden,
     setPaused(paused) {
       pauseBtn.textContent = paused ? "▶" : "⏸";
       pauseBtn.title = paused ? "Reprendre" : "Pause";

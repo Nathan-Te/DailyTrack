@@ -78,6 +78,7 @@ export class Controls {
   private pauseLatch = false;
   private padRespawnHeld = false;
   private padRestartHeld = false;
+  private padPauseHeld = false;
   private padCameraHeld = false;
 
   /** `touch` : l'interface tactile, si elle est active — ses axes s'ajoutent à ceux du clavier et de la manette. */
@@ -112,13 +113,17 @@ export class Controls {
     const pad = navigator.getGamepads?.().find((p): p is Gamepad => !!p && p.connected);
     const g = pad ? gamepadAxes(pad) : { steer: 0, throttle: 0, brake: 0 };
 
-    // Manette : Y = dernier point de contrôle, Start = depuis le départ (sur front montant).
+    // Manette : Y = dernier point de contrôle, X = depuis le départ, Start = pause (sur front montant). Avant le lot 29, Start recommençait :
+    // il ouvre maintenant le menu de pause, qui propose « Recommencer ».
     const padRespawn = !!pad && (pad.buttons[3]?.pressed ?? false);
-    const padRestart = !!pad && (pad.buttons[9]?.pressed ?? false);
+    const padRestart = !!pad && (pad.buttons[2]?.pressed ?? false);
+    const padPause = !!pad && (pad.buttons[9]?.pressed ?? false);
     if (padRespawn && !this.padRespawnHeld) this.respawnLatch = true;
     if (padRestart && !this.padRestartHeld) this.restartLatch = true;
+    if (padPause && !this.padPauseHeld) this.pauseLatch = true;
     this.padRespawnHeld = padRespawn;
     this.padRestartHeld = padRestart;
+    this.padPauseHeld = padPause;
     // Vue/Select (bouton 8) : caméra suivante.
     const padCamera = !!pad && (pad.buttons[8]?.pressed ?? false);
     if (padCamera && !this.padCameraHeld) this.cameraLatch = true;

@@ -45,7 +45,7 @@ export interface Arena {
   /** Décor allégé (qualité basse) : sans effet ici, il n'y a pas de décor. */
   setLite(on: boolean): void;
   /** Qualité, ambiance, halos, ombres et phares (lot 23) : sans objet ici (pas de décor). */
-  setQuality(level: 0 | 1 | 2): void;
+  setQuality(level: 0 | 1 | 2, shadows?: boolean): void;
   look: Look;
   setView(heightPx: number, fovDeg: number): void;
   followCar(x: number, y: number, z: number, yaw: number, hood?: boolean): void;

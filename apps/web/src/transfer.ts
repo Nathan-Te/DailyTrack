@@ -5,6 +5,7 @@
 // Forme : `CDJ1.<charge utile en base64url>.<somme de contrôle sur 8 hexadécimaux>`. La charge est un JSON ; la somme de contrôle (CRC-32 des
 // octets de la charge) détecte une copie tronquée ou une faute de frappe avant qu'on remplace quoi que ce soit.
 import { decodeReplay } from "@cdj/sim";
+import { RANK_PREFIX, clearRanks, loadRanks, parseRank, type RankMark } from "./profile";
 
 export const TRANSFER_PREFIX = "CDJ1";
 const ID_KEY = "cdj:player";
@@ -34,6 +35,8 @@ export interface TransferData {
   best: Record<string, TransferRecord>;
   /** Meilleur temps confirmé par le serveur, par identifiant de circuit (évite de renvoyer ce qui est déjà classé). */
   sub: Record<string, number>;
+  /** Places vues au classement, par jour (lot 29 : pour « meilleure place » du profil). Facultatif : un code plus ancien n'en a pas. */
+  ranks?: Record<string, RankMark>;
 }
 
 type ReadStorage = Pick<Storage, "length" | "key" | "getItem">;
@@ -118,7 +121,8 @@ export function collectTransfer(storage: ReadStorage): TransferData | null {
     if (r.replay && !recent.has(trackId) && !pending) best[trackId] = { ...r, replay: undefined };
   }
   const name = storage.getItem(NAME_KEY);
-  return { id, name: name && name.length ? name : null, best, sub };
+  const ranks = Object.fromEntries(loadRanks(storage));
+  return { id, name: name && name.length ? name : null, best, sub, ...(Object.keys(ranks).length ? { ranks } : {}) };
 }
 
 // --- Encodage ---------------------------------------------------------------------------------------------------------------------
@@ -178,7 +182,12 @@ export function decodeTransfer(input: string): DecodeResult {
   for (const [trackId, ms] of Object.entries((raw.sub ?? {}) as Record<string, unknown>)) {
     if (DAY_TRACK.test(trackId) && finiteInt(ms, 1, 3_600_000)) sub[trackId] = ms;
   }
-  return { ok: true, data: { id: raw.id, name, best, sub } };
+  const ranks: Record<string, RankMark> = {};
+  for (const [date, value] of Object.entries((raw.ranks ?? {}) as Record<string, unknown>)) {
+    const mark = /^\d{4}-\d{2}-\d{2}$/.test(date) ? parseRank(value) : null;
+    if (mark) ranks[date] = mark;
+  }
+  return { ok: true, data: { id: raw.id, name, best, sub, ...(Object.keys(ranks).length ? { ranks } : {}) } };
 }
 
 // --- Application -------------------------------------------------------------------------------------------------------------------
@@ -192,11 +201,13 @@ export function applyTransfer(data: TransferData, storage: WriteStorage): boolea
   try {
     for (const k of keysWith(storage, BEST)) if (DAY_TRACK.test(k)) storage.removeItem(BEST + k);
     for (const k of keysWith(storage, SUB)) if (DAY_TRACK.test(k)) storage.removeItem(SUB + k);
+    clearRanks(storage);
     storage.setItem(ID_KEY, data.id);
     if (data.name) storage.setItem(NAME_KEY, data.name);
     else storage.removeItem(NAME_KEY);
     for (const [trackId, r] of Object.entries(data.best)) storage.setItem(BEST + trackId, JSON.stringify(r));
     for (const [trackId, ms] of Object.entries(data.sub)) storage.setItem(SUB + trackId, String(ms));
+    for (const [date, mark] of Object.entries(data.ranks ?? {})) storage.setItem(RANK_PREFIX + date, JSON.stringify(mark));
     return true;
   } catch {
     return false;

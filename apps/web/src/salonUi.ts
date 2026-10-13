@@ -1,4 +1,8 @@
-import { formatDelta, formatTime } from "./format";
+import type { BoardLine } from "./boardView";
+import { linesEls } from "./boardView";
+import type { BoardPanel } from "./boardPanel";
+import { formatTime } from "./format";
+import { disambiguateNames } from "./profile";
 import type { SalonBoard, SalonRow } from "./salonApi";
 import { podiumRows } from "./salon";
 
@@ -23,25 +27,37 @@ export function visibleRows(board: Pick<SalonBoard, "rows">): (SalonRow | "gap")
   return out;
 }
 
-/** Remplit le panneau de classement de la session (`#board`). */
-export function renderSalonBoard(box: HTMLElement, board: SalonBoard | null, label: string, watchHref?: string): void {
-  const title = el("div", "title");
-  box.classList.add("salon");
+/** En course, le classement tient dans un coin : les cinq premiers, puis ton entourage (une place avant, une après). */
+export const BOARD_COMPACT_TOP = 5;
+/** Sur petit écran (téléphone), le coin est plus petit encore : trois lignes. */
+const compactTop = (): number => (typeof matchMedia === "function" && matchMedia("(max-width: 900px), (max-height: 520px)").matches ? 3 : BOARD_COMPACT_TOP);
+
+export function compactRows(board: Pick<SalonBoard, "rows" | "me">, top = compactTop()): SalonRow[] {
+  const near = (r: SalonRow) => board.me !== null && Math.abs(r.rank - board.me.rank) <= 1;
+  return [...board.rows].filter((r) => r.rank <= top || near(r)).sort((a, b) => a.rank - b.rank);
+}
+
+/** Remplit le panneau de classement de la session (`#board`) : ta ligne marquée « toi », les pseudos en double suffixés. */
+export function renderSalonBoard(panel: BoardPanel, board: SalonBoard | null, label: string, watchHref?: string): void {
+  panel.root.classList.add("salon");
   if (!board) {
-    title.textContent = `Salon ${label} · classement en chargement…`;
-    box.replaceChildren(title);
+    panel.setTitle(`Salon ${label} · classement en chargement…`);
+    panel.body.replaceChildren();
     return;
   }
-  title.textContent = board.participants === 0 ? `Salon ${label} · personne n'a encore de temps` : `Salon ${label} · ${board.participants} classé${board.participants > 1 ? "s" : ""} · ${board.players} présent${board.players > 1 ? "s" : ""}`;
-  const rows = visibleRows(board).map((r) => {
-    if (r === "gap") return el("div", "gap", "…");
-    const d = el("div", r.mine ? "row me" : "row");
-    d.append(el("span", "rank", String(r.rank)), el("span", "who", r.name), el("span", "time", formatTime(r.ms)), el("span", "icon", r.rank === 1 ? "" : formatDelta(r.gap)));
-    return d;
+  panel.setTitle(board.participants === 0 ? `Salon ${label} · personne n'a encore de temps` : `Salon ${label} · ${board.participants} classé${board.participants > 1 ? "s" : ""} · ${board.players} présent${board.players > 1 ? "s" : ""}`);
+  const rows = compactRows(board);
+  const names = disambiguateNames(rows.map((r) => r.name));
+  const lines: (BoardLine | "gap")[] = [];
+  let last = 0;
+  rows.forEach((r, i) => {
+    if (last > 0 && r.rank > last + 1) lines.push("gap");
+    lines.push({ rank: r.rank, name: names[i]!, ms: r.ms, medal: null, me: !!r.mine, ...(r.rank === 1 ? {} : { gap: r.gap }) });
+    last = r.rank;
   });
   // Revoir le meilleur tour de la session en cours (lot 27b).
   const link = board.participants > 0 && watchHref ? [Object.assign(el("a", "watchlink", "▶ Revoir le meilleur tour"), { href: watchHref })] : [];
-  box.replaceChildren(title, ...rows, ...link);
+  panel.body.replaceChildren(...linesEls(lines), ...link);
 }
 
 export interface PodiumView {
