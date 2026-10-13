@@ -24,7 +24,7 @@
 - **Réveil** (image Docker contre `sqld`, 5 démarrages) : processus prêt en **75–85 ms**, schéma reconnu en **35–47 ms** (une lecture), première réponse de `/api/health` **0,37–0,42 s** `docker run` compris. Sur Cloud Run s'y ajoutent le démarrage du conteneur et l'aller-retour vers Turso : compter **1 à 2 s** pour la première requête après un repos (seed § 7).
 - **Première requête qui génère** : circuit du jour **0,5 s** (une fois par jour), circuit d'une session du Salon **0,3–0,5 s** (au premier envoi de chaque session, qui paie donc la génération en plus du rejeu).
 - **Mémoire** : 16 Mo au repos, **43 Mo** après un circuit généré et deux rejeux (d'où 512 Mo : très large).
-- **Coût d'un rejeu (même machine, alterné, 40 rejeux, avant = `main`, après = ce lot)** : R_OLD ms → R_NEW ms (`replayRace`, code de `sim` identique : seule la constante `PREMIER_JOUR` change). Requête `submit` complète : 25–40 ms de calcul.
+- **Coût d'un rejeu (même machine, alterné, 40 rejeux, avant = `main`, après = ce lot)** : **12,1 ms → 12,3 ms** par `decodeReplay` + `replayRace` d'une course de 39 s (trois passages alternés de 40 rejeux : 12,1 / 13,2 / 11,2 ms avant, 11,9 / 12,8 / 12,2 ms après : le bruit entre passages dépasse l'écart ; code de `sim` identique, seule la constante `PREMIER_JOUR` change). Requête `submit` complète : 25–40 ms de calcul.
 
 ### Budget d'un joueur (`npm run measure:budget`, `rows_read` / `rows_written` de `sqld` = ce que facture Turso)
 | Requête | instr. SQL | lignes lues | écrites | calcul |
