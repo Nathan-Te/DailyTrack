@@ -98,6 +98,7 @@ echo "GCP_PROJECT_ID                 = $PROJECT_ID"
 ```
 
    - **Tu dois voir** à la fin trois lignes, dont `GCP_WORKLOAD_IDENTITY_PROVIDER = projects/123456789012/locations/global/workloadIdentityPools/github/providers/github-repo`. **Copie ces trois lignes dans un bloc-notes** : tu en as besoin à l'étape 4.
+   - **Pièges** : la valeur à recopier est **ce qui suit le `= `** (pas le nom `GCP_WORKLOAD_IDENTITY_PROVIDER =`), elle commence par `projects/` suivi du **numéro** du projet (12 chiffres, **pas** son identifiant `circuit-du-jour-123456`), sans espace ni guillemets ni retour à la ligne autour, et sans `//iam.googleapis.com/` devant. Si la dernière commande affiche une erreur au lieu d'une ligne `projects/…`, le fournisseur n'existe pas : reprends les commandes `workload-identity-pools` plus haut.
 
 > **Si tu préfères une clé JSON** (moins sûr, une clé qui ne périme jamais) : crée-la avec `gcloud iam service-accounts keys create /tmp/cle.json --iam-account="$DEPLOY_SA"`, colle son contenu dans le secret GitHub `GCP_SA_KEY`, **supprime le fichier**, et saute les secrets `GCP_WORKLOAD_IDENTITY_PROVIDER` / `GCP_SERVICE_ACCOUNT`. La fédération ci-dessus est conseillée.
 
@@ -206,6 +207,7 @@ Sur GitHub : dépôt `DailyTrack` → **Settings** → **Secrets and variables**
 | Symptôme | Cause probable | Quoi faire |
 |---|---|---|
 | Le workflow dit « Déploiement de l'API ignoré » | une variable ou un secret manque | le résumé liste ce qui manque ; étape 4 |
+| Échec à l'authentification Google : `Invalid value for "audience"` (« this value should be the full resource name of the Identity Provider ») | le secret `GCP_WORKLOAD_IDENTITY_PROVIDER` n'est pas le nom complet du fournisseur (identifiant de projet au lieu du **numéro**, nom de la variable collé avec la valeur, espace ou guillemets autour, `//iam.googleapis.com/` en trop) | dans Cloud Shell : `gcloud iam workload-identity-pools providers describe github-repo --location=global --workload-identity-pool=github --project="$PROJECT_ID" --format='value(name)'` ; recopie **exactement** la ligne `projects/123…/providers/github-repo` dans le secret (GitHub → Settings → Secrets and variables → Actions → `GCP_WORKLOAD_IDENTITY_PROVIDER` → Update), puis Actions → Deploy API → **Run workflow** (le workflow vérifie maintenant la forme de ce secret et le dit clairement) |
 | Échec à l'authentification Google (`Unable to acquire impersonated credentials`) | fédération mal reliée ; nom du dépôt différent | refaire l'étape 2.6 avec le bon `GITHUB_REPO` (majuscules comprises) ; vérifier le secret `GCP_SERVICE_ACCOUNT` |
 | `Permission denied on secret …` au déploiement | le compte d'exécution ne peut pas lire un secret | refaire l'étape 3b.4 |
 | `Image … not found` ou refus à la poussée de l'image | dépôt Artifact Registry absent ou région différente | étape 2.4 ; `GCP_REGION` doit être celle du dépôt |

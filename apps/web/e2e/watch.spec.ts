@@ -7,7 +7,7 @@ import { boxes, expectNoOverlap } from "./layout";
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(180_000);
 
-const DAY = "2026-09-30";
+const DAY = "2026-10-21"; // un jour du jeu de démonstration (du 13/10 au 26/10/2026)
 const DAY_URL = `/?api=demo&day=${DAY}&watch=best&debug`;
 const ready = (page: Page) => page.waitForFunction(() => window.__cdj?.watch, undefined, { timeout: 60_000 });
 const state = (page: Page) => page.evaluate(() => window.__cdj.watch!);

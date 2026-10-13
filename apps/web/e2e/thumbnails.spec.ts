@@ -89,7 +89,7 @@ test("archives de démonstration : les 15 miniatures apparaissent au défilement
   // La ligne garde ses informations (numéro, date, thème, médailles, pilotes) à côté de l'image.
   const first = page.locator("#archive .day").nth(1);
   await expect(first).toContainText("#14");
-  await expect(first).toContainText("2026-10-05");
+  await expect(first).toContainText("2026-10-26");
   await expect(first.locator(".sub")).toContainText("pilotes");
   test.info().annotations.push({
     type: "mesure",
@@ -160,7 +160,7 @@ test("sans WebGL le tracé 2D prend le relais, aux couleurs du thème", async ({
 });
 
 test("ouvrir un jour : sa miniature s'affiche pendant le décompte, et disparaît au départ", async ({ page }) => {
-  await page.goto("/?api=demo&day=2026-09-30&debug");
+  await page.goto("/?api=demo&day=2026-10-21&debug");
   await page.waitForFunction(() => window.__cdj?.manual && (window.__cdj.manual(true), true), undefined, { timeout: 30_000 }); // décompte figé
   const card = page.locator("#daycard img");
   await expect(card).toBeVisible({ timeout: 60_000 });

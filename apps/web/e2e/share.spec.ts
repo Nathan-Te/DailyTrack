@@ -98,12 +98,15 @@ test.describe("archives", () => {
   });
 
   test("un jour passé se joue sans envoyer de temps au classement", async ({ page }) => {
-    const past = "2026-10-28";
+    // Le serveur réel (heure réelle) refuse un jour futur et un jour d'avant le premier : le seul jour passé sûr, quelle que soit la date
+    // du test, est le premier jour (13/10/2026) ; « aujourd'hui » du jeu est le lendemain.
+    const past = "2026-10-13";
+    const today = "2026-10-14";
     const c = dailyCircuit(Math.floor(Date.parse(past) / 86_400_000));
     const pastCode = encodeReplay(runPilot(c.track, { grip: 0.9 }).replay);
     let submissions = 0;
     page.on("request", (r) => r.url().includes("/api/submit") && submissions++);
-    await page.goto(`/?debug&timescale=6&today=${TODAY}&seed=${past}&api=${encodeURIComponent("http://127.0.0.1:8787")}`);
+    await page.goto(`/?debug&timescale=6&today=${today}&seed=${past}&api=${encodeURIComponent("http://127.0.0.1:8787")}`);
     await page.waitForFunction(() => window.__cdj?.phase);
     await page.evaluate((cc) => window.__cdj.autoplay(cc), pastCode);
     await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
