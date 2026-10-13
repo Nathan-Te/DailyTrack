@@ -34,7 +34,7 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
   await page.goto("/?api=demo&debug");
   await ready(page);
   await page.keyboard.press("KeyH");
-  await page.locator("#archive .day", { hasText: "2026-09-30" }).click();
+  await page.locator("#archive .day", { hasText: "2026-09-30" }).locator(".date").click(); // (le centre de la ligne peut tomber sur « Revoir le meilleur tour »)
   await page.waitForURL(/seed=2026-09-30/);
   expect(new URL(page.url()).searchParams.get("api")).toBe("demo"); // le mode démo suit
   await ready(page);

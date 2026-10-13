@@ -19,7 +19,7 @@ test("le mode spectateur : voiture du premier, pseudo, barre de lecture", async 
   for (let i = 0; i < 9; i++) await page.evaluate(() => window.__cdj.advance(120));
   await page.evaluate(() => window.__cdj.manual(false));
   await page.locator("#watch-play").click();
-  await page.locator("#watch-speed-0.5").click();
+  await page.locator("[data-speed=\"0.5\"]").click();
   await page.waitForTimeout(1500);
   await page.screenshot({ path: join(OUT, "lot-27b-spectateur.png") });
 });
