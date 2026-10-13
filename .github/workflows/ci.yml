@@ -37,3 +37,40 @@ jobs:
         with:
           name: playwright-results
           path: apps/web/test-results/
+
+  # Lot 28 : l'image Docker de l'API (celle de Cloud Run) démarre contre un vrai serveur libSQL (le protocole de Turso), répond à /api/health,
+  # sert un temps du jour et du Salon rejoués par le serveur, et refuse de démarrer avec SALON_MINUTES.
+  api-image:
+    runs-on: ubuntu-latest
+    services:
+      libsql:
+        # sqld, le serveur de Turso (épinglé par son empreinte ; à renouveler de temps en temps).
+        image: ghcr.io/tursodatabase/libsql-server@sha256:6dd3eb276d9d3604e4a48ac4a999a2e267814732d57d7e94c04ba71482333a67
+        ports:
+          - 8081:8080
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci -w @cdj/api --ignore-scripts
+      - name: Construire l'image
+        run: docker build -f apps/api/Dockerfile -t cdj-api .
+      - name: Démarrage refusé avec SALON_MINUTES (production)
+        run: |
+          set +e
+          docker run --rm -e SALON_MINUTES=2 -e ALLOWED_ORIGINS='*' -e RATE_SALT=un-sel-de-test-assez-long cdj-api
+          code=$?
+          [ "$code" = "1" ] || { echo "attendu : sortie 1, obtenu $code"; exit 1; }
+      - name: Démarrer l'image contre libSQL
+        run: |
+          docker run -d --name cdj --network host -e PORT=8090 -e TURSO_DATABASE_URL=http://127.0.0.1:8081 \
+            -e ALLOWED_ORIGINS=https://nathan-te.github.io -e RATE_SALT=un-sel-de-test-assez-long -e TRUST_PROXY=1 cdj-api
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8090/api/health && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8090/api/health | jq -e '.ok == true and .db == "ok" and .salonOverride == false'
+      - name: Essai de bout en bout (temps du jour, Salon)
+        run: npm run smoke -w @cdj/api -- http://127.0.0.1:8090 --origin https://nathan-te.github.io
+      - name: Journaux du conteneur
+        if: always()
+        run: docker logs cdj

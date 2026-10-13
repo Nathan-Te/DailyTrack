@@ -4,8 +4,7 @@ import { formatDay } from "@cdj/sim";
 import { createApi } from "../src/api";
 import { SCHEMA } from "../src/db";
 import { createNodeServer } from "../src/node-server";
-import { openSqlite } from "../src/node-sqlite";
-import { DAY, NOON, circuitOf, pilotReplay, playerId } from "./helpers";
+import { DAY, NOON, circuitOf, openTestDb, pilotReplay, playerId } from "./helpers";
 
 // Le vrai serveur HTTP Node (celui du conteneur Docker), de bout en bout : deux « appareils », deux temps, un classement.
 const DATE = formatDay(DAY);
@@ -16,7 +15,7 @@ let base = "";
 let close: () => Promise<void>;
 
 beforeAll(async () => {
-  const db = openSqlite(":memory:");
+  const db = await openTestDb();
   for (const sql of SCHEMA) await db.run(sql);
   const c = circuitOf(DAY);
   await db.run("INSERT INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [DAY, c.track.id, c.spec, c.authorMs, c.attempt, c.palette, NOON]);

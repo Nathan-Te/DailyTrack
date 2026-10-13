@@ -4,16 +4,19 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "build:node": "esbuild src/server.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/server.mjs",
+    "build:node": "node scripts/build-node.mjs",
     "start": "node dist/server.mjs",
     "dev:worker": "wrangler dev",
     "deploy:worker": "wrangler deploy",
     "measure:generator": "esbuild scripts/measure-generator.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-generator.mjs && node dist/measure-generator.mjs",
     "measure:salon": "esbuild scripts/measure-salon.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-salon.mjs && NODE_NO_WARNINGS=1 node dist/measure-salon.mjs",
+    "smoke": "esbuild scripts/smoke.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/smoke.mjs --log-level=warning && node dist/smoke.mjs",
+    "measure:budget": "esbuild scripts/measure-budget.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-budget.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-budget.mjs",
     "history:seed": "esbuild scripts/history-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/history-seed.mjs && node dist/history-seed.mjs"
   },
   "dependencies": {
-    "@cdj/sim": "*"
+    "@cdj/sim": "*",
+    "@libsql/client": "^0.18.0"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

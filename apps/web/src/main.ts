@@ -76,6 +76,7 @@ import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName, setName, getName } from "./identity";
+import { mountTransferUi } from "./transferUi";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
 import { mountTouchUi } from "./touchUi";
@@ -335,6 +336,7 @@ function mountDrivingTouch() {
     onRespawn: () => controls.requestRespawn(),
     onRestart: () => controls.requestRestart(),
     onCamera: () => cycleCamera(),
+    onTransfer: () => settingsUi.open(),
   });
   touchUi.setPaused(paused);
 }
@@ -363,6 +365,9 @@ function setPaused(value: boolean) {
   touchUi?.setPaused(paused);
 }
 $("pause-resume").addEventListener("click", () => setPaused(false));
+// Fenêtre « Réglages » (lot 28) : le code de transfert. Ouverte depuis la pause (ou les réglages tactiles) ; elle gèle le jeu comme les archives.
+const settingsUi = mountTransferUi($("settings"));
+$("pause-settings").addEventListener("click", () => settingsUi.open());
 $("pause-restart").addEventListener("click", () => controls.requestRestart());
 let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
 // Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
@@ -1344,7 +1349,7 @@ function stepOnce(input: CarInput) {
  * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
  */
 function isFrozen(): boolean {
-  return paused || !hudArchive.hidden || (touchMode && !!touchUi?.settingsOpen()) || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
+  return paused || !hudArchive.hidden || settingsUi.isOpen() || (touchMode && !!touchUi?.settingsOpen()) || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
 
 function frame(now: number) {

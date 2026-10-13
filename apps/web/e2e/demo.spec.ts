@@ -34,14 +34,14 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
   await page.goto("/?api=demo&debug");
   await ready(page);
   await page.keyboard.press("KeyH");
-  await page.locator("#archive .day", { hasText: "2026-09-30" }).locator(".date").click(); // (le centre de la ligne peut tomber sur « Revoir le meilleur tour »)
-  await page.waitForURL(/seed=2026-09-30/);
+  await page.locator("#archive .day", { hasText: "2026-10-21" }).locator(".date").click(); // (le centre de la ligne peut tomber sur « Revoir le meilleur tour »)
+  await page.waitForURL(/seed=2026-10-21/);
   expect(new URL(page.url()).searchParams.get("api")).toBe("demo"); // le mode démo suit
   await ready(page);
-  await expect(page.locator("#meta")).toContainText("2026-09-30");
+  await expect(page.locator("#meta")).toContainText("2026-10-21");
   await expect(page.locator("#ghostinfo")).toContainText("premier : Démo", { timeout: 20_000 });
   await expect(page.locator("#board")).toBeVisible();
-  await expect(page.locator("#board .title")).toContainText("Classement figé · 2026-09-30");
+  await expect(page.locator("#board .title")).toContainText("Classement figé · 2026-10-21");
   expect(await page.locator("#board .row").count()).toBeGreaterThanOrEqual(8);
   await expect(page.locator("#board .row .who").first()).toContainText("Démo");
   // le fantôme roule : il a avancé pendant que le joueur ne touche à rien
@@ -50,9 +50,9 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
 });
 
 test("accès direct par ?day= : même jour, même classement figé", async ({ page }) => {
-  await page.goto("/?api=demo&day=2026-09-30&debug");
+  await page.goto("/?api=demo&day=2026-10-21&debug");
   await ready(page);
-  await expect(page.locator("#meta")).toContainText("2026-09-30");
+  await expect(page.locator("#meta")).toContainText("2026-10-21");
   await expect(page.locator("#ghostinfo")).toContainText("premier : Démo", { timeout: 20_000 });
   await expect(page.locator("#board .title")).toContainText("Classement figé");
 });
@@ -63,12 +63,12 @@ test("ton meilleur temps est placé dans la liste des archives (rang figé parmi
   // Un record local pour le 30/09 : 1 s, devant tous les pilotes de démonstration.
   await page.evaluate(async () => {
     const index = await fetch("demo/index.json").then((r) => r.json());
-    localStorage.setItem(`cdj:best:jour-2026-09-30-g${index.generatorVersion}`, JSON.stringify({ ms: 1000, splits: [], medal: "author", simVersion: index.simVersion }));
+    localStorage.setItem(`cdj:best:jour-2026-10-21-g${index.generatorVersion}`, JSON.stringify({ ms: 1000, splits: [], medal: "author", simVersion: index.simVersion }));
   });
   await page.reload();
   await ready(page);
   await page.keyboard.press("KeyH");
-  await expect(page.locator("#archive .day", { hasText: "2026-09-30" }).locator(".best")).toContainText("1ᵉʳ/", { timeout: 10_000 });
+  await expect(page.locator("#archive .day", { hasText: "2026-10-21" }).locator(".best")).toContainText("1ᵉʳ/", { timeout: 10_000 });
 });
 
 test("sans le mode démo, le jeu marche comme avant : pas de classement, pas de bandeau", async ({ page }) => {

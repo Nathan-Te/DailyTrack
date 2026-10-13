@@ -34,7 +34,8 @@ test("une date impossible est refusée", async ({ page }) => {
 test.describe("jeu (rendu 3D)", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 
-  for (const date of ["2026-10-06", "2026-10-07", "2026-10-08"]) {
+  // Deux dates d'avant le lancement (13/10/2026 : pas de numéro) et une d'après (numéro affiché).
+  for (const date of ["2026-10-06", "2026-10-07", "2026-12-25"]) {
     test(`?seed=${date} : le circuit se charge, se joue, et affiche son titre et ses médailles`, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(String(e)));
@@ -43,7 +44,8 @@ test.describe("jeu (rendu 3D)", () => {
       await page.goto(`/?debug&seed=${date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
       const expected = golden.circuits.find((c) => c.date === date)!;
-      await expect(page.locator("#meta")).toContainText(`#${expected.number}`);
+      if (expected.number >= 1) await expect(page.locator("#meta")).toContainText(`#${expected.number}`);
+      else await expect(page.locator("#meta")).not.toContainText("#");
       await expect(page.locator("#meta")).toContainText(date);
       await expect(page.locator("#medals")).toContainText("🥇");
 
@@ -58,7 +60,8 @@ test.describe("jeu (rendu 3D)", () => {
 
   test("trois dates donnent trois circuits différents", async ({ page }) => {
     const ids = new Set<string>();
-    for (const date of ["2026-10-06", "2026-10-07", "2026-10-08"]) {
+    // Deux dates d'avant le lancement (13/10/2026 : pas de numéro) et une d'après (numéro affiché).
+  for (const date of ["2026-10-06", "2026-10-07", "2026-12-25"]) {
       await page.goto(`/?debug&seed=${date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
       ids.add(await page.evaluate(() => (window.__cdj.race as { track: { id: string } }).track.id));

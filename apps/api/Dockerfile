@@ -1,15 +1,19 @@
-# Serveur du classement sur un serveur Docker. Depuis la racine du dépôt :
+# Serveur de l'API (classement, planning, Salon). Depuis la racine du dépôt :
 #   docker build -f apps/api/Dockerfile -t circuit-du-jour-api .
-#   docker run -d -p 8787:8787 -v cdj-data:/data -e TRUST_PROXY=1 -e RATE_SALT=<une-valeur-secrete> circuit-du-jour-api
-# Le Salon (lot 27) est servi par le même conteneur, sans rien de plus : sessions de 10 minutes, circuits préparés par une tâche interne.
-# Ne jamais régler SALON_MINUTES en production (tests et essais locaux seulement).
+# Cloud Run (production) : voir docs/mise-en-ligne.md. Il fournit PORT ; la base est Turso (TURSO_DATABASE_URL, TURSO_AUTH_TOKEN en secret),
+# les origines autorisées sont ALLOWED_ORIGINS. Essai local avec un serveur libSQL :
+#   docker run -p 8081:8080 ghcr.io/tursodatabase/libsql-server
+#   docker run -p 8080:8080 -e TURSO_DATABASE_URL=http://host.docker.internal:8081 -e ALLOWED_ORIGINS='*' circuit-du-jour-api
+# Sur un serveur à soi, sans Turso : SQLite dans le volume /data (`-v cdj-data:/data -e ALLOWED_ORIGINS=… -e TRUST_PROXY=1 -e RATE_SALT=…`).
+# SALON_MINUTES : jamais en production (le serveur refuse de démarrer avec elle).
 FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/sim/package.json packages/sim/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
-RUN npm ci
+# Seulement ce dont l'API a besoin (pas Three.js, pas Playwright) : une construction rapide.
+RUN npm ci -w @cdj/api --ignore-scripts
 COPY packages/sim packages/sim
 COPY apps/api apps/api
 RUN npm run build:node -w @cdj/api
@@ -17,8 +21,10 @@ RUN npm run build:node -w @cdj/api
 FROM node:22-slim
 WORKDIR /app
 COPY --from=build /app/apps/api/dist/server.mjs ./server.mjs
-ENV PORT=8787 DB_PATH=/data/cdj.sqlite NODE_NO_WARNINGS=1
+# Un seul fichier JavaScript : pas de node_modules à charger au réveil. Pas de variable GIT_SHA ici : le déploiement la pose.
+ENV NODE_ENV=production NODE_NO_WARNINGS=1 PORT=8080 DB_PATH=/data/cdj.sqlite
+RUN mkdir /data && chown node:node /data
 VOLUME /data
-EXPOSE 8787
+EXPOSE 8080
 USER node
 CMD ["node", "server.mjs"]

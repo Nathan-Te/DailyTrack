@@ -13,6 +13,7 @@ import {
 } from "@cdj/sim";
 import type { SqlDb } from "./db";
 import { HttpError } from "./errors";
+import type { Logger } from "./log";
 import { cleanName } from "./validate";
 
 // Le Salon côté serveur (lot 27) : il sert le contrat `SalonApi` du jeu (`apps/web/src/salonApi.ts`).
@@ -87,6 +88,8 @@ export interface SalonKit {
   limits: SalonLimits;
   /** Marque `demo` les joueurs créés (jamais réglé par le serveur de production). */
   demoPlayers: boolean;
+  /** Journal structuré (silencieux par défaut). */
+  log?: Logger;
 }
 
 export interface SalonRequestInfo {
@@ -163,7 +166,7 @@ export function createSalon(kit: SalonKit) {
       await db.run("DELETE FROM salon_throttle WHERE at < ?", [now() - 3_600_000]);
     } catch (e) {
       forgotten = before; // réessayé à la prochaine requête
-      console.error("Salon : oubli impossible :", e);
+      kit.log?.("ERROR", "salon : oubli impossible", { error: e instanceof Error ? e.message.slice(0, 200) : "inconnue" });
       return;
     }
     for (const session of [...circuits.keys()]) if (session <= closed) circuits.delete(session);
@@ -290,9 +293,8 @@ export function createSalon(kit: SalonKit) {
 
   /** Le classement de la session : les premiers, plus le voisin de devant et celui de derrière du joueur (le jeu en tire ses fantômes). */
   async function board(session: number, playerId: string | null, since?: number): Promise<SalonBoard> {
-    const version = await versionOf(session);
-    const players = await present();
-    const count = await participants(session);
+    // Trois lectures indépendantes : en parallèle (sur Turso chaque lecture est un aller-retour réseau, de l'ordre de la dizaine de ms).
+    const [version, players, count] = await Promise.all([versionOf(session), present(), participants(session)]);
     if (since !== undefined && since === version) {
       const me = playerId ? await myRow(session, playerId) : null;
       return { session, version, participants: count, players, rows: [], me, unchanged: true };
@@ -454,7 +456,7 @@ export function createSalon(kit: SalonKit) {
       await circuitFor(session);
       if (t >= salonSessionEnd(session, sessionMs) - PREPARE_AHEAD_MS) await circuitFor(session + 1);
     } catch (e) {
-      console.error("Salon : entretien impossible :", e);
+      kit.log?.("ERROR", "salon : entretien impossible", { error: e instanceof Error ? e.message.slice(0, 200) : "inconnue" });
     }
   }
 

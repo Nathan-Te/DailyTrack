@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/test-results
+.git
+.github
+docs
+apps/web
+!apps/web/package.json
+*.log

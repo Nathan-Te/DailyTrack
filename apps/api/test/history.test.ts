@@ -2,14 +2,13 @@ import { describe, expect, it } from "vitest";
 import { PREMIER_JOUR, SIM_VERSION, formatDay, medalFor, medalsFor, replayRace, decodeReplay, dailyCircuit } from "@cdj/sim";
 import { assertDemoOnly, runFictional, seedHistory, styleFor } from "../src/history";
 import { createApi } from "../src/api";
-import { openSqlite } from "../src/node-sqlite";
-import { DAY, NOON, circuitOf, playerId, pilotReplay } from "./helpers";
+import { DAY, NOON, circuitOf, openTestDb, playerId, pilotReplay } from "./helpers";
 
 // Historique de pilotes fictifs (lot 11) : leurs courses passent par le même chemin que les vraies.
 
 describe("seedHistory", () => {
   it("fabrique un jeu de données cohérent, par l'API (rejeu serveur), avec des joueurs marqués demo", async () => {
-    const db = openSqlite(":memory:");
+    const db = await openTestDb();
     const data = await seedHistory({ days: 2, pilots: { min: 4, max: 5 }, db });
     expect(data.index.days.map((d) => d.date)).toEqual([formatDay(PREMIER_JOUR), formatDay(PREMIER_JOUR + 1)]);
     expect(data.index.demoToday).toBe(formatDay(PREMIER_JOUR + 2));
@@ -44,7 +43,7 @@ describe("seedHistory", () => {
   }, 60_000);
 
   it("refuse une base qui contient de vrais joueurs (jamais de production)", async () => {
-    const db = openSqlite(":memory:");
+    const db = await openTestDb();
     // Un vrai joueur, créé par l'API comme en production (sans l'option demo).
     const real = createApi({ db, now: () => NOON });
     const code = pilotReplay(DAY, 0.9).code;
@@ -55,7 +54,7 @@ describe("seedHistory", () => {
   }, 60_000);
 
   it("accepte une base vierge ou déjà 100 % démo", async () => {
-    const db = openSqlite(":memory:");
+    const db = await openTestDb();
     await expect(assertDemoOnly(db)).resolves.toBeUndefined();
     await seedHistory({ days: 1, pilots: { min: 3, max: 3 }, db });
     await expect(assertDemoOnly(db)).resolves.toBeUndefined();

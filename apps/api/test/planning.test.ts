@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dailyCircuit, dailyTrackId, encodeReplay, formatDay, runPilot, themeForDay, THEME_NAMES } from "@cdj/sim";
+import { dailyCircuit, dailyTrackId, encodeReplay, formatDay, PREMIER_JOUR, runPilot, themeForDay, THEME_NAMES } from "@cdj/sim";
 import { ADMIN_MAX_FAILURES, PLANNING_HORIZON } from "../src/api";
 import { DAY, DAY_MS, NOON, makeApi, playerId } from "./helpers";
 
@@ -32,7 +32,7 @@ describe("accès admin", () => {
     expect(r.status).toBe(200);
     expect(r.body.today).toBe(formatDay(DAY));
     expect(r.body.plan).toEqual([]);
-    expect(r.body.days).toHaveLength(15); // aujourd'hui + quatorze jours passés
+    expect(r.body.days).toHaveLength(Math.min(15, DAY - PREMIER_JOUR + 1)); // aujourd'hui + quatorze jours passés, sans remonter avant le premier jour
   });
 
   it("sans ADMIN_TOKEN (ou trop court), les routes d'admin n'existent pas", async () => {

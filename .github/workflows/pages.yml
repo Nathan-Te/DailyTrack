@@ -25,7 +25,9 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          # L'adresse de l'API de production n'est injectée que dans la construction de main : un aperçu de branche ne classe jamais
+          # ses essais dans la vraie base (il peut toujours viser une autre API avec ?api=…).
+          VITE_API_URL: ${{ github.ref_name == 'main' && vars.VITE_API_URL || '' }}
 
       - name: Récupérer la branche gh-pages (ou la créer)
         run: |
