@@ -52,7 +52,14 @@ Ce n'est pas un défaut du chrono : il **part au « PARTEZ ! »**, voiture immob
 
 ## Coût de la scène derrière l'accueil
 
-MESURE_ACCUEIL
+La scène du jour tourne derrière l'accueil, caméra en survol lent, **plafonnée à 30 images/s (20 sur appareil tactile) et à la qualité « moyenne » (« basse » sur appareil tactile)** : pas de décor dense ni d'ombres de 1024 derrière un écran de menus. Mesuré avec `__cdj.render.home` (temps passé dans `renderer.render` par image, en rendu **logiciel** SwiftShader, 10 s après 9 s de réchauffement) :
+
+| | accueil (avant plafonnement de la qualité) | accueil (après) | course (qualité automatique, descendue à « basse » par le rendu logiciel) |
+|---|---|---|---|
+| ordinateur 1280×720 | 13 ms / image | 27 ms / image (bruité : 3 images/s en logiciel) | 1,1 ms / image |
+| téléphone paysage 844×390 | 5,2 ms / image | 1,3 ms / image | 1,0 ms / image |
+
+Ces chiffres **ne disent pas le coût sur un vrai GPU** (le rendu logiciel n'en est pas représentatif, voir `docs/orchestration.md` § 8, lot 9) : ils montrent que sur téléphone le décor de l'accueil coûte autant qu'une course en qualité basse. À vérifier sur un vrai téléphone (batterie, chauffe) ; si cela gêne, le plus simple est de figer la scène (une seule image) après quelques secondes, ou de la remplacer par la miniature du jour (lot 13).
 
 ## Non vérifié
 

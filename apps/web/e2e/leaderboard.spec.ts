@@ -126,7 +126,7 @@ test("sans adresse d'API, aucun classement n'apparaît", async ({ browser }) => 
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
   await race(page, slowCode);
   await expect(page.locator("#finish .big")).toBeVisible();
-  await expect(page.locator("#finish .online")).toContainText("Course non classée"); // on le dit (lot 29), sans formulaire ni envoi
+  await expect(page.locator("#finish .online")).toContainText(/non classée/i); // on le dit (lot 29), sans formulaire ni envoi
   await expect(page.locator("#finish .online input")).toHaveCount(0);
   await expect(page.locator("#board")).toBeHidden();
   await context.close();

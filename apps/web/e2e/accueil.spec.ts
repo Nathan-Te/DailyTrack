@@ -407,15 +407,15 @@ test.describe("pause et touches", () => {
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = false), index);
       await page.waitForTimeout(400);
     };
-    await press(9); // Start
+    await press(9); // Start : pause
     await page.waitForFunction(() => window.__cdj.paused === true);
-    await press(9);
+    await expect(page.locator("#pause")).toBeVisible();
+    await press(2); // X : depuis le départ (referme aussi la pause)
     await page.waitForFunction(() => window.__cdj.paused === false);
-    await page.waitForTimeout(1500);
-    const before = await page.evaluate(() => window.__cdj.car.tick);
-    expect(before).toBeGreaterThan(0);
-    await press(2); // X : depuis le départ
-    expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
+    await page.waitForFunction(() => window.__cdj.phase === "racing");
+    await page.waitForTimeout(1200);
+    await press(3); // Y : dernier point de contrôle (ici le départ : la reprise est comptée)
+    await page.waitForFunction(() => (window.__cdj.race as { respawns: number }).respawns >= 1);
     await ctx.close();
   });
 

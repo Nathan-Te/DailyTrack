@@ -451,7 +451,7 @@ function applySettings(patch: Partial<GameSettings> = {}) {
   governor.locked = plan.fixed;
   if (plan.fixed || wasQuality !== settings.quality) governor.level = plan.level; // retour à l'automatique : on repart de haut, la fluidité redescendra si besoin
   effects.quality = governor.level;
-  view.setQuality(governor.level, settings.shadows);
+  syncSceneQuality();
   effects.particlesOn = settings.particles;
   effects.skidMarksOn = settings.skids;
   shakeScale = params.get("shake") === "0" || !settings.shake ? 0 : 1;
@@ -460,6 +460,12 @@ function applySettings(patch: Partial<GameSettings> = {}) {
   syncBoardFold();
   if ("ghost" in patch) applyGhostSetting();
   settingsPanel?.sync();
+}
+
+/** Qualité de la scène : celle du jeu, sauf derrière l'accueil, où elle ne dépasse pas « moyenne » (« basse » sur appareil tactile : la batterie d'abord). */
+function syncSceneQuality() {
+  const level = (homeOpen ? Math.min(governor.level, touchMode ? 0 : 1) : governor.level) as Quality;
+  view.setQuality(level, settings.shadows);
 }
 
 function setCameraByName(name: string) {
@@ -535,12 +541,14 @@ function leaveToHome() {
   showPauseConfirm(false);
   startAttempt(); // la voiture revient au départ, le décompte attendra le bouton « Circuit du jour »
   homeOpen = true;
+  syncSceneQuality();
   homeUi.open();
 }
 
 function playDaily() {
   const go = () => {
     homeOpen = false;
+    syncSceneQuality();
     homeUi.close();
     startAttempt();
     snapCamera = true;
@@ -1584,7 +1592,7 @@ function frame(now: number) {
   if (homeOpen) homeSpin += Math.min(frameMs, 100) / 1000;
   if (!frozen && !manual && governor.observe(frameMs)) {
     effects.quality = governor.level;
-    view.setQuality(governor.level, settings.shadows); // qualité basse : décor, ombres et halos allégés (téléphone lent)
+    syncSceneQuality(); // qualité basse : décor, ombres et halos allégés (téléphone lent)
     if (settingsPanel?.isOpen()) settingsPanel.sync();
   }
 
@@ -2036,8 +2044,10 @@ if (watchWanted && track) {
 document.body.classList.toggle("no-splits", !settings.splits);
 syncBoardFold();
 if (!watchWanted && !salon && (settings.ghost === "first" || settings.ghost === "ahead") && params.get("ghost") !== "off" && online.enabled && !(daily && !submitAllowed)) applyGhostSetting();
-if (homeOpen) homeUi.open();
-else if (needsHowto() && !watchWanted) howto.open(); // première visite sans passer par l'accueil (lien direct) : l'aide d'abord
+if (homeOpen) {
+  syncSceneQuality();
+  homeUi.open();
+} else if (needsHowto() && !watchWanted) howto.open(); // première visite sans passer par l'accueil (lien direct) : l'aide d'abord
 renderer.setAnimationLoop(frame);
 
 // Accès de débogage pour les tests de navigateur (`?debug`) : état de la course, sans effet sur le jeu.
