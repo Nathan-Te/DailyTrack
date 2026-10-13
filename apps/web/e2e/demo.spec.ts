@@ -42,7 +42,7 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
   await expect(page.locator("#ghostinfo")).toContainText("premier : Démo", { timeout: 20_000 });
   await expect(page.locator("#board")).toBeVisible();
   await expect(page.locator("#board .btitle")).toContainText("Classement figé · 21 oct.");
-  expect(await page.locator("#board .row").count()).toBeGreaterThanOrEqual(8);
+  expect(await page.locator("#board .row").count()).toBeGreaterThanOrEqual(5); // le coin en montre cinq (lot 29)
   await expect(page.locator("#board .row .who").first()).toContainText("Démo");
   // le fantôme roule : il a avancé pendant que le joueur ne touche à rien
   await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 20_000 });

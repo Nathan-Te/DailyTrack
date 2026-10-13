@@ -219,3 +219,16 @@ body.paused #pause { display: flex; }
 
 /* Réglage « temps intermédiaires » désactivé. */
 body.no-splits #splits { display: none; }
+
+/* --- Petits écrans : barre du haut en icônes, classement sous la ligne du fantôme ----------------------------------------------------
+   (ces règles vivent ici, après les règles de base : la feuille de style du jeu est chargée après la page, elle l'emporterait sinon) */
+@media (max-width: 1100px) { #menu .txt { display: none; } }
+@media (max-width: 900px), (max-height: 520px) {
+  #menu { right: 8px; top: 6px; gap: 4px; }
+  #menu button { padding: 0; width: 44px; }
+  #board { top: 130px; width: min(250px, 52vw); font-size: 12px; }
+}
+@media (max-height: 520px) and (orientation: landscape) { #board { top: 104px; } }
+@media (orientation: portrait) { body.touch #board { top: 138px; } }
+/* Petit écran en portrait : l'arrivée occupe le milieu, le classement lui laisse la place (le rang est dans le panneau). */
+@media (max-width: 520px) { body.finished #board { display: none; } }

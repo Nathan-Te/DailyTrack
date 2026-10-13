@@ -403,9 +403,9 @@ test.describe("pause et touches", () => {
     await page.waitForFunction(() => window.__cdj.phase === "racing");
     const press = async (index: number) => {
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = true), index);
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(700); // le rendu logiciel est lent : l'appui doit durer plus d'une image
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = false), index);
-      await page.waitForTimeout(150);
+      await page.waitForTimeout(400);
     };
     await press(9); // Start
     await page.waitForFunction(() => window.__cdj.paused === true);
@@ -437,6 +437,7 @@ test.describe("pause et touches", () => {
     await expect(page.locator("#banner")).toContainText("Le chrono tourne", { timeout: 20_000 }); // et on le dit au joueur
     // Pause : le chrono s'arrête net, et repart là où il était.
     await page.keyboard.press("p");
+    await page.waitForFunction(() => window.__cdj.paused === true);
     const a = await page.locator("#timer").textContent();
     await page.waitForTimeout(1200);
     expect(await page.locator("#timer").textContent()).toBe(a);

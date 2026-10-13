@@ -110,7 +110,7 @@ test.describe("archives", () => {
     await page.waitForFunction(() => window.__cdj?.phase);
     await page.evaluate((cc) => window.__cdj.autoplay(cc), pastCode);
     await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
-    await expect(page.locator("#finish .online")).toContainText("Classement figé");
+    await expect(page.locator("#finish .online")).toContainText("classement est figé");
     expect(submissions).toBe(0);
   });
 });

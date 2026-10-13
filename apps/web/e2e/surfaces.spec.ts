@@ -98,7 +98,7 @@ test("un thème forcé n'est jamais envoyé au classement, même avec une adress
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 15_000 });
   await page.waitForTimeout(800);
   expect(calls).toEqual([]);
-  await expect(page.locator("#finish .online")).toHaveCount(0);
+  await expect(page.locator("#finish .online")).toContainText("Course non classée");
 });
 
 test("sans thème forcé, l'en-tête donne le thème du jour (et plus la palette)", async ({ page }) => {

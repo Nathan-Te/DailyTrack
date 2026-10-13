@@ -135,7 +135,7 @@
       body.touch #menu button { min-height: 44px; min-width: 44px; }
       body.touch #splits { top: 60px; }
       /* Portrait : les boutons de menu font 44 px (et non 34), la pile d'infos à gauche descend d'autant. */
-      @media (orientation: portrait) { body.touch #medals { top: 52px; } body.touch #timer { top: 68px; } body.touch #ghostinfo { top: 106px; } body.touch #splits { top: 70px; } body.touch #board { top: 138px; } }
+      @media (orientation: portrait) { body.touch #medals { top: 52px; } body.touch #timer { top: 68px; } body.touch #ghostinfo { top: 106px; } body.touch #splits { top: 70px; } }
       body.touch #finish button { min-height: 44px; }
       /* Aides à l'écran : le toucher passe au travers (tout est géré par #touch). */
       #touch > * { pointer-events: none; position: absolute; }
@@ -198,7 +198,7 @@
 
       /* Petits écrans (téléphone) : bandeau resserré, menu en icônes, panneaux plus étroits. */
       @media (max-width: 900px), (max-height: 520px) {
-        #meta { top: 8px; font-size: 11px; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* deux chiffres au numéro du circuit : ne jamais passer sous le menu */
+        #meta { top: 8px; font-size: 11px; max-width: calc(100vw - 218px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* deux chiffres au numéro du circuit : ne jamais passer sous le menu */
         #meta .long { display: none; }
         /* Portrait : les boutons du menu occupent le coin droit sur 34 px de haut, le bandeau passe dessous. */
         #medals { top: 44px; font-size: 11px; }
@@ -208,15 +208,11 @@
         #ghostinfo { top: 98px; font-size: 11px; max-width: calc(100vw - 200px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         #ghostinfo .long { display: none; }
         /* Le classement reste dans le coin, compact et repliable (lot 29), sous la ligne du fantôme. */
-        #board { top: 130px; width: min(250px, 52vw); font-size: 12px; }
         #helpchip { display: none; }
         #info { display: none; }
         #speed { font-size: 28px; right: 14px; bottom: 12px; }
         #banner { font-size: 44px; top: 30%; }
         #banner.small { font-size: 24px; }
-        #menu { right: 8px; top: 6px; gap: 4px; }
-        #menu .txt { display: none; }
-        #menu button { padding: 0; width: 44px; }
         #finish { padding: 14px 16px; top: 56%; }
         #finish .big { font-size: 32px; }
         /* Une fois la course finie, le panneau d'arrivée prend la place : on masque ce qui le recouvrirait. */
@@ -235,7 +231,6 @@
         #timer { top: 44px; }
         #splits { top: 48px; }
         #ghostinfo { top: 82px; }
-        #board { top: 104px; }
         #finish { left: auto; right: 12px; top: auto; bottom: 8px; transform: none; width: min(380px, 46vw); max-height: calc(100vh - 100px); display: flex; flex-direction: column; font-size: 14px; line-height: 1.35; padding: 10px 14px; }
         #finish .big { font-size: 26px; }
         #finish .medal { font-size: 18px; }

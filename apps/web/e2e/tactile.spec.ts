@@ -178,7 +178,7 @@ for (const p of PHONES) {
       const frozen = await tick();
       await page.waitForTimeout(600);
       expect(await tick()).toBe(frozen); // rien ne bouge
-      await page.getByRole("button", { name: "Reprendre" }).first().click();
+      await page.locator("#pause-resume").click(); // la pause est une fenêtre : elle recouvre la barre tactile
       await expect(page.locator("#pause")).toBeHidden();
       await expect.poll(tick, { timeout: 5_000 }).toBeGreaterThan(frozen + 20);
 

@@ -64,16 +64,19 @@ for (const viewport of [
     await page.locator("#finish .online button[type=submit]").click();
     await expect(page.locator("#finish .online .rank")).toBeVisible({ timeout: 20_000 });
     // Le classement (lot 29) reste dans son coin, compact, sans recouvrir le panneau d'arrivée ; son en-tête le replie (cible de 44 px).
-    await expect(page.locator("#board")).toBeVisible();
-    await expect(page.locator("#board .row")).toHaveCount(3);
     await page.waitForTimeout(500);
+    const narrow = viewport.width <= 520; // portrait : le classement laisse sa place au panneau d'arrivée
+    if (narrow) await expect(page.locator("#board")).toBeHidden();
+    else {
+      await expect(page.locator("#board .row")).toHaveCount(3);
+      expect((await page.locator("#board .bhead").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+      await page.locator("#board .bhead").click();
+      await expect(page.locator("#board")).toHaveClass(/folded/);
+      await page.locator("#board .bhead").click();
+      await expect(page.locator("#board")).not.toHaveClass(/folded/);
+    }
     const finished = ["#meta", "#medals", "#timer", "#menu", "#ghostinfo", "#board", "#finish"];
     expectNoOverlap(await boxes(page, finished), viewport);
-    expect((await page.locator("#board .bhead").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-    await page.locator("#board .bhead").click();
-    await expect(page.locator("#board")).toHaveClass(/folded/);
-    await page.locator("#board .bhead").click();
-    await expect(page.locator("#board")).not.toHaveClass(/folded/);
     for (const b of await page.locator("#finish .actions button").all()) {
       const box = (await b.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(34);
