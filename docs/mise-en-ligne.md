@@ -208,6 +208,7 @@ Sur GitHub : dépôt `DailyTrack` → **Settings** → **Secrets and variables**
 |---|---|---|
 | Le workflow dit « Déploiement de l'API ignoré » | une variable ou un secret manque | le résumé liste ce qui manque ; étape 4 |
 | Échec à l'authentification Google : `Invalid value for "audience"` (« this value should be the full resource name of the Identity Provider ») | le secret `GCP_WORKLOAD_IDENTITY_PROVIDER` n'est pas le nom complet du fournisseur (identifiant de projet au lieu du **numéro**, nom de la variable collé avec la valeur, espace ou guillemets autour, `//iam.googleapis.com/` en trop) | dans Cloud Shell : `gcloud iam workload-identity-pools providers describe github-repo --location=global --workload-identity-pool=github --format='value(name)'` (une seule ligne, sans guillemets autour de l'identifiant ; si l'invite reste sur `>`, fais **Ctrl+C** et recommence) ; recopie **exactement** la ligne `projects/123…/providers/github-repo` dans le secret (GitHub → Settings → Secrets and variables → Actions → `GCP_WORKLOAD_IDENTITY_PROVIDER` → Update), puis Actions → Deploy API → **Run workflow** (le workflow vérifie maintenant la forme de ce secret et le dit clairement) |
+| `Permission 'iam.serviceAccounts.getAccessToken' denied` (à l'étape *Construire et pousser l'image*, après une authentification réussie), puis `Unauthenticated request … uploadArtifacts` | GitHub est reconnu par Google mais n'a pas le droit d'agir comme le compte `cdj-deploy` : le rôle *Workload Identity User* manque ou vise un autre dépôt, souvent parce que **Cloud Shell avait perdu les variables** (`$DEPLOY_SA`, `$POOL`… vides) quand tu as lancé les commandes de l'étape 2 | refaire les droits avec le bloc « Réparer les droits » ci-dessous (sans danger si déjà faits), puis relancer **Deploy API** |
 | Échec à l'authentification Google (`Unable to acquire impersonated credentials`) | fédération mal reliée ; nom du dépôt différent | refaire l'étape 2.6 avec le bon `GITHUB_REPO` (majuscules comprises) ; vérifier le secret `GCP_SERVICE_ACCOUNT` |
 | `Permission denied on secret …` au déploiement | le compte d'exécution ne peut pas lire un secret | refaire l'étape 3b.4 |
 | `Image … not found` ou refus à la poussée de l'image | dépôt Artifact Registry absent ou région différente | étape 2.4 ; `GCP_REGION` doit être celle du dépôt |
@@ -217,6 +218,25 @@ Sur GitHub : dépôt `DailyTrack` → **Settings** → **Secrets and variables**
 | Erreur « CORS » dans la console du navigateur | l'origine du jeu n'est pas autorisée | le site est autorisé tout seul ; pour un autre domaine, variable `ALLOWED_ORIGINS` (séparées par `;`) puis redéployer (Actions → Deploy API → Run workflow) |
 | Première requête lente (1–2 s) | réveil du conteneur (0 instance au repos) | normal ; la suivante est instantanée |
 | Facture inattendue | trop de joueurs dans le Salon | voir `docs/lots/lot-28-mise-en-ligne.md` (budget) ; au besoin `gcloud run services update cdj-api --region=europe-west1 --max-instances=1` |
+
+**Réparer les droits de déploiement** (Cloud Shell oublie ses variables quand on le ferme ou qu'il se met en veille : refais ces lignes en entier, avec **ton** identifiant de projet, **sans guillemets** ; recommencer ne casse rien) :
+
+```bash
+PROJECT_ID=dailytrack-511513
+GITHUB_REPO=Nathan-Te/DailyTrack
+gcloud config set project $PROJECT_ID
+DEPLOY_SA=cdj-deploy@$PROJECT_ID.iam.gserviceaccount.com
+RUNTIME_SA=cdj-api-runtime@$PROJECT_ID.iam.gserviceaccount.com
+POOL=$(gcloud iam workload-identity-pools describe github --location=global --format='value(name)')
+echo "POOL=$POOL"
+gcloud iam service-accounts add-iam-policy-binding $DEPLOY_SA --role=roles/iam.workloadIdentityUser --member=principalSet://iam.googleapis.com/$POOL/attribute.repository/$GITHUB_REPO
+gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:$DEPLOY_SA --role=roles/run.admin
+gcloud projects add-iam-policy-binding $PROJECT_ID --member=serviceAccount:$DEPLOY_SA --role=roles/artifactregistry.writer
+gcloud iam service-accounts add-iam-policy-binding $RUNTIME_SA --member=serviceAccount:$DEPLOY_SA --role=roles/iam.serviceAccountUser
+gcloud artifacts repositories list --location=europe-west1
+```
+
+**Tu dois voir** : `POOL=projects/<12 chiffres>/locations/global/workloadIdentityPools/github` (si `POOL=` est vide, le pool n'existe pas : refais l'étape 2.6), quatre blocs `Updated IAM policy`, et le dépôt `cdj` dans la liste (sinon : étape 2.4). `GITHUB_REPO` doit être écrit **exactement** comme sur GitHub (`Nathan-Te/DailyTrack`, majuscules comprises).
 
 **Changer un secret** : `printf '%s' 'nouvelle-valeur' | gcloud secrets versions add cdj-turso-token --data-file=-`, puis relancer **Deploy API** (Actions → Run workflow).
 **Tout arrêter** : `gcloud run services delete cdj-api --region=europe-west1` (le jeu retombe en « hors ligne, non classé » sans rien casser).
