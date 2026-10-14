@@ -2,7 +2,7 @@
 
 Source de vérité du projet. Vit dans `docs/seed.md`, n'est modifié que par Nathan. Projet **web, court**, conçu pour être développé **entièrement dans le cloud** (Claude Code sur le web), sans PC.
 
-*Version 9 (13/10/2026) : lots 0 à 28 livrés, **jeu en ligne depuis le 13/10/2026** (GitHub Pages + Cloud Run + Turso). Ajoutés : un **écran d'accueil**, un **menu de pause** et des **réglages** complets ; tour d'amélioration de l'interface et de la compréhension ; **profil visible à l'accueil** ; **pseudos réservés** (lots 29 et 30 au § 12).*
+*Version 9 (13/10/2026) : lots 0 à 28 livrés, **jeu en ligne depuis le 13/10/2026** (GitHub Pages + Cloud Run + Turso). Ajoutés : un **écran d'accueil**, un **menu de pause** et des **réglages** complets ; tour d'amélioration de l'interface et de la compréhension ; **profil visible à l'accueil** ; **pseudos réservés** (lots 29 à 31 au § 12) ; finale du Salon en 15 s ; plus de circuit futur visible.*
 
 ---
 
@@ -35,13 +35,14 @@ Chaque jour, un nouveau circuit court, le même pour tout le monde : on le parco
 - **L'écran d'arrivée** : temps, médaille, rang du jour, et la **ligne à partager** :
   `Circuit du Jour #142 — 37,312 s — 🥇 — 23e/812`
 - **Les archives** : la liste des jours passés avec une **miniature en vue aérienne**, le thème, les médailles et ta place figée ; on rejoue un jour avec le fantôme du premier et le classement figé.
-- **Le Salon** (deuxième mode, le circuit du jour reste le mode principal) : un circuit qui **change toutes les 10 minutes**, à heure fixe pour tout le monde (xx:00, xx:10, xx:20…) ; tous ceux qui sont dans le Salon jouent le même circuit ; on voit **les fantômes des meilleurs tours des autres joueurs de la session**, avec leur pseudo, et le **classement de la session** qui se met à jour pendant qu'on joue ; un compte à rebours indique le temps restant ; à la fin, **podium**, puis le circuit suivant se charge tout seul. Ligne à partager : `Salon 14:20 — 31,402 s — 3e/17`. Le Salon ne touche jamais aux records ni au classement du circuit du jour.
+- **Le Salon** (deuxième mode, le circuit du jour reste le mode principal) : un circuit qui **change toutes les 10 minutes**, à heure fixe pour tout le monde (xx:00, xx:10, xx:20…) ; tous ceux qui sont dans le Salon jouent le même circuit ; on voit **les fantômes des meilleurs tours des autres joueurs de la session**, avec leur pseudo, et le **classement de la session** qui se met à jour pendant qu'on joue ; un compte à rebours indique le temps restant ; **dans les 15 dernières secondes, plus aucune course ne peut partir** : c'est la « dernière chance » pour ceux qui roulent, avec un grand compte à rebours et le classement qui bouge en direct ; **à l'heure pile, le circuit change pour tout le monde en même temps** (une course pas finie ne compte pas), le podium final s'affiche par-dessus le départ du circuit suivant. Ligne à partager : `Salon 14:20 — 31,402 s — 3e/17`. Le Salon ne touche jamais aux records ni au classement du circuit du jour.
 
 ## 4. Direction artistique
 Low-poly coloré et propre. **Chaque thème a sa lumière** (heure du jour, couleur du ciel, brume, intensité du soleil) et son décor : on ne confond pas deux thèmes. **Lisibilité d'abord** : panneaux de direction avant les virages, vibreurs, arche de départ et d'arrivée, portes de points de contrôle bien visibles, chaque revêtement, bas-côté et bloc à effet reconnaissable au premier coup d'œil. **La vitesse se voit** (bord de piste qui défile, marquages, champ de vision, lignes de vitesse, vent). Ombres portées, léger halo sur les néons et les turbos, phares la nuit. Les sections surélevées ont des piliers et laissent voir le vide ; les parois de cuve sont en damier. Une voiture low-poly originale et animée, des effets, des sons procéduraux et une ambiance sonore par thème. Dans le Salon, les fantômes des autres joueurs sont translucides, d'une couleur chacun, avec leur pseudo au-dessus. Pas de textures lourdes : le jeu se charge en quelques secondes, et reste fluide sur téléphone grâce aux niveaux de qualité.
 
 ## 5. Le circuit du jour
-- **Généré à partir de la date** (graine = date en UTC) par **assemblage de figures** tirées d'une bibliothèque, avec leurs variantes. Règles : pas d'intersection au même niveau ; peu de virages serrés (sauf thème qui en fait son identité) ; au moins deux passages techniques et une portion rapide ; selon le thème, un saut sur élément technique et/ou une cuve ; jamais la même figure deux fois dans un circuit ; peu de figures en commun d'un jour au suivant.
+- **Le circuit du jour change à minuit, heure de Paris, pour tout le monde** : tous les joueurs découvrent le nouveau circuit au même instant (minuit en France, 6 h à Delhi…). « Aujourd'hui » est la date à Paris (heure d'été comprise). L'accueil affiche « Prochain circuit dans HH:MM:SS » et se recharge à minuit de Paris.
+- **Généré à partir de la date** (graine = la date du jour, au sens de Paris) par **assemblage de figures** tirées d'une bibliothèque, avec leurs variantes. Règles : pas d'intersection au même niveau ; peu de virages serrés (sauf thème qui en fait son identité) ; au moins deux passages techniques et une portion rapide ; selon le thème, un saut sur élément technique et/ou une cuve ; jamais la même figure deux fois dans un circuit ; peu de figures en commun d'un jour au suivant.
 - **Durée** : le temps de l'auteur tombe entre **30 et 40 s**, pour qu'une course correcte tienne en 30 à 45 s.
 - **Un thème par jour, avec son format de circuit.** Chaque thème a une **fiche de format** (dénivelé, largeur dominante, densité de virages, longueur des droites, vitesse, sauts, revêtements, figures) que le générateur respecte et que le script de mesure vérifie ; deux thèmes ne doivent jamais se jouer pareil :
   - *Stade* — **le spectacle** : plein jour ensoleillé, herbe et vibreurs ; vitesse, cuves, sauts, turbos ;
@@ -64,7 +65,7 @@ Low-poly coloré et propre. **Chaque thème a sa lumière** (heure du jour, coul
 - **Comptes (plus tard, peut-être)** : si le jeu (ou d'autres jeux de Nathan) se monétise, un compte **facultatif** (connexion Google, Apple ou Discord, ou lien par e-mail) pourra être **relié** à l'identité anonyme existante sans rien perdre ; pas avant d'en avoir besoin.
 - **Fantômes** : le serveur sert la rediffusion du premier et des voisins de classement.
 - **Administration** : un jeton secret donne accès au planning ; aucun compte.
-- **Classement du Salon** : un classement **par session de 10 minutes** (meilleur temps de chaque joueur), même validation par rejeu ; une course commencée avant la fin compte si elle est envoyée dans la minute qui suit ; **tout ce qui concerne une session (courses, classement, podium) est oublié dès qu'elle est finie** : on ne garde aucun historique du Salon.
+- **Classement du Salon** : un classement **par session de 10 minutes** (meilleur temps de chaque joueur), même validation par rejeu ; les courses doivent **finir avant l'heure pile** de fin de session (15 dernières secondes : plus de départ) ; le serveur n'accepte un envoi que jusqu'à quelques secondes après la fin (marge réseau) ; **tout ce qui concerne une session (courses, classement, podium) est oublié dès qu'elle est finie** : on ne garde aucun historique du Salon.
 
 ## 7. Technique
 - **TypeScript partout**, en monorepo :
@@ -94,6 +95,12 @@ Low-poly coloré et propre. **Chaque thème a sa lumière** (heure du jour, coul
   (Si un lot a besoin d'une information de Nathan, par exemple une date, il l'ajoute à la suite de cette phrase ; s'il l'a oubliée, l'agent la lui demande avant de commencer.)
 
   Le prochain lot est le **premier lot du § 12 dont la PR n'est pas fusionnée** dans `origin/main`. Si la PR du lot précédent est encore ouverte, l'agent **ne démarre rien** et le signale. À un **point d'arrêt** (⏸), il s'arrête et attend Nathan. Un seul lot par session.
+- **Tests : cibler en local, laisser la CI faire le run complet.** Pendant un lot, l'agent lance les tests unitaires en entier (`npm test`, rapide) mais, pour les e2e, **seulement les specs concernées par les fichiers modifiés** (`npx playwright test <spec> …` ou `--grep`). Il les liste dans le README du lot, rubrique « Vérifications », avec le critère de choix. Repères :
+  - interface (HUD, accueil, pause, réglages, arrivée) → specs qui lisent `#meta`, `#menu`, `#pause`, `#board`, `#finish`, plus `mobile`, `tactile` et celles du lot ;
+  - physique ou générateur → scénarios (`air`, `cuves`, `glace`…), `daily`, `replay`, golden ;
+  - API ou Salon → `leaderboard`, `salon*`, `watch*`.
+
+  **Avant de modifier ou supprimer un identifiant, une classe ou un texte de l'interface**, l'agent cherche ses usages dans `apps/web/e2e` (`grep`) et corrige ces specs dans le même lot. Il **ne lance pas le run e2e complet en local** (≈ 1 h en rendu logiciel) : **la CI (Chromium, Firefox, WebKit) est le seul critère de fusion**. Un run complet local n'est justifié que pour un lot qui touche tout (rendu, boucle de jeu).
 - **Après tout changement de `SIM_VERSION` ou `GENERATOR_VERSION`** : références golden, `npm run history:seed`, `npm run measure:generator`, coût d'un rejeu mesuré (avant / après, même machine), jour de test de l'API revérifié.
 - **Le quota** : Sonnet en effort moyen pour la plupart des lots ; Opus pour la physique et le générateur.
 
@@ -106,7 +113,9 @@ Comptes (e-mail, mot de passe), éditeur de circuits, plusieurs voitures, régla
 
 **À venir** (prompts au § 12) :
 - **Lot 29 — Accueil, réglages et compréhension.** Écran d'accueil (titre, classement du jour, choix circuit du jour / Salon, réglages), classement affiché par défaut en course, barre du haut refaite (Accueil et Réglages ; plus de bouton Salon), menu de pause, réglages complets, aide « Comment jouer », messages plus clairs. **À tester** : ouvrir le jeu, lancer le circuit du jour, revenir à l'accueil, passer au Salon, changer la qualité graphique.
+- **Retouche 29b — Une CI fiable.** Tests e2e en parallèle (un job par navigateur, découpés en parts), une relance signalée, familles instables corrigées, horloge maîtrisée, `main` protégée. **À tester** : rien à jouer, retour du README (trois runs verts, moins de 20 min).
 - **Lot 30 — Pseudos réservés et profil synchronisé.** Un pseudo appartient à son premier propriétaire ; le profil (records, fantôme, médailles, pseudo) est le même sur tous les appareils, le serveur fait foi ; un code peut être révoqué ; les doublons actuels sont réglés. **À tester** : prendre ton pseudo sur un autre navigateur (refusé) ; battre ton record sur le téléphone puis le retrouver sur le PC ; changer ton code.
+- **Lot 31 — Jour de Paris, pas de circuit futur, et finale du Salon.** Le circuit change à minuit heure de Paris pour tout le monde (compte à rebours sur l'accueil) ; plus de touches N et T ni d'adresse qui montre un circuit à venir (on ne remonte que dans le passé) ; Salon : 15 dernières secondes de « dernière chance », puis changement de circuit pour tout le monde à l'heure pile. **À tester** : `?day=` d'un jour futur (refusé) ; une fin de session au Salon (`?mode=salon&api=demo&salonMinutes=2`).
 - ⏸ **Ensuite** : calibrage des médailles ; **jalon** : une semaine de circuits et de Salons joués par Nathan et quelques amis ; nom de domaine si le jeu prend.
 
 ## 11. Concurrence
@@ -130,6 +139,7 @@ Chaque prompt se suffit à lui-même. L'agent exécute le prompt du prochain lot
 - Tout bouton tactile ajouté reste **loin des frontières entre zones** (piège de la retouche 10b) et se vérifie avec `?zones=1`.
 - README d'une page dans `docs/lots/`, qui **commence par le lien direct de l'aperçu** avec le scénario du lot ; PR en brouillon avec « À tester », « Garde-fous », « Vérifications faites », « Non vérifié » ; numéro de PR reporté dans `docs/orchestration.md` § 2.
 - Rapport : vérifié (et comment) / non vérifié / décisions pour Nathan.
+- **Tests** : `npm test` en entier, e2e **ciblés** seulement (règle du § 8), liste et critère de choix dans « Vérifications » ; « tous les tests verts » veut dire **la CI verte** sur la PR.
 - **Message de fin de session** : il se termine par la section **« À tester »** avec les liens cliquables de l'aperçu (règle du § 8), sans attendre que Nathan les demande.
 
 ### Lot 29 — Accueil, réglages et compréhension
@@ -193,12 +203,46 @@ Qu'un joueur qui ouvre le lien pour la première fois comprenne en dix secondes 
 #### Hors périmètre
 Nouveaux modes, comptes, traduction, refonte du rendu 3D.
 
+### Retouche 29b — Une CI fiable
+
+**Modèle conseillé : Sonnet, effort élevé** (diagnostic de tests instables, CI ; aucune physique).
+
+#### Contexte
+- Lot 29 fusionné **avec la CI rouge**, en connaissance de cause. Branche : `lot-29b-ci-fiable`. Lis `.github/workflows/ci.yml`, `apps/web/playwright.config.*`, `apps/web/e2e/`, pièges § 8 de l'orchestration (timing de la CI, tests tactiles en pas à pas, rendu logiciel, horloge réelle).
+- Constat de l'agent du lot 29 : **la CI est rouge sur `main` depuis au moins le 8 octobre**, uniquement le job `e2e` (le job `test`, 844 tests unitaires, et les déploiements sont verts). Cause principale : **un seul job en série de 30 à 55 min** (3 navigateurs × ≈ 190 tests, rendu logiciel, 2 cœurs), tests sensibles à la charge, aucun relancé, plusieurs dépendants du temps réel. Familles qui échouent : `planning` (Firefox), `thumbnails`, `watch`, parfois `salon-serveur`, `tactile`, `share` ; un cas lié à **minuit UTC** (le run a changé de jour en cours de route). Conséquence : « échec connu » est devenu une habitude et la CI ne protège plus rien.
+- Règle du seed (§ 8) : **la CI est le seul critère de fusion**. Ce lot la rend vraie avant les lots 30 et 31.
+
+#### Objet
+Une CI verte, rapide et digne de confiance : rouge = vrai problème.
+
+#### À livrer
+- **Paralléliser** : le job `e2e` devient une **matrice** (un job par navigateur) et chaque navigateur est **découpé en parts** (`--shard`) ; rapports fusionnés en un seul (blob reporter + merge) ; objectif : **moins de 20 min** du push au verdict.
+- **Relance encadrée** : `retries: 1` **en CI seulement** ; un test qui passe à la relance est **signalé « instable »** dans le résumé du run (pas caché) ; la liste des instables est écrite dans le README du lot et suivie dans `docs/orchestration.md` § 8.
+- **Corriger chaque famille instable** (pas la masquer) : pour chacune, la cause trouvée et la correction — attendre un état plutôt qu'une durée (`__cdj.phase`, événements), pas à pas (`__cdj.manual` + `advance`) au lieu du temps réel, ressources partagées isolées (serveur de test, base, ports), **horloge maîtrisée** : `page.clock` de Playwright côté navigateur et une heure injectable côté API en test (variable réservée aux tests, refusée en production), pour qu'aucun test ne dépende de l'heure réelle ni ne puisse changer de jour en cours de route.
+- **Interdits rappelés** : ne jamais désactiver, sauter ou affaiblir un test pour être vert (`skip`, `fixme`, seuils relâchés sans mesure) ; si un test est faux, le corriger et dire pourquoi.
+- **Protection de `main`** : documenter dans le README les réglages GitHub que **Nathan** active (règle de protection de branche : statuts `test` et `e2e` obligatoires avant fusion), puisque l'agent ne peut pas les changer lui-même.
+- **Garde-fou** : un petit job planifié (une fois par nuit, à une heure sans changement de jour) relance la suite complète sur `main` pour détecter les instabilités qui reviennent.
+
+#### Critères d'arrêt
+- **Trois runs complets verts d'affilée** sur la branche (relancés à la main), puis vert sur la PR ; durée de chaque run notée (objectif < 20 min) ; nombre de tests instables à la relance = **0** sur ces trois runs, sinon chacun expliqué.
+- `npm test` vert ; aucun test supprimé, sauté ou affaibli (liste des tests modifiés et pourquoi dans le README).
+- README `docs/lots/lot-29b-ci-fiable.md` : avant / après (durée, échecs), cause et correction par famille, réglages GitHub à activer par Nathan (pas à pas, avec ce qu'il doit voir), lien vers les trois runs verts. Pas de scénario de jeu à tester : **un simple retour du README suffit**.
+
+#### Modifications de `CLAUDE.md`
+- Section **« Tests »** : CI en matrice et en parts, relance unique en CI et signalement des instables, horloge maîtrisée dans les tests, interdits, « rouge = vrai problème ».
+
+#### Mettre aussi à jour
+`docs/orchestration.md` : § 5 (commandes de test), § 6 (méthode : CI obligatoire), § 8 (pièges : chaque famille instable et sa correction).
+
+#### Hors périmètre
+Nouvelles fonctions du jeu, changement de navigateurs testés.
+
 ### Lot 30 — Pseudos réservés et profil synchronisé
 
 **Modèle conseillé : Sonnet, effort élevé** (API, identité, synchronisation).
 
 #### Contexte
-- Lot 29 fusionné. Branche : `lot-30-pseudos`. Lis `docs/lots/lot-5-classement.md` (identité, sécurité), `lot-28-mise-en-ligne.md` (code de transfert, Turso), `lot-29-accueil-ux.md` (carte du profil).
+- Retouche 29b fusionnée (CI verte). Branche : `lot-30-pseudos`. Lis `docs/lots/lot-5-classement.md` (identité, sécurité), `lot-28-mise-en-ligne.md` (code de transfert, Turso), `lot-29-accueil-ux.md` (carte du profil).
 - Constat de Nathan : le classement en ligne montre deux « Nathan » et trois « Nowy » (mêmes personnes sur plusieurs appareils). Décision : **un pseudo appartient à son premier propriétaire** ; pour l'utiliser sur un autre appareil, on charge son code.
 - Aujourd'hui le code de transfert copie l'identité **et une photo des records locaux** : ensuite chaque appareil vit sa vie (record, fantôme « ton record », médailles des archives, pseudo affiché). Décision : **le profil devient vraiment multi-appareils**, le serveur fait foi, le stockage local n'est plus qu'un cache ; et un code peut être **révoqué**.
 
@@ -230,6 +274,52 @@ Nouveaux modes, comptes, traduction, refonte du rendu 3D.
 #### Hors périmètre
 Comptes (e-mail, connexion Google…), modération avancée, expiration des pseudos inactifs, synchronisation des réglages entre appareils.
 
+### Lot 31 — Jour de Paris, pas de circuit futur, et finale du Salon
+
+**Modèle conseillé : Sonnet, effort moyen.**
+
+#### Contexte
+- Lot 30 fusionné. Branche : `lot-31-futur-finale`. Lis `docs/lots/lot-9b-visuels.md` (touches N et T), `lot-11-historique.md` (`?day=`), `lot-14-admin-planning.md` (`?variant=`, planning), `lot-26-salon.md`, `lot-27-salon-serveur.md`, `lot-27b-salon-oubli.md`, `lot-29-accueil-ux.md`.
+- Demandes de Nathan :
+  1. **désactiver les touches N et T** (circuit au hasard, thème suivant) et **interdire de voir un circuit à venir** par l'adresse : on ne peut remonter que dans le **passé** ;
+  2. **le circuit du jour change à minuit, heure de Paris, pour tout le monde** (décision du 14/10/2026) : cela remplace la règle « jour UTC » de `CLAUDE.md` ; les circuits de chaque date ne changent pas, seul l'instant où « aujourd'hui » passe au jour suivant bouge : **aucune version à monter** ;
+  3. au Salon, au moment de changer de circuit : **un compte à rebours de 15 s** pour les retardataires, puis **le circuit change pour tout le monde en même temps** ; on n'attend plus que les joueurs finissent, ils ont une limite de temps.
+
+#### À livrer
+- **Jour de Paris** (jeu, API, admin, démo) :
+  - une seule fonction « date du jour » (hors de `sim`, qui reçoit toujours une date) : la date à **Europe/Paris** à l'instant donné, heure d'été comprise (`Intl.DateTimeFormat` avec `timeZone: "Europe/Paris"`, ou table des changements d'heure si l'environnement ne l'a pas : le vérifier sur Cloud Run et dans les trois navigateurs) ;
+  - l'API l'utilise partout où elle utilisait le jour UTC : jour accepté pour un envoi, **grâce de 10 min après minuit de Paris**, classement du jour, jours figés du planning, `GET /api/day`, archives ;
+  - **accueil** : « Prochain circuit dans HH:MM:SS » jusqu'à minuit de Paris ; à zéro, l'accueil se recharge sur le nouveau circuit (une course en cours n'est pas interrompue : elle reste sur son circuit, et son temps compte s'il est envoyé pendant la grâce) ;
+  - **tests** du passage d'un jour à l'autre à 23 h 59 et 0 h 01 (Paris) en été et en hiver, et **autour du changement d'heure du dimanche 25/10/2026** (nuit de 25 h) et de mars ; un joueur à Delhi et un à New York voient le même circuit au même instant ;
+  - mettre à jour la règle « jour UTC » partout où elle est écrite (`CLAUDE.md`, `docs/orchestration.md`, README des lots concernés si nécessaire).
+- **Pas de circuit futur en production** (le site publié depuis `main`) :
+  - touches **N** et **T** retirées (et de l'aide « Comment jouer ») ;
+  - `?seed=` / `?day=` d'un jour **après aujourd'hui (date de Paris)** : refusé, on tombe sur le circuit du jour avec un message court ; les jours passés restent accessibles (archives) ;
+  - `?variant=` et `?theme=` : refusés pour aujourd'hui et le futur (ils ne servent qu'à l'admin et aux essais) ;
+  - les **aperçus de branche** et le mode `?debug` gardent ces outils pour les tests des agents (garde-fou testé : impossible en production) ;
+  - l'admin (`/admin/`, sous jeton) garde le planning des jours à venir ;
+  - le dire honnêtement dans le README : le générateur tourne dans le navigateur, donc quelqu'un de très motivé peut encore calculer un circuit futur en lisant le code ; on supprime l'accès facile, pas la possibilité technique (pour la supprimer, il faudrait une graine secrète côté serveur : à proposer dans le rapport, sans l'appliquer).
+- **Finale du Salon** (jeu, serveur et démo) :
+  - à **fin − 15 s** : plus aucun départ possible (le bouton « départ » est grisé, message « Dernière chance : plus de départ ») ; ceux qui roulent continuent ; grand compte à rebours **15 → 0** au centre ; classement de la session affiché d'office et rafraîchi plus souvent (toutes les 2 s) pour voir les derniers changements ;
+  - à **l'heure pile** (`fin`, heure du serveur) : la course en cours s'arrête pour tous (non comptée), le **podium final** s'affiche par-dessus le circuit suivant, déjà chargé, dont le décompte de départ commence ; plus d'attente des retardataires ;
+  - serveur : un envoi n'est accepté que jusqu'à `fin + 3 s` (marge réseau, mesurée et justifiée), au lieu de `fin + 60 s` ; la session est oubliée juste après (règle de la 27b) ;
+  - sessions toujours alignées sur l'horloge (xx:00, xx:10…) ; `?salonMinutes` (démo et essais) suit la même règle.
+- **Aucun changement de `sim`** (versions inchangées).
+
+#### Critères d'arrêt
+- Tous les tests verts, golden inchangés.
+- Tests e2e : en production simulée, N et T ne font rien ; `?day=` futur → circuit du jour ; `?day=` passé → ce jour ; en `?debug` sur aperçu, les outils restent ; Salon en démo avec `?salonMinutes=1` : à `fin − 15 s` le départ est refusé, une course en cours peut finir avant `fin` et compte, une course non finie à `fin` est coupée et ne compte pas, le changement de circuit a lieu au même instant pour deux contextes de navigateur.
+- Tests d'API : envoi à `fin + 2 s` accepté, à `fin + 5 s` refusé ; jour de Paris : envoi à 23 h 59 Paris compté pour ce jour, à 0 h 05 Paris compté pour la veille (grâce), à 0 h 15 refusé pour la veille ; changement d'heure du 25/10/2026 couvert.
+- README `docs/lots/lot-31-futur-finale.md` : liens de l'aperçu — `?mode=salon&api=demo&salonMinutes=2` (attendre la fin d'une session : dernière chance, puis changement pour tous), puis l'adresse d'un jour futur (refusée), puis un jour passé (accepté), puis l'accueil (compte à rebours jusqu'à minuit de Paris).
+
+#### Modifications de `CLAUDE.md`
+- Section **« Salon »** : finale de 15 s, changement à l'heure pile, `fin + 3 s` côté serveur.
+- Section **« Interface »** : outils d'essai (N, T, `?variant=`, `?theme=`, jours futurs) réservés aux aperçus et à `?debug`, jamais en production ; compte à rebours de l'accueil.
+- Section **« Classement »** (ou règles) : **« aujourd'hui » = date à Paris**, grâce de 10 min après minuit de Paris (remplace la règle « jour UTC »).
+
+#### Hors périmètre
+Graine secrète côté serveur, nouveaux modes.
+
 ### ⏸ Fin des lots écrits
 
-Après le lot 30, l'agent s'arrête : le calibrage et le jalon seront rédigés avec Nathan.
+Après le lot 31, l'agent s'arrête : le calibrage et le jalon seront rédigés avec Nathan.
