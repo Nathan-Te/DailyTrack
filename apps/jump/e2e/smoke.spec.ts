@@ -152,7 +152,7 @@ test("?debug&tune : un curseur par réglage, un réglage modifié marque la part
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
   const sliders = page.locator("#tune input[type=range]");
-  await expect(sliders).toHaveCount(18);
+  await expect(sliders).toHaveCount(20); // 18 réglages du personnage + 2 du lot 2 (friable, ressort)
   await expect(page.locator("#tuned")).toBeEmpty();
   await expect(page.locator("#debug")).toContainText("vitesse");
   const gravity = page.locator('#tune input[data-key="gravity"]');

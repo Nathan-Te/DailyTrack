@@ -1,15 +1,24 @@
 import { parisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import {
+  ATTEMPT_DEAD,
+  ATTEMPT_FINISHED,
+  ATTEMPT_READY,
+  DANGERS_LEVEL,
+  DEATH_NAMES,
   DEFAULT_JUMP_PARAMS,
+  ESSAI_LEVEL,
   INPUT_MASK,
   JUMP_SIM_VERSION,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
+  RESPAWN_TICKS,
   SANDBOX_LEVEL,
   TICK_RATE,
   UNITS_PER_TILE,
   playerMode,
+  sawCenters,
+  type AttemptState,
   type JumpParams,
   type Level,
   type PlayerState,
@@ -17,20 +26,26 @@ import {
 import { followCamera, snapCamera, type CameraView, type Follow } from "./camera";
 import { Controls } from "./input";
 import { animateLook, onStep, restLook, type Look } from "./look";
+import { BurstPool, Shake } from "./fx";
+import { mountHud } from "./hud";
 import { FixedStepper } from "./loop";
 import { paletteForDay } from "./palette";
 import { createScene, type JumpScene } from "./scene";
-import { JumpSession } from "./session";
+import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { readUrlOptions, type Scenario } from "./urlOptions";
 
+// Lot 2 : dangers (pics, scies fixes et mobiles, blocs friables, ressorts), mort instantanée, réapparition en 0,15 s, chrono par essai,
+// arrivée ; HUD (chrono, meilleur temps, morts), bandeau d'arrivée, éclatement et tremblement à la mort (`?fx=off` les coupe),
+// `?debug&hitbox` (boîtes justes), scénarios `essai` (par défaut) et `dangers`.
 // Lot 1b : commandes tactiles (zones sans trou, glissement ← →, saut au second doigt), page adaptée au téléphone, réglages au doigt.
 // Lot 1 : le personnage. Boucle à pas fixe (120 Hz) sur `stepPlayer`, rendu interpolé, caméra qui suit, clavier et manette,
 // surimpression et `window.__jump` avec `?debug`, panneau de réglages avec `?debug&tune`. Pas encore de danger ni d'arrivée.
 
-type Phase = "loading" | "ready" | "playing" | "no-webgl";
+/** `ready` : l'essai attend la première commande ; `playing` : en course ; `dead` : éclaté, nouvel essai dans un instant ; `finished` : arrivé. */
+type Phase = "loading" | "ready" | "playing" | "dead" | "finished" | "no-webgl";
 
 /** Le personnage tel que `__jump.player` le montre : unités humaines, plus l'état brut de la simulation. */
 export interface PlayerView {
@@ -49,6 +64,28 @@ export interface PlayerView {
   raw: PlayerState;
 }
 
+/** L'essai tel que `__jump.attempt` le montre. */
+export interface AttemptView {
+  status: "attend" | "course" | "mort" | "arrivé";
+  /** Chrono de l'essai, en pas, et affiché. */
+  time: number;
+  timeText: string;
+  /** Pas depuis la mort (tant que mort) ; nouvel essai à `respawnTicks`. */
+  deathTicks: number;
+  respawnTicks: number;
+  /** Session : morts, essais, meilleur temps (pas), dernière mort (cause, centre en tuiles, chrono). */
+  deaths: number;
+  attempts: number;
+  best: number | null;
+  bestText: string | null;
+  lastDeath: { cause: string; x: number; y: number; time: number } | null;
+  /** Centres des scies, en tuiles. */
+  saws: { x: number; y: number }[];
+  crumbles: number[];
+  sections: number[];
+  raw: AttemptState;
+}
+
 /** Ce que `?debug` expose sur `window.__jump` (lu par les tests de navigateur). */
 export interface JumpDebug {
   phase: Phase;
@@ -58,6 +95,12 @@ export interface JumpDebug {
   palette: string;
   scenario: Scenario;
   readonly player: PlayerView;
+  /** L'essai en cours et la session (lot 2). */
+  readonly attempt: AttemptView;
+  /** Effets de la mort : éclats émis, encore visibles, tremblement en cours ; `enabled` faux avec `?fx=off`. */
+  readonly fx: { enabled: boolean; emitted: number; alive: number; shaking: boolean };
+  /** Bandeau d'arrivée affiché. */
+  readonly banner: boolean;
   /** Les réglages en vigueur (modifiés en place par le panneau). */
   params: JumpParams;
   /** Partie aux réglages modifiés : jamais enregistrée. */
@@ -85,7 +128,7 @@ declare global {
 }
 
 const options = readUrlOptions(location.search);
-const LEVELS: Record<Scenario, Level> = { "bac-a-sable": SANDBOX_LEVEL };
+const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL };
 const level = LEVELS[options.scenario];
 
 const day = parisDay(Date.now());
@@ -100,9 +143,11 @@ document.documentElement.style.background = `#${palette.background.toString(16).
 const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS };
 const session = new JumpSession(level, params);
 
+const burst = options.fx ? new BurstPool() : null;
+const shake = new Shake();
 let scene: JumpScene | null = null;
 try {
-  scene = createScene(document.body, level, palette);
+  scene = createScene(document.body, level, palette, { hitbox: options.hitbox, burst });
 } catch {
   scene = null;
 }
@@ -118,7 +163,7 @@ let look: Look = restLook();
 const controls = new Controls();
 const stepper = new FixedStepper();
 
-function view(s: PlayerState = session.state): PlayerView {
+function view(s: PlayerState = session.state.player): PlayerView {
   const p = session.params;
   return {
     x: s.x / T,
@@ -134,12 +179,56 @@ function view(s: PlayerState = session.state): PlayerView {
   };
 }
 
+const STATUS_NAMES = ["attend", "course", "mort", "arrivé"] as const;
+
+function attemptView(): AttemptView {
+  const s = session.state;
+  const d = session.lastDeath;
+  return {
+    status: STATUS_NAMES[s.status]!,
+    time: s.time,
+    timeText: formatTicks(s.time),
+    deathTicks: s.status === ATTEMPT_DEAD ? s.deathTicks : 0,
+    respawnTicks: RESPAWN_TICKS,
+    deaths: session.deaths,
+    attempts: session.attempts,
+    best: session.best,
+    bestText: session.best === null ? null : formatTicks(session.best),
+    lastDeath: d ? { cause: DEATH_NAMES[d.cause] ?? "?", x: d.x / T, y: d.y / T, time: d.time } : null,
+    saws: sawCenters(level, s).map((p) => ({ x: p.x / T, y: p.y / T })),
+    crumbles: [...s.crumbles],
+    sections: [...s.sections],
+    raw: { ...s, player: { ...s.player }, crumbles: [...s.crumbles], sections: [...s.sections], tiles: [] },
+  };
+}
+
+function phaseOf(s: AttemptState): Phase {
+  if (s.status === ATTEMPT_READY) return "ready";
+  if (s.status === ATTEMPT_DEAD) return "dead";
+  if (s.status === ATTEMPT_FINISHED) return "finished";
+  return "playing";
+}
+
+function onEvent(e: SessionEvent): void {
+  if (e.kind === "death") {
+    if (burst) {
+      burst.burst(e.x / T, -e.y / T);
+      shake.start();
+    }
+  } else if (e.kind === "respawn") {
+    look = restLook();
+    if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
+    stepper.reset();
+  } else if (e.kind === "finish") hud.finish(session);
+}
+
 function stepOnce(): void {
   const bits = injected ?? controls.sample();
-  if (bits !== 0 && phase === "ready") phase = "playing";
   const prev = session.state;
-  session.step(bits);
-  look = onStep(look, prev, session.state, session.params.fallSpeed);
+  const event = session.step(bits);
+  if (session.state.status !== ATTEMPT_DEAD && prev.status !== ATTEMPT_DEAD) look = onStep(look, prev.player, session.state.player, session.params.fallSpeed);
+  if (event) onEvent(event);
+  if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
 }
 
 function follow(s: PlayerState): Follow {
@@ -153,9 +242,12 @@ function restart(): void {
   controls.resetLatch();
   stepper.reset();
   look = restLook();
-  if (scene) camera = snapCamera(follow(session.state), scene.frame);
-  if (phase === "playing") phase = "ready";
+  hud.hideFinish();
+  if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
+  if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
 }
+
+const hud = mountHud({ onRestart: () => controls.requestRestart() });
 
 // ——— Surimpression de `?debug` ———
 const overlay = options.debug ? document.getElementById("debug") : null;
@@ -166,12 +258,18 @@ function updateOverlay(): void {
   tunedBadge.textContent = session.tuned ? "réglages modifiés" : "";
   if (!overlay) return;
   const v = view();
-  const side = session.state.slide < 0 ? " (gauche)" : session.state.slide > 0 ? " (droite)" : "";
+  const st = session.state;
+  const side = st.player.slide < 0 ? " (gauche)" : st.player.slide > 0 ? " (droite)" : "";
+  const d = session.lastDeath;
+  const death = d ? `${DEATH_NAMES[d.cause]} (colonne ${fmt(d.x / T, 1)} · rangée ${fmt(d.y / T, 1)})` : "aucune";
   overlay.textContent = [
+    `essai     n° ${session.attempts} · ${STATUS_NAMES[st.status]} · ${formatTicks(st.time)} · morts ${session.deaths}`,
+    `mort      ${death}`,
     `vitesse   → ${fmt(v.vx)}  ↑ ${fmt(-v.vy)} tuiles/s`,
     `état      ${v.mode}${side}`,
     `coyote    ${v.coyote}/${params.coyote}   tampon ${v.buffer}/${params.jumpBuffer}   verrou ${v.lock}`,
     `position  colonne ${fmt(v.x, 2)} · rangée ${fmt(v.y, 2)}   pas ${session.ticks}`,
+    options.hitbox ? "boîtes justes (hitbox)" : "",
     manual ? "pas à pas (manual)" : "",
   ]
     .filter(Boolean)
@@ -191,6 +289,15 @@ const info: JumpDebug = {
   scenario: options.scenario,
   get player() {
     return view();
+  },
+  get attempt() {
+    return attemptView();
+  },
+  get fx() {
+    return { enabled: !!burst, emitted: burst?.emitted ?? 0, alive: burst?.alive ?? 0, shaking: shake.active };
+  },
+  get banner() {
+    return hud.finishShown;
   },
   params,
   get tuned() {
@@ -268,18 +375,29 @@ if (options.tune) {
 }
 
 /** Dessine l'image : personnage interpolé entre l'état précédent et l'état courant (`alpha`), caméra lissée sur `dt` secondes. */
+let clock = 0;
 function draw(alpha: number, dt: number): void {
   if (!scene) return;
-  const a = session.prev;
-  const b = session.state;
+  clock += dt;
+  const sa = session.prev;
+  const sb = session.state;
+  const a = sa.player;
+  const b = sb.player;
   const x = (a.x + (b.x - a.x) * alpha) / T;
   const y = (a.y + (b.y - a.y) * alpha) / T;
   look = animateLook(look, dt, (-b.vy * TICK_RATE) / T);
-  scene.setPlayer({ x, y, look });
-  const f = follow(b);
-  camera = followCamera(camera, { ...f, cx: x + PLAYER_WIDTH / T / 2, cy: -(y + PLAYER_HEIGHT / T / 2) }, scene.frame, dt);
-  scene.setView(camera.x, camera.y);
+  scene.setPlayer({ x, y, look, visible: sb.status !== ATTEMPT_DEAD });
+  burst?.update(dt);
+  scene.setWorld(sa, sb, alpha, clock);
+  // Mort : la caméra reste où l'on est mort (l'éclatement se voit) ; le nouvel essai la repose au départ.
+  if (sb.status !== ATTEMPT_DEAD) {
+    const f = follow(b);
+    camera = followCamera(camera, { ...f, cx: x + PLAYER_WIDTH / T / 2, cy: -(y + PLAYER_HEIGHT / T / 2) }, scene.frame, dt);
+  }
+  const jolt = burst ? shake.offset(dt) : { x: 0, y: 0 };
+  scene.setView(camera.x + jolt.x, camera.y + jolt.y);
   scene.render();
+  hud.update(session);
 }
 
 if (!scene) {
@@ -288,7 +406,7 @@ if (!scene) {
 } else {
   const s = scene;
   s.resize(touchOn);
-  camera = snapCamera(follow(session.state), s.frame);
+  camera = snapCamera(follow(session.state.player), s.frame);
   const onResize = () => {
     s.resize(touchOn);
     draw(manual ? 1 : stepper.alpha, 0);

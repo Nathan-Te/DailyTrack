@@ -6,4 +6,6 @@ export * from "./idiv";
 export * from "./level";
 export * from "./collide";
 export * from "./player";
+export * from "./attempt";
 export * from "./sandbox";
+export * from "./levels";

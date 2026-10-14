@@ -12,15 +12,16 @@ export interface UrlOption {
 }
 
 /** Les niveaux qu'on peut ouvrir par `?scenario=`. */
-export const SCENARIOS = ["bac-a-sable"] as const;
+export const SCENARIOS = ["essai", "dangers", "bac-a-sable"] as const;
 export type Scenario = (typeof SCENARIOS)[number];
 
 export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "scenario",
-    description: "Niveau à ouvrir. « bac-a-sable » : le bac à sable du personnage (lot 1), aussi la page par défaut.",
+    description:
+      "Niveau à ouvrir. « essai » : le niveau d'essai du lot 2 (≈ 30 s, tous les dangers), la page par défaut ; « dangers » : la galerie, chaque danger seul ; « bac-a-sable » : le bac à sable du personnage (lot 1).",
     values: SCENARIOS,
-    default: "bac-a-sable",
+    default: "essai",
   },
   {
     name: "debug",
@@ -31,6 +32,16 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     name: "tune",
     description: "Avec `debug` : panneau de réglages du personnage (mémorisé dans `jump:tune`). Une partie aux réglages modifiés n'est jamais enregistrée.",
     values: [],
+  },
+  {
+    name: "hitbox",
+    description: "Avec `debug` : dessine les boîtes de collision « justes » (personnage, pics réduits, disques mortels des scies) et les sections.",
+    values: [],
+  },
+  {
+    name: "fx",
+    description: "`off` coupe les effets de la mort (éclatement en particules, tremblement d'écran). Affichage seulement.",
+    values: ["off"],
   },
   {
     name: "touch",
@@ -53,6 +64,10 @@ export interface UrlChoices {
   touch: "1" | "0" | null;
   /** Zones et doigts dessinés. */
   zones: boolean;
+  /** Boîtes de collision dessinées : seulement avec `debug`. */
+  hitbox: boolean;
+  /** Effets de la mort (particules, tremblement) ; `?fx=off` les coupe. */
+  fx: boolean;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -60,10 +75,12 @@ export function readUrlOptions(search: string): UrlChoices {
   const scenario = params.get("scenario");
   const debug = params.has("debug");
   return {
-    scenario: (SCENARIOS as readonly string[]).includes(scenario ?? "") ? (scenario as Scenario) : "bac-a-sable",
+    scenario: (SCENARIOS as readonly string[]).includes(scenario ?? "") ? (scenario as Scenario) : "essai",
     debug,
     tune: debug && params.has("tune"),
     touch: params.get("touch") === "1" ? "1" : params.get("touch") === "0" ? "0" : null,
     zones: params.has("zones"),
+    hitbox: debug && params.has("hitbox"),
+    fx: params.get("fx") !== "off",
   };
 }

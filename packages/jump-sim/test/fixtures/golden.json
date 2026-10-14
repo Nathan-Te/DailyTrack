@@ -18,7 +18,9 @@
     "coyote": 10,
     "wallCoyote": 6,
     "jumpBuffer": 12,
-    "cornerTolerance": 1024
+    "cornerTolerance": 1024,
+    "crumbleDelay": 30,
+    "springSpeed": 1056
   },
   "sandbox": "03b97c4e",
   "runs": {
@@ -297,6 +299,71 @@
         "lock": 0,
         "lockDir": 0
       }
+    }
+  },
+  "essai": {
+    "level": "84e3f379",
+    "ticks": 2595,
+    "time": 2595,
+    "trace": "8e5eae28",
+    "final": {
+      "status": 3,
+      "time": 2595,
+      "player": {
+        "x": 898375,
+        "y": 33792,
+        "vx": 375,
+        "vy": 0,
+        "ground": 1,
+        "air": 0,
+        "wallSide": 0,
+        "wallAir": 255,
+        "slide": 0,
+        "buffer": 0,
+        "held": 0,
+        "jumping": 0,
+        "lock": 0,
+        "lockDir": 0
+      },
+      "tiles": "b9cbab26",
+      "crumbles": [
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        -1,
+        0,
+        -1,
+        -1,
+        0,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        -1
+      ],
+      "sections": [
+        1,
+        543,
+        1237,
+        1957
+      ],
+      "deathCause": 0,
+      "deathX": 0,
+      "deathY": 0,
+      "deathTicks": 0,
+      "springCell": 3604,
+      "springTime": 2196
     }
   }
 }

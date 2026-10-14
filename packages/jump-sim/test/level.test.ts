@@ -19,15 +19,19 @@ describe("parseLevel", () => {
     expect(tileAt(level, 4, 1)).toBe(TILE_EMPTY); // l'arrivée aussi
     expect(tileAt(level, 3, 2)).toBe(TILE_SOLID);
     expect(level.tiles.filter((t) => t === TILE_SOLID)).toHaveLength(6);
+    expect(level.saws).toEqual([]);
+    expect(level.sections).toEqual([]);
+    expect(level.crumbles).toEqual([]);
   });
 
   it("ignore les lignes vides autour et les fins de ligne Windows", () => {
     expect(parseLevel("\r\n\r\nS.F\r\n###\r\n\r\n")).toEqual(parseLevel("S.F\n###"));
   });
 
-  it("le monde est clos : hors de la grille, c'est plein", () => {
+  it("le monde est clos à gauche, à droite et en haut ; ouvert en bas (lot 2 : on en meurt)", () => {
     const level = parseLevel(GRID);
-    for (const [c, r] of [[-1, 0], [6, 0], [0, -1], [0, 3]] as const) expect(tileAt(level, c, r)).toBe(TILE_SOLID);
+    for (const [c, r] of [[-1, 0], [6, 0], [0, -1]] as const) expect(tileAt(level, c, r)).toBe(TILE_SOLID);
+    for (const [c, r] of [[0, 3], [5, 4], [-1, 3]] as const) expect(tileAt(level, c, r)).toBe(TILE_EMPTY);
   });
 
   it("place une tuile en unités entières (1 tuile = 4 096 unités)", () => {

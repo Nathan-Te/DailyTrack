@@ -1,7 +1,7 @@
 import { UNITS_PER_TILE } from "./constants";
-import { boxHits, sweep, tileOf } from "./collide";
+import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
-import { TILE_SOLID, tileAt, type Level } from "./level";
+import { isSolidTile, tileAt, type Level } from "./level";
 
 // Le personnage (lot 1) : course à l'élan, saut à hauteur variable, glisse et saut muraux, tolérances (coyote, tampon, coin).
 // `stepPlayer` est pur et avance d'un pas de 1/120 s. Tout l'état est entier : positions en unités (1 tuile = 4 096), vitesses en unités
@@ -75,6 +75,10 @@ export interface JumpParams {
   jumpBuffer: number;
   /** Tolérance de coin : en montée, une tête qui accroche un coin de plafond d'au plus ce nombre d'unités est décalée, unités. */
   cornerTolerance: number;
+  /** Bloc friable (lot 2) : il tombe ce nombre de pas après le premier contact. */
+  crumbleDelay: number;
+  /** Ressort (lot 2) : vitesse de lancement vers le haut, unités/pas (plafonnée à `MAX_SPEED`) ; ce saut ne se coupe pas. */
+  springSpeed: number;
 }
 
 /**
@@ -100,6 +104,8 @@ export const DEFAULT_JUMP_PARAMS: Readonly<JumpParams> = Object.freeze({
   wallCoyote: 6, // 0,05 s
   jumpBuffer: 12, // 0,1 s
   cornerTolerance: 1024, // 1/4 de tuile
+  crumbleDelay: 30, // 0,25 s
+  springSpeed: 1056, // ≈ 7 tuiles de haut
 });
 
 export const JUMP_PARAM_KEYS = Object.keys(DEFAULT_JUMP_PARAMS) as readonly (keyof JumpParams)[];
@@ -175,7 +181,7 @@ const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi 
 const approach = (v: number, target: number, step: number) => (v < target ? (v + step > target ? target : v + step) : v - step < target ? target : v - step);
 
 /** Distance (unités) entre le bord de la boîte et un mur plein de ce côté, si elle est d'au plus `reach` ; sinon −1. */
-function wallGap(level: Level, x: number, y: number, side: number, reach: number): number {
+function wallGap(level: Grid, x: number, y: number, side: number, reach: number): number {
   const r0 = tileOf(y);
   const r1 = tileOf(y + PLAYER_HEIGHT - 1);
   const edge = side < 0 ? x : x + PLAYER_WIDTH; // bord de la boîte de ce côté
@@ -183,7 +189,7 @@ function wallGap(level: Level, x: number, y: number, side: number, reach: number
   const far = side < 0 ? tileOf(x - reach - 1) : tileOf(x + PLAYER_WIDTH + reach); // dernière colonne dont le bord est à ≤ reach
   for (let c = near; side < 0 ? c >= far : c <= far; c += side) {
     for (let r = r0; r <= r1; r++) {
-      if (tileAt(level, c, r) !== TILE_SOLID) continue;
+      if (!isSolidTile(tileAt(level, c, r))) continue;
       return side < 0 ? edge - (c + 1) * UNITS_PER_TILE : c * UNITS_PER_TILE - edge;
     }
   }
@@ -195,7 +201,7 @@ function wallGap(level: Level, x: number, y: number, side: number, reach: number
  * Ordre : commande horizontale → gravité ou glisse → saut (sol, coyote, mur, tampon) → coupe de saut → plafond de vitesse →
  * déplacement x puis y (tolérance de coin en montée) → sol, compteurs, contact mural.
  */
-export function stepPlayer(state: Readonly<PlayerState>, input: number, level: Level, params: Readonly<JumpParams>): PlayerState {
+export function stepPlayer(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>): PlayerState {
   if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
   const p = params;
   let dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0); // gauche + droite = neutre
@@ -279,8 +285,8 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: L
     const row = tileOf(my.pos) - 1;
     const c0 = tileOf(x);
     const c1 = tileOf(x + PLAYER_WIDTH - 1);
-    const s0 = tileAt(level, c0, row) === TILE_SOLID;
-    const s1 = tileAt(level, c1, row) === TILE_SOLID;
+    const s0 = isSolidTile(tileAt(level, c0, row));
+    const s1 = isSolidTile(tileAt(level, c1, row));
     let nx = x;
     if (c0 !== c1 && s0 && !s1 && (c0 + 1) * UNITS_PER_TILE - x <= p.cornerTolerance) nx = (c0 + 1) * UNITS_PER_TILE;
     else if (c0 !== c1 && s1 && !s0 && x + PLAYER_WIDTH - c1 * UNITS_PER_TILE <= p.cornerTolerance) nx = c1 * UNITS_PER_TILE - PLAYER_WIDTH;
@@ -321,7 +327,7 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: L
 }
 
 /** Avance de plusieurs pas avec les commandes données (une par pas). */
-export function runPlayer(state: Readonly<PlayerState>, inputs: readonly number[], level: Level, params: Readonly<JumpParams>): PlayerState {
+export function runPlayer(state: Readonly<PlayerState>, inputs: readonly number[], level: Grid, params: Readonly<JumpParams>): PlayerState {
   let s = state as PlayerState;
   for (const input of inputs) s = stepPlayer(s, input, level, params);
   return s;

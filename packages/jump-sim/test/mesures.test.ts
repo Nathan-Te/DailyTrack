@@ -1,6 +1,23 @@
 import { Rng } from "@cdj/core";
 import { describe, expect, it } from "vitest";
-import { INPUT_MASK, PLAYER_HEIGHT, PLAYER_WIDTH, SANDBOX_LEVEL, SANDBOX_MARKS, initialPlayer, stepPlayer, type Level, type PlayerState } from "../src/index";
+import {
+  ATTEMPT_DEAD,
+  ATTEMPT_READY,
+  ESSAI_LEVEL,
+  INPUT_MASK,
+  PLAYER_HEIGHT,
+  PLAYER_WIDTH,
+  RESPAWN_TICKS,
+  SANDBOX_LEVEL,
+  SANDBOX_MARKS,
+  initialAttempt,
+  initialPlayer,
+  parseLevel,
+  stepAttempt,
+  stepPlayer,
+  type Level,
+  type PlayerState,
+} from "../src/index";
 import { J, P, R, T, climbChimney, floatAt, hold, room, standAt } from "./helpers";
 
 // Mesures du personnage, tirées de la simulation (README du lot 1). Les grandeurs physiques sont vérifiées ici à chaque `npm test` ;
@@ -79,6 +96,56 @@ describe("mesures", () => {
       expect(climb.reachedAt).toBeGreaterThan(0);
     }
     expect(PLAYER_HEIGHT).toBeLessThan(T);
+  });
+
+  it("ressort, réapparition (lot 2)", () => {
+    const shaft = parseLevel(["#.....F#", ...Array(14).fill("#......#"), "#S.....#", "###*####"].join("\n"));
+    let s = initialAttempt(shaft);
+    let launchY = -1;
+    let top = Infinity;
+    for (let t = 0; t < 400; t++) {
+      s = stepAttempt(s, t < 20 ? R : 0, shaft, P);
+      if (launchY < 0 && s.player.vy === -P.springSpeed) launchY = s.player.y;
+      if (launchY >= 0) top = Math.min(top, s.player.y);
+      if (launchY >= 0 && s.player.vy > 0) break;
+    }
+    const height = (launchY - top) / T;
+    note("hauteur du ressort (sans rien tenir)", `${height.toFixed(2)} tuiles (lancement ${((P.springSpeed * 120) / T).toFixed(1)} tuiles/s)`);
+    expect(height).toBeGreaterThan(6.8);
+    expect(height).toBeLessThan(7.3);
+
+    // De la mort au nouvel essai : `RESPAWN_TICKS` pas.
+    const pit = parseLevel(["#......F#", "#S......#", "##.######"].join("\n"));
+    let d = initialAttempt(pit);
+    let k = 0;
+    while (d.status !== ATTEMPT_DEAD && k < 300) (d = stepAttempt(d, R, pit, P)), k++;
+    let wait = 0;
+    while (d.status !== ATTEMPT_READY && wait < 100) (d = stepAttempt(d, R, pit, P)), wait++;
+    note("de la mort au nouvel essai", `${wait} pas (${S(wait).toFixed(3)} s), commandes ignorées pendant ce temps`);
+    expect(wait).toBe(RESPAWN_TICKS);
+    expect(S(wait)).toBeLessThanOrEqual(0.2);
+  });
+
+  it("coût d'un pas d'essai sur le niveau d'essai (affiché avec MESURES=1)", () => {
+    // Commandes tenues un temps au hasard (comme un joueur) : le personnage avance, meurt, recommence.
+    const rng = new Rng(4);
+    const inputs: number[] = [];
+    while (inputs.length < 4096) {
+      const input = rng.chance(2) ? R | (rng.chance(2) ? J : 0) : rng.int(INPUT_MASK + 1);
+      for (let n = 1 + rng.int(40); n > 0 && inputs.length < 4096; n--) inputs.push(input);
+    }
+    const steps = process.env.MESURES ? 2_000_000 : 20_000;
+    let s = initialAttempt(ESSAI_LEVEL);
+    let deaths = 0;
+    const t0 = performance.now();
+    for (let i = 0; i < steps; i++) {
+      const before = s.status;
+      s = stepAttempt(s, inputs[i & 4095]!, ESSAI_LEVEL, P);
+      if (s.status === ATTEMPT_DEAD && before !== ATTEMPT_DEAD) deaths++;
+    }
+    const ns = ((performance.now() - t0) * 1e6) / steps;
+    note("coût moyen d'un `stepAttempt` (commandes au hasard, niveau d'essai)", `${ns.toFixed(0)} ns (${deaths} morts sur ${steps.toLocaleString("fr-FR")} pas)`);
+    expect(deaths).toBeGreaterThan(0);
   });
 
   it("coût d'un pas (affiché avec MESURES=1)", () => {
