@@ -23,8 +23,10 @@ Runs de la branche (le résumé de chacun est dans l'onglet « Summary » du run
 | [#249](https://github.com/Nathan-Te/DailyTrack/actions/runs/38539737042) (PR, même commit) | `5efb9a7` | 13 min | 214 réussis, 0 instable, **1 échec** : `thumbnails` (délai, corrigé ci-dessous) |
 | [#252](https://github.com/Nathan-Te/DailyTrack/actions/runs/38542158246) (push) | `8793daa` | 13 min | **vert**, 214 réussis, **1 instable** : `figures` admin (WebKit), corrigé ci-dessous |
 | [#253](https://github.com/Nathan-Te/DailyTrack/actions/runs/38542166578) (PR, même commit) | `8793daa` | 13 min | **vert** |
+| [#254](https://github.com/Nathan-Te/DailyTrack/actions/runs/38543987601) (push) | `f2486ac` | 12 min | **vert**, mais **4 instables** : `salon` ×2, `tactile` ×2 (corrigés ci-dessous) — le résumé les montre, la relance les a fait passer |
+| [#255](https://github.com/Nathan-Te/DailyTrack/actions/runs/38543991665) (PR, même commit) | `f2486ac` | 12 min | **vert** (instables : non relevés) |
 
-**Critère d'arrêt « trois runs complets verts d'affilée, 0 instable »** : **pas encore atteint, honnêtement**. Dernière série : #252 et #253 verts (13 min), mais #252 avait 1 instable (`figures` WebKit, corrigé depuis) ; #249 était rouge (`thumbnails`, corrigé depuis). L'agent de session ne peut pas relancer un run (403 : seuls les nouveaux commits en lancent, un par événement `push` et `pull_request`). **À faire par Nathan** : sur la PR, *Re-run all jobs* jusqu'à avoir trois runs verts sans « Tests instables » dans le résumé, puis fusionner ; chaque run se lit en tête de sa page (« Résultats e2e »).
+**Critère d'arrêt « trois runs complets verts d'affilée, 0 instable »** : **pas encore atteint, honnêtement**. Dernière série : #252 à #255 verts (12 à 13 min) — mais « vert » ne veut pas dire « sans instable » : #252 avait 1 instable (`figures`), #254 en avait 4 (`salon`, `tactile`), tous corrigés depuis ; #249 était rouge (`thumbnails`). L'agent de session ne peut pas relancer un run (403 : seuls les nouveaux commits en lancent, un par événement `push` et `pull_request`). **À faire par Nathan** : sur la PR, *Re-run all jobs* jusqu'à avoir trois runs verts sans « Tests instables » dans le résumé, puis fusionner ; chaque run se lit en tête de sa page (« Résultats e2e »).
 
 ## Familles instables : cause et correction
 
@@ -46,6 +48,9 @@ Aucun test n'a été supprimé, sauté pour être vert ni affaibli. Chaque cause
 | **`accueil`** « manette » | Bouton tenu 700 ms ; le jeu lit la manette une fois par image, plus longue que cela en rendu logiciel | Le bouton reste enfoncé **jusqu'à ce que l'effet soit visible** |
 | **`thumbnails`** « 15 miniatures » | Quinze miniatures en WebGL logiciel : ≈ 52 s en local, plus de 180 s en CI (3 runs sur 4) ; aucune autre cause dans les traces | Délai du test **420 s** (mesure citée dans le fichier) ; aucune assertion changée |
 | **`figures`** admin (WebKit, instable) | Le « change » du champ variante part au départ du focus et **redessine la page**, qui remet la case « Miroir » à son état d'avant : un clic juste avant est annulé (« Clicking the checkbox did not change its state »). Course réelle de l'interface d'admin, hors jeu | Le test valide la variante (`blur`, attente de `v=1` dans l'adresse) **avant** de cliquer la case ; mêmes assertions |
+| **`salon`** « en cours de session » (instable, 2ᵉ passe) | Les fantômes sont ceux **du départ en cours** (`GhostField.active`) : tant que le classement fictif s'allonge, ils ne sont plus ceux du premier ; mon attente d'« état stable » ne pouvait donc jamais aboutir (120 s) | On redonne un départ (Entrée) après chaque mise à jour du classement jusqu'à ce que les fantômes du départ soient ceux du classement (10 essais au plus, puis assertion) |
+| **`salon`** « touche G » (instable) | « aucun fantôme » lu 500 ms après la touche : 2 voitures encore dessinées | On attend `ghosts.shown === 0` |
+| **`tactile`** « deux pédales », « ancien défaut » (instables) | `__cdj.input` est lu image par image ; 5 s ne suffisent pas toujours en rendu logiciel (0 relevé pour 64 attendu) | Attente de 30 s (elle s'arrête dès que l'état est atteint) dans tout le fichier |
 | **Minuit UTC** | Plusieurs specs calculaient « aujourd'hui » avec l'heure réelle ; un run qui passait minuit changeait de jour | **Horloge maîtrisée** (voir ci-dessous) |
 
 ### Horloge maîtrisée
