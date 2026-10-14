@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page, TODAY, newClockedContext } from "./fixtures";
 import { dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
 import { shareLine } from "../src/share";
 
@@ -11,7 +11,7 @@ test.describe.configure({ mode: "serial" });
 test.setTimeout(180_000);
 
 const API = "http://127.0.0.1:8787";
-const day = Math.floor(Date.now() / 86_400_000);
+const day = TODAY;
 const circuit = dailyCircuit(day);
 const fast = runPilot(circuit.track, { grip: 1 });
 const slow = runPilot(circuit.track, { grip: 0.78 });
@@ -19,7 +19,7 @@ const fastCode = encodeReplay(fast.replay);
 const slowCode = encodeReplay(slow.replay);
 
 async function newDevice(browser: Browser, api = API): Promise<Page> {
-  const context = await browser.newContext({ viewport: { width: 1000, height: 560 } });
+  const context = await newClockedContext(browser, { viewport: { width: 1000, height: 560 } });
   const page = await context.newPage();
   await page.goto(`/?debug&timescale=6&api=${encodeURIComponent(api)}`);
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
@@ -96,7 +96,7 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
 
 test("un classement injoignable ne gêne pas le jeu : message clair et bouton pour réessayer", async ({ browser }) => {
   // Le planning du jour répond (sinon le jeu est « hors ligne, non classé », lot 14) ; ensuite plus personne n'écoute.
-  const context = await browser.newContext({ viewport: { width: 1000, height: 560 } });
+  const context = await newClockedContext(browser, { viewport: { width: 1000, height: 560 } });
   const info = { date: circuit.date, variant: 0, theme: null, trackId: circuit.track.id };
   await context.route("http://api.test/**", (route) => {
     const cors = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
@@ -120,7 +120,7 @@ test("un classement injoignable ne gêne pas le jeu : message clair et bouton po
 });
 
 test("sans adresse d'API, aucun classement n'apparaît", async ({ browser }) => {
-  const context = await browser.newContext();
+  const context = await newClockedContext(browser);
   const page = await context.newPage();
   await page.goto("/?debug&timescale=6");
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");

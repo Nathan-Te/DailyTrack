@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page, TODAY, newClockedContext, clockNow } from "./fixtures";
 import { dailyCircuit, formatDay } from "@cdj/sim";
 import { boxes, expectNoOverlap } from "./layout";
 
@@ -19,7 +19,7 @@ async function open(page: Page, url: string, { wide = false }: { wide?: boolean 
 const ui = (page: Page) => page.evaluate(() => window.__cdj.ui);
 
 async function fresh(browser: Browser, viewport = DESKTOP, touch = false): Promise<BrowserContext> {
-  return browser.newContext({ viewport, hasTouch: touch, isMobile: touch, permissions: ["clipboard-read", "clipboard-write"] });
+  return newClockedContext(browser, { viewport, hasTouch: touch, isMobile: touch, permissions: ["clipboard-read", "clipboard-write"] });
 }
 
 test.describe("l'accueil", () => {
@@ -127,7 +127,7 @@ test.describe("l'accueil", () => {
   test("les liens de test, de partage et d'archive sautent l'accueil ; ?home=1 le force", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    const day = formatDay(Math.floor(Date.now() / 86_400_000) - 1);
+    const day = formatDay(TODAY - 1);
     for (const url of [`/?seed=${day}`, `/?day=${day}&api=demo`, "/?scenario=essai", "/?demo", "/?debug", "/?mode=salon&api=demo", "/?watch=best&api=demo&seed=2026-10-26", "/?theme=nuit"]) {
       await open(page, url);
       await expect(page.locator("#home"), url).toBeHidden();
@@ -488,7 +488,7 @@ test.describe("profil", () => {
   test("« Copier mon code » puis « Charger un code » dans un autre contexte : mêmes pseudo, records et places", async ({ browser }) => {
     const ID = "0123456789abcdef0123456789abcdef";
     const OTHER = "fedcba9876543210fedcba9876543210";
-    const today = formatDay(Math.floor(Date.now() / 86_400_000));
+    const today = formatDay(TODAY);
     const a = await fresh(browser);
     const pa = await a.newPage();
     await pa.addInitScript(
@@ -601,7 +601,7 @@ test.describe("profil", () => {
 const API = "http://api.test";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
 const json = (body: unknown, status = 200) => ({ status, headers: CORS, contentType: "application/json", body: JSON.stringify(body) });
-const day = Math.floor(Date.now() / 86_400_000);
+const day = TODAY;
 const circuit = dailyCircuit(day);
 
 async function mockApi(ctx: BrowserContext, board: { rank: number; name: string; ms: number; medal: string | null }[], me: { rank: number; name: string; ms: number; medal: string | null } | null) {
@@ -611,7 +611,7 @@ async function mockApi(ctx: BrowserContext, board: { rank: number; name: string;
     if (url.pathname === `/api/day/${circuit.date}`) return route.fulfill(json({ date: circuit.date, variant: 0, theme: null, trackId: circuit.track.id }));
     if (url.pathname.endsWith("/leaderboard")) return route.fulfill(json({ date: circuit.date, participants: Math.max(12, me?.rank ?? 0), top: board, me }));
     if (url.pathname === "/api/salon/now") {
-      const serverMs = Date.now();
+      const serverMs = clockNow();
       return route.fulfill(json({ serverMs, session: Math.floor(serverMs / 600_000), startMs: Math.floor(serverMs / 600_000) * 600_000, endMs: (Math.floor(serverMs / 600_000) + 1) * 600_000, trackId: "salon-x", players: 4 }));
     }
     return route.fulfill(json({ error: "no_ghost", message: "Aucun fantôme" }, 404));

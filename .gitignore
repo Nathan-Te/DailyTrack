@@ -9,3 +9,7 @@ dist-types/
 *.tsbuildinfo
 dist-types-e2e/
 data/
+blob-report/
+playwright-report/
+apps/web/all-blobs/
+apps/web/merged/

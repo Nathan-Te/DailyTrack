@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, TODAY } from "./fixtures";
 import { dailyCircuit, encodeReplay, medalFor, runPilot, createSurfacesTrack } from "@cdj/sim";
 
 // Lot 9 : effets visuels, sons, démo. Tout se lit dans `__cdj.fx` / `__cdj.audio` (présentation seule : ces tests ne
@@ -112,7 +112,7 @@ test("le contexte audio démarre au premier geste, pas avant", async ({ page }) 
 });
 
 test.describe("circuit du jour joué par le pilote", () => {
-  const day = Math.floor(Date.now() / 86_400_000);
+  const day = TODAY;
   const circuit = dailyCircuit(day);
   const run = runPilot(circuit.track, { grip: 0.9 });
   const code = encodeReplay(run.replay);

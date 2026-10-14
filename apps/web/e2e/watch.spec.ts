@@ -72,16 +72,20 @@ test("pause, ralenti, accéléré et retour de 5 s ne changent pas le temps fina
   }
   // Ralenti réel : à ×0,25, le pas avance quatre fois moins vite qu'à ×1.
   await page.locator("#watch-play").click();
+  // Le rapport se mesure sur l'horloge de la PAGE (performance.now) et sur trois secondes : en rendu logiciel une image dure 0,3 s ou plus,
+  // une fenêtre de 0,7 s ne contient que deux ou trois images et le rapport sortait au hasard (0,2 relevé en CI).
   const rate = async (speed: number) => {
     await page.locator(`[data-speed="${speed}"]`).click();
-    const a = (await state(page)).tick;
-    await page.waitForTimeout(700);
-    return (await state(page)).tick - a;
+    await page.waitForFunction((s) => window.__cdj.watch!.speed === s, speed);
+    const from = await page.evaluate(() => ({ tick: window.__cdj.watch!.tick, at: performance.now() }));
+    await page.waitForTimeout(3000);
+    const to = await page.evaluate(() => ({ tick: window.__cdj.watch!.tick, at: performance.now() }));
+    return (to.tick - from.tick) / (to.at - from.at);
   };
   const slow = await rate(0.25);
   const normal = await rate(1);
   expect(slow).toBeGreaterThan(0);
-  expect(normal / slow).toBeGreaterThan(1.5); // (rendu logiciel lent : le rapport exact est bruité, la proportion est vérifiée à la louche)
+  expect(normal / slow).toBeGreaterThan(1.5); // (même seuil qu'avant : le vrai rapport est de 4 ; les fenêtres plus longues ne le brouillent plus)
   // Un second retour de 5 s en marche, puis accéléré jusqu'au bout.
   await page.locator("#watch-back").click();
   await page.locator("#watch-speed-2").click();
@@ -137,14 +141,17 @@ test("« Courir contre ce fantôme » lance une course normale avec le bon fant�
 test("caméras : proche, loin, capot, puis la caméra libre (glisser tourne, molette zoome) ; le pseudo flotte au-dessus", async ({ page }) => {
   await page.goto(`${DAY_URL}&timescale=1`);
   await ready(page);
-  // La touche est lue à l'image suivante : un appui à la fois, avec le temps de la prendre en compte.
+  // La touche est lue à l'image suivante : un appui à la fois, puis on ATTEND que la caméra ait changé (jamais une durée : en rendu logiciel
+  // une image dure plus d'une demi-seconde et un appui suivant arrivait avant que le précédent soit lu).
+  const label = () => page.evaluate(() => (window.__cdj.watch!.free ? "libre" : window.__cdj.camera.name));
   const next = async () => {
+    const before = await label();
     await page.keyboard.press("KeyC");
-    await page.waitForTimeout(500);
+    await page.waitForFunction((b) => (window.__cdj.watch!.free ? "libre" : window.__cdj.camera.name) !== b, before, { timeout: 30_000 });
   };
   const names: string[] = [];
   for (let i = 0; i < 5; i++) {
-    names.push(await page.evaluate(() => (window.__cdj.watch!.free ? "libre" : window.__cdj.camera.name)));
+    names.push(await label());
     await next();
   }
   // Les trois caméras de la touche C, puis la caméra libre, puis on reboucle (le départ dépend de la caméra mémorisée : on part de « proche »).

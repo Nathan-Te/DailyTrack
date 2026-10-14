@@ -26,6 +26,16 @@ if (config.salonMinutes !== undefined) {
   consoleLog("WARNING", "SALON_MINUTES : sessions du Salon raccourcies (tests et essais locaux seulement, jamais en production)", { salonMinutes: config.salonMinutes });
 }
 
+// Horloge de test (`TEST_CLOCK_OFFSET_MS`) : l'heure réelle plus un décalage constant, qui avance donc en temps réel. Les tests de navigateur
+// décalent de la même valeur l'horloge des pages (`context.clock`), pour que le serveur et les pages s'accordent et qu'aucun test ne
+// dépende du jour réel ni ne change de jour en route.
+let now: (() => number) | undefined;
+if (config.testClockOffsetMs !== undefined) {
+  const offset = config.testClockOffsetMs;
+  now = () => Date.now() + offset;
+  consoleLog("WARNING", "TEST_CLOCK_OFFSET_MS : horloge du serveur décalée (tests seulement, jamais en production)", { offsetMs: offset, now: new Date(now()).toISOString() });
+}
+
 let db;
 if (config.db.kind === "turso") {
   db = await openLibsql({ url: config.db.url, authToken: config.db.authToken });
@@ -41,6 +51,8 @@ const api = createApi({
   rateSalt: config.rateSalt,
   adminToken: config.adminToken,
   salonMinutes: config.salonMinutes,
+  now,
+  testClock: now !== undefined,
   revision: config.revision,
   log: consoleLog,
 });

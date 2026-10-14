@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, FIXED_NOW } from "./fixtures";
 import { DEFAULT_CAR_PARAMS } from "@cdj/sim";
 
 // Lot 7 : scénario `pilotage`, panneau de réglage `?debug&tune`, caméras. Rendu 3D : Chromium seulement.
@@ -54,7 +54,7 @@ test("?debug&tune : les curseurs changent la voiture en direct ; la course n'est
     if (url.pathname === "/api/submit") submits.push(url.pathname);
     return route.fulfill({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({ date: "", participants: 0, top: [], me: null }) });
   });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(FIXED_NOW).toISOString().slice(0, 10);
   await racing(page, `/?debug&tune&api=${encodeURIComponent(API)}&seed=${today}`);
   const panel = page.locator("#tune");
   await expect(panel).toBeVisible();

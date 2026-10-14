@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, TODAY } from "./fixtures";
 import { PREMIER_JOUR, dailyTrackId, formatDay } from "@cdj/sim";
 
 // Panneau d'admin et planning (lot 14), en mode démo : sans serveur, remplacements gardés dans ce navigateur.
@@ -117,7 +117,7 @@ test("le jeu : variante d'essai (?variant=) jouable, jamais classée ; sans API 
 // --- Avec le vrai serveur (celui du conteneur Docker, base en mémoire, ADMIN_TOKEN fixé par playwright.config.ts) -----------
 const API = "http://127.0.0.1:8787";
 const TOKEN = "e2e-admin-token-0123456789";
-const REAL_TODAY = Math.floor(Date.now() / 86_400_000);
+const REAL_TODAY = TODAY;
 
 test("admin avec le vrai serveur : mauvais jeton refusé, bon jeton accepté, remplacement puis retour à l'original", async ({ page, request }) => {
   await page.goto(`/admin/?api=${encodeURIComponent(API)}`);
