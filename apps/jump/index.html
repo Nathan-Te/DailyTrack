@@ -17,7 +17,24 @@
       #hud { display: contents; }
       #debug { position: fixed; left: 10px; top: 10px; margin: 0; padding: 6px 9px; color: #fff; background: rgba(11, 16, 32, 0.72); border-radius: 8px; font: 600 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; pointer-events: none; }
       #debug[hidden] { display: none; }
-      #tuned { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); font: 700 12px system-ui, sans-serif; color: #ffd22e; background: rgba(11, 16, 32, 0.72); padding: 2px 9px; border-radius: 6px; pointer-events: none; }
+      /* HUD du lot 2 : chrono de l'essai, meilleur temps, morts. En haut au centre (ordinateur), sous la bande haute (téléphone). */
+      #chrono { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 12px; padding: 4px 12px; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; z-index: 4; }
+      #chrono .time { font-size: 22px; font-weight: 800; min-width: 5.6em; text-align: right; }
+      #chrono.done .time { color: #ffd22e; }
+      #chrono .best, #chrono .deaths { opacity: 0.85; }
+      /* Bandeau d'arrivée (lot 2) : au-dessus de la couche tactile, un bouton de 48 px. */
+      #finish { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; box-sizing: border-box; max-width: calc(100% - 32px); min-width: min(320px, calc(100% - 32px)); padding: 16px 20px; border-radius: 14px; background: rgba(11, 16, 32, 0.9); color: #fff; font: 600 15px system-ui, sans-serif; text-align: center; font-variant-numeric: tabular-nums; touch-action: manipulation; }
+      #finish[hidden] { display: none; }
+      #finish .title { font-size: 18px; opacity: 0.85; }
+      #finish .time { font-size: 34px; font-weight: 800; color: #ffd22e; margin: 2px 0 6px; }
+      #finish .stats { display: flex; flex-direction: column; gap: 2px; opacity: 0.9; }
+      #finish button { margin-top: 12px; min-height: 48px; min-width: 200px; padding: 0 18px; border: 0; border-radius: 10px; background: #ffd22e; color: #101820; font: 700 16px system-ui, sans-serif; cursor: pointer; }
+      #finish .hint { margin-top: 6px; font-size: 12px; opacity: 0.65; }
+      /* Point de passage atteint (lot 2b) : message bref, au-dessus du personnage, sans rien capter. */
+      #toast { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); z-index: 4; padding: 6px 14px; border-radius: 999px; background: rgba(11, 16, 32, 0.72); color: #fff; font: 700 15px system-ui, sans-serif; pointer-events: none; opacity: 0; white-space: nowrap; }
+      #toast.show { animation: toast 1.2s ease forwards; }
+      @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -30%); } 12% { opacity: 1; transform: translate(-50%, -50%); } 75% { opacity: 1; } 100% { opacity: 0; } }
+      #tuned { position: fixed; left: 50%; top: 54px; transform: translateX(-50%); font: 700 12px system-ui, sans-serif; color: #ffd22e; background: rgba(11, 16, 32, 0.72); padding: 2px 9px; border-radius: 6px; pointer-events: none; }
       #tuned:empty { display: none; }
       #tune { position: fixed; right: 10px; top: 10px; width: 300px; max-height: calc(100vh - 56px); overflow: auto; background: rgba(11, 16, 32, 0.88); color: #fff; font: 600 12px system-ui, sans-serif; border-radius: 10px; padding: 8px 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; user-select: text; -webkit-user-select: text; }
       #tune[hidden] { display: none; }
@@ -58,6 +75,9 @@
       body.touch-suspended #tbar { display: none; }
       /* Sur téléphone, la surimpression de debug descend sous la bande haute et s'empile avec l'invitation à tourner l'écran. */
       body.touch #hud { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; position: fixed; z-index: 4; left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); top: calc(var(--band) + 4px); pointer-events: none; }
+      body.touch #chrono { position: static; transform: none; align-self: center; max-width: 100%; box-sizing: border-box; gap: 10px; font-size: 12px; padding: 3px 10px; }
+      body.touch #chrono .time { font-size: 19px; }
+      @media (max-width: 360px) { body.touch #chrono { gap: 6px; font-size: 11px; } body.touch #chrono .time { font-size: 17px; min-width: 5em; } }
       body.touch #debug, body.touch #tuned { box-sizing: border-box; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; position: static; transform: none; font-size: 11px; line-height: 1.35; background: rgba(11, 16, 32, 0.82); }
       body.touch-suspended #hud { visibility: hidden; }
       @media (max-height: 520px) { body.touch #debug { font-size: 10px; } }
@@ -79,10 +99,19 @@
   <body>
     <div id="stamp"></div>
     <div id="hud">
+      <div id="chrono" aria-live="off"><span class="time">0,000 s</span><span class="best">Meilleur —</span><span class="deaths">Morts 0</span></div>
       <pre id="debug" hidden></pre>
       <div id="tuned"></div>
     </div>
+    <div id="toast" role="status"></div>
     <div id="tune" hidden></div>
+    <div id="finish" role="dialog" aria-label="Arrivée" hidden>
+      <div class="title">Arrivée !</div>
+      <div class="time"></div>
+      <div class="stats"><span class="best"></span><span class="deaths"></span></div>
+      <button type="button" id="finish-restart">Recommencer</button>
+      <div class="hint">R, ou touche le bandeau</div>
+    </div>
     <div id="nogl">WebGL n'est pas disponible dans ce navigateur : DailyJump ne peut pas s'afficher.</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

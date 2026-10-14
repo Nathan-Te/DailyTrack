@@ -6,8 +6,12 @@ import {
   INPUT_LEFT,
   INPUT_RIGHT,
   JUMP_PARAM_KEYS,
+  DEATH_SPIKE,
+  RESPAWN_TICKS,
   SANDBOX_LEVEL,
+  initialAttempt,
   initialPlayer,
+  parseLevel,
   stepPlayer,
   type PlayerState,
 } from "@cdj/jump-sim";
@@ -16,7 +20,7 @@ import { CAMERA, clampAxis, followCamera, snapCamera, type Frame } from "../src/
 import { JumpLatch, directionBits, padDirection, padJump, padRestart } from "../src/input";
 import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
-import { JumpSession } from "../src/session";
+import { JumpSession, formatTicks } from "../src/session";
 import { TUNE_SLIDERS, TUNE_STORAGE_KEY, formatHuman, jumpHeight, loadTuned, paramsJson, parseTuned, saveTuned, toHuman } from "../src/tune";
 import { URL_OPTIONS, readUrlOptions } from "../src/urlOptions";
 
@@ -45,9 +49,11 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    expect(readUrlOptions("")).toEqual({ scenario: "bac-a-sable", debug: false, tune: false, touch: null, zones: false });
-    expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ scenario: "bac-a-sable", debug: true, tune: false, touch: null, zones: false });
-    expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ scenario: "bac-a-sable", debug: true, tune: true, touch: null, zones: false });
+    const none = { debug: false, tune: false, touch: null, zones: false, hitbox: false, fx: true };
+    expect(readUrlOptions("")).toEqual({ ...none, scenario: "essai" });
+    expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
+    expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ ...none, scenario: "essai", debug: true, tune: true });
+    expect(readUrlOptions("?scenario=dangers").scenario).toBe("dangers");
     expect(readUrlOptions("?tune").tune).toBe(false);
   });
 
@@ -56,6 +62,13 @@ describe("paramètres d'adresse", () => {
     expect(readUrlOptions("?touch=0").touch).toBe("0");
     expect(readUrlOptions("?touch=oui").touch).toBeNull();
     expect(readUrlOptions("?zones").zones).toBe(true);
+  });
+
+  it("lit hitbox (seulement avec debug) et fx=off", () => {
+    expect(readUrlOptions("?hitbox").hitbox).toBe(false);
+    expect(readUrlOptions("?debug&hitbox").hitbox).toBe(true);
+    expect(readUrlOptions("?fx=off").fx).toBe(false);
+    expect(readUrlOptions("?fx=on").fx).toBe(true);
   });
 });
 
@@ -155,9 +168,9 @@ describe("session", () => {
     for (let i = 0; i < 30; i++) session.step(INPUT_RIGHT);
     expect(session.ticks).toBe(30);
     expect(session.prev).not.toBe(session.state);
-    expect(session.state.x).toBeGreaterThan(initialPlayer(SANDBOX_LEVEL).x);
+    expect(session.state.player.x).toBeGreaterThan(initialPlayer(SANDBOX_LEVEL).x);
     session.restart();
-    expect(session.state).toEqual(initialPlayer(SANDBOX_LEVEL));
+    expect(session.state).toEqual(initialAttempt(SANDBOX_LEVEL));
     expect(session.prev).toBe(session.state);
     expect(session.ticks).toBe(0);
   });
@@ -175,7 +188,7 @@ describe("session", () => {
     expect(session.tuned).toBe(false);
   });
 
-  it("joue exactement stepPlayer (le jeu n'ajoute rien à la simulation)", () => {
+  it("sur le bac à sable (sans danger), l'essai joue exactement stepPlayer (le jeu n'ajoute rien à la simulation)", () => {
     const session = new JumpSession(SANDBOX_LEVEL, { ...DEFAULT_JUMP_PARAMS });
     let s: PlayerState = initialPlayer(SANDBOX_LEVEL);
     const inputs = [INPUT_RIGHT, INPUT_RIGHT | INPUT_JUMP, INPUT_JUMP, 0, INPUT_LEFT, INPUT_LEFT | INPUT_RIGHT];
@@ -184,7 +197,107 @@ describe("session", () => {
       s = stepPlayer(s, input, SANDBOX_LEVEL, DEFAULT_JUMP_PARAMS);
       session.step(input);
     }
-    expect(session.state).toEqual(s);
+    expect(session.state.player).toEqual(s);
+  });
+
+  // Un couloir : départ, un pic, l'arrivée ; on meurt en courant, on arrive en sautant.
+  const corridor = parseLevel([...Array(5).fill("#.............#"), "#S.....^.....F#", "###############"].join("\n"));
+  const dieOnce = (session: JumpSession) => {
+    let event = null;
+    for (let i = 0; i < 400 && !event; i++) event = session.step(INPUT_RIGHT);
+    return event;
+  };
+
+  it("compte les morts et garde la dernière ; la réapparition est un nouvel essai ; recommencer n'est pas une mort", () => {
+    const session = new JumpSession(corridor, { ...DEFAULT_JUMP_PARAMS });
+    const death = dieOnce(session);
+    expect(death).toMatchObject({ kind: "death", cause: DEATH_SPIKE });
+    expect(session.deaths).toBe(1);
+    expect(session.lastDeath?.cause).toBe(DEATH_SPIKE);
+    let respawn = null;
+    let waited = 0;
+    while (!respawn && waited < 100) {
+      respawn = session.step(INPUT_RIGHT);
+      waited++;
+    }
+    expect(respawn).toEqual({ kind: "respawn", checkpoint: false });
+    expect(waited).toBe(RESPAWN_TICKS);
+    expect(session.state).toEqual(initialAttempt(corridor));
+    expect(session.prev).toBe(session.state); // pas d'interpolation depuis le lieu de la mort
+    expect(session.attempts).toBe(2);
+    // Recommencer en pleine course : nouvel essai, pas une mort.
+    for (let i = 0; i < 10; i++) session.step(INPUT_RIGHT);
+    session.restart();
+    expect(session.deaths).toBe(1);
+    expect(session.attempts).toBe(3);
+    expect(session.state).toEqual(initialAttempt(corridor));
+  });
+
+  it("l'arrivée fige le temps et donne le meilleur temps de la session (un essai aux réglages modifiés ne compte pas)", () => {
+    const finish = (session: JumpSession, jumpAt: number) => {
+      let event = null;
+      for (let t = 0; t < 600 && event?.kind !== "finish"; t++) event = session.step(t >= jumpAt && t < jumpAt + 45 ? INPUT_RIGHT | INPUT_JUMP : INPUT_RIGHT);
+      return event;
+    };
+    const params = { ...DEFAULT_JUMP_PARAMS };
+    const session = new JumpSession(corridor, params);
+    let jumpAt = 0;
+    for (; jumpAt < 120; jumpAt++) {
+      const probe = new JumpSession(corridor, { ...DEFAULT_JUMP_PARAMS });
+      if (finish(probe, jumpAt)?.kind === "finish") break;
+    }
+    const first = finish(session, jumpAt);
+    expect(first).toMatchObject({ kind: "finish", best: true });
+    expect(session.best).toBe(session.state.time);
+    const frozen = session.state;
+    session.step(INPUT_RIGHT);
+    expect(session.state).toBe(frozen);
+    // Moins bien (on attend avant de partir : le chrono ne tourne pas, donc même temps) : pas un nouveau meilleur.
+    session.restart();
+    for (let i = 0; i < 30; i++) session.step(0);
+    expect(finish(session, jumpAt)).toMatchObject({ kind: "finish", best: false });
+    expect(session.best).toBe(frozen.time);
+    // Réglages modifiés (gravité plus faible : le même saut va plus loin, l'arrivée est plus tôt) : pas un meilleur temps.
+    params.gravity -= 2;
+    let tuned = null;
+    for (let j = 0; j < 120 && tuned?.kind !== "finish"; j++) {
+      session.restart();
+      tuned = finish(session, j);
+    }
+    expect(tuned?.kind).toBe("finish");
+    expect(session.tuned).toBe(true);
+    expect(session.best).toBe(frozen.time);
+  });
+
+  it("point de passage : signalé une fois ; mourir après fait reprendre dessus dans le même essai (pas un nouvel essai), chrono qui continue", () => {
+    const lv = parseLevel([...Array(5).fill("#...............#"), "#S...C......F...#", "#########.#######"].join("\n"));
+    const session = new JumpSession(lv, { ...DEFAULT_JUMP_PARAMS });
+    const events: string[] = [];
+    let respawned = null;
+    for (let t = 0; t < 600 && !respawned; t++) {
+      const e = session.step(INPUT_RIGHT);
+      if (e) events.push(e.kind);
+      if (e?.kind === "respawn") respawned = e;
+    }
+    expect(events).toEqual(["checkpoint", "death", "respawn"]);
+    expect(respawned).toEqual({ kind: "respawn", checkpoint: true });
+    expect(session.attempts).toBe(1);
+    expect(session.deaths).toBe(1);
+    expect(session.attemptDeaths).toBe(1);
+    expect(session.state.time).toBeGreaterThan(session.lastDeath!.time);
+    expect(session.prev).toBe(session.state);
+    // Recommencer oublie le point : départ, chrono à zéro, nouvel essai.
+    session.restart();
+    expect(session.state).toEqual(initialAttempt(lv));
+    expect(session.attempts).toBe(2);
+    expect(session.attemptDeaths).toBe(0);
+  });
+
+  it("formate un temps en secondes à 3 décimales", () => {
+    expect(formatTicks(0)).toBe("0,000 s");
+    expect(formatTicks(1)).toBe("0,008 s");
+    expect(formatTicks(120)).toBe("1,000 s");
+    expect(formatTicks(3601)).toBe("30,008 s");
   });
 });
 

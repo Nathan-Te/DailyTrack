@@ -1,4 +1,4 @@
-import { DEFAULT_JUMP_PARAMS, JUMP_PARAM_KEYS, TICK_RATE, UNITS_PER_TILE, isDefaultJumpParams, type JumpParams } from "@cdj/jump-sim";
+import { DEFAULT_JUMP_PARAMS, JUMP_PARAM_KEYS, MAX_SPEED, TICK_RATE, UNITS_PER_TILE, isDefaultJumpParams, type JumpParams } from "@cdj/jump-sim";
 import { storageKey } from "./storage";
 
 // Panneau de réglages du personnage (`?debug&tune`) : un curseur par réglage, en unités humaines, la valeur entière à côté. Effet immédiat
@@ -80,6 +80,9 @@ export const TUNE_SLIDERS: readonly TuneSlider[] = [
   { key: "wallCoyote", label: "Coyote mural", unit: "ticks", min: 0, max: 30 },
   { key: "jumpBuffer", label: "Tampon de saut", unit: "ticks", min: 0, max: 30 },
   { key: "cornerTolerance", label: "Tolérance de coin", unit: "length", min: 0, max: 2048 },
+  { key: "crumbleDelay", label: "Bloc friable : délai avant la chute", unit: "ticks", min: 0, max: 120 },
+  // Le ressort lance à la fin du pas où l'on s'y pose : la gravité agit avant le premier mouvement (d'où `v − g`).
+  { key: "springSpeed", label: "Ressort : vitesse de lancement", unit: "speed", min: 0, max: 2048, hint: (p) => `≈ ${num(jumpHeight(Math.min(p.springSpeed, MAX_SPEED) - p.gravity, p.gravity), 2)} tuiles de haut` },
 ];
 
 export const TUNE_STORAGE_KEY = storageKey("tune");

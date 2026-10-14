@@ -28,7 +28,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   const info = await jump(page);
   expect(info.phase).toBe("ready");
-  expect(info.simVersion).toBe(1);
+  expect(info.simVersion).toBe(2);
   expect(info.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
   const canvas = page.locator("canvas");
@@ -38,7 +38,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(box!.height).toBeGreaterThan(100);
 
   // Le coin affiche la version de la simulation et le jour du jeu.
-  await expect(page.locator("#stamp")).toHaveText(`DailyJump · sim v1 · ${info.day}`);
+  await expect(page.locator("#stamp")).toHaveText(`DailyJump · sim v2 · ${info.day}`);
 
   // Les pixels : le fond uni, les tuiles, le personnage et l'arrivée font au moins quatre couleurs, et le fond ne couvre pas tout.
   const pixels = await page.evaluate(() => (window as unknown as { __jump: JumpDebugView }).__jump.probe());
@@ -49,7 +49,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
 
 test("sans ?debug, aucun accès de débogage n'est exposé", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#stamp")).toContainText("DailyJump · sim v1");
+  await expect(page.locator("#stamp")).toContainText("DailyJump · sim v2");
   expect(await page.evaluate(() => "__jump" in window)).toBe(false);
 });
 
@@ -152,7 +152,7 @@ test("?debug&tune : un curseur par réglage, un réglage modifié marque la part
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
   const sliders = page.locator("#tune input[type=range]");
-  await expect(sliders).toHaveCount(18);
+  await expect(sliders).toHaveCount(20); // 18 réglages du personnage + 2 du lot 2 (friable, ressort)
   await expect(page.locator("#tuned")).toBeEmpty();
   await expect(page.locator("#debug")).toContainText("vitesse");
   const gravity = page.locator('#tune input[data-key="gravity"]');

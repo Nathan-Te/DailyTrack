@@ -1,4 +1,5 @@
-import { expect, test, type Browser, type BrowserContext, type CDPSession, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+import { Fingers, hasWebGL, withPhone } from "./phone";
 
 // Lot 1b : DailyJump jouable sur téléphone. Téléphone émulé (écran tactile, portrait et paysage), doigts posés un par un.
 // Chromium : vrais événements tactiles par le protocole (`Input.dispatchTouchEvent`, ils deviennent des pointer events comme sur un téléphone) ;
@@ -47,23 +48,6 @@ const FORMATS = [
   { name: "petit écran en portrait", viewport: SMALL },
 ] as const;
 
-const hasWebGL = (page: Page): Promise<boolean> =>
-  page.evaluate(() => {
-    const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
-  });
-
-/** Un téléphone : écran tactile, et (Chromium) émulation mobile complète. Le contexte se ferme à la fin du test. */
-async function withPhone(browser: Browser, viewport: { width: number; height: number }, run: (page: Page, context: BrowserContext) => Promise<void>): Promise<void> {
-  const chromium = browser.browserType().name() === "chromium";
-  const context = await browser.newContext({ viewport, hasTouch: true, ...(chromium ? { isMobile: true, deviceScaleFactor: 2 } : {}) });
-  try {
-    await run(await context.newPage(), context);
-  } finally {
-    await context.close();
-  }
-}
-
 /** Ouvre le bac à sable en pas à pas. `extra` : paramètres d'adresse en plus (ex. `&touch=1`). Rend faux si WebGL manque. */
 async function open(page: Page, extra: string): Promise<boolean> {
   await page.goto(`/?scenario=bac-a-sable&debug${extra}`);
@@ -71,53 +55,6 @@ async function open(page: Page, extra: string): Promise<boolean> {
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.manual(true));
   return true;
-}
-
-/** Doigts posés sur l'écran, envoyés comme sur un téléphone (plusieurs à la fois). */
-class Fingers {
-  private readonly points = new Map<number, { x: number; y: number }>();
-  private constructor(
-    private readonly page: Page,
-    private readonly cdp: CDPSession | null,
-  ) {}
-
-  static async on(page: Page): Promise<Fingers> {
-    const cdp = page.context().browser()?.browserType().name() === "chromium" ? await page.context().newCDPSession(page) : null;
-    return new Fingers(page, cdp);
-  }
-
-  private async send(type: "touchStart" | "touchMove" | "touchEnd", all: Map<number, { x: number; y: number }>) {
-    await this.cdp!.send("Input.dispatchTouchEvent", { type, touchPoints: [...all].map(([id, p]) => ({ id, x: p.x, y: p.y })) });
-  }
-
-  private async synthetic(type: "pointerdown" | "pointermove" | "pointerup", id: number, x: number, y: number) {
-    await this.page.evaluate(
-      ([t, i, px, py]) => {
-        const layer = document.getElementById("touch")!;
-        layer.dispatchEvent(new PointerEvent(t as string, { pointerId: (i as number) + 100, pointerType: "touch", clientX: px as number, clientY: py as number, bubbles: true, cancelable: true, isPrimary: i === 1 }));
-      },
-      [type, id, x, y] as const,
-    );
-  }
-
-  async down(id: number, x: number, y: number) {
-    this.points.set(id, { x, y });
-    if (this.cdp) await this.send("touchStart", this.points);
-    else await this.synthetic("pointerdown", id, x, y);
-  }
-
-  async move(id: number, x: number, y: number) {
-    this.points.set(id, { x, y });
-    if (this.cdp) await this.send("touchMove", this.points);
-    else await this.synthetic("pointermove", id, x, y);
-  }
-
-  async up(id: number) {
-    const p = this.points.get(id)!;
-    this.points.delete(id);
-    if (this.cdp) await this.send("touchEnd", new Map([[id, p]])); // pour touchEnd, le protocole attend le doigt qu'on lève
-    else await this.synthetic("pointerup", id, p.x, p.y);
-  }
 }
 
 for (const format of FORMATS) {
@@ -229,7 +166,7 @@ for (const format of FORMATS) {
         await page.locator("#gear").tap();
         await expect(page.locator("#tune")).toBeVisible();
         const panel = await targets("#tune button, #tune input[type=range]");
-        expect(panel.length).toBeGreaterThan(18); // 18 curseurs, fermer, copier, réinitialiser
+        expect(panel.length).toBeGreaterThan(20); // 20 curseurs, fermer, copier, réinitialiser
         for (const t of panel) {
           expect(t.w, `${t.name} largeur`).toBeGreaterThanOrEqual(44);
           expect(t.h, `${t.name} hauteur`).toBeGreaterThanOrEqual(44);

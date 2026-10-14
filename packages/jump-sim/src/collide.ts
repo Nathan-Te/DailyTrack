@@ -1,5 +1,5 @@
 import { UNITS_PER_TILE } from "./constants";
-import { TILE_SOLID, tileAt, type Level } from "./level";
+import { isSolidTile, tileAt, type Level } from "./level";
 
 // Collisions boîte contre grille, en unités entières. Une boîte = [x, x + w) × [y, y + h) (x vers la droite, y vers le bas).
 // Les déplacements se font axe par axe et ne parcourent que les colonnes (ou rangées) **nouvellement** couvertes : la boîte s'arrête
@@ -17,16 +17,19 @@ export function tileOf(v: number): number {
   return v >> TILE_SHIFT;
 }
 
-/** Vrai si une tuile pleine se trouve dans les colonnes [c0, c1] × rangées [r0, r1]. */
-export function solidIn(level: Level, c0: number, c1: number, r0: number, r1: number): boolean {
+/** Ce que les collisions lisent d'un niveau : sa grille (celle de l'essai en cours, blocs friables tombés compris). */
+export type Grid = Pick<Level, "width" | "height" | "tiles">;
+
+/** Vrai si une tuile pleine (bloc, friable pas encore tombé, ressort) se trouve dans les colonnes [c0, c1] × rangées [r0, r1]. */
+export function solidIn(level: Grid, c0: number, c1: number, r0: number, r1: number): boolean {
   for (let r = r0; r <= r1; r++) {
-    for (let c = c0; c <= c1; c++) if (tileAt(level, c, r) === TILE_SOLID) return true;
+    for (let c = c0; c <= c1; c++) if (isSolidTile(tileAt(level, c, r))) return true;
   }
   return false;
 }
 
 /** Vrai si la boîte chevauche une tuile pleine. */
-export function boxHits(level: Level, x: number, y: number, w: number, h: number): boolean {
+export function boxHits(level: Grid, x: number, y: number, w: number, h: number): boolean {
   return solidIn(level, tileOf(x), tileOf(x + w - 1), tileOf(y), tileOf(y + h - 1));
 }
 
@@ -40,7 +43,7 @@ export interface Move {
  * Déplace la boîte de `d` unités sur l'axe principal (`pos`, taille `size`), l'autre axe couvrant [`o`, `o + osize`).
  * `horizontal` : l'axe principal est x (colonnes) ; sinon y (rangées). Ne parcourt que les tuiles nouvellement couvertes.
  */
-export function sweep(level: Level, pos: number, size: number, d: number, o: number, osize: number, horizontal: boolean): Move {
+export function sweep(level: Grid, pos: number, size: number, d: number, o: number, osize: number, horizontal: boolean): Move {
   if (d === 0) return { pos, blocked: false };
   const o0 = tileOf(o);
   const o1 = tileOf(o + osize - 1);

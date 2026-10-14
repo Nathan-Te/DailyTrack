@@ -3,12 +3,17 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_JUMP_PARAMS,
+  ESSAI_ASCII,
+  ESSAI_LEVEL,
   JUMP_SIM_VERSION,
   SANDBOX_ASCII,
   SANDBOX_LEVEL,
   SANDBOX_MARKS,
+  initialAttempt,
   initialPlayer,
+  stepAttempt,
   stepPlayer,
+  type AttemptState,
   type JumpParams,
   type PlayerState,
 } from "../src/index";
@@ -19,6 +24,9 @@ import { J, L, R, T, climbChimney, climbWall, compress, expand, standAt } from "
 // échouer ce test : comprendre pourquoi, incrémenter `JUMP_SIM_VERSION`, puis régénérer :
 //   UPDATE_GOLDEN=1 npx vitest run packages/jump-sim/test/golden.test.ts
 // Les suites de la cheminée et du mur sont produites par les pilotes de `helpers.ts` à la régénération, puis rejouées telles quelles.
+// Lot 2 : la solution du niveau d'essai (`fixtures/essai-solution.json`) rejouée par `stepAttempt` : temps, état final et empreinte
+// de chaque pas (personnage, chrono, statut, blocs friables, sections, point de passage). Les suites du lot 1 n'ont pas bougé (mêmes empreintes) ; seuls
+// les deux nouveaux réglages (`crumbleDelay`, `springSpeed`) sont venus s'ajouter à `params`.
 
 const FILE = join(import.meta.dirname, "fixtures/golden.json");
 const FLOOR = SANDBOX_MARKS.floorRow;
@@ -38,12 +46,47 @@ interface GoldenRun {
   final: PlayerState;
 }
 
+/** L'essai final, sans la grille (remplacée par son empreinte). */
+type FinalAttempt = Omit<AttemptState, "tiles"> & { tiles: string };
+
+interface GoldenEssai {
+  /** Empreinte du texte du niveau d'essai. */
+  level: string;
+  ticks: number;
+  /** Chrono à l'arrivée, en pas : le temps de l'auteur. */
+  time: number;
+  trace: string;
+  final: FinalAttempt;
+}
+
 interface Golden {
   jumpSimVersion: number;
   params: JumpParams;
   /** Empreinte du texte du bac à sable : le modifier change le résultat d'un essai. */
   sandbox: string;
   runs: Record<string, GoldenRun>;
+  essai: GoldenEssai;
+}
+
+function hashNumbers(values: readonly number[]): string {
+  let h = 2166136261;
+  for (const v of values) h = fnv(h, v);
+  return h.toString(16).padStart(8, "0");
+}
+
+/** Rejoue la solution de l'essai. */
+function playEssai(): GoldenEssai {
+  const solution = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/essai-solution.json"), "utf8")) as { inputs: [number, number][] };
+  const inputs = expand(solution.inputs);
+  let s = initialAttempt(ESSAI_LEVEL);
+  let h = 2166136261;
+  for (const input of inputs) {
+    s = stepAttempt(s, input, ESSAI_LEVEL, DEFAULT_JUMP_PARAMS);
+    for (const v of Object.values(s.player)) h = fnv(h, v);
+    for (const v of [s.status, s.time, s.deathCause, s.springCell, s.springTime, s.checkpoint, ...s.crumbles, ...s.sections]) h = fnv(h, v);
+  }
+  const final: FinalAttempt = { ...s, tiles: hashNumbers(s.tiles) };
+  return { level: textHash(ESSAI_ASCII), ticks: inputs.length, time: s.time, trace: h.toString(16).padStart(8, "0"), final };
 }
 
 function fnv(h: number, v: number): number {
@@ -96,7 +139,7 @@ function scripts(): Record<string, Script> {
 if (process.env.UPDATE_GOLDEN) {
   const runs: Record<string, GoldenRun> = {};
   for (const [name, script] of Object.entries(scripts())) runs[name] = play(script);
-  const golden: Golden = { jumpSimVersion: JUMP_SIM_VERSION, params: { ...DEFAULT_JUMP_PARAMS }, sandbox: textHash(SANDBOX_ASCII), runs };
+  const golden: Golden = { jumpSimVersion: JUMP_SIM_VERSION, params: { ...DEFAULT_JUMP_PARAMS }, sandbox: textHash(SANDBOX_ASCII), runs, essai: playEssai() };
   writeFileSync(FILE, JSON.stringify(golden, null, 2) + "\n");
 }
 
@@ -119,6 +162,16 @@ describe("référence du personnage (golden)", () => {
       expect(run.trace).toBe(ref.trace);
     });
   }
+
+  it("la solution du niveau d'essai rejoue exactement : même temps de l'auteur, même état final, même trajectoire", () => {
+    const ref = golden.essai;
+    expect(textHash(ESSAI_ASCII), "niveau d'essai modifié : JUMP_SIM_VERSION +1, SOLVE=1 puis UPDATE_GOLDEN=1").toBe(ref.level);
+    const run = playEssai();
+    expect(run.ticks).toBe(ref.ticks);
+    expect(run.time).toBe(ref.time);
+    expect(run.final).toEqual(ref.final);
+    expect(run.trace).toBe(ref.trace);
+  });
 
   it("les suites de la référence font ce qu'elles disent (la cheminée est montée, le mur est remonté)", () => {
     const chim = golden.runs.cheminee!.final;
