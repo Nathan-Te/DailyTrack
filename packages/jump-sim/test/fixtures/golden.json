@@ -1,0 +1,302 @@
+{
+  "jumpSimVersion": 1,
+  "params": {
+    "runSpeed": 375,
+    "groundAccel": 17,
+    "groundDecel": 32,
+    "airAccel": 13,
+    "airDecel": 6,
+    "gravity": 19,
+    "fallSpeed": 751,
+    "jumpSpeed": 800,
+    "jumpCut": 340,
+    "slideSpeed": 171,
+    "wallJumpX": 340,
+    "wallJumpY": 680,
+    "wallLock": 0,
+    "wallReach": 512,
+    "coyote": 10,
+    "wallCoyote": 6,
+    "jumpBuffer": 12,
+    "cornerTolerance": 1024
+  },
+  "sandbox": "03b97c4e",
+  "runs": {
+    "course-saut": {
+      "col": null,
+      "inputs": [
+        [
+          2,
+          50
+        ],
+        [
+          6,
+          45
+        ],
+        [
+          2,
+          25
+        ],
+        [
+          0,
+          15
+        ],
+        [
+          1,
+          20
+        ],
+        [
+          5,
+          3
+        ],
+        [
+          1,
+          40
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          6,
+          60
+        ],
+        [
+          4,
+          10
+        ],
+        [
+          0,
+          40
+        ]
+      ],
+      "ticks": 318,
+      "trace": "4af497a3",
+      "final": {
+        "x": 48544,
+        "y": 95232,
+        "vx": 0,
+        "vy": 0,
+        "ground": 1,
+        "air": 0,
+        "wallSide": 0,
+        "wallAir": 255,
+        "slide": 0,
+        "buffer": 0,
+        "held": 0,
+        "jumping": 0,
+        "lock": 0,
+        "lockDir": 0
+      }
+    },
+    "trous": {
+      "col": 71,
+      "inputs": [
+        [
+          2,
+          20
+        ],
+        [
+          6,
+          30
+        ],
+        [
+          2,
+          10
+        ],
+        [
+          6,
+          30
+        ],
+        [
+          2,
+          8
+        ],
+        [
+          6,
+          40
+        ],
+        [
+          2,
+          12
+        ],
+        [
+          6,
+          45
+        ],
+        [
+          2,
+          6
+        ],
+        [
+          6,
+          50
+        ],
+        [
+          0,
+          30
+        ]
+      ],
+      "ticks": 281,
+      "trace": "e9390aa9",
+      "final": {
+        "x": 389960,
+        "y": 104092,
+        "vx": 195,
+        "vy": 701,
+        "ground": 0,
+        "air": 255,
+        "wallSide": 0,
+        "wallAir": 255,
+        "slide": 0,
+        "buffer": 0,
+        "held": 0,
+        "jumping": 0,
+        "lock": 0,
+        "lockDir": 0
+      }
+    },
+    "cheminee": {
+      "col": 150,
+      "inputs": [
+        [
+          2,
+          1
+        ],
+        [
+          6,
+          25
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          5,
+          25
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          6,
+          25
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          5,
+          14
+        ]
+      ],
+      "ticks": 93,
+      "trace": "20387f9f",
+      "final": {
+        "x": 614336,
+        "y": 62094,
+        "vx": -375,
+        "vy": -433,
+        "ground": 0,
+        "air": 255,
+        "wallSide": 1,
+        "wallAir": 255,
+        "slide": 0,
+        "buffer": 0,
+        "held": 1,
+        "jumping": 1,
+        "lock": 0,
+        "lockDir": 0
+      }
+    },
+    "saut-mural": {
+      "col": 162,
+      "inputs": [
+        [
+          2,
+          1
+        ],
+        [
+          6,
+          7
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          2,
+          17
+        ],
+        [
+          6,
+          37
+        ],
+        [
+          2,
+          21
+        ],
+        [
+          6,
+          23
+        ]
+      ],
+      "ticks": 360,
+      "trace": "b9e6422c",
+      "final": {
+        "x": 674931,
+        "y": 32487,
+        "vx": 375,
+        "vy": -382,
+        "ground": 0,
+        "air": 255,
+        "wallSide": 0,
+        "wallAir": 255,
+        "slide": 0,
+        "buffer": 0,
+        "held": 1,
+        "jumping": 1,
+        "lock": 0,
+        "lockDir": 0
+      }
+    }
+  }
+}
