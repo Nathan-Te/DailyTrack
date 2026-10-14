@@ -1,5 +1,5 @@
 {
-  "jumpSimVersion": 1,
+  "jumpSimVersion": 2,
   "params": {
     "runSpeed": 375,
     "groundAccel": 17,
@@ -302,10 +302,10 @@
     }
   },
   "essai": {
-    "level": "84e3f379",
+    "level": "69cc9d20",
     "ticks": 2595,
     "time": 2595,
-    "trace": "8e5eae28",
+    "trace": "6dcd718a",
     "final": {
       "status": 3,
       "time": 2595,
@@ -363,7 +363,8 @@
       "deathY": 0,
       "deathTicks": 0,
       "springCell": 3604,
-      "springTime": 2196
+      "springTime": 2196,
+      "checkpoint": 4
     }
   }
 }

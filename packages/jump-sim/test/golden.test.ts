@@ -25,7 +25,7 @@ import { J, L, R, T, climbChimney, climbWall, compress, expand, standAt } from "
 //   UPDATE_GOLDEN=1 npx vitest run packages/jump-sim/test/golden.test.ts
 // Les suites de la cheminée et du mur sont produites par les pilotes de `helpers.ts` à la régénération, puis rejouées telles quelles.
 // Lot 2 : la solution du niveau d'essai (`fixtures/essai-solution.json`) rejouée par `stepAttempt` : temps, état final et empreinte
-// de chaque pas (personnage, chrono, statut, blocs friables, sections). Les suites du lot 1 n'ont pas bougé (mêmes empreintes) ; seuls
+// de chaque pas (personnage, chrono, statut, blocs friables, sections, point de passage). Les suites du lot 1 n'ont pas bougé (mêmes empreintes) ; seuls
 // les deux nouveaux réglages (`crumbleDelay`, `springSpeed`) sont venus s'ajouter à `params`.
 
 const FILE = join(import.meta.dirname, "fixtures/golden.json");
@@ -83,7 +83,7 @@ function playEssai(): GoldenEssai {
   for (const input of inputs) {
     s = stepAttempt(s, input, ESSAI_LEVEL, DEFAULT_JUMP_PARAMS);
     for (const v of Object.values(s.player)) h = fnv(h, v);
-    for (const v of [s.status, s.time, s.deathCause, s.springCell, s.springTime, ...s.crumbles, ...s.sections]) h = fnv(h, v);
+    for (const v of [s.status, s.time, s.deathCause, s.springCell, s.springTime, s.checkpoint, ...s.crumbles, ...s.sections]) h = fnv(h, v);
   }
   const final: FinalAttempt = { ...s, tiles: hashNumbers(s.tiles) };
   return { level: textHash(ESSAI_ASCII), ticks: inputs.length, time: s.time, trace: h.toString(16).padStart(8, "0"), final };

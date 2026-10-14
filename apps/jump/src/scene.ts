@@ -272,6 +272,25 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   finish.add(glow, ring, pole, flag);
   world.add(finish);
 
+  // ——— Points de passage (lot 2b) : un mât et un fanion, pâles tant qu'on ne les a pas touchés, colorés quand c'est le point de reprise ———
+  const cpIdle = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+  const cpOn = new MeshBasicMaterial({ color: palette.spring });
+  const cpPole = new MeshBasicMaterial({ color: palette.player, transparent: true, opacity: 0.8 });
+  const checkpoints = level.checkpoints.map((cell) => {
+    const g = new Group();
+    g.position.set(cell.col + 0.5, -cell.row - 1, 0.04); // origine : bas de la tuile
+    const pole = new Mesh(new PlaneGeometry(0.08, 1.3), cpPole);
+    pole.position.set(-0.2, 0.65, 0);
+    const pennant = new Mesh(new PlaneGeometry(0.55, 0.36), cpIdle);
+    pennant.position.set(0.08, 1.12, 0.01);
+    const base = new Mesh(new PlaneGeometry(0.7, 0.08), cpPole);
+    base.position.set(0, 0.04, 0);
+    g.add(pole, pennant, base);
+    world.add(g);
+    return pennant;
+  });
+  let shownCheckpoint = -2;
+
   // ——— Personnage : un carré (exactement la boîte de collision) et deux yeux ———
   const player = new Group();
   const feet = new Group();
@@ -424,6 +443,11 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
         }
         s.pad.position.y = 0.92 - 0.38 * press;
         s.coil.scale.y = 1 - 0.55 * press;
+      }
+      // Points de passage : le point de reprise est coloré.
+      if (state.checkpoint !== shownCheckpoint) {
+        shownCheckpoint = state.checkpoint;
+        checkpoints.forEach((m, k) => (m.material = k === state.checkpoint ? cpOn : cpIdle));
       }
       // Arrivée : elle pulse doucement.
       const pulse = 0.5 + 0.5 * Math.sin(clock * 4);

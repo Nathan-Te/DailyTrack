@@ -28,6 +28,8 @@ interface AttemptView {
   best: number | null;
   bestText: string | null;
   lastDeath: { cause: string; x: number; y: number; time: number } | null;
+  checkpoint: number;
+  checkpoints: number;
   saws: { x: number; y: number }[];
   crumbles: number[];
   sections: number[];
@@ -154,7 +156,7 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   expect(done.deaths).toBe(2);
   await expect(page.locator("#finish")).toBeVisible();
   await expect(page.locator("#finish .time")).toHaveText(AUTHOR_TEXT);
-  await expect(page.locator("#finish .deaths")).toHaveText("Morts : 2");
+  await expect(page.locator("#finish .deaths")).toHaveText("Morts : 2 · essai sans faute");
   await expect(page.locator("#chrono .time")).toHaveText(AUTHOR_TEXT);
   // Le temps est figé.
   await step(page, 60);
@@ -166,6 +168,47 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
   await expect(page.locator("#finish")).toBeHidden();
   await expect(page.locator("#chrono .best")).toHaveText(`Meilleur ${AUTHOR_TEXT}`);
+});
+
+test("point de passage : l'atteindre, mourir après, reprendre dessus dans le même essai, chrono qui continue", async ({ page }) => {
+  test.skip(!(await openEssai(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
+  expect((await attempt(page)).checkpoints).toBe(5);
+  // Le début de la solution, pas à pas, jusqu'au premier point de passage (colonne 51, après les pics).
+  const reached = await page.evaluate((runs) => {
+    const j = (window as unknown as { __jump: JumpPlay }).__jump;
+    for (const [bits, n] of runs) {
+      j.input(bits);
+      for (let k = 0; k < n; k++) {
+        j.advance(1);
+        if (j.attempt.checkpoint >= 0) return j.attempt.checkpoint;
+      }
+    }
+    return -1;
+  }, SOLUTION.inputs);
+  expect(reached).toBe(0);
+  await expect(page.locator("#toast")).toHaveText("Point de passage");
+  // Revenir à gauche dans le champ de pics.
+  await jump(page, (j) => j.input(1));
+  expect(await untilDead(page)).toBeGreaterThan(0);
+  const dead = await attempt(page);
+  expect(dead.lastDeath?.cause).toBe("pic");
+  // Reprise sur le point : même essai (pas un nouvel essai), chrono qui a continué pendant l'attente.
+  await jump(page, (j) => j.input(0));
+  expect(await untilRespawn(page)).toBeLessThanOrEqual(24);
+  const back = await attempt(page);
+  expect(back.status).toBe("course");
+  expect(back.checkpoint).toBe(0);
+  expect(back.attempts).toBe(1);
+  expect(back.deaths).toBe(1);
+  expect(back.time).toBeGreaterThan(dead.time);
+  expect(Math.floor(back.raw.player.x! / 4096)).toBe(51);
+  // R oublie le point : départ, chrono à zéro.
+  await jump(page, (j) => j.input(null));
+  await page.keyboard.press("KeyR");
+  await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
+  const fresh = await attempt(page);
+  expect(fresh.checkpoint).toBe(-1);
+  expect(fresh.time).toBe(0);
 });
 
 test("?fx=off : la mort n'éclate pas et l'écran ne tremble pas ; ?hitbox ne change rien à la simulation", async ({ page }) => {

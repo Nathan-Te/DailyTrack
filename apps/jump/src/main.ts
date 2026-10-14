@@ -79,6 +79,9 @@ export interface AttemptView {
   best: number | null;
   bestText: string | null;
   lastDeath: { cause: string; x: number; y: number; time: number } | null;
+  /** Point de passage retenu (indice, −1 aucun) et nombre de points du niveau (lot 2b). */
+  checkpoint: number;
+  checkpoints: number;
   /** Centres des scies, en tuiles. */
   saws: { x: number; y: number }[];
   crumbles: number[];
@@ -195,6 +198,8 @@ function attemptView(): AttemptView {
     best: session.best,
     bestText: session.best === null ? null : formatTicks(session.best),
     lastDeath: d ? { cause: DEATH_NAMES[d.cause] ?? "?", x: d.x / T, y: d.y / T, time: d.time } : null,
+    checkpoint: s.checkpoint,
+    checkpoints: level.checkpoints.length,
     saws: sawCenters(level, s).map((p) => ({ x: p.x / T, y: p.y / T })),
     crumbles: [...s.crumbles],
     sections: [...s.sections],
@@ -215,7 +220,8 @@ function onEvent(e: SessionEvent): void {
       burst.burst(e.x / T, -e.y / T);
       shake.start();
     }
-  } else if (e.kind === "respawn") {
+  } else if (e.kind === "checkpoint") hud.toast("Point de passage");
+  else if (e.kind === "respawn") {
     look = restLook();
     if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
     stepper.reset();
@@ -263,7 +269,7 @@ function updateOverlay(): void {
   const d = session.lastDeath;
   const death = d ? `${DEATH_NAMES[d.cause]} (colonne ${fmt(d.x / T, 1)} · rangée ${fmt(d.y / T, 1)})` : "aucune";
   overlay.textContent = [
-    `essai     n° ${session.attempts} · ${STATUS_NAMES[st.status]} · ${formatTicks(st.time)} · morts ${session.deaths}`,
+    `essai     n° ${session.attempts} · ${STATUS_NAMES[st.status]} · ${formatTicks(st.time)} · morts ${session.deaths} · point ${st.checkpoint < 0 ? "aucun" : `${st.checkpoint + 1}/${level.checkpoints.length}`}`,
     `mort      ${death}`,
     `vitesse   → ${fmt(v.vx)}  ↑ ${fmt(-v.vy)} tuiles/s`,
     `état      ${v.mode}${side}`,

@@ -3,6 +3,7 @@
 ## À tester
 - **`https://nathan-te.github.io/DailyTrack/b/lot-2-dangers-dailyjump/jump/?scenario=essai`** (aussi la page par défaut) : finir le niveau d'essai, au clavier, à la manette et au téléphone (paysage). Mourir souvent : la réapparition doit sembler immédiate, sans écran ; R (ou ↻, ou Start/Select) relance sans compter de mort. À l'arrivée : bandeau avec le temps, le meilleur de la session et les morts ; « Recommencer » ou R.
 - **`https://nathan-te.github.io/DailyTrack/b/lot-2-dangers-dailyjump/jump/?scenario=dangers&debug&hitbox`** : la galerie, chaque danger seul, avec ses boîtes « justes » en vert (personnage, pics réduits, disques mortels des scies) et les limites des sections. Frôler un pic par le côté, passer sous les pics `v`, toucher une dent de scie sans le disque : on survit ; la surimpression dit la cause de la dernière mort.
+- **Points de passage (retouche 2b)** : cinq fanions dans l'essai. Mourir après en avoir touché un fait reprendre dessus, **chrono qui continue** ; R repart du départ, chrono à zéro (le chasseur de chrono ne les remarque pas).
 - Avec `&fx=off` : ni éclatement ni tremblement. `&debug&tune` : deux curseurs de plus (délai des blocs friables, vitesse du ressort).
 
 ## Légende des caractères (`packages/jump-sim/src/level.ts`)
@@ -13,6 +14,7 @@
 | `^` `v` `<` `>` | pics, pointe vers le haut / bas / gauche / droite | tuile traversable ; boîte mortelle = moitié côté base, ½ tuile de large au milieu (dans le triangle) |
 | `o` `O` | scie fixe, rayon mortel 7/16 et 11/8 de tuile (dents dessinées jusqu'à ½ et 1,5), centrée sur sa tuile | cercle contre boîte, distances au carré entières, d² = r² ne tue pas |
 | `x` | bloc friable | plein ; tombe `crumbleDelay` pas après le premier contact (posé dessus, ou poussé contre en l'air) ; revient à la mort ou à « recommencer » |
+| `C` | point de passage (lot 2b), fanion | tuile vide ; le toucher (vivant) le retient ; à la mort, reprise dessus, chrono qui continue |
 | `*` | ressort (vers le haut) | plein ; s'y poser lance à `springSpeed` (≈ 7 tuiles), saut que relâcher ne coupe pas |
 | bas de la grille | — | ouvert : en sortir tue ; gauche, droite, haut restent pleins |
 
@@ -29,6 +31,8 @@ Une scie mobile appartient à la section de son premier point ; son cycle démar
 3. **scies** : scie « ascenseur » entre deux marches, couloir bas où une scie va et vient au sol (pics sur le toit), bloc dont une scie fait le tour, grande scie au-dessus d'un trou (saut court) ;
 4. **final** : trois ressorts en escalier (pics `<` sur la face du deuxième mur), longue course sous un plafond à pics (petits sauts seulement) au-dessus de trois rangées de pics et d'un pont friable.
 
+**Points de passage** (lot 2b) : colonnes 51 (début des murs), 62 (sur le palier, avant les friables), 106 (début des scies), 167 (début du final), 188 (avant la course sous le plafond à pics) ; un dans la galerie (colonne 56).
+
 **Temps de l'auteur : 2 595 pas = 21,625 s** (`test/fixtures/essai-solution.json`, 112 séries de commandes, trouvée par le chercheur hors simulation `test/solver.ts` : recherche par faisceau, paquets de 4 pas, points de passage). Un bon joueur humain devrait finir vers 26–30 s. La galerie a aussi sa solution (1 521 pas).
 
 ## Mesures (`MESURES=1 npx vitest run packages/jump-sim/test/mesures.test.ts --silent=false`, Node 22)
@@ -40,14 +44,15 @@ Une scie mobile appartient à la section de son premier point ; son cycle démar
 | Délai des blocs friables (`crumbleDelay`) | 30 pas = 0,25 s |
 
 ## Vérifié / non vérifié / décisions
-**Vérifié** : typecheck ; Vitest (`jump-sim` : 105 tests — pics dans les 4 orientations de face et le long, cercle contre boîte au carré près, bornes sur la plus grande carte, périodicité exacte aller-retour et boucle, activation par section, friables (minuterie, chute, glisse murale), ressort (hauteur, non coupable, plafond `MAX_SPEED`), mort par le bas, remise à zéro en égalité profonde, monde qui attend, arrivée prioritaire, pas de saut automatique, fuzz de 150 000 pas sur `essai` (réglages par défaut et au hasard) et déterminisme ; `apps/jump` : 72 tests dont session (morts, recommencer ≠ mort, meilleur temps, essais aux réglages modifiés exclus) et effets) ; `npm test` complet (1 132 tests SQLite + 158 libSQL) ; **golden du lot 1 inchangés** (mêmes empreintes de trajectoire ; seul `params` gagne les deux réglages) et golden de l'essai ajouté ; e2e **Chromium** en local (39 tests, dont les 4 du lot 2 : pics, réapparition ≤ 24 pas, remise à zéro, solution rejouée jusqu'au bandeau, au clavier puis au doigt en paysage) ; captures relues à l'œil. Aucune zone partagée ni fichier de DailyTrack touché, aucune dépendance ajoutée.
+**Vérifié** : typecheck ; Vitest (`jump-sim` : 111 tests — pics dans les 4 orientations de face et le long, cercle contre boîte au carré près, bornes sur la plus grande carte, périodicité exacte aller-retour et boucle, activation par section, friables (minuterie, chute, glisse murale), ressort (hauteur, non coupable, plafond `MAX_SPEED`), mort par le bas, remise à zéro en égalité profonde, monde qui attend, arrivée prioritaire, pas de saut automatique, fuzz de 150 000 pas sur `essai` (réglages par défaut et au hasard) et déterminisme ; `apps/jump` : 73 tests dont session (morts, recommencer ≠ mort, meilleur temps, essais aux réglages modifiés exclus) et effets) ; `npm test` complet (1 139 tests SQLite + 158 libSQL) ; **golden du lot 1 inchangés** (mêmes empreintes de trajectoire ; seul `params` gagne les deux réglages) et golden de l'essai ajouté ; e2e **Chromium** en local (40 tests, dont les 5 du lot 2 : pics, point de passage, réapparition ≤ 24 pas, remise à zéro, solution rejouée jusqu'au bandeau, au clavier puis au doigt en paysage) ; captures relues à l'œil. Aucune zone partagée ni fichier de DailyTrack touché, aucune dépendance ajoutée.
 **Non vérifié** : Firefox et WebKit (absents ici, la CI tranche) ; vraie manette, vrai téléphone ; le ressenti de la difficulté (montée en difficulté, durée « ~30 s pour un bon joueur ») : c'est à toi de jouer.
 
 **Décisions pour Nathan**
-1. **`JUMP_SIM_VERSION` reste à 1** : aucune trajectoire du lot 1 n'a bougé (mêmes empreintes) et aucune rediffusion n'existe encore (lot 3). Les nouveaux réglages s'ajoutent à `JumpParams`. Le bas de la grille devient ouvert (aucun effet sur le bac à sable, qui a un sol partout).
+1. **`JUMP_SIM_VERSION` passe à 2 avec les points de passage (2b)** : le niveau d'essai et la règle de mort changent le résultat d'un essai. Les trajectoires du lot 1 n'ont pas bougé (mêmes empreintes) ; la solution de l'essai rejoue au pas près (même temps, même empreinte hors point de passage). Le bas de la grille devient ouvert (aucun effet sur le bac à sable, qui a un sol partout).
 2. **La page par défaut est maintenant `essai`** (c'était le bac à sable). `?scenario=bac-a-sable` reste, inchangé ; son `F` est désormais une vraie arrivée.
 3. **Réapparition à 0,15 s** (18 pas) : assez pour voir l'éclatement, sous les 0,2 s. **Saut tenu depuis la mort** : il ne démarre pas l'essai et ne fait pas sauter tant qu'il n'est pas relâché ; une direction démarre tout de suite.
 4. **Boîtes justes** : pics = moitié côté base (frôler la pointe ne tue pas, s'enfoncer d'une demi-tuile tue) ; scies = disque plein (les dents ne tuent pas). Plus sévère si tu préfères : `SPIKE_DEPTH`, `SAW_*_RADIUS`.
 5. **Contact friable** : posé dessus, ou poussé contre lui en l'air (pas un simple frôlement de tête). **Ressort** : tuile pleine qui lance dès qu'on s'y pose, même en y marchant depuis le sol voisin.
 6. **Temps de l'auteur 21,6 s** : la recherche ne rate rien ; si le niveau te paraît trop court ou trop dur, je l'ajuste (chaque changement ⇒ `SOLVE=1`, golden, version).
 7. Les tests e2e de DailyJump tournent toujours dans la part 1 de la matrice CI (aucun workflow touché) ; le lot 2 y ajoute ≈ 15 s par navigateur.
+8. **Points de passage (2b)** : la mort après un point ne termine pas l'essai, le chrono continue (comme les reprises de DailyTrack) ; sans point, nouvel essai. Choix possibles à trancher : faut-il une touche « revenir au dernier point » (aujourd'hui seule la mort y ramène) ? Le temps d'un essai avec reprises doit-il compter au même titre qu'un essai sans faute dans le futur classement (lot 3 et phase 2) ? Pour l'instant oui, le bandeau dit combien de morts il contient.

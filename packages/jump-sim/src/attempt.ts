@@ -22,6 +22,10 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 //   - le chrono compte les pas jusqu'au contact de l'arrivée `F` (compris), puis se fige ;
 //   - **mort** au contact d'un pic (boîte réduite), du disque d'une scie, ou en sortant par le bas de la grille ; cause et position restent
 //     lisibles dans l'état pendant `RESPAWN_TICKS` pas (commandes ignorées), puis l'essai repart de l'**état initial exact** ;
+//   - **points de passage** (lot 2b, `C`) : en toucher un (vivant à la fin du pas) le retient ; une mort après en avoir touché un ne
+//     termine pas l'essai : **le chrono continue** (pendant l'attente aussi) et l'on reprend sur ce point, sans attendre de commande, avec
+//     les blocs friables reposés, le ressort au repos, et les sections du point et d'après remises à l'arrêt (elles repartent à leur
+//     entrée, comme la première fois) ; les sections d'avant gardent leur cycle. Sans point touché, la mort termine l'essai (ci-dessus) ;
 //   - **arrivée et mort au même pas : l'arrivée l'emporte** (vérifiée d'abord) ;
 //   - à la réapparition, **pas de saut automatique** : un saut tenu depuis l'essai précédent ne compte qu'après avoir été relâché ;
 //     une direction tenue compte tout de suite.
@@ -128,6 +132,8 @@ export interface AttemptState {
   /** Dernier ressort déclenché (indice de tuile, −1 aucun) et pas du chrono où il l'a été (pour l'affichage). */
   springCell: number;
   springTime: number;
+  /** Dernier point de passage touché (indice dans `level.checkpoints`), −1 aucun. */
+  checkpoint: number;
 }
 
 /** État au départ (et après chaque mort, et après « recommencer ») : rien n'a bougé. */
@@ -145,6 +151,24 @@ export function initialAttempt(level: Level): AttemptState {
     deathTicks: 0,
     springCell: -1,
     springTime: 0,
+    checkpoint: -1,
+  };
+}
+
+/**
+ * Reprise au point de passage `state.checkpoint` (lot 2b) : le personnage posé sur ce point, à l'arrêt ; friables reposés ; sections du
+ * point et d'après à l'arrêt (celles d'avant gardent leur cycle) ; le chrono continue (`time` inchangé ici).
+ */
+export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): AttemptState {
+  const cell = level.checkpoints[state.checkpoint]!;
+  const sections = state.sections.map((start, i) => (level.sections[i]!.c1 >= cell.col ? -1 : start));
+  return {
+    ...initialAttempt(level),
+    status: ATTEMPT_RUNNING,
+    time: state.time,
+    player: initialPlayer({ ...level, start: cell }),
+    sections,
+    checkpoint: state.checkpoint,
   };
 }
 
@@ -217,7 +241,14 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   if (state.status === ATTEMPT_FINISHED) return state as AttemptState;
   if (state.status === ATTEMPT_DEAD) {
     const deathTicks = state.deathTicks + 1;
-    if (deathTicks < RESPAWN_TICKS) return { ...state, deathTicks };
+    // Avec un point de passage, l'essai continue : le chrono tourne pendant l'attente.
+    const time = state.checkpoint >= 0 ? state.time + 1 : state.time;
+    if (deathTicks < RESPAWN_TICKS) return { ...state, deathTicks, time };
+    if (state.checkpoint >= 0) {
+      const back = checkpointAttempt(level, { ...state, time });
+      if (jump) back.player = { ...back.player, held: 1 };
+      return back;
+    }
     // Nouvel essai : l'état initial exact. Le bouton de saut tenu à cet instant est noté comme tenu : il ne fera pas sauter tout seul.
     const fresh = initialAttempt(level);
     if (jump) fresh.player = { ...fresh.player, held: 1 };
@@ -317,6 +348,12 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
       deathY: player.y + idiv(PLAYER_HEIGHT, 2),
       deathTicks: 0,
     };
+  }
+  // ——— Point de passage : retenu seulement si l'on est vivant à la fin du pas (jamais de reprise sur une mort) ———
+  for (let i = 0; i < level.checkpoints.length; i++) {
+    if (i === next.checkpoint) continue;
+    const c = level.checkpoints[i]!;
+    if (boxesOverlap(playerBox(player), { x: c.col * T, y: c.row * T, w: T, h: T })) return { ...next, checkpoint: i };
   }
   return next;
 }

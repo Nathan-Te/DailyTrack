@@ -2,6 +2,7 @@ import {
   ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
   ATTEMPT_READY,
+  ATTEMPT_RUNNING,
   TICK_RATE,
   initialAttempt,
   isDefaultJumpParams,
@@ -19,7 +20,10 @@ import {
 /** Ce qui vient d'arriver pendant un pas (l'affichage s'en sert : éclatement, tremblement, bandeau). */
 export type SessionEvent =
   | { kind: "death"; cause: number; x: number; y: number }
-  | { kind: "respawn" }
+  /** Retour en jeu après une mort : au départ (nouvel essai) ou sur un point de passage (le même essai continue, chrono compris). */
+  | { kind: "respawn"; checkpoint: boolean }
+  /** Point de passage atteint (lot 2b). */
+  | { kind: "checkpoint"; index: number }
   | { kind: "finish"; time: number; best: boolean };
 
 export interface LastDeath {
@@ -41,6 +45,8 @@ export class JumpSession {
   /** Meilleur temps d'arrivée de la session, en pas (null : pas encore d'arrivée). */
   best: number | null = null;
   lastDeath: LastDeath | null = null;
+  /** Morts dans l'essai en cours (reprises sur un point de passage, lot 2b) : 0 = essai sans faute. */
+  attemptDeaths = 0;
   /** Essais commencés (le premier compris). */
   attempts = 1;
   /** Vrai dès que les réglages ont différé des défauts pendant l'essai : il ne sera jamais enregistré (lot 3). */
@@ -70,13 +76,19 @@ export class JumpSession {
     const s = this.state;
     if (s.status === ATTEMPT_DEAD && before.status !== ATTEMPT_DEAD) {
       this.deaths++;
+      this.attemptDeaths++;
       this.lastDeath = { cause: s.deathCause, x: s.deathX, y: s.deathY, time: s.time };
       return { kind: "death", cause: s.deathCause, x: s.deathX, y: s.deathY };
     }
     if (s.status === ATTEMPT_READY && before.status === ATTEMPT_DEAD) {
       this.newAttempt();
-      return { kind: "respawn" };
+      return { kind: "respawn", checkpoint: false };
     }
+    if (s.status === ATTEMPT_RUNNING && before.status === ATTEMPT_DEAD) {
+      this.prev = s; // pas d'interpolation depuis le lieu de la mort
+      return { kind: "respawn", checkpoint: true };
+    }
+    if (s.checkpoint !== before.checkpoint && s.checkpoint >= 0 && s.status === ATTEMPT_RUNNING) return { kind: "checkpoint", index: s.checkpoint };
     if (s.status === ATTEMPT_FINISHED && before.status !== ATTEMPT_FINISHED) {
       // Un essai aux réglages modifiés n'est pas un vrai temps : il ne devient pas le meilleur de la session.
       const counted = !this.tuned;
@@ -95,6 +107,7 @@ export class JumpSession {
 
   private newAttempt(): void {
     this.prev = this.state;
+    this.attemptDeaths = 0;
     this.ticks = 0;
     this.attempts++;
     this.wasTuned = !isDefaultJumpParams(this.params);

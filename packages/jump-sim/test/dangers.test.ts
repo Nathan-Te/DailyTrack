@@ -656,3 +656,131 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
     for (const bad of [-1, 8, 1.5, Number.NaN]) expect(() => stepAttempt(initialAttempt(lv), bad, lv, P)).toThrow(RangeError);
   });
 });
+
+describe("points de passage (lot 2b)", () => {
+  // Départ, un pic, un point de passage, un bloc friable posé sur un trou, un trou ouvert jusqu'en bas, l'arrivée ; une scie mobile dans la
+  // deuxième section (en l'air : on passe dessous).
+  const lv = parseLevel(`
+#........................#
+#........................#
+#S..^..C..............F..#
+############x###...#######
+############.###...#######
+
+section a 0-8
+section b 9-25
+scie m o 120 aller-retour 15,1 20,1
+`);
+  const C = lv.checkpoints[0]!;
+
+  it("`C` est une tuile vide repérée ; les points sont rangés de gauche à droite", () => {
+    expect(tileAt(lv, 7, 2)).toBe(TILE_EMPTY);
+    expect(lv.checkpoints).toEqual([{ col: 7, row: 2 }]);
+    const two = parseLevel(["#......C.#", "#C......F#", "#S.......#", "##########"].join("\n"));
+    expect(two.checkpoints).toEqual([{ col: 1, row: 1 }, { col: 7, row: 0 }]);
+  });
+
+  /** Va du départ jusqu'au point de passage (saute le pic) ; rend l'état une fois le point retenu. */
+  function reachCheckpoint(): AttemptState {
+    for (let jt = 1; jt < 60; jt++) {
+      let s = initialAttempt(lv);
+      for (let t = 0; t < 300 && s.status !== ATTEMPT_DEAD; t++) {
+        s = stepAttempt(s, t >= jt && t < jt + 30 ? R | J : R, lv, P);
+        if (s.checkpoint === 0) return s;
+      }
+    }
+    throw new Error("point de passage jamais atteint");
+  }
+
+  it("le toucher le retient ; mourir ensuite fait reprendre dessus, chrono qui continue, sans attendre de commande", () => {
+    const at = reachCheckpoint();
+    expect(at.checkpoint).toBe(0);
+    // Continuer à droite : par-dessus le friable, puis dans le trou des colonnes 16 à 18 (ouvert jusqu'en bas).
+    const dead = untilDead(lv, at, R, 600);
+    expect(dead.state.status).toBe(ATTEMPT_DEAD);
+    const timeAtDeath = dead.state.time;
+    let s = dead.state;
+    for (let k = 1; k < RESPAWN_TICKS; k++) {
+      s = stepAttempt(s, R, lv, P);
+      expect(s.status).toBe(ATTEMPT_DEAD);
+      expect(s.time).toBe(timeAtDeath + k); // le chrono tourne pendant l'attente
+    }
+    s = stepAttempt(s, 0, lv, P);
+    expect(s.status).toBe(ATTEMPT_RUNNING);
+    expect(s.time).toBe(timeAtDeath + RESPAWN_TICKS);
+    expect(s.checkpoint).toBe(0);
+    expect(s.player.x).toBe(C.col * T + (T - PLAYER_WIDTH) / 2);
+    expect(s.player.y).toBe((C.row + 1) * T - PLAYER_HEIGHT);
+    expect(s.player.ground).toBe(1);
+    expect(s.player.vx).toBe(0);
+    // Sans commande, le chrono continue (le monde n'attend plus : l'essai est en cours).
+    const idle = run(lv, s, 0, 10);
+    expect(idle.time).toBe(s.time + 10);
+  });
+
+  it("la reprise remet à l'arrêt les sections du point et d'après (elles repartent à l'entrée), garde celles d'avant, repose les friables", () => {
+    const at = reachCheckpoint();
+    // Aller jusqu'au bloc friable (le toucher), entrer dans la section b (la scie part), puis tomber dans le trou.
+    let s = at;
+    let touched = false;
+    for (let t = 0; t < 400 && s.status !== ATTEMPT_DEAD; t++) {
+      s = stepAttempt(s, R, lv, P);
+      if (s.crumbles[0]! > 0 || s.crumbles[0] === CRUMBLE_GONE) touched = true;
+    }
+    expect(s.status).toBe(ATTEMPT_DEAD);
+    expect(touched).toBe(true);
+    expect(s.sections[1]).toBeGreaterThan(0);
+    const sectionA = s.sections[0];
+    s = run(lv, s, 0, RESPAWN_TICKS);
+    expect(s.status).toBe(ATTEMPT_RUNNING);
+    expect(s.crumbles).toEqual([CRUMBLE_INTACT]);
+    expect(s.tiles).toBe(lv.tiles);
+    expect(s.sections).toEqual([-1, -1]); // le point est dans la section a : a et b repartiront à leur entrée
+    expect(sawCenters(lv, s)[0]).toEqual({ x: 15 * T + T / 2, y: T + T / 2 });
+    expect(sectionA).toBeGreaterThan(0);
+    // Au pas suivant, la section du point se remet en marche.
+    const next = stepAttempt(s, 0, lv, P);
+    expect(next.sections[0]).toBe(next.time);
+  });
+
+  it("une section d'avant le point garde son cycle", () => {
+    const lv2 = parseLevel(`
+#.........................#
+#S.......C.....F..........#
+###########.###############
+
+section a 0-5
+section b 6-25
+scie m o 60 boucle 2,0 4,0
+`);
+    let s = initialAttempt(lv2);
+    while (s.checkpoint < 0) s = stepAttempt(s, R, lv2, P);
+    const startA = s.sections[0]!;
+    s = untilDead(lv2, s, R).state;
+    s = run(lv2, s, 0, RESPAWN_TICKS);
+    expect(s.sections[0]).toBe(startA);
+    expect(s.sections[1]).toBe(-1);
+  });
+
+  it("un point touché au pas même d'une mort n'est pas retenu", () => {
+    // On meurt en le touchant : on repart donc du départ (nouvel essai).
+    // Disque d'une demi-tuile centré sur le point : le pas qui entre dans la tuile du point entre aussi dans le disque.
+    const trap = parseLevel(["#..........#", "#S....C...F#", "############", "", "section a 0-11", "scie s 0.5 60 boucle 6,1 6,1"].join("\n"));
+    const d = untilDead(trap, initialAttempt(trap), R).state;
+    expect(d.player.x + PLAYER_WIDTH).toBeGreaterThan(6 * T); // au pas de la mort, la boîte touchait bien le point
+    expect(d.checkpoint).toBe(-1);
+    expect(run(trap, d, 0, RESPAWN_TICKS)).toEqual(initialAttempt(trap));
+  });
+
+  it("le dernier point touché compte ; recommencer (état initial) l'oublie", () => {
+    const lv3 = parseLevel(["#...........#", "#S..C...C..F#", "#############"].join("\n"));
+    let s = initialAttempt(lv3);
+    const seen: number[] = [];
+    for (let t = 0; t < 200 && s.status === ATTEMPT_RUNNING || t === 0; t++) {
+      s = stepAttempt(s, R, lv3, P);
+      if (seen[seen.length - 1] !== s.checkpoint) seen.push(s.checkpoint);
+    }
+    expect(seen).toEqual([-1, 0, 1]);
+    expect(initialAttempt(lv3).checkpoint).toBe(-1);
+  });
+});

@@ -10,6 +10,7 @@ import { idiv } from "./idiv";
 //   `^` `v` `<` `>` pics, pointe vers le haut / le bas / la gauche / la droite (tuile traversable, boîte mortelle réduite)
 //   `o` petite scie fixe (rayon ≈ ½ tuile) · `O` grande scie fixe (rayon ≈ 1,5 tuile), centrées sur leur tuile (traversable)
 //   `x` bloc friable (plein, cède `crumbleDelay` pas après le premier contact) · `*` ressort (plein, lance vers le haut qui s'y pose)
+//   `C` point de passage (tuile vide repérée, posée sur un sol sûr) : le toucher l'active ; à la mort, on y reprend, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
 //   section <nom> <col0>-<col1>
@@ -111,6 +112,8 @@ export interface Level {
   /** Blocs friables, dans l'ordre de lecture ; `crumbleIndex[row * width + col]` = leur rang, −1 ailleurs. */
   crumbles: readonly Cell[];
   crumbleIndex: readonly number[];
+  /** Points de passage `C` (lot 2b), de gauche à droite (ordre du parcours), puis de haut en bas. */
+  checkpoints: readonly Cell[];
 }
 
 export class LevelError extends Error {
@@ -125,6 +128,7 @@ const GRID_CODES: Record<string, number> = {
   ".": TILE_EMPTY,
   S: TILE_EMPTY,
   F: TILE_EMPTY,
+  C: TILE_EMPTY,
   o: TILE_EMPTY,
   O: TILE_EMPTY,
   x: TILE_CRUMBLE,
@@ -193,6 +197,7 @@ export function parseLevel(text: string): Level {
   const saws: Saw[] = [];
   const crumbles: Cell[] = [];
   const crumbleIndex: number[] = [];
+  const checkpoints: Cell[] = [];
   for (let row = 0; row < height; row++) {
     const line = lines[row]!;
     if (line.length !== width) throw new LevelError(`Ligne ${row + 1} : ${line.length} colonnes au lieu de ${width}`);
@@ -205,12 +210,14 @@ export function parseLevel(text: string): Level {
       if (code === TILE_CRUMBLE) crumbles.push({ col, row });
       if (c === "S") starts.push({ col, row });
       if (c === "F") finishes.push({ col, row });
+      if (c === "C") checkpoints.push({ col, row });
       if (c === "o" || c === "O") {
         const p = centerOf(col, row);
         saws.push({ id: `${c}${saws.length}`, radius: c === "o" ? SAW_SMALL_RADIUS : SAW_BIG_RADIUS, mode: "fixe", points: [p], cycle: 0, section: -1, nodes: [p], times: [0, 0] });
       }
     }
   }
+  checkpoints.sort((a, b) => a.col - b.col || a.row - b.row);
   if (starts.length !== 1) throw new LevelError(`Il faut exactement un départ « S » (${starts.length} trouvés)`);
   if (finishes.length !== 1) throw new LevelError(`Il faut exactement une arrivée « F » (${finishes.length} trouvées)`);
 
@@ -258,7 +265,7 @@ export function parseLevel(text: string): Level {
     const cycle = Number(cycleText);
     saws.push({ id, radius, mode, points, cycle, section, ...sawPath(points, mode, cycle) });
   }
-  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex };
+  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints };
 }
 
 /**

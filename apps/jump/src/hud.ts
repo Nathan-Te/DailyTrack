@@ -10,6 +10,8 @@ export interface Hud {
   update(session: JumpSession): void;
   finish(session: JumpSession): void;
   hideFinish(): void;
+  /** Message bref au milieu de l'écran (point de passage atteint). */
+  toast(text: string): void;
   readonly finishShown: boolean;
 }
 
@@ -32,6 +34,8 @@ export function mountHud(opts: { onRestart(): void }): Hud {
     if (e.target !== button) opts.onRestart();
   });
 
+  const toastEl = document.getElementById("toast")!;
+  let toastTimer: ReturnType<typeof setTimeout> | null = null;
   let last = "";
   let shown = false;
   return {
@@ -49,9 +53,19 @@ export function mountHud(opts: { onRestart(): void }): Hud {
     finish(session) {
       bTime.textContent = formatTicks(session.state.time);
       bBest.textContent = session.best === null ? "Meilleur : — (réglages modifiés)" : `Meilleur de la session : ${formatTicks(session.best)}`;
-      bDeaths.textContent = `Morts : ${session.deaths}`;
+      // Avec les points de passage, un temps peut contenir des morts (le chrono a continué) : on le dit.
+      const run = session.attemptDeaths === 0 ? "essai sans faute" : `${session.attemptDeaths} dans cet essai`;
+      bDeaths.textContent = `Morts : ${session.deaths} · ${run}`;
       banner.hidden = false;
       shown = true;
+    },
+    toast(text) {
+      toastEl.textContent = text;
+      toastEl.classList.remove("show");
+      void toastEl.offsetWidth; // relance l'animation
+      toastEl.classList.add("show");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1200);
     },
     hideFinish() {
       banner.hidden = true;

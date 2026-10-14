@@ -220,7 +220,7 @@ describe("session", () => {
       respawn = session.step(INPUT_RIGHT);
       waited++;
     }
-    expect(respawn).toEqual({ kind: "respawn" });
+    expect(respawn).toEqual({ kind: "respawn", checkpoint: false });
     expect(waited).toBe(RESPAWN_TICKS);
     expect(session.state).toEqual(initialAttempt(corridor));
     expect(session.prev).toBe(session.state); // pas d'interpolation depuis le lieu de la mort
@@ -267,6 +267,30 @@ describe("session", () => {
     expect(tuned?.kind).toBe("finish");
     expect(session.tuned).toBe(true);
     expect(session.best).toBe(frozen.time);
+  });
+
+  it("point de passage : signalé une fois ; mourir après fait reprendre dessus dans le même essai (pas un nouvel essai), chrono qui continue", () => {
+    const lv = parseLevel([...Array(5).fill("#...............#"), "#S...C......F...#", "#########.#######"].join("\n"));
+    const session = new JumpSession(lv, { ...DEFAULT_JUMP_PARAMS });
+    const events: string[] = [];
+    let respawned = null;
+    for (let t = 0; t < 600 && !respawned; t++) {
+      const e = session.step(INPUT_RIGHT);
+      if (e) events.push(e.kind);
+      if (e?.kind === "respawn") respawned = e;
+    }
+    expect(events).toEqual(["checkpoint", "death", "respawn"]);
+    expect(respawned).toEqual({ kind: "respawn", checkpoint: true });
+    expect(session.attempts).toBe(1);
+    expect(session.deaths).toBe(1);
+    expect(session.attemptDeaths).toBe(1);
+    expect(session.state.time).toBeGreaterThan(session.lastDeath!.time);
+    expect(session.prev).toBe(session.state);
+    // Recommencer oublie le point : départ, chrono à zéro, nouvel essai.
+    session.restart();
+    expect(session.state).toEqual(initialAttempt(lv));
+    expect(session.attempts).toBe(2);
+    expect(session.attemptDeaths).toBe(0);
   });
 
   it("formate un temps en secondes à 3 décimales", () => {
