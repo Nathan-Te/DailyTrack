@@ -75,7 +75,9 @@ const racing = async (page: Page, url: string) => {
 };
 const input = (page: Page) => page.evaluate(() => ({ ...window.__cdj.input }));
 const polled = (page: Page, read: (i: { steer: number; throttle: number; brake: number }) => number) =>
-  expect.poll(async () => read(await input(page)), { timeout: 5_000 });
+  // 30 s et non 5 : `__cdj.input` est lu image par image, et en rendu logiciel une image dure parfois plus d'une seconde (0 relevé pour 64 attendu
+  // après 5 s en CI). L'attente s'arrête dès que l'état est atteint : seul un vrai échec attend jusqu'au bout.
+  expect.poll(async () => read(await input(page)), { timeout: 30_000 });
 
 for (const p of PHONES) {
   test.describe(p.name, () => {
@@ -89,7 +91,7 @@ for (const p of PHONES) {
       // Sans doigt : plein gaz tout seul, tout droit ; la voiture avance.
       await polled(page, (i) => i.throttle).toBe(64);
       expect(await page.evaluate(() => window.__cdj.car.z)).toBeGreaterThanOrEqual(0);
-      await expect.poll(() => page.evaluate(() => window.__cdj.car.z), { timeout: 5_000 }).toBeGreaterThan(5);
+      await expect.poll(() => page.evaluate(() => window.__cdj.car.z), { timeout: 30_000 }).toBeGreaterThan(5);
       expect((await input(page)).steer).toBe(0);
 
       const f = await fingersOf(page);
@@ -168,7 +170,7 @@ for (const p of PHONES) {
       // Ne pas arriver pendant le test : on freine d'un doigt (l'accélérateur automatique se coupe).
       const f = await fingersOf(page);
       await f.down(2, 700, 250);
-      await expect.poll(() => page.evaluate(() => window.__cdj.car.vz), { timeout: 5_000 }).toBeLessThan(0.01);
+      await expect.poll(() => page.evaluate(() => window.__cdj.car.vz), { timeout: 30_000 }).toBeLessThan(0.01);
       await f.up(2);
 
       const tick = () => page.evaluate(() => window.__cdj.car.tick);
@@ -180,15 +182,15 @@ for (const p of PHONES) {
       expect(await tick()).toBe(frozen); // rien ne bouge
       await page.locator("#pause-resume").click(); // la pause est une fenêtre : elle recouvre la barre tactile
       await expect(page.locator("#pause")).toBeHidden();
-      await expect.poll(tick, { timeout: 5_000 }).toBeGreaterThan(frozen + 20);
+      await expect.poll(tick, { timeout: 30_000 }).toBeGreaterThan(frozen + 20);
 
       // Reprise au point de contrôle (bouton ↺) : sans point franchi, c'est le départ ; le compteur de reprises monte.
       const respawns = () => page.evaluate(() => (window.__cdj.race as { respawns: number }).respawns);
       await page.getByRole("button", { name: "Recommencer au dernier point de contrôle" }).click();
-      await expect.poll(respawns, { timeout: 5_000 }).toBe(1);
+      await expect.poll(respawns, { timeout: 30_000 }).toBe(1);
       // Recommencer depuis le départ (bouton ⟲) : nouveau décompte.
       await page.getByRole("button", { name: "Recommencer depuis le départ" }).click();
-      await page.waitForFunction(() => window.__cdj.phase === "countdown", undefined, { timeout: 5_000 });
+      await page.waitForFunction(() => window.__cdj.phase === "countdown", undefined, { timeout: 30_000 });
       await context.close();
     });
 

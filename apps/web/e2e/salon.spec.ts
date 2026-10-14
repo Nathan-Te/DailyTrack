@@ -41,17 +41,21 @@ test("on arrive en cours de session : compte à rebours, joueurs fictifs au clas
   await loaded(page);
   await withRows(page, 3);
   // Les joueurs fictifs sont calculés un à un (fil de travail) : le premier du classement CHANGE tant que le dernier n'est pas arrivé, et les
-  // fantômes suivent le classement avec un temps de retard. On attend donc l'état stable — les fantômes sont ceux du classement courant —
-  // avant de comparer (« Démo Sirocco » attendu, « Démo Bouchon » reçu en CI : deux lectures à des moments différents).
-  await page.waitForFunction(
-    () => {
+  // fantômes sont ceux **du départ en cours** (`GhostField.active`, fixés à ce départ : « Démo Sirocco » attendu, « Démo Bouchon » reçu en CI).
+  // On redonne donc un départ (Entrée) après une mise à jour du classement, jusqu'à ce que les fantômes du départ soient ceux du classement.
+  const settled = () =>
+    page.evaluate(() => {
       const s = window.__cdj.salon!;
       const rows = s.board?.rows ?? [];
       return rows.length >= 3 && (s.ghosts?.count ?? 0) >= 1 && s.ghosts!.names[0] === rows[0]!.name;
-    },
-    undefined,
-    { timeout: 120_000, polling: 500 },
-  );
+    });
+  for (let essai = 0; essai < 10 && !(await settled()); essai++) {
+    const polls = await page.evaluate(() => window.__cdj.salon!.stats.boardPolls);
+    await page.waitForFunction((n) => window.__cdj.salon!.stats.boardPolls > n, polls, { timeout: 60_000 }); // un classement plus récent
+    await page.keyboard.press("Enter"); // nouveau départ : les fantômes repartent du classement courant
+    await page.waitForFunction(() => (window.__cdj.salon!.ghosts?.count ?? 0) >= 1, undefined, { timeout: 60_000 });
+  }
+  expect(await settled(), "les fantômes du départ sont ceux du classement").toBe(true);
   const s = await page.evaluate(() => window.__cdj.salon!);
   expect(s.demo).toBe(true);
   expect(s.sessionMs).toBe(LONG);
@@ -183,7 +187,8 @@ test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le c
   await page.keyboard.press("KeyG");
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("off");
   await page.waitForFunction(() => window.__cdj.phase === "racing" || window.__cdj.phase === "countdown");
-  await page.waitForTimeout(500);
+  // « aucun » : les voitures disparaissent à la prochaine image — on attend l'état, pas 500 ms (en CI 2 voitures restaient dessinées à cet instant).
+  await page.waitForFunction(() => window.__cdj.salon!.ghosts!.shown === 0, undefined, { timeout: 30_000 });
   expect((await page.evaluate(() => window.__cdj.salon!.ghosts!.shown))).toBe(0);
   await page.keyboard.press("KeyG");
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("all");
