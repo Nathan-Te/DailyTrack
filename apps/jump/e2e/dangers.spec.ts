@@ -241,6 +241,8 @@ test.describe("au doigt (téléphone en paysage)", () => {
           else await fingers.up(2);
           jumping = j;
         }
+        // Les doigts doivent donner exactement ces commandes avant de jouer la série (état attendu, pas une durée).
+        await page.waitForFunction((b) => (window as unknown as { __jump: { touch: { bits: number } } }).__jump.touch.bits === b, bits);
         await step(page, n);
       }
       if (dir !== 0) await fingers.up(1);

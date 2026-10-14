@@ -32,8 +32,14 @@ export class Fingers {
     return new Fingers(page, cdp);
   }
 
+  /**
+   * Chromium : le protocole rend la main avant que la page ait vu le doigt (un `pointermove` n'est livré qu'à l'image suivante). Sur une
+   * machine chargée (CI : 2 cœurs, 2 workers), lire l'état tout de suite lisait l'ancien doigt (lot 2). On attend donc deux images de la
+   * page : les événements de pointeur d'une image passent avant ses `requestAnimationFrame`.
+   */
   private async send(type: "touchStart" | "touchMove" | "touchEnd", all: Map<number, { x: number; y: number }>) {
     await this.cdp!.send("Input.dispatchTouchEvent", { type, touchPoints: [...all].map(([id, p]) => ({ id, x: p.x, y: p.y })) });
+    await this.page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
   }
 
   private async synthetic(type: "pointerdown" | "pointermove" | "pointerup", id: number, x: number, y: number) {
