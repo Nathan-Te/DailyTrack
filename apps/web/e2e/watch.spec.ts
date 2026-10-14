@@ -249,7 +249,16 @@ test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le 
   const w = await state(page);
   expect(w.mode).toBe("salon");
   expect(w.name).toBeTruthy();
-  expect(w.announcedMs).toBeLessThanOrEqual(first.ms); // (le classement a pu s'améliorer entre-temps : jamais plus lent)
+  // Le lien de la page d'origine porte `salonAt` : la page de lecture repart de cette heure FIXE, plus tôt que l'horloge de la page d'origine
+  // (qui a avancé pendant l'attente, longue en CI). Les joueurs fictifs se révèlent avec l'horloge, donc le « premier » de la nouvelle page peut
+  // être plus lent que celui lu avant le clic (`first`, relevé en CI : « annoncé ≤ premier » faux à chaque essai). Ce qui doit être vrai : le tour
+  // regardé est bien le temps classé de CE joueur dans le classement de la session, à la milliseconde.
+  await page.waitForFunction(
+    (who) => window.__cdj.salon!.board?.rows.some((r) => r.name === who.name && r.ms === who.ms) ?? false,
+    { name: w.name, ms: w.announcedMs },
+    { timeout: 60_000 },
+  );
+  expect(first.ms).toBeGreaterThan(0); // (le classement de la page d'origine avait bien un temps)
   expect(await page.evaluate(() => window.__cdj.salon!.ghosts!.count)).toBe(0); // un spectateur ne court pas : pas de fantômes autour
   expect(salon.id).toBe(await page.evaluate(() => window.__cdj.trackId));
   await finished(page);
