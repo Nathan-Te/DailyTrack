@@ -263,7 +263,8 @@ test("« Changer mon code » : l'ancien code ne vaut plus rien, l'autre appareil
   await reloaded;
   await a.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
   expect(await idOf(a)).toBe(newId);
-  await goHomeAndWait(a);
+  await a.goto(`/?home=1&${GAME}`); // une course est déjà lancée après le rechargement : on repart de l'accueil
+  await a.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
   await expect(a.locator("#home .profile input.name")).toHaveValue("Nowy Pro");
   await expect(a.locator("#home .profile .notice.error")).toHaveCount(0);
 
