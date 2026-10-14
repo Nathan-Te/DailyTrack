@@ -67,6 +67,10 @@ async function chooseName(page: Page, name: string) {
 /** Ouvre l'accueil d'une page déjà chargée (avec la synchronisation de son retour). */
 async function goHomeAndWait(page: Page) {
   await page.locator("#btn-home").click();
+  // Une fois le décompte fini, le jeu demande confirmation avant de quitter la course en cours (selon la lenteur de la machine, on tombe d'un côté ou de l'autre).
+  const leave = page.locator("#pause-leave");
+  await expect(page.locator("body")).toHaveClass(/home|paused/);
+  if (await leave.isVisible()) await leave.click();
   await expect(page.locator("body")).toHaveClass(/home/);
 }
 
