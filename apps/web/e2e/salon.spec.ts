@@ -151,6 +151,25 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
     // Plus longue tâche du fil principal (outil de mesure : `PerformanceObserver` « longtask »).
     (window as unknown as { __long: { at: number; ms: number }[] }).__long = [];
     new PerformanceObserver((l) => l.getEntries().forEach((e) => (window as unknown as { __long: { at: number; ms: number }[] }).__long.push({ at: e.startTime, ms: e.duration }))).observe({ entryTypes: ["longtask"] });
+    // Diagnostic (retouche 31b) : qui occupe une image longue (« long-animation-frame » : scripts responsables) et quand des shaders se compilent.
+    const w = window as unknown as { __frames: unknown[]; __links: number[] };
+    w.__frames = [];
+    w.__links = [];
+    try {
+      new PerformanceObserver((l) =>
+        l.getEntries().forEach((e) => {
+          const f = e as PerformanceEntry & { blockingDuration?: number; renderStart?: number; scripts?: { invoker: string; sourceFunctionName: string; duration: number }[] };
+          w.__frames.push({ at: Math.round(f.startTime), ms: Math.round(f.duration), blocking: Math.round(f.blockingDuration ?? 0), render: Math.round((f.startTime + f.duration) - (f.renderStart || f.startTime)), scripts: (f.scripts ?? []).map((s) => `${s.invoker}|${s.sourceFunctionName}|${Math.round(s.duration)}`) });
+        }),
+      ).observe({ type: "long-animation-frame", buffered: false });
+    } catch {
+      /* navigateur sans cette mesure */
+    }
+    const link = WebGL2RenderingContext.prototype.linkProgram;
+    WebGL2RenderingContext.prototype.linkProgram = function (program) {
+      w.__links.push(Math.round(performance.now()));
+      return link.call(this, program);
+    };
   });
   await page.goto(salonUrl2(START2 + 100_000));
   await loaded(page);
@@ -186,6 +205,11 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
   await page.waitForTimeout(3000); // fenêtre de mesure (rien d'autre à attendre)
   const afterClose = (await page.evaluate(() => (window as unknown as { __long: { at: number; ms: number }[] }).__long)).filter((t) => t.at >= closedAt - 50 && t.at <= closedAt + 3000);
   console.log(`après le podium : tâches longues ${JSON.stringify(afterClose.map((t) => [Math.round(t.at - closedAt), Math.round(t.ms)]))}`);
+  const diag = await page.evaluate((c) => {
+    const w = window as unknown as { __frames: { at: number }[]; __links: number[] };
+    return { frames: w.__frames.filter((f) => f.at >= c - 50 && f.at <= c + 3000).map((f) => ({ ...f, at: f.at - Math.round(c) })), links: w.__links.filter((t) => t >= c - 50 && t <= c + 3000).map((t) => t - Math.round(c)) };
+  }, closedAt);
+  console.log(`après le podium : images longues ${JSON.stringify(diag.frames)} ; shaders compilés à ${JSON.stringify(diag.links)} ms`);
   expect(Math.max(0, ...afterClose.map((t) => t.ms))).toBeLessThan(250); // aucune saccade de plus d'un quart de seconde quand on repart
   await expect(page.locator("#meta")).toContainText("Salon");
   await page.waitForFunction(() => window.__cdj.phase === "countdown" || window.__cdj.phase === "racing");
