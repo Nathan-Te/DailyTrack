@@ -249,7 +249,12 @@ test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le 
   const w = await state(page);
   expect(w.mode).toBe("salon");
   expect(w.name).toBeTruthy();
-  expect(w.announcedMs).toBeLessThanOrEqual(first.ms); // (le classement a pu s'améliorer entre-temps : jamais plus lent)
+  // Les courses des joueurs fictifs se terminent l'une après l'autre : au rechargement, le premier tour disponible peut être celui d'un pilote
+  // moins rapide que le premier vu avant. Ce qui doit tenir : le tour regardé est une vraie ligne du classement, avec le temps du serveur.
+  await page.evaluate(() => window.__cdj.salon!.refresh());
+  const rows = await page.evaluate(() => window.__cdj.salon!.board!.rows.map((r) => ({ name: r.name, ms: r.ms })));
+  expect(rows.some((r) => r.name === w.name && r.ms === w.announcedMs), `${w.name} ${w.announcedMs} dans ${JSON.stringify(rows)}`).toBe(true);
+  expect(rows.some((r) => r.ms === first.ms)).toBe(true);
   expect(await page.evaluate(() => window.__cdj.salon!.ghosts!.count)).toBe(0); // un spectateur ne court pas : pas de fantômes autour
   expect(salon.id).toBe(await page.evaluate(() => window.__cdj.trackId));
   await finished(page);
