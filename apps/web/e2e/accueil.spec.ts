@@ -401,21 +401,19 @@ test.describe("pause et touches", () => {
     });
     await open(page, "/?debug&scenario=essai&timescale=4");
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    const press = async (index: number) => {
+    // Le bouton reste enfoncé JUSQU'À ce que l'effet soit visible (puis relâché) : le jeu lit la manette une fois par image, et en rendu
+    // logiciel une image peut durer plus que n'importe quelle durée d'appui choisie d'avance (700 ms ne suffisait pas : test bloqué en CI).
+    const press = async (index: number, effect: () => boolean) => {
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = true), index);
-      await page.waitForTimeout(700); // le rendu logiciel est lent : l'appui doit durer plus d'une image
+      await page.waitForFunction(effect);
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = false), index);
-      await page.waitForTimeout(400);
     };
-    await press(9); // Start : pause
-    await page.waitForFunction(() => window.__cdj.paused === true);
+    await press(9, () => window.__cdj.paused === true); // Start : pause
     await expect(page.locator("#pause")).toBeVisible();
-    await press(2); // X : depuis le départ (referme aussi la pause)
-    await page.waitForFunction(() => window.__cdj.paused === false);
+    await press(2, () => window.__cdj.paused === false); // X : depuis le départ (referme aussi la pause)
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    await page.waitForTimeout(1200);
-    await press(3); // Y : dernier point de contrôle (ici le départ : la reprise est comptée)
-    await page.waitForFunction(() => (window.__cdj.race as { respawns: number }).respawns >= 1);
+    await page.waitForFunction(() => (window.__cdj.race as { car: { tick: number } }).car.tick > 120); // la course tourne (1 s de simulation)
+    await press(3, () => (window.__cdj.race as { respawns: number }).respawns >= 1); // Y : dernier point de contrôle (ici le départ : la reprise est comptée)
     await ctx.close();
   });
 

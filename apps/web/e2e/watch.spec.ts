@@ -99,7 +99,9 @@ test("pause, ralenti, accéléré et retour de 5 s ne changent pas le temps fina
 });
 
 test("la barre de progression saute n'importe où ; Entrée et « Rejouer la rediffusion » repartent du début", async ({ page }) => {
-  await page.goto(`${DAY_URL}&timescale=6`);
+  // timescale=2 et non 6 : une image fait avancer la lecture de 0,5 s × timescale au plus (120 pas ici, 360 à ×6) ; à ×6 une image enjambait
+  // toute la fenêtre « pas < 200 » du départ, qu'on ne voyait donc jamais (test bloqué 180 s en CI, à chaque essai).
+  await page.goto(`${DAY_URL}&timescale=2`);
   await ready(page);
   const { total, announcedMs } = await state(page);
   await page.locator("#watch-play").click(); // pause
