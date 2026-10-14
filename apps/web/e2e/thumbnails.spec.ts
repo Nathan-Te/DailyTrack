@@ -4,7 +4,10 @@ import { boxes, expectNoOverlap } from "./layout";
 // Miniatures des archives (lot 13). Rendu 3D : Chromium seulement (WebGL). On vérifie le CONTENU des images (pixels), pas
 // seulement leur présence : un compteur ne dit pas si l'image est vide (leçon du lot 9b).
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
-test.setTimeout(180_000);
+// Budget mesuré (lot 29b) : les 15 miniatures en WebGL logiciel prennent ≈ 52 s sur la machine de développement (4 essais : 52 à 56 s) et plus de
+// 180 s sur le runner de la CI (2 cœurs, quatre échecs de suite sur « 15 miniatures » sans autre cause que le délai). Seul le délai change : aucune
+// assertion n'est touchée, et un vrai blocage échoue toujours (chaque attente d'une image a son propre délai de 60 s).
+test.setTimeout(420_000);
 
 // Quatorze jours d'historique + « aujourd'hui » de la démo.
 const DEMO_ROWS = 15;
