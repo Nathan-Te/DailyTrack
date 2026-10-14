@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page, TODAY, newClockedContext } from "./fixtures";
+import { expect as baseExpect, test, type Browser, type Page, TODAY, newClockedContext } from "./fixtures";
 import { SIM_VERSION, dailyCircuit, encodeReplay, formatDay, runPilot } from "@cdj/sim";
 import { encodeTransfer } from "../src/transfer";
 import { formatTime } from "../src/format";
@@ -9,6 +9,8 @@ import { formatTime } from "../src/format";
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.describe.configure({ mode: "serial" });
 test.setTimeout(240_000);
+// Plusieurs pages et deux workers dessinent en rendu logiciel sur la CI : un aller-retour vers l'API y dépasse vite 5 s. Les attentes d'état ont 30 s.
+const expect = baseExpect.configure({ timeout: 30_000 });
 
 const API = "http://127.0.0.1:8790";
 const circuit = dailyCircuit(TODAY);
