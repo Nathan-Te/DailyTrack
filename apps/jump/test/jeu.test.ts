@@ -45,10 +45,17 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    expect(readUrlOptions("")).toEqual({ scenario: "bac-a-sable", debug: false, tune: false });
-    expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ scenario: "bac-a-sable", debug: true, tune: false });
-    expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ scenario: "bac-a-sable", debug: true, tune: true });
+    expect(readUrlOptions("")).toEqual({ scenario: "bac-a-sable", debug: false, tune: false, touch: null, zones: false });
+    expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ scenario: "bac-a-sable", debug: true, tune: false, touch: null, zones: false });
+    expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ scenario: "bac-a-sable", debug: true, tune: true, touch: null, zones: false });
     expect(readUrlOptions("?tune").tune).toBe(false);
+  });
+
+  it("lit touch (1, 0, ou l'appareil décide) et zones", () => {
+    expect(readUrlOptions("?touch=1").touch).toBe("1");
+    expect(readUrlOptions("?touch=0").touch).toBe("0");
+    expect(readUrlOptions("?touch=oui").touch).toBeNull();
+    expect(readUrlOptions("?zones").zones).toBe(true);
   });
 });
 

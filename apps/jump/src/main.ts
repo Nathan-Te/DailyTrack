@@ -21,9 +21,12 @@ import { FixedStepper } from "./loop";
 import { paletteForDay } from "./palette";
 import { createScene, type JumpScene } from "./scene";
 import { JumpSession } from "./session";
+import { wantsTouch } from "./touch";
+import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { readUrlOptions, type Scenario } from "./urlOptions";
 
+// Lot 1b : commandes tactiles (zones sans trou, glissement ← →, saut au second doigt), page adaptée au téléphone, réglages au doigt.
 // Lot 1 : le personnage. Boucle à pas fixe (120 Hz) sur `stepPlayer`, rendu interpolé, caméra qui suit, clavier et manette,
 // surimpression et `window.__jump` avec `?debug`, panneau de réglages avec `?debug&tune`. Pas encore de danger ni d'arrivée.
 
@@ -61,6 +64,8 @@ export interface JumpDebug {
   readonly tuned: boolean;
   /** Pas joués depuis le départ. */
   readonly ticks: number;
+  /** Tactile (lot 1b) : interface active, doigts posés (rôle et position), commande qu'ils donnent, panneau de réglages ouvert (jeu en pause). */
+  readonly touch: { active: boolean; fingers: { id: number; role: string; x: number; y: number }[]; bits: number; paused: boolean; panelOpen: boolean; viewTiles: number };
   /** Pas à pas : la boucle ne fait plus avancer la simulation, seul `advance` le fait (sans rendu). */
   manual(on: boolean): void;
   /** Joue `n` pas tout de suite (commande injectée, sinon clavier et manette) et renvoie le personnage. */
@@ -103,6 +108,9 @@ try {
 }
 
 const T = UNITS_PER_TILE;
+const touchOn = wantsTouch(options.touch, window.matchMedia?.("(pointer: coarse)").matches ?? false);
+let panelOpen = false;
+let touchUi: TouchUi | null = null;
 let phase: Phase = "loading";
 let manual = false;
 let injected: number | null = null;
@@ -191,6 +199,17 @@ const info: JumpDebug = {
   get ticks() {
     return session.ticks;
   },
+  get touch() {
+    const fingers = touchUi?.pad.list() ?? [];
+    return {
+      active: touchOn,
+      fingers,
+      bits: touchUi?.pad.bits ?? 0,
+      paused: panelOpen,
+      panelOpen,
+      viewTiles: scene ? scene.frame.halfH * 2 : 0,
+    };
+  },
   manual(on: boolean) {
     manual = on;
     stepper.reset();
@@ -230,9 +249,22 @@ if (options.debug) {
   overlay?.removeAttribute("hidden");
 }
 
+/** Ouvre ou ferme le panneau de réglages (téléphone) : ouvert, la partie est en pause et la couche tactile ne capte plus rien. */
+function setPanel(open: boolean): void {
+  panelOpen = open;
+  document.getElementById("tune")!.hidden = !open;
+  touchUi?.suspend(open);
+  controls.setTouch(0, false);
+  stepper.reset();
+}
+
+if (touchOn) {
+  touchUi = mountTouchUi({ controls, forced: options.touch === "1", zones: options.zones, tune: options.tune, onRestart: () => controls.requestRestart(), onGear: () => setPanel(true) });
+}
+
 if (options.tune) {
   const panel = document.getElementById("tune")!;
-  mountTunePanel(panel, params, () => updateOverlay());
+  mountTunePanel(panel, params, () => updateOverlay(), touchOn ? { onClose: () => setPanel(false) } : {});
 }
 
 /** Dessine l'image : personnage interpolé entre l'état précédent et l'état courant (`alpha`), caméra lissée sur `dt` secondes. */
@@ -255,19 +287,21 @@ if (!scene) {
   phase = "no-webgl";
 } else {
   const s = scene;
-  s.resize();
+  s.resize(touchOn);
   camera = snapCamera(follow(session.state), s.frame);
-  window.addEventListener("resize", () => {
-    s.resize();
+  const onResize = () => {
+    s.resize(touchOn);
     draw(manual ? 1 : stepper.alpha, 0);
-  });
+  };
+  window.addEventListener("resize", onResize);
+  window.addEventListener("orientationchange", onResize);
   let last = performance.now();
   const frame = (now: number) => {
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.25);
     last = now;
     controls.pollPad();
     if (controls.takeRestart()) restart();
-    if (!manual) {
+    if (!manual && !panelOpen) {
       const steps = stepper.advance(dt);
       for (let i = 0; i < steps; i++) stepOnce();
     }

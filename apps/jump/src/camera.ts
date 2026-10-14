@@ -76,3 +76,20 @@ export function followCamera(view: CameraView, p: Follow, frame: Frame, dt: numb
   const y = view.y + (targetY - view.y) * ease(CAMERA.verticalRate, dt);
   return clampView({ x, y, ahead }, frame);
 }
+
+/** Hauteur de l'image, en tuiles, sur grand écran (clavier et souris). */
+export const VIEW_TILES_DESKTOP = 18;
+/** Sur téléphone en paysage : de 12 à 14 tuiles de haut (13 : 28 tuiles de large sur un écran 19,5:9, chaque tuile fait ≈ 30 px). */
+export const VIEW_TILES_PHONE = 13;
+/** Largeur minimale de l'image, en tuiles : en portrait, l'image s'agrandit en hauteur plutôt que de montrer moins de 10 tuiles de large. */
+export const VIEW_MIN_WIDTH_TILES = 10;
+
+/**
+ * Hauteur de l'image en tuiles d'après la fenêtre (affichage seul). `touch` : téléphone (13 tuiles de haut en paysage) ; sinon 18.
+ * Dans les deux cas, jamais moins de `VIEW_MIN_WIDTH_TILES` de large : un écran en portrait gagne en hauteur.
+ */
+export function viewHeightTiles(width: number, height: number, touch: boolean): number {
+  const base = touch ? VIEW_TILES_PHONE : VIEW_TILES_DESKTOP;
+  if (!(width > 0) || !(height > 0)) return base;
+  return Math.max(base, (VIEW_MIN_WIDTH_TILES * height) / width);
+}

@@ -11,15 +11,12 @@ import {
   WebGLRenderer,
 } from "three";
 import { PLAYER_HEIGHT, PLAYER_WIDTH, TILE_SOLID, UNITS_PER_TILE, cellOrigin, type Level } from "@cdj/jump-sim";
-import type { Frame } from "./camera";
+import { viewHeightTiles, VIEW_TILES_DESKTOP, type Frame } from "./camera";
 import { squashScale, type Look } from "./look";
 import type { Palette } from "./palette";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
 // la rangée 0 de la grille tout en haut. Aucun calcul de simulation ici : on affiche ce que `jump-sim` a calculé.
-
-/** Hauteur de l'image, en tuiles. */
-export const VIEW_HEIGHT_TILES = 18;
 
 /** Ce que le rendu sait du personnage : sa boîte (interpolée), en tuiles, et son allure. */
 export interface PlayerPose {
@@ -32,7 +29,7 @@ export interface PlayerPose {
 export interface JumpScene {
   renderer: WebGLRenderer;
   /** Largeur et hauteur de l'image d'après la fenêtre ; à rappeler au redimensionnement. */
-  resize(): void;
+  resize(touch?: boolean): void;
   /** Taille du niveau et de l'image, en tuiles (pour la caméra). */
   readonly frame: Frame;
   setView(x: number, y: number): void;
@@ -102,7 +99,7 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   player.position.z = 0.2;
   world.add(player);
 
-  const frame: Frame = { width: level.width, height: level.height, halfW: 1, halfH: VIEW_HEIGHT_TILES / 2 };
+  const frame: Frame = { width: level.width, height: level.height, halfW: 1, halfH: VIEW_TILES_DESKTOP / 2 };
   let viewX = 0;
   let viewY = 0;
 
@@ -117,11 +114,13 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   return {
     renderer,
     frame,
-    resize() {
+    resize(touch = false) {
       const w = Math.max(1, window.innerWidth);
       const h = Math.max(1, window.innerHeight);
       renderer.setSize(w, h, false);
-      frame.halfW = (VIEW_HEIGHT_TILES * (w / h)) / 2;
+      const tiles = viewHeightTiles(w, h, touch);
+      frame.halfH = tiles / 2;
+      frame.halfW = (tiles * (w / h)) / 2;
       place();
     },
     setView(x, y) {
