@@ -228,8 +228,8 @@ test.describe("réglages", () => {
   test("un changement de qualité s'applique tout de suite et survit au rechargement", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    await open(page, "/?home=1&debug&api=demo");
-    await page.locator("#home-settings").click();
+    await open(page, "/?debug&api=demo"); // sans accueil : derrière l'accueil la scène est plafonnée à « moyenne »
+    await page.locator("#btn-settings").click();
     await expect(page.locator("#settings")).toBeVisible();
     await expect(page.locator("#tab-graphics")).toHaveAttribute("aria-selected", "true");
     await page.getByRole("radio", { name: "Basse", exact: true }).click();
@@ -254,8 +254,8 @@ test.describe("réglages", () => {
     expect((await ui(page)).quality).toBe(2);
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!).quality)).toBe("medium");
     // Retour à l'automatique.
-    await open(page, "/?home=1&debug&api=demo");
-    await page.locator("#home-settings").click();
+    await open(page, "/?debug&api=demo");
+    await page.locator("#btn-settings").click();
     await page.getByRole("radio", { name: "Automatique" }).click();
     state = await ui(page);
     expect(state.settingsValues.quality).toBe("auto");
@@ -334,7 +334,7 @@ test.describe("réglages", () => {
 
     // Tout est mémorisé et versionné ; rechargé, c'est pareil.
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!))).toMatchObject({ version: 1, unit: "mph", ghost: "first", splits: false, board: false, shake: false, speedFeel: "off" });
-    await page.reload();
+    await open(page, "/?debug&api=demo&timescale=4"); // (l'accueil forcé s'était retiré de l'adresse : même page qu'un rechargement)
     await page.waitForFunction(() => window.__cdj?.ui);
     s = (await ui(page)).settingsValues;
     expect(s).toMatchObject({ unit: "mph", ghost: "first", splits: false, board: false });
@@ -442,8 +442,7 @@ test.describe("pause et touches", () => {
     await page.waitForTimeout(1200);
     expect(await page.locator("#timer").textContent()).toBe(a);
     await page.keyboard.press("p");
-    await page.waitForTimeout(800);
-    expect(await page.locator("#timer").textContent()).not.toBe(a);
+    await expect(page.locator("#timer")).not.toHaveText(a!, { timeout: 15_000 });
     await ctx.close();
   });
 });
