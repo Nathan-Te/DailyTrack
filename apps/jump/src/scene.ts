@@ -19,6 +19,8 @@ import {
   ShapeGeometry,
   Vector3,
   WebGLRenderer,
+  AlwaysStencilFunc,
+  ReplaceStencilOp,
 } from "three";
 import {
   ATTEMPT_DEAD,
@@ -36,6 +38,7 @@ import {
   type Level,
 } from "@cdj/jump-sim";
 import { viewHeightTiles, VIEW_TILES_DESKTOP, type Frame } from "./camera";
+import { SOLID_STENCIL } from "./actors";
 import { BurstMesh, type BurstPool } from "./fx";
 import { squashScale, type Look } from "./look";
 import type { Palette } from "./palette";
@@ -62,6 +65,10 @@ export interface SceneOptions {
 
 export interface JumpScene {
   renderer: WebGLRenderer;
+  /** Le monde (tuiles, y vers le haut) : le lot 3 y ajoute fantôme, foule du carnage et taches (`actors.ts`). */
+  readonly world: Group;
+  /** Recul de la caméra (1 = normal ; le carnage dézoome un peu). Prend effet au prochain `resize`. */
+  zoom: number;
   /** Largeur et hauteur de l'image d'après la fenêtre ; à rappeler au redimensionnement. */
   resize(touch?: boolean): void;
   /** Taille du niveau et de l'image, en tuiles (pour la caméra). */
@@ -134,7 +141,8 @@ function circlePoints(r: number, n = 40): Vector3[] {
 }
 
 export function createScene(canvasParent: HTMLElement, level: Level, palette: Palette, options: SceneOptions = {}): JumpScene {
-  const renderer = new WebGLRenderer({ antialias: false, powerPreference: "low-power", preserveDrawingBuffer: false });
+  // Pochoir (lot 3) : les blocs pleins l'écrivent, les taches de peinture ne se dessinent que là (`actors.ts`).
+  const renderer = new WebGLRenderer({ antialias: false, powerPreference: "low-power", preserveDrawingBuffer: false, stencil: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setClearColor(new Color(palette.background), 1);
   canvasParent.appendChild(renderer.domElement);
@@ -147,7 +155,12 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
 
   // ——— Tuiles pleines : une tuile (col, row) occupe [col, col + 1] × [−row − 1, −row] ———
   const solid = level.tiles.filter((t) => t === TILE_SOLID).length;
-  const tiles = new InstancedMesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ color: palette.tile }), Math.max(1, solid));
+  const tileMat = new MeshBasicMaterial({ color: palette.tile });
+  tileMat.stencilWrite = true;
+  tileMat.stencilRef = SOLID_STENCIL;
+  tileMat.stencilFunc = AlwaysStencilFunc;
+  tileMat.stencilZPass = ReplaceStencilOp;
+  const tiles = new InstancedMesh(new PlaneGeometry(1, 1), tileMat, Math.max(1, solid));
   const m = new Matrix4();
   let i = 0;
   for (let row = 0; row < level.height; row++) {
@@ -370,12 +383,14 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
 
   return {
     renderer,
+    world,
+    zoom: 1,
     frame,
     resize(touch = false) {
       const w = Math.max(1, window.innerWidth);
       const h = Math.max(1, window.innerHeight);
       renderer.setSize(w, h, false);
-      const tilesHigh = viewHeightTiles(w, h, touch);
+      const tilesHigh = viewHeightTiles(w, h, touch) * this.zoom;
       frame.halfH = tilesHigh / 2;
       frame.halfW = (tilesHigh * (w / h)) / 2;
       place();

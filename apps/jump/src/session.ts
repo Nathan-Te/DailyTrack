@@ -4,18 +4,21 @@ import {
   ATTEMPT_READY,
   ATTEMPT_RUNNING,
   TICK_RATE,
+  AttemptRecorder,
   initialAttempt,
   isDefaultJumpParams,
   stepAttempt,
   type AttemptState,
   type JumpParams,
   type Level,
+  type RecordedAttempt,
 } from "@cdj/jump-sim";
 
 // Une session de jeu : le niveau, les réglages (lus à chaque pas : le panneau `?debug&tune` les change en direct), l'essai courant et
 // l'état précédent (pour interpoler l'affichage), et ce que la session retient (lot 2) : morts, meilleur temps, dernière mort.
 // « Recommencer » est un événement de la session, pas une commande de la simulation, et **ce n'est pas une mort**.
-// Mémoire de la session seulement : l'enregistrement viendra au lot 3.
+// Lot 3 : chaque essai est enregistré (`AttemptRecorder`) ; un essai clos (arrivée, mort sans point de passage, « recommencer ») attend
+// dans `takeEssai()` que le jeu le confie à la mémoire du jour, qui le **rejoue** avant d'en garder quoi que ce soit.
 
 /** Ce qui vient d'arriver pendant un pas (l'affichage s'en sert : éclatement, tremblement, bandeau). */
 export type SessionEvent =
@@ -51,14 +54,31 @@ export class JumpSession {
   attempts = 1;
   /** Vrai dès que les réglages ont différé des défauts pendant l'essai : il ne sera jamais enregistré (lot 3). */
   private wasTuned: boolean;
+  /** Enregistreur des essais (lot 3) ; null : rien n'est enregistré (lecture d'une rediffusion). */
+  readonly recorder: AttemptRecorder | null;
+  /** Essais clos, pas encore confiés à la mémoire du jour (avec leur drapeau « réglages modifiés »). */
+  private closed: { essai: RecordedAttempt; tuned: boolean }[] = [];
 
   constructor(
     readonly level: Level,
     readonly params: JumpParams,
+    levelId: string | null = null,
   ) {
     this.state = initialAttempt(level);
     this.prev = this.state;
     this.wasTuned = !isDefaultJumpParams(params);
+    this.recorder = levelId ? new AttemptRecorder(levelId) : null;
+  }
+
+  /** Le prochain essai clos (arrivée, mort sans point de passage, « recommencer »), à confier à la mémoire du jour. */
+  takeEssai(): { essai: RecordedAttempt; tuned: boolean } | null {
+    return this.closed.shift() ?? null;
+  }
+
+  /** La page se ferme : l'essai en cours est clos comme un abandon (ses vies sont gardées). */
+  flush(): void {
+    const ab = this.recorder?.abandon();
+    if (ab) this.closed.push({ essai: ab, tuned: this.tuned });
   }
 
   /** Essai aux réglages modifiés (même s'ils ont été remis aux défauts depuis le départ). */
@@ -74,6 +94,8 @@ export class JumpSession {
     this.state = stepAttempt(before, input, this.level, this.params);
     this.ticks++;
     const s = this.state;
+    const done = this.recorder?.step(before, input, s);
+    if (done) this.closed.push({ essai: done, tuned: this.tuned });
     if (s.status === ATTEMPT_DEAD && before.status !== ATTEMPT_DEAD) {
       this.deaths++;
       this.attemptDeaths++;
@@ -101,6 +123,7 @@ export class JumpSession {
 
   /** « Recommencer » : nouvel essai depuis l'état initial, sans interpolation depuis l'ancienne position. Ne compte pas comme une mort. */
   restart(): void {
+    this.flush();
     this.state = initialAttempt(this.level);
     this.newAttempt();
   }

@@ -93,6 +93,17 @@
       #zones .zone.band { background: rgba(255, 80, 80, 0.12); }
       #zones .dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #ff3b6b; border: 2px solid #fff; }
       #zones .dot.jump { background: #ffaa3c; }
+      /* Lot 3 : compteur du carnage (au-dessus de la couche tactile, il ne capte rien : un doigt n'importe où passe le carnage). */
+      #carnage { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 8; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 16px; border-radius: 12px; background: rgba(11, 16, 32, 0.78); color: #fff; font: 700 18px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
+      #carnage[hidden] { display: none; }
+      #carnage .hint { font-size: 12px; font-weight: 600; opacity: 0.7; }
+      /* Sur téléphone : empilé sous le chrono, dans la colonne du HUD (jamais sur les boutons ni sur la surimpression de debug). */
+      body.touch #carnage { position: static; transform: none; align-self: center; font-size: 16px; padding: 4px 12px; }
+      /* Fantôme : un bouton sur ordinateur (G au clavier) ; sur téléphone, il est dans la bande haute (👻). */
+      #ghostbtn { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 4; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+      #ghostbtn[aria-pressed="false"] { opacity: 0.65; }
+      body.touch #ghostbtn { display: none; }
+      .tbar-btn[aria-pressed="false"] { opacity: 0.5; }
       #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
     </style>
   </head>
@@ -100,6 +111,7 @@
     <div id="stamp"></div>
     <div id="hud">
       <div id="chrono" aria-live="off"><span class="time">0,000 s</span><span class="best">Meilleur —</span><span class="deaths">Morts 0</span></div>
+      <div id="carnage" role="status" hidden><span class="count"></span><span class="hint">Une commande pour passer</span></div>
       <pre id="debug" hidden></pre>
       <div id="tuned"></div>
     </div>
@@ -112,6 +124,7 @@
       <button type="button" id="finish-restart">Recommencer</button>
       <div class="hint">R, ou touche le bandeau</div>
     </div>
+    <button type="button" id="ghostbtn" aria-pressed="true" title="Fantôme (G)">👻 Fantôme : oui</button>
     <div id="nogl">WebGL n'est pas disponible dans ce navigateur : DailyJump ne peut pas s'afficher.</div>
     <script type="module" src="/src/main.ts"></script>
   </body>

@@ -9,3 +9,6 @@ export * from "./player";
 export * from "./attempt";
 export * from "./sandbox";
 export * from "./levels";
+export * from "./replay";
+export * from "./solutions";
+export * from "./demo";

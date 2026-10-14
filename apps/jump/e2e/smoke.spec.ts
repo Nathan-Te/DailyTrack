@@ -161,7 +161,7 @@ test("?debug&tune : un curseur par réglage, un réglage modifié marque la part
     el.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await advance(page, 0, 1);
-  await expect(page.locator("#tuned")).toHaveText("réglages modifiés");
+  await expect(page.locator("#tuned")).toHaveText("réglages modifiés : rien n'est enregistré");
   expect(await page.evaluate(() => (window as unknown as { __jump: { tuned: boolean; params: { gravity: number } } }).__jump.params.gravity)).toBe(30);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem("jump:tune") ?? "{}").gravity)).toBe(30);
   await page.getByRole("button", { name: "Réinitialiser" }).click();

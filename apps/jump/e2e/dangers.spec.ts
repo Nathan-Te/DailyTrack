@@ -149,6 +149,15 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
     }
     j.input(0);
   }, SOLUTION.inputs);
+  // Lot 3 : à l'arrivée, le carnage démarre de lui-même ; une commande le passe et mène au bandeau.
+  // Seul un appui compte (la direction tenue à l'arrivée ne le passe pas) : on relâche, puis on appuie sur saut.
+  expect(await phase(page)).toBe("carnage");
+  await step(page, 1);
+  expect(await phase(page)).toBe("carnage");
+  await jump(page, (j) => j.input(4));
+  await step(page, 1);
+  await jump(page, (j) => j.input(0));
+  expect(await phase(page)).toBe("finished");
   const done = await attempt(page);
   expect(done.status).toBe("arrivé");
   expect(done.time).toBe(SOLUTION.ticks);
@@ -290,6 +299,12 @@ test.describe("au doigt (téléphone en paysage)", () => {
       }
       if (dir !== 0) await fingers.up(1);
       if (jumping) await fingers.up(2);
+      // Lot 3 : le carnage démarre à l'arrivée ; un doigt posé (ici, la zone de saut) le passe et mène au bandeau.
+      expect(await phase(page)).toBe("carnage");
+      await fingers.down(2, ...at.jump);
+      await step(page, 1);
+      await fingers.up(2);
+      expect(await phase(page)).toBe("finished");
       const done = await attempt(page);
       expect(done.status).toBe("arrivé");
       expect(done.time).toBe(SOLUTION.ticks);
