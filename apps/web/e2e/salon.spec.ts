@@ -183,8 +183,8 @@ test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le c
   await page.keyboard.press("KeyG");
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("off");
   await page.waitForFunction(() => window.__cdj.phase === "racing" || window.__cdj.phase === "countdown");
-  await page.waitForTimeout(500);
-  expect((await page.evaluate(() => window.__cdj.salon!.ghosts!.shown))).toBe(0);
+  // Les fantômes disparaissent à la prochaine image : on attend cet état, pas une durée (la CI dessine lentement).
+  await page.waitForFunction(() => window.__cdj.salon!.ghosts!.shown === 0, undefined, { timeout: 20_000 });
   await page.keyboard.press("KeyG");
   expect(await page.evaluate(() => window.__cdj.salon!.ghostMode)).toBe("all");
 });

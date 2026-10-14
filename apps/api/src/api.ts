@@ -24,9 +24,10 @@ import {
 } from "@cdj/sim";
 import { ensureSchemaOn, schemaVersion, type SqlDb } from "./db";
 import { HttpError } from "./errors";
+import { createPlayers } from "./players";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
-import { PLAYER_ID, cleanName } from "./validate";
+import { PLAYER_ID } from "./validate";
 
 // API du classement. Elle ne fait confiance à aucun temps annoncé : elle reçoit la rediffusion (la suite des
 // commandes du joueur), la rejoue avec le même code de simulation que le jeu, et n'enregistre que le temps
@@ -278,8 +279,10 @@ export function createApi(options: ApiOptions) {
   }
 
   // --- Le Salon (lot 27) : voir salon.ts ------------------------------------------------------------------------------
+  const players = createPlayers({ db, now, demoPlayers: options.demoPlayers === true });
   const salon = createSalon({
     db,
+    players,
     now,
     sessionMs,
     hashKey,
@@ -314,13 +317,13 @@ export function createApi(options: ApiOptions) {
     const playerId = playerIdOf(body.playerId);
     const day = dayOf(body.date, true);
     if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
-    const suppliedName = body.name === undefined ? null : cleanName(body.name);
-    if (body.name !== undefined && suppliedName === null) throw new HttpError(400, "invalid_name", "Pseudo invalide (1 à 20 caractères : lettres, chiffres, espace . _ ' -)");
     if (info.clientKey) await hit(await hashKey("ip", info.clientKey), limits.perClient);
     await hit(await hashKey("p", playerId), limits.perPlayer);
 
-    const knownName = await playerName(playerId);
-    if (!suppliedName && !knownName) throw new HttpError(400, "name_required", "Choisis un pseudo pour entrer au classement");
+    // Pseudo (lot 30) : réservé à son premier propriétaire, vérifié avant le rejeu (bon marché) et garanti par la base à l'écriture.
+    await players.assertActive(playerId);
+    const known = await players.find(playerId);
+    const name = await players.resolveName(playerId, body.name, known);
 
     // Vérifications bon marché d'abord, rejeu (coûteux) ensuite.
     let replay;
@@ -342,12 +345,7 @@ export function createApi(options: ApiOptions) {
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 
     const t = now();
-    if (suppliedName) {
-      await db.run(
-        "INSERT INTO players (id, name, created_at, updated_at, demo) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at",
-        [playerId, suppliedName, t, t, options.demoPlayers ? 1 : 0],
-      );
-    }
+    await players.save(playerId, name, known);
     const previous = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, playerId]);
     const improved = !previous || result.finishMs < previous.ms;
     if (improved) {
@@ -378,15 +376,133 @@ export function createApi(options: ApiOptions) {
   async function renamePlayer(req: Request, info: RequestInfo): Promise<unknown> {
     const body = await readJson(req);
     const playerId = playerIdOf(body.playerId);
-    const name = cleanName(body.name);
-    if (!name) throw new HttpError(400, "invalid_name", "Pseudo invalide (1 à 20 caractères : lettres, chiffres, espace . _ ' -)");
+    players.checkForm(body.name); // forme et mots refusés d'abord : aucune base ni débit consommé pour un pseudo qui ne passera jamais
     if (info.clientKey) await hit(await hashKey("ip", info.clientKey), limits.perClient);
     await hit(await hashKey("p", playerId), limits.perPlayer);
+    await players.assertActive(playerId);
     // On ne crée jamais de joueur ici : un joueur n'existe qu'après avoir envoyé une course valide (sinon, n'importe
     // qui pourrait remplir la base de pseudos sans jouer).
-    const row = await db.first<{ id: string }>("UPDATE players SET name = ?, updated_at = ? WHERE id = ? RETURNING id", [name, now(), playerId]);
-    if (!row) throw new HttpError(404, "unknown_player", "Ce joueur n'a pas encore de temps enregistré");
+    const known = await players.find(playerId);
+    if (!known) throw new HttpError(404, "unknown_player", "Ce joueur n'a pas encore de temps enregistré");
+    const name = await players.resolveName(playerId, body.name, known);
+    await players.save(playerId, name, known);
+    await db.run("UPDATE salon_runs SET name = ? WHERE player_id = ? AND name <> ?", [name, playerId, name]); // le Salon en cours montre le même pseudo
     return { name };
+  }
+
+  // --- Pseudos et profil (lot 30) ---------------------------------------------------------------------------------
+  /** Vérifications de pseudo par adresse et par fenêtre de débit : assez pour un formulaire, trop peu pour balayer des pseudos. */
+  const NAME_CHECKS_PER_WINDOW = 40;
+  /** Lectures du profil par joueur / par adresse et par fenêtre de débit (le jeu se synchronise au plus toutes les 30 s). */
+  const ME_PER_PLAYER = 60;
+  const ME_PER_CLIENT = 200;
+  /** Changements de code par joueur et par fenêtre de débit. */
+  const ROTATIONS_PER_WINDOW = 3;
+
+  /** L'identifiant secret du joueur, lu dans l'en-tête `X-Player-Id` (jamais dans l'adresse, qui finit dans les journaux de l'hébergeur). */
+  function secretOf(req: Request): string {
+    return playerIdOf(req.headers.get("x-player-id"));
+  }
+
+  async function nameCheck(req: Request, url: URL, info: RequestInfo): Promise<unknown> {
+    if (info.clientKey) await hit(await hashKey("nm", info.clientKey), NAME_CHECKS_PER_WINDOW);
+    const header = req.headers.get("x-player-id");
+    return players.check(url.searchParams.get("name"), header === null ? null : playerIdOf(header));
+  }
+
+  /** Le profil du joueur, tel que le serveur le connaît : le jeu s'y synchronise, son stockage local n'en est qu'un cache. */
+  async function myProfile(req: Request, info: RequestInfo): Promise<unknown> {
+    const id = secretOf(req);
+    if (info.clientKey) await hit(await hashKey("meip", info.clientKey), ME_PER_CLIENT);
+    await hit(await hashKey("me", id), ME_PER_PLAYER);
+    await players.assertActive(id);
+    const row = await players.find(id);
+    if (!row) throw new HttpError(404, "unknown_player", "Ce profil n'existe pas sur le serveur : joue un tour pour l'ouvrir");
+
+    const t = today();
+    const rows = await db.all<{ day: number; ms: number; submitted_at: number; track_id: string | null; author_ms: number | null; final_rank: number | null; final_total: number | null }>(
+      `SELECT r.day AS day, r.ms AS ms, r.submitted_at AS submitted_at, c.track_id AS track_id, c.author_ms AS author_ms, r.final_rank AS final_rank, r.final_total AS final_total
+       FROM results r LEFT JOIN circuits c ON c.day = r.day WHERE r.player_id = ? ORDER BY r.day DESC`,
+      [id],
+    );
+    // Un jour est fermé (sa place ne bougera plus) une fois passée la minute de grâce qui suit minuit : sa place est calculée une fois, puis gardée.
+    const closedBefore = now() - t * DAY_MS >= GRACE_MS ? t : t - 1;
+    if (rows.some((r) => r.final_rank === null && r.day < closedBefore)) {
+      const done = await db.all<{ day: number; final_rank: number; final_total: number }>(
+        `UPDATE results SET
+           final_rank = (SELECT COUNT(*) FROM results x WHERE x.day = results.day AND (x.ms < results.ms OR (x.ms = results.ms AND x.submitted_at < results.submitted_at))) + 1,
+           final_total = (SELECT COUNT(*) FROM results x WHERE x.day = results.day)
+         WHERE player_id = ? AND final_rank IS NULL AND day < ? RETURNING day, final_rank, final_total`,
+        [id, closedBefore],
+      );
+      const byDay = new Map(done.map((d) => [d.day, d]));
+      for (const r of rows) {
+        const d = byDay.get(r.day);
+        if (d) {
+          r.final_rank = d.final_rank;
+          r.final_total = d.final_total;
+        }
+      }
+    }
+    const counts: Record<Medal, number> = { author: 0, gold: 0, silver: 0, bronze: 0 };
+    let bestRank: { date: string; rank: number; participants: number } | null = null;
+    const played = new Set<number>();
+    const past: { date: string; trackId: string | null; ms: number; medal: Medal | null }[] = [];
+    let todayRow: (typeof rows)[number] | null = null;
+    for (const r of rows) {
+      played.add(r.day);
+      const medal = r.author_ms === null ? null : (medalFor(r.ms, medalsFor(r.author_ms)) as Medal | null);
+      if (medal) counts[medal]++;
+      // Jours fermés : place gardée. Aujourd'hui (et hier, pendant la grâce) : place du moment.
+      const rank = r.final_rank ?? (await rankOf(r.day, r.ms, r.submitted_at));
+      const total = r.final_total ?? (await participants(r.day));
+      if (!bestRank || rank < bestRank.rank || (rank === bestRank.rank && total > bestRank.participants)) bestRank = { date: formatDay(r.day), rank, participants: total };
+      if (r.day === t) todayRow = r;
+      else past.push({ date: formatDay(r.day), trackId: r.track_id, ms: r.ms, medal });
+    }
+    let streak = 0;
+    for (let d = played.has(t) ? t : t - 1; played.has(d); d--) streak++;
+
+    let best: unknown = null;
+    if (todayRow) {
+      const full = await db.first<{ splits: string; replay: string }>("SELECT splits, replay FROM results WHERE day = ? AND player_id = ?", [t, id]);
+      let simVersion: number | null = null;
+      try {
+        simVersion = full ? decodeReplay(full.replay).simVersion : null;
+      } catch {
+        /* rediffusion illisible : le temps reste, pas le fantôme */
+      }
+      best = {
+        date: formatDay(t),
+        trackId: todayRow.track_id,
+        ms: todayRow.ms,
+        medal: todayRow.author_ms === null ? null : medalFor(todayRow.ms, medalsFor(todayRow.author_ms)),
+        splits: full ? (JSON.parse(full.splits) as number[]) : [],
+        ...(full && simVersion !== null ? { replay: full.replay, simVersion } : {}),
+      };
+    }
+    return {
+      name: row.name,
+      renameRequired: row.rename_required === 1,
+      today: formatDay(t),
+      simVersion: SIM_VERSION,
+      stats: { days: rows.length, medals: counts, bestRank, streak },
+      best,
+      past,
+    };
+  }
+
+  /** « Changer mon code » : le serveur associe le profil au nouvel identifiant `newId` (tiré par le jeu), l'ancien ne vaut plus rien. */
+  async function rotateCode(req: Request, info: RequestInfo): Promise<unknown> {
+    const oldId = secretOf(req);
+    const body = await readJson(req);
+    const newId = playerIdOf(body.newId);
+    if (newId === oldId) throw new HttpError(400, "invalid_player", "Le nouvel identifiant doit être différent de l'ancien");
+    if (info.clientKey) await hit(await hashKey("ip", info.clientKey), limits.perClient);
+    await hit(await hashKey("rot", oldId), ROTATIONS_PER_WINDOW);
+    const { replayed } = await players.rotate(oldId, newId);
+    log("INFO", "code de joueur remplacé", { replayed });
+    return { rotated: true };
   }
 
   async function dayInfo(date: string): Promise<unknown> {
@@ -567,7 +683,7 @@ export function createApi(options: ApiOptions) {
   function corsFor(req: Request): Record<string, string> {
     const common = {
       "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Player-Id",
       "Access-Control-Max-Age": "86400",
     };
     if (!allowedOrigins) return { "Access-Control-Allow-Origin": allowOrigin, ...common };
@@ -624,6 +740,18 @@ export function createApi(options: ApiOptions) {
         if (req.method !== "PUT") throw new HttpError(405, "method_not_allowed", "PUT attendu");
         return reply(200, await renamePlayer(req, info));
       }
+      if (path === "/api/name") {
+        if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+        return reply(200, await nameCheck(req, url, info));
+      }
+      if (path === "/api/me") {
+        if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+        return reply(200, await myProfile(req, info));
+      }
+      if (path === "/api/me/code") {
+        if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
+        return reply(200, await rotateCode(req, info));
+      }
       if (path === "/api/planning") {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
         return reply(200, await publicPlanning());
@@ -678,7 +806,7 @@ export function createApi(options: ApiOptions) {
     } catch (e) {
       if (e instanceof HttpError) {
         if (e.status === 429 || e.status >= 500) log(e.status >= 500 ? "ERROR" : "WARNING", "refus", { status: e.status, code: e.code });
-        return reply(e.status, { error: e.code, message: e.message }, e.headers);
+        return reply(e.status, { error: e.code, message: e.message, ...e.details }, e.headers);
       }
       log("ERROR", "erreur interne", { error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 300) : "inconnue" });
       return reply(500, { error: "internal", message: "Erreur interne" });

@@ -263,14 +263,23 @@ describe(`adaptateur ${TEST_DB}`, () => {
     }
   });
 
+  it("SQLite local : un lot est une transaction (tout ou rien)", async () => {
+    const db = await openTestDb();
+    if (TEST_DB !== "sqlite") return;
+    await db.run("CREATE TABLE t (id INTEGER PRIMARY KEY)");
+    await db.batch!([{ sql: "INSERT INTO t VALUES (1)" }, { sql: "INSERT INTO t VALUES (?)", params: [2] }]);
+    await expect(db.batch!([{ sql: "INSERT INTO t VALUES (3)" }, { sql: "INSERT INTO t VALUES (1)" }])).rejects.toThrow();
+    expect(await db.all("SELECT id FROM t ORDER BY id")).toEqual([{ id: 1 }, { id: 2 }]);
+  });
+
   it("applique un lot dans une transaction, en un aller-retour (libSQL)", async () => {
     const db = await openTestDb();
-    if (!db.batch) return; // SQLite local : pas de lot
+    if (TEST_DB !== "libsql") return; // SQLite local : voir le test précédent
     await db.run("CREATE TABLE t (id INTEGER PRIMARY KEY)");
     const before = (db as ReturnType<typeof libsqlDb>).stats.roundTrips;
-    await db.batch([{ sql: "INSERT INTO t VALUES (1)" }, { sql: "INSERT INTO t VALUES (?)", params: [2] }]);
+    await db.batch!([{ sql: "INSERT INTO t VALUES (1)" }, { sql: "INSERT INTO t VALUES (?)", params: [2] }]);
     expect((db as ReturnType<typeof libsqlDb>).stats.roundTrips).toBe(before + 1);
-    await expect(db.batch([{ sql: "INSERT INTO t VALUES (3)" }, { sql: "INSERT INTO t VALUES (1)" }])).rejects.toThrow();
+    await expect(db.batch!([{ sql: "INSERT INTO t VALUES (3)" }, { sql: "INSERT INTO t VALUES (1)" }])).rejects.toThrow();
     expect(await db.all("SELECT id FROM t ORDER BY id")).toEqual([{ id: 1 }, { id: 2 }]); // le lot raté n'a rien laissé
   });
 });

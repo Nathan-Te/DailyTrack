@@ -55,6 +55,8 @@ export interface SettingsUi {
   isOpen(): boolean;
   /** Relit les valeurs (après un changement venu d'ailleurs : touche M, touche C, qualité automatique). */
   sync(): void;
+  /** Ouvre la zone « Charger un code » de l'onglet Profil. */
+  showLoad(): void;
 }
 
 const LEVEL_NAME = ["basse", "moyenne", "haute"] as const;
@@ -235,5 +237,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     close,
     isOpen: () => !ov.root.hidden,
     sync,
+    /** Ouvre la zone « Charger un code » de l'onglet Profil. */
+    showLoad: () => profile.showLoad(),
   };
 }

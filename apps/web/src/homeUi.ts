@@ -39,6 +39,8 @@ export interface HomeHost {
 }
 
 export interface HomeUi {
+  /** Redessine ce qui vient des records (ton temps, médailles, profil) sans recharger le Salon (après une synchronisation) ; `board` : relit aussi le classement du jour (ta place vient peut-être d'arriver). */
+  refresh(options?: { board?: boolean }): void;
   open(): void;
   close(): void;
   isOpen(): boolean;
@@ -202,6 +204,15 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   }
 
   return {
+    refresh(options = {}) {
+      if (!open) return;
+      const rank = mine.querySelector(".rank")?.textContent ?? "";
+      renderToday();
+      const slot = mine.querySelector(".rank");
+      if (slot && rank) slot.textContent = rank; // ta place déjà connue ne disparaît pas le temps de la relire
+      profileCard.refresh();
+      if (options.board) void loadBoard(generation);
+    },
     open() {
       open = true;
       generation++;

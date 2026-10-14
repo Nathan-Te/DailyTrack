@@ -1,10 +1,17 @@
 import { SIM_VERSION } from "@cdj/sim";
 import { DEMO_BASE, LeaderboardApi, apiBase, type ApiResult, type GhostData, type Leaderboard, type LeaderboardSource, type SubmitResult } from "./api";
 import { DemoApi } from "./demo";
-import { getName, getPlayerId, getSubmittedBest, normalizeName, setName, setSubmittedBest } from "./identity";
+import { clearNextId, getName, getPlayerId, getSubmittedBest, normalizeName, setName, setPlayerId, setSubmittedBest, takeNextId } from "./identity";
+import { ProfileSync } from "./profileSync";
 import { listDayBests, type BestRun } from "./records";
 
 export type GhostMode = "mine" | "first" | "ahead" | "off";
+
+/** Le message du serveur quand un pseudo est déjà à quelqu'un d'autre (repris tel quel pour les vérifications faites avant l'envoi). */
+export const NAME_TAKEN_MESSAGE = "Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.";
+
+export type RenameResult = { ok: true; name: string } | { ok: false; code: string; message: string; suggestions?: string[] };
+export type ChangeCodeResult = { ok: true } | { ok: false; code: string; message: string };
 
 /** Un fantôme prêt à rejouer, avec de quoi l'étiqueter. */
 export interface GhostChoice {
@@ -23,7 +30,15 @@ export class Online {
   readonly api: LeaderboardSource | null;
   /** Mode démo (`?api=demo`) : classements figés lus dans un jeu de données statique, rien n'est envoyé. */
   readonly demo: boolean;
-  readonly playerId = getPlayerId();
+  /** Profil, pseudo, code : parle au serveur même hors circuit du jour (Salon). `null` sans serveur ; en démonstration, un faux qui refuse tout. */
+  readonly profileApi: LeaderboardSource | null;
+  /** Synchronisation du profil (lot 30) : le serveur fait foi, le stockage du navigateur n'est qu'un cache. */
+  readonly sync: ProfileSync;
+
+  /** Identifiant secret du joueur : lu à chaque fois (il change avec « Changer mon code » ou un code chargé). */
+  get playerId(): string {
+    return getPlayerId();
+  }
 
   constructor(
     readonly trackId: string | null,
@@ -33,6 +48,9 @@ export class Online {
   ) {
     this.demo = base === DEMO_BASE;
     this.api = base && date && trackId ? (this.demo ? new DemoApi((d) => listDayBests().get(d) ?? null) : new LeaderboardApi(base)) : null;
+    this.profileApi = this.api ?? (base && !this.demo ? new LeaderboardApi(base) : null);
+    // Rien à synchroniser en démonstration (lecture seule) ni sans serveur.
+    this.sync = new ProfileSync({ api: () => (this.demo ? null : this.profileApi), playerId: () => this.playerId, adopt: setPlayerId, storage: localStorage });
   }
 
   get enabled(): boolean {
@@ -53,19 +71,70 @@ export class Online {
   async submit(best: BestRun, name: string): Promise<ApiResult<SubmitResult>> {
     if (!this.api || !this.date || !this.trackId || !best.replay) return { ok: false, status: 0, code: "disabled", message: "Classement désactivé" };
     const r = await this.api.submit(this.playerId, name, this.date, best.replay);
-    if (r.ok) setSubmittedBest(this.trackId, r.data.bestMs);
+    if (r.ok) {
+      setSubmittedBest(this.trackId, r.data.bestMs);
+      this.sync.noteServerKnows();
+    }
     return r;
   }
 
   /**
-   * Retient le pseudo en local ; avec `server`, le change aussi sur le serveur (réservé aux joueurs déjà classés :
-   * pour les autres, le pseudo part avec leur première course). Renvoie le pseudo retenu.
+   * Choisit un pseudo (lot 30 : un pseudo appartient à son premier propriétaire). Le serveur dit s'il est libre :
+   *   - joueur déjà classé : le serveur le change (et les autres appareils le voient à leur prochaine synchronisation) ;
+   *   - pas encore classé, ou `viaSubmit` (le pseudo part avec la course qu'on s'apprête à envoyer) : le serveur vérifie seulement qu'il est libre ;
+   *   - sans réseau : retenu en local, vérifié à l'envoi (jamais pour un joueur que le serveur connaît : son pseudo ne change pas hors ligne).
    */
-  async rename(raw: string, server = false): Promise<string> {
+  async rename(raw: string, options: { viaSubmit?: boolean } = {}): Promise<RenameResult> {
     const name = normalizeName(raw);
-    setName(name);
-    if (server && this.api) await this.api.rename(this.playerId, name);
-    return name;
+    const api = this.profileApi;
+    if (!api || this.demo) {
+      setName(name);
+      return { ok: true, name };
+    }
+    const keep = (): RenameResult => {
+      setName(name);
+      return { ok: true, name };
+    };
+    const check = async (): Promise<RenameResult> => {
+      const c = await api.checkName(name, this.playerId);
+      if (c.ok) return c.data.available ? keep() : { ok: false, code: "name_taken", message: NAME_TAKEN_MESSAGE, suggestions: c.data.suggestions };
+      return c.status === 0 ? keep() : { ok: false, code: c.code, message: c.message };
+    };
+    if (options.viaSubmit || this.sync.state.known === false) return check();
+    const r = await api.rename(this.playerId, name);
+    if (r.ok) {
+      setName(r.data.name);
+      this.sync.noteRenamed();
+      return { ok: true, name: r.data.name };
+    }
+    if (r.code === "unknown_player") {
+      this.sync.noteServerKnows(false);
+      return check();
+    }
+    if (r.status === 0) {
+      return this.sync.state.known === true ? { ok: false, code: r.code, message: "Hors ligne : ton pseudo ne peut pas changer sans le serveur. Réessaie en ligne." } : keep();
+    }
+    return { ok: false, code: r.code, message: r.message, ...(r.suggestions ? { suggestions: r.suggestions } : {}) };
+  }
+
+  /**
+   * « Changer mon code » : le serveur associe le profil à un nouvel identifiant secret, l'ancien devient inutilisable. Le nouvel identifiant est tiré ici et
+   * gardé jusqu'à la réponse : si elle se perd, la même demande rejouée réussit. Un profil que le serveur ne connaît pas encore reçoit simplement un
+   * nouvel identifiant local.
+   */
+  async changeCode(): Promise<ChangeCodeResult> {
+    const api = this.profileApi;
+    if (!api || this.demo) return { ok: false, code: "disabled", message: "Pas de serveur ici : le code ne peut pas être changé." };
+    const next = takeNextId();
+    const r = await api.rotateCode(this.playerId, next);
+    if (r.ok || r.code === "unknown_player") {
+      setPlayerId(next);
+      clearNextId();
+      this.sync.reset();
+      return { ok: true };
+    }
+    if (r.code === "code_revoked") clearNextId();
+    return { ok: false, code: r.code, message: r.status === 0 ? "Impossible de joindre le serveur : réessaie dans un moment." : r.message };
   }
 
   leaderboard(limit = 10): Promise<ApiResult<Leaderboard>> {

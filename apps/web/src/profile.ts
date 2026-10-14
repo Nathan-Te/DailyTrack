@@ -197,8 +197,9 @@ export function dayLong(date: string): string {
 
 /**
  * Deux joueurs au même pseudo se distinguent par un court suffixe : le premier (par ordre d'affichage) garde son nom, les suivants
- * deviennent « Nom·2 », « Nom·3 »… Le même classement montre les mêmes suffixes à tout le monde. (Les pseudos réservés du lot 30
- * rendront ce suffixe inutile, sauf pour les comptes déjà existants.)
+ * deviennent « Nom·2 », « Nom·3 »… Le même classement montre les mêmes suffixes à tout le monde. Depuis le lot 30 un pseudo appartient
+ * à un seul joueur sur le serveur : ce suffixe d'affichage ne sert plus qu'aux données d'avant (jeu de démonstration) ; les comptes migrés
+ * portent leur suffixe « ·2 » dans leur pseudo même.
  */
 export function disambiguateNames(names: readonly string[]): string[] {
   const seen = new Map<string, number>();

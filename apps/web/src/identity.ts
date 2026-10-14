@@ -22,16 +22,54 @@ function write(key: string, value: string): void {
 
 let memoryId: string | null = null;
 
-/** Identifiant du joueur (32 caractères hexadécimaux, tirés avec `crypto.getRandomValues`), créé au premier appel. */
+/** 128 bits tirés avec `crypto.getRandomValues`, en hexadécimal. */
+export function randomPlayerId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Identifiant du joueur (32 caractères hexadécimaux), créé au premier appel. C'est le secret du profil : le code de transfert n'est que lui. */
 export function getPlayerId(): string {
   const stored = read(ID_KEY);
   if (stored && /^[0-9a-f]{32}$/.test(stored)) return stored;
   if (memoryId) return memoryId;
-  const bytes = crypto.getRandomValues(new Uint8Array(16));
-  const id = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const id = randomPlayerId();
   memoryId = id;
   write(ID_KEY, id);
   return id;
+}
+
+/** Adopte un autre identifiant (« Changer mon code » réussi, code chargé). */
+export function setPlayerId(id: string): void {
+  memoryId = id;
+  write(ID_KEY, id);
+}
+
+const NEXT_KEY = "cdj:player:next";
+
+/**
+ * Nouvel identifiant d'un « Changer mon code » en cours : tiré une fois et gardé jusqu'à la réponse du serveur. Si la réponse se perd (réseau
+ * coupé après que le serveur a changé le code), la même demande rejouée réussit encore et on ne perd pas l'accès à son profil.
+ */
+export function pendingNextId(): string | null {
+  const v = read(NEXT_KEY);
+  return v && /^[0-9a-f]{32}$/.test(v) ? v : null;
+}
+
+export function takeNextId(): string {
+  const existing = pendingNextId();
+  if (existing) return existing;
+  const id = randomPlayerId();
+  write(NEXT_KEY, id);
+  return id;
+}
+
+export function clearNextId(): void {
+  try {
+    localStorage.removeItem(NEXT_KEY);
+  } catch {
+    /* tant pis */
+  }
 }
 
 export function getName(): string | null {

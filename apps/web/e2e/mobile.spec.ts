@@ -33,6 +33,7 @@ for (const viewport of [
       if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
       const me = { rank: 3, name: "Mobile", ms: pilot.finishMs, medal: null };
       if (url.pathname === `/api/day/${circuit.date}`) return route.fulfill(json({ date: circuit.date, variant: 0, theme: null, trackId: circuit.track.id })); // planning (lot 14)
+      if (url.pathname === "/api/name") return route.fulfill(json({ available: true })); // pseudo libre (lot 30 : le serveur dit si un pseudo est pris)
       if (url.pathname === "/api/submit") {
         return route.fulfill(json({ accepted: true, improved: true, ms: pilot.finishMs, splits: [], respawns: 0, bestMs: pilot.finishMs, rank: 3, participants: 12, medal: null }));
       }

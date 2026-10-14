@@ -1,3 +1,5 @@
+import { PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX, migratePseudos } from "./pseudos";
+
 /** Accès SQL minimal, satisfait par SQLite (Node) et par D1 (Cloudflare) : le cœur ne connaît que ceci. */
 export type SqlValue = string | number | null;
 
@@ -20,7 +22,18 @@ export const MIGRATIONS: string[] = [
   "ALTER TABLE players ADD COLUMN demo INTEGER NOT NULL DEFAULT 0",
   // Lot 27b : le Salon n'a plus de podiums gardés (une session finie est oubliée).
   "DROP TABLE IF EXISTS salon_podiums",
+  // Lot 30 : pseudos réservés. `name_key` : forme normalisée du pseudo (unique : index posé par `migratePseudos` après avoir résolu les
+  // doublons existants) ; `rename_required` : 1 pour un compte renommé par la migration, jusqu'à ce que son propriétaire choisisse un pseudo.
+  "ALTER TABLE players ADD COLUMN name_key TEXT",
+  "ALTER TABLE players ADD COLUMN rename_required INTEGER NOT NULL DEFAULT 0",
+  // Lot 30 : place finale et nombre de participants d'un jour terminé, calculés une fois (à la première lecture du profil) puis gardés : un jour
+  // fermé est figé, relire son classement à chaque synchronisation coûterait une lecture par concurrent et par jour.
+  "ALTER TABLE results ADD COLUMN final_rank INTEGER",
+  "ALTER TABLE results ADD COLUMN final_total INTEGER",
 ];
+
+/** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
+const MIGRATION_MARKS = [PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX];
 
 /** Tables de l'API. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
 export const SCHEMA: string[] = [
@@ -29,7 +42,9 @@ export const SCHEMA: string[] = [
      name TEXT NOT NULL,
      created_at INTEGER NOT NULL,
      updated_at INTEGER NOT NULL,
-     demo INTEGER NOT NULL DEFAULT 0
+     demo INTEGER NOT NULL DEFAULT 0,
+     name_key TEXT,
+     rename_required INTEGER NOT NULL DEFAULT 0
    )`,
   // Cache des circuits du jour : calculés une fois (générateur + pilote de validation, coûteux), puis figés.
   `CREATE TABLE IF NOT EXISTS circuits (
@@ -58,9 +73,20 @@ export const SCHEMA: string[] = [
      replay TEXT NOT NULL,
      respawns INTEGER NOT NULL,
      submitted_at INTEGER NOT NULL,
+     final_rank INTEGER,
+     final_total INTEGER,
      PRIMARY KEY (day, player_id)
    )`,
   `CREATE INDEX IF NOT EXISTS results_by_time ON results (day, ms, submitted_at)`,
+  // Lot 30 : « mes temps » (GET /api/me) lit les résultats d'un joueur sans parcourir toute la table.
+  `CREATE INDEX IF NOT EXISTS results_by_player ON results (player_id, day)`,
+  // Lot 30 : codes révoqués (« Changer mon code »). Empreintes SHA-256 seulement : l'ancien identifiant (un secret) n'est pas gardé.
+  // `successor` : empreinte du nouvel identifiant (permet de rejouer sans danger une demande dont la réponse s'est perdue).
+  `CREATE TABLE IF NOT EXISTS revoked_codes (
+     hash TEXT PRIMARY KEY,
+     successor TEXT NOT NULL,
+     revoked_at INTEGER NOT NULL
+   )`,
   `CREATE TABLE IF NOT EXISTS rate (
      key TEXT NOT NULL,
      bucket INTEGER NOT NULL,
@@ -117,7 +143,7 @@ export const META_TABLE = "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY
 /** Empreinte (FNV-1a, 32 bits) du schéma et des migrations : change toute seule dès qu'on touche à l'un ou l'autre. */
 export function schemaVersion(): string {
   let h = 0x811c9dc5;
-  for (const ch of [...SCHEMA, ...MIGRATIONS].join("\n")) {
+  for (const ch of [...SCHEMA, ...MIGRATIONS, ...MIGRATION_MARKS].join("\n")) {
     h ^= ch.charCodeAt(0);
     h = Math.imul(h, 0x01000193) >>> 0;
   }
@@ -144,6 +170,11 @@ export async function ensureSchemaOn(db: SqlDb): Promise<boolean> {
     } catch {
       /* colonne déjà là */
     }
+  }
+  // Lot 30 : clés de pseudo calculées, doublons résolus (le plus ancien garde son pseudo), puis index unique. Le rapport est gardé dans `meta`.
+  const migration = await migratePseudos(db);
+  if (migration.renamed.length) {
+    await db.run("INSERT INTO meta (key, value) VALUES ('pseudo_migration', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [JSON.stringify(migration)]);
   }
   await db.run("INSERT INTO meta (key, value) VALUES ('schema', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value", [version]);
   return false;

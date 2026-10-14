@@ -14,6 +14,18 @@ interface CdjDebug {
     qualityLocked: boolean;
     homeAllowed: boolean;
   };
+  /** Synchronisation du profil (lot 30) : état, pseudo vu par le serveur, record du jour gardé ici, identifiant et pseudo locaux. */
+  sync: {
+    status: "idle" | "syncing" | "ok" | "offline" | "revoked" | "unknown" | "disabled";
+    at: number | null;
+    known: boolean | null;
+    renameRequired: boolean;
+    nameProblem: { message: string; suggestions: string[] } | null;
+    error: string | null;
+    best: { ms: number; replay: boolean } | null;
+    playerId: string;
+    name: string | null;
+  };
   ghost: { z: number; tick: number } | null;
   car: { x: number; y: number; z: number; vx: number; vy: number; vz: number; yaw: number; tick: number; nx: number; ny: number; nz: number; grounded: number };
   race: unknown;
