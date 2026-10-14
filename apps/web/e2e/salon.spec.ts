@@ -8,9 +8,12 @@ test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seu
 test.setTimeout(240_000);
 
 // Deux durées de session : 10 minutes (la vraie : tout ce qui n'a pas besoin de voir la fin d'une session, sans craindre qu'elle se
-// termine pendant le test, même sur une CI lente) et 2 minutes (le podium et la bascule, où l'on avance l'horloge soi-même).
+// termine pendant le test, même sur une CI lente) et 3 minutes (le podium et la bascule, où l'on avance l'horloge soi-même).
+// Pas 2 minutes (retouche 31b) : le circuit suivant se prépare dans les 2 dernières minutes d'une session (`PREPARE_MS`) — dès la première
+// seconde d'une session de 2 minutes, donc. Sa scène se construisait alors sur le fil principal juste quand on repart après le podium (tâche
+// longue de 725 à 754 ms en CI, profil à l'appui), ce qui n'arrive jamais avec les vraies sessions de 10 minutes (préparation à la 8e minute).
 const LONG = 10 * 60_000;
-const SHORT = 2 * 60_000;
+const SHORT = 3 * 60_000;
 const T0 = 1791549980000;
 const SESSION = Math.floor(T0 / LONG);
 const START = SESSION * LONG;
@@ -19,7 +22,7 @@ const END = START + LONG;
 const START2 = SESSION2 * SHORT;
 const END2 = START2 + SHORT;
 const salonUrl = (at: number, extra = "") => `/?mode=salon&api=demo&debug&salonMinutes=10&salonAt=${at}${extra}`;
-const salonUrl2 = (at: number, extra = "") => `/?mode=salon&api=demo&debug&salonMinutes=2&salonAt=${at}${extra}`;
+const salonUrl2 = (at: number, extra = "") => `/?mode=salon&api=demo&debug&salonMinutes=3&salonAt=${at}${extra}`;
 
 // La rediffusion d'un bon pilote sur le circuit de la session (calculée ici, rejouée dans le navigateur).
 const circuit = salonCircuit(SESSION);
@@ -43,15 +46,25 @@ test("on arrive en cours de session : compte à rebours, joueurs fictifs au clas
   // Les joueurs fictifs sont calculés un à un (fil de travail) : le premier du classement CHANGE tant que le dernier n'est pas arrivé, et les
   // fantômes suivent le classement avec un temps de retard. On attend donc l'état stable — les fantômes sont ceux du classement courant —
   // avant de comparer (« Démo Sirocco » attendu, « Démo Bouchon » reçu en CI : deux lectures à des moments différents).
-  await page.waitForFunction(
-    () => {
+  // Retouche 31b : une course déjà partie GARDE ses fantômes (un changement de classement attend le prochain départ, voulu) ; si le dernier
+  // joueur fictif arrive après le départ, l'état stable n'arrive donc jamais seul (vu en CI : 2 min de course sur place, échec). Un nouveau
+  // départ (Entrée) prend le classement du moment : on en relance un tant que le premier fantôme n'est pas le premier du classement.
+  const settled = () =>
+    page.evaluate(() => {
       const s = window.__cdj.salon!;
       const rows = s.board?.rows ?? [];
-      return rows.length >= 3 && (s.ghosts?.count ?? 0) >= 1 && s.ghosts!.names[0] === rows[0]!.name;
-    },
-    undefined,
-    { timeout: 120_000, polling: 500 },
-  );
+      return { same: rows.length >= 3 && (s.ghosts?.count ?? 0) >= 1 && s.ghosts!.names[0] === rows[0]!.name, racing: window.__cdj.phase === "racing" };
+    });
+  await expect
+    .poll(
+      async () => {
+        const st = await settled();
+        if (!st.same && st.racing) await page.keyboard.press("Enter");
+        return st.same;
+      },
+      { timeout: 120_000, intervals: [2000] },
+    )
+    .toBe(true);
   const s = await page.evaluate(() => window.__cdj.salon!);
   expect(s.demo).toBe(true);
   expect(s.sessionMs).toBe(LONG);
@@ -232,18 +245,28 @@ test("le circuit change au même instant pour deux navigateurs (à l'heure pile 
     const pages = await Promise.all(contexts.map((c) => c.newPage()));
     await Promise.all(pages.map((p) => p.goto(salonUrl1(START1 + 20_000))));
     await Promise.all(pages.map(loaded));
-    // Les deux horloges sont réglées sur le même instant, 2 s avant l'heure pile ; chaque page note (heure du Salon, session) à chaque image.
+    // État stable avant de mesurer (retouche 31b) : les fantômes fictifs (calculés en fil de travail) déjà dessinés — leur première image
+    // compile leurs shaders, 2,5 à 4,6 s de fil principal en rendu logiciel — et le circuit suivant prêt, sa scène construite d'avance (avec des
+    // sessions d'une minute cette préparation commence dès le chargement ; avec les vraies, deux minutes avant la fin). Sans cette attente,
+    // l'une ou l'autre tombait dans les 2 s mesurées : 2 à 5 images au lieu de plus de 5 (CI et local sur 2 cœurs).
+    await Promise.all(
+      pages.map((p) => p.waitForFunction(() => window.__cdj.salon!.stats.prebuilds >= 1 && (window.__cdj.salon!.ghosts?.shown ?? 0) >= 1, undefined, { timeout: 90_000 })),
+    );
+    expect(await pages[0]!.evaluate(() => window.__cdj.salon!.session), "la session n'est pas encore finie (chargement trop lent)").toBe(SESSION1);
+    // Les deux horloges sont réglées sur le même instant, 8 s avant l'heure pile (dans la finale) ; chaque page note (heure du Salon, session)
+    // à chaque image. 8 s et non 2 (retouche 31b) : en rendu logiciel sur 2 cœurs, une page du Salon seule dessine une image toutes les 0,5 à
+    // 0,75 s, deux pages côte à côte toutes les 1,3 s environ (mesuré) — 2 s ne donnaient que 2 à 5 images, pas de quoi mesurer un écart.
     await Promise.all(pages.map((p) => p.evaluate((end) => {
       const w = window as unknown as { __samples: [number, number][] };
       w.__samples = [];
-      window.__cdj.salon!.setNow(end - 2000);
+      window.__cdj.salon!.setNow(end - 8000);
       const sample = () => {
         w.__samples.push([window.__cdj.salon!.now, window.__cdj.salon!.session]);
         if (w.__samples.length < 4000) requestAnimationFrame(sample);
       };
       requestAnimationFrame(sample);
     }, END1)));
-    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s, SESSION1, { timeout: 20_000 })));
+    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s, SESSION1, { timeout: 30_000 })));
     for (const p of pages) {
       const samples = await p.evaluate(() => (window as unknown as { __samples: [number, number][] }).__samples);
       expect(samples.length).toBeGreaterThan(5);
