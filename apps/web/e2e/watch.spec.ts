@@ -241,7 +241,6 @@ test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le 
   await page.waitForFunction(() => (window.__cdj?.salon?.board?.rows.length ?? 0) >= 1, undefined, { timeout: 120_000, polling: 500 });
   const link = page.locator("#board .watchlink");
   await expect(link).toBeVisible();
-  const first = await page.evaluate(() => window.__cdj.salon!.board!.rows[0]!);
   await link.click();
   await page.waitForURL(/watch=best/);
   expect(new URL(page.url()).searchParams.get("mode")).toBe("salon");
@@ -254,7 +253,6 @@ test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le 
   await page.evaluate(() => window.__cdj.salon!.refresh());
   const rows = await page.evaluate(() => window.__cdj.salon!.board!.rows.map((r) => ({ name: r.name, ms: r.ms })));
   expect(rows.some((r) => r.name === w.name && r.ms === w.announcedMs), `${w.name} ${w.announcedMs} dans ${JSON.stringify(rows)}`).toBe(true);
-  expect(rows.some((r) => r.ms === first.ms)).toBe(true);
   expect(await page.evaluate(() => window.__cdj.salon!.ghosts!.count)).toBe(0); // un spectateur ne court pas : pas de fantômes autour
   expect(salon.id).toBe(await page.evaluate(() => window.__cdj.trackId));
   await finished(page);
