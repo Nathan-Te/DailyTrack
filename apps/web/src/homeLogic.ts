@@ -27,8 +27,10 @@ export function wantsHome(params: URLSearchParams): boolean {
 export function homeHref(search: string): string {
   const p = new URLSearchParams(search);
   for (const k of CIRCUIT_KEYS) p.delete(k);
-  p.set("home", "1");
-  return `?${p.toString().replace(/=(?=&|$)/g, "")}`;
+  // L'adresse nue (celle du site) est l'accueil ; `home=1` n'est utile que si un réglage restant (`debug`…) sauterait l'accueil.
+  if (DIRECT_KEYS.some((k) => p.has(k))) p.set("home", "1");
+  const q = p.toString().replace(/=(?=&|$)/g, "");
+  return q ? `?${q}` : "./";
 }
 
 /** La même adresse sans `home` (l'accueil forcé une fois ne doit pas coller aux liens suivants). */
@@ -36,7 +38,7 @@ export function withoutHome(search: string): string {
   const p = new URLSearchParams(search);
   p.delete("home");
   const q = p.toString().replace(/=(?=&|$)/g, "");
-  return q ? `?${q}` : "?";
+  return q ? `?${q}` : "./";
 }
 
 export const MEDAL_WORD: Record<Medal, string> = { author: "Auteur", gold: "Or", silver: "Argent", bronze: "Bronze" };

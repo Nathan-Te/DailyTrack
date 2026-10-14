@@ -27,13 +27,13 @@ describe("l'accueil s'affiche… sauf lien direct", () => {
 
 describe("adresses", () => {
   it("l'accueil garde les réglages d'affichage, pas le circuit", () => {
-    expect(homeHref("?seed=2026-10-13&api=demo&touch=1&theme=nuit&mode=salon&watch=best&demo")).toBe("?api=demo&touch=1&home=1");
-    expect(homeHref("")).toBe("?home=1");
+    expect(homeHref("?seed=2026-10-13&api=demo&touch=1&theme=nuit&mode=salon&watch=best&demo")).toBe("?api=demo&touch=1");
+    expect(homeHref("")).toBe("./");
     expect(homeHref("?debug&today=2026-10-20")).toBe("?debug&today=2026-10-20&home=1");
   });
   it("home ne colle pas aux liens suivants", () => {
     expect(withoutHome("?home=1&api=demo")).toBe("?api=demo");
-    expect(withoutHome("?home=1")).toBe("?");
+    expect(withoutHome("?home=1")).toBe("./");
     expect(modeHref("?home=1&api=demo", true)).toBe("?api=demo&mode=salon");
   });
 });

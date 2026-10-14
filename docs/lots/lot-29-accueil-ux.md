@@ -24,7 +24,9 @@
 
 ### Liens directs
 
-L'accueil s'affiche sauf si l'adresse choisit un circuit ou un mode : `?seed=` `?day=` `?scenario=` `?mode=` `?watch=` `?demo` `?debug` `?theme=` `?variant=` `?spec=`. `?home=1` le force (même avec `?debug`), `?home=0` le coupe. Les liens de partage d'un jour passé (`?seed=`) et les archives n'ont donc pas changé ; le lien de partage d'aujourd'hui (l'adresse nue) ouvre l'accueil, un clic de plus. Depuis la course, « Accueil » revient **sur place** si le circuit d'aujourd'hui est joué, par la page (`?home=1`) depuis le Salon, une archive, un scénario ou une rediffusion.
+L'accueil s'affiche sauf si l'adresse choisit un circuit ou un mode : `?seed=` `?day=` `?scenario=` `?mode=` `?watch=` `?demo` `?debug` `?theme=` `?variant=` `?spec=`. `?home=1` le force (même avec `?debug`), `?home=0` le coupe. Les liens de partage d'un jour passé (`?seed=`) et les archives n'ont donc pas changé ; le lien de partage d'aujourd'hui (l'adresse nue) ouvre l'accueil, un clic de plus. Depuis la course, « Accueil » revient **sur place** si le circuit d'aujourd'hui est joué, par la page depuis le Salon, une archive, un scénario ou une rediffusion.
+
+**Adresse de l'accueil** : l'accueil est l'adresse nue du site (`https://nathan-te.github.io/DailyTrack/`), jamais `/?` ni `/?home=1`. « Accueil » depuis le Salon, une archive ou un scénario mène à `./` (les réglages d'affichage comme `api` ou `touch` restent) ; `home=1` n'est ajouté que si un réglage restant (`debug`…) sauterait l'accueil, et il est retiré de la barre d'adresse après le chargement.
 
 ### Le chrono de la capture (1:01,717 voiture arrêtée)
 

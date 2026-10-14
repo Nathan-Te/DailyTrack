@@ -270,7 +270,7 @@ describe("passer du Salon au circuit du jour", () => {
     expect(modeHref("?api=demo&seed=2026-10-07&theme=nuit&debug", true)).toBe("?api=demo&debug&mode=salon");
     expect(modeHref("?mode=salon&api=demo&salonMinutes=2&debug&salonAt=5", false)).toBe("?api=demo&salonMinutes=2&debug");
     expect(modeHref("?scenario=pilotage&spec=S", true)).toBe("?mode=salon");
-    expect(modeHref("?mode=salon", false)).toBe("?");
+    expect(modeHref("?mode=salon", false)).toBe("./");
   });
 });
 

@@ -163,5 +163,5 @@ export function modeHref(search: string, salon: boolean): string {
   for (const k of ["mode", "scenario", "seed", "day", "theme", "variant", "spec", "f", "v", "m", "today", "salonAt", "home"]) p.delete(k);
   if (salon) p.set("mode", "salon");
   const q = p.toString().replace(/=(?=&|$)/g, "");
-  return q ? `?${q}` : "?";
+  return q ? `?${q}` : "./";
 }
