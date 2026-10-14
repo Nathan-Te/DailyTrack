@@ -12,10 +12,12 @@
   },
   "scripts": {
     "dev": "npm run dev -w @cdj/web",
-    "build": "npm run build -w @cdj/web",
+    "dev:jump": "npm run dev -w @cdj/jump",
+    "build": "npm run build -w @cdj/web && npm run build -w @cdj/jump",
     "test": "vitest run --project sqlite && vitest run --project libsql",
     "typecheck": "tsc -b",
     "test:e2e": "npm run build && npm run build:node -w @cdj/api && npm run e2e -w @cdj/web",
+    "e2e:jump": "npm run build -w @cdj/jump && npm run e2e -w @cdj/jump",
     "history:seed": "npm run history:seed -w @cdj/api",
     "measure:generator": "npm run measure:generator -w @cdj/api",
     "measure:salon": "npm run measure:salon -w @cdj/api",

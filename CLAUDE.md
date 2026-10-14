@@ -9,6 +9,12 @@ Jeu web quotidien : un circuit court par jour, identique pour tous, classement v
 - `docs/lots/` — un README d'une page par lot.
 - `docs/orchestration.md` — synthèse des lots, règles à ne pas casser, méthode et suite (pour l'agent orchestrateur).
 
+## Plusieurs jeux dans ce dépôt
+- **Jeux** : **DailyTrack** (ce fichier : `packages/sim`, `apps/web`, `apps/api`, `docs/seed.md`, `docs/lots/`) et **DailyJump** (`packages/jump-sim`, `apps/jump`, `docs/jump/` ; ses consignes sont dans `docs/jump/consignes.md`, importé en bas de ce fichier). Chaque jeu a sa simulation, son application, sa vision (seed) et ses README de lots ; ils ne s'importent jamais l'un l'autre.
+- **Zones partagées** (un seul propriétaire à la fois, conflits à éviter) : `packages/core` (`@cdj/core`, socle sans logique de jeu) et `packages/clock` (jour de Paris), `package.json` et `package-lock.json` racine, `.github/workflows/`, la configuration Vitest / Playwright / TypeScript racine (`vitest.config.ts`, `tsconfig.base.json`, `tsconfig.json`), ce `CLAUDE.md` racine.
+- **Règle : un lot ne modifie une zone partagée que si son prompt le dit.** Les consignes d'un jeu vivent dans le dossier de ce jeu, pas ici.
+- **Règle : avant de déclarer le lot fini, rebaser sur `main` à jour (ou fusionner `main`) et obtenir une CI verte** sur le résultat. Conflit sur `package-lock.json` : ne pas le fusionner à la main, prendre celui de `main` puis relancer `npm install`, qui le régénère.
+
 ## Commandes
 - `npm install` · `npm run dev` · `npm test` (Vitest) · `npm run typecheck` · `npm run build` · `npm run measure:generator` (durées, validation par thème, vitesse du pilote, coût d'un rejeu, bas-côtés et moments de choix par thème)
 - Mise en ligne (lot 28) : `npm run smoke -- http://localhost:8080` (essai de bout en bout d'une API en marche : crée un joueur « Fumée », jamais contre la vraie base) · `npm run measure:budget` (budget d'un joueur sur Cloud Run + Turso, demande un `sqld` local : `docker run -p 8081:8080 ghcr.io/tursodatabase/libsql-server`) · `npx vitest run --project sqlite|libsql` (les tests d'API tournent sur les deux bases)
@@ -297,3 +303,5 @@ Guide pas à pas pour Nathan : `docs/mise-en-ligne.md` ; mesures, budget et déc
 ## Méthode
 - Un lot = une session = une branche = une PR. L'agent s'arrête quand les critères du lot sont verts.
 - Tout code de `sim` est testé par Vitest en ligne de commande.
+
+@docs/jump/consignes.md

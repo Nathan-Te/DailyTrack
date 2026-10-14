@@ -1,4 +1,4 @@
-import { civilFromDays, daysFromCivil } from "@cdj/sim";
+import { civilFromDays, daysFromCivil } from "@cdj/core";
 
 // Horloge du jeu (lot 31) : « aujourd'hui » est la **date à Paris** (Europe/Paris, heure d'été comprise), la même pour tout le monde au
 // même instant, où que soit le joueur. Une seule définition, utilisée par le jeu, l'API et l'admin ; `packages/sim` ne la connaît pas

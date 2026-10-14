@@ -1,4 +1,4 @@
-import { Rng, mixSeed } from "./rng";
+import { Rng, mixSeed } from "@cdj/core";
 import type { BlockSurface, ShoulderKind, WidthLetter } from "./track";
 
 // Les thèmes du jour (lot 8). Le thème est tiré de la date (même graine que la palette avant le lot 8) ; il règle :

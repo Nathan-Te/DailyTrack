@@ -18,6 +18,7 @@ on:
     branches: [main]
     paths:
       - "apps/api/**"
+      - "packages/core/**"
       - "packages/sim/**"
       - "packages/clock/**"
       - "package.json"

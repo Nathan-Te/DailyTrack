@@ -2,16 +2,28 @@
   "files": [],
   "references": [
     {
+      "path": "packages/core"
+    },
+    {
       "path": "packages/sim"
     },
     {
       "path": "packages/clock"
     },
     {
+      "path": "packages/jump-sim"
+    },
+    {
       "path": "apps/web"
     },
     {
       "path": "apps/web/e2e"
+    },
+    {
+      "path": "apps/jump"
+    },
+    {
+      "path": "apps/jump/e2e"
     },
     {
       "path": "apps/api"

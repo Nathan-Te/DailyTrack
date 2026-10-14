@@ -11,7 +11,7 @@ export * from "./race";
 export * from "./jump";
 export * from "./circuits";
 export * from "./replay";
-export * from "./rng";
+export { Rng, mixSeed, daysFromCivil, civilFromDays, formatDay, parseDay } from "@cdj/core";
 export * from "./calendar";
 export * from "./autopilot";
 export * from "./choices";
