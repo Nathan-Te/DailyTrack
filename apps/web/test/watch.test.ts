@@ -175,13 +175,13 @@ describe("spectateur du Salon : aucune présence, aucune session finie", () => {
     const sent = await api.submit(session, "p1", "Moi", encodeReplay(pilot.replay));
     expect(sent.ok).toBe(true);
     const ref = sent.ok ? sent.data.board.me!.ref : "";
-    // La session est finie mais la grâce court : classement et fantôme encore servis (le podium s'en sert).
-    clock.set(start + len + 30_000);
+    // La session est finie mais la fenêtre de lecture (20 s) court : classement et fantôme encore servis (le podium s'en sert).
+    clock.set(start + len + 19_000);
     const during = await api.board(session, "p1");
     expect(during.ok && during.data.rows.map((r) => r.name)).toContain("Moi");
     expect((await api.ghosts(session, [ref])).ok).toBe(true);
-    // La grâce écoulée : plus rien.
-    clock.set(start + len + 60_001);
+    // La fenêtre écoulée : plus rien.
+    clock.set(start + len + 20_001);
     const after = await api.board(session, "p1");
     expect(!after.ok && after.status).toBe(404);
     const gone = await api.ghosts(session, [ref]);

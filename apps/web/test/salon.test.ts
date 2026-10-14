@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ReplayRecorder, bestPilotRun, encodeReplay, salonCircuit, salonSessionStart, salonTheme, SIM_VERSION } from "@cdj/sim";
 import {
-  LAST_TRY_MS,
+  FINALE_MS,
   MAX_GHOSTS,
   PREPARE_MS,
   SUBMIT_GRACE_MS,
+  startOpen,
   SalonClock,
   countdownText,
   ghostShown,
@@ -48,15 +49,21 @@ describe("horloge et déroulé d'une session", () => {
     expect(clock.now()).toBe(47);
   });
 
-  it("compte à rebours, dernier essai, préparation et clôture", () => {
+  it("compte à rebours, finale de 15 s, préparation et clôture à fin + 3 s", () => {
     const session = 1000;
     const len = 600_000;
     const end = (session + 1) * len;
-    expect(sessionClock(end - 400_000, session, len)).toMatchObject({ remainingMs: 400_000, lastTry: false, preparing: false, ended: false, closed: false });
+    expect(sessionClock(end - 400_000, session, len)).toMatchObject({ remainingMs: 400_000, finale: false, preparing: false, ended: false, closed: false });
     expect(sessionClock(end - PREPARE_MS, session, len).preparing).toBe(true);
-    expect(sessionClock(end - LAST_TRY_MS - 1, session, len).lastTry).toBe(false);
-    expect(sessionClock(end - LAST_TRY_MS, session, len).lastTry).toBe(true);
-    expect(sessionClock(end, session, len)).toMatchObject({ lastTry: false, ended: true, closed: false });
+    expect(sessionClock(end - FINALE_MS - 1, session, len).finale).toBe(false);
+    expect(sessionClock(end - FINALE_MS, session, len).finale).toBe(true);
+    expect(FINALE_MS).toBe(15_000);
+    expect(SUBMIT_GRACE_MS).toBe(3_000);
+    expect(sessionClock(end, session, len)).toMatchObject({ finale: false, ended: true, closed: false });
+    // plus aucun départ dès fin − 15 s ; un départ une seconde avant est encore permis
+    expect(startOpen(end - FINALE_MS - 1000, session, len)).toBe(true);
+    expect(startOpen(end - FINALE_MS, session, len)).toBe(false);
+    expect(startOpen(end + 1, session, len)).toBe(false);
     expect(submitOpen(end + SUBMIT_GRACE_MS, session, len)).toBe(true); // une course commencée avant la fin
     expect(submitOpen(end + SUBMIT_GRACE_MS + 1, session, len)).toBe(false);
   });
@@ -247,7 +254,7 @@ describe("Salon de démonstration (DemoSalonApi)", () => {
     const junk = await api.submit(session, "p1", "Moi", "pas-une-rediffusion");
     expect(junk.ok).toBe(false);
     clock.set(start + len + SUBMIT_GRACE_MS - 1);
-    expect((await api.submit(session, "p1", "Moi", myReplay)).ok).toBe(true); // commencée avant la fin, finie après
+    expect((await api.submit(session, "p1", "Moi", myReplay)).ok).toBe(true); // envoyée juste après l'heure pile : marge réseau de 3 s
     clock.set(start + len + SUBMIT_GRACE_MS + 1);
     const late = await api.submit(session, "p1", "Moi", myReplay);
     expect(!late.ok && late.code).toBe("session_closed");

@@ -82,11 +82,10 @@ Séries `{count, steer, throttle, brake, respawn}` → octets → base64url, bor
 - Un lot « rendu seul » ou « interface seule » **ne bouge aucune version** (c'est un critère de sortie vérifiable : golden inchangés).
 
 ### 3.4 Contenu quotidien généré et **validé**
-- Graine = jour UTC ; **figures** (40+, chacune : intention, variantes miroir/largeur/niveau, droites obligatoires derrière, drapeaux saut/cuve/turbo…) assemblées par `composeFigures` : 5 à 7 par circuit, signature du thème toujours présente, quotas (un freinage franc, une portion rapide, ≥ 2 techniques), 8 tirages dont on garde le plus riche, **repos par groupes** (`isRested`) pour limiter la répétition sans historique.
-- **Pilote automatique** (`bestPilotRun`) : valide que le circuit est faisable, dans une fenêtre de durée (30–40 s), au-dessus d'une vitesse minimale (portions rapides), avec saut dans sa fenêtre de vitesse ; son temps est le **temps d'auteur** → médailles (or ×1,08, argent ×1,20, bronze ×1,40). Estimation de durée *avant* de faire rouler le pilote (rejet rapide).
-- **Toute règle de générateur se valide par un script de mesure** (`npm run measure:generator` : durées, taux de validation par thème sur 12 dates × 6 tentatives, vitesse du pilote, moments de choix, coût d'un rejeu), jamais par les tests seuls. Chaque nouvel effet de piste crée une règle (« deux droites derrière une plaque », cinq derrière un super turbo, etc.) ; un thème qui interdit trop de figures fait échouer la génération en silence.
-- **Variantes et planning** : `dailyCircuit(jour, variante)` ; la variante 0 est le circuit d'origine (golden inchangés). L'admin peut remplacer un jour **futur** (jamais aujourd'hui ni le passé : « un jour commencé est figé »).
-- Génération coûteuse (0,2–0,5 s) : mise en cache en base, **un seul calcul même si deux requêtes arrivent ensemble** (promesse en cours par jour/session).
+- Graine = numéro de jour de la date (`mixSeed(jour, sel)` ; « aujourd'hui » = la date à Paris, lot 31), même circuit pour tous, sans serveur nécessaire côté client.
+- `composeSpec` construit un texte de blocs par segments ; **`bestPilotRun`** (pilote automatique, essais à plusieurs niveaux d'adhérence) valide qu'il est faisable et dans une fenêtre de durée (28–48 s) ; son temps devient le **temps d'auteur** → seuils de médailles (or ×1,08, argent ×1,20, bronze ×1,40).
+- Chaque nouvel effet de piste crée une **règle de générateur** (ex. deux droites derrière une plaque). Après tout changement de physique ou de règle : **mesurer le taux de circuits validés par thème** (12 jours × 6 tentatives), sinon la génération échoue en silence et ralentit.
+- Génération coûteuse (≤ 0,5 s) : le serveur la **met en cache** (`circuits`).
 
 ### 3.5 Thèmes et identité
 8 thèmes tirés de la date (`themeForDay`) ; un thème règle palette, revêtements, largeurs, bas-côtés, cuves, sauts, figures favorites/interdites, signature, lumière (`LOOKS`) et ambiance sonore. Ajouter un thème = `THEME_NAMES`, `THEMES`, palettes, signature, capture, versions +1. Un thème **forcé** par l'adresse est un essai, jamais classé.

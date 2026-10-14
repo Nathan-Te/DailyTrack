@@ -47,7 +47,7 @@ export interface MeProfile {
   name: string;
   /** Vrai pour un compte renommé par la migration des doublons : on lui propose de choisir un nouveau pseudo. */
   renameRequired: boolean;
-  /** Date « aujourd'hui » du serveur (UTC). */
+  /** Date « aujourd'hui » du serveur (Paris). */
   today: string;
   simVersion: number;
   stats: {

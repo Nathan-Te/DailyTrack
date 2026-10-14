@@ -32,8 +32,18 @@ import type { Players } from "./players";
 // `salonCircuit(session)` (même code de simulation que le jeu) et n'enregistre que son propre résultat. Un joueur n'est jamais
 // désigné par son identifiant secret mais par une référence publique propre à la session.
 
-/** Un envoi est accepté jusqu'à 60 s après la fin de la session (une course commencée avant la fin peut se terminer). */
-export const SALON_GRACE_MS = 60_000;
+/**
+ * Un envoi est accepté jusqu'à **3 s** après la fin de la session (lot 31, avant : 60 s). Au jeu, la course en cours est coupée à l'heure
+ * pile et ne compte pas : seule une course terminée *avant* `fin` peut arriver après, le temps de la réponse. Marge = l'aller du réseau
+ * (une requête de 10 à 300 ms sur une bonne ligne, un réveil de Cloud Run de 0,4 s, un mobile lent 1 à 2 s) + l'écart de l'horloge du
+ * joueur, recalée sur `now` à ± la moitié de l'aller-retour. Au-delà, c'est trop tard : le circuit a changé pour tout le monde.
+ */
+export const SALON_GRACE_MS = 3_000;
+/**
+ * Une session finie reste *lue* (classement final, fantômes) 20 s après sa fin : le podium du jeu s'affiche à l'heure pile avec le dernier
+ * classement connu, puis le rafraîchit une fois les envois clos (`fin + 3 s`). Le podium dure 10 s. Ensuite elle est oubliée (27b).
+ */
+export const SALON_SERVE_MS = 20_000;
 /**
  * Présence (lot 27b) : au plus **une écriture par joueur et par 30 s** (`PRESENCE_WRITE_MS`) ; la dernière visite enregistrée peut donc
  * avoir jusqu'à 30 s de retard, d'où une fenêtre de 60 s : est présent un joueur dont la dernière écriture date de moins de 60 s
@@ -137,8 +147,8 @@ export function createSalon(kit: SalonKit) {
   const readBuckets = new Map<string, { bucket: number; count: number }>();
 
   const current = () => salonSessionAt(now(), sessionMs);
-  /** Plus ancienne session encore servie : celle dont la minute de grâce n'est pas écoulée (le podium de fin en a besoin). */
-  const oldestServed = () => salonSessionAt(now() - SALON_GRACE_MS, sessionMs);
+  /** Plus ancienne session encore servie : celle dont la fenêtre de lecture du podium (`SALON_SERVE_MS`) n'est pas écoulée (le podium de fin en a besoin). */
+  const oldestServed = () => salonSessionAt(now() - SALON_SERVE_MS, sessionMs);
 
   /** Numéro de session d'une adresse : un entier raisonnable, entre la plus ancienne servie et la prochaine. */
   function sessionOf(raw: string): number {

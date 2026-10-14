@@ -1,5 +1,7 @@
 # Retouche 27b — Le Salon oublie chaque session ; revoir le meilleur tour
 
+> **Mis à jour au lot 31** ([lot-31-futur-finale.md](lot-31-futur-finale.md)) : le déroulé de fin de session est refait (finale de 15 s, changement à l'heure pile, plus d'attente des retardataires) ; les envois sont acceptés jusqu'à `fin + 3 s` (et non 60 s) et la session reste lue 20 s pour le podium. Les passages ci-dessous sur `overrun`, le « dernier essai » et la minute de grâce décrivent l'état d'avant.
+
 **À essayer** (aperçu de la branche `ccr-7a787c67-0to9vn`)
 
 1. **Une bascule : tout repart de zéro** — [`?mode=salon&api=demo&salonMinutes=2`](https://nathan-te.github.io/DailyTrack/b/ccr-7a787c67-0to9vn/?mode=salon&api=demo&salonMinutes=2). Laisse passer la fin de la session (« dernier essai » à 30 s, podium 10 s) : le classement de la session suivante est **vide**, ta course précédente n'y est pas, et rien de l'ancienne session n'est accessible (le serveur répond 404 pour elle après la minute de grâce ; le podium s'affiche pendant la grâce, à partir du classement qui existe encore).

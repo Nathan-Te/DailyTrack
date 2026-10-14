@@ -1,5 +1,7 @@
 # Lot 27 — Le Salon côté serveur
 
+> **Mis à jour au lot 31** ([lot-31-futur-finale.md](lot-31-futur-finale.md)) : le déroulé de fin de session est refait (finale de 15 s, changement à l'heure pile, plus d'attente des retardataires) ; les envois sont acceptés jusqu'à `fin + 3 s` (et non 60 s) et la session reste lue 20 s pour le podium. Les passages ci-dessous sur `overrun`, le « dernier essai » et la minute de grâce décrivent l'état d'avant.
+
 > **Retouche 27b** : les podiums gardés, la purge à 48 h et la présence écrite à chaque lecture ont été remplacés (une session finie est oubliée) — voir [`lot-27b-salon-oubli.md`](lot-27b-salon-oubli.md).
 
 **À essayer**

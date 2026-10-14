@@ -6,7 +6,7 @@ import type { ApiResult, Leaderboard } from "./api";
 import { dayLines, linesEls } from "./boardView";
 import { button, el } from "./dom";
 import { formatTime } from "./format";
-import { MEDAL_WORD, TAGLINE, mmss, remainingMs, type SalonLookup } from "./homeLogic";
+import { MEDAL_WORD, TAGLINE, hhmmss, mmss, remainingMs, type SalonLookup } from "./homeLogic";
 import { dayLong, dayShort, rememberRank } from "./profile";
 import { mountProfileCard, type ProfileCard, type ProfileHost } from "./profileUi";
 import { MEDAL_ICON, ordinal } from "./share";
@@ -26,6 +26,10 @@ export interface HomeHost {
   leaderboard: (() => Promise<ApiResult<Leaderboard>>) | null;
   /** Texte à montrer à la place du classement quand il n'y en a pas (« hors ligne », « pas de serveur »). */
   noBoardReason: string;
+  /** Temps jusqu'au prochain circuit du jour (minuit, heure de Paris), ou `null` s'il n'a pas de sens (démonstration, date simulée). */
+  msUntilNextDay(): number | null;
+  /** Minuit de Paris est passé : le jeu se recharge sur le nouveau circuit. */
+  onNewDay(): void;
   /** Interroge le Salon (état, thème, temps restant, joueurs). */
   salon(): Promise<SalonLookup>;
   profile: ProfileHost;
@@ -73,7 +77,10 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   playDaily.addEventListener("click", () => host.playDaily());
   const touchNote = el("p", "note", "📱 Pour conduire, mets ton téléphone en paysage.");
   touchNote.hidden = !host.touch;
-  today.append(todayHead, medalList, mine, playDaily, touchNote);
+  const nextDay = el("p", "note next-day");
+  nextDay.id = "home-nextday";
+  nextDay.hidden = true;
+  today.append(todayHead, medalList, mine, playDaily, touchNote, nextDay);
 
   // --- Salon ---
   const salonCard = el("section", "card salon");
@@ -187,6 +194,19 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     salonText.replaceChildren(line);
   }
 
+  /** « Prochain circuit dans HH:MM:SS » ; à zéro l'accueil se recharge sur le nouveau circuit (une course en cours n'est pas interrompue : l'accueil est fermé). */
+  function renderNextDay() {
+    const left = host.msUntilNextDay();
+    nextDay.hidden = left === null;
+    if (left === null) return;
+    if (left <= 0) {
+      host.onNewDay();
+      return;
+    }
+    const text = `Prochain circuit dans ${hhmmss(left)} (minuit, heure de Paris)`;
+    if (nextDay.textContent !== text) nextDay.textContent = text;
+  }
+
   async function loadSalon(gen: number) {
     salonText.replaceChildren(el("p", "status", "Recherche du Salon…"));
     playSalon.disabled = false;
@@ -225,7 +245,9 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
       void loadBoard(gen);
       void loadSalon(gen);
       clearInterval(timer);
+      renderNextDay();
       timer = window.setInterval(() => {
+        renderNextDay();
         if (!salonStatus) return;
         // La session finie, on redemande (circuit suivant) ; sinon on ne fait que redessiner le temps restant.
         if (remainingMs(salonStatus, Date.now()) <= 0) void loadSalon(generation);

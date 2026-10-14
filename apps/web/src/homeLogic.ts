@@ -76,6 +76,13 @@ export function mmss(ms: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
+/** « 07:42:09 » : le décompte jusqu'au prochain circuit (minuit, heure de Paris). */
+export function hhmmss(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const two = (n: number) => String(n).padStart(2, "0");
+  return `${two(Math.floor(total / 3600))}:${two(Math.floor(total / 60) % 60)}:${two(total % 60)}`;
+}
+
 const salonThemeLabel = (session: number): string => THEMES[salonTheme(session) as ThemeName].label;
 
 /**

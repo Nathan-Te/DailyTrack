@@ -89,7 +89,7 @@ describe(`santé (${TEST_DB})`, () => {
     const t = await makeApi({ revision: "abc1234" });
     const r = await t.call("GET", "/api/health");
     expect(r.status).toBe(200);
-    expect(r.body).toEqual({ ok: true, db: "ok", simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: DATE, salonMinutes: 10, salonOverride: false, revision: "abc1234" });
+    expect(r.body).toEqual({ ok: true, db: "ok", clock: expect.stringMatching(/^(intl|table)$/), simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: DATE, salonMinutes: 10, salonOverride: false, revision: "abc1234" });
   });
 
   it("signale SALON_MINUTES quand elle est réglée", async () => {

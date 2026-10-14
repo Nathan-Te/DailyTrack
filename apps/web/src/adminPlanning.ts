@@ -1,3 +1,4 @@
+import { parisDay } from "@cdj/clock";
 import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
 import { DEMO_BASE, apiBase, type ApiResult } from "./api";
 import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
@@ -94,7 +95,7 @@ export function mountPlanning(stateApi: () => string): void {
   let overview: AdminOverview | null = null;
   let generation = 0; // chaque rafraîchissement abandonne les miniatures du précédent
 
-  const todayUtc = () => Math.floor(Date.now() / 86_400_000);
+  const todayParis = () => parisDay(Date.now()); // la date à Paris (lot 31)
   const apiParam = () => (base ? `?api=${encodeURIComponent(base)}` : "");
 
   function status(message: string, kind: "info" | "error" = "info") {
@@ -115,14 +116,14 @@ export function mountPlanning(stateApi: () => string): void {
     if (!backend) {
       status("Aucune API configurée : le planning montre les circuits d'origine, sans pouvoir les remplacer. Ouvre /admin/?api=demo pour essayer sans serveur, ou renseigne l'adresse de l'API plus bas (Outils).", "info");
       showTokenForm(false);
-      overview = { today: formatDay(todayUtc()), plan: [], days: [], times: [] };
+      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
       render();
       return;
     }
     if (backend.kind === "api" && !token) {
       status(`API : ${backend.label}. Saisis le jeton d'admin (variable ADMIN_TOKEN du serveur).`);
       showTokenForm(true);
-      overview = { today: formatDay(todayUtc()), plan: [], days: [], times: [] };
+      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
       render();
       return;
     }
@@ -141,12 +142,12 @@ export function mountPlanning(stateApi: () => string): void {
         status(`${r.message}${r.status === 429 ? " (trop d'essais, attends un peu)" : ""}.`, "error");
         showTokenForm(r.status === 429);
       }
-      overview = { today: formatDay(todayUtc()), plan: [], days: [], times: [] };
+      overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
       render();
       return;
     }
     overview = r.data;
-    status(`Connecté : ${backend.label}. Aujourd'hui (UTC) : ${overview.today}.`);
+    status(`Connecté : ${backend.label}. Aujourd'hui (Paris) : ${overview.today}.`);
     showTokenForm(false);
     render();
   }

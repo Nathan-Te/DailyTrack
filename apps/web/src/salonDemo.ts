@@ -4,7 +4,7 @@ import type { SalonApi, SalonBoard, SalonGhost, SalonNow, SalonRow, SalonSubmitR
 import type { LoadedSalonCircuit, SalonEngine } from "./salonEngine";
 import type { PilotRunData } from "./salonJobs";
 import { demoPlan, plannedRuns, type PilotPlan } from "./salonPlan";
-import { SUBMIT_GRACE_MS, type SalonClock } from "./salon";
+import { SERVE_GRACE_MS, SUBMIT_GRACE_MS, type SalonClock } from "./salon";
 
 // Salon de démonstration (`?mode=salon&api=demo`, lot 26) : le navigateur joue le rôle du serveur. Il tient les classements de session,
 // valide les courses du joueur **par rejeu** (comme le futur serveur : le temps annoncé ne compte pas) et fait arriver des joueurs
@@ -57,11 +57,11 @@ export class DemoSalonApi implements SalonApi {
   constructor(private readonly o: DemoSalonOptions) {}
 
   /**
-   * Une session finie est oubliée (lot 27b), comme sur le serveur : une fois la minute de grâce écoulée, ses courses (celles du joueur
+   * Une session finie est oubliée (lot 27b), comme sur le serveur : une fois la fenêtre de lecture du podium (20 s) écoulée, ses courses (celles du joueur
    * comprises), son classement et ses fantômes ne sont plus gardés ni servis. Appelée au début de chaque route.
    */
   private forget(): number {
-    const oldest = salonSessionAt(this.o.clock.now() - SUBMIT_GRACE_MS, this.o.sessionMs);
+    const oldest = salonSessionAt(this.o.clock.now() - SERVE_GRACE_MS, this.o.sessionMs);
     for (const s of [...this.sessions.keys()]) if (s < oldest) this.sessions.delete(s);
     return oldest;
   }
