@@ -34,26 +34,50 @@ async function shiftDate(context: BrowserContext, offsetMs: number = OFFSET): Pr
   }, offsetMs);
 }
 
-export const test = base.extend({
+// Contextes supplémentaires (`newClockedContext`, `newContextAt`) : fermés à la fin du test qui les a ouverts (retouche 31b). Playwright ne
+// ferme que le contexte de la fixture `page` : un contexte ouvert à la main restait ouvert dans le navigateur du worker, et ses pages
+// (le Salon, une rediffusion) continuaient de dessiner en rendu logiciel pendant tous les tests suivants de ce worker. Mesuré : après
+// watch-serveur.spec.ts (deux pages jamais fermées), le premier chargement de watch.spec.ts:16 prenait 77 s au lieu de 2, et le test
+// dépassait son délai à chaque fois ; seul, il passe en 26 s.
+const opened = new Set<BrowserContext>();
+
+/** Garde un contexte ouvert après la fin du test (specs en série dont les appareils servent d'un test à l'autre) : le spec le ferme lui-même. */
+export function keepOpen(context: BrowserContext): void {
+  opened.delete(context);
+}
+
+export const test = base.extend<{ closeExtraContexts: void }>({
   context: async ({ context }, use) => {
     await shiftDate(context);
     await use(context);
   },
+  closeExtraContexts: [
+    // eslint-disable-next-line no-empty-pattern
+    async ({}, use) => {
+      await use();
+      const left = [...opened];
+      opened.clear();
+      await Promise.all(left.map((c) => c.close().catch(() => {})));
+    },
+    { auto: true },
+  ],
 });
 
-/** Un contexte supplémentaire (autre appareil) avec la même horloge maîtrisée. */
+/** Un contexte supplémentaire (autre appareil) avec la même horloge maîtrisée ; fermé à la fin du test (voir `keepOpen`). */
 export async function newClockedContext(browser: Browser, options: Parameters<Browser["newContext"]>[0] = {}): Promise<BrowserContext> {
   const context = await browser.newContext(options);
+  opened.add(context);
   await shiftDate(context);
   return context;
 }
 
 /**
  * Un contexte dont l'horloge vaut `instantMs` à l'ouverture (puis avance normalement) : pour les passages de minuit de Paris et les joueurs de
- * fuseaux différents (`timezoneId`). L'horloge des serveurs de test reste celle de `playwright.config.ts`.
+ * fuseaux différents (`timezoneId`). L'horloge des serveurs de test reste celle de `playwright.config.ts`. Fermé à la fin du test.
  */
 export async function newContextAt(browser: Browser, instantMs: number, options: Parameters<Browser["newContext"]>[0] = {}): Promise<BrowserContext> {
   const context = await browser.newContext(options);
+  opened.add(context);
   await shiftDate(context, instantMs - Date.now());
   return context;
 }

@@ -12,3 +12,4 @@ export function summarize(
   report: unknown,
   options?: { failOnFlaky?: boolean },
 ): { markdown: string; warnings: string[]; flaky: FlatTest[]; failed: FlatTest[]; exitCode: number };
+export function chromiumSeconds(tests: FlatTest[]): Record<string, number>;

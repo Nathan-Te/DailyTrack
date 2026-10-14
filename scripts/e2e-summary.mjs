@@ -30,6 +30,13 @@ export function collectTests(report) {
   return out;
 }
 
+/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. */
+export function chromiumSeconds(tests) {
+  const sum = {};
+  for (const t of tests) if (t.project === "chromium") sum[t.file] = (sum[t.file] ?? 0) + t.ms;
+  return Object.fromEntries(Object.keys(sum).sort().map((f) => [f, Math.round(sum[f] / 1000)]));
+}
+
 const mmss = (ms) => `${Math.floor(ms / 60000)} min ${String(Math.round((ms % 60000) / 1000)).padStart(2, "0")} s`;
 
 export function summarize(report, { failOnFlaky = false } = {}) {
@@ -51,6 +58,12 @@ export function summarize(report, { failOnFlaky = false } = {}) {
   block("Échecs", failed, "Échec à chaque essai : un vrai problème.");
   block("Tests instables", flaky, "Échec au premier essai, réussite à la relance : **à corriger** (cause dans le README du lot 29b, suivi dans docs/orchestration.md § 8).");
   if (!failed.length && !flaky.length) lines.push("", "Aucun échec, aucun test instable.");
+  // Durées Chromium par fichier (retouche 31b) : de quoi tenir à jour apps/web/e2e/durees.json, qui compose les parts de la CI.
+  const perFile = chromiumSeconds(tests);
+  if (Object.keys(perFile).length) {
+    lines.push("", "<details><summary>Durées Chromium par fichier (s, essais ratés compris) — pour apps/web/e2e/durees.json</summary>", "", "```json");
+    lines.push(JSON.stringify(perFile, null, 2), "```", "</details>");
+  }
   const warnings = flaky.map((t) => `::warning title=Test instable (${t.project})::${t.file} › ${t.title}`);
   const exitCode = failed.length || (failOnFlaky && flaky.length) ? 1 : 0;
   return { markdown: lines.join("\n"), warnings, flaky, failed, exitCode };

@@ -48,8 +48,14 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   expect(health.salonMinutes).toBe(3);
   expect(health.testClock).toBe(true);
 
-  const alice = await device(browser, "Alice");
-  const bob = await device(browser, "Bob");
+  // Pseudos propres à chaque essai : depuis le lot 30 un pseudo appartient à son premier propriétaire, et la relance de CI retrouve le même serveur
+  // (base en mémoire) où « Alice » appartient à l'identité du premier essai. Avec les mêmes pseudos, la relance était refusée (« déjà utilisé »),
+  // jamais classée, et échouait sans rien dire de la cause du premier échec.
+  const tag = test.info().retry ? String(test.info().retry + 1) : "";
+  const ALICE = `Alice${tag}`;
+  const BOB = `Bob${tag}`;
+  const alice = await device(browser, ALICE);
+  const bob = await device(browser, BOB);
   // Attendre le début de la session, mesuré sur l'horloge du serveur (une question toutes les secondes, aucune durée supposée).
   for (;;) {
     const { serverMs } = await (await fetch(`${API}/api/salon/now`)).json();
@@ -71,28 +77,28 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   await play(alice, fastCode);
   await play(bob, slowCode);
   expect(await alice.evaluate(() => window.__cdj.salon!.best)).toBe(fast.finishMs);
-  expect(await bob.evaluate(() => window.__cdj.salon!.board!.me)).toMatchObject({ name: "Bob", ms: slow.finishMs, rank: 2 });
+  expect(await bob.evaluate(() => window.__cdj.salon!.board!.me)).toMatchObject({ name: BOB, ms: slow.finishMs, rank: 2 });
   // Le serveur a rejoué les deux courses et retrouvé exactement les temps de la simulation.
   const direct = await (await fetch(`${API}/api/salon/${session}/board`)).json();
   expect(direct.rows.map((r: { name: string; ms: number }) => [r.name, r.ms])).toEqual([
-    ["Alice", fast.finishMs],
-    ["Bob", slow.finishMs],
+    [ALICE, fast.finishMs],
+    [BOB, slow.finishMs],
   ]);
   expect(direct.participants).toBe(2);
   expect(JSON.stringify(direct)).not.toMatch(/[0-9a-f]{32}/); // aucun identifiant secret dans le classement public
 
   // --- Chacun voit la ligne et le fantôme de l'autre (le classement se rafraîchit toutes les 5 s) ---
-  await alice.waitForFunction(() => window.__cdj.salon!.board!.rows.some((r) => r.name === "Bob"), undefined, { timeout: 30_000 });
+  await alice.waitForFunction((n) => window.__cdj.salon!.board!.rows.some((r) => r.name === n), BOB, { timeout: 30_000 });
   // Un nouveau départ : les fantômes (les autres et le tien) repartent avec la course.
   await Promise.all([alice.keyboard.press("Enter"), bob.keyboard.press("Enter")]);
-  await alice.waitForFunction(() => window.__cdj.salon!.ghosts!.names.includes("Bob"), undefined, { timeout: 30_000 });
-  await bob.waitForFunction(() => window.__cdj.salon!.board!.rows.some((r) => r.name === "Alice"), undefined, { timeout: 30_000 });
-  await bob.waitForFunction(() => window.__cdj.salon!.ghosts!.names.includes("Alice"), undefined, { timeout: 30_000 });
+  await alice.waitForFunction((n) => window.__cdj.salon!.ghosts!.names.includes(n), BOB, { timeout: 30_000 });
+  await bob.waitForFunction((n) => window.__cdj.salon!.board!.rows.some((r) => r.name === n), ALICE, { timeout: 30_000 });
+  await bob.waitForFunction((n) => window.__cdj.salon!.ghosts!.names.includes(n), ALICE, { timeout: 30_000 });
   for (const page of [alice, bob]) {
     const g = await page.evaluate(() => window.__cdj.salon!.ghosts!);
     expect(g.rejected).toBe(0);
     expect(g.names).toContain("Toi");
-    await expect(page.locator("#board")).toContainText(page === alice ? "Bob" : "Alice");
+    await expect(page.locator("#board")).toContainText(page === alice ? BOB : ALICE);
   }
   // Les présents : le serveur compte les deux navigateurs.
   const now = await (await fetch(`${API}/api/salon/now`)).json();
@@ -100,13 +106,44 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   expect(now.players).toBe(2);
 
   // --- La bascule de session se fait pour les deux au même moment : podium, puis le circuit suivant, le même pour tous ---
-  const switched = (page: Page) =>
-    page
-      .waitForFunction((s) => window.__cdj.salon!.session > s, session, { timeout: 240_000, polling: 100 })
-      .then(() => Date.now());
-  const [tA, tB] = await Promise.all([switched(alice), switched(bob)]);
-  console.log(`bascule : Alice ${new Date(tA).toISOString()}, Bob ${new Date(tB).toISOString()} (écart ${Math.abs(tA - tB)} ms)`);
-  expect(Math.abs(tA - tB)).toBeLessThan(1500); // le circuit change à l'heure pile du serveur (lot 31), sans attendre personne
+  // Mesurée DANS chaque page, sur l'horloge du Salon (celle du serveur, recalée par `/api/salon/now`) : chaque image note l'heure du Salon,
+  // et l'on garde la première image qui montre la session suivante. Une mesure côté Node (heure de retour d'un `waitForFunction`) compte
+  // aussi l'attente d'un fil principal occupé par le rendu logiciel — en CI, un simple `evaluate` sur la page d'Alice y a attendu 33 s, et
+  // l'écart « mesuré » entre les deux pages (1,5 à 2,1 s) venait de là, pas de la bascule (Bob à fin + 0,28 s, Alice à fin + 2,4 s côté Node).
+  const end = (session + 1) * SESSION_MS;
+  type Switch = { before: number; after: number | null };
+  const watchSwitch = (page: Page) =>
+    page.evaluate((s) => {
+      const rec: Switch = { before: 0, after: null };
+      (window as unknown as { __switch: Switch }).__switch = rec;
+      const sample = () => {
+        const sal = window.__cdj.salon!;
+        if (sal.session > s) rec.after = sal.now;
+        else {
+          rec.before = sal.now;
+          requestAnimationFrame(sample);
+        }
+      };
+      requestAnimationFrame(sample);
+    }, session);
+  await Promise.all([watchSwitch(alice), watchSwitch(bob)]);
+  const switched = async (page: Page) => {
+    await page.waitForFunction(() => (window as unknown as { __switch: Switch }).__switch.after !== null, undefined, { timeout: 240_000 });
+    const sw = await page.evaluate(() => (window as unknown as { __switch: Switch }).__switch);
+    return { before: sw.before, after: sw.after!, frame: sw.after! - sw.before };
+  };
+  const [sA, sB] = await Promise.all([switched(alice), switched(bob)]);
+  console.log(
+    `bascule (heure du Salon − heure pile) : ${ALICE} +${sA.after - end} ms (image ${sA.frame} ms), ${BOB} +${sB.after - end} ms (image ${sB.frame} ms) ; écart ${Math.abs(sA.after - sB.after)} ms`,
+  );
+  for (const sw of [sA, sB]) {
+    expect(sw.before, "une image de l'ancienne session a été vue").toBeGreaterThan(0);
+    // Jamais avant l'heure pile ; et pas plus tard qu'une image (même règle que salon.spec.ts, lot 31) : la bascule ne dépend que de l'heure.
+    expect(sw.after, "bascule avant l'heure pile").toBeGreaterThanOrEqual(end - 50);
+    expect(sw.after - end, "retard de la bascule").toBeLessThan(sw.frame + 600);
+  }
+  // Le même instant pour les deux (le circuit change à l'heure pile du serveur, lot 31, sans attendre personne) : à une image près.
+  expect(Math.abs(sA.after - sB.after)).toBeLessThan(Math.max(sA.frame, sB.frame) + 600);
   const next = salonTrackId(session + 1);
   for (const page of [alice, bob]) {
     expect(await page.evaluate(() => window.__cdj.salon!.session)).toBe(session + 1);
