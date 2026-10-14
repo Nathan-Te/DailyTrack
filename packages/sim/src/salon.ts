@@ -2,7 +2,7 @@ import { GENERATOR_VERSION } from "./constants";
 import { bestPilotRun } from "./autopilot";
 import { createTestTrack } from "./circuits";
 import { generateCircuit, medalsFor, type Medals, type PlacedFigure } from "./generator";
-import { Rng, mixSeed } from "./rng";
+import { Rng, mixSeed } from "@cdj/core";
 import { THEME_NAMES, themeByName, type PaletteName, type ThemeName } from "./themes";
 import type { Track } from "./track";
 

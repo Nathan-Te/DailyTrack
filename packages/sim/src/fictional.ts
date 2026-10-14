@@ -2,7 +2,7 @@ import { AXIS_MAX, makeInput } from "./car";
 import { CELL, cellKey, type Track } from "./track";
 import { createRace, stepRace } from "./race";
 import { ReplayRecorder, encodeReplay } from "./replay";
-import { Rng } from "./rng";
+import { Rng } from "@cdj/core";
 import { createAutopilot } from "./autopilot";
 import { trackJumps } from "./jump";
 

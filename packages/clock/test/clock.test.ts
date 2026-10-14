@@ -1,4 +1,4 @@
-import { daysFromCivil, formatDay } from "@cdj/sim";
+import { daysFromCivil, formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import { DAY_MS, msUntilNextParisDay, parisClockSource, parisDay, parisDayByIntl, parisDayByRule, parisDayStart, parisOffsetByRule } from "../src";
 

@@ -1,9 +1,9 @@
 import { GENERATOR_VERSION } from "./constants";
-import { circuitNumber, formatDay } from "./calendar";
+import { circuitNumber } from "./calendar";
 import { bestPilotRun, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
-import { Rng, mixSeed } from "./rng";
+import { Rng, formatDay, mixSeed } from "@cdj/core";
 import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";

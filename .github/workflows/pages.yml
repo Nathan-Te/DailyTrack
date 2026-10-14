@@ -1,7 +1,7 @@
 name: Pages
 # Publie le jeu sur GitHub Pages (branche gh-pages) :
-#   main     → https://<utilisateur>.github.io/<dépôt>/
-#   branche  → https://<utilisateur>.github.io/<dépôt>/b/<branche>/
+#   main     → https://<utilisateur>.github.io/<dépôt>/            (DailyTrack)      et  …/<dépôt>/jump/            (DailyJump)
+#   branche  → https://<utilisateur>.github.io/<dépôt>/b/<branche>/ (DailyTrack)      et  …/b/<branche>/jump/        (DailyJump)
 on:
   push:
 
@@ -23,6 +23,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Construit DailyTrack (apps/web) puis DailyJump (apps/jump) ; VITE_API_URL ne concerne que DailyTrack.
       - run: npm run build
         env:
           # L'adresse de l'API de production n'est injectée que dans la construction de main : un aperçu de branche ne classe jamais
@@ -48,15 +49,18 @@ jobs:
             # La racine est remplacée, les aperçus de branches (b/) sont conservés.
             find site -mindepth 1 -maxdepth 1 ! -name .git ! -name b -exec rm -rf {} +
             cp -R apps/web/dist/. site/
+            mkdir -p site/jump && cp -R apps/jump/dist/. site/jump/
             url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
           else
             rm -rf "site/b/${slug}"
             mkdir -p "site/b/${slug}"
             cp -R apps/web/dist/. "site/b/${slug}/"
+            mkdir -p "site/b/${slug}/jump" && cp -R apps/jump/dist/. "site/b/${slug}/jump/"
             url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/"
           fi
           touch site/.nojekyll
           echo "### Aperçu : ${url}" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Aperçu DailyJump : ${url}jump/?debug" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publier
         working-directory: site

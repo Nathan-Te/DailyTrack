@@ -78,6 +78,11 @@ jobs:
           echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
         run: npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+      # DailyJump (lot 0) : test de fumée de /jump/, une seule fois par navigateur (part 1 de la matrice), sans relance (retries: 0).
+      # Il tourne après les tests de DailyTrack et ne change ni leur rapport ni leur verdict ; s'il échoue, la part échoue (`e2e` rouge).
+      - name: Test de fumée DailyJump (${{ matrix.browser }})
+        if: startsWith(matrix.shard, '1/')
+        run: npm run e2e -w @cdj/jump -- --project=${{ matrix.browser }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

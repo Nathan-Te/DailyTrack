@@ -1,3 +1,4 @@
+import { CodecError, fromBase64Url, pushVarint, readVarint, toBase64Url } from "@cdj/core";
 import { TICK_RATE, SIM_VERSION } from "./constants";
 import { AXIS_MAX, NO_INPUT, copyCar, createCar, type CarInput, type CarState } from "./car";
 import { createRace, stepRace } from "./race";
@@ -109,39 +110,14 @@ export class ReplayPlayer {
 
 // --- Encodage ---------------------------------------------------------------------------------
 
-const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-
-function toBase64Url(bytes: number[]): string {
-  let out = "";
-  for (let i = 0; i < bytes.length; i += 3) {
-    const a = bytes[i]!;
-    const b = bytes[i + 1];
-    const c = bytes[i + 2];
-    out += B64[a >> 2]!;
-    out += B64[((a & 3) << 4) | ((b ?? 0) >> 4)]!;
-    if (b !== undefined) out += B64[((b & 15) << 2) | ((c ?? 0) >> 6)]!;
-    if (c !== undefined) out += B64[c & 63]!;
+/** Octets → texte, en gardant le message d'erreur de rediffusion (la lecture du texte vient du réseau). */
+function fromText(code: string): number[] {
+  try {
+    return fromBase64Url(code);
+  } catch (e) {
+    if (e instanceof CodecError) throw new ReplayError(`Rediffusion illisible (${e.message})`);
+    throw e;
   }
-  return out;
-}
-
-function fromBase64Url(text: string): number[] {
-  const bytes: number[] = [];
-  let acc = 0;
-  let bits = 0;
-  for (let i = 0; i < text.length; i++) {
-    const v = B64.indexOf(text[i]!);
-    if (v < 0) throw new ReplayError("Rediffusion illisible (caractère invalide)");
-    acc = (acc << 6) | v;
-    bits += 6;
-    if (bits >= 8) {
-      bits -= 8;
-      bytes.push((acc >> bits) & 0xff);
-      acc &= (1 << bits) - 1;
-    }
-  }
-  if (bits >= 6) throw new ReplayError("Rediffusion illisible (longueur invalide)");
-  return bytes;
 }
 
 const ID_OK = /^[a-z0-9_-]{1,32}$/;
@@ -152,12 +128,7 @@ export function encodeReplay(replay: Replay): string {
   const bytes: number[] = [FORMAT, replay.simVersion, replay.trackId.length];
   for (let i = 0; i < replay.trackId.length; i++) bytes.push(replay.trackId.charCodeAt(i));
   for (const r of replay.runs) {
-    let n = r.count;
-    while (n >= 0x80) {
-      bytes.push((n & 0x7f) | 0x80);
-      n >>= 7;
-    }
-    bytes.push(n);
+    pushVarint(bytes, r.count);
     bytes.push(r.steer & 0xff, r.throttle, r.brake | (r.respawn ? RESPAWN_BIT : 0));
   }
   return toBase64Url(bytes);
@@ -165,7 +136,7 @@ export function encodeReplay(replay: Replay): string {
 
 /** Texte → rediffusion. Refuse tout ce qui est mal formé ou hors limites (le texte vient du réseau). */
 export function decodeReplay(code: string): Replay {
-  const bytes = fromBase64Url(code);
+  const bytes = fromText(code);
   let pos = 0;
   const byte = (): number => {
     const b = bytes[pos++];
@@ -183,14 +154,12 @@ export function decodeReplay(code: string): Replay {
   const runs: ReplayRun[] = [];
   let total = 0;
   while (pos < bytes.length) {
-    let count = 0;
-    let shift = 0;
-    for (;;) {
-      const b = byte();
-      count += (b & 0x7f) * (1 << shift);
-      if ((b & 0x80) === 0) break;
-      shift += 7;
-      if (shift > 21) throw new ReplayError("Série trop longue");
+    let count: number;
+    try {
+      count = readVarint(byte);
+    } catch (e) {
+      if (e instanceof CodecError) throw new ReplayError("Série trop longue");
+      throw e;
     }
     if (count < 1) throw new ReplayError("Série vide");
     const raw = byte();
