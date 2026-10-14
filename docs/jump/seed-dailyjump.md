@@ -1,6 +1,6 @@
 # Seed — « DailyJump » (titre provisoire)
 
-Source de vérité du jeu. Vit dans `docs/jump/seed.md` du dépôt DailyTrack, n'est modifié que par Nathan. Deuxième jeu quotidien du futur portail, après DailyTrack. Développé **dans le cloud** (Claude Code sur le web), dans le **même monorepo** que DailyTrack, publié sur **GitHub Pages** sous `/jump/`.
+Source de vérité du jeu. Vit dans `docs/jump/seed-dailyjump.md` du dépôt DailyTrack, n'est modifié que par Nathan. Deuxième jeu quotidien du futur portail, après DailyTrack. Développé **dans le cloud** (Claude Code sur le web), dans le **même monorepo** que DailyTrack, publié sur **GitHub Pages** sous `/jump/`.
 
 ---
 
@@ -8,7 +8,7 @@ Source de vérité du jeu. Vit dans `docs/jump/seed.md` du dépôt DailyTrack, n
 Chaque jour, un niveau de plateformes court et brutal à la Super Meat Boy, le même pour tout le monde : on meurt, on réapparaît aussitôt, on recommence jusqu'à passer, puis on chasse le chrono — et à la fin on regarde tous ses essais rejoués en même temps.
 
 ## 2. Les piliers
-1. **Une minute par jour.** Un passage parfait dure 25 à 40 secondes. On joue en pause café ; on revient demain.
+1. **Une minute par jour.** Un passage parfait dure 25 à 40 secondes. On joue en pause café, au clavier, à la manette ou au téléphone ; on revient demain.
 2. **Le même niveau pour tous.** Un niveau par jour, déduit de la date (même règle de changement de jour que DailyTrack : minuit, heure de Paris), identique pour chaque joueur.
 3. **La mort ne coûte rien.** Mort instantanée, réapparition au départ en moins de 0,2 s, aucun écran, aucun menu. Essais illimités. La frustration doit toujours se transformer en « encore une ».
 4. **Un temps est une preuve.** La simulation est **déterministe et entièrement en entiers** : un essai est la suite des commandes du joueur, rejouable à l'identique partout. Le temps classé est celui que le code recalcule, jamais celui qu'on annonce.
@@ -17,12 +17,13 @@ Chaque jour, un niveau de plateformes court et brutal à la Super Meat Boy, le m
 **Pas de difficulté selon le jour de la semaine** : chaque niveau vise le même niveau d'exigence.
 
 ## 3. Le personnage
-- **Commandes** : gauche, droite, saut. **Pas de bouton de course** (simplifie le tactile ; la vitesse vient de l'élan). Recommencer : touche dédiée (R / bouton de manette). Rien d'autre.
+- **Commandes** : gauche, droite, saut. **Pas de bouton de course** (simplifie le tactile ; la vitesse vient de l'élan). Recommencer : touche dédiée (R / bouton de manette / bouton à l'écran). Rien d'autre.
+- **Sur téléphone** : moitié gauche de l'écran = gauche et droite (on glisse de l'une à l'autre sans lever le doigt), moitié droite = saut (tenir = plus haut), un petit bouton pour recommencer. Paysage recommandé, portrait jouable. **Le mobile est une cible de premier rang** : chaque lot est jouable au doigt dès sa livraison.
 - **Mouvement** : accélération et décélération au sol, contrôle en l'air un peu plus faible, vitesse maximale.
 - **Saut à hauteur variable** : relâcher tôt coupe le saut.
-- **Mur** : glisser le long d'un mur en le poussant (chute ralentie) ; **saut mural** qui repousse du mur. C'est le cœur de Meat Boy.
+- **Mur** : glisser le long d'un mur en le poussant (chute ralentie) ; **saut mural** qui repousse du mur. C'est le cœur de Meat Boy. Remonter un mur seul, saut mural après saut mural, reste possible.
 - **Les tolérances qui font les bonnes sensations** : *coyote time* (on peut encore sauter quelques ticks après avoir quitté le bord), *tampon de saut* (un appui juste avant l'atterrissage est pris en compte), tolérance de coin (on glisse au-dessus d'un coin qu'on frôle par la tête). Toutes en ticks, donc déterministes.
-- **Le feeling se règle par Nathan** : panneau `?debug&tune` (gravité, impulsion de saut, coupe de saut, accélérations, vitesse de glisse, poussée murale, tolérances). Une partie jouée avec des réglages modifiés n'est jamais enregistrée ; les valeurs retenues deviennent les défauts (version +1).
+- **Le feeling se règle par Nathan** : panneau `?debug&tune` (gravité, impulsion de saut, coupe de saut, accélérations, vitesse de glisse, poussée murale, tolérances), utilisable aussi au doigt. Une partie jouée avec des réglages modifiés n'est jamais enregistrée ; les valeurs retenues deviennent les défauts (version +1).
 
 ## 4. Le niveau
 - **Une grille de tuiles**, vue de côté, plusieurs écrans de long (horizontal avec des passages verticaux). La caméra suit le personnage avec une avance dans la direction du mouvement.
@@ -60,24 +61,27 @@ Le pilote automatique de DailyTrack ne se transpose pas : chercher une suite de 
 - Le jeu se charge en quelques secondes, mobile compris.
 
 ## 8. Technique
-- **Dans le monorepo DailyTrack.** Nouveaux espaces : `packages/core` (le socle partagé, extrait **au besoin**), `packages/jump-sim` (simulation pure du saut), `apps/jump` (le jeu). DailyTrack ne doit **jamais** changer de comportement à cause de DailyJump : ses golden tests sont le garde-fou de toute extraction.
-- **`packages/core`** ne contient **aucune logique de jeu** : PRNG à graine, calendrier (jour du jeu, changement de jour), codage des rediffusions (octets ↔ base64url, séries compressées), test de pureté générique. Il grandit seulement quand le deuxième jeu a besoin d'un morceau.
+- **Dans le monorepo DailyTrack.** Espaces du jeu : `packages/jump-sim` (simulation pure du saut), `apps/jump` (le jeu), `docs/jump/` (seed, consignes, README des lots). Espaces partagés : `packages/core` (le socle commun, extrait **au besoin**) et `packages/clock` (la règle du changement de jour). DailyTrack ne doit **jamais** changer de comportement à cause de DailyJump : ses golden tests sont le garde-fou de toute extraction.
+- **`packages/core`** est **pur** et ne contient **aucune logique de jeu** : PRNG à graine, conversion des jours du calendrier, codage des rediffusions (octets ↔ base64url, varint pour les séries compressées), test de pureté générique appliqué à `core`, à la sim de DailyTrack et à `jump-sim`. Il grandit seulement quand un jeu a besoin d'un morceau.
+- **`packages/clock`** porte la règle « aujourd'hui = la date à Paris, changement à minuit ». Elle lit l'heure, donc elle reste **hors de `core`** et hors de toute sim ; les deux jeux l'utilisent telle quelle.
 - **`packages/jump-sim`** :
   - pas fixe à 120 Hz, interpolation à l'affichage seulement ;
-  - **aucun nombre à virgule dans l'état** : positions en unités entières (**1 tuile = 4 096 unités**, soit 16 px × 256 sous-pixels), vitesses en unités par tick, minuteries en ticks ; divisions entières par une fonction maison qui tronque vers zéro et **ne renvoie jamais `-0`** ;
+  - **aucun nombre à virgule dans l'état** : positions en unités entières (**1 tuile = 4 096 unités**, soit 16 px × 256 sous-pixels), vitesses en unités par tick, minuteries en ticks ;
+  - divisions entières par une fonction maison (`idiv`) qui tronque vers zéro et **ne renvoie jamais `-0`** ; **seule exception** : l'indice de tuile d'une coordonnée (`tileOf`, décalage de 12 bits, arrondi vers le bas, jamais `-0`), plus rapide et testé ;
   - collisions boîte contre grille, axe par axe ; scies en cercle contre boîte, par distances au carré entières ;
   - **vitesse maximale strictement inférieure à une tuile par tick** (test) : la traversée de mur est impossible par construction ;
-  - commandes : 3 bits par tick (gauche, droite, saut tenu) ; l'appui du saut est déduit dans la simulation ;
-  - mêmes interdits que `sim` (pas de `Math.random`, `Date`, fonctions transcendantes, imports externes), vérifiés par le test de pureté, plus un test qui vérifie que tout l'état reste entier après des milliers de ticks aléatoires ;
+  - commandes : 3 bits par tick (gauche, droite, saut tenu) ; l'appui du saut est déduit dans la simulation ; « recommencer » est un événement de session, pas une commande de la simulation ;
+  - mêmes interdits que la sim de DailyTrack (pas de `Math.random`, `Date`, fonctions transcendantes, imports externes autres que `@cdj/core`), vérifiés par le test de pureté, plus un test qui vérifie que tout l'état reste entier après des milliers de ticks aléatoires ;
   - `JUMP_SIM_VERSION` et `JUMP_GENERATOR_VERSION`, golden tests, même règle de versions que DailyTrack.
-- **`apps/jump`** : Vite + Three.js, boucle à pas fixe, entrées clavier / manette / tactile fusionnées, outils `?debug` exposés sur `window.__jump` (même esprit que `__cdj` : `phase`, `manual`, `advance`…), stockage local préfixé `jump:`.
-- **Publication** : le même site GitHub Pages que DailyTrack, sous `/jump/` ; même mécanisme d'aperçu par branche.
+- **`apps/jump`** : Vite + Three.js, boucle à pas fixe, entrées clavier / manette / tactile fusionnées en mêmes commandes, outils `?debug` exposés sur `window.__jump` (même esprit que `__cdj` : `phase`, `manual`, `advance`…), stockage local préfixé `jump:`, paramètres d'adresse déclarés dans une liste unique (`urlOptions.ts`).
+- **Publication** : le même site GitHub Pages que DailyTrack, sous `/jump/`, avec des chemins relatifs ; même mécanisme d'aperçu par branche (`/b/<branche>/jump/`).
 - **Pas de serveur au premier jalon.** Le jeu fonctionne entièrement sans API (comme DailyTrack sans réseau).
 
 ## 9. Méthode
-- Les règles de DailyTrack (guide technique § 8) : un lot = une session neuve = une branche = une PR brouillon ; README d'une page dans `docs/jump/lots/` ; le prompt de lot indique les modifications du `CLAUDE.md` ; l'agent s'arrête quand la CI est verte ; rapports honnêtes (vérifié / non vérifié / décisions pour Nathan).
-- **Chaque lot fournit un scénario lançable en deux clics** depuis l'aperçu : `?scenario=bac-a-sable`, `?scenario=essai`, `?module=<id>`, `?module=<id>&solution` (regarder la solution), `?seed=AAAA-MM-JJ`, `?debug&tune`. Tout paramètre d'adresse rejoint la page d'admin.
-- Effort moyen pour la plupart des lots ; le modèle le plus puissant pour le solveur et les bugs de déterminisme.
+- Les règles de DailyTrack (guide technique § 8) : un lot = une session neuve = une branche = une PR brouillon ; README d'une page dans `docs/jump/lots/` ; le prompt de lot indique les modifications de `docs/jump/consignes.md` (importé par le `CLAUDE.md` racine) ; l'agent s'arrête quand la CI est verte ; rapports honnêtes (vérifié / non vérifié / décisions pour Nathan).
+- **Zones partagées** (`packages/core`, `packages/clock`, `package.json` / `package-lock.json` racine, `.github/workflows/`, configuration racine, `CLAUDE.md` racine, `apps/api/Dockerfile`) : touchées seulement si le prompt le dit, jamais par deux lots en même temps ; un lot qui touche `packages/core` laisse inchangés les golden des deux jeux.
+- **Chaque lot fournit un scénario lançable en deux clics** depuis l'aperçu, sur ordinateur comme sur téléphone : `?scenario=bac-a-sable`, `?scenario=essai`, `?module=<id>`, `?module=<id>&solution` (regarder la solution), `?seed=AAAA-MM-JJ`, `?debug&tune`, `?touch=1`. Tout paramètre d'adresse rejoint `urlOptions.ts`, puis la page d'admin.
+- Effort moyen pour la plupart des lots ; le modèle le plus puissant pour la physique, le solveur et les bugs de déterminisme.
 
 ## 10. Hors du premier jalon
 Classement en ligne et fantôme du premier (phase 2, avec le socle serveur commun) ; carte de chaleur des morts de tous les joueurs (phase 2) ; portail commun, série tous jeux confondus et publicité (phase 3) ; Salon en direct ; éditeur de niveaux ; objets à ramasser ; boss ; plusieurs personnages.
@@ -85,14 +89,15 @@ Classement en ligne et fantôme du premier (phase 2, avec le socle serveur commu
 **Point ouvert pour la phase 2** : le nombre de morts et les points de mort ne sont pas prouvés si l'on n'envoie que le meilleur essai. Soit ils restent déclaratifs (jamais classés), soit le client envoie tous les essais et le serveur les rejoue (coût à mesurer).
 
 ## 11. Plan en lots
-- **Lot 0 — Le socle partagé.** `packages/core` extrait de DailyTrack (seulement ce dont le saut aura besoin), golden de DailyTrack inchangés ; `packages/jump-sim` testé ; `apps/jump` publiée sous `/jump/` avec une grille et un personnage immobile ; CI étendue. **À tester** : `/jump/` s'ouvre sur l'aperçu, DailyTrack joue comme avant.
-- **Lot 1 — Le personnage.** Physique en entiers, course, saut variable, glisse et saut muraux, tolérances, caméra, clavier et manette, panneau de réglages. **À tester** : `?scenario=bac-a-sable` — est-ce que ça a le goût de Meat Boy ?
-- **Lot 2 — Les dangers et la mort.** Pics, scies fixes et mobiles, blocs friables, ressorts ; mort instantanée, réapparition en moins de 0,2 s, remise à zéro du niveau, chrono par essai, arrivée ; un niveau d'essai écrit à la main (~30 s). **À tester** : `?scenario=essai`, finir le niveau.
-- **Lot 3 — La rediffusion et le carnage.** Enregistrement de chaque essai, rejeu exact (Node ↔ Chromium ↔ Firefox ↔ WebKit), golden ; fantôme du meilleur essai ; le carnage à l'arrivée ; les taches de peinture. **À tester** : mourir une vingtaine de fois, finir, regarder le carnage.
+- **Lot 0 — Le socle partagé** *(livré)*. `packages/core` extrait de DailyTrack, golden de DailyTrack inchangés ; `packages/jump-sim` testé ; `apps/jump` publiée sous `/jump/` avec une grille et un personnage immobile ; CI étendue.
+- **Lot 1 — Le personnage** *(livré)*. Physique en entiers, course, saut variable, glisse et saut muraux, tolérances, caméra, clavier et manette, panneau de réglages, bac à sable.
+- **Lot 1b — Jouable sur mobile.** Commandes tactiles (gauche / droite à glisser, saut, recommencer), page adaptée au téléphone (aucun défilement ni zoom, paysage recommandé), panneau de réglages au doigt ; `tileOf` dans la sim (golden inchangés). **À tester** : le bac à sable sur téléphone, régler le feeling au doigt.
+- **Lot 2 — Les dangers et la mort.** Pics, scies fixes et mobiles, blocs friables, ressorts ; mort instantanée, réapparition en moins de 0,2 s, remise à zéro du niveau, chrono par essai, arrivée ; un niveau d'essai écrit à la main (~30 s). **À tester** : `?scenario=essai`, finir le niveau, au clavier et au téléphone.
+- **Lot 3 — La rediffusion et le carnage.** Enregistrement de chaque essai, rejeu exact (Node ↔ Chromium ↔ Firefox ↔ WebKit), golden ; fantôme du meilleur essai ; le carnage à l'arrivée ; les taches de peinture. Les tests e2e de DailyJump rejoignent le rapport fusionné de la CI (zone partagée, à coordonner). **À tester** : mourir une vingtaine de fois, finir, regarder le carnage.
 - **Lot 4 — Les morceaux et le solveur.** Format des morceaux, solveur hors ligne, 25 à 30 morceaux avec leurs variantes et solutions stockées et testées. **À tester** : `?module=<id>` pour jouer un morceau, `&solution` pour regarder sa solution.
 - **Lot 5 — Le niveau du jour.** Assemblage par la date, raccords, quotas, repos, validation par rejeu, temps de l'auteur et médailles, palette du jour, script de mesure. **À tester** : trois dates (`?seed=`) donnent trois niveaux jouables et différents.
-- **Lot 6 — L'arrivée et le partage.** Écran d'arrivée (temps, médaille, morts), ligne à partager, archives, accueil minimal, tactile de base (trois grandes zones). **Jalon** : une semaine de niveaux joués par Nathan.
-- **Ensuite** : retouches de feeling, thèmes et nouveaux éléments, juice, tactile soigné ; puis **phase 2** (socle serveur commun : identité et pseudo partagés avec DailyTrack, classement prouvé, fantôme du premier, carnage du jour) et **phase 3** (portail).
+- **Lot 6 — L'arrivée et le partage.** Écran d'arrivée (temps, médaille, morts), ligne à partager, archives, accueil minimal. **Jalon** : une semaine de niveaux joués par Nathan.
+- **Ensuite** : retouches de feeling, thèmes et nouveaux éléments, juice, finitions tactiles ; puis **phase 2** (socle serveur commun : identité et pseudo partagés avec DailyTrack, classement prouvé, fantôme du premier, carnage du jour) et **phase 3** (portail).
 
 ## 12. Références
 - **Super Meat Boy** : la référence de rythme, de mort instantanée et de carnage final.
