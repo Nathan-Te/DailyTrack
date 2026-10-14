@@ -2,7 +2,20 @@
 //   npm run smoke -w @cdj/api -- http://localhost:8080 [--origin https://nathan-te.github.io]
 // Santé, circuit du jour (généré par la première requête), un temps du jour rejoué par le serveur, classement, fantôme, Salon (maintenant,
 // envoi, classement). **Crée un joueur « Fumée »** : à ne pas lancer contre la vraie base de production.
-import { dailyCircuit, encodeReplay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
+import { dailyCircuit, encodeReplay, parseDay, runPilot, salonCircuit, type Track } from "@cdj/sim";
+
+/**
+ * Un pilote local qui finit ce circuit. Tous les niveaux n'y passent pas : le générateur valide un circuit avec PLUSIEURS niveaux de pilote (relevé en CI :
+ * le circuit de la session 2986621, thème Nuit, n'est pas fini à 0,9 mais l'est à 0,8 en 38,8 s). Le Salon change toutes les 10 minutes à l'heure
+ * réelle : supposer qu'un seul niveau finit rendait ce contrôle instable.
+ */
+const localPilot = (track: Track) => {
+  for (const grip of [0.9, 0.85, 0.8, 0.75, 0.7, 0.65, 0.6, 0.55, 0.5]) {
+    const r = runPilot(track, { grip });
+    if (r.valid) return r;
+  }
+  return runPilot(track, { grip: 0.9 });
+};
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const originAt = process.argv.indexOf("--origin");
@@ -38,7 +51,7 @@ const again = await call("GET", `/api/day/${date}`);
 check("deuxième lecture : lu en base, plus de génération", again.body.trackId === info.body.trackId && again.ms < Math.max(300, info.ms), `${again.ms} ms`);
 
 const circuit = dailyCircuit(day);
-const run = runPilot(circuit.track, { grip: 0.9 });
+const run = localPilot(circuit.track);
 check("le pilote local finit le circuit du jour", run.valid && circuit.track.id === info.body.trackId);
 const sub = await call("POST", "/api/submit", { playerId: player, name: "Fumée", date, replay: encodeReplay(run.replay) });
 check("temps du jour accepté, rejoué par le serveur", sub.status === 200 && sub.body.ms === run.finishMs && sub.body.rank >= 1, `${sub.body.ms} ms, ${sub.ms} ms de requête`);
@@ -50,7 +63,7 @@ check("fantôme du premier servi", ghost.status === 200 && typeof ghost.body.rep
 const now = await call("GET", `/api/salon/now?player=${player}`);
 check("Salon : session en cours", now.status === 200 && Number.isInteger(now.body.session), `session ${now.body.session}`);
 const salon = salonCircuit(now.body.session);
-const srun = runPilot(salon.track, { grip: 0.9 });
+const srun = localPilot(salon.track);
 check("le pilote local finit le circuit du Salon", srun.valid && salon.track.id === now.body.trackId);
 const ssub = await call("POST", `/api/salon/${now.body.session}/submit`, { playerId: player, name: "Fumée", replay: encodeReplay(srun.replay) });
 check("Salon : temps accepté (circuit de la session généré à ce premier envoi)", ssub.status === 200 && ssub.body.ms === srun.finishMs, `${ssub.ms} ms`);
