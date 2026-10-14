@@ -1,5 +1,5 @@
 import { PREMIER_JOUR, SIM_VERSION, GENERATOR_VERSION } from "@cdj/sim";
-import type { ApiResult, BoardRow, GhostData, Leaderboard, LeaderboardSource, SubmitResult } from "./api";
+import type { ApiResult, BoardRow, GhostData, Leaderboard, LeaderboardSource, MeProfile, NameCheck, SubmitResult } from "./api";
 import { getName } from "./identity";
 
 // Mode démo (`?api=demo`, lot 11) : un jeu de données statique (`public/demo/`, fabriqué par `npm run history:seed`) tient
@@ -108,6 +108,19 @@ export class DemoApi implements LeaderboardSource {
 
   async rename(_playerId: string, name: string): Promise<ApiResult<{ name: string }>> {
     return { ok: true, data: { name } };
+  }
+
+  // Pas de profil en démonstration : rien n'est envoyé ni synchronisé.
+  async me(): Promise<ApiResult<MeProfile>> {
+    return fail("demo", "Mode démonstration : pas de profil sur le serveur", 0);
+  }
+
+  async checkName(): Promise<ApiResult<NameCheck>> {
+    return { ok: true, data: { available: true } };
+  }
+
+  async rotateCode(): Promise<ApiResult<{ rotated: true }>> {
+    return fail("demo", "Mode démonstration : le code ne peut pas être changé", 0);
   }
 
   async leaderboard(date: string, _playerId: string, limit = 10): Promise<ApiResult<Leaderboard>> {

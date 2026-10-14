@@ -70,7 +70,7 @@ const db: SqlDb = {
 };
 
 async function reset(): Promise<void> {
-  const tables = ["players", "circuits", "planning", "results", "rate", "salon_runs", "salon_sessions", "salon_circuits", "salon_presence", "salon_throttle", "meta"];
+  const tables = ["players", "circuits", "planning", "results", "rate", "salon_runs", "salon_sessions", "salon_circuits", "salon_presence", "salon_throttle", "revoked_codes", "meta"];
   for (const t of tables) await db.run(`DROP TABLE IF EXISTS ${t}`);
 }
 
@@ -86,11 +86,11 @@ interface Sample {
 }
 const samples = new Map<string, Sample[]>();
 
-async function call(label: string | null, api: ReturnType<typeof createApi>, method: string, path: string, body?: unknown, client = "203.0.113.7"): Promise<any> {
+async function call(label: string | null, api: ReturnType<typeof createApi>, method: string, path: string, body?: unknown, client = "203.0.113.7", headers: Record<string, string> = {}): Promise<any> {
   const before = { ...tally };
   const cpu0 = process.cpuUsage();
   const t0 = performance.now();
-  const res = await api.handle(new Request(`http://api.test${path}`, { method, headers: body ? { "Content-Type": "application/json" } : {}, body: body ? JSON.stringify(body) : undefined }), { clientKey: client });
+  const res = await api.handle(new Request(`http://api.test${path}`, { method, headers: { ...(body ? { "Content-Type": "application/json" } : {}), ...headers }, body: body ? JSON.stringify(body) : undefined }), { clientKey: client });
   const wallMs = performance.now() - t0;
   const cpu = process.cpuUsage(cpu0);
   const json = await res.json();
@@ -163,6 +163,42 @@ console.log(`\n=== Circuit du jour : un joueur, ${DAY_PLAYERS} autres déjà cla
   await call("jour : fantôme de devant", api, "GET", `/api/day/${formatDay(DAY)}/ghost?kind=ahead&player=${me}`);
 }
 
+// --- 1b. Profil synchronisé (lot 30) : `GET /api/me` selon l'historique du joueur ----------------------------------------------------------------------
+// Chaque lancement du jeu et chaque retour à l'accueil (au plus un par 30 s) lit le profil. La place de chaque jour passé (les 90 derniers) coûte une
+// lecture par concurrent ce jour-là : on mesure donc avec `DAY_PLAYERS` concurrents par jour et un historique de 1 à 120 jours.
+const HISTORY = (process.env.HISTORY_DAYS ?? "1,14,60,120").split(",").map(Number);
+console.log(`\n=== Profil : GET /api/me, ${DAY_PLAYERS} concurrents par jour, historique de ${HISTORY.join(", ")} jours ===`);
+for (const history of HISTORY) {
+  const api = await freshApi(DAY_START);
+  const me = playerId(1);
+  await call(null, api, "POST", "/api/submit", { playerId: me, name: "Moi", date: formatDay(DAY), replay: dayReplays[1]!.code });
+  // Jours passés (fabriqués directement : le serveur ne classe que le jour courant) : une ligne de circuit et DAY_PLAYERS résultats par jour.
+  for (let d = 1; d <= history - 1; d++) {
+    const day = DAY - d;
+    await db.run("INSERT INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, 'x', ?, 1, 'stade', 0)", [day, `jour-${formatDay(day)}-g15`, daily.authorMs]);
+    const rows: string[] = [];
+    const params: SqlValue[] = [];
+    for (let i = 0; i < DAY_PLAYERS; i++) {
+      rows.push("(?, ?, ?, '[]', 'x', 0, ?)");
+      params.push(day, i === 0 ? me : playerId(1000 + i), daily.authorMs + 100 * i, day * 10 + i);
+    }
+    await db.run(`INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at) VALUES ${rows.join(",")}`, params);
+  }
+  for (let k = 0; k < 3; k++) {
+    const r = await call(`profil ${history} j : GET /api/me${k === 0 ? " (1re lecture : calcule les places des jours terminés)" : ""}`, api, "GET", "/api/me", undefined, "203.0.113.7", { "X-Player-Id": me });
+    if (r.status !== 200 || r.body.stats.days !== history) throw new Error(`profil : ${history} jours attendus, reçu ${r.status} ${JSON.stringify(r.body).slice(0, 120)}`);
+  }
+}
+{
+  const api = await freshApi(DAY_START);
+  const me = playerId(1);
+  await call(null, api, "POST", "/api/submit", { playerId: me, name: "Moi", date: formatDay(DAY), replay: dayReplays[1]!.code });
+  for (let k = 0; k < 3; k++) await call("profil : vérifier un pseudo", api, "GET", `/api/name?name=Libre${k}`, undefined, "203.0.113.7", { "X-Player-Id": me });
+  await call("profil : changer de pseudo", api, "PUT", "/api/player", { playerId: me, name: "Moi2" });
+  await call("profil : changer mon code", api, "POST", "/api/me/code", { newId: playerId(2) }, "203.0.113.7", { "X-Player-Id": me });
+  await call("profil : ancien code refusé (GET /api/me)", api, "GET", "/api/me", undefined, "203.0.113.7", { "X-Player-Id": me });
+}
+
 // --- 2. Salon : un joueur pendant une session, avec P joueurs présents ------------------------------------------------------------------
 const salonBy = new Map<number, Record<string, Sample>>();
 for (const players of SALON_PLAYERS) {
@@ -211,6 +247,7 @@ const row = (label: string, s: Sample) =>
   `  ${label.padEnd(58)} ${fmt(s.statements, 1).padStart(6)} ${fmt(s.read, 1).padStart(8)} ${fmt(s.written, 1).padStart(7)} ${fmt(s.cpuMs, 1).padStart(8)}`;
 console.log(`\n${"Par requête (moyennes)".padEnd(60)} ${"instr.".padStart(6)} ${"lignes lues".padStart(8)} ${"écrites".padStart(7)} ${"CPU ms".padStart(8)}`);
 for (const label of [...samples.keys()].filter((l) => l.startsWith("jour"))) console.log(row(label, mean(label)));
+for (const label of [...samples.keys()].filter((l) => l.startsWith("profil"))) console.log(row(label, mean(label)));
 for (const players of SALON_PLAYERS) for (const label of [...samples.keys()].filter((l) => l.startsWith(`salon ${players} :`))) console.log(row(label, mean(label)));
 
 // --- Un joueur, une journée ---------------------------------------------------------------------------------------------------------------
@@ -248,6 +285,9 @@ const dayOnly = budgetOf([
 console.log("\nHypothèses (un joueur) : circuit du jour = 1 lecture du circuit, 3 classements, 2 fantômes, 3 temps envoyés (chacun améliore le précédent).");
 console.log("Salon de 30 minutes = 3 sessions : `maintenant` toutes les 10 s (180), classement toutes les 5 s (360 dont 30 % ont changé), 4 lots de fantômes par session (12), 2 envois par session (6).");
 
+// Synchronisation du profil (lot 30) : un lancement + un retour à l'accueil par visite, deux visites par jour = 4 lectures du profil.
+const syncOnly = (history: number) => budgetOf([[1, mean(`profil ${history} j : GET /api/me (1re lecture : calcule les places des jours terminés)`)], [3, mean(`profil ${history} j : GET /api/me`)]]);
+
 const FREE = { requests: 2_000_000, vcpuS: 180_000, tursoRead: 500_000_000, tursoWritten: 10_000_000 };
 const report = (label: string, b: Budget) => {
   const perDay = (limit: number, per: number) => (per > 0 ? Math.floor(limit / 30 / per) : Infinity);
@@ -260,6 +300,7 @@ const report = (label: string, b: Budget) => {
 };
 console.log("\n=== Un joueur, une journée ===");
 report("circuit du jour seul", dayOnly);
+for (const h of HISTORY) report(`+ synchronisation du profil (4 lectures, ${h} j d'historique)`, sum(dayOnly, syncOnly(h)));
 for (const players of SALON_PLAYERS) {
   const s = salonBy.get(players)!;
   const salon30 = budgetOf([

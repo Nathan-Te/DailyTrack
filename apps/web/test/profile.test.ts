@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dayLong, dayShort, disambiguateNames, listPlayedDays, loadRanks, parseRank, playedFromRecords, profileStats, rememberRank, streakOf } from "../src/profile";
 import { dayLines } from "../src/boardView";
-import { applyTransfer, collectTransfer, decodeTransfer, encodeTransfer } from "../src/transfer";
 
 function memory(initial: Record<string, string> = {}) {
   const m = new Map(Object.entries(initial));
@@ -84,36 +83,6 @@ describe("places gardées", () => {
     rememberRank("pas-une-date", { rank: 1, participants: 1 }, store);
     rememberRank("2026-10-14", { rank: 99, participants: 5 }, store); // invalide
     expect([...loadRanks(store)]).toEqual([["2026-10-13", { rank: 4, participants: 9 }]]);
-  });
-});
-
-describe("code de transfert : les places voyagent", () => {
-  const ID = "0123456789abcdef0123456789abcdef";
-  it("copier puis charger ailleurs retrouve pseudo, records et places", () => {
-    const a = memory({ "cdj:player": ID, "cdj:name": "Alice", "cdj:best:jour-2026-10-13-g15": rec(41_000, "silver"), "cdj:rank:2026-10-13": JSON.stringify({ rank: 4, participants: 9 }) });
-    const code = encodeTransfer(collectTransfer(a)!);
-    const decoded = decodeTransfer(code);
-    expect(decoded.ok).toBe(true);
-    if (!decoded.ok) return;
-    const b = memory({ "cdj:rank:2026-09-01": JSON.stringify({ rank: 1, participants: 2 }) }); // une place de l'ancienne identité : effacée
-    expect(applyTransfer(decoded.data, b)).toBe(true);
-    expect(b.getItem("cdj:name")).toBe("Alice");
-    expect(listPlayedDays(b)).toEqual([{ date: "2026-10-13", ms: 41_000, medal: "silver" }]);
-    expect([...loadRanks(b)]).toEqual([["2026-10-13", { rank: 4, participants: 9 }]]);
-  });
-  it("un code sans places (ancien) se charge toujours", () => {
-    const a = memory({ "cdj:player": ID, "cdj:best:jour-2026-10-13-g15": rec(41_000, null) });
-    const data = collectTransfer(a)!;
-    expect(data.ranks).toBeUndefined();
-    const decoded = decodeTransfer(encodeTransfer(data));
-    expect(decoded.ok && decoded.data.ranks).toBeFalsy();
-  });
-  it("une place invalide dans un code est ignorée, le reste est gardé", () => {
-    const a = memory({ "cdj:player": ID, "cdj:rank:2026-10-13": JSON.stringify({ rank: 4, participants: 9 }) });
-    const data = collectTransfer(a)!;
-    const bad = encodeTransfer({ ...data, ranks: { "2026-10-13": { rank: 4, participants: 9 }, "2026-10-14": { rank: 0, participants: 1 } } });
-    const decoded = decodeTransfer(bad);
-    expect(decoded.ok && Object.keys(decoded.data.ranks ?? {})).toEqual(["2026-10-13"]);
   });
 });
 

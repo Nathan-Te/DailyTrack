@@ -19,6 +19,17 @@ export function openSqlite(path: string): SqlDb & { close(): void } {
     async all<T>(sql: string, params: SqlValue[] = []) {
       return db.prepare(sql).all(...params) as T[];
     },
+    // Une transaction : toutes les instructions ou aucune (changement de code d'un joueur, lot 30).
+    async batch(statements) {
+      db.exec("BEGIN");
+      try {
+        for (const s of statements) db.prepare(s.sql).run(...((s.params ?? []) as SqlValue[]));
+        db.exec("COMMIT");
+      } catch (e) {
+        db.exec("ROLLBACK");
+        throw e;
+      }
+    },
     close() {
       db.close();
     },

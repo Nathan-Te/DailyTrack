@@ -72,5 +72,13 @@ export default defineConfig({
       reuseExistingServer: false,
       env: { PORT: "8789", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", SALON_MINUTES: "2", TEST_CLOCK_OFFSET_MS },
     },
+    {
+      // Réservé à e2e/profil.spec.ts (lot 30 : pseudos réservés, profil synchronisé entre appareils, code changé). Un serveur par spec : ses joueurs et ses
+      // pseudos ne doivent pas se mêler à ceux du classement de leaderboard.spec.ts.
+      command: "node ../api/dist/server.mjs",
+      url: "http://127.0.0.1:8790/api/health",
+      reuseExistingServer: false,
+      env: { PORT: "8790", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
+    },
   ],
 });

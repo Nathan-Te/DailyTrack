@@ -91,6 +91,20 @@ export { styleFor, runFictional, type PilotStyle };
 
 const hex32 = (rng: Rng) => Array.from({ length: 4 }, () => rng.next().toString(16).padStart(8, "0")).join("");
 
+/**
+ * Identifiant stable d'un pilote fictif (lot 30) : un pseudo appartient à un seul joueur, donc « Démo Alice » est la même personne tous les jours
+ * (avant, chaque jour tirait un nouvel identifiant pour le même nom). 32 hexadécimaux déduits du nom (FNV-1a, quatre graines).
+ */
+export function fictionalId(name: string): string {
+  let id = "";
+  for (let k = 0; k < 4; k++) {
+    let h = (0x811c9dc5 ^ Math.imul(k + 1, 0x9e3779b1)) >>> 0;
+    for (const ch of name) h = Math.imul(h ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+    id += h.toString(16).padStart(8, "0");
+  }
+  return id;
+}
+
 // --- Le jeu de données --------------------------------------------------------------------------
 
 export interface SeedOptions {
@@ -150,7 +164,8 @@ export async function seedHistory(options: SeedOptions = {}): Promise<DemoDatase
         continue;
       }
       clock = day * DAY_MS + 12 * HOUR_MS + (p + 1) * 1000;
-      const res = await call("POST", "/api/submit", { playerId: hex32(rng), name: names[p]!, date, replay: run.code });
+      hex32(rng); // le tirage reste consommé (les jeux de données déjà publiés ne bougent pas) ; l'identifiant, lui, est stable
+      const res = await call("POST", "/api/submit", { playerId: fictionalId(names[p]!), name: names[p]!, date, replay: run.code });
       if (res.status === 200) accepted++;
       else rejected++; // refus du serveur : la course ne compte pas (jamais de contournement)
     }

@@ -111,6 +111,19 @@ kbd { font: 700 12px var(--font); background: rgba(255, 255, 255, 0.16); border:
 .tr-preview { margin-top: 8px; padding: 10px; border-radius: 10px; background: rgba(255, 210, 46, 0.12); }
 .tr-preview .found { font-weight: 800; }
 .tr-preview .line { margin: 6px 0; font-weight: 500; }
+/* Messages du serveur sur le profil (lot 30) : code remplacé ailleurs, pseudo à rechoisir, pseudo pris, hors ligne. */
+.profile .notices { margin: 0 0 10px; }
+.profile .notices[hidden] { display: none; }
+.profile .notice { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: rgba(255, 210, 46, 0.12); font-weight: 600; font-size: 14px; }
+.profile .notice p { margin: 0; }
+.profile .notice.error { background: rgba(255, 90, 90, 0.16); }
+.profile .notice.quiet { background: none; padding: 0; color: var(--muted); font-weight: 500; font-size: 13px; }
+.profile .notice .actions { margin-top: 6px; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.suggestions[hidden] { display: none; }
+.tr-confirm { margin-top: 8px; padding: 10px; border-radius: 10px; background: rgba(255, 90, 90, 0.14); }
+.tr-confirm[hidden] { display: none; }
+.tr-confirm p { margin: 0; font-weight: 600; }
 
 /* --- Accueil ------------------------------------------------------------------------------------------------------------ */
 #home { position: fixed; inset: 0; z-index: 5; overflow-x: hidden; overflow-y: auto; touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; color: #fff; font: 500 15px/1.45 var(--font); background: linear-gradient(180deg, rgba(5, 8, 20, 0.5) 0%, rgba(5, 8, 20, 0.84) 60%); padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0); }

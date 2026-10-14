@@ -33,7 +33,8 @@ describe("seedHistory", () => {
     const real = await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM players WHERE demo = 0");
     const demo = await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM players WHERE demo = 1");
     expect(real!.n).toBe(0);
-    expect(demo!.n).toBe(data.days.reduce((n, d) => n + d.top.length, 0));
+    // Un pseudo appartient à un seul joueur (lot 30) : un pilote fictif qui revient un autre jour est la même personne.
+    expect(demo!.n).toBe(new Set(data.days.flatMap((d) => d.top.map((r) => r.name))).size);
   }, 60_000);
 
   it("est déterministe : deux fabrications donnent exactement le même jeu de données", async () => {

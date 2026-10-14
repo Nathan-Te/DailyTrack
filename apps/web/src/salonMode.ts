@@ -83,7 +83,10 @@ const withTimeout = <T>(p: Promise<T>, ms: number): Promise<T | null> => Promise
 
 export class SalonController {
   readonly demo: boolean;
-  readonly playerId = getPlayerId();
+  /** Lu à chaque fois : « Changer mon code » change l'identifiant sans recharger la page. */
+  get playerId(): string {
+    return getPlayerId();
+  }
   readonly clock: SalonClock;
   readonly sessionMs: number;
   state: SalonState = "playing";

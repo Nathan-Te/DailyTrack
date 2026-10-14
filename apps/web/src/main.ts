@@ -434,7 +434,14 @@ let lastRespawns = 0;
 let settingsPanel: ReturnType<typeof mountSettings> | null = null;
 const profileHost: ProfileHost = {
   today: formatDay(todayUtc),
-  rename: (name) => online.rename(name, true), // local, et sur le serveur si le joueur y est déjà classé
+  rename: (name) => online.rename(name), // le serveur dit si le pseudo est libre ; changé aussi sur le serveur si le joueur y est déjà classé
+  fetchProfile: (id) => (online.profileApi && !online.demo ? online.profileApi.me(id) : null),
+  changeCode: () => online.changeCode(),
+  sync: online.sync,
+  submitLegacy: async (id, name, replays) => {
+    // Ancien code (lot 28) : le serveur rejoue les rediffusions des derniers jours et ignore le reste (jour figé, autre version).
+    for (const r of replays.filter((x) => x.date >= formatDay(todayUtc - 1)).slice(0, 3)) await online.profileApi?.submit(id, name, r.date, r.replay);
+  },
   onChange: () => settingsPanel?.sync(),
 };
 const howto = mountHowto(document.body, touchMode ? "touch" : "keyboard", { onSeen: () => markHowtoSeen() });
@@ -543,6 +550,7 @@ function leaveToHome() {
   homeOpen = true;
   syncSceneQuality();
   homeUi.open();
+  void syncProfile(); // un temps battu sur un autre appareil apparaît ici
 }
 
 function playDaily() {
@@ -602,6 +610,51 @@ const homeUi: HomeUi = mountHome($("home"), {
   openSettings: () => openSettings(),
   openHowto: () => howto.open(),
 });
+
+// --- Synchronisation du profil (lot 30) -------------------------------------------------------------------
+// Le serveur fait foi, le stockage local n'est qu'un cache : au lancement et au retour sur l'accueil, le jeu fusionne le profil du serveur
+// (pseudo, meilleur temps du jour et sa rediffusion, temps des jours passés, meilleure place) avec le cache — le meilleur gagne — puis envoie au
+// serveur un record local qu'il n'a pas (fait hors ligne) : il le rejoue. Rien de tout cela ne touche à la simulation.
+
+/** Le cache a reçu un record du serveur : fantôme « ton record », accueil et réglages le montrent. */
+function applySyncedRecord() {
+  if (!track || salon || watch) return;
+  const fresh = loadBest(track.id);
+  if (fresh && (!best || fresh.ms !== best.ms || fresh.replay !== best.replay)) {
+    best = fresh;
+    if (ghostMode === "mine") {
+      ghostSource = best;
+      if (homeOpen || phase === "countdown") startAttempt(); // aucune course en cours : on repart avec le fantôme du serveur
+    }
+  }
+  homeUi.refresh({ board: true }); // ton temps (et donc ta place) vient peut-être de changer
+  settingsPanel?.sync();
+}
+
+async function syncProfile(force = false) {
+  if (!track || !daily || trial || salon || watch || online.demo || !online.profileApi) return;
+  const o = await online.sync.run({ force });
+  if (!o.ran) return;
+  if (o.merged && (o.merged.todayChanged || o.merged.pastChanged > 0 || o.merged.nameChanged)) applySyncedRecord();
+  // Un record local que le serveur n'a pas (fait hors ligne, ou avant que le serveur ne réponde) part maintenant : il le rejoue et le classe.
+  if (o.status !== "revoked" && submitAllowed && best && online.name && online.needsSubmit(best)) {
+    const r = await online.submit(best, online.name);
+    if (r.ok) {
+      online.sync.noteNameProblem(null);
+      rememberRank(daily.date, { rank: r.data.rank, participants: r.data.participants });
+      lastRank = { rank: r.data.rank, participants: r.data.participants };
+      homeUi.refresh({ board: true });
+    } else if (r.code === "name_taken") {
+      online.sync.noteNameProblem({ message: r.message, suggestions: r.suggestions ?? [] }); // la carte du profil propose un autre pseudo ou le code
+    }
+  }
+}
+
+/** Ouvre Réglages › Profil sur « Charger un code » (depuis un message d'erreur qui y mène). */
+function openLoadCode() {
+  openSettings("profile");
+  settingsPanel?.showLoad();
+}
 
 // --- Partage et archives --------------------------------------------------------------------
 let lastRank: { rank: number; participants: number } | null = null;
@@ -981,14 +1034,19 @@ function startOnlineFlow(box: HTMLElement) {
     box.replaceChildren(text("Envoi au classement…"));
     const r = await online.submit(best, name);
     if (r.ok) {
+      online.sync.noteNameProblem(null);
       const gap = r.data.bestMs !== best.ms ? ` (temps du serveur : ${formatTime(r.data.bestMs)})` : "";
       showRank(r.data.rank, r.data.participants, gap);
+    } else if (r.code === "name_taken") {
+      nameForm({ message: r.message, suggestions: r.suggestions }); // pseudo pris entre-temps : on en choisit un autre, ou on charge son code
+    } else if (r.code === "code_revoked") {
+      box.replaceChildren(text(r.message, "error"), button("Charger un code", () => openLoadCode()));
     } else {
       box.replaceChildren(text(r.status === 0 ? `Hors ligne : course non classée (${r.message})` : r.message, "error"), button("Réessayer", () => void send()));
     }
   };
 
-  const nameForm = () => {
+  const nameForm = (problem?: { message: string; suggestions?: string[] }) => {
     const form = document.createElement("form");
     const input = document.createElement("input");
     input.type = "text";
@@ -1002,18 +1060,40 @@ function startOnlineFlow(box: HTMLElement) {
     ok.className = "btn primary small";
     ok.textContent = "OK";
     const error = text("", "error");
+    const extras = document.createElement("div");
+    extras.className = "suggestions";
+    /** Pseudo refusé : le message du serveur, des pseudos libres à toucher, et « Charger un code » (le pseudo est peut-être le tien, sur un autre appareil). */
+    const showProblem = (message: string, suggestions: readonly string[] = [], offerLoad = false) => {
+      error.textContent = message;
+      extras.replaceChildren(
+        ...suggestions.map((s) =>
+          button(s, () => {
+            input.value = s;
+            form.requestSubmit();
+          }),
+        ),
+        ...(offerLoad ? [button("Charger un code", () => openLoadCode())] : []),
+      );
+    };
     const label = text(online.name ? "Nouveau pseudo" : "Choisis ton pseudo pour entrer au classement", "label");
-    form.append(label, input, ok, error);
+    form.append(label, input, ok, error, extras);
+    if (problem) showProblem(problem.message, problem.suggestions, true);
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = normalizeName(input.value);
+      showProblem("");
       if (!isValidName(name)) {
         error.textContent = "1 à 20 caractères : lettres, chiffres, espace . _ ' -";
         return;
       }
       ok.disabled = true;
       const pending = online.needsSubmit(best);
-      await online.rename(name, !pending); // pas encore classé : le pseudo part avec la course
+      const renamed = await online.rename(name, { viaSubmit: pending }); // pas encore classé : le pseudo part avec la course
+      if (!renamed.ok) {
+        ok.disabled = false;
+        showProblem(renamed.message, renamed.suggestions, renamed.code === "name_taken");
+        return;
+      }
       settingsPanel?.sync();
       if (pending) await send();
       else {
@@ -1120,24 +1200,56 @@ function finishSalonRun() {
     } else {
       const retry = Object.assign(document.createElement("button"), { type: "button", className: "link", textContent: "Réessayer" });
       retry.addEventListener("click", () => void send());
+      if (r.code === "name_taken") return nameForm({ message: r.message, suggestions: r.suggestions });
+      if (r.code === "code_revoked") {
+        const load = Object.assign(document.createElement("button"), { type: "button", className: "link", textContent: "Charger un code" });
+        load.addEventListener("click", () => openLoadCode());
+        return box.replaceChildren(text(r.message, "error"), load);
+      }
       box.replaceChildren(text(r.message, "error"), ...(sal.canSubmit(sessionNo) ? [retry] : []));
     }
   };
-  const nameForm = () => {
+  const nameForm = (problem?: { message: string; suggestions?: string[] }) => {
     const form = document.createElement("form");
     const input = Object.assign(document.createElement("input"), { type: "text", maxLength: 20, placeholder: "Ton pseudo", autocomplete: "off", value: getName() ?? "" });
     const ok = Object.assign(document.createElement("button"), { type: "submit", textContent: "OK" });
     const error = text("", "error");
-    form.append(text("Choisis ton pseudo pour entrer au classement du Salon", "label"), input, ok, error);
-    form.addEventListener("submit", (ev) => {
+    const extras = Object.assign(document.createElement("div"), { className: "suggestions" });
+    const link = (label: string, onClick: () => void) => {
+      const b = Object.assign(document.createElement("button"), { type: "button", className: "link", textContent: label });
+      b.addEventListener("click", onClick);
+      return b;
+    };
+    /** Pseudo refusé : le message du serveur, des pseudos libres à toucher, et « Charger un code » (le pseudo est peut-être le tien, sur un autre appareil). */
+    const showProblem = (message: string, suggestions: readonly string[] = [], offerLoad = false) => {
+      error.textContent = message;
+      extras.replaceChildren(
+        ...suggestions.map((s) =>
+          link(s, () => {
+            input.value = s;
+            form.requestSubmit();
+          }),
+        ),
+        ...(offerLoad ? [link("Charger un code", () => openLoadCode())] : []),
+      );
+    };
+    form.append(text("Choisis ton pseudo pour entrer au classement du Salon", "label"), input, ok, error, extras);
+    if (problem) showProblem(problem.message, problem.suggestions, true);
+    form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const name = normalizeName(input.value);
+      showProblem("");
       if (!isValidName(name)) {
         error.textContent = "1 à 20 caractères : lettres, chiffres, espace . _ ' -";
         return;
       }
-      setName(name);
       ok.disabled = true;
+      const renamed = await online.rename(name, { viaSubmit: true }); // le serveur dit si le pseudo est libre (réservé à son premier propriétaire)
+      if (!renamed.ok) {
+        ok.disabled = false;
+        showProblem(renamed.message, renamed.suggestions, renamed.code === "name_taken");
+        return;
+      }
       void send();
     });
     box.replaceChildren(form);
@@ -2047,7 +2159,8 @@ if (!watchWanted && !salon && (settings.ghost === "first" || settings.ghost === 
 if (homeOpen) {
   syncSceneQuality();
   homeUi.open();
-} else if (needsHowto() && !watchWanted) howto.open(); // première visite sans passer par l'accueil (lien direct) : l'aide d'abord
+} else if (needsHowto() && !watchWanted) howto.open();
+void syncProfile(); // au lancement // première visite sans passer par l'accueil (lien direct) : l'aide d'abord
 renderer.setAnimationLoop(frame);
 
 // Accès de débogage pour les tests de navigateur (`?debug`) : état de la course, sans effet sur le jeu.
@@ -2185,6 +2298,10 @@ if (params.has("debug")) {
       /** Interface (lot 29) : accueil ouvert, réglages, aide, classement replié, réglages courants. */
       get ui() {
         return { home: homeOpen, settings: !!settingsPanel?.isOpen(), howto: howto.isOpen(), boardFolded: boardPanel.folded(), boardHidden: hudBoard.hidden, settingsValues: { ...settings }, paused, quality: governor.level, qualityLocked: governor.locked, homeAllowed };
+      },
+      /** Synchronisation du profil (lot 30) : état (`ok`, `offline`, `revoked`, `unknown`…) et record du jour tel qu'il est gardé ici. */
+      get sync() {
+        return { ...online.sync.state, best: best ? { ms: best.ms, replay: !!best.replay } : null, playerId: online.playerId, name: online.name };
       },
       /** Joue une rediffusion à la place du clavier (tests de navigateur). */
       autoplay(code: string) {

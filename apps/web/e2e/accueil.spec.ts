@@ -483,75 +483,42 @@ test.describe("profil", () => {
     await ctx.close();
   });
 
-  test("« Copier mon code » puis « Charger un code » dans un autre contexte : mêmes pseudo, records et places", async ({ browser }) => {
+  test("« Copier mon code » donne un code court (l'identifiant et une somme de contrôle) ; sans serveur, on ne peut pas en charger un", async ({ browser }) => {
+    // Charger un code récupère le profil depuis le serveur (lot 30) : le parcours complet, avec un vrai serveur et deux appareils, est dans profil.spec.ts.
     const ID = "0123456789abcdef0123456789abcdef";
-    const OTHER = "fedcba9876543210fedcba9876543210";
-    const today = formatDay(TODAY);
-    const old = formatDay(TODAY - 5); // un autre jour que « aujourd'hui » (une date écrite en dur finissait par tomber un jour de test)
     const a = await fresh(browser);
     const pa = await a.newPage();
-    await pa.addInitScript(
-      ([id, t]) => {
-        if (localStorage.getItem("cdj:player")) return;
+    await pa.addInitScript((id) => {
+      if (!localStorage.getItem("cdj:player")) {
         localStorage.setItem("cdj:player", id!);
         localStorage.setItem("cdj:name", "Alice");
-        localStorage.setItem(`cdj:best:jour-${t}-g15`, JSON.stringify({ ms: 41000, splits: [10000, 20000], simVersion: 14, medal: "silver" }));
-        localStorage.setItem(`cdj:sub:jour-${t}-g15`, "41000");
-        localStorage.setItem(`cdj:rank:${t}`, JSON.stringify({ rank: 2, participants: 7 }));
-      },
-      [ID, today],
-    );
+      }
+    }, ID);
     await open(pa, "/?home=1&debug&api=demo");
     await pa.getByRole("button", { name: "Copier mon code" }).click();
     await expect(pa.locator("#home .tr-msg")).toContainText("Code copié");
     await expect(pa.locator("#home .tr-msg")).toContainText("Garde-le pour toi");
     await expect(pa.locator("#home .profile .warn")).toContainText("ne le partage pas"); // l'avertissement est toujours là
     const code = await pa.evaluate(() => navigator.clipboard.readText());
-    expect(code).toMatch(/^CDJ1\.[A-Za-z0-9_-]+\.[0-9a-f]{8}$/);
+    expect(code).toMatch(/^CDJ2\.[0-9a-f]{32}\.[0-9a-f]{8}$/);
+    expect(code).toContain(ID);
     expect(await pa.locator("#home .tr-code").inputValue()).toBe(""); // le code n'est pas montré à l'écran
 
-    // Autre navigateur : une autre identité, d'autres records.
+    // Autre navigateur : sans serveur (démonstration), il n'y a pas de profil à retrouver : le jeu le dit, rien ne change.
     const b = await fresh(browser);
     const pb = await b.newPage();
-    await pb.addInitScript(
-      ([id, o]) => {
-        if (localStorage.getItem("cdj:player")) return;
-        localStorage.setItem("cdj:player", id!);
-        localStorage.setItem("cdj:name", "Bob");
-        localStorage.setItem(`cdj:best:jour-${o}-g15`, JSON.stringify({ ms: 50000, splits: [], simVersion: 14 }));
-        localStorage.setItem("cdj:touch", '{"vibration":false}');
-      },
-      [OTHER, old],
-    );
     await open(pb, "/?home=1&debug&api=demo");
-    await expect(pb.locator("#home .profile input.name")).toHaveValue("Bob");
+    const before = await pb.evaluate(() => localStorage.getItem("cdj:player"));
     await pb.getByRole("button", { name: "Charger un code" }).click();
     await pb.locator("#home .tr-code").fill(code);
-    // Aperçu du profil trouvé, avec confirmation ; rien n'a changé.
-    await expect(pb.locator("#home .tr-preview")).toBeVisible();
-    await expect(pb.locator("#home .tr-preview")).toContainText("« Alice »");
-    await expect(pb.locator("#home .tr-preview")).toContainText("Jours joués1");
-    await expect(pb.locator("#home .tr-preview")).toContainText("2e sur 7");
-    await expect(pb.locator("#home .tr-preview")).toContainText("« Bob »");
-    expect(await pb.evaluate(() => localStorage.getItem("cdj:player"))).toBe(OTHER);
-    await pb.screenshot({ path: "../../docs/lots/img/lot-29-charger-un-code.png" });
-    const reloaded = pb.waitForEvent("load");
-    await pb.locator("#home .tr-apply").click();
-    await reloaded;
-    await pb.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
-    await expect(pb.locator("#home .profile input.name")).toHaveValue("Alice");
-    const state = await pb.evaluate(() => ({ ...localStorage }));
-    expect(state["cdj:player"]).toBe(ID);
-    expect(JSON.parse(state[`cdj:best:jour-${today}-g15`]!).ms).toBe(41000);
-    expect(state[`cdj:best:jour-${old}-g15`]).toBeUndefined(); // les anciens records sont remplacés
-    expect(JSON.parse(state[`cdj:rank:${today}`]!)).toEqual({ rank: 2, participants: 7 });
-    expect(state["cdj:touch"]).toBe('{"vibration":false}'); // les réglages restent
-    await expect(pb.locator("#home .profile .stats")).toContainText("🥈 1");
+    await expect(pb.locator("#home .tr-msg")).toContainText("Pas de serveur ici");
+    await expect(pb.locator("#home .tr-preview")).toBeHidden();
+    expect(await pb.evaluate(() => localStorage.getItem("cdj:player"))).toBe(before);
     await a.close();
     await b.close();
   });
 
-  test("un code abîmé est refusé sans rien changer ; annuler ne change rien non plus ; taper dans la zone ne commande pas le jeu", async ({ browser }) => {
+  test("un code abîmé est refusé sans rien changer ; taper dans la zone ne commande pas le jeu", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await page.addInitScript(() => {
@@ -564,15 +531,13 @@ test.describe("profil", () => {
     await page.getByRole("button", { name: "Copier mon code" }).click();
     const code = await page.evaluate(() => navigator.clipboard.readText());
     await page.getByRole("button", { name: "Charger un code" }).click();
-    await page.locator("#home .tr-code").fill(code.slice(0, 40) + code.slice(52));
+    await page.locator("#home .tr-code").fill(code.slice(0, -1) + (code.endsWith("0") ? "1" : "0"));
     await expect(page.locator("#home .tr-msg")).toContainText("somme de contrôle");
     await expect(page.locator("#home .tr-preview")).toBeHidden();
+    await page.locator("#home .tr-code").fill(code.slice(0, 20) + code.slice(24));
+    await expect(page.locator("#home .tr-msg")).toContainText("abîmé");
     await page.locator("#home .tr-code").fill("bonjour");
     await expect(page.locator("#home .tr-msg")).toContainText("Ce n'est pas un code de transfert");
-    await page.locator("#home .tr-code").fill(code);
-    await expect(page.locator("#home .tr-preview")).toBeVisible();
-    await page.locator("#home .tr-cancel").click();
-    await expect(page.locator("#home .tr-preview")).toBeHidden();
     expect(await page.evaluate(() => localStorage.getItem("cdj:player"))).toBe("0123456789abcdef0123456789abcdef");
     await page.locator("#home .tr-code").fill("");
     await page.locator("#home .tr-code").press("p");

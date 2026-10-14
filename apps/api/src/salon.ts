@@ -14,7 +14,7 @@ import {
 import type { SqlDb } from "./db";
 import { HttpError } from "./errors";
 import type { Logger } from "./log";
-import { cleanName } from "./validate";
+import type { Players } from "./players";
 
 // Le Salon côté serveur (lot 27) : il sert le contrat `SalonApi` du jeu (`apps/web/src/salonApi.ts`).
 //
@@ -85,6 +85,8 @@ export interface SalonKit {
   hit: (key: string, limit: number) => Promise<void>;
   readJson: (req: Request) => Promise<Record<string, unknown>>;
   playerIdOf: (value: unknown) => string;
+  /** Joueurs (lot 30) : pseudos réservés et codes révoqués, mêmes règles que le classement du jour. */
+  players: Players;
   limits: SalonLimits;
   /** Marque `demo` les joueurs créés (jamais réglé par le serveur de production). */
   demoPlayers: boolean;
@@ -381,8 +383,6 @@ export function createSalon(kit: SalonKit) {
     const body = await kit.readJson(req);
     const playerId = kit.playerIdOf(body.playerId);
     if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
-    const suppliedName = body.name === undefined ? null : cleanName(body.name);
-    if (body.name !== undefined && suppliedName === null) throw new HttpError(400, "invalid_name", "Pseudo invalide (1 à 20 caractères : lettres, chiffres, espace . _ ' -)");
 
     // Vérifications sans état d'abord (une session qui n'est pas ouverte ne coûte rien à refuser).
     const t = now();
@@ -394,9 +394,9 @@ export function createSalon(kit: SalonKit) {
 
     // Débit : par adresse (avant tout rejeu), puis par joueur.
     if (info.clientKey) await kit.hit(await kit.hashKey("ssb", info.clientKey), limits.submitsPerClient);
-    const known = await db.first<{ name: string }>("SELECT name FROM players WHERE id = ?", [playerId]);
-    if (!suppliedName && !known) throw new HttpError(400, "name_required", "Choisis un pseudo pour entrer au classement");
-    const name = suppliedName ?? known!.name;
+    await kit.players.assertActive(playerId);
+    const known = await kit.players.find(playerId);
+    const name = await kit.players.resolveName(playerId, body.name, known); // pseudo réservé à son premier propriétaire (lot 30)
     await throttleSubmit(playerId); // un oubli de pseudo ne coûte pas le délai : il se corrige tout de suite
 
     let replay;
@@ -417,10 +417,7 @@ export function createSalon(kit: SalonKit) {
 
     const at = now();
     // Le joueur n'existe qu'après une course valide ; son pseudo est celui du classement du jour (même identité).
-    await db.run(
-      "INSERT INTO players (id, name, created_at, updated_at, demo) VALUES (?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at WHERE players.name <> excluded.name",
-      [playerId, name, at, at, kit.demoPlayers ? 1 : 0],
-    );
+    await kit.players.save(playerId, name, known);
     const ref = await refOf(session, playerId);
     const previous = await db.first<{ ms: number; name: string }>("SELECT ms, name FROM salon_runs WHERE session = ? AND player_id = ?", [session, playerId]);
     const improved = !previous || result.finishMs < previous.ms;
