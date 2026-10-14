@@ -489,6 +489,7 @@ test.describe("profil", () => {
     const ID = "0123456789abcdef0123456789abcdef";
     const OTHER = "fedcba9876543210fedcba9876543210";
     const today = formatDay(TODAY);
+    const old = formatDay(TODAY - 5); // un autre jour que « aujourd'hui » (une date écrite en dur finissait par tomber un jour de test)
     const a = await fresh(browser);
     const pa = await a.newPage();
     await pa.addInitScript(
@@ -515,14 +516,14 @@ test.describe("profil", () => {
     const b = await fresh(browser);
     const pb = await b.newPage();
     await pb.addInitScript(
-      ([id]) => {
+      ([id, o]) => {
         if (localStorage.getItem("cdj:player")) return;
         localStorage.setItem("cdj:player", id!);
         localStorage.setItem("cdj:name", "Bob");
-        localStorage.setItem("cdj:best:jour-2026-10-20-g15", JSON.stringify({ ms: 50000, splits: [], simVersion: 14 }));
+        localStorage.setItem(`cdj:best:jour-${o}-g15`, JSON.stringify({ ms: 50000, splits: [], simVersion: 14 }));
         localStorage.setItem("cdj:touch", '{"vibration":false}');
       },
-      [OTHER],
+      [OTHER, old],
     );
     await open(pb, "/?home=1&debug&api=demo");
     await expect(pb.locator("#home .profile input.name")).toHaveValue("Bob");
@@ -544,7 +545,7 @@ test.describe("profil", () => {
     const state = await pb.evaluate(() => ({ ...localStorage }));
     expect(state["cdj:player"]).toBe(ID);
     expect(JSON.parse(state[`cdj:best:jour-${today}-g15`]!).ms).toBe(41000);
-    expect(state["cdj:best:jour-2026-10-20-g15"]).toBeUndefined(); // les anciens records sont remplacés
+    expect(state[`cdj:best:jour-${old}-g15`]).toBeUndefined(); // les anciens records sont remplacés
     expect(JSON.parse(state[`cdj:rank:${today}`]!)).toEqual({ rank: 2, participants: 7 });
     expect(state["cdj:touch"]).toBe('{"vibration":false}'); // les réglages restent
     await expect(pb.locator("#home .profile .stats")).toContainText("🥈 1");
