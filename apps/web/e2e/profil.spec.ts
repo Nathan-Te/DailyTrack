@@ -7,7 +7,9 @@ import { formatTime } from "../src/format";
 // « appareils » = contextes de navigateur isolés. Chaque course est jouée en accéléré (`?debug&timescale=6`) avec la rediffusion d'un pilote.
 // Les scénarios se suivent (mode série) : A, B et C sont les mêmes appareils d'un bout à l'autre. Le rendu 3D demande WebGL : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
-test.describe.configure({ mode: "serial" });
+// Pas de relance : les scénarios se suivent sur le même serveur (mémoire) et chacun laisse des joueurs derrière lui. Une relance du premier trouverait « Nowy » déjà pris
+// (c'est précisément ce que ce lot garantit) et ne dirait rien de la cause du premier échec.
+test.describe.configure({ mode: "serial", retries: 0 });
 test.setTimeout(240_000);
 // Plusieurs pages et deux workers dessinent en rendu logiciel sur la CI : un aller-retour vers l'API y dépasse vite 5 s. Les attentes d'état ont 30 s.
 const expect = baseExpect.configure({ timeout: 30_000 });
@@ -39,6 +41,19 @@ async function race(page: Page, code: string) {
  */
 const sleep = (page: Page) => page.evaluate(() => window.__cdj.manual(true));
 const wake = (page: Page) => page.evaluate(() => window.__cdj.manual(false));
+/**
+ * Ouvre une page et attend que la synchronisation du profil ait eu une réponse du serveur (ok, inconnu ou code remplacé), en rechargeant jusqu'à trois fois :
+ * sur la CI, deux workers dessinent en rendu logiciel et un appel à l'API peut dépasser son délai de 8 s (la synchronisation se dit alors « hors ligne »
+ * et se refait au lancement suivant — c'est le comportement voulu du jeu, pas ce que ce test vérifie).
+ */
+async function syncedGoto(page: Page, url: string): Promise<void> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    await page.goto(url);
+    await page.waitForFunction(() => window.__cdj?.sync && !["idle", "syncing"].includes(window.__cdj.sync.status), undefined, { timeout: 60_000 });
+    if ((await page.evaluate(() => window.__cdj.sync.status)) !== "offline") return;
+  }
+}
+
 const idOf = (page: Page) => page.evaluate(() => localStorage.getItem("cdj:player")!);
 const bestOf = (page: Page) => page.evaluate((id) => JSON.parse(localStorage.getItem(`cdj:best:${id}`) ?? "null") as { ms: number; replay?: string; medal?: string | null } | null, circuit.track.id);
 const board = async () => (await (await fetch(`${API}/api/day/${circuit.date}/leaderboard?limit=50`)).json()) as { participants: number; top: { name: string; ms: number }[] };
@@ -125,7 +140,7 @@ test("un record fait sur un appareil apparaît sur l'autre : temps, fantôme « 
   await sleep(a);
 
   // C revient à l'accueil après la pause de synchronisation (30 s) : on la saute en rechargeant, ce qui est un nouveau lancement.
-  await c.goto(`/?home=1&${GAME}`);
+  await syncedGoto(c, `/?home=1&${GAME}`);
   await expect.poll(async () => (await bestOf(c))?.ms, { timeout: 30_000 }).toBe(fast.finishMs);
   const record = (await bestOf(c))!;
   expect(record.replay).toBe(fastCode); // la rediffusion du serveur : le fantôme « ton record » suit
@@ -187,7 +202,7 @@ test("un pseudo changé sur un appareil se voit sur l'autre", async () => {
   // L'ancien pseudo est libre pour un autre : le pseudo n'appartient qu'à qui l'a.
   expect((await (await fetch(`${API}/api/name?name=nowy`)).json()).available).toBe(true);
 
-  await c.goto(`/?home=1&${GAME}`);
+  await syncedGoto(c, `/?home=1&${GAME}`);
   await expect(c.locator("#home .profile input.name")).toHaveValue("Nowy Pro", { timeout: 20_000 });
   expect(await c.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Nowy Pro");
   await sleep(c);
@@ -214,7 +229,7 @@ test("hors ligne : le cache sert et le dit discrètement ; le record fait hors l
   expect((await board()).participants).toBe(before);
   // Le réseau revient : au lancement suivant, le record est envoyé, rejoué et classé.
   await ctx.unroute(`${API}/**`);
-  await d.goto(`/?home=1&${GAME}`);
+  await syncedGoto(d, `/?home=1&${GAME}`);
   await expect.poll(async () => (await board()).top.find((r) => r.name === "Voyageur")?.ms, { timeout: 30_000 }).toBe(slow.finishMs);
   await expect(d.locator("#home .profile .notice.quiet")).toHaveCount(0);
   await expect(d.locator("#home .mine .rank")).toContainText(/sur \d+/, { timeout: 20_000 });
@@ -226,7 +241,7 @@ test("« Changer mon code » : l'ancien code ne vaut plus rien, l'autre appareil
   expect((await me(oldId)).status).toBe(200);
 
   // Sur C : confirmation obligatoire, puis le nouveau code est copié.
-  await c.goto(`/?home=1&${GAME}`);
+  await syncedGoto(c, `/?home=1&${GAME}`);
   await expect(c.locator("#home .profile input.name")).toHaveValue("Nowy Pro", { timeout: 20_000 });
   await c.getByRole("button", { name: "Changer mon code" }).click();
   await expect(c.locator("#home .tr-confirm")).toContainText("ne marchera plus");
@@ -251,8 +266,7 @@ test("« Changer mon code » : l'ancien code ne vaut plus rien, l'autre appareil
 
   await sleep(c); // c ne sert plus : il affamerait la page suivante (rendu logiciel)
   // Sur A (qui a encore l'ancien code) : le jeu signale que son code n'est plus valide…
-  await a.goto(`/?home=1&${GAME}`);
-  await a.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
+  await syncedGoto(a, `/?home=1&${GAME}`);
   const notice = a.locator("#home .profile .notice.error");
   await expect(notice).toContainText("Ce code n'est plus valide", { timeout: 20_000 });
   await a.screenshot({ path: "../../docs/lots/img/lot-30-code-invalide.png" });
