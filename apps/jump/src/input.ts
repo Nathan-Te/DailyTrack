@@ -95,6 +95,8 @@ export class Controls {
   private padRestartDown = false;
   private restartLatch = false;
   private padDir = 0;
+  private touchDir = 0;
+  private touchJump = false;
 
   constructor(target: Window = window) {
     target.addEventListener("keydown", (e) => {
@@ -120,7 +122,7 @@ export class Controls {
 
   private syncJump(): void {
     this.keyJump = this.has(KEYS.jump);
-    if (this.keyJump || this.padJumpDown) this.latch.press();
+    if (this.keyJump || this.padJumpDown || this.touchJump) this.latch.press();
     else this.latch.release();
   }
 
@@ -138,10 +140,24 @@ export class Controls {
     this.padRestartDown = restart;
   }
 
+  /** Direction (−1, 0, 1) et saut tenus par les doigts : le saut passe par la même mémorisation que le clavier, un appui bref compte. */
+  setTouch(direction: number, jump: boolean): void {
+    this.touchDir = direction;
+    if (jump !== this.touchJump) {
+      this.touchJump = jump;
+      this.syncJump();
+    }
+  }
+
+  /** Demande « recommencer » (bouton tactile) : même événement que la touche R. */
+  requestRestart(): void {
+    this.restartLatch = true;
+  }
+
   /** Les 3 bits du prochain pas de simulation. */
   sample(): number {
-    const left = this.has(KEYS.left) || this.padDir < 0;
-    const right = this.has(KEYS.right) || this.padDir > 0;
+    const left = this.has(KEYS.left) || this.padDir < 0 || this.touchDir < 0;
+    const right = this.has(KEYS.right) || this.padDir > 0 || this.touchDir > 0;
     return directionBits(left, right) | (this.latch.sample() ? INPUT_JUMP : 0);
   }
 

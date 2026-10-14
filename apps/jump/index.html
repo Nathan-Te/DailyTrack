@@ -8,10 +8,13 @@
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffd22e'/%3E%3C/svg%3E" />
     <title>DailyJump</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #101820; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
-      body { user-select: none; -webkit-user-select: none; }
-      canvas { display: block; width: 100%; height: 100%; }
-      #stamp { position: fixed; right: 12px; bottom: 10px; color: #fff; font: 600 13px system-ui, sans-serif; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); font-variant-numeric: tabular-nums; pointer-events: none; text-align: right; }
+      :root { --band: 60px; }
+      html { margin: 0; height: 100%; height: 100dvh; background: #101820; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
+      /* Corps fixe : ni défilement, ni rebond, ni barre d'adresse qui bouge la page. */
+      body { position: fixed; inset: 0; margin: 0; overflow: hidden; overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; background: #101820; }
+      canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+      #stamp { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); color: #fff; font: 600 13px system-ui, sans-serif; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); font-variant-numeric: tabular-nums; pointer-events: none; text-align: right; }
+      #hud { display: contents; }
       #debug { position: fixed; left: 10px; top: 10px; margin: 0; padding: 6px 9px; color: #fff; background: rgba(11, 16, 32, 0.72); border-radius: 8px; font: 600 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; pointer-events: none; }
       #debug[hidden] { display: none; }
       #tuned { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); font: 700 12px system-ui, sans-serif; color: #ffd22e; background: rgba(11, 16, 32, 0.72); padding: 2px 9px; border-radius: 6px; pointer-events: none; }
@@ -30,13 +33,55 @@
       #tune .actions { display: flex; gap: 6px; margin-top: 6px; }
       #tune .actions button { font: inherit; padding: 5px 8px; border-radius: 6px; border: 0; cursor: pointer; background: #ffd22e; color: #111; }
       #tune .actions button + button { background: rgba(255, 255, 255, 0.14); color: #fff; }
+      /* Réglages sur téléphone (?debug&tune) : ouverts par ⚙, en feuille qui prend la page et défile ; curseurs et boutons d'au moins 44 px. */
+      body.touch #tune { background: rgba(11, 16, 32, 0.97); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; z-index: 30; font-size: 14px; padding: 8px 12px 16px; }
+      body.touch #tune .head { position: sticky; top: -8px; margin: -8px -12px 0; padding: 8px 12px; background: rgba(11, 16, 32, 0.96); z-index: 1; }
+      body.touch #tune .head button { width: 44px; height: 44px; font-size: 18px; }
+      body.touch #tune .row { margin-top: 12px; }
+      body.touch #tune .row input { height: 44px; touch-action: pan-y; }
+      body.touch #tune .actions { flex-wrap: wrap; }
+      body.touch #tune .actions button { min-height: 44px; padding: 0 14px; }
+      #tune textarea.json { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 6px; padding: 6px; user-select: text; -webkit-user-select: text; }
+      #tune textarea.json[hidden] { display: none; }
+      /* Commandes tactiles (lot 1b) : la couche reçoit les doigts, les boutons dessinés ne reçoivent rien. */
+      #touch { position: fixed; inset: 0; z-index: 5; touch-action: none; -webkit-user-select: none; user-select: none; }
+      body.touch-suspended #touch { pointer-events: none; }
+      #tbuttons { position: fixed; inset: 0; z-index: 6; pointer-events: none; visibility: hidden; }
+      body.touch-seen #tbuttons { visibility: visible; }
+      body.touch-suspended #tbuttons { visibility: hidden; }
+      .tbtn { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 22%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.85); font: 700 26px system-ui, sans-serif; transition: background 60ms, transform 60ms; }
+      .tbtn.down { background: rgba(255, 210, 46, 0.62); border-color: #ffd22e; color: #101820; transform: scale(0.94); }
+      #tbar { position: fixed; z-index: 7; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
+      .tbar-right { display: flex; gap: 8px; }
+      .tbar-btn { pointer-events: auto; box-sizing: border-box; width: 48px; height: 48px; padding: 0; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.45); background: rgba(11, 16, 32, 0.55); color: #fff; font: 700 24px system-ui, sans-serif; line-height: 1; touch-action: manipulation; }
+      .tbar-btn:active { background: rgba(255, 210, 46, 0.6); color: #101820; }
+      body.touch-suspended #tbar { display: none; }
+      /* Sur téléphone, la surimpression de debug descend sous la bande haute et s'empile avec l'invitation à tourner l'écran. */
+      body.touch #hud { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; position: fixed; z-index: 4; left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); top: calc(var(--band) + 4px); pointer-events: none; }
+      body.touch #debug, body.touch #tuned { box-sizing: border-box; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; position: static; transform: none; font-size: 11px; line-height: 1.35; background: rgba(11, 16, 32, 0.82); }
+      body.touch-suspended #hud { visibility: hidden; }
+      @media (max-height: 520px) { body.touch #debug { font-size: 10px; } }
+      #rotate { display: none; align-self: center; box-sizing: border-box; max-width: 100%; padding: 6px 12px; border-radius: 999px; background: rgba(11, 16, 32, 0.78); color: #fff; font: 600 13px system-ui, sans-serif; text-align: center; animation: rotate-out 0.6s ease 9s forwards; }
+      @media (orientation: portrait) { body.touch #rotate:not(.gone) { display: block; } }
+      @keyframes rotate-out { to { opacity: 0; visibility: hidden; } }
+      /* ?zones=1 */
+      #zones { position: fixed; inset: 0; z-index: 9; pointer-events: none; }
+      #zones .zone { position: absolute; box-sizing: border-box; border: 1px dashed rgba(255, 255, 255, 0.7); color: rgba(255, 255, 255, 0.8); font: 600 12px system-ui, sans-serif; padding: 2px 4px; }
+      #zones .zone.left { background: rgba(80, 160, 255, 0.12); }
+      #zones .zone.right { background: rgba(80, 255, 160, 0.12); }
+      #zones .zone.jump { background: rgba(255, 170, 60, 0.12); }
+      #zones .zone.band { background: rgba(255, 80, 80, 0.12); }
+      #zones .dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #ff3b6b; border: 2px solid #fff; }
+      #zones .dot.jump { background: #ffaa3c; }
       #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
     </style>
   </head>
   <body>
     <div id="stamp"></div>
-    <pre id="debug" hidden></pre>
-    <div id="tuned"></div>
+    <div id="hud">
+      <pre id="debug" hidden></pre>
+      <div id="tuned"></div>
+    </div>
     <div id="tune" hidden></div>
     <div id="nogl">WebGL n'est pas disponible dans ce navigateur : DailyJump ne peut pas s'afficher.</div>
     <script type="module" src="/src/main.ts"></script>

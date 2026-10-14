@@ -32,6 +32,16 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     description: "Avec `debug` : panneau de réglages du personnage (mémorisé dans `jump:tune`). Une partie aux réglages modifiés n'est jamais enregistrée.",
     values: [],
   },
+  {
+    name: "touch",
+    description: "Commandes tactiles : `1` les force (la souris simule le doigt, boutons visibles), `0` les coupe ; sans le paramètre, l'appareil décide (pointeur grossier).",
+    values: ["1", "0"],
+  },
+  {
+    name: "zones",
+    description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
+    values: [],
+  },
 ];
 
 export interface UrlChoices {
@@ -39,6 +49,10 @@ export interface UrlChoices {
   debug: boolean;
   /** Panneau de réglages : seulement avec `debug`. */
   tune: boolean;
+  /** `1` / `0` : tactile imposé ou coupé ; `null` : l'appareil décide. */
+  touch: "1" | "0" | null;
+  /** Zones et doigts dessinés. */
+  zones: boolean;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -49,5 +63,7 @@ export function readUrlOptions(search: string): UrlChoices {
     scenario: (SCENARIOS as readonly string[]).includes(scenario ?? "") ? (scenario as Scenario) : "bac-a-sable",
     debug,
     tune: debug && params.has("tune"),
+    touch: params.get("touch") === "1" ? "1" : params.get("touch") === "0" ? "0" : null,
+    zones: params.has("zones"),
   };
 }

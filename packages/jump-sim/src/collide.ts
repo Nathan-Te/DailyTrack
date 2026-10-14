@@ -1,20 +1,20 @@
 import { UNITS_PER_TILE } from "./constants";
-import { idiv } from "./idiv";
 import { TILE_SOLID, tileAt, type Level } from "./level";
 
 // Collisions boîte contre grille, en unités entières. Une boîte = [x, x + w) × [y, y + h) (x vers la droite, y vers le bas).
 // Les déplacements se font axe par axe et ne parcourent que les colonnes (ou rangées) **nouvellement** couvertes : la boîte s'arrête
 // contre la première tuile pleine rencontrée, quelle que soit la vitesse (et la vitesse reste sous une tuile par pas, `MAX_SPEED`).
 
-/** Division arrondie vers le bas (−1 ÷ 4 096 = −1), bâtie sur `idiv` : la tuile qui contient une coordonnée, même négative. */
-export function floorDiv(a: number, b: number): number {
-  const q = idiv(a, b);
-  return a % b !== 0 && a < 0 !== b < 0 ? q - 1 : q;
-}
+/** Décalage qui divise par `UNITS_PER_TILE` (4 096 = 2^12). */
+const TILE_SHIFT = 12;
 
-/** Tuile (colonne ou rangée) qui contient la coordonnée `v`. */
+/**
+ * Tuile (colonne ou rangée) qui contient la coordonnée `v`, négative comprise : `v >> 12`, arrondi vers le bas, jamais `-0`.
+ * **Seul usage permis d'un décalage dans la simulation** (toute autre division passe par `idiv`). Exact tant que `v` tient sur 32 bits
+ * signés (±2^31 unités = ±524 288 tuiles), très au-delà de tout niveau ; testé contre `Math.floor(v / 4096)`.
+ */
 export function tileOf(v: number): number {
-  return floorDiv(v, UNITS_PER_TILE);
+  return v >> TILE_SHIFT;
 }
 
 /** Vrai si une tuile pleine se trouve dans les colonnes [c0, c1] × rangées [r0, r1]. */

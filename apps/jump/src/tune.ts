@@ -150,16 +150,22 @@ async function copyText(text: string): Promise<boolean> {
   }
 }
 
+export interface TunePanelOptions {
+  /** Sur téléphone : le panneau s'ouvre par ⚙ ; ce bouton ✕ le referme (à la place du repli – / +). */
+  onClose?: () => void;
+}
+
 /** Construit le panneau dans `root`. `params` est modifié en place ; `onChange` après chaque modification. */
-export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: () => void): { refresh(): void } {
+export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: () => void, options: TunePanelOptions = {}): { refresh(): void } {
   const head = document.createElement("div");
   head.className = "head";
   const title = document.createElement("strong");
   title.textContent = "Réglages du personnage";
   const toggle = document.createElement("button");
   toggle.type = "button";
-  toggle.textContent = "–";
-  toggle.title = "Replier";
+  toggle.textContent = options.onClose ? "✕" : "–";
+  toggle.title = options.onClose ? "Fermer" : "Replier";
+  if (options.onClose) toggle.setAttribute("aria-label", "Fermer les réglages");
   head.append(title, toggle);
 
   const body = document.createElement("div");
@@ -221,10 +227,25 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
     actions.append(b);
     return b;
   };
+  // Presse-papiers refusé (page non sécurisée, navigateur strict) : le JSON s'affiche dans une zone de texte déjà sélectionnée.
+  const fallback = document.createElement("textarea");
+  fallback.className = "json";
+  fallback.readOnly = true;
+  fallback.rows = 8;
+  fallback.hidden = true;
+  fallback.setAttribute("aria-label", "Valeurs à copier");
   button("Copier les valeurs", async (b) => {
-    const ok = await copyText(paramsJson(params));
-    b.textContent = ok ? "Copié ✓" : "Copie impossible";
-    setTimeout(() => (b.textContent = "Copier les valeurs"), 1600);
+    const text = paramsJson(params);
+    const ok = await copyText(text);
+    fallback.hidden = ok;
+    if (!ok) {
+      fallback.value = text;
+      fallback.focus();
+      fallback.select();
+      fallback.setSelectionRange(0, text.length);
+    }
+    b.textContent = ok ? "Copié ✓" : "Copie impossible : texte ci-dessous";
+    setTimeout(() => (b.textContent = "Copier les valeurs"), 2400);
   });
   button("Réinitialiser", () => {
     Object.assign(params, DEFAULT_JUMP_PARAMS);
@@ -232,16 +253,20 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
     refresh();
     onChange();
   });
-  body.append(status, actions);
+  body.append(status, actions, fallback);
 
   toggle.addEventListener("click", () => {
     toggle.blur();
+    if (options.onClose) {
+      options.onClose();
+      return;
+    }
     const folded = root.classList.toggle("folded");
     toggle.textContent = folded ? "+" : "–";
     toggle.title = folded ? "Déplier" : "Replier";
   });
   root.replaceChildren(head, body);
-  root.hidden = false;
+  root.hidden = options.onClose ? true : false;
   refresh();
   return { refresh };
 }
