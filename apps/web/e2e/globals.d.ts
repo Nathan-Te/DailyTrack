@@ -1,6 +1,19 @@
 // Accès de débogage exposé par le jeu avec `?debug` (voir src/main.ts), tel que les tests de navigateur le lisent.
 interface CdjDebug {
   phase: string;
+  /** Interface (lot 29) : accueil, réglages, aide ouverts ; classement replié ou masqué ; réglages courants ; qualité. */
+  ui: {
+    home: boolean;
+    settings: boolean;
+    howto: boolean;
+    boardFolded: boolean;
+    boardHidden: boolean;
+    settingsValues: { quality: string; particles: boolean; skids: boolean; shake: boolean; speedFeel: string; shadows: boolean; ghost: string; board: boolean; splits: boolean; unit: string };
+    paused: boolean;
+    quality: number;
+    qualityLocked: boolean;
+    homeAllowed: boolean;
+  };
   ghost: { z: number; tick: number } | null;
   car: { x: number; y: number; z: number; vx: number; vy: number; vz: number; yaw: number; tick: number; nx: number; ny: number; nz: number; grounded: number };
   race: unknown;

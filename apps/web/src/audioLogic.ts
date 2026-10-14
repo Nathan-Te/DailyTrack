@@ -80,22 +80,31 @@ export function windGain(speed: number): number {
 export const VOLUME_STEPS = [0, 0.25, 0.55, 1] as const;
 
 export interface AudioSettings {
-  /** Volume ∈ [0, 1] (0 = muet). */
+  /** Volume général ∈ [0, 1] (0 = muet). */
   volume: number;
   /** Dernier volume non nul, que la touche M rétablit. */
   last: number;
+  /** Niveaux des trois voix (lot 29), ∈ [0, 1], appliqués avant le volume général : moteur, effets (crissement, roulement, vent, bruitages), ambiance du thème. */
+  engine: number;
+  effects: number;
+  ambience: number;
 }
 
-export const DEFAULT_AUDIO: Readonly<AudioSettings> = { volume: 0.55, last: 0.55 };
+export const DEFAULT_AUDIO: Readonly<AudioSettings> = { volume: 0.55, last: 0.55, engine: 1, effects: 1, ambience: 1 };
+
+const unit = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : null);
 
 export function parseAudioSettings(raw: string | null): AudioSettings {
   const s: AudioSettings = { ...DEFAULT_AUDIO };
   if (!raw) return s;
   try {
-    const o = JSON.parse(raw) as { volume?: unknown; last?: unknown };
-    if (typeof o.volume === "number" && Number.isFinite(o.volume)) s.volume = Math.min(1, Math.max(0, o.volume));
+    const o = JSON.parse(raw) as Partial<Record<keyof AudioSettings, unknown>>;
+    s.volume = unit(o.volume) ?? s.volume;
     if (typeof o.last === "number" && Number.isFinite(o.last) && o.last > 0) s.last = Math.min(1, o.last);
     else if (s.volume > 0) s.last = s.volume;
+    s.engine = unit(o.engine) ?? s.engine;
+    s.effects = unit(o.effects) ?? s.effects;
+    s.ambience = unit(o.ambience) ?? s.ambience;
   } catch {
     /* réglages illisibles : valeurs par défaut */
   }
@@ -104,14 +113,20 @@ export function parseAudioSettings(raw: string | null): AudioSettings {
 
 /** Touche M : muet ↔ dernier volume. */
 export function toggleMute(s: AudioSettings): AudioSettings {
-  return s.volume > 0 ? { volume: 0, last: s.volume } : { volume: s.last > 0 ? s.last : DEFAULT_AUDIO.last, last: s.last };
+  return s.volume > 0 ? { ...s, volume: 0, last: s.volume } : { ...s, volume: s.last > 0 ? s.last : DEFAULT_AUDIO.last };
+}
+
+/** Volume général choisi au curseur : retenu comme « dernier volume » s'il n'est pas nul. */
+export function withVolume(s: AudioSettings, volume: number): AudioSettings {
+  const v = Math.min(1, Math.max(0, volume));
+  return { ...s, volume: v, last: v > 0 ? v : s.last };
 }
 
 /** Bouton son : cran suivant (muet → 25 % → 55 % → 100 % → muet). */
 export function nextVolume(s: AudioSettings): AudioSettings {
   const i = VOLUME_STEPS.findIndex((v) => v >= s.volume - 1e-9);
   const next = VOLUME_STEPS[(i + 1) % VOLUME_STEPS.length]!;
-  return { volume: next, last: next > 0 ? next : s.last };
+  return { ...s, volume: next, last: next > 0 ? next : s.last };
 }
 
 export function volumeIcon(volume: number): string {

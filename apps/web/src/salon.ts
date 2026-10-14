@@ -160,7 +160,7 @@ export function podiumRows(board: Pick<SalonBoard, "rows">): SalonRow[] {
  */
 export function modeHref(search: string, salon: boolean): string {
   const p = new URLSearchParams(search);
-  for (const k of ["mode", "scenario", "seed", "day", "theme", "variant", "spec", "f", "v", "m", "today", "salonAt"]) p.delete(k);
+  for (const k of ["mode", "scenario", "seed", "day", "theme", "variant", "spec", "f", "v", "m", "today", "salonAt", "home"]) p.delete(k);
   if (salon) p.set("mode", "salon");
   const q = p.toString().replace(/=(?=&|$)/g, "");
   return q ? `?${q}` : "?";

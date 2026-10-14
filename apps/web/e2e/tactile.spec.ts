@@ -150,8 +150,8 @@ for (const p of PHONES) {
       await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // le reste est gardé
       await polled(page, (i) => i.throttle).toBe(0);
       // Le joueur choisit l'accélérateur automatique : la sauvegarde porte la version, un rechargement le garde.
-      await page.getByRole("button", { name: "Réglages des commandes" }).click();
-      await page.getByRole("button", { name: "Automatique" }).click();
+      await page.locator("#tbar .gear").click();
+      await page.getByRole("radio", { name: "Automatique" }).click();
       await page.getByRole("button", { name: "Fermer" }).click();
       await polled(page, (i) => i.throttle).toBe(64);
       await page.reload();
@@ -178,7 +178,7 @@ for (const p of PHONES) {
       const frozen = await tick();
       await page.waitForTimeout(600);
       expect(await tick()).toBe(frozen); // rien ne bouge
-      await page.getByRole("button", { name: "Reprendre" }).first().click();
+      await page.locator("#pause-resume").click(); // la pause est une fenêtre : elle recouvre la barre tactile
       await expect(page.locator("#pause")).toBeHidden();
       await expect.poll(tick, { timeout: 5_000 }).toBeGreaterThan(frozen + 20);
 
@@ -195,14 +195,15 @@ for (const p of PHONES) {
     test("réglages : boutons ← →, accélérateur manuel, gardés d'une visite à l'autre ; cibles de 44 px", async ({ browser }) => {
       const { context, page } = await phone(browser, p);
       await racing(page, "/?debug&scenario=plat");
-      await page.getByRole("button", { name: "Réglages des commandes" }).click();
-      await expect(page.locator("#tsettings")).toBeVisible();
+      await page.locator("#tbar .gear").click();
+      await expect(page.locator("#settings")).toBeVisible();
+      await expect(page.locator("#page-controls")).toBeVisible(); // le bouton ⚙ ouvre Réglages › Commandes (lot 29)
       // La fenêtre figé la partie ; ses cibles font au moins 44 px.
-      for (const b of await page.locator("#tsettings button").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-      await page.getByRole("button", { name: "Boutons ← →" }).click();
-      await page.getByRole("button", { name: "Bouton gaz" }).click();
+      for (const b of await page.locator("#page-controls button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+      await page.getByRole("radio", { name: "Boutons ← →" }).click();
+      await page.getByRole("radio", { name: "Bouton gaz" }).click();
       await page.getByRole("button", { name: "Fermer" }).click();
-      await expect(page.locator("#tsettings")).toBeHidden();
+      await expect(page.locator("#settings")).toBeHidden();
       await expect(page.locator("#touch .steer-left")).toBeVisible();
       await expect(page.locator("#touch .pedal-gas")).toBeVisible();
 
@@ -592,13 +593,13 @@ for (const p of PHONES) {
       await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // forcé par ?steer=boutons
       const width = async () => (await page.locator("#touch .steer-left").boundingBox())!.width;
       const medium = await width();
-      await page.getByRole("button", { name: "Réglages des commandes" }).click();
-      await page.getByRole("button", { name: "Grands" }).click();
+      await page.locator("#tbar .gear").click();
+      await page.getByRole("radio", { name: "Grands" }).click();
       await page.getByRole("button", { name: "Fermer" }).click();
       expect(await width()).toBeGreaterThan(medium);
       expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).buttonSize)).toBe("large");
-      await page.getByRole("button", { name: "Réglages des commandes" }).click();
-      await page.getByRole("button", { name: "Petits" }).click();
+      await page.locator("#tbar .gear").click();
+      await page.getByRole("radio", { name: "Petits" }).click();
       await page.getByRole("button", { name: "Fermer" }).click();
       expect(await width()).toBeLessThan(medium);
       // le visuel respecte les marges des bords (bandes de gestes système)

@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 
+/** « 2026-10-13 » → « 13 oct. » (même format que l'en-tête du jeu, `src/profile.ts` : non importé ici, le projet de test ne compile pas `src`). */
+const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
+const dayShort = (d: string) => `${Number(d.slice(8))} ${MONTHS[Number(d.slice(5, 7)) - 1]}`;
+
 // Circuits du jour de référence calculés par Node (packages/sim/test/golden-daily.test.ts).
 const golden = JSON.parse(readFileSync(new URL("../../../packages/sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as {
   circuits: { date: string; number: number; attempt: number; spec: string; authorMs: number; palette: string; theme: string }[];
@@ -44,9 +48,9 @@ test.describe("jeu (rendu 3D)", () => {
       await page.goto(`/?debug&seed=${date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
       const expected = golden.circuits.find((c) => c.date === date)!;
-      if (expected.number >= 1) await expect(page.locator("#meta")).toContainText(`#${expected.number}`);
-      else await expect(page.locator("#meta")).not.toContainText("#");
-      await expect(page.locator("#meta")).toContainText(date);
+      if (expected.number >= 1) await expect(page.locator("#meta")).toContainText(`n° ${expected.number}`);
+      else await expect(page.locator("#meta")).not.toContainText("n°");
+      await expect(page.locator("#meta")).toContainText(dayShort(date));
       await expect(page.locator("#medals")).toContainText("🥇");
 
       const z0 = await page.evaluate(() => window.__cdj.car.z);

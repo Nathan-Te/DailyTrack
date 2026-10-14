@@ -44,7 +44,7 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
   await expect(alice.locator("#finish .online .error")).toContainText("1 à 20 caractères"); // pseudo refusé : rien n'est envoyé
   await alice.locator("#finish .online input").fill("Alice");
   await alice.locator("#finish .online button[type=submit]").click();
-  await expect(alice.locator("#finish .online .rank")).toHaveText("Rang 1 / 1");
+  await expect(alice.locator("#finish .online .rank")).toHaveText("1er sur 1");
   await expect(alice.locator("#board")).toContainText("Alice");
   // La ligne à partager reprend le rang donné par le serveur.
   await expect(alice.locator("#finish .share")).toHaveText(
@@ -56,7 +56,7 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
   await race(bob, slowCode);
   await bob.locator("#finish .online input").fill("Bob");
   await bob.locator("#finish .online button[type=submit]").click();
-  await expect(bob.locator("#finish .online .rank")).toHaveText("Rang 2 / 2");
+  await expect(bob.locator("#finish .online .rank")).toHaveText("2e sur 2");
   const rows = bob.locator("#board .row");
   await expect(rows).toHaveCount(2);
   await expect(rows.nth(0)).toContainText("Alice");
@@ -126,7 +126,8 @@ test("sans adresse d'API, aucun classement n'apparaît", async ({ browser }) => 
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
   await race(page, slowCode);
   await expect(page.locator("#finish .big")).toBeVisible();
-  await expect(page.locator("#finish .online")).toHaveCount(0);
+  await expect(page.locator("#finish .online")).toContainText(/non classée/i); // on le dit (lot 29), sans formulaire ni envoi
+  await expect(page.locator("#finish .online input")).toHaveCount(0);
   await expect(page.locator("#board")).toBeHidden();
   await context.close();
 });

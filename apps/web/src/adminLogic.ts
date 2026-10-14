@@ -35,6 +35,10 @@ export interface AdminState {
   steer: "" | "boutons" | "glisser";
   /** Dessine les zones tactiles actives (`?zones=1`). */
   zones: boolean;
+  /** Force l'écran d'accueil (`?home=1`, lot 29) : sans cela, `debug` et les liens directs le sautent. */
+  home: boolean;
+  /** Montre l'aide « Comment jouer » même avec `debug` (`?howto=1`, lot 29). */
+  howto: boolean;
   /** Le Salon (`?mode=salon`, lot 26) : un circuit toutes les 10 minutes ; avec `api=demo` ou une API. Remplace le circuit du jour. */
   salon: boolean;
   /** Revoir le meilleur tour (`?watch=best`, lot 27b) : mode spectateur sur le circuit du jour ou, avec le Salon, la session en cours. */
@@ -67,6 +71,8 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   thumbs: "",
   steer: "",
   zones: false,
+  home: false,
+  howto: false,
   salon: false,
   watch: false,
   salonMinutes: "",
@@ -108,6 +114,8 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.thumbs !== "") p.set("thumbs", s.thumbs);
   if (s.steer !== "") p.set("steer", s.steer);
   if (s.zones) p.set("zones", "1");
+  if (s.home) p.set("home", "1");
+  if (s.howto) p.set("howto", "1");
   if (s.api.trim() !== "") p.set("api", s.api.trim());
   return p.toString().replace(/=(?=&|$)/g, "");
 }
@@ -127,7 +135,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
@@ -168,6 +176,8 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Le Salon (démonstration)", hint: "un circuit toutes les 10 minutes, joueurs fictifs, fantômes, classement de session, podium (?mode=salon&api=demo)", state: { api: "demo", salon: true } },
   { label: "Le Salon, sessions de 2 minutes", hint: "pour voir une bascule de circuit en deux minutes (?salonMinutes=2)", state: { api: "demo", salon: true, salonMinutes: "2" } },
   { label: "Revoir le meilleur tour (démonstration)", hint: "un jour passé du jeu de données de démonstration, en spectateur (?api=demo&day=2026-09-30&watch=best)", state: { api: "demo", date: "2026-09-30", watch: true } },
+  { label: "Accueil (démonstration)", hint: "l'écran d'accueil du jeu, classement et Salon de démonstration (?api=demo) ; ajoute le téléphone avec ?touch=1", state: { api: "demo" } },
+  { label: "Accueil avec les outils de test", hint: "l'accueil forcé (?home=1) malgré debug : pour tester le parcours accueil → course", state: { api: "demo", home: true, debug: true } },
   { label: "Archives de démonstration", hint: "14 jours passés, classements figés et fantômes (?api=demo)", state: { api: "demo" } },
   { label: "Essai tactile (souris = doigt)", hint: "interface mobile sur ordinateur", state: { touch: "1" } },
   { label: "Zones tactiles (boutons)", hint: "boutons ← → et frein, zones actives dessinées", state: { scenario: "pilotage", touch: "1", steer: "boutons", zones: true } },

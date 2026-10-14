@@ -1,4 +1,16 @@
+import "./ui.css";
 import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
+import { SPEED_FEEL_FACTOR, formatSpeed, loadSettings, qualityPlan, saveSettings, type GameSettings } from "./settings";
+import { dailyTitle, homeHref, lookupSalon, wantsHome, withoutHome, MEDAL_WORD } from "./homeLogic";
+import { mountHome, type HomeUi } from "./homeUi";
+import { mountSettings, type SettingsTab } from "./settingsUi";
+import type { ProfileHost } from "./profileUi";
+import { mountHowto } from "./howtoUi";
+import { howtoSeen, markHowtoSeen } from "./howto";
+import { mountBoardPanel } from "./boardPanel";
+import { dayLines, linesEls } from "./boardView";
+import { dayShort, rememberRank } from "./profile";
+import { el as makeEl, flashLabel } from "./dom";
 import { NeutralToneMapping, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
@@ -76,7 +88,6 @@ import { createTelemetry, readTelemetry } from "./telemetry";
 import { formatDelta, formatTime } from "./format";
 import type { Leaderboard } from "./api";
 import { isValidName, normalizeName, setName, getName } from "./identity";
-import { mountTransferUi } from "./transferUi";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
 import { mountTouchUi } from "./touchUi";
@@ -86,10 +97,10 @@ import { GHOST_COLORS, MY_GHOST_COLOR } from "./salon";
 import { ORBIT_MIN_DIST, clampOrbit, nextWatchCamera, orbitOffset, progressOf, seekTick, tickAt, unwatchHref, wantsWatch, watchHref, watchTitle, REWIND_TICKS, WATCH_SPEEDS, type WatchEntry, type WatchSpeed } from "./watch";
 import { mountWatchUi, type WatchUi } from "./watchUi";
 import { SalonController, bootSalon, isBootError, type SalonHost, type SalonRunResult } from "./salonMode";
-import { modeHref, salonShareLine as salonLine } from "./salon";
+import { modeHref, salonShareLine as salonLine, sessionMsFromParams } from "./salon";
 import type { LoadedSalonCircuit } from "./salonEngine";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
-import { MEDAL_ICON, shareLine, shareText, shareUrl, type ShareResult } from "./share";
+import { MEDAL_ICON, ordinal, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { buildTrackScene, type TrackScene } from "./trackMesh";
 import { loadTunedParams, mountTunePanel } from "./tune";
@@ -163,6 +174,17 @@ if (scenario === "jour" && !trial) {
 if (scenario === "jour") {
   daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
 }
+// Accueil (lot 29) : au chargement, sauf lien direct (`?seed=`, `?day=`, `?scenario=`, `?mode=`, `?watch=`, `?demo`, `?debug`…) ; `?home=1` le force.
+// Il ne s'affiche que sur le circuit d'aujourd'hui, jamais sur un scénario, un essai, le Salon ou une rediffusion.
+const homeAllowed = !!daily && daily.day === todayUtc && seedParam === null && !trial && !salon && !watchWanted && !customTrack && !params.has("demo");
+let homeOpen = homeAllowed && wantsHome(params);
+if (params.has("home")) {
+  try {
+    history.replaceState(null, "", withoutHome(location.search)); // l'accueil forcé une fois ne doit pas coller aux liens suivants
+  } catch {
+    /* tant pis : l'adresse garde home= */
+  }
+}
 let track: Track | null = salon ? salon.circuit.track : scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "bas-cotes" ? createBasCotesTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
@@ -201,12 +223,19 @@ if (ghostField) view.scene.add(ghostField.group);
 // `?shake=0` coupe les secousses de caméra ; `?demo` : le pilote automatique boucle sur le circuit.
 const effects = new Effects(view.scene);
 effects.enabled = params.get("fx") !== "off";
+// Réglages du joueur (lot 29) : qualité, effets, secousses, sensation de vitesse, ombres… `?quality=`, `?fx=off` et `?shake=0` les surpassent (essais).
+const settings: GameSettings = loadSettings();
 const qualityParam = params.get("quality");
-const governor = new QualityGovernor(26, 19, qualityParam === "0" || qualityParam === "1" || qualityParam === "2");
-if (governor.locked) governor.level = Number(qualityParam) as Quality;
+const qualityStart = qualityPlan(settings.quality, qualityParam);
+const governor = new QualityGovernor(26, 19, qualityStart.fixed);
+governor.level = qualityStart.level;
 effects.quality = governor.level;
-view.setQuality(governor.level);
-const SHAKE = params.get("shake") === "0" ? 0 : 1;
+view.setQuality(governor.level, settings.shadows);
+effects.particlesOn = settings.particles;
+effects.skidMarksOn = settings.skids;
+let shakeScale = params.get("shake") === "0" || !settings.shake ? 0 : 1;
+/** Intensité de la sensation de vitesse (champ de vision, lignes, vibration) : 0 à 1,5. */
+let feel = SPEED_FEEL_FACTOR[settings.speedFeel];
 const demo = params.has("demo");
 const tel = createTelemetry();
 const gameAudio = new GameAudio(() => syncSoundButton());
@@ -229,6 +258,8 @@ let flash = 0;
 let wasFalling = false;
 let fallVeil = 0;
 let lastCountdown = 0;
+/** Aide « le chrono tourne » déjà montrée pour cette tentative. */
+let idleHintShown = false;
 let demoReplay: ReturnType<typeof bestPilotRun> = null;
 let demoTimer = 0;
 
@@ -259,6 +290,8 @@ const hudSplits = $("splits");
 const hudBanner = $("banner");
 const hudFinish = $("finish");
 const hudBoard = $("board");
+/** Classement en course : un panneau compact, replié ou déplié (réglage `board`). Le Salon y écrit aussi. */
+const boardPanel = mountBoardPanel(hudBoard, (folded) => applySettings({ board: !folded }));
 const hudArchive = $("archive");
 let splash: HTMLElement | null = document.getElementById("splash");
 
@@ -267,29 +300,34 @@ const MEDAL_NAME: Record<Medal, string> = { author: "Meilleur que l'auteur !", g
 // Titre du circuit et seuils des médailles.
 if (salon) {
   $("meta").textContent = salon.title();
-  salon.dom = { countdown: $("medals"), board: hudBoard, podium: $("podium") };
+  salon.dom = { countdown: $("medals"), board: boardPanel, podium: $("podium") };
 } else if (daily) {
   const m = daily.medals;
   const invalidSeed = seedParam !== null && seedDay === null;
-  // « Circuit du Jour » est masqué sur petit écran (`.long`) : il reste « #1 · 2026-10-06 · neige ».
+  // « Circuit du Jour n° 1 · 13 oct. · Rallye » ; « Circuit du Jour » est masqué sur petit écran (`.long`) : il reste « n° 1 · 13 oct. · Rallye ».
   const long = document.createElement("span");
   long.className = "long";
   long.textContent = "Circuit du Jour ";
-  $("meta").replaceChildren(long, `${daily.number >= 1 ? `#${daily.number} · ` : ""}${daily.date} · ${THEMES[daily.theme].label}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
-  $("medals").textContent = `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}`;
+  $("meta").replaceChildren(long, `${dailyTitle(daily.number, daily.date, THEMES[daily.theme].label, false)}${trial ? (trialVariant !== null ? ` (variante ${trialVariant}${forcedTheme ? `, thème forcé` : ""} : essai, non classé)` : " (thème forcé : essai, non classé)") : !planKnown && !demoApiMode ? " (hors ligne, non classé)" : ""}${demoApiMode ? " · mode démo" : ""}${invalidSeed ? " (date invalide : circuit d'aujourd'hui)" : ""}`);
+  // Médailles nommées avec leur temps (le nom disparaît sur écran étroit, voir index.html).
+  $("medals").replaceChildren(
+    ...(["author", "gold", "silver", "bronze"] as const).map((k) => {
+      const item = document.createElement("span");
+      item.className = "m";
+      const name = document.createElement("span");
+      name.className = "nm";
+      name.textContent = MEDAL_WORD[k];
+      item.append(`${MEDAL_ICON[k]}`, name, formatTime(m[k]));
+      return item;
+    }),
+  );
 } else if (track) {
   $("meta").textContent = scenario === "pilotage" ? "Circuit de pilotage" : scenario === "surfaces" ? "Circuit des surfaces" : scenario === "largeurs" ? "Circuit des largeurs" : scenario === "vitesse" ? "Circuit de vitesse" : scenario === "glace" ? "Circuit de glace" : scenario === "relief" ? "Circuit du relief" : scenario === "cuves" ? "Circuit des cuves" : scenario === "air" ? "Circuit de l'air" : scenario === "bas-cotes" ? "Bas-côtés et vibreurs" : scenario === "figures" ? "Les figures" : scenario === "figure" ? `Figure : ${figureByName(params.get("f"))?.label ?? ""}` : "Circuit d'essai";
 }
 function updateInfo() {
-  if (watch) {
-    $("info").textContent = "Espace ou P : pause · ← : retour 5 s · → : avance 5 s · 1 2 3 4 : vitesse ¼ ½ 1 2 · C : caméra (libre : glisser, molette) · Entrée : depuis le début";
-    return;
-  }
-  $("info").textContent = salon
-    ? "ZQSD/WASD ou flèches · Espace : frein/drift · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantômes · Tab : classement"
-    : track
-    ? `ZQSD/WASD ou flèches · Espace : frein/drift · R : point de contrôle · Entrée : départ · manette : Y / Start · C : caméra · P : pause · G : fantôme · N : au hasard · T : thème${online.enabled ? " · L : classement" : ""}`
-    : "scénario « plat » · ZQSD/WASD ou flèches · Espace : frein/drift · R ou Entrée : recommencer · C : caméra";
+  // La ligne d'aide minuscule des lots précédents est remplacée par « Comment jouer » (bouton en bas à gauche, page d'aide, pause).
+  // Seul le spectateur (lot 27b) garde un rappel de ses touches : elles ne sont nulle part ailleurs.
+  $("info").textContent = watch ? "Espace ou P : pause · ← : retour 5 s · → : avance 5 s · 1 2 3 4 : vitesse ¼ ½ 1 2 · C : caméra (libre : glisser, molette) · Entrée : depuis le début" : "";
 }
 
 // --- État de la partie ----------------------------------------------------------------------
@@ -336,7 +374,7 @@ function mountDrivingTouch() {
     onRespawn: () => controls.requestRespawn(),
     onRestart: () => controls.requestRestart(),
     onCamera: () => cycleCamera(),
-    onTransfer: () => settingsUi.open(),
+    onSettings: () => openSettings("controls"),
   });
   touchUi.setPaused(paused);
 }
@@ -359,19 +397,15 @@ function setPaused(value: boolean) {
     watch.paused = value; // la pause du spectateur : pas de fenêtre, la barre de lecture reste là
     return;
   }
-  if (value && phase === "finished") return;
+  if (value && (phase === "finished" || homeOpen || settingsPanel?.isOpen() || howto.isOpen())) return;
   paused = value;
   document.body.classList.toggle("paused", paused);
   touchUi?.setPaused(paused);
+  if (!paused) showPauseConfirm(false);
 }
-$("pause-resume").addEventListener("click", () => setPaused(false));
-// Fenêtre « Réglages » (lot 28) : le code de transfert. Ouverte depuis la pause (ou les réglages tactiles) ; elle gèle le jeu comme les archives.
-const settingsUi = mountTransferUi($("settings"));
-$("pause-settings").addEventListener("click", () => settingsUi.open());
-$("pause-restart").addEventListener("click", () => controls.requestRestart());
 let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
 // Fantôme affiché : son record par défaut (`G` pour passer au premier, au joueur devant, ou à aucun).
-let ghostMode: GhostMode = params.get("ghost") === "off" ? "off" : "mine";
+let ghostMode: GhostMode = params.get("ghost") === "off" || settings.ghost === "none" ? "off" : "mine";
 let ghostSource: BestRun | null = ghostMode === "mine" ? best : null;
 let ghostLabel = "ton record";
 let ghostBusy = false;
@@ -394,6 +428,180 @@ let accumulator = 0;
 let pendingRespawn = false;
 let shownSplits = 0;
 let lastRespawns = 0;
+
+// --- Écrans : accueil, réglages, aide, pause (lot 29) --------------------------------------------------------------------------
+// Tout ce qui suit est de la présentation : rien ici ne touche à la simulation (les mêmes commandes, les mêmes rediffusions).
+let settingsPanel: ReturnType<typeof mountSettings> | null = null;
+const profileHost: ProfileHost = {
+  today: formatDay(todayUtc),
+  rename: (name) => online.rename(name, true), // local, et sur le serveur si le joueur y est déjà classé
+  onChange: () => settingsPanel?.sync(),
+};
+const howto = mountHowto(document.body, touchMode ? "touch" : "keyboard", { onSeen: () => markHowtoSeen() });
+/** L'aide s'ouvre d'elle-même à la première visite ; pas pour les liens de test (`?debug`, sauf `?howto=1`). */
+const autoHowto = !howtoSeen() && (!params.has("debug") || params.get("howto") === "1");
+const needsHowto = () => autoHowto && !howtoSeen();
+
+/** Applique un changement de réglage tout de suite (qualité, effets, secousses, sensation de vitesse, ombres, classement…), puis le mémorise. */
+function applySettings(patch: Partial<GameSettings> = {}) {
+  const wasQuality = settings.quality;
+  Object.assign(settings, patch);
+  saveSettings(settings);
+  const plan = qualityPlan(settings.quality, qualityParam);
+  governor.locked = plan.fixed;
+  if (plan.fixed || wasQuality !== settings.quality) governor.level = plan.level; // retour à l'automatique : on repart de haut, la fluidité redescendra si besoin
+  effects.quality = governor.level;
+  syncSceneQuality();
+  effects.particlesOn = settings.particles;
+  effects.skidMarksOn = settings.skids;
+  shakeScale = params.get("shake") === "0" || !settings.shake ? 0 : 1;
+  feel = SPEED_FEEL_FACTOR[settings.speedFeel];
+  document.body.classList.toggle("no-splits", !settings.splits);
+  syncBoardFold();
+  if ("ghost" in patch) applyGhostSetting();
+  settingsPanel?.sync();
+}
+
+/** Qualité de la scène : celle du jeu, sauf derrière l'accueil, où elle ne dépasse pas « moyenne » (« basse » sur appareil tactile : la batterie d'abord). */
+function syncSceneQuality() {
+  const level = (homeOpen ? Math.min(governor.level, touchMode ? 0 : 1) : governor.level) as Quality;
+  view.setQuality(level, settings.shadows);
+}
+
+function setCameraByName(name: string) {
+  cameraIndex = cameraIndexOf(name);
+  snapCamera = true;
+  try {
+    localStorage.setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
+  } catch {
+    /* tant pis */
+  }
+}
+
+settingsPanel = mountSettings(document.body, {
+  settings,
+  apply: applySettings,
+  audio: () => gameAudio.settings,
+  setAudio: (a) => gameAudio.setSettings(a),
+  camera: () => CAMERAS[cameraIndex]!.name,
+  setCamera: setCameraByName,
+  qualityLevel: () => governor.level,
+  touch: touchPad ? { pad: touchPad, changed: () => touchUi?.refresh() } : null,
+  profile: profileHost,
+  qualityFromUrl: qualityParam === "0" || qualityParam === "1" || qualityParam === "2",
+  openHowto: () => howto.open(),
+});
+function openSettings(tab?: SettingsTab) {
+  showPauseConfirm(false);
+  settingsPanel!.open(tab);
+}
+
+// Pause : Reprendre, Recommencer, Dernier point de contrôle, Réglages, Comment jouer, Archives, Accueil (avec confirmation si une course est en cours).
+function showPauseConfirm(show: boolean) {
+  $("pause-menu").hidden = show;
+  $("pause-confirm").hidden = !show;
+}
+$("pause-resume").addEventListener("click", () => setPaused(false));
+$("pause-restart").addEventListener("click", () => controls.requestRestart());
+$("pause-respawn").addEventListener("click", () => {
+  setPaused(false);
+  controls.requestRespawn();
+});
+$("pause-settings").addEventListener("click", () => openSettings());
+$("pause-howto").addEventListener("click", () => howto.open());
+$("pause-archive").addEventListener("click", () => openArchive());
+$("pause-archive").hidden = !!salon; // le Salon n'a pas d'archives
+$("pause-home").addEventListener("click", () => goHome());
+$("pause-stay").addEventListener("click", () => showPauseConfirm(false));
+$("pause-leave").addEventListener("click", () => leaveToHome());
+$("helpchip").addEventListener("click", () => howto.open());
+
+/** Une course est en cours (décompte passé, arrivée pas franchie) : quitter la fait perdre ce tour. */
+const raceInProgress = () => !watch && phase === "racing" && !!race && race.finishMs < 0;
+
+/** « Accueil » (barre du haut, pause) : avec confirmation si une course est en cours. */
+function goHome() {
+  if (raceInProgress()) {
+    setPaused(true);
+    showPauseConfirm(true);
+    return;
+  }
+  leaveToHome();
+}
+
+/** Revient à l'accueil : sur place pour le circuit du jour (rien à recharger), par la page sinon (Salon, archive, scénario, rediffusion). */
+function leaveToHome() {
+  if (!homeAllowed) {
+    location.assign(homeHref(location.search));
+    return;
+  }
+  settingsPanel?.close();
+  howto.close();
+  closeArchive();
+  showPauseConfirm(false);
+  startAttempt(); // la voiture revient au départ, le décompte attendra le bouton « Circuit du jour »
+  homeOpen = true;
+  syncSceneQuality();
+  homeUi.open();
+}
+
+function playDaily() {
+  const go = () => {
+    homeOpen = false;
+    syncSceneQuality();
+    homeUi.close();
+    startAttempt();
+    snapCamera = true;
+  };
+  if (needsHowto()) howto.open(go);
+  else go();
+}
+
+function playSalon() {
+  const go = () => location.assign(modeHref(location.search, true));
+  if (needsHowto()) howto.open(go);
+  else go();
+}
+
+/** Classement du jour (accueil, coin de la course) : en démonstration, « aujourd'hui » est vide, on montre alors la veille (figée). */
+async function fetchBoard(limit: number) {
+  const r = await online.leaderboard(limit);
+  if (online.demo && r.ok && r.data.participants === 0 && online.api) {
+    const yesterday = await online.api.leaderboard(formatDay(todayUtc - 1), online.playerId, limit);
+    if (yesterday.ok) return yesterday;
+  }
+  return r;
+}
+const homeLeaderboard = () => fetchBoard(10);
+
+const homeUi: HomeUi = mountHome($("home"), {
+  daily: {
+    get number() {
+      return daily!.number;
+    },
+    get date() {
+      return daily!.date;
+    },
+    get themeLabel() {
+      return THEMES[daily!.theme].label;
+    },
+    get medals() {
+      return daily!.medals;
+    },
+  },
+  best: () => (best ? { ms: best.ms, medal: best.medal ?? (daily ? medalFor(best.ms, daily.medals) : null) } : null),
+  leaderboard: online.enabled ? homeLeaderboard : null,
+  noBoardReason: apiBase() === null ? "Pas de classement ici : ce jeu n'est pas relié à un serveur. Tu peux jouer, ton record reste sur cet appareil." : "Hors ligne : le serveur ne répond pas. Tu peux jouer, la course ne sera pas classée.",
+  salon: () => lookupSalon(apiBase(), sessionMsFromParams(location.search)),
+  profile: profileHost,
+  touch: touchMode,
+  playDaily,
+  playSalon,
+  watchBest: () => location.assign(watchHref(location.search)),
+  openArchive: () => openArchive(),
+  openSettings: () => openSettings(),
+  openHowto: () => howto.open(),
+});
 
 // --- Partage et archives --------------------------------------------------------------------
 let lastRank: { rank: number; participants: number } | null = null;
@@ -521,6 +729,7 @@ function startAttempt() {
   snapCamera = true;
   effects.reset();
   lastCountdown = 0;
+  idleHintShown = false;
   shake = 0;
   demoTimer = 0;
   if (demo && track && demoReplay) autoplay = new ReplayPlayer(demoReplay.replay); // la démo : le pilote reprend à chaque tour
@@ -597,33 +806,19 @@ async function cycleGhost() {
 }
 
 // --- Classement -----------------------------------------------------------------------------
-let boardVisible = false;
+// Affiché par défaut dans un coin (du jour, ou de la session dans le Salon), repliable (touche L, bouton de l'en-tête) ; le choix est mémorisé.
+const boardAvailable = () => online.enabled || !!salon;
+const boardOpen = () => !boardPanel.folded();
+const compactScreen = () => matchMedia("(max-width: 900px), (max-height: 520px)").matches;
+/** Combien de lignes en course (le coin est petit : 3 sur petit écran, 5 sinon) ; l'accueil en montre dix. */
+const boardRows = () => (compactScreen() ? 3 : 5);
+let boardLoadedAt = -1e9;
 
 function renderBoard(lb: Leaderboard) {
-  const row = (r: { rank: number; name: string; ms: number; medal: string | null }, me: boolean) => {
-    const d = document.createElement("div");
-    d.className = me ? "row me" : "row";
-    const icon = r.medal ? MEDAL_ICON[r.medal as Medal] : "";
-    for (const [cls, text] of [["rank", `${r.rank}`], ["who", r.name], ["time", formatTime(r.ms)], ["icon", icon]] as const) {
-      const span = document.createElement("span");
-      span.className = cls;
-      span.textContent = text;
-      d.append(span);
-    }
-    return d;
-  };
-  const title = document.createElement("div");
-  title.className = "title";
-  const label = submitAllowed ? "Classement du jour" : `Classement figé · ${lb.date}`;
-  title.textContent = lb.participants === 0 ? `${label} : personne` : `${label} · ${lb.participants} pilote${lb.participants > 1 ? "s" : ""}`;
-  const rows = lb.top.map((r) => row(r, lb.me !== null && r.rank === lb.me.rank && r.name === lb.me.name));
-  if (lb.me && lb.me.rank > lb.top.length) {
-    const gap = document.createElement("div");
-    gap.className = "gap";
-    gap.textContent = "…";
-    rows.push(gap, row(lb.me, true));
-  }
-  hudBoard.replaceChildren(title, ...rows, ...(lb.participants > 0 && !watch ? [watchLink()] : []));
+  const label = submitAllowed ? "Classement du jour" : `Classement figé · ${dayShort(lb.date)}`;
+  boardPanel.setTitle(lb.participants === 0 ? `${label} : personne` : `${label} · ${lb.participants} pilote${lb.participants > 1 ? "s" : ""}`);
+  if (lb.me) rememberRank(lb.date, { rank: lb.me.rank, participants: lb.participants }); // le profil garde ta meilleure place
+  boardPanel.body.replaceChildren(...linesEls(dayLines(lb)), ...(lb.participants > 0 && !watch ? [watchLink()] : []));
 }
 
 /** Lien « Revoir le meilleur tour » (classement du jour) : la même page en mode spectateur. */
@@ -637,36 +832,72 @@ function watchLink(): HTMLAnchorElement {
 
 async function refreshBoard() {
   if (!online.enabled) return;
-  const r = await online.leaderboard();
+  boardLoadedAt = performance.now();
+  const r = await fetchBoard(boardRows());
   if (r.ok) renderBoard(r.data);
-  else hudBoard.textContent = r.message;
+  else boardPanel.body.replaceChildren(makeEl("div", "error", r.message));
 }
 
+/** Affiche ou masque le panneau (rien à montrer sans classement) et le plie selon le réglage ; le Salon est prévenu pour son rythme de mise à jour. */
+function syncBoardFold() {
+  hudBoard.hidden = !boardAvailable();
+  boardPanel.setFolded(!settings.board);
+  if (salon) salon.boardOpen = settings.board;
+  if (hudBoard.hidden || !settings.board) return;
+  if (salon) salon.renderBoard();
+  else if (performance.now() - boardLoadedAt > 1500) void refreshBoard();
+}
+
+/** Plie ou déplie le classement (touche L, Tab dans le Salon) : le choix est mémorisé. */
 function setBoardVisible(visible: boolean) {
-  if (salon) {
-    boardVisible = visible;
-    salon.boardOpen = visible;
-    hudBoard.hidden = !visible;
-    if (visible) salon.renderBoard();
+  if (!boardAvailable()) return;
+  applySettings({ board: visible });
+}
+
+/** Après un envoi ou une arrivée : le classement se remet à jour tout seul (il est déjà affiché, ou se déplie à la demande). */
+function autoShowBoard() {
+  void refreshBoard();
+}
+
+/** `G` / bouton Fantôme : dans le Salon, les fantômes de la session ; sinon, le fantôme suivant du circuit du jour. */
+function ghostAction() {
+  if (salon && ghostField) ghostField.setMode(salon.cycleGhostMode());
+  else void cycleGhost();
+}
+
+/** Réglage « Fantôme affiché » : au prochain départ (ou tout de suite, avant la course). Le premier et le joueur devant demandent le classement. */
+function applyGhostSetting() {
+  if (!track || salon || watch) return;
+  const wanted = settings.ghost;
+  if (wanted === "none") return setGhost("off", null, "aucun");
+  if (wanted === "mine" || !online.enabled) return setGhost("mine", best, "ton record");
+  void online.remoteGhost(wanted).then((choice) => {
+    if (choice) setGhost(choice.mode, choice.source, choice.label);
+    else setGhost("mine", best, "ton record"); // personne devant toi, ou pas de premier : ton record
+  });
+}
+
+/** Échap : ferme la fenêtre du dessus ; sinon, pause (ou reprise). */
+function onEscape() {
+  if (howto.isOpen()) return howto.close();
+  if (settingsPanel?.isOpen()) return settingsPanel.close();
+  if (!hudArchive.hidden) return closeArchive();
+  if (homeOpen || watch) return;
+  if (paused) {
+    if (!$("pause-confirm").hidden) showPauseConfirm(false);
+    else setPaused(false);
     return;
   }
-  boardVisible = visible && online.enabled;
-  hudBoard.hidden = !boardVisible;
-  if (boardVisible) void refreshBoard();
+  if (phase !== "finished") setPaused(true);
 }
-
-const compactScreen = () => matchMedia("(max-width: 900px), (max-height: 520px)").matches;
-
-/** À l'arrivée, le classement s'affiche tout seul à côté du panneau ; sur petit écran, il se demande (🏆) et ne le recouvre pas. */
-function autoShowBoard() {
-  if (!compactScreen()) setBoardVisible(true);
-}
-hudBoard.addEventListener("click", () => {
-  if (compactScreen()) setBoardVisible(false); // fenêtre : un toucher la ferme
-});
 
 window.addEventListener("keydown", (e) => {
   if (e.repeat || isTyping(e)) return;
+  if (e.code === "Escape") {
+    e.preventDefault();
+    return onEscape();
+  }
+  if (homeOpen || howto.isOpen() || settingsPanel?.isOpen()) return; // une fenêtre est ouverte : les touches du jeu attendent
   if (watch) {
     if (e.code === "Space") {
       e.preventDefault();
@@ -677,23 +908,19 @@ window.addEventListener("keydown", (e) => {
     const digit = ["Digit1", "Digit2", "Digit3", "Digit4"].indexOf(e.code);
     if (digit >= 0) watch.speed = WATCH_SPEEDS[digit]!;
   }
-  if (e.code === "KeyG" && !watch) {
-    if (salon && ghostField) ghostField.setMode(salon.cycleGhostMode());
-    else void cycleGhost();
-  }
+  if (e.code === "KeyG" && !watch) ghostAction();
   if (e.code === "Tab" && salon) {
     e.preventDefault();
-    setBoardVisible(!boardVisible);
+    setBoardVisible(!boardOpen());
   }
   if (e.code === "KeyM") gameAudio.mute();
   if (e.code === "KeyN" && track && scenario === "jour") location.assign(randomSeedHref(location.search)); // circuit au hasard (essai, jamais classé)
   if (e.code === "KeyT" && track && scenario === "jour") location.assign(themeHref(location.search, nextTheme(forcedTheme?.name ?? null))); // thème suivant
-  if (e.code === "KeyL") setBoardVisible(!boardVisible);
+  if (e.code === "KeyL") setBoardVisible(!boardOpen());
   if (e.code === "KeyH" && !salon) (hudArchive.hidden ? openArchive : closeArchive)();
-  if (e.code === "Escape") closeArchive();
 });
 
-// Boutons du menu (tactile et souris) : mêmes actions que les touches.
+// Barre du haut : Accueil, Réglages, Fantôme, Son (icône muet). Mêmes actions que les touches.
 const menuButton = (id: string, onClick: () => void) => {
   const b = $(id) as HTMLButtonElement;
   b.addEventListener("click", () => {
@@ -702,42 +929,37 @@ const menuButton = (id: string, onClick: () => void) => {
   });
   return b;
 };
-menuButton("btn-board", () => setBoardVisible(!boardVisible)).hidden = !online.enabled && !salon;
-menuButton("btn-ghost", () => void cycleGhost()).hidden = !track;
-const soundBtn = menuButton("btn-sound", () => gameAudio.cycle());
+menuButton("btn-home", () => goHome());
+menuButton("btn-settings", () => openSettings());
+menuButton("btn-ghost", () => ghostAction()).hidden = !track;
+const soundBtn = menuButton("btn-sound", () => gameAudio.mute());
 function syncSoundButton() {
-  const icon = volumeIcon(gameAudio.settings.volume);
+  const muted = gameAudio.settings.volume <= 0;
+  const icon = muted ? "🔇" : "🔊";
   soundBtn.querySelector(".ico")!.textContent = icon;
-  soundBtn.querySelector(".txt")!.textContent = `${icon} Son`;
+  soundBtn.querySelector(".txt")!.textContent = muted ? "Muet" : "Son";
+  soundBtn.title = muted ? "Son coupé (M pour le remettre)" : "Couper le son (M)";
+  soundBtn.setAttribute("aria-label", soundBtn.title);
+  soundBtn.setAttribute("aria-pressed", String(muted));
+  if (settingsPanel?.isOpen()) settingsPanel.sync();
 }
 syncSoundButton();
-menuButton("btn-archive", () => (hudArchive.hidden ? openArchive() : closeArchive())).hidden = !!salon; // le Salon n'a pas d'archives
-// Salon ↔ circuit du jour (lot 26) : seulement avec une API (ou la démonstration), le Salon a besoin du serveur.
-const modeBtn = menuButton("btn-mode", () => location.assign(modeHref(location.search, !salon)));
-modeBtn.hidden = apiBase() === null;
-// Petit écran : le bouton du menu est masqué (CSS) ; la fenêtre de pause porte la même entrée.
-const pauseMode = $("pause-mode") as HTMLButtonElement;
-pauseMode.hidden = apiBase() === null;
-pauseMode.textContent = salon ? "Circuit du jour" : "Salon";
-pauseMode.addEventListener("click", () => location.assign(modeHref(location.search, !salon)));
-if (salon) {
-  modeBtn.querySelector(".ico")!.textContent = "📅";
-  modeBtn.querySelector(".txt")!.textContent = "Jour";
-  modeBtn.title = "Revenir au circuit du jour";
-}
 
-/** Envoi du meilleur temps au classement, et affichage du rang dans le panneau d'arrivée. */
+/**
+ * Envoi du meilleur temps au classement, et messages clairs dans le panneau d'arrivée : envoi en cours, « Temps enregistré · 4e sur 7 »,
+ * « Hors ligne : course non classée », erreur avec « Réessayer ». Le serveur rejoue la course : seul son temps compte.
+ */
 function startOnlineFlow(box: HTMLElement) {
   const text = (msg: string, cls = "") => {
     const d = document.createElement("div");
-    d.className = cls;
+    d.className = `status ${cls}`.trim();
     d.textContent = msg;
     return d;
   };
   const button = (label: string, onClick: () => void) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.className = "link";
+    b.className = "btn link";
     b.textContent = label;
     b.addEventListener("click", onClick);
     return b;
@@ -745,21 +967,24 @@ function startOnlineFlow(box: HTMLElement) {
 
   const showRank = (rank: number, participants: number, extra = "") => {
     lastRank = { rank, participants };
+    rememberRank(daily!.date, { rank, participants });
     updateShareLine();
-    box.replaceChildren(text(`Rang ${rank} / ${participants}${extra}`, "rank"), button("Changer de pseudo", () => nameForm()));
+    const line = text("", "ok");
+    line.append("Temps enregistré · ", Object.assign(document.createElement("span"), { className: "rank", textContent: `${ordinal(rank)} sur ${participants}` }), extra);
+    box.replaceChildren(line, button("Changer de pseudo", () => nameForm()));
     autoShowBoard();
   };
 
   const send = async () => {
     const name = online.name;
     if (!best || !name) return nameForm();
-    box.replaceChildren(text("Envoi au classement…", "status"));
+    box.replaceChildren(text("Envoi au classement…"));
     const r = await online.submit(best, name);
     if (r.ok) {
-      const gap = r.data.bestMs !== best.ms ? ` · temps du serveur : ${formatTime(r.data.bestMs)}` : "";
+      const gap = r.data.bestMs !== best.ms ? ` (temps du serveur : ${formatTime(r.data.bestMs)})` : "";
       showRank(r.data.rank, r.data.participants, gap);
     } else {
-      box.replaceChildren(text(r.message, "error"), button("Réessayer", () => void send()));
+      box.replaceChildren(text(r.status === 0 ? `Hors ligne : course non classée (${r.message})` : r.message, "error"), button("Réessayer", () => void send()));
     }
   };
 
@@ -770,12 +995,15 @@ function startOnlineFlow(box: HTMLElement) {
     input.maxLength = 20;
     input.placeholder = "Ton pseudo";
     input.autocomplete = "off";
+    input.setAttribute("aria-label", "Ton pseudo");
     input.value = online.name ?? "";
     const ok = document.createElement("button");
     ok.type = "submit";
+    ok.className = "btn primary small";
     ok.textContent = "OK";
     const error = text("", "error");
-    form.append(text(online.name ? "Nouveau pseudo" : "Choisis ton pseudo pour entrer au classement", "label"), input, ok, error);
+    const label = text(online.name ? "Nouveau pseudo" : "Choisis ton pseudo pour entrer au classement", "label");
+    form.append(label, input, ok, error);
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       const name = normalizeName(input.value);
@@ -786,9 +1014,10 @@ function startOnlineFlow(box: HTMLElement) {
       ok.disabled = true;
       const pending = online.needsSubmit(best);
       await online.rename(name, !pending); // pas encore classé : le pseudo part avec la course
+      settingsPanel?.sync();
       if (pending) await send();
       else {
-        box.replaceChildren(text(`Pseudo : ${name}`, "status"));
+        box.replaceChildren(text(`Pseudo : ${name}`));
         autoShowBoard();
       }
     });
@@ -798,17 +1027,17 @@ function startOnlineFlow(box: HTMLElement) {
   };
 
   if (!submitAllowed) {
-    box.replaceChildren(text("Classement figé : ce jour est terminé", "status"));
+    box.replaceChildren(text("Jour passé : le classement est figé, ce temps n'y entre pas."));
     autoShowBoard();
   } else if (online.needsSubmit(best)) {
     void send();
   } else {
     // Ce temps n'améliore pas le record, déjà classé : on affiche simplement la place actuelle.
-    box.replaceChildren(text("Chargement du classement…", "status"));
+    box.replaceChildren(text("Chargement du classement…"));
     void online.leaderboard().then((r) => {
       if (r.ok && r.data.me) showRank(r.data.me.rank, r.data.participants);
       else if (r.ok) box.replaceChildren();
-      else box.replaceChildren(text(r.message, "error"));
+      else box.replaceChildren(text(r.status === 0 ? `Hors ligne : course non classée (${r.message})` : r.message, "error"));
       if (r.ok) autoShowBoard();
     });
   }
@@ -837,6 +1066,15 @@ function medalLines(ms: number): [string, string][] {
   const medal = medalFor(ms, daily.medals);
   if (medal) return [["medal", `${MEDAL_ICON[medal]} ${MEDAL_NAME[medal]}`]];
   return [["", `Pas de médaille · bronze à ${formatTime(daily.medals.bronze)}`]];
+}
+
+/** Partager : la feuille de partage du téléphone si elle existe, sinon la ligne est copiée (« Copié ✓ »). */
+async function shareOut(b: HTMLButtonElement, line: string, url: string) {
+  if (canNativeShare()) {
+    if (await nativeShare({ text: line, url })) return;
+    return; // annulé par le joueur : rien d'autre à faire
+  }
+  flashLabel(b, (await copyText(`${line}\n${url}`)) ? "Copié ✓" : "Copie impossible");
 }
 
 /** Salon (lot 26) : l'arrivée d'une course de session. Ni record local, ni classement du jour : seulement la session. */
@@ -917,15 +1155,9 @@ function finishSalonRun() {
     return b;
   };
   action("Rejouer", () => startAttempt(), "primary");
-  action("Copier le résultat", async (b) => {
-    const line = sal.shareLine() ?? salonLine(sal.label, ms);
-    const old = b.textContent;
-    b.textContent = (await copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`)) ? "Copié ✓" : "Copie impossible";
-    setTimeout(() => (b.textContent = old), 1600);
-  });
   action("Revoir le meilleur tour", () => location.assign(watchHref(location.search))).id = "finish-watch";
-  action("Classement", () => setBoardVisible(!boardVisible));
-  if (!compactScreen()) action("Circuit du jour", () => location.assign(modeHref(location.search, false)), "mode");
+  action("Partager", (b) => shareOut(b, sal.shareLine() ?? salonLine(sal.label, ms), `${location.origin}${location.pathname}?mode=salon`));
+  action("Accueil", () => goHome());
   const hint = text("Entrée : rejouer · Tab : classement", "hint");
   hudFinish.replaceChildren(...nodes, ...(counted ? [box] : []), share, actions, hint);
   hudFinish.hidden = false;
@@ -974,7 +1206,7 @@ function finishRun() {
   onlineBox.className = "online";
   const hint = document.createElement("div");
   hint.className = "hint";
-  hint.textContent = "Entrée : rejouer · H : archives";
+  hint.textContent = "Entrée : rejouer · P : pause";
 
   // Ligne à partager (circuits du jour) et boutons : tout est cliquable, pour le tactile.
   shareEl = daily ? document.createElement("div") : null;
@@ -994,29 +1226,20 @@ function finishRun() {
     actions.append(b);
     return b;
   };
-  const flash = (b: HTMLButtonElement, text: string) => {
-    const label = b.textContent;
-    b.textContent = text;
-    setTimeout(() => (b.textContent = label), 1600);
-  };
+  // Les quatre actions de l'arrivée : Rejouer, Revoir le meilleur tour, Partager, Accueil (les archives sont à l'accueil et dans la pause).
   action("Rejouer", () => startAttempt(), "primary");
-  if (daily) {
-    action("Copier le résultat", async (b) => {
-      const share = currentShare();
-      if (share) flash(b, (await copyText(shareText(share, shareLink()))) ? "Copié ✓" : "Copie impossible");
-    });
-    if (canNativeShare()) {
-      action("Partager", async () => {
-        const share = currentShare();
-        if (share) await nativeShare({ text: shareLine(share), url: shareLink() });
-      });
-    }
-  }
   action("Revoir le meilleur tour", () => location.assign(watchHref(location.search))).id = "finish-watch";
-  action("Archives", () => openArchive());
-  if (apiBase() !== null && !compactScreen()) action("Salon", () => location.assign(modeHref(location.search, true)), "mode"); // le Salon : un circuit toutes les 10 minutes (sur téléphone : dans la fenêtre de pause)
+  if (daily) {
+    action("Partager", async (b) => {
+      const share = currentShare();
+      if (share) await shareOut(b, shareLine(share), shareLink());
+    });
+  }
+  action("Accueil", () => goHome());
   const showOnline = online.enabled && counted;
-  hudFinish.replaceChildren(...rows, ...(showOnline ? [onlineBox] : []), ...(shareEl && best ? [shareEl] : []), actions, hint);
+  // Sans classement, on le dit : la course n'est pas perdue, elle n'est simplement pas envoyée.
+  if (counted && !online.enabled) onlineBox.append(Object.assign(document.createElement("div"), { className: "status", textContent: apiBase() === null ? "Course non classée : ce jeu n'est pas relié à un serveur. Ton record reste sur cet appareil." : "Hors ligne : course non classée. Ton record reste sur cet appareil." }));
+  hudFinish.replaceChildren(...rows, ...(showOnline || (counted && !online.enabled) ? [onlineBox] : []), ...(shareEl && best ? [shareEl] : []), actions, hint);
   hudFinish.hidden = false;
   document.body.classList.add("finished");
   if (showOnline) startOnlineFlow(onlineBox);
@@ -1233,6 +1456,9 @@ async function loadWatchEntry(): Promise<WatchEntry | null> {
 
 // --- Boucle : simulation à pas fixe, rendu interpolé ------------------------------------------
 let last = performance.now();
+/** Accueil ouvert : la caméra tourne lentement autour de la voiture au départ (temps écoulé, en secondes). */
+let homeSpin = 0;
+let lastHomeRender = 0;
 let camYaw = 0;
 /** Part « en vol » de la caméra ∈ [0, 1] (lissée) : 1 = elle suit la direction du déplacement. */
 let airMix = 0;
@@ -1241,6 +1467,8 @@ const AIR_HOP_SUBSTEPS = 12;
 const hudFreeze = $("freeze");
 /** Temps passé dans `renderer.render` (ms cumulées, images) : mesure du coût du rendu (`__cdj.render`). */
 const renderCost = { ms: 0, frames: 0 };
+/** Idem, seulement avec l'accueil ouvert (mesure du coût de la scène en fond : `__cdj.render.home`). */
+const homeCost = { ms: 0, frames: 0 };
 let camBaseY = 0;
 let snapCamera = true;
 const camPos = { x: 0, y: 0, z: 0 };
@@ -1349,7 +1577,7 @@ function stepOnce(input: CarInput) {
  * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
  */
 function isFrozen(): boolean {
-  return paused || !hudArchive.hidden || settingsUi.isOpen() || (touchMode && !!touchUi?.settingsOpen()) || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
+  return paused || homeOpen || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
 
 function frame(now: number) {
@@ -1361,9 +1589,11 @@ function frame(now: number) {
   const elapsed = manual ? manualTicksNow * DT : frozen ? 0 : Math.min((now - last) / 1000, 0.5) * timeScale * (watch ? watch.speed : 1); // borne : pas de spirale après un onglet en pause ; 0,5 s : la course reste à l'heure jusqu'à 2 images/s (téléphone lent, rendu logiciel)
   const frameMs = now - last;
   last = now;
+  if (homeOpen) homeSpin += Math.min(frameMs, 100) / 1000;
   if (!frozen && !manual && governor.observe(frameMs)) {
     effects.quality = governor.level;
-    view.setQuality(governor.level); // qualité basse : décor, ombres et halos allégés (téléphone lent)
+    syncSceneQuality(); // qualité basse : décor, ombres et halos allégés (téléphone lent)
+    if (settingsPanel?.isOpen()) settingsPanel.sync();
   }
 
   if (pendingSeek !== null && watch) {
@@ -1444,6 +1674,11 @@ function frame(now: number) {
     }
     if (race.finishMs >= 0 && phase === "racing") finishRun();
     hudTimer.textContent = phase === "countdown" ? formatTime(0) : formatTime(raceElapsedMs(race));
+    // Le chrono part au « PARTEZ ! », voiture immobile ou non (comme sur Trackmania) : si le joueur n'a pas bougé, on lui dit quoi faire.
+    if (phase === "racing" && !frozen && !idleHintShown && !watch && race.splits.length === 0 && carSpeed(car) < 0.5 && raceElapsedMs(race) > 2500) {
+      idleHintShown = true;
+      showBanner(touchMode ? "Le chrono tourne : touche la moitié droite" : "Le chrono tourne : ↑ ou Z pour accélérer", 4, true);
+    }
   } else {
     hudTimer.textContent = "";
   }
@@ -1575,7 +1810,7 @@ function frame(now: number) {
   // Secousse (chocs, réceptions) : décalage de la caméra qui s'éteint vite ; coupée avec `?shake=0`.
   shake *= Math.max(0, 1 - 7 * elapsed);
   // Vue capot : la secousse reste bien en deçà du jeu entre l'œil et la carrosserie (`HOOD_CLEARANCE`).
-  const sh = (SHAKE * shake * 0.22 + (buzzAllowed(governor.level) ? SHAKE * buzzAmplitude(speed) * 2 : 0)) * (hood ? 0.3 : 1);
+  const sh = (shakeScale * shake * 0.22 + (buzzAllowed(governor.level) ? shakeScale * feel * buzzAmplitude(speed) * 2 : 0)) * (hood ? 0.3 : 1);
   if (mount) {
     // L'œil est un point de la carrosserie : même position que la caisse (pas de retard, tangage et roulis compris), donc jamais à travers.
     carMesh.updateMatrixWorld();
@@ -1604,6 +1839,13 @@ function frame(now: number) {
     camera.up.set(0, 1, 0);
     camera.lookAt(x, y + 1, z);
   }
+  if (homeOpen) {
+    // Accueil : la scène du jour est survolée lentement, la voiture au départ au centre. Présentation seule (la course est gelée).
+    const o = orbitOffset(0.9 + homeSpin * (matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 0.14), 0.3, 15);
+    camera.position.set(x + o.x, y + 1 + o.y, z + o.z);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(x, y + 1.3, z);
+  }
   // Étiquette au pseudo du tour regardé : masquée tout près de la caméra (vue capot).
   if (nameLabel) nameLabel.place(camera.position.distanceTo(carMesh.position), Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight, 3.5);
   if (watch) watchUi?.update({ paused: watch.paused, speed: watch.speed, progress: progressOf(Math.min(car.tick, watch.total), watch.total), camera: freeCam ? "libre" : CAMERAS[cameraIndex]!.name });
@@ -1611,7 +1853,7 @@ function frame(now: number) {
   if (hood && ghostMesh.visible && ghostMesh.position.distanceToSquared(camera.position) < HOOD_GHOST_CLEARANCE * HOOD_GHOST_CLEARANCE) ghostMesh.visible = false;
   // Turbo : le champ de vision s'ouvre encore (coup de zoom arrière), puis revient.
   fovKick += ((car.turbo > 0 ? 7 : car.boost > 0 ? 4 : 0) - fovKick) * (1 - Math.exp(-5 * elapsed));
-  const fov = rig.fov + speedRatio * rig.fovAtSpeed + (hood ? fastCam.fov * 0.5 : fastCam.fov) + fovKick;
+  const fov = rig.fov + feel * (speedRatio * rig.fovAtSpeed + (hood ? fastCam.fov * 0.5 : fastCam.fov) + fovKick);
   if (Math.abs(camera.fov - fov) > 0.01) {
     camera.fov = fov;
     camera.updateProjectionMatrix();
@@ -1636,7 +1878,7 @@ function frame(now: number) {
     active: phase === "racing" && !frozen && !manual,
   });
   // Lignes de vitesse au-delà de 75 % de la pointe, éclair du point de contrôle.
-  const lines = speedLinesOpacity(speed, car.turbo > 0);
+  const lines = Math.min(0.6, speedLinesOpacity(speed, car.turbo > 0) * feel);
   hudLines.style.opacity = phase === "countdown" ? "0" : lines.toFixed(2);
   flash = Math.max(0, flash - elapsed * 2.2);
   hudFlash.style.opacity = flash.toFixed(2);
@@ -1644,15 +1886,22 @@ function frame(now: number) {
   const veilTarget = race && race.fallTicks > 0 ? Math.min(1, (race.fallTicks / FALL_TICKS) * 1.25) : 0;
   fallVeil += (veilTarget - fallVeil) * (1 - Math.exp(-(veilTarget > fallVeil ? 14 : 7) * elapsed));
   hudFall.style.opacity = fallVeil < 0.01 ? "0" : fallVeil.toFixed(2);
-  hudSpeed.textContent = `${Math.round(speed * 3.6)} km/h`;
+  hudSpeed.textContent = formatSpeed(speed, settings.unit);
   hudSpeed.dataset.level = String(speedLevel(speed)); // jaune, orange puis rouge au-delà de la pointe
   updateEffects();
-  if (!manual) {
+  // Accueil ouvert : la scène tourne derrière, mais à 30 images par seconde (20 sur téléphone) : c'est un décor, pas une course.
+  const homeSkip = homeOpen && lastHomeRender > 0 && now - lastHomeRender < (touchMode ? 48 : 31);
+  if (!manual && !homeSkip) {
     // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
     const t0 = performance.now();
     renderer.render(view.scene, camera);
     renderCost.ms += performance.now() - t0;
     renderCost.frames++;
+    if (homeOpen) {
+      lastHomeRender = now;
+      homeCost.ms += performance.now() - t0;
+      homeCost.frames++;
+    }
   }
   splash?.remove(); // premier rendu fait : on retire l'écran de chargement
   splash = null;
@@ -1711,7 +1960,7 @@ function swapSalonCircuit(c: LoadedSalonCircuit) {
   next.scene.add(carMesh, carShadow, ghostMesh);
   if (ghostField) next.scene.add(ghostField.group);
   effects.attach(next.scene);
-  next.setQuality(governor.level);
+  next.setQuality(governor.level, settings.shadows);
   view = next;
   renderer.toneMappingExposure = view.look.exposure;
   view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
@@ -1758,7 +2007,7 @@ const salonHost: SalonHost = {
 };
 if (salon) {
   salon.attachHost(salonHost);
-  if (!compactScreen()) setBoardVisible(true);
+  syncBoardFold();
 }
 // Salon injoignable (lot 26) : dit dans l'en-tête, et rappelé au départ (le décompte écrase le bandeau jusque-là).
 let salonNoticePending = salonNotice;
@@ -1792,6 +2041,13 @@ if (watchWanted && track) {
     mountDrivingTouch();
   }
 }
+document.body.classList.toggle("no-splits", !settings.splits);
+syncBoardFold();
+if (!watchWanted && !salon && (settings.ghost === "first" || settings.ghost === "ahead") && params.get("ghost") !== "off" && online.enabled && !(daily && !submitAllowed)) applyGhostSetting();
+if (homeOpen) {
+  syncSceneQuality();
+  homeUi.open();
+} else if (needsHowto() && !watchWanted) howto.open(); // première visite sans passer par l'accueil (lien direct) : l'aide d'abord
 renderer.setAnimationLoop(frame);
 
 // Accès de débogage pour les tests de navigateur (`?debug`) : état de la course, sans effet sur le jeu.
@@ -1829,7 +2085,7 @@ if (params.has("debug")) {
       },
       /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
       get render() {
-        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames };
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {
@@ -1925,6 +2181,10 @@ if (params.has("debug")) {
           orbit: { ...orbit },
           seek: (tick: number) => watch && restartWatch(tick),
         };
+      },
+      /** Interface (lot 29) : accueil ouvert, réglages, aide, classement replié, réglages courants. */
+      get ui() {
+        return { home: homeOpen, settings: !!settingsPanel?.isOpen(), howto: howto.isOpen(), boardFolded: boardPanel.folded(), boardHidden: hudBoard.hidden, settingsValues: { ...settings }, paused, quality: governor.level, qualityLocked: governor.locked, homeAllowed };
       },
       /** Joue une rediffusion à la place du clavier (tests de navigateur). */
       autoplay(code: string) {

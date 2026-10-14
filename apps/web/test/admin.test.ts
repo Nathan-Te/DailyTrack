@@ -69,6 +69,13 @@ describe("adresse du jeu construite par /admin", () => {
       "demo&fx=off&quality=1&camera=capot&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
     );
   });
+  it("l'accueil (lot 29) : ?home=1 le force malgré debug, ?howto=1 montre l'aide ; le lien de l'accueil de démonstration est simple", () => {
+    expect(buildQuery({ ...DEFAULT_ADMIN, api: "demo", home: true, debug: true })).toBe("debug&home=1&api=demo");
+    expect(buildQuery({ ...DEFAULT_ADMIN, howto: true, debug: true })).toBe("debug&howto=1");
+    expect(buildQuery({ ...DEFAULT_ADMIN, api: "demo" })).toBe("api=demo");
+    expect(parseAdmin('{"home":true,"howto":"oui"}')).toMatchObject({ home: true, howto: false });
+    expect(PRESETS.some((p) => p.label.startsWith("Accueil") && p.state.api === "demo")).toBe(true);
+  });
   it("revoir le meilleur tour (lot 27b) : ?watch=best, avec le jour ou avec le Salon", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, watch: true, api: "demo", date: "2026-09-30" })).toBe("watch=best&seed=2026-09-30&api=demo");
     expect(buildQuery({ ...DEFAULT_ADMIN, watch: true, salon: true, api: "demo" })).toBe("watch=best&mode=salon&api=demo");

@@ -23,6 +23,7 @@ import { HttpSalonApi, type SalonApi, type SalonBoard, type SalonGhost, type Sal
 import { DemoSalonApi } from "./salonDemo";
 import { createSalonEngine, type LoadedSalonCircuit, type SalonEngine } from "./salonEngine";
 import type { GhostEntry } from "./salonGhosts";
+import type { BoardPanel } from "./boardPanel";
 import { renderPodium, renderSalonBoard } from "./salonUi";
 import { watchHref } from "./watch";
 
@@ -51,7 +52,7 @@ export interface SalonHost {
 export interface SalonDom {
   /** Ligne du compte à rebours. */
   countdown: HTMLElement;
-  board: HTMLElement;
+  board: BoardPanel;
   podium: HTMLElement;
 }
 
@@ -265,7 +266,7 @@ export class SalonController {
 
   renderBoard(): void {
     if (this.dom) renderSalonBoard(this.dom.board, this.board, this.label, this.spectator ? undefined : watchHref(location.search));
-    if (this.dom && this.lastError && !this.board) this.dom.board.append(Object.assign(document.createElement("div"), { className: "error", textContent: this.lastError }));
+    if (this.dom && this.lastError && !this.board) this.dom.board.body.append(Object.assign(document.createElement("div"), { className: "error", textContent: this.lastError }));
   }
 
   /** Charge les fantômes utiles (trois premiers, devant, derrière) et prévient le jeu quand l'ensemble change. */

@@ -22,7 +22,9 @@
 
       .hud { position: fixed; color: #fff; font: 600 14px system-ui, sans-serif; text-shadow: 0 1px 3px rgba(0,0,0,.55); pointer-events: none; font-variant-numeric: tabular-nums; }
       #meta { left: 16px; top: 12px; font-size: 15px; }
-      #medals { left: 16px; top: 34px; font-size: 13px; opacity: .9; white-space: pre; }
+      #medals { left: 16px; top: 34px; font-size: 13px; opacity: .95; display: flex; flex-wrap: wrap; gap: 0 14px; max-width: calc(100vw - 230px); }
+      #medals .m { white-space: nowrap; }
+      #medals .m .nm { opacity: .85; margin: 0 3px 0 2px; }
       /* Fond sombre translucide : lisible aussi sur le ciel clair du thème « neige ». */
       #ghostinfo { left: 16px; top: 54px; font-size: 13px; color: #bfe1ff; background: rgba(11,16,32,.55); padding: 1px 7px; border-radius: 6px; }
       #ghostinfo:empty { display: none; }
@@ -55,21 +57,6 @@
       #finish .medal::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,.75) 50%, transparent 70%); transform: translateX(-100%); animation: glint 1.4s ease-out .5s 2; pointer-events: none; }
       @keyframes glint { to { transform: translateX(100%); } }
       @media (prefers-reduced-motion: reduce) { #finish .medal::after { animation: none; } }
-      #menu { position: fixed; right: 12px; top: 10px; display: flex; gap: 6px; }
-      #menu button { font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.6); border: 1px solid rgba(255,255,255,.18); border-radius: 8px; padding: 6px 10px; cursor: pointer; min-height: 32px; }
-      #menu button[hidden] { display: none; }
-      #menu .ico { display: none; }
-      #pause button[hidden] { display: none; }
-
-      #board { position: fixed; left: 16px; top: 82px; width: 270px; background: rgba(11,16,32,.78); color: #fff; font: 600 13px system-ui, sans-serif; padding: 10px 12px; border-radius: 10px; font-variant-numeric: tabular-nums; }
-      #board[hidden] { display: none; }
-      #board .title { opacity: .8; margin-bottom: 6px; }
-      #board .row { display: grid; grid-template-columns: 24px 1fr auto 22px; gap: 6px; padding: 2px 0; }
-      #board .row.me { color: #ffd22e; }
-      #board .rank { text-align: right; opacity: .75; }
-      #board .who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #board .gap { text-align: center; opacity: .5; }
-
       #finish { position: fixed; left: 50%; top: 58%; transform: translate(-50%, -50%); background: rgba(11,16,32,.86); color: #fff; font: 600 16px system-ui, sans-serif; padding: 20px 26px; border-radius: 14px; text-align: center; line-height: 1.55; width: min(400px, calc(100vw - 24px)); box-sizing: border-box; max-height: calc(100vh - 24px); overflow: auto; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
       #finish[hidden] { display: none; }
       #finish .big { font-size: 40px; font-weight: 800; }
@@ -97,11 +84,10 @@
       body.finished #watchbar, body.podium #watchbar, body.paused #watchbar { display: none; }
       body.touch #watchbar { bottom: calc(12px + env(safe-area-inset-bottom, 0px)); }
       body.watch #btn-ghost { display: none; }
-      #board .watchlink { display: block; margin-top: 8px; padding: 8px; text-align: center; color: #9bd0ff; font-weight: 700; text-decoration: underline; border-radius: 8px; background: rgba(255,255,255,.08); }
       #archive .watch { color: #9bd0ff; font-size: 12px; text-decoration: underline; cursor: pointer; padding: 4px 0; }
       /* La vitesse et les indicateurs passent au-dessus de la barre sur petit écran (elle occupe presque toute la largeur). */
       @media (max-width: 900px), (max-height: 520px) { body.watch #speed, body.watch.touch #speed { bottom: 118px; } body.watch #fx, body.watch.touch #fx { bottom: 150px; } }
-      #archive { position: fixed; inset: 0; z-index: 5; background: rgba(5,8,20,.62); display: flex; align-items: center; justify-content: center; }
+      #archive { position: fixed; inset: 0; z-index: 7; background: rgba(5,8,20,.62); display: flex; align-items: center; justify-content: center; }
       #archive[hidden] { display: none; }
       #archive .panel { width: min(520px, calc(100vw - 24px)); max-height: calc(100vh - 40px); overflow: auto; background: #131a33; color: #fff; font: 600 14px system-ui, sans-serif; border-radius: 14px; padding: 14px 16px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
       #archive .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
@@ -136,7 +122,7 @@
       #archive .note { opacity: .6; font-size: 12px; margin-top: 10px; }
 
       /* Commandes tactiles (lot 10) : tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`). */
-      #touch, #tbar, #tsettings, #rotate, #pause { display: none; }
+      #touch, #tbar, #rotate { display: none; }
       body.touch #touch { display: block; position: fixed; inset: 0; z-index: 0; touch-action: none; -webkit-user-select: none; user-select: none; }
       /* Barre d'actions compacte et centrée (entre les pouces : de 36 % à 64 % de la largeur sur un écran de 844 px) : un bouton attire les appuis voisins (le navigateur « corrige » le toucher vers lui), donc elle ne touche ni la frontière ← | → (25 %) ni frein | gaz (75 %). */
       body.touch #tbar { pointer-events: none; display: flex; position: fixed; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); gap: 2px; }
@@ -169,54 +155,11 @@
       .fdot { position: fixed; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; border: 3px solid #fff; z-index: 9; pointer-events: none; opacity: .9; }
       .safe-probe { position: fixed; visibility: hidden; pointer-events: none; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
       #touch .hint { left: 50%; top: 64%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); box-sizing: border-box; text-align: center; font: 600 13px system-ui, sans-serif; color: #fff; background: rgba(11,16,32,.7); padding: 4px 10px; border-radius: 8px; }
-      #tsettings { position: fixed; inset: 0; z-index: 5; background: rgba(5,8,20,.62); align-items: center; justify-content: center; }
-      body.touch #tsettings:not([hidden]) { display: flex; }
-      #tsettings .panel { width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; background: #131a33; color: #fff; font: 600 14px system-ui, sans-serif; border-radius: 14px; padding: 12px 16px 16px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
-      #tsettings .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-      #tsettings .tools { display: flex; gap: 8px; }
-      #tsettings .title { font-size: 18px; font-weight: 800; }
-      #tsettings .close, #tsettings .reset { font: inherit; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; min-width: 44px; min-height: 44px; cursor: pointer; }
-      #tsettings .reset { padding: 0 12px; font-size: 13px; }
-      #tsettings .row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center; margin-top: 6px; }
-      #tsettings .seg { display: flex; gap: 6px; }
-      #tsettings .seg button { flex: 1; font: inherit; color: #fff; background: rgba(255,255,255,.1); border: 1px solid transparent; border-radius: 10px; min-height: 44px; padding: 0 8px; cursor: pointer; }
-      #tsettings .seg button.on { background: #ffd22e; color: #111; }
-      #tsettings .slider { display: flex; align-items: center; gap: 10px; min-height: 44px; }
-      #tsettings .slider input { flex: 1; min-width: 0; }
-      #tsettings .slider .value { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
       #rotate { position: fixed; left: 0; right: 0; top: 42%; z-index: 2; justify-content: center; pointer-events: none; }
       #rotate .card { pointer-events: auto; width: min(300px, calc(100vw - 32px)); box-sizing: border-box; text-align: center; background: rgba(19,26,51,.94); color: #fff; font: 600 15px system-ui, sans-serif; line-height: 1.4; border-radius: 14px; padding: 12px 16px 14px; box-shadow: 0 8px 30px rgba(0,0,0,.45); }
       #rotate .icon { font-size: 34px; display: inline-block; transform: rotate(90deg); }
       #rotate button { margin-top: 8px; font: inherit; color: #111; background: #ffd22e; border: 0; border-radius: 10px; min-height: 44px; padding: 0 16px; cursor: pointer; }
       @media (orientation: portrait) { body.touch:not(.rotate-ok):not(.finished) #rotate { display: flex; } }
-      #pause { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; background: rgba(11,16,32,.9); color: #fff; font: 600 16px system-ui, sans-serif; padding: 16px 22px; border-radius: 14px; text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.4); }
-      body.paused #pause { display: block; }
-      #pause .big { font-size: 30px; font-weight: 800; margin-bottom: 10px; }
-      #pause .actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
-      #pause button { font: inherit; padding: 8px 14px; border-radius: 10px; border: 0; cursor: pointer; background: rgba(255,255,255,.14); color: #fff; min-height: 44px; }
-      #pause button.primary { background: #ffd22e; color: #111; }
-
-      /* Fenêtre « Réglages » (code de transfert) : au-dessus de la pause et des réglages tactiles. */
-      #settings { position: fixed; inset: 0; z-index: 6; background: rgba(5,8,20,.66); display: flex; align-items: center; justify-content: center; }
-      #settings[hidden] { display: none; }
-      #settings .panel { width: min(460px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto; background: #131a33; color: #fff; font: 600 14px system-ui, sans-serif; line-height: 1.4; border-radius: 14px; padding: 12px 16px 16px; box-sizing: border-box; box-shadow: 0 10px 40px rgba(0,0,0,.5); }
-      #settings .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-      #settings .title { font-size: 18px; font-weight: 800; }
-      #settings .close { font: inherit; color: #fff; background: rgba(255,255,255,.12); border: 0; border-radius: 10px; min-width: 44px; min-height: 44px; cursor: pointer; }
-      #settings h3 { margin: 12px 0 4px; font-size: 15px; }
-      #settings .who { margin-top: 6px; opacity: .85; font-weight: 500; }
-      #settings p { margin: 4px 0 8px; font-weight: 500; opacity: .85; }
-      #settings .warn { font-size: 13px; color: #ffd9a0; opacity: 1; }
-      #settings button { font: inherit; color: #fff; background: rgba(255,255,255,.14); border: 0; border-radius: 10px; min-height: 44px; padding: 0 14px; cursor: pointer; }
-      #settings button.primary { background: #ffd22e; color: #111; }
-      #settings textarea { display: block; width: 100%; box-sizing: border-box; margin: 6px 0 8px; font: 12px ui-monospace, monospace; color: #fff; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2); border-radius: 10px; padding: 8px; resize: vertical; }
-      #settings .msg { min-height: 20px; margin-top: 8px; font-weight: 600; }
-      #settings .msg.ok { color: #8fe3a3; }
-      #settings .msg.error { color: #ff9c9c; }
-      #settings .confirm { margin-top: 8px; padding: 10px; border-radius: 10px; background: rgba(255,210,46,.12); }
-      #settings .confirm .line { margin-bottom: 6px; font-weight: 500; }
-      #settings .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-
       /* Panneau de réglage de la conduite (`?debug&tune`) : outil de mise au point, à droite sous les temps. */
       #tune { position: fixed; right: 12px; top: 150px; z-index: 3; width: 290px; max-height: calc(100vh - 220px); overflow: auto; background: rgba(11,16,32,.86); color: #fff; font: 600 12px system-ui, sans-serif; border-radius: 10px; padding: 8px 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; }
       #tune[hidden] { display: none; }
@@ -236,10 +179,9 @@
 
       /* Le Salon (lot 26) : compte à rebours, classement de la session, podium. */
       #medals.last { color: #ff9c8f; font-weight: 800; }
-      #board.salon { width: 290px; }
-      #board.salon .row { grid-template-columns: 22px 1fr auto 52px; }
-      #board.salon .row .icon { opacity: .7; font-size: 11px; text-align: right; align-self: center; }
-      #board .error { color: #ff8a80; margin-top: 4px; }
+      #board.salon { width: 300px; }
+      #board.salon .row { grid-template-columns: 24px minmax(0, 1fr) auto 54px; }
+      #board.salon .row .icon { opacity: .7; font-size: 11px; text-align: right; }
       #podium { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(380px, calc(100vw - 24px)); box-sizing: border-box; background: rgba(19,26,51,.97); color: #fff; font: 600 15px system-ui, sans-serif; padding: 16px 20px; border-radius: 14px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-height: calc(100vh - 24px); overflow: auto; }
       #podium[hidden] { display: none; }
       #podium .title { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
@@ -256,7 +198,7 @@
 
       /* Petits écrans (téléphone) : bandeau resserré, menu en icônes, panneaux plus étroits. */
       @media (max-width: 900px), (max-height: 520px) {
-        #meta { top: 8px; font-size: 11px; max-width: calc(100vw - 210px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* deux chiffres au numéro du circuit : ne jamais passer sous le menu */
+        #meta { top: 8px; font-size: 11px; max-width: calc(100vw - 218px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* deux chiffres au numéro du circuit : ne jamais passer sous le menu */
         #meta .long { display: none; }
         /* Portrait : les boutons du menu occupent le coin droit sur 34 px de haut, le bandeau passe dessous. */
         #medals { top: 44px; font-size: 11px; }
@@ -265,18 +207,12 @@
         /* La ligne du fantôme ne doit jamais atteindre les temps intermédiaires, à droite : largeur plafonnée, coupée par « … ». */
         #ghostinfo { top: 98px; font-size: 11px; max-width: calc(100vw - 200px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         #ghostinfo .long { display: none; }
-        /* Le classement devient une fenêtre qu'on ouvre (bouton 🏆) et qu'on ferme en la touchant : pas de place pour l'afficher à côté. */
-        #board { left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; width: min(320px, calc(100vw - 24px)); max-height: 72vh; overflow: auto; box-sizing: border-box; background: rgba(19,26,51,.97); box-shadow: 0 10px 40px rgba(0,0,0,.5); cursor: pointer; }
+        /* Le classement reste dans le coin, compact et repliable (lot 29), sous la ligne du fantôme. */
+        #helpchip { display: none; }
         #info { display: none; }
         #speed { font-size: 28px; right: 14px; bottom: 12px; }
         #banner { font-size: 44px; top: 30%; }
         #banner.small { font-size: 24px; }
-        #menu { right: 8px; top: 6px; gap: 4px; }
-        #menu .txt { display: none; }
-        /* Le menu est plein : l'accès au Salon (ou au circuit du jour) est dans la fenêtre de pause et sur le panneau d'arrivée. */
-        #menu #btn-mode, #finish .actions .mode { display: none; }
-        #menu .ico { display: inline; font-size: 16px; }
-        #menu button { padding: 4px 8px; min-height: 34px; min-width: 38px; }
         #finish { padding: 14px 16px; top: 56%; }
         #finish .big { font-size: 32px; }
         /* Une fois la course finie, le panneau d'arrivée prend la place : on masque ce qui le recouvrirait. */
@@ -286,6 +222,9 @@
       @media (max-width: 520px) {
         #timer { left: 16px; transform: none; }
       }
+      /* Étroit : les médailles gardent leur icône et leur temps ; leur nom reste dans l'accueil et l'arrivée. */
+      @media (max-width: 1300px) { #medals .nm { display: none; } }
+      @media (max-width: 600px) { #medals { max-width: calc(100vw - 32px); } }
       /* Téléphone en paysage : peu de hauteur, le panneau d'arrivée se range à droite, sous le bandeau. */
       @media (max-height: 520px) and (orientation: landscape) {
         #medals { top: 26px; }
@@ -301,7 +240,6 @@
         #finish .online { order: 2; margin-top: 6px; font-size: 13px; }
         #finish .share { order: 3; margin-top: 6px; font-size: 12px; }
         #finish button { font-size: 14px; padding: 6px 12px; }
-        #board { width: min(250px, 40vw); }
       }
     </style>
   </head>
@@ -312,12 +250,11 @@
     <div id="meta" class="hud"></div>
     <div id="medals" class="hud"></div>
     <div id="ghostinfo" class="hud"></div>
-    <div id="menu">
-      <button id="btn-board" type="button" title="Classement (L)" hidden><span class="ico">🏆</span><span class="txt">Classement</span></button>
-      <button id="btn-ghost" type="button" title="Fantôme (G)"><span class="ico">👻</span><span class="txt">Fantôme</span></button>
-      <button id="btn-sound" type="button" title="Son (M)"><span class="ico">🔊</span><span class="txt">Son</span></button>
-      <button id="btn-archive" type="button" title="Archives (H)"><span class="ico">📅</span><span class="txt">Archives</span></button>
-      <button id="btn-mode" type="button" title="Salon : un circuit toutes les 10 minutes" hidden><span class="ico">🏁</span><span class="txt">Salon</span></button>
+    <div id="menu" role="toolbar" aria-label="Menu du jeu">
+      <button id="btn-home" type="button" title="Accueil" aria-label="Accueil"><span class="ico">🏠</span><span class="txt">Accueil</span></button>
+      <button id="btn-settings" type="button" title="Réglages" aria-label="Réglages"><span class="ico">⚙</span><span class="txt">Réglages</span></button>
+      <button id="btn-ghost" type="button" title="Fantôme (G)" aria-label="Fantôme"><span class="ico">👻</span><span class="txt">Fantôme</span></button>
+      <button id="btn-sound" type="button" title="Son (M)" aria-label="Son"><span class="ico">🔊</span><span class="txt">Son</span></button>
     </div>
     <div id="board" hidden></div>
     <div id="info" class="hud"></div>
@@ -336,12 +273,28 @@
     <div id="fall"></div>
     <div id="watchbar" hidden></div>
     <div id="tbar"></div>
-    <div id="tsettings" hidden></div>
-    <div id="settings" hidden></div>
     <div id="rotate"></div>
-    <div id="pause">
-      <div class="big">Pause</div>
-      <div class="actions"><button id="pause-resume" class="primary" type="button">Reprendre</button><button id="pause-restart" type="button">Recommencer</button><button id="pause-mode" type="button" hidden>Salon</button><button id="pause-settings" type="button">Réglages</button></div>
+    <button id="helpchip" type="button" title="Comment jouer">❓ Comment jouer · P : pause</button>
+    <div id="home" hidden></div>
+    <div id="pause" class="overlay" role="dialog" aria-modal="true" aria-label="Pause">
+      <div class="panel">
+        <div class="head"><h2 class="title">Pause</h2></div>
+        <div class="body">
+          <div class="menu" id="pause-menu">
+            <button id="pause-resume" class="btn primary" type="button">Reprendre</button>
+            <button id="pause-restart" class="btn" type="button">Recommencer</button>
+            <button id="pause-respawn" class="btn" type="button">Dernier point de contrôle</button>
+            <button id="pause-settings" class="btn" type="button">Réglages</button>
+            <button id="pause-howto" class="btn" type="button">Comment jouer</button>
+            <button id="pause-archive" class="btn" type="button">Archives</button>
+            <button id="pause-home" class="btn" type="button">Accueil</button>
+          </div>
+          <div class="confirm" id="pause-confirm" hidden>
+            <p>Quitter cette course ? Le tour en cours ne sera pas enregistré.</p>
+            <div class="actions"><button id="pause-stay" class="btn primary" type="button">Rester</button><button id="pause-leave" class="btn" type="button">Retour à l'accueil</button></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="tuned" class="hud"></div>
     <div id="tune" hidden></div>

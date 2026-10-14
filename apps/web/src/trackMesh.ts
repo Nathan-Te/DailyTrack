@@ -1295,7 +1295,7 @@ export interface TrackScene {
   /** Décor allégé (qualité basse) : montagnes, soleil, étoiles et décor de bord de piste masqués ; ciel et route restent. */
   setLite(on: boolean): void;
   /** Niveau de qualité 0–2 (lot 23) : 0 sans décor ni ombres ni halos ; 1 ombres de 512, halos, phares, décor de base ; 2 tout (ombres de 1024, décor dense, silhouettes proches). */
-  setQuality(level: 0 | 1 | 2): void;
+  setQuality(level: 0 | 1 | 2, shadows?: boolean): void;
   /** Ambiance du thème (exposition, brume, halos, phares). */
   look: Look;
   /** Hauteur de la fenêtre (pixels) et champ de vision (degrés) : taille des halos à l'écran. */
@@ -1563,7 +1563,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
   scene.add(floor);
 
   let shadowSize = 0;
-  const setQuality = (level: 0 | 1 | 2) => {
+  const setQuality = (level: 0 | 1 | 2, shadows = true) => {
     currentLevel = level;
     scene.traverse((o) => {
       // Seuls les objets marqués (`level`, ou `heavy` = niveau 1) sont touchés : les effets, la voiture et le fantôme gèrent leur visibilité eux-mêmes.
@@ -1573,7 +1573,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       if (casts !== undefined) o.castShadow = level >= casts;
     });
     // Ombres : carte de 512 (qualité 1) ou 1024 (qualité 2) ; coupées à la qualité 0 (reste l'ombre douce posée sous la voiture).
-    const want = options.aerial ? 0 : level === 2 ? 1024 : level === 1 ? 512 : 0;
+    const want = options.aerial || !shadows ? 0 : level === 2 ? 1024 : level === 1 ? 512 : 0; // `shadows` : le réglage « ombres » du joueur (lot 29)
     if (want !== shadowSize) {
       shadowSize = want;
       sun.castShadow = want > 0;
