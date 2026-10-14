@@ -76,8 +76,17 @@ jobs:
           blob="$(echo '${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
           echo "blob=$blob" >> "$GITHUB_ENV"
           echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
+      # Chromium (retouche 31b) : parts composées par DURÉE (scripts/e2e-parts.mjs, apps/web/e2e/durees.json) et UN test à la fois.
+      # Le runner a 2 cœurs : deux pages en WebGL logiciel côte à côte s'y affament (miniatures + spectateur : × 3 à × 6 sur les durées),
+      # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté. Firefox et WebKit (rapides, sans WebGL lourd) gardent `--shard`.
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
-        run: npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+        run: |
+          if [ "${{ matrix.browser }}" = chromium ]; then
+            node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium > "$RUNNER_TEMP/part.txt"
+            npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt"
+          else
+            npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+          fi
       # DailyJump (lot 0) : test de fumée de /jump/, une seule fois par navigateur (part 1 de la matrice), sans relance (retries: 0).
       # Il tourne après les tests de DailyTrack et ne change ni leur rapport ni leur verdict ; s'il échoue, la part échoue (`e2e` rouge).
       - name: Test de fumée DailyJump (${{ matrix.browser }})

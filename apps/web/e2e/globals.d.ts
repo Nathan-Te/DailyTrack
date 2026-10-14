@@ -56,7 +56,7 @@ interface CdjDebug {
     podiumVisible: boolean;
     now: number;
     endMs: number;
-    stats: { mainThreadGenerations: number; swaps: number; boardPolls: number; submits: number; prefetched: number; overtaken: number; buildMs: number; swapMs: number; swapAt: number; prebuilt: number; builtInSwap: number };
+    stats: { mainThreadGenerations: number; swaps: number; boardPolls: number; submits: number; prefetched: number; overtaken: number; buildMs: number; swapMs: number; swapAt: number; prebuilt: number; builtInSwap: number; prebuilds: number };
     setNow(ms: number): void;
     setGhostMode(mode: "all" | "top" | "off"): void;
     refresh(): Promise<void>;

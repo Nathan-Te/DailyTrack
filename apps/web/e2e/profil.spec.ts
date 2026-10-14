@@ -1,4 +1,4 @@
-import { expect as baseExpect, test, type Browser, type Page, TODAY, newClockedContext } from "./fixtures";
+import { expect as baseExpect, test, type Browser, type Page, TODAY, keepOpen, newClockedContext } from "./fixtures";
 import { SIM_VERSION, dailyCircuit, encodeReplay, formatDay, runPilot } from "@cdj/sim";
 import { encodeTransfer } from "../src/transfer";
 import { formatTime } from "../src/format";
@@ -82,6 +82,7 @@ let nowyCode = "";
 test("un pseudo appartient à son premier propriétaire : refusé (casse et accents), suggestions libres, puis le code le rend", async ({ browser }) => {
   // --- A joue (lentement) et prend « Nowy » ---
   a = await newDevice(browser);
+  keepOpen(a.context()); // A et C servent jusqu'au dernier scénario, qui les ferme
   await race(a, slowCode);
   await chooseName(a, "Nowy");
   await expect(a.locator("#finish .online .rank")).toHaveText("1er sur 1");
@@ -108,6 +109,7 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
 
   // --- C veut « Nowy » aussi : « Charger un code » avec le code d'A le fait devenir Nowy ---
   c = await newDevice(browser);
+  keepOpen(c.context());
   await race(c, slowCode);
   await chooseName(c, "NOWY");
   await expect(c.locator("#finish .online .error")).toContainText("déjà utilisé");

@@ -34,9 +34,14 @@ test("l'écran d'arrivée donne la ligne à partager, et le bouton la copie avec
 
 test("le bouton « Rejouer » relance un décompte (utile sans clavier)", async ({ page }) => {
   await finishRace(page);
+  // Pas à pas : avec timescale=6, une seule image lente du rendu logiciel (0,5 s × 6) mangeait tout le décompte de 3 s
+  // avant que le test lise la phase (instable vu en CI, retouche 31b). Le décompte n'avance plus que par `advance`.
+  await page.evaluate(() => window.__cdj.manual(true));
   await page.getByRole("button", { name: "Rejouer" }).click();
   await expect(page.locator("#finish")).toBeHidden();
   expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
+  await page.evaluate(() => window.__cdj.advance(3 * 120 + 1)); // 3 s de décompte
+  expect(await page.evaluate(() => window.__cdj.phase)).toBe("racing");
 });
 
 test("le record garde sa médaille pour la liste des archives", async ({ page }) => {

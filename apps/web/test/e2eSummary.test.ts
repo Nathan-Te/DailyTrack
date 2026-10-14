@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { summarize } from "../../../scripts/e2e-summary.mjs";
+import { chromiumSeconds, collectTests, summarize } from "../../../scripts/e2e-summary.mjs";
 
 // Le résumé du run e2e (retouche 29b) : un test qui n'a réussi qu'à la relance doit apparaître, nommé, dans le résumé.
 const test = (projectName: string, status: string, results: { status: string; duration?: number; error?: { message: string } }[]) => ({ projectName, status, results });
@@ -44,5 +44,10 @@ describe("résumé e2e", () => {
     expect(summarize(flakyOnly).exitCode).toBe(0);
     expect(summarize(flakyOnly, { failOnFlaky: true }).exitCode).toBe(1);
     expect(summarize({ suites: [] }).markdown).toContain("Aucun échec, aucun test instable.");
+  });
+
+  it("durées Chromium par fichier (secondes, tous essais) : pour apps/web/e2e/durees.json", () => {
+    expect(chromiumSeconds(collectTests(report))).toEqual({ "watch.spec.ts": 2 }); // 1000 + 500 + 700 ms ; Firefox et WebKit à part
+    expect(summarize(report).markdown).toContain('"watch.spec.ts": 2');
   });
 });

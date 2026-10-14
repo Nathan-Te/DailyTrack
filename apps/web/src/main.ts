@@ -2073,7 +2073,8 @@ if (demo && track) {
 // --- Le Salon : changement de circuit sans recharger la page (lot 26) ---------------------------------------------------------
 // Une nouvelle scène par session : la voiture, son ombre, les fantômes et les effets passent de l'ancienne à la nouvelle, puis l'ancienne
 // est libérée (rien ne s'accumule côté carte graphique en une soirée de sessions). Le circuit vient du fil de travail, déjà préparé.
-const salonStats = { buildMs: 0, swapMs: 0, swapAt: 0, prebuilt: 0, builtInSwap: 0 };
+// `prebuilds` : scènes construites d'avance (outil de test : une scène se construit sur le fil principal, les mesures d'images l'attendent).
+const salonStats = { buildMs: 0, swapMs: 0, swapAt: 0, prebuilt: 0, builtInSwap: 0, prebuilds: 0 };
 let prebuilt: { id: string; scene: ReturnType<typeof buildTrackScene> } | null = null;
 
 function buildSalonScene(c: LoadedSalonCircuit) {
@@ -2126,6 +2127,7 @@ const salonHost: SalonHost = {
     if (prebuilt?.id === c.id) return;
     prebuilt?.scene.dispose();
     prebuilt = { id: c.id, scene: buildSalonScene(c) };
+    salonStats.prebuilds++;
   },
   // « Une course est en cours » : elle roule vraiment (une voiture immobile sur la ligne n'a rien commencé : le podium n'attend pas).
   isRacing: () => !watch && !watchWait && phase === "racing" && !!race && (carSpeed(car) > 2 || race.splits.length > 0),
