@@ -53,21 +53,26 @@ test.describe("jeu (rendu 3D)", () => {
       await expect(page.locator("#meta")).toContainText(dayShort(date));
       await expect(page.locator("#medals")).toContainText("🥇");
 
+      // Pas à pas (lot 29b) : « la voiture roule » se mesure en 300 pas (2,5 s de simulation), pas en 2,5 s de temps réel — en rendu logiciel
+      // la boucle ne fait que quelques pas par seconde et la distance parcourue dépendait de la charge de la machine (10,6 m relevés pour 13 attendus).
+      await page.evaluate(() => window.__cdj.manual(true));
       const z0 = await page.evaluate(() => window.__cdj.car.z);
       await page.keyboard.down("KeyW");
-      await page.waitForTimeout(2500);
+      await page.evaluate(() => window.__cdj.advance(300));
       const z1 = await page.evaluate(() => window.__cdj.car.z);
-      expect(z1).toBeGreaterThan(z0 + 5); // la voiture roule
+      expect(z1).toBeGreaterThan(z0 + 5); // la voiture roule (seuil inchangé)
       expect(errors).toEqual([]);
     });
   }
 
   test("trois dates donnent trois circuits différents", async ({ page }) => {
+    // Trois chargements de suite : en rendu logiciel un chargement (génération du circuit + construction de la scène) prend 20 à 40 s en CI.
+    test.setTimeout(240_000);
     const ids = new Set<string>();
     // Deux dates d'avant le lancement (13/10/2026 : pas de numéro) et une d'après (numéro affiché).
   for (const date of ["2026-10-06", "2026-10-07", "2026-12-25"]) {
       await page.goto(`/?debug&seed=${date}`);
-      await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
+      await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 60_000 });
       ids.add(await page.evaluate(() => (window.__cdj.race as { track: { id: string } }).track.id));
     }
     expect(ids.size).toBe(3);

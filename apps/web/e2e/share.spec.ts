@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, TODAY } from "./fixtures";
 import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
 import { shareLine } from "../src/share";
 
@@ -6,7 +6,7 @@ import { shareLine } from "../src/share";
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(120_000);
 
-const day = Math.floor(Date.now() / 86_400_000);
+const day = TODAY;
 const circuit = dailyCircuit(day);
 const run = runPilot(circuit.track, { grip: 0.9 });
 const code = encodeReplay(run.replay);

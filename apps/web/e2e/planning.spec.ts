@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, TODAY, hasWebGL } from "./fixtures";
 import { PREMIER_JOUR, dailyTrackId, formatDay } from "@cdj/sim";
 
 // Panneau d'admin et planning (lot 14), en mode démo : sans serveur, remplacements gardés dans ce navigateur.
@@ -36,7 +36,7 @@ test("admin en démo : bandeau, planning de 14 cartes, aujourd'hui et historique
   expect(errors).toEqual([]);
 });
 
-test("remplacer J+2 dans le panneau, puis ouvrir le jeu sur ce jour : c'est la variante choisie", async ({ page }) => {
+test("remplacer J+2 dans le panneau : la variante choisie est gardée", async ({ page }) => {
   await page.goto("/admin/?api=demo");
   await page.evaluate(() => localStorage.removeItem("cdj:demo-plan"));
   await page.reload();
@@ -59,8 +59,15 @@ test("remplacer J+2 dans le panneau, puis ouvrir le jeu sur ce jour : c'est la v
   await expect(card).toHaveAttribute("data-variant", "3");
   await expect(card.locator(".badge")).toHaveText("variante 3");
   expect(JSON.parse((await page.evaluate(() => localStorage.getItem("cdj:demo-plan")))!)).toEqual({ [J2_DATE]: { variant: 3, theme: null } });
+});
 
-  // Le jeu en démo respecte le remplacement : même identifiant de circuit que le panneau.
+// Le jeu en démo respecte le remplacement : même identifiant de circuit que le panneau. Séparé du test du panneau (lot 29b) : le jeu a besoin de
+// WebGL, que le Firefox de la CI n'a pas (`new WebGLRenderer` échoue, `__cdj` n'existe jamais : 40 s d'attente puis échec, à chaque run). Le panneau,
+// lui, est testé dans tous les navigateurs ; le jeu l'est partout où WebGL existe (Chromium, WebKit).
+test("le jeu en démo respecte le remplacement choisi dans le panneau (même identifiant de circuit)", async ({ page }) => {
+  await page.goto("/admin/?api=demo"); // même origine que le jeu : le remplacement est écrit comme le fait le panneau (vérifié par le test précédent)
+  test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (le panneau est testé ci-dessus)");
+  await page.evaluate((plan) => localStorage.setItem("cdj:demo-plan", plan), JSON.stringify({ [J2_DATE]: { variant: 3, theme: null } }));
   await page.goto(`/?api=demo&day=${J2_DATE}&debug`);
   await ready(page);
   expect(await page.evaluate(() => window.__cdj.trackId)).toBe(dailyTrackId(J2, null, 3));
@@ -117,7 +124,7 @@ test("le jeu : variante d'essai (?variant=) jouable, jamais classée ; sans API 
 // --- Avec le vrai serveur (celui du conteneur Docker, base en mémoire, ADMIN_TOKEN fixé par playwright.config.ts) -----------
 const API = "http://127.0.0.1:8787";
 const TOKEN = "e2e-admin-token-0123456789";
-const REAL_TODAY = Math.floor(Date.now() / 86_400_000);
+const REAL_TODAY = TODAY;
 
 test("admin avec le vrai serveur : mauvais jeton refusé, bon jeton accepté, remplacement puis retour à l'original", async ({ page, request }) => {
   await page.goto(`/admin/?api=${encodeURIComponent(API)}`);

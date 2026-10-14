@@ -6,6 +6,7 @@
  *   ALLOWED_ORIGINS : origines CORS, séparées par des virgules ou des points-virgules (obligatoire en production)
  *   ADMIN_TOKEN (≥ 16 caractères) · RATE_SALT (≥ 16 caractères, obligatoire en production) · TRUST_PROXY (nombre de proxys de confiance ; 1 sur Cloud Run)
  *   SALON_MINUTES : tests et essais locaux seulement, refusée en production
+ *   TEST_CLOCK_OFFSET_MS : décalage (ms, entier) ajouté à l'heure réelle : l'horloge du serveur avance en temps réel mais à une date choisie ; tests seulement, refusée en production
  *   GIT_SHA, K_REVISION, K_SERVICE : posées par le déploiement / Cloud Run
  */
 export interface ServerConfig {
@@ -20,6 +21,8 @@ export interface ServerConfig {
   adminToken?: string;
   trustProxy: number;
   salonMinutes?: number;
+  /** Décalage (ms) de l'horloge de test du serveur (`TEST_CLOCK_OFFSET_MS`) ; absent : heure réelle. */
+  testClockOffsetMs?: number;
   revision?: string;
 }
 
@@ -42,6 +45,15 @@ export function readConfig(env: Env): ServerConfig {
       throw new ConfigError("SALON_MINUTES est réglée alors que le serveur tourne en production (NODE_ENV=production) : elle sert aux essais locaux et aux tests, jamais en ligne. Supprime la variable.");
     }
     salonMinutes = Number(env.SALON_MINUTES);
+  }
+
+  let testClockOffsetMs: number | undefined;
+  if (env.TEST_CLOCK_OFFSET_MS) {
+    if (production || onCloudRun) {
+      throw new ConfigError("TEST_CLOCK_OFFSET_MS est réglée alors que le serveur tourne en production : elle décale le jour des tests, jamais en ligne. Supprime la variable.");
+    }
+    testClockOffsetMs = Number(env.TEST_CLOCK_OFFSET_MS);
+    if (!Number.isSafeInteger(testClockOffsetMs)) throw new ConfigError(`TEST_CLOCK_OFFSET_MS : un nombre entier de millisecondes attendu, reçu : ${env.TEST_CLOCK_OFFSET_MS}`);
   }
 
   if (!turso && onCloudRun) {
@@ -79,6 +91,7 @@ export function readConfig(env: Env): ServerConfig {
     adminToken: env.ADMIN_TOKEN,
     trustProxy: trust,
     salonMinutes,
+    testClockOffsetMs,
     revision: env.K_REVISION ?? env.GIT_SHA,
   };
 }

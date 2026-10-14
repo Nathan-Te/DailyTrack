@@ -199,6 +199,21 @@ describe("configuration du serveur", () => {
     expect(() => readConfig({ K_SERVICE: "cdj-api", NODE_ENV: "production", ALLOWED_ORIGINS: "*" })).toThrow(/TURSO_DATABASE_URL/);
   });
 
+  it("TEST_CLOCK_OFFSET_MS : permise hors production, refusée en production et sur Cloud Run, entier exigé", () => {
+    expect(readConfig({ TEST_CLOCK_OFFSET_MS: "-518400000" }).testClockOffsetMs).toBe(-518_400_000);
+    expect(readConfig({}).testClockOffsetMs).toBeUndefined();
+    expect(() => readConfig({ ...prod, TEST_CLOCK_OFFSET_MS: "1000" })).toThrow(/TEST_CLOCK_OFFSET_MS/);
+    expect(() => readConfig({ K_SERVICE: "cdj-api", TURSO_DATABASE_URL: "libsql://x", TEST_CLOCK_OFFSET_MS: "1000" })).toThrow(/TEST_CLOCK_OFFSET_MS/);
+    expect(() => readConfig({ TEST_CLOCK_OFFSET_MS: "demain" })).toThrow(ConfigError);
+    expect(() => readConfig({ TEST_CLOCK_OFFSET_MS: "1.5" })).toThrow(ConfigError);
+  });
+
+  it("signale l'horloge de test dans /api/health quand l'horloge de test est active", async () => {
+    const t = await makeApi({ testClock: true });
+    expect((await t.call("GET", "/api/health")).body).toMatchObject({ testClock: true });
+    expect((await (await makeApi({})).call("GET", "/api/health")).body.testClock).toBeUndefined();
+  });
+
   it("refuse de démarrer en production avec SALON_MINUTES", () => {
     expect(() => readConfig({ ...prod, SALON_MINUTES: "2" })).toThrow(ConfigError);
     expect(() => readConfig({ ...prod, SALON_MINUTES: "2" })).toThrow(/SALON_MINUTES/);

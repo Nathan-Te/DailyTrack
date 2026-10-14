@@ -74,6 +74,8 @@ export interface ApiOptions {
    * essais locaux seulement**, absente en production (une session n'a pas la même durée pour tous si elle change).
    */
   salonMinutes?: number;
+  /** Vrai quand `now` vient de `TEST_CLOCK` (tests seulement) : signalé par /api/health, toujours absent en production. */
+  testClock?: boolean;
   /** Limites de débit du Salon (voir `DEFAULT_SALON_LIMITS`). */
   salonLimits?: Partial<SalonLimits>;
 }
@@ -592,6 +594,7 @@ export function createApi(options: ApiOptions) {
       salonMinutes: sessionMs / 60_000,
       /** Vrai si `SALON_MINUTES` est réglée (essais locaux seulement) : doit toujours être faux en production. */
       salonOverride: options.salonMinutes !== undefined,
+      ...(options.testClock ? { testClock: true } : {}),
       ...(options.revision ? { revision: options.revision } : {}),
     };
     try {

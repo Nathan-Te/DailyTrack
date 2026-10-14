@@ -2,6 +2,15 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  # Garde-fou (retouche 29b) : la suite complète tourne chaque nuit sur `main` (03 h 17 UTC : loin d'un changement de jour, jamais sur
+  # une heure pleine très chargée) ; à ce run, un test instable fait échouer le job pour qu'une instabilité qui revient se voie.
+  schedule:
+    - cron: "17 3 * * *"
+
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   test:
@@ -18,8 +27,31 @@ jobs:
       - run: npm run build
 
   # Même rediffusion rejouée dans Chromium, Firefox et WebKit : le résultat doit être identique à celui de Node.
-  e2e:
+  # Retouche 29b — CI rapide et fiable : une matrice (un job par navigateur et par part, `--shard`), une relance unique (`retries: 1`, voir
+  # apps/web/playwright.config.ts) et un job `e2e` qui fusionne les rapports, NOMME les tests instables dans le résumé du run et donne le verdict.
+  # `e2e-parts` ne sert qu'à répartir le travail ; la protection de branche exige `test` et `e2e` (docs/lots/lot-29b-ci-fiable.md).
+  e2e-parts:
+    name: e2e-parts (${{ matrix.browser }} ${{ matrix.shard }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { browser: chromium, shard: "1/8" }
+          - { browser: chromium, shard: "2/8" }
+          - { browser: chromium, shard: "3/8" }
+          - { browser: chromium, shard: "4/8" }
+          - { browser: chromium, shard: "5/8" }
+          - { browser: chromium, shard: "6/8" }
+          - { browser: chromium, shard: "7/8" }
+          - { browser: chromium, shard: "8/8" }
+          - { browser: firefox, shard: "1/2" }
+          - { browser: firefox, shard: "2/2" }
+          - { browser: webkit, shard: "1/2" }
+          - { browser: webkit, shard: "2/2" }
+    env:
+      E2E_ALL_BROWSERS: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,16 +59,90 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx playwright install --with-deps chromium firefox webkit
-        working-directory: apps/web
-      - run: npm run test:e2e
-        env:
-          E2E_ALL_BROWSERS: "1"
-      - uses: actions/upload-artifact@v4
-        if: failure()
+      - uses: actions/cache@v4
+        id: browsers
         with:
-          name: playwright-results
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+        working-directory: apps/web
+        if: steps.browsers.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps ${{ matrix.browser }}
+        working-directory: apps/web
+        if: steps.browsers.outputs.cache-hit == 'true'
+      - run: npm run build && npm run build:node -w @cdj/api
+      - name: Nom de la part
+        run: |
+          blob="$(echo '${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
+          echo "blob=$blob" >> "$GITHUB_ENV"
+          echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
+      - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
+        run: npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: blob-${{ env.blob }}
+          path: apps/web/blob-report/
+          retention-days: 7
+          if-no-files-found: warn
+      # Traces des essais ratés (même ceux d'un test réussi à la relance) : de quoi trouver la cause d'une instabilité.
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: resultats-${{ env.blob }}
           path: apps/web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Verdict unique (statut `e2e`) : fusionne les rapports des parts, écrit le résumé (instables nommés) et échoue au moindre vrai échec.
+  e2e:
+    needs: e2e-parts
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: blob-*
+          path: apps/web/all-blobs
+          merge-multiple: true
+      - name: Fusionner les rapports
+        working-directory: apps/web
+        run: |
+          mkdir -p merged
+          if ls all-blobs/*.zip >/dev/null 2>&1; then
+            PLAYWRIGHT_JSON_OUTPUT_NAME=merged/report.json npx playwright merge-reports --reporter=json,html all-blobs
+            ls merged
+          else
+            echo "aucun rapport de part : les jobs e2e-parts ont échoué avant les tests" >&2
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rapport-e2e
+          path: apps/web/playwright-report/
+          retention-days: 14
+          if-no-files-found: ignore
+      - name: Résumé du run
+        run: |
+          if [ ! -f apps/web/merged/report.json ]; then
+            echo "### e2e : aucun rapport, les jobs de part ont échoué avant les tests" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          # Run de nuit : un test instable fait échouer le job (c'est le but : voir une instabilité qui revient).
+          flags=""; [ "${{ github.event_name }}" = "schedule" ] && flags="--fail-on-flaky"
+          set +e
+          node scripts/e2e-summary.mjs apps/web/merged/report.json $flags > summary.md
+          code=$?
+          cat summary.md >> "$GITHUB_STEP_SUMMARY"
+          cat summary.md
+          [ "${{ needs.e2e-parts.result }}" = "success" ] || [ $code -ne 0 ] || { echo "::error::une part e2e a échoué sans test en échec (installation, construction, délai dépassé…) : voir le job"; code=1; }
+          exit $code
 
   # Lot 28 : l'image Docker de l'API (celle de Cloud Run) démarre contre un vrai serveur libSQL (le protocole de Turso), répond à /api/health,
   # sert un temps du jour et du Salon rejoués par le serveur, et refuse de démarrer avec SALON_MINUTES.

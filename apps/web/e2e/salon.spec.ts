@@ -40,6 +40,18 @@ test("on arrive en cours de session : compte à rebours, joueurs fictifs au clas
   await page.goto(salonUrl(START + 300_000));
   await loaded(page);
   await withRows(page, 3);
+  // Les joueurs fictifs sont calculés un à un (fil de travail) : le premier du classement CHANGE tant que le dernier n'est pas arrivé, et les
+  // fantômes suivent le classement avec un temps de retard. On attend donc l'état stable — les fantômes sont ceux du classement courant —
+  // avant de comparer (« Démo Sirocco » attendu, « Démo Bouchon » reçu en CI : deux lectures à des moments différents).
+  await page.waitForFunction(
+    () => {
+      const s = window.__cdj.salon!;
+      const rows = s.board?.rows ?? [];
+      return rows.length >= 3 && (s.ghosts?.count ?? 0) >= 1 && s.ghosts!.names[0] === rows[0]!.name;
+    },
+    undefined,
+    { timeout: 120_000, polling: 500 },
+  );
   const s = await page.evaluate(() => window.__cdj.salon!);
   expect(s.demo).toBe(true);
   expect(s.sessionMs).toBe(LONG);
@@ -141,7 +153,9 @@ test("une course commencée avant la fin, finie après, est acceptée ; le podiu
   await loaded(page);
   await withRows(page, 2);
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
-  await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
+  // La voiture doit VRAIMENT rouler (1 s de simulation) avant la fin de la session : « phase = racing » est déjà vrai avant que la course lancée
+  // par autoplay ait démarré, et une fin de session qui tombe pendant le décompte va droit au podium (jamais « overrun » : relevé en CI).
+  await page.waitForFunction(() => window.__cdj.phase === "racing" && window.__cdj.car.tick > 120, undefined, { timeout: 60_000 });
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 1500);
   await page.waitForFunction(() => window.__cdj.salon!.state === "overrun", undefined, { timeout: 15_000 });
   await expect(page.locator("#podium")).toBeHidden(); // la course continue

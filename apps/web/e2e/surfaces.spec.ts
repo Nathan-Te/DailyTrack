@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, FIXED_NOW } from "./fixtures";
 import { THEMES, THEME_NAMES, createSurfacesTrack, dailyCircuit, parseDay } from "@cdj/sim";
 
 // Lot 8 : scénario `surfaces`, indicateur d'effets du HUD, thèmes forcés. Rendu 3D : Chromium seulement.
@@ -85,7 +85,7 @@ test("un thème forcé n'est jamais envoyé au classement, même avec une adress
     if (route.request().method() === "OPTIONS") return route.fulfill({ status: 204, headers: CORS });
     return route.fulfill({ status: 200, headers: CORS, contentType: "application/json", body: JSON.stringify({}) });
   });
-  const today = new Date().toISOString().slice(0, 10);
+  const today = new Date(FIXED_NOW).toISOString().slice(0, 10);
   await racing(page, `/?debug&seed=${today}&theme=banquise&api=${encodeURIComponent(API)}`);
   await expect(page.locator("#board")).toBeHidden(); // pas de classement pour un circuit d'essai
   // On se téléporte avant la ligne d'arrivée : la course finit, rien ne part.

@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, TODAY, newClockedContext } from "./fixtures";
 import { SIM_VERSION, dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
 import { boxes, expectNoOverlap } from "./layout";
 
@@ -7,7 +7,7 @@ import { boxes, expectNoOverlap } from "./layout";
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(150_000);
 
-const day = Math.floor(Date.now() / 86_400_000);
+const day = TODAY;
 const circuit = dailyCircuit(day);
 const pilot = runPilot(circuit.track, { grip: 0.9 });
 const code = encodeReplay(pilot.replay);
@@ -22,7 +22,7 @@ for (const viewport of [
   { name: "petit portrait", width: 360, height: 640 },
 ]) {
   test(`téléphone ${viewport.name} (${viewport.width}×${viewport.height}) : en course puis à l'arrivée, rien ne se chevauche`, async ({ browser }) => {
-    const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+    const context = await newClockedContext(browser, { viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     // Un fantôme et un classement : le bandeau est au complet.
     await context.addInitScript(
       ([id, replay, ms, simVersion]) => localStorage.setItem(`cdj:best:${id}`, JSON.stringify({ ms, splits: [9000, 18000, 27000], replay, simVersion })),

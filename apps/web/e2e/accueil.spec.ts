@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { expect, test, type Browser, type BrowserContext, type Page, TODAY, newClockedContext, clockNow } from "./fixtures";
 import { dailyCircuit, formatDay } from "@cdj/sim";
 import { boxes, expectNoOverlap } from "./layout";
 
@@ -19,7 +19,7 @@ async function open(page: Page, url: string, { wide = false }: { wide?: boolean 
 const ui = (page: Page) => page.evaluate(() => window.__cdj.ui);
 
 async function fresh(browser: Browser, viewport = DESKTOP, touch = false): Promise<BrowserContext> {
-  return browser.newContext({ viewport, hasTouch: touch, isMobile: touch, permissions: ["clipboard-read", "clipboard-write"] });
+  return newClockedContext(browser, { viewport, hasTouch: touch, isMobile: touch, permissions: ["clipboard-read", "clipboard-write"] });
 }
 
 test.describe("l'accueil", () => {
@@ -127,7 +127,7 @@ test.describe("l'accueil", () => {
   test("les liens de test, de partage et d'archive sautent l'accueil ; ?home=1 le force", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    const day = formatDay(Math.floor(Date.now() / 86_400_000) - 1);
+    const day = formatDay(TODAY - 1);
     for (const url of [`/?seed=${day}`, `/?day=${day}&api=demo`, "/?scenario=essai", "/?demo", "/?debug", "/?mode=salon&api=demo", "/?watch=best&api=demo&seed=2026-10-26", "/?theme=nuit"]) {
       await open(page, url);
       await expect(page.locator("#home"), url).toBeHidden();
@@ -401,21 +401,19 @@ test.describe("pause et touches", () => {
     });
     await open(page, "/?debug&scenario=essai&timescale=4");
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    const press = async (index: number) => {
+    // Le bouton reste enfoncé JUSQU'À ce que l'effet soit visible (puis relâché) : le jeu lit la manette une fois par image, et en rendu
+    // logiciel une image peut durer plus que n'importe quelle durée d'appui choisie d'avance (700 ms ne suffisait pas : test bloqué en CI).
+    const press = async (index: number, effect: () => boolean) => {
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = true), index);
-      await page.waitForTimeout(700); // le rendu logiciel est lent : l'appui doit durer plus d'une image
+      await page.waitForFunction(effect);
       await page.evaluate((i) => ((window as unknown as { __pad: { buttons: { pressed: boolean }[] } }).__pad.buttons[i]!.pressed = false), index);
-      await page.waitForTimeout(400);
     };
-    await press(9); // Start : pause
-    await page.waitForFunction(() => window.__cdj.paused === true);
+    await press(9, () => window.__cdj.paused === true); // Start : pause
     await expect(page.locator("#pause")).toBeVisible();
-    await press(2); // X : depuis le départ (referme aussi la pause)
-    await page.waitForFunction(() => window.__cdj.paused === false);
+    await press(2, () => window.__cdj.paused === false); // X : depuis le départ (referme aussi la pause)
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    await page.waitForTimeout(1200);
-    await press(3); // Y : dernier point de contrôle (ici le départ : la reprise est comptée)
-    await page.waitForFunction(() => (window.__cdj.race as { respawns: number }).respawns >= 1);
+    await page.waitForFunction(() => (window.__cdj.race as { car: { tick: number } }).car.tick > 120); // la course tourne (1 s de simulation)
+    await press(3, () => (window.__cdj.race as { respawns: number }).respawns >= 1); // Y : dernier point de contrôle (ici le départ : la reprise est comptée)
     await ctx.close();
   });
 
@@ -488,7 +486,8 @@ test.describe("profil", () => {
   test("« Copier mon code » puis « Charger un code » dans un autre contexte : mêmes pseudo, records et places", async ({ browser }) => {
     const ID = "0123456789abcdef0123456789abcdef";
     const OTHER = "fedcba9876543210fedcba9876543210";
-    const today = formatDay(Math.floor(Date.now() / 86_400_000));
+    const today = formatDay(TODAY);
+    const old = formatDay(TODAY - 5); // un autre jour que « aujourd'hui » (une date écrite en dur finissait par tomber un jour de test)
     const a = await fresh(browser);
     const pa = await a.newPage();
     await pa.addInitScript(
@@ -515,14 +514,14 @@ test.describe("profil", () => {
     const b = await fresh(browser);
     const pb = await b.newPage();
     await pb.addInitScript(
-      ([id]) => {
+      ([id, o]) => {
         if (localStorage.getItem("cdj:player")) return;
         localStorage.setItem("cdj:player", id!);
         localStorage.setItem("cdj:name", "Bob");
-        localStorage.setItem("cdj:best:jour-2026-10-20-g15", JSON.stringify({ ms: 50000, splits: [], simVersion: 14 }));
+        localStorage.setItem(`cdj:best:jour-${o}-g15`, JSON.stringify({ ms: 50000, splits: [], simVersion: 14 }));
         localStorage.setItem("cdj:touch", '{"vibration":false}');
       },
-      [OTHER],
+      [OTHER, old],
     );
     await open(pb, "/?home=1&debug&api=demo");
     await expect(pb.locator("#home .profile input.name")).toHaveValue("Bob");
@@ -544,7 +543,7 @@ test.describe("profil", () => {
     const state = await pb.evaluate(() => ({ ...localStorage }));
     expect(state["cdj:player"]).toBe(ID);
     expect(JSON.parse(state[`cdj:best:jour-${today}-g15`]!).ms).toBe(41000);
-    expect(state["cdj:best:jour-2026-10-20-g15"]).toBeUndefined(); // les anciens records sont remplacés
+    expect(state[`cdj:best:jour-${old}-g15`]).toBeUndefined(); // les anciens records sont remplacés
     expect(JSON.parse(state[`cdj:rank:${today}`]!)).toEqual({ rank: 2, participants: 7 });
     expect(state["cdj:touch"]).toBe('{"vibration":false}'); // les réglages restent
     await expect(pb.locator("#home .profile .stats")).toContainText("🥈 1");
@@ -601,7 +600,7 @@ test.describe("profil", () => {
 const API = "http://api.test";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
 const json = (body: unknown, status = 200) => ({ status, headers: CORS, contentType: "application/json", body: JSON.stringify(body) });
-const day = Math.floor(Date.now() / 86_400_000);
+const day = TODAY;
 const circuit = dailyCircuit(day);
 
 async function mockApi(ctx: BrowserContext, board: { rank: number; name: string; ms: number; medal: string | null }[], me: { rank: number; name: string; ms: number; medal: string | null } | null) {
@@ -611,7 +610,7 @@ async function mockApi(ctx: BrowserContext, board: { rank: number; name: string;
     if (url.pathname === `/api/day/${circuit.date}`) return route.fulfill(json({ date: circuit.date, variant: 0, theme: null, trackId: circuit.track.id }));
     if (url.pathname.endsWith("/leaderboard")) return route.fulfill(json({ date: circuit.date, participants: Math.max(12, me?.rank ?? 0), top: board, me }));
     if (url.pathname === "/api/salon/now") {
-      const serverMs = Date.now();
+      const serverMs = clockNow();
       return route.fulfill(json({ serverMs, session: Math.floor(serverMs / 600_000), startMs: Math.floor(serverMs / 600_000) * 600_000, endMs: (Math.floor(serverMs / 600_000) + 1) * 600_000, trackId: "salon-x", players: 4 }));
     }
     return route.fulfill(json({ error: "no_ghost", message: "Aucun fantôme" }, 404));
