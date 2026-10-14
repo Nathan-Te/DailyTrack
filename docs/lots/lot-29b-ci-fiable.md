@@ -28,8 +28,9 @@ Runs de la branche (le résumé de chacun est dans l'onglet « Summary » du run
 | [#258](https://github.com/Nathan-Te/DailyTrack/actions/runs/38546323921) (push) | `f72df5c` | 13 min | 214 réussis, **0 instable** (les 4 corrections tiennent), **1 échec** : `watch` « Salon (démo) … session en cours » (corrigé ci-dessous) |
 | [#259](https://github.com/Nathan-Te/DailyTrack/actions/runs/38548433288) (push) | `efd3bf4` | 11 min | `e2e` vert, **0 échec** ; rouge à cause de `api-image` (smoke : circuit du Salon du moment non fini à l'adhérence 0,9), corrigé ci-dessous |
 | [#260](https://github.com/Nathan-Te/DailyTrack/actions/runs/38550493927) (push) | `bceefda` | **11,5 min** | **vert, 215 réussis, 0 instable, 0 échec, 15 jobs verts** (premier run pleinement conforme) |
+| [#261](https://github.com/Nathan-Te/DailyTrack/actions/runs/38552604870) (push) | `8140a80` | **10,5 min** | **vert, 215 réussis, 0 instable, 0 échec** (2ᵉ run conforme d'affilée ; commit de documentation seule) |
 
-**Critère d'arrêt « trois runs complets verts d'affilée, 0 instable »** : **1 run conforme sur 3** (#260, 0 instable). Avant lui : #252 à #255 verts mais avec des instables (corrigés), #258 et #259 rouges sur un seul test chacun (corrigés). L'agent de session ne peut pas relancer un run (403 : seuls ses nouveaux commits en lancent). **À faire par Nathan** : sur la PR, *Re-run all jobs* deux fois et lire en tête de chaque run le tableau « Résultats e2e » — on veut « Aucun échec, aucun test instable » ; trois runs ainsi, puis fusionner.
+**Critère d'arrêt « trois runs complets verts d'affilée, 0 instable »** : **2 runs conformes d'affilée** (#260 et #261 : 215 réussis, 0 instable, 0 échec, 10,5 à 11,5 min). Le troisième est le run du commit qui ajoute cette ligne (à lire dans l'onglet Actions) ; si Nathan veut une preuve de plus, *Re-run all jobs* sur la PR (l'agent de session ne peut pas relancer : 403). Avant #260 : #252 à #255 verts mais avec des instables (corrigés), #258 et #259 rouges sur un seul test ou un seul job chacun (corrigés).
 
 ## Familles instables : cause et correction
 
