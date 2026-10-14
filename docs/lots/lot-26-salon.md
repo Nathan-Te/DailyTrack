@@ -1,5 +1,7 @@
 # Lot 26 — Le Salon : un circuit toutes les 10 minutes (côté jeu, avec mode démo)
 
+> **Mis à jour au lot 31** ([lot-31-futur-finale.md](lot-31-futur-finale.md)) : le déroulé de fin de session est refait (finale de 15 s, changement à l'heure pile, plus d'attente des retardataires) ; les envois sont acceptés jusqu'à `fin + 3 s` (et non 60 s) et la session reste lue 20 s pour le podium. Les passages ci-dessous sur `overrun`, le « dernier essai » et la minute de grâce décrivent l'état d'avant.
+
 **À essayer** (aperçu de la branche : `https://nathan-te.github.io/DailyTrack/b/claude-ecstatic-mccarthy-c02grk/`) :
 
 1. **Le Salon en démonstration** : [`?mode=salon&api=demo`](https://nathan-te.github.io/DailyTrack/b/claude-ecstatic-mccarthy-c02grk/?mode=salon&api=demo) — circuit de la session en cours, joueurs fictifs qui arrivent au fil du temps (leurs fantômes avec leur pseudo, le classement à gauche, **Tab** pour l'ouvrir ou le fermer, **G** pour les fantômes), compte à rebours en haut à gauche.

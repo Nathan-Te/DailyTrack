@@ -6,15 +6,19 @@ import type { SalonBoard, SalonRow } from "./salonApi";
 // Le Salon (lot 26) : logique pure (horloge, déroulé d'une session, choix des fantômes, ligne à partager). Aucun DOM, aucun
 // rendu : testée par Vitest. `main.ts` et `salonMode.ts` l'utilisent.
 
-/** Bandeau « dernier essai » : les 30 dernières secondes de la session. */
-export const LAST_TRY_MS = 30_000;
+/** Finale (lot 31) : les 15 dernières secondes. Plus aucun départ ; ceux qui roulent continuent ; grand compte à rebours ; classement d'office. */
+export const FINALE_MS = 15_000;
 /** Le circuit suivant se prépare (fil de travail) pendant les deux dernières minutes. */
 export const PREPARE_MS = 120_000;
-/** Une course commencée avant la fin se termine : l'envoi est accepté jusqu'à 60 s après la fin. */
-export const SUBMIT_GRACE_MS = 60_000;
-/** Durée du podium avant le circuit suivant. */
+/** Un envoi est accepté jusqu'à 3 s après la fin (marge réseau, voir `SALON_GRACE_MS` côté serveur) ; la course en cours à l'heure pile est coupée. */
+export const SUBMIT_GRACE_MS = 3_000;
+/** Le serveur sert encore le classement d'une session finie 20 s (le podium) avant de l'oublier. */
+export const SERVE_GRACE_MS = 20_000;
+/** Durée du podium, affiché par-dessus le circuit suivant. */
 export const PODIUM_MS = 10_000;
 export const BOARD_POLL_MS = 5000;
+/** Classement rafraîchi plus souvent pendant la finale, pour voir les derniers changements. */
+export const FINALE_POLL_MS = 2000;
 export const NOW_POLL_MS = 10_000;
 /** Fantômes des autres joueurs affichés en même temps (plus le tien). */
 export const MAX_GHOSTS = 5;
@@ -76,21 +80,24 @@ export function salonShareLine(label: string, ms: number, rank?: number | null, 
 
 export interface SessionClock {
   remainingMs: number;
-  /** Les 30 dernières secondes. */
-  lastTry: boolean;
+  /** La finale : les 15 dernières secondes, avant la fin. */
+  finale: boolean;
   /** Les deux dernières minutes : le circuit suivant se prépare. */
   preparing: boolean;
   /** La session est terminée. */
   ended: boolean;
-  /** Plus aucun envoi n'est accepté (60 s après la fin). */
+  /** Plus aucun envoi n'est accepté (3 s après la fin). */
   closed: boolean;
 }
 
 export function sessionClock(nowMs: number, session: number, sessionMs: number = SALON_SESSION_MS): SessionClock {
   const end = salonSessionEnd(session, sessionMs);
   const remainingMs = end - nowMs;
-  return { remainingMs, lastTry: remainingMs > 0 && remainingMs <= LAST_TRY_MS, preparing: remainingMs <= PREPARE_MS, ended: remainingMs <= 0, closed: nowMs > end + SUBMIT_GRACE_MS };
+  return { remainingMs, finale: remainingMs > 0 && remainingMs <= FINALE_MS, preparing: remainingMs <= PREPARE_MS, ended: remainingMs <= 0, closed: nowMs > end + SUBMIT_GRACE_MS };
 }
+
+/** Un départ est-il encore permis ? Non pendant la finale ni après la fin. */
+export const startOpen = (nowMs: number, session: number, sessionMs: number = SALON_SESSION_MS): boolean => sessionClock(nowMs, session, sessionMs).remainingMs > FINALE_MS;
 
 /** Un envoi daté de `nowMs` pour cette session serait-il accepté ? (le serveur décide ; le jeu évite un envoi perdu d'avance) */
 export const submitOpen = (nowMs: number, session: number, sessionMs: number = SALON_SESSION_MS): boolean => !sessionClock(nowMs, session, sessionMs).closed;

@@ -4,8 +4,10 @@ import { copyText } from "./clipboard";
 import { getName, getPlayerId } from "./identity";
 import {
   BOARD_POLL_MS,
+  FINALE_POLL_MS,
   NOW_POLL_MS,
   PODIUM_MS,
+  SUBMIT_GRACE_MS,
   SalonClock,
   countdownText,
   nextSalonGhostMode,
@@ -32,7 +34,12 @@ import { watchHref } from "./watch";
 // pour ce qui le concerne (changer de scène, savoir si une course est en cours). Rien ici ne touche à la simulation, aux records ni au
 // classement du circuit du jour.
 
-export type SalonState = "playing" | "overrun" | "podium" | "switching";
+/**
+ * `playing` : la session roule (la finale en fait partie : `finaleOn`) ; `podium` : à l'heure pile le circuit suivant est installé et le
+ * podium de la session finie s'affiche par-dessus (le jeu est gelé dessous, son décompte attend la fermeture du podium) ; `switching` :
+ * le circuit suivant n'était pas prêt, on réessaie.
+ */
+export type SalonState = "playing" | "podium" | "switching";
 
 export interface SalonHost {
   /** Remplace le circuit (nouvelle scène) et repart d'un décompte. */
@@ -41,8 +48,10 @@ export interface SalonHost {
   prebuild(c: LoadedSalonCircuit): void;
   /** Une course est en cours (hors décompte et hors arrivée). */
   isRacing(): boolean;
-  /** Abandonne la course en cours (plus de temps : l'envoi serait refusé). */
+  /** Abandonne la course en cours : à l'heure pile elle s'arrête pour tout le monde et ne compte pas. */
   abortRun(): void;
+  /** Finale (lot 31) : plus aucun départ (boutons grisés), classement affiché d'office ; `false` rend tout. */
+  finale(on: boolean): void;
   banner(text: string, seconds: number, small?: boolean): void;
   flash(): void;
   /** Les fantômes du prochain départ ont changé. */
@@ -52,6 +61,8 @@ export interface SalonHost {
 export interface SalonDom {
   /** Ligne du compte à rebours. */
   countdown: HTMLElement;
+  /** Grand compte à rebours de la finale (15 → 0), au centre. */
+  finale: HTMLElement;
   board: BoardPanel;
   podium: HTMLElement;
 }
@@ -115,9 +126,14 @@ export class SalonController {
   private lastCountdown = "";
   private polling = false;
   private podiumAt = 0;
-  private settleAt = 0;
   private podiumShown = -1;
   private retryAt = 0;
+  /** La finale est en cours (15 dernières secondes) : départs fermés, grand compte à rebours. */
+  finaleOn = false;
+  /** La session qui vient de finir, pour le podium (le jeu est déjà passé à la suivante). */
+  private old: { session: number; label: string; board: SalonBoard | null; best: SalonController["best"]; end: number; refreshed: boolean } | null = null;
+  private podiumSwapped = false;
+  private prebuiltFor = -1;
 
   constructor(
     readonly api: SalonApi,
@@ -176,49 +192,70 @@ export class SalonController {
   tick(): void {
     const now = this.clock.now();
     const perf = performance.now();
-    const c = sessionClock(now, this.session, this.sessionMs);
 
-    if (this.state === "playing" || this.state === "overrun") {
-      // Compte à rebours et bandeau « dernier essai ».
-      const text = `⏱ ${countdownText(c.remainingMs)}${c.lastTry ? " · DERNIER ESSAI" : ""}${c.ended ? " · fin de session" : ""} · ${this.players} joueur${this.players > 1 ? "s" : ""}`;
+    if (this.state === "playing") {
+      const c = sessionClock(now, this.session, this.sessionMs);
+      // Finale : les 15 dernières secondes. Plus aucun départ, grand compte à rebours, classement d'office, rafraîchi plus souvent.
+      if (c.finale && !this.finaleOn) this.enterFinale();
+      else if (!c.finale && this.finaleOn) this.leaveFinale();
+      const text = `⏱ ${countdownText(c.remainingMs)}${c.finale ? " · DERNIÈRE CHANCE" : ""} · ${this.players} joueur${this.players > 1 ? "s" : ""}`;
       if (text !== this.lastCountdown && this.dom) {
         this.lastCountdown = text;
         this.dom.countdown.textContent = text;
-        this.dom.countdown.classList.toggle("last", c.lastTry || c.ended);
+        this.dom.countdown.classList.toggle("last", c.finale);
+      }
+      if (this.finaleOn && this.dom) {
+        const n = String(Math.max(0, Math.ceil(c.remainingMs / 1000)));
+        if (this.dom.finale.textContent !== n) this.dom.finale.textContent = n;
       }
       if (c.preparing && !this.circuits.has(this.session + 1)) {
         this.stats.prefetched++;
         void this.circuitFor(this.session + 1); // la bascule n'attendra pas le générateur
       }
-      if (perf - this.lastBoardPoll >= BOARD_POLL_MS) void this.refreshBoard();
+      // La scène du circuit suivant se construit dès qu'il est prêt et que personne ne roule (sinon : à l'heure pile, derrière le podium).
+      if (c.preparing && this.prebuiltFor !== this.session + 1 && this.host && !this.host.isRacing()) {
+        const next = this.session + 1;
+        this.prebuiltFor = next;
+        void this.circuitFor(next).then((circ) => {
+          if (circ && this.state === "playing" && this.session + 1 === next && !this.host?.isRacing()) this.host?.prebuild(circ);
+          else if (this.prebuiltFor === next) this.prebuiltFor = -1;
+        });
+      }
+      if (perf - this.lastBoardPoll >= (this.finaleOn ? FINALE_POLL_MS : BOARD_POLL_MS)) void this.refreshBoard();
       if (!this.demo && perf - this.lastNowPoll >= NOW_POLL_MS) void this.syncNow();
-    }
-
-    if (this.state === "playing" && c.ended) {
-      if (this.host?.isRacing() && !c.closed) {
-        this.state = "overrun";
-        this.settleAt = 0;
-        this.host.banner("Fin de session : termine ton tour", 4, true);
-      } else {
-        void this.startPodium();
-      }
-    } else if (this.state === "overrun") {
-      if (this.host?.isRacing()) {
-        if (c.closed) {
-          this.host.abortRun(); // plus d'envoi accepté : on ne laisse pas courir pour rien
-          void this.startPodium();
-        }
-      } else {
-        // La course est finie (ou abandonnée) : on laisse voir le résultat un instant, puis le podium.
-        if (this.settleAt === 0) this.settleAt = perf + 2500;
-        if (perf >= this.settleAt) void this.startPodium();
-      }
+      // À l'heure pile (heure du serveur) : la course en cours s'arrête pour tous, le circuit change pour tous. Personne n'attend personne.
+      if (c.ended) void this.endSession();
     } else if (this.state === "podium") {
-      const left = (this.podiumAt + PODIUM_MS - perf) / 1000;
-      const shown = Math.max(0, Math.ceil(left));
-      if (shown !== this.podiumShown) this.drawPodium(left);
-      if (left <= 0 && perf >= this.retryAt) void this.swapToCurrent();
+      const old = this.old;
+      // Le classement final une fois les envois clos (fin + 3 s) : une course finie juste avant la fin peut encore monter au podium.
+      if (old && !old.refreshed && now >= old.end + SUBMIT_GRACE_MS + 500) {
+        old.refreshed = true;
+        void this.refreshOldBoard();
+      }
+      if (this.podiumSwapped) {
+        const left = (this.podiumAt + PODIUM_MS - perf) / 1000;
+        const shown = Math.max(0, Math.ceil(left));
+        if (shown !== this.podiumShown) this.drawPodium(left);
+        if (left <= 0) this.closePodium();
+      }
     }
+  }
+
+  private enterFinale(): void {
+    this.finaleOn = true;
+    if (this.dom) {
+      this.dom.finale.hidden = false;
+      this.dom.finale.textContent = String(Math.ceil((this.endMs - this.clock.now()) / 1000));
+    }
+    this.host?.finale(true);
+    this.host?.banner("Dernière chance : plus de départ", 3, true);
+    this.lastBoardPoll = -1e9; // classement tout de suite
+  }
+
+  private leaveFinale(): void {
+    this.finaleOn = false;
+    if (this.dom) this.dom.finale.hidden = true;
+    this.host?.finale(false);
   }
 
   private async syncNow(): Promise<void> {
@@ -355,7 +392,10 @@ export class SalonController {
   submit(r: SalonRunResult, name: string): Promise<ApiResult<SalonSubmitResult>> {
     this.stats.submits++;
     const p = this.api.submit(r.session, this.playerId, name, r.replay).then((res) => {
-      if (res.ok && r.session === this.session) {
+      if (res.ok && this.old && r.session === this.old.session) {
+        this.old.board = res.data.board; // course terminée juste avant la fin : elle monte au podium
+        if (this.state === "podium") this.drawPodium(Math.max(0, (this.podiumAt + PODIUM_MS - performance.now()) / 1000));
+      } else if (res.ok && r.session === this.session) {
         this.board = res.data.board;
         this.players = res.data.board.players;
         this.renderBoard();
@@ -371,57 +411,35 @@ export class SalonController {
 
   // --- Podium et bascule -----------------------------------------------------------------------------------------------
 
-  private async startPodium(): Promise<void> {
-    if (this.state === "podium" || this.state === "switching") return;
+  /**
+   * L'heure pile : la course en cours est coupée (non comptée), le circuit suivant s'installe tout de suite et le podium de la session
+   * finie s'affiche par-dessus avec le dernier classement connu (rafraîchi à `fin + 3 s`, quand les envois sont clos).
+   */
+  private async endSession(): Promise<void> {
+    if (this.state !== "playing") return;
     this.state = "podium";
-    this.podiumAt = performance.now() + 600; // le temps de récupérer le classement final
+    this.podiumSwapped = false;
     this.retryAt = 0;
     this.podiumShown = -1;
+    this.old = { session: this.session, label: this.label, board: this.board, best: this.best, end: this.endMs, refreshed: false };
+    if (this.finaleOn) this.leaveFinale();
+    this.host?.abortRun();
     if (this.dom) this.dom.podium.hidden = false;
     document.body.classList.add("podium");
     this.drawPodium(PODIUM_MS / 1000);
-    // Le circuit suivant est déjà généré : sa scène se construit maintenant, derrière le podium (une courte saccade que personne ne voit).
-    void this.circuitFor(salonSessionAt(this.clock.now(), this.sessionMs)).then((c) => {
-      if (c && this.state === "podium") setTimeout(() => this.state === "podium" && this.host?.prebuild(c), 250);
-    });
-    // Un envoi encore en route (course finie après la fin) compte dans le podium : on l'attend un instant.
-    if (this.inflight.size > 0) await withTimeout(Promise.allSettled([...this.inflight]), 3000);
-    const r = await withTimeout(this.api.board(this.session, this.pid), 2500);
-    if (r?.ok) this.board = r.data;
-    this.podiumAt = performance.now();
-    this.drawPodium(PODIUM_MS / 1000);
+    await this.installNext();
   }
 
-  private drawPodium(secondsLeft: number): void {
-    if (!this.dom) return;
-    this.podiumShown = Math.max(0, Math.ceil(secondsLeft));
-    const mine = this.board?.me && this.best ? { ms: this.board.me.ms, rank: this.board.me.rank, participants: this.board.participants } : null;
-    const line = mine ? salonShareLine(this.label, mine.ms, mine.rank, mine.participants) : null;
-    renderPodium(this.dom.podium, {
-      label: this.label,
-      board: this.board,
-      mine,
-      shareLine: line,
-      secondsLeft,
-      onCopy: line ? async (b) => {
-        const label = b.textContent;
-        b.textContent = (await copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`)) ? "Copié ✓" : "Copie impossible";
-        setTimeout(() => (b.textContent = label), 1600);
-      } : undefined,
-    });
-  }
-
-  /** Bascule vers la session en cours : circuit préparé d'avance, nouvelle scène, classement de la nouvelle session. */
-  private async swapToCurrent(): Promise<void> {
-    if (this.state !== "podium") return;
-    this.state = "switching";
+  /** Installe le circuit de la session en cours (préparé d'avance) ; réessaie s'il n'est pas prêt. */
+  private async installNext(): Promise<void> {
     const target = salonSessionAt(this.clock.now(), this.sessionMs);
     const circuit = await this.circuitFor(target);
+    if (this.state !== "podium") return;
     if (!circuit) {
       this.circuits.delete(target);
-      this.state = "podium";
       this.retryAt = performance.now() + 3000;
       this.host?.banner("Circuit indisponible, nouvel essai…", 2.5, true);
+      setTimeout(() => void this.installNext(), 3000);
       return;
     }
     this.session = target;
@@ -432,13 +450,53 @@ export class SalonController {
     this.ghostSignature = "";
     this.lastCountdown = "";
     this.stats.swaps++;
-    if (this.dom) this.dom.podium.hidden = true;
-    document.body.classList.remove("podium");
-    this.state = "playing";
-    this.host?.swapCircuit(circuit);
+    this.prebuiltFor = -1;
+    this.podiumSwapped = true;
+    this.podiumAt = performance.now(); // le podium dure 10 s à partir de l'installation du circuit suivant
+    // Spectateur (lot 27b) : le podium se voit d'abord, la page revient au Salon normal à sa fermeture (voir `closePodium`).
+    if (!this.spectator) this.host?.swapCircuit(circuit); // nouvelle scène ; le décompte de départ attend la fermeture du podium (jeu gelé dessous)
     this.renderBoard();
     this.lastBoardPoll = -1e9; // classement de la nouvelle session tout de suite
-    void this.circuitFor(target + 1); // et la suivante se prépare déjà (le fil de travail s'en occupe)
+    void this.circuitFor(target + 1);
+    this.drawPodium(PODIUM_MS / 1000);
+  }
+
+  private async refreshOldBoard(): Promise<void> {
+    const old = this.old;
+    if (!old) return;
+    const r = await withTimeout(this.api.board(old.session, this.pid), 2500);
+    if (r?.ok && this.old === old && this.state === "podium") {
+      old.board = r.data;
+      this.drawPodium(Math.max(0, (this.podiumAt + PODIUM_MS - performance.now()) / 1000));
+    }
+  }
+
+  private closePodium(): void {
+    this.state = "playing";
+    this.old = null;
+    if (this.dom) this.dom.podium.hidden = true;
+    document.body.classList.remove("podium");
+    if (this.spectator) this.host?.swapCircuit(this.circuit);
+  }
+
+  private drawPodium(secondsLeft: number): void {
+    const old = this.old;
+    if (!this.dom || !old) return;
+    this.podiumShown = Math.max(0, Math.ceil(secondsLeft));
+    const mine = old.board?.me && old.best ? { ms: old.board.me.ms, rank: old.board.me.rank, participants: old.board.participants } : null;
+    const line = mine ? salonShareLine(old.label, mine.ms, mine.rank, mine.participants) : null;
+    renderPodium(this.dom.podium, {
+      label: old.label,
+      board: old.board,
+      mine,
+      shareLine: line,
+      secondsLeft,
+      onCopy: line ? async (b) => {
+        const label = b.textContent;
+        b.textContent = (await copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`)) ? "Copié ✓" : "Copie impossible";
+        setTimeout(() => (b.textContent = label), 1600);
+      } : undefined,
+    });
   }
 
   /** Fin de la session en cours (ms UTC). */

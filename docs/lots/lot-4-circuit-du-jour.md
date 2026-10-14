@@ -9,7 +9,7 @@
 - **PRNG à graine** (`rng.ts`, mulberry32, entiers uniquement).
 - **Identifiant du circuit** `jour-AAAA-MM-JJ-g1` : la version du générateur en fait partie, donc les records et rediffusions d'un autre générateur ne se mélangent pas.
 
-**Jouer** : par défaut, le circuit d'aujourd'hui (UTC). `?seed=2026-10-07` : n'importe quelle autre date (date invalide → aujourd'hui, avec un message). `?scenario=essai` : le circuit écrit à la main des lots 2-3. `?scenario=plat` : le terrain d'essai du lot 1. Le record et le fantôme sont gardés **par circuit**.
+**Jouer** : par défaut, le circuit d'aujourd'hui (date de Paris depuis le lot 31 ; UTC avant). `?seed=2026-10-07` : n'importe quelle autre date (date invalide → aujourd'hui, avec un message). `?scenario=essai` : le circuit écrit à la main des lots 2-3. `?scenario=plat` : le terrain d'essai du lot 1. Le record et le fantôme sont gardés **par circuit**.
 
 **À tester** : ouvrir `?seed=2026-10-06`, `?seed=2026-10-07` et `?seed=2026-10-08` : trois circuits différents, jouables, de trois thèmes différents. Pour chacun : la longueur est-elle bonne (30 à 60 s pour toi) ? Les passages marquants sont-ils lisibles ? Les médailles sont-elles atteignables ?
 

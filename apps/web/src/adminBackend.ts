@@ -22,7 +22,7 @@ export interface DayRow extends PlanEntry {
 }
 
 export interface AdminOverview {
-  /** « Aujourd'hui » du serveur (UTC), ou celui de la démo. */
+  /** « Aujourd'hui » du serveur (date de Paris), ou celui de la démo. */
   today: string;
   /** Remplacements enregistrés (futurs et passés). */
   plan: PlanRow[];

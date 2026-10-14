@@ -17,7 +17,7 @@
 | `GET /api/day/…/leaderboard?limit=&player=` | `{participants, top[], me}` |
 | `GET /api/day/…/ghost?kind=first\|ahead&player=` | nom, temps, intermédiaires et **rediffusion** du premier / du joueur devant |
 
-**Règles du classement** : seul le circuit d'aujourd'hui (UTC) accepte des temps, avec **10 minutes de grâce** après minuit pour finir une course commencée la veille ; les jours passés restent consultables, **figés**. Meilleur temps par joueur et par jour ; à temps égal, le premier arrivé passe devant. Le circuit du jour est calculé au premier appel puis mis en cache en base (`circuits`), donc il reste le même même si le générateur change plus tard.
+**Règles du classement** : seul le circuit d'aujourd'hui (**date de Paris** depuis le lot 31 ; UTC avant) accepte des temps, avec **10 minutes de grâce** après minuit (de Paris) pour finir une course commencée la veille ; les jours passés restent consultables, **figés**. Meilleur temps par joueur et par jour ; à temps égal, le premier arrivé passe devant. Le circuit du jour est calculé au premier appel puis mis en cache en base (`circuits`), donc il reste le même même si le générateur change plus tard.
 
 **Sécurité** (ce qui est garanti, et ce qui ne l'est pas)
 - Garanti : un temps falsifié ne passe pas (rejeu) ; requêtes SQL paramétrées ; pseudo validé (1 à 20 caractères, lettres/chiffres/espace/`. _ ' -`) et affiché via `textContent` ; corps limité à 400 ko (même sans `Content-Length`) ; rediffusion bornée à 10 min de jeu ; **limitation de débit** par adresse (60 requêtes / 10 min, adresse hachée avec un sel, jamais stockée en clair) et par joueur (30 / 10 min), appliquée avant tout rejeu ; l'identifiant du joueur (128 bits tirés par le navigateur) n'est jamais renvoyé par l'API.

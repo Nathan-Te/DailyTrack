@@ -10,11 +10,13 @@ FROM node:22-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/sim/package.json packages/sim/
+COPY packages/clock/package.json packages/clock/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
 # Seulement ce dont l'API a besoin (pas Three.js, pas Playwright) : une construction rapide.
 RUN npm ci -w @cdj/api --ignore-scripts
 COPY packages/sim packages/sim
+COPY packages/clock packages/clock
 COPY apps/api apps/api
 RUN npm run build:node -w @cdj/api
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { SIM_VERSION, decodeReplay, encodeReplay, replayRace, salonSessionEnd, salonSessionStart, salonTrackId } from "@cdj/sim";
 import { createApi } from "../src/api";
-import { MAX_GHOST_REFS, PRESENCE_MS, PRESENCE_WRITE_MS, SALON_GRACE_MS } from "../src/salon";
+import { MAX_GHOST_REFS, PRESENCE_MS, PRESENCE_WRITE_MS, SALON_GRACE_MS, SALON_SERVE_MS } from "../src/salon";
 import { NOON, SALON_SESSION, SESSION_MS, makeApi, playerId, salonCircuitOf, salonReplay, seedSalonCircuit, type TestApi } from "./helpers";
 
 // Le Salon côté serveur (lot 27) : mêmes exigences que le classement du jour — seul le temps rejoué compte.
@@ -249,11 +249,12 @@ describe("POST /api/salon/<session>/submit", () => {
     expect(r.body.ms).toBe(replayRace(salonCircuitOf(S).track, decodeReplay(mid.code)).finishMs);
   });
 
-  it("accepte une course finie dans la minute qui suit la fin de la session, refuse après et avant le début", async () => {
+  it("accepte un envoi jusqu'à fin + 3 s (marge réseau), refuse au-delà et avant le début (lot 31)", async () => {
     const t = await salonApi();
-    t.clock.now = END + SALON_GRACE_MS - 1;
-    expect((await submit(t, 1, "Alice", fast.code)).status).toBe(200); // commencée avant la fin, envoyée juste dans la minute
-    t.clock.now = END + SALON_GRACE_MS + 1;
+    expect(SALON_GRACE_MS).toBe(3_000);
+    t.clock.now = END + 2_000;
+    expect((await submit(t, 1, "Alice", fast.code)).status).toBe(200); // terminée avant l'heure pile, arrivée 2 s plus tard
+    t.clock.now = END + 5_000;
     const late = await submit(t, 2, "Bob", fast.code);
     expect(late.status).toBe(409);
     expect(late.body).toMatchObject({ error: "session_closed" });
@@ -502,14 +503,14 @@ describe("circuit de la session suivante, purge et podiums", () => {
     ]);
   });
 
-  it("oublie une session finie : courses, classement et circuit effacés après la minute de grâce, le podium servi pendant la grâce", async () => {
+  it("oublie une session finie : courses, classement et circuit effacés après la fenêtre de lecture de 20 s, le podium servi pendant cette fenêtre", async () => {
     const t = await salonApi();
     await submit(t, 1, "Alice", fast.code);
     await submit(t, 2, "Bob", mid.code);
     await submit(t, 3, "Carole", slow.code);
     await submit(t, 4, "Dave", slowest.code);
     // La session est finie mais la grâce court : le classement final (le podium) reste servi, avec ses fantômes.
-    t.clock.now = END + SALON_GRACE_MS - 1000;
+    t.clock.now = END + SALON_SERVE_MS - 1000;
     const final = (await t.call("GET", `/api/salon/${S}/board`)).body;
     expect(final.rows.slice(0, 3).map((r: { name: string }) => r.name)).toEqual(["Alice", "Bob", "Carole"]);
     expect(final.participants).toBe(4);
@@ -517,7 +518,7 @@ describe("circuit de la session suivante, purge et podiums", () => {
     expect((await t.call("GET", `/api/salon/${S}/ghosts?refs=${refs}`)).body.ghosts).toHaveLength(3);
     expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(4);
     // La grâce écoulée, la première requête qui voit la session terminée l'efface ; plus rien n'est servi ni gardé.
-    t.clock.now = END + SALON_GRACE_MS + 1;
+    t.clock.now = END + SALON_SERVE_MS + 1;
     const next = await t.call("GET", `/api/salon/${S + 1}/board`);
     expect(next.status).toBe(200);
     expect(next.body).toMatchObject({ participants: 0, rows: [] });
@@ -525,7 +526,7 @@ describe("circuit de la session suivante, purge et podiums", () => {
     expect(await t.db.first("SELECT session FROM salon_circuits WHERE session = ?", [S])).toBeNull();
     expect((await t.call("GET", `/api/salon/${S}/board`)).status).toBe(404);
     expect((await t.call("GET", `/api/salon/${S}/ghosts?refs=${refs}`)).status).toBe(404);
-    expect((await submit(t, 5, "Eve", fast.code)).status).toBe(409); // session_closed
+    expect((await submit(t, 5, "Eve", fast.code)).status).toBe(409); // session_closed (fermée dès fin + 3 s)
     expect((await t.call("GET", "/api/salon/podiums")).status).toBe(404); // plus de route d'historique
     expect(await t.db.first("SELECT name FROM sqlite_master WHERE name = 'salon_podiums'")).toBeNull();
   });
@@ -534,13 +535,13 @@ describe("circuit de la session suivante, purge et podiums", () => {
     const t = await salonApi();
     await seedSalonCircuit(t.db, S + 1);
     await submit(t, 1, "Alice", fast.code);
-    t.clock.now = END + 30_000; // la session S est finie, la grâce court encore
+    t.clock.now = END + 10_000; // la session S est finie, la fenêtre de lecture court encore
     await t.call("GET", "/api/salon/now");
     expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(1);
     // Un joueur de la session suivante, puis la fin de la grâce : seule S disparaît.
     await seedSalonCircuit(t.db, S + 1);
     await submit(t, 2, "Bob", salonReplay(S + 1, 0.9).code, {}, S + 1);
-    t.clock.now = END + SALON_GRACE_MS + 1;
+    t.clock.now = END + SALON_SERVE_MS + 1;
     await t.call("GET", "/api/salon/now");
     expect((await t.db.all<{ session: number }>("SELECT session FROM salon_runs")).map((r) => r.session)).toEqual([S + 1]);
     expect((await t.db.all<{ session: number }>("SELECT session FROM salon_circuits")).map((r) => r.session)).toEqual([S + 1]);

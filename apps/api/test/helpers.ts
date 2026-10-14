@@ -20,6 +20,9 @@ import { openSqlite } from "../src/node-sqlite";
 
 export const DAY_MS = 86_400_000;
 
+// « Aujourd'hui » est la date à Paris (lot 31) : les tests de passage d'un jour à l'autre partent de minuit de Paris, pas de minuit UTC.
+export { parisDay, parisDayStart } from "@cdj/clock";
+
 /** Base sur laquelle tournent les tests d'API : SQLite (`node:sqlite`, défaut) ou libSQL (`CDJ_TEST_DB=libsql` : projet « libsql » de vitest). */
 export const TEST_DB = process.env.CDJ_TEST_DB === "libsql" ? "libsql" : "sqlite";
 

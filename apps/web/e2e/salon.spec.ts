@@ -100,13 +100,37 @@ test("ta course est rejouée et classée dans la session ; le Salon ne touche ni
   await page.waitForFunction(() => window.__cdj.salon!.ghosts!.names.includes("Toi"), undefined, { timeout: 30_000 });
 });
 
-test("à 30 s de la fin : bandeau « dernier essai »", async ({ page }) => {
+test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebours, classement affiché d'office ; la course en cours continue", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(salonUrl(START + 60_000));
   await loaded(page);
-  await expect(page.locator("#medals")).not.toContainText("DERNIER ESSAI");
-  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 20_000);
-  await expect(page.locator("#medals")).toContainText("DERNIER ESSAI");
+  await withRows(page, 1);
+  await page.waitForFunction(() => window.__cdj.phase === "racing" || window.__cdj.phase === "countdown");
+  await expect(page.locator("#medals")).not.toContainText("DERNIÈRE CHANCE");
+  await expect(page.locator("#finale")).toBeHidden();
+  expect(await page.evaluate(() => window.__cdj.salon!.startLocked)).toBe(false);
+  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - FINALE - 400);
+  await expect(page.locator("#finale")).toBeHidden(); // 400 ms avant la finale
+  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 10_500);
+  await expect(page.locator("#medals")).toContainText("DERNIÈRE CHANCE");
   await expect(page.locator("#medals")).toHaveClass(/last/);
+  await expect(page.locator("#finale")).toBeVisible();
+  // Le nombre décroît en temps réel pendant l'attente (rendu logiciel lent) : il est entre 1 et 11 (jamais 15 : la finale a commencé à 10,5 s de la fin).
+  const shownCount = Number(await page.locator("#finale").textContent());
+  expect(shownCount).toBeGreaterThanOrEqual(0);
+  expect(shownCount).toBeLessThanOrEqual(11);
+  await expect(page.locator("#board")).not.toHaveClass(/folded/);
+  const during = await page.evaluate(() => ({ locked: window.__cdj.salon!.startLocked, finale: window.__cdj.salon!.finaleOn, phase: window.__cdj.phase }));
+  expect(during).toMatchObject({ locked: true, finale: true });
+  // Le départ est refusé : la tentative en cours n'est pas remise à zéro.
+  await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 60_000 });
+  await page.keyboard.down("ArrowUp");
+  await page.waitForFunction(() => window.__cdj.car.tick > 120, undefined, { timeout: 60_000 });
+  const tick = await page.evaluate(() => window.__cdj.car.tick);
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#banner")).toContainText("plus de départ");
+  expect(await page.evaluate(() => window.__cdj.car.tick)).toBeGreaterThanOrEqual(tick);
+  await page.keyboard.up("ArrowUp");
 });
 
 test("fin de session : podium (trois premiers), puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", async ({ page }) => {
@@ -125,8 +149,11 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
   await expect(page.locator("#podium")).toContainText("terminé");
   await expect(page.locator("#podium .place")).toHaveCount(3);
   await expect(page.locator("#podium .place .who").first()).toContainText("Démo ");
-  await expect(page.locator("#podium")).toContainText("Circuit suivant dans");
-  // Le circuit suivant : un autre identifiant, un autre thème, la page n'a pas été rechargée.
+  await expect(page.locator("#podium")).toContainText("Départ du circuit suivant dans");
+  // Le circuit suivant est déjà là, derrière le podium (lot 31) : un autre identifiant, un autre thème, la page n'a pas été rechargée.
+  const behind = await page.evaluate(() => ({ id: window.__cdj.salon!.trackId, state: window.__cdj.salon!.state }));
+  expect(behind.id).not.toBe(before.id);
+  expect(behind.state).toBe("podium");
   await page.waitForFunction((id) => window.__cdj.salon!.trackId !== id && window.__cdj.salon!.state === "playing", before.id, { timeout: 30_000 });
   const after = await page.evaluate(() => ({ ...window.__cdj.salon!, board: null, long: (window as unknown as { __long: { at: number; ms: number }[] }).__long }));
   expect(after.session).toBe(SESSION2 + 1);
@@ -136,34 +163,101 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
   expect(after.stats.swaps).toBe(1);
   // Pas de gel à la bascule : le circuit vient du fil de travail (jamais du fil principal) et sa scène était déjà construite pendant le podium.
   expect(after.stats.mainThreadGenerations).toBe(0);
-  expect(after.stats.prebuilt).toBe(1);
-  expect(after.stats.builtInSwap).toBe(0);
-  // Tâches longues (> 50 ms) du fil principal pendant la bascule et les secondes qui suivent (rendu logiciel de la CI : lent par nature).
+  expect(after.stats.prebuilt + after.stats.builtInSwap).toBe(1); // construite d'avance si personne ne roulait, sinon à l'heure pile, derrière le podium
+  // Tâches longues (> 50 ms) du fil principal : à l'heure pile (la première image de la nouvelle scène, derrière le podium : la course est coupée et
+  // le jeu gelé, personne ne conduit) puis, ce qui compte, quand le podium se ferme et que le joueur repart (rendu logiciel de la CI : lent par nature).
   const around = after.long.filter((t) => t.at >= after.stats.swapAt - 50 && t.at <= after.stats.swapAt + 3000);
-  console.log(`bascule : ${after.stats.swapMs.toFixed(1)} ms (scène construite pendant le podium : ${after.stats.buildMs.toFixed(0)} ms) ; tâches longues autour de la bascule : ${JSON.stringify(around.map((t) => Math.round(t.ms)))}`);
-  expect(after.stats.swapMs).toBeLessThan(120);
-  expect(Math.max(0, ...around.map((t) => t.ms))).toBeLessThan(250); // aucune saccade de plus d'un quart de seconde autour de la bascule
+  console.log(`bascule : ${after.stats.swapMs.toFixed(1)} ms (scène construite : ${after.stats.buildMs.toFixed(0)} ms) ; tâches longues autour de la bascule (début relatif, durée) : ${JSON.stringify(around.map((t) => [Math.round(t.at - after.stats.swapAt), Math.round(t.ms)]))} ; construites d'avance : ${after.stats.prebuilt}`);
+  if (after.stats.prebuilt === 1) expect(after.stats.swapMs).toBeLessThan(120);
+  const closedAt = await page.evaluate(() => performance.now()); // le podium vient de se fermer : le décompte de départ commence
+  await page.waitForTimeout(3000); // fenêtre de mesure (rien d'autre à attendre)
+  const afterClose = (await page.evaluate(() => (window as unknown as { __long: { at: number; ms: number }[] }).__long)).filter((t) => t.at >= closedAt - 50 && t.at <= closedAt + 3000);
+  console.log(`après le podium : tâches longues ${JSON.stringify(afterClose.map((t) => [Math.round(t.at - closedAt), Math.round(t.ms)]))}`);
+  expect(Math.max(0, ...afterClose.map((t) => t.ms))).toBeLessThan(250); // aucune saccade de plus d'un quart de seconde quand on repart
   await expect(page.locator("#meta")).toContainText("Salon");
   await page.waitForFunction(() => window.__cdj.phase === "countdown" || window.__cdj.phase === "racing");
 });
 
-test("une course commencée avant la fin, finie après, est acceptée ; le podium attend son résultat", async ({ page }) => {
+// Sessions d'une minute (lot 31) : la finale commence à 45 s, le circuit change à la 60e seconde pour tout le monde.
+const MIN1 = 60_000;
+const SESSION1 = Math.floor(T0 / MIN1);
+const START1 = SESSION1 * MIN1;
+const END1 = START1 + MIN1;
+const circuit1 = salonCircuit(SESSION1);
+const code1 = encodeReplay(runPilot(circuit1.track, { grip: 0.9 }).replay);
+const finishMs1 = runPilot(circuit1.track, { grip: 0.9 }).finishMs;
+const salonUrl1 = (at: number, extra = "") => `/?mode=salon&api=demo&debug&salonMinutes=1&salonAt=${at}${extra}`;
+const FINALE = 15_000;
+
+test("une course commencée avant la fin et finie avant l'heure pile est acceptée et compte (podium)", async ({ page }) => {
   await named(page);
   await page.goto(salonUrl(START + 300_000, "&timescale=4"));
   await loaded(page);
-  await withRows(page, 2);
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
-  // La voiture doit VRAIMENT rouler (1 s de simulation) avant la fin de la session : « phase = racing » est déjà vrai avant que la course lancée
-  // par autoplay ait démarré, et une fin de session qui tombe pendant le décompte va droit au podium (jamais « overrun » : relevé en CI).
+  // La voiture doit VRAIMENT rouler (1 s de simulation) : « phase = racing » est déjà vrai avant que la course lancée par autoplay ait démarré.
   await page.waitForFunction(() => window.__cdj.phase === "racing" && window.__cdj.car.tick > 120, undefined, { timeout: 60_000 });
-  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 1500);
-  await page.waitForFunction(() => window.__cdj.salon!.state === "overrun", undefined, { timeout: 15_000 });
-  await expect(page.locator("#podium")).toBeHidden(); // la course continue
+  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 40_000); // 40 s réelles pour finir (le tour dure ≈ 35 s de simulation, ×4)
   await expect(page.locator("#finish")).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 20_000 }); // envoyée après la fin : acceptée
+  await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 20_000 }); // envoyée avant la fin : acceptée
+  expect((await page.evaluate(() => window.__cdj.salon!.best))).toBe(pilot.finishMs);
+  // À l'heure pile, le podium s'affiche avec ta place.
+  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 300);
   await expect(page.locator("#podium")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("#podium .mine")).toContainText("Ta place");
-  expect((await page.evaluate(() => window.__cdj.salon!.best))).toBe(pilot.finishMs);
+});
+
+test("une course non finie à l'heure pile est coupée pour tous et ne compte pas ; le circuit suivant est déjà installé sous le podium", async ({ page }) => {
+  await named(page);
+  await page.goto(salonUrl1(START1 + 20_000, "&timescale=4"));
+  await loaded(page);
+  await page.evaluate((c) => window.__cdj.autoplay(c), code1);
+  await page.waitForFunction(() => window.__cdj.phase === "racing" && window.__cdj.car.tick > 120, undefined, { timeout: 60_000 });
+  expect(finishMs1).toBeGreaterThan(20_000); // le tour dure plus que ce qu'il reste : il ne peut pas finir avant l'heure pile
+  await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END1 - 3000);
+  await page.waitForFunction(() => window.__cdj.salon!.startLocked, undefined, { timeout: 15_000 }); // finale : plus de départ (tant que l'heure pile n'est pas passée)
+  await expect(page.locator("#podium")).toBeVisible({ timeout: 15_000 });
+  const s = await page.evaluate(() => ({ ...window.__cdj.salon!, board: null }));
+  expect(s.session).toBe(SESSION1 + 1);
+  expect(s.trackId).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
+  expect(s.stats.submits).toBe(0); // rien n'a été envoyé : la course coupée ne compte pas
+  expect(s.best).toBeNull();
+  await expect(page.locator("#podium .mine")).toContainText("pas de temps");
+  expect(await page.evaluate(() => window.__cdj.salon!.startLocked)).toBe(false); // la finale est finie : on pourra repartir à la fermeture du podium
+  expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("cdj:best:")))).toEqual([]);
+});
+
+test("le circuit change au même instant pour deux navigateurs (à l'heure pile du serveur, pas à la fin de leur course)", async ({ browser }) => {
+  const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
+  try {
+    const pages = await Promise.all(contexts.map((c) => c.newPage()));
+    await Promise.all(pages.map((p) => p.goto(salonUrl1(START1 + 20_000))));
+    await Promise.all(pages.map(loaded));
+    // Les deux horloges sont réglées sur le même instant, 2 s avant l'heure pile ; chaque page note (heure du Salon, session) à chaque image.
+    await Promise.all(pages.map((p) => p.evaluate((end) => {
+      const w = window as unknown as { __samples: [number, number][] };
+      w.__samples = [];
+      window.__cdj.salon!.setNow(end - 2000);
+      const sample = () => {
+        w.__samples.push([window.__cdj.salon!.now, window.__cdj.salon!.session]);
+        if (w.__samples.length < 4000) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    }, END1)));
+    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s, SESSION1, { timeout: 20_000 })));
+    for (const p of pages) {
+      const samples = await p.evaluate(() => (window as unknown as { __samples: [number, number][] }).__samples);
+      expect(samples.length).toBeGreaterThan(5);
+      // Jamais avant l'heure pile (sur l'horloge du Salon) ; et pas plus tard qu'une image (en rendu logiciel une image dure 0,3 s ou plus) :
+      // la bascule ne dépend ni d'une course ni d'un podium, seulement de l'heure.
+      for (const [now, session] of samples) if (session > SESSION1) expect(now, "bascule avant l'heure pile").toBeGreaterThanOrEqual(END1 - 50);
+      const firstSwitched = samples.find(([, session]) => session > SESSION1)!;
+      const gaps = samples.slice(1).map(([t], i) => t - samples[i]![0]);
+      expect(firstSwitched[0] - END1, "retard de la bascule").toBeLessThan(Math.max(...gaps) + 600);
+      expect(await p.evaluate(() => window.__cdj.salon!.trackId)).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
+    }
+  } finally {
+    await Promise.all(contexts.map((c) => c.close()));
+  }
 });
 
 test("touche G : tous → premiers seulement → aucun ; Tab ouvre et ferme le classement", async ({ page }) => {

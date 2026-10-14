@@ -100,7 +100,7 @@ export function ordinal(rank: number): string {
 }
 
 /** Remplit le panneau des archives : une ligne-lien par jour. */
-export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, onClose: () => void, currentTheme: string | null = null, extras: ArchiveExtras | null = null, thumbs: ThumbSource | null = null) {
+export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, onClose: () => void, currentTheme: string | null = null, extras: ArchiveExtras | null = null, thumbs: ThumbSource | null = null, trialTools = true) {
   disposeArchive();
   const drawing = (currentPanel = {});
   const head = document.createElement("div");
@@ -229,6 +229,7 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
   note.className = "note";
   note.textContent = "Les jours passés, les circuits au hasard et les thèmes forcés se rejouent sans classement (touches N : au hasard, T : thème suivant).";
   const top = panel.scrollTop; // redessiné quand les détails arrivent : on reste où le joueur a défilé
-  panel.replaceChildren(head, tools, list, note);
+  // Production (lot 31) : ni circuit au hasard (il pourrait tomber après aujourd'hui), ni thème forcé.
+  panel.replaceChildren(head, ...(trialTools ? [tools] : []), list, note);
   panel.scrollTop = top;
 }

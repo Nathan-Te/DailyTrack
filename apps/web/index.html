@@ -183,6 +183,12 @@
       #board.salon { width: 300px; }
       #board.salon .row { grid-template-columns: 24px minmax(0, 1fr) auto 54px; }
       #board.salon .row .icon { opacity: .7; font-size: 11px; text-align: right; }
+      /* Finale (lot 31) : grand compte à rebours 15 → 0 au centre, départs fermés (boutons grisés). */
+      #finale { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 4; pointer-events: none; font: 900 clamp(72px, 22vmin, 190px)/1 system-ui, sans-serif; color: #ffd22e; text-shadow: 0 4px 24px rgba(0,0,0,.6); opacity: .82; font-variant-numeric: tabular-nums; }
+      #finale[hidden] { display: none; }
+      #finale small { display: block; text-align: center; font-size: clamp(13px, 3vmin, 20px); font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #fff; opacity: .9; margin-top: 4px; }
+      body.start-locked #pause-restart, body.start-locked #finish .restart, body.start-locked #touch .restart { opacity: .35; filter: grayscale(1); cursor: not-allowed; }
+      body.podium #finale { display: none; }
       #podium { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 6; width: min(380px, calc(100vw - 24px)); box-sizing: border-box; background: rgba(19,26,51,.97); color: #fff; font: 600 15px system-ui, sans-serif; padding: 16px 20px; border-radius: 14px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.5); max-height: calc(100vh - 24px); overflow: auto; }
       #podium[hidden] { display: none; }
       #podium .title { font-size: 20px; font-weight: 800; margin-bottom: 10px; }
@@ -264,6 +270,7 @@
     <div id="banner" class="hud"></div>
     <div id="freeze" class="hud" aria-hidden="true">❄ FIGÉ</div>
     <div id="finish" hidden></div>
+    <div id="finale" hidden aria-live="off"></div>
     <div id="podium" hidden></div>
     <div id="archive" hidden><div class="panel"></div></div>
     <div id="daycard" hidden></div>

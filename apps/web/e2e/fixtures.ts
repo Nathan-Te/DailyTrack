@@ -1,3 +1,4 @@
+import { parisDay } from "@cdj/clock";
 import { expect, test as base, type Browser, type BrowserContext, type Page } from "@playwright/test";
 
 // Horloge maîtrisée (retouche 29b) : aucun test ne dépend de l'heure réelle ni ne peut changer de jour en cours de route.
@@ -12,12 +13,12 @@ import { expect, test as base, type Browser, type BrowserContext, type Page } fr
 // Midi UTC : un run de moins de douze heures reste dans la même journée.
 export const FIXED_NOW = Date.parse("2026-10-20T12:00:00Z");
 /** Numéro de jour UTC (jours depuis 1970) de l'horloge de test. */
-export const TODAY = Math.floor(FIXED_NOW / 86_400_000);
+export const TODAY = parisDay(FIXED_NOW); // « aujourd'hui » = la date à Paris (lot 31)
 /** Décalage entre l'heure réelle et l'horloge de test (posé par playwright.config.ts avant le démarrage des workers). */
 const OFFSET = Number(process.env.E2E_CLOCK_OFFSET_MS ?? FIXED_NOW - Date.now());
 
 /** Décale `Date` (constructeur sans argument, `Date.now()`) de `offset` ms ; minuteurs, `performance.now` et rAF restent réels. */
-async function shiftDate(context: BrowserContext): Promise<void> {
+async function shiftDate(context: BrowserContext, offsetMs: number = OFFSET): Promise<void> {
   await context.addInitScript((offset: number) => {
     const Real = Date;
     class Shifted extends Real {
@@ -30,7 +31,7 @@ async function shiftDate(context: BrowserContext): Promise<void> {
       }
     }
     (globalThis as { Date: DateConstructor }).Date = Shifted as unknown as DateConstructor;
-  }, OFFSET);
+  }, offsetMs);
 }
 
 export const test = base.extend({
@@ -44,6 +45,16 @@ export const test = base.extend({
 export async function newClockedContext(browser: Browser, options: Parameters<Browser["newContext"]>[0] = {}): Promise<BrowserContext> {
   const context = await browser.newContext(options);
   await shiftDate(context);
+  return context;
+}
+
+/**
+ * Un contexte dont l'horloge vaut `instantMs` à l'ouverture (puis avance normalement) : pour les passages de minuit de Paris et les joueurs de
+ * fuseaux différents (`timezoneId`). L'horloge des serveurs de test reste celle de `playwright.config.ts`.
+ */
+export async function newContextAt(browser: Browser, instantMs: number, options: Parameters<Browser["newContext"]>[0] = {}): Promise<BrowserContext> {
+  const context = await browser.newContext(options);
+  await shiftDate(context, instantMs - Date.now());
   return context;
 }
 

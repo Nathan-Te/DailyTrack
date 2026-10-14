@@ -28,6 +28,9 @@ jobs:
           # L'adresse de l'API de production n'est injectée que dans la construction de main : un aperçu de branche ne classe jamais
           # ses essais dans la vraie base (il peut toujours viser une autre API avec ?api=…).
           VITE_API_URL: ${{ github.ref_name == 'main' && vars.VITE_API_URL || '' }}
+          # Lot 31 : le site publié depuis main n'a ni touches N et T, ni circuit à venir (?day=), ni ?variant= / ?theme= pour aujourd'hui :
+          # ces outils restent dans les aperçus de branche et en ?debug (voir apps/web/src/access.ts).
+          VITE_PRODUCTION: ${{ github.ref_name == 'main' && '1' || '' }}
 
       - name: Récupérer la branche gh-pages (ou la créer)
         run: |

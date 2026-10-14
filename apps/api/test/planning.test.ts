@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { dailyCircuit, dailyTrackId, encodeReplay, formatDay, PREMIER_JOUR, runPilot, themeForDay, THEME_NAMES } from "@cdj/sim";
 import { ADMIN_MAX_FAILURES, PLANNING_HORIZON } from "../src/api";
-import { DAY, DAY_MS, NOON, makeApi, playerId } from "./helpers";
+import { DAY, DAY_MS, NOON, makeApi, parisDayStart, playerId } from "./helpers";
 
 // Planning des circuits (lot 14) : remplacer à l'avance le circuit d'un jour à venir, sans casser « le même circuit pour
 // tous » ni la validation par rejeu.
@@ -102,7 +102,7 @@ describe("remplacement d'un circuit", () => {
     expect((await t.db.all("SELECT * FROM planning")).length).toBe(0);
     // à minuit, « demain » devient « aujourd'hui » : le remplacement est alors refusé
     await put(t, T_DATE, { variant: 1 });
-    t.clock.now = (TOMORROW * DAY_MS) + 1;
+    t.clock.now = parisDayStart(TOMORROW) + 1;
     expect((await put(t, T_DATE, { variant: 3 })).status).toBe(409);
     expect((await t.call("GET", `/api/day/${T_DATE}`)).body.variant).toBe(1);
   });

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { formatDay, medalFor, medalsFor } from "@cdj/sim";
 import { ensureSchemaOn, schemaVersion } from "../src/db";
 import { FORBIDDEN_WORDS, isForbidden, migratePseudos, nameKey, provisionalName, suggestionCandidates } from "../src/pseudos";
-import { DAY, DAY_MS, NOON, SALON_SESSION, circuitOf, makeApi, openTestDb, pilotReplay, playerId, salonReplay, seedSalonCircuit, type TestApi } from "./helpers";
+import { DAY, DAY_MS, NOON, parisDayStart, SALON_SESSION, circuitOf, makeApi, openTestDb, pilotReplay, playerId, salonReplay, seedSalonCircuit, type TestApi } from "./helpers";
 
 // Pseudos réservés, profil synchronisé et code révocable (lot 30).
 const DATE = formatDay(DAY);
@@ -299,11 +299,11 @@ describe("GET /api/me — le profil vu par le serveur", () => {
 
   it("la place d'hier reste « du moment » pendant la minute de grâce, puis se fige", async () => {
     const { t } = await withHistory();
-    t.clock.now = DAY * DAY_MS + 60_000; // une minute après minuit : hier compte encore (grâce de dix minutes)
+    t.clock.now = parisDayStart(DAY) + 60_000; // une minute après minuit (Paris) : hier compte encore (grâce de dix minutes)
     await me(t, playerId(1));
     expect(await t.db.first("SELECT final_rank FROM results WHERE player_id = ? AND day = ?", [playerId(1), DAY - 1])).toEqual({ final_rank: null });
     expect(await t.db.first("SELECT final_rank FROM results WHERE player_id = ? AND day = ?", [playerId(1), DAY - 2])).toEqual({ final_rank: 4 });
-    t.clock.now = DAY * DAY_MS + 11 * 60_000;
+    t.clock.now = parisDayStart(DAY) + 11 * 60_000;
     await me(t, playerId(1));
     expect(await t.db.first("SELECT final_rank FROM results WHERE player_id = ? AND day = ?", [playerId(1), DAY - 1])).toEqual({ final_rank: 1 });
   });

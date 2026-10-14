@@ -5,6 +5,9 @@
       "path": "packages/sim"
     },
     {
+      "path": "packages/clock"
+    },
+    {
       "path": "apps/web"
     },
     {

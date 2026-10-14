@@ -39,7 +39,9 @@ interface CdjDebug {
   touch: boolean;
   /** Salon (lot 26) : déroulé, classement, fantômes, horloge pilotable ; `null` hors du Salon. */
   salon: {
-    state: "playing" | "overrun" | "podium" | "switching";
+    state: "playing" | "podium" | "switching";
+    finaleOn: boolean;
+    startLocked: boolean;
     session: number;
     trackId: string;
     theme: string;

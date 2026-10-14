@@ -22,6 +22,7 @@ import {
   type ThemeName,
   type Track,
 } from "@cdj/sim";
+import { parisClockSource, parisDay, parisDayStart } from "@cdj/clock";
 import { ensureSchemaOn, schemaVersion, type SqlDb } from "./db";
 import { HttpError } from "./errors";
 import { createPlayers } from "./players";
@@ -36,10 +37,9 @@ import { PLAYER_ID } from "./validate";
 // Elle ne dépend que de l'API Web standard (Request/Response) et de `SqlDb` : elle tourne telle quelle sur
 // Cloudflare Workers (+ D1) et sur Node (+ SQLite).
 
-const DAY_MS = 86_400_000;
 /** Taille maximale du corps d'une requête (une rediffusion complète fait ~6 ko ; le pire cas décodable ~300 ko). */
 export const MAX_BODY_BYTES = 400_000;
-/** Un joueur qui passe la ligne juste après minuit UTC peut encore classer sa course du jour précédent. */
+/** Un joueur qui passe la ligne juste après minuit (heure de Paris) peut encore classer sa course du jour précédent. */
 export const GRACE_MS = 10 * 60_000;
 
 export interface ApiOptions {
@@ -132,7 +132,9 @@ export function createApi(options: ApiOptions) {
       throw e;
     }));
 
-  const today = () => Math.floor(now() / DAY_MS);
+  const today = () => parisDay(now()); // la date à Paris (lot 31), jamais le jour UTC
+  /** Temps écoulé depuis minuit de Paris (le jour dure 23 h, 24 h ou 25 h selon l'heure d'été). */
+  const sinceMidnight = () => now() - parisDayStart(today());
 
   // --- Planning et circuit du jour (cache : le générateur est coûteux, le résultat est figé) -----------------
   /** Variante et thème imposé du planning pour un jour (`{ 0, null }` : le circuit d'origine). */
@@ -271,8 +273,7 @@ export function createApi(options: ApiOptions) {
     if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
     if (day < PREMIER_JOUR || day > today()) throw new HttpError(404, "unknown_day", "Ce jour n'a pas (encore) de circuit");
     if (mustBeOpen) {
-      const sinceMidnight = now() - today() * DAY_MS;
-      const open = day === today() || (day === today() - 1 && sinceMidnight < GRACE_MS);
+      const open = day === today() || (day === today() - 1 && sinceMidnight() < GRACE_MS);
       if (!open) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé");
     }
     return day;
@@ -426,7 +427,7 @@ export function createApi(options: ApiOptions) {
       [id],
     );
     // Un jour est fermé (sa place ne bougera plus) une fois passée la minute de grâce qui suit minuit : sa place est calculée une fois, puis gardée.
-    const closedBefore = now() - t * DAY_MS >= GRACE_MS ? t : t - 1;
+    const closedBefore = sinceMidnight() >= GRACE_MS ? t : t - 1;
     if (rows.some((r) => r.final_rank === null && r.day < closedBefore)) {
       const done = await db.all<{ day: number; final_rank: number; final_total: number }>(
         `UPDATE results SET
@@ -594,7 +595,7 @@ export function createApi(options: ApiOptions) {
     };
   }
 
-  /** Le jour doit être strictement dans le futur (UTC) : un jour commencé est figé, ses joueurs ont déjà couru dessus. */
+  /** Le jour doit être strictement dans le futur (date de Paris) : un jour commencé est figé, ses joueurs ont déjà couru dessus. */
   function plannableDay(date: string): number {
     const day = parseDay(date);
     if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
@@ -707,6 +708,8 @@ export function createApi(options: ApiOptions) {
       simVersion: SIM_VERSION,
       generatorVersion: GENERATOR_VERSION,
       today: formatDay(today()),
+      /** Comment « aujourd'hui » est lu à Paris : `intl` (fuseaux de l'environnement) ou `table` (règle d'heure d'été). */
+      clock: parisClockSource,
       salonMinutes: sessionMs / 60_000,
       /** Vrai si `SALON_MINUTES` est réglée (essais locaux seulement) : doit toujours être faux en production. */
       salonOverride: options.salonMinutes !== undefined,

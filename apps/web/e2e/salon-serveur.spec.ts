@@ -102,21 +102,22 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   // --- La bascule de session se fait pour les deux au même moment : podium, puis le circuit suivant, le même pour tous ---
   const switched = (page: Page) =>
     page
-      .waitForFunction((s) => window.__cdj.salon!.session > s && window.__cdj.salon!.state === "playing", session, { timeout: 240_000, polling: 100 })
+      .waitForFunction((s) => window.__cdj.salon!.session > s, session, { timeout: 240_000, polling: 100 })
       .then(() => Date.now());
   const [tA, tB] = await Promise.all([switched(alice), switched(bob)]);
   console.log(`bascule : Alice ${new Date(tA).toISOString()}, Bob ${new Date(tB).toISOString()} (écart ${Math.abs(tA - tB)} ms)`);
-  expect(Math.abs(tA - tB)).toBeLessThan(3000);
+  expect(Math.abs(tA - tB)).toBeLessThan(1500); // le circuit change à l'heure pile du serveur (lot 31), sans attendre personne
   const next = salonTrackId(session + 1);
   for (const page of [alice, bob]) {
     expect(await page.evaluate(() => window.__cdj.salon!.session)).toBe(session + 1);
     expect(await page.evaluate(() => window.__cdj.salon!.trackId)).toBe(next);
     expect(await page.evaluate(() => window.__cdj.salon!.stats.mainThreadGenerations)).toBe(0);
-    await expect(page.locator("#podium")).toBeHidden();
+    await expect(page.locator("#podium")).toBeVisible(); // le podium de la session finie, par-dessus le circuit suivant
   }
-  // Le classement de la nouvelle session repart de zéro ; celui de la précédente reste lisible (et son podium sera gardé).
+  // Le classement de la nouvelle session repart de zéro ; celui de la précédente reste lisible pendant le podium (20 s).
   const fresh = await (await fetch(`${API}/api/salon/${session + 1}/board`)).json();
   expect(fresh.participants).toBe(0);
   const old = await (await fetch(`${API}/api/salon/${session}/board`)).json();
   expect(old.participants).toBe(2);
+  for (const page of [alice, bob]) await page.waitForFunction(() => window.__cdj.salon!.state === "playing", undefined, { timeout: 30_000 });
 });

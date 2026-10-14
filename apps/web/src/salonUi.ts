@@ -96,6 +96,6 @@ export function renderPodium(box: HTMLElement, v: PodiumView): void {
       children.push(b);
     }
   }
-  children.push(el("div", "next", `Circuit suivant dans ${Math.max(0, Math.ceil(v.secondsLeft))} s…`));
+  children.push(el("div", "next", `Départ du circuit suivant dans ${Math.max(0, Math.ceil(v.secondsLeft))} s…`));
   box.replaceChildren(...children);
 }

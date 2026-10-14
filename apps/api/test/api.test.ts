@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { GENERATOR_VERSION, PREMIER_JOUR, SIM_VERSION, TICK_RATE, dailyTrackId, decodeReplay, encodeReplay, formatDay, medalsFor, replayRace } from "@cdj/sim";
-import { DAY, DAY_MS, NOON, circuitOf, makeApi, pilotReplay, playerId } from "./helpers";
+import { DAY, DAY_MS, NOON, circuitOf, makeApi, parisDayStart, pilotReplay, playerId } from "./helpers";
 
 const DATE = formatDay(DAY);
 // Quatre rediffusions valides de vitesses différentes : 30 est la plus rapide, 18 la plus lente.
@@ -153,8 +153,8 @@ describe("jours ouverts et fermés", () => {
     const t = await makeApi();
     expect((await t.call("POST", "/api/submit", { playerId: playerId(1), name: "A", date: formatDay(DAY + 1), replay: fast.code })).status).toBe(404);
     expect((await t.call("POST", "/api/submit", { playerId: playerId(1), name: "A", date: formatDay(PREMIER_JOUR - 1), replay: fast.code })).status).toBe(404);
-    // Le lendemain à 00:30 UTC : le classement de DAY est figé.
-    t.clock.now = (DAY + 1) * DAY_MS + 30 * 60_000;
+    // Le lendemain à 00:30 (Paris) : le classement de DAY est figé.
+    t.clock.now = parisDayStart(DAY + 1) + 30 * 60_000;
     const r = await submit(t, 1, "Alice", fast.code);
     expect(r.status).toBe(409);
     expect(r.body.error).toBe("day_closed");
@@ -162,7 +162,7 @@ describe("jours ouverts et fermés", () => {
 
   it("laisse finir une course commencée juste avant minuit (10 minutes de grâce)", async () => {
     const t = await makeApi();
-    t.clock.now = (DAY + 1) * DAY_MS + 5 * 60_000; // 00:05 UTC le lendemain
+    t.clock.now = parisDayStart(DAY + 1) + 5 * 60_000; // 00:05 à Paris le lendemain
     const r = await submit(t, 1, "Alice", fast.code);
     expect(r.status).toBe(200);
     expect(r.body.rank).toBe(1);
@@ -279,7 +279,7 @@ describe("protocole", () => {
   it("répond à /api/health", async () => {
     const t = await makeApi();
     const r = await t.call("GET", "/api/health");
-    expect(r.body).toEqual({ ok: true, db: "ok", simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: DATE, salonMinutes: 10, salonOverride: false });
+    expect(r.body).toEqual({ ok: true, db: "ok", clock: expect.stringMatching(/^(intl|table)$/), simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION, today: DATE, salonMinutes: 10, salonOverride: false });
   });
 
   it("autorise CORS et répond aux requêtes préalables", async () => {

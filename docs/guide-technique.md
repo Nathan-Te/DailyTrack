@@ -78,7 +78,7 @@ Tables : `players(id, name, demo, …)`, `circuits(day, track_id, spec, author_m
 - Ancrer les tests du générateur/API sur des **dates fixes**, pas sur la constante de lancement.
 
 ### 3.4 Contenu quotidien généré et **validé**
-- Graine = jour UTC (`mixSeed(jour, sel)`), même circuit pour tous, sans serveur nécessaire côté client.
+- Graine = numéro de jour de la date (`mixSeed(jour, sel)` ; « aujourd'hui » = la date à Paris, lot 31), même circuit pour tous, sans serveur nécessaire côté client.
 - `composeSpec` construit un texte de blocs par segments ; **`bestPilotRun`** (pilote automatique, essais à plusieurs niveaux d'adhérence) valide qu'il est faisable et dans une fenêtre de durée (28–48 s) ; son temps devient le **temps d'auteur** → seuils de médailles (or ×1,08, argent ×1,20, bronze ×1,40).
 - Chaque nouvel effet de piste crée une **règle de générateur** (ex. deux droites derrière une plaque). Après tout changement de physique ou de règle : **mesurer le taux de circuits validés par thème** (12 jours × 6 tentatives), sinon la génération échoue en silence et ralentit.
 - Génération coûteuse (≤ 0,5 s) : le serveur la **met en cache** (`circuits`).

@@ -68,6 +68,8 @@ import {
   type RaceState,
   type Track,
 } from "@cdj/sim";
+import { isRestricted, judgeAddress, trialKeysAllowed, withoutRefused } from "./access";
+import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { archiveDays, disposeArchive, nextTheme, randomSeedHref, renderArchive, themeHref, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
@@ -138,24 +140,41 @@ if (params.get("mode") === "salon" && !customTrack && requested === null) {
 const figureTrack = !customTrack && requested === "figure" ? createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1") : null;
 const scenario = salon ? "salon" : customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" || requested === "bas-cotes" ? requested : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
-const fakeToday = params.has("debug") ? parseDay(params.get("today") ?? "") : null;
+// Production (lot 31) : outils d'essai coupés, aucun circuit à venir (voir `access.ts`).
+const restricted = isRestricted(location.search);
+const fakeToday = params.has("debug") && !restricted ? parseDay(params.get("today") ?? "") : null;
 // `?api=demo` : jeu de données statique d'archives (lot 11) ; « aujourd'hui » y est figé au lendemain de l'historique.
 const demoApiMode = apiBase() === DEMO_BASE;
-const todayUtc = fakeToday ?? (demoApiMode ? DEMO_TODAY : Math.floor(Date.now() / 86_400_000));
-// `?day=AAAA-MM-JJ` : accès direct à un jour (même chose que `?seed=`).
+// « Aujourd'hui » = la date à Paris (lot 31), la même pour tout le monde au même instant. La démonstration fige le sien au lendemain de
+// son historique ; en production ce lendemain ne dépasse jamais la vraie date (pas de circuit à venir, même par la démonstration).
+const realToday = parisDay(Date.now());
+const todayParis = fakeToday ?? (demoApiMode ? (restricted ? Math.min(DEMO_TODAY, realToday) : DEMO_TODAY) : realToday);
+// `?day=AAAA-MM-JJ` : accès direct à un jour (même chose que `?seed=`). En production, un jour à venir est refusé : circuit du jour.
 const seedParam = params.get("seed") ?? params.get("day");
-const seedDay = seedParam === null ? null : parseDay(seedParam);
-let daily: DailyCircuit | null = null;
+const requestedSeedDay = seedParam === null ? null : parseDay(seedParam);
 // `?theme=<nom>` force le thème du jour (essais) : autre circuit, jamais classé.
 const themeParam = params.get("theme");
-const forcedTheme = themeByName(themeParam);
+const requestedTheme = themeByName(themeParam);
 // `?variant=N` (avec `?seed=`) : une variante du planning pour l'essayer (l'admin l'ouvre ainsi) ; comme un thème forcé, jamais classée.
 const variantParam = params.get("variant") === null ? null : Number(params.get("variant"));
-const trialVariant = variantParam !== null && isVariant(variantParam) ? variantParam : null;
+const requestedVariant = variantParam !== null && isVariant(variantParam) ? variantParam : null;
+const verdict = judgeAddress({ seedDay: requestedSeedDay, trial: !!requestedTheme || requestedVariant !== null, today: todayParis, restricted });
+const seedDay = verdict.seedDay;
+const forcedTheme = verdict.dropTrial ? null : requestedTheme;
+const trialVariant = verdict.dropTrial ? null : requestedVariant;
+const addressNotice = verdict.notice;
+if (addressNotice) {
+  try {
+    history.replaceState(null, "", location.pathname + withoutRefused(location.search, verdict, requestedSeedDay !== null && seedDay === null) + location.hash);
+  } catch {
+    /* tant pis : l'adresse garde les paramètres refusés (le jeu les ignore de toute façon) */
+  }
+}
+let daily: DailyCircuit | null = null;
 const trial = !!forcedTheme || trialVariant !== null; // circuit d'essai : choisi par l'adresse, jamais classé
 // Planning (lot 14) : le circuit en vigueur ce jour-là peut avoir été remplacé par l'admin. On le demande à l'API (délai court) ;
 // sans API, ou si elle ne répond pas, c'est le circuit d'origine, course jouable mais non classée.
-const planDay = seedDay ?? todayUtc;
+const planDay = seedDay ?? todayParis;
 let plan: PlanEntry = NO_PLAN;
 let planKnown = false;
 if (scenario === "jour" && !trial) {
@@ -176,7 +195,7 @@ if (scenario === "jour") {
 }
 // Accueil (lot 29) : au chargement, sauf lien direct (`?seed=`, `?day=`, `?scenario=`, `?mode=`, `?watch=`, `?demo`, `?debug`…) ; `?home=1` le force.
 // Il ne s'affiche que sur le circuit d'aujourd'hui, jamais sur un scénario, un essai, le Salon ou une rediffusion.
-const homeAllowed = !!daily && daily.day === todayUtc && seedParam === null && !trial && !salon && !watchWanted && !customTrack && !params.has("demo");
+const homeAllowed = !!daily && daily.day === todayParis && (seedParam === null || seedDay === null) && !trial && !salon && !watchWanted && !customTrack && !params.has("demo");
 let homeOpen = homeAllowed && wantsHome(params);
 if (params.has("home")) {
   try {
@@ -267,7 +286,7 @@ let demoTimer = 0;
 // Sans le planning de l'API (hors ligne, serveur muet, version différente) on ne sait pas quel circuit le serveur rejouera : pas de classement.
 const online = new Online(track ? track.id : null, daily && !trial && planKnown ? daily.date : null);
 // On ne peut classer que le circuit d'aujourd'hui (un jour passé est figé : le serveur refuse).
-const submitAllowed = !!daily && daily.day === todayUtc && !trial && planKnown && !online.demo;
+const submitAllowed = !!daily && daily.day === todayParis && !trial && planKnown && !online.demo;
 // Outils de test (`?debug`) : accélérer le temps et jouer une rediffusion à la place du clavier.
 const timeScale = params.has("debug") ? Math.max(1, Number(params.get("timescale")) || 1) : 1;
 let autoplay: ReplayPlayer | null = null;
@@ -300,7 +319,7 @@ const MEDAL_NAME: Record<Medal, string> = { author: "Meilleur que l'auteur !", g
 // Titre du circuit et seuils des médailles.
 if (salon) {
   $("meta").textContent = salon.title();
-  salon.dom = { countdown: $("medals"), board: boardPanel, podium: $("podium") };
+  salon.dom = { countdown: $("medals"), finale: $("finale"), board: boardPanel, podium: $("podium") };
 } else if (daily) {
   const m = daily.medals;
   const invalidSeed = seedParam !== null && seedDay === null;
@@ -433,14 +452,14 @@ let lastRespawns = 0;
 // Tout ce qui suit est de la présentation : rien ici ne touche à la simulation (les mêmes commandes, les mêmes rediffusions).
 let settingsPanel: ReturnType<typeof mountSettings> | null = null;
 const profileHost: ProfileHost = {
-  today: formatDay(todayUtc),
+  today: formatDay(todayParis),
   rename: (name) => online.rename(name), // le serveur dit si le pseudo est libre ; changé aussi sur le serveur si le joueur y est déjà classé
   fetchProfile: (id) => (online.profileApi && !online.demo ? online.profileApi.me(id) : null),
   changeCode: () => online.changeCode(),
   sync: online.sync,
   submitLegacy: async (id, name, replays) => {
     // Ancien code (lot 28) : le serveur rejoue les rediffusions des derniers jours et ignore le reste (jour figé, autre version).
-    for (const r of replays.filter((x) => x.date >= formatDay(todayUtc - 1)).slice(0, 3)) await online.profileApi?.submit(id, name, r.date, r.replay);
+    for (const r of replays.filter((x) => x.date >= formatDay(todayParis - 1)).slice(0, 3)) await online.profileApi?.submit(id, name, r.date, r.replay);
   },
   onChange: () => settingsPanel?.sync(),
 };
@@ -575,7 +594,7 @@ function playSalon() {
 async function fetchBoard(limit: number) {
   const r = await online.leaderboard(limit);
   if (online.demo && r.ok && r.data.participants === 0 && online.api) {
-    const yesterday = await online.api.leaderboard(formatDay(todayUtc - 1), online.playerId, limit);
+    const yesterday = await online.api.leaderboard(formatDay(todayParis - 1), online.playerId, limit);
     if (yesterday.ok) return yesterday;
   }
   return r;
@@ -600,6 +619,12 @@ const homeUi: HomeUi = mountHome($("home"), {
   best: () => (best ? { ms: best.ms, medal: best.medal ?? (daily ? medalFor(best.ms, daily.medals) : null) } : null),
   leaderboard: online.enabled ? homeLeaderboard : null,
   noBoardReason: apiBase() === null ? "Pas de classement ici : ce jeu n'est pas relié à un serveur. Tu peux jouer, ton record reste sur cet appareil." : "Hors ligne : le serveur ne répond pas. Tu peux jouer, la course ne sera pas classée.",
+  // Compte à rebours jusqu'à minuit de Paris : seulement pour le vrai « aujourd'hui » (pas en démonstration ni avec `?today=`).
+  msUntilNextDay: () => {
+    if (!daily || todayParis !== realToday || daily.day !== todayParis) return null;
+    return parisDay(Date.now()) !== todayParis ? 0 : msUntilNextParisDay(Date.now()); // page restée ouverte après minuit : le nouveau circuit
+  },
+  onNewDay: () => location.reload(),
   salon: () => lookupSalon(apiBase(), sessionMsFromParams(location.search)),
   profile: profileHost,
   touch: touchMode,
@@ -671,7 +696,7 @@ function updateShareLine() {
   if (shareEl && share) shareEl.textContent = shareLine(share);
 }
 
-const shareLink = () => shareUrl(location, daily!.date, daily!.day === todayUtc);
+const shareLink = () => shareUrl(location, daily!.date, daily!.day === todayParis);
 
 // Miniatures (lot 13) : fabriquées à la demande, une par une, jamais pendant une course (sauf si tout est gelé : pause, ou
 // fenêtre ouverte au toucher). `?thumbs=2d|top` : repli 2D / vue d'aplomb (essais) ; `?thumbs=off` les coupe.
@@ -711,7 +736,7 @@ const thumbSource: ThumbSource | null =
 // Ouvrir un jour passé (ou un circuit d'essai) : sa miniature s'affiche pendant le décompte, jamais une fois la course lancée.
 const hudDayCard = $("daycard");
 let dayCardShown = false;
-if (daily && !daily.fallback && daily.day !== todayUtc && thumbsParam !== "off") {
+if (daily && !daily.fallback && daily.day !== todayParis && thumbsParam !== "off") {
   const circuit = { track: daily.track, palette: daily.palette, theme: daily.theme };
   void thumbService.request({ day: daily.day, theme: daily.forcedTheme ? daily.theme : null, variant: daily.variant, circuit }, () => phase === "countdown").then((url) => {
     if (!url) return;
@@ -724,10 +749,10 @@ if (daily && !daily.fallback && daily.day !== todayUtc && thumbsParam !== "off")
 }
 
 function openArchive() {
-  const days = archiveDays(todayUtc, listDayBests());
+  const days = archiveDays(todayParis, listDayBests());
   let shownExtras: Parameters<typeof renderArchive>[6] = null;
   const draw = (extras: Parameters<typeof renderArchive>[6]) =>
-    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, (shownExtras = extras ?? shownExtras), thumbSource);
+    renderArchive(hudArchive.querySelector(".panel")!, days, location.search, daily?.date ?? null, closeArchive, forcedTheme?.name ?? null, (shownExtras = extras ?? shownExtras), thumbSource, trialKeysAllowed(restricted));
   draw(null);
   hudArchive.hidden = false;
   void loadArchivePlan().then(() => {
@@ -748,9 +773,16 @@ hudArchive.addEventListener("click", (e) => {
   if (e.target === hudArchive) closeArchive(); // clic à côté du panneau
 });
 
-function startAttempt() {
+/** Finale du Salon (lot 31) : plus aucun départ dans les 15 dernières secondes (ni au clavier, ni à la manette, ni au doigt). */
+let startLocked = false;
+
+function startAttempt(force = false) {
   if (watch) return restartWatch(0); // spectateur : « recommencer » = la rediffusion repart du début
-  if (salon && salon.state !== "playing") return; // podium, bascule : pas de nouveau départ
+  if (!force && salon && salon.state !== "playing") return; // podium, bascule : pas de nouveau départ
+  if (!force && startLocked) {
+    showBanner("Dernière chance : plus de départ", 1.6, true);
+    return;
+  }
   if (track) {
     session = new RunSession(track, ghostSource, carParams);
     ghostField?.restart(track); // Salon : les fantômes des autres repartent avec toi
@@ -967,8 +999,9 @@ window.addEventListener("keydown", (e) => {
     setBoardVisible(!boardOpen());
   }
   if (e.code === "KeyM") gameAudio.mute();
-  if (e.code === "KeyN" && track && scenario === "jour") location.assign(randomSeedHref(location.search)); // circuit au hasard (essai, jamais classé)
-  if (e.code === "KeyT" && track && scenario === "jour") location.assign(themeHref(location.search, nextTheme(forcedTheme?.name ?? null))); // thème suivant
+  // N et T (circuit au hasard, thème suivant) sont des outils d'essai : aperçus et `?debug` seulement, jamais en production (lot 31).
+  if (e.code === "KeyN" && track && scenario === "jour" && trialKeysAllowed(restricted)) location.assign(randomSeedHref(location.search)); // circuit au hasard (essai, jamais classé)
+  if (e.code === "KeyT" && track && scenario === "jour" && trialKeysAllowed(restricted)) location.assign(themeHref(location.search, nextTheme(forcedTheme?.name ?? null))); // thème suivant
   if (e.code === "KeyL") setBoardVisible(!boardOpen());
   if (e.code === "KeyH" && !salon) (hudArchive.hidden ? openArchive : closeArchive)();
 });
@@ -1266,7 +1299,7 @@ function finishSalonRun() {
     actions.append(b);
     return b;
   };
-  action("Rejouer", () => startAttempt(), "primary");
+  action("Rejouer", () => startAttempt(), "primary").classList.add("restart");
   action("Revoir le meilleur tour", () => location.assign(watchHref(location.search))).id = "finish-watch";
   action("Partager", (b) => shareOut(b, sal.shareLine() ?? salonLine(sal.label, ms), `${location.origin}${location.pathname}?mode=salon`));
   action("Accueil", () => goHome());
@@ -2083,7 +2116,7 @@ function swapSalonCircuit(c: LoadedSalonCircuit) {
   best = null;
   ghostSource = null;
   ghostField?.clear();
-  startAttempt(); // décompte neuf sur le nouveau circuit
+  startAttempt(true); // décompte neuf sur le nouveau circuit (gelé tant que le podium est affiché)
   salonStats.swapMs = performance.now() - t0;
 }
 
@@ -2099,9 +2132,18 @@ const salonHost: SalonHost = {
   abortRun() {
     if (phase === "racing") {
       phase = "finished";
-      hudFinish.replaceChildren(Object.assign(document.createElement("div"), { textContent: "Session terminée : tour abandonné" }));
+      hudFinish.replaceChildren(Object.assign(document.createElement("div"), { textContent: "Session terminée : tour non compté" }));
       hudFinish.hidden = false;
     }
+  },
+  finale(on) {
+    startLocked = on;
+    document.body.classList.toggle("start-locked", on);
+    for (const b of document.querySelectorAll<HTMLElement>("#pause-restart, #finish .restart, #touch .restart")) b.setAttribute("aria-disabled", String(on));
+    if (on) {
+      boardPanel.setFolded(false); // classement affiché d'office pendant la finale
+      hudBoard.hidden = false;
+    } else syncBoardFold(); // rendu au réglage du joueur
   },
   banner: showBanner,
   flash() {
@@ -2122,8 +2164,8 @@ if (salon) {
   syncBoardFold();
 }
 // Salon injoignable (lot 26) : dit dans l'en-tête, et rappelé au départ (le décompte écrase le bandeau jusque-là).
-let salonNoticePending = salonNotice;
-if (salonNotice) $("meta").append(` · ${salonNotice}`);
+let salonNoticePending = salonNotice || addressNotice;
+if (salonNotice || addressNotice) $("meta").append(` · ${salonNotice || addressNotice}`);
 
 // Revoir le meilleur tour (lot 27b) : `?watch=best`. Le tour vient du classement (jour ou session), sinon de ton record local ; s'il n'y
 // en a pas, une course normale (dans le Salon : on attend le premier temps de la session).
@@ -2249,6 +2291,8 @@ if (params.has("debug")) {
         const sal = salon;
         return {
           state: sal.state,
+          finaleOn: sal.finaleOn,
+          startLocked,
           session: sal.session,
           trackId: sal.circuit.id,
           theme: sal.circuit.theme,
