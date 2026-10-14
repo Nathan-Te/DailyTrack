@@ -247,6 +247,7 @@ test("« Changer mon code » : l'ancien code ne vaut plus rien, l'autre appareil
   expect(kept).toMatchObject({ name: "Nowy Pro", stats: { days: 1 }, best: { ms: fast.finishMs } });
   expect((await board()).top.find((r) => r.name === "Nowy Pro")!.ms).toBe(fast.finishMs); // les temps et le pseudo sont conservés
 
+  await sleep(c); // c ne sert plus : il affamerait la page suivante (rendu logiciel)
   // Sur A (qui a encore l'ancien code) : le jeu signale que son code n'est plus valide…
   await a.goto(`/?home=1&${GAME}`);
   await a.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
