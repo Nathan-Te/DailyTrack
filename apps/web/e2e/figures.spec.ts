@@ -69,6 +69,10 @@ test("admin : « Une figure » propose la liste des figures, la variante et le m
   await expect(page.locator("#url")).toContainText(`scenario=figure&f=${FIGURES[0]!.name}`);
   await page.locator("#figure").selectOption("slalom-glace");
   await page.locator("#figurevariant").fill("1");
+  // Valider la variante AVANT de cliquer le miroir : le « change » du champ (au départ du focus) redessine la page et remet la case à son état
+  // d'avant, ce qui annulait un clic arrivé juste avant (WebKit, CI : « Clicking the checkbox did not change its state »).
+  await page.locator("#figurevariant").blur();
+  await expect(page.locator("#url")).toContainText("v=1");
   await page.locator("#figuremirror").check();
   await expect(page.locator("#url")).toContainText("scenario=figure&f=slalom-glace&v=1&m=1");
   await page.locator('input[name="scenario"][value="figures"]').check();

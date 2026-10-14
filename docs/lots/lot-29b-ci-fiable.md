@@ -21,8 +21,10 @@ Runs de la branche (le résumé de chacun est dans l'onglet « Summary » du run
 | [#246](https://github.com/Nathan-Te/DailyTrack/actions/runs/38537592182) | `ccb5ce8` | 12 min | 213 réussis, 1 instable, 1 échec |
 | [#248](https://github.com/Nathan-Te/DailyTrack/actions/runs/38539728315) (push) | `5efb9a7` | 10 min | **vert** |
 | [#249](https://github.com/Nathan-Te/DailyTrack/actions/runs/38539737042) (PR, même commit) | `5efb9a7` | 13 min | 214 réussis, 0 instable, **1 échec** : `thumbnails` (délai, corrigé ci-dessous) |
+| [#252](https://github.com/Nathan-Te/DailyTrack/actions/runs/38542158246) (push) | `8793daa` | 13 min | **vert**, 214 réussis, **1 instable** : `figures` admin (WebKit), corrigé ci-dessous |
+| [#253](https://github.com/Nathan-Te/DailyTrack/actions/runs/38542166578) (PR, même commit) | `8793daa` | 13 min | **vert** |
 
-**Critère d'arrêt « trois runs verts d'affilée » : voir la fin du README** (mise à jour au fil des runs ; l'agent de session ne peut pas relancer un run, 403 : chaque nouveau commit en fait un).
+**Critère d'arrêt « trois runs complets verts d'affilée, 0 instable »** : **pas encore atteint, honnêtement**. Dernière série : #252 et #253 verts (13 min), mais #252 avait 1 instable (`figures` WebKit, corrigé depuis) ; #249 était rouge (`thumbnails`, corrigé depuis). L'agent de session ne peut pas relancer un run (403 : seuls les nouveaux commits en lancent, un par événement `push` et `pull_request`). **À faire par Nathan** : sur la PR, *Re-run all jobs* jusqu'à avoir trois runs verts sans « Tests instables » dans le résumé, puis fusionner ; chaque run se lit en tête de sa page (« Résultats e2e »).
 
 ## Familles instables : cause et correction
 
@@ -43,6 +45,7 @@ Aucun test n'a été supprimé, sauté pour être vert ni affaibli. Chaque cause
 | **`accueil`** « Copier mon code » | **Bombe à retardement** : un ancien record écrit en dur au 20/10/2026 qui est devenu « aujourd'hui » dès que l'horloge de test a visé ce jour (le test aurait aussi échoué le vrai 20/10) | L'ancien jour se calcule : `TODAY − 5` |
 | **`accueil`** « manette » | Bouton tenu 700 ms ; le jeu lit la manette une fois par image, plus longue que cela en rendu logiciel | Le bouton reste enfoncé **jusqu'à ce que l'effet soit visible** |
 | **`thumbnails`** « 15 miniatures » | Quinze miniatures en WebGL logiciel : ≈ 52 s en local, plus de 180 s en CI (3 runs sur 4) ; aucune autre cause dans les traces | Délai du test **420 s** (mesure citée dans le fichier) ; aucune assertion changée |
+| **`figures`** admin (WebKit, instable) | Le « change » du champ variante part au départ du focus et **redessine la page**, qui remet la case « Miroir » à son état d'avant : un clic juste avant est annulé (« Clicking the checkbox did not change its state »). Course réelle de l'interface d'admin, hors jeu | Le test valide la variante (`blur`, attente de `v=1` dans l'adresse) **avant** de cliquer la case ; mêmes assertions |
 | **Minuit UTC** | Plusieurs specs calculaient « aujourd'hui » avec l'heure réelle ; un run qui passait minuit changeait de jour | **Horloge maîtrisée** (voir ci-dessous) |
 
 ### Horloge maîtrisée
@@ -63,7 +66,7 @@ Aucun test n'a été supprimé, sauté pour être vert ni affaibli. Chaque cause
 `ci.yml` se lance aussi chaque nuit à **03 h 17 UTC** sur `main` (aussi à la main : *Run workflow*). À ce run, **un test instable fait échouer le job** : une instabilité qui revient se voit (mail GitHub) au lieu de se cacher derrière la relance.
 
 ## Suivi des instables
-Voir `docs/orchestration.md` § 8. Au dernier run vert observé : **0 instable**.
+Voir `docs/orchestration.md` § 8. Dernier run observé avec instable : #252 (`figures` WebKit, corrigé). Le run de nuit dira si un autre revient.
 
 ## Vérifications
 - `npm test` : 848 tests + 118 (projets `sqlite` puis `libsql`) verts ; `npm run typecheck` vert.
