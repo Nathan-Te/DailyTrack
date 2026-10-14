@@ -52,3 +52,10 @@ export type { Browser, BrowserContext, Page };
 
 /** « Maintenant » sur l'horloge de test, côté Node (pour simuler un serveur qui répond avec l'heure du navigateur). */
 export const clockNow = () => Date.now() + OFFSET;
+
+/** Ce navigateur sait-il créer un contexte WebGL ? (Le Firefox de la CI, non : le jeu ne démarre pas, `__cdj` n'existe jamais.) */
+export const hasWebGL = (page: Page): Promise<boolean> =>
+  page.evaluate(() => {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  });
