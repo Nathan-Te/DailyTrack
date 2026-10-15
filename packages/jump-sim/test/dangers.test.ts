@@ -1,4 +1,4 @@
-import { Rng } from "@cdj/core";
+import { Rng, parseDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
   ATTEMPT_DEAD,
@@ -41,6 +41,7 @@ import {
   UNITS_PER_TILE,
   boxHits,
   buildModule,
+  dailyLevel,
   boxDistance2,
   circleHitsBox,
   deathAt,
@@ -637,6 +638,22 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
       const lv = buildModule(id, v).level;
       deaths += fuzz(400 + k, 10, 1500, () => ({ ...P }), lv).deaths;
       const r = fuzz(500 + k, 10, 800, (rng) => {
+        const p = { ...P };
+        for (const key of keys) p[key] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[key] + 2);
+        return p;
+      }, lv);
+      expect(r.total).toBe(8_000);
+    }
+    expect(deaths).toBeGreaterThan(10);
+  });
+
+  it("lot 5 : trois niveaux du jour assemblés (dates fixes), réglages par défaut et au hasard : même intégrité", () => {
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    let deaths = 0;
+    for (const [k, date] of ["2026-10-16", "2026-11-03", "2027-01-20"].entries()) {
+      const lv = dailyLevel(parseDay(date)!).level;
+      deaths += fuzz(700 + k, 8, 2500, () => ({ ...P }), lv).deaths;
+      const r = fuzz(800 + k, 8, 1000, (rng) => {
         const p = { ...P };
         for (const key of keys) p[key] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[key] + 2);
         return p;
