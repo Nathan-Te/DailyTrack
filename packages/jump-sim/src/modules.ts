@@ -1,36 +1,48 @@
-import { circleHitsBox } from "./attempt";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, stepAttempt, type AttemptState } from "./attempt";
+import { tileOf } from "./collide";
+import { idiv } from "./idiv";
+import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
+import { START_AT_SPAWN, replayStartState } from "./replay";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "./catalog";
 import { JUMP_SIM_VERSION, UNITS_PER_TILE } from "./constants";
-import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, parseLevel, sawCenter, type Level } from "./level";
+import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, sawCenter, type Level } from "./level";
 
 // Les morceaux (lot 4) : des portions de niveau écrites en texte qui **portent leur solution**, matière première du niveau du jour (lot 5).
 // La source est un fichier texte par morceau (`packages/jump-sim/modules/<id>.txt`) ; le solveur hors ligne (`npm run solve:modules -w
 // @cdj/jump-sim`) recopie ces textes et les solutions trouvées dans `catalog.ts` (généré : la simulation reste pure, sans lecture de fichier).
 //
-// Format d'un fichier (une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
+// Format d'un fichier, **version 2** (lot 6 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français
 //   etiquettes: mural vertical                    parmi MODULE_TAGS
-//   paliers: 17 9                                 rangées (du gabarit) du **sol** du palier d'entrée, puis de sortie
-//   repeter: haut rangees 6-7                     un paramètre nommé et une plage de rangées (ou de `colonnes`) du gabarit
+//   format: 2                                     la version du format (un fichier v1, aux paliers dessinés, est refusé)
+//   paliers: 17 6                                 rangées (de la grille) du **sol** à l'entrée, puis à la sortie
+//   repeter: haut rangees 6-7                     un paramètre nommé et une plage de rangées (ou de `colonnes`) de la grille
 //   variante: haut=2 cycle=180                    une variante = une valeur pour chaque paramètre (2 à 4 variantes)
 //   grille:                                       puis la grille (caractères de `level.ts`, sans `S`, `F` ni `C`), une ligne vide,
 //   scie <id> <rayon> <cycle> <mode> <c,r>…       puis le bloc annexe : seulement des scies (la section est implicite)
 //
-// **Variantes déclaratives.** Une plage `repeter` est dessinée **une fois** dans le gabarit ; dans une variante, elle apparaît autant de
+// **Variantes déclaratives.** Une plage `repeter` est dessinée **une fois** dans la grille ; dans une variante, elle apparaît autant de
 // fois que la valeur du paramètre (0 la retire) : `repeter: trou colonnes 12-12` avec `trou=3` donne un trou de trois colonnes. Deux plages
 // d'un même axe ne se chevauchent pas. Dans le bloc annexe, `{nom}` est remplacé par la valeur du paramètre (cycle, rayon d'une scie…), et
-// les coordonnées `col,rangée` sont celles du gabarit : elles désignent la **première** copie d'une plage répétée, ou la **dernière** avec
+// les coordonnées `col,rangée` sont celles de la grille : elles désignent la **première** copie d'une plage répétée, ou la **dernière** avec
 // une apostrophe (`14',3`).
 //
-// **Paliers.** Le morceau commence et finit sur un palier : au moins `PALIER_MIN` tuiles de sol plein (`#`) collées au bord, avec
-// `PALIER_HEADROOM` rangées libres au-dessus (ni bloc, ni danger, ni scie qui y passe). Le niveau construit ajoute **une colonne d'appel** à
-// gauche (copie de la première colonne, avec le départ `S` au sol) et **une colonne de sortie** à droite (copie de la dernière, avec
-// l'arrivée `F` au sol) : sortir, c'est franchir le bord droit du palier de sortie. Le morceau forme **une seule section** (ses scies mobiles
-// démarrent quand le centre du personnage y entre). Le point de passage du morceau est implicite, au début du palier d'entrée.
+// **Paliers (lot 6).** Les paliers **ne sont plus dessinés** : la grille commence à la première colonne du défi et finit à la dernière.
+// `buildModule` pose de chaque côté le **palier standard** : `PALIER_LENGTH` colonnes de sol plein à la rangée déclarée, du plein dessous,
+// **du vide au-dessus jusqu'en haut de la grille** (un rebord, pas un couloir). Le même palier sert dans le niveau du jour, où le palier de
+// sortie d'un morceau **est** le palier d'entrée du suivant (les mêmes tuiles). Le morceau forme **une seule section** : ses scies mobiles
+// démarrent quand le centre du personnage passe le bord droit du palier d'entrée.
 //
-// **Entrées et sortie.** Entrée *arrêt* : au départ, immobile. Entrée *élan* : au départ, au sol, à pleine vitesse vers la droite (drapeau
-// « élan » de la rediffusion). **Sortie toujours en élan** : la solution finit au sol, à pleine vitesse, en touchant l'arrivée.
+// **Le point canonique est le bord droit d'un palier.** Une solution **sort** au premier pas où le centre du personnage franchit le bord
+// droit du palier de sortie, au sol, à `runSpeed`, en course « propre » (`isCleanRun` : bouton relâché, rien en attente) ; le morceau
+// suivant **entre en élan** exactement là. L'entrée *arrêt* se fait immobile au début du palier d'entrée (premier morceau du niveau,
+// reprise sur un point de passage). Le niveau d'un morceau seul : palier d'entrée (départ `S` sur sa première colonne) · grille · palier
+// de sortie · une colonne de piste et la colonne d'arrivée `F` (seulement pour finir le morceau joué seul : la solution est déjà sortie) ;
+// devant le palier d'entrée, une colonne de garde (`PALIER_GUARD`) l'écarte du bord du niveau, et la solution ne repasse jamais à gauche du
+// début du palier d'entrée (une reprise sur un point de passage a, à sa gauche, le morceau précédent).
+// L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
+// bord du palier (`entryTick` pas, droite tenue) puis joue.
 
 export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration"] as const;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
@@ -39,12 +51,20 @@ export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
 
 /** Hauteur maximale d'un morceau construit, en rangées. */
 export const MODULE_MAX_HEIGHT = 30;
-/** Tuiles de sol plat d'un palier, au moins. */
-export const PALIER_MIN = 3;
-/** Rangées libres au-dessus du sol d'un palier, au moins. */
+/** Version du format des fichiers de morceaux (lot 6 : paliers posés, plus dessinés). */
+export const MODULE_FORMAT = 2;
+/** Longueur du palier standard (lot 6), en tuiles : celle d'un raccord du niveau du jour. */
+export const PALIER_LENGTH = 2;
+/**
+ * Colonne de garde devant le palier d'entrée (morceau seul, et début du niveau du jour) : une colonne comme un palier, pour que le départ ne
+ * soit jamais à portée de saut mural du bord gauche du niveau. Une reprise sur un point de passage a, à sa gauche, le morceau précédent :
+ * une solution ne doit rien devoir au bord du niveau (et ne repasse jamais à gauche du palier d'entrée : `moduleSpan`).
+ */
+export const PALIER_GUARD = 1;
+/** Rangées libres au-dessus du sol d'un palier, au moins (la rangée du sol déclarée est au moins celle-ci). */
 export const PALIER_HEADROOM = 4;
-/** Durée d'une solution : entre 2 et 6 s. */
-export const MODULE_MIN_TICKS = 240;
+/** Durée d'une solution entre son entrée et sa sortie canoniques (`ModuleSolution.exitTick − entryTick`) : entre 1 et 6 s. */
+export const MODULE_MIN_TICKS = 120;
 export const MODULE_MAX_TICKS = 720;
 /** Copies d'une plage répétée : de 0 à 40 (un paramètre du bloc annexe, comme un cycle, va jusqu'à `MAX_SAW_CYCLE`). */
 export const MAX_PARAM = 40;
@@ -68,7 +88,7 @@ export interface ModuleDef {
   id: string;
   intention: string;
   tags: readonly ModuleTag[];
-  /** Rangées du gabarit du sol du palier d'entrée et de sortie. */
+  /** Rangées de la grille du sol à l'entrée et à la sortie (celles des paliers posés). */
   entryRow: number;
   exitRow: number;
   repeats: readonly ModuleRepeat[];
@@ -81,7 +101,7 @@ export interface ModuleDef {
   text: string;
 }
 
-const KEYS = new Set(["id", "intention", "etiquettes", "paliers", "repeter", "variante"]);
+const KEYS = new Set(["id", "intention", "etiquettes", "format", "paliers", "repeter", "variante"]);
 const MODULE_GRID = /^[#.^v<>oOx*]+$/;
 
 /** Lit le texte d'un morceau. Refuse tout ce qui est mal formé (clé inconnue, étiquette inconnue, variante incomplète…). */
@@ -110,8 +130,9 @@ export function parseModule(text: string): ModuleDef {
   const tags = one("etiquettes").split(/\s+/);
   for (const t of tags) if (!(MODULE_TAGS as readonly string[]).includes(t)) throw new ModuleError(where(`étiquette « ${t} » inconnue (${MODULE_TAGS.join(", ")})`));
   if (new Set(tags).size !== tags.length) throw new ModuleError(where("étiquette en double"));
+  if (one("format") !== String(MODULE_FORMAT)) throw new ModuleError(where(`format ${one("format")} : seul le format ${MODULE_FORMAT} (paliers posés, lot 6) est lu`));
   const paliers = /^(\d+)\s+(\d+)$/.exec(one("paliers"));
-  if (!paliers) throw new ModuleError(where("« paliers: <rangée d'entrée> <rangée de sortie> » attendu"));
+  if (!paliers) throw new ModuleError(where("« paliers: <rangée du sol à l'entrée> <rangée du sol à la sortie> » attendu"));
 
   // ——— Grille, puis bloc annexe ———
   i++;
@@ -127,6 +148,7 @@ export function parseModule(text: string): ModuleDef {
   const entryRow = Number(paliers[1]);
   const exitRow = Number(paliers[2]);
   if (entryRow >= grid.length || exitRow >= grid.length) throw new ModuleError(where("rangée de palier hors de la grille"));
+  if (entryRow < PALIER_HEADROOM || exitRow < PALIER_HEADROOM) throw new ModuleError(where(`rangée de palier sous la ${PALIER_HEADROOM}e : moins de ${PALIER_HEADROOM} rangées libres au-dessus`));
 
   // ——— Plages répétées ———
   const params: string[] = [];
@@ -187,7 +209,14 @@ function unroll(size: number, repeats: readonly ModuleRepeat[], values: Readonly
   return { src, first, last };
 }
 
-/** Un morceau construit : le niveau jouable (appel, morceau, sortie) et ce qu'il faut pour l'enchaîner. */
+/** Un palier posé : ses colonnes (bornes comprises) et la rangée de son sol. */
+export interface Palier {
+  col0: number;
+  col1: number;
+  row: number;
+}
+
+/** Un morceau construit : le niveau jouable (palier d'entrée, morceau, palier de sortie, arrivée) et ce qu'il faut pour l'enchaîner. */
 export interface BuiltModule {
   id: string;
   variant: number;
@@ -199,14 +228,19 @@ export interface BuiltModule {
   ascii: string;
   /** Empreinte FNV-1a du texte : une solution stockée l'est pour cette grille. */
   hash: string;
-  /** Colonnes avant le morceau (appel, et couloir de lancement s'il y en a un) : la première colonne du morceau. */
+  /** Colonnes avant le morceau (couloir de lancement s'il y en a un, garde, palier d'entrée) : la première colonne du morceau. */
   lead: number;
-  /** Largeur du morceau seul (sans appel ni sortie), hauteur. */
+  /** Largeur du morceau seul (sa grille, sans paliers), hauteur. */
   width: number;
   height: number;
   /** Rangées du sol des paliers d'entrée et de sortie (dans le niveau construit). */
   entryRow: number;
   exitRow: number;
+  /** Les paliers posés. Le bord droit du palier d'entrée est la colonne `lead`, celui du palier de sortie la colonne `exitCol`. */
+  palierIn: Palier;
+  palierOut: Palier;
+  /** Première colonne après le palier de sortie : la solution sort quand le centre du personnage y entre (point canonique). */
+  exitCol: number;
 }
 
 export interface BuildOptions {
@@ -220,6 +254,9 @@ export function textHash(text: string): string {
   return h.toString(16).padStart(8, "0");
 }
 
+/** Une colonne de palier standard : du vide au-dessus du sol (jusqu'en haut), le sol à la rangée `floor`, du plein dessous. */
+const palierCell = (r: number, floor: number) => (r < floor ? "." : "#");
+
 /** Construit une variante d'un morceau écrit (`parseModule`) : fonction pure, mêmes entrées, même niveau. */
 export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOptions = {}): BuiltModule {
   const values = def.variants[variant];
@@ -232,21 +269,25 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
   const width = cols.src.length;
   const height = rows.src.length;
   if (height > MODULE_MAX_HEIGHT) throw new ModuleError(where(`${height} rangées (au plus ${MODULE_MAX_HEIGHT})`));
-  if (width < 2 * PALIER_MIN) throw new ModuleError(where("trop étroit"));
+  if (width < 1) throw new ModuleError(where("grille vide"));
   const entryRow = rows.first[def.entryRow]!;
   const exitRow = rows.first[def.exitRow]!;
-  const lead = 1 + launch;
+  const L = PALIER_LENGTH;
+  const lead = launch + PALIER_GUARD + L;
+  const exitCol = lead + width + L;
+  // Le départ : au début du palier d'entrée, ou au bout du couloir de lancement s'il y en a un.
+  const start = launch > 0 ? 0 : PALIER_GUARD;
 
+  // Couloir de lancement, garde et palier d'entrée · grille · palier de sortie · piste · arrivée.
   const grid = rows.src.map((r) => cols.src.map((c) => def.grid[r]![c]!).join(""));
   const lines = grid.map((row, r) => {
-    const head = row[0]!.repeat(lead);
-    const tail = row[width - 1]!;
-    const left = r === entryRow - 1 ? "S" + head.slice(1) : head;
-    return left + row + (r === exitRow - 1 ? "F" : tail);
+    const cells = palierCell(r, entryRow).repeat(lead);
+    const left = r === entryRow - 1 ? cells.slice(0, start) + "S" + cells.slice(start + 1) : cells;
+    const right = palierCell(r, exitRow).repeat(L + 1) + (r === exitRow - 1 ? "F" : palierCell(r, exitRow));
+    return left + row + right;
   });
-  if (grid[entryRow - 1]?.[0] !== "." || grid[exitRow - 1]?.[width - 1] !== ".") throw new ModuleError(where("le départ et l'arrivée se posent sur des tuiles vides"));
 
-  // ——— Bloc annexe : la section du morceau, ses scies (paramètres remplacés, coordonnées du gabarit traduites) ———
+  // ——— Bloc annexe : la section du morceau, ses scies (paramètres remplacés, coordonnées de la grille traduites) ———
   const annex = [`section ${def.id} ${lead}-${lead + width - 1}`];
   for (const line of def.annex) {
     const filled = line.replace(/\{([a-z][a-z0-9]*)\}/g, (_, p: string) => String(values[p]));
@@ -261,7 +302,7 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
           const r = Number(m[3]);
           const col = (m[2] ? cols.last : cols.first)[c];
           const row = (m[4] ? rows.last : rows.first)[r];
-          if (col === undefined || row === undefined || col < 0 || row < 0) throw new ModuleError(where(`point ${w} hors du gabarit ou retiré par la variante`));
+          if (col === undefined || row === undefined || col < 0 || row < 0) throw new ModuleError(where(`point ${w} hors de la grille ou retiré par la variante`));
           return `${col + lead},${row}`;
         })
         .join(" "),
@@ -288,42 +329,49 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
     height,
     entryRow,
     exitRow,
+    palierIn: { col0: lead - L, col1: lead - 1, row: entryRow },
+    palierOut: { col0: lead + width, col1: lead + width + L - 1, row: exitRow },
+    exitCol,
   };
   const problems = palierProblems(built);
   if (problems.length > 0) throw new ModuleError(where(problems.join(" ; ")));
   return built;
 }
 
-/** Ce qui ne va pas dans les paliers d'un morceau construit (vide : conformes). */
+/**
+ * Ce qui ne va pas dans les paliers d'un morceau construit (vide : conformes) : forme standard (sol plein, plein dessous, vide au-dessus
+ * jusqu'en haut), au moins `PALIER_HEADROOM` rangées libres, aucune scie (fixe ou mobile, sur tout son cycle) dans la boîte libre au-dessus
+ * du palier, et un passage au bord droit du palier d'entrée (la première colonne du morceau est libre au ras du sol : on y entre en élan).
+ */
 export function palierProblems(m: BuiltModule): string[] {
   const out: string[] = [];
   const L = m.level;
   const T = UNITS_PER_TILE;
-  const zones = [
-    { name: "entrée", c0: m.lead, row: m.entryRow },
-    { name: "sortie", c0: m.lead + m.width - PALIER_MIN, row: m.exitRow },
-  ];
-  for (const z of zones) {
-    if (z.row - PALIER_HEADROOM < 0) out.push(`palier d'${z.name} : moins de ${PALIER_HEADROOM} rangées au-dessus`);
-    for (let c = z.c0; c < z.c0 + PALIER_MIN; c++) {
-      if (L.tiles[z.row * L.width + c] !== TILE_SOLID) out.push(`palier d'${z.name} : colonne ${c - m.lead} sans sol plein`);
-      for (let r = Math.max(0, z.row - PALIER_HEADROOM); r < z.row; r++) {
-        if (L.tiles[r * L.width + c] !== TILE_EMPTY) out.push(`palier d'${z.name} : tuile (${c - m.lead}, ${r}) occupée`);
+  const at = (c: number, r: number) => L.tiles[r * L.width + c];
+  for (const [name, z] of [
+    ["entrée", m.palierIn],
+    ["sortie", m.palierOut],
+  ] as const) {
+    if (z.row < PALIER_HEADROOM) out.push(`palier d'${name} : moins de ${PALIER_HEADROOM} rangées au-dessus`);
+    for (let c = z.col0; c <= z.col1; c++) {
+      for (let r = 0; r < L.height; r++) {
+        const want = r < z.row ? TILE_EMPTY : TILE_SOLID;
+        if (at(c, r) !== want) out.push(`palier d'${name} : tuile (${c}, ${r}) ${want === TILE_SOLID ? "vide" : "occupée"}`);
       }
     }
-    // Aucune scie (fixe ou mobile, sur tout son cycle) n'entre dans la boîte libre au-dessus du palier.
-    const box = { x: z.c0 * T, y: (z.row - PALIER_HEADROOM) * T, w: PALIER_MIN * T, h: PALIER_HEADROOM * T };
+    const box = { x: z.col0 * T, y: (z.row - PALIER_HEADROOM) * T, w: (z.col1 - z.col0 + 1) * T, h: PALIER_HEADROOM * T };
     for (const saw of L.saws) {
       const n = saw.cycle === 0 ? 1 : saw.cycle;
       for (let t = 0; t < n; t++) {
         const p = sawCenter(saw, t);
         if (circleHitsBox(p.x, p.y, saw.radius, box)) {
-          out.push(`palier d'${z.name} : la scie ${saw.id} y passe`);
+          out.push(`palier d'${name} : la scie ${saw.id} y passe`);
           break;
         }
       }
     }
   }
+  if (isSolidTile(at(m.lead, m.entryRow - 1)!)) out.push("première colonne du morceau pleine au ras du sol : on n'y entre pas en courant");
   return out;
 }
 
@@ -347,14 +395,28 @@ export function buildModule(id: string, variant: number, options: BuildOptions =
 
 /** Une solution stockée (une variante, un état d'entrée) : une rediffusion du lot 3 et sa marge. */
 export interface ModuleSolution {
-  /** Rediffusion (base64url) ; départ lancé pour l'entrée élan. */
+  /**
+   * Rediffusion (base64url) du morceau joué seul, du départ à l'arrivée `F` ; départ lancé pour l'entrée élan. Elle contient l'entrée et la
+   * sortie canoniques (`entryTick`, `exitTick`) ; après la sortie, droite tenue jusqu'à l'arrivée.
+   */
   code: string;
-  /** Durée (pas) de cette solution, et de la plus rapide trouvée avant recentrage (les deux sont égales ou presque). */
+  /** Durée (pas) de toute la rediffusion (jusqu'à l'arrivée du morceau seul). */
   ticks: number;
+  /**
+   * Pas joués quand le centre du personnage passe le bord droit du palier d'entrée (0 à l'arrêt : la solution part de là où elle est ;
+   * en élan, ce que coûte la course jusqu'au bord, droite tenue) et quand il passe le bord droit du palier de sortie (la sortie). Dans le
+   * niveau du jour, un morceau compte `exitTick − entryTick` pas.
+   */
+  entryTick: number;
+  exitTick: number;
+  /** Durée entre l'entrée et la sortie de la plus rapide trouvée avant durcissement (égale ou à peine plus courte). */
   fastest: number;
   /** Taux de réussite (‰) quand chaque changement de commande est décalé au hasard de ±1, ±2, ±3 pas (`GIGUE_DRAWS` tirages chacun). */
   gigue: readonly [number, number, number];
-  /** Taux de réussite (‰) rejouée en élan depuis des positions d'entrée décalées de quelques unités (`RACCORD_OFFSETS`) ; null à l'arrêt. */
+  /**
+   * Taux de réussite (‰) rejouée en élan depuis chacune des positions d'entrée possibles (`RACCORD_POSITIONS` : le centre franchit le bord
+   * n'importe où dans un pas de course) jusqu'à une sortie propre ; null à l'arrêt.
+   */
   raccord: number | null;
   /** Note d'exigence (1 facile … 5 exigeant), 0 = « au pas près » (refusée). */
   exigence: number;
@@ -374,27 +436,112 @@ export interface ModuleSolutionsFile {
   modules: Readonly<Record<string, { variants: readonly ModuleVariantSolutions[] }>>;
 }
 
-/** Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. */
-export const EXIGENCE_VERSION = 1;
+/** Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6). */
+export const EXIGENCE_VERSION = 2;
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
-/** Décalages d'entrée (unités, sur x) du test de raccord : un pas à pleine vitesse fait 375 unités, le raccord tombe n'importe où dedans. */
-export const RACCORD_OFFSETS: readonly number[] = [-192, -160, -128, -96, -64, -48, -32, -16, -8, -4, -2, -1, 1, 2, 4, 8, 16, 32, 48, 64, 96, 128, 160, 192];
+/**
+ * Positions d'entrée du test de raccord (lot 6) : de combien d'unités le centre du personnage a dépassé le bord droit du palier d'entrée
+ * au pas où il le franchit. À pleine vitesse un pas fait `runSpeed` = 375 unités : l'entrée réelle tombe n'importe où dans [0, 375) ; on
+ * en essaie 25, régulièrement espacées.
+ */
+export const RACCORD_POSITIONS: readonly number[] = Array.from({ length: 25 }, (_, k) => 7 + 15 * k);
 /** « Au pas près » : la solution échoue à ±1 pas sur plus de la moitié des tirages. */
 export const PAS_PRES = 500;
+/** Raccord strict (lot 6) : la solution en élan doit réussir depuis au moins 90 % des positions d'entrée, sinon la variante est refusée. */
+export const RACCORD_MIN = 900;
+/**
+ * Selon la position d'entrée, la sortie peut venir un peu plus tard que dans la solution stockée : le test de raccord et l'assemblage du
+ * niveau du jour continuent alors droite tenue, au plus ce nombre de pas après la fin de ses commandes.
+ */
+export const RACCORD_TAIL = 64;
 
 /**
- * Note d'exigence d'une solution (taux en ‰). Règle (README du lot 4) :
- *   0 (« au pas près », refusée) si la gigue ±1 réussit moins d'une fois sur deux, ou si le raccord réussit moins d'une fois sur deux ;
- *   sinon, selon la gigue : 1 si ±3 réussit ≥ 90 % ; 2 si ±3 ≥ 60 % ; 3 si ±2 ≥ 60 % ; 4 si ±1 ≥ 80 % ; 5 sinon ;
- *   puis +1 (au plus 5) si le raccord échoue plus d'une fois sur dix.
+ * Note d'exigence d'une solution (taux en ‰). Règle (README des lots 4 et 6) :
+ *   0 (refusée) si la gigue ±1 réussit moins d'une fois sur deux (« au pas près »), ou si le raccord réussit moins de 9 fois sur 10 ;
+ *   sinon, selon la gigue : 1 si ±3 réussit ≥ 90 % ; 2 si ±3 ≥ 60 % ; 3 si ±2 ≥ 60 % ; 4 si ±1 ≥ 80 % ; 5 sinon.
  */
 export function exigenceOf(gigue: readonly [number, number, number], raccord: number | null): number {
   const [g1, g2, g3] = gigue;
-  if (g1 < PAS_PRES || (raccord !== null && raccord < PAS_PRES)) return 0;
-  let e = g3 >= 900 ? 1 : g3 >= 600 ? 2 : g2 >= 600 ? 3 : g1 >= 800 ? 4 : 5;
-  if (raccord !== null && raccord < 900 && e < 5) e++;
-  return e;
+  if (g1 < PAS_PRES || (raccord !== null && raccord < RACCORD_MIN)) return 0;
+  return g3 >= 900 ? 1 : g3 >= 600 ? 2 : g2 >= 600 ? 3 : g1 >= 800 ? 4 : 5;
+}
+
+// ——— Le point canonique (lot 6) ———
+
+/** Colonne du centre du personnage. */
+export function centerCol(p: Readonly<PlayerState>): number {
+  return tileOf(p.x + idiv(PLAYER_WIDTH, 2));
+}
+
+/**
+ * La course « propre » du point canonique : au sol, à `runSpeed` vers la droite, rien d'autre en cours (bouton de saut relâché, aucun saut en
+ * attente dans le tampon, ni montée, ni glisse, ni mur, ni verrou). C'est l'état de quiconque court depuis un moment sur du plat, droite tenue :
+ * deux personnages dans cet état ne diffèrent que par leur position, d'où des raccords exacts.
+ */
+export function isCleanRun(p: Readonly<PlayerState>): boolean {
+  return (
+    p.ground === 1 &&
+    p.vx === DEFAULT_JUMP_PARAMS.runSpeed &&
+    p.vy === 0 &&
+    p.air === 0 &&
+    p.wallSide === 0 &&
+    p.wallAir === COUNTER_CAP &&
+    p.slide === 0 &&
+    p.buffer === 0 &&
+    p.held === 0 &&
+    p.jumping === 0 &&
+    p.lock === 0 &&
+    p.lockDir === 0
+  );
+}
+
+/** L'état de départ d'un morceau seul : au départ `S` (début du palier d'entrée), à l'arrêt ou lancé (entrée élan). */
+export function moduleStart(m: BuiltModule, entry: ModuleEntry): AttemptState {
+  return replayStartState(m.level, { ...START_AT_SPAWN, elan: entry === "elan" ? 1 : 0 });
+}
+
+/** Ce que donne la rediffusion d'une solution de morceau rejouée sur le morceau seul (`moduleSpan`). */
+export interface ModuleSpan {
+  entryTick: number;
+  exitTick: number;
+  /** Pas joués à l'arrivée (= toute la rediffusion). */
+  finishTick: number;
+}
+
+/**
+ * Rejoue une solution sur le morceau seul et vérifie la **règle du point canonique** : en élan, droite tenue jusqu'à ce que le centre passe
+ * le bord du palier d'entrée, en course propre ; puis la **sortie** au premier pas où le centre passe le bord du palier de sortie, vivant,
+ * en course propre ; puis droite tenue jusqu'à l'arrivée, atteinte au dernier pas, sans mort. Rend les trois pas, ou ce qui ne va pas.
+ * `start` : un autre départ (le test de raccord décale la position d'entrée).
+ */
+export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly number[], start?: AttemptState): ModuleSpan | string {
+  const level = m.level;
+  let s = start ?? moduleStart(m, entry);
+  let entryTick = entry === "arret" ? 0 : -1;
+  let exitTick = -1;
+  for (let t = 0; t < inputs.length; t++) {
+    const bits = inputs[t]!;
+    if ((entryTick < 0 || exitTick >= 0) && bits !== INPUT_RIGHT) return `pas ${t + 1} : droite seule attendue ${entryTick < 0 ? "avant l'entrée" : "après la sortie"}`;
+    s = stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
+    if (s.status === ATTEMPT_DEAD) return `mort au pas ${t + 1}`;
+    if (s.status === ATTEMPT_FINISHED) {
+      if (exitTick < 0) return "arrivée avant la sortie";
+      if (t + 1 !== inputs.length) return "des pas après l'arrivée";
+      return { entryTick, exitTick, finishTick: t + 1 };
+    }
+    const col = centerCol(s.player);
+    if (entryTick < 0 && col >= m.lead) {
+      if (!isCleanRun(s.player)) return "entrée hors de la course propre";
+      entryTick = t + 1;
+    }
+    if (col < m.palierIn.col0) return `pas ${t + 1} : le centre repasse à gauche du palier d'entrée`;
+    if (exitTick < 0 && entryTick >= 0 && col >= m.exitCol) {
+      if (!isCleanRun(s.player)) return `sortie au pas ${t + 1} hors de la course propre`;
+      exitTick = t + 1;
+    }
+  }
+  return "la rediffusion n'arrive pas";
 }
 
 /** Les solutions stockées d'un morceau (variante) : null si le catalogue n'en a pas (ou plus : grille ou version changée). */

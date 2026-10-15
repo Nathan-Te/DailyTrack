@@ -6,21 +6,27 @@ import {
   DAILY_MAX_ATTEMPTS,
   EXIGENCE_RATE_MAX,
   EXIGENCE_RATE_MIN,
+  JOINT_TICKS,
+  MAX_DAILY_HEIGHT,
   MODULES,
   MODULE_TAGS,
   PREMIER_JOUR_JUMP,
   TICK_RATE,
   dailyLevel,
   decodeReplay,
+  fromRuns,
+  initialAttempt,
   isRestedModule,
   replayAttempt,
   type DailyLevel,
 } from "../src/index";
+import { emptyRun, secs, tiles } from "./vide";
 
 // `npm run measure:jump -w @cdj/jump-sim` — mesures du niveau du jour (lot 5) sur 120 dates à partir de `PREMIER_JOUR_JUMP` : taux de
 // validation des tirages, tirage retenu, secours, temps de l'auteur (et sa répartition par tranches de 2 s), morceaux par niveau, exigence
 // (somme, par minute, profil par tiers), étiquettes, emploi de chaque morceau, morceaux en commun d'un jour au suivant, hauteur, temps de
-// génération et coût d'un rejeu. **Toute règle du générateur se juge à ces mesures.** `-- --jours=N` pour un autre nombre de dates.
+// génération et coût d'un rejeu ; **course à vide** (lot 6) : temps au sol sans appui de saut sur les paliers (par raccord, au total) et plus
+// longue course au sol sans saut. **Toute règle du générateur se juge à ces mesures.** `-- --jours=N` pour un autre nombre de dates.
 
 const arg = process.argv.find((a) => a.startsWith("--jours="));
 const DAYS = arg ? Number(arg.slice(8)) : 120;
@@ -84,10 +90,42 @@ for (let lo = 24; lo < 42; lo += 2) {
   const n = times.filter((v) => v >= lo * TICK_RATE && v < (lo + 2) * TICK_RATE).length;
   if (n > 0 || (lo >= 26 && lo <= 38)) line(`| ${lo}–${lo + 2} s | ${n} ${"█".repeat(n)} |`);
 }
-const estimates = levels.map((L) => L.pieces.reduce((s, p) => s + p.solutionTicks, 0) + 9 * (L.pieces.length - 1));
+const estimates = levels.map((L) => L.pieces.reduce((s, p) => s + p.solutionTicks, 0) + JOINT_TICKS * (L.pieces.length - 1));
 const gap = levels.map((L, k) => L.authorTicks - estimates[k]!);
 line();
-line(`Écart temps de l'auteur − estimation (somme des solutions + 9 pas par raccord) : min ${stats(gap).min} · moyenne ${num(stats(gap).mean)} · max ${stats(gap).max} pas.`);
+line(`Écart temps de l'auteur − estimation (somme des solutions de l'entrée à la sortie${JOINT_TICKS ? ` + ${JOINT_TICKS} pas par raccord` : ", aucune course entre deux"}) : min ${stats(gap).min} · moyenne ${num(stats(gap).mean)} · max ${stats(gap).max} pas.`);
+line();
+
+// ——— Course à vide (lot 6) ———
+const perJoint: number[] = [];
+const jointShare: number[] = [];
+const departs: number[] = [];
+const arrivals: number[] = [];
+const longT: number[] = [];
+const longU: number[] = [];
+for (const L of levels) {
+  const zones = L.paliers.map((p, k) => ({ c0: p.col0, c1: k === L.paliers.length - 1 ? p.col1 + 1 : p.col1 }));
+  const r = emptyRun(L.level, initialAttempt(L.level), fromRuns(decodeReplay(L.code).runs), zones);
+  const joints = r.zones.slice(1, -1);
+  perJoint.push(...joints);
+  jointShare.push(joints.reduce((a, b) => a + b, 0) / L.authorTicks);
+  departs.push(r.zones[0]!);
+  arrivals.push(r.zones[r.zones.length - 1]!);
+  longT.push(r.longestTicks);
+  longU.push(r.longestUnits);
+}
+const pj = stats(perJoint);
+const js = stats(jointShare);
+line("### Course à vide (rediffusion de l'auteur)");
+line("Temps **au sol sans appui de saut**, centre du personnage au-dessus d'un palier ; plus longue course au sol sans saut du niveau.");
+line();
+line(`| mesure | moyenne | max |`);
+line(`|---|---|---|`);
+line(`| par raccord (${perJoint.length} raccords) | ${secs(pj.mean)} s | ${secs(pj.max)} s |`);
+line(`| total des raccords, en % du temps de l'auteur | ${num(100 * js.mean)} % | ${num(100 * js.max)} % |`);
+line(`| palier de départ (accélération comprise) | ${secs(stats(departs).mean)} s | ${secs(stats(departs).max)} s |`);
+line(`| palier d'arrivée (jusqu'à \`F\`) | ${secs(stats(arrivals).mean)} s | ${secs(stats(arrivals).max)} s |`);
+line(`| plus longue course au sol sans saut | ${secs(stats(longT).mean)} s · ${tiles(stats(longU).mean)} tuiles | ${secs(stats(longT).max)} s · ${tiles(stats(longU).max)} tuiles |`);
 line();
 
 // ——— Morceaux, hauteur ———
@@ -98,7 +136,7 @@ line("### Forme");
 line(`| mesure | min | moyenne | max |`);
 line(`|---|---|---|---|`);
 line(`| morceaux par niveau | ${stats(counts).min} | ${num(stats(counts).mean)} | ${stats(counts).max} |`);
-line(`| hauteur (rangées, ≤ 48) | ${stats(heights).min} | ${num(stats(heights).mean)} | ${stats(heights).max} |`);
+line(`| hauteur (rangées, ≤ ${MAX_DAILY_HEIGHT}) | ${stats(heights).min} | ${num(stats(heights).mean)} | ${stats(heights).max} |`);
 line(`| largeur (colonnes) | ${stats(widths).min} | ${num(stats(widths).mean)} | ${stats(widths).max} |`);
 line();
 

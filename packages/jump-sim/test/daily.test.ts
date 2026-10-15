@@ -15,16 +15,24 @@ import {
   MEDAL_PERCENT,
   MIN_PIECES,
   MODULES,
-  PALIER_MIN,
+  PALIER_GUARD,
+  PALIER_LENGTH,
+  PLAYER_HEIGHT,
+  RACCORD_TAIL,
+  INPUT_RIGHT,
   PREMIER_JOUR_JUMP,
   RESPIRATION_FROM,
   RESPIRATION_TO,
   REST_GROUPS,
   TILE_SOLID,
+  TICK_RATE,
   UNITS_PER_TILE,
-  PLAYER_WIDTH,
   DEFAULT_JUMP_PARAMS,
+  ATTEMPT_FINISHED,
   assemble,
+  buildModule,
+  centerCol,
+  checkpointAttempt,
   dailyLevel,
   dailyLevelId,
   dailyProblems,
@@ -40,11 +48,15 @@ import {
   restGroup,
   fromRuns,
   initialAttempt,
+  isCleanRun,
+  moduleSolutions,
+  moduleStart,
   stepAttempt,
   type DailyLevel,
 } from "../src/index";
+import { emptyRun } from "../tools/vide";
 
-// Le niveau du jour (lot 5) sur 60 dates fixes à partir du premier jour (jamais « aujourd'hui » : les tests ne lisent pas l'heure).
+// Le niveau du jour (lots 5 et 6) sur 60 dates fixes à partir du premier jour (jamais « aujourd'hui » : les tests ne lisent pas l'heure).
 
 const DATES = Array.from({ length: 60 }, (_, k) => PREMIER_JOUR_JUMP + k);
 const levels: DailyLevel[] = DATES.map((d) => dailyLevel(d));
@@ -120,7 +132,7 @@ describe("niveau du jour : la preuve par rejeu", () => {
 });
 
 describe("niveau du jour : quotas et budget", () => {
-  it("de 6 à 10 morceaux, jamais deux fois le même", () => {
+  it(`de ${MIN_PIECES} à ${MAX_PIECES} morceaux, jamais deux fois le même`, () => {
     for (const L of levels) {
       expect(L.pieces.length).toBeGreaterThanOrEqual(MIN_PIECES);
       expect(L.pieces.length).toBeLessThanOrEqual(MAX_PIECES);
@@ -204,35 +216,46 @@ describe("niveau du jour : assemblage", () => {
     }
   });
 
-  it("paliers alignés : la sortie d'un morceau et l'entrée du suivant sont sur la même rangée, avec la colonne de raccord entre les deux", () => {
+  it("paliers partagés (lot 6) : le palier de sortie d'un morceau est le palier d'entrée du suivant, sans colonne de raccord", () => {
     for (const L of levels) {
+      const lv = L.level;
+      const at = (c: number, r: number) => lv.tiles[r * lv.width + c];
+      expect(L.paliers).toHaveLength(L.pieces.length + 1);
+      expect(L.paliers[0]).toEqual({ col0: PALIER_GUARD, col1: PALIER_GUARD + PALIER_LENGTH - 1, row: L.pieces[0]!.entryRow });
       for (let k = 1; k < L.pieces.length; k++) {
         const a = L.pieces[k - 1]!;
         const b = L.pieces[k]!;
         expect(b.entryRow).toBe(a.exitRow);
-        expect(b.col0).toBe(a.col1 + 2);
-        const joint = a.col1 + 1;
-        const lv = L.level;
-        // Sol plein sous le raccord et sous les paliers voisins, vide au-dessus.
-        for (let c = joint - PALIER_MIN; c <= joint + PALIER_MIN; c++) expect(lv.tiles[a.exitRow * lv.width + c], `${L.date} col ${c}`).toBe(TILE_SOLID);
-        expect(lv.tiles[(a.exitRow - 1) * lv.width + joint]).toBe(0);
+        // Entre deux morceaux : exactement un palier standard, ni plus ni moins.
+        expect(b.col0).toBe(a.col1 + 1 + PALIER_LENGTH);
+        const p = L.paliers[k]!;
+        expect(p).toEqual({ col0: a.col1 + 1, col1: a.col1 + PALIER_LENGTH, row: a.exitRow });
+        // Sol plein, plein dessous, vide au-dessus jusqu'en haut du plus haut des deux morceaux (un rebord, pas un couloir).
+        const roof = Math.min(a.top, b.top);
+        for (let c = p.col0; c <= p.col1; c++) {
+          for (let r = 0; r < lv.height; r++) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r})`).toBe(r < roof || r >= p.row);
+        }
       }
+      const last = L.pieces[L.pieces.length - 1]!;
+      expect(L.paliers[L.pieces.length]).toEqual({ col0: last.col1 + 1, col1: last.col1 + PALIER_LENGTH, row: last.exitRow });
+      expect(lv.width).toBe(last.col1 + PALIER_LENGTH + 2);
     }
   });
 
-  it("un point de passage par morceau, sauf le premier (qui a le départ), posé au sol de sa colonne de raccord", () => {
+  it("un point de passage par morceau, sauf le premier (qui a le départ), au début du palier qui le précède ; l'arrivée juste après le dernier palier", () => {
     for (const L of levels) {
       const lv = L.level;
       expect(lv.checkpoints).toHaveLength(L.pieces.length - 1);
       L.pieces.slice(1).forEach((p, k) => {
         const cp = lv.checkpoints[k]!;
-        expect(cp.col).toBe(p.col0 - 1);
+        expect(cp.col).toBe(p.col0 - PALIER_LENGTH);
+        expect(cp.col).toBe(L.paliers[k + 1]!.col0);
         expect(cp.row).toBe(p.entryRow - 1);
         expect(lv.tiles[(cp.row + 1) * lv.width + cp.col]).toBe(TILE_SOLID);
       });
-      expect(lv.start).toEqual({ col: 0, row: L.pieces[0]!.entryRow - 1 });
-      const last = L.pieces[L.pieces.length - 1]!;
-      expect(lv.finish).toEqual({ col: last.col1 + 1, row: last.exitRow - 1 });
+      expect(lv.start).toEqual({ col: PALIER_GUARD, row: L.pieces[0]!.entryRow - 1 });
+      const last = L.paliers[L.paliers.length - 1]!;
+      expect(lv.finish).toEqual({ col: last.col1 + 1, row: last.row - 1 });
     }
   });
 
@@ -247,33 +270,93 @@ describe("niveau du jour : assemblage", () => {
     }
   });
 
-  it("hors des morceaux tout est plein : les colonnes de raccord n'ont que du sol, du vide au-dessus et des blocs", () => {
+  it("hors des morceaux tout est plein : les colonnes des paliers n'ont que du sol, du vide au-dessus, des blocs et les repères", () => {
     for (const L of levels.slice(0, 10)) {
       const rows = L.ascii.split("\n\n")[0]!.split("\n");
-      for (let k = 1; k < L.pieces.length; k++) {
-        const col = L.pieces[k]!.col0 - 1;
-        for (const row of rows) expect(".#C").toContain(row[col]);
-      }
+      for (const p of L.paliers) for (let c = p.col0; c <= p.col1; c++) for (const row of rows) expect(".#CS").toContain(row[c]);
     }
   });
 
-  it("le départ d'un morceau est rejoint à moins d'un demi-pas de course près (raccord du lot 4)", () => {
-    for (const L of levels.slice(0, 10)) {
-      // Rejoue pas à pas et lit la position au pas où chaque morceau commence.
+  it("la solution suivante démarre au pas de sortie de la précédente : centre au bord du palier, en course propre, puis les commandes du morceau en élan", () => {
+    for (const L of levels.slice(0, 20)) {
       let s = initialAttempt(L.level);
       const inputs = fromRuns(L.replay.runs);
-      const starts = new Set(L.pieces.slice(1).map((p) => p.start));
-      let tick = 0;
-      for (const bits of inputs) {
-        if (starts.has(tick)) {
-          const p = L.pieces.find((q) => q.start === tick)!;
-          const goal = (p.col0 - 1) * T + (T - PLAYER_WIDTH) / 2;
-          expect(Math.abs(s.player.x - goal), `${L.date} ${p.id}`).toBeLessThanOrEqual(375);
-          expect(s.player.ground).toBe(1);
+      const starts = new Map(L.pieces.slice(1).map((p) => [p.start, p]));
+      let prevCol = centerCol(s.player);
+      for (let tick = 0; tick <= inputs.length; tick++) {
+        const p = starts.get(tick);
+        if (p) {
+          // Le pas qui vient d'être joué est la sortie du morceau précédent : le centre vient de passer le bord droit du palier partagé.
+          expect(centerCol(s.player), `${L.date} ${p.id}`).toBe(p.col0);
+          expect(prevCol, `${L.date} ${p.id}`).toBeLessThan(p.col0);
+          expect(isCleanRun(s.player), `${L.date} ${p.id}`).toBe(true);
+          expect(s.player.y + PLAYER_HEIGHT).toBe(p.entryRow * T);
+          // Puis la solution en élan du morceau, depuis son entrée, sans course entre les deux.
+          const sol = moduleSolutions(p.id, p.variant)!.elan!;
+          // (Selon la position d'entrée, la sortie peut venir quelques pas après la fin des commandes stockées : droite tenue, `RACCORD_TAIL`.)
+          const own = [...fromRuns(decodeReplay(sol.code).runs), ...new Array<number>(RACCORD_TAIL).fill(INPUT_RIGHT)];
+          expect(inputs.slice(p.start, p.end), `${L.date} ${p.id}`).toEqual(own.slice(sol.entryTick, sol.entryTick + p.end - p.start));
         }
-        s = stepAttempt(s, bits, L.level, DEFAULT_JUMP_PARAMS);
-        tick++;
+        if (tick === inputs.length) break;
+        prevCol = centerCol(s.player);
+        s = stepAttempt(s, inputs[tick]!, L.level, DEFAULT_JUMP_PARAMS);
       }
+      expect(s.status).toBe(ATTEMPT_FINISHED);
+    }
+  });
+
+  it("la reprise sur un point de passage donne exactement l'entrée « arrêt » du morceau seul, et sa solution en sort", () => {
+    for (const L of levels.slice(0, 20)) {
+      const lv = L.level;
+      L.pieces.slice(1).forEach((p, i) => {
+        const k = i + 1;
+        const where = `${L.date} ${p.id}`;
+        const m = buildModule(p.id, p.variant);
+        // Un essai qui a pris ce point et qui meurt plus loin : tout a démarré ; reprise.
+        const running = { ...initialAttempt(lv), checkpoint: i, time: 5000, sections: lv.sections.map(() => 1000) };
+        let s = checkpointAttempt(lv, running);
+        const alone = moduleStart(m, "arret");
+        const dx = (L.paliers[k]!.col0 - m.palierIn.col0) * T;
+        expect(lv.checkpoints[i]!.col, where).toBe(L.paliers[k]!.col0);
+        const dy = (p.entryRow - m.entryRow) * T;
+        expect({ ...s.player, x: s.player.x - dx, y: s.player.y - dy }, where).toEqual(alone.player);
+        // Les sections de ce morceau et d'après sont à l'arrêt, celles d'avant gardent leur cycle.
+        expect(s.sections.slice(k).every((v) => v === -1), where).toBe(true);
+        expect(s.sections.slice(0, k).every((v) => v === 1000), where).toBe(true);
+        // La solution « arrêt » du morceau seul, jouée depuis là, le traverse et sort en course propre (ou arrive, pour le dernier).
+        const sol = moduleSolutions(p.id, p.variant)!.arret!;
+        const own = fromRuns(decodeReplay(sol.code).runs);
+        const last = k === L.pieces.length - 1;
+        expect(m.palierIn.col0, where).toBe(PALIER_GUARD);
+        for (let t = 0; t < sol.exitTick && s.status !== ATTEMPT_FINISHED; t++) s = stepAttempt(s, own[t]!, lv, DEFAULT_JUMP_PARAMS);
+        if (last) expect(s.status, where).toBe(ATTEMPT_FINISHED);
+        else {
+          expect(centerCol(s.player), where).toBe(L.pieces[k + 1]!.col0);
+          expect(isCleanRun(s.player), where).toBe(true);
+        }
+      });
+    }
+  });
+});
+
+describe("course à vide (lot 6)", () => {
+  // Sur la rediffusion de l'auteur : temps au sol sans appui de saut, centre au-dessus d'un palier de raccord.
+  const runs = levels.map((L) => {
+    const zones = L.paliers.slice(1, -1).map((p) => ({ c0: p.col0, c1: p.col1 }));
+    return { L, r: emptyRun(L.level, initialAttempt(L.level), fromRuns(L.replay.runs), zones) };
+  });
+
+  it("la règle du générateur compte comme la mesure : `palierTicks` = le temps au sol sans appui de saut sur chaque palier de raccord", () => {
+    for (const { L, r } of runs) expect(L.palierTicks, L.date).toEqual(r.zones);
+  });
+
+  it("moins de 0,25 s par raccord en moyenne, et moins de 6 % du temps de l'auteur au total, sur 60 dates", () => {
+    const all = runs.flatMap(({ r }) => r.zones);
+    const mean = all.reduce((a, b) => a + b, 0) / all.length;
+    expect(mean).toBeLessThan(0.25 * TICK_RATE);
+    for (const { L, r } of runs) {
+      const total = r.zones.reduce((a, b) => a + b, 0);
+      expect(total, L.date).toBeLessThan(0.06 * L.authorTicks);
     }
   });
 });
