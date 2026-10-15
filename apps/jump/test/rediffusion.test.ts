@@ -199,7 +199,8 @@ describe("mémoire du jour", () => {
     expect(m.deaths).toHaveLength(MAX_DEATHS);
     expect(m.deaths[0]!.x).toBe(25);
     expect(memoryOf(store).lives).toHaveLength(MAX_LIVES);
-  });
+    // 280 essais rejoués : ≈ 2,5 s seul, plus de 5 s (le délai par défaut) sur le runner de la CI chargé par les autres fichiers (lot 10).
+  }, 30_000);
 
   it("rien n'est enregistré avec des réglages modifiés : ni meilleur essai, ni vies, ni taches", () => {
     const store = new MemStore();
