@@ -55,6 +55,7 @@ import {
   stepAttempt,
   tileAt,
   type AttemptState,
+  type JumpParamKey,
   type JumpParams,
   type Level,
   type PlayerState,
@@ -624,7 +625,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
   });
 
   it("réglages au hasard (crumbleDelay et springSpeed compris, extrêmes compris) : même intégrité", () => {
-    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
     const r = fuzz(11, 40, 1500, (rng) => {
       const p = { ...P };
       for (const k of keys) p[k] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[k] + 2);
@@ -634,7 +635,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
   });
 
   it("lot 4 : quelques morceaux (cheminée, scies, friables, ressorts), réglages par défaut et au hasard : même intégrité", () => {
-    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
     const picks: [string, number][] = [["cheminee", 1], ["cheminee-scie", 0], ["scie-ronde", 2], ["mur-friable", 0], ["ressort-mur", 1], ["ascenseur", 2]];
     let deaths = 0;
     for (const [k, [id, v]] of picks.entries()) {
@@ -651,7 +652,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
   });
 
   it("lot 7 : variantes mutées (chaque mutateur) et enchaînements longs, réglages par défaut et au hasard : même intégrité", () => {
-    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
     // Une variante par mutateur (trouvée dans le catalogue), plus deux enchaînements longs.
     const picks: [string, number][] = [];
     for (const name of MUTATORS) {
@@ -675,7 +676,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
   });
 
   it("lot 5 : trois niveaux du jour assemblés (dates fixes), réglages par défaut et au hasard : même intégrité", () => {
-    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
     let deaths = 0;
     for (const [k, date] of ["2026-10-16", "2026-11-03", "2027-01-20"].entries()) {
       const lv = dailyLevel(parseDay(date)!).level;
@@ -691,7 +692,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
   });
 
   it("lot 6 : départs aux raccords — en élan sur chaque palier partagé (position d'entrée au hasard dans un pas de course) et reprises sur chaque point de passage : même intégrité", () => {
-    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
     const rng = new Rng(20261015);
     let total = 0;
     let deaths = 0;

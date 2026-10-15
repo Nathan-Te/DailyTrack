@@ -50,13 +50,18 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false };
+    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false };
     // Lot 5 : sans paramètre, le niveau du jour.
     expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
     expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ ...none, scenario: "essai", debug: true, tune: true });
     expect(readUrlOptions("?scenario=dangers").scenario).toBe("dangers");
     expect(readUrlOptions("?tune").tune).toBe(false);
+    // Lot 8b : l'essai d'élan, seulement avec debug et tune.
+    expect(readUrlOptions("?scenario=bac-a-sable&debug&tune&sprint=1")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, tune: true, sprint: true });
+    expect(readUrlOptions("?scenario=bac-a-sable&debug&sprint=1").sprint).toBe(false);
+    expect(readUrlOptions("?sprint=1").sprint).toBe(false);
+    expect(readUrlOptions("?debug&tune&sprint=2").sprint).toBe(false);
   });
 
   it("lot 4 : lit la galerie, le morceau, sa variante, son entrée et la lecture de sa solution ; construit les liens", () => {

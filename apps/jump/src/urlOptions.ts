@@ -42,6 +42,12 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: [],
   },
   {
+    name: "sprint",
+    description:
+      "Avec `debug&tune` : `1` allume l'essai d'élan progressif (lot 8b) aux valeurs de départ (15 tuiles/s après 0,4 s à pleine vitesse au sol, atteint en ≈ 0,57 s). Désactivé par défaut ; une partie avec l'élan est `tuned`, jamais enregistrée. Exemple : `?scenario=bac-a-sable&debug&tune&sprint=1`.",
+    values: ["1"],
+  },
+  {
     name: "hitbox",
     description: "Avec `debug` : dessine les boîtes de collision « justes » (personnage, pics réduits, disques mortels des scies) et les sections.",
     values: [],
@@ -120,6 +126,8 @@ export interface UrlChoices {
   debug: boolean;
   /** Panneau de réglages : seulement avec `debug`. */
   tune: boolean;
+  /** Lot 8b : l'essai d'élan progressif aux valeurs de départ (`?sprint=1`) : seulement avec `debug&tune`. */
+  sprint: boolean;
   /** `1` / `0` : tactile imposé ou coupé ; `null` : l'appareil décide. */
   touch: "1" | "0" | null;
   /** Zones et doigts dessinés. */
@@ -155,6 +163,7 @@ export function readUrlOptions(search: string): UrlChoices {
     solution: daily && params.has("solution"),
     debug,
     tune: debug && params.has("tune"),
+    sprint: debug && params.has("tune") && params.get("sprint") === "1",
     touch: params.get("touch") === "1" ? "1" : params.get("touch") === "0" ? "0" : null,
     zones: params.has("zones"),
     hitbox: debug && params.has("hitbox"),

@@ -46,6 +46,11 @@
       #tune .row .hint { grid-column: 1 / 3; opacity: 0.7; font-weight: 500; }
       #tune .row .hint:empty { display: none; }
       #tune .row.changed { color: #ffd22e; }
+      #tune .sprint { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.18); display: flex; flex-direction: column; }
+      #tune .sprint > .hint { opacity: 0.7; font-weight: 500; margin-top: 2px; }
+      #tune .sprint .switch { font: inherit; align-self: flex-start; margin-top: 6px; padding: 5px 10px; border-radius: 6px; border: 0; cursor: pointer; background: rgba(255, 255, 255, 0.14); color: #fff; }
+      #tune .sprint.on .switch { background: #39ff88; color: #111; }
+      #tune .sprint .row input:disabled { opacity: 0.4; }
       #tune .status { margin-top: 8px; opacity: 0.8; }
       #tune .actions { display: flex; gap: 6px; margin-top: 6px; }
       #tune .actions button { font: inherit; padding: 5px 8px; border-radius: 6px; border: 0; cursor: pointer; background: #ffd22e; color: #111; }
@@ -57,7 +62,7 @@
       body.touch #tune .row { margin-top: 12px; }
       body.touch #tune .row input { height: 44px; touch-action: pan-y; }
       body.touch #tune .actions { flex-wrap: wrap; }
-      body.touch #tune .actions button { min-height: 44px; padding: 0 14px; }
+      body.touch #tune .actions button, body.touch #tune .sprint .switch { min-height: 44px; min-width: 44px; padding: 0 14px; }
       #tune textarea.json { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 6px; padding: 6px; user-select: text; -webkit-user-select: text; }
       #tune textarea.json[hidden] { display: none; }
       /* Commandes tactiles (lot 1b) : la couche reçoit les doigts, les boutons dessinés ne reçoivent rien. */

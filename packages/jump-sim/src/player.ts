@@ -79,6 +79,17 @@ export interface JumpParams {
   crumbleDelay: number;
   /** Ressort (lot 2) : vitesse de lancement vers le haut, unités/pas (plafonnée à `MAX_SPEED`) ; ce saut ne se coupe pas. */
   springSpeed: number;
+  // ——— Lot 8b : essai d'élan progressif (panneau `?debug&tune` seulement) ———
+  // Ces quatre réglages sont **absents des défauts** (absent = 0 : aucun élan) : sans eux, `stepPlayer` fait exactement les mêmes calculs
+  // qu'avant (golden, rediffusions et niveaux du jour inchangés, `JUMP_SIM_VERSION` aussi). Une partie avec `sprintMode` = 1 est `tuned`.
+  /** 0 (ou absent) : aucun élan ; 1 : élan progressif. */
+  sprintMode?: number;
+  /** Vitesse maximale en élan, unités/pas (sans effet sous `runSpeed` ; plafonnée à `MAX_SPEED`). */
+  sprintSpeed?: number;
+  /** Pas au sol à `runSpeed`, direction tenue, avant que l'élan commence. */
+  sprintDelay?: number;
+  /** Accélération de `runSpeed` vers `sprintSpeed` (au sol), unités/pas². */
+  sprintAccel?: number;
 }
 
 /**
@@ -108,11 +119,37 @@ export const DEFAULT_JUMP_PARAMS: Readonly<JumpParams> = Object.freeze({
   springSpeed: 1056, // ≈ 7 tuiles de haut
 });
 
-export const JUMP_PARAM_KEYS = Object.keys(DEFAULT_JUMP_PARAMS) as readonly (keyof JumpParams)[];
+/** Lot 8b : les réglages de l'essai d'élan progressif (absents des défauts, voir `JumpParams`). */
+export const SPRINT_PARAM_KEYS = ["sprintMode", "sprintSpeed", "sprintDelay", "sprintAccel"] as const satisfies readonly (keyof JumpParams)[];
+export type SprintParamKey = (typeof SPRINT_PARAM_KEYS)[number];
+/** Les réglages qui ont un défaut (tous sauf l'essai d'élan). */
+export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey>;
 
-/** Vrai si tous les réglages valent leur défaut (une partie aux réglages modifiés porte le drapeau `tuned`). */
+export const JUMP_PARAM_KEYS = Object.keys(DEFAULT_JUMP_PARAMS) as readonly JumpParamKey[];
+
+/**
+ * Lot 8b : valeurs de départ de l'essai d'élan (`?debug&tune&sprint=1`, interrupteur du panneau) : élan jusqu'à 15 tuiles/s (512), après
+ * 0,4 s au sol à pleine vitesse (48 pas), atteint en ≈ 0,57 s (137 unités/pas gagnées à 2 par pas : 69 pas). Pas des défauts.
+ */
+export const SPRINT_TRIAL_PARAMS: Readonly<Required<Pick<JumpParams, SprintParamKey>>> = Object.freeze({
+  sprintMode: 1,
+  sprintSpeed: 512,
+  sprintDelay: 48,
+  sprintAccel: 2,
+});
+
+/**
+ * Vrai si tous les réglages valent leur défaut (une partie aux réglages modifiés porte le drapeau `tuned`). L'élan éteint (`sprintMode`
+ * absent ou 0) ne change rien : ses autres réglages, sans effet, ne rendent pas la partie `tuned`.
+ */
 export function isDefaultJumpParams(params: Readonly<JumpParams>): boolean {
-  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]);
+  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode;
+}
+
+/** Vitesse visée en élan (unités/pas) : `sprintSpeed`, jamais sous `runSpeed` ni au-dessus de `MAX_SPEED`. */
+export function sprintTop(params: Readonly<JumpParams>): number {
+  const v = params.sprintSpeed ?? 0;
+  return v < params.runSpeed ? params.runSpeed : v > MAX_SPEED ? MAX_SPEED : v;
 }
 
 // ——— État ———
@@ -144,6 +181,12 @@ export interface PlayerState {
   /** Pas restants du verrou de la commande vers le mur, et le côté verrouillé. */
   lock: number;
   lockDir: number;
+  /**
+   * Lot 8b, **seulement avec `sprintMode` = 1** (le champ est absent sinon : les empreintes de trajectoire ne changent pas) : pas finis au
+   * sol à pleine vitesse, direction tenue (plafonné à `COUNTER_CAP`) ; gardé en l'air, remis à 0 au lâcher, au mur, au demi-tour. L'élan
+   * agit quand il atteint `sprintDelay`.
+   */
+  sprint?: number;
 }
 
 /** État au départ du niveau : la boîte centrée sur la tuile `S`, posée au bas de cette tuile. */
@@ -217,10 +260,18 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
   const grounded = state.ground === 1;
   const accel = grounded ? p.groundAccel : p.airAccel;
   const decel = grounded ? p.groundDecel : p.airDecel;
+  // Lot 8b : élan progressif (essai). Éteint, rien de ce qui suit ne change de calcul.
+  const sprintOn = p.sprintMode === 1;
+  let sprint = sprintOn ? (state.sprint ?? 0) : 0;
   let vx = state.vx;
   if (dir === 0) vx = approach(vx, 0, decel);
   else if (vx * dir < 0) vx = approach(vx, dir * p.runSpeed, accel > decel ? accel : decel); // demi-tour : le plus fort des deux
-  else if (vx * dir > p.runSpeed) vx = approach(vx, dir * p.runSpeed, decel); // au-delà de la course (après un saut mural)
+  else if (sprintOn && sprint >= (p.sprintDelay ?? 0) && vx * dir >= p.runSpeed && sprintTop(p) > p.runSpeed) {
+    // En élan : au sol, la vitesse monte vers `sprintSpeed` ; en l'air, la vitesse acquise est gardée (ni réaccélérée, ni freinée).
+    const top = sprintTop(p);
+    if (vx * dir > top) vx = approach(vx, dir * top, decel);
+    else if (grounded) vx = approach(vx, dir * top, p.sprintAccel ?? 0);
+  } else if (vx * dir > p.runSpeed) vx = approach(vx, dir * p.runSpeed, decel); // au-delà de la course (après un saut mural)
   else vx = approach(vx, dir * p.runSpeed, accel);
 
   // ——— Gravité ou glisse murale ———
@@ -235,6 +286,7 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
   let wallAir = state.wallAir;
   let jumping = state.jumping;
   let jumped = false;
+  let wallJumped = false;
   if (pressed || state.buffer > 0) {
     if (grounded || state.air <= p.coyote) {
       vy = -p.jumpSpeed;
@@ -252,6 +304,7 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
         vx = -wall * p.wallJumpX;
         vy = -p.wallJumpY;
         jumped = true;
+        wallJumped = true;
         slide = 0;
         wallAir = COUNTER_CAP;
         lock = p.wallLock;
@@ -323,6 +376,13 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
   }
   if (ground) jumping = 0;
 
+  if (sprintOn) {
+    // L'élan se perd au lâcher, au demi-tour, contre un mur (heurté, glisse, saut mural) ; il se compte au sol à pleine vitesse.
+    if (dir === 0 || state.vx * dir < 0 || mx.blocked || slide !== 0 || wallJumped) sprint = 0;
+    // Compté à la course exacte (avant l'élan) ou pendant l'élan ; pas pendant le freinage qui suit un élan perdu (au-dessus de la course).
+    else if (grounded) sprint = vx * dir === p.runSpeed || (sprint >= (p.sprintDelay ?? 0) && vx * dir > p.runSpeed) ? (sprint < COUNTER_CAP ? sprint + 1 : sprint) : 0;
+    return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, sprint };
+  }
   return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir };
 }
 

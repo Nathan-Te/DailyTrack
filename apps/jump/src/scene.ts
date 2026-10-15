@@ -43,7 +43,8 @@ import {
 import { viewHeightTiles, VIEW_TILES_DESKTOP, type Frame } from "./camera";
 import { SOLID_STENCIL } from "./actors";
 import { BurstMesh, type BurstPool } from "./fx";
-import { squashScale, type Look } from "./look";
+import { STEP, squashScale, type Look } from "./look";
+import { mixColor } from "./feel";
 import type { Palette } from "./palette";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
@@ -371,14 +372,18 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   const flagLift = checkpoints.map(() => 0);
   let lastClock = 0;
 
-  // ——— Personnage : un carré (exactement la boîte de collision) et deux yeux ———
+  // ——— Personnage : un carré et deux yeux ; lot 8b : deux pieds sous le corps (corps + pieds remplissent exactement la boîte au repos) ———
+  // `player` : bas-milieu de la boîte ; `feet` : l'écrasement (ancré en bas) ; `torso` : corps et yeux (rebond, penché, respiration).
   const player = new Group();
   const feet = new Group();
-  const body = new Mesh(new PlaneGeometry(PW, PH), new MeshBasicMaterial({ color: palette.player }));
-  body.position.set(0, PH / 2, 0);
-  feet.add(body);
+  const torso = new Group();
+  const bodyH = PH - STEP.leg;
+  const body = new Mesh(new PlaneGeometry(PW, bodyH), new MeshBasicMaterial({ color: palette.player }));
+  body.position.set(0, bodyH / 2, 0);
+  torso.add(body);
+  torso.position.y = STEP.leg;
   const eyes = new Group();
-  eyes.position.set(0, PH * 0.62, 0.05);
+  eyes.position.set(0, PH * 0.62 - STEP.leg, 0.05);
   const eyeWhite = new MeshBasicMaterial({ color: 0xffffff });
   const eyePupil = new MeshBasicMaterial({ color: 0x101820 });
   const pupils: Mesh[] = [];
@@ -391,7 +396,15 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
     pupils.push(pupil);
     eyes.add(white, pupil);
   }
-  feet.add(eyes);
+  torso.add(eyes);
+  feet.add(torso);
+  const footMat = new MeshBasicMaterial({ color: mixColor(palette.player, 0x000000, 0.45) });
+  const footGeo = new PlaneGeometry(STEP.footW, STEP.footH);
+  const footMeshes = [new Mesh(footGeo, footMat), new Mesh(footGeo, footMat)];
+  for (const f of footMeshes) {
+    f.position.z = 0.02; // devant le corps : un pied replié se voit
+    feet.add(f);
+  }
   player.add(feet);
   player.position.z = 0.2;
   world.add(player);
@@ -498,14 +511,20 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
       player.visible = pose.visible !== false;
       player.position.x = pose.x + PW / 2;
       player.position.y = -(pose.y + PH);
-      const { sx, sy } = squashScale(pose.look.squash, pose.squashAmount ?? 1);
+      const look = pose.look;
+      const { sx, sy } = squashScale(look.squash, pose.squashAmount ?? 1);
       feet.scale.set(sx, sy, 1);
+      // Lot 8b : rebond, penché (autour du bas du corps) et respiration ; les pieds, eux, restent où l'animation les pose.
+      torso.position.y = STEP.leg + look.bob;
+      torso.rotation.z = -look.lean;
+      torso.scale.y = look.breath;
+      for (let i = 0; i < 2; i++) footMeshes[i]!.position.set(look.feet[i * 2]!, look.feet[i * 2 + 1]! + STEP.footH / 2, 0.02);
       eyes.scale.y = 1 - 0.88 * (pose.blink ?? 0);
-      const lookX = pose.look.eyeX;
+      const lookX = look.eyeX;
       eyes.position.x = lookX * 0.07;
       for (const p of pupils) {
-        p.position.x = (p.userData.baseX as number) + lookX * 0.04;
-        p.position.y = pose.look.eyeY * 0.05;
+        p.position.x = (p.userData.baseX as number) + lookX * 0.045;
+        p.position.y = look.eyeY * 0.055;
       }
       if (hitPlayer) {
         hitPlayer.visible = player.visible;

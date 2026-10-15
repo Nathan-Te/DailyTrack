@@ -89,6 +89,11 @@ export interface FeelLevels {
   squash: number;
   /** Le fanion se lève en douceur (sinon il est posé tout de suite en haut). */
   animate: boolean;
+  /**
+   * Lot 8b : amplitude des mouvements du corps (rebond à chaque pas, penché, respiration, inclinaison du dérapage) : 0 avec le mouvement
+   * réduit ou « effets : aucun », 0,6 en effets réduits. Les pieds et les yeux, eux, font partie du personnage : toujours animés.
+   */
+  body: number;
   vibration: boolean;
 }
 
@@ -107,6 +112,7 @@ export function feelLevels(s: PlayerSettings, fxParam = true): FeelLevels {
     shake: shakeAmp,
     squash: calm ? 0.35 : effects === "aucun" ? 0.7 : effects === "reduit" ? 0.85 : 1,
     animate: !calm && effects !== "aucun",
+    body: calm || effects === "aucun" ? 0 : effects === "reduit" ? 0.6 : 1,
     vibration: s.vibration,
   };
 }

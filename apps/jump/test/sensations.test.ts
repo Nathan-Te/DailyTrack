@@ -217,7 +217,7 @@ S....#....
   it("recopie le pas et la source ; la liste des noms est complète", () => {
     const { events } = play(FLAT, [[R | J, 2]]);
     expect(events[0]).toMatchObject({ kind: "saut", tick: 0, source: "jeu" });
-    expect(EVENT_KINDS).toHaveLength(14);
+    expect(EVENT_KINDS).toHaveLength(15); // lot 8b : `derapage`
   });
 });
 

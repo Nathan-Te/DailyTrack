@@ -37,7 +37,8 @@ export type SoundId =
   | "friableTombe"
   | "pointDePassage"
   | "arrivee"
-  | "medaille";
+  | "medaille"
+  | "derapage";
 
 export interface SoundSpec {
   id: SoundId;
@@ -143,6 +144,11 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
         tone("square", noteFreq(10), 0.32, 0.09, 0.26),
         tone("triangle", noteFreq(-2), 0.42, 0.1, 0.26),
       ]);
+    case "derapage": {
+      // Lot 8b : un frottement court, un peu plus fort et plus long quand on dérape vite.
+      const k = Math.min(1, e.speed / 15);
+      return spec("derapage", 1, [noise(3200 + 600 * v, 0.1 + 0.06 * k, 0.06 + 0.04 * k, 0, 1300, "bandpass", 1.6), noise(900, 0.06, 0.03 * k, 0.02, 500, "bandpass", 1)]);
+    }
     case "medaille": {
       const phrase = MEDAL_PHRASES[e.medal];
       const wave: OscillatorType = e.medal === "author" ? "square" : e.medal === "gold" ? "triangle" : "sine";
