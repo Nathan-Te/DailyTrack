@@ -22,7 +22,8 @@ import {
 // sont confondus, le meilleur reste. Ce qui change depuis le lot 2 :
 //   - plus de points de passage écrits à la main : la recherche est guidée par une **carte de distances** (parcours en largeur sur les
 //     tuiles libres, depuis l'arrivée), qui sait qu'une cheminée se monte et qu'un détour se fait ;
-//   - le but est un prédicat (pour les morceaux : l'arrivée **au sol, à pleine vitesse**) ; une arrivée qui ne le remplit pas est écartée ;
+//   - le but est un prédicat vérifié **à chaque pas** (pour les morceaux, lot 6 : la sortie canonique, `canonicalExit`) ; `dead` écarte
+//     une branche qui ne peut plus l'atteindre (la sortie franchie hors de la course propre) ; une arrivée sans le but est écartée ;
 //   - on part de n'importe quel état (entrée à l'arrêt ou lancée) ;
 //   - dans la couche où le but est atteint, on garde le pas exact le plus tôt.
 
@@ -100,8 +101,10 @@ export function guideScore(level: Level, dist: Int32Array, s: AttemptState): num
 
 export interface BeamOptions {
   start: AttemptState;
-  /** But atteint dans cet état (une arrivée qui ne le remplit pas est écartée). */
+  /** But atteint dans cet état (vérifié à chaque pas ; une arrivée qui ne le remplit pas est écartée). */
   goal(s: AttemptState): boolean;
+  /** Branche perdue dans cet état (en plus de la mort et d'une arrivée sans le but). */
+  lost?(s: AttemptState): boolean;
   chunk?: number;
   beam?: number;
   maxTicks?: number;
@@ -144,18 +147,23 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
       for (let action = 0; action < ACTIONS.length; action++) {
         let s = node.state;
         let at = -1;
+        let lost = false;
         for (let k = 0; k < chunk; k++) {
           s = stepAttempt(s, bitsAt(action, k), level, P);
-          if (s.status === ATTEMPT_DEAD || s.status === ATTEMPT_FINISHED) {
+          if (options.goal(s)) {
             at = k + 1;
             break;
           }
+          if (s.status === ATTEMPT_DEAD || s.status === ATTEMPT_FINISHED || options.lost?.(s)) {
+            lost = true;
+            break;
+          }
         }
-        if (s.status === ATTEMPT_DEAD) continue;
+        if (lost) continue;
         const changes = node.changes + (action !== node.action ? 1 : 0) + (ACTIONS[action]!.jump === "repress" ? 1 : 0);
         const child: Node = { state: s, parent: node, action, score: 0, changes };
-        if (s.status === ATTEMPT_FINISHED) {
-          if (options.goal(s) && (!best || at < best.tick)) best = { node: child, tick: at };
+        if (at > 0) {
+          if (!best || at < best.tick) best = { node: child, tick: at };
           continue;
         }
         child.score = guideScore(level, dist, s) - penalty * changes;

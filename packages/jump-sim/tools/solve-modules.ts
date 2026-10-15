@@ -14,6 +14,7 @@ import {
   encodeReplay,
   exigenceOf,
   fromRuns,
+  moduleSpan,
   parseModule,
   type ModuleEntry,
   type ModuleSolution,
@@ -21,11 +22,14 @@ import {
   type ModuleVariantSolutions,
 } from "../src/index";
 import { beamSolve } from "./beam";
-import { elanExit, entryState, harden, hardenScore, measureMargins, validSolution } from "./exigence";
+import { canonicalExit, elanEntry, entryState, harden, hardenScore, lostExit, measureMargins } from "./exigence";
 import { readModules, readSolutions, writeCatalog } from "./files";
 
-// `npm run solve:modules -w @cdj/jump-sim` — le solveur hors ligne des morceaux (lot 4). Pour chaque morceau × variante × entrée (arrêt,
-// élan), il cherche la solution la plus rapide qui sort en élan (`beam.ts`), la durcit (aussi rapide, plus tolérante), mesure sa marge (`exigence.ts`), puis écrit
+// `npm run solve:modules -w @cdj/jump-sim` — le solveur hors ligne des morceaux (lots 4 et 6). Pour chaque morceau × variante × entrée
+// (arrêt, élan), il cherche la solution la plus rapide jusqu'à la **sortie canonique** (le centre passe le bord droit du palier de sortie, au
+// sol, en course propre : `beam.ts`) — en élan, depuis le bord droit du palier d'entrée, après la course droite tenue —, la durcit (aussi
+// rapide, plus tolérante à la gigue et à toutes les positions d'entrée), la finit tout droit jusqu'à l'arrivée du morceau seul, mesure sa
+// marge (`exigence.ts`), puis écrit
 // `modules/solutions.json` et `src/catalog.ts`. **Incrémental** : une solution stockée est gardée tant que l'empreinte de sa grille et
 // `JUMP_SIM_VERSION` n'ont pas changé (la mesure seule est refaite si `EXIGENCE_VERSION` a changé).
 //   --force          tout re-résoudre          --only=a,b     seulement ces morceaux (les autres sont gardés tels quels)
@@ -61,40 +65,59 @@ function runJob(job: Job): JobResult {
   const t0 = performance.now();
   try {
     const m = buildModuleDef(parseModule(job.text), job.variant);
-    const start = entryState(m, job.entry);
     let inputs: number[];
     let fastest: number;
     if (job.kind === "measure") {
       inputs = fromRuns(decodeReplay(job.code!).runs);
       fastest = job.fastest ?? inputs.length;
     } else {
+      // En élan, la recherche part du bord droit du palier d'entrée (après la course, droite tenue, qui fait partie de la rediffusion).
+      const prefix: number[] = [];
+      let start = entryState(m, job.entry);
+      if (job.entry === "elan") {
+        const e = elanEntry(m);
+        for (let t = 0; t < e.ticks; t++) prefix.push(INPUT_RIGHT);
+        start = e.state;
+      }
+      const goal = canonicalExit(m);
+      const lost = lostExit(m);
       // Plusieurs recherches (paquets de 4, 6 et 8 pas, à progression égale la suite la plus simple d'abord) : la plus rapide donne le temps
-      // de référence ; parmi celles qui en sont à moins de `SLOWER` près, après durcissement, la plus tolérante à la gigue est gardée.
+      // de référence ; parmi celles qui en sont à moins de `SLOWER` près, après durcissement, la plus tolérante est gardée.
       const found: number[][] = [];
       for (const chunk of [4, 6, 8]) {
-        let f = beamSolve(m.level, { start, goal: elanExit, beam: job.beam, chunk, changePenalty: 128 });
-        if (!f && chunk === 4) f = beamSolve(m.level, { start, goal: elanExit, beam: job.beam * 3, chunk: 3 });
+        let f = beamSolve(m.level, { start, goal, lost, beam: job.beam, chunk, changePenalty: 128 });
+        if (!f && chunk === 4) f = beamSolve(m.level, { start, goal, lost, beam: job.beam * 3, chunk: 3 });
         if (!f) continue;
         // Le monde attend la première commande : on retire les pas d'attente du début (une rediffusion commence au premier pas commandé).
-        let lead = 0;
-        if (job.entry === "arret") while (lead < f.length && (f[lead]! & (INPUT_LEFT | INPUT_RIGHT | INPUT_JUMP)) === 0) lead++;
-        found.push(f.slice(lead));
+        let idle = 0;
+        if (job.entry === "arret") while (idle < f.length && (f[idle]! & (INPUT_LEFT | INPUT_RIGHT | INPUT_JUMP)) === 0) idle++;
+        found.push([...prefix, ...f.slice(idle)]);
       }
       if (found.length === 0) return { job, solution: null, ms: performance.now() - t0 };
-      fastest = Math.min(...found.map((f) => f.length));
-      let best: { inputs: number[]; score: number } | null = null;
+      fastest = Math.min(...found.map((f) => f.length)) - prefix.length;
+      let best: { inputs: number[]; score: number; core: number } | null = null;
       for (const f of found) {
-        if (f.length > fastest + Math.floor((fastest * SLOWER) / 100)) continue;
+        if (f.length - prefix.length > fastest + Math.floor((fastest * SLOWER) / 100)) continue;
         const hard = harden(m, job.entry, f);
-        const score = hardenScore(m, job.entry, hard);
-        if (!best || score > best.score || (score === best.score && hard.length < best.inputs.length)) best = { inputs: hard, score };
+        const score = hardenScore(m, job.entry, hard.full);
+        if (!best || score > best.score || (score === best.score && hard.core.length < best.core)) best = { inputs: hard.full, score, core: hard.core.length };
       }
       inputs = best!.inputs;
     }
-    if (!validSolution(m, start, inputs)) throw new Error("solution non valable après durcissement");
+    const span = moduleSpan(m, job.entry, inputs);
+    if (typeof span === "string") throw new Error(`solution non valable : ${span}`);
     const margins = measureMargins(m, job.entry, inputs);
     const code = encodeReplay(attemptReplay(m.levelId, inputs, 0, job.entry === "elan" ? 1 : 0));
-    const solution: ModuleSolution = { code, ticks: inputs.length, fastest, gigue: margins.gigue, raccord: margins.raccord, exigence: exigenceOf(margins.gigue, margins.raccord) };
+    const solution: ModuleSolution = {
+      code,
+      ticks: inputs.length,
+      entryTick: span.entryTick,
+      exitTick: span.exitTick,
+      fastest,
+      gigue: margins.gigue,
+      raccord: margins.raccord,
+      exigence: exigenceOf(margins.gigue, margins.raccord),
+    };
     return { job, solution, ms: performance.now() - t0 };
   } catch (e) {
     return { job, solution: null, ms: performance.now() - t0, error: e instanceof Error ? e.message : String(e) };
@@ -163,7 +186,7 @@ async function main(): Promise<void> {
           results.push(r);
           const s = r.solution;
           const tag = `${r.job.id} v${r.job.variant} ${r.job.entry}`.padEnd(32);
-          console.log(`${tag} ${s ? `${(s.ticks / 120).toFixed(3)} s (trouvée ${(s.fastest / 120).toFixed(3)} s) · gigue ${s.gigue.map((g) => g / 10).join(" / ")} % · raccord ${s.raccord === null ? "—" : `${s.raccord / 10} %`} · exigence ${s.exigence}` : `AUCUNE SOLUTION${r.error ? ` (${r.error})` : ""}`} · ${(r.ms / 1000).toFixed(1)} s`);
+          console.log(`${tag} ${s ? `${((s.exitTick - s.entryTick) / 120).toFixed(3)} s (trouvée ${(s.fastest / 120).toFixed(3)} s) · gigue ${s.gigue.map((g) => g / 10).join(" / ")} % · raccord ${s.raccord === null ? "—" : `${s.raccord / 10} %`} · exigence ${s.exigence}` : `AUCUNE SOLUTION${r.error ? ` (${r.error})` : ""}`} · ${(r.ms / 1000).toFixed(1)} s`);
           next();
         });
         w.on("error", fail);

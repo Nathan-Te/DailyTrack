@@ -1,9 +1,15 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXED_NOW, PUBLISHED, TODAY, atInstant, servePublished, shiftDate } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
 
 // Lot 5 : le niveau du jour. Horloge maîtrisée par décalage de `Date` (`clock.ts`, jamais `page.clock.install`) ; tout résultat qui dépend
 // du nombre de pas se lit en pas à pas (`manual` + `advance`).
+
+/** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+/** Lot 6 : entre deux morceaux, exactement un palier partagé de 2 colonnes (aucune colonne de raccord). */
+const PALIER_LENGTH = 2;
 
 interface DailyDebug {
   date: string;
@@ -14,7 +20,7 @@ interface DailyDebug {
   preview: boolean;
   refused: boolean;
   hash: string;
-  pieces: { id: string; variant: number; col0: number; col1: number }[];
+  pieces: { id: string; variant: number; col0: number; col1: number; start: number; end: number }[];
   authorTicks: number;
   medals: { author: number; gold: number; silver: number; bronze: number };
   lastMedal: string | null;
@@ -73,7 +79,7 @@ test("la page par défaut ouvre le niveau du jour (date de Paris, horloge décal
     test.skip(!(await open(page, "/?debug")), SKIP);
     const j = await jump(page);
     expect(j.day).toBe(TODAY);
-    expect(j.daily).toMatchObject({ date: TODAY, today: TODAY, number: 5, id: `jour-${TODAY}-g1`, mode: "jour", preview: true, refused: false });
+    expect(j.daily).toMatchObject({ date: TODAY, today: TODAY, number: 5, id: `jour-${TODAY}-g${GENERATOR}`, mode: "jour", preview: true, refused: false });
     expect(j.daily!.pieces.length).toBeGreaterThanOrEqual(6);
     expect(j.daily!.authorTicks).toBeGreaterThanOrEqual(3000);
     expect(j.daily!.authorTicks).toBeLessThanOrEqual(4800);
@@ -118,6 +124,12 @@ test("?seed=…&solution finit au temps de l'auteur, en pas à pas, avec la méd
     const start = await jump(page);
     expect(start.watching).toBe(true);
     expect(start.daily!.date).toBe("2026-10-25");
+    // Raccords fluides (lot 6) : un palier partagé entre deux morceaux, et la solution suivante démarre au pas de sortie de la précédente.
+    const pieces = start.daily!.pieces;
+    for (let k = 1; k < pieces.length; k++) {
+      expect(pieces[k]!.col0 - pieces[k - 1]!.col1 - 1).toBe(PALIER_LENGTH);
+      expect(pieces[k]!.start).toBe(pieces[k - 1]!.end);
+    }
     const ticks = await until(page, ["finished"], 6000);
     expect(ticks).toBe(start.daily!.authorTicks);
     const end = await jump(page);

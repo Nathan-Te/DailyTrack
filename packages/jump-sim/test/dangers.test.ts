@@ -56,6 +56,7 @@ import {
   type JumpParams,
   type Level,
   type PlayerState,
+  checkpointAttempt,
 } from "../src/index";
 
 // Lot 2 : éléments de niveau (pics, scies fixes et mobiles, sections, blocs friables, ressorts, bas de la grille) et règles d'un essai
@@ -660,6 +661,47 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
       }, lv);
       expect(r.total).toBe(8_000);
     }
+    expect(deaths).toBeGreaterThan(10);
+  });
+
+  it("lot 6 : départs aux raccords — en élan sur chaque palier partagé (position d'entrée au hasard dans un pas de course) et reprises sur chaque point de passage : même intégrité", () => {
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const rng = new Rng(20261015);
+    let total = 0;
+    let deaths = 0;
+    for (const date of ["2026-10-18", "2026-12-02"]) {
+      const L = dailyLevel(parseDay(date)!);
+      const lv = L.level;
+      for (let k = 1; k < L.pieces.length; k++) {
+        const p = L.pieces[k]!;
+        // L'état de raccord : au sol du palier partagé, à pleine vitesse, le centre vient de passer son bord droit.
+        const base = checkpointAttempt(lv, { ...initialAttempt(lv), checkpoint: k - 1 });
+        const x = p.col0 * T - PLAYER_WIDTH / 2 + rng.int(DEFAULT_JUMP_PARAMS.runSpeed);
+        const starts = [base, { ...base, player: { ...base.player, x, vx: DEFAULT_JUMP_PARAMS.runSpeed } }];
+        for (const start of starts) {
+          for (let run = 0; run < 3; run++) {
+            const params = { ...P };
+            if (run === 2) for (const key of keys) params[key] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[key] + 2);
+            let s: AttemptState = start;
+            const lastTiles = { ref: null as readonly number[] | null };
+            let input = 0;
+            let left = 0;
+            for (let t = 0; t < 400; t++) {
+              if (left-- <= 0) {
+                input = rng.int(8);
+                left = rng.int(30);
+              }
+              const before = s.status;
+              s = stepAttempt(s, input, lv, params);
+              if (s.status === ATTEMPT_DEAD && before !== ATTEMPT_DEAD) deaths++;
+              assertSound(s, `${date} raccord ${k}, essai ${run}, pas ${t}`, lastTiles, lv);
+              total++;
+            }
+          }
+        }
+      }
+    }
+    expect(total).toBeGreaterThan(20_000);
     expect(deaths).toBeGreaterThan(10);
   });
 

@@ -2,10 +2,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
   DEFAULT_JUMP_PARAMS,
   EXIGENCE_VERSION,
+  INPUT_RIGHT,
   JUMP_SIM_VERSION,
   MODULES,
   MODULE_ENTRIES,
@@ -14,21 +14,31 @@ import {
   MODULE_MIN_TICKS,
   MODULE_TAGS,
   ModuleError,
+  MODULE_FORMAT,
+  PALIER_GUARD,
   PALIER_HEADROOM,
-  PALIER_MIN,
+  PALIER_LENGTH,
   PAS_PRES,
-  PLAYER_WIDTH,
+  PLAYER_HEIGHT,
+  RACCORD_MIN,
+  RACCORD_POSITIONS,
   TILE_EMPTY,
   TILE_SOLID,
   UNITS_PER_TILE,
   buildModule,
   buildModuleDef,
+  centerCol,
   decodeReplay,
   exigenceOf,
+  fromRuns,
+  isCleanRun,
   moduleSolutions,
+  moduleSpan,
+  moduleStart,
   palierProblems,
   parseModule,
   replayAttempt,
+  stepAttempt,
   variantExigence,
   type BuiltModule,
   type ModuleSolution,
@@ -37,8 +47,9 @@ import {
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "../src/catalog";
 import { catalogSource } from "../tools/files";
 
-// Les morceaux du lot 4 : format, variantes, paliers, catalogue et solutions stockées. Les solutions sont trouvées hors ligne
-// (`npm run solve:modules -w @cdj/jump-sim`) : ce test ne cherche rien, il **rejoue** ce qui est stocké.
+// Les morceaux des lots 4 et 6 : format v2, variantes, palier standard, catalogue et solutions stockées (point canonique au bord droit des
+// paliers). Les solutions sont trouvées hors ligne (`npm run solve:modules -w @cdj/jump-sim`) : ce test ne cherche rien, il **rejoue** ce
+// qui est stocké.
 
 const T = UNITS_PER_TILE;
 const DIR = join(import.meta.dirname, "../modules");
@@ -49,21 +60,22 @@ const SMALL = `
 id: essai-format
 intention: Tester le format.
 etiquettes: scie precision
+format: 2
 paliers: 5 5
-repeter: trou colonnes 4-4
+repeter: trou colonnes 1-1
 repeter: haut rangees 1-1
 variante: trou=1 haut=1 cycle=120
 variante: trou=3 haut=0 cycle=60
 grille:
-..........
-..........
-..........
-..........
-..........
-####.#####
-####.#####
+....
+....
+....
+....
+....
+#.##
+#.##
 
-scie s o {cycle} aller-retour 4,0 4',4
+scie s o {cycle} aller-retour 1,0 1',4
 `;
 
 /** Pourquoi une solution stockée n'est plus valable pour ce morceau construit (null : elle l'est). */
@@ -77,6 +89,15 @@ function staleReason(file: ModuleSolutionsFile, built: BuiltModule): string | nu
   return null;
 }
 
+/** Les colonnes du morceau, dans le niveau construit, sont exactement la grille déroulée de la variante (rien n'y est ajouté). */
+function row0(rows: readonly string[], m: BuiltModule): boolean {
+  const def = MODULES.find((d) => d.id === m.id)!;
+  const sliced = rows.map((r) => r.slice(m.lead, m.lead + m.width).replace(/[SFC]/g, "."));
+  // Sans plage répétée de colonnes ni de rangées, la grille du fichier est recopiée telle quelle.
+  if (def.repeats.length === 0) return sliced.join("\n") === def.grid.join("\n");
+  return sliced.length === m.height && sliced.every((r) => r.length === m.width);
+}
+
 describe("format d'un morceau", () => {
   const def = parseModule(SMALL);
 
@@ -87,32 +108,36 @@ describe("format d'un morceau", () => {
     expect(def.params).toEqual(["trou", "haut", "cycle"]);
     expect(def.variants).toEqual([{ trou: 1, haut: 1, cycle: 120 }, { trou: 3, haut: 0, cycle: 60 }]);
     expect(def.grid).toHaveLength(7);
-    expect(def.annex).toEqual(["scie s o {cycle} aller-retour 4,0 4',4"]);
+    expect(def.annex).toEqual(["scie s o {cycle} aller-retour 1,0 1',4"]);
   });
 
-  it("une variante déroule les plages : colonne d'appel avec le départ, morceau, colonne de sortie avec l'arrivée, une section", () => {
+  it("une variante déroule les plages ; buildModule pose les paliers standard : palier d'entrée (départ), morceau, palier de sortie, piste, arrivée", () => {
     const a = buildModuleDef(def, 0);
-    expect(a.width).toBe(10);
+    expect(a.width).toBe(4);
     expect(a.height).toBe(7);
-    expect(a.lead).toBe(1);
+    expect(a.lead).toBe(PALIER_GUARD + PALIER_LENGTH);
+    // Garde, paliers : sol plein à la rangée déclarée, plein dessous, **vide au-dessus jusqu'en haut** (un rebord, pas un couloir).
     expect(a.ascii.split("\n\n")[0]!.split("\n")).toEqual([
-      "............",
-      "............",
-      "............",
-      "............",
-      "S..........F",
-      ".####.######",
-      ".####.######",
-    ].map((row, r) => (r >= 5 ? "#" + row.slice(1) : row)));
-    expect(a.level.sections).toEqual([{ name: "essai-format", c0: 1, c1: 10 }]);
+      "...........",
+      "...........",
+      "...........",
+      "...........",
+      ".S........F",
+      "####.######",
+      "####.######",
+    ]);
+    expect(a.palierIn).toEqual({ col0: 1, col1: 2, row: 5 });
+    expect(a.palierOut).toEqual({ col0: 7, col1: 8, row: 5 });
+    expect(a.exitCol).toBe(9);
+    expect(a.level.sections).toEqual([{ name: "essai-format", c0: 3, c1: 6 }]);
     const b = buildModuleDef(def, 1);
-    expect(b.width).toBe(12); // trou de trois colonnes
+    expect(b.width).toBe(6); // trou de trois colonnes
     expect(b.height).toBe(6); // la rangée 1 retirée
     expect(b.entryRow).toBe(4);
-    // `4,0` : première copie de la colonne 4 ; `4',4` : dernière copie (la rangée 4 du gabarit devient la 3) ; `{cycle}` remplacé.
+    // `1,0` : première copie de la colonne 1 ; `1',4` : dernière copie (la rangée 4 de la grille devient la 3) ; `{cycle}` remplacé.
     const saw = b.level.saws[0]!;
     expect(saw.cycle).toBe(60);
-    expect(saw.points).toEqual([{ x: 5 * T + T / 2, y: 0 * T + T / 2 }, { x: 7 * T + T / 2, y: 3 * T + T / 2 }]);
+    expect(saw.points).toEqual([{ x: 4 * T + T / 2, y: 0 * T + T / 2 }, { x: 6 * T + T / 2, y: 3 * T + T / 2 }]);
     expect(a.levelId).toBe("module:essai-format:0");
   });
 
@@ -122,13 +147,19 @@ describe("format d'un morceau", () => {
     expect(bad((t) => t.replace("id: essai-format", "id: Essai"))).toThrow(/id/);
     expect(bad((t) => t.replace("variante: trou=3 haut=0 cycle=60", "variante: trou=3 haut=0"))).toThrow(/« cycle » manque/);
     expect(bad((t) => t.replace("variante: trou=3", "variante: trou=99"))).toThrow(/au plus 40/);
-    expect(bad((t) => t.replace("repeter: haut rangees 1-1", "repeter: haut colonnes 3-5"))).toThrow(/chevauchent/);
-    expect(bad((t) => t.replace("..........\n####", "....S.....\n####"))).toThrow(/interdit/);
+    expect(bad((t) => t.replace("repeter: haut rangees 1-1", "repeter: haut colonnes 0-2"))).toThrow(/chevauchent/);
+    expect(bad((t) => t.replace("....\n#.##", "..S.\n#.##"))).toThrow(/interdit/);
     expect(bad((t) => t.replace("paliers: 5 5", "palier: 5 5"))).toThrow(/clé: valeur/);
     expect(bad((t) => t.replace("repeter: haut rangees 1-1", "repeter: haut rangees 5-5"))).toThrow(/palier ne se répète pas/);
-    // Une variante qui retire une colonne citée par une scie, une plage qui casse un palier.
+    // Format v1 (paliers dessinés) ou absent : refusé ; un sol de palier trop haut dans la grille.
+    expect(bad((t) => t.replace("format: 2", "format: 1"))).toThrow(/format 1/);
+    expect(bad((t) => t.replace("format: 2\n", ""))).toThrow(/« format: » attendu/);
+    expect(bad((t) => t.replace("paliers: 5 5", "paliers: 3 5"))).toThrow(/rangées libres/);
+    // Une variante qui retire une colonne citée par une scie ; une première colonne pleine au ras du sol (on n'y entre pas en courant) ;
+    // une scie qui passe au-dessus d'un palier.
     expect(() => buildModuleDef(parseModule(SMALL.replace("variante: trou=1", "variante: trou=0")), 0)).toThrow(ModuleError);
-    expect(() => buildModuleDef(parseModule(SMALL.replace("####.#####\n####", "##.#.#####\n####")), 0)).toThrow(/palier d'entrée/);
+    expect(() => buildModuleDef(parseModule(SMALL.replace("....\n#.##\n#.##", "#...\n#.##\n#.##")), 0)).toThrow(/première colonne/);
+    expect(() => buildModuleDef(parseModule(SMALL.replace("s o {cycle} aller-retour 1,0", "s O {cycle} aller-retour 0,2")), 0)).toThrow(/palier d'entrée : la scie s y passe/);
   });
 
   it("buildModule est pur et déterministe : même morceau, même variante, même niveau ; le gabarit ne bouge pas", () => {
@@ -145,10 +176,12 @@ describe("format d'un morceau", () => {
   it("le couloir de lancement (jeu humain, entrée en élan) ajoute des colonnes devant le palier, le départ au bout", () => {
     const plain = buildModule("plaine", 0);
     const run = buildModule("plaine", 0, { lancement: 5 });
-    expect(run.lead).toBe(6);
+    expect(run.lead).toBe(5 + PALIER_GUARD + PALIER_LENGTH);
     expect(run.level.width).toBe(plain.level.width + 5);
     expect(run.level.start).toEqual({ col: 0, row: plain.entryRow - 1 });
-    expect(run.level.sections[0]).toEqual({ name: "plaine", c0: 6, c1: 6 + plain.width - 1 });
+    expect(plain.level.start).toEqual({ col: PALIER_GUARD, row: plain.entryRow - 1 });
+    expect(run.palierIn).toEqual({ col0: 5 + PALIER_GUARD, col1: 5 + PALIER_GUARD + PALIER_LENGTH - 1, row: plain.entryRow });
+    expect(run.level.sections[0]).toEqual({ name: "plaine", c0: run.lead, c1: run.lead + plain.width - 1 });
   });
 });
 
@@ -174,24 +207,33 @@ describe("le catalogue", () => {
     for (const m of MODULES) expect(m.intention, m.id).toMatch(/^[A-ZÀ-Ý].{20,}\.$/);
   });
 
-  it("chaque variante construite a des paliers conformes (≥ 3 tuiles de sol plein, 4 rangées libres, aucune scie) et tient en 30 rangées", () => {
+  it("format v2 : chaque fichier est au format 2, aucune grille ne contient de palier — buildModule pose le palier standard à côté d'elle", () => {
     for (const def of MODULES) {
+      expect(def.text, def.id).toMatch(new RegExp(`^format: ${MODULE_FORMAT}$`, "m"));
       for (let v = 0; v < def.variants.length; v++) {
         const m = buildModule(def.id, v);
-        expect(m.height, `${def.id} v${v}`).toBeLessThanOrEqual(MODULE_MAX_HEIGHT);
-        expect(palierProblems(m), `${def.id} v${v}`).toEqual([]);
+        const where = `${def.id} v${v}`;
+        expect(m.height, where).toBeLessThanOrEqual(MODULE_MAX_HEIGHT);
+        expect(palierProblems(m), where).toEqual([]);
         const L = m.level;
-        for (const [c0, row] of [[m.lead, m.entryRow], [m.lead + m.width - PALIER_MIN, m.exitRow]] as const) {
-          for (let c = c0; c < c0 + PALIER_MIN; c++) {
-            expect(L.tiles[row * L.width + c], `${def.id} v${v} sol (${c}, ${row})`).toBe(TILE_SOLID);
-            for (let r = row - PALIER_HEADROOM; r < row; r++) expect(L.tiles[r * L.width + c], `${def.id} v${v} (${c}, ${r})`).toBe(TILE_EMPTY);
+        const rows = m.ascii.split("\n\n")[0]!.split("\n");
+        // Le niveau = palier d'entrée · la grille de la variante, recopiée telle quelle · palier de sortie · piste · arrivée.
+        expect(L.width, where).toBe(PALIER_GUARD + PALIER_LENGTH + m.width + PALIER_LENGTH + 2);
+        expect(m.palierIn, where).toEqual({ col0: PALIER_GUARD, col1: PALIER_GUARD + PALIER_LENGTH - 1, row: m.entryRow });
+        expect(m.palierOut, where).toEqual({ col0: m.lead + m.width, col1: m.lead + m.width + PALIER_LENGTH - 1, row: m.exitRow });
+        expect(m.exitCol, where).toBe(m.palierOut.col1 + 1);
+        for (const [p, row] of [[{ ...m.palierIn, col0: 0 }, m.entryRow], [m.palierOut, m.exitRow]] as const) {
+          for (let c = p.col0; c <= p.col1; c++) {
+            for (let r = 0; r < L.height; r++) expect(L.tiles[r * L.width + c], `${where} (${c}, ${r})`).toBe(r < row ? TILE_EMPTY : TILE_SOLID);
           }
         }
-        // Départ au début du palier d'entrée (colonne d'appel), arrivée juste après le bord droit du palier de sortie, au sol.
-        expect(L.start).toEqual({ col: m.lead - 1, row: m.entryRow - 1 });
-        expect(L.finish).toEqual({ col: m.lead + m.width, row: m.exitRow - 1 });
+        expect(row0(rows, m), where).toBe(true);
+        // Départ au début du palier d'entrée (la garde devant lui), arrivée après le palier de sortie et une colonne de piste, au sol.
+        expect(L.start).toEqual({ col: PALIER_GUARD, row: m.entryRow - 1 });
+        expect(L.finish).toEqual({ col: m.exitCol + 1, row: m.exitRow - 1 });
         expect(L.checkpoints).toEqual([]);
-        expect(L.sections).toHaveLength(1);
+        expect(L.sections).toEqual([{ name: def.id, c0: m.lead, c1: m.lead + m.width - 1 }]);
+        expect(m.entryRow, where).toBeGreaterThanOrEqual(PALIER_HEADROOM);
       }
     }
   });
@@ -221,7 +263,7 @@ describe("les solutions stockées", () => {
   });
 
   for (const def of MODULES) {
-    it(`« ${def.id} » : chaque solution, rejouée, finit sans mourir, au sol, à pleine vitesse, en franchissant le bord droit du palier de sortie`, () => {
+    it(`« ${def.id} » : chaque solution sort au bord droit de son palier, au sol, à pleine vitesse, en course propre, puis finit sans mourir`, () => {
       for (let v = 0; v < def.variants.length; v++) {
         const m = buildModule(def.id, v);
         expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
@@ -234,26 +276,41 @@ describe("les solutions stockées", () => {
           expect(r.finished, where).toBe(true);
           expect(r.deaths, where).toEqual([]);
           expect(r.ticks, where).toBe(sol.ticks);
-          expect(r.time, where).toBe(sol.ticks);
           expect(r.final.status).toBe(ATTEMPT_FINISHED);
-          expect(r.final.player.ground, where).toBe(1);
-          expect(r.final.player.vx, where).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
-          // Le bord droit du morceau : l'avant de la boîte vient de le passer, au niveau du palier de sortie.
-          const edge = (m.lead + m.width) * T;
-          expect(r.final.player.x + PLAYER_WIDTH, where).toBeGreaterThan(edge);
-          expect(r.final.player.x + PLAYER_WIDTH - DEFAULT_JUMP_PARAMS.runSpeed, where).toBeLessThanOrEqual(edge);
-          expect(r.final.player.y + 3072, where).toBe(m.exitRow * T);
-          // Durée : entre 2 et 6 s ; elle ne vaut pas plus de 2 % de plus que la plus rapide trouvée.
-          expect(sol.ticks, where).toBeGreaterThanOrEqual(MODULE_MIN_TICKS);
-          expect(sol.ticks, where).toBeLessThanOrEqual(MODULE_MAX_TICKS);
-          expect(sol.ticks, where).toBeLessThanOrEqual(sol.fastest + Math.floor((sol.fastest * 2) / 100));
-          expect(r.final.status, where).not.toBe(ATTEMPT_DEAD);
+          // La règle du point canonique, et les pas stockés sont ceux que le rejeu retrouve.
+          const inputs = fromRuns(replay.runs);
+          const span = moduleSpan(m, entry, inputs);
+          expect(span, where).toEqual({ entryTick: sol.entryTick, exitTick: sol.exitTick, finishTick: sol.ticks });
+          let s = moduleStart(m, entry);
+          for (let t = 0; t < sol.exitTick; t++) {
+            const before = s;
+            s = stepAttempt(s, inputs[t]!, m.level, DEFAULT_JUMP_PARAMS);
+            // Entrée (élan) : la course, droite tenue, jusqu'au pas où le centre passe le bord du palier d'entrée.
+            if (entry === "elan" && t < sol.entryTick) expect(inputs[t], where).toBe(INPUT_RIGHT);
+            if (entry === "elan" && t + 1 === sol.entryTick) {
+              expect(centerCol(before.player), where).toBe(m.lead - 1);
+              expect(centerCol(s.player), where).toBe(m.lead);
+              expect(isCleanRun(s.player), where).toBe(true);
+            }
+            if (t + 1 < sol.exitTick) expect(centerCol(s.player), where).toBeLessThan(m.exitCol);
+          }
+          // Sortie : le premier pas où le centre passe le bord droit du palier de sortie, au sol de ce palier, à pleine vitesse.
+          expect(centerCol(s.player), where).toBe(m.exitCol);
+          expect(s.player.ground, where).toBe(1);
+          expect(s.player.vx, where).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
+          expect(s.player.y + PLAYER_HEIGHT, where).toBe(m.exitRow * T);
+          expect(isCleanRun(s.player), where).toBe(true);
+          // Durée entre l'entrée et la sortie : de 1 à 6 s ; pas plus de 2 % au-dessus de la plus rapide trouvée.
+          const ticks = sol.exitTick - sol.entryTick;
+          expect(ticks, where).toBeGreaterThanOrEqual(MODULE_MIN_TICKS);
+          expect(ticks, where).toBeLessThanOrEqual(MODULE_MAX_TICKS);
+          expect(ticks, where).toBeLessThanOrEqual(sol.fastest + Math.floor((sol.fastest * 2) / 100));
         }
       }
     });
   }
 
-  it("aucun morceau n'est « au pas près » : d'après les taux stockés, chaque solution réussit au moins une fois sur deux à ±1 pas", () => {
+  it("aucun morceau n'est « au pas près » ni fragile au raccord : chaque solution réussit au moins une fois sur deux à ±1 pas, et en élan depuis 90 % des positions d'entrée", () => {
     const all: { where: string; sol: ModuleSolution }[] = [];
     for (const def of MODULES) {
       def.variants.forEach((_, v) => {
@@ -262,7 +319,7 @@ describe("les solutions stockées", () => {
     }
     for (const { where, sol } of all) {
       expect(sol.gigue[0], where).toBeGreaterThanOrEqual(PAS_PRES);
-      if (sol.raccord !== null) expect(sol.raccord, where).toBeGreaterThanOrEqual(PAS_PRES);
+      if (sol.raccord !== null) expect(sol.raccord, where).toBeGreaterThanOrEqual(RACCORD_MIN);
       expect(sol.exigence, where).toBe(exigenceOf(sol.gigue, sol.raccord));
       expect(sol.exigence, where).toBeGreaterThanOrEqual(1);
       expect(sol.raccord === null, where).toBe(where.endsWith("arret"));
@@ -275,15 +332,22 @@ describe("les solutions stockées", () => {
     expect([...seen].sort()).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("règle d'exigence : au pas près sous la moitié à ±1 (ou au raccord), puis de 1 à 5 selon la gigue, +1 pour un raccord fragile", () => {
+  it("règle d'exigence : refusée sous la moitié à ±1 ou sous 90 % au raccord (strict, lot 6), puis de 1 à 5 selon la gigue", () => {
     expect(exigenceOf([499, 900, 900], null)).toBe(0);
-    expect(exigenceOf([1000, 1000, 1000], 499)).toBe(0);
+    expect(exigenceOf([1000, 1000, 1000], 899)).toBe(0);
     expect(exigenceOf([1000, 1000, 950], null)).toBe(1);
-    expect(exigenceOf([1000, 1000, 950], 850)).toBe(2);
+    expect(exigenceOf([1000, 1000, 950], 900)).toBe(1);
     expect(exigenceOf([1000, 900, 700], null)).toBe(2);
     expect(exigenceOf([1000, 700, 400], null)).toBe(3);
     expect(exigenceOf([900, 500, 300], null)).toBe(4);
     expect(exigenceOf([600, 300, 100], null)).toBe(5);
-    expect(exigenceOf([600, 300, 100], 600)).toBe(5);
+    expect(exigenceOf([600, 300, 100], 950)).toBe(5);
+  });
+
+  it("le test de raccord couvre tout un pas de course : 25 positions d'entrée régulières dans [0, runSpeed)", () => {
+    expect(RACCORD_POSITIONS).toHaveLength(25);
+    expect(Math.min(...RACCORD_POSITIONS)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...RACCORD_POSITIONS)).toBeLessThan(DEFAULT_JUMP_PARAMS.runSpeed);
+    expect(Math.max(...RACCORD_POSITIONS) - Math.min(...RACCORD_POSITIONS)).toBeGreaterThan(DEFAULT_JUMP_PARAMS.runSpeed - 30);
   });
 });
