@@ -57,6 +57,9 @@ export interface PlayerPose {
   y: number;
   look: Look;
   visible?: boolean;
+  /** Lot 8 : yeux fermés (0 ouverts … 1 fermés) et part de l'écrasement affichée (réglages). */
+  blink?: number;
+  squashAmount?: number;
 }
 
 export interface SceneOptions {
@@ -111,6 +114,10 @@ export interface JumpScene {
   setPlayer(pose: PlayerPose): void;
   /** Le niveau dans l'état de l'essai : scies (interpolées entre `prev` et `state`), blocs friables, ressorts. `clock` : secondes. */
   setWorld(prev: Readonly<AttemptState>, state: Readonly<AttemptState>, alpha: number, clock: number): void;
+  /** Lot 8 : traînée à pleine vitesse (coins haut-gauche en tuiles, y vers le bas, et opacité). */
+  setTrail(points: readonly { x: number; y: number; alpha: number }[]): void;
+  /** Lot 8 : animations douces (fanion qui se lève, ressort qui rebondit) ; faux : posées tout de suite (mouvement réduit, effets aucun). */
+  animate: boolean;
   render(): void;
   dispose(): void;
 }
@@ -358,6 +365,11 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
     return pennant;
   });
   let shownCheckpoint = -2;
+  // Lot 8 : le fanion est en bas du mât tant que le point n'est pas franchi, il se lève quand on le franchit (et redescend au départ).
+  const FLAG_LOW = 0.3;
+  const FLAG_HIGH = 1.12;
+  const flagLift = checkpoints.map(() => 0);
+  let lastClock = 0;
 
   // ——— Personnage : un carré (exactement la boîte de collision) et deux yeux ———
   const player = new Group();
@@ -383,6 +395,16 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   player.add(feet);
   player.position.z = 0.2;
   world.add(player);
+
+  // ——— Lot 8 : traînée à pleine vitesse, quelques carrés pâles (un matériau chacun pour son opacité ; pool fixe) ———
+  const trailMeshes: Mesh[] = [];
+  for (let k = 0; k < 5; k++) {
+    const t = new Mesh(new PlaneGeometry(PW, PH), new MeshBasicMaterial({ color: palette.player, transparent: true, opacity: 0, depthWrite: false }));
+    t.position.z = 0.18 - k * 0.001;
+    t.visible = false;
+    world.add(t);
+    trailMeshes.push(t);
+  }
 
   const burst = options.burst ? new BurstMesh(options.burst, palette.player, world) : null;
 
@@ -456,6 +478,7 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
     renderer,
     world,
     zoom: 1,
+    animate: true,
     frame,
     resize(touch = false) {
       const w = Math.max(1, window.innerWidth);
@@ -475,8 +498,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
       player.visible = pose.visible !== false;
       player.position.x = pose.x + PW / 2;
       player.position.y = -(pose.y + PH);
-      const { sx, sy } = squashScale(pose.look.squash);
+      const { sx, sy } = squashScale(pose.look.squash, pose.squashAmount ?? 1);
       feet.scale.set(sx, sy, 1);
+      eyes.scale.y = 1 - 0.88 * (pose.blink ?? 0);
       const lookX = pose.look.eyeX;
       eyes.position.x = lookX * 0.07;
       for (const p of pupils) {
@@ -488,7 +512,21 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
         hitPlayer.position.set(pose.x, -pose.y, 0.5);
       }
     },
+    setTrail(points) {
+      for (let k = 0; k < trailMeshes.length; k++) {
+        const m = trailMeshes[k]!;
+        const p = points[k];
+        m.visible = !!p && p.alpha > 0.01;
+        if (!p) continue;
+        m.position.x = p.x + PW / 2;
+        m.position.y = -(p.y + PH / 2);
+        (m.material as MeshBasicMaterial).opacity = p.alpha;
+      }
+    },
     setWorld(prev, state, alpha, clock) {
+      const dt = Math.max(0, Math.min(0.1, clock - lastClock));
+      lastClock = clock;
+      const animate = this.animate;
       // Scies : positions de la simulation, interpolées ; rotation au rythme du chrono de l'essai (immobiles tant que le monde attend).
       const a = sawCenters(level, prev);
       const b = sawCenters(level, state);
@@ -520,21 +558,31 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
           g.position.y = home.y;
         }
       }
-      // Ressorts : compression brève puis détente au déclenchement.
+      // Ressorts : compression brève puis détente au déclenchement ; lot 8 : la détente dépasse et rebondit (oscillation amortie).
       for (const [cell, s] of springs) {
         let press = 0;
         if (cell === state.springCell && state.status !== ATTEMPT_DEAD) {
           const ago = time - state.springTime;
-          if (ago >= 0 && ago < 18) press = ago < 4 ? ago / 4 : 1 - (ago - 4) / 14;
+          if (animate) {
+            if (ago >= 0 && ago < 4) press = ago / 4;
+            else if (ago >= 4 && ago < 60) press = Math.exp(-(ago - 4) / 12) * Math.cos((ago - 4) * 0.3);
+          } else if (ago >= 0 && ago < 18) press = ago < 4 ? ago / 4 : 1 - (ago - 4) / 14;
         }
         s.pad.position.y = 0.92 - 0.38 * press;
         s.coil.scale.y = 1 - 0.55 * press;
       }
-      // Points de passage : le point de reprise est coloré.
+      // Points de passage : le point de reprise est coloré ; les fanions des points franchis sont levés (lot 8).
       if (state.checkpoint !== shownCheckpoint) {
         shownCheckpoint = state.checkpoint;
         checkpoints.forEach((m, k) => (m.material = k === state.checkpoint ? cpOn : cpIdle));
         doors.forEach((m, k) => (m.material = k === state.checkpoint ? doorOn : doorIdle));
+      }
+      for (let k = 0; k < checkpoints.length; k++) {
+        const target = k <= state.checkpoint ? 1 : 0;
+        const v = flagLift[k]!;
+        // Levé en ≈ 0,35 s (un peu d'élan au départ), descendu tout de suite (recommencer).
+        flagLift[k] = !animate || target === 0 ? target : Math.min(1, v + dt * (1.2 + 6 * v));
+        checkpoints[k]!.position.y = FLAG_LOW + (FLAG_HIGH - FLAG_LOW) * flagLift[k]!;
       }
       // Arrivée : elle pulse doucement.
       const pulse = 0.5 + 0.5 * Math.sin(clock * 4);

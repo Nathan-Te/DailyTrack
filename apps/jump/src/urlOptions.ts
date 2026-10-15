@@ -48,7 +48,8 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "fx",
-    description: "`off` coupe les effets de la mort (éclatement en particules, tremblement d'écran). Affichage seulement.",
+    description:
+      "`off` coupe les effets visuels : éclatement à la mort, poussière, débris, confettis, traînée, tremblement d'écran (comme « Effets visuels : aucun » du menu ⏸, sans toucher au réglage mémorisé). Les taches restent. Affichage seulement.",
     values: ["off"],
   },
   {
@@ -125,7 +126,7 @@ export interface UrlChoices {
   zones: boolean;
   /** Boîtes de collision dessinées : seulement avec `debug`. */
   hitbox: boolean;
-  /** Effets de la mort (particules, tremblement) ; `?fx=off` les coupe (pas les taches). */
+  /** Effets visuels (particules, secousses, traînée) ; `?fx=off` les coupe (pas les taches). */
   fx: boolean;
   /** Fantôme forcé à « caché » (`?ghost=off`). */
   ghostOff: boolean;

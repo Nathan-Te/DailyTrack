@@ -1,0 +1,243 @@
+import {
+  ATTEMPT_DEAD,
+  ATTEMPT_FINISHED,
+  ATTEMPT_READY,
+  CRUMBLE_GONE,
+  CRUMBLE_INTACT,
+  DEATH_FALL,
+  DEATH_SAW,
+  DEATH_SPIKE,
+  PLAYER_HEIGHT,
+  PLAYER_WIDTH,
+  TICK_RATE,
+  UNITS_PER_TILE,
+  type AttemptState,
+  type JumpMedal,
+  type JumpParams,
+  type Level,
+  type PlayerState,
+} from "@cdj/jump-sim";
+
+// Événements de jeu (lot 8), **logique pure** : on compare deux états successifs d'un essai (avant et après un pas) et l'on en déduit ce qui
+// vient d'arriver. Le son (`audio.ts`), les particules (`feel.ts`, `fx.ts`) et les vibrations ne s'abonnent qu'à cette liste : ils ne lisent
+// jamais la simulation directement, et rien ici ne l'influence (on ne fait que lire deux états).
+//
+// Positions en tuiles, **y vers le bas** comme la simulation (le centre du personnage, sauf mention contraire).
+//
+// Comment chaque événement se lit dans l'état (sans rejouer la simulation) :
+//   - saut / saut mural : un appui (front montant de `held`) ou un tampon actif, et `buffer` remis à 0 par le saut (`stepPlayer` : seul un
+//     saut le remet à 0 avant la fin du tampon) ; sinon une vitesse de montée nouvelle (vy plus négative qu'au pas d'avant : la gravité ne
+//     fait que l'augmenter). Pas un ressort (il remet aussi `buffer` à 0). Au sol ou dans le coyote : `saut` ; sinon `sautMural`.
+//   - atterrissage : `ground` passe de 0 à 1 ; intensité = vitesse de chute du pas d'avant ÷ chute maximale (0 à 1).
+//   - pas : au sol avant et après, un pas chaque fois que le centre franchit un multiple de `STRIDE_TILES` (la cadence suit la distance).
+//   - glisse : `slide` passe de 0 à ±1 (début) ou revient à 0 (fin, aussi à la mort et à l'arrivée).
+//   - mort, réapparition, point de passage, arrivée : transitions de `status` et de `checkpoint`.
+//   - ressort : `springTime` / `springCell` changent ; friable : minuterie lancée (craque), bloc tombé (tombe).
+
+export type DeathCauseName = "pic" | "scie" | "chute";
+
+/** D'où vient un événement : la partie (ou une lecture), le héros du carnage, une autre vie du carnage (filtrée). */
+export type EventSource = "jeu" | "heros" | "vie";
+
+interface Base {
+  /** Pas de la session (ou du carnage) où il est survenu. */
+  tick: number;
+  source: EventSource;
+  /** Centre, en tuiles (y vers le bas). */
+  x: number;
+  y: number;
+}
+
+export type GameEvent =
+  | (Base & { kind: "saut" })
+  /** `side` : côté du mur quitté (−1 gauche, 1 droite). */
+  | (Base & { kind: "sautMural"; side: number })
+  /** `intensity` ∈ [0, 1] : vitesse de chute ÷ chute maximale. */
+  | (Base & { kind: "atterrissage"; intensity: number })
+  /** `speed` : vitesse au sol (tuiles/s) ; `cadence` : pas par seconde à cette vitesse. */
+  | (Base & { kind: "pas"; speed: number; cadence: number; full: boolean })
+  | (Base & { kind: "glisseDebut"; side: number })
+  | (Base & { kind: "glisseFin" })
+  | (Base & { kind: "mort"; cause: DeathCauseName })
+  | (Base & { kind: "reapparition"; checkpoint: boolean })
+  | (Base & { kind: "pointDePassage"; index: number })
+  | (Base & { kind: "arrivee" })
+  /** Position : le haut de la tuile du ressort. */
+  | (Base & { kind: "ressort" })
+  /** Position : le centre du bloc friable. */
+  | (Base & { kind: "friableCraque"; index: number })
+  | (Base & { kind: "friableTombe"; index: number })
+  /** Médaille obtenue à l'arrivée sur le niveau du jour (le jeu la pousse : la simulation ne connaît pas les médailles). */
+  | (Base & { kind: "medaille"; medal: JumpMedal });
+
+export type GameEventKind = GameEvent["kind"];
+
+/** Tous les noms d'événements (ordre de la documentation). */
+export const EVENT_KINDS: readonly GameEventKind[] = [
+  "saut",
+  "sautMural",
+  "atterrissage",
+  "pas",
+  "glisseDebut",
+  "glisseFin",
+  "mort",
+  "reapparition",
+  "pointDePassage",
+  "arrivee",
+  "ressort",
+  "friableCraque",
+  "friableTombe",
+  "medaille",
+];
+
+/** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
+export const STRIDE_TILES = 1.5;
+const STRIDE = STRIDE_TILES * UNITS_PER_TILE;
+/** « Pleine vitesse » : au moins cette part de la vitesse de course (poussière de course, traînée). */
+export const FULL_SPEED = 0.92;
+
+const T = UNITS_PER_TILE;
+const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SAW]: "scie", [DEATH_FALL]: "chute" };
+
+export function causeName(cause: number): DeathCauseName {
+  return CAUSES[cause] ?? "pic";
+}
+
+const centerX = (p: Readonly<PlayerState>) => (p.x + PLAYER_WIDTH / 2) / T;
+const centerY = (p: Readonly<PlayerState>) => (p.y + PLAYER_HEIGHT / 2) / T;
+const feetY = (p: Readonly<PlayerState>) => (p.y + PLAYER_HEIGHT) / T;
+
+/** Un saut a-t-il eu lieu pendant ce pas ? (voir l'en-tête) */
+export function jumpedBetween(prev: Readonly<PlayerState>, cur: Readonly<PlayerState>, params: Readonly<JumpParams>, spring: boolean): boolean {
+  if (spring) return false;
+  const pressed = cur.held === 1 && prev.held === 0;
+  if (!pressed && prev.buffer === 0) return false;
+  if (cur.buffer === 0 && (pressed ? params.jumpBuffer > 0 : prev.buffer > 1)) return true;
+  return cur.vy < prev.vy && cur.vy < 0;
+}
+
+/**
+ * Événements survenus entre deux états successifs d'un essai (`prev` → `cur`, un pas de `stepAttempt`). Pure : ne modifie rien.
+ * `tick` et `source` sont recopiés dans chaque événement. Un « recommencer » n'est pas un pas : le jeu ne compare pas à travers lui.
+ */
+export function eventsBetween(prev: Readonly<AttemptState>, cur: Readonly<AttemptState>, level: Level, params: Readonly<JumpParams>, tick = 0, source: EventSource = "jeu"): GameEvent[] {
+  const out: GameEvent[] = [];
+  if (prev === cur) return out;
+  const p = prev.player;
+  const c = cur.player;
+  const at = (s: Readonly<PlayerState>) => ({ tick, source, x: centerX(s), y: centerY(s) });
+
+  // Réapparition : depuis la mort, au départ (nouvel essai) ou sur un point de passage. Rien d'autre à comparer (le personnage a sauté).
+  if (prev.status === ATTEMPT_DEAD) {
+    if (cur.status !== ATTEMPT_DEAD) out.push({ ...at(c), kind: "reapparition", checkpoint: cur.status !== ATTEMPT_READY });
+    return out;
+  }
+  if (cur.status === ATTEMPT_READY || prev.status === ATTEMPT_FINISHED) return out; // le monde attend (ou la course est finie)
+
+  const spring = cur.springCell >= 0 && (cur.springTime !== prev.springTime || cur.springCell !== prev.springCell);
+  if (jumpedBetween(p, c, params, spring)) {
+    const ground = p.ground === 1 || p.air <= params.coyote;
+    if (ground) out.push({ ...at(c), kind: "saut", x: centerX(c), y: feetY(p) });
+    else out.push({ ...at(c), kind: "sautMural", side: c.vx > 0 ? -1 : c.vx < 0 ? 1 : p.wallSide || 1 });
+  }
+  if (spring) {
+    const col = cur.springCell % level.width;
+    const row = (cur.springCell - col) / level.width;
+    out.push({ tick, source, kind: "ressort", x: col + 0.5, y: row });
+  }
+  if (p.ground === 0 && c.ground === 1) {
+    const fall = Math.max(0, p.vy);
+    const intensity = Math.min(1, params.fallSpeed > 0 ? fall / params.fallSpeed : 0);
+    out.push({ ...at(c), kind: "atterrissage", y: feetY(c), intensity });
+  }
+  if (p.ground === 1 && c.ground === 1 && c.vx !== 0) {
+    const a = Math.floor((p.x + PLAYER_WIDTH / 2) / STRIDE);
+    const b = Math.floor((c.x + PLAYER_WIDTH / 2) / STRIDE);
+    if (a !== b) {
+      const speed = (Math.abs(c.vx) * TICK_RATE) / T;
+      out.push({ ...at(c), kind: "pas", y: feetY(c), speed, cadence: speed / STRIDE_TILES, full: Math.abs(c.vx) >= params.runSpeed * FULL_SPEED });
+    }
+  }
+  const ends = cur.status === ATTEMPT_DEAD || cur.status === ATTEMPT_FINISHED;
+  if (p.slide === 0 && c.slide !== 0 && !ends) out.push({ ...at(c), kind: "glisseDebut", side: c.slide });
+  else if (p.slide !== 0 && (c.slide === 0 || ends)) out.push({ ...at(c), kind: "glisseFin" });
+
+  if (cur.crumbles !== prev.crumbles) {
+    for (let i = 0; i < cur.crumbles.length; i++) {
+      const a = prev.crumbles[i]!;
+      const b = cur.crumbles[i]!;
+      if (a === b) continue;
+      const cell = level.crumbles[i]!;
+      if (a === CRUMBLE_INTACT && b > 0) out.push({ tick, source, kind: "friableCraque", index: i, x: cell.col + 0.5, y: cell.row + 0.5 });
+      else if (b === CRUMBLE_GONE && a !== CRUMBLE_GONE) out.push({ tick, source, kind: "friableTombe", index: i, x: cell.col + 0.5, y: cell.row + 0.5 });
+    }
+  }
+  if (cur.status === ATTEMPT_DEAD) {
+    out.push({ tick, source, kind: "mort", cause: causeName(cur.deathCause), x: cur.deathX / T, y: cur.deathY / T });
+  } else if (cur.status === ATTEMPT_FINISHED) {
+    out.push({ ...at(c), kind: "arrivee" });
+  } else if (cur.checkpoint !== prev.checkpoint && cur.checkpoint >= 0) {
+    const cell = level.checkpoints[cur.checkpoint]!;
+    out.push({ tick, source, kind: "pointDePassage", index: cur.checkpoint, x: cell.col + 0.5, y: cell.row + 1 });
+  }
+  return out;
+}
+
+// ——— Le carnage : seulement les morts et les arrivées des autres vies, avec un débit plafonné ———
+
+/** Fenêtre du débit (pas : 100 ms). */
+export const CARNAGE_WINDOW_TICKS = 12;
+/** Au plus ce nombre d'événements d'autres vies par fenêtre (les suivants sont écartés). */
+export const CARNAGE_EVENTS_PER_WINDOW = 6;
+
+/** Filtre des événements des vies du carnage : seulement `mort` et `arrivee`, au plus `max` par fenêtre de `window` pas. */
+export class CarnageFilter {
+  private start = -Infinity;
+  private count = 0;
+  /** Écartés depuis le départ (mesure). */
+  dropped = 0;
+
+  constructor(
+    readonly max = CARNAGE_EVENTS_PER_WINDOW,
+    readonly window = CARNAGE_WINDOW_TICKS,
+  ) {}
+
+  /** Garde-t-on cet événement d'une autre vie ? */
+  admit(e: GameEvent): boolean {
+    if (e.kind !== "mort" && e.kind !== "arrivee") return false;
+    if (e.tick >= this.start + this.window) {
+      this.start = e.tick;
+      this.count = 0;
+    }
+    if (this.count >= this.max) {
+      this.dropped++;
+      return false;
+    }
+    this.count++;
+    return true;
+  }
+
+  reset(): void {
+    this.start = -Infinity;
+    this.count = 0;
+    this.dropped = 0;
+  }
+}
+
+/** Les derniers événements (`?debug` : `__jump.events`). */
+export class EventLog {
+  private readonly items: GameEvent[] = [];
+  total = 0;
+  constructor(readonly size = 200) {}
+  push(e: GameEvent): void {
+    this.items.push(e);
+    this.total++;
+    if (this.items.length > this.size) this.items.shift();
+  }
+  list(): GameEvent[] {
+    return this.items.map((e) => ({ ...e }));
+  }
+  clear(): void {
+    this.items.length = 0;
+  }
+}

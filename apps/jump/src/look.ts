@@ -2,6 +2,8 @@ import type { PlayerState } from "@cdj/jump-sim";
 
 // L'allure du personnage, **à l'affichage seulement** : écrasement et étirement au saut et à l'atterrissage, regard dans la direction
 // du mouvement. Lit les états de la simulation, ne les modifie jamais.
+// Lot 8 : plus marqués (étirement −0,36 au lieu de −0,28, écrasement 0,55 au lieu de 0,42), écrasé contre le mur au début d'une glisse ;
+// l'amplitude affichée suit les réglages (`squashScale(…, amount)` : mouvement réduit, effets réduits).
 
 export interface Look {
   /** > 0 : écrasé (plus large, moins haut) ; < 0 : étiré. */
@@ -17,10 +19,12 @@ export interface Look {
 }
 
 export const LOOK = {
-  /** Étirement au décollage. */
-  takeoff: -0.28,
+  /** Étirement au décollage (saut, saut mural, ressort). */
+  takeoff: -0.36,
   /** Écrasement maximal à l'atterrissage (chute à la vitesse maximale). */
-  landing: 0.42,
+  landing: 0.55,
+  /** Contre le mur, au début d'une glisse : plus étroit, plus haut. */
+  wall: -0.2,
   /** Ressort du retour à la forme (raideur 1/s², amortissement 1/s). */
   stiffness: 420,
   damping: 26,
@@ -41,6 +45,9 @@ export function onStep(look: Look, prev: PlayerState, cur: PlayerState, fallSpee
   } else if (!prev.ground && cur.ground) {
     squash = Math.max(squash, LOOK.landing * Math.min(1, Math.max(0.25, prev.vy / Math.max(1, fallSpeed))));
     squashVel = 0;
+  } else if (prev.slide === 0 && cur.slide !== 0) {
+    squash = Math.min(squash, LOOK.wall);
+    squashVel = 0;
   }
   if (cur.slide !== 0) facing = -cur.slide; // contre un mur : il regarde de l'autre côté
   else if (cur.vx > 0) facing = 1;
@@ -60,8 +67,8 @@ export function animateLook(look: Look, dt: number, vyUp: number): Look {
   return { ...look, squash, squashVel, eyeX, eyeY };
 }
 
-/** Échelles du corps (largeur, hauteur) pour un écrasement donné : l'aire reste à peu près la même. */
-export function squashScale(squash: number): { sx: number; sy: number } {
-  const sy = 1 - squash;
+/** Échelles du corps (largeur, hauteur) pour un écrasement donné : l'aire reste à peu près la même. `amount` : part affichée (réglages). */
+export function squashScale(squash: number, amount = 1): { sx: number; sy: number } {
+  const sy = 1 - squash * amount;
   return { sx: 1 / Math.max(0.4, sy), sy };
 }
