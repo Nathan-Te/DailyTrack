@@ -34,6 +34,7 @@ import {
   UNITS_PER_TILE,
   buildModule,
   buildModuleDef,
+  MAX_REST_EXIGENCE,
   centerCol,
   decodeReplay,
   exigenceOf,
@@ -206,6 +207,19 @@ describe("le catalogue", () => {
     for (const m of MODULES) {
       expect(m.variants.length, m.id).toBeGreaterThanOrEqual(2);
       expect(m.variants.length, m.id).toBeLessThanOrEqual(MAX_VARIANTS);
+    }
+  });
+
+  it("lot 7b : toute variante d'un morceau « respiration » a une exigence de 2 au plus (aux deux entrées)", () => {
+    const rest = MODULES.filter((m) => m.tags.includes("respiration"));
+    expect(rest.length).toBeGreaterThanOrEqual(4);
+    for (const m of rest) {
+      m.variants.forEach((_, v) => {
+        const sol = moduleSolutions(m.id, v);
+        expect(sol, `${m.id} v${v} a ses solutions`).not.toBeNull();
+        for (const e of ["arret", "elan"] as const) expect(sol![e]!.exigence, `${m.id} v${v} ${e}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
+        expect(variantExigence(sol), `${m.id} v${v}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
+      });
     }
   });
 

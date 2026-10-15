@@ -11,9 +11,9 @@ repeter: large colonnes 10-10
 repeter: large colonnes 13-13
 repeter: large colonnes 16-16
 variante: large=1
-variante: large=2
 variante: large=3
-variante: large=2 +sol-friable
+variante: large=3 +ressort
+variante: large=1 +ressort
 variante: large=1 +denivele:2
 variante: large=2 +ressort
 grille:

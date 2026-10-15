@@ -44,6 +44,7 @@ import {
   dailyProblems,
   decodeReplay,
   encodeReplay,
+  TENSION_RISES,
   exigenceOfPieces,
   fallbackLevel,
   isRestedModule,
@@ -177,6 +178,16 @@ describe("niveau du jour : quotas et budget", () => {
       expect(L.pieces.some((p) => p.exigence >= EXIGENCE_PEAK)).toBe(true);
       expect(L.exigence.thirds[2]).toBeGreaterThanOrEqual(L.exigence.thirds[0]);
     }
+  });
+
+  it("lot 7b : la tension monte jusqu'à la fin — dernier tiers ≥ deuxième tiers, et la règle est bien dans dailyProblems", () => {
+    expect(TENSION_RISES).toBe(true);
+    for (const L of levels) expect(L.exigence.thirds[2], L.date).toBeGreaterThanOrEqual(L.exigence.thirds[1]);
+    // La règle est appliquée : un niveau valide dont le dernier tiers est moins exigeant que le deuxième est refusé.
+    const L = levels[0]!;
+    expect(dailyProblems(L)).toEqual([]);
+    const flat = { ...L, exigence: { ...L.exigence, thirds: [10, 30, 20] as [number, number, number] } };
+    expect(dailyProblems(flat).some((m) => m.includes("deuxième"))).toBe(true);
   });
 
   it("pas de difficulté selon le jour de la semaine : l'exigence moyenne de chaque jour de la semaine reste dans la fenêtre", () => {

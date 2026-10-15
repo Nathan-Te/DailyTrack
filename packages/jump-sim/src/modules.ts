@@ -816,6 +816,9 @@ export function moduleSolutions(id: string, variant: number): ModuleVariantSolut
   return MODULE_SOLUTIONS.modules[id]?.variants[variant] ?? null;
 }
 
+/** Lot 7b : une respiration n'est jamais exigeante — toute variante d'un morceau étiqueté `respiration` a une exigence de 2 au plus. */
+export const MAX_REST_EXIGENCE = 2;
+
 /** Exigence d'une variante : la plus haute de ses deux solutions (0 s'il en manque une). */
 export function variantExigence(s: ModuleVariantSolutions | null): number {
   if (!s || !s.arret || !s.elan) return 0;
