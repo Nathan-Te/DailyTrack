@@ -13,3 +13,4 @@ export * from "./replay";
 export * from "./solutions";
 export * from "./demo";
 export * from "./modules";
+export * from "./daily";

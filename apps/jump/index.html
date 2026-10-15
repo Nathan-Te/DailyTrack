@@ -132,6 +132,15 @@
       #gallery .actions { display: flex; gap: 8px; }
       #gallery .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 10px; background: #ffd22e; color: #101820; font-weight: 700; text-decoration: none; touch-action: manipulation; }
       #gallery .btn.watch { background: rgba(255, 255, 255, 0.14); color: #fff; }
+      /* Lot 5 : ligne du niveau du jour (DailyJump #N, archive / aperçu, médaille visée) et message discret (date refusée, nouveau niveau). */
+      #dayline { position: fixed; left: 50%; top: 50px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); box-sizing: border-box; padding: 2px 10px; border-radius: 8px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+      #dayline[hidden] { display: none; }
+      #daynote { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); box-sizing: border-box; padding: 3px 12px; border-radius: 8px; background: rgba(11, 16, 32, 0.78); color: #ffd22e; font: 600 13px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; display: none; }
+      #daynote.show { display: block; animation: daynote-out 0.8s ease 8s forwards; }
+      #daynote.show.sticky { animation: none; }
+      @keyframes daynote-out { to { opacity: 0; visibility: hidden; } }
+      body.daily #tuned { top: 110px; }
+      body.touch #dayline, body.touch #daynote { position: static; transform: none; align-self: center; max-width: 100%; font-size: 12px; white-space: normal; text-align: center; }
       #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
     </style>
   </head>
@@ -139,6 +148,8 @@
     <div id="stamp"></div>
     <div id="hud">
       <div id="chrono" aria-live="off"><span class="time">0,000 s</span><span class="best">Meilleur —</span><span class="deaths">Morts 0</span></div>
+      <div id="dayline" hidden></div>
+      <div id="daynote" role="status"></div>
       <div id="carnage" role="status" hidden><span class="count"></span><span class="hint">Une commande pour passer</span></div>
       <pre id="debug" hidden></pre>
       <div id="tuned"></div>
