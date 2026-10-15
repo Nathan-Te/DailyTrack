@@ -1,24 +1,32 @@
 id: scie-sol
 intention: Sauter au bon moment par-dessus deux scies qui font l'aller-retour au sol d'un couloir bas, en sens contraires.
 etiquettes: scie
-format: 2
+famille: scie-sol
+mutateurs: patrouille sol-friable denivele
+format: 3
 paliers: 10 10
 variante: cycle=300
 variante: cycle=240
 variante: cycle=180
+variante: cycle=300 +patrouille
+variante: cycle=240 +sol-friable
+variante: cycle=240 +denivele:2
 grille:
-...##################...
-...##################...
-...##################...
-...##################...
-...##################...
-...##################...
-...##################...
-........................
-........................
-........................
-########################
-########################
+..##################..
+..##################..
+..##################..
+..##################..
+..##################..
+..##################..
+..##################..
+......................
+......................
+......................
+######################
+######################
 
-scie patrouille o {cycle} aller-retour 5,9 18,9
-scie contre o {cycle} aller-retour 18,9 5,9
+scie patrouille o {cycle} aller-retour 4,9 17,9
+scie contre o {cycle} aller-retour 17,9 4,9
+zone patrouille o 200 aller-retour 10,9 4,9
+zone sol-friable 8-13 10
+zone denivele 20-21

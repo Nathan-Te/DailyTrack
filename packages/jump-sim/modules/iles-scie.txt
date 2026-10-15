@@ -1,0 +1,35 @@
+id: iles-scie
+intention: Sauter d'îlot friable en îlot friable sous une scie qui fait le pendule au-dessus d'eux.
+etiquettes: friable scie precision
+famille: iles
+mutateurs: fosse plafond denivele
+format: 3
+paliers: 9 9
+repeter: ecart colonnes 6-6
+repeter: ecart colonnes 11-11
+repeter: ecart colonnes 16-16
+variante: ecart=1 cycle=240
+variante: ecart=2 cycle=300
+variante: ecart=1 cycle=180
+variante: ecart=2 cycle=240 +fosse
+variante: ecart=1 cycle=240 +plafond
+variante: ecart=1 cycle=300 +denivele:2
+grille:
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+##..xx...xx...xx...###
+##.................###
+##.................###
+##.................###
+
+scie pendule o {cycle} aller-retour 4,5 16,5
+zone fosse 2-18 12
+zone plafond 2-18 2
+zone denivele 19-21

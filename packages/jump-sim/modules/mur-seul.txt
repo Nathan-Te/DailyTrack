@@ -1,24 +1,37 @@
 id: mur-seul
-intention: Remonter un grand mur tout seul, saut mural après saut mural, en revenant vers lui.
+intention: Remonter deux grands murs tout seul, saut mural après saut mural, en revenant vers chacun.
 etiquettes: mural vertical
-format: 2
-paliers: 12 6
-repeter: haut rangees 9-9
+famille: mur
+mutateurs: garde sol-friable denivele
+format: 3
+paliers: 16 4
+repeter: haut rangees 12-12
 variante: haut=1
 variante: haut=3
 variante: haut=5
+variante: haut=3 +garde
+variante: haut=1 +sol-friable
+variante: haut=3 +denivele:2
 grille:
-...........
-...........
-...........
-...........
-...........
-...........
-.......####
-.......####
-.......####
-.......####
-.......####
-.......####
-###########
-###########
+..........
+..........
+..........
+..........
+.......###
+.......###
+.......###
+.......###
+.......###
+.......###
+....######
+....######
+....######
+....######
+....######
+....######
+##########
+##########
+
+zone garde 3 13-14 <
+zone sol-friable 4-6 10
+zone denivele 7-9

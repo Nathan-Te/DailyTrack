@@ -118,7 +118,7 @@
       #gallery h1 { margin: 4px 0 6px; font-size: 24px; }
       #gallery .lead { margin: 0 0 10px; opacity: 0.8; }
       #gallery .entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
-      #gallery .entry button { min-height: 44px; min-width: 44px; padding: 0 14px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; background: transparent; color: #fff; font: 600 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+      #gallery .entry button { min-height: 46px; /* 44 px au moins, avec une marge : Firefox mesure 43,99997 px à une position fractionnaire */ min-width: 44px; padding: 0 14px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; background: transparent; color: #fff; font: 600 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
       #gallery .entry button[aria-pressed="true"] { background: #ffd22e; border-color: #ffd22e; color: #101820; }
       #gallery .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
       #gallery .card { min-width: 0; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); }
@@ -129,8 +129,16 @@
       #gallery .variant { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
       #gallery .info { display: flex; flex-direction: column; min-width: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
       #gallery .ex { color: #ffd22e; letter-spacing: 1px; }
+      #gallery .filters { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 6px; }
+      #gallery .filter { display: flex; align-items: center; gap: 8px; min-width: 0; }
+      #gallery .filter select { min-height: 46px; min-width: 44px; max-width: 60vw; padding: 0 10px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; background: #1b2633; color: #fff; font: 600 15px system-ui, sans-serif; touch-action: manipulation; }
+      #gallery .count { margin: 0 0 10px; opacity: 0.8; font-size: 13px; }
+      #gallery .card[hidden] { display: none; }
+      #gallery .tag.family { background: rgba(120, 200, 255, 0.18); color: #9fd8ff; }
+      #gallery .tag.long { background: rgba(140, 255, 160, 0.18); color: #a6ffb4; }
+      #gallery .mut { opacity: 0.75; }
       #gallery .actions { display: flex; gap: 8px; }
-      #gallery .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 10px; background: #ffd22e; color: #101820; font-weight: 700; text-decoration: none; touch-action: manipulation; }
+      #gallery .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 46px; min-width: 44px; padding: 0 14px; border-radius: 10px; background: #ffd22e; color: #101820; font-weight: 700; text-decoration: none; touch-action: manipulation; }
       #gallery .btn.watch { background: rgba(255, 255, 255, 0.14); color: #fff; }
       /* Lot 5 : ligne du niveau du jour (DailyJump #N, archive / aperçu, médaille visée) et message discret (date refusée, nouveau niveau). */
       #dayline { position: fixed; left: 50%; top: 50px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); box-sizing: border-box; padding: 2px 10px; border-radius: 8px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }

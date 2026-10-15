@@ -1,7 +1,9 @@
 id: piliers
 intention: Bondir de pilier en pilier, chacun large d'une seule tuile, au-dessus du vide.
 etiquettes: precision
-format: 2
+famille: piliers
+mutateurs: patrouille sol-friable denivele
+format: 3
 paliers: 10 10
 repeter: ecart colonnes 5-5
 repeter: ecart colonnes 9-9
@@ -10,6 +12,9 @@ repeter: ecart colonnes 17-17
 repeter: ecart colonnes 21-21
 variante: ecart=1
 variante: ecart=2
+variante: ecart=1 +patrouille
+variante: ecart=2 +sol-friable
+variante: ecart=1 +denivele:2
 grille:
 ........................
 ........................
@@ -25,3 +30,8 @@ grille:
 ###...#...#...#...#...##
 ###...#...#...#...#...##
 ###...#...#...#...#...##
+
+zone patrouille o 360 aller-retour 6,4 18,4
+zone sol-friable 6 10
+zone sol-friable 14 10
+zone denivele 22-23

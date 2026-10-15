@@ -15,6 +15,13 @@ import {
   MODULE_TAGS,
   ModuleError,
   MODULE_FORMAT,
+  MAX_VARIANTS,
+  MAX_MUTATIONS,
+  MUTATORS,
+  LONG_MAX_TICKS,
+  LONG_MIN_TICKS,
+  mutateTemplate,
+  mutationLabel,
   PALIER_GUARD,
   PALIER_HEADROOM,
   PALIER_LENGTH,
@@ -46,6 +53,7 @@ import {
 } from "../src/index";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "../src/catalog";
 import { catalogSource } from "../tools/files";
+import { ELAN_FLAT_MAX, FLAT_MAX, flatLimit, flatsOf, longestFlat } from "../tools/plats";
 
 // Les morceaux des lots 4 et 6 : format v2, variantes, palier standard, catalogue et solutions stockées (point canonique au bord droit des
 // paliers). Les solutions sont trouvées hors ligne (`npm run solve:modules -w @cdj/jump-sim`) : ce test ne cherche rien, il **rejoue** ce
@@ -60,7 +68,8 @@ const SMALL = `
 id: essai-format
 intention: Tester le format.
 etiquettes: scie precision
-format: 2
+famille: essai
+format: 3
 paliers: 5 5
 repeter: trou colonnes 1-1
 repeter: haut rangees 1-1
@@ -93,8 +102,9 @@ function staleReason(file: ModuleSolutionsFile, built: BuiltModule): string | nu
 function row0(rows: readonly string[], m: BuiltModule): boolean {
   const def = MODULES.find((d) => d.id === m.id)!;
   const sliced = rows.map((r) => r.slice(m.lead, m.lead + m.width).replace(/[SFC]/g, "."));
-  // Sans plage répétée de colonnes ni de rangées, la grille du fichier est recopiée telle quelle.
-  if (def.repeats.length === 0) return sliced.join("\n") === def.grid.join("\n");
+  // Sans plage répétée de colonnes ni de rangées (ni dénivelé), la grille du fichier, mutée (lot 7), est recopiée telle quelle.
+  const tpl = mutateTemplate(def, m.mutations);
+  if (def.repeats.length === 0 && !tpl.denivele) return sliced.join("\n") === tpl.grid.join("\n");
   return sliced.length === m.height && sliced.every((r) => r.length === m.width);
 }
 
@@ -152,8 +162,10 @@ describe("format d'un morceau", () => {
     expect(bad((t) => t.replace("paliers: 5 5", "palier: 5 5"))).toThrow(/clé: valeur/);
     expect(bad((t) => t.replace("repeter: haut rangees 1-1", "repeter: haut rangees 5-5"))).toThrow(/palier ne se répète pas/);
     // Format v1 (paliers dessinés) ou absent : refusé ; un sol de palier trop haut dans la grille.
-    expect(bad((t) => t.replace("format: 2", "format: 1"))).toThrow(/format 1/);
-    expect(bad((t) => t.replace("format: 2\n", ""))).toThrow(/« format: » attendu/);
+    expect(bad((t) => t.replace("format: 3", "format: 2"))).toThrow(/format 2/);
+    expect(bad((t) => t.replace("format: 3\n", ""))).toThrow(/« format: » attendu/);
+    expect(bad((t) => t.replace("famille: essai\n", ""))).toThrow(/« famille: » attendu/);
+    expect(bad((t) => t.replace("famille: essai", "famille: Essai"))).toThrow(/famille/);
     expect(bad((t) => t.replace("paliers: 5 5", "paliers: 3 5"))).toThrow(/rangées libres/);
     // Une variante qui retire une colonne citée par une scie ; une première colonne pleine au ras du sol (on n'y entre pas en courant) ;
     // une scie qui passe au-dessus d'un palier.
@@ -174,27 +186,26 @@ describe("format d'un morceau", () => {
   });
 
   it("le couloir de lancement (jeu humain, entrée en élan) ajoute des colonnes devant le palier, le départ au bout", () => {
-    const plain = buildModule("plaine", 0);
-    const run = buildModule("plaine", 0, { lancement: 5 });
+    const plain = buildModule("tunnel", 0);
+    const run = buildModule("tunnel", 0, { lancement: 5 });
     expect(run.lead).toBe(5 + PALIER_GUARD + PALIER_LENGTH);
     expect(run.level.width).toBe(plain.level.width + 5);
     expect(run.level.start).toEqual({ col: 0, row: plain.entryRow - 1 });
     expect(plain.level.start).toEqual({ col: PALIER_GUARD, row: plain.entryRow - 1 });
     expect(run.palierIn).toEqual({ col0: 5 + PALIER_GUARD, col1: 5 + PALIER_GUARD + PALIER_LENGTH - 1, row: plain.entryRow });
-    expect(run.level.sections[0]).toEqual({ name: "plaine", c0: run.lead, c1: run.lead + plain.width - 1 });
+    expect(run.level.sections[0]).toEqual({ name: "tunnel", c0: run.lead, c1: run.lead + plain.width - 1 });
   });
 });
 
 describe("le catalogue", () => {
-  it("compte 25 à 30 morceaux, d'id distincts, chacun dans son fichier, avec 2 à 4 variantes", () => {
-    expect(MODULES.length).toBeGreaterThanOrEqual(25);
-    expect(MODULES.length).toBeLessThanOrEqual(30);
+  it("compte au moins 50 morceaux (lot 7), d'id distincts, chacun dans son fichier, avec 2 à 6 variantes", () => {
+    expect(MODULES.length).toBeGreaterThanOrEqual(50);
     const files = readdirSync(DIR).filter((f) => f.endsWith(".txt")).sort();
     expect(MODULES.map((m) => `${m.id}.txt`)).toEqual(files);
     expect(new Set(MODULES.map((m) => m.id)).size).toBe(MODULES.length);
     for (const m of MODULES) {
       expect(m.variants.length, m.id).toBeGreaterThanOrEqual(2);
-      expect(m.variants.length, m.id).toBeLessThanOrEqual(4);
+      expect(m.variants.length, m.id).toBeLessThanOrEqual(MAX_VARIANTS);
     }
   });
 
@@ -207,7 +218,7 @@ describe("le catalogue", () => {
     for (const m of MODULES) expect(m.intention, m.id).toMatch(/^[A-ZÀ-Ý].{20,}\.$/);
   });
 
-  it("format v2 : chaque fichier est au format 2, aucune grille ne contient de palier — buildModule pose le palier standard à côté d'elle", () => {
+  it("format v3 : chaque fichier est au format 3, aucune grille ne contient de palier — buildModule pose le palier standard à côté d'elle", () => {
     for (const def of MODULES) {
       expect(def.text, def.id).toMatch(new RegExp(`^format: ${MODULE_FORMAT}$`, "m"));
       for (let v = 0; v < def.variants.length; v++) {
@@ -252,14 +263,14 @@ describe("le catalogue", () => {
 
 describe("les solutions stockées", () => {
   it("une empreinte de grille ou de version périmée est signalée avec « relancer solve:modules »", () => {
-    const m = buildModule("plaine", 0);
+    const m = buildModule("tunnel", 0);
     expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
-    const moved: ModuleSolutionsFile = { ...MODULE_SOLUTIONS, modules: { ...MODULE_SOLUTIONS.modules, plaine: { ...MODULE_SOLUTIONS.modules.plaine!, variants: [{ ...MODULE_SOLUTIONS.modules.plaine!.variants[0]!, grid: "00000000" }] } } };
+    const moved: ModuleSolutionsFile = { ...MODULE_SOLUTIONS, modules: { ...MODULE_SOLUTIONS.modules, tunnel: { ...MODULE_SOLUTIONS.modules.tunnel!, variants: [{ ...MODULE_SOLUTIONS.modules.tunnel!.variants[0]!, grid: "00000000" }] } } };
     expect(staleReason(moved, m)).toMatch(/relancer solve:modules/);
     expect(staleReason({ ...MODULE_SOLUTIONS, jumpSimVersion: JUMP_SIM_VERSION - 1 }, m)).toMatch(/relancer solve:modules/);
     expect(staleReason({ ...MODULE_SOLUTIONS, exigenceVersion: EXIGENCE_VERSION + 1 }, m)).toMatch(/relancer solve:modules/);
     // La lecture du catalogue n'en rend aucune pour une autre version.
-    expect(moduleSolutions("plaine", 0)).not.toBeNull();
+    expect(moduleSolutions("tunnel", 0)).not.toBeNull();
   });
 
   for (const def of MODULES) {
@@ -300,10 +311,10 @@ describe("les solutions stockées", () => {
           expect(s.player.vx, where).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
           expect(s.player.y + PLAYER_HEIGHT, where).toBe(m.exitRow * T);
           expect(isCleanRun(s.player), where).toBe(true);
-          // Durée entre l'entrée et la sortie : de 1 à 6 s ; pas plus de 2 % au-dessus de la plus rapide trouvée.
+          // Durée entre l'entrée et la sortie : de 1 à 6 s (5 à 8 s pour un enchaînement long) ; pas plus de 2 % au-dessus de la plus rapide.
           const ticks = sol.exitTick - sol.entryTick;
-          expect(ticks, where).toBeGreaterThanOrEqual(MODULE_MIN_TICKS);
-          expect(ticks, where).toBeLessThanOrEqual(MODULE_MAX_TICKS);
+          expect(ticks, where).toBeGreaterThanOrEqual(def.long ? LONG_MIN_TICKS : MODULE_MIN_TICKS);
+          expect(ticks, where).toBeLessThanOrEqual(def.long ? LONG_MAX_TICKS : MODULE_MAX_TICKS);
           expect(ticks, where).toBeLessThanOrEqual(sol.fastest + Math.floor((sol.fastest * 2) / 100));
         }
       }
@@ -349,5 +360,190 @@ describe("les solutions stockées", () => {
     expect(Math.min(...RACCORD_POSITIONS)).toBeGreaterThanOrEqual(0);
     expect(Math.max(...RACCORD_POSITIONS)).toBeLessThan(DEFAULT_JUMP_PARAMS.runSpeed);
     expect(Math.max(...RACCORD_POSITIONS) - Math.min(...RACCORD_POSITIONS)).toBeGreaterThan(DEFAULT_JUMP_PARAMS.runSpeed - 30);
+  });
+});
+
+// ——— Lot 7 : mutateurs, plats, familles, enchaînements longs ———
+
+const MUT = `
+id: essai-mutateurs
+intention: Tester les mutateurs.
+etiquettes: precision
+famille: essai
+mutateurs: plafond fosse sol-friable patrouille garde ressort denivele
+format: 3
+paliers: 6 6
+repeter: large colonnes 4-4
+variante: large=1
+variante: large=2 +plafond:pics +fosse
+variante: large=1 +sol-friable +ressort
+variante: large=1 +patrouille:90 +garde
+variante: large=1 +denivele:2
+variante: large=2 +denivele:-1
+grille:
+...........
+...........
+...........
+...........
+...........
+...........
+###...#####
+###...#####
+###...#####
+
+zone plafond 3-5 1
+zone fosse 3-5 8
+zone sol-friable 0-2 6
+zone ressort 8 6
+zone patrouille o 120 aller-retour 3,3 5,3
+zone garde 5 5 <
+zone denivele 6-10
+`;
+
+describe("mutateurs (lot 7)", () => {
+  const def = parseModule(MUT);
+  const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
+
+  it("lit les zones et les mutateurs des variantes ; au plus deux par variante, six variantes, seulement ceux déclarés", () => {
+    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele"]);
+    expect(MUTATORS).toEqual(def.mutators);
+    expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
+    expect(def.mutations[0]).toEqual([]);
+    expect(def.mutations[1]).toEqual([{ name: "plafond", arg: "pics" }, { name: "fosse", arg: "" }]);
+    expect(mutationLabel(def.mutations[1]!)).toBe("+plafond:pics +fosse");
+    expect(def.mutations.every((m) => m.length <= MAX_MUTATIONS)).toBe(true);
+    const bad = (from: string, to: string) => () => parseModule(MUT.replace(from, to));
+    expect(bad("variante: large=1 +denivele:2", "variante: large=1 +denivele:2 +plafond +fosse")).toThrow(/au plus 2 mutateurs/);
+    expect(bad("variante: large=1 +denivele:2", "variante: large=1 +vent")).toThrow(/non accepté/);
+    expect(bad("variante: large=1 +denivele:2", "variante: large=1 +denivele")).toThrow(/argument/);
+    expect(bad("variante: large=1 +denivele:2", "variante: large=1 +plafond:lave")).toThrow(/argument/);
+    expect(bad("zone garde 5 5 <", "zone garde 5 5 x")).toThrow(/zone garde/);
+    expect(bad("zone denivele 6-10", "zone denivele 6-9")).toThrow(/dernière colonne/);
+    expect(bad("zone ressort 8 6\n", "")).toThrow(/sans zone/);
+    expect(bad("mutateurs: plafond fosse", "mutateurs: fosse")).toThrow(/absent de « mutateurs: »/);
+    expect(bad("variante: large=1 +denivele:2", "variante: large=1")).toThrow(/identiques/);
+    expect(() => parseModule(MUT.replace("variante: large=1\n", "variante: large=1\nvariante: large=3\n"))).toThrow(/au plus 6/);
+  });
+
+  it("chaque mutateur transforme exactement sa zone du gabarit, puis le déroulé recopie la plage répétée", () => {
+    expect(grid(0)).toEqual(["...........", "...........", "...........", "...........", "...........", "...........", "###...#####", "###...#####", "###...#####"]);
+    // plafond (pics) : plein jusqu'à la rangée d'au-dessus, pics à la rangée ; fosse : le fond vide devient un fond de pics sur du plein.
+    expect(grid(1)).toEqual(["...####.....", "...vvvv.....", "............", "............", "............", "............", "###....#####", "###....#####", "###^^^^#####"]);
+    // sol-friable : x ; ressort : *.
+    expect(grid(2)).toEqual(["...........", "...........", "...........", "...........", "...........", "...........", "xxx...##*##", "###...#####", "###...#####"]);
+    // garde : un pic contre le mur ; patrouille : une scie de plus, au cycle donné.
+    expect(grid(3)[5]).toBe(".....<.....");
+    const saw = buildModuleDef(def, 3).level.saws.find((s) => s.id === "mutee")!;
+    expect(saw.cycle).toBe(90);
+    // denivele : la zone descend de 2 (la grille s'allonge), la sortie aussi ; ou monte de 1 (le bas recopie la dernière tuile).
+    const down = buildModuleDef(def, 4);
+    expect(down.exitRow).toBe(8);
+    expect(down.height).toBe(11);
+    expect(grid(4).map((r) => r.slice(6))).toEqual([".....", ".....", ".....", ".....", ".....", ".....", ".....", ".....", "#####", "#####", "#####"]);
+    const up = buildModuleDef(def, 5);
+    expect(up.exitRow).toBe(5);
+    expect(grid(5)[5]!.slice(7)).toBe("#####");
+  });
+
+  it("purs et déterministes : le gabarit ne bouge pas, deux constructions donnent le même niveau", () => {
+    const before = JSON.stringify(def);
+    for (let v = 0; v < def.variants.length; v++) {
+      const a = mutateTemplate(def, def.mutations[v]!);
+      expect(mutateTemplate(def, def.mutations[v]!)).toEqual(a);
+      expect(buildModuleDef(def, v)).toEqual(buildModuleDef(def, v));
+    }
+    expect(JSON.stringify(def)).toBe(before);
+  });
+
+  it("refuse une zone qui ne s'y prête pas (une tuile qui n'est pas ce que le mutateur attend), avec un message clair", () => {
+    const wrong = parseModule(MUT.replace("zone sol-friable 0-2 6", "zone sol-friable 0-3 6"));
+    expect(() => buildModuleDef(wrong, 2)).toThrow(/sol-friable.*au lieu d'un bloc/);
+    const blocked = parseModule(MUT.replace("zone garde 5 5 <", "zone garde 6 6 <"));
+    expect(() => buildModuleDef(blocked, 3)).toThrow(/garde.*occupée/);
+  });
+
+  it("toutes les variantes mutées du catalogue sont des morceaux conformes : paliers, hauteur, plats", () => {
+    let mutated = 0;
+    for (const def of MODULES) {
+      def.mutations.forEach((muts, v) => {
+        if (muts.length === 0) return;
+        mutated++;
+        const m = buildModule(def.id, v);
+        expect(palierProblems(m), `${def.id} v${v}`).toEqual([]);
+        expect(m.height, `${def.id} v${v}`).toBeLessThanOrEqual(MODULE_MAX_HEIGHT);
+        expect(longestFlat(m).length, `${def.id} v${v}`).toBeLessThanOrEqual(flatLimit(def.elan));
+      });
+    }
+    expect(mutated).toBeGreaterThanOrEqual(60);
+  });
+
+  it("chaque mutateur sert dans le catalogue", () => {
+    for (const name of MUTATORS) expect(MODULES.some((d) => d.mutations.some((ms) => ms.some((x) => x.name === name))), name).toBe(true);
+  });
+});
+
+describe("règle des plats (lot 7)", () => {
+  it("un plat sans défi est une suite de colonnes au même sol, sans danger dans les 3 rangées au-dessus", () => {
+    const flat = buildModuleDef(parseModule(MUT), 0);
+    // Le sol à gauche (3 colonnes), le sol à droite (5 colonnes) ; le trou coupe.
+    expect(flatsOf(flat).map((f) => f.length)).toEqual([5, 3]);
+    const spiked = buildModuleDef(parseModule(MUT.replace("###...#####\n###...#####\n###...#####", "###...##^##\n###...#####\n###...#####")), 0);
+    expect(flatsOf(spiked).map((f) => f.length)).toEqual([3, 2, 2]);
+  });
+
+  it(`aucun morceau n'a de plat sans défi de plus de ${FLAT_MAX} tuiles ; « elan » (l'élan est le défi) : ${ELAN_FLAT_MAX} au plus, et il en a besoin`, () => {
+    for (const def of MODULES) {
+      let longest = 0;
+      for (let v = 0; v < def.variants.length; v++) {
+        const f = longestFlat(buildModule(def.id, v));
+        expect(f.length, `${def.id} v${v} (colonne ${f.col}, rangée ${f.row})`).toBeLessThanOrEqual(flatLimit(def.elan));
+        longest = Math.max(longest, f.length);
+      }
+      if (def.elan) expect(longest, `${def.id} est marqué elan sans plat de plus de ${FLAT_MAX}`).toBeGreaterThan(FLAT_MAX);
+    }
+    expect(MODULES.filter((d) => d.elan).map((d) => d.id)).toEqual(["saut-long"]);
+  });
+
+  it("les respirations ne sont plus des courses à plat : chacune a au moins trois sauts à faire (trous, bosses, corniches, ressorts)", () => {
+    for (const def of MODULES.filter((d) => d.tags.includes("respiration"))) {
+      for (let v = 0; v < def.variants.length; v++) {
+        const flats = flatsOf(buildModule(def.id, v));
+        expect(flats.length, `${def.id} v${v}`).toBeGreaterThanOrEqual(3);
+      }
+    }
+  });
+});
+
+describe("familles et enchaînements longs (lot 7)", () => {
+  it("chaque morceau a une famille ; les cheminées sont une seule famille ; aucune famille ne compte plus de 5 morceaux", () => {
+    const fam = new Map<string, string[]>();
+    for (const d of MODULES) fam.set(d.family, [...(fam.get(d.family) ?? []), d.id]);
+    for (const id of ["cheminee", "cheminee-scie", "cheminee-pics"]) expect(MODULES.find((d) => d.id === id)!.family).toBe("cheminee");
+    for (const [f, ids] of fam) expect(ids.length, f).toBeLessThanOrEqual(5);
+    expect(fam.size).toBeGreaterThanOrEqual(25);
+  });
+
+  it("au moins 8 enchaînements longs, chacun de 5 à 8 s (entrée → sortie) ; les autres morceaux de 1 à 6 s", () => {
+    const longs = MODULES.filter((d) => d.long);
+    expect(longs.length).toBeGreaterThanOrEqual(8);
+    for (const def of MODULES) {
+      for (let v = 0; v < def.variants.length; v++) {
+        for (const e of MODULE_ENTRIES) {
+          const sol = moduleSolutions(def.id, v)![e]!;
+          const ticks = sol.exitTick - sol.entryTick;
+          const [lo, hi] = def.long ? [LONG_MIN_TICKS, LONG_MAX_TICKS] : [MODULE_MIN_TICKS, MODULE_MAX_TICKS];
+          expect(ticks, `${def.id} v${v} ${e}`).toBeGreaterThanOrEqual(lo);
+          expect(ticks, `${def.id} v${v} ${e}`).toBeLessThanOrEqual(hi);
+        }
+      }
+    }
+  });
+
+  it("au moins 6 morceaux finissent plus bas qu'ils ne commencent (variante 0)", () => {
+    const lower = MODULES.filter((d) => {
+      const m = buildModule(d.id, 0);
+      return m.exitRow > m.entryRow;
+    });
+    expect(lower.length).toBeGreaterThanOrEqual(6);
   });
 });

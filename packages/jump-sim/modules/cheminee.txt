@@ -1,31 +1,38 @@
 id: cheminee
-intention: Monter une cheminée en sautant d'un mur à l'autre, puis sortir par le haut.
+intention: Monter une cheminée en sautant d'un mur à l'autre, puis sortir par le haut et franchir le trou du sommet.
 etiquettes: mural vertical
-format: 2
-paliers: 17 6
-repeter: large colonnes 9-9
+famille: cheminee
+mutateurs: plafond fosse denivele
+format: 3
+paliers: 17 7
+repeter: large colonnes 4-4
 repeter: haut rangees 10-10
-variante: large=1 haut=1
-variante: large=2 haut=3
-variante: large=2 haut=6
+variante: large=1 haut=2
+variante: large=2 haut=4
+variante: large=2 haut=4 +fosse +denivele:3
+variante: large=1 haut=6 +denivele:-2
 grille:
-########.........
-########.........
-########.........
-########.........
-########.........
-########.........
-########..#######
-########..#######
-########..#######
-########..#######
-########..#######
-########..#######
-########..#######
-.#######..#######
-.#######..#######
-..........#######
-..........#######
-#################
-#################
-#################
+###...........
+###...........
+###...........
+###...........
+###...........
+###...........
+###..###......
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+.##..###...###
+.##..###...###
+.....###...###
+.....###...###
+########...###
+########...###
+########...###
+
+zone plafond 6-13 2
+zone fosse 8-10 16
+zone denivele 11-13

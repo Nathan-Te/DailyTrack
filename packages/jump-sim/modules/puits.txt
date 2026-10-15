@@ -1,33 +1,40 @@
 id: puits
-intention: Se laisser glisser contre le mur d'un puits pour ne pas manquer la porte de sortie, au-dessus des pics du fond.
+intention: Se laisser glisser contre le mur d'un puits pour ne pas manquer la porte de sortie, puis sauter le trou du couloir.
 etiquettes: mural vertical
-format: 2
+famille: puits
+mutateurs: garde fosse denivele
+format: 3
 paliers: 4 18
 repeter: large colonnes 4-4
 repeter: prof rangees 9-9
-variante: large=1 prof=1
-variante: large=2 prof=4
-variante: large=1 prof=7
+variante: large=1 prof=6
+variante: large=1 prof=4 +garde
+variante: large=2 prof=3 +fosse
+variante: large=1 prof=3 +denivele:2
 grille:
-......#########
-......#########
-......#########
-......#########
-###...#########
-###...#########
-###...#########
-###...#########
-###...#########
-###...#########
-###...#########
-###...#########
-###...#########
-###...#########
-###............
-###............
-###............
-###............
-###...#########
-###^^^#########
-###############
-###############
+......########
+......########
+......########
+......########
+###...########
+###...########
+###...########
+###...########
+###...########
+###...########
+###...########
+###...########
+###...########
+###...########
+###...........
+###...........
+###...........
+###...........
+###...###..###
+###^^^###..###
+#########..###
+#########..###
+
+zone garde 5 6-8 <
+zone fosse 9-10 20
+zone denivele 11-13

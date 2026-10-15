@@ -1,22 +1,28 @@
 id: tunnel
-intention: Traverser un tunnel bas en courant : un saut s'y cognerait la tête.
+intention: Traverser un tunnel bas semé de bosses : de petits sauts rythmés, la tête sous le plafond.
 etiquettes: respiration
-format: 2
+famille: tunnel
+mutateurs: plafond denivele
+format: 3
 paliers: 9 9
-repeter: long colonnes 9-9
+repeter: long colonnes 3-5
+variante: long=2
+variante: long=3
 variante: long=4
-variante: long=10
-variante: long=16
+variante: long=3 +plafond:pics
+variante: long=2 +denivele:2
 grille:
-....############....
-....############....
-....############....
-....############....
-....############....
-....############....
-....############....
-....................
-....................
-####################
-####################
-####################
+.###########.
+.###########.
+.###########.
+.###########.
+.###########.
+.###########.
+.............
+.............
+.....#..#....
+#############
+#############
+
+zone plafond 1-11 5
+zone denivele 12-12

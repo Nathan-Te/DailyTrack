@@ -22,7 +22,7 @@ import {
   type ModuleVariantSolutions,
 } from "../src/index";
 import { beamSolve } from "./beam";
-import { canonicalExit, elanEntry, entryState, harden, hardenScore, lostExit, measureMargins } from "./exigence";
+import { canonicalExit, elanEntry, entryState, fromCore, harden, hardenScore, lostExit, measureMargins } from "./exigence";
 import { readModules, readSolutions, writeCatalog } from "./files";
 
 // `npm run solve:modules -w @cdj/jump-sim` — le solveur hors ligne des morceaux (lots 4 et 6). Pour chaque morceau × variante × entrée
@@ -33,7 +33,7 @@ import { readModules, readSolutions, writeCatalog } from "./files";
 // `modules/solutions.json` et `src/catalog.ts`. **Incrémental** : une solution stockée est gardée tant que l'empreinte de sa grille et
 // `JUMP_SIM_VERSION` n'ont pas changé (la mesure seule est refaite si `EXIGENCE_VERSION` a changé).
 //   --force          tout re-résoudre          --only=a,b     seulement ces morceaux (les autres sont gardés tels quels)
-//   --beam=N         largeur du faisceau (800)  --workers=N    fils de calcul (tous les cœurs)
+//   --beam=N         largeur du faisceau (600 ; 800 avant le lot 7)  --workers=N    fils de calcul (tous les cœurs)
 //   --dry            ne rien écrire (mesure du temps du solveur : `measure:modules -- --solveur`)
 // Ne tourne jamais en production ni dans `npm test`.
 
@@ -58,13 +58,23 @@ interface JobResult {
 
 /** Une solution gardée peut être plus lente que la plus rapide trouvée d'au plus ce pourcentage (pour être plus tolérante). */
 const SLOWER = 2;
+/** Pas d'attente qu'une solution à l'arrêt peut perdre au début (marge de la borne des recherches suivantes). */
+const IDLE_SLACK = 48;
+/**
+ * Paquets des recherches (lot 7 : 4 et 6 pas ; 4, 6 et 8 aux lots 4 et 6). Chaque recherche coûte autant (largeur × actions × pas) : la
+ * troisième ne donnait presque jamais la solution gardée, et le catalogue a doublé (budget : moins de 20 min sur 4 fils).
+ */
+const CHUNKS = [4, 6];
 
 const args = new Map(process.argv.slice(2).map((a) => (a.includes("=") ? (a.split("=") as [string, string]) : [a, "1"])));
 
 function runJob(job: Job): JobResult {
   const t0 = performance.now();
   try {
-    const m = buildModuleDef(parseModule(job.text), job.variant);
+    const def = parseModule(job.text);
+    const m = buildModuleDef(def, job.variant);
+    // Un enchaînement long (lot 7) dure jusqu'à 8 s : la recherche va plus loin.
+    const maxTicks = def.long ? 1320 : 960;
     let inputs: number[];
     let fastest: number;
     if (job.kind === "measure") {
@@ -81,12 +91,20 @@ function runJob(job: Job): JobResult {
       }
       const goal = canonicalExit(m);
       const lost = lostExit(m);
-      // Plusieurs recherches (paquets de 4, 6 et 8 pas, à progression égale la suite la plus simple d'abord) : la plus rapide donne le temps
-      // de référence ; parmi celles qui en sont à moins de `SLOWER` près, après durcissement, la plus tolérante est gardée.
+      // Plusieurs recherches (paquets de `CHUNKS` pas, à progression égale la suite la plus simple d'abord) : la plus rapide donne le temps
+      // de référence ; parmi celles qui en sont à moins de `SLOWER` près, la plus tolérante est durcie et gardée.
       const found: number[][] = [];
-      for (const chunk of [4, 6, 8]) {
-        let f = beamSolve(m.level, { start, goal, lost, beam: job.beam, chunk, changePenalty: 128 });
-        if (!f && chunk === 4) f = beamSolve(m.level, { start, goal, lost, beam: job.beam * 3, chunk: 3 });
+      // Borne (lot 7, sans effet sur le résultat) : une fois une solution trouvée, une recherche suivante n'a pas besoin d'aller au-delà de
+      // la durée où sa solution serait écartée (plus de `SLOWER` % au-dessus de la plus rapide connue, plus `IDLE_SLACK` pas d'attente
+      // retirés au début) : une recherche vaine s'arrête là au lieu d'aller jusqu'à `maxTicks`.
+      const bound = () => {
+        if (found.length === 0) return maxTicks;
+        const cur = Math.min(...found.map((f) => f.length)) - prefix.length;
+        return Math.min(maxTicks, cur + Math.floor((cur * SLOWER) / 100) + IDLE_SLACK);
+      };
+      for (const chunk of CHUNKS) {
+        let f = beamSolve(m.level, { start, goal, lost, beam: job.beam, chunk, changePenalty: 128, maxTicks: bound() });
+        if (!f && chunk === 4) f = beamSolve(m.level, { start, goal, lost, beam: job.beam * 3, chunk: 3, maxTicks });
         if (!f) continue;
         // Le monde attend la première commande : on retire les pas d'attente du début (une rediffusion commence au premier pas commandé).
         let idle = 0;
@@ -95,14 +113,16 @@ function runJob(job: Job): JobResult {
       }
       if (found.length === 0) return { job, solution: null, ms: performance.now() - t0 };
       fastest = Math.min(...found.map((f) => f.length)) - prefix.length;
-      let best: { inputs: number[]; score: number; core: number } | null = null;
+      // Lot 7 : parmi les solutions à moins de `SLOWER` % de la plus rapide, seule la plus tolérante **avant** durcissement est durcie (à
+      // égalité, la plus courte) : le durcissement de chacune coûtait la moitié du temps du solveur (catalogue doublé, budget de 20 min).
+      let pick: { core: number[]; score: number } | null = null;
       for (const f of found) {
         if (f.length - prefix.length > fastest + Math.floor((fastest * SLOWER) / 100)) continue;
-        const hard = harden(m, job.entry, f);
-        const score = hardenScore(m, job.entry, hard.full);
-        if (!best || score > best.score || (score === best.score && hard.core.length < best.core)) best = { inputs: hard.full, score, core: hard.core.length };
+        const full = fromCore(m, job.entry, f);
+        const score = full ? hardenScore(m, job.entry, full.full) : -1;
+        if (!pick || score > pick.score || (score === pick.score && f.length < pick.core.length)) pick = { core: f, score };
       }
-      inputs = best!.inputs;
+      inputs = harden(m, job.entry, pick!.core).full;
     }
     const span = moduleSpan(m, job.entry, inputs);
     if (typeof span === "string") throw new Error(`solution non valable : ${span}`);
@@ -137,7 +157,7 @@ async function main(): Promise<void> {
   const t0 = performance.now();
   const force = args.has("--force");
   const only = args.get("--only")?.split(",") ?? null;
-  const beam = Number(args.get("--beam") ?? 800);
+  const beam = Number(args.get("--beam") ?? 600);
   const modules = readModules();
   const old = readSolutions();
   const sameSim = old?.jumpSimVersion === JUMP_SIM_VERSION;
@@ -154,7 +174,7 @@ async function main(): Promise<void> {
         const stored = keep ? prev[entry] : null;
         if (stored && old?.exigenceVersion === EXIGENCE_VERSION) vs[entry] = stored;
         else if (stored) jobs.push({ id: def.id, text, variant: v, entry, kind: "measure", code: stored.code, fastest: stored.fastest, beam });
-        else if (only && !only.includes(def.id) && prev?.grid === m.hash && prev[entry]) vs[entry] = prev[entry];
+        else if (only && !only.includes(def.id)) vs[entry] = prev?.grid === m.hash ? (prev[entry] ?? null) : null;
         else jobs.push({ id: def.id, text, variant: v, entry, kind: "solve", beam });
       }
       variants.push(vs);
@@ -167,8 +187,14 @@ async function main(): Promise<void> {
   // ——— Fils de calcul ———
   const results: JobResult[] = [];
   const workers = Math.max(1, Math.min(Number(args.get("--workers") ?? availableParallelism()), jobs.length));
-  // Les plus longues d'abord (les variantes les plus hautes) : la file se vide plus régulièrement.
-  const queue = [...jobs];
+  // Les plus longues d'abord (enchaînements longs, puis les plus grandes grilles) : la file se vide plus régulièrement (lot 7 : elle n'était
+  // pas triée, les enchaînements longs finissaient seuls sur un fil).
+  const cost = (j: Job) => {
+    const m = buildModuleDef(parseModule(j.text), j.variant);
+    return (parseModule(j.text).long ? 1e6 : 0) + m.width * m.height;
+  };
+  const costs = new Map(jobs.map((j) => [j, cost(j)]));
+  const queue = [...jobs].sort((a, b) => costs.get(b)! - costs.get(a)!);
   await Promise.all(
     Array.from({ length: workers }, () => {
       const w = new Worker(fileURLToPath(import.meta.url));

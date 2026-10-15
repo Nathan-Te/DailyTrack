@@ -41,6 +41,8 @@ import {
   UNITS_PER_TILE,
   boxHits,
   buildModule,
+  MODULES,
+  MUTATORS,
   dailyLevel,
   boxDistance2,
   circleHitsBox,
@@ -645,6 +647,30 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
       }, lv);
       expect(r.total).toBe(8_000);
     }
+    expect(deaths).toBeGreaterThan(10);
+  });
+
+  it("lot 7 : variantes mutées (chaque mutateur) et enchaînements longs, réglages par défaut et au hasard : même intégrité", () => {
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    // Une variante par mutateur (trouvée dans le catalogue), plus deux enchaînements longs.
+    const picks: [string, number][] = [];
+    for (const name of MUTATORS) {
+      const def = MODULES.find((d) => d.mutations.some((ms) => ms.some((x) => x.name === name)))!;
+      picks.push([def.id, def.mutations.findIndex((ms) => ms.some((x) => x.name === name))]);
+    }
+    for (const def of MODULES.filter((d) => d.long).slice(0, 2)) picks.push([def.id, 0]);
+    let deaths = 0;
+    for (const [k, [id, v]] of picks.entries()) {
+      const lv = buildModule(id, v).level;
+      deaths += fuzz(900 + k, 8, 1500, () => ({ ...P }), lv).deaths;
+      const r = fuzz(950 + k, 8, 800, (rng) => {
+        const p = { ...P };
+        for (const key of keys) p[key] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[key] + 2);
+        return p;
+      }, lv);
+      expect(r.total).toBe(6_400);
+    }
+    expect(picks.length).toBe(MUTATORS.length + 2);
     expect(deaths).toBeGreaterThan(10);
   });
 

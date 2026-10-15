@@ -6,6 +6,7 @@ import {
   buildModule,
   decodeReplay,
   initialAttempt,
+  mutationLabel,
   moduleSolutions,
   stepAttempt,
   UNITS_PER_TILE,
@@ -35,6 +36,8 @@ export interface VariantInfo {
   index: number;
   /** Paramètres de la variante (« haut=3 large=2 »), vide s'il n'y en a pas. */
   label: string;
+  /** Mutateurs de la variante (lot 7), écrits comme dans le fichier (« +plafond:pics +denivele:2 »), vide sans mutateur. */
+  mutations: string;
   exigence: number;
   /** Durées des solutions (pas), à l'arrêt et en élan ; null : pas de solution stockée pour cette version. */
   ticks: Record<ModuleEntry, number | null>;
@@ -44,6 +47,9 @@ export interface ModuleInfo {
   id: string;
   intention: string;
   tags: readonly ModuleTag[];
+  /** Famille (lot 7) et enchaînement long. */
+  family: string;
+  long: boolean;
   variants: VariantInfo[];
   /** Exigence la plus basse et la plus haute de ses variantes. */
   min: number;
@@ -55,15 +61,33 @@ function infoOf(id: string): ModuleInfo {
   const variants = def.variants.map((values, index) => {
     const s = moduleSolutions(id, index);
     const ticks = Object.fromEntries(MODULE_ENTRIES.map((e) => [e, s?.[e]?.ticks ?? null])) as Record<ModuleEntry, number | null>;
-    return { index, label: Object.entries(values).map(([k, v]) => `${k}=${v}`).join(" "), exigence: variantExigence(s), ticks };
+    return { index, label: Object.entries(values).map(([k, v]) => `${k}=${v}`).join(" "), mutations: mutationLabel(def.mutations[index]!), exigence: variantExigence(s), ticks };
   });
   const ex = variants.map((v) => v.exigence);
-  return { id, intention: def.intention, tags: def.tags, variants, min: Math.min(...ex), max: Math.max(...ex) };
+  return { id, intention: def.intention, tags: def.tags, family: def.family, long: def.long, variants, min: Math.min(...ex), max: Math.max(...ex) };
 }
 
 /** Les morceaux dans l'ordre de la galerie : du plus facile au plus exigeant (exigence de la variante la plus facile, puis la plus dure), puis par id. */
 export function galleryOrder(): ModuleInfo[] {
   return MODULES.map((m) => infoOf(m.id)).sort((a, b) => a.min - b.min || a.max - b.max || (a.id < b.id ? -1 : 1));
+}
+
+/** Filtre de la galerie (lot 7) : une étiquette et une famille, ou toutes (null). */
+export interface GalleryFilter {
+  tag: ModuleTag | null;
+  family: string | null;
+}
+
+/** Le morceau passe-t-il le filtre ? */
+export function matchesFilter(m: ModuleInfo, f: GalleryFilter): boolean {
+  return (f.tag === null || m.tags.includes(f.tag)) && (f.family === null || m.family === f.family);
+}
+
+/** Les familles du catalogue, dans l'ordre alphabétique, avec leur nombre de morceaux. */
+export function galleryFamilies(order: readonly ModuleInfo[]): { family: string; count: number }[] {
+  const n = new Map<string, number>();
+  for (const m of order) n.set(m.family, (n.get(m.family) ?? 0) + 1);
+  return [...n].map(([family, count]) => ({ family, count })).sort((a, b) => (a.family < b.family ? -1 : 1));
 }
 
 /** Le morceau qui suit `id` dans la galerie (le premier après le dernier). */

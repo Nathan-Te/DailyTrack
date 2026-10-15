@@ -1,0 +1,35 @@
+id: paroi-friable
+intention: Remonter seul un mur de blocs friables : chaque appui le fait céder, il faut monter sans hésiter.
+etiquettes: mural friable vertical
+famille: mur
+mutateurs: garde denivele
+format: 3
+paliers: 17 5
+repeter: haut rangees 10-10
+variante: haut=1
+variante: haut=5
+variante: haut=5 +garde
+variante: haut=1 +denivele:2
+grille:
+..........
+..........
+..........
+..........
+..........
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+......x###
+##########
+##########
+
+zone garde 5 14-15 <
+zone denivele 7-9

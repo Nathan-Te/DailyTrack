@@ -13,7 +13,7 @@ import {
   type AttemptState,
 } from "@cdj/jump-sim";
 import { DayMemory, type KeyValue } from "../src/memory";
-import { LAUNCH_TILES, galleryOrder, launchTicks, nextModule, referenceTicks, solutionReplay } from "../src/modulesInfo";
+import { LAUNCH_TILES, galleryFamilies, galleryOrder, launchTicks, matchesFilter, nextModule, referenceTicks, solutionReplay } from "../src/modulesInfo";
 
 // Lot 4 : le catalogue des morceaux vu par le jeu (logique pure) et la mémoire par morceau.
 
@@ -66,35 +66,65 @@ describe("galerie", () => {
   });
 
   it("en élan, le temps de référence compte le couloir de lancement : droite tenue depuis l'arrêt jusqu'au départ du morceau", () => {
-    const t = launchTicks("plaine", 0);
+    const t = launchTicks("tunnel", 0);
     expect(t).toBeGreaterThan(20);
     expect(t).toBeLessThan(80);
-    const run = buildModule("plaine", 0, { lancement: LAUNCH_TILES });
+    const run = buildModule("tunnel", 0, { lancement: LAUNCH_TILES });
     const s: AttemptState = runAttempt(initialAttempt(run.level), new Array(t).fill(INPUT_RIGHT), run.level, DEFAULT_JUMP_PARAMS);
     expect(s.player.vx).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
-    expect(referenceTicks("plaine", 0, "elan")).toBe(moduleSolutions("plaine", 0)!.elan!.ticks + t);
-    expect(referenceTicks("plaine", 0, "arret")).toBe(moduleSolutions("plaine", 0)!.arret!.ticks);
+    expect(referenceTicks("tunnel", 0, "elan")).toBe(moduleSolutions("tunnel", 0)!.elan!.ticks + t);
+    expect(referenceTicks("tunnel", 0, "arret")).toBe(moduleSolutions("tunnel", 0)!.arret!.ticks);
     // Et en pratique : droite tenue sur le couloir, puis la solution en élan, finit le morceau à peu près au temps de référence.
-    const elan = fromRuns(solutionReplay("plaine", 0, "elan")!.runs);
+    const elan = fromRuns(solutionReplay("tunnel", 0, "elan")!.runs);
     const done = runAttempt(initialAttempt(run.level), [...new Array(t).fill(INPUT_RIGHT), ...elan, ...new Array(60).fill(INPUT_RIGHT)], run.level, DEFAULT_JUMP_PARAMS);
     expect(done.status).toBe(ATTEMPT_FINISHED);
-    expect(Math.abs(done.time - referenceTicks("plaine", 0, "elan")!)).toBeLessThanOrEqual(2);
+    expect(Math.abs(done.time - referenceTicks("tunnel", 0, "elan")!)).toBeLessThanOrEqual(2);
   });
 });
 
 describe("mémoire d'un morceau", () => {
   it("rangée sous `module:<id>:<n>:<entrée>`, ses rediffusions portent `module:<id>:<n>` ; arrêt et élan ne se mélangent pas", () => {
     const store = new MemStore();
-    const plain = buildModule("plaine", 0);
-    const run = buildModule("plaine", 0, { lancement: LAUNCH_TILES });
+    const plain = buildModule("tunnel", 0);
+    const run = buildModule("tunnel", 0, { lancement: LAUNCH_TILES });
     const today = () => "2026-10-15";
     const a = new DayMemory({ store, level: plain.level, levelId: plain.levelId, key: `${plain.levelId}:arret`, today });
     a.recordDeath({ x: 4096, y: 4096, cause: 1 }, false);
     const b = new DayMemory({ store, level: run.level, levelId: run.levelId, key: `${run.levelId}:elan`, today });
     b.recordDeath({ x: 8192, y: 4096, cause: 1 }, false);
-    expect(store.getItem("jump:morts:module:plaine:0:arret")).not.toBeNull();
-    expect(store.getItem("jump:morts:module:plaine:0:elan")).not.toBeNull();
+    expect(store.getItem("jump:morts:module:tunnel:0:arret")).not.toBeNull();
+    expect(store.getItem("jump:morts:module:tunnel:0:elan")).not.toBeNull();
     expect(new DayMemory({ store, level: plain.level, levelId: plain.levelId, key: `${plain.levelId}:arret`, today }).deaths).toHaveLength(1);
     expect(new DayMemory({ store, level: run.level, levelId: run.levelId, key: `${run.levelId}:elan`, today }).deaths).toHaveLength(1);
+  });
+});
+
+describe("galerie : filtres et mutateurs (lot 7)", () => {
+  const order = galleryOrder();
+
+  it("chaque carte porte sa famille, son enchaînement long et, pour chaque variante, ses mutateurs écrits comme dans le fichier", () => {
+    for (const m of order) {
+      const def = MODULES.find((d) => d.id === m.id)!;
+      expect(m.family).toBe(def.family);
+      expect(m.long).toBe(def.long);
+      m.variants.forEach((v) => expect(v.mutations).toBe(def.mutations[v.index]!.map((x) => `+${x.name}${x.arg ? `:${x.arg}` : ""}`).join(" ")));
+    }
+    expect(order.some((m) => m.variants.some((v) => v.mutations !== ""))).toBe(true);
+  });
+
+  it("le filtre garde exactement les morceaux qui portent l'étiquette et appartiennent à la famille ; sans filtre, tous", () => {
+    expect(order.filter((m) => matchesFilter(m, { tag: null, family: null }))).toHaveLength(order.length);
+    const ressorts = order.filter((m) => matchesFilter(m, { tag: "ressort", family: null }));
+    expect(ressorts.map((m) => m.id).sort()).toEqual(MODULES.filter((d) => d.tags.includes("ressort")).map((d) => d.id).sort());
+    const chem = order.filter((m) => matchesFilter(m, { tag: null, family: "cheminee" }));
+    expect(chem.map((m) => m.id)).toContain("cheminee-scie");
+    expect(chem.every((m) => m.family === "cheminee")).toBe(true);
+    expect(order.filter((m) => matchesFilter(m, { tag: "scie", family: "cheminee" })).every((m) => m.tags.includes("scie") && m.family === "cheminee")).toBe(true);
+  });
+
+  it("la liste des familles : chacune une fois, dans l'ordre alphabétique, avec son nombre de morceaux", () => {
+    const fams = galleryFamilies(order);
+    expect(fams.map((f) => f.family)).toEqual([...new Set(MODULES.map((d) => d.family))].sort());
+    expect(fams.reduce((n, f) => n + f.count, 0)).toBe(order.length);
   });
 });

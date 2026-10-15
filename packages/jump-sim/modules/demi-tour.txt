@@ -1,27 +1,36 @@
 id: demi-tour
 intention: Sauter contre le bas d'un mur hérissé, rebondir en arrière sur une corniche, puis repartir par-dessus le mur.
 etiquettes: mural
-format: 2
+famille: demi-tour
+mutateurs: sol-friable plafond denivele
+format: 3
 paliers: 15 8
-repeter: ecart colonnes 10-10
+repeter: ecart colonnes 6-6
 variante: ecart=1
 variante: ecart=2
 variante: ecart=4
+variante: ecart=2 +sol-friable
+variante: ecart=1 +plafond
+variante: ecart=2 +denivele:-2
 grille:
-....................
-....................
-....................
-....................
-....................
-....................
-....................
-....................
-.............#######
-............<#######
-......###...<#######
-............<#######
-.............#######
-.............#######
-.............#######
-####################
-####################
+.............
+.............
+.............
+.............
+.............
+.............
+.............
+.............
+.........####
+........<####
+..###...<####
+........<####
+.........####
+.........####
+......^^^####
+#############
+#############
+
+zone sol-friable 2-4 10
+zone plafond 0-7 5
+zone denivele 9-12
