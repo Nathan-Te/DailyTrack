@@ -173,7 +173,8 @@ test("passage de minuit : la partie continue, « Nouveau niveau disponible », p
       const j = (window as unknown as { __jump: JumpDebug }).__jump;
       j.manual(true);
       j.input(2);
-      j.advance(30);
+      // Lot 7 : 15 pas seulement (sur le palier de départ) : 60 pas droite tenue menaient dans le premier morceau, qui peut tuer un coureur.
+      j.advance(15);
     });
     let j = await jump(page);
     expect(j.daily).toMatchObject({ date: "2026-10-20", newDay: false });
@@ -183,7 +184,7 @@ test("passage de minuit : la partie continue, « Nouveau niveau disponible », p
     await expect(page.locator("#daynote")).toContainText("Nouveau niveau disponible");
     // La partie en cours continue sur le niveau d'hier.
     const x = j.player.x;
-    await page.evaluate(() => (window as unknown as { __jump: JumpDebug }).__jump.advance(30));
+    await page.evaluate(() => (window as unknown as { __jump: JumpDebug }).__jump.advance(15));
     j = await jump(page);
     expect(j.daily!.date).toBe("2026-10-20");
     expect(j.phase).toBe("playing");

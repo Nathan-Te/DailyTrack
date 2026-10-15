@@ -7044,158 +7044,96 @@
   "toboggan": {
    "variants": [
     {
-     "grid": "6f96051f",
+     "grid": "f21c0c1f",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjAAgg4m4gk",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjAAugQu6gRGigV--gc",
       "ticks": 384,
       "entryTick": 0,
       "exitTick": 377,
       "fastest": 377,
       "gigue": [
        1000,
-       1000,
-       1000
+       940,
+       530
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 3
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjAEihAmggc",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjAE0gM-6gRGigWWAeIH",
       "ticks": 373,
       "entryTick": 17,
       "exitTick": 366,
       "fastest": 349,
       "gigue": [
        1000,
-       1000,
-       1000
+       880,
+       705
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
-     "grid": "38cf64ae",
+     "grid": "62479773",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEAogkmogMmig0",
-      "ticks": 417,
-      "entryTick": 0,
-      "exitTick": 410,
-      "fastest": 410,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1
-     },
-     "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEE6gUmqhM",
-      "ticks": 406,
-      "entryTick": 17,
-      "exitTick": 399,
-      "fastest": 382,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": 1000,
-      "exigence": 1
-     }
-    },
-    {
-     "grid": "e0869c33",
-     "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIAogsmggUmogc",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEAqgQ-8gQ-ggVOsgg",
       "ticks": 384,
       "entryTick": 0,
       "exitTick": 377,
       "fastest": 377,
       "gigue": [
        1000,
-       1000,
-       1000
+       925,
+       635
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIEihAmggc",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEE4gM24gRG-gSWAfIH",
       "ticks": 373,
       "entryTick": 17,
       "exitTick": 366,
       "fastest": 349,
       "gigue": [
        1000,
-       1000,
-       1000
+       915,
+       680
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
-     "grid": "fa3e6e29",
+     "grid": "719561ed",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjMAogkmogMmig0",
-      "ticks": 417,
-      "entryTick": 0,
-      "exitTick": 410,
-      "fastest": 410,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1
-     },
-     "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjME6gUmqhM",
-      "ticks": 406,
-      "entryTick": 17,
-      "exitTick": 399,
-      "fastest": 382,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": 1000,
-      "exigence": 1
-     }
-    },
-    {
-     "grid": "326412ed",
-     "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjQAgg4m4gk",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIAmgRG-gQ-8gRWugg",
       "ticks": 384,
       "entryTick": 0,
       "exitTick": 377,
       "fastest": 377,
       "gigue": [
        1000,
-       1000,
-       1000
+       925,
+       645
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjQEihAmggc",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIE2gM-4gRGigVGsgg",
       "ticks": 373,
       "entryTick": 17,
       "exitTick": 366,
       "fastest": 349,
       "gigue": [
        1000,
-       1000,
-       1000
+       865,
+       575
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 3
      }
     }
    ]

@@ -125,10 +125,11 @@ test.describe("au doigt (téléphone en paysage)", () => {
   const VIEW = { width: 844, height: 390 };
   const at = { right: [VIEW.width * 0.37, VIEW.height * 0.75], jump: [VIEW.width * 0.75, VIEW.height * 0.75] } as const;
 
-  test("?module=pont-friable se joue au doigt : courir jusqu'au bout, passer le carnage, lire le bandeau, recommencer", async ({ browser }) => {
+  // Lot 7 : `descente` (une respiration : on s'y laisse tomber en courant) ; le pont friable a maintenant des trous à sauter.
+  test("?module=descente se joue au doigt : courir jusqu'au bout, passer le carnage, lire le bandeau, recommencer", async ({ browser }) => {
     test.setTimeout(120_000);
     await withPhone(browser, VIEW, async (page) => {
-      test.skip(!(await open(page, "?module=pont-friable&variante=1&touch=1&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
+      test.skip(!(await open(page, "?module=descente&variante=1&touch=1&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       const fingers = await Fingers.on(page);
       await fingers.down(1, ...at.right);
       await page.waitForFunction(() => (window as unknown as { __jump: ModuleDebug }).__jump.touch.bits === 2);
