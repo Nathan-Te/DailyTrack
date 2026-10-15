@@ -1,5 +1,5 @@
 id: cheminee-scie
-intention: Monter une cheminée large pendant qu'une scie va et vient dans son bas : la croiser au bon moment.
+intention: Monter une cheminée large pendant qu'une scie va et vient dans sa partie haute : la croiser au bon moment.
 etiquettes: mural scie vertical
 paliers: 17 6
 repeter: haut rangees 10-10
