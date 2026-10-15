@@ -7,6 +7,8 @@ import {
   DEATH_FALL,
   DEATH_SAW,
   DEATH_SPIKE,
+  INPUT_LEFT,
+  INPUT_RIGHT,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
   TICK_RATE,
@@ -33,6 +35,9 @@ import {
 //   - glisse : `slide` passe de 0 à ±1 (début) ou revient à 0 (fin, aussi à la mort et à l'arrivée).
 //   - mort, réapparition, point de passage, arrivée : transitions de `status` et de `checkpoint`.
 //   - ressort : `springTime` / `springCell` changent ; friable : minuterie lancée (craque), bloc tombé (tombe).
+//   - dérapage (lot 8b) : au sol avant et après, la commande vient de passer à l'opposé du mouvement (demi-tour) alors que la vitesse est
+//     d'au moins `SKID_SPEED` × la course. Seul événement qui lit les commandes (celle du pas et celle d'avant, `EventInputs`) : sans
+//     elles (héros du carnage), pas de dérapage.
 
 export type DeathCauseName = "pic" | "scie" | "chute";
 
@@ -67,6 +72,8 @@ export type GameEvent =
   /** Position : le centre du bloc friable. */
   | (Base & { kind: "friableCraque"; index: number })
   | (Base & { kind: "friableTombe"; index: number })
+  /** Lot 8b : demi-tour au sol à vitesse. `side` : sens du mouvement avant le demi-tour (la poussière part devant) ; `speed` : tuiles/s. */
+  | (Base & { kind: "derapage"; side: number; speed: number })
   /** Médaille obtenue à l'arrivée sur le niveau du jour (le jeu la pousse : la simulation ne connaît pas les médailles). */
   | (Base & { kind: "medaille"; medal: JumpMedal });
 
@@ -88,6 +95,7 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "friableCraque",
   "friableTombe",
   "medaille",
+  "derapage",
 ];
 
 /** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
@@ -95,6 +103,17 @@ export const STRIDE_TILES = 1.5;
 const STRIDE = STRIDE_TILES * UNITS_PER_TILE;
 /** « Pleine vitesse » : au moins cette part de la vitesse de course (poussière de course, traînée). */
 export const FULL_SPEED = 0.92;
+
+/** Lot 8b : un demi-tour au sol dérape à partir de cette part de la vitesse de course. */
+export const SKID_SPEED = 0.6;
+
+/** Commandes du pas joué et du pas d'avant (bits `INPUT_*`) : seul le dérapage s'en sert. */
+export interface EventInputs {
+  bits: number;
+  prevBits: number;
+}
+
+const dirOf = (bits: number) => (bits & INPUT_RIGHT ? 1 : 0) - (bits & INPUT_LEFT ? 1 : 0);
 
 const T = UNITS_PER_TILE;
 const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SAW]: "scie", [DEATH_FALL]: "chute" };
@@ -120,7 +139,15 @@ export function jumpedBetween(prev: Readonly<PlayerState>, cur: Readonly<PlayerS
  * Événements survenus entre deux états successifs d'un essai (`prev` → `cur`, un pas de `stepAttempt`). Pure : ne modifie rien.
  * `tick` et `source` sont recopiés dans chaque événement. Un « recommencer » n'est pas un pas : le jeu ne compare pas à travers lui.
  */
-export function eventsBetween(prev: Readonly<AttemptState>, cur: Readonly<AttemptState>, level: Level, params: Readonly<JumpParams>, tick = 0, source: EventSource = "jeu"): GameEvent[] {
+export function eventsBetween(
+  prev: Readonly<AttemptState>,
+  cur: Readonly<AttemptState>,
+  level: Level,
+  params: Readonly<JumpParams>,
+  tick = 0,
+  source: EventSource = "jeu",
+  inputs?: Readonly<EventInputs>,
+): GameEvent[] {
   const out: GameEvent[] = [];
   if (prev === cur) return out;
   const p = prev.player;
@@ -156,6 +183,13 @@ export function eventsBetween(prev: Readonly<AttemptState>, cur: Readonly<Attemp
     if (a !== b) {
       const speed = (Math.abs(c.vx) * TICK_RATE) / T;
       out.push({ ...at(c), kind: "pas", y: feetY(c), speed, cadence: speed / STRIDE_TILES, full: Math.abs(c.vx) >= params.runSpeed * FULL_SPEED });
+    }
+  }
+  if (inputs && p.ground === 1 && c.ground === 1 && p.vx !== 0) {
+    const moving = p.vx > 0 ? 1 : -1;
+    const dir = dirOf(inputs.bits);
+    if (dir === -moving && dirOf(inputs.prevBits) !== dir && Math.abs(p.vx) >= params.runSpeed * SKID_SPEED) {
+      out.push({ ...at(c), kind: "derapage", y: feetY(c), side: moving, speed: (Math.abs(p.vx) * TICK_RATE) / T });
     }
   }
   const ends = cur.status === ATTEMPT_DEAD || cur.status === ATTEMPT_FINISHED;

@@ -15,6 +15,7 @@ import {
   PLAYER_WIDTH,
   RESPAWN_TICKS,
   SANDBOX_LEVEL,
+  SPRINT_TRIAL_PARAMS,
   TICK_RATE,
   UNITS_PER_TILE,
   decodeReplay,
@@ -42,7 +43,7 @@ import { DayMemory, browserStorage, clearAll, loadGhostSetting, saveGhostSetting
 import { stainFor } from "./stains";
 import { followCamera, snapCamera, type CameraView, type Follow } from "./camera";
 import { Controls } from "./input";
-import { animateLook, onStep, restLook, type Look } from "./look";
+import { animateLook, motionOf, onSkid, onStep, restLook, stridePhase, type FeetPose, type Look } from "./look";
 import { BurstMesh, BurstPool, Shake } from "./fx";
 import { mountHud } from "./hud";
 import { FixedStepper } from "./loop";
@@ -56,7 +57,7 @@ import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modu
 import { dailyHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
 import { browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
 import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
-import { CarnageFilter, EventLog, FULL_SPEED, causeName, eventsBetween, type GameEvent } from "./events";
+import { CarnageFilter, EventLog, causeName, eventsBetween, type GameEvent } from "./events";
 import { JumpAudio, type AudioDebug } from "./audio";
 import { sawMix } from "./audioLogic";
 import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColors, feelEvent, slideSpark } from "./feel";
@@ -216,6 +217,12 @@ export interface JumpDebug {
    * pas** et le dessin **par image** (le rendu logiciel fait peu d'images, donc beaucoup de pas par image : ces deux-là se comparent).
    */
   readonly frameTimes: { mean: number; p95: number; frames: number; stepMs: number; drawMs: number; reset(): void };
+  /**
+   * Lot 8b : l'animation du personnage (affichage seul) : pose des pieds, distance parcourue au sol (tuiles) et phase du cycle des pieds
+   * (0 à 1, un cycle = deux pas), pieds (bas-milieu de la boîte, tuiles, y vers le haut), rebond (tuiles), penché (rad), respiration,
+   * dérapage, et l'amplitude des mouvements du corps permise par les réglages (`body`).
+   */
+  readonly look: { pose: FeetPose; stride: number; phase: number; feet: number[]; bob: number; lean: number; breath: number; skid: number; squash: number; body: number };
 }
 
 /** Le niveau du jour tel que `__jump.daily` le montre (lot 5). */
@@ -307,6 +314,8 @@ document.documentElement.style.background = `#${palette.background.toString(16).
 
 // Réglages : les défauts, sauf en `?debug&tune` où le panneau reprend ceux qu'on avait laissés (`jump:tune`).
 const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS };
+// Lot 8b : `?debug&tune&sprint=1` : l'essai d'élan progressif, aux valeurs de départ (la partie est `tuned`).
+if (options.sprint) Object.assign(params, SPRINT_TRIAL_PARAMS);
 
 // ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
 // Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
@@ -382,6 +391,8 @@ let phase: Phase = "loading";
 let manual = false;
 let injected: number | null = null;
 let look: Look = restLook();
+/** Lot 8b : l'allure du héros du carnage (il court comme le personnage). */
+let heroLook: Look = restLook();
 const controls = new Controls();
 const stepper = new FixedStepper();
 
@@ -488,6 +499,7 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
   camera = snapCamera(follow(run.hero.state.player), scene.frame);
   stepper.reset();
   phase = "carnage";
+  heroLook = restLook();
   hud.carnage(carnageLabel(run.total, 0));
   return true;
 }
@@ -540,6 +552,8 @@ function stepCarnage(): void {
     if (carnageFilter.admit(ev)) lifeEvents.push(ev);
   }
   const h = c.run.hero;
+  if (h.state.status !== ATTEMPT_DEAD && h.prev.status !== ATTEMPT_DEAD && h.state !== h.prev) heroLook = onStep(heroLook, h.prev.player, h.state.player, DEFAULT_JUMP_PARAMS.fallSpeed);
+  else if (h.state.status === ATTEMPT_DEAD) heroLook = restLook();
   dispatch([...eventsBetween(h.prev, h.state, level, DEFAULT_JUMP_PARAMS, tick, "heros"), ...lifeEvents]);
   hud.carnage(carnageLabel(c.run.total, c.run.arrivals));
   if (c.run.done) endCarnage();
@@ -570,6 +584,10 @@ function dispatch(events: readonly GameEvent[]): void {
       if (e.kind === "glisseDebut") slideSide = e.side;
       else if (e.kind === "glisseFin" || e.kind === "mort" || e.kind === "reapparition" || e.kind === "arrivee") slideSide = 0;
       if (e.kind === "reapparition") trail.clear();
+    }
+    if (e.kind === "derapage") {
+      if (e.source === "jeu") look = onSkid(look, e.side);
+      else if (e.source === "heros") heroLook = onSkid(heroLook, e.side);
     }
   }
   audio.handle(events);
@@ -646,10 +664,11 @@ function stepOnce(): void {
     return;
   }
   const bits = watching ? (watchInputs[watchIndex++] ?? 0) : (injected ?? controls.sample());
+  const prevBits = lastBits;
   lastBits = bits;
   const prev = session.state;
   const event = session.step(bits);
-  dispatch(eventsBetween(prev, session.state, level, session.params, eventTick++, "jeu"));
+  dispatch(eventsBetween(prev, session.state, level, session.params, eventTick++, "jeu", { bits, prevBits }));
   if (session.state.status !== ATTEMPT_DEAD && prev.status !== ATTEMPT_DEAD) look = onStep(look, prev.player, session.state.player, session.params.fallSpeed);
   ghost?.sync(session.state.time);
   if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
@@ -970,6 +989,9 @@ const info: JumpDebug = {
   get settings() {
     return { ...settings };
   },
+  get look() {
+    return { pose: look.pose, stride: look.stride, phase: stridePhase(look.stride), feet: [...look.feet], bob: look.bob, lean: look.lean, breath: look.breath, skid: look.skid, squash: look.squash, body: levels.body };
+  },
   get menu() {
     return { open: menuOpen };
   },
@@ -1142,11 +1164,11 @@ function draw(alpha: number, dt: number): void {
   const b = sb.player;
   const x = (a.x + (b.x - a.x) * alpha) / T;
   const y = (a.y + (b.y - a.y) * alpha) / T;
-  look = animateLook(look, dt, (-b.vy * TICK_RATE) / T);
+  look = animateLook(look, dt, motionOf(b, session.params.runSpeed, session.params.fallSpeed), levels.body);
   const alive = sb.status !== ATTEMPT_DEAD;
   scene.setPlayer({ x, y, look, visible: alive, blink: blink.update(dt), squashAmount: levels.squash });
   scene.setWorld(sa, sb, alpha, clock);
-  feelFrame(scene, sb, x, y, alive, dt);
+  feelFrame(scene, sb, x, y, alive, dt, session.params.runSpeed);
   drawGhost(alpha);
   // Mort : la caméra reste où l'on est mort (l'éclatement se voit) ; le nouvel essai la repose au départ.
   if (sb.status !== ATTEMPT_DEAD) {
@@ -1163,9 +1185,11 @@ function draw(alpha: number, dt: number): void {
  * Lot 8, à chaque image : traînée à pleine vitesse, frottement de la glisse (tant qu'elle dure, d'après les événements), scies audibles
  * (les trois plus proches du personnage, stéréo selon leur position). `x`, `y` : coin haut-gauche affiché du personnage (tuiles).
  */
-function feelFrame(sc: JumpScene, st: Readonly<AttemptState>, x: number, y: number, alive: boolean, dt: number): void {
-  const fast = alive && Math.abs(st.player.vx) >= DEFAULT_JUMP_PARAMS.runSpeed * FULL_SPEED;
-  if (levels.continuous) trail.update(dt, x, y, fast && !menuOpen);
+function feelFrame(sc: JumpScene, st: Readonly<AttemptState>, x: number, y: number, alive: boolean, dt: number, runSpeed: number): void {
+  // Lot 8b : la traînée seulement à pleine vitesse ou en élan (au-delà de la course : un peu plus marquée).
+  const speed = Math.abs(st.player.vx);
+  const fast = alive && speed >= runSpeed;
+  if (levels.continuous) trail.update(dt, x, y, fast && !menuOpen, 1 + Math.max(0, speed - runSpeed) / Math.max(1, runSpeed));
   else trail.clear();
   sc.setTrail(trail.points);
   slideClock += dt;
@@ -1196,16 +1220,16 @@ function drawGhost(alpha: number): void {
   else ghostMesh.set(poseBetween(g.prev.player, gs.player, alpha), null);
 }
 
-const CARNAGE_LOOK = restLook();
 
 /** Le carnage : le héros (le personnage, avec ses yeux), la foule (un carré translucide par vie), le monde du héros, la caméra sur lui. */
 function drawCarnage(sc: NonNullable<typeof scene>, c: CarnageRun, alpha: number, dt: number): void {
   const h = c.run.hero;
   const hero = poseBetween(h.prev.player, h.state.player, alpha);
   const heroAlive = h.state.status !== ATTEMPT_DEAD;
-  sc.setPlayer({ ...hero, look: CARNAGE_LOOK, visible: heroAlive, blink: blink.update(dt) });
+  heroLook = animateLook(heroLook, dt, motionOf(h.state.player, DEFAULT_JUMP_PARAMS.runSpeed, DEFAULT_JUMP_PARAMS.fallSpeed), levels.body);
+  sc.setPlayer({ ...hero, look: heroLook, visible: heroAlive, blink: blink.update(dt), squashAmount: levels.squash });
   sc.setWorld(h.prev, h.state, alpha, clock);
-  feelFrame(sc, h.state, hero.x, hero.y, heroAlive, dt);
+  feelFrame(sc, h.state, hero.x, hero.y, heroAlive, dt, DEFAULT_JUMP_PARAMS.runSpeed);
   const lives = c.run.lives;
   for (let i = 0; i < lives.length; i++) {
     const life = lives[i]!;

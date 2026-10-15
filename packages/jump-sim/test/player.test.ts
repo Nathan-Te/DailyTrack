@@ -9,6 +9,7 @@ import {
   PLAYER_WIDTH,
   SANDBOX_LEVEL,
   SANDBOX_MARKS,
+  SPRINT_TRIAL_PARAMS,
   TILE_SOLID,
   boxHits,
   initialPlayer,
@@ -16,6 +17,7 @@ import {
   playerMode,
   stepPlayer,
   tileAt,
+  type JumpParamKey,
   type JumpParams,
   type Level,
   type PlayerState,
@@ -541,13 +543,19 @@ describe("intégrité (fuzz)", () => {
   });
 
   it("réglages au hasard (de 0 à 3 fois le défaut, et des extrêmes) : même intégrité", () => {
-    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
     const total = fuzz(7, 60, 1000, (rng) => {
       const p = { ...P };
       for (const k of keys) p[k] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[k] + 2);
       return p;
     });
     expect(total).toBe(60_000);
+  });
+
+  it("lot 8b : élan progressif allumé (valeurs de départ, puis au hasard) : même intégrité", () => {
+    expect(fuzz(8, 30, 1500, () => ({ ...P, ...SPRINT_TRIAL_PARAMS }))).toBe(45_000);
+    const total = fuzz(81, 40, 1000, (rng) => ({ ...P, sprintMode: 1, sprintSpeed: rng.int(4000), sprintDelay: rng.int(300), sprintAccel: rng.chance(10) ? rng.int(5000) : rng.int(40) }));
+    expect(total).toBe(40_000);
   });
 });
 

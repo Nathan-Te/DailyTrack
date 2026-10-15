@@ -226,6 +226,10 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       // Poussière de course à pleine vitesse seulement.
       if (e.full && levels.continuous) pool.emit({ ...dust, life: 0.35, size: 0.14, x, y: y + 0.05, count: 2, angle: UP, spread: 0.9, vmin: 0.8, vmax: 2, jitter: 0.3 });
       break;
+    case "derapage":
+      // Lot 8b : poussière soulevée devant, dans le sens du mouvement (le pied avant freine).
+      pool.emit({ ...dust, life: 0.4, size: 0.15, x: x + e.side * 0.3, y: y + 0.05, count: 6, angle: e.side > 0 ? 0.55 : Math.PI - 0.55, spread: 0.45, vmin: 1.5, vmax: 4.5, jitter: 0.25 });
+      break;
     case "friableCraque":
       pool.emit({ x, y: y + 0.4, count: 3, angle: UP, spread: 1, vmin: 1, vmax: 3, life: 0.4, size: 0.12, gravity: -25, drag: 1, colors: colors.crumble, jitter: 0.8 });
       break;
@@ -262,13 +266,21 @@ export function slideSpark(pool: Particles, colors: FeelColors, x: number, y: nu
 export const TRAIL_LENGTH = 5;
 export const TRAIL_EVERY = 0.03;
 
-/** Traînée à pleine vitesse : les dernières positions, de plus en plus pâles ; elle s'efface d'elle-même à l'arrêt. */
+/** Opacité de la première image de la traînée (lot 8b : 0,14 au lieu de 0,24, plus discrète). */
+export const TRAIL_ALPHA = 0.14;
+
+/**
+ * Traînée à pleine vitesse : les dernières positions, de plus en plus pâles ; elle s'efface d'elle-même à l'arrêt. Lot 8b : seulement à
+ * pleine vitesse ou en élan (`active`), un peu plus marquée en élan (`strength`, de 1 à 1,5).
+ */
 export class Trail {
   readonly points: { x: number; y: number; alpha: number }[] = [];
   private since = 0;
   private fade = 0;
+  private strength = 1;
 
-  update(dt: number, x: number, y: number, active: boolean): void {
+  update(dt: number, x: number, y: number, active: boolean, strength = 1): void {
+    this.strength = Math.max(0, Math.min(1.5, strength));
     this.fade = Math.max(0, Math.min(1, this.fade + (active ? dt * 6 : -dt * 5)));
     this.since += dt;
     if (this.since >= TRAIL_EVERY) {
@@ -276,7 +288,7 @@ export class Trail {
       this.points.unshift({ x, y, alpha: 1 });
       if (this.points.length > TRAIL_LENGTH) this.points.length = TRAIL_LENGTH;
     }
-    for (let i = 0; i < this.points.length; i++) this.points[i]!.alpha = this.fade * 0.24 * (1 - i / TRAIL_LENGTH);
+    for (let i = 0; i < this.points.length; i++) this.points[i]!.alpha = this.fade * TRAIL_ALPHA * this.strength * (1 - i / TRAIL_LENGTH);
   }
 
   clear(): void {
