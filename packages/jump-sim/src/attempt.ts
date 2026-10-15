@@ -22,7 +22,8 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 //   - le chrono compte les pas jusqu'au contact de l'arrivée `F` (compris), puis se fige ;
 //   - **mort** au contact d'un pic (boîte réduite), du disque d'une scie, ou en sortant par le bas de la grille ; cause et position restent
 //     lisibles dans l'état pendant `RESPAWN_TICKS` pas (commandes ignorées), puis l'essai repart de l'**état initial exact** ;
-//   - **points de passage** (lot 2b, `C`) : en toucher un (vivant à la fin du pas) le retient ; une mort après en avoir touché un ne
+//   - **points de passage** (lot 2b, `C`) : le franchir (lot 4 : le centre du personnage, vivant à la fin du pas, passe sa colonne vers la
+//     droite, à n'importe quelle hauteur) le retient ; une mort après en avoir touché un ne
 //     termine pas l'essai : **le chrono continue** (pendant l'attente aussi) et l'on reprend sur ce point, sans attendre de commande, avec
 //     les blocs friables reposés, le ressort au repos, et les sections du point et d'après remises à l'arrêt (elles repartent à leur
 //     entrée, comme la première fois) ; les sections d'avant gardent leur cycle. Sans point touché, la mort termine l'essai (ci-dessus) ;
@@ -132,7 +133,7 @@ export interface AttemptState {
   /** Dernier ressort déclenché (indice de tuile, −1 aucun) et pas du chrono où il l'a été (pour l'affichage). */
   springCell: number;
   springTime: number;
-  /** Dernier point de passage touché (indice dans `level.checkpoints`), −1 aucun. */
+  /** Dernier point de passage franchi (indice dans `level.checkpoints`), −1 aucun. */
   checkpoint: number;
 }
 
@@ -349,11 +350,17 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
       deathTicks: 0,
     };
   }
-  // ——— Point de passage : retenu seulement si l'on est vivant à la fin du pas (jamais de reprise sur une mort) ———
-  for (let i = 0; i < level.checkpoints.length; i++) {
-    if (i === next.checkpoint) continue;
-    const c = level.checkpoints[i]!;
-    if (boxesOverlap(playerBox(player), { x: c.col * T, y: c.row * T, w: T, h: T })) return { ...next, checkpoint: i };
+  // ——— Point de passage (lot 4) : pris quand le centre du personnage, vivant à la fin du pas, **franchit sa colonne vers la droite**, à
+  // n'importe quelle hauteur (le sauter par-dessus le prend aussi) ; jamais sur une mort (on a déjà rendu l'état de la mort ci-dessus) ———
+  const before = tileOf(state.player.x + idiv(PLAYER_WIDTH, 2));
+  if (col > before) {
+    let taken = next.checkpoint;
+    // Rangés de gauche à droite, une colonne chacun : le plus à droite des points franchis pendant ce pas l'emporte.
+    for (let i = 0; i < level.checkpoints.length; i++) {
+      const c = level.checkpoints[i]!.col;
+      if (before < c && c <= col) taken = i;
+    }
+    if (taken !== next.checkpoint) return { ...next, checkpoint: taken };
   }
   return next;
 }

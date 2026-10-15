@@ -25,7 +25,8 @@ import { DEFAULT_JUMP_PARAMS, INPUT_MASK } from "./player";
 //
 // Octets (puis base64url, `@cdj/core`) :
 //   FORMAT · version de la sim (varint) · longueur de l'identifiant du niveau · identifiant (ASCII)
-//   drapeaux : bit 0 = saut tenu au départ, bit 1 = départ sur un point de passage
+//   drapeaux : bit 0 = saut tenu au départ, bit 1 = départ sur un point de passage, bit 2 = départ lancé (lot 4 : au départ `S`, au sol,
+//              à pleine vitesse vers la droite ; l'entrée « élan » des morceaux)
 //   [point de passage] : indice du point (varint) · chrono au départ (varint) · nombre de sections (varint) · par section : début + 1 (varint, 0 = à l'arrêt)
 //   séries : varint(count × 8 + bits), count ≥ 1
 // Une série de moins de 16 pas tient dans un octet ; un essai de 25 s tient dans quelques centaines d'octets.
@@ -39,13 +40,14 @@ export const JUMP_REPLAY_FORMAT = 1;
 /** Plus longue rediffusion acceptée : 10 minutes de jeu. Au-delà, l'enregistrement abandonne l'essai, le décodage refuse le texte. */
 export const MAX_ATTEMPT_TICKS = TICK_RATE * 600;
 
-/** Identifiant d'un niveau : le nom du scénario aujourd'hui (`essai`), la date plus tard (`jour-2026-10-14-g1`). */
-export const LEVEL_ID_PATTERN = /^[a-z0-9_-]{1,40}$/;
+/** Identifiant d'un niveau : le nom du scénario (`essai`), un morceau (`module:cheminee:1`, lot 4), la date plus tard (`jour-2026-10-14-g1`). */
+export const LEVEL_ID_PATTERN = /^[a-z0-9_:-]{1,40}$/;
 
 const MAX_SECTIONS = 256;
 const MAX_CHECKPOINTS = 4096;
 const FLAG_HELD = 1;
 const FLAG_CHECKPOINT = 2;
+const FLAG_ELAN = 4;
 
 /** Une série : `count` pas consécutifs avec les mêmes 3 bits de commande. */
 export interface InputRun {
@@ -63,6 +65,11 @@ export interface ReplayStart {
   time: number;
   /** Début de chaque section, en pas du chrono (−1 à l'arrêt) ; vide au départ `S` (toutes à l'arrêt). */
   sections: readonly number[];
+  /**
+   * 1 : départ **lancé** (lot 4, entrée « élan » d'un morceau) : au départ `S`, au sol, à la vitesse de course (`runSpeed` des réglages par
+   * défaut) vers la droite ; 0 : à l'arrêt. Jamais sur un point de passage.
+   */
+  elan: number;
 }
 
 export interface JumpReplay {
@@ -86,7 +93,7 @@ export class JumpReplayError extends Error {
 }
 
 /** Départ `S`, bouton relâché. */
-export const START_AT_SPAWN: ReplayStart = Object.freeze({ checkpoint: -1, held: 0, time: 0, sections: Object.freeze([]) as readonly number[] });
+export const START_AT_SPAWN: ReplayStart = Object.freeze({ checkpoint: -1, held: 0, time: 0, sections: Object.freeze([]) as readonly number[], elan: 0 });
 
 /** Nombre de pas d'une suite de séries. */
 export function runsTicks(runs: readonly InputRun[]): number {
@@ -113,9 +120,9 @@ export function fromRuns(runs: readonly InputRun[]): number[] {
   return out;
 }
 
-/** Une rediffusion d'essai (départ `S`) de cette version de la simulation. */
-export function attemptReplay(levelId: string, inputs: readonly number[], held = 0): JumpReplay {
-  return { simVersion: JUMP_SIM_VERSION, levelId, start: { ...START_AT_SPAWN, held }, runs: toRuns(inputs) };
+/** Une rediffusion d'essai (départ `S`, à l'arrêt ou lancé : `elan` = 1) de cette version de la simulation. */
+export function attemptReplay(levelId: string, inputs: readonly number[], held = 0, elan = 0): JumpReplay {
+  return { simVersion: JUMP_SIM_VERSION, levelId, start: { ...START_AT_SPAWN, held, elan: elan ? 1 : 0 }, runs: toRuns(inputs) };
 }
 
 // ——— Octets ———
@@ -133,7 +140,8 @@ export function encodeReplay(replay: JumpReplay): string {
   bytes.push(replay.levelId.length);
   for (let i = 0; i < replay.levelId.length; i++) bytes.push(replay.levelId.charCodeAt(i));
   const atCheckpoint = s.checkpoint >= 0;
-  bytes.push((s.held ? FLAG_HELD : 0) | (atCheckpoint ? FLAG_CHECKPOINT : 0));
+  if (atCheckpoint && s.elan) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
+  bytes.push((s.held ? FLAG_HELD : 0) | (atCheckpoint ? FLAG_CHECKPOINT : 0) | (s.elan ? FLAG_ELAN : 0));
   if (atCheckpoint) {
     pushVarint(bytes, s.checkpoint);
     pushVarint(bytes, s.time);
@@ -183,8 +191,9 @@ export function decodeReplay(code: string): JumpReplay {
   for (let i = 0; i < idLen; i++) levelId += String.fromCharCode(byte());
   checkLevelId(levelId);
   const flags = byte();
-  if (flags & ~(FLAG_HELD | FLAG_CHECKPOINT)) throw new JumpReplayError("format", "Drapeaux de départ inconnus");
-  const start: ReplayStart = { checkpoint: -1, held: flags & FLAG_HELD ? 1 : 0, time: 0, sections: [] };
+  if (flags & ~(FLAG_HELD | FLAG_CHECKPOINT | FLAG_ELAN)) throw new JumpReplayError("format", "Drapeaux de départ inconnus");
+  if (flags & FLAG_CHECKPOINT && flags & FLAG_ELAN) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
+  const start: ReplayStart = { checkpoint: -1, held: flags & FLAG_HELD ? 1 : 0, time: 0, sections: [], elan: flags & FLAG_ELAN ? 1 : 0 };
   if (flags & FLAG_CHECKPOINT) {
     const checkpoint = varint("Point de passage");
     const time = varint("Chrono");
@@ -222,8 +231,10 @@ export function decodeReplay(code: string): JumpReplay {
 export function replayStartState(level: Level, start: ReplayStart): AttemptState {
   if (start.checkpoint < 0) {
     const s = initialAttempt(level);
-    return start.held ? { ...s, player: { ...s.player, held: 1 } } : s;
+    if (!start.held && !start.elan) return s;
+    return { ...s, player: { ...s.player, held: start.held ? 1 : 0, vx: start.elan ? DEFAULT_JUMP_PARAMS.runSpeed : 0 } };
   }
+  if (start.elan) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
   if (start.checkpoint >= level.checkpoints.length) throw new JumpReplayError("level", `Point de passage ${start.checkpoint} absent de ce niveau`);
   if (start.sections.length !== level.sections.length) throw new JumpReplayError("level", "Nombre de sections différent de celui du niveau");
   const s = checkpointAttempt(level, { ...initialAttempt(level), checkpoint: start.checkpoint, time: start.time, sections: start.sections });
@@ -232,7 +243,7 @@ export function replayStartState(level: Level, start: ReplayStart): AttemptState
 
 /** Le départ d'une vie, lu dans l'état de la réapparition. */
 function startOf(s: Readonly<AttemptState>): ReplayStart {
-  return { checkpoint: s.checkpoint, held: s.player.held, time: s.time, sections: [...s.sections] };
+  return { checkpoint: s.checkpoint, held: s.player.held, time: s.time, sections: [...s.sections], elan: 0 };
 }
 
 export type LifeEnd = "mort" | "arrivée" | "abandon";

@@ -1,5 +1,5 @@
 {
-  "jumpSimVersion": 2,
+  "jumpSimVersion": 3,
   "params": {
     "runSpeed": 375,
     "groundAccel": 17,
@@ -305,7 +305,7 @@
     "level": "69cc9d20",
     "ticks": 2595,
     "time": 2595,
-    "trace": "6dcd718a",
+    "trace": "71466e78",
     "final": {
       "status": 3,
       "time": 2595,

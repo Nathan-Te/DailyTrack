@@ -142,6 +142,31 @@ describe("mémoire du jour", () => {
     expect(memoryOf(store).best).toBeNull();
   });
 
+  it("lot 4 : une mémoire laissée par la version 2 (points de passage touchés) est purgée au chargement, sans bruit", () => {
+    // Ce que la version 2 a réellement écrit : la solution de l'essai codée avec `JUMP_SIM_VERSION` = 2, une vie, une mort.
+    const V2_SOLUTION = "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw";
+    expect(JUMP_SIM_VERSION).toBe(3);
+    expect(decodeReplay(V2_SOLUTION).simVersion).toBe(2);
+    const store = new MemStore();
+    const fresh = memoryOf(store);
+    fresh.recordEssai(finished(), false);
+    const meta = JSON.parse(store.getItem("jump:jour:essai")!);
+    store.setItem("jump:jour:essai", JSON.stringify({ ...meta, simVersion: 2 }));
+    store.setItem("jump:meilleur:essai", JSON.stringify({ code: V2_SOLUTION, time: 2595, deaths: 0, essai: 1 }));
+    store.setItem("jump:vies:essai", JSON.stringify([{ code: V2_SOLUTION, essai: 1 }]));
+    store.setItem("jump:morts:essai", JSON.stringify([{ x: 4096, y: 4096, cause: 1 }]));
+    const m = memoryOf(store);
+    expect(m.best).toBeNull();
+    expect(m.lives).toEqual([]);
+    expect(m.deaths).toEqual([]);
+    expect(store.getItem("jump:meilleur:essai")).toBeNull();
+    // Même avec une méta à jour, une rediffusion de la version 2 n'est jamais rejouée comme meilleur essai.
+    const meta3 = JSON.parse(store.getItem("jump:jour:essai") ?? JSON.stringify({ ...meta, simVersion: 3 }));
+    store.setItem("jump:jour:essai", JSON.stringify({ ...meta3, simVersion: JUMP_SIM_VERSION, level: meta.level, day: meta.day }));
+    store.setItem("jump:meilleur:essai", JSON.stringify({ code: V2_SOLUTION, time: 2595, deaths: 0, essai: 1 }));
+    expect(memoryOf(store).best).toBeNull();
+  });
+
   it("le jour qui change en cours de partie (page restée ouverte après minuit) repart de zéro à la prochaine écriture", () => {
     const store = new MemStore();
     let day = "2026-10-14";
@@ -271,23 +296,24 @@ describe("carnage", () => {
   it("calendrier : les vies nées au départ partent avec le héros, les autres au moment où il passe leur point de passage", () => {
     const { checkpoints, heroTicks } = departures(ESSAI_LEVEL, SOLUTION);
     expect(heroTicks).toBe(2595);
-    // La solution touche les cinq points dans l'ordre.
+    // La solution passe les cinq points dans l'ordre.
     expect(checkpoints.every((t) => t > 0)).toBe(true);
     for (let c = 1; c < checkpoints.length; c++) expect(checkpoints[c]!).toBeGreaterThan(checkpoints[c - 1]!);
-    // Au pas indiqué, le héros vient de toucher le point ou d'en dépasser la colonne (la solution saute par-dessus deux points), pas avant.
+    // Au pas indiqué, le centre du héros vient de franchir la colonne du point (lot 4 : c'est aussi le pas où la simulation le prend, même
+    // quand la solution saute par-dessus), pas avant.
     const runner = new ReplayRunner(ESSAI_LEVEL, SOLUTION);
-    const touched: number[] = ESSAI_LEVEL.checkpoints.map(() => -1);
+    const taken: number[] = ESSAI_LEVEL.checkpoints.map(() => -1);
     const crossed: number[] = ESSAI_LEVEL.checkpoints.map(() => -1);
     while (runner.step()) {
       const s = runner.state;
-      if (s.checkpoint >= 0 && touched[s.checkpoint] === -1) touched[s.checkpoint] = runner.tick;
+      if (s.checkpoint >= 0 && taken[s.checkpoint] === -1) taken[s.checkpoint] = runner.tick;
       const col = Math.floor((s.player.x + 1536) / T);
       ESSAI_LEVEL.checkpoints.forEach((cp, c) => {
         if (crossed[c] === -1 && col >= cp.col) crossed[c] = runner.tick;
       });
     }
-    expect(touched.filter((t) => t < 0).length).toBeGreaterThan(0); // des points sautés…
-    expect(checkpoints).toEqual(touched.map((t, c) => (t < 0 ? crossed[c] : Math.min(t, crossed[c]! < 0 ? t : crossed[c]!))));
+    expect(checkpoints).toEqual(crossed);
+    expect(taken).toEqual(crossed);
     const { depart } = carnageSchedule(ESSAI_LEVEL, SOLUTION, lives);
     lives.forEach((l, i) => expect(depart[i]).toBe(l.start.checkpoint < 0 ? 0 : checkpoints[l.start.checkpoint]));
     expect(lives.some((l) => l.start.checkpoint >= 0)).toBe(true);

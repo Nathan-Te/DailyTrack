@@ -10,7 +10,8 @@ import { idiv } from "./idiv";
 //   `^` `v` `<` `>` pics, pointe vers le haut / le bas / la gauche / la droite (tuile traversable, boîte mortelle réduite)
 //   `o` petite scie fixe (rayon ≈ ½ tuile) · `O` grande scie fixe (rayon ≈ 1,5 tuile), centrées sur leur tuile (traversable)
 //   `x` bloc friable (plein, cède `crumbleDelay` pas après le premier contact) · `*` ressort (plein, lance vers le haut qui s'y pose)
-//   `C` point de passage (tuile vide repérée, posée sur un sol sûr) : le toucher l'active ; à la mort, on y reprend, chrono qui continue
+//   `C` point de passage (tuile vide repérée, posée sur un sol sûr ; un seul par colonne) : le centre du personnage qui **franchit sa colonne**
+//       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
 //   section <nom> <col0>-<col1>
@@ -112,7 +113,7 @@ export interface Level {
   /** Blocs friables, dans l'ordre de lecture ; `crumbleIndex[row * width + col]` = leur rang, −1 ailleurs. */
   crumbles: readonly Cell[];
   crumbleIndex: readonly number[];
-  /** Points de passage `C` (lot 2b), de gauche à droite (ordre du parcours), puis de haut en bas. */
+  /** Points de passage `C` (lot 2b), de gauche à droite (ordre du parcours), un par colonne au plus (lot 4). */
   checkpoints: readonly Cell[];
 }
 
@@ -218,6 +219,10 @@ export function parseLevel(text: string): Level {
     }
   }
   checkpoints.sort((a, b) => a.col - b.col || a.row - b.row);
+  // Un point se prend en franchissant sa colonne (lot 4) : deux points dans la même colonne seraient pris ensemble.
+  for (let i = 1; i < checkpoints.length; i++) {
+    if (checkpoints[i]!.col === checkpoints[i - 1]!.col) throw new LevelError(`Deux points de passage « C » dans la colonne ${checkpoints[i]!.col + 1} (un seul par colonne)`);
+  }
   if (starts.length !== 1) throw new LevelError(`Il faut exactement un départ « S » (${starts.length} trouvés)`);
   if (finishes.length !== 1) throw new LevelError(`Il faut exactement une arrivée « F » (${finishes.length} trouvées)`);
 
