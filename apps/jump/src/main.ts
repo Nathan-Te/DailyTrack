@@ -47,8 +47,8 @@ import { animateLook, motionOf, onSkid, onStep, restLook, stridePhase, type Feet
 import { BurstMesh, BurstPool, Shake } from "./fx";
 import { mountHud } from "./hud";
 import { FixedStepper } from "./loop";
-import { paletteForDay } from "./palette";
-import { createScene, type JumpScene } from "./scene";
+import { themeByName, themeForDay } from "./themes";
+import { createScene, type JumpScene, type SceneDetail, type SceneStats } from "./scene";
 import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -59,7 +59,8 @@ import { browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad
 import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
 import { CarnageFilter, EventLog, causeName, eventsBetween, type GameEvent } from "./events";
 import { JumpAudio, type AudioDebug } from "./audio";
-import { sawMix } from "./audioLogic";
+import { AMBIENCES, sawMix } from "./audioLogic";
+import { textSeed } from "./decor";
 import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
@@ -131,6 +132,18 @@ export interface AttemptView {
   raw: AttemptState;
 }
 
+/** Lot 9 : `__jump.theme`. */
+export interface ThemeView {
+  name: string;
+  label: string;
+  forced: boolean;
+  /** Thème que la date aurait donné. */
+  ofDay: string;
+  ambience: string;
+  detail: SceneDetail | null;
+  stats: SceneStats | null;
+}
+
 /** Ce que `?debug` expose sur `window.__jump` (lu par les tests de navigateur). */
 export interface JumpDebug {
   phase: Phase;
@@ -138,6 +151,8 @@ export interface JumpDebug {
   day: string;
   simVersion: number;
   palette: string;
+  /** Lot 9 : le thème dessiné (imposé par `?theme=` ou celui du jour), ce que la scène a construit, l'ambiance. */
+  readonly theme: ThemeView;
   /** Le niveau écrit à la main ouvert (`?scenario=`), null : le niveau du jour (lot 5) ou un morceau. */
   scenario: Scenario | null;
   /** Lot 5 : le niveau du jour (null pour un scénario ou un morceau). */
@@ -299,8 +314,9 @@ const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry
 const nextHref = mod ? moduleHref({ id: nextModule(mod.id), variant: 0, entry: mod.entry }, options) : null;
 
 const dayText = formatDay(today);
-// La palette du jour : celle de la date du niveau (une archive garde la sienne).
-const palette = paletteForDay(daily ? daily.day : today);
+// Lot 9 : le thème du jour, celui de la date du niveau (une archive garde le sien) ; `?theme=` en impose un (cosmétique). La palette en vient.
+const theme = themeByName(options.theme) ?? themeForDay(daily ? daily.day : today);
+const palette = theme.palette;
 
 const stamp = document.getElementById("stamp")!;
 stamp.textContent = `DailyJump · sim v${JUMP_SIM_VERSION} · ${dayText}`;
@@ -348,6 +364,8 @@ const trail = new Trail();
 const blink = new Blink();
 const vibrator = new Vibrator(typeof navigator.vibrate === "function" ? (p) => navigator.vibrate(p) : null);
 const audio = new JumpAudio(settings);
+// Lot 9 : l'ambiance du thème, sur le bus « ambiance » (elle démarre au premier geste, comme le reste du son).
+audio.setAmbience(AMBIENCES[theme.ambience], textSeed(`${levelId}:${theme.name}:ambiance`));
 const eventLog = new EventLog(200);
 const carnageFilter = new CarnageFilter();
 /** Pas joués depuis le chargement (partie et carnage) : l'horloge des événements et de leurs débits. */
@@ -359,7 +377,7 @@ let scene: JumpScene | null = null;
 try {
   // `?debug` sur le niveau du jour : les limites des morceaux, avec leur identifiant, leur variante et leur exigence.
   const pieces = options.debug && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
-  scene = createScene(document.body, level, palette, { hitbox: options.hitbox, burst, pieces });
+  scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels) });
   scene.animate = levels.animate;
 } catch {
   scene = null;
@@ -807,6 +825,17 @@ const info: JumpDebug = {
   day: dayText,
   simVersion: JUMP_SIM_VERSION,
   palette: palette.name,
+  get theme(): ThemeView {
+    return {
+      name: theme.name,
+      label: theme.label,
+      forced: themeByName(options.theme) !== null,
+      ofDay: themeForDay(daily ? daily.day : today).name,
+      ambience: AMBIENCES[theme.ambience].label,
+      detail: scene ? sceneDetail(levels) : null,
+      stats: scene ? { ...scene.stats } : null,
+    };
+  },
   scenario: options.scenario,
   get daily(): DailyView | null {
     if (!daily || !choice) return null;
@@ -1022,14 +1051,16 @@ const info: JumpDebug = {
     const px = new Uint8Array(width * height * 4);
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const seen = new Set<number>();
-    const bg = palette.background;
+    // Lot 9 : le fond = le ciel et les plans de parallaxe (aplats : à 2 près par canal, l'arrondi des couleurs de sommet).
+    const backdrop = scene.backdrop;
+    const near = (rgb: number, c: number) => Math.abs(((rgb >> 16) & 255) - ((c >> 16) & 255)) <= 2 && Math.abs(((rgb >> 8) & 255) - ((c >> 8) & 255)) <= 2 && Math.abs((rgb & 255) - (c & 255)) <= 2;
     let background = 0;
     let total = 0;
     for (let i = 0; i < px.length; i += 4 * 5) {
       const rgb = (px[i]! << 16) | (px[i + 1]! << 8) | px[i + 2]!;
       seen.add(rgb);
       total++;
-      if (rgb === bg) background++;
+      if (backdrop.some((c) => near(rgb, c))) background++;
     }
     return { width, height, colors: seen.size, background: total ? background / total : 0 };
   },
@@ -1057,7 +1088,10 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
   saveSettings(store, settings);
   levels = feelLevels(settings, options.fx);
   particles.amount = levels.particles;
-  if (scene) scene.animate = levels.animate;
+  if (scene) {
+    scene.animate = levels.animate;
+    scene.setDetail(sceneDetail(levels));
+  }
   if (!levels.continuous) trail.clear();
   audio.setSettings(settings);
   // Un aperçu, pour entendre le niveau choisi (au plus quatre fois par seconde pendant qu'on glisse le curseur).
@@ -1179,6 +1213,11 @@ function draw(alpha: number, dt: number): void {
   scene.setView(camera.x + jolt.x, camera.y + jolt.y);
   scene.render();
   hud.update(session);
+}
+
+/** Lot 9 : ce que les réglages demandent au décor et à la parallaxe. */
+function sceneDetail(l: FeelLevels): SceneDetail {
+  return { decorLite: l.decorLite, parallaxLite: l.parallaxLite, parallaxMotion: l.parallaxMotion };
 }
 
 /**

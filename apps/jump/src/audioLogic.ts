@@ -268,3 +268,188 @@ export function sliderGain(v: number): number {
 export function soundGainFor(e: GameEvent): number {
   return e.source === "vie" ? CARNAGE_SOUND_GAIN : 1;
 }
+
+// ——— Lot 9 : ambiances sonores par thème (bus « ambiance ») ———
+// Une boucle procédurale discrète par thème : des **nappes** continues (bruit filtré ou notes tenues, lentement modulées) et des
+// **événements** espacés (un oiseau, un train de grillons, un coup de machine). Tout reste **sous les sons de jeu** : le niveau de crête de
+// l'ambiance ne dépasse pas `AMBIENCE_HEADROOM` × la crête du plus discret des sons qui comptent (le saut ; test). Le bus suit le curseur
+// « ambiance » du menu et se tait quand l'onglet est caché (`ambienceTarget`). Les instants des événements sont tirés d'une graine : la
+// même ambiance s'entend de la même façon, et ce hasard-là n'est jamais celui de la simulation.
+
+/** Une nappe continue : bruit filtré ou note tenue, dont le volume ondule (`lfoRate` Hz, `lfoDepth` = part du volume). */
+export interface AmbientBed {
+  type: "noise" | "tone";
+  /** Note : forme d'onde et fréquence ; bruit : centre du filtre. */
+  wave?: OscillatorType;
+  freq: number;
+  /** Bruit, ou note filtrée : type de filtre, résonance ; balayage du filtre (Hz) au rythme de l'ondulation. */
+  filter?: BiquadFilterType;
+  filterFreq?: number;
+  q?: number;
+  sweep?: number;
+  /** Seconde note désaccordée (cents), pour une nappe plus large. */
+  detune?: number;
+  gain: number;
+  lfoRate: number;
+  lfoDepth: number;
+}
+
+/** Un événement espacé : ses couches (comme un son de jeu), joué toutes les `every[0]` à `every[1]` secondes. */
+export interface AmbientEvent {
+  id: string;
+  every: readonly [number, number];
+  layers: readonly Layer[];
+}
+
+export interface AmbienceSpec {
+  id: string;
+  label: string;
+  beds: readonly AmbientBed[];
+  events: readonly AmbientEvent[];
+}
+
+/** L'ambiance ne dépasse jamais cette part de la crête du saut (le plus discret des sons qui comptent, hors pas). */
+export const AMBIENCE_HEADROOM = 0.6;
+
+const chirp = (f: number, delay: number, g: number): Layer => ({ type: "tone", wave: "sine", freq: f, to: f * 1.25, dur: 0.07, gain: g, delay });
+
+export const AMBIENCES: Record<"foret" | "usine" | "glace" | "nuit" | "neon", AmbienceSpec> = {
+  foret: {
+    id: "foret",
+    label: "vent et oiseaux",
+    beds: [{ type: "noise", freq: 520, filter: "lowpass", q: 0.6, sweep: 180, gain: 0.016, lfoRate: 0.07, lfoDepth: 0.55 }],
+    events: [
+      { id: "oiseau", every: [4, 9], layers: [chirp(2700, 0, 0.012), chirp(3100, 0.11, 0.01), chirp(2900, 0.24, 0.008)] },
+      { id: "oiseau-loin", every: [7, 14], layers: [chirp(3600, 0, 0.006), chirp(3400, 0.15, 0.005)] },
+    ],
+  },
+  usine: {
+    id: "usine",
+    label: "machines lointaines",
+    beds: [
+      { type: "tone", wave: "sawtooth", freq: 55, filter: "lowpass", filterFreq: 170, q: 0.8, detune: 9, gain: 0.012, lfoRate: 0.35, lfoDepth: 0.25 },
+      { type: "noise", freq: 900, filter: "bandpass", q: 0.7, sweep: 120, gain: 0.006, lfoRate: 0.11, lfoDepth: 0.4 },
+    ],
+    events: [
+      {
+        id: "machine",
+        every: [1.6, 3.2],
+        layers: [
+          { type: "noise", freq: 160, to: 90, dur: 0.22, gain: 0.014, filter: "lowpass", q: 1 },
+          { type: "noise", freq: 150, to: 90, dur: 0.2, gain: 0.01, filter: "lowpass", q: 1, delay: 0.42 },
+        ],
+      },
+      { id: "vapeur", every: [9, 16], layers: [{ type: "noise", freq: 3200, to: 2200, dur: 0.6, gain: 0.006, filter: "highpass", q: 0.7 }] },
+    ],
+  },
+  glace: {
+    id: "glace",
+    label: "vent froid",
+    beds: [
+      { type: "noise", freq: 1200, filter: "bandpass", q: 1.1, sweep: 500, gain: 0.014, lfoRate: 0.09, lfoDepth: 0.6 },
+      { type: "noise", freq: 300, filter: "lowpass", q: 0.5, sweep: 60, gain: 0.008, lfoRate: 0.05, lfoDepth: 0.4 },
+    ],
+    events: [{ id: "sifflement", every: [6, 12], layers: [{ type: "tone", wave: "sine", freq: 1400, to: 1100, dur: 1.2, gain: 0.004 }] }],
+  },
+  nuit: {
+    id: "nuit",
+    label: "grillons",
+    beds: [{ type: "noise", freq: 400, filter: "lowpass", q: 0.5, sweep: 80, gain: 0.006, lfoRate: 0.06, lfoDepth: 0.4 }],
+    events: [
+      {
+        id: "grillon",
+        every: [0.9, 2.4],
+        layers: [0, 0.07, 0.14, 0.21].map((d) => ({ type: "tone" as const, wave: "sine" as OscillatorType, freq: 4400, dur: 0.035, gain: 0.008, delay: d })),
+      },
+      {
+        id: "grillon-loin",
+        every: [1.7, 3.8],
+        layers: [0, 0.08, 0.16].map((d) => ({ type: "tone" as const, wave: "sine" as OscillatorType, freq: 3900, dur: 0.03, gain: 0.004, delay: d })),
+      },
+    ],
+  },
+  neon: {
+    id: "neon",
+    label: "nappe synthétique",
+    beds: [
+      { type: "tone", wave: "sawtooth", freq: noteFreq(-17), filter: "lowpass", filterFreq: 700, q: 1.4, sweep: 350, detune: 12, gain: 0.008, lfoRate: 0.08, lfoDepth: 0.3 },
+      { type: "tone", wave: "sawtooth", freq: noteFreq(-10), filter: "lowpass", filterFreq: 600, q: 1.2, sweep: 300, detune: -10, gain: 0.006, lfoRate: 0.06, lfoDepth: 0.35 },
+    ],
+    events: [{ id: "scintillement", every: [5, 10], layers: [{ type: "tone", wave: "triangle", freq: noteFreq(15), dur: 0.5, gain: 0.004 }, { type: "tone", wave: "triangle", freq: noteFreq(22), dur: 0.6, gain: 0.003, delay: 0.18 }] }],
+  },
+};
+
+export function ambienceFor(theme: keyof typeof AMBIENCES): AmbienceSpec {
+  return AMBIENCES[theme];
+}
+
+/** Crête d'un son : la plus forte des couches qui sonnent en même temps (au pire, toutes se superposent). */
+export function layersPeak(layers: readonly Layer[]): number {
+  let peak = 0;
+  for (const a of layers) {
+    let sum = 0;
+    for (const b of layers) {
+      const a0 = a.delay ?? 0;
+      const b0 = b.delay ?? 0;
+      if (b0 < a0 + a.dur && a0 < b0 + b.dur) sum += b.gain;
+    }
+    peak = Math.max(peak, sum);
+  }
+  return peak;
+}
+
+/** Crête de l'ambiance : toutes les nappes au sommet de leur ondulation, plus deux événements qui se superposent au pire. */
+export function ambiencePeak(spec: AmbienceSpec): number {
+  const beds = spec.beds.reduce((s, b) => s + b.gain * (1 + b.lfoDepth) * (b.detune ? 2 : 1), 0);
+  const events = spec.events.map((e) => layersPeak(e.layers)).sort((a, b) => b - a);
+  return beds + (events[0] ?? 0) + (events[1] ?? 0);
+}
+
+/** Crête du son de jeu le plus discret qui compte (le saut) : l'ambiance reste dessous. */
+export function quietestGameSoundPeak(): number {
+  const s = soundFor({ kind: "saut", x: 0, y: 0, tick: 0, source: "jeu" })!;
+  return layersPeak(s.layers);
+}
+
+/** Volume visé du bus d'ambiance : le curseur (au carré), zéro quand l'onglet est caché. */
+export function ambienceTarget(ambience: number, hidden: boolean): number {
+  return hidden ? 0 : sliderGain(ambience);
+}
+
+/**
+ * Calendrier des événements d'une ambiance, **pur** : tirages d'une graine (générateur congruentiel maison, jamais `Math.random`).
+ * `due(t)` rend les événements à jouer jusqu'à l'instant `t` (secondes du contexte audio) et prépare les suivants.
+ */
+export class AmbientScheduler {
+  private readonly next: number[];
+  private state: number;
+  constructor(
+    readonly spec: AmbienceSpec,
+    seed: number,
+    start = 0,
+  ) {
+    this.state = seed >>> 0 || 1;
+    // Le premier de chaque événement arrive entre son minimum et son maximum (jamais tout de suite à l'ouverture).
+    this.next = spec.events.map((e) => start + this.between(e.every));
+  }
+
+  private rand(): number {
+    this.state = (Math.imul(this.state, 1664525) + 1013904223) >>> 0;
+    return this.state / 4294967296;
+  }
+
+  private between(range: readonly [number, number]): number {
+    return range[0] + (range[1] - range[0]) * this.rand();
+  }
+
+  /** Événements dus jusqu'à `t` : leur indice et l'instant prévu. Après une longue absence (onglet caché), on ne rattrape pas : un seul chacun. */
+  due(t: number): { index: number; at: number }[] {
+    const out: { index: number; at: number }[] = [];
+    this.spec.events.forEach((e, i) => {
+      if (this.next[i]! > t) return;
+      out.push({ index: i, at: this.next[i]! });
+      this.next[i] = Math.max(this.next[i]!, t) + this.between(e.every);
+    });
+    return out;
+  }
+}

@@ -1,15 +1,14 @@
 import {
   BufferGeometry,
   Color,
+  DoubleSide,
   Float32BufferAttribute,
   Group,
-  InstancedMesh,
   Line,
   LineBasicMaterial,
   LineDashedMaterial,
   LineLoop,
   LineSegments,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   OrthographicCamera,
@@ -45,7 +44,11 @@ import { SOLID_STENCIL } from "./actors";
 import { BurstMesh, type BurstPool } from "./fx";
 import { STEP, squashScale, type Look } from "./look";
 import { mixColor } from "./feel";
-import type { Palette } from "./palette";
+import type { Art } from "./artKit";
+import { buildDecorArt, keepouts, placeDecor, type DecorChunk } from "./decor";
+import { buildParallax, layerOffset, visibleLayers } from "./parallax";
+import { CHUNK_COLUMNS, buildTileArt } from "./tileArt";
+import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
 // la rangée 0 de la grille tout en haut. Aucun calcul de simulation ici : on affiche ce que `jump-sim` a calculé (positions des scies,
@@ -70,6 +73,41 @@ export interface SceneOptions {
   burst?: BurstPool | null;
   /** Lot 5, `?debug` sur le niveau du jour : limites des morceaux (colonnes, rangée du palier d'entrée) et leur étiquette. */
   pieces?: readonly PieceMark[];
+  /** Lot 9 : identifiant du niveau (graine du décor et de la parallaxe, avec le thème). */
+  levelId?: string;
+  /** Lot 9 : allègements du décor et de la parallaxe (réglages du joueur). */
+  detail?: SceneDetail;
+}
+
+/** Lot 9 : ce que les réglages demandent au décor et au fond (affichage seulement). */
+export interface SceneDetail {
+  decorLite: boolean;
+  parallaxLite: boolean;
+  /** 1 : la parallaxe défile ; 0 : figée à l'écran (mouvement réduit). */
+  parallaxMotion: number;
+}
+
+/** Lot 9 : ce que la scène a construit (mesures, `__jump.theme`). */
+export interface SceneStats {
+  tileChunks: number;
+  tileTriangles: number;
+  decorItems: number;
+  decorLite: number;
+  decorTriangles: number;
+  layers: number;
+  layersShown: number;
+  parallaxTriangles: number;
+  buildMs: number;
+}
+
+/** Une `BufferGeometry` d'un tampon pur (positions, couleurs par sommet, indices). */
+function artGeometry(art: Art): BufferGeometry {
+  const g = new BufferGeometry();
+  g.setAttribute("position", new Float32BufferAttribute(art.pos, 3));
+  g.setAttribute("color", new Float32BufferAttribute(art.col, 3));
+  g.setIndex(art.idx);
+  g.computeBoundingSphere();
+  return g;
 }
 
 /** Un morceau du niveau du jour, dessiné en `?debug`. */
@@ -119,6 +157,12 @@ export interface JumpScene {
   setTrail(points: readonly { x: number; y: number; alpha: number }[]): void;
   /** Lot 8 : animations douces (fanion qui se lève, ressort qui rebondit) ; faux : posées tout de suite (mouvement réduit, effets aucun). */
   animate: boolean;
+  /** Lot 9 : le thème dessiné, ses couleurs de fond (ciel et plans : la sonde des pixels les compte comme du fond), ce qui est construit. */
+  readonly theme: Theme;
+  readonly backdrop: readonly number[];
+  readonly stats: SceneStats;
+  /** Lot 9 : allègements du décor et de la parallaxe (réglages), tout de suite. */
+  setDetail(d: SceneDetail): void;
   render(): void;
   dispose(): void;
 }
@@ -143,7 +187,7 @@ function sawShape(body: number, tip: number, teeth: number): ShapeGeometry {
 }
 
 /** Pics : un triangle franc par tuile, pointe selon l'orientation (coordonnées du monde, y vers le haut). */
-function spikeTriangles(level: Level): BufferGeometry {
+function spikeTriangles(level: Level, grow = 0): BufferGeometry {
   const pos: number[] = [];
   for (let row = 0; row < level.height; row++) {
     for (let col = 0; col < level.width; col++) {
@@ -160,6 +204,19 @@ function spikeTriangles(level: Level): BufferGeometry {
       else if (t === 5) pos.push(x0, yTop, 0, xm, yBot, 0, x1, yTop, 0);
       else if (t === 6) pos.push(x1, yTop, 0, x0, ym, 0, x1, yBot, 0);
       else pos.push(x0, yBot, 0, x1, ym, 0, x0, yTop, 0);
+      if (grow > 0) {
+        // Cerne : le triangle agrandi autour de son centre de gravité.
+        const k = pos.length - 9;
+        const cx = (pos[k]! + pos[k + 3]! + pos[k + 6]!) / 3;
+        const cy = (pos[k + 1]! + pos[k + 4]! + pos[k + 7]!) / 3;
+        for (let v = 0; v < 3; v++) {
+          const dx = pos[k + v * 3]! - cx;
+          const dy = pos[k + v * 3 + 1]! - cy;
+          const len = Math.hypot(dx, dy) || 1;
+          pos[k + v * 3] = cx + dx * (1 + (grow * 2) / len);
+          pos[k + v * 3 + 1] = cy + dy * (1 + (grow * 2) / len);
+        }
+      }
     }
   }
   const g = new BufferGeometry();
@@ -182,7 +239,9 @@ function circlePoints(r: number, n = 40): Vector3[] {
   return pts;
 }
 
-export function createScene(canvasParent: HTMLElement, level: Level, palette: Palette, options: SceneOptions = {}): JumpScene {
+export function createScene(canvasParent: HTMLElement, level: Level, theme: Theme, options: SceneOptions = {}): JumpScene {
+  const t0 = performance.now();
+  const palette = theme.palette;
   // Pochoir (lot 3) : les blocs pleins l'écrivent, les taches de peinture ne se dessinent que là (`actors.ts`).
   const renderer = new WebGLRenderer({ antialias: false, powerPreference: "low-power", preserveDrawingBuffer: false, stencil: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -195,30 +254,63 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   scene.add(world);
   const W = level.width;
 
-  // ——— Tuiles pleines : une tuile (col, row) occupe [col, col + 1] × [−row − 1, −row] ———
-  const solid = level.tiles.filter((t) => t === TILE_SOLID).length;
-  const tileMat = new MeshBasicMaterial({ color: palette.tile });
+  // ——— Lot 9 : blocs pleins auto-tuilés (`tileArt.ts`), fusionnés par tronçons de colonnes (un appel de dessin chacun, écarté hors champ).
+  // Ils écrivent le pochoir (lot 3) : les taches de peinture ne se dessinent que sur eux (`actors.ts`), coins arrondis compris.
+  const list = keepouts(level);
+  // Double face : les tampons purs ne garantissent pas le sens des triangles (un contour de tuile tourne dans le sens horaire).
+  const tileMat = new MeshBasicMaterial({ vertexColors: true, side: DoubleSide });
   tileMat.stencilWrite = true;
   tileMat.stencilRef = SOLID_STENCIL;
   tileMat.stencilFunc = AlwaysStencilFunc;
   tileMat.stencilZPass = ReplaceStencilOp;
-  const tiles = new InstancedMesh(new PlaneGeometry(1, 1), tileMat, Math.max(1, solid));
-  const m = new Matrix4();
-  let i = 0;
-  for (let row = 0; row < level.height; row++) {
-    for (let col = 0; col < W; col++) {
-      if (level.tiles[row * W + col] !== TILE_SOLID) continue;
-      tiles.setMatrixAt(i++, m.makeTranslation(col + 0.5, -row - 0.5, 0));
-    }
+  const tileArt = buildTileArt(level, theme.tiles, list);
+  let tileTriangles = 0;
+  for (const c of tileArt.chunks) {
+    if (c.art.triangles === 0) continue;
+    tileTriangles += c.art.triangles;
+    world.add(new Mesh(artGeometry(c.art), tileMat));
   }
-  tiles.count = solid;
-  tiles.instanceMatrix.needsUpdate = true;
-  world.add(tiles);
+
+  // ——— Lot 9 : décor (sans collision), derrière tout ce qui compte ; les `lite` d'abord, seuls dessinés avec les effets réduits ———
+  const levelId = options.levelId ?? "niveau";
+  const decorItems = placeDecor(level, theme, levelId, list);
+  const decorMat = new MeshBasicMaterial({ vertexColors: true, side: DoubleSide });
+  const decorMeshes: { mesh: Mesh; chunk: DecorChunk }[] = [];
+  let decorTriangles = 0;
+  for (const chunk of buildDecorArt(theme, decorItems, W, CHUNK_COLUMNS)) {
+    if (chunk.art.triangles === 0) continue;
+    decorTriangles += chunk.art.triangles;
+    const mesh = new Mesh(artGeometry(chunk.art), decorMat);
+    world.add(mesh);
+    decorMeshes.push({ mesh, chunk });
+  }
+
+  // ——— Lot 9 : fond en parallaxe, deux ou trois plans (hors du monde : leur position suit la caméra, `setView`) ———
+  const layerMat = new MeshBasicMaterial({ vertexColors: true, side: DoubleSide });
+  let parallaxTriangles = 0;
+  const layers = buildParallax(theme, W, levelId).map((l) => {
+    parallaxTriangles += l.art.triangles;
+    const mesh = new Mesh(artGeometry(l.art), layerMat);
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    return { layer: l.layer, mesh };
+  });
+  let detail: SceneDetail = options.detail ?? { decorLite: false, parallaxLite: false, parallaxMotion: 1 };
+  const applyDetail = () => {
+    for (const d of decorMeshes) d.mesh.geometry.setDrawRange(0, detail.decorLite ? d.chunk.liteIndices : Infinity);
+    const shown = visibleLayers(layers.length, detail.parallaxLite);
+    layers.forEach((l, i) => (l.mesh.visible = i < shown));
+  };
+  applyDetail();
 
   // ——— Pics : triangles francs ———
   const spikes = new Mesh(spikeTriangles(level), new MeshBasicMaterial({ color: palette.hazard }));
   spikes.position.z = 0.05;
   world.add(spikes);
+  // Lot 9 : un cerne sombre autour de chaque pic (le même dans tous les thèmes) : il le détache d'un contour clair, d'un friable, du décor.
+  const spikeRim = new Mesh(spikeTriangles(level, 0.09), new MeshBasicMaterial({ color: HAZARD_OUTLINE }));
+  spikeRim.position.z = 0.045;
+  world.add(spikeRim);
 
   // ——— Blocs friables : aspect distinct (plus clair, fendu, quatre éclats aux coins), ils tremblent pendant leur minuterie ———
   const crumbleColor = new Color(palette.crumble);
@@ -277,15 +369,21 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
 
   // ——— Scies : disques dentés qui tournent (affichage), trajets des scies mobiles en pointillés discrets ———
   const sawMat = new MeshBasicMaterial({ color: palette.hazard });
-  const hubMat = new MeshBasicMaterial({ color: palette.background });
+  const hubMat = new MeshBasicMaterial({ color: HAZARD_OUTLINE });
+  const sawRimMat = new MeshBasicMaterial({ color: HAZARD_OUTLINE });
   const saws = level.saws.map((saw) => {
     const body = saw.radius / T;
     const tip = body + Math.min(0.14, body * 0.25);
     const g = new Group();
-    const disc = new Mesh(sawShape(body, tip, Math.max(8, Math.round(body * 18))), sawMat);
+    const teeth = Math.max(8, Math.round(body * 18));
+    const disc = new Mesh(sawShape(body, tip, teeth), sawMat);
     const hub = new Mesh(new PlaneGeometry(body * 0.45, body * 0.45), hubMat);
     hub.position.z = 0.01;
     disc.add(hub);
+    // Lot 9 : cerne sombre derrière la scie (dents comprises), comme les pics.
+    const rim = new Mesh(sawShape(body + 0.07, tip + 0.07, teeth), sawRimMat);
+    rim.position.z = -0.01;
+    disc.add(rim);
     g.add(disc);
     g.position.z = 0.15;
     world.add(g);
@@ -479,12 +577,29 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   let viewX = 0;
   let viewY = 0;
 
+  const mid = -level.height / 2;
   const place = () => {
+    for (const l of layers) {
+      const o = layerOffset(l.layer, viewX, viewY, mid, detail.parallaxMotion);
+      l.mesh.position.set(o.x, o.y, 0);
+    }
     camera.left = viewX - frame.halfW;
     camera.right = viewX + frame.halfW;
     camera.top = viewY + frame.halfH;
     camera.bottom = viewY - frame.halfH;
     camera.updateProjectionMatrix();
+  };
+
+  const stats: SceneStats = {
+    tileChunks: tileArt.chunks.length,
+    tileTriangles,
+    decorItems: decorItems.length,
+    decorLite: decorItems.filter((d) => d.lite).length,
+    decorTriangles,
+    layers: layers.length,
+    layersShown: visibleLayers(layers.length, detail.parallaxLite),
+    parallaxTriangles,
+    buildMs: performance.now() - t0,
   };
 
   return {
@@ -493,6 +608,15 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
     zoom: 1,
     animate: true,
     frame,
+    theme,
+    backdrop: backdropColors(theme),
+    stats,
+    setDetail(d) {
+      detail = { ...d };
+      applyDetail();
+      stats.layersShown = visibleLayers(layers.length, detail.parallaxLite);
+      place();
+    },
     resize(touch = false) {
       const w = Math.max(1, window.innerWidth);
       const h = Math.max(1, window.innerHeight);

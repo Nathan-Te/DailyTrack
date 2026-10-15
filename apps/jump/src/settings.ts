@@ -95,6 +95,11 @@ export interface FeelLevels {
    */
   body: number;
   vibration: boolean;
+  /** Lot 9 : décor allégé (la moitié) et un seul plan de parallaxe, avec les effets réduits ou « aucun » (et `?fx=off`). */
+  decorLite: boolean;
+  parallaxLite: boolean;
+  /** Lot 9 : défilement de la parallaxe (1) ou plans figés à l'écran (0, mouvement réduit). */
+  parallaxMotion: number;
 }
 
 /**
@@ -114,5 +119,8 @@ export function feelLevels(s: PlayerSettings, fxParam = true): FeelLevels {
     animate: !calm && effects !== "aucun",
     body: calm || effects === "aucun" ? 0 : effects === "reduit" ? 0.6 : 1,
     vibration: s.vibration,
+    decorLite: effects !== "normal",
+    parallaxLite: effects !== "normal",
+    parallaxMotion: calm ? 0 : 1,
   };
 }

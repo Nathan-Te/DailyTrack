@@ -4,6 +4,7 @@
 
 import { parseDay } from "@cdj/core";
 import { MODULES, MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
+import { THEME_NAMES, themeByName, type ThemeName } from "./themes";
 
 export interface UrlOption {
   name: string;
@@ -108,6 +109,12 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: [],
   },
   {
+    name: "theme",
+    description:
+      "Lot 9 : impose un thème visuel et sonore (forêt, usine, glace, nuit, néon) au lieu du thème du jour : `?seed=2026-10-20&theme=neon`. Cosmétique : le niveau, son identifiant, les temps et les rediffusions ne changent pas, donc permis aussi sur le site publié. Un nom inconnu garde le thème du jour.",
+    values: THEME_NAMES,
+  },
+  {
     name: "zones",
     description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
     values: [],
@@ -146,6 +153,8 @@ export interface UrlChoices {
   gallery: boolean;
   /** Le morceau à jouer (`?module=<id>`), sa variante, son entrée, et la lecture de sa solution (`&solution`) ; null : un scénario. */
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
+  /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Cosmétique. */
+  theme: ThemeName | null;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -173,6 +182,7 @@ export function readUrlOptions(search: string): UrlChoices {
     watchBest: params.get("watch") === "best",
     gallery,
     module: mod,
+    theme: themeByName(params.get("theme"))?.name ?? null,
   };
 }
 
@@ -185,13 +195,14 @@ function moduleOf(params: URLSearchParams): UrlChoices["module"] {
   return { id: def.id, variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
 }
 
-/** Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme). */
+/** Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme, thème imposé). */
 function carried(from: UrlChoices): string[] {
   const out: string[] = [];
   if (from.debug) out.push("debug");
   if (from.touch) out.push(`touch=${from.touch}`);
   if (!from.fx) out.push("fx=off");
   if (from.ghostOff) out.push("ghost=off");
+  if (from.theme) out.push(`theme=${from.theme}`);
   return out;
 }
 
