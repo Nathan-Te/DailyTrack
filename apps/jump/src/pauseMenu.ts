@@ -9,6 +9,8 @@ export interface PauseMenuOptions {
   onChange(s: PlayerSettings, changed: keyof PlayerSettings): void;
   onResume(): void;
   onRestart(): void;
+  /** Lot 10 : retour à l'accueil. */
+  onHome?(): void;
   /** Le téléphone sait vibrer (`navigator.vibrate`) : sinon le réglage le dit. */
   canVibrate: boolean;
 }
@@ -55,6 +57,12 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   restart.type = "button";
   restart.id = "menu-restart";
   actions.append(resume, restart);
+  // Lot 10 : l'accueil (on y revient par le menu ⏸ une fois la partie lancée).
+  const home = el("button", "mbtn", "Accueil");
+  home.type = "button";
+  home.id = "menu-home";
+  home.hidden = !opts.onHome;
+  actions.append(home);
   head.append(actions);
   root.append(head);
 
@@ -158,6 +166,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   let open = false;
   resume.addEventListener("click", () => opts.onResume());
   restart.addEventListener("click", () => opts.onRestart());
+  home.addEventListener("click", () => opts.onHome?.());
 
   return {
     get isOpen() {

@@ -102,6 +102,8 @@ interface Meta {
   simVersion: number;
   level: string;
   essai: number;
+  /** Lot 10 : morts du jour sur ce niveau, toutes comptées (les positions gardées, elles, sont plafonnées à 300). */
+  morts?: number;
 }
 
 export interface DayMemoryOptions {
@@ -121,6 +123,8 @@ export class DayMemory {
   deaths: StoredDeath[] = [];
   /** Numéro du prochain essai enregistré. */
   private essai = 1;
+  /** Lot 10 : morts du jour (sans plafond). */
+  private deathTotal = 0;
   private day: string;
   private readonly hash: string;
 
@@ -176,6 +180,7 @@ export class DayMemory {
     this.lives = Array.isArray(lives) ? lives.filter((l) => l && typeof l.code === "string" && isCurrent(l.code)).slice(-MAX_LIVES) : [];
     const deaths = this.read<StoredDeath[]>("morts");
     this.deaths = Array.isArray(deaths) ? deaths.filter((d) => d && Number.isInteger(d.x) && Number.isInteger(d.y)).slice(-MAX_DEATHS) : [];
+    this.deathTotal = Number.isInteger(meta.morts) && meta.morts! >= this.deaths.length ? meta.morts! : this.deaths.length;
     const best = this.read<BestAttempt>("meilleur");
     this.best = null;
     if (best && typeof best.code === "string") {
@@ -219,12 +224,13 @@ export class DayMemory {
     this.lives = [];
     this.deaths = [];
     this.essai = 1;
+    this.deathTotal = 0;
     for (const kind of ["meilleur", "vies", "morts"]) this.remove(kind);
     this.saveMeta();
   }
 
   private saveMeta(): void {
-    this.write("jour", { day: this.day, simVersion: JUMP_SIM_VERSION, level: this.hash, essai: this.essai } satisfies Meta);
+    this.write("jour", { day: this.day, simVersion: JUMP_SIM_VERSION, level: this.hash, essai: this.essai, morts: this.deathTotal } satisfies Meta);
   }
 
   /** Le jour a-t-il changé depuis le chargement ? Alors la mémoire repart de zéro (minuit à Paris passé, page restée ouverte). */
@@ -271,8 +277,20 @@ export class DayMemory {
     this.checkDay();
     this.deaths.push({ x: death.x, y: death.y, cause: death.cause });
     if (this.deaths.length > MAX_DEATHS) this.deaths.splice(0, this.deaths.length - MAX_DEATHS);
+    this.deathTotal++;
     this.write("morts", this.deaths);
+    this.saveMeta();
     return true;
+  }
+
+  /** Lot 10 : essais enregistrés aujourd'hui sur ce niveau (rejoués : arrivées, morts sans point de passage, abandons). */
+  get attempts(): number {
+    return this.essai - 1;
+  }
+
+  /** Lot 10 : morts d'aujourd'hui sur ce niveau, toutes comptées. */
+  get totalDeaths(): number {
+    return this.deathTotal;
   }
 
   /** Le meilleur essai, en rediffusion (null s'il n'y en a pas). */
