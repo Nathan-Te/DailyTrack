@@ -1,19 +1,19 @@
-import { Rng, mixSeed } from "@cdj/core";
+import { THEMES, THEME_NAMES, themeForDay } from "./themes";
 
-// Palette du jour : le fond uni, les tuiles, le personnage. Tirée de la date (même règle pour tout le monde), comme les thèmes de DailyTrack.
-// Présentation seulement : la simulation ne la connaît pas.
+// Palette du jour : le fond uni, les tuiles, le personnage. Depuis le lot 9, elle est **la palette du thème du jour** (`themes.ts`) :
+// les dangers et le personnage y gardent leurs couleurs réservées. Présentation seulement : la simulation ne la connaît pas.
 
 export interface Palette {
   name: string;
-  /** Fond uni. */
+  /** Fond uni (le ciel, derrière les plans de parallaxe). */
   background: number;
-  /** Tuiles pleines. */
+  /** Tuiles pleines (la bande du bord : les taches s'y fondent en s'effaçant). */
   tile: number;
   /** Arrivée. */
   finish: number;
-  /** Personnage (et ses éclats à la mort). */
+  /** Personnage (et ses éclats à la mort, son fantôme, ses taches) : la même couleur dans tous les thèmes. */
   player: number;
-  /** Dangers : pics et scies (lot 2). */
+  /** Dangers : pics et scies (lot 2) : la même couleur dans tous les thèmes. */
   hazard: number;
   /** Blocs friables. */
   crumble: number;
@@ -21,17 +21,8 @@ export interface Palette {
   spring: number;
 }
 
-export const PALETTES: readonly Palette[] = [
-  { name: "forêt", background: 0x1c3a2b, tile: 0x4f8f4a, finish: 0xffd22e, player: 0xf4efe2, hazard: 0xe8283a, crumble: 0xb08a55, spring: 0x39c6ff },
-  { name: "usine", background: 0x2b2f36, tile: 0x7d8794, finish: 0xff8a3d, player: 0xffd22e, hazard: 0xff3b3b, crumble: 0xa9764a, spring: 0x39ff88 },
-  { name: "glace", background: 0xcfe8f5, tile: 0x5aa3c7, finish: 0xe8283a, player: 0x16324a, hazard: 0xd1145a, crumble: 0x9fc4d8, spring: 0xff8a00 },
-  { name: "nuit", background: 0x0b1020, tile: 0x3a4a8a, finish: 0xffd22e, player: 0xf4efe2, hazard: 0xff3b5c, crumble: 0x8a7a5a, spring: 0x39ff88 },
-  { name: "néon", background: 0x14061f, tile: 0xd400a8, finish: 0x39ff88, player: 0x00e5ff, hazard: 0xff2d2d, crumble: 0x8a5ad4, spring: 0xffd22e },
-];
-
-/** Sel propre à DailyJump : le même numéro de jour ne donne pas la même graine que DailyTrack. */
-const PALETTE_SALT = 0x6a756d70;
+export const PALETTES: readonly Palette[] = THEME_NAMES.map((n) => THEMES[n].palette);
 
 export function paletteForDay(day: number): Palette {
-  return new Rng(mixSeed(day, PALETTE_SALT)).pick(PALETTES);
+  return themeForDay(day).palette;
 }

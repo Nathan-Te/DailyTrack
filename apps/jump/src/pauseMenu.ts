@@ -115,7 +115,7 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   };
   shows.push(toggle("vibration", "Vibrations", opts.canVibrate ? undefined : "Cet appareil ne vibre pas (iPhone, ordinateur)."));
   shows.push(toggle("shake", "Tremblement d'écran"));
-  shows.push(toggle("reducedMotion", "Mouvement réduit", "Ni secousse, ni particules, ni traînée."));
+  shows.push(toggle("reducedMotion", "Mouvement réduit", "Ni secousse, ni particules, ni traînée ; le fond ne défile plus."));
   const seg = el("div", "mseg");
   seg.setAttribute("role", "group");
   seg.setAttribute("aria-label", "Effets visuels");

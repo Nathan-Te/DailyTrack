@@ -1,5 +1,8 @@
 import {
+  AmbientScheduler,
   SLIDE_LOOP,
+  ambienceTarget,
+  type AmbienceSpec,
   SAW_VOICES,
   SoundRate,
   VoiceLimiter,
@@ -16,7 +19,7 @@ import type { PlayerSettings } from "./settings";
 // Son de DailyJump (lot 8) : Web Audio **procédural**, zéro fichier (oscillateurs et bruit filtré). Tout ce qui se décide (quel son, quel
 // volume, quelles scies, combien à la fois) est dans `audioLogic.ts`, pur et testé ; ici on ne fait que jouer.
 //
-// Trois bus sous le volume général : effets, ambiance (vide jusqu'au lot 9). Le contexte audio n'est créé ou réveillé qu'au **premier geste**
+// Deux bus sous le volume général : effets, ambiance (lot 9 : la boucle procédurale du thème, `AMBIENCES`). Le contexte audio n'est créé ou réveillé qu'au **premier geste**
 // du joueur (règle des navigateurs, et d'iOS en particulier : la reprise doit se faire pendant le geste) ; il est suspendu quand l'onglet est
 // caché. Le son ne lit que les événements de jeu : il ne peut rien changer au résultat d'un essai.
 
@@ -42,14 +45,22 @@ export interface AudioDebug {
   slide: boolean;
   saws: { index: number; gain: number; pan: number }[];
   errors: number;
+  /** Lot 9 : l'ambiance du thème (nom, nappes branchées, événements joués). */
+  ambience: { id: string | null; beds: number; events: number };
 }
 
 export class JumpAudio {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private sfx: GainNode | null = null;
-  /** Bus de l'ambiance : créé, branché, vide jusqu'au lot 9. */
+  /** Bus de l'ambiance (lot 9 : la boucle du thème). */
   private ambience: GainNode | null = null;
+  private ambienceSpec: AmbienceSpec | null = null;
+  private ambienceSeed = 1;
+  private scheduler: AmbientScheduler | null = null;
+  private bedNodes: AudioScheduledSourceNode[] = [];
+  private bedGains: GainNode[] = [];
+  private ambientEvents = 0;
   private noise: AudioBuffer | null = null;
   private slideNode: { gain: GainNode } | null = null;
   private sawNodes: SawNode[] = [];
@@ -75,6 +86,8 @@ export class JumpAudio {
     }
     document.addEventListener("visibilitychange", () => {
       if (!this.ctx) return;
+      // Lot 9 : l'ambiance se tait d'abord (sans attendre la suspension), puis le contexte se suspend.
+      this.applyGains(0.02);
       if (document.hidden) void this.ctx.suspend().catch(() => undefined);
       else void this.ctx.resume().catch(() => undefined);
     });
@@ -130,6 +143,79 @@ export class JumpAudio {
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     this.buildSlide(ctx);
     this.buildSaws(ctx);
+    this.buildAmbience(ctx);
+  }
+
+  /** Lot 9 : l'ambiance du thème (nappes continues et événements espacés, graine fixe). Remplace la précédente. */
+  setAmbience(spec: AmbienceSpec | null, seed = 1): void {
+    this.ambienceSpec = spec;
+    this.ambienceSeed = seed;
+    if (this.ctx) this.buildAmbience(this.ctx);
+  }
+
+  private buildAmbience(ctx: AudioContext): void {
+    for (const n of this.bedNodes) {
+      try {
+        n.stop();
+      } catch {
+        // déjà arrêtée
+      }
+    }
+    for (const g of this.bedGains) g.disconnect();
+    this.bedNodes = [];
+    this.bedGains = [];
+    this.scheduler = null;
+    const spec = this.ambienceSpec;
+    if (!spec || !this.ambience) return;
+    try {
+      for (const bed of spec.beds) {
+        const gain = ctx.createGain();
+        gain.gain.value = bed.gain;
+        gain.connect(this.ambience);
+        let head: AudioNode = gain;
+        let filter: BiquadFilterNode | null = null;
+        if (bed.filter) {
+          filter = ctx.createBiquadFilter();
+          filter.type = bed.filter;
+          filter.frequency.value = bed.type === "noise" ? bed.freq : (bed.filterFreq ?? bed.freq * 4);
+          filter.Q.value = bed.q ?? 0.7;
+          filter.connect(gain);
+          head = filter;
+        }
+        if (bed.type === "noise") {
+          const src = this.loopNoise(ctx);
+          src.connect(head);
+          this.bedNodes.push(src);
+        } else {
+          for (const cents of bed.detune ? [0, bed.detune] : [0]) {
+            const o = ctx.createOscillator();
+            o.type = bed.wave ?? "sine";
+            o.frequency.value = bed.freq;
+            o.detune.value = cents;
+            o.connect(head);
+            o.start();
+            this.bedNodes.push(o);
+          }
+        }
+        // Ondulation lente du volume (et du filtre).
+        const lfo = ctx.createOscillator();
+        lfo.frequency.value = bed.lfoRate;
+        const depth = ctx.createGain();
+        depth.gain.value = bed.gain * bed.lfoDepth;
+        lfo.connect(depth).connect(gain.gain);
+        if (filter && bed.sweep) {
+          const sweep = ctx.createGain();
+          sweep.gain.value = bed.sweep;
+          lfo.connect(sweep).connect(filter.frequency);
+        }
+        lfo.start();
+        this.bedNodes.push(lfo);
+        this.bedGains.push(gain);
+      }
+      this.scheduler = new AmbientScheduler(spec, this.ambienceSeed, ctx.currentTime);
+    } catch {
+      this.errors++;
+    }
   }
 
   private loopNoise(ctx: AudioContext): AudioBufferSourceNode {
@@ -196,7 +282,7 @@ export class JumpAudio {
     const set = (p: AudioParam, v: number) => (fade > 0 ? p.setTargetAtTime(v, t, fade) : (p.value = v));
     set(this.master.gain, sliderGain(this.settings.volume));
     set(this.sfx.gain, sliderGain(this.settings.sfx));
-    set(this.ambience.gain, sliderGain(this.settings.ambience));
+    set(this.ambience.gain, ambienceTarget(this.settings.ambience, typeof document !== "undefined" && document.hidden));
   }
 
   setSettings(s: PlayerSettings): void {
@@ -263,14 +349,14 @@ export class JumpAudio {
     }
   }
 
-  private layer(ctx: AudioContext, l: Layer, k: number): void {
-    const t0 = ctx.currentTime + (l.delay ?? 0);
+  private layer(ctx: AudioContext, l: Layer, k: number, dest: AudioNode = this.sfx!, at = ctx.currentTime): void {
+    const t0 = at + (l.delay ?? 0);
     const peak = Math.max(0.0002, l.gain * k);
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(peak, t0 + Math.min(0.01, l.dur / 3));
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + l.dur);
-    g.connect(this.sfx!);
+    g.connect(dest);
     let src: AudioScheduledSourceNode;
     if (l.type === "tone") {
       const o = ctx.createOscillator();
@@ -301,6 +387,17 @@ export class JumpAudio {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== "running") return;
     const t = ctx.currentTime;
+    // Lot 9 : les événements d'ambiance dus (oiseau, grillons, machine…), sur le bus « ambiance ».
+    if (this.scheduler && this.ambience && this.ambienceSpec) {
+      for (const due of this.scheduler.due(t)) {
+        try {
+          for (const l of this.ambienceSpec.events[due.index]!.layers) this.layer(ctx, l, 1, this.ambience, Math.max(t, due.at));
+          this.ambientEvents++;
+        } catch {
+          this.errors++;
+        }
+      }
+    }
     const list = this.lastSaws;
     // Une voix garde sa scie tant qu'elle reste audible : pas de saut de stéréo quand l'ordre des distances change.
     const free = this.sawNodes.filter((n) => !list.some((s) => s.index === n.index));
@@ -333,6 +430,7 @@ export class JumpAudio {
       slide: this.sliding && this.active,
       saws: this.lastSaws.map((s) => ({ index: s.index, gain: s.gain, pan: s.pan })),
       errors: this.errors,
+      ambience: { id: this.ambienceSpec?.id ?? null, beds: this.bedGains.length, events: this.ambientEvents },
     };
   }
 }
