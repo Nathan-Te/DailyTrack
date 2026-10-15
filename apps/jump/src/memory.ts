@@ -207,7 +207,7 @@ export class DayMemory {
         }
         if (day !== this.day) stale.push(k.slice(prefix.length));
       }
-      for (const id of stale) for (const kind of ["jour", "meilleur", "vies", "morts"]) store.removeItem(storageKey(`${kind}:${id}`));
+      for (const id of stale) for (const kind of ["jour", "meilleur", "vies", "morts", "niveau"]) store.removeItem(storageKey(`${kind}:${id}`));
     } catch {
       /* rien */
     }

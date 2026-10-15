@@ -26,7 +26,6 @@ import {
   runsTicks,
   sawCenters,
   buildModule,
-  dailyLevel,
   jumpMedalFor,
   replayStartState,
   type AttemptState,
@@ -55,6 +54,7 @@ import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
 import { dailyHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
+import { browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
 import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
 import { CarnageFilter, EventLog, FULL_SPEED, causeName, eventsBetween, type GameEvent } from "./events";
 import { JumpAudio, type AudioDebug } from "./audio";
@@ -246,6 +246,8 @@ export interface DailyView {
   newDay: boolean;
   /** Message discret affiché (date refusée, nouveau niveau), "" sinon. */
   notice: string;
+  /** Lot 7b : d'où vient le niveau (`cache`, `worker`, `principal`), s'il a été généré pendant ce chargement, pourquoi le cache a été refusé, durée du chargement et temps de fil principal (ms). */
+  load: { source: string; generated: boolean; cacheMiss: string; totalMs: number; blockedMs: number };
   /** Ligne du HUD. */
   line: string;
 }
@@ -275,7 +277,12 @@ const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_L
 const today = parisDay(Date.now());
 const preview = isPreview(location);
 const choice: DayChoice | null = options.daily ? chooseDay(options.seed, today, preview) : null;
-const daily: DailyLevel | null = choice ? dailyLevel(choice.day) : null;
+// Lot 7b : le niveau se charge hors du fil principal (cache vérifié, sinon worker, sinon repli ; `dailyLoader.ts`). Attente au niveau du module.
+const store = browserStorage();
+const loaded: DailyLoad | null = choice
+  ? await loadDaily(choice.day, { store, today: formatDay(today), makeWorker: browserWorker, showProgress: progressMessage(document), yieldToPaint })
+  : null;
+const daily: DailyLevel | null = loaded ? loaded.level : null;
 // Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
 // couloir de lancement est ajouté devant le palier d'entrée ; la solution, elle, part lancée du départ du morceau (sans couloir).
 const mod = options.module;
@@ -304,7 +311,6 @@ const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS
 // ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
 // Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
 const levelId: string = built ? built.levelId : daily ? daily.id : (options.scenario ?? "essai");
-const store = browserStorage();
 const memory = new DayMemory({ store, level, levelId, key: mod ? `${levelId}:${mod.entry}` : levelId, today: () => formatDay(parisDay(Date.now())) });
 // `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
 // `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
@@ -807,6 +813,7 @@ const info: JumpDebug = {
       lastMedal,
       newDay,
       notice,
+      load: loaded ? { source: loaded.source, generated: loaded.generated, cacheMiss: loaded.cacheMiss, totalMs: loaded.totalMs, blockedMs: loaded.blockedMs } : { source: "aucun", generated: false, cacheMiss: "", totalMs: 0, blockedMs: 0 },
       line: shownLine,
     };
   },

@@ -103,18 +103,25 @@ export const EXIGENCE_PEAK = 4;
  * Profil visé pendant le tirage, en dixièmes de point : un morceau placé à la fraction p du temps cible vise l'exigence
  * `PROFILE_START + (PROFILE_END − PROFILE_START) × p` (la variante la plus proche est choisie). Règle vérifiée après rejeu : le dernier
  * tiers (en temps) est au moins aussi exigeant, en moyenne pondérée par la durée, que le premier. 1,3 → 3,3 aux lots 5 et 6 ; 1,0 → 3,0 au
- * lot 7 (avec la correction ci-dessous, le niveau moyen remonte de lui-même).
+ * lot 7 (avec la correction ci-dessous, le niveau moyen remonte de lui-même) ; 1,0 → 3,6 au lot 7b (tension jusqu'à la fin).
  */
 export const PROFILE_START = 10;
-export const PROFILE_END = 30;
+export const PROFILE_END = 36;
 /**
  * Correction du profil (lot 7, pour cent) : la variante visée suit le profil plus cette part de l'écart entre l'exigence accumulée et celle
  * que donnerait `EXIGENCE_RATE_CENTER` pour le temps estimé. Sans elle, la somme de 10 morceaux d'exigence 1 à 5 s'étalait trop : 44 % des
  * tirages rejoués tombaient hors de la fenêtre (mesuré). Elle ne s'applique qu'à partir de `STEER_FROM` (pour mille du temps visé) : le
  * début garde son profil doux, la fin rattrape (sinon la règle « dernier tiers ≥ premier tiers » échouait plus souvent).
  */
-export const EXIGENCE_STEER = 60;
-export const STEER_FROM = 333;
+export const EXIGENCE_STEER = 100;
+export const STEER_FROM = 600;
+/**
+ * Lot 7b : la tension monte jusqu'à la fin — le dernier tiers est au moins aussi exigeant que le deuxième (en plus du premier). Mesurée sur
+ * 120 dates : avec l'ancien pilotage (profil 1,0 → 3,0, correction 60 % dès 33 %) la règle ne laissait que 42 % de tirages validés ; avec
+ * `PROFILE_END` 36, `EXIGENCE_STEER` 100 et `STEER_FROM` 600 (la correction ne joue que sur le dernier tiers, le milieu garde son profil
+ * doux) 61,8 %, secours 0 (README du lot 7b).
+ */
+export const TENSION_RISES = true;
 
 // ——— Quotas, repos, tirages ———
 
@@ -663,6 +670,7 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   const e = d.exigence;
   if (e.rate < EXIGENCE_RATE_MIN || e.rate > EXIGENCE_RATE_MAX) out.push(`exigence ${e.rate} hors de [${EXIGENCE_RATE_MIN}, ${EXIGENCE_RATE_MAX}]`);
   if (e.thirds[2] < e.thirds[0]) out.push(`le dernier tiers (${e.thirds[2]}) est moins exigeant que le premier (${e.thirds[0]})`);
+  if (TENSION_RISES && e.thirds[2] < e.thirds[1]) out.push(`le dernier tiers (${e.thirds[2]}) est moins exigeant que le deuxième (${e.thirds[1]})`);
   const idle = d.palierTicks.reduce((a, b) => a + b, 0);
   if (idle * 1000 >= EMPTY_RUN_MAX * total) out.push(`course à vide sur les paliers ${per(idle, total)} ‰ (moins de ${EMPTY_RUN_MAX} ‰)`);
   return out;
