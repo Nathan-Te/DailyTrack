@@ -30,6 +30,7 @@ import { readModules, readSolutions, writeCatalog } from "./files";
 // `JUMP_SIM_VERSION` n'ont pas changé (la mesure seule est refaite si `EXIGENCE_VERSION` a changé).
 //   --force          tout re-résoudre          --only=a,b     seulement ces morceaux (les autres sont gardés tels quels)
 //   --beam=N         largeur du faisceau (800)  --workers=N    fils de calcul (tous les cœurs)
+//   --dry            ne rien écrire (mesure du temps du solveur : `measure:modules -- --solveur`)
 // Ne tourne jamais en production ni dans `npm test`.
 
 interface Job {
@@ -173,15 +174,17 @@ async function main(): Promise<void> {
   for (const r of results) out[r.job.id]!.variants[r.job.variant]![r.job.entry] = r.solution;
 
   const file: ModuleSolutionsFile = { jumpSimVersion: JUMP_SIM_VERSION, exigenceVersion: EXIGENCE_VERSION, modules: out };
-  writeCatalog(
-    modules.map((m) => m.text),
-    file,
-  );
+  if (!args.has("--dry")) {
+    writeCatalog(
+      modules.map((m) => m.text),
+      file,
+    );
+  }
   const missing = Object.entries(out).flatMap(([id, m]) => m.variants.flatMap((v, k) => MODULE_ENTRIES.filter((e) => !v[e]).map((e) => `${id} v${k} ${e}`)));
   const tight = Object.entries(out).flatMap(([id, m]) => m.variants.flatMap((v, k) => MODULE_ENTRIES.filter((e) => v[e]?.exigence === 0).map((e) => `${id} v${k} ${e}`)));
   const cpu = results.reduce((n, r) => n + r.ms, 0);
   console.log(`\nTemps : ${((performance.now() - t0) / 1000).toFixed(1)} s (${workers} fils, ${(cpu / 1000).toFixed(1)} s de calcul).`);
   if (missing.length) console.log(`Sans solution : ${missing.join(", ")}`);
   if (tight.length) console.log(`Au pas près (à adoucir ou retirer) : ${tight.join(", ")}`);
-  console.log("Écrit : modules/solutions.json, src/catalog.ts");
+  console.log(args.has("--dry") ? "Rien n'est écrit (--dry)." : "Écrit : modules/solutions.json, src/catalog.ts");
 }

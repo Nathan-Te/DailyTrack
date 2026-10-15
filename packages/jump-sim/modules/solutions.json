@@ -1771,48 +1771,21 @@
   "saut-long": {
    "variants": [
     {
-     "grid": "b2919eae",
-     "arret": {
-      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzowABQIJJoH9g0",
-      "ticks": 344,
-      "fastest": 345,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1
-     },
-     "elan": {
-      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzowBLoH7g0",
-      "ticks": 340,
-      "fastest": 340,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": 1000,
-      "exigence": 1
-     }
-    },
-    {
      "grid": "afdab2f3",
      "arret": {
-      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoxABwIJKoIPoIN",
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzowABwIHKIIzg0",
       "ticks": 356,
       "fastest": 356,
       "gigue": [
        1000,
        1000,
-       955
+       1000
       ],
       "raccord": null,
       "exigence": 1
      },
      "elan": {
-      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoxBPoHhg4",
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzowBPoHhg4",
       "ticks": 351,
       "fastest": 351,
       "gigue": [
@@ -1827,21 +1800,48 @@
     {
      "grid": "07d22558",
      "arret": {
-      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoyABwIJKoIVsIN",
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoxABwIJKoIXroN",
       "ticks": 367,
       "fastest": 367,
       "gigue": [
        1000,
-       990,
-       940
+       1000,
+       955
       ],
       "raccord": null,
       "exigence": 1
      },
      "elan": {
-      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoyBLoIng4",
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoxBLoIng4",
       "ticks": 362,
       "fastest": 362,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "cf074791",
+     "arret": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoyABQQJKoIfvIN",
+      "ticks": 378,
+      "fastest": 378,
+      "gigue": [
+       1000,
+       985,
+       895
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoyBLoI9g4",
+      "ticks": 373,
+      "fastest": 373,
       "gigue": [
        1000,
        1000,
@@ -1941,21 +1941,21 @@
   "scie-sol": {
    "variants": [
     {
-     "grid": "ee9073e7",
+     "grid": "fb55c197",
      "arret": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjAAFAgcwgr-CQ",
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjAAFAgU8gW2BCL-CQo",
       "ticks": 333,
       "fastest": 334,
       "gigue": [
        1000,
-       1000,
-       995
+       980,
+       845
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjAEwgqGChI",
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjAE-gW2BBqGChI",
       "ticks": 330,
       "fastest": 330,
       "gigue": [
@@ -1968,48 +1968,48 @@
      }
     },
     {
-     "grid": "27c1f77a",
+     "grid": "76b29e13",
      "arret": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjEAFAgckgmeCxI",
-      "ticks": 333,
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjEADBgsggXmAzLmAzKOBw",
+      "ticks": 334,
       "fastest": 334,
       "gigue": [
        1000,
        1000,
-       950
+       970
       ],
       "raccord": null,
       "exigence": 1
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjEEmgm2Cwo",
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjEEkgXmAyL-Axq2Bw",
       "ticks": 330,
       "fastest": 330,
       "gigue": [
        1000,
        1000,
-       1000
+       905
       ],
       "raccord": 1000,
       "exigence": 1
      }
     },
     {
-     "grid": "0d3719fd",
+     "grid": "a4e8d18b",
      "arret": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIAFAgcugf-DAo",
-      "ticks": 333,
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIADAgcsgTuAhqmAyLGCQo",
+      "ticks": 332,
       "fastest": 334,
       "gigue": [
        1000,
        1000,
-       950
+       945
       ],
       "raccord": null,
       "exigence": 1
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIEwgeGDRI",
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIEugT2AmLWAiLWCQo",
       "ticks": 330,
       "fastest": 330,
       "gigue": [

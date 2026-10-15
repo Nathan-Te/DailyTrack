@@ -13,6 +13,8 @@ export interface FinishOptions {
   reference?: string | null;
   /** Lot 4 : lien « Morceau suivant ». */
   next?: string | null;
+  /** Une lecture (rediffusion, solution) : sans meilleur temps, on n'accuse pas les réglages. */
+  watching?: boolean;
 }
 
 export interface Hud {
@@ -76,7 +78,7 @@ export function mountHud(opts: { onRestart(): void }): Hud {
       next.hidden = !opts.next;
       if (opts.next) next.href = opts.next;
       bTime.textContent = formatTicks(session.state.time);
-      bBest.textContent = session.best === null ? "Meilleur : — (réglages modifiés)" : `Meilleur du jour : ${formatTicks(session.best)}`;
+      bBest.textContent = session.best === null ? (opts.watching ? "Meilleur du jour : —" : "Meilleur : — (réglages modifiés)") : `Meilleur du jour : ${formatTicks(session.best)}`;
       // Avec les points de passage, un temps peut contenir des morts (le chrono a continué) : on le dit.
       const run = session.attemptDeaths === 0 ? "essai sans faute" : `${session.attemptDeaths} dans cet essai`;
       bDeaths.textContent = `Morts : ${session.deaths} · ${run}`;

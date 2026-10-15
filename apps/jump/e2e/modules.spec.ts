@@ -12,20 +12,26 @@ interface ModuleDebug {
   manual(on: boolean): void;
   advance(n: number): unknown;
 }
-const J = "(window as unknown as { __jump: ModuleDebug }).__jump";
-void J;
 const debug = (page: Page) => page.evaluate(() => {
   const j = (window as unknown as { __jump: ModuleDebug }).__jump;
   return { phase: j.phase, module: j.module, attempt: j.attempt };
 });
 const step = (page: Page, n = 1) => page.evaluate((k) => (window as unknown as { __jump: ModuleDebug }).__jump.advance(k), n);
 
-/** Ouvre une adresse du jeu en `?debug` ; faux sans WebGL. */
+/**
+ * Ouvre une adresse du jeu en `?debug`, passe en pas à pas et repart du départ (une lecture de solution démarre d'elle-même : on la
+ * relance, comme la touche R) ; faux sans WebGL.
+ */
 async function open(page: Page, search: string): Promise<boolean> {
   await page.goto(`/${search}`);
   if (!(await hasWebGL(page))) return false;
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
-  await page.evaluate(() => (window as unknown as { __jump: ModuleDebug }).__jump.manual(true));
+  await page.waitForFunction(() => ["ready", "playing", "finished"].includes((window as unknown as { __jump?: { phase: string } }).__jump?.phase ?? ""));
+  await page.evaluate(() => {
+    const j = (window as unknown as { __jump: ModuleDebug & { restart(): void } }).__jump;
+    j.manual(true);
+    j.restart();
+  });
+  await page.waitForFunction(() => (window as unknown as { __jump: ModuleDebug }).__jump.phase === "ready");
   return true;
 }
 

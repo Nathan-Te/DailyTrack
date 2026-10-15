@@ -211,7 +211,7 @@ const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_L
 const mod = options.module;
 const built = mod ? buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? LAUNCH_TILES : 0 }) : null;
 const level = built ? built.level : LEVELS[options.scenario];
-const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry) : null;
+const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
 const nextHref = mod ? moduleHref({ id: nextModule(mod.id), variant: 0, entry: mod.entry }, options) : null;
 
 const day = parisDay(Date.now());
@@ -465,7 +465,9 @@ function onEvent(e: SessionEvent): void {
     stepper.reset();
   } else if (e.kind === "finish") {
     if (watching) {
-      hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : "Rediffusion" });
+      // Une lecture n'est pas un temps du joueur : le meilleur affiché reste celui du jour.
+      session.best = memory.best?.time ?? null;
+      hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : "Rediffusion", watching: true });
       return;
     }
     const rec = drainEssais();
@@ -552,7 +554,7 @@ function updateOverlay(): void {
     `position  colonne ${fmt(v.x, 2)} · rangée ${fmt(v.y, 2)}   pas ${session.ticks}`,
     options.hitbox ? "boîtes justes (hitbox)" : "",
     manual ? "pas à pas (manual)" : "",
-    watching ? "lecture du meilleur essai (watch=best)" : "",
+    watching ? (mod?.solution ? "lecture de la solution du morceau (solution)" : "lecture du meilleur essai (watch=best)") : "",
     `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
   ]
     .filter(Boolean)

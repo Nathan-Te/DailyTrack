@@ -102,9 +102,9 @@ export function launchTicks(id: string, variant: number): number {
   return t;
 }
 
-/** Temps de référence à l'arrivée (pas) : la solution stockée, plus le couloir en élan ; null sans solution. */
-export function referenceTicks(id: string, variant: number, entry: ModuleEntry): number | null {
+/** Temps de référence à l'arrivée (pas) : la solution stockée, plus le couloir quand on joue en élan (`corridor`) ; null sans solution. */
+export function referenceTicks(id: string, variant: number, entry: ModuleEntry, corridor = entry === "elan"): number | null {
   const s = moduleSolutions(id, variant)?.[entry];
   if (!s) return null;
-  return entry === "elan" ? s.ticks + launchTicks(id, variant) : s.ticks;
+  return corridor ? s.ticks + launchTicks(id, variant) : s.ticks;
 }

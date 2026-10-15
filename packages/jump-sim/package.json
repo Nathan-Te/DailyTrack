@@ -10,6 +10,6 @@
   },
   "scripts": {
     "solve:modules": "esbuild tools/solve-modules.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/solve-modules.mjs --log-level=warning && node dist/solve-modules.mjs",
-    "measure:modules": "esbuild tools/measure-modules.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-modules.mjs --log-level=warning && node dist/measure-modules.mjs"
+    "measure:modules": "esbuild tools/measure-modules.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-modules.mjs --log-level=warning && esbuild tools/solve-modules.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/solve-modules.mjs --log-level=warning && node dist/measure-modules.mjs"
   }
 }
