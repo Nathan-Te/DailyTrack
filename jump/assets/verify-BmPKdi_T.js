@@ -1,0 +1,1 @@
+import{S as e,b as t,h as n,m as r,u as i,x as a}from"./src-BuEyBRhV.js";var o={essai:a,dangers:t,"bac-a-sable":e};window.__verify=e=>{let t=i(e),a=o[t.levelId];if(!a)throw Error(`Niveau inconnu : ${t.levelId}`);return{...n(a,t),lives:r(a,t).lives.length}},document.getElementById(`status`).textContent=`Prête.`,document.documentElement.dataset.ready=`true`;

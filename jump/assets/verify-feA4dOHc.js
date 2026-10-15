@@ -1,1 +1,0 @@
-import{a as e,f as t,l as n,m as r,p as i,u as a}from"./src-xTDokMfH.js";var o={essai:i,dangers:t,"bac-a-sable":r};window.__verify=t=>{let r=e(t),i=o[r.levelId];if(!i)throw Error(`Niveau inconnu : ${r.levelId}`);return{...a(i,r),lives:n(i,r).lives.length}},document.getElementById(`status`).textContent=`Prête.`,document.documentElement.dataset.ready=`true`;
