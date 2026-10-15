@@ -96,10 +96,12 @@ test("?carnage=demo démarre tout seul, compte ses vies, les fait mourir (éclat
   await expect(page.locator("#carnage .count")).toHaveText(`${start.carnage.lives} vies · 0 arrivée`);
   expect(start.stains.count).toBe(0); // les taches du carnage apparaissent avec ses morts
 
-  // Les premières vagues (jusqu'au pas 1 500 du héros, compté depuis le départ du carnage) : des vies partent, meurent, tachent.
-  await step(page, 1500 - start.carnage.tick, 0);
+  // Les premières vagues (jusqu'au pas 1 600 du héros, compté depuis le départ du carnage) : des vies partent, meurent, tachent.
+  // (Lot 4 : les points de passage se prennent en franchissant leur colonne, les essais fictifs ont changé ; 9 morts au pas 1 500,
+  // 11 au pas 1 600 : on regarde au pas 1 600, même seuil.)
+  await step(page, 1600 - start.carnage.tick, 0);
   const mid = await J(page);
-  expect(mid.carnage.tick).toBe(1500);
+  expect(mid.carnage.tick).toBe(1600);
   expect(mid.carnage.deaths).toBeGreaterThanOrEqual(10);
   expect(mid.stains.count).toBe(mid.carnage.deaths); // chaque mort laisse sa tache
   expect(mid.phase).toBe("carnage");

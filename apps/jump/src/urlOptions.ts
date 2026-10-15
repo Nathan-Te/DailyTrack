@@ -2,6 +2,8 @@
 // (un test vérifie qu'aucun autre fichier ne lit un paramètre absent de cette liste). La future page d'admin de DailyJump lira `URL_OPTIONS`
 // pour construire ses liens, comme `adminLogic.ts` de DailyTrack.
 
+import { MODULES, MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
+
 export interface UrlOption {
   name: string;
   description: string;
@@ -65,6 +67,33 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: ["best"],
   },
   {
+    name: "modules",
+    description: "La galerie des morceaux (lot 4) : intention, étiquettes, exigence et durée de chaque variante, avec « Jouer » et « Regarder ».",
+    values: [],
+  },
+  {
+    name: "module",
+    description: "Joue un morceau du catalogue (lot 4) au lieu d'un scénario : `?module=cheminee`. Un identifiant inconnu ouvre la galerie.",
+    values: MODULES.map((m) => m.id),
+  },
+  {
+    name: "variante",
+    description: "Avec `module` : la variante (0 par défaut). Une variante qui n'existe pas revient à 0.",
+    values: ["0", "1", "2", "3"],
+    default: "0",
+  },
+  {
+    name: "entree",
+    description: "Avec `module` : `arret` (au départ, immobile ; par défaut) ou `elan` (un couloir de lancement est ajouté devant le palier d'entrée ; la solution part lancée).",
+    values: MODULE_ENTRIES,
+    default: "arret",
+  },
+  {
+    name: "solution",
+    description: "Avec `module` : regarder la solution stockée du morceau (rejouée par `replayAttempt`), sans jouer (R la relance).",
+    values: [],
+  },
+  {
     name: "zones",
     description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
     values: [],
@@ -90,6 +119,10 @@ export interface UrlChoices {
   carnageDemo: boolean;
   /** Lecture du meilleur essai, sans jouer (`?watch=best`). */
   watchBest: boolean;
+  /** La galerie des morceaux (`?modules`, ou un `?module=` inconnu). */
+  gallery: boolean;
+  /** Le morceau à jouer (`?module=<id>`), sa variante, son entrée, et la lecture de sa solution (`&solution`) ; null : un scénario. */
+  module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -107,5 +140,39 @@ export function readUrlOptions(search: string): UrlChoices {
     ghostOff: params.get("ghost") === "off",
     carnageDemo: params.get("carnage") === "demo",
     watchBest: params.get("watch") === "best",
+    gallery: params.has("modules") || (params.has("module") && moduleOf(params) === null),
+    module: moduleOf(params),
   };
+}
+
+function moduleOf(params: URLSearchParams): UrlChoices["module"] {
+  const id = params.get("module");
+  const def = MODULES.find((m) => m.id === id);
+  if (!def) return null;
+  const v = Number(params.get("variante") ?? "0");
+  const variant = Number.isInteger(v) && v >= 0 && v < def.variants.length ? v : 0;
+  return { id: def.id, variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
+}
+
+/** Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme). */
+function carried(from: UrlChoices): string[] {
+  const out: string[] = [];
+  if (from.debug) out.push("debug");
+  if (from.touch) out.push(`touch=${from.touch}`);
+  if (!from.fx) out.push("fx=off");
+  if (from.ghostOff) out.push("ghost=off");
+  return out;
+}
+
+/** Lien vers un morceau : `?module=<id>&variante=<n>[&entree=elan][&solution]`, plus ce que l'adresse actuelle garde. */
+export function moduleHref(target: { id: string; variant: number; entry: ModuleEntry; solution?: boolean }, from: UrlChoices): string {
+  const parts = [`module=${encodeURIComponent(target.id)}`, `variante=${target.variant}`];
+  if (target.entry === "elan") parts.push("entree=elan");
+  if (target.solution) parts.push("solution");
+  return `?${[...parts, ...carried(from)].join("&")}`;
+}
+
+/** Lien vers la galerie des morceaux. */
+export function galleryHref(from: UrlChoices): string {
+  return `?${["modules", ...carried(from)].join("&")}`;
 }

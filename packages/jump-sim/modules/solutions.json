@@ -1,0 +1,2112 @@
+{
+ "jumpSimVersion": 3,
+ "exigenceVersion": 1,
+ "modules": {
+  "ascenseur": {
+   "variants": [
+    {
+     "grid": "1b80a03a",
+     "arret": {
+      "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjowABQINKIHNqoL",
+      "ticks": 312,
+      "fastest": 312,
+      "gigue": [
+       1000,
+       980,
+       895
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjowBLIHProL",
+      "ticks": 308,
+      "fastest": 308,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "d9cd36ad",
+     "arret": {
+      "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjoxABQIHKIH7gs",
+      "ticks": 311,
+      "fastest": 312,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjoxBLoH7gs",
+      "ticks": 308,
+      "fastest": 308,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "1808cb7f",
+     "arret": {
+      "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjoyAAwYHMIILvoK",
+      "ticks": 323,
+      "fastest": 323,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjoyBLIINpoL",
+      "ticks": 319,
+      "fastest": 319,
+      "gigue": [
+       1000,
+       1000,
+       920
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "cheminee-pics": {
+   "variants": [
+    {
+     "grid": "bd792ba8",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MACKBdYBSDTlARDOARpmTSA9pgg",
+      "ticks": 344,
+      "fastest": 339,
+      "gigue": [
+       895,
+       520,
+       325
+      ],
+      "raccord": null,
+      "exigence": 4
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MATKBMYBMZUCEOYBCjxOVRElhggi",
+      "ticks": 332,
+      "fastest": 332,
+      "gigue": [
+       1000,
+       815,
+       580
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    },
+    {
+     "grid": "511e259d",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQCqBY4BUN0BKUU-WhWZAbYBGK0BCRSiCA",
+      "ticks": 372,
+      "fastest": 372,
+      "gigue": [
+       985,
+       825,
+       605
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQSqBmi8ARKWATAkQUwStgEahQESKaYICg",
+      "ticks": 367,
+      "fastest": 362,
+      "gigue": [
+       885,
+       580,
+       160
+      ],
+      "raccord": 1000,
+      "exigence": 4
+     }
+    }
+   ]
+  },
+  "cheminee-scie": {
+   "variants": [
+    {
+     "grid": "28242929",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MACCB0B9ErYBCDyNAUKGCDI",
+      "ticks": 326,
+      "fastest": 320,
+      "gigue": [
+       770,
+       265,
+       130
+      ],
+      "raccord": null,
+      "exigence": 5
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MASyBjAJZS4SjgEqNLUBEqYIEg",
+      "ticks": 314,
+      "fastest": 310,
+      "gigue": [
+       525,
+       260,
+       120
+      ],
+      "raccord": 958,
+      "exigence": 5
+     }
+    },
+    {
+     "grid": "73bb54e6",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQC6BYYBQP0BCJQBSuUBEUz6Bw",
+      "ticks": 336,
+      "fastest": 336,
+      "gigue": [
+       875,
+       480,
+       280
+      ],
+      "raccord": null,
+      "exigence": 4
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQTiBKYBMf0BGJYBIvUBGk7qBw",
+      "ticks": 325,
+      "fastest": 326,
+      "gigue": [
+       1000,
+       850,
+       450
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    },
+    {
+     "grid": "33e092fc",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgDKBWZA_QESngEi5QEINI4I",
+      "ticks": 329,
+      "fastest": 327,
+      "gigue": [
+       910,
+       600,
+       355
+      ],
+      "raccord": null,
+      "exigence": 3
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgSyBigJrQERrgESFOUBEKYIEg",
+      "ticks": 320,
+      "fastest": 318,
+      "gigue": [
+       935,
+       515,
+       305
+      ],
+      "raccord": 1000,
+      "exigence": 4
+     }
+    },
+    {
+     "grid": "bce7721f",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwA0EBSeBig03QEIxAEybI0BCgkILJYI",
+      "ticks": 346,
+      "fastest": 346,
+      "gigue": [
+       900,
+       420,
+       185
+      ],
+      "raccord": null,
+      "exigence": 4
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwTSBLYBOY0CIK4BSfUBCT1G0gc",
+      "ticks": 338,
+      "fastest": 338,
+      "gigue": [
+       1000,
+       800,
+       525
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    }
+   ]
+  },
+  "cheminee": {
+   "variants": [
+    {
+     "grid": "ed68c430",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAAHBAcugdOClYKHkQlCl4KXiUJHUSGBxI",
+      "ticks": 317,
+      "fastest": 317,
+      "gigue": [
+       785,
+       450,
+       275
+      ],
+      "raccord": null,
+      "exigence": 5
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAEwgdWCk4KHkQlCl4KXiUJHUSWBw",
+      "ticks": 310,
+      "fastest": 310,
+      "gigue": [
+       625,
+       600,
+       380
+      ],
+      "raccord": 667,
+      "exigence": 4
+     }
+    },
+    {
+     "grid": "e49c3866",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjEADAgc2gfeAQoWLE08ErYBCh4seb4I",
+      "ticks": 362,
+      "fastest": 363,
+      "gigue": [
+       1000,
+       1000,
+       930
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjEEwgfmARokbSQirgEKFiSRAa4I",
+      "ticks": 355,
+      "fastest": 355,
+      "gigue": [
+       680,
+       605,
+       485
+      ],
+      "raccord": 667,
+      "exigence": 4
+     }
+    },
+    {
+     "grid": "aec800d5",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjIAqgggGYUBCq4BEqUBKo4BMjRlMq4I",
+      "ticks": 385,
+      "fastest": 385,
+      "gigue": [
+       875,
+       580,
+       315
+      ],
+      "raccord": null,
+      "exigence": 4
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjIE-gXGAVF1ET2GAQg8hQEKfkQKPoUBCr4I",
+      "ticks": 376,
+      "fastest": 373,
+      "gigue": [
+       960,
+       795,
+       565
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    }
+   ]
+  },
+  "demi-tour": {
+   "variants": [
+    {
+     "grid": "81eac41f",
+     "arret": {
+      "code": "AQMSbW9kdWxlOmRlbWktdG91cjowAHKWBSreAjlAlQIRLe4I",
+      "ticks": 341,
+      "fastest": 343,
+      "gigue": [
+       1000,
+       970,
+       870
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOmRlbWktdG91cjowBKIE5gEKjgQypgG6CQ",
+      "ticks": 339,
+      "fastest": 339,
+      "gigue": [
+       1000,
+       935,
+       885
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "bc4882dc",
+     "arret": {
+      "code": "AQMSbW9kdWxlOmRlbWktdG91cjoxAMIBpgYSrgEizgIKjgoq",
+      "ticks": 359,
+      "fastest": 359,
+      "gigue": [
+       765,
+       695,
+       500
+      ],
+      "raccord": null,
+      "exigence": 3
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOmRlbWktdG91cjoxBBpOogPGAiLGA0AcQiihAVruCQ",
+      "ticks": 376,
+      "fastest": 382,
+      "gigue": [
+       1000,
+       975,
+       925
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "4c399709",
+     "arret": {
+      "code": "AQMSbW9kdWxlOmRlbWktdG91cjoyAAwIJI4BwgNGigMwDE1EbQwWECxeHQ6yAp4Bggk",
+      "ticks": 399,
+      "fastest": 401,
+      "gigue": [
+       755,
+       530,
+       300
+      ],
+      "raccord": null,
+      "exigence": 5
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOmRlbWktdG91cjoyBEoO4gLeAYoB9gUIbIYK",
+      "ticks": 366,
+      "fastest": 367,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "descente": {
+   "variants": [
+    {
+     "grid": "9d8594d2",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmRlc2NlbnRlOjAAHAgcwgMm4gQm-gg",
+      "ticks": 290,
+      "fastest": 290,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmRlc2NlbnRlOjAEogImsg8",
+      "ticks": 286,
+      "fastest": 286,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "bcec8572",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmRlc2NlbnRlOjEAHAgcogMm4gQmogUmkgc",
+      "ticks": 345,
+      "fastest": 345,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmRlc2NlbnRlOjEEggMm4gomggc",
+      "ticks": 340,
+      "fastest": 340,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "2570cb33",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmRlc2NlbnRlOjIAHAgc-hs",
+      "ticks": 454,
+      "fastest": 454,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmRlc2NlbnRlOjIEggEm8ho",
+      "ticks": 450,
+      "fastest": 450,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "escalier-friable": {
+   "variants": [
+    {
+     "grid": "c46b8a55",
+     "arret": {
+      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MACiAbYECo4B0gJm0gJmogI0NYYF",
+      "ticks": 344,
+      "fastest": 340,
+      "gigue": [
+       1000,
+       965,
+       810
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MASSAbYEIkb6AWa6AlayAl7KBQ",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       840,
+       460,
+       225
+      ],
+      "raccord": 1000,
+      "exigence": 4
+     }
+    },
+    {
+     "grid": "bf32daf1",
+     "arret": {
+      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQCCAqYEMqYBggNmogKOAaoD5gU",
+      "ticks": 384,
+      "fastest": 384,
+      "gigue": [
+       1000,
+       1000,
+       940
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQQ6vgQylgGCA5YBsgNmggPWBQo",
+      "ticks": 373,
+      "fastest": 373,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "escalier": {
+   "variants": [
+    {
+     "grid": "8597f3cb",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjAAygF-2gK-AzLGCjI",
+      "ticks": 318,
+      "fastest": 312,
+      "gigue": [
+       1000,
+       970,
+       840
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjAEjgHKAmaiAtYM",
+      "ticks": 308,
+      "fastest": 308,
+      "gigue": [
+       865,
+       700,
+       430
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    },
+    {
+     "grid": "d7e610ba",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEAHBAc9gMSZsoCdroCngs",
+      "ticks": 357,
+      "fastest": 357,
+      "gigue": [
+       1000,
+       1000,
+       885
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEEjgG6ApYB0gJmogLGCxo",
+      "ticks": 351,
+      "fastest": 351,
+      "gigue": [
+       1000,
+       910,
+       635
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "c1b51846",
+     "arret": {
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjIA2gFu4gJmkgK-AeoChg0",
+      "ticks": 406,
+      "fastest": 400,
+      "gigue": [
+       1000,
+       995,
+       880
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjIElgGCA5YB0gLGBDLWCyo",
+      "ticks": 395,
+      "fastest": 395,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "grande-scie": {
+   "variants": [
+    {
+     "grid": "54c52887",
+     "arret": {
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjAA8gkO-gk",
+      "ticks": 318,
+      "fastest": 312,
+      "gigue": [
+       1000,
+       985,
+       870
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjAEsgRGkgMOmgs",
+      "ticks": 308,
+      "fastest": 308,
+      "gigue": [
+       985,
+       935,
+       880
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "2973b43e",
+     "arret": {
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjEAJAgkqgUWigMOkgs",
+      "ticks": 324,
+      "fastest": 323,
+      "gigue": [
+       1000,
+       855,
+       825
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjEE0gUOggMOmgs",
+      "ticks": 319,
+      "fastest": 319,
+      "gigue": [
+       1000,
+       890,
+       795
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "20c5c984",
+     "arret": {
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIAFBAsigkOmgs",
+      "ticks": 334,
+      "fastest": 334,
+      "gigue": [
+       835,
+       615,
+       450
+      ],
+      "raccord": null,
+      "exigence": 3
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIEogkmkgs",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       555,
+       540,
+       320
+      ],
+      "raccord": 917,
+      "exigence": 5
+     }
+    }
+   ]
+  },
+  "iles-friables": {
+   "variants": [
+    {
+     "grid": "d0bf753f",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MAAcCCRe-gPuBDJu4gPuBRo",
+      "ticks": 334,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       1000,
+       845
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MAR2ggSWBRJe0gOWAYoF",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "ad804d6e",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MQAMIGQe2gNGwgJ--gKuAfoCpgGKA166Aw",
+      "ticks": 392,
+      "fastest": 389,
+      "gigue": [
+       1000,
+       990,
+       900
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MQS6Ac4EQo4B-gLWAfoCrgGKA06CBA",
+      "ticks": 384,
+      "fastest": 384,
+      "gigue": [
+       1000,
+       980,
+       815
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    }
+   ]
+  },
+  "lucarne": {
+   "variants": [
+    {
+     "grid": "489ef2fc",
+     "arret": {
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MAAkCBziBKYBggXmCgo",
+      "ticks": 357,
+      "fastest": 357,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MASGAaIEhgHiAibCA4YJGg",
+      "ticks": 351,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "a0ef9966",
+     "arret": {
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQAcCCTaBI4B4gImwgOmCSI",
+      "ticks": 356,
+      "fastest": 356,
+      "gigue": [
+       1000,
+       930,
+       830
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQTGAeIDhgHiAibCA4YJGg",
+      "ticks": 351,
+      "fastest": 351,
+      "gigue": [
+       1000,
+       1000,
+       950
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "mur-friable": {
+   "variants": [
+    {
+     "grid": "dc84ce14",
+     "arret": {
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAADAgckgamAQoeRCUKXgo-ISXGBwo",
+      "ticks": 288,
+      "fastest": 288,
+      "gigue": [
+       1000,
+       805,
+       610
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAEugTOAQq-AQh8CDwIfAk9hgdC",
+      "ticks": 288,
+      "fastest": 285,
+      "gigue": [
+       1000,
+       1000,
+       895
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "7bfb1b84",
+     "arret": {
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjEAggXeAQpeCoYBCHwKfgh8CDyGByo",
+      "ticks": 309,
+      "fastest": 305,
+      "gigue": [
+       1000,
+       720,
+       590
+      ],
+      "raccord": null,
+      "exigence": 3
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjEEsgYdTApWPQktPgh8CTU0CS00lgcK",
+      "ticks": 301,
+      "fastest": 301,
+      "gigue": [
+       900,
+       910,
+       655
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "f63513b4",
+     "arret": {
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIADAgsggZWCjYiHkQlCl4KXiUJHUYKPi0JFcYHCg",
+      "ticks": 316,
+      "fastest": 316,
+      "gigue": [
+       885,
+       560,
+       380
+      ],
+      "raccord": null,
+      "exigence": 4
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIEwgTGAQq-AQg8Rgg8Rgh8Cj4KPkQKvgc6",
+      "ticks": 319,
+      "fastest": 313,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "mur-seul": {
+   "variants": [
+    {
+     "grid": "909f5b11",
+     "arret": {
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjAADBA8tgQK1gFKlgg",
+      "ticks": 246,
+      "fastest": 246,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjAEImaiA6YCIaYICg",
+      "ticks": 241,
+      "fastest": 241,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "ffc6b621",
+     "arret": {
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjEAJAgcxgQKngIKngMKnggK",
+      "ticks": 301,
+      "fastest": 301,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjEEWl7CA9YBCr4BggKGCDI",
+      "ticks": 294,
+      "fastest": 294,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "81a9d331",
+     "arret": {
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIAigI-sgPWAQr-AgrOAeoBxgH6Bg",
+      "ticks": 358,
+      "fastest": 358,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIEfroDtgIKngGSAp4BmgL2BzI",
+      "ticks": 348,
+      "fastest": 348,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "petits-trous": {
+   "variants": [
+    {
+     "grid": "aa08c30c",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czowAAwIHKoDLtoENrIF5gc",
+      "ticks": 354,
+      "fastest": 356,
+      "gigue": [
+       1000,
+       1000,
+       975
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czowBLICRtoFHroF5gc",
+      "ticks": 351,
+      "fastest": 351,
+      "gigue": [
+       1000,
+       1000,
+       875
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "3db1b5e5",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czoxAAwIFLIDNsIFTqoG5gc",
+      "ticks": 386,
+      "fastest": 389,
+      "gigue": [
+       1000,
+       980,
+       915
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czoxBIoDTuoFPpoGTrIH",
+      "ticks": 384,
+      "fastest": 384,
+      "gigue": [
+       1000,
+       1000,
+       915
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "26172342",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czoyAAwIJNoDTsIGPooHTooH",
+      "ticks": 420,
+      "fastest": 421,
+      "gigue": [
+       1000,
+       1000,
+       925
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czoyBNoDXooGVooHPsIH",
+      "ticks": 417,
+      "fastest": 417,
+      "gigue": [
+       1000,
+       970,
+       870
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    }
+   ]
+  },
+  "piliers": {
+   "variants": [
+    {
+     "grid": "3db582ea",
+     "arret": {
+      "code": "AQMQbW9kdWxlOnBpbGllcnM6MAAUCBzaBKYBmgMWogP-Bw",
+      "ticks": 333,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       1000,
+       945
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMQbW9kdWxlOnBpbGllcnM6MATiBO4B-gIW2gN-sgY",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "6d365105",
+     "arret": {
+      "code": "AQMQbW9kdWxlOnBpbGllcnM6MQCaBR6KA1baAibKAzaaAs4G",
+      "ticks": 395,
+      "fastest": 389,
+      "gigue": [
+       1000,
+       930,
+       670
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMQbW9kdWxlOnBpbGllcnM6MQTyBA6iAz6iAg6aA2baAh6iBg",
+      "ticks": 384,
+      "fastest": 384,
+      "gigue": [
+       1000,
+       900,
+       705
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    }
+   ]
+  },
+  "plafond-pics": {
+   "variants": [
+    {
+     "grid": "011c5c74",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczowAAwYHIoHLpoDHtIDRqoI",
+      "ticks": 378,
+      "fastest": 378,
+      "gigue": [
+       1000,
+       920,
+       845
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczowBKIHLroDJooDPsoI",
+      "ticks": 373,
+      "fastest": 373,
+      "gigue": [
+       1000,
+       1000,
+       920
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "51abd8d9",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoxABwIJJIHLtIENrIDRvII",
+      "ticks": 411,
+      "fastest": 411,
+      "gigue": [
+       1000,
+       860,
+       625
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoxBKIHNrIENvoDPtII",
+      "ticks": 406,
+      "fastest": 406,
+      "gigue": [
+       1000,
+       1000,
+       870
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "712f7279",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyAAwIJJoHPvoERpIFPsoI",
+      "ticks": 441,
+      "fastest": 443,
+      "gigue": [
+       1000,
+       950,
+       625
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyBLoHPooFPvIERtoI",
+      "ticks": 439,
+      "fastest": 439,
+      "gigue": [
+       1000,
+       970,
+       550
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    }
+   ]
+  },
+  "plaine": {
+   "variants": [
+    {
+     "grid": "3a1c57a5",
+     "arret": {
+      "code": "AQMPbW9kdWxlOnBsYWluZTowABwIHPoKNroI",
+      "ticks": 323,
+      "fastest": 323,
+      "gigue": [
+       1000,
+       1000,
+       930
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMPbW9kdWxlOnBsYWluZTowBPoKhgk",
+      "ticks": 319,
+      "fastest": 319,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "1da5fbe0",
+     "arret": {
+      "code": "AQMPbW9kdWxlOnBsYWluZToxABwIHPIOPsoI",
+      "ticks": 389,
+      "fastest": 389,
+      "gigue": [
+       1000,
+       1000,
+       970
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMPbW9kdWxlOnBsYWluZToxBJIPNsII",
+      "ticks": 384,
+      "fastest": 384,
+      "gigue": [
+       1000,
+       1000,
+       925
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "25687fab",
+     "arret": {
+      "code": "AQMPbW9kdWxlOnBsYWluZToyABwIHPoShgk",
+      "ticks": 454,
+      "fastest": 454,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMPbW9kdWxlOnBsYWluZToyBJoTNsoI",
+      "ticks": 450,
+      "fastest": 450,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "pont-friable": {
+   "variants": [
+    {
+     "grid": "0b9ae282",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZTowABwIHIoT",
+      "ticks": 312,
+      "fastest": 312,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZTowBKIT",
+      "ticks": 308,
+      "fastest": 308,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "b72b81df",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZToxABwIHOoV",
+      "ticks": 356,
+      "fastest": 356,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZToxBPoV",
+      "ticks": 351,
+      "fastest": 351,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "c7819723",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZToyABwIHMoY",
+      "ticks": 400,
+      "fastest": 400,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZToyBNoY",
+      "ticks": 395,
+      "fastest": 395,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "puits": {
+   "variants": [
+    {
+     "grid": "bddcde31",
+     "arret": {
+      "code": "AQMObW9kdWxlOnB1aXRzOjAAogI28gFgMaAC6gk",
+      "ticks": 283,
+      "fastest": 280,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMObW9kdWxlOnB1aXRzOjAEggHGA0DBAUDaCQ",
+      "ticks": 267,
+      "fastest": 267,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "cc63828a",
+     "arret": {
+      "code": "AQMObW9kdWxlOnB1aXRzOjEAogI28gFgMaACkgEwogk",
+      "ticks": 298,
+      "fastest": 298,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMObW9kdWxlOnB1aXRzOjEEggGGBECBAcAB4gk",
+      "ticks": 284,
+      "fastest": 284,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "27ab3245",
+     "arret": {
+      "code": "AQMObW9kdWxlOnB1aXRzOjIAogI2kgTBAbIL",
+      "ticks": 314,
+      "fastest": 313,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMObW9kdWxlOnB1aXRzOjIEal6CA-ADYZIK",
+      "ticks": 306,
+      "fastest": 301,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "quinconce": {
+   "variants": [
+    {
+     "grid": "789174e8",
+     "arret": {
+      "code": "AQMSbW9kdWxlOnF1aW5jb25jZTowACQIFNIFXuoEXuIDTpIJ",
+      "ticks": 411,
+      "fastest": 411,
+      "gigue": [
+       1000,
+       1000,
+       950
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOnF1aW5jb25jZTowBPIFXuIEXsoDTqIJ",
+      "ticks": 406,
+      "fastest": 406,
+      "gigue": [
+       1000,
+       1000,
+       915
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "2f8e34ae",
+     "arret": {
+      "code": "AQMSbW9kdWxlOnF1aW5jb25jZToxABwIJMoFlgHqBX7yBKYK",
+      "ticks": 465,
+      "fastest": 465,
+      "gigue": [
+       1000,
+       985,
+       870
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOnF1aW5jb25jZToxBPIFfvIFhgHiBLYK",
+      "ticks": 461,
+      "fastest": 461,
+      "gigue": [
+       1000,
+       1000,
+       940
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "ressort-mur": {
+   "variants": [
+    {
+     "grid": "dc7e8fa5",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjAAJAgc5g4i",
+      "ticks": 248,
+      "fastest": 248,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjAESh7yAhayCw",
+      "ticks": 242,
+      "fastest": 242,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "cedfc129",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjEAJAgcxg8a",
+      "ticks": 259,
+      "fastest": 259,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjEESh7yAhaKDA",
+      "ticks": 253,
+      "fastest": 253,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "ressort-plafond": {
+   "variants": [
+    {
+     "grid": "0a88fc81",
+     "arret": {
+      "code": "AQMYbW9kdWxlOnJlc3NvcnQtcGxhZm9uZDowADQILKYRMg",
+      "ticks": 294,
+      "fastest": 294,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOnJlc3NvcnQtcGxhZm9uZDowBNYRIg",
+      "ticks": 286,
+      "fastest": 286,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "2fdab1c7",
+     "arret": {
+      "code": "AQMYbW9kdWxlOnJlc3NvcnQtcGxhZm9uZDoxAJIC9gcKfgo-2gc",
+      "ticks": 307,
+      "fastest": 343,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOnJlc3NvcnQtcGxhZm9uZDoxBNYFMrYDCCyWAQouygk",
+      "ticks": 333,
+      "fastest": 331,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "94a1d0cd",
+     "arret": {
+      "code": "AQMYbW9kdWxlOnJlc3NvcnQtcGxhZm9uZDoyABwgZuIDZqIDpgFihgwi",
+      "ticks": 371,
+      "fastest": 371,
+      "gigue": [
+       1000,
+       1000,
+       970
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOnJlc3NvcnQtcGxhZm9uZDoyBP4FEo4ECq4MCg",
+      "ticks": 361,
+      "fastest": 361,
+      "gigue": [
+       1000,
+       935,
+       780
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    }
+   ]
+  },
+  "ressorts-trous": {
+   "variants": [
+    {
+     "grid": "1f599899",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnJlc3NvcnRzLXRyb3VzOjAAHAg0ogUO8hk",
+      "ticks": 509,
+      "fastest": 509,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnJlc3NvcnRzLXRyb3VzOjAEogUmgho",
+      "ticks": 504,
+      "fastest": 504,
+      "gigue": [
+       1000,
+       1000,
+       910
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "71989c1e",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnJlc3NvcnRzLXRyb3VzOjEAJAgM-gUOwhs",
+      "ticks": 542,
+      "fastest": 542,
+      "gigue": [
+       615,
+       370,
+       285
+      ],
+      "raccord": null,
+      "exigence": 5
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnJlc3NvcnRzLXRyb3VzOjEE6gUW0hs",
+      "ticks": 537,
+      "fastest": 537,
+      "gigue": [
+       690,
+       420,
+       470
+      ],
+      "raccord": 1000,
+      "exigence": 5
+     }
+    }
+   ]
+  },
+  "saut-long": {
+   "variants": [
+    {
+     "grid": "afdab2f3",
+     "arret": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzowABwIHKIIzg0",
+      "ticks": 356,
+      "fastest": 356,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzowBPoHhg4",
+      "ticks": 351,
+      "fastest": 351,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "07d22558",
+     "arret": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoxABwIJKoIXroN",
+      "ticks": 367,
+      "fastest": 367,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoxBLoIng4",
+      "ticks": 362,
+      "fastest": 362,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "cf074791",
+     "arret": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoyABQQJKoIfvIN",
+      "ticks": 378,
+      "fastest": 378,
+      "gigue": [
+       1000,
+       985,
+       895
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMSbW9kdWxlOnNhdXQtbG9uZzoyBLoI9g4",
+      "ticks": 373,
+      "fastest": 373,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "scie-ronde": {
+   "variants": [
+    {
+     "grid": "b86e0514",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnNjaWUtcm9uZGU6MADSCb4LGg",
+      "ticks": 340,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnNjaWUtcm9uZGU6MASCCcYLEg",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       860
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "d54df661",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnNjaWUtcm9uZGU6MQA0CDSSBTZgMmFaMfoBNvIJ",
+      "ticks": 343,
+      "fastest": 342,
+      "gigue": [
+       720,
+       720,
+       635
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnNjaWUtcm9uZGU6MQTCB0DCAiaiCg",
+      "ticks": 336,
+      "fastest": 335,
+      "gigue": [
+       710,
+       665,
+       535
+      ],
+      "raccord": 1000,
+      "exigence": 3
+     }
+    },
+    {
+     "grid": "5efb6cdc",
+     "arret": {
+      "code": "AQMTbW9kdWxlOnNjaWUtcm9uZGU6MgAcCBy6FA",
+      "ticks": 334,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMTbW9kdWxlOnNjaWUtcm9uZGU6MgSCCiaiCg",
+      "ticks": 328,
+      "fastest": 328,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "scie-sol": {
+   "variants": [
+    {
+     "grid": "fb55c197",
+     "arret": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjAAFAgU8gW2BCL-CQo",
+      "ticks": 333,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       980,
+       845
+      ],
+      "raccord": null,
+      "exigence": 2
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjAE-gW2BBqGChI",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "76b29e13",
+     "arret": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjEADBgsggXmAzLmAzKOBw",
+      "ticks": 334,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       1000,
+       970
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjEEkgXmAyL-Axq2Bw",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       905
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "a4e8d18b",
+     "arret": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIADAgcsgTuAhqmAyLGCQo",
+      "ticks": 332,
+      "fastest": 334,
+      "gigue": [
+       1000,
+       1000,
+       945
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIEugT2AmLWAiLWCQo",
+      "ticks": 330,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  },
+  "tunnel": {
+   "variants": [
+    {
+     "grid": "d56cf356",
+     "arret": {
+      "code": "AQMPbW9kdWxlOnR1bm5lbDowABwIHIINZoIBZpIE",
+      "ticks": 321,
+      "fastest": 321,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMPbW9kdWxlOnR1bm5lbDowBOIOJuoE",
+      "ticks": 317,
+      "fastest": 317,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "659d1761",
+     "arret": {
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoxABwIHOISJuoE",
+      "ticks": 388,
+      "fastest": 388,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoxBKIRZoIBZpIE",
+      "ticks": 382,
+      "fastest": 382,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "16d8abd0",
+     "arret": {
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoyABwIHOIWJuoE",
+      "ticks": 452,
+      "fastest": 452,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoyBIIXJuoE",
+      "ticks": 449,
+      "fastest": 449,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    }
+   ]
+  }
+ }
+}

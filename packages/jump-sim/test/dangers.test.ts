@@ -40,6 +40,7 @@ import {
   ESSAI_LEVEL,
   UNITS_PER_TILE,
   boxHits,
+  buildModule,
   boxDistance2,
   circleHitsBox,
   deathAt,
@@ -554,7 +555,7 @@ scie m o 120 boucle 8,0 10,0
 
 describe("intégrité (fuzz) sur le niveau d'essai", () => {
   /** Tout l'état est entier, sans −0 ; vitesses sous MAX_SPEED ; la boîte n'est jamais dans un bloc plein de la grille de l'essai. */
-  function assertSound(s: AttemptState, where: string, lastTiles: { ref: readonly number[] | null }) {
+  function assertSound(s: AttemptState, where: string, lastTiles: { ref: readonly number[] | null }, lv: Level = ESSAI_LEVEL) {
     const check = (k: string, v: unknown) => {
       if (typeof v !== "number" || !Number.isInteger(v) || Object.is(v, -0)) throw new Error(`${where} : ${k} = ${String(v)} (entier sans −0 attendu)`);
     };
@@ -568,15 +569,14 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
     }
     const p = s.player;
     if (Math.abs(p.vx) > MAX_SPEED || Math.abs(p.vy) > MAX_SPEED) throw new Error(`${where} : vitesse ${p.vx}, ${p.vy}`);
-    const grid = { width: ESSAI_LEVEL.width, height: ESSAI_LEVEL.height, tiles: s.tiles };
+    const grid = { width: lv.width, height: lv.height, tiles: s.tiles };
     if (boxHits(grid, p.x, p.y, PLAYER_WIDTH, PLAYER_HEIGHT)) throw new Error(`${where} : la boîte est dans un mur (${p.x}, ${p.y})`);
     for (const c of s.crumbles) if (c < CRUMBLE_GONE) throw new Error(`${where} : bloc friable ${c}`);
   }
 
   /** Commandes au hasard tenues un temps au hasard ; départs au hasard (personnage posé n'importe où dans le vide). */
-  function fuzz(seed: number, runs: number, ticks: number, params: (rng: Rng) => JumpParams): { total: number; deaths: number; trace: number } {
+  function fuzz(seed: number, runs: number, ticks: number, params: (rng: Rng) => JumpParams, lv: Level = ESSAI_LEVEL): { total: number; deaths: number; trace: number } {
     const rng = new Rng(seed);
-    const lv = ESSAI_LEVEL;
     let total = 0;
     let deaths = 0;
     let trace = 2166136261;
@@ -605,7 +605,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
         const before = s.status;
         s = stepAttempt(s, input, lv, p);
         if (s.status === ATTEMPT_DEAD && before !== ATTEMPT_DEAD) deaths++;
-        assertSound(s, `graine ${seed}, essai ${run}, pas ${t}`, lastTiles);
+        assertSound(s, `graine ${seed}, essai ${run}, pas ${t}`, lastTiles, lv);
         trace = Math.imul(trace ^ (s.player.x + s.player.y * 7 + s.time), 16777619) >>> 0;
         total++;
       }
@@ -627,6 +627,23 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
       return p;
     });
     expect(r.total).toBe(60_000);
+  });
+
+  it("lot 4 : quelques morceaux (cheminée, scies, friables, ressorts), réglages par défaut et au hasard : même intégrité", () => {
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const picks: [string, number][] = [["cheminee", 1], ["cheminee-scie", 0], ["scie-ronde", 2], ["mur-friable", 0], ["ressort-mur", 1], ["ascenseur", 2]];
+    let deaths = 0;
+    for (const [k, [id, v]] of picks.entries()) {
+      const lv = buildModule(id, v).level;
+      deaths += fuzz(400 + k, 10, 1500, () => ({ ...P }), lv).deaths;
+      const r = fuzz(500 + k, 10, 800, (rng) => {
+        const p = { ...P };
+        for (const key of keys) p[key] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[key] + 2);
+        return p;
+      }, lv);
+      expect(r.total).toBe(8_000);
+    }
+    expect(deaths).toBeGreaterThan(10);
   });
 
   it("déterminisme : mêmes commandes, même suite d'états (deux fois, au bit près)", () => {
@@ -673,11 +690,12 @@ scie m o 120 aller-retour 15,1 20,1
 `);
   const C = lv.checkpoints[0]!;
 
-  it("`C` est une tuile vide repérée ; les points sont rangés de gauche à droite", () => {
+  it("`C` est une tuile vide repérée ; les points sont rangés de gauche à droite ; deux points dans une même colonne sont refusés", () => {
     expect(tileAt(lv, 7, 2)).toBe(TILE_EMPTY);
     expect(lv.checkpoints).toEqual([{ col: 7, row: 2 }]);
     const two = parseLevel(["#......C.#", "#C......F#", "#S.......#", "##########"].join("\n"));
     expect(two.checkpoints).toEqual([{ col: 1, row: 1 }, { col: 7, row: 0 }]);
+    expect(() => parseLevel(["#....C...#", "#....C..F#", "#S.......#", "##########"].join("\n"))).toThrow(/même colonne|colonne 6/);
   });
 
   /** Va du départ jusqu'au point de passage (saute le pic) ; rend l'état une fois le point retenu. */
@@ -692,7 +710,7 @@ scie m o 120 aller-retour 15,1 20,1
     throw new Error("point de passage jamais atteint");
   }
 
-  it("le toucher le retient ; mourir ensuite fait reprendre dessus, chrono qui continue, sans attendre de commande", () => {
+  it("le franchir le retient ; mourir ensuite fait reprendre dessus, au sol, chrono qui continue, sans attendre de commande", () => {
     const at = reachCheckpoint();
     expect(at.checkpoint).toBe(0);
     // Continuer à droite : par-dessus le friable, puis dans le trou des colonnes 16 à 18 (ouvert jusqu'en bas).
@@ -762,8 +780,8 @@ scie m o 60 boucle 2,0 4,0
     expect(s.sections[1]).toBe(-1);
   });
 
-  it("un point touché au pas même d'une mort n'est pas retenu", () => {
-    // On meurt en le touchant : on repart donc du départ (nouvel essai).
+  it("un point atteint au pas même d'une mort n'est pas retenu", () => {
+    // On meurt en arrivant sur le point : on repart donc du départ (nouvel essai).
     // Disque d'une demi-tuile centré sur le point : le pas qui entre dans la tuile du point entre aussi dans le disque.
     const trap = parseLevel(["#..........#", "#S....C...F#", "############", "", "section a 0-11", "scie s 0.5 60 boucle 6,1 6,1"].join("\n"));
     const d = untilDead(trap, initialAttempt(trap), R).state;
@@ -772,7 +790,7 @@ scie m o 60 boucle 2,0 4,0
     expect(run(trap, d, 0, RESPAWN_TICKS)).toEqual(initialAttempt(trap));
   });
 
-  it("le dernier point touché compte ; recommencer (état initial) l'oublie", () => {
+  it("le dernier point franchi compte ; recommencer (état initial) l'oublie", () => {
     const lv3 = parseLevel(["#...........#", "#S..C...C..F#", "#############"].join("\n"));
     let s = initialAttempt(lv3);
     const seen: number[] = [];
@@ -782,5 +800,74 @@ scie m o 60 boucle 2,0 4,0
     }
     expect(seen).toEqual([-1, 0, 1]);
     expect(initialAttempt(lv3).checkpoint).toBe(-1);
+  });
+  // Lot 4 : un point se prend quand le centre du personnage, vivant, franchit sa colonne vers la droite, à n'importe quelle hauteur.
+  const centerCol = (st: AttemptState) => Math.floor((st.player.x + PLAYER_WIDTH / 2) / T);
+
+  it("sauté par-dessus, il est pris : au pas où le centre passe sa colonne, pas avant", () => {
+    const hop = parseLevel(["#............#", "#............#", "#............#", "#............#", "#............#", "#............#", "#S...C......F#", "##############"].join("\n"));
+    let s = initialAttempt(hop);
+    let taken = -1;
+    let airborneAtTake = false;
+    for (let t = 0; t < 200 && s.status !== ATTEMPT_FINISHED && s.status !== ATTEMPT_DEAD; t++) {
+      const before = s;
+      // Saut complet dès le départ : on survole la tuile du point sans jamais la toucher.
+      s = stepAttempt(s, t < 40 ? R | J : R, hop, P);
+      const box = { x: s.player.x, y: s.player.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
+      if (centerCol(s) < 5) expect(s.checkpoint).toBe(-1);
+      if (s.checkpoint === 0 && before.checkpoint === -1) {
+        taken = t;
+        expect(centerCol(before)).toBeLessThan(5);
+        expect(centerCol(s)).toBe(5);
+        airborneAtTake = box.y + box.h <= 6 * T; // au-dessus de la tuile du point (rangée 6) : il ne la touche pas
+      }
+    }
+    expect(taken).toBeGreaterThan(0);
+    expect(airborneAtTake).toBe(true);
+  });
+
+  it("à n'importe quelle hauteur : un point posé en hauteur se prend en passant dessous ; la reprise se fait sur lui, au sol", () => {
+    const high = parseLevel(["#...........#", "#.....C.....#", "#....###....#", "#...........#", "#...........#", "#S.....^...F#", "#############"].join("\n"));
+    let s = initialAttempt(high);
+    while (s.checkpoint < 0 && s.status !== ATTEMPT_DEAD) s = stepAttempt(s, R, high, P);
+    expect(s.checkpoint).toBe(0);
+    expect(s.player.y).toBe(5 * T + T - PLAYER_HEIGHT); // il marche au sol, cinq rangées sous le point
+    // Le pic juste après : mort, puis reprise sur le point, posé sur sa plate-forme.
+    s = untilDead(high, s, R).state;
+    expect(s.checkpoint).toBe(0);
+    s = run(high, s, 0, RESPAWN_TICKS);
+    expect(s.status).toBe(ATTEMPT_RUNNING);
+    expect(s.player.y).toBe(2 * T - PLAYER_HEIGHT);
+    expect(s.player.ground).toBe(1);
+  });
+
+  it("franchi en mourant, il n'est pas pris", () => {
+    // Pas de sol sous le point : le personnage tombe et sort par le bas au pas même où son centre passe la colonne du point.
+    const pit = parseLevel(["#...........#", "#S....C....F#", "####......###"].join("\n"));
+    const startX = 6 * T - PLAYER_WIDTH / 2 - 1; // centre une unité avant la colonne 6
+    const vx = P.runSpeed;
+    const make = (y: number): AttemptState => ({ ...initialAttempt(pit), status: ATTEMPT_RUNNING, player: { ...initialAttempt(pit).player, x: startX, y, vx, vy: P.fallSpeed, ground: 0, air: 255 } });
+    // Les pieds une unité au-dessus du bas de la grille : le pas suivant les en fait sortir (mort) en même temps qu'il passe la colonne.
+    const dying = stepAttempt(make(3 * T - PLAYER_HEIGHT - 1), R, pit, P);
+    expect(centerCol(dying)).toBe(6);
+    expect(dying.status).toBe(ATTEMPT_DEAD);
+    expect(dying.deathCause).toBe(DEATH_FALL);
+    expect(dying.checkpoint).toBe(-1);
+    // Le même pas, plus haut : vivant, il est pris.
+    const alive = stepAttempt(make(T), R, pit, P);
+    expect(alive.status).toBe(ATTEMPT_RUNNING);
+    expect(alive.checkpoint).toBe(0);
+  });
+
+  it("revenir en arrière ne le reprend pas ; le refranchir vers la droite, si", () => {
+    const lv4 = parseLevel(["#...............#", "#S..C.....C...F.#", "#################"].join("\n"));
+    let s = initialAttempt(lv4);
+    while (s.checkpoint < 1) s = stepAttempt(s, R, lv4, P);
+    while (centerCol(s) > 2) {
+      s = stepAttempt(s, L, lv4, P);
+      expect(s.checkpoint).toBe(1); // vers la gauche : rien ne change
+    }
+    while (s.checkpoint !== 0) s = stepAttempt(s, R, lv4, P);
+    expect(centerCol(s)).toBe(4);
   });
 });

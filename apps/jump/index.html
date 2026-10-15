@@ -104,6 +104,34 @@
       #ghostbtn[aria-pressed="false"] { opacity: 0.65; }
       body.touch #ghostbtn { display: none; }
       .tbar-btn[aria-pressed="false"] { opacity: 0.5; }
+      /* Lot 4 : bandeau d'arrivée d'un morceau (temps de la solution, « Morceau suivant ») ; galerie des morceaux (?modules), qui défile. */
+      #finish .ref:empty { display: none; }
+      #finish .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+      #finish .buttons button { margin-top: 0; min-width: 160px; }
+      #finish .next { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 48px; min-width: 160px; padding: 0 18px; border-radius: 10px; background: rgba(255, 255, 255, 0.16); color: #fff; font: 700 16px system-ui, sans-serif; text-decoration: none; }
+      #finish .next[hidden] { display: none; }
+      #modname { position: fixed; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4; max-width: calc(100% - 140px); padding: 3px 10px; border-radius: 8px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 12px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+      #modname:empty { display: none; }
+      body.touch #modname { bottom: auto; top: calc(var(--band) + 34px); }
+      body.gallery > :not(#gallery) { display: none !important; }
+      #gallery { position: fixed; inset: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; box-sizing: border-box; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); color: #fff; font: 15px/1.4 system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
+      #gallery h1 { margin: 4px 0 6px; font-size: 24px; }
+      #gallery .lead { margin: 0 0 10px; opacity: 0.8; }
+      #gallery .entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+      #gallery .entry button { min-height: 44px; min-width: 44px; padding: 0 14px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; background: transparent; color: #fff; font: 600 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+      #gallery .entry button[aria-pressed="true"] { background: #ffd22e; border-color: #ffd22e; color: #101820; }
+      #gallery .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+      #gallery .card { min-width: 0; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); }
+      #gallery .card h2 { margin: 0; font-size: 17px; }
+      #gallery .intent { margin: 4px 0; opacity: 0.9; }
+      #gallery .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; }
+      #gallery .tag { padding: 1px 8px; border-radius: 999px; background: rgba(255, 210, 46, 0.18); color: #ffd22e; font-size: 12px; }
+      #gallery .variant { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+      #gallery .info { display: flex; flex-direction: column; min-width: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
+      #gallery .ex { color: #ffd22e; letter-spacing: 1px; }
+      #gallery .actions { display: flex; gap: 8px; }
+      #gallery .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 10px; background: #ffd22e; color: #101820; font-weight: 700; text-decoration: none; touch-action: manipulation; }
+      #gallery .btn.watch { background: rgba(255, 255, 255, 0.14); color: #fff; }
       #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
     </style>
   </head>
@@ -120,12 +148,13 @@
     <div id="finish" role="dialog" aria-label="Arrivée" hidden>
       <div class="title">Arrivée !</div>
       <div class="time"></div>
-      <div class="stats"><span class="best"></span><span class="deaths"></span></div>
-      <button type="button" id="finish-restart">Recommencer</button>
+      <div class="stats"><span class="ref"></span><span class="best"></span><span class="deaths"></span></div>
+      <div class="buttons"><button type="button" id="finish-restart">Recommencer</button><a id="finish-next" class="next" hidden>Morceau suivant</a></div>
       <div class="hint">R, ou touche le bandeau</div>
     </div>
+    <div id="modname"></div>
     <button type="button" id="ghostbtn" aria-pressed="true" title="Fantôme (G)">👻 Fantôme : oui</button>
     <div id="nogl">WebGL n'est pas disponible dans ce navigateur : DailyJump ne peut pas s'afficher.</div>
-    <script type="module" src="/src/main.ts"></script>
+    <script type="module" src="/src/boot.ts"></script>
   </body>
 </html>

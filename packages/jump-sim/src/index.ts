@@ -12,3 +12,4 @@ export * from "./levels";
 export * from "./replay";
 export * from "./solutions";
 export * from "./demo";
+export * from "./modules";

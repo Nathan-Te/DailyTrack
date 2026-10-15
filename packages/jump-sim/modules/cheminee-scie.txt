@@ -1,0 +1,32 @@
+id: cheminee-scie
+intention: Monter une cheminée large pendant qu'une scie va et vient dans sa partie haute : la croiser au bon moment.
+etiquettes: mural scie vertical
+paliers: 17 6
+repeter: haut rangees 10-10
+variante: haut=1 cycle=360
+variante: haut=1 cycle=480
+variante: haut=1 cycle=420
+variante: haut=2 cycle=480
+grille:
+#########.............
+#########.............
+#########.............
+#########.............
+#########.............
+#########.............
+#########...##########
+#########...##########
+#########...##########
+#########...##########
+#########...##########
+#########...##########
+#########...##########
+....#####...##########
+....#####...##########
+............##########
+............##########
+######################
+######################
+######################
+
+scie va-et-vient o {cycle} aller-retour 10,2 10,8

@@ -28,6 +28,7 @@ import {
   replayAttempt,
   replayFingerprint,
   replayStartState,
+  START_AT_SPAWN,
   runsTicks,
   stepAttempt,
   toRuns,
@@ -136,10 +137,25 @@ describe("format de la rediffusion", () => {
     const essai = attemptReplay("essai", [2, 2, 2, 6, 6, 0, 0, 0, 1, 5, 4, 4, 7, 3], 1);
     const back = decodeReplay(encodeReplay(essai));
     expect(back).toEqual(essai);
-    const life: JumpReplay = { simVersion: JUMP_SIM_VERSION, levelId: "jour-2026-10-14-g1", start: { checkpoint: 3, held: 0, time: 1234, sections: [5, 400, -1, -1] }, runs: [{ count: 300, bits: 2 }, { count: 1, bits: 6 }, { count: 70000, bits: 0 }] };
+    const life: JumpReplay = { simVersion: JUMP_SIM_VERSION, levelId: "jour-2026-10-14-g1", start: { checkpoint: 3, held: 0, time: 1234, sections: [5, 400, -1, -1], elan: 0 }, runs: [{ count: 300, bits: 2 }, { count: 1, bits: 6 }, { count: 70000, bits: 0 }] };
     expect(decodeReplay(encodeReplay(life))).toEqual(life);
     expect(SOLUTION.levelId).toBe("essai");
     expect(encodeReplay(SOLUTION)).toBe(ESSAI_SOLUTION_CODE);
+  });
+
+  it("départ lancé (lot 4, entrée « élan » des morceaux) : codé dans les drapeaux, rejoué à pleine vitesse depuis le départ", () => {
+    const elan = attemptReplay("module:plaine:0", [2, 2, 6, 6, 2], 0, 1);
+    expect(elan.start.elan).toBe(1);
+    expect(decodeReplay(encodeReplay(elan))).toEqual(elan);
+    expect(encodeReplay(elan)).not.toBe(encodeReplay(attemptReplay("module:plaine:0", [2, 2, 6, 6, 2])));
+    const s = replayStartState(ESSAI_LEVEL, elan.start);
+    expect(s.player.vx).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
+    expect(s.player.ground).toBe(1);
+    expect(replayStartState(ESSAI_LEVEL, START_AT_SPAWN).player.vx).toBe(0);
+    expect(() => encodeReplay({ ...elan, start: { ...elan.start, checkpoint: 0 } })).toThrow(JumpReplayError);
+    // Lancé, on va plus loin dans le même nombre de pas.
+    const run = (start: typeof elan) => replayAttempt(ESSAI_LEVEL, { ...start, levelId: "essai", runs: [{ count: 40, bits: 2 }] }).final.player.x;
+    expect(run(elan)).toBeGreaterThan(run(attemptReplay("essai", [])));
   });
 
   it("une série de moins de 16 pas tient dans un octet ; l'en-tête d'un essai fait 4 octets plus l'identifiant", () => {
@@ -171,7 +187,8 @@ describe("format de la rediffusion", () => {
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 5, 101, 115]))).toBe("format"); // tronquée
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 2, 65, 66, 0, 16]))).toBe("format"); // identifiant en majuscules
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 0, 2]))).toBe("format"); // série vide (count 0)
-    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 4, 16]))).toBe("format"); // drapeau inconnu
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 8, 16]))).toBe("format"); // drapeau inconnu
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 6, 0, 0, 0, 16]))).toBe("format"); // départ lancé sur un point de passage
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 0, 0xff, 0xff, 0xff, 0xff, 0x7f]))).toBe("format"); // entier trop long
     expect(() => encodeReplay({ ...attemptReplay("essai", [2]), runs: [{ count: 1, bits: 8 }] })).toThrow(JumpReplayError);
     expect(() => encodeReplay(attemptReplay("Essai !", [2]))).toThrow(/Identifiant/);
@@ -215,7 +232,7 @@ describe("format de la rediffusion", () => {
 
   it("refuse un autre niveau (si on le précise), un point de passage absent, des pas après la fin de l'essai", () => {
     expect(() => replayAttempt(ESSAI_LEVEL, SOLUTION, "dangers")).toThrow(/autre niveau/);
-    const ghostCp: JumpReplay = { ...SOLUTION, start: { checkpoint: 9, held: 0, time: 10, sections: [-1, -1, -1, -1] } };
+    const ghostCp: JumpReplay = { ...SOLUTION, start: { checkpoint: 9, held: 0, time: 10, sections: [-1, -1, -1, -1], elan: 0 } };
     expect(() => replayAttempt(ESSAI_LEVEL, ghostCp)).toThrow(/Point de passage 9/);
     const extra: JumpReplay = { ...SOLUTION, runs: [...SOLUTION.runs, { count: 1, bits: 2 }] };
     expect(() => replayAttempt(ESSAI_LEVEL, extra)).toThrow(/après la fin/);

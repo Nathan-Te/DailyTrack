@@ -25,6 +25,8 @@ import {
   replayAttempt,
   runsTicks,
   sawCenters,
+  buildModule,
+  replayStartState,
   type AttemptState,
   type JumpParams,
   type JumpReplay,
@@ -48,7 +50,8 @@ import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
-import { readUrlOptions, type Scenario } from "./urlOptions";
+import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
+import { moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
 
 // Lot 3 : rediffusions. Chaque essai est enregistré puis **rejoué** par la mémoire du jour (`memory.ts`), qui garde le meilleur essai, les
 // vies et les morts du jour (stockage `jump:`, protégé : le jeu marche sans). Fantôme du meilleur essai calé sur le chrono (`ghost.ts`),
@@ -117,6 +120,8 @@ export interface JumpDebug {
   simVersion: number;
   palette: string;
   scenario: Scenario;
+  /** Lot 4 : le morceau joué (`?module=`), son temps de référence (pas) ; null pour un scénario. */
+  module: { id: string; variant: number; entry: "arret" | "elan"; solution: boolean; levelId: string; reference: number | null; next: string } | null;
   readonly player: PlayerView;
   /** L'essai en cours et la session (lot 2). */
   readonly attempt: AttemptView;
@@ -201,7 +206,13 @@ declare global {
 
 const options = readUrlOptions(location.search);
 const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL };
-const level = LEVELS[options.scenario];
+// Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
+// couloir de lancement est ajouté devant le palier d'entrée ; la solution, elle, part lancée du départ du morceau (sans couloir).
+const mod = options.module;
+const built = mod ? buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? LAUNCH_TILES : 0 }) : null;
+const level = built ? built.level : LEVELS[options.scenario];
+const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
+const nextHref = mod ? moduleHref({ id: nextModule(mod.id), variant: 0, entry: mod.entry }, options) : null;
 
 const day = parisDay(Date.now());
 const dayText = formatDay(day);
@@ -209,24 +220,32 @@ const palette = paletteForDay(day);
 
 const stamp = document.getElementById("stamp")!;
 stamp.textContent = `DailyJump · sim v${JUMP_SIM_VERSION} · ${dayText}`;
+if (mod && built) {
+  const entryText = mod.entry === "elan" ? "élan" : "arrêt";
+  document.getElementById("modname")!.textContent = `${mod.solution ? "Solution · " : ""}${mod.id} · variante ${mod.variant} · ${entryText}`;
+  document.title = `DailyJump · ${mod.id}`;
+}
 document.documentElement.style.background = `#${palette.background.toString(16).padStart(6, "0")}`;
 
 // Réglages : les défauts, sauf en `?debug&tune` où le panneau reprend ceux qu'on avait laissés (`jump:tune`).
 const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS };
 
 // ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
-const levelId: string = options.scenario;
+// Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
+const levelId: string = built ? built.levelId : options.scenario;
 const store = browserStorage();
-const memory = new DayMemory({ store, level, levelId, today: () => formatDay(parisDay(Date.now())) });
+const memory = new DayMemory({ store, level, levelId, key: mod ? `${levelId}:${mod.entry}` : levelId, today: () => formatDay(parisDay(Date.now())) });
 // `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
-const watchReplay = options.watchBest ? memory.bestReplay() : null;
+// `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
+const watchReplay = mod?.solution ? solutionReplay(mod.id, mod.variant, mod.entry) : options.watchBest ? memory.bestReplay() : null;
 const watching = watchReplay !== null;
 const watchInputs = watchReplay ? fromRuns(watchReplay.runs) : [];
 let watchIndex = 0;
 
 const session = new JumpSession(level, params, watching ? null : levelId);
 session.best = memory.best?.time ?? null;
-if (watchReplay) session.state = { ...session.state, player: { ...session.state.player, held: watchReplay.start.held } };
+if (watchReplay) session.state = replayStartState(level, watchReplay.start);
+session.prev = session.state;
 
 const burst = options.fx ? new BurstPool() : null;
 const shake = new Shake();
@@ -385,7 +404,7 @@ function endCarnage(): void {
   } else {
     phase = phaseOf(session.state);
     camera = snapCamera(follow(session.state.player), scene.frame);
-    hud.finish(session);
+    hud.finish(session, finishOptions());
   }
 }
 
@@ -446,13 +465,22 @@ function onEvent(e: SessionEvent): void {
     stepper.reset();
   } else if (e.kind === "finish") {
     if (watching) {
-      hud.finish(session, { title: "Rediffusion" });
+      // Une lecture n'est pas un temps du joueur : le meilleur affiché reste celui du jour.
+      session.best = memory.best?.time ?? null;
+      hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : "Rediffusion", watching: true });
       return;
     }
     const rec = drainEssais();
     // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), le bandeau tout de suite.
-    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) hud.finish(session);
+    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) hud.finish(session, finishOptions());
   }
+}
+
+/** Bandeau d'arrivée d'un morceau (lot 4) : le temps de la solution, « Morceau suivant ». */
+function finishOptions(): { reference: string | null; next: string | null } {
+  if (!mod) return { reference: null, next: null };
+  const ref = reference === null ? "Solution : —" : `Solution : ${formatTicks(reference)}${mod.entry === "elan" && !mod.solution ? " (couloir compris)" : ""}`;
+  return { reference: ref, next: nextHref };
 }
 
 /** Commande du dernier pas joué (le carnage ne se passe que sur une nouvelle commande). */
@@ -490,7 +518,8 @@ function restart(): void {
   drainEssais();
   if (watchReplay) {
     watchIndex = 0;
-    session.state = { ...session.state, player: { ...session.state.player, held: watchReplay.start.held } };
+    session.state = replayStartState(level, watchReplay.start);
+    session.prev = session.state;
   }
   ghost?.sync(0);
   controls.resetLatch();
@@ -525,7 +554,7 @@ function updateOverlay(): void {
     `position  colonne ${fmt(v.x, 2)} · rangée ${fmt(v.y, 2)}   pas ${session.ticks}`,
     options.hitbox ? "boîtes justes (hitbox)" : "",
     manual ? "pas à pas (manual)" : "",
-    watching ? "lecture du meilleur essai (watch=best)" : "",
+    watching ? (mod?.solution ? "lecture de la solution du morceau (solution)" : "lecture du meilleur essai (watch=best)") : "",
     `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
   ]
     .filter(Boolean)
@@ -543,6 +572,7 @@ const info: JumpDebug = {
   simVersion: JUMP_SIM_VERSION,
   palette: palette.name,
   scenario: options.scenario,
+  module: mod && built ? { ...mod, levelId: built.levelId, reference, next: nextHref! } : null,
   get player() {
     return view();
   },
@@ -897,7 +927,9 @@ if (!scene) {
   updateOverlay();
   phase = "ready";
   requestAnimationFrame(frame);
-  if (options.watchBest && !watching) hud.toast("Pas encore de meilleur essai aujourd'hui : à toi de jouer");
+  if (mod?.solution && !watching) hud.toast("Pas de solution stockée pour ce morceau");
+  else if (mod?.solution) hud.toast("Solution du morceau");
+  else if (options.watchBest && !watching) hud.toast("Pas encore de meilleur essai aujourd'hui : à toi de jouer");
   else if (watching) hud.toast("Rediffusion de ton meilleur essai");
   if (options.carnageDemo) startDemo();
 }

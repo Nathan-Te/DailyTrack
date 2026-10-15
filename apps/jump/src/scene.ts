@@ -285,11 +285,32 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
   finish.add(glow, ring, pole, flag);
   world.add(finish);
 
-  // ——— Points de passage (lot 2b) : un mât et un fanion, pâles tant qu'on ne les a pas touchés, colorés quand c'est le point de reprise ———
+  // ——— Points de passage (lot 2b) : un mât et un fanion, pâles tant qu'on ne les a pas pris, colorés quand c'est le point de reprise.
+  // Lot 4 : un point se prend en franchissant sa colonne, à n'importe quelle hauteur ; il se dessine donc aussi comme une **porte discrète** :
+  // une bande translucide sur toute la hauteur libre de sa colonne, et un trait pointillé sur le seuil (le bord gauche de la colonne, que le
+  // centre du personnage doit passer).
   const cpIdle = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
   const cpOn = new MeshBasicMaterial({ color: palette.spring });
   const cpPole = new MeshBasicMaterial({ color: palette.player, transparent: true, opacity: 0.8 });
+  const doorIdle = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05, depthWrite: false });
+  const doorOn = new MeshBasicMaterial({ color: palette.spring, transparent: true, opacity: 0.1, depthWrite: false });
+  const doorLine = new LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.3, transparent: true, opacity: 0.35 });
+  const solidAt = (col: number, row: number) => row >= 0 && row < level.height && level.tiles[row * level.width + col]! >= TILE_SOLID && level.tiles[row * level.width + col]! <= TILE_SPRING;
+  const doors: Mesh[] = [];
   const checkpoints = level.checkpoints.map((cell) => {
+    // Hauteur libre de la colonne autour du point : vers le haut jusqu'au premier bloc (ou le haut du niveau), vers le bas jusqu'au sol.
+    let top = cell.row;
+    while (top > 0 && !solidAt(cell.col, top - 1)) top--;
+    let bottom = cell.row;
+    while (bottom < level.height - 1 && !solidAt(cell.col, bottom + 1)) bottom++;
+    const span = bottom - top + 1;
+    const door = new Mesh(new PlaneGeometry(1, span), doorIdle);
+    door.position.set(cell.col + 0.5, -top - span / 2, 0.02);
+    world.add(door);
+    doors.push(door);
+    const sill = new Line(new BufferGeometry().setFromPoints([new Vector3(cell.col, -top, 0.03), new Vector3(cell.col, -bottom - 1, 0.03)]), doorLine);
+    sill.computeLineDistances();
+    world.add(sill);
     const g = new Group();
     g.position.set(cell.col + 0.5, -cell.row - 1, 0.04); // origine : bas de la tuile
     const pole = new Mesh(new PlaneGeometry(0.08, 1.3), cpPole);
@@ -463,6 +484,7 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
       if (state.checkpoint !== shownCheckpoint) {
         shownCheckpoint = state.checkpoint;
         checkpoints.forEach((m, k) => (m.material = k === state.checkpoint ? cpOn : cpIdle));
+        doors.forEach((m, k) => (m.material = k === state.checkpoint ? doorOn : doorIdle));
       }
       // Arrivée : elle pulse doucement.
       const pulse = 0.5 + 0.5 * Math.sin(clock * 4);

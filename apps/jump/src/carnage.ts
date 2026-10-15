@@ -12,8 +12,8 @@ import {
 
 // Le carnage (lot 3), **logique seule** (aucun rendu, testée) : à l'arrivée, toutes les vies du jour rejouées ensemble, par vagues.
 //   - Le **héros** est l'essai qui vient de finir, rejoué depuis le départ (reprises comprises).
-//   - Chaque autre vie part de son point de départ **au moment où le héros y passe** pour la première fois (il touche ce point de passage,
-//     ou son centre en dépasse la colonne) ; les vies nées au départ partent avec lui. Les vies de l'essai héros ne sont pas dupliquées
+//   - Chaque autre vie part de son point de départ **au moment où le héros y passe** pour la première fois (son centre, vivant, en franchit
+//     la colonne : c'est aussi la règle qui prend le point, lot 4) ; les vies nées au départ partent avec lui. Les vies de l'essai héros ne sont pas dupliquées
 //     (l'appelant les écarte : `DayMemory.liveReplays(essai)`).
 //   - Chaque vie est simulée dans **sa propre instance** de la simulation (`ReplayRunner`) : elle meurt exactement là où elle est morte.
 //     Les dangers affichés sont ceux du monde du héros : une vie partie d'un point de passage à un autre instant que lors de sa vraie
@@ -47,7 +47,7 @@ const centerCol = (s: Readonly<AttemptState>) => tileOf(s.player.x + PLAYER_WIDT
 
 /**
  * Pas du héros où chaque point de départ est passé pour la première fois : `[−1]` (le départ `S`) → 0 ; point de passage `c` → premier pas
- * où le héros vivant le touche, ou en dépasse la colonne (il peut le sauter) ; −1 s'il ne l'a jamais passé. Rend aussi la durée du héros.
+ * où le centre du héros vivant en atteint la colonne (même s'il le saute) ; −1 s'il ne l'a jamais passé. Rend aussi la durée du héros.
  */
 export function departures(level: Level, hero: JumpReplay): { checkpoints: number[]; heroTicks: number } {
   const passed = level.checkpoints.map(() => -1);
@@ -58,7 +58,7 @@ export function departures(level: Level, hero: JumpReplay): { checkpoints: numbe
     const col = centerCol(s);
     for (let c = 0; c < passed.length; c++) {
       if (passed[c]! >= 0) continue;
-      if (s.checkpoint === c || col >= level.checkpoints[c]!.col) passed[c] = runner.tick;
+      if (col >= level.checkpoints[c]!.col) passed[c] = runner.tick;
     }
   }
   return { checkpoints: passed, heroTicks: runner.tick };

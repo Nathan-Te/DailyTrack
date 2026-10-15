@@ -1,0 +1,23 @@
+id: mur-seul
+intention: Remonter un grand mur tout seul, saut mural après saut mural, en revenant vers lui.
+etiquettes: mural vertical
+paliers: 12 6
+repeter: haut rangees 9-9
+variante: haut=1
+variante: haut=3
+variante: haut=5
+grille:
+.................
+.................
+.................
+.................
+.................
+.................
+..........#######
+..........#######
+..........#######
+..........#######
+..........#######
+..........#######
+#################
+#################

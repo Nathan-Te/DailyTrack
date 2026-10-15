@@ -6,11 +6,22 @@ import { formatTicks, type JumpSession } from "./session";
 // Placement : en haut au centre sur ordinateur ; sur téléphone, sous la bande haute, empilé avec la surimpression de debug (`#hud`),
 // jamais sur les boutons. Le bandeau est l'écran d'arrivée minimal (l'écran complet viendra au lot 6).
 
+export interface FinishOptions {
+  /** « Arrivée ! » par défaut (« Rediffusion » en lecture). */
+  title?: string;
+  /** Lot 4 : le temps de référence (« Solution : 2,600 s »), affiché sous le temps. */
+  reference?: string | null;
+  /** Lot 4 : lien « Morceau suivant ». */
+  next?: string | null;
+  /** Une lecture (rediffusion, solution) : sans meilleur temps, on n'accuse pas les réglages. */
+  watching?: boolean;
+}
+
 export interface Hud {
   /** `time` : le chrono affiché (par défaut celui de l'essai ; pendant le carnage, celui du héros). */
   update(session: JumpSession, time?: number): void;
   /** Bandeau d'arrivée. `title` : « Arrivée ! » par défaut (« Rediffusion » en lecture). Le meilleur temps affiché est celui du jour, recalculé par le rejeu. */
-  finish(session: JumpSession, opts?: { title?: string }): void;
+  finish(session: JumpSession, opts?: FinishOptions): void;
   /** Compteur du carnage (« 47 vies · 1 arrivée ») ; null le cache. */
   carnage(label: string | null): void;
   readonly carnageShown: boolean;
@@ -31,6 +42,8 @@ export function mountHud(opts: { onRestart(): void }): Hud {
   const bDeaths = banner.querySelector<HTMLElement>(".deaths")!;
   const button = banner.querySelector<HTMLButtonElement>("button")!;
   const bTitle = banner.querySelector<HTMLElement>(".title")!;
+  const bRef = banner.querySelector<HTMLElement>(".ref")!;
+  const next = banner.querySelector<HTMLAnchorElement>("#finish-next")!;
   const carnageEl = document.getElementById("carnage")!;
   const carnageCount = carnageEl.querySelector<HTMLElement>(".count")!;
   let carnageText: string | null = null;
@@ -40,7 +53,7 @@ export function mountHud(opts: { onRestart(): void }): Hud {
   });
   // Toucher le bandeau (pas seulement le bouton) recommence aussi ; il est au-dessus de la couche tactile.
   banner.addEventListener("pointerup", (e) => {
-    if (e.target !== button) opts.onRestart();
+    if (e.target !== button && e.target !== next) opts.onRestart();
   });
 
   const toastEl = document.getElementById("toast")!;
@@ -61,8 +74,11 @@ export function mountHud(opts: { onRestart(): void }): Hud {
     },
     finish(session, opts = {}) {
       bTitle.textContent = opts.title ?? "Arrivée !";
+      bRef.textContent = opts.reference ?? "";
+      next.hidden = !opts.next;
+      if (opts.next) next.href = opts.next;
       bTime.textContent = formatTicks(session.state.time);
-      bBest.textContent = session.best === null ? "Meilleur : — (réglages modifiés)" : `Meilleur du jour : ${formatTicks(session.best)}`;
+      bBest.textContent = session.best === null ? (opts.watching ? "Meilleur du jour : —" : "Meilleur : — (réglages modifiés)") : `Meilleur du jour : ${formatTicks(session.best)}`;
       // Avec les points de passage, un temps peut contenir des morts (le chrono a continué) : on le dit.
       const run = session.attemptDeaths === 0 ? "essai sans faute" : `${session.attemptDeaths} dans cet essai`;
       bDeaths.textContent = `Morts : ${session.deaths} · ${run}`;
