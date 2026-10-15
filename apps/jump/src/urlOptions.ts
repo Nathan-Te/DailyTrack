@@ -49,6 +49,22 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: ["1", "0"],
   },
   {
+    name: "ghost",
+    description: "`off` cache le fantôme de ton meilleur essai du jour (sans changer le réglage mémorisé, bouton 👻 ou touche G).",
+    values: ["off"],
+  },
+  {
+    name: "carnage",
+    description:
+      "`demo` lance tout de suite un carnage de démonstration sur l'essai : le héros est la solution de l'auteur, les autres vies sont des essais fictifs déterministes (perturbations à graine fixe de la solution, rejouées comme des vraies). Rien n'est enregistré.",
+    values: ["demo"],
+  },
+  {
+    name: "watch",
+    description: "`best` rejoue ton meilleur essai du jour, seul, sans pouvoir jouer (R le relance). Sans meilleur essai, la partie est normale.",
+    values: ["best"],
+  },
+  {
     name: "zones",
     description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
     values: [],
@@ -66,8 +82,14 @@ export interface UrlChoices {
   zones: boolean;
   /** Boîtes de collision dessinées : seulement avec `debug`. */
   hitbox: boolean;
-  /** Effets de la mort (particules, tremblement) ; `?fx=off` les coupe. */
+  /** Effets de la mort (particules, tremblement) ; `?fx=off` les coupe (pas les taches). */
   fx: boolean;
+  /** Fantôme forcé à « caché » (`?ghost=off`). */
+  ghostOff: boolean;
+  /** Carnage de démonstration au chargement (`?carnage=demo`). */
+  carnageDemo: boolean;
+  /** Lecture du meilleur essai, sans jouer (`?watch=best`). */
+  watchBest: boolean;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -82,5 +104,8 @@ export function readUrlOptions(search: string): UrlChoices {
     zones: params.has("zones"),
     hitbox: debug && params.has("hitbox"),
     fx: params.get("fx") !== "off",
+    ghostOff: params.get("ghost") === "off",
+    carnageDemo: params.get("carnage") === "demo",
+    watchBest: params.get("watch") === "best",
   };
 }

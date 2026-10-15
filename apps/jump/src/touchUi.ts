@@ -15,6 +15,9 @@ export interface TouchUiOptions {
   tune: boolean;
   onRestart(): void;
   onGear(): void;
+  /** Lot 3 : bouton 👻 (fantôme montré ou caché), avec son état de départ. */
+  onGhost?(): void;
+  ghostOn?: boolean;
 }
 
 export interface TouchUi {
@@ -23,6 +26,8 @@ export interface TouchUi {
   suspend(on: boolean): void;
   /** Vrai si la page peut passer en plein écran (le bouton n'existe pas sinon). */
   readonly fullscreenButton: boolean;
+  /** Met à jour le bouton 👻 (fantôme montré ou caché). */
+  setGhost(on: boolean): void;
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, id?: string, cls?: string): HTMLElementTagNameMap[K] => {
@@ -82,6 +87,21 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   bar.append(restart);
 
   const side = el("div", "tbar-right");
+  let ghostBtn: HTMLButtonElement | null = null;
+  if (opts.onGhost) {
+    const g = el("button", "ghost", "tbar-btn");
+    g.type = "button";
+    g.textContent = "👻";
+    g.title = "Fantôme";
+    g.setAttribute("aria-label", "Fantôme");
+    g.setAttribute("aria-pressed", opts.ghostOn === false ? "false" : "true");
+    g.addEventListener("click", () => {
+      g.blur();
+      opts.onGhost?.();
+    });
+    side.append(g);
+    ghostBtn = g;
+  }
   if (opts.tune) {
     const gear = el("button", "gear", "tbar-btn");
     gear.type = "button";
@@ -223,6 +243,9 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   return {
     pad,
     fullscreenButton: fsApi,
+    setGhost(on) {
+      ghostBtn?.setAttribute("aria-pressed", on ? "true" : "false");
+    },
     suspend(on) {
       suspended = on;
       document.body.classList.toggle("touch-suspended", on);

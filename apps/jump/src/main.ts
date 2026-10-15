@@ -8,6 +8,7 @@ import {
   DEATH_NAMES,
   DEFAULT_JUMP_PARAMS,
   ESSAI_LEVEL,
+  ESSAI_SOLUTION_CODE,
   INPUT_MASK,
   JUMP_SIM_VERSION,
   PLAYER_HEIGHT,
@@ -16,17 +17,29 @@ import {
   SANDBOX_LEVEL,
   TICK_RATE,
   UNITS_PER_TILE,
+  decodeReplay,
+  demoAttempts,
+  fromRuns,
+  lifeReplay,
   playerMode,
+  replayAttempt,
+  runsTicks,
   sawCenters,
   type AttemptState,
   type JumpParams,
+  type JumpReplay,
   type Level,
   type PlayerState,
 } from "@cdj/jump-sim";
+import { CrowdMesh, GhostMesh, StainLayer } from "./actors";
+import { Carnage, HERO, carnageLabel } from "./carnage";
+import { Ghost } from "./ghost";
+import { DayMemory, browserStorage, clearAll, loadGhostSetting, saveGhostSetting, type RecordedEssai } from "./memory";
+import { stainFor } from "./stains";
 import { followCamera, snapCamera, type CameraView, type Follow } from "./camera";
 import { Controls } from "./input";
 import { animateLook, onStep, restLook, type Look } from "./look";
-import { BurstPool, Shake } from "./fx";
+import { BurstMesh, BurstPool, Shake } from "./fx";
 import { mountHud } from "./hud";
 import { FixedStepper } from "./loop";
 import { paletteForDay } from "./palette";
@@ -37,6 +50,10 @@ import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { readUrlOptions, type Scenario } from "./urlOptions";
 
+// Lot 3 : rediffusions. Chaque essai est enregistré puis **rejoué** par la mémoire du jour (`memory.ts`), qui garde le meilleur essai, les
+// vies et les morts du jour (stockage `jump:`, protégé : le jeu marche sans). Fantôme du meilleur essai calé sur le chrono (`ghost.ts`),
+// carnage par vagues à l'arrivée (`carnage.ts`), taches de peinture (`stains.ts`), lecture `?watch=best`, démonstration `?carnage=demo`.
+// Rien n'est enregistré avec des réglages modifiés.
 // Lot 2 : dangers (pics, scies fixes et mobiles, blocs friables, ressorts), mort instantanée, réapparition en 0,15 s, chrono par essai,
 // arrivée ; HUD (chrono, meilleur temps, morts), bandeau d'arrivée, éclatement et tremblement à la mort (`?fx=off` les coupe),
 // `?debug&hitbox` (boîtes justes), scénarios `essai` (par défaut) et `dangers`.
@@ -44,8 +61,11 @@ import { readUrlOptions, type Scenario } from "./urlOptions";
 // Lot 1 : le personnage. Boucle à pas fixe (120 Hz) sur `stepPlayer`, rendu interpolé, caméra qui suit, clavier et manette,
 // surimpression et `window.__jump` avec `?debug`, panneau de réglages avec `?debug&tune`. Pas encore de danger ni d'arrivée.
 
-/** `ready` : l'essai attend la première commande ; `playing` : en course ; `dead` : éclaté, nouvel essai dans un instant ; `finished` : arrivé. */
-type Phase = "loading" | "ready" | "playing" | "dead" | "finished" | "no-webgl";
+/**
+ * `ready` : l'essai attend la première commande ; `playing` : en course ; `dead` : éclaté, nouvel essai dans un instant ; `finished` : arrivé ;
+ * `carnage` : toutes les vies du jour rejouées (lot 3).
+ */
+type Phase = "loading" | "ready" | "playing" | "dead" | "finished" | "carnage" | "no-webgl";
 
 /** Le personnage tel que `__jump.player` le montre : unités humaines, plus l'état brut de la simulation. */
 export interface PlayerView {
@@ -122,6 +142,55 @@ export interface JumpDebug {
   restart(): void;
   /** Redessine, relit les pixels de l'image et compte les couleurs : preuve qu'un rendu non vide est à l'écran. */
   probe(): { width: number; height: number; colors: number; background: number };
+  /** Lot 3 : rediffusions du jour (meilleur essai, vies) ; exporter et importer en base64url. */
+  readonly replays: {
+    list(): { kind: "meilleur" | "vie"; essai: number; ticks: number; time?: number; deaths?: number; code: string }[];
+    /** Texte du meilleur essai (`"best"`) ou de la vie n° `i` (null s'il n'y en a pas). */
+    export(which?: "best" | number): string | null;
+    /** Importe une rediffusion comme meilleur essai, si le rejeu la valide. */
+    import(code: string): { ok: true; time: number } | { ok: false; reason: string };
+  };
+  /** Lot 3 : le carnage. */
+  readonly carnage: {
+    readonly state: CarnageView;
+    /** Démarre un carnage sur le meilleur essai du jour (héros) et les autres vies du jour. Faux s'il n'y a pas de meilleur essai. */
+    start(): boolean;
+    /**
+     * Carnage de démonstration (`?carnage=demo`) : `lives` vies fictives (par défaut, celles de la démonstration ; plus, elles sont reprises).
+     * `crowd` (mesure) : `lives` copies de la solution, qui courent toutes en même temps jusqu'au bout.
+     */
+    demo(lives?: number, crowd?: boolean): boolean;
+    /** Comme une commande : passe le carnage. */
+    skip(): void;
+  };
+  /** Lot 3 : stockage local (`jump:*`). */
+  readonly storage: { clear(): number; size(): number; readonly memory: { best: number | null; lives: number; deaths: number; positions: { x: number; y: number }[] } };
+  /** Lot 3 : fantôme (réglage, visible, où il en est). */
+  readonly ghost: { enabled: boolean; available: boolean; visible: boolean; tick: number; status: string; x: number; y: number };
+  /** Bascule le fantôme (comme G ou le bouton 👻). */
+  toggleGhost(): boolean;
+  /** Lot 3 : taches à l'écran. */
+  readonly stains: { count: number; discs: number; added: number };
+  /** Lecture `?watch=best` en cours. */
+  readonly watching: boolean;
+  /**
+   * Temps de fil principal (ms), mesuré sur les 600 dernières images : par image (moyenne, 95e centile), et séparément la simulation **par
+   * pas** et le dessin **par image** (le rendu logiciel fait peu d'images, donc beaucoup de pas par image : ces deux-là se comparent).
+   */
+  readonly frameTimes: { mean: number; p95: number; frames: number; stepMs: number; drawMs: number; reset(): void };
+}
+
+export interface CarnageView {
+  active: boolean;
+  demo: boolean;
+  /** Vies du carnage (héros compris), arrivées et morts jusqu'ici, vies en course, pas du héros. */
+  lives: number;
+  arrivals: number;
+  deaths: number;
+  running: number;
+  tick: number;
+  heroTicks: number;
+  label: string;
 }
 
 declare global {
@@ -144,7 +213,20 @@ document.documentElement.style.background = `#${palette.background.toString(16).
 
 // Réglages : les défauts, sauf en `?debug&tune` où le panneau reprend ceux qu'on avait laissés (`jump:tune`).
 const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS };
-const session = new JumpSession(level, params);
+
+// ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
+const levelId: string = options.scenario;
+const store = browserStorage();
+const memory = new DayMemory({ store, level, levelId, today: () => formatDay(parisDay(Date.now())) });
+// `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
+const watchReplay = options.watchBest ? memory.bestReplay() : null;
+const watching = watchReplay !== null;
+const watchInputs = watchReplay ? fromRuns(watchReplay.runs) : [];
+let watchIndex = 0;
+
+const session = new JumpSession(level, params, watching ? null : levelId);
+session.best = memory.best?.time ?? null;
+if (watchReplay) session.state = { ...session.state, player: { ...session.state.player, held: watchReplay.start.held } };
 
 const burst = options.fx ? new BurstPool() : null;
 const shake = new Shake();
@@ -154,6 +236,23 @@ try {
 } catch {
   scene = null;
 }
+
+// ——— Lot 3 : fantôme, taches ———
+let ghostOn = !options.ghostOff && loadGhostSetting(store);
+let ghost: Ghost | null = null;
+const refreshGhost = () => {
+  const best = memory.bestReplay();
+  try {
+    ghost = best && !watching ? new Ghost(level, best) : null;
+  } catch {
+    ghost = null;
+  }
+};
+refreshGhost();
+const ghostMesh = scene ? new GhostMesh(scene.world, palette.player) : null;
+const stains = scene ? new StainLayer(scene.world, palette.player, palette.tile) : null;
+const storedStains = () => memory.deaths.map((d) => stainFor(level, d.x, d.y));
+stains?.reset(storedStains());
 
 const T = UNITS_PER_TILE;
 const touchOn = wantsTouch(options.touch, window.matchMedia?.("(pointer: coarse)").matches ?? false);
@@ -214,27 +313,165 @@ function phaseOf(s: AttemptState): Phase {
   return "playing";
 }
 
+/** Confie les essais clos à la mémoire du jour (qui les rejoue) ; rend le dernier enregistré. */
+function drainEssais(): RecordedEssai | null {
+  let last: RecordedEssai | null = null;
+  for (let e = session.takeEssai(); e; e = session.takeEssai()) {
+    const rec = memory.recordEssai(e.essai, e.tuned);
+    if (!rec) continue;
+    last = rec;
+    if (rec.newBest) refreshGhost();
+  }
+  // Le meilleur temps affiché est celui que le rejeu a recalculé.
+  if (last && memory.best) session.best = memory.best.time;
+  return last;
+}
+
+// ——— Carnage (lot 3) ———
+interface CarnageRun {
+  run: Carnage;
+  crowd: CrowdMesh;
+  demo: boolean;
+  /** Commande au pas précédent : seule une nouvelle commande (un appui) passe le carnage. */
+  prevBits: number;
+}
+let carnage: CarnageRun | null = null;
+let carnageBurst: { pool: BurstPool; mesh: BurstMesh } | null = null;
+/** Zoom arrière du carnage : on voit plus large autour du héros. */
+const CARNAGE_ZOOM = 1.3;
+
+function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0): boolean {
+  if (!scene || carnage) return false;
+  let run: Carnage;
+  try {
+    run = new Carnage(level, hero, others);
+  } catch {
+    return false;
+  }
+  const crowd = new CrowdMesh(scene.world, palette.player, others.length);
+  crowd.show(true);
+  if (options.fx && !carnageBurst) {
+    // Éclats plafonnés : un seul pool, recyclé (les plus vieux éclats repartent d'abord).
+    const pool = new BurstPool(384);
+    carnageBurst = { pool, mesh: new BurstMesh(pool, palette.player, scene.world) };
+  }
+  carnage = { run, crowd, demo, prevBits: bits };
+  hud.hideFinish();
+  ghostMesh?.hide();
+  stains?.reset([]);
+  scene.zoom = CARNAGE_ZOOM;
+  scene.resize(touchOn);
+  camera = snapCamera(follow(run.hero.state.player), scene.frame);
+  stepper.reset();
+  phase = "carnage";
+  hud.carnage(carnageLabel(run.total, 0));
+  return true;
+}
+
+function endCarnage(): void {
+  const c = carnage;
+  if (!c || !scene) return;
+  carnage = null;
+  c.crowd.dispose(scene.world);
+  carnageBurst?.pool.clear();
+  hud.carnage(null);
+  stains?.reset(storedStains());
+  scene.zoom = 1;
+  scene.resize(touchOn);
+  stepper.reset();
+  if (c.demo) {
+    restart();
+    hud.toast("Fin de la démonstration");
+  } else {
+    phase = phaseOf(session.state);
+    camera = snapCamera(follow(session.state.player), scene.frame);
+    hud.finish(session);
+  }
+}
+
+/** Un pas du carnage ; une nouvelle commande le passe. */
+function stepCarnage(): void {
+  const c = carnage!;
+  const bits = injected ?? controls.sample();
+  const pressed = bits & ~c.prevBits;
+  c.prevBits = bits;
+  if (pressed) {
+    c.run.stop();
+    endCarnage();
+    return;
+  }
+  for (const e of c.run.step()) {
+    if (e.kind !== "death") continue;
+    stains?.add(stainFor(level, e.x, e.y));
+    if (carnageBurst) carnageBurst.pool.burst(e.x / T, -e.y / T, e.life === HERO ? 20 : 8);
+  }
+  hud.carnage(carnageLabel(c.run.total, c.run.arrivals));
+  if (c.run.done) endCarnage();
+}
+
+/** Le carnage de démonstration : la solution de l'auteur en héros, des essais fictifs déterministes pour les autres vies. */
+function demoLives(max = 0): JumpReplay[] {
+  const solution = decodeReplay(ESSAI_SOLUTION_CODE);
+  const lives: JumpReplay[] = [];
+  const attempts = demoAttempts(ESSAI_LEVEL, solution, 2026, { attempts: max > 50 ? Math.ceil(max / 3) : 14 });
+  for (const a of attempts) for (const life of replayAttempt(ESSAI_LEVEL, a.replay).lives) lives.push(lifeReplay(a.replay, life));
+  if (max <= 0) return lives;
+  // Mesures à 150 ou 300 vies : on reprend les mêmes vies autant qu'il faut.
+  const out: JumpReplay[] = [];
+  for (let i = 0; out.length < max && lives.length > 0; i++) out.push(lives[i % lives.length]!);
+  return out;
+}
+
+function startDemo(max = 0, crowd = false): boolean {
+  if (level !== ESSAI_LEVEL) {
+    hud.toast("Démonstration : seulement sur ?scenario=essai");
+    return false;
+  }
+  const solution = decodeReplay(ESSAI_SOLUTION_CODE);
+  return startCarnage(solution, crowd ? new Array(max).fill(solution) : demoLives(max), true, lastBits);
+}
+
 function onEvent(e: SessionEvent): void {
   if (e.kind === "death") {
     if (burst) {
       burst.burst(e.x / T, -e.y / T);
       shake.start();
     }
+    // Tache de la journée (pas en lecture, pas avec des réglages modifiés).
+    if (!watching && memory.recordDeath({ x: e.x, y: e.y, cause: e.cause }, session.tuned)) stains?.add(stainFor(level, e.x, e.y));
   } else if (e.kind === "checkpoint") hud.toast("Point de passage");
   else if (e.kind === "respawn") {
     look = restLook();
     if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
     stepper.reset();
-  } else if (e.kind === "finish") hud.finish(session);
+  } else if (e.kind === "finish") {
+    if (watching) {
+      hud.finish(session, { title: "Rediffusion" });
+      return;
+    }
+    const rec = drainEssais();
+    // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), le bandeau tout de suite.
+    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) hud.finish(session);
+  }
 }
 
+/** Commande du dernier pas joué (le carnage ne se passe que sur une nouvelle commande). */
+let lastBits = 0;
+
 function stepOnce(): void {
-  const bits = injected ?? controls.sample();
+  if (carnage) {
+    stepCarnage();
+    return;
+  }
+  const bits = watching ? (watchInputs[watchIndex++] ?? 0) : (injected ?? controls.sample());
+  lastBits = bits;
   const prev = session.state;
   const event = session.step(bits);
   if (session.state.status !== ATTEMPT_DEAD && prev.status !== ATTEMPT_DEAD) look = onStep(look, prev.player, session.state.player, session.params.fallSpeed);
-  if (event) onEvent(event);
+  ghost?.sync(session.state.time);
   if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
+  if (event) onEvent(event);
+  if (!carnage) drainEssais();
 }
 
 function follow(s: PlayerState): Follow {
@@ -244,7 +481,18 @@ function follow(s: PlayerState): Follow {
 let camera: CameraView = { x: 0, y: 0, ahead: 0 };
 
 function restart(): void {
+  if (carnage) {
+    carnage.run.stop();
+    carnage.demo = false;
+    endCarnage();
+  }
   session.restart();
+  drainEssais();
+  if (watchReplay) {
+    watchIndex = 0;
+    session.state = { ...session.state, player: { ...session.state.player, held: watchReplay.start.held } };
+  }
+  ghost?.sync(0);
   controls.resetLatch();
   stepper.reset();
   look = restLook();
@@ -261,7 +509,7 @@ const tunedBadge = document.getElementById("tuned")!;
 const fmt = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 
 function updateOverlay(): void {
-  tunedBadge.textContent = session.tuned ? "réglages modifiés" : "";
+  tunedBadge.textContent = session.tuned ? "réglages modifiés : rien n'est enregistré" : "";
   if (!overlay) return;
   const v = view();
   const st = session.state;
@@ -277,6 +525,8 @@ function updateOverlay(): void {
     `position  colonne ${fmt(v.x, 2)} · rangée ${fmt(v.y, 2)}   pas ${session.ticks}`,
     options.hitbox ? "boîtes justes (hitbox)" : "",
     manual ? "pas à pas (manual)" : "",
+    watching ? "lecture du meilleur essai (watch=best)" : "",
+    `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -336,6 +586,107 @@ const info: JumpDebug = {
     injected = bits;
   },
   restart,
+  replays: {
+    list() {
+      const out: ReturnType<JumpDebug["replays"]["list"]> = [];
+      if (memory.best) out.push({ kind: "meilleur", essai: memory.best.essai, ticks: memory.best.time, time: memory.best.time, deaths: memory.best.deaths, code: memory.best.code });
+      for (const l of memory.lives) {
+        let ticks = 0;
+        try {
+          ticks = runsTicks(decodeReplay(l.code).runs);
+        } catch {
+          ticks = 0;
+        }
+        out.push({ kind: "vie", essai: l.essai, ticks, code: l.code });
+      }
+      return out;
+    },
+    export(which = "best") {
+      if (which === "best") return memory.best?.code ?? null;
+      return memory.lives[which]?.code ?? null;
+    },
+    import(code: string) {
+      const r = memory.importBest(code);
+      if (r.ok) {
+        session.best = memory.best?.time ?? null;
+        refreshGhost();
+      }
+      return r;
+    },
+  },
+  carnage: {
+    get state(): CarnageView {
+      const c = carnage;
+      if (!c) return { active: false, demo: false, lives: 0, arrivals: 0, deaths: 0, running: 0, tick: 0, heroTicks: 0, label: "" };
+      return { active: true, demo: c.demo, lives: c.run.total, arrivals: c.run.arrivals, deaths: c.run.deaths, running: c.run.running, tick: c.run.tick, heroTicks: c.run.heroTicks, label: carnageLabel(c.run.total, c.run.arrivals) };
+    },
+    start() {
+      const best = memory.bestReplay();
+      if (!best || !memory.best) return false;
+      return startCarnage(best, memory.liveReplays(memory.best.essai), false, lastBits);
+    },
+    demo(lives?: number, crowd?: boolean) {
+      return startDemo(lives ?? 0, crowd ?? false);
+    },
+    skip() {
+      if (!carnage) return;
+      carnage.run.stop();
+      endCarnage();
+    },
+  },
+  storage: {
+    clear() {
+      const n = clearAll(store);
+      memory.purge();
+      refreshGhost();
+      session.best = null;
+      stains?.reset([]);
+      return n;
+    },
+    size() {
+      return memory.storedSize();
+    },
+    get memory() {
+      return { best: memory.best?.time ?? null, lives: memory.lives.length, deaths: memory.deaths.length, positions: memory.deaths.map((d) => ({ x: d.x / T, y: d.y / T })) };
+    },
+  },
+  get ghost() {
+    const g = ghost;
+    const p = g?.state.player;
+    return {
+      enabled: ghostOn,
+      available: !!g,
+      visible: ghostMesh?.group.visible ?? false,
+      tick: g?.tick ?? 0,
+      status: g ? STATUS_NAMES[g.state.status]! : "aucun",
+      x: p ? p.x / T : 0,
+      y: p ? p.y / T : 0,
+    };
+  },
+  toggleGhost() {
+    return toggleGhost();
+  },
+  get stains() {
+    return { count: stains?.count ?? 0, discs: stains?.discs ?? 0, added: stains?.added ?? 0 };
+  },
+  get watching() {
+    return watching;
+  },
+  get frameTimes() {
+    const list = [...frameWork];
+    const sorted = list.slice().sort((a, b) => a - b);
+    return {
+      mean: list.length ? list.reduce((a, b) => a + b, 0) / list.length : 0,
+      p95: sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))]! : 0,
+      frames: list.length,
+      stepMs: workStats.steps ? workStats.stepMs / workStats.steps : 0,
+      drawMs: workStats.draws ? workStats.drawMs / workStats.draws : 0,
+      reset() {
+        frameWork.length = 0;
+        workStats.steps = workStats.stepMs = workStats.draws = workStats.drawMs = 0;
+      },
+    };
+  },
   probe() {
     if (!scene) return { width: 0, height: 0, colors: 0, background: 0 };
     draw(1, 0);
@@ -371,9 +722,48 @@ function setPanel(open: boolean): void {
   stepper.reset();
 }
 
-if (touchOn) {
-  touchUi = mountTouchUi({ controls, forced: options.touch === "1", zones: options.zones, tune: options.tune, onRestart: () => controls.requestRestart(), onGear: () => setPanel(true) });
+// ——— Fantôme : réglage mémorisé (`jump:fantome`), bouton 👻 (téléphone), bouton du coin et touche G (ordinateur) ———
+const ghostButton = document.getElementById("ghostbtn") as HTMLButtonElement;
+function showGhostSetting(): void {
+  ghostButton.setAttribute("aria-pressed", ghostOn ? "true" : "false");
+  ghostButton.textContent = `👻 Fantôme : ${ghostOn ? "oui" : "non"}`;
+  touchUi?.setGhost(ghostOn);
 }
+function toggleGhost(): boolean {
+  ghostOn = !ghostOn;
+  saveGhostSetting(store, ghostOn);
+  showGhostSetting();
+  return ghostOn;
+}
+ghostButton.addEventListener("click", () => {
+  ghostButton.blur();
+  toggleGhost();
+});
+window.addEventListener("keydown", (e) => {
+  if (e.code === "KeyG" && !e.repeat) toggleGhost();
+});
+
+if (touchOn) {
+  touchUi = mountTouchUi({
+    controls,
+    forced: options.touch === "1",
+    zones: options.zones,
+    tune: options.tune,
+    onRestart: () => controls.requestRestart(),
+    onGear: () => setPanel(true),
+    onGhost: () => toggleGhost(),
+    ghostOn,
+  });
+}
+showGhostSetting();
+
+// La page se ferme (ou passe en arrière-plan) : l'essai en cours est clos comme un abandon, ses vies sont gardées.
+const flushEssai = () => {
+  if (watching || carnage) return;
+  session.flush();
+  drainEssais();
+};
+window.addEventListener("pagehide", flushEssai);
 
 if (options.tune) {
   const panel = document.getElementById("tune")!;
@@ -385,6 +775,12 @@ let clock = 0;
 function draw(alpha: number, dt: number): void {
   if (!scene) return;
   clock += dt;
+  burst?.update(dt);
+  stains?.update(dt);
+  if (carnage) {
+    drawCarnage(scene, carnage, alpha, dt);
+    return;
+  }
   const sa = session.prev;
   const sb = session.state;
   const a = sa.player;
@@ -393,8 +789,8 @@ function draw(alpha: number, dt: number): void {
   const y = (a.y + (b.y - a.y) * alpha) / T;
   look = animateLook(look, dt, (-b.vy * TICK_RATE) / T);
   scene.setPlayer({ x, y, look, visible: sb.status !== ATTEMPT_DEAD });
-  burst?.update(dt);
   scene.setWorld(sa, sb, alpha, clock);
+  drawGhost(alpha);
   // Mort : la caméra reste où l'on est mort (l'éclatement se voit) ; le nouvel essai la repose au départ.
   if (sb.status !== ATTEMPT_DEAD) {
     const f = follow(b);
@@ -405,6 +801,61 @@ function draw(alpha: number, dt: number): void {
   scene.render();
   hud.update(session);
 }
+
+/** Position interpolée (tuiles, coin haut-gauche) entre deux états ; pas d'interpolation à travers un saut (reprise sur un point). */
+function poseBetween(a: PlayerState, b: PlayerState, alpha: number): { x: number; y: number } {
+  if (Math.abs(b.x - a.x) + Math.abs(b.y - a.y) > T) return { x: b.x / T, y: b.y / T };
+  return { x: (a.x + (b.x - a.x) * alpha) / T, y: (a.y + (b.y - a.y) * alpha) / T };
+}
+
+/** Le fantôme du meilleur essai : carré translucide ; mort, un anneau qui s'ouvre là où il est mort ; puis sa reprise. */
+function drawGhost(alpha: number): void {
+  if (!ghostMesh) return;
+  const g = ghost;
+  if (!g || !ghostOn || watching) {
+    ghostMesh.hide();
+    return;
+  }
+  const gs = g.state;
+  if (gs.status === ATTEMPT_DEAD) ghostMesh.set(null, { x: gs.deathX / T, y: gs.deathY / T, dying: Math.min(1, gs.deathTicks / RESPAWN_TICKS) });
+  else ghostMesh.set(poseBetween(g.prev.player, gs.player, alpha), null);
+}
+
+const CARNAGE_LOOK = restLook();
+
+/** Le carnage : le héros (le personnage, avec ses yeux), la foule (un carré translucide par vie), le monde du héros, la caméra sur lui. */
+function drawCarnage(sc: NonNullable<typeof scene>, c: CarnageRun, alpha: number, dt: number): void {
+  const h = c.run.hero;
+  const hero = poseBetween(h.prev.player, h.state.player, alpha);
+  sc.setPlayer({ ...hero, look: CARNAGE_LOOK, visible: h.state.status !== ATTEMPT_DEAD });
+  sc.setWorld(h.prev, h.state, alpha, clock);
+  const lives = c.run.lives;
+  for (let i = 0; i < lives.length; i++) {
+    const life = lives[i]!;
+    const r = life.runner;
+    if (life.status !== "court" || !r || r.state.status === ATTEMPT_DEAD) c.crowd.set(i, null);
+    else {
+      const p = poseBetween(r.prev.player, r.state.player, alpha);
+      c.crowd.set(i, p.x, p.y);
+    }
+  }
+  c.crowd.commit();
+  if (carnageBurst) {
+    carnageBurst.pool.update(dt);
+    carnageBurst.mesh.sync();
+  }
+  if (h.state.status !== ATTEMPT_DEAD) {
+    const f = follow(h.state.player);
+    camera = followCamera(camera, { ...f, cx: hero.x + PLAYER_WIDTH / T / 2, cy: -(hero.y + PLAYER_HEIGHT / T / 2) }, sc.frame, dt);
+  }
+  sc.setView(camera.x, camera.y);
+  sc.render();
+  hud.update(session, h.state.time);
+}
+
+/** Temps de fil principal par image (ms), les 600 dernières images : mesure du carnage (`__jump.frameTimes`). */
+const frameWork: number[] = [];
+const workStats = { steps: 0, stepMs: 0, draws: 0, drawMs: 0 };
 
 if (!scene) {
   document.getElementById("nogl")!.style.display = "flex";
@@ -421,6 +872,7 @@ if (!scene) {
   window.addEventListener("orientationchange", onResize);
   let last = performance.now();
   const frame = (now: number) => {
+    const t0 = performance.now();
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.25);
     last = now;
     controls.pollPad();
@@ -428,14 +880,25 @@ if (!scene) {
     if (!manual && !panelOpen) {
       const steps = stepper.advance(dt);
       for (let i = 0; i < steps; i++) stepOnce();
+      workStats.steps += steps;
     }
+    const t1 = performance.now();
     draw(manual ? 1 : stepper.alpha, dt);
     updateOverlay();
+    const t2 = performance.now();
+    workStats.stepMs += t1 - t0;
+    workStats.drawMs += t2 - t1;
+    workStats.draws++;
+    frameWork.push(t2 - t0);
+    if (frameWork.length > 600) frameWork.shift();
     requestAnimationFrame(frame);
   };
   draw(1, 0);
   updateOverlay();
   phase = "ready";
   requestAnimationFrame(frame);
+  if (options.watchBest && !watching) hud.toast("Pas encore de meilleur essai aujourd'hui : à toi de jouer");
+  else if (watching) hud.toast("Rediffusion de ton meilleur essai");
+  if (options.carnageDemo) startDemo();
 }
 

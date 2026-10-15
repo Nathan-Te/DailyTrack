@@ -7,8 +7,13 @@ import { formatTicks, type JumpSession } from "./session";
 // jamais sur les boutons. Le bandeau est l'écran d'arrivée minimal (l'écran complet viendra au lot 6).
 
 export interface Hud {
-  update(session: JumpSession): void;
-  finish(session: JumpSession): void;
+  /** `time` : le chrono affiché (par défaut celui de l'essai ; pendant le carnage, celui du héros). */
+  update(session: JumpSession, time?: number): void;
+  /** Bandeau d'arrivée. `title` : « Arrivée ! » par défaut (« Rediffusion » en lecture). Le meilleur temps affiché est celui du jour, recalculé par le rejeu. */
+  finish(session: JumpSession, opts?: { title?: string }): void;
+  /** Compteur du carnage (« 47 vies · 1 arrivée ») ; null le cache. */
+  carnage(label: string | null): void;
+  readonly carnageShown: boolean;
   hideFinish(): void;
   /** Message bref au milieu de l'écran (point de passage atteint). */
   toast(text: string): void;
@@ -25,6 +30,10 @@ export function mountHud(opts: { onRestart(): void }): Hud {
   const bBest = banner.querySelector<HTMLElement>(".best")!;
   const bDeaths = banner.querySelector<HTMLElement>(".deaths")!;
   const button = banner.querySelector<HTMLButtonElement>("button")!;
+  const bTitle = banner.querySelector<HTMLElement>(".title")!;
+  const carnageEl = document.getElementById("carnage")!;
+  const carnageCount = carnageEl.querySelector<HTMLElement>(".count")!;
+  let carnageText: string | null = null;
   button.addEventListener("click", () => {
     button.blur();
     opts.onRestart();
@@ -39,8 +48,8 @@ export function mountHud(opts: { onRestart(): void }): Hud {
   let last = "";
   let shown = false;
   return {
-    update(session) {
-      const t = formatTicks(session.state.time);
+    update(session, at = session.state.time) {
+      const t = formatTicks(at);
       const b = session.best === null ? "—" : formatTicks(session.best);
       const key = `${t}|${b}|${session.deaths}|${session.state.status}`;
       if (key === last) return;
@@ -50,9 +59,10 @@ export function mountHud(opts: { onRestart(): void }): Hud {
       deaths.textContent = `Morts ${session.deaths}`;
       chrono.classList.toggle("done", session.state.status === ATTEMPT_FINISHED);
     },
-    finish(session) {
+    finish(session, opts = {}) {
+      bTitle.textContent = opts.title ?? "Arrivée !";
       bTime.textContent = formatTicks(session.state.time);
-      bBest.textContent = session.best === null ? "Meilleur : — (réglages modifiés)" : `Meilleur de la session : ${formatTicks(session.best)}`;
+      bBest.textContent = session.best === null ? "Meilleur : — (réglages modifiés)" : `Meilleur du jour : ${formatTicks(session.best)}`;
       // Avec les points de passage, un temps peut contenir des morts (le chrono a continué) : on le dit.
       const run = session.attemptDeaths === 0 ? "essai sans faute" : `${session.attemptDeaths} dans cet essai`;
       bDeaths.textContent = `Morts : ${session.deaths} · ${run}`;
@@ -73,6 +83,15 @@ export function mountHud(opts: { onRestart(): void }): Hud {
     },
     get finishShown() {
       return shown;
+    },
+    carnage(label) {
+      if (label === carnageText) return;
+      carnageText = label;
+      carnageEl.hidden = label === null;
+      if (label !== null) carnageCount.textContent = label;
+    },
+    get carnageShown() {
+      return carnageText !== null;
     },
   };
 }

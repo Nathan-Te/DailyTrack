@@ -7,6 +7,8 @@ export default defineConfig({
   build: {
     target: "es2022",
     rollupOptions: {
+      // Lot 3 : `verify.html`, rejeu sans rendu pour les tests de déterminisme entre navigateurs.
+      input: { main: "index.html", verify: "verify.html" },
       output: {
         // Three.js (l'essentiel du poids) dans son propre fichier : il change rarement, le navigateur le garde en cache.
         manualChunks(id: string) {

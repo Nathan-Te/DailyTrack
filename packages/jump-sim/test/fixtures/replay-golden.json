@@ -1,0 +1,263 @@
+{
+  "jumpSimVersion": 2,
+  "solution": {
+    "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw",
+    "bytes": 163,
+    "finished": true,
+    "ticks": 2595,
+    "time": 2595,
+    "deaths": 0,
+    "lives": 1,
+    "final": {
+      "status": 3,
+      "time": 2595,
+      "player": {
+        "x": 898375,
+        "y": 33792,
+        "vx": 375,
+        "vy": 0,
+        "ground": 1,
+        "air": 0,
+        "wallSide": 0,
+        "wallAir": 255,
+        "slide": 0,
+        "buffer": 0,
+        "held": 0,
+        "jumping": 0,
+        "lock": 0,
+        "lockDir": 0
+      },
+      "crumbles": [
+        0,
+        0,
+        0,
+        -1,
+        0,
+        0,
+        -1,
+        0,
+        -1,
+        -1,
+        0,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        -1,
+        -1,
+        0,
+        0,
+        0,
+        0,
+        -1,
+        -1
+      ],
+      "sections": [
+        1,
+        543,
+        1237,
+        1957
+      ],
+      "deathCause": 0,
+      "deathX": 0,
+      "deathY": 0,
+      "deathTicks": 0,
+      "springCell": 3604,
+      "springTime": 2196,
+      "checkpoint": 4
+    }
+  },
+  "replays": [
+    {
+      "name": "solution de l'essai",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw",
+      "hash": "b3c1e964",
+      "finished": true,
+      "ticks": 2595,
+      "time": 2595,
+      "deaths": 0
+    },
+    {
+      "name": "essai fictif 0 (arrivée)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAZ0BsgI-wgggIiCiBSBBIOoEPqoDPqoDPqoEHuoCPqoDProDCA",
+      "hash": "fee4e26a",
+      "finished": true,
+      "ticks": 2656,
+      "time": 2656,
+      "deaths": 1
+    },
+    {
+      "name": "essai fictif 1 (arrivée)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIClgKSBCbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw",
+      "hash": "b463381c",
+      "finished": true,
+      "ticks": 2595,
+      "time": 2595,
+      "deaths": 0
+    },
+    {
+      "name": "essai fictif 2 (mort)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmwgKFASZC",
+      "hash": "d87d0ae0",
+      "finished": false,
+      "ticks": 328,
+      "time": 328,
+      "deaths": 1
+    },
+    {
+      "name": "essai fictif 3 (arrivée)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGqAx6qBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw",
+      "hash": "1af4a31b",
+      "finished": true,
+      "ticks": 2595,
+      "time": 2595,
+      "deaths": 0
+    },
+    {
+      "name": "essai fictif 4 (abandon)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqoCxAE6JoIDJoIEpgGiAyaqBb4BogImogMgCh4kmgEQpgGqA54B6gMeUkHaAX7KBF7CBRCmAfoBfTqeAeoDHlJB2gF-ygReygVeqgIQpgH6AX06ngHqAx5SQdoBfsoEXsoFXqoCEKYBQq4CDTqeAeoDHlJB2gF-ygRewgUQPr0BngINOp4B6gMeUkHaAX7KBF7KBV6qAsQBOiaCAxY",
+      "hash": "e95afe52",
+      "finished": false,
+      "ticks": 3793,
+      "time": 3793,
+      "deaths": 6
+    },
+    {
+      "name": "essai fictif 5 (abandon)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXuIEmALKAyb6AhCmAaoDngHqAx7qAn66BJgCsgOYAqoBEKYBqgOeAeoDHuoCfroEmAKyA5gCqgEQpgGqA54B6gMe6gJ-ugSYArIDmAKqARCmAaoDngHqAx7qAn7SAmyCAZgCsgOYAroBEKYBqgOeAeoDHuoCftICbIIBmAKyA5gCugE",
+      "hash": "046c2012",
+      "finished": false,
+      "ticks": 3409,
+      "time": 3409,
+      "deaths": 6
+    },
+    {
+      "name": "essai fictif 6 (arrivée)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgcxIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw",
+      "hash": "6c4ec722",
+      "finished": true,
+      "ticks": 2595,
+      "time": 2595,
+      "deaths": 0
+    },
+    {
+      "name": "essai fictif 7 (abandon)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJsoBe8IBpgGiAyaqBb4BogImogMgCh4kogNACRCmAaoDngHqAx7qAn6SAb0CggFe8gQQpgGqA54BqgK4AooCfpIBvQKCAV4qEKYBqgOeAaoCuAKKAn4i8AG9AYIBXioQpgGqA54BavUBiAKKAn4i8AEVEKYBqgOeAWr1AYgCigJGxAGIARU",
+      "hash": "62d56503",
+      "finished": false,
+      "ticks": 3155,
+      "time": 3155,
+      "deaths": 6
+    },
+    {
+      "name": "essai fictif 8 (arrivée)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAfoBpgFSHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw",
+      "hash": "a8243fb0",
+      "finished": true,
+      "ticks": 2595,
+      "time": 2595,
+      "deaths": 0
+    },
+    {
+      "name": "essai fictif 9 (mort)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkA8gMmugE-Ug",
+      "hash": "1f5b1b73",
+      "finished": false,
+      "ticks": 106,
+      "time": 106,
+      "deaths": 1
+    },
+    {
+      "name": "vie 0 (point 4, arrivée)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkCBIESBAKgBNYJAOICPqoDPqoEHuoCPqoDProDCA",
+      "hash": "dce34a8f",
+      "finished": true,
+      "ticks": 351,
+      "time": 2656,
+      "deaths": 0
+    },
+    {
+      "name": "vie 1 (point 1, mort)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkCAcsMBAIAAAAQpgGqA54B6gMeUkHaAX7KBF6yBA",
+      "hash": "3f5b5bcd",
+      "finished": false,
+      "ticks": 372,
+      "time": 1983,
+      "deaths": 1
+    },
+    {
+      "name": "vie 2 (point 1, mort)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkCAdEPBAIAAAAQpgH6AX06ngHqAx5SQdoBfsoEXsoFXpoB",
+      "hash": "332a3b08",
+      "finished": false,
+      "ticks": 421,
+      "time": 2422,
+      "deaths": 1
+    },
+    {
+      "name": "vie 3 (point 1, mort)",
+      "level": "essai",
+      "code": "AQIFZXNzYWkCAYgTBAIAAAAQpgH6AX06ngHqAx5SQdoBfsoEXsoFXpoB",
+      "hash": "86508472",
+      "finished": false,
+      "ticks": 421,
+      "time": 2861,
+      "deaths": 1
+    },
+    {
+      "name": "galerie 0 (mort)",
+      "level": "dangers",
+      "code": "AQIHZGFuZ2VycwCqAz7iAv4BSibqAj6qA16qAj6KBR46",
+      "hash": "2a8d00ce",
+      "finished": false,
+      "ticks": 399,
+      "time": 399,
+      "deaths": 1
+    },
+    {
+      "name": "galerie 1 (abandon)",
+      "level": "dangers",
+      "code": "AQIHZGFuZ2VycwCqAz7iAiaiAibqAj6qA16qAj6KBR7qAj6qAx7qAh7qAh7KAx7CAmaKAbMCLoIDKBxCYGEiICQJHSQlJIYDJSkdogFAIUCGASUgwgEm6gMe6gIe6gIeygMewgJmigGzAi6CAygcQmBhIiAkCR0kJSSGAyUpHaIBQCFAhgElIMIBJuoDHuoCHuoCHqIGZooBswIuggMoHEJgYSIgJAkdJCUkhgMlKR2iAUAhQIYBJSDCASbqAx7qAh7qAh6iBmaKAbMCLoIDKBxCYGEiICQJHSQlJIYDJSkdogFAIUCGASUgwgEm6gMe6gIe6gIeogZmigGzAi6CAygcQmBhIiAkCR0kJSSGAyUpHaIBQCFAhgElIMIBJqICzQEe6gIe6gIeugM",
+      "hash": "dff0f80c",
+      "finished": false,
+      "ticks": 3651,
+      "time": 3651,
+      "deaths": 6
+    },
+    {
+      "name": "galerie 2 (mort)",
+      "level": "dangers",
+      "code": "AQIHZGFuZ2VycwCqAz7iAiYiwAFCJuoCPqoDXqoCPvIC",
+      "hash": "f8c52711",
+      "finished": false,
+      "ticks": 354,
+      "time": 354,
+      "deaths": 1
+    },
+    {
+      "name": "galerie 3 (arrivée)",
+      "level": "dangers",
+      "code": "AQIHZGFuZ2VycwCqAz7iAiaiAibqAj6qA16qAj6KBR7qAj6qAx7qAh7qAh7KAx7CAmaCA2aCAygcQmBhIiAkCR0kJSSGAyUpHaIBQCFAhgElIMIBJooFHuoCHsICZoIDpgGCAUDiASAhYKoGPqoD",
+      "hash": "f3ae005b",
+      "finished": true,
+      "ticks": 1521,
+      "time": 1521,
+      "deaths": 0
+    }
+  ]
+}
