@@ -26,8 +26,10 @@ import {
   runsTicks,
   sawCenters,
   buildModule,
+  dailyLevel,
   replayStartState,
   type AttemptState,
+  type DailyLevel,
   type JumpParams,
   type JumpReplay,
   type Level,
@@ -51,8 +53,12 @@ import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
-import { moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
+import { dailyHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
+import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
 
+// Lot 5 : le niveau du jour (`dailyLevel`) est la page par défaut ; `?seed=AAAA-MM-JJ` ouvre celui d'une date (archive, ou à venir sur un
+// aperçu : le site publié refuse les dates futures, `dailyInfo.ts`) ; HUD « DailyJump #N » et médaille visée, médaille et temps de l'auteur
+// à l'arrivée, `&solution` (la rediffusion de l'auteur), `?debug` (limites des morceaux, `__jump.daily`), passage de minuit.
 // Lot 3 : rediffusions. Chaque essai est enregistré puis **rejoué** par la mémoire du jour (`memory.ts`), qui garde le meilleur essai, les
 // vies et les morts du jour (stockage `jump:`, protégé : le jeu marche sans). Fantôme du meilleur essai calé sur le chrono (`ghost.ts`),
 // carnage par vagues à l'arrivée (`carnage.ts`), taches de peinture (`stains.ts`), lecture `?watch=best`, démonstration `?carnage=demo`.
@@ -119,7 +125,10 @@ export interface JumpDebug {
   day: string;
   simVersion: number;
   palette: string;
-  scenario: Scenario;
+  /** Le niveau écrit à la main ouvert (`?scenario=`), null : le niveau du jour (lot 5) ou un morceau. */
+  scenario: Scenario | null;
+  /** Lot 5 : le niveau du jour (null pour un scénario ou un morceau). */
+  readonly daily: DailyView | null;
   /** Lot 4 : le morceau joué (`?module=`), son temps de référence (pas) ; null pour un scénario. */
   module: { id: string; variant: number; entry: "arret" | "elan"; solution: boolean; levelId: string; reference: number | null; next: string } | null;
   readonly player: PlayerView;
@@ -185,6 +194,38 @@ export interface JumpDebug {
   readonly frameTimes: { mean: number; p95: number; frames: number; stepMs: number; drawMs: number; reset(): void };
 }
 
+/** Le niveau du jour tel que `__jump.daily` le montre (lot 5). */
+export interface DailyView {
+  date: string;
+  number: number;
+  id: string;
+  /** Aujourd'hui (date de Paris lue au chargement) ; `jour`, `archive` ou `futur` ; site publié ou aperçu ; date future refusée. */
+  today: string;
+  mode: DayChoice["mode"];
+  preview: boolean;
+  refused: boolean;
+  hash: string;
+  width: number;
+  height: number;
+  pieces: { id: string; variant: number; entry: string; exigence: number; tags: readonly string[]; col0: number; col1: number; start: number; end: number }[];
+  attempts: { index: number; status: string; reason: string; pieces: string[]; ticks: number; rate: number; score: number }[];
+  chosen: number;
+  fallback: boolean;
+  authorTicks: number;
+  medals: { author: number; gold: number; silver: number; bronze: number };
+  exigence: { sum: number; rate: number; thirds: readonly number[] };
+  /** La rediffusion de l'auteur (base64url). */
+  code: string;
+  /** Médaille de la dernière arrivée (null : aucune, ou pas encore d'arrivée). */
+  lastMedal: string | null;
+  /** Passage de minuit : un nouveau niveau attend la prochaine commande « recommencer ». */
+  newDay: boolean;
+  /** Message discret affiché (date refusée, nouveau niveau), "" sinon. */
+  notice: string;
+  /** Ligne du HUD. */
+  line: string;
+}
+
 export interface CarnageView {
   active: boolean;
   demo: boolean;
@@ -206,17 +247,22 @@ declare global {
 
 const options = readUrlOptions(location.search);
 const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL };
+// Lot 5 : « aujourd'hui » = la date de Paris (`@cdj/clock`), lue ici, hors de la simulation ; le niveau du jour en découle.
+const today = parisDay(Date.now());
+const preview = isPreview(location);
+const choice: DayChoice | null = options.daily ? chooseDay(options.seed, today, preview) : null;
+const daily: DailyLevel | null = choice ? dailyLevel(choice.day) : null;
 // Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
 // couloir de lancement est ajouté devant le palier d'entrée ; la solution, elle, part lancée du départ du morceau (sans couloir).
 const mod = options.module;
 const built = mod ? buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? LAUNCH_TILES : 0 }) : null;
-const level = built ? built.level : LEVELS[options.scenario];
+const level = built ? built.level : daily ? daily.level : LEVELS[options.scenario ?? "essai"];
 const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
 const nextHref = mod ? moduleHref({ id: nextModule(mod.id), variant: 0, entry: mod.entry }, options) : null;
 
-const day = parisDay(Date.now());
-const dayText = formatDay(day);
-const palette = paletteForDay(day);
+const dayText = formatDay(today);
+// La palette du jour : celle de la date du niveau (une archive garde la sienne).
+const palette = paletteForDay(daily ? daily.day : today);
 
 const stamp = document.getElementById("stamp")!;
 stamp.textContent = `DailyJump · sim v${JUMP_SIM_VERSION} · ${dayText}`;
@@ -225,6 +271,7 @@ if (mod && built) {
   document.getElementById("modname")!.textContent = `${mod.solution ? "Solution · " : ""}${mod.id} · variante ${mod.variant} · ${entryText}`;
   document.title = `DailyJump · ${mod.id}`;
 }
+if (daily) document.title = daily.number >= 1 ? `DailyJump #${daily.number}` : "DailyJump";
 document.documentElement.style.background = `#${palette.background.toString(16).padStart(6, "0")}`;
 
 // Réglages : les défauts, sauf en `?debug&tune` où le panneau reprend ceux qu'on avait laissés (`jump:tune`).
@@ -232,12 +279,13 @@ const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS
 
 // ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
 // Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
-const levelId: string = built ? built.levelId : options.scenario;
+const levelId: string = built ? built.levelId : daily ? daily.id : (options.scenario ?? "essai");
 const store = browserStorage();
 const memory = new DayMemory({ store, level, levelId, key: mod ? `${levelId}:${mod.entry}` : levelId, today: () => formatDay(parisDay(Date.now())) });
 // `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
 // `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
-const watchReplay = mod?.solution ? solutionReplay(mod.id, mod.variant, mod.entry) : options.watchBest ? memory.bestReplay() : null;
+// `&solution` sur le niveau du jour (lot 5) : la rediffusion de l'auteur, la preuve du niveau.
+const watchReplay = mod?.solution ? solutionReplay(mod.id, mod.variant, mod.entry) : daily && options.solution ? daily.replay : options.watchBest ? memory.bestReplay() : null;
 const watching = watchReplay !== null;
 const watchInputs = watchReplay ? fromRuns(watchReplay.runs) : [];
 let watchIndex = 0;
@@ -251,7 +299,9 @@ const burst = options.fx ? new BurstPool() : null;
 const shake = new Shake();
 let scene: JumpScene | null = null;
 try {
-  scene = createScene(document.body, level, palette, { hitbox: options.hitbox, burst });
+  // `?debug` sur le niveau du jour : les limites des morceaux, avec leur identifiant, leur variante et leur exigence.
+  const pieces = options.debug && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
+  scene = createScene(document.body, level, palette, { hitbox: options.hitbox, burst, pieces });
 } catch {
   scene = null;
 }
@@ -467,7 +517,7 @@ function onEvent(e: SessionEvent): void {
     if (watching) {
       // Une lecture n'est pas un temps du joueur : le meilleur affiché reste celui du jour.
       session.best = memory.best?.time ?? null;
-      hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : "Rediffusion", watching: true });
+      hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : daily && options.solution ? "Rediffusion de l'auteur" : "Rediffusion", watching: true });
       return;
     }
     const rec = drainEssais();
@@ -476,8 +526,16 @@ function onEvent(e: SessionEvent): void {
   }
 }
 
-/** Bandeau d'arrivée d'un morceau (lot 4) : le temps de la solution, « Morceau suivant ». */
+/** Médaille de la dernière arrivée sur le niveau du jour (`__jump.daily.lastMedal`). */
+let lastMedal: string | null = null;
+
+/** Bandeau d'arrivée : niveau du jour (lot 5) : la médaille obtenue et le temps de l'auteur ; morceau (lot 4) : le temps de la solution, « Morceau suivant ». */
 function finishOptions(): { reference: string | null; next: string | null } {
+  if (daily) {
+    const m = finishMedalText(session.state.time, daily.medals);
+    lastMedal = m.medal;
+    return { reference: m.text, next: null };
+  }
   if (!mod) return { reference: null, next: null };
   const ref = reference === null ? "Solution : —" : `Solution : ${formatTicks(reference)}${mod.entry === "elan" && !mod.solution ? " (couloir compris)" : ""}`;
   return { reference: ref, next: nextHref };
@@ -509,6 +567,11 @@ function follow(s: PlayerState): Follow {
 let camera: CameraView = { x: 0, y: 0, ahead: 0 };
 
 function restart(): void {
+  // Passage de minuit (lot 5) : la partie en cours a continué ; « recommencer » ouvre le nouveau niveau du jour.
+  if (newDay) {
+    location.replace(location.pathname + dailyHref(options));
+    return;
+  }
   if (carnage) {
     carnage.run.stop();
     carnage.demo = false;
@@ -532,12 +595,52 @@ function restart(): void {
 
 const hud = mountHud({ onRestart: () => controls.requestRestart() });
 
+// ——— Lot 5 : ligne du jour (DailyJump #N, mode, médaille visée), message discret, passage de minuit ———
+const dayLineEl = document.getElementById("dayline")!;
+const dayNoteEl = document.getElementById("daynote")!;
+let shownLine = "";
+let notice = "";
+/** Un nouveau jour a commencé pendant que la page était ouverte : le prochain « recommencer » ouvre son niveau. */
+let newDay = false;
+function setNotice(text: string, sticky: boolean): void {
+  notice = text;
+  dayNoteEl.textContent = text;
+  dayNoteEl.classList.toggle("sticky", sticky);
+  dayNoteEl.classList.remove("show");
+  void dayNoteEl.offsetWidth; // relance l'animation
+  dayNoteEl.classList.toggle("show", text !== "");
+}
+function updateDayLine(): void {
+  if (!daily || !choice) return;
+  const text = dayLine(daily, choice, preview, session.best);
+  if (text === shownLine) return;
+  shownLine = text;
+  dayLineEl.textContent = text;
+}
+if (daily && choice) {
+  dayLineEl.hidden = false;
+  document.body.classList.add("daily");
+  updateDayLine();
+  if (choice.refused) setNotice(REFUSED_TEXT, false);
+  // Le niveau d'aujourd'hui est ouvert (ou une date future refusée) : à minuit de Paris, un nouveau niveau attend. La partie continue.
+  if (choice.mode === "jour") {
+    const shownDay = choice.day;
+    const watchDay = () => {
+      if (newDay || parisDay(Date.now()) === shownDay) return;
+      newDay = true;
+      setNotice(NEW_DAY_TEXT, true);
+    };
+    setInterval(watchDay, 1000);
+  }
+}
+
 // ——— Surimpression de `?debug` ———
 const overlay = options.debug ? document.getElementById("debug") : null;
 const tunedBadge = document.getElementById("tuned")!;
 const fmt = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 
 function updateOverlay(): void {
+  updateDayLine();
   tunedBadge.textContent = session.tuned ? "réglages modifiés : rien n'est enregistré" : "";
   if (!overlay) return;
   const v = view();
@@ -554,11 +657,22 @@ function updateOverlay(): void {
     `position  colonne ${fmt(v.x, 2)} · rangée ${fmt(v.y, 2)}   pas ${session.ticks}`,
     options.hitbox ? "boîtes justes (hitbox)" : "",
     manual ? "pas à pas (manual)" : "",
-    watching ? (mod?.solution ? "lecture de la solution du morceau (solution)" : "lecture du meilleur essai (watch=best)") : "",
+    watching ? (mod?.solution ? "lecture de la solution du morceau (solution)" : daily && options.solution ? "lecture de la rediffusion de l'auteur (solution)" : "lecture du meilleur essai (watch=best)") : "",
+    daily ? dailyOverlay() : "",
     `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
   ]
     .filter(Boolean)
     .join("\n");
+}
+
+/** Surimpression `?debug` du niveau du jour : le morceau où se trouve le personnage. */
+function dailyOverlay(): string {
+  if (!daily) return "";
+  const col = Math.floor((session.state.player.x + PLAYER_WIDTH / 2) / T);
+  const k = daily.pieces.findIndex((p) => col >= p.col0 - 1 && col <= p.col1);
+  const p = daily.pieces[k];
+  const where = p ? `${k + 1}/${daily.pieces.length} ${p.id} v${p.variant} · exigence ${p.exigence}/5 · ${p.entry === "arret" ? "arrêt" : "élan"}` : "—";
+  return `morceau   ${where}\nniveau    ${daily.id} · auteur ${formatTicks(daily.authorTicks)} · tirage ${daily.chosen}${daily.fallback ? " (secours)" : ""}`;
 }
 
 const info: JumpDebug = {
@@ -572,6 +686,33 @@ const info: JumpDebug = {
   simVersion: JUMP_SIM_VERSION,
   palette: palette.name,
   scenario: options.scenario,
+  get daily(): DailyView | null {
+    if (!daily || !choice) return null;
+    return {
+      date: daily.date,
+      number: daily.number,
+      id: daily.id,
+      today: dayText,
+      mode: choice.mode,
+      preview,
+      refused: choice.refused,
+      hash: daily.hash,
+      width: daily.level.width,
+      height: daily.level.height,
+      pieces: daily.pieces.map((p) => ({ id: p.id, variant: p.variant, entry: p.entry, exigence: p.exigence, tags: p.tags, col0: p.col0, col1: p.col1, start: p.start, end: p.end })),
+      attempts: daily.attempts.map((a) => ({ ...a, pieces: [...a.pieces] })),
+      chosen: daily.chosen,
+      fallback: daily.fallback,
+      authorTicks: daily.authorTicks,
+      medals: { ...daily.medals },
+      exigence: { ...daily.exigence },
+      code: daily.code,
+      lastMedal,
+      newDay,
+      notice,
+      line: shownLine,
+    };
+  },
   module: mod && built ? { ...mod, levelId: built.levelId, reference, next: nextHref! } : null,
   get player() {
     return view();
@@ -927,7 +1068,8 @@ if (!scene) {
   updateOverlay();
   phase = "ready";
   requestAnimationFrame(frame);
-  if (mod?.solution && !watching) hud.toast("Pas de solution stockée pour ce morceau");
+  if (daily && options.solution) hud.toast("Rediffusion de l'auteur");
+  else if (mod?.solution && !watching) hud.toast("Pas de solution stockée pour ce morceau");
   else if (mod?.solution) hud.toast("Solution du morceau");
   else if (options.watchBest && !watching) hud.toast("Pas encore de meilleur essai aujourd'hui : à toi de jouer");
   else if (watching) hud.toast("Rediffusion de ton meilleur essai");

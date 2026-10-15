@@ -2,6 +2,7 @@
 // (un test vérifie qu'aucun autre fichier ne lit un paramètre absent de cette liste). La future page d'admin de DailyJump lira `URL_OPTIONS`
 // pour construire ses liens, comme `adminLogic.ts` de DailyTrack.
 
+import { parseDay } from "@cdj/core";
 import { MODULES, MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
 
 export interface UrlOption {
@@ -21,9 +22,14 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "scenario",
     description:
-      "Niveau à ouvrir. « essai » : le niveau d'essai du lot 2 (≈ 30 s, tous les dangers), la page par défaut ; « dangers » : la galerie, chaque danger seul ; « bac-a-sable » : le bac à sable du personnage (lot 1).",
+      "Niveau écrit à la main à ouvrir au lieu du niveau du jour (la page par défaut depuis le lot 5). « essai » : le niveau d'essai du lot 2 (≈ 22 s, tous les dangers) ; « dangers » : la galerie, chaque danger seul ; « bac-a-sable » : le bac à sable du personnage (lot 1). Une valeur inconnue ouvre l'essai.",
     values: SCENARIOS,
-    default: "essai",
+  },
+  {
+    name: "seed",
+    description:
+      "Le niveau du jour d'une date (AAAA-MM-JJ) : `?seed=2026-10-20`. Une date passée se joue en archive. Sur le site publié, une date future est refusée (le niveau d'aujourd'hui s'ouvre, « Ce niveau n'est pas encore sorti ») ; sur un aperçu de branche ou en local, toutes les dates sont ouvertes. Une date illisible ouvre le niveau du jour.",
+    values: [],
   },
   {
     name: "debug",
@@ -90,7 +96,8 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "solution",
-    description: "Avec `module` : regarder la solution stockée du morceau (rejouée par `replayAttempt`), sans jouer (R la relance).",
+    description:
+      "Avec `module` : regarder la solution stockée du morceau ; sur le niveau du jour (sans paramètre ou avec `seed`) : regarder la rediffusion de l'auteur (rejouée par `replayAttempt`, qui donne le temps de l'auteur). Sans jouer (R la relance). Ne lève jamais le refus d'une date future.",
     values: [],
   },
   {
@@ -101,7 +108,14 @@ export const URL_OPTIONS: readonly UrlOption[] = [
 ];
 
 export interface UrlChoices {
-  scenario: Scenario;
+  /** Un niveau écrit à la main (`?scenario=`), ou null : le niveau du jour. */
+  scenario: Scenario | null;
+  /** Le niveau du jour (lot 5) : ni `scenario`, ni morceau, ni galerie. */
+  daily: boolean;
+  /** `?seed=AAAA-MM-JJ` lu (numéro de jour), null s'il est absent ou illisible. */
+  seed: number | null;
+  /** `&solution` sur le niveau du jour : la rediffusion de l'auteur. */
+  solution: boolean;
   debug: boolean;
   /** Panneau de réglages : seulement avec `debug`. */
   tune: boolean;
@@ -129,8 +143,15 @@ export function readUrlOptions(search: string): UrlChoices {
   const params = new URLSearchParams(search);
   const scenario = params.get("scenario");
   const debug = params.has("debug");
+  const mod = moduleOf(params);
+  const gallery = params.has("modules") || (params.has("module") && mod === null);
+  const chosen = scenario === null ? null : (SCENARIOS as readonly string[]).includes(scenario) ? (scenario as Scenario) : "essai";
+  const daily = chosen === null && mod === null && !gallery;
   return {
-    scenario: (SCENARIOS as readonly string[]).includes(scenario ?? "") ? (scenario as Scenario) : "essai",
+    scenario: chosen,
+    daily,
+    seed: daily ? parseDay(params.get("seed") ?? "") : null,
+    solution: daily && params.has("solution"),
     debug,
     tune: debug && params.has("tune"),
     touch: params.get("touch") === "1" ? "1" : params.get("touch") === "0" ? "0" : null,
@@ -140,8 +161,8 @@ export function readUrlOptions(search: string): UrlChoices {
     ghostOff: params.get("ghost") === "off",
     carnageDemo: params.get("carnage") === "demo",
     watchBest: params.get("watch") === "best",
-    gallery: params.has("modules") || (params.has("module") && moduleOf(params) === null),
-    module: moduleOf(params),
+    gallery,
+    module: mod,
   };
 }
 
@@ -175,4 +196,9 @@ export function moduleHref(target: { id: string; variant: number; entry: ModuleE
 /** Lien vers la galerie des morceaux. */
 export function galleryHref(from: UrlChoices): string {
   return `?${["modules", ...carried(from)].join("&")}`;
+}
+
+/** Lien vers le niveau d'aujourd'hui (passage de minuit, lot 5) : sans `seed` ni `solution`, avec ce que l'adresse actuelle garde. */
+export function dailyHref(from: UrlChoices): string {
+  return `?${carried(from).join("&")}`;
 }

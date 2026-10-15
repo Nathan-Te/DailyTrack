@@ -1,4 +1,5 @@
 import { readFileSync, readdirSync } from "node:fs";
+import { parseDay } from "@cdj/core";
 import { join } from "node:path";
 import {
   DEFAULT_JUMP_PARAMS,
@@ -22,7 +23,7 @@ import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
 import { JumpSession, formatTicks } from "../src/session";
 import { TUNE_SLIDERS, TUNE_STORAGE_KEY, formatHuman, jumpHeight, loadTuned, paramsJson, parseTuned, saveTuned, toHuman } from "../src/tune";
-import { URL_OPTIONS, galleryHref, moduleHref, readUrlOptions } from "../src/urlOptions";
+import { URL_OPTIONS, dailyHref, galleryHref, moduleHref, readUrlOptions } from "../src/urlOptions";
 
 const SRC = new URL("../src", import.meta.url).pathname;
 
@@ -49,8 +50,9 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null };
-    expect(readUrlOptions("")).toEqual({ ...none, scenario: "essai" });
+    const none = { debug: false, tune: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false };
+    // Lot 5 : sans paramètre, le niveau du jour.
+    expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
     expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ ...none, scenario: "essai", debug: true, tune: true });
     expect(readUrlOptions("?scenario=dangers").scenario).toBe("dangers");
@@ -71,6 +73,20 @@ describe("paramètres d'adresse", () => {
     expect(moduleHref({ id: "plaine", variant: 0, entry: "arret" }, readUrlOptions(""))).toBe("?module=plaine&variante=0");
     expect(galleryHref(from)).toBe("?modules&debug&touch=1&fx=off");
     expect(readUrlOptions(moduleHref({ id: "puits", variant: 2, entry: "elan" }, from)).module).toEqual({ id: "puits", variant: 2, entry: "elan", solution: false });
+  });
+
+  it("lot 5 : le niveau du jour (page par défaut), ?seed=AAAA-MM-JJ et &solution ; le lien du passage de minuit", () => {
+    expect(readUrlOptions("?seed=2026-10-20")).toMatchObject({ daily: true, scenario: null, seed: parseDay("2026-10-20"), solution: false });
+    expect(readUrlOptions("?seed=2026-10-20&solution&debug")).toMatchObject({ daily: true, seed: parseDay("2026-10-20"), solution: true, debug: true });
+    expect(readUrlOptions("?seed=2026-02-30").seed).toBeNull(); // illisible : le niveau du jour
+    expect(readUrlOptions("?seed=demain").seed).toBeNull();
+    expect(readUrlOptions("?solution").solution).toBe(true);
+    // Un scénario ou un morceau n'est pas le niveau du jour : `seed` et `solution` ne s'y appliquent pas (le morceau a sa propre solution).
+    expect(readUrlOptions("?scenario=essai&seed=2026-10-20")).toMatchObject({ daily: false, seed: null });
+    expect(readUrlOptions("?module=cheminee&solution")).toMatchObject({ daily: false, solution: false, module: { id: "cheminee", solution: true } });
+    expect(readUrlOptions("?modules").daily).toBe(false);
+    expect(dailyHref(readUrlOptions("?seed=2026-10-20&solution&debug&touch=1"))).toBe("?debug&touch=1");
+    expect(dailyHref(readUrlOptions(""))).toBe("?");
   });
 
   it("lit touch (1, 0, ou l'appareil décide) et zones", () => {

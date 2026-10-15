@@ -19,6 +19,9 @@ import {
   ShapeGeometry,
   Vector3,
   WebGLRenderer,
+  CanvasTexture,
+  Sprite,
+  SpriteMaterial,
   AlwaysStencilFunc,
   ReplaceStencilOp,
 } from "three";
@@ -61,6 +64,37 @@ export interface SceneOptions {
   hitbox?: boolean;
   /** Éclats de la mort (absent avec `?fx=off`). */
   burst?: BurstPool | null;
+  /** Lot 5, `?debug` sur le niveau du jour : limites des morceaux (colonnes, rangée du palier d'entrée) et leur étiquette. */
+  pieces?: readonly PieceMark[];
+}
+
+/** Un morceau du niveau du jour, dessiné en `?debug`. */
+export interface PieceMark {
+  col0: number;
+  col1: number;
+  /** Rangée du sol de son palier d'entrée : l'étiquette se pose au-dessus. */
+  row: number;
+  label: string;
+}
+
+/** Étiquette de texte (sprite, sans éclairage) : `height` tuiles de haut. Affichage de debug seulement. */
+function textSprite(text: string, height: number): Sprite {
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d")!;
+  const font = "600 40px system-ui, sans-serif";
+  ctx.font = font;
+  const w = Math.ceil(ctx.measureText(text).width) + 24;
+  canvas.width = w;
+  canvas.height = 56;
+  ctx.font = font;
+  ctx.fillStyle = "rgba(11, 16, 32, 0.78)";
+  ctx.fillRect(0, 0, w, 56);
+  ctx.fillStyle = "#ffd22e";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 12, 29);
+  const sprite = new Sprite(new SpriteMaterial({ map: new CanvasTexture(canvas), depthTest: false, transparent: true }));
+  sprite.scale.set((height * w) / 56, height, 1);
+  return sprite;
 }
 
 export interface JumpScene {
@@ -387,6 +421,22 @@ export function createScene(canvasParent: HTMLElement, level: Level, palette: Pa
       loop.position.z = 0.5;
       world.add(loop);
       hitSaws.push(loop);
+    }
+  }
+
+  // ——— Lot 5, ?debug : limites des morceaux du niveau du jour, avec leur identifiant, leur variante et leur exigence ———
+  if (options.pieces && options.pieces.length > 0) {
+    const seg: number[] = [];
+    for (const p of options.pieces) seg.push(p.col0, 0, 0, p.col0, -level.height, 0, p.col1 + 1, 0, 0, p.col1 + 1, -level.height, 0);
+    const g = new BufferGeometry();
+    g.setAttribute("position", new Float32BufferAttribute(seg, 3));
+    const lines = new LineSegments(g, new LineBasicMaterial({ color: 0xffd22e, transparent: true, opacity: 0.7 }));
+    lines.position.z = 0.55;
+    world.add(lines);
+    for (const p of options.pieces) {
+      const label = textSprite(p.label, 0.8);
+      label.position.set(p.col0 + 0.2 + label.scale.x / 2, -(p.row - 4.6), 0.6);
+      world.add(label);
     }
   }
 
