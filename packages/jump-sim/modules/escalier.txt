@@ -1,0 +1,26 @@
+id: escalier
+intention: Gravir un escalier de grandes marches, un bond par marche, sans casser son élan.
+etiquettes: respiration vertical
+paliers: 12 4
+repeter: large colonnes 7-7
+repeter: large colonnes 10-10
+repeter: large colonnes 13-13
+repeter: large colonnes 16-16
+variante: large=1
+variante: large=2
+variante: large=3
+grille:
+............................
+............................
+............................
+............................
+..............##############
+..............##############
+...........#################
+...........#################
+........####################
+........####################
+.....#######################
+.....#######################
+############################
+############################

@@ -22,7 +22,7 @@ import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
 import { JumpSession, formatTicks } from "../src/session";
 import { TUNE_SLIDERS, TUNE_STORAGE_KEY, formatHuman, jumpHeight, loadTuned, paramsJson, parseTuned, saveTuned, toHuman } from "../src/tune";
-import { URL_OPTIONS, readUrlOptions } from "../src/urlOptions";
+import { URL_OPTIONS, galleryHref, moduleHref, readUrlOptions } from "../src/urlOptions";
 
 const SRC = new URL("../src", import.meta.url).pathname;
 
@@ -49,12 +49,28 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false };
+    const none = { debug: false, tune: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null };
     expect(readUrlOptions("")).toEqual({ ...none, scenario: "essai" });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
     expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ ...none, scenario: "essai", debug: true, tune: true });
     expect(readUrlOptions("?scenario=dangers").scenario).toBe("dangers");
     expect(readUrlOptions("?tune").tune).toBe(false);
+  });
+
+  it("lot 4 : lit la galerie, le morceau, sa variante, son entrée et la lecture de sa solution ; construit les liens", () => {
+    expect(readUrlOptions("?modules").gallery).toBe(true);
+    expect(readUrlOptions("?module=inconnu").gallery).toBe(true);
+    expect(readUrlOptions("?module=inconnu").module).toBeNull();
+    expect(readUrlOptions("?module=cheminee").module).toEqual({ id: "cheminee", variant: 0, entry: "arret", solution: false });
+    expect(readUrlOptions("?module=cheminee&variante=2&entree=elan&solution").module).toEqual({ id: "cheminee", variant: 2, entry: "elan", solution: true });
+    expect(readUrlOptions("?module=cheminee&variante=9").module!.variant).toBe(0);
+    expect(readUrlOptions("?module=cheminee&variante=-1").module!.variant).toBe(0);
+    expect(readUrlOptions("?module=cheminee&entree=n'importe").module!.entry).toBe("arret");
+    const from = readUrlOptions("?modules&debug&touch=1&fx=off");
+    expect(moduleHref({ id: "cheminee", variant: 1, entry: "elan", solution: true }, from)).toBe("?module=cheminee&variante=1&entree=elan&solution&debug&touch=1&fx=off");
+    expect(moduleHref({ id: "plaine", variant: 0, entry: "arret" }, readUrlOptions(""))).toBe("?module=plaine&variante=0");
+    expect(galleryHref(from)).toBe("?modules&debug&touch=1&fx=off");
+    expect(readUrlOptions(moduleHref({ id: "puits", variant: 2, entry: "elan" }, from)).module).toEqual({ id: "puits", variant: 2, entry: "elan", solution: false });
   });
 
   it("lit touch (1, 0, ou l'appareil décide) et zones", () => {

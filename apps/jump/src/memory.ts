@@ -107,8 +107,10 @@ interface Meta {
 export interface DayMemoryOptions {
   store: KeyValue | null;
   level: Level;
-  /** Identifiant du niveau (`essai`, plus tard la date) : il préfixe les clés et va dans les rediffusions. */
+  /** Identifiant du niveau (`essai`, `module:cheminee:1`, plus tard la date) : il va dans les rediffusions, et nomme les clés. */
   levelId: string;
+  /** Nom des clés de stockage, si ce n'est pas `levelId` (lot 4 : un morceau est rangé par entrée, `module:<id>:<n>:elan`). */
+  key?: string;
   /** Le jour du jeu (AAAA-MM-JJ, date de Paris) : relu à chaque écriture, la mémoire se purge s'il a changé. */
   today(): string;
 }
@@ -133,7 +135,7 @@ export class DayMemory {
   }
 
   private key(kind: string): string {
-    return storageKey(`${kind}:${this.opts.levelId}`);
+    return storageKey(`${kind}:${this.opts.key ?? this.opts.levelId}`);
   }
 
   private read<T>(kind: string): T | null {

@@ -28,7 +28,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   const info = await jump(page);
   expect(info.phase).toBe("ready");
-  expect(info.simVersion).toBe(2);
+  expect(info.simVersion).toBe(3);
   expect(info.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
   const canvas = page.locator("canvas");
@@ -38,7 +38,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(box!.height).toBeGreaterThan(100);
 
   // Le coin affiche la version de la simulation et le jour du jeu.
-  await expect(page.locator("#stamp")).toHaveText(`DailyJump · sim v2 · ${info.day}`);
+  await expect(page.locator("#stamp")).toHaveText(`DailyJump · sim v3 · ${info.day}`);
 
   // Les pixels : le fond uni, les tuiles, le personnage et l'arrivée font au moins quatre couleurs, et le fond ne couvre pas tout.
   const pixels = await page.evaluate(() => (window as unknown as { __jump: JumpDebugView }).__jump.probe());
@@ -49,7 +49,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
 
 test("sans ?debug, aucun accès de débogage n'est exposé", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#stamp")).toContainText("DailyJump · sim v2");
+  await expect(page.locator("#stamp")).toContainText("DailyJump · sim v3");
   expect(await page.evaluate(() => "__jump" in window)).toBe(false);
 });
 

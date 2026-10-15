@@ -40,6 +40,7 @@ import {
   ESSAI_LEVEL,
   UNITS_PER_TILE,
   boxHits,
+  buildModule,
   boxDistance2,
   circleHitsBox,
   deathAt,
@@ -554,7 +555,7 @@ scie m o 120 boucle 8,0 10,0
 
 describe("intégrité (fuzz) sur le niveau d'essai", () => {
   /** Tout l'état est entier, sans −0 ; vitesses sous MAX_SPEED ; la boîte n'est jamais dans un bloc plein de la grille de l'essai. */
-  function assertSound(s: AttemptState, where: string, lastTiles: { ref: readonly number[] | null }) {
+  function assertSound(s: AttemptState, where: string, lastTiles: { ref: readonly number[] | null }, lv: Level = ESSAI_LEVEL) {
     const check = (k: string, v: unknown) => {
       if (typeof v !== "number" || !Number.isInteger(v) || Object.is(v, -0)) throw new Error(`${where} : ${k} = ${String(v)} (entier sans −0 attendu)`);
     };
@@ -568,15 +569,14 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
     }
     const p = s.player;
     if (Math.abs(p.vx) > MAX_SPEED || Math.abs(p.vy) > MAX_SPEED) throw new Error(`${where} : vitesse ${p.vx}, ${p.vy}`);
-    const grid = { width: ESSAI_LEVEL.width, height: ESSAI_LEVEL.height, tiles: s.tiles };
+    const grid = { width: lv.width, height: lv.height, tiles: s.tiles };
     if (boxHits(grid, p.x, p.y, PLAYER_WIDTH, PLAYER_HEIGHT)) throw new Error(`${where} : la boîte est dans un mur (${p.x}, ${p.y})`);
     for (const c of s.crumbles) if (c < CRUMBLE_GONE) throw new Error(`${where} : bloc friable ${c}`);
   }
 
   /** Commandes au hasard tenues un temps au hasard ; départs au hasard (personnage posé n'importe où dans le vide). */
-  function fuzz(seed: number, runs: number, ticks: number, params: (rng: Rng) => JumpParams): { total: number; deaths: number; trace: number } {
+  function fuzz(seed: number, runs: number, ticks: number, params: (rng: Rng) => JumpParams, lv: Level = ESSAI_LEVEL): { total: number; deaths: number; trace: number } {
     const rng = new Rng(seed);
-    const lv = ESSAI_LEVEL;
     let total = 0;
     let deaths = 0;
     let trace = 2166136261;
@@ -605,7 +605,7 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
         const before = s.status;
         s = stepAttempt(s, input, lv, p);
         if (s.status === ATTEMPT_DEAD && before !== ATTEMPT_DEAD) deaths++;
-        assertSound(s, `graine ${seed}, essai ${run}, pas ${t}`, lastTiles);
+        assertSound(s, `graine ${seed}, essai ${run}, pas ${t}`, lastTiles, lv);
         trace = Math.imul(trace ^ (s.player.x + s.player.y * 7 + s.time), 16777619) >>> 0;
         total++;
       }
@@ -627,6 +627,23 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
       return p;
     });
     expect(r.total).toBe(60_000);
+  });
+
+  it("lot 4 : quelques morceaux (cheminée, scies, friables, ressorts), réglages par défaut et au hasard : même intégrité", () => {
+    const keys = Object.keys(DEFAULT_JUMP_PARAMS) as (keyof JumpParams)[];
+    const picks: [string, number][] = [["cheminee", 1], ["cheminee-scie", 0], ["scie-ronde", 2], ["mur-friable", 0], ["ressort-mur", 1], ["ascenseur", 2]];
+    let deaths = 0;
+    for (const [k, [id, v]] of picks.entries()) {
+      const lv = buildModule(id, v).level;
+      deaths += fuzz(400 + k, 10, 1500, () => ({ ...P }), lv).deaths;
+      const r = fuzz(500 + k, 10, 800, (rng) => {
+        const p = { ...P };
+        for (const key of keys) p[key] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[key] + 2);
+        return p;
+      }, lv);
+      expect(r.total).toBe(8_000);
+    }
+    expect(deaths).toBeGreaterThan(10);
   });
 
   it("déterminisme : mêmes commandes, même suite d'états (deux fois, au bit près)", () => {
