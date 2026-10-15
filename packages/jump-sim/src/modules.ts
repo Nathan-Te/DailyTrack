@@ -11,16 +11,37 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // La source est un fichier texte par morceau (`packages/jump-sim/modules/<id>.txt`) ; le solveur hors ligne (`npm run solve:modules -w
 // @cdj/jump-sim`) recopie ces textes et les solutions trouvées dans `catalog.ts` (généré : la simulation reste pure, sans lecture de fichier).
 //
-// Format d'un fichier, **version 2** (lot 6 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
+// Format d'un fichier, **version 3** (lot 7 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français
 //   etiquettes: mural vertical                    parmi MODULE_TAGS
-//   format: 2                                     la version du format (un fichier v1, aux paliers dessinés, est refusé)
+//   famille: cheminee                             (lot 7) les morceaux de même intention ; une seule famille de chaque par niveau
+//   enchainement: long                            (lot 7, facultatif) un enchaînement long : deux intentions sans palier, 5 à 8 s
+//   elan: oui                                     (lot 7, facultatif) l'élan est le défi : un plat sans défi va jusqu'à 9 tuiles (6 sinon)
+//   mutateurs: plafond fosse                      (lot 7, facultatif) les mutateurs acceptés, chacun avec sa zone dans le bloc annexe
+//   format: 3                                     la version du format (v1 aux paliers dessinés, v2 sans famille : refusés)
 //   paliers: 17 6                                 rangées (de la grille) du **sol** à l'entrée, puis à la sortie
 //   repeter: haut rangees 6-7                     un paramètre nommé et une plage de rangées (ou de `colonnes`) de la grille
-//   variante: haut=2 cycle=180                    une variante = une valeur pour chaque paramètre (2 à 4 variantes)
+//   variante: haut=2 cycle=180 +plafond:pics      une valeur pour chaque paramètre, et jusqu'à deux mutateurs (`+nom` ou `+nom:argument`) ;
+//                                                 de 1 à `MAX_VARIANTS` (6) variantes
 //   grille:                                       puis la grille (caractères de `level.ts`, sans `S`, `F` ni `C`), une ligne vide,
-//   scie <id> <rayon> <cycle> <mode> <c,r>…       puis le bloc annexe : seulement des scies (la section est implicite)
+//   scie <id> <rayon> <cycle> <mode> <c,r>…       puis le bloc annexe : des scies (la section est implicite)
+//   zone <mutateur> …                             et les zones de mutation (ci-dessous)
+//
+// **Mutateurs (lot 7).** Une transformation déclarative du **gabarit** (avant le déroulé des plages répétées : une zone posée sur une plage
+// est recopiée avec elle), appliquée dans l'ordre de la variante. Zones (coordonnées du gabarit ; `a-b` ou `a` seul) :
+//   zone plafond <colonnes> <rangée>              `+plafond` (ou `:nu`) : du haut jusqu'à la rangée, tout devient plein ; `+plafond:pics` :
+//                                                 plein jusqu'à la rangée d'au-dessus, la rangée elle-même garnie de pics `v`
+//   zone fosse <colonnes> <rangée>                `+fosse` : un fond vide (aucun sol jusqu'en bas) devient un fond de pics `^` posé sur du
+//                                                 plein ; un fond de pics devient vide jusqu'en bas (on peut s'y rattraper à un mur)
+//   zone sol-friable <colonnes> <rangée>          `+sol-friable` : ces tuiles de sol (`#`) deviennent friables (`x`)
+//   zone patrouille <rayon> <cycle> <mode> <c,r>… `+patrouille` : ajoute cette scie mobile ; `+patrouille:<cycle>` change son cycle
+//   zone garde <colonnes> <rangées> <pic>         `+garde` : ces tuiles vides, contre un mur, prennent ce pic (`<` `>` `^` `v`)
+//   zone ressort <colonnes> <rangée>              `+ressort` : ces tuiles de marche (`#`) deviennent des ressorts (`*`)
+//   zone denivele <colonnes>                      `+denivele:<k>` : les colonnes de la zone (jusqu'au bout de la grille) descendent de k
+//                                                 rangées (k < 0 : montent) ; la sortie aussi (« finit plus bas » ou plus haut)
+// Le résultat est un morceau ordinaire, vérifié comme les autres (paliers, hauteur, plats), résolu par le solveur ; une variante mutée au
+// pas près, au raccord sous 90 % ou sans solution est retirée du fichier.
 //
 // **Variantes déclaratives.** Une plage `repeter` est dessinée **une fois** dans la grille ; dans une variante, elle apparaît autant de
 // fois que la valeur du paramètre (0 la retire) : `repeter: trou colonnes 12-12` avec `trou=3` donne un trou de trois colonnes. Deux plages
@@ -45,14 +66,20 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
 export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration"] as const;
+/** Les mutateurs (lot 7). */
+export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele"] as const;
+export type MutatorName = (typeof MUTATORS)[number];
+/** Au plus ce nombre de mutateurs par variante, et de variantes par morceau (lot 7). */
+export const MAX_MUTATIONS = 2;
+export const MAX_VARIANTS = 6;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
 export const MODULE_ENTRIES = ["arret", "elan"] as const;
 export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
 
 /** Hauteur maximale d'un morceau construit, en rangées. */
 export const MODULE_MAX_HEIGHT = 30;
-/** Version du format des fichiers de morceaux (lot 6 : paliers posés, plus dessinés). */
-export const MODULE_FORMAT = 2;
+/** Version du format des fichiers de morceaux (lot 6 : paliers posés, plus dessinés ; lot 7 : famille, mutateurs). */
+export const MODULE_FORMAT = 3;
 /** Longueur du palier standard (lot 6), en tuiles : celle d'un raccord du niveau du jour. */
 export const PALIER_LENGTH = 2;
 /**
@@ -63,9 +90,12 @@ export const PALIER_LENGTH = 2;
 export const PALIER_GUARD = 1;
 /** Rangées libres au-dessus du sol d'un palier, au moins (la rangée du sol déclarée est au moins celle-ci). */
 export const PALIER_HEADROOM = 4;
-/** Durée d'une solution entre son entrée et sa sortie canoniques (`ModuleSolution.exitTick − entryTick`) : entre 1 et 6 s. */
+/** Durée d'une solution entre son entrée et sa sortie canoniques (`ModuleSolution.exitTick − entryTick`) : entre 1 et 6 s… */
 export const MODULE_MIN_TICKS = 120;
 export const MODULE_MAX_TICKS = 720;
+/** … et de 5 à 8 s pour un enchaînement long (lot 7). */
+export const LONG_MIN_TICKS = 600;
+export const LONG_MAX_TICKS = 960;
 /** Copies d'une plage répétée : de 0 à 40 (un paramètre du bloc annexe, comme un cycle, va jusqu'à `MAX_SAW_CYCLE`). */
 export const MAX_PARAM = 40;
 
@@ -83,11 +113,40 @@ export interface ModuleRepeat {
   to: number;
 }
 
+/** Un mutateur d'une variante : son nom et son argument (`pics`, `-2`, `240`… ; vide sans argument). */
+export interface Mutation {
+  name: MutatorName;
+  arg: string;
+}
+
+/** Une zone de mutation (bloc annexe), en coordonnées du gabarit. */
+export interface MutationZone {
+  name: MutatorName;
+  /** Colonnes et rangées (bornes comprises) ; pour `patrouille`, la déclaration de la scie (rayon, cycle, mode, points). */
+  c0: number;
+  c1: number;
+  r0: number;
+  r1: number;
+  /** `garde` : le pic posé ; `patrouille` : les mots de la scie (après `scie <id>`). */
+  extra: string;
+}
+
 /** Un morceau tel qu'écrit (gabarit + métadonnées). */
 export interface ModuleDef {
   id: string;
   intention: string;
   tags: readonly ModuleTag[];
+  /** Famille (lot 7) : les morceaux de même intention ; une seule de chaque par niveau. */
+  family: string;
+  /** Enchaînement long (lot 7) : deux intentions sans palier au milieu, solution de 5 à 8 s. */
+  long: boolean;
+  /** L'élan est le défi (lot 7) : un plat sans défi peut aller jusqu'à `ELAN_FLAT_MAX` tuiles. */
+  elan: boolean;
+  /** Mutateurs acceptés, et leurs zones. */
+  mutators: readonly MutatorName[];
+  zones: readonly MutationZone[];
+  /** Mutateurs de chaque variante (dans l'ordre d'application). */
+  mutations: readonly (readonly Mutation[])[];
   /** Rangées de la grille du sol à l'entrée et à la sortie (celles des paliers posés). */
   entryRow: number;
   exitRow: number;
@@ -101,7 +160,54 @@ export interface ModuleDef {
   text: string;
 }
 
-const KEYS = new Set(["id", "intention", "etiquettes", "format", "paliers", "repeter", "variante"]);
+const KEYS = new Set(["id", "intention", "etiquettes", "famille", "enchainement", "elan", "mutateurs", "format", "paliers", "repeter", "variante"]);
+const SPIKES = "<>^v";
+
+/** `a-b` ou `a` → [a, b]. */
+function span(text: string): [number, number] | null {
+  const m = /^(\d+)(?:-(\d+))?$/.exec(text);
+  if (!m) return null;
+  const a = Number(m[1]);
+  const b = m[2] === undefined ? a : Number(m[2]);
+  return a <= b ? [a, b] : null;
+}
+
+/** Lit une zone de mutation (`zone <mutateur> …`) ; `fail` lève l'erreur. */
+function parseZone(words: readonly string[], width: number, height: number, fail: (s: string) => never): MutationZone {
+  const name = words[1] as MutatorName;
+  if (!(MUTATORS as readonly string[]).includes(name)) fail(`zone « ${words[1]} » : mutateur inconnu (${MUTATORS.join(", ")})`);
+  const cols = (w: string | undefined) => {
+    const v = w === undefined ? null : span(w);
+    if (!v || v[1] >= width) fail(`zone ${name} : colonnes « ${w} » hors du gabarit`);
+    return v!;
+  };
+  const rows = (w: string | undefined) => {
+    const v = w === undefined ? null : span(w);
+    if (!v || v[1] >= height) fail(`zone ${name} : rangées « ${w} » hors du gabarit`);
+    return v!;
+  };
+  const zone = (c: [number, number], r: [number, number], extra = ""): MutationZone => ({ name, c0: c[0], c1: c[1], r0: r[0], r1: r[1], extra });
+  switch (name) {
+    case "plafond":
+    case "fosse":
+    case "sol-friable":
+    case "ressort":
+      if (words.length !== 4) fail(`« zone ${name} <colonnes> <rangée> » attendu`);
+      return zone(cols(words[2]), rows(words[3]));
+    case "garde":
+      if (words.length !== 5 || words[4]!.length !== 1 || !SPIKES.includes(words[4]!)) fail("« zone garde <colonnes> <rangées> <pic : < > ^ v> » attendu");
+      return zone(cols(words[2]), rows(words[3]), words[4]);
+    case "denivele": {
+      if (words.length !== 3) fail("« zone denivele <colonnes> » attendu");
+      const c = cols(words[2]);
+      if (c[1] !== width - 1) fail("zone denivele : elle va jusqu'à la dernière colonne (la sortie)");
+      return zone(c, [0, height - 1]);
+    }
+    case "patrouille":
+      if (words.length < 7) fail("« zone patrouille <rayon> <cycle> <mode> <c,r> <c,r>… » attendu");
+      return zone([0, width - 1], [0, height - 1], words.slice(2).join(" "));
+  }
+}
 const MODULE_GRID = /^[#.^v<>oOx*]+$/;
 
 /** Lit le texte d'un morceau. Refuse tout ce qui est mal formé (clé inconnue, étiquette inconnue, variante incomplète…). */
@@ -130,7 +236,20 @@ export function parseModule(text: string): ModuleDef {
   const tags = one("etiquettes").split(/\s+/);
   for (const t of tags) if (!(MODULE_TAGS as readonly string[]).includes(t)) throw new ModuleError(where(`étiquette « ${t} » inconnue (${MODULE_TAGS.join(", ")})`));
   if (new Set(tags).size !== tags.length) throw new ModuleError(where("étiquette en double"));
-  if (one("format") !== String(MODULE_FORMAT)) throw new ModuleError(where(`format ${one("format")} : seul le format ${MODULE_FORMAT} (paliers posés, lot 6) est lu`));
+  if (one("format") !== String(MODULE_FORMAT)) throw new ModuleError(where(`format ${one("format")} : seul le format ${MODULE_FORMAT} (paliers posés, famille et mutateurs, lot 7) est lu`));
+  const family = one("famille");
+  if (!/^[a-z0-9-]{1,24}$/.test(family)) throw new ModuleError(where(`famille « ${family} » invalide (minuscules, chiffres, tirets)`));
+  const optional = (k: string, value: string) => {
+    const v = meta[k];
+    if (!v) return false;
+    if (v.length !== 1 || v[0] !== value) throw new ModuleError(where(`« ${k}: ${value} » attendu (ou rien)`));
+    return true;
+  };
+  const long = optional("enchainement", "long");
+  const elan = optional("elan", "oui");
+  const mutators = (meta.mutateurs ?? []).flatMap((l) => l.split(/\s+/)).filter(Boolean) as MutatorName[];
+  for (const m of mutators) if (!(MUTATORS as readonly string[]).includes(m)) throw new ModuleError(where(`mutateur « ${m} » inconnu (${MUTATORS.join(", ")})`));
+  if (new Set(mutators).size !== mutators.length) throw new ModuleError(where("mutateur en double"));
   const paliers = /^(\d+)\s+(\d+)$/.exec(one("paliers"));
   if (!paliers) throw new ModuleError(where("« paliers: <rangée du sol à l'entrée> <rangée du sol à la sortie> » attendu"));
 
@@ -138,7 +257,8 @@ export function parseModule(text: string): ModuleDef {
   i++;
   const grid: string[] = [];
   for (; i < lines.length && lines[i]!.trim() !== ""; i++) grid.push(lines[i]!.trim());
-  const annex = lines.slice(i).map((l) => l.trim()).filter((l) => l !== "" && !l.startsWith("//"));
+  const annexAll = lines.slice(i).map((l) => l.trim()).filter((l) => l !== "" && !l.startsWith("//"));
+  const annex = annexAll.filter((l) => !l.startsWith("zone "));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
   const width = grid[0]!.length;
   grid.forEach((row, r) => {
@@ -166,13 +286,34 @@ export function parseModule(text: string): ModuleDef {
       if (a !== b && a.axis === b.axis && a.from <= b.to && b.from <= a.to) throw new ModuleError(where(`les plages ${a.from}-${a.to} et ${b.from}-${b.to} se chevauchent`));
     }
   }
-  for (const line of annex) for (const m of line.matchAll(/\{([a-z][a-z0-9]*)\}/g)) if (!params.includes(m[1]!)) params.push(m[1]!);
+  for (const line of annexAll) for (const m of line.matchAll(/\{([a-z][a-z0-9]*)\}/g)) if (!params.includes(m[1]!)) params.push(m[1]!);
+  const fail = (msg: string): never => {
+    throw new ModuleError(where(msg));
+  };
+  const zones = annexAll.filter((l) => l.startsWith("zone ")).map((l) => parseZone(l.split(/\s+/), width, grid.length, fail));
+  for (const m of mutators) if (!zones.some((z) => z.name === m)) fail(`mutateur « ${m} » sans zone`);
+  for (const z of zones) if (!mutators.includes(z.name)) fail(`zone ${z.name} : mutateur absent de « mutateurs: »`);
   for (const r of [entryRow, exitRow]) if (repeats.some((p) => p.axis === "rangees" && r >= p.from && r <= p.to)) throw new ModuleError(where("une rangée de palier ne se répète pas"));
 
   // ——— Variantes ———
+  const mutations: Mutation[][] = [];
   const variants = (meta.variante ?? []).map((spec, k) => {
     const values: Record<string, number> = {};
+    const muts: Mutation[] = [];
+    mutations.push(muts);
     for (const w of spec.split(/\s+/).filter(Boolean)) {
+      if (w.startsWith("+")) {
+        const mm = /^\+([a-z-]+)(?::(-?[a-z0-9]+))?$/.exec(w);
+        if (!mm || !mutators.includes(mm[1] as MutatorName)) fail(`variante ${k} : mutateur « ${w} » non accepté (${mutators.join(", ") || "aucun"})`);
+        const name = mm![1] as MutatorName;
+        const arg = mm![2] ?? "";
+        const okArg =
+          name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : arg === "";
+        if (!okArg) fail(`variante ${k} : argument « ${arg} » de ${name} invalide`);
+        if (muts.some((x) => x.name === name)) fail(`variante ${k} : ${name} deux fois`);
+        muts.push({ name, arg });
+        continue;
+      }
       const m = /^([a-z][a-z0-9]*)=(\d+)$/.exec(w);
       if (!m) throw new ModuleError(where(`variante ${k} : « nom=valeur » attendu (« ${w} »)`));
       if (!params.includes(m[1]!)) throw new ModuleError(where(`variante ${k} : paramètre « ${m[1]} » inconnu`));
@@ -182,10 +323,106 @@ export function parseModule(text: string): ModuleDef {
       values[m[1]!] = v;
     }
     for (const p of params) if (values[p] === undefined) throw new ModuleError(where(`variante ${k} : « ${p} » manque`));
+    if (muts.length > MAX_MUTATIONS) fail(`variante ${k} : au plus ${MAX_MUTATIONS} mutateurs`);
     return values;
   });
   if (variants.length === 0) throw new ModuleError(where("au moins une « variante: » (même sans paramètre)"));
-  return { id, intention, tags: tags as ModuleTag[], entryRow, exitRow, repeats, params, variants, grid, annex, text };
+  if (variants.length > MAX_VARIANTS) fail(`${variants.length} variantes (au plus ${MAX_VARIANTS})`);
+  const seen = new Set(variants.map((v, k) => JSON.stringify([v, mutations[k]])));
+  if (seen.size !== variants.length) fail("deux variantes identiques");
+  return { id, intention, tags: tags as ModuleTag[], family, long, elan, mutators, zones, mutations, entryRow, exitRow, repeats, params, variants, grid, annex, text };
+}
+
+/** Un gabarit muté : grille, scies ajoutées (lignes du bloc annexe), et le dénivelé à appliquer après le déroulé (colonne du gabarit, k). */
+export interface MutatedTemplate {
+  grid: string[];
+  annex: string[];
+  denivele: { from: number; k: number } | null;
+}
+
+/**
+ * Applique les mutateurs d'une variante au **gabarit** d'un morceau (avant le déroulé des plages répétées), dans l'ordre. Fonction pure : le
+ * gabarit ne bouge pas. Lève `ModuleError` si une zone ne s'y prête pas (une tuile qui n'est pas ce que le mutateur attend).
+ */
+export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): MutatedTemplate {
+  const grid = def.grid.map((r) => r.split(""));
+  const annex = [...def.annex];
+  let denivele: MutatedTemplate["denivele"] = null;
+  const fail = (s: string): never => {
+    throw new ModuleError(`Morceau « ${def.id} » : ${s}`);
+  };
+  const cell = (c: number, r: number) => grid[r]![c]!;
+  const set = (c: number, r: number, v: string) => {
+    grid[r]![c] = v;
+  };
+  let patrol = 0;
+  for (const m of mutations) {
+    const zones = def.zones.filter((z) => z.name === m.name);
+    for (const z of zones) {
+      const where = `${m.name} (colonnes ${z.c0}-${z.c1})`;
+      switch (m.name) {
+        case "plafond":
+          for (let c = z.c0; c <= z.c1; c++) {
+            for (let r = 0; r <= z.r0; r++) {
+              if (cell(c, r) !== "." && cell(c, r) !== "#") fail(`${where} : tuile (${c}, ${r}) « ${cell(c, r)} » sous le plafond`);
+              set(c, r, r === z.r0 && m.arg === "pics" ? "v" : "#");
+            }
+          }
+          break;
+        case "fosse": {
+          const spiked = [];
+          for (let c = z.c0; c <= z.c1; c++) spiked.push(cell(c, z.r0) === "^");
+          if (spiked.every(Boolean)) {
+            for (let c = z.c0; c <= z.c1; c++) for (let r = z.r0; r < grid.length; r++) set(c, r, ".");
+          } else {
+            for (let c = z.c0; c <= z.c1; c++) {
+              for (let r = z.r0; r < grid.length; r++) if (cell(c, r) !== ".") fail(`${where} : ni fond de pics ni fond vide (tuile (${c}, ${r}))`);
+              set(c, z.r0, "^");
+              for (let r = z.r0 + 1; r < grid.length; r++) set(c, r, "#");
+            }
+          }
+          break;
+        }
+        case "sol-friable":
+        case "ressort":
+          for (let c = z.c0; c <= z.c1; c++) {
+            if (cell(c, z.r0) !== "#") fail(`${where} : tuile (${c}, ${z.r0}) « ${cell(c, z.r0)} » au lieu d'un bloc`);
+            set(c, z.r0, m.name === "ressort" ? "*" : "x");
+          }
+          break;
+        case "garde":
+          for (let c = z.c0; c <= z.c1; c++) {
+            for (let r = z.r0; r <= z.r1; r++) {
+              if (cell(c, r) !== ".") fail(`${where} : tuile (${c}, ${r}) occupée`);
+              set(c, r, z.extra);
+            }
+          }
+          break;
+        case "patrouille": {
+          const words = z.extra.split(" ");
+          if (m.arg) words[1] = m.arg;
+          annex.push(`scie mutee${patrol++ || ""} ${words.join(" ")}`);
+          break;
+        }
+        case "denivele":
+          denivele = { from: z.c0, k: Number(m.arg) };
+          // Appliqué après le déroulé des plages (`buildModuleDef`) : seulement vérifié ici (aucune scie dans la zone).
+          for (const line of annex) {
+            for (const w of line.split(/\s+/).slice(5)) {
+              const c = Number(/^(\d+)/.exec(w)?.[1] ?? -1);
+              if (c >= z.c0) fail(`${where} : une scie y passe`);
+            }
+          }
+          break;
+      }
+    }
+  }
+  return { grid: grid.map((r) => r.join("")), annex, denivele };
+}
+
+/** Les mutateurs d'une variante, écrits comme dans le fichier (`+plafond:pics +denivele:2`), vide sans mutateur. */
+export function mutationLabel(mutations: readonly Mutation[]): string {
+  return mutations.map((m) => `+${m.name}${m.arg ? `:${m.arg}` : ""}`).join(" ");
 }
 
 /** Une plage d'un axe, déroulée : pour chaque index du gabarit, l'index de sa première et de sa dernière copie (−1 si retirée). */
@@ -221,6 +458,8 @@ export interface BuiltModule {
   id: string;
   variant: number;
   values: Readonly<Record<string, number>>;
+  /** Mutateurs de la variante (lot 7), dans l'ordre d'application. */
+  mutations: readonly Mutation[];
   /** Identifiant de niveau des rediffusions : `module:<id>:<variante>`. */
   levelId: string;
   level: Level;
@@ -264,14 +503,20 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
   const launch = options.lancement ?? 0;
   if (!Number.isInteger(launch) || launch < 0 || launch > 40) throw new ModuleError("lancement : de 0 à 40 colonnes");
   const where = (s: string) => `Morceau « ${def.id} », variante ${variant} : ${s}`;
-  const cols = unroll(def.grid[0]!.length, def.repeats.filter((r) => r.axis === "colonnes"), values);
-  const rows = unroll(def.grid.length, def.repeats.filter((r) => r.axis === "rangees"), values);
+  const mutations = def.mutations[variant] ?? [];
+  let tpl: MutatedTemplate;
+  try {
+    tpl = mutateTemplate(def, mutations);
+  } catch (e) {
+    if (e instanceof ModuleError) throw new ModuleError(where(e.message));
+    throw e;
+  }
+  const cols = unroll(tpl.grid[0]!.length, def.repeats.filter((r) => r.axis === "colonnes"), values);
+  const rows = unroll(tpl.grid.length, def.repeats.filter((r) => r.axis === "rangees"), values);
   const width = cols.src.length;
-  const height = rows.src.length;
-  if (height > MODULE_MAX_HEIGHT) throw new ModuleError(where(`${height} rangées (au plus ${MODULE_MAX_HEIGHT})`));
   if (width < 1) throw new ModuleError(where("grille vide"));
   const entryRow = rows.first[def.entryRow]!;
-  const exitRow = rows.first[def.exitRow]!;
+  let exitRow = rows.first[def.exitRow]!;
   const L = PALIER_LENGTH;
   const lead = launch + PALIER_GUARD + L;
   const exitCol = lead + width + L;
@@ -279,7 +524,27 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
   const start = launch > 0 ? 0 : PALIER_GUARD;
 
   // Couloir de lancement, garde et palier d'entrée · grille · palier de sortie · piste · arrivée.
-  const grid = rows.src.map((r) => cols.src.map((c) => def.grid[r]![c]!).join(""));
+  const cells = rows.src.map((r) => cols.src.map((c) => tpl.grid[r]![c]!));
+  // Dénivelé (lot 7) : les colonnes de la zone (toutes leurs copies) descendent de k rangées (la grille s'allonge, recopie de sa dernière
+  // rangée), ou montent de −k (le bas se remplit de la dernière tuile de chaque colonne) ; la sortie suit.
+  if (tpl.denivele) {
+    const { from, k } = tpl.denivele;
+    const zone = cols.src.map((c) => c >= from);
+    if (k > 0) {
+      const last = cells[cells.length - 1]!;
+      for (let i = 0; i < k; i++) cells.push([...last]);
+    } else if (exitRow + k < PALIER_HEADROOM) throw new ModuleError(where(`dénivelé ${k} : moins de ${PALIER_HEADROOM} rangées au-dessus de la sortie`));
+    const H = cells.length;
+    for (let c = 0; c < zone.length; c++) {
+      if (!zone[c]) continue;
+      const col = cells.map((row) => row[c]!);
+      for (let r = 0; r < H; r++) cells[r]![c] = k > 0 ? (r >= k ? col[r - k]! : ".") : r - k < H ? col[r - k]! : col[H - 1]!;
+    }
+    exitRow += k;
+  }
+  const grid = cells.map((row) => row.join(""));
+  const height = grid.length;
+  if (height > MODULE_MAX_HEIGHT) throw new ModuleError(where(`${height} rangées (au plus ${MODULE_MAX_HEIGHT})`));
   const lines = grid.map((row, r) => {
     const cells = palierCell(r, entryRow).repeat(lead);
     const left = r === entryRow - 1 ? cells.slice(0, start) + "S" + cells.slice(start + 1) : cells;
@@ -289,7 +554,7 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
 
   // ——— Bloc annexe : la section du morceau, ses scies (paramètres remplacés, coordonnées de la grille traduites) ———
   const annex = [`section ${def.id} ${lead}-${lead + width - 1}`];
-  for (const line of def.annex) {
+  for (const line of tpl.annex) {
     const filled = line.replace(/\{([a-z][a-z0-9]*)\}/g, (_, p: string) => String(values[p]));
     const words = filled.split(/\s+/);
     if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies sont permises (« ${words[0]} »)`));
@@ -320,6 +585,7 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
     id: def.id,
     variant,
     values,
+    mutations,
     levelId: `module:${def.id}:${variant}`,
     level,
     ascii,

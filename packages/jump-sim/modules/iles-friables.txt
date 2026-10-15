@@ -1,7 +1,9 @@
 id: iles-friables
 intention: Sauter d'îlot friable en îlot friable, chacun un peu plus haut, sans jamais s'y poser longtemps.
 etiquettes: friable precision
-format: 2
+famille: iles
+mutateurs: plafond fosse denivele
+format: 3
 paliers: 12 7
 repeter: ecart colonnes 4-4
 repeter: ecart colonnes 9-9
@@ -10,6 +12,9 @@ repeter: ecart colonnes 19-19
 repeter: ecart colonnes 22-22
 variante: ecart=1
 variante: ecart=2
+variante: ecart=1 +plafond:pics
+variante: ecart=2 +fosse
+variante: ecart=1 +denivele:3
 grille:
 ........................
 ........................
@@ -26,3 +31,8 @@ grille:
 ###....................#
 ###....................#
 ###....................#
+###....................#
+
+zone plafond 4-21 3
+zone fosse 3-22 15
+zone denivele 23-23

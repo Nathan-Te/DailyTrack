@@ -1,0 +1,41 @@
+id: cheminee-vide
+intention: S'élancer dans une cheminée sans fond au-dessus des pics, et la remonter d'un mur à l'autre sans jamais retomber.
+etiquettes: mural vertical
+famille: entre-murs
+mutateurs: garde fosse denivele
+format: 3
+paliers: 15 4
+repeter: large colonnes 4-4
+repeter: haut rangees 8-8
+variante: large=1 haut=1
+variante: large=2 haut=2
+variante: large=1 haut=3
+variante: large=1 haut=1 +garde
+variante: large=2 haut=1 +fosse
+variante: large=1 haut=2 +denivele:2
+grille:
+.........
+.........
+.........
+.........
+..#..####
+..#..####
+..#..####
+..#..####
+..#..####
+..#..####
+..#..####
+.....####
+.....####
+.....####
+.....####
+##...####
+##...####
+##...####
+##...####
+##^^^####
+#########
+
+zone garde 4 12-13 <
+zone fosse 2-4 19
+zone denivele 5-8

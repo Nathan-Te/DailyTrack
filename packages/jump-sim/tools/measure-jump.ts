@@ -10,6 +10,7 @@ import {
   MAX_DAILY_HEIGHT,
   MODULES,
   MODULE_TAGS,
+  MUTATORS,
   PREMIER_JOUR_JUMP,
   TICK_RATE,
   dailyLevel,
@@ -125,7 +126,7 @@ line(`| par raccord (${perJoint.length} raccords) | ${secs(pj.mean)} s | ${secs(
 line(`| total des raccords, en % du temps de l'auteur | ${num(100 * js.mean)} % | ${num(100 * js.max)} % |`);
 line(`| palier de départ (accélération comprise) | ${secs(stats(departs).mean)} s | ${secs(stats(departs).max)} s |`);
 line(`| palier d'arrivée (jusqu'à \`F\`) | ${secs(stats(arrivals).mean)} s | ${secs(stats(arrivals).max)} s |`);
-line(`| plus longue course au sol sans saut | ${secs(stats(longT).mean)} s · ${tiles(stats(longU).mean)} tuiles | ${secs(stats(longT).max)} s · ${tiles(stats(longU).max)} tuiles |`);
+line(`| plus longue course au sol sans saut (cible : moyenne ≤ 1,2 s, max ≤ 2 s) | ${secs(stats(longT).mean)} s · ${tiles(stats(longU).mean)} tuiles | ${secs(stats(longT).max)} s · ${tiles(stats(longU).max)} tuiles |`);
 line();
 
 // ——— Morceaux, hauteur ———
@@ -201,6 +202,41 @@ for (let k = 1; k < levels.length; k++) {
 const c = stats(common);
 line("### D'un jour au suivant");
 line(`Morceaux en commun entre deux jours consécutifs : min ${c.min} · moyenne ${num(c.mean, 2)} · max ${c.max} (répartition : ${[0, 1, 2, 3, 4, 5, 6].map((n) => `${n}→${common.filter((v) => v === n).length}`).join(" ")}).`);
+// Lot 7 : répétition sur 7 jours glissants (mesure seulement ; cible : un même morceau au plus 3 fois).
+const weekMax = new Map<string, number>();
+for (let k = 0; k + 7 <= levels.length; k++) {
+  const n = new Map<string, number>();
+  for (const L of levels.slice(k, k + 7)) for (const p of L.pieces) n.set(p.id, (n.get(p.id) ?? 0) + 1);
+  for (const [id, v] of n) weekMax.set(id, Math.max(weekMax.get(id) ?? 0, v));
+}
+const over = [...weekMax].filter(([, v]) => v > 3).sort((a, b) => b[1] - a[1]);
+const hist = [1, 2, 3, 4, 5, 6, 7].map((n) => `${n}→${[...weekMax.values()].filter((v) => v === n).length}`).join(" ");
+line(`Sur 7 jours glissants, nombre maximal d'apparitions d'un même morceau : ${Math.max(...weekMax.values())} (morceaux par maximum : ${hist}) ; au-delà de 3 : ${over.length ? over.map(([id, v]) => `${id} (${v})`).join(", ") : "aucun"}.`);
+line();
+
+// ——— Familles, enchaînements longs, mutateurs (lot 7) ———
+const fams = levels.map((L) => new Set(L.pieces.map((p) => p.family)).size);
+const longs = levels.map((L) => L.pieces.filter((p) => p.long).length);
+const longShare = levels.map((L) => L.pieces.filter((p) => p.long).reduce((s, p) => s + p.end - p.start, 0) / L.authorTicks);
+line("### Familles, enchaînements longs, mutateurs");
+line(`| mesure | min | moyenne | max |`);
+line(`|---|---|---|---|`);
+line(`| familles par niveau (une seule de chaque) | ${stats(fams).min} | ${num(stats(fams).mean)} | ${stats(fams).max} |`);
+line(`| enchaînements longs par niveau | ${stats(longs).min} | ${num(stats(longs).mean, 2)} | ${stats(longs).max} |`);
+line(`| part du temps de l'auteur dans les enchaînements longs | ${num(100 * stats(longShare).min)} % | ${num(100 * stats(longShare).mean)} % | ${num(100 * stats(longShare).max)} % |`);
+line();
+const mutUse = new Map<string, number>();
+let mutated = 0;
+let total = 0;
+for (const L of levels) {
+  for (const p of L.pieces) {
+    total++;
+    const ms = MODULES.find((m) => m.id === p.id)!.mutations[p.variant]!;
+    if (ms.length > 0) mutated++;
+    for (const m of ms) mutUse.set(m.name, (mutUse.get(m.name) ?? 0) + 1);
+  }
+}
+line(`Morceaux joués avec au moins un mutateur : ${mutated} sur ${total} (${num((100 * mutated) / total)} %) ; par mutateur : ${MUTATORS.map((m) => `${m} ${mutUse.get(m) ?? 0}`).join(" · ")}.`);
 line();
 
 // ——— Coûts ———

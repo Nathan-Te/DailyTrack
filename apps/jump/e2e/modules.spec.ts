@@ -59,8 +59,7 @@ for (const format of [
       await page.goto("/?modules&debug");
       await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
       const info = await page.evaluate(() => (window as unknown as { __jump: { gallery: { modules: number; variants: number } } }).__jump.gallery);
-      expect(info.modules).toBeGreaterThanOrEqual(25);
-      expect(info.modules).toBeLessThanOrEqual(30);
+      expect(info.modules).toBeGreaterThanOrEqual(50); // lot 7 : au moins 50 morceaux
       await expect(page.locator("#gallery .card")).toHaveCount(info.modules);
       await expect(page.locator("#gallery .variant")).toHaveCount(info.variants);
       await expect(page.locator("#gallery a.play")).toHaveCount(info.variants);

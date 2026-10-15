@@ -1,0 +1,33 @@
+id: saut-plafond
+intention: Franchir deux trous sous un plafond bas : un saut s'y cogne la tête, seule la pleine vitesse fait passer.
+etiquettes: precision
+famille: saut-long
+mutateurs: plafond fosse denivele
+format: 3
+paliers: 10 10
+repeter: trou colonnes 5-5
+repeter: trou colonnes 14-14
+variante: trou=1
+variante: trou=2
+variante: trou=1 +plafond:pics
+variante: trou=1 +fosse
+variante: trou=2 +denivele:1
+grille:
+.####################.
+.####################.
+.####################.
+.####################.
+.####################.
+.####################.
+.####################.
+......................
+......................
+......................
+####....#####....#####
+####....#####....#####
+####....#####....#####
+
+zone plafond 1-20 6
+zone fosse 4-7 12
+zone fosse 13-16 12
+zone denivele 17-21

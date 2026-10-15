@@ -1,0 +1,35 @@
+id: scies-jumelles
+intention: Deux scies tournent en sens contraires autour de chaque borne : la sauter au moment où elles s'écartent.
+etiquettes: scie precision
+famille: scies-jumelles
+mutateurs: sol-friable plafond denivele
+format: 3
+paliers: 10 10
+variante: cycle=240
+variante: cycle=180
+variante: cycle=300
+variante: cycle=240 +sol-friable
+variante: cycle=300 +plafond
+variante: cycle=180 +denivele:2
+grille:
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+.....#......#......
+.....#......#......
+###################
+###################
+###################
+
+scie a o {cycle} boucle 4,7 6,7 6,9 4,9
+scie b o {cycle} boucle 6,9 4,9 4,7 6,7
+scie c o {cycle} boucle 11,7 13,7 13,9 11,9
+scie d o {cycle} boucle 13,9 11,9 11,7 13,7
+zone sol-friable 8-9 10
+zone plafond 0-18 2
+zone denivele 16-18

@@ -20,10 +20,16 @@ import {
   PLAYER_HEIGHT,
   RACCORD_TAIL,
   INPUT_RIGHT,
+  LONGEST_RUN_MAX,
+  MAX_LONG,
+  MIN_LONG,
+  longestRunOf,
   PREMIER_JOUR_JUMP,
   RESPIRATION_FROM,
   RESPIRATION_TO,
   REST_GROUPS,
+  REST_OPEN,
+  isOpenGroup,
   TILE_SOLID,
   TICK_RATE,
   UNITS_PER_TILE,
@@ -183,26 +189,34 @@ describe("niveau du jour : quotas et budget", () => {
     }
   });
 
-  it("repos : chaque morceau d'un groupe au repos est absent ce jour-là ; trois groupes non vides", () => {
+  it("repos : chaque morceau d'un groupe au repos est absent ce jour-là ; groupes non vides, de tailles égales à un près ; REST_OPEN groupes ouverts par jour", () => {
     const sizes = new Array<number>(REST_GROUPS).fill(0);
     for (const m of MODULES) sizes[restGroup(m.id)]!++;
     for (const n of sizes) expect(n).toBeGreaterThan(0);
+    expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
+    for (const L of levels) {
+      const open = Array.from({ length: REST_GROUPS }, (_, g) => g).filter((g) => isOpenGroup(g, L.day));
+      expect(open).toHaveLength(REST_OPEN);
+      // Les groupes ouverts sont consécutifs (modulo REST_GROUPS) et la fenêtre avance de REST_OPEN groupes par jour.
+      expect(open.every((g) => isOpenGroup((g + REST_GROUPS - 1) % REST_GROUPS, L.day) || isOpenGroup((g + 1) % REST_GROUPS, L.day))).toBe(true);
+      expect(isOpenGroup((((REST_OPEN * L.day) % REST_GROUPS) + REST_GROUPS) % REST_GROUPS, L.day)).toBe(true);
+    }
     for (const L of levels) for (const p of L.pieces) expect(isRestedModule(p.id, L.day), `${L.date} ${p.id}`).toBe(false);
   });
 
-  it("deux jours consécutifs ont peu de morceaux en commun (seulement le groupe disponible les deux jours)", () => {
+  it("deux jours consécutifs n'ont en commun que des morceaux des 2 × REST_OPEN − REST_GROUPS groupes ouverts les deux jours", () => {
     for (let k = 1; k < levels.length; k++) {
       const a = new Set(levels[k - 1]!.pieces.map((p) => p.id));
       const common = levels[k]!.pieces.filter((p) => a.has(p.id));
-      const shared = MODULES.filter((m) => !isRestedModule(m.id, levels[k]!.day) && !isRestedModule(m.id, levels[k - 1]!.day)).length;
-      expect(common.length).toBeLessThanOrEqual(shared);
-      for (const p of common) expect(restGroup(p.id)).toBe((((levels[k]!.day + 1) % 3) + 3) % 3);
+      const both = Array.from({ length: REST_GROUPS }, (_, g) => g).filter((g) => isOpenGroup(g, levels[k]!.day) && isOpenGroup(g, levels[k - 1]!.day));
+      expect(both).toHaveLength(2 * REST_OPEN - REST_GROUPS);
+      for (const p of common) expect(both).toContain(restGroup(p.id));
     }
   });
 });
 
 describe("niveau du jour : assemblage", () => {
-  it("hauteur bornée (≤ 48 rangées) ; la rangée du haut est pleine", () => {
+  it("hauteur bornée (≤ 56 rangées) ; la rangée du haut est pleine", () => {
     for (const L of levels) {
       expect(L.level.height).toBeLessThanOrEqual(MAX_DAILY_HEIGHT);
       for (let c = 0; c < L.level.width; c++) expect(L.level.tiles[c]).toBe(TILE_SOLID);
@@ -358,6 +372,44 @@ describe("course à vide (lot 6)", () => {
       const total = r.zones.reduce((a, b) => a + b, 0);
       expect(total, L.date).toBeLessThan(0.06 * L.authorTicks);
     }
+  });
+});
+
+describe("lot 7 : variété", () => {
+  it("une seule famille de chaque par niveau ; de 1 à 2 enchaînements longs", () => {
+    for (const L of levels) {
+      expect(new Set(L.pieces.map((p) => p.family)).size, L.date).toBe(L.pieces.length);
+      const longs = L.pieces.filter((p) => p.long).length;
+      expect(longs, L.date).toBeGreaterThanOrEqual(MIN_LONG);
+      expect(longs, L.date).toBeLessThanOrEqual(MAX_LONG);
+      for (const p of L.pieces) {
+        const def = MODULES.find((m) => m.id === p.id)!;
+        expect(p.family).toBe(def.family);
+        expect(p.long).toBe(def.long);
+      }
+    }
+  });
+
+  it("cible de répétition : deux jours consécutifs ont au plus 1,5 morceau en commun en moyenne, 4 au plus", () => {
+    const common: number[] = [];
+    for (let k = 1; k < levels.length; k++) {
+      const a = new Set(levels[k - 1]!.pieces.map((p) => p.id));
+      common.push(levels[k]!.pieces.filter((p) => a.has(p.id)).length);
+    }
+    expect(Math.max(...common)).toBeLessThanOrEqual(4);
+    expect(common.reduce((a, b) => a + b, 0) / common.length).toBeLessThanOrEqual(1.5);
+  });
+
+  it("plus longue course au sol sans saut (rediffusion de l'auteur) : 1,2 s au plus en moyenne, 2 s au plus ; `longestRun` = la mesure des outils", () => {
+    const runs = levels.map((L) => {
+      const r = emptyRun(L.level, initialAttempt(L.level), fromRuns(L.replay.runs), []);
+      expect(L.longestRun, L.date).toBe(r.longestTicks);
+      expect(longestRunOf(L.level, fromRuns(L.replay.runs))).toBe(L.longestRun);
+      expect(L.longestRun, L.date).toBeLessThanOrEqual(LONGEST_RUN_MAX);
+      expect(L.longestRun, L.date).toBeLessThanOrEqual(2 * TICK_RATE);
+      return L.longestRun;
+    });
+    expect(runs.reduce((a, b) => a + b, 0) / runs.length).toBeLessThanOrEqual(1.2 * TICK_RATE);
   });
 });
 

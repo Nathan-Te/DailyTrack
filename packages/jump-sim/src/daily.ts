@@ -71,6 +71,18 @@ export const JOINT_TICKS = 0;
 /** Morceaux par niveau : 6 à 13 (10 au lot 5 ; sans course à vide, il en faut 11 ou 12 pour la même durée). */
 export const MIN_PIECES = 6;
 export const MAX_PIECES = 13;
+/**
+ * Enchaînements longs (lot 7) : au moins `MIN_LONG` par niveau, au plus `MAX_LONG` ; imposé à partir de `FORCE_LONG_AT` (pour mille du
+ * temps cible) s'il manque encore.
+ */
+export const MIN_LONG = 1;
+export const MAX_LONG = 2;
+export const FORCE_LONG_AT = 300;
+/**
+ * Plus longue course au sol sans saut (lot 7), sur la rediffusion de l'auteur : au plus 2 s (règle du générateur ; la cible de la moyenne,
+ * 1,2 s, est mesurée par `measure:jump` et vérifiée par les tests).
+ */
+export const LONGEST_RUN_MAX = 2 * TICK_RATE;
 /** Hauteur totale du niveau, rangée de blocs du haut comprise (48 au lot 5 : un morceau de plus, c'est plus de dénivelé). */
 export const MAX_DAILY_HEIGHT = 56;
 
@@ -79,21 +91,30 @@ export const MAX_DAILY_HEIGHT = 56;
 /**
  * Exigence du niveau = somme des exigences de ses morceaux (1 à 5, lot 4) **ramenée à sa durée**, en **dixièmes de point par minute** de
  * temps de l'auteur (`exigenceRate`). Elle doit tomber dans [`EXIGENCE_RATE_MIN`, `EXIGENCE_RATE_MAX`] ; le score des tirages vise
- * `EXIGENCE_RATE_CENTER`. Seuils réglés sur `npm run measure:jump` (README des lots 5 et 6 : 380–460 au lot 5 ; sans course à vide, la même
- * suite de morceaux tient en moins de temps, la fenêtre est recentrée sur la médiane des tirages, même largeur relative).
+ * `EXIGENCE_RATE_CENTER`. Seuils réglés sur `npm run measure:jump` (README des lots 5 à 7 : 380–460 au lot 5, 430–520 au lot 6 ; lot 7 :
+ * nouveau catalogue, la fenêtre est recentrée sur la médiane des tirages, même largeur relative, ±10 %).
  */
-export const EXIGENCE_RATE_MIN = 430;
-export const EXIGENCE_RATE_MAX = 520;
-export const EXIGENCE_RATE_CENTER = 475;
+export const EXIGENCE_RATE_MIN = 445;
+export const EXIGENCE_RATE_MAX = 540;
+export const EXIGENCE_RATE_CENTER = 492;
 /** Au moins un morceau de cette exigence ou plus. */
 export const EXIGENCE_PEAK = 4;
 /**
  * Profil visé pendant le tirage, en dixièmes de point : un morceau placé à la fraction p du temps cible vise l'exigence
  * `PROFILE_START + (PROFILE_END − PROFILE_START) × p` (la variante la plus proche est choisie). Règle vérifiée après rejeu : le dernier
- * tiers (en temps) est au moins aussi exigeant, en moyenne pondérée par la durée, que le premier.
+ * tiers (en temps) est au moins aussi exigeant, en moyenne pondérée par la durée, que le premier. 1,3 → 3,3 aux lots 5 et 6 ; 1,0 → 3,0 au
+ * lot 7 (avec la correction ci-dessous, le niveau moyen remonte de lui-même).
  */
-export const PROFILE_START = 13;
-export const PROFILE_END = 33;
+export const PROFILE_START = 10;
+export const PROFILE_END = 30;
+/**
+ * Correction du profil (lot 7, pour cent) : la variante visée suit le profil plus cette part de l'écart entre l'exigence accumulée et celle
+ * que donnerait `EXIGENCE_RATE_CENTER` pour le temps estimé. Sans elle, la somme de 10 morceaux d'exigence 1 à 5 s'étalait trop : 44 % des
+ * tirages rejoués tombaient hors de la fenêtre (mesuré). Elle ne s'applique qu'à partir de `STEER_FROM` (pour mille du temps visé) : le
+ * début garde son profil doux, la fin rattrape (sinon la règle « dernier tiers ≥ premier tiers » échouait plus souvent).
+ */
+export const EXIGENCE_STEER = 60;
+export const STEER_FROM = 333;
 
 // ——— Quotas, repos, tirages ———
 
@@ -107,6 +128,8 @@ export const FORCE_QUOTA_AT = 550;
 /** Le morceau `respiration` est imposé quand le temps estimé passe le haut de sa fenêtre moins ceci (un morceau et une demi-respiration). */
 export const FORCE_REST_SLACK = 3 * TICK_RATE;
 export const FORCE_PEAK_AT = 667;
+/** Poids d'une respiration qui peut tomber au milieu (lot 7). */
+export const REST_WEIGHT = 4;
 /** Tirages par jour (on garde le meilleur valide) et tentatives au plus (au-delà : le secours). */
 export const DAILY_DRAWS = 6;
 export const DAILY_MAX_ATTEMPTS = 40;
@@ -123,22 +146,32 @@ export const EMPTY_RUN_MAX = 60;
 export const MEDAL_PERCENT = { gold: 110, silver: 130, bronze: 160 } as const;
 
 /**
- * **Repos sans historique** (comme `isRested` de DailyTrack) : chaque morceau appartient à l'un de trois groupes (empreinte de son
- * identifiant) ; le jour `d` laisse au repos le groupe `d mod 3`. Deux jours de suite n'ont donc en commun que des morceaux du seul groupe
- * disponible les deux jours, sans aucune mémoire des jours passés. Le secours ignore le repos.
+ * **Repos sans historique** (comme `isRested` de DailyTrack ; lot 7 : généralisé) : chaque morceau appartient à l'un de `REST_GROUPS`
+ * groupes (empreinte de son identifiant) ; le jour `d`, seuls `REST_OPEN` groupes consécutifs sont ouverts, à partir du groupe
+ * `REST_OPEN × d` (modulo `REST_GROUPS`) : la fenêtre avance de `REST_OPEN` groupes par jour. Deux jours de suite n'ont donc en commun que
+ * les morceaux de `2 × REST_OPEN − REST_GROUPS` groupes, sans aucune mémoire des jours passés. Le secours ignore le repos.
+ * Lots 5 et 6 : 3 groupes, 2 ouverts (un en commun d'un jour au suivant, le tiers du catalogue) ; lot 7 : 7 groupes, 4 ouverts (un en commun,
+ * le septième du catalogue) — mesuré par `measure:jump` (README du lot 7).
  */
-export const REST_GROUPS = 3;
+export const REST_GROUPS = 7;
+export const REST_OPEN = 4;
 /**
- * Sel de l'empreinte des groupes : choisi (recherche sur 5 000 sels, README du lot 5) pour que le catalogue actuel se range en trois
- * groupes de 9 aux étiquettes réparties (mural, scie, respiration, précision… : au plus un d'écart entre deux groupes), les deux descentes
- * (`descente`, `puits`) dans deux groupes différents. Changer de sel change les niveaux : `JUMP_GENERATOR_VERSION` +1.
+ * Sel de l'empreinte des groupes : choisi par `npm run repos:modules -w @cdj/jump-sim` (README du lot 7) pour que les groupes aient la même
+ * taille, que chaque étiquette, les enchaînements longs et les morceaux qui finissent plus bas y soient répartis, et que les morceaux d'une
+ * même famille tombent le plus possible dans des groupes différents. Changer de sel change les niveaux : `JUMP_GENERATOR_VERSION` +1.
+ * (Lot 5 : `repos4310:`.)
  */
-export const REST_SALT = "repos4310:";
+export const REST_SALT = "repos2527:";
 export function restGroup(id: string): number {
   return Number.parseInt(textHash(`${REST_SALT}${id}`), 16) % REST_GROUPS;
 }
+/** Le groupe `g` est-il ouvert le jour `day` ? (Entre `REST_OPEN × day` et `REST_OPEN × day + REST_OPEN − 1`, modulo `REST_GROUPS`.) */
+export function isOpenGroup(g: number, day: number): boolean {
+  const from = (((REST_OPEN * day) % REST_GROUPS) + REST_GROUPS) % REST_GROUPS;
+  return (((g - from) % REST_GROUPS) + REST_GROUPS) % REST_GROUPS < REST_OPEN;
+}
 export function isRestedModule(id: string, day: number): boolean {
-  return restGroup(id) === ((day % REST_GROUPS) + REST_GROUPS) % REST_GROUPS;
+  return !isOpenGroup(restGroup(id), day);
 }
 
 /** Les médailles d'un niveau, en pas (le temps de l'auteur est le palier au-dessus de l'or). */
@@ -179,6 +212,9 @@ interface Choice {
   id: string;
   variant: number;
   tags: readonly ModuleTag[];
+  /** Famille (une seule de chaque par niveau) et enchaînement long (lot 7). */
+  family: string;
+  long: boolean;
   exigence: number;
   /** Durées des solutions entre leur entrée et leur sortie canoniques (pas). */
   arret: number;
@@ -201,7 +237,7 @@ function choices(): Choice[][] {
       if (!s?.arret || !s.elan || exigence < 1) return [];
       const b = buildModule(def.id, variant);
       const span = (x: { entryTick: number; exitTick: number }) => x.exitTick - x.entryTick;
-      return [{ id: def.id, variant, tags: def.tags, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow }];
+      return [{ id: def.id, variant, tags: def.tags, family: def.family, long: def.long, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow }];
     }),
   ).filter((list) => list.length > 0);
   return catalog;
@@ -217,6 +253,9 @@ export interface DailyPiece {
   variant: number;
   entry: ModuleEntry;
   tags: readonly ModuleTag[];
+  /** Famille et enchaînement long (lot 7). */
+  family: string;
+  long: boolean;
   exigence: number;
   /** Durée de sa solution entre son entrée et sa sortie canoniques (pas), celle qui compte dans l'estimation. */
   solutionTicks: number;
@@ -273,6 +312,8 @@ export interface DailyLevel {
   paliers: readonly Palier[];
   /** Course à vide sur chaque palier de raccord (`pieces.length − 1`), en pas, sur la rediffusion de l'auteur (`palierTicksOf`). */
   palierTicks: readonly number[];
+  /** Plus longue course au sol sans saut de la rediffusion de l'auteur, en pas (`longestRunOf`, lot 7). */
+  longestRun: number;
   /** La preuve : la rediffusion de l'auteur (et son texte base64url), rejouée par `replayAttempt`. */
   replay: JumpReplay;
   code: string;
@@ -321,18 +362,26 @@ function compose(day: number, rng: Rng): Slot[] | string {
   const pool = choices().filter((list) => !isRestedModule(list[0]!.id, day));
   const picks: Slot[] = [];
   const used = new Set<string>();
+  const families = new Set<string>();
   let est = 0;
   for (;;) {
     if (picks.length >= MAX_PIECES) return "trop de morceaux";
     const first = picks.length === 0;
     const entry: ModuleEntry = first ? "arret" : "elan";
     const p = per(est, AUTHOR_TARGET_TICKS);
-    const target = PROFILE_START * 10 + idiv((PROFILE_END - PROFILE_START) * 10 * (p < 1000 ? p : 1000), 1000); // centièmes de point
+    // Le profil visé, corrigé (lot 7) d'une part du retard ou de l'avance de l'exigence accumulée sur ce que donnerait le centre de la
+    // fenêtre pour ce temps estimé (en centièmes de point : rate × pas ÷ 720) : la composition revient vers le centre au lieu d'y tomber au
+    // hasard.
+    const done = picks.reduce((n, q) => n + q.choice.exigence, 0) * 100;
+    const steer = p < STEER_FROM ? 0 : idiv((idiv(EXIGENCE_RATE_CENTER * est, 720) - done) * EXIGENCE_STEER, 100);
+    const target = PROFILE_START * 10 + idiv((PROFILE_END - PROFILE_START) * 10 * (p < 1000 ? p : 1000), 1000) + steer; // centièmes de point
     const precisionRun = picks.length >= MAX_PRECISION_RUN && picks.slice(-MAX_PRECISION_RUN).every((q) => has(q.choice, "precision"));
     const needMural = !picks.some((q) => has(q.choice, "mural"));
     const needScie = !picks.some((q) => has(q.choice, "scie"));
     const needRest = !picks.some((q) => has(q.choice, "respiration"));
     const needPeak = !picks.some((q) => q.choice.exigence >= EXIGENCE_PEAK);
+    const longs = picks.filter((q) => q.choice.long).length;
+    const forceLong = longs < MIN_LONG && p >= FORCE_LONG_AT;
     const restWindow = (c: Choice, ticks: number) => {
       const mid = est + idiv(ticks, 2);
       return mid >= idiv(ESTIMATE_MAX_TICKS * RESPIRATION_FROM, 1000) && mid <= idiv(ESTIMATE_MIN_TICKS * RESPIRATION_TO, 1000) && has(c, "respiration");
@@ -351,8 +400,10 @@ function compose(day: number, rng: Rng): Slot[] | string {
     const cands: Cand[] = [];
     for (const list of pool) {
       const id = list[0]!.id;
-      if (used.has(id)) continue;
+      if (used.has(id) || families.has(list[0]!.family)) continue;
       const tags = list[0]!.tags;
+      const long = list[0]!.long;
+      if (long ? longs >= MAX_LONG : forceLong && !forceRest) continue;
       if (precisionRun && tags.includes("precision")) continue;
       if (tags.includes("respiration") && !needRest) continue;
       if (forceRest && !tags.includes("respiration")) continue;
@@ -370,6 +421,7 @@ function compose(day: number, rng: Rng): Slot[] | string {
           const all = [...picks.map((q) => q.choice), c];
           if (!all.some((q) => has(q, "mural")) || !all.some((q) => has(q, "scie")) || !all.some((q) => has(q, "respiration"))) return false;
           if (!all.some((q) => q.exigence >= EXIGENCE_PEAK) || all.length < MIN_PIECES) return false;
+          if (all.filter((q) => q.long).length < MIN_LONG) return false;
         }
         return stack([...picks, pick]).height <= MAX_DAILY_HEIGHT;
       });
@@ -387,9 +439,15 @@ function compose(day: number, rng: Rng): Slot[] | string {
       const choice = best.length === 1 ? best[0]! : rng.pick(best);
       let weight = gap <= 50 ? 8 : gap <= 100 ? 5 : gap <= 200 ? 2 : 1;
       if ((needMural && has(choice, "mural")) || (needScie && has(choice, "scie"))) weight *= 2;
+      // Lot 7 : une respiration qui peut tomber au milieu est préférée tout de suite (`REST_WEIGHT`) ; attendue jusqu'au dernier moment, elle
+      // manquait souvent (deux à quatre disponibles par jour, parfois prises par leur famille) : 20 % des tirages finissaient en impasse.
+      if (has(choice, "respiration")) weight *= REST_WEIGHT;
       cands.push({ pick: { choice, entry }, weight });
     }
-    if (cands.length === 0) return `impasse au morceau ${picks.length + 1}`;
+    if (cands.length === 0) {
+      const forced = [forceRest && "respiration", forceLong && !forceRest && "long", forceMural && "mural", forceScie && "scie", forcePeak && "pointe"].filter(Boolean);
+      return `impasse au morceau ${picks.length + 1}${forced.length ? ` (imposés : ${forced.join(", ")})` : ""}`;
+    }
     let total = 0;
     for (const c of cands) total += c.weight;
     let r = rng.int(total);
@@ -403,6 +461,7 @@ function compose(day: number, rng: Rng): Slot[] | string {
     }
     picks.push(chosen.pick);
     used.add(chosen.pick.choice.id);
+    families.add(chosen.pick.choice.family);
     est += ticksOf(chosen.pick) + (picks.length > 1 ? JOINT_TICKS : 0);
     if (est >= ESTIMATE_MIN_TICKS) return picks;
   }
@@ -465,6 +524,8 @@ export function assemble(picks: readonly { id: string; variant: number }[]): Ass
       variant: p.choice.variant,
       entry: p.entry,
       tags: p.choice.tags,
+      family: p.choice.family,
+      long: p.choice.long,
       exigence: p.choice.exigence,
       solutionTicks: ticksOf(p),
       col0: col,
@@ -573,13 +634,17 @@ export function exigenceOfPieces(pieces: readonly PlacedExigence[], total: numbe
  * Les règles du niveau du jour, vérifiées sur le niveau **après rejeu** (durées réelles) : rend la liste de ce qui ne va pas (vide : valide).
  * Les tests du lot 5 l'appliquent à chaque date.
  */
-export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "level" | "exigence" | "palierTicks">): string[] {
+export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "level" | "exigence" | "palierTicks" | "longestRun">): string[] {
   const out: string[] = [];
   const { pieces, authorTicks: total } = d;
   if (total < AUTHOR_MIN_TICKS || total > AUTHOR_MAX_TICKS) out.push(`temps de l'auteur ${total} pas hors de [${AUTHOR_MIN_TICKS}, ${AUTHOR_MAX_TICKS}]`);
   if (pieces.length < MIN_PIECES || pieces.length > MAX_PIECES) out.push(`${pieces.length} morceaux (de ${MIN_PIECES} à ${MAX_PIECES})`);
   if (d.level.height > MAX_DAILY_HEIGHT) out.push(`hauteur ${d.level.height} (au plus ${MAX_DAILY_HEIGHT})`);
   if (new Set(pieces.map((p) => p.id)).size !== pieces.length) out.push("morceau en double");
+  if (new Set(pieces.map((p) => p.family)).size !== pieces.length) out.push("famille en double");
+  const longs = pieces.filter((p) => p.long).length;
+  if (longs < MIN_LONG || longs > MAX_LONG) out.push(`${longs} enchaînements longs (de ${MIN_LONG} à ${MAX_LONG})`);
+  if (d.longestRun > LONGEST_RUN_MAX) out.push(`course au sol sans saut de ${d.longestRun} pas (au plus ${LONGEST_RUN_MAX})`);
   if (!pieces.some((p) => p.tags.includes("mural"))) out.push("aucun morceau mural");
   if (!pieces.some((p) => p.tags.includes("scie"))) out.push("aucun morceau scie");
   let run = 0;
@@ -624,6 +689,24 @@ export function palierTicksOf(level: Level, paliers: readonly Palier[], inputs: 
   return out;
 }
 
+/**
+ * Plus longue course au sol sans saut (lot 7) : le plus grand nombre de pas consécutifs où, après le pas joué, le personnage est au sol et le
+ * bouton de saut relâché dans la commande de ce pas (la même mesure que `tools/vide.ts`). Rejoue les commandes depuis le départ.
+ */
+export function longestRunOf(level: Level, inputs: readonly number[]): number {
+  let s = initialAttempt(level);
+  let run = 0;
+  let best = 0;
+  for (const bits of inputs) {
+    s = stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
+    if (s.status === ATTEMPT_DEAD) break;
+    run = s.player.ground === 1 && (bits & INPUT_JUMP) === 0 ? run + 1 : 0;
+    if (run > best) best = run;
+    if (s.status === ATTEMPT_FINISHED) break;
+  }
+  return best;
+}
+
 /** Score d'un tirage valide : écart au centre de la durée et de l'exigence, en pour mille de chacun (plus petit = meilleur). */
 function scoreOf(ticks: number, rate: number): number {
   return per(Math.abs(ticks - AUTHOR_TARGET_TICKS), AUTHOR_TARGET_TICKS) + per(Math.abs(rate - EXIGENCE_RATE_CENTER), EXIGENCE_RATE_CENTER);
@@ -656,6 +739,7 @@ function prove(picks: readonly { id: string; variant: number }[], id: string): {
     pieces,
     paliers: asm.paliers,
     palierTicks: palierTicksOf(asm.level, asm.paliers, chain.inputs),
+    longestRun: longestRunOf(asm.level, chain.inputs),
     replay,
     code: encodeReplay(replay),
     authorTicks: total,
@@ -667,22 +751,20 @@ function prove(picks: readonly { id: string; variant: number }[], id: string): {
 
 /**
  * Le niveau de secours : une suite fixe de variantes, choisie parmi les tirages valides de 400 dates (celle qui tombe le plus près du centre
- * de la cible : 30,21 s, exigence 476), qui tient toutes les règles. Il ignore le repos. Assemblé et validé comme les autres (test) ; la
+ * de la cible : 30,13 s, exigence 497 ; lot 7), qui tient toutes les règles. Il ignore le repos. Assemblé et validé comme les autres (test) ; la
  * mesure (`measure:jump`) montre qu'il ne sert jamais.
  */
 export const FALLBACK_PIECES: readonly { id: string; variant: number }[] = [
-  { id: "ressorts-trous", variant: 0 },
-  { id: "ascenseur", variant: 1 },
+  { id: "mur-seul", variant: 4 },
+  { id: "ressorts-escalier", variant: 0 },
+  { id: "plongeon", variant: 0 },
+  { id: "tunnel-scies", variant: 1 },
+  { id: "iles-scie", variant: 2 },
+  { id: "escalier", variant: 1 },
+  { id: "piliers", variant: 1 },
+  { id: "puits-descente", variant: 2 },
   { id: "mur-friable", variant: 2 },
-  { id: "ressort-plafond", variant: 1 },
-  { id: "pont-friable", variant: 2 },
-  { id: "grande-scie", variant: 0 },
-  { id: "escalier", variant: 2 },
-  { id: "scie-sol", variant: 2 },
-  { id: "cheminee-pics", variant: 2 },
-  { id: "lucarne", variant: 0 },
-  { id: "puits", variant: 0 },
-  { id: "cheminee", variant: 0 },
+  { id: "marelle", variant: 2 },
 ];
 
 const cache = new Map<number, DailyLevel>();

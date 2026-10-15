@@ -1,0 +1,36 @@
+id: marelle
+intention: Sauter de dalle en dalle, une haute, une basse, au-dessus d'un sol hérissé.
+etiquettes: precision
+famille: marelle
+mutateurs: sol-friable plafond denivele
+format: 3
+paliers: 9 9
+repeter: ecart colonnes 7-7
+repeter: ecart colonnes 12-12
+repeter: ecart colonnes 17-17
+variante: ecart=1
+variante: ecart=2
+variante: ecart=1 +sol-friable
+variante: ecart=2 +plafond:pics
+variante: ecart=1 +denivele:2
+grille:
+.........................
+.........................
+.........................
+.........................
+.........................
+.........................
+.........................
+.........###.......###...
+.........................
+###.###.......###.....###
+###...................###
+###...................###
+###^^^^^^^^^^^^^^^^^^^###
+#########################
+#########################
+
+zone sol-friable 9-11 7
+zone sol-friable 19-21 7
+zone plafond 3-21 2
+zone denivele 22-24

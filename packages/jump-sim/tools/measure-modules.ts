@@ -9,11 +9,13 @@ import {
   fromRuns,
   moduleStart,
   replayAttempt,
+  mutationLabel,
   variantExigence,
   type ModuleSolution,
 } from "../src/index";
 import { packageDir, readModules, readSolutions } from "./files";
 import { emptyRun, secs, tiles } from "./vide";
+import { flatLimit, longestFlat } from "./plats";
 
 // `npm run measure:modules -w @cdj/jump-sim` — mesures du catalogue des morceaux (lot 4), à partir des solutions stockées : pour chaque
 // morceau et variante, durées entre l'entrée et la sortie canoniques (arrêt, élan), exigence, taux de gigue (±1, ±2, ±3) et de raccord,
@@ -29,9 +31,12 @@ const file = readSolutions();
 if (!file) throw new Error("modules/solutions.json absent : npm run solve:modules -w @cdj/jump-sim");
 
 const rows: string[] = [
-  "| morceau | v | paramètres | étiquettes | arrêt (s) | élan (s) | exigence | gigue ±1/±2/±3 arrêt (%) | gigue ±1/±2/±3 élan (%) | raccord (%) | paliers élan (s) | plus longue course élan |",
-  "|---|---|---|---|---|---|---|---|---|---|---|---|",
+  "| morceau | famille | v | paramètres | mutateurs | étiquettes | arrêt (s) | élan (s) | exigence | gigue ±1/±2/±3 arrêt (%) | gigue ±1/±2/±3 élan (%) | raccord (%) | paliers élan (s) | plus longue course élan | plus long plat sans défi |",
+  "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
 ];
+const perMutator = new Map<string, number>();
+const perFamily = new Map<string, string[]>();
+let longCount = 0;
 const palierTicks: number[] = [];
 const longest: { t: number; u: number }[] = [];
 const perExigence = new Map<number, number>();
@@ -42,6 +47,8 @@ let replayTicks = 0;
 let total = 0;
 for (const { def } of modules) {
   for (const t of def.tags) perTag.set(t, (perTag.get(t) ?? 0) + 1);
+  perFamily.set(def.family, [...(perFamily.get(def.family) ?? []), def.id]);
+  if (def.long) longCount++;
   def.variants.forEach((values, v) => {
     const sols = file.modules[def.id]?.variants[v];
     const ex = variantExigence(sols ?? null);
@@ -72,8 +79,10 @@ for (const { def } of modules) {
       vide = secs(ticks);
       run = `${secs(r.longestTicks)} s · ${tiles(r.longestUnits)} t.`;
     }
+    for (const mu of def.mutations[v]!) perMutator.set(mu.name, (perMutator.get(mu.name) ?? 0) + 1);
+    const flat = longestFlat(m);
     rows.push(
-      `| ${def.id} | ${v} | ${Object.entries(values).map(([k, x]) => `${k}=${x}`).join(" ") || "—"} | ${def.tags.join(" ")} | ${span(sols?.arret)} | ${span(sols?.elan)} | ${ex || "**refusée**"} | ${g(sols?.arret)} | ${g(sols?.elan)} | ${sols?.elan?.raccord != null ? pct(sols.elan.raccord) : "—"} | ${vide} | ${run} |`,
+      `| ${def.id}${def.long ? " (long)" : ""} | ${def.family} | ${v} | ${Object.entries(values).map(([k, x]) => `${k}=${x}`).join(" ") || "—"} | ${mutationLabel(def.mutations[v]!) || "—"} | ${def.tags.join(" ")} | ${span(sols?.arret)} | ${span(sols?.elan)} | ${ex || "**refusée**"} | ${g(sols?.arret)} | ${g(sols?.elan)} | ${sols?.elan?.raccord != null ? pct(sols.elan.raccord) : "—"} | ${vide} | ${run} | ${flat.length}${def.elan ? " (élan)" : ""}${flat.length > flatLimit(def.elan) ? " **trop long**" : ""} |`,
     );
   });
 }
@@ -82,6 +91,9 @@ console.log(rows.join("\n"));
 console.log("\n## Répartition");
 console.log(`Exigence (variantes) : ${[1, 2, 3, 4, 5].map((e) => `${e} → ${perExigence.get(e) ?? 0}`).join(" · ")}${perExigence.get(0) ? ` · refusées (au pas près ou raccord < 90 %) → ${perExigence.get(0)}` : ""}`);
 console.log(`Étiquettes (morceaux) : ${MODULE_TAGS.map((t) => `${t} ${perTag.get(t) ?? 0}`).join(" · ")}`);
+console.log(`Familles (${perFamily.size}) : ${[...perFamily].sort((a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1)).map(([f, ids]) => `${f} ${ids.length}`).join(" · ")}`);
+console.log(`Enchaînements longs : ${longCount} morceaux`);
+console.log(`Mutateurs (variantes) : ${[...perMutator].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k} ${n}`).join(" · ")} ; variantes mutées ${modules.reduce((n, { def }) => n + def.mutations.filter((x) => x.length > 0).length, 0)} sur ${total}`);
 durations.sort((a, b) => a - b);
 const mean = durations.reduce((a, b) => a + b, 0) / durations.length;
 const meanOf = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;

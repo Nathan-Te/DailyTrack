@@ -1,32 +1,36 @@
 id: cheminee-pics
-intention: Monter une cheminée dont chaque mur porte une plaque de pics : choisir le bon mur à chaque hauteur.
+intention: Monter une cheminée dont chaque mur porte une plaque de pics : choisir le bon mur à chaque hauteur, puis redescendre.
 etiquettes: mural precision vertical
-format: 2
-paliers: 17 6
+famille: cheminee
+mutateurs: garde denivele
+format: 3
+paliers: 17 10
 repeter: plaque rangees 13-13
 repeter: plaque rangees 8-8
-repeter: couloir colonnes 1-1
-variante: plaque=1 couloir=1
-variante: plaque=2 couloir=2
-variante: plaque=0 couloir=2
+variante: plaque=1
+variante: plaque=2
+variante: plaque=1 +denivele:3
 grille:
-######..........
-######..........
-######..........
-######..........
-######..........
-######..........
-######...#######
-######>..#######
-######>..#######
-######...#######
-######...#######
-######...#######
-######..<#######
-.#####..<#######
-.#####...#######
-.........#######
-.........#######
-################
-################
-################
+###...........
+###...........
+###...........
+###...........
+###...........
+###...........
+###...####....
+###>..####....
+###>..####....
+###...####....
+###...########
+###...########
+###..<########
+.##..<########
+.##...########
+......########
+......########
+##############
+##############
+##############
+
+zone garde 3 10-11 >
+zone denivele 10-13

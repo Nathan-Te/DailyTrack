@@ -207,7 +207,7 @@ export interface DailyView {
   hash: string;
   width: number;
   height: number;
-  pieces: { id: string; variant: number; entry: string; exigence: number; tags: readonly string[]; col0: number; col1: number; start: number; end: number }[];
+  pieces: { id: string; variant: number; entry: string; exigence: number; tags: readonly string[]; family: string; long: boolean; col0: number; col1: number; start: number; end: number }[];
   attempts: { index: number; status: string; reason: string; pieces: string[]; ticks: number; rate: number; score: number }[];
   chosen: number;
   fallback: boolean;
@@ -669,7 +669,10 @@ function updateOverlay(): void {
 function dailyOverlay(): string {
   if (!daily) return "";
   const col = Math.floor((session.state.player.x + PLAYER_WIDTH / 2) / T);
-  const k = daily.pieces.findIndex((p) => col >= p.col0 - 1 && col <= p.col1);
+  // Un morceau commence quand le centre passe le bord droit du palier qui le précède (sa première colonne) et va jusqu'au morceau suivant :
+  // le palier partagé appartient au morceau d'avant (lot 7 : le décompte commençait une colonne trop tôt) ; avant le premier, le premier.
+  let k = 0;
+  while (k + 1 < daily.pieces.length && col >= daily.pieces[k + 1]!.col0) k++;
   const p = daily.pieces[k];
   const where = p ? `${k + 1}/${daily.pieces.length} ${p.id} v${p.variant} · exigence ${p.exigence}/5 · ${p.entry === "arret" ? "arrêt" : "élan"}` : "—";
   return `morceau   ${where}\nniveau    ${daily.id} · auteur ${formatTicks(daily.authorTicks)} · tirage ${daily.chosen}${daily.fallback ? " (secours)" : ""}`;
@@ -699,7 +702,7 @@ const info: JumpDebug = {
       hash: daily.hash,
       width: daily.level.width,
       height: daily.level.height,
-      pieces: daily.pieces.map((p) => ({ id: p.id, variant: p.variant, entry: p.entry, exigence: p.exigence, tags: p.tags, col0: p.col0, col1: p.col1, start: p.start, end: p.end })),
+      pieces: daily.pieces.map((p) => ({ id: p.id, variant: p.variant, entry: p.entry, exigence: p.exigence, tags: p.tags, family: p.family, long: p.long, col0: p.col0, col1: p.col1, start: p.start, end: p.end })),
       attempts: daily.attempts.map((a) => ({ ...a, pieces: [...a.pieces] })),
       chosen: daily.chosen,
       fallback: daily.fallback,

@@ -1,27 +1,39 @@
 id: escalier
 intention: Gravir un escalier de grandes marches, un bond par marche, sans casser son élan.
 etiquettes: respiration vertical
-format: 2
-paliers: 12 4
+famille: escalier
+mutateurs: sol-friable ressort denivele
+format: 3
+paliers: 14 4
 repeter: large colonnes 4-4
 repeter: large colonnes 7-7
 repeter: large colonnes 10-10
 repeter: large colonnes 13-13
+repeter: large colonnes 16-16
 variante: large=1
 variante: large=2
 variante: large=3
+variante: large=2 +sol-friable
+variante: large=1 +denivele:2
+variante: large=2 +ressort
 grille:
-......................
-......................
-......................
-......................
-...........###########
-...........###########
-........##############
-........##############
-.....#################
-.....#################
-..####################
-..####################
-######################
-######################
+...................
+...................
+...................
+...................
+................###
+................###
+.............######
+.............######
+..........#########
+..........#########
+.......############
+.......############
+....###############
+....###############
+###################
+###################
+
+zone sol-friable 7-9 10
+zone ressort 7 10
+zone denivele 16-18

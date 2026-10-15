@@ -1,0 +1,48 @@
+id: ressorts-escalier
+intention: Monter de ressort en ressort, chacun posé sur une corniche plus haute, au-dessus du vide.
+etiquettes: ressort vertical precision
+famille: rebonds
+mutateurs: plafond fosse denivele
+format: 3
+paliers: 22 10
+repeter: ecart colonnes 6-6
+repeter: ecart colonnes 13-13
+repeter: ecart colonnes 20-20
+variante: ecart=1
+variante: ecart=2
+variante: ecart=1 +plafond:pics
+variante: ecart=2 +fosse
+variante: ecart=1 +denivele:-2
+grille:
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+......................######
+......................######
+......................######
+......................######
+...............##*....######
+...............###....######
+...............###....######
+...............###....######
+........##*....###....######
+........###....###....######
+........###....###....######
+........###....###....######
+###*....###....###....######
+####....###....###....######
+####....###....###....######
+####....###....###....######
+
+zone plafond 4-21 1
+zone fosse 4-7 25
+zone fosse 11-14 25
+zone fosse 18-21 25
+zone denivele 22-27
