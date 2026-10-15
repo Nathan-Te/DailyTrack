@@ -27,6 +27,7 @@ import {
   sawCenters,
   buildModule,
   dailyLevel,
+  jumpMedalFor,
   replayStartState,
   type AttemptState,
   type DailyLevel,
@@ -55,7 +56,18 @@ import { loadTuned, mountTunePanel } from "./tune";
 import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
 import { dailyHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
 import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
+import { CarnageFilter, EventLog, FULL_SPEED, causeName, eventsBetween, type GameEvent } from "./events";
+import { JumpAudio, type AudioDebug } from "./audio";
+import { sawMix } from "./audioLogic";
+import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColors, feelEvent, slideSpark } from "./feel";
+import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
+import { mountPauseMenu } from "./pauseMenu";
 
+// Lot 8 : les sensations. Chaque pas, `eventsBetween` (events.ts, pur) compare les deux états de l'essai et en déduit les événements de jeu
+// (saut, atterrissage, pas, glisse, mort, ressort, friable…) ; le son (`audio.ts`), les particules et les vibrations (`feel.ts`) ne
+// s'abonnent qu'à eux. Le carnage n'en garde que les morts et les arrivées des autres vies, au débit plafonné. Menu ⏸ (Échap, P, Start,
+// bouton) : pause, réglages du joueur (`jump:settings`, jamais `tuned`), commandes. `?fx=off` et le mouvement réduit coupent particules,
+// secousses et traînée, jamais les taches.
 // Lot 5 : le niveau du jour (`dailyLevel`) est la page par défaut ; `?seed=AAAA-MM-JJ` ouvre celui d'une date (archive, ou à venir sur un
 // aperçu : le site publié refuse les dates futures, `dailyInfo.ts`) ; HUD « DailyJump #N » et médaille visée, médaille et temps de l'auteur
 // à l'arrivée, `&solution` (la rediffusion de l'auteur), `?debug` (limites des morceaux, `__jump.daily`), passage de minuit.
@@ -187,6 +199,18 @@ export interface JumpDebug {
   readonly stains: { count: number; discs: number; added: number };
   /** Lecture `?watch=best` en cours. */
   readonly watching: boolean;
+  /** Lot 8 : les derniers événements de jeu (200 au plus), du plus ancien au plus récent. */
+  readonly events: GameEvent[];
+  clearEvents(): void;
+  /** Lot 8 : le son (contexte, sons demandés et joués, scies audibles, glisse). */
+  readonly audio: AudioDebug;
+  /** Lot 8 : particules, secousse, traînée, vibrations, et les niveaux d'effets en vigueur. */
+  readonly effects: { levels: FeelLevels; emitted: number; alive: number; shaking: boolean; trail: number; vibrations: number; carnageDropped: number };
+  /** Lot 8 : réglages du joueur (mémorisés dans `jump:settings`). */
+  readonly settings: PlayerSettings;
+  /** Lot 8 : le menu ⏸ (ouvert : la partie est en pause). */
+  readonly menu: { open: boolean };
+  setMenu(open: boolean): void;
   /**
    * Temps de fil principal (ms), mesuré sur les 600 dernières images : par image (moyenne, 95e centile), et séparément la simulation **par
    * pas** et le dessin **par image** (le rendu logiciel fait peu d'images, donc beaucoup de pas par image : ces deux-là se comparent).
@@ -295,16 +319,37 @@ session.best = memory.best?.time ?? null;
 if (watchReplay) session.state = replayStartState(level, watchReplay.start);
 session.prev = session.state;
 
-const burst = options.fx ? new BurstPool() : null;
+// Lot 8 : réglages du joueur (son, vibrations, tremblement, effets, mouvement réduit), lus avant tout effet.
+const systemCalm = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+let settings: PlayerSettings = loadSettings(store, systemCalm);
+let levels: FeelLevels = feelLevels(settings, options.fx);
+// Les éclats de la mort existent toujours ; ils ne partent que si les réglages le permettent (`levels.particles`).
+const burst = new BurstPool();
 const shake = new Shake();
+const particles = new Particles();
+particles.amount = levels.particles;
+const colors = feelColors(palette);
+const trail = new Trail();
+const blink = new Blink();
+const vibrator = new Vibrator(typeof navigator.vibrate === "function" ? (p) => navigator.vibrate(p) : null);
+const audio = new JumpAudio(settings);
+const eventLog = new EventLog(200);
+const carnageFilter = new CarnageFilter();
+/** Pas joués depuis le chargement (partie et carnage) : l'horloge des événements et de leurs débits. */
+let eventTick = 0;
+/** Glisse en cours (côté du mur), d'après les événements : le frottement en sort. */
+let slideSide = 0;
+let slideClock = 0;
 let scene: JumpScene | null = null;
 try {
   // `?debug` sur le niveau du jour : les limites des morceaux, avec leur identifiant, leur variante et leur exigence.
   const pieces = options.debug && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
   scene = createScene(document.body, level, palette, { hitbox: options.hitbox, burst, pieces });
+  scene.animate = levels.animate;
 } catch {
   scene = null;
 }
+const particleMesh = scene ? new ParticleMesh(particles, scene.world) : null;
 
 // ——— Lot 3 : fantôme, taches ———
 let ghostOn = !options.ghostOff && loadGhostSetting(store);
@@ -425,6 +470,10 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
     carnageBurst = { pool, mesh: new BurstMesh(pool, palette.player, scene.world) };
   }
   carnage = { run, crowd, demo, prevBits: bits };
+  carnageFilter.reset();
+  audio.stopLoops();
+  slideSide = 0;
+  trail.clear();
   hud.hideFinish();
   ghostMesh?.hide();
   stains?.reset([]);
@@ -443,6 +492,8 @@ function endCarnage(): void {
   carnage = null;
   c.crowd.dispose(scene.world);
   carnageBurst?.pool.clear();
+  audio.stopLoops();
+  slideSide = 0;
   hud.carnage(null);
   stains?.reset(storedStains());
   scene.zoom = 1;
@@ -469,13 +520,53 @@ function stepCarnage(): void {
     endCarnage();
     return;
   }
+  const tick = eventTick++;
+  const lifeEvents: GameEvent[] = [];
   for (const e of c.run.step()) {
-    if (e.kind !== "death") continue;
-    stains?.add(stainFor(level, e.x, e.y));
-    if (carnageBurst) carnageBurst.pool.burst(e.x / T, -e.y / T, e.life === HERO ? 20 : 8);
+    // Les taches : toutes les morts (elles portent une information, jamais filtrées).
+    if (e.kind === "death") stains?.add(stainFor(level, e.x, e.y));
+    // Les autres vies : seulement leurs morts et leurs arrivées, au débit plafonné (le héros a tous ses événements, plus bas).
+    if (e.life === HERO || e.kind === "depart") continue;
+    const ev: GameEvent =
+      e.kind === "death"
+        ? { kind: "mort", cause: causeName(e.cause), x: e.x / T, y: e.y / T, tick, source: "vie" }
+        : { kind: "arrivee", ...centerOf(c.run.lives[e.life]!.runner?.state.player), tick, source: "vie" };
+    if (carnageFilter.admit(ev)) lifeEvents.push(ev);
   }
+  const h = c.run.hero;
+  dispatch([...eventsBetween(h.prev, h.state, level, DEFAULT_JUMP_PARAMS, tick, "heros"), ...lifeEvents]);
   hud.carnage(carnageLabel(c.run.total, c.run.arrivals));
   if (c.run.done) endCarnage();
+}
+
+/** Centre du personnage en tuiles (y vers le bas). */
+function centerOf(p: PlayerState | undefined): { x: number; y: number } {
+  return p ? { x: (p.x + PLAYER_WIDTH / 2) / T, y: (p.y + PLAYER_HEIGHT / 2) / T } : { x: 0, y: 0 };
+}
+
+/**
+ * Lot 8 : les événements d'un pas vont au journal (`__jump.events`), aux particules, à la secousse, aux vibrations et au son. Rien d'autre
+ * ne déclenche un effet ; rien ici ne touche à la simulation.
+ */
+function dispatch(events: readonly GameEvent[]): void {
+  if (events.length === 0) return;
+  for (const e of events) {
+    eventLog.push(e);
+    const out = feelEvent(e, particles, colors, levels);
+    if (out.shake > 0) shake.start(out.shake);
+    if (out.vibrate !== null && !watching) vibrator.play(out.vibrate, performance.now());
+    if (e.kind === "mort" && levels.particles > 0) {
+      // Éclatement à la couleur du personnage : celui de la partie, ou le pool du carnage (héros et autres vies).
+      if (e.source === "jeu") burst.burst(e.x, -e.y, Math.max(1, Math.round(28 * levels.particles)));
+      else if (carnageBurst) carnageBurst.pool.burst(e.x, -e.y, Math.max(1, Math.round((e.source === "heros" ? 20 : 8) * levels.particles)));
+    }
+    if (e.source !== "vie") {
+      if (e.kind === "glisseDebut") slideSide = e.side;
+      else if (e.kind === "glisseFin" || e.kind === "mort" || e.kind === "reapparition" || e.kind === "arrivee") slideSide = 0;
+      if (e.kind === "reapparition") trail.clear();
+    }
+  }
+  audio.handle(events);
 }
 
 /** Le carnage de démonstration : la solution de l'auteur en héros, des essais fictifs déterministes pour les autres vies. */
@@ -502,11 +593,7 @@ function startDemo(max = 0, crowd = false): boolean {
 
 function onEvent(e: SessionEvent): void {
   if (e.kind === "death") {
-    if (burst) {
-      burst.burst(e.x / T, -e.y / T);
-      shake.start();
-    }
-    // Tache de la journée (pas en lecture, pas avec des réglages modifiés).
+    // Éclats et tremblement : par les événements de jeu (`dispatch`, lot 8). Tache de la journée (pas en lecture, pas avec des réglages modifiés).
     if (!watching && memory.recordDeath({ x: e.x, y: e.y, cause: e.cause }, session.tuned)) stains?.add(stainFor(level, e.x, e.y));
   } else if (e.kind === "checkpoint") hud.toast("Point de passage");
   else if (e.kind === "respawn") {
@@ -520,6 +607,9 @@ function onEvent(e: SessionEvent): void {
       hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : daily && options.solution ? "Rediffusion de l'auteur" : "Rediffusion", watching: true });
       return;
     }
+    // Lot 8 : la médaille obtenue sur le niveau du jour a sa phrase musicale (après la fanfare d'arrivée).
+    const medal = daily ? jumpMedalFor(session.state.time, daily.medals) : null;
+    if (medal) dispatch([{ kind: "medaille", medal, ...centerOf(session.state.player), tick: eventTick, source: "jeu" }]);
     const rec = drainEssais();
     // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), le bandeau tout de suite.
     if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) hud.finish(session, finishOptions());
@@ -553,6 +643,7 @@ function stepOnce(): void {
   lastBits = bits;
   const prev = session.state;
   const event = session.step(bits);
+  dispatch(eventsBetween(prev, session.state, level, session.params, eventTick++, "jeu"));
   if (session.state.status !== ATTEMPT_DEAD && prev.status !== ATTEMPT_DEAD) look = onStep(look, prev.player, session.state.player, session.params.fallSpeed);
   ghost?.sync(session.state.time);
   if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
@@ -579,6 +670,9 @@ function restart(): void {
   }
   session.restart();
   drainEssais();
+  audio.stopLoops();
+  slideSide = 0;
+  trail.clear();
   if (watchReplay) {
     watchIndex = 0;
     session.state = replayStartState(level, watchReplay.start);
@@ -724,7 +818,7 @@ const info: JumpDebug = {
     return attemptView();
   },
   get fx() {
-    return { enabled: !!burst, emitted: burst?.emitted ?? 0, alive: burst?.alive ?? 0, shaking: shake.active };
+    return { enabled: levels.particles > 0, emitted: burst.emitted, alive: burst.alive, shaking: shake.active };
   },
   get banner() {
     return hud.finishShown;
@@ -846,6 +940,35 @@ const info: JumpDebug = {
   get watching() {
     return watching;
   },
+  get events() {
+    return eventLog.list();
+  },
+  clearEvents() {
+    eventLog.clear();
+  },
+  get audio() {
+    return audio.debug();
+  },
+  get effects() {
+    return {
+      levels: { ...levels },
+      emitted: particles.emitted,
+      alive: particles.alive,
+      shaking: shake.active,
+      trail: trail.points.filter((p) => p.alpha > 0.01).length,
+      vibrations: vibrator.count,
+      carnageDropped: carnageFilter.dropped,
+    };
+  },
+  get settings() {
+    return { ...settings };
+  },
+  get menu() {
+    return { open: menuOpen };
+  },
+  setMenu(open: boolean) {
+    setMenu(open);
+  },
   get frameTimes() {
     const list = [...frameWork];
     const sorted = list.slice().sort((a, b) => a - b);
@@ -891,10 +1014,58 @@ if (options.debug) {
 function setPanel(open: boolean): void {
   panelOpen = open;
   document.getElementById("tune")!.hidden = !open;
-  touchUi?.suspend(open);
+  touchUi?.suspend(open || menuOpen);
   controls.setTouch(0, false);
+  audio.setActive(!open && !menuOpen);
   stepper.reset();
 }
+
+// ——— Lot 8 : menu ⏸ (Échap, P, Start, bouton) : la partie est en pause, les réglages du joueur s'appliquent tout de suite ———
+let menuOpen = false;
+let lastPreview = 0;
+function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): void {
+  settings = next;
+  saveSettings(store, settings);
+  levels = feelLevels(settings, options.fx);
+  particles.amount = levels.particles;
+  if (scene) scene.animate = levels.animate;
+  if (!levels.continuous) trail.clear();
+  audio.setSettings(settings);
+  // Un aperçu, pour entendre le niveau choisi (au plus quatre fois par seconde pendant qu'on glisse le curseur).
+  const now = performance.now();
+  if ((changed === "volume" || changed === "sfx") && now - lastPreview > 250) {
+    lastPreview = now;
+    audio.preview();
+  }
+  if (changed === "vibration" && settings.vibration) vibrator.play(25, now);
+}
+const menu = mountPauseMenu({
+  settings,
+  canVibrate: typeof navigator.vibrate === "function",
+  onChange: applySettings,
+  onResume: () => setMenu(false),
+  onRestart: () => {
+    setMenu(false);
+    controls.requestRestart();
+  },
+});
+function setMenu(open: boolean): void {
+  if (open === menuOpen) return;
+  menuOpen = open;
+  if (open) menu.open();
+  else menu.close();
+  document.body.classList.toggle("paused", open);
+  controls.setSuspended(open);
+  touchUi?.suspend(open || panelOpen);
+  controls.setTouch(0, false);
+  audio.setActive(!open && !panelOpen);
+  stepper.reset();
+}
+const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
+pauseButton.addEventListener("click", () => {
+  pauseButton.blur();
+  setMenu(true);
+});
 
 // ——— Fantôme : réglage mémorisé (`jump:fantome`), bouton 👻 (téléphone), bouton du coin et touche G (ordinateur) ———
 const ghostButton = document.getElementById("ghostbtn") as HTMLButtonElement;
@@ -914,7 +1085,7 @@ ghostButton.addEventListener("click", () => {
   toggleGhost();
 });
 window.addEventListener("keydown", (e) => {
-  if (e.code === "KeyG" && !e.repeat) toggleGhost();
+  if (e.code === "KeyG" && !e.repeat && !menuOpen) toggleGhost();
 });
 
 if (touchOn) {
@@ -925,6 +1096,7 @@ if (touchOn) {
     tune: options.tune,
     onRestart: () => controls.requestRestart(),
     onGear: () => setPanel(true),
+    onMenu: () => setMenu(true),
     onGhost: () => toggleGhost(),
     ghostOn,
   });
@@ -949,8 +1121,10 @@ let clock = 0;
 function draw(alpha: number, dt: number): void {
   if (!scene) return;
   clock += dt;
-  burst?.update(dt);
+  burst.update(dt);
   stains?.update(dt);
+  particles.update(dt);
+  particleMesh?.sync();
   if (carnage) {
     drawCarnage(scene, carnage, alpha, dt);
     return;
@@ -962,18 +1136,38 @@ function draw(alpha: number, dt: number): void {
   const x = (a.x + (b.x - a.x) * alpha) / T;
   const y = (a.y + (b.y - a.y) * alpha) / T;
   look = animateLook(look, dt, (-b.vy * TICK_RATE) / T);
-  scene.setPlayer({ x, y, look, visible: sb.status !== ATTEMPT_DEAD });
+  const alive = sb.status !== ATTEMPT_DEAD;
+  scene.setPlayer({ x, y, look, visible: alive, blink: blink.update(dt), squashAmount: levels.squash });
   scene.setWorld(sa, sb, alpha, clock);
+  feelFrame(scene, sb, x, y, alive, dt);
   drawGhost(alpha);
   // Mort : la caméra reste où l'on est mort (l'éclatement se voit) ; le nouvel essai la repose au départ.
   if (sb.status !== ATTEMPT_DEAD) {
     const f = follow(b);
     camera = followCamera(camera, { ...f, cx: x + PLAYER_WIDTH / T / 2, cy: -(y + PLAYER_HEIGHT / T / 2) }, scene.frame, dt);
   }
-  const jolt = burst ? shake.offset(dt) : { x: 0, y: 0 };
+  const jolt = shake.offset(dt);
   scene.setView(camera.x + jolt.x, camera.y + jolt.y);
   scene.render();
   hud.update(session);
+}
+
+/**
+ * Lot 8, à chaque image : traînée à pleine vitesse, frottement de la glisse (tant qu'elle dure, d'après les événements), scies audibles
+ * (les trois plus proches du personnage, stéréo selon leur position). `x`, `y` : coin haut-gauche affiché du personnage (tuiles).
+ */
+function feelFrame(sc: JumpScene, st: Readonly<AttemptState>, x: number, y: number, alive: boolean, dt: number): void {
+  const fast = alive && Math.abs(st.player.vx) >= DEFAULT_JUMP_PARAMS.runSpeed * FULL_SPEED;
+  if (levels.continuous) trail.update(dt, x, y, fast && !menuOpen);
+  else trail.clear();
+  sc.setTrail(trail.points);
+  slideClock += dt;
+  if (slideSide !== 0 && alive && levels.continuous && slideClock >= SLIDE_EVERY) {
+    slideClock = 0;
+    slideSpark(particles, colors, x + PLAYER_WIDTH / T / 2 + (slideSide * PLAYER_WIDTH) / T / 2, -(y + (PLAYER_HEIGHT / T) * 0.85), slideSide);
+  }
+  const listener = { x: x + PLAYER_WIDTH / T / 2, y: y + PLAYER_HEIGHT / T / 2 };
+  audio.update(level.saws.length === 0 ? [] : sawMix(sawCenters(level, st).map((p) => ({ x: p.x / T, y: p.y / T })), listener));
 }
 
 /** Position interpolée (tuiles, coin haut-gauche) entre deux états ; pas d'interpolation à travers un saut (reprise sur un point). */
@@ -1001,8 +1195,10 @@ const CARNAGE_LOOK = restLook();
 function drawCarnage(sc: NonNullable<typeof scene>, c: CarnageRun, alpha: number, dt: number): void {
   const h = c.run.hero;
   const hero = poseBetween(h.prev.player, h.state.player, alpha);
-  sc.setPlayer({ ...hero, look: CARNAGE_LOOK, visible: h.state.status !== ATTEMPT_DEAD });
+  const heroAlive = h.state.status !== ATTEMPT_DEAD;
+  sc.setPlayer({ ...hero, look: CARNAGE_LOOK, visible: heroAlive, blink: blink.update(dt) });
   sc.setWorld(h.prev, h.state, alpha, clock);
+  feelFrame(sc, h.state, hero.x, hero.y, heroAlive, dt);
   const lives = c.run.lives;
   for (let i = 0; i < lives.length; i++) {
     const life = lives[i]!;
@@ -1050,8 +1246,9 @@ if (!scene) {
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.25);
     last = now;
     controls.pollPad();
+    if (controls.takeMenu()) setMenu(!menuOpen);
     if (controls.takeRestart()) restart();
-    if (!manual && !panelOpen) {
+    if (!manual && !panelOpen && !menuOpen) {
       const steps = stepper.advance(dt);
       for (let i = 0; i < steps; i++) stepOnce();
       workStats.steps += steps;

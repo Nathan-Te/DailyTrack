@@ -100,9 +100,34 @@
       /* Sur téléphone : empilé sous le chrono, dans la colonne du HUD (jamais sur les boutons ni sur la surimpression de debug). */
       body.touch #carnage { position: static; transform: none; align-self: center; font-size: 16px; padding: 4px 12px; }
       /* Fantôme : un bouton sur ordinateur (G au clavier) ; sur téléphone, il est dans la bande haute (👻). */
-      #ghostbtn { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 4; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+      #ghostbtn { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 112px); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 4; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
       #ghostbtn[aria-pressed="false"] { opacity: 0.65; }
-      body.touch #ghostbtn { display: none; }
+      body.touch #ghostbtn, body.touch #pausebtn { display: none; }
+      /* Lot 8 : bouton du menu ⏸ (ordinateur ; au téléphone il est dans la bande haute), et le menu : pause, réglages du joueur, commandes. */
+      #pausebtn { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 4; min-height: 46px; min-width: 100px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
+      #menu { position: fixed; z-index: 40; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 14px 18px 18px; border-radius: 14px; background: #0b1020; box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5); color: #fff; font: 600 15px/1.35 system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
+      #menu[hidden] { display: none; }
+      #menu h2 { margin: 0; font-size: 22px; }
+      #menu h3 { margin: 14px 0 4px; font-size: 15px; color: #ffd22e; text-transform: uppercase; letter-spacing: 0.06em; }
+      #menu h4 { margin: 0 0 2px; font-size: 14px; }
+      #menu .mhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+      #menu .mactions { display: flex; flex-wrap: wrap; gap: 8px; }
+      #menu .mbtn { box-sizing: border-box; min-height: 46px; min-width: 46px; padding: 0 16px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+      #menu .mbtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
+      #menu .mbtn[aria-pressed="true"] { background: rgba(255, 210, 46, 0.22); border-color: #ffd22e; }
+      #menu .mbtn:focus-visible, #menu input:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
+      #menu .mtoggle { display: block; width: 100%; margin-top: 8px; text-align: left; }
+      #menu .mrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; margin-top: 6px; }
+      #menu .mrow input[type="range"] { grid-column: 1 / 3; width: 100%; height: 46px; margin: 0; accent-color: #ffd22e; touch-action: pan-y; cursor: pointer; }
+      #menu .mvalue { font-variant-numeric: tabular-nums; opacity: 0.85; }
+      #menu .mhint { grid-column: 1 / 3; margin: 0 0 2px; font-size: 12px; font-weight: 500; opacity: 0.7; }
+      #menu .mseg { margin-top: 10px; }
+      #menu .msegbtns { display: flex; gap: 6px; margin-top: 4px; }
+      #menu .msegbtns .mbtn { flex: 1 1 0; padding: 0 8px; }
+      #menu .mhelp { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 14px; }
+      #menu .mhelp h3 { grid-column: 1 / -1; }
+      #menu .mhelp ul { margin: 0; padding-left: 18px; font-size: 13px; font-weight: 500; opacity: 0.9; }
+      body.paused #finish, body.paused #toast { visibility: hidden; }
       .tbar-btn[aria-pressed="false"] { opacity: 0.5; }
       /* Lot 4 : bandeau d'arrivée d'un morceau (temps de la solution, « Morceau suivant ») ; galerie des morceaux (?modules), qui défile. */
       #finish .ref:empty { display: none; }
@@ -172,6 +197,7 @@
       <div class="hint">R, ou touche le bandeau</div>
     </div>
     <div id="modname"></div>
+    <button type="button" id="pausebtn" title="Menu (Échap ou P)" aria-label="Menu">⏸ Menu</button>
     <button type="button" id="ghostbtn" aria-pressed="true" title="Fantôme (G)">👻 Fantôme : oui</button>
     <div id="nogl">WebGL n'est pas disponible dans ce navigateur : DailyJump ne peut pas s'afficher.</div>
     <script type="module" src="/src/boot.ts"></script>

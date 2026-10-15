@@ -1,7 +1,9 @@
 import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
 
 // Entrées de DailyJump : clavier (par `KeyboardEvent.code`, donc QZSD et WASD au même endroit) et manette, fusionnés en 3 bits par pas.
-// « Recommencer » (R, Start/Select) n'est pas une commande de la simulation : c'est un événement de la session.
+// « Recommencer » (R, Select) n'est pas une commande de la simulation : c'est un événement de la session.
+// Lot 8 : le menu ⏸ (Échap ou P, Start à la manette) met la partie en pause ; menu ouvert, le clavier ne commande plus rien (les flèches et
+// Espace servent aux curseurs et aux boutons du menu).
 
 /** Touches physiques. `KeyA` = Q et `KeyW` = Z sur un clavier AZERTY. */
 export const KEYS = {
@@ -9,9 +11,11 @@ export const KEYS = {
   right: ["ArrowRight", "KeyD"],
   jump: ["Space", "ArrowUp", "KeyW"],
   restart: ["KeyR"],
+  /** Menu ⏸ (lot 8). */
+  menu: ["Escape", "KeyP"],
 } as const;
 
-const GAME_CODES = new Set<string>(Object.values(KEYS).flat());
+const GAME_CODES = new Set<string>([...KEYS.left, ...KEYS.right, ...KEYS.jump, ...KEYS.restart]);
 
 /**
  * Le bouton de saut entre deux pas : **aucun appui n'est perdu**. Un appui puis un relâchement entre deux pas compte pour un pas tenu ;
@@ -79,8 +83,10 @@ export function padDirection(pad: Pick<Gamepad, "axes" | "buttons">): number {
 
 /** A (0) ou B (1) = saut. */
 export const padJump = (pad: Pick<Gamepad, "buttons">): boolean => !!(pad.buttons[0]?.pressed || pad.buttons[1]?.pressed);
-/** Start (9) ou Select (8) = recommencer. */
-export const padRestart = (pad: Pick<Gamepad, "buttons">): boolean => !!(pad.buttons[9]?.pressed || pad.buttons[8]?.pressed);
+/** Select (8) = recommencer (lot 8 : Start ouvre le menu). */
+export const padRestart = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[8]?.pressed;
+/** Start (9) = menu ⏸ (lot 8). */
+export const padMenu = (pad: Pick<Gamepad, "buttons">): boolean => !!pad.buttons[9]?.pressed;
 
 /** Bits de direction : gauche + droite ensemble = neutre (la simulation le fait aussi). */
 export function directionBits(left: boolean, right: boolean): number {
@@ -93,13 +99,22 @@ export class Controls {
   private keyJump = false;
   private padJumpDown = false;
   private padRestartDown = false;
+  private padMenuDown = false;
   private restartLatch = false;
+  private menuLatch = false;
+  /** Menu ouvert : le clavier ne commande plus le personnage (lot 8). */
+  private suspended = false;
   private padDir = 0;
   private touchDir = 0;
   private touchJump = false;
 
   constructor(target: Window = window) {
     target.addEventListener("keydown", (e) => {
+      if ((KEYS.menu as readonly string[]).includes(e.code)) {
+        if (!e.repeat) this.menuLatch = true;
+        return;
+      }
+      if (this.suspended) return; // menu ouvert : flèches et Espace vont au menu
       if (GAME_CODES.has(e.code)) e.preventDefault(); // Espace et flèches ne font pas défiler la page
       if (e.repeat) return;
       this.down.add(e.code);
@@ -136,8 +151,27 @@ export class Controls {
       this.syncJump();
     }
     const restart = pad ? padRestart(pad) : false;
-    if (restart && !this.padRestartDown) this.restartLatch = true;
+    if (restart && !this.padRestartDown && !this.suspended) this.restartLatch = true;
     this.padRestartDown = restart;
+    const menu = pad ? padMenu(pad) : false;
+    if (menu && !this.padMenuDown) this.menuLatch = true;
+    this.padMenuDown = menu;
+  }
+
+  /** Vrai une fois après Échap, P ou Start (lot 8). */
+  takeMenu(): boolean {
+    const m = this.menuLatch;
+    this.menuLatch = false;
+    return m;
+  }
+
+  /** Menu ouvert (vrai) ou refermé : le clavier lâche tout, rien de tenu ne compte comme un appui à la reprise. */
+  setSuspended(on: boolean): void {
+    this.suspended = on;
+    this.down.clear();
+    this.restartLatch = false;
+    this.syncJump();
+    this.latch.reset();
   }
 
   /** Direction (−1, 0, 1) et saut tenus par les doigts : le saut passe par la même mémorisation que le clavier, un appui bref compte. */
@@ -161,7 +195,7 @@ export class Controls {
     return directionBits(left, right) | (this.latch.sample() ? INPUT_JUMP : 0);
   }
 
-  /** Vrai une fois après un appui sur R (ou Start/Select). */
+  /** Vrai une fois après un appui sur R (ou Select). */
   takeRestart(): boolean {
     const r = this.restartLatch;
     this.restartLatch = false;

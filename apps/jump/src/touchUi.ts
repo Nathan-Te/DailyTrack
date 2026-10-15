@@ -4,6 +4,7 @@ import { NO_INSETS, TouchPad, ZONE_SPANS, buttonRects, layoutFor, type Insets, t
 // Interface tactile (lot 1b) : la couche qui reçoit les doigts (pointer events, plusieurs à la fois), les boutons dessinés (translucides,
 // sans effet sur le toucher), la bande haute (recommencer, réglages, plein écran) et, avec `?zones=1`, le dessin des zones. Toute la décision
 // (quelle zone, quelle direction) est dans `touch.ts`, pur et testé ; ici on ne fait que brancher le DOM.
+// Lot 8 : ⏸ (menu) en tête des boutons de droite de la bande haute.
 
 export interface TouchUiOptions {
   controls: Controls;
@@ -15,6 +16,8 @@ export interface TouchUiOptions {
   tune: boolean;
   onRestart(): void;
   onGear(): void;
+  /** Lot 8 : bouton ⏸ (menu : pause, réglages du joueur, commandes). */
+  onMenu?(): void;
   /** Lot 3 : bouton 👻 (fantôme montré ou caché), avec son état de départ. */
   onGhost?(): void;
   ghostOn?: boolean;
@@ -87,6 +90,18 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   bar.append(restart);
 
   const side = el("div", "tbar-right");
+  if (opts.onMenu) {
+    const m = el("button", "pause", "tbar-btn");
+    m.type = "button";
+    m.textContent = "⏸";
+    m.title = "Menu";
+    m.setAttribute("aria-label", "Menu");
+    m.addEventListener("click", () => {
+      m.blur();
+      opts.onMenu?.();
+    });
+    side.append(m);
+  }
   let ghostBtn: HTMLButtonElement | null = null;
   if (opts.onGhost) {
     const g = el("button", "ghost", "tbar-btn");
