@@ -634,9 +634,9 @@ describe("intégrité (fuzz) sur le niveau d'essai", () => {
     expect(r.total).toBe(60_000);
   });
 
-  it("lot 4 : quelques morceaux (cheminée, scies, friables, ressorts), réglages par défaut et au hasard : même intégrité", () => {
+  it("lot 4 : quelques morceaux (cheminée, élan, scies, friables, ressorts), réglages par défaut et au hasard : même intégrité", () => {
     const keys = Object.keys(DEFAULT_JUMP_PARAMS) as JumpParamKey[];
-    const picks: [string, number][] = [["cheminee", 1], ["cheminee-scie", 0], ["scie-ronde", 2], ["mur-friable", 0], ["ressort-mur", 1], ["ascenseur", 2]];
+    const picks: [string, number][] = [["cheminee", 1], ["grand-saut", 0], ["scie-ronde", 1], ["mur-friable", 0], ["ressort-plafond", 1], ["ascenseur", 2]];
     let deaths = 0;
     for (const [k, [id, v]] of picks.entries()) {
       const lv = buildModule(id, v).level;

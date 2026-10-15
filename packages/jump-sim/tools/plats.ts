@@ -9,7 +9,7 @@ import { TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSpikeTile, s
 // plat). Mesure géométrique, sur chaque variante construite (mutateurs compris), indépendante de la solution.
 
 export const FLAT_MAX = 6;
-export const ELAN_FLAT_MAX = 9;
+export const ELAN_FLAT_MAX = 14;
 /** Rangées au-dessus du sol où un danger fait du plat un défi (un saut normal y passe). */
 export const FLAT_CLEARANCE = 3;
 

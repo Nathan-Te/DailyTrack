@@ -12,7 +12,6 @@ variante: trou=1 cycle=180
 variante: trou=2 cycle=240
 variante: trou=1 cycle=240 +sol-friable
 variante: trou=2 cycle=200 +fosse
-variante: trou=1 cycle=180 +denivele:2
 grille:
 ...............
 ...............

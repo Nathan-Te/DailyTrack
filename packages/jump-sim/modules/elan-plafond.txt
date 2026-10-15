@@ -1,0 +1,31 @@
+id: elan-plafond
+intention: Courir sous un plafond bas et enjamber les fosses par petits sauts : seul l'élan plein les fait passer, il ne faut jamais lâcher.
+etiquettes: elan precision
+famille: elan-plafond
+mutateurs: sol-friable denivele
+format: 3
+paliers: 9 9
+repeter: piste colonnes 2-2
+repeter: fosse colonnes 5-5
+repeter: fosse colonnes 10-10
+repeter: fosse colonnes 15-15
+variante: piste=10 fosse=5
+variante: piste=9 fosse=5
+variante: piste=10 fosse=5 +denivele:2
+variante: piste=10 fosse=6
+grille:
+.####################
+.####################
+.####################
+.####################
+.####################
+.####################
+.####################
+.....................
+.....................
+#####.####.####.#####
+#####.####.####.#####
+#####^####^####^#####
+
+zone sol-friable 6-9 9
+zone denivele 16-20

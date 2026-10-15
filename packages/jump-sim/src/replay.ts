@@ -12,7 +12,7 @@ import {
 import { JUMP_SIM_VERSION, TICK_RATE } from "./constants";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
-import { DEFAULT_JUMP_PARAMS, INPUT_MASK } from "./player";
+import { DEFAULT_JUMP_PARAMS, INPUT_MASK, sprintTop } from "./player";
 
 // Rediffusions (lot 3). Un **essai** (du départ à l'arrivée, à une mort sans point de passage, ou à « recommencer ») est entièrement décrit
 // par les commandes du joueur, 3 bits par pas, rangées en séries `{ count, bits }`. Les reprises aux points de passage ne sont pas
@@ -25,8 +25,9 @@ import { DEFAULT_JUMP_PARAMS, INPUT_MASK } from "./player";
 //
 // Octets (puis base64url, `@cdj/core`) :
 //   FORMAT · version de la sim (varint) · longueur de l'identifiant du niveau · identifiant (ASCII)
-//   drapeaux : bit 0 = saut tenu au départ, bit 1 = départ sur un point de passage, bit 2 = départ lancé (lot 4 : au départ `S`, au sol,
-//              à pleine vitesse vers la droite ; l'entrée « élan » des morceaux)
+//   drapeaux : bit 0 = saut tenu au départ, bit 1 = départ sur un point de passage, bit 2 = départ lancé à la course (lot 4 : au départ
+//              `S`, au sol, à `runSpeed` vers la droite, compteur d'élan à 0 ; l'entrée « course » des morceaux), bit 3 = départ lancé en
+//              élan plein (lot 8c : à `sprintSpeed`, compteur d'élan à `sprintDelay` ; l'entrée « plein » des morceaux) — jamais les deux
 //   [point de passage] : indice du point (varint) · chrono au départ (varint) · nombre de sections (varint) · par section : début + 1 (varint, 0 = à l'arrêt)
 //   séries : varint(count × 8 + bits), count ≥ 1
 // Une série de moins de 16 pas tient dans un octet ; un essai de 25 s tient dans quelques centaines d'octets.
@@ -48,6 +49,7 @@ const MAX_CHECKPOINTS = 4096;
 const FLAG_HELD = 1;
 const FLAG_CHECKPOINT = 2;
 const FLAG_ELAN = 4;
+const FLAG_PLEIN = 8;
 
 /** Une série : `count` pas consécutifs avec les mêmes 3 bits de commande. */
 export interface InputRun {
@@ -66,8 +68,9 @@ export interface ReplayStart {
   /** Début de chaque section, en pas du chrono (−1 à l'arrêt) ; vide au départ `S` (toutes à l'arrêt). */
   sections: readonly number[];
   /**
-   * 1 : départ **lancé** (lot 4, entrée « élan » d'un morceau) : au départ `S`, au sol, à la vitesse de course (`runSpeed` des réglages par
-   * défaut) vers la droite ; 0 : à l'arrêt. Jamais sur un point de passage.
+   * Départ **lancé** (lot 4, entrées des morceaux) : 1 = au départ `S`, au sol, à la vitesse de course (`runSpeed` des réglages par défaut)
+   * vers la droite, compteur d'élan à 0 ; 2 (lot 8c) = en élan plein (`sprintSpeed`, compteur à `sprintDelay`) ; 0 : à l'arrêt. Jamais sur
+   * un point de passage.
    */
   elan: number;
 }
@@ -120,9 +123,10 @@ export function fromRuns(runs: readonly InputRun[]): number[] {
   return out;
 }
 
-/** Une rediffusion d'essai (départ `S`, à l'arrêt ou lancé : `elan` = 1) de cette version de la simulation. */
+/** Une rediffusion d'essai (départ `S`, à l'arrêt ou lancé : `elan` = 1 à la course, 2 en élan plein) de cette version de la simulation. */
 export function attemptReplay(levelId: string, inputs: readonly number[], held = 0, elan = 0): JumpReplay {
-  return { simVersion: JUMP_SIM_VERSION, levelId, start: { ...START_AT_SPAWN, held, elan: elan ? 1 : 0 }, runs: toRuns(inputs) };
+  if (elan !== 0 && elan !== 1 && elan !== 2) throw new JumpReplayError("format", `Départ lancé inconnu : ${elan}`);
+  return { simVersion: JUMP_SIM_VERSION, levelId, start: { ...START_AT_SPAWN, held, elan }, runs: toRuns(inputs) };
 }
 
 // ——— Octets ———
@@ -141,7 +145,8 @@ export function encodeReplay(replay: JumpReplay): string {
   for (let i = 0; i < replay.levelId.length; i++) bytes.push(replay.levelId.charCodeAt(i));
   const atCheckpoint = s.checkpoint >= 0;
   if (atCheckpoint && s.elan) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
-  bytes.push((s.held ? FLAG_HELD : 0) | (atCheckpoint ? FLAG_CHECKPOINT : 0) | (s.elan ? FLAG_ELAN : 0));
+  if (s.elan !== 0 && s.elan !== 1 && s.elan !== 2) throw new JumpReplayError("format", `Départ lancé inconnu : ${s.elan}`);
+  bytes.push((s.held ? FLAG_HELD : 0) | (atCheckpoint ? FLAG_CHECKPOINT : 0) | (s.elan === 1 ? FLAG_ELAN : 0) | (s.elan === 2 ? FLAG_PLEIN : 0));
   if (atCheckpoint) {
     pushVarint(bytes, s.checkpoint);
     pushVarint(bytes, s.time);
@@ -191,9 +196,10 @@ export function decodeReplay(code: string): JumpReplay {
   for (let i = 0; i < idLen; i++) levelId += String.fromCharCode(byte());
   checkLevelId(levelId);
   const flags = byte();
-  if (flags & ~(FLAG_HELD | FLAG_CHECKPOINT | FLAG_ELAN)) throw new JumpReplayError("format", "Drapeaux de départ inconnus");
-  if (flags & FLAG_CHECKPOINT && flags & FLAG_ELAN) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
-  const start: ReplayStart = { checkpoint: -1, held: flags & FLAG_HELD ? 1 : 0, time: 0, sections: [], elan: flags & FLAG_ELAN ? 1 : 0 };
+  if (flags & ~(FLAG_HELD | FLAG_CHECKPOINT | FLAG_ELAN | FLAG_PLEIN)) throw new JumpReplayError("format", "Drapeaux de départ inconnus");
+  if (flags & FLAG_CHECKPOINT && flags & (FLAG_ELAN | FLAG_PLEIN)) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
+  if (flags & FLAG_ELAN && flags & FLAG_PLEIN) throw new JumpReplayError("format", "Départ lancé à la course et en élan plein");
+  const start: ReplayStart = { checkpoint: -1, held: flags & FLAG_HELD ? 1 : 0, time: 0, sections: [], elan: flags & FLAG_PLEIN ? 2 : flags & FLAG_ELAN ? 1 : 0 };
   if (flags & FLAG_CHECKPOINT) {
     const checkpoint = varint("Point de passage");
     const time = varint("Chrono");
@@ -232,7 +238,9 @@ export function replayStartState(level: Level, start: ReplayStart): AttemptState
   if (start.checkpoint < 0) {
     const s = initialAttempt(level);
     if (!start.held && !start.elan) return s;
-    return { ...s, player: { ...s.player, held: start.held ? 1 : 0, vx: start.elan ? DEFAULT_JUMP_PARAMS.runSpeed : 0 } };
+    const P = DEFAULT_JUMP_PARAMS;
+    const vx = start.elan === 2 ? sprintTop(P) : start.elan ? P.runSpeed : 0;
+    return { ...s, player: { ...s.player, held: start.held ? 1 : 0, vx, sprint: start.elan === 2 ? P.sprintDelay : 0 } };
   }
   if (start.elan) throw new JumpReplayError("format", "Départ lancé sur un point de passage");
   if (start.checkpoint >= level.checkpoints.length) throw new JumpReplayError("level", `Point de passage ${start.checkpoint} absent de ce niveau`);

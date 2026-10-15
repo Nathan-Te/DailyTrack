@@ -15,7 +15,6 @@ import {
   PLAYER_WIDTH,
   RESPAWN_TICKS,
   SANDBOX_LEVEL,
-  SPRINT_TRIAL_PARAMS,
   TICK_RATE,
   UNITS_PER_TILE,
   decodeReplay,
@@ -25,6 +24,7 @@ import {
   playerMode,
   replayAttempt,
   runsTicks,
+  sprintTop,
   sawCenters,
   buildModule,
   jumpMedalFor,
@@ -33,6 +33,7 @@ import {
   type DailyLevel,
   type JumpParams,
   type JumpReplay,
+  type ModuleEntry,
   type Level,
   type PlayerState,
 } from "@cdj/jump-sim";
@@ -53,7 +54,7 @@ import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
-import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
+import { launchTilesFor, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
 import { dailyHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
 import { browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
 import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
@@ -61,7 +62,7 @@ import { CarnageFilter, EventLog, causeName, eventsBetween, type GameEvent } fro
 import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, sawMix } from "./audioLogic";
 import { textSeed } from "./decor";
-import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColors, feelEvent, slideSpark } from "./feel";
+import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColors, feelEvent, slideSpark, trailStrength } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
 
@@ -158,7 +159,7 @@ export interface JumpDebug {
   /** Lot 5 : le niveau du jour (null pour un scénario ou un morceau). */
   readonly daily: DailyView | null;
   /** Lot 4 : le morceau joué (`?module=`), son temps de référence (pas) ; null pour un scénario. */
-  module: { id: string; variant: number; entry: "arret" | "elan"; solution: boolean; levelId: string; reference: number | null; next: string } | null;
+  module: { id: string; variant: number; entry: ModuleEntry; solution: boolean; levelId: string; reference: number | null; next: string } | null;
   readonly player: PlayerView;
   /** L'essai en cours et la session (lot 2). */
   readonly attempt: AttemptView;
@@ -305,12 +306,13 @@ const loaded: DailyLoad | null = choice
   ? await loadDaily(choice.day, { store, today: formatDay(today), makeWorker: browserWorker, showProgress: progressMessage(document), yieldToPaint })
   : null;
 const daily: DailyLevel | null = loaded ? loaded.level : null;
-// Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
-// couloir de lancement est ajouté devant le palier d'entrée ; la solution, elle, part lancée du départ du morceau (sans couloir).
+// Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|course|plein[&solution]`). En jeu humain avec une entrée lancée,
+// un couloir de lancement est ajouté devant le palier d'entrée (plus long en élan plein, lot 8c) ; la solution, elle, part lancée du départ
+// du morceau (sans couloir).
 const mod = options.module;
-const built = mod ? buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? LAUNCH_TILES : 0 }) : null;
+const built = mod ? buildModule(mod.id, mod.variant, { lancement: !mod.solution ? launchTilesFor(mod.entry) : 0 }) : null;
 const level = built ? built.level : daily ? daily.level : LEVELS[options.scenario ?? "essai"];
-const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
+const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry !== "arret" && !mod.solution) : null;
 const nextHref = mod ? moduleHref({ id: nextModule(mod.id), variant: 0, entry: mod.entry }, options) : null;
 
 const dayText = formatDay(today);
@@ -321,7 +323,7 @@ const palette = theme.palette;
 const stamp = document.getElementById("stamp")!;
 stamp.textContent = `DailyJump · sim v${JUMP_SIM_VERSION} · ${dayText}`;
 if (mod && built) {
-  const entryText = mod.entry === "elan" ? "élan" : "arrêt";
+  const entryText = mod.entry === "plein" ? "élan plein" : mod.entry === "course" ? "course" : "arrêt";
   document.getElementById("modname")!.textContent = `${mod.solution ? "Solution · " : ""}${mod.id} · variante ${mod.variant} · ${entryText}`;
   document.title = `DailyJump · ${mod.id}`;
 }
@@ -330,8 +332,8 @@ document.documentElement.style.background = `#${palette.background.toString(16).
 
 // Réglages : les défauts, sauf en `?debug&tune` où le panneau reprend ceux qu'on avait laissés (`jump:tune`).
 const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS };
-// Lot 8b : `?debug&tune&sprint=1` : l'essai d'élan progressif, aux valeurs de départ (la partie est `tuned`).
-if (options.sprint) Object.assign(params, SPRINT_TRIAL_PARAMS);
+// Lot 8c : `?debug&tune&sprint=0` : le préréglage sans élan, pour comparer (la partie est `tuned`).
+if (options.sprintOff) params.sprintMode = 0;
 
 // ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
 // Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
@@ -669,7 +671,7 @@ function finishOptions(): { reference: string | null; next: string | null } {
     return { reference: m.text, next: null };
   }
   if (!mod) return { reference: null, next: null };
-  const ref = reference === null ? "Solution : —" : `Solution : ${formatTicks(reference)}${mod.entry === "elan" && !mod.solution ? " (couloir compris)" : ""}`;
+  const ref = reference === null ? "Solution : —" : `Solution : ${formatTicks(reference)}${mod.entry !== "arret" && !mod.solution ? " (couloir compris)" : ""}`;
   return { reference: ref, next: nextHref };
 }
 
@@ -1225,10 +1227,10 @@ function sceneDetail(l: FeelLevels): SceneDetail {
  * (les trois plus proches du personnage, stéréo selon leur position). `x`, `y` : coin haut-gauche affiché du personnage (tuiles).
  */
 function feelFrame(sc: JumpScene, st: Readonly<AttemptState>, x: number, y: number, alive: boolean, dt: number, runSpeed: number): void {
-  // Lot 8b : la traînée seulement à pleine vitesse ou en élan (au-delà de la course : un peu plus marquée).
+  // Lot 8b : la traînée seulement à pleine vitesse ou en élan ; lot 8c : bien plus marquée en élan plein (`trailStrength`).
   const speed = Math.abs(st.player.vx);
   const fast = alive && speed >= runSpeed;
-  if (levels.continuous) trail.update(dt, x, y, fast && !menuOpen, 1 + Math.max(0, speed - runSpeed) / Math.max(1, runSpeed));
+  if (levels.continuous) trail.update(dt, x, y, fast && !menuOpen, trailStrength(speed, runSpeed, sprintTop(session.params)));
   else trail.clear();
   sc.setTrail(trail.points);
   slideClock += dt;

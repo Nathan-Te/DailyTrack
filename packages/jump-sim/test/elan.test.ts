@@ -1,47 +1,43 @@
 import { Rng } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
-  COUNTER_CAP,
   DEFAULT_JUMP_PARAMS,
   ESSAI_LEVEL,
   ESSAI_SOLUTION_CODE,
   INPUT_MASK,
+  JUMP_PARAM_KEYS,
   MAX_SPEED,
-  MODULES,
-  MODULE_ENTRIES,
+  NO_SPRINT_PARAMS,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
   SANDBOX_LEVEL,
   SANDBOX_MARKS,
-  SPRINT_TRIAL_PARAMS,
+  SPRINT_PARAM_KEYS,
   boxHits,
-  buildModule,
   decodeReplay,
   fromRuns,
   initialAttempt,
   isDefaultJumpParams,
-  moduleStart,
   replayStartState,
   sprintTop,
   stepAttempt,
   stepPlayer,
-  type AttemptState,
   type JumpParams,
   type Level,
   type PlayerState,
 } from "../src/index";
-import { MODULE_SOLUTIONS } from "../src/catalog";
 import { J, L, R, T, floatAt, hold, room, standAt } from "./helpers";
 
-// Lot 8b : l'essai d'élan progressif (`sprintMode` = 1, panneau `?debug&tune` seulement). Éteint, rien ne change : mêmes états, au champ
-// près (pas de champ `sprint`), donc mêmes empreintes de trajectoire que les golden. Allumé : l'élan démarre après `sprintDelay` pas au sol
-// à pleine vitesse, se garde en l'air, se perd au lâcher, au mur et au demi-tour, et reste sous `MAX_SPEED`.
+// L'élan progressif (essai au lot 8b, **adopté au lot 8c** : actif par défaut, valeurs de Nathan). L'élan démarre après `sprintDelay` pas au
+// sol à pleine vitesse, se garde en l'air, se perd au lâcher, au mur et au demi-tour, reste sous `MAX_SPEED` ; son compteur est **borné** à
+// `sprintDelay` (deux élans pleins sont le même état). Éteint (`sprintMode` 0, mesures et panneau), le compteur reste à 0 et l'on court
+// comme avant le lot 8b.
 
-const ELAN: Readonly<JumpParams> = { ...DEFAULT_JUMP_PARAMS, ...SPRINT_TRIAL_PARAMS };
-/** L'élan éteint, mais ses autres réglages présents (et extrêmes) : ils ne doivent rien changer. */
-const OFF: Readonly<JumpParams> = { ...DEFAULT_JUMP_PARAMS, sprintMode: 0, sprintSpeed: 2000, sprintDelay: 0, sprintAccel: 40 };
+const ELAN: Readonly<JumpParams> = DEFAULT_JUMP_PARAMS;
+const OFF: Readonly<JumpParams> = NO_SPRINT_PARAMS;
 const FLOOR = SANDBOX_MARKS.floorRow;
 const RUN = DEFAULT_JUMP_PARAMS.runSpeed;
+const TOP = 614;
 /** Une longue salle plate, pour courir sans rien heurter. */
 const HALL = room(160, 8);
 const HALL_ROW = 7;
@@ -55,74 +51,54 @@ function trace(lv: Level, s: PlayerState, inputs: readonly number[], p: Readonly
 
 const repeat = (input: number, n: number) => new Array<number>(n).fill(input);
 
-describe("élan éteint (mode 0) : trajectoires identiques", () => {
-  it("les réglages par défaut et l'élan éteint ne portent pas la partie `tuned` ; l'élan allumé, si", () => {
+describe("élan adopté (lot 8c) : défauts et compteur borné", () => {
+  it("les défauts sont ceux du tableau : élan actif, 614 (≈ 18 tuiles/s), 42 pas (0,35 s), 3 (élan plein en ≈ 0,66 s)", () => {
+    expect({ sprintMode: ELAN.sprintMode, sprintSpeed: ELAN.sprintSpeed, sprintDelay: ELAN.sprintDelay, sprintAccel: ELAN.sprintAccel }).toEqual({ sprintMode: 1, sprintSpeed: 614, sprintDelay: 42, sprintAccel: 3 });
+    expect((614 * 120) / T).toBeCloseTo(18, 0);
+    expect(42 / 120).toBe(0.35);
+    expect(Math.ceil((614 - RUN) / 3)).toBe(80); // 80 pas ≈ 0,66 s
+    for (const k of SPRINT_PARAM_KEYS) expect(JUMP_PARAM_KEYS).toContain(k);
     expect(isDefaultJumpParams(DEFAULT_JUMP_PARAMS)).toBe(true);
-    expect(isDefaultJumpParams(OFF)).toBe(true);
-    expect(isDefaultJumpParams(ELAN)).toBe(false);
-    expect("sprintMode" in DEFAULT_JUMP_PARAMS).toBe(false);
+    expect(isDefaultJumpParams(OFF)).toBe(false); // sans élan, une partie est `tuned`
+    expect(initialAttempt(ESSAI_LEVEL).player.sprint).toBe(0);
   });
 
-  it("fuzz : mêmes états au pas près (sans champ `sprint`) avec les défauts et avec l'élan éteint", () => {
+  it("le compteur s'arrête à `sprintDelay` : deux personnages en élan plein ont exactement le même état (à la position près)", () => {
+    const a = hold(standAt(HALL, 2, HALL_ROW), R, 220, HALL, ELAN);
+    const b = hold(standAt(HALL, 10, HALL_ROW), R, 400, HALL, ELAN);
+    expect(a.sprint).toBe(ELAN.sprintDelay);
+    expect(b.sprint).toBe(ELAN.sprintDelay);
+    expect({ ...a, x: 0 }).toEqual({ ...b, x: 0 });
+    const states = trace(HALL, standAt(HALL, 2, HALL_ROW), repeat(R, 300), ELAN);
+    expect(Math.max(...states.map((s) => s.sprint))).toBe(ELAN.sprintDelay);
+  });
+
+  it("éteint : le compteur reste à 0 et la course ne dépasse jamais `runSpeed` (comme avant le lot 8b)", () => {
     const rng = new Rng(20261015);
     let steps = 0;
-    for (let run = 0; run < 30; run++) {
-      const col = 3 + rng.int(150);
-      let a = standAt(SANDBOX_LEVEL, col, FLOOR);
-      if (boxHits(SANDBOX_LEVEL, a.x, a.y, PLAYER_WIDTH, PLAYER_HEIGHT)) a = standAt(SANDBOX_LEVEL, SANDBOX_MARKS.start, FLOOR);
-      let b = a;
+    for (let run = 0; run < 20; run++) {
+      let s = standAt(SANDBOX_LEVEL, SANDBOX_MARKS.start + rng.int(20), FLOOR);
       let input = 0;
       let left = 0;
       for (let t = 0; t < 1500; t++) {
         if (left-- <= 0) {
-          input = rng.int(INPUT_MASK + 1);
-          left = rng.int(60);
+          input = rng.chance(2) ? R : rng.int(INPUT_MASK + 1);
+          left = rng.int(90);
         }
-        a = stepPlayer(a, input, SANDBOX_LEVEL, DEFAULT_JUMP_PARAMS);
-        b = stepPlayer(b, input, SANDBOX_LEVEL, OFF);
-        if (t % 97 === 0 || "sprint" in a || "sprint" in b) {
-          expect("sprint" in a || "sprint" in b, `essai ${run}, pas ${t}`).toBe(false);
-        }
-        expect(b, `essai ${run}, pas ${t}`).toEqual(a);
+        s = stepPlayer(s, input, SANDBOX_LEVEL, OFF);
+        expect(s.sprint).toBe(0);
+        if (s.ground) expect(Math.abs(s.vx)).toBeLessThanOrEqual(Math.max(RUN, OFF.wallJumpX));
         steps++;
       }
     }
-    expect(steps).toBe(45_000);
-  });
-
-  it("un échantillon des solutions stockées (morceaux, les deux entrées ; niveau d'essai) se rejoue à l'identique, élan éteint", () => {
-    const play = (lv: Level, start: AttemptState, inputs: readonly number[], p: Readonly<JumpParams>) => {
-      let s = start;
-      const states: AttemptState[] = [];
-      for (const i of inputs) states.push((s = stepAttempt(s, i, lv, p)));
-      return states;
-    };
-    let checked = 0;
-    for (const def of MODULES.filter((_, k) => k % 4 === 0)) {
-      const m = buildModule(def.id, 0);
-      for (const entry of MODULE_ENTRIES) {
-        const sol = MODULE_SOLUTIONS.modules[def.id]!.variants[0]![entry]!;
-        const inputs = fromRuns(decodeReplay(sol.code).runs);
-        const a = play(m.level, moduleStart(m, entry), inputs, DEFAULT_JUMP_PARAMS);
-        const b = play(m.level, moduleStart(m, entry), inputs, OFF);
-        expect(b, `${def.id} ${entry}`).toEqual(a);
-        checked++;
-      }
-    }
-    const essai = decodeReplay(ESSAI_SOLUTION_CODE);
-    const inputs = fromRuns(essai.runs);
-    expect(play(ESSAI_LEVEL, replayStartState(ESSAI_LEVEL, essai.start), inputs, OFF)).toEqual(play(ESSAI_LEVEL, replayStartState(ESSAI_LEVEL, essai.start), inputs, DEFAULT_JUMP_PARAMS));
-    expect(checked).toBeGreaterThanOrEqual(10);
+    expect(steps).toBe(30_000);
+    expect(trace(HALL, standAt(HALL, 2, HALL_ROW), repeat(R, 260), OFF).every((s) => s.vx <= RUN)).toBe(true);
   });
 });
 
 describe("élan progressif (mode 1)", () => {
-  it("valeurs de départ : 15 tuiles/s après 0,4 s à pleine vitesse, atteint en ≈ 0,57 s ; sous MAX_SPEED", () => {
-    expect(SPRINT_TRIAL_PARAMS).toEqual({ sprintMode: 1, sprintSpeed: 512, sprintDelay: 48, sprintAccel: 2 });
-    expect((512 * 120) / T).toBe(15);
-    expect(SPRINT_TRIAL_PARAMS.sprintDelay / 120).toBe(0.4);
-    expect(Math.ceil((512 - RUN) / 2) / 120).toBeCloseTo(0.575, 3);
-    expect(sprintTop(ELAN)).toBe(512);
+  it("vitesse visée : `sprintSpeed`, jamais sous la course ni au-delà de MAX_SPEED", () => {
+    expect(sprintTop(ELAN)).toBe(TOP);
     expect(sprintTop({ ...ELAN, sprintSpeed: 100 })).toBe(RUN); // sous la course : aucun élan
     expect(sprintTop({ ...ELAN, sprintSpeed: 99_999 })).toBe(MAX_SPEED);
   });
@@ -135,21 +111,21 @@ describe("élan progressif (mode 1)", () => {
     // Le pas où l'on atteint la course compte (on y est à pleine vitesse à la fin du pas) : `sprintDelay` pas à `runSpeed`, puis l'élan.
     expect(over - first).toBe(ELAN.sprintDelay);
     for (let t = first; t < over; t++) expect(states[t]!.vx).toBe(RUN);
-    expect(states[over]!.vx).toBe(RUN + ELAN.sprintAccel!);
-    const top = states.findIndex((s) => s.vx === 512);
-    expect(top - over + 1).toBe(Math.ceil((512 - RUN) / ELAN.sprintAccel!));
-    expect(states.slice(top).every((s) => s.vx === 512)).toBe(true);
+    expect(states[over]!.vx).toBe(RUN + ELAN.sprintAccel);
+    const top = states.findIndex((s) => s.vx === TOP);
+    expect(top - over + 1).toBe(Math.ceil((TOP - RUN) / ELAN.sprintAccel));
+    expect(states.slice(top).every((s) => s.vx === TOP)).toBe(true);
     // Le même départ sans élan reste à la course.
-    expect(trace(HALL, standAt(HALL, 2, HALL_ROW), repeat(R, 260), DEFAULT_JUMP_PARAMS).every((s) => s.vx <= RUN)).toBe(true);
+    expect(trace(HALL, standAt(HALL, 2, HALL_ROW), repeat(R, 260), OFF).every((s) => s.vx <= RUN)).toBe(true);
     // À gauche, symétrique.
     const back = trace(HALL, standAt(HALL, 150, HALL_ROW), repeat(L, 260), ELAN);
-    expect(back[back.length - 1]!.vx).toBe(-512);
+    expect(back[back.length - 1]!.vx).toBe(-TOP);
   });
 
   it("un délai nul : l'élan part dès la pleine vitesse ; un délai plus long que la course : jamais", () => {
     const now = trace(HALL, standAt(HALL, 2, HALL_ROW), repeat(R, 200), { ...ELAN, sprintDelay: 0 });
     const first = now.findIndex((s) => s.vx === RUN);
-    expect(now[first + 1]!.vx).toBe(RUN + 2);
+    expect(now[first + 1]!.vx).toBe(RUN + ELAN.sprintAccel);
     const never = trace(HALL, standAt(HALL, 2, HALL_ROW), repeat(R, 200), { ...ELAN, sprintDelay: 240 });
     expect(never.every((s) => s.vx <= RUN)).toBe(true);
   });
@@ -157,8 +133,8 @@ describe("élan progressif (mode 1)", () => {
   /** En élan (vitesse maximale atteinte), au milieu de la salle. */
   const sprinting = () => {
     const s = hold(standAt(HALL, 2, HALL_ROW), R, 200, HALL, ELAN);
-    expect(s.vx).toBe(512);
-    expect(s.sprint).toBeGreaterThanOrEqual(ELAN.sprintDelay!);
+    expect(s.vx).toBe(TOP);
+    expect(s.sprint).toBeGreaterThanOrEqual(ELAN.sprintDelay);
     return s;
   };
 
@@ -178,7 +154,7 @@ describe("élan progressif (mode 1)", () => {
     let s = sprinting();
     s = stepPlayer(s, L, HALL, ELAN);
     expect(s.sprint).toBe(0);
-    expect(s.vx).toBeLessThan(512);
+    expect(s.vx).toBeLessThan(TOP);
     s = hold(s, L, 40, HALL, ELAN);
     expect(s.vx).toBe(-RUN); // de l'autre côté, la course seulement
   });
@@ -190,7 +166,7 @@ describe("élan progressif (mode 1)", () => {
     expect(s.sprint).toBe(0);
     // En glisse : lancé en élan, il saute contre le mur du bout de la salle.
     s = hold(standAt(HALL, 140, HALL_ROW), R, 145, HALL, ELAN);
-    expect(s.vx).toBe(512);
+    expect(s.vx).toBe(TOP);
     s = stepPlayer(s, R | J, HALL, ELAN);
     expect(s.ground).toBe(0);
     expect(s.sprint).toBeGreaterThan(0); // gardé au saut
@@ -205,22 +181,22 @@ describe("élan progressif (mode 1)", () => {
 
   it("gardé en l'air : la vitesse acquise ne remonte pas et ne tombe pas d'un coup ; il continue à l'atterrissage", () => {
     let s = sprinting();
-    const counter = s.sprint!;
+    const counter = s.sprint;
     s = stepPlayer(s, R | J, HALL, ELAN);
     expect(s.ground).toBe(0);
     let air = 0;
     while (s.ground === 0 && air < 200) {
       s = stepPlayer(s, R | J, HALL, ELAN);
       if (s.ground === 0) {
-        expect(s.vx).toBe(512);
-        expect(s.sprint).toBe(counter + 1); // compté au pas du saut (au sol), pas en l'air
+        expect(s.vx).toBe(TOP);
+        expect(s.sprint).toBe(counter); // au maximum, gardé en l'air
       }
       air++;
     }
     expect(s.ground).toBe(1);
-    expect(stepPlayer(s, R, HALL, ELAN).vx).toBe(512);
+    expect(stepPlayer(s, R, HALL, ELAN).vx).toBe(TOP);
     // Une vitesse entre la course et l'élan, en l'air, en élan : gardée telle quelle (le contrôle aérien ne la remonte pas).
-    const mid: PlayerState = { ...floatAt(HALL, 40 * T, 3 * T, 450, -200), sprint: 200 };
+    const mid: PlayerState = { ...floatAt(HALL, 40 * T, 3 * T, 450, -200), sprint: ELAN.sprintDelay };
     const next = stepPlayer(mid, R, HALL, ELAN);
     expect(next.vx).toBe(450);
     // Sans élan, la même vitesse en l'air est ramenée vers la course (comme avant).
@@ -238,12 +214,12 @@ describe("élan progressif (mode 1)", () => {
     expect(states.every((s) => Math.abs(s.vx) <= MAX_SPEED)).toBe(true);
   });
 
-  it("fuzz d'intégrité, élan allumé (valeurs de départ et au hasard) : tout entier, sans −0, sous MAX_SPEED, hors des murs", () => {
+  it("fuzz d'intégrité, élan allumé (défauts et au hasard) : tout entier, sans −0, sous MAX_SPEED, hors des murs", () => {
     const rng = new Rng(8_2026);
     let total = 0;
     for (let run = 0; run < 50; run++) {
       const p: JumpParams =
-        run % 2 === 0 ? { ...ELAN } : { ...ELAN, sprintSpeed: rng.int(2600), sprintDelay: rng.int(COUNTER_CAP + 20), sprintAccel: rng.chance(10) ? rng.int(3000) : rng.int(41) };
+        run % 2 === 0 ? { ...ELAN } : { ...ELAN, sprintSpeed: rng.int(2600), sprintDelay: rng.int(300), sprintAccel: rng.chance(10) ? rng.int(3000) : rng.int(41) };
       const lv = run % 3 === 0 ? HALL : SANDBOX_LEVEL;
       let s = lv === HALL ? standAt(HALL, 2 + rng.int(150), HALL_ROW) : standAt(SANDBOX_LEVEL, SANDBOX_MARKS.start + rng.int(25), FLOOR);
       let input = 0;
@@ -258,7 +234,7 @@ describe("élan progressif (mode 1)", () => {
         for (const [k, v] of Object.entries(s)) if (!Number.isInteger(v) || Object.is(v, -0)) throw new Error(`${where} : ${k} = ${String(v)}`);
         if (Math.abs(s.vx) > MAX_SPEED || Math.abs(s.vy) > MAX_SPEED) throw new Error(`${where} : vitesse ${s.vx}, ${s.vy}`);
         if (boxHits(lv, s.x, s.y, PLAYER_WIDTH, PLAYER_HEIGHT)) throw new Error(`${where} : dans un mur`);
-        if (s.sprint === undefined || s.sprint < 0 || s.sprint > COUNTER_CAP) throw new Error(`${where} : sprint = ${String(s.sprint)}`);
+        if (s.sprint < 0 || s.sprint > p.sprintDelay) throw new Error(`${where} : sprint = ${String(s.sprint)} (borné à ${p.sprintDelay})`);
         total++;
       }
     }
@@ -275,7 +251,7 @@ describe("élan progressif (mode 1)", () => {
       max = Math.max(max, Math.abs(s.player.vx));
     }
     expect(max).toBeLessThanOrEqual(MAX_SPEED);
-    expect("sprint" in initialAttempt(ESSAI_LEVEL).player).toBe(false);
+    expect(initialAttempt(ESSAI_LEVEL).player.sprint).toBe(0);
   });
 });
 

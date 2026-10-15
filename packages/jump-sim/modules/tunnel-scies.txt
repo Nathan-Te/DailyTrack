@@ -8,7 +8,7 @@ format: 3
 paliers: 23 4
 repeter: large colonnes 41-41
 variante: large=1 cycle=720
-variante: large=1 cycle=600 +sol-friable
+variante: large=1 cycle=840
 grille:
 ..######################################......
 ..######################################......

@@ -1,0 +1,32 @@
+id: grand-saut
+intention: Prendre tout son élan sur la piste et franchir deux très grands trous de suite : sans l'élan plein, le premier est trop large.
+etiquettes: elan precision
+famille: grand-saut
+mutateurs: fosse sol-friable denivele
+format: 3
+paliers: 9 9
+repeter: piste colonnes 2-2
+repeter: trou colonnes 4-4
+repeter: trou colonnes 8-8
+variante: piste=10 trou=13
+variante: piste=11 trou=13
+variante: piste=10 trou=13 +denivele:2
+variante: piste=11 trou=14
+grille:
+...............
+...............
+...............
+...............
+...............
+...............
+...............
+...............
+...............
+####.###.######
+####.###.######
+####.###.######
+
+zone fosse 4 11
+zone fosse 8 11
+zone sol-friable 0-3 9
+zone denivele 9-14

@@ -13,6 +13,7 @@ import {
   isSpikeTile,
   stepAttempt,
   type AttemptState,
+  type JumpParams,
   type Level,
 } from "../src/index";
 
@@ -27,14 +28,21 @@ import {
 //   - on part de n'importe quel état (entrée à l'arrêt ou lancée) ;
 //   - dans la couche où le but est atteint, on garde le pas exact le plus tôt.
 
-/** Une action : une direction tenue tout le paquet × un motif du bouton de saut. */
+/**
+ * Une action : une direction tenue tout le paquet × un motif du bouton de saut ; plus (lot 8c) le **bref relâchement** : un pas sans rien,
+ * puis droite (`tap`) — il remet l'élan à zéro sans presque rien coûter, d'où l'état canonique « course » au bord d'un palier.
+ */
 const DIRS = [INPUT_RIGHT, 0, INPUT_LEFT];
 const PATTERNS = ["off", "on", "repress"] as const;
 type Pattern = (typeof PATTERNS)[number];
-export const ACTIONS: readonly { dir: number; jump: Pattern }[] = DIRS.flatMap((dir) => PATTERNS.map((jump) => ({ dir, jump })));
+export const ACTIONS: readonly { dir: number; jump: Pattern; tap?: true }[] = [
+  ...DIRS.flatMap((dir) => PATTERNS.map((jump) => ({ dir, jump }))),
+  { dir: INPUT_RIGHT, jump: "off", tap: true },
+];
 
 export function bitsAt(action: number, k: number): number {
   const a = ACTIONS[action]!;
+  if (a.tap && k === 0) return 0;
   const j = a.jump === "on" || (a.jump === "repress" && k > 0) ? INPUT_JUMP : 0;
   return a.dir | j;
 }
@@ -114,10 +122,22 @@ export interface BeamOptions {
    * simple l'emporte (moins de changements, donc moins de prises à la gigue). 0 par défaut.
    */
   changePenalty?: number;
+  /**
+   * Lot 8c, **recherche robuste au raccord** : d'autres départs (le même état d'entrée, décalé dans le pas) joués avec les mêmes commandes.
+   * Une branche est perdue dès que l'un d'eux meurt, arrive, ou remplit `companionLost` ; un compagnon qui remplit `companionDone` (sa sortie
+   * canonique) est mis de côté ; la note est celle du plus en retard. Le but reste celui du départ principal.
+   */
+  companions?: readonly AttemptState[];
+  /** Réglages de la simulation (les défauts ; `NO_SPRINT_PARAMS` pour la mesure « sans élan » du lot 8c, `measure-elan.ts`). */
+  params?: Readonly<JumpParams>;
+  companionDone?(s: AttemptState): boolean;
+  companionLost?(s: AttemptState): boolean;
 }
 
 interface Node {
   state: AttemptState;
+  /** Les compagnons (recherche robuste), null une fois sortis. */
+  others: readonly (AttemptState | null)[];
   parent: Node | null;
   action: number;
   score: number;
@@ -127,7 +147,7 @@ interface Node {
 
 function key(s: AttemptState): string {
   const p = s.player;
-  return `${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}`;
+  return `${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${p.sprint}|${s.crumbles.join("")}|${s.springCell}`;
 }
 
 /** Cherche une suite de commandes qui mène de `start` au but. Rend les commandes (une par pas, la dernière atteint le but), ou null. */
@@ -138,18 +158,30 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
   const perCell = options.perCell ?? 2;
   const penalty = options.changePenalty ?? 0;
   const dist = distanceField(level);
-  const P = DEFAULT_JUMP_PARAMS;
-  let layer: Node[] = [{ state: options.start, parent: null, action: -1, score: 0, changes: 0 }];
+  const P = options.params ?? DEFAULT_JUMP_PARAMS;
+  const companions = options.companions ?? [];
+  let layer: Node[] = [{ state: options.start, others: companions, parent: null, action: -1, score: 0, changes: 0 }];
   for (let t = 0; t < maxTicks; t += chunk) {
     const seen = new Map<string, Node>();
     let best: { node: Node; tick: number } | null = null;
     for (const node of layer) {
       for (let action = 0; action < ACTIONS.length; action++) {
         let s = node.state;
+        const others = node.others.slice();
         let at = -1;
         let lost = false;
-        for (let k = 0; k < chunk; k++) {
-          s = stepAttempt(s, bitsAt(action, k), level, P);
+        for (let k = 0; k < chunk && !lost; k++) {
+          const bits = bitsAt(action, k);
+          s = stepAttempt(s, bits, level, P);
+          for (let i = 0; i < others.length; i++) {
+            const o = others[i];
+            if (!o) continue;
+            const n = stepAttempt(o, bits, level, P);
+            if (options.companionDone?.(n)) others[i] = null;
+            else if (n.status === ATTEMPT_DEAD || n.status === ATTEMPT_FINISHED || options.companionLost?.(n)) lost = true;
+            else others[i] = n;
+          }
+          if (lost) break;
           if (options.goal(s)) {
             at = k + 1;
             break;
@@ -160,14 +192,17 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
           }
         }
         if (lost) continue;
-        const changes = node.changes + (action !== node.action ? 1 : 0) + (ACTIONS[action]!.jump === "repress" ? 1 : 0);
-        const child: Node = { state: s, parent: node, action, score: 0, changes };
+        const changes = node.changes + (action !== node.action ? 1 : 0) + (ACTIONS[action]!.jump === "repress" || ACTIONS[action]!.tap ? 1 : 0);
+        const child: Node = { state: s, others, parent: node, action, score: 0, changes };
         if (at > 0) {
           if (!best || at < best.tick) best = { node: child, tick: at };
           continue;
         }
-        child.score = guideScore(level, dist, s) - penalty * changes;
-        const k = key(s);
+        let score = guideScore(level, dist, s);
+        for (const o of others) if (o) score = Math.min(score, guideScore(level, dist, o));
+        child.score = score - penalty * changes;
+        let k = key(s);
+        for (const o of others) k += o ? `|${o.player.x >> 9},${o.player.y >> 9}` : "|-";
         const prev = seen.get(k);
         if (!prev || child.score > prev.score) seen.set(k, child);
       }
@@ -179,7 +214,7 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
     layer = [];
     for (const n of sorted) {
       const p = n.state.player;
-      const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}`;
+      const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}|${p.sprint >= P.sprintDelay ? 2 : p.sprint > 0 ? 1 : 0}`;
       const used = cells.get(cell) ?? 0;
       if (used >= perCell) continue;
       cells.set(cell, used + 1);

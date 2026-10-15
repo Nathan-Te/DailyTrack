@@ -19,6 +19,9 @@ import {
   initialAttempt,
   isRestedModule,
   replayAttempt,
+  DEFAULT_JUMP_PARAMS,
+  sprintTop,
+  stepAttempt,
   type DailyLevel,
 } from "../src/index";
 import { emptyRun, secs, tiles } from "./vide";
@@ -27,7 +30,8 @@ import { emptyRun, secs, tiles } from "./vide";
 // validation des tirages, tirage retenu, secours, temps de l'auteur (et sa répartition par tranches de 2 s), morceaux par niveau, exigence
 // (somme, par minute, profil par tiers), étiquettes, emploi de chaque morceau, morceaux en commun d'un jour au suivant, hauteur, temps de
 // génération et coût d'un rejeu ; **course à vide** (lot 6) : temps au sol sans appui de saut sur les paliers (par raccord, au total) et plus
-// longue course au sol sans saut. **Toute règle du générateur se juge à ces mesures.** `-- --jours=N` pour un autre nombre de dates.
+// longue course au sol sans saut ; **élan** (lot 8c) : part du temps de l'auteur en élan, coutures franchies en élan plein.
+// **Toute règle du générateur se juge à ces mesures.** `-- --jours=N` pour un autre nombre de dates.
 
 const arg = process.argv.find((a) => a.startsWith("--jours="));
 const DAYS = arg ? Number(arg.slice(8)) : 120;
@@ -127,6 +131,43 @@ line(`| total des raccords, en % du temps de l'auteur | ${num(100 * js.mean)} % 
 line(`| palier de départ (accélération comprise) | ${secs(stats(departs).mean)} s | ${secs(stats(departs).max)} s |`);
 line(`| palier d'arrivée (jusqu'à \`F\`) | ${secs(stats(arrivals).mean)} s | ${secs(stats(arrivals).max)} s |`);
 line(`| plus longue course au sol sans saut (cible : moyenne ≤ 1,2 s, max ≤ 2 s) | ${secs(stats(longT).mean)} s · ${tiles(stats(longU).mean)} tuiles | ${secs(stats(longT).max)} s · ${tiles(stats(longU).max)} tuiles |`);
+line();
+
+// ——— Élan (lot 8c) ———
+// Part du temps de l'auteur passée en élan (au-delà de la vitesse de course : seul l'élan y mène), en élan plein, et coutures (raccords
+// entre deux morceaux) franchies en élan plein (le morceau suivant entre « plein »).
+const P = DEFAULT_JUMP_PARAMS;
+const inSprint: number[] = [];
+const inFull: number[] = [];
+const seamsFull: number[] = [];
+const seamsShare: number[] = [];
+for (const L of levels) {
+  let s = initialAttempt(L.level);
+  let fast = 0;
+  let full = 0;
+  for (const bits of fromRuns(decodeReplay(L.code).runs)) {
+    s = stepAttempt(s, bits, L.level, P);
+    if (Math.abs(s.player.vx) > P.runSpeed) fast++;
+    if (Math.abs(s.player.vx) === sprintTop(P) && s.player.sprint === P.sprintDelay) full++;
+  }
+  inSprint.push(fast / L.authorTicks);
+  inFull.push(full / L.authorTicks);
+  const seams = L.pieces.slice(1);
+  const plein = seams.filter((p) => p.entry === "plein").length;
+  seamsFull.push(plein);
+  seamsShare.push(plein / Math.max(1, seams.length));
+}
+line("### Élan (rediffusion de l'auteur)");
+line(`| mesure | min | moyenne | max |`);
+line(`|---|---|---|---|`);
+line(`| part du temps en élan (au-delà de la course) | ${num(100 * stats(inSprint).min)} % | ${num(100 * stats(inSprint).mean)} % | ${num(100 * stats(inSprint).max)} % |`);
+line(`| part du temps en élan plein (${num((sprintTop(P) * TICK_RATE) / 4096)} tuiles/s) | ${num(100 * stats(inFull).min)} % | ${num(100 * stats(inFull).mean)} % | ${num(100 * stats(inFull).max)} % |`);
+line(`| coutures franchies en élan plein (par niveau) | ${stats(seamsFull).min} | ${num(stats(seamsFull).mean, 2)} | ${stats(seamsFull).max} |`);
+line(`| … en part des coutures | ${num(100 * stats(seamsShare).min)} % | ${num(100 * stats(seamsShare).mean)} % | ${num(100 * stats(seamsShare).max)} % |`);
+const entryCount = { arret: 0, course: 0, plein: 0 };
+for (const L of levels) for (const p of L.pieces) entryCount[p.entry]++;
+line();
+line(`Entrées des morceaux (toutes dates) : arrêt ${entryCount.arret} · course ${entryCount.course} · élan plein ${entryCount.plein}.`);
 line();
 
 // ——— Morceaux, hauteur ———

@@ -12,7 +12,6 @@ variante: trou=2
 variante: trou=3
 variante: trou=2 +fosse
 variante: trou=1 +plafond:pics
-variante: trou=2 +denivele:2
 grille:
 ...............
 ...............

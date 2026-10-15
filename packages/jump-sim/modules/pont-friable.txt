@@ -8,11 +8,9 @@ paliers: 9 9
 repeter: ecart colonnes 6-6
 repeter: ecart colonnes 11-11
 repeter: ecart colonnes 16-16
-variante: ecart=1
 variante: ecart=2
 variante: ecart=3
 variante: ecart=2 +plafond
-variante: ecart=1 +plafond:pics
 variante: ecart=2 +fosse +denivele:2
 grille:
 .......................

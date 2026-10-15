@@ -1,231 +1,244 @@
 {
-  "jumpSimVersion": 3,
-  "jumpGeneratorVersion": 4,
+  "jumpSimVersion": 4,
+  "jumpGeneratorVersion": 5,
   "days": {
     "2026-10-16": {
-      "id": "jour-2026-10-16-g4",
+      "id": "jour-2026-10-16-g5",
       "number": 1,
-      "hash": "8a7c90f7",
-      "width": 274,
-      "height": 54,
+      "hash": "0229725a",
+      "width": 397,
+      "height": 47,
       "pieces": [
-        "demi-tour:3",
-        "ressort-plafond:2",
-        "pont-patrouille:0",
-        "mur-trous:3",
-        "corniches:1",
-        "ascenseur:5",
-        "ressorts-trous:1",
-        "tremplin:0",
-        "cheminee:1"
+        "grand-saut:3",
+        "cheminee-vide:2",
+        "scie-ronde:0",
+        "chute-pics:0",
+        "scie-sol:4",
+        "elan-traversee:0",
+        "elan-friable:3",
+        "tunnel:1",
+        "escalier-friable:0",
+        "plafond-pics:2",
+        "mur-trous:5",
+        "mur-friable:1"
       ],
-      "authorTicks": 3428,
+      "authorTicks": 3515,
       "medals": {
-        "author": 3428,
-        "gold": 3771,
-        "silver": 4457,
-        "bronze": 5485
+        "author": 3515,
+        "gold": 3867,
+        "silver": 4570,
+        "bronze": 5624
       },
       "exigence": {
-        "sum": 25,
-        "rate": 525,
+        "sum": 33,
+        "rate": 675,
         "thirds": [
-          32,
-          17,
-          44
+          20,
+          20,
+          34
+        ]
+      },
+      "chosen": 0,
+      "code": "AQQSam91ci0yMDI2LTEwLTE2LWc1AIIK5gYixggaVl0KXgo2ZAp-Ci5UEbYBggMgQgiSA6YH8gIgEsEB5gJhggRAwgW-AyIukgQQQcIHvgGqA9YBwgaeAaoHPuoCPvoCVvoIbroFlgZibtoD5gRC7gMq_gIyxgQaNtICVtoCDvIExgIajgMSlgMQrgMi7gMidpoHDooEFtoCHqIEJpoFZhImPQgsPhptEEwWMmUJLTbyAS76ATbKAg"
+    },
+    "2026-10-25": {
+      "id": "jour-2026-10-25-g5",
+      "number": 10,
+      "hash": "236146db",
+      "width": 414,
+      "height": 54,
+      "pieces": [
+        "mur-seul:2",
+        "pendule:0",
+        "scie-sol:2",
+        "elan-friable:1",
+        "descente-scies:5",
+        "rebonds-doux:1",
+        "saut-plafond:0",
+        "ressort-mur:0",
+        "cheminee-vide:2",
+        "escalier-friable:2",
+        "elan-traversee:3",
+        "mur-friable:1",
+        "toboggan:1"
+      ],
+      "authorTicks": 3738,
+      "medals": {
+        "author": 3738,
+        "gold": 4112,
+        "silver": 4860,
+        "bronze": 5981
+      },
+      "exigence": {
+        "sum": 35,
+        "rate": 674,
+        "thirds": [
+          20,
+          24,
+          40
+        ]
+      },
+      "chosen": 0,
+      "code": "AQQSam91ci0yMDI2LTEwLTI1LWc1ALoBzgIKngMKngMShgHaAv4BIqYGIEII8gIuugQ28gQIogTuAiqOBsIGhgGyBe4GmgM-wgRGmgQemgU2ggdmwgMm0gQ2ygPGBaIEIMEBQEFiCBoIkgHGAQpeCh5kCn4KHkQhZiXCAyBCCBKGAYIDRuIBhgGiA2bSBCbSAwjaB6YBsgPmAcIGlgGiBz76Aj7qAla6BGYSJj0ILD4abRBMFjJlCS028gEu-gE20gIIggI2ogIxUjEOkgSmAZoFCCyKA2E6XiqOBA"
+    },
+    "2026-11-03": {
+      "id": "jour-2026-11-03-g5",
+      "number": 19,
+      "hash": "95ddef77",
+      "width": 382,
+      "height": 55,
+      "pieces": [
+        "scie-sol:4",
+        "elan-friable:5",
+        "puits:1",
+        "mur-seul:5",
+        "elan-mur:0",
+        "piliers-scie:2",
+        "rebonds-doux:3",
+        "iles-friables:0",
+        "elan-plafond:0",
+        "scie-ronde:1",
+        "ascenseur:0",
+        "tunnel-scies:0",
+        "cheminee-pics:0"
+      ],
+      "authorTicks": 3546,
+      "medals": {
+        "author": 3546,
+        "gold": 3901,
+        "silver": 4610,
+        "bronze": 5674
+      },
+      "exigence": {
+        "sum": 33,
+        "rate": 670,
+        "thirds": [
+          15,
+          22,
+          42
         ]
       },
       "chosen": 3,
-      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc0ACLGAgrWBBLGAboHlgUapgJRfiou8gTmBkImqgO2AbIDrgHaAmFeMYICVqICXpoClgG6AlaqBe4BKB2WAyKWAxqmAwqeAxquAZIHDroCRtoGNuoCJroHxgQy1g7aAW66A17iCBbSHbYB6gauAaIK5gEKHiRFRCKmARIWJIUBCn6CAib6BQ"
-    },
-    "2026-10-25": {
-      "id": "jour-2026-10-25-g4",
-      "number": 10,
-      "hash": "c0dc2e0a",
-      "width": 310,
-      "height": 43,
-      "pieces": [
-        "quinconce:4",
-        "scie-ronde:3",
-        "descente-scies:0",
-        "corniches:3",
-        "iles-scie:5",
-        "ascenseur:1",
-        "escalier-friable:0",
-        "cheminee:0",
-        "saut-plafond:3",
-        "demi-tour-ressorts:1"
-      ],
-      "authorTicks": 3467,
-      "medals": {
-        "author": 3467,
-        "gold": 3814,
-        "silver": 4508,
-        "bronze": 5548
-      },
-      "exigence": {
-        "sum": 22,
-        "rate": 456,
-        "thirds": [
-          10,
-          17,
-          43
-        ]
-      },
-      "chosen": 0,
-      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc0ALoDRpIFPpIFProPLvIgVvoKxgQy1g4qNrIDNmDyATTSCnbSAzbCBWa6AnbaAm7KApYBggNmogdOEm4KHnQQhgEiRiUgZoICNooI1gUyxgeSAg66ESAyGDoZOggJOhEQCiE6MCogCjAiGRIhQCEQEhkaMVIhggEwGlAqKAohKDIJGBowGjAaMBoZGDLOAboF"
-    },
-    "2026-11-03": {
-      "id": "jour-2026-11-03-g4",
-      "number": 19,
-      "hash": "2d70f16e",
-      "width": 302,
-      "height": 51,
-      "pieces": [
-        "demi-tour:1",
-        "saut-plafond:4",
-        "chute-pics:4",
-        "ascenseur:1",
-        "tunnel-scies:0",
-        "escalier:0",
-        "iles-friables:0",
-        "pont-friable:4",
-        "lucarne:1",
-        "quinconce:5",
-        "scie-sol:3",
-        "plafond-pics:2"
-      ],
-      "authorTicks": 3530,
-      "medals": {
-        "author": 3530,
-        "gold": 3883,
-        "silver": 4589,
-        "bronze": 5648
-      },
-      "exigence": {
-        "sum": 24,
-        "rate": 489,
-        "thirds": [
-          11,
-          20,
-          27
-        ]
-      },
-      "chosen": 0,
-      "code": "AQMSam91ci0yMDI2LTExLTAzLWc0ACLGAgreBCKmCLIDjgYy9gciHjgpeixBIiCBAaACISCCAsYEqgF20gM2mgd2mgPWA0qGAdICFooDZoID5gMKHsICpgEKXiUKfgoeZAkdZgoeRCUKXgpeJQkdJOYECmbiAu4DGuYGEoYBwgNG8gJWsgOeAZIHNtoCRuICJooIRooCZqIDVsoJLvIDJooDPuoJ1gIapgMixgeyAjbCBDayBDaiBEbSBg"
+      "code": "AQQSam91ci0yMDI2LTExLTAzLWc1ALIGrgMSTvIDMLoIjgGSBVa6CEFCgQEgwgFI4gIYggEmYiHmAggS9gFIHJYDIoYBygJeRSwmOUJmsgIYsgiGBiKOAfIEZrIDpgMKrgHCA4YBsgVmggM26gOmBRK2BaoGrgMivgMi5gSqAWBSHuIICKIBLvIEHqIECPIB7gMSfrIDdqoDDsICLsIC5gMIDNICxgEKXgoWbApmChZkCl4KPiQlCmYKNiEihgGCBAj6AShMzQEQ3gESbk0SOUayByAy"
     },
     "2026-12-25": {
-      "id": "jour-2026-12-25-g4",
+      "id": "jour-2026-12-25-g5",
       "number": 71,
-      "hash": "3f19e9dd",
-      "width": 292,
-      "height": 54,
+      "hash": "177ec6e5",
+      "width": 378,
+      "height": 50,
       "pieces": [
-        "cheminee:2",
-        "ressort-plafond:0",
-        "descente-scies:2",
-        "cheminee-vide:3",
-        "tunnel:1",
-        "iles-scie:0",
-        "mur-trous:0",
-        "escalier-friable:1",
-        "tremplin:0",
-        "grande-scie:1",
-        "pendule:1"
+        "iles-scie:1",
+        "mur-trous:2",
+        "ressort-mur:2",
+        "elan-friable:2",
+        "chute-pics:0",
+        "rebonds-doux:1",
+        "cheminee-vide:4",
+        "descente-scies:1",
+        "escalier-friable:0",
+        "plafond-pics:0",
+        "saut-long:3",
+        "cheminee-scie:0",
+        "pont-friable:1"
       ],
-      "authorTicks": 3597,
+      "authorTicks": 3614,
       "medals": {
-        "author": 3597,
-        "gold": 3957,
-        "silver": 4677,
-        "bronze": 5756
+        "author": 3614,
+        "gold": 3976,
+        "silver": 4699,
+        "bronze": 5783
       },
       "exigence": {
-        "sum": 26,
-        "rate": 520,
+        "sum": 36,
+        "rate": 717,
         "thirds": [
-          12,
           20,
+          19,
+          38
+        ]
+      },
+      "chosen": 3,
+      "code": "AQQSam91ci0yMDI2LTEyLTI1LWc1ANIBLvIDHooEHqIDPvoEGBKGAkAk5gIihgMQEsYDIqYDIXbCBhbqBA7SAiaiBCbaByDBAUBBYggaCOIIpgG6BZ4H4gIgEsEB5gJhggRAggEmigYOggQ2ggMIer4BEo4BCi5kYZYB0gFWggk2mgYukgUu8gRW4gXuAyr-AjLGBKoBRtoDTsIHRvIDVpoGVgqGARoedTC2AQg0xQEILIoCJpoFCNIEFvoCDpIEJrIE"
+    },
+    "2027-03-28": {
+      "id": "jour-2027-03-28-g5",
+      "number": 164,
+      "hash": "30cf2e52",
+      "width": 405,
+      "height": 56,
+      "pieces": [
+        "scie-sol:4",
+        "elan-friable:5",
+        "cheminee-vide:5",
+        "elan-mur:2",
+        "piliers:4",
+        "descente-scies:3",
+        "puits:1",
+        "ressort-mur:2",
+        "rebonds-doux:3",
+        "tunnel-scies:1",
+        "grand-saut:2",
+        "saut-long:5",
+        "escalier-friable:1"
+      ],
+      "authorTicks": 3513,
+      "medals": {
+        "author": 3513,
+        "gold": 3865,
+        "silver": 4567,
+        "bronze": 5621
+      },
+      "exigence": {
+        "sum": 33,
+        "rate": 676,
+        "thirds": [
+          17,
+          17,
           37
         ]
       },
       "chosen": 2,
-      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc0AMID5gEKHhxNRCKmAQoeJIUBCo4BqgiGAeoeVsoThgIiRCUKXgo-JCGGBUpu-gJGugNu8gY2-gI-ugMu0gI2-gWuAkr-AhK2Awr-AjK2AyKGAdIEVpoETrIERuoDZsoIXpoClgHSAmaiAmaSAWFmNMYEygK2AeoGrgGyCg7CBQ7aCFbCA07yBg"
-    },
-    "2027-03-28": {
-      "id": "jour-2027-03-28-g4",
-      "number": 164,
-      "hash": "d7da9e07",
-      "width": 281,
-      "height": 40,
-      "pieces": [
-        "scie-ronde:2",
-        "descente-scies:0",
-        "saut-plafond:2",
-        "pont-friable:4",
-        "quinconce:3",
-        "ressort-plafond:1",
-        "tunnel:4",
-        "paroi-friable:2",
-        "cheminee-pics:2",
-        "puits-descente:2"
-      ],
-      "authorTicks": 3455,
-      "medals": {
-        "author": 3455,
-        "gold": 3801,
-        "silver": 4492,
-        "bronze": 5528
-      },
-      "exigence": {
-        "sum": 23,
-        "rate": 479,
-        "thirds": [
-          12,
-          20,
-          36
-        ]
-      },
-      "chosen": 4,
-      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc0AIIKJoohVvoMRpoGPuIJNtoCRuICJpIIfroGPsoDZqIIjgHSCm6SAz6KA3biBd4CCvYCKoYDKo4DIpYDGtYHmgIwHO0BGM4BGm5FEklGmggWYEpo6QHCAgiyBWaKBU7aB3bqBEa6CA"
+      "code": "AQQSam91ci0yMDI3LTAzLTI4LWc1ALIGrgMSTvIDMLoIjgGSBVbCBj6NASqWATJlCS02wgE2MvYBCNIIxgYijgHiAzaaCDbCBR7qAyaiBTaiCEFCgQEgwgFI4gIYggEmYiHmAgi6BBghGhEaIBIZGh0aGRogEhkaGTIUCiASIBIdGhkaGRoZogE20gI2mgQmmgQI0gG-AxqGAeoDxgTyAkayAma6Bd4BGj4tCBReCiZEFQpuCl4lCR1mCh5kCR1G0gE2ogIgkgimBjKGAcIIZvoDRpoF3gGKAY4B2gGeBQ"
     },
     "2027-06-21": {
-      "id": "jour-2027-06-21-g4",
+      "id": "jour-2027-06-21-g5",
       "number": 249,
-      "hash": "a00a689d",
-      "width": 314,
-      "height": 53,
+      "hash": "db847d95",
+      "width": 402,
+      "height": 35,
       "pieces": [
-        "scie-sol:3",
-        "scies-jumelles:1",
-        "pendule:2",
-        "iles-scie:0",
-        "tunnel-scies:0",
-        "marelle:4",
-        "escalier:5",
-        "tremplin:0",
-        "piliers:1",
-        "cheminee-scie:3",
-        "ressorts-trous:2"
+        "paroi-friable:3",
+        "iles-scie:4",
+        "chute-pics:2",
+        "pont-friable:1",
+        "elan-traversee:0",
+        "petits-trous:2",
+        "cheminee:2",
+        "quinconce:5",
+        "tremplin:1",
+        "demi-tour:2",
+        "elan-plafond:3",
+        "piliers-scie:0"
       ],
-      "authorTicks": 3646,
+      "authorTicks": 3703,
       "medals": {
-        "author": 3646,
-        "gold": 4011,
-        "silver": 4740,
-        "bronze": 5834
+        "author": 3703,
+        "gold": 4074,
+        "silver": 4814,
+        "bronze": 5925
       },
       "exigence": {
-        "sum": 25,
-        "rate": 493,
+        "sum": 34,
+        "rate": 661,
         "thirds": [
-          12,
-          26,
-          28
+          14,
+          27,
+          37
         ]
       },
-      "chosen": 4,
-      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc0AJIE1gIingMa3gf6AZYB4gPGB6IDProDRroHNvoCProDLtICNsoHdpoD1gNKhgHSAhaKA2aCA-YDCh7CAqYBCl4lCn4KHmQJHWYKHkQlCl4KXiUJHSTmBIoCrgGaCI4BigZu6gJW-gemBdICtgHqBq4B-goOogM-wgIuogNGogIuygcIXAkVjgEKHiQlTknmARIueEEmqgsOihk"
+      "chosen": 3,
+      "code": "AQQSam91ci0yMDI3LTA2LTIxLWc1AMIB5gMKngMgpgMKvgMK_gYkRgg6HvICLvIDHtICFoIFICIIEhbyAaUBYBmoASEgwgFg4gEkggMIygQW-gIOkgQmwgSOAYIEngUalgHyBp4B-gb-AiKmAyLmA-oBfuIFfpoGrgEKHmQoXaYBCh6MAUEaJW7iBxiaAi6qAyyKBC6aAxaqAxgSCMICxgGaBlbCB35NIqYCEm4y_gUIOgjKCIYEEv4DIuYEEo4B4gMOwgLeAYoE3gGiA4YBqgU"
     }
   }
 }

@@ -10,7 +10,6 @@ repeter: trou colonnes 14-14
 variante: trou=1
 variante: trou=2
 variante: trou=1 +plafond:pics
-variante: trou=1 +fosse
 variante: trou=2 +denivele:1
 grille:
 .####################.

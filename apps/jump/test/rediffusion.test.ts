@@ -78,7 +78,8 @@ const BROKEN: KeyValue = {
 const memoryOf = (store: KeyValue | null, day = "2026-10-14", level: Level = ESSAI_LEVEL, levelId = "essai") => new DayMemory({ store, level, levelId, today: () => day });
 
 /** Essais fictifs de l'essai (déterministes), avec morts et reprises. */
-const DEMO = demoAttempts(ESSAI_LEVEL, SOLUTION, 42, { attempts: 16 });
+// Lot 8c : 32 essais (16 avant) — avec la solution plus rapide de l'élan, les 16 premiers n'ont plus d’arrivée avec des morts.
+const DEMO = demoAttempts(ESSAI_LEVEL, SOLUTION, 42, { attempts: 32 });
 const finished = (): RecordedAttempt => ({ replay: SOLUTION, end: "arrivée" });
 
 describe("mémoire du jour", () => {
@@ -89,7 +90,7 @@ describe("mémoire du jour", () => {
     for (const e of DEMO) m.recordEssai(e, false);
     const rec = m.recordEssai(finished(), false)!;
     expect(rec.result.finished).toBe(true);
-    expect(rec.newBest || m.best!.time <= 2595).toBe(true);
+    expect(rec.newBest || m.best!.time <= 2218).toBe(true);
     expect(m.best!.time).toBe(Math.min(...[...DEMO, finished()].map((e) => replayAttempt(ESSAI_LEVEL, e.replay)).filter((r) => r.finished).map((r) => r.time)));
     const lives = [...DEMO, finished()].reduce((n, e) => n + replayAttempt(ESSAI_LEVEL, e.replay).lives.filter((l) => l.ticks > 0).length, 0);
     expect(m.lives).toHaveLength(Math.min(lives, MAX_LIVES));
@@ -112,7 +113,7 @@ describe("mémoire du jour", () => {
     // Quelqu'un réécrit le temps à la main : au chargement, le rejeu redonne le vrai temps.
     const key = "jump:meilleur:essai";
     store.setItem(key, JSON.stringify({ ...JSON.parse(store.getItem(key)!), time: 100 }));
-    expect(memoryOf(store).best!.time).toBe(2595);
+    expect(memoryOf(store).best!.time).toBe(2218);
     // Une rediffusion qui ne finit pas n'est pas un meilleur essai.
     store.setItem(key, JSON.stringify({ code: encodeReplay(attemptReplay("essai", [2, 2, 2])), time: 3, deaths: 0, essai: 1 }));
     expect(memoryOf(store).best).toBeNull();
@@ -145,7 +146,7 @@ describe("mémoire du jour", () => {
   it("lot 4 : une mémoire laissée par la version 2 (points de passage touchés) est purgée au chargement, sans bruit", () => {
     // Ce que la version 2 a réellement écrit : la solution de l'essai codée avec `JUMP_SIM_VERSION` = 2, une vie, une mort.
     const V2_SOLUTION = "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw";
-    expect(JUMP_SIM_VERSION).toBe(3);
+    expect(JUMP_SIM_VERSION).toBe(4);
     expect(decodeReplay(V2_SOLUTION).simVersion).toBe(2);
     const store = new MemStore();
     const fresh = memoryOf(store);
@@ -164,6 +165,29 @@ describe("mémoire du jour", () => {
     const meta3 = JSON.parse(store.getItem("jump:jour:essai") ?? JSON.stringify({ ...meta, simVersion: 3 }));
     store.setItem("jump:jour:essai", JSON.stringify({ ...meta3, simVersion: JUMP_SIM_VERSION, level: meta.level, day: meta.day }));
     store.setItem("jump:meilleur:essai", JSON.stringify({ code: V2_SOLUTION, time: 2595, deaths: 0, essai: 1 }));
+    expect(memoryOf(store).best).toBeNull();
+  });
+
+  it("lot 8c : une mémoire laissée par la version 3 (sans élan) est purgée au chargement, sans bruit", () => {
+    // Ce que la version 3 a réellement écrit : la solution de l'essai d'avant l'élan (21,625 s), codée avec `JUMP_SIM_VERSION` = 3.
+    const V3_SOLUTION = "AQMFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw";
+    expect(decodeReplay(V3_SOLUTION).simVersion).toBe(3);
+    const store = new MemStore();
+    const fresh = memoryOf(store);
+    fresh.recordEssai(finished(), false);
+    const meta = JSON.parse(store.getItem("jump:jour:essai")!);
+    store.setItem("jump:jour:essai", JSON.stringify({ ...meta, simVersion: 3 }));
+    store.setItem("jump:meilleur:essai", JSON.stringify({ code: V3_SOLUTION, time: 2595, deaths: 0, essai: 1 }));
+    store.setItem("jump:vies:essai", JSON.stringify([{ code: V3_SOLUTION, essai: 1 }]));
+    store.setItem("jump:morts:essai", JSON.stringify([{ x: 4096, y: 4096, cause: 1 }]));
+    const m = memoryOf(store);
+    expect(m.best).toBeNull();
+    expect(m.lives).toEqual([]);
+    expect(m.deaths).toEqual([]);
+    expect(store.getItem("jump:meilleur:essai")).toBeNull();
+    // Même avec une méta à jour, une rediffusion de la version 3 n'est jamais rejouée comme meilleur essai.
+    store.setItem("jump:jour:essai", JSON.stringify({ ...meta, simVersion: JUMP_SIM_VERSION }));
+    store.setItem("jump:meilleur:essai", JSON.stringify({ code: V3_SOLUTION, time: 2595, deaths: 0, essai: 1 }));
     expect(memoryOf(store).best).toBeNull();
   });
 
@@ -218,7 +242,7 @@ describe("mémoire du jour", () => {
       for (const e of DEMO.slice(0, 4)) expect(() => m.recordEssai(e, false)).not.toThrow();
       const rec = m.recordEssai(finished(), false)!;
       expect(rec.result.finished).toBe(true);
-      expect(m.best!.time).toBeLessThanOrEqual(2595);
+      expect(m.best!.time).toBeLessThanOrEqual(2218);
       expect(m.recordDeath({ x: 1, y: 1, cause: 1 }, false)).toBe(true);
       expect(m.liveReplays().length).toBeGreaterThan(0);
       expect(m.storedSize()).toBe(0);
@@ -241,7 +265,7 @@ describe("mémoire du jour", () => {
 
   it("importe une rediffusion comme meilleur essai si le rejeu la valide ; refuse les autres", () => {
     const m = memoryOf(new MemStore());
-    expect(m.importBest(ESSAI_SOLUTION_CODE)).toEqual({ ok: true, time: 2595 });
+    expect(m.importBest(ESSAI_SOLUTION_CODE)).toEqual({ ok: true, time: 2218 });
     expect(m.importBest(encodeReplay(attemptReplay("essai", [2]))).ok).toBe(false);
     expect(m.importBest("@@").ok).toBe(false);
     expect(m.importBest(encodeReplay({ ...SOLUTION, levelId: "dangers" })).ok).toBe(false);
@@ -295,7 +319,7 @@ describe("carnage", () => {
 
   it("calendrier : les vies nées au départ partent avec le héros, les autres au moment où il passe leur point de passage", () => {
     const { checkpoints, heroTicks } = departures(ESSAI_LEVEL, SOLUTION);
-    expect(heroTicks).toBe(2595);
+    expect(heroTicks).toBe(2218);
     // La solution passe les cinq points dans l'ordre.
     expect(checkpoints.every((t) => t > 0)).toBe(true);
     for (let c = 1; c < checkpoints.length; c++) expect(checkpoints[c]!).toBeGreaterThan(checkpoints[c - 1]!);

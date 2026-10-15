@@ -10,9 +10,7 @@ repeter: pics colonnes 9-9
 repeter: pics colonnes 14-14
 repeter: pics colonnes 19-19
 variante: pics=1
-variante: pics=2
 variante: pics=3
-variante: pics=2 +sol-friable
 variante: pics=1 +denivele:2
 grille:
 .######################..

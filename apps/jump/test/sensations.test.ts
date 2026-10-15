@@ -217,7 +217,63 @@ S....#....
   it("recopie le pas et la source ; la liste des noms est complète", () => {
     const { events } = play(FLAT, [[R | J, 2]]);
     expect(events[0]).toMatchObject({ kind: "saut", tick: 0, source: "jeu" });
-    expect(EVENT_KINDS).toHaveLength(15); // lot 8b : `derapage`
+    expect(EVENT_KINDS).toHaveLength(17); // lot 8b : `derapage` ; lot 8c : `elanDebut`, `elanPerdu`
+  });
+});
+
+describe("lot 8c : l'élan (elanDebut, elanPerdu)", () => {
+  const HALL = parseLevel([".".repeat(80), ".".repeat(80), "S" + ".".repeat(78) + "F", "#".repeat(80)].join("\n"));
+  const WALLED = parseLevel([".".repeat(40), ".".repeat(30) + "#........F", "S" + ".".repeat(29) + "#.........", "#".repeat(40)].join("\n"));
+
+  it("`elanDebut` quand le compteur atteint `sprintDelay`, une seule fois ; `elanPerdu` au lâcher, avec la vitesse de la perte", () => {
+    const { events } = play(HALL, [
+      [R, 150],
+      [0, 3],
+      [R, 30],
+    ]);
+    const start = only(events, "elanDebut");
+    expect(start).toHaveLength(1);
+    expect(start[0]!.side).toBe(1);
+    const lost = only(events, "elanPerdu");
+    expect(lost).toHaveLength(1);
+    expect(lost[0]!.speed).toBeGreaterThan(11); // perdu en élan, au-delà de la course
+    expect(lost[0]!.tick).toBe(150);
+    // Le début vient après la mise en vitesse (23 pas) et `sprintDelay` pas à pleine vitesse.
+    expect(start[0]!.tick).toBeGreaterThanOrEqual(DEFAULT_JUMP_PARAMS.sprintDelay + 20);
+    expect(start[0]!.tick).toBeLessThan(DEFAULT_JUMP_PARAMS.sprintDelay + 30);
+  });
+
+  it("perdu contre un mur ; rien à la mort ni sans élan (`sprintMode` 0)", () => {
+    const { events } = play(WALLED, [[R, 320]]);
+    expect(only(events, "elanDebut")).toHaveLength(1);
+    expect(only(events, "elanPerdu")).toHaveLength(1);
+    const off = { ...DEFAULT_JUMP_PARAMS, sprintMode: 0 };
+    let s = initialAttempt(HALL);
+    const seen: GameEvent[] = [];
+    for (let t = 0; t < 200; t++) {
+      const next = stepAttempt(s, R, HALL, off);
+      seen.push(...eventsBetween(s, next, HALL, off, t));
+      s = next;
+    }
+    expect(kinds(seen)).not.toContain("elanDebut");
+    expect(kinds(seen)).not.toContain("elanPerdu");
+  });
+
+  it("un son discret et montant pendant la prise d'élan, un souffle léger quand il est perdu", () => {
+    const up = soundFor({ kind: "elanDebut", side: 1, tick: 0, source: "jeu", x: 0, y: 0 })!;
+    expect(up.id).toBe("elanDebut");
+    expect(up.priority).toBe(0);
+    const tones = up.layers.filter((l) => l.type === "tone");
+    expect(tones.length).toBeGreaterThan(0);
+    for (const l of tones) expect(l.to!).toBeGreaterThan(l.freq); // montant
+    expect(up.duration).toBeGreaterThanOrEqual(0.6); // toute la prise d'élan (≈ 0,66 s)
+    for (const l of up.layers) expect(l.gain).toBeLessThanOrEqual(0.05); // discret
+    const down = soundFor({ kind: "elanPerdu", speed: 18, tick: 0, source: "jeu", x: 0, y: 0 })!;
+    expect(down.id).toBe("elanPerdu");
+    expect(down.layers.every((l) => l.type === "noise")).toBe(true); // un souffle
+    expect(down.layers[0]!.to!).toBeLessThan(down.layers[0]!.freq);
+    for (const l of down.layers) expect(l.gain).toBeLessThanOrEqual(0.07);
+    expect(soundFor({ kind: "elanPerdu", speed: 11, tick: 0, source: "jeu", x: 0, y: 0 })!.layers[0]!.gain).toBeLessThan(down.layers[0]!.gain);
   });
 });
 

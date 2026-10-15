@@ -6,11 +6,9 @@ mutateurs: plafond garde denivele
 format: 3
 paliers: 19 13
 repeter: ecart colonnes 5-5
-variante: ecart=1
-variante: ecart=2
-variante: ecart=1 +plafond:pics
-variante: ecart=2 +garde
 variante: ecart=1 +denivele:3
+variante: ecart=1 +denivele:4
+variante: ecart=1 +plafond:pics +denivele:3
 grille:
 .............
 .............

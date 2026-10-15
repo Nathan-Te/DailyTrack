@@ -11,7 +11,6 @@ repeter: ecart colonnes 16-16
 repeter: ecart colonnes 26-26
 variante: ecart=1 cycle=420
 variante: ecart=1 cycle=300
-variante: ecart=1 cycle=480 +fosse
 variante: ecart=1 cycle=420 +plafond
 grille:
 ......................................................

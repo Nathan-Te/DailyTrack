@@ -19,8 +19,15 @@ import {
 // Le catalogue des morceaux vu par le jeu (lot 4), **logique pure** (testée sans DOM) : l'ordre de la galerie, le morceau suivant, la
 // solution à regarder et le temps de référence affiché à l'arrivée.
 
-/** Colonnes du couloir de lancement ajoutées devant le palier d'entrée quand on joue un morceau en élan. */
-export const LAUNCH_TILES = 5;
+/** Colonnes du couloir de lancement ajoutées devant le palier d'entrée quand on joue un morceau à la course (lot 8c : 3, 5 avant ; plus long, l'élan s'enclenche avant le morceau). */
+export const LAUNCH_TILES = 3;
+/** Lot 8c : en élan plein, le couloir est plus long (≈ 15 tuiles pour prendre tout son élan depuis l'arrêt). */
+export const SPRINT_LAUNCH_TILES = 18;
+
+/** Le couloir de lancement d'une entrée (0 à l'arrêt). */
+export function launchTilesFor(entry: ModuleEntry): number {
+  return entry === "plein" ? SPRINT_LAUNCH_TILES : entry === "course" ? LAUNCH_TILES : 0;
+}
 
 export const TAG_LABELS: Record<ModuleTag, string> = {
   mural: "mural",
@@ -30,6 +37,7 @@ export const TAG_LABELS: Record<ModuleTag, string> = {
   friable: "friable",
   ressort: "ressort",
   respiration: "respiration",
+  elan: "élan",
 };
 
 export interface VariantInfo {
@@ -39,7 +47,7 @@ export interface VariantInfo {
   /** Mutateurs de la variante (lot 7), écrits comme dans le fichier (« +plafond:pics +denivele:2 »), vide sans mutateur. */
   mutations: string;
   exigence: number;
-  /** Durées des solutions (pas), à l'arrêt et en élan ; null : pas de solution stockée pour cette version. */
+  /** Durées des solutions (pas), à l'arrêt, à la course et en élan plein ; null : pas de solution stockée pour cette version. */
   ticks: Record<ModuleEntry, number | null>;
 }
 
@@ -109,14 +117,15 @@ export function solutionReplay(id: string, variant: number, entry: ModuleEntry):
 }
 
 /**
- * Pas pour courir le couloir de lancement (départ à l'arrêt, droite tenue) jusqu'à l'endroit où part la solution en élan : ce que le temps
- * de référence ajoute quand on joue un morceau en élan (la solution, elle, part déjà lancée).
+ * Pas pour courir le couloir de lancement (départ à l'arrêt, droite tenue) jusqu'à l'endroit où part la solution lancée : ce que le temps
+ * de référence ajoute quand on joue un morceau lancé (la solution, elle, part déjà lancée).
  */
-export function launchTicks(id: string, variant: number): number {
-  const run = buildModule(id, variant, { lancement: LAUNCH_TILES });
+export function launchTicks(id: string, variant: number, entry: ModuleEntry = "course"): number {
+  const tiles = launchTilesFor(entry);
+  const run = buildModule(id, variant, { lancement: tiles });
   const plain = buildModule(id, variant);
-  // Dans le niveau à couloir, le départ du morceau sans couloir est `LAUNCH_TILES` colonnes plus loin, à la même place dans sa tuile.
-  const target = initialAttempt(plain.level).player.x + LAUNCH_TILES * UNITS_PER_TILE;
+  // Dans le niveau à couloir, le départ du morceau sans couloir est `tiles` colonnes plus loin, à la même place dans sa tuile.
+  const target = initialAttempt(plain.level).player.x + tiles * UNITS_PER_TILE;
   let s = initialAttempt(run.level);
   let t = 0;
   while (t < 600 && s.player.x < target) {
@@ -126,9 +135,9 @@ export function launchTicks(id: string, variant: number): number {
   return t;
 }
 
-/** Temps de référence à l'arrivée (pas) : la solution stockée, plus le couloir quand on joue en élan (`corridor`) ; null sans solution. */
-export function referenceTicks(id: string, variant: number, entry: ModuleEntry, corridor = entry === "elan"): number | null {
+/** Temps de référence à l'arrivée (pas) : la solution stockée, plus le couloir quand on joue lancé (`corridor`) ; null sans solution. */
+export function referenceTicks(id: string, variant: number, entry: ModuleEntry, corridor = entry !== "arret"): number | null {
   const s = moduleSolutions(id, variant)?.[entry];
   if (!s) return null;
-  return corridor ? s.ticks + launchTicks(id, variant) : s.ticks;
+  return corridor && entry !== "arret" ? s.ticks + launchTicks(id, variant, entry) : s.ticks;
 }

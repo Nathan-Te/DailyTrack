@@ -9,7 +9,8 @@ import {
   PLAYER_WIDTH,
   SANDBOX_LEVEL,
   SANDBOX_MARKS,
-  SPRINT_TRIAL_PARAMS,
+  NO_SPRINT_PARAMS,
+  sprintTop,
   TILE_SOLID,
   boxHits,
   initialPlayer,
@@ -387,6 +388,40 @@ describe("collisions", () => {
     expect(checks).toBe(8 * 40 * 12);
   });
 
+  it("lot 8c : aucune traversée en élan plein non plus, dans les 8 directions (défauts, puis élan poussé à MAX_SPEED)", () => {
+    const rows: string[] = [];
+    for (let r = 0; r < 16; r++) rows.push("#" + ".".repeat(16) + "#");
+    for (let r = 4; r <= 11; r++) {
+      const line = rows[r]!.split("");
+      for (let c = 5; c <= 12; c++) if (r === 4 || r === 11 || c === 5 || c === 12) line[c] = "#";
+      rows[r] = line.join("");
+    }
+    rows[1] = "#S" + ".".repeat(14) + "F#";
+    rows.push("#".repeat(18));
+    const lv = level(rows);
+    const inside = (s: PlayerState) => s.x >= 6 * T && s.x + PLAYER_WIDTH <= 12 * T && s.y >= 5 * T && s.y + PLAYER_HEIGHT <= 11 * T;
+    const rng = new Rng(818);
+    let checks = 0;
+    for (const p of [P, { ...P, sprintSpeed: MAX_SPEED, sprintAccel: MAX_SPEED, sprintDelay: 0, gravity: 0, fallSpeed: MAX_SPEED }]) {
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]] as const) {
+        const input = dx > 0 ? R : L;
+        for (let trial = 0; trial < 40; trial++) {
+          let s = floatAt(lv, 6 * T + rng.int(6 * T - PLAYER_WIDTH), 5 * T + rng.int(6 * T - PLAYER_HEIGHT));
+          // En élan plein : compteur au maximum, à la vitesse d'élan (posé ou non), poussé dans la direction.
+          s = { ...s, sprint: p.sprintDelay, vx: dx * sprintTop(p), vy: dy * MAX_SPEED };
+          for (let t = 0; t < 12; t++) {
+            s = stepPlayer({ ...s, vx: s.vx === 0 ? dx * sprintTop(p) : s.vx, vy: dy === 0 ? s.vy : dy * MAX_SPEED }, input, lv, p);
+            expect(boxHits(lv, s.x, s.y, PLAYER_WIDTH, PLAYER_HEIGHT)).toBe(false);
+            expect(inside(s), `direction (${dx}, ${dy})`).toBe(true);
+            expect(s.sprint).toBeLessThanOrEqual(p.sprintDelay);
+            checks++;
+          }
+        }
+      }
+    }
+    expect(checks).toBe(2 * 8 * 40 * 12);
+  });
+
   it("un couloir d'une tuile de haut se traverse en courant", () => {
     const [col, len] = SANDBOX_MARKS.corridor;
     let s = standAt(SANDBOX_LEVEL, col - 3, FLOOR);
@@ -500,12 +535,14 @@ describe("bac à sable", () => {
 });
 
 describe("intégrité (fuzz)", () => {
-  function assertSound(s: PlayerState, lv: Level, where: string) {
+  function assertSound(s: PlayerState, lv: Level, where: string, p: Readonly<JumpParams>) {
     for (const [k, v] of Object.entries(s)) {
       if (!Number.isInteger(v) || Object.is(v, -0)) throw new Error(`${where} : ${k} = ${String(v)} (entier sans −0 attendu)`);
     }
     if (Math.abs(s.vx) > MAX_SPEED || Math.abs(s.vy) > MAX_SPEED) throw new Error(`${where} : vitesse ${s.vx}, ${s.vy}`);
     if (boxHits(lv, s.x, s.y, PLAYER_WIDTH, PLAYER_HEIGHT)) throw new Error(`${where} : la boîte est dans un mur (${s.x}, ${s.y})`);
+    if (s.sprint < 0 || s.sprint > Math.max(0, p.sprintDelay)) throw new Error(`${where} : compteur d'élan ${s.sprint} hors de [0, ${p.sprintDelay}]`);
+    if (p.sprintMode !== 1 && s.sprint !== 0) throw new Error(`${where} : compteur d'élan ${s.sprint} sans élan`);
     for (const k of ["ground", "held", "jumping"] as const) if (s[k] !== 0 && s[k] !== 1) throw new Error(`${where} : ${k} = ${s[k]}`);
     for (const k of ["wallSide", "slide", "lockDir"] as const) if (s[k] < -1 || s[k] > 1) throw new Error(`${where} : ${k} = ${s[k]}`);
   }
@@ -531,7 +568,7 @@ describe("intégrité (fuzz)", () => {
           left = rng.int(40);
         }
         s = stepPlayer(s, input, lv, p);
-        assertSound(s, lv, `graine ${seed}, essai ${run}, pas ${t}`);
+        assertSound(s, lv, `graine ${seed}, essai ${run}, pas ${t}`, p);
         total++;
       }
     }
@@ -547,13 +584,14 @@ describe("intégrité (fuzz)", () => {
     const total = fuzz(7, 60, 1000, (rng) => {
       const p = { ...P };
       for (const k of keys) p[k] = rng.chance(10) ? rng.int(5000) : rng.int(3 * P[k] + 2);
+      p.sprintMode = rng.int(2);
       return p;
     });
     expect(total).toBe(60_000);
   });
 
-  it("lot 8b : élan progressif allumé (valeurs de départ, puis au hasard) : même intégrité", () => {
-    expect(fuzz(8, 30, 1500, () => ({ ...P, ...SPRINT_TRIAL_PARAMS }))).toBe(45_000);
+  it("élan progressif (lot 8b, par défaut depuis le 8c) : éteint, au hasard, poussé à l'extrême : même intégrité, compteur borné", () => {
+    expect(fuzz(8, 30, 1500, () => ({ ...NO_SPRINT_PARAMS }))).toBe(45_000);
     const total = fuzz(81, 40, 1000, (rng) => ({ ...P, sprintMode: 1, sprintSpeed: rng.int(4000), sprintDelay: rng.int(300), sprintAccel: rng.chance(10) ? rng.int(5000) : rng.int(40) }));
     expect(total).toBe(40_000);
   });

@@ -55,7 +55,7 @@ import {
   restGroup,
   fromRuns,
   initialAttempt,
-  isCleanRun,
+  canonicalOf,
   moduleSolutions,
   moduleStart,
   stepAttempt,
@@ -234,11 +234,20 @@ describe("niveau du jour : assemblage", () => {
     }
   });
 
-  it("premier morceau à l'arrêt, tous les suivants en élan", () => {
+  it("premier morceau à l'arrêt ; chacun des suivants entre dans l'état où le précédent est sorti (lot 8c : course ou élan plein)", () => {
     for (const L of levels) {
       expect(L.pieces[0]!.entry).toBe("arret");
-      for (const p of L.pieces.slice(1)) expect(p.entry).toBe("elan");
+      L.pieces.slice(1).forEach((p, i) => {
+        const prev = L.pieces[i]!;
+        expect(p.entry, `${L.date} ${p.id}`).toBe(moduleSolutions(prev.id, prev.variant)![prev.entry]!.exit);
+      });
     }
+    // L'élan passe les coutures : sur les 60 dates, des morceaux entrent en élan plein.
+    expect(levels.flatMap((L) => L.pieces).filter((p) => p.entry === "plein").length).toBeGreaterThan(0);
+  });
+
+  it("lot 8c : au moins un morceau « elan » par niveau", () => {
+    for (const L of levels) expect(L.pieces.some((p) => p.tags.includes("elan")), L.date).toBe(true);
   });
 
   it("paliers partagés (lot 6) : le palier de sortie d'un morceau est le palier d'entrée du suivant, sans colonne de raccord", () => {
@@ -302,7 +311,7 @@ describe("niveau du jour : assemblage", () => {
     }
   });
 
-  it("la solution suivante démarre au pas de sortie de la précédente : centre au bord du palier, en course propre, puis les commandes du morceau en élan", () => {
+  it("la solution suivante démarre au pas de sortie de la précédente : centre au bord du palier, dans un état canonique, puis les commandes du morceau pour cette entrée", () => {
     for (const L of levels.slice(0, 20)) {
       let s = initialAttempt(L.level);
       const inputs = fromRuns(L.replay.runs);
@@ -314,10 +323,10 @@ describe("niveau du jour : assemblage", () => {
           // Le pas qui vient d'être joué est la sortie du morceau précédent : le centre vient de passer le bord droit du palier partagé.
           expect(centerCol(s.player), `${L.date} ${p.id}`).toBe(p.col0);
           expect(prevCol, `${L.date} ${p.id}`).toBeLessThan(p.col0);
-          expect(isCleanRun(s.player), `${L.date} ${p.id}`).toBe(true);
+          expect(canonicalOf(s.player), `${L.date} ${p.id}`).toBe(p.entry);
           expect(s.player.y + PLAYER_HEIGHT).toBe(p.entryRow * T);
-          // Puis la solution en élan du morceau, depuis son entrée, sans course entre les deux.
-          const sol = moduleSolutions(p.id, p.variant)!.elan!;
+          // Puis la solution du morceau pour cette entrée (course ou élan plein), depuis son entrée, sans course entre les deux.
+          const sol = moduleSolutions(p.id, p.variant)![p.entry]!;
           // (Selon la position d'entrée, la sortie peut venir quelques pas après la fin des commandes stockées : droite tenue, `RACCORD_TAIL`.)
           const own = [...fromRuns(decodeReplay(sol.code).runs), ...new Array<number>(RACCORD_TAIL).fill(INPUT_RIGHT)];
           expect(inputs.slice(p.start, p.end), `${L.date} ${p.id}`).toEqual(own.slice(sol.entryTick, sol.entryTick + p.end - p.start));
@@ -357,7 +366,7 @@ describe("niveau du jour : assemblage", () => {
         if (last) expect(s.status, where).toBe(ATTEMPT_FINISHED);
         else {
           expect(centerCol(s.player), where).toBe(L.pieces[k + 1]!.col0);
-          expect(isCleanRun(s.player), where).toBe(true);
+          expect(canonicalOf(s.player), where).toBe(sol.exit);
         }
       });
     }
