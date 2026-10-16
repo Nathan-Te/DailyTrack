@@ -3,6 +3,7 @@ import {
   JUMP_PARAM_KEYS,
   MAX_SPEED,
   SPRINT_PARAM_KEYS,
+  SPRINT_TRIAL_PARAMS,
   TICK_RATE,
   UNITS_PER_TILE,
   isDefaultJumpParams,
@@ -16,8 +17,7 @@ import { storageKey } from "./storage";
 // Panneau de réglages du personnage (`?debug&tune`) : un curseur par réglage, en unités humaines, la valeur entière à côté. Effet immédiat
 // (la session lit les réglages à chaque pas). « Copier les valeurs » donne le JSON à coller (les valeurs retenues deviennent les défauts,
 // version +1). Une partie aux réglages modifiés porte le drapeau `tuned` et ne sera jamais enregistrée.
-// Lot 8b : une section « Élan progressif » (interrupteur et trois curseurs) ; essai au lot 8b, **actif par défaut depuis le lot 8c** :
-// l'éteindre (ou changer un curseur) rend la partie `tuned`, comme tout autre réglage.
+// Lot 8b : une section « Élan progressif (essai) » (interrupteur et trois curseurs) ; éteint par défaut, allumé la partie est `tuned`.
 
 type Unit = "speed" | "accel" | "ticks" | "length";
 
@@ -32,7 +32,7 @@ export interface TuneSlider<K extends keyof JumpParams = JumpParamKey> {
   hint?: (p: Readonly<JumpParams>) => string;
 }
 
-/** Les curseurs de l'élan (section à part du panneau ; défauts du lot 8c dans `DEFAULT_JUMP_PARAMS`). */
+/** Lot 8b : les curseurs de l'essai d'élan (section à part, sans défaut : valeurs de départ `SPRINT_TRIAL_PARAMS`). */
 export type SprintSlider = TuneSlider<Exclude<SprintParamKey, "sprintMode">>;
 
 const T = UNITS_PER_TILE;
@@ -102,10 +102,10 @@ export const TUNE_SLIDERS: readonly TuneSlider[] = [
   { key: "springSpeed", label: "Ressort : vitesse de lancement", unit: "speed", min: 0, max: 2048, hint: (p) => `≈ ${num(jumpHeight(Math.min(p.springSpeed, MAX_SPEED) - p.gravity, p.gravity), 2)} tuiles de haut` },
 ];
 
-/** Valeur d'un réglage d'élan. */
-export const sprintValue = (p: Readonly<JumpParams>, key: SprintParamKey): number => p[key];
+/** Valeur d'un réglage d'élan, ou sa valeur de départ s'il n'est pas encore réglé. */
+export const sprintValue = (p: Readonly<JumpParams>, key: SprintParamKey): number => p[key] ?? SPRINT_TRIAL_PARAMS[key];
 
-const sprintParams = (p: Readonly<JumpParams>): JumpParams => p;
+const sprintParams = (p: Readonly<JumpParams>): JumpParams => ({ ...p, sprintSpeed: sprintValue(p, "sprintSpeed"), sprintAccel: sprintValue(p, "sprintAccel") });
 
 export const SPRINT_SLIDERS: readonly SprintSlider[] = [
   { key: "sprintSpeed", label: "Élan : vitesse maximale", unit: "speed", min: 375, max: 1500, hint: (p) => `+${num(((sprintTop(sprintParams(p)) - p.runSpeed) * R) / T)} tuiles/s sur la course` },
@@ -122,19 +122,27 @@ export const SPRINT_SLIDERS: readonly SprintSlider[] = [
 
 export const TUNE_STORAGE_KEY = storageKey("tune");
 
-/** Réglages en JSON, dans l'ordre des défauts (élan compris) : prêts à coller dans `DEFAULT_JUMP_PARAMS`. */
+/** Réglages en JSON, dans l'ordre des défauts : prêts à coller dans `DEFAULT_JUMP_PARAMS`. L'élan n'y est que s'il est allumé. */
 export function paramsJson(params: Readonly<JumpParams>): string {
-  return JSON.stringify(params, [...JUMP_PARAM_KEYS], 2);
+  const keys: string[] = [...JUMP_PARAM_KEYS];
+  if (params.sprintMode) for (const k of SPRINT_PARAM_KEYS) if (params[k] !== undefined) keys.push(k);
+  return JSON.stringify(params, keys, 2);
 }
 
-/** Allume l'élan (le défaut) ou l'éteint (ses réglages restent, sans effet ; la partie devient `tuned`). */
+/** Lot 8b : allume l'élan (les réglages absents prennent leur valeur de départ) ou l'éteint (ses réglages restent, sans effet). */
 export function setSprint(params: JumpParams, on: boolean): void {
-  params.sprintMode = on ? 1 : 0;
+  if (!on) {
+    params.sprintMode = 0;
+    return;
+  }
+  for (const k of SPRINT_PARAM_KEYS) params[k] = sprintValue(params, k);
+  params.sprintMode = 1;
 }
 
-/** Remet les défauts (l'élan revient, actif). */
+/** Remet les défauts : l'élan disparaît (ses réglages aussi). */
 export function resetParams(params: JumpParams): void {
   Object.assign(params, DEFAULT_JUMP_PARAMS);
+  for (const k of SPRINT_PARAM_KEYS) delete params[k];
 }
 
 /** Lit des réglages gardés : seules les clés connues, entières et dans les bornes de leur curseur, sont reprises. */
@@ -147,7 +155,7 @@ export function parseTuned(text: string | null): JumpParams {
       const v = saved[s.key];
       if (typeof v === "number" && Number.isInteger(v) && v >= s.min && v <= s.max) params[s.key] = v;
     }
-    if (saved.sprintMode === 0 || saved.sprintMode === 1) setSprint(params, saved.sprintMode === 1);
+    if (saved.sprintMode === 1) setSprint(params, true);
   } catch {
     /* texte illisible : les défauts */
   }
@@ -229,10 +237,10 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   const sprintBox = document.createElement("div");
   sprintBox.className = "sprint";
   const sprintTitle = document.createElement("strong");
-  sprintTitle.textContent = "Élan progressif";
+  sprintTitle.textContent = "Élan progressif (essai)";
   const sprintNote = document.createElement("small");
   sprintNote.className = "hint";
-  sprintNote.textContent = "Après un moment à pleine vitesse au sol, le personnage accélère encore. Actif par défaut : l'éteindre rend la partie « réglages modifiés ».";
+  sprintNote.textContent = "Après un moment à pleine vitesse au sol, le personnage accélère encore. Jamais enregistré, jamais classé.";
   const sprintSwitch = document.createElement("button");
   sprintSwitch.type = "button";
   sprintSwitch.className = "switch";

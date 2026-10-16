@@ -1,5 +1,5 @@
 {
-  "jumpSimVersion": 4,
+  "jumpSimVersion": 3,
   "params": {
     "runSpeed": 375,
     "groundAccel": 17,
@@ -20,11 +20,7 @@
     "jumpBuffer": 12,
     "cornerTolerance": 1024,
     "crumbleDelay": 30,
-    "springSpeed": 1056,
-    "sprintMode": 1,
-    "sprintSpeed": 614,
-    "sprintDelay": 42,
-    "sprintAccel": 3
+    "springSpeed": 1056
   },
   "sandbox": "03b97c4e",
   "runs": {
@@ -77,7 +73,7 @@
         ]
       ],
       "ticks": 318,
-      "trace": "4c95c177",
+      "trace": "4af497a3",
       "final": {
         "x": 48544,
         "y": 95232,
@@ -92,8 +88,7 @@
         "held": 0,
         "jumping": 0,
         "lock": 0,
-        "lockDir": 0,
-        "sprint": 0
+        "lockDir": 0
       }
     },
     "trous": {
@@ -145,7 +140,7 @@
         ]
       ],
       "ticks": 281,
-      "trace": "7bd30ba8",
+      "trace": "e9390aa9",
       "final": {
         "x": 389960,
         "y": 104092,
@@ -160,8 +155,7 @@
         "held": 0,
         "jumping": 0,
         "lock": 0,
-        "lockDir": 0,
-        "sprint": 0
+        "lockDir": 0
       }
     },
     "cheminee": {
@@ -201,7 +195,7 @@
         ]
       ],
       "ticks": 93,
-      "trace": "3c57df27",
+      "trace": "20387f9f",
       "final": {
         "x": 614336,
         "y": 62094,
@@ -216,8 +210,7 @@
         "held": 1,
         "jumping": 1,
         "lock": 0,
-        "lockDir": 0,
-        "sprint": 0
+        "lockDir": 0
       }
     },
     "saut-mural": {
@@ -289,7 +282,7 @@
         ]
       ],
       "ticks": 360,
-      "trace": "f54dba1b",
+      "trace": "b9e6422c",
       "final": {
         "x": 674931,
         "y": 32487,
@@ -304,23 +297,22 @@
         "held": 1,
         "jumping": 1,
         "lock": 0,
-        "lockDir": 0,
-        "sprint": 1
+        "lockDir": 0
       }
     }
   },
   "essai": {
     "level": "69cc9d20",
-    "ticks": 2218,
-    "time": 2218,
-    "trace": "93bd6149",
+    "ticks": 2595,
+    "time": 2595,
+    "trace": "71466e78",
     "final": {
       "status": 3,
-      "time": 2218,
+      "time": 2595,
       "player": {
-        "x": 898064,
+        "x": 898375,
         "y": 33792,
-        "vx": 597,
+        "vx": 375,
         "vy": 0,
         "ground": 1,
         "air": 0,
@@ -331,25 +323,18 @@
         "held": 0,
         "jumping": 0,
         "lock": 0,
-        "lockDir": 0,
-        "sprint": 42
+        "lockDir": 0
       },
-      "tiles": "7186c20a",
+      "tiles": "b9cbab26",
       "crumbles": [
-        -1,
-        -1,
-        -1,
+        0,
+        0,
+        0,
         -1,
         0,
         0,
         -1,
-        -1,
-        -1,
         0,
-        -1,
-        -1,
-        0,
-        -1,
         -1,
         -1,
         0,
@@ -358,21 +343,27 @@
         0,
         0,
         0,
+        -1,
+        -1,
         0,
-        0
+        0,
+        0,
+        0,
+        -1,
+        -1
       ],
       "sections": [
         1,
-        460,
-        1119,
-        1609
+        543,
+        1237,
+        1957
       ],
       "deathCause": 0,
       "deathX": 0,
       "deathY": 0,
       "deathTicks": 0,
       "springCell": 3604,
-      "springTime": 1844,
+      "springTime": 2196,
       "checkpoint": 4
     }
   }

@@ -38,9 +38,7 @@ export type SoundId =
   | "pointDePassage"
   | "arrivee"
   | "medaille"
-  | "derapage"
-  | "elanDebut"
-  | "elanPerdu";
+  | "derapage";
 
 export interface SoundSpec {
   id: SoundId;
@@ -150,15 +148,6 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
       // Lot 8b : un frottement court, un peu plus fort et plus long quand on dérape vite.
       const k = Math.min(1, e.speed / 15);
       return spec("derapage", 1, [noise(3200 + 600 * v, 0.1 + 0.06 * k, 0.06 + 0.04 * k, 0, 1300, "bandpass", 1.6), noise(900, 0.06, 0.03 * k, 0.02, 500, "bandpass", 1)]);
-    }
-    case "elanDebut":
-      // Lot 8c : discret et montant, sur toute la prise d'élan (≈ 0,66 s jusqu'à l'élan plein) : une note douce qui glisse vers le haut,
-      // doublée d'un souffle qui s'ouvre.
-      return spec("elanDebut", 0, [tone("sine", 220 * (1 + 0.03 * v), 0.66, 0.035, 0, 440), tone("triangle", 330, 0.6, 0.015, 0.06, 660), noise(900, 0.6, 0.025, 0, 2600, "bandpass", 1.4)]);
-    case "elanPerdu": {
-      // Lot 8c : un souffle léger qui retombe, un peu plus présent quand on allait vite.
-      const k = Math.min(1, Math.max(0, (e.speed - 11) / 7));
-      return spec("elanPerdu", 0, [noise(1800, 0.22, 0.03 + 0.03 * k, 0, 500, "bandpass", 0.9)]);
     }
     case "medaille": {
       const phrase = MEDAL_PHRASES[e.medal];

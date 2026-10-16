@@ -38,9 +38,6 @@ import {
 //   - dérapage (lot 8b) : au sol avant et après, la commande vient de passer à l'opposé du mouvement (demi-tour) alors que la vitesse est
 //     d'au moins `SKID_SPEED` × la course. Seul événement qui lit les commandes (celle du pas et celle d'avant, `EventInputs`) : sans
 //     elles (héros du carnage), pas de dérapage.
-//   - élan (lot 8c) : `elanDebut` quand le compteur d'élan atteint `sprintDelay` (la vitesse va monter vers `sprintSpeed`) ; `elanPerdu`
-//     quand il retombe d'au moins `sprintDelay` (lâcher, demi-tour, mur), avec la vitesse au moment de la perte. Ni l'un ni l'autre à la
-//     mort, à l'arrivée ou sans élan (`sprintMode` 0).
 
 export type DeathCauseName = "pic" | "scie" | "chute";
 
@@ -77,10 +74,6 @@ export type GameEvent =
   | (Base & { kind: "friableTombe"; index: number })
   /** Lot 8b : demi-tour au sol à vitesse. `side` : sens du mouvement avant le demi-tour (la poussière part devant) ; `speed` : tuiles/s. */
   | (Base & { kind: "derapage"; side: number; speed: number })
-  /** Lot 8c : l'élan commence (`side` : sens de la course). */
-  | (Base & { kind: "elanDebut"; side: number })
-  /** Lot 8c : l'élan est perdu ; `speed` : vitesse au moment de la perte (tuiles/s). */
-  | (Base & { kind: "elanPerdu"; speed: number })
   /** Médaille obtenue à l'arrivée sur le niveau du jour (le jeu la pousse : la simulation ne connaît pas les médailles). */
   | (Base & { kind: "medaille"; medal: JumpMedal });
 
@@ -103,8 +96,6 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "friableTombe",
   "medaille",
   "derapage",
-  "elanDebut",
-  "elanPerdu",
 ];
 
 /** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
@@ -202,12 +193,6 @@ export function eventsBetween(
     }
   }
   const ends = cur.status === ATTEMPT_DEAD || cur.status === ATTEMPT_FINISHED;
-  if (params.sprintMode === 1 && params.sprintDelay > 0 && !ends) {
-    const was = p.sprint >= params.sprintDelay;
-    const is = c.sprint >= params.sprintDelay;
-    if (!was && is) out.push({ ...at(c), kind: "elanDebut", y: feetY(c), side: c.vx < 0 ? -1 : 1 });
-    else if (was && !is) out.push({ ...at(c), kind: "elanPerdu", speed: (Math.abs(p.vx) * TICK_RATE) / T });
-  }
   if (p.slide === 0 && c.slide !== 0 && !ends) out.push({ ...at(c), kind: "glisseDebut", side: c.slide });
   else if (p.slide !== 0 && (c.slide === 0 || ends)) out.push({ ...at(c), kind: "glisseFin" });
 

@@ -8,6 +8,7 @@ paliers: 17 7
 repeter: haut rangees 10-10
 variante: haut=2
 variante: haut=4
+variante: haut=6
 variante: haut=4 +plafond:pics
 grille:
 ####..........

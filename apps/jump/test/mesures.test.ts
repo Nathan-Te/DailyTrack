@@ -51,7 +51,7 @@ describe("mesures du lot 3", () => {
     note("Rejeu de la solution de l'essai (`replayAttempt`, 2 595 pas, découpage en vies compris)", ms(replay));
     note("Rejeu avec empreinte de tous les états (`replayFingerprint`)", ms(fingerprint));
     note("Un pas d'essai (`stepAttempt`, en moyenne sur la solution)", `${(perStep * 1000).toFixed(2).replace(".", ",")} µs`);
-    note("Rediffusion de la solution (18,483 s)", `${Math.floor((ESSAI_SOLUTION_CODE.length * 6) / 8)} octets, ${ESSAI_SOLUTION_CODE.length} caractères base64url`);
+    note("Rediffusion de la solution (21,625 s)", `${Math.floor((ESSAI_SOLUTION_CODE.length * 6) / 8)} octets, ${ESSAI_SOLUTION_CODE.length} caractères base64url`);
     expect(replay).toBeLessThan(100);
   });
 

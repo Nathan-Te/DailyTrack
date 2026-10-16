@@ -55,7 +55,7 @@ describe("themeForDay", () => {
   it("le thème ne dépend que de la date : ni identifiant de niveau, ni version (cosmétique)", () => {
     // `themeForDay` ne prend que le numéro du jour ; le niveau d'une date ne lit pas le thème (son identifiant n'en parle pas).
     const L = dailyLevel(daysFromCivil(2026, 10, 20));
-    expect(L.id).toBe(`jour-2026-10-20-g5`);
+    expect(L.id).toBe(`jour-2026-10-20-g4`);
     for (const t of ALL) expect(L.id).not.toContain(t.name);
   });
 });

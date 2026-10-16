@@ -6,6 +6,8 @@ mutateurs: patrouille denivele
 format: 3
 paliers: 17 6
 repeter: haut rangees 10-10
+variante: haut=1 cycle=390
+variante: haut=2 cycle=480
 variante: haut=3 cycle=420
 variante: haut=1 cycle=390 +denivele:3
 grille:

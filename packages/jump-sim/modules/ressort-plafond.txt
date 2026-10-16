@@ -8,7 +8,9 @@ paliers: 18 13
 repeter: bord colonnes 7-7
 variante: bord=1
 variante: bord=2
+variante: bord=4
 variante: bord=2 +sol-friable
+variante: bord=1 +denivele:2
 grille:
 ..######......
 ..######......

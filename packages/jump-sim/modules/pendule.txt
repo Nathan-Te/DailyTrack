@@ -7,6 +7,8 @@ format: 3
 paliers: 12 12
 variante: cycle=180
 variante: cycle=240
+variante: cycle=150
+variante: cycle=240 +sol-friable
 variante: cycle=180 +plafond:pics
 variante: cycle=240 +denivele:2
 grille:

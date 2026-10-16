@@ -3,23 +3,7 @@ import { ATTEMPT_DEAD, ATTEMPT_FINISHED, initialAttempt, stepAttempt, type Attem
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, TICK_RATE } from "./constants";
 import { idiv } from "./idiv";
 import { parseLevel, type Level } from "./level";
-import {
-  MODULES,
-  MODULE_ENTRIES,
-  PALIER_GUARD,
-  PALIER_LENGTH,
-  RACCORD_TAIL,
-  buildModule,
-  canonicalOf,
-  centerCol,
-  moduleSolutions,
-  textHash,
-  variantExigence,
-  type ModuleEntry,
-  type ModuleExit,
-  type ModuleTag,
-  type Palier,
-} from "./modules";
+import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
 import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpReplay } from "./replay";
 
@@ -34,8 +18,8 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 //     rangée** ; son vide monte jusqu'en haut du plus haut des deux morceaux voisins ;
 //   - le point de passage `C` du morceau suivant est au début de ce palier, au sol : y reprendre, c'est exactement le départ « à l'arrêt »
 //     du morceau seul ;
-//   - le premier morceau part à l'**arrêt** (départ `S` au début du premier palier, une colonne de garde devant, comme `buildModule`) ;
-//     chacun des suivants entre dans **l'état canonique où le précédent est sorti** (lot 8c : à la course ou en élan plein) ;
+//   - le premier morceau part à l'**arrêt** (départ `S` au début du premier palier, une colonne de garde devant, comme `buildModule`),
+//     tous les suivants en **élan** ;
 //   - hors des morceaux et des paliers, **tout est plein** ; une rangée de blocs ferme le haut (les côtés sont fermés par `tileAt`) ; sous
 //     un morceau, le vide continue jusqu'en bas du niveau là où sa dernière rangée n'est pas un bloc (on y meurt en tombant, comme dans le
 //     morceau seul) ;
@@ -43,10 +27,9 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 //     ses scies mobiles sont recopiées, coordonnées décalées.
 //
 // **La preuve** : la solution du premier morceau (à l'arrêt), jouée jusqu'à sa **sortie canonique** (le centre passe le bord droit du
-// palier, au sol, à la course ou en élan plein : `canonicalOf`) ; puis, **au pas suivant, sans course entre les deux**, la solution du
-// morceau suivant **pour cet état d'entrée** (lot 8c), à partir de son entrée (`entryTick` : le pas où, joué seul, il franchit ce même bord
-// dans cet état) ; et ainsi de suite ; la dernière jusqu'à l'arrivée. L'élan passe donc les coutures : un morceau qui sort en élan plein
-// fait entrer le suivant en élan plein. Une seule possibilité par raccord (plus de repli « l'autre pas » du lot 5) : le raccord strict du lot 6 l'a rendu inutile.
+// palier, au sol, en course propre : `isCleanRun`) ; puis, **au pas suivant, sans course entre les deux**, la solution en élan du morceau
+// suivant, à partir de son entrée (`entryTick` : le pas où, joué seul, il franchit ce même bord) ; et ainsi de suite ; la dernière jusqu'à
+// l'arrivée. Une seule possibilité par raccord (plus de repli « l'autre pas » du lot 5) : le raccord strict du lot 6 l'a rendu inutile.
 // Cette rediffusion complète est ensuite **rejouée** par `replayAttempt` sur le niveau assemblé : rien n'est supposé.
 //
 // **Tirages** : `DAILY_DRAWS` tirages par jour (graine `mixSeed(jour, sel)` puis `mixSeed(graine, tirage)`) ; chacun compose une suite de
@@ -87,7 +70,7 @@ export const ESTIMATE_MAX_TICKS = 32 * TICK_RATE;
 export const JOINT_TICKS = 0;
 /** Morceaux par niveau : 6 à 13 (10 au lot 5 ; sans course à vide, il en faut 11 ou 12 pour la même durée). */
 export const MIN_PIECES = 6;
-export const MAX_PIECES = 15;
+export const MAX_PIECES = 13;
 /**
  * Enchaînements longs (lot 7) : au moins `MIN_LONG` par niveau, au plus `MAX_LONG` ; imposé à partir de `FORCE_LONG_AT` (pour mille du
  * temps cible) s'il manque encore.
@@ -111,9 +94,9 @@ export const MAX_DAILY_HEIGHT = 56;
  * `EXIGENCE_RATE_CENTER`. Seuils réglés sur `npm run measure:jump` (README des lots 5 à 7 : 380–460 au lot 5, 430–520 au lot 6 ; lot 7 :
  * nouveau catalogue, la fenêtre est recentrée sur la médiane des tirages, même largeur relative, ±10 %).
  */
-export const EXIGENCE_RATE_MIN = 600;
-export const EXIGENCE_RATE_MAX = 740;
-export const EXIGENCE_RATE_CENTER = 670;
+export const EXIGENCE_RATE_MIN = 445;
+export const EXIGENCE_RATE_MAX = 540;
+export const EXIGENCE_RATE_CENTER = 492;
 /** Au moins un morceau de cette exigence ou plus. */
 export const EXIGENCE_PEAK = 4;
 /**
@@ -123,14 +106,14 @@ export const EXIGENCE_PEAK = 4;
  * lot 7 (avec la correction ci-dessous, le niveau moyen remonte de lui-même) ; 1,0 → 3,6 au lot 7b (tension jusqu'à la fin).
  */
 export const PROFILE_START = 10;
-export const PROFILE_END = 34;
+export const PROFILE_END = 36;
 /**
  * Correction du profil (lot 7, pour cent) : la variante visée suit le profil plus cette part de l'écart entre l'exigence accumulée et celle
  * que donnerait `EXIGENCE_RATE_CENTER` pour le temps estimé. Sans elle, la somme de 10 morceaux d'exigence 1 à 5 s'étalait trop : 44 % des
  * tirages rejoués tombaient hors de la fenêtre (mesuré). Elle ne s'applique qu'à partir de `STEER_FROM` (pour mille du temps visé) : le
  * début garde son profil doux, la fin rattrape (sinon la règle « dernier tiers ≥ premier tiers » échouait plus souvent).
  */
-export const EXIGENCE_STEER = 60;
+export const EXIGENCE_STEER = 100;
 export const STEER_FROM = 600;
 /**
  * Lot 7b : la tension monte jusqu'à la fin — le dernier tiers est au moins aussi exigeant que le deuxième (en plus du premier). Mesurée sur
@@ -152,13 +135,6 @@ export const FORCE_QUOTA_AT = 550;
 /** Le morceau `respiration` est imposé quand le temps estimé passe le haut de sa fenêtre moins ceci (un morceau et une demi-respiration). */
 export const FORCE_REST_SLACK = 3 * TICK_RATE;
 export const FORCE_PEAK_AT = 667;
-/**
- * Lot 8c : le morceau `elan` (au moins un par niveau) est imposé plus tôt que les autres quotas, à partir de ce point du temps cible (pour
- * mille) : peu exigeant (1 à 3), placé dans le dernier tiers il le rendait moins exigeant que le deuxième (règle de tension, mesuré).
- */
-export const FORCE_ELAN_AT = 450;
-/** Lot 8c : poids relatif d'un morceau propre au jour (ni la veille ni le lendemain) face à un morceau partagé avec un jour voisin. */
-export const SHARED_WEIGHT = 2;
 /** Poids d'une respiration qui peut tomber au milieu (lot 7). */
 export const REST_WEIGHT = 4;
 /** Tirages par jour (on garde le meilleur valide) et tentatives au plus (au-delà : le secours). */
@@ -190,9 +166,9 @@ export const REST_OPEN = 4;
  * Sel de l'empreinte des groupes : choisi par `npm run repos:modules -w @cdj/jump-sim` (README du lot 7) pour que les groupes aient la même
  * taille, que chaque étiquette, les enchaînements longs et les morceaux qui finissent plus bas y soient répartis, et que les morceaux d'une
  * même famille tombent le plus possible dans des groupes différents. Changer de sel change les niveaux : `JUMP_GENERATOR_VERSION` +1.
- * (Lot 5 : `repos4310:` ; lot 7 : `repos2527:` ; lot 8c : `repos17912:`, nouveau catalogue.)
+ * (Lot 5 : `repos4310:`.)
  */
-export const REST_SALT = "repos17912:";
+export const REST_SALT = "repos2527:";
 export function restGroup(id: string): number {
   return Number.parseInt(textHash(`${REST_SALT}${id}`), 16) % REST_GROUPS;
 }
@@ -238,7 +214,7 @@ export function jumpMedalFor(ticks: number, medals: JumpMedals): JumpMedal | nul
 
 // ——— Le catalogue vu par le générateur ———
 
-/** Une variante utilisable : solutions stockées aux trois entrées, exigence ≥ 1. */
+/** Une variante utilisable : solutions stockées aux deux entrées, exigence ≥ 1. */
 interface Choice {
   id: string;
   variant: number;
@@ -247,9 +223,9 @@ interface Choice {
   family: string;
   long: boolean;
   exigence: number;
-  /** Durées des solutions entre leur entrée et leur sortie canoniques (pas), par entrée, et l'état de sortie de chacune (lot 8c). */
-  ticks: Readonly<Record<ModuleEntry, number>>;
-  exits: Readonly<Record<ModuleEntry, ModuleExit>>;
+  /** Durées des solutions entre leur entrée et leur sortie canoniques (pas). */
+  arret: number;
+  elan: number;
   height: number;
   width: number;
   entryRow: number;
@@ -265,15 +241,10 @@ function choices(): Choice[][] {
     def.variants.flatMap((_, variant) => {
       const s = moduleSolutions(def.id, variant);
       const exigence = variantExigence(s);
-      if (!s || MODULE_ENTRIES.some((e) => !s[e]) || exigence < 1) return [];
+      if (!s?.arret || !s.elan || exigence < 1) return [];
       const b = buildModule(def.id, variant);
-      const ticks = { arret: 0, course: 0, plein: 0 };
-      const exits: Record<ModuleEntry, ModuleExit> = { arret: "course", course: "course", plein: "course" };
-      for (const e of MODULE_ENTRIES) {
-        ticks[e] = s[e]!.exitTick - s[e]!.entryTick;
-        exits[e] = s[e]!.exit;
-      }
-      return [{ id: def.id, variant, tags: def.tags, family: def.family, long: def.long, exigence, ticks, exits, height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow }];
+      const span = (x: { entryTick: number; exitTick: number }) => x.exitTick - x.entryTick;
+      return [{ id: def.id, variant, tags: def.tags, family: def.family, long: def.long, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow }];
     }),
   ).filter((list) => list.length > 0);
   return catalog;
@@ -369,9 +340,7 @@ interface Slot {
   entry: ModuleEntry;
 }
 
-const ticksOf = (p: Slot) => p.choice.ticks[p.entry];
-/** L'entrée du morceau qui suit `p` : l'état canonique où sort sa solution. */
-const nextEntry = (p: Slot): ModuleEntry => p.choice.exits[p.entry];
+const ticksOf = (p: Slot) => (p.entry === "arret" ? p.choice.arret : p.choice.elan);
 
 /** Rangées de chaque morceau (haut de sa grille), et hauteur totale (rangée du haut comprise), d'une suite de morceaux. */
 function stack(picks: readonly Slot[]): { tops: number[]; height: number } {
@@ -405,7 +374,7 @@ function compose(day: number, rng: Rng): Slot[] | string {
   for (;;) {
     if (picks.length >= MAX_PIECES) return "trop de morceaux";
     const first = picks.length === 0;
-    const entry: ModuleEntry = first ? "arret" : nextEntry(picks[picks.length - 1]!);
+    const entry: ModuleEntry = first ? "arret" : "elan";
     const p = per(est, AUTHOR_TARGET_TICKS);
     // Le profil visé, corrigé (lot 7) d'une part du retard ou de l'avance de l'exigence accumulée sur ce que donnerait le centre de la
     // fenêtre pour ce temps estimé (en centièmes de point : rate × pas ÷ 720) : la composition revient vers le centre au lieu d'y tomber au
@@ -416,7 +385,6 @@ function compose(day: number, rng: Rng): Slot[] | string {
     const precisionRun = picks.length >= MAX_PRECISION_RUN && picks.slice(-MAX_PRECISION_RUN).every((q) => has(q.choice, "precision"));
     const needMural = !picks.some((q) => has(q.choice, "mural"));
     const needScie = !picks.some((q) => has(q.choice, "scie"));
-    const needElan = !picks.some((q) => has(q.choice, "elan"));
     const needRest = !picks.some((q) => has(q.choice, "respiration"));
     const needPeak = !picks.some((q) => q.choice.exigence >= EXIGENCE_PEAK);
     const longs = picks.filter((q) => q.choice.long).length;
@@ -430,7 +398,6 @@ function compose(day: number, rng: Rng): Slot[] | string {
     const forceRest = needRest && est + FORCE_REST_SLACK > idiv(ESTIMATE_MIN_TICKS * RESPIRATION_TO, 1000);
     const forceMural = needMural && p >= FORCE_QUOTA_AT;
     const forceScie = needScie && p >= FORCE_QUOTA_AT;
-    const forceElan = needElan && p >= FORCE_ELAN_AT;
     const forcePeak = needPeak && p >= FORCE_PEAK_AT;
 
     interface Cand {
@@ -447,7 +414,7 @@ function compose(day: number, rng: Rng): Slot[] | string {
       if (precisionRun && tags.includes("precision")) continue;
       if (tags.includes("respiration") && !needRest) continue;
       if (forceRest && !tags.includes("respiration")) continue;
-      if ((forceMural || forceScie || forceElan) && !((forceMural && tags.includes("mural")) || (forceScie && tags.includes("scie")) || (forceElan && tags.includes("elan")))) continue;
+      if ((forceMural || forceScie) && !((forceMural && tags.includes("mural")) || (forceScie && tags.includes("scie")))) continue;
       // Variantes qui tiennent : hauteur, durée, respiration au milieu, pointe d'exigence imposée.
       const ok = list.filter((c) => {
         const pick = { choice: c, entry };
@@ -459,7 +426,7 @@ function compose(day: number, rng: Rng): Slot[] | string {
         if (end >= ESTIMATE_MIN_TICKS) {
           // Ce morceau finirait le niveau : tous les quotas doivent être tenus avec lui.
           const all = [...picks.map((q) => q.choice), c];
-          if (!all.some((q) => has(q, "mural")) || !all.some((q) => has(q, "scie")) || !all.some((q) => has(q, "respiration")) || !all.some((q) => has(q, "elan"))) return false;
+          if (!all.some((q) => has(q, "mural")) || !all.some((q) => has(q, "scie")) || !all.some((q) => has(q, "respiration"))) return false;
           if (!all.some((q) => q.exigence >= EXIGENCE_PEAK) || all.length < MIN_PIECES) return false;
           if (all.filter((q) => q.long).length < MIN_LONG) return false;
         }
@@ -478,19 +445,14 @@ function compose(day: number, rng: Rng): Slot[] | string {
       }
       const choice = best.length === 1 ? best[0]! : rng.pick(best);
       let weight = gap <= 50 ? 8 : gap <= 100 ? 5 : gap <= 200 ? 2 : 1;
-      if ((needMural && has(choice, "mural")) || (needScie && has(choice, "scie")) || (needElan && has(choice, "elan"))) weight *= 2;
+      if ((needMural && has(choice, "mural")) || (needScie && has(choice, "scie"))) weight *= 2;
       // Lot 7 : une respiration qui peut tomber au milieu est préférée tout de suite (`REST_WEIGHT`) ; attendue jusqu'au dernier moment, elle
       // manquait souvent (deux à quatre disponibles par jour, parfois prises par leur famille) : 20 % des tirages finissaient en impasse.
       if (has(choice, "respiration")) weight *= REST_WEIGHT;
-      // Lot 8c : un morceau d'un groupe ouvert aussi la veille ou le lendemain (les deux groupes du bord de la fenêtre, déduits de la date
-      // seule) pèse moitié moins : avec l'élan, les morceaux sont plus courts et plus nombreux par niveau (12 au lieu de 11), et les jours
-      // consécutifs en partageaient davantage (1,6 en moyenne, cible 1,5).
-      const g = restGroup(choice.id);
-      if (!isOpenGroup(g, day - 1) && !isOpenGroup(g, day + 1)) weight *= SHARED_WEIGHT;
       cands.push({ pick: { choice, entry }, weight });
     }
     if (cands.length === 0) {
-      const forced = [forceRest && "respiration", forceLong && !forceRest && "long", forceMural && "mural", forceScie && "scie", forceElan && "elan", forcePeak && "pointe"].filter(Boolean);
+      const forced = [forceRest && "respiration", forceLong && !forceRest && "long", forceMural && "mural", forceScie && "scie", forcePeak && "pointe"].filter(Boolean);
       return `impasse au morceau ${picks.length + 1}${forced.length ? ` (imposés : ${forced.join(", ")})` : ""}`;
     }
     let total = 0;
@@ -521,17 +483,13 @@ interface Assembled {
   paliers: Palier[];
 }
 
-/**
- * Assemble une suite de morceaux en un niveau (grille + bloc annexe). L'entrée de chaque morceau (`DailyPiece.entry`) est celle que
- * prévoient les solutions stockées (l'état de sortie du précédent) ; l'enchaînement rejoué (`chainSolutions`) la confirme ou la corrige.
- */
+/** Assemble une suite de morceaux en un niveau (grille + bloc annexe). */
 export function assemble(picks: readonly { id: string; variant: number }[]): Assembled {
   const all = choices().flat();
-  const full: Slot[] = [];
-  picks.forEach((p, k) => {
+  const full: Slot[] = picks.map((p, k) => {
     const choice = all.find((c) => c.id === p.id && c.variant === p.variant);
     if (!choice) throw new RangeError(`Morceau « ${p.id} », variante ${p.variant} : pas de solution utilisable`);
-    full.push({ choice, entry: k === 0 ? "arret" : nextEntry(full[k - 1]!) });
+    return { choice, entry: k === 0 ? "arret" : "elan" };
   });
   if (full.length === 0) throw new RangeError("Assemblage vide");
   const L = PALIER_LENGTH;
@@ -612,24 +570,20 @@ export function assemble(picks: readonly { id: string; variant: number }[]): Ass
 type Step = (s: AttemptState, bits: number) => AttemptState;
 
 /**
- * Met les solutions bout à bout en jouant la simulation : la solution du morceau `k` **pour l'état où le précédent est sorti** (lot 8c :
- * arrêt pour le premier, puis course ou élan plein) est jouée à partir de son entrée (`entryTick` ; 0 pour le premier) depuis cet état,
- * jusqu'à **sa** sortie canonique — le centre passe le bord droit du palier qui le suit (la première colonne du morceau suivant), vivant, à
- * la course ou en élan plein —, ou jusqu'à l'arrivée pour le dernier. Rend les commandes, le pas où commence chaque morceau et l'entrée
- * de chacun, ou la raison de l'échec.
+ * Met les solutions bout à bout en jouant la simulation : la solution du morceau `k` est jouée à partir de son entrée (`entryTick` ; 0 pour le
+ * premier, à l'arrêt) depuis l'état où le précédent est sorti, jusqu'à **sa** sortie canonique — le centre passe le bord droit du palier qui
+ * le suit (la première colonne du morceau suivant), vivant, en course propre —, ou jusqu'à l'arrivée pour le dernier. Rend les commandes et
+ * le pas où commence chaque morceau, ou la raison de l'échec.
  */
-function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[]; entries: ModuleEntry[] } | string {
+function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[] } | string {
   const level = asm.level;
   const step: Step = (s, bits) => stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
   const inputs: number[] = [];
   const starts: number[] = [];
-  const entries: ModuleEntry[] = [];
   let s: AttemptState = initialAttempt(level);
-  let entry: ModuleEntry = "arret";
   for (let k = 0; k < asm.pieces.length; k++) {
     const piece = asm.pieces[k]!;
-    entries.push(entry);
-    const sol = moduleSolutions(piece.id, piece.variant)?.[entry];
+    const sol = moduleSolutions(piece.id, piece.variant)?.[piece.entry];
     if (!sol) return `${piece.id}:${piece.variant} sans solution`;
     const commands = fromRuns(decodeReplay(sol.code).runs);
     const last = k === asm.pieces.length - 1;
@@ -648,15 +602,13 @@ function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[]; e
         if (!last) return `${piece.id}:${piece.variant} touche l'arrivée (morceau ${k + 1})`;
         done = true;
       } else if (!last && centerCol(s.player) >= exitCol) {
-        const exit = canonicalOf(s.player);
-        if (!exit) return `${piece.id}:${piece.variant} sort hors des états canoniques (morceau ${k + 1})`;
-        entry = exit;
+        if (!isCleanRun(s.player)) return `${piece.id}:${piece.variant} sort hors de la course propre (morceau ${k + 1})`;
         done = true;
       }
     }
     if (!done) return `${piece.id}:${piece.variant} n'aboutit pas (morceau ${k + 1})`;
   }
-  return { inputs, starts, entries };
+  return { inputs, starts };
 }
 
 /** Ce qui suffit d'un morceau placé pour juger l'exigence : son exigence, son début et sa fin (pas). */
@@ -702,7 +654,6 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   if (d.longestRun > LONGEST_RUN_MAX) out.push(`course au sol sans saut de ${d.longestRun} pas (au plus ${LONGEST_RUN_MAX})`);
   if (!pieces.some((p) => p.tags.includes("mural"))) out.push("aucun morceau mural");
   if (!pieces.some((p) => p.tags.includes("scie"))) out.push("aucun morceau scie");
-  if (!pieces.some((p) => p.tags.includes("elan"))) out.push("aucun morceau elan");
   let run = 0;
   for (const p of pieces) {
     run = p.tags.includes("precision") ? run + 1 : 0;
@@ -714,7 +665,7 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
     const mid = per(p.start + p.end, 2 * total);
     if (mid < RESPIRATION_FROM || mid > RESPIRATION_TO) out.push(`respiration à ${mid} ‰ (entre ${RESPIRATION_FROM} et ${RESPIRATION_TO})`);
   }
-  if (pieces[0]?.entry !== "arret" || pieces.slice(1).some((p) => p.entry === "arret")) out.push("entrées : le premier à l'arrêt, les autres lancés (course ou élan plein)");
+  if (pieces[0]?.entry !== "arret" || pieces.slice(1).some((p) => p.entry !== "elan")) out.push("entrées : le premier à l'arrêt, les autres en élan");
   if (!pieces.some((p) => p.exigence >= EXIGENCE_PEAK)) out.push(`aucun morceau d'exigence ${EXIGENCE_PEAK} ou plus`);
   const e = d.exigence;
   if (e.rate < EXIGENCE_RATE_MIN || e.rate > EXIGENCE_RATE_MAX) out.push(`exigence ${e.rate} hors de [${EXIGENCE_RATE_MIN}, ${EXIGENCE_RATE_MAX}]`);
@@ -787,11 +738,7 @@ function prove(picks: readonly { id: string; variant: number }[], id: string): {
   if (!result.finished) return "le rejeu n'arrive pas";
   if (result.deaths.length > 0) return `le rejeu meurt ${result.deaths.length} fois`;
   const total = result.time;
-  const pieces = asm.pieces.map((p, k) => {
-    const entry = chain.entries[k]!;
-    const sol = moduleSolutions(p.id, p.variant)![entry]!;
-    return { ...p, entry, solutionTicks: sol.exitTick - sol.entryTick, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total };
-  });
+  const pieces = asm.pieces.map((p, k) => ({ ...p, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total }));
   const built: Built = {
     id,
     level: asm.level,
@@ -812,22 +759,20 @@ function prove(picks: readonly { id: string; variant: number }[], id: string): {
 
 /**
  * Le niveau de secours : une suite fixe de variantes, choisie parmi les tirages valides de 400 dates (celle qui tombe le plus près du centre
- * de la cible : 30,23 s, exigence 674 ; lot 8c, `tools/secours.ts`), qui tient toutes les règles. Il ignore le repos. Assemblé et validé comme
- * les autres (test) ; la mesure (`measure:jump`) montre qu'il ne sert jamais.
+ * de la cible : 30,13 s, exigence 497 ; lot 7), qui tient toutes les règles. Il ignore le repos. Assemblé et validé comme les autres (test) ; la
+ * mesure (`measure:jump`) montre qu'il ne sert jamais.
  */
 export const FALLBACK_PIECES: readonly { id: string; variant: number }[] = [
-  { id: "piliers", variant: 2 },
-  { id: "scie-sol", variant: 0 },
-  { id: "grand-saut", variant: 3 },
-  { id: "puits", variant: 1 },
-  { id: "mur-trous", variant: 1 },
-  { id: "petits-trous", variant: 1 },
-  { id: "ressort-plafond", variant: 1 },
+  { id: "mur-seul", variant: 4 },
+  { id: "ressorts-escalier", variant: 0 },
+  { id: "plongeon", variant: 0 },
+  { id: "tunnel-scies", variant: 1 },
   { id: "iles-scie", variant: 2 },
-  { id: "mur-friable", variant: 1 },
-  { id: "plafond-pics", variant: 1 },
-  { id: "escalier-friable", variant: 2 },
-  { id: "saut-long", variant: 2 },
+  { id: "escalier", variant: 1 },
+  { id: "piliers", variant: 1 },
+  { id: "puits-descente", variant: 2 },
+  { id: "mur-friable", variant: 2 },
+  { id: "marelle", variant: 2 },
 ];
 
 const cache = new Map<number, DailyLevel>();

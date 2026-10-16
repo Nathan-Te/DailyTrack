@@ -8,6 +8,7 @@ paliers: 10 10
 repeter: fenetre rangees 6-6
 variante: fenetre=2
 variante: fenetre=1
+variante: fenetre=1 +denivele:2
 grille:
 ...#.....#.....#....
 ...#.....#.....#....

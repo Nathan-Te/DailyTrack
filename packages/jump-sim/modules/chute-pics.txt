@@ -6,6 +6,7 @@ mutateurs: patrouille garde denivele
 format: 3
 paliers: 4 25
 repeter: prof rangees 12-12
+variante: prof=1
 variante: prof=3
 variante: prof=1 +patrouille
 variante: prof=2 +garde

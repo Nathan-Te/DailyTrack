@@ -157,7 +157,7 @@ test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargeme
   const done = await J(page);
   expect(done.phase).toBe("finished");
   expect(done.banner).toBe(true);
-  await expect(page.locator("#finish .best")).toHaveText(/Meilleur du jour : 18,483 s/);
+  await expect(page.locator("#finish .best")).toHaveText(/Meilleur du jour : 21,625 s/);
   expect(done.stains.count).toBe(3); // les taches de la journée reviennent
 
   // Rechargement : meilleur essai, vies, morts relus ; le fantôme est prêt, les taches sont aux mêmes endroits.
@@ -171,7 +171,7 @@ test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargeme
     expect(p.x).toBeCloseTo(deaths[i]!.x, 6);
     expect(p.y).toBeCloseTo(deaths[i]!.y, 6);
   });
-  expect(back.attempt.bestText).toBe("18,483 s");
+  expect(back.attempt.bestText).toBe("21,625 s");
   expect(back.ghost).toMatchObject({ enabled: true, available: true, tick: 0 });
 
   // Le fantôme est calé sur le chrono : il part à la première commande, pas avant.

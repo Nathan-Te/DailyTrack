@@ -85,10 +85,10 @@ for (const format of [
       expect(overflow.scroll).toBeLessThanOrEqual(overflow.client);
       expect(overflow.tall).toBe(true); // elle défile
       // L'entrée change les liens.
-      await expect(page.locator("#gallery a.play").first()).not.toHaveAttribute("href", /entree=/);
-      await page.locator("#gallery .entry button", { hasText: "En élan plein" }).tap();
-      await expect(page.locator("#gallery a.play").first()).toHaveAttribute("href", /entree=plein/);
-      await expect(page.locator("#gallery a.watch").first()).toHaveAttribute("href", /entree=plein&solution/);
+      await expect(page.locator("#gallery a.play").first()).not.toHaveAttribute("href", /entree=elan/);
+      await page.locator("#gallery .entry button", { hasText: "En élan" }).tap();
+      await expect(page.locator("#gallery a.play").first()).toHaveAttribute("href", /entree=elan/);
+      await expect(page.locator("#gallery a.watch").first()).toHaveAttribute("href", /entree=elan&solution/);
       // « Jouer » ouvre le morceau.
       const id = await page.locator("#gallery .card").first().getAttribute("data-id");
       await page.locator("#gallery a.play").first().tap();
@@ -96,15 +96,15 @@ for (const format of [
       test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
       const d = await debug(page);
-      expect(d.module).toMatchObject({ id, variant: 0, entry: "plein", solution: false });
+      expect(d.module).toMatchObject({ id, variant: 0, entry: "elan", solution: false });
     });
   });
 }
 
 test("?module=<id>&solution finit en pas à pas : le temps est celui de la solution stockée, le bandeau propose le morceau suivant", async ({ page }) => {
-  test.skip(!(await open(page, "?module=cheminee&variante=1&entree=course&solution&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
+  test.skip(!(await open(page, "?module=cheminee&variante=1&entree=elan&solution&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   const start = await debug(page);
-  expect(start.module).toMatchObject({ id: "cheminee", variant: 1, entry: "course", solution: true, levelId: "module:cheminee:1" });
+  expect(start.module).toMatchObject({ id: "cheminee", variant: 1, entry: "elan", solution: true, levelId: "module:cheminee:1" });
   expect(start.module!.reference).toBeGreaterThan(240);
   const ticks = await until(page, ["finished"]);
   expect(ticks).toBe(start.module!.reference);
@@ -117,7 +117,7 @@ test("?module=<id>&solution finit en pas à pas : le temps est celui de la solut
   await expect(page.locator("#finish .ref")).toContainText("Solution : ");
   const next = page.locator("#finish-next");
   await expect(next).toBeVisible();
-  await expect(next).toHaveAttribute("href", /module=[a-z-]+&variante=0&entree=course&debug/);
+  await expect(next).toHaveAttribute("href", /module=[a-z-]+&variante=0&entree=elan&debug/);
   await expect(page.locator("#modname")).toContainText("cheminee");
 });
 
@@ -125,32 +125,15 @@ test.describe("au doigt (téléphone en paysage)", () => {
   const VIEW = { width: 844, height: 390 };
   const at = { right: [VIEW.width * 0.37, VIEW.height * 0.75], jump: [VIEW.width * 0.75, VIEW.height * 0.75] } as const;
 
-  // Lot 8c : `descente` est retiré (avec l'élan, on n'y sautait plus : critère de banalité) ; `grand-saut` (morceau « elan ») se joue au
-  // doigt : droite tenue sur la piste, et un appui de saut chaque fois que le personnage quitte le bord (le coyote le prend), tenu 45 pas.
-  test("?module=grand-saut se joue au doigt : prendre l'élan, sauter les deux grands trous, passer le carnage, lire le bandeau, recommencer", async ({ browser }) => {
+  // Lot 7 : `descente` (une respiration : on s'y laisse tomber en courant) ; le pont friable a maintenant des trous à sauter.
+  test("?module=descente se joue au doigt : courir jusqu'au bout, passer le carnage, lire le bandeau, recommencer", async ({ browser }) => {
     test.setTimeout(120_000);
     await withPhone(browser, VIEW, async (page) => {
-      test.skip(!(await open(page, "?module=grand-saut&variante=0&touch=1&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
+      test.skip(!(await open(page, "?module=descente&variante=1&touch=1&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       const fingers = await Fingers.on(page);
       await fingers.down(1, ...at.right);
       await page.waitForFunction(() => (window as unknown as { __jump: ModuleDebug }).__jump.touch.bits === 2);
-      let wasGround = true;
-      let holding = 0;
-      for (let t = 0; t < 1500; t++) {
-        await step(page, 1);
-        const s = await page.evaluate(() => {
-          const j = (window as unknown as { __jump: ModuleDebug & { player: { mode: string } } }).__jump;
-          return { phase: j.phase, ground: j.player.mode === "sol" };
-        });
-        if (s.phase === "carnage" || s.phase === "finished") break;
-        if (holding > 0 && --holding === 0) await fingers.up(2);
-        if (wasGround && !s.ground && holding === 0) {
-          await fingers.down(2, ...at.jump);
-          holding = 45;
-        }
-        wasGround = s.ground;
-      }
-      if (holding > 0) await fingers.up(2);
+      expect(await until(page, ["carnage", "finished"])).toBeGreaterThan(0);
       await fingers.up(1);
       const done = await debug(page);
       expect(done.attempt.status).toBe("arrivé");

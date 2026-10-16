@@ -45,8 +45,8 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "sprint",
     description:
-      "Préréglage, avec `debug&tune` : `0` éteint l'élan progressif (actif par défaut depuis le lot 8c : 18 tuiles/s après 0,35 s à pleine vitesse au sol, élan plein en ≈ 0,66 s), pour comparer. Une partie sans élan est `tuned`, jamais enregistrée. Exemple : `?scenario=bac-a-sable&debug&tune&sprint=0`.",
-    values: ["0"],
+      "Avec `debug&tune` : `1` allume l'essai d'élan progressif (lot 8b) aux valeurs de départ (15 tuiles/s après 0,4 s à pleine vitesse au sol, atteint en ≈ 0,57 s). Désactivé par défaut ; une partie avec l'élan est `tuned`, jamais enregistrée. Exemple : `?scenario=bac-a-sable&debug&tune&sprint=1`.",
+    values: ["1"],
   },
   {
     name: "hitbox",
@@ -98,8 +98,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "entree",
-    description:
-      "Avec `module` : `arret` (au départ, immobile ; par défaut), `course` (un couloir de lancement est ajouté devant le palier d'entrée ; la solution part lancée à la course ; `elan` est l'ancien nom) ou `plein` (en élan plein : couloir plus long, la solution part à pleine vitesse d'élan).",
+    description: "Avec `module` : `arret` (au départ, immobile ; par défaut) ou `elan` (un couloir de lancement est ajouté devant le palier d'entrée ; la solution part lancée).",
     values: MODULE_ENTRIES,
     default: "arret",
   },
@@ -114,6 +113,17 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     description:
       "Lot 9 : impose un thème visuel et sonore (forêt, usine, glace, nuit, néon) au lieu du thème du jour : `?seed=2026-10-20&theme=neon`. Cosmétique : le niveau, son identifiant, les temps et les rediffusions ne changent pas, donc permis aussi sur le site publié. Un nom inconnu garde le thème du jour.",
     values: THEME_NAMES,
+  },
+  {
+    name: "accueil",
+    description:
+      "Lot 10 : `0` saute l'accueil (le niveau du jour s'ouvre tout de suite, comme avant ; les tests de navigateur s'en servent), `1` le montre. Sans le paramètre, la page par défaut ouvre l'accueil ; les liens directs (`seed`, `module`, `scenario`, `solution`, `watch`, `carnage`) ouvrent toujours directement leur contenu.",
+    values: ["0", "1"],
+  },
+  {
+    name: "archives",
+    description: "Lot 10 : ouvre l'accueil sur la liste des archives (les niveaux passés, du n° 1 à hier, avec ta médaille et ton temps) : `?archives`.",
+    values: [],
   },
   {
     name: "zones",
@@ -134,8 +144,8 @@ export interface UrlChoices {
   debug: boolean;
   /** Panneau de réglages : seulement avec `debug`. */
   tune: boolean;
-  /** Lot 8c : le préréglage « sans élan » (`?sprint=0`) : seulement avec `debug&tune`. */
-  sprintOff: boolean;
+  /** Lot 8b : l'essai d'élan progressif aux valeurs de départ (`?sprint=1`) : seulement avec `debug&tune`. */
+  sprint: boolean;
   /** `1` / `0` : tactile imposé ou coupé ; `null` : l'appareil décide. */
   touch: "1" | "0" | null;
   /** Zones et doigts dessinés. */
@@ -156,6 +166,10 @@ export interface UrlChoices {
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
   /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Cosmétique. */
   theme: ThemeName | null;
+  /** Lot 10 : `?accueil=1` (vrai) / `?accueil=0` (faux) ; null : la page décide (`wantsHome`, homeLogic.ts). */
+  home: boolean | null;
+  /** Lot 10 : `?archives` : l'accueil s'ouvre sur la liste des archives. */
+  archives: boolean;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -173,7 +187,7 @@ export function readUrlOptions(search: string): UrlChoices {
     solution: daily && params.has("solution"),
     debug,
     tune: debug && params.has("tune"),
-    sprintOff: debug && params.has("tune") && params.get("sprint") === "0",
+    sprint: debug && params.has("tune") && params.get("sprint") === "1",
     touch: params.get("touch") === "1" ? "1" : params.get("touch") === "0" ? "0" : null,
     zones: params.has("zones"),
     hitbox: debug && params.has("hitbox"),
@@ -184,6 +198,8 @@ export function readUrlOptions(search: string): UrlChoices {
     gallery,
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
+    home: params.get("accueil") === "1" ? true : params.get("accueil") === "0" ? false : null,
+    archives: daily && params.has("archives"),
   };
 }
 
@@ -193,26 +209,28 @@ function moduleOf(params: URLSearchParams): UrlChoices["module"] {
   if (!def) return null;
   const v = Number(params.get("variante") ?? "0");
   const variant = Number.isInteger(v) && v >= 0 && v < def.variants.length ? v : 0;
-  const e = params.get("entree");
-  const entry: ModuleEntry = e === "course" || e === "elan" ? "course" : e === "plein" ? "plein" : "arret";
-  return { id: def.id, variant, entry, solution: params.has("solution") };
+  return { id: def.id, variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
 }
 
-/** Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme, thème imposé). */
-function carried(from: UrlChoices): string[] {
+/**
+ * Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme, thème imposé), et
+ * `accueil=0` (lot 10) avec `home` : un test qui saute l'accueil le saute encore après « recommencer » au passage de minuit.
+ */
+function carried(from: UrlChoices, home = false): string[] {
   const out: string[] = [];
   if (from.debug) out.push("debug");
   if (from.touch) out.push(`touch=${from.touch}`);
   if (!from.fx) out.push("fx=off");
   if (from.ghostOff) out.push("ghost=off");
   if (from.theme) out.push(`theme=${from.theme}`);
+  if (home && from.home === false) out.push("accueil=0");
   return out;
 }
 
-/** Lien vers un morceau : `?module=<id>&variante=<n>[&entree=course|plein][&solution]`, plus ce que l'adresse actuelle garde. */
+/** Lien vers un morceau : `?module=<id>&variante=<n>[&entree=elan][&solution]`, plus ce que l'adresse actuelle garde. */
 export function moduleHref(target: { id: string; variant: number; entry: ModuleEntry; solution?: boolean }, from: UrlChoices): string {
   const parts = [`module=${encodeURIComponent(target.id)}`, `variante=${target.variant}`];
-  if (target.entry !== "arret") parts.push(`entree=${target.entry}`);
+  if (target.entry === "elan") parts.push("entree=elan");
   if (target.solution) parts.push("solution");
   return `?${[...parts, ...carried(from)].join("&")}`;
 }
@@ -224,5 +242,15 @@ export function galleryHref(from: UrlChoices): string {
 
 /** Lien vers le niveau d'aujourd'hui (passage de minuit, lot 5) : sans `seed` ni `solution`, avec ce que l'adresse actuelle garde. */
 export function dailyHref(from: UrlChoices): string {
+  return `?${carried(from, true).join("&")}`;
+}
+
+/** Lot 10 : lien vers l'accueil (le niveau du jour, accueil montré) : sans `seed` ni `solution`, avec les outils d'affichage gardés. */
+export function homeHref(from: UrlChoices): string {
   return `?${carried(from).join("&")}`;
+}
+
+/** Lot 10 : lien vers l'archive d'une date (`?seed=AAAA-MM-JJ`), avec les outils d'affichage gardés. */
+export function archiveHref(date: string, from: UrlChoices): string {
+  return `?${[`seed=${date}`, ...carried(from)].join("&")}`;
 }

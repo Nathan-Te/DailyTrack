@@ -269,23 +269,9 @@ export const TRAIL_EVERY = 0.03;
 /** Opacité de la première image de la traînée (lot 8b : 0,14 au lieu de 0,24, plus discrète). */
 export const TRAIL_ALPHA = 0.14;
 
-/** Lot 8c : force de la traînée en élan plein (de 1 à la course jusqu'à celle-ci à `sprintSpeed`). */
-export const TRAIL_SPRINT_STRENGTH = 2.4;
-
-/**
- * Force de la traînée (lot 8c) : 1 à la course, puis elle monte avec la vitesse jusqu'à `TRAIL_SPRINT_STRENGTH` en élan plein (`top` :
- * vitesse d'élan) ; 0 sous la course (pas de traînée).
- */
-export function trailStrength(speed: number, runSpeed: number, top: number): number {
-  if (speed < runSpeed) return 0;
-  if (top <= runSpeed) return 1;
-  const k = Math.min(1, (speed - runSpeed) / (top - runSpeed));
-  return 1 + (TRAIL_SPRINT_STRENGTH - 1) * k * k;
-}
-
 /**
  * Traînée à pleine vitesse : les dernières positions, de plus en plus pâles ; elle s'efface d'elle-même à l'arrêt. Lot 8b : seulement à
- * pleine vitesse ou en élan (`active`), plus marquée en élan (`strength`, lot 8c : de 1 à `TRAIL_SPRINT_STRENGTH` en élan plein).
+ * pleine vitesse ou en élan (`active`), un peu plus marquée en élan (`strength`, de 1 à 1,5).
  */
 export class Trail {
   readonly points: { x: number; y: number; alpha: number }[] = [];
@@ -294,7 +280,7 @@ export class Trail {
   private strength = 1;
 
   update(dt: number, x: number, y: number, active: boolean, strength = 1): void {
-    this.strength = Math.max(0, Math.min(TRAIL_SPRINT_STRENGTH, strength));
+    this.strength = Math.max(0, Math.min(1.5, strength));
     this.fade = Math.max(0, Math.min(1, this.fade + (active ? dt * 6 : -dt * 5)));
     this.since += dt;
     if (this.since >= TRAIL_EVERY) {

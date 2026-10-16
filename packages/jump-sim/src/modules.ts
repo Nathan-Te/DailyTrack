@@ -1,7 +1,7 @@
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, stepAttempt, type AttemptState } from "./attempt";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
-import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, PLAYER_WIDTH, sprintTop, type PlayerState } from "./player";
+import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
 import { START_AT_SPAWN, replayStartState } from "./replay";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "./catalog";
 import { JUMP_SIM_VERSION, UNITS_PER_TILE } from "./constants";
@@ -14,10 +14,10 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // Format d'un fichier, **version 3** (lot 7 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français
-//   etiquettes: mural vertical                    parmi MODULE_TAGS ; `elan` (lot 8c ; `elan: oui` au lot 7) : l'élan est le défi, un plat
-//                                                 sans défi va jusqu'à `ELAN_FLAT_MAX` tuiles (6 sinon)
+//   etiquettes: mural vertical                    parmi MODULE_TAGS
 //   famille: cheminee                             (lot 7) les morceaux de même intention ; une seule famille de chaque par niveau
 //   enchainement: long                            (lot 7, facultatif) un enchaînement long : deux intentions sans palier, 5 à 8 s
+//   elan: oui                                     (lot 7, facultatif) l'élan est le défi : un plat sans défi va jusqu'à 9 tuiles (6 sinon)
 //   mutateurs: plafond fosse                      (lot 7, facultatif) les mutateurs acceptés, chacun avec sa zone dans le bloc annexe
 //   format: 3                                     la version du format (v1 aux paliers dessinés, v2 sans famille : refusés)
 //   paliers: 17 6                                 rangées (de la grille) du **sol** à l'entrée, puis à la sortie
@@ -65,7 +65,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "elan"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration"] as const;
 /** Les mutateurs (lot 7). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -73,15 +73,8 @@ export type MutatorName = (typeof MUTATORS)[number];
 export const MAX_MUTATIONS = 2;
 export const MAX_VARIANTS = 6;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
-/**
- * Les trois entrées d'un morceau (lot 8c) : à l'**arrêt** (premier morceau, reprise sur un point de passage), à la **course** et en **élan
- * plein** (les deux états canoniques du bord d'un palier, `canonicalOf`). Chaque solution **sort** dans l'un des deux états canoniques.
- */
-export const MODULE_ENTRIES = ["arret", "course", "plein"] as const;
+export const MODULE_ENTRIES = ["arret", "elan"] as const;
 export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
-/** Les deux états canoniques au bord droit d'un palier (lot 8c) : sorties possibles d'une solution, entrées lancées du morceau suivant. */
-export const MODULE_EXITS = ["course", "plein"] as const;
-export type ModuleExit = (typeof MODULE_EXITS)[number];
 
 /** Hauteur maximale d'un morceau construit, en rangées. */
 export const MODULE_MAX_HEIGHT = 30;
@@ -97,14 +90,11 @@ export const PALIER_LENGTH = 2;
 export const PALIER_GUARD = 1;
 /** Rangées libres au-dessus du sol d'un palier, au moins (la rangée du sol déclarée est au moins celle-ci). */
 export const PALIER_HEADROOM = 4;
-/**
- * Durée d'une solution entre son entrée et sa sortie canoniques (`ModuleSolution.exitTick − entryTick`) : entre 0,9 et 6 s… (lot 8c : 1 s
- * avant ; en élan plein, les morceaux les plus courts passent sous la seconde)
- */
-export const MODULE_MIN_TICKS = 108;
+/** Durée d'une solution entre son entrée et sa sortie canoniques (`ModuleSolution.exitTick − entryTick`) : entre 1 et 6 s… */
+export const MODULE_MIN_TICKS = 120;
 export const MODULE_MAX_TICKS = 720;
-/** … et de 3 à 8 s pour un enchaînement long (lot 7 : 5 à 8 s ; lot 8c : en élan plein, les mêmes enchaînements durent jusqu'à 40 % de moins). */
-export const LONG_MIN_TICKS = 360;
+/** … et de 5 à 8 s pour un enchaînement long (lot 7). */
+export const LONG_MIN_TICKS = 600;
 export const LONG_MAX_TICKS = 960;
 /** Copies d'une plage répétée : de 0 à 40 (un paramètre du bloc annexe, comme un cycle, va jusqu'à `MAX_SAW_CYCLE`). */
 export const MAX_PARAM = 40;
@@ -150,7 +140,7 @@ export interface ModuleDef {
   family: string;
   /** Enchaînement long (lot 7) : deux intentions sans palier au milieu, solution de 5 à 8 s. */
   long: boolean;
-  /** L'élan est le défi (étiquette `elan`, lot 8c ; `elan: oui` au lot 7) : un plat sans défi peut aller jusqu'à `ELAN_FLAT_MAX` tuiles. */
+  /** L'élan est le défi (lot 7) : un plat sans défi peut aller jusqu'à `ELAN_FLAT_MAX` tuiles. */
   elan: boolean;
   /** Mutateurs acceptés, et leurs zones. */
   mutators: readonly MutatorName[];
@@ -170,7 +160,7 @@ export interface ModuleDef {
   text: string;
 }
 
-const KEYS = new Set(["id", "intention", "etiquettes", "famille", "enchainement", "mutateurs", "format", "paliers", "repeter", "variante"]);
+const KEYS = new Set(["id", "intention", "etiquettes", "famille", "enchainement", "elan", "mutateurs", "format", "paliers", "repeter", "variante"]);
 const SPIKES = "<>^v";
 
 /** `a-b` ou `a` → [a, b]. */
@@ -230,7 +220,6 @@ export function parseModule(text: string): ModuleDef {
     if (raw === "" || raw.startsWith("//")) continue;
     if (raw === "grille:") break;
     const m = /^([a-z]+):\s*(.*)$/.exec(raw);
-    if (m && m[1] === "elan") throw new ModuleError(`Ligne ${i + 1} : « elan: oui » est remplacé par l'étiquette « elan » (lot 8c)`);
     if (!m || !KEYS.has(m[1]!)) throw new ModuleError(`Ligne ${i + 1} : « clé: valeur » attendu (${[...KEYS].join(", ")}, puis « grille: »)`);
     (meta[m[1]!] ??= []).push(m[2]!.trim());
   }
@@ -257,7 +246,7 @@ export function parseModule(text: string): ModuleDef {
     return true;
   };
   const long = optional("enchainement", "long");
-  const elan = tags.includes("elan");
+  const elan = optional("elan", "oui");
   const mutators = (meta.mutateurs ?? []).flatMap((l) => l.split(/\s+/)).filter(Boolean) as MutatorName[];
   for (const m of mutators) if (!(MUTATORS as readonly string[]).includes(m)) throw new ModuleError(where(`mutateur « ${m} » inconnu (${MUTATORS.join(", ")})`));
   if (new Set(mutators).size !== mutators.length) throw new ModuleError(where("mutateur en double"));
@@ -673,29 +662,26 @@ export function buildModule(id: string, variant: number, options: BuildOptions =
 /** Une solution stockée (une variante, un état d'entrée) : une rediffusion du lot 3 et sa marge. */
 export interface ModuleSolution {
   /**
-   * Rediffusion (base64url) du morceau joué seul, du départ à l'arrivée `F` ; départ lancé pour les entrées course et plein (lot 8c). Elle
-   * contient l'entrée et la sortie canoniques (`entryTick`, `exitTick`) ; avant l'entrée, l'approche canonique (`entryPrefix`) ; après la
-   * sortie, droite tenue jusqu'à l'arrivée.
+   * Rediffusion (base64url) du morceau joué seul, du départ à l'arrivée `F` ; départ lancé pour l'entrée élan. Elle contient l'entrée et la
+   * sortie canoniques (`entryTick`, `exitTick`) ; après la sortie, droite tenue jusqu'à l'arrivée.
    */
   code: string;
   /** Durée (pas) de toute la rediffusion (jusqu'à l'arrivée du morceau seul). */
   ticks: number;
   /**
    * Pas joués quand le centre du personnage passe le bord droit du palier d'entrée (0 à l'arrêt : la solution part de là où elle est ;
-   * lancée, ce que coûte l'approche jusqu'au bord) et quand il passe le bord droit du palier de sortie (la sortie). Dans le niveau du jour,
-   * un morceau compte `exitTick − entryTick` pas.
+   * en élan, ce que coûte la course jusqu'au bord, droite tenue) et quand il passe le bord droit du palier de sortie (la sortie). Dans le
+   * niveau du jour, un morceau compte `exitTick − entryTick` pas.
    */
   entryTick: number;
   exitTick: number;
-  /** L'état canonique de la sortie (lot 8c) : l'entrée de la solution du morceau suivant dans le niveau du jour. */
-  exit: ModuleExit;
   /** Durée entre l'entrée et la sortie de la plus rapide trouvée avant durcissement (égale ou à peine plus courte). */
   fastest: number;
   /** Taux de réussite (‰) quand chaque changement de commande est décalé au hasard de ±1, ±2, ±3 pas (`GIGUE_DRAWS` tirages chacun). */
   gigue: readonly [number, number, number];
   /**
-   * Taux de réussite (‰) rejouée depuis chacune des positions d'entrée possibles (`raccordPositions` : le centre franchit le bord n'importe
-   * où dans un pas, à la course ou en élan plein) jusqu'à une sortie canonique ; null à l'arrêt.
+   * Taux de réussite (‰) rejouée en élan depuis chacune des positions d'entrée possibles (`RACCORD_POSITIONS` : le centre franchit le bord
+   * n'importe où dans un pas de course) jusqu'à une sortie propre ; null à l'arrêt.
    */
   raccord: number | null;
   /** Note d'exigence (1 facile … 5 exigeant), 0 = « au pas près » (refusée). */
@@ -706,8 +692,7 @@ export interface ModuleVariantSolutions {
   /** Empreinte de la grille construite (`BuiltModule.hash`). */
   grid: string;
   arret: ModuleSolution | null;
-  course: ModuleSolution | null;
-  plein: ModuleSolution | null;
+  elan: ModuleSolution | null;
 }
 
 export interface ModuleSolutionsFile {
@@ -717,29 +702,19 @@ export interface ModuleSolutionsFile {
   modules: Readonly<Record<string, { variants: readonly ModuleVariantSolutions[] }>>;
 }
 
-/**
- * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
- * 3 : deux états canoniques, raccord aux deux entrées lancées (lot 8c).
- */
-export const EXIGENCE_VERSION = 3;
+/** Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6). */
+export const EXIGENCE_VERSION = 2;
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
-/** Positions d'entrée du test de raccord, par entrée lancée (lot 6 : 25). */
-export const RACCORD_COUNT = 25;
 /**
- * Positions d'entrée du test de raccord (lot 6, lot 8c) : de combien d'unités le centre du personnage a dépassé le bord droit du palier
- * d'entrée au pas où il le franchit. Un pas fait `runSpeed` = 375 unités à la course, `sprintSpeed` = 614 en élan plein : l'entrée réelle
- * tombe n'importe où dans [0, pas) ; on en essaie `RACCORD_COUNT`, régulièrement espacées (au milieu de 25 tranches égales).
+ * Positions d'entrée du test de raccord (lot 6) : de combien d'unités le centre du personnage a dépassé le bord droit du palier d'entrée
+ * au pas où il le franchit. À pleine vitesse un pas fait `runSpeed` = 375 unités : l'entrée réelle tombe n'importe où dans [0, 375) ; on
+ * en essaie 25, régulièrement espacées.
  */
-export function raccordPositions(entry: ModuleExit): number[] {
-  const v = entry === "plein" ? sprintTop(DEFAULT_JUMP_PARAMS) : DEFAULT_JUMP_PARAMS.runSpeed;
-  return Array.from({ length: RACCORD_COUNT }, (_, k) => idiv((2 * k + 1) * v, 2 * RACCORD_COUNT));
-}
-/** Les positions à la course (7, 22, … 367 : celles du lot 6). */
-export const RACCORD_POSITIONS: readonly number[] = raccordPositions("course");
+export const RACCORD_POSITIONS: readonly number[] = Array.from({ length: 25 }, (_, k) => 7 + 15 * k);
 /** « Au pas près » : la solution échoue à ±1 pas sur plus de la moitié des tirages. */
 export const PAS_PRES = 500;
-/** Raccord strict (lot 6) : une solution lancée doit réussir depuis au moins 90 % des positions d'entrée, sinon la variante est refusée. */
+/** Raccord strict (lot 6) : la solution en élan doit réussir depuis au moins 90 % des positions d'entrée, sinon la variante est refusée. */
 export const RACCORD_MIN = 900;
 /**
  * Selon la position d'entrée, la sortie peut venir un peu plus tard que dans la solution stockée : le test de raccord et l'assemblage du
@@ -758,7 +733,7 @@ export function exigenceOf(gigue: readonly [number, number, number], raccord: nu
   return g3 >= 900 ? 1 : g3 >= 600 ? 2 : g2 >= 600 ? 3 : g1 >= 800 ? 4 : 5;
 }
 
-// ——— Les deux états canoniques (lot 6, lot 8c) ———
+// ——— Le point canonique (lot 6) ———
 
 /** Colonne du centre du personnage. */
 export function centerCol(p: Readonly<PlayerState>): number {
@@ -766,25 +741,14 @@ export function centerCol(p: Readonly<PlayerState>): number {
 }
 
 /**
- * Compteur d'élan de l'état canonique « course » (lot 8c). L'état « course » est au sol, à `runSpeed`, compteur à **1** : le premier pas à
- * pleine vitesse compté depuis que l'élan a été remis à zéro. On l'atteint à la sortie de n'importe quel morceau par un **bref relâchement**
- * sur le palier : un pas sans direction deux pas avant le bord (vitesse 343, puis 360, puis 375 au pas du bord, compteur 0, 0, 1) ; ou en
- * atterrissant au bord après un saut mural (qui remet l'élan à zéro). Une valeur plus haute demanderait plus de pas au sol sur un palier de
- * 2 tuiles (22 pas de course) ; 0 est impossible au sol à pleine vitesse (chaque pas y est compté).
+ * La course « propre » du point canonique : au sol, à `runSpeed` vers la droite, rien d'autre en cours (bouton de saut relâché, aucun saut en
+ * attente dans le tampon, ni montée, ni glisse, ni mur, ni verrou). C'est l'état de quiconque court depuis un moment sur du plat, droite tenue :
+ * deux personnages dans cet état ne diffèrent que par leur position, d'où des raccords exacts.
  */
-export const COURSE_SPRINT = 1;
-
-/**
- * L'état canonique d'un personnage au bord d'un palier, ou null (lot 8c ; la « course propre » du lot 6). Dans les deux états : au sol, rien
- * d'autre en cours (bouton de saut relâché, aucun saut en attente dans le tampon, ni montée, ni glisse, ni mur, ni verrou) ; puis
- *   - **course** : à `runSpeed` vers la droite, compteur d'élan à `COURSE_SPRINT` ;
- *   - **plein** (élan plein) : à `sprintSpeed`, compteur d'élan au maximum (`sprintDelay`, il y est borné).
- * Deux personnages dans le même état canonique ne diffèrent que par leur position : d'où des raccords exacts.
- */
-export function canonicalOf(p: Readonly<PlayerState>): ModuleExit | null {
-  const P = DEFAULT_JUMP_PARAMS;
-  const quiet =
+export function isCleanRun(p: Readonly<PlayerState>): boolean {
+  return (
     p.ground === 1 &&
+    p.vx === DEFAULT_JUMP_PARAMS.runSpeed &&
     p.vy === 0 &&
     p.air === 0 &&
     p.wallSide === 0 &&
@@ -794,99 +758,52 @@ export function canonicalOf(p: Readonly<PlayerState>): ModuleExit | null {
     p.held === 0 &&
     p.jumping === 0 &&
     p.lock === 0 &&
-    p.lockDir === 0;
-  if (!quiet) return null;
-  if (p.vx === P.runSpeed && p.sprint === COURSE_SPRINT) return "course";
-  if (p.vx === sprintTop(P) && p.sprint === P.sprintDelay) return "plein";
-  return null;
+    p.lockDir === 0
+  );
 }
 
-/** Dans l'un des deux états canoniques (lot 8c) — la « course propre » du lot 6. */
-export function isCleanRun(p: Readonly<PlayerState>): boolean {
-  return canonicalOf(p) !== null;
-}
-
-/** Le drapeau « lancé » de la rediffusion d'une entrée : 0 à l'arrêt, 1 à la course, 2 en élan plein. */
-export const entryLaunch = (entry: ModuleEntry): number => (entry === "plein" ? 2 : entry === "course" ? 1 : 0);
-
-/** L'état de départ d'un morceau seul : au départ `S` (début du palier d'entrée), à l'arrêt ou lancé (course, élan plein). */
+/** L'état de départ d'un morceau seul : au départ `S` (début du palier d'entrée), à l'arrêt ou lancé (entrée élan). */
 export function moduleStart(m: BuiltModule, entry: ModuleEntry): AttemptState {
-  return replayStartState(m.level, { ...START_AT_SPAWN, elan: entryLaunch(entry) });
-}
-
-const prefixCache = new Map<string, readonly number[]>();
-
-/**
- * L'**approche canonique** d'une entrée lancée (lot 8c) : les commandes du départ `S` (lancé) jusqu'au pas où le centre franchit le bord droit
- * du palier d'entrée **dans l'état canonique de l'entrée**. Élan plein : droite tenue. Course : droite tenue, un pas relâché, puis droite
- * (le bref relâchement qui met le compteur à `COURSE_SPRINT` au bord). Vide à l'arrêt. Le palier étant standard, l'approche est la même pour
- * tous les morceaux (calculée, pas écrite).
- */
-export function entryPrefix(m: BuiltModule, entry: ModuleEntry): readonly number[] {
-  if (entry === "arret") return [];
-  const key = `${m.levelId}:${m.lead}:${entry}`;
-  const hit = prefixCache.get(key);
-  if (hit) return hit;
-  const tries = entry === "plein" ? [-1] : Array.from({ length: 64 }, (_, a) => a);
-  for (const a of tries) {
-    const inputs: number[] = [];
-    let s = moduleStart(m, entry);
-    for (let t = 0; t < 96; t++) {
-      const bits = t === a ? 0 : INPUT_RIGHT;
-      inputs.push(bits);
-      s = stepAttempt(s, bits, m.level, DEFAULT_JUMP_PARAMS);
-      if (centerCol(s.player) >= m.lead) {
-        if (canonicalOf(s.player) === entry) {
-          prefixCache.set(key, inputs);
-          return inputs;
-        }
-        break;
-      }
-    }
-  }
-  throw new ModuleError(`${m.levelId} : aucune approche ne passe le bord du palier d'entrée ${entry === "plein" ? "en élan plein" : "à la course"}`);
+  return replayStartState(m.level, { ...START_AT_SPAWN, elan: entry === "elan" ? 1 : 0 });
 }
 
 /** Ce que donne la rediffusion d'une solution de morceau rejouée sur le morceau seul (`moduleSpan`). */
 export interface ModuleSpan {
   entryTick: number;
   exitTick: number;
-  /** L'état canonique de la sortie. */
-  exit: ModuleExit;
   /** Pas joués à l'arrivée (= toute la rediffusion). */
   finishTick: number;
 }
 
 /**
- * Rejoue une solution sur le morceau seul et vérifie la **règle du point canonique** : lancée, l'approche canonique (`entryPrefix`) jusqu'à
- * ce que le centre passe le bord du palier d'entrée dans l'état de l'entrée ; puis la **sortie** au premier pas où le centre passe le bord du
- * palier de sortie, vivant, dans un état canonique (course ou élan plein) ; puis droite tenue jusqu'à l'arrivée, atteinte au dernier pas,
- * sans mort. Rend les pas et l'état de sortie, ou ce qui ne va pas.
+ * Rejoue une solution sur le morceau seul et vérifie la **règle du point canonique** : en élan, droite tenue jusqu'à ce que le centre passe
+ * le bord du palier d'entrée, en course propre ; puis la **sortie** au premier pas où le centre passe le bord du palier de sortie, vivant,
+ * en course propre ; puis droite tenue jusqu'à l'arrivée, atteinte au dernier pas, sans mort. Rend les trois pas, ou ce qui ne va pas.
+ * `start` : un autre départ (le test de raccord décale la position d'entrée).
  */
-export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly number[]): ModuleSpan | string {
+export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly number[], start?: AttemptState): ModuleSpan | string {
   const level = m.level;
-  const prefix = entryPrefix(m, entry);
-  let s = moduleStart(m, entry);
-  const entryTick = prefix.length;
+  let s = start ?? moduleStart(m, entry);
+  let entryTick = entry === "arret" ? 0 : -1;
   let exitTick = -1;
-  let exit: ModuleExit | null = null;
   for (let t = 0; t < inputs.length; t++) {
     const bits = inputs[t]!;
-    if (t < entryTick && bits !== prefix[t]) return `pas ${t + 1} : l'approche canonique est attendue avant l'entrée`;
-    if (exitTick >= 0 && bits !== INPUT_RIGHT) return `pas ${t + 1} : droite seule attendue après la sortie`;
+    if ((entryTick < 0 || exitTick >= 0) && bits !== INPUT_RIGHT) return `pas ${t + 1} : droite seule attendue ${entryTick < 0 ? "avant l'entrée" : "après la sortie"}`;
     s = stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
     if (s.status === ATTEMPT_DEAD) return `mort au pas ${t + 1}`;
     if (s.status === ATTEMPT_FINISHED) {
-      if (exitTick < 0 || !exit) return "arrivée avant la sortie";
+      if (exitTick < 0) return "arrivée avant la sortie";
       if (t + 1 !== inputs.length) return "des pas après l'arrivée";
-      return { entryTick, exitTick, exit, finishTick: t + 1 };
+      return { entryTick, exitTick, finishTick: t + 1 };
     }
     const col = centerCol(s.player);
-    if (t + 1 === entryTick && (col < m.lead || canonicalOf(s.player) !== entry)) return "entrée hors de l'état canonique";
+    if (entryTick < 0 && col >= m.lead) {
+      if (!isCleanRun(s.player)) return "entrée hors de la course propre";
+      entryTick = t + 1;
+    }
     if (col < m.palierIn.col0) return `pas ${t + 1} : le centre repasse à gauche du palier d'entrée`;
-    if (exitTick < 0 && t + 1 > entryTick && col >= m.exitCol) {
-      exit = canonicalOf(s.player);
-      if (!exit) return `sortie au pas ${t + 1} hors des états canoniques`;
+    if (exitTick < 0 && entryTick >= 0 && col >= m.exitCol) {
+      if (!isCleanRun(s.player)) return `sortie au pas ${t + 1} hors de la course propre`;
       exitTick = t + 1;
     }
   }
@@ -902,14 +819,8 @@ export function moduleSolutions(id: string, variant: number): ModuleVariantSolut
 /** Lot 7b : une respiration n'est jamais exigeante — toute variante d'un morceau étiqueté `respiration` a une exigence de 2 au plus. */
 export const MAX_REST_EXIGENCE = 2;
 
-/** Exigence d'une variante : la plus haute de ses trois solutions (0 s'il en manque une). */
+/** Exigence d'une variante : la plus haute de ses deux solutions (0 s'il en manque une). */
 export function variantExigence(s: ModuleVariantSolutions | null): number {
-  if (!s) return 0;
-  let worst = 0;
-  for (const e of MODULE_ENTRIES) {
-    const sol = s[e];
-    if (!sol || sol.exigence === 0) return 0;
-    if (sol.exigence > worst) worst = sol.exigence;
-  }
-  return worst;
+  if (!s || !s.arret || !s.elan) return 0;
+  return s.arret.exigence === 0 || s.elan.exigence === 0 ? 0 : Math.max(s.arret.exigence, s.elan.exigence);
 }

@@ -5,8 +5,10 @@ famille: scie-ronde
 mutateurs: sol-friable denivele
 format: 3
 paliers: 10 10
-variante: cycle=100
-variante: cycle=100 +denivele:2
+variante: cycle=240
+variante: cycle=180
+variante: cycle=240 +sol-friable
+variante: cycle=180 +denivele:2
 grille:
 .................
 .................

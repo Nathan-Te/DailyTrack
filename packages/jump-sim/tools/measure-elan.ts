@@ -1,112 +1,45 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { availableParallelism } from "node:os";
-import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { Worker, isMainThread, parentPort } from "node:worker_threads";
 import {
   ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
-  ATTEMPT_RUNNING,
-  COUNTER_CAP,
   DEFAULT_JUMP_PARAMS,
   INPUT_JUMP,
-  INPUT_LEFT,
   INPUT_RIGHT,
   MODULES,
-  NO_SPRINT_PARAMS,
   PLAYER_WIDTH,
-  PREMIER_JOUR_JUMP,
+  SANDBOX_LEVEL,
+  SANDBOX_MARKS,
+  SPRINT_TRIAL_PARAMS,
   TICK_RATE,
   UNITS_PER_TILE,
   buildModule,
   centerCol,
   dailyLevel,
-  initialAttempt,
+  decodeReplay,
+  fromRuns,
   initialPlayer,
   moduleStart,
   parseLevel,
-  sprintTop,
+  replayStartState,
   stepAttempt,
   stepPlayer,
   type AttemptState,
-  type BuiltModule,
   type JumpParams,
   type Level,
   type PlayerState,
 } from "../src/index";
-import { beamSolve } from "./beam";
-import { packageDir } from "./files";
+import { MODULE_SOLUTIONS } from "../src/catalog";
+import { parseDay } from "@cdj/core";
 
-// `npm run measure:elan -w @cdj/jump-sim` — lot 8c : ce que l'élan change, pour la calibration des médailles (rien n'est modifié).
-//   1. Du plat et la portée d'un saut, avec et sans élan (`NO_SPRINT_PARAMS`).
-//   2. **Le temps de l'auteur avec et sans élan, sur les mêmes niveaux** (120 dates) : pour chaque morceau et variante, une solution
-//      **sans élan** (la plus rapide du faisceau, entrées arrêt et course, sortie dans la « course propre » du lot 6 : au sol, à `runSpeed`,
-//      rien en cours) ; puis, pour chaque date, ces solutions mises bout à bout **sur le niveau assemblé du jour** et rejouées sans élan
-//      (raccord exact du lot 6). Le temps rejoué est le « temps de l'auteur sans élan » du même niveau. Les solutions sans élan ne sont pas
-//      durcies (la plus rapide) : l'écart est donc un peu sous-estimé (le durcissement coûte au plus 2 %).
-//   Les solutions sans élan sont gardées dans `dist/sans-elan.json` (empreinte de la grille), pas dans le dépôt.
+// `npm run measure:elan -w @cdj/jump-sim` — lot 8b : ce que changerait l'essai d'élan progressif (valeurs de départ `SPRINT_TRIAL_PARAMS`),
+// sans rien modifier : temps gagné sur la plus longue ligne droite du bac à sable et sur du plat, portée d'un saut, solutions stockées des
+// morceaux rejouées avec l'élan (identiques, plus rapides, cassées), preuves de quelques niveaux du jour rejouées avec l'élan.
 
+const ELAN: Readonly<JumpParams> = { ...DEFAULT_JUMP_PARAMS, ...SPRINT_TRIAL_PARAMS };
 const T = UNITS_PER_TILE;
-const OFF = NO_SPRINT_PARAMS;
-const P = DEFAULT_JUMP_PARAMS;
+const sec = (t: number) => (t / TICK_RATE).toFixed(3).replace(".", ",");
+const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 const R = INPUT_RIGHT;
 const J = INPUT_JUMP;
-const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
-const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
-const stats = (xs: number[]) => ({ min: Math.min(...xs), mean: xs.reduce((a, b) => a + b, 0) / xs.length, max: Math.max(...xs) });
-
-/** La course propre du lot 6, sans élan : au sol, à `runSpeed`, rien en cours. */
-function oldClean(p: Readonly<PlayerState>): boolean {
-  return p.ground === 1 && p.vx === P.runSpeed && p.vy === 0 && p.air === 0 && p.wallSide === 0 && p.wallAir === COUNTER_CAP && p.slide === 0 && p.buffer === 0 && p.held === 0 && p.jumping === 0 && p.lock === 0;
-}
-
-type Entry = "arret" | "course";
-interface Plain {
-  /** Commandes depuis le départ du morceau seul (lancé : droite tenue jusqu'au bord), jusqu'à la sortie. */
-  inputs: number[];
-  entryTick: number;
-}
-
-/** Une solution sans élan d'un morceau (la plus rapide du faisceau), ou null. */
-function solvePlain(m: BuiltModule, entry: Entry): Plain | null {
-  let start = moduleStart(m, entry);
-  const prefix: number[] = [];
-  if (entry === "course") {
-    for (let t = 0; t < 64 && centerCol(start.player) < m.lead; t++) {
-      start = stepAttempt(start, R, m.level, OFF);
-      prefix.push(R);
-    }
-  }
-  const goal = (s: AttemptState) => s.status === ATTEMPT_RUNNING && centerCol(s.player) >= m.exitCol && oldClean(s.player);
-  const lost = (s: AttemptState) => (centerCol(s.player) >= m.exitCol && !oldClean(s.player)) || centerCol(s.player) < m.palierIn.col0;
-  const f = beamSolve(m.level, { start, goal, lost, beam: 600, chunk: 4, changePenalty: 128, maxTicks: 1320, params: OFF });
-  if (!f) return null;
-  let idle = 0;
-  if (entry === "arret") while (idle < f.length && (f[idle]! & (INPUT_LEFT | INPUT_RIGHT | INPUT_JUMP)) === 0) idle++;
-  return { inputs: [...prefix, ...f.slice(idle)], entryTick: prefix.length };
-}
-
-interface Job {
-  id: string;
-  variant: number;
-}
-interface JobOut {
-  key: string;
-  hash: string;
-  arret: Plain | null;
-  course: Plain | null;
-}
-
-if (!isMainThread) {
-  parentPort!.on("message", (job: Job | null) => {
-    if (job === null) process.exit(0);
-    const m = buildModule(job.id, job.variant);
-    const out: JobOut = { key: `${job.id}:${job.variant}`, hash: m.hash, arret: solvePlain(m, "arret"), course: solvePlain(m, "course") };
-    parentPort!.postMessage(out);
-  });
-} else {
-  await main();
-}
 
 /** Pas pour que le bord droit de la boîte atteigne `col` (tuiles), droite tenue depuis `s`. */
 function ticksTo(lv: Level, s: PlayerState, col: number, p: Readonly<JumpParams>): number {
@@ -117,133 +50,158 @@ function ticksTo(lv: Level, s: PlayerState, col: number, p: Readonly<JumpParams>
   return -1;
 }
 
-async function main(): Promise<void> {
-  const out: string[] = [];
-  const line = (s = "") => out.push(s);
+const out: string[] = [];
+const line = (s = "") => out.push(s);
 
-  // ——— 1. Plat et portée ———
+// ——— 1. La plus longue ligne droite du bac à sable : la piste d'élan, du départ (colonne 3) à la première marche (colonne 33) ———
+{
+  const start = initialPlayer(SANDBOX_LEVEL);
+  const to = SANDBOX_MARKS.steps[0][0];
+  const a = ticksTo(SANDBOX_LEVEL, start, to, DEFAULT_JUMP_PARAMS);
+  const b = ticksTo(SANDBOX_LEVEL, start, to, ELAN);
+  line("## Bac à sable : piste d'élan (départ → première marche, 30 tuiles), droite tenue depuis l'arrêt");
+  line();
+  line("| | sans élan | avec l'élan | gagné |");
+  line("|---|---|---|---|");
+  line(`| temps | ${sec(a)} s | ${sec(b)} s | ${sec(a - b)} s (${num((100 * (a - b)) / a)} %) |`);
+  line();
+}
+
+// ——— 2. Du plat, depuis l'arrêt : 10, 20, 40, 80 tuiles ———
+{
+  // Une longue salle haute (12 rangées libres : aucun saut ne touche le plafond).
   const hall = parseLevel([...new Array<string>(11).fill("#" + ".".repeat(200) + "#"), "#S" + ".".repeat(198) + "F#", "#".repeat(202)].join("\n"));
   const start = initialPlayer(hall);
   line("## Plat, depuis l'arrêt, droite tenue");
   line();
   line("| distance | sans élan | avec l'élan | gagné |");
   line("|---|---|---|---|");
-  for (const d of [10, 20, 40, 80]) {
-    const a = ticksTo(hall, start, 2 + d, OFF);
-    const b = ticksTo(hall, start, 2 + d, P);
+  for (const d of [10, 20, 40, 80, 160]) {
+    const a = ticksTo(hall, start, 2 + d, DEFAULT_JUMP_PARAMS);
+    const b = ticksTo(hall, start, 2 + d, ELAN);
     line(`| ${d} tuiles | ${sec(a)} s | ${sec(b)} s | ${sec(a - b)} s (${num((100 * (a - b)) / a)} %) |`);
   }
-  // Distance pour prendre l'élan plein : depuis l'arrêt, et depuis la course (compteur à 1, l'état canonique « course »).
-  const toFull = (s: PlayerState) => {
-    const x0 = s.x;
-    for (let t = 0; t < 600; t++) {
-      s = stepPlayer(s, R, hall, P);
-      if (s.vx === sprintTop(P) && s.sprint === P.sprintDelay) return { ticks: t + 1, tiles: (s.x - x0) / T };
-    }
-    return { ticks: -1, tiles: -1 };
-  };
-  const fromStop = toFull({ ...start });
-  const fromRun = toFull({ ...start, vx: P.runSpeed, sprint: 1 });
   line();
-  line(`Élan plein (${num((sprintTop(P) * TICK_RATE) / T)} tuiles/s) : depuis l'arrêt en ${sec(fromStop.ticks)} s sur ${num(fromStop.tiles)} tuiles ; depuis la course en ${sec(fromRun.ticks)} s sur ${num(fromRun.tiles)} tuiles.`);
-  const reach = (s0: PlayerState, hold: number, p: Readonly<JumpParams>) => {
-    let s: PlayerState = { ...s0, x: 10 * T };
+  // Portée d'un saut complet et d'un saut court, sur du plat, lancé à la course et en élan.
+  const reach = (vx: number, hold: number) => {
+    let s: PlayerState = { ...start, x: 10 * T, vx, ...(vx > DEFAULT_JUMP_PARAMS.runSpeed ? { sprint: 255 } : {}) };
     const x0 = s.x;
-    s = stepPlayer(s, R | J, hall, p);
-    for (let t = 1; t < 600 && s.ground === 0; t++) s = stepPlayer(s, t < hold ? R | J : R, hall, p);
+    s = stepPlayer(s, R | J, hall, ELAN);
+    for (let t = 1; t < 600 && s.ground === 0; t++) s = stepPlayer(s, t < hold ? R | J : R, hall, ELAN);
     return (s.x - x0) / T;
   };
+  line("## Portée d'un saut sur du plat (du décollage au retour au sol)");
   line();
-  line("| saut sur du plat (du décollage au retour au sol) | à la course | en élan plein |");
+  line("| saut | à la course (11 tuiles/s) | en élan (15 tuiles/s) |");
   line("|---|---|---|");
-  for (const [name, hold] of [["complet (tenu)", 999], ["court (relâché au 6e pas)", 6]] as const) {
-    line(`| ${name} | ${num(reach({ ...start, vx: P.runSpeed }, hold, OFF))} tuiles | ${num(reach({ ...start, vx: sprintTop(P), sprint: P.sprintDelay }, hold, P))} tuiles |`);
-  }
+  line(`| complet (tenu) | ${num(reach(DEFAULT_JUMP_PARAMS.runSpeed, 999))} tuiles | ${num(reach(512, 999))} tuiles |`);
+  line(`| court (relâché au 6e pas) | ${num(reach(DEFAULT_JUMP_PARAMS.runSpeed, 6))} tuiles | ${num(reach(512, 6))} tuiles |`);
   line();
-
-  // ——— 2. Solutions sans élan (cache) ———
-  const cacheFile = join(packageDir(), "dist", "sans-elan.json");
-  const cache: Record<string, JobOut> = existsSync(cacheFile) ? (JSON.parse(readFileSync(cacheFile, "utf8")) as Record<string, JobOut>) : {};
-  const jobs: Job[] = [];
-  for (const def of MODULES) {
-    def.variants.forEach((_, v) => {
-      const hit = cache[`${def.id}:${v}`];
-      if (!hit || hit.hash !== buildModule(def.id, v).hash) jobs.push({ id: def.id, variant: v });
-    });
-  }
-  const t0 = performance.now();
-  if (jobs.length > 0) {
-    const queue = [...jobs];
-    const n = Math.max(1, Math.min(availableParallelism(), jobs.length));
-    await Promise.all(
-      Array.from({ length: n }, () => {
-        const w = new Worker(fileURLToPath(import.meta.url));
-        return new Promise<void>((done, fail) => {
-          const next = () => {
-            const job = queue.shift();
-            if (!job) {
-              w.postMessage(null);
-              done();
-              return;
-            }
-            w.postMessage(job);
-          };
-          w.on("message", (r: JobOut) => {
-            cache[r.key] = r;
-            next();
-          });
-          w.on("error", fail);
-          next();
-        });
-      }),
-    );
-    mkdirSync(join(packageDir(), "dist"), { recursive: true });
-    writeFileSync(cacheFile, JSON.stringify(cache));
-  }
-  const solveS = (performance.now() - t0) / 1000;
-
-  // ——— 3. Le niveau du jour, avec et sans élan ———
-  // Chaque niveau a au moins un morceau « elan » (quota), infaisable sans élan par construction : le niveau entier ne se rejoue donc pas
-  // sans élan. On compare **morceau par morceau** : pour chaque morceau qui se fait sans élan, la durée de sa solution sans élan (entrée
-  // arrêt pour le premier, course sinon, raccord exact du lot 6) contre la durée qu'il prend dans la preuve de l'auteur (avec l'élan,
-  // `end − start`). Temps « sans élan » estimé d'un niveau = somme des durées sans élan + durée avec élan des morceaux « elan ».
-  const DAYS = 120;
-  const rows: { date: string; elan: number; plain: number; partElan: number; partPlain: number; missing: number }[] = [];
-  for (let k = 0; k < DAYS; k++) {
-    const L = dailyLevel(PREMIER_JOUR_JUMP + k);
-    let plain = 0;
-    let partElan = 0;
-    let partPlain = 0;
-    let missing = 0;
-    L.pieces.forEach((p, i) => {
-      const sol = cache[`${p.id}:${p.variant}`]?.[i === 0 ? "arret" : "course"];
-      const withElan = p.end - p.start;
-      if (!sol) {
-        missing++;
-        plain += withElan;
-        return;
-      }
-      const d = sol.inputs.length - sol.entryTick;
-      plain += d;
-      partPlain += d;
-      partElan += withElan;
-    });
-    rows.push({ date: L.date, elan: L.authorTicks, plain, partElan, partPlain, missing });
-  }
-  const gaps = rows.map((r) => r.plain - r.elan);
-  const ratio = rows.map((r) => (r.partPlain - r.partElan) / r.partPlain);
-  const noPlain = MODULES.filter((d) => d.variants.some((_, v) => !cache[`${d.id}:${v}`]?.arret || !cache[`${d.id}:${v}`]?.course)).map((d) => d.id);
-  line(`## Temps de l'auteur avec et sans élan, sur les mêmes niveaux (${DAYS} dates)`);
-  line();
-  line(`Morceaux sans solution sans élan (au moins une variante) : ${noPlain.join(", ") || "aucun"} — les morceaux « elan » (par construction) et ceux dont un saut demande l'élan sans en porter l'étiquette ; ils comptent pour leur durée avec l'élan dans l'estimation sans élan. Morceaux ainsi comptés par niveau : ${num(stats(rows.map((r) => r.missing)).mean, 2)} en moyenne.`);
-  line();
-  line("| mesure | min | moyenne | max |");
-  line("|---|---|---|---|");
-  line(`| temps de l'auteur avec l'élan (preuve rejouée) | ${sec(stats(rows.map((r) => r.elan)).min)} s | ${sec(stats(rows.map((r) => r.elan)).mean)} s | ${sec(stats(rows.map((r) => r.elan)).max)} s |`);
-  line(`| sans élan, estimé (mêmes morceaux) | ${sec(stats(rows.map((r) => r.plain)).min)} s | ${sec(stats(rows.map((r) => r.plain)).mean)} s | ${sec(stats(rows.map((r) => r.plain)).max)} s |`);
-  line(`| écart (sans − avec) | ${sec(stats(gaps).min)} s | ${sec(stats(gaps).mean)} s | ${sec(stats(gaps).max)} s |`);
-  line(`| écart sur les morceaux faisables sans élan, en % de leur temps sans élan | ${num(100 * stats(ratio).min)} % | ${num(100 * stats(ratio).mean)} % | ${num(100 * stats(ratio).max)} % |`);
-  line();
-  line(`Solutions sans élan : ${jobs.length} variantes cherchées (${num(solveS)} s), ${Object.keys(cache).length - jobs.length} reprises du cache. La solution sans élan est la plus rapide du faisceau, sans durcissement (celle avec l'élan est durcie à 2 % près) : l'écart est un peu sous-estimé.`);
-  console.log(out.join("\n"));
 }
+
+// ——— 3. Les solutions stockées des morceaux, rejouées avec l'élan (entrée « élan », compteur d'élan à 0 au départ) ———
+interface Row {
+  id: string;
+  v: number;
+  /** Plus longue course au sol à pleine vitesse, droite tenue, dans la solution stockée (pas). */
+  run: number;
+  base: number;
+  elan: number | null;
+  verdict: "identique" | "plus rapide" | "plus lente" | "cassée";
+  why: string;
+}
+const rows: Row[] = [];
+for (const def of MODULES) {
+  for (let v = 0; v < def.variants.length; v++) {
+    const sol = MODULE_SOLUTIONS.modules[def.id]?.variants[v]?.elan;
+    if (!sol) continue;
+    const m = buildModule(def.id, v);
+    const inputs = fromRuns(decodeReplay(sol.code).runs);
+    // La plus longue course à pleine vitesse au sol (droite tenue) de la solution, sans élan.
+    let s: AttemptState = moduleStart(m, "elan");
+    let run = 0;
+    let best = 0;
+    for (const bits of inputs) {
+      const before = s;
+      s = stepAttempt(s, bits, m.level, DEFAULT_JUMP_PARAMS);
+      const full = before.player.ground === 1 && s.player.ground === 1 && bits === R && s.player.vx === DEFAULT_JUMP_PARAMS.runSpeed;
+      run = full ? run + 1 : 0;
+      best = Math.max(best, run);
+    }
+    // Rejouée avec l'élan : la sortie (le centre passe le bord droit du palier de sortie), vivant.
+    let e: AttemptState = moduleStart(m, "elan");
+    let exit = -1;
+    let why = "";
+    for (let t = 0; t < inputs.length; t++) {
+      e = stepAttempt(e, inputs[t]!, m.level, ELAN);
+      if (e.status === ATTEMPT_DEAD) {
+        why = `mort au pas ${t + 1}`;
+        break;
+      }
+      if (exit < 0 && centerCol(e.player) >= m.exitCol) exit = t + 1;
+      if (e.status === ATTEMPT_FINISHED) break;
+    }
+    if (exit < 0 && !why) why = "n'arrive pas à la sortie";
+    const verdict = why ? "cassée" : exit === sol.exitTick ? "identique" : exit < sol.exitTick ? "plus rapide" : "plus lente";
+    rows.push({ id: def.id, v, run: best, base: sol.exitTick - sol.entryTick, elan: why ? null : exit - sol.entryTick, verdict, why });
+  }
+}
+{
+  const count = (k: Row["verdict"]) => rows.filter((r) => r.verdict === k).length;
+  line(`## Solutions stockées des morceaux (entrée élan), rejouées avec l'élan : ${rows.length} variantes`);
+  line();
+  line(`identiques ${count("identique")} · plus rapides ${count("plus rapide")} · plus lentes ${count("plus lente")} · cassées ${count("cassée")}`);
+  line();
+  line(
+    `L'élan démarre après ${SPRINT_TRIAL_PARAMS.sprintDelay} pas au sol à pleine vitesse, **cumulés d'un saut à l'autre** tant que la direction reste tenue (sauter ne coupe pas l'élan) : la plupart des solutions le voient, même sans longue course continue.`,
+  );
+  line();
+  line("| morceau | v | plus longue course continue à pleine vitesse | entrée → sortie sans élan | avec l'élan | verdict |");
+  line("|---|---|---|---|---|---|");
+  for (const r of rows.filter((x) => x.verdict !== "identique").sort((a, b) => b.run - a.run)) {
+    line(`| ${r.id} | ${r.v} | ${sec(r.run)} s | ${sec(r.base)} s | ${r.elan === null ? "—" : `${sec(r.elan)} s`} | ${r.verdict}${r.why ? ` (${r.why})` : ""} |`);
+  }
+  line();
+  // Les trois morceaux qui courent le plus longtemps droite tenue.
+  line("### Les trois morceaux aux plus longues courses droite tenue (variante 0, entrée élan)");
+  line();
+  line("| morceau | plus longue course continue | sans élan | avec l'élan | gagné |");
+  line("|---|---|---|---|---|");
+  for (const r of rows.filter((x) => x.v === 0).sort((a, b) => b.run - a.run).slice(0, 3)) {
+    line(`| ${r.id} | ${sec(r.run)} s | ${sec(r.base)} s | ${r.elan === null ? `— (${r.why})` : `${sec(r.elan)} s`} | ${r.elan === null ? "—" : `${sec(r.base - r.elan)} s`} |`);
+  }
+  line();
+  // Familles et étiquettes des morceaux qui changent.
+  const changed = new Set(rows.filter((r) => r.verdict !== "identique").map((r) => r.id));
+  line(`Morceaux touchés (au moins une variante qui change) : ${[...changed].sort().join(", ") || "aucun"}.`);
+  line(`Morceaux « elan: oui » (l'élan est le défi) : ${MODULES.filter((d) => d.elan).map((d) => d.id).join(", ") || "aucun"}.`);
+  line();
+}
+
+// ——— 4. Les preuves de quelques niveaux du jour, rejouées avec l'élan ———
+{
+  line("## Preuves de l'auteur de six niveaux du jour, rejouées avec l'élan");
+  line();
+  line("| date | auteur | avec l'élan |");
+  line("|---|---|---|");
+  for (const date of ["2026-10-16", "2026-10-20", "2026-11-01", "2026-11-15", "2026-12-01", "2027-01-01"]) {
+    const day = dailyLevel(parseDay(date)!);
+    const replay = day.replay;
+    let s = replayStartState(day.level, replay.start);
+    let res = "n'arrive pas";
+    let deaths = 0;
+    for (const bits of fromRuns(replay.runs)) {
+      const before = s.status;
+      s = stepAttempt(s, bits, day.level, ELAN);
+      if (s.status === ATTEMPT_DEAD && before !== ATTEMPT_DEAD) deaths++;
+      if (s.status === ATTEMPT_FINISHED) {
+        res = `arrivée en ${sec(s.time)} s`;
+        break;
+      }
+    }
+    line(`| ${date} | ${sec(day.authorTicks)} s | ${res}${deaths ? ` · ${deaths} mort(s)` : ""} |`);
+  }
+  line();
+}
+
+console.log(out.join("\n"));

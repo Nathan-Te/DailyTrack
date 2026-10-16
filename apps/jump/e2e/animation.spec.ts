@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { hasWebGL } from "./phone";
 
-// Lot 8b, adopté au lot 8c : l'élan progressif, actif par défaut (pas à pas : la vitesse dépasse la course après le délai ; la partie est
-// enregistrée ; `?debug&tune&sprint=0` l'éteint, et cette partie-là est `tuned`, rien n'est enregistré) et l'animation du personnage (le cycle des pieds avance avec la distance ; le mouvement réduit coupe le
+// Lot 8b : l'essai d'élan progressif (`?debug&tune&sprint=1`, pas à pas : la vitesse dépasse la course après le délai, la partie est
+// `tuned` et rien n'est enregistré) et l'animation du personnage (le cycle des pieds avance avec la distance ; le mouvement réduit coupe le
 // rebond et le penché, pas les pieds). Tout se lit dans `__jump`, jamais sur une durée.
 
 const RIGHT = 2;
@@ -55,48 +55,42 @@ function speeds(page: Page, bits: number, n: number): Promise<number[]> {
   );
 }
 
-test("?scenario=bac-a-sable&debug&tune : l'élan par défaut, la vitesse dépasse la course après le délai, jusqu'à ≈ 18 tuiles/s ; l'éteindre rend la partie `tuned`", async ({ page }) => {
-  await page.goto("/?debug");
-  await page.evaluate(() => localStorage.removeItem("jump:tune"));
-  test.skip(!(await open(page, "scenario=bac-a-sable&debug&tune")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-  expect(await get(page, (j) => j.params)).toMatchObject({ sprintMode: 1, sprintSpeed: 614, sprintDelay: 42, sprintAccel: 3 });
-  expect(await get(page, (j) => j.tuned)).toBe(false);
+test("?scenario=bac-a-sable&debug&tune&sprint=1 : la vitesse dépasse la course après le délai, jusqu'à 15 tuiles/s ; partie `tuned`", async ({ page }) => {
+  test.skip(!(await open(page, "scenario=bac-a-sable&debug&tune&sprint=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
+  expect(await get(page, (j) => j.params)).toMatchObject({ sprintMode: 1, sprintSpeed: 512, sprintDelay: 48, sprintAccel: 2 });
   await expect(page.locator('#tune .switch[data-key="sprintMode"]')).toHaveText("Élan : activé");
   await expect(page.locator('#tune input[data-key="sprintSpeed"]')).toBeEnabled();
   const v = await speeds(page, RIGHT, 200);
   const first = v.findIndex((x) => x >= RUN - 1e-9);
   const over = v.findIndex((x) => x > RUN + 1e-9);
   expect(first).toBeGreaterThan(0);
-  expect(over - first).toBe(42); // 0,35 s à pleine vitesse au sol, puis l'élan
+  expect(over - first).toBe(48); // 0,4 s à pleine vitesse au sol, puis l'élan
   expect(v.slice(first, over).every((x) => Math.abs(x - RUN) < 1e-9)).toBe(true);
-  expect(v[v.length - 1]).toBeCloseTo((614 * 120) / 4096, 9);
-  expect(await get(page, (j) => j.tuned)).toBe(false);
-  // L'interrupteur éteint l'élan : la course seulement (après un lâcher, l'élan est perdu) ; la partie devient `tuned`.
+  expect(v[v.length - 1]).toBeCloseTo(15, 9);
+  expect(await get(page, (j) => j.tuned)).toBe(true);
+  await expect(page.locator("#tuned")).toHaveText("réglages modifiés : rien n'est enregistré");
+  // L'interrupteur éteint l'élan : la course seulement (après un lâcher, l'élan est perdu).
   await page.locator('#tune .switch[data-key="sprintMode"]').click();
   await expect(page.locator('#tune .switch[data-key="sprintMode"]')).toHaveText("Élan : désactivé");
   await speeds(page, 0, 30);
   const off = await speeds(page, RIGHT, 200);
   expect(Math.max(...off)).toBeCloseTo(RUN, 9);
-  expect(await get(page, (j) => j.tuned)).toBe(true);
-  await expect(page.locator("#tuned")).toHaveText("réglages modifiés : rien n'est enregistré");
-  await page.evaluate(() => localStorage.removeItem("jump:tune"));
 });
 
-test("une partie avec l'élan (le défaut) est enregistrée ; la même partie sans élan (`sprint=0`) ne l'est pas (ni essai, ni vie)", async ({ page }) => {
+test("une partie avec l'élan n'est pas enregistrée (ni essai, ni vie) ; la même partie sans élan l'est", async ({ page }) => {
   test.skip(!(await open(page, "scenario=essai&debug")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-  // Avec l'élan (le défaut) : un essai abandonné (recommencer) garde sa vie.
+  // Sans élan : un essai abandonné (recommencer) garde sa vie.
   await get(page, (j) => j.storage.clear());
-  const fast = await speeds(page, RIGHT, 90);
-  expect(Math.max(...fast)).toBeGreaterThan(RUN); // l'élan a bien servi
+  await speeds(page, RIGHT, 90);
   await get(page, (j) => j.restart());
   const plain = await get(page, (j) => ({ lives: j.storage.memory.lives, replays: j.replays.list().length }));
   expect(plain.lives).toBeGreaterThan(0);
-  // Sans élan : rien.
+  // Avec l'élan : rien.
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
-  test.skip(!(await open(page, "scenario=essai&debug&tune&sprint=0")), "WebGL indisponible");
+  test.skip(!(await open(page, "scenario=essai&debug&tune&sprint=1")), "WebGL indisponible");
   await get(page, (j) => j.storage.clear());
   const v = await speeds(page, RIGHT, 90);
-  expect(Math.max(...v)).toBeCloseTo(RUN, 9);
+  expect(Math.max(...v)).toBeGreaterThan(RUN); // l'élan a bien servi
   expect(await get(page, (j) => j.tuned)).toBe(true);
   await get(page, (j) => j.restart());
   const tuned = await get(page, (j) => ({ lives: j.storage.memory.lives, best: j.storage.memory.best, replays: j.replays.list().length }));

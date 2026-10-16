@@ -1,4 +1,4 @@
-import { Rng, fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
+import { Rng, pushVarint, toBase64Url } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
   ATTEMPT_DEAD,
@@ -23,7 +23,6 @@ import {
   demoAttempts,
   encodeReplay,
   fromRuns,
-  sprintTop,
   initialAttempt,
   lifeReplay,
   replayAttempt,
@@ -144,7 +143,7 @@ describe("format de la rediffusion", () => {
     expect(encodeReplay(SOLUTION)).toBe(ESSAI_SOLUTION_CODE);
   });
 
-  it("départ lancé (lot 4, entrée « course » des morceaux, « élan » avant le lot 8c) : codé dans les drapeaux, rejoué à pleine vitesse depuis le départ", () => {
+  it("départ lancé (lot 4, entrée « élan » des morceaux) : codé dans les drapeaux, rejoué à pleine vitesse depuis le départ", () => {
     const elan = attemptReplay("module:plaine:0", [2, 2, 6, 6, 2], 0, 1);
     expect(elan.start.elan).toBe(1);
     expect(decodeReplay(encodeReplay(elan))).toEqual(elan);
@@ -157,25 +156,6 @@ describe("format de la rediffusion", () => {
     // Lancé, on va plus loin dans le même nombre de pas.
     const run = (start: typeof elan) => replayAttempt(ESSAI_LEVEL, { ...start, levelId: "essai", runs: [{ count: 40, bits: 2 }] }).final.player.x;
     expect(run(elan)).toBeGreaterThan(run(attemptReplay("essai", [])));
-  });
-
-  it("lot 8c : départ lancé en élan plein (bit 3 des drapeaux) : à `sprintSpeed`, compteur au maximum ; jamais avec le départ à la course", () => {
-    const plein = attemptReplay("module:plaine:0", [2, 2, 6, 6, 2], 0, 2);
-    expect(plein.start.elan).toBe(2);
-    expect(decodeReplay(encodeReplay(plein))).toEqual(plein);
-    const codes = new Set([0, 1, 2].map((e) => encodeReplay(attemptReplay("module:plaine:0", [2, 2], 0, e))));
-    expect(codes.size).toBe(3);
-    const s = replayStartState(ESSAI_LEVEL, plein.start);
-    expect(s.player.vx).toBe(sprintTop(DEFAULT_JUMP_PARAMS));
-    expect(s.player.sprint).toBe(DEFAULT_JUMP_PARAMS.sprintDelay);
-    expect(replayStartState(ESSAI_LEVEL, { ...plein.start, elan: 1 }).player.sprint).toBe(0);
-    expect(() => attemptReplay("essai", [], 0, 3)).toThrow(JumpReplayError);
-    expect(() => encodeReplay({ ...plein, start: { ...plein.start, checkpoint: 0 } })).toThrow(JumpReplayError);
-    // Les deux drapeaux ensemble sont refusés à la lecture.
-    const bytes = fromBase64Url(encodeReplay(plein));
-    const flagAt = 3 + bytes[2]!;
-    bytes[flagAt] = bytes[flagAt]! | 4;
-    expect(() => decodeReplay(toBase64Url(bytes))).toThrow(JumpReplayError);
   });
 
   it("une série de moins de 16 pas tient dans un octet ; l'en-tête d'un essai fait 4 octets plus l'identifiant", () => {
@@ -207,9 +187,7 @@ describe("format de la rediffusion", () => {
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 5, 101, 115]))).toBe("format"); // tronquée
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 2, 65, 66, 0, 16]))).toBe("format"); // identifiant en majuscules
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 0, 2]))).toBe("format"); // série vide (count 0)
-    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 16, 16]))).toBe("format"); // drapeau inconnu (lot 8c : 8 = départ en élan plein)
-    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 12, 16]))).toBe("format"); // lancé à la course et en élan plein
-    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 10, 0, 0, 0, 16]))).toBe("format"); // élan plein sur un point de passage
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 8, 16]))).toBe("format"); // drapeau inconnu
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 6, 0, 0, 0, 16]))).toBe("format"); // départ lancé sur un point de passage
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 0, 0xff, 0xff, 0xff, 0xff, 0x7f]))).toBe("format"); // entier trop long
     expect(() => encodeReplay({ ...attemptReplay("essai", [2]), runs: [{ count: 1, bits: 8 }] })).toThrow(JumpReplayError);
@@ -306,9 +284,7 @@ describe("rejeu = ce qui a été vécu", () => {
         const result = replayAttempt(level, essai.replay);
         // Les vies couvrent l'essai : leurs pas plus les attentes de réapparition qui ont abouti à une reprise.
         const respawns = result.lives.filter((l) => l.start.checkpoint >= 0).length;
-        // Abandon pendant l'attente d'une réapparition : les pas morts depuis la mort (`deathTicks`, le pas de la mort est dans la vie).
-        // (Lot 8c : `+ 1` avant, jamais exercé par les sessions d'avant l'élan ; le pas de la mort est déjà compté dans sa vie.)
-        const waits = result.deaths.length > 0 && essai.end === "abandon" && result.final.status === ATTEMPT_DEAD ? result.final.deathTicks : 0;
+        const waits = result.deaths.length > 0 && essai.end === "abandon" && result.final.status === ATTEMPT_DEAD ? result.final.deathTicks + 1 : 0;
         expect(result.lives.reduce((n, l) => n + l.ticks, 0) + respawns * RESPAWN_TICKS + waits).toBe(result.ticks);
         expect(result.deaths.length).toBe(result.lives.filter((l) => l.end === "mort").length);
         for (const life of result.lives) {
@@ -395,10 +371,10 @@ describe("enregistreur", () => {
     expect(rec.recording).toBe(true);
   });
 
-  it("une rediffusion d'essai est petite : la solution de l'essai (18,5 s, lot 8c) tient en moins de 200 octets", () => {
+  it("une rediffusion d'essai est petite : la solution de l'essai (21,6 s) tient en moins de 200 octets", () => {
     const bytes = Math.floor((ESSAI_SOLUTION_CODE.length * 6) / 8);
     expect(bytes).toBeLessThan(200);
-    expect(replayAttempt(ESSAI_LEVEL, SOLUTION).time).toBe(2218);
+    expect(replayAttempt(ESSAI_LEVEL, SOLUTION).time).toBe(2595);
   });
 });
 
@@ -425,10 +401,10 @@ describe("rejeu pas à pas", () => {
     while (r.step());
     expect(r.done).toBe(true);
     expect(r.state.status).toBe(ATTEMPT_FINISHED);
-    expect(r.tick).toBe(2218);
+    expect(r.tick).toBe(2595);
     expect(r.step()).toBe(false);
     const fp = replayFingerprint(ESSAI_LEVEL, SOLUTION);
-    expect(fp).toMatchObject({ finished: true, ticks: 2218, time: 2218, deaths: 0 });
+    expect(fp).toMatchObject({ finished: true, ticks: 2595, time: 2595, deaths: 0 });
     expect(fp.hash).toMatch(/^[0-9a-f]{8}$/);
   });
 });

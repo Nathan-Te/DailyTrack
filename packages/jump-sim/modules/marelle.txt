@@ -8,9 +8,11 @@ paliers: 9 9
 repeter: ecart colonnes 7-7
 repeter: ecart colonnes 12-12
 repeter: ecart colonnes 17-17
+variante: ecart=1
 variante: ecart=2
 variante: ecart=1 +sol-friable
 variante: ecart=2 +plafond:pics
+variante: ecart=1 +denivele:2
 grille:
 .........................
 .........................

@@ -1,5 +1,5 @@
 import type { ModuleEntry } from "@cdj/jump-sim";
-import { MODULE_ENTRIES, MODULE_TAGS, type ModuleTag } from "@cdj/jump-sim";
+import { MODULE_TAGS, type ModuleTag } from "@cdj/jump-sim";
 import { TAG_LABELS, galleryFamilies, galleryOrder, matchesFilter, type GalleryFilter, type ModuleInfo } from "./modulesInfo";
 import { formatTicks } from "./session";
 import { moduleHref, type UrlChoices } from "./urlOptions";
@@ -9,7 +9,7 @@ import { moduleHref, type UrlChoices } from "./urlOptions";
 // solutions, « Jouer » et « Regarder ». Le choix de l'entrée (à l'arrêt ou en élan) change les liens ; deux listes (lot 7) filtrent par
 // étiquette et par famille.
 
-const ENTRY_LABELS: Record<ModuleEntry, string> = { arret: "À l'arrêt", course: "À la course", plein: "En élan plein" };
+const ENTRY_LABELS: Record<ModuleEntry, string> = { arret: "À l'arrêt", elan: "En élan" };
 
 function dots(n: number): string {
   return n <= 0 ? "—" : "●".repeat(n) + "○".repeat(5 - n);
@@ -41,13 +41,13 @@ export function mountGallery(options: UrlChoices): GalleryView {
   root.id = "gallery";
   const head = el("header", "");
   head.append(el("h1", "", "Les morceaux"));
-  head.append(el("p", "lead", `${order.length} morceaux, chacun avec sa solution. Exigence de 1 (facile) à 5 (exigeant) ; durées de la solution, au départ arrêté, à la course et en élan plein.`));
+  head.append(el("p", "lead", `${order.length} morceaux, chacun avec sa solution. Exigence de 1 (facile) à 5 (exigeant) ; durées de la solution, au départ arrêté et lancé.`));
   const toggle = el("div", "entry");
   toggle.setAttribute("role", "group");
   toggle.setAttribute("aria-label", "Entrée");
   toggle.append(el("span", "label", "Entrée :"));
   const buttons = new Map<ModuleEntry, HTMLButtonElement>();
-  for (const entry of MODULE_ENTRIES) {
+  for (const entry of ["arret", "elan"] as const) {
     const b = el("button", "", ENTRY_LABELS[entry]);
     b.type = "button";
     b.addEventListener("click", () => view.setEntry(entry));
@@ -110,7 +110,7 @@ export function mountGallery(options: UrlChoices): GalleryView {
       ex.title = "Exigence (1 facile, 5 exigeant)";
       info.append(ex);
       const fmt = (t: number | null) => (t === null ? "—" : formatTicks(t));
-      info.append(el("span", "dur", `arrêt ${fmt(v.ticks.arret)} · course ${fmt(v.ticks.course)} · élan ${fmt(v.ticks.plein)}`));
+      info.append(el("span", "dur", `arrêt ${fmt(v.ticks.arret)} · élan ${fmt(v.ticks.elan)}`));
       const play = el("a", "btn play", "Jouer");
       const watch = el("a", "btn watch", "Regarder");
       links.push({ play, watch, id: m.id, variant: v.index });

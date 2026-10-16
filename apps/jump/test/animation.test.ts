@@ -4,11 +4,11 @@ import {
   INPUT_JUMP,
   INPUT_LEFT,
   INPUT_RIGHT,
+  SPRINT_TRIAL_PARAMS,
   TICK_RATE,
   UNITS_PER_TILE,
   initialAttempt,
   isDefaultJumpParams,
-  sprintTop,
   parseLevel,
   stepAttempt,
   type AttemptState,
@@ -18,7 +18,7 @@ import {
 import { EVENT_KINDS, SKID_SPEED, STRIDE_TILES, eventsBetween, type GameEvent } from "../src/events";
 import { STEP, animateLook, feetPose, feetTarget, leanTarget, motionOf, onSkid, onStep, restLook, stridePhase, type Look, type Motion } from "../src/look";
 import { soundFor } from "../src/audioLogic";
-import { Particles, TRAIL_ALPHA, TRAIL_SPRINT_STRENGTH, Trail, feelColors, feelEvent, trailStrength } from "../src/feel";
+import { Particles, TRAIL_ALPHA, Trail, feelColors, feelEvent } from "../src/feel";
 import { defaultSettings, feelLevels } from "../src/settings";
 import { PALETTES } from "../src/palette";
 import { SPRINT_SLIDERS, TUNE_SLIDERS, paramsJson, parseTuned, resetParams, setSprint } from "../src/tune";
@@ -238,53 +238,45 @@ describe("corps : penché, rebond, respiration ; mouvement réduit", () => {
 });
 
 describe("traînée plus discrète", () => {
-  it("plus pâle qu'au lot 8 (0,24) à la course ; lot 8c : elle s'intensifie avec l'élan, jusqu'à `TRAIL_SPRINT_STRENGTH` fois en élan plein", () => {
+  it("plus pâle qu'au lot 8 (0,24) ; un peu plus marquée en élan, jamais au-delà de 1,5 fois", () => {
     expect(TRAIL_ALPHA).toBeLessThan(0.24);
     const t = new Trail();
     for (let i = 0; i < 30; i++) t.update(1 / 60, i * 0.2, 0, true);
     expect(t.points[0]!.alpha).toBeCloseTo(TRAIL_ALPHA, 6);
     for (let i = 0; i < 30; i++) t.update(1 / 60, i * 0.2, 0, true, 9);
-    expect(t.points[0]!.alpha).toBeCloseTo(TRAIL_ALPHA * TRAIL_SPRINT_STRENGTH, 6);
-    const top = sprintTop(P);
-    expect(trailStrength(P.runSpeed - 1, P.runSpeed, top)).toBe(0);
-    expect(trailStrength(P.runSpeed, P.runSpeed, top)).toBe(1);
-    expect(trailStrength(top, P.runSpeed, top)).toBe(TRAIL_SPRINT_STRENGTH);
-    const mid = trailStrength((P.runSpeed + top) / 2, P.runSpeed, top);
-    expect(mid).toBeGreaterThan(1);
-    expect(mid).toBeLessThan(TRAIL_SPRINT_STRENGTH);
-    expect(TRAIL_SPRINT_STRENGTH).toBeGreaterThan(1.5); // plus marquée qu'au lot 8b
+    expect(t.points[0]!.alpha).toBeCloseTo(TRAIL_ALPHA * 1.5, 6);
   });
 });
 
-describe("panneau : l'élan, section normale (lot 8c)", () => {
-  it("trois curseurs d'élan à côté des 20 réglages ; actif par défaut ; l'éteindre rend la partie « réglages modifiés » ; réinitialiser le rallume", () => {
+describe("panneau : essai d'élan", () => {
+  it("trois curseurs d'élan à côté des 20 réglages ; l'interrupteur met les valeurs de départ ; réinitialiser l'enlève", () => {
     expect(TUNE_SLIDERS).toHaveLength(20);
     expect(SPRINT_SLIDERS.map((s) => s.key)).toEqual(["sprintSpeed", "sprintDelay", "sprintAccel"]);
     for (const s of SPRINT_SLIDERS) {
-      const v = P[s.key];
+      const v = SPRINT_TRIAL_PARAMS[s.key];
       expect(v >= s.min && v <= s.max, s.key).toBe(true);
     }
     const p: JumpParams = { ...P };
-    expect(p.sprintMode).toBe(1);
-    expect(JSON.parse(paramsJson(p))).toMatchObject({ sprintMode: 1, sprintSpeed: 614, sprintDelay: 42, sprintAccel: 3 });
-    setSprint(p, false);
-    expect(p.sprintMode).toBe(0);
+    setSprint(p, true);
+    expect(p).toMatchObject(SPRINT_TRIAL_PARAMS);
     expect(isDefaultJumpParams(p)).toBe(false);
+    expect(JSON.parse(paramsJson(p))).toMatchObject(SPRINT_TRIAL_PARAMS);
     p.sprintSpeed = 700;
+    setSprint(p, false);
+    expect(isDefaultJumpParams(p)).toBe(true);
+    expect(JSON.parse(paramsJson(p)).sprintSpeed).toBeUndefined();
     setSprint(p, true);
     expect(p.sprintSpeed).toBe(700); // le réglage choisi est gardé
-    expect(isDefaultJumpParams(p)).toBe(false);
     resetParams(p);
     expect(p).toEqual({ ...P });
-    expect(isDefaultJumpParams(p)).toBe(true);
   });
 
   it("relit l'élan gardé (`jump:tune`) : seulement des valeurs entières dans les bornes", () => {
     const p = parseTuned(JSON.stringify({ sprintMode: 1, sprintSpeed: 600, sprintDelay: 30, sprintAccel: 3 }));
     expect(p).toMatchObject({ sprintMode: 1, sprintSpeed: 600, sprintDelay: 30, sprintAccel: 3 });
     const bad = parseTuned(JSON.stringify({ sprintMode: 1, sprintSpeed: 99_999, sprintDelay: 1.5 }));
-    expect(bad).toMatchObject({ sprintMode: 1, sprintSpeed: P.sprintSpeed, sprintDelay: P.sprintDelay, sprintAccel: P.sprintAccel });
-    expect(parseTuned(JSON.stringify({ sprintMode: 0 })).sprintMode).toBe(0);
-    expect(isDefaultJumpParams(parseTuned(JSON.stringify({ sprintSpeed: 614 })))).toBe(true);
+    expect(bad).toMatchObject(SPRINT_TRIAL_PARAMS);
+    expect(parseTuned(JSON.stringify({ sprintSpeed: 600 })).sprintMode).toBeUndefined();
+    expect(isDefaultJumpParams(parseTuned(JSON.stringify({ sprintSpeed: 600 })))).toBe(true);
   });
 });

@@ -5,10 +5,7 @@ import {
   INPUT_RIGHT,
   MODULES,
   buildModule,
-  MODULE_ENTRIES,
-  entryLaunch,
   fromRuns,
-  sprintTop,
   initialAttempt,
   moduleSolutions,
   replayAttempt,
@@ -16,7 +13,7 @@ import {
   type AttemptState,
 } from "@cdj/jump-sim";
 import { DayMemory, type KeyValue } from "../src/memory";
-import { LAUNCH_TILES, galleryFamilies, galleryOrder, launchTicks, launchTilesFor, matchesFilter, nextModule, referenceTicks, solutionReplay } from "../src/modulesInfo";
+import { LAUNCH_TILES, galleryFamilies, galleryOrder, launchTicks, matchesFilter, nextModule, referenceTicks, solutionReplay } from "../src/modulesInfo";
 
 // Lot 4 : le catalogue des morceaux vu par le jeu (logique pure) et la mémoire par morceau.
 
@@ -49,8 +46,7 @@ describe("galerie", () => {
       for (const v of m.variants) {
         expect(v.exigence).toBeGreaterThanOrEqual(1);
         expect(v.ticks.arret).toBeGreaterThan(0);
-        expect(v.ticks.course).toBeGreaterThan(0);
-        expect(v.ticks.plein).toBeGreaterThan(0);
+        expect(v.ticks.elan).toBeGreaterThan(0);
       }
     }
     expect(nextModule(order[0]!.id)).toBe(order[1]!.id);
@@ -58,10 +54,10 @@ describe("galerie", () => {
   });
 
   it("la solution à regarder est la rediffusion stockée ; rejouée sur le morceau sans couloir, elle finit au temps de référence", () => {
-    for (const entry of MODULE_ENTRIES) {
+    for (const entry of ["arret", "elan"] as const) {
       const replay = solutionReplay("cheminee", 1, entry)!;
       expect(replay.levelId).toBe("module:cheminee:1");
-      expect(replay.start.elan).toBe(entryLaunch(entry));
+      expect(replay.start.elan).toBe(entry === "elan" ? 1 : 0);
       const r = replayAttempt(buildModule("cheminee", 1).level, replay, "module:cheminee:1");
       expect(r.finished).toBe(true);
       expect(r.time).toBe(referenceTicks("cheminee", 1, entry, false));
@@ -69,27 +65,20 @@ describe("galerie", () => {
     expect(solutionReplay("cheminee", 99, "arret")).toBeNull();
   });
 
-  it("lancé, le temps de référence compte le couloir de lancement : droite tenue depuis l'arrêt jusqu'au départ du morceau", () => {
-    const t = launchTicks("tunnel", 0, "course");
+  it("en élan, le temps de référence compte le couloir de lancement : droite tenue depuis l'arrêt jusqu'au départ du morceau", () => {
+    const t = launchTicks("tunnel", 0);
     expect(t).toBeGreaterThan(20);
     expect(t).toBeLessThan(80);
     const run = buildModule("tunnel", 0, { lancement: LAUNCH_TILES });
     const s: AttemptState = runAttempt(initialAttempt(run.level), new Array(t).fill(INPUT_RIGHT), run.level, DEFAULT_JUMP_PARAMS);
     expect(s.player.vx).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
-    expect(referenceTicks("tunnel", 0, "course")).toBe(moduleSolutions("tunnel", 0)!.course!.ticks + t);
+    expect(referenceTicks("tunnel", 0, "elan")).toBe(moduleSolutions("tunnel", 0)!.elan!.ticks + t);
     expect(referenceTicks("tunnel", 0, "arret")).toBe(moduleSolutions("tunnel", 0)!.arret!.ticks);
-    // Lot 8c : en élan plein, le couloir est assez long pour arriver au départ du morceau en élan plein.
-    const tp = launchTicks("tunnel", 0, "plein");
-    const runP = buildModule("tunnel", 0, { lancement: launchTilesFor("plein") });
-    const sp: AttemptState = runAttempt(initialAttempt(runP.level), new Array(tp).fill(INPUT_RIGHT), runP.level, DEFAULT_JUMP_PARAMS);
-    expect(sp.player.vx).toBe(sprintTop(DEFAULT_JUMP_PARAMS));
-    expect(sp.player.sprint).toBe(DEFAULT_JUMP_PARAMS.sprintDelay);
-    expect(referenceTicks("tunnel", 0, "plein")).toBe(moduleSolutions("tunnel", 0)!.plein!.ticks + tp);
-    // Et en pratique : droite tenue sur le couloir, puis la solution lancée, finit le morceau à peu près au temps de référence.
-    const plein = fromRuns(solutionReplay("tunnel", 0, "plein")!.runs);
-    const done = runAttempt(initialAttempt(runP.level), [...new Array(tp).fill(INPUT_RIGHT), ...plein, ...new Array(60).fill(INPUT_RIGHT)], runP.level, DEFAULT_JUMP_PARAMS);
+    // Et en pratique : droite tenue sur le couloir, puis la solution en élan, finit le morceau à peu près au temps de référence.
+    const elan = fromRuns(solutionReplay("tunnel", 0, "elan")!.runs);
+    const done = runAttempt(initialAttempt(run.level), [...new Array(t).fill(INPUT_RIGHT), ...elan, ...new Array(60).fill(INPUT_RIGHT)], run.level, DEFAULT_JUMP_PARAMS);
     expect(done.status).toBe(ATTEMPT_FINISHED);
-    expect(Math.abs(done.time - referenceTicks("tunnel", 0, "plein")!)).toBeLessThanOrEqual(2);
+    expect(Math.abs(done.time - referenceTicks("tunnel", 0, "elan")!)).toBeLessThanOrEqual(2);
   });
 });
 
@@ -101,12 +90,12 @@ describe("mémoire d'un morceau", () => {
     const today = () => "2026-10-15";
     const a = new DayMemory({ store, level: plain.level, levelId: plain.levelId, key: `${plain.levelId}:arret`, today });
     a.recordDeath({ x: 4096, y: 4096, cause: 1 }, false);
-    const b = new DayMemory({ store, level: run.level, levelId: run.levelId, key: `${run.levelId}:course`, today });
+    const b = new DayMemory({ store, level: run.level, levelId: run.levelId, key: `${run.levelId}:elan`, today });
     b.recordDeath({ x: 8192, y: 4096, cause: 1 }, false);
     expect(store.getItem("jump:morts:module:tunnel:0:arret")).not.toBeNull();
-    expect(store.getItem("jump:morts:module:tunnel:0:course")).not.toBeNull();
+    expect(store.getItem("jump:morts:module:tunnel:0:elan")).not.toBeNull();
     expect(new DayMemory({ store, level: plain.level, levelId: plain.levelId, key: `${plain.levelId}:arret`, today }).deaths).toHaveLength(1);
-    expect(new DayMemory({ store, level: run.level, levelId: run.levelId, key: `${run.levelId}:course`, today }).deaths).toHaveLength(1);
+    expect(new DayMemory({ store, level: run.level, levelId: run.levelId, key: `${run.levelId}:elan`, today }).deaths).toHaveLength(1);
   });
 });
 
@@ -128,7 +117,7 @@ describe("galerie : filtres et mutateurs (lot 7)", () => {
     const ressorts = order.filter((m) => matchesFilter(m, { tag: "ressort", family: null }));
     expect(ressorts.map((m) => m.id).sort()).toEqual(MODULES.filter((d) => d.tags.includes("ressort")).map((d) => d.id).sort());
     const chem = order.filter((m) => matchesFilter(m, { tag: null, family: "cheminee" }));
-    expect(chem.map((m) => m.id)).toContain("mur-friable");
+    expect(chem.map((m) => m.id)).toContain("cheminee-scie");
     expect(chem.every((m) => m.family === "cheminee")).toBe(true);
     expect(order.filter((m) => matchesFilter(m, { tag: "scie", family: "cheminee" })).every((m) => m.tags.includes("scie") && m.family === "cheminee")).toBe(true);
   });

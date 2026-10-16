@@ -5,16 +5,14 @@ import {
   ATTEMPT_RUNNING,
   DEFAULT_JUMP_PARAMS,
   GIGUE_DRAWS,
-  RACCORD_COUNT,
   INPUT_RIGHT,
   PLAYER_WIDTH,
+  RACCORD_POSITIONS,
   RACCORD_TAIL,
   UNITS_PER_TILE,
-  canonicalOf,
   centerCol,
-  entryPrefix,
+  isCleanRun,
   moduleSpan,
-  raccordPositions,
   moduleStart,
   stepAttempt,
   textHash,
@@ -30,10 +28,9 @@ import { play } from "./beam";
 //     `GIGUE_DRAWS` tirages à graine fixe ; l'ordre des commandes est gardé (une commande ne disparaît pas : au moins un pas chacune) — un
 //     joueur appuie sur les mêmes boutons, un peu tôt ou un peu tard. Une fois la suite épuisée, la dernière commande est tenue 2 s de plus.
 //     Réussite = arriver sans mourir (au sol ou non, à pleine vitesse ou non) ;
-//   - le **raccord** (entrées lancées, lots 6 et 8c) : la même solution rejouée depuis chaque position d'entrée possible (`raccordPositions` :
-//     de combien le centre a dépassé le bord du palier d'entrée au pas où il le franchit, de 0 à un pas — de course ou d'élan plein), parce
-//     que dans le niveau du jour l'entrée tombe n'importe où dans ce pas. Réussite = une sortie canonique (course ou élan plein : le niveau
-//     du jour enchaîne la solution de l'état obtenu) **et** l'arrivée, sans mourir.
+//   - le **raccord** (entrée en élan, lot 6) : la même solution rejouée depuis chaque position d'entrée possible (`RACCORD_POSITIONS` : de
+//     combien le centre a dépassé le bord du palier d'entrée au pas où il le franchit, de 0 à un pas de course), parce que dans le niveau du
+//     jour l'entrée tombe n'importe où dans ce pas. Réussite = la sortie canonique (course propre) **et** l'arrivée, sans mourir.
 // La note (`exigenceOf`, src/modules.ts) en découle.
 
 /** Pas ajoutés après la solution (la dernière commande tenue) quand on la rejoue décalée. */
@@ -42,28 +39,30 @@ export const EXTRA_TICKS = 240;
 /** L'état d'entrée d'un morceau : au départ, à l'arrêt ou lancé. */
 export const entryState = moduleStart;
 
-/** Le but du solveur (lots 6 et 8c) : une sortie canonique — le centre passe le bord droit du palier de sortie, vivant, à la course ou en élan plein. */
+/** Le but du solveur (lot 6) : la sortie canonique — le centre passe le bord droit du palier de sortie, vivant, en course propre. */
 export function canonicalExit(m: BuiltModule): (s: AttemptState) => boolean {
-  return (s) => s.status === ATTEMPT_RUNNING && centerCol(s.player) >= m.exitCol && canonicalOf(s.player) !== null;
+  return (s) => s.status === ATTEMPT_RUNNING && centerCol(s.player) >= m.exitCol && isCleanRun(s.player);
 }
 
 /**
- * Branche perdue : elle a passé le bord du palier de sortie hors des états canoniques (la première fois compte), ou son centre repasse à
+ * Branche perdue : elle a passé le bord du palier de sortie hors de la course propre (la première fois compte), ou son centre repasse à
  * gauche du palier d'entrée (une solution ne doit rien devoir à ce qu'il y a avant : le bord du niveau seul, le morceau précédent assemblé).
  */
 export function lostExit(m: BuiltModule): (s: AttemptState) => boolean {
   return (s) => {
     const col = centerCol(s.player);
-    return (col >= m.exitCol && canonicalOf(s.player) === null) || col < m.palierIn.col0;
+    return (col >= m.exitCol && !isCleanRun(s.player)) || col < m.palierIn.col0;
   };
 }
 
-/** Lancé : pas de l'approche canonique (`entryPrefix`) jusqu'au bord du palier d'entrée, et l'état à ce pas (d'où part la recherche). */
-export function launchEntry(m: BuiltModule, entry: ModuleEntry): { ticks: number; state: AttemptState } {
-  const prefix = entryPrefix(m, entry);
-  let s = moduleStart(m, entry);
-  for (const bits of prefix) s = stepAttempt(s, bits, m.level, DEFAULT_JUMP_PARAMS);
-  return { ticks: prefix.length, state: s };
+/** En élan : pas de course (droite tenue) du départ jusqu'au bord du palier d'entrée, et l'état à ce pas (d'où part la recherche). */
+export function elanEntry(m: BuiltModule): { ticks: number; state: AttemptState } {
+  let s = moduleStart(m, "elan");
+  for (let t = 1; t <= 64; t++) {
+    s = stepAttempt(s, INPUT_RIGHT, m.level, DEFAULT_JUMP_PARAMS);
+    if (centerCol(s.player) >= m.lead) return { ticks: t, state: s };
+  }
+  throw new Error(`${m.levelId} : le bord du palier d'entrée n'est pas atteint en courant`);
 }
 
 /**
@@ -80,8 +79,7 @@ export function fromCore(m: BuiltModule, entry: ModuleEntry, cur: readonly numbe
       exit = t + 1;
       break;
     }
-    if (s.status === ATTEMPT_DEAD || s.status === ATTEMPT_FINISHED || centerCol(s.player) < m.palierIn.col0) return null;
-    if (t + 1 > entryPrefix(m, entry).length && centerCol(s.player) >= m.exitCol) return null;
+    if (s.status === ATTEMPT_DEAD || s.status === ATTEMPT_FINISHED || centerCol(s.player) >= m.exitCol || centerCol(s.player) < m.palierIn.col0) return null;
   }
   if (exit < 0) return null;
   const core = cur.slice(0, exit);
@@ -143,31 +141,33 @@ export function seedOf(m: BuiltModule, entry: ModuleEntry): number {
   return Number.parseInt(textHash(`${m.levelId}:${entry}`), 16);
 }
 
-/**
- * Les départs du test de raccord (lot 8c) : l'état au bord du palier d'entrée (après l'approche canonique, pas `entryTick`), le centre
- * décalé à chaque position voulue au-delà du bord. C'est exactement l'état d'entrée du niveau du jour, où seule la position change.
- */
-export function raccordStarts(m: BuiltModule, entry: ModuleEntry): { from: number; states: AttemptState[] } {
-  const e = launchEntry(m, entry);
-  const kind = entry === "plein" ? "plein" : "course";
-  const base = m.lead * UNITS_PER_TILE - PLAYER_WIDTH / 2;
-  return { from: e.ticks, states: raccordPositions(kind).map((d) => ({ ...e.state, player: { ...e.state.player, x: base + d } })) };
+/** Les départs du test de raccord : le départ lancé, décalé pour que le centre franchisse le bord du palier à chaque position voulue. */
+export function raccordStarts(m: BuiltModule): AttemptState[] {
+  const e = elanEntry(m);
+  const reached = e.state.player.x + PLAYER_WIDTH / 2 - m.lead * UNITS_PER_TILE;
+  const start = moduleStart(m, "elan");
+  return RACCORD_POSITIONS.map((d) => ({ ...start, player: { ...start.player, x: start.player.x + d - reached } }));
 }
 
 /**
- * Une entrée décalée réussit-elle ? La solution, jouée à partir de son entrée (puis droite tenue : selon la position d'entrée, la sortie et
- * l'arrivée peuvent venir un pas plus tard), sort dans un état canonique et arrive sans mourir — ce que demande le raccord.
+ * Une entrée décalée réussit-elle ? La solution (puis droite tenue : selon la position d'entrée, la sortie et l'arrivée peuvent venir un pas
+ * plus tard) passe le bord du palier d'entrée en course propre, sort en course propre, et arrive sans mourir — ce que demande le raccord.
  */
-export function raccordOk(m: BuiltModule, start: AttemptState, inputs: readonly number[], from: number): boolean {
+export function raccordOk(m: BuiltModule, start: AttemptState, inputs: readonly number[]): boolean {
   const goal = canonicalExit(m);
   let s = start;
+  let entered = false;
   let exited = false;
-  for (let t = from; t < inputs.length + RACCORD_TAIL; t++) {
+  for (let t = 0; t < inputs.length + RACCORD_TAIL; t++) {
     s = stepAttempt(s, t < inputs.length ? inputs[t]! : INPUT_RIGHT, m.level, DEFAULT_JUMP_PARAMS);
     if (s.status === ATTEMPT_DEAD) return false;
     if (s.status === ATTEMPT_FINISHED) return exited;
     const col = centerCol(s.player);
     if (col < m.palierIn.col0) return false;
+    if (!entered && col >= m.lead) {
+      if (!isCleanRun(s.player)) return false;
+      entered = true;
+    }
     if (!exited && col >= m.exitCol) {
       if (!goal(s)) return false;
       exited = true;
@@ -176,13 +176,13 @@ export function raccordOk(m: BuiltModule, start: AttemptState, inputs: readonly 
   return false;
 }
 
-/** Réussites du test de raccord (sur `RACCORD_COUNT`) ; −1 dès qu'on ne peut plus dépasser `floor` (en comptant `base`). */
-function raccordHits(m: BuiltModule, entry: ModuleEntry, inputs: readonly number[], base = 0, floor = -1): number {
-  const { from, states } = raccordStarts(m, entry);
+/** Réussites du test de raccord (sur `RACCORD_POSITIONS.length`) ; −1 dès qu'on ne peut plus dépasser `floor` (en comptant `base`). */
+function raccordHits(m: BuiltModule, inputs: readonly number[], base = 0, floor = -1): number {
+  const starts = raccordStarts(m);
   let ok = 0;
-  for (let i = 0; i < states.length; i++) {
-    if (raccordOk(m, states[i]!, inputs, from)) ok++;
-    if (base + ok + (states.length - i - 1) <= floor) return -1;
+  for (let i = 0; i < starts.length; i++) {
+    if (raccordOk(m, starts[i]!, inputs)) ok++;
+    if (base + ok + (starts.length - i - 1) <= floor) return -1;
   }
   return ok;
 }
@@ -197,7 +197,7 @@ export function measureMargins(m: BuiltModule, entry: ModuleEntry, inputs: reado
     for (let d = 0; d < GIGUE_DRAWS; d++) if (play(m.level, start, jittered(inputs, k, rng), EXTRA_TICKS).finished) ok++;
     gigue.push(Math.round((ok * 1000) / GIGUE_DRAWS));
   }
-  const raccord = entry !== "arret" ? Math.round((raccordHits(m, entry, inputs) * 1000) / RACCORD_COUNT) : null;
+  const raccord = entry === "elan" ? Math.round((raccordHits(m, inputs) * 1000) / RACCORD_POSITIONS.length) : null;
   return { gigue: gigue as [number, number, number], raccord };
 }
 
@@ -210,12 +210,12 @@ const HARDEN_DRAWS = 16;
  */
 export function hardenScore(m: BuiltModule, entry: ModuleEntry, inputs: readonly number[], floor = -1): number {
   const start = entryState(m, entry);
-  const raccords = entry !== "arret" ? RACCORD_COUNT : 0;
+  const raccords = entry === "elan" ? RACCORD_POSITIONS.length : 0;
   const total = 3 * HARDEN_DRAWS + raccords;
   let ok = 0;
   let done = 0;
   if (raccords > 0) {
-    const r = raccordHits(m, entry, inputs, 0, floor - 3 * HARDEN_DRAWS);
+    const r = raccordHits(m, inputs, 0, floor - 3 * HARDEN_DRAWS);
     if (r < 0) return -1;
     ok += r;
     done += raccords;
@@ -244,7 +244,7 @@ export function harden(m: BuiltModule, entry: ModuleEntry, core: readonly number
   let current = fromCore(m, entry, core);
   if (!current) throw new Error(`${m.levelId} ${entry} : solution non valable avant durcissement`);
   let best = score(current.full, -1);
-  const max = 3 * HARDEN_DRAWS + (entry !== "arret" ? RACCORD_COUNT : 0);
+  const max = 3 * HARDEN_DRAWS + (entry === "elan" ? RACCORD_POSITIONS.length : 0);
   for (let pass = 0; pass < maxPasses && best < max; pass++) {
     let improved = false;
     for (let i = 0; best < max; i++) {

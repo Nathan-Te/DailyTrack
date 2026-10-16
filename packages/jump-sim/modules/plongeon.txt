@@ -1,0 +1,32 @@
+id: plongeon
+intention: Plonger d'une corniche haute dans un couloir bas où une scie roule au sol, et la sauter sans se cogner au plafond.
+etiquettes: scie vertical
+famille: plongeon
+mutateurs: sol-friable
+format: 3
+paliers: 6 16
+variante: cycle=240
+variante: cycle=300
+variante: cycle=240 +sol-friable
+grille:
+........##########
+........##########
+........##########
+........##########
+........##########
+........##########
+###.....##########
+###.....##########
+###.....##########
+###.....##########
+###.....##########
+###.....##########
+###.....##########
+###...............
+###...............
+###...............
+##################
+##################
+
+scie balai o {cycle} aller-retour 9,15 15,15
+zone sol-friable 3-7 16

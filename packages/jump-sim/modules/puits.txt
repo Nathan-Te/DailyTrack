@@ -8,7 +8,9 @@ paliers: 4 18
 repeter: large colonnes 4-4
 repeter: prof rangees 9-9
 variante: large=1 prof=6
+variante: large=1 prof=4 +garde
 variante: large=2 prof=3 +fosse
+variante: large=1 prof=3 +denivele:2
 grille:
 ......########
 ......########

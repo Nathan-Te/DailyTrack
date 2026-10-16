@@ -22,7 +22,7 @@ import { JumpLatch, directionBits, padDirection, padJump, padMenu, padRestart } 
 import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
 import { JumpSession, formatTicks } from "../src/session";
-import { TUNE_SLIDERS, TUNE_STORAGE_KEY, formatHuman, jumpHeight, loadTuned, paramsJson, parseTuned, saveTuned, toHuman, SPRINT_SLIDERS } from "../src/tune";
+import { TUNE_SLIDERS, TUNE_STORAGE_KEY, formatHuman, jumpHeight, loadTuned, paramsJson, parseTuned, saveTuned, toHuman } from "../src/tune";
 import { URL_OPTIONS, dailyHref, galleryHref, moduleHref, readUrlOptions } from "../src/urlOptions";
 
 const SRC = new URL("../src", import.meta.url).pathname;
@@ -50,7 +50,7 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, sprintOff: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null };
+    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, home: null, archives: false };
     // Lot 5 : sans paramètre, le niveau du jour.
     expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
@@ -58,11 +58,10 @@ describe("paramètres d'adresse", () => {
     expect(readUrlOptions("?scenario=dangers").scenario).toBe("dangers");
     expect(readUrlOptions("?tune").tune).toBe(false);
     // Lot 8b : l'essai d'élan, seulement avec debug et tune.
-    // Lot 8c : `sprint=0` est un préréglage (sans élan, pour comparer) ; l'ancien `sprint=1` ne fait plus rien (l'élan est le défaut).
-    expect(readUrlOptions("?scenario=bac-a-sable&debug&tune&sprint=0")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, tune: true, sprintOff: true });
-    expect(readUrlOptions("?scenario=bac-a-sable&debug&sprint=0").sprintOff).toBe(false);
-    expect(readUrlOptions("?sprint=0").sprintOff).toBe(false);
-    expect(readUrlOptions("?debug&tune&sprint=1").sprintOff).toBe(false);
+    expect(readUrlOptions("?scenario=bac-a-sable&debug&tune&sprint=1")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, tune: true, sprint: true });
+    expect(readUrlOptions("?scenario=bac-a-sable&debug&sprint=1").sprint).toBe(false);
+    expect(readUrlOptions("?sprint=1").sprint).toBe(false);
+    expect(readUrlOptions("?debug&tune&sprint=2").sprint).toBe(false);
   });
 
   it("lot 9 : ?theme= impose un thème (nom avec ou sans accent), un nom inconnu est ignoré ; les liens internes le gardent", () => {
@@ -80,19 +79,15 @@ describe("paramètres d'adresse", () => {
     expect(readUrlOptions("?module=inconnu").gallery).toBe(true);
     expect(readUrlOptions("?module=inconnu").module).toBeNull();
     expect(readUrlOptions("?module=cheminee").module).toEqual({ id: "cheminee", variant: 0, entry: "arret", solution: false });
-    expect(readUrlOptions("?module=cheminee&variante=2&entree=course&solution").module).toEqual({ id: "cheminee", variant: 2, entry: "course", solution: true });
-    expect(readUrlOptions("?module=cheminee&variante=2&entree=plein").module).toEqual({ id: "cheminee", variant: 2, entry: "plein", solution: false });
-    // L'ancien nom de l'entrée lancée (avant le lot 8c) mène à la course.
-    expect(readUrlOptions("?module=cheminee&variante=2&entree=elan").module!.entry).toBe("course");
+    expect(readUrlOptions("?module=cheminee&variante=2&entree=elan&solution").module).toEqual({ id: "cheminee", variant: 2, entry: "elan", solution: true });
     expect(readUrlOptions("?module=cheminee&variante=9").module!.variant).toBe(0);
     expect(readUrlOptions("?module=cheminee&variante=-1").module!.variant).toBe(0);
     expect(readUrlOptions("?module=cheminee&entree=n'importe").module!.entry).toBe("arret");
     const from = readUrlOptions("?modules&debug&touch=1&fx=off");
-    expect(moduleHref({ id: "cheminee", variant: 1, entry: "course", solution: true }, from)).toBe("?module=cheminee&variante=1&entree=course&solution&debug&touch=1&fx=off");
-    expect(moduleHref({ id: "cheminee", variant: 1, entry: "plein" }, from)).toBe("?module=cheminee&variante=1&entree=plein&debug&touch=1&fx=off");
+    expect(moduleHref({ id: "cheminee", variant: 1, entry: "elan", solution: true }, from)).toBe("?module=cheminee&variante=1&entree=elan&solution&debug&touch=1&fx=off");
     expect(moduleHref({ id: "plaine", variant: 0, entry: "arret" }, readUrlOptions(""))).toBe("?module=plaine&variante=0");
     expect(galleryHref(from)).toBe("?modules&debug&touch=1&fx=off");
-    expect(readUrlOptions(moduleHref({ id: "puits", variant: 1, entry: "plein" }, from)).module).toEqual({ id: "puits", variant: 1, entry: "plein", solution: false });
+    expect(readUrlOptions(moduleHref({ id: "puits", variant: 2, entry: "elan" }, from)).module).toEqual({ id: "puits", variant: 2, entry: "elan", solution: false });
   });
 
   it("lot 5 : le niveau du jour (page par défaut), ?seed=AAAA-MM-JJ et &solution ; le lien du passage de minuit", () => {
@@ -357,9 +352,9 @@ describe("session", () => {
 });
 
 describe("réglages (?debug&tune)", () => {
-  it("un curseur par réglage (l'élan : son interrupteur et ses trois curseurs, lot 8c), défauts dans les bornes", () => {
-    expect([...TUNE_SLIDERS.map((s) => s.key), "sprintMode", ...SPRINT_SLIDERS.map((s) => s.key)].sort()).toEqual([...JUMP_PARAM_KEYS].sort());
-    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS]) {
+  it("un curseur par réglage, défauts dans les bornes", () => {
+    expect(TUNE_SLIDERS.map((s) => s.key).sort()).toEqual([...JUMP_PARAM_KEYS].sort());
+    for (const s of TUNE_SLIDERS) {
       const v = DEFAULT_JUMP_PARAMS[s.key];
       expect(v, s.key).toBeGreaterThanOrEqual(s.min);
       expect(v, s.key).toBeLessThanOrEqual(s.max);

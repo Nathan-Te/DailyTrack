@@ -28,7 +28,6 @@ import {
   PAS_PRES,
   PLAYER_HEIGHT,
   RACCORD_MIN,
-  RACCORD_COUNT,
   RACCORD_POSITIONS,
   TILE_EMPTY,
   TILE_SOLID,
@@ -36,10 +35,7 @@ import {
   buildModule,
   buildModuleDef,
   MAX_REST_EXIGENCE,
-  canonicalOf,
   centerCol,
-  entryLaunch,
-  entryPrefix,
   decodeReplay,
   exigenceOf,
   fromRuns,
@@ -49,9 +45,7 @@ import {
   moduleStart,
   palierProblems,
   parseModule,
-  raccordPositions,
   replayAttempt,
-  sprintTop,
   stepAttempt,
   variantExigence,
   type BuiltModule,
@@ -216,14 +210,14 @@ describe("le catalogue", () => {
     }
   });
 
-  it("lot 7b : toute variante d'un morceau « respiration » a une exigence de 2 au plus (aux trois entrées)", () => {
+  it("lot 7b : toute variante d'un morceau « respiration » a une exigence de 2 au plus (aux deux entrées)", () => {
     const rest = MODULES.filter((m) => m.tags.includes("respiration"));
     expect(rest.length).toBeGreaterThanOrEqual(4);
     for (const m of rest) {
       m.variants.forEach((_, v) => {
         const sol = moduleSolutions(m.id, v);
         expect(sol, `${m.id} v${v} a ses solutions`).not.toBeNull();
-        for (const e of MODULE_ENTRIES) expect(sol![e]!.exigence, `${m.id} v${v} ${e}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
+        for (const e of ["arret", "elan"] as const) expect(sol![e]!.exigence, `${m.id} v${v} ${e}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
         expect(variantExigence(sol), `${m.id} v${v}`).toBeLessThanOrEqual(MAX_REST_EXIGENCE);
       });
     }
@@ -294,7 +288,7 @@ describe("les solutions stockées", () => {
   });
 
   for (const def of MODULES) {
-    it(`« ${def.id} » : chaque solution (trois entrées) sort au bord droit de son palier dans un état canonique, puis finit sans mourir`, () => {
+    it(`« ${def.id} » : chaque solution sort au bord droit de son palier, au sol, à pleine vitesse, en course propre, puis finit sans mourir`, () => {
       for (let v = 0; v < def.variants.length; v++) {
         const m = buildModule(def.id, v);
         expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
@@ -302,7 +296,7 @@ describe("les solutions stockées", () => {
           const sol = MODULE_SOLUTIONS.modules[def.id]!.variants[v]![entry]!;
           const where = `${def.id} v${v} ${entry}`;
           const replay = decodeReplay(sol.code);
-          expect(replay.start.elan, where).toBe(entryLaunch(entry));
+          expect(replay.start.elan, where).toBe(entry === "elan" ? 1 : 0);
           const r = replayAttempt(m.level, replay, m.levelId);
           expect(r.finished, where).toBe(true);
           expect(r.deaths, where).toEqual([]);
@@ -311,27 +305,26 @@ describe("les solutions stockées", () => {
           // La règle du point canonique, et les pas stockés sont ceux que le rejeu retrouve.
           const inputs = fromRuns(replay.runs);
           const span = moduleSpan(m, entry, inputs);
-          expect(span, where).toEqual({ entryTick: sol.entryTick, exitTick: sol.exitTick, exit: sol.exit, finishTick: sol.ticks });
+          expect(span, where).toEqual({ entryTick: sol.entryTick, exitTick: sol.exitTick, finishTick: sol.ticks });
           let s = moduleStart(m, entry);
-          const prefix = entryPrefix(m, entry);
           for (let t = 0; t < sol.exitTick; t++) {
             const before = s;
             s = stepAttempt(s, inputs[t]!, m.level, DEFAULT_JUMP_PARAMS);
-            // Entrée lancée : l'approche canonique jusqu'au pas où le centre passe le bord du palier d'entrée, dans l'état de l'entrée.
-            if (t < sol.entryTick) expect(inputs[t], where).toBe(prefix[t]);
-            if (entry !== "arret" && t + 1 === sol.entryTick) {
+            // Entrée (élan) : la course, droite tenue, jusqu'au pas où le centre passe le bord du palier d'entrée.
+            if (entry === "elan" && t < sol.entryTick) expect(inputs[t], where).toBe(INPUT_RIGHT);
+            if (entry === "elan" && t + 1 === sol.entryTick) {
               expect(centerCol(before.player), where).toBe(m.lead - 1);
               expect(centerCol(s.player), where).toBe(m.lead);
-              expect(canonicalOf(s.player), where).toBe(entry);
+              expect(isCleanRun(s.player), where).toBe(true);
             }
             if (t + 1 < sol.exitTick) expect(centerCol(s.player), where).toBeLessThan(m.exitCol);
           }
-          // Sortie : le premier pas où le centre passe le bord droit du palier de sortie, au sol de ce palier, dans l'état canonique stocké.
+          // Sortie : le premier pas où le centre passe le bord droit du palier de sortie, au sol de ce palier, à pleine vitesse.
           expect(centerCol(s.player), where).toBe(m.exitCol);
           expect(s.player.ground, where).toBe(1);
-          expect(s.player.vx, where).toBe(sol.exit === "plein" ? sprintTop(DEFAULT_JUMP_PARAMS) : DEFAULT_JUMP_PARAMS.runSpeed);
+          expect(s.player.vx, where).toBe(DEFAULT_JUMP_PARAMS.runSpeed);
           expect(s.player.y + PLAYER_HEIGHT, where).toBe(m.exitRow * T);
-          expect(canonicalOf(s.player), where).toBe(sol.exit);
+          expect(isCleanRun(s.player), where).toBe(true);
           // Durée entre l'entrée et la sortie : de 1 à 6 s (5 à 8 s pour un enchaînement long) ; pas plus de 2 % au-dessus de la plus rapide.
           const ticks = sol.exitTick - sol.entryTick;
           expect(ticks, where).toBeGreaterThanOrEqual(def.long ? LONG_MIN_TICKS : MODULE_MIN_TICKS);
@@ -342,7 +335,7 @@ describe("les solutions stockées", () => {
     });
   }
 
-  it("aucun morceau n'est « au pas près » ni fragile au raccord : chaque solution réussit au moins une fois sur deux à ±1 pas, et lancée (course, élan plein) depuis 90 % des positions d'entrée", () => {
+  it("aucun morceau n'est « au pas près » ni fragile au raccord : chaque solution réussit au moins une fois sur deux à ±1 pas, et en élan depuis 90 % des positions d'entrée", () => {
     const all: { where: string; sol: ModuleSolution }[] = [];
     for (const def of MODULES) {
       def.variants.forEach((_, v) => {
@@ -376,15 +369,11 @@ describe("les solutions stockées", () => {
     expect(exigenceOf([600, 300, 100], 950)).toBe(5);
   });
 
-  it("le test de raccord couvre tout un pas de chaque entrée lancée : 25 positions régulières dans [0, runSpeed) et [0, sprintSpeed)", () => {
-    expect(RACCORD_POSITIONS).toEqual(Array.from({ length: 25 }, (_, k) => 7 + 15 * k)); // celles du lot 6
-    for (const [entry, v] of [["course", DEFAULT_JUMP_PARAMS.runSpeed], ["plein", sprintTop(DEFAULT_JUMP_PARAMS)]] as const) {
-      const pos = raccordPositions(entry);
-      expect(pos, entry).toHaveLength(RACCORD_COUNT);
-      expect(Math.min(...pos)).toBeGreaterThanOrEqual(0);
-      expect(Math.max(...pos)).toBeLessThan(v);
-      expect(Math.max(...pos) - Math.min(...pos)).toBeGreaterThan(v - 2 * Math.ceil(v / 25));
-    }
+  it("le test de raccord couvre tout un pas de course : 25 positions d'entrée régulières dans [0, runSpeed)", () => {
+    expect(RACCORD_POSITIONS).toHaveLength(25);
+    expect(Math.min(...RACCORD_POSITIONS)).toBeGreaterThanOrEqual(0);
+    expect(Math.max(...RACCORD_POSITIONS)).toBeLessThan(DEFAULT_JUMP_PARAMS.runSpeed);
+    expect(Math.max(...RACCORD_POSITIONS) - Math.min(...RACCORD_POSITIONS)).toBeGreaterThan(DEFAULT_JUMP_PARAMS.runSpeed - 30);
   });
 });
 
@@ -526,11 +515,7 @@ describe("règle des plats (lot 7)", () => {
       }
       if (def.elan) expect(longest, `${def.id} est marqué elan sans plat de plus de ${FLAT_MAX}`).toBeGreaterThan(FLAT_MAX);
     }
-    // Lot 8c : l'étiquette « elan » (4 à 6 morceaux où l'élan est le défi).
-    const elan = MODULES.filter((d) => d.elan).map((d) => d.id);
-    expect(elan.length).toBeGreaterThanOrEqual(4);
-    expect(elan.length).toBeLessThanOrEqual(6);
-    expect(elan).toEqual(MODULES.filter((d) => d.tags.includes("elan")).map((d) => d.id));
+    expect(MODULES.filter((d) => d.elan).map((d) => d.id)).toEqual(["saut-long"]);
   });
 
   it("les respirations ne sont plus des courses à plat : chacune a au moins trois sauts à faire (trous, bosses, corniches, ressorts)", () => {
@@ -547,12 +532,12 @@ describe("familles et enchaînements longs (lot 7)", () => {
   it("chaque morceau a une famille ; les cheminées sont une seule famille ; aucune famille ne compte plus de 5 morceaux", () => {
     const fam = new Map<string, string[]>();
     for (const d of MODULES) fam.set(d.family, [...(fam.get(d.family) ?? []), d.id]);
-    for (const id of ["cheminee", "mur-friable"]) expect(MODULES.find((d) => d.id === id)!.family).toBe("cheminee");
+    for (const id of ["cheminee", "cheminee-scie", "cheminee-pics"]) expect(MODULES.find((d) => d.id === id)!.family).toBe("cheminee");
     for (const [f, ids] of fam) expect(ids.length, f).toBeLessThanOrEqual(5);
     expect(fam.size).toBeGreaterThanOrEqual(25);
   });
 
-  it("au moins 8 enchaînements longs, chacun de 3 à 8 s (entrée → sortie, lot 8c ; 5 à 8 s avant) ; les autres morceaux de 0,9 à 6 s", () => {
+  it("au moins 8 enchaînements longs, chacun de 5 à 8 s (entrée → sortie) ; les autres morceaux de 1 à 6 s", () => {
     const longs = MODULES.filter((d) => d.long);
     expect(longs.length).toBeGreaterThanOrEqual(8);
     for (const def of MODULES) {
