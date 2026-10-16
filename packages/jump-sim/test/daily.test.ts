@@ -6,7 +6,6 @@ import {
   EXIGENCE_PEAK,
   EXIGENCE_RATE_MAX,
   EXIGENCE_RATE_MIN,
-  FALLBACK_PIECES,
   JUMP_GENERATOR_VERSION,
   LEVEL_ID_PATTERN,
   MAX_DAILY_HEIGHT,
@@ -46,6 +45,7 @@ import {
   encodeReplay,
   TENSION_RISES,
   exigenceOfPieces,
+  fallbackFor,
   fallbackLevel,
   isRestedModule,
   jumpMedalFor,
@@ -460,7 +460,8 @@ describe("niveau de secours", () => {
     expect(typeof f).not.toBe("string");
     if (typeof f === "string") return;
     expect(f.fallback).toBe(true);
-    expect(f.pieces.map((p) => `${p.id}:${p.variant}`)).toEqual(FALLBACK_PIECES.map((p) => `${p.id}:${p.variant}`));
+    // Lot 13 : le premier jour est en forêt, qui a sa suite de secours (les cinq thèmes ont la leur) ; `FALLBACK_PIECES` reste la suite par défaut.
+    expect(f.pieces.map((p) => `${p.id}:${p.variant}`)).toEqual(fallbackFor(f.theme).map((p) => `${p.id}:${p.variant}`));
     expect(dailyProblems(f)).toEqual([]);
     const r = replayAttempt(f.level, decodeReplay(f.code), f.id);
     expect(r.finished).toBe(true);

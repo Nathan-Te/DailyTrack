@@ -134,17 +134,41 @@ interface Node {
   off: number;
 }
 
-function key(level: Level, s: AttemptState, on: number, off: number): string {
+/**
+ * Lot 13 : les horloges d'un niveau, section par section — le cycle des clignotants (lot 12) et ceux des rafales de ses zones de vent ; vide
+ * pour une section sans horloge. Deux états à des phases différentes d'une même horloge n'ont pas le même avenir.
+ */
+export function sectionClocks(level: Level): number[][] {
+  return level.sections.map((_, i) => [
+    ...(level.blinkCycles[i] ? [level.blinkCycles[i]!.cycle] : []),
+    ...level.winds.filter((w) => w.section === i && w.gust !== null).map((w) => w.gust!.cycle),
+  ]);
+}
+
+/** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales). */
+export function isDynamicLevel(level: Level): boolean {
+  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null);
+}
+
+/** Les phases de chaque section modulo chacune de ses horloges (`shift` : grain, en puissance de 2). */
+function clockKey(level: Level, clocks: readonly (readonly number[])[], s: AttemptState, shift: number): string {
+  return sectionPhases(level, s)
+    .map((ph, i) => clocks[i]!.map((c) => (ph % c) >> shift).join(":"))
+    .join(",");
+}
+
+function key(level: Level, clocks: readonly (readonly number[])[], s: AttemptState, on: number, off: number): string {
   const p = s.player;
   let dyn = "";
-  if (level.blinks.length > 0 || level.alts.length > 0) {
+  if (isDynamicLevel(level)) {
     // Lot 12 : deux états qui ne diffèrent que par la phase des clignotants ou la parité des alternés n'ont pas le même avenir. La phase de
-    // chaque section (modulo son cycle) et l'état des blocs (un bloc qui attend la sortie du personnage compte) les distinguent.
-    const phases = sectionPhases(level, s).map((ph, i) => (level.blinkCycles[i] ? ph % level.blinkCycles[i]!.cycle : 0));
+    // chaque section (modulo ses horloges : clignotants, et rafales depuis le lot 13) et l'état des blocs (un bloc qui attend la sortie du
+    // personnage compte) les distinguent.
+    const phases = clockKey(level, clocks, s, 0);
     let codes = "";
     for (const b of level.blinks) codes += s.tiles[b.row * level.width + b.col]! === 11 ? "1" : "0";
     for (const a of level.alts) codes += s.tiles[a.row * level.width + a.col]! === 13 ? "1" : "0";
-    dyn = `|${s.alt ?? 0}|${phases.join(",")}|${codes}`;
+    dyn = `|${s.alt ?? 0}|${phases}|${codes}`;
   }
   return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}${dyn}`;
 }
@@ -155,9 +179,10 @@ function key(level: Level, s: AttemptState, on: number, off: number): string {
  * aux meilleures branches posées au sol** (celles qui attendent qu'un bloc s'allume ou que la parité change ne gagnent pas de terrain : sans
  * réserve, les branches lancées dans le vide les écartaient, puis mouraient, et la couche se vidait — « aucune solution » alors qu'un morceau
  * existait). La première passe est celle d'avant : les morceaux sans attente gardent leurs solutions, bit pour bit.
+ * Lot 13 : la même seconde passe sert aux rafales (attendre au bord que le vent se lève) ; la clé connaît aussi leurs horloges.
  */
 export function beamSolve(level: Level, options: BeamOptions): number[] | null {
-  const dynamic = level.blinks.length > 0 || level.alts.length > 0;
+  const dynamic = isDynamicLevel(level);
   const first = beamSearch(level, options, false);
   return first ?? (dynamic ? beamSearch(level, options, true) : null);
 }
@@ -169,6 +194,7 @@ function beamSearch(level: Level, options: BeamOptions, reserve: boolean): numbe
   const perCell = options.perCell ?? 2;
   const penalty = options.changePenalty ?? 0;
   const dist = distanceField(level);
+  const clocks = sectionClocks(level);
   const P = DEFAULT_JUMP_PARAMS;
   const pressMin = options.pressMin ?? 0;
   const releaseMin = options.releaseMin ?? 0;
@@ -220,7 +246,7 @@ function beamSearch(level: Level, options: BeamOptions, reserve: boolean): numbe
           continue;
         }
         child.score = guideScore(level, dist, s) - penalty * changes;
-        const k = key(level, s, Math.min(on, pressMin), Math.min(off, releaseMin));
+        const k = key(level, clocks, s, Math.min(on, pressMin), Math.min(off, releaseMin));
         const prev = seen.get(k);
         if (!prev || child.score > prev.score) seen.set(k, child);
       }
@@ -233,7 +259,7 @@ function beamSearch(level: Level, options: BeamOptions, reserve: boolean): numbe
     const take = (n: Node): boolean => {
       const p = n.state.player;
       // Lot 12 : avec des blocs qui clignotent ou s'alternent, deux branches à la même case mais à des phases différentes n'ont pas le même avenir.
-      const dyn = reserve ? `|${n.state.alt ?? 0}|${sectionPhases(level, n.state).map((ph, i) => (level.blinkCycles[i] ? (ph % level.blinkCycles[i]!.cycle) >> 4 : 0)).join(",")}` : "";
+      const dyn = reserve ? `|${n.state.alt ?? 0}|${clockKey(level, clocks, n.state, 4)}` : "";
       const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}|${Math.min(n.on, pressMin)}${dyn}`;
       const used = cells.get(cell) ?? 0;
       if (used >= perCell) return false;

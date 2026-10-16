@@ -12,9 +12,10 @@ export const JUMP_SIM_VERSION = 3;
  * même règle que `GENERATOR_VERSION` de DailyTrack. 5 depuis le lot 8c (règle de jouabilité humaine : catalogue remesuré et adouci) ;
  * 6 depuis le lot 11 (le thème entre dans le générateur : morceaux des mécaniques tapis et glace, quota de signature, identifiants `-t<thème>`) ;
  * 7 depuis la retouche du lot 11 (jouable au clavier : appui de saut d'au moins `PRESS_MIN` pas, catalogue re-résolu, repos recalculé) ;
- * 8 depuis le lot 12 (nuit et néon ont leur mécanique : morceaux et mutateurs clignotants et alternés, quota de signature, repos, secours).
+ * 8 depuis le lot 12 (nuit et néon ont leur mécanique : morceaux et mutateurs clignotants et alternés, quota de signature, repos, secours) ;
+ * 9 depuis le lot 13 (la forêt a ses courants d'air : morceaux et mutateur de vent, quota de signature, repos, secours).
  */
-export const JUMP_GENERATOR_VERSION = 8;
+export const JUMP_GENERATOR_VERSION = 9;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

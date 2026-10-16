@@ -17,7 +17,8 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   intention: Monter une cheminée …              une phrase en français
 //   etiquettes: mural vertical                    parmi MODULE_TAGS
 //   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
-//                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne`) ; sans cette
+//                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne` ; lot 13 :
+//                                                 `foret` : `vent`) ; sans cette
 //                                                 ligne, il sort dans tous les thèmes
 //   famille: cheminee                             (lot 7) les morceaux de même intention ; une seule famille de chaque par niveau
 //   enchainement: long                            (lot 7, facultatif) un enchaînement long : deux intentions sans palier, 5 à 8 s
@@ -31,6 +32,9 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   grille:                                       puis la grille (caractères de `level.ts`, sans `S`, `F` ni `C`), une ligne vide,
 //   scie <id> <rayon> <cycle> <mode> <c,r>…       puis le bloc annexe : des scies (la section est implicite)
 //   clignote <cycle> <solide> <décalage>          (lot 12) le cycle des blocs clignotants `b` `d` du morceau (la section est implicite ; `{param}` permis)
+//   vent <c0>-<c1> <r0>-<r1> <sens> <force> [rafale <cycle> <actif> <décalage>]
+//                                                 (lot 13) une zone de vent (syntaxe de `level.ts`) ; colonnes et rangées du gabarit (de la
+//                                                 première copie de `c0`/`r0` à la dernière de `c1`/`r1`), section implicite, `{param}` permis
 //   zone <mutateur> …                             et les zones de mutation (ci-dessous)
 //
 // **Mutateurs (lot 7).** Une transformation déclarative du **gabarit** (avant le déroulé des plages répétées : une zone posée sur une plage
@@ -51,6 +55,8 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //                                                 variante n'est permise que dans le thème nuit
 //   zone alterne <colonnes> <rangées> <A|B>       `+alterne` (lot 12) : ces tuiles de sol (`#`) deviennent des blocs alternés `A` ou `B` ; la
 //                                                 variante n'est permise que dans le thème néon
+//   zone vent <colonnes> <rangées>                `+vent:<haut|gauche|droite>` (lot 13) : une zone de vent de force 100 sur ce rectangle ;
+//                                                 `+vent:<sens>:rafale` : en rafales (`WIND_GUST_PROFILE`) ; la variante n'est permise qu'en forêt
 //   zone denivele <colonnes>                      `+denivele:<k>` : les colonnes de la zone (jusqu'au bout de la grille) descendent de k
 //                                                 rangées (k < 0 : montent) ; la sortie aussi (« finit plus bas » ou plus haut)
 // Le résultat est un morceau ordinaire, vérifié comme les autres (paliers, hauteur, plats), résolu par le solveur ; une variante mutée au
@@ -78,9 +84,9 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne"] as const;
-/** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12). */
-export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent"] as const;
+/** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13). */
+export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
 /** Au plus ce nombre de mutateurs par variante, et de variantes par morceau (lot 7). */
 export const MAX_MUTATIONS = 2;
@@ -213,6 +219,9 @@ function parseZone(words: readonly string[], width: number, height: number, fail
     case "garde":
       if (words.length !== 5 || words[4]!.length !== 1 || !SPIKES.includes(words[4]!)) fail("« zone garde <colonnes> <rangées> <pic : < > ^ v> » attendu");
       return zone(cols(words[2]), rows(words[3]), words[4]);
+    case "vent":
+      if (words.length !== 4) fail("« zone vent <colonnes> <rangées> » attendu");
+      return zone(cols(words[2]), rows(words[3]));
     case "clignotant":
     case "alterne": {
       const groups = name === "clignotant" ? "bd" : "AB";
@@ -236,6 +245,9 @@ const MODULE_GRID = /^[#.^v<>oOx*[\]~bdAB]+$/;
  * Lot 12 : les profils de clignotement des mutations `+clignotant:<profil>` — cycle, pas solides de `b`, décalage (pas). `lent` : 3 s, solide
  * 1,8 s ; `moyen` : 2,25 s, 1,25 s ; `vif` : 1,75 s, 0,9 s ; `decale` : 2,5 s, `b` absent au pas 0 (on attend qu'il apparaisse).
  */
+/** Lot 13 : la rafale des mutations `+vent:<sens>:rafale` — 2 s de cycle, souffle 1 s, sans décalage (souffle à l'entrée). */
+export const WIND_GUST_PROFILE = Object.freeze({ cycle: 240, active: 120, shift: 0 });
+
 export const BLINK_PROFILES: Readonly<Record<string, { cycle: number; solid: number; shift: number }>> = Object.freeze({
   lent: { cycle: 360, solid: 216, shift: 0 },
   moyen: { cycle: 270, solid: 150, shift: 0 },
@@ -276,7 +288,7 @@ export function parseModule(text: string): ModuleDef {
   if (themeText !== null && !(MECHANIC_THEMES as readonly string[]).includes(themeText)) throw new ModuleError(where(`theme « ${themeText} » inconnu (${MECHANIC_THEMES.join(", ")})`));
   const theme = themeText as JumpThemeName | null;
   // Lot 11 : l'étiquette d'une mécanique et le thème vont ensemble (un morceau `tapis` est de l'usine, un morceau `glace` de la glace).
-  for (const [tag, th] of [["tapis", "usine"], ["glace", "glace"], ["clignotant", "nuit"], ["alterne", "neon"]] as const) {
+  for (const [tag, th] of [["tapis", "usine"], ["glace", "glace"], ["clignotant", "nuit"], ["alterne", "neon"], ["vent", "foret"]] as const) {
     if (tags.includes(tag) !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} » et « theme: ${th} » vont ensemble`));
   }
   const optional = (k: string, value: string) => {
@@ -348,7 +360,7 @@ export function parseModule(text: string): ModuleDef {
         const name = mm![1] as MutatorName;
         const arg = mm![2] ?? "";
         const okArg =
-          name === "clignotant" ? arg in BLINK_PROFILES : name === "alterne" ? arg === "" : name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : name === "surface" ? (SURFACE_ARGS as readonly string[]).includes(arg) : arg === "";
+          name === "clignotant" ? arg in BLINK_PROFILES : name === "vent" ? /^(haut|gauche|droite)(:rafale)?$/.test(arg) : name === "alterne" ? arg === "" : name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : name === "surface" ? (SURFACE_ARGS as readonly string[]).includes(arg) : arg === "";
         if (!okArg) fail(`variante ${k} : argument « ${arg} » de ${name} invalide`);
         if (muts.some((x) => x.name === name)) fail(`variante ${k} : ${name} deux fois`);
         muts.push({ name, arg });
@@ -384,7 +396,17 @@ const SURFACE_CHARS: Readonly<Record<string, string>> = { glace: "~", "tapis:gau
 export function variantTheme(def: Pick<ModuleDef, "theme" | "mutations">, variant: number): JumpThemeName | null {
   const muts = def.mutations[variant] ?? [];
   const surface = muts.find((m) => m.name === "surface");
-  const fromSurface: JumpThemeName | null = muts.some((m) => m.name === "clignotant") ? "nuit" : muts.some((m) => m.name === "alterne") ? "neon" : !surface ? null : surface.arg === "glace" ? "glace" : "usine";
+  const fromSurface: JumpThemeName | null = muts.some((m) => m.name === "clignotant")
+    ? "nuit"
+    : muts.some((m) => m.name === "alterne")
+      ? "neon"
+      : muts.some((m) => m.name === "vent")
+        ? "foret"
+        : !surface
+          ? null
+          : surface.arg === "glace"
+            ? "glace"
+            : "usine";
   return def.theme ?? fromSurface;
 }
 
@@ -469,6 +491,13 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
             }
           }
           break;
+        case "vent": {
+          // Lot 13 : une zone de vent (coordonnées du gabarit, traduites au déroulé comme celles des scies).
+          const [dir, gust] = m.arg.split(":");
+          const g = WIND_GUST_PROFILE;
+          annex.push(`vent ${z.c0}-${z.c1} ${z.r0}-${z.r1} ${dir} 100${gust ? ` rafale ${g.cycle} ${g.active} ${g.shift}` : ""}`);
+          break;
+        }
         case "patrouille": {
           const words = z.extra.split(" ");
           if (m.arg) words[1] = m.arg;
@@ -479,6 +508,9 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
           denivele = { from: z.c0, k: Number(m.arg) };
           // Appliqué après le déroulé des plages (`buildModuleDef`) : seulement vérifié ici (aucune scie dans la zone).
           for (const line of annex) {
+            const vm = /^vent (\d+)-(\d+) /.exec(line);
+            if (vm && Number(vm[2]) >= z.c0) fail(`${where} : une zone de vent y passe`);
+            if (vm) continue;
             for (const w of line.split(/\s+/).slice(5)) {
               const c = Number(/^(\d+)/.exec(w)?.[1] ?? -1);
               if (c >= z.c0) fail(`${where} : une scie y passe`);
@@ -633,7 +665,20 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       annex.push(`clignote ${def.id} ${words.slice(1).join(" ")}`);
       continue;
     }
-    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies et « clignote » sont permis (« ${words[0]} »)`));
+    if (words[0] === "vent") {
+      // Lot 13 : une zone de vent, de la première copie de c0 (r0) à la dernière de c1 (r1).
+      const cm = /^(\d+)-(\d+)$/.exec(words[1] ?? "");
+      const rm = /^(\d+)-(\d+)$/.exec(words[2] ?? "");
+      if (!cm || !rm) throw new ModuleError(where(`zone de vent mal écrite (« ${filled} »)`));
+      const c0 = cols.first[Number(cm[1])];
+      const c1 = cols.last[Number(cm[2])];
+      const r0 = rows.first[Number(rm[1])];
+      const r1 = rows.last[Number(rm[2])];
+      if ([c0, c1, r0, r1].some((v) => v === undefined || v < 0)) throw new ModuleError(where(`zone de vent « ${filled} » hors de la grille ou retirée par la variante`));
+      annex.push(["vent", `${c0! + lead}-${c1! + lead}`, `${r0}-${r1}`, ...words.slice(3)].join(" "));
+      continue;
+    }
+    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote » et « vent » sont permis (« ${words[0]} »)`));
     annex.push(
       words
         .map((w, k) => {

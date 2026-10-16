@@ -1,5 +1,6 @@
 import { Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Vector3, type Object3D } from "three";
 import { BLOCK_STYLE } from "./blocks";
+import { WIND_STYLE } from "./wind";
 import type { GameEvent } from "./events";
 import type { Palette } from "./palette";
 import type { FeelLevels } from "./settings";
@@ -174,6 +175,8 @@ export interface FeelColors {
   blink: readonly number[];
   altA: readonly number[];
   altB: readonly number[];
+  /** Lot 13 : feuilles et pollen du vent (couleurs réservées de `wind.ts`). */
+  wind: readonly number[];
 }
 
 export function feelColors(p: Palette): FeelColors {
@@ -188,6 +191,7 @@ export function feelColors(p: Palette): FeelColors {
     blink: [BLOCK_STYLE.blink.fill, BLOCK_STYLE.blink.edge, 0xffffff],
     altA: [BLOCK_STYLE.altA.fill, BLOCK_STYLE.altA.edge, 0xffffff],
     altB: [BLOCK_STYLE.altB.fill, BLOCK_STYLE.altB.edge, 0xffffff],
+    wind: [WIND_STYLE.leaf, WIND_STYLE.leafDark, WIND_STYLE.pollen],
   };
 }
 
@@ -273,6 +277,18 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       // Lot 12 : un bref éclat des deux couleurs autour du personnage (ou du fanion, à la remise à A) ; l'éclat des blocs est dans le rendu.
       pool.emit({ x, y, count: e.reset ? 12 : 8, angle: UP, spread: Math.PI, vmin: 2, vmax: 5.5, life: 0.35, size: 0.12, gravity: -3, drag: 4, colors: e.alt === 1 ? colors.altB.concat(colors.altA) : colors.altA.concat(colors.altB), jitter: 0.5 });
       break;
+    case "ventDebut": {
+      // Lot 13 : quelques feuilles arrachées autour du personnage, emportées dans le sens du vent.
+      const a = e.dir === "haut" ? UP : e.dir === "gauche" ? Math.PI : 0;
+      pool.emit({ x, y, count: 4, angle: a, spread: 0.7, vmin: 2, vmax: 4.5, life: 0.5, size: 0.11, gravity: 0, drag: 2, colors: colors.wind, jitter: 0.4 });
+      break;
+    }
+    case "rafale": {
+      // Lot 13 : la rafale qui part : une bouffée de feuilles au centre de la zone (le reste se lit sur les feuilles de la zone).
+      const a = e.dir === "haut" ? UP : e.dir === "gauche" ? Math.PI : 0;
+      pool.emit({ x, y, count: 6, angle: a, spread: 0.5, vmin: 3, vmax: 6, life: 0.55, size: 0.12, gravity: 0, drag: 1.5, colors: colors.wind, jitter: 1.2 });
+      break;
+    }
     case "friableCraque":
       pool.emit({ x, y: y + 0.4, count: 3, angle: UP, spread: 1, vmin: 1, vmax: 3, life: 0.4, size: 0.12, gravity: -25, drag: 1, colors: colors.crumble, jitter: 0.8 });
       break;

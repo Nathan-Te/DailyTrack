@@ -1,0 +1,33 @@
+id: vent-derive
+intention: Se laisser emporter par la dérive au-dessus des pics jusqu'au pied d'un grand mur, puis le remonter : le vent y ramène après chaque saut mural.
+etiquettes: mural vertical vent
+famille: vent-derive
+theme: foret
+format: 3
+paliers: 14 5
+repeter: haut rangees 8-8
+repeter: trou colonnes 4-4
+variante: haut=1 trou=1
+variante: haut=2 trou=2
+variante: haut=3 trou=1
+variante: haut=3 trou=2
+grille:
+.............
+.............
+.............
+.............
+.............
+.........####
+.........####
+.........####
+.........####
+.........####
+.........####
+.........####
+.........####
+.........####
+##.......####
+##^^^^^^^####
+#############
+
+vent 2-8 1-14 droite 100

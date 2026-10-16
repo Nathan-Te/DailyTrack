@@ -52,6 +52,7 @@ import { CHUNK_COLUMNS, buildTileArt } from "./tileArt";
 import { BELT_FRAGMENT, BELT_VERTEX, beltRuns, beltTime, buildBeltArt, iceRuns } from "./surfaceArt";
 import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
 import { createDynamicBlocks, type DynamicStats } from "./dynamicArt";
+import { createWindArt, type WindStats } from "./windArt";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
 // la rangée 0 de la grille tout en haut. Aucun calcul de simulation ici : on affiche ce que `jump-sim` a calculé (positions des scies,
@@ -167,6 +168,9 @@ export interface JumpScene {
   flashBlocks(amount: number): void;
   /** Lot 12 : état des blocs clignotants et alternés à la dernière image (null : le niveau n'en a pas). */
   readonly blocks: DynamicStats | null;
+  /** Lot 13 : part des particules du vent (réglages : 0 = flèches fixes à la place), et l'état du vent à la dernière image (null : aucune zone). */
+  windParticles: number;
+  readonly wind: WindStats | null;
   /** Lot 8 : animations douces (fanion qui se lève, ressort qui rebondit) ; faux : posées tout de suite (mouvement réduit, effets aucun). */
   animate: boolean;
   /** Lot 9 : le thème dessiné, ses couleurs de fond (ciel et plans : la sonde des pixels les compte comme du fond), ce qui est construit. */
@@ -381,6 +385,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
 
   // ——— Lot 12 : blocs clignotants (nuit) et alternés (néon), dessinés d'après l'état de l'essai (`dynamicArt.ts`) ———
   const dynamic = createDynamicBlocks(world, level, !!options.hitbox);
+  // ——— Lot 13 : courants d'air (forêt) : contour discret, feuilles et pollen, ou flèches fixes (`windArt.ts`) ———
+  const windArt = createWindArt(world, level, !!options.hitbox);
 
   // ——— Ressorts : socle sombre, ressort en zigzag, plateau de couleur qui se comprime à l'impact ———
   const springMat = new MeshBasicMaterial({ color: palette.spring });
@@ -683,6 +689,10 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     get blocks() {
       return dynamic ? dynamic.stats : null;
     },
+    windParticles: 1,
+    get wind() {
+      return windArt ? windArt.stats : null;
+    },
     backdrop: backdropColors(theme),
     stats,
     setDetail(d) {
@@ -766,6 +776,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       }
       // Lot 12 : blocs clignotants et alternés.
       dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH });
+      // Lot 13 : le vent (particules si les réglages en gardent et que le mouvement n'est pas réduit, sinon flèches fixes).
+      windArt?.update(state, clock, this.windParticles, animate, renderer.domElement.height / Math.max(1, 2 * frame.halfH));
       // Blocs friables : tremblement pendant la minuterie, disparus une fois tombés.
       for (let k = 0; k < crumbles.length; k++) {
         const g = crumbles[k]!;

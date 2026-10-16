@@ -65,7 +65,7 @@ for (let w = 0; w < G; w++) {
 // `MIN_PER_DAY` morceaux (ou variantes à mutateur) de chaque mécanique : sans cela, un jour d'usine ou de glace pourrait n'avoir presque
 // rien de sa mécanique. `--themes` lance la recherche (aléatoire, graine fixe) et imprime la table.
 // Lot 12 : nuit (blocs clignotants) et néon (blocs alternés) ; **les groupes déjà rangés (usine, glace) ne bougent pas** : seuls les morceaux
-// absents de `THEMED_REST_GROUPS` sont placés (les niveaux d'usine et de glace gardent leur composition de repos).
+// absents de `THEMED_REST_GROUPS` sont placés (les niveaux d'usine et de glace gardent leur composition de repos). Lot 13 : forêt (vent), de même.
 if (process.argv.includes("--themes")) {
   const { Rng } = await import("@cdj/core");
   const themed = MODULES.filter((d) => d.theme !== null);
@@ -78,6 +78,7 @@ if (process.argv.includes("--themes")) {
     glace: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "surface" && m.arg === "glace")),
     nuit: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "clignotant")),
     neon: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "alterne")),
+    foret: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "vent")),
   };
   const MIN_PER_DAY = 3;
   const rng = new Rng(12);

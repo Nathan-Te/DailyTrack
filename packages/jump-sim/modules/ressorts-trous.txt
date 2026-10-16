@@ -2,7 +2,7 @@ id: ressorts-trous
 intention: Rebondir de ressort en ressort au-dessus d'une fosse à pics, sans lâcher la course.
 etiquettes: ressort precision
 famille: rebonds
-mutateurs: plafond denivele
+mutateurs: plafond denivele vent
 format: 3
 paliers: 13 13
 repeter: ecart colonnes 12-12
@@ -12,6 +12,7 @@ variante: ecart=1
 variante: ecart=1 +plafond +denivele:2
 variante: ecart=1 +plafond
 variante: ecart=1 +denivele:2
+variante: ecart=1 +vent:haut
 grille:
 ........................................
 ........................................
@@ -32,3 +33,4 @@ grille:
 
 zone plafond 4-35 3
 zone denivele 37-39
+zone vent 4-35 1-12

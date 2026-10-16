@@ -17,6 +17,7 @@ import {
 } from "./audioLogic";
 import type { GameEvent } from "./events";
 import type { PlayerSettings } from "./settings";
+import { WIND_VOICES, type WindVoice } from "./wind";
 
 // Son de DailyJump (lot 8) : Web Audio **procédural**, zéro fichier (oscillateurs et bruit filtré). Tout ce qui se décide (quel son, quel
 // volume, quelles scies, combien à la fois) est dans `audioLogic.ts`, pur et testé ; ici on ne fait que jouer.
@@ -32,6 +33,8 @@ interface SawNode {
   gain: GainNode;
   pan: StereoPannerNode | null;
   index: number;
+  /** Lot 13 : le filtre d'un souffle (il s'ouvre avec la force du vent). */
+  filter?: BiquadFilterNode;
 }
 
 export interface AudioDebug {
@@ -48,6 +51,8 @@ export interface AudioDebug {
   saws: { index: number; gain: number; pan: number }[];
   /** Lot 11 : les tapis roulants audibles (plage, volume, stéréo). */
   belts: { index: number; gain: number; pan: number }[];
+  /** Lot 13 : les zones de vent audibles (zone, volume, stéréo, force du souffle). */
+  winds: { index: number; gain: number; pan: number; strength: number }[];
   errors: number;
   /** Lot 9 : l'ambiance du thème (nom, nappes branchées, événements joués). */
   ambience: { id: string | null; beds: number; events: number };
@@ -69,6 +74,7 @@ export class JumpAudio {
   private slideNode: { gain: GainNode } | null = null;
   private sawNodes: SawNode[] = [];
   private beltNodes: SawNode[] = [];
+  private windNodes: SawNode[] = [];
   private readonly limiter = new VoiceLimiter();
   private readonly carnageRate = new SoundRate();
   private sliding = false;
@@ -76,6 +82,7 @@ export class JumpAudio {
   private variation = 0;
   private lastSaws: SawVoice[] = [];
   private lastBelts: BeltVoice[] = [];
+  private lastWinds: WindVoice[] = [];
   private readonly requested: Record<string, number> = {};
   private readonly played: Record<string, number> = {};
   private errors = 0;
@@ -150,6 +157,7 @@ export class JumpAudio {
     this.buildSlide(ctx);
     this.buildSaws(ctx);
     this.buildBelts(ctx);
+    this.buildWinds(ctx);
     this.buildAmbience(ctx);
   }
 
@@ -325,6 +333,39 @@ export class JumpAudio {
     }
   }
 
+  /**
+   * Lot 13 : le souffle d'une zone de vent : du bruit en boucle, filtré (passe-bande large), dont le volume ondule lentement ; le filtre s'ouvre
+   * avec la force du souffle (une rafale siffle plus haut). Trois voix sur le bus des effets, réattribuées à chaque image (`windMix`).
+   */
+  private buildWinds(ctx: AudioContext): void {
+    for (let i = 0; i < WIND_VOICES; i++) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noise;
+      src.loop = true;
+      src.playbackRate.value = 0.8 + i * 0.07;
+      const f = ctx.createBiquadFilter();
+      f.type = "bandpass";
+      f.frequency.value = 500;
+      f.Q.value = 0.7;
+      const swell = ctx.createGain();
+      swell.gain.value = 0.75;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 0.35 + i * 0.11;
+      const depth = ctx.createGain();
+      depth.gain.value = 0.25;
+      lfo.connect(depth).connect(swell.gain);
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const pan = typeof ctx.createStereoPanner === "function" ? ctx.createStereoPanner() : null;
+      src.connect(f).connect(swell).connect(gain);
+      if (pan) gain.connect(pan).connect(this.sfx!);
+      else gain.connect(this.sfx!);
+      src.start();
+      lfo.start();
+      this.windNodes.push({ gain, pan, index: -1, filter: f });
+    }
+  }
+
   private applyGains(fade = 0.04): void {
     if (!this.ctx || !this.master || !this.sfx || !this.ambience) return;
     const t = this.ctx.currentTime;
@@ -430,10 +471,11 @@ export class JumpAudio {
     src.onended = () => g.disconnect();
   }
 
-  /** À chaque image : les scies audibles (`sawMix`) et, lot 11, les tapis roulants (`beltMix`). Une liste vide les fait taire ; rien en pause. */
-  update(saws: readonly SawVoice[], belts: readonly BeltVoice[] = []): void {
+  /** À chaque image : les scies audibles (`sawMix`), lot 11 les tapis roulants (`beltMix`), lot 13 les zones de vent (`windMix`). Une liste vide les fait taire ; rien en pause. */
+  update(saws: readonly SawVoice[], belts: readonly BeltVoice[] = [], winds: readonly WindVoice[] = []): void {
     this.lastSaws = this.active ? saws.slice() : [];
     this.lastBelts = this.active ? belts.slice() : [];
+    this.lastWinds = this.active ? winds.slice() : [];
     const ctx = this.ctx;
     if (!ctx || ctx.state !== "running") return;
     const t = ctx.currentTime;
@@ -450,6 +492,11 @@ export class JumpAudio {
     }
     this.voices(this.sawNodes, this.lastSaws, t);
     this.voices(this.beltNodes, this.lastBelts, t);
+    this.voices(this.windNodes, this.lastWinds, t);
+    for (const n of this.windNodes) {
+      const w = this.lastWinds.find((x) => x.index === n.index);
+      if (w) n.filter?.frequency.setTargetAtTime(380 + 900 * w.strength, t, 0.12);
+    }
   }
 
   /** Une voix garde sa source (scie, tapis) tant qu'elle reste audible : pas de saut de stéréo quand l'ordre des distances change. */
@@ -484,6 +531,7 @@ export class JumpAudio {
       slide: this.sliding && this.active,
       saws: this.lastSaws.map((s) => ({ index: s.index, gain: s.gain, pan: s.pan })),
       belts: this.lastBelts.map((s) => ({ index: s.index, gain: s.gain, pan: s.pan })),
+      winds: this.lastWinds.map((s) => ({ index: s.index, gain: s.gain, pan: s.pan, strength: s.strength })),
       errors: this.errors,
       ambience: { id: this.ambienceSpec?.id ?? null, beds: this.bedGains.length, events: this.ambientEvents },
     };

@@ -1,47 +1,47 @@
 {
   "jumpSimVersion": 3,
-  "jumpGeneratorVersion": 8,
+  "jumpGeneratorVersion": 9,
   "days": {
     "2026-10-16": {
-      "id": "jour-2026-10-16-g8",
+      "id": "jour-2026-10-16-g9",
       "number": 1,
-      "hash": "84440619",
-      "width": 299,
-      "height": 46,
+      "hash": "315ed113",
+      "width": 286,
+      "height": 56,
       "pieces": [
-        "ressort-mur:1",
-        "quinconce:2",
-        "pont-friable:1",
-        "plafond-pics:0",
+        "vent-pont:0",
+        "cheminee-vide:1",
+        "quinconce:4",
+        "ressort-plafond:3",
+        "vent-derive:1",
         "puits-descente:2",
         "tunnel:3",
-        "demi-tour:5",
-        "cheminee-vide:3",
-        "chute-pics:2",
-        "piliers-scie:0",
-        "ascenseur:5"
+        "escalier-scies:0",
+        "vent-piliers:1",
+        "vent-puits:1",
+        "lucarne:1"
       ],
-      "authorTicks": 3540,
+      "authorTicks": 3595,
       "medals": {
-        "author": 3540,
-        "gold": 3894,
-        "silver": 4602,
-        "bronze": 5664
+        "author": 3595,
+        "gold": 3955,
+        "silver": 4674,
+        "bronze": 5752
       },
       "exigence": {
-        "sum": 24,
-        "rate": 488,
+        "sum": 25,
+        "rate": 500,
         "thirds": [
-          12,
+          13,
           20,
-          28
+          32
         ]
       },
-      "chosen": 1,
-      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc4AJIBNBg2GhgeHBgaHR7CCZYBkgdm0gU2wgpukgaWA5oJLvICNvICLvICNtoGLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBRpUPTQp_gM6jgQqxgeKAbYBGjYaXCk2IkYkIYYFIi76AdECogKQAeIDMKoDpgUylgGCCTb6AjaKA5YBygSGAaoDNoIFhgGiBEbSBQ"
+      "chosen": 0,
+      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc5AJIBhgOiBS7iAi7yB5YBGkYilAEpbipOJSJGRKIFlgHKBW76A17aCG7CC94DIuQBIoQCYkSgAfoELnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBRrmBCKGAfoCjgHaAq4B8gKWAcIC3gQajgHCAvYEGqYIOgjSAUb6AjTiAjbCBoYBIqYCIqYBogKGAyo-qgdOkgJ28gNG6gY"
     },
     "2026-10-25": {
-      "id": "jour-2026-10-25-g8",
+      "id": "jour-2026-10-25-g9",
       "number": 10,
       "hash": "8e39b499",
       "width": 280,
@@ -76,47 +76,47 @@
         ]
       },
       "chosen": 4,
-      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc4AIoQngTCCkbiCvYBMLYDMqYCMuYG2ge-CCq-BHmyCG7CCm76ArYGEkaSBF7yBm7KBXbqA6YB2gSGAYIGhgGiBEaSBla6A5ACqgJG0gKAA4EBugJW4gLgAdIBRtoDVpoFND0sMcYEUpYImgHOAdoD5gc"
+      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc5AIoQngTCCkbiCvYBMLYDMqYCMuYG2ge-CCq-BHmyCG7CCm76ArYGEkaSBF7yBm7KBXbqA6YB2gSGAYIGhgGiBEaSBla6A5ACqgJG0gKAA4EBugJW4gLgAdIBRtoDVpoFND0sMcYEUpYImgHOAdoD5gc"
     },
     "2026-11-03": {
-      "id": "jour-2026-11-03-g8",
+      "id": "jour-2026-11-03-g9",
       "number": 19,
-      "hash": "afc8c51e",
-      "width": 280,
-      "height": 46,
+      "hash": "14b28315",
+      "width": 258,
+      "height": 50,
       "pieces": [
-        "descente-scies:2",
-        "scie-ronde:2",
-        "pendule:5",
-        "ressort-mur-iles:3",
-        "tunnel:0",
-        "saut-plafond:2",
-        "marelle:0",
-        "escalier-friable:2",
+        "tunnel-scies:1",
+        "puits-descente:1",
+        "vent-colonne:3",
+        "plongeon:0",
+        "rebonds-doux:4",
+        "paroi-friable:1",
         "cheminee-pics:2",
-        "mur-seul:1"
+        "escalier-friable:1",
+        "vent-rafale:4",
+        "vent-derive:3"
       ],
-      "authorTicks": 3508,
+      "authorTicks": 3590,
       "medals": {
-        "author": 3508,
-        "gold": 3859,
-        "silver": 4561,
-        "bronze": 5613
+        "author": 3590,
+        "gold": 3949,
+        "silver": 4667,
+        "bronze": 5744
       },
       "exigence": {
-        "sum": 26,
-        "rate": 533,
+        "sum": 25,
+        "rate": 501,
         "thirds": [
-          12,
-          20,
-          40
+          10,
+          22,
+          38
         ]
       },
-      "chosen": 5,
-      "code": "AQMSam91ci0yMDI2LTExLTAzLWc4AMIXRtoVNvoIhgHyBj6qB6YDIqYDIp4DIo4DGqYFMk6CA3a6Ay7SAzaqAi6aAy6iCnbaA94F6gI-ygU2ugdGkgR-ygVm0gaOBCJ2-gG-AYID1giKAjiVAhhdfhpmVRhNNrIIzgEwhgMqpgGiAv4BIrYBsgU"
+      "chosen": 1,
+      "code": "AQMSam91ci0yMDI2LTExLTAzLWc5AJIBNqoDvgMixgMitgMyngGiAu4DQt4DKqYBIjYihAEpVipOLSpWQlYpRSYihgEihgU6LjgtaoABtQH6CI4BygRmqgguogU24ghW8gJhugS2BhoukAHaAcgBQkiKA9YFCjaiAjZixgEyNsID1gHyAfYCMoYDOs4CMoYDMrYDKkZa9gExpgGaBTiVAhhdfhpmVRhNNqIIbvICVtoCVvoBtgQihgYSwAKRAdoBIJoBvgHyA4QC2gTmAyLkASKEAkLkAeoE"
     },
     "2026-12-25": {
-      "id": "jour-2026-12-25-g8",
+      "id": "jour-2026-12-25-g9",
       "number": 71,
       "hash": "35c1b01b",
       "width": 285,
@@ -150,10 +150,10 @@
         ]
       },
       "chosen": 4,
-      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc4AIoDzgIivgQalgIavgValgHiA84F8gOhASLGCZIDPnQmITxlKGZcGRStARZ51gPyBYYDMOYSugKmBTKWAYIJNvoCNooDlgHKBIYBqgM2ggfuBBouwgI-ugU2ogQuigMuigQ28gbuBGK2AiquAho-kgI2igIukgIukgIu0gKmCDI2ogI2wgS2ARo-GkwhRiJGJCGGBQ"
+      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc5AIoDzgIivgQalgIavgValgHiA84F8gOhASLGCZIDPnQmITxlKGZcGRStARZ51gPyBYYDMOYSugKmBTKWAYIJNvoCNooDlgHKBIYBqgM2ggfuBBouwgI-ugU2ogQuigMuigQ28gbuBGK2AiquAho-kgI2igIukgIukgIu0gKmCDI2ogI2wgS2ARo-GkwhRiJGJCGGBQ"
     },
     "2027-03-28": {
-      "id": "jour-2027-03-28-g8",
+      "id": "jour-2027-03-28-g9",
       "number": 164,
       "hash": "35d27598",
       "width": 285,
@@ -190,10 +190,10 @@
         ]
       },
       "chosen": 5,
-      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc4ANoBNroCLqoCboIDXpIHWCzVARreATreAkJEbi1hpgiKA9YFOr4HIlQ9NCn-AzqOBCrGB8ICpgUylgGCCTb6AjaKA5YBygSGAaoDNooGxgGyAfYCcKYB6gdGogRGwgJG4gROkgJ28gNGugemAViuAzKGAzDGATXqBS6iBDbCB26aDjbqCC5gNXIRYqABMmCCAzbSAjEK"
+      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc5ANoBNroCLqoCboIDXpIHWCzVARreATreAkJEbi1hpgiKA9YFOr4HIlQ9NCn-AzqOBCrGB8ICpgUylgGCCTb6AjaKA5YBygSGAaoDNooGxgGyAfYCcKYB6gdGogRGwgJG4gROkgJ28gNGugemAViuAzKGAzDGATXqBS6iBDbCB26aDjbqCC5gNXIRYqABMmCCAzbSAjEK"
     },
     "2027-06-21": {
-      "id": "jour-2027-06-21-g8",
+      "id": "jour-2027-06-21-g9",
       "number": 249,
       "hash": "6c3dd867",
       "width": 329,
@@ -227,7 +227,7 @@
         ]
       },
       "chosen": 3,
-      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc4ANIDvgEaLgyFASqWARo0ZSwqhgGCAjb6BfYBYOYCIoYDMq4DMuYDGK4BqgRWygQuwgQ28gNeygqmBTKWAYIJNvoCNooDlgHKBIYBqgM2kgle8gKOAbIHlgGSBGbiA2bKBC7SAjEaRooCfvoDboIHhgH6BTbCB276AlbiAs4BwgRu8gJW2gJW-gG2BCKGBtoBLuoDbroENpIE_gLQAgo"
+      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc5ANIDvgEaLgyFASqWARo0ZSwqhgGCAjb6BfYBYOYCIoYDMq4DMuYDGK4BqgRWygQuwgQ28gNeygqmBTKWAYIJNvoCNooDlgHKBIYBqgM2kgle8gKOAbIHlgGSBGbiA2bKBC7SAjEaRooCfvoDboIHhgH6BTbCB276AlbiAs4BwgRu8gJW2gJW-gG2BCKGBtoBLuoDbroENpIE_gLQAgo"
     }
   }
 }

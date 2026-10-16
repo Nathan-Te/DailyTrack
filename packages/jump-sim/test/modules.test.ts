@@ -400,7 +400,7 @@ id: essai-mutateurs
 intention: Tester les mutateurs.
 etiquettes: precision
 famille: essai
-mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface clignotant alterne
+mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface clignotant alterne vent
 format: 3
 paliers: 6 6
 repeter: large colonnes 4-4
@@ -431,6 +431,7 @@ zone denivele 6-10
 zone surface 0-1 6
 zone clignotant 0-1 6-8 b
 zone alterne 8 6-8 A
+zone vent 3-5 0-5
 `;
 
 describe("mutateurs (lot 7)", () => {
@@ -438,7 +439,7 @@ describe("mutateurs (lot 7)", () => {
   const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
 
   it("lit les zones et les mutateurs des variantes ; au plus deux par variante, six variantes, seulement ceux déclarés", () => {
-    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne"]);
+    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent"]);
     expect(MUTATORS).toEqual(def.mutators);
     expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
     expect(def.mutations[0]).toEqual([]);
@@ -447,7 +448,7 @@ describe("mutateurs (lot 7)", () => {
     expect(def.mutations.every((m) => m.length <= MAX_MUTATIONS)).toBe(true);
     const bad = (from: string, to: string) => () => parseModule(MUT.replace(from, to));
     expect(bad("variante: large=1 +denivele:2", "variante: large=1 +denivele:2 +plafond +fosse")).toThrow(/au plus 2 mutateurs/);
-    expect(bad("variante: large=1 +denivele:2", "variante: large=1 +vent")).toThrow(/non accepté/);
+    expect(bad("variante: large=1 +denivele:2", "variante: large=1 +tempete")).toThrow(/non accepté/);
     expect(bad("variante: large=1 +denivele:2", "variante: large=1 +denivele")).toThrow(/argument/);
     expect(bad("variante: large=1 +denivele:2", "variante: large=1 +plafond:lave")).toThrow(/argument/);
     expect(bad("zone garde 5 5 <", "zone garde 5 5 x")).toThrow(/zone garde/);

@@ -1,4 +1,5 @@
 import { blockEvents } from "./blocks";
+import { windEvents } from "./wind";
 import {
   ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
@@ -52,6 +53,9 @@ import {
 //     tapis est une fin puis un début. `glaceFrein` : sur la glace avant et après, la vitesse au sol d'au moins `ICE_BRAKE_SPEED` × la course
 //     baisse (frein, lâcher, demi-tour : on le lit dans l'état, pas dans les commandes), un par `ICE_STRIDE_TILES` parcourues : il porte le
 //     givre et le crissement. Aucun de ces événements n'est gardé pour les autres vies du carnage (`CarnageFilter` : mort et arrivée seulement).
+//   - vent (lot 13) : voir `wind.ts` — `ventDebut` / `ventFin` (le centre du personnage entre dans une zone qui souffle, ou la zone où il est se
+//     met à souffler, et l'inverse ; la mort et l'arrivée ferment l'état), `rafale` (une rafale de la section courante part, position : le
+//     centre de la zone). Jamais gardés pour les autres vies du carnage.
 
 export type DeathCauseName = "pic" | "scie" | "chute";
 
@@ -104,6 +108,11 @@ export type GameEvent =
   | (Base & { kind: "bascule"; alt: number; reset: boolean })
   /** Lot 12 : un temps du cycle de la section de nuit courante (4 par cycle ; `accent` sur les deux bascules). */
   | (Base & { kind: "metronome"; accent: boolean; beat: number })
+  /** Lot 13 : le personnage est poussé par une zone de vent / ne l'est plus. `zone` : indice dans `Level.winds` ; `dir` : son sens. */
+  | (Base & { kind: "ventDebut"; zone: number; dir: "haut" | "gauche" | "droite" })
+  | (Base & { kind: "ventFin"; zone: number; dir: "haut" | "gauche" | "droite" })
+  /** Lot 13 : une rafale de la section courante part (position : le centre de la zone). */
+  | (Base & { kind: "rafale"; zone: number; dir: "haut" | "gauche" | "droite" })
   /** Médaille obtenue à l'arrivée sur le niveau du jour (le jeu la pousse : la simulation ne connaît pas les médailles). */
   | (Base & { kind: "medaille"; medal: JumpMedal });
 
@@ -136,6 +145,9 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "blocDisparait",
   "bascule",
   "metronome",
+  "ventDebut",
+  "ventFin",
+  "rafale",
 ];
 
 /** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
@@ -272,6 +284,8 @@ export function eventsBetween(
   }
   // Lot 12 : blocs clignotants et alternés (rien pour un niveau sans eux).
   if (level.blinks.length > 0 || level.alts.length > 0) out.push(...blockEvents(prev, cur, level, tick, source, at(c)));
+  // Lot 13 : courants d'air (rien pour un niveau sans vent).
+  if (level.winds.length > 0) out.push(...windEvents(prev, cur, level, tick, source, at(c)));
   if (cur.status === ATTEMPT_DEAD) {
     out.push({ tick, source, kind: "mort", cause: causeName(cur.deathCause), x: cur.deathX / T, y: cur.deathY / T });
   } else if (cur.status === ATTEMPT_FINISHED) {

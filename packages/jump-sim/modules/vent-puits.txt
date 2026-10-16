@@ -1,0 +1,38 @@
+id: vent-puits
+intention: Remonter un puits sans prise grâce au courant d'air qui monte, puis se poser sur la corniche du haut au bon moment.
+etiquettes: vertical vent
+famille: vent-puits
+theme: foret
+format: 3
+paliers: 22 6
+repeter: haut rangees 10-10
+variante: haut=1 force=100
+variante: haut=3 force=100
+variante: haut=2 force=150
+grille:
+..........
+..........
+..........
+..........
+..........
+..........
+......####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+#.....####
+......####
+......####
+......####
+##########
+##########
+
+vent 1-5 1-21 haut {force}
