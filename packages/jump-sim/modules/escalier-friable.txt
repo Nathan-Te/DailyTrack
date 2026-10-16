@@ -10,7 +10,7 @@ repeter: large colonnes 9-9
 repeter: large colonnes 13-13
 repeter: large colonnes 17-17
 variante: large=2
-variante: large=1 +patrouille
+variante: large=2 +patrouille
 variante: large=2 +denivele:2
 grille:
 ........................

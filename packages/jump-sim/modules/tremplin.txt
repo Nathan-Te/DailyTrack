@@ -7,8 +7,9 @@ format: 3
 paliers: 12 12
 repeter: trou colonnes 8-8
 repeter: trou colonnes 20-20
-variante: trou=1
-variante: trou=1 +denivele:2
+variante: trou=0
+variante: trou=0 +denivele:2
+variante: trou=0 +plafond
 grille:
 ............................
 ............................

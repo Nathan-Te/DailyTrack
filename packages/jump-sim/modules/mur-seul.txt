@@ -8,7 +8,7 @@ paliers: 16 4
 repeter: haut rangees 12-12
 variante: haut=1
 variante: haut=3
-variante: haut=5
+variante: haut=2
 variante: haut=3 +garde
 variante: haut=1 +sol-friable
 variante: haut=3 +denivele:2

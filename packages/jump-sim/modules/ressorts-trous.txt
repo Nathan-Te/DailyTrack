@@ -9,7 +9,7 @@ repeter: ecart colonnes 12-12
 repeter: ecart colonnes 23-23
 repeter: ecart colonnes 34-34
 variante: ecart=1
-variante: ecart=2
+variante: ecart=2 +plafond
 variante: ecart=1 +plafond
 variante: ecart=1 +denivele:2
 grille:

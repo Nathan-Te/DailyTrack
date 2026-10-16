@@ -7,10 +7,9 @@ mutateurs: sol-friable plafond
 format: 3
 paliers: 22 4
 variante: cycle=300
-variante: cycle=360
-variante: cycle=240
-variante: cycle=300 +sol-friable
-variante: cycle=360 +plafond:pics
+variante: cycle=330
+variante: cycle=270
+variante: cycle=300 +plafond
 grille:
 ............................................................
 ............................................................

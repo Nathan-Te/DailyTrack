@@ -10,9 +10,10 @@ repeter: large colonnes 4-4
 repeter: ecart colonnes 16-16
 repeter: ecart colonnes 23-23
 repeter: ecart colonnes 37-37
-variante: large=1 ecart=2
-variante: large=1 ecart=2 +garde
-variante: large=1 ecart=3 +denivele:1
+variante: large=2 ecart=2
+variante: large=2 ecart=3
+variante: large=2 ecart=2 +garde
+variante: large=2 ecart=3 +denivele:1
 grille:
 ......####......................................
 ......####......................................
