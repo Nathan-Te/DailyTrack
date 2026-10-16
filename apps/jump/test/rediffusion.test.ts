@@ -215,10 +215,13 @@ describe("mémoire du jour", () => {
   it("plafonne les vies aux 300 plus récentes et les morts aux 300 plus récentes", () => {
     const store = new MemStore();
     const m = memoryOf(store);
-    for (let i = 0; i < 40; i++) for (const e of DEMO) m.recordEssai(e, false);
+    // 640 essais enregistrés, comme avant le lot 8c (40 passes de 16 essais) : la démo en a 32 depuis, d'où 20 passes ; bien plus de vies
+    // que le plafond, et chaque essai est rejoué par la mémoire (le double de passes dépassait 5 s en CI).
+    const PASSES = 640 / DEMO.length;
+    for (let i = 0; i < PASSES; i++) for (const e of DEMO) m.recordEssai(e, false);
     expect(m.lives).toHaveLength(MAX_LIVES);
     // Les plus récentes : la dernière vie gardée vient du dernier essai enregistré.
-    expect(m.lives.at(-1)!.essai).toBe(40 * DEMO.length);
+    expect(m.lives.at(-1)!.essai).toBe(PASSES * DEMO.length);
     for (let i = 0; i < MAX_DEATHS + 25; i++) m.recordDeath({ x: i, y: i, cause: 1 }, false);
     expect(m.deaths).toHaveLength(MAX_DEATHS);
     expect(m.deaths[0]!.x).toBe(25);

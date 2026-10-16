@@ -115,4 +115,4 @@ génération 162,7 ms en moyenne (289,1 ms au pire) · rejeu de la preuve 6,17 m
   4. `LAUNCH_TILES` passe de 5 à 3 dans la galerie : 5 tuiles enclenchaient l'élan avant le morceau.
   5. `SHARED_WEIGHT` = 2 : un nouveau poids, qui favorise les morceaux propres au jour.
   6. `ressort-mur` et `saut-long` demandent l'élan pour certaines variantes, sans l'étiquette `elan`.
-  7. La démo de l'essai (`?carnage=demo`) ne contient presque plus que des abandons, et plus aucune arrivée après des morts : le test passe maintenant à 32 essais. Faut-il refaire la démo ?
+  7. La démo de l'essai (`?carnage=demo`) ne contient presque plus que des abandons, et plus aucune arrivée après des morts : le test passe maintenant à 32 essais. Le test du plafond des vies faisait 40 passes de cette démo : 1 280 essais rejoués, 5,5 s en CI pour une limite de 5 s. Il revient à 640 essais, son volume d'avant le lot (20 passes de 32), avec les mêmes assertions. Faut-il refaire la démo ?
