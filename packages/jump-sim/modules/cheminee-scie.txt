@@ -8,7 +8,7 @@ paliers: 17 6
 repeter: haut rangees 10-10
 variante: haut=2 cycle=540
 variante: haut=2 cycle=600
-variante: haut=2 cycle=720
+variante: haut=2 cycle=660
 variante: haut=2 cycle=600 +denivele:3
 grille:
 ###..........

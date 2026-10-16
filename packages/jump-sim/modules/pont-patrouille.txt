@@ -10,7 +10,7 @@ repeter: ecart colonnes 6-6
 repeter: ecart colonnes 16-16
 repeter: ecart colonnes 26-26
 variante: ecart=1 cycle=660 +fosse
-variante: ecart=1 cycle=540 +fosse
+variante: ecart=1 cycle=630 +fosse
 variante: ecart=1 cycle=600 +fosse
 variante: ecart=1 cycle=720 +fosse
 grille:
