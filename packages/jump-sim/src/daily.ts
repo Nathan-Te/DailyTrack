@@ -190,7 +190,7 @@ export const REST_OPEN = 4;
  * Sel de l'empreinte des groupes : choisi par `npm run repos:modules -w @cdj/jump-sim` (README du lot 7) pour que les groupes aient la même
  * taille, que chaque étiquette, les enchaînements longs et les morceaux qui finissent plus bas y soient répartis, et que les morceaux d'une
  * même famille tombent le plus possible dans des groupes différents. Changer de sel change les niveaux : `JUMP_GENERATOR_VERSION` +1.
- * (Lot 5 : `repos4310:` ; lot 7 : `repos2527:`.)
+ * (Lot 5 : `repos4310:` ; lot 7 : `repos2527:` ; lot 8c : `repos17912:`, nouveau catalogue.)
  */
 export const REST_SALT = "repos17912:";
 export function restGroup(id: string): number {

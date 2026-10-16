@@ -235,7 +235,7 @@ async function main(): Promise<void> {
   const noPlain = MODULES.filter((d) => d.variants.some((_, v) => !cache[`${d.id}:${v}`]?.arret || !cache[`${d.id}:${v}`]?.course)).map((d) => d.id);
   line(`## Temps de l'auteur avec et sans élan, sur les mêmes niveaux (${DAYS} dates)`);
   line();
-  line(`Morceaux sans solution sans élan (au moins une variante) : ${noPlain.join(", ") || "aucun"} — par construction, les morceaux « elan » ; ils comptent pour leur durée avec l'élan dans l'estimation sans élan. Morceaux ainsi comptés par niveau : ${num(stats(rows.map((r) => r.missing)).mean, 2)} en moyenne.`);
+  line(`Morceaux sans solution sans élan (au moins une variante) : ${noPlain.join(", ") || "aucun"} — les morceaux « elan » (par construction) et ceux dont un saut demande l'élan sans en porter l'étiquette ; ils comptent pour leur durée avec l'élan dans l'estimation sans élan. Morceaux ainsi comptés par niveau : ${num(stats(rows.map((r) => r.missing)).mean, 2)} en moyenne.`);
   line();
   line("| mesure | min | moyenne | max |");
   line("|---|---|---|---|");
