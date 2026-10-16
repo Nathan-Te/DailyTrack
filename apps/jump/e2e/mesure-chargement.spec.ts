@@ -37,7 +37,7 @@ test("fil principal bloqué par le chargement du niveau du jour", async ({ brows
             new PerformanceObserver((list) => list.getEntries().forEach((e) => w.__longTasks.push(e.duration))).observe({ type: "longtask", buffered: true });
           });
           const open = async () => {
-            await page.goto("/?debug&touch=1");
+            await page.goto("/?debug&touch=1&accueil=0");
             await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: { phase: string } }).__jump?.phase ?? ""));
           };
           await open();

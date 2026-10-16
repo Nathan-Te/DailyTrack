@@ -31,6 +31,7 @@ import {
   replayStartState,
   type AttemptState,
   type DailyLevel,
+  type JumpMedal,
   type JumpParams,
   type JumpReplay,
   type Level,
@@ -54,9 +55,30 @@ import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
-import { dailyHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
-import { browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
-import { NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, type DayChoice } from "./dailyInfo";
+import { archiveHref, dailyHref, homeHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
+import { browserFrozen, browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
+import { MEDAL_ICON, NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, shortDate, type DayChoice } from "./dailyInfo";
+import { FROZEN_DAYS } from "./frozen";
+import { History, mayRecord, type DayRecord } from "./history";
+import {
+  ARCHIVE_STREAK_TEXT,
+  archiveDays,
+  archiveRow,
+  countdownText,
+  helpSeen,
+  homeHeading,
+  homeStatus,
+  markHelpSeen,
+  medalText,
+  medalThresholds,
+  plural,
+  streakText,
+  wantsHome,
+} from "./homeLogic";
+import { mountHome, type Home, type HomeView } from "./home";
+import { mountArrival } from "./arrival";
+import { shareText } from "./share";
+import { sendShare } from "./clipboard";
 import { CarnageFilter, EventLog, causeName, eventsBetween, type GameEvent } from "./events";
 import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, sawMix } from "./audioLogic";
@@ -65,6 +87,12 @@ import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColor
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
 
+// Lot 10 : la boucle quotidienne. L'**accueil** (`home.ts`) s'ouvre sur la page par défaut, posé sur le niveau qui se charge derrière (Jouer
+// = le geste qui réveille le son) ; on y revient par le menu ⏸ ou l'écran d'arrivée. L'**écran d'arrivée** (`arrival.ts`) remplace le
+// bandeau pour le niveau du jour, **après** le carnage : temps, médaille, seuils, morts et essais du jour, série, Rejouer / Partager / Revoir
+// le carnage / Accueil, compte à rebours. L'**historique** (`history.ts`, `jump:historique`) garde chaque jour joué (meilleur temps, médaille,
+// morts, essais) et donne la série ; seul le niveau du jour, joué le jour même, y entre (une archive jamais). Les **niveaux figés**
+// (`frozen.ts`) passent par `loadDaily`.
 // Lot 8 : les sensations. Chaque pas, `eventsBetween` (events.ts, pur) compare les deux états de l'essai et en déduit les événements de jeu
 // (saut, atterrissage, pas, glisse, mort, ressort, friable…) ; le son (`audio.ts`), les particules et les vibrations (`feel.ts`) ne
 // s'abonnent qu'à eux. Le carnage n'en garde que les morts et les arrivées des autres vies, au débit plafonné. Menu ⏸ (Échap, P, Start,
@@ -238,6 +266,15 @@ export interface JumpDebug {
    * dérapage, et l'amplitude des mouvements du corps permise par les réglages (`body`).
    */
   readonly look: { pose: FeetPose; stride: number; phase: number; feet: number[]; bob: number; lean: number; breath: number; skid: number; squash: number; body: number };
+  /** Lot 10 : l'accueil. */
+  readonly home: HomeDebug;
+  /** Lot 10 : l'historique persistant (`jump:historique`) et la série d'aujourd'hui (date de Paris). */
+  readonly history: DayRecord[];
+  readonly streak: number;
+  /** Lot 10 : l'écran d'arrivée (affiché, dernier texte partagé, message du partage). */
+  readonly arrival: { shown: boolean; share: string; message: string };
+  /** Lot 10 (tests) : joue une rediffusion (par défaut la preuve de l'auteur) comme les commandes du joueur ; rend son nombre de pas. */
+  autoplay(code?: string): number;
 }
 
 /** Le niveau du jour tel que `__jump.daily` le montre (lot 5). */
@@ -269,9 +306,23 @@ export interface DailyView {
   /** Message discret affiché (date refusée, nouveau niveau), "" sinon. */
   notice: string;
   /** Lot 7b : d'où vient le niveau (`cache`, `worker`, `principal`), s'il a été généré pendant ce chargement, pourquoi le cache a été refusé, durée du chargement et temps de fil principal (ms). */
-  load: { source: string; generated: boolean; cacheMiss: string; totalMs: number; blockedMs: number };
+  load: { source: string; generated: boolean; cacheMiss: string; frozenMiss: string; totalMs: number; blockedMs: number };
   /** Ligne du HUD. */
   line: string;
+}
+
+/** Lot 10 : l'accueil tel que `__jump.home` le montre. */
+export interface HomeDebug {
+  /** L'accueil existe sur cette page (niveau du jour), s'est ouvert au chargement, est ouvert ; Jouer répond ; aide et archives ouvertes. */
+  available: boolean;
+  atStart: boolean;
+  open: boolean;
+  ready: boolean;
+  help: boolean;
+  archives: boolean;
+  /** Dates listées dans les archives (dernière ouverture). */
+  archiveDates: string[];
+  view: HomeView | null;
 }
 
 export interface CarnageView {
@@ -299,10 +350,56 @@ const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_L
 const today = parisDay(Date.now());
 const preview = isPreview(location);
 const choice: DayChoice | null = options.daily ? chooseDay(options.seed, today, preview) : null;
-// Lot 7b : le niveau se charge hors du fil principal (cache vérifié, sinon worker, sinon repli ; `dailyLoader.ts`). Attente au niveau du module.
 const store = browserStorage();
+
+// ——— Lot 10 : historique et accueil, montés avant le chargement du niveau (l'accueil s'affiche tout de suite, Jouer attend le niveau) ———
+const history = new History(store);
+/** L'accueil existe sur la page du niveau du jour (hors lecture) ; il s'ouvre au chargement si `wantsHome`, sinon par le menu ⏸ ou l'arrivée. */
+const homeHere = choice !== null && choice.mode === "jour" && !options.solution && !options.watchBest && !options.carnageDemo;
+const homeAtStart = homeHere && wantsHome(options);
+const homeTheme = themeByName(options.theme) ?? themeForDay(today);
+/** Vrai une fois le jeu entièrement prêt : avant, ouvrir ou fermer une fenêtre de l'accueil ne touche pas encore à la pause. */
+let gameReady = false;
+const home: Home | null = homeHere
+  ? mountHome({
+      onPlay: () => playFromHome(),
+      onSettings: () => setMenu(true),
+      archiveRows: () => archiveDays(parisDay(Date.now())).map((d) => archiveRow(d, themeForDay(d).label, history.forDate(formatDay(d)))),
+      archiveHref: (date) => archiveHref(date, options),
+      onChange: () => {
+        if (gameReady) syncPause();
+      },
+    })
+  : null;
+if (home && homeAtStart) {
+  home.open(homeView());
+  if (options.archives) home.openArchives();
+  else if (!helpSeen(store)) {
+    // « Comment jouer » s'ouvre de lui-même à la toute première visite (puis depuis l'accueil).
+    home.openHelp();
+    markHelpSeen(store);
+  }
+}
+
+/** Ce que montre l'accueil : le niveau d'aujourd'hui, l'état du joueur (historique), la série, le compte à rebours. */
+function homeView(): HomeView {
+  const now = Date.now();
+  const heading = homeHeading(today, homeTheme.label);
+  const status = homeStatus(history.forDate(formatDay(today)));
+  return { ...heading, status: status.text, finished: status.finished, streak: streakText(history.streak(parisDay(now))), countdown: countdownText(now) };
+}
+
+// Lot 7b : le niveau se charge hors du fil principal (cache vérifié, sinon worker, sinon repli ; `dailyLoader.ts`). Attente au niveau du module.
+// Lot 10 : un niveau figé passe avant tout (sa preuve rejouée) ; avec l'accueil ouvert, « Préparation du niveau… » est dans le bouton Jouer.
 const loaded: DailyLoad | null = choice
-  ? await loadDaily(choice.day, { store, today: formatDay(today), makeWorker: browserWorker, showProgress: progressMessage(document), yieldToPaint })
+  ? await loadDaily(choice.day, {
+      store,
+      today: formatDay(today),
+      makeWorker: browserWorker,
+      showProgress: homeAtStart ? undefined : progressMessage(document),
+      yieldToPaint,
+      frozen: { days: FROZEN_DAYS, read: browserFrozen },
+    })
   : null;
 const daily: DailyLevel | null = loaded ? loaded.level : null;
 // Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
@@ -473,7 +570,21 @@ function drainEssais(): RecordedEssai | null {
   }
   // Le meilleur temps affiché est celui que le rejeu a recalculé.
   if (last && memory.best) session.best = memory.best.time;
+  if (last) recordHistory();
   return last;
+}
+
+/**
+ * Lot 10 : l'historique reprend l'état du jour de la mémoire (meilleur temps rejoué, sa médaille, morts et essais du jour) — **seulement**
+ * pour le niveau du jour joué le jour même (une archive, un jour à venir, une lecture n'y entrent jamais ; un essai aux réglages modifiés
+ * n'est pas enregistré par la mémoire, donc n'arrive pas ici).
+ */
+function recordHistory(): void {
+  if (!daily || !choice) return;
+  if (!mayRecord({ mode: choice.mode, levelDay: daily.day, today: parisDay(Date.now()), watching, tuned: false })) return;
+  const best = memory.best;
+  const rec: DayRecord = { id: daily.id, date: daily.date, best: best?.time ?? null, medal: best ? jumpMedalFor(best.time, daily.medals) : null, deaths: memory.totalDeaths, attempts: memory.attempts };
+  history.put(rec);
 }
 
 // ——— Carnage (lot 3) ———
@@ -485,6 +596,8 @@ interface CarnageRun {
   prevBits: number;
 }
 let carnage: CarnageRun | null = null;
+/** Lot 10 : le dernier carnage joué (héros et autres vies), pour « Revoir le carnage ». */
+let lastCarnage: { hero: JumpReplay; others: JumpReplay[] } | null = null;
 let carnageBurst: { pool: BurstPool; mesh: BurstMesh } | null = null;
 /** Zoom arrière du carnage : on voit plus large autour du héros. */
 const CARNAGE_ZOOM = 1.3;
@@ -505,6 +618,9 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
     carnageBurst = { pool, mesh: new BurstMesh(pool, palette.player, scene.world) };
   }
   carnage = { run, crowd, demo, prevBits: bits };
+  // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel.
+  if (!demo) lastCarnage = { hero, others };
+  arrival.hide();
   carnageFilter.reset();
   audio.stopLoops();
   slideSide = 0;
@@ -541,7 +657,7 @@ function endCarnage(): void {
   } else {
     phase = phaseOf(session.state);
     camera = snapCamera(follow(session.state.player), scene.frame);
-    hud.finish(session, finishOptions());
+    showFinish();
   }
 }
 
@@ -649,13 +765,116 @@ function onEvent(e: SessionEvent): void {
       hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : daily && options.solution ? "Rediffusion de l'auteur" : "Rediffusion", watching: true });
       return;
     }
-    // Lot 8 : la médaille obtenue sur le niveau du jour a sa phrase musicale (après la fanfare d'arrivée).
+    // Lot 8 : la médaille obtenue sur le niveau du jour a sa phrase musicale (après la fanfare d'arrivée). Lot 10 : avec l'écran d'arrivée,
+    // elle sonne à son ouverture, après le carnage, avec l'animation de la médaille.
     const medal = daily ? jumpMedalFor(session.state.time, daily.medals) : null;
-    if (medal) dispatch([{ kind: "medaille", medal, ...centerOf(session.state.player), tick: eventTick, source: "jeu" }]);
+    const screen = arrivalScreen();
+    if (medal && !screen) dispatch([{ kind: "medaille", medal, ...centerOf(session.state.player), tick: eventTick, source: "jeu" }]);
+    pendingMedal = screen ? medal : null;
     const rec = drainEssais();
-    // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), le bandeau tout de suite.
-    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) hud.finish(session, finishOptions());
+    finishNewBest = rec?.newBest ?? false;
+    // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), l'arrivée tout de suite.
+    if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) showFinish();
   }
+}
+
+/** Lot 10 : la médaille de l'arrivée, à faire sonner à l'ouverture de l'écran d'arrivée (une seule fois). */
+let pendingMedal: JumpMedal | null = null;
+/** Lot 10 : la dernière arrivée a battu le meilleur temps du jour. */
+let finishNewBest = false;
+
+/** Lot 10 : l'écran d'arrivée sert au niveau du jour joué (pas une lecture, pas des réglages modifiés) ; ailleurs, le bandeau du lot 2. */
+function arrivalScreen(): boolean {
+  return daily !== null && choice !== null && !watching && !session.tuned;
+}
+
+/** L'arrivée : l'écran d'arrivée (niveau du jour), sinon le bandeau. */
+function showFinish(): void {
+  if (!arrivalScreen()) {
+    hud.finish(session, finishOptions());
+    return;
+  }
+  const d = daily!;
+  const c = choice!;
+  const time = session.state.time;
+  const medal = jumpMedalFor(time, d.medals);
+  lastMedal = medal;
+  if (pendingMedal) {
+    dispatch([{ kind: "medaille", medal: pendingMedal, ...centerOf(session.state.player), tick: eventTick, source: "jeu" }]);
+    pendingMedal = null;
+  }
+  const best = memory.best?.time ?? session.best;
+  const bestMedal = best === null ? null : jumpMedalFor(best, d.medals);
+  const now = Date.now();
+  const title = c.mode === "jour" ? "Arrivée !" : c.mode === "archive" ? `Arrivée · archive du ${shortDate(d.date)}` : "Arrivée · à venir (aperçu)";
+  arrival.show({
+    title,
+    time: formatTicks(time),
+    medal,
+    medalIcon: medal ? MEDAL_ICON[medal] : "",
+    medalText: medalText(medal),
+    best: finishNewBest ? "Nouveau meilleur temps du jour !" : best === null ? "Meilleur du jour : —" : `Meilleur du jour : ${formatTicks(best)}${bestMedal ? ` ${MEDAL_ICON[bestMedal]}` : ""}`,
+    newBest: finishNewBest,
+    thresholds: medalThresholds(d.medals, time),
+    stats: `${plural(memory.totalDeaths, "mort", "morts")} aujourd'hui · ${plural(memory.attempts, "essai", "essais")}`,
+    run: session.attemptDeaths === 0 ? "Essai sans faute" : `${plural(session.attemptDeaths, "mort", "morts")} dans cet essai`,
+    streak: c.mode === "jour" ? streakText(history.streak(parisDay(now))) : c.mode === "archive" ? ARCHIVE_STREAK_TEXT : "Aperçu : ne compte pas dans ta série",
+    countdown: countdownText(now),
+    canCarnage: lastCarnage !== null && scene !== null,
+    canShare: memory.best !== null,
+  });
+}
+
+/** Lot 10 : le texte partagé en dernier (`__jump.arrival.share`). */
+let lastShare = "";
+
+/** Lot 10 : « Partager » : la feuille de partage au téléphone, sinon le presse-papiers, sinon le texte à sélectionner. */
+async function share(): Promise<void> {
+  if (!daily || !choice || !memory.best) return;
+  const best = memory.best.time;
+  const text = shareText({ number: daily.number, date: daily.date, ticks: best, medal: jumpMedalFor(best, daily.medals), deaths: memory.totalDeaths, kind: choice.mode }, location);
+  lastShare = text;
+  const r = await sendShare(text, touchOn);
+  if (r === "partage") arrival.shareResult("Partagé", null);
+  else if (r === "copie") arrival.shareResult("Copié dans le presse-papiers", null);
+  else if (r === "annule") arrival.shareResult("", null);
+  else arrival.shareResult("Copie impossible : sélectionne le texte ci-dessous", text);
+}
+
+/** Lot 10 : « Revoir le carnage » : le dernier carnage, tel quel ; l'écran d'arrivée revient à sa fin. */
+function replayCarnage(): void {
+  if (!lastCarnage || carnage) return;
+  startCarnage(lastCarnage.hero, lastCarnage.others, false, lastBits);
+}
+
+/** Lot 10 : l'accueil. Sur la page du niveau du jour, il se pose sur la partie (en pause) ; ailleurs, on va à la page du niveau du jour. */
+function goHome(): void {
+  if (!home) {
+    location.assign(location.pathname + homeHref(options));
+    return;
+  }
+  if (carnage) {
+    carnage.run.stop();
+    endCarnage();
+  }
+  setMenu(false);
+  arrival.hide();
+  hud.hideFinish();
+  home.open(homeView());
+  syncPause();
+}
+
+/** Lot 10 : Jouer (le geste réveille aussi le son). Après une arrivée, un nouvel essai ; après minuit, le niveau du nouveau jour. */
+function playFromHome(): void {
+  if (newDay) {
+    location.replace(location.pathname + dailyHref(options));
+    return;
+  }
+  audio.unlock();
+  home?.close();
+  if (session.state.status === ATTEMPT_FINISHED) restart();
+  controls.resetLatch();
+  syncPause();
 }
 
 /** Médaille de la dernière arrivée sur le niveau du jour (`__jump.daily.lastMedal`). */
@@ -675,13 +894,21 @@ function finishOptions(): { reference: string | null; next: string | null } {
 
 /** Commande du dernier pas joué (le carnage ne se passe que sur une nouvelle commande). */
 let lastBits = 0;
+/** Lot 10 : commandes d'une rediffusion jouées comme celles du joueur (`__jump.autoplay`). */
+let autoplayInputs: number[] | null = null;
+let autoplayIndex = 0;
 
 function stepOnce(): void {
   if (carnage) {
     stepCarnage();
     return;
   }
-  const bits = watching ? (watchInputs[watchIndex++] ?? 0) : (injected ?? controls.sample());
+  let bits = watching ? (watchInputs[watchIndex++] ?? 0) : (injected ?? controls.sample());
+  // Lot 10 (tests) : `__jump.autoplay(code)` joue une rediffusion comme si c'étaient les commandes du joueur (l'essai est enregistré).
+  if (autoplayInputs && !watching) {
+    bits = autoplayInputs[autoplayIndex++] ?? 0;
+    if (autoplayIndex >= autoplayInputs.length) autoplayInputs = null;
+  }
   const prevBits = lastBits;
   lastBits = bits;
   const prev = session.state;
@@ -726,11 +953,13 @@ function restart(): void {
   stepper.reset();
   look = restLook();
   hud.hideFinish();
+  arrival.hide();
   if (scene) camera = snapCamera(follow(session.state.player), scene.frame);
   if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
 }
 
 const hud = mountHud({ onRestart: () => controls.requestRestart() });
+const arrival = mountArrival({ onReplay: () => controls.requestRestart(), onShare: () => void share(), onCarnage: () => replayCarnage(), onHome: () => goHome() });
 
 // ——— Lot 5 : ligne du jour (DailyJump #N, mode, médaille visée), message discret, passage de minuit ———
 const dayLineEl = document.getElementById("dayline")!;
@@ -757,6 +986,9 @@ function updateDayLine(): void {
 if (daily && choice) {
   dayLineEl.hidden = false;
   document.body.classList.add("daily");
+  // Lot 10 : le mode archive se voit dans le HUD (il ne compte pas dans la série).
+  const modeTag = document.getElementById("modetag")!;
+  modeTag.hidden = choice.mode !== "archive";
   updateDayLine();
   if (choice.refused) setNotice(REFUSED_TEXT, false);
   // Le niveau d'aujourd'hui est ouvert (ou une date future refusée) : à minuit de Paris, un nouveau niveau attend. La partie continue.
@@ -770,6 +1002,13 @@ if (daily && choice) {
     setInterval(watchDay, 1000);
   }
 }
+// Lot 10 : le compte à rebours jusqu'au prochain niveau (minuit, heure de Paris), sur l'accueil et l'écran d'arrivée.
+setInterval(() => {
+  if (!home?.isOpen && !arrival.shown) return;
+  const text = countdownText(Date.now());
+  home?.setCountdown(text);
+  arrival.setCountdown(text);
+}, 1000);
 
 // ——— Surimpression de `?debug` ———
 const overlay = options.debug ? document.getElementById("debug") : null;
@@ -861,7 +1100,9 @@ const info: JumpDebug = {
       lastMedal,
       newDay,
       notice,
-      load: loaded ? { source: loaded.source, generated: loaded.generated, cacheMiss: loaded.cacheMiss, totalMs: loaded.totalMs, blockedMs: loaded.blockedMs } : { source: "aucun", generated: false, cacheMiss: "", totalMs: 0, blockedMs: 0 },
+      load: loaded
+        ? { source: loaded.source, generated: loaded.generated, cacheMiss: loaded.cacheMiss, frozenMiss: loaded.frozenMiss, totalMs: loaded.totalMs, blockedMs: loaded.blockedMs }
+        : { source: "aucun", generated: false, cacheMiss: "", frozenMiss: "", totalMs: 0, blockedMs: 0 },
       line: shownLine,
     };
   },
@@ -1024,6 +1265,34 @@ const info: JumpDebug = {
   get menu() {
     return { open: menuOpen };
   },
+  get home(): HomeDebug {
+    return {
+      available: home !== null,
+      atStart: homeAtStart,
+      open: home?.isOpen ?? false,
+      ready: home?.ready ?? false,
+      help: home?.helpOpen ?? false,
+      archives: home?.archivesOpen ?? false,
+      archiveDates: home ? home.rows.map((r) => r.date) : [],
+      view: home ? homeView() : null,
+    };
+  },
+  get history() {
+    return history.entries.map((r) => ({ ...r }));
+  },
+  get streak() {
+    return history.streak(parisDay(Date.now()));
+  },
+  get arrival() {
+    return { shown: arrival.shown, share: lastShare, message: arrival.message };
+  },
+  autoplay(code?: string) {
+    const c = code ?? daily?.code ?? (level === ESSAI_LEVEL ? ESSAI_SOLUTION_CODE : null);
+    if (!c) throw new Error("rien à jouer : donne une rediffusion");
+    autoplayInputs = fromRuns(decodeReplay(c).runs);
+    autoplayIndex = 0;
+    return autoplayInputs.length;
+  },
   setMenu(open: boolean) {
     setMenu(open);
   },
@@ -1074,9 +1343,9 @@ if (options.debug) {
 function setPanel(open: boolean): void {
   panelOpen = open;
   document.getElementById("tune")!.hidden = !open;
-  touchUi?.suspend(open || menuOpen);
+  touchUi?.suspend(open || menuOpen || homeOpen());
   controls.setTouch(0, false);
-  audio.setActive(!open && !menuOpen);
+  audio.setActive(!open && !menuOpen && !homeOpen());
   stepper.reset();
 }
 
@@ -1109,8 +1378,11 @@ const menu = mountPauseMenu({
   onResume: () => setMenu(false),
   onRestart: () => {
     setMenu(false);
+    if (home?.isOpen) home.close();
     controls.requestRestart();
+    syncPause();
   },
+  onHome: () => goHome(),
 });
 function setMenu(open: boolean): void {
   if (open === menuOpen) return;
@@ -1118,10 +1390,21 @@ function setMenu(open: boolean): void {
   if (open) menu.open();
   else menu.close();
   document.body.classList.toggle("paused", open);
-  controls.setSuspended(open);
-  touchUi?.suspend(open || panelOpen);
+  syncPause();
+}
+/** Lot 10 : l'accueil ouvert met la partie en pause, comme le menu. */
+const homeOpen = (): boolean => home?.isOpen ?? false;
+/** Menu ⏸ ou accueil ouverts : le clavier et les doigts ne commandent plus le personnage, le son de jeu se tait, aucun pas ne se joue. */
+let suspendedNow = false;
+function syncPause(): void {
+  const blocked = menuOpen || homeOpen();
+  if (blocked !== suspendedNow) {
+    suspendedNow = blocked;
+    controls.setSuspended(blocked);
+  }
+  touchUi?.suspend(blocked || panelOpen);
   controls.setTouch(0, false);
-  audio.setActive(!open && !panelOpen);
+  audio.setActive(!blocked && !panelOpen);
   stepper.reset();
 }
 const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
@@ -1318,7 +1601,7 @@ if (!scene) {
     controls.pollPad();
     if (controls.takeMenu()) setMenu(!menuOpen);
     if (controls.takeRestart()) restart();
-    if (!manual && !panelOpen && !menuOpen) {
+    if (!manual && !panelOpen && !menuOpen && !homeOpen()) {
       const steps = stepper.advance(dt);
       for (let i = 0; i < steps; i++) stepOnce();
       workStats.steps += steps;
@@ -1345,4 +1628,8 @@ if (!scene) {
   else if (watching) hud.toast("Rediffusion de ton meilleur essai");
   if (options.carnageDemo) startDemo();
 }
+// Lot 10 : le jeu est prêt : Jouer et Réglages répondent ; l'accueil ouvert tient la partie en pause.
+gameReady = true;
+home?.setReady(true);
+syncPause();
 

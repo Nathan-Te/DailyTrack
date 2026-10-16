@@ -115,6 +115,17 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: THEME_NAMES,
   },
   {
+    name: "accueil",
+    description:
+      "Lot 10 : `0` saute l'accueil (le niveau du jour s'ouvre tout de suite, comme avant ; les tests de navigateur s'en servent), `1` le montre. Sans le paramètre, la page par défaut ouvre l'accueil ; les liens directs (`seed`, `module`, `scenario`, `solution`, `watch`, `carnage`) ouvrent toujours directement leur contenu.",
+    values: ["0", "1"],
+  },
+  {
+    name: "archives",
+    description: "Lot 10 : ouvre l'accueil sur la liste des archives (les niveaux passés, du n° 1 à hier, avec ta médaille et ton temps) : `?archives`.",
+    values: [],
+  },
+  {
     name: "zones",
     description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
     values: [],
@@ -155,6 +166,10 @@ export interface UrlChoices {
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
   /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Cosmétique. */
   theme: ThemeName | null;
+  /** Lot 10 : `?accueil=1` (vrai) / `?accueil=0` (faux) ; null : la page décide (`wantsHome`, homeLogic.ts). */
+  home: boolean | null;
+  /** Lot 10 : `?archives` : l'accueil s'ouvre sur la liste des archives. */
+  archives: boolean;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -183,6 +198,8 @@ export function readUrlOptions(search: string): UrlChoices {
     gallery,
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
+    home: params.get("accueil") === "1" ? true : params.get("accueil") === "0" ? false : null,
+    archives: daily && params.has("archives"),
   };
 }
 
@@ -195,14 +212,18 @@ function moduleOf(params: URLSearchParams): UrlChoices["module"] {
   return { id: def.id, variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
 }
 
-/** Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme, thème imposé). */
-function carried(from: UrlChoices): string[] {
+/**
+ * Ce qu'un lien interne garde de l'adresse actuelle : les outils et réglages d'affichage (debug, tactile, effets, fantôme, thème imposé), et
+ * `accueil=0` (lot 10) avec `home` : un test qui saute l'accueil le saute encore après « recommencer » au passage de minuit.
+ */
+function carried(from: UrlChoices, home = false): string[] {
   const out: string[] = [];
   if (from.debug) out.push("debug");
   if (from.touch) out.push(`touch=${from.touch}`);
   if (!from.fx) out.push("fx=off");
   if (from.ghostOff) out.push("ghost=off");
   if (from.theme) out.push(`theme=${from.theme}`);
+  if (home && from.home === false) out.push("accueil=0");
   return out;
 }
 
@@ -221,5 +242,15 @@ export function galleryHref(from: UrlChoices): string {
 
 /** Lien vers le niveau d'aujourd'hui (passage de minuit, lot 5) : sans `seed` ni `solution`, avec ce que l'adresse actuelle garde. */
 export function dailyHref(from: UrlChoices): string {
+  return `?${carried(from, true).join("&")}`;
+}
+
+/** Lot 10 : lien vers l'accueil (le niveau du jour, accueil montré) : sans `seed` ni `solution`, avec les outils d'affichage gardés. */
+export function homeHref(from: UrlChoices): string {
   return `?${carried(from).join("&")}`;
+}
+
+/** Lot 10 : lien vers l'archive d'une date (`?seed=AAAA-MM-JJ`), avec les outils d'affichage gardés. */
+export function archiveHref(date: string, from: UrlChoices): string {
+  return `?${[`seed=${date}`, ...carried(from)].join("&")}`;
 }

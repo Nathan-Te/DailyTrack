@@ -38,7 +38,7 @@ test("la page par défaut montre « Préparation du niveau… », puis le niveau
   await atInstant(browser, FIXED_NOW, async (page) => {
     const seen: string[] = [];
     await slowWorker(page, 700, seen);
-    await page.goto("/?debug", { waitUntil: "commit" });
+    await page.goto("/?debug&accueil=0", { waitUntil: "commit" });
     await expect(page.locator("#prep")).toHaveText("Préparation du niveau…");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
@@ -57,7 +57,7 @@ test("au rechargement le niveau vient du cache : pas de worker, pas de nouvelle 
   await atInstant(browser, FIXED_NOW, async (page) => {
     const seen: string[] = [];
     await slowWorker(page, 0, seen);
-    await page.goto("/?debug");
+    await page.goto("/?debug&accueil=0");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
       return;
@@ -80,7 +80,7 @@ test("au rechargement le niveau vient du cache : pas de worker, pas de nouvelle 
 
 test("un cache corrompu est écarté (la preuve ne se rejoue pas) : le niveau est régénéré, puis le cache redevient sain", async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page) => {
-    await page.goto("/?debug");
+    await page.goto("/?debug&accueil=0");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
       return;
@@ -108,7 +108,7 @@ test("un cache corrompu est écarté (la preuve ne se rejoue pas) : le niveau es
 test("sans worker (indisponible) : repli sur le fil principal, même niveau qu'avec le worker", async ({ browser }) => {
   let hashViaWorker = "";
   await atInstant(browser, FIXED_NOW, async (page) => {
-    await page.goto("/?debug");
+    await page.goto("/?debug&accueil=0");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
       return;
@@ -120,7 +120,7 @@ test("sans worker (indisponible) : repli sur le fil principal, même niveau qu'a
     await page.addInitScript(() => {
       delete (window as unknown as { Worker?: unknown }).Worker;
     });
-    await page.goto("/?debug", { waitUntil: "commit" });
+    await page.goto("/?debug&accueil=0", { waitUntil: "commit" });
     await ready(page);
     const d = await daily(page);
     expect(d.load).toMatchObject({ source: "principal", generated: true });
@@ -137,7 +137,7 @@ test("stockage refusé : le jeu se charge quand même, par le worker, et rien n'
       };
       Object.defineProperty(window, "localStorage", { get: refuse, configurable: true });
     });
-    await page.goto("/?debug");
+    await page.goto("/?debug&accueil=0");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
       return;

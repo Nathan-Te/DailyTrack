@@ -179,6 +179,84 @@
       @keyframes daynote-out { to { opacity: 0; visibility: hidden; } }
       body.daily #tuned { top: 110px; }
       body.touch #dayline, body.touch #daynote { position: static; transform: none; align-self: center; max-width: 100%; font-size: 12px; white-space: normal; text-align: center; }
+      /* Lot 10 : l'accueil (surimpression sur le niveau qui se charge derrière), « Comment jouer », les archives, l'écran d'arrivée. Au-dessus
+         de la couche tactile ; cibles d'au moins 44 px (46-52 px : Firefox mesure 43,99997 px à une position fractionnaire). */
+      #home { position: fixed; inset: 0; z-index: 35; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: rgba(11, 16, 32, 0.86); color: #fff; font: 600 15px/1.35 system-ui, sans-serif; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+      #home[hidden] { display: none; }
+      #home .hcard { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(520px, 100%); margin: auto; text-align: center; }
+      #home .htitle { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: 0.01em; }
+      #home .hsub { margin: 0; opacity: 0.85; }
+      #home .hstatus { margin: 6px 0 0; font-size: 17px; font-variant-numeric: tabular-nums; }
+      #home .hstatus.done { color: #ffd22e; font-weight: 800; }
+      #home .hstreak { margin: 0; opacity: 0.85; }
+      #home .hplay { margin-top: 10px; min-height: 64px; min-width: min(280px, 100%); padding: 0 28px; border: 0; border-radius: 16px; background: #ffd22e; color: #101820; font: 800 24px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+      #home .hplay:disabled { background: rgba(255, 210, 46, 0.35); color: rgba(16, 24, 32, 0.8); font-size: 17px; cursor: progress; }
+      #home .hbtns { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+      #home .hbtn, .sbtn { box-sizing: border-box; min-height: 48px; min-width: 48px; padding: 0 16px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+      #home .hbtn:disabled { opacity: 0.5; cursor: progress; }
+      .sbtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
+      #home button:focus-visible, .sheet button:focus-visible, .sheet a:focus-visible, #arrival button:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
+      #home .hcount { margin: 8px 0 0; font-size: 13px; opacity: 0.75; font-variant-numeric: tabular-nums; }
+      @media (max-height: 520px) { #home .htitle { font-size: 26px; } #home .hplay { min-height: 56px; margin-top: 4px; } #home .hcard { gap: 3px; } }
+      #help, #archives { position: fixed; inset: 0; z-index: 38; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 16, 0.6); }
+      #help[hidden], #archives[hidden] { display: none; }
+      .sheet { box-sizing: border-box; width: min(600px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 12px 18px 18px; border-radius: 14px; background: #0b1020; box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5); color: #fff; font: 500 15px/1.4 system-ui, sans-serif; }
+      .sheet .shead { position: sticky; top: -12px; margin: -12px -18px 0; padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0b1020; z-index: 1; }
+      .sheet h2 { margin: 0; font-size: 21px; }
+      .sheet h3 { margin: 12px 0 4px; font-size: 14px; color: #ffd22e; text-transform: uppercase; letter-spacing: 0.06em; }
+      .sheet ul { margin: 0; padding-left: 18px; }
+      .sheet li { margin: 3px 0; }
+      .sheet .slead { margin: 4px 0 8px; opacity: 0.75; font-size: 13px; }
+      #archives .alist { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+      #archives .alist li { margin: 0; }
+      #archives .arow { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 12px; box-sizing: border-box; min-height: 52px; padding: 6px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; text-decoration: none; font-variant-numeric: tabular-nums; touch-action: pan-y; }
+      #archives .arow:active { background: rgba(255, 210, 46, 0.25); }
+      #archives .anum { font-weight: 800; font-size: 17px; min-width: 2.6em; }
+      #archives .adate { opacity: 0.85; }
+      #archives .ares { opacity: 0.6; font-size: 14px; }
+      #archives .ares.medal { opacity: 1; color: #ffd22e; font-weight: 700; }
+      #archives .aempty[hidden] { display: none; }
+      #arrival { position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 16, 0.45); touch-action: manipulation; }
+      #arrival[hidden] { display: none; }
+      #arrival .acard { box-sizing: border-box; width: min(560px, calc(100% - 24px)); max-height: calc(100% - 16px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 14px 18px; border-radius: 16px; background: rgba(11, 16, 32, 0.95); color: #fff; font: 600 14px/1.35 system-ui, sans-serif; text-align: center; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 8px; }
+      #arrival .atitle { font-size: 17px; opacity: 0.85; }
+      #arrival .atime { font-size: 38px; font-weight: 800; color: #ffd22e; line-height: 1.1; }
+      #arrival .amedalrow { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; }
+      #arrival .amedal { font-size: 34px; line-height: 1; }
+      #arrival .amedal[hidden] { display: none; }
+      #arrival .amedalrow.pop .amedal { animation: medal-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+      @keyframes medal-pop { 0% { transform: scale(0.2) rotate(-25deg); opacity: 0; } 60% { transform: scale(1.25) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
+      @media (prefers-reduced-motion: reduce) { #arrival .amedalrow.pop .amedal { animation: none; } }
+      #arrival .abest { opacity: 0.9; }
+      #arrival .abest.record { color: #39ff88; }
+      #arrival .athresholds { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 13px; }
+      #arrival .athresholds li { display: flex; align-items: center; gap: 6px; opacity: 0.6; }
+      #arrival .athresholds li.reached { opacity: 1; }
+      #arrival .athresholds .tlabel { flex: 1; text-align: left; }
+      #arrival .astats, #arrival .arun, #arrival .astreak { opacity: 0.9; }
+      #arrival .astreak { color: #ffd22e; }
+      #arrival .abtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+      #arrival .abtn { box-sizing: border-box; min-height: 48px; min-width: 48px; padding: 0 12px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
+      #arrival .abtn[hidden] { display: none; }
+      #arrival .abtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
+      #arrival .amessage { min-height: 1.2em; color: #39ff88; font-size: 13px; }
+      #arrival .afallback { width: 100%; box-sizing: border-box; font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 8px; padding: 6px; user-select: text; -webkit-user-select: text; resize: none; }
+      #arrival .afallback[hidden] { display: none; }
+      #arrival .acount, #arrival .ahint { font-size: 12px; opacity: 0.7; }
+      body.touch #arrival .ahint { display: none; }
+      /* Paysage bas (téléphone) : deux colonnes, le résultat à gauche, les actions à droite. */
+      @media (max-height: 520px) and (min-width: 560px) {
+        #arrival .acard { flex-direction: row; align-items: center; width: min(760px, calc(100% - 24px)); padding: 10px 14px; gap: 14px; }
+        #arrival .amain, #arrival .aside { flex: 1 1 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+        #arrival .atime { font-size: 30px; }
+        #arrival .amedal { font-size: 28px; }
+      }
+      #arrival .amain, #arrival .aside { display: flex; flex-direction: column; gap: 6px; }
+      body.home-open #tbar, body.home-open #hud, body.home-open #pausebtn, body.home-open #ghostbtn, body.home-open #stamp, body.home-open #modname { visibility: hidden; }
+      /* Lot 10 : le mode archive, dans le HUD. */
+      #modetag { position: fixed; left: 50%; top: 76px; transform: translateX(-50%); z-index: 4; padding: 1px 10px; border-radius: 999px; background: #9fd8ff; color: #101820; font: 800 11px system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; }
+      #modetag[hidden] { display: none; }
+      body.touch #modetag { position: static; transform: none; align-self: center; }
       #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
     </style>
   </head>
@@ -187,6 +265,7 @@
     <div id="hud">
       <div id="chrono" aria-live="off"><span class="time">0,000 s</span><span class="best">Meilleur —</span><span class="deaths">Morts 0</span></div>
       <div id="dayline" hidden></div>
+      <div id="modetag" hidden>Archive</div>
       <div id="daynote" role="status"></div>
       <div id="carnage" role="status" hidden><span class="count"></span><span class="hint">Une commande pour passer</span></div>
       <pre id="debug" hidden></pre>

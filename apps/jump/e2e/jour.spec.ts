@@ -76,7 +76,7 @@ const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se c
 
 test("la page par défaut ouvre le niveau du jour (date de Paris, horloge décalée) : DailyJump #5, médaille visée", async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page) => {
-    test.skip(!(await open(page, "/?debug")), SKIP);
+    test.skip(!(await open(page, "/?debug&accueil=0")), SKIP);
     const j = await jump(page);
     expect(j.day).toBe(TODAY);
     expect(j.daily).toMatchObject({ date: TODAY, today: TODAY, number: 5, id: `jour-${TODAY}-g${GENERATOR}`, mode: "jour", preview: true, refused: false });
@@ -168,7 +168,7 @@ test("passage de minuit : la partie continue, « Nouveau niveau disponible », p
   test.setTimeout(90_000);
   // 23:59:57 à Paris le 20/10/2026 (UTC+2).
   await atInstant(browser, Date.parse("2026-10-20T21:59:57Z"), async (page) => {
-    test.skip(!(await open(page, "/?debug")), SKIP);
+    test.skip(!(await open(page, "/?debug&accueil=0")), SKIP);
     await page.evaluate(() => {
       const j = (window as unknown as { __jump: JumpDebug }).__jump;
       j.manual(true);
