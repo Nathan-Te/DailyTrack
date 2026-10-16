@@ -95,7 +95,19 @@ describe("élan éteint (mode 0) : trajectoires identiques", () => {
       let s = start;
       const states: AttemptState[] = [];
       for (const i of inputs) states.push((s = stepAttempt(s, i, lv, p)));
-      return states;
+      // Lot 13 : les états sont comparés sérialisés (le même contenu, champ par champ et dans le même ordre ; −0 noté à part), et une grille
+      // n'est écrite qu'à sa première apparition (un état qui garde le même tableau renvoie à elle) : 12 000 comparaisons profondes `toEqual`
+      // coûtaient plus de 5 s en CI, la simulation elle-même 0,15 s.
+      const grids: (readonly number[])[] = [];
+      return JSON.stringify(states, (k, v) => {
+        if (k === "tiles") {
+          const seen = grids.indexOf(v as readonly number[]);
+          if (seen >= 0) return `grille ${seen}`;
+          grids.push(v as readonly number[]);
+          return v;
+        }
+        return Object.is(v, -0) ? "-0" : v;
+      });
     };
     let checked = 0;
     for (const def of MODULES.filter((_, k) => k % 4 === 0)) {
@@ -105,13 +117,13 @@ describe("élan éteint (mode 0) : trajectoires identiques", () => {
         const inputs = fromRuns(decodeReplay(sol.code).runs);
         const a = play(m.level, moduleStart(m, entry), inputs, DEFAULT_JUMP_PARAMS);
         const b = play(m.level, moduleStart(m, entry), inputs, OFF);
-        expect(b, `${def.id} ${entry}`).toEqual(a);
+        expect(b, `${def.id} ${entry}`).toBe(a);
         checked++;
       }
     }
     const essai = decodeReplay(ESSAI_SOLUTION_CODE);
     const inputs = fromRuns(essai.runs);
-    expect(play(ESSAI_LEVEL, replayStartState(ESSAI_LEVEL, essai.start), inputs, OFF)).toEqual(play(ESSAI_LEVEL, replayStartState(ESSAI_LEVEL, essai.start), inputs, DEFAULT_JUMP_PARAMS));
+    expect(play(ESSAI_LEVEL, replayStartState(ESSAI_LEVEL, essai.start), inputs, OFF)).toBe(play(ESSAI_LEVEL, replayStartState(ESSAI_LEVEL, essai.start), inputs, DEFAULT_JUMP_PARAMS));
     expect(checked).toBeGreaterThanOrEqual(10);
   });
 });
