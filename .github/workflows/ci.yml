@@ -149,7 +149,8 @@ jobs:
           mkdir -p merged
           if ls all-blobs/*.zip >/dev/null 2>&1; then
             # --config : les rapports de DailyTrack et de DailyJump viennent de dossiers de tests différents (lot 3c, scripts/e2e-merge.config.mjs).
-            PLAYWRIGHT_JSON_OUTPUT_NAME=merged/report.json npx playwright merge-reports --config ../../scripts/e2e-merge.config.mjs --reporter=json,html all-blobs
+            # Chemins ABSOLUS : avec --config, Playwright range les sorties relativement au dossier de la configuration, pas du dossier courant.
+            PLAYWRIGHT_JSON_OUTPUT_NAME="$PWD/merged/report.json" PLAYWRIGHT_HTML_OUTPUT_DIR="$PWD/playwright-report" npx playwright merge-reports --config ../../scripts/e2e-merge.config.mjs --reporter=json,html all-blobs
             ls merged
           else
             echo "aucun rapport de part : les jobs e2e-parts ont échoué avant les tests" >&2
