@@ -243,10 +243,16 @@ test("mouvement réduit : le vacillement reste lisible, sans clignoter (la face 
       // On avance jusqu'à ce qu'un bloc plein vacille (il lui reste moins de 0,25 s), puis on regarde plusieurs images.
       const found = await page.evaluate(() => {
         const j = (window as unknown as { __jump: Jump }).__jump;
+        // On court jusqu'à la section (le monde se met en marche), puis on attend sur place : le cycle de la section tourne.
         j.input(2);
+        j.advance(36); // le centre passe dans la section (le palier fait deux tuiles) ; la corniche d'entrée est plus loin
+        j.input(0);
         for (let t = 0; t < 400; t++) {
           j.advance(1);
-          if ((j.blocks?.wobbling ?? 0) > 0) return true;
+          if ((j.blocks?.wobbling ?? 0) > 0) {
+            j.advance(20); // le vacillement avance : on le regarde aux deux tiers (le contour ne s'épaissit qu'à partir de 30 %)
+            return true;
+          }
         }
         return false;
       });
@@ -293,7 +299,9 @@ test("le métronome de la nuit bat sur les phases du cycle de la section ; `?met
     test.skip(!(await open(page, `/?module=nuit-pont&variante=0&debug${off ? "&metronome=off" : ""}`)), SKIP);
     const run = await page.evaluate(() => {
       const j = (window as unknown as { __jump: Jump }).__jump;
-      j.input(2 | 4);
+      j.input(2);
+      j.advance(36);
+      j.input(0);
       const beats: boolean[] = [];
       for (let t = 0; t < 420; t++) {
         j.advance(1);

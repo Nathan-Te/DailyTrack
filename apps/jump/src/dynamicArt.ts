@@ -239,7 +239,7 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
         const show = level.alts.length > 0;
         labels.A.visible = show && alt === 0;
         labels.B.visible = show && alt === 1;
-        for (const s of [labels.A, labels.B]) s.position.set(view.x - view.halfW + 1.6, view.y + view.halfH - 1.9, 0.7);
+        for (const s of [labels.A, labels.B]) s.position.set(view.x + view.halfW - 1.6, view.y + view.halfH - 1.9, 0.7);
       }
     },
   };

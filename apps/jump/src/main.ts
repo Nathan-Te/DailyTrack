@@ -17,10 +17,8 @@ import {
   SANDBOX_LEVEL,
   SPRINT_TRIAL_PARAMS,
   TICK_RATE,
-  TILE_ALT_ON,
   TILE_BELT_LEFT,
   TILE_BELT_RIGHT,
-  TILE_BLINK_ON,
   UNITS_PER_TILE,
   decodeReplay,
   groundTile,
@@ -59,6 +57,7 @@ import { FixedStepper } from "./loop";
 import { THEMES, themeByName, themeForDay } from "./themes";
 import { createScene, type JumpScene, type SceneDetail, type SceneStats } from "./scene";
 import type { DynamicStats } from "./dynamicArt";
+import { blockLooks } from "./blocks";
 import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -1323,12 +1322,20 @@ const info: JumpDebug = {
     const stats = scene?.blocks ?? null;
     if (!stats && level.blinks.length === 0 && level.alts.length === 0) return null;
     const state = session.state;
+    const looks = blockLooks(level, state);
     return {
+      // Ce que le dessin a posé à la dernière image (opacité de la face qui vacille, contours épais, éclat) ; le reste se lit de l'état de l'essai.
       ...(stats ?? {}),
+      blinks: level.blinks.length,
+      alts: level.alts.length,
+      solid: looks.filter((l) => l.solid).length,
+      absent: looks.filter((l) => !l.solid).length,
+      wobbling: looks.filter((l) => l.wobble > 0).length,
+      waiting: looks.filter((l) => l.waiting).length,
       alt: level.alts.length > 0 ? (state.alt ?? 0) : -1,
       phases: sectionPhases(level, state),
       cycles: level.blinkCycles.map((c) => (c ? { ...c } : null)),
-      states: [...level.blinks.map((b) => state.tiles[b.row * level.width + b.col] === TILE_BLINK_ON), ...level.alts.map((a) => state.tiles[a.row * level.width + a.col] === TILE_ALT_ON)],
+      states: looks.map((l) => l.solid),
     };
   },
   get home(): HomeDebug {
