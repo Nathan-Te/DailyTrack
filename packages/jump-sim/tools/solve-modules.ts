@@ -8,6 +8,8 @@ import {
   INPUT_RIGHT,
   JUMP_SIM_VERSION,
   MODULE_ENTRIES,
+  PRESS_MIN,
+  RELEASE_MIN,
   attemptReplay,
   buildModuleDef,
   decodeReplay,
@@ -16,6 +18,7 @@ import {
   fromRuns,
   moduleSpan,
   parseModule,
+  shortestPress,
   type ModuleEntry,
   type ModuleSolution,
   type ModuleSolutionsFile,
@@ -106,8 +109,8 @@ function runJob(job: Job): JobResult {
         return Math.min(maxTicks, cur + Math.floor((cur * SLOWER) / 100) + IDLE_SLACK);
       };
       for (const chunk of CHUNKS) {
-        let f = beamSolve(m.level, { start, goal, lost, beam: job.beam, chunk, changePenalty: 128, maxTicks: bound() });
-        if (!f && chunk === 4) f = beamSolve(m.level, { start, goal, lost, beam: job.beam * 3, chunk: 3, maxTicks });
+        let f = beamSolve(m.level, { start, goal, lost, beam: job.beam, chunk, changePenalty: 128, maxTicks: bound(), pressMin: PRESS_MIN, releaseMin: RELEASE_MIN });
+        if (!f && chunk === 4) f = beamSolve(m.level, { start, goal, lost, beam: job.beam * 3, chunk: 3, maxTicks, pressMin: PRESS_MIN, releaseMin: RELEASE_MIN });
         if (!f) continue;
         // Le monde attend la première commande : on retire les pas d'attente du début (une rediffusion commence au premier pas commandé).
         let idle = 0;
@@ -167,6 +170,7 @@ function runJob(job: Job): JobResult {
       gigue: margins.gigue,
       raccord: margins.raccord,
       exigence: exigenceOf(margins.gigue, margins.raccord),
+      press: shortestPress(inputs),
     };
     return { job, solution, ms: performance.now() - t0 };
   } catch (e) {

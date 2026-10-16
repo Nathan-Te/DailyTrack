@@ -1,4 +1,4 @@
-import { MODULES, MODULE_TAGS, textHash } from "../src/index";
+import { MODULES, MODULE_TAGS, REST_SALT, textHash } from "../src/index";
 
 // `npm run repos:modules -w @cdj/jump-sim -- [--groupes=7] [--ouverts=4] [--sels=20000]` — cherche le sel des groupes de repos (`REST_SALT`,
 // daily.ts ; lots 5 et 7) : parmi `repos<n>:`, celui qui range le catalogue en groupes de tailles égales (à un près) et dont **chaque jour**
@@ -68,7 +68,7 @@ if (process.argv.includes("--themes")) {
   const { Rng } = await import("@cdj/core");
   const themed = MODULES.filter((d) => d.theme !== null);
   const base = MODULES.filter((d) => d.theme === null);
-  const baseGroups = base.map((d) => Number.parseInt(textHash(`repos2527:${d.id}`), 16) % G);
+  const baseGroups = base.map((d) => Number.parseInt(textHash(`${REST_SALT}${d.id}`), 16) % G);
   const windows = Array.from({ length: G }, (_, w) => Array.from({ length: K }, (_, i) => (w + i) % G));
   const surf = (d: (typeof MODULES)[number], what: "glace" | "tapis") => d.mutations.some((ms) => ms.some((m) => m.name === "surface" && (what === "glace" ? m.arg === "glace" : m.arg.startsWith("tapis"))));
   const MIN_PER_DAY = 3;

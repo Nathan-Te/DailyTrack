@@ -98,9 +98,9 @@ export const MAX_DAILY_HEIGHT = 56;
  * temps de l'auteur (`exigenceRate`). Elle doit tomber dans [`EXIGENCE_RATE_MIN`, `EXIGENCE_RATE_MAX`] ; le score des tirages vise
  * `EXIGENCE_RATE_CENTER`. Seuils réglés sur `npm run measure:jump` (README des lots 5 à 7 : 380–460 au lot 5, 430–520 au lot 6 ; lot 7 :
  * nouveau catalogue, la fenêtre est recentrée sur la médiane des tirages, même largeur relative, ±10 % ; lot 8c : notes lues sur la gigue
- * ±3, un peu plus hautes en moyenne, 445–540 → 445–570, centre 492 → 505 : 63,9 % de tirages validés au lieu de 57,1 %, mesuré).
+ * ±3, un peu plus hautes en moyenne, 445–540 → 445–570, centre 492 → 505 : 63,9 % de tirages validés au lieu de 57,1 %, mesuré ; retouche « jouable au clavier » du lot 11 : appuis humains, notes plus basses en queue, 445 → 425 : tirages validés 54,7 % → voir `docs/jump/lots/lot-11-themes-jouables.md`).
  */
-export const EXIGENCE_RATE_MIN = 445;
+export const EXIGENCE_RATE_MIN = 425;
 export const EXIGENCE_RATE_MAX = 570;
 export const EXIGENCE_RATE_CENTER = 505;
 /** Au moins un morceau de cette exigence ou plus. */
@@ -177,7 +177,7 @@ export const REST_OPEN = 4;
  * même famille tombent le plus possible dans des groupes différents. Changer de sel change les niveaux : `JUMP_GENERATOR_VERSION` +1.
  * (Lot 5 : `repos4310:`.)
  */
-export const REST_SALT = "repos2527:";
+export const REST_SALT = "repos19541:";
 export function restGroup(id: string): number {
   const fixed = THEMED_REST_GROUPS[id];
   if (fixed !== undefined) return fixed;
@@ -189,20 +189,20 @@ export function restGroup(id: string): number {
  * près et chaque jour ouvre au moins quatre morceaux ou variantes de chaque mécanique.
  */
 export const THEMED_REST_GROUPS: Readonly<Record<string, number>> = {
-  "glace-cheminee": 4,
-  "glace-corniches": 3,
-  "glace-freinage": 0,
-  "glace-mur": 6,
-  "glace-promenade": 5,
+  "glace-cheminee": 2,
+  "glace-corniches": 4,
+  "glace-freinage": 6,
+  "glace-mur": 5,
+  "glace-promenade": 4,
   "glace-relais": 2,
   "glace-saut-haut": 1,
-  "tapis-alternes": 4,
+  "tapis-alternes": 2,
   "tapis-contraire": 6,
-  "tapis-escalier": 1,
-  "tapis-lance": 3,
+  "tapis-escalier": 2,
+  "tapis-lance": 2,
   "tapis-mur": 0,
-  "tapis-relais": 2,
-  "tapis-respiration": 5,
+  "tapis-relais": 5,
+  "tapis-respiration": 3,
 };
 /** Le groupe `g` est-il ouvert le jour `day` ? (Entre `REST_OPEN × day` et `REST_OPEN × day + REST_OPEN − 1`, modulo `REST_GROUPS`.) */
 export function isOpenGroup(g: number, day: number): boolean {
@@ -833,45 +833,44 @@ function prove(picks: readonly { id: string; variant: number }[], id: string, th
  * mesure (`measure:jump`) montre qu'il ne sert jamais. Lot 11 : un thème à mécanique a le sien (il doit tenir le quota de signature).
  */
 export const FALLBACK_PIECES: readonly { id: string; variant: number }[] = [
-  { id: "mur-seul", variant: 4 },
-  { id: "ressorts-escalier", variant: 0 },
-  { id: "plongeon", variant: 0 },
-  { id: "tunnel-scies", variant: 1 },
-  { id: "iles-scie", variant: 2 },
-  { id: "escalier", variant: 1 },
-  { id: "piliers", variant: 1 },
-  { id: "puits-descente", variant: 2 },
-  { id: "mur-friable", variant: 2 },
-  { id: "marelle", variant: 2 },
+  { id: "cheminee-vide", variant: 1 },
+  { id: "pont-friable", variant: 3 },
+  { id: "escalier-scies", variant: 0 },
+  { id: "descente", variant: 2 },
+  { id: "mur-friable", variant: 1 },
+  { id: "piliers-scie", variant: 1 },
+  { id: "puits", variant: 1 },
+  { id: "ascenseur", variant: 5 },
+  { id: "chute-pics", variant: 0 },
+  { id: "iles-friables", variant: 1 },
 ];
 
 /** Lot 11 : les suites de secours des thèmes à mécanique (remplies avec le catalogue : voir `fallbackFor`). */
 export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly { id: string; variant: number }[]>>> = {
   // Choisies, comme `FALLBACK_PIECES`, parmi les tirages valides (80 dates, thème forcé) : celle qui tombe le plus près du centre.
   usine: [
-    { id: "cheminee-pics", variant: 2 },
-    { id: "tapis-contraire", variant: 3 },
-    { id: "demi-tour", variant: 5 },
-    { id: "tapis-mur", variant: 1 },
-    { id: "puits-descente", variant: 1 },
-    { id: "tapis-respiration", variant: 0 },
-    { id: "toboggan", variant: 1 },
-    { id: "tremplin", variant: 0 },
-    { id: "escalier-scies", variant: 3 },
-    { id: "lucarne", variant: 1 },
+    { id: "cheminee", variant: 1 },
+    { id: "tapis-alternes", variant: 0 },
+    { id: "tapis-escalier", variant: 2 },
+    { id: "mur-trous", variant: 3 },
+    { id: "tunnel", variant: 0 },
+    { id: "descente-scies", variant: 1 },
+    { id: "escalier-friable", variant: 2 },
+    { id: "tapis-mur", variant: 3 },
+    { id: "saut-long", variant: 2 },
+    { id: "pendule", variant: 3 },
+    { id: "tapis-lance", variant: 3 },
   ],
   glace: [
-    { id: "ressort-scie", variant: 1 },
-    { id: "cheminee-vide", variant: 0 },
-    { id: "glace-relais", variant: 2 },
-    { id: "plongeon", variant: 0 },
-    { id: "rebonds-doux", variant: 1 },
-    { id: "mur-seul", variant: 0 },
-    { id: "glace-cheminee", variant: 2 },
-    { id: "plafond-pics", variant: 2 },
-    { id: "marelle", variant: 3 },
-    { id: "mur-friable", variant: 1 },
-    { id: "puits-descente", variant: 1 },
+    { id: "pendule", variant: 2 },
+    { id: "ressorts-trous", variant: 0 },
+    { id: "mur-trous", variant: 2 },
+    { id: "petits-trous", variant: 1 },
+    { id: "glace-relais", variant: 0 },
+    { id: "glace-cheminee", variant: 0 },
+    { id: "chute-pics", variant: 2 },
+    { id: "iles-friables", variant: 1 },
+    { id: "cheminee", variant: 0 },
   ],
 };
 

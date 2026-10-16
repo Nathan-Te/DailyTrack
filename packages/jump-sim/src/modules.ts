@@ -1,7 +1,7 @@
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, stepAttempt, type AttemptState } from "./attempt";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
-import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
+import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
 import { START_AT_SPAWN, replayStartState } from "./replay";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "./catalog";
 import { JUMP_SIM_VERSION, UNITS_PER_TILE } from "./constants";
@@ -725,6 +725,8 @@ export interface ModuleSolution {
   raccord: number | null;
   /** Note d'exigence (1 facile … 5 exigeant), 0 = refusée (pas jouable par un humain, ou raccord < 90 %). */
   exigence: number;
+  /** Lot 11 : le plus court appui de saut de la solution, en pas (0 : aucun saut) ; jamais sous `PRESS_MIN`. */
+  press: number;
 }
 
 export interface ModuleVariantSolutions {
@@ -745,7 +747,56 @@ export interface ModuleSolutionsFile {
  * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
  * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3.
  */
-export const EXIGENCE_VERSION = 3;
+export const EXIGENCE_VERSION = 4;
+
+// ——— Jouable au clavier (lot 11, retouche) ———
+// La gigue (ci-dessus) décale des changements de commande mais ne dit pas **combien de temps un doigt peut tenir ou lâcher une touche** : une
+// solution qui exige un appui de 1 pas (8 ms) pour un « petit saut » n'est jouable ni au clavier ni à la manette (une pression dure en
+// pratique 60 à 100 ms). Mesuré sur le catalogue du lot 11 : 81 solutions sur 580 avaient un appui d'un seul pas, 118 un relâchement d'un seul
+// pas entre deux appuis. Un petit saut est pourtant ce que les scies basses réclament : la hauteur d'un saut dépend de la durée de l'appui
+// (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,71 à 5 pas, 2,22 à 8 pas, 2,82 à 12 pas).
+/** Plus courte durée d'un appui de saut (pas) : 5 pas = 42 ms, un appui franc ; le plus petit saut qu'on puisse exiger fait 1,71 tuile. */
+export const PRESS_MIN = 5;
+/** Plus court relâchement (pas) entre deux appuis de saut : 3 pas = 25 ms (un appui-relâchement complet d'au moins 8 pas, ≈ 15 par seconde). */
+export const RELEASE_MIN = 3;
+
+/**
+ * Ce qui ne va pas dans la façon de tenir le bouton de saut d'une suite de commandes (null : jouable par un doigt) : un appui de moins de
+ * `PRESS_MIN` pas, ou un relâchement de moins de `RELEASE_MIN` pas entre deux appuis. L'appui qui dure jusqu'à la fin des commandes n'est
+ * pas jugé (il se prolonge dans le jeu).
+ */
+export function pressProblems(inputs: readonly number[]): string | null {
+  let on = 0;
+  let off = -1;
+  for (let t = 0; t < inputs.length; t++) {
+    if ((inputs[t]! & INPUT_JUMP) !== 0) {
+      if (on === 0 && off >= 0 && off < RELEASE_MIN) return `pas ${t + 1} : relâchement de ${off} pas entre deux appuis (au moins ${RELEASE_MIN})`;
+      on++;
+      off = -1;
+    } else {
+      if (on > 0 && on < PRESS_MIN) return `pas ${t + 1} : appui de saut de ${on} pas (au moins ${PRESS_MIN})`;
+      if (on > 0) off = 0;
+      on = 0;
+      if (off >= 0) off++;
+    }
+  }
+  return null;
+}
+
+/** Plus courte durée d'un appui de saut (pas) d'une suite de commandes, 0 s'il n'y a aucun appui. */
+export function shortestPress(inputs: readonly number[]): number {
+  let on = 0;
+  let min = 0;
+  for (const bits of inputs) {
+    if ((bits & INPUT_JUMP) !== 0) on++;
+    else {
+      if (on > 0 && (min === 0 || on < min)) min = on;
+      on = 0;
+    }
+  }
+  if (on > 0 && (min === 0 || on < min)) min = on;
+  return min;
+}
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
 /**
@@ -838,6 +889,8 @@ export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly 
   let s = start ?? moduleStart(m, entry);
   let entryTick = entry === "arret" ? 0 : -1;
   let exitTick = -1;
+  const hold = pressProblems(inputs);
+  if (hold) return `bouton de saut injouable : ${hold}`;
   for (let t = 0; t < inputs.length; t++) {
     const bits = inputs[t]!;
     if ((entryTick < 0 || exitTick >= 0) && bits !== INPUT_RIGHT) return `pas ${t + 1} : droite seule attendue ${entryTick < 0 ? "avant l'entrée" : "après la sortie"}`;

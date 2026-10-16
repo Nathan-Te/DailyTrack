@@ -8,7 +8,7 @@ paliers: 10 10
 variante: cycle=300
 variante: cycle=240
 variante: cycle=360
-variante: cycle=300 +patrouille
+variante: cycle=330 +patrouille
 variante: cycle=240 +sol-friable
 variante: cycle=240 +denivele:2
 grille:

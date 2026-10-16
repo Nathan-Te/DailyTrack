@@ -30,57 +30,78 @@ Aperçu de la branche (toutes les dates y sont ouvertes), **avec le son** (un pr
 ## Les nouveaux morceaux (14) et variantes de surface (6)
 | morceau | thème | étiquettes | variantes | exigence | solution | intention |
 |---|---|---|---|---|---|---|
-| `glace-cheminee` | glace | glace mural vertical | 3 | 3–5 | 2.6–2.6 s | Monter une cheminée en sautant d'un mur à l'autre, puis franchir le trou du sommet pour se poser sur une corniche de glace : on la quitte aussi vite qu'on y arrive. |
+| `glace-cheminee` | glace | glace mural vertical | 3 | 2–5 | 2.6–2.6 s | Monter une cheminée en sautant d'un mur à l'autre, puis franchir le trou du sommet pour se poser sur une corniche de glace : on la quitte aussi vite qu'on y arrive. |
 | `glace-corniches` | glace | glace precision | 4 | 1–1 | 1.9–2.0 s | Dévaler des corniches glacées dont chacune porte un pic là où l'on glisse : l'élan emporte, il faut sauter au bon endroit. |
-| `glace-freinage` | glace | glace precision | 5 | 1–4 | 2.1–2.4 s | Se poser sur une petite plaque de glace au-delà d'un trou, sans glisser jusque dans les pics : retenir son élan en l'air, puis repartir. |
-| `glace-mur` | glace | glace mural vertical | 4 | 1–4 | 2.7–2.9 s | Foncer sur la glace jusqu'au pied d'un grand mur sans pouvoir s'arrêter, puis le remonter saut mural après saut mural. |
-| `glace-promenade` | glace | glace respiration | 4 | 1–2 | 2.5–3.8 s | Glisser sur une longue piste de glace en sautant de petites marches : l'élan se garde tout seul, il suffit de sauter à temps. |
-| `glace-relais` | glace | glace precision mural · long | 3 | 1–4 | 5.4–5.7 s | Dévaler des corniches de glace, se poser sur une plaque avant les pics, puis foncer sur la glace jusqu'à un grand mur à remonter. |
+| `glace-freinage` | glace | glace precision | 5 | 1–5 | 2.1–2.4 s | Se poser sur une petite plaque de glace au-delà d'un trou, sans glisser jusque dans les pics : retenir son élan en l'air, puis repartir. |
+| `glace-mur` | glace | glace mural vertical | 4 | 1–1 | 2.7–3.4 s | Foncer sur la glace jusqu'au pied d'un grand mur sans pouvoir s'arrêter, puis le remonter saut mural après saut mural. |
+| `glace-promenade` | glace | glace respiration | 4 | 2–2 | 2.5–3.8 s | Glisser sur une longue piste de glace en sautant de petites marches : l'élan se garde tout seul, il suffit de sauter à temps. |
+| `glace-relais` | glace | glace precision mural · long | 3 | 1–2 | 5.4–5.7 s | Dévaler des corniches de glace, se poser sur une plaque avant les pics, puis foncer sur la glace jusqu'à un grand mur à remonter. |
 | `glace-saut-haut` | glace | glace precision | 5 | 1–1 | 1.9–2.1 s | Courir sur la glace pour prendre tout son élan, puis franchir un trou jusqu'à une corniche plus haute : l'élan ne se rattrape pas. |
-| `tapis-alternes` | usine | tapis precision | 4 | 1–4 | 1.9–3.1 s | Franchir des tapis qui se croisent au-dessus des pics : chaque plateforme tire dans son sens, sauter de l'une à l'autre en gardant le rythme. |
-| `tapis-contraire` | usine | tapis scie | 4 | 2–5 | 2.0–2.4 s | Remonter un tapis roulant qui recule en passant sous des scies qui descendent à tour de rôle : avancer au bon moment, sans se laisser ramener. |
-| `tapis-escalier` | usine | tapis precision vertical | 4 | 1–4 | 1.9–2.0 s | Gravir un escalier dont chaque marche est un tapis qui recule : sauter de marche en marche avant d'être ramené en arrière. |
-| `tapis-lance` | usine | tapis precision | 4 | 1–3 | 1.7–2.1 s | Un tapis qui lance un saut trop long à pied : sauter au bord et retenir son élan pour se poser sur la plateforme avant les pics. |
-| `tapis-mur` | usine | tapis mural vertical | 4 | 1–4 | 2.4–2.8 s | Se laisser emporter par un tapis jusqu'au pied d'un mur, puis le remonter saut mural après saut mural sans retomber sur le tapis. |
-| `tapis-relais` | usine | tapis scie precision · long | 3 | 5–5 | 5.7–5.9 s | Remonter un long tapis contraire sous des scies, franchir des tapis croisés au-dessus des pics, puis se faire lancer au-dessus d'un trou : garder son élan, puis le retenir. |
-| `tapis-respiration` | usine | tapis respiration | 2 | 2–2 | 2.4–3.0 s | Se laisser porter par un tapis rapide en sautant de petites marches : le tapis fait le travail, il suffit de garder le rythme. |
+| `tapis-alternes` | usine | tapis precision | 4 | 1–2 | 1.8–3.1 s | Franchir des tapis qui se croisent au-dessus des pics : chaque plateforme tire dans son sens, sauter de l'une à l'autre en gardant le rythme. |
+| `tapis-contraire` | usine | tapis scie | 4 | 1–5 | 2.0–2.3 s | Remonter un tapis roulant qui recule en passant sous des scies qui descendent à tour de rôle : avancer au bon moment, sans se laisser ramener. |
+| `tapis-escalier` | usine | tapis precision vertical | 4 | 1–2 | 1.9–2.1 s | Gravir un escalier dont chaque marche est un tapis qui recule : sauter de marche en marche avant d'être ramené en arrière. |
+| `tapis-lance` | usine | tapis precision | 4 | 1–5 | 1.7–2.1 s | Un tapis qui lance un saut trop long à pied : sauter au bord et retenir son élan pour se poser sur la plateforme avant les pics. |
+| `tapis-mur` | usine | tapis mural vertical | 4 | 1–2 | 2.4–2.8 s | Se laisser emporter par un tapis jusqu'au pied d'un mur, puis le remonter saut mural après saut mural sans retomber sur le tapis. |
+| `tapis-relais` | usine | tapis scie precision · long | 2 | 5–5 | 5.9–5.9 s | Remonter un long tapis contraire sous des scies, franchir des tapis croisés au-dessus des pics, puis se faire lancer au-dessus d'un trou : garder son élan, puis le retenir. |
+| `tapis-respiration` | usine | tapis respiration | 2 | 1–1 | 2.4–3.0 s | Se laisser porter par un tapis rapide en sautant de petites marches : le tapis fait le travail, il suffit de garder le rythme. |
 
 Variantes `+surface` de morceaux ordinaires : `plafond-pics` v4 (glace), `scie-ronde` v4 (glace) et v5 (tapis droite), `plongeon` v3 (glace), v4 (tapis gauche), v5 (tapis droite). Dans chaque mécanique : 7 morceaux, **un enchaînement long** (5,4–5,9 s) et **une respiration** (exigence ≤ 2 partout, au moins 3 sauts). Règles inchangées : ±3 pas ≥ 50 %, raccord ≥ 90 %, plats, familles, 6 variantes au plus. Variantes écartées en route : `glace-freinage` (plafond sans solution), `plafond-pics` tapis gauche (au pas près).
 
-**Solveur** : le catalogue entier (65 morceaux, 290 variantes) re-résolu de zéro (`--force`, 4 fils) : **1 471 s = 24,5 min** (5 877 s de calcul), sans aucune variante sans solution ni au pas près ; plafond du lot : 30 min. Les nouveautés seules : ≈ 4 min (238 s pour 124 solutions). Les solutions des 231 variantes d'avant sont **inchangées** (comparées une à une).
+**Solveur** : le catalogue entier re-résolu de zéro (`--force`, 4 fils) : **1 471 s = 24,5 min** (5 877 s de calcul) pour 65 morceaux et 290 variantes avant la retouche « clavier » ; **1 246 s = 20,8 min** (4 981 s de calcul) avec la règle d'appui minimal (voir plus bas). Plafond du lot : 30 min. Les nouveautés seules : ≈ 4 min.
 
-## `measure:jump` (120 dates, `npm run measure:jump -w @cdj/jump-sim`)
-Globalement : 63,6 % de tirages validés (73,6 % des composés), **secours 0**, temps de l'auteur 28,06–31,14 s, exigence 463–545 (fenêtre 445–570), génération 144 ms en moyenne (252 ms au pire), rejeu 5 ms.
+## `measure:jump` (120 dates, `npm run measure:jump -w @cdj/jump-sim`, après la retouche « clavier »)
+Globalement : **58,6 %** de tirages validés (71,3 % des composés ; 63,6 % avant la retouche), **secours 0**, 3 jours sur 120 sans tirage valide parmi les 6 premiers, temps de l'auteur 28,04–31,70 s, exigence 443–553 (fenêtre 425–570), génération 122 ms en moyenne (211 ms au pire), rejeu 4,6 ms.
 
 ### Par thème (niveaux du jour : le thème de chaque date)
 
 | thème (mécanique) | jours | tirages validés | secours | temps de l'auteur (min · moy · max) | exigence/min (min · moy · max) | part de la mécanique (min · moy · max) | morceaux en commun avec la veille |
 |---|---|---|---|---|---|---|---|
-| foret (—) | 31 | 61,3 % | 0 | 28,57 · 29,68 · 31,14 s | 469 · 509 · 544 | 0 · 0 · 0 % | 0,73 (max 3) |
-| usine (tapis) | 16 | 64,6 % | 0 | 28,27 · 29,76 · 30,44 s | 475 · 511 · 545 | 21 · 26 · 38 % | 0,50 (max 1) |
-| glace (glace) | 23 | 60,9 % | 0 | 28,06 · 29,62 · 31,09 s | 482 · 510 · 535 | 20 · 27 · 37 % | 0,83 (max 3) |
-| nuit (—) | 27 | 64,8 % | 0 | 28,31 · 29,57 · 31,03 s | 463 · 505 · 529 | 0 · 0 · 0 % | 0,59 (max 3) |
-| neon (—) | 23 | 67,4 % | 0 | 28,40 · 29,76 · 30,86 s | 481 · 513 · 544 | 0 · 0 · 0 % | 0,74 (max 3) |
+| foret (—) | 31 | 65,1 % | 0 | 28,21 · 29,66 · 31,11 s | 468 · 505 · 553 | 0 · 0 · 0 % | 1,13 (max 4) |
+| usine (tapis) | 16 | 35,5 % | 0 | 28,32 · 29,52 · 31,70 s | 450 · 502 · 542 | 21 · 30 · 36 % | 0,81 (max 3) |
+| glace (glace) | 23 | 58,0 % | 0 | 28,48 · 29,61 · 31,56 s | 449 · 503 · 543 | 20 · 29 · 40 % | 1,13 (max 3) |
+| nuit (—) | 27 | 61,7 % | 0 | 28,04 · 29,71 · 31,10 s | 443 · 513 · 548 | 0 · 0 · 0 % | 1,00 (max 4) |
+| neon (—) | 23 | 65,2 % | 0 | 28,19 · 29,28 · 31,11 s | 481 · 511 · 543 | 0 · 0 · 0 % | 0,87 (max 3) |
 
 ### Thème forcé (12 dates × 5 thèmes, du 2027-08-12 au 2027-08-23)
 
 | thème forcé | niveaux | tirages validés | des composés | secours | temps de l'auteur (min · moy · max) | exigence/min (moy) | part de la mécanique (moy) | génération (moy · max) |
 |---|---|---|---|---|---|---|---|---|
-| foret | 12 | 72,2 % | 83,9 % | 0 | 28,23 · 29,34 · 30,97 s | 507 | 0 % | 151 · 207 ms |
-| usine | 12 | 54,2 % | 76,5 % | 0 | 28,32 · 29,56 · 31,98 s | 509 | 28 % | 124 · 228 ms |
-| glace | 12 | 66,7 % | 76,2 % | 0 | 28,23 · 29,77 · 31,21 s | 510 | 27 % | 125 · 158 ms |
-| nuit | 12 | 72,2 % | 83,9 % | 0 | 28,23 · 29,34 · 30,97 s | 507 | 0 % | 139 · 185 ms |
-| neon | 12 | 72,2 % | 83,9 % | 0 | 28,23 · 29,34 · 30,97 s | 507 | 0 % | 127 · 178 ms |
+| foret | 12 | 65,3 % | 72,3 % | 0 | 28,16 · 29,43 · 30,15 s | 518 | 0 % | 128 · 168 ms |
+| usine | 12 | 44,2 % | 79,1 % | 0 | 28,08 · 29,40 · 30,66 s | 510 | 27 % | 97 · 145 ms |
+| glace | 12 | 54,2 % | 72,2 % | 0 | 28,46 · 29,60 · 30,41 s | 500 | 29 % | 86 · 137 ms |
+| nuit | 12 | 65,3 % | 72,3 % | 0 | 28,16 · 29,43 · 30,15 s | 518 | 0 % | 127 · 198 ms |
+| neon | 12 | 65,3 % | 72,3 % | 0 | 28,16 · 29,43 · 30,15 s | 518 | 0 % | 125 · 175 ms |
 
-Les trois thèmes sans mécanique donnent la même ligne en « thème forcé » (même composition : voulu).
+Les trois thèmes sans mécanique donnent la même ligne en « thème forcé » (même composition : voulu). Usine est le thème le plus contraint (35 % de tirages validés sur ses 16 jours) : presque tous ses refus sont des **impasses de composition** (respiration imposée, quota de tapis), jamais un niveau invalide ; le niveau est trouvé au tirage suivant (jusqu'à 40) et le secours n'a pas servi.
 
 ## Jours figés et versions
-- `JUMP_GENERATOR_VERSION` **6** ; `JUMP_SIM_VERSION` **3** (inchangée) ; golden du personnage, de l'essai et des rediffusions **inchangés** ; golden de DailyTrack inchangés (aucun fichier de DailyTrack touché).
-- Golden du niveau du jour régénérés : tous les identifiants passent en g6 ; les dates en thème sans mécanique gardent les mêmes morceaux et la même empreinte de niveau ; les dates usine / glace changent (nouveaux morceaux, quota de signature).
+- `JUMP_GENERATOR_VERSION` **7** (6 pour le thème, 7 pour la retouche « clavier ») ; `JUMP_SIM_VERSION` **3** (inchangée) ; golden du personnage, de l'essai et des rediffusions **inchangés** ; golden de DailyTrack inchangés (aucun fichier de DailyTrack touché).
+- Golden du niveau du jour régénérés. **Au g6 seul**, les dates en thème sans mécanique gardaient les mêmes morceaux et la même empreinte de niveau ; **au g7** (catalogue re-résolu, repos recalculé, fenêtre d'exigence 425–570) tous les niveaux changent : la règle « figer avant de changer de version » s'applique (rien à figer de plus : voir ci-dessous).
 - **Jours figés** : `main` n'a pas bougé depuis le début du lot ; `npm run freeze:days -w @cdj/jump -- demain` lancé **dans un worktree sur `main`** : 0 fichier écrit (le 16 et le 17 octobre sont déjà figés en g4 et se relisent). Test `apps/jump/test/figes.test.ts` : chaque fichier de `public/levels/` se recharge et se rejoue avec le nouveau code.
 
+## Retouche : jouable au clavier (piste 1)
+**Le problème** (retour de Nathan sur un pont friable sous des scies basses) : la règle de jouabilité du lot 8c décale les changements de commande de ±3 pas, mais ne dit pas **combien de temps un doigt tient ou lâche une touche**. Or la hauteur du saut dépend de la durée de l'appui (réglages par défaut) :
+
+| appui | 1 pas (8 ms) | 3 pas (25 ms) | 5 pas (42 ms) | 8 pas (67 ms) | 12 pas (100 ms) |
+|---|---|---|---|---|---|
+| hauteur | 0,98 tuile | 1,36 | 1,71 | 2,22 | 2,82 |
+
+Une pression de touche dure 60 à 100 ms (2 à 2,8 tuiles) : un passage qui demande un « petit saut » de 1,3 tuile est infaisable. **Mesuré sur le catalogue** : sur 580 solutions, **81 avaient un appui d'un seul pas, 192 (33 %) un appui de moins de 5 pas, 118 un relâchement d'un seul pas entre deux appuis**.
+
+**La règle** (`modules.ts`, constantes nommées) : `PRESS_MIN` = **5 pas** (42 ms : un appui franc ; le plus petit saut exigible fait 1,71 tuile) et `RELEASE_MIN` = **3 pas** (25 ms entre deux appuis). `pressProblems(commandes)` refuse toute solution qui ne les tient pas : `moduleSpan` (donc le solveur, les tests, la preuve) la rejette ; `ModuleSolution.press` donne l'appui le plus court de chaque solution stockée. `EXIGENCE_VERSION` 4.
+- **Solveur** : la recherche en faisceau interdit les suites qui coupent un appui avant `PRESS_MIN` ou rappuient avant `RELEASE_MIN` (`beam.ts`, `pressMin`, `releaseMin`) ; tout candidat du durcissement passe par `moduleSpan`.
+- **Mesure d'exigence** : la gigue ne fabrique plus d'appui d'un pas : après le décalage, un appui trop court est **prolongé** et un second appui trop proche **retardé** (`humanized`, `tools/exigence.ts`). Un passage qui demandait un geste inhumain échoue donc à la gigue et est refusé.
+- **Résultat** : sur les 535 solutions qui sautent, **le plus court appui est de 5 pas** (aucune sous la règle ; test `clavier.test.ts` sur tout le catalogue, et sur 3 000 gigues).
+
+**Ce qu'il a fallu adoucir ou retirer** (le solveur ne trouvait plus de solution à ±3 pas ≥ 50 % aux deux entrées) :
+- **adoucis** : `grande-scie` (scies relevées d'une rangée : 3 tuiles de dégagement au lieu de 2), `scies-jumelles`, `escalier-scies`, `scie-sol`, `tapis-relais` (cycles des scies), `demi-tour` (écart), `cheminee-vide`, `tunnel` (variante de respiration) ;
+- **retirés** (leurs passages exigeaient des appuis de 1 à 3 pas) : **`pont-patrouille`** (le pont de la capture : trop de micro-sauts sous des scies basses ; l'élan échouait à 0–13 %, même avec des trous plus larges et des scies relevées), **`demi-tour-ressorts`** (échec en élan à toute variante), **`toboggan`** (une seule variante tenait). Le catalogue compte **62 morceaux, 279 variantes**. Les trois restent dans les niveaux figés du 16 et 17 octobre (g4), qui se rejouent toujours.
+- **Repos** : le sel des groupes passe à `repos19541:` (les groupes n'étaient plus de la même taille à un près) ; table des morceaux d'une mécanique recalculée ; niveaux de secours recalculés pour les trois cas (sans mécanique, usine, glace).
+- **Fenêtre d'exigence** : 445–570 → **425–570** (la queue basse s'est allongée : 133 tirages de 603 sous 445, moyenne 403, contre 6 tirages hauts ; médiane inchangée à 505) : tirages validés 54,7 % → 58,6 %, secours 0.
+- **Non couvert** : la **manette** a la même contrainte (appui par image, ≥ 2 pas) ; le tactile aussi ; la règle les couvre toutes (appui minimal 42 ms). Un joueur plus rapide que 42 ms n'est pas gêné ; un joueur qui tient 100 ms fait des sauts de 2,8 tuiles : les passages à plafond bas sont donc ceux d'une hauteur de saut **choisie** de 1,7 à 2,8 tuiles, ce que la gigue (appui prolongé) mesure.
+
 ## Vérifié / non vérifié / décisions pour Nathan
-**Vérifié** : `tsc -b` propre ; Vitest `jump-sim`, `core`, `apps/jump` (639 tests) ; e2e Chromium de `apps/jump` (100 verts, 4 outils de mesure ou de capture sautés hors variable d'environnement) dont usine et glace en `&solution`, un morceau tapis et un morceau glace au doigt en paysage, thème forcé sans écriture dans l'historique ; captures du tapis et de la glace relues.
+**Vérifié** : `tsc -b` propre ; Vitest `jump-sim`, `core`, `apps/jump` (644 tests) ; e2e Chromium de `apps/jump` (100 verts, 4 outils de mesure ou de capture sautés hors variable d'environnement) dont usine et glace en `&solution`, un morceau tapis et un morceau glace au doigt en paysage, thème forcé sans écriture dans l'historique ; captures du tapis et de la glace relues.
 **Non vérifié** : Firefox et WebKit en local (la CI tranche) ; un vrai téléphone ; l'écoute réelle du ronronnement et du crissement (logique testée seulement) ; la perf sur vrai GPU ; la CI après rebase (à confirmer sur la PR).
 
 **Décisions pour Nathan**
@@ -89,3 +110,5 @@ Les trois thèmes sans mécanique donnent la même ligne en « thème forcé » 
 3. **Un tapis contraire se contourne en sautant** (la vitesse en l'air n'est plus freinée) : voulu, c'est le « saut de tapis », mais l'auteur le fait ; un plafond bas le limiterait.
 4. **Un thème forcé neutre** (forêt / nuit / néon) donne le même niveau avec un autre identifiant ; seul l'aspect change.
 5. **Réglages absents des défauts** : choix pour garder le golden du personnage intact ; si tu préfères les ranger dans `DEFAULT_JUMP_PARAMS`, le golden `params` changera (aucune trajectoire).
+6. **Trois morceaux retirés** (`pont-patrouille`, `demi-tour-ressorts`, `toboggan`) : si tu tiens à l'un d'eux, il faut le redessiner avec plus de dégagement (et non adoucir la règle).
+7. **`PRESS_MIN` = 5 pas (42 ms)** est un choix : à 4 pas (33 ms) le plus petit saut tombe à 1,54 tuile et plus de passages à plafond bas seraient permis, mais un appui aussi bref est déjà difficile à répéter ; à 6 pas (50 ms), 1,89 tuile, davantage de morceaux seraient retirés. À régler d'après tes essais au clavier.
