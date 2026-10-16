@@ -51,6 +51,7 @@ import { buildParallax, layerOffset, visibleLayers } from "./parallax";
 import { CHUNK_COLUMNS, buildTileArt } from "./tileArt";
 import { BELT_FRAGMENT, BELT_VERTEX, beltRuns, beltTime, buildBeltArt, iceRuns } from "./surfaceArt";
 import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
+import { createDynamicBlocks, type DynamicStats } from "./dynamicArt";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
 // la rangée 0 de la grille tout en haut. Aucun calcul de simulation ici : on affiche ce que `jump-sim` a calculé (positions des scies,
@@ -162,6 +163,10 @@ export interface JumpScene {
   setWorld(prev: Readonly<AttemptState>, state: Readonly<AttemptState>, alpha: number, clock: number): void;
   /** Lot 8 : traînée à pleine vitesse (coins haut-gauche en tuiles, y vers le bas, et opacité). */
   setTrail(points: readonly { x: number; y: number; alpha: number }[]): void;
+  /** Lot 12 : un éclat bref sur les blocs alternés (bascule, remise à A) : 1 = plein, il s'éteint tout seul ; sans effet sans mouvement. */
+  flashBlocks(amount: number): void;
+  /** Lot 12 : état des blocs clignotants et alternés à la dernière image (null : le niveau n'en a pas). */
+  readonly blocks: DynamicStats | null;
   /** Lot 8 : animations douces (fanion qui se lève, ressort qui rebondit) ; faux : posées tout de suite (mouvement réduit, effets aucun). */
   animate: boolean;
   /** Lot 9 : le thème dessiné, ses couleurs de fond (ciel et plans : la sonde des pixels les compte comme du fond), ce qui est construit. */
@@ -373,6 +378,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     world.add(g);
     return g;
   });
+
+  // ——— Lot 12 : blocs clignotants (nuit) et alternés (néon), dessinés d'après l'état de l'essai (`dynamicArt.ts`) ———
+  const dynamic = createDynamicBlocks(world, level, !!options.hitbox);
 
   // ——— Ressorts : socle sombre, ressort en zigzag, plateau de couleur qui se comprime à l'impact ———
   const springMat = new MeshBasicMaterial({ color: palette.spring });
@@ -669,6 +677,12 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     animate: true,
     frame,
     theme,
+    flashBlocks(amount) {
+      dynamic?.flash(amount);
+    },
+    get blocks() {
+      return dynamic ? dynamic.stats : null;
+    },
     backdrop: backdropColors(theme),
     stats,
     setDetail(d) {
@@ -750,6 +764,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
         saws[k]!.disc.rotation.z = -time * 0.12;
         if (hitSaws[k]) hitSaws[k]!.position.set(x, y, 0.5);
       }
+      // Lot 12 : blocs clignotants et alternés.
+      dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH });
       // Blocs friables : tremblement pendant la minuterie, disparus une fois tombés.
       for (let k = 0; k < crumbles.length; k++) {
         const g = crumbles[k]!;

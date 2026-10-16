@@ -1,4 +1,4 @@
-import { MODULES, MODULE_TAGS, REST_SALT, textHash } from "../src/index";
+import { MODULES, MODULE_TAGS, REST_SALT, THEMED_REST_GROUPS, textHash } from "../src/index";
 
 // `npm run repos:modules -w @cdj/jump-sim -- [--groupes=7] [--ouverts=4] [--sels=20000]` — cherche le sel des groupes de repos (`REST_SALT`,
 // daily.ts ; lots 5 et 7) : parmi `repos<n>:`, celui qui range le catalogue en groupes de tailles égales (à un près) et dont **chaque jour**
@@ -62,28 +62,38 @@ for (let w = 0; w < G; w++) {
 // ——— Lot 11 : les morceaux d'une mécanique (`theme:`) ———
 // Le sel des groupes ne change pas (les niveaux des thèmes sans mécanique restent ceux d'avant) : les morceaux d'un thème sont rangés à la
 // main (`THEMED_REST_GROUPS`, daily.ts) pour que les groupes gardent la même taille à un près et que **chaque jour** ouvre au moins
-// `MIN_PER_DAY` morceaux (ou variantes à mutateur `surface`) de chaque mécanique : sans cela, un jour d'usine ou de glace pourrait n'avoir
-// presque rien de sa mécanique. `--themes` lance la recherche (aléatoire, graine fixe) et imprime la table.
+// `MIN_PER_DAY` morceaux (ou variantes à mutateur) de chaque mécanique : sans cela, un jour d'usine ou de glace pourrait n'avoir presque
+// rien de sa mécanique. `--themes` lance la recherche (aléatoire, graine fixe) et imprime la table.
+// Lot 12 : nuit (blocs clignotants) et néon (blocs alternés) ; **les groupes déjà rangés (usine, glace) ne bougent pas** : seuls les morceaux
+// absents de `THEMED_REST_GROUPS` sont placés (les niveaux d'usine et de glace gardent leur composition de repos).
 if (process.argv.includes("--themes")) {
   const { Rng } = await import("@cdj/core");
   const themed = MODULES.filter((d) => d.theme !== null);
+  const fresh = themed.filter((d) => THEMED_REST_GROUPS[d.id] === undefined);
   const base = MODULES.filter((d) => d.theme === null);
   const baseGroups = base.map((d) => Number.parseInt(textHash(`${REST_SALT}${d.id}`), 16) % G);
   const windows = Array.from({ length: G }, (_, w) => Array.from({ length: K }, (_, i) => (w + i) % G));
-  const surf = (d: (typeof MODULES)[number], what: "glace" | "tapis") => d.mutations.some((ms) => ms.some((m) => m.name === "surface" && (what === "glace" ? m.arg === "glace" : m.arg.startsWith("tapis"))));
+  const MUTATION: Record<string, (d: (typeof MODULES)[number]) => boolean> = {
+    usine: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "surface" && m.arg.startsWith("tapis"))),
+    glace: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "surface" && m.arg === "glace")),
+    nuit: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "clignotant")),
+    neon: (d) => d.mutations.some((ms) => ms.some((m) => m.name === "alterne")),
+  };
   const MIN_PER_DAY = 3;
-  const rng = new Rng(11);
+  const rng = new Rng(12);
   const score = (assign: number[]) => {
     const sizes = new Array<number>(G).fill(0);
     for (const g of baseGroups) sizes[g]!++;
+    for (const d of themed) if (THEMED_REST_GROUPS[d.id] !== undefined) sizes[THEMED_REST_GROUPS[d.id]!]!++;
     for (const g of assign) sizes[g]!++;
     const size = Math.max(...sizes) - Math.min(...sizes);
     let bad = 0;
     let spread = 0;
-    for (const [theme, what] of [["usine", "tapis"], ["glace", "glace"]] as const) {
+    for (const theme of Object.keys(MUTATION)) {
+      const groupOf = (d: (typeof MODULES)[number]) => THEMED_REST_GROUPS[d.id] ?? assign[fresh.indexOf(d)]!;
       const per = windows.map((win) => {
-        const own = themed.filter((d, k) => d.theme === theme && win.includes(assign[k]!)).length;
-        const mut = base.filter((d, k) => surf(d, what) && win.includes(baseGroups[k]!)).length;
+        const own = themed.filter((d) => d.theme === theme && win.includes(groupOf(d))).length;
+        const mut = base.filter((d, k) => MUTATION[theme]!(d) && win.includes(baseGroups[k]!)).length;
         return own + mut;
       });
       if (Math.min(...per) < MIN_PER_DAY) bad += MIN_PER_DAY - Math.min(...per);
@@ -93,13 +103,12 @@ if (process.argv.includes("--themes")) {
   };
   let best: { assign: number[]; s: ReturnType<typeof score> } | null = null;
   for (let n = 0; n < 300000; n++) {
-    const assign = themed.map(() => rng.int(G));
+    const assign = fresh.map(() => rng.int(G));
     const s = score(assign);
     const key = (x: ReturnType<typeof score>) => (x.size > 1 ? 1e9 : 0) + x.bad * 1e4 + x.spread;
     if (!best || key(s) < key(best.s)) best = { assign, s };
   }
-  console.log(`\n${themed.length} morceaux d'une mécanique : tailles à ${best!.s.size} près, manques ${best!.s.bad}, écart ${best!.s.spread}`);
-  console.log("export const THEMED_REST_GROUPS: Readonly<Record<string, number>> = {");
-  themed.forEach((d, k) => console.log(`  "${d.id}": ${best!.assign[k]},`));
-  console.log("};");
+  console.log(`\n${fresh.length} morceaux à ranger (sur ${themed.length} d'une mécanique) : tailles à ${best!.s.size} près, manques ${best!.s.bad}, écart ${best!.s.spread}`);
+  console.log("// à ajouter à THEMED_REST_GROUPS :");
+  fresh.forEach((d, k) => console.log(`  "${d.id}": ${best!.assign[k]},`));
 }

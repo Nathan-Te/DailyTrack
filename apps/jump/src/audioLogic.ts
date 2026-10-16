@@ -41,7 +41,9 @@ export type SoundId =
   | "derapage"
   | "tapisDebut"
   | "glaceDebut"
-  | "glaceFrein";
+  | "glaceFrein"
+  | "bascule"
+  | "metronome";
 
 export interface SoundSpec {
   id: SoundId;
@@ -84,6 +86,9 @@ export const MEDAL_PHRASES: Record<JumpMedal, readonly { note: number; at: numbe
     { note: 22, at: 0.44, dur: 0.5 },
   ],
 };
+
+/** Volume de crête du tic du métronome de la nuit (lot 12) : sous le quart du saut (0,07 + 0,05) : un tempo, jamais un bruit de jeu. */
+export const METRONOME_GAIN = 0.03;
 
 /** La médaille joue après la fanfare d'arrivée. */
 export const MEDAL_DELAY = 0.55;
@@ -162,6 +167,17 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
     case "glaceFrein":
       // Lot 11 : crissement de glisse sur la glace, sobre, plus aigu et un peu plus long quand on va vite.
       return spec("glaceFrein", 1, iceScreech(Math.min(1, e.speed / 15), v, 1));
+    case "bascule":
+      // Lot 12 : le « clic » du néon, sec, un peu plus aigu quand B devient solide (la parité s'entend) ; la remise à A par un point de passage
+      // y ajoute une petite note claire (le fanion).
+      return spec("bascule", 1, [
+        noise(3400 + 500 * v, 0.022, 0.085, 0, 1900, "bandpass", 3),
+        tone("square", (e.alt === 1 ? 1500 : 1180) * (1 + 0.03 * v), 0.03, 0.045, 0, e.alt === 1 ? 1900 : 1500),
+        ...(e.reset ? [tone("sine", noteFreq(22), 0.22, 0.05, 0.03)] : []),
+      ]);
+    case "metronome":
+      // Lot 12 : le tempo de la nuit : un tic très discret (un peu plus haut et plus fort sur les deux bascules du cycle).
+      return spec("metronome", 0, [tone("sine", e.accent ? 880 : 660, e.accent ? 0.05 : 0.04, e.accent ? METRONOME_GAIN : METRONOME_GAIN * 0.55)]);
     case "medaille": {
       const phrase = MEDAL_PHRASES[e.medal];
       const wave: OscillatorType = e.medal === "author" ? "square" : e.medal === "gold" ? "triangle" : "sine";

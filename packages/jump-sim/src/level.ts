@@ -12,6 +12,14 @@ import { idiv } from "./idiv";
 //   `x` bloc friable (plein, cède `crumbleDelay` pas après le premier contact) · `*` ressort (plein, lance vers le haut qui s'y pose)
 //   `[` tapis roulant vers la gauche · `]` tapis roulant vers la droite · `~` glace (lot 11) : blocs pleins dont seule la **face du dessus**
 //       agit (le tapis fait avancer, la glace fait glisser) ; leurs murs et leur dessous sont ceux d'un bloc ordinaire
+//   `b` `d` **blocs clignotants** (lot 12, thème nuit) : blocs pleins qui apparaissent et disparaissent en rythme. Le cycle est déclaré dans
+//       le bloc annexe (`clignote`, ci-dessous) ; `b` est solide pendant la fenêtre déclarée, `d` (le second groupe) **en opposition de
+//       phase** : solide pendant le reste du cycle. Un bloc qui devrait devenir solide pendant que le personnage le chevauche **reste
+//       traversable jusqu'à ce que le personnage en sorte** : on ne meurt jamais écrasé ni coincé
+//   `A` `B` **blocs alternés** (lot 12, thème néon) : deux jeux de blocs pleins dont **exactement un est solide à la fois**. **Chaque saut qui
+//       part** (sol, coyote, saut mural, saut gardé dans le tampon qui part vraiment — pas un ressort, pas un simple appui) inverse les deux
+//       jeux. Au départ de l'essai, **A est solide** ; **franchir un point de passage** remet A solide, et la mort ramène l'état du point de
+//       reprise (donc A). Même règle de sortie que les clignotants
 //   `C` point de passage (tuile vide repérée, posée sur un sol sûr ; un seul par colonne) : le centre du personnage qui **franchit sa colonne**
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
@@ -22,6 +30,11 @@ import { idiv } from "./idiv";
 //   scie <id> <rayon> <cycle> <aller-retour|boucle> <col,rangée> <col,rangée>…
 //       rayon : `o`, `O` ou un nombre de tuiles (`0.75`) ; cycle : durée d'un tour complet, en pas (120 = 1 s) ; points de passage : centres
 //       de tuiles. `boucle` revient du dernier point au premier ; `aller-retour` repart en sens inverse.
+//   clignote <section> <cycle> <solide> <décalage>
+//       (lot 12) le cycle des blocs clignotants `b` et `d` de la section : `cycle` pas en tout, `solide` pas où `b` est solide (1 à cycle − 1),
+//       `décalage` : position dans le cycle au pas 0 (0 à cycle − 1). Au pas de phase `p` (pas écoulés depuis que le personnage est entré dans
+//       la section ; 0 avant), `q = (p + décalage) mod cycle` : `b` est solide si `q < solide`, `d` si `q ≥ solide`. Un bloc `b` ou `d` doit
+//       être dans une section qui déclare son cycle.
 
 export const TILE_EMPTY = 0;
 export const TILE_SOLID = 1;
@@ -38,11 +51,24 @@ export const TILE_SPIKE_RIGHT = 7;
 export const TILE_BELT_LEFT = 8;
 export const TILE_BELT_RIGHT = 9;
 export const TILE_ICE = 10;
-export type Tile = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+/**
+ * Lot 12 : blocs clignotants (`b`, `d`) et alternés (`A`, `B`). Le code d'une tuile de `Level.tiles` et de `AttemptState.tiles` est son **état
+ * actuel** : plein (`…_ON`) ou absent (`…_OFF`, traversable) ; à quel groupe elle appartient se lit dans `Level.blinks` / `Level.alts`.
+ */
+export const TILE_BLINK_ON = 11;
+export const TILE_BLINK_OFF = 12;
+export const TILE_ALT_ON = 13;
+export const TILE_ALT_OFF = 14;
+export type Tile = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14;
 
-/** Vrai pour une tuile qui arrête le personnage : bloc plein, bloc friable (pas encore tombé), ressort, tapis, glace. */
+/** Vrai pour une tuile qui arrête le personnage : bloc plein, bloc friable (pas encore tombé), ressort, tapis, glace, bloc clignotant ou alterné présent. */
 export function isSolidTile(t: number): boolean {
-  return (t >= TILE_SOLID && t <= TILE_SPRING) || t >= TILE_BELT_LEFT;
+  return (t >= TILE_SOLID && t <= TILE_SPRING) || (t >= TILE_BELT_LEFT && t <= TILE_ICE) || t === TILE_BLINK_ON || t === TILE_ALT_ON;
+}
+
+/** Vrai pour un bloc clignotant ou alterné (présent ou absent). */
+export function isDynamicTile(t: number): boolean {
+  return t >= TILE_BLINK_ON && t <= TILE_ALT_OFF;
 }
 
 /** Vrai pour un tapis roulant (l'un ou l'autre sens). */
@@ -66,6 +92,9 @@ export const MAX_SAW_POINTS = 32;
 export const MAX_SAW_CYCLE = 72_000;
 /** Rayon maximal d'une scie : 4 tuiles. */
 export const MAX_SAW_RADIUS = 4 * UNITS_PER_TILE;
+/** Lot 12 : cycle d'un bloc clignotant, en pas : de 2 à 1 200 (10 s). */
+export const MIN_BLINK_CYCLE = 2;
+export const MAX_BLINK_CYCLE = 1200;
 
 /**
  * Rayon **mortel** des scies fixes, en unités. Un peu moins que le dessin : le disque plein a ce rayon, les dents le dépassent
@@ -111,6 +140,28 @@ export interface Saw {
   times: readonly number[];
 }
 
+/** Lot 12 : le cycle des blocs clignotants d'une section (`clignote`, voir l'en-tête). */
+export interface BlinkCycle {
+  cycle: number;
+  solid: number;
+  shift: number;
+}
+
+/** Lot 12 : un bloc clignotant. `group` : 0 pour `b`, 1 pour `d` (en opposition de phase) ; `section` : indice dans `Level.sections`. */
+export interface BlinkBlock {
+  col: number;
+  row: number;
+  group: number;
+  section: number;
+}
+
+/** Lot 12 : un bloc alterné. `set` : 0 pour `A` (solide au départ), 1 pour `B`. */
+export interface AltBlock {
+  col: number;
+  row: number;
+  set: number;
+}
+
 export interface Level {
   width: number;
   height: number;
@@ -126,6 +177,11 @@ export interface Level {
   crumbleIndex: readonly number[];
   /** Points de passage `C` (lot 2b), de gauche à droite (ordre du parcours), un par colonne au plus (lot 4). */
   checkpoints: readonly Cell[];
+  /** Lot 12 : blocs clignotants (ordre de lecture) et le cycle déclaré de chaque section (`null` : aucun) ; vides sans ces blocs. */
+  blinks: readonly BlinkBlock[];
+  blinkCycles: readonly (BlinkCycle | null)[];
+  /** Lot 12 : blocs alternés (ordre de lecture). */
+  alts: readonly AltBlock[];
 }
 
 export class LevelError extends Error {
@@ -148,6 +204,10 @@ const GRID_CODES: Record<string, number> = {
   "[": TILE_BELT_LEFT,
   "]": TILE_BELT_RIGHT,
   "~": TILE_ICE,
+  b: TILE_BLINK_ON,
+  d: TILE_BLINK_ON,
+  A: TILE_ALT_ON,
+  B: TILE_ALT_OFF,
   "^": TILE_SPIKE_UP,
   v: TILE_SPIKE_DOWN,
   "<": TILE_SPIKE_LEFT,
@@ -213,6 +273,8 @@ export function parseLevel(text: string): Level {
   const crumbles: Cell[] = [];
   const crumbleIndex: number[] = [];
   const checkpoints: Cell[] = [];
+  const blinkCells: { col: number; row: number; group: number }[] = [];
+  const alts: AltBlock[] = [];
   for (let row = 0; row < height; row++) {
     const line = lines[row]!;
     if (line.length !== width) throw new LevelError(`Ligne ${row + 1} : ${line.length} colonnes au lieu de ${width}`);
@@ -226,6 +288,8 @@ export function parseLevel(text: string): Level {
       if (c === "S") starts.push({ col, row });
       if (c === "F") finishes.push({ col, row });
       if (c === "C") checkpoints.push({ col, row });
+      if (c === "b" || c === "d") blinkCells.push({ col, row, group: c === "b" ? 0 : 1 });
+      if (c === "A" || c === "B") alts.push({ col, row, set: c === "A" ? 0 : 1 });
       if (c === "o" || c === "O") {
         const p = centerOf(col, row);
         saws.push({ id: `${c}${saws.length}`, radius: c === "o" ? SAW_SMALL_RADIUS : SAW_BIG_RADIUS, mode: "fixe", points: [p], cycle: 0, section: -1, nodes: [p], times: [0, 0] });
@@ -243,6 +307,7 @@ export function parseLevel(text: string): Level {
   // ——— Bloc annexe ———
   const sections: Section[] = [];
   const pending: { line: number; words: string[] }[] = [];
+  const blinkLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -259,8 +324,33 @@ export function parseLevel(text: string): Level {
       if (clash) throw new LevelError(`${where} : chevauche la section « ${clash.name} »`);
       sections.push({ name: words[1]!, c0, c1 });
     } else if (words[0] === "scie") pending.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (section, scie)`);
+    else if (words[0] === "clignote") blinkLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (section, scie, clignote)`);
   }
+  // ——— Lot 12 : les cycles des blocs clignotants, par section ———
+  const blinkCycles: (BlinkCycle | null)[] = sections.map(() => null);
+  for (const { line, words } of blinkLines) {
+    const where = `Annexe, ligne ${line}`;
+    const section = words.length === 5 ? sections.findIndex((s) => s.name === words[1]) : -1;
+    if (words.length !== 5) throw new LevelError(`${where} : « clignote <section> <cycle> <solide> <décalage> » attendu`);
+    if (section < 0) throw new LevelError(`${where} : section « ${words[1]} » inconnue`);
+    if (blinkCycles[section] !== null) throw new LevelError(`${where} : cycle de la section « ${words[1]} » déjà déclaré`);
+    if (!words.slice(2).every((w) => /^\d+$/.test(w))) throw new LevelError(`${where} : cycle, solide et décalage sont des nombres de pas`);
+    const [cycle, solid, shift] = words.slice(2).map(Number) as [number, number, number];
+    if (cycle < MIN_BLINK_CYCLE || cycle > MAX_BLINK_CYCLE) throw new LevelError(`${where} : cycle de ${cycle} pas hors de ${MIN_BLINK_CYCLE}–${MAX_BLINK_CYCLE}`);
+    if (solid < 1 || solid >= cycle) throw new LevelError(`${where} : « solide » vaut de 1 à cycle − 1 (${cycle - 1})`);
+    if (shift >= cycle) throw new LevelError(`${where} : « décalage » vaut de 0 à cycle − 1 (${cycle - 1})`);
+    blinkCycles[section] = { cycle, solid, shift };
+  }
+  const blinks: BlinkBlock[] = blinkCells.map((b) => {
+    const section = sections.findIndex((s) => b.col >= s.c0 && b.col <= s.c1);
+    if (section < 0) throw new LevelError(`Bloc clignotant (colonne ${b.col}, rangée ${b.row}) dans aucune section`);
+    const cycle = blinkCycles[section];
+    if (!cycle) throw new LevelError(`Bloc clignotant (colonne ${b.col}, rangée ${b.row}) : la section « ${sections[section]!.name} » ne déclare pas de « clignote »`);
+    // L'état initial : celui du pas de phase 0.
+    tiles[b.row * width + b.col] = blinkIsSolid(cycle, b.group, 0) ? TILE_BLINK_ON : TILE_BLINK_OFF;
+    return { ...b, section };
+  });
   for (const { line, words } of pending) {
     const where = `Annexe, ligne ${line}`;
     if (words.length < 7) throw new LevelError(`${where} : « scie <id> <rayon> <cycle> <aller-retour|boucle> <col,rangée> <col,rangée>… » attendu`);
@@ -284,7 +374,7 @@ export function parseLevel(text: string): Level {
     const cycle = Number(cycleText);
     saws.push({ id, radius, mode, points, cycle, section, ...sawPath(points, mode, cycle) });
   }
-  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints };
+  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts };
 }
 
 /**
@@ -300,6 +390,15 @@ export function tileAt(level: Pick<Level, "width" | "height" | "tiles">, col: nu
 /** Coin haut-gauche d'une tuile, en unités entières (x vers la droite, y vers le bas, comme les rangées). */
 export function cellOrigin(cell: Cell): { x: number; y: number } {
   return { x: cell.col * UNITS_PER_TILE, y: cell.row * UNITS_PER_TILE };
+}
+
+/**
+ * Lot 12 : le groupe `group` (0 : `b`, 1 : `d`) d'un cycle de clignotement est-il solide à la phase `phase` (pas écoulés depuis l'entrée dans
+ * la section, 0 avant) ? Pure, entière : `q = (phase + décalage) mod cycle` ; `b` est solide pour `q < solide`, `d` pour `q ≥ solide`.
+ */
+export function blinkIsSolid(c: BlinkCycle, group: number, phase: number): boolean {
+  const q = (phase + c.shift) % c.cycle;
+  return group === 0 ? q < c.solid : q >= c.solid;
 }
 
 /**

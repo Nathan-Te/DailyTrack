@@ -579,12 +579,13 @@ describe("thème et mécanique (adresse, galerie, essai)", () => {
     throw new Error(`pas de jour ${theme}`);
   };
 
-  it("chaque thème à mécanique a une date du calendrier ; usine → tapis, glace → glace, les autres sans mécanique", () => {
+  it("chaque thème à mécanique a une date du calendrier ; usine → tapis, glace → glace, nuit → clignotant et néon → alterné (lot 12), la forêt sans mécanique", () => {
     expect(mechanicOf(THEMES.usine.name)).toBe("tapis");
     expect(mechanicOf(THEMES.glace.name)).toBe("glace");
-    for (const n of ["foret", "nuit", "neon"] as const) expect(mechanicOf(n)).toBeNull();
-    expect(jumpThemeForDay(dayOf("usine"))).toBe("usine");
-    expect(jumpThemeForDay(dayOf("glace"))).toBe("glace");
+    expect(mechanicOf(THEMES.nuit.name)).toBe("clignotant");
+    expect(mechanicOf(THEMES.neon.name)).toBe("alterne");
+    expect(mechanicOf("foret")).toBeNull();
+    for (const n of ["usine", "glace", "nuit", "neon"] as const) expect(jumpThemeForDay(dayOf(n))).toBe(n);
     expect(daysFromCivil(2026, 10, 16)).toBe(first);
   });
 

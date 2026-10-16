@@ -291,6 +291,25 @@ function wallGap(level: Grid, x: number, y: number, side: number, reach: number)
  * déplacement x puis y (tolérance de coin en montée) → sol, compteurs, contact mural.
  */
 export function stepPlayer(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>): PlayerState {
+  return stepPlayerJump(state, input, level, params, null);
+}
+
+/**
+ * Ce qu'un pas a déclenché, rempli par `stepPlayerJump` (lot 12) : `jumped` vaut 1 si un saut **part vraiment** pendant ce pas (sol, coyote,
+ * saut mural, ou saut gardé dans le tampon qui part), 0 sinon ; `wall` vaut 1 si c'était un saut mural. Un ressort n'est pas un saut (il
+ * se déclenche dans `stepAttempt`). Seule lecture : les blocs alternés s'inversent à chaque saut qui part.
+ */
+export interface JumpFlags {
+  jumped: number;
+  wall: number;
+}
+
+/**
+ * `stepPlayer` qui dit aussi si un saut est parti (lot 12) : mêmes calculs au bit près, `flags` (s'il est donné) est rempli. C'est la **seule**
+ * façon de savoir qu'un saut est « vraiment parti » : on ne le déduit pas de l'appui sur la touche (l'appui peut attendre dans le tampon,
+ * ou ne servir à rien en l'air).
+ */
+export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null): PlayerState {
   if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
   const p = params;
   let dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0); // gauche + droite = neutre
@@ -375,6 +394,10 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
     }
   }
   if (jumped) jumping = 1;
+  if (flags) {
+    flags.jumped = jumped ? 1 : 0;
+    flags.wall = wallJumped ? 1 : 0;
+  }
   const buffer = jumped ? 0 : pressed ? p.jumpBuffer : state.buffer > 0 ? state.buffer - 1 : 0;
 
   // ——— Coupe de saut : relâcher pendant la montée ———

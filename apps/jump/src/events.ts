@@ -1,3 +1,4 @@
+import { blockEvents } from "./blocks";
 import {
   ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
@@ -39,6 +40,9 @@ import {
 //   - glisse : `slide` passe de 0 à ±1 (début) ou revient à 0 (fin, aussi à la mort et à l'arrivée).
 //   - mort, réapparition, point de passage, arrivée : transitions de `status` et de `checkpoint`.
 //   - ressort : `springTime` / `springCell` changent ; friable : minuterie lancée (craque), bloc tombé (tombe).
+//   - blocs (lot 12) : voir `blocks.ts` — `blocApparait` / `blocDisparait` (un par section et par sens, comparaison des grilles), `blocVacille` (le
+//     groupe plein d'une section passe sous 0,25 s avant de s'éteindre), `bascule` (la parité des alternés change, ou remise à A au point de
+//     passage), `metronome` (un des quatre temps du cycle de la section courante). Aucun n'est gardé pour les autres vies du carnage.
 //   - dérapage (lot 8b) : au sol avant et après, la commande vient de passer à l'opposé du mouvement (demi-tour) alors que la vitesse est
 //     d'au moins `SKID_SPEED` × la course. Seul événement qui lit les commandes (celle du pas et celle d'avant, `EventInputs`) : sans
 //     elles (héros du carnage), pas de dérapage. Lot 11 : sur la glace il porte `ice` (la poussière devient du givre, le frottement un crissement).
@@ -92,6 +96,14 @@ export type GameEvent =
   | (Base & { kind: "glaceFin" })
   /** Lot 11 : freinage sur la glace. `side` : sens du mouvement, `speed` : tuiles/s. */
   | (Base & { kind: "glaceFrein"; side: number; speed: number })
+  /** Lot 12 : blocs clignotants d'une section. `count` : nombre de blocs ; position : leur centre. `blocVacille` : ils vont s'éteindre (0,25 s avant). */
+  | (Base & { kind: "blocVacille"; section: number; count: number })
+  | (Base & { kind: "blocApparait"; section: number; count: number })
+  | (Base & { kind: "blocDisparait"; section: number; count: number })
+  /** Lot 12 : les blocs alternés s'inversent (un saut est parti) : `alt` = le jeu solide maintenant (0 : A, 1 : B) ; `reset` : remise à A par un point de passage (position : le fanion). */
+  | (Base & { kind: "bascule"; alt: number; reset: boolean })
+  /** Lot 12 : un temps du cycle de la section de nuit courante (4 par cycle ; `accent` sur les deux bascules). */
+  | (Base & { kind: "metronome"; accent: boolean; beat: number })
   /** Médaille obtenue à l'arrivée sur le niveau du jour (le jeu la pousse : la simulation ne connaît pas les médailles). */
   | (Base & { kind: "medaille"; medal: JumpMedal });
 
@@ -119,6 +131,11 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "glaceDebut",
   "glaceFin",
   "glaceFrein",
+  "blocVacille",
+  "blocApparait",
+  "blocDisparait",
+  "bascule",
+  "metronome",
 ];
 
 /** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
@@ -253,6 +270,8 @@ export function eventsBetween(
       else if (b === CRUMBLE_GONE && a !== CRUMBLE_GONE) out.push({ tick, source, kind: "friableTombe", index: i, x: cell.col + 0.5, y: cell.row + 0.5 });
     }
   }
+  // Lot 12 : blocs clignotants et alternés (rien pour un niveau sans eux).
+  if (level.blinks.length > 0 || level.alts.length > 0) out.push(...blockEvents(prev, cur, level, tick, source, at(c)));
   if (cur.status === ATTEMPT_DEAD) {
     out.push({ tick, source, kind: "mort", cause: causeName(cur.deathCause), x: cur.deathX / T, y: cur.deathY / T });
   } else if (cur.status === ATTEMPT_FINISHED) {

@@ -11,6 +11,7 @@ import {
   stepAttempt,
   UNITS_PER_TILE,
   JUMP_THEME_NAMES,
+  MECHANIC_THEMES,
   variantExigence,
   variantTheme,
   type JumpReplay,
@@ -35,6 +36,8 @@ export const TAG_LABELS: Record<ModuleTag, string> = {
   respiration: "respiration",
   tapis: "tapis roulant",
   glace: "glace",
+  clignotant: "clignotant",
+  alterne: "alterné",
 };
 
 /**
@@ -108,7 +111,8 @@ export interface GalleryFilter {
  */
 export function matchesTheme(m: ModuleInfo, theme: ThemeFilter | null): boolean {
   if (theme === null) return true;
-  if (theme === "usine" || theme === "glace") return m.variants.some((v) => v.theme === theme);
+  // Lot 12 : usine, glace, nuit et néon ont chacun leur mécanique : ne restent que leurs morceaux (et variantes mutées) ; forêt et « sans » : ceux de tous les thèmes.
+  if ((MECHANIC_THEMES as readonly string[]).includes(theme)) return m.variants.some((v) => v.theme === theme);
   return m.variants.some((v) => v.theme === null);
 }
 

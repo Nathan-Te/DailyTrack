@@ -9,8 +9,10 @@ import {
   PLAYER_WIDTH,
   SAW_SMALL_RADIUS,
   UNITS_PER_TILE,
+  isDynamicTile,
   isSolidTile,
   isSpikeTile,
+  sectionPhases,
   stepAttempt,
   type AttemptState,
   type Level,
@@ -47,7 +49,8 @@ export function distanceField(level: Level): Int32Array {
   const H = level.height;
   const dist = new Int32Array(W * H).fill(-1);
   const blocked = new Uint8Array(W * H);
-  for (let i = 0; i < W * H; i++) if (isSolidTile(level.tiles[i]!) || isSpikeTile(level.tiles[i]!)) blocked[i] = 1;
+  // Lot 12 : un bloc clignotant ou alterné est tantôt plein, tantôt absent : pour le guidage il ne bouche rien (on cherche un chemin optimiste).
+  for (let i = 0; i < W * H; i++) if ((isSolidTile(level.tiles[i]!) && !isDynamicTile(level.tiles[i]!)) || isSpikeTile(level.tiles[i]!)) blocked[i] = 1;
   // Les scies fixes bouchent les tuiles dont le centre est dans leur disque (les mobiles passent partout : on les ignore ici).
   for (const saw of level.saws) {
     if (saw.cycle !== 0) continue;
@@ -131,13 +134,35 @@ interface Node {
   off: number;
 }
 
-function key(s: AttemptState, on: number, off: number): string {
+function key(level: Level, s: AttemptState, on: number, off: number): string {
   const p = s.player;
-  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}`;
+  let dyn = "";
+  if (level.blinks.length > 0 || level.alts.length > 0) {
+    // Lot 12 : deux états qui ne diffèrent que par la phase des clignotants ou la parité des alternés n'ont pas le même avenir. La phase de
+    // chaque section (modulo son cycle) et l'état des blocs (un bloc qui attend la sortie du personnage compte) les distinguent.
+    const phases = sectionPhases(level, s).map((ph, i) => (level.blinkCycles[i] ? ph % level.blinkCycles[i]!.cycle : 0));
+    let codes = "";
+    for (const b of level.blinks) codes += s.tiles[b.row * level.width + b.col]! === 11 ? "1" : "0";
+    for (const a of level.alts) codes += s.tiles[a.row * level.width + a.col]! === 13 ? "1" : "0";
+    dyn = `|${s.alt ?? 0}|${phases.join(",")}|${codes}`;
+  }
+  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}${dyn}`;
 }
 
-/** Cherche une suite de commandes qui mène de `start` au but. Rend les commandes (une par pas, la dernière atteint le but), ou null. */
+/**
+ * Cherche une suite de commandes qui mène de `start` au but. Rend les commandes (une par pas, la dernière atteint le but), ou null.
+ * Lot 12 : dans un niveau à blocs clignotants ou alternés, si la recherche ordinaire échoue, une **seconde passe réserve la moitié du faisceau
+ * aux meilleures branches posées au sol** (celles qui attendent qu'un bloc s'allume ou que la parité change ne gagnent pas de terrain : sans
+ * réserve, les branches lancées dans le vide les écartaient, puis mouraient, et la couche se vidait — « aucune solution » alors qu'un morceau
+ * existait). La première passe est celle d'avant : les morceaux sans attente gardent leurs solutions, bit pour bit.
+ */
 export function beamSolve(level: Level, options: BeamOptions): number[] | null {
+  const dynamic = level.blinks.length > 0 || level.alts.length > 0;
+  const first = beamSearch(level, options, false);
+  return first ?? (dynamic ? beamSearch(level, options, true) : null);
+}
+
+function beamSearch(level: Level, options: BeamOptions, reserve: boolean): number[] | null {
   const chunk = options.chunk ?? 4;
   const beam = options.beam ?? 800;
   const maxTicks = options.maxTicks ?? 960;
@@ -195,7 +220,7 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
           continue;
         }
         child.score = guideScore(level, dist, s) - penalty * changes;
-        const k = key(s, Math.min(on, pressMin), Math.min(off, releaseMin));
+        const k = key(level, s, Math.min(on, pressMin), Math.min(off, releaseMin));
         const prev = seen.get(k);
         if (!prev || child.score > prev.score) seen.set(k, child);
       }
@@ -205,14 +230,35 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
     const sorted = [...seen.values()].sort((a, b) => b.score - a.score);
     const cells = new Map<string, number>();
     layer = [];
-    for (const n of sorted) {
+    const take = (n: Node): boolean => {
       const p = n.state.player;
-      const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}|${Math.min(n.on, pressMin)}`;
+      // Lot 12 : avec des blocs qui clignotent ou s'alternent, deux branches à la même case mais à des phases différentes n'ont pas le même avenir.
+      const dyn = reserve ? `|${n.state.alt ?? 0}|${sectionPhases(level, n.state).map((ph, i) => (level.blinkCycles[i] ? (ph % level.blinkCycles[i]!.cycle) >> 4 : 0)).join(",")}` : "";
+      const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}|${Math.min(n.on, pressMin)}${dyn}`;
       const used = cells.get(cell) ?? 0;
-      if (used >= perCell) continue;
+      if (used >= perCell) return false;
       cells.set(cell, used + 1);
       layer.push(n);
-      if (layer.length >= beam) break;
+      return true;
+    };
+    if (reserve) {
+      // Lot 12 : la moitié du faisceau est réservée aux meilleures branches **posées au sol** : celles qui attendent qu'un bloc s'allume ou que
+      // la parité change ne gagnent pas de terrain, et sans réserve elles étaient écartées par les branches lancées dans le vide (qui meurent
+      // quelques pas plus tard : la couche se vidait, « aucune solution » alors qu'un morceau existait).
+      const reserved = new Set<Node>();
+      for (const n of sorted) {
+        if (reserved.size >= beam / 2) break;
+        if (n.state.player.ground === 1 && take(n)) reserved.add(n);
+      }
+      for (const n of sorted) {
+        if (layer.length >= beam) break;
+        if (!reserved.has(n)) take(n);
+      }
+    } else {
+      for (const n of sorted) {
+        if (!take(n)) continue;
+        if (layer.length >= beam) break;
+      }
     }
     if (layer.length === 0) return null;
   }
