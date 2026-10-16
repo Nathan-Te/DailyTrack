@@ -675,8 +675,16 @@ export interface ModuleSolution {
    */
   entryTick: number;
   exitTick: number;
-  /** Durée entre l'entrée et la sortie de la plus rapide trouvée avant durcissement (égale ou à peine plus courte). */
+  /**
+   * Durée entre l'entrée et la sortie de la plus rapide trouvée avant durcissement (égale ou à peine plus courte). Après un repli robuste
+   * (lot 8c), la plus rapide **jouable par un humain** : c'est la référence de la règle des 2 %.
+   */
   fastest: number;
+  /**
+   * Lot 8c, seulement après un repli robuste : la plus rapide trouvée, qui n'était pas jouable par un humain (gigue ±3 sous `HUMAIN_MIN`).
+   * La solution gardée en est au plus à 25 % au-dessus.
+   */
+  rapide?: number;
   /** Taux de réussite (‰) quand chaque changement de commande est décalé au hasard de ±1, ±2, ±3 pas (`GIGUE_DRAWS` tirages chacun). */
   gigue: readonly [number, number, number];
   /**

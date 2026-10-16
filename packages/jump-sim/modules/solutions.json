@@ -195,93 +195,93 @@
   "cheminee-pics": {
    "variants": [
     {
+     "grid": "9070275b",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MADCA2YKzgESZkUiQUbCCA",
+      "ticks": 272,
+      "entryTick": 0,
+      "exitTick": 265,
+      "fastest": 265,
+      "gigue": [
+       205,
+       60,
+       25
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MATqAmYKvgEabkUiQTbSCA",
+      "ticks": 261,
+      "entryTick": 17,
+      "exitTick": 254,
+      "fastest": 237,
+      "gigue": [
+       235,
+       60,
+       10
+      ],
+      "raccord": 1000,
+      "exigence": 0
+     }
+    },
+    {
      "grid": "9f932a66",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MADSAzAMjQIYxgEaZkUSSU66CA",
-      "ticks": 303,
-      "entryTick": 0,
-      "exitTick": 297,
-      "fastest": 293,
-      "gigue": [
-       945,
-       685,
-       360
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MATyAjgc7QEI3gEiZlUKQVa6CA",
-      "ticks": 293,
-      "entryTick": 17,
-      "exitTick": 286,
-      "fastest": 267,
-      "gigue": [
-       770,
-       450,
-       410
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
-     "grid": "6a2ba0e7",
-     "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQDKAzAU1QESxgEahgMStAFBJdIBdrIG",
-      "ticks": 346,
-      "entryTick": 0,
-      "exitTick": 339,
-      "fastest": 339,
-      "gigue": [
-       995,
-       660,
-       345
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQTqAkAsrQEYxgEahgMipAFJJZoBhgHSBg",
-      "ticks": 335,
-      "entryTick": 17,
-      "exitTick": 328,
-      "fastest": 308,
-      "gigue": [
-       600,
-       340,
-       220
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
-     "grid": "69377583",
-     "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MgDSAzAk5QEY3gEKdk0SQUbCCA",
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQDCA0BE1QEQxgEiZkUiOUbKCA",
       "ticks": 304,
       "entryTick": 0,
       "exitTick": 297,
       "fastest": 293,
       "gigue": [
-       1000,
-       760,
-       465
+       750,
+       500,
+       255
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MgTyAjgkpQFhxgEyNjRlCS3yCA",
-      "ticks": 291,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQT6AiAUjQIQzgEiZk0KSW6iCA",
+      "ticks": 293,
       "entryTick": 17,
-      "exitTick": 284,
+      "exitTick": 286,
       "fastest": 267,
       "gigue": [
-       295,
-       170,
-       55
+       975,
+       760,
+       445
+      ],
+      "raccord": 1000,
+      "exigence": 0
+     }
+    },
+    {
+     "grid": "84b13a3a",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MgC6A14KvgEyZjUwMdYISg",
+      "ticks": 273,
+      "entryTick": 0,
+      "exitTick": 266,
+      "fastest": 265,
+      "gigue": [
+       275,
+       105,
+       45
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MgTqAmYKzgESZkUiQYYBggg",
+      "ticks": 261,
+      "entryTick": 17,
+      "exitTick": 254,
+      "fastest": 237,
+      "gigue": [
+       275,
+       70,
+       20
       ],
       "raccord": 1000,
       "exigence": 0
@@ -292,29 +292,29 @@
   "cheminee-quinconce": {
    "variants": [
     {
-     "grid": "ba52134b",
+     "grid": "337e65f4",
      "arret": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowAMIDZgo-Ch5EJQpeCl4lCR1GCl4lCn4KHmQg5gMihgHCCCaiAybiAkbiAibiBg",
-      "ticks": 668,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowALoDPgpOCi5lCl4KXjQILGUJLTYKXghcCo4BggM2wgo2ggM2ggM2ogI2kgc",
+      "ticks": 684,
       "entryTick": 0,
-      "exitTick": 661,
-      "fastest": 661,
+      "exitTick": 677,
+      "fastest": 675,
       "gigue": [
-       20,
-       0,
+       25,
+       5,
        0
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowBOoCZgo-Ch5EJQpeCl4dER1GCl4lCn4KHmQg5gMihgHCCCaiAybiAkbiAibiBg",
-      "ticks": 657,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowBOoCZgo-Ch48LQpeCl4lCR1GCj4lCR1GCh4lRiLmAyJmggomggMmogMmwgImkgc",
+      "ticks": 671,
       "entryTick": 17,
-      "exitTick": 650,
-      "fastest": 633,
+      "exitTick": 664,
+      "fastest": 647,
       "gigue": [
-       10,
+       15,
        0,
        0
       ],
@@ -323,15 +323,15 @@
      }
     },
     {
-     "grid": "ce6dc7f3",
+     "grid": "789d5f6d",
      "arret": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxAMIDZgo-Ch5EJQpeCl4lCR1GCl4lCn4KHmQg5gMihgHCCCaiAybiAkbiAibiBg",
-      "ticks": 668,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxAMIDZgo-Ch5EJQpeCl4lCR1GCl4lCn4KHmQg5gMihgHiCSaCAyaiAybCAiaSBw",
+      "ticks": 690,
       "entryTick": 0,
-      "exitTick": 661,
-      "fastest": 661,
+      "exitTick": 683,
+      "fastest": 683,
       "gigue": [
-       25,
+       15,
        0,
        0
       ],
@@ -339,14 +339,45 @@
       "exigence": 0
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxBOoCZgo-Ch5EJQpeCl4lCR1GCl4lCn4KHmQg5gMihgHCCCaiAybiAkbiAibiBg",
-      "ticks": 657,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxBOoCZgo-Ch5EJQpeCl4lCR1GCl4lCn4KHmQg5gMihgHiCSaCAyaiAybCAiaSBw",
+      "ticks": 679,
       "entryTick": 17,
-      "exitTick": 650,
-      "fastest": 633,
+      "exitTick": 672,
+      "fastest": 655,
+      "gigue": [
+       10,
+       5,
+       0
+      ],
+      "raccord": 1000,
+      "exigence": 0
+     }
+    },
+    {
+     "grid": "e5a5410c",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToyAMIDZgo-Ch5EJQpeCl4lCR1GCj4lCR1GCh4lRiLmAyJmggomggMmogMmwgImkgc",
+      "ticks": 682,
+      "entryTick": 0,
+      "exitTick": 675,
+      "fastest": 675,
       "gigue": [
        5,
-       10,
+       0,
+       0
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToyBOoCZgo-Ch5EJQpeCl4lCR1GCj4lCR1WCg4lRiLmAyJmggomggMmogMmwgImkgc",
+      "ticks": 671,
+      "entryTick": 17,
+      "exitTick": 664,
+      "fastest": 647,
+      "gigue": [
+       15,
+       0,
        0
       ],
       "raccord": 1000,
@@ -358,124 +389,124 @@
   "cheminee-scie": {
    "variants": [
     {
-     "grid": "0451e236",
+     "grid": "88bca730",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MADyAV4hSjGNAgoWlAEyZmVAKS2SAibqBQ",
-      "ticks": 293,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MADCA0BkFTCWATJcVRocTiSGAyImigQ",
+      "ticks": 269,
       "entryTick": 0,
-      "exitTick": 286,
-      "fastest": 286,
+      "exitTick": 262,
+      "fastest": 265,
       "gigue": [
-       720,
-       375,
-       115
+       580,
+       325,
+       210
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MATqAggcPREdhgEKHiQlZjH-ARIWgAE5JqICJvoF",
-      "ticks": 304,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MATyAkAcdQq2AQokdTJVhgISRrIF",
+      "ticks": 257,
       "entryTick": 17,
-      "exitTick": 297,
-      "fastest": 279,
+      "exitTick": 250,
+      "fastest": 235,
       "gigue": [
-       400,
-       170,
-       95
+       780,
+       345,
+       215
       ],
       "raccord": 1000,
       "exigence": 0
      }
     },
     {
-     "grid": "90fb25c1",
+     "grid": "80f0696b",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQC6A-YBCjxdUEZw3QE5Cu4HSg",
-      "ticks": 303,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQC6A-4BEhYUXTwirgEKFiSNAVqOA6oF",
+      "ticks": 302,
       "entryTick": 0,
-      "exitTick": 297,
-      "fastest": 297,
+      "exitTick": 295,
+      "fastest": 295,
       "gigue": [
-       470,
-       325,
-       200
+       490,
+       370,
+       275
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQTqAuYBCh4sTThcIWJ1Do0BCR0ksgIewgU",
-      "ticks": 294,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQT6ApYBWjxlOq4BQlU2RTL2B0I",
+      "ticks": 295,
       "entryTick": 17,
-      "exitTick": 287,
+      "exitTick": 288,
       "fastest": 267,
       "gigue": [
-       660,
-       395,
-       255
+       130,
+       95,
+       60
       ],
-      "raccord": 1000,
+      "raccord": 920,
       "exigence": 0
      }
     },
     {
-     "grid": "205ff16a",
+     "grid": "2d25008f",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgDCA-YBEhYsRUQalgEaFhx1RAo-ggIm2gU",
-      "ticks": 295,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgDKAxxFCR2mAQpeZUAkhgEiZCUkggFpHSTCAiaqBQ",
+      "ticks": 333,
       "entryTick": 0,
-      "exitTick": 289,
-      "fastest": 289,
+      "exitTick": 326,
+      "fastest": 326,
       "gigue": [
-       425,
-       205,
-       105
+       35,
+       40,
+       5
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgTyAtYBEiYcRUQargEKFiSNAUo-qgIeugU",
-      "ticks": 288,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgT6AqYCGm0-NTI-rAEaVH1YRPoCDoIF",
+      "ticks": 321,
       "entryTick": 17,
-      "exitTick": 281,
-      "fastest": 264,
+      "exitTick": 314,
+      "fastest": 297,
       "gigue": [
-       980,
-       710,
-       315
+       1000,
+       1000,
+       795
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 3
      }
     },
     {
-     "grid": "725007d3",
+     "grid": "ce12c269",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwDyAWYhQjHtARIulAEyZmVgCS2aCA",
-      "ticks": 293,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwDCA0BERSCWATJkJRpkLiSmB0I",
+      "ticks": 272,
       "entryTick": 0,
-      "exitTick": 286,
-      "fastest": 286,
+      "exitTick": 265,
+      "fastest": 265,
       "gigue": [
-       275,
-       120,
-       35
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwTSAi4ipgE6ZG06JM4BIkVQNboI",
-      "ticks": 302,
-      "entryTick": 17,
-      "exitTick": 295,
-      "fastest": 279,
-      "gigue": [
-       265,
-       135,
+       250,
+       195,
        100
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwTyAkAMhQEKtgEaLF0yTc4HSg",
+      "ticks": 258,
+      "entryTick": 17,
+      "exitTick": 251,
+      "fastest": 235,
+      "gigue": [
+       775,
+       435,
+       260
       ],
       "raccord": 1000,
       "exigence": 0
@@ -517,65 +548,65 @@
      }
     },
     {
-     "grid": "e61c696d",
+     "grid": "f0abfd66",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQCCAma6Ak5EZSDGASpOVSJlREYkigU",
-      "ticks": 281,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQDqAW7KAm4kRQo4djilAT4gJCWmBVo",
+      "ticks": 271,
       "entryTick": 0,
-      "exitTick": 274,
-      "fastest": 274,
+      "exitTick": 264,
+      "fastest": 264,
       "gigue": [
-       1000,
-       1000,
-       920
+       970,
+       775,
+       615
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQTqAcYBCuYBCFxdIiU2ZJIF",
-      "ticks": 213,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQTqAcYBCo4BCi5kYdYFWg",
+      "ticks": 202,
       "entryTick": 17,
-      "exitTick": 206,
-      "fastest": 191,
+      "exitTick": 196,
+      "fastest": 179,
       "gigue": [
        1000,
-       650,
-       495
+       635,
+       430
       ],
       "raccord": 1000,
       "exigence": 0
      }
     },
     {
-     "grid": "46b25800",
+     "grid": "2bd63861",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MgDaAW6KApQBCmYITAktZAktZgqeBUI",
-      "ticks": 242,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MgDSAXaKAowBCl4IXAktZAk1KDX2BEI",
+      "ticks": 236,
       "entryTick": 0,
-      "exitTick": 235,
-      "fastest": 235,
+      "exitTick": 229,
+      "fastest": 229,
       "gigue": [
        1000,
        1000,
-       990
+       935
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MgTqAbYBCmYKJmQKfgoeRCFmJdoE",
-      "ticks": 204,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MgTqAcYBClYSLjUKLjwVCU0sCr4BkgQ",
+      "ticks": 197,
       "entryTick": 17,
-      "exitTick": 198,
-      "fastest": 181,
+      "exitTick": 191,
+      "fastest": 174,
       "gigue": [
        1000,
-       710,
-       445
+       760,
+       525
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 5
      }
     },
     {
@@ -639,71 +670,40 @@
       "raccord": 1000,
       "exigence": 5
      }
-    },
-    {
-     "grid": "785c1e21",
-     "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6NQDSAW6SApwBCBxlCS1mCi41NJYEWg",
-      "ticks": 221,
-      "entryTick": 0,
-      "exitTick": 214,
-      "fastest": 214,
-      "gigue": [
-       1000,
-       1000,
-       960
-      ],
-      "raccord": null,
-      "exigence": 1
-     },
-     "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6NQTqAbYBCqYBEhacAQqOBVI",
-      "ticks": 187,
-      "entryTick": 17,
-      "exitTick": 180,
-      "fastest": 161,
-      "gigue": [
-       1000,
-       700,
-       390
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
     }
    ]
   },
   "cheminee": {
    "variants": [
     {
-     "grid": "4bd534e7",
+     "grid": "2c07a73f",
      "arret": {
-      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAAwgNmCl4KHmQghgEiRiUgZoICJoIG",
-      "ticks": 280,
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAAwgPeAQomJEVEErYBCh4kRSEkIYoCToIH",
+      "ticks": 314,
       "entryTick": 0,
-      "exitTick": 273,
-      "fastest": 273,
+      "exitTick": 307,
+      "fastest": 307,
       "gigue": [
-       220,
-       100,
-       65
+       1000,
+       785,
+       585
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 5
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAE6gJWClYSLmQghgEiRiUgduIBTuoF",
-      "ticks": 269,
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAE6gLmARIOHE1MIqYBEhYkRUFGkgI-6gY",
+      "ticks": 303,
       "entryTick": 17,
-      "exitTick": 262,
-      "fastest": 244,
+      "exitTick": 296,
+      "fastest": 279,
       "gigue": [
-       690,
-       385,
-       185
+       980,
+       750,
+       565
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 5
      }
     },
     {
@@ -769,31 +769,31 @@
      }
     },
     {
-     "grid": "7ac96d5f",
+     "grid": "c9693a51",
      "arret": {
-      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjMAugNWCn4KRjUKXhUJTTQKjgEKLmUKXqICdqIF",
-      "ticks": 308,
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjMAugNeCqYBEq0BIcQBMlZ1MjRWNfIBjgHSBQ",
+      "ticks": 333,
       "entryTick": 0,
-      "exitTick": 302,
-      "fastest": 302,
+      "exitTick": 326,
+      "fastest": 326,
       "gigue": [
-       580,
-       435,
-       135
+       690,
+       315,
+       110
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjME6gJmCl4KHmQgZgqeAQoeRAqeASJGggMmogU",
-      "ticks": 301,
+      "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjME-gJATDUSrgESJHUylgEyNGUyvgQKVtIE",
+      "ticks": 323,
       "entryTick": 17,
-      "exitTick": 294,
-      "fastest": 275,
+      "exitTick": 316,
+      "fastest": 299,
       "gigue": [
-       140,
-       30,
-       15
+       765,
+       470,
+       155
       ],
       "raccord": 1000,
       "exigence": 0
@@ -1091,62 +1091,93 @@
   "demi-tour-ressorts": {
    "variants": [
     {
-     "grid": "07cf220e",
+     "grid": "8f46d533",
      "arret": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowAIIDDuIYGGGCA6ABeXoo7gHaBg",
-      "ticks": 699,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowAIoDDsoYKGGCAyARYHGCAUCCAcYHUg",
+      "ticks": 710,
       "entryTick": 0,
-      "exitTick": 692,
-      "fastest": 692,
+      "exitTick": 703,
+      "fastest": 703,
       "gigue": [
-       1000,
-       955,
-       795
+       985,
+       880,
+       700
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowBPICDroRCIIBGBIJIhgRSgkYIhkKGDogMigiIRIRMCEoGhkqMSoxkgFAGigiMBoZCDIhIBowGjAaMBoZGBqOAuIF",
-      "ticks": 688,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowBPICDsIRODoYKgkiEBFCCRA6CUIQIkgKGBoZGhkwISgSGToxMjF6WBogKjAKGRgyGSgaIBowGjAiERhi5gGiBg",
+      "ticks": 700,
       "entryTick": 17,
-      "exitTick": 682,
-      "fastest": 666,
+      "exitTick": 693,
+      "fastest": 677,
       "gigue": [
-       655,
-       465,
-       395
+       530,
+       410,
+       325
       ],
       "raccord": 1000,
       "exigence": 0
      }
     },
     {
-     "grid": "79bf773e",
+     "grid": "ca6aee31",
      "arret": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoxAIIDDrIYQGmCAyhBWCFaQGocvgHCBg",
-      "ticks": 698,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoxAIoDDtIYEHmCAyARaGGCAUimAbIG",
+      "ticks": 687,
       "entryTick": 0,
-      "exitTick": 691,
-      "fastest": 691,
+      "exitTick": 681,
+      "fastest": 681,
       "gigue": [
        990,
-       950,
-       845
+       915,
+       700
+      ],
+      "raccord": null,
+      "exigence": 4
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoxBPoCDsIRODoYGgkqEBkyGRAaISowCjAKMCoZGgk4ITAKIUIpIjGiATgSIBpAGhkYMhkYIjASMBowGhkYMtYBsgU",
+      "ticks": 678,
+      "entryTick": 17,
+      "exitTick": 671,
+      "fastest": 655,
+      "gigue": [
+       365,
+       345,
+       250
+      ],
+      "raccord": 1000,
+      "exigence": 0
+     }
+    },
+    {
+     "grid": "58a18587",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoyAIIDDtIYKGGCAyghWGGCAUBi5gdS",
+      "ticks": 710,
+      "entryTick": 0,
+      "exitTick": 703,
+      "fastest": 703,
+      "gigue": [
+       995,
+       910,
+       810
       ],
       "raccord": null,
       "exigence": 3
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoxBOICDvISCSIQCVoZEBoZGigyMAooCiEqGTAhOBIRMjEyEZoBSBowCjAqGRgyGRgaMBowGjAaGRhSxgH6BQ",
-      "ticks": 689,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoyBOoCDtoRKDIgGhE6EAkyGRgaGRowGjASMCIZGhkwGTAaGTIxEjGaAUgaMBowGhkYMhkIGkAaMBowGhkYMt4B2gY",
+      "ticks": 700,
       "entryTick": 17,
-      "exitTick": 682,
-      "fastest": 666,
+      "exitTick": 693,
+      "fastest": 677,
       "gigue": [
-       465,
-       410,
-       310
+       365,
+       325,
+       215
       ],
       "raccord": 1000,
       "exigence": 0
@@ -1696,34 +1727,34 @@
      }
     },
     {
-     "grid": "265c9667",
+     "grid": "c6752c90",
      "arret": {
-      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQCaAb4EClaaAk7aAYYBogK2BUI",
-      "ticks": 318,
+      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQDCAWaiApYBggOWAYIDlgGCA6YFQg",
+      "ticks": 362,
       "entryTick": 0,
-      "exitTick": 311,
-      "fastest": 311,
+      "exitTick": 355,
+      "fastest": 355,
       "gigue": [
-       760,
-       375,
-       265
+       1000,
+       850,
+       750
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 3
      },
      "elan": {
-      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQSKAWaqAo4BygJumgJumgFhXjTGBEI",
-      "ticks": 313,
+      "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQSKAWayAn7aAn7CAo4BggNm8gU",
+      "ticks": 351,
       "entryTick": 17,
-      "exitTick": 306,
-      "fastest": 284,
+      "exitTick": 345,
+      "fastest": 328,
       "gigue": [
-       740,
-       640,
-       355
+       1000,
+       940,
+       730
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 3
      }
     },
     {
@@ -1793,92 +1824,30 @@
      }
     },
     {
-     "grid": "e66e72d9",
+     "grid": "1bb7e721",
      "arret": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjEAwgGmBUJm4gJmogLGBCKWAboCvgGCA4YB0gK-AfoCxgk6",
+      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjEAwgGmBRJumgLOAeICngHyAq4B6gK2AfoCvgQKjgGiArYJSg",
       "ticks": 711,
       "entryTick": 0,
       "exitTick": 705,
       "fastest": 705,
       "gigue": [
-       575,
-       205,
-       95
+       885,
+       735,
+       505
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 5
      },
      "elan": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjEEigHmBCKGAfoCZqoCxgQyhgGyAtYB-gLmBApuqgLGCUI",
+      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjEEigHmBCKGAfoCbqICpgQirgHSAq4B8gLOBBqGAaoCzglC",
       "ticks": 701,
       "entryTick": 17,
       "exitTick": 694,
       "fastest": 677,
       "gigue": [
-       635,
-       395,
-       145
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
-     "grid": "d51c1cd5",
-     "arret": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjIAwgGmBTJumgK2AYIDlgHqApYBigO2BBp-ogL2BBq2CFI",
-      "ticks": 711,
-      "entryTick": 0,
-      "exitTick": 705,
-      "fastest": 705,
-      "gigue": [
-       1000,
-       865,
-       490
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjIEqgHOBAqWAeIChgGqAuYEKo4B2gKuAdoC9gQadqoClglC",
-      "ticks": 701,
-      "entryTick": 17,
-      "exitTick": 694,
-      "fastest": 677,
-      "gigue": [
-       1000,
-       930,
-       745
-      ],
-      "raccord": 1000,
-      "exigence": 3
-     }
-    },
-    {
-     "grid": "4e0aa0f5",
-     "arret": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjMAwgGmBRp26gKGAcoCtgHiAr4EOnaaAsYEMsYEKv4HSg",
-      "ticks": 711,
-      "entryTick": 0,
-      "exitTick": 705,
-      "fastest": 705,
-      "gigue": [
-       1000,
-       900,
-       660
-      ],
-      "raccord": null,
-      "exigence": 4
-     },
-     "elan": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjMEigH-BDJeygK-BCJmqgK-BCKOAdoCxgQixgQabuIH",
-      "ticks": 701,
-      "entryTick": 17,
-      "exitTick": 694,
-      "fastest": 677,
-      "gigue": [
-       930,
-       570,
+       780,
+       555,
        305
       ],
       "raccord": 1000,
@@ -1886,34 +1855,65 @@
      }
     },
     {
-     "grid": "614569cb",
+     "grid": "77573665",
      "arret": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjQAwgGmBTpekgKuAdoCtgGCA5YBggOuAeICzgQ6XqIClgHqCA",
+      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjIAwgHGBRJmogKWAdICxgGCA8YEInaiAsYEMsYEMvYHSg",
       "ticks": 711,
       "entryTick": 0,
       "exitTick": 705,
       "fastest": 705,
       "gigue": [
-       565,
-       270,
-       80
+       885,
+       675,
+       435
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjQEygGmBCKGAfICdqICxgQixgQabqoCvgQajgGiAsYB4gg",
+      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjIEigG2AfICpgHiAsYECpYBwgK-AeICxgQqjgGSA8YEMsYHYg",
       "ticks": 701,
       "entryTick": 17,
       "exitTick": 694,
       "fastest": 677,
       "gigue": [
-       475,
-       165,
-       75
+       1000,
+       890,
+       660
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 4
+     }
+    },
+    {
+     "grid": "dda0089d",
+     "arret": {
+      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjMAwgHOBQpmggLWAeICngHyAqYB-gLGBCJ-qgLmBDKmCEo",
+      "ticks": 711,
+      "entryTick": 0,
+      "exitTick": 705,
+      "fastest": 704,
+      "gigue": [
+       960,
+       825,
+       540
+      ],
+      "raccord": null,
+      "exigence": 5
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjMEqgHGBCKGAeICjgGyAr4EUqYEIoYB4gKGAcoC3gQipghC",
+      "ticks": 701,
+      "entryTick": 17,
+      "exitTick": 694,
+      "fastest": 677,
+      "gigue": [
+       1000,
+       985,
+       825
+      ],
+      "raccord": 1000,
+      "exigence": 3
      }
     }
    ]
@@ -1952,34 +1952,34 @@
      }
     },
     {
-     "grid": "6b009647",
+     "grid": "4c8bc72b",
      "arret": {
-      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEAugFu4gJ20gJ2-gJuggO2Bmo",
-      "ticks": 373,
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEAkgGWAbIChgHyAZYBygJuogL2BGI",
+      "ticks": 318,
       "entryTick": 0,
-      "exitTick": 366,
-      "fastest": 366,
+      "exitTick": 311,
+      "fastest": 311,
       "gigue": [
-       1000,
-       965,
-       820
+       810,
+       545,
+       400
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEEigFeugKGAdIChgGCA2aiAqYHSg",
-      "ticks": 362,
+      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEEigFewgJWmgJeygJmogKmBVo",
+      "ticks": 308,
       "entryTick": 17,
-      "exitTick": 355,
-      "fastest": 338,
+      "exitTick": 301,
+      "fastest": 284,
       "gigue": [
-       1000,
-       900,
-       770
+       970,
+       730,
+       405
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -2074,37 +2074,6 @@
       "raccord": 1000,
       "exigence": 1
      }
-    },
-    {
-     "grid": "ce310861",
-     "arret": {
-      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjUAkgGGAdICfsoI9gRi",
-      "ticks": 318,
-      "entryTick": 0,
-      "exitTick": 311,
-      "fastest": 311,
-      "gigue": [
-       1000,
-       990,
-       920
-      ],
-      "raccord": null,
-      "exigence": 2
-     },
-     "elan": {
-      "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjUEkgGGAeoCXuoHpgVK",
-      "ticks": 308,
-      "entryTick": 17,
-      "exitTick": 301,
-      "fastest": 284,
-      "gigue": [
-       915,
-       800,
-       650
-      ],
-      "raccord": 1000,
-      "exigence": 4
-     }
     }
    ]
   },
@@ -2173,34 +2142,34 @@
      }
     },
     {
-     "grid": "b4e442e4",
+     "grid": "c960a85f",
      "arret": {
-      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIA6gMm-gUWsgY",
-      "ticks": 264,
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIA4gMO2gQOmgU",
+      "ticks": 220,
       "entryTick": 0,
-      "exitTick": 257,
-      "fastest": 257,
+      "exitTick": 213,
+      "fastest": 213,
       "gigue": [
-       645,
-       275,
-       110
+       1000,
+       910,
+       690
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIEkgMWggYWugY",
-      "ticks": 253,
+      "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIEigMO2gQOmgU",
+      "ticks": 209,
       "entryTick": 17,
-      "exitTick": 246,
-      "fastest": 229,
+      "exitTick": 203,
+      "fastest": 186,
       "gigue": [
-       415,
-       360,
-       230
+       1000,
+       905,
+       780
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 3
      }
     },
     {
@@ -2650,20 +2619,20 @@
   "lucarne": {
    "variants": [
     {
-     "grid": "181480d2",
+     "grid": "994f591e",
      "arret": {
-      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MADKAUaCA0aSA3bSBw",
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MACSAVaiA06qA3a6Bw",
       "ticks": 275,
       "entryTick": 0,
       "exitTick": 268,
-      "fastest": 266,
+      "fastest": 268,
       "gigue": [
-       860,
-       665,
-       495
+       1000,
+       815,
+       650
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 4
      },
      "elan": {
       "code": "AQMQbW9kdWxlOmx1Y2FybmU6MASKAUaKAn76A26aBw",
@@ -2674,72 +2643,72 @@
       "gigue": [
        895,
        750,
-       540
+       530
       ],
       "raccord": 1000,
       "exigence": 5
      }
     },
     {
-     "grid": "ea4d366e",
+     "grid": "181480d2",
      "arret": {
-      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQDCAU76AlbyAlaKCA",
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQBifvICbtIDbrIH",
       "ticks": 275,
       "entryTick": 0,
       "exitTick": 268,
-      "fastest": 263,
+      "fastest": 266,
       "gigue": [
-       785,
-       535,
-       435
+       1000,
+       1000,
+       920
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQSKAU6CAnaSA1aaCA",
-      "ticks": 263,
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQSKAU6SAnbyA2aiBw",
+      "ticks": 264,
       "entryTick": 17,
-      "exitTick": 256,
-      "fastest": 239,
+      "exitTick": 257,
+      "fastest": 240,
       "gigue": [
-       775,
-       525,
-       380
+       1000,
+       755,
+       590
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 5
      }
     },
     {
-     "grid": "3868bc1e",
+     "grid": "760351ce",
      "arret": {
-      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MgCqAU6SA0bKA07KBw",
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MgBydpIDVtoDbpoH",
       "ticks": 275,
       "entryTick": 0,
       "exitTick": 268,
-      "fastest": 263,
+      "fastest": 268,
       "gigue": [
-       880,
-       695,
-       490
+       1000,
+       1000,
+       875
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MgSKAUaaAlaiA16SCA",
-      "ticks": 263,
+      "code": "AQMQbW9kdWxlOmx1Y2FybmU6MgSKAVbyAYYB2gOOAZoH",
+      "ticks": 264,
       "entryTick": 17,
-      "exitTick": 256,
-      "fastest": 239,
+      "exitTick": 257,
+      "fastest": 240,
       "gigue": [
-       895,
-       575,
-       295
+       890,
+       695,
+       560
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 5
      }
     }
    ]
@@ -2906,31 +2875,31 @@
   "mur-friable": {
    "variants": [
     {
-     "grid": "d54d4a80",
+     "grid": "b63463d4",
      "arret": {
-      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAAigReCi4SXj0KXi0JPSYatgMKbpIE",
-      "ticks": 268,
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAA4gMmQm4KNiQlCo4BCg6UARKEAfoBPqoF",
+      "ticks": 279,
       "entryTick": 0,
-      "exitTick": 261,
-      "fastest": 261,
+      "exitTick": 272,
+      "fastest": 269,
       "gigue": [
-       635,
-       615,
-       405
+       375,
+       245,
+       155
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAEqgMuEo4BCiZFCiY0NQktZgouNPIBProF",
-      "ticks": 261,
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAE2gHWATBlCm4dCVUkCn4KHkUKLjwu8gE2ogU",
+      "ticks": 269,
       "entryTick": 17,
-      "exitTick": 254,
-      "fastest": 235,
+      "exitTick": 262,
+      "fastest": 246,
       "gigue": [
-       525,
-       245,
-       150
+       590,
+       345,
+       170
       ],
       "raccord": 1000,
       "exigence": 0
@@ -2968,62 +2937,62 @@
      }
     },
     {
-     "grid": "95d80190",
+     "grid": "e2a5640c",
      "arret": {
-      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIAkgReEi4QVAktZAktNAmNAQgsZgktNDbyATaiBQ",
-      "ticks": 300,
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIA4gMmMnYKPiQlCl4KPiQlCl4KPiUJHWaCAiaiBQ",
+      "ticks": 288,
       "entryTick": 0,
-      "exitTick": 293,
-      "fastest": 293,
+      "exitTick": 281,
+      "fastest": 281,
       "gigue": [
-       640,
-       255,
-       145
+       260,
+       90,
+       55
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIEsgM2CnYaLjUKLmQJLTwJJWYKbiUK7gMKTvoD",
-      "ticks": 290,
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIEsgMuCoYBEi41Ci40NQktNAktPggkNgktNjTyATaqBQ",
+      "ticks": 282,
       "entryTick": 17,
-      "exitTick": 284,
-      "fastest": 266,
+      "exitTick": 275,
+      "fastest": 257,
       "gigue": [
-       480,
-       285,
-       290
+       430,
+       190,
+       110
       ],
-      "raccord": 960,
+      "raccord": 1000,
       "exigence": 0
      }
     },
     {
-     "grid": "d880ca70",
+     "grid": "78a5d988",
      "arret": {
-      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjMAkgRmCiYQXAklPhoOTQhENhJlCl48igJO0gQ",
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjMAkgRmCi4IXAkdTgomRQgkRhplCm48ygKGBEo",
       "ticks": 285,
       "entryTick": 0,
       "exitTick": 278,
       "fastest": 278,
       "gigue": [
-       930,
-       530,
-       320
+       905,
+       540,
+       400
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjMEsgMuCl4aPDUaXgldCl4IXAkttgMKLroE",
-      "ticks": 274,
+      "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjMEsgMuCl4aTDUKXgldCl4IdAkNvgMq7gNi",
+      "ticks": 275,
       "entryTick": 17,
-      "exitTick": 267,
+      "exitTick": 268,
       "fastest": 251,
       "gigue": [
-       440,
-       245,
-       140
+       615,
+       490,
+       355
       ],
       "raccord": 1000,
       "exigence": 0
@@ -3096,34 +3065,34 @@
      }
     },
     {
-     "grid": "fe4925d4",
+     "grid": "5cfbfab2",
      "arret": {
-      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIAsgHGAgqWAzpumgLOAZIC_gEK3gZq",
-      "ticks": 379,
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIAigH-AhqmAxJe0gKGAgqGB0I",
+      "ticks": 327,
       "entryTick": 0,
-      "exitTick": 372,
-      "fastest": 372,
+      "exitTick": 320,
+      "fastest": 320,
       "gigue": [
-       535,
-       475,
-       440
+       805,
+       555,
+       430
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIEigGeAhquAwqWAZIC1gMa_gEi5gZa",
-      "ticks": 376,
+      "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIEmgGGAhCmAwpu0gKmAgreBmI",
+      "ticks": 317,
       "entryTick": 17,
-      "exitTick": 370,
-      "fastest": 353,
+      "exitTick": 311,
+      "fastest": 294,
       "gigue": [
-       1000,
-       935,
-       900
+       955,
+       800,
+       705
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -3476,31 +3445,31 @@
      }
     },
     {
-     "grid": "cf635701",
+     "grid": "e15945e9",
      "arret": {
-      "code": "AQMWbW9kdWxlOnBhcm9pLWZyaWFibGU6MgCaATwN6gLFAdYBEo4DEp4DEKYDEp4DEu4HQg",
-      "ticks": 468,
+      "code": "AQMWbW9kdWxlOnBhcm9pLWZyaWFibGU6MgDKAd4DCCymAxKGAwquAwruB0o",
+      "ticks": 381,
       "entryTick": 0,
-      "exitTick": 461,
-      "fastest": 462,
+      "exitTick": 374,
+      "fastest": 373,
       "gigue": [
-       925,
-       710,
-       415
+       1000,
+       995,
+       985
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 1
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOnBhcm9pLWZyaWFibGU6MgSqAtYCCvYCIq4DCo4DGpYDItYHWg",
-      "ticks": 423,
+      "code": "AQMWbW9kdWxlOnBhcm9pLWZyaWFibGU6MgSiArYCGp4DGq4BigKWAYIC9gdC",
+      "ticks": 369,
       "entryTick": 17,
-      "exitTick": 417,
-      "fastest": 400,
+      "exitTick": 362,
+      "fastest": 346,
       "gigue": [
        1000,
        1000,
-       975
+       995
       ],
       "raccord": 1000,
       "exigence": 1
@@ -4015,34 +3984,34 @@
      }
     },
     {
-     "grid": "e6605c40",
+     "grid": "fb1e3ba2",
      "arret": {
-      "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo0AMoDDrIDpgHKAz6CA74BigZeogOOAYIELtoChgHaBg",
+      "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo0AKoEhgUSngHaCv4EMpYBsgSGAaoDFvIF",
       "ticks": 679,
       "entryTick": 0,
       "exitTick": 672,
-      "fastest": 672,
+      "fastest": 670,
       "gigue": [
-       970,
-       635,
-       380
+       1000,
+       1000,
+       950
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 1
      },
      "elan": {
-      "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo0BKoDpgUylgGSCF6KAaYGCo4BugSGAbIDJrIF",
-      "ticks": 668,
+      "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo0BKoDpgUylgGCCTbiAk6KA7YBigSWAboDHtIF",
+      "ticks": 666,
       "entryTick": 17,
-      "exitTick": 661,
-      "fastest": 644,
+      "exitTick": 659,
+      "fastest": 642,
       "gigue": [
        1000,
-       1000,
-       1000
+       945,
+       825
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 3
      }
     },
     {
@@ -4302,34 +4271,34 @@
      }
     },
     {
-     "grid": "dbf36b11",
+     "grid": "1ac07ef0",
      "arret": {
-      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyAIIEPpoENsoELroEPqoH",
-      "ticks": 417,
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyAOoDFroCTrIDFuoCLoIH",
+      "ticks": 329,
       "entryTick": 0,
-      "exitTick": 410,
-      "fastest": 410,
+      "exitTick": 322,
+      "fastest": 322,
       "gigue": [
        1000,
-       805,
-       480
+       945,
+       915
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyBKoDNrIERqoEPpoETqoH",
-      "ticks": 406,
+      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyBJIDFqoDHpoDHpoDNqIG",
+      "ticks": 319,
       "entryTick": 17,
-      "exitTick": 399,
-      "fastest": 382,
+      "exitTick": 312,
+      "fastest": 295,
       "gigue": [
        1000,
-       850,
-       510
+       1000,
+       970
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 1
      }
     },
     {
@@ -4361,37 +4330,6 @@
       ],
       "raccord": 1000,
       "exigence": 2
-     }
-    },
-    {
-     "grid": "5f54e552",
-     "arret": {
-      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczo0AKoDPrIDNsoCProCHroH",
-      "ticks": 329,
-      "entryTick": 0,
-      "exitTick": 322,
-      "fastest": 322,
-      "gigue": [
-       105,
-       110,
-       105
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczo0BKoDJpoDLooDLtIBIEEmigc",
-      "ticks": 322,
-      "entryTick": 17,
-      "exitTick": 315,
-      "fastest": 297,
-      "gigue": [
-       710,
-       420,
-       165
-      ],
-      "raccord": 1000,
-      "exigence": 0
      }
     }
    ]
@@ -4686,124 +4624,124 @@
   "pont-patrouille": {
    "variants": [
     {
-     "grid": "7f399d54",
+     "grid": "ff7e74a4",
      "arret": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTowALoBTqoDtgUS5gHCA36iA44BsgJ2ugJm4gKmAeICRrIF",
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTowAMoBZvoCNqIC1gUypgUargHyAqYBsgKGAaIClgGiAjaiBg",
+      "ticks": 646,
+      "entryTick": 0,
+      "exitTick": 639,
+      "fastest": 639,
+      "gigue": [
+       295,
+       85,
+       65
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTowBKoChgYqHvIC3gHKAw7CApYB8gJmqgJewgKuAdICLtoF",
+      "ticks": 635,
+      "entryTick": 17,
+      "exitTick": 629,
+      "fastest": 612,
+      "gigue": [
+       935,
+       745,
+       570
+      ],
+      "raccord": 1000,
+      "exigence": 5
+     }
+    },
+    {
+     "grid": "6f123b4e",
+     "arret": {
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxAJoBhgGSAx7aA36yA9YB6gOuBDKWAdoCXqIClgGqAl7yBQ",
+      "ticks": 646,
+      "entryTick": 0,
+      "exitTick": 639,
+      "fastest": 639,
+      "gigue": [
+       565,
+       285,
+       135
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxBMoC1gUqdsoDtgUylgUSZqICZqIClgHqAja6BQ",
+      "ticks": 635,
+      "entryTick": 17,
+      "exitTick": 629,
+      "fastest": 612,
+      "gigue": [
+       545,
+       335,
+       205
+      ],
+      "raccord": 1000,
+      "exigence": 0
+     }
+    },
+    {
+     "grid": "5ab78624",
+     "arret": {
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToyANIBRpIDDsoC1gUy5gQy9gHqAn7qAl6aAq4B2gIm6gU",
       "ticks": 646,
       "entryTick": 0,
       "exitTick": 639,
       "fastest": 639,
       "gigue": [
        915,
-       730,
-       390
+       670,
+       375
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTowBIoB5gYyNrIDlgGyA8YB0gJhZjHyAWaSAnaiApYBogI2igY",
-      "ticks": 642,
-      "entryTick": 17,
-      "exitTick": 635,
-      "fastest": 616,
-      "gigue": [
-       165,
-       30,
-       25
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
-     "grid": "940366f6",
-     "arret": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxAMoFNqIDrgUqXqIDxgQiZsICZtoCRooDJrIG",
-      "ticks": 646,
-      "entryTick": 0,
-      "exitTick": 639,
-      "fastest": 639,
-      "gigue": [
-       695,
-       520,
-       385
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxBIoBngGqA9YB6gNWmgOuBRpmygJewgJmggLOAdoCJtIF",
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToyBKoChgYqLooDvgG6AyaiAq4BggNWogJeugK2AdICVrIF",
       "ticks": 635,
       "entryTick": 17,
       "exitTick": 629,
       "fastest": 612,
       "gigue": [
-       540,
-       445,
-       255
+       1000,
+       755,
+       450
       ],
       "raccord": 1000,
       "exigence": 0
      }
     },
     {
-     "grid": "eb4bcab8",
+     "grid": "a504457c",
      "arret": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToyAKYFECQ1dtIDhgGSBL4BwgOWAcoCdvoBjgHiArYBygIW8gU",
-      "ticks": 653,
-      "entryTick": 0,
-      "exitTick": 646,
-      "fastest": 639,
-      "gigue": [
-       420,
-       355,
-       235
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToyBIoBhgHiBUaCA6YFIkaiA2a6Ak7iAX7qAqYBwgIm8gU",
-      "ticks": 635,
-      "entryTick": 17,
-      "exitTick": 629,
-      "fastest": 612,
-      "gigue": [
-       600,
-       230,
-       90
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
-     "grid": "af27232c",
-     "arret": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTozALIF5gUSrgHaA266A2a6Am7SAmbSAqYB0gI20gU",
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTozAMIBRpIDFtoCXroDngUiZtoDRpoCVvIBZqICVoIDRpIG",
       "ticks": 646,
       "entryTick": 0,
       "exitTick": 639,
       "fastest": 639,
       "gigue": [
-       580,
-       600,
-       270
+       450,
+       200,
+       110
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTozBIoB5gYyNqIDpgGyA8YB0gJhdiHyAV66AlaSAqYBogI2ggY",
-      "ticks": 641,
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTozBKoChgYqFpIDzgG6AxaqAqYBggNmwgJmogKmAcICJvIF",
+      "ticks": 635,
       "entryTick": 17,
-      "exitTick": 634,
-      "fastest": 616,
+      "exitTick": 629,
+      "fastest": 612,
       "gigue": [
-       415,
-       80,
-       50
+       670,
+       600,
+       420
       ],
       "raccord": 1000,
       "exigence": 0
@@ -4814,93 +4752,124 @@
   "puits-descente": {
    "variants": [
     {
-     "grid": "f3203b10",
+     "grid": "aeda7bcd",
      "arret": {
-      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjAAsgEW8gNxogcuigQ--gdGogRmkgk",
-      "ticks": 654,
-      "entryTick": 0,
-      "exitTick": 647,
-      "fastest": 644,
-      "gigue": [
-       475,
-       285,
-       125
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjAEkgEWSGJg8QHyAQiyBibiA17SB44BkgQ-igk",
-      "ticks": 648,
-      "entryTick": 17,
-      "exitTick": 641,
-      "fastest": 623,
-      "gigue": [
-       930,
-       665,
-       450
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
-     "grid": "638f813a",
-     "arret": {
-      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjEAggEmogIgIeACYiDSBjaiAyaiCCbCBCaqCQ",
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjAAmgEmkgEYQcIBIEEioQHCByaiAyaSCDa6BE6KCQ",
       "ticks": 653,
       "entryTick": 0,
       "exitTick": 646,
-      "fastest": 646,
+      "fastest": 642,
       "gigue": [
-       195,
-       30,
-       25
+       140,
+       25,
+       40
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjEEqgEOWEJg8QGKAiDqBRaKBEaKCE66BDaSCQ",
-      "ticks": 649,
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjAEigEOmgKJAYgBEcIBKJoGDtIDbooIZpIEXtoI",
+      "ticks": 646,
       "entryTick": 17,
-      "exitTick": 642,
-      "fastest": 625,
+      "exitTick": 639,
+      "fastest": 622,
       "gigue": [
-       745,
-       425,
-       260
+       965,
+       795,
+       640
+      ],
+      "raccord": 1000,
+      "exigence": 4
+     }
+    },
+    {
+     "grid": "764b2ffd",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjEAogEmggEgQcIBIEEioQHiBiaiBSaiCCbCBSaSCQ",
+      "ticks": 686,
+      "entryTick": 0,
+      "exitTick": 679,
+      "fastest": 679,
+      "gigue": [
+       40,
+       5,
+       15
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjEEigEOogLBAVjiB4YB4gRW-gd2mgRuigk",
+      "ticks": 681,
+      "entryTick": 17,
+      "exitTick": 674,
+      "fastest": 655,
+      "gigue": [
+       1000,
+       975,
+       900
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "2df4f04f",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjIAWj6yA5ABkQGiAjbSA0byA1biB3a6A5YBugk",
+      "ticks": 650,
+      "entryTick": 0,
+      "exitTick": 643,
+      "fastest": 643,
+      "gigue": [
+       535,
+       285,
+       175
+      ],
+      "raccord": null,
+      "exigence": 0
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjIEigEmKDmCASRBIiChAboDjgHiAm6KBGaCCF66A54B0gg",
+      "ticks": 646,
+      "entryTick": 17,
+      "exitTick": 639,
+      "fastest": 622,
+      "gigue": [
+       920,
+       565,
+       425
       ],
       "raccord": 1000,
       "exigence": 0
      }
     },
     {
-     "grid": "23b62775",
+     "grid": "fbe46627",
      "arret": {
-      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjIAWj7yAoECugde2gRe0geWAdIEbvoI",
-      "ticks": 682,
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjMAogEmggEgQcIBIEEioQHiBiaiBSaiCCbCBSaSCQ",
+      "ticks": 686,
       "entryTick": 0,
-      "exitTick": 675,
-      "fastest": 677,
+      "exitTick": 679,
+      "fastest": 679,
       "gigue": [
-       650,
-       445,
-       210
+       25,
+       10,
+       10
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjIEkgEOWGpQ8QGSCH7SBF76B27yA54Bigk",
-      "ticks": 679,
+      "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjMEmgEOigKRAXAhsgEoigZ24gRm6gde-gZu2gY",
+      "ticks": 682,
       "entryTick": 17,
-      "exitTick": 672,
+      "exitTick": 675,
       "fastest": 655,
       "gigue": [
-       990,
-       900,
-       705
+       920,
+       805,
+       600
       ],
       "raccord": 1000,
       "exigence": 4
@@ -5834,65 +5803,96 @@
   "ressort-scie": {
    "variants": [
     {
-     "grid": "e200048c",
+     "grid": "eb496a82",
      "arret": {
-      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZTowADI2ajC-ASwRjQFhlgdC",
-      "ticks": 212,
+      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZTowAMoDQAy1AQqeB0o",
+      "ticks": 213,
       "entryTick": 0,
-      "exitTick": 205,
-      "fastest": 202,
+      "exitTick": 206,
+      "fastest": 206,
       "gigue": [
-       595,
-       480,
-       515
+       795,
+       425,
+       290
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
-      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZTowBPoCMGRdES3mBlo",
+      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZTowBOoBNtICMboH",
+      "ticks": 202,
+      "entryTick": 17,
+      "exitTick": 195,
+      "fastest": 177,
+      "gigue": [
+       560,
+       615,
+       615
+      ],
+      "raccord": 520,
+      "exigence": 0
+     }
+    },
+    {
+     "grid": "e8bf549c",
+     "arret": {
+      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToxAOICpgMhqgc",
+      "ticks": 217,
+      "entryTick": 0,
+      "exitTick": 210,
+      "fastest": 209,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToxBOoBNtICMboH",
       "ticks": 202,
       "entryTick": 17,
       "exitTick": 195,
       "fastest": 178,
       "gigue": [
-       760,
-       615,
-       435
+       525,
+       555,
+       505
       ],
-      "raccord": 1000,
+      "raccord": 520,
       "exigence": 0
      }
     },
     {
-     "grid": "af779341",
+     "grid": "846fa2ba",
      "arret": {
-      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToxADaqA0AsjQEKlgdS",
-      "ticks": 214,
+      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToyANIC_gGIAaoG",
+      "ticks": 191,
       "entryTick": 0,
-      "exitTick": 207,
-      "fastest": 207,
+      "exitTick": 184,
+      "fastest": 184,
       "gigue": [
-       745,
-       580,
-       435
+       805,
+       675,
+       640
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToxBPoCOLwBMZYHSg",
-      "ticks": 206,
+      "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToyBJoCzgFIWcoG",
+      "ticks": 185,
       "entryTick": 17,
-      "exitTick": 199,
-      "fastest": 180,
+      "exitTick": 178,
+      "fastest": 161,
       "gigue": [
-       550,
-       510,
-       290
+       1000,
+       985,
+       945
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 2
      }
     }
    ]
@@ -6090,7 +6090,7 @@
      }
     },
     {
-     "grid": "18086399",
+     "grid": "ef363e75",
      "arret": {
       "code": "AQMXbW9kdWxlOnJlc3NvcnRzLXRyb3VzOjEAwgQ2ghw",
       "ticks": 526,
@@ -6726,34 +6726,34 @@
      }
     },
     {
-     "grid": "86754e26",
+     "grid": "66257bc6",
      "arret": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIAygU2qgIwMSI-qgIw1gVi",
-      "ticks": 300,
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIAugbWBDLWBjo",
+      "ticks": 296,
       "entryTick": 0,
-      "exitTick": 293,
+      "exitTick": 290,
       "fastest": 290,
       "gigue": [
-       565,
-       455,
-       390
+       1000,
+       1000,
+       1000
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 1
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIE2gOmAwrmAhJGwgc",
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIE-gXGBDK2Blo",
       "ticks": 286,
       "entryTick": 17,
       "exitTick": 279,
       "fastest": 262,
       "gigue": [
-       760,
-       620,
-       335
+       1000,
+       1000,
+       1000
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 1
      }
     },
     {
@@ -7075,34 +7075,34 @@
      }
     },
     {
-     "grid": "62479773",
+     "grid": "43930c3e",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEAugQu-gQ2ggV2igg",
-      "ticks": 384,
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEA4gMmmgQcVuIDJoIEhgGKCA",
+      "ticks": 417,
       "entryTick": 0,
-      "exitTick": 377,
-      "fastest": 377,
+      "exitTick": 410,
+      "fastest": 410,
       "gigue": [
-       1000,
-       845,
-       495
+       315,
+       105,
+       10
       ],
       "raccord": null,
       "exigence": 0
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEE2gM28gRGkgWWAdIH",
-      "ticks": 373,
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEEugFm4gMOigSWAYIExgPaBg",
+      "ticks": 406,
       "entryTick": 17,
-      "exitTick": 366,
-      "fastest": 349,
+      "exitTick": 399,
+      "fastest": 382,
       "gigue": [
-       1000,
-       925,
-       745
+       410,
+       310,
+       240
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -7141,58 +7141,89 @@
   "tremplin": {
    "variants": [
     {
-     "grid": "6eca0fbd",
+     "grid": "e4a1699e",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjAAsgMu6gE04gU2wgEk-gg",
-      "ticks": 363,
+      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjAAogSGAaIGlgHSCA",
+      "ticks": 340,
       "entryTick": 0,
-      "exitTick": 356,
-      "fastest": 356,
+      "exitTick": 333,
+      "fastest": 333,
       "gigue": [
-       685,
-       435,
-       280
+       1000,
+       1000,
+       1000
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 1
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjAEmgMe6gHOBhK-AdII",
-      "ticks": 351,
+      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjAEygOuAaIGpgGiCA",
+      "ticks": 330,
       "entryTick": 17,
-      "exitTick": 345,
-      "fastest": 328,
+      "exitTick": 323,
+      "fastest": 306,
       "gigue": [
-       695,
-       620,
-       525
+       1000,
+       1000,
+       1000
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 1
      }
     },
     {
-     "grid": "2e6c3461",
+     "grid": "9cc06aee",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjEAugMu4gFEsgUWygIUwgg",
-      "ticks": 363,
+      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjEAogSGAcIGZuII",
+      "ticks": 340,
       "entryTick": 0,
-      "exitTick": 356,
-      "fastest": 355,
+      "exitTick": 333,
+      "fastest": 333,
       "gigue": [
-       535,
-       390,
-       210
+       1000,
+       1000,
+       1000
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 1
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjEEogOmCCKOAZIJ",
-      "ticks": 351,
+      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjEEqgOWAfIGhgGqCA",
+      "ticks": 330,
       "entryTick": 17,
-      "exitTick": 345,
-      "fastest": 328,
+      "exitTick": 323,
+      "fastest": 306,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1
+     }
+    },
+    {
+     "grid": "51c53a91",
+     "arret": {
+      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjIAogSGAaoGlgHKCA",
+      "ticks": 340,
+      "entryTick": 0,
+      "exitTick": 333,
+      "fastest": 333,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOnRyZW1wbGluOjIEygOeAbIGngGqCA",
+      "ticks": 330,
+      "entryTick": 17,
+      "exitTick": 323,
+      "fastest": 306,
       "gigue": [
        1000,
        1000,
@@ -7304,102 +7335,71 @@
      }
     },
     {
-     "grid": "aafc0da5",
+     "grid": "b750aa6e",
      "arret": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDoxAKIEdvoC3gIipgZK",
-      "ticks": 285,
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoxAKIEdqIH",
+      "ticks": 198,
       "entryTick": 0,
-      "exitTick": 279,
-      "fastest": 279,
+      "exitTick": 191,
+      "fastest": 191,
       "gigue": [
        1000,
        1000,
-       900
+       890
       ],
       "raccord": null,
       "exigence": 2
      },
      "elan": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDoxBJIBfooDNsIDdqoH",
-      "ticks": 275,
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoxBIoBbvoCtgZK",
+      "ticks": 188,
       "entryTick": 17,
-      "exitTick": 268,
-      "fastest": 251,
+      "exitTick": 181,
+      "fastest": 164,
       "gigue": [
        1000,
-       860,
-       710
+       1000,
+       1000
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 1
      }
     },
     {
-     "grid": "47953f7c",
+     "grid": "a9f6ba5c",
      "arret": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDoyAPoCNvoBDroCPsoCtgJy9gVa",
-      "ticks": 329,
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoyAKIEbqoH",
+      "ticks": 198,
       "entryTick": 0,
-      "exitTick": 322,
-      "fastest": 322,
-      "gigue": [
-       975,
-       830,
-       700
-      ],
-      "raccord": null,
-      "exigence": 4
-     },
-     "elan": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDoyBKoBXooDTqoDfvoCzgZK",
-      "ticks": 319,
-      "entryTick": 17,
-      "exitTick": 312,
-      "fastest": 295,
-      "gigue": [
-       860,
-       820,
-       735
-      ],
-      "raccord": 1000,
-      "exigence": 3
-     }
-    },
-    {
-     "grid": "1e7a7b4b",
-     "arret": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDozAKoEXoID5gIipgZK",
-      "ticks": 285,
-      "entryTick": 0,
-      "exitTick": 279,
-      "fastest": 279,
+      "exitTick": 191,
+      "fastest": 191,
       "gigue": [
        1000,
-       845,
-       735
+       1000,
+       890
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 2
      },
      "elan": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDozBIoBjgGqAy6qA3aiBw",
-      "ticks": 275,
+      "code": "AQMPbW9kdWxlOnR1bm5lbDoyBIoBZoIDtgZK",
+      "ticks": 188,
       "entryTick": 17,
-      "exitTick": 268,
-      "fastest": 251,
+      "exitTick": 181,
+      "fastest": 164,
       "gigue": [
        1000,
-       865,
-       795
+       1000,
+       975
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 1
      }
     },
     {
      "grid": "c764abed",
      "arret": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDo0ANoB9gIq1gIy5gZC",
+      "code": "AQMPbW9kdWxlOnR1bm5lbDozANoB9gIq1gIy5gZC",
       "ticks": 242,
       "entryTick": 0,
       "exitTick": 235,
@@ -7413,15 +7413,15 @@
       "exigence": 1
      },
      "elan": {
-      "code": "AQMPbW9kdWxlOnR1bm5lbDo0BIoBdooDRpoDbvoE",
+      "code": "AQMPbW9kdWxlOnR1bm5lbDozBKIBhgHyAi6SA4YB8gQ",
       "ticks": 231,
       "entryTick": 17,
       "exitTick": 224,
       "fastest": 207,
       "gigue": [
        1000,
-       985,
-       960
+       1000,
+       965
       ],
       "raccord": 1000,
       "exigence": 1

@@ -331,6 +331,11 @@ describe("les solutions stockées", () => {
           expect(ticks, where).toBeGreaterThanOrEqual(def.long ? LONG_MIN_TICKS : MODULE_MIN_TICKS);
           expect(ticks, where).toBeLessThanOrEqual(def.long ? LONG_MAX_TICKS : MODULE_MAX_TICKS);
           expect(ticks, where).toBeLessThanOrEqual(sol.fastest + Math.floor((sol.fastest * 2) / 100));
+          // Lot 8c, repli robuste : la plus rapide trouvée n'était pas jouable ; la solution gardée reste à 25 % d'elle au plus.
+          if (sol.rapide !== undefined) {
+            expect(sol.rapide, where).toBeLessThan(sol.fastest);
+            expect(ticks, where).toBeLessThanOrEqual(sol.rapide + Math.floor((sol.rapide * 25) / 100));
+          }
         }
       }
     });

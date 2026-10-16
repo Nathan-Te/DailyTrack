@@ -239,9 +239,17 @@ export function hardenScore(m: BuiltModule, entry: ModuleEntry, inputs: readonly
  * décaler un changement de commande (±1, ±2, ±4, ±8), décaler toute une commande (son début et sa fin ensemble), ou supprimer une commande
  * inutile. Une retouche est gardée si sa note (`hardenScore`) monte. Rend le cœur et la rediffusion complète.
  */
-export function harden(m: BuiltModule, entry: ModuleEntry, core: readonly number[], maxPasses = 8): { core: number[]; full: number[] } {
+export function harden(
+  m: BuiltModule,
+  entry: ModuleEntry,
+  core: readonly number[],
+  maxPasses = 8,
+  maxLength?: number,
+): { core: number[]; full: number[] } {
   const score = (full: readonly number[], floor: number) => hardenScore(m, entry, full, floor);
-  const limit = core.length;
+  // Lot 8c, repli robuste : `maxLength` permet de prendre plus de temps (attendre avant un geste) ; sans lui, aussi rapide seulement.
+  const limit = maxLength ?? core.length;
+  const slower = limit > core.length;
   let current = fromCore(m, entry, core);
   if (!current) throw new Error(`${m.levelId} ${entry} : solution non valable avant durcissement`);
   let best = score(current.full, -1);
@@ -260,6 +268,8 @@ export function harden(m: BuiltModule, entry: ModuleEntry, core: readonly number
       for (const d of [1, -1, 2, -2, 4, -4, 8, -8]) {
         if (i < ends.length) withEnds(ends.map((e, j) => (j === i ? e + d : e)));
         if (i > 0 && i < ends.length) withEnds(ends.map((e, j) => (j === i || j === i - 1 ? e + d : e)));
+        // Repli robuste : retarder (ou avancer) tout ce qui suit le geste i, d'un bloc — attendre un peu avant de repartir.
+        if (slower && i < ends.length) withEnds(ends.map((e, j) => (j >= i ? e + d : e)));
       }
       // Supprimer la commande i (ses pas vont à la commande d'avant).
       if (i > 0 && i < runs.length) {
