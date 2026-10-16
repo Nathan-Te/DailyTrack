@@ -8,7 +8,7 @@ paliers: 15 4
 repeter: large colonnes 4-4
 repeter: haut rangees 8-8
 variante: large=1 haut=1
-variante: large=2 haut=1
+variante: large=2 haut=1 +garde
 variante: large=1 haut=2
 variante: large=1 haut=1 +garde
 variante: large=2 haut=1 +fosse

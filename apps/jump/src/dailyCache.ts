@@ -3,7 +3,7 @@ import { STORAGE_PREFIX, storageKey } from "./storage";
 import type { KeyValue } from "./memory";
 
 // Cache du niveau du jour (lot 7b) : la charge générée (`DailyPayload`) rangée sous `jump:niveau:<identifiant>`. L'identifiant porte déjà
-// `JUMP_GENERATOR_VERSION` (`…-g4`) ; la charge garde `JUMP_SIM_VERSION` et `JUMP_GENERATOR_VERSION`, comparés à la lecture (`fromPayload`).
+// `JUMP_GENERATOR_VERSION` (`…-g5`) ; la charge garde `JUMP_SIM_VERSION` et `JUMP_GENERATOR_VERSION`, comparés à la lecture (`fromPayload`).
 // La preuve est **rejouée** à la relecture (loader) : ce qui est lu ici n'est qu'un candidat. Tout accès est protégé : sans stockage (ou
 // stockage qui lève), le jeu régénère simplement.
 //

@@ -10,7 +10,6 @@ repeter: haut rangees 10-10
 variante: large=2 haut=2
 variante: large=2 haut=4
 variante: large=2 haut=4 +fosse +denivele:3
-variante: large=2 haut=6 +denivele:-2
 grille:
 ###...........
 ###...........
