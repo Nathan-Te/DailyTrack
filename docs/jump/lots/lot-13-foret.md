@@ -70,7 +70,9 @@ Forêt **49,5 %** de tirages validés (65,1 % au lot 12 sans mécanique ; 32,3 %
 
 ## Vérifié / non vérifié / décisions pour Nathan
 **Vérifié** : `tsc -b` propre ; Vitest `core`, `jump-sim`, `apps/jump` (44 fichiers, 785 tests, dont `vent.test.ts` et `foret.test.ts` côté simulation, `vent.test.ts` côté jeu) ; e2e Chromium de `apps/jump` : **112 verts, 4 outils sautés**, dont `foret.spec.ts` (5 tests : niveau forêt en `&solution` au temps de l'auteur, `vent-pont` au doigt en paysage, mouvement réduit : flèches fixes sans clignoter / effets : particules, hitbox et `?scenario=vent` sans erreur de shader, section « Courants d'air » de `?debug&tune`) ; `smoke.spec.ts` compte 29 curseurs au lieu de 26 (les trois du vent) ; captures du jeu relues (feuilles et pollen, flèches, hitbox) ; la règle « danger visible » sur tout le catalogue.
-**Non vérifié** : Firefox et WebKit en local (la CI tranche) ; l'écoute réelle du souffle (logique et niveaux testés, pas l'oreille) ; un vrai téléphone ; la perf sur vrai GPU (un `Points` de 160 au plus, un maillage de flèches par zone) ; la CI après rebase (à confirmer sur la PR).
+**CI** (run 38971947774, tête 127b865) : `test` vert, verdict `e2e` vert sur les trois navigateurs (463 réussis, 0 échec ; un instable de DailyTrack, `tactile.spec.ts`, hors de ce lot) ; `foret.spec.ts` dure 6 à 11 s en CI selon les runs (8 retenues dans `durees.json`).
+
+**Non vérifié** : l'écoute réelle du souffle (logique et niveaux testés, pas l'oreille) ; un vrai téléphone ; la perf sur vrai GPU (un `Points` de 160 au plus, un maillage de flèches par zone).
 
 **Décisions pour Nathan**
 1. **Vent vers le haut = la gravité remplacée** (pas ajoutée à une poussée) : sous la zone, on monte toujours vers 6 tuiles/s, même posé au sol (on se fait soulever). Un vent vers le bas n'existe pas (le prompt ne le demandait pas).
