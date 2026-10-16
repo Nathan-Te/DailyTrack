@@ -93,6 +93,11 @@ import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrato
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
 
+// Lot 11 (partie jeu) : le **thème est une donnée du générateur** (`daily.theme`, celui de la date ou un thème **forcé** par `?theme=`, qui est alors un
+// **essai** : identifiant `…-t<thème>`, `DayMode` « essai », rien d'enregistré — ni mémoire du jour, ni historique, ni série, ni partage, bandeau
+// d'essai). Deux surfaces dessinées en lecture seule (`tileArt.ts`, `surfaceArt.ts` : tapis à chevrons qui défilent dans un seul matériau, glace à
+// reflets), trois événements par surface (`events.ts`), ronronnement spatialisé des tapis et crissement de la glace (`audioLogic.ts`), givre et
+// étincelles de rouage (`feel.ts`), section « Tapis et glace » du panneau `?debug&tune` ; un morceau de mécanique s'ouvre dans son thème.
 // Lot 10 : la boucle quotidienne. L'**accueil** (`home.ts`) s'ouvre sur la page par défaut, posé sur le niveau qui se charge derrière (Jouer
 // = le geste qui réveille le son) ; on y revient par le menu ⏸ ou l'écran d'arrivée. L'**écran d'arrivée** (`arrival.ts`) remplace le
 // bandeau pour le niveau du jour, **après** le carnage : temps, médaille, seuils, morts et essais du jour, série, Rejouer / Partager / Revoir

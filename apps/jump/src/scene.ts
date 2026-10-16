@@ -96,6 +96,8 @@ export interface SceneStats {
   /** Lot 11 : tuiles de tapis roulant et triangles de leurs chevrons (un tampon par tronçon, un matériau). */
   beltTiles: number;
   beltTriangles: number;
+  /** Lot 11 : la phase de défilement des chevrons (0 : figés : mouvement réduit, effets « aucun », ou pas encore d'image). */
+  beltPhase: number;
   decorItems: number;
   decorLite: number;
   decorTriangles: number;
@@ -650,6 +652,7 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     tileTriangles,
     beltTiles: beltArt.tiles,
     beltTriangles,
+    beltPhase: 0,
     decorItems: decorItems.length,
     decorLite: decorItems.filter((d) => d.lite).length,
     decorTriangles,
@@ -728,7 +731,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       lastClock = clock;
       const animate = this.animate;
       // Lot 11 : phase des chevrons des tapis (figée sans mouvement).
-      beltMat.uniforms.uTime!.value = beltTime(clock, animate);
+      const phase = beltTime(clock, animate);
+      beltMat.uniforms.uTime!.value = phase;
+      stats.beltPhase = phase;
       // Scies : positions de la simulation, interpolées ; rotation au rythme du chrono de l'essai (immobiles tant que le monde attend).
       const a = sawCenters(level, prev);
       const b = sawCenters(level, state);

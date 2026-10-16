@@ -1,12 +1,16 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXED_NOW, atInstant } from "./clock";
 
-// Lot 9 — les thèmes visuels : chaque thème s'affiche sans erreur, en portrait et en paysage ; `?theme=` impose le thème (cosmétique :
-// l'identifiant du niveau ne change pas) ; les effets réduits allègent le décor et la parallaxe, le mouvement réduit la fige.
+// Lot 9 — les thèmes visuels : chaque thème s'affiche sans erreur, en portrait et en paysage ; `?theme=` impose le thème ; les effets réduits
+// allègent le décor et la parallaxe, le mouvement réduit la fige. Lot 11 : le thème est une donnée du générateur — un thème **forcé** (différent
+// de celui de la date) est un essai, dont l'identifiant porte le suffixe `-t<thème>` ; le thème de la date donne le niveau ordinaire.
 // Captures du README : `CAPTURES=1 npx playwright test themes --project=chromium` (dans `apps/jump`) → `docs/jump/lots/img/lot-9-<thème>.png`.
 
 const THEMES = ["foret", "usine", "glace", "nuit", "neon"] as const;
 const DATE = "2026-10-20";
+/** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface ThemeView {
   name: string;
@@ -59,16 +63,18 @@ for (const orientation of ["paysage", "portrait"] as const) {
       FIXED_NOW,
       async (page) => {
         test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-        let id: string | null = null;
+        const natural = (await (async () => {
+          await open(page, `seed=${DATE}&debug&touch=1`);
+          return info(page);
+        })()).theme.ofDay;
         for (const name of THEMES) {
           const errors = await open(page, `seed=${DATE}&debug&touch=1&theme=${name}`);
           const v = await info(page);
           expect(v.phase).toBe("ready");
           expect(v.theme.name).toBe(name);
-          expect(v.theme.forced).toBe(true);
-          // Le thème est cosmétique : le niveau (son identifiant) est le même pour tous les thèmes.
-          if (id === null) id = v.id;
-          expect(v.id).toBe(id);
+          // Le thème de la date donne le niveau ordinaire ; un autre thème, un essai à l'identifiant suffixé.
+          expect(v.theme.forced).toBe(name !== natural);
+          expect(v.id).toBe(name === natural ? `jour-${DATE}-g${GENERATOR}` : `jour-${DATE}-g${GENERATOR}-t${name}`);
           const s = v.theme.stats!;
           expect(s.tileChunks).toBeGreaterThan(1);
           expect(s.tileTriangles).toBeGreaterThan(1000);
@@ -87,7 +93,7 @@ for (const orientation of ["paysage", "portrait"] as const) {
   });
 }
 
-test("?theme= impose le thème ; sans lui (ou inconnu), c'est le thème du jour", async ({ browser }) => {
+test("?theme= impose le thème (un essai s'il n'est pas celui de la date) ; sans lui (ou inconnu), c'est le thème du jour", async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page) => {
     test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
     await open(page, `seed=${DATE}&debug`);
@@ -101,7 +107,13 @@ test("?theme= impose le thème ; sans lui (ou inconnu), c'est le thème du jour"
     const forced = await info(page);
     expect(forced.theme.name).toBe(other);
     expect(forced.theme.ofDay).toBe(day.theme.ofDay);
-    expect(forced.id).toBe(day.id);
+    expect(forced.theme.forced).toBe(true);
+    // Lot 11 : un thème forcé est un autre niveau (un essai) ; le thème de la date, lui, redonne le niveau ordinaire.
+    expect(forced.id).toBe(`${day.id}-t${other}`);
+    await open(page, `seed=${DATE}&debug&theme=${day.theme.ofDay}`);
+    const same = await info(page);
+    expect(same.id).toBe(day.id);
+    expect(same.theme.forced).toBe(false);
     // Un nom accentué marche aussi.
     await open(page, `seed=${DATE}&debug&theme=n%C3%A9on`);
     expect((await info(page)).theme.name).toBe("neon");

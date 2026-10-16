@@ -1,6 +1,5 @@
 import { daysFromCivil } from "@cdj/core";
 import {
-  ATTEMPT_DEAD,
   ATTEMPT_FINISHED,
   DEFAULT_JUMP_PARAMS,
   JUMP_THEME_NAMES,
@@ -58,6 +57,8 @@ import {
   topExposed,
 } from "../src/surfaceArt";
 import { TILE_Z, buildTileArt, insideTiles } from "../src/tileArt";
+import { chooseDay, dayLine } from "../src/dailyInfo";
+import { mayRecord } from "../src/history";
 import { SURFACE_SLIDERS, loadTuned, parseTuned, paramsJson, resetParams, saveTuned, surfaceValue, surfacesChanged } from "../src/tune";
 import { galleryHref, moduleHref, readUrlOptions, URL_OPTIONS } from "../src/urlOptions";
 import { JumpSession } from "../src/session";
@@ -300,17 +301,18 @@ describe("événements des surfaces (eventsBetween)", () => {
     const kinds = won.events.map((e) => e.kind);
     expect(kinds.indexOf("tapisFin")).toBeGreaterThan(-1);
     expect(kinds.indexOf("arrivee")).toBeGreaterThan(-1);
-    // Mort sur de la glace : un pic posé sur la glace.
+    // Mort sur de la glace : un pic posé sur la glace (le personnage réapparaît ensuite : on lit les événements jusqu'à la mort).
     const die = parseLevel(["..........", "S.....^..F", "~~~~~~~~~~"].join("\n") + "\n");
-    const dead = play(die, [[R, 300]]);
-    expect(dead.state.status).toBe(ATTEMPT_DEAD);
+    const dead = play(die, [[R, 500]]);
     const ev = dead.events.map((e) => e.kind);
-    expect(ev).toContain("mort");
-    expect(ev.filter((k) => k === "glaceFin").length).toBeLessThanOrEqual(1);
-    // Au pas de la mort, plus rien n'est « sous les pieds » : si l'on était sur la glace, la fin est émise avec la mort.
-    const fin2 = dead.events.findIndex((e) => e.kind === "glaceFin");
-    const mort = dead.events.findIndex((e) => e.kind === "mort");
-    if (fin2 >= 0) expect(fin2).toBeLessThanOrEqual(mort);
+    const mort = ev.indexOf("mort");
+    expect(mort).toBeGreaterThan(-1);
+    // Sur la glace dès le départ : seule la mort peut fermer l'état, et elle le ferme dans le même pas.
+    expect(ev.slice(0, mort + 1).filter((k) => k === "glaceFin")).toHaveLength(1);
+    expect(ev.indexOf("glaceFin")).toBeLessThan(mort);
+    // Le personnage réapparaît et meurt encore : une fin d'état par mort, jamais deux, et jamais à la réapparition.
+    expect(ev.filter((k) => k === "glaceFin")).toHaveLength(ev.filter((k) => k === "mort").length);
+    expect(ev.filter((k) => k === "glaceDebut")).toHaveLength(0);
   });
 
   it("freinage sur la glace : des événements au rythme de la distance, seulement vite, seulement en ralentissant", () => {
@@ -669,5 +671,18 @@ describe("thème et mécanique (adresse, galerie, essai)", () => {
     const trial = dailyLevel(dayOf("foret"), "glace");
     expect(trial.forcedTheme).toBe(true);
     expect(trial.id).toMatch(/-tglace$/);
+  });
+
+  it("un essai de thème : `mayRecord` refuse (jamais d'historique ni de série), la ligne du HUD le dit, ouvrir une date n'en fait pas un essai tout seul", async () => {
+    const { dailyLevel } = await import("@cdj/jump-sim");
+    const day = dayOf("foret");
+    const trial = dailyLevel(day, "usine");
+    const choice = { ...chooseDay(day, day, false), mode: "essai" as const };
+    expect(mayRecord({ mode: "essai", levelDay: day, today: day, watching: false, tuned: false })).toBe(false);
+    expect(mayRecord({ mode: "jour", levelDay: day, today: day, watching: false, tuned: false })).toBe(true);
+    const line = dayLine(trial, choice, false, null);
+    expect(line).toContain("essai de thème");
+    expect(line).toContain("rien n'est enregistré");
+    expect(chooseDay(day, day, false).mode).toBe("jour");
   });
 });

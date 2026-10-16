@@ -1,5 +1,5 @@
 import { daysFromCivil } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, dailyLevelId, replayAttempt } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, JUMP_THEME_NAMES, dailyLevel, dailyLevelId, jumpThemeForDay, replayAttempt } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
 import { cacheKey, readCache, sweepCache, writeCache } from "../src/dailyCache";
 import { loadDaily, type LoaderOptions, type WorkerLike } from "../src/dailyLoader";
@@ -56,13 +56,16 @@ class FakeWorker implements WorkerLike {
   onerror: ((e: unknown) => void) | null = null;
   onmessageerror: ((e: unknown) => void) | null = null;
   terminated = false;
+  /** Lot 11 : les demandes reçues (jour, thème forcé). */
+  readonly requests: WorkerRequest[] = [];
   constructor(private readonly mode: "ok" | "erreur" | "muet" | "echec" = "ok") {}
   postMessage(m: WorkerRequest): void {
+    this.requests.push(m);
     if (this.mode === "muet") return;
     queueMicrotask(() => {
       if (this.mode === "erreur") this.onerror?.(new Error("script introuvable"));
       else if (this.mode === "echec") this.onmessage?.({ data: { ok: false, error: "boum" } });
-      else this.onmessage?.({ data: structuredClone({ ok: true, payload: generatePayload(m.day) } satisfies WorkerReply) });
+      else this.onmessage?.({ data: structuredClone({ ok: true, payload: generatePayload(m.day, m.theme ?? null) } satisfies WorkerReply) });
     });
   }
   terminate(): void {
@@ -242,5 +245,80 @@ describe("repli sans worker", () => {
     expect(worker.source).toBe("worker");
     expect(main.source).toBe("principal");
     expect(worker.blockedMs).toBeLessThan(main.blockedMs / 2);
+  });
+});
+
+describe("thème forcé : un essai (lot 11)", () => {
+  const natural = jumpThemeForDay(DAY);
+  const other = JUMP_THEME_NAMES.find((n) => n !== natural)!;
+  const trialId = dailyLevelId(DAY, other);
+
+  it("l'identifiant d'un essai est suffixé `-t<thème>` ; celui du thème de la date ne l'est pas", () => {
+    expect(trialId).toBe(`${dailyLevelId(DAY)}-t${other}`);
+    expect(dailyLevelId(DAY, natural)).toBe(dailyLevelId(DAY));
+  });
+
+  it("la charge porte le thème : un essai se reconstruit (preuve rejouée) pour son thème, pas pour un autre, ni pour la date ordinaire", () => {
+    const p = JSON.parse(JSON.stringify(generatePayload(DAY, other)));
+    expect(p.theme).toBe(other);
+    expect(p.forcedTheme).toBe(true);
+    expect(p.id).toBe(trialId);
+    const l = fromPayload(p, DAY, { proof: true, theme: other });
+    expect(typeof l).not.toBe("string");
+    const level = l as ReturnType<typeof dailyLevel>;
+    expect(level.theme).toBe(other);
+    expect(level.forcedTheme).toBe(true);
+    expect(level.id).toBe(trialId);
+    expect(level.hash).toBe(dailyLevel(DAY, other).hash);
+    expect(fromPayload(p, DAY, { proof: true })).toBe("autre niveau"); // le niveau ordinaire n'est pas un essai
+    expect(fromPayload(generatePayload(DAY), DAY, { proof: true, theme: other })).toBe("autre niveau");
+    // Un ancien cache (format 1, sans thème) est refusé.
+    expect(fromPayload({ ...p, format: 1 }, DAY, { proof: true, theme: other })).toBe("charge illisible");
+    expect(fromPayload({ ...p, theme: "lave" }, DAY, { proof: true, theme: other })).toBe("charge illisible");
+    expect(fromPayload({ ...p, forcedTheme: false }, DAY, { proof: true, theme: other })).toBe("autre niveau");
+  });
+
+  it("le chargement demande le thème au worker, garde l'essai sous son propre identifiant (celui du niveau ordinaire reste intact) et le relit du cache", async () => {
+    const store = new MemStore();
+    const a = options(store, "ok", { theme: other });
+    const first = await loadDaily(DAY, a.opts);
+    expect(first.source).toBe("worker");
+    expect(first.level.forcedTheme).toBe(true);
+    expect(first.level.theme).toBe(other);
+    expect(first.level.id).toBe(trialId);
+    expect(a.made[0]!.requests).toEqual([{ day: DAY, theme: other }]);
+    expect([...store.map.keys()]).toEqual([cacheKey(trialId)]);
+    expect(store.map.has(cacheKey(dailyLevelId(DAY)))).toBe(false);
+    const again = await loadDaily(DAY, options(store, "ok", { theme: other }).opts);
+    expect(again.source).toBe("cache");
+    expect(again.level.id).toBe(trialId);
+    // Le niveau ordinaire de la même date coexiste dans le cache sans le toucher.
+    const plain = await loadDaily(DAY, options(store).opts);
+    expect(plain.level.forcedTheme).toBe(false);
+    expect(plain.level.id).toBe(dailyLevelId(DAY));
+    expect(store.map.size).toBe(2);
+  });
+
+  it("le thème de la date (ou aucun) donne le niveau ordinaire : ni suffixe, ni essai, et le worker n'a pas de thème à appliquer", async () => {
+    for (const theme of [natural, null, undefined]) {
+      const a = options(new MemStore(), "ok", { theme });
+      const r = await loadDaily(DAY, a.opts);
+      expect(r.level.forcedTheme, String(theme)).toBe(false);
+      expect(r.level.id).toBe(dailyLevelId(DAY));
+      expect(a.made[0]!.requests[0]!.theme ?? null).toBe(null);
+    }
+  });
+
+  it("un thème forcé ne lit jamais un niveau figé (ceux de public/levels/ sont ceux des thèmes naturels) ; sans worker, le repli donne le même essai", async () => {
+    let asked = 0;
+    const frozen = { days: ["2026-10-16"], read: async () => (asked++, null) };
+    const r = await loadDaily(DAY, options(new MemStore(), "aucun", { theme: other, frozen }).opts);
+    expect(asked).toBe(0);
+    expect(r.source).toBe("principal");
+    expect(r.level.id).toBe(trialId);
+    expect(r.level.hash).toBe(dailyLevel(DAY, other).hash);
+    // Le niveau ordinaire, lui, interroge le fichier figé (absent ici : on génère).
+    await loadDaily(DAY, options(new MemStore(), "aucun", { frozen }).opts);
+    expect(asked).toBe(1);
   });
 });

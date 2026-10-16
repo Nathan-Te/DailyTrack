@@ -1,9 +1,13 @@
+import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXED_NOW, atInstant } from "./clock";
 import { hasWebGL } from "./phone";
 
 // Lot 7b : le niveau du jour se génère hors du fil principal (worker de module), derrière « Préparation du niveau… », et se relit du cache
 // (preuve rejouée) au rechargement. Horloge maîtrisée par décalage de `Date` ; tout ce qui dépend du nombre de pas se lit en pas à pas.
+
+/** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface Load {
   source: string;
@@ -49,7 +53,7 @@ test("la page par défaut montre « Préparation du niveau… », puis le niveau
     const d = await daily(page);
     expect(d.load).toMatchObject({ source: "worker", generated: true, cacheMiss: "" });
     expect(seen.length).toBeGreaterThanOrEqual(1);
-    expect(d.id).toMatch(/^jour-2026-10-20-g5$/);
+    expect(d.id).toBe(`jour-2026-10-20-g${GENERATOR}`);
   });
 });
 

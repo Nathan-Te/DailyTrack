@@ -294,15 +294,15 @@ function iceTop(art: Art, s: TileStyle, col: number, row: number, cl: number, cr
   const x1 = col + 1 - cr * 0.6;
   const yTop = -row;
   const z = TILE_Z.trim;
-  art.rect(x0, yTop - 0.3, x1, yTop - RIM.top, z, [s.ice.base, s.ice.base, s.ice.sheen, s.ice.sheen]);
+  art.rect(x0, yTop - 0.36, x1, yTop - RIM.top, z, [s.ice.base, s.ice.base, s.ice.sheen, s.ice.sheen]);
   const n = cellNoise(col, row, 31);
   const n2 = cellNoise(col, row, 37);
   const glint = (gx: number, h: number) => {
     const gy = yTop - 0.06 - h;
-    art.quad([gx, gy, gx + 0.05, gy, gx + 0.05 + h * 0.7, yTop - 0.06, gx + h * 0.7, yTop - 0.06], z + 0.0005, s.ice.glint);
+    art.quad([gx, gy, gx + 0.07, gy, gx + 0.07 + h * 0.7, yTop - 0.06, gx + h * 0.7, yTop - 0.06], z + 0.0005, s.ice.glint);
   };
-  glint(col + 0.1 + n * 0.45, 0.14 + n2 * 0.06);
-  if (n2 > 0.45) glint(col + 0.62 + n * 0.15, 0.08);
+  glint(col + 0.06 + n * 0.4, 0.2 + n2 * 0.08);
+  if (n2 > 0.4) glint(col + 0.6 + n * 0.12, 0.12);
 }
 
 /** Garniture d'une face du dessus : `cl` / `cr` = coupe des coins (la garniture s'arrête où l'arrondi commence). */

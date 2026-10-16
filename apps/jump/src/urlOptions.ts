@@ -50,7 +50,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "hitbox",
-    description: "Avec `debug` : dessine les boîtes de collision « justes » (personnage, pics réduits, disques mortels des scies) et les sections.",
+    description: "Avec `debug` : dessine les boîtes de collision « justes » (personnage, pics réduits, disques mortels des scies) et les sections ; lot 11 : les surfaces en surimpression — tapis roulants (cadre de la face du dessus et un chevron par tuile dans le sens du tapis, en cyan) et glace (liseré et losanges, en bleu pâle).",
     values: [],
   },
   {
