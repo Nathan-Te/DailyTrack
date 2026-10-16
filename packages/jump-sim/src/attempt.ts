@@ -2,18 +2,24 @@ import { UNITS_PER_TILE } from "./constants";
 import { tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
+  TILE_ALT_OFF,
+  TILE_ALT_ON,
+  TILE_BLINK_OFF,
+  TILE_BLINK_ON,
   TILE_EMPTY,
   TILE_SPIKE_DOWN,
   TILE_SPIKE_LEFT,
   TILE_SPIKE_RIGHT,
   TILE_SPIKE_UP,
   TILE_SPRING,
+  blinkIsSolid,
+  isSolidTile,
   isSpikeTile,
   sawCenter,
   type Level,
   type Point,
 } from "./level";
-import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED, PLAYER_HEIGHT, PLAYER_WIDTH, initialPlayer, stepPlayer, type JumpParams, type PlayerState } from "./player";
+import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED, PLAYER_HEIGHT, PLAYER_WIDTH, initialPlayer, stepPlayerJump, type JumpFlags, type JumpParams, type PlayerState } from "./player";
 
 // Un essai (lot 2) : le personnage plus tout l'état dynamique du niveau (scies, sections en marche, blocs friables, ressort), un chrono
 // en pas, la mort et l'arrivée. `stepAttempt` est pur et avance d'un pas ; tout l'état est entier. Règles :
@@ -32,8 +38,16 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 //     une direction tenue compte tout de suite.
 // « Recommencer » n'est pas une commande : la session repart simplement de `initialAttempt` (ce n'est pas une mort).
 //
+// **Blocs clignotants et alternés (lot 12)** : leur état actuel est dans `tiles` (codes `TILE_BLINK_*` / `TILE_ALT_*`), recalculé **à la fin de
+// chaque pas** (`settleDynamic`) pour le pas suivant : un clignotant suit le cycle de sa section (phase = pas écoulés depuis l'entrée du
+// personnage dans la section, comme les scies), un alterné suit la parité `alt` (0 : `A` solide ; chaque saut qui part l'inverse ; franchir
+// un point de passage la remet à 0). **Règle de sortie** : un bloc qui devrait devenir solide pendant que la boîte du personnage le chevauche
+// reste absent jusqu'au premier pas où elle n'y est plus — on ne meurt jamais écrasé ni coincé. `alt` n'existe que dans un niveau qui a des
+// blocs alternés (les empreintes des autres niveaux ne changent pas).
+//
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
-// l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies).
+// l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
+// puis l'état des blocs clignotants et alternés pour le pas suivant (lot 12).
 
 export const ATTEMPT_READY = 0;
 export const ATTEMPT_RUNNING = 1;
@@ -135,11 +149,16 @@ export interface AttemptState {
   springTime: number;
   /** Dernier point de passage franchi (indice dans `level.checkpoints`), −1 aucun. */
   checkpoint: number;
+  /**
+   * Lot 12, **seulement dans un niveau qui a des blocs alternés** (absent sinon : les empreintes des autres niveaux ne changent pas) : le jeu
+   * solide, 0 pour `A`, 1 pour `B`. Part à 0, s'inverse à chaque saut qui part, revient à 0 en franchissant un point de passage.
+   */
+  alt?: number;
 }
 
 /** État au départ (et après chaque mort, et après « recommencer ») : rien n'a bougé. */
 export function initialAttempt(level: Level): AttemptState {
-  return {
+  const base: AttemptState = {
     status: ATTEMPT_READY,
     time: 0,
     player: initialPlayer(level),
@@ -154,6 +173,7 @@ export function initialAttempt(level: Level): AttemptState {
     springTime: 0,
     checkpoint: -1,
   };
+  return level.alts.length > 0 ? { ...base, alt: 0 } : base;
 }
 
 /**
@@ -163,7 +183,7 @@ export function initialAttempt(level: Level): AttemptState {
 export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): AttemptState {
   const cell = level.checkpoints[state.checkpoint]!;
   const sections = state.sections.map((start, i) => (level.sections[i]!.c1 >= cell.col ? -1 : start));
-  return {
+  const back: AttemptState = {
     ...initialAttempt(level),
     status: ATTEMPT_RUNNING,
     time: state.time,
@@ -171,6 +191,45 @@ export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): 
     sections,
     checkpoint: state.checkpoint,
   };
+  // Lot 12 : les clignotants des sections d'avant ont gardé leur cycle ; les alternés repartent de A (état du point de passage).
+  return { ...back, tiles: settleDynamic(level, back.tiles, back.sections, back.time, back.alt ?? 0, back.player) };
+}
+
+/** Rectangle d'une tuile, en unités. */
+const tileBox = (col: number, row: number): Box => ({ x: col * UNITS_PER_TILE, y: row * UNITS_PER_TILE, w: UNITS_PER_TILE, h: UNITS_PER_TILE });
+
+/**
+ * Lot 12 : l'état des blocs clignotants et alternés pour le pas qui suit un état de temps `time`, de sections `sections`, de parité `alt`, où
+ * le personnage est en `player`. Un bloc qui doit être **absent** l'est tout de suite ; un bloc qui doit être **plein** le devient **sauf
+ * si la boîte du personnage le chevauche** : il reste alors traversable jusqu'au premier état où elle n'y est plus (se toucher par un bord
+ * ne compte pas). Rend `tiles` lui-même si rien ne change (sinon une copie : les tableaux d'un état ne sont jamais modifiés).
+ */
+export function settleDynamic(level: Level, tiles: readonly number[], sections: readonly number[], time: number, alt: number, player: Readonly<PlayerState>): readonly number[] {
+  if (level.blinks.length === 0 && level.alts.length === 0) return tiles;
+  let out = tiles;
+  const box = playerBox(player);
+  const apply = (col: number, row: number, want: boolean, on: number, off: number) => {
+    const k = row * level.width + col;
+    if (isSolidTile(out[k]!) === want) return;
+    if (want && boxesOverlap(box, tileBox(col, row))) return;
+    if (out === tiles) out = [...tiles];
+    (out as number[])[k] = want ? on : off;
+  };
+  for (const b of level.blinks) {
+    const start = sections[b.section]!;
+    const phase = start < 0 ? 0 : time - start;
+    apply(b.col, b.row, blinkIsSolid(level.blinkCycles[b.section]!, b.group, phase), TILE_BLINK_ON, TILE_BLINK_OFF);
+  }
+  for (const a of level.alts) apply(a.col, a.row, a.set === alt, TILE_ALT_ON, TILE_ALT_OFF);
+  return out;
+}
+
+/**
+ * Lot 12 : phase de chaque section dans cet état (pas écoulés depuis que le personnage y est entré, 0 avant), dans l'ordre de
+ * `level.sections` : la même lecture que `sawPhase`, pour le rendu, le métronome et le solveur.
+ */
+export function sectionPhases(level: Level, state: Readonly<AttemptState>): number[] {
+  return level.sections.map((_, i) => (state.sections[i]! < 0 ? 0 : state.time - state.sections[i]!));
 }
 
 /** Pas écoulés dans le cycle de la scie `index` (0 tant que sa section n'est pas en marche, et pour une scie fixe). */
@@ -278,7 +337,8 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   }
 
   // ——— Personnage ———
-  let player = stepPlayer(state.player, input, gridOf(level, tiles), params);
+  const flags: JumpFlags | null = level.alts.length > 0 ? { jumped: 0, wall: 0 } : null;
+  let player = stepPlayerJump(state.player, input, gridOf(level, tiles), params, flags);
   const landed = player.ground === 1;
   const c0 = tileOf(player.x);
   const c1 = tileOf(player.x + PLAYER_WIDTH - 1);
@@ -336,7 +396,18 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     (sections as number[])[i] = time;
   }
 
+  // ——— Lot 12 : la parité des blocs alternés (chaque saut qui part l'inverse ; franchir un point de passage la remet à A) ———
+  const before = tileOf(state.player.x + idiv(PLAYER_WIDTH, 2));
+  let alt = state.alt ?? 0;
+  if (level.alts.length > 0) {
+    if (flags!.jumped === 1) alt = 1 - alt;
+    if (col > before && level.checkpoints.some((c) => before < c.col && c.col <= col)) alt = 0;
+  }
+  // L'état des blocs clignotants et alternés pour le pas suivant (le personnage chevauche-t-il un bloc qui devient plein ? il reste absent).
+  tiles = settleDynamic(level, tiles, sections, time, alt, player);
+
   const next: AttemptState = { ...state, status: ATTEMPT_RUNNING, time, player, tiles, crumbles, sections, springCell, springTime };
+  if (level.alts.length > 0) next.alt = alt;
   // ——— L'arrivée d'abord : elle l'emporte sur une mort au même pas ———
   if (reachesFinish(level, player)) return { ...next, status: ATTEMPT_FINISHED };
   const cause = deathAt(level, next);
@@ -352,7 +423,6 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   }
   // ——— Point de passage (lot 4) : pris quand le centre du personnage, vivant à la fin du pas, **franchit sa colonne vers la droite**, à
   // n'importe quelle hauteur (le sauter par-dessus le prend aussi) ; jamais sur une mort (on a déjà rendu l'état de la mort ci-dessus) ———
-  const before = tileOf(state.player.x + idiv(PLAYER_WIDTH, 2));
   if (col > before) {
     let taken = next.checkpoint;
     // Rangés de gauche à droite, une colonne chacun : le plus à droite des points franchis pendant ce pas l'emporte.

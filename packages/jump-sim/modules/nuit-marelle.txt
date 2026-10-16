@@ -1,0 +1,27 @@
+id: nuit-marelle
+intention: Marcher sur des pierres qui s'allument à tour de rôle : un rythme régulier, des sauts courts, de quoi souffler.
+etiquettes: respiration clignotant
+famille: nuit-marelle
+theme: nuit
+format: 3
+paliers: 8 8
+repeter: paires colonnes 2-13
+variante: paires=1 cycle=300 solide=150 decalage=0
+variante: paires=1 cycle=360 solide=190 decalage=0
+variante: paires=1 cycle=330 solide=170 decalage=40
+variante: paires=1 cycle=270 solide=140 decalage=0
+grille:
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+...................
+##...bbb...ddd...##
+##...............##
+##^^^^^^^^^^^^^^^##
+###################
+
+clignote {cycle} {solide} {decalage}

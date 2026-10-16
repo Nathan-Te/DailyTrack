@@ -17,8 +17,10 @@ import {
   SANDBOX_LEVEL,
   SPRINT_TRIAL_PARAMS,
   TICK_RATE,
+  TILE_ALT_ON,
   TILE_BELT_LEFT,
   TILE_BELT_RIGHT,
+  TILE_BLINK_ON,
   UNITS_PER_TILE,
   decodeReplay,
   groundTile,
@@ -29,6 +31,7 @@ import {
   replayAttempt,
   runsTicks,
   sawCenters,
+  sectionPhases,
   buildModule,
   jumpMedalFor,
   jumpThemeForDay,
@@ -55,6 +58,7 @@ import { mountHud } from "./hud";
 import { FixedStepper } from "./loop";
 import { THEMES, themeByName, themeForDay } from "./themes";
 import { createScene, type JumpScene, type SceneDetail, type SceneStats } from "./scene";
+import type { DynamicStats } from "./dynamicArt";
 import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -184,7 +188,20 @@ export interface ThemeView {
 }
 
 /** Ce que `?debug` expose sur `window.__jump` (lu par les tests de navigateur). */
+/** Lot 12 : état des blocs clignotants et alternés (`__jump.blocks`). */
+export interface BlocksDebug extends Partial<DynamicStats> {
+  /** Le jeu solide (0 : A, 1 : B) ; −1 sans blocs alternés. */
+  alt: number;
+  /** Phase de chaque section (pas depuis l'entrée du personnage) et cycle déclaré de chacune. */
+  phases: number[];
+  cycles: ({ cycle: number; solid: number; shift: number } | null)[];
+  /** Plein (vrai) ou absent (faux), pour chaque bloc : clignotants puis alternés (ordre de la grille) ; `solid` / `absent` comptent ceux de la dernière image dessinée. */
+  states: boolean[];
+}
+
 export interface JumpDebug {
+  /** Lot 12 : les blocs clignotants et alternés (null : le niveau n'en a pas). */
+  readonly blocks: BlocksDebug | null;
   phase: Phase;
   /** Jour du jeu affiché (AAAA-MM-JJ). */
   day: string;
@@ -745,12 +762,15 @@ function dispatch(events: readonly GameEvent[]): void {
       else if (e.kind === "glisseFin" || e.kind === "mort" || e.kind === "reapparition" || e.kind === "arrivee") slideSide = 0;
       if (e.kind === "reapparition") trail.clear();
     }
+    // Lot 12 : un éclat bref sur les blocs alternés à chaque bascule (le rendu ne le joue pas sans mouvement).
+    if (e.kind === "bascule" && e.source !== "vie") scene?.flashBlocks(e.reset ? 1 : 0.8);
     if (e.kind === "derapage") {
       if (e.source === "jeu") look = onSkid(look, e.side);
       else if (e.source === "heros") heroLook = onSkid(heroLook, e.side);
     }
   }
-  audio.handle(events);
+  // Lot 12 : `?metronome=off` coupe le tempo de la nuit (les autres sons restent).
+  audio.handle(options.metronome ? events : events.filter((e) => e.kind !== "metronome"));
 }
 
 /** Le carnage de démonstration : la solution de l'auteur en héros, des essais fictifs déterministes pour les autres vies. */
@@ -1297,6 +1317,19 @@ const info: JumpDebug = {
   },
   get menu() {
     return { open: menuOpen };
+  },
+  /** Lot 12 : état des blocs clignotants et alternés (null sans eux) : ce qui est dessiné (pleins, absents, vacillants, en attente), le jeu solide, l'éclat, et l'état de la simulation. */
+  get blocks() {
+    const stats = scene?.blocks ?? null;
+    if (!stats && level.blinks.length === 0 && level.alts.length === 0) return null;
+    const state = session.state;
+    return {
+      ...(stats ?? {}),
+      alt: level.alts.length > 0 ? (state.alt ?? 0) : -1,
+      phases: sectionPhases(level, state),
+      cycles: level.blinkCycles.map((c) => (c ? { ...c } : null)),
+      states: [...level.blinks.map((b) => state.tiles[b.row * level.width + b.col] === TILE_BLINK_ON), ...level.alts.map((a) => state.tiles[a.row * level.width + a.col] === TILE_ALT_ON)],
+    };
   },
   get home(): HomeDebug {
     return {

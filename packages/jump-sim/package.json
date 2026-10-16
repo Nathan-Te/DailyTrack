@@ -14,6 +14,7 @@
     "measure:jump": "esbuild tools/measure-jump.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-jump.mjs --log-level=warning && node dist/measure-jump.mjs",
     "voir:module": "esbuild tools/voir.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/voir.mjs --log-level=warning && node dist/voir.mjs",
     "measure:elan": "esbuild tools/measure-elan.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-elan.mjs --log-level=warning && node dist/measure-elan.mjs",
-    "repos:modules": "esbuild tools/repos.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/repos.mjs --log-level=warning && node dist/repos.mjs"
+    "repos:modules": "esbuild tools/repos.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/repos.mjs --log-level=warning && node dist/repos.mjs",
+    "secours:modules": "esbuild tools/secours.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/secours.mjs --log-level=warning && node dist/secours.mjs"
   }
 }

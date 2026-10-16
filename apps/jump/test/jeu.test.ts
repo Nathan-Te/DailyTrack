@@ -50,7 +50,7 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, home: null, archives: false };
+    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false };
     // Lot 5 : sans paramètre, le niveau du jour.
     expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
@@ -62,6 +62,15 @@ describe("paramètres d'adresse", () => {
     expect(readUrlOptions("?scenario=bac-a-sable&debug&sprint=1").sprint).toBe(false);
     expect(readUrlOptions("?sprint=1").sprint).toBe(false);
     expect(readUrlOptions("?debug&tune&sprint=2").sprint).toBe(false);
+  });
+
+  it("lot 12 : ?metronome=off coupe le tempo de la nuit (rien d'autre) ; les liens internes le gardent", () => {
+    expect(readUrlOptions("").metronome).toBe(true);
+    expect(readUrlOptions("?metronome=off").metronome).toBe(false);
+    expect(readUrlOptions("?metronome=on").metronome).toBe(true);
+    const from = readUrlOptions("?metronome=off&debug");
+    expect(galleryHref(from)).toBe("?modules&debug&metronome=off");
+    expect(dailyHref(from)).toBe("?debug&metronome=off");
   });
 
   it("lot 9 : ?theme= impose un thème (nom avec ou sans accent), un nom inconnu est ignoré ; les liens internes le gardent", () => {

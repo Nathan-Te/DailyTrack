@@ -1,0 +1,35 @@
+id: nuit-cheminee
+intention: Monter une cheminée dont un mur s'éteint par moments : grimper tant qu'il est allumé, sortir par le haut.
+etiquettes: mural vertical clignotant
+famille: nuit-cheminee
+theme: nuit
+format: 3
+paliers: 17 7
+repeter: large colonnes 4-4
+variante: large=2 cycle=360 solide=240 decalage=0
+variante: large=2 cycle=300 solide=180 decalage=0
+variante: large=2 cycle=330 solide=200 decalage=150
+variante: large=1 cycle=300 solide=200 decalage=0
+grille:
+###...........
+###...........
+###...........
+###...........
+###...........
+###...........
+###..###......
+###..bbb...###
+###..bbb...###
+###..bbb...###
+###..bbb...###
+###..bbb...###
+###..bbb...###
+.##..###...###
+.##..###...###
+.....###...###
+.....###...###
+########...###
+########...###
+########...###
+
+clignote {cycle} {solide} {decalage}

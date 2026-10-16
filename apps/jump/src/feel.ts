@@ -1,4 +1,5 @@
 import { Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Vector3, type Object3D } from "three";
+import { BLOCK_STYLE } from "./blocks";
 import type { GameEvent } from "./events";
 import type { Palette } from "./palette";
 import type { FeelLevels } from "./settings";
@@ -169,6 +170,10 @@ export interface FeelColors {
   /** Lot 11 : éclats de givre (glace) et étincelles de rouage (tapis roulant) : pâles, jamais la couleur d'un danger ni du personnage. */
   frost: readonly number[];
   gear: readonly number[];
+  /** Lot 12 : éclats des blocs clignotants (nuit) et alternés (néon, jeux A et B) : leurs couleurs réservées, jamais celles d'un danger ni du personnage. */
+  blink: readonly number[];
+  altA: readonly number[];
+  altB: readonly number[];
 }
 
 export function feelColors(p: Palette): FeelColors {
@@ -180,6 +185,9 @@ export function feelColors(p: Palette): FeelColors {
     confetti: [p.finish, p.spring, p.hazard, p.player, 0xffffff, 0x39ff88],
     frost: [0xffffff, 0xd8f6ff, 0xa9e4fb],
     gear: [0xe6eef2, 0xb9c4cc, 0xf4f8fa],
+    blink: [BLOCK_STYLE.blink.fill, BLOCK_STYLE.blink.edge, 0xffffff],
+    altA: [BLOCK_STYLE.altA.fill, BLOCK_STYLE.altA.edge, 0xffffff],
+    altB: [BLOCK_STYLE.altB.fill, BLOCK_STYLE.altB.edge, 0xffffff],
   };
 }
 
@@ -249,6 +257,21 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
     case "tapisDebut":
       // Lot 11 : quelques étincelles de rouage à la pose sur le tapis.
       pool.emit({ ...gear, x, y: y + 0.05, count: 4, angle: UP, spread: 1.2, vmin: 1.5, vmax: 3.5, jitter: 0.5 });
+      break;
+    case "blocApparait":
+      // Lot 12 : un souffle de paillettes là où des blocs s'allument (un seul événement par section et par sens, `count` blocs).
+      pool.emit({ x, y, count: Math.min(6, 2 + e.count), angle: UP, spread: Math.PI, vmin: 0.8, vmax: 2.4, life: 0.4, size: 0.1, gravity: -2, drag: 3, colors: colors.blink, jitter: Math.min(3, 1 + e.count * 0.3) });
+      break;
+    case "blocDisparait":
+      pool.emit({ x, y, count: Math.min(6, 2 + e.count), angle: -UP, spread: Math.PI, vmin: 0.6, vmax: 2, life: 0.35, size: 0.09, gravity: -6, drag: 2, colors: colors.blink, jitter: Math.min(3, 1 + e.count * 0.3) });
+      break;
+    case "blocVacille":
+      // Deux étincelles seulement : le vacillement, lui, se lit sur le dessin des blocs.
+      pool.emit({ x, y, count: 2, angle: UP, spread: Math.PI, vmin: 0.4, vmax: 1.2, life: 0.3, size: 0.08, gravity: 0, drag: 2, colors: colors.blink, jitter: Math.min(3, 1 + e.count * 0.3) });
+      break;
+    case "bascule":
+      // Lot 12 : un bref éclat des deux couleurs autour du personnage (ou du fanion, à la remise à A) ; l'éclat des blocs est dans le rendu.
+      pool.emit({ x, y, count: e.reset ? 12 : 8, angle: UP, spread: Math.PI, vmin: 2, vmax: 5.5, life: 0.35, size: 0.12, gravity: -3, drag: 4, colors: e.alt === 1 ? colors.altB.concat(colors.altA) : colors.altA.concat(colors.altB), jitter: 0.5 });
       break;
     case "friableCraque":
       pool.emit({ x, y: y + 0.4, count: 3, angle: UP, spread: 1, vmin: 1, vmax: 3, life: 0.4, size: 0.12, gravity: -25, drag: 1, colors: colors.crumble, jitter: 0.8 });

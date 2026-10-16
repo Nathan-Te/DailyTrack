@@ -24,7 +24,8 @@ import {
   type JumpThemeName,
 } from "../src/index";
 
-// Lot 11 — le thème est une donnée du générateur : il décide des morceaux permis et du quota de signature (la mécanique de son thème).
+// Lot 11 — le thème est une donnée du générateur : il décide des morceaux permis et du quota de signature (la mécanique de son thème) ; lot 12 :
+// nuit (blocs clignotants) et néon (blocs alternés) ont la leur.
 
 const lot9 = JSON.parse(readFileSync(join(import.meta.dirname, "fixtures/themes-lot9.json"), "utf8")) as { first: number; count: number; names: string };
 const DATES = Array.from({ length: 60 }, (_, k) => PREMIER_JOUR_JUMP + k);
@@ -46,9 +47,9 @@ describe("jumpThemeForDay (socle)", () => {
     expect([...seen].sort()).toEqual([...JUMP_THEME_NAMES].sort());
   });
 
-  it("deux thèmes ont une mécanique : usine (tapis) et glace ; les trois autres n'en ont pas", () => {
-    expect(THEME_MECHANIC).toEqual({ usine: "tapis", glace: "glace" });
-    expect(JUMP_THEME_NAMES.filter((n) => mechanicOf(n) === null).sort()).toEqual(["foret", "neon", "nuit"]);
+  it("quatre thèmes ont une mécanique : usine (tapis), glace, nuit (clignotants, lot 12) et néon (alternés, lot 12) ; seule la forêt n'en a pas (lot 13)", () => {
+    expect(THEME_MECHANIC).toEqual({ usine: "tapis", glace: "glace", nuit: "clignotant", neon: "alterne" });
+    expect(JUMP_THEME_NAMES.filter((n) => mechanicOf(n) === null)).toEqual(["foret"]);
   });
 });
 
@@ -57,11 +58,13 @@ describe("morceaux d'un thème", () => {
     for (const def of MODULES) {
       expect(def.tags.includes("tapis"), def.id).toBe(def.theme === "usine");
       expect(def.tags.includes("glace"), def.id).toBe(def.theme === "glace");
+      expect(def.tags.includes("clignotant"), def.id).toBe(def.theme === "nuit");
+      expect(def.tags.includes("alterne"), def.id).toBe(def.theme === "neon");
     }
   });
 
   it("au moins 6 morceaux par mécanique, dont un enchaînement long et une respiration (exigence ≤ 2 partout)", () => {
-    for (const [theme, tag] of [["usine", "tapis"], ["glace", "glace"]] as const) {
+    for (const [theme, tag] of [["usine", "tapis"], ["glace", "glace"], ["nuit", "clignotant"], ["neon", "alterne"]] as const) {
       const own = MODULES.filter((m) => m.theme === theme);
       expect(own.length, theme).toBeGreaterThanOrEqual(6);
       expect(own.every((m) => m.tags.includes(tag))).toBe(true);
@@ -89,6 +92,30 @@ describe("morceaux d'un thème", () => {
     }
     expect(glace).toBeGreaterThanOrEqual(3);
     expect(tapis).toBeGreaterThanOrEqual(3);
+  });
+
+  it("lot 12 : les mutateurs `clignotant` et `alterne` sont réservés à nuit et néon, convertissent vraiment des blocs, et le niveau construit les contient", () => {
+    let blink = 0;
+    let alt = 0;
+    for (const def of MODULES) {
+      for (let v = 0; v < def.variants.length; v++) {
+        for (const m of def.mutations[v]!) {
+          if (m.name !== "clignotant" && m.name !== "alterne") continue;
+          expect(variantTheme(def, v), `${def.id} v${v}`).toBe(m.name === "clignotant" ? "nuit" : "neon");
+          const built = buildModule(def.id, v);
+          if (m.name === "clignotant") {
+            blink++;
+            expect(built.level.blinks.length, `${def.id} v${v}`).toBeGreaterThan(0);
+            expect(built.ascii).toMatch(/clignote /);
+          } else {
+            alt++;
+            expect(built.level.alts.length, `${def.id} v${v}`).toBeGreaterThan(0);
+          }
+        }
+      }
+    }
+    expect(blink).toBeGreaterThanOrEqual(2);
+    expect(alt).toBeGreaterThanOrEqual(2);
   });
 
   it("une variante mutée reste dans la limite de six variantes par morceau", () => {
@@ -121,6 +148,8 @@ describe("le niveau du jour lit le thème", () => {
     // Sur 60 jours il y a au moins un jour de chaque thème à mécanique.
     expect(levels.some((L) => L.theme === "usine")).toBe(true);
     expect(levels.some((L) => L.theme === "glace")).toBe(true);
+    expect(levels.some((L) => L.theme === "nuit")).toBe(true);
+    expect(levels.some((L) => L.theme === "neon")).toBe(true);
   });
 
   it(`quota de signature : au moins ${SIGNATURE_MIN_PIECES} morceaux de la mécanique, de ${SIGNATURE_SHARE_MIN / 10} à ${SIGNATURE_SHARE_MAX / 10} % du temps de l'auteur`, () => {
@@ -156,7 +185,7 @@ describe("le niveau du jour lit le thème", () => {
   });
 
   it("le niveau de secours d'un thème à mécanique tient aussi le quota de signature", () => {
-    for (const theme of ["usine", "glace"] as const) {
+    for (const theme of ["usine", "glace", "nuit", "neon"] as const) {
       const day = DATES.find((d) => jumpThemeForDay(d) === theme)!;
       const f = fallbackLevel(day);
       expect(typeof f, theme).not.toBe("string");
@@ -179,7 +208,7 @@ describe("thème forcé = essai", () => {
   });
 
   it("forcer un autre thème : identifiant suffixé -t<thème>, drapeau d'essai, morceaux de ce thème, règles tenues", () => {
-    for (const forced of ["usine", "glace", "nuit"] as JumpThemeName[]) {
+    for (const forced of ["usine", "glace", "nuit", "neon"] as JumpThemeName[]) {
       const L = dailyLevel(day, forced);
       expect(L.forcedTheme).toBe(true);
       expect(L.theme).toBe(forced);

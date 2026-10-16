@@ -1,0 +1,25 @@
+id: neon-silence
+intention: Un pont de sol alterné sous des pics : il faut sauter une fois pour le faire apparaître, puis courir sans sauter jusqu'au bout.
+etiquettes: precision alterne
+famille: neon-silence
+theme: neon
+format: 3
+paliers: 9 9
+repeter: pont colonnes 10-10
+variante: pont=1
+variante: pont=3
+variante: pont=5
+grille:
+#####################
+#####################
+#####################
+#####################
+#####################
+#####################
+.....................
+.........vvvv........
+.....................
+##AAAABBBBBBBBAAAAA##
+##.................##
+##^^^^^^^^^^^^^^^^^##
+#####################

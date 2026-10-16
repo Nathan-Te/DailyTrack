@@ -1,0 +1,26 @@
+id: neon-pics
+intention: Compter ses sauts : chaque saut inverse les portes et il y a des pics à franchir entre elles.
+etiquettes: precision alterne
+famille: neon-pics
+theme: neon
+format: 3
+paliers: 9 9
+repeter: pa colonnes 8-8
+repeter: pb colonnes 14-14
+variante: pa=2 pb=3
+variante: pa=3 pb=2
+variante: pa=2 pb=2
+variante: pa=3 pb=3
+grille:
+#####################
+#####################
+#####################
+#####################
+#####################
+#####################
+.....A.....B.....B...
+.....A.....B.....B...
+.....A.....B.....B...
+########^#####^######
+#####################
+#####################

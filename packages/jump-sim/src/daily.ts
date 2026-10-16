@@ -186,7 +186,8 @@ export function restGroup(id: string): number {
 /**
  * Lot 11 : le groupe de repos des morceaux d'une mécanique (`theme:`), rangés **à la main** (`npm run repos:modules -w @cdj/jump-sim --
  * --themes`) : le sel ne change pas (les niveaux des thèmes sans mécanique restent ceux d'avant), les groupes gardent la même taille à un
- * près et chaque jour ouvre au moins quatre morceaux ou variantes de chaque mécanique.
+ * près et chaque jour ouvre au moins quatre morceaux ou variantes de chaque mécanique. Lot 12 : nuit et néon (`repos:modules -- --themes` ne
+ * place que les morceaux absents de la table : usine et glace gardent leurs groupes).
  */
 export const THEMED_REST_GROUPS: Readonly<Record<string, number>> = {
   "glace-cheminee": 2,
@@ -196,6 +197,19 @@ export const THEMED_REST_GROUPS: Readonly<Record<string, number>> = {
   "glace-promenade": 4,
   "glace-relais": 2,
   "glace-saut-haut": 1,
+  "neon-cheminee": 2,
+  "neon-couloir": 3,
+  "neon-pics": 4,
+  "neon-relais": 6,
+  "neon-respiration": 5,
+  "neon-silence": 0,
+  "nuit-cheminee": 2,
+  "nuit-escalier": 5,
+  "nuit-marelle": 6,
+  "nuit-opposition": 1,
+  "nuit-pont": 4,
+  "nuit-portes": 1,
+  "nuit-relais": 3,
   "tapis-alternes": 2,
   "tapis-contraire": 6,
   "tapis-escalier": 2,
@@ -576,6 +590,11 @@ export function assemble(picks: readonly { id: string; variant: number }[]): Ass
     annex.push(`section ${p.choice.id} ${col}-${col + built.width - 1}`);
     for (const line of annexText.split("\n")) {
       const words = line.trim().split(/\s+/);
+      // Lot 12 : le cycle des blocs clignotants du morceau, rattaché à sa section (mêmes colonnes, rien à décaler).
+      if (words[0] === "clignote") {
+        annex.push(`clignote ${p.choice.id} ${words.slice(2).join(" ")}`);
+        continue;
+      }
       if (words[0] !== "scie") continue;
       annex.push(
         words
@@ -871,6 +890,31 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
     { id: "chute-pics", variant: 2 },
     { id: "iles-friables", variant: 1 },
     { id: "cheminee", variant: 0 },
+  ],
+  // Lot 12 : choisies par `npm run secours:modules -w @cdj/jump-sim` parmi les tirages valides de 80 dates (thème forcé), les plus proches du centre.
+  nuit: [
+    { id: "mur-seul", variant: 0 },
+    { id: "grande-scie", variant: 3 },
+    { id: "puits-descente", variant: 1 },
+    { id: "marelle", variant: 5 },
+    { id: "nuit-marelle", variant: 0 },
+    { id: "nuit-escalier", variant: 1 },
+    { id: "piliers", variant: 1 },
+    { id: "cheminee-quinconce", variant: 1 },
+    { id: "plongeon", variant: 1 },
+    { id: "nuit-portes", variant: 0 },
+  ],
+  neon: [
+    { id: "neon-cheminee", variant: 1 },
+    { id: "ressort-scie", variant: 1 },
+    { id: "paroi-friable", variant: 2 },
+    { id: "escalier-scies", variant: 0 },
+    { id: "puits", variant: 2 },
+    { id: "petits-trous", variant: 5 },
+    { id: "piliers-scie", variant: 5 },
+    { id: "demi-tour", variant: 3 },
+    { id: "pont-friable", variant: 4 },
+    { id: "neon-couloir", variant: 2 },
   ],
 };
 

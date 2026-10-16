@@ -1,0 +1,28 @@
+id: nuit-pont
+intention: Traverser un long pont de blocs qui s'allument et s'éteignent au-dessus des pics : le franchir d'un trait pendant qu'il est allumé.
+etiquettes: precision clignotant
+famille: nuit-pont
+theme: nuit
+format: 3
+paliers: 8 8
+repeter: long colonnes 2-2
+variante: long=9 cycle=300 solide=210 decalage=0
+variante: long=9 cycle=300 solide=210 decalage=240
+variante: long=10 cycle=270 solide=140 decalage=0
+variante: long=11 cycle=330 solide=170 decalage=250
+variante: long=12 cycle=300 solide=150 decalage=180
+grille:
+.....
+.....
+.....
+.....
+.....
+.....
+.....
+.....
+##b##
+##.##
+##^##
+#####
+
+clignote {cycle} {solide} {decalage}

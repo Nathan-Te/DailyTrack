@@ -2,7 +2,7 @@ id: petits-trous
 intention: Sauter une file de petits trous en courant, sans lever le pied de l'accélérateur.
 etiquettes: respiration
 famille: trous
-mutateurs: sol-friable denivele
+mutateurs: sol-friable denivele alterne
 format: 3
 paliers: 8 8
 repeter: trou colonnes 3-3
@@ -14,6 +14,7 @@ variante: trou=2
 variante: trou=3
 variante: trou=2 +sol-friable
 variante: trou=1 +denivele:2
+variante: trou=1 +alterne
 grille:
 .........................
 .........................
@@ -29,3 +30,6 @@ grille:
 
 zone sol-friable 10-14 8
 zone denivele 22-24
+zone alterne 4-8 8-10 B
+zone alterne 10-14 8-10 A
+zone alterne 16-20 8-10 B
