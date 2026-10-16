@@ -1,22 +1,22 @@
 {
-  "_": "Durée de chaque spec de DailyJump dans Chromium (s), un test à la fois : compose les parts Chromium de la CI (scripts/e2e-parts.mjs, lot 3c). Première valeur : mesure locale (Chromium sans GPU, 100 tests en 5,6 min) ; à remplacer par les durées « jump/… » du résumé du run `e2e` de la CI. Les outils de mesure sont sautés hors MESURE=1.",
+  "_": "Durée de chaque spec de DailyJump dans Chromium (s), un test à la fois, mesurée en CI (run 38916375876, résumé du job `e2e` : lignes « jump/… ») : compose les parts Chromium de la CI (scripts/e2e-parts.mjs, lot 3c). Les outils de mesure sont sautés hors MESURE=1.",
   "secondes": {
-    "animation.spec.ts": 8,
-    "arrivee.spec.ts": 38,
-    "carnage.spec.ts": 13,
-    "chargement.spec.ts": 17,
-    "dangers.spec.ts": 63,
-    "jour.spec.ts": 22,
+    "animation.spec.ts": 6,
+    "arrivee.spec.ts": 37,
+    "carnage.spec.ts": 11,
+    "chargement.spec.ts": 10,
+    "dangers.spec.ts": 31,
+    "jour.spec.ts": 19,
     "mesure-carnage.spec.ts": 0,
     "mesure-chargement.spec.ts": 0,
     "mesure-themes.spec.ts": 0,
-    "mobile.spec.ts": 58,
-    "modules.spec.ts": 26,
+    "mobile.spec.ts": 53,
+    "modules.spec.ts": 17,
     "replay.spec.ts": 1,
-    "sensations.spec.ts": 19,
-    "smoke.spec.ts": 6,
-    "surfaces.spec.ts": 32,
-    "themes.spec.ts": 28,
-    "variete.spec.ts": 5
+    "sensations.spec.ts": 15,
+    "smoke.spec.ts": 5,
+    "surfaces.spec.ts": 18,
+    "themes.spec.ts": 16,
+    "variete.spec.ts": 2
   }
 }
