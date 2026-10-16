@@ -22,7 +22,7 @@ Les ≈ 100 e2e de DailyJump suivent les règles de CI de DailyTrack (retouche 2
 | jump webkit 1/1 | 2 min 53 s |
 | DailyTrack (12 parts, inchangées) | 1 à 12 min |
 
-Les parts DailyJump finissent ≈ 8 min avant la plus longue part DailyTrack : elles ne sont pas sur le chemin critique. Durées Chromium par fichier (essais ratés compris) relevées dans le résumé du job `e2e` et recopiées dans `apps/jump/e2e/durees.json` (≈ 4,5 min au total, réparties 1/2 et 2/2).
+Les parts DailyJump finissent ≈ 8 min avant la plus longue part DailyTrack : elles ne sont pas sur le chemin critique. Durées Chromium par fichier (essais ratés compris) relevées dans le résumé du job `e2e` et recopiées dans `apps/jump/e2e/durees.json` (≈ 4 min au total, réparties 1/2 et 2/2).
 
 ## Durée du push au verdict
 - **Avant** : 11 min 19 s (run [38913401908](https://github.com/Nathan-Te/DailyTrack/actions/runs/38913401908), `main`, lot 11 ; 10 min 26 s au lot 8c, run 38881324836). Les e2e DailyJump y tournaient à la suite de la part 1 (Chromium +2 min ; Firefox +45 s ; WebKit +1 min 46 s).
@@ -35,5 +35,5 @@ Les parts DailyJump finissent ≈ 8 min avant la plus longue part DailyTrack : e
 **Décisions / écarts**
 1. Branche : la session imposait `main` ; une PR brouillon ne peut pas en partir, j'ai poussé `lot-3c-ci-dailyjump`.
 2. Hors liste autorisée, deux scripts de CI ont été étendus sans changer leur comportement pour DailyTrack : `scripts/e2e-parts.mjs` (jeu déduit du préfixe `jump-` du projet) et `scripts/e2e-summary.mjs` (durées `jump/…`), plus `scripts/e2e-merge.config.mjs` (nouveau). À toi de valider.
-3. Le nombre de parts DailyJump (2 pour Chromium, 1 pour les autres) est large : une seule part Chromium (≈ 4,5 min) suffirait. Gardé à 2 pour la marge ; à réduire si tu veux moins de jobs.
+3. Le nombre de parts DailyJump (2 pour Chromium, 1 pour les autres) est large : une seule part Chromium (≈ 4 min) suffirait. Gardé à 2 pour la marge ; à réduire si tu veux moins de jobs.
 4. Le test `e2eParts.test.ts` de DailyTrack lit le nombre de parts dans `ci.yml` par la première occurrence de `browser: chromium, shard:` : les entrées DailyJump s'écrivent donc dans l'ordre `suite, shard, browser` (commentaire dans `ci.yml`).
