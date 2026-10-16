@@ -62,6 +62,19 @@ jobs:
           echo "### Aperçu : ${url}" >> "$GITHUB_STEP_SUMMARY"
           echo "### Aperçu DailyJump : ${url}jump/?debug" >> "$GITHUB_STEP_SUMMARY"
 
+      # Lot 3c : les niveaux figés de DailyJump (apps/jump/public/levels/, lot 10) doivent être dans le site publié, pour main comme pour un
+      # aperçu de branche : le jeu les lit à côté de la page (`levels/AAAA-MM-JJ.json`) et, s'ils manquent, un jour déjà joué changerait de niveau.
+      - name: Vérifier les niveaux figés publiés
+        run: |
+          if [ "${GITHUB_REF_NAME}" = "main" ]; then dest="site/jump"; else dest="site/b/$(echo "${GITHUB_REF_NAME}" | tr '/' '-')/jump"; fi
+          missing=0
+          for f in apps/jump/public/levels/*.json; do
+            [ -e "$f" ] || continue
+            cmp -s "$f" "$dest/levels/$(basename "$f")" || { echo "::error::niveau figé absent ou différent du site publié : $dest/levels/$(basename "$f")"; missing=1; }
+          done
+          [ "$missing" = 0 ] && echo "niveaux figés publiés : $(ls apps/jump/public/levels | wc -l) fichier(s) dans $dest/levels" >> "$GITHUB_STEP_SUMMARY"
+          exit $missing
+
       - name: Publier
         working-directory: site
         run: |

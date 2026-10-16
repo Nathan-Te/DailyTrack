@@ -30,10 +30,14 @@ export function collectTests(report) {
   return out;
 }
 
-/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. */
+/** Secondes passées par fichier dans Chromium (tous essais), triées par nom. Les fichiers de DailyJump (projet `jump-chromium`, lot 3c) sont préfixés « jump/ ». */
 export function chromiumSeconds(tests) {
   const sum = {};
-  for (const t of tests) if (t.project === "chromium") sum[t.file] = (sum[t.file] ?? 0) + t.ms;
+  for (const t of tests) {
+    if (t.project !== "chromium" && t.project !== "jump-chromium") continue;
+    const key = t.project === "jump-chromium" ? `jump/${t.file.split("/").pop()}` : t.file;
+    sum[key] = (sum[key] ?? 0) + t.ms;
+  }
   return Object.fromEntries(Object.keys(sum).sort().map((f) => [f, Math.round(sum[f] / 1000)]));
 }
 
@@ -61,7 +65,7 @@ export function summarize(report, { failOnFlaky = false } = {}) {
   // Durées Chromium par fichier (retouche 31b) : de quoi tenir à jour apps/web/e2e/durees.json, qui compose les parts de la CI.
   const perFile = chromiumSeconds(tests);
   if (Object.keys(perFile).length) {
-    lines.push("", "<details><summary>Durées Chromium par fichier (s, essais ratés compris) — pour apps/web/e2e/durees.json</summary>", "", "```json");
+    lines.push("", "<details><summary>Durées Chromium par fichier (s, essais ratés compris) — pour apps/web/e2e/durees.json (et, préfixés « jump/ », apps/jump/e2e/durees.json)</summary>", "", "```json");
     lines.push(JSON.stringify(perFile, null, 2), "```", "</details>");
   }
   const warnings = flaky.map((t) => `::warning title=Test instable (${t.project})::${t.file} › ${t.title}`);

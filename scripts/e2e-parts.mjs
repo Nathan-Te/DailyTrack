@@ -1,5 +1,6 @@
 // Répartition des specs e2e entre les parts de la CI, par DURÉE (retouche 31b). Utilisé par .github/workflows/ci.yml pour Chromium.
 //   node scripts/e2e-parts.mjs 3/8 chromium > liste.txt   → liste de tests pour `playwright test --test-list liste.txt`
+//   node scripts/e2e-parts.mjs 1/2 jump-chromium > liste.txt   → idem pour les specs de DailyJump (lot 3c)
 //
 // Pourquoi : `--shard` de Playwright coupe la liste des tests par NOMBRE, fichier par fichier, dans l'ordre alphabétique. Ajouter un spec
 // (le lot 31 en a ajouté onze) déplace toutes les frontières : la part 7 de Chromium s'est retrouvée vide, la part 8 a reçu les miniatures
@@ -13,6 +14,10 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const E2E = join(ROOT, "apps/web/e2e");
+// Lot 3c : DailyJump a ses specs et ses durées à lui (apps/jump/e2e/durees.json). Son projet Playwright de CI s'appelle `jump-<navigateur>`
+// (apps/jump/playwright.config.ts) : le préfixe du projet dit de quel jeu il s'agit.
+const E2E_JUMP = join(ROOT, "apps/jump/e2e");
+export const gameOf = (project) => (project.startsWith("jump-") ? { dir: E2E_JUMP, name: "jump" } : { dir: E2E, name: "web" });
 export const DEFAULT_S = 60;
 
 /** Les specs du dossier e2e (noms relatifs au dossier, comme Playwright les écrit dans une liste de tests). */
@@ -53,9 +58,10 @@ function main(argv) {
     process.exit(2);
   }
   const [current, total] = [+m[1], +m[2]];
-  const durations = JSON.parse(readFileSync(join(E2E, "durees.json"), "utf8")).secondes;
-  const files = specFiles();
-  for (const f of files) if (!(f in durations)) console.error(`e2e-parts : ${f} absent de apps/web/e2e/durees.json, compté ${DEFAULT_S} s`);
+  const game = gameOf(project);
+  const durations = JSON.parse(readFileSync(join(game.dir, "durees.json"), "utf8")).secondes;
+  const files = specFiles(game.dir);
+  for (const f of files) if (!(f in durations)) console.error(`e2e-parts : ${f} absent de apps/${game.name}/e2e/durees.json, compté ${DEFAULT_S} s`);
   const parts = assignParts(files, durations, total);
   const part = parts[current - 1];
   console.error(`e2e-parts : part ${current}/${total} ≈ ${Math.round(part.load)} s — ${part.files.join(", ")}`);
