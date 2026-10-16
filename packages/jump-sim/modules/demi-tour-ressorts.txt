@@ -7,7 +7,7 @@ mutateurs: sol-friable plafond denivele
 format: 3
 paliers: 9 11
 repeter: ecart colonnes 49-49
-variante: ecart=0 +denivele:2
+variante: ecart=0 +denivele:1
 variante: ecart=0
 variante: ecart=0 +sol-friable
 grille:

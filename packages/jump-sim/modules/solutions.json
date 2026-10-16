@@ -298,99 +298,99 @@
   "cheminee-quinconce": {
    "variants": [
     {
-     "grid": "337e65f4",
+     "grid": "40acf130",
      "arret": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowANIDbho-dQp2Cl4kCGxFIT0uCmYYVCpm-gJGmgo-kgMmogM28gIO-gY",
-      "ticks": 702,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowAMoDXgoeClZFIm4KdiQINGUJnQEKXghcEo4BggNWygg-igMuigM-8gI2ygY",
+      "ticks": 678,
       "entryTick": 0,
-      "exitTick": 695,
-      "fastest": 695,
-      "rapide": 675,
+      "exitTick": 671,
+      "fastest": 671,
+      "rapide": 653,
       "gigue": [
-       995,
-       970,
-       770
+       920,
+       930,
+       650
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowBJIDzgEaTj0KTj0RHTwJjQEITDUJLTYIXAltNDbyAn7yCTaSAx6CAzbqAi7qBg",
-      "ticks": 698,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowBIoDlgEKbk0KXiUJNTwJrQEILDUJHUYIXAltVCbCAmaCCTaSAx6CAzbqAjb6Bg",
+      "ticks": 677,
       "entryTick": 17,
-      "exitTick": 691,
-      "fastest": 674,
-      "rapide": 647,
+      "exitTick": 670,
+      "fastest": 653,
+      "rapide": 625,
       "gigue": [
-       995,
-       985,
-       745
+       1000,
+       970,
+       765
       ],
       "raccord": 1000,
       "exigence": 3
      }
     },
     {
-     "grid": "789d5f6d",
+     "grid": "c04fe696",
      "arret": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxAPIDbipuRRJ-Ck5ECCxlCaUBCoYBCl4VCiZkggNm0glOigM28gJWigM-0gY",
-      "ticks": 719,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxANIDZgoOGk51El4iRjQILHUJPVYSZghkCn6KA16iCE6KAy6CAzbyAjbqBg",
+      "ticks": 680,
       "entryTick": 0,
-      "exitTick": 712,
-      "fastest": 712,
-      "rapide": 683,
+      "exitTick": 673,
+      "fastest": 673,
+      "rapide": 653,
+      "gigue": [
+       995,
+       895,
+       590
+      ],
+      "raccord": null,
+      "exigence": 5
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxBIIDzgE6Pl0KFjxFCUUkCY0BCCxFES1uCDwJDTQ2ggNmoge2AeIDNvICRooDLsoG",
+      "ticks": 680,
+      "entryTick": 17,
+      "exitTick": 673,
+      "fastest": 656,
+      "rapide": 625,
       "gigue": [
        1000,
+       960,
+       870
+      ],
+      "raccord": 1000,
+      "exigence": 2
+     }
+    },
+    {
+     "grid": "602357f8",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToyANIDngEKHmUKXgpeLAg0ZQltDhJ2CHQqXoIDTtIIRooDJooDRoIDFvIG",
+      "ticks": 676,
+      "entryTick": 0,
+      "exitTick": 669,
+      "fastest": 669,
+      "rapide": 653,
+      "gigue": [
        1000,
+       995,
        915
       ],
       "raccord": null,
       "exigence": 2
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxBPoCpgESFkwVEp4BGlYtCR1GCl4lGmYSHmQovgMipgHCCUaCAzaKAz6yAyaaBg",
-      "ticks": 692,
+      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToyBIIDzgEiNnUKLoQBCXUMEYUBCEwVCTUuKDwJLVQWggNm8ghG-gImigM-igMO2gY",
+      "ticks": 681,
       "entryTick": 17,
-      "exitTick": 685,
-      "fastest": 668,
-      "rapide": 655,
-      "gigue": [
-       915,
-       870,
-       545
-      ],
-      "raccord": 1000,
-      "exigence": 5
-     }
-    },
-    {
-     "grid": "e5a5410c",
-     "arret": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToyANIDngEKLpUBEoYBCl40CDRtGUUWCl4IXFJGggNWkgpGigMWigM--gIu-gY",
-      "ticks": 710,
-      "entryTick": 0,
-      "exitTick": 703,
-      "fastest": 703,
-      "rapide": 675,
+      "exitTick": 674,
+      "fastest": 657,
+      "rapide": 625,
       "gigue": [
        1000,
        965,
-       810
-      ],
-      "raccord": null,
-      "exigence": 3
-     },
-     "elan": {
-      "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToyBPoCzgEiPkUSLjQtETUsCa0BECw1ESU2EFQxDSxGkgN22gk-ggMWigM--gI24gY",
-      "ticks": 694,
-      "entryTick": 17,
-      "exitTick": 687,
-      "fastest": 670,
-      "rapide": 647,
-      "gigue": [
-       940,
-       900,
-       795
+       845
       ],
       "raccord": 1000,
       "exigence": 3
@@ -467,34 +467,35 @@
      }
     },
     {
-     "grid": "4b6dee9e",
+     "grid": "2f552cc5",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgC6A84BKlw1MMUBkgGVAWJmggMwNvoD",
-      "ticks": 315,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgDKA_YBChxtRAquAQoOHG0WdUA2ggMe6gQ",
+      "ticks": 310,
       "entryTick": 0,
-      "exitTick": 308,
-      "fastest": 308,
+      "exitTick": 304,
+      "fastest": 304,
       "gigue": [
-       165,
-       60,
-       15
+       980,
+       940,
+       720
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 3
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgT6AtYBGHQ9cI4BEhS9AhBUogMewgQ",
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgSCA94BKiRlYpYBGsUBJokBTJIDFtoE",
       "ticks": 310,
       "entryTick": 17,
       "exitTick": 303,
-      "fastest": 291,
+      "fastest": 286,
+      "rapide": 279,
       "gigue": [
        1000,
-       990,
-       890
+       945,
+       800
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -565,34 +566,34 @@
      }
     },
     {
-     "grid": "49c8aab6",
+     "grid": "7a65ef39",
      "arret": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQAKxgIpDI4DGp4DEf4EEh7qBQ",
-      "ticks": 329,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQAargJBhgMipgMKjgG6At4ECh6iBQ",
+      "ticks": 372,
       "entryTick": 0,
-      "exitTick": 323,
-      "fastest": 320,
+      "exitTick": 365,
+      "fastest": 363,
       "gigue": [
        1000,
-       995,
-       915
+       1000,
+       1000
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 1
      },
      "elan": {
-      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQTqAcYBCo4BCi5kYdYFWg",
-      "ticks": 202,
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MQTyAcYBCj4KPj0KVhwdCWUKtgGiBA",
+      "ticks": 198,
       "entryTick": 17,
-      "exitTick": 196,
-      "fastest": 179,
+      "exitTick": 191,
+      "fastest": 174,
       "gigue": [
        1000,
-       635,
-       430
+       1000,
+       805
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 3
      }
     },
     {
@@ -1077,34 +1078,34 @@
   "demi-tour-ressorts": {
    "variants": [
     {
-     "grid": "8de16761",
+     "grid": "c324c05b",
      "arret": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowAJoBjgGKFxgZCjAyEFIZIlEgGkASGTowQiCaAZgBEiAiGRg6EBkKEKYCwgY",
-      "ticks": 707,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowAIoBlgHCFwkSIDIYEhkiGSJRKBo4ChlCEDI4CbIBiAESMBoZGDIYGRoIjgGaBg",
+      "ticks": 684,
       "entryTick": 0,
-      "exitTick": 700,
-      "fastest": 700,
+      "exitTick": 677,
+      "fastest": 678,
       "gigue": [
-       600,
-       510,
-       440
+       745,
+       620,
+       625
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowBKoCDqoaKHEaUFo4QWJgogGGAuoG",
-      "ticks": 702,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowBLICDtIaaUIQItgBMoABKghaTZ4B4gU",
+      "ticks": 678,
       "entryTick": 17,
-      "exitTick": 695,
-      "fastest": 679,
+      "exitTick": 671,
+      "fastest": 655,
       "gigue": [
-       900,
-       615,
-       375
+       845,
+       705,
+       725
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 3
      }
     },
     {
@@ -1139,35 +1140,35 @@
      }
     },
     {
-     "grid": "b1a45e5d",
+     "grid": "b57b0ecc",
      "arret": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoyALIBfoIXECEKMDIwGhESKRpBUAoQWhESIDoYSaIBcBoQGiEQMhgZGhgK5gHSBg",
-      "ticks": 705,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoyAJoBhgHyFhFaMCooIhE6UTASQCIJKjBKCAmqAbABGhASGRgyGBkaCM4B4gU",
+      "ticks": 685,
       "entryTick": 0,
-      "exitTick": 699,
-      "fastest": 700,
+      "exitTick": 678,
+      "fastest": 678,
       "gigue": [
-       580,
-       475,
-       375
+       870,
+       900,
+       760
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 3
      },
      "elan": {
-      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoyBLICDrIaYHFSOApIEogBaiDKASWuAfoG",
-      "ticks": 711,
+      "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoyBMICDvIZQHlaYAqAAUIoajhKRdYB2gU",
+      "ticks": 685,
       "entryTick": 17,
-      "exitTick": 704,
-      "fastest": 687,
-      "rapide": 677,
+      "exitTick": 678,
+      "fastest": 661,
+      "rapide": 655,
       "gigue": [
-       930,
-       690,
-       575
+       990,
+       825,
+       675
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 4
      }
     }
    ]
@@ -1832,7 +1833,6 @@
       "entryTick": 17,
       "exitTick": 694,
       "fastest": 677,
-      "rapide": 677,
       "gigue": [
        1000,
        885,
@@ -1850,7 +1850,6 @@
       "entryTick": 0,
       "exitTick": 705,
       "fastest": 705,
-      "rapide": 705,
       "gigue": [
        1000,
        975,
@@ -4626,7 +4625,6 @@
       "entryTick": 0,
       "exitTick": 639,
       "fastest": 639,
-      "rapide": 639,
       "gigue": [
        1000,
        975,
@@ -4641,7 +4639,6 @@
       "entryTick": 17,
       "exitTick": 629,
       "fastest": 612,
-      "rapide": 612,
       "gigue": [
        1000,
        965,
@@ -4652,34 +4649,34 @@
      }
     },
     {
-     "grid": "ca4b4cce",
+     "grid": "d9dc709e",
      "arret": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxAJoBhgGSAx7aA36yA9YB6gOuBDKWAdoCXqIClgGqAl7yBQ",
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxAOIBNpoDDuoCvgGaBI4FKs4B4gKGAdICXqIC9gHCAka6BQ",
       "ticks": 646,
       "entryTick": 0,
       "exitTick": 639,
       "fastest": 639,
       "gigue": [
-       565,
-       285,
-       135
+       1000,
+       860,
+       605
       ],
       "raccord": null,
-      "exigence": 0
+      "exigence": 4
      },
      "elan": {
-      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxBMoC1gUqdsoDtgUylgUSZqICZqIClgHqAja6BQ",
+      "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxBJoCpgVKrgGCBN4EKvYECm66Ama6AuYBwgImwgU",
       "ticks": 635,
       "entryTick": 17,
       "exitTick": 629,
       "fastest": 612,
       "gigue": [
-       545,
-       335,
-       205
+       1000,
+       950,
+       795
       ],
       "raccord": 1000,
-      "exigence": 0
+      "exigence": 3
      }
     },
     {
@@ -4690,7 +4687,6 @@
       "entryTick": 0,
       "exitTick": 639,
       "fastest": 639,
-      "rapide": 639,
       "gigue": [
        955,
        820,
@@ -4705,7 +4701,6 @@
       "entryTick": 17,
       "exitTick": 629,
       "fastest": 612,
-      "rapide": 612,
       "gigue": [
        945,
        760,
@@ -4738,7 +4733,6 @@
       "entryTick": 17,
       "exitTick": 629,
       "fastest": 612,
-      "rapide": 612,
       "gigue": [
        1000,
        975,
@@ -7084,54 +7078,23 @@
      }
     },
     {
-     "grid": "cbc9be09",
-     "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEA4gMmmgQcVuIDJoIEhgGKCA",
-      "ticks": 417,
-      "entryTick": 0,
-      "exitTick": 410,
-      "fastest": 410,
-      "gigue": [
-       315,
-       105,
-       10
-      ],
-      "raccord": null,
-      "exigence": 0
-     },
-     "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEEugFm4gMOigSWAYIExgPaBg",
-      "ticks": 406,
-      "entryTick": 17,
-      "exitTick": 399,
-      "fastest": 382,
-      "gigue": [
-       410,
-       310,
-       240
-      ],
-      "raccord": 1000,
-      "exigence": 0
-     }
-    },
-    {
      "grid": "719561ed",
      "arret": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIAogQ-6gROkgWmAcoH",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEAsgQ22gRWogV26gc",
       "ticks": 384,
       "entryTick": 0,
       "exitTick": 377,
       "fastest": 377,
       "gigue": [
        1000,
-       975,
-       760
+       920,
+       755
       ],
       "raccord": null,
       "exigence": 3
      },
      "elan": {
-      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIE2gM26gRO-gSOAfIH",
+      "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEE2gM28gRGkgWWAdIH",
       "ticks": 373,
       "entryTick": 17,
       "exitTick": 366,
@@ -7139,10 +7102,10 @@
       "gigue": [
        1000,
        925,
-       700
+       745
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 3
      }
     }
    ]

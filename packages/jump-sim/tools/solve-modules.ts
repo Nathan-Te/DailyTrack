@@ -149,8 +149,10 @@ function runJob(job: Job): JobResult {
         inputs = h;
         span = sp;
         margins = mg;
-        rapide = any;
         fastest = sp.exitTick - sp.entryTick;
+        // Aussi rapide que la plus rapide (mieux durcie seulement) : rien de plus lent, pas de `rapide` à noter.
+        if (fastest > any) rapide = any;
+        else fastest = any;
         break;
       }
     }
