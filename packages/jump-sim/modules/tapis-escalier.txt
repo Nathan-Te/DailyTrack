@@ -1,0 +1,32 @@
+id: tapis-escalier
+intention: Gravir un escalier dont chaque marche est un tapis qui recule : sauter de marche en marche avant d'être ramené en arrière.
+etiquettes: tapis precision vertical
+famille: tapis-escalier
+theme: usine
+mutateurs: denivele
+format: 3
+paliers: 12 8
+repeter: marche colonnes 15-15
+variante: marche=1
+variante: marche=2
+variante: marche=3
+variante: marche=2 +denivele:2
+grille:
+................
+................
+................
+................
+................
+................
+................
+................
+................
+............[[[[
+........[[[[####
+....[[[[########
+[[[[############
+################
+################
+################
+
+zone denivele 14-15

@@ -10,6 +10,8 @@ import { idiv } from "./idiv";
 //   `^` `v` `<` `>` pics, pointe vers le haut / le bas / la gauche / la droite (tuile traversable, boîte mortelle réduite)
 //   `o` petite scie fixe (rayon ≈ ½ tuile) · `O` grande scie fixe (rayon ≈ 1,5 tuile), centrées sur leur tuile (traversable)
 //   `x` bloc friable (plein, cède `crumbleDelay` pas après le premier contact) · `*` ressort (plein, lance vers le haut qui s'y pose)
+//   `[` tapis roulant vers la gauche · `]` tapis roulant vers la droite · `~` glace (lot 11) : blocs pleins dont seule la **face du dessus**
+//       agit (le tapis fait avancer, la glace fait glisser) ; leurs murs et leur dessous sont ceux d'un bloc ordinaire
 //   `C` point de passage (tuile vide repérée, posée sur un sol sûr ; un seul par colonne) : le centre du personnage qui **franchit sa colonne**
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
@@ -32,11 +34,20 @@ export const TILE_SPIKE_UP = 4;
 export const TILE_SPIKE_DOWN = 5;
 export const TILE_SPIKE_LEFT = 6;
 export const TILE_SPIKE_RIGHT = 7;
-export type Tile = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+/** Lot 11 : tapis roulant vers la gauche `[`, vers la droite `]`, glace `~` (blocs pleins à face du dessus particulière). */
+export const TILE_BELT_LEFT = 8;
+export const TILE_BELT_RIGHT = 9;
+export const TILE_ICE = 10;
+export type Tile = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 
-/** Vrai pour une tuile qui arrête le personnage : bloc plein, bloc friable (pas encore tombé), ressort. */
+/** Vrai pour une tuile qui arrête le personnage : bloc plein, bloc friable (pas encore tombé), ressort, tapis, glace. */
 export function isSolidTile(t: number): boolean {
-  return t >= TILE_SOLID && t <= TILE_SPRING;
+  return (t >= TILE_SOLID && t <= TILE_SPRING) || t >= TILE_BELT_LEFT;
+}
+
+/** Vrai pour un tapis roulant (l'un ou l'autre sens). */
+export function isBeltTile(t: number): boolean {
+  return t === TILE_BELT_LEFT || t === TILE_BELT_RIGHT;
 }
 
 /** Vrai pour un pic (n'importe quelle orientation). */
@@ -134,6 +145,9 @@ const GRID_CODES: Record<string, number> = {
   O: TILE_EMPTY,
   x: TILE_CRUMBLE,
   "*": TILE_SPRING,
+  "[": TILE_BELT_LEFT,
+  "]": TILE_BELT_RIGHT,
+  "~": TILE_ICE,
   "^": TILE_SPIKE_UP,
   v: TILE_SPIKE_DOWN,
   "<": TILE_SPIKE_LEFT,

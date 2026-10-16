@@ -1,0 +1,30 @@
+id: tapis-contraire
+intention: Remonter un tapis roulant qui recule en passant sous des scies qui descendent à tour de rôle : avancer au bon moment, sans se laisser ramener.
+etiquettes: tapis scie
+famille: tapis-contraire
+theme: usine
+mutateurs: denivele
+format: 3
+paliers: 9 9
+repeter: long colonnes 8-8
+variante: long=1 cycle=240
+variante: long=3 cycle=240
+variante: long=1 cycle=180
+variante: long=3 cycle=300 +denivele:2
+grille:
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+[[[[[[[[[[[[[[[[[[
+##################
+##################
+
+scie s1 1 {cycle} aller-retour 5,3 5,8
+scie s2 1 {cycle} aller-retour 12,8 12,3
+zone denivele 15-17

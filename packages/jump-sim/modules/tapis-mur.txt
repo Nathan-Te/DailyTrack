@@ -1,0 +1,33 @@
+id: tapis-mur
+intention: Se laisser emporter par un tapis jusqu'au pied d'un mur, puis le remonter saut mural après saut mural sans retomber sur le tapis.
+etiquettes: tapis mural vertical
+famille: tapis-mur
+theme: usine
+mutateurs: denivele
+format: 3
+paliers: 13 6
+repeter: haut rangees 8-8
+repeter: long colonnes 2-2
+variante: haut=1 long=1
+variante: haut=2 long=2
+variante: haut=3 long=1
+variante: haut=1 long=3 +denivele:2
+grille:
+............
+............
+............
+............
+............
+............
+......######
+......######
+......######
+......######
+......######
+......######
+......######
+]]]]]]######
+############
+############
+
+zone denivele 9-11

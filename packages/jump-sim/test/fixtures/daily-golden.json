@@ -1,9 +1,9 @@
 {
   "jumpSimVersion": 3,
-  "jumpGeneratorVersion": 5,
+  "jumpGeneratorVersion": 6,
   "days": {
     "2026-10-16": {
-      "id": "jour-2026-10-16-g5",
+      "id": "jour-2026-10-16-g6",
       "number": 1,
       "hash": "8e686843",
       "width": 305,
@@ -38,10 +38,10 @@
         ]
       },
       "chosen": 5,
-      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc1ANIDngEKHmUKXgpeLAg0ZQltDhJ2CHQqXoIDTtIIRooDJooDRoIDFtIJDroZbqoCjgGSA16qAo4B6gJuigg-2gU2qgdmggO2BhJmggRW-gaGAhpMJQpeCj4kIYYFIg6iAsEBWOIHhgHiBFb6B3aaBG7iCc4BSFmSBiaqA3ihAeIBQOIBJIoGTrIERvoFJroG"
+      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc2ANIDngEKHmUKXgpeLAg0ZQltDhJ2CHQqXoIDTtIIRooDJooDRoIDFtIJDroZbqoCjgGSA16qAo4B6gJuigg-2gU2qgdmggO2BhJmggRW-gaGAhpMJQpeCj4kIYYFIg6iAsEBWOIHhgHiBFb6B3aaBG7iCc4BSFmSBiaqA3ihAeIBQOIBJIoGTrIERvoFJroG"
     },
     "2026-10-25": {
-      "id": "jour-2026-10-25-g5",
+      "id": "jour-2026-10-25-g6",
       "number": 10,
       "hash": "dcd9993c",
       "width": 284,
@@ -75,10 +75,10 @@
         ]
       },
       "chosen": 1,
-      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc1ANIBbpIDXoIDZtIDpgHiBG6iBkbaA2bCCbYCGp4DGq4BigKWAYIC9gdKngV6vgRq3gRingQijgHKAmbKAu4BsgJO4gRmggO2BpICaHR9Gq4BSvYCCm5cfQouuhY20g5Wugx4LI0BDgqmBwpW8gGGAdoDjgHiBibiBG7qB37aBQ"
+      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc2ANIBbpIDXoIDZtIDpgHiBG6iBkbaA2bCCbYCGp4DGq4BigKWAYIC9gdKngV6vgRq3gRingQijgHKAmbKAu4BsgJO4gRmggO2BpICaHR9Gq4BSvYCCm5cfQouuhY20g5Wugx4LI0BDgqmBwpW8gGGAdoDjgHiBibiBG7qB37aBQ"
     },
     "2026-11-03": {
-      "id": "jour-2026-11-03-g5",
+      "id": "jour-2026-11-03-g6",
       "number": 19,
       "hash": "8279ed47",
       "width": 300,
@@ -112,10 +112,10 @@
         ]
       },
       "chosen": 2,
-      "code": "AQMSam91ci0yMDI2LTExLTAzLWc1AMoDPvoERtoDbsoQLgouqgX2AgqOAwquAwquAwrOBRpG8gJe2gMu2gNGggPeA5IHbtoChgQK3gbaAjbyBEaSBZYBughu0gNGwgWOAbIDdvICpgGqA36CA2a6BeYBEg4cTUwipgESFiRFQUaSAj6yBkaKAn76A26KCaYFMpYBkgheqgGGBgqOAfID3gGiAybaBA"
+      "code": "AQMSam91ci0yMDI2LTExLTAzLWc2AMoDPvoERtoDbsoQLgouqgX2AgqOAwquAwquAwrOBRpG8gJe2gMu2gNGggPeA5IHbtoChgQK3gbaAjbyBEaSBZYBughu0gNGwgWOAbIDdvICpgGqA36CA2a6BeYBEg4cTUwipgESFiRFQUaSAj6yBkaKAn76A26KCaYFMpYBkgheqgGGBgqOAfID3gGiAybaBA"
     },
     "2026-12-25": {
-      "id": "jour-2026-12-25-g5",
+      "id": "jour-2026-12-25-g6",
       "number": 71,
       "hash": "75c267f6",
       "width": 294,
@@ -150,83 +150,82 @@
         ]
       },
       "chosen": 2,
-      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc1AKoEhgU6lgGqBMYBqgfGAdICFrIDpgGyAx7SBX76CaYCSvYCKrYDCv4CMrYDIoYBugVGsgRWqgYmogU2kggO2gQW4gQulQEKxgVCvggSbqoD1gIKLqoIrgGiBqYB6gdW8gGGAdoDjgHCCOYBEg4cTUwipgESFiRFQUaSAj76CD7aBTaiCb4BmgiOAcoF"
+      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc2AKoEhgU6lgGqBMYBqgfGAdICFrIDpgGyAx7SBX76CaYCSvYCKrYDCv4CMrYDIoYBugVGsgRWqgYmogU2kggO2gQW4gQulQEKxgVCvggSbqoD1gIKLqoIrgGiBqYB6gdW8gGGAdoDjgHCCOYBEg4cTUwipgESFiRFQUaSAj76CD7aBTaiCb4BmgiOAcoF"
     },
     "2027-03-28": {
-      "id": "jour-2027-03-28-g5",
+      "id": "jour-2027-03-28-g6",
       "number": 164,
-      "hash": "75e9f4d0",
-      "width": 286,
-      "height": 53,
+      "hash": "689fed45",
+      "width": 319,
+      "height": 56,
       "pieces": [
-        "iles-scie:4",
-        "chute-pics:0",
-        "ressort-mur:2",
-        "paroi-friable:2",
-        "ressort-scie:1",
-        "puits-descente:1",
-        "tunnel:0",
-        "escalier-friable:0",
-        "lucarne:1",
-        "descente-scies:1",
-        "cheminee:2"
+        "escalier-scies:2",
+        "ressort-mur:1",
+        "iles-friables:2",
+        "tremplin:1",
+        "tapis-respiration:1",
+        "tapis-mur:1",
+        "pont-patrouille:3",
+        "tapis-contraire:2",
+        "toboggan:0",
+        "cheminee-pics:0"
       ],
-      "authorTicks": 3559,
+      "authorTicks": 3620,
       "medals": {
-        "author": 3559,
-        "gold": 3915,
-        "silver": 4627,
-        "bronze": 5695
+        "author": 3620,
+        "gold": 3982,
+        "silver": 4706,
+        "bronze": 5792
       },
       "exigence": {
         "sum": 26,
-        "rate": 525,
+        "rate": 517,
         "thirds": [
-          11,
-          28,
+          30,
+          22,
           36
         ]
       },
       "chosen": 0,
-      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc1ALIBXuID_gLKAk6iBiaqA3ihAeIBQOIBJOoOtgIangMargGKApYBggL2B3oOmgsOogLBAVjiB4YB4gRW-gd2mgRu0ghuqgPWAgou8gVuqgKOAZIDXqoCjgHqAm66BU6SAnbyA2b6FDbSDlaqDOYBCh4cTUQKtgESFiyFAQqGAZII"
+      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc2ANoB9gQqhgGKA3bSAqYBwgKWBRJ2sgLmBBrOBApu8hGGAcIDRoIDRrIDpgHyBpYB8gaGAZIKlgGSBGbiA2bKBC7SAjGKAb4CEpYDCqYBwgieBXq-BGreBGKeBCKOAcoCZsoC7gGyAk7iBD4qmQEKzAFShgHiA6YB4gIusgZGwgRuogWGAbIJaHR9Gq4BSvYCCm5cfQouigg"
     },
     "2027-06-21": {
-      "id": "jour-2027-06-21-g5",
+      "id": "jour-2027-06-21-g6",
       "number": 249,
-      "hash": "877fbcc2",
-      "width": 272,
-      "height": 51,
+      "hash": "c5e29df3",
+      "width": 322,
+      "height": 40,
       "pieces": [
+        "scies-jumelles:2",
+        "tapis-alternes:3",
+        "pendule:1",
+        "plongeon:0",
+        "cheminee-vide:0",
         "ressort-mur-iles:1",
-        "ressort-scie:1",
-        "mur-seul:0",
-        "pendule:3",
-        "ressorts-trous:3",
-        "escalier:0",
-        "iles-scie:2",
-        "marelle:1",
-        "puits:0",
-        "scie-sol:1",
-        "cheminee-scie:3"
+        "tapis-respiration:0",
+        "tapis-relais:1",
+        "grande-scie:1",
+        "puits:3",
+        "scie-sol:3"
       ],
-      "authorTicks": 3471,
+      "authorTicks": 3547,
       "medals": {
-        "author": 3471,
-        "gold": 3819,
-        "silver": 4513,
-        "bronze": 5554
+        "author": 3547,
+        "gold": 3902,
+        "silver": 4612,
+        "bronze": 5676
       },
       "exigence": {
         "sum": 26,
-        "rate": 539,
+        "rate": 527,
         "thirds": [
-          18,
+          14,
           20,
-          31
+          39
         ]
       },
-      "chosen": 5,
-      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc1ACqWATjWBSKmAZoCrgMK5gQqbrIDTrIDNsIDTuICDooDLtoIDpoLlgIK3gMK9gEahgcihgHyBUbSCg66GWbiAu4DIt4GChaCA16qAzbSAjbyBSaKBW7CB376BQ7SA2nwAiII-gFGognuAyLeCPoB3gESRF0kEq4BCh4U3QEaZvoG"
+      "chosen": 0,
+      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc2AOIC1gHaA5YBoghW2gNu6gRW-gSGAfIFRtIHDuoBkQHaAYAB4gLuBXKGAhpMJQpeCj4kIYYF4gH2AgqOAwquAwquAwrOBRpG8gJe2gMu2gNGggPeA6oJlgGSBGaSBDbCA1aiAyaSAw66A74BygMeugImygKWAeoEjgHSBQ7KAoYB-gYOwgUOwgUmIEEiWCJsxQHiAUCyCtYCGqYDIrYH"
     }
   }
 }

@@ -19,7 +19,10 @@ import {
   initialAttempt,
   isRestedModule,
   replayAttempt,
+  JUMP_THEME_NAMES,
+  mechanicOf,
   type DailyLevel,
+  type JumpThemeName,
 } from "../src/index";
 import { emptyRun, secs, tiles } from "./vide";
 
@@ -257,5 +260,52 @@ line(`|---|---|`);
 line(`| génération d'un niveau (tous ses tirages, rejeux compris) : moyenne · max | ${num(g.mean)} ms · ${num(g.max)} ms |`);
 line(`| rejeu de la preuve (\`replayAttempt\`) : moyenne · max | ${num(rp.mean, 2)} ms · ${num(rp.max, 2)} ms (${num((1e6 * replayMs.reduce((a, b) => a + b, 0)) / ticks, 0)} ns par pas) |`);
 line(`| taille de la preuve (base64url) : moyenne | ${num(stats(levels.map((L) => L.code.length)).mean, 0)} caractères |`);
+
+// ——— Par thème (lot 11) ———
+const mechShare = (L: DailyLevel) => L.pieces.filter((p) => p.mechanic !== null).reduce((n, p) => n + p.end - p.start, 0) / L.authorTicks;
+const rows = (list: readonly DailyLevel[]) => {
+  const a = list.flatMap((L) => L.attempts);
+  const v = a.filter((x) => x.status === "valide").length;
+  const composedN = a.filter((x) => x.status !== "impasse").length;
+  const ms = list.map(mechShare);
+  return { n: list.length, valid: a.length ? (100 * v) / a.length : 0, validComposed: composedN ? (100 * v) / composedN : 0, fallback: list.filter((L) => L.fallback).length, time: stats(list.map((L) => L.authorTicks)), rate: stats(list.map((L) => L.exigence.rate)), mech: stats(ms), pieces: stats(list.map((L) => L.pieces.length)), gen: stats(list.map((L) => genMs[levels.indexOf(L)] ?? 0)) };
+};
+line();
+line("## Par thème (niveaux du jour : le thème de chaque date)");
+line();
+line("| thème (mécanique) | jours | tirages validés | secours | temps de l'auteur (min · moy · max) | exigence/min (min · moy · max) | part de la mécanique (min · moy · max) | morceaux en commun avec la veille |");
+line("|---|---|---|---|---|---|---|---|");
+for (const theme of JUMP_THEME_NAMES) {
+  const list = levels.filter((L) => L.theme === theme);
+  if (list.length === 0) continue;
+  const r = rows(list);
+  const commonT = list.flatMap((L) => {
+    const k = levels.indexOf(L);
+    if (k === 0) return [];
+    const prev = new Set(levels[k - 1]!.pieces.map((p) => p.id));
+    return [L.pieces.filter((p) => prev.has(p.id)).length];
+  });
+  line(`| ${theme} (${mechanicOf(theme) ?? "—"}) | ${r.n} | ${num(r.valid)} % | ${r.fallback} | ${sec(r.time.min)} · ${sec(r.time.mean)} · ${sec(r.time.max)} s | ${r.rate.min} · ${num(r.rate.mean, 0)} · ${r.rate.max} | ${num(100 * r.mech.min, 0)} · ${num(100 * r.mech.mean, 0)} · ${num(100 * r.mech.max, 0)} % | ${num(stats(commonT).mean, 2)} (max ${stats(commonT).max}) |`);
+}
+line();
+
+// ——— Thème forcé (lot 11) : 12 dates × 5 thèmes, comme le taux de validation par thème de DailyTrack ———
+const FORCED_FROM = PREMIER_JOUR_JUMP + 300;
+const FORCED_DATES = 12;
+line(`## Thème forcé (${FORCED_DATES} dates × ${JUMP_THEME_NAMES.length} thèmes, du ${formatDay(FORCED_FROM)} au ${formatDay(FORCED_FROM + FORCED_DATES - 1)})`);
+line();
+line("| thème forcé | niveaux | tirages validés | des composés | secours | temps de l'auteur (min · moy · max) | exigence/min (moy) | part de la mécanique (moy) | génération (moy · max) |");
+line("|---|---|---|---|---|---|---|---|---|");
+for (const theme of JUMP_THEME_NAMES as readonly JumpThemeName[]) {
+  const list: DailyLevel[] = [];
+  const ms: number[] = [];
+  for (let k = 0; k < FORCED_DATES; k++) {
+    const t0 = performance.now();
+    list.push(dailyLevel(FORCED_FROM + k, theme));
+    ms.push(performance.now() - t0);
+  }
+  const r = rows(list);
+  line(`| ${theme} | ${r.n} | ${num(r.valid)} % | ${num(r.validComposed)} % | ${r.fallback} | ${sec(r.time.min)} · ${sec(r.time.mean)} · ${sec(r.time.max)} s | ${num(r.rate.mean, 0)} | ${num(100 * r.mech.mean, 0)} % | ${num(stats(ms).mean, 0)} · ${num(stats(ms).max, 0)} ms |`);
+}
 
 console.log(out.join("\n"));

@@ -1,0 +1,38 @@
+id: glace-cheminee
+intention: Monter une cheminée en sautant d'un mur à l'autre, puis franchir le trou du sommet pour se poser sur une corniche de glace : on la quitte aussi vite qu'on y arrive.
+etiquettes: glace mural vertical
+famille: glace-cheminee
+theme: glace
+mutateurs: plafond fosse denivele
+format: 3
+paliers: 17 7
+repeter: large colonnes 4-4
+repeter: haut rangees 10-10
+variante: large=2 haut=2
+variante: large=2 haut=4
+variante: large=2 haut=4 +fosse +denivele:3
+grille:
+###...........
+###...........
+###...........
+###...........
+###...........
+###...........
+###..###......
+###..###...~~~
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+###..###...###
+.##..###...###
+.##..###...###
+.....###...###
+.....###...###
+########...###
+########...###
+########...###
+
+zone plafond 6-13 2
+zone fosse 8-10 16
+zone denivele 11-13

@@ -1,7 +1,7 @@
 import { UNITS_PER_TILE } from "./constants";
 import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
-import { isSolidTile, tileAt, type Level } from "./level";
+import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, isSolidTile, tileAt, type Level } from "./level";
 
 // Le personnage (lot 1) : course à l'élan, saut à hauteur variable, glisse et saut muraux, tolérances (coyote, tampon, coin).
 // `stepPlayer` est pur et avance d'un pas de 1/120 s. Tout l'état est entier : positions en unités (1 tuile = 4 096), vitesses en unités
@@ -90,6 +90,15 @@ export interface JumpParams {
   sprintDelay?: number;
   /** Accélération de `runSpeed` vers `sprintSpeed` (au sol), unités/pas². */
   sprintAccel?: number;
+  // ——— Lot 11 : tapis roulants et glace ———
+  // Comme l'élan, ces trois réglages sont **absents de `DEFAULT_JUMP_PARAMS`** (absent = `SURFACE_DEFAULTS`) : la table des défauts, donc le
+  // golden du personnage, ne bouge pas ; aucun niveau d'avant ne contient de tapis ni de glace, leurs trajectoires sont identiques.
+  /** Tapis roulant : vitesse ajoutée dans le sens du tapis à la vitesse visée au sol, unités/pas. */
+  beltSpeed?: number;
+  /** Glace : accélération au sol (remplace `groundAccel`), unités/pas². */
+  iceAccel?: number;
+  /** Glace : freinage au sol (remplace `groundDecel`), unités/pas². */
+  iceDecel?: number;
 }
 
 /**
@@ -123,7 +132,7 @@ export const DEFAULT_JUMP_PARAMS: Readonly<JumpParams> = Object.freeze({
 export const SPRINT_PARAM_KEYS = ["sprintMode", "sprintSpeed", "sprintDelay", "sprintAccel"] as const satisfies readonly (keyof JumpParams)[];
 export type SprintParamKey = (typeof SPRINT_PARAM_KEYS)[number];
 /** Les réglages qui ont un défaut (tous sauf l'essai d'élan). */
-export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey>;
+export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey | SurfaceParamKey>;
 
 export const JUMP_PARAM_KEYS = Object.keys(DEFAULT_JUMP_PARAMS) as readonly JumpParamKey[];
 
@@ -139,11 +148,24 @@ export const SPRINT_TRIAL_PARAMS: Readonly<Required<Pick<JumpParams, SprintParam
 });
 
 /**
+ * Lot 11 : défauts des réglages des surfaces. Tapis : 5 tuiles/s (171 unités/pas) ; glace : accélération au quart de `groundAccel` (4 contre
+ * 17) et freinage au huitième de `groundDecel` (4 contre 32) : pleine vitesse en ≈ 94 pas (0,8 s), arrêt en ≈ 94 pas.
+ */
+export const SURFACE_DEFAULTS = Object.freeze({ beltSpeed: 171, iceAccel: 4, iceDecel: 4 });
+export const SURFACE_PARAM_KEYS = ["beltSpeed", "iceAccel", "iceDecel"] as const satisfies readonly (keyof JumpParams)[];
+export type SurfaceParamKey = (typeof SURFACE_PARAM_KEYS)[number];
+
+/** Un réglage de surface : la valeur donnée, sinon son défaut. */
+export function surfaceParam(params: Readonly<JumpParams>, key: SurfaceParamKey): number {
+  return params[key] ?? SURFACE_DEFAULTS[key];
+}
+
+/**
  * Vrai si tous les réglages valent leur défaut (une partie aux réglages modifiés porte le drapeau `tuned`). L'élan éteint (`sprintMode`
  * absent ou 0) ne change rien : ses autres réglages, sans effet, ne rendent pas la partie `tuned`.
  */
 export function isDefaultJumpParams(params: Readonly<JumpParams>): boolean {
-  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode;
+  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode && SURFACE_PARAM_KEYS.every((k) => surfaceParam(params, k) === SURFACE_DEFAULTS[k]);
 }
 
 /** Vitesse visée en élan (unités/pas) : `sprintSpeed`, jamais sous `runSpeed` ni au-dessus de `MAX_SPEED`. */
@@ -187,6 +209,12 @@ export interface PlayerState {
    * agit quand il atteint `sprintDelay`.
    */
   sprint?: number;
+  /**
+   * Lot 11, **seulement non nul** (le champ est absent sinon : les empreintes des niveaux sans tapis ne changent pas) : sens (−1, 1) du
+   * tapis sur lequel le personnage était posé ; gardé en l'air tant que la vitesse va dans ce sens, remis à 0 au sol hors d'un tapis, contre
+   * un mur ou à l'arrêt. Tant qu'il est là, la vitesse acquise sur le tapis n'est pas freinée en l'air.
+   */
+  carry?: number;
 }
 
 /** État au départ du niveau : la boîte centrée sur la tuile `S`, posée au bas de cette tuile. */
@@ -216,6 +244,24 @@ export function initialPlayer(level: Level): PlayerState {
 export function playerMode(state: Readonly<PlayerState>): "sol" | "air" | "mur" {
   if (state.ground) return "sol";
   return state.slide !== 0 ? "mur" : "air";
+}
+
+/**
+ * Lot 11 : la tuile sous les pieds (la rangée juste sous la boîte) : celle de la colonne du centre si elle est pleine, sinon la première
+ * pleine des colonnes couvertes ; `TILE_EMPTY` (0) en l'air. Seul son code compte (tapis, glace, bloc ordinaire).
+ */
+export function groundTile(level: Grid, x: number, y: number): number {
+  const row = tileOf(y + PLAYER_HEIGHT);
+  const c0 = tileOf(x);
+  const c1 = tileOf(x + PLAYER_WIDTH - 1);
+  const mid = tileOf(x + idiv(PLAYER_WIDTH, 2));
+  const m = tileAt(level, mid, row);
+  if (isSolidTile(m)) return m;
+  for (let c = c0; c <= c1; c++) {
+    const t = tileAt(level, c, row);
+    if (isSolidTile(t)) return t;
+  }
+  return 0;
 }
 
 const sign = (v: number) => (v > 0 ? 1 : v < 0 ? -1 : 0);
@@ -258,13 +304,29 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
 
   // ——— Horizontal ———
   const grounded = state.ground === 1;
-  const accel = grounded ? p.groundAccel : p.airAccel;
-  const decel = grounded ? p.groundDecel : p.airDecel;
+  // Lot 11 : la surface sous les pieds (au début du pas) ; la glace remplace l'accélération et le freinage au sol, un tapis ajoute sa vitesse.
+  const under = grounded ? groundTile(level, state.x, state.y) : 0;
+  const belt = under === TILE_BELT_LEFT ? -1 : under === TILE_BELT_RIGHT ? 1 : 0;
+  const onIce = under === TILE_ICE;
+  const carry0 = state.carry ?? 0;
+  const accel = grounded ? (onIce ? surfaceParam(p, "iceAccel") : p.groundAccel) : p.airAccel;
+  const decel = grounded ? (onIce ? surfaceParam(p, "iceDecel") : p.groundDecel) : p.airDecel;
   // Lot 8b : élan progressif (essai). Éteint, rien de ce qui suit ne change de calcul.
   const sprintOn = p.sprintMode === 1;
   let sprint = sprintOn ? (state.sprint ?? 0) : 0;
   let vx = state.vx;
-  if (dir === 0) vx = approach(vx, 0, decel);
+  if (belt !== 0) {
+    // Tapis : vitesse visée = course voulue + vitesse du tapis (immobile, on est emporté ; contre le tapis, on avance moins vite).
+    const target = dir * p.runSpeed + belt * surfaceParam(p, "beltSpeed");
+    const sg = sign(target);
+    if (sg === 0) vx = approach(vx, 0, decel);
+    else vx = approach(vx, target, vx * sg < 0 ? (accel > decel ? accel : decel) : vx * sg < target * sg ? accel : decel);
+  } else if (carry0 !== 0 && !grounded) {
+    // En l'air, après un tapis : la vitesse acquise est gardée (ni freinée, ni réaccélérée au-delà de la course) ; on peut encore la freiner.
+    if (dir === 0) vx = vx * carry0 > 0 ? vx : approach(vx, 0, decel);
+    else if (vx * dir < 0) vx = approach(vx, dir * p.runSpeed, accel > decel ? accel : decel);
+    else if (vx * dir <= p.runSpeed) vx = approach(vx, dir * p.runSpeed, accel);
+  } else if (dir === 0) vx = approach(vx, 0, decel);
   else if (vx * dir < 0) vx = approach(vx, dir * p.runSpeed, accel > decel ? accel : decel); // demi-tour : le plus fort des deux
   else if (sprintOn && sprint >= (p.sprintDelay ?? 0) && vx * dir >= p.runSpeed && sprintTop(p) > p.runSpeed) {
     // En élan : au sol, la vitesse monte vers `sprintSpeed` ; en l'air, la vitesse acquise est gardée (ni réaccélérée, ni freinée).
@@ -376,14 +438,22 @@ export function stepPlayer(state: Readonly<PlayerState>, input: number, level: G
   }
   if (ground) jumping = 0;
 
+  // Lot 11 : le sens du tapis qui porte le personnage ; en l'air il est gardé tant que la vitesse va dans ce sens (un mur l'arrête).
+  let carry = 0;
+  if (ground) {
+    const t = groundTile(level, x, y);
+    carry = t === TILE_BELT_LEFT ? -1 : t === TILE_BELT_RIGHT ? 1 : 0;
+  } else if (carry0 !== 0 && vx * carry0 > 0) carry = carry0;
+  const tail = carry !== 0 ? { carry } : {};
+
   if (sprintOn) {
     // L'élan se perd au lâcher, au demi-tour, contre un mur (heurté, glisse, saut mural) ; il se compte au sol à pleine vitesse.
     if (dir === 0 || state.vx * dir < 0 || mx.blocked || slide !== 0 || wallJumped) sprint = 0;
     // Compté à la course exacte (avant l'élan) ou pendant l'élan ; pas pendant le freinage qui suit un élan perdu (au-dessus de la course).
     else if (grounded) sprint = vx * dir === p.runSpeed || (sprint >= (p.sprintDelay ?? 0) && vx * dir > p.runSpeed) ? (sprint < COUNTER_CAP ? sprint + 1 : sprint) : 0;
-    return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, sprint };
+    return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, sprint, ...tail };
   }
-  return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir };
+  return { x, y, vx: vx + 0, vy: vy + 0, ground, air, wallSide, wallAir, slide, buffer, held: jump, jumping, lock, lockDir, ...tail };
 }
 
 /** Avance de plusieurs pas avec les commandes données (une par pas). */

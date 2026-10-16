@@ -1,0 +1,33 @@
+id: glace-saut-haut
+intention: Courir sur la glace pour prendre tout son élan, puis franchir un trou jusqu'à une corniche plus haute : l'élan ne se rattrape pas.
+etiquettes: glace precision
+famille: glace-saut-haut
+theme: glace
+mutateurs: plafond denivele
+format: 3
+paliers: 11 9
+repeter: long colonnes 5-5
+repeter: trou colonnes 10-10
+variante: long=1 trou=3
+variante: long=2 trou=4
+variante: long=1 trou=5
+variante: long=3 trou=4 +denivele:2
+variante: long=2 trou=4 +plafond:pics
+grille:
+..............
+..............
+..............
+..............
+..............
+..............
+..............
+..............
+..............
+...........###
+...........###
+~~~~~~~~~~.###
+##########.###
+##########.###
+
+zone denivele 11-13
+zone plafond 10-13 5

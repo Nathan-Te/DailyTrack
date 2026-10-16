@@ -52,6 +52,7 @@ import {
   type BuiltModule,
   type ModuleSolution,
   type ModuleSolutionsFile,
+  variantTheme,
 } from "../src/index";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "../src/catalog";
 import { catalogSource } from "../tools/files";
@@ -155,7 +156,7 @@ describe("format d'un morceau", () => {
 
   it("refuse ce qui est mal formé, avec un message clair", () => {
     const bad = (patch: (t: string) => string) => () => parseModule(patch(SMALL));
-    expect(bad((t) => t.replace("etiquettes: scie precision", "etiquettes: scie glace"))).toThrow(/étiquette « glace » inconnue/);
+    expect(bad((t) => t.replace("etiquettes: scie precision", "etiquettes: scie neige"))).toThrow(/étiquette « neige » inconnue/);
     expect(bad((t) => t.replace("id: essai-format", "id: Essai"))).toThrow(/id/);
     expect(bad((t) => t.replace("variante: trou=3 haut=0 cycle=60", "variante: trou=3 haut=0"))).toThrow(/« cycle » manque/);
     expect(bad((t) => t.replace("variante: trou=3", "variante: trou=99"))).toThrow(/au plus 40/);
@@ -398,7 +399,7 @@ id: essai-mutateurs
 intention: Tester les mutateurs.
 etiquettes: precision
 famille: essai
-mutateurs: plafond fosse sol-friable patrouille garde ressort denivele
+mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface
 format: 3
 paliers: 6 6
 repeter: large colonnes 4-4
@@ -426,6 +427,7 @@ zone ressort 8 6
 zone patrouille o 120 aller-retour 3,3 5,3
 zone garde 5 5 <
 zone denivele 6-10
+zone surface 0-1 6
 `;
 
 describe("mutateurs (lot 7)", () => {
@@ -433,7 +435,7 @@ describe("mutateurs (lot 7)", () => {
   const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
 
   it("lit les zones et les mutateurs des variantes ; au plus deux par variante, six variantes, seulement ceux déclarés", () => {
-    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele"]);
+    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface"]);
     expect(MUTATORS).toEqual(def.mutators);
     expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
     expect(def.mutations[0]).toEqual([]);
@@ -471,6 +473,21 @@ describe("mutateurs (lot 7)", () => {
     const up = buildModuleDef(def, 5);
     expect(up.exitRow).toBe(5);
     expect(grid(5)[5]!.slice(7)).toBe("#####");
+  });
+
+  it("lot 11 : `+surface:glace` / `tapis:gauche` / `tapis:droite` convertissent exactement les tuiles de sol de leur zone, et la variante est réservée à son thème", () => {
+    const withSurface = (arg: string) => parseModule(MUT.replace("variante: large=1 +denivele:2", `variante: large=1 +surface:${arg}`));
+    const row = (arg: string) => buildModuleDef(withSurface(arg), 4).ascii.split("\n\n")[0]!.split("\n")[6]!.slice(PALIER_GUARD + PALIER_LENGTH, PALIER_GUARD + PALIER_LENGTH + 3);
+    expect(row("glace")).toBe("~~#");
+    expect(row("tapis:gauche")).toBe("[[#");
+    expect(row("tapis:droite")).toBe("]]#");
+    expect(variantTheme(withSurface("glace"), 4)).toBe("glace");
+    expect(variantTheme(withSurface("tapis:droite"), 4)).toBe("usine");
+    expect(variantTheme(withSurface("glace"), 0)).toBeNull();
+    expect(() => parseModule(MUT.replace("variante: large=1 +denivele:2", "variante: large=1 +surface:sable"))).toThrow(/argument/);
+    expect(() => parseModule(MUT.replace("variante: large=1 +denivele:2", "variante: large=1 +surface"))).toThrow(/argument/);
+    // Une tuile qui n'est pas un bloc ne se convertit pas.
+    expect(() => buildModuleDef(parseModule(MUT.replace("zone surface 0-1 6", "zone surface 0-3 6").replace("variante: large=1 +denivele:2", "variante: large=1 +surface:glace")), 4)).toThrow(/au lieu d'un bloc/);
   });
 
   it("purs et déterministes : le gabarit ne bouge pas, deux constructions donnent le même niveau", () => {
