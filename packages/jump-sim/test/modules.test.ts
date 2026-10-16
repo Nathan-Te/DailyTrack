@@ -25,7 +25,8 @@ import {
   PALIER_GUARD,
   PALIER_HEADROOM,
   PALIER_LENGTH,
-  PAS_PRES,
+  HUMAIN_MIN,
+  NOTE_SEUILS,
   PLAYER_HEIGHT,
   RACCORD_MIN,
   RACCORD_POSITIONS,
@@ -330,12 +331,17 @@ describe("les solutions stockées", () => {
           expect(ticks, where).toBeGreaterThanOrEqual(def.long ? LONG_MIN_TICKS : MODULE_MIN_TICKS);
           expect(ticks, where).toBeLessThanOrEqual(def.long ? LONG_MAX_TICKS : MODULE_MAX_TICKS);
           expect(ticks, where).toBeLessThanOrEqual(sol.fastest + Math.floor((sol.fastest * 2) / 100));
+          // Lot 8c, repli robuste : la plus rapide trouvée n'était pas jouable ; la solution gardée reste à 25 % d'elle au plus.
+          if (sol.rapide !== undefined) {
+            expect(sol.rapide, where).toBeLessThan(sol.fastest);
+            expect(ticks, where).toBeLessThanOrEqual(sol.rapide + Math.floor((sol.rapide * 25) / 100));
+          }
         }
       }
     });
   }
 
-  it("aucun morceau n'est « au pas près » ni fragile au raccord : chaque solution réussit au moins une fois sur deux à ±1 pas, et en élan depuis 90 % des positions d'entrée", () => {
+  it("tout morceau est jouable par un humain et solide au raccord : chaque solution réussit au moins une fois sur deux à ±3 pas (lot 8c), et en élan depuis 90 % des positions d'entrée", () => {
     const all: { where: string; sol: ModuleSolution }[] = [];
     for (const def of MODULES) {
       def.variants.forEach((_, v) => {
@@ -343,7 +349,7 @@ describe("les solutions stockées", () => {
       });
     }
     for (const { where, sol } of all) {
-      expect(sol.gigue[0], where).toBeGreaterThanOrEqual(PAS_PRES);
+      expect(sol.gigue[2], where).toBeGreaterThanOrEqual(HUMAIN_MIN);
       if (sol.raccord !== null) expect(sol.raccord, where).toBeGreaterThanOrEqual(RACCORD_MIN);
       expect(sol.exigence, where).toBe(exigenceOf(sol.gigue, sol.raccord));
       expect(sol.exigence, where).toBeGreaterThanOrEqual(1);
@@ -357,16 +363,24 @@ describe("les solutions stockées", () => {
     expect([...seen].sort()).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("règle d'exigence : refusée sous la moitié à ±1 ou sous 90 % au raccord (strict, lot 6), puis de 1 à 5 selon la gigue", () => {
-    expect(exigenceOf([499, 900, 900], null)).toBe(0);
+  it("règle d'exigence (lot 8c) : refusée sous la moitié à ±3 pas (pas jouable par un humain) ou sous 90 % au raccord (strict, lot 6), puis de 1 à 5 selon la gigue ±3", () => {
+    expect([HUMAIN_MIN, ...NOTE_SEUILS]).toEqual([500, 950, 850, 720, 600]);
+    // Le cas de plafond-pics v2 : parfait à ±1, mais un humain y échoue presque toujours (35 % à ±3) : refusé, il ne l'était pas avant.
+    expect(exigenceOf([1000, 640, 350], null)).toBe(0);
+    expect(exigenceOf([1000, 1000, 499], null)).toBe(0);
     expect(exigenceOf([1000, 1000, 1000], 899)).toBe(0);
     expect(exigenceOf([1000, 1000, 950], null)).toBe(1);
     expect(exigenceOf([1000, 1000, 950], 900)).toBe(1);
-    expect(exigenceOf([1000, 900, 700], null)).toBe(2);
-    expect(exigenceOf([1000, 700, 400], null)).toBe(3);
-    expect(exigenceOf([900, 500, 300], null)).toBe(4);
-    expect(exigenceOf([600, 300, 100], null)).toBe(5);
-    expect(exigenceOf([600, 300, 100], 950)).toBe(5);
+    expect(exigenceOf([1000, 950, 949], null)).toBe(2);
+    expect(exigenceOf([1000, 900, 850], null)).toBe(2);
+    expect(exigenceOf([1000, 900, 849], null)).toBe(3);
+    expect(exigenceOf([1000, 800, 720], null)).toBe(3);
+    expect(exigenceOf([1000, 800, 719], null)).toBe(4);
+    expect(exigenceOf([1000, 700, 600], null)).toBe(4);
+    expect(exigenceOf([1000, 700, 599], null)).toBe(5);
+    expect(exigenceOf([900, 600, 500], 950)).toBe(5);
+    // Seule la gigue ±3 compte : ±1 et ±2 ne changent ni le refus ni la note.
+    expect(exigenceOf([400, 400, 800], null)).toBe(exigenceOf([1000, 1000, 800], null));
   });
 
   it("le test de raccord couvre tout un pas de course : 25 positions d'entrée régulières dans [0, runSpeed)", () => {

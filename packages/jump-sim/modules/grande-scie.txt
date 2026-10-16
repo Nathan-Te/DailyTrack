@@ -9,7 +9,7 @@ repeter: trou colonnes 2-2
 repeter: trou colonnes 9-9
 variante: trou=1
 variante: trou=2
-variante: trou=3
+variante: trou=1 +fosse
 variante: trou=2 +fosse
 variante: trou=1 +plafond:pics
 variante: trou=2 +denivele:2

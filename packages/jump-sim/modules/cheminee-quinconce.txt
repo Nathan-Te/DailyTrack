@@ -9,8 +9,9 @@ paliers: 23 8
 repeter: haut rangees 12-12
 repeter: ecart colonnes 12-12
 repeter: ecart colonnes 18-18
-variante: haut=5 ecart=2
-variante: haut=5 ecart=2 +fosse
+variante: haut=4 ecart=2
+variante: haut=4 ecart=2 +sol-friable
+variante: haut=4 ecart=2 +fosse
 grille:
 ###.....################...................
 ###.....################...................

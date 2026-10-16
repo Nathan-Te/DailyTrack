@@ -49,7 +49,7 @@ test("la page par défaut montre « Préparation du niveau… », puis le niveau
     const d = await daily(page);
     expect(d.load).toMatchObject({ source: "worker", generated: true, cacheMiss: "" });
     expect(seen.length).toBeGreaterThanOrEqual(1);
-    expect(d.id).toMatch(/^jour-2026-10-20-g4$/);
+    expect(d.id).toMatch(/^jour-2026-10-20-g5$/);
   });
 });
 

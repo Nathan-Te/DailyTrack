@@ -9,7 +9,6 @@ repeter: large colonnes 5-5
 repeter: large colonnes 13-13
 repeter: large colonnes 21-21
 variante: large=1
-variante: large=1 +sol-friable
 variante: large=1 +denivele:1
 grille:
 ..............................

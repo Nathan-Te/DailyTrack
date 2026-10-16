@@ -10,7 +10,7 @@ variante: cycle=240
 variante: cycle=180
 variante: cycle=300
 variante: cycle=240 +sol-friable
-variante: cycle=180 +fosse
+variante: cycle=300 +fosse
 variante: cycle=240 +denivele:2
 grille:
 .........................................................

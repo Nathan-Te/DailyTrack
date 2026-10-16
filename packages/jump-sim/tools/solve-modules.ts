@@ -58,6 +58,8 @@ interface JobResult {
 
 /** Une solution gardée peut être plus lente que la plus rapide trouvée d'au plus ce pourcentage (pour être plus tolérante). */
 const SLOWER = 2;
+/** Lot 8c, repli robuste : jusqu'à combien de % au-dessus de la plus rapide trouvée on cherche une solution jouable par un humain. */
+const ROBUST_SLOWER = 25;
 /** Pas d'attente qu'une solution à l'arrêt peut perdre au début (marge de la borne des recherches suivantes). */
 const IDLE_SLACK = 48;
 /**
@@ -77,12 +79,14 @@ function runJob(job: Job): JobResult {
     const maxTicks = def.long ? 1320 : 960;
     let inputs: number[];
     let fastest: number;
+    // Visibles du repli robuste (plus bas) : le préfixe de la course d'élan et toutes les solutions trouvées.
+    const prefix: number[] = [];
+    const found: number[][] = [];
     if (job.kind === "measure") {
       inputs = fromRuns(decodeReplay(job.code!).runs);
       fastest = job.fastest ?? inputs.length;
     } else {
       // En élan, la recherche part du bord droit du palier d'entrée (après la course, droite tenue, qui fait partie de la rediffusion).
-      const prefix: number[] = [];
       let start = entryState(m, job.entry);
       if (job.entry === "elan") {
         const e = elanEntry(m);
@@ -93,7 +97,6 @@ function runJob(job: Job): JobResult {
       const lost = lostExit(m);
       // Plusieurs recherches (paquets de `CHUNKS` pas, à progression égale la suite la plus simple d'abord) : la plus rapide donne le temps
       // de référence ; parmi celles qui en sont à moins de `SLOWER` près, la plus tolérante est durcie et gardée.
-      const found: number[][] = [];
       // Borne (lot 7, sans effet sur le résultat) : une fois une solution trouvée, une recherche suivante n'a pas besoin d'aller au-delà de
       // la durée où sa solution serait écartée (plus de `SLOWER` % au-dessus de la plus rapide connue, plus `IDLE_SLACK` pas d'attente
       // retirés au début) : une recherche vaine s'arrête là au lieu d'aller jusqu'à `maxTicks`.
@@ -124,9 +127,35 @@ function runJob(job: Job): JobResult {
       }
       inputs = harden(m, job.entry, pick!.core).full;
     }
-    const span = moduleSpan(m, job.entry, inputs);
+    let span = moduleSpan(m, job.entry, inputs);
     if (typeof span === "string") throw new Error(`solution non valable : ${span}`);
-    const margins = measureMargins(m, job.entry, inputs);
+    let margins = measureMargins(m, job.entry, inputs);
+    let rapide: number | undefined;
+    // Lot 8c — **repli robuste** : la plus rapide (et toutes celles à moins de `SLOWER` %) peut tenir d'une astuce au pas près, qu'aucun
+    // humain ne refait. Si la solution durcie n'est pas jouable (`exigenceOf` = 0), on reprend les solutions trouvées de la plus rapide à
+    // `ROBUST_SLOWER` % au-dessus, et on durcit chacune en lui permettant de prendre plus de temps (attendre avant un geste) ; la première
+    // jouable est gardée. Elle devient la référence (`fastest`) ; la plus rapide trouvée reste notée (`rapide`).
+    if (job.kind === "solve" && found.length > 0 && exigenceOf(margins.gigue, margins.raccord) === 0) {
+      const any = fastest;
+      const sorted = [...found].sort((a, b) => a.length - b.length);
+      for (const f of sorted) {
+        if (f.length - prefix.length > any + Math.floor((any * ROBUST_SLOWER) / 100)) break;
+        const cap = prefix.length + any + Math.floor((any * ROBUST_SLOWER) / 100);
+        const h = harden(m, job.entry, f, 12, cap).full;
+        const sp = moduleSpan(m, job.entry, h);
+        if (typeof sp === "string") continue;
+        const mg = measureMargins(m, job.entry, h);
+        if (exigenceOf(mg.gigue, mg.raccord) === 0) continue;
+        inputs = h;
+        span = sp;
+        margins = mg;
+        fastest = sp.exitTick - sp.entryTick;
+        // Aussi rapide que la plus rapide (mieux durcie seulement) : rien de plus lent, pas de `rapide` à noter.
+        if (fastest > any) rapide = any;
+        else fastest = any;
+        break;
+      }
+    }
     const code = encodeReplay(attemptReplay(m.levelId, inputs, 0, job.entry === "elan" ? 1 : 0));
     const solution: ModuleSolution = {
       code,
@@ -134,6 +163,7 @@ function runJob(job: Job): JobResult {
       entryTick: span.entryTick,
       exitTick: span.exitTick,
       fastest,
+      ...(rapide !== undefined ? { rapide } : {}),
       gigue: margins.gigue,
       raccord: margins.raccord,
       exigence: exigenceOf(margins.gigue, margins.raccord),

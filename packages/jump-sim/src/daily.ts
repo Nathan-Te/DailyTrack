@@ -92,11 +92,12 @@ export const MAX_DAILY_HEIGHT = 56;
  * Exigence du niveau = somme des exigences de ses morceaux (1 à 5, lot 4) **ramenée à sa durée**, en **dixièmes de point par minute** de
  * temps de l'auteur (`exigenceRate`). Elle doit tomber dans [`EXIGENCE_RATE_MIN`, `EXIGENCE_RATE_MAX`] ; le score des tirages vise
  * `EXIGENCE_RATE_CENTER`. Seuils réglés sur `npm run measure:jump` (README des lots 5 à 7 : 380–460 au lot 5, 430–520 au lot 6 ; lot 7 :
- * nouveau catalogue, la fenêtre est recentrée sur la médiane des tirages, même largeur relative, ±10 %).
+ * nouveau catalogue, la fenêtre est recentrée sur la médiane des tirages, même largeur relative, ±10 % ; lot 8c : notes lues sur la gigue
+ * ±3, un peu plus hautes en moyenne, 445–540 → 445–570, centre 492 → 505 : 63,9 % de tirages validés au lieu de 57,1 %, mesuré).
  */
 export const EXIGENCE_RATE_MIN = 445;
-export const EXIGENCE_RATE_MAX = 540;
-export const EXIGENCE_RATE_CENTER = 492;
+export const EXIGENCE_RATE_MAX = 570;
+export const EXIGENCE_RATE_CENTER = 505;
 /** Au moins un morceau de cette exigence ou plus. */
 export const EXIGENCE_PEAK = 4;
 /**

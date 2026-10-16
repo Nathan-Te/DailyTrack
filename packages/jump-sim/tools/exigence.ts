@@ -201,8 +201,11 @@ export function measureMargins(m: BuiltModule, entry: ModuleEntry, inputs: reado
   return { gigue: gigue as [number, number, number], raccord };
 }
 
-/** Tirages du durcissement (graine fixe, distincte de celle de la mesure) : 16 à ±1, 16 à ±2, 16 à ±3. */
-const HARDEN_DRAWS = 16;
+/**
+ * Tirages du durcissement (graine fixe, distincte de celle de la mesure). Lot 8c : tous à ±3 pas, ce que juge la règle de jouabilité humaine
+ * (`HUMAIN_MIN`, `exigenceOf`) ; avant, 16 à ±1, 16 à ±2 et 16 à ±3.
+ */
+const HARDEN_DRAWS = 48;
 
 /**
  * Note du durcissement : réussites sous les tirages de gigue du durcissement (48), plus, en élan, les positions de raccord réussies (25) ;
@@ -211,22 +214,20 @@ const HARDEN_DRAWS = 16;
 export function hardenScore(m: BuiltModule, entry: ModuleEntry, inputs: readonly number[], floor = -1): number {
   const start = entryState(m, entry);
   const raccords = entry === "elan" ? RACCORD_POSITIONS.length : 0;
-  const total = 3 * HARDEN_DRAWS + raccords;
+  const total = HARDEN_DRAWS + raccords;
   let ok = 0;
   let done = 0;
   if (raccords > 0) {
-    const r = raccordHits(m, inputs, 0, floor - 3 * HARDEN_DRAWS);
+    const r = raccordHits(m, inputs, 0, floor - HARDEN_DRAWS);
     if (r < 0) return -1;
     ok += r;
     done += raccords;
   }
-  for (let k = 1; k <= 3; k++) {
-    const rng = new Rng(mixSeed(seedOf(m, entry) ^ 0x5eed, k));
-    for (let d = 0; d < HARDEN_DRAWS; d++) {
-      if (play(m.level, start, jittered(inputs, k, rng), EXTRA_TICKS).finished) ok++;
-      done++;
-      if (ok + (total - done) <= floor) return -1;
-    }
+  const rng = new Rng(mixSeed(seedOf(m, entry) ^ 0x5eed, 3));
+  for (let d = 0; d < HARDEN_DRAWS; d++) {
+    if (play(m.level, start, jittered(inputs, 3, rng), EXTRA_TICKS).finished) ok++;
+    done++;
+    if (ok + (total - done) <= floor) return -1;
   }
   return ok;
 }
@@ -238,13 +239,21 @@ export function hardenScore(m: BuiltModule, entry: ModuleEntry, inputs: readonly
  * décaler un changement de commande (±1, ±2, ±4, ±8), décaler toute une commande (son début et sa fin ensemble), ou supprimer une commande
  * inutile. Une retouche est gardée si sa note (`hardenScore`) monte. Rend le cœur et la rediffusion complète.
  */
-export function harden(m: BuiltModule, entry: ModuleEntry, core: readonly number[], maxPasses = 8): { core: number[]; full: number[] } {
+export function harden(
+  m: BuiltModule,
+  entry: ModuleEntry,
+  core: readonly number[],
+  maxPasses = 8,
+  maxLength?: number,
+): { core: number[]; full: number[] } {
   const score = (full: readonly number[], floor: number) => hardenScore(m, entry, full, floor);
-  const limit = core.length;
+  // Lot 8c, repli robuste : `maxLength` permet de prendre plus de temps (attendre avant un geste) ; sans lui, aussi rapide seulement.
+  const limit = maxLength ?? core.length;
+  const slower = limit > core.length;
   let current = fromCore(m, entry, core);
   if (!current) throw new Error(`${m.levelId} ${entry} : solution non valable avant durcissement`);
   let best = score(current.full, -1);
-  const max = 3 * HARDEN_DRAWS + (entry === "elan" ? RACCORD_POSITIONS.length : 0);
+  const max = HARDEN_DRAWS + (entry === "elan" ? RACCORD_POSITIONS.length : 0);
   for (let pass = 0; pass < maxPasses && best < max; pass++) {
     let improved = false;
     for (let i = 0; best < max; i++) {
@@ -259,6 +268,8 @@ export function harden(m: BuiltModule, entry: ModuleEntry, core: readonly number
       for (const d of [1, -1, 2, -2, 4, -4, 8, -8]) {
         if (i < ends.length) withEnds(ends.map((e, j) => (j === i ? e + d : e)));
         if (i > 0 && i < ends.length) withEnds(ends.map((e, j) => (j === i || j === i - 1 ? e + d : e)));
+        // Repli robuste : retarder (ou avancer) tout ce qui suit le geste i, d'un bloc — attendre un peu avant de repartir.
+        if (slower && i < ends.length) withEnds(ends.map((e, j) => (j >= i ? e + d : e)));
       }
       // Supprimer la commande i (ses pas vont à la commande d'avant).
       if (i > 0 && i < runs.length) {

@@ -8,7 +8,7 @@ paliers: 17 5
 repeter: haut rangees 10-10
 variante: haut=1
 variante: haut=5
-variante: haut=5 +garde
+variante: haut=1 +garde
 variante: haut=1 +denivele:2
 grille:
 ..........

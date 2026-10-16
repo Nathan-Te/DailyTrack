@@ -89,7 +89,7 @@ for (const { def } of modules) {
 console.log(`# Catalogue des morceaux : ${modules.length} morceaux, ${total} variantes (JUMP_SIM_VERSION ${file.jumpSimVersion})\n`);
 console.log(rows.join("\n"));
 console.log("\n## Répartition");
-console.log(`Exigence (variantes) : ${[1, 2, 3, 4, 5].map((e) => `${e} → ${perExigence.get(e) ?? 0}`).join(" · ")}${perExigence.get(0) ? ` · refusées (au pas près ou raccord < 90 %) → ${perExigence.get(0)}` : ""}`);
+console.log(`Exigence (variantes) : ${[1, 2, 3, 4, 5].map((e) => `${e} → ${perExigence.get(e) ?? 0}`).join(" · ")}${perExigence.get(0) ? ` · refusées (±3 < 50 % : pas jouable par un humain, ou raccord < 90 %) → ${perExigence.get(0)}` : ""}`);
 console.log(`Étiquettes (morceaux) : ${MODULE_TAGS.map((t) => `${t} ${perTag.get(t) ?? 0}`).join(" · ")}`);
 console.log(`Familles (${perFamily.size}) : ${[...perFamily].sort((a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1)).map(([f, ids]) => `${f} ${ids.length}`).join(" · ")}`);
 console.log(`Enchaînements longs : ${longCount} morceaux`);

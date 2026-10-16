@@ -5,8 +5,9 @@ famille: ressort-scie
 mutateurs: garde denivele
 format: 3
 paliers: 21 15
-variante: cycle=180
-variante: cycle=240
+variante: cycle=300
+variante: cycle=360
+variante: cycle=300 +denivele:2
 grille:
 ............
 ............

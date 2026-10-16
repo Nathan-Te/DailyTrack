@@ -7,8 +7,8 @@ format: 3
 paliers: 17 10
 repeter: plaque rangees 13-13
 repeter: plaque rangees 8-8
-variante: plaque=1
 variante: plaque=2
+variante: plaque=1
 variante: plaque=1 +denivele:3
 grille:
 ###...........
