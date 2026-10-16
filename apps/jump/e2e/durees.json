@@ -1,5 +1,5 @@
 {
-  "_": "Durée de chaque spec de DailyJump dans Chromium (s), un test à la fois, mesurée en CI (run 38916375876, résumé du job `e2e` : lignes « jump/… ») : compose les parts Chromium de la CI (scripts/e2e-parts.mjs, lot 3c). Les outils de mesure sont sautés hors MESURE=1.",
+  "_": "Durée de chaque spec de DailyJump dans Chromium (s), un test à la fois, mesurée en CI (run 38916375876, résumé du job `e2e` : lignes « jump/… ») : compose les parts Chromium de la CI (scripts/e2e-parts.mjs, lot 3c). Les outils de mesure sont sautés hors MESURE=1. nuit-neon.spec.ts (lot 12, fusionné après la mesure) : 30 s estimées, jamais mesurées en CI — à remplacer par la ligne « jump/nuit-neon.spec.ts » du résumé du prochain run.",
   "secondes": {
     "animation.spec.ts": 6,
     "arrivee.spec.ts": 37,
@@ -12,6 +12,7 @@
     "mesure-themes.spec.ts": 0,
     "mobile.spec.ts": 53,
     "modules.spec.ts": 17,
+    "nuit-neon.spec.ts": 30,
     "replay.spec.ts": 1,
     "sensations.spec.ts": 15,
     "smoke.spec.ts": 5,
