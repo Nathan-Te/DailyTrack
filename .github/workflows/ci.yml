@@ -30,8 +30,11 @@ jobs:
   # Retouche 29b — CI rapide et fiable : une matrice (un job par navigateur et par part, `--shard`), une relance unique (`retries: 1`, voir
   # apps/web/playwright.config.ts) et un job `e2e` qui fusionne les rapports, NOMME les tests instables dans le résumé du run et donne le verdict.
   # `e2e-parts` ne sert qu'à répartir le travail ; la protection de branche exige `test` et `e2e` (docs/lots/lot-29b-ci-fiable.md).
+  # Lot 3c — DailyJump suit les mêmes règles : ses specs (apps/jump/e2e) sont des parts de la même matrice (`suite: jump`, un projet Playwright
+  # `jump-<navigateur>`), avec la même relance (`retries: 1` en CI), des rapports « blob » fusionnés dans le même rapport et le même verdict `e2e`.
+  # (Ne pas écrire `browser: chromium, shard: …` pour une entrée jump : apps/web/test/e2eParts.test.ts lit le nombre de parts DailyTrack ci-dessous.)
   e2e-parts:
-    name: e2e-parts (${{ matrix.browser }} ${{ matrix.shard }})
+    name: e2e-parts (${{ matrix.suite == 'jump' && 'jump ' || '' }}${{ matrix.browser }} ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -50,6 +53,10 @@ jobs:
           - { browser: firefox, shard: "2/2" }
           - { browser: webkit, shard: "1/2" }
           - { browser: webkit, shard: "2/2" }
+          - { suite: jump, shard: "1/2", browser: chromium }
+          - { suite: jump, shard: "2/2", browser: chromium }
+          - { suite: jump, shard: "1/1", browser: firefox }
+          - { suite: jump, shard: "1/1", browser: webkit }
     env:
       E2E_ALL_BROWSERS: "1"
     steps:
@@ -71,15 +78,19 @@ jobs:
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit == 'true'
       - run: npm run build && npm run build:node -w @cdj/api
+        if: matrix.suite != 'jump'
+      - run: npm run build -w @cdj/jump
+        if: matrix.suite == 'jump'
       - name: Nom de la part
         run: |
-          blob="$(echo '${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
+          blob="$(echo '${{ matrix.suite == 'jump' && 'jump-' || '' }}${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
           echo "blob=$blob" >> "$GITHUB_ENV"
           echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
       # Chromium (retouche 31b) : parts composées par DURÉE (scripts/e2e-parts.mjs, apps/web/e2e/durees.json) et UN test à la fois.
       # Le runner a 2 cœurs : deux pages en WebGL logiciel côte à côte s'y affament (miniatures + spectateur : × 3 à × 6 sur les durées),
       # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté. Firefox et WebKit (rapides, sans WebGL lourd) gardent `--shard`.
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
+        if: matrix.suite != 'jump'
         run: |
           if [ "${{ matrix.browser }}" = chromium ]; then
             node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium > "$RUNNER_TEMP/part.txt"
@@ -87,16 +98,23 @@ jobs:
           else
             npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
           fi
-      # DailyJump (lot 0) : test de fumée de /jump/, une seule fois par navigateur (part 1 de la matrice), sans relance (retries: 0).
-      # Il tourne après les tests de DailyTrack et ne change ni leur rapport ni leur verdict ; s'il échoue, la part échoue (`e2e` rouge).
-      - name: Test de fumée DailyJump (${{ matrix.browser }})
-        if: startsWith(matrix.shard, '1/')
-        run: npm run e2e -w @cdj/jump -- --project=${{ matrix.browser }}
+      # DailyJump (lot 3c) : mêmes règles que DailyTrack. Chromium : parts composées par durée (apps/jump/e2e/durees.json) et un test à la fois
+      # (même runner à 2 cœurs, même rendu logiciel) ; Firefox et WebKit : `--shard`. Les outils de mesure et de captures (MESURE, CAPTURES) se
+      # sautent d'eux-mêmes avec leur motif (« outil de mesure : MESURE=1 ») : ni l'un ni l'autre n'est défini ici.
+      - name: Tests e2e DailyJump (${{ matrix.browser }}, part ${{ matrix.shard }})
+        if: matrix.suite == 'jump'
+        run: |
+          if [ "${{ matrix.browser }}" = chromium ]; then
+            node scripts/e2e-parts.mjs ${{ matrix.shard }} jump-chromium > "$RUNNER_TEMP/part.txt"
+            npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt"
+          else
+            npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }} --shard=${{ matrix.shard }}
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: blob-${{ env.blob }}
-          path: apps/web/blob-report/
+          path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/blob-report/
           retention-days: 7
           if-no-files-found: warn
       # Traces des essais ratés (même ceux d'un test réussi à la relance) : de quoi trouver la cause d'une instabilité.
@@ -104,7 +122,7 @@ jobs:
         if: always()
         with:
           name: resultats-${{ env.blob }}
-          path: apps/web/test-results/
+          path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/test-results/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -130,7 +148,8 @@ jobs:
         run: |
           mkdir -p merged
           if ls all-blobs/*.zip >/dev/null 2>&1; then
-            PLAYWRIGHT_JSON_OUTPUT_NAME=merged/report.json npx playwright merge-reports --reporter=json,html all-blobs
+            # --config : les rapports de DailyTrack et de DailyJump viennent de dossiers de tests différents (lot 3c, scripts/e2e-merge.config.mjs).
+            PLAYWRIGHT_JSON_OUTPUT_NAME=merged/report.json npx playwright merge-reports --config ../../scripts/e2e-merge.config.mjs --reporter=json,html all-blobs
             ls merged
           else
             echo "aucun rapport de part : les jobs e2e-parts ont échoué avant les tests" >&2
