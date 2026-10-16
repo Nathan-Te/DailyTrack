@@ -1,22 +1,51 @@
-import { Rng, mixSeed } from "@cdj/core";
+import { JUMP_THEME_NAMES, jumpThemeForDay, type JumpThemeName } from "@cdj/jump-sim";
 import { mix } from "./contrast";
 import type { Palette } from "./palette";
 
 // Thèmes du jour (lot 9) : une identité visuelle et sonore complète — palette, traitement des tuiles, décor, fond en parallaxe, ambiance.
-// **Cosmétique** : le thème n'entre ni dans l'identifiant du niveau ni dans aucune version, et rien de la simulation ne le lit. Il le
-// restera tant qu'aucun élément de jeu ne dépendra de lui (une glace glissante, par exemple, serait un élément de jeu, dans son propre lot).
+// **Lot 11 : le thème est une donnée du générateur.** Le *choix* du thème d'une date (`jumpThemeForDay`) et la liste des noms
+// (`JUMP_THEME_NAMES`) viennent de `@cdj/jump-sim` (`packages/jump-sim/src/themes.ts`) : le thème décide des morceaux permis et de la mécanique
+// du niveau (usine : tapis roulants ; glace : glace), donc de son identifiant quand il est forcé (`?theme=` : un **essai**, jamais enregistré).
+// Ce fichier ne garde que l'**identité visuelle et sonore** de chaque thème (palette, tuiles, décor, fond, ambiance) — et le style de ses deux
+// surfaces de jeu (`TileStyle.belt`, `TileStyle.ice`, lot 11). Un test vérifie que les noms de l'application sont ceux de la simulation.
 //
 // Couleurs réservées, identiques dans tous les thèmes : les **dangers** (pics, scies : `HAZARD`, cernés de `HAZARD_OUTLINE`) et le
 // **personnage** (`PLAYER`, ses taches comprises). Les seuils de contraste sont vérifiés par `test/themes.test.ts`.
 
-export const THEME_NAMES = ["foret", "usine", "glace", "nuit", "neon"] as const;
-export type ThemeName = (typeof THEME_NAMES)[number];
+export const THEME_NAMES = JUMP_THEME_NAMES;
+export type ThemeName = JumpThemeName;
 
 /** Danger : le même rouge partout ; sombre cerne autour des pics et des scies (il les détache d'un bloc friable ou d'un contour clair). */
 export const HAZARD = 0xff3b3b;
 export const HAZARD_OUTLINE = 0x1a0408;
 /** Personnage : le même jaune partout (ses éclats, son fantôme et ses taches aussi). */
 export const PLAYER = 0xffd23f;
+
+/**
+ * Tapis roulant (lot 11) : une bande sur la face du dessus. `base` (très sombre : mêmes seuils que les pleins vis-à-vis des dangers et du
+ * personnage), `rail` (liserés haut et bas de la bande), `chevron` (clair, peu saturé : il se lit en niveaux de gris et ne prend la teinte ni
+ * des dangers, ni du personnage, ni des ressorts) ; les chevrons défilent dans le sens du tapis (`surfaceArt.ts`, un seul matériau).
+ */
+export interface BeltStyle {
+  base: number;
+  rail: number;
+  chevron: number;
+}
+
+/**
+ * Glace (lot 11) : un bloc à reflet. `base` et `sheen` (dégradé sombre de la face : bleu nuit, mêmes seuils que les pleins), `edge` (croûte
+ * claire du dessus, plus épaisse que le contour ordinaire) et `glint` (éclats en biais, presque blancs).
+ */
+export interface IceStyle {
+  base: number;
+  sheen: number;
+  edge: number;
+  glint: number;
+}
+
+/** Les deux surfaces sont les mêmes dans tous les thèmes (un tapis ou de la glace se reconnaît d'un thème à l'autre). */
+export const BELT_STYLE: BeltStyle = { base: 0x0b0e13, rail: 0x2c323b, chevron: 0xe6eef2 };
+export const ICE_STYLE: IceStyle = { base: 0x0a2238, sheen: 0x123f60, edge: 0xdff8ff, glint: 0xf4fdff };
 
 /** Garniture des faces du dessus. */
 export type TrimKind = "herbe" | "rivets" | "givre" | "etoiles" | "neon";
@@ -44,6 +73,9 @@ export interface TileStyle {
   speck: number;
   /** Fissures des blocs friables. */
   crack: number;
+  /** Lot 11 : le tapis roulant et la glace de ce thème. */
+  belt: BeltStyle;
+  ice: IceStyle;
 }
 
 /**
@@ -123,6 +155,8 @@ const FORET_TILES: TileStyle = {
   pattern: "pierres",
   speck: 0x1c2f1e,
   crack: 0x4a3f22,
+  belt: BELT_STYLE,
+  ice: ICE_STYLE,
 };
 
 // ——— Usine : bandes et rivets, coins chanfreinés, cheminées et poutres ———
@@ -141,6 +175,8 @@ const USINE_TILES: TileStyle = {
   pattern: "plaques",
   speck: 0x181b21,
   crack: 0x3c3a33,
+  belt: BELT_STYLE,
+  ice: ICE_STYLE,
 };
 
 // ——— Glace : givre, coins arrondis, montagnes de glace ———
@@ -159,6 +195,8 @@ const GLACE_TILES: TileStyle = {
   pattern: "cristaux",
   speck: 0x1a3954,
   crack: 0x2f4f66,
+  belt: BELT_STYLE,
+  ice: ICE_STYLE,
 };
 
 // ——— Nuit : lisière étoilée, coins chanfreinés, ciel étoilé et lune ———
@@ -177,6 +215,8 @@ const NUIT_TILES: TileStyle = {
   pattern: "briques",
   speck: 0x121731,
   crack: 0x3a3550,
+  belt: BELT_STYLE,
+  ice: ICE_STYLE,
 };
 
 // ——— Néon : liseré lumineux, coins chanfreinés, grille et skyline ———
@@ -195,6 +235,8 @@ const NEON_TILES: TileStyle = {
   pattern: "grille",
   speck: 0x281c48,
   crack: 0x4a2a5c,
+  belt: BELT_STYLE,
+  ice: ICE_STYLE,
 };
 
 export const THEMES: Record<ThemeName, Theme> = {
@@ -302,21 +344,12 @@ export function themeByName(name: string | null | undefined): Theme | null {
   return (THEME_NAMES as readonly string[]).includes(key) ? THEMES[key as ThemeName] : null;
 }
 
-/** Sel propre aux thèmes de DailyJump (le même numéro de jour ne donne pas la même graine que DailyTrack ni que la palette du lot 0). */
-const THEME_SALT = 0x74686d39;
-
-const draw = (day: number, n: number): number => new Rng(mixSeed(day, THEME_SALT)).int(n);
-
 /**
- * Le thème d'un jour (numéro de jour de `@cdj/core`), **pur**. Deux jours consécutifs n'ont jamais le même thème : un jour pair tire
- * librement parmi les cinq ; un jour impair tire parmi ceux que n'ont pas ses deux voisins (pairs, donc connus sans récurrence).
+ * Le thème d'un jour (numéro de jour de `@cdj/core`), **pur** : le tirage est celui de la simulation (`jumpThemeForDay`, identique à celui du
+ * lot 9). Deux jours consécutifs n'ont jamais le même thème.
  */
 export function themeForDay(day: number): Theme {
-  const even = (d: number) => THEME_NAMES[draw(d, THEME_NAMES.length)]!;
-  if (((day % 2) + 2) % 2 === 0) return THEMES[even(day)];
-  const banned = new Set([even(day - 1), even(day + 1)]);
-  const allowed = THEME_NAMES.filter((n) => !banned.has(n));
-  return THEMES[allowed[draw(day, allowed.length)]!];
+  return THEMES[jumpThemeForDay(day)];
 }
 
 /** Toutes les couleurs du fond (ciel et plans de parallaxe, accents compris) : ce qu'un danger ou le personnage peut avoir derrière lui. */
@@ -324,9 +357,12 @@ export function backdropColors(t: Theme): number[] {
   return [t.palette.background, ...t.parallax.flatMap((l) => [l.color, l.accent])];
 }
 
-/** Couleurs des tuiles pleines qu'un danger peut toucher (bande du bord, plein, plein profond, motif). */
+/**
+ * Couleurs des tuiles pleines qu'un danger peut toucher (bande du bord, plein, plein profond, motif) — lot 11 : et le fond sombre d'un tapis,
+ * le dégradé de la glace (les clairs, chevrons, croûte et éclats, sont des accents, comme les contours clairs).
+ */
 export function solidColors(t: Theme): number[] {
-  return [t.tiles.face, t.tiles.fill, t.tiles.deep, t.tiles.speck];
+  return [t.tiles.face, t.tiles.fill, t.tiles.deep, t.tiles.speck, t.tiles.belt.base, t.tiles.belt.rail, t.tiles.ice.base, t.tiles.ice.sheen];
 }
 
 /** Couleur d'un niveau de profondeur du plein (0 : bord, 1 : intermédiaire, ≥ 2 : profond). */

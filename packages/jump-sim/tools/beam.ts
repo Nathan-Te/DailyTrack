@@ -114,6 +114,9 @@ export interface BeamOptions {
    * simple l'emporte (moins de changements, donc moins de prises à la gigue). 0 par défaut.
    */
   changePenalty?: number;
+  /** Lot 11 : durée minimale d'un appui de saut et d'un relâchement entre deux appuis (pas), 0 = aucune règle (`PRESS_MIN`, `RELEASE_MIN`). */
+  pressMin?: number;
+  releaseMin?: number;
 }
 
 interface Node {
@@ -123,11 +126,14 @@ interface Node {
   score: number;
   /** Changements d'action depuis le départ. */
   changes: number;
+  /** Lot 11 : pas d'appui de saut en cours (0 : bouton relâché) et pas relâchés depuis le dernier appui (−1 : aucun appui avant). */
+  on: number;
+  off: number;
 }
 
-function key(s: AttemptState): string {
+function key(s: AttemptState, on: number, off: number): string {
   const p = s.player;
-  return `${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}`;
+  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}`;
 }
 
 /** Cherche une suite de commandes qui mène de `start` au but. Rend les commandes (une par pas, la dernière atteint le but), ou null. */
@@ -139,7 +145,9 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
   const penalty = options.changePenalty ?? 0;
   const dist = distanceField(level);
   const P = DEFAULT_JUMP_PARAMS;
-  let layer: Node[] = [{ state: options.start, parent: null, action: -1, score: 0, changes: 0 }];
+  const pressMin = options.pressMin ?? 0;
+  const releaseMin = options.releaseMin ?? 0;
+  let layer: Node[] = [{ state: options.start, parent: null, action: -1, score: 0, changes: 0, on: 0, off: -1 }];
   for (let t = 0; t < maxTicks; t += chunk) {
     const seen = new Map<string, Node>();
     let best: { node: Node; tick: number } | null = null;
@@ -148,8 +156,28 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
         let s = node.state;
         let at = -1;
         let lost = false;
+        let on = node.on;
+        let off = node.off;
         for (let k = 0; k < chunk; k++) {
-          s = stepAttempt(s, bitsAt(action, k), level, P);
+          const bits = bitsAt(action, k);
+          // Lot 11 : un doigt ne tient pas un appui plus court que `pressMin`, ni ne relâche moins de `releaseMin` entre deux appuis.
+          if ((bits & INPUT_JUMP) !== 0) {
+            if (on === 0 && off >= 0 && off < releaseMin) {
+              lost = true;
+              break;
+            }
+            on++;
+            off = -1;
+          } else {
+            if (on > 0 && on < pressMin) {
+              lost = true;
+              break;
+            }
+            if (on > 0) off = 0;
+            on = 0;
+            if (off >= 0 && off < 99) off++;
+          }
+          s = stepAttempt(s, bits, level, P);
           if (options.goal(s)) {
             at = k + 1;
             break;
@@ -161,13 +189,13 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
         }
         if (lost) continue;
         const changes = node.changes + (action !== node.action ? 1 : 0) + (ACTIONS[action]!.jump === "repress" ? 1 : 0);
-        const child: Node = { state: s, parent: node, action, score: 0, changes };
+        const child: Node = { state: s, parent: node, action, score: 0, changes, on, off };
         if (at > 0) {
           if (!best || at < best.tick) best = { node: child, tick: at };
           continue;
         }
         child.score = guideScore(level, dist, s) - penalty * changes;
-        const k = key(s);
+        const k = key(s, Math.min(on, pressMin), Math.min(off, releaseMin));
         const prev = seen.get(k);
         if (!prev || child.score > prev.score) seen.set(k, child);
       }
@@ -179,7 +207,7 @@ export function beamSolve(level: Level, options: BeamOptions): number[] | null {
     layer = [];
     for (const n of sorted) {
       const p = n.state.player;
-      const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}`;
+      const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}|${Math.min(n.on, pressMin)}`;
       const used = cells.get(cell) ?? 0;
       if (used >= perCell) continue;
       cells.set(cell, used + 1);

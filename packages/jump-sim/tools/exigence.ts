@@ -5,8 +5,11 @@ import {
   ATTEMPT_RUNNING,
   DEFAULT_JUMP_PARAMS,
   GIGUE_DRAWS,
+  INPUT_JUMP,
   INPUT_RIGHT,
   PLAYER_WIDTH,
+  PRESS_MIN,
+  RELEASE_MIN,
   RACCORD_POSITIONS,
   RACCORD_TAIL,
   UNITS_PER_TILE,
@@ -116,7 +119,41 @@ function rebuild(bits: readonly number[], ends: readonly number[], total: number
   return out;
 }
 
-/** La solution, chaque changement de commande décalé de −k à +k pas (au moins un pas par commande). */
+/**
+ * Lot 11 : ce qu'un doigt peut réellement faire. Un appui plus court que `PRESS_MIN` pas est prolongé jusque-là ; un relâchement de moins de
+ * `RELEASE_MIN` pas entre deux appuis retarde le second appui (qui garde sa fin, ou `PRESS_MIN` pas au moins). Sans cela, la gigue
+ * fabriquait des appuis d'un pas qu'aucun joueur ne produit, et ne punissait pas les solutions qui en exigent.
+ */
+export function humanized(inputs: readonly number[]): number[] {
+  const out = [...inputs];
+  const n = out.length;
+  const jump = (t: number) => (out[t]! & INPUT_JUMP) !== 0;
+  let release = -1;
+  let t = 0;
+  while (t < n) {
+    if (!jump(t)) {
+      t++;
+      continue;
+    }
+    if (release >= 0 && t - release < RELEASE_MIN) {
+      const end = Math.min(n, release + RELEASE_MIN);
+      for (let u = t; u < end; u++) out[u] = out[u]! & ~INPUT_JUMP;
+      t = end;
+      continue;
+    }
+    let e = t;
+    while (e < n && jump(e)) e++;
+    if (e - t < PRESS_MIN) {
+      for (; e < Math.min(n, t + PRESS_MIN); e++) out[e] = out[e]! | INPUT_JUMP;
+      while (e < n && jump(e)) e++;
+    }
+    release = e;
+    t = e;
+  }
+  return out;
+}
+
+/** La solution, chaque changement de commande décalé de −k à +k pas (au moins un pas par commande), puis rendue humaine (`humanized`). */
 export function jittered(inputs: readonly number[], k: number, rng: Rng): number[] {
   const { runs, ends } = boundaries(inputs);
   const shifted: number[] = [];
@@ -128,7 +165,7 @@ export function jittered(inputs: readonly number[], k: number, rng: Rng): number
     prev = v;
   }
   const total = Math.max(inputs.length, prev + 1);
-  return rebuild(runs, shifted, total);
+  return humanized(rebuild(runs, shifted, total));
 }
 
 export interface Margins {

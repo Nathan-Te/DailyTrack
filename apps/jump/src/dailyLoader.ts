@@ -1,5 +1,5 @@
-import type { DailyLevel } from "@cdj/jump-sim";
-import { dailyLevelId } from "@cdj/jump-sim";
+import type { DailyLevel, JumpThemeName } from "@cdj/jump-sim";
+import { dailyLevelId, jumpThemeForDay } from "@cdj/jump-sim";
 import { formatDay } from "@cdj/core";
 import { dropCache, readCache, writeCache } from "./dailyCache";
 import { thawLevel } from "./frozen";
@@ -14,6 +14,8 @@ import type { WorkerReply, WorkerRequest } from "./dailyWorker";
 //   2. un worker de module (`dailyWorker.ts`) : la génération (≈ 140 ms, 230 au pire sous Node, ×4 sur téléphone) quitte le fil principal,
 //      qui affiche « Préparation du niveau… » ;
 //   3. à défaut de worker (indisponible, script non chargé, erreur, délai dépassé) : la génération sur le fil principal, comme avant le 7b.
+// Lot 11 : un **thème forcé** (`options.theme` différent de celui de la date : un essai, identifiant `…-t<thème>`) ne lit jamais un niveau figé
+// (les fichiers de `public/levels/` sont ceux des thèmes naturels) ; le cache le range sous son identifiant, le worker le génère.
 // Le résultat est gardé dans le cache. Rien ici ne touche à la simulation : le niveau est celui de `dailyLevel`, à l'empreinte près.
 
 /** D'où vient le niveau chargé (`fige` : un niveau figé, lot 10). */
@@ -58,12 +60,14 @@ export interface LoaderOptions {
   workerTimeoutMs?: number;
   /** Lot 10 : les dates figées (AAAA-MM-JJ) et la lecture d'un fichier (rend son contenu JSON, ou null s'il n'existe pas). */
   frozen?: { days: readonly string[]; read(date: string): Promise<unknown> } | undefined;
+  /** Lot 11 : un thème imposé par l'adresse. Le thème de la date (ou absent) : le niveau ordinaire ; un autre : un essai. */
+  theme?: JumpThemeName | null;
 }
 
 export const WORKER_TIMEOUT_MS = 20_000;
 
 /** Demande la charge au worker ; rejette si le worker échoue ou ne répond pas. */
-function viaWorker(worker: WorkerLike, day: number, timeoutMs: number): Promise<DailyPayload> {
+function viaWorker(worker: WorkerLike, day: number, timeoutMs: number, theme: JumpThemeName | null): Promise<DailyPayload> {
   return new Promise<DailyPayload>((resolve, reject) => {
     const timer = setTimeout(() => done(() => reject(new Error("le worker ne répond pas"))), timeoutMs);
     let over = false;
@@ -78,7 +82,7 @@ function viaWorker(worker: WorkerLike, day: number, timeoutMs: number): Promise<
     worker.onmessage = (e) => done(() => (e.data.ok && isPayload(e.data.payload) ? resolve(e.data.payload) : reject(new Error(e.data.ok ? "charge illisible" : e.data.error))));
     worker.onerror = () => done(() => reject(new Error("erreur du worker")));
     worker.onmessageerror = () => done(() => reject(new Error("message du worker illisible")));
-    worker.postMessage({ day });
+    worker.postMessage({ day, theme });
   });
 }
 
@@ -86,14 +90,16 @@ function viaWorker(worker: WorkerLike, day: number, timeoutMs: number): Promise<
 export async function loadDaily(day: number, options: LoaderOptions): Promise<DailyLoad> {
   const now = options.now ?? (() => performance.now());
   const t0 = now();
-  const id = dailyLevelId(day);
+  // Lot 11 : `forced` = un thème imposé qui n'est pas celui de la date (un essai) ; null sinon.
+  const forced = options.theme && options.theme !== jumpThemeForDay(day) ? options.theme : null;
+  const id = dailyLevelId(day, forced);
   let blocked = 0;
   let cacheMiss = "";
   let frozenMiss = "";
 
   // 0. Un niveau figé : le niveau tel qu'il a été joué, sa preuve rejouée avant d'accepter quoi que ce soit (lot 10).
   const date = formatDay(day);
-  if (options.frozen?.days.includes(date)) {
+  if (forced === null && options.frozen?.days.includes(date)) {
     let raw: unknown = null;
     try {
       raw = await options.frozen.read(date);
@@ -114,7 +120,7 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
   const cached = readCache(options.store, id, options.today);
   if (cached) {
     const t = now();
-    const level = fromPayload(cached, day, { proof: true });
+    const level = fromPayload(cached, day, { proof: true, theme: forced });
     blocked += now() - t;
     if (typeof level !== "string") return { level, source: "cache", generated: false, cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
     cacheMiss = level;
@@ -134,7 +140,7 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
     }
     if (worker) {
       try {
-        payload = await viaWorker(worker, day, options.workerTimeoutMs ?? WORKER_TIMEOUT_MS);
+        payload = await viaWorker(worker, day, options.workerTimeoutMs ?? WORKER_TIMEOUT_MS, forced);
       } catch {
         payload = null;
       }
@@ -144,11 +150,11 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
       source = "principal";
       await options.yieldToPaint?.();
       const t = now();
-      payload = generatePayload(day);
+      payload = generatePayload(day, forced);
       blocked += now() - t;
     }
     const t = now();
-    const level = fromPayload(payload, day, { proof: false });
+    const level = fromPayload(payload, day, { proof: false, theme: forced });
     blocked += now() - t;
     if (typeof level === "string") throw new Error(`niveau du jour invalide : ${level}`);
     writeCache(options.store, payload, options.today);

@@ -1,0 +1,29 @@
+id: tapis-lance
+intention: Un tapis qui lance un saut trop long à pied : sauter au bord et retenir son élan pour se poser sur la plateforme avant les pics.
+etiquettes: tapis precision
+famille: tapis-lance
+theme: usine
+mutateurs: denivele
+format: 3
+paliers: 9 9
+repeter: trou colonnes 8-8
+repeter: pique colonnes 13-13
+variante: trou=5 pique=3
+variante: trou=4 pique=3
+variante: trou=6 pique=4
+variante: trou=5 pique=5 +denivele:2
+grille:
+................
+................
+................
+................
+................
+................
+................
+................
+.............^..
+]]]]]]]].#######
+########.#######
+########.#######
+
+zone denivele 14-15

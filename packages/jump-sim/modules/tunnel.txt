@@ -8,7 +8,7 @@ paliers: 9 9
 repeter: long colonnes 3-6
 variante: long=2
 variante: long=1
-variante: long=1 +denivele:2
+variante: long=1 +denivele:-1
 variante: long=2 +denivele:2
 grille:
 .###########.

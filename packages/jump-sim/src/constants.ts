@@ -9,9 +9,11 @@ export const JUMP_SIM_VERSION = 3;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
- * même règle que `GENERATOR_VERSION` de DailyTrack. 5 depuis le lot 8c (règle de jouabilité humaine : catalogue remesuré et adouci).
+ * même règle que `GENERATOR_VERSION` de DailyTrack. 5 depuis le lot 8c (règle de jouabilité humaine : catalogue remesuré et adouci) ;
+ * 6 depuis le lot 11 (le thème entre dans le générateur : morceaux des mécaniques tapis et glace, quota de signature, identifiants `-t<thème>`) ;
+ * 7 depuis la retouche du lot 11 (jouable au clavier : appui de saut d'au moins `PRESS_MIN` pas, catalogue re-résolu, repos recalculé).
  */
-export const JUMP_GENERATOR_VERSION = 5;
+export const JUMP_GENERATOR_VERSION = 7;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

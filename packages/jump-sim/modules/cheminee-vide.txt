@@ -11,7 +11,6 @@ variante: large=1 haut=1
 variante: large=1 haut=2 +garde
 variante: large=1 haut=2
 variante: large=1 haut=1 +garde
-variante: large=2 haut=1 +fosse
 grille:
 .........
 .........

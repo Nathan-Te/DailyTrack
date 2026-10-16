@@ -17,8 +17,11 @@ import {
   SANDBOX_LEVEL,
   SPRINT_TRIAL_PARAMS,
   TICK_RATE,
+  TILE_BELT_LEFT,
+  TILE_BELT_RIGHT,
   UNITS_PER_TILE,
   decodeReplay,
+  groundTile,
   demoAttempts,
   fromRuns,
   lifeReplay,
@@ -28,12 +31,14 @@ import {
   sawCenters,
   buildModule,
   jumpMedalFor,
+  jumpThemeForDay,
   replayStartState,
   type AttemptState,
   type DailyLevel,
   type JumpMedal,
   type JumpParams,
   type JumpReplay,
+  type JumpThemeName,
   type Level,
   type PlayerState,
 } from "@cdj/jump-sim";
@@ -48,13 +53,13 @@ import { animateLook, motionOf, onSkid, onStep, restLook, stridePhase, type Feet
 import { BurstMesh, BurstPool, Shake } from "./fx";
 import { mountHud } from "./hud";
 import { FixedStepper } from "./loop";
-import { themeByName, themeForDay } from "./themes";
+import { THEMES, themeByName, themeForDay } from "./themes";
 import { createScene, type JumpScene, type SceneDetail, type SceneStats } from "./scene";
 import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
-import { LAUNCH_TILES, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
+import { LAUNCH_TILES, moduleTheme, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
 import { archiveHref, dailyHref, homeHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
 import { browserFrozen, browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
 import { MEDAL_ICON, NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, shortDate, type DayChoice } from "./dailyInfo";
@@ -81,12 +86,18 @@ import { shareText } from "./share";
 import { sendShare } from "./clipboard";
 import { CarnageFilter, EventLog, causeName, eventsBetween, type GameEvent } from "./events";
 import { JumpAudio, type AudioDebug } from "./audio";
-import { AMBIENCES, sawMix } from "./audioLogic";
+import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
+import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
-import { Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, feelColors, feelEvent, slideSpark } from "./feel";
+import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
 
+// Lot 11 (partie jeu) : le **thème est une donnée du générateur** (`daily.theme`, celui de la date ou un thème **forcé** par `?theme=`, qui est alors un
+// **essai** : identifiant `…-t<thème>`, `DayMode` « essai », rien d'enregistré — ni mémoire du jour, ni historique, ni série, ni partage, bandeau
+// d'essai). Deux surfaces dessinées en lecture seule (`tileArt.ts`, `surfaceArt.ts` : tapis à chevrons qui défilent dans un seul matériau, glace à
+// reflets), trois événements par surface (`events.ts`), ronronnement spatialisé des tapis et crissement de la glace (`audioLogic.ts`), givre et
+// étincelles de rouage (`feel.ts`), section « Tapis et glace » du panneau `?debug&tune` ; un morceau de mécanique s'ouvre dans son thème.
 // Lot 10 : la boucle quotidienne. L'**accueil** (`home.ts`) s'ouvre sur la page par défaut, posé sur le niveau qui se charge derrière (Jouer
 // = le geste qui réveille le son) ; on y revient par le menu ⏸ ou l'écran d'arrivée. L'**écran d'arrivée** (`arrival.ts`) remplace le
 // bandeau pour le niveau du jour, **après** le carnage : temps, médaille, seuils, morts et essais du jour, série, Rejouer / Partager / Revoir
@@ -282,6 +293,9 @@ export interface DailyView {
   date: string;
   number: number;
   id: string;
+  /** Lot 11 : le thème du niveau (donnée du générateur) et s'il est forcé (essai : rien n'est enregistré). */
+  theme: string;
+  forcedTheme: boolean;
   /** Aujourd'hui (date de Paris lue au chargement) ; `jour`, `archive` ou `futur` ; site publié ou aperçu ; date future refusée. */
   today: string;
   mode: DayChoice["mode"];
@@ -290,7 +304,7 @@ export interface DailyView {
   hash: string;
   width: number;
   height: number;
-  pieces: { id: string; variant: number; entry: string; exigence: number; tags: readonly string[]; family: string; long: boolean; col0: number; col1: number; start: number; end: number }[];
+  pieces: { id: string; variant: number; entry: string; exigence: number; tags: readonly string[]; family: string; long: boolean; mechanic: string | null; col0: number; col1: number; start: number; end: number }[];
   attempts: { index: number; status: string; reason: string; pieces: string[]; ticks: number; rate: number; score: number }[];
   chosen: number;
   fallback: boolean;
@@ -349,13 +363,18 @@ const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_L
 // Lot 5 : « aujourd'hui » = la date de Paris (`@cdj/clock`), lue ici, hors de la simulation ; le niveau du jour en découle.
 const today = parisDay(Date.now());
 const preview = isPreview(location);
-const choice: DayChoice | null = options.daily ? chooseDay(options.seed, today, preview) : null;
+const dayChoice: DayChoice | null = options.daily ? chooseDay(options.seed, today, preview) : null;
+// Lot 11 : `?theme=` sur le niveau du jour qui force un thème **différent de celui de la date** est un **essai** : un autre niveau (identifiant
+// `…-t<thème>`), qui n'entre ni dans l'historique, ni dans la série, ni dans le partage, et dont rien n'est enregistré. Le thème de la date
+// lui-même donne le niveau ordinaire (le thème est alors une donnée de la date, pas un choix).
+const trialTheme: JumpThemeName | null = dayChoice && options.theme !== null && options.theme !== jumpThemeForDay(dayChoice.day) ? options.theme : null;
+const choice: DayChoice | null = dayChoice && trialTheme !== null ? { ...dayChoice, mode: "essai" } : dayChoice;
 const store = browserStorage();
 
 // ——— Lot 10 : historique et accueil, montés avant le chargement du niveau (l'accueil s'affiche tout de suite, Jouer attend le niveau) ———
 const history = new History(store);
 /** L'accueil existe sur la page du niveau du jour (hors lecture) ; il s'ouvre au chargement si `wantsHome`, sinon par le menu ⏸ ou l'arrivée. */
-const homeHere = choice !== null && choice.mode === "jour" && !options.solution && !options.watchBest && !options.carnageDemo;
+const homeHere = choice !== null && choice.mode === "jour" && trialTheme === null && !options.solution && !options.watchBest && !options.carnageDemo;
 const homeAtStart = homeHere && wantsHome(options);
 const homeTheme = themeByName(options.theme) ?? themeForDay(today);
 /** Vrai une fois le jeu entièrement prêt : avant, ouvrir ou fermer une fenêtre de l'accueil ne touche pas encore à la pause. */
@@ -399,6 +418,7 @@ const loaded: DailyLoad | null = choice
       showProgress: homeAtStart ? undefined : progressMessage(document),
       yieldToPaint,
       frozen: { days: FROZEN_DAYS, read: browserFrozen },
+      theme: trialTheme,
     })
   : null;
 const daily: DailyLevel | null = loaded ? loaded.level : null;
@@ -408,11 +428,17 @@ const mod = options.module;
 const built = mod ? buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? LAUNCH_TILES : 0 }) : null;
 const level = built ? built.level : daily ? daily.level : LEVELS[options.scenario ?? "essai"];
 const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
-const nextHref = mod ? moduleHref({ id: nextModule(mod.id), variant: 0, entry: mod.entry }, options) : null;
+const nextId = mod ? nextModule(mod.id) : null;
+const nextHref = mod && nextId ? moduleHref({ id: nextId, variant: 0, entry: mod.entry, theme: moduleTheme(nextId, 0) ?? undefined }, options) : null;
 
 const dayText = formatDay(today);
-// Lot 9 : le thème du jour, celui de la date du niveau (une archive garde le sien) ; `?theme=` en impose un (cosmétique). La palette en vient.
-const theme = themeByName(options.theme) ?? themeForDay(daily ? daily.day : today);
+// Lot 9 : le thème du jour, celui de la date du niveau (une archive garde le sien). Lot 11 : le thème est une donnée du générateur : un niveau du
+// jour porte le sien (`daily.theme`, celui de la date ou le thème forcé d'un essai). Un morceau ou un scénario n'a pas de thème : `?theme=` leur en
+// donne un (cosmétique, ils n'ont pas de mécanique de thème). La palette en vient.
+const modTheme = mod ? moduleTheme(mod.id, mod.variant) : null;
+const theme = daily ? THEMES[daily.theme] : (themeByName(options.theme) ?? (modTheme ? THEMES[modTheme] : themeForDay(today)));
+/** Lot 11 : essai (thème forcé) : rien n'est enregistré, comme avec des réglages modifiés. */
+const isTrial = daily !== null && daily.forcedTheme;
 const palette = theme.palette;
 
 const stamp = document.getElementById("stamp")!;
@@ -563,7 +589,7 @@ function phaseOf(s: AttemptState): Phase {
 function drainEssais(): RecordedEssai | null {
   let last: RecordedEssai | null = null;
   for (let e = session.takeEssai(); e; e = session.takeEssai()) {
-    const rec = memory.recordEssai(e.essai, e.tuned);
+    const rec = memory.recordEssai(e.essai, e.tuned || isTrial);
     if (!rec) continue;
     last = rec;
     if (rec.newBest) refreshGhost();
@@ -752,7 +778,7 @@ function startDemo(max = 0, crowd = false): boolean {
 function onEvent(e: SessionEvent): void {
   if (e.kind === "death") {
     // Éclats et tremblement : par les événements de jeu (`dispatch`, lot 8). Tache de la journée (pas en lecture, pas avec des réglages modifiés).
-    if (!watching && memory.recordDeath({ x: e.x, y: e.y, cause: e.cause }, session.tuned)) stains?.add(stainFor(level, e.x, e.y));
+    if (!watching && memory.recordDeath({ x: e.x, y: e.y, cause: e.cause }, session.tuned || isTrial)) stains?.add(stainFor(level, e.x, e.y));
   } else if (e.kind === "checkpoint") hud.toast("Point de passage");
   else if (e.kind === "respawn") {
     look = restLook();
@@ -785,7 +811,7 @@ let finishNewBest = false;
 
 /** Lot 10 : l'écran d'arrivée sert au niveau du jour joué (pas une lecture, pas des réglages modifiés) ; ailleurs, le bandeau du lot 2. */
 function arrivalScreen(): boolean {
-  return daily !== null && choice !== null && !watching && !session.tuned;
+  return daily !== null && choice !== null && !watching && !session.tuned && !isTrial;
 }
 
 /** L'arrivée : l'écran d'arrivée (niveau du jour), sinon le bandeau. */
@@ -830,7 +856,7 @@ let lastShare = "";
 
 /** Lot 10 : « Partager » : la feuille de partage au téléphone, sinon le presse-papiers, sinon le texte à sélectionner. */
 async function share(): Promise<void> {
-  if (!daily || !choice || !memory.best) return;
+  if (!daily || !choice || !memory.best || choice.mode === "essai") return; // un essai de thème ne se partage pas
   const best = memory.best.time;
   const text = shareText({ number: daily.number, date: daily.date, ticks: best, medal: jumpMedalFor(best, daily.medals), deaths: memory.totalDeaths, kind: choice.mode }, location);
   lastShare = text;
@@ -881,7 +907,11 @@ function playFromHome(): void {
 let lastMedal: string | null = null;
 
 /** Bandeau d'arrivée : niveau du jour (lot 5) : la médaille obtenue et le temps de l'auteur ; morceau (lot 4) : le temps de la solution, « Morceau suivant ». */
-function finishOptions(): { reference: string | null; next: string | null } {
+function finishOptions(): { reference: string | null; next: string | null; title?: string } {
+  if (daily && isTrial) {
+    // Lot 11 : un essai de thème (rien n'est enregistré) : le bandeau le dit, sans médaille ni temps de l'auteur.
+    return { reference: `Essai du thème ${theme.label} : rien n'est enregistré · Temps de l'auteur : ${formatTicks(daily.medals.author)}`, next: null, title: `Arrivée · essai ${theme.label}` };
+  }
   if (daily) {
     const m = finishMedalText(session.state.time, daily.medals);
     lastMedal = m.medal;
@@ -988,7 +1018,8 @@ if (daily && choice) {
   document.body.classList.add("daily");
   // Lot 10 : le mode archive se voit dans le HUD (il ne compte pas dans la série).
   const modeTag = document.getElementById("modetag")!;
-  modeTag.hidden = choice.mode !== "archive";
+  modeTag.hidden = choice.mode !== "archive" && choice.mode !== "essai";
+  if (choice.mode === "essai") modeTag.textContent = `Essai · ${theme.label}`;
   updateDayLine();
   if (choice.refused) setNotice(REFUSED_TEXT, false);
   // Le niveau d'aujourd'hui est ouvert (ou une date future refusée) : à minuit de Paris, un nouveau niveau attend. La partie continue.
@@ -1068,7 +1099,7 @@ const info: JumpDebug = {
     return {
       name: theme.name,
       label: theme.label,
-      forced: themeByName(options.theme) !== null,
+      forced: daily ? daily.forcedTheme : themeByName(options.theme) !== null,
       ofDay: themeForDay(daily ? daily.day : today).name,
       ambience: AMBIENCES[theme.ambience].label,
       detail: scene ? sceneDetail(levels) : null,
@@ -1082,6 +1113,8 @@ const info: JumpDebug = {
       date: daily.date,
       number: daily.number,
       id: daily.id,
+      theme: daily.theme,
+      forcedTheme: daily.forcedTheme,
       today: dayText,
       mode: choice.mode,
       preview,
@@ -1089,7 +1122,7 @@ const info: JumpDebug = {
       hash: daily.hash,
       width: daily.level.width,
       height: daily.level.height,
-      pieces: daily.pieces.map((p) => ({ id: p.id, variant: p.variant, entry: p.entry, exigence: p.exigence, tags: p.tags, family: p.family, long: p.long, col0: p.col0, col1: p.col1, start: p.start, end: p.end })),
+      pieces: daily.pieces.map((p) => ({ id: p.id, variant: p.variant, entry: p.entry, exigence: p.exigence, tags: p.tags, family: p.family, long: p.long, mechanic: p.mechanic, col0: p.col0, col1: p.col1, start: p.start, end: p.end })),
       attempts: daily.attempts.map((a) => ({ ...a, pieces: [...a.pieces] })),
       chosen: daily.chosen,
       fallback: daily.fallback,
@@ -1503,6 +1536,10 @@ function sceneDetail(l: FeelLevels): SceneDetail {
   return { decorLite: l.decorLite, parallaxLite: l.parallaxLite, parallaxMotion: l.parallaxMotion };
 }
 
+let beltClock = 0;
+/** Lot 11 : les plages de tapis roulant du niveau (leur ronronnement est spatialisé, `beltMix`). Calculées une fois. */
+const belts = beltRuns(level);
+
 /**
  * Lot 8, à chaque image : traînée à pleine vitesse, frottement de la glisse (tant qu'elle dure, d'après les événements), scies audibles
  * (les trois plus proches du personnage, stéréo selon leur position). `x`, `y` : coin haut-gauche affiché du personnage (tuiles).
@@ -1519,8 +1556,16 @@ function feelFrame(sc: JumpScene, st: Readonly<AttemptState>, x: number, y: numb
     slideClock = 0;
     slideSpark(particles, colors, x + PLAYER_WIDTH / T / 2 + (slideSide * PLAYER_WIDTH) / T / 2, -(y + (PLAYER_HEIGHT / T) * 0.85), slideSide);
   }
+  // Lot 11 : sur un tapis roulant, des étincelles de rouage (lues de l'état : la tuile sous les pieds ; rien n'est écrit dans la simulation).
+  beltClock += dt;
+  if (belts.length > 0 && alive && levels.continuous && beltClock >= BELT_EVERY) {
+    beltClock = 0;
+    const under = st.player.ground === 1 ? groundTile(level, st.player.x, st.player.y) : 0;
+    const side = under === TILE_BELT_LEFT ? -1 : under === TILE_BELT_RIGHT ? 1 : 0;
+    if (side !== 0) beltSpark(particles, colors, x + PLAYER_WIDTH / T / 2, -(y + PLAYER_HEIGHT / T), side);
+  }
   const listener = { x: x + PLAYER_WIDTH / T / 2, y: y + PLAYER_HEIGHT / T / 2 };
-  audio.update(level.saws.length === 0 ? [] : sawMix(sawCenters(level, st).map((p) => ({ x: p.x / T, y: p.y / T })), listener));
+  audio.update(level.saws.length === 0 ? [] : sawMix(sawCenters(level, st).map((p) => ({ x: p.x / T, y: p.y / T })), listener), belts.length === 0 ? [] : beltMix(belts, listener));
 }
 
 /** Position interpolée (tuiles, coin haut-gauche) entre deux états ; pas d'interpolation à travers un saut (reprise sur un point). */

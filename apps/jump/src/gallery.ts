@@ -1,13 +1,16 @@
 import type { ModuleEntry } from "@cdj/jump-sim";
 import { MODULE_TAGS, type ModuleTag } from "@cdj/jump-sim";
-import { TAG_LABELS, galleryFamilies, galleryOrder, matchesFilter, type GalleryFilter, type ModuleInfo } from "./modulesInfo";
+import { TAG_LABELS, THEME_FILTERS, galleryFamilies, galleryOrder, matchesFilter, type GalleryFilter, type ModuleInfo, type ThemeFilter } from "./modulesInfo";
+import { THEMES, themeByName } from "./themes";
 import { formatTicks } from "./session";
 import { moduleHref, type UrlChoices } from "./urlOptions";
 
 // La galerie des morceaux (lot 4, `?modules`) : une page HTML simple, utilisable au téléphone (elle défile, cibles d'au moins 44 px).
 // Pour chaque morceau : intention, étiquettes, famille (lot 7) ; pour chaque variante : paramètres, mutateurs (lot 7), exigence, durées des
 // solutions, « Jouer » et « Regarder ». Le choix de l'entrée (à l'arrêt ou en élan) change les liens ; deux listes (lot 7) filtrent par
-// étiquette et par famille.
+// étiquette et par famille ; lot 11 : un troisième filtre par **thème** (forêt, usine, glace, nuit, néon, ou « sans mécanique »), et **chaque morceau
+// d'une mécanique (chaque variante à mutateur `surface`) s'ouvre dans son thème** : ses liens portent `&theme=<nom>` (décor, palette, tapis et
+// glace comme dans le niveau du jour).
 
 const ENTRY_LABELS: Record<ModuleEntry, string> = { arret: "À l'arrêt", elan: "En élan" };
 
@@ -73,13 +76,16 @@ export function mountGallery(options: UrlChoices): GalleryView {
   };
   const tagSelect = select("Étiquette :", "etiquette", [["", "toutes"], ...MODULE_TAGS.map((t) => [t, TAG_LABELS[t]] as [string, string])]);
   const familySelect = select("Famille :", "famille", [["", "toutes"], ...galleryFamilies(order).map((f) => [f.family, `${f.family} (${f.count})`] as [string, string])]);
+  const themeLabel = (t: ThemeFilter) => (t === "sans" ? "sans mécanique" : t === "usine" ? "usine (tapis roulants)" : t === "glace" ? "glace (patinoire)" : (themeByName(t)?.label ?? t));
+  const themeSelect = select("Thème :", "theme", [["", "tous"], ...THEME_FILTERS.map((t) => [t, themeLabel(t)] as [string, string])]);
   const count = el("p", "count");
+  themeSelect.addEventListener("change", () => view.setFilter({ theme: (themeSelect.value || null) as ThemeFilter | null }));
   tagSelect.addEventListener("change", () => view.setFilter({ tag: (tagSelect.value || null) as ModuleTag | null }));
   familySelect.addEventListener("change", () => view.setFilter({ family: familySelect.value || null }));
   head.append(filters, count);
   root.append(head);
 
-  const links: { play: HTMLAnchorElement; watch: HTMLAnchorElement; id: string; variant: number }[] = [];
+  const links: { play: HTMLAnchorElement; watch: HTMLAnchorElement; id: string; variant: number; theme: ThemeFilter | null }[] = [];
   const cards: { li: HTMLLIElement; m: ModuleInfo }[] = [];
   const list = el("ul", "cards");
   let variants = 0;
@@ -105,6 +111,11 @@ export function mountGallery(options: UrlChoices): GalleryView {
       row.dataset.variant = String(v.index);
       const info = el("div", "info");
       info.append(el("span", "vname", `Variante ${v.index}${v.label ? ` · ${v.label}` : ""}`));
+      if (v.theme) {
+        const th = el("span", "tag theme", `thème ${THEMES[v.theme].label}`);
+        th.dataset.theme = v.theme;
+        info.append(th);
+      }
       info.append(el("span", "mut", v.mutations ? `mutateurs ${v.mutations.replace(/\+/g, "").split(" ").join(" · ")}` : "sans mutateur"));
       const ex = el("span", "ex", `${dots(v.exigence)} ${v.exigence > 0 ? `${v.exigence}/5` : "sans solution"}`);
       ex.title = "Exigence (1 facile, 5 exigeant)";
@@ -113,7 +124,7 @@ export function mountGallery(options: UrlChoices): GalleryView {
       info.append(el("span", "dur", `arrêt ${fmt(v.ticks.arret)} · élan ${fmt(v.ticks.elan)}`));
       const play = el("a", "btn play", "Jouer");
       const watch = el("a", "btn watch", "Regarder");
-      links.push({ play, watch, id: m.id, variant: v.index });
+      links.push({ play, watch, id: m.id, variant: v.index, theme: v.theme });
       const actions = el("div", "actions");
       actions.append(play, watch);
       row.append(info, actions);
@@ -126,12 +137,13 @@ export function mountGallery(options: UrlChoices): GalleryView {
     modules: order.length,
     variants,
     entry: "arret",
-    filter: { tag: null, family: null },
+    filter: { tag: null, family: null, theme: null },
     shown: order.length,
     setFilter(f) {
       view.filter = { ...view.filter, ...f };
       tagSelect.value = view.filter.tag ?? "";
       familySelect.value = view.filter.family ?? "";
+      themeSelect.value = view.filter.theme ?? "";
       let shown = 0;
       for (const c of cards) {
         const ok = matchesFilter(c.m, view.filter);
@@ -145,8 +157,9 @@ export function mountGallery(options: UrlChoices): GalleryView {
       view.entry = entry;
       for (const [e, b] of buttons) b.setAttribute("aria-pressed", e === entry ? "true" : "false");
       for (const l of links) {
-        l.play.href = moduleHref({ id: l.id, variant: l.variant, entry }, options);
-        l.watch.href = moduleHref({ id: l.id, variant: l.variant, entry, solution: true }, options);
+        const theme = l.theme === null || l.theme === "sans" ? undefined : l.theme;
+        l.play.href = moduleHref({ id: l.id, variant: l.variant, entry, theme }, options);
+        l.watch.href = moduleHref({ id: l.id, variant: l.variant, entry, solution: true, theme }, options);
       }
     },
   };

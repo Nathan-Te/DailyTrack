@@ -4,13 +4,17 @@ import {
   MAX_SPEED,
   SPRINT_PARAM_KEYS,
   SPRINT_TRIAL_PARAMS,
+  SURFACE_DEFAULTS,
+  SURFACE_PARAM_KEYS,
   TICK_RATE,
   UNITS_PER_TILE,
   isDefaultJumpParams,
   sprintTop,
+  surfaceParam,
   type JumpParamKey,
   type JumpParams,
   type SprintParamKey,
+  type SurfaceParamKey,
 } from "@cdj/jump-sim";
 import { storageKey } from "./storage";
 
@@ -18,6 +22,10 @@ import { storageKey } from "./storage";
 // (la session lit les réglages à chaque pas). « Copier les valeurs » donne le JSON à coller (les valeurs retenues deviennent les défauts,
 // version +1). Une partie aux réglages modifiés porte le drapeau `tuned` et ne sera jamais enregistrée.
 // Lot 8b : une section « Élan progressif (essai) » (interrupteur et trois curseurs) ; éteint par défaut, allumé la partie est `tuned`.
+// Lot 11 : une section « Tapis et glace » (trois curseurs : `beltSpeed`, `iceAccel`, `iceDecel`). Ces réglages sont **optionnels** (absents de
+// `DEFAULT_JUMP_PARAMS`, comme ceux de l'élan : absent = `SURFACE_DEFAULTS`) : le curseur montre le défaut tant qu'ils sont absents, la valeur
+// n'est écrite qu'au premier mouvement du curseur, « Réinitialiser » les retire, et dès que l'un diffère du défaut la partie est `tuned`
+// (`isDefaultJumpParams`) : rien n'est enregistré, le badge « réglages modifiés » s'affiche.
 
 type Unit = "speed" | "accel" | "ticks" | "length";
 
@@ -34,6 +42,9 @@ export interface TuneSlider<K extends keyof JumpParams = JumpParamKey> {
 
 /** Lot 8b : les curseurs de l'essai d'élan (section à part, sans défaut : valeurs de départ `SPRINT_TRIAL_PARAMS`). */
 export type SprintSlider = TuneSlider<Exclude<SprintParamKey, "sprintMode">>;
+
+/** Lot 11 : les curseurs des surfaces (section à part, valeurs par défaut `SURFACE_DEFAULTS`). */
+export type SurfaceSlider = TuneSlider<SurfaceParamKey>;
 
 const T = UNITS_PER_TILE;
 const R = TICK_RATE;
@@ -120,12 +131,35 @@ export const SPRINT_SLIDERS: readonly SprintSlider[] = [
   },
 ];
 
+/** Valeur d'un réglage de surface, ou son défaut s'il n'est pas réglé. */
+export const surfaceValue = (p: Readonly<JumpParams>, key: SurfaceParamKey): number => surfaceParam(p, key);
+
+export const SURFACE_SLIDERS: readonly SurfaceSlider[] = [
+  {
+    key: "beltSpeed",
+    label: "Tapis roulant : vitesse ajoutée",
+    unit: "speed",
+    min: 0,
+    max: 600,
+    hint: (p) => `avec le tapis : ${num(((p.runSpeed + surfaceValue(p, "beltSpeed")) * R) / T)} tuiles/s, contre : ${num((Math.abs(p.runSpeed - surfaceValue(p, "beltSpeed")) * R) / T)} tuiles/s`,
+  },
+  { key: "iceAccel", label: "Glace : accélération", unit: "accel", min: 1, max: 120, hint: (p) => `pleine vitesse en ${num(ticksTo(p.runSpeed, surfaceValue(p, "iceAccel")) / R, 2)} s` },
+  { key: "iceDecel", label: "Glace : freinage (et demi-tour)", unit: "accel", min: 1, max: 160, hint: (p) => `arrêt en ${num(ticksTo(p.runSpeed, surfaceValue(p, "iceDecel")) / R, 2)} s` },
+];
+
+/** Combien de réglages de surface diffèrent de leur défaut. */
+export const surfacesChanged = (p: Readonly<JumpParams>): number => SURFACE_PARAM_KEYS.filter((k) => surfaceValue(p, k) !== SURFACE_DEFAULTS[k]).length;
+
 export const TUNE_STORAGE_KEY = storageKey("tune");
 
-/** Réglages en JSON, dans l'ordre des défauts : prêts à coller dans `DEFAULT_JUMP_PARAMS`. L'élan n'y est que s'il est allumé. */
+/**
+ * Réglages en JSON, dans l'ordre des défauts : prêts à coller dans `DEFAULT_JUMP_PARAMS`. L'élan n'y est que s'il est allumé ; les réglages des
+ * surfaces (lot 11) que s'ils diffèrent de leur défaut.
+ */
 export function paramsJson(params: Readonly<JumpParams>): string {
   const keys: string[] = [...JUMP_PARAM_KEYS];
   if (params.sprintMode) for (const k of SPRINT_PARAM_KEYS) if (params[k] !== undefined) keys.push(k);
+  for (const k of SURFACE_PARAM_KEYS) if (params[k] !== undefined && params[k] !== SURFACE_DEFAULTS[k]) keys.push(k);
   return JSON.stringify(params, keys, 2);
 }
 
@@ -139,10 +173,11 @@ export function setSprint(params: JumpParams, on: boolean): void {
   params.sprintMode = 1;
 }
 
-/** Remet les défauts : l'élan disparaît (ses réglages aussi). */
+/** Remet les défauts : l'élan disparaît (ses réglages aussi), et les réglages des surfaces reviennent à leur défaut (absents). */
 export function resetParams(params: JumpParams): void {
   Object.assign(params, DEFAULT_JUMP_PARAMS);
   for (const k of SPRINT_PARAM_KEYS) delete params[k];
+  for (const k of SURFACE_PARAM_KEYS) delete params[k];
 }
 
 /** Lit des réglages gardés : seules les clés connues, entières et dans les bornes de leur curseur, sont reprises. */
@@ -151,7 +186,7 @@ export function parseTuned(text: string | null): JumpParams {
   if (!text) return params;
   try {
     const saved = JSON.parse(text) as Partial<Record<keyof JumpParams, unknown>>;
-    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS]) {
+    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS, ...SURFACE_SLIDERS]) {
       const v = saved[s.key];
       if (typeof v === "number" && Number.isInteger(v) && v >= s.min && v <= s.max) params[s.key] = v;
     }
@@ -230,6 +265,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   type Row = { input: HTMLInputElement; value: HTMLElement; hint: HTMLElement; row: HTMLElement };
   const rows = new Map<JumpParamKey, Row>();
   const sprintRows = new Map<Exclude<SprintParamKey, "sprintMode">, Row>();
+  const surfaceRows = new Map<SurfaceParamKey, Row>();
   const status = document.createElement("div");
   status.className = "status";
 
@@ -264,10 +300,18 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
       r.hint.textContent = s.hint ? s.hint(params) : "";
       r.row.classList.toggle("changed", on);
     }
+    for (const s of SURFACE_SLIDERS) {
+      const r = surfaceRows.get(s.key)!;
+      const v = surfaceValue(params, s.key);
+      r.input.value = String(v);
+      r.value.textContent = `${formatHuman(s.unit, v)} (${v})`;
+      r.hint.textContent = s.hint ? s.hint(params) : "";
+      r.row.classList.toggle("changed", v !== SURFACE_DEFAULTS[s.key]);
+    }
     sprintSwitch.textContent = on ? "Élan : activé" : "Élan : désactivé";
     sprintSwitch.setAttribute("aria-pressed", on ? "true" : "false");
     sprintBox.classList.toggle("on", on);
-    const changed = JUMP_PARAM_KEYS.filter((k) => params[k] !== DEFAULT_JUMP_PARAMS[k]).length + (on ? 1 : 0);
+    const changed = JUMP_PARAM_KEYS.filter((k) => params[k] !== DEFAULT_JUMP_PARAMS[k]).length + (on ? 1 : 0) + surfacesChanged(params);
     status.textContent = changed === 0 ? "Réglages par défaut" : `${changed} réglage(s) modifié(s) : partie jamais enregistrée`;
   };
 
@@ -310,6 +354,18 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   sprintBox.append(sprintTitle, sprintNote, sprintSwitch);
   for (const s of SPRINT_SLIDERS) addSlider(sprintBox, s, sprintRows);
   body.append(sprintBox);
+
+  // Lot 11 : la section « Tapis et glace ».
+  const surfaceBox = document.createElement("div");
+  surfaceBox.className = "surfaces";
+  const surfaceTitle = document.createElement("strong");
+  surfaceTitle.textContent = "Tapis et glace";
+  const surfaceNote = document.createElement("small");
+  surfaceNote.className = "hint";
+  surfaceNote.textContent = "Vitesse du tapis roulant, accélération et freinage sur la glace. Modifiés, la partie n'est jamais enregistrée.";
+  surfaceBox.append(surfaceTitle, surfaceNote);
+  for (const s of SURFACE_SLIDERS) addSlider(surfaceBox, s, surfaceRows);
+  body.append(surfaceBox);
 
   const actions = document.createElement("div");
   actions.className = "actions";

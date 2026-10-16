@@ -3,12 +3,14 @@ import {
   SLIDE_LOOP,
   ambienceTarget,
   type AmbienceSpec,
+  BELT_VOICES,
   SAW_VOICES,
   SoundRate,
   VoiceLimiter,
   sliderGain,
   soundFor,
   soundGainFor,
+  type BeltVoice,
   type Layer,
   type SawVoice,
   type SoundSpec,
@@ -44,6 +46,8 @@ export interface AudioDebug {
   carnageDropped: number;
   slide: boolean;
   saws: { index: number; gain: number; pan: number }[];
+  /** Lot 11 : les tapis roulants audibles (plage, volume, stéréo). */
+  belts: { index: number; gain: number; pan: number }[];
   errors: number;
   /** Lot 9 : l'ambiance du thème (nom, nappes branchées, événements joués). */
   ambience: { id: string | null; beds: number; events: number };
@@ -64,12 +68,14 @@ export class JumpAudio {
   private noise: AudioBuffer | null = null;
   private slideNode: { gain: GainNode } | null = null;
   private sawNodes: SawNode[] = [];
+  private beltNodes: SawNode[] = [];
   private readonly limiter = new VoiceLimiter();
   private readonly carnageRate = new SoundRate();
   private sliding = false;
   private active = true;
   private variation = 0;
   private lastSaws: SawVoice[] = [];
+  private lastBelts: BeltVoice[] = [];
   private readonly requested: Record<string, number> = {};
   private readonly played: Record<string, number> = {};
   private errors = 0;
@@ -143,6 +149,7 @@ export class JumpAudio {
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     this.buildSlide(ctx);
     this.buildSaws(ctx);
+    this.buildBelts(ctx);
     this.buildAmbience(ctx);
   }
 
@@ -276,6 +283,48 @@ export class JumpAudio {
     }
   }
 
+  /**
+   * Lot 11 : ronronnement d'un tapis roulant : une dent de scie grave et un carré une octave plus haut, filtrés (passe-bas), dont le volume
+   * bat au rythme de la bande (≈ 9 Hz). Trois voix, réattribuées à chaque image comme celles des scies ; volume et stéréo viennent de `beltMix`.
+   */
+  private buildBelts(ctx: AudioContext): void {
+    for (let i = 0; i < BELT_VOICES; i++) {
+      const o = ctx.createOscillator();
+      o.type = "sawtooth";
+      o.frequency.value = 54 + i * 4;
+      const o2 = ctx.createOscillator();
+      o2.type = "square";
+      o2.frequency.value = 108 + i * 7;
+      const f = ctx.createBiquadFilter();
+      f.type = "lowpass";
+      f.frequency.value = 330;
+      f.Q.value = 1.4;
+      const mix = ctx.createGain();
+      mix.gain.value = 0.35;
+      o2.connect(mix);
+      o.connect(f);
+      mix.connect(f);
+      const trem = ctx.createGain();
+      trem.gain.value = 0.7;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 8.5 + i * 0.9;
+      const depth = ctx.createGain();
+      depth.gain.value = 0.3;
+      lfo.connect(depth).connect(trem.gain);
+      f.connect(trem);
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      const pan = typeof ctx.createStereoPanner === "function" ? ctx.createStereoPanner() : null;
+      trem.connect(gain);
+      if (pan) gain.connect(pan).connect(this.sfx!);
+      else gain.connect(this.sfx!);
+      o.start();
+      o2.start();
+      lfo.start();
+      this.beltNodes.push({ gain, pan, index: -1 });
+    }
+  }
+
   private applyGains(fade = 0.04): void {
     if (!this.ctx || !this.master || !this.sfx || !this.ambience) return;
     const t = this.ctx.currentTime;
@@ -381,9 +430,10 @@ export class JumpAudio {
     src.onended = () => g.disconnect();
   }
 
-  /** À chaque image : les scies audibles (`sawMix`). Une liste vide les fait taire. */
-  update(saws: readonly SawVoice[]): void {
+  /** À chaque image : les scies audibles (`sawMix`) et, lot 11, les tapis roulants (`beltMix`). Une liste vide les fait taire ; rien en pause. */
+  update(saws: readonly SawVoice[], belts: readonly BeltVoice[] = []): void {
     this.lastSaws = this.active ? saws.slice() : [];
+    this.lastBelts = this.active ? belts.slice() : [];
     const ctx = this.ctx;
     if (!ctx || ctx.state !== "running") return;
     const t = ctx.currentTime;
@@ -398,11 +448,15 @@ export class JumpAudio {
         }
       }
     }
-    const list = this.lastSaws;
-    // Une voix garde sa scie tant qu'elle reste audible : pas de saut de stéréo quand l'ordre des distances change.
-    const free = this.sawNodes.filter((n) => !list.some((s) => s.index === n.index));
+    this.voices(this.sawNodes, this.lastSaws, t);
+    this.voices(this.beltNodes, this.lastBelts, t);
+  }
+
+  /** Une voix garde sa source (scie, tapis) tant qu'elle reste audible : pas de saut de stéréo quand l'ordre des distances change. */
+  private voices(nodes: SawNode[], list: readonly { index: number; gain: number; pan: number }[], t: number): void {
+    const free = nodes.filter((n) => !list.some((s) => s.index === n.index));
     for (const s of list) {
-      let node = this.sawNodes.find((n) => n.index === s.index);
+      let node = nodes.find((n) => n.index === s.index);
       if (!node) {
         node = free.shift();
         if (!node) continue;
@@ -429,6 +483,7 @@ export class JumpAudio {
       carnageDropped: this.carnageRate.dropped,
       slide: this.sliding && this.active,
       saws: this.lastSaws.map((s) => ({ index: s.index, gain: s.gain, pan: s.pan })),
+      belts: this.lastBelts.map((s) => ({ index: s.index, gain: s.gain, pan: s.pan })),
       errors: this.errors,
       ambience: { id: this.ambienceSpec?.id ?? null, beds: this.bedGains.length, events: this.ambientEvents },
     };

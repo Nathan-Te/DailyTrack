@@ -1,0 +1,31 @@
+id: tapis-relais
+intention: Remonter un long tapis contraire sous des scies, franchir des tapis croisés au-dessus des pics, puis se faire lancer au-dessus d'un trou : garder son élan, puis le retenir.
+etiquettes: tapis scie precision
+famille: tapis-relais
+enchainement: long
+theme: usine
+format: 3
+paliers: 9 9
+repeter: trou colonnes 53-53
+repeter: pique colonnes 58-58
+variante: trou=4 pique=3 cycle=390
+variante: trou=5 pique=4 cycle=405
+grille:
+.............................................................
+.............................................................
+.............................................................
+.............................................................
+.............................................................
+.............................................................
+.............................................................
+.............................................................
+..........................................................^..
+[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[##]]]^^[[[^^]]]]]]].#######
+#####################################################.#######
+#####################################################.#######
+
+scie s1 1 {cycle} aller-retour 5,3 5,8
+scie s2 1 {cycle} aller-retour 11,8 11,3
+scie s3 1 {cycle} aller-retour 17,3 17,8
+scie s4 1 {cycle} aller-retour 23,8 23,3
+scie s5 1 {cycle} aller-retour 29,3 29,8

@@ -2,13 +2,15 @@ id: scie-ronde
 intention: Passer sous deux blocs suspendus pendant que la scie qui fait le tour de chacun est au-dessus.
 etiquettes: scie
 famille: scie-ronde
-mutateurs: sol-friable denivele
+mutateurs: sol-friable denivele surface
 format: 3
 paliers: 10 10
 variante: cycle=240
 variante: cycle=180
 variante: cycle=240 +sol-friable
 variante: cycle=180 +denivele:2
+variante: cycle=240 +surface:glace
+variante: cycle=300 +surface:tapis:droite
 grille:
 .................
 .................
@@ -28,3 +30,4 @@ scie ronde o {cycle} boucle 3,5 6,5 6,9 3,9
 scie ronde2 o {cycle} boucle 13,9 13,5 10,5 10,9
 zone sol-friable 7-9 10
 zone denivele 14-16
+zone surface 1-15 10

@@ -2,7 +2,7 @@ id: plafond-pics
 intention: Courir sous un plafond hérissé et enjamber les pics du sol par petits sauts : un grand saut s'y empale.
 etiquettes: precision
 famille: plafond
-mutateurs: sol-friable denivele
+mutateurs: sol-friable denivele surface
 format: 3
 paliers: 10 10
 repeter: pics colonnes 4-4
@@ -13,6 +13,7 @@ variante: pics=1
 variante: pics=2
 variante: pics=1 +sol-friable
 variante: pics=2 +sol-friable
+variante: pics=1 +surface:glace
 grille:
 .######################..
 .######################..
@@ -30,3 +31,4 @@ grille:
 zone sol-friable 5-8 10
 zone sol-friable 15-18 10
 zone denivele 20-24
+zone surface 1-22 10

@@ -1,5 +1,7 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { daysFromCivil } from "@cdj/core";
-import { DANGERS_LEVEL, ESSAI_LEVEL, PREMIER_JOUR_JUMP, SANDBOX_LEVEL, TILE_SOLID, buildModule, dailyLevel, isSpikeTile, parseLevel, type Level } from "@cdj/jump-sim";
+import { DANGERS_LEVEL, ESSAI_LEVEL, JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, PREMIER_JOUR_JUMP, SANDBOX_LEVEL, TILE_SOLID, buildModule, dailyLevel, dailyLevelId, isSpikeTile, jumpThemeForDay, parseLevel, type Level } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
 import { AMBIENCES, AMBIENCE_HEADROOM, AmbientScheduler, ambiencePeak, ambienceTarget, quietestGameSoundPeak } from "../src/audioLogic";
 import { CORNERS, E, N, NE, NW, S, SE, SW, W, depthMap, neighbourMask, tileShape } from "../src/autotile";
@@ -52,11 +54,29 @@ describe("themeForDay", () => {
     expect(themeByName(null)).toBeNull();
   });
 
-  it("le thème ne dépend que de la date : ni identifiant de niveau, ni version (cosmétique)", () => {
-    // `themeForDay` ne prend que le numéro du jour ; le niveau d'une date ne lit pas le thème (son identifiant n'en parle pas).
-    const L = dailyLevel(daysFromCivil(2026, 10, 20));
-    expect(L.id).toBe(`jour-2026-10-20-g5`);
-    for (const t of ALL) expect(L.id).not.toContain(t.name);
+  it("lot 11 : les noms et le tirage viennent de la simulation (400 dates du lot 9 : mêmes thèmes qu'avant)", () => {
+    expect([...THEME_NAMES]).toEqual([...JUMP_THEME_NAMES]);
+    expect(Object.keys(THEMES).sort()).toEqual([...JUMP_THEME_NAMES].sort());
+    const lot9 = JSON.parse(readFileSync(join(import.meta.dirname, "../../../packages/jump-sim/test/fixtures/themes-lot9.json"), "utf8")) as { first: number; count: number; names: string };
+    const names = lot9.names.split(" ");
+    expect(names).toHaveLength(lot9.count);
+    for (let i = 0; i < lot9.count; i++) {
+      expect(themeForDay(lot9.first + i).name, `jour ${lot9.first + i}`).toBe(names[i]);
+      expect(themeForDay(lot9.first + i).name).toBe(jumpThemeForDay(lot9.first + i));
+    }
+  });
+
+  it("lot 11 : le thème est une donnée du générateur : le niveau d'une date porte le sien ; un thème forcé est un essai à l'identifiant suffixé", () => {
+    const day = daysFromCivil(2026, 10, 20);
+    const L = dailyLevel(day);
+    expect(L.id).toBe(`jour-2026-10-20-g${JUMP_GENERATOR_VERSION}`);
+    expect(L.theme).toBe(themeForDay(day).name);
+    expect(L.forcedTheme).toBe(false);
+    // Forcer le thème de la date donne le niveau de la date, pas un essai.
+    expect(dailyLevel(day, L.theme)).toBe(L);
+    const other = JUMP_THEME_NAMES.find((n) => n !== L.theme)!;
+    expect(dailyLevelId(day, other)).toBe(`${L.id}-t${other}`);
+    expect(dailyLevelId(day, L.theme)).toBe(L.id);
   });
 });
 
@@ -115,6 +135,67 @@ describe("couleurs réservées et contrastes", () => {
     expect(contrastRatio(0x336699, 0x336699)).toBe(1);
     expect(hueOf(0xff0000).hue).toBe(0);
     expect(hueDistance(0xff0000, 0x00ffff)).toBe(180);
+  });
+});
+
+describe("surfaces : tapis roulants et glace (lot 11)", () => {
+  it("le fond d'un tapis et le dégradé de la glace tiennent les mêmes seuils que les pleins : dangers et personnage ≥ 3:1 dessus, dans tous les thèmes", () => {
+    for (const t of ALL) {
+      const { belt, ice } = t.tiles;
+      for (const c of [belt.base, belt.rail, ice.base, ice.sheen]) {
+        expect(contrastRatio(HAZARD, c), `${t.name} danger ${c.toString(16)}`).toBeGreaterThanOrEqual(3);
+        expect(contrastRatio(PLAYER, c), `${t.name} personnage ${c.toString(16)}`).toBeGreaterThanOrEqual(3);
+        for (const b of backdropColors(t)) expect(contrastRatio(c, b), `${t.name} fond ${c.toString(16)} ${b.toString(16)}`).toBeLessThanOrEqual(2.4);
+      }
+      // Les couleurs de surface sont comptées parmi les pleins (les seuils des dangers et du personnage les couvrent aussi).
+      for (const c of [belt.base, belt.rail, ice.base, ice.sheen]) expect(solidColors(t)).toContain(c);
+    }
+  });
+
+  it("le tapis se distingue d'un bloc ordinaire : chevrons clairs ≥ 4,5:1 sur la bande et ≥ 3:1 sur la tuile voisine, bande plus sombre que la tuile, en niveaux de gris aussi", () => {
+    for (const t of ALL) {
+      const { belt } = t.tiles;
+      expect(contrastRatio(belt.chevron, belt.base), t.name).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(belt.chevron, t.tiles.face), t.name).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(belt.chevron, t.tiles.fill), t.name).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(belt.chevron, t.palette.background), t.name).toBeGreaterThanOrEqual(3);
+      expect(contrastRatio(belt.base, t.tiles.face), t.name).toBeGreaterThanOrEqual(1.5);
+      expect(luminance(belt.base)).toBeLessThan(luminance(t.tiles.face));
+      for (const c of backdropColors(t)) expect(contrastRatio(belt.chevron, c), `${t.name} ${c.toString(16)}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("la glace se distingue d'un bloc ordinaire : croûte et éclats clairs ≥ 3:1 sur la tuile voisine et ≥ 4,5:1 sur sa face, face bleu nuit un peu plus sombre que la tuile", () => {
+    for (const t of ALL) {
+      const { ice } = t.tiles;
+      for (const c of [ice.edge, ice.glint]) {
+        expect(contrastRatio(c, ice.base), `${t.name} ${c.toString(16)}`).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(c, ice.sheen), `${t.name} ${c.toString(16)}`).toBeGreaterThanOrEqual(4.5);
+        expect(contrastRatio(c, t.tiles.face), `${t.name} ${c.toString(16)}`).toBeGreaterThanOrEqual(3);
+        for (const b of backdropColors(t)) expect(contrastRatio(c, b), `${t.name} ${c.toString(16)}`).toBeGreaterThanOrEqual(3);
+      }
+      expect(contrastRatio(ice.base, t.tiles.face), t.name).toBeGreaterThanOrEqual(1.3);
+      expect(luminance(ice.base)).toBeLessThan(luminance(t.tiles.face));
+    }
+  });
+
+  it("les accents (chevrons, croûte, éclats) ne prennent ni la teinte d'un danger, ni celle du personnage, ni celle d'un ressort, d'un friable ou de l'arrivée (ou sont presque gris)", () => {
+    for (const t of ALL) {
+      const accents = [t.tiles.belt.chevron, t.tiles.ice.edge, t.tiles.ice.glint];
+      const reserved = [HAZARD, PLAYER, t.palette.spring, t.palette.crumble, t.palette.finish];
+      for (const a of accents) {
+        const near = reserved.filter((r) => hueDistance(a, r) < 30);
+        // Peu saturé (blanc cassé, gris bleuté) : jamais confondu avec une couleur franche.
+        if (near.length > 0) expect(hueOf(a).chroma, `${t.name} ${a.toString(16)}`).toBeLessThan(0.16);
+      }
+    }
+  });
+
+  it("les surfaces sont les mêmes dans tous les thèmes (un tapis ou de la glace se reconnaît d'un thème à l'autre)", () => {
+    for (const t of ALL) {
+      expect(t.tiles.belt).toBe(THEMES.foret.tiles.belt);
+      expect(t.tiles.ice).toBe(THEMES.foret.tiles.ice);
+    }
   });
 });
 

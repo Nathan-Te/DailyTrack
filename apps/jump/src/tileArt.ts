@@ -1,8 +1,9 @@
-import { TILE_EMPTY, TILE_SOLID, isSpikeTile, type Level } from "@cdj/jump-sim";
+import { TILE_EMPTY, TILE_ICE, isSpikeTile, type Level } from "@cdj/jump-sim";
 import { Art } from "./artKit";
-import { cellNoise, depthMap, neighbourMask, tileShape, type TileShape } from "./autotile";
+import { cellNoise, depthMap, isMatterTile, neighbourMask, tileShape, type TileShape } from "./autotile";
 import { mix } from "./contrast";
 import { keepoutField, keepouts, type Keepout } from "./decor";
+import { BELT_BAND, BELT_GAP, beltDirection } from "./surfaceArt";
 import { depthColor, type TileStyle } from "./themes";
 
 // Dessin des blocs pleins (lot 9), **pur** : chaque tuile `#` selon ses 8 voisins (`autotile.ts`) — coins extérieurs arrondis ou chanfreinés,
@@ -11,6 +12,10 @@ import { depthColor, type TileStyle } from "./themes";
 // déterministe à l'intérieur. Tout est **fusionné** : un tampon par tronçon de `CHUNK_COLUMNS` colonnes (un appel de dessin chacun,
 // écarté par la caméra hors champ). La géométrie ne déborde jamais d'une tuile, sauf de petites bosses de garniture (≤ `TRIM_BUMP`)
 // au-dessus d'une face libre.
+//
+// Lot 11 : un tapis roulant (`[` `]`) ou de la glace (`~`) est un bloc plein comme un autre pour l'auto-tuilage ; seule sa **face du dessus** change :
+// tapis = une bande sombre cernée de deux liserés (les chevrons qui défilent sont un autre tampon, `surfaceArt.ts`, animé dans un shader) ;
+// glace = un bloc bleu nuit à croûte claire épaisse et éclats en biais (statique). Pas de garniture du thème sur ces faces.
 //
 // Lisibilité : une face qui porte un pic n'a **ni contour ni garniture** (le pic, cerné de sombre, s'y détache sur le plein sombre) ; pas de
 // bosse de garniture à moins de 1,5 tuile d'un danger, d'un ressort, d'un fanion ou de l'arrivée.
@@ -116,13 +121,19 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
     const art = new Art();
     for (let row = 0; row < level.height; row++) {
       for (let col = c0; col < c1; col++) {
-        if (level.tiles[row * W + col] !== TILE_SOLID) continue;
+        const code = level.tiles[row * W + col]!;
+        if (!isMatterTile(code)) continue;
+        const ice = code === TILE_ICE;
+        const belt = beltDirection(code) !== 0;
         tiles++;
         const shape = tileShape(neighbourMask(level, col, row));
         const x = col;
         const yTop = -row;
         const yBot = yTop - 1;
-        const corner = [vertexColor(style, depth, level, col, row), vertexColor(style, depth, level, col + 1, row), vertexColor(style, depth, level, col + 1, row + 1), vertexColor(style, depth, level, col, row + 1)];
+        const corner = ice
+          ? [style.ice.sheen, style.ice.sheen, style.ice.base, style.ice.base]
+          : [vertexColor(style, depth, level, col, row), vertexColor(style, depth, level, col + 1, row), vertexColor(style, depth, level, col + 1, row + 1), vertexColor(style, depth, level, col, row + 1)];
+        const rimTop = ice ? style.ice.edge : style.rimTop;
         // ——— Plein ———
         if (!shape.outer.some(Boolean)) {
           art.rect(x, yBot, x + 1, yTop, TILE_Z.base, [corner[3]!, corner[2]!, corner[1]!, corner[0]!]);
@@ -134,7 +145,7 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
         }
         if (shape.interior) interior++;
         const d = depth[row * W + col]!;
-        if (d >= 1) pattern(art, style, col, row, d);
+        if (d >= 1 && !ice) pattern(art, style, col, row, d);
         // ——— Contours des faces exposées (sauf une face qui porte un pic) ———
         const holds = { top: spikeAt(col, row - 1), right: spikeAt(col + 1, row), bottom: spikeAt(col, row + 1), left: spikeAt(col - 1, row) };
         const r = style.radius;
@@ -142,7 +153,7 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
         const z = TILE_Z.rim;
         if (shape.top) {
           if (holds.top) hazardFaces++;
-          else art.rect(x + cut(0), yTop - RIM.top, x + 1 - cut(1), yTop, z, style.rimTop);
+          else art.rect(x + cut(0), yTop - RIM.top, x + 1 - cut(1), yTop, z, rimTop);
         }
         if (shape.bottom) {
           if (holds.bottom) hazardFaces++;
@@ -165,7 +176,7 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
         ] as const;
         for (let k = 0; k < 4; k++) {
           if (!shape.outer[k] || (sides[k]![0] && sides[k]![1])) continue;
-          const color = k < 2 ? style.rimTop : style.rimBottom;
+          const color = k < 2 ? rimTop : style.rimBottom;
           const w = k < 2 ? RIM.top : RIM.bottom;
           const cx = k === 0 || k === 3 ? x + r : x + 1 - r;
           const cy = k < 2 ? yTop - r : yBot + r;
@@ -182,8 +193,8 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
         }
         // Coins intérieurs : le carré où les contours des deux voisins se rejoignent (la diagonale vide ne porte pas de pic).
         const inner = [
-          [x, yTop - RIM.top, x + RIM.side, yTop, col - 1, row - 1, style.rimTop],
-          [x + 1 - RIM.side, yTop - RIM.top, x + 1, yTop, col + 1, row - 1, style.rimTop],
+          [x, yTop - RIM.top, x + RIM.side, yTop, col - 1, row - 1, rimTop],
+          [x + 1 - RIM.side, yTop - RIM.top, x + 1, yTop, col + 1, row - 1, rimTop],
           [x + 1 - RIM.side, yBot, x + 1, yBot + RIM.bottom, col + 1, row + 1, style.rimBottom],
           [x, yBot, x + RIM.side, yBot + RIM.bottom, col - 1, row + 1, style.rimBottom],
         ] as const;
@@ -195,8 +206,12 @@ export function buildTileArt(level: Level, style: TileStyle, list: readonly Keep
         }
         // ——— Garniture : seulement sur une face du dessus libre (une case vide au-dessus, sans pic) ———
         if (shape.top && tileAt(col, row - 1) === TILE_EMPTY) {
-          const bumps = row - 1 >= 0 && keep[(row - 1) * W + col]! >= 1.5 && keep[row * W + col]! >= 1.5;
-          trim(art, style, col, row, cut(0), cut(1), bumps);
+          if (ice) iceTop(art, style, col, row, cut(0), cut(1));
+          else if (belt) beltTop(art, style, col, row, cut(0), cut(1));
+          else {
+            const bumps = row - 1 >= 0 && keep[(row - 1) * W + col]! >= 1.5 && keep[row * W + col]! >= 1.5;
+            trim(art, style, col, row, cut(0), cut(1), bumps);
+          }
         }
       }
     }
@@ -254,6 +269,40 @@ function pattern(art: Art, s: TileStyle, col: number, row: number, depth: number
       } else if (n < 0.12) art.rect(x + 0.4, yTop - 0.6, x + 0.46, yTop - 0.54, z, color);
       break;
   }
+}
+
+/**
+ * Lot 11, la face d'un tapis : la bande sombre (`belt.base`) entre deux liserés (`belt.rail`) ; les chevrons (clairs, animés) se posent dessus
+ * dans un autre tampon. Aucune bosse au-dessus de la face.
+ */
+function beltTop(art: Art, s: TileStyle, col: number, row: number, cl: number, cr: number): void {
+  const x0 = col + cl * 0.6;
+  const x1 = col + 1 - cr * 0.6;
+  const yTop = -row - BELT_GAP;
+  const yBot = yTop - BELT_BAND;
+  const z = TILE_Z.trim;
+  art.rect(x0, yBot - 0.025, x1, yTop + 0.025, z, s.belt.rail);
+  art.rect(x0, yBot, x1, yTop, z + 0.0005, s.belt.base);
+}
+
+/**
+ * Lot 11, la face de la glace : un dégradé bleu nuit sous la croûte claire (déjà posée comme contour du dessus), et deux éclats en biais
+ * (un toujours, un second selon la case) : un reflet qui ne bouge pas, quelle que soit la palette.
+ */
+function iceTop(art: Art, s: TileStyle, col: number, row: number, cl: number, cr: number): void {
+  const x0 = col + cl * 0.6;
+  const x1 = col + 1 - cr * 0.6;
+  const yTop = -row;
+  const z = TILE_Z.trim;
+  art.rect(x0, yTop - 0.36, x1, yTop - RIM.top, z, [s.ice.base, s.ice.base, s.ice.sheen, s.ice.sheen]);
+  const n = cellNoise(col, row, 31);
+  const n2 = cellNoise(col, row, 37);
+  const glint = (gx: number, h: number) => {
+    const gy = yTop - 0.06 - h;
+    art.quad([gx, gy, gx + 0.07, gy, gx + 0.07 + h * 0.7, yTop - 0.06, gx + h * 0.7, yTop - 0.06], z + 0.0005, s.ice.glint);
+  };
+  glint(col + 0.06 + n * 0.4, 0.2 + n2 * 0.08);
+  if (n2 > 0.4) glint(col + 0.6 + n * 0.12, 0.12);
 }
 
 /** Garniture d'une face du dessus : `cl` / `cr` = coupe des coins (la garniture s'arrête où l'arrondi commence). */
@@ -319,7 +368,7 @@ export function insideTiles(level: Level, art: Art, slack = TRIM_BUMP): boolean 
     let ok = false;
     for (let c = Math.floor(x - eps); c <= Math.floor(x + eps) && !ok; c++) {
       for (let r = Math.floor(y - eps); r <= Math.floor(y + slack + eps) && !ok; r++) {
-        if (c < 0 || c >= level.width || r < 0 || r >= level.height || level.tiles[r * level.width + c] !== TILE_SOLID) continue;
+        if (c < 0 || c >= level.width || r < 0 || r >= level.height || !isMatterTile(level.tiles[r * level.width + c]!)) continue;
         ok = x >= c - eps && x <= c + 1 + eps && y >= r - slack - eps && y <= r + 1 + eps;
       }
     }

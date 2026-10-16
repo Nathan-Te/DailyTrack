@@ -1,10 +1,11 @@
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, stepAttempt, type AttemptState } from "./attempt";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
-import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
+import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
 import { START_AT_SPAWN, replayStartState } from "./replay";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "./catalog";
 import { JUMP_SIM_VERSION, UNITS_PER_TILE } from "./constants";
+import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
 import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, sawCenter, type Level } from "./level";
 
 // Les morceaux (lot 4) : des portions de niveau écrites en texte qui **portent leur solution**, matière première du niveau du jour (lot 5).
@@ -15,6 +16,8 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français
 //   etiquettes: mural vertical                    parmi MODULE_TAGS
+//   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
+//                                                 `tapis` ; `glace` : étiquette `glace`) ; sans cette ligne, il sort dans tous les thèmes
 //   famille: cheminee                             (lot 7) les morceaux de même intention ; une seule famille de chaque par niveau
 //   enchainement: long                            (lot 7, facultatif) un enchaînement long : deux intentions sans palier, 5 à 8 s
 //   elan: oui                                     (lot 7, facultatif) l'élan est le défi : un plat sans défi va jusqu'à 9 tuiles (6 sinon)
@@ -38,6 +41,9 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   zone patrouille <rayon> <cycle> <mode> <c,r>… `+patrouille` : ajoute cette scie mobile ; `+patrouille:<cycle>` change son cycle
 //   zone garde <colonnes> <rangées> <pic>         `+garde` : ces tuiles vides, contre un mur, prennent ce pic (`<` `>` `^` `v`)
 //   zone ressort <colonnes> <rangée>              `+ressort` : ces tuiles de marche (`#`) deviennent des ressorts (`*`)
+//   zone surface <colonnes> <rangée>              `+surface:glace` (`~`), `+surface:tapis:gauche` (`[`) ou `+surface:tapis:droite` (`]`) (lot 11) :
+//                                                 ces tuiles de sol (`#`) changent de surface ; la variante n'est permise que dans le thème de
+//                                                 sa mécanique (glace : `glace` ; usine : `tapis`)
 //   zone denivele <colonnes>                      `+denivele:<k>` : les colonnes de la zone (jusqu'au bout de la grille) descendent de k
 //                                                 rangées (k < 0 : montent) ; la sortie aussi (« finit plus bas » ou plus haut)
 // Le résultat est un morceau ordinaire, vérifié comme les autres (paliers, hauteur, plats), résolu par le solveur ; une variante mutée au
@@ -65,9 +71,9 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration"] as const;
-/** Les mutateurs (lot 7). */
-export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace"] as const;
+/** Les mutateurs (lot 7 ; `surface` : lot 11). */
+export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
 /** Au plus ce nombre de mutateurs par variante, et de variantes par morceau (lot 7). */
 export const MAX_MUTATIONS = 2;
@@ -138,6 +144,8 @@ export interface ModuleDef {
   tags: readonly ModuleTag[];
   /** Famille (lot 7) : les morceaux de même intention ; une seule de chaque par niveau. */
   family: string;
+  /** Lot 11 : le thème d'une mécanique (`usine`, `glace`) auquel le morceau est réservé ; null : tous les thèmes. */
+  theme: JumpThemeName | null;
   /** Enchaînement long (lot 7) : deux intentions sans palier au milieu, solution de 5 à 8 s. */
   long: boolean;
   /** L'élan est le défi (lot 7) : un plat sans défi peut aller jusqu'à `ELAN_FLAT_MAX` tuiles. */
@@ -160,7 +168,7 @@ export interface ModuleDef {
   text: string;
 }
 
-const KEYS = new Set(["id", "intention", "etiquettes", "famille", "enchainement", "elan", "mutateurs", "format", "paliers", "repeter", "variante"]);
+const KEYS = new Set(["id", "intention", "etiquettes", "famille", "theme", "enchainement", "elan", "mutateurs", "format", "paliers", "repeter", "variante"]);
 const SPIKES = "<>^v";
 
 /** `a-b` ou `a` → [a, b]. */
@@ -192,6 +200,7 @@ function parseZone(words: readonly string[], width: number, height: number, fail
     case "fosse":
     case "sol-friable":
     case "ressort":
+    case "surface":
       if (words.length !== 4) fail(`« zone ${name} <colonnes> <rangée> » attendu`);
       return zone(cols(words[2]), rows(words[3]));
     case "garde":
@@ -208,7 +217,7 @@ function parseZone(words: readonly string[], width: number, height: number, fail
       return zone([0, width - 1], [0, height - 1], words.slice(2).join(" "));
   }
 }
-const MODULE_GRID = /^[#.^v<>oOx*]+$/;
+const MODULE_GRID = /^[#.^v<>oOx*[\]~]+$/;
 
 /** Lit le texte d'un morceau. Refuse tout ce qui est mal formé (clé inconnue, étiquette inconnue, variante incomplète…). */
 export function parseModule(text: string): ModuleDef {
@@ -239,6 +248,13 @@ export function parseModule(text: string): ModuleDef {
   if (one("format") !== String(MODULE_FORMAT)) throw new ModuleError(where(`format ${one("format")} : seul le format ${MODULE_FORMAT} (paliers posés, famille et mutateurs, lot 7) est lu`));
   const family = one("famille");
   if (!/^[a-z0-9-]{1,24}$/.test(family)) throw new ModuleError(where(`famille « ${family} » invalide (minuscules, chiffres, tirets)`));
+  const themeText = meta.theme === undefined ? null : one("theme");
+  if (themeText !== null && !(MECHANIC_THEMES as readonly string[]).includes(themeText)) throw new ModuleError(where(`theme « ${themeText} » inconnu (${MECHANIC_THEMES.join(", ")})`));
+  const theme = themeText as JumpThemeName | null;
+  // Lot 11 : l'étiquette d'une mécanique et le thème vont ensemble (un morceau `tapis` est de l'usine, un morceau `glace` de la glace).
+  for (const [tag, th] of [["tapis", "usine"], ["glace", "glace"]] as const) {
+    if (tags.includes(tag) !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} » et « theme: ${th} » vont ensemble`));
+  }
   const optional = (k: string, value: string) => {
     const v = meta[k];
     if (!v) return false;
@@ -303,12 +319,12 @@ export function parseModule(text: string): ModuleDef {
     mutations.push(muts);
     for (const w of spec.split(/\s+/).filter(Boolean)) {
       if (w.startsWith("+")) {
-        const mm = /^\+([a-z-]+)(?::(-?[a-z0-9]+))?$/.exec(w);
+        const mm = /^\+([a-z-]+)(?::(-?[a-z0-9:]+))?$/.exec(w);
         if (!mm || !mutators.includes(mm[1] as MutatorName)) fail(`variante ${k} : mutateur « ${w} » non accepté (${mutators.join(", ") || "aucun"})`);
         const name = mm![1] as MutatorName;
         const arg = mm![2] ?? "";
         const okArg =
-          name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : arg === "";
+          name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : name === "surface" ? (SURFACE_ARGS as readonly string[]).includes(arg) : arg === "";
         if (!okArg) fail(`variante ${k} : argument « ${arg} » de ${name} invalide`);
         if (muts.some((x) => x.name === name)) fail(`variante ${k} : ${name} deux fois`);
         muts.push({ name, arg });
@@ -330,7 +346,21 @@ export function parseModule(text: string): ModuleDef {
   if (variants.length > MAX_VARIANTS) fail(`${variants.length} variantes (au plus ${MAX_VARIANTS})`);
   const seen = new Set(variants.map((v, k) => JSON.stringify([v, mutations[k]])));
   if (seen.size !== variants.length) fail("deux variantes identiques");
-  return { id, intention, tags: tags as ModuleTag[], family, long, elan, mutators, zones, mutations, entryRow, exitRow, repeats, params, variants, grid, annex, text };
+  return { id, intention, tags: tags as ModuleTag[], family, theme, long, elan, mutators, zones, mutations, entryRow, exitRow, repeats, params, variants, grid, annex, text };
+}
+
+/** Lot 11 : les arguments de `+surface` et le caractère de grille qu'ils posent. */
+export const SURFACE_ARGS = ["glace", "tapis:gauche", "tapis:droite"] as const;
+const SURFACE_CHARS: Readonly<Record<string, string>> = { glace: "~", "tapis:gauche": "[", "tapis:droite": "]" };
+
+/**
+ * Lot 11 : le thème auquel une variante est réservée : celui du morceau (`theme:`), sinon celui de sa mutation de surface (`+surface:glace`
+ * → glace, `+surface:tapis:…` → usine), sinon null (tous les thèmes). Un morceau d'un thème ne mute pas vers l'autre.
+ */
+export function variantTheme(def: Pick<ModuleDef, "theme" | "mutations">, variant: number): JumpThemeName | null {
+  const surface = (def.mutations[variant] ?? []).find((m) => m.name === "surface");
+  const fromSurface: JumpThemeName | null = !surface ? null : surface.arg === "glace" ? "glace" : "usine";
+  return def.theme ?? fromSurface;
 }
 
 /** Un gabarit muté : grille, scies ajoutées (lignes du bloc annexe), et le dénivelé à appliquer après le déroulé (colonne du gabarit, k). */
@@ -385,9 +415,10 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
         }
         case "sol-friable":
         case "ressort":
+        case "surface":
           for (let c = z.c0; c <= z.c1; c++) {
             if (cell(c, z.r0) !== "#") fail(`${where} : tuile (${c}, ${z.r0}) « ${cell(c, z.r0)} » au lieu d'un bloc`);
-            set(c, z.r0, m.name === "ressort" ? "*" : "x");
+            set(c, z.r0, m.name === "ressort" ? "*" : m.name === "surface" ? SURFACE_CHARS[m.arg]! : "x");
           }
           break;
         case "garde":
@@ -694,6 +725,8 @@ export interface ModuleSolution {
   raccord: number | null;
   /** Note d'exigence (1 facile … 5 exigeant), 0 = refusée (pas jouable par un humain, ou raccord < 90 %). */
   exigence: number;
+  /** Lot 11 : le plus court appui de saut de la solution, en pas (0 : aucun saut) ; jamais sous `PRESS_MIN`. */
+  press: number;
 }
 
 export interface ModuleVariantSolutions {
@@ -714,7 +747,56 @@ export interface ModuleSolutionsFile {
  * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
  * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3.
  */
-export const EXIGENCE_VERSION = 3;
+export const EXIGENCE_VERSION = 4;
+
+// ——— Jouable au clavier (lot 11, retouche) ———
+// La gigue (ci-dessus) décale des changements de commande mais ne dit pas **combien de temps un doigt peut tenir ou lâcher une touche** : une
+// solution qui exige un appui de 1 pas (8 ms) pour un « petit saut » n'est jouable ni au clavier ni à la manette (une pression dure en
+// pratique 60 à 100 ms). Mesuré sur le catalogue du lot 11 : 81 solutions sur 580 avaient un appui d'un seul pas, 118 un relâchement d'un seul
+// pas entre deux appuis. Un petit saut est pourtant ce que les scies basses réclament : la hauteur d'un saut dépend de la durée de l'appui
+// (0,98 tuile à 1 pas, 1,36 à 3 pas, 1,71 à 5 pas, 2,22 à 8 pas, 2,82 à 12 pas).
+/** Plus courte durée d'un appui de saut (pas) : 5 pas = 42 ms, un appui franc ; le plus petit saut qu'on puisse exiger fait 1,71 tuile. */
+export const PRESS_MIN = 5;
+/** Plus court relâchement (pas) entre deux appuis de saut : 3 pas = 25 ms (un appui-relâchement complet d'au moins 8 pas, ≈ 15 par seconde). */
+export const RELEASE_MIN = 3;
+
+/**
+ * Ce qui ne va pas dans la façon de tenir le bouton de saut d'une suite de commandes (null : jouable par un doigt) : un appui de moins de
+ * `PRESS_MIN` pas, ou un relâchement de moins de `RELEASE_MIN` pas entre deux appuis. L'appui qui dure jusqu'à la fin des commandes n'est
+ * pas jugé (il se prolonge dans le jeu).
+ */
+export function pressProblems(inputs: readonly number[]): string | null {
+  let on = 0;
+  let off = -1;
+  for (let t = 0; t < inputs.length; t++) {
+    if ((inputs[t]! & INPUT_JUMP) !== 0) {
+      if (on === 0 && off >= 0 && off < RELEASE_MIN) return `pas ${t + 1} : relâchement de ${off} pas entre deux appuis (au moins ${RELEASE_MIN})`;
+      on++;
+      off = -1;
+    } else {
+      if (on > 0 && on < PRESS_MIN) return `pas ${t + 1} : appui de saut de ${on} pas (au moins ${PRESS_MIN})`;
+      if (on > 0) off = 0;
+      on = 0;
+      if (off >= 0) off++;
+    }
+  }
+  return null;
+}
+
+/** Plus courte durée d'un appui de saut (pas) d'une suite de commandes, 0 s'il n'y a aucun appui. */
+export function shortestPress(inputs: readonly number[]): number {
+  let on = 0;
+  let min = 0;
+  for (const bits of inputs) {
+    if ((bits & INPUT_JUMP) !== 0) on++;
+    else {
+      if (on > 0 && (min === 0 || on < min)) min = on;
+      on = 0;
+    }
+  }
+  if (on > 0 && (min === 0 || on < min)) min = on;
+  return min;
+}
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
 /**
@@ -807,6 +889,8 @@ export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly 
   let s = start ?? moduleStart(m, entry);
   let entryTick = entry === "arret" ? 0 : -1;
   let exitTick = -1;
+  const hold = pressProblems(inputs);
+  if (hold) return `bouton de saut injouable : ${hold}`;
   for (let t = 0; t < inputs.length; t++) {
     const bits = inputs[t]!;
     if ((entryTick < 0 || exitTick >= 0) && bits !== INPUT_RIGHT) return `pas ${t + 1} : droite seule attendue ${entryTick < 0 ? "avant l'entrée" : "après la sortie"}`;

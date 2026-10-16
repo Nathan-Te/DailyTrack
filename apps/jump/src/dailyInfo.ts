@@ -39,8 +39,11 @@ export function isPreview(loc: PageLocation): boolean {
   return /\/b\/[^/]+\//.test(loc.pathname) || isLocalHost(loc.hostname);
 }
 
-/** `jour` : le niveau d'aujourd'hui ; `archive` : un jour passé ; `futur` : un jour à venir (aperçu seulement). */
-export type DayMode = "jour" | "archive" | "futur";
+/**
+ * `jour` : le niveau d'aujourd'hui ; `archive` : un jour passé ; `futur` : un jour à venir (aperçu seulement) ; `essai` (lot 11) : le niveau
+ * d'une date joué avec un **thème forcé** (`?theme=`), un autre niveau que celui du jour : jamais enregistré, ni historique, ni série, ni partage.
+ */
+export type DayMode = "jour" | "archive" | "futur" | "essai";
 
 export interface DayChoice {
   /** Le jour dont on ouvre le niveau. */
@@ -85,6 +88,7 @@ export function dayLine(daily: Pick<DailyLevel, "number" | "date" | "medals">, c
   const parts = [levelTitle(daily.number)];
   if (choice.mode === "archive") parts.push(`archive du ${shortDate(daily.date)}`);
   if (choice.mode === "futur") parts.push(`à venir (${shortDate(daily.date)})`);
+  if (choice.mode === "essai") parts.push(`essai de thème (${shortDate(daily.date)}) : rien n'est enregistré`);
   if (preview) parts.push("aperçu");
   const next = nextMedal(best, daily.medals);
   parts.push(next ? `visée ${MEDAL_ICON[next.medal]} ${formatTicks(next.ticks)}` : `${MEDAL_ICON.author} auteur battu`);
