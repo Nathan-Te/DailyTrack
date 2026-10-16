@@ -16,6 +16,7 @@ import {
   Scene,
   Shape,
   ShapeGeometry,
+  ShaderMaterial,
   Vector3,
   WebGLRenderer,
   CanvasTexture,
@@ -29,10 +30,10 @@ import {
   CRUMBLE_GONE,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
-  TILE_SOLID,
   TILE_SPRING,
   UNITS_PER_TILE,
   cellOrigin,
+  isSolidTile,
   isSpikeTile,
   sawCenters,
   spikeBox,
@@ -48,6 +49,7 @@ import type { Art } from "./artKit";
 import { buildDecorArt, keepouts, placeDecor, type DecorChunk } from "./decor";
 import { buildParallax, layerOffset, visibleLayers } from "./parallax";
 import { CHUNK_COLUMNS, buildTileArt } from "./tileArt";
+import { BELT_FRAGMENT, BELT_VERTEX, beltRuns, beltTime, buildBeltArt, iceRuns } from "./surfaceArt";
 import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
@@ -91,6 +93,9 @@ export interface SceneDetail {
 export interface SceneStats {
   tileChunks: number;
   tileTriangles: number;
+  /** Lot 11 : tuiles de tapis roulant et triangles de leurs chevrons (un tampon par tronçon, un matériau). */
+  beltTiles: number;
+  beltTriangles: number;
   decorItems: number;
   decorLite: number;
   decorTriangles: number;
@@ -271,6 +276,32 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     world.add(new Mesh(artGeometry(c.art), tileMat));
   }
 
+  // ——— Lot 11 : les chevrons des tapis roulants, un tampon par tronçon et **un seul matériau** : le défilement est un décalage de phase dans le
+  // shader (`uTime`, mis à jour par `setWorld`), jamais un objet créé en jeu. Figés (temps 0) avec le mouvement réduit et les effets « aucun ».
+  const beltArt = buildBeltArt(level, CHUNK_COLUMNS);
+  const beltMat = new ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uColor: { value: new Color(theme.tiles.belt.chevron) } },
+    vertexShader: BELT_VERTEX,
+    fragmentShader: BELT_FRAGMENT,
+    transparent: true,
+    depthWrite: false,
+    side: DoubleSide,
+  });
+  let beltTriangles = 0;
+  for (const c of beltArt.chunks) {
+    if (c.triangles === 0) continue;
+    beltTriangles += c.triangles;
+    const g = new BufferGeometry();
+    g.setAttribute("position", new Float32BufferAttribute(c.pos, 3));
+    g.setAttribute("aDir", new Float32BufferAttribute(c.dir, 1));
+    g.setAttribute("aBand", new Float32BufferAttribute(c.band, 1));
+    g.setIndex(c.idx);
+    g.computeBoundingSphere();
+    const mesh = new Mesh(g, beltMat);
+    mesh.renderOrder = 1;
+    world.add(mesh);
+  }
+
   // ——— Lot 9 : décor (sans collision), derrière tout ce qui compte ; les `lite` d'abord, seuls dessinés avec les effets réduits ———
   const levelId = options.levelId ?? "niveau";
   const decorItems = placeDecor(level, theme, levelId, list);
@@ -435,7 +466,7 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   const doorIdle = new MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.05, depthWrite: false });
   const doorOn = new MeshBasicMaterial({ color: palette.spring, transparent: true, opacity: 0.1, depthWrite: false });
   const doorLine = new LineDashedMaterial({ color: 0xffffff, dashSize: 0.3, gapSize: 0.3, transparent: true, opacity: 0.35 });
-  const solidAt = (col: number, row: number) => row >= 0 && row < level.height && level.tiles[row * level.width + col]! >= TILE_SOLID && level.tiles[row * level.width + col]! <= TILE_SPRING;
+  const solidAt = (col: number, row: number) => row >= 0 && row < level.height && isSolidTile(level.tiles[row * level.width + col]!);
   const doors: Mesh[] = [];
   const checkpoints = level.checkpoints.map((cell) => {
     // Hauteur libre de la colonne autour du point : vers le haut jusqu'au premier bloc (ou le haut du niveau), vers le bas jusqu'au sol.
@@ -542,6 +573,30 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     const hb = new LineSegments(g, new LineBasicMaterial({ color: debugColor }));
     hb.position.z = 0.5;
     world.add(hb);
+    // Lot 11 : les surfaces en surimpression — tapis roulants (cadre de la face du dessus et un chevron par tuile, dans le sens du tapis) et
+    // glace (liseré le long de la face du dessus et un losange par tuile). Cyan et bleu pâle : jamais le vert des boîtes ni le rouge des dangers.
+    const beltSeg: number[] = [];
+    for (const r of beltRuns(level)) {
+      const x0 = r.col0;
+      const x1 = r.col1 + 1;
+      const y = -r.row;
+      beltSeg.push(x0, y, 0, x1, y, 0, x1, y, 0, x1, y - 0.2, 0, x1, y - 0.2, 0, x0, y - 0.2, 0, x0, y - 0.2, 0, x0, y, 0);
+      for (let c = r.col0; c <= r.col1; c++) beltSeg.push(c + 0.5 - r.dir * 0.12, y - 0.19, 0, c + 0.5 + r.dir * 0.12, y - 0.1, 0, c + 0.5 + r.dir * 0.12, y - 0.1, 0, c + 0.5 - r.dir * 0.12, y - 0.01, 0);
+    }
+    const iceSeg: number[] = [];
+    for (const r of iceRuns(level)) {
+      const y = -r.row;
+      iceSeg.push(r.col0, y, 0, r.col1 + 1, y, 0, r.col0, y - 0.06, 0, r.col1 + 1, y - 0.06, 0);
+      for (let c = r.col0; c <= r.col1; c++) iceSeg.push(c + 0.5, y - 0.02, 0, c + 0.6, y - 0.12, 0, c + 0.6, y - 0.12, 0, c + 0.5, y - 0.22, 0, c + 0.5, y - 0.22, 0, c + 0.4, y - 0.12, 0, c + 0.4, y - 0.12, 0, c + 0.5, y - 0.02, 0);
+    }
+    for (const [seg, color] of [[beltSeg, 0x00e5ff], [iceSeg, 0xb0f0ff]] as const) {
+      if (seg.length === 0) continue;
+      const sg = new BufferGeometry();
+      sg.setAttribute("position", new Float32BufferAttribute(seg, 3));
+      const lines = new LineSegments(sg, new LineBasicMaterial({ color }));
+      lines.position.z = 0.5;
+      world.add(lines);
+    }
     const pg = new BufferGeometry();
     const ps: number[] = [];
     boxSegments(ps, 0, 0, PLAYER_WIDTH, PLAYER_HEIGHT);
@@ -593,6 +648,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   const stats: SceneStats = {
     tileChunks: tileArt.chunks.length,
     tileTriangles,
+    beltTiles: beltArt.tiles,
+    beltTriangles,
     decorItems: decorItems.length,
     decorLite: decorItems.filter((d) => d.lite).length,
     decorTriangles,
@@ -670,6 +727,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       const dt = Math.max(0, Math.min(0.1, clock - lastClock));
       lastClock = clock;
       const animate = this.animate;
+      // Lot 11 : phase des chevrons des tapis (figée sans mouvement).
+      beltMat.uniforms.uTime!.value = beltTime(clock, animate);
       // Scies : positions de la simulation, interpolées ; rotation au rythme du chrono de l'essai (immobiles tant que le monde attend).
       const a = sawCenters(level, prev);
       const b = sawCenters(level, state);

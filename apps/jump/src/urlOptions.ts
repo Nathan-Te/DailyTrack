@@ -111,7 +111,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "theme",
     description:
-      "Lot 9 : impose un thème visuel et sonore (forêt, usine, glace, nuit, néon) au lieu du thème du jour : `?seed=2026-10-20&theme=neon`. Cosmétique : le niveau, son identifiant, les temps et les rediffusions ne changent pas, donc permis aussi sur le site publié. Un nom inconnu garde le thème du jour.",
+      "Impose un thème (forêt, usine, glace, nuit, néon). Depuis le lot 11 le thème est une donnée du générateur (usine : tapis roulants ; glace : glace) : sur le niveau du jour, un thème **différent de celui de la date** donne un autre niveau, un **essai** (identifiant suffixé `-t<thème>`, `?seed=2026-10-20&theme=usine`) dont rien n'est enregistré (ni meilleur temps, ni fantôme, ni taches, ni historique, ni série, ni partage) ; le thème de la date lui-même donne le niveau ordinaire. Permis aussi sur le site publié (un essai n'est jamais classé). Sur un morceau (`?module=…&theme=glace`) ou un scénario, il ne change que le décor et les surfaces dessinées : la galerie ouvre chaque morceau de mécanique dans son thème. Un nom inconnu garde le thème du jour.",
     values: THEME_NAMES,
   },
   {
@@ -164,7 +164,7 @@ export interface UrlChoices {
   gallery: boolean;
   /** Le morceau à jouer (`?module=<id>`), sa variante, son entrée, et la lecture de sa solution (`&solution`) ; null : un scénario. */
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
-  /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Cosmétique. */
+  /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Lot 11 : sur le niveau du jour, un thème différent de celui de la date est un **essai** ; sur un morceau ou un scénario, il reste cosmétique. */
   theme: ThemeName | null;
   /** Lot 10 : `?accueil=1` (vrai) / `?accueil=0` (faux) ; null : la page décide (`wantsHome`, homeLogic.ts). */
   home: boolean | null;
@@ -228,11 +228,14 @@ function carried(from: UrlChoices, home = false): string[] {
 }
 
 /** Lien vers un morceau : `?module=<id>&variante=<n>[&entree=elan][&solution]`, plus ce que l'adresse actuelle garde. */
-export function moduleHref(target: { id: string; variant: number; entry: ModuleEntry; solution?: boolean }, from: UrlChoices): string {
+export function moduleHref(target: { id: string; variant: number; entry: ModuleEntry; solution?: boolean; theme?: ThemeName }, from: UrlChoices): string {
   const parts = [`module=${encodeURIComponent(target.id)}`, `variante=${target.variant}`];
   if (target.entry === "elan") parts.push("entree=elan");
   if (target.solution) parts.push("solution");
-  return `?${[...parts, ...carried(from)].join("&")}`;
+  // Lot 11 : un morceau de mécanique s'ouvre dans son thème (`&theme=<nom>`), qui l'emporte sur celui de l'adresse actuelle.
+  const kept = target.theme ? carried(from).filter((p) => !p.startsWith("theme=")) : carried(from);
+  if (target.theme) parts.push(`theme=${target.theme}`);
+  return `?${[...parts, ...kept].join("&")}`;
 }
 
 /** Lien vers la galerie des morceaux. */

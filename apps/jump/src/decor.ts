@@ -1,6 +1,7 @@
 import { Rng } from "@cdj/core";
 import { TILE_EMPTY, TILE_SOLID, TILE_SPRING, UNITS_PER_TILE, isSpikeTile, type Level } from "@cdj/jump-sim";
 import { Art } from "./artKit";
+import { isMatterTile } from "./autotile";
 import type { DecorKind, DecorPart, Theme } from "./themes";
 
 // Décor du lot 9, **pur et déterministe** : graine = identifiant du niveau + thème. Purement visuel (aucune collision : la simulation ne le
@@ -199,7 +200,9 @@ function isFree(level: Level, col: number, row: number): boolean {
   return !level.checkpoints.some((c) => c.col === col && c.row === row);
 }
 
-const solidAt = (level: Level, col: number, row: number) => col >= 0 && col < level.width && row >= 0 && row < level.height && level.tiles[row * level.width + col] === TILE_SOLID;
+/** Lot 11 : la matière (bloc plein, tapis, glace) : les murs et le sol où un décor de fond s'ancre. Un décor « dessus » ne se pose que sur un bloc ordinaire. */
+const solidAt = (level: Level, col: number, row: number) => col >= 0 && col < level.width && row >= 0 && row < level.height && isMatterTile(level.tiles[row * level.width + col]!);
+const plainAt = (level: Level, col: number, row: number) => col >= 0 && col < level.width && row >= 0 && row < level.height && level.tiles[row * level.width + col] === TILE_SOLID;
 
 /** Les cases d'une boîte (y vers le bas) sont-elles toutes libres ? (Un décor de face ne déborde jamais sur une tuile ni sur un objet.) */
 function boxInFreeCells(level: Level, b: Box): boolean {
@@ -224,7 +227,7 @@ export function placeDecor(level: Level, theme: Theme, levelId: string, list: re
       if (!isFree(level, col, row)) continue;
       const floor = solidAt(level, col, row + 1);
       if (floor) {
-        candidates.push({ anchor: "dessus", col, row, side: 1 });
+        if (plainAt(level, col, row + 1)) candidates.push({ anchor: "dessus", col, row, side: 1 });
         if (isFree(level, col, row - 1) && isFree(level, col, row - 2)) candidates.push({ anchor: "fond", col, row, side: 1 });
       } else {
         if (solidAt(level, col - 1, row)) candidates.push({ anchor: "mur", col, row, side: 1 });

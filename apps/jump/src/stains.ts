@@ -1,4 +1,5 @@
-import { TILE_SOLID, UNITS_PER_TILE, type Level } from "@cdj/jump-sim";
+import { UNITS_PER_TILE, isSolidTile, type Level } from "@cdj/jump-sim";
+import { isMatterTile } from "./autotile";
 
 // Taches de peinture (lot 3), **placement seulement** (pur, testé ; le dessin est dans `actors.ts`) : à chaque mort, une tache de la
 // couleur du personnage se pose sur la ou les surfaces solides les plus proches (sol, mur ou plafond). Pas du sang : de la couleur, des
@@ -47,9 +48,9 @@ function rand(seed: number): () => number {
   };
 }
 
-const solidAt = (level: Level, col: number, row: number) => col >= 0 && row >= 0 && col < level.width && row < level.height && level.tiles[row * level.width + col] === TILE_SOLID;
-/** Une tuile où la peinture peut « voler » : dans la grille et pas un bloc (plein, friable ou ressort : codes 1 à 3). */
-const openAt = (level: Level, col: number, row: number) => col >= 0 && row >= 0 && col < level.width && row < level.height && !(level.tiles[row * level.width + col]! >= 1 && level.tiles[row * level.width + col]! <= 3);
+const solidAt = (level: Level, col: number, row: number) => col >= 0 && row >= 0 && col < level.width && row < level.height && isMatterTile(level.tiles[row * level.width + col]!);
+/** Une tuile où la peinture peut « voler » : dans la grille et pas un bloc (plein, friable, ressort, tapis ou glace). */
+const openAt = (level: Level, col: number, row: number) => col >= 0 && row >= 0 && col < level.width && row < level.height && !isSolidTile(level.tiles[row * level.width + col]!);
 
 /** Faces exposées des blocs pleins autour de (px, py) (tuiles), dans un carré de côté 2 × `reach` (plus une tuile de marge). */
 function facesAround(level: Level, px: number, py: number, reach: number): Face[] {

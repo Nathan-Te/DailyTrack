@@ -166,6 +166,9 @@ export interface FeelColors {
   crumble: readonly number[];
   spring: readonly number[];
   confetti: readonly number[];
+  /** Lot 11 : éclats de givre (glace) et étincelles de rouage (tapis roulant) : pâles, jamais la couleur d'un danger ni du personnage. */
+  frost: readonly number[];
+  gear: readonly number[];
 }
 
 export function feelColors(p: Palette): FeelColors {
@@ -175,6 +178,8 @@ export function feelColors(p: Palette): FeelColors {
     crumble: [p.crumble, mixColor(p.crumble, 0x000000, 0.35), mixColor(p.crumble, 0xffffff, 0.3)],
     spring: [p.spring, 0xffffff],
     confetti: [p.finish, p.spring, p.hazard, p.player, 0xffffff, 0x39ff88],
+    frost: [0xffffff, 0xd8f6ff, 0xa9e4fb],
+    gear: [0xe6eef2, 0xb9c4cc, 0xf4f8fa],
   };
 }
 
@@ -208,6 +213,8 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
   const x = e.x;
   const y = -e.y; // monde affiché : y vers le haut
   const dust = { life: 0.45, size: 0.18, gravity: 3, drag: 4, colors: colors.dust };
+  const frost = { life: 0.5, size: 0.11, gravity: -4, drag: 3, colors: colors.frost };
+  const gear = { life: 0.3, size: 0.07, gravity: -10, drag: 2, colors: colors.gear };
   switch (e.kind) {
     case "saut":
       pool.emit({ ...dust, x, y, count: 6, angle: UP, spread: 1.3, vmin: 1.5, vmax: 4, jitter: 0.5 });
@@ -227,8 +234,21 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       if (e.full && levels.continuous) pool.emit({ ...dust, life: 0.35, size: 0.14, x, y: y + 0.05, count: 2, angle: UP, spread: 0.9, vmin: 0.8, vmax: 2, jitter: 0.3 });
       break;
     case "derapage":
+      // Lot 11 : sur la glace, ce sont des éclats de givre (plus nombreux, plus clairs), pas de la poussière.
+      if (e.ice) {
+        pool.emit({ ...frost, x: x + e.side * 0.3, y: y + 0.05, count: 8, angle: e.side > 0 ? 0.5 : Math.PI - 0.5, spread: 0.55, vmin: 1.5, vmax: 4.5, jitter: 0.25 });
+        break;
+      }
       // Lot 8b : poussière soulevée devant, dans le sens du mouvement (le pied avant freine).
       pool.emit({ ...dust, life: 0.4, size: 0.15, x: x + e.side * 0.3, y: y + 0.05, count: 6, angle: e.side > 0 ? 0.55 : Math.PI - 0.55, spread: 0.45, vmin: 1.5, vmax: 4.5, jitter: 0.25 });
+      break;
+    case "glaceFrein":
+      // Lot 11 : un peu de givre jeté devant le pied qui glisse (le crissement est dans `audioLogic`).
+      pool.emit({ ...frost, x: x + e.side * 0.25, y: y + 0.04, count: 3, angle: e.side > 0 ? 0.45 : Math.PI - 0.45, spread: 0.5, vmin: 1, vmax: 3.2, jitter: 0.25 });
+      break;
+    case "tapisDebut":
+      // Lot 11 : quelques étincelles de rouage à la pose sur le tapis.
+      pool.emit({ ...gear, x, y: y + 0.05, count: 4, angle: UP, spread: 1.2, vmin: 1.5, vmax: 3.5, jitter: 0.5 });
       break;
     case "friableCraque":
       pool.emit({ x, y: y + 0.4, count: 3, angle: UP, spread: 1, vmin: 1, vmax: 3, life: 0.4, size: 0.12, gravity: -25, drag: 1, colors: colors.crumble, jitter: 0.8 });
@@ -258,6 +278,15 @@ export const SLIDE_EVERY = 0.05;
 /** Le frottement : `x`, `y` = point de contact (tuiles, y vers le haut), `side` = côté du mur. */
 export function slideSpark(pool: Particles, colors: FeelColors, x: number, y: number, side: number): void {
   pool.emit({ x, y, count: 1, angle: UP, spread: 0.5, vmin: 0.6, vmax: 1.8, life: 0.3, size: 0.12, gravity: 2, drag: 3, colors: side ? colors.spark.concat(colors.dust) : colors.dust, jitter: 0.3 });
+}
+
+/**
+ * Lot 11 : étincelles et poussière de rouage tant qu'on est posé sur un tapis roulant (émises en continu, une particule tous les `BELT_EVERY` s,
+ * lancées à contre-sens du tapis : elles filent derrière la bande). `side` : sens du tapis.
+ */
+export const BELT_EVERY = 0.09;
+export function beltSpark(pool: Particles, colors: FeelColors, x: number, y: number, side: number): void {
+  pool.emit({ x, y, count: 1, angle: side > 0 ? Math.PI - 0.5 : 0.5, spread: 0.5, vmin: 0.8, vmax: 2.2, life: 0.3, size: 0.07, gravity: -8, drag: 2, colors: colors.gear.concat(colors.dust), jitter: 0.5 });
 }
 
 // ——— Traînée et clignement ———

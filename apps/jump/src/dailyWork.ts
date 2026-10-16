@@ -2,11 +2,13 @@ import { formatDay } from "@cdj/core";
 import {
   JUMP_GENERATOR_VERSION,
   JUMP_SIM_VERSION,
+  JUMP_THEME_NAMES,
   dailyLevel,
   dailyLevelId,
   decodeReplay,
   encodeReplay,
   jumpMedalsFor,
+  jumpThemeForDay,
   levelNumber,
   parseLevel,
   replayAttempt,
@@ -15,6 +17,7 @@ import {
   type DailyExigence,
   type DailyLevel,
   type DailyPiece,
+  type JumpThemeName,
   type Palier,
 } from "@cdj/jump-sim";
 
@@ -23,8 +26,11 @@ import {
 // cache de stockage : `fromPayload` reconstruit le `DailyLevel` — et, quand on ne fait pas confiance à la source, **rejoue la preuve**.
 // Logique pure, sans DOM ni stockage : testée sous Node.
 
-/** Version du format de la charge (à monter si ses champs changent : l'ancien cache est alors ignoré). */
-export const PAYLOAD_FORMAT = 1;
+/**
+ * Version du format de la charge (à monter si ses champs changent : l'ancien cache est alors ignoré). Lot 11 : 2 (la charge porte le thème du
+ * niveau — celui de la date ou un thème **forcé** : un essai, dont l'identifiant est suffixé `-t<thème>`).
+ */
+export const PAYLOAD_FORMAT = 2;
 
 export interface DailyPayload {
   format: number;
@@ -32,6 +38,9 @@ export interface DailyPayload {
   generatorVersion: number;
   day: number;
   id: string;
+  /** Lot 11 : le thème du niveau et s'il est forcé (différent de celui de la date : un essai). */
+  theme: JumpThemeName;
+  forcedTheme: boolean;
   /** Texte complet du niveau (grille et bloc annexe) et son empreinte. */
   ascii: string;
   hash: string;
@@ -56,6 +65,8 @@ export function toPayload(d: DailyLevel): DailyPayload {
     generatorVersion: JUMP_GENERATOR_VERSION,
     day: d.day,
     id: d.id,
+    theme: d.theme,
+    forcedTheme: d.forcedTheme,
     ascii: d.ascii,
     hash: d.hash,
     pieces: d.pieces.map((p) => ({ ...p, tags: [...p.tags] })),
@@ -71,9 +82,9 @@ export function toPayload(d: DailyLevel): DailyPayload {
   };
 }
 
-/** Génère le niveau d'une date (le travail du worker : `dailyLevel`, puis sa charge). */
-export function generatePayload(day: number): DailyPayload {
-  return toPayload(dailyLevel(day));
+/** Génère le niveau d'une date (le travail du worker : `dailyLevel`, puis sa charge) ; `forced` : un thème imposé (essai). */
+export function generatePayload(day: number, forced: JumpThemeName | null = null): DailyPayload {
+  return toPayload(dailyLevel(day, forced));
 }
 
 const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
@@ -89,6 +100,9 @@ export function isPayload(v: unknown): v is DailyPayload {
     isInt(p.generatorVersion) &&
     isInt(p.day) &&
     typeof p.id === "string" &&
+    typeof p.theme === "string" &&
+    (JUMP_THEME_NAMES as readonly string[]).includes(p.theme) &&
+    typeof p.forcedTheme === "boolean" &&
     typeof p.ascii === "string" &&
     typeof p.hash === "string" &&
     typeof p.code === "string" &&
@@ -110,11 +124,14 @@ export function isPayload(v: unknown): v is DailyPayload {
  * texte ; avec `proof` (le cache), **la preuve est rejouée** (`replayAttempt` : arrivée sans mort au temps de l'auteur) — une charge corrompue
  * ou périmée ne passe jamais.
  */
-export function fromPayload(p: unknown, day: number, options: { proof: boolean }): DailyLevel | string {
+export function fromPayload(p: unknown, day: number, options: { proof: boolean; theme?: JumpThemeName | null }): DailyLevel | string {
   if (!isPayload(p)) return "charge illisible";
   if (p.simVersion !== JUMP_SIM_VERSION || p.generatorVersion !== JUMP_GENERATOR_VERSION) return "autre version";
-  const id = dailyLevelId(day);
-  if (p.day !== day || p.id !== id) return "autre niveau";
+  // Lot 11 : le thème attendu est celui qu'on a demandé (`theme`, forcé) ou celui de la date ; un autre thème est un autre niveau.
+  const natural = jumpThemeForDay(day);
+  const theme = options.theme ?? natural;
+  const id = dailyLevelId(day, theme);
+  if (p.day !== day || p.id !== id || p.theme !== theme || p.forcedTheme !== (theme !== natural)) return "autre niveau";
   if (textHash(p.ascii) !== p.hash) return "empreinte du niveau";
   let level;
   let replay;
@@ -138,6 +155,8 @@ export function fromPayload(p: unknown, day: number, options: { proof: boolean }
     date: formatDay(day),
     number: levelNumber(day),
     id,
+    theme,
+    forcedTheme: theme !== natural,
     level,
     ascii: p.ascii,
     hash: p.hash,

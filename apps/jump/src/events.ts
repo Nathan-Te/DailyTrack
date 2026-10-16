@@ -12,7 +12,11 @@ import {
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
   TICK_RATE,
+  TILE_BELT_LEFT,
+  TILE_BELT_RIGHT,
+  TILE_ICE,
   UNITS_PER_TILE,
+  groundTile,
   type AttemptState,
   type JumpMedal,
   type JumpParams,
@@ -37,7 +41,13 @@ import {
 //   - ressort : `springTime` / `springCell` changent ; friable : minuterie lancée (craque), bloc tombé (tombe).
 //   - dérapage (lot 8b) : au sol avant et après, la commande vient de passer à l'opposé du mouvement (demi-tour) alors que la vitesse est
 //     d'au moins `SKID_SPEED` × la course. Seul événement qui lit les commandes (celle du pas et celle d'avant, `EventInputs`) : sans
-//     elles (héros du carnage), pas de dérapage.
+//     elles (héros du carnage), pas de dérapage. Lot 11 : sur la glace il porte `ice` (la poussière devient du givre, le frottement un crissement).
+//   - tapis et glace (lot 11) : la tuile sous les pieds (`groundTile` de la simulation, lue des deux côtés d'un pas, au sol seulement) passe
+//     d'autre chose à un tapis (`tapisDebut`, `side` = sens du tapis : −1 gauche, 1 droite) ou à la glace (`glaceDebut`), et inversement
+//     (`tapisFin`, `glaceFin`) ; la mort et l'arrivée ferment aussi l'état (comme `glisseFin`), le décollage aussi. Un changement de sens de
+//     tapis est une fin puis un début. `glaceFrein` : sur la glace avant et après, la vitesse au sol d'au moins `ICE_BRAKE_SPEED` × la course
+//     baisse (frein, lâcher, demi-tour : on le lit dans l'état, pas dans les commandes), un par `ICE_STRIDE_TILES` parcourues : il porte le
+//     givre et le crissement. Aucun de ces événements n'est gardé pour les autres vies du carnage (`CarnageFilter` : mort et arrivée seulement).
 
 export type DeathCauseName = "pic" | "scie" | "chute";
 
@@ -73,7 +83,15 @@ export type GameEvent =
   | (Base & { kind: "friableCraque"; index: number })
   | (Base & { kind: "friableTombe"; index: number })
   /** Lot 8b : demi-tour au sol à vitesse. `side` : sens du mouvement avant le demi-tour (la poussière part devant) ; `speed` : tuiles/s. */
-  | (Base & { kind: "derapage"; side: number; speed: number })
+  | (Base & { kind: "derapage"; side: number; speed: number; ice: boolean })
+  /** Lot 11 : le personnage se pose sur un tapis roulant / le quitte. `side` : sens du tapis (−1 gauche, 1 droite). Position : les pieds. */
+  | (Base & { kind: "tapisDebut"; side: number })
+  | (Base & { kind: "tapisFin"; side: number })
+  /** Lot 11 : le personnage se pose sur la glace / la quitte. */
+  | (Base & { kind: "glaceDebut" })
+  | (Base & { kind: "glaceFin" })
+  /** Lot 11 : freinage sur la glace. `side` : sens du mouvement, `speed` : tuiles/s. */
+  | (Base & { kind: "glaceFrein"; side: number; speed: number })
   /** Médaille obtenue à l'arrivée sur le niveau du jour (le jeu la pousse : la simulation ne connaît pas les médailles). */
   | (Base & { kind: "medaille"; medal: JumpMedal });
 
@@ -96,6 +114,11 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "friableTombe",
   "medaille",
   "derapage",
+  "tapisDebut",
+  "tapisFin",
+  "glaceDebut",
+  "glaceFin",
+  "glaceFrein",
 ];
 
 /** Distance au sol entre deux bruits de pas (tuiles) : à pleine course (11 tuiles/s), un peu plus de 7 pas par seconde. */
@@ -103,6 +126,11 @@ export const STRIDE_TILES = 1.5;
 const STRIDE = STRIDE_TILES * UNITS_PER_TILE;
 /** « Pleine vitesse » : au moins cette part de la vitesse de course (poussière de course, traînée). */
 export const FULL_SPEED = 0.92;
+
+/** Lot 11 : le freinage sur la glace compte à partir de cette part de la vitesse de course, et donne un événement par `ICE_STRIDE_TILES` parcourues. */
+export const ICE_BRAKE_SPEED = 0.35;
+export const ICE_STRIDE_TILES = 1;
+const ICE_STRIDE = ICE_STRIDE_TILES * UNITS_PER_TILE;
 
 /** Lot 8b : un demi-tour au sol dérape à partir de cette part de la vitesse de course. */
 export const SKID_SPEED = 0.6;
@@ -121,6 +149,9 @@ const CAUSES: Record<number, DeathCauseName> = { [DEATH_SPIKE]: "pic", [DEATH_SA
 export function causeName(cause: number): DeathCauseName {
   return CAUSES[cause] ?? "pic";
 }
+
+/** Sens du tapis qu'est une tuile (−1 gauche, 1 droite), 0 pour toute autre. */
+const beltSide = (tile: number): number => (tile === TILE_BELT_LEFT ? -1 : tile === TILE_BELT_RIGHT ? 1 : 0);
 
 const centerX = (p: Readonly<PlayerState>) => (p.x + PLAYER_WIDTH / 2) / T;
 const centerY = (p: Readonly<PlayerState>) => (p.y + PLAYER_HEIGHT / 2) / T;
@@ -185,14 +216,30 @@ export function eventsBetween(
       out.push({ ...at(c), kind: "pas", y: feetY(c), speed, cadence: speed / STRIDE_TILES, full: Math.abs(c.vx) >= params.runSpeed * FULL_SPEED });
     }
   }
+  const ends = cur.status === ATTEMPT_DEAD || cur.status === ATTEMPT_FINISHED;
+  // Lot 11 : la surface sous les pieds, avant et après le pas (0 en l'air) ; la fin d'un essai ferme l'état.
+  const under = (s: Readonly<PlayerState>): number => (s.ground === 1 ? groundTile(level, s.x, s.y) : 0);
+  const before = under(p);
+  const after = ends ? 0 : under(c);
   if (inputs && p.ground === 1 && c.ground === 1 && p.vx !== 0) {
     const moving = p.vx > 0 ? 1 : -1;
     const dir = dirOf(inputs.bits);
     if (dir === -moving && dirOf(inputs.prevBits) !== dir && Math.abs(p.vx) >= params.runSpeed * SKID_SPEED) {
-      out.push({ ...at(c), kind: "derapage", y: feetY(c), side: moving, speed: (Math.abs(p.vx) * TICK_RATE) / T });
+      out.push({ ...at(c), kind: "derapage", y: feetY(c), side: moving, speed: (Math.abs(p.vx) * TICK_RATE) / T, ice: before === TILE_ICE && after === TILE_ICE });
     }
   }
-  const ends = cur.status === ATTEMPT_DEAD || cur.status === ATTEMPT_FINISHED;
+  const beltBefore = beltSide(before);
+  const beltAfter = beltSide(after);
+  if (beltBefore !== beltAfter) {
+    if (beltBefore !== 0) out.push({ ...at(c), kind: "tapisFin", y: feetY(p), side: beltBefore });
+    if (beltAfter !== 0) out.push({ ...at(c), kind: "tapisDebut", y: feetY(c), side: beltAfter });
+  }
+  if ((before === TILE_ICE) !== (after === TILE_ICE)) out.push({ ...at(c), kind: before === TILE_ICE ? "glaceFin" : "glaceDebut", y: feetY(before === TILE_ICE ? p : c) });
+  if (before === TILE_ICE && after === TILE_ICE && Math.abs(p.vx) >= params.runSpeed * ICE_BRAKE_SPEED && Math.abs(c.vx) < Math.abs(p.vx)) {
+    const a = Math.floor((p.x + PLAYER_WIDTH / 2) / ICE_STRIDE);
+    const b = Math.floor((c.x + PLAYER_WIDTH / 2) / ICE_STRIDE);
+    if (a !== b) out.push({ ...at(c), kind: "glaceFrein", y: feetY(c), side: p.vx > 0 ? 1 : -1, speed: (Math.abs(p.vx) * TICK_RATE) / T });
+  }
   if (p.slide === 0 && c.slide !== 0 && !ends) out.push({ ...at(c), kind: "glisseDebut", side: c.slide });
   else if (p.slide !== 0 && (c.slide === 0 || ends)) out.push({ ...at(c), kind: "glisseFin" });
 

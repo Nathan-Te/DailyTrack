@@ -152,7 +152,7 @@ export function streakOf(list: readonly DayRecord[], today: number): number {
   return n;
 }
 
-/** Le niveau ouvert peut-il entrer dans l'historique ? Le niveau du jour seulement, joué le jour même, ni lecture ni réglages modifiés. */
-export function mayRecord(o: { mode: "jour" | "archive" | "futur"; levelDay: number; today: number; watching: boolean; tuned: boolean }): boolean {
+/** Le niveau ouvert peut-il entrer dans l'historique ? Le niveau du jour seulement (jamais un essai de thème forcé, lot 11), joué le jour même, ni lecture ni réglages modifiés. */
+export function mayRecord(o: { mode: "jour" | "archive" | "futur" | "essai"; levelDay: number; today: number; watching: boolean; tuned: boolean }): boolean {
   return o.mode === "jour" && o.levelDay === o.today && !o.watching && !o.tuned;
 }

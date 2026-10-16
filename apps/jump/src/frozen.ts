@@ -4,6 +4,7 @@ import {
   JUMP_SIM_VERSION,
   decodeReplay,
   encodeReplay,
+  jumpThemeForDay,
   levelNumber,
   parseLevel,
   replayAttempt,
@@ -185,6 +186,9 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
     date,
     number: levelNumber(day),
     id,
+    // Lot 11 : un niveau figé est celui du thème naturel de sa date (jamais un essai).
+    theme: jumpThemeForDay(day),
+    forcedTheme: false,
     level,
     ascii,
     hash: f.hash,

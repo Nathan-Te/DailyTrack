@@ -1,8 +1,9 @@
-import { TILE_SOLID, type Level } from "@cdj/jump-sim";
+import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, TILE_SOLID, type Level } from "@cdj/jump-sim";
 
 // Auto-tuilage (lot 9), **pur** : chaque bloc plein se dessine selon ses 8 voisins. Rien ici ne touche à la simulation : on lit la grille.
-// Seuls les blocs pleins `#` comptent comme matière (un bloc friable peut tomber, un ressort est un objet à part : la face d'un bloc plein
-// qui les touche est exposée et garde son contour). Hors de la grille, la gauche, la droite et le haut sont pleins (les bords du niveau),
+// Seuls les blocs pleins `#` — et, depuis le lot 11, les **tapis roulants** `[` `]` et la **glace** `~`, qui sont des blocs pleins dont seule la
+// face du dessus a un traitement propre — comptent comme matière (un bloc friable peut tomber, un ressort est un objet à part : la face d'un
+// bloc plein qui les touche est exposée et garde son contour). Hors de la grille, la gauche, la droite et le haut sont pleins (les bords du niveau),
 // le bas est ouvert (on en meurt en tombant).
 
 export const N = 1;
@@ -26,11 +27,16 @@ export const NEIGHBOURS: readonly (readonly [number, number, number])[] = [
   [NW, -1, -1],
 ];
 
+/** Lot 11 : vrai pour un bloc plein, un tapis roulant ou de la glace (la matière de l'auto-tuilage, du pochoir des taches, de l'ancrage du décor). */
+export function isMatterTile(t: number): boolean {
+  return t === TILE_SOLID || t === TILE_BELT_LEFT || t === TILE_BELT_RIGHT || t === TILE_ICE;
+}
+
 /** Vrai si la case est de la matière pour l'auto-tuilage. */
 export function isMatter(level: Pick<Level, "width" | "height" | "tiles">, col: number, row: number): boolean {
   if (row >= level.height) return false;
   if (col < 0 || col >= level.width || row < 0) return true;
-  return level.tiles[row * level.width + col] === TILE_SOLID;
+  return isMatterTile(level.tiles[row * level.width + col]!);
 }
 
 /** Masque des 8 voisins d'une case (bit levé = voisin plein). */

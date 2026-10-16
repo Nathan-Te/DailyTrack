@@ -38,7 +38,10 @@ export type SoundId =
   | "pointDePassage"
   | "arrivee"
   | "medaille"
-  | "derapage";
+  | "derapage"
+  | "tapisDebut"
+  | "glaceDebut"
+  | "glaceFrein";
 
 export interface SoundSpec {
   id: SoundId;
@@ -145,10 +148,20 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
         tone("triangle", noteFreq(-2), 0.42, 0.1, 0.26),
       ]);
     case "derapage": {
-      // Lot 8b : un frottement court, un peu plus fort et plus long quand on dérape vite.
+      // Lot 8b : un frottement court, un peu plus fort et plus long quand on dérape vite. Lot 11 : sur la glace, le crissement de la glace.
       const k = Math.min(1, e.speed / 15);
+      if (e.ice) return spec("derapage", 1, iceScreech(k, v, 1.3));
       return spec("derapage", 1, [noise(3200 + 600 * v, 0.1 + 0.06 * k, 0.06 + 0.04 * k, 0, 1300, "bandpass", 1.6), noise(900, 0.06, 0.03 * k, 0.02, 500, "bandpass", 1)]);
     }
+    case "tapisDebut":
+      // Lot 11 : un « clac » mécanique, sourd, quand on se pose sur un tapis (le ronronnement continu est spatialisé : `beltMix`).
+      return spec("tapisDebut", 0, [noise(800 + 300 * v, 0.045, 0.06, 0, 420, "bandpass", 2), tone("square", 110, 0.06, 0.035, 0, 70)]);
+    case "glaceDebut":
+      // Lot 11 : un souffle clair, à peine : le contact de la glace.
+      return spec("glaceDebut", 0, [noise(5200 + 600 * v, 0.07, 0.04, 0, 3400, "highpass", 0.7)]);
+    case "glaceFrein":
+      // Lot 11 : crissement de glisse sur la glace, sobre, plus aigu et un peu plus long quand on va vite.
+      return spec("glaceFrein", 1, iceScreech(Math.min(1, e.speed / 15), v, 1));
     case "medaille": {
       const phrase = MEDAL_PHRASES[e.medal];
       const wave: OscillatorType = e.medal === "author" ? "square" : e.medal === "gold" ? "triangle" : "sine";
@@ -159,6 +172,14 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
     default:
       return null;
   }
+}
+
+/** Lot 11 : le crissement d'un freinage sur la glace (un bruit étroit qui descend, un fil aigu) ; `k` ∈ [0, 1] : vitesse ; `v` : variation ; `weight` : force. */
+function iceScreech(k: number, v: number, weight: number): Layer[] {
+  return [
+    noise(4300 + 700 * v + 500 * k, 0.09 + 0.07 * k, (0.045 + 0.035 * k) * weight, 0, 2500, "bandpass", 5),
+    tone("sine", 2400 + 300 * v, 0.08 + 0.05 * k, (0.008 + 0.01 * k) * weight, 0, 1700),
+  ];
 }
 
 /** La glisse murale : une boucle de bruit frotté, tant qu'elle dure (niveau et filtre). */
@@ -195,6 +216,51 @@ export function sawMix(saws: readonly { x: number; y: number }[], listener: { x:
     if (d >= range) continue;
     const k = 1 - d / range;
     near.push({ index: i, gain: SAW_GAIN * k * k, pan: Math.max(-1, Math.min(1, dx / range)), distance: d });
+  }
+  near.sort((a, b) => a.distance - b.distance || a.index - b.index);
+  return near.slice(0, max);
+}
+
+// ——— Tapis roulants spatialisés (lot 11) ———
+
+/** Portée de l'écoute d'un tapis (tuiles) et nombre de tapis audibles (comme les scies : trois voix). */
+export const BELT_RANGE = 9;
+export const BELT_VOICES = 3;
+/** Volume d'un tapis collé au personnage : un ronronnement discret, sous la scie (0,07) et très sous les sons de jeu. */
+export const BELT_GAIN = 0.035;
+/** Écart horizontal (tuiles) qui donne la stéréo pleine : au-dessus du tapis, le son est au centre. */
+export const BELT_PAN_SPAN = 7;
+/** Longueur (tuiles) d'une plage au-delà de laquelle elle ne ronronne plus plus fort. */
+export const BELT_LONG = 8;
+
+export interface BeltVoice {
+  /** Indice de la plage dans la liste donnée à `beltMix` (la voix garde sa plage tant qu'elle reste audible). */
+  index: number;
+  gain: number;
+  /** −1 gauche … 1 droite. */
+  pan: number;
+  distance: number;
+}
+
+/**
+ * Les tapis qu'on entend depuis `listener` (tuiles, y vers le bas) : chaque plage est `{ row, col0, col1 }` (colonnes incluses, la face du
+ * dessus à `row`). Distance = au point le plus proche de la plage (une plage longue s'entend de partout où elle passe) ; volume =
+ * (1 − d / portée)² × (0,6 + 0,4 × longueur ÷ `BELT_LONG`), stéréo = écart horizontal jusqu'à ce point ÷ `BELT_PAN_SPAN` (0 au-dessus du
+ * tapis). Les `max` plus proches à moins de `range` tuiles ; au-delà, le tapis se tait. **Pur** : ni silence de pause ni plafond de pool ici
+ * (`JumpAudio.update` ne reçoit rien en pause, `setActive`).
+ */
+export function beltMix(runs: readonly { row: number; col0: number; col1: number }[], listener: { x: number; y: number }, max = BELT_VOICES, range = BELT_RANGE): BeltVoice[] {
+  const near: BeltVoice[] = [];
+  for (let i = 0; i < runs.length; i++) {
+    const r = runs[i]!;
+    const nx = Math.min(Math.max(listener.x, r.col0), r.col1 + 1);
+    const dx = nx - listener.x;
+    const dy = r.row - listener.y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d >= range) continue;
+    const k = 1 - d / range;
+    const len = 0.6 + 0.4 * Math.min(1, (r.col1 - r.col0 + 1) / BELT_LONG);
+    near.push({ index: i, gain: BELT_GAIN * k * k * len, pan: Math.max(-1, Math.min(1, dx / BELT_PAN_SPAN)), distance: d });
   }
   near.sort((a, b) => a.distance - b.distance || a.index - b.index);
   return near.slice(0, max);
