@@ -50,7 +50,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "hitbox",
-    description: "Avec `debug` : dessine les boîtes de collision « justes » (personnage, pics réduits, disques mortels des scies) et les sections ; lot 11 : les surfaces en surimpression — tapis roulants (cadre de la face du dessus et un chevron par tuile dans le sens du tapis, en cyan) et glace (liseré et losanges, en bleu pâle).",
+    description: "Avec `debug` : dessine les boîtes de collision « justes » (personnage, pics réduits, disques mortels des scies) et les sections ; lot 11 : les surfaces en surimpression — tapis roulants (cadre de la face du dessus et un chevron par tuile dans le sens du tapis, en cyan) et glace (liseré et losanges, en bleu pâle) ; lot 12 : l'état des blocs clignotants et alternés — cadre vert = plein, croix rose = absent — et, avec des blocs alternés, « JEU A ACTIF » ou « JEU B ACTIF » en haut à gauche.",
     values: [],
   },
   {
@@ -111,8 +111,14 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "theme",
     description:
-      "Impose un thème (forêt, usine, glace, nuit, néon). Depuis le lot 11 le thème est une donnée du générateur (usine : tapis roulants ; glace : glace) : sur le niveau du jour, un thème **différent de celui de la date** donne un autre niveau, un **essai** (identifiant suffixé `-t<thème>`, `?seed=2026-10-20&theme=usine`) dont rien n'est enregistré (ni meilleur temps, ni fantôme, ni taches, ni historique, ni série, ni partage) ; le thème de la date lui-même donne le niveau ordinaire. Permis aussi sur le site publié (un essai n'est jamais classé). Sur un morceau (`?module=…&theme=glace`) ou un scénario, il ne change que le décor et les surfaces dessinées : la galerie ouvre chaque morceau de mécanique dans son thème. Un nom inconnu garde le thème du jour.",
+      "Impose un thème (forêt, usine, glace, nuit, néon). Depuis le lot 11 le thème est une donnée du générateur (usine : tapis roulants ; glace : glace ; lot 12 : nuit : blocs clignotants ; néon : blocs alternés) : sur le niveau du jour, un thème **différent de celui de la date** donne un autre niveau, un **essai** (identifiant suffixé `-t<thème>`, `?seed=2026-10-20&theme=usine`) dont rien n'est enregistré (ni meilleur temps, ni fantôme, ni taches, ni historique, ni série, ni partage) ; le thème de la date lui-même donne le niveau ordinaire. Permis aussi sur le site publié (un essai n'est jamais classé). Sur un morceau (`?module=…&theme=glace`) ou un scénario, il ne change que le décor et les surfaces dessinées : la galerie ouvre chaque morceau de mécanique dans son thème. Un nom inconnu garde le thème du jour.",
     values: THEME_NAMES,
+  },
+  {
+    name: "metronome",
+    description:
+      "Lot 12 : `off` coupe le métronome de la nuit (le tic discret qui marque le cycle des blocs clignotants de la section courante), sans toucher aux réglages mémorisés. Les autres sons (clic du néon…) restent. Affichage et son seulement : la simulation ne le lit pas.",
+    values: ["off"],
   },
   {
     name: "accueil",
@@ -166,6 +172,8 @@ export interface UrlChoices {
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
   /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Lot 11 : sur le niveau du jour, un thème différent de celui de la date est un **essai** ; sur un morceau ou un scénario, il reste cosmétique. */
   theme: ThemeName | null;
+  /** Lot 12 : le métronome de la nuit (`?metronome=off` le coupe). */
+  metronome: boolean;
   /** Lot 10 : `?accueil=1` (vrai) / `?accueil=0` (faux) ; null : la page décide (`wantsHome`, homeLogic.ts). */
   home: boolean | null;
   /** Lot 10 : `?archives` : l'accueil s'ouvre sur la liste des archives. */
@@ -198,6 +206,7 @@ export function readUrlOptions(search: string): UrlChoices {
     gallery,
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
+    metronome: params.get("metronome") !== "off",
     home: params.get("accueil") === "1" ? true : params.get("accueil") === "0" ? false : null,
     archives: daily && params.has("archives"),
   };
@@ -223,6 +232,7 @@ function carried(from: UrlChoices, home = false): string[] {
   if (!from.fx) out.push("fx=off");
   if (from.ghostOff) out.push("ghost=off");
   if (from.theme) out.push(`theme=${from.theme}`);
+  if (!from.metronome) out.push("metronome=off");
   if (home && from.home === false) out.push("accueil=0");
   return out;
 }

@@ -1,0 +1,31 @@
+id: neon-cheminee
+intention: Monter une cheminée dont les deux murs ne sont jamais solides ensemble : chaque saut mural fait apparaître le mur d'en face.
+etiquettes: mural vertical alterne
+famille: neon-cheminee
+theme: neon
+format: 3
+paliers: 17 7
+repeter: large colonnes 4-4
+variante: large=1
+variante: large=2
+grille:
+BBB...........
+BBB...........
+BBB...........
+BBB...........
+BBB...........
+BBB...........
+BBB..###......
+BBB..AAA...###
+BBB..AAA...###
+BBB..AAA...###
+BBB..AAA...###
+BBB..AAA...###
+BBB..AAA...###
+.BB..AAA...###
+.BB..AAA...###
+.....AAA...###
+.....AAA...###
+########...###
+########...###
+########...###

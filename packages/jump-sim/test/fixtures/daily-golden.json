@@ -1,9 +1,9 @@
 {
   "jumpSimVersion": 3,
-  "jumpGeneratorVersion": 7,
+  "jumpGeneratorVersion": 8,
   "days": {
     "2026-10-16": {
-      "id": "jour-2026-10-16-g7",
+      "id": "jour-2026-10-16-g8",
       "number": 1,
       "hash": "84440619",
       "width": 299,
@@ -38,47 +38,48 @@
         ]
       },
       "chosen": 1,
-      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc3AJIBNBg2GhgeHBgaHR7CCZYBkgdm0gU2wgpukgaWA5oJLvICNvICLvICNtoGLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBRpUPTQp_gM6jgQqxgeKAbYBGjYaXCk2IkYkIYYFIi76AdECogKQAeIDMKoDpgUylgGCCTb6AjaKA5YBygSGAaoDNoIFhgGiBEbSBQ"
+      "code": "AQMSam91ci0yMDI2LTEwLTE2LWc4AJIBNBg2GhgeHBgaHR7CCZYBkgdm0gU2wgpukgaWA5oJLvICNvICLvICNtoGLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBRpUPTQp_gM6jgQqxgeKAbYBGjYaXCk2IkYkIYYFIi76AdECogKQAeIDMKoDpgUylgGCCTb6AjaKA5YBygSGAaoDNoIFhgGiBEbSBQ"
     },
     "2026-10-25": {
-      "id": "jour-2026-10-25-g7",
+      "id": "jour-2026-10-25-g8",
       "number": 10,
-      "hash": "1d60225f",
-      "width": 302,
-      "height": 55,
+      "hash": "8e39b499",
+      "width": 280,
+      "height": 36,
       "pieces": [
-        "ressorts-escalier:1",
-        "ascenseur:4",
-        "marelle:4",
-        "ressort-mur:4",
-        "puits-descente:2",
-        "tunnel:0",
-        "plongeon:0",
-        "plafond-pics:2",
-        "lucarne:2",
-        "escalier-scies:0"
+        "descente-scies:4",
+        "mur-seul:0",
+        "nuit-portes:3",
+        "ressort-plafond:3",
+        "tunnel:1",
+        "marelle:5",
+        "piliers:2",
+        "ascenseur:5",
+        "nuit-opposition:4",
+        "demi-tour:3",
+        "scies-jumelles:4"
       ],
-      "authorTicks": 3365,
+      "authorTicks": 3535,
       "medals": {
-        "author": 3365,
-        "gold": 3702,
-        "silver": 4375,
-        "bronze": 5384
+        "author": 3535,
+        "gold": 3889,
+        "silver": 4596,
+        "bronze": 5656
       },
       "exigence": {
-        "sum": 22,
-        "rate": 470,
+        "sum": 25,
+        "rate": 509,
         "thirds": [
-          11,
+          13,
           20,
-          33
+          37
         ]
       },
       "chosen": 4,
-      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc3AJoBLsIBIEEiWEkgogkgQaoKhgGCBkbKBX5aNvoCjgFaNvIBxgEidoIBdpoPLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp22gPeBRoukAHaAcgBQkiKA9YFigIuugMu-gIuggM-2gVW8gGGAdoDjgHqBuYEIoYB-gKOAdoCrgHyApYBwgLeBBqOAcIC9gQajgg"
+      "code": "AQMSam91ci0yMDI2LTEwLTI1LWc4AIoQngTCCkbiCvYBMLYDMqYCMuYG2ge-CCq-BHmyCG7CCm76ArYGEkaSBF7yBm7KBXbqA6YB2gSGAYIGhgGiBEaSBla6A5ACqgJG0gKAA4EBugJW4gLgAdIBRtoDVpoFND0sMcYEUpYImgHOAdoD5gc"
     },
     "2026-11-03": {
-      "id": "jour-2026-11-03-g7",
+      "id": "jour-2026-11-03-g8",
       "number": 19,
       "hash": "afc8c51e",
       "width": 280,
@@ -112,48 +113,47 @@
         ]
       },
       "chosen": 5,
-      "code": "AQMSam91ci0yMDI2LTExLTAzLWc3AMIXRtoVNvoIhgHyBj6qB6YDIqYDIp4DIo4DGqYFMk6CA3a6Ay7SAzaqAi6aAy6iCnbaA94F6gI-ygU2ugdGkgR-ygVm0gaOBCJ2-gG-AYID1giKAjiVAhhdfhpmVRhNNrIIzgEwhgMqpgGiAv4BIrYBsgU"
+      "code": "AQMSam91ci0yMDI2LTExLTAzLWc4AMIXRtoVNvoIhgHyBj6qB6YDIqYDIp4DIo4DGqYFMk6CA3a6Ay7SAzaqAi6aAy6iCnbaA94F6gI-ygU2ugdGkgR-ygVm0gaOBCJ2-gG-AYID1giKAjiVAhhdfhpmVRhNNrIIzgEwhgMqpgGiAv4BIrYBsgU"
     },
     "2026-12-25": {
-      "id": "jour-2026-12-25-g7",
+      "id": "jour-2026-12-25-g8",
       "number": 71,
-      "hash": "18491161",
-      "width": 274,
-      "height": 39,
+      "hash": "35c1b01b",
+      "width": 285,
+      "height": 48,
       "pieces": [
-        "piliers:1",
-        "ascenseur:0",
-        "tunnel-scies:0",
-        "escalier:2",
-        "chute-pics:4",
-        "plafond-pics:0",
+        "neon-pics:2",
+        "ressort-plafond:4",
+        "puits:3",
         "cheminee-scie:2",
-        "demi-tour:2",
-        "puits:1",
-        "quinconce:0",
-        "ressorts-escalier:4"
+        "ressorts-escalier:2",
+        "piliers-scie:0",
+        "neon-respiration:0",
+        "iles-scie:3",
+        "neon-relais:2",
+        "cheminee-vide:0"
       ],
-      "authorTicks": 3487,
+      "authorTicks": 3384,
       "medals": {
-        "author": 3487,
-        "gold": 3836,
-        "silver": 4534,
-        "bronze": 5580
+        "author": 3384,
+        "gold": 3723,
+        "silver": 4400,
+        "bronze": 5415
       },
       "exigence": {
-        "sum": 25,
-        "rate": 516,
+        "sum": 24,
+        "rate": 510,
         "thirds": [
-          13,
-          22,
-          29
+          18,
+          20,
+          40
         ]
       },
-      "chosen": 0,
-      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc3ANIDLqoDRroCLtIDLrICLuIFZpIENuoJzgMi1gMydqIDzgMizgMatgMqrgEajgEqZiJGJSBmIkYlIEYiZiQihgUabsoClgoylgfaBIEBnAKiASAkxgTyAS7yAjbyAi7yAjbqCD50JiE8ZShmXBkUrQEWedYDsgRUPSwZ5gRatggKLlgteu0CWMoDTrIFhgHiBC7SAXSCAT7iCIYDMN4S"
+      "chosen": 4,
+      "code": "AQMSam91ci0yMDI2LTEyLTI1LWc4AIoDzgIivgQalgIavgValgHiA84F8gOhASLGCZIDPnQmITxlKGZcGRStARZ51gPyBYYDMOYSugKmBTKWAYIJNvoCNooDlgHKBIYBqgM2ggfuBBouwgI-ugU2ogQuigMuigQ28gbuBGK2AiquAho-kgI2igIukgIukgIu0gKmCDI2ogI2wgS2ARo-GkwhRiJGJCGGBQ"
     },
     "2027-03-28": {
-      "id": "jour-2027-03-28-g7",
+      "id": "jour-2027-03-28-g8",
       "number": 164,
       "hash": "35d27598",
       "width": 285,
@@ -190,10 +190,10 @@
         ]
       },
       "chosen": 5,
-      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc3ANoBNroCLqoCboIDXpIHWCzVARreATreAkJEbi1hpgiKA9YFOr4HIlQ9NCn-AzqOBCrGB8ICpgUylgGCCTb6AjaKA5YBygSGAaoDNooGxgGyAfYCcKYB6gdGogRGwgJG4gROkgJ28gNGugemAViuAzKGAzDGATXqBS6iBDbCB26aDjbqCC5gNXIRYqABMmCCAzbSAjEK"
+      "code": "AQMSam91ci0yMDI3LTAzLTI4LWc4ANoBNroCLqoCboIDXpIHWCzVARreATreAkJEbi1hpgiKA9YFOr4HIlQ9NCn-AzqOBCrGB8ICpgUylgGCCTb6AjaKA5YBygSGAaoDNooGxgGyAfYCcKYB6gdGogRGwgJG4gROkgJ28gNGugemAViuAzKGAzDGATXqBS6iBDbCB26aDjbqCC5gNXIRYqABMmCCAzbSAjEK"
     },
     "2027-06-21": {
-      "id": "jour-2027-06-21-g7",
+      "id": "jour-2027-06-21-g8",
       "number": 249,
       "hash": "6c3dd867",
       "width": 329,
@@ -227,7 +227,7 @@
         ]
       },
       "chosen": 3,
-      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc3ANIDvgEaLgyFASqWARo0ZSwqhgGCAjb6BfYBYOYCIoYDMq4DMuYDGK4BqgRWygQuwgQ28gNeygqmBTKWAYIJNvoCNooDlgHKBIYBqgM2kgle8gKOAbIHlgGSBGbiA2bKBC7SAjEaRooCfvoDboIHhgH6BTbCB276AlbiAs4BwgRu8gJW2gJW-gG2BCKGBtoBLuoDbroENpIE_gLQAgo"
+      "code": "AQMSam91ci0yMDI3LTA2LTIxLWc4ANIDvgEaLgyFASqWARo0ZSwqhgGCAjb6BfYBYOYCIoYDMq4DMuYDGK4BqgRWygQuwgQ28gNeygqmBTKWAYIJNvoCNooDlgHKBIYBqgM2kgle8gKOAbIHlgGSBGbiA2bKBC7SAjEaRooCfvoDboIHhgH6BTbCB276AlbiAs4BwgRu8gJW2gJW-gG2BCKGBtoBLuoDbroENpIE_gLQAgo"
     }
   }
 }

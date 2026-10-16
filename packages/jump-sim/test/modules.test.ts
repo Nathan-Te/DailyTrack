@@ -37,6 +37,7 @@ import {
   buildModuleDef,
   MAX_REST_EXIGENCE,
   centerCol,
+  INPUT_JUMP,
   decodeReplay,
   exigenceOf,
   fromRuns,
@@ -399,7 +400,7 @@ id: essai-mutateurs
 intention: Tester les mutateurs.
 etiquettes: precision
 famille: essai
-mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface
+mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface clignotant alterne
 format: 3
 paliers: 6 6
 repeter: large colonnes 4-4
@@ -428,6 +429,8 @@ zone patrouille o 120 aller-retour 3,3 5,3
 zone garde 5 5 <
 zone denivele 6-10
 zone surface 0-1 6
+zone clignotant 0-1 6-8 b
+zone alterne 8 6-8 A
 `;
 
 describe("mutateurs (lot 7)", () => {
@@ -435,7 +438,7 @@ describe("mutateurs (lot 7)", () => {
   const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
 
   it("lit les zones et les mutateurs des variantes ; au plus deux par variante, six variantes, seulement ceux déclarés", () => {
-    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface"]);
+    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne"]);
     expect(MUTATORS).toEqual(def.mutators);
     expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
     expect(def.mutations[0]).toEqual([]);
@@ -552,6 +555,17 @@ describe("règle des plats (lot 7)", () => {
   it("les respirations ne sont plus des courses à plat : chacune a au moins trois sauts à faire (trous, bosses, corniches, ressorts)", () => {
     for (const def of MODULES.filter((d) => d.tags.includes("respiration"))) {
       for (let v = 0; v < def.variants.length; v++) {
+        // Lot 12 : les sols de nuit et de néon (et d'une variante mutée) sont des blocs clignotants ou alternés, pas des `#` : on compte alors les **sauts** de chaque solution
+        // stockée (fronts montants du bouton de saut), aux deux entrées. Les autres : les plats, comme avant.
+        if (def.theme === "nuit" || def.theme === "neon" || def.mutations[v]!.some((m) => m.name === "clignotant" || m.name === "alterne")) {
+          for (const entry of ["arret", "elan"] as const) {
+            const sol = moduleSolutions(def.id, v)![entry]!;
+            const bits = fromRuns(decodeReplay(sol.code).runs);
+            const presses = bits.filter((b, t) => (b & INPUT_JUMP) !== 0 && (t === 0 || (bits[t - 1]! & INPUT_JUMP) === 0)).length;
+            expect(presses, `${def.id} v${v} ${entry}`).toBeGreaterThanOrEqual(3);
+          }
+          continue;
+        }
         const flats = flatsOf(buildModule(def.id, v));
         expect(flats.length, `${def.id} v${v}`).toBeGreaterThanOrEqual(3);
       }

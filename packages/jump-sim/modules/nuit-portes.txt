@@ -1,0 +1,26 @@
+id: nuit-portes
+intention: Un couloir fermé par des portes qui s'ouvrent à tour de rôle, avec des pics entre elles : passer au moment où elle s'ouvre, sauter, passer la suivante.
+etiquettes: precision clignotant
+famille: nuit-portes
+theme: nuit
+format: 3
+paliers: 9 9
+variante: cycle=240 solide=120 decalage=0
+variante: cycle=240 solide=120 decalage=60
+variante: cycle=200 solide=100 decalage=0
+variante: cycle=300 solide=170 decalage=100
+grille:
+##########################
+##########################
+##########################
+##########################
+##########################
+##########################
+.....b......d......b......
+.....b......d......b......
+.....b......d......b......
+########^^^####^^^########
+##########################
+##########################
+
+clignote {cycle} {solide} {decalage}

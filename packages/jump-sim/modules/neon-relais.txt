@@ -1,0 +1,27 @@
+id: neon-relais
+intention: Un enchaînement : le sol qui change à chaque saut au-dessus des pics, puis un couloir de portes à passer en comptant ses sauts.
+etiquettes: precision alterne
+famille: neon-relais
+theme: neon
+enchainement: long
+format: 3
+paliers: 9 9
+repeter: suite colonnes 2-9
+repeter: pics colonnes 17-17
+variante: suite=5 pics=3
+variante: suite=5 pics=2
+variante: suite=5 pics=1
+grille:
+#########################
+#########################
+#########################
+#########################
+#########################
+#########################
+..............A......B...
+..............A......B...
+..............A......B...
+##AAAABBBB#######^^######
+##........###############
+##^^^^^^^^###############
+#########################

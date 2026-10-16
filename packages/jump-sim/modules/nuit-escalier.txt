@@ -1,0 +1,29 @@
+id: nuit-escalier
+intention: Gravir un escalier dont une marche sur deux seulement est allumée : sauter de l'une à l'autre au moment où elles basculent.
+etiquettes: vertical clignotant
+famille: nuit-escalier
+theme: nuit
+format: 3
+paliers: 12 8
+variante: cycle=280 solide=140 decalage=0
+variante: cycle=240 solide=120 decalage=120
+variante: cycle=200 solide=100 decalage=0
+variante: cycle=300 solide=150 decalage=40
+grille:
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+...............ddd####
+...........bbb....####
+.......ddd........####
+...bbb............####
+##................####
+##^^^^^^^^^^^^^^^^####
+######################
+
+clignote {cycle} {solide} {decalage}
