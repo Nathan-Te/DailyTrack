@@ -1,6 +1,6 @@
 {
  "jumpSimVersion": 3,
- "exigenceVersion": 2,
+ "exigenceVersion": 3,
  "modules": {
   "ascenseur": {
    "variants": [
@@ -49,7 +49,7 @@
        845
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOmFzY2Vuc2V1cjoxBKICdtIDNvoF",
@@ -208,7 +208,7 @@
        305
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MATyAjAk7QEg1gESZkUKST7aCA",
@@ -222,7 +222,7 @@
        290
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -239,7 +239,7 @@
        245
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MQTyAjAM7QEIxgESjgMSrAFBJaIBZvIG",
@@ -253,7 +253,7 @@
        370
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -270,7 +270,7 @@
        280
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXBpY3M6MgT6AjAc7QEYzgEabkUSSUbCCA",
@@ -284,7 +284,7 @@
        375
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     }
    ]
@@ -305,7 +305,7 @@
        15
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZTowBOoCVgpOCh5EJQpeCl4lCR1GCj5VCn4KDmwY5gMihgGyCEaKAy7qAj7iAlayBg",
@@ -319,7 +319,7 @@
        35
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -336,7 +336,7 @@
        45
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMbbW9kdWxlOmNoZW1pbmVlLXF1aW5jb25jZToxBOoCXgpGCh5EJQpeCl4lCR1GCl4lCn4KHmQg5gMihgG6CDaSAyb6AjbiAlayBg",
@@ -350,7 +350,7 @@
        0
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -371,7 +371,7 @@
        375
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MATyAkwNETVuCh5ENSY5_gESFnBRJqICJuIF",
@@ -385,7 +385,7 @@
        125
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -402,7 +402,7 @@
        315
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MQTqAuYBCh4cVUhUGWJlFp0BCSUcogImygU",
@@ -416,7 +416,7 @@
        225
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -433,7 +433,7 @@
        290
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MgTyAt4BCiYUTUwKrgESFiy1ARo-sgIWugU",
@@ -447,7 +447,7 @@
        465
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -464,7 +464,7 @@
        435
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6MwTqAghcCRWOAQoeJCVOSeYBEi54QSa6CA",
@@ -478,7 +478,7 @@
        60
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     }
    ]
@@ -499,7 +499,7 @@
        730
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MATqAYYCIkQlCmYKNiQhhgVa",
@@ -513,7 +513,7 @@
        780
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -544,7 +544,7 @@
        420
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -561,7 +561,7 @@
        945
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MgTqAcYBCl4KHmQKfgoeRCFmJdoE",
@@ -575,7 +575,7 @@
        445
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -592,7 +592,7 @@
        900
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6MwTqAYYCIkQlCl4KPiQhhgVa",
@@ -606,7 +606,7 @@
        750
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -623,7 +623,7 @@
        560
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXZpZGU6NATqAb4BCpYBCi5kYdYFWg",
@@ -637,7 +637,7 @@
        510
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -668,7 +668,7 @@
        365
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     }
    ]
@@ -689,7 +689,7 @@
        140
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjAE6gJOEm4KHnQQhgEiRiUgZoICNvIF",
@@ -703,7 +703,7 @@
        260
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -720,7 +720,7 @@
        510
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjEE6gLmAQoeJEVEIqYBEhYkhQEKfoICJtIG",
@@ -734,7 +734,7 @@
        555
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -751,7 +751,7 @@
        695
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjIE6gLeARIeHE1EIqYBCh4khQEKngHSCA",
@@ -765,7 +765,7 @@
        750
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -782,7 +782,7 @@
        140
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmNoZW1pbmVlOjME6gJWCm4KDoQBEF4KpgEKHkQKpgEaVuICRpIF",
@@ -796,7 +796,7 @@
        135
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     }
    ]
@@ -817,7 +817,7 @@
        715
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMTbW9kdWxlOmNodXRlLXBpY3M6MASSAR6iA4ABoQHiAUDiASTSAw",
@@ -831,7 +831,7 @@
        795
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -848,7 +848,7 @@
        740
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMTbW9kdWxlOmNodXRlLXBpY3M6MQSKASaiA4ABwQHCAiDCASaiAmZK",
@@ -879,7 +879,7 @@
        745
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMTbW9kdWxlOmNodXRlLXBpY3M6MgSiARaKAtECmgJZ8gE0ogIxigE",
@@ -893,7 +893,7 @@
        820
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -910,7 +910,7 @@
        735
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMTbW9kdWxlOmNodXRlLXBpY3M6MwSKASbiAiDBAoABwgMmogEgQcIB",
@@ -941,7 +941,7 @@
        940
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMTbW9kdWxlOmNodXRlLXBpY3M6NASSAR44KXosQSIggQGgAiEgggLGBEo",
@@ -955,7 +955,7 @@
        915
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     }
    ]
@@ -1104,7 +1104,7 @@
        750
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czowBPICDroRSBowSgkKGBEyERAyGQoQUigiKAohGhEwGUAaCTIxMjGKAVgKIBowGhkYMhkgIigSMBowGhkYGu4BkgY",
@@ -1118,7 +1118,7 @@
        375
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -1135,7 +1135,7 @@
        585
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMbbW9kdWxlOmRlbWktdG91ci1yZXNzb3J0czoxBPoCDroRIDIYOhk6CAk6ERAKITowKiAKMCIZEiFAIRASGRoxUiGCATAaUCooCiEoMgkYGjAaMBowGhkYMs4BigY",
@@ -1149,7 +1149,7 @@
        405
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -1184,7 +1184,7 @@
        655
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -1215,7 +1215,7 @@
        925
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -1232,7 +1232,7 @@
        910
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMSbW9kdWxlOmRlbWktdG91cjoyBIoBNo0BCsYFMsYIUg",
@@ -1277,7 +1277,7 @@
        900
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -1308,7 +1308,7 @@
        765
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -1339,7 +1339,7 @@
        720
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -1391,7 +1391,7 @@
        835
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMXbW9kdWxlOmRlc2NlbnRlLXNjaWVzOjEEkg822g5Gigs",
@@ -1405,7 +1405,7 @@
        690
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -1498,7 +1498,7 @@
        835
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -1529,7 +1529,7 @@
        935
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     }
    ]
@@ -1678,7 +1678,7 @@
        830
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MASKAWa6AnbaAm7KApYBggNm8gU",
@@ -1692,7 +1692,7 @@
        715
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -1709,7 +1709,7 @@
        215
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MQSaAV6aApYB0gJmogJmkgFhZjTGBEI",
@@ -1723,7 +1723,7 @@
        320
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -1740,7 +1740,7 @@
        560
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMZbW9kdWxlOmVzY2FsaWVyLWZyaWFibGU6MgSKAWaaAp4B0gLGBDLWCFI",
@@ -1754,7 +1754,7 @@
        725
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -1775,7 +1775,7 @@
        490
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjAEkgGWAfoCpgHyAsYEMm7CAqYB-gLGBCp--gK-BDL2B2I",
@@ -1789,7 +1789,7 @@
        335
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -1806,7 +1806,7 @@
        170
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjEEigHuBBKOAfICdqICpgQitgHaAr4B4gL2BBJmogLGCUI",
@@ -1820,7 +1820,7 @@
        240
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -1837,7 +1837,7 @@
        440
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjIEigHGBCKmAfICfroCpgQirgHKAr4B4gL-BBJ2ogKmCUI",
@@ -1851,7 +1851,7 @@
        640
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -1868,7 +1868,7 @@
        385
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjMEigH-BBp2ugLOBCJmogLGBCqGAdoCxgQixgQiZuIH",
@@ -1882,7 +1882,7 @@
        305
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -1899,7 +1899,7 @@
        110
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOmVzY2FsaWVyLXNjaWVzOjQEygGmBCKGAYIDbpoCxgQixgQiZqICxgQihgHaAo4B4gg",
@@ -1913,7 +1913,7 @@
        55
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -1965,7 +1965,7 @@
        685
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjEEkgFeugJu4gKGAYIDZqICpgdK",
@@ -1979,7 +1979,7 @@
        650
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -1996,7 +1996,7 @@
        935
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjIEigF28gKWAdIIxgdK",
@@ -2041,7 +2041,7 @@
        925
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -2089,7 +2089,7 @@
        820
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMRbW9kdWxlOmVzY2FsaWVyOjUEogFu6gJW-gemBUo",
@@ -2103,7 +2103,7 @@
        765
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -2124,7 +2124,7 @@
        760
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjAEigMO2gQOmgU",
@@ -2138,7 +2138,7 @@
        760
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -2155,7 +2155,7 @@
        415
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjEE-gIOwgUO8gU",
@@ -2169,7 +2169,7 @@
        690
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -2186,7 +2186,7 @@
        145
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjIEmgMWggYeqgY",
@@ -2200,7 +2200,7 @@
        140
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -2217,7 +2217,7 @@
        635
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjME-gIOygUO6gU",
@@ -2231,7 +2231,7 @@
        540
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -2248,7 +2248,7 @@
        680
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjQEigMO4gQOkgU",
@@ -2262,7 +2262,7 @@
        675
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -2279,7 +2279,7 @@
        715
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMUbW9kdWxlOmdyYW5kZS1zY2llOjUE-gIOigQOqgc",
@@ -2293,7 +2293,7 @@
        750
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -2314,7 +2314,7 @@
        830
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MASKAYYBwgNG8gJWsgOeAZIF",
@@ -2345,7 +2345,7 @@
        820
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MQSKAY4FClbCAv4FEkayAy6KAw",
@@ -2359,7 +2359,7 @@
        600
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -2376,7 +2376,7 @@
        740
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MgSKAYYBwgNG4gJmugOWAZIF",
@@ -2390,7 +2390,7 @@
        845
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -2407,7 +2407,7 @@
        830
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6MwSqAeYEEl66Av4FEkaqAz6CAw",
@@ -2421,7 +2421,7 @@
        635
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -2438,7 +2438,7 @@
        910
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMWbW9kdWxlOmlsZXMtZnJpYWJsZXM6NASKAaYBogNmmgM2ugNGugU",
@@ -2452,7 +2452,7 @@
        785
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -2535,7 +2535,7 @@
        905
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMSbW9kdWxlOmlsZXMtc2NpZToyBIoBFqIDPqoDNtICNqoG",
@@ -2566,7 +2566,7 @@
        830
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOmlsZXMtc2NpZTozBIoBNrIELpoDFoIENpIG",
@@ -2580,7 +2580,7 @@
        930
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -2597,7 +2597,7 @@
        915
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMSbW9kdWxlOmlsZXMtc2NpZTo0BIoBLuoCRpoDHuICZqoG",
@@ -2611,7 +2611,7 @@
        905
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -2628,7 +2628,7 @@
        930
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMSbW9kdWxlOmlsZXMtc2NpZTo1BIoBNrIDNmDyATTqCQ",
@@ -2663,7 +2663,7 @@
        705
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMQbW9kdWxlOmx1Y2FybmU6MASKAUaSAnb6A26aBw",
@@ -2677,7 +2677,7 @@
        540
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -2694,7 +2694,7 @@
        345
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMQbW9kdWxlOmx1Y2FybmU6MQSKAUaKAmaiA1aaCA",
@@ -2708,7 +2708,7 @@
        350
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -2725,7 +2725,7 @@
        480
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMQbW9kdWxlOmx1Y2FybmU6MgSKAU6SAmaSA1aaCA",
@@ -2739,7 +2739,7 @@
        355
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     }
    ]
@@ -2774,7 +2774,7 @@
        940
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -2791,7 +2791,7 @@
        910
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMQbW9kdWxlOm1hcmVsbGU6MQSKASaSBW6yB3a6Bg",
@@ -2805,7 +2805,7 @@
        930
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -2822,7 +2822,7 @@
        660
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMQbW9kdWxlOm1hcmVsbGU6MgSKASbyA16qBl6KBw",
@@ -2867,7 +2867,7 @@
        910
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -2884,7 +2884,7 @@
        800
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMQbW9kdWxlOm1hcmVsbGU6NASKA64BmgiOAaoG",
@@ -2919,7 +2919,7 @@
        335
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjAEqgMuEo4BCiZFCiY0NQktZgouNPoBNroF",
@@ -2933,7 +2933,7 @@
        155
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -2950,7 +2950,7 @@
        360
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjEEsgMuCm4KTCUKbglFFhJeCFwJLZYDCo4BggQ",
@@ -2964,7 +2964,7 @@
        335
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -2981,7 +2981,7 @@
        150
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjIEsgMuCnYSLkUSJjQtES1UCQ1mCi5lCsYDCnb6Aw",
@@ -2995,7 +2995,7 @@
        415
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -3012,7 +3012,7 @@
        290
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMUbW9kdWxlOm11ci1mcmlhYmxlOjMEsgMuCmYaNEUKXgldCl4IZAkljgMidoIE",
@@ -3026,7 +3026,7 @@
        300
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -3061,7 +3061,7 @@
        920
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3092,7 +3092,7 @@
        530
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -3109,7 +3109,7 @@
        440
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMRbW9kdWxlOm11ci1zZXVsOjIEigHGAhKGAxp-sgLGAxr-ASLmBlo",
@@ -3123,7 +3123,7 @@
        705
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -3140,7 +3140,7 @@
        945
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMRbW9kdWxlOm11ci1zZXVsOjMEigGmAhKWAwqOAcoChgIKhgc6",
@@ -3154,7 +3154,7 @@
        640
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -3216,7 +3216,7 @@
        775
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -3237,7 +3237,7 @@
        725
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOm11ci10cm91czowBJIBrgJK_gIStgMK_gIytgMihgHSBFaaBE6yBEbqA2byCA",
@@ -3251,7 +3251,7 @@
        935
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3268,7 +3268,7 @@
        670
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMSbW9kdWxlOm11ci10cm91czoxBKIBzgIylgMKjgMQ5gMihgMixgMidroGDuIChgHKBkaaAxbqBw",
@@ -3282,7 +3282,7 @@
        900
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3299,7 +3299,7 @@
        665
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMSbW9kdWxlOm11ci10cm91czoyBIoBpgIilgMSpgMSjgGyApYBigKmCAoe-gI-8gZeigMmigg",
@@ -3313,7 +3313,7 @@
        820
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -3344,7 +3344,7 @@
        750
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -3361,7 +3361,7 @@
        790
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOm11ci10cm91czo0BIoBpgIyhgMytgMK_gIyrgMifuoERrIERrIEPooERuoI",
@@ -3375,7 +3375,7 @@
        785
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -3392,7 +3392,7 @@
        805
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOm11ci10cm91czo1BIoBpgJa_gIStgMK_gIytgMSfsoFTrIEVqoGJqIFNroG",
@@ -3441,7 +3441,7 @@
        940
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3458,7 +3458,7 @@
        685
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMWbW9kdWxlOnBhcm9pLWZyaWFibGU6MQSyAsYCEvYCIo4DMoYDMoYDGtYHWg",
@@ -3489,7 +3489,7 @@
        495
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMWbW9kdWxlOnBhcm9pLWZyaWFibGU6MgSiAt4CCvYCKoYDKo4DIpYDGtYHWg",
@@ -3503,7 +3503,7 @@
        940
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3555,7 +3555,7 @@
        940
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBlbmR1bGU6MASqBF6yA0bSBw",
@@ -3569,7 +3569,7 @@
        940
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3662,7 +3662,7 @@
        905
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3710,7 +3710,7 @@
        945
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBlbmR1bGU6NQSSAY4B4gZGigc",
@@ -3745,7 +3745,7 @@
        930
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBldGl0cy10cm91czowBJoBFooDVpoFFtoCRroG",
@@ -3821,7 +3821,7 @@
        785
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -3852,7 +3852,7 @@
        940
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -3883,7 +3883,7 @@
        930
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     }
    ]
@@ -3904,7 +3904,7 @@
        735
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTowBKoDpgUylgGCCTb6Aj6CA5YBqgSWAaIDDvoF",
@@ -3918,7 +3918,7 @@
        775
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -3935,7 +3935,7 @@
        770
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZToxBKoDpgUylgGSCF6qAYYGCo4B8gPOAaoDJroF",
@@ -3966,7 +3966,7 @@
        825
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZToyBKoDpgUylgGCCTbaAl6CA5YBugSGAaoDDvIF",
@@ -3980,7 +3980,7 @@
        730
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -3997,7 +3997,7 @@
        550
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTozBOoCDooDzgUq5gYiJqIEzgHKAh76A3aCAx6CBg",
@@ -4011,7 +4011,7 @@
        725
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -4028,7 +4028,7 @@
        210
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo0BKoDpgUylgGSCE6iAZ4GCo4BugSOAZIDNroF",
@@ -4042,7 +4042,7 @@
        900
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -4059,7 +4059,7 @@
        725
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBpbGllcnMtc2NpZTo1BMoDhgUS5gGyCCYiJooDPuICngG6BIYBmgk",
@@ -4073,7 +4073,7 @@
        690
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     }
    ]
@@ -4094,7 +4094,7 @@
        840
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBpbGllcnM6MAT6Ag6KA84B6gOWAdoG",
@@ -4108,7 +4108,7 @@
        905
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -4125,7 +4125,7 @@
        720
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBpbGllcnM6MQTCAw6iAz7CAi6iA0aiAi6iBg",
@@ -4139,7 +4139,7 @@
        565
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -4156,7 +4156,7 @@
        935
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBpbGllcnM6MgSiAXaKBIYB2gR2wgY",
@@ -4170,7 +4170,7 @@
        845
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -4187,7 +4187,7 @@
        720
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBpbGllcnM6MwSKAaYB8gNW-gIm4gM2kgIuigY",
@@ -4201,7 +4201,7 @@
        660
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -4218,7 +4218,7 @@
        940
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMQbW9kdWxlOnBpbGllcnM6NATqAg7KA54B8gNeigc",
@@ -4232,7 +4232,7 @@
        845
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -4253,7 +4253,7 @@
        805
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczowBLoCHpIDHvICLooDPqoH",
@@ -4267,7 +4267,7 @@
        510
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -4284,7 +4284,7 @@
        790
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoxBKIDPtoDPsIDNuIDFooH",
@@ -4298,7 +4298,7 @@
        830
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -4315,7 +4315,7 @@
        350
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczoyBKoDNsIENrIENqIERqoH",
@@ -4329,7 +4329,7 @@
        375
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -4346,7 +4346,7 @@
        690
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczozBKIDRtIDNuIDPrIDNvoG",
@@ -4360,7 +4360,7 @@
        740
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -4377,7 +4377,7 @@
        385
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBsYWZvbmQtcGljczo0BJIDPooDPooDLqICLliyBg",
@@ -4391,7 +4391,7 @@
        235
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -4443,7 +4443,7 @@
        530
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnBsb25nZW9uOjEEmgEW4gGRAaIBkAH6A4YFSg",
@@ -4488,7 +4488,7 @@
        935
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     }
    ]
@@ -4523,7 +4523,7 @@
        915
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -4540,7 +4540,7 @@
        935
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZToxBIIDVqIGhgPiBw",
@@ -4585,7 +4585,7 @@
        900
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -4602,7 +4602,7 @@
        945
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZTozBNoD5gMypgUy1gIKXtoD",
@@ -4647,7 +4647,7 @@
        835
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -4664,7 +4664,7 @@
        945
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnBvbnQtZnJpYWJsZTo1BJoDRtoF_gKqCA",
@@ -4699,7 +4699,7 @@
        365
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTowBIoB5gZCJqoDtgGyA64B2gJhXjGCAlaiAl6aApYBugJW4gU",
@@ -4713,7 +4713,7 @@
        75
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -4730,7 +4730,7 @@
        370
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToxBIoBlgG6A9YB2gNeqgOWBSJmwgJmygJekgK2AcICNuIF",
@@ -4744,7 +4744,7 @@
        255
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -4761,7 +4761,7 @@
        195
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZToyBJIBhgH6BSaCA6YFIkaiA2a6Ak7iAYYB4gKmAcICJvIF",
@@ -4775,7 +4775,7 @@
        105
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -4792,7 +4792,7 @@
        370
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMYbW9kdWxlOnBvbnQtcGF0cm91aWxsZTozBIoBhgcSNqoDvgGiA7YBwgJhdjHyAWaqAl6iApYBqgJO6gU",
@@ -4806,7 +4806,7 @@
        45
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -4827,7 +4827,7 @@
        70
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjAEmgEWSFJo8QGqAhjaBS7aA06CCFa6BD6SCQ",
@@ -4841,7 +4841,7 @@
        250
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -4858,7 +4858,7 @@
        225
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjEEogEOaEpQ8QGSAhDSBT7qA1biB3a6BD6CCQ",
@@ -4872,7 +4872,7 @@
        295
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     },
     {
@@ -4889,7 +4889,7 @@
        290
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOnB1aXRzLWRlc2NlbnRlOjIEkgEWYEpo6QHCAgiyBWaKBU7aB3bqBEaSCQ",
@@ -4903,7 +4903,7 @@
        325
       ],
       "raccord": 1000,
-      "exigence": 4
+      "exigence": 0
      }
     }
    ]
@@ -4924,7 +4924,7 @@
        635
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMObW9kdWxlOnB1aXRzOjAEigEO0gNp8AJiCLoBPpoG",
@@ -4938,7 +4938,7 @@
        935
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -4955,7 +4955,7 @@
        730
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMObW9kdWxlOnB1aXRzOjEEmgEW8gHRAvoBQIoCfqoF",
@@ -4986,7 +4986,7 @@
        625
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMObW9kdWxlOnB1aXRzOjIEogEOOBmCASRZGlBxgAGiA4YBugU",
@@ -5031,7 +5031,7 @@
        720
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     }
    ]
@@ -5052,7 +5052,7 @@
        800
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOnF1aW5jb25jZTowBNoCNuoDLpoDRtoH",
@@ -5066,7 +5066,7 @@
        595
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     },
     {
@@ -5083,7 +5083,7 @@
        760
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOnF1aW5jb25jZToxBIoBlgGiBj7aA2bSCA",
@@ -5114,7 +5114,7 @@
        795
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOnF1aW5jb25jZToyBIoBlgGSB2bCBU6iCQ",
@@ -5145,7 +5145,7 @@
        845
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMSbW9kdWxlOnF1aW5jb25jZTozBJIBfroGPsoDZtoI",
@@ -5159,7 +5159,7 @@
        825
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -5176,7 +5176,7 @@
        900
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMSbW9kdWxlOnF1aW5jb25jZTo0BIoBlgHSBWb6A1bqCA",
@@ -5190,7 +5190,7 @@
        930
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -5207,7 +5207,7 @@
        625
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMSbW9kdWxlOnF1aW5jb25jZTo1BPICLvIDJooDPuIH",
@@ -5221,7 +5221,7 @@
        475
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     }
    ]
@@ -5370,7 +5370,7 @@
        525
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMZbW9kdWxlOnJlc3NvcnQtbXVyLWlsZXM6MATKAtYCMoYDCq4DCq4DCp4FOk6iAz7qAg6yAzaiAg7yAi6aCA",
@@ -5384,7 +5384,7 @@
        815
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -5401,7 +5401,7 @@
        745
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMZbW9kdWxlOnJlc3NvcnQtbXVyLWlsZXM6MQTKAvYCEoYDCq4DCq4DCp4FOlbyAlbiAy7aAz6KAxaaAzbCBw",
@@ -5432,7 +5432,7 @@
        760
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMZbW9kdWxlOnJlc3NvcnQtbXVyLWlsZXM6MgTKAtYCMoYDCq4DCq4DGo4FUkaqAzbCAi6iAzaCAg6SAxa6CA",
@@ -5446,7 +5446,7 @@
        445
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -5463,7 +5463,7 @@
        800
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMZbW9kdWxlOnJlc3NvcnQtbXVyLWlsZXM6MwTKAtYCIpYDCq4DCq4DCr4FGk6KA1baAybSA06CAy6CAzbCBw",
@@ -5494,7 +5494,7 @@
        505
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMZbW9kdWxlOnJlc3NvcnQtbXVyLWlsZXM6NATqAt4CCqYDCqYDEo4DGo4B-gQ2wgOeA5IDngTaCQ",
@@ -5508,7 +5508,7 @@
        915
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     }
    ]
@@ -5529,7 +5529,7 @@
        925
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjAE4gs",
@@ -5591,7 +5591,7 @@
        935
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjIE4gs",
@@ -5622,7 +5622,7 @@
        695
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMUbW9kdWxlOnJlc3NvcnQtbXVyOjME0gceygQ",
@@ -5764,7 +5764,7 @@
        935
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -5795,7 +5795,7 @@
        900
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -5861,7 +5861,7 @@
        455
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 0
      }
     },
     {
@@ -5878,7 +5878,7 @@
        265
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnJlc3NvcnQtc2NpZToxBPoCOLwBMZYHSg",
@@ -5892,7 +5892,7 @@
        290
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     }
    ]
@@ -5913,7 +5913,7 @@
        940
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMabW9kdWxlOnJlc3NvcnRzLWVzY2FsaWVyOjAEqgLmAwqeBCSmDkI",
@@ -5944,7 +5944,7 @@
        910
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMabW9kdWxlOnJlc3NvcnRzLWVzY2FsaWVyOjEEygKWBAruBDAxqg8",
@@ -6006,7 +6006,7 @@
        835
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMabW9kdWxlOnJlc3NvcnRzLWVzY2FsaWVyOjMEygKWBAruBDAxqg8",
@@ -6037,7 +6037,7 @@
        790
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMabW9kdWxlOnJlc3NvcnRzLWVzY2FsaWVyOjQEqgLmAwqeBCSmDkI",
@@ -6086,7 +6086,7 @@
        910
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -6103,7 +6103,7 @@
        390
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOnJlc3NvcnRzLXRyb3VzOjEEwgQWyhs",
@@ -6117,7 +6117,7 @@
        445
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -6179,7 +6179,7 @@
        945
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     }
    ]
@@ -6452,7 +6452,7 @@
        900
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnNhdXQtcGxhZm9uZDoyBIoDRpoGPtoH",
@@ -6466,7 +6466,7 @@
        770
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -6497,7 +6497,7 @@
        840
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 3
      }
     },
     {
@@ -6514,7 +6514,7 @@
        905
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnNhdXQtcGxhZm9uZDo0BKoEjgYy9gdS",
@@ -6722,7 +6722,7 @@
        920
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -6739,7 +6739,7 @@
        435
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnNjaWUtc29sOjIE2gOmAwreAhpGwgc",
@@ -6753,7 +6753,7 @@
        320
       ],
       "raccord": 1000,
-      "exigence": 5
+      "exigence": 0
      }
     },
     {
@@ -6770,7 +6770,7 @@
        945
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnNjaWUtc29sOjMEwgPWAhqmAyLGB0o",
@@ -6881,7 +6881,7 @@
        935
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -6929,7 +6929,7 @@
        785
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMXbW9kdWxlOnNjaWVzLWp1bWVsbGVzOjIEmgLGAeID9gdC",
@@ -6943,7 +6943,7 @@
        930
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -6991,7 +6991,7 @@
        325
       ],
       "raccord": null,
-      "exigence": 4
+      "exigence": 0
      },
      "elan": {
       "code": "AQMXbW9kdWxlOnNjaWVzLWp1bWVsbGVzOjQEogLOAdID9gdC",
@@ -7057,7 +7057,7 @@
        530
       ],
       "raccord": null,
-      "exigence": 3
+      "exigence": 5
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjAE0gM-6gRGigWWAeIH",
@@ -7071,7 +7071,7 @@
        705
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -7088,7 +7088,7 @@
        635
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjEE4gM24gRG-gSWAfIH",
@@ -7102,7 +7102,7 @@
        680
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -7119,7 +7119,7 @@
        645
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnRvYm9nZ2FuOjIE2gM-4gRGigVGsgg",
@@ -7133,7 +7133,7 @@
        575
       ],
       "raccord": 1000,
-      "exigence": 3
+      "exigence": 5
      }
     }
    ]
@@ -7154,7 +7154,7 @@
        315
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnRyZW1wbGluOjAEygO2AeoGrgHyCA",
@@ -7185,7 +7185,7 @@
        280
       ],
       "raccord": null,
-      "exigence": 5
+      "exigence": 0
      },
      "elan": {
       "code": "AQMRbW9kdWxlOnRyZW1wbGluOjEEogOmCCKmAfoI",
@@ -7220,7 +7220,7 @@
        780
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnR1bm5lbC1zY2llczowBOICdpoD1gNKhgHSAhaKA2aCA-YDCh7CAqYBCl4lCn4KHmQJHWYKHkQlCl4KXiUJHSTmBEI",
@@ -7251,7 +7251,7 @@
        650
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMVbW9kdWxlOnR1bm5lbC1zY2llczoxBOoCbpoD5gQi5gMixgMavgcStgEKVgoubApeCg50Cl4KLiQ1ClYKRikaxgGSBA",
@@ -7265,7 +7265,7 @@
        680
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     }
    ]
@@ -7286,7 +7286,7 @@
        765
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMPbW9kdWxlOnR1bm5lbDowBIoBZrID1gIKLqIG",
@@ -7300,7 +7300,7 @@
        945
       ],
       "raccord": 1000,
-      "exigence": 1
+      "exigence": 2
      }
     },
     {
@@ -7317,7 +7317,7 @@
        825
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 3
      },
      "elan": {
       "code": "AQMPbW9kdWxlOnR1bm5lbDoxBLIBbvoCRroDbqoH",
@@ -7331,7 +7331,7 @@
        665
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -7348,7 +7348,7 @@
        655
       ],
       "raccord": null,
-      "exigence": 2
+      "exigence": 4
      },
      "elan": {
       "code": "AQMPbW9kdWxlOnR1bm5lbDoyBJoBfvICRrIDfvoC1gZK",
@@ -7362,7 +7362,7 @@
        675
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {
@@ -7379,7 +7379,7 @@
        905
       ],
       "raccord": null,
-      "exigence": 1
+      "exigence": 2
      },
      "elan": {
       "code": "AQMPbW9kdWxlOnR1bm5lbDozBIoBZqoDPsoDbqIH",
@@ -7393,7 +7393,7 @@
        620
       ],
       "raccord": 1000,
-      "exigence": 2
+      "exigence": 4
      }
     },
     {

@@ -684,7 +684,7 @@ export interface ModuleSolution {
    * n'importe où dans un pas de course) jusqu'à une sortie propre ; null à l'arrêt.
    */
   raccord: number | null;
-  /** Note d'exigence (1 facile … 5 exigeant), 0 = « au pas près » (refusée). */
+  /** Note d'exigence (1 facile … 5 exigeant), 0 = refusée (pas jouable par un humain, ou raccord < 90 %). */
   exigence: number;
 }
 
@@ -702,8 +702,11 @@ export interface ModuleSolutionsFile {
   modules: Readonly<Record<string, { variants: readonly ModuleVariantSolutions[] }>>;
 }
 
-/** Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6). */
-export const EXIGENCE_VERSION = 2;
+/**
+ * Version de la mesure d'exigence : la changer (tirages, décalages, seuils) oblige à relancer `solve:modules`. 2 : raccord strict (lot 6) ;
+ * 3 : jouable par un humain (lot 8c), la note se lit sur la gigue ±3.
+ */
+export const EXIGENCE_VERSION = 3;
 /** Tirages par amplitude de gigue (±1, ±2, ±3 pas). */
 export const GIGUE_DRAWS = 200;
 /**
@@ -712,8 +715,14 @@ export const GIGUE_DRAWS = 200;
  * en essaie 25, régulièrement espacées.
  */
 export const RACCORD_POSITIONS: readonly number[] = Array.from({ length: 25 }, (_, k) => 7 + 15 * k);
-/** « Au pas près » : la solution échoue à ±1 pas sur plus de la moitié des tirages. */
-export const PAS_PRES = 500;
+/**
+ * **Jouable par un humain** (lot 8c) : la solution doit réussir au moins une fois sur deux quand chaque changement de commande est décalé au
+ * hasard de ±3 pas (25 ms). Avant le lot 8c le seuil portait sur ±1 pas (8 ms, `PAS_PRES`) : il laissait passer des passages que seul un
+ * joueur parfait réussit (`plafond-pics` v2 : 35 % à ±3). Mesuré sur le catalogue du lot 7b : 182 variantes sur 233 tiennent ce seuil.
+ */
+export const HUMAIN_MIN = 500;
+/** Seuils de la note sur la gigue ±3 (‰) : 1 au-dessus du premier, … 5 entre le dernier et `HUMAIN_MIN`. */
+export const NOTE_SEUILS: readonly [number, number, number, number] = [950, 850, 720, 600];
 /** Raccord strict (lot 6) : la solution en élan doit réussir depuis au moins 90 % des positions d'entrée, sinon la variante est refusée. */
 export const RACCORD_MIN = 900;
 /**
@@ -724,13 +733,17 @@ export const RACCORD_TAIL = 64;
 
 /**
  * Note d'exigence d'une solution (taux en ‰). Règle (README des lots 4 et 6) :
- *   0 (refusée) si la gigue ±1 réussit moins d'une fois sur deux (« au pas près »), ou si le raccord réussit moins de 9 fois sur 10 ;
- *   sinon, selon la gigue : 1 si ±3 réussit ≥ 90 % ; 2 si ±3 ≥ 60 % ; 3 si ±2 ≥ 60 % ; 4 si ±1 ≥ 80 % ; 5 sinon.
+ *   0 (refusée) si la gigue ±3 réussit moins d'une fois sur deux (pas jouable par un humain, `HUMAIN_MIN`), ou si le raccord réussit moins
+ *   de 9 fois sur 10 ;
+ *   sinon, selon la gigue ±3 (`NOTE_SEUILS`) : 1 si ≥ 95 % ; 2 si ≥ 85 % ; 3 si ≥ 72 % ; 4 si ≥ 60 % ; 5 sinon (≥ 50 %).
+ * Lot 8c : jusque-là, 0 si ±1 < 50 % et la note mêlait ±1, ±2 et ±3 (1 si ±3 ≥ 90 % ; 2 si ±3 ≥ 60 % ; 3 si ±2 ≥ 60 % ; 4 si ±1 ≥ 80 % ;
+ * 5 sinon). Les seuils de la note sont choisis pour garder une répartition proche de l'ancienne (README du lot 8c).
  */
 export function exigenceOf(gigue: readonly [number, number, number], raccord: number | null): number {
-  const [g1, g2, g3] = gigue;
-  if (g1 < PAS_PRES || (raccord !== null && raccord < RACCORD_MIN)) return 0;
-  return g3 >= 900 ? 1 : g3 >= 600 ? 2 : g2 >= 600 ? 3 : g1 >= 800 ? 4 : 5;
+  const g3 = gigue[2];
+  if (g3 < HUMAIN_MIN || (raccord !== null && raccord < RACCORD_MIN)) return 0;
+  const [n1, n2, n3, n4] = NOTE_SEUILS;
+  return g3 >= n1 ? 1 : g3 >= n2 ? 2 : g3 >= n3 ? 3 : g3 >= n4 ? 4 : 5;
 }
 
 // ——— Le point canonique (lot 6) ———
