@@ -29,6 +29,7 @@ import {
   replayFingerprint,
   replayStartState,
   START_AT_SPAWN,
+  VENT_LEVEL,
   runsTicks,
   stepAttempt,
   toRuns,
@@ -247,6 +248,8 @@ describe("rejeu = ce qui a été vécu", () => {
     { name: "commandes au hasard, recommencer au hasard", level: ESSAI_LEVEL, runs: playSession(ESSAI_LEVEL, 60_000, randomPilot(7), 900, 3) },
     { name: "solution avec écarts (points de passage, reprises)", level: ESSAI_LEVEL, runs: playSession(ESSAI_LEVEL, 80_000, sloppyPilot(11), 5000, 5) },
     { name: "galerie des dangers, au hasard", level: DANGERS_LEVEL, runs: playSession(DANGERS_LEVEL, 40_000, randomPilot(23), 700, 9) },
+    // Lot 13 : la galerie des courants d'air (zones constantes et rafale, points de passage) : le vent garde l'égalité entre jeu et rejeu.
+    { name: "galerie des courants d'air, au hasard", level: VENT_LEVEL, runs: playSession(VENT_LEVEL, 40_000, randomPilot(31), 700, 13) },
   ];
 
   it("les sessions jouées contiennent des morts, des reprises sur un point de passage, des arrivées et des abandons", () => {

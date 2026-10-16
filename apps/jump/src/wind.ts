@@ -192,8 +192,8 @@ export function windMix(level: Pick<Level, "winds">, looks: readonly WindLook[],
 
 /** Particules du vent, au plus (tous les niveaux), et par zone ; densité visée (par tuile de zone). */
 export const WIND_PARTICLES_MAX = 160;
-export const WIND_PARTICLES_ZONE = 36;
-export const WIND_DENSITY = 0.3;
+export const WIND_PARTICLES_ZONE = 40;
+export const WIND_DENSITY = 0.45;
 /** Vitesse d'affichage des particules (tuiles/s) quand la zone souffle, et sans souffle (elles flottent). */
 export const WIND_FLOW = 5;
 export const WIND_FLOAT = 0.4;
@@ -255,7 +255,7 @@ export function windParticle(zone: WindZone, index: number, k: number, travel: n
   }
   out.angle = clock * (kind === 2 ? 0 : 1.5 + r1 * 2) * (r0 < 0.5 ? -1 : 1) + r0 * 6.28;
   out.alpha = fade * (blowing ? 0.85 : 0.35 + 0.5 * agitate);
-  out.size = kind === 2 ? 0.07 + 0.03 * r1 : 0.16 + 0.06 * r1;
+  out.size = kind === 2 ? 0.13 + 0.05 * r1 : 0.32 + 0.1 * r1;
   out.kind = kind;
   return out;
 }

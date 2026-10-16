@@ -100,7 +100,8 @@ export const DANGERS_LEVEL: Level = parseLevel(DANGERS_ASCII);
 /**
  * Lot 13 — galerie des courants d'air (`?scenario=vent`), chaque zone dans sa section : une colonne montante au-dessus d'un gouffre (y monter,
  * planer, filer), une dérive vers la droite (on est emporté, on court plus vite), un vent contraire (on avance moins vite), puis une rafale
- * au-dessus d'un gouffre trop large à pied : attendre qu'elle souffle (elle s'annonce), s'y lancer. Un niveau neuf : les niveaux d'essai et de
+ * au-dessus d'un gouffre trop large à pied : attendre qu'elle souffle (elle s'annonce), s'y lancer ; un point de passage au début de chaque
+ * section après la première (y reprendre remet l'horloge de la rafale à zéro). Un niveau neuf : les niveaux d'essai et de
  * la galerie des dangers ne changent pas (`JUMP_SIM_VERSION` reste 3).
  */
 export const VENT_ASCII = `
@@ -115,7 +116,7 @@ export const VENT_ASCII = `
 #................................................................................#
 #................................................................................#
 #................................................................................#
-#.S...........................................................................F..#
+#.S..................C...................C..................C.................F..#
 ######............############################################............########
 ######^^^^^^^^^^^^############################################^^^^^^^^^^^^########
 ##################################################################################

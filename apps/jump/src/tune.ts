@@ -406,7 +406,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
 
   // Lot 13 : la section « Courants d'air ».
   const windBox = document.createElement("div");
-  windBox.className = "surfaces winds";
+  windBox.className = "winds";
   const windTitle = document.createElement("strong");
   windTitle.textContent = "Courants d'air";
   const windNote = document.createElement("small");
