@@ -1,5 +1,6 @@
 import { DEFAULT_CAR_PARAMS, isDefaultParams, type CarParams } from "@cdj/sim";
 import { copyText } from "./clipboard";
+import { gameStorage } from "./storage";
 
 // Panneau de réglage de la conduite (`?debug&tune`, lot 7) : des curseurs sur les paramètres qui comptent le plus,
 // effet immédiat sur la course en cours, et « Copier les réglages » (JSON) pour les envoyer à Nathan → retouche 7b.
@@ -74,7 +75,7 @@ const STORAGE_KEY = "cdj:tune";
 export function loadTunedParams(): CarParams {
   const params: CarParams = { ...DEFAULT_CAR_PARAMS };
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") as Partial<Record<keyof CarParams, unknown>>;
+    const saved = JSON.parse(gameStorage().getItem(STORAGE_KEY) ?? "{}") as Partial<Record<keyof CarParams, unknown>>;
     for (const k of Object.keys(params) as (keyof CarParams)[]) {
       const v = saved[k];
       if (typeof v === "number" && Number.isFinite(v)) params[k] = v;
@@ -87,8 +88,8 @@ export function loadTunedParams(): CarParams {
 
 function saveTunedParams(params: Readonly<CarParams>): void {
   try {
-    if (isDefaultParams(params)) localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, paramsJson(params));
+    if (isDefaultParams(params)) gameStorage().removeItem(STORAGE_KEY);
+    else gameStorage().setItem(STORAGE_KEY, paramsJson(params));
   } catch {
     /* stockage indisponible */
   }

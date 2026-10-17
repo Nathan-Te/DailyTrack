@@ -14,6 +14,7 @@ import {
   type AmbienceKind,
   type AudioSettings,
 } from "./audioLogic";
+import { gameStorage } from "./storage";
 
 // Sons procéduraux (Web Audio, lot 9) : aucun fichier, donc rien à créditer ni à télécharger (voir docs/credits.md).
 // Le contexte audio ne démarre qu'au premier geste du joueur (règle des navigateurs). Le son ne lit que l'état de la
@@ -64,7 +65,7 @@ export class GameAudio {
   constructor(private readonly onChange: (s: AudioSettings) => void = () => undefined) {
     let raw: string | null = null;
     try {
-      raw = localStorage.getItem(KEY);
+      raw = gameStorage().getItem(KEY);
     } catch {
       /* stockage indisponible */
     }
@@ -92,7 +93,7 @@ export class GameAudio {
 
   private save() {
     try {
-      localStorage.setItem(KEY, JSON.stringify(this.settings));
+      gameStorage().setItem(KEY, JSON.stringify(this.settings));
     } catch {
       /* tant pis */
     }

@@ -2,20 +2,44 @@ name: Pages
 # Publie le jeu sur GitHub Pages (branche gh-pages) :
 #   main     → https://<utilisateur>.github.io/<dépôt>/            (DailyTrack)      et  …/<dépôt>/jump/            (DailyJump)
 #   branche  → https://<utilisateur>.github.io/<dépôt>/b/<branche>/ (DailyTrack)      et  …/b/<branche>/jump/        (DailyJump)
+#
+# Lot R1 (plateforme) :
+#   - main n'est plus publié à chaque poussée : production.yml l'appelle (`workflow_call`, `production: true`) après la recette, et le job
+#     attend la validation de Nathan (environnement `production`), en même temps que le déploiement de l'API : un seul clic pour les deux.
+#   - un aperçu de branche est construit avec VITE_API_URL = sa révision de recette étiquetée si elle répond, sinon la révision de recette
+#     par défaut (`RECETTE_API_URL`), JAMAIS l'adresse de production ; sans recette configurée, sans serveur comme avant.
+#   - un aperçu a son propre stockage local (`VITE_STORAGE=apercu` : clés `apercu:cdj:*`, `apercu:jump:*`) ; main garde `cdj:*` et `jump:*`.
+#   - « Run workflow » (ou recette.yml après un déploiement) reconstruit l'aperçu d'une branche ; main passe toujours par production.yml.
 on:
   push:
+    branches-ignore: [main, gh-pages]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      production:
+        description: "vrai seulement depuis production.yml : publier main à la racine"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
-concurrency:
-  group: pages-publish
-  cancel-in-progress: false
-
 jobs:
   publish:
     runs-on: ubuntu-latest
-    if: github.ref_name != 'gh-pages'
+    if: github.ref_name != 'gh-pages' && (github.ref_name != 'main' || inputs.production == true)
+    # main : validation de Nathan (environnement `production`) ; une branche : environnement `apercu`, sans règle (lien « View deployment » sur la PR).
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'apercu' }}
+      url: ${{ steps.publish.outputs.url }}
+    # Un groupe par branche : main qui attend la validation ne bloque aucun aperçu (la publication réessaie si gh-pages a bougé entre-temps).
+    concurrency:
+      group: pages-${{ github.ref_name }}
+      cancel-in-progress: false
+    env:
+      MAIN: ${{ github.ref_name == 'main' }}
+      PROD_API_URL: ${{ vars.VITE_API_URL }}
+      RECETTE_API_URL: ${{ vars.RECETTE_API_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,64 +47,108 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+
+      - name: Adresse de l'API et stockage
+        id: target
+        run: |
+          slug="$(node scripts/recette.mjs slug "$GITHUB_REF_NAME")"
+          echo "slug=$slug" >> "$GITHUB_OUTPUT"
+          if [ "$MAIN" = true ]; then
+            # L'adresse de l'API de production n'est injectée que dans la construction de main.
+            echo "api=$PROD_API_URL" >> "$GITHUB_OUTPUT"
+            echo "storage=production" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "storage=apercu" >> "$GITHUB_OUTPUT"
+          api=""
+          if [ -z "$RECETTE_API_URL" ]; then
+            echo "### Aperçu sans serveur : recette non configurée : voir docs/plateforme/recette.md" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Recette non configurée::recette non configurée : voir docs/plateforme/recette.md (aperçu sans serveur, comme avant)"
+          else
+            base="${RECETTE_API_URL%/}"
+            tagged="$(node scripts/recette.mjs url "$base" "$GITHUB_REF_NAME")"
+            # La révision de la branche n'existe que si une PR touche le serveur (recette.yml) ; sinon, la recette par défaut.
+            if curl --fail --silent --max-time 20 --retry 2 --retry-all-errors "$tagged/api/health" >/dev/null; then api="$tagged"; else api="$base"; fi
+            echo "### Aperçu branché sur la recette : $api" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          # Garde-fou : un aperçu ne parle JAMAIS à la production.
+          if [ -n "$api" ] && [ -n "$PROD_API_URL" ]; then
+            prod_host="$(printf '%s' "$PROD_API_URL" | sed -E 's#^https?://##; s#/.*$##')"
+            api_host="$(printf '%s' "$api" | sed -E 's#^https?://##; s#/.*$##')"
+            case "$api_host" in "$prod_host"|*"---$prod_host") echo "::error title=Aperçu branché sur la production::RECETTE_API_URL ($RECETTE_API_URL) est l'adresse de production. Voir docs/plateforme/recette.md."; exit 1 ;; esac
+          fi
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+
       # Construit DailyTrack (apps/web) puis DailyJump (apps/jump) ; VITE_API_URL ne concerne que DailyTrack.
       - run: npm run build
         env:
-          # L'adresse de l'API de production n'est injectée que dans la construction de main : un aperçu de branche ne classe jamais
-          # ses essais dans la vraie base (il peut toujours viser une autre API avec ?api=…).
-          VITE_API_URL: ${{ github.ref_name == 'main' && vars.VITE_API_URL || '' }}
+          VITE_API_URL: ${{ steps.target.outputs.api }}
+          # Lot R1 : préfixe du stockage local (apps/web/src/storage.ts, apps/jump/src/storage.ts) fixé à la construction.
+          VITE_STORAGE: ${{ steps.target.outputs.storage }}
           # Lot 31 : le site publié depuis main n'a ni touches N et T, ni circuit à venir (?day=), ni ?variant= / ?theme= pour aujourd'hui :
           # ces outils restent dans les aperçus de branche et en ?debug (voir apps/web/src/access.ts).
           VITE_PRODUCTION: ${{ github.ref_name == 'main' && '1' || '' }}
 
-      - name: Récupérer la branche gh-pages (ou la créer)
+      # Le préfixe est bien dans ce qui sera publié (Vite remplace `import.meta.env.VITE_STORAGE` par sa valeur) : un aperçu qui écrirait
+      # les clés de la production ne part pas.
+      - name: Vérifier le stockage de la construction
         run: |
-          if git ls-remote --exit-code --heads origin gh-pages >/dev/null; then
-            git clone --depth 1 --branch gh-pages "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" site
-          else
-            mkdir site && cd site && git init -q -b gh-pages
-            git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
-          fi
+          want="${{ steps.target.outputs.storage }}"
+          for app in web jump; do
+            if ! grep -rqE "flag:[\`'\"]${want}[\`'\"]" "apps/$app/dist/assets"; then
+              echo "::error title=Stockage de l'aperçu::apps/$app/dist ne porte pas VITE_STORAGE=$want (apps/$app/src/storage.ts : buildFlags). Si la minification a changé de forme, adapter ce contrôle."
+              exit 1
+            fi
+          done
+          echo "stockage local : VITE_STORAGE=$want" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Copier le build
+      # Publication : copie du build dans gh-pages, vérification des niveaux figés, poussée ; si gh-pages a bougé entre-temps (un autre
+      # aperçu vient d'être publié), on recommence sur une copie neuve (main et les aperçus ne touchent jamais les mêmes dossiers).
+      - name: Publier
+        id: publish
+        env:
+          SLUG: ${{ steps.target.outputs.slug }}
         run: |
-          slug="$(echo "${GITHUB_REF_NAME}" | tr '/' '-')"
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then
-            # La racine est remplacée, les aperçus de branches (b/) sont conservés.
-            find site -mindepth 1 -maxdepth 1 ! -name .git ! -name b -exec rm -rf {} +
-            cp -R apps/web/dist/. site/
-            mkdir -p site/jump && cp -R apps/jump/dist/. site/jump/
-            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
-          else
-            rm -rf "site/b/${slug}"
-            mkdir -p "site/b/${slug}"
-            cp -R apps/web/dist/. "site/b/${slug}/"
-            mkdir -p "site/b/${slug}/jump" && cp -R apps/jump/dist/. "site/b/${slug}/jump/"
-            url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/"
-          fi
-          touch site/.nojekyll
+          remote="https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          base_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"
+          if [ "$MAIN" = true ]; then url="$base_url"; dest="site"; else url="${base_url}b/${SLUG}/"; dest="site/b/${SLUG}"; fi
+          for attempt in 1 2 3 4 5; do
+            rm -rf site
+            if git ls-remote --exit-code --heads "$remote" gh-pages >/dev/null; then
+              git clone -q --depth 1 --branch gh-pages "$remote" site
+            else
+              mkdir site && (cd site && git init -q -b gh-pages && git remote add origin "$remote")
+            fi
+            if [ "$MAIN" = true ]; then
+              # La racine est remplacée, les aperçus de branches (b/) sont conservés.
+              find site -mindepth 1 -maxdepth 1 ! -name .git ! -name b -exec rm -rf {} +
+            else
+              rm -rf "$dest"
+            fi
+            mkdir -p "$dest/jump"
+            cp -R apps/web/dist/. "$dest/"
+            cp -R apps/jump/dist/. "$dest/jump/"
+            touch site/.nojekyll
+            # Lot 3c : les niveaux figés de DailyJump (apps/jump/public/levels/, lot 10) doivent être dans le site publié, pour main comme pour un
+            # aperçu de branche : le jeu les lit à côté de la page (`levels/AAAA-MM-JJ.json`) et, s'ils manquent, un jour déjà joué changerait de niveau.
+            missing=0
+            for f in apps/jump/public/levels/*.json; do
+              [ -e "$f" ] || continue
+              cmp -s "$f" "$dest/jump/levels/$(basename "$f")" || { echo "::error::niveau figé absent ou différent du site publié : $dest/jump/levels/$(basename "$f")"; missing=1; }
+            done
+            [ "$missing" = 0 ] || exit 1
+            cd site
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            if git diff --cached --quiet; then cd ..; echo "rien de neuf à publier"; break; fi
+            git commit -q -m "Aperçu de ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+            if git push -q origin gh-pages; then cd ..; break; fi
+            cd ..
+            [ "$attempt" = 5 ] && { echo "::error::gh-pages n'a pas pu être poussée après 5 essais"; exit 1; }
+            echo "gh-pages a bougé : nouvel essai ($attempt)"; sleep $((attempt * 3))
+          done
+          echo "niveaux figés publiés : $(ls apps/jump/public/levels | wc -l) fichier(s) dans $dest/jump/levels" >> "$GITHUB_STEP_SUMMARY"
           echo "### Aperçu : ${url}" >> "$GITHUB_STEP_SUMMARY"
           echo "### Aperçu DailyJump : ${url}jump/?debug" >> "$GITHUB_STEP_SUMMARY"
-
-      # Lot 3c : les niveaux figés de DailyJump (apps/jump/public/levels/, lot 10) doivent être dans le site publié, pour main comme pour un
-      # aperçu de branche : le jeu les lit à côté de la page (`levels/AAAA-MM-JJ.json`) et, s'ils manquent, un jour déjà joué changerait de niveau.
-      - name: Vérifier les niveaux figés publiés
-        run: |
-          if [ "${GITHUB_REF_NAME}" = "main" ]; then dest="site/jump"; else dest="site/b/$(echo "${GITHUB_REF_NAME}" | tr '/' '-')/jump"; fi
-          missing=0
-          for f in apps/jump/public/levels/*.json; do
-            [ -e "$f" ] || continue
-            cmp -s "$f" "$dest/levels/$(basename "$f")" || { echo "::error::niveau figé absent ou différent du site publié : $dest/levels/$(basename "$f")"; missing=1; }
-          done
-          [ "$missing" = 0 ] && echo "niveaux figés publiés : $(ls apps/jump/public/levels | wc -l) fichier(s) dans $dest/levels" >> "$GITHUB_STEP_SUMMARY"
-          exit $missing
-
-      - name: Publier
-        working-directory: site
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet && exit 0
-          git commit -q -m "Aperçu de ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
-          git push origin gh-pages
+          echo "url=$url" >> "$GITHUB_OUTPUT"

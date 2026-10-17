@@ -11,6 +11,7 @@ import { dayShort, listPlayedDays, loadRanks, playedFromRecords, profileStats, t
 import type { ProfileSync } from "./profileSync";
 import { MEDAL_ICON, ordinal } from "./share";
 import { applyIdentity, decodeTransfer, encodeTransfer, legacyReplays, pendingTrackIds, type TransferData } from "./transfer";
+import { gameStorage } from "./storage";
 
 export interface ProfileHost {
   /** Jour affiché comme « aujourd'hui » (AAAA-MM-JJ) : la série se compte jusque-là. */
@@ -67,7 +68,7 @@ export const baseName = (name: string): string => name.replace(/·\d+$/u, "");
 const RENAME_NOTICE = "cdj:notice:rename";
 
 export function mountProfileCard(host: ProfileHost): ProfileCard {
-  const storage = host.storage ?? localStorage;
+  const storage = host.storage ?? gameStorage();
   const reload = host.reload ?? (() => location.reload());
   const root = el("section", "profile");
   root.setAttribute("aria-label", "Ton profil");

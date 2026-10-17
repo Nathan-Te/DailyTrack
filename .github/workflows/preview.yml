@@ -30,13 +30,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # Lot R1 (plateforme) : un aperçu ne parle jamais à l'API de production (avant : vars.VITE_API_URL) ; il vise la recette par défaut
+      # (`RECETTE_API_URL`, son origine doit être dans RECETTE_ALLOWED_ORIGINS) ou rien, et garde son propre stockage local.
       - if: steps.cfg.outputs.ok == 'true'
         run: npm ci && npm run build
         env:
-          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_API_URL: ${{ vars.RECETTE_API_URL }}
+          VITE_STORAGE: apercu
       - name: Déployer l'aperçu
         if: steps.cfg.outputs.ok == 'true'
+        env:
+          BRANCH: ${{ github.head_ref || github.ref_name }}
         run: >
           npx wrangler@4 pages deploy apps/web/dist
           --project-name "$CLOUDFLARE_PAGES_PROJECT"
-          --branch "${{ github.head_ref || github.ref_name }}"
+          --branch "$BRANCH"

@@ -1,4 +1,5 @@
 import { GENERATOR_VERSION, SIM_VERSION, type Medal } from "@cdj/sim";
+import { gameStorage } from "./storage";
 
 export interface BestRun {
   ms: number;
@@ -27,7 +28,7 @@ function current(r: BestRun | null): r is BestRun {
  * Meilleurs temps locaux de tous les circuits du jour joués dans ce navigateur, par date. Seuls comptent ceux du
  * générateur et de la simulation actuels : avec une autre version, le circuit ou la conduite ne sont plus les mêmes.
  */
-export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"> = localStorage): Map<string, DayBest> {
+export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"> = gameStorage()): Map<string, DayBest> {
   const out = new Map<string, DayBest>();
   let count = 0;
   try {
@@ -56,7 +57,7 @@ const key = (trackId: string) => `cdj:best:${trackId}`;
  */
 export function loadBest(trackId: string): BestRun | null {
   try {
-    const raw = localStorage.getItem(key(trackId));
+    const raw = gameStorage().getItem(key(trackId));
     if (!raw) return null;
     const r = JSON.parse(raw) as BestRun;
     return current(r) ? r : null;
@@ -67,7 +68,7 @@ export function loadBest(trackId: string): BestRun | null {
 
 export function saveBest(trackId: string, r: BestRun): void {
   try {
-    localStorage.setItem(key(trackId), JSON.stringify(r));
+    gameStorage().setItem(key(trackId), JSON.stringify(r));
   } catch {
     /* navigation privée, stockage bloqué : tant pis */
   }

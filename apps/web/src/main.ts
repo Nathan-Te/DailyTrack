@@ -106,6 +106,7 @@ import { MEDAL_ICON, ordinal, shareLine, shareUrl, type ShareResult } from "./sh
 import { RunSession } from "./session";
 import { buildTrackScene, type TrackScene } from "./trackMesh";
 import { loadTunedParams, mountTunePanel } from "./tune";
+import { gameStorage } from "./storage";
 
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),
@@ -498,7 +499,7 @@ function setCameraByName(name: string) {
   cameraIndex = cameraIndexOf(name);
   snapCamera = true;
   try {
-    localStorage.setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
+    gameStorage().setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
   } catch {
     /* tant pis */
   }
@@ -1630,7 +1631,7 @@ const lerp =(a: number, b: number, t: number) => a + (b - a) * t;
 // Caméras (touche C / bouton Vue de la manette / bouton 🎥 du toucher) : proche, loin, capot (`cameras.ts`).
 let cameraIndex = 0;
 try {
-  cameraIndex = cameraIndexOf(localStorage.getItem("cdj:camera"));
+  cameraIndex = cameraIndexOf(gameStorage().getItem("cdj:camera"));
 } catch {
   /* stockage indisponible : caméra proche */
 }
@@ -1648,7 +1649,7 @@ function cycleCamera() {
   }
   cameraIndex = nextCameraIndex(cameraIndex);
   try {
-    localStorage.setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
+    gameStorage().setItem("cdj:camera", CAMERAS[cameraIndex]!.name);
   } catch {
     /* tant pis */
   }

@@ -306,3 +306,4 @@ Guide pas à pas pour Nathan : `docs/mise-en-ligne.md` ; mesures, budget et déc
 - Tout code de `sim` est testé par Vitest en ligne de commande.
 
 @docs/jump/consignes.md
+@docs/plateforme/consignes.md

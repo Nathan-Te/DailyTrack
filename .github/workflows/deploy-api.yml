@@ -1,51 +1,102 @@
 name: Deploy API
-# Déploie l'API (classement, planning, Salon) sur Google Cloud Run à chaque fusion dans main : image Docker → Artifact Registry → Cloud Run.
-# Tant que la mise en ligne n'est pas configurée (variables et secrets ci-dessous), le workflow ne fait rien et le dit dans son résumé.
-# Pas à pas pour Nathan : docs/mise-en-ligne.md.
+# Déploie l'API (classement, planning, Salon) sur Google Cloud Run : image Docker → Artifact Registry → Cloud Run, puis contrôle de /api/health.
+# Lot R1 (plateforme) : un seul workflow, appelé par les autres, pour deux cibles entièrement séparées :
+#   - production : service `cdj-api`, base Turso des joueurs ; le job attend la validation de Nathan (environnement GitHub `production`).
+#     Appelé par production.yml (fusion dans main, après la recette) ; « Run workflow » ici redéploie à la main (validation demandée aussi).
+#   - recette    : service `cdj-api-recette`, base Turso de recette, ses propres secrets (Secret Manager). Appelé par recette.yml :
+#     une révision étiquetée SANS trafic par PR (`tag`), ou la révision qui reçoit le trafic de recette (fusion dans main, `tag` vide).
+# Tant qu'une cible n'est pas configurée (variables et secrets ci-dessous), le job ne fait rien et le dit dans son résumé.
+# Pas à pas pour Nathan : docs/mise-en-ligne.md (production), docs/plateforme/recette.md (recette).
 #
 # Variables GitHub (Settings → Secrets and variables → Actions → Variables) :
-#   GCP_PROJECT_ID        identifiant du projet Google Cloud
-#   TURSO_DATABASE_URL    adresse de la base (libsql://….turso.io)
-#   GCP_REGION            région Cloud Run (défaut : europe-west1, Belgique, tarif de niveau 1)
-#   GCP_SERVICE           nom du service Cloud Run (défaut : cdj-api)
-#   GCP_AR_REPO           dépôt Artifact Registry (défaut : cdj)
-#   GCP_RUNTIME_SA        compte de service qui exécute l'API (défaut : cdj-api-runtime@<projet>.iam.gserviceaccount.com)
-#   ALLOWED_ORIGINS       origines CORS autorisées en plus du site GitHub Pages (séparées par des points-virgules), facultatif
+#   GCP_PROJECT_ID              identifiant du projet Google Cloud (commun aux deux cibles)
+#   GCP_REGION                  région Cloud Run (défaut : europe-west1, Belgique, tarif de niveau 1)
+#   production : TURSO_DATABASE_URL, GCP_SERVICE (cdj-api), GCP_AR_REPO (cdj), GCP_RUNTIME_SA (cdj-api-runtime@…), ALLOWED_ORIGINS (facultatif)
+#   recette    : RECETTE_TURSO_DATABASE_URL (son nom contient « recette »), RECETTE_GCP_SERVICE (cdj-api-recette), RECETTE_GCP_AR_REPO
+#                (cdj-recette), RECETTE_GCP_RUNTIME_SA (cdj-recette-runtime@…), RECETTE_ALLOWED_ORIGINS (facultatif)
 # Secrets GitHub : GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT (fédération d'identité, recommandé) ou GCP_SA_KEY (clé JSON).
-# Les secrets de l'API elle-même (ADMIN_TOKEN, TURSO_AUTH_TOKEN, RATE_SALT) vivent dans Secret Manager, jamais ici ni dans le dépôt.
+# Les secrets de l'API elle-même vivent dans Secret Manager, jamais ici ni dans le dépôt :
+#   production : cdj-turso-token, cdj-admin-token, cdj-rate-salt · recette : cdj-recette-turso-token, cdj-recette-admin-token, cdj-recette-rate-salt
 on:
-  push:
-    branches: [main]
-    paths:
-      - "apps/api/**"
-      - "packages/core/**"
-      - "packages/sim/**"
-      - "packages/clock/**"
-      - "package.json"
-      - "package-lock.json"
-      - "tsconfig.base.json"
-      - ".github/workflows/deploy-api.yml"
+  workflow_call:
+    inputs:
+      target:
+        description: "production ou recette"
+        type: string
+        required: true
+      tag:
+        description: "recette : étiquette de la révision sans trafic (vide : la révision qui reçoit le trafic de recette)"
+        type: string
+        default: ""
+      salon_minutes:
+        description: "recette seulement : sessions du Salon raccourcies (SALON_MINUTES)"
+        type: string
+        default: ""
+      test_clock_offset_ms:
+        description: "recette seulement : horloge de test du serveur (TEST_CLOCK_OFFSET_MS)"
+        type: string
+        default: ""
+    outputs:
+      enabled:
+        description: "« true » si la cible est configurée et déployée"
+        value: ${{ jobs.deploy.outputs.enabled }}
+      url:
+        description: "adresse du service (production, recette par défaut) ou de la révision étiquetée"
+        value: ${{ jobs.deploy.outputs.url }}
   workflow_dispatch:
+    inputs:
+      target:
+        description: "production (validation de Nathan demandée) ou recette"
+        type: choice
+        options: [production, recette]
+        default: production
+      tag:
+        description: "recette : étiquette de la révision (vide : révision par défaut de la recette)"
+        type: string
+        default: ""
+      salon_minutes:
+        description: "recette seulement : SALON_MINUTES (essai rapide du Salon ; l'essai de bout en bout est alors sauté)"
+        type: string
+        default: ""
+      test_clock_offset_ms:
+        description: "recette seulement : TEST_CLOCK_OFFSET_MS (ms, entier : tester minuit)"
+        type: string
+        default: ""
 
 permissions:
   contents: read
   id-token: write # fédération d'identité (aucune clé longue durée)
 
-concurrency:
-  group: deploy-api
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Production : le job attend la validation d'un relecteur de l'environnement `production` (Nathan). Recette : environnement sans règle.
+    environment:
+      name: ${{ inputs.target == 'production' && 'production' || 'recette' }}
+      url: ${{ steps.result.outputs.url }}
+    concurrency:
+      group: deploy-api-${{ inputs.target }}-${{ inputs.tag || 'defaut' }}
+      cancel-in-progress: false
+    outputs:
+      enabled: ${{ steps.cfg.outputs.enabled }}
+      url: ${{ steps.result.outputs.url }}
     env:
+      TARGET: ${{ inputs.target }}
+      TAG: ${{ inputs.tag }}
+      SALON_MINUTES_IN: ${{ inputs.salon_minutes }}
+      TEST_CLOCK_IN: ${{ inputs.test_clock_offset_ms }}
       GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-      TURSO_DATABASE_URL: ${{ vars.TURSO_DATABASE_URL }}
       GCP_REGION: ${{ vars.GCP_REGION }}
-      GCP_SERVICE: ${{ vars.GCP_SERVICE }}
-      GCP_AR_REPO: ${{ vars.GCP_AR_REPO }}
-      GCP_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
-      EXTRA_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+      PROD_DB: ${{ vars.TURSO_DATABASE_URL }}
+      PROD_SERVICE: ${{ vars.GCP_SERVICE }}
+      PROD_AR_REPO: ${{ vars.GCP_AR_REPO }}
+      PROD_RUNTIME_SA: ${{ vars.GCP_RUNTIME_SA }}
+      PROD_ORIGINS: ${{ vars.ALLOWED_ORIGINS }}
+      RECETTE_DB: ${{ vars.RECETTE_TURSO_DATABASE_URL }}
+      RECETTE_SERVICE: ${{ vars.RECETTE_GCP_SERVICE }}
+      RECETTE_AR_REPO: ${{ vars.RECETTE_GCP_AR_REPO }}
+      RECETTE_RUNTIME_SA: ${{ vars.RECETTE_GCP_RUNTIME_SA }}
+      RECETTE_ORIGINS: ${{ vars.RECETTE_ALLOWED_ORIGINS }}
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
@@ -55,18 +106,39 @@ jobs:
       - name: Configuration présente ?
         id: cfg
         run: |
+          if [ "$TARGET" != production ] && [ "$TARGET" != recette ]; then
+            echo "::error::cible inconnue : « $TARGET » (production ou recette)"; exit 1
+          fi
+          if [ "$TARGET" = production ] && { [ -n "$TAG" ] || [ -n "$SALON_MINUTES_IN" ] || [ -n "$TEST_CLOCK_IN" ]; }; then
+            echo "::error::étiquette, SALON_MINUTES et TEST_CLOCK_OFFSET_MS sont réservés à la recette"; exit 1
+          fi
+          if [ "$TARGET" = recette ]; then db="$RECETTE_DB"; dbvar=RECETTE_TURSO_DATABASE_URL; else db="$PROD_DB"; dbvar=TURSO_DATABASE_URL; fi
           missing=""
           [ -n "$GCP_PROJECT_ID" ] || missing="$missing GCP_PROJECT_ID"
-          [ -n "$TURSO_DATABASE_URL" ] || missing="$missing TURSO_DATABASE_URL"
+          [ -n "$db" ] || missing="$missing $dbvar"
           if [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
             [ "$HAS_SA_KEY" = "true" ] || missing="$missing (GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT, ou GCP_SA_KEY)"
           fi
           if [ -n "$missing" ]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "### Déploiement de l'API ignoré" >> "$GITHUB_STEP_SUMMARY"
-            echo "La mise en ligne n'est pas configurée. Il manque :$missing — voir docs/mise-en-ligne.md." >> "$GITHUB_STEP_SUMMARY"
-            echo "::notice::Déploiement de l'API ignoré (mise en ligne non configurée) :$missing"
+            if [ "$TARGET" = recette ]; then
+              echo "### Recette non configurée : voir docs/plateforme/recette.md" >> "$GITHUB_STEP_SUMMARY"
+              echo "Étape sautée. Il manque :$missing. Les aperçus de branche restent sans serveur, comme avant." >> "$GITHUB_STEP_SUMMARY"
+              echo "::notice title=Recette non configurée::recette non configurée : voir docs/plateforme/recette.md (il manque :$missing)"
+            else
+              echo "### Déploiement de l'API ignoré" >> "$GITHUB_STEP_SUMMARY"
+              echo "La mise en ligne n'est pas configurée. Il manque :$missing — voir docs/mise-en-ligne.md." >> "$GITHUB_STEP_SUMMARY"
+              echo "::notice::Déploiement de l'API ignoré (mise en ligne non configurée) :$missing"
+            fi
             exit 0
+          fi
+          # Règle des noms de base (lot R1, la même que apps/api/src/config.ts, qui refuse aussi de démarrer) : on la vérifie dès ici, avant de construire.
+          dbname="$(printf '%s' "$db" | sed -E 's#^[a-z]+://##; s#[/:?].*$##; s#\..*$##' | tr '[:upper:]' '[:lower:]')"
+          if [ "$TARGET" = recette ]; then
+            case "$dbname" in *recette*) ;; *) echo "::error title=Base de recette mal branchée::RECETTE_TURSO_DATABASE_URL vise « $dbname », dont le nom ne contient pas « recette ». Voir docs/plateforme/recette.md, étape 1."; exit 1 ;; esac
+            if [ -n "$PROD_DB" ] && [ "$RECETTE_DB" = "$PROD_DB" ]; then echo "::error::RECETTE_TURSO_DATABASE_URL est la base de production"; exit 1; fi
+          else
+            case "$dbname" in *recette*) echo "::error title=Base de production mal branchée::TURSO_DATABASE_URL vise « $dbname », une base de recette."; exit 1 ;; esac
           fi
           # Une valeur mal copiée donne plus tard une erreur obscure de Google (« Invalid value for "audience" ») : on la repère ici.
           if [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; then
@@ -80,17 +152,27 @@ jobs:
             fi
           fi
           region="${GCP_REGION:-europe-west1}"
-          service="${GCP_SERVICE:-cdj-api}"
-          repo="${GCP_AR_REPO:-cdj}"
           owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
           origins="https://${owner}.github.io"
-          [ -z "$EXTRA_ORIGINS" ] || origins="${origins};${EXTRA_ORIGINS}"
+          if [ "$TARGET" = recette ]; then
+            service="${RECETTE_SERVICE:-cdj-api-recette}"
+            repo="${RECETTE_AR_REPO:-cdj-recette}"
+            runtime_sa="${RECETTE_RUNTIME_SA:-cdj-recette-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
+            [ -z "$RECETTE_ORIGINS" ] || origins="${origins};${RECETTE_ORIGINS}"
+          else
+            service="${PROD_SERVICE:-cdj-api}"
+            repo="${PROD_AR_REPO:-cdj}"
+            runtime_sa="${PROD_RUNTIME_SA:-cdj-api-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
+            [ -z "$PROD_ORIGINS" ] || origins="${origins};${PROD_ORIGINS}"
+          fi
+          if [ -n "$TAG" ] && ! printf '%s' "$TAG" | grep -Eq '^b-[a-z0-9-]{1,22}$'; then echo "::error::étiquette invalide : « $TAG » (scripts/recette.mjs)"; exit 1; fi
           {
             echo "enabled=true"
             echo "region=$region"
             echo "service=$service"
+            echo "db=$db"
             echo "image=${region}-docker.pkg.dev/${GCP_PROJECT_ID}/${repo}/api:${GITHUB_SHA}"
-            echo "runtime_sa=${GCP_RUNTIME_SA:-cdj-api-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
+            echo "runtime_sa=$runtime_sa"
             echo "origins=$origins"
           } >> "$GITHUB_OUTPUT"
 
@@ -118,9 +200,10 @@ jobs:
           docker build -f apps/api/Dockerfile -t "${{ steps.cfg.outputs.image }}" .
           docker push "${{ steps.cfg.outputs.image }}"
 
-      - name: Déployer sur Cloud Run
+      # --- Production : exactement le déploiement d'avant le lot R1, plus ENVIRONMENT=production (config.ts : jamais une base « recette »).
+      - name: Déployer sur Cloud Run (production)
         id: deploy
-        if: steps.cfg.outputs.enabled == 'true'
+        if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'production'
         uses: google-github-actions/deploy-cloudrun@v3
         with:
           service: ${{ steps.cfg.outputs.service }}
@@ -128,7 +211,8 @@ jobs:
           image: ${{ steps.cfg.outputs.image }}
           # Aucune valeur secrète ici : l'adresse de la base et les origines ne sont pas des secrets.
           env_vars: |
-            TURSO_DATABASE_URL=${{ env.TURSO_DATABASE_URL }}
+            ENVIRONMENT=production
+            TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }}
             ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }}
             TRUST_PROXY=1
             GIT_SHA=${{ github.sha }}
@@ -153,16 +237,92 @@ jobs:
             --port=8080
             --service-account=${{ steps.cfg.outputs.runtime_sa }}
 
+      # --- Recette : gcloud directement, pour nommer la révision (`--revision-suffix`) et choisir le trafic.
+      #     Avec étiquette : révision SANS trafic, joignable à https://<étiquette>---<hôte du service>. Sans étiquette (fusion dans main) :
+      #     la nouvelle révision reçoit tout le trafic de recette ; les révisions étiquetées des PR ouvertes restent joignables.
+      #     Bornes : 1 instance au plus, 0 au repos (la recette ne sert qu'aux essais de Nathan).
+      - name: Déployer sur Cloud Run (recette)
+        id: deploy_recette
+        if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette'
+        run: |
+          service="${{ steps.cfg.outputs.service }}"
+          region="${{ steps.cfg.outputs.region }}"
+          suffix="r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          envs="ENVIRONMENT=recette,TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }},ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }},TRUST_PROXY=1,GIT_SHA=${GITHUB_SHA}"
+          if [ -n "$SALON_MINUTES_IN" ]; then envs="$envs,SALON_MINUTES=$SALON_MINUTES_IN"; fi
+          if [ -n "$TEST_CLOCK_IN" ]; then envs="$envs,TEST_CLOCK_OFFSET_MS=$TEST_CLOCK_IN"; fi
+          traffic=""
+          if [ -n "$TAG" ]; then
+            # Une révision sans trafic ne peut pas créer le service : la toute première fois, cette révision devient aussi la recette par
+            # défaut (la prochaine fusion dans main la remplace).
+            if gcloud run services describe "$service" --region "$region" --format='value(metadata.name)' >/dev/null 2>&1; then
+              traffic="--tag=$TAG --no-traffic"
+            else
+              echo "::notice title=Service de recette créé::« $service » n'existait pas : cette révision reçoit aussi le trafic de recette jusqu'à la prochaine fusion dans main."
+              traffic="--tag=$TAG"
+            fi
+          fi
+          # La virgule sépare les variables de --set-env-vars : ALLOWED_ORIGINS utilise des points-virgules (config.ts les accepte).
+          # shellcheck disable=SC2086 # $traffic : vide, ou deux options
+          gcloud run deploy "$service" --region "$region" --image "${{ steps.cfg.outputs.image }}" --quiet \
+            --revision-suffix="$suffix" $traffic \
+            --set-env-vars="$envs" \
+            --set-secrets=TURSO_AUTH_TOKEN=cdj-recette-turso-token:latest,ADMIN_TOKEN=cdj-recette-admin-token:latest,RATE_SALT=cdj-recette-rate-salt:latest \
+            --allow-unauthenticated --min-instances=0 --max-instances=1 --cpu=1 --memory=512Mi --concurrency=40 --timeout=30 --port=8080 \
+            --service-account="${{ steps.cfg.outputs.runtime_sa }}"
+          revision="${service}-${suffix}"
+          if [ -z "$TAG" ]; then
+            gcloud run services update-traffic "$service" --region "$region" --to-revisions="${revision}=100" --quiet
+            url="$(gcloud run services describe "$service" --region "$region" --format='value(status.url)')"
+          else
+            url="$(gcloud run services describe "$service" --region "$region" --format=json | jq -r --arg t "$TAG" '.status.traffic[] | select(.tag == $t) | .url' | head -n1)"
+            [ -n "$url" ] || { echo "::error::adresse de la révision étiquetée « $TAG » introuvable"; exit 1; }
+            expected="$(node scripts/recette.mjs url "$(gcloud run services describe "$service" --region "$region" --format='value(status.url)')" "$GITHUB_HEAD_REF")" || expected=""
+            [ -z "$GITHUB_HEAD_REF" ] || [ "$url" = "$expected" ] || echo "::warning::adresse de révision inattendue ($url, attendu $expected) : l'aperçu Pages, qui la calcule, ne la trouvera pas"
+          fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
+
+      - name: Adresse
+        id: result
+        if: steps.cfg.outputs.enabled == 'true'
+        run: echo "url=${{ steps.deploy.outputs.url || steps.deploy_recette.outputs.url }}" >> "$GITHUB_OUTPUT"
+
       - name: Vérifier la santé du service déployé
         if: steps.cfg.outputs.enabled == 'true'
         run: |
-          url="${{ steps.deploy.outputs.url }}"
+          url="${{ steps.result.outputs.url }}"
           curl --fail --silent --show-error --retry 5 --retry-delay 3 --retry-all-errors "$url/api/health" | tee health.json
-          jq -e '.ok == true and .db == "ok" and .salonOverride == false' health.json
+          if [ "$TARGET" = production ]; then
+            jq -e '.ok == true and .db == "ok" and .salonOverride == false' health.json
+          else
+            jq -e '.ok == true and .db == "ok"' health.json
+          fi
           {
-            echo "### API déployée"
+            if [ "$TARGET" = production ]; then echo "### API déployée (production)"; else echo "### API de recette déployée${TAG:+ (révision $TAG, sans trafic)}"; fi
             echo "- Adresse : $url"
             echo "- Santé : \`$url/api/health\`"
-            echo "- Révision : \`${GITHUB_SHA::7}\`"
-            echo "- À renseigner dans la variable GitHub \`VITE_API_URL\` si ce n'est pas déjà fait, puis relancer la publication du site (workflow Pages)."
+            echo "- Commit : \`${GITHUB_SHA::7}\`"
+            [ "$TARGET" = production ] && echo "- À renseigner dans la variable GitHub \`VITE_API_URL\` si ce n'est pas déjà fait."
+            [ "$TARGET" = recette ] && [ -z "$TAG" ] && echo "- Révision par défaut de la recette : à renseigner dans la variable GitHub \`RECETTE_API_URL\` si ce n'est pas déjà fait."
+            true
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Recette : l'essai de bout en bout existant (crée un joueur « Fumée… », jamais contre la vraie base : ici la base de recette).
+      # Il exige un Salon de durée normale : avec SALON_MINUTES, il est sauté (et le résumé le dit).
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Essai de bout en bout contre la recette
+        if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette'
+        run: |
+          if [ -n "$SALON_MINUTES_IN" ]; then
+            echo "- Essai de bout en bout sauté : SALON_MINUTES=$SALON_MINUTES_IN (il vérifie un Salon de durée normale)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          npm ci -w @cdj/api --ignore-scripts
+          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --origin "https://${owner}.github.io"
+          echo "- Essai de bout en bout (\`npm run smoke\`) : réussi." >> "$GITHUB_STEP_SUMMARY"

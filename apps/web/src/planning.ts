@@ -1,5 +1,6 @@
 import { isVariant, themeByName, type ThemeName } from "@cdj/sim";
 import { apiCall, type ApiResult } from "./api";
+import { gameStorage } from "./storage";
 
 // Planning des circuits (lot 14) : l'admin peut remplacer à l'avance le circuit d'un jour à venir. Le circuit en vigueur d'un
 // jour = (variante, thème imposé). Variante 0 sans thème : le circuit d'origine (celui d'avant le lot 14).
@@ -68,7 +69,7 @@ export function saveDemoPlan(plan: Map<string, PlanEntry>, storage: Pick<Storage
 
 function safeStorage(): Storage | null {
   try {
-    return localStorage;
+    return gameStorage();
   } catch {
     return null;
   }
