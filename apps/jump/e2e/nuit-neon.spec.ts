@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { decodeReplay, fromRuns, moduleSolutions } from "@cdj/jump-sim";
 import { FIXED_NOW, atInstant } from "./clock";
@@ -16,10 +16,13 @@ const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/t
 /** Les thèmes des 400 premières dates du lot 9 (le thème d'une date ne change pas : fixture de `jump-sim`). */
 const THEMES = JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/themes-lot9.json", import.meta.url), "utf8")) as { first: number; count: number; names: string };
 const NAMES = THEMES.names.split(" ");
-/** La première date (AAAA-MM-JJ) à partir du 18/10/2026 dont le thème naturel est `theme` (le 16 et le 17 sont figés, en g4). */
+/** Les jours figés (`public/levels/`) : leur niveau est celui d'un générateur d'avant, jamais celui de cette version. */
+const FROZEN = new Set(readdirSync(new URL("../public/levels", import.meta.url)).map((f) => f.slice(0, 10)));
+/** La première date (AAAA-MM-JJ) à partir du 18/10/2026 dont le thème naturel est `theme`, hors des jours figés. */
 function dayWith(theme: string, from = "2026-10-18"): string {
   for (let d = Date.parse(from) / 86_400_000; d < THEMES.first + THEMES.count; d++) {
-    if (NAMES[d - THEMES.first] === theme) return new Date(d * 86_400_000).toISOString().slice(0, 10);
+    const date = new Date(d * 86_400_000).toISOString().slice(0, 10);
+    if (NAMES[d - THEMES.first] === theme && !FROZEN.has(date)) return date;
   }
   throw new Error(`aucune date de thème ${theme}`);
 }
