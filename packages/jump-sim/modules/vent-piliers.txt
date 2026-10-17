@@ -1,0 +1,29 @@
+id: vent-piliers
+intention: Sauter de pilier en pilier, chacun large d'une tuile, contre un vent qui repousse vers les pics : se poser juste, repartir aussitôt.
+etiquettes: precision vent
+famille: vent-piliers
+theme: foret
+format: 3
+paliers: 8 8
+repeter: trou colonnes 2-2
+repeter: trou colonnes 5-5
+repeter: trou colonnes 8-8
+variante: trou=1 force=60
+variante: trou=2 force=50
+variante: trou=1 force=80
+variante: trou=2 force=60
+grille:
+.............
+.............
+.............
+.............
+.............
+.............
+.............
+.............
+##..#..#..###
+##..#..#..###
+##^^#^^#^^###
+#############
+
+vent 0-12 2-9 gauche {force}

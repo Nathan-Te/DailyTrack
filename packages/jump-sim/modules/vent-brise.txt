@@ -1,0 +1,28 @@
+id: vent-brise
+intention: Se laisser porter par une brise douce le long d'un escalier de grandes marches : il suffit de sauter à temps.
+etiquettes: respiration vent
+famille: vent-brise
+theme: foret
+format: 3
+paliers: 10 6
+repeter: large colonnes 3-3
+repeter: large colonnes 7-7
+repeter: large colonnes 11-11
+variante: large=1 force=60
+variante: large=2 force=50
+variante: large=1 force=80
+grille:
+..................
+..................
+..................
+..................
+..................
+..................
+..............####
+..........########
+......############
+..################
+##################
+##################
+
+vent 0-17 1-9 droite {force}

@@ -3,7 +3,7 @@ import { TICK_RATE } from "./constants";
 
 // Les thèmes de DailyJump (lot 11) : le thème est une **donnée du générateur**. Chaque thème peut apporter sa mécanique de jeu (revêtements,
 // comme les thèmes de DailyTrack) : `usine` les tapis roulants, `glace` la glace, `nuit` les blocs clignotants et `neon` les blocs alternés
-// (lot 12) ; `foret` n'a pas encore de mécanique (lot 13) et garde la composition d'avant. Le thème d'un jour se déduit de la date (`jumpThemeForDay`, pur) : il n'entre donc pas
+// (lot 12), `foret` les courants d'air (lot 13) : depuis le lot 13, les cinq thèmes ont leur mécanique. Le thème d'un jour se déduit de la date (`jumpThemeForDay`, pur) : il n'entre donc pas
 // dans l'identifiant du niveau, sauf **forcé** par l'adresse (`?theme=`) : alors c'est un essai, identifiant suffixé `-t<thème>`.
 //
 // **Tout changement de `jumpThemeForDay` ou des règles d'un thème impose `JUMP_GENERATOR_VERSION` +1** (le niveau d'une date change).
@@ -13,11 +13,11 @@ export const JUMP_THEME_NAMES = ["foret", "usine", "glace", "nuit", "neon"] as c
 export type JumpThemeName = (typeof JUMP_THEME_NAMES)[number];
 
 /** Les mécaniques : un morceau porte l'étiquette de sa mécanique (`tapis`, `glace`) et le thème qui la porte. */
-export type Mechanic = "tapis" | "glace" | "clignotant" | "alterne";
+export type Mechanic = "tapis" | "glace" | "clignotant" | "alterne" | "vent";
 
-/** Les thèmes qui ont une mécanique, et celle-ci (lot 12 : la nuit a ses blocs clignotants, le néon ses blocs alternés). */
-export const THEME_MECHANIC: Readonly<Partial<Record<JumpThemeName, Mechanic>>> = { usine: "tapis", glace: "glace", nuit: "clignotant", neon: "alterne" };
-export const MECHANIC_THEMES = ["usine", "glace", "nuit", "neon"] as const satisfies readonly JumpThemeName[];
+/** Les thèmes qui ont une mécanique, et celle-ci (lot 12 : la nuit a ses blocs clignotants, le néon ses blocs alternés ; lot 13 : la forêt ses courants d'air). */
+export const THEME_MECHANIC: Readonly<Partial<Record<JumpThemeName, Mechanic>>> = { usine: "tapis", glace: "glace", nuit: "clignotant", neon: "alterne", foret: "vent" };
+export const MECHANIC_THEMES = ["usine", "glace", "nuit", "neon", "foret"] as const satisfies readonly JumpThemeName[];
 
 /** La mécanique d'un thème, ou null. */
 export function mechanicOf(theme: JumpThemeName): Mechanic | null {

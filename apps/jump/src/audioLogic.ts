@@ -43,7 +43,9 @@ export type SoundId =
   | "glaceDebut"
   | "glaceFrein"
   | "bascule"
-  | "metronome";
+  | "metronome"
+  | "ventDebut"
+  | "rafale";
 
 export interface SoundSpec {
   id: SoundId;
@@ -178,6 +180,12 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
     case "metronome":
       // Lot 12 : le tempo de la nuit : un tic très discret (un peu plus haut et plus fort sur les deux bascules du cycle).
       return spec("metronome", 0, [tone("sine", e.accent ? 880 : 660, e.accent ? 0.05 : 0.04, e.accent ? METRONOME_GAIN : METRONOME_GAIN * 0.55)]);
+    case "ventDebut":
+      // Lot 13 : un souffle doux qui se lève quand le vent prend le personnage (le souffle continu est spatialisé : `windMix`, wind.ts).
+      return spec("ventDebut", 0, [noise(700 + 200 * v, 0.32, 0.035, 0, e.dir === "haut" ? 1500 : 1100, "bandpass", 0.8)]);
+    case "rafale":
+      // Lot 13 : la rafale qui part : un coup de vent plus franc, qui monte puis retombe.
+      return spec("rafale", 1, [noise(500 + 150 * v, 0.5, 0.06, 0, 1600, "bandpass", 0.9), noise(2400, 0.3, 0.018, 0.08, 1200, "highpass", 0.6)]);
     case "medaille": {
       const phrase = MEDAL_PHRASES[e.medal];
       const wave: OscillatorType = e.medal === "author" ? "square" : e.medal === "gold" ? "triangle" : "sine";

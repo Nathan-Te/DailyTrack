@@ -2,7 +2,7 @@ id: tremplin
 intention: Un ressort au bord d'un grand trou : rebondir à pleine vitesse pour le franchir, deux fois de suite.
 etiquettes: ressort precision
 famille: tremplin
-mutateurs: plafond fosse denivele
+mutateurs: plafond fosse denivele vent
 format: 3
 paliers: 12 12
 repeter: trou colonnes 8-8
@@ -10,6 +10,7 @@ repeter: trou colonnes 20-20
 variante: trou=0
 variante: trou=0 +denivele:2
 variante: trou=0 +plafond
+variante: trou=0 +vent:haut
 grille:
 ............................
 ............................
@@ -32,3 +33,4 @@ zone plafond 6-22 2
 zone fosse 6-10 15
 zone fosse 18-22 15
 zone denivele 23-27
+zone vent 6-10 1-14

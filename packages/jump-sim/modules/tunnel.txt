@@ -2,7 +2,7 @@ id: tunnel
 intention: Traverser un tunnel haut de plafond semé de bosses espacées : de petits sauts rythmés, sans se presser.
 etiquettes: respiration
 famille: tunnel
-mutateurs: plafond denivele
+mutateurs: plafond denivele vent
 format: 3
 paliers: 9 9
 repeter: long colonnes 3-6
@@ -10,6 +10,7 @@ variante: long=2
 variante: long=1
 variante: long=1 +denivele:-1
 variante: long=2 +denivele:2
+variante: long=2 +vent:droite
 grille:
 .###########.
 .###########.
@@ -25,3 +26,4 @@ grille:
 
 zone plafond 1-11 4
 zone denivele 12-12
+zone vent 1-11 5-8

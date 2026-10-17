@@ -2,13 +2,14 @@ id: lucarne
 intention: Passer d'un saut par les fenêtres de trois murs minces, chacune à une autre hauteur.
 etiquettes: precision
 famille: lucarne
-mutateurs: sol-friable garde denivele
+mutateurs: sol-friable garde denivele vent
 format: 3
 paliers: 10 10
 repeter: fenetre rangees 6-6
 variante: fenetre=3
 variante: fenetre=2
 variante: fenetre=3 +denivele:2
+variante: fenetre=3 +vent:gauche
 grille:
 ...#.....#.....#....
 ...#.....#.....#....
@@ -26,3 +27,4 @@ grille:
 zone sol-friable 4-8 10
 zone garde 4-8 9 ^
 zone denivele 16-19
+zone vent 4-15 0-9

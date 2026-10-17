@@ -15,6 +15,7 @@ import {
   PLAYER_WIDTH,
   RESPAWN_TICKS,
   SANDBOX_LEVEL,
+  VENT_LEVEL,
   SPRINT_TRIAL_PARAMS,
   TICK_RATE,
   TILE_BELT_LEFT,
@@ -30,6 +31,10 @@ import {
   runsTicks,
   sawCenters,
   sectionPhases,
+  windActive,
+  windPhase,
+  windPush,
+  windZoneOf,
   buildModule,
   jumpMedalFor,
   jumpThemeForDay,
@@ -58,6 +63,8 @@ import { THEMES, themeByName, themeForDay } from "./themes";
 import { createScene, type JumpScene, type SceneDetail, type SceneStats } from "./scene";
 import type { DynamicStats } from "./dynamicArt";
 import { blockLooks } from "./blocks";
+import { windDirName, windLooks, windMix } from "./wind";
+import type { WindStats } from "./windArt";
 import { JumpSession, formatTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -198,9 +205,24 @@ export interface BlocksDebug extends Partial<DynamicStats> {
   states: boolean[];
 }
 
+/** Lot 13 : `__jump.wind` — ce que le dessin a posé (particules ou flèches) et l'état des zones dans la simulation. */
+export interface WindDebug extends Partial<WindStats> {
+  zones: number;
+  /** Les zones : rectangle, sens, force, rafale. */
+  list: { c0: number; c1: number; r0: number; r1: number; dir: string; force: number; gust: { cycle: number; active: number; shift: number } | null }[];
+  /** La zone où est le centre du personnage (−1 : aucune), et s'il est poussé. */
+  inside: number;
+  pushed: boolean;
+  /** Par zone : souffle-t-elle dans l'état de l'essai, et la phase de sa section. */
+  active: boolean[];
+  phases: number[];
+}
+
 export interface JumpDebug {
   /** Lot 12 : les blocs clignotants et alternés (null : le niveau n'en a pas). */
   readonly blocks: BlocksDebug | null;
+  /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
+  readonly wind: WindDebug | null;
   phase: Phase;
   /** Jour du jeu affiché (AAAA-MM-JJ). */
   day: string;
@@ -375,7 +397,7 @@ declare global {
 }
 
 const options = readUrlOptions(location.search);
-const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL };
+const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL, vent: VENT_LEVEL };
 // Lot 5 : « aujourd'hui » = la date de Paris (`@cdj/clock`), lue ici, hors de la simulation ; le niveau du jour en découle.
 const today = parisDay(Date.now());
 const preview = isPreview(location);
@@ -452,7 +474,8 @@ const dayText = formatDay(today);
 // jour porte le sien (`daily.theme`, celui de la date ou le thème forcé d'un essai). Un morceau ou un scénario n'a pas de thème : `?theme=` leur en
 // donne un (cosmétique, ils n'ont pas de mécanique de thème). La palette en vient.
 const modTheme = mod ? moduleTheme(mod.id, mod.variant) : null;
-const theme = daily ? THEMES[daily.theme] : (themeByName(options.theme) ?? (modTheme ? THEMES[modTheme] : themeForDay(today)));
+// Lot 13 : la galerie des courants d'air (`?scenario=vent`) s'ouvre dans son thème (la forêt).
+const theme = daily ? THEMES[daily.theme] : (themeByName(options.theme) ?? (modTheme ? THEMES[modTheme] : options.scenario === "vent" ? THEMES.foret : themeForDay(today)));
 /** Lot 11 : essai (thème forcé) : rien n'est enregistré, comme avec des réglages modifiés. */
 const isTrial = daily !== null && daily.forcedTheme;
 const palette = theme.palette;
@@ -518,6 +541,7 @@ try {
   const pieces = options.debug && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
   scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels) });
   scene.animate = levels.animate;
+  scene.windParticles = levels.particles;
 } catch {
   scene = null;
 }
@@ -1317,6 +1341,21 @@ const info: JumpDebug = {
   get menu() {
     return { open: menuOpen };
   },
+  /** Lot 13 : les courants d'air (null sans eux). */
+  get wind() {
+    if (level.winds.length === 0) return null;
+    const state = session.state;
+    const inside = windZoneOf(level, state);
+    return {
+      ...(scene?.wind ?? {}),
+      zones: level.winds.length,
+      list: level.winds.map((w) => ({ c0: w.c0, c1: w.c1, r0: w.r0, r1: w.r1, dir: windDirName(w), force: w.force, gust: w.gust ? { ...w.gust } : null })),
+      inside,
+      pushed: windPush(level, state) !== null,
+      active: level.winds.map((_, i) => windActive(level, state, i)),
+      phases: level.winds.map((_, i) => windPhase(level, state, i)),
+    };
+  },
   /** Lot 12 : état des blocs clignotants et alternés (null sans eux) : ce qui est dessiné (pleins, absents, vacillants, en attente), le jeu solide, l'éclat, et l'état de la simulation. */
   get blocks() {
     const stats = scene?.blocks ?? null;
@@ -1432,6 +1471,7 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
   particles.amount = levels.particles;
   if (scene) {
     scene.animate = levels.animate;
+    scene.windParticles = levels.particles;
     scene.setDetail(sceneDetail(levels));
   }
   if (!levels.continuous) trail.clear();
@@ -1605,7 +1645,12 @@ function feelFrame(sc: JumpScene, st: Readonly<AttemptState>, x: number, y: numb
     if (side !== 0) beltSpark(particles, colors, x + PLAYER_WIDTH / T / 2, -(y + PLAYER_HEIGHT / T), side);
   }
   const listener = { x: x + PLAYER_WIDTH / T / 2, y: y + PLAYER_HEIGHT / T / 2 };
-  audio.update(level.saws.length === 0 ? [] : sawMix(sawCenters(level, st).map((p) => ({ x: p.x / T, y: p.y / T })), listener), belts.length === 0 ? [] : beltMix(belts, listener));
+  audio.update(
+    level.saws.length === 0 ? [] : sawMix(sawCenters(level, st).map((p) => ({ x: p.x / T, y: p.y / T })), listener),
+    belts.length === 0 ? [] : beltMix(belts, listener),
+    // Lot 13 : le souffle des zones de vent (trois voix, plus fort au centre d'une zone, un murmure quand une rafale ne souffle pas).
+    level.winds.length === 0 ? [] : windMix(level, windLooks(level, st), listener),
+  );
 }
 
 /** Position interpolée (tuiles, coin haut-gauche) entre deux états ; pas d'interpolation à travers un saut (reprise sur un point). */

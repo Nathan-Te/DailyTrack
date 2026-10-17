@@ -2,7 +2,7 @@ id: descente
 intention: Se laisser tomber de corniche en corniche jusqu'en bas, sans freiner.
 etiquettes: respiration
 famille: descente
-mutateurs: denivele
+mutateurs: denivele vent
 format: 3
 paliers: 4 16
 repeter: large colonnes 4-4
@@ -14,6 +14,7 @@ variante: large=1
 variante: large=2
 variante: large=3
 variante: large=2 +denivele:3
+variante: large=1 +vent:droite
 grille:
 ....................
 ....................
@@ -37,3 +38,4 @@ grille:
 ####################
 
 zone denivele 17-19
+zone vent 0-19 0-15

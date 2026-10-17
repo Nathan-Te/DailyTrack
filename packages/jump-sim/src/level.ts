@@ -35,6 +35,16 @@ import { idiv } from "./idiv";
 //       `décalage` : position dans le cycle au pas 0 (0 à cycle − 1). Au pas de phase `p` (pas écoulés depuis que le personnage est entré dans
 //       la section ; 0 avant), `q = (p + décalage) mod cycle` : `b` est solide si `q < solide`, `d` si `q ≥ solide`. Un bloc `b` ou `d` doit
 //       être dans une section qui déclare son cycle.
+//   vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>]
+//       (lot 13, thème forêt) une **zone de vent** : un rectangle de tuiles (bornes comprises), **traversable** (ce n'est pas un bloc), qui
+//       pousse le personnage tant que **le centre** de sa boîte y est, au sol comme en l'air. `haut` : une accélération verticale qui compense
+//       la gravité et au-delà, jusqu'à une vitesse de montée `windRise` (on plane, on se fait porter) ; `gauche` / `droite` : une accélération
+//       horizontale jusqu'à une vitesse de dérive `windDrift`, qui s'ajoute à la commande (comme un tapis). `force` : en pourcentage des
+//       réglages (`WIND_MIN_FORCE` à `WIND_MAX_FORCE`, 100 = les réglages tels quels). En sortant de la zone, la vitesse acquise est gardée et la
+//       physique ordinaire reprend. Sans `rafale`, la zone souffle toujours ; avec, elle souffle `actif` pas sur `cycle`, décalée de
+//       `décalage` : au pas de phase `p` de la section de sa première colonne (pas écoulés depuis que le personnage y est entré ; 0 avant),
+//       `q = (p + décalage) mod cycle`, elle souffle si `q < actif`. La mort et la reprise remettent l'horloge à zéro (comme les scies). Deux
+//       zones ne se chevauchent pas ; une zone en rafale doit être dans une section.
 
 export const TILE_EMPTY = 0;
 export const TILE_SOLID = 1;
@@ -95,6 +105,11 @@ export const MAX_SAW_RADIUS = 4 * UNITS_PER_TILE;
 /** Lot 12 : cycle d'un bloc clignotant, en pas : de 2 à 1 200 (10 s). */
 export const MIN_BLINK_CYCLE = 2;
 export const MAX_BLINK_CYCLE = 1200;
+/** Lot 13 : force d'une zone de vent, en % des réglages (`windAccel`, `windRise`, `windDrift`), et cycle d'une rafale (de 2 pas à 10 s). */
+export const WIND_MIN_FORCE = 25;
+export const WIND_MAX_FORCE = 200;
+export const MIN_GUST_CYCLE = 2;
+export const MAX_GUST_CYCLE = 1200;
 
 /**
  * Rayon **mortel** des scies fixes, en unités. Un peu moins que le dessin : le disque plein a ce rayon, les dents le dépassent
@@ -162,6 +177,34 @@ export interface AltBlock {
   set: number;
 }
 
+/** Lot 13 : sens d'une zone de vent. */
+export const WIND_UP = 1;
+export const WIND_LEFT = 2;
+export const WIND_RIGHT = 3;
+export const WIND_DIR_NAMES = ["", "haut", "gauche", "droite"] as const;
+
+/** Lot 13 : une rafale (`rafale <cycle> <actif> <décalage>`, voir l'en-tête). */
+export interface Gust {
+  cycle: number;
+  active: number;
+  shift: number;
+}
+
+/** Lot 13 : une zone de vent (traversable). Colonnes et rangées bornes comprises ; `section` : celle de sa première colonne (−1 : aucune). */
+export interface WindZone {
+  c0: number;
+  c1: number;
+  r0: number;
+  r1: number;
+  /** `WIND_UP`, `WIND_LEFT` ou `WIND_RIGHT`. */
+  dir: number;
+  /** En % des réglages. */
+  force: number;
+  /** null : souffle toujours. */
+  gust: Gust | null;
+  section: number;
+}
+
 export interface Level {
   width: number;
   height: number;
@@ -182,6 +225,8 @@ export interface Level {
   blinkCycles: readonly (BlinkCycle | null)[];
   /** Lot 12 : blocs alternés (ordre de lecture). */
   alts: readonly AltBlock[];
+  /** Lot 13 : zones de vent (ordre du bloc annexe) ; vide sans vent. */
+  winds: readonly WindZone[];
 }
 
 export class LevelError extends Error {
@@ -308,6 +353,7 @@ export function parseLevel(text: string): Level {
   const sections: Section[] = [];
   const pending: { line: number; words: string[] }[] = [];
   const blinkLines: { line: number; words: string[] }[] = [];
+  const windLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -325,7 +371,8 @@ export function parseLevel(text: string): Level {
       sections.push({ name: words[1]!, c0, c1 });
     } else if (words[0] === "scie") pending.push({ line: end + i + 1, words });
     else if (words[0] === "clignote") blinkLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (section, scie, clignote)`);
+    else if (words[0] === "vent") windLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (section, scie, clignote, vent)`);
   }
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
   const blinkCycles: (BlinkCycle | null)[] = sections.map(() => null);
@@ -374,7 +421,36 @@ export function parseLevel(text: string): Level {
     const cycle = Number(cycleText);
     saws.push({ id, radius, mode, points, cycle, section, ...sawPath(points, mode, cycle) });
   }
-  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts };
+  // ——— Lot 13 : les zones de vent ———
+  const winds: WindZone[] = [];
+  for (const { line, words } of windLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>] » attendu";
+    if (words.length !== 5 && words.length !== 9) throw new LevelError(`${where} : ${usage}`);
+    const cm = /^(\d+)-(\d+)$/.exec(words[1]!);
+    const rm = /^(\d+)-(\d+)$/.exec(words[2]!);
+    if (!cm || !rm) throw new LevelError(`${where} : ${usage}`);
+    const [c0, c1, r0, r1] = [cm[1], cm[2], rm[1], rm[2]].map(Number) as [number, number, number, number];
+    if (c0 > c1 || c1 >= width || r0 > r1 || r1 >= height) throw new LevelError(`${where} : zone ${c0}-${c1} × ${r0}-${r1} hors de la grille`);
+    const dir = WIND_DIR_NAMES.indexOf(words[3] as (typeof WIND_DIR_NAMES)[number]);
+    if (dir < 1) throw new LevelError(`${where} : sens « ${words[3]} » inconnu (haut, gauche, droite)`);
+    if (!/^\d+$/.test(words[4]!) || Number(words[4]) < WIND_MIN_FORCE || Number(words[4]) > WIND_MAX_FORCE) throw new LevelError(`${where} : force en % de ${WIND_MIN_FORCE} à ${WIND_MAX_FORCE}`);
+    const section = sections.findIndex((s) => c0 >= s.c0 && c0 <= s.c1);
+    let gust: Gust | null = null;
+    if (words.length === 9) {
+      if (words[5] !== "rafale" || !words.slice(6).every((w) => /^\d+$/.test(w))) throw new LevelError(`${where} : ${usage}`);
+      const [cycle, active, shift] = words.slice(6).map(Number) as [number, number, number];
+      if (cycle < MIN_GUST_CYCLE || cycle > MAX_GUST_CYCLE) throw new LevelError(`${where} : rafale de ${cycle} pas hors de ${MIN_GUST_CYCLE}–${MAX_GUST_CYCLE}`);
+      if (active < 1 || active >= cycle) throw new LevelError(`${where} : « actif » vaut de 1 à cycle − 1 (${cycle - 1})`);
+      if (shift >= cycle) throw new LevelError(`${where} : « décalage » vaut de 0 à cycle − 1 (${cycle - 1})`);
+      if (section < 0) throw new LevelError(`${where} : une zone en rafale doit être dans une section (colonne ${c0})`);
+      gust = { cycle, active, shift };
+    }
+    const clash = winds.find((w) => c0 <= w.c1 && w.c0 <= c1 && r0 <= w.r1 && w.r0 <= r1);
+    if (clash) throw new LevelError(`${where} : chevauche la zone de vent ${clash.c0}-${clash.c1} × ${clash.r0}-${clash.r1}`);
+    winds.push({ c0, c1, r0, r1, dir, force: Number(words[4]), gust, section });
+  }
+  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds };
 }
 
 /**
@@ -417,4 +493,23 @@ export function sawCenter(saw: Saw, phase: number): Point {
   const span = saw.times[k + 1]! - t0;
   if (span <= 0) return a;
   return { x: a.x + idiv((b.x - a.x) * (t - t0), span), y: a.y + idiv((b.y - a.y) * (t - t0), span) };
+}
+
+/**
+ * Lot 13 : la zone de vent souffle-t-elle à la phase `phase` de sa section (pas écoulés depuis l'entrée du personnage dans la section, 0 avant) ?
+ * Pure, entière : toujours sans rafale ; avec, `q = (phase + décalage) mod cycle < actif`.
+ */
+export function windBlows(zone: Pick<WindZone, "gust">, phase: number): boolean {
+  const g = zone.gust;
+  if (!g) return true;
+  return (phase + g.shift) % g.cycle < g.active;
+}
+
+/** Lot 13 : l'indice de la zone de vent qui contient la tuile (col, row), −1 aucune (les zones ne se chevauchent pas). */
+export function windZoneAt(level: Pick<Level, "winds">, col: number, row: number): number {
+  for (let i = 0; i < level.winds.length; i++) {
+    const w = level.winds[i]!;
+    if (col >= w.c0 && col <= w.c1 && row >= w.r0 && row <= w.r1) return i;
+  }
+  return -1;
 }

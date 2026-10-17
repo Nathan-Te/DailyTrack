@@ -1,0 +1,1592 @@
+{
+ "2026-10-17": {
+  "theme": "glace",
+  "pieces": [
+   "glace-corniches:0",
+   "cheminee-scie:2",
+   "glace-relais:2",
+   "glace-promenade:0",
+   "iles-friables:2",
+   "pont-friable:4",
+   "grande-scie:4",
+   "ressort-scie:2",
+   "saut-plafond:4",
+   "mur-seul:3",
+   "puits:3",
+   "pendule:3"
+  ],
+  "hash": "490bf141",
+  "authorTicks": 3543
+ },
+ "2026-10-18": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-escalier:0",
+   "scies-jumelles:2",
+   "puits-descente:1",
+   "escalier-scies:0",
+   "nuit-marelle:1",
+   "ressort-plafond:1",
+   "demi-tour:3",
+   "cheminee-pics:1",
+   "piliers:2",
+   "ascenseur:5",
+   "marelle:5"
+  ],
+  "hash": "fd0de6af",
+  "authorTicks": 3613
+ },
+ "2026-10-19": {
+  "theme": "glace",
+  "pieces": [
+   "escalier-scies:0",
+   "chute-pics:4",
+   "mur-friable:2",
+   "glace-corniches:1",
+   "glace-promenade:3",
+   "pendule:3",
+   "piliers-scie:1",
+   "glace-cheminee:0",
+   "cheminee-vide:3",
+   "tremplin:2",
+   "glace-mur:1"
+  ],
+  "hash": "ee3dc622",
+  "authorTicks": 3614
+ },
+ "2026-10-21": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-contraire:3",
+   "iles-scie:5",
+   "cheminee-scie:2",
+   "ressort-scie:1",
+   "mur-trous:5",
+   "tapis-respiration:1",
+   "puits:2",
+   "lucarne:0",
+   "plafond-pics:2",
+   "pont-friable:4",
+   "tapis-relais:0"
+  ],
+  "hash": "1a122171",
+  "authorTicks": 3804
+ },
+ "2026-10-22": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-relais:0",
+   "descente-scies:3",
+   "petits-trous:1",
+   "piliers:5",
+   "pendule:3",
+   "nuit-cheminee:3",
+   "scie-ronde:1",
+   "plongeon:1",
+   "ressorts-escalier:4",
+   "ressort-mur:3"
+  ],
+  "hash": "edaa817b",
+  "authorTicks": 3411
+ },
+ "2026-10-23": {
+  "theme": "usine",
+  "pieces": [
+   "puits-descente:1",
+   "demi-tour:0",
+   "tapis-contraire:3",
+   "iles-scie:0",
+   "quinconce:0",
+   "tapis-mur:3",
+   "tunnel:3",
+   "tapis-relais:1",
+   "ressort-mur:3",
+   "chute-pics:0",
+   "cheminee-vide:1"
+  ],
+  "hash": "2c455c81",
+  "authorTicks": 3452
+ },
+ "2026-10-25": {
+  "theme": "nuit",
+  "pieces": [
+   "descente-scies:4",
+   "mur-seul:0",
+   "nuit-portes:3",
+   "ressort-plafond:3",
+   "tunnel:1",
+   "marelle:5",
+   "piliers:2",
+   "ascenseur:5",
+   "nuit-opposition:4",
+   "demi-tour:3",
+   "scies-jumelles:4"
+  ],
+  "hash": "8e39b499",
+  "authorTicks": 3535
+ },
+ "2026-10-26": {
+  "theme": "glace",
+  "pieces": [
+   "ascenseur:4",
+   "tremplin:2",
+   "pont-friable:0",
+   "paroi-friable:0",
+   "piliers-scie:0",
+   "glace-promenade:1",
+   "glace-cheminee:1",
+   "iles-scie:2",
+   "cheminee-vide:0",
+   "pendule:3",
+   "glace-corniches:3",
+   "cheminee:0"
+  ],
+  "hash": "62703596",
+  "authorTicks": 3514
+ },
+ "2026-10-28": {
+  "theme": "neon",
+  "pieces": [
+   "ascenseur:2",
+   "neon-couloir:1",
+   "scie-sol:3",
+   "mur-friable:1",
+   "iles-friables:3",
+   "tunnel-scies:0",
+   "neon-respiration:0",
+   "plafond-pics:2",
+   "neon-pics:3",
+   "puits:1",
+   "neon-relais:1"
+  ],
+  "hash": "e109deef",
+  "authorTicks": 3711
+ },
+ "2026-10-30": {
+  "theme": "neon",
+  "pieces": [
+   "piliers-scie:0",
+   "cheminee-vide:1",
+   "tunnel-scies:0",
+   "neon-pics:2",
+   "neon-respiration:0",
+   "pont-friable:4",
+   "neon-silence:2",
+   "chute-pics:2",
+   "demi-tour:3",
+   "ressorts-escalier:4"
+  ],
+  "hash": "9d30904e",
+  "authorTicks": 3445
+ },
+ "2026-10-31": {
+  "theme": "nuit",
+  "pieces": [
+   "grande-scie:0",
+   "ressorts-trous:0",
+   "ressort-scie:0",
+   "nuit-opposition:0",
+   "nuit-relais:0",
+   "petits-trous:1",
+   "paroi-friable:1",
+   "nuit-cheminee:3",
+   "escalier-friable:2",
+   "plongeon:1"
+  ],
+  "hash": "70b50b34",
+  "authorTicks": 3491
+ },
+ "2026-11-02": {
+  "theme": "glace",
+  "pieces": [
+   "glace-cheminee:1",
+   "iles-scie:4",
+   "piliers-scie:3",
+   "corniches:0",
+   "glace-relais:0",
+   "chute-pics:3",
+   "pendule:3",
+   "demi-tour:3",
+   "cheminee-scie:3",
+   "cheminee-vide:2",
+   "glace-mur:2"
+  ],
+  "hash": "b90b50a6",
+  "authorTicks": 3612
+ },
+ "2026-11-04": {
+  "theme": "neon",
+  "pieces": [
+   "neon-pics:2",
+   "scie-sol:5",
+   "iles-scie:1",
+   "plafond-pics:0",
+   "mur-trous:5",
+   "neon-respiration:0",
+   "cheminee-scie:2",
+   "lucarne:2",
+   "demi-tour:1",
+   "ascenseur:5",
+   "neon-couloir:1",
+   "chute-pics:4"
+  ],
+  "hash": "8c2efea1",
+  "authorTicks": 3538
+ },
+ "2026-11-05": {
+  "theme": "glace",
+  "pieces": [
+   "glace-saut-haut:3",
+   "cheminee-pics:0",
+   "mur-seul:0",
+   "ressort-mur:4",
+   "glace-relais:0",
+   "tunnel:3",
+   "plongeon:3",
+   "pendule:3",
+   "glace-cheminee:0",
+   "escalier-friable:0",
+   "scie-ronde:3",
+   "ressorts-trous:0"
+  ],
+  "hash": "38114d87",
+  "authorTicks": 3605
+ },
+ "2026-11-06": {
+  "theme": "usine",
+  "pieces": [
+   "iles-scie:4",
+   "tapis-contraire:3",
+   "pont-friable:1",
+   "cheminee-scie:2",
+   "puits-descente:2",
+   "tapis-mur:3",
+   "escalier:0",
+   "tapis-relais:0",
+   "scie-sol:1",
+   "chute-pics:2"
+  ],
+  "hash": "91fae896",
+  "authorTicks": 3399
+ },
+ "2026-11-07": {
+  "theme": "neon",
+  "pieces": [
+   "plongeon:0",
+   "saut-plafond:5",
+   "mur-friable:2",
+   "neon-couloir:1",
+   "scies-jumelles:4",
+   "mur-trous:5",
+   "corniches:1",
+   "neon-pics:3",
+   "escalier-friable:1",
+   "puits:2",
+   "neon-cheminee:1"
+  ],
+  "hash": "27926c82",
+  "authorTicks": 3436
+ },
+ "2026-11-09": {
+  "theme": "nuit",
+  "pieces": [
+   "demi-tour:5",
+   "cheminee-scie:2",
+   "piliers-scie:0",
+   "corniches:0",
+   "nuit-relais:0",
+   "nuit-pont:4",
+   "nuit-cheminee:3",
+   "chute-pics:2",
+   "ascenseur:5",
+   "pont-friable:2"
+  ],
+  "hash": "55e63098",
+  "authorTicks": 3491
+ },
+ "2026-11-10": {
+  "theme": "neon",
+  "pieces": [
+   "piliers:0",
+   "neon-silence:2",
+   "puits-descente:1",
+   "ressort-plafond:3",
+   "ressorts-escalier:2",
+   "petits-trous:5",
+   "plongeon:1",
+   "neon-cheminee:0",
+   "escalier-friable:1",
+   "mur-seul:1",
+   "marelle:1"
+  ],
+  "hash": "09cb0e88",
+  "authorTicks": 3600
+ },
+ "2026-11-12": {
+  "theme": "glace",
+  "pieces": [
+   "grande-scie:3",
+   "plongeon:2",
+   "glace-saut-haut:4",
+   "cheminee-pics:0",
+   "glace-cheminee:1",
+   "mur-trous:3",
+   "descente:3",
+   "ressort-mur:3",
+   "escalier-friable:1",
+   "iles-friables:1",
+   "glace-relais:0"
+  ],
+  "hash": "6c77ca23",
+  "authorTicks": 3787
+ },
+ "2026-11-14": {
+  "theme": "neon",
+  "pieces": [
+   "neon-cheminee:1",
+   "mur-seul:0",
+   "pont-friable:5",
+   "ressorts-trous:0",
+   "descente-scies:0",
+   "petits-trous:5",
+   "grande-scie:1",
+   "cheminee-vide:3",
+   "neon-couloir:2",
+   "neon-pics:0",
+   "cheminee:1"
+  ],
+  "hash": "07a01559",
+  "authorTicks": 3567
+ },
+ "2026-11-16": {
+  "theme": "glace",
+  "pieces": [
+   "glace-relais:1",
+   "piliers-scie:0",
+   "glace-cheminee:1",
+   "glace-promenade:1",
+   "cheminee-scie:2",
+   "ascenseur:5",
+   "tremplin:1",
+   "puits:0",
+   "iles-friables:1",
+   "chute-pics:0"
+  ],
+  "hash": "70e22987",
+  "authorTicks": 3434
+ },
+ "2026-11-17": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-mur:0",
+   "grande-scie:3",
+   "ressort-mur-iles:3",
+   "tapis-contraire:3",
+   "rebonds-doux:0",
+   "pendule:3",
+   "plafond-pics:0",
+   "puits-descente:3",
+   "plongeon:4",
+   "scies-jumelles:3",
+   "tapis-lance:3"
+  ],
+  "hash": "f6c6ae9c",
+  "authorTicks": 3574
+ },
+ "2026-11-18": {
+  "theme": "neon",
+  "pieces": [
+   "puits:3",
+   "iles-scie:4",
+   "ressort-scie:1",
+   "cheminee-scie:2",
+   "tunnel-scies:0",
+   "neon-pics:2",
+   "neon-respiration:0",
+   "plafond-pics:2",
+   "neon-couloir:2",
+   "scie-sol:4",
+   "chute-pics:1",
+   "demi-tour:5"
+  ],
+  "hash": "89497e53",
+  "authorTicks": 3537
+ },
+ "2026-11-20": {
+  "theme": "glace",
+  "pieces": [
+   "cheminee-scie:2",
+   "glace-mur:1",
+   "plafond-pics:3",
+   "ressorts-escalier:2",
+   "puits-descente:2",
+   "glace-promenade:3",
+   "glace-freinage:4",
+   "ascenseur:5",
+   "ressort-mur-iles:0",
+   "chute-pics:2"
+  ],
+  "hash": "e219e7e6",
+  "authorTicks": 3552
+ },
+ "2026-11-22": {
+  "theme": "glace",
+  "pieces": [
+   "puits-descente:1",
+   "demi-tour:5",
+   "ressort-mur:4",
+   "glace-freinage:1",
+   "mur-seul:4",
+   "plongeon:3",
+   "tunnel:3",
+   "chute-pics:4",
+   "scie-sol:5",
+   "cheminee-pics:1",
+   "plafond-pics:4",
+   "scie-ronde:3",
+   "scies-jumelles:3"
+  ],
+  "hash": "54b5acee",
+  "authorTicks": 3555
+ },
+ "2026-11-23": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-alternes:0",
+   "ressort-scie:1",
+   "tapis-lance:1",
+   "tapis-escalier:0",
+   "pendule:3",
+   "mur-friable:2",
+   "piliers-scie:3",
+   "tapis-respiration:0",
+   "lucarne:0",
+   "puits:1",
+   "mur-trous:5"
+  ],
+  "hash": "68ed1435",
+  "authorTicks": 3434
+ },
+ "2026-11-24": {
+  "theme": "nuit",
+  "pieces": [
+   "quinconce:1",
+   "nuit-cheminee:2",
+   "nuit-opposition:0",
+   "paroi-friable:0",
+   "puits-descente:2",
+   "nuit-marelle:1",
+   "ressort-plafond:1",
+   "grande-scie:1",
+   "escalier-friable:1",
+   "nuit-portes:2",
+   "ressorts-escalier:4"
+  ],
+  "hash": "d77c82f3",
+  "authorTicks": 3648
+ },
+ "2026-11-26": {
+  "theme": "neon",
+  "pieces": [
+   "ressort-scie:0",
+   "cheminee:1",
+   "scie-ronde:3",
+   "paroi-friable:3",
+   "scies-jumelles:4",
+   "descente-scies:0",
+   "petits-trous:5",
+   "neon-silence:1",
+   "neon-couloir:2",
+   "neon-cheminee:0",
+   "grande-scie:1",
+   "escalier-friable:0"
+  ],
+  "hash": "b9d40223",
+  "authorTicks": 3617
+ },
+ "2026-11-27": {
+  "theme": "nuit",
+  "pieces": [
+   "scie-sol:2",
+   "nuit-escalier:0",
+   "cheminee-vide:1",
+   "puits:3",
+   "plafond-pics:0",
+   "tunnel-scies:0",
+   "nuit-marelle:0",
+   "nuit-pont:4",
+   "cheminee-pics:1",
+   "ressort-mur:3",
+   "iles-scie:2",
+   "chute-pics:4",
+   "demi-tour:5"
+  ],
+  "hash": "fa15c97b",
+  "authorTicks": 3641
+ },
+ "2026-11-29": {
+  "theme": "nuit",
+  "pieces": [
+   "demi-tour:0",
+   "descente-scies:2",
+   "piliers-scie:3",
+   "nuit-marelle:0",
+   "nuit-escalier:1",
+   "nuit-portes:1",
+   "lucarne:0",
+   "scie-sol:1",
+   "cheminee-pics:1",
+   "saut-plafond:2"
+  ],
+  "hash": "c0437c36",
+  "authorTicks": 3453
+ },
+ "2026-12-01": {
+  "theme": "nuit",
+  "pieces": [
+   "descente-scies:3",
+   "grande-scie:5",
+   "plongeon:2",
+   "piliers:4",
+   "cheminee-quinconce:0",
+   "nuit-marelle:0",
+   "nuit-opposition:4",
+   "nuit-portes:0",
+   "mur-seul:1"
+  ],
+  "hash": "4ede666b",
+  "authorTicks": 3604
+ },
+ "2026-12-02": {
+  "theme": "glace",
+  "pieces": [
+   "ascenseur:0",
+   "mur-friable:2",
+   "glace-corniches:3",
+   "scie-sol:3",
+   "iles-friables:2",
+   "mur-trous:3",
+   "glace-promenade:3",
+   "glace-freinage:4",
+   "puits:0",
+   "plafond-pics:0",
+   "ressorts-trous:3"
+  ],
+  "hash": "5df93e36",
+  "authorTicks": 3474
+ },
+ "2026-12-03": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-lance:1",
+   "iles-friables:4",
+   "ressort-mur:1",
+   "tapis-mur:2",
+   "plongeon:2",
+   "descente-scies:0",
+   "tunnel:3",
+   "grande-scie:4",
+   "ressort-scie:2",
+   "scie-ronde:5",
+   "ressorts-escalier:4",
+   "tapis-alternes:3",
+   "mur-friable:1"
+  ],
+  "hash": "5a662af8",
+  "authorTicks": 3503
+ },
+ "2026-12-04": {
+  "theme": "neon",
+  "pieces": [
+   "ressort-plafond:0",
+   "iles-scie:1",
+   "demi-tour:0",
+   "plafond-pics:0",
+   "piliers-scie:0",
+   "neon-respiration:0",
+   "neon-relais:1",
+   "ressorts-escalier:0",
+   "pont-friable:4",
+   "lucarne:0"
+  ],
+  "hash": "3eb573e5",
+  "authorTicks": 3461
+ },
+ "2026-12-05": {
+  "theme": "glace",
+  "pieces": [
+   "scies-jumelles:2",
+   "glace-corniches:3",
+   "paroi-friable:3",
+   "pendule:3",
+   "mur-friable:2",
+   "glace-relais:0",
+   "escalier:0",
+   "descente-scies:0",
+   "glace-cheminee:0",
+   "puits:1",
+   "cheminee-vide:3"
+  ],
+  "hash": "bf063366",
+  "authorTicks": 3517
+ },
+ "2026-12-06": {
+  "theme": "neon",
+  "pieces": [
+   "saut-plafond:5",
+   "ressort-mur-iles:3",
+   "scie-ronde:3",
+   "descente-scies:0",
+   "neon-respiration:0",
+   "lucarne:0",
+   "plongeon:1",
+   "demi-tour:3",
+   "ascenseur:5",
+   "mur-seul:3",
+   "neon-silence:0"
+  ],
+  "hash": "b9d7a6c5",
+  "authorTicks": 3566
+ },
+ "2026-12-08": {
+  "theme": "glace",
+  "pieces": [
+   "glace-relais:2",
+   "glace-cheminee:1",
+   "grande-scie:5",
+   "ressort-plafond:3",
+   "tunnel:0",
+   "ressorts-escalier:2",
+   "marelle:1",
+   "scie-ronde:2",
+   "glace-freinage:4",
+   "quinconce:4",
+   "scie-sol:3",
+   "plafond-pics:2"
+  ],
+  "hash": "be3d1629",
+  "authorTicks": 3599
+ },
+ "2026-12-10": {
+  "theme": "neon",
+  "pieces": [
+   "neon-cheminee:1",
+   "mur-seul:4",
+   "pendule:2",
+   "scies-jumelles:4",
+   "descente-scies:0",
+   "petits-trous:5",
+   "ressort-plafond:3",
+   "scie-ronde:2",
+   "cheminee:0",
+   "neon-couloir:2",
+   "escalier-friable:0",
+   "neon-silence:2"
+  ],
+  "hash": "91610fcd",
+  "authorTicks": 3637
+ },
+ "2026-12-11": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-mur:2",
+   "tapis-contraire:3",
+   "puits:3",
+   "cheminee-pics:0",
+   "ressort-mur-iles:3",
+   "corniches:0",
+   "chute-pics:3",
+   "ascenseur:5",
+   "lucarne:0",
+   "tapis-relais:1"
+  ],
+  "hash": "4842d007",
+  "authorTicks": 3514
+ },
+ "2026-12-13": {
+  "theme": "glace",
+  "pieces": [
+   "glace-freinage:1",
+   "scie-ronde:3",
+   "chute-pics:4",
+   "glace-mur:0",
+   "piliers:0",
+   "puits-descente:2",
+   "tunnel:1",
+   "escalier-scies:0",
+   "mur-seul:5",
+   "lucarne:1",
+   "plongeon:3"
+  ],
+  "hash": "dff82d71",
+  "authorTicks": 3446
+ },
+ "2026-12-14": {
+  "theme": "neon",
+  "pieces": [
+   "neon-cheminee:1",
+   "pendule:0",
+   "paroi-friable:2",
+   "demi-tour:5",
+   "piliers-scie:0",
+   "neon-respiration:0",
+   "chute-pics:3",
+   "neon-pics:3",
+   "escalier-friable:1",
+   "mur-friable:2",
+   "iles-friables:3"
+  ],
+  "hash": "33ffbed8",
+  "authorTicks": 3592
+ },
+ "2026-12-15": {
+  "theme": "nuit",
+  "pieces": [
+   "mur-seul:4",
+   "scies-jumelles:0",
+   "nuit-opposition:1",
+   "nuit-cheminee:1",
+   "piliers:2",
+   "ressort-mur-iles:3",
+   "tunnel:1",
+   "marelle:5",
+   "nuit-portes:0",
+   "plongeon:1",
+   "cheminee-pics:1"
+  ],
+  "hash": "bd108f4b",
+  "authorTicks": 3527
+ },
+ "2026-12-17": {
+  "theme": "nuit",
+  "pieces": [
+   "ressorts-escalier:1",
+   "scie-ronde:3",
+   "nuit-cheminee:2",
+   "nuit-opposition:0",
+   "descente-scies:0",
+   "mur-friable:1",
+   "tunnel:0",
+   "nuit-portes:0",
+   "mur-seul:5",
+   "ressort-plafond:1",
+   "marelle:5"
+  ],
+  "hash": "fc60bffa",
+  "authorTicks": 3450
+ },
+ "2026-12-19": {
+  "theme": "neon",
+  "pieces": [
+   "pont-friable:5",
+   "pendule:1",
+   "mur-friable:2",
+   "puits:3",
+   "descente-scies:0",
+   "petits-trous:5",
+   "saut-plafond:5",
+   "iles-friables:1",
+   "ressort-scie:2",
+   "neon-couloir:2",
+   "paroi-friable:1"
+  ],
+  "hash": "b47a496e",
+  "authorTicks": 3557
+ },
+ "2026-12-21": {
+  "theme": "neon",
+  "pieces": [
+   "neon-cheminee:1",
+   "iles-friables:4",
+   "chute-pics:4",
+   "mur-friable:2",
+   "piliers-scie:0",
+   "petits-trous:5",
+   "ascenseur:5",
+   "escalier-scies:3",
+   "neon-couloir:2",
+   "neon-pics:3"
+  ],
+  "hash": "2066a0f6",
+  "authorTicks": 3544
+ },
+ "2026-12-22": {
+  "theme": "glace",
+  "pieces": [
+   "glace-relais:2",
+   "scie-ronde:1",
+   "descente-scies:0",
+   "tunnel:3",
+   "plongeon:3",
+   "glace-saut-haut:3",
+   "pendule:5",
+   "mur-seul:5",
+   "plafond-pics:2",
+   "saut-plafond:4",
+   "escalier-friable:1"
+  ],
+  "hash": "ddb08ea4",
+  "authorTicks": 3596
+ },
+ "2026-12-23": {
+  "theme": "neon",
+  "pieces": [
+   "puits-descente:1",
+   "mur-friable:1",
+   "cheminee-vide:1",
+   "neon-pics:2",
+   "neon-respiration:0",
+   "iles-scie:3",
+   "mur-trous:3",
+   "neon-couloir:2",
+   "chute-pics:2",
+   "demi-tour:4"
+  ],
+  "hash": "9a84ac1b",
+  "authorTicks": 3423
+ },
+ "2026-12-24": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-mur:2",
+   "descente-scies:2",
+   "cheminee:1",
+   "tunnel:3",
+   "mur-trous:3",
+   "scie-ronde:5",
+   "grande-scie:4",
+   "plongeon:4",
+   "iles-friables:1",
+   "pendule:3",
+   "tapis-lance:3"
+  ],
+  "hash": "d11a40d5",
+  "authorTicks": 3579
+ },
+ "2026-12-25": {
+  "theme": "neon",
+  "pieces": [
+   "neon-pics:2",
+   "ressort-plafond:4",
+   "puits:3",
+   "cheminee-scie:2",
+   "ressorts-escalier:2",
+   "piliers-scie:0",
+   "neon-respiration:0",
+   "iles-scie:3",
+   "neon-relais:2",
+   "cheminee-vide:0"
+  ],
+  "hash": "35c1b01b",
+  "authorTicks": 3384
+ },
+ "2026-12-26": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-opposition:0",
+   "paroi-friable:0",
+   "scie-ronde:3",
+   "descente-scies:1",
+   "nuit-portes:1",
+   "escalier:2",
+   "cheminee:0",
+   "nuit-pont:4",
+   "nuit-cheminee:3",
+   "iles-scie:2",
+   "scies-jumelles:4"
+  ],
+  "hash": "314daf64",
+  "authorTicks": 3507
+ },
+ "2026-12-28": {
+  "theme": "nuit",
+  "pieces": [
+   "tremplin:1",
+   "piliers-scie:1",
+   "paroi-friable:2",
+   "escalier:2",
+   "nuit-cheminee:1",
+   "nuit-escalier:1",
+   "nuit-pont:4",
+   "chute-pics:2",
+   "cheminee-scie:3",
+   "demi-tour:5",
+   "ascenseur:5"
+  ],
+  "hash": "7332006a",
+  "authorTicks": 3461
+ },
+ "2026-12-29": {
+  "theme": "glace",
+  "pieces": [
+   "puits-descente:1",
+   "pendule:0",
+   "quinconce:0",
+   "petits-trous:1",
+   "glace-freinage:3",
+   "glace-cheminee:1",
+   "ressorts-escalier:2",
+   "escalier-friable:1",
+   "saut-plafond:2",
+   "scie-ronde:4",
+   "mur-seul:2"
+  ],
+  "hash": "c83405f0",
+  "authorTicks": 3522
+ },
+ "2026-12-30": {
+  "theme": "nuit",
+  "pieces": [
+   "saut-long:1",
+   "nuit-pont:0",
+   "escalier-scies:0",
+   "pont-friable:4",
+   "cheminee:1",
+   "nuit-marelle:0",
+   "nuit-escalier:1",
+   "scie-sol:4",
+   "nuit-relais:1",
+   "chute-pics:0",
+   "puits:1"
+  ],
+  "hash": "cfb5b86b",
+  "authorTicks": 3502
+ },
+ "2026-12-31": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-mur:0",
+   "plongeon:5",
+   "tapis-escalier:0",
+   "escalier-friable:0",
+   "piliers:0",
+   "mur-trous:3",
+   "tunnel:3",
+   "tapis-lance:0",
+   "descente-scies:0",
+   "cheminee:0",
+   "iles-friables:1"
+  ],
+  "hash": "f641ead8",
+  "authorTicks": 3694
+ },
+ "2027-01-01": {
+  "theme": "nuit",
+  "pieces": [
+   "lucarne:0",
+   "nuit-escalier:0",
+   "ascenseur:0",
+   "puits:3",
+   "ressort-mur-iles:3",
+   "marelle:5",
+   "nuit-marelle:1",
+   "iles-scie:0",
+   "chute-pics:2",
+   "cheminee-vide:1",
+   "quinconce:1",
+   "cheminee-scie:2"
+  ],
+  "hash": "b7b8b65f",
+  "authorTicks": 3545
+ },
+ "2027-01-03": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-escalier:0",
+   "escalier-scies:0",
+   "marelle:0",
+   "nuit-marelle:0",
+   "descente-scies:0",
+   "mur-seul:3",
+   "nuit-portes:0",
+   "cheminee-pics:2",
+   "scie-sol:5"
+  ],
+  "hash": "d7136d79",
+  "authorTicks": 3436
+ },
+ "2027-01-05": {
+  "theme": "nuit",
+  "pieces": [
+   "scie-ronde:3",
+   "nuit-cheminee:1",
+   "ressort-mur-iles:3",
+   "nuit-portes:1",
+   "nuit-marelle:0",
+   "descente-scies:1",
+   "mur-seul:5",
+   "escalier-friable:2",
+   "grande-scie:1",
+   "pendule:3"
+  ],
+  "hash": "e74d7a8d",
+  "authorTicks": 3600
+ },
+ "2027-01-06": {
+  "theme": "glace",
+  "pieces": [
+   "glace-mur:0",
+   "tremplin:2",
+   "pont-friable:0",
+   "iles-scie:2",
+   "piliers-scie:3",
+   "glace-promenade:0",
+   "demi-tour:1",
+   "cheminee-vide:0",
+   "glace-freinage:4",
+   "mur-trous:5"
+  ],
+  "hash": "220be50f",
+  "authorTicks": 3660
+ },
+ "2027-01-07": {
+  "theme": "neon",
+  "pieces": [
+   "ressorts-escalier:1",
+   "neon-couloir:1",
+   "paroi-friable:2",
+   "marelle:1",
+   "descente-scies:1",
+   "petits-trous:5",
+   "neon-cheminee:0",
+   "cheminee-pics:2",
+   "grande-scie:1",
+   "plongeon:1",
+   "neon-silence:0"
+  ],
+  "hash": "069d1650",
+  "authorTicks": 3487
+ },
+ "2027-01-08": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-contraire:3",
+   "marelle:4",
+   "ascenseur:4",
+   "tapis-mur:3",
+   "ressort-plafond:3",
+   "puits-descente:2",
+   "tunnel:3",
+   "cheminee-vide:1",
+   "tapis-relais:1",
+   "piliers:3",
+   "demi-tour:1"
+  ],
+  "hash": "57d9ac31",
+  "authorTicks": 3543
+ },
+ "2027-01-09": {
+  "theme": "neon",
+  "pieces": [
+   "ressorts-trous:0",
+   "paroi-friable:2",
+   "cheminee:1",
+   "descente-scies:0",
+   "neon-pics:2",
+   "petits-trous:5",
+   "neon-couloir:2",
+   "pont-friable:4",
+   "scies-jumelles:4",
+   "cheminee-vide:3",
+   "saut-plafond:4"
+  ],
+  "hash": "c2507202",
+  "authorTicks": 3585
+ },
+ "2027-01-10": {
+  "theme": "usine",
+  "pieces": [
+   "tunnel-scies:1",
+   "plongeon:5",
+   "scies-jumelles:4",
+   "tapis-mur:3",
+   "ressort-plafond:3",
+   "tunnel:0",
+   "saut-plafond:2",
+   "tapis-relais:0",
+   "mur-seul:1",
+   "demi-tour:0",
+   "quinconce:4"
+  ],
+  "hash": "4a88da5d",
+  "authorTicks": 3551
+ },
+ "2027-01-12": {
+  "theme": "nuit",
+  "pieces": [
+   "scies-jumelles:1",
+   "descente-scies:3",
+   "mur-seul:4",
+   "saut-plafond:2",
+   "nuit-portes:3",
+   "nuit-marelle:0",
+   "scie-ronde:0",
+   "grande-scie:4",
+   "nuit-opposition:4",
+   "ressort-mur:3",
+   "escalier-friable:1"
+  ],
+  "hash": "427dc57c",
+  "authorTicks": 3568
+ },
+ "2027-01-14": {
+  "theme": "neon",
+  "pieces": [
+   "neon-cheminee:1",
+   "ressorts-trous:0",
+   "descente-scies:1",
+   "tunnel:1",
+   "saut-plafond:5",
+   "grande-scie:5",
+   "pendule:5",
+   "iles-friables:1",
+   "mur-friable:0",
+   "escalier-friable:1",
+   "neon-silence:0"
+  ],
+  "hash": "8275083a",
+  "authorTicks": 3504
+ },
+ "2027-01-15": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-pont:2",
+   "cheminee-scie:2",
+   "piliers-scie:1",
+   "scie-sol:4",
+   "nuit-marelle:1",
+   "ressort-mur:0",
+   "puits-descente:2",
+   "cheminee-vide:0",
+   "nuit-escalier:2",
+   "marelle:1",
+   "demi-tour:1"
+  ],
+  "hash": "c11c9e86",
+  "authorTicks": 3475
+ },
+ "2027-01-16": {
+  "theme": "glace",
+  "pieces": [
+   "plongeon:3",
+   "glace-relais:1",
+   "mur-trous:3",
+   "glace-promenade:2",
+   "mur-friable:2",
+   "scies-jumelles:4",
+   "puits:1",
+   "grande-scie:1",
+   "ressort-scie:2",
+   "pont-friable:4",
+   "scie-ronde:1"
+  ],
+  "hash": "657d5792",
+  "authorTicks": 3525
+ },
+ "2027-01-17": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-mur:2",
+   "ressort-plafond:2",
+   "ascenseur:3",
+   "piliers-scie:1",
+   "saut-plafond:4",
+   "plongeon:5",
+   "rebonds-doux:3",
+   "scies-jumelles:4",
+   "cheminee-pics:2",
+   "tapis-contraire:1",
+   "marelle:0",
+   "scie-ronde:5",
+   "scie-sol:1"
+  ],
+  "hash": "4d30d9b4",
+  "authorTicks": 3558
+ },
+ "2027-01-18": {
+  "theme": "glace",
+  "pieces": [
+   "pont-friable:3",
+   "ascenseur:0",
+   "glace-relais:1",
+   "iles-friables:2",
+   "glace-promenade:0",
+   "cheminee-vide:1",
+   "mur-trous:2",
+   "puits:1",
+   "demi-tour:3",
+   "glace-cheminee:0"
+  ],
+  "hash": "214b159f",
+  "authorTicks": 3552
+ },
+ "2027-01-19": {
+  "theme": "nuit",
+  "pieces": [
+   "scie-sol:2",
+   "ressort-mur:1",
+   "nuit-opposition:1",
+   "scies-jumelles:4",
+   "nuit-cheminee:0",
+   "descente-scies:0",
+   "petits-trous:1",
+   "nuit-portes:0",
+   "piliers:0",
+   "scie-ronde:1",
+   "cheminee-pics:1"
+  ],
+  "hash": "4a1db69c",
+  "authorTicks": 3550
+ },
+ "2027-01-20": {
+  "theme": "usine",
+  "pieces": [
+   "tremplin:0",
+   "scie-sol:5",
+   "quinconce:0",
+   "cheminee:1",
+   "puits-descente:2",
+   "tapis-contraire:0",
+   "tapis-respiration:1",
+   "tapis-relais:0",
+   "ressort-scie:2",
+   "demi-tour:3"
+  ],
+  "hash": "57462d27",
+  "authorTicks": 3413
+ },
+ "2027-01-21": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-cheminee:1",
+   "iles-friables:0",
+   "descente-scies:3",
+   "cheminee:1",
+   "nuit-portes:1",
+   "tunnel:0",
+   "ressort-scie:2",
+   "nuit-opposition:4",
+   "mur-seul:5",
+   "plongeon:2",
+   "ressorts-trous:0"
+  ],
+  "hash": "7f156e55",
+  "authorTicks": 3816
+ },
+ "2027-01-22": {
+  "theme": "glace",
+  "pieces": [
+   "ascenseur:4",
+   "ressort-mur:1",
+   "piliers-scie:0",
+   "glace-corniches:0",
+   "escalier:1",
+   "cheminee-pics:0",
+   "glace-freinage:3",
+   "tunnel-scies:1",
+   "lucarne:0",
+   "pont-friable:4",
+   "plafond-pics:4"
+  ],
+  "hash": "6b426239",
+  "authorTicks": 3524
+ },
+ "2027-01-23": {
+  "theme": "nuit",
+  "pieces": [
+   "paroi-friable:0",
+   "iles-scie:4",
+   "nuit-opposition:0",
+   "plongeon:2",
+   "nuit-relais:1",
+   "puits:2",
+   "escalier:2",
+   "scies-jumelles:4",
+   "nuit-portes:0",
+   "mur-friable:0",
+   "saut-plafond:2"
+  ],
+  "hash": "b45d89b7",
+  "authorTicks": 3548
+ },
+ "2027-01-24": {
+  "theme": "usine",
+  "pieces": [
+   "tapis-mur:0",
+   "ressort-mur:1",
+   "marelle:3",
+   "tapis-contraire:3",
+   "chute-pics:4",
+   "tunnel-scies:0",
+   "tunnel:3",
+   "plafond-pics:2",
+   "cheminee-quinconce:1",
+   "demi-tour:3",
+   "plongeon:4"
+  ],
+  "hash": "c5d21e24",
+  "authorTicks": 3541
+ },
+ "2027-01-25": {
+  "theme": "glace",
+  "pieces": [
+   "glace-cheminee:1",
+   "glace-mur:1",
+   "paroi-friable:0",
+   "piliers-scie:3",
+   "escalier:0",
+   "glace-corniches:1",
+   "chute-pics:4",
+   "puits:1",
+   "mur-friable:0",
+   "demi-tour:4",
+   "pont-friable:4",
+   "tremplin:1"
+  ],
+  "hash": "ab1b6e01",
+  "authorTicks": 3548
+ },
+ "2027-01-27": {
+  "theme": "usine",
+  "pieces": [
+   "scie-sol:5",
+   "pont-friable:0",
+   "piliers-scie:1",
+   "escalier:2",
+   "ressorts-trous:0",
+   "cheminee:1",
+   "tapis-contraire:2",
+   "tapis-relais:0",
+   "chute-pics:0"
+  ],
+  "hash": "fa2a2fdb",
+  "authorTicks": 3444
+ },
+ "2027-01-28": {
+  "theme": "nuit",
+  "pieces": [
+   "nuit-cheminee:1",
+   "ressorts-escalier:1",
+   "grande-scie:0",
+   "mur-trous:3",
+   "marelle:5",
+   "tunnel:3",
+   "scies-jumelles:3",
+   "nuit-portes:0",
+   "scie-ronde:3",
+   "plongeon:1",
+   "cheminee-pics:2"
+  ],
+  "hash": "00371369",
+  "authorTicks": 3565
+ },
+ "2027-01-30": {
+  "theme": "nuit",
+  "pieces": [
+   "scie-ronde:0",
+   "iles-friables:4",
+   "nuit-cheminee:0",
+   "cheminee:1",
+   "nuit-relais:0",
+   "petits-trous:1",
+   "pont-friable:4",
+   "puits:0",
+   "cheminee-vide:3",
+   "ressort-scie:2",
+   "paroi-friable:1"
+  ],
+  "hash": "75f342c1",
+  "authorTicks": 3618
+ },
+ "2027-01-31": {
+  "theme": "neon",
+  "pieces": [
+   "plafond-pics:1",
+   "quinconce:3",
+   "tunnel-scies:1",
+   "ascenseur:5",
+   "rebonds-doux:3",
+   "neon-relais:1",
+   "neon-silence:0",
+   "ressort-mur:3",
+   "lucarne:0",
+   "cheminee-pics:2",
+   "mur-seul:3"
+  ],
+  "hash": "300ccf40",
+  "authorTicks": 3644
+ },
+ "2027-02-01": {
+  "theme": "glace",
+  "pieces": [
+   "glace-cheminee:1",
+   "piliers-scie:3",
+   "cheminee:1",
+   "glace-relais:0",
+   "glace-promenade:0",
+   "ressort-scie:2",
+   "cheminee-vide:0",
+   "puits:2",
+   "pont-friable:4",
+   "iles-friables:2"
+  ],
+  "hash": "95b19477",
+  "authorTicks": 3417
+ },
+ "2027-02-02": {
+  "theme": "nuit",
+  "pieces": [
+   "ressorts-escalier:3",
+   "scies-jumelles:2",
+   "nuit-cheminee:1",
+   "ressort-mur-iles:3",
+   "marelle:5",
+   "tunnel:1",
+   "pendule:3",
+   "scie-ronde:0",
+   "escalier-friable:1",
+   "plongeon:1",
+   "nuit-portes:0"
+  ],
+  "hash": "a1c9aba0",
+  "authorTicks": 3615
+ },
+ "2027-02-03": {
+  "theme": "glace",
+  "pieces": [
+   "cheminee-vide:1",
+   "ascenseur:2",
+   "puits-descente:1",
+   "glace-promenade:0",
+   "glace-freinage:3",
+   "demi-tour:0",
+   "ressort-mur-iles:4",
+   "ressort-scie:2",
+   "lucarne:1",
+   "plafond-pics:4"
+  ],
+  "hash": "b9c73cc9",
+  "authorTicks": 3539
+ },
+ "2027-02-04": {
+  "theme": "neon",
+  "pieces": [
+   "descente-scies:5",
+   "cheminee-pics:0",
+   "neon-cheminee:0",
+   "petits-trous:5",
+   "ressort-plafond:3",
+   "iles-friables:3",
+   "paroi-friable:1",
+   "neon-couloir:2",
+   "plongeon:1",
+   "escalier-friable:0"
+  ],
+  "hash": "690c76de",
+  "authorTicks": 3448
+ },
+ "2027-02-05": {
+  "theme": "glace",
+  "pieces": [
+   "glace-corniches:3",
+   "escalier-scies:0",
+   "piliers:4",
+   "puits-descente:2",
+   "glace-promenade:3",
+   "plafond-pics:4",
+   "ressort-mur:3",
+   "lucarne:1",
+   "iles-scie:0",
+   "ascenseur:5",
+   "cheminee-pics:0"
+  ],
+  "hash": "a694d1b5",
+  "authorTicks": 3598
+ },
+ "2027-02-07": {
+  "theme": "neon",
+  "pieces": [
+   "tunnel-scies:1",
+   "neon-relais:0",
+   "plafond-pics:0",
+   "neon-respiration:0",
+   "piliers:3",
+   "chute-pics:0",
+   "demi-tour:3",
+   "ressorts-escalier:2",
+   "neon-silence:2"
+  ],
+  "hash": "c473b82b",
+  "authorTicks": 3371
+ },
+ "2027-02-08": {
+  "theme": "nuit",
+  "pieces": [
+   "escalier-scies:0",
+   "nuit-cheminee:0",
+   "ressort-scie:0",
+   "pont-friable:4",
+   "petits-trous:1",
+   "nuit-relais:0",
+   "puits:1",
+   "cheminee-vide:0",
+   "cheminee-scie:3"
+  ],
+  "hash": "36bddcc8",
+  "authorTicks": 3359
+ },
+ "2027-02-09": {
+  "theme": "neon",
+  "pieces": [
+   "pendule:4",
+   "descente-scies:4",
+   "neon-cheminee:0",
+   "petits-trous:1",
+   "scies-jumelles:3",
+   "neon-relais:0",
+   "escalier-friable:2",
+   "cheminee-pics:2",
+   "marelle:1",
+   "scie-ronde:3"
+  ],
+  "hash": "a2f92210",
+  "authorTicks": 3558
+ },
+ "2027-02-11": {
+  "theme": "usine",
+  "pieces": [
+   "paroi-friable:0",
+   "ressorts-escalier:3",
+   "tapis-escalier:3",
+   "plongeon:5",
+   "descente-scies:1",
+   "petits-trous:1",
+   "tapis-mur:3",
+   "mur-friable:0",
+   "tapis-lance:3",
+   "scies-jumelles:3",
+   "scie-ronde:2",
+   "tapis-alternes:2"
+  ],
+  "hash": "09ae7b9a",
+  "authorTicks": 3685
+ },
+ "2027-02-12": {
+  "theme": "nuit",
+  "pieces": [
+   "iles-scie:4",
+   "marelle:2",
+   "cheminee-scie:2",
+   "nuit-pont:3",
+   "demi-tour:0",
+   "puits-descente:2",
+   "nuit-marelle:0",
+   "escalier-scies:0",
+   "lucarne:1",
+   "nuit-escalier:2",
+   "piliers:5"
+  ],
+  "hash": "00a5926f",
+  "authorTicks": 3606
+ }
+}

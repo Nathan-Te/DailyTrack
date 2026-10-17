@@ -8,13 +8,17 @@ import {
   SURFACE_PARAM_KEYS,
   TICK_RATE,
   UNITS_PER_TILE,
+  WIND_DEFAULTS,
+  WIND_PARAM_KEYS,
   isDefaultJumpParams,
   sprintTop,
   surfaceParam,
+  windParam,
   type JumpParamKey,
   type JumpParams,
   type SprintParamKey,
   type SurfaceParamKey,
+  type WindParamKey,
 } from "@cdj/jump-sim";
 import { storageKey } from "./storage";
 
@@ -26,6 +30,7 @@ import { storageKey } from "./storage";
 // `DEFAULT_JUMP_PARAMS`, comme ceux de l'élan : absent = `SURFACE_DEFAULTS`) : le curseur montre le défaut tant qu'ils sont absents, la valeur
 // n'est écrite qu'au premier mouvement du curseur, « Réinitialiser » les retire, et dès que l'un diffère du défaut la partie est `tuned`
 // (`isDefaultJumpParams`) : rien n'est enregistré, le badge « réglages modifiés » s'affiche.
+// Lot 13 : une section « Courants d'air » (trois curseurs : `windAccel`, `windRise`, `windDrift`), sur le même principe (absent = `WIND_DEFAULTS`).
 
 type Unit = "speed" | "accel" | "ticks" | "length";
 
@@ -45,6 +50,8 @@ export type SprintSlider = TuneSlider<Exclude<SprintParamKey, "sprintMode">>;
 
 /** Lot 11 : les curseurs des surfaces (section à part, valeurs par défaut `SURFACE_DEFAULTS`). */
 export type SurfaceSlider = TuneSlider<SurfaceParamKey>;
+/** Lot 13 : les curseurs du vent (section à part, valeurs par défaut `WIND_DEFAULTS`). */
+export type WindSlider = TuneSlider<WindParamKey>;
 
 const T = UNITS_PER_TILE;
 const R = TICK_RATE;
@@ -150,6 +157,25 @@ export const SURFACE_SLIDERS: readonly SurfaceSlider[] = [
 /** Combien de réglages de surface diffèrent de leur défaut. */
 export const surfacesChanged = (p: Readonly<JumpParams>): number => SURFACE_PARAM_KEYS.filter((k) => surfaceValue(p, k) !== SURFACE_DEFAULTS[k]).length;
 
+/** Lot 13 : valeur d'un réglage du vent, ou son défaut. */
+export const windValue = (p: Readonly<JumpParams>, key: WindParamKey): number => windParam(p, key);
+
+export const WIND_SLIDERS: readonly WindSlider[] = [
+  { key: "windAccel", label: "Vent : poussée", unit: "accel", min: 1, max: 120, hint: (p) => `montée atteinte en ${num(ticksTo(windValue(p, "windRise"), windValue(p, "windAccel")) / R, 2)} s depuis l'arrêt` },
+  { key: "windRise", label: "Vent vers le haut : montée maximale", unit: "speed", min: 0, max: 1200, hint: (p) => `on plane à ${num((windValue(p, "windRise") * R) / T)} tuiles/s vers le haut` },
+  {
+    key: "windDrift",
+    label: "Vent latéral : dérive",
+    unit: "speed",
+    min: 0,
+    max: 800,
+    hint: (p) => `avec le vent : ${num(((p.runSpeed + windValue(p, "windDrift")) * R) / T)} tuiles/s, contre : ${num(((p.runSpeed - windValue(p, "windDrift")) * R) / T)} tuiles/s`,
+  },
+];
+
+/** Combien de réglages du vent diffèrent de leur défaut. */
+export const windsChanged = (p: Readonly<JumpParams>): number => WIND_PARAM_KEYS.filter((k) => windValue(p, k) !== WIND_DEFAULTS[k]).length;
+
 export const TUNE_STORAGE_KEY = storageKey("tune");
 
 /**
@@ -160,6 +186,7 @@ export function paramsJson(params: Readonly<JumpParams>): string {
   const keys: string[] = [...JUMP_PARAM_KEYS];
   if (params.sprintMode) for (const k of SPRINT_PARAM_KEYS) if (params[k] !== undefined) keys.push(k);
   for (const k of SURFACE_PARAM_KEYS) if (params[k] !== undefined && params[k] !== SURFACE_DEFAULTS[k]) keys.push(k);
+  for (const k of WIND_PARAM_KEYS) if (params[k] !== undefined && params[k] !== WIND_DEFAULTS[k]) keys.push(k);
   return JSON.stringify(params, keys, 2);
 }
 
@@ -178,6 +205,7 @@ export function resetParams(params: JumpParams): void {
   Object.assign(params, DEFAULT_JUMP_PARAMS);
   for (const k of SPRINT_PARAM_KEYS) delete params[k];
   for (const k of SURFACE_PARAM_KEYS) delete params[k];
+  for (const k of WIND_PARAM_KEYS) delete params[k];
 }
 
 /** Lit des réglages gardés : seules les clés connues, entières et dans les bornes de leur curseur, sont reprises. */
@@ -186,7 +214,7 @@ export function parseTuned(text: string | null): JumpParams {
   if (!text) return params;
   try {
     const saved = JSON.parse(text) as Partial<Record<keyof JumpParams, unknown>>;
-    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS, ...SURFACE_SLIDERS]) {
+    for (const s of [...TUNE_SLIDERS, ...SPRINT_SLIDERS, ...SURFACE_SLIDERS, ...WIND_SLIDERS]) {
       const v = saved[s.key];
       if (typeof v === "number" && Number.isInteger(v) && v >= s.min && v <= s.max) params[s.key] = v;
     }
@@ -266,6 +294,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   const rows = new Map<JumpParamKey, Row>();
   const sprintRows = new Map<Exclude<SprintParamKey, "sprintMode">, Row>();
   const surfaceRows = new Map<SurfaceParamKey, Row>();
+  const windRows = new Map<WindParamKey, Row>();
   const status = document.createElement("div");
   status.className = "status";
 
@@ -308,10 +337,18 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
       r.hint.textContent = s.hint ? s.hint(params) : "";
       r.row.classList.toggle("changed", v !== SURFACE_DEFAULTS[s.key]);
     }
+    for (const s of WIND_SLIDERS) {
+      const r = windRows.get(s.key)!;
+      const v = windValue(params, s.key);
+      r.input.value = String(v);
+      r.value.textContent = `${formatHuman(s.unit, v)} (${v})`;
+      r.hint.textContent = s.hint ? s.hint(params) : "";
+      r.row.classList.toggle("changed", v !== WIND_DEFAULTS[s.key]);
+    }
     sprintSwitch.textContent = on ? "Élan : activé" : "Élan : désactivé";
     sprintSwitch.setAttribute("aria-pressed", on ? "true" : "false");
     sprintBox.classList.toggle("on", on);
-    const changed = JUMP_PARAM_KEYS.filter((k) => params[k] !== DEFAULT_JUMP_PARAMS[k]).length + (on ? 1 : 0) + surfacesChanged(params);
+    const changed = JUMP_PARAM_KEYS.filter((k) => params[k] !== DEFAULT_JUMP_PARAMS[k]).length + (on ? 1 : 0) + surfacesChanged(params) + windsChanged(params);
     status.textContent = changed === 0 ? "Réglages par défaut" : `${changed} réglage(s) modifié(s) : partie jamais enregistrée`;
   };
 
@@ -366,6 +403,18 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   surfaceBox.append(surfaceTitle, surfaceNote);
   for (const s of SURFACE_SLIDERS) addSlider(surfaceBox, s, surfaceRows);
   body.append(surfaceBox);
+
+  // Lot 13 : la section « Courants d'air ».
+  const windBox = document.createElement("div");
+  windBox.className = "winds";
+  const windTitle = document.createElement("strong");
+  windTitle.textContent = "Courants d'air";
+  const windNote = document.createElement("small");
+  windNote.className = "hint";
+  windNote.textContent = "Poussée, montée maximale (vent vers le haut) et dérive (vent latéral), à force 100. Modifiés, la partie n'est jamais enregistrée.";
+  windBox.append(windTitle, windNote);
+  for (const s of WIND_SLIDERS) addSlider(windBox, s, windRows);
+  body.append(windBox);
 
   const actions = document.createElement("div");
   actions.className = "actions";

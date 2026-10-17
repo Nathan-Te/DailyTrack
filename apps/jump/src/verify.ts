@@ -1,4 +1,4 @@
-import { DANGERS_LEVEL, ESSAI_LEVEL, SANDBOX_LEVEL, decodeReplay, replayAttempt, replayFingerprint, type Level } from "@cdj/jump-sim";
+import { DANGERS_LEVEL, ESSAI_LEVEL, SANDBOX_LEVEL, VENT_LEVEL, decodeReplay, replayAttempt, replayFingerprint, type Level } from "@cdj/jump-sim";
 
 // Page de test sans rendu (lot 3) : rejoue une rediffusion avec la même simulation que le jeu et rend l'empreinte de tous les états du
 // rejeu. Le test de navigateur `e2e/replay.spec.ts` la compare à celle que Node a calculée (`packages/jump-sim/test/fixtures/replay-golden.json`),
@@ -13,7 +13,7 @@ export interface VerifyResult {
   lives: number;
 }
 
-const LEVELS: Record<string, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL };
+const LEVELS: Record<string, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL, vent: VENT_LEVEL };
 
 declare global {
   interface Window {

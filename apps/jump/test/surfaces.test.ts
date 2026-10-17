@@ -579,13 +579,13 @@ describe("thème et mécanique (adresse, galerie, essai)", () => {
     throw new Error(`pas de jour ${theme}`);
   };
 
-  it("chaque thème à mécanique a une date du calendrier ; usine → tapis, glace → glace, nuit → clignotant et néon → alterné (lot 12), la forêt sans mécanique", () => {
+  it("chaque thème à mécanique a une date du calendrier ; usine → tapis, glace → glace, nuit → clignotant et néon → alterné (lot 12), forêt → vent (lot 13)", () => {
     expect(mechanicOf(THEMES.usine.name)).toBe("tapis");
     expect(mechanicOf(THEMES.glace.name)).toBe("glace");
     expect(mechanicOf(THEMES.nuit.name)).toBe("clignotant");
     expect(mechanicOf(THEMES.neon.name)).toBe("alterne");
-    expect(mechanicOf("foret")).toBeNull();
-    for (const n of ["usine", "glace", "nuit", "neon"] as const) expect(jumpThemeForDay(dayOf(n))).toBe(n);
+    expect(mechanicOf("foret")).toBe("vent");
+    for (const n of ["usine", "glace", "nuit", "neon", "foret"] as const) expect(jumpThemeForDay(dayOf(n))).toBe(n);
     expect(daysFromCivil(2026, 10, 16)).toBe(first);
   });
 
@@ -629,7 +629,7 @@ describe("thème et mécanique (adresse, galerie, essai)", () => {
     expect(THEME_FILTERS).toEqual([...JUMP_THEME_NAMES, "sans"]);
     expect(matchesTheme(generic, null)).toBe(true);
     expect(matchesTheme(generic, "sans")).toBe(true);
-    expect(matchesTheme(generic, "foret")).toBe(true);
+    expect(matchesTheme(generic, "foret")).toBe(false); // lot 13 : la forêt a sa mécanique (le vent)
     expect(matchesTheme(generic, "usine")).toBe(false);
     expect(matchesTheme(usine, "usine")).toBe(true);
     expect(matchesTheme(usine, "glace")).toBe(false);

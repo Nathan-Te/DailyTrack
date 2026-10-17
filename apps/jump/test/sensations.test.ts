@@ -217,7 +217,7 @@ S....#....
   it("recopie le pas et la source ; la liste des noms est complète", () => {
     const { events } = play(FLAT, [[R | J, 2]]);
     expect(events[0]).toMatchObject({ kind: "saut", tick: 0, source: "jeu" });
-    expect(EVENT_KINDS).toHaveLength(25); // lot 8b : `derapage` ; lot 11 : `tapisDebut`, `tapisFin`, `glaceDebut`, `glaceFin`, `glaceFrein` ; lot 12 : `blocVacille`, `blocApparait`, `blocDisparait`, `bascule`, `metronome`
+    expect(EVENT_KINDS).toHaveLength(28); // lot 8b : `derapage` ; lot 11 : `tapisDebut`, `tapisFin`, `glaceDebut`, `glaceFin`, `glaceFrein` ; lot 12 : `blocVacille`, `blocApparait`, `blocDisparait`, `bascule`, `metronome` ; lot 13 : `ventDebut`, `ventFin`, `rafale`
   });
 });
 

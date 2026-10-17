@@ -16,14 +16,14 @@ export interface UrlOption {
 }
 
 /** Les niveaux qu'on peut ouvrir par `?scenario=`. */
-export const SCENARIOS = ["essai", "dangers", "bac-a-sable"] as const;
+export const SCENARIOS = ["essai", "dangers", "bac-a-sable", "vent"] as const;
 export type Scenario = (typeof SCENARIOS)[number];
 
 export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "scenario",
     description:
-      "Niveau écrit à la main à ouvrir au lieu du niveau du jour (la page par défaut depuis le lot 5). « essai » : le niveau d'essai du lot 2 (≈ 22 s, tous les dangers) ; « dangers » : la galerie, chaque danger seul ; « bac-a-sable » : le bac à sable du personnage (lot 1). Une valeur inconnue ouvre l'essai.",
+      "Niveau écrit à la main à ouvrir au lieu du niveau du jour (la page par défaut depuis le lot 5). « essai » : le niveau d'essai du lot 2 (≈ 22 s, tous les dangers) ; « dangers » : la galerie, chaque danger seul ; « bac-a-sable » : le bac à sable du personnage (lot 1) ; « vent » (lot 13) : la galerie des courants d'air (colonne montante, dérive, vent contraire, rafale), dans le thème forêt. Une valeur inconnue ouvre l'essai.",
     values: SCENARIOS,
   },
   {

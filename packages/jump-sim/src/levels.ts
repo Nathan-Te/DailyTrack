@@ -96,3 +96,39 @@ scie ronde o 300 boucle 80,11 83,11 83,14 80,14
 `;
 
 export const DANGERS_LEVEL: Level = parseLevel(DANGERS_ASCII);
+
+/**
+ * Lot 13 — galerie des courants d'air (`?scenario=vent`), chaque zone dans sa section : une colonne montante au-dessus d'un gouffre (y monter,
+ * planer, filer), une dérive vers la droite (on est emporté, on court plus vite), un vent contraire (on avance moins vite), puis une rafale
+ * au-dessus d'un gouffre trop large à pied : attendre qu'elle souffle (elle s'annonce), s'y lancer ; un point de passage au début de chaque
+ * section après la première (y reprendre remet l'horloge de la rafale à zéro). Un niveau neuf : les niveaux d'essai et de
+ * la galerie des dangers ne changent pas (`JUMP_SIM_VERSION` reste 3).
+ */
+export const VENT_ASCII = `
+##################################################################################
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#................................................................................#
+#.S..................C...................C..................C.................F..#
+######............############################################............########
+######^^^^^^^^^^^^############################################^^^^^^^^^^^^########
+##################################################################################
+
+section colonne 1-20
+section derive 21-40
+section contre 41-58
+section rafale 59-80
+vent 10-13 2-13 haut 100
+vent 22-39 2-11 droite 100
+vent 42-57 2-11 gauche 100
+vent 62-73 2-13 droite 100 rafale 240 140 130
+`;
+
+export const VENT_LEVEL: Level = parseLevel(VENT_ASCII);

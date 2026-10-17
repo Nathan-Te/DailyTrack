@@ -76,7 +76,7 @@ export function mountGallery(options: UrlChoices): GalleryView {
   };
   const tagSelect = select("Étiquette :", "etiquette", [["", "toutes"], ...MODULE_TAGS.map((t) => [t, TAG_LABELS[t]] as [string, string])]);
   const familySelect = select("Famille :", "famille", [["", "toutes"], ...galleryFamilies(order).map((f) => [f.family, `${f.family} (${f.count})`] as [string, string])]);
-  const themeLabel = (t: ThemeFilter) => (t === "sans" ? "sans mécanique" : t === "usine" ? "usine (tapis roulants)" : t === "glace" ? "glace (patinoire)" : t === "nuit" ? "nuit (blocs clignotants)" : t === "neon" ? "néon (blocs alternés)" : (themeByName(t)?.label ?? t));
+  const themeLabel = (t: ThemeFilter) => (t === "sans" ? "sans mécanique" : t === "usine" ? "usine (tapis roulants)" : t === "glace" ? "glace (patinoire)" : t === "nuit" ? "nuit (blocs clignotants)" : t === "neon" ? "néon (blocs alternés)" : t === "foret" ? "forêt (courants d'air)" : (themeByName(t)?.label ?? t));
   const themeSelect = select("Thème :", "theme", [["", "tous"], ...THEME_FILTERS.map((t) => [t, themeLabel(t)] as [string, string])]);
   const count = el("p", "count");
   themeSelect.addEventListener("change", () => view.setFilter({ theme: (themeSelect.value || null) as ThemeFilter | null }));

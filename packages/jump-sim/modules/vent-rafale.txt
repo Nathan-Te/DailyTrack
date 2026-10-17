@@ -1,0 +1,31 @@
+id: vent-rafale
+intention: Attendre la rafale au bord du gouffre, puis s'y lancer : elle porte assez loin, entre les deux scies, pour atteindre l'autre bord.
+etiquettes: scie precision vent
+famille: vent-rafale
+theme: foret
+format: 3
+paliers: 9 9
+repeter: trou colonnes 9-9
+variante: trou=1 cycle=240 actif=140 decalage=130
+variante: trou=2 cycle=300 actif=170 decalage=170
+variante: trou=1 cycle=200 actif=130 decalage=100
+variante: trou=2 cycle=240 actif=120 decalage=130
+variante: trou=1 cycle=240 actif=125 decalage=130
+variante: trou=1 cycle=200 actif=115 decalage=100
+grille:
+................
+................
+................
+.......o........
+................
+................
+................
+................
+................
+##............##
+##............##
+##.........o..##
+##^^^^^^^^^^^^##
+################
+
+vent 2-13 1-11 droite 100 rafale {cycle} {actif} {decalage}

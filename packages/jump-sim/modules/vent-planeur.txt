@@ -1,0 +1,29 @@
+id: vent-planeur
+intention: Franchir trois bosses en se laissant porter par de petits courants d'air montants : un saut, on plane, on se pose.
+etiquettes: respiration vent
+famille: vent-planeur
+theme: foret
+format: 3
+paliers: 9 9
+repeter: large colonnes 7-7
+repeter: large colonnes 13-13
+variante: large=1 force=60
+variante: large=1 force=70
+variante: large=1 force=80
+grille:
+..................
+..................
+..................
+..................
+..................
+..................
+..................
+...##.....##.....#
+...##.....##.....#
+##################
+##################
+##################
+
+vent 2-5 2-6 haut {force}
+vent 8-11 2-6 haut {force}
+vent 14-17 2-6 haut {force}

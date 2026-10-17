@@ -1,7 +1,7 @@
 import { UNITS_PER_TILE } from "./constants";
 import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
-import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, isSolidTile, tileAt, type Level } from "./level";
+import { TILE_BELT_LEFT, TILE_BELT_RIGHT, TILE_ICE, WIND_LEFT, WIND_RIGHT, WIND_UP, isSolidTile, tileAt, type Level } from "./level";
 
 // Le personnage (lot 1) : course à l'élan, saut à hauteur variable, glisse et saut muraux, tolérances (coyote, tampon, coin).
 // `stepPlayer` est pur et avance d'un pas de 1/120 s. Tout l'état est entier : positions en unités (1 tuile = 4 096), vitesses en unités
@@ -99,6 +99,14 @@ export interface JumpParams {
   iceAccel?: number;
   /** Glace : freinage au sol (remplace `groundDecel`), unités/pas². */
   iceDecel?: number;
+  // ——— Lot 13 : courants d'air (forêt) ———
+  // Même principe : **absents de `DEFAULT_JUMP_PARAMS`** (absent = `WIND_DEFAULTS`) ; aucun niveau d'avant n'a de zone de vent.
+  /** Vent : accélération vers la vitesse visée (montée, ou dérive sans commande), unités/pas² (à force 100). */
+  windAccel?: number;
+  /** Vent vers le haut : vitesse de montée maximale, unités/pas (à force 100). */
+  windRise?: number;
+  /** Vent latéral : vitesse de dérive, ajoutée à la vitesse visée dans le sens du vent, unités/pas (à force 100). */
+  windDrift?: number;
 }
 
 /**
@@ -132,7 +140,7 @@ export const DEFAULT_JUMP_PARAMS: Readonly<JumpParams> = Object.freeze({
 export const SPRINT_PARAM_KEYS = ["sprintMode", "sprintSpeed", "sprintDelay", "sprintAccel"] as const satisfies readonly (keyof JumpParams)[];
 export type SprintParamKey = (typeof SPRINT_PARAM_KEYS)[number];
 /** Les réglages qui ont un défaut (tous sauf l'essai d'élan). */
-export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey | SurfaceParamKey>;
+export type JumpParamKey = Exclude<keyof JumpParams, SprintParamKey | SurfaceParamKey | WindParamKey>;
 
 export const JUMP_PARAM_KEYS = Object.keys(DEFAULT_JUMP_PARAMS) as readonly JumpParamKey[];
 
@@ -161,11 +169,34 @@ export function surfaceParam(params: Readonly<JumpParams>, key: SurfaceParamKey)
 }
 
 /**
+ * Lot 13 : défauts des réglages du vent. Montée jusqu'à 6 tuiles/s (205 unités/pas) : on plane, porté doucement ; dérive de 5 tuiles/s
+ * (171, comme un tapis) : avec le vent on court à 16 tuiles/s, contre lui à 6 ; accélération de 20 unités/pas² (≈ la gravité, 19) : une chute à
+ * 12 tuiles/s est retournée en ≈ 0,25 s, la dérive est atteinte en 9 pas.
+ */
+export const WIND_DEFAULTS = Object.freeze({ windAccel: 20, windRise: 205, windDrift: 171 });
+export const WIND_PARAM_KEYS = ["windAccel", "windRise", "windDrift"] as const satisfies readonly (keyof JumpParams)[];
+export type WindParamKey = (typeof WIND_PARAM_KEYS)[number];
+
+/** Un réglage du vent : la valeur donnée, sinon son défaut. */
+export function windParam(params: Readonly<JumpParams>, key: WindParamKey): number {
+  return params[key] ?? WIND_DEFAULTS[key];
+}
+
+/**
+ * Lot 13 : la poussée d'une zone de vent pendant un pas (calculée par `stepAttempt` : le centre du personnage dans une zone qui souffle) :
+ * `dir` = `WIND_UP`, `WIND_LEFT` ou `WIND_RIGHT`, `force` en % des réglages.
+ */
+export interface WindPush {
+  dir: number;
+  force: number;
+}
+
+/**
  * Vrai si tous les réglages valent leur défaut (une partie aux réglages modifiés porte le drapeau `tuned`). L'élan éteint (`sprintMode`
  * absent ou 0) ne change rien : ses autres réglages, sans effet, ne rendent pas la partie `tuned`.
  */
 export function isDefaultJumpParams(params: Readonly<JumpParams>): boolean {
-  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode && SURFACE_PARAM_KEYS.every((k) => surfaceParam(params, k) === SURFACE_DEFAULTS[k]);
+  return JUMP_PARAM_KEYS.every((k) => params[k] === DEFAULT_JUMP_PARAMS[k]) && !params.sprintMode && SURFACE_PARAM_KEYS.every((k) => surfaceParam(params, k) === SURFACE_DEFAULTS[k]) && WIND_PARAM_KEYS.every((k) => windParam(params, k) === WIND_DEFAULTS[k]);
 }
 
 /** Vitesse visée en élan (unités/pas) : `sprintSpeed`, jamais sous `runSpeed` ni au-dessus de `MAX_SPEED`. */
@@ -291,7 +322,7 @@ function wallGap(level: Grid, x: number, y: number, side: number, reach: number)
  * déplacement x puis y (tolérance de coin en montée) → sol, compteurs, contact mural.
  */
 export function stepPlayer(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>): PlayerState {
-  return stepPlayerJump(state, input, level, params, null);
+  return stepPlayerJump(state, input, level, params, null, null);
 }
 
 /**
@@ -308,8 +339,12 @@ export interface JumpFlags {
  * `stepPlayer` qui dit aussi si un saut est parti (lot 12) : mêmes calculs au bit près, `flags` (s'il est donné) est rempli. C'est la **seule**
  * façon de savoir qu'un saut est « vraiment parti » : on ne le déduit pas de l'appui sur la touche (l'appui peut attendre dans le tampon,
  * ou ne servir à rien en l'air).
+ * Lot 13 : `wind` (null : aucun vent, exactement les calculs d'avant) est la poussée de la zone de vent où se trouve le centre du personnage
+ * au début du pas. Vers le haut, elle **remplace la gravité** : la vitesse verticale va vers −`windRise` (montée), freinée par la gravité si
+ * l'on monte plus vite ; sur le côté, la vitesse visée devient commande + `windDrift` dans le sens du vent (sans commande, on dérive à
+ * `windAccel`). Rien n'est gardé dans l'état : en sortant de la zone, la vitesse acquise reste et la physique ordinaire reprend.
  */
-export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null): PlayerState {
+export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null, wind: Readonly<WindPush> | null = null): PlayerState {
   if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
   const p = params;
   let dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0); // gauche + droite = neutre
@@ -334,7 +369,19 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
   const sprintOn = p.sprintMode === 1;
   let sprint = sprintOn ? (state.sprint ?? 0) : 0;
   let vx = state.vx;
-  if (belt !== 0) {
+  // Lot 13 : la poussée du vent (force en % des réglages ; l'accélération ne descend jamais sous 1).
+  const side = wind === null ? 0 : wind.dir === WIND_LEFT ? -1 : wind.dir === WIND_RIGHT ? 1 : 0;
+  const up = wind !== null && wind.dir === WIND_UP;
+  const windRaw = wind === null ? 0 : idiv(windParam(p, "windAccel") * wind.force, 100);
+  const windAcc = windRaw < 1 ? 1 : windRaw;
+  if (side !== 0) {
+    // Vent latéral : vitesse visée = course voulue (+ tapis) + dérive ; sans commande, on est emporté à `windAccel`.
+    const target = dir * p.runSpeed + belt * surfaceParam(p, "beltSpeed") + side * idiv(windParam(p, "windDrift") * wind!.force, 100);
+    const sg = sign(target);
+    if (sg === 0) vx = approach(vx, 0, decel);
+    else if (dir === 0) vx = approach(vx, target, vx * sg < target * sg ? windAcc : decel);
+    else vx = approach(vx, target, vx * sg < 0 ? (accel > decel ? accel : decel) : vx * sg < target * sg ? accel : decel);
+  } else if (belt !== 0) {
     // Tapis : vitesse visée = course voulue + vitesse du tapis (immobile, on est emporté ; contre le tapis, on avance moins vite).
     const target = dir * p.runSpeed + belt * surfaceParam(p, "beltSpeed");
     const sg = sign(target);
@@ -358,9 +405,15 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
   // ——— Gravité ou glisse murale ———
   let vy = state.vy;
   let slide = 0;
-  if (!grounded && vy >= 0 && dir !== 0 && wallGap(level, state.x, state.y, dir, 1) === 0) slide = dir;
-  const fall = slide !== 0 ? p.slideSpeed : p.fallSpeed;
-  vy = vy < fall ? (vy + p.gravity > fall ? fall : vy + p.gravity) : vy - p.gravity < fall ? fall : vy - p.gravity;
+  if (up) {
+    // Lot 13 : vent vers le haut : il remplace la gravité ; on monte jusqu'à −`windRise`, la gravité freine une montée plus rapide (un saut).
+    const rise = -idiv(windParam(p, "windRise") * wind!.force, 100);
+    vy = vy < rise ? (vy + p.gravity > rise ? rise : vy + p.gravity) : approach(vy, rise, windAcc);
+  } else {
+    if (!grounded && vy >= 0 && dir !== 0 && wallGap(level, state.x, state.y, dir, 1) === 0) slide = dir;
+    const fall = slide !== 0 ? p.slideSpeed : p.fallSpeed;
+    vy = vy < fall ? (vy + p.gravity > fall ? fall : vy + p.gravity) : vy - p.gravity < fall ? fall : vy - p.gravity;
+  }
 
   // ——— Saut ———
   let air = state.air;

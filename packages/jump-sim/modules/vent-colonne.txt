@@ -1,0 +1,30 @@
+id: vent-colonne
+intention: Planer au-dessus d'un gouffre porté par une colonne d'air montante : s'y laisser monter, puis filer jusqu'à l'autre bord.
+etiquettes: precision vent
+famille: vent-colonne
+theme: foret
+mutateurs: plafond
+format: 3
+paliers: 9 9
+repeter: trou colonnes 11-11
+variante: trou=1 force=100
+variante: trou=2 force=100
+variante: trou=3 force=160
+variante: trou=1 force=100 +plafond:pics
+variante: trou=2 force=150 +plafond:pics
+grille:
+................
+................
+................
+................
+................
+................
+................
+................
+................
+##............##
+##^^^^^^^^^^^^##
+################
+
+vent 5-8 1-10 haut {force}
+zone plafond 2-13 2

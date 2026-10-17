@@ -47,9 +47,9 @@ describe("jumpThemeForDay (socle)", () => {
     expect([...seen].sort()).toEqual([...JUMP_THEME_NAMES].sort());
   });
 
-  it("quatre thèmes ont une mécanique : usine (tapis), glace, nuit (clignotants, lot 12) et néon (alternés, lot 12) ; seule la forêt n'en a pas (lot 13)", () => {
-    expect(THEME_MECHANIC).toEqual({ usine: "tapis", glace: "glace", nuit: "clignotant", neon: "alterne" });
-    expect(JUMP_THEME_NAMES.filter((n) => mechanicOf(n) === null)).toEqual(["foret"]);
+  it("les cinq thèmes ont une mécanique : usine (tapis), glace, nuit (clignotants, lot 12), néon (alternés, lot 12) et forêt (courants d'air, lot 13)", () => {
+    expect(THEME_MECHANIC).toEqual({ usine: "tapis", glace: "glace", nuit: "clignotant", neon: "alterne", foret: "vent" });
+    expect(JUMP_THEME_NAMES.filter((n) => mechanicOf(n) === null)).toEqual([]);
   });
 });
 
@@ -169,23 +169,26 @@ describe("le niveau du jour lit le thème", () => {
     const bare = { ...usine, pieces: usine.pieces.map((p) => ({ ...p, mechanic: null })) };
     expect(dailyProblems(bare).join(" ; ")).toMatch(/mécanique tapis/);
     const foret = levels.find((L) => L.theme === "foret")!;
-    const stray = { ...foret, pieces: foret.pieces.map((p, k) => (k === 0 ? { ...p, mechanic: "tapis" as const } : p)) };
+    const bareForest = { ...foret, pieces: foret.pieces.map((p) => ({ ...p, mechanic: null })) };
+    expect(dailyProblems(bareForest).join(" ; ")).toMatch(/mécanique vent/);
+    // Lot 13 : un morceau d'une autre mécanique (un tapis en forêt) est hors de son thème, même si le quota est tenu.
+    const plain = foret.pieces.findIndex((p) => p.mechanic === null);
+    const stray = { ...foret, pieces: foret.pieces.map((p, k) => (k === plain ? { ...p, mechanic: "tapis" as const } : p)) };
     expect(dailyProblems(stray).join(" ; ")).toMatch(/hors de son thème/);
   });
 
-  it("thèmes sans mécanique : la composition ne change pas (aucune variante réservée n'entre dans le catalogue du jour)", () => {
+  it("un niveau ne contient que des morceaux et des variantes de son thème (ou de tous les thèmes)", () => {
     for (const L of levels) {
-      if (mechanicOf(L.theme) !== null) continue;
       for (const p of L.pieces) {
         const def = moduleDef(p.id);
-        expect(def.theme, p.id).toBeNull();
-        expect(variantTheme(def, p.variant), `${p.id}:${p.variant}`).toBeNull();
+        const th = variantTheme(def, p.variant);
+        expect(th === null || th === L.theme, `${L.date} ${p.id}:${p.variant}`).toBe(true);
       }
     }
   });
 
   it("le niveau de secours d'un thème à mécanique tient aussi le quota de signature", () => {
-    for (const theme of ["usine", "glace", "nuit", "neon"] as const) {
+    for (const theme of ["usine", "glace", "nuit", "neon", "foret"] as const) {
       const day = DATES.find((d) => jumpThemeForDay(d) === theme)!;
       const f = fallbackLevel(day);
       expect(typeof f, theme).not.toBe("string");

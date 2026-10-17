@@ -16,10 +16,12 @@ import {
   isSolidTile,
   isSpikeTile,
   sawCenter,
+  windBlows,
+  windZoneAt,
   type Level,
   type Point,
 } from "./level";
-import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED, PLAYER_HEIGHT, PLAYER_WIDTH, initialPlayer, stepPlayerJump, type JumpFlags, type JumpParams, type PlayerState } from "./player";
+import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED, PLAYER_HEIGHT, PLAYER_WIDTH, initialPlayer, stepPlayerJump, type JumpFlags, type JumpParams, type PlayerState, type WindPush } from "./player";
 
 // Un essai (lot 2) : le personnage plus tout l'état dynamique du niveau (scies, sections en marche, blocs friables, ressort), un chrono
 // en pas, la mort et l'arrivée. `stepAttempt` est pur et avance d'un pas ; tout l'état est entier. Règles :
@@ -44,6 +46,10 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // un point de passage la remet à 0). **Règle de sortie** : un bloc qui devrait devenir solide pendant que la boîte du personnage le chevauche
 // reste absent jusqu'au premier pas où elle n'y est plus — on ne meurt jamais écrasé ni coincé. `alt` n'existe que dans un niveau qui a des
 // blocs alternés (les empreintes des autres niveaux ne changent pas).
+//
+// **Courants d'air (lot 13)** : une zone de vent (`Level.winds`) pousse le personnage tant que le centre de sa boîte y est, **au début du pas**
+// (`windPush`) ; une zone en rafale suit l'horloge de sa section (pas écoulés depuis l'entrée du personnage, comme les scies : la mort et la
+// reprise la remettent à zéro). Rien de plus dans l'état : la phase se lit dans `sections`, la vitesse acquise dans `player`.
 //
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
@@ -245,6 +251,34 @@ export function sawCenters(level: Level, state: Readonly<AttemptState>): Point[]
   return level.saws.map((saw, i) => sawCenter(saw, sawPhase(level, state, i)));
 }
 
+/** Lot 13 : phase de la section de la zone de vent `index` dans cet état (0 avant l'entrée, et pour une zone hors section). */
+export function windPhase(level: Level, state: Readonly<AttemptState>, index: number): number {
+  const w = level.winds[index]!;
+  if (w.section < 0) return 0;
+  const start = state.sections[w.section]!;
+  return start < 0 ? 0 : state.time - start;
+}
+
+/** Lot 13 : la zone de vent `index` souffle-t-elle dans cet état ? */
+export function windActive(level: Level, state: Readonly<AttemptState>, index: number): boolean {
+  return windBlows(level.winds[index]!, windPhase(level, state, index));
+}
+
+/** Lot 13 : la zone de vent où se trouve le centre du personnage dans cet état (qu'elle souffle ou non), −1 aucune. */
+export function windZoneOf(level: Level, state: Readonly<AttemptState>): number {
+  if (level.winds.length === 0) return -1;
+  const p = state.player;
+  return windZoneAt(level, tileOf(p.x + idiv(PLAYER_WIDTH, 2)), tileOf(p.y + idiv(PLAYER_HEIGHT, 2)));
+}
+
+/** Lot 13 : la poussée que subit le personnage au pas qui suit cet état (null : hors d'une zone, ou zone qui ne souffle pas). */
+export function windPush(level: Level, state: Readonly<AttemptState>): WindPush | null {
+  const i = windZoneOf(level, state);
+  if (i < 0 || !windActive(level, state, i)) return null;
+  const w = level.winds[i]!;
+  return { dir: w.dir, force: w.force };
+}
+
 /** Boîte du personnage. */
 export function playerBox(p: Readonly<PlayerState>): Box {
   return { x: p.x, y: p.y, w: PLAYER_WIDTH, h: PLAYER_HEIGHT };
@@ -338,7 +372,7 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
 
   // ——— Personnage ———
   const flags: JumpFlags | null = level.alts.length > 0 ? { jumped: 0, wall: 0 } : null;
-  let player = stepPlayerJump(state.player, input, gridOf(level, tiles), params, flags);
+  let player = stepPlayerJump(state.player, input, gridOf(level, tiles), params, flags, level.winds.length > 0 ? windPush(level, state) : null);
   const landed = player.ground === 1;
   const c0 = tileOf(player.x);
   const c1 = tileOf(player.x + PLAYER_WIDTH - 1);

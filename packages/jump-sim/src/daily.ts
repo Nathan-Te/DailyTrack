@@ -187,7 +187,7 @@ export function restGroup(id: string): number {
  * Lot 11 : le groupe de repos des morceaux d'une mécanique (`theme:`), rangés **à la main** (`npm run repos:modules -w @cdj/jump-sim --
  * --themes`) : le sel ne change pas (les niveaux des thèmes sans mécanique restent ceux d'avant), les groupes gardent la même taille à un
  * près et chaque jour ouvre au moins quatre morceaux ou variantes de chaque mécanique. Lot 12 : nuit et néon (`repos:modules -- --themes` ne
- * place que les morceaux absents de la table : usine et glace gardent leurs groupes).
+ * place que les morceaux absents de la table : usine et glace gardent leurs groupes). Lot 13 : forêt (vent), de même.
  */
 export const THEMED_REST_GROUPS: Readonly<Record<string, number>> = {
   "glace-cheminee": 2,
@@ -217,6 +217,15 @@ export const THEMED_REST_GROUPS: Readonly<Record<string, number>> = {
   "tapis-mur": 0,
   "tapis-relais": 5,
   "tapis-respiration": 3,
+  "vent-brise": 0,
+  "vent-colonne": 1,
+  "vent-derive": 6,
+  "vent-piliers": 5,
+  "vent-planeur": 3,
+  "vent-pont": 0,
+  "vent-puits": 4,
+  "vent-rafale": 1,
+  "vent-relais": 2,
 };
 /** Le groupe `g` est-il ouvert le jour `day` ? (Entre `REST_OPEN × day` et `REST_OPEN × day + REST_OPEN − 1`, modulo `REST_GROUPS`.) */
 export function isOpenGroup(g: number, day: number): boolean {
@@ -595,6 +604,13 @@ export function assemble(picks: readonly { id: string; variant: number }[]): Ass
         annex.push(`clignote ${p.choice.id} ${words.slice(2).join(" ")}`);
         continue;
       }
+      // Lot 13 : une zone de vent, colonnes et rangées décalées comme les scies (la section est celle de sa première colonne : le morceau).
+      if (words[0] === "vent") {
+        const [c0, c1] = words[1]!.split("-").map((v) => Number(v) - built.lead + col);
+        const [r0, r1] = words[2]!.split("-").map((v) => Number(v) + top);
+        annex.push(["vent", `${c0}-${c1}`, `${r0}-${r1}`, ...words.slice(3)].join(" "));
+        continue;
+      }
       if (words[0] !== "scie") continue;
       annex.push(
         words
@@ -752,9 +768,11 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   if (e.rate < EXIGENCE_RATE_MIN || e.rate > EXIGENCE_RATE_MAX) out.push(`exigence ${e.rate} hors de [${EXIGENCE_RATE_MIN}, ${EXIGENCE_RATE_MAX}]`);
   if (e.thirds[2] < e.thirds[0]) out.push(`le dernier tiers (${e.thirds[2]}) est moins exigeant que le premier (${e.thirds[0]})`);
   if (TENSION_RISES && e.thirds[2] < e.thirds[1]) out.push(`le dernier tiers (${e.thirds[2]}) est moins exigeant que le deuxième (${e.thirds[1]})`);
-  // Lot 11 : le quota de signature d'un thème à mécanique, sur le temps réel de l'auteur.
+  // Lot 11 : le quota de signature d'un thème à mécanique, sur le temps réel de l'auteur. Lot 13 : seuls comptent les morceaux de **la**
+  // mécanique du thème ; un morceau d'une autre mécanique est hors de son thème (le générateur n'en pose jamais : rien ne change pour les autres).
+  if (d.theme !== undefined && pieces.some((p) => p.mechanic !== null && p.mechanic !== mechanicOf(d.theme!))) out.push("un morceau de mécanique hors de son thème");
   if (d.theme !== undefined && mechanicOf(d.theme) !== null) {
-    const mech = pieces.filter((p) => p.mechanic !== null);
+    const mech = pieces.filter((p) => p.mechanic === mechanicOf(d.theme!));
     const t = mech.reduce((n, p) => n + (p.end - p.start), 0);
     if (mech.length < SIGNATURE_MIN_PIECES) out.push(`${mech.length} morceaux de la mécanique ${mechanicOf(d.theme)} (au moins ${SIGNATURE_MIN_PIECES})`);
     if (mech.some((p) => p.end - p.start < SIGNATURE_MIN_TICKS)) out.push("un morceau de la mécanique dure moins d'une seconde");
@@ -915,6 +933,20 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
     { id: "demi-tour", variant: 3 },
     { id: "pont-friable", variant: 4 },
     { id: "neon-couloir", variant: 2 },
+  ],
+  // Lot 13 : la forêt (courants d'air), choisie de même (`secours:modules -- --theme=foret`, 80 dates valides sur 80).
+  foret: [
+    { id: "scie-sol", variant: 1 },
+    { id: "tremplin", variant: 1 },
+    { id: "demi-tour", variant: 0 },
+    { id: "mur-friable", variant: 3 },
+    { id: "ressort-mur-iles", variant: 3 },
+    { id: "corniches", variant: 4 },
+    { id: "vent-piliers", variant: 1 },
+    { id: "chute-pics", variant: 0 },
+    { id: "ressort-scie", variant: 2 },
+    { id: "lucarne", variant: 3 },
+    { id: "quinconce", variant: 3 },
   ],
 };
 

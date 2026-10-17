@@ -38,6 +38,7 @@ export const TAG_LABELS: Record<ModuleTag, string> = {
   glace: "glace",
   clignotant: "clignotant",
   alterne: "alterné",
+  vent: "vent",
 };
 
 /**
@@ -105,13 +106,13 @@ export interface GalleryFilter {
 }
 
 /**
- * Le morceau a-t-il une variante pour ce thème ? Un thème à mécanique (`usine`, `glace`) : les variantes qui lui sont réservées (la mécanique) ;
- * un thème sans mécanique (`foret`, `nuit`, `neon`) ou `sans` : les variantes de tous les thèmes (celles qu'un niveau de ce thème peut tirer
- * sans mécanique).
+ * Le morceau a-t-il une variante pour ce thème ? Un thème à mécanique (depuis le lot 13, les cinq) : les variantes qui lui sont réservées (la
+ * mécanique) ; `sans` : les variantes de tous les thèmes (celles que tout niveau peut tirer).
  */
 export function matchesTheme(m: ModuleInfo, theme: ThemeFilter | null): boolean {
   if (theme === null) return true;
-  // Lot 12 : usine, glace, nuit et néon ont chacun leur mécanique : ne restent que leurs morceaux (et variantes mutées) ; forêt et « sans » : ceux de tous les thèmes.
+  // Lot 12 : usine, glace, nuit et néon ont chacun leur mécanique : ne restent que leurs morceaux (et variantes mutées) ; lot 13 : la forêt aussi
+  // (courants d'air) ; « sans » : ceux de tous les thèmes.
   if ((MECHANIC_THEMES as readonly string[]).includes(theme)) return m.variants.some((v) => v.theme === theme);
   return m.variants.some((v) => v.theme === null);
 }
