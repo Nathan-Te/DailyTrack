@@ -99,6 +99,7 @@ import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
 import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
+import { readIdentity } from "@cdj/profile";
 import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
@@ -219,6 +220,11 @@ export interface WindDebug extends Partial<WindStats> {
 }
 
 export interface JumpDebug {
+  /**
+   * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
+   * DailyTrack), sans rien créer ni afficher : existe-t-elle, et quel est son pseudo.
+   */
+  readonly profile: { exists: boolean; name: string | null };
   /** Lot 12 : les blocs clignotants et alternés (null : le niveau n'en a pas). */
   readonly blocks: BlocksDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
@@ -1129,6 +1135,9 @@ function dailyOverlay(): string {
 }
 
 const info: JumpDebug = {
+  get profile() {
+    return readIdentity(store);
+  },
   get phase() {
     return phase;
   },

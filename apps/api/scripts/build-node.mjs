@@ -1,6 +1,16 @@
 // Paquet unique du serveur Node (`dist/server.mjs`), celui de l'image Docker. Le client HTTP de libSQL (Turso) est embarqué ; le client
 // natif (`file:`, développement et tests) ne l'est pas : il est chargé à la demande (voir src/libsql-open.ts) et n'est pas dans l'image.
+import { readFileSync, readdirSync } from "node:fs";
 import { build } from "esbuild";
+
+// Lot P0 (plateforme) : les niveaux figés de DailyJump (`apps/jump/public/levels/AAAA-MM-JJ.json`) entrent dans le paquet, tels quels : le
+// serveur calcule le niveau d'une date par la même règle que le jeu (le fichier figé d'abord). Un fichier illisible arrête la construction.
+const levelsDir = new URL("../../jump/public/levels/", import.meta.url);
+const frozen = {};
+for (const f of readdirSync(levelsDir).sort()) {
+  const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+  if (date) frozen[date] = JSON.parse(readFileSync(new URL(f, levelsDir), "utf8"));
+}
 
 await build({
   entryPoints: ["src/server.ts"],
@@ -11,6 +21,7 @@ await build({
   outfile: "dist/server.mjs",
   // Le client HTTP de libSQL tire `ws`, écrit en CommonJS : dans un paquet ESM il lui faut un `require`.
   banner: { js: "import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);" },
+  define: { __JUMP_FROZEN_LEVELS__: JSON.stringify(frozen) },
   legalComments: "none",
   logLevel: "warning",
 });

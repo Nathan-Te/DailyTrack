@@ -10,5 +10,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["./*.ts", "../playwright.config.ts", "../src/verify.ts", "../src/share.ts", "../src/format.ts", "../src/transfer.ts", "../src/profile.ts", "../src/storage.ts"],
-  "references": [{ "path": "../../../packages/sim" }, { "path": "../../../packages/clock" }]
+  "references": [{ "path": "../../../packages/sim" }, { "path": "../../../packages/clock" }, { "path": "../../../packages/profile" }]
 }

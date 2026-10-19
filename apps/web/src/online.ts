@@ -1,18 +1,16 @@
 import { SIM_VERSION } from "@cdj/sim";
 import { DEMO_BASE, LeaderboardApi, apiBase, type ApiResult, type GhostData, type Leaderboard, type LeaderboardSource, type SubmitResult } from "./api";
 import { DemoApi } from "./demo";
-import { clearNextId, getName, getPlayerId, getSubmittedBest, normalizeName, setName, setPlayerId, setSubmittedBest, takeNextId } from "./identity";
+import { Profile, type ChangeCodeResult, type RenameResult } from "@cdj/profile";
+import { getName, getPlayerId, getSubmittedBest, identity, setPlayerId, setSubmittedBest } from "./identity";
 import { ProfileSync } from "./profileSync";
 import { listDayBests, type BestRun } from "./records";
 import { gameStorage } from "./storage";
 
 export type GhostMode = "mine" | "first" | "ahead" | "off";
 
-/** Le message du serveur quand un pseudo est déjà à quelqu'un d'autre (repris tel quel pour les vérifications faites avant l'envoi). */
-export const NAME_TAKEN_MESSAGE = "Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.";
-
-export type RenameResult = { ok: true; name: string } | { ok: false; code: string; message: string; suggestions?: string[] };
-export type ChangeCodeResult = { ok: true } | { ok: false; code: string; message: string };
+// Lot P0 (plateforme) : le pseudo (propriété du premier, suggestions) et « Changer mon code » sont ceux du module de profil commun.
+export { NAME_TAKEN_MESSAGE, type ChangeCodeResult, type RenameResult } from "@cdj/profile";
 
 /** Un fantôme prêt à rejouer, avec de quoi l'étiqueter. */
 export interface GhostChoice {
@@ -35,6 +33,8 @@ export class Online {
   readonly profileApi: LeaderboardSource | null;
   /** Synchronisation du profil (lot 30) : le serveur fait foi, le stockage du navigateur n'est qu'un cache. */
   readonly sync: ProfileSync;
+  /** Pseudo et code (`@cdj/profile`), sur l'identité et l'API du profil de ce jeu. */
+  private readonly profile: Profile<ProfileSync>;
 
   /** Identifiant secret du joueur : lu à chaque fois (il change avec « Changer mon code » ou un code chargé). */
   get playerId(): string {
@@ -52,6 +52,7 @@ export class Online {
     this.profileApi = this.api ?? (base && !this.demo ? new LeaderboardApi(base) : null);
     // Rien à synchroniser en démonstration (lecture seule) ni sans serveur.
     this.sync = new ProfileSync({ api: () => (this.demo ? null : this.profileApi), playerId: () => this.playerId, adopt: setPlayerId, storage: gameStorage() });
+    this.profile = new Profile({ api: this.profileApi, demo: this.demo, identity, sync: this.sync });
   }
 
   get enabled(): boolean {
@@ -80,62 +81,16 @@ export class Online {
   }
 
   /**
-   * Choisit un pseudo (lot 30 : un pseudo appartient à son premier propriétaire). Le serveur dit s'il est libre :
-   *   - joueur déjà classé : le serveur le change (et les autres appareils le voient à leur prochaine synchronisation) ;
-   *   - pas encore classé, ou `viaSubmit` (le pseudo part avec la course qu'on s'apprête à envoyer) : le serveur vérifie seulement qu'il est libre ;
-   *   - sans réseau : retenu en local, vérifié à l'envoi (jamais pour un joueur que le serveur connaît : son pseudo ne change pas hors ligne).
+   * Choisit un pseudo (lot 30 : un pseudo appartient à son premier propriétaire) : voir `Profile.rename` (`@cdj/profile`). Joueur classé : le
+   * serveur le change ; pas encore classé ou `viaSubmit` : vérifié seulement ; sans réseau : local (jamais pour un joueur que le serveur connaît).
    */
-  async rename(raw: string, options: { viaSubmit?: boolean } = {}): Promise<RenameResult> {
-    const name = normalizeName(raw);
-    const api = this.profileApi;
-    if (!api || this.demo) {
-      setName(name);
-      return { ok: true, name };
-    }
-    const keep = (): RenameResult => {
-      setName(name);
-      return { ok: true, name };
-    };
-    const check = async (): Promise<RenameResult> => {
-      const c = await api.checkName(name, this.playerId);
-      if (c.ok) return c.data.available ? keep() : { ok: false, code: "name_taken", message: NAME_TAKEN_MESSAGE, suggestions: c.data.suggestions };
-      return c.status === 0 ? keep() : { ok: false, code: c.code, message: c.message };
-    };
-    if (options.viaSubmit || this.sync.state.known === false) return check();
-    const r = await api.rename(this.playerId, name);
-    if (r.ok) {
-      setName(r.data.name);
-      this.sync.noteRenamed();
-      return { ok: true, name: r.data.name };
-    }
-    if (r.code === "unknown_player") {
-      this.sync.noteServerKnows(false);
-      return check();
-    }
-    if (r.status === 0) {
-      return this.sync.state.known === true ? { ok: false, code: r.code, message: "Hors ligne : ton pseudo ne peut pas changer sans le serveur. Réessaie en ligne." } : keep();
-    }
-    return { ok: false, code: r.code, message: r.message, ...(r.suggestions ? { suggestions: r.suggestions } : {}) };
+  rename(raw: string, options: { viaSubmit?: boolean } = {}): Promise<RenameResult> {
+    return this.profile.rename(raw, options);
   }
 
-  /**
-   * « Changer mon code » : le serveur associe le profil à un nouvel identifiant secret, l'ancien devient inutilisable. Le nouvel identifiant est tiré ici et
-   * gardé jusqu'à la réponse : si elle se perd, la même demande rejouée réussit. Un profil que le serveur ne connaît pas encore reçoit simplement un
-   * nouvel identifiant local.
-   */
-  async changeCode(): Promise<ChangeCodeResult> {
-    const api = this.profileApi;
-    if (!api || this.demo) return { ok: false, code: "disabled", message: "Pas de serveur ici : le code ne peut pas être changé." };
-    const next = takeNextId();
-    const r = await api.rotateCode(this.playerId, next);
-    if (r.ok || r.code === "unknown_player") {
-      setPlayerId(next);
-      clearNextId();
-      this.sync.reset();
-      return { ok: true };
-    }
-    if (r.code === "code_revoked") clearNextId();
-    return { ok: false, code: r.code, message: r.status === 0 ? "Impossible de joindre le serveur : réessaie dans un moment." : r.message };
+  /** « Changer mon code » : voir `Profile.changeCode` (`@cdj/profile`) ; l'ancien identifiant devient inutilisable. */
+  changeCode(): Promise<ChangeCodeResult> {
+    return this.profile.changeCode();
   }
 
   leaderboard(limit = 10): Promise<ApiResult<Leaderboard>> {

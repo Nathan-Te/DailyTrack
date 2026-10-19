@@ -1,5 +1,6 @@
 import type { SqlDb } from "./db";
 import { HttpError } from "./errors";
+import type { Statement } from "./games";
 import { isForbidden, isUniqueViolation, nameKey, suggestionCandidates } from "./pseudos";
 import { cleanName } from "./validate";
 
@@ -27,11 +28,16 @@ export interface PlayersOptions {
   now: () => number;
   /** Marque `demo` les joueurs créés (jamais réglé par le serveur de production). */
   demoPlayers: boolean;
+  /**
+   * Lot P0 (registre des jeux) : les lignes des jeux qui suivent un « Changer mon code » (DailyTrack : ses temps, ses courses du Salon en cours),
+   * dans la même transaction que la révocation. Sans elle : rien d'autre que le joueur.
+   */
+  rotateStatements?: (oldId: string, newId: string) => Statement[];
 }
 
 export type Players = ReturnType<typeof createPlayers>;
 
-export function createPlayers({ db, now, demoPlayers }: PlayersOptions) {
+export function createPlayers({ db, now, demoPlayers, rotateStatements }: PlayersOptions) {
   const find = (id: string) => db.first<PlayerRow>("SELECT id, name, name_key, rename_required FROM players WHERE id = ?", [id]);
 
   /** Ce code a-t-il été remplacé (« Changer mon code ») ? */
@@ -119,8 +125,8 @@ export function createPlayers({ db, now, demoPlayers }: PlayersOptions) {
   }
 
   /**
-   * « Changer mon code » : le profil passe à `newId`, `oldId` est révoqué. Résultats et pseudo suivent ; les courses du Salon en cours
-   * sont oubliées (une session dure dix minutes). Rejouable : si la réponse s'est perdue, la même demande (même ancien et même nouvel
+   * « Changer mon code » : le profil passe à `newId`, `oldId` est révoqué. Pseudo et lignes des jeux suivent (DailyTrack : résultats ; les
+   * courses du Salon en cours sont oubliées, une session dure dix minutes). Rejouable : si la réponse s'est perdue, la même demande (même ancien et même nouvel
    * identifiant) réussit encore. Une seule transaction quand la base le permet.
    */
   async function rotate(oldId: string, newId: string): Promise<{ replayed: boolean }> {
@@ -137,8 +143,7 @@ export function createPlayers({ db, now, demoPlayers }: PlayersOptions) {
     const t = now();
     const statements = [
       { sql: "INSERT INTO revoked_codes (hash, successor, revoked_at) VALUES (?, ?, ?) ON CONFLICT (hash) DO UPDATE SET successor = excluded.successor, revoked_at = excluded.revoked_at", params: [oldHash, newHash, t] },
-      { sql: "UPDATE results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] },
-      { sql: "DELETE FROM salon_runs WHERE player_id = ?", params: [oldId] },
+      ...(rotateStatements?.(oldId, newId) ?? []), // les lignes de chaque jeu (registre)
       { sql: "UPDATE players SET id = ?, updated_at = ? WHERE id = ?", params: [newId, t, oldId] },
     ];
     if (db.batch) await db.batch(statements);

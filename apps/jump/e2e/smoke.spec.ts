@@ -47,6 +47,24 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(pixels.background).toBeLessThan(0.98);
 });
 
+// Lot P0 (plateforme) : DailyJump lit l'identité commune (clés `cdj:*` de DailyTrack, même origine donc même stockage) sans rien afficher ni créer.
+test("?debug : __jump.profile dit si une identité de la plateforme existe et son pseudo, sans en créer", async ({ page }) => {
+  type ProfileView = { exists: boolean; name: string | null };
+  const profile = () => page.evaluate(() => (window as unknown as { __jump: { profile: ProfileView } }).__jump.profile);
+  await page.goto("/?scenario=bac-a-sable&debug");
+  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase !== undefined);
+  expect(await profile()).toEqual({ exists: false, name: null });
+  expect(await page.evaluate(() => localStorage.getItem("cdj:player"))).toBeNull(); // rien n'est créé
+
+  // Une identité écrite par DailyTrack (même origine) : DailyJump la voit.
+  await page.evaluate(() => {
+    localStorage.setItem("cdj:player", "0123456789abcdef0123456789abcdef");
+    localStorage.setItem("cdj:name", "Nowy");
+  });
+  expect(await profile()).toEqual({ exists: true, name: "Nowy" });
+  await expect(page.locator("body")).not.toContainText("Nowy"); // rien n'est affiché
+});
+
 test("sans ?debug, aucun accès de débogage n'est exposé", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#stamp")).toContainText("DailyJump · sim v3");
