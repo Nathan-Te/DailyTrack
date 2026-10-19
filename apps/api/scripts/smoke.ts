@@ -8,9 +8,12 @@
 // `dailyLevel`, la règle du jeu) : le serveur la rejoue, rend le temps de l'auteur, sans mort, son rang ; le classement le montre ; une autre
 // version est refusée (409). **Garde-fou** : un serveur `production` (`/api/jump/info`) n'est accepté qu'en local (l'image de la CI) ; une
 // adresse distante de production est refusée avant toute écriture (les workflows ne lancent déjà `smoke` que contre la recette ou la CI).
+// Lot P3 : les morts de tout le monde. Le joueur d'essai envoie un lot de vies (des morts d'essais fictifs du niveau du jour) et une vie forgée
+// (en-tête incohérent) : le lot est accepté, la vie forgée écartée seule ; la carte des morts et l'échantillon du carnage répondent ; un
+// inconnu est refusé (404). Relancé sur la même base, un autre joueur « Fumée » : rien ne s'accumule de façon gênante (30 morts au plus chacun).
 import { readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, lifeReplay, replayAttempt } from "@cdj/jump-sim";
 import { jumpDailyOf } from "../src/jump";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
@@ -166,6 +169,43 @@ check(
   "DailyJump : /api/jump/me rend le jour classé du joueur d'essai (temps rejoué, médaille, morts)",
   jme.status === 200 && jme.body.name === NAME && meToday?.ticks === level.authorTicks && meToday?.medal === "author" && meToday?.deaths === 0 && jme.body.stats?.days >= 1,
   `${jme.status} ${jme.body.stats?.days} jour(s), ${jme.ms} ms`,
+);
+
+// --- DailyJump (lot P3) : les morts de tout le monde --------------------------------------------------------------------------------
+const deathLives: string[] = [];
+for (const a of demoAttempts(level.level, level.replay, 0x5e0e, { attempts: 6, maxLives: 6 })) {
+  for (const life of replayAttempt(level.level, a.replay, level.id).lives) if (life.end === "mort" && deathLives.length < 6) deathLives.push(encodeJump(lifeReplay(a.replay, life)));
+}
+const fromCheckpoint = deathLives.map((c) => decodeReplay(c)).find((r) => r.start.checkpoint >= 0);
+const forged = fromCheckpoint ? encodeJump({ ...fromCheckpoint, start: { ...fromCheckpoint.start, sections: fromCheckpoint.start.sections.map(() => -1) } }) : "forgée";
+const livesBody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives: [...deathLives, forged] };
+const unknown = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+const jstranger = await fetch(`${base}/api/jump/lives`, {
+  method: "POST",
+  headers: { "X-Player-Id": unknown, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
+  body: JSON.stringify(livesBody),
+});
+check("DailyJump : un inconnu ne peut pas envoyer de vies (404 unknown_player)", jstranger.status === 404 && ((await jstranger.json()) as any).error === "unknown_player");
+const jlives = await jcall("POST", "/api/jump/lives", livesBody);
+const verdicts: string[] = Array.isArray(jlives.body.results) ? jlives.body.results : [];
+check(
+  "DailyJump : un lot de vies accepté (chaque vie rejouée), la vie forgée écartée seule",
+  jlives.status === 200 && deathLives.length > 0 && jlives.body.accepted === deathLives.length && verdicts.slice(0, deathLives.length).every((v) => v === "ok") && verdicts[deathLives.length] === "invalid",
+  `${jlives.status} ${jlives.body.accepted} acceptée(s) sur ${jlives.body.received}, ${jlives.body.invalid} écartée(s), ${jlives.ms} ms`,
+);
+const jagainLives = await jcall("POST", "/api/jump/lives", { ...livesBody, lives: deathLives });
+check("DailyJump : le même lot renvoyé n'est pas compté deux fois", jagainLives.status === 200 && jagainLives.body.accepted === 0 && jagainLives.body.duplicates === deathLives.length);
+const jmap = await jcall("GET", `/api/jump/day/${date}/deaths`);
+check(
+  "DailyJump : carte des morts du jour (tuiles agrégées, joueurs, morts)",
+  jmap.status === 200 && Array.isArray(jmap.body.tiles) && jmap.body.players >= 0 && jmap.body.deaths >= 0 && jmap.body.open === true,
+  `${jmap.body.players} joueur(s), ${jmap.body.deaths} mort(s), ${jmap.body.tiles?.length} tuile(s) (recalculée au plus toutes les 3 min), ${jmap.ms} ms`,
+);
+const jcarnage = await jcall("GET", `/api/jump/day/${date}/carnage`);
+check(
+  "DailyJump : échantillon du carnage (rediffusions, sans identifiant)",
+  jcarnage.status === 200 && Array.isArray(jcarnage.body.lives) && jcarnage.body.simVersion === JUMP_SIM_VERSION && !JSON.stringify(jcarnage.body).includes(player),
+  `${jcarnage.body.lives?.length} vie(s) de ${jcarnage.body.players} joueur(s), ${jcarnage.ms} ms`,
 );
 
 console.log(failed ? `\n${failed} vérification(s) en échec` : "\nTout est bon.");

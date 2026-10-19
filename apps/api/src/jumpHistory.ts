@@ -6,6 +6,7 @@ import {
   PREMIER_JOUR_JUMP,
   demoAttempts,
   encodeReplay,
+  lifeReplay,
   replayAttempt,
   type DailyLevel,
   type JumpMedals,
@@ -15,6 +16,7 @@ import { createApi } from "./api";
 import type { SqlDb } from "./db";
 import { assertDemoOnly, fictionalId } from "./history";
 import { jumpDailyOf, type JumpBoardRow } from "./jump";
+import { JUMP_LIVES_PER_DAY, type CarnageSample, type DeathMap } from "./jumpLives";
 
 export { jumpDailyOf };
 
@@ -45,6 +47,10 @@ export interface JumpDemoDay {
   rows?: { name: string; ticks: number; deaths: number }[];
   /** Lot P2 : le fantôme du premier, tel que `GET /api/jump/day/<date>/ghost/first` le rend (sans `mine`). */
   first?: { name: string; ticks: number; deaths: number; replay: string; simVersion: number; generatorVersion: number } | null;
+  /** Lot P3 : la carte des morts du jour (figée pour les archives), telle que `GET /api/jump/day/<date>/deaths` la rend. */
+  deaths?: Pick<DeathMap, "players" | "deaths" | "tiles">;
+  /** Lot P3 : l'échantillon du carnage de tout le monde, tel que `GET /api/jump/day/<date>/carnage` le rend. */
+  carnage?: Pick<CarnageSample, "players" | "dayPlayers" | "lives">;
 }
 
 export interface JumpDemoIndex {
@@ -61,8 +67,12 @@ export interface JumpDemoDataset {
   days: JumpDemoDay[];
 }
 
-/** Les essais fictifs d'un jour : un par joueur (son meilleur), pseudos et ordre d'envoi déterministes. Le premier a la preuve de l'auteur. */
-export function fictionalJumps(d: DailyLevel, count: number): { name: string; code: string; ticks: number }[] {
+/**
+ * Les essais fictifs d'un jour : un par joueur (son meilleur), pseudos et ordre d'envoi déterministes. Le premier a la preuve de l'auteur.
+ * Lot P3 : chaque joueur a aussi ses **vies qui finissent par une mort** (celles de tous ses essais fictifs, au plus 30 : le plafond du jour),
+ * au format de rediffusion ; le premier (la preuve de l'auteur) n'en a pas.
+ */
+export function fictionalJumps(d: DailyLevel, count: number): { name: string; code: string; ticks: number; lives: string[] }[] {
   const rng = new Rng(mixSeed(d.day, 0x7a3b));
   const names: string[] = [...FICTIONAL_NAMES];
   for (let i = names.length - 1; i > 0; i--) {
@@ -72,20 +82,22 @@ export function fictionalJumps(d: DailyLevel, count: number): { name: string; co
   // Un seul lot d'essais fictifs par jour (leur préparation coûte cher : une fois par niveau), réparti entre les joueurs : chacun en reçoit
   // quelques-uns et envoie son meilleur arrivé ; plus il en reçoit, plus il a de chances d'être rapide.
   const pool = demoAttempts(d.level, d.replay, mixSeed(d.day, 0x51), { attempts: count * 16, maxLives: 8 });
-  const out: { name: string; code: string; ticks: number }[] = [{ name: names[0]!, code: d.code, ticks: d.authorTicks }];
+  const out: { name: string; code: string; ticks: number; lives: string[] }[] = [{ name: names[0]!, code: d.code, ticks: d.authorTicks, lives: [] }];
   let cursor = 0;
   for (let p = 1; p < names.length && out.length < count && cursor < pool.length; p++) {
     const share = 2 + rng.int(14);
     let best: { code: string; ticks: number } | null = null;
+    const lives: string[] = [];
     for (const a of pool.slice(cursor, cursor + share)) {
-      if (a.end !== "arrivée") continue;
       const r = replayAttempt(d.level, a.replay, d.id);
+      for (const life of r.lives) if (life.end === "mort" && lives.length < JUMP_LIVES_PER_DAY) lives.push(encodeReplay(lifeReplay(a.replay, life)));
+      if (a.end !== "arrivée") continue;
       // Un essai fictif sans mort suit la preuve au pas près : il arrive exactement au temps de l'auteur. On ne garde que ceux qui ont trébuché
       // (sinon tout le monde serait à égalité avec l'auteur) ; le premier joueur, lui, a la preuve.
       if (r.finished && r.deaths.length > 0 && (!best || r.time < best.ticks)) best = { code: encodeReplay(a.replay), ticks: r.time };
     }
     cursor += share;
-    if (best) out.push({ name: names[p]!, ...best });
+    if (best) out.push({ name: names[p]!, ...best, lives });
   }
   return out;
 }
@@ -101,7 +113,7 @@ export interface JumpSeedOptions {
   players?: { min: number; max: number };
   /** Base 100 % démo exigée (jeu de données statique) ; la recette, elle, a de vrais essais de testeurs. */
   demoOnly?: boolean;
-  onDay?(info: { date: string; accepted: number; refused: number; firstError: string }): void;
+  onDay?(info: { date: string; accepted: number; refused: number; firstError: string; lives: number }): void;
 }
 
 /** Envoie les essais fictifs de chaque jour par le vrai `createApi` (horloge réglée sur le jour, à Paris). Rend le nombre d'essais acceptés. */
@@ -118,6 +130,7 @@ export async function seedJumpDays(options: JumpSeedOptions): Promise<number> {
     const jumps = fictionalJumps(d, wanted);
     let accepted = 0;
     let refused = 0;
+    let lives = 0;
     let firstError = "";
     for (let p = 0; p < jumps.length; p++) {
       const j = jumps[p]!;
@@ -130,14 +143,27 @@ export async function seedJumpDays(options: JumpSeedOptions): Promise<number> {
           body: JSON.stringify({ levelId: d.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: j.code, name: j.name }),
         }),
       );
-      if (res.status === 200) accepted++;
-      else {
+      if (res.status === 200) {
+        accepted++;
+        // Lot P3 : ses vies du jour (un lot), par le même `createApi` : chacune est rejouée, seules les morts rejouées comptent.
+        if (j.lives.length) {
+          const lr = await api.handle(
+            new Request("http://seed.local/api/jump/lives", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Player-Id": fictionalId(j.name) },
+              body: JSON.stringify({ levelId: d.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives: j.lives }),
+            }),
+          );
+          if (lr.status === 200) lives += ((await lr.json()) as { accepted: number }).accepted;
+          else if (!firstError) firstError = `vies : ${lr.status} ${String(((await lr.json()) as { error?: string }).error ?? "")}`;
+        }
+      } else {
         refused++; // refus du serveur : l'essai ne compte pas (jamais de contournement)
         if (!firstError) firstError = `${res.status} ${String(((await res.json()) as { error?: string }).error ?? "")}`;
       }
     }
     total += accepted;
-    options.onDay?.({ date: d.date, accepted, refused, firstError });
+    options.onDay?.({ date: d.date, accepted, refused, firstError, lives });
   }
   return total;
 }
@@ -157,7 +183,20 @@ export async function seedJumpDemo(options: { db: SqlDb; frozen: Readonly<Record
     const ghost = await api.handle(new Request(`http://seed.local/api/jump/day/${date}/ghost/first`));
     const g = ghost.status === 200 ? ((await ghost.json()) as NonNullable<JumpDemoDay["first"]>) : null;
     const first = g ? { name: g.name, ticks: g.ticks, deaths: g.deaths, replay: g.replay, simVersion: g.simVersion, generatorVersion: g.generatorVersion } : null;
-    const entry: JumpDemoDay = { date, number: level.number, levelId: board.levelId, medals: level.medals, participants: board.participants, top: board.top, first };
+    // Lot P3 : la carte des morts et l'échantillon du carnage (figés pour les jours passés, comme les archives du serveur).
+    const map = (await (await api.handle(new Request(`http://seed.local/api/jump/day/${date}/deaths`))).json()) as DeathMap;
+    const sample = (await (await api.handle(new Request(`http://seed.local/api/jump/day/${date}/carnage`))).json()) as CarnageSample;
+    const entry: JumpDemoDay = {
+      date,
+      number: level.number,
+      levelId: board.levelId,
+      medals: level.medals,
+      participants: board.participants,
+      top: board.top,
+      first,
+      deaths: { players: map.players, deaths: map.deaths, tiles: map.tiles },
+      carnage: { players: sample.players, dayPlayers: sample.dayPlayers, lives: sample.lives },
+    };
     if (day === JUMP_DEMO_TODAY) {
       entry.rows = await options.db.all<{ name: string; ticks: number; deaths: number }>(
         "SELECT p.name AS name, r.ticks AS ticks, r.deaths AS deaths FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC",
