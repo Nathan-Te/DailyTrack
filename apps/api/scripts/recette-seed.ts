@@ -8,12 +8,17 @@
 // écriture directe en base), avec une horloge injectée réglée sur chaque jour. Pilotes « Démo … » (les noms fictifs de `history:seed`),
 // identifiant stable par nom (`fictionalId`) et marqués `demo` : relancer le script ne crée aucun doublon (le meilleur temps est gardé).
 // Le Salon n'est pas rempli : une session finie est oubliée (27b), des joueurs fictifs y disparaîtraient en 10 minutes.
+// Lot P1 : DailyJump aussi, **sur le jour courant** (celui qu'on teste sur l'aperçu : finir le niveau et voir son rang parmi eux) : les mêmes
+// joueurs « Démo … » envoient de vraies rediffusions (perturbations de la preuve de l'auteur), par le même code que la démonstration
+// (`seedJumpDays`, apps/api/src/jumpHistory.ts) et le vrai `createApi` (rejeu serveur). Relancer ne crée aucun doublon (meilleur essai gardé).
 import { FICTIONAL_NAMES, Rng, dailyCircuit, formatDay, mixSeed, parseDay, runFictional, styleFor } from "@cdj/sim";
 import { parisDay, parisDayStart } from "@cdj/clock";
+import { readFileSync, readdirSync } from "node:fs";
 import { createApi } from "../src/api";
 import { ConfigError, recetteSeedTarget } from "../src/config";
 import type { SqlDb } from "../src/db";
 import { fictionalId } from "../src/history";
+import { seedJumpDays } from "../src/jumpHistory";
 import { openLibsql } from "../src/libsql-open";
 
 const HOUR_MS = 3_600_000;
@@ -96,3 +101,19 @@ for (let day = today - days + 1; day <= today; day++) {
   console.log(`${date} : ${accepted} pilote(s) classé(s)${refused ? `, ${refused} refus` : ""}`);
 }
 console.log(`\n${total} temps envoyés par createApi (rejoués par le serveur) en ${((Date.now() - started) / 1000).toFixed(0)} s.`);
+
+// DailyJump : les niveaux figés du dépôt (les mêmes que ceux de l'image du serveur), puis les joueurs fictifs du jour courant.
+const levelsDir = new URL("../../jump/public/levels/", import.meta.url);
+const frozen: Record<string, unknown> = {};
+for (const f of readdirSync(levelsDir).sort()) {
+  const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+  if (date) frozen[date] = JSON.parse(readFileSync(new URL(f, levelsDir), "utf8"));
+}
+const jumpStarted = Date.now();
+const jumps = await seedJumpDays({
+  db,
+  frozen,
+  days: [today],
+  onDay: (d) => console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s)${d.refused ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`),
+});
+console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);

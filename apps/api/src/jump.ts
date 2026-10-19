@@ -13,6 +13,7 @@ import {
   replayAttempt,
   textHash,
   thawLevel,
+  type DailyLevel,
   type JumpMedal,
   type JumpMedals,
   type JumpReplay,
@@ -203,6 +204,16 @@ export function computeJumpDay(day: number, frozen: unknown): Computed & { froze
     generatorVersion: JUMP_GENERATOR_VERSION,
   };
   return { info, ascii: d.ascii, frozenMiss };
+}
+
+/** Le niveau d'une date par la règle du jeu et du serveur : le fichier figé s'il se vérifie (`thawLevel`), sinon `dailyLevel`. */
+export function jumpDailyOf(day: number, frozen: Readonly<Record<string, unknown>>): DailyLevel {
+  const raw = frozen[formatDay(day)];
+  if (raw !== undefined) {
+    const thawed = thawLevel(raw, day);
+    if (typeof thawed !== "string") return thawed;
+  }
+  return dailyLevel(day);
 }
 
 /** Rang d'un résultat : ceux qui ont un meilleur temps, puis à temps égal ceux qui l'ont envoyé avant, puis au même instant l'identifiant. */
