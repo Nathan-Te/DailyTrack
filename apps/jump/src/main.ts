@@ -968,7 +968,8 @@ function showFinish(): void {
   });
   // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
   refreshRank();
-  if (ranking.enabled && (c.mode === "archive" || (c.mode === "jour" && !ranking.pendingFor(d.date)))) void ranking.loadBoard(d.date);
+  // Le top 10 se lit tout de suite, même pendant l'envoi ou le choix du pseudo (il est relu après la réponse du serveur).
+  if (ranking.enabled && (c.mode === "archive" || c.mode === "jour")) void ranking.loadBoard(d.date);
 }
 
 /** Lot P1 : le classement de l'écran d'arrivée et le rang de l'accueil suivent l'état du classement. */

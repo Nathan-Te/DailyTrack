@@ -101,6 +101,9 @@ test("démo : finir le niveau → premier pseudo → rang et top 10 → Partager
 
     // Premier envoi : pas de pseudo → le formulaire ; un pseudo de démonstration est pris (suggestions), un autre passe.
     await expect(page.locator("#arrival-rank")).toHaveText("Choisis ton pseudo pour entrer au classement");
+    // Le top 10 des joueurs fictifs est déjà là, sans ta ligne.
+    await expect(page.locator("#arrival .arklist li").first()).toBeVisible();
+    await expect(page.locator("#arrival .arklist li.mine")).toHaveCount(0);
     j = await jump(page);
     expect(j.rank.pending).toHaveLength(1);
     await page.locator("#arrival-name").fill("Démo Renard");
