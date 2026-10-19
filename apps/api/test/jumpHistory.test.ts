@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, decodeReplay, replayAttempt } from "@cdj/jump-sim";
 import { JUMP_DEMO_DAYS, JUMP_DEMO_TODAY, fictionalJumps, jumpDailyOf, seedJumpDays } from "../src/jumpHistory";
 import { fictionalId } from "../src/history";
 import { openTestDb, playerId, TEST_DB } from "./helpers";
@@ -67,6 +67,18 @@ describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
       expect(day.levelId, "relancer jump:seed").toBe(jumpDailyOf(PREMIER_JOUR_JUMP + index.days.indexOf(d), FROZEN).id);
       expect(day.participants).toBeGreaterThanOrEqual(3);
       expect(day.top.length).toBe(Math.min(10, day.participants));
+    }
+  });
+
+  it("lot P2 : chaque jour a le fantôme du premier — le premier du classement, sa rediffusion se rejoue à son temps et ses morts", () => {
+    for (const d of index.days) {
+      const day = JSON.parse(readFileSync(join(PUBLIC, "demo", `${d.date}.json`), "utf8")) as { top: { name: string; ticks: number; deaths: number }[]; first?: { name: string; ticks: number; deaths: number; replay: string; simVersion: number } };
+      expect(day.first, "relancer jump:seed").toBeTruthy();
+      expect([day.first!.name, day.first!.ticks, day.first!.deaths]).toEqual([day.top[0]!.name, day.top[0]!.ticks, day.top[0]!.deaths]);
+      expect(day.first!.simVersion).toBe(JUMP_SIM_VERSION);
+      const level = jumpDailyOf(PREMIER_JOUR_JUMP + index.days.indexOf(d), FROZEN);
+      const r = replayAttempt(level.level, decodeReplay(day.first!.replay), level.id);
+      expect([r.finished, r.time, r.deaths.length]).toEqual([true, day.first!.ticks, day.first!.deaths]);
     }
   });
 

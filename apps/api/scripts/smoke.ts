@@ -144,5 +144,27 @@ check("DailyJump : une autre version est refusée (409, « nouvelle version »)"
 const jyesterday = await jcall("POST", "/api/jump/submit", { ...jbody, levelId: `jour-${formatDay(day - 1)}-g${JUMP_GENERATOR_VERSION}` });
 check("DailyJump : un autre jour est refusé", jyesterday.status === 409);
 
+// --- DailyJump (lot P2) : le fantôme du premier et le profil DailyJump ----------------------------------------------------------
+const jghost = await jcall("GET", `/api/jump/day/${date}/ghost/first`);
+const firstRow = jboard.body.top?.[0];
+check(
+  "DailyJump : fantôme du premier (la rediffusion du premier du classement, versions du jeu)",
+  jghost.status === 200 &&
+    typeof jghost.body.replay === "string" &&
+    jghost.body.replay.length > 0 &&
+    jghost.body.name === firstRow?.name &&
+    jghost.body.ticks === firstRow?.ticks &&
+    jghost.body.simVersion === JUMP_SIM_VERSION &&
+    jghost.body.mine === (firstRow?.name === NAME),
+  `${jghost.status} premier « ${String(jghost.body.name)} », ${String(jghost.body.ticks)} pas, ${jghost.ms} ms`,
+);
+const jme = await jcall("GET", "/api/jump/me");
+const meToday = Array.isArray(jme.body.days) ? jme.body.days.find((d: { date: string }) => d.date === date) : null;
+check(
+  "DailyJump : /api/jump/me rend le jour classé du joueur d'essai (temps rejoué, médaille, morts)",
+  jme.status === 200 && jme.body.name === NAME && meToday?.ticks === level.authorTicks && meToday?.medal === "author" && meToday?.deaths === 0 && jme.body.stats?.days >= 1,
+  `${jme.status} ${jme.body.stats?.days} jour(s), ${jme.ms} ms`,
+);
+
 console.log(failed ? `\n${failed} vérification(s) en échec` : "\nTout est bon.");
 process.exit(failed ? 1 : 0);
