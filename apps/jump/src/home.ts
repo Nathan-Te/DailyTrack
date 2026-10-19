@@ -13,6 +13,8 @@ export interface HomeView {
   finished: boolean;
   streak: string;
   countdown: string;
+  /** Lot P1 : « Ton rang du jour : 3ᵉ sur 128 » (un temps classé aujourd'hui), sinon "". */
+  rank?: string;
 }
 
 export interface HomeOptions {
@@ -81,7 +83,9 @@ export function mountHome(opts: HomeOptions): Home {
   row.append(archives, help, settings);
   const countdown = el("p", "hcount");
   countdown.setAttribute("aria-live", "off");
-  card.append(title, subtitle, status, streak, play, row, countdown);
+  const rank = el("p", "hrank");
+  rank.id = "home-rank";
+  card.append(title, subtitle, status, rank, streak, play, row, countdown);
   root.append(card);
 
   // ——— Comment jouer ———
@@ -119,7 +123,7 @@ export function mountHome(opts: HomeOptions): Home {
   archHead.append(el("h2", undefined, "Archives"));
   const archClose = button("archives-close", "sbtn", "Fermer");
   archHead.append(archClose);
-  const archLead = el("p", "slead", "Les niveaux des jours passés, sans classement. Ta série ne bouge pas.");
+  const archLead = el("p", "slead", "Les niveaux des jours passés : rejouables, jamais classés. Ta série ne bouge pas.");
   const list = el("ul", "alist");
   const empty = el("p", "aempty", "Pas encore d'archives : elles commencent le lendemain du niveau n° 1.");
   archCard.append(archHead, archLead, list, empty);
@@ -138,6 +142,7 @@ export function mountHome(opts: HomeOptions): Home {
     status.textContent = v.status;
     status.classList.toggle("done", v.finished);
     streak.textContent = v.streak;
+    rank.textContent = v.rank ?? "";
     countdown.textContent = v.countdown;
   };
 

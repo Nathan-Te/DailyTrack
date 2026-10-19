@@ -4,8 +4,14 @@
 // envoi, classement). **Crée un joueur « Fumée »** : à ne pas lancer contre la vraie base de production.
 // Lot P0 (plateforme) : DailyJump (`/api/jump/info`, `/api/jump/day/<aujourd'hui>` calculé par le serveur et égal à celui du jeu, chaque jour
 // figé de l'image servi depuis son fichier) ; lecture seule.
+// Lot P1 : DailyJump classé. Le joueur d'essai envoie **la preuve de l'auteur** du niveau du jour (fichier figé du dépôt s'il y en a un, sinon
+// `dailyLevel`, la règle du jeu) : le serveur la rejoue, rend le temps de l'auteur, sans mort, son rang ; le classement le montre ; une autre
+// version est refusée (409). **Garde-fou** : un serveur `production` (`/api/jump/info`) n'est accepté qu'en local (l'image de la CI) ; une
+// adresse distante de production est refusée avant toute écriture (les workflows ne lancent déjà `smoke` que contre la recette ou la CI).
+import { readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel } from "@cdj/jump-sim";
+import { jumpDailyOf } from "../src/jump";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const originAt = process.argv.indexOf("--origin");
@@ -30,6 +36,13 @@ function check(label: string, ok: boolean, detail = ""): void {
 const player = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 // Un pseudo appartient à son premier propriétaire (lot 30) : chaque exécution prend le sien, pour qu'on puisse relancer l'essai sur la même base.
 const NAME = `Fumée${Math.floor(1000 + Math.random() * 9000)}`;
+
+// Garde-fou (lot P1) : jamais contre la production (sauf l'image lancée en local par la CI, contre son propre sqld).
+const where = await call("GET", "/api/jump/info").catch(() => null);
+if (where?.body?.environment === "production" && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) {
+  console.error(`smoke refuse ${base} : c'est un serveur de production. Il crée des joueurs « Fumée » : recette ou serveur local seulement.`);
+  process.exit(1);
+}
 
 const health = await call("GET", "/api/health");
 check("santé : base joignable, SALON_MINUTES absente", health.status === 200 && health.body.ok && health.body.db === "ok" && health.body.salonOverride === false, JSON.stringify(health.body));
@@ -90,6 +103,46 @@ for (const d of frozenDays) {
 }
 const jfuture = await call("GET", `/api/jump/day/${formatDay(day + 1)}`);
 check("DailyJump : demain est refusé", jfuture.status === 404);
+
+// --- DailyJump (lot P1) : un essai classé, rejoué par le serveur ------------------------------------------------------------------
+const frozenFiles: Record<string, unknown> = {};
+try {
+  const dir = new URL("../../jump/public/levels/", import.meta.url);
+  for (const f of readdirSync(dir)) {
+    const d = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+    if (d) frozenFiles[d] = JSON.parse(readFileSync(new URL(f, dir), "utf8"));
+  }
+} catch {
+  /* sans le dépôt : le niveau généré (un jour figé ne serait alors pas le bon : le serveur le dirait, 409 version) */
+}
+const level = jumpDailyOf(day, frozenFiles);
+const jbody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: level.code };
+const jcall = async (method: string, path: string, body?: unknown) => {
+  const t0 = performance.now();
+  const res = await fetch(base + path, {
+    method,
+    headers: { "X-Player-Id": player, ...(body ? { "Content-Type": "application/json" } : {}), ...(origin ? { Origin: origin } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return { status: res.status, body: (await res.json()) as any, ms: Math.round(performance.now() - t0) };
+};
+check("DailyJump : le niveau du jour du serveur est celui du jeu", jday.body.id === level.id && jday.body.hash === level.hash, `${level.id} ${level.hash}`);
+const jsub = await jcall("POST", "/api/jump/submit", jbody);
+check(
+  "DailyJump : essai du jour accepté, rejoué par le serveur (temps de l'auteur, sans mort), rang rendu",
+  jsub.status === 200 && jsub.body.ticks === level.authorTicks && jsub.body.deaths === 0 && jsub.body.medal === "author" && jsub.body.rank >= 1 && jsub.body.participants >= jsub.body.rank,
+  `${jsub.status} ${jsub.body.ticks} pas, rang ${jsub.body.rank}/${jsub.body.participants}, ${jsub.ms} ms`,
+);
+const jboard = await jcall("GET", `/api/jump/day/${date}/board`);
+check(
+  "DailyJump : classement du jour, la ligne du joueur d'essai (même rang)",
+  jboard.status === 200 && jboard.body.me?.name === NAME && jboard.body.me?.ticks === level.authorTicks && jboard.body.me?.rank === jsub.body.rank && jboard.body.top.length >= 1,
+  `${jboard.body.participants} classé(s), ${jboard.ms} ms`,
+);
+const jold = await jcall("POST", "/api/jump/submit", { ...jbody, generatorVersion: JUMP_GENERATOR_VERSION - 1 });
+check("DailyJump : une autre version est refusée (409, « nouvelle version »)", jold.status === 409 && jold.body.error === "version");
+const jyesterday = await jcall("POST", "/api/jump/submit", { ...jbody, levelId: `jour-${formatDay(day - 1)}-g${JUMP_GENERATOR_VERSION}` });
+check("DailyJump : un autre jour est refusé", jyesterday.status === 409);
 
 console.log(failed ? `\n${failed} vérification(s) en échec` : "\nTout est bon.");
 process.exit(failed ? 1 : 0);

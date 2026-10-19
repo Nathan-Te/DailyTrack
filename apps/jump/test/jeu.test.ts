@@ -23,7 +23,7 @@ import { LOOK, animateLook, onStep, restLook, squashScale } from "../src/look";
 import { FixedStepper, MAX_STEPS_PER_FRAME, STEP_SECONDS } from "../src/loop";
 import { JumpSession, formatTicks } from "../src/session";
 import { TUNE_SLIDERS, TUNE_STORAGE_KEY, formatHuman, jumpHeight, loadTuned, paramsJson, parseTuned, saveTuned, toHuman } from "../src/tune";
-import { URL_OPTIONS, dailyHref, galleryHref, moduleHref, readUrlOptions } from "../src/urlOptions";
+import { URL_OPTIONS, archiveHref, dailyHref, galleryHref, moduleHref, readUrlOptions } from "../src/urlOptions";
 
 const SRC = new URL("../src", import.meta.url).pathname;
 
@@ -50,7 +50,7 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false };
+    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, carnageDemo: false, watchBest: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false, api: null };
     // Lot 5 : sans paramètre, le niveau du jour.
     expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
@@ -62,6 +62,15 @@ describe("paramètres d'adresse", () => {
     expect(readUrlOptions("?scenario=bac-a-sable&debug&sprint=1").sprint).toBe(false);
     expect(readUrlOptions("?sprint=1").sprint).toBe(false);
     expect(readUrlOptions("?debug&tune&sprint=2").sprint).toBe(false);
+  });
+
+  it("lot P1 : ?api= (adresse du classement ou « demo ») ; les liens internes le gardent", () => {
+    expect(readUrlOptions("").api).toBeNull();
+    expect(readUrlOptions("?api=demo").api).toBe("demo");
+    expect(readUrlOptions("?api=https%3A%2F%2Fexemple.test").api).toBe("https://exemple.test");
+    const from = readUrlOptions("?api=demo&debug");
+    expect(dailyHref(from)).toBe("?debug&api=demo");
+    expect(archiveHref("2026-10-20", from)).toBe("?seed=2026-10-20&debug&api=demo");
   });
 
   it("lot 12 : ?metronome=off coupe le tempo de la nuit (rien d'autre) ; les liens internes le gardent", () => {

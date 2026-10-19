@@ -14,7 +14,8 @@
     "measure:jump-api": "esbuild scripts/measure-jump.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-jump.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-jump.mjs",
     "measure:budget": "esbuild scripts/measure-budget.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-budget.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-budget.mjs",
     "history:seed": "esbuild scripts/history-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/history-seed.mjs && node dist/history-seed.mjs",
-    "pseudos:migrate": "esbuild scripts/pseudos-migrate.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/pseudos-migrate.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/pseudos-migrate.mjs"
+    "pseudos:migrate": "esbuild scripts/pseudos-migrate.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/pseudos-migrate.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/pseudos-migrate.mjs",
+    "jump:seed": "esbuild scripts/jump-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/jump-seed.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/jump-seed.mjs"
   },
   "dependencies": {
     "@cdj/clock": "*",

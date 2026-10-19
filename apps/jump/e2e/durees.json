@@ -1,10 +1,11 @@
 {
-  "_": "Durée de chaque spec de DailyJump dans Chromium (s), un test à la fois, mesurée en CI (run 38916375876, résumé du job `e2e` : lignes « jump/… ») : compose les parts Chromium de la CI (scripts/e2e-parts.mjs, lot 3c). Les outils de mesure sont sautés hors MESURE=1. nuit-neon.spec.ts : 10 s mesurées au run 38950629568. foret.spec.ts (lot 13) : 6 à 11 s mesurées en CI (runs 38971016217, 38971054131, 38971940887, 38971947774), 8 retenues.",
+  "_": "Durée de chaque spec de DailyJump dans Chromium (s), un test à la fois, mesurée en CI (run 38916375876, résumé du job `e2e` : lignes « jump/… ») : compose les parts Chromium de la CI (scripts/e2e-parts.mjs, lot 3c). Les outils de mesure sont sautés hors MESURE=1. nuit-neon.spec.ts : 10 s mesurées au run 38950629568. foret.spec.ts (lot 13) : 6 à 11 s mesurées en CI (runs 38971016217, 38971054131, 38971940887, 38971947774), 8 retenues. classement.spec.ts (lot P1 de la plateforme) : 13 s mesurées en CI (run 39246847264).",
   "secondes": {
     "animation.spec.ts": 6,
     "arrivee.spec.ts": 37,
     "carnage.spec.ts": 11,
     "chargement.spec.ts": 10,
+    "classement.spec.ts": 13,
     "dangers.spec.ts": 31,
     "foret.spec.ts": 8,
     "jour.spec.ts": 19,

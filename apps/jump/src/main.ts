@@ -1,4 +1,4 @@
-import { parisDay } from "@cdj/clock";
+import { parisDay, parisDayStart } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import {
   ATTEMPT_DEAD,
@@ -99,7 +99,13 @@ import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
 import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
-import { readIdentity } from "@cdj/profile";
+import { NAME_KEY, createIdentity, readIdentity } from "@cdj/profile";
+import { HttpRankSource, rankApiBase, type RankSource } from "./rankApi";
+import { RankQueue } from "./rankQueue";
+import { Ranking, mayRank } from "./ranking";
+import { arrivalRankView, homeRankText } from "./rankView";
+import { DEMO_TODAY, DemoRankSource } from "./demoRank";
+import { BUILD_API_URL, demoStorage } from "./storage";
 import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu } from "./pauseMenu";
@@ -327,7 +333,14 @@ export interface JumpDebug {
   readonly history: DayRecord[];
   readonly streak: number;
   /** Lot 10 : l'écran d'arrivée (affiché, dernier texte partagé, message du partage). */
-  readonly arrival: { shown: boolean; share: string; message: string };
+  readonly arrival: { shown: boolean; share: string; message: string; rank: { shown: boolean; status: string; rows: number } };
+  /**
+   * Lot P1 (plateforme) : le classement du jour — branché (`enabled`, `demo`), état de l'envoi (`state.status` : `idle`, `sending`, `ranked`,
+   * `offline`, `version`, `name`…), envois en attente (la file hors ligne), rang connu du jour, dernier classement lu, dernière réponse.
+   */
+  readonly rank: unknown;
+  /** Lot P1 : le classement relit ce qui attend et repart (comme le retour du réseau). */
+  rankWake(): void;
   /** Lot 10 (tests) : joue une rediffusion (par défaut la preuve de l'auteur) comme les commandes du joueur ; rend son nombre de pas. */
   autoplay(code?: string): number;
 }
@@ -404,8 +417,16 @@ declare global {
 
 const options = readUrlOptions(location.search);
 const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL, vent: VENT_LEVEL };
+// Lot P1 (plateforme) : le classement du jour. Adresse du serveur : `?api=` (essais ; `demo` : la démonstration), sinon `VITE_API_URL` de la
+// construction (production pour `main`, recette pour un aperçu), sinon aucune : pas de classement, le jeu marche comme avant.
+const apiBase = rankApiBase(options.api, BUILD_API_URL);
+const demoRank = apiBase === "demo";
+/** La démonstration joue « son » aujourd'hui (`DEMO_TODAY`, celui du jeu de données) : toutes les dates du jeu sont décalées d'autant. */
+const dayShift = demoRank ? DEMO_TODAY - parisDay(Date.now()) : 0;
+/** « Aujourd'hui » du jeu : la date de Paris (décalée en démonstration). */
+const gameDay = (ms = Date.now()): number => parisDay(ms) + dayShift;
 // Lot 5 : « aujourd'hui » = la date de Paris (`@cdj/clock`), lue ici, hors de la simulation ; le niveau du jour en découle.
-const today = parisDay(Date.now());
+const today = gameDay();
 const preview = isPreview(location);
 const dayChoice: DayChoice | null = options.daily ? chooseDay(options.seed, today, preview) : null;
 // Lot 11 : `?theme=` sur le niveau du jour qui force un thème **différent de celui de la date** est un **essai** : un autre niveau (identifiant
@@ -413,7 +434,32 @@ const dayChoice: DayChoice | null = options.daily ? chooseDay(options.seed, toda
 // lui-même donne le niveau ordinaire (le thème est alors une donnée de la date, pas un choix).
 const trialTheme: JumpThemeName | null = dayChoice && options.theme !== null && options.theme !== jumpThemeForDay(dayChoice.day) ? options.theme : null;
 const choice: DayChoice | null = dayChoice && trialTheme !== null ? { ...dayChoice, mode: "essai" } : dayChoice;
-const store = browserStorage();
+// Lot P1 : en démonstration, tout ce que le jeu garde est à part (`demo:` : mémoire du jour, historique, série, file, identité) ; seul ton
+// pseudo de la plateforme y est recopié (lu, jamais écrit dans le vrai stockage).
+const store = demoRank ? demoStorage(browserStorage()) : browserStorage();
+if (demoRank && store) {
+  try {
+    const realName = browserStorage()?.getItem(NAME_KEY);
+    if (realName && !store.getItem(NAME_KEY)) store.setItem(NAME_KEY, realName);
+  } catch {
+    /* stockage illisible : la démonstration demandera un pseudo */
+  }
+}
+const rankSource: RankSource | null = apiBase === null ? null : demoRank ? new DemoRankSource(new URL("demo/", document.baseURI).href, store) : new HttpRankSource(apiBase);
+const ranking = new Ranking({
+  source: rankSource,
+  queue: new RankQueue(store, () => Date.now()),
+  identity: createIdentity(() => {
+    if (!store) throw new Error("stockage indisponible");
+    return store;
+  }),
+  identityStore: () => store,
+  today: () => gameDay(),
+  sinceMidnight: () => Date.now() - parisDayStart(parisDay(Date.now())),
+  setTimer: (fn, ms) => setTimeout(fn, ms),
+  clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+  now: () => Date.now(),
+});
 
 // ——— Lot 10 : historique et accueil, montés avant le chargement du niveau (l'accueil s'affiche tout de suite, Jouer attend le niveau) ———
 const history = new History(store);
@@ -427,7 +473,7 @@ const home: Home | null = homeHere
   ? mountHome({
       onPlay: () => playFromHome(),
       onSettings: () => setMenu(true),
-      archiveRows: () => archiveDays(parisDay(Date.now())).map((d) => archiveRow(d, themeForDay(d).label, history.forDate(formatDay(d)))),
+      archiveRows: () => archiveDays(gameDay()).map((d) => archiveRow(d, themeForDay(d).label, history.forDate(formatDay(d)))),
       archiveHref: (date) => archiveHref(date, options),
       onChange: () => {
         if (gameReady) syncPause();
@@ -449,7 +495,9 @@ function homeView(): HomeView {
   const now = Date.now();
   const heading = homeHeading(today, homeTheme.label);
   const status = homeStatus(history.forDate(formatDay(today)));
-  return { ...heading, status: status.text, finished: status.finished, streak: streakText(history.streak(parisDay(now))), countdown: countdownText(now) };
+  // Lot P1 : ton rang du jour (un temps classé aujourd'hui).
+  const rank = homeRankText(ranking.enabled, ranking.known(formatDay(today)));
+  return { ...heading, status: status.text, finished: status.finished, streak: streakText(history.streak(gameDay(now))), countdown: countdownText(now), rank };
 }
 
 // Lot 7b : le niveau se charge hors du fil principal (cache vérifié, sinon worker, sinon repli ; `dailyLoader.ts`). Attente au niveau du module.
@@ -504,7 +552,7 @@ if (options.sprint) Object.assign(params, SPRINT_TRIAL_PARAMS);
 // ——— Mémoire du jour (lot 3) : par niveau, purgée au changement de jour ou de niveau ———
 // Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
 const levelId: string = built ? built.levelId : daily ? daily.id : (options.scenario ?? "essai");
-const memory = new DayMemory({ store, level, levelId, key: mod ? `${levelId}:${mod.entry}` : levelId, today: () => formatDay(parisDay(Date.now())) });
+const memory = new DayMemory({ store, level, levelId, key: mod ? `${levelId}:${mod.entry}` : levelId, today: () => formatDay(gameDay()) });
 // `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
 // `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
 // `&solution` sur le niveau du jour (lot 5) : la rediffusion de l'auteur, la preuve du niveau.
@@ -638,12 +686,32 @@ function drainEssais(): RecordedEssai | null {
     const rec = memory.recordEssai(e.essai, e.tuned || isTrial);
     if (!rec) continue;
     last = rec;
-    if (rec.newBest) refreshGhost();
+    if (rec.newBest) {
+      refreshGhost();
+      // Lot P1 : un meilleur essai du niveau du jour part au classement (en arrière-plan ; la file garde le meilleur s'il n'y a pas de réseau).
+      if (!e.tuned) offerBest();
+    }
   }
   // Le meilleur temps affiché est celui que le rejeu a recalculé.
   if (last && memory.best) session.best = memory.best.time;
   if (last) recordHistory();
   return last;
+}
+
+/**
+ * Lot P1 : un essai peut-il entrer au classement ? Seulement le niveau du jour joué le jour même (la règle de l'historique : `mayRecord`),
+ * jamais une archive, un jour à venir, un thème forcé, une partie aux réglages modifiés, une lecture, un carnage de démonstration ; un
+ * morceau ou un scénario n'est pas le niveau du jour (`daily` est nul).
+ */
+function rankable(): boolean {
+  return mayRank({ mode: daily && choice ? choice.mode : null, levelDay: daily?.day ?? -1, today: gameDay(), watching, tuned: session.tuned, trial: isTrial, carnageDemo: options.carnageDemo });
+}
+
+/** Lot P1 : propose le meilleur essai du jour (rejoué par la mémoire) au classement ; la file ne garde que ce qui bat le meilleur envoyé. */
+function offerBest(): void {
+  const best = memory.best;
+  if (!best || !daily || !rankable()) return;
+  ranking.offer({ date: daily.date, levelId: daily.id, replay: best.code, ticks: best.time, deaths: best.deaths });
 }
 
 /**
@@ -653,7 +721,7 @@ function drainEssais(): RecordedEssai | null {
  */
 function recordHistory(): void {
   if (!daily || !choice) return;
-  if (!mayRecord({ mode: choice.mode, levelDay: daily.day, today: parisDay(Date.now()), watching, tuned: false })) return;
+  if (!mayRecord({ mode: choice.mode, levelDay: daily.day, today: gameDay(), watching, tuned: false })) return;
   const best = memory.best;
   const rec: DayRecord = { id: daily.id, date: daily.date, best: best?.time ?? null, medal: best ? jumpMedalFor(best.time, daily.medals) : null, deaths: memory.totalDeaths, attempts: memory.attempts };
   history.put(rec);
@@ -893,11 +961,33 @@ function showFinish(): void {
     thresholds: medalThresholds(d.medals, time),
     stats: `${plural(memory.totalDeaths, "mort", "morts")} aujourd'hui · ${plural(memory.attempts, "essai", "essais")}`,
     run: session.attemptDeaths === 0 ? "Essai sans faute" : `${plural(session.attemptDeaths, "mort", "morts")} dans cet essai`,
-    streak: c.mode === "jour" ? streakText(history.streak(parisDay(now))) : c.mode === "archive" ? ARCHIVE_STREAK_TEXT : "Aperçu : ne compte pas dans ta série",
+    streak: c.mode === "jour" ? streakText(history.streak(gameDay(now))) : c.mode === "archive" ? ARCHIVE_STREAK_TEXT : "Aperçu : ne compte pas dans ta série",
     countdown: countdownText(now),
     canCarnage: lastCarnage !== null && scene !== null,
     canShare: memory.best !== null,
   });
+  // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
+  refreshRank();
+  // Le top 10 se lit tout de suite, même pendant l'envoi ou le choix du pseudo (il est relu après la réponse du serveur).
+  if (ranking.enabled && (c.mode === "archive" || c.mode === "jour")) void ranking.loadBoard(d.date);
+}
+
+/** Lot P1 : le classement de l'écran d'arrivée et le rang de l'accueil suivent l'état du classement. */
+function refreshRank(): void {
+  if (daily && choice && arrival.shown) {
+    arrival.setRank(
+      arrivalRankView({
+        enabled: ranking.enabled,
+        mode: choice.mode,
+        date: daily.date,
+        state: ranking.state,
+        pending: ranking.pendingFor(daily.date) !== null,
+        known: ranking.known(daily.date),
+        board: ranking.boards.get(daily.date) ?? null,
+      }),
+    );
+  }
+  if (home?.isOpen) home.update(homeView());
 }
 
 /** Lot 10 : le texte partagé en dernier (`__jump.arrival.share`). */
@@ -907,7 +997,9 @@ let lastShare = "";
 async function share(): Promise<void> {
   if (!daily || !choice || !memory.best || choice.mode === "essai") return; // un essai de thème ne se partage pas
   const best = memory.best.time;
-  const text = shareText({ number: daily.number, date: daily.date, ticks: best, medal: jumpMedalFor(best, daily.medals), deaths: memory.totalDeaths, kind: choice.mode }, location);
+  // Lot P1 : le rang s'ajoute à la fin (`3ᵉ/128`) s'il est celui de ce temps ; sinon (hors ligne, pas encore envoyé) la ligne du lot 10.
+  const rank = choice.mode === "jour" ? ranking.shareRank(daily.date, best) : null;
+  const text = shareText({ number: daily.number, date: daily.date, ticks: best, medal: jumpMedalFor(best, daily.medals), deaths: memory.totalDeaths, kind: choice.mode, rank }, location);
   lastShare = text;
   const r = await sendShare(text, touchOn);
   if (r === "partage") arrival.shareResult("Partagé", null);
@@ -937,6 +1029,8 @@ function goHome(): void {
   hud.hideFinish();
   home.open(homeView());
   syncPause();
+  // Lot P1 : le rang du jour, relu (sans attendre : l'accueil se met à jour quand la réponse arrive).
+  if (ranking.enabled && daily && ranking.known(daily.date)) void ranking.loadBoard(daily.date);
 }
 
 /** Lot 10 : Jouer (le geste réveille aussi le son). Après une arrivée, un nouvel essai ; après minuit, le niveau du nouveau jour. */
@@ -1038,7 +1132,26 @@ function restart(): void {
 }
 
 const hud = mountHud({ onRestart: () => controls.requestRestart() });
-const arrival = mountArrival({ onReplay: () => controls.requestRestart(), onShare: () => void share(), onCarnage: () => replayCarnage(), onHome: () => goHome() });
+const arrival = mountArrival({
+  onReplay: () => controls.requestRestart(),
+  onShare: () => void share(),
+  onCarnage: () => replayCarnage(),
+  onHome: () => goHome(),
+  // Lot P1 : le premier pseudo (ou un autre après un refus) : vérifié par le serveur, puis l'envoi en attente part avec lui.
+  onName: (name) => void ranking.chooseName(name).then(() => refreshRank()),
+  onReload: () => location.reload(),
+});
+// Lot P1 : l'état du classement change (envoi, réponse, lecture) : l'écran d'arrivée et l'accueil suivent. Le réseau revient : ce qui attend repart.
+ranking.onChange(() => refreshRank());
+window.addEventListener("online", () => ranking.wake());
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") ranking.wake();
+});
+// Au chargement : un meilleur essai du jour pas encore classé (joué avant ce lot, ou la file d'une autre page) part ; ce qui attend repart ;
+// le rang du jour de l'accueil est relu (les autres joueurs ont pu passer devant).
+offerBest();
+void ranking.flush();
+if (ranking.enabled && home && ranking.known(formatDay(today))) void ranking.loadBoard(formatDay(today));
 
 // ——— Lot 5 : ligne du jour (DailyJump #N, mode, médaille visée), message discret, passage de minuit ———
 const dayLineEl = document.getElementById("dayline")!;
@@ -1075,7 +1188,7 @@ if (daily && choice) {
   if (choice.mode === "jour") {
     const shownDay = choice.day;
     const watchDay = () => {
-      if (newDay || parisDay(Date.now()) === shownDay) return;
+      if (newDay || gameDay() === shownDay) return;
       newDay = true;
       setNotice(NEW_DAY_TEXT, true);
     };
@@ -1402,10 +1515,16 @@ const info: JumpDebug = {
     return history.entries.map((r) => ({ ...r }));
   },
   get streak() {
-    return history.streak(parisDay(Date.now()));
+    return history.streak(gameDay());
   },
   get arrival() {
-    return { shown: arrival.shown, share: lastShare, message: arrival.message };
+    return { shown: arrival.shown, share: lastShare, message: arrival.message, rank: arrival.rank };
+  },
+  get rank() {
+    return { ...(ranking.debug(today) as object), demo: demoRank };
+  },
+  rankWake() {
+    ranking.wake();
   },
   autoplay(code?: string) {
     const c = code ?? daily?.code ?? (level === ESSAI_LEVEL ? ESSAI_SOLUTION_CODE : null);

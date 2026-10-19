@@ -51,9 +51,10 @@ export interface GameInstance {
   dailyLevel(day: number): Promise<unknown>;
   /**
    * La validation d'un essai envoyé : le serveur **rejoue** la rediffusion sur le niveau du jour (seule source d'un temps) et rend son propre
-   * résultat, ou lève `HttpError`. DailyTrack : `replayRace` sur le circuit du jour ; DailyJump : à venir (lot P1), absente d'ici là.
+   * résultat, ou lève `HttpError`. DailyTrack : `replayRace` sur le circuit du jour ; DailyJump (lot P1) : `replayAttempt` sur le niveau du jour
+   * (son temps en pas et ses morts, en plus du temps en ms).
    */
-  validate?(day: number, replay: string): Promise<{ ms: number }>;
+  validate?(day: number, replay: string): Promise<{ ms: number; ticks?: number; deaths?: number }>;
   /** Pseudo changé (`PUT /api/player`) : ce que le jeu montre déjà du joueur suit. */
   onRename?(playerId: string, name: string): Promise<void>;
   /** « Changer mon code » : les lignes du jeu passent au nouvel identifiant (dans la transaction de la plateforme). */
