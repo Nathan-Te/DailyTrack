@@ -24,6 +24,8 @@ import { STAIN_DISCS, type StainDisc } from "./stains";
 //   - la foule du carnage (un seul `InstancedMesh` : un carré par vie) ;
 //   - les taches de peinture (un seul `InstancedMesh` de disques, découpés au pochoir par les blocs pleins : la peinture ne déborde jamais
 //     dans le vide). Au-delà de `MAX_STAINS` taches, les plus anciennes s'estompent (elles se fondent dans la couleur des blocs, puis partent).
+//     Lot P3 (plateforme) : les taches de tout le monde sont une **seconde couche du même système** (`StainLayer`, capacité et profondeur à
+//     elle), dessinée sous les tiennes, chaque tache avec son intensité (`strength` < 1 : plus pâle).
 // Rien n'est créé pendant le jeu : capacités fixées à la construction, objets recyclés.
 
 const T = UNITS_PER_TILE;
@@ -176,6 +178,8 @@ export class CrowdMesh {
 
 interface LiveStain {
   discs: StainDisc[];
+  /** Part de la couleur de la peinture (1 : tes taches ; moins : celles des autres, plus pâles). */
+  strength: number;
   /** Première case de l'instance. */
   slot: number;
   /** 1 = pleine ; décroît vers 0 pendant l'estompe. */
@@ -199,9 +203,12 @@ export class StainLayer {
   private dirty = true;
   /** Taches posées depuis le départ (contrôle). */
   added = 0;
+  /** Taches pleines au plus (au-delà, les plus anciennes s'estompent). */
+  readonly capacity: number;
 
-  constructor(parent: Object3D, paint: number, tile: number) {
-    const slots = (MAX_STAINS + 40) * STAIN_DISCS;
+  constructor(parent: Object3D, paint: number, tile: number, options: { capacity?: number; z?: number } = {}) {
+    this.capacity = options.capacity ?? MAX_STAINS;
+    const slots = (this.capacity + 40) * STAIN_DISCS;
     const material = new MeshBasicMaterial({ color: 0xffffff });
     // Pochoir : seulement là où un bloc plein a écrit `SOLID_STENCIL`.
     material.stencilWrite = true;
@@ -216,7 +223,7 @@ export class StainLayer {
     this.mesh.instanceColor.setUsage(DynamicDrawUsage);
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1;
-    this.mesh.position.z = 0.01;
+    this.mesh.position.z = options.z ?? 0.01;
     for (let i = 0; i < slots; i++) this.mesh.setMatrixAt(i, this.hidden);
     for (let s = slots - STAIN_DISCS; s >= 0; s -= STAIN_DISCS) this.free.push(s);
     this.paint = new Color(paint);
@@ -234,8 +241,8 @@ export class StainLayer {
     return this.stains.reduce((n, s) => n + s.discs.length, 0);
   }
 
-  /** Pose une tache. La plus ancienne s'estompe si l'on dépasse `MAX_STAINS`. */
-  add(discs: StainDisc[], instant = false): void {
+  /** Pose une tache (intensité `strength`, 1 par défaut). La plus ancienne s'estompe si l'on dépasse la capacité. */
+  add(discs: StainDisc[], instant = false, strength = 1): void {
     if (discs.length === 0) return;
     let slot = this.free.pop();
     if (slot === undefined) {
@@ -244,11 +251,11 @@ export class StainLayer {
       this.release(oldest);
       slot = this.free.pop()!;
     }
-    this.stains.push({ discs, slot, life: 1, fading: false });
+    this.stains.push({ discs, slot, life: 1, fading: false, strength });
     this.added++;
     let full = this.stains.filter((s) => !s.fading).length;
     for (const s of this.stains) {
-      if (full <= MAX_STAINS) break;
+      if (full <= this.capacity) break;
       if (s.fading) continue;
       s.fading = true;
       full--;
@@ -257,11 +264,14 @@ export class StainLayer {
     this.dirty = true;
   }
 
-  /** Remplace toutes les taches (chargement, début et fin du carnage). */
-  reset(list: StainDisc[][]): void {
+  /** Remplace toutes les taches (chargement, début et fin du carnage ; lot P3 : une carte des morts, avec l'intensité de chaque tache). */
+  reset(list: readonly (StainDisc[] | { discs: StainDisc[]; strength: number })[]): void {
     for (const s of this.stains) this.release(s);
     this.stains.length = 0;
-    for (const d of list) this.add(d, true);
+    for (const d of list) {
+      if (Array.isArray(d)) this.add(d, true);
+      else this.add(d.discs, true, d.strength);
+    }
     this.update(0);
   }
 
@@ -298,7 +308,7 @@ export class StainLayer {
         this.m.setPosition(d.x, -d.y, 0);
         this.mesh.setMatrixAt(s.slot + j, this.m);
         // Nuance par disque, puis fondu vers la couleur des blocs quand la tache s'estompe.
-        this.c.copy(this.paint).offsetHSL(0, 0, d.shade * 0.06).lerp(this.tile, 1 - k);
+        this.c.copy(this.paint).offsetHSL(0, 0, d.shade * 0.06).lerp(this.tile, 1 - k * s.strength);
         this.mesh.setColorAt(s.slot + j, this.c);
       }
     }
@@ -308,5 +318,9 @@ export class StainLayer {
 
   set visible(on: boolean) {
     this.mesh.visible = on;
+  }
+
+  get visible(): boolean {
+    return this.mesh.visible;
   }
 }

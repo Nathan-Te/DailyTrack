@@ -114,6 +114,6 @@ const jumps = await seedJumpDays({
   db,
   frozen,
   days: [today],
-  onDay: (d) => console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s)${d.refused ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`),
+  onDay: (d) => console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s), ${d.lives} vie(s) gardée(s) (morts rejouées)${d.refused || d.firstError ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`),
 });
 console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);

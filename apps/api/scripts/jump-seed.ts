@@ -23,7 +23,7 @@ const started = Date.now();
 const data = await seedJumpDemo({
   db: openSqlite(":memory:"),
   frozen,
-  onDay: (d) => console.log(`${d.date} : ${d.accepted} joueurs classés${d.refused ? `, ${d.refused} refus (${d.firstError})` : ""}`),
+  onDay: (d) => console.log(`${d.date} : ${d.accepted} joueurs classés, ${d.lives} vies gardées${d.refused || d.firstError ? `, ${d.refused} refus (${d.firstError})` : ""}`),
 });
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });

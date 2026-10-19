@@ -7,6 +7,9 @@
 // partage) sur une journée, à comparer avec celui de DailyTrack (`npm run measure:budget`).
 // Lot P2 : le fantôme du premier (`GET /api/jump/day/<date>/ghost/first`, jour en cours et jour passé) et le profil DailyJump
 // (`GET /api/jump/me`, 1 jour puis 30 jours d'historique), et le joueur type avec eux.
+// Lot P3 : les morts de tout le monde — un lot de vies (instructions, lignes, temps de rejeu), une journée de joueur type (50 morts, 3 lots,
+// plafond de 30), la carte et l'échantillon avec **1 000 joueurs simulés** (calcul, lignes lues, taille des réponses), l'oubli d'un jour, et
+// le seuil de l'offre gratuite de Turso (500 M lignes lues, 10 M écrites par mois) et de Cloud Run (2 M requêtes par mois).
 //
 //   docker run -d -p 8081:8080 ghcr.io/tursodatabase/libsql-server     (un sqld local)
 //   SQLD_URL=http://localhost:8081 npm run measure:jump-api -w @cdj/api
@@ -14,7 +17,8 @@
 // ⚠ Le script **vide** la table `jump_levels` (et le schéma) de ce serveur : il refuse tout ce qui n'est pas localhost.
 import { readFileSync, readdirSync } from "node:fs";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, checkLife, decodeReplay, demoAttempts, encodeReplay, lifeReplay, replayAttempt } from "@cdj/jump-sim";
+import { JUMP_MAP_REFRESH_MS } from "../src/jumpLives";
 import { createApi } from "../src/api";
 import { fictionalJumps, jumpDailyOf } from "../src/jumpHistory";
 import type { SqlDb, SqlValue } from "../src/db";
@@ -75,15 +79,19 @@ const today = daysFromCivil(2026, 10, 19);
 const clock = { now: today * 86_400_000 + 12 * 3_600_000 };
 const make = () => createApi({ db, now: () => clock.now, rateSalt: "mesure", jumpFrozen: frozen, environment: "local" });
 
-for (const t of ["jump_levels", "jump_results", "players", "rate", "revoked_codes", "meta"]) await db.run(`DROP TABLE IF EXISTS ${t}`);
+const TABLES = ["jump_levels", "jump_results", "jump_lives", "jump_deaths", "players", "rate", "revoked_codes", "meta"];
+for (const t of TABLES) await db.run(`DROP TABLE IF EXISTS ${t}`);
 
 const costs = new Map<string, { statements: number; read: number; written: number; ms: number }>();
+const sizes = new Map<string, number>();
 async function measure(label: string, api: ReturnType<typeof make>, path: string, init: RequestInit = {}, client = "203.0.113.7"): Promise<void> {
   const before = { ...tally };
   const t0 = performance.now();
   const res = await api.handle(new Request(`http://api.test${path}`, init), { clientKey: client });
   const ms = performance.now() - t0;
-  const body = (await res.json()) as { source?: string };
+  const text = await res.text();
+  const body = (JSON.parse(text) as { source?: string }) ?? {};
+  sizes.set(label, text.length);
   costs.set(label, { statements: tally.statements - before.statements, read: tally.read - before.read, written: tally.written - before.written, ms });
   console.log(
     `${label.padEnd(58)} ${String(res.status).padStart(3)}  ${ms.toFixed(1).padStart(7)} ms  instructions ${String(tally.statements - before.statements).padStart(2)}  lues ${String(tally.read - before.read).padStart(3)}  écrites ${String(tally.written - before.written).padStart(2)}${body.source ? `  (${body.source})` : ""}`,
@@ -186,4 +194,122 @@ console.log(
   `Joueur type avec le lot P2 (fantôme du premier ×6, profil ×4, historique de 30 jours) : ${typicalP2.requests} requêtes · ${typicalP2.statements} instructions · ${typicalP2.read} lignes lues · ${typicalP2.written} lignes écrites`,
 );
 console.log(`  une arrivée qui améliore : ${visit.requests} requêtes, ${visit.read} lignes lues, ${visit.written} écrites ; un partage : 0 requête ; un chargement (rang connu) : 1 requête, ${costs.get("board, joueur classé")!.read} lignes lues`);
-for (const t of ["jump_levels", "jump_results", "players", "rate", "revoked_codes", "meta"]) await db.run(`DROP TABLE IF EXISTS ${t}`);
+
+// --- Lot P3 : les morts de tout le monde ----------------------------------------------------------------------------------------------
+console.log(`\n--- Les morts de tout le monde (lot P3) ---\n`);
+// Des vies qui finissent par une mort, tirées d'essais fictifs du niveau du jour (perturbations de la preuve de l'auteur).
+const pool: string[] = [];
+for (const a of demoAttempts(day.level, day.replay, 0x9a7e, { attempts: 120, maxLives: 8 })) {
+  for (const life of replayAttempt(day.level, a.replay, day.id).lives) if (life.end === "mort") pool.push(encodeReplay(lifeReplay(a.replay, life)));
+}
+const lengths = pool.map((c) => c.length);
+console.log(`${pool.length} vies (des morts) disponibles, ${Math.min(...lengths)} à ${Math.max(...lengths)} caractères (moyenne ${Math.round(lengths.reduce((a, b) => a + b, 0) / lengths.length)})`);
+const lotOf = (lives: string[], extra: Record<string, unknown> = {}): RequestInit => ({
+  method: "POST",
+  headers: { "Content-Type": "application/json", "X-Player-Id": me },
+  body: JSON.stringify({ levelId: day.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives, ...extra }),
+});
+// Le rejeu seul d'un lot de 10 vies (dans le processus, sans base) : ce que coûte la validation.
+const level = day.level;
+const t10 = performance.now();
+for (const c of pool.slice(0, 10)) checkLife(level, decodeReplay(c), day.id);
+const replay10 = performance.now() - t10;
+console.log(`rejeu de 10 vies (checkLife, sans base) : ${replay10.toFixed(1)} ms\n`);
+await measure("lives : premier lot de 10 (crée la ligne du joueur)", c, "/api/jump/lives", lotOf(pool.slice(0, 10)));
+await measure("lives : deuxième lot de 10", c, "/api/jump/lives", lotOf(pool.slice(10, 20)));
+await measure("lives : troisième lot de 10 (le plafond de 30 atteint)", c, "/api/jump/lives", lotOf(pool.slice(20, 30)));
+await measure("lives : lot renvoyé (10 doublons, rien n'est écrit)", c, "/api/jump/lives", lotOf(pool.slice(20, 30)));
+await measure("lives : lot au-delà du plafond (refusé sans rejeu)", c, "/api/jump/lives", lotOf(pool.slice(30, 40)));
+await measure("lives : autre version (refus avant le rejeu)", c, "/api/jump/lives", lotOf(pool.slice(30, 40), { generatorVersion: 0 }));
+clock.now += JUMP_MAP_REFRESH_MS;
+await measure("deaths : carte recalculée (1 joueur)", c, `/api/jump/day/${date}/deaths`);
+await measure("deaths : même instance (mémoire, 3 min)", c, `/api/jump/day/${date}/deaths`);
+await measure("carnage : échantillon (mémoire, calculé avec la carte)", c, `/api/jump/day/${date}/carnage`);
+const fresh2 = make();
+await fresh2.handle(new Request("http://api.test/api/health"));
+await measure("instance neuve : deaths (lu en base, rien de nouveau)", fresh2, `/api/jump/day/${date}/deaths`);
+
+// 1 000 joueurs simulés : 40 joueurs envoient vraiment leurs vies (par l'API, rejouées), puis leurs lignes sont recopiées pour 960 autres
+// identifiants (mêmes vies : seul le coût de lecture et de calcul compte ici).
+const PLAYERS = 1000;
+for (let i = 0; i < 40; i++) {
+  const id = hex(5000 + i);
+  await db.run("INSERT OR IGNORE INTO players (id, name, created_at, updated_at, demo, name_key) VALUES (?, ?, 1, 1, 0, ?)", [id, `Mesure${i}`, `mesure${i}`]);
+  const start = (i * 17) % Math.max(1, pool.length - 30);
+  await c.handle(
+    new Request("http://api.test/api/jump/lives", { method: "POST", headers: { "Content-Type": "application/json", "X-Player-Id": id }, body: JSON.stringify({ levelId: day.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives: pool.slice(start, start + 30) }) }),
+    { clientKey: `192.0.2.${i}` },
+  );
+}
+for (let i = 40; i < PLAYERS; i++) {
+  await db.run("INSERT INTO jump_lives (day, player_id, level_id, count, lives, rev, updated_at) SELECT day, ?, level_id, count, lives, 1, updated_at FROM jump_lives WHERE day = ? AND player_id = ?", [hex(5000 + i), today, hex(5000 + (i % 40))]);
+}
+await db.run("UPDATE jump_deaths SET version = version + 1 WHERE day = ?", [today]);
+const rowBytes = (await db.first<{ n: number }>("SELECT AVG(LENGTH(lives)) AS n FROM jump_lives WHERE day = ?", [today]))!.n;
+console.log(`\n${PLAYERS + 1} joueurs avec des vies aujourd'hui ; ligne d'un joueur à 30 vies : ${Math.round(rowBytes)} octets en moyenne\n`);
+clock.now += JUMP_MAP_REFRESH_MS;
+await measure(`deaths : carte recalculée (${PLAYERS} joueurs)`, c, `/api/jump/day/${date}/deaths`);
+await measure(`carnage : échantillon (${PLAYERS} joueurs, mémoire)`, c, `/api/jump/day/${date}/carnage`);
+const fresh3 = make();
+await fresh3.handle(new Request("http://api.test/api/health"));
+await measure(`instance neuve : carnage (${PLAYERS} joueurs, lu en base)`, fresh3, `/api/jump/day/${date}/carnage`);
+console.log(`  taille des réponses : carte ${sizes.get(`deaths : carte recalculée (${PLAYERS} joueurs)`)} octets, échantillon ${sizes.get(`carnage : échantillon (${PLAYERS} joueurs, mémoire)`)} octets`);
+// L'oubli : le lendemain, après la grâce, la première requête fige la carte et l'échantillon et efface les vies brutes.
+const forgetClock = clock.now;
+clock.now = (today + 1) * 86_400_000 + 12 * 3_600_000;
+const g = make();
+await g.handle(new Request("http://api.test/api/health"));
+await measure(`oubli du jour (${PLAYERS + 1} joueurs : carte et échantillon figés, vies effacées)`, g, "/api/jump/info");
+await measure("jour passé : deaths (figé, lu en base)", g, `/api/jump/day/${date}/deaths`);
+await measure("jour passé : deaths (figé, mémoire)", g, `/api/jump/day/${date}/deaths`);
+clock.now = forgetClock;
+
+// Joueur type du lot P3 : 50 morts dans la journée, 3 lots (le jeu n'envoie que 30 morts : plafond) ; la carte lue à chaque chargement (2) et
+// rafraîchie à chaque arrivée (4) ; le carnage de tout le monde regardé 2 fois. Les lectures de la carte et de l'échantillon sont presque
+// toujours servies par la mémoire de l'instance (3 min) : on les compte au prix d'une lecture en base (le pire cas pour un joueur seul).
+const typicalP3 = sum([
+  [1, "pseudo libre ? (GET /api/name, la plateforme)"],
+  [1, "submit : premier essai (crée le joueur)"],
+  [1, "submit : essai amélioré"],
+  [6, "board, joueur classé"],
+  [6, "ghost/first, jour en cours (joueur)"],
+  [4, "/api/jump/me, 30 jours classés"],
+  [1, "lives : premier lot de 10 (crée la ligne du joueur)"],
+  [2, "lives : deuxième lot de 10"],
+  [6, "instance neuve : deaths (lu en base, rien de nouveau)"],
+  [2, `instance neuve : carnage (${PLAYERS} joueurs, lu en base)`],
+]);
+const livesOnly = sum([
+  [1, "lives : premier lot de 10 (crée la ligne du joueur)"],
+  [2, "lives : deuxième lot de 10"],
+  [6, "instance neuve : deaths (lu en base, rien de nouveau)"],
+  [2, `instance neuve : carnage (${PLAYERS} joueurs, lu en base)`],
+]);
+console.log(
+  `\nJoueur type avec le lot P3 (P2 + 3 lots de vies, carte ×6, carnage ×2) : ${typicalP3.requests} requêtes · ${typicalP3.statements} instructions · ${typicalP3.read} lignes lues · ${typicalP3.written} lignes écrites`,
+);
+console.log(`  dont le lot P3 : ${livesOnly.requests} requêtes · ${livesOnly.read} lignes lues · ${livesOnly.written} lignes écrites`);
+// Coût du jour qui ne dépend pas d'un joueur : la carte recalculée au plus toutes les 3 min tant que des vies arrivent (≤ 480 fois par jour,
+// une ligne lue par joueur du jour et une écrite), puis l'oubli (une ligne lue et une effacée par joueur).
+const rebuild = costs.get(`deaths : carte recalculée (${PLAYERS} joueurs)`)!;
+const forgetCost = costs.get(`oubli du jour (${PLAYERS + 1} joueurs : carte et échantillon figés, vies effacées)`)!;
+const perRebuildRead = rebuild.read / (PLAYERS + 1);
+console.log(`  carte recalculée : ${rebuild.read} lignes lues pour ${PLAYERS + 1} joueurs (${perRebuildRead.toFixed(2)} par joueur), ${rebuild.written} écrite, ${rebuild.ms.toFixed(0)} ms`);
+console.log(`  oubli : ${forgetCost.read} lignes lues, ${forgetCost.written} écrites (effacements compris), ${forgetCost.ms.toFixed(0)} ms`);
+const REBUILDS = (24 * 60) / (JUMP_MAP_REFRESH_MS / 60_000);
+const month = (n: number) => {
+  const reads = 30 * (n * typicalP3.read + REBUILDS * (n * perRebuildRead + 2) + n * (forgetCost.read / (PLAYERS + 1)));
+  const writes = 30 * (n * typicalP3.written + REBUILDS + n * (forgetCost.written / (PLAYERS + 1)));
+  const requests = 30 * n * typicalP3.requests;
+  return { reads, writes, requests };
+};
+for (const n of [100, 1000, 3000, 10_000]) {
+  const m = month(n);
+  console.log(`  ${String(n).padStart(6)} joueurs/jour : ${(m.reads / 1e6).toFixed(1)} M lignes lues, ${(m.writes / 1e6).toFixed(2)} M écrites, ${(m.requests / 1e6).toFixed(2)} M requêtes par mois`);
+}
+let limit = 1;
+while (month(limit).reads < 500e6 && month(limit).writes < 10e6 && month(limit).requests < 2e6) limit += 10;
+const m = month(limit);
+const which = m.reads >= 500e6 ? "lignes lues de Turso" : m.writes >= 10e6 ? "lignes écrites de Turso" : "requêtes de Cloud Run";
+console.log(`  offre gratuite dépassée vers ${limit} joueurs DailyJump par jour (premier plafond atteint : ${which}), carte recalculée ${REBUILDS} fois par jour (pire cas)`);
+for (const t of TABLES) await db.run(`DROP TABLE IF EXISTS ${t}`);

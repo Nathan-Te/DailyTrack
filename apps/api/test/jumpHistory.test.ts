@@ -22,11 +22,17 @@ describe(`joueurs fictifs de DailyJump (${TEST_DB})`, () => {
   it("passent par le vrai createApi (aucun refus), sont marqués demo, avec un identifiant stable par pseudo ; relancer ne crée aucun doublon", async () => {
     const db = await openTestDb();
     const day = JUMP_DEMO_TODAY;
-    const seen: { accepted: number; refused: number }[] = [];
+    const seen: { accepted: number; refused: number; lives: number; firstError: string }[] = [];
     const total = await seedJumpDays({ db, frozen: FROZEN, days: [day], demoOnly: true, onDay: (d) => void seen.push(d) });
     expect(seen).toHaveLength(1);
     expect(seen[0]!.refused).toBe(0);
+    expect(seen[0]!.firstError).toBe("");
     expect(total).toBeGreaterThanOrEqual(5);
+    // Lot P3 : leurs vies (des morts rejouées par le serveur), au plus 30 par joueur, une ligne par joueur.
+    const lives = await db.all<{ player_id: string; count: number }>("SELECT player_id, count FROM jump_lives WHERE day = ?", [day]);
+    expect(lives.length).toBeGreaterThanOrEqual(total - 1);
+    expect(lives.reduce((n, r) => n + r.count, 0)).toBe(seen[0]!.lives);
+    for (const r of lives) expect(r.count).toBeLessThanOrEqual(30);
     const rows = await db.all<{ id: string; name: string; demo: number; ticks: number }>("SELECT p.id AS id, p.name AS name, p.demo AS demo, r.ticks AS ticks FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ?", [day]);
     expect(rows).toHaveLength(total);
     for (const r of rows) {
@@ -40,6 +46,7 @@ describe(`joueurs fictifs de DailyJump (${TEST_DB})`, () => {
     expect(new Set(rows.map((r) => r.ticks)).size).toBeGreaterThan(rows.length / 2);
     await seedJumpDays({ db, frozen: FROZEN, days: [day] });
     expect(await db.first("SELECT COUNT(*) AS n FROM jump_results")).toEqual({ n: total });
+    expect(await db.first<{ n: number }>("SELECT SUM(count) AS n FROM jump_lives WHERE day = ?", [day])).toEqual({ n: seen[0]!.lives });
     // Base qui contient de vrais joueurs : refus du jeu de données de démonstration.
     await db.run("INSERT INTO players (id, name, created_at, updated_at, demo, name_key) VALUES (?, 'Vrai', 1, 1, 0, 'vrai')", [playerId(1)]);
     await expect(seedJumpDays({ db, frozen: FROZEN, days: [day], demoOnly: true })).rejects.toThrow(/vrai/);
@@ -54,6 +61,14 @@ describe(`joueurs fictifs de DailyJump (${TEST_DB})`, () => {
     expect(a[0]!.ticks).toBe(d.authorTicks);
   }, 60_000);
 });
+
+/** Le niveau d'un jour du jeu de données, généré une fois par fichier de test (le générateur est coûteux). */
+const levels = new Map<number, ReturnType<typeof jumpDailyOf>>();
+function levelOf(day: number): ReturnType<typeof jumpDailyOf> {
+  let l = levels.get(day);
+  if (!l) levels.set(day, (l = jumpDailyOf(day, FROZEN)));
+  return l;
+}
 
 describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
   const index = JSON.parse(readFileSync(join(PUBLIC, "demo", "index.json"), "utf8")) as { simVersion: number; generatorVersion: number; demoToday: string; days: { date: string; levelId: string; participants: number }[] };
@@ -76,7 +91,7 @@ describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
       expect(day.first, "relancer jump:seed").toBeTruthy();
       expect([day.first!.name, day.first!.ticks, day.first!.deaths]).toEqual([day.top[0]!.name, day.top[0]!.ticks, day.top[0]!.deaths]);
       expect(day.first!.simVersion).toBe(JUMP_SIM_VERSION);
-      const level = jumpDailyOf(PREMIER_JOUR_JUMP + index.days.indexOf(d), FROZEN);
+      const level = levelOf(PREMIER_JOUR_JUMP + index.days.indexOf(d));
       const r = replayAttempt(level.level, decodeReplay(day.first!.replay), level.id);
       expect([r.finished, r.time, r.deaths.length]).toEqual([true, day.first!.ticks, day.first!.deaths]);
     }
@@ -88,5 +103,25 @@ describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
     const rows = await db.all("SELECT p.name AS name, r.ticks AS ticks, r.deaths AS deaths FROM jump_results r JOIN players p ON p.id = r.player_id ORDER BY r.ticks, r.submitted_at, r.player_id");
     const file = JSON.parse(readFileSync(join(PUBLIC, "demo", `${index.demoToday}.json`), "utf8")) as { rows: unknown[] };
     expect(file.rows, "relancer jump:seed").toEqual(rows);
+  }, 60_000);
+
+  it("lot P3 : chaque jour a sa carte des morts et l'échantillon du carnage ; chaque vie de l'échantillon se rejoue et meurt", () => {
+    for (const d of index.days) {
+      const day = JSON.parse(readFileSync(join(PUBLIC, "demo", `${d.date}.json`), "utf8")) as {
+        deaths?: { players: number; deaths: number; tiles: number[][] };
+        carnage?: { players: number; dayPlayers: number; lives: { replay: string; section: number; p: number }[] };
+      };
+      expect(day.deaths, "relancer jump:seed").toBeTruthy();
+      expect(day.carnage, "relancer jump:seed").toBeTruthy();
+      expect(day.deaths!.players).toBeGreaterThanOrEqual(3);
+      expect(day.deaths!.tiles.reduce((n, t) => n + t[2]!, 0)).toBeLessThanOrEqual(day.deaths!.deaths);
+      expect(day.carnage!.lives.length).toBeGreaterThanOrEqual(10);
+      const level = levelOf(PREMIER_JOUR_JUMP + index.days.indexOf(d));
+      for (const l of day.carnage!.lives) {
+        const r = replayAttempt(level.level, decodeReplay(l.replay), level.id);
+        expect(r.lives.map((x) => x.end)).toEqual(["mort"]);
+      }
+    }
+    // Comme les autres tests de ce fichier qui génèrent des niveaux (15 jours, ≈ 1 000 vies rejouées) : 5 s ne suffisent pas en CI.
   }, 60_000);
 });

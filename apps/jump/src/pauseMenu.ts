@@ -168,6 +168,25 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   ghosts.append(firstGhost, el("p", "mhint", "Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Ton fantôme : bouton 👻 ou touche G."));
   root.append(ghosts);
 
+  // ——— Lot P3 : les taches de tout le monde ———
+  const stainsSection = el("section", "msection");
+  stainsSection.append(el("h3", undefined, "Taches"));
+  const othersStains = el("button", "mbtn mtoggle");
+  othersStains.type = "button";
+  othersStains.dataset.setting = "othersStains";
+  othersStains.id = "menu-others-stains";
+  shows.push(() => {
+    othersStains.setAttribute("aria-pressed", s.othersStains ? "true" : "false");
+    othersStains.textContent = `Taches de tout le monde : ${s.othersStains ? "oui" : "non"}`;
+  });
+  othersStains.addEventListener("click", () => {
+    s = { ...s, othersStains: !s.othersStains };
+    shows.forEach((f) => f());
+    change("othersStains");
+  });
+  stainsSection.append(othersStains, el("p", "mhint", "Les morts des autres joueurs du jour, plus pâles et plus petites que les tiennes : on voit où le niveau tue."));
+  root.append(stainsSection);
+
   // ——— Lot P2 : Réglages › Profil ———
   if (opts.profile) root.append(opts.profile);
 

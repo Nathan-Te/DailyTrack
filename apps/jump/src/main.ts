@@ -22,6 +22,7 @@ import {
   TILE_BELT_RIGHT,
   UNITS_PER_TILE,
   decodeReplay,
+  encodeReplay,
   groundTile,
   demoAttempts,
   fromRuns,
@@ -30,6 +31,7 @@ import {
   replayAttempt,
   runsTicks,
   sawCenters,
+  sectionAt,
   sectionPhases,
   windActive,
   windPhase,
@@ -106,6 +108,11 @@ import { mountProfileUi } from "./profileUi";
 import { copyText } from "./clipboard";
 import { HttpRankSource, rankApiBase, type RankSource } from "./rankApi";
 import { RankQueue } from "./rankQueue";
+import { LIVES_EVERY_MS, LivesQueue, type LifeCandidate } from "./livesQueue";
+import { LivesSender } from "./livesSender";
+import { OTHERS_MAX_TILES, keepoutDistance as keepoutDistanceOf, keepoutOf, othersStains, type Keepout } from "./othersStains";
+import { everyoneLives, everyonePlan, type EveryoneLives } from "./everyone";
+import type { DeathMapData } from "./rankApi";
 import { Ranking, mayRank } from "./ranking";
 import { arrivalRankView, homeRankText } from "./rankView";
 import { DEMO_TODAY, DemoRankSource } from "./demoRank";
@@ -325,6 +332,20 @@ export interface JumpDebug {
   toggleGhost(): boolean;
   /** Lot 3 : taches à l'écran. */
   readonly stains: { count: number; discs: number; added: number };
+  /**
+   * Lot P3 (plateforme) : les taches de tout le monde — date, réglage, carte chargée, tuiles de la carte, taches dessinées et leurs disques,
+   * couche visible, joueurs et morts du jour, raison d'absence ; `closest` : la plus petite distance (tuiles) d'un disque à un danger ou un fanion.
+   */
+  readonly othersStains: { date: string | null; enabled: boolean; loaded: boolean; tiles: number; drawn: number; discs: number; visible: boolean; players: number; deaths: number; miss: string; closest: number };
+  /** Lot P3 : l'envoi des vies (branché, état, lots envoyés, file du jour, dernière réponse du serveur). */
+  readonly lives: unknown;
+  /** Lot P3 : l'échantillon du carnage de tout le monde (chargé, vies jouables, joueurs, écartées, à toi, bouton de l'arrivée). */
+  readonly everyone: { loaded: boolean; lives: number; players: number; rejected: number; own: number; miss: string; button: string | null };
+  /**
+   * Lot P3 (tests) : le carnage de tout le monde, comme le bouton de l'arrivée ; faux sans échantillon ou sans essai héros. `max` (mesure) :
+   * l'échantillon repris jusqu'à `max` vies.
+   */
+  startEveryone(max?: number): boolean;
   /** Lecture `?watch=best` en cours. */
   readonly watching: boolean;
   /** Lot 8 : les derniers événements de jeu (200 au plus), du plus ancien au plus récent. */
@@ -424,6 +445,8 @@ export interface HomeDebug {
 export interface CarnageView {
   active: boolean;
   demo: boolean;
+  /** Lot P3 : le carnage de tout le monde (l'échantillon du serveur) ; sinon le tien. */
+  everyone: boolean;
   /** Vies du carnage (héros compris), arrivées et morts jusqu'ici, vies en course, pas du héros. */
   lives: number;
   arrivals: number;
@@ -505,6 +528,20 @@ const jumpSync = new ProfileSync<JumpSyncResult, KeyValueStore, JumpMe>({
   },
   identity,
 });
+// ——— Lot P3 (plateforme) : les vies du niveau du jour qui finissent par une mort partent au serveur, qui les rejoue (au plus 30 par jour,
+// choisies le long du niveau : `livesQueue.ts`) — à l'arrivée, toutes les 3 minutes pendant la partie et quand la page se cache (`keepalive`) ;
+// jamais pour une archive, un thème forcé, une partie aux réglages modifiés, un morceau, un scénario, ni en démonstration. Le jeu ne bloque
+// jamais sur ces envois ; sans identité ou pour un joueur pas encore classé, elles attendent la première arrivée acceptée.
+const livesSender = new LivesSender({
+  source: demoRank ? null : rankSource,
+  queue: new LivesQueue(store, () => Date.now()),
+  playerId: ownId,
+  today: () => gameDay(),
+  sinceMidnight: () => Date.now() - parisDayStart(parisDay(Date.now())),
+  now: () => Date.now(),
+  setTimer: (fn, ms) => setTimeout(fn, ms),
+  clearTimer: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
+});
 const ranking = new Ranking({
   source: rankSource,
   queue: new RankQueue(store, () => Date.now()),
@@ -514,6 +551,8 @@ const ranking = new Ranking({
   onAccepted: () => {
     void syncProfile(true);
     void loadFirst();
+    // Lot P3 : le joueur existe maintenant sur le serveur : ses vies en attente partent.
+    livesSender.wake();
   },
   identityStore: () => store,
   today: () => gameDay(),
@@ -764,6 +803,44 @@ async function loadFirst(): Promise<void> {
 const stains = scene ? new StainLayer(scene.world, palette.player, palette.tile) : null;
 const storedStains = () => memory.deaths.map((d) => stainFor(level, d.x, d.y));
 stains?.reset(storedStains());
+// ——— Lot P3 (plateforme) : les taches de tout le monde — la carte des morts du jour (serveur ou démonstration), plus pâles et plus petites que
+// les tiennes, une seconde couche du même système, dessinée dessous ; jamais sur un danger ni un fanion (`othersStains.ts`). Chargée avec le
+// niveau, rafraîchie à l'arrivée ; une archive montre la carte figée de son jour. Réglage « Taches de tout le monde » (menu ⏸, mémorisé).
+const othersLayer = scene ? new StainLayer(scene.world, palette.player, palette.tile, { capacity: OTHERS_MAX_TILES, z: 0.005 }) : null;
+let othersMap: DeathMapData | null = null;
+let othersMiss = firstDate && rankSource?.deaths ? "" : "aucun serveur";
+let othersKeepout: Keepout | null = null;
+let othersDrawn: { count: number; discs: number; closest: number } = { count: 0, discs: 0, closest: Infinity };
+const othersOn = (): boolean => settings.othersStains && !watching;
+function drawOthers(): void {
+  othersKeepout ??= keepoutOf(level);
+  const list = othersMap ? othersStains(level, othersMap.tiles, othersKeepout) : [];
+  let closest = Infinity;
+  if (options.debug) for (const o of list) for (const d of o.discs) closest = Math.min(closest, othersKeepoutDistance(d.x, d.y));
+  othersDrawn = { count: list.length, discs: list.reduce((n, o) => n + o.discs.length, 0), closest };
+  othersLayer?.reset(list);
+  showOthers();
+}
+function othersKeepoutDistance(x: number, y: number): number {
+  return keepoutDistanceOf(othersKeepout!, x, y);
+}
+/** La couche des autres : visible selon le réglage, jamais pendant un carnage ni une lecture. */
+function showOthers(): void {
+  if (othersLayer) othersLayer.visible = othersOn() && !carnage;
+}
+/** Lit la carte des morts du jour (ne bloque jamais ; un échec réseau garde la carte déjà lue). */
+async function loadOthers(): Promise<void> {
+  if (!firstDate || !rankSource?.deaths) return;
+  const r = await rankSource.deaths(firstDate);
+  if (!r.ok) {
+    othersMiss = r.code;
+    return;
+  }
+  const other = r.data.levelId !== null && r.data.levelId !== levelId;
+  othersMiss = other ? "autre niveau" : "";
+  othersMap = other ? null : r.data;
+  drawOthers();
+}
 
 const T = UNITS_PER_TILE;
 const touchOn = wantsTouch(options.touch, window.matchMedia?.("(pointer: coarse)").matches ?? false);
@@ -833,6 +910,7 @@ function drainEssais(): RecordedEssai | null {
     const rec = memory.recordEssai(e.essai, e.tuned || isTrial);
     if (!rec) continue;
     last = rec;
+    offerLives(rec, e.tuned);
     if (rec.newBest) {
       refreshGhost();
       refreshFirstGhost();
@@ -853,6 +931,14 @@ function drainEssais(): RecordedEssai | null {
  */
 function rankable(): boolean {
   return mayRank({ mode: daily && choice ? choice.mode : null, levelDay: daily?.day ?? -1, today: gameDay(), watching, tuned: session.tuned, trial: isTrial, carnageDemo: options.carnageDemo });
+}
+
+/** Lot P3 : les morts d'un essai du niveau du jour (rejouées par la mémoire : fin, position et section viennent du rejeu) entrent dans la file des vies. */
+function offerLives(rec: RecordedEssai, tuned: boolean): void {
+  if (!daily || tuned || !livesSender.enabled || !rankable()) return;
+  const lives: LifeCandidate[] = [];
+  for (const life of rec.result.lives) if (life.end === "mort" && life.death) lives.push({ code: encodeReplay(lifeReplay(rec.replay, life)), section: sectionAt(level, life.death.x) });
+  livesSender.offer(daily.date, daily.id, level.sections.length, lives, rec.result.finished);
 }
 
 /** Lot P1 : propose le meilleur essai du jour (rejoué par la mémoire) au classement ; la file ne garde que ce qui bat le meilleur envoyé. */
@@ -882,6 +968,8 @@ interface CarnageRun {
   demo: boolean;
   /** Commande au pas précédent : seule une nouvelle commande (un appui) passe le carnage. */
   prevBits: number;
+  /** Lot P3 : le carnage de tout le monde et son compteur (« 142 vies de 37 joueurs »), `null` : le tien. */
+  everyone: string | null;
 }
 let carnage: CarnageRun | null = null;
 /** Lot 10 : le dernier carnage joué (héros et autres vies), pour « Revoir le carnage ». */
@@ -890,7 +978,7 @@ let carnageBurst: { pool: BurstPool; mesh: BurstMesh } | null = null;
 /** Zoom arrière du carnage : on voit plus large autour du héros. */
 const CARNAGE_ZOOM = 1.3;
 
-function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0): boolean {
+function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bits = 0, everyone: string | null = null): boolean {
   if (!scene || carnage) return false;
   let run: Carnage;
   try {
@@ -905,9 +993,9 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
     const pool = new BurstPool(384);
     carnageBurst = { pool, mesh: new BurstMesh(pool, palette.player, scene.world) };
   }
-  carnage = { run, crowd, demo, prevBits: bits };
-  // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel.
-  if (!demo) lastCarnage = { hero, others };
+  carnage = { run, crowd, demo, prevBits: bits, everyone };
+  // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel (le tien, pas celui de tout le monde).
+  if (!demo && everyone === null) lastCarnage = { hero, others };
   arrival.hide();
   carnageFilter.reset();
   audio.stopLoops();
@@ -917,13 +1005,14 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
   ghostMesh?.hide();
   firstGhostMesh?.hide();
   stains?.reset([]);
+  showOthers();
   scene.zoom = CARNAGE_ZOOM;
   scene.resize(touchOn);
   camera = snapCamera(follow(run.hero.state.player), scene.frame);
   stepper.reset();
   phase = "carnage";
   heroLook = restLook();
-  hud.carnage(carnageLabel(run.total, 0));
+  hud.carnage(everyone ?? carnageLabel(run.total, 0));
   return true;
 }
 
@@ -937,6 +1026,7 @@ function endCarnage(): void {
   slideSide = 0;
   hud.carnage(null);
   stains?.reset(storedStains());
+  showOthers();
   scene.zoom = 1;
   scene.resize(touchOn);
   stepper.reset();
@@ -978,7 +1068,7 @@ function stepCarnage(): void {
   if (h.state.status !== ATTEMPT_DEAD && h.prev.status !== ATTEMPT_DEAD && h.state !== h.prev) heroLook = onStep(heroLook, h.prev.player, h.state.player, DEFAULT_JUMP_PARAMS.fallSpeed);
   else if (h.state.status === ATTEMPT_DEAD) heroLook = restLook();
   dispatch([...eventsBetween(h.prev, h.state, level, DEFAULT_JUMP_PARAMS, tick, "heros"), ...lifeEvents]);
-  hud.carnage(carnageLabel(c.run.total, c.run.arrivals));
+  hud.carnage(c.everyone ?? carnageLabel(c.run.total, c.run.arrivals));
   if (c.run.done) endCarnage();
 }
 
@@ -1069,6 +1159,8 @@ function onEvent(e: SessionEvent): void {
     pendingMedal = screen ? medal : null;
     const rec = drainEssais();
     finishNewBest = rec?.newBest ?? false;
+    // Lot P3 : les vies du jour partent à l'arrivée (en arrière-plan).
+    void livesSender.flush();
     // Le carnage démarre de lui-même ; sans essai enregistré (réglages modifiés), l'arrivée tout de suite.
     if (!(rec?.result.finished && startCarnage(rec.replay, memory.liveReplays(rec.essai), false, lastBits))) showFinish();
   }
@@ -1124,6 +1216,10 @@ function showFinish(): void {
   // Lot P2 : le fantôme du premier est relu (un autre a pu passer devant, ou c'est toi maintenant) ; « Regarder le premier » s'il y en a un.
   arrival.setFirst(null);
   void loadFirst();
+  // Lot P3 : la carte des morts est rafraîchie ; « Le carnage de tout le monde » apparaît quand l'échantillon est là.
+  void loadOthers();
+  arrival.setEveryone(null);
+  void loadEveryone();
   // Le top 10 se lit tout de suite, même pendant l'envoi ou le choix du pseudo (il est relu après la réponse du serveur).
   if (ranking.enabled && (c.mode === "archive" || c.mode === "jour")) void ranking.loadBoard(d.date);
 }
@@ -1162,6 +1258,35 @@ async function share(): Promise<void> {
   else if (r === "copie") arrival.shareResult("Copié dans le presse-papiers", null);
   else if (r === "annule") arrival.shareResult("", null);
   else arrival.shareResult("Copie impossible : sélectionne le texte ci-dessous", text);
+}
+
+// ——— Lot P3 : le carnage de tout le monde : l'échantillon du serveur (≈ 150 vies d'autres joueurs), ton essai en héros, par vagues ———
+let everyone: EveryoneLives | null = null;
+let everyoneAt = 0;
+let everyoneMiss = firstDate && rankSource?.carnage ? "" : "aucun serveur";
+/** Lit l'échantillon (au plus une fois par 3 minutes : le serveur ne le recalcule pas plus souvent) ; ne bloque jamais. */
+async function loadEveryone(): Promise<void> {
+  if (!firstDate || !rankSource?.carnage) return;
+  if (!everyone || Date.now() - everyoneAt > LIVES_EVERY_MS) {
+    const r = await rankSource.carnage(firstDate);
+    if (r.ok) {
+      everyone = everyoneLives(level, levelId, r.data, new Set(memory.lives.map((l) => l.code)));
+      everyoneAt = Date.now();
+      everyoneMiss = everyone.lives.length ? "" : "échantillon vide";
+    } else everyoneMiss = r.code;
+  }
+  if (arrival.shown) arrival.setEveryone(canEveryone() ? "Le carnage de tout le monde" : null);
+}
+const canEveryone = (): boolean => !!(scene && lastCarnage && everyone && everyone.lives.length > 0);
+/** Le carnage de tout le monde : ton dernier essai arrivé en héros, les vies de l'échantillon par vagues ; le compteur « N vies de M joueurs ». */
+function startEveryone(max = 0): boolean {
+  if (!canEveryone() || carnage) return false;
+  const hero = lastCarnage!.hero;
+  let e = everyone!;
+  // Mesure (`__jump.startEveryone(150)`) : l'échantillon repris autant qu'il faut pour atteindre `max` vies.
+  if (max > e.lives.length) e = { ...e, lives: Array.from({ length: max }, (_, i) => e.lives[i % e.lives.length]!), players: Array.from({ length: max }, (_, i) => e.players[i % e.players.length]!) };
+  const plan = everyonePlan(level, hero, e);
+  return startCarnage(hero, e.lives, false, lastBits, plan.label);
 }
 
 /** Lot 10 : « Revoir le carnage » : le dernier carnage, tel quel ; l'écran d'arrivée revient à sa fin. */
@@ -1301,6 +1426,7 @@ const arrival = mountArrival({
   onName: (name) => void ranking.chooseName(name).then(() => refreshRank()),
   onReload: () => location.reload(),
   // Lot P2 : « Regarder le premier » : la lecture de son essai (`?watch=first`, la date pour une archive).
+  onEveryone: () => void startEveryone(),
   onFirst: () => location.assign(location.pathname + watchFirstHref(choice?.mode === "archive" && daily ? daily.date : null, options)),
 });
 // Lot P1 : l'état du classement change (envoi, réponse, lecture) : l'écran d'arrivée et l'accueil suivent. Le réseau revient : ce qui attend repart.
@@ -1310,7 +1436,15 @@ ranking.onChange(() => {
   if (ranking.state.status === "revoked" && jumpSync.state.status !== "revoked") void syncProfile(true);
 });
 window.addEventListener("online", () => ranking.wake());
+window.addEventListener("online", () => livesSender.wake());
+// Lot P3 : pendant la partie, un lot de vies toutes les 3 minutes au plus (page visible).
+setInterval(() => {
+  if (document.visibilityState === "visible") void livesSender.flush();
+}, LIVES_EVERY_MS);
 document.addEventListener("visibilitychange", () => {
+  // Lot P3 : la page se cache : les vies dues partent (`keepalive` : l'envoi survit à la fermeture de la page).
+  if (document.visibilityState === "hidden") void livesSender.flush({ keepalive: true });
+  if (document.visibilityState === "visible") livesSender.wake();
   if (document.visibilityState === "visible") ranking.wake();
 });
 // Au chargement : un meilleur essai du jour pas encore classé (joué avant ce lot, ou la file d'une autre page) part ; ce qui attend repart ;
@@ -1322,6 +1456,9 @@ if (ranking.enabled && home && ranking.known(formatDay(today))) void ranking.loa
 void syncProfile();
 if (options.watchFirst) refreshFirstGhost();
 else void loadFirst();
+// Lot P3 : les vies en attente (une autre page, une coupure) repartent ; la carte des morts du jour se charge avec le niveau.
+void livesSender.flush();
+void loadOthers();
 
 // ——— Lot 5 : ligne du jour (DailyJump #N, mode, médaille visée), message discret, passage de minuit ———
 const dayLineEl = document.getElementById("dayline")!;
@@ -1557,8 +1694,19 @@ const info: JumpDebug = {
   carnage: {
     get state(): CarnageView {
       const c = carnage;
-      if (!c) return { active: false, demo: false, lives: 0, arrivals: 0, deaths: 0, running: 0, tick: 0, heroTicks: 0, label: "" };
-      return { active: true, demo: c.demo, lives: c.run.total, arrivals: c.run.arrivals, deaths: c.run.deaths, running: c.run.running, tick: c.run.tick, heroTicks: c.run.heroTicks, label: carnageLabel(c.run.total, c.run.arrivals) };
+      if (!c) return { active: false, demo: false, everyone: false, lives: 0, arrivals: 0, deaths: 0, running: 0, tick: 0, heroTicks: 0, label: "" };
+      return {
+        active: true,
+        demo: c.demo,
+        everyone: c.everyone !== null,
+        lives: c.run.total,
+        arrivals: c.run.arrivals,
+        deaths: c.run.deaths,
+        running: c.run.running,
+        tick: c.run.tick,
+        heroTicks: c.run.heroTicks,
+        label: c.everyone ?? carnageLabel(c.run.total, c.run.arrivals),
+      };
     },
     start() {
       const best = memory.bestReplay();
@@ -1629,6 +1777,30 @@ const info: JumpDebug = {
   ghostColors: { own: OWN_GHOST_COLOR, first: FIRST_GHOST_COLOR },
   get stains() {
     return { count: stains?.count ?? 0, discs: stains?.discs ?? 0, added: stains?.added ?? 0 };
+  },
+  get othersStains() {
+    return {
+      date: firstDate,
+      enabled: othersOn(),
+      loaded: othersMap !== null,
+      tiles: othersMap?.tiles.length ?? 0,
+      drawn: othersDrawn.count,
+      discs: othersDrawn.discs,
+      visible: othersLayer?.visible ?? false,
+      players: othersMap?.players ?? 0,
+      deaths: othersMap?.deaths ?? 0,
+      miss: othersMiss,
+      closest: othersDrawn.closest,
+    };
+  },
+  get lives() {
+    return livesSender.debug(formatDay(today));
+  },
+  get everyone() {
+    return { loaded: everyone !== null, lives: everyone?.lives.length ?? 0, players: new Set(everyone?.players ?? []).size, rejected: everyone?.rejected ?? 0, own: everyone?.own ?? 0, miss: everyoneMiss, button: arrival.everyone };
+  },
+  startEveryone(max?: number) {
+    return startEveryone(max ?? 0);
   },
   get watching() {
     return watching;
@@ -1806,6 +1978,7 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
   }
   if (!levels.continuous) trail.clear();
   audio.setSettings(settings);
+  if (changed === "othersStains") showOthers();
   // Un aperçu, pour entendre le niveau choisi (au plus quatre fois par seconde pendant qu'on glisse le curseur).
   const now = performance.now();
   if ((changed === "volume" || changed === "sfx") && now - lastPreview > 250) {
