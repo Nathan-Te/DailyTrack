@@ -1,0 +1,7 @@
+{
+  "_": "Sous-ensemble multi-navigateurs de DailyTrack (lot R3 de la plateforme) : les specs dont le SENS est la comparaison entre navigateurs (rejeu identique Node ↔ navigateur, déterminisme). Sur une PR, Firefox et WebKit ne lancent qu'eux (Chromium lance tout ce qui concerne la PR) ; sur main, la nuit et à la demande, les trois navigateurs lancent tout. Un nouveau test de comparaison entre navigateurs rejoint cette liste (apps/web/CLAUDE.md). Vérifié par apps/web/test/multiNavigateurs.test.ts ; lu par scripts/e2e-parts.mjs (`multi`).",
+  "specs": {
+    "replay.spec.ts": "chaque navigateur rejoue la rediffusion de référence et trouve exactement le résultat de Node (au bit près) ; une rediffusion falsifiée ne donne pas ce temps",
+    "daily.spec.ts": "chaque navigateur régénère les circuits du jour de référence : même texte, même temps d'auteur, même palette que Node ; une date impossible est refusée partout"
+  }
+}

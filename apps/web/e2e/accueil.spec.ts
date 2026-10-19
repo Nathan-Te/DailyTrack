@@ -420,27 +420,42 @@ test.describe("pause et touches", () => {
   test("le chrono : il part au « PARTEZ ! », même voiture immobile ; il ne tourne ni à l'accueil, ni au décompte, ni en pause", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    await open(page, "/?home=1&debug&api=demo&timescale=2");
-    await page.waitForTimeout(1500);
+    await open(page, "/?home=1&debug&api=demo");
+    await page.waitForTimeout(1500); // à l'accueil, en temps réel : rien ne doit changer pendant 1,5 s
     await expect(page.locator("#timer")).toBeHidden(); // à l'accueil, le HUD de course est caché et rien ne tourne
     expect(await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick)).toBe(0);
+    // Lot R3 : la suite se fait pas à pas (`manual` + `advance`). Avant, des attentes en temps réel accéléré (`timescale=2`, 500 ms puis 1,2 s)
+    // supposaient qu'une image au moins était dessinée dans la fenêtre : sur un runner chargé, la première image de la course a pris plus de
+    // 1,2 s (reproduit en local, processeur occupé : 0 pas au lieu de > 100, comme en CI : 7 et 0). En pas à pas, chaque étape attend son
+    // image et compte des pas exacts : le décompte qui ne tourne pas, la course qui tourne voiture immobile, la pause qui fige tout.
+    await page.evaluate(() => window.__cdj.manual(true));
     await page.locator("#home-daily").click();
-    await page.waitForTimeout(500);
+    await page.waitForFunction(() => window.__cdj.phase === "countdown");
+    await page.evaluate(() => window.__cdj.advance(120)); // 1 s de décompte
+    expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
     await expect(page.locator("#timer")).toHaveText("0,000 s"); // décompte : zéro
+    expect(await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick)).toBe(0);
+    await page.evaluate(() => window.__cdj.advance(240)); // la fin des 3 s de décompte : « PARTEZ ! »
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    await page.waitForTimeout(1200);
+    await page.evaluate(() => window.__cdj.advance(240)); // 2 s de course sans toucher à rien
     const running = await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick);
     expect(running).toBeGreaterThan(100); // il tourne depuis le départ, la voiture n'a pas bougé : c'est voulu (comme Trackmania)
     expect(await page.evaluate(() => Math.hypot(window.__cdj.car.vx, window.__cdj.car.vz))).toBeLessThan(0.5);
+    await page.evaluate(() => window.__cdj.advance(120)); // au-delà de 2,5 s immobile : l'aide apparaît
     await expect(page.locator("#banner")).toContainText("Le chrono tourne", { timeout: 20_000 }); // et on le dit au joueur
-    // Pause : le chrono s'arrête net, et repart là où il était.
+    // Pause : le chrono s'arrête net (même 2 s de pas demandés n'y changent rien), et repart là où il était.
     await page.keyboard.press("p");
     await page.waitForFunction(() => window.__cdj.paused === true);
     const a = await page.locator("#timer").textContent();
-    await page.waitForTimeout(1200);
+    const pausedTick = await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick);
+    await page.evaluate(() => window.__cdj.advance(240));
     expect(await page.locator("#timer").textContent()).toBe(a);
+    expect(await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick)).toBe(pausedTick);
     await page.keyboard.press("p");
+    await page.waitForFunction(() => window.__cdj.paused === false);
+    await page.evaluate(() => window.__cdj.advance(120));
     await expect(page.locator("#timer")).not.toHaveText(a!, { timeout: 15_000 });
+    expect(await page.evaluate(() => (window.__cdj.race as { car: { tick: number } }).car.tick)).toBe(pausedTick + 120);
     await ctx.close();
   });
 });

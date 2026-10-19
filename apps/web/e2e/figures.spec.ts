@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { FIGURES, createFigureTrack, createFiguresTrack, encodeReplay, runPilot } from "@cdj/sim";
+import { openAdmin } from "./adminPage";
 
 // Lot 20 : scénarios `figures` (le tour des figures marquantes) et `figure` (une seule figure, en boucle), et l'admin qui les propose.
 test.setTimeout(150_000);
@@ -61,7 +62,7 @@ test.describe("jeu (WebGL : Chromium seulement)", () => {
 });
 
 test("admin : « Une figure » propose la liste des figures, la variante et le miroir, et construit l'adresse", async ({ page }) => {
-  await page.goto("/admin/");
+  await openAdmin(page); // lot R3 : la page a fini de se construire (le planning au-dessus déplaçait les outils sous le pointeur : e2e/adminPage.ts)
   await expect(page.locator("#figurerow")).toBeHidden();
   await page.locator('input[name="scenario"][value="figure"]').check();
   await expect(page.locator("#figurerow")).toBeVisible();

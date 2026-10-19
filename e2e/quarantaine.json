@@ -1,0 +1,4 @@
+{
+  "_": "Quarantaine des tests e2e (lot R3 de la plateforme, docs/plateforme/lots/lot-R3-ci.md) : le filet pour un test instable FUTUR, pas la règle. Une entrée = { test : « web/e2e/<fichier>.spec.ts › <titre> » (ou « jump/e2e/… », le nom du résumé du run), navigateur : chromium | firefox | webkit, depuis : AAAA-MM-JJ, dette : lien vers la dette (docs/orchestration.md#… pour DailyTrack, docs/jump/synthese.md#… pour DailyJump, qui nomme le fichier du test), responsable : la personne ou le lot qui le répare }. Sur une PR, le test tourne toujours et son échec n'est qu'un avertissement ; sur main, la nuit et avant la production il reste bloquant. Au plus 3 entrées ; une entrée de plus de 14 jours fait échouer le run de nuit (« dette expirée »). Vérifié par scripts/e2e-quarantaine.mjs et apps/web/test/quarantaine.test.ts.",
+  "entrees": []
+}

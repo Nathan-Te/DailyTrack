@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
+import { adminSettled, openAdmin } from "./adminPage";
 
 // Page /admin : menu des outils de test. Pas de WebGL ici (la page n'affiche pas le jeu) : tous les navigateurs.
+// Lot R3 : chaque test attend que la page ait fini de se construire avant de cliquer (`openAdmin`, voir e2e/adminPage.ts : le planning qui se
+// remplit au-dessus des outils les déplaçait sous le pointeur ; WebKit, sans ancrage du défilement, perdait des clics).
 
 test("le menu construit l'adresse du jeu et la lance", async ({ page }) => {
-  await page.goto("/admin/");
+  await openAdmin(page);
   await expect(page.locator("h1")).toContainText("admin");
   await expect(page.locator("#launch")).toHaveAttribute("href", "../");
   await page.locator("#theme").selectOption("nuit");
@@ -19,9 +22,10 @@ test("le menu construit l'adresse du jeu et la lance", async ({ page }) => {
 });
 
 test("les choix survivent au rechargement ; un raccourci les remplace ; réinitialiser les efface", async ({ page }) => {
-  await page.goto("/admin/");
+  await openAdmin(page);
   await page.locator("#demo").check();
   await page.reload();
+  await adminSettled(page);
   await expect(page.locator("#demo")).toBeChecked();
   await page.getByRole("button", { name: /Réglage de la voiture/ }).click();
   await expect(page.locator("#demo")).not.toBeChecked();
@@ -31,7 +35,7 @@ test("les choix survivent au rechargement ; un raccourci les remplace ; réiniti
 });
 
 test("« Lancer le jeu » ouvre le jeu avec les paramètres choisis", async ({ page }) => {
-  await page.goto("/admin/");
+  await openAdmin(page);
   await page.locator('input[name="scenario"][value="pilotage"]').check();
   await page.locator("#debug").check();
   await page.locator("#launch").click();
@@ -42,9 +46,10 @@ test("« Lancer le jeu » ouvre le jeu avec les paramètres choisis", async ({ p
 });
 
 test("données locales : liste et effacement", async ({ page }) => {
-  await page.goto("/admin/");
+  await openAdmin(page);
   await page.evaluate(() => localStorage.setItem("cdj:best:test", "{}"));
   await page.reload();
+  await adminSettled(page);
   await expect(page.locator("#keys")).toContainText("cdj:best:test");
   page.once("dialog", (d) => void d.accept());
   await page.getByRole("button", { name: "Effacer les données du jeu" }).click();

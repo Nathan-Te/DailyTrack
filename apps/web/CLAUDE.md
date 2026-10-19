@@ -2,6 +2,8 @@
 
 Chargé quand on lit un fichier de `apps/web`. Le jeu affiche ce que calcule `packages/sim` : **jamais l'inverse**. Synthèse : `docs/orchestration.md`. Autres consignes : `packages/sim/CLAUDE.md` (simulation, générateur), `apps/api/CLAUDE.md` (serveur, Salon côté serveur, profil). Règles de tests et de CI (retouche 29b, 31b) : `CLAUDE.md` racine, rubrique « Tests et CI ».
 
+> **Tests entre navigateurs (lot R3 de la plateforme)** : sur une PR, Firefox et WebKit ne lancent que `e2e/multi-navigateurs.json` (`replay.spec.ts`, `daily.spec.ts` : rejeu et circuits du jour identiques à Node) ; tout tourne sur `main`, la nuit et à la demande. **Tout nouveau test de comparaison entre navigateurs (rejeu, déterminisme) rejoint cette liste**, avec sa raison (`test/multiNavigateurs.test.ts`). La page d'admin se teste après `openAdmin` / `adminSettled` (`e2e/adminPage.ts` : elle se construit encore quelques secondes et déplace ses outils). Quarantaine et règle d'arrêt : `CLAUDE.md` racine, « Tests et CI ».
+
 > **Renvois « voir <rubrique> »** : une rubrique citée mais absente de ce fichier se trouve dans un autre `CLAUDE.md` du dépôt ; l'index des rubriques est dans le `CLAUDE.md` racine. Pour l'état d'ensemble, partir de la synthèse ; n'ouvrir un README de lot que pour un détail.
 
 ## Arrivée, partage, archives, mobile (lot 6)

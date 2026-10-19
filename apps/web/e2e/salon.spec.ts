@@ -171,7 +171,12 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
       return link.call(this, program);
     };
   });
-  await page.goto(salonUrl2(START2 + 100_000));
+  // Qualité figée (`quality=2`, celle où démarre la qualité automatique : la scène la plus lourde). Lot R3 : la saccade de 300 ms vue en CI
+  // après le podium (runs `push`) n'était pas la bascule mais la PREMIÈRE décision de la qualité automatique (`QualityGovernor`) : le jeu a
+  // roulé quelques secondes seulement avant la fin de session, la qualité descend donc juste après le podium (2 → 1 → 0, mesuré : 1,5 s et
+  // 3,4 s en local, plus tôt sur un runner plus lent) et le passage à 0 coupe les ombres, ce qui recompile 5 shaders d'un coup (journal
+  // « shaders compilés à … », sans `USE_SHADOWMAP`). Ce test mesure la bascule : la qualité automatique a son propre moment, hors de lui.
+  await page.goto(salonUrl2(START2 + 100_000, "&quality=2"));
   await loaded(page);
   await withRows(page, 3);
   const before = await page.evaluate(() => ({ id: window.__cdj.salon!.trackId, theme: window.__cdj.salon!.theme }));
@@ -290,15 +295,21 @@ test("le circuit change au même instant pour deux navigateurs (à l'heure pile 
       };
       requestAnimationFrame(sample);
     }, END1)));
-    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s, SESSION1, { timeout: 30_000 })));
+    // Lot R3 : on attend dans la page la bascule ET plus de 5 images notées (avant : la bascule seule, puis « plus de 5 » compté à la lecture,
+    // côté Node — 4 ou 5 images certains runs, 7 occurrences en CI : deux pages en rendu logiciel, ≈ 1,3 s par image). L'image de plus arrive
+    // après la bascule ; elle ne relâche rien : les écarts entre images sont pris seulement jusqu'à la première image basculée.
+    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s && (window as unknown as { __samples: unknown[] }).__samples.length > 5, SESSION1, { timeout: 30_000 })));
     for (const p of pages) {
       const samples = await p.evaluate(() => (window as unknown as { __samples: [number, number][] }).__samples);
       expect(samples.length).toBeGreaterThan(5);
       // Jamais avant l'heure pile (sur l'horloge du Salon) ; et pas plus tard qu'une image (en rendu logiciel une image dure 0,3 s ou plus) :
       // la bascule ne dépend ni d'une course ni d'un podium, seulement de l'heure.
       for (const [now, session] of samples) if (session > SESSION1) expect(now, "bascule avant l'heure pile").toBeGreaterThanOrEqual(END1 - 50);
-      const firstSwitched = samples.find(([, session]) => session > SESSION1)!;
-      const gaps = samples.slice(1).map(([t], i) => t - samples[i]![0]);
+      const switchedAt = samples.findIndex(([, session]) => session > SESSION1);
+      expect(switchedAt, "au moins une image avant la bascule").toBeGreaterThan(0);
+      const firstSwitched = samples[switchedAt]!;
+      const upToSwitch = samples.slice(0, switchedAt + 1);
+      const gaps = upToSwitch.slice(1).map(([t], i) => t - upToSwitch[i]![0]);
       expect(firstSwitched[0] - END1, "retard de la bascule").toBeLessThan(Math.max(...gaps) + 600);
       expect(await p.evaluate(() => window.__cdj.salon!.trackId)).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
     }

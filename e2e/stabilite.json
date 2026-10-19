@@ -1,0 +1,48 @@
+{
+  "_": "Preuve de stabilité (lot R3 de la plateforme) : chaque test listé est rejoué `repetitions` fois de suite (`--repeat-each`, `--retries=0` : aucune relance, un seul échec rend le job rouge), sur son navigateur et sur le runner de la CI, par .github/workflows/stabilite.yml. Le workflow se lance sur une PR qui change ce fichier (ou le workflow), et à la demande. Un lot qui répare un test instable y ajoute sa ligne et donne le run dans son README. `jeu` : web (DailyTrack) ou jump (DailyJump) ; `fichier` : le spec ; `titre` : un morceau du titre (`--grep`, expression régulière), vide = tout le fichier.",
+  "repetitions": 30,
+  "tests": [
+    {
+      "jeu": "web",
+      "fichier": "thumbnails.spec.ts",
+      "titre": "sans WebGL le tracé 2D",
+      "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "admin.spec.ts",
+      "titre": "",
+      "navigateur": "webkit"
+    },
+    {
+      "jeu": "web",
+      "fichier": "figures.spec.ts",
+      "titre": "admin : « Une figure »",
+      "navigateur": "webkit"
+    },
+    {
+      "jeu": "web",
+      "fichier": "salon.spec.ts",
+      "titre": "fin de session : podium",
+      "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "tactile.spec.ts",
+      "titre": "pause, reprise au point de contrôle",
+      "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "accueil.spec.ts",
+      "titre": "le chrono : il part",
+      "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "salon.spec.ts",
+      "titre": "le circuit change au même instant pour deux navigateurs",
+      "navigateur": "chromium"
+    }
+  ]
+}

@@ -166,10 +166,23 @@ for (const p of PHONES) {
       const { context, page } = await phone(browser, p);
       await racing(page, "/?debug&spec=" + encodeURIComponent("S@start S S@cp S S S S S S S@finish"));
       // Ne pas arriver pendant le test : on freine d'un doigt (l'accélérateur automatique se coupe).
+      // Lot R3 : pas à pas. Tenir le frein, c'est freiner PUIS reculer (le frein sert de marche arrière) jusqu'au mur du départ, où la voiture
+      // se pose à vz = +0,035 m/s, immobile (vx = 0) : vérifié en Node, la valeur exacte des deux échecs de CI (runs 38916380755, 38971947774).
+      // Lue en temps réel, vz donnait « < 0,01 » pendant le recul, ou 0,035 pour toujours si la première lecture tombait après le choc :
+      // la réussite dépendait de l'heure de la lecture. Ici on lit vz tous les 10 pas depuis l'appui : la voiture doit cesser d'avancer
+      // (vz < 0,01) dans les 5 s de simulation, comme avant, sans dépendre de la vitesse de la machine.
       const f = await fingersOf(page);
+      await page.evaluate(() => window.__cdj.manual(true));
       await f.down(2, 700, 250);
-      await expect.poll(() => page.evaluate(() => window.__cdj.car.vz), { timeout: 5_000 }).toBeLessThan(0.01);
+      let vz = Infinity;
+      for (let i = 0; i < 60 && vz >= 0.01; i++) {
+        await page.evaluate(() => window.__cdj.advance(10));
+        vz = await page.evaluate(() => window.__cdj.car.vz);
+      }
+      expect(vz).toBeLessThan(0.01);
+      expect(await input(page)).toMatchObject({ throttle: 0, brake: 64 }); // le doigt freine, l'accélérateur automatique est coupé
       await f.up(2);
+      await page.evaluate(() => window.__cdj.manual(false));
 
       const tick = () => page.evaluate(() => window.__cdj.car.tick);
       await page.getByRole("button", { name: "Pause" }).click();
