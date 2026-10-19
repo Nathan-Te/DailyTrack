@@ -21,6 +21,7 @@ import {
 } from "@cdj/jump-sim";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } from "./games";
+import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
 
 // DailyJump (`jump`) au registre des jeux. Lot P0 de la plateforme : l'espace `/api/jump/` en lecture ; lot P1 : **le classement du jour
 // prouvé par rejeu**.
@@ -32,6 +33,9 @@ import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } f
 //   GET  /api/jump/day/<AAAA-MM-JJ>/board  (lot P1) le classement de ce jour : top 10, nombre de classés, la ligne du joueur (`X-Player-Id`)
 //   GET  /api/jump/day/<AAAA-MM-JJ>/ghost/first  (lot P2) la rediffusion du premier de ce jour (son pseudo, son temps, les versions)
 //   GET  /api/jump/me                      (lot P2) le profil DailyJump du joueur (`X-Player-Id`) : chaque jour classé (temps, morts, médaille)
+//   POST /api/jump/lives                   (lot P3) un lot de vies du jour, chacune rejouée ; seules les morts rejouées comptent (`jumpLives.ts`)
+//   GET  /api/jump/day/<AAAA-MM-JJ>/deaths (lot P3) la carte des morts du jour (comptes agrégés par tuile, cause dominante)
+//   GET  /api/jump/day/<AAAA-MM-JJ>/carnage (lot P3) l'échantillon du carnage de tout le monde (≈ 150 vies d'autres joueurs)
 //
 // **Lot P2 : un profil par jeu.** `GET /api/me` reste celui de DailyTrack (DailyJump ne fournit pas de crochet `profile` : la réponse de
 // `/api/me` ne change pas) ; DailyJump a le sien, `/api/jump/me`, sous son préfixe. Toutes deux sont des lectures : débit **en mémoire**.
@@ -102,6 +106,8 @@ export const JUMP_SCHEMA: string[] = [
    )`,
   `CREATE INDEX IF NOT EXISTS jump_results_by_time ON jump_results (day, ticks, submitted_at, player_id)`,
   `CREATE INDEX IF NOT EXISTS jump_results_by_player ON jump_results (player_id, day)`,
+  // Lot P3 : les vies du jour (une ligne par joueur et par jour) et la carte des morts et l'échantillon du carnage (une ligne par jour).
+  ...JUMP_LIVES_SCHEMA,
 ];
 
 export interface JumpOptions {
@@ -376,9 +382,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
    * Étapes 3 à 5 de la validation d'un envoi (le débit et la taille sont vérifiés avant, par la route) : le niveau du jour seulement, les
    * versions, puis **le rejeu**. Rend le temps et les morts **du serveur**. Sert aussi au registre (`validate`).
    */
-  async function validateJump(body: Record<string, unknown>, beforeReplay?: () => Promise<void>): Promise<JumpValidated> {
-    // 3. Le niveau du jour seulement.
-    const levelId = body.levelId;
+  /** Étape 3 d'un envoi (essai ou vies) : le niveau du jour seulement. Rend le numéro du jour ; archive, thème forcé, futur : refusés. */
+  function dailyDayOf(levelId: unknown): number {
     const m = typeof levelId === "string" ? LEVEL_ID.exec(levelId) : null;
     if (!m) throw new HttpError(400, "invalid_level", "Identifiant de niveau attendu : jour-AAAA-MM-JJ-g<N>");
     if (m[3]) throw new HttpError(409, "not_daily", "Un thème forcé est un essai : il n'est jamais classé");
@@ -387,6 +392,13 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     if (day > today()) throw new HttpError(409, "not_daily", "Ce niveau n'est pas encore sorti");
     if (day < PREMIER_JOUR_JUMP) throw new HttpError(409, "not_daily", "Ce jour n'a pas de niveau DailyJump");
     if (!isOpen(day)) throw new HttpError(409, "day_closed", "Le classement de ce jour est figé : seul le niveau du jour se classe");
+    return day;
+  }
+
+  async function validateJump(body: Record<string, unknown>, beforeReplay?: () => Promise<void>): Promise<JumpValidated> {
+    // 3. Le niveau du jour seulement.
+    const levelId = body.levelId;
+    const day = dailyDayOf(levelId);
     // 4. Les versions : celles du code du jeu, puis le niveau que le serveur calcule pour ce jour (figé ou généré).
     if (body.simVersion !== JUMP_SIM_VERSION) throw versionError(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
     if (body.generatorVersion !== JUMP_GENERATOR_VERSION) throw versionError(`générateur v${String(body.generatorVersion)}, serveur v${JUMP_GENERATOR_VERSION}`);
@@ -416,6 +428,18 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     if (!r.finished) throw new HttpError(422, "not_finished", "Cet essai n'arrive pas au bout du niveau");
     return { day, info, replay, ticks: r.time, deaths: r.deaths.length };
   }
+
+  // Lot P3 : les vies de tout le monde (envoi, carte des morts, échantillon du carnage, oubli à la fin du jour).
+  const lives = createJumpLives({
+    platform,
+    playable,
+    dailyDayOf,
+    dayOf,
+    isOpen,
+    lastClosed: () => (isOpen(today() - 1) ? today() - 2 : today() - 1),
+    headerPlayer,
+    versionError,
+  });
 
   async function rankOf(day: number, ticks: number, submittedAt: number, playerId: string): Promise<number> {
     const row = await db.first<{ n: number }>(RANK_SQL, [day, ticks, ticks, submittedAt, submittedAt, playerId]);
@@ -582,6 +606,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   }
 
   async function route(path: string, req: Request, _url: URL, info: RequestInfo): Promise<unknown> {
+    // Lot P3 : la première requête qui voit un jour terminé fige sa carte et son échantillon et oublie ses vies brutes (une comparaison
+    // d'entiers ensuite, par instance).
+    if (path.startsWith("/api/jump/")) await lives.forget();
     if (path === "/api/jump/info") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       await limitReads(info);
@@ -591,11 +618,15 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
       return await submit(req, info);
     }
+    if (path === "/api/jump/lives") {
+      if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
+      return await lives.receive(req, info);
+    }
     if (path === "/api/jump/me") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       return await myProfile(req, info);
     }
-    const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first)?$/.exec(path);
+    const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first|\/deaths|\/carnage)?$/.exec(path);
     if (m) {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       await limitReads(info);
@@ -607,6 +638,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       }
       if (m[2] === "/board") return await board(date, req);
       if (m[2] === "/ghost/first") return await firstGhost(date, req);
+      if (m[2] === "/deaths") return await lives.deathMap(date);
+      if (m[2] === "/carnage") return await lives.carnage(date);
       return await getLevel(dayOf(date));
     }
     if (path === "/api/jump" || path.startsWith("/api/jump/")) throw new HttpError(404, "not_found", "Route inconnue");
@@ -625,7 +658,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     // « Changer mon code » : les essais classés suivent le joueur (les premiers gardés en mémoire sont oubliés : leur identifiant a changé).
     rotateStatements: (oldId, newId): Statement[] => {
       firstOfClosed.clear();
-      return [{ sql: "UPDATE jump_results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }];
+      return [{ sql: "UPDATE jump_results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, ...lives.rotateStatements(oldId, newId)];
     },
     // Un pseudo changé : le premier d'un jour passé gardé en mémoire le reprend à la prochaine lecture.
     onRename: async () => {
@@ -639,7 +672,7 @@ export const JUMP_GAME: GameDefinition<JumpOptions> = {
   code: "jump",
   name: "DailyJump",
   prefix: "/api/jump",
-  tables: ["jump_levels", "jump_results"],
+  tables: ["jump_levels", "jump_results", "jump_lives", "jump_deaths"],
   schema: JUMP_SCHEMA,
   versions: () => ({ simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION }),
   create: createJump,
