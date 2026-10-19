@@ -49,7 +49,16 @@ Comme le Salon (retouche 27b), **sans tâche de fond** : au début de toute rout
 
 **Charge par jour et offre gratuite** (Turso : 500 M lignes lues, 10 M écrites par mois ; Cloud Run : 2 M requêtes) — joueurs type, plus la carte recalculée 480 fois par jour au pire (une ligne lue par joueur), plus l'oubli : 100 joueurs/jour → 5,2 M lues, 0,11 M écrites, 0,09 M requêtes par mois ; 1 000 → 52 M, 1,0 M, 0,9 M ; 3 000 → 156 M, 3,0 M, 2,7 M. **L'offre gratuite est dépassée vers 2 200 joueurs DailyJump par jour**, et ce sont **les requêtes de Cloud Run** qui limitent d'abord (Turso tiendrait jusqu'à ≈ 9 600 joueurs). Ce seuil compte DailyJump seul : DailyTrack (et surtout son Salon, lot 28) partage les mêmes 2 M requêtes.
 
-**Carnage de tout le monde à 150 vies** (`MESURE=1 npx playwright test mesure-carnage -g "tout le monde" --project=chromium`, téléphone 844 × 390 @2, SwiftShader) : MESURE_CARNAGE
+**Carnage de tout le monde à 150 vies** (`MESURE=1 npx playwright test mesure-carnage -g "tout le monde" --project=chromium`, téléphone 844 × 390 @2, SwiftShader) : le niveau du jour de la démonstration (30/10/2026), ton essai en héros ; « échantillon » = les 27 vies de 9 joueurs fictifs, « 150 » = cet échantillon repris jusqu'à 150 vies (`__jump.startEveryone(150)`). Comme au lot 3, SwiftShader ne fait que ~12 images/s : on lit la simulation **par pas** et le dessin **par image**, et l'on en déduit une image à 60 i/s (2 pas + 1 dessin).
+
+| Processeur | Vies | En course (moy.) | Simulation / pas | Dessin / image | Image à 60 i/s | Image mesurée (moy. · 95e c.) |
+|---|---|---|---|---|---|---|
+| ×1 | échantillon (27) | 17 | 0,08 ms | 5,82 ms | **5,98 ms** | 6,63 · 5,60 ms |
+| ×1 | 150 | 95 | 0,24 ms | 7,79 ms | **8,27 ms** | 10,09 · 15,50 ms |
+| ×4 | échantillon (27) | 17 | 0,38 ms | 12,80 ms | **13,56 ms** | 16,72 · 37,20 ms |
+| ×4 | 150 | 95 | 0,98 ms | 13,38 ms | **15,35 ms** | 24,95 · 57,50 ms |
+
+**Lecture** : à ×4 (téléphone moyen), 150 vies ajoutent ≈ 1,8 ms par image à l'échantillon de la démo et l'image estimée reste **sous les 16,7 ms (15,35 ms)**, sans réduction d'effets ; sons du carnage plafonnés (54 joués en 4 s, aucun événement écarté au-delà du débit). La marge est faible : presque tout est le dessin du **niveau du jour** (plus grand que l'essai du lot 3, 7,7 ms à ×4 sans foule), pas le carnage. Chiffres bruités (rendu logiciel sur 2 cœurs) : ordres de grandeur seulement ; non vérifié sur un vrai téléphone.
 
 ## Vérifié / non vérifié / décisions pour Nathan
 **Vérifié** : VERIFIE

@@ -82,7 +82,7 @@ test("temps de fil principal du carnage à 50, 150 et 300 vies", async ({ browse
 });
 
 // Lot P3 (plateforme) : le carnage de tout le monde à 150 vies (l'échantillon du serveur), ton essai en héros, processeur ×1 et ×4, avec la
-// démonstration (`?api=demo` : l'échantillon des joueurs fictifs, repris jusqu'à 150 vies par `__jump.startEveryone(150)`).
+// démonstration (`?api=demo` : l'échantillon des joueurs fictifs, tel quel pour N = 0, repris jusqu'à 150 vies par `__jump.startEveryone(150)`).
 //   MESURE=1 npx playwright test mesure-carnage -g "tout le monde" --project=chromium
 test("temps de fil principal du carnage de tout le monde à 150 vies", async ({ browser, browserName }) => {
   test.skip(browserName !== "chromium", "ralentissement du processeur : Chromium seulement");
@@ -137,7 +137,7 @@ test("temps de fil principal du carnage de tout le monde à 150 vies", async ({ 
         if (!result) throw new Error("carnage de tout le monde indisponible");
         const f = (v: number) => `${v.toFixed(2).replace(".", ",")} ms`;
         rows.push(
-          `| ×${rate} | ${n === 0 ? "1 (héros seul)" : n} | ${result.label} | ${result.running.toFixed(0)} | ${result.sounds} · ${result.dropped} | ${f(result.stepMs)} | ${f(result.drawMs)} | **${f(2 * result.stepMs + result.drawMs)}** | ${f(result.mean)} · ${f(result.p95)} | ${(result.frames / result.seconds).toFixed(0)} |`,
+          `| ×${rate} | ${n === 0 ? "échantillon de la démo" : n} | ${result.label} | ${result.running.toFixed(0)} | ${result.sounds} · ${result.dropped} | ${f(result.stepMs)} | ${f(result.drawMs)} | **${f(2 * result.stepMs + result.drawMs)}** | ${f(result.mean)} · ${f(result.p95)} | ${(result.frames / result.seconds).toFixed(0)} |`,
         );
       } finally {
         await context.close();
