@@ -62,6 +62,14 @@ describe(`joueurs fictifs de DailyJump (${TEST_DB})`, () => {
   }, 60_000);
 });
 
+/** Le niveau d'un jour du jeu de données, généré une fois par fichier de test (le générateur est coûteux). */
+const levels = new Map<number, ReturnType<typeof jumpDailyOf>>();
+function levelOf(day: number): ReturnType<typeof jumpDailyOf> {
+  let l = levels.get(day);
+  if (!l) levels.set(day, (l = jumpDailyOf(day, FROZEN)));
+  return l;
+}
+
 describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
   const index = JSON.parse(readFileSync(join(PUBLIC, "demo", "index.json"), "utf8")) as { simVersion: number; generatorVersion: number; demoToday: string; days: { date: string; levelId: string; participants: number }[] };
 
@@ -83,7 +91,7 @@ describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
       expect(day.first, "relancer jump:seed").toBeTruthy();
       expect([day.first!.name, day.first!.ticks, day.first!.deaths]).toEqual([day.top[0]!.name, day.top[0]!.ticks, day.top[0]!.deaths]);
       expect(day.first!.simVersion).toBe(JUMP_SIM_VERSION);
-      const level = jumpDailyOf(PREMIER_JOUR_JUMP + index.days.indexOf(d), FROZEN);
+      const level = levelOf(PREMIER_JOUR_JUMP + index.days.indexOf(d));
       const r = replayAttempt(level.level, decodeReplay(day.first!.replay), level.id);
       expect([r.finished, r.time, r.deaths.length]).toEqual([true, day.first!.ticks, day.first!.deaths]);
     }
@@ -108,11 +116,12 @@ describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
       expect(day.deaths!.players).toBeGreaterThanOrEqual(3);
       expect(day.deaths!.tiles.reduce((n, t) => n + t[2]!, 0)).toBeLessThanOrEqual(day.deaths!.deaths);
       expect(day.carnage!.lives.length).toBeGreaterThanOrEqual(10);
-      const level = jumpDailyOf(PREMIER_JOUR_JUMP + index.days.indexOf(d), FROZEN);
+      const level = levelOf(PREMIER_JOUR_JUMP + index.days.indexOf(d));
       for (const l of day.carnage!.lives) {
         const r = replayAttempt(level.level, decodeReplay(l.replay), level.id);
         expect(r.lives.map((x) => x.end)).toEqual(["mort"]);
       }
     }
-  });
+    // Comme les autres tests de ce fichier qui génèrent des niveaux (15 jours, ≈ 1 000 vies rejouées) : 5 s ne suffisent pas en CI.
+  }, 60_000);
 });
