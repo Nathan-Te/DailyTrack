@@ -1,0 +1,202 @@
+import { formatDay, parseDay } from "@cdj/core";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION } from "./constants";
+import { levelNumber, type DailyExigence, type DailyLevel, type DailyPiece, type JumpMedals } from "./daily";
+import { parseLevel } from "./level";
+import { textHash, type Palier } from "./modules";
+import { decodeReplay, encodeReplay, replayAttempt } from "./replay";
+import { jumpThemeForDay } from "./themes";
+
+// Niveaux figés (lot 10 ; **une seule règle** depuis le lot P1 de la plateforme) : un fichier compact par date,
+// `apps/jump/public/levels/AAAA-MM-JJ.json`, écrit par `npm run freeze:days -w @cdj/jump` (apps/jump/tools/freeze-days.ts). Il garde **le niveau
+// tel qu'il a été joué** : la grille (codée par rangée : un caractère et le nombre de répétitions), le bloc annexe (sections et scies), la preuve
+// de l'auteur, les médailles, les versions (`JUMP_SIM_VERSION`, `JUMP_GENERATOR_VERSION`) et l'identifiant. Une fois le jeu lancé, on fige
+// **avant** tout changement de version : les jours joués ne changent plus jamais, même si le générateur change.
+//
+// À la lecture (`thawLevel`), rien n'est cru sur parole : versions, identifiant, empreinte du texte, médailles, puis **la preuve est rejouée**
+// (`replayAttempt` : arrivée sans mort au temps de l'auteur). Un fichier refusé laisse le jeu générer le niveau comme d'habitude.
+// **Le jeu (`apps/jump/src/dailyLoader.ts`) et le serveur (`apps/api/src/jump.ts`) importent cette fonction** : avant le lot P1, chacun avait
+// sa copie (`thawLevel` et `thawFrozen`), gardées égales par un test. Fonction pure (aucune lecture de fichier : on lui passe le contenu JSON).
+// **Limite** : un niveau figé sous une autre physique (`JUMP_SIM_VERSION` différente) ne se rejoue plus : il est refusé (décision pour
+// Nathan : voir docs/jump/lots/lot-10-arrivee.md).
+
+export const FROZEN_FORMAT = 1;
+
+export interface FrozenLevel {
+  format: number;
+  jeu: "dailyjump";
+  /** AAAA-MM-JJ. */
+  date: string;
+  /** `jour-AAAA-MM-JJ-g<N>` : l'identifiant d'origine (rediffusions, mémoire, historique). */
+  id: string;
+  simVersion: number;
+  generatorVersion: number;
+  /** La grille, une chaîne par rangée : `#40.12^3` = 40 `#`, 12 `.`, 3 `^` (`rleRow`). */
+  grille: string[];
+  /** Le reste du texte, tel quel : la ligne vide puis le bloc annexe (sections, scies). */
+  annexe: string[];
+  /** Empreinte du texte complet (`textHash`). */
+  hash: string;
+  /** La preuve : la rediffusion de l'auteur (base64url) et son temps (pas). */
+  preuve: string;
+  auteur: number;
+  medailles: JumpMedals;
+  /** Ce que le jeu affiche du niveau (morceaux, paliers, mesures). */
+  morceaux: DailyPiece[];
+  paliers: Palier[];
+  palierTicks: number[];
+  longestRun: number;
+  exigence: DailyExigence;
+  tirage: number;
+  secours: boolean;
+}
+
+/** Une rangée de la grille en plages : `#####...^` → `#5.3^`. Les chiffres n'existent pas dans la légende de la grille : refusés. */
+export function rleRow(row: string): string {
+  if (/\d/.test(row)) throw new Error(`rangée avec un chiffre : ${row}`);
+  let out = "";
+  for (let i = 0; i < row.length; ) {
+    let j = i + 1;
+    while (j < row.length && row[j] === row[i]) j++;
+    out += j - i > 1 ? `${row[i]}${j - i}` : row[i];
+    i = j;
+  }
+  return out;
+}
+
+/** L'inverse de `rleRow` (lève sur un texte mal formé). */
+export function unrleRow(code: string): string {
+  let out = "";
+  for (let i = 0; i < code.length; ) {
+    const c = code[i]!;
+    if (/\d/.test(c)) throw new Error(`plage mal formée : ${code}`);
+    let j = i + 1;
+    while (j < code.length && /\d/.test(code[j]!)) j++;
+    const n = j > i + 1 ? Number(code.slice(i + 1, j)) : 1;
+    if (!Number.isInteger(n) || n < 1 || n > 4096) throw new Error(`plage mal formée : ${code}`);
+    out += c.repeat(n);
+    i = j;
+  }
+  return out;
+}
+
+/** Sépare le texte d'un niveau en grille (jusqu'à la première ligne vide) et reste (la ligne vide et le bloc annexe), puis code la grille. */
+export function encodeAscii(ascii: string): { grille: string[]; annexe: string[] } {
+  const lines = ascii.split("\n");
+  const end = lines.indexOf("");
+  const cut = end < 0 ? lines.length : end;
+  return { grille: lines.slice(0, cut).map(rleRow), annexe: lines.slice(cut) };
+}
+
+export function decodeAscii(grille: readonly string[], annexe: readonly string[]): string {
+  return [...grille.map(unrleRow), ...annexe].join("\n");
+}
+
+/** Version du générateur portée par un identifiant `jour-AAAA-MM-JJ-g<N>`. */
+function generatorOf(id: string): number | null {
+  const m = /-g(\d+)$/.exec(id);
+  return m ? Number(m[1]) : null;
+}
+
+/** Le fichier figé d'un niveau du jour. */
+export function freezeLevel(d: DailyLevel): FrozenLevel {
+  const { grille, annexe } = encodeAscii(d.ascii);
+  return {
+    format: FROZEN_FORMAT,
+    jeu: "dailyjump",
+    date: d.date,
+    id: d.id,
+    simVersion: JUMP_SIM_VERSION,
+    generatorVersion: generatorOf(d.id) ?? JUMP_GENERATOR_VERSION,
+    grille,
+    annexe,
+    hash: d.hash,
+    preuve: d.code,
+    auteur: d.authorTicks,
+    medailles: { ...d.medals },
+    morceaux: d.pieces.map((p) => ({ ...p, tags: [...p.tags] })),
+    paliers: d.paliers.map((p) => ({ ...p })),
+    palierTicks: [...d.palierTicks],
+    longestRun: d.longestRun,
+    exigence: { sum: d.exigence.sum, rate: d.exigence.rate, thirds: [...d.exigence.thirds] as [number, number, number] },
+    tirage: d.chosen,
+    secours: d.fallback,
+  };
+}
+
+/** Le texte du fichier (une ligne par champ long : compact, lisible dans une revue). */
+export function frozenJson(f: FrozenLevel): string {
+  return `${JSON.stringify(f)}\n`;
+}
+
+const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);
+const isStrings = (v: unknown): v is string[] => Array.isArray(v) && v.every((s) => typeof s === "string");
+
+function isMedals(v: unknown): v is JumpMedals {
+  if (typeof v !== "object" || v === null) return false;
+  const m = v as Record<string, unknown>;
+  return isInt(m.author) && isInt(m.gold) && isInt(m.silver) && isInt(m.bronze) && m.author > 0 && m.author <= m.gold && m.gold <= m.silver && m.silver <= m.bronze;
+}
+
+/**
+ * Le niveau d'un fichier figé (son contenu JSON) pour la date `day`, ou la raison du refus. Vérifie la forme, la date, les versions (même
+ * physique ; un générateur jamais plus récent que le code), l'identifiant, l'empreinte, les médailles, puis **rejoue la preuve**.
+ */
+export function thawLevel(raw: unknown, day: number): DailyLevel | string {
+  if (typeof raw !== "object" || raw === null) return "fichier illisible";
+  const f = raw as Partial<Record<keyof FrozenLevel, unknown>>;
+  if (f.format !== FROZEN_FORMAT || f.jeu !== "dailyjump") return "format inconnu";
+  const date = formatDay(day);
+  if (f.date !== date || typeof f.date !== "string" || parseDay(f.date) !== day) return "autre date";
+  if (!isInt(f.simVersion) || !isInt(f.generatorVersion)) return "versions illisibles";
+  if (f.simVersion !== JUMP_SIM_VERSION) return `autre physique (sim v${f.simVersion}, le jeu est en v${JUMP_SIM_VERSION})`;
+  if (f.generatorVersion < 1 || f.generatorVersion > JUMP_GENERATOR_VERSION) return "générateur inconnu";
+  const id = `jour-${date}-g${f.generatorVersion}`;
+  if (f.id !== id) return "autre identifiant";
+  if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || typeof f.preuve !== "string" || !isInt(f.auteur)) return "fichier incomplet";
+  if (!isMedals(f.medailles) || f.medailles.author !== f.auteur) return "médailles illisibles";
+  if (!Array.isArray(f.morceaux) || !Array.isArray(f.paliers) || !Array.isArray(f.palierTicks) || !isInt(f.longestRun)) return "fichier incomplet";
+  const ex = f.exigence as { sum?: unknown; rate?: unknown; thirds?: unknown } | undefined;
+  if (!ex || !isInt(ex.sum) || !isInt(ex.rate) || !Array.isArray(ex.thirds) || ex.thirds.length !== 3) return "fichier incomplet";
+  let ascii: string;
+  let level;
+  let replay;
+  try {
+    ascii = decodeAscii(f.grille, f.annexe);
+    if (textHash(ascii) !== f.hash) return "empreinte du niveau";
+    level = parseLevel(ascii);
+    replay = decodeReplay(f.preuve);
+  } catch (e) {
+    return `illisible : ${(e as Error).message}`;
+  }
+  try {
+    const r = replayAttempt(level, replay, id);
+    if (!r.finished || r.deaths.length > 0 || r.time !== f.auteur) return "la preuve ne se rejoue pas";
+  } catch (e) {
+    return `la preuve ne se rejoue pas : ${(e as Error).message}`;
+  }
+  if (encodeReplay(replay) !== f.preuve) return "preuve non canonique";
+  return {
+    day,
+    date,
+    number: levelNumber(day),
+    id,
+    // Lot 11 : un niveau figé est celui du thème naturel de sa date (jamais un essai).
+    theme: jumpThemeForDay(day),
+    forcedTheme: false,
+    level,
+    ascii,
+    hash: f.hash,
+    pieces: f.morceaux as DailyPiece[],
+    paliers: f.paliers as Palier[],
+    palierTicks: f.palierTicks as number[],
+    longestRun: f.longestRun,
+    replay,
+    code: f.preuve,
+    authorTicks: f.auteur,
+    medals: { ...f.medailles },
+    exigence: ex as DailyExigence,
+    attempts: [],
+    chosen: isInt(f.tirage) ? f.tirage : 0,
+    fallback: f.secours === true,
+  };
+}

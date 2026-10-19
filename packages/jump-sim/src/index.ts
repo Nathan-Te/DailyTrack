@@ -15,3 +15,4 @@ export * from "./demo";
 export * from "./themes";
 export * from "./modules";
 export * from "./daily";
+export * from "./frozen";
