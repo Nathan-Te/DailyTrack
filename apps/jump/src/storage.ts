@@ -33,8 +33,12 @@ export function namespacePrefix(flag: string | undefined, mode: string | undefin
 type Env = { env: Record<string, string | undefined> };
 function buildFlags(): { flag?: string; mode?: string; api?: string } {
   try {
-    const env = (import.meta as unknown as Env).env;
-    return { flag: env.VITE_STORAGE, mode: env.MODE, api: env.VITE_API_URL };
+    // Accès écrits en entier (`import.meta.env.X`) : Vite ne remplace que cette forme à la construction (jamais un `env` rangé dans une variable).
+    return {
+      flag: (import.meta as unknown as Env).env.VITE_STORAGE,
+      mode: (import.meta as unknown as Env).env.MODE,
+      api: (import.meta as unknown as Env).env.VITE_API_URL,
+    };
   } catch {
     return {};
   }
