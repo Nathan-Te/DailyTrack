@@ -1,3 +1,5 @@
+import { gameStorage } from "./storage";
+
 // Réglages du jeu (lot 29) : graphismes et jeu, mémorisés dans le navigateur (`cdj:settings`) et versionnés comme les réglages tactiles
 // (`cdj:touch`, voir touch.ts). Logique pure, sans DOM : le panneau (settingsUi.ts) lit et écrit ces valeurs, main.ts les applique.
 // Présentation seule : rien ici ne touche à la simulation ni aux rediffusions.
@@ -89,7 +91,7 @@ export function parseSettings(raw: string | null): GameSettings {
 
 export function loadSettings(): GameSettings {
   try {
-    return parseSettings(localStorage.getItem(SETTINGS_KEY));
+    return parseSettings(gameStorage().getItem(SETTINGS_KEY));
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -97,7 +99,7 @@ export function loadSettings(): GameSettings {
 
 export function saveSettings(s: Readonly<GameSettings>): void {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify({ ...s, version: SETTINGS_VERSION }));
+    gameStorage().setItem(SETTINGS_KEY, JSON.stringify({ ...s, version: SETTINGS_VERSION }));
   } catch {
     /* stockage indisponible : les réglages ne survivront pas à la session */
   }

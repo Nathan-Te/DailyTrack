@@ -2,6 +2,7 @@ import { FIGURES, PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim"
 import { RANDOM_SPAN } from "./archive";
 import { mountPlanning } from "./adminPlanning";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin, type AdminState, type Scenario } from "./adminLogic";
+import { gameStorage, storageKeys } from "./storage";
 
 // Page /admin : menu des outils de test. Choix mémorisés (`cdj:admin`), adresse du jeu recalculée à chaque changement.
 
@@ -10,7 +11,7 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 
 let state: AdminState = (() => {
   try {
-    return parseAdmin(localStorage.getItem(KEY));
+    return parseAdmin(gameStorage().getItem(KEY));
   } catch {
     return { ...DEFAULT_ADMIN };
   }
@@ -39,7 +40,7 @@ const SCENARIOS: [Scenario, string][] = [
 
 function save() {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    gameStorage().setItem(KEY, JSON.stringify(state));
   } catch {
     /* stockage indisponible */
   }
@@ -124,7 +125,7 @@ $("copy").addEventListener("click", async (e) => {
 function renderKeys() {
   let keys: string[] = [];
   try {
-    keys = gameKeys(Object.keys(localStorage));
+    keys = gameKeys(storageKeys(gameStorage()));
   } catch {
     /* stockage indisponible */
   }
@@ -134,7 +135,7 @@ function renderKeys() {
 $("wipe").addEventListener("click", () => {
   if (!confirm("Effacer les records, réglages, caméra et son de ce navigateur ?")) return;
   try {
-    for (const k of gameKeys(Object.keys(localStorage))) localStorage.removeItem(k);
+    for (const k of gameKeys(storageKeys(gameStorage()))) gameStorage().removeItem(k);
     $("wiped").textContent = "Effacé.";
   } catch {
     $("wiped").textContent = "Impossible.";

@@ -1,3 +1,5 @@
+import { gameStorage } from "./storage";
+
 // « Comment jouer » (lot 29) : le texte de l'aide, par appareil, et le souvenir de l'avoir vue. Logique pure ; le DOM est dans howtoUi.ts.
 
 export type Device = "keyboard" | "touch";
@@ -10,7 +12,7 @@ type KV = Pick<Storage, "getItem" | "setItem">;
 
 function safeStorage(): KV | null {
   try {
-    return localStorage;
+    return gameStorage();
   } catch {
     return null;
   }

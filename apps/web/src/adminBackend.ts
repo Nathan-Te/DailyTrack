@@ -3,6 +3,7 @@ import { apiCall, type ApiResult } from "./api";
 import { DemoApi, DEMO_TODAY } from "./demo";
 import { replaceProblem } from "./adminPlan";
 import { isReplaced, loadDemoPlan, parsePlanEntry, saveDemoPlan, type PlanEntry } from "./planning";
+import { gameStorage } from "./storage";
 
 // Ce que le panneau d'admin demande à un serveur (lot 14) : l'API réelle (jeton) ou, en `?api=demo`, un faux local qui garde
 // les remplacements dans ce navigateur seulement.
@@ -66,7 +67,7 @@ export function saveToken(token: string, storage: Pick<Storage, "setItem" | "rem
 
 function safeStorage(): Storage | null {
   try {
-    return localStorage;
+    return gameStorage();
   } catch {
     return null;
   }

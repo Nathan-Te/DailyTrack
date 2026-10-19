@@ -20,7 +20,7 @@ import {
   type SurfaceParamKey,
   type WindParamKey,
 } from "@cdj/jump-sim";
-import { storageKey } from "./storage";
+import { gameStorage, storageKey } from "./storage";
 
 // Panneau de réglages du personnage (`?debug&tune`) : un curseur par réglage, en unités humaines, la valeur entière à côté. Effet immédiat
 // (la session lit les réglages à chaque pas). « Copier les valeurs » donne le JSON à coller (les valeurs retenues deviennent les défauts,
@@ -243,11 +243,7 @@ export function saveTuned(params: Readonly<JumpParams>, storage: Pick<Storage, "
 }
 
 function safeStorage(): Storage | null {
-  try {
-    return typeof localStorage === "undefined" ? null : localStorage;
-  } catch {
-    return null;
-  }
+  return gameStorage();
 }
 
 async function copyText(text: string): Promise<boolean> {

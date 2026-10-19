@@ -1,3 +1,5 @@
+import { gameStorage } from "./storage";
+
 // Identité légère : un identifiant aléatoire et un pseudo, gardés dans le navigateur. Pas de compte, pas d'e-mail.
 // Changer de navigateur, c'est devenir un autre joueur (accepté au premier jalon, voir docs/seed.md § 6).
 
@@ -6,7 +8,7 @@ const NAME_KEY = "cdj:name";
 
 function read(key: string): string | null {
   try {
-    return localStorage.getItem(key);
+    return gameStorage().getItem(key);
   } catch {
     return null;
   }
@@ -14,7 +16,7 @@ function read(key: string): string | null {
 
 function write(key: string, value: string): void {
   try {
-    localStorage.setItem(key, value);
+    gameStorage().setItem(key, value);
   } catch {
     /* navigation privée, stockage bloqué : l'identité ne survivra pas à la session */
   }
@@ -66,7 +68,7 @@ export function takeNextId(): string {
 
 export function clearNextId(): void {
   try {
-    localStorage.removeItem(NEXT_KEY);
+    gameStorage().removeItem(NEXT_KEY);
   } catch {
     /* tant pis */
   }

@@ -4,6 +4,7 @@ import { DemoApi } from "./demo";
 import { clearNextId, getName, getPlayerId, getSubmittedBest, normalizeName, setName, setPlayerId, setSubmittedBest, takeNextId } from "./identity";
 import { ProfileSync } from "./profileSync";
 import { listDayBests, type BestRun } from "./records";
+import { gameStorage } from "./storage";
 
 export type GhostMode = "mine" | "first" | "ahead" | "off";
 
@@ -50,7 +51,7 @@ export class Online {
     this.api = base && date && trackId ? (this.demo ? new DemoApi((d) => listDayBests().get(d) ?? null) : new LeaderboardApi(base)) : null;
     this.profileApi = this.api ?? (base && !this.demo ? new LeaderboardApi(base) : null);
     // Rien à synchroniser en démonstration (lecture seule) ni sans serveur.
-    this.sync = new ProfileSync({ api: () => (this.demo ? null : this.profileApi), playerId: () => this.playerId, adopt: setPlayerId, storage: localStorage });
+    this.sync = new ProfileSync({ api: () => (this.demo ? null : this.profileApi), playerId: () => this.playerId, adopt: setPlayerId, storage: gameStorage() });
   }
 
   get enabled(): boolean {

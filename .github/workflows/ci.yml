@@ -203,6 +203,28 @@ jobs:
           docker run --rm -e SALON_MINUTES=2 -e ALLOWED_ORIGINS='*' -e RATE_SALT=un-sel-de-test-assez-long cdj-api
           code=$?
           [ "$code" = "1" ] || { echo "attendu : sortie 1, obtenu $code"; exit 1; }
+      # Lot R1 (plateforme) : la même image en recette. Elle refuse une base dont le nom ne contient pas « recette » (et la production refuse
+      # une base de recette) ; en recette, l'horloge de test est permise, et l'essai de bout en bout passe (`recette.local` → le même sqld).
+      - name: Recette — démarrage refusé sur une base sans « recette », production refusée sur une base de recette
+        run: |
+          set +e
+          docker run --rm -e ENVIRONMENT=recette -e TURSO_DATABASE_URL=libsql://dailytrack-misterzcool.turso.io -e ALLOWED_ORIGINS='*' -e RATE_SALT=un-sel-de-test-assez-long cdj-api
+          code=$?
+          [ "$code" = "1" ] || { echo "recette sur la base de production : attendu sortie 1, obtenu $code"; exit 1; }
+          docker run --rm -e TURSO_DATABASE_URL=libsql://dailytrack-recette-misterzcool.turso.io -e ALLOWED_ORIGINS='*' -e RATE_SALT=un-sel-de-test-assez-long cdj-api
+          code=$?
+          [ "$code" = "1" ] || { echo "production sur la base de recette : attendu sortie 1, obtenu $code"; exit 1; }
+      - name: Recette — l'image démarre avec l'horloge de test et passe l'essai de bout en bout
+        run: |
+          # `recette.local` = l'hôte du runner (où sqld est publié sur 8081) : le nom de la base vue par config.ts est « recette ».
+          docker run -d --name cdj-recette -p 8091:8091 --add-host recette.local:host-gateway -e PORT=8091 -e ENVIRONMENT=recette \
+            -e TURSO_DATABASE_URL=http://recette.local:8081 -e TEST_CLOCK_OFFSET_MS=0 \
+            -e ALLOWED_ORIGINS=https://nathan-te.github.io -e RATE_SALT=un-sel-de-test-assez-long -e TRUST_PROXY=1 cdj-api
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:8091/api/health && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8091/api/health | jq -e '.ok == true and .db == "ok"'
+          npm run smoke -w @cdj/api -- http://127.0.0.1:8091 --origin https://nathan-te.github.io
+          docker logs cdj-recette
+          docker rm -f cdj-recette
       - name: Démarrer l'image contre libSQL
         run: |
           docker run -d --name cdj --network host -e PORT=8090 -e TURSO_DATABASE_URL=http://127.0.0.1:8081 \

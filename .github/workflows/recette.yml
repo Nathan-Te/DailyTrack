@@ -1,0 +1,198 @@
+name: Recette
+# Lot R1 (plateforme) : chaque PR qui touche le serveur déploie SA version sur le serveur de recette (service Cloud Run et base Turso
+# séparés de la production), en révision étiquetée SANS trafic ; l'aperçu Pages de sa branche lui parle. Pas à pas : docs/plateforme/recette.md.
+#   - PR ouverte ou mise à jour : révision `b-<branche>-<empreinte>` (scripts/recette.mjs), contrôle de /api/health, `npm run smoke`,
+#     commentaire sur la PR (adresse de la révision et de l'aperçu), puis l'aperçu de la branche est reconstruit pour viser la révision.
+#   - PR fermée (fusionnée ou non) : l'étiquette est retirée (la révision ne reçoit plus rien).
+#   - « Run workflow » : sur main, (re)crée la révision par défaut de la recette (celle que la fusion dans main met à jour, voir
+#     production.yml) ; sur une branche, sa révision étiquetée, avec au besoin un Salon court ou une horloge de test.
+# Jamais pour une PR venue d'un fork : les secrets ne sortent pas du dépôt. Tant que la recette n'est pas configurée, tout est sauté avec
+# le message « recette non configurée : voir docs/plateforme/recette.md » et la CI reste verte.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    # Recopié de SERVER_PATHS (scripts/recette.mjs) ; apps/api/test/recette.test.ts vérifie que les deux listes sont identiques.
+    paths:
+      - "apps/api/**"
+      - "packages/sim/**"
+      - "packages/core/**"
+      - "packages/clock/**"
+      - "packages/jump-sim/**"
+      - "packages/profile/**"
+      - "apps/jump/public/levels/**"
+      - "package.json"
+      - "package-lock.json"
+      - "tsconfig.base.json"
+      - ".github/workflows/deploy-api.yml"
+      - ".github/workflows/recette.yml"
+  workflow_dispatch:
+    inputs:
+      salon_minutes:
+        description: "SALON_MINUTES (Salon court, ex. 2) ; vide : durée normale"
+        type: string
+        default: ""
+      test_clock_offset_ms:
+        description: "TEST_CLOCK_OFFSET_MS (ms, entier : décale l'horloge du serveur, ex. pour tester minuit) ; vide : heure réelle"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  # Ce qui est à faire, et pour quelle étiquette (même calcul que le workflow Pages).
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      action: ${{ steps.plan.outputs.action }}
+      tag: ${{ steps.plan.outputs.tag }}
+      branch: ${{ steps.plan.outputs.branch }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: Plan
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_ACTION: ${{ github.event.action }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            branch="$HEAD_REF"
+            if [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
+              action=fork
+              echo "### Recette : PR venue d'un fork, rien n'est déployé (les secrets ne sortent pas du dépôt)" >> "$GITHUB_STEP_SUMMARY"
+              echo "::notice title=Recette::PR venue d'un fork ($HEAD_REPO) : pas de révision de recette."
+            elif [ "$PR_ACTION" = closed ]; then action=cleanup
+            else action=deploy
+            fi
+          else
+            branch="$GITHUB_REF_NAME"
+            if [ "$branch" = main ]; then action=default; else action=deploy; fi
+          fi
+          tag=""
+          [ "$action" = deploy ] || [ "$action" = cleanup ] && tag="$(node scripts/recette.mjs tag "$branch")"
+          { echo "action=$action"; echo "tag=$tag"; echo "branch=$branch"; } >> "$GITHUB_OUTPUT"
+          echo "branche : $branch · action : $action · étiquette : ${tag:-(révision par défaut)}"
+
+  deploy:
+    needs: plan
+    if: needs.plan.outputs.action == 'deploy' || needs.plan.outputs.action == 'default'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-api.yml
+    with:
+      target: recette
+      tag: ${{ needs.plan.outputs.tag }}
+      salon_minutes: ${{ inputs.salon_minutes || '' }}
+      test_clock_offset_ms: ${{ inputs.test_clock_offset_ms || '' }}
+    secrets: inherit
+
+  # Commentaire sur la PR (un seul, mis à jour à chaque poussée) et aperçu reconstruit pour viser la révision qui vient d'être déployée.
+  announce:
+    needs: [plan, deploy]
+    if: needs.deploy.outputs.enabled == 'true' && needs.plan.outputs.action == 'deploy'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write # relancer le workflow Pages de la branche (workflow_dispatch : permis au GITHUB_TOKEN)
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      URL: ${{ needs.deploy.outputs.url }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      BRANCH: ${{ needs.plan.outputs.branch }}
+      PR: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: Reconstruire l'aperçu de la branche
+        run: |
+          # Le workflow Pages de la branche a pu se terminer avant que la révision existe (il visait alors la recette par défaut).
+          if gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"; then
+            echo "- Aperçu de \`$BRANCH\` reconstruit pour viser $URL (workflow Pages)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::impossible de relancer le workflow Pages de $BRANCH (branche partie d'avant le lot R1 ?) : l'aperçu vise la recette par défaut jusqu'à la prochaine poussée"
+          fi
+      - name: Commentaire sur la PR
+        if: github.event_name == 'pull_request'
+        run: |
+          slug="$(node scripts/recette.mjs slug "$BRANCH")"
+          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          preview="https://${owner}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/"
+          marker="<!-- recette-r1 -->"
+          {
+            echo "$marker"
+            echo "### Recette"
+            echo ""
+            echo "- Révision de recette : $URL (étiquette \`$TAG\`, sans trafic ; construite depuis la PR fusionnée avec main, \`${GITHUB_SHA::7}\`)"
+            echo "- Santé : $URL/api/health"
+            echo "- Aperçu DailyTrack : ${preview} · DailyJump : ${preview}jump/"
+            echo "- L'aperçu est reconstruit pour viser cette révision (workflow Pages, 2 à 3 min). Son stockage local est séparé de la production (\`apercu:*\`)."
+            echo ""
+            echo "_Mis à jour à chaque poussée ; l'étiquette est retirée à la fermeture de la PR._"
+          } > body.md
+          id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq ".[] | select(.body | contains(\"$marker\")) | .id" | tail -n1)"
+          if [ -n "$id" ]; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@body.md >/dev/null
+          else
+            gh pr comment "$PR" --repo "$GITHUB_REPOSITORY" --body-file body.md
+          fi
+
+  # PR fermée : l'étiquette est retirée ; la révision, qui ne reçoit plus rien, est supprimée (sans effet si elle sert encore).
+  cleanup:
+    needs: plan
+    if: needs.plan.outputs.action == 'cleanup'
+    runs-on: ubuntu-latest
+    environment: recette
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      TAG: ${{ needs.plan.outputs.tag }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      RECETTE_DB: ${{ vars.RECETTE_TURSO_DATABASE_URL }}
+      SERVICE: ${{ vars.RECETTE_GCP_SERVICE || 'cdj-api-recette' }}
+      REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - name: Configuration présente ?
+        id: cfg
+        run: |
+          if [ -n "$GCP_PROJECT_ID" ] && [ -n "$RECETTE_DB" ] && { { [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; } || [ "$HAS_SA_KEY" = true ]; }; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Recette non configurée : voir docs/plateforme/recette.md (rien à nettoyer)" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Recette non configurée::recette non configurée : voir docs/plateforme/recette.md"
+          fi
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v3
+        if: steps.cfg.outputs.enabled == 'true'
+      - name: Retirer l'étiquette
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          revisions="$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null | jq -r --arg t "$TAG" '.status.traffic[]? | select(.tag == $t) | .revisionName')"
+          if [ -z "$revisions" ]; then
+            echo "- Aucune révision étiquetée \`$TAG\` : rien à retirer." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gcloud run services update-traffic "$SERVICE" --region "$REGION" --remove-tags="$TAG" --quiet
+          for r in $revisions; do
+            gcloud run revisions delete "$r" --region "$REGION" --quiet || echo "::notice::révision $r gardée (elle sert encore)"
+          done
+          echo "- Étiquette \`$TAG\` retirée du service de recette ($revisions)." >> "$GITHUB_STEP_SUMMARY"

@@ -10,7 +10,7 @@ import {
   type Level,
   type RecordedAttempt,
 } from "@cdj/jump-sim";
-import { STORAGE_PREFIX, storageKey } from "./storage";
+import { STORAGE_PREFIX, gameStorage, storageKey } from "./storage";
 
 // Mémoire du jour (lot 3), **par niveau** : le meilleur essai (sa rediffusion), toutes les vies du jour (rediffusions, les 300 plus récentes)
 // et les positions de mort du jour (les taches). Tout survit à un rechargement et se purge quand le jour, le niveau ou la version de la
@@ -69,15 +69,9 @@ export interface RecordedEssai {
   newBest: boolean;
 }
 
-/** `localStorage` s'il est lisible, sinon null (navigation privée stricte, iframe isolée…). */
+/** Le stockage local s'il est lisible, sinon null (navigation privée stricte, iframe isolée…) ; préfixé dans un aperçu (`storage.ts`). */
 export function browserStorage(): KeyValue | null {
-  try {
-    const s = window.localStorage;
-    void s.length;
-    return s;
-  } catch {
-    return null;
-  }
+  return gameStorage();
 }
 
 /** Empreinte du contenu d'un niveau : le modifier (sans changer de version) purge sa mémoire. */

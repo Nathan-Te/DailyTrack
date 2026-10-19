@@ -1,4 +1,5 @@
 import type { Axes } from "./input";
+import { gameStorage } from "./storage";
 
 // Commandes tactiles (lot 10) : logique pure, sans DOM, testée par Vitest. Le tactile produit les mêmes axes
 // que le clavier et la manette ; ils passent ensuite par `makeInput` (commandes entières) : rien ne change dans
@@ -75,7 +76,7 @@ export function parseTouchSettings(raw: string | null): TouchSettings {
 
 export function loadTouchSettings(): TouchSettings {
   try {
-    return parseTouchSettings(localStorage.getItem(KEY));
+    return parseTouchSettings(gameStorage().getItem(KEY));
   } catch {
     return { ...DEFAULT_TOUCH_SETTINGS };
   }
@@ -83,7 +84,7 @@ export function loadTouchSettings(): TouchSettings {
 
 export function saveTouchSettings(s: Readonly<TouchSettings>): void {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...s, version: TOUCH_SETTINGS_VERSION }));
+    gameStorage().setItem(KEY, JSON.stringify({ ...s, version: TOUCH_SETTINGS_VERSION }));
   } catch {
     /* stockage indisponible : les réglages ne survivront pas à la session */
   }

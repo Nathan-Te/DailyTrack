@@ -1,0 +1,83 @@
+name: Production
+# Lot R1 (plateforme) : une fusion dans main part en production en trois temps, et seulement après la validation de Nathan.
+#   1. recette : si la fusion touche le serveur (SERVER_PATHS, scripts/recette.mjs), la révision par défaut de la recette est mise à jour
+#      (contrôle de /api/health et essai de bout en bout) ; sautée avec un message si la recette n'est pas configurée ;
+#   2. validation : les deux jobs suivants attendent ensemble l'approbation d'un relecteur de l'environnement GitHub `production` (Nathan) :
+#      un seul clic (« Review deployments » → production → Approve) les libère tous les deux ;
+#   3. l'API de production (si la fusion touche le serveur) et le site publié depuis main (DailyTrack et DailyJump) partent ensemble.
+# Deux fusions rapprochées : la seconde attend la fin de la première (validée ou refusée) ; une troisième remplace la seconde en attente.
+# « Run workflow » sur main : republie le site et, si demandé, redéploie l'API (validation demandée aussi). Pas à pas : docs/plateforme/recette.md.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      api:
+        description: "Redéployer aussi l'API de production"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      server: ${{ steps.diff.outputs.server }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: La fusion touche-t-elle le serveur ?
+        id: diff
+        env:
+          BEFORE: ${{ github.event.before }}
+          FORCE_API: ${{ inputs.api }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            server="$([ "$FORCE_API" = true ] && echo true || echo false)"
+          elif [ -z "$BEFORE" ] || [ "$BEFORE" = 0000000000000000000000000000000000000000 ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            server=true # historique inconnu : dans le doute, on déploie
+          else
+            server="$(git diff --name-only "$BEFORE" "$GITHUB_SHA" | node scripts/recette.mjs touches-server)"
+          fi
+          echo "server=$server" >> "$GITHUB_OUTPUT"
+          echo "### Fusion : serveur touché : $server" >> "$GITHUB_STEP_SUMMARY"
+
+  # Rien ne part en production sans passer par la recette.
+  recette:
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-api.yml
+    with:
+      target: recette
+    secrets: inherit
+
+  api:
+    needs: [changes, recette]
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.server == 'true' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-api.yml
+    with:
+      target: production
+    secrets: inherit
+
+  pages:
+    needs: [changes, recette]
+    if: ${{ !failure() && !cancelled() }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/pages.yml
+    with:
+      production: true
+    secrets: inherit

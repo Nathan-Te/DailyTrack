@@ -1,4 +1,5 @@
 import { formatDay, parseDay, type Medal } from "@cdj/sim";
+import { gameStorage } from "./storage";
 
 // Profil du joueur (lot 29) : ce qu'on peut dire de lui sans serveur, à partir de ses records gardés dans le navigateur — jours joués,
 // médailles, série de jours, meilleure place. Logique pure (stockage injecté), testée par Vitest.
@@ -40,7 +41,7 @@ const isMedal = (m: unknown): m is Medal => m === "author" || m === "gold" || m 
  * de fantôme (voir `records.ts`), mais le jour a bien été joué et sa médaille bien gagnée. Un jour joué sous deux versions garde la
  * meilleure médaille (à égalité, le meilleur temps).
  */
-export function listPlayedDays(storage: ReadStorage = localStorage): PlayedDay[] {
+export function listPlayedDays(storage: ReadStorage = gameStorage()): PlayedDay[] {
   const out = new Map<string, PlayedDay>();
   let count = 0;
   try {
@@ -85,7 +86,7 @@ export function playedFromRecords(best: Record<string, { ms: number; medal?: str
 }
 
 /** Places gardées (`cdj:rank:*`). */
-export function loadRanks(storage: ReadStorage = localStorage): Map<string, RankMark> {
+export function loadRanks(storage: ReadStorage = gameStorage()): Map<string, RankMark> {
   const out = new Map<string, RankMark>();
   let count = 0;
   try {
@@ -131,7 +132,7 @@ export function rememberRank(date: string, mark: RankMark, storage: Pick<Storage
 
 function safeStorage(): Storage | null {
   try {
-    return localStorage;
+    return gameStorage();
   } catch {
     return null;
   }
