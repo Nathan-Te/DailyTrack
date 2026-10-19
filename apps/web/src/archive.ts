@@ -74,12 +74,24 @@ export interface ThumbSource {
 let lineObserver: IntersectionObserver | null = null;
 /** Le dessin du panneau en cours : une demande de miniature n'est utile que tant que son panneau est le courant. */
 let currentPanel: object | null = null;
+/**
+ * Jours dont la ligne est à l'écran dans le panneau ouvert. Lot R3 : une miniature est voulue tant que SON JOUR est à l'écran, et un
+ * redessin (les détails arrivent) garde ces jours tant que le nouvel observateur n'a pas répondu. Avant, la demande dépendait de la case
+ * dessinée : redessiné pendant la fabrication de la première miniature, le panneau rendait la demande caduque avant que sa nouvelle case
+ * se signale ; elle était abandonnée et redemandée au bout de la file (aujourd'hui en dernier, 60 s et plus sur le runner de la CI).
+ */
+let shownDays = new Set<string>();
 
-/** Arrête la surveillance des lignes (panneau fermé ou redessiné) : plus aucune miniature n'est demandée. */
-export function disposeArchive() {
+function stopObserving() {
   lineObserver?.disconnect();
   lineObserver = null;
   currentPanel = null;
+}
+
+/** Arrête la surveillance des lignes (panneau fermé) : plus aucune miniature n'est demandée. */
+export function disposeArchive() {
+  stopObserving();
+  shownDays = new Set();
 }
 
 const THUMB_LABEL = (d: ArchiveDay) => `Vue aérienne du circuit${d.number >= 1 ? ` n° ${d.number}` : ""} du ${d.date}`;
@@ -101,8 +113,8 @@ export function ordinal(rank: number): string {
 
 /** Remplit le panneau des archives : une ligne-lien par jour. */
 export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, onClose: () => void, currentTheme: string | null = null, extras: ArchiveExtras | null = null, thumbs: ThumbSource | null = null, trialTools = true) {
-  disposeArchive();
-  const drawing = (currentPanel = {});
+  stopObserving(); // redessin : les jours à l'écran restent voulus (`shownDays`) jusqu'à la réponse du nouvel observateur
+  currentPanel = {};
   const head = document.createElement("div");
   head.className = "head";
   const title = document.createElement("div");
@@ -140,13 +152,12 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
   // Miniatures : une case de taille fixe par ligne (la liste ne bouge pas quand l'image arrive), remplie quand la ligne
   // apparaît à l'écran — `IntersectionObserver` sur le panneau qui défile.
   const boxes = new Map<Element, ArchiveDay>();
-  const visible = new Set<Element>();
   const ask = (box: HTMLElement, day: ArchiveDay) => {
     if (!thumbs || box.dataset.state === "ready") return;
     const known = thumbs.peek(day);
     if (known) return showThumb(box, day, known);
     box.dataset.state = "wait";
-    void thumbs.request(day, () => currentPanel === drawing && visible.has(box) && box.isConnected).then((url) => {
+    void thumbs.request(day, () => currentPanel !== null && shownDays.has(day.date)).then((url) => {
       if (url && box.isConnected) showThumb(box, day, url);
       else if (box.dataset.state === "wait") box.dataset.state = "none";
     });
@@ -155,10 +166,11 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
     lineObserver = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
+          const day = boxes.get(e.target)!;
           if (e.isIntersecting) {
-            visible.add(e.target);
-            ask(e.target as HTMLElement, boxes.get(e.target)!);
-          } else visible.delete(e.target);
+            shownDays.add(day.date);
+            ask(e.target as HTMLElement, day);
+          } else shownDays.delete(day.date);
         }
       },
       { root: panel, rootMargin: "120px 0px" },
@@ -182,7 +194,7 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
       if (known) showThumb(box, d, known);
       else if (lineObserver) lineObserver.observe(box);
       else {
-        visible.add(box);
+        shownDays.add(d.date);
         ask(box, d);
       }
     }

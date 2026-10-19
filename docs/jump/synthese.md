@@ -86,4 +86,4 @@ Versions en vigueur : `JUMP_SIM_VERSION` **3** · `JUMP_GENERATOR_VERSION` **9**
 ## 10. Dettes et questions ouvertes
 - Archives sous ancienne physique (recommandation : listées, non rejouables) — [lot 10](lots/lot-10-arrivee.md).
 - Difficulté ressentie des morceaux de glace, de nuit et de vent : l'exigence (gigue des commandes) la mesure mal — [lot 11](lots/lot-11-themes-jouables.md), [12](lots/lot-12-nuit-neon.md), [13](lots/lot-13-foret.md).
-- Tests instables de DailyTrack qui ont bloqué des lots DailyJump (`salon.spec.ts:149`, `tactile.spec.ts`) : voir `docs/orchestration.md` § 8 (lot R2).
+- Tests instables de DailyTrack qui ont bloqué des lots DailyJump (`salon.spec.ts:149`, `tactile.spec.ts`) : **réparés au lot R3** de la plateforme (`docs/orchestration.md` § 8, `docs/plateforme/lots/lot-R3-ci.md`). Depuis, une PR DailyJump ne lance plus les e2e de DailyTrack, même quand elle touche `apps/api/src/jump*.ts`. Une dette de test DailyJump se note ici (avec le nom du fichier du test) : c'est le lien qu'exige la quarantaine (`e2e/quarantaine.json`).

@@ -74,11 +74,13 @@ jobs:
           set -o pipefail
           args=(--project="$PROJET" --workers=1 --retries=0 --repeat-each="$N" --reporter=list)
           [ -z "$TITRE" ] || args+=(--grep "$TITRE")
+          set +e
           npx playwright test "e2e/$FICHIER" "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/sortie.txt"
           code=${PIPESTATUS[0]}
-          passed=$(grep -Eo '^ +[0-9]+ passed' "$RUNNER_TEMP/sortie.txt" | grep -Eo '[0-9]+' | tail -1)
-          failed=$(grep -Eo '^ +[0-9]+ failed' "$RUNNER_TEMP/sortie.txt" | grep -Eo '[0-9]+' | tail -1)
-          echo "### $FICHIER${TITRE:+ › $TITRE} ($PROJET) : ${passed:-0} réussis, ${failed:-0} échecs, $N passages demandés par test, sans relance" >> "$GITHUB_STEP_SUMMARY"
+          # Le compte de la fin de sortie de Playwright (« 30 passed », « 1 failed ») ; absent = 0 (sans faire échouer l'étape).
+          count() { grep -Eo "^ +[0-9]+ $1" "$RUNNER_TEMP/sortie.txt" | grep -Eo '[0-9]+' | tail -1; }
+          passed=$(count passed); failed=$(count failed); flaky=$(count flaky)
+          echo "### $FICHIER${TITRE:+ › $TITRE} ($PROJET) : ${passed:-0} réussis, ${failed:-0} échecs, ${flaky:-0} instables, $N passages demandés par test, sans relance" >> "$GITHUB_STEP_SUMMARY"
           exit $code
       - uses: actions/upload-artifact@v4
         if: failure()

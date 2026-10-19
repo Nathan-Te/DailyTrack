@@ -203,31 +203,38 @@ test("vues : inclinée et d'aplomb donnent deux images différentes du même cir
 
 test("l'ouverture des archives ne gèle pas l'interface (processeur ×4 : la génération se fait hors du fil principal)", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
-  const page = await context.newPage();
-  const cdp = await context.newCDPSession(page);
-  await page.addInitScript(() => {
-    (window as unknown as { __long: number[] }).__long = [];
-    new PerformanceObserver((list) => {
-      for (const e of list.getEntries()) (window as unknown as { __long: number[] }).__long.push(Math.round(e.duration));
-    }).observe({ type: "longtask", buffered: true });
-  });
-  // `thumbs=2d` : sans WebGL logiciel (très lent en conteneur, rapide sur une vraie carte), ce qui reste est la génération et le dessin.
-  await page.goto("/?api=demo&debug&thumbs=2d&touch=0");
-  await ready(page);
-  await page.evaluate(() => window.__cdj.manual(true)); // le jeu ne dessine plus : on ne mesure que les miniatures
-  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
-  await page.evaluate(() => ((window as unknown as { __long: number[] }).__long.length = 0));
-  await page.keyboard.press("KeyH");
-  await scrollThrough(page, DEMO_ROWS);
-  const long = await page.evaluate(() => (window as unknown as { __long: number[] }).__long);
-  const stats = await page.evaluate(() => window.__cdj.thumbs.stats);
-  const worst = Math.max(0, ...long);
-  test.info().annotations.push({ type: "mesure", description: `processeur ×4 : ${stats.made} miniatures, plus longue tâche ${worst} ms (${long.length} tâches > 50 ms) ; génération ${JSON.stringify(stats.generateMs)} ms` });
-  // Un circuit coûte ≈ 200 ms (800 ms à ×4) : sur le fil principal, 15 d'entre eux gèleraient l'écran plusieurs secondes.
-  expect(stats.mainThreadGenerations, "la génération se fait dans le fil de travail").toBe(0);
-  expect(worst, "aucune tâche ne bloque l'écran longtemps").toBeLessThan(1500);
-  expect(stats.made).toBe(DEMO_ROWS);
-  await context.close();
+  try {
+    const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    // Lot R3 : chaque tâche longue est datée sur l'horloge de la page, et seules celles qui COMMENCENT après le début de la mesure comptent.
+    // Avant, la liste était vidée au début de la mesure ; mais l'observateur livre ses entrées après coup : celle de la première image du jeu
+    // (évaluation du script + premier rendu, compilation des shaders comprise : 3,2 à 4,2 s mesurées, `long-animation-frame`), finie juste
+    // avant `manual(true)`, arrivait parfois après la remise à zéro et passait pour une tâche des archives (CI : 1 794 à 5 710 ms).
+    await page.addInitScript(() => {
+      (window as unknown as { __long: { at: number; ms: number }[] }).__long = [];
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries()) (window as unknown as { __long: { at: number; ms: number }[] }).__long.push({ at: e.startTime, ms: Math.round(e.duration) });
+      }).observe({ type: "longtask", buffered: true });
+    });
+    // `thumbs=2d` : sans WebGL logiciel (très lent en conteneur, rapide sur une vraie carte), ce qui reste est la génération et le dessin.
+    await page.goto("/?api=demo&debug&thumbs=2d&touch=0");
+    await ready(page);
+    await page.evaluate(() => window.__cdj.manual(true)); // le jeu ne dessine plus : on ne mesure que les miniatures
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
+    const from = await page.evaluate(() => performance.now());
+    await page.keyboard.press("KeyH");
+    await scrollThrough(page, DEMO_ROWS);
+    const long = (await page.evaluate(() => (window as unknown as { __long: { at: number; ms: number }[] }).__long)).filter((t) => t.at >= from).map((t) => t.ms);
+    const stats = await page.evaluate(() => window.__cdj.thumbs.stats);
+    const worst = Math.max(0, ...long);
+    test.info().annotations.push({ type: "mesure", description: `processeur ×4 : ${stats.made} miniatures, plus longue tâche ${worst} ms (${long.length} tâches > 50 ms) ; génération ${JSON.stringify(stats.generateMs)} ms` });
+    // Un circuit coûte ≈ 200 ms (800 ms à ×4) : sur le fil principal, 15 d'entre eux gèleraient l'écran plusieurs secondes.
+    expect(stats.mainThreadGenerations, "la génération se fait dans le fil de travail").toBe(0);
+    expect(worst, "aucune tâche ne bloque l'écran longtemps").toBeLessThan(1500);
+    expect(stats.made).toBe(DEMO_ROWS);
+  } finally {
+    await context.close(); // même après un échec : une page laissée ouverte dessinerait pendant les tests suivants (lot 31b)
+  }
 });
 
 for (const viewport of [
@@ -237,19 +244,22 @@ for (const viewport of [
 ]) {
   test(`téléphone ${viewport.name} : les lignes d'archives ne débordent pas et l'image ne recouvre rien`, async ({ browser }) => {
     const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
-    const page = await context.newPage();
-    await page.goto("/?api=demo&debug&thumbs=2d&touch=0");
-    await ready(page);
-    await page.keyboard.press("KeyH");
-    const row = page.locator("#archive .day").nth(1);
-    await expect(row.locator(".sub")).toBeVisible({ timeout: 30_000 });
-    await expect(row.locator(".thumb img")).toBeVisible({ timeout: 60_000 });
-    await row.scrollIntoViewIfNeeded();
-    const panel = await page.locator("#archive .panel").evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
-    expect(panel.scroll, "pas de défilement horizontal").toBeLessThanOrEqual(panel.client + 1);
-    const list = await boxes(page, ["#archive .day:nth-child(2) .thumb", "#archive .day:nth-child(2) .what", "#archive .day:nth-child(2) .best", "#archive .day:nth-child(2) .sub"]);
-    expect(list.length).toBe(4);
-    expectNoOverlap(list, viewport);
-    await context.close();
+    try {
+      const page = await context.newPage();
+      await page.goto("/?api=demo&debug&thumbs=2d&touch=0");
+      await ready(page);
+      await page.keyboard.press("KeyH");
+      const row = page.locator("#archive .day").nth(1);
+      await expect(row.locator(".sub")).toBeVisible({ timeout: 30_000 });
+      await expect(row.locator(".thumb img")).toBeVisible({ timeout: 60_000 });
+      await row.scrollIntoViewIfNeeded();
+      const panel = await page.locator("#archive .panel").evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }));
+      expect(panel.scroll, "pas de défilement horizontal").toBeLessThanOrEqual(panel.client + 1);
+      const list = await boxes(page, ["#archive .day:nth-child(2) .thumb", "#archive .day:nth-child(2) .what", "#archive .day:nth-child(2) .best", "#archive .day:nth-child(2) .sub"]);
+      expect(list.length).toBe(4);
+      expectNoOverlap(list, viewport);
+    } finally {
+      await context.close();
+    }
   });
 }

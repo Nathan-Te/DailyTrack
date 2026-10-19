@@ -43,6 +43,12 @@
       "fichier": "salon.spec.ts",
       "titre": "le circuit change au même instant pour deux navigateurs",
       "navigateur": "chromium"
+    },
+    {
+      "jeu": "web",
+      "fichier": "thumbnails.spec.ts",
+      "titre": "l'ouverture des archives ne gèle pas l'interface",
+      "navigateur": "chromium"
     }
   ]
 }
