@@ -44,5 +44,6 @@ describe("la CI lit le sous-ensemble", () => {
     expect(ci).toMatch(/schedule:/);
     expect(ci).toMatch(/workflow_dispatch:/);
     expect(ci).toMatch(/branches: \[main\]/);
+    expect(ci, "à la demande depuis une PR (un agent ne peut pas lancer « Run workflow »)").toContain('grep -qF "[ci complet]"');
   });
 });
