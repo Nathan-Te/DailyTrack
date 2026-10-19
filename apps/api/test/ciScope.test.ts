@@ -1,0 +1,118 @@
+import { describe, expect, it } from "vitest";
+import { SERVER_PATHS } from "../../../scripts/recette.mjs";
+import { CATEGORIES, RULES, categoriesOf, scopeOf, toOutputs } from "../../../scripts/ci-scope.mjs";
+
+// Lot R2 (plateforme) : portée d'une PR pour la CI. Un fichier propre à un jeu ne lance que les e2e de ce jeu ; une zone partagée ou un doute
+// lance tout ; le serveur touché (SERVER_PATHS) lance l'image de l'API.
+const ALL = [...CATEGORIES].sort();
+const cats = (p: string) => categoriesOf(p).sort();
+
+describe("catégorie d'un fichier", () => {
+  it("DailyTrack seul", () => {
+    for (const p of ["apps/web/src/main.ts", "apps/web/e2e/salon.spec.ts", "apps/web/CLAUDE.md", "packages/sim/src/car.ts", "packages/sim/CLAUDE.md", "docs/lots/lot-31-futur-finale.md", "docs/orchestration.md", "docs/seed.md", "docs/guide-technique.md"])
+      expect(cats(p), p).toEqual(["track"]);
+  });
+
+  it("DailyJump seul", () => {
+    for (const p of ["apps/jump/src/main.ts", "apps/jump/e2e/smoke.spec.ts", "apps/jump/CLAUDE.md", "packages/jump-sim/src/level.ts", "packages/jump-sim/modules/solutions.json", "docs/jump/synthese.md", "docs/jump/lots/lot-13-foret.md"])
+      expect(cats(p), p).toEqual(["jump"]);
+  });
+
+  it("plateforme seule : la documentation de la plateforme", () => {
+    for (const p of ["docs/plateforme/recette.md", "docs/plateforme/lots/lot-R2-hygiene.md", "docs/mise-en-ligne.md", "docs/securite-facturation.md"]) expect(cats(p), p).toEqual(["plateforme"]);
+  });
+
+  it("les niveaux figés de DailyJump (lus par le serveur) : DailyJump et plateforme", () => {
+    expect(cats("apps/jump/public/levels/2026-10-16.json")).toEqual(["jump", "plateforme"]);
+  });
+
+  it("zone partagée = les trois catégories à la fois", () => {
+    const shared = [
+      "apps/api/src/api.ts", "apps/api/Dockerfile", "apps/api/CLAUDE.md", "packages/core/src/index.ts", "packages/clock/src/index.ts", "packages/profile/src/index.ts",
+      ".github/workflows/ci.yml", ".github/workflows/pages.yml", ".github/workflows/recette.yml", "scripts/e2e-parts.mjs", "scripts/ci-scope.mjs",
+      "package.json", "package-lock.json", "tsconfig.base.json", "tsconfig.json", "vitest.config.ts", "CLAUDE.md",
+    ];
+    for (const p of shared) expect(cats(p), p).toEqual(ALL);
+  });
+
+  it("le doute compte pour les trois : fichier inconnu, racine, chemin étrange", () => {
+    for (const p of ["docs/credits.md", "README.md", "nouveau-dossier/x.ts", "apps/nouveau/src/x.ts", "packages/autre/x.ts", ".gitignore", "", "../apps/web/x.ts", "apps/web/../api/x.ts"])
+      expect(cats(p), JSON.stringify(p)).toEqual(ALL);
+  });
+
+  it("un nom qui ressemble à une zone sans en être une n'est pas reconnu", () => {
+    for (const p of ["apps/webhook/x.ts", "apps/jumper/x.ts", "packages/sim-extra/x.ts", "packages/jump-sim2/x.ts", "docs/jumpy/x.md"]) expect(cats(p), p).toEqual(ALL);
+  });
+
+  it("normalise ./ et les séparateurs Windows", () => {
+    expect(cats("./apps/jump/src/main.ts")).toEqual(["jump"]);
+    expect(cats("apps\\web\\src\\main.ts")).toEqual(["track"]);
+  });
+
+  it("chaque fichier a au moins une catégorie, toutes valides", () => {
+    for (const p of ["a", "apps/web/x", "apps/jump/public/levels/x.json", "docs/lots/x"]) {
+      const c = categoriesOf(p);
+      expect(c.length).toBeGreaterThan(0);
+      for (const x of c) expect(CATEGORIES).toContain(x);
+    }
+  });
+
+  it("toute zone partagée de SERVER_PATHS est classée par une règle sans la réduire à un seul jeu, sauf les dossiers propres à un jeu", () => {
+    // apps/api, core, clock, profile, package.json… : les trois. packages/sim et jump-sim sont propres à un jeu MAIS touchent le serveur (voir `server`).
+    for (const p of ["apps/api/x.ts", "packages/core/x.ts", "packages/clock/x.ts", "packages/profile/x.ts", "package.json", "package-lock.json", "tsconfig.base.json"]) expect(cats(p), p).toEqual(ALL);
+    expect(RULES.every((r) => r.cats.length > 0)).toBe(true);
+    expect(SERVER_PATHS.length).toBeGreaterThan(0);
+  });
+});
+
+describe("portée d'une PR", () => {
+  it("DailyJump seul : e2e de DailyJump seulement, pas ceux de DailyTrack", () => {
+    const s = scopeOf(["apps/jump/src/main.ts", "apps/jump/test/figes.test.ts", "docs/jump/synthese.md"]);
+    expect(s).toMatchObject({ track: false, jump: true, plateforme: false, full: false, server: false });
+  });
+
+  it("DailyTrack seul : e2e de DailyTrack seulement", () => {
+    expect(scopeOf(["apps/web/src/hud.ts"])).toMatchObject({ track: true, jump: false, server: false });
+  });
+
+  it("deux jeux : les deux suites", () => {
+    expect(scopeOf(["apps/web/src/hud.ts", "packages/jump-sim/src/level.ts"])).toMatchObject({ track: true, jump: true });
+  });
+
+  it("le moteur d'un jeu touche le serveur (il rejoue les courses) : image de l'API", () => {
+    expect(scopeOf(["packages/jump-sim/src/level.ts"])).toMatchObject({ track: false, jump: true, server: true });
+    expect(scopeOf(["packages/sim/src/car.ts"])).toMatchObject({ track: true, jump: false, server: true });
+  });
+
+  it("une zone partagée lance tout", () => {
+    for (const f of ["apps/api/src/api.ts", "packages/core/src/index.ts", ".github/workflows/ci.yml", "package-lock.json", "CLAUDE.md"])
+      expect(scopeOf([f, "apps/jump/src/main.ts"]), f).toMatchObject({ track: true, jump: true, plateforme: true, server: expect.anything() });
+  });
+
+  it("une zone partagée hors SERVER_PATHS (workflow de CI, script) touche aussi l'image de l'API : on teste ce qu'on change", () => {
+    expect(scopeOf([".github/workflows/ci.yml"])).toMatchObject({ server: true });
+    expect(scopeOf(["scripts/ci-scope.mjs"])).toMatchObject({ server: true });
+    expect(scopeOf(["docs/credits.md"])).toMatchObject({ server: true });
+  });
+
+  it("documentation de la plateforme seule : aucune suite de jeu, pas d'image", () => {
+    expect(scopeOf(["docs/plateforme/recette.md"])).toMatchObject({ track: false, jump: false, plateforme: true, server: false });
+  });
+
+  it("le doute lance tout : liste vide, fichier inconnu", () => {
+    expect(scopeOf([])).toMatchObject({ full: true, track: true, jump: true, plateforme: true, server: true });
+    expect(scopeOf(["", "  "])).toMatchObject({ full: true });
+    expect(scopeOf(["apps/jump/src/main.ts", "truc-inconnu.bin"])).toMatchObject({ track: true, jump: true, plateforme: true });
+  });
+
+  it("`full` (nuit, lancement manuel, main) lance tout, même pour un petit changement", () => {
+    expect(scopeOf(["apps/jump/src/main.ts"], { full: true })).toMatchObject({ full: true, track: true, jump: true, plateforme: true, server: true });
+  });
+
+  it("les sorties pour GitHub Actions sont des lignes clé=valeur", () => {
+    const out = toOutputs(scopeOf(["apps/jump/src/main.ts"]));
+    expect(out).toContain("jump=true\n");
+    expect(out).toContain("track=false\n");
+    expect(out).toContain("server=false\n");
+  });
+});

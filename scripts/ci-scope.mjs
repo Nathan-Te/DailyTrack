@@ -1,0 +1,81 @@
+// Portée d'une PR pour la CI (lot R2) : range chaque fichier changé dans une ou plusieurs catégories — `track` (DailyTrack), `jump` (DailyJump),
+// `plateforme` — et dit quelles parties de la CI doivent tourner. Pur et testé (apps/api/test/ciScope.test.ts) ; utilisé par le job `scope` de
+// .github/workflows/ci.yml :
+//   git diff --name-only origin/main...HEAD | node scripts/ci-scope.mjs [--full]   → lignes `clé=valeur` pour $GITHUB_OUTPUT
+//
+// Règles (docs/plateforme/lots/lot-R2-hygiene.md) :
+//   - un fichier propre à un jeu compte pour ce jeu seul ; une zone partagée (apps/api, packages/core, packages/clock, le module de profil, les
+//     workflows, les scripts de CI, la configuration racine, package.json et son verrou, le CLAUDE.md racine…) compte pour LES TROIS ;
+//   - tout fichier qu'aucune règle ne reconnaît compte pour les trois (le doute ne saute jamais un test) ; une liste vide aussi ;
+//   - typecheck et tests unitaires : toujours tout (hors de ce script) ; e2e : les suites des catégories touchées ; api-image : si le serveur est touché (SERVER_PATHS, ou toute zone partagée / tout doute).
+import { touchesServer } from "./recette.mjs";
+
+export const CATEGORIES = ["track", "jump", "plateforme"];
+
+// Dans l'ordre : la première règle qui reconnaît le fichier l'emporte. Les exceptions précèdent la règle générale de leur dossier.
+export const RULES = [
+  // Les niveaux figés de DailyJump sont lus par le serveur (SERVER_PATHS) : DailyJump et plateforme.
+  { glob: "apps/jump/public/levels/**", cats: ["jump", "plateforme"] },
+  { glob: "apps/web/**", cats: ["track"] },
+  { glob: "packages/sim/**", cats: ["track"] },
+  { glob: "docs/lots/**", cats: ["track"] },
+  { glob: "docs/seed.md", cats: ["track"] },
+  { glob: "docs/orchestration.md", cats: ["track"] },
+  { glob: "docs/guide-technique.md", cats: ["track"] },
+  { glob: "apps/jump/**", cats: ["jump"] },
+  { glob: "packages/jump-sim/**", cats: ["jump"] },
+  { glob: "docs/jump/**", cats: ["jump"] },
+  { glob: "docs/plateforme/**", cats: ["plateforme"] },
+  { glob: "docs/mise-en-ligne.md", cats: ["plateforme"] },
+  { glob: "docs/securite-facturation.md", cats: ["plateforme"] },
+];
+
+function globToRegExp(glob) {
+  const re = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*\*/g, "\u0000").replace(/\*/g, "[^/]*").replace(/\u0000/g, ".*");
+  return new RegExp(`^${re}$`);
+}
+const COMPILED = RULES.map((r) => ({ re: globToRegExp(r.glob), cats: r.cats }));
+
+/** Chemin normalisé (séparateurs `/`, pas de `./` en tête). */
+function normalize(path) {
+  return String(path).trim().replace(/\\/g, "/").replace(/^(\.\/)+/, "");
+}
+
+/** Catégories d'un fichier : jamais vide (zone partagée ou doute = les trois). */
+export function categoriesOf(path) {
+  const p = normalize(path);
+  if (!p || p.startsWith("../") || p.includes("/../")) return [...CATEGORIES];
+  for (const r of COMPILED) if (r.re.test(p)) return [...r.cats];
+  return [...CATEGORIES];
+}
+
+/**
+ * Ce qui doit tourner pour ces fichiers changés. `full` (run de nuit, lancement manuel, `main`, base introuvable) lance tout.
+ * Une liste vide est un doute : tout tourne aussi.
+ */
+export function scopeOf(files, { full = false } = {}) {
+  const list = files.map(normalize).filter(Boolean);
+  const all = full || list.length === 0;
+  const cats = new Set(all ? CATEGORIES : list.flatMap(categoriesOf));
+  return {
+    full: all,
+    track: cats.has("track"),
+    jump: cats.has("jump"),
+    plateforme: cats.has("plateforme"),
+    // Le serveur est touché par ses chemins (SERVER_PATHS) ou par toute zone partagée / tout doute (workflows, scripts de CI, configuration racine…).
+    server: all || touchesServer(list) || list.some((f) => categoriesOf(f).length === CATEGORIES.length),
+    reason: full ? "lancement complet demandé" : list.length === 0 ? "aucun fichier connu (doute : tout tourne)" : `${list.length} fichier(s) changé(s)`,
+  };
+}
+
+/** Lignes `clé=valeur` pour $GITHUB_OUTPUT. */
+export function toOutputs(scope) {
+  return Object.entries(scope).map(([k, v]) => `${k}=${v}`).join("\n") + "\n";
+}
+
+const isMain = import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("/scripts/ci-scope.mjs");
+if (isMain) {
+  const { readFileSync } = await import("node:fs");
+  const files = readFileSync(0, "utf8").split("\n");
+  process.stdout.write(toOutputs(scopeOf(files, { full: process.argv.includes("--full") })));
+}

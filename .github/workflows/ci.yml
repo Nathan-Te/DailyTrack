@@ -26,6 +26,50 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  # Lot R2 (plateforme) — portée de la PR : quels fichiers sont changés, donc quelles suites e2e et quelle image ont un sens. Typecheck et tests
+  # unitaires (`test`) tournent TOUJOURS en entier (rapides, et ils protègent les imports croisés). Les e2e ne tournent que pour les jeux touchés,
+  # `api-image` que si le serveur l'est. Une zone partagée ou un doute = tout (scripts/ci-scope.mjs, testé). Le run de nuit, un lancement manuel
+  # et `main` ne filtrent rien. Un échec de ce job fait échouer `e2e` (jamais de « saut » par erreur). Règles : docs/plateforme/lots/lot-R2-hygiene.md.
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      track: ${{ steps.scope.outputs.track }}
+      jump: ${{ steps.scope.outputs.jump }}
+      server: ${{ steps.scope.outputs.server }}
+      full: ${{ steps.scope.outputs.full }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Portée des fichiers changés
+        id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+          BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+        run: |
+          full=""
+          if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
+          : > "$RUNNER_TEMP/files.txt"
+          if [ -z "$full" ]; then
+            git fetch --no-tags origin "$BASE" || full="--full"
+          fi
+          if [ -z "$full" ]; then
+            git diff --name-only "origin/$BASE...HEAD" > "$RUNNER_TEMP/files.txt" || full="--full"
+          fi
+          node scripts/ci-scope.mjs $full < "$RUNNER_TEMP/files.txt" | tee -a "$GITHUB_OUTPUT" > "$RUNNER_TEMP/scope.txt"
+          {
+            echo "### Portée de la CI"
+            echo
+            echo "Événement : \`$EVENT\` ${full:+(lancement complet, aucun filtre)}"
+            echo
+            echo '```'; cat "$RUNNER_TEMP/scope.txt"; echo '```'
+            echo "Fichiers changés : $(wc -l < "$RUNNER_TEMP/files.txt")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # Même rediffusion rejouée dans Chromium, Firefox et WebKit : le résultat doit être identique à celui de Node.
   # Retouche 29b — CI rapide et fiable : une matrice (un job par navigateur et par part, `--shard`), une relance unique (`retries: 1`, voir
   # apps/web/playwright.config.ts) et un job `e2e` qui fusionne les rapports, NOMME les tests instables dans le résumé du run et donne le verdict.
@@ -34,6 +78,7 @@ jobs:
   # `jump-<navigateur>`), avec la même relance (`retries: 1` en CI), des rapports « blob » fusionnés dans le même rapport et le même verdict `e2e`.
   # (Ne pas écrire `browser: chromium, shard: …` pour une entrée jump : apps/web/test/e2eParts.test.ts lit le nombre de parts DailyTrack ci-dessous.)
   e2e-parts:
+    needs: scope
     name: e2e-parts (${{ matrix.suite == 'jump' && 'jump ' || '' }}${{ matrix.browser }} ${{ matrix.shard }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -60,28 +105,44 @@ jobs:
     env:
       E2E_ALL_BROWSERS: "1"
     steps:
+      # Lot R2 : la matrice reste fixe (apps/web/test/e2eParts.test.ts et apps/jump/test/ciE2e.test.ts la lisent) ; une part dont le jeu n'est pas
+      # touché ne fait QUE cette étape et réussit (chaque étape suivante est conditionnée par elle) : le verdict `e2e` voit « réussi », jamais un trou.
+      - name: Cette part est-elle concernée ?
+        id: gate
+        run: |
+          if [ "${{ matrix.suite == 'jump' && needs.scope.outputs.jump || needs.scope.outputs.track }}" = true ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "part sautée : le jeu (${{ matrix.suite == 'jump' && 'DailyJump' || 'DailyTrack' }}) n'est pas touché par cette PR (portée : job scope)" | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - uses: actions/checkout@v4
+        if: steps.gate.outputs.run == 'true'
       - uses: actions/setup-node@v4
+        if: steps.gate.outputs.run == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci
+        if: steps.gate.outputs.run == 'true'
       - uses: actions/cache@v4
+        if: steps.gate.outputs.run == 'true'
         id: browsers
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}
       - run: npx playwright install --with-deps ${{ matrix.browser }}
         working-directory: apps/web
-        if: steps.browsers.outputs.cache-hit != 'true'
+        if: steps.gate.outputs.run == 'true' && steps.browsers.outputs.cache-hit != 'true'
       - run: npx playwright install-deps ${{ matrix.browser }}
         working-directory: apps/web
-        if: steps.browsers.outputs.cache-hit == 'true'
+        if: steps.gate.outputs.run == 'true' && steps.browsers.outputs.cache-hit == 'true'
       - run: npm run build && npm run build:node -w @cdj/api
-        if: matrix.suite != 'jump'
+        if: steps.gate.outputs.run == 'true' && matrix.suite != 'jump'
       - run: npm run build -w @cdj/jump
-        if: matrix.suite == 'jump'
+        if: steps.gate.outputs.run == 'true' && matrix.suite == 'jump'
       - name: Nom de la part
+        if: steps.gate.outputs.run == 'true'
         run: |
           blob="$(echo '${{ matrix.suite == 'jump' && 'jump-' || '' }}${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
           echo "blob=$blob" >> "$GITHUB_ENV"
@@ -90,7 +151,7 @@ jobs:
       # Le runner a 2 cœurs : deux pages en WebGL logiciel côte à côte s'y affament (miniatures + spectateur : × 3 à × 6 sur les durées),
       # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté. Firefox et WebKit (rapides, sans WebGL lourd) gardent `--shard`.
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
-        if: matrix.suite != 'jump'
+        if: steps.gate.outputs.run == 'true' && matrix.suite != 'jump'
         run: |
           if [ "${{ matrix.browser }}" = chromium ]; then
             node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium > "$RUNNER_TEMP/part.txt"
@@ -102,7 +163,7 @@ jobs:
       # (même runner à 2 cœurs, même rendu logiciel) ; Firefox et WebKit : `--shard`. Les outils de mesure et de captures (MESURE, CAPTURES) se
       # sautent d'eux-mêmes avec leur motif (« outil de mesure : MESURE=1 ») : ni l'un ni l'autre n'est défini ici.
       - name: Tests e2e DailyJump (${{ matrix.browser }}, part ${{ matrix.shard }})
-        if: matrix.suite == 'jump'
+        if: steps.gate.outputs.run == 'true' && matrix.suite == 'jump'
         run: |
           if [ "${{ matrix.browser }}" = chromium ]; then
             node scripts/e2e-parts.mjs ${{ matrix.shard }} jump-chromium > "$RUNNER_TEMP/part.txt"
@@ -111,7 +172,7 @@ jobs:
             npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }} --shard=${{ matrix.shard }}
           fi
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.gate.outputs.run == 'true'
         with:
           name: blob-${{ env.blob }}
           path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/blob-report/
@@ -119,7 +180,7 @@ jobs:
           if-no-files-found: warn
       # Traces des essais ratés (même ceux d'un test réussi à la relance) : de quoi trouver la cause d'une instabilité.
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.gate.outputs.run == 'true'
         with:
           name: resultats-${{ env.blob }}
           path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/test-results/
@@ -127,23 +188,38 @@ jobs:
           if-no-files-found: ignore
 
   # Verdict unique (statut `e2e`) : fusionne les rapports des parts, écrit le résumé (instables nommés) et échoue au moindre vrai échec.
+  # Lot R2 : ce job tourne TOUJOURS (`if: always()`), même si toutes les parts sont sautées : c'est lui qui porte le statut requis `e2e`, il n'est donc
+  # jamais « sauté » ni en attente. Sans suite concernée (PR de documentation de la plateforme…), il le dit dans le résumé et réussit ; si `scope` a
+  # échoué il échoue (on ne sait pas ce qui devait tourner).
   e2e:
-    needs: e2e-parts
+    needs: [scope, e2e-parts]
     if: always()
     runs-on: ubuntu-latest
     steps:
+      - name: Portée connue ?
+        run: |
+          [ "${{ needs.scope.result }}" = success ] || { echo "::error::le job scope a échoué : on ne sait pas quelles suites devaient tourner"; exit 1; }
+      - name: Aucune suite e2e concernée
+        if: needs.scope.outputs.track != 'true' && needs.scope.outputs.jump != 'true'
+        run: |
+          echo "### e2e : aucune suite concernée par cette PR (ni DailyTrack ni DailyJump touchés) — verdict vert, rien à fusionner" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v4
+        if: needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true'
       - uses: actions/setup-node@v4
+        if: needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true'
         with:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
+        if: needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true'
       - uses: actions/download-artifact@v4
+        if: needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true'
         with:
           pattern: blob-*
           path: apps/web/all-blobs
           merge-multiple: true
       - name: Fusionner les rapports
+        if: needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true'
         working-directory: apps/web
         run: |
           mkdir -p merged
@@ -156,13 +232,14 @@ jobs:
             echo "aucun rapport de part : les jobs e2e-parts ont échoué avant les tests" >&2
           fi
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && (needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true')
         with:
           name: rapport-e2e
           path: apps/web/playwright-report/
           retention-days: 14
           if-no-files-found: ignore
       - name: Résumé du run
+        if: needs.scope.outputs.track == 'true' || needs.scope.outputs.jump == 'true'
         run: |
           if [ ! -f apps/web/merged/report.json ]; then
             echo "### e2e : aucun rapport, les jobs de part ont échoué avant les tests" >> "$GITHUB_STEP_SUMMARY"
@@ -181,6 +258,9 @@ jobs:
   # Lot 28 : l'image Docker de l'API (celle de Cloud Run) démarre contre un vrai serveur libSQL (le protocole de Turso), répond à /api/health,
   # sert un temps du jour et du Salon rejoués par le serveur, et refuse de démarrer avec SALON_MINUTES.
   api-image:
+    # Lot R2 : seulement si le serveur est touché (scripts/ci-scope.mjs : SERVER_PATHS, zone partagée ou doute). Non requis : sauté = sans effet.
+    needs: scope
+    if: needs.scope.outputs.server == 'true'
     runs-on: ubuntu-latest
     services:
       libsql:
