@@ -1,10 +1,13 @@
 import type { JumpMedal } from "@cdj/jump-sim";
 import { MEDAL_ICON } from "./dailyInfo";
+import { ordinal } from "./rankApi";
 import { formatTicks } from "./session";
 
 // La ligne à partager (lot 10), **logique pure** (testée sans DOM), façon Wordle et format du seed (§ 5) :
-//   `DailyJump #12 — 31,402 s — 🥇 — 47 💀`
-// suivie, à la ligne, du lien du jeu. Le rang s'ajoutera avec le classement (phase 2) ; la série n'y est pas (décision de Nathan).
+//   `DailyJump #12 — 31,402 s — 🥇 — 47 💀 — 3ᵉ/128`
+// suivie, à la ligne, du lien du jeu. Lot P1 de la plateforme : **le rang du classement du jour s'ajoute à la fin** (`3ᵉ/128`), seulement s'il
+// est celui de ce temps (confirmé par le serveur) ; sans rang (hors ligne, pas encore envoyé, archive, pas de serveur) la ligne reste celle du
+// lot 10. La série n'y est pas (décision de Nathan).
 // Un niveau d'archive porte la mention « (archive) » et son lien `?seed=` ; un niveau à venir (aperçu seulement) « (à venir) ».
 // Le lien est **construit depuis l'adresse courante** (jamais écrit en dur) : un aperçu de branche partage un lien d'aperçu.
 
@@ -22,16 +25,19 @@ export interface ShareResult {
   /** Morts du jour sur ce niveau. */
   deaths: number;
   kind: ShareKind;
+  /** Lot P1 : le rang de ce temps au classement du jour et le nombre de classés, s'il est connu (confirmé par le serveur). */
+  rank?: { rank: number; participants: number } | null;
 }
 
 const TAG: Record<ShareKind, string> = { jour: "", archive: " (archive)", futur: " (à venir)" };
 
-/** `DailyJump #12 — 31,402 s — 🥇 — 47 💀` (sans médaille : le morceau est omis). */
+/** `DailyJump #12 — 31,402 s — 🥇 — 47 💀 — 3ᵉ/128` (sans médaille ni rang : ces morceaux sont omis). */
 export function shareLine(r: ShareResult): string {
   const title = `${r.number >= 1 ? `DailyJump #${r.number}` : `DailyJump ${r.date}`}${TAG[r.kind]}`;
   const parts = [title, formatTicks(r.ticks)];
   if (r.medal) parts.push(MEDAL_ICON[r.medal]);
   parts.push(`${r.deaths} 💀`);
+  if (r.rank && r.kind === "jour") parts.push(`${ordinal(r.rank.rank)}/${r.rank.participants}`);
   return parts.join(" — ");
 }
 

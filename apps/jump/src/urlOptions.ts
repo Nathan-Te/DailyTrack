@@ -132,6 +132,12 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: [],
   },
   {
+    name: "api",
+    description:
+      "Lot P1 (plateforme) : adresse du serveur du classement (`?api=https://…`, essais), ou `demo` : le classement de démonstration (des joueurs fictifs « Démo … » sur 14 jours plus « aujourd'hui », lu dans `demo/` ; on y joue le niveau du 30/10/2026 comme niveau du jour ; rien n'est envoyé, tout est gardé à part, sous `demo:`). Sans elle : `VITE_API_URL` de la construction (la production pour `main`, la recette pour un aperçu), sinon pas de classement. Gardée par les liens internes.",
+    values: ["demo"],
+  },
+  {
     name: "zones",
     description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
     values: [],
@@ -178,6 +184,8 @@ export interface UrlChoices {
   home: boolean | null;
   /** Lot 10 : `?archives` : l'accueil s'ouvre sur la liste des archives. */
   archives: boolean;
+  /** Lot P1 : `?api=` (adresse du serveur du classement, ou `demo`), sinon `null`. */
+  api: string | null;
 }
 
 export function readUrlOptions(search: string): UrlChoices {
@@ -209,6 +217,7 @@ export function readUrlOptions(search: string): UrlChoices {
     metronome: params.get("metronome") !== "off",
     home: params.get("accueil") === "1" ? true : params.get("accueil") === "0" ? false : null,
     archives: daily && params.has("archives"),
+    api: params.get("api") || null,
   };
 }
 
@@ -234,6 +243,7 @@ function carried(from: UrlChoices, home = false): string[] {
   if (from.theme) out.push(`theme=${from.theme}`);
   if (!from.metronome) out.push("metronome=off");
   if (home && from.home === false) out.push("accueil=0");
+  if (from.api) out.push(`api=${encodeURIComponent(from.api)}`);
   return out;
 }
 

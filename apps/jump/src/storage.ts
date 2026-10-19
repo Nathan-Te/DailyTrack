@@ -31,14 +31,20 @@ export function namespacePrefix(flag: string | undefined, mode: string | undefin
 // `import.meta.env` n'existe que sous Vite et Vitest. Vite remplace `import.meta.env.VITE_STORAGE` et `import.meta.env.MODE` par leur
 // valeur à la construction ; sous Node, l'accès lève.
 type Env = { env: Record<string, string | undefined> };
-function buildFlags(): { flag?: string; mode?: string } {
+function buildFlags(): { flag?: string; mode?: string; api?: string } {
   try {
-    return { flag: (import.meta as unknown as Env).env.VITE_STORAGE, mode: (import.meta as unknown as Env).env.MODE };
+    const env = (import.meta as unknown as Env).env;
+    return { flag: env.VITE_STORAGE, mode: env.MODE, api: env.VITE_API_URL };
   } catch {
     return {};
   }
 }
 const flags = buildFlags();
+/**
+ * Lot P1 (plateforme) : l'adresse du serveur du classement fixée à la construction (`VITE_API_URL`, posée par `pages.yml` : la production pour
+ * `main`, la recette pour un aperçu de branche ; absente : pas de classement, sauf `?api=`).
+ */
+export const BUILD_API_URL: string | undefined = flags.api || undefined;
 /** Préfixe physique de cette construction (`""` en production). */
 export const NAMESPACE_PREFIX = namespacePrefix(flags.flag, flags.mode);
 
@@ -90,4 +96,12 @@ export function gameStorage(): Storage | null {
   } catch {
     return null;
   }
+}
+
+/** Lot P1 : préfixe du mode démo (`?api=demo`) : tout ce que le jeu y garde est à part (`demo:jump:*`, `demo:cdj:*`), jamais les vraies données. */
+export const DEMO_PREFIX = "demo:";
+
+/** Le stockage du mode démo : le stockage du jeu vu à travers `demo:` (rien du vrai jeu n'est lu ni écrit, sauf ce que le jeu y copie). */
+export function demoStorage(backing: BackingStorage | null): Storage | null {
+  return backing ? prefixedStorage(backing, DEMO_PREFIX) : null;
 }

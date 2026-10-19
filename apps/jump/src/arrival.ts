@@ -1,10 +1,14 @@
 import type { JumpMedal } from "@cdj/jump-sim";
+import type { RankView } from "./rankView";
 
 // L'écran d'arrivée du niveau du jour (lot 10, remplace le bandeau du lot 2 pour le niveau du jour ; les morceaux, les scénarios et les
 // lectures gardent le bandeau) : le temps de l'essai, le meilleur du jour, la médaille (avec une courte animation, et sa phrase musicale du
 // lot 8), les seuils des médailles et le temps de l'auteur, les morts du jour et les essais, la série ; **Rejouer**, **Partager**, **Revoir
 // le carnage**, **Accueil** ; le compte à rebours jusqu'au prochain niveau. Il s'ouvre **après** le carnage. DOM seulement : les textes
 // viennent de `homeLogic.ts`. Cibles d'au moins 44 px, en portrait comme en paysage.
+// Lot P1 (plateforme) : le **classement du jour** (`.arank`) : ton rang (« 3ᵉ sur 128 »), le top 10 avec ta ligne mise en valeur, l'état de
+// l'envoi (« Classement indisponible, ton temps sera envoyé », « Une nouvelle version du jeu est disponible » + Recharger), et le formulaire
+// du premier pseudo (pseudos libres à toucher). Une archive montre son classement figé. Les textes viennent de `rankView.ts` (pur).
 
 export interface ArrivalView {
   title: string;
@@ -30,6 +34,10 @@ export interface ArrivalOptions {
   onShare(): void;
   onCarnage(): void;
   onHome(): void;
+  /** Lot P1 : le pseudo choisi dans le formulaire du classement. */
+  onName?(name: string): void;
+  /** Lot P1 : « Recharger » (une nouvelle version du jeu). */
+  onReload?(): void;
 }
 
 export interface Arrival {
@@ -40,6 +48,10 @@ export interface Arrival {
   /** Résultat du partage : un message (« Copié dans le presse-papiers »), et le texte à sélectionner si rien n'a marché. */
   shareResult(message: string, fallbackText: string | null): void;
   readonly message: string;
+  /** Lot P1 : le classement (rang, top 10, état, pseudo). */
+  setRank(view: RankView): void;
+  /** Lot P1 : ce qui est affiché du classement (tests). */
+  readonly rank: { shown: boolean; status: string; rows: number };
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
@@ -72,7 +84,40 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   medalRow.append(medal, medalText);
   const best = el("div", "abest");
   const thresholds = el("ul", "athresholds");
-  main.append(title, time, medalRow, best, thresholds);
+  // Lot P1 : le classement du jour.
+  const rankBox = el("section", "arank");
+  rankBox.hidden = true;
+  rankBox.setAttribute("aria-label", "Classement");
+  const rankTitle = el("div", "arktitle");
+  const rankStatus = el("div", "arkstatus");
+  rankStatus.id = "arrival-rank";
+  rankStatus.setAttribute("role", "status");
+  const reload = button("arrival-reload", "abtn", "Recharger");
+  reload.hidden = true;
+  const nameForm = el("form", "arkname");
+  nameForm.hidden = true;
+  const nameInput = el("input", "arkinput");
+  nameInput.id = "arrival-name";
+  nameInput.type = "text";
+  nameInput.maxLength = 20;
+  nameInput.autocomplete = "off";
+  nameInput.placeholder = "Ton pseudo";
+  nameInput.setAttribute("aria-label", "Ton pseudo");
+  const nameOk = el("button", "abtn primary", "OK");
+  nameOk.type = "submit";
+  nameOk.id = "arrival-name-ok";
+  const nameError = el("div", "arkerror");
+  const suggestions = el("div", "arksugg");
+  nameForm.append(nameInput, nameOk, nameError, suggestions);
+  const rankList = el("ol", "arklist");
+  rankBox.append(rankTitle, rankStatus, reload, nameForm, rankList);
+  // Taper son pseudo ne commande pas le personnage (R recommence, Espace saute…) : les touches restent dans le champ.
+  for (const type of ["keydown", "keyup"] as const) nameInput.addEventListener(type, (e) => e.stopPropagation());
+  nameForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    opts.onName?.(nameInput.value);
+  });
+  main.append(title, time, medalRow, best, thresholds, rankBox);
   const side = el("div", "aside");
   const stats = el("div", "astats");
   const run = el("div", "arun");
@@ -110,10 +155,54 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   on(share, () => opts.onShare(), false);
   on(carnage, () => opts.onCarnage());
   on(home, () => opts.onHome());
+  on(reload, () => opts.onReload?.());
 
   let shown = false;
   let note = "";
+  let rankShown = { shown: false, status: "", rows: 0 };
+  let suggestionKey = "";
   return {
+    get rank() {
+      return rankShown;
+    },
+    setRank(v) {
+      rankShown = { shown: v.shown, status: v.status, rows: v.rows.length };
+      rankBox.hidden = !v.shown;
+      if (!v.shown) return;
+      rankTitle.textContent = v.title;
+      rankStatus.textContent = v.status;
+      rankStatus.dataset.tone = v.tone;
+      reload.hidden = !v.reload;
+      const wasHidden = nameForm.hidden;
+      nameForm.hidden = !v.askName;
+      nameError.textContent = v.nameMessage;
+      nameOk.disabled = false;
+      // Les pseudos libres proposés : un bouton chacun (le toucher le choisit) ; reconstruits seulement s'ils changent.
+      const key = v.suggestions.join("|");
+      if (key !== suggestionKey) {
+        suggestionKey = key;
+        suggestions.replaceChildren(
+          ...v.suggestions.map((name) => {
+            const b = el("button", "abtn arksuggestion", name);
+            b.type = "button";
+            b.addEventListener("click", () => {
+              nameInput.value = name;
+              opts.onName?.(name);
+            });
+            return b;
+          }),
+        );
+      }
+      if (v.askName && wasHidden) nameInput.focus({ preventScroll: true });
+      rankList.replaceChildren(
+        ...v.rows.map((r, i) => {
+          const li = el("li", r.mine ? "mine" : undefined);
+          if (v.gap && i === v.rows.length - 1) li.classList.add("gap");
+          li.append(el("span", "krank", r.rank), el("span", "kname", r.name), el("span", "kmedal", r.medal), el("span", "ktime", r.time));
+          return li;
+        }),
+      );
+    },
     get shown() {
       return shown;
     },

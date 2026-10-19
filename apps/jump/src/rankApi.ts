@@ -1,0 +1,96 @@
+import { ProfileClient, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
+import type { JumpMedal } from "@cdj/jump-sim";
+
+// Le classement du jour de DailyJump vu du jeu (lot P1 de la plateforme) : ce qu'on envoie et ce que le serveur rend, et le client HTTP
+// (`POST /api/jump/submit`, `GET /api/jump/day/<date>/board`) bâti sur celui du profil commun (`@cdj/profile` : délai de 8 s, erreurs
+// traduites, corps vide = panne réseau ; **un échec est une valeur, jamais une exception** : le jeu ne bloque jamais sur le réseau).
+// L'identifiant secret voyage dans l'en-tête `X-Player-Id`, jamais dans l'adresse. Le mode démo (`demoRank.ts`) a la même interface.
+
+/** Un essai à envoyer : le niveau du jour, sa rediffusion, et ce que **le jeu** a recalculé (pour la file ; le serveur, lui, rejoue). */
+export interface RankEntry {
+  /** AAAA-MM-JJ (date de Paris du niveau du jour). */
+  date: string;
+  levelId: string;
+  /** Rediffusion de l'essai (base64url). */
+  replay: string;
+  /** Temps (pas) et morts du rejeu du jeu : servent à ne garder que le meilleur en attente ; le serveur ne les reçoit pas. */
+  ticks: number;
+  deaths: number;
+}
+
+export interface JumpBoardRow {
+  rank: number;
+  name: string;
+  ticks: number;
+  deaths: number;
+  medal: JumpMedal | null;
+}
+
+/** `GET /api/jump/day/<date>/board`. */
+export interface JumpBoard {
+  date: string;
+  /** Le jour accepte-t-il encore des envois (aujourd'hui, ou hier pendant la grâce) ? Sinon : figé. */
+  open: boolean;
+  participants: number;
+  levelId: string | null;
+  top: JumpBoardRow[];
+  /** Ta ligne (identifiant fourni et classé), sinon `null`. */
+  me: JumpBoardRow | null;
+}
+
+/** `POST /api/jump/submit` : le temps et les morts **du rejeu du serveur**, le meilleur essai gardé, sa médaille, son rang. */
+export interface JumpSubmitResult {
+  accepted: true;
+  date: string;
+  levelId: string;
+  ticks: number;
+  deaths: number;
+  improved: boolean;
+  bestTicks: number;
+  bestDeaths: number;
+  medal: JumpMedal | null;
+  rank: number;
+  participants: number;
+}
+
+/** Ce que le jeu demande à un classement : le serveur (`HttpRankSource`) ou le jeu de données statique de la démo (`DemoRankSource`). */
+export interface RankSource extends ProfileApi {
+  submit(playerId: string, name: string | null, entry: RankEntry, versions: { simVersion: number; generatorVersion: number }): Promise<ApiResult<JumpSubmitResult>>;
+  board(date: string, playerId: string | null): Promise<ApiResult<JumpBoard>>;
+}
+
+/** Le serveur de la plateforme. */
+export class HttpRankSource extends ProfileClient implements RankSource {
+  constructor(base: string, fetchImpl?: FetchLike) {
+    super(base, fetchImpl);
+  }
+
+  submit(playerId: string, name: string | null, entry: RankEntry, versions: { simVersion: number; generatorVersion: number }) {
+    // Ni le temps ni les morts du jeu ne partent : le serveur rejoue la rediffusion et garde les siens.
+    const body = { levelId: entry.levelId, simVersion: versions.simVersion, generatorVersion: versions.generatorVersion, replay: entry.replay, ...(name ? { name } : {}) };
+    return this.call<JumpSubmitResult>("POST", "/api/jump/submit", body, { "X-Player-Id": playerId });
+  }
+
+  board(date: string, playerId: string | null) {
+    return this.call<JumpBoard>("GET", `/api/jump/day/${encodeURIComponent(date)}/board`, undefined, playerId ? { "X-Player-Id": playerId } : undefined);
+  }
+}
+
+/**
+ * Adresse de l'API : `?api=https://…` (essais), `?api=demo` (démonstration), sinon `VITE_API_URL` (fixée à la construction : celle de la
+ * production dans `main`, celle de la recette dans un aperçu de branche), sinon rien : pas de classement, le jeu marche comme avant.
+ */
+export function rankApiBase(fromUrl: string | null, env: string | undefined): string | null {
+  const base = fromUrl || env || "";
+  return base ? base.replace(/\/+$/, "") : null;
+}
+
+/** « 1ᵉʳ », « 3ᵉ » (rang en français, lettres en exposant). */
+export function ordinal(rank: number): string {
+  return rank === 1 ? "1ᵉʳ" : `${rank}ᵉ`;
+}
+
+/** « 3ᵉ sur 128 » (écran d'arrivée, accueil). */
+export function rankText(rank: number, participants: number): string {
+  return `${ordinal(rank)} sur ${participants}`;
+}
