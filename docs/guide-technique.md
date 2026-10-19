@@ -168,8 +168,8 @@ Pièges appris : police de CI plus large (imposer DejaVu Sans dans les tests de 
 
 ## 8. Méthode de travail pour l'orchestrateur
 - **Un lot = une session neuve = une branche = une PR (brouillon)** ; README de lot d'une page (livré, « à tester », garde-fous, mesures, limites) ; l'agent s'arrête quand les critères sont verts (**= CI verte sur la PR**). Après fusion, repartir de `main` à jour ; une PR fusionnée ne se réutilise pas.
-- `CLAUDE.md` = consignes courtes **par lot** (chaque lot y ajoute sa section) ; `docs/orchestration.md` = synthèse, pièges, suite.
-- Prompt de lot : *Contexte · Objet · À livrer · Critères d'arrêt · Modifications de `CLAUDE.md` · Hors périmètre · Règles rappelées · Rapport attendu*.
+- Consignes (lot R2) : `CLAUDE.md` racine = carte du dépôt, règles communes, index ; **un `CLAUDE.md` par zone** (`packages/sim`, `apps/web`, `apps/api`, `packages/jump-sim`, `apps/jump`), chargé à la demande quand on lit un fichier de la zone — chaque lot y ajoute sa section, dans la zone qu'il touche ; synthèses : `docs/orchestration.md` (DailyTrack : synthèse, pièges, suite), `docs/jump/synthese.md` (DailyJump).
+- Prompt de lot : *Contexte · Objet · À livrer · Critères d'arrêt · Modifications des `CLAUDE.md` de zone · Hors périmètre · Règles rappelées · Rapport attendu*.
 - **Une retouche** (7b, 9b, 10b, 18b, 24, 27b, 29b) corrige ou règle un lot livré sans en ouvrir un nouveau ; les **réglages de feeling** viennent du humain (panneau `?debug&tune` → valeurs copiées → nouveaux défauts, versions +1).
 - **Rapports honnêtes** : vérifié / non vérifié (vrai téléphone, déploiement réel) / décisions pour l'humain. **Les décisions produit sont consignées** (ex. « le Salon oublie », « un jour commencé est figé », « au-delà d'un rebord : un rebord »).
 - **Mesurer plutôt que supposer** : coût de rejeu, taux de validation par thème, budget de requêtes, écritures en base, poids du chunk.
