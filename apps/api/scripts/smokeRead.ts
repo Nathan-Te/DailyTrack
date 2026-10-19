@@ -188,10 +188,10 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
 }
 
 /** Le résumé d'un run (Markdown, `GITHUB_STEP_SUMMARY`) : chaque vérification, et pour un échec la route et la réponse. */
-export function smokeSummary(base: string, checks: SmokeCheck[], rollback: string | null): string {
+export function smokeSummary(base: string, checks: SmokeCheck[], rollback: string | null, target = "de la production"): string {
   const failed = checks.filter((c) => !c.ok);
   const lines = [
-    failed.length ? `### ❌ Vérification de la production : ${failed.length} échec(s)` : "### ✅ Vérification de la production : tout est bon",
+    failed.length ? `### ❌ Vérification ${target} : ${failed.length} échec(s)` : `### ✅ Vérification ${target} : tout est bon`,
     "",
     `Cible : ${base} — \`smoke --lecture-seule\` (aucune écriture : des GET seulement, sans identifiant de joueur).`,
     "",

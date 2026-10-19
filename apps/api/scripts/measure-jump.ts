@@ -10,6 +10,9 @@
 // Lot P3 : les morts de tout le monde — un lot de vies (instructions, lignes, temps de rejeu), une journée de joueur type (50 morts, 3 lots,
 // plafond de 30), la carte et l'échantillon avec **1 000 joueurs simulés** (calcul, lignes lues, taille des réponses), l'oubli d'un jour, et
 // le seuil de l'offre gratuite de Turso (500 M lignes lues, 10 M écrites par mois) et de Cloud Run (2 M requêtes par mois).
+// Lot P4 : la lecture regroupée (`/bundle` : classement, fantôme du premier, carte, profil du jour) et l'envoi qui rend le classement ; le
+// joueur type avant / après, **avec les pré-vols CORS** (OPTIONS : une requête Cloud Run par adresse personnelle et par 2 heures dans Chrome,
+// jamais comptés avant ce lot) ; le seuil de l'offre gratuite pour DailyJump seul. Le partage avec DailyTrack : `npm run measure:platform`.
 //
 //   docker run -d -p 8081:8080 ghcr.io/tursodatabase/libsql-server     (un sqld local)
 //   SQLD_URL=http://localhost:8081 npm run measure:jump-api -w @cdj/api
@@ -254,6 +257,18 @@ const fresh3 = make();
 await fresh3.handle(new Request("http://api.test/api/health"));
 await measure(`instance neuve : carnage (${PLAYERS} joueurs, lu en base)`, fresh3, `/api/jump/day/${date}/carnage`);
 console.log(`  taille des réponses : carte ${sizes.get(`deaths : carte recalculée (${PLAYERS} joueurs)`)} octets, échantillon ${sizes.get(`carnage : échantillon (${PLAYERS} joueurs, mémoire)`)} octets`);
+// --- Lot P4 : la lecture regroupée ---------------------------------------------------------------------------------------------------
+console.log(`\n--- La lecture regroupée (lot P4) : ${PLAYERS + 1} joueurs avec des vies, 31 classés, le joueur avec 30 jours d'historique ---\n`);
+const asMe = { headers: { "X-Player-Id": me } };
+await measure("bundle, sans joueur (carte en mémoire)", c, `/api/jump/day/${date}/bundle`);
+await measure("bundle, joueur classé (profil du jour compris)", c, `/api/jump/day/${date}/bundle`, asMe);
+const fresh4 = make();
+await fresh4.handle(new Request("http://api.test/api/health"));
+await measure("instance neuve : bundle, joueur classé (carte lue en base)", fresh4, `/api/jump/day/${date}/bundle`, asMe);
+await measure("instance neuve : bundle, même instance ensuite", fresh4, `/api/jump/day/${date}/bundle`, asMe);
+await measure("bundle d'un jour passé (archive, sans profil)", c, `/api/jump/day/${past}/bundle`, asMe);
+console.log(`  taille de la réponse regroupée (joueur classé, 30 jours) : ${sizes.get("bundle, joueur classé (profil du jour compris)")} octets`);
+
 // L'oubli : le lendemain, après la grâce, la première requête fige la carte et l'échantillon et efface les vies brutes.
 const forgetClock = clock.now;
 clock.now = (today + 1) * 86_400_000 + 12 * 3_600_000;
@@ -289,6 +304,30 @@ console.log(
   `\nJoueur type avec le lot P3 (P2 + 3 lots de vies, carte ×6, carnage ×2) : ${typicalP3.requests} requêtes · ${typicalP3.statements} instructions · ${typicalP3.read} lignes lues · ${typicalP3.written} lignes écrites`,
 );
 console.log(`  dont le lot P3 : ${livesOnly.requests} requêtes · ${livesOnly.read} lignes lues · ${livesOnly.written} lignes écrites`);
+// Lot P4 : le joueur type du lot P3 avec le jeu du lot P4. Mêmes hypothèses (2 chargements, 4 arrivées dont 2 envois, 1 pseudo, 50 morts dont 30
+// envoyées en 3 lots, carnage de tout le monde regardé 2 fois, 30 jours d'historique) : chaque chargement = **une** lecture regroupée (classement,
+// premier, carte, profil) ; à l'arrivée, le jour n'est relu que si la dernière lecture a plus de 3 minutes (une fois par visite) ; l'envoi rend le
+// classement (rien à relire) ; plus de relecture du profil après un envoi (l'historique local a l'essai). Lectures comptées au prix d'une instance
+// neuve (le pire cas pour un joueur seul).
+const typicalP4 = sum([
+  [1, "pseudo libre ? (GET /api/name, la plateforme)"],
+  [1, "submit : premier essai (crée le joueur)"],
+  [1, "submit : essai amélioré"],
+  [4, "instance neuve : bundle, joueur classé (carte lue en base)"],
+  [1, "lives : premier lot de 10 (crée la ligne du joueur)"],
+  [2, "lives : deuxième lot de 10"],
+  [2, `instance neuve : carnage (${PLAYERS} joueurs, lu en base)`],
+]);
+// Les pré-vols CORS (OPTIONS) : le navigateur en fait un par adresse « personnelle » (en-tête `X-Player-Id`, corps JSON) et le garde 2 heures
+// (Chrome). Hypothèse : deux visites à plus de 2 heures d'écart. P3 : board, ghost/first, /jump/me, submit, lives (+ /api/name la première
+// visite) = 6 + 5 ; P4 : bundle, submit, lives (+ /api/name) = 4 + 3. Aucune ligne Turso, un peu de calcul.
+const PREFLIGHTS_P3 = 11;
+const PREFLIGHTS_P4 = 7;
+console.log(
+  `\nJoueur type avec le lot P4 (lecture regroupée ×4, carnage ×2, 3 lots de vies, 2 envois, 1 pseudo) : ${typicalP4.requests} requêtes · ${typicalP4.statements} instructions · ${typicalP4.read} lignes lues · ${typicalP4.written} lignes écrites`,
+);
+console.log(`  pré-vols CORS (OPTIONS, deux visites à plus de 2 h d'écart) : P3 ${PREFLIGHTS_P3}, P4 ${PREFLIGHTS_P4} → requêtes Cloud Run par jour : P3 ${typicalP3.requests + PREFLIGHTS_P3}, P4 ${typicalP4.requests + PREFLIGHTS_P4}`);
+
 // Coût du jour qui ne dépend pas d'un joueur : la carte recalculée au plus toutes les 3 min tant que des vies arrivent (≤ 480 fois par jour,
 // une ligne lue par joueur du jour et une écrite), puis l'oubli (une ligne lue et une effacée par joueur).
 const rebuild = costs.get(`deaths : carte recalculée (${PLAYERS} joueurs)`)!;
@@ -297,19 +336,27 @@ const perRebuildRead = rebuild.read / (PLAYERS + 1);
 console.log(`  carte recalculée : ${rebuild.read} lignes lues pour ${PLAYERS + 1} joueurs (${perRebuildRead.toFixed(2)} par joueur), ${rebuild.written} écrite, ${rebuild.ms.toFixed(0)} ms`);
 console.log(`  oubli : ${forgetCost.read} lignes lues, ${forgetCost.written} écrites (effacements compris), ${forgetCost.ms.toFixed(0)} ms`);
 const REBUILDS = (24 * 60) / (JUMP_MAP_REFRESH_MS / 60_000);
-const month = (n: number) => {
-  const reads = 30 * (n * typicalP3.read + REBUILDS * (n * perRebuildRead + 2) + n * (forgetCost.read / (PLAYERS + 1)));
-  const writes = 30 * (n * typicalP3.written + REBUILDS + n * (forgetCost.written / (PLAYERS + 1)));
-  const requests = 30 * n * typicalP3.requests;
+const month = (player: { read: number; written: number; requests: number }, preflights: number) => (n: number) => {
+  const reads = 30 * (n * player.read + REBUILDS * (n * perRebuildRead + 2) + n * (forgetCost.read / (PLAYERS + 1)));
+  const writes = 30 * (n * player.written + REBUILDS + n * (forgetCost.written / (PLAYERS + 1)));
+  const requests = 30 * n * (player.requests + preflights);
   return { reads, writes, requests };
 };
-for (const n of [100, 1000, 3000, 10_000]) {
-  const m = month(n);
-  console.log(`  ${String(n).padStart(6)} joueurs/jour : ${(m.reads / 1e6).toFixed(1)} M lignes lues, ${(m.writes / 1e6).toFixed(2)} M écrites, ${(m.requests / 1e6).toFixed(2)} M requêtes par mois`);
+for (const [label, player, preflights] of [
+  ["P3, sans les pré-vols (le chiffre du lot P3)", typicalP3, 0],
+  ["P3, pré-vols compris", typicalP3, PREFLIGHTS_P3],
+  ["P4, sans les pré-vols", typicalP4, 0],
+  ["P4, pré-vols compris", typicalP4, PREFLIGHTS_P4],
+] as const) {
+  const m = month(player, preflights);
+  for (const n of [1000, 3000]) {
+    const x = m(n);
+    console.log(`  ${label.padEnd(44)} ${String(n).padStart(5)} joueurs/jour : ${(x.reads / 1e6).toFixed(1)} M lues, ${(x.writes / 1e6).toFixed(2)} M écrites, ${(x.requests / 1e6).toFixed(2)} M requêtes par mois`);
+  }
+  let limit = 1;
+  while (m(limit).reads < 500e6 && m(limit).writes < 10e6 && m(limit).requests < 2e6) limit += 10;
+  const y = m(limit);
+  const which = y.reads >= 500e6 ? "lignes lues de Turso" : y.writes >= 10e6 ? "lignes écrites de Turso" : "requêtes de Cloud Run";
+  console.log(`  ${label.padEnd(44)} → offre gratuite dépassée vers ${limit} joueurs DailyJump par jour (DailyJump seul ; premier plafond : ${which})`);
 }
-let limit = 1;
-while (month(limit).reads < 500e6 && month(limit).writes < 10e6 && month(limit).requests < 2e6) limit += 10;
-const m = month(limit);
-const which = m.reads >= 500e6 ? "lignes lues de Turso" : m.writes >= 10e6 ? "lignes écrites de Turso" : "requêtes de Cloud Run";
-console.log(`  offre gratuite dépassée vers ${limit} joueurs DailyJump par jour (premier plafond atteint : ${which}), carte recalculée ${REBUILDS} fois par jour (pire cas)`);
 for (const t of TABLES) await db.run(`DROP TABLE IF EXISTS ${t}`);

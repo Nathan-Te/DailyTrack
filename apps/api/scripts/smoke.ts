@@ -36,7 +36,8 @@ if (readOnly) {
   for (const c of checks) console.log(`${c.ok ? "✓" : "✗"} ${c.label} — ${c.route} ${c.status}${c.detail ? ` — ${c.detail}` : ""}`);
   const failedChecks = checks.filter((c) => !c.ok).length;
   const summary = option("--resume");
-  if (summary) appendFileSync(summary, smokeSummary(base, checks, option("--retour") ?? null));
+  const target = option("--environnement") === "production" ? "de la production" : "en lecture seule";
+  if (summary) appendFileSync(summary, smokeSummary(base, checks, option("--retour") ?? null, target));
   console.log(failedChecks ? `\n${failedChecks} vérification(s) en échec` : "\nTout est bon (lecture seule : rien n'a été écrit).");
   process.exit(failedChecks ? 1 : 0);
 }
