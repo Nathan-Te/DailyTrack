@@ -54,6 +54,9 @@ jobs:
             echo "### Recette non configurée : voir docs/plateforme/recette.md (pas de joueurs fictifs à écrire)" >> "$GITHUB_STEP_SUMMARY"
             echo "::notice title=Recette non configurée::recette non configurée : voir docs/plateforme/recette.md"
           fi
+      # Le dépôt d'abord : `actions/checkout` vide le dossier de travail, où l'authentification écrit son fichier d'identifiants.
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
       - uses: google-github-actions/auth@v3
         if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
         with:
@@ -64,8 +67,6 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
       - uses: google-github-actions/setup-gcloud@v3
-        if: steps.cfg.outputs.enabled == 'true'
-      - uses: actions/checkout@v4
         if: steps.cfg.outputs.enabled == 'true'
       - uses: actions/setup-node@v4
         if: steps.cfg.outputs.enabled == 'true'

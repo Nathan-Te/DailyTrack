@@ -26,6 +26,12 @@ case "$dbname" in
 esac
 
 if ! token="$(gcloud secrets versions access latest --secret=cdj-recette-turso-token --project="$GCP_PROJECT_ID" 2>/tmp/secret-err)"; then
+  # Seul un refus de permission est « une commande à lancer une fois » ; toute autre erreur (identifiants illisibles, secret absent…) est un
+  # vrai problème : le job échoue et le dit.
+  if ! grep -qiE "PERMISSION_DENIED|permission .*denied" /tmp/secret-err; then
+    echo "::error title=recette:seed : jeton de la recette illisible::$(head -c 300 /tmp/secret-err | tr '\n' ' ')"
+    exit 1
+  fi
   echo "::notice title=recette:seed automatique non autorisé::le compte de déploiement ne lit pas le secret cdj-recette-turso-token ($(head -c 160 /tmp/secret-err | tr '\n' ' ')). Une commande, une fois, dans Cloud Shell : gcloud secrets add-iam-policy-binding cdj-recette-turso-token --member=serviceAccount:cdj-deploy@${GCP_PROJECT_ID}.iam.gserviceaccount.com --role=roles/secretmanager.secretAccessor"
   {
     echo "### Joueurs fictifs de la recette : non lancés"
