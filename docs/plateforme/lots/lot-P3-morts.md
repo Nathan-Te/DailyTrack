@@ -1,0 +1,63 @@
+# Lot P3 (plateforme) — les morts de tout le monde
+
+Branche `claude/lot-p3-deaths-all-players-xsg5ng`, PR brouillon. Vision : `docs/plateforme/seed-phase-2.md` §§ 2, 3, 5, 8 (lot P3), 9. Les morts de tous les joueurs du jour deviennent visibles, **chacune prouvée par rejeu** : les **taches de tout le monde** dans le niveau, plus pâles que les tiennes, et le **carnage de tout le monde** à l'arrivée. Les vies brutes sont oubliées à la fin du jour ; la carte et l'échantillon figés restent pour les archives. **Décision de Nathan appliquée : au plus 30 morts par joueur et par jour** (le jeu les choisit, le serveur le vérifie) ; seules les vies qui finissent par une mort partent ; **§ 3 (profil) retiré** : `/api/jump/me` ne change pas.
+
+## À tester
+1. **L'aperçu, branché sur la recette** : `https://nathan-te.github.io/DailyTrack/b/claude-lot-p3-deaths-all-players-xsg5ng/jump/` (révision de recette : commentaire « Recette » de la PR ; `recette:seed` y envoie aussi les vies des joueurs fictifs du jour).
+   - **Taches de tout le monde** : Jouer → dans le niveau, des taches **pâles et plus petites** (là où les « Démo … » sont morts : surtout au fond des trous et au pied des piliers), jamais sur un pic, une scie ni un fanion. Meurs : ta tache est jaune vif, par-dessus. Menu ⏸ → Taches → « Taches de tout le monde : non » les coupe (mémorisé).
+   - **Carnage de tout le monde** : finir le niveau → ton carnage → l'écran d'arrivée → **« Le carnage de tout le monde »** : ton essai en héros, les vies des autres partent par vagues, compteur « N vies de M joueurs » en haut ; une touche le passe ; « Revoir le carnage » rejoue toujours le tien.
+   - **Une archive** (Accueil → Archives → un jour) : la carte figée de ce jour-là (taches) et son carnage de tout le monde à l'arrivée.
+2. **`…/jump/?api=demo`** (aperçu ou site publié) : les mêmes taches et le même carnage avec les joueurs fictifs du 30/10/2026, en deux clics (Jouer, finir — ou `&accueil=0`) ; `&seed=2026-10-20` : une archive figée. Rien n'est envoyé.
+
+## Les routes (`apps/api/src/jumpLives.ts`)
+- **`POST /api/jump/lives`** (`X-Player-Id` ; `{ levelId, simVersion, generatorVersion, lives[] }`). Ordre : (1) **débit en base avant tout** (adresse, joueur) ; (2) taille ; (3) **le niveau du jour seulement** (grâce de 10 min) ; (4) versions ; puis **seul un joueur qui existe déjà** (404 `unknown_player` sinon : le jeu garde ses vies et les envoie après sa première arrivée acceptée), code révoqué (410) ; (5) plafonds : 30 vies par lot, 2 min de jeu par vie, 5 min par lot, **30 morts par joueur et par jour** (les vies en trop ne sont pas rejouées, la réponse le dit) ; (6) **rejeu de chaque vie** par `checkLife` (nouvelle aide pure de `jump-sim` : en-tête **atteignable** — le point de passage existe, les sections du point et d'après à l'arrêt, celles d'avant en marche dans l'ordre du parcours, un chrono qui laisse la reprise —, une seule vie, **fin, position et cause calculées par le serveur**). Une vie invalide est écartée seule ; la réponse donne le sort de chacune. **Déduplication** par empreinte de la rediffusion (même joueur, même contenu).
+- **`GET /api/jump/day/<date>/deaths`** : tuiles `[col, row, morts, cause dominante]`, les 300 plus meurtrières, joueurs et morts du jour. **`GET /api/jump/day/<date>/carnage`** : ≈ 150 vies, au plus 3 par joueur, tour à tour une par section (toutes représentées), **déterministe à partir du jour**, un numéro de joueur propre à l'échantillon, **jamais l'identifiant**. Lectures comptées en mémoire.
+- **Carte des morts : chaque mort compte une fois, donc un joueur pèse au plus 30 morts** (voulu : un joueur qui meurt 300 fois ne repeint pas le niveau à lui seul).
+
+## Le stockage choisi, et pourquoi
+**Jamais une ligne par mort ; au plus deux lignes écrites par lot** (hors compteurs de débit, comme toutes les routes d'envoi ; testé en comptant `changes()` par table, sur SQLite et libSQL) :
+- `jump_lives` : **une ligne par joueur et par jour** (≈ 3,9 ko à 30 vies) : ses vies retenues en JSON compact `[empreinte, col, row, cause, section, rediffusion]` — de quoi dédupliquer, compter le plafond, agréger la carte et tirer l'échantillon **sans rien rejouer de nouveau**. Écriture conditionnelle (`rev`) : deux lots simultanés du même joueur ne s'écrasent pas.
+- `jump_deaths` : **une ligne par jour** ; son compteur `version` avance à chaque lot accepté ; elle garde la carte et l'échantillon calculés (`built`, `built_at`, `frozen`).
+- Pourquoi : Turso facture les lignes **écrites** (10 M par mois gratuits) ; une ligne par mort coûterait 30 écritures par joueur et par jour au lieu de 2 par lot. La carte est recalculée **au plus toutes les 3 minutes et seulement si des vies sont arrivées** (une ligne lue par joueur du jour), gardée en base (toutes les instances la lisent) et en mémoire par instance.
+
+## L'oubli de fin de jour
+Comme le Salon (retouche 27b), **sans tâche de fond** : au début de toute route `/api/jump/…`, une comparaison d'entiers ; à la **première requête qui voit un jour terminé** (après la grâce), pour chaque jour fermé qui a encore des vies : **carte finale et échantillon final figés** (`frozen = 1`, jamais réécrits ensuite) puis **vies brutes effacées**, dans une transaction. Une instance qui démarre le refait une fois. Les archives lisent la carte et l'échantillon figés (testé : mêmes réponses avant et après l'oubli, `open: false` ; plus aucune vie acceptée ; rien n'est oublié pendant la grâce).
+
+## Le jeu (`apps/jump`)
+- **File des vies** (`livesQueue.ts`, pur ; `livesSender.ts`) : les morts du niveau du jour, **30 au plus, choisies section par section** (`⌊30 ÷ sections⌋` chacune, dans l'ordre d'arrivée), le reste du quota rempli avec les morts suivantes **une fois le niveau fini** ; lots à l'arrivée, toutes les 3 minutes, page cachée (`keepalive`), au chargement ; reprise, délai qui s'allonge, purge après la grâce ; **jamais pour une archive, un thème forcé, des réglages modifiés, une lecture, un morceau, un scénario ni en démonstration** (la règle du classement) ; jamais bloquant.
+- **Taches de tout le monde** (`othersStains.ts`) : seconde couche du `StainLayer` du lot 3, sous les tiennes, rayon × 0,55, intensité de 0,22 à 0,55 selon le nombre de morts (plafond à 12 morts), 200 tuiles au plus, **aucun disque à moins d'une tuile d'un pic, d'une scie (trajet et rayon), d'un fanion, du départ ou de l'arrivée** ; réglage du menu mémorisé.
+- **Carnage de tout le monde** (`everyone.ts`) : l'échantillon vérifié (version, niveau, en-tête), tes vies retirées, ton dernier essai arrivé en héros, les vagues et les plafonds de son et de particules du lot 3, compteur « N vies de M joueurs ».
+- **Morts et essais du jour** : locaux, comme au P2 (§ 3 retiré) ; la ligne à partager garde le vrai total local.
+
+## Mesures
+`npm run measure:jump-api -w @cdj/api` (sqld local, vrai code de l'API ; conteneur de la session) :
+
+| requête | instructions | lignes lues | écrites | durée |
+|---|---|---|---|---|
+| lot de 10 vies, premier de la fenêtre (crée la ligne du joueur) | 9 | 134 | 7 | 68 ms |
+| lot de 10 vies suivant | 7 | 9 | 4 (2 de débit + 2) | 37–43 ms |
+| lot renvoyé (10 doublons) / au-delà du plafond | 5 | 6 | 2 (débit) | 24 ms |
+| lot d'une autre version (refus avant le rejeu) | 2 | 4 | 2 (débit) | 11 ms |
+| rejeu seul de 10 vies (`checkLife`, sans base) | — | — | — | 3,5–5,5 ms |
+| carte, même instance (3 min) / instance neuve, rien de nouveau | 0 / 2 | 0 / 2 | 0 | 0,5 / 8 ms |
+| **carte recalculée, 1 000 joueurs** (3,9 Mo de vies relues) | 3 | 1 003 | 1 | 185 ms ; réponse 0,6 ko |
+| **échantillon, 1 000 joueurs** (calculé avec la carte) | 0 | 0 | 0 | réponse 23 ko |
+| **oubli d'un jour de 1 000 joueurs** | 5 | 3 005 | 1 002 (effacements) | 170 ms |
+| jour passé : carte figée (en base / en mémoire) | 1 / 0 | 1 / 0 | 0 | 7 / 0,6 ms |
+
+**Joueur type** (le P2 + 50 morts dont 30 envoyées en 3 lots, carte lue 6 fois et échantillon 2 fois, comptées au prix d'une lecture en base) : **30 requêtes, 104 instructions, 1 252 lignes lues, 32 écrites** — P2 : 19, 65, 1 084, 17 ; le lot P3 seul : 11 requêtes, 168 lues, 15 écrites.
+
+**Charge par jour et offre gratuite** (Turso : 500 M lignes lues, 10 M écrites par mois ; Cloud Run : 2 M requêtes) — joueurs type, plus la carte recalculée 480 fois par jour au pire (une ligne lue par joueur), plus l'oubli : 100 joueurs/jour → 5,2 M lues, 0,11 M écrites, 0,09 M requêtes par mois ; 1 000 → 52 M, 1,0 M, 0,9 M ; 3 000 → 156 M, 3,0 M, 2,7 M. **L'offre gratuite est dépassée vers 2 200 joueurs DailyJump par jour**, et ce sont **les requêtes de Cloud Run** qui limitent d'abord (Turso tiendrait jusqu'à ≈ 9 600 joueurs). Ce seuil compte DailyJump seul : DailyTrack (et surtout son Salon, lot 28) partage les mêmes 2 M requêtes.
+
+**Carnage de tout le monde à 150 vies** (`MESURE=1 npx playwright test mesure-carnage -g "tout le monde" --project=chromium`, téléphone 844 × 390 @2, SwiftShader) : MESURE_CARNAGE
+
+## Vérifié / non vérifié / décisions pour Nathan
+**Vérifié** : VERIFIE
+
+**Non vérifié** : NONVERIFIE
+
+**Décisions pour Nathan** : (1) **le choix des 30 morts** : section par section (`⌊30 ÷ sections⌋`, au moins 1), dans l'ordre d'arrivée ; le reste du quota ne se remplit qu'**une fois le niveau fini** ce jour-là (sinon les premières sections, où l'on meurt le plus, prendraient tout le quota avant qu'on ait vu la fin) ; (2) **la carte compte aussi tes propres morts envoyées** (elle est agrégée par le serveur ; tes taches jaunes sont dessinées par-dessus) ; (3) **l'échantillon retire tes vies côté jeu** (par leur rediffusion) plutôt que côté serveur : l'échantillon est le même pour tous et se garde en cache ; une vie envoyée depuis un autre appareil n'est pas reconnue (rare) ; (4) taches des autres : **pâles par mélange avec la couleur des blocs** (intensité 0,22 à 0,55), dessous les tiennes, cachées pendant un carnage ; (5) le carnage de tout le monde garde la **couleur de la foule du lot 3** ; (6) « Revoir le carnage » rejoue le tien, pas celui de tout le monde ; (7) **un joueur pas encore classé** garde ses vies jusqu'à sa première arrivée acceptée (aucune identité n'est créée pour elles) ; (8) le prompt demandait une fusion « le maximum » des morts et essais ; **retirée avec le § 3** : rien n'est fusionné ; si un lot futur les synchronise, la règle prévue est le maximum ; (9) un test existant comparait l'objet entier des réglages (`sensations.test.ts`) : il gagne `othersStains: true`, comme aux lots précédents ; (10) l'index des rubriques du `CLAUDE.md` racine (zone partagée, hors de ce lot) peut gagner « Les morts de tout le monde (lot P3) » (`apps/api`), « Plateforme (lot P3) » (`apps/jump`, `packages/jump-sim`).
+
+### Checklist de validation
+Sur la recette, avant « Approve » : ☐ commentaire « Recette » sur la PR ; ☐ journaux du workflow « Recette » : `/api/health` et `smoke` verts, lignes « un inconnu ne peut pas envoyer de vies », « un lot de vies accepté… la vie forgée écartée seule », « carte des morts », « échantillon du carnage » ; ☐ job `seed` : « DailyJump … N vie(s) gardée(s) » ; ☐ aperçu `…/jump/` : taches pâles des « Démo … », réglage « Taches de tout le monde » ; finir → ton carnage → « Le carnage de tout le monde » et son compteur ; ☐ une archive : sa carte figée ; ☐ `?api=demo` ; ☐ DailyTrack de l'aperçu inchangé ; ☐ le lendemain : `<révision>/api/jump/day/<hier>/deaths` rend `open: false` et la même carte (vies brutes oubliées).
+Sur la production, après : ☐ `<API>/api/health` inchangé ; ☐ `<API>/api/jump/day/<aujourd'hui>/deaths` (`players: 0` au début, jamais « Démo ») ; ☐ le jeu publié : mourir, finir, recharger : `…/deaths` compte tes morts (au plus 30) dans les 3 minutes ; ☐ le lendemain : la carte d'hier figée ; ☐ DailyTrack : un temps, son classement, le profil.
