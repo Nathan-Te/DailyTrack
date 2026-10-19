@@ -14,6 +14,7 @@
     "@cdj/clock": "*",
     "@cdj/core": "*",
     "@cdj/jump-sim": "*",
+    "@cdj/profile": "*",
     "three": "^0.186.1"
   },
   "devDependencies": {

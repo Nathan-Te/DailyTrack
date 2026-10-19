@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeReplay, runPilot, dailyCircuit, daysFromCivil } from "@cdj/sim";
-import { TRANSFER_PREFIX, applyIdentity, crc32, decodeTransfer, encodeTransfer, legacyReplays, pendingTrackIds, readPlayerId } from "../src/transfer";
+import { applyIdentity, crc32, decodeTransfer, legacyReplays, pendingTrackIds } from "../src/transfer";
 
 /** Un `localStorage` en mémoire. */
 function memory(initial: Record<string, string> = {}) {
@@ -34,44 +34,6 @@ function legacyCode(payload: unknown): string {
   for (const b of bytes) s += String.fromCharCode(b);
   return `CDJ1.${btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}.${crc32(bytes)}`;
 }
-
-describe("somme de contrôle", () => {
-  it("CRC-32 usuel", () => {
-    expect(crc32(new TextEncoder().encode("123456789"))).toBe("cbf43926");
-    expect(crc32(new Uint8Array())).toBe("00000000");
-  });
-});
-
-describe("le code de transfert ne contient que l'identifiant", () => {
-  it("a la forme CDJ2.<identifiant>.<somme de contrôle> et fait l'aller-retour", () => {
-    const code = encodeTransfer(ID);
-    expect(code).toBe(`${TRANSFER_PREFIX}.${ID}.${crc32(new TextEncoder().encode(ID))}`);
-    expect(code).toMatch(/^CDJ2\.[0-9a-f]{32}\.[0-9a-f]{8}$/);
-    expect(code.length).toBe(46);
-    const back = decodeTransfer(code);
-    expect(back).toEqual({ ok: true, data: { version: 2, id: ID, name: null, best: {}, sub: {} } });
-  });
-
-  it("ne dit rien des records ni du pseudo (le serveur les connaît)", () => {
-    expect(encodeTransfer(ID)).not.toMatch(/Alice|jour-|ms/);
-  });
-
-  it("ignore les espaces, les retours à la ligne et la casse ajoutés en copiant", () => {
-    const code = encodeTransfer(ID);
-    expect(decodeTransfer(` ${code.slice(0, 20)}\n  ${code.slice(20)}\n`).ok).toBe(true);
-    expect(decodeTransfer(code.toUpperCase().replace("CDJ2", "CDJ2")).ok).toBe(true);
-  });
-
-  it("refuse un code tronqué, modifié ou qui n'en est pas un", () => {
-    const code = encodeTransfer(ID);
-    const flipped = code.slice(0, 10) + (code[10] === "a" ? "b" : "a") + code.slice(11);
-    for (const bad of [code.slice(0, -3), code.slice(0, 20) + code.slice(24), flipped, "", "   ", "bonjour", "CDJ3.abc.00000000", `${code}.x`, `CDJ2.${"z".repeat(32)}.00000000`, "CDJ2.abc.00000000"]) {
-      expect(decodeTransfer(bad).ok, bad.slice(0, 24)).toBe(false);
-    }
-    const r = decodeTransfer(flipped);
-    expect(!r.ok && r.reason).toContain("somme de contrôle");
-  });
-});
 
 describe("anciens codes (CDJ1) : toujours acceptés", () => {
   it("lisent identifiant, pseudo et rediffusions ; les records seront envoyés puis ignorés", () => {
@@ -122,14 +84,6 @@ describe("anciens codes (CDJ1) : toujours acceptés", () => {
     expect(Object.keys(r.data.best).sort()).toEqual(["jour-2026-10-13-g15", "jour-2026-10-17-g15"]);
     expect(r.data.best["jour-2026-10-13-g15"]).toEqual({ ms: 41_000, splits: [1, 2], simVersion: 14 });
     expect(r.data.sub).toEqual({ "jour-2026-10-13-g15": 41_000 });
-  });
-});
-
-describe("readPlayerId", () => {
-  it("lit l'identifiant du navigateur, ou rien", () => {
-    expect(readPlayerId(memory({ "cdj:player": ID }))).toBe(ID);
-    expect(readPlayerId(memory())).toBeNull();
-    expect(readPlayerId(memory({ "cdj:player": "pas-un-identifiant" }))).toBeNull();
   });
 });
 

@@ -1,4 +1,5 @@
 import { PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX, migratePseudos } from "./pseudos";
+import { GAMES } from "./registry";
 
 /** Accès SQL minimal, satisfait par SQLite (Node) et par D1 (Cloudflare) : le cœur ne connaît que ceci. */
 export type SqlValue = string | number | null;
@@ -35,8 +36,11 @@ export const MIGRATIONS: string[] = [
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */
 const MIGRATION_MARKS = [PSEUDO_MIGRATION_ID, UNIQUE_NAME_INDEX];
 
-/** Tables de l'API. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
-export const SCHEMA: string[] = [
+/**
+ * Tables de la plateforme (lot P0), communes à tous les jeux : joueurs (pseudo réservé), codes révoqués, compteurs de débit. Créées au premier
+ * appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle.
+ */
+export const PLATFORM_SCHEMA: string[] = [
   `CREATE TABLE IF NOT EXISTS players (
      id TEXT PRIMARY KEY,
      name TEXT NOT NULL,
@@ -46,40 +50,6 @@ export const SCHEMA: string[] = [
      name_key TEXT,
      rename_required INTEGER NOT NULL DEFAULT 0
    )`,
-  // Cache des circuits du jour : calculés une fois (générateur + pilote de validation, coûteux), puis figés.
-  `CREATE TABLE IF NOT EXISTS circuits (
-     day INTEGER PRIMARY KEY,
-     track_id TEXT NOT NULL,
-     spec TEXT NOT NULL,
-     author_ms INTEGER NOT NULL,
-     attempt INTEGER NOT NULL,
-     palette TEXT NOT NULL,
-     created_at INTEGER NOT NULL
-   )`,
-  // Planning (lot 14) : les jours dont le circuit a été remplacé à l'avance par l'admin. Pas de ligne = circuit d'origine
-  // (variante 0, thème de la date). `theme` : thème imposé, ou NULL pour celui de la date.
-  `CREATE TABLE IF NOT EXISTS planning (
-     day INTEGER PRIMARY KEY,
-     variant INTEGER NOT NULL,
-     theme TEXT,
-     chosen_at INTEGER NOT NULL
-   )`,
-  // Meilleur temps de chaque joueur pour chaque jour, avec la rediffusion qui l'a produit (sert de fantôme).
-  `CREATE TABLE IF NOT EXISTS results (
-     day INTEGER NOT NULL,
-     player_id TEXT NOT NULL,
-     ms INTEGER NOT NULL,
-     splits TEXT NOT NULL,
-     replay TEXT NOT NULL,
-     respawns INTEGER NOT NULL,
-     submitted_at INTEGER NOT NULL,
-     final_rank INTEGER,
-     final_total INTEGER,
-     PRIMARY KEY (day, player_id)
-   )`,
-  `CREATE INDEX IF NOT EXISTS results_by_time ON results (day, ms, submitted_at)`,
-  // Lot 30 : « mes temps » (GET /api/me) lit les résultats d'un joueur sans parcourir toute la table.
-  `CREATE INDEX IF NOT EXISTS results_by_player ON results (player_id, day)`,
   // Lot 30 : codes révoqués (« Changer mon code »). Empreintes SHA-256 seulement : l'ancien identifiant (un secret) n'est pas gardé.
   // `successor` : empreinte du nouvel identifiant (permet de rejouer sans danger une demande dont la réponse s'est perdue).
   `CREATE TABLE IF NOT EXISTS revoked_codes (
@@ -93,46 +63,10 @@ export const SCHEMA: string[] = [
      count INTEGER NOT NULL,
      PRIMARY KEY (key, bucket)
    )`,
-  // --- Le Salon (lot 27) ---
-  // Meilleur temps de chaque joueur pour chaque session, avec la rediffusion qui l'a produit (sert de fantôme). `ref` : référence
-  // publique du joueur pour cette session (empreinte salée : l'identifiant secret ne sort jamais du serveur). Effacé à la fin de la session (+ minute de grâce : lot 27b).
-  `CREATE TABLE IF NOT EXISTS salon_runs (
-     session INTEGER NOT NULL,
-     player_id TEXT NOT NULL,
-     ref TEXT NOT NULL,
-     name TEXT NOT NULL,
-     ms INTEGER NOT NULL,
-     splits TEXT NOT NULL,
-     replay TEXT NOT NULL,
-     submitted_at INTEGER NOT NULL,
-     PRIMARY KEY (session, player_id)
-   )`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS salon_runs_by_ref ON salon_runs (session, ref)`,
-  `CREATE INDEX IF NOT EXISTS salon_runs_by_time ON salon_runs (session, ms, submitted_at)`,
-  `CREATE INDEX IF NOT EXISTS salon_runs_by_date ON salon_runs (submitted_at)`,
-  // Version du classement d'une session : augmente à chaque temps amélioré ou pseudo changé (le jeu ne recharge que si elle change).
-  `CREATE TABLE IF NOT EXISTS salon_sessions (
-     session INTEGER PRIMARY KEY,
-     version INTEGER NOT NULL
-   )`,
-  // Cache des circuits de session : générés à l'avance (deux minutes avant la fin de la session précédente), puis figés.
-  `CREATE TABLE IF NOT EXISTS salon_circuits (
-     session INTEGER PRIMARY KEY,
-     track_id TEXT NOT NULL,
-     spec TEXT NOT NULL,
-     created_at INTEGER NOT NULL
-   )`,
-  // Présence : empreinte du joueur et dernier passage. Rien d'autre n'est conservé (ni identifiant, ni adresse).
-  `CREATE TABLE IF NOT EXISTS salon_presence (
-     key TEXT PRIMARY KEY,
-     seen_at INTEGER NOT NULL
-   )`,
-  // Dernier envoi de chaque joueur (empreinte) : au plus un envoi toutes les 5 s.
-  `CREATE TABLE IF NOT EXISTS salon_throttle (
-     key TEXT PRIMARY KEY,
-     at INTEGER NOT NULL
-   )`,
 ];
+
+/** Tout le schéma : la plateforme, puis les tables de chaque jeu du registre (`registry.ts`), dans l'ordre. Son texte fait l'empreinte. */
+export const SCHEMA: string[] = [...PLATFORM_SCHEMA, ...GAMES.flatMap((g) => g.schema)];
 
 /**
  * Table de service : empreinte du schéma appliqué. Au démarrage, une seule lecture suffit à savoir que la base est à jour (sur Turso,

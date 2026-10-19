@@ -56,6 +56,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **3** · `JUMP_GENERATOR_VERSION` **9**
 - **Accueil** (page du jour, archives, aide « Comment jouer »), **écran d'arrivée** (médaille, temps de l'auteur, partage, série), **historique** `jump:historique` (niveau du jour joué le jour même seulement), **ligne à partager** — [lot 10](lots/lot-10-arrivee.md).
 - Tactile : zones sans trou, cibles ≥ 44 px, cadrage 13 tuiles en paysage — [lot 1b](lots/lot-1b-mobile.md). Sensations (événements → son procédural, particules, secousse, menu ⏸, mouvement réduit) — [lot 8](lots/lot-8-sensations.md) ; animation du personnage calée sur la distance — [lot 8b](lots/lot-8b-animation-elan.md). Carnage et taches (rendu seul) — [lot 3](lots/lot-3-rediffusion.md).
 - « Aujourd'hui » = date de Paris (`@cdj/clock`) ; sur le site publié, une date future est refusée (une porte, pas une protection) — [lot 5](lots/lot-5-niveau-du-jour.md).
+- **Plateforme (lot P0)** : avec `?debug`, `__jump.profile` dit si une identité de la plateforme (`cdj:*`, celle de DailyTrack) existe et son pseudo, sans rien afficher ni créer ; le serveur sert `/api/jump/info` et `/api/jump/day/<date>` (le niveau calculé par la même règle que le jeu : figé d'abord, sinon `dailyLevel`), en lecture seule — [P0](../plateforme/lots/lot-P0-socle.md).
 
 ## 8. Outils
 - `?debug` expose `window.__jump` (phase, player, params, attempt, daily, events, audio, blocks, wind, history…) ; `?debug&tune` panneau de réglages (jamais enregistré) ; `?debug&hitbox` — [lot 1](lots/lot-1-personnage.md), [2](lots/lot-2-dangers.md).

@@ -44,8 +44,14 @@ if (config.db.kind === "turso") {
   db = openSqlite(config.db.path);
 }
 
+/** Lot P0 : les niveaux figés de DailyJump, inclus dans le paquet par `scripts/build-node.mjs` (absents hors du paquet : aucun). */
+declare const __JUMP_FROZEN_LEVELS__: Record<string, unknown> | undefined;
+const jumpFrozen = typeof __JUMP_FROZEN_LEVELS__ === "undefined" ? {} : __JUMP_FROZEN_LEVELS__;
+
 const api = createApi({
   db,
+  environment: config.environment,
+  jumpFrozen,
   allowOrigin: config.allowOrigin ?? "*",
   allowedOrigins: config.allowedOrigins,
   rateSalt: config.rateSalt,
@@ -68,6 +74,8 @@ createNodeServer(api, { trustProxy: config.trustProxy }).listen(config.port, () 
     base: config.db.kind === "turso" ? "turso" : "sqlite",
     cors: config.allowedOrigins ? config.allowedOrigins.length : "*",
     admin: !!config.adminToken && config.adminToken.length >= 16,
+    jeux: api.games.map((g) => g.code).join(","),
+    figesJump: Object.keys(jumpFrozen).length,
     startupMs: Math.round(process.uptime() * 1000),
   });
 });

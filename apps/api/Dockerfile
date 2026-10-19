@@ -1,4 +1,4 @@
-# Serveur de l'API (classement, planning, Salon). Depuis la racine du dépôt :
+# Serveur de l'API de la plateforme (DailyTrack : classement, planning, Salon ; DailyJump : `/api/jump/`). Depuis la racine du dépôt :
 #   docker build -f apps/api/Dockerfile -t circuit-du-jour-api .
 # Cloud Run (production) : voir docs/mise-en-ligne.md. Il fournit PORT ; la base est Turso (TURSO_DATABASE_URL, TURSO_AUTH_TOKEN en secret),
 # les origines autorisées sont ALLOWED_ORIGINS. Essai local avec un serveur libSQL :
@@ -14,14 +14,21 @@ COPY packages/sim/package.json packages/sim/
 COPY packages/clock/package.json packages/clock/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
-# DailyJump (lot 0) : l'API ne s'en sert pas, mais le verrou (package-lock.json) liste ces espaces de travail.
 COPY packages/jump-sim/package.json packages/jump-sim/
+COPY packages/profile/package.json packages/profile/
+# DailyJump (lot 0) : le jeu lui-même n'entre pas dans l'image, mais le verrou (package-lock.json) liste son espace de travail.
 COPY apps/jump/package.json apps/jump/
 # Seulement ce dont l'API a besoin (pas Three.js, pas Playwright) : une construction rapide.
 RUN npm ci -w @cdj/api --ignore-scripts
 COPY packages/core packages/core
 COPY packages/sim packages/sim
 COPY packages/clock packages/clock
+# Lot P0 (plateforme) : la simulation de DailyJump (le serveur calcule le niveau du jour par la même règle que le jeu), ses niveaux figés
+# (inclus dans le paquet par scripts/build-node.mjs : `/api/jump/info` les liste) et le module de profil commun (côté client aujourd'hui ;
+# copié pour que l'image suive l'espace de travail de la plateforme).
+COPY packages/jump-sim packages/jump-sim
+COPY packages/profile packages/profile
+COPY apps/jump/public/levels apps/jump/public/levels
 COPY apps/api apps/api
 RUN npm run build:node -w @cdj/api
 

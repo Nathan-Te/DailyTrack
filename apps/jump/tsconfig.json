@@ -9,5 +9,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["src", "test", "vite.config.ts"],
-  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/jump-sim" }, { "path": "../../packages/clock" }]
+  "references": [{ "path": "../../packages/core" }, { "path": "../../packages/jump-sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }]
 }

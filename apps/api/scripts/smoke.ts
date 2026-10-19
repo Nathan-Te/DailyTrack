@@ -2,7 +2,10 @@
 //   npm run smoke -w @cdj/api -- http://localhost:8080 [--origin https://nathan-te.github.io]
 // Santé, circuit du jour (généré par la première requête), un temps du jour rejoué par le serveur, classement, fantôme, Salon (maintenant,
 // envoi, classement). **Crée un joueur « Fumée »** : à ne pas lancer contre la vraie base de production.
-import { dailyCircuit, encodeReplay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
+// Lot P0 (plateforme) : DailyJump (`/api/jump/info`, `/api/jump/day/<aujourd'hui>` calculé par le serveur et égal à celui du jeu, chaque jour
+// figé de l'image servi depuis son fichier) ; lecture seule.
+import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel } from "@cdj/jump-sim";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const originAt = process.argv.indexOf("--origin");
@@ -63,6 +66,30 @@ const ssub = await call("POST", `/api/salon/${now.body.session}/submit`, { playe
 check("Salon : temps accepté (circuit de la session généré à ce premier envoi)", ssub.status === 200 && ssub.body.ms === srun.finishMs, `${ssub.ms} ms`);
 const sboard = await call("GET", `/api/salon/${now.body.session}/board?player=${player}`);
 check("Salon : classement de la session", sboard.status === 200 && sboard.body.rows?.length >= 1 && sboard.body.me?.ms === srun.finishMs);
+
+// --- DailyJump (lot P0) : l'espace /api/jump/, en lecture seule --------------------------------------------------------------
+const jinfo = await call("GET", "/api/jump/info");
+check(
+  "DailyJump : /api/jump/info (versions, date de Paris, jours figés, environnement)",
+  jinfo.status === 200 && jinfo.body.simVersion === JUMP_SIM_VERSION && jinfo.body.generatorVersion === JUMP_GENERATOR_VERSION && jinfo.body.today === date && Array.isArray(jinfo.body.frozenDays),
+  JSON.stringify(jinfo.body),
+);
+const frozenDays: string[] = Array.isArray(jinfo.body.frozenDays) ? jinfo.body.frozenDays : [];
+const jday = await call("GET", `/api/jump/day/${date}`);
+const ours = frozenDays.includes(date) ? null : dailyLevel(day);
+check(
+  "DailyJump : niveau du jour calculé par le serveur (identifiant, empreinte, temps de l'auteur), le même que le jeu",
+  jday.status === 200 && typeof jday.body.hash === "string" && (ours === null || (jday.body.id === ours.id && jday.body.hash === ours.hash && jday.body.authorTicks === ours.authorTicks)),
+  `${jday.body.id} ${jday.body.hash} (${jday.body.source}), ${jday.ms} ms`,
+);
+const jagain = await call("GET", `/api/jump/day/${date}`);
+check("DailyJump : deuxième lecture servie du cache", jagain.status === 200 && jagain.body.hash === jday.body.hash, `${jagain.ms} ms`);
+for (const d of frozenDays) {
+  const r = await call("GET", `/api/jump/day/${d}`);
+  check(`DailyJump : jour figé ${d} servi depuis son fichier (preuve rejouée)`, r.status === 200 && r.body.source === "fige", `${r.body.id} ${r.body.hash}`);
+}
+const jfuture = await call("GET", `/api/jump/day/${formatDay(day + 1)}`);
+check("DailyJump : demain est refusé", jfuture.status === 404);
 
 console.log(failed ? `\n${failed} vérification(s) en échec` : "\nTout est bon.");
 process.exit(failed ? 1 : 0);
