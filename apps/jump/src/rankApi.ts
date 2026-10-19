@@ -1,7 +1,8 @@
-import { ProfileClient, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
+import { ProfileClient, TIMEOUT_MS, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { JumpMedal } from "@cdj/jump-sim";
 import type { FirstGhostData } from "./firstGhost";
 import type { JumpMe } from "./jumpProfile";
+import type { LifeVerdict } from "./livesQueue";
 
 // Le classement du jour de DailyJump vu du jeu (lot P1 de la plateforme) : ce qu'on envoie et ce que le serveur rend, et le client HTTP
 // (`POST /api/jump/submit`, `GET /api/jump/day/<date>/board`) bâti sur celui du profil commun (`@cdj/profile` : délai de 8 s, erreurs
@@ -55,6 +56,50 @@ export interface JumpSubmitResult {
   participants: number;
 }
 
+/** Lot P3 : un lot de vies (rediffusions de vies qui finissent par une mort) ; jamais une position ni une cause : le serveur rejoue. */
+export interface LivesLot {
+  levelId: string;
+  simVersion: number;
+  generatorVersion: number;
+  lives: string[];
+}
+
+/** `POST /api/jump/lives` : le sort de chaque vie, le nombre gardé aujourd'hui et le plafond (30). */
+export interface LivesResult {
+  accepted: number;
+  received: number;
+  duplicates: number;
+  invalid: number;
+  notDeath: number;
+  overCap: number;
+  dayCount: number;
+  cap: number;
+  results: LifeVerdict[];
+  message: string;
+}
+
+/** `GET /api/jump/day/<date>/deaths` : la carte des morts du jour (`tiles` : `[col, row, morts, cause dominante]`). */
+export interface DeathMapData {
+  date: string;
+  levelId: string | null;
+  open: boolean;
+  players: number;
+  deaths: number;
+  tiles: [number, number, number, number][];
+}
+
+/** `GET /api/jump/day/<date>/carnage` : l'échantillon du carnage de tout le monde (≈ 150 vies d'autres joueurs, sans identifiant). */
+export interface CarnageSampleData {
+  date: string;
+  levelId: string | null;
+  open: boolean;
+  simVersion: number;
+  generatorVersion: number;
+  players: number;
+  dayPlayers: number;
+  lives: { replay: string; section: number; p: number }[];
+}
+
 /** Ce que le jeu demande à un classement : le serveur (`HttpRankSource`) ou le jeu de données statique de la démo (`DemoRankSource`). */
 export interface RankSource extends ProfileApi {
   submit(playerId: string, name: string | null, entry: RankEntry, versions: { simVersion: number; generatorVersion: number }): Promise<ApiResult<JumpSubmitResult>>;
@@ -63,6 +108,12 @@ export interface RankSource extends ProfileApi {
   firstGhost?(date: string, playerId: string | null): Promise<ApiResult<FirstGhostData>>;
   /** Lot P2 : le profil DailyJump du joueur (`GET /api/jump/me`) ; la démonstration n'en a pas. */
   jumpMe?(playerId: string): Promise<ApiResult<JumpMe>>;
+  /** Lot P3 : un lot de vies du jour (`keepalive` : la page se cache, l'envoi doit survivre à sa fermeture). La démonstration n'envoie rien. */
+  sendLives?(playerId: string, lot: LivesLot, options?: { keepalive?: boolean }): Promise<ApiResult<LivesResult>>;
+  /** Lot P3 : la carte des morts d'un jour (figée pour une archive). */
+  deaths?(date: string): Promise<ApiResult<DeathMapData>>;
+  /** Lot P3 : l'échantillon du carnage de tout le monde d'un jour (figé pour une archive). */
+  carnage?(date: string): Promise<ApiResult<CarnageSampleData>>;
 }
 
 /** Le serveur de la plateforme. */
@@ -87,6 +138,21 @@ export class HttpRankSource extends ProfileClient implements RankSource {
 
   jumpMe(playerId: string) {
     return this.call<JumpMe>("GET", "/api/jump/me", undefined, { "X-Player-Id": playerId });
+  }
+
+  sendLives(playerId: string, lot: LivesLot, options: { keepalive?: boolean } = {}) {
+    if (!options.keepalive) return this.call<LivesResult>("POST", "/api/jump/lives", lot, { "X-Player-Id": playerId });
+    // La page se cache : `keepalive` laisse partir la requête même si la page se ferme (corps < 64 ko : 30 vies font ≈ 3 ko).
+    const base = this.fetchImpl ?? ((u: string, i: RequestInit) => fetch(u, i));
+    return call<LivesResult>(this.base, "POST", "/api/jump/lives", lot, TIMEOUT_MS, { "X-Player-Id": playerId }, (u, init) => base(u, { ...init, keepalive: true }));
+  }
+
+  deaths(date: string) {
+    return this.call<DeathMapData>("GET", `/api/jump/day/${encodeURIComponent(date)}/deaths`);
+  }
+
+  carnage(date: string) {
+    return this.call<CarnageSampleData>("GET", `/api/jump/day/${encodeURIComponent(date)}/carnage`);
   }
 }
 

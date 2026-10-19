@@ -4,7 +4,7 @@ import type { ApiResult, FetchLike, MeProfile, NameCheck } from "@cdj/profile";
 import type { KeyValue } from "./memory";
 import type { FirstGhostData } from "./firstGhost";
 import type { JumpMe } from "./jumpProfile";
-import type { JumpBoard, JumpBoardRow, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
+import type { CarnageSampleData, DeathMapData, JumpBoard, JumpBoardRow, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
 import { storageKey } from "./storage";
 
 // Le classement de démonstration (`?api=demo`, lot P1 de la plateforme), sur le modèle de DailyTrack (`apps/web/src/demo.ts`) : **lecture seule**
@@ -41,6 +41,9 @@ export interface DemoDay {
   rows?: { name: string; ticks: number; deaths: number }[];
   /** Lot P2 : le fantôme du premier du jour (sa rediffusion, validée par le vrai serveur à la fabrication du jeu de données). */
   first?: Omit<FirstGhostData, "date" | "levelId" | "mine"> | null;
+  /** Lot P3 : la carte des morts et l'échantillon du carnage de tout le monde (vies des joueurs fictifs, validées par le vrai serveur). */
+  deaths?: Pick<DeathMapData, "players" | "deaths" | "tiles">;
+  carnage?: Pick<CarnageSampleData, "players" | "dayPlayers" | "lives">;
 }
 
 interface DemoEntry {
@@ -167,6 +170,23 @@ export class DemoRankSource implements RankSource {
     const f = day.data.first;
     if (!f) return fail(404, "no_ghost", "Personne n'est encore classé ce jour-là");
     return { ok: true, data: { ...f, date: day.data.date, levelId: day.data.levelId, mine: false } };
+  }
+
+  /** Lot P3 : la carte des morts du jeu de données (tes morts de démonstration n'y sont pas : rien n'est envoyé). */
+  async deaths(date: string): Promise<ApiResult<DeathMapData>> {
+    const day = await this.json<DemoDay>(`${date}.json`);
+    if (!day.ok) return day;
+    const m = day.data.deaths ?? { players: 0, deaths: 0, tiles: [] };
+    return { ok: true, data: { date, levelId: day.data.levelId, open: date === formatDay(DEMO_TODAY), ...m } };
+  }
+
+  /** Lot P3 : l'échantillon du carnage de tout le monde du jeu de données. */
+  async carnage(date: string): Promise<ApiResult<CarnageSampleData>> {
+    const [index, day] = await Promise.all([this.json<DemoIndex>("index.json"), this.json<DemoDay>(`${date}.json`)]);
+    if (!index.ok) return index;
+    if (!day.ok) return day;
+    const c = day.data.carnage ?? { players: 0, dayPlayers: 0, lives: [] };
+    return { ok: true, data: { date, levelId: day.data.levelId, open: date === formatDay(DEMO_TODAY), simVersion: index.data.simVersion, generatorVersion: index.data.generatorVersion, ...c } };
   }
 
   // Le profil DailyJump n'existe pas en démonstration (comme la synchronisation de DailyTrack) : rien n'est synchronisé.

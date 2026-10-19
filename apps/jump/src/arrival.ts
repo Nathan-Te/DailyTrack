@@ -40,6 +40,8 @@ export interface ArrivalOptions {
   onReload?(): void;
   /** Lot P2 : « Regarder le premier » (la lecture de son essai). */
   onFirst?(): void;
+  /** Lot P3 : « Le carnage de tout le monde » (l'échantillon du serveur, ton essai en héros). */
+  onEveryone?(): void;
 }
 
 export interface Arrival {
@@ -57,6 +59,9 @@ export interface Arrival {
   /** Lot P2 : le bouton « Regarder le premier » (son texte), ou `null` : caché (pas de premier, ou c'est toi). */
   setFirst(text: string | null): void;
   readonly first: string | null;
+  /** Lot P3 : le bouton « Le carnage de tout le monde » (son texte, avec le compteur), ou `null` : caché (pas d'échantillon). */
+  setEveryone(text: string | null): void;
+  readonly everyone: string | null;
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
@@ -135,7 +140,10 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   // Lot P2 : la lecture de l'essai du premier (quand il y en a un, et que ce n'est pas toi).
   const first = button("arrival-first", "abtn", "Regarder le premier");
   first.hidden = true;
-  buttons.append(replay, share, carnage, first, home);
+  // Lot P3 : le carnage de tout le monde (après ton propre carnage : l'écran d'arrivée s'ouvre à sa fin).
+  const everyone = button("arrival-everyone", "abtn", "Le carnage de tout le monde");
+  everyone.hidden = true;
+  buttons.append(replay, share, carnage, everyone, first, home);
   const message = el("div", "amessage");
   message.setAttribute("role", "status");
   const fallback = el("textarea", "afallback");
@@ -165,13 +173,23 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   on(home, () => opts.onHome());
   on(reload, () => opts.onReload?.());
   on(first, () => opts.onFirst?.());
+  on(everyone, () => opts.onEveryone?.());
 
   let shown = false;
   let note = "";
   let rankShown = { shown: false, status: "", rows: 0 };
   let suggestionKey = "";
   let firstText: string | null = null;
+  let everyoneText: string | null = null;
   return {
+    get everyone() {
+      return everyoneText;
+    },
+    setEveryone(text) {
+      everyoneText = text;
+      everyone.hidden = text === null;
+      if (text !== null) everyone.textContent = text;
+    },
     get rank() {
       return rankShown;
     },
