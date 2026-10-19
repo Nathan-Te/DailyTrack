@@ -15,11 +15,22 @@ export interface HomeView {
   countdown: string;
   /** Lot P1 : « Ton rang du jour : 3ᵉ sur 128 » (un temps classé aujourd'hui), sinon "". */
   rank?: string;
+  /** Lot P2 : la petite carte du profil commun : pseudo, série, nombre de médailles ; le code remplacé ailleurs. */
+  profile?: { name: string | null; streak: number; medals: number; revoked: boolean };
+}
+
+/** Lot P2 : le texte de la carte du profil de l'accueil. */
+export function profileCardText(p: NonNullable<HomeView["profile"]>): string {
+  if (p.revoked) return "Ce code n'est plus valide : charge le nouveau (Réglages › Profil)";
+  const who = p.name ? `👤 ${p.name}` : "👤 Sans pseudo";
+  return `${who} · série ${p.streak} · ${p.medals} médaille${p.medals > 1 ? "s" : ""}`;
 }
 
 export interface HomeOptions {
   onPlay(): void;
   onSettings(): void;
+  /** Lot P2 : la carte du profil touchée (Réglages › Profil) ; sans elle, les réglages. */
+  onProfile?(): void;
   /** Les lignes des archives, calculées à l'ouverture de la liste (l'historique a pu changer). */
   archiveRows(): readonly ArchiveRow[];
   /** Le lien d'une archive (`?seed=…`, outils d'affichage gardés). */
@@ -85,7 +96,10 @@ export function mountHome(opts: HomeOptions): Home {
   countdown.setAttribute("aria-live", "off");
   const rank = el("p", "hrank");
   rank.id = "home-rank";
-  card.append(title, subtitle, status, rank, streak, play, row, countdown);
+  // Lot P2 : la carte du profil (un bouton : il ouvre Réglages › Profil).
+  const profile = button("home-profile", "hprofile", "");
+  profile.hidden = true;
+  card.append(title, subtitle, status, rank, streak, play, row, profile, countdown);
   root.append(card);
 
   // ——— Comment jouer ———
@@ -144,6 +158,11 @@ export function mountHome(opts: HomeOptions): Home {
     streak.textContent = v.streak;
     rank.textContent = v.rank ?? "";
     countdown.textContent = v.countdown;
+    profile.hidden = !v.profile;
+    if (v.profile) {
+      profile.textContent = profileCardText(v.profile);
+      profile.classList.toggle("warn", v.profile.revoked);
+    }
   };
 
   play.addEventListener("click", () => {
@@ -151,6 +170,9 @@ export function mountHome(opts: HomeOptions): Home {
   });
   settings.addEventListener("click", () => {
     if (ready) opts.onSettings();
+  });
+  profile.addEventListener("click", () => {
+    if (ready) (opts.onProfile ?? opts.onSettings)();
   });
   const self: Home = {
     get isOpen() {

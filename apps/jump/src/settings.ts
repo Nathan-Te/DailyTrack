@@ -23,10 +23,12 @@ export interface PlayerSettings {
   effects: EffectsLevel;
   /** Mouvement réduit : ni secousse, ni particules, ni traînée, écrasement discret. Par défaut : ce que demande le système. */
   reducedMotion: boolean;
+  /** Lot P2 (plateforme) : le fantôme du premier du classement (oui par défaut). `?ghost=` l'emporte sans toucher au réglage. */
+  firstGhost: boolean;
 }
 
 export function defaultSettings(systemReducedMotion = false): PlayerSettings {
-  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: systemReducedMotion };
+  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true };
 }
 
 const unit = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d);
@@ -53,6 +55,7 @@ export function parseSettings(raw: string | null, systemReducedMotion = false): 
     shake: bool(o.shake, d.shake),
     effects: EFFECTS_LEVELS.includes(o.effects as EffectsLevel) ? (o.effects as EffectsLevel) : d.effects,
     reducedMotion: bool(o.reducedMotion, d.reducedMotion),
+    firstGhost: bool(o.firstGhost, d.firstGhost),
   };
 }
 

@@ -1,0 +1,78 @@
+name: Recette — joueurs fictifs
+# Lot P2 (plateforme) : `npm run recette:seed` automatique — les joueurs fictifs « Démo … » de la recette (DailyTrack : 7 jours ; DailyJump : le
+# jour courant), sans que Nathan ait à le lancer :
+#   - chaque jour (cron, 00:17 UTC = 01:17 ou 02:17 à Paris : le nouveau jour de Paris a commencé) ;
+#   - après chaque déploiement d'une révision de recette (appelé par recette.yml pour une PR, par production.yml pour une fusion dans main) ;
+#   - « Run workflow » à la main, au besoin.
+# **Aucun secret GitHub de plus** : mêmes accès que le workflow « Recette » (fédération d'identité, ou clé JSON), le jeton de la base de
+# recette est lu dans Secret Manager (`apps/api/scripts/recette-seed-auto.sh`). **Il refuse la production** : la base visée est
+# RECETTE_TURSO_DATABASE_URL (son nom doit contenir « recette », vérifié ici, puis par `recette:seed` lui-même, qui exige ENVIRONMENT=recette).
+# Sans configuration de la recette : sauté avec le message habituel, vert.
+on:
+  schedule:
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Jours de DailyTrack à remplir (1 à 30), jusqu'à aujourd'hui"
+        type: string
+        default: "7"
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    # Un remplissage à la fois (deux PR poussées ensemble, ou le cron) ; relancer ne crée aucun doublon.
+    concurrency:
+      group: recette-seed
+      cancel-in-progress: false
+    environment: recette
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      RECETTE_DB: ${{ vars.RECETTE_TURSO_DATABASE_URL }}
+      PROD_DB: ${{ vars.TURSO_DATABASE_URL }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+      DAYS: ${{ inputs.days || '7' }}
+    steps:
+      - name: Configuration présente ?
+        id: cfg
+        run: |
+          if [ -n "$GCP_PROJECT_ID" ] && [ -n "$RECETTE_DB" ] && { { [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; } || [ "$HAS_SA_KEY" = true ]; }; then
+            if [ -n "$PROD_DB" ] && [ "$RECETTE_DB" = "$PROD_DB" ]; then echo "::error::RECETTE_TURSO_DATABASE_URL est la base de production : recette:seed refusé"; exit 1; fi
+            case "$DAYS" in ''|*[!0-9]*) echo "::error::days : un nombre de jours (1 à 30)"; exit 1 ;; esac
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Recette non configurée : voir docs/plateforme/recette.md (pas de joueurs fictifs à écrire)" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Recette non configurée::recette non configurée : voir docs/plateforme/recette.md"
+          fi
+      # Le dépôt d'abord : `actions/checkout` vide le dossier de travail, où l'authentification écrit son fichier d'identifiants.
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v3
+        if: steps.cfg.outputs.enabled == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - name: Joueurs fictifs (recette:seed)
+        if: steps.cfg.outputs.enabled == 'true'
+        run: bash apps/api/scripts/recette-seed-auto.sh "$DAYS"

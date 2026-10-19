@@ -129,6 +129,22 @@
       #menu .mseg { margin-top: 10px; }
       #menu .msegbtns { display: flex; gap: 6px; margin-top: 4px; }
       #menu .msegbtns .mbtn { flex: 1 1 0; padding: 0 8px; }
+      /* Lot P2 : Réglages › Profil (le profil commun de la plateforme). Cibles ≥ 44 px. */
+      #menu .pshared { margin: 0 0 6px; font-size: 13px; opacity: 0.85; }
+      #menu .pname { display: flex; gap: 8px; margin-top: 6px; }
+      #menu .pinput { flex: 1 1 auto; min-width: 0; box-sizing: border-box; min-height: 46px; padding: 0 12px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; font: 600 16px system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
+      #menu .pcode { display: block; width: 100%; box-sizing: border-box; min-height: 64px; margin-top: 6px; padding: 8px 10px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; font: 500 14px ui-monospace, monospace; user-select: text; -webkit-user-select: text; resize: vertical; }
+      #menu .pactions, #menu .psugg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+      #menu .psugg[hidden], #menu .pnotice[hidden], #menu .pconfirm[hidden], #menu .pload[hidden], #menu .ppreview[hidden] { display: none; }
+      #menu .pstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 4px 12px; margin: 10px 0 0; }
+      #menu .pstats dt { font-size: 12px; opacity: 0.7; }
+      #menu .pstats dd { margin: 0; font-variant-numeric: tabular-nums; }
+      #menu .pmsg { min-height: 0; margin-top: 4px; font-size: 13px; }
+      #menu .pmsg[data-tone="ok"] { color: #8affc8; }
+      #menu .pmsg[data-tone="error"] { color: #ff8a65; }
+      #menu .pwarn { margin-top: 6px; padding: 8px 10px; border: 1px solid #ff8a65; border-radius: 10px; color: #ffccbc; }
+      #menu .pwarn p, #menu .pconfirm p, #menu .ppreview p { margin: 0 0 6px; }
+      #menu .pfound { font-weight: 800; }
       #menu .mhelp { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 14px; }
       #menu .mhelp h3 { grid-column: 1 / -1; }
       #menu .mhelp ul { margin: 0; padding-left: 18px; font-size: 13px; font-weight: 500; opacity: 0.9; }
@@ -191,6 +207,10 @@
       #home .hstreak { margin: 0; opacity: 0.85; }
       #home .hrank { margin: 0; color: #ffd22e; font-weight: 800; }
       #home .hrank:empty { display: none; }
+      /* Lot P2 : la carte du profil commun (pseudo, série, médailles) : un bouton vers Réglages › Profil. */
+      #home .hprofile { margin-top: 6px; min-height: 44px; max-width: 100%; padding: 0 14px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 22px; background: rgba(255, 255, 255, 0.06); color: #fff; font: 600 14px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #home .hprofile.warn { border-color: #ff8a65; color: #ffccbc; white-space: normal; }
+      #home .hprofile[hidden] { display: none; }
       #home .hplay { margin-top: 10px; min-height: 64px; min-width: min(280px, 100%); padding: 0 28px; border: 0; border-radius: 16px; background: #ffd22e; color: #101820; font: 800 24px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
       #home .hplay:disabled { background: rgba(255, 210, 46, 0.35); color: rgba(16, 24, 32, 0.8); font-size: 17px; cursor: progress; }
       #home .hbtns { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }

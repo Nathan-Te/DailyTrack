@@ -13,6 +13,8 @@ export interface PauseMenuOptions {
   onHome?(): void;
   /** Le téléphone sait vibrer (`navigator.vibrate`) : sinon le réglage le dit. */
   canVibrate: boolean;
+  /** Lot P2 (plateforme) : Réglages › Profil (le profil commun, `profileUi.ts`), placé avant l'aide des commandes. */
+  profile?: HTMLElement;
 }
 
 export interface PauseMenu {
@@ -146,6 +148,28 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   shows.push(() => effectButtons.forEach((b) => b.setAttribute("aria-pressed", b.dataset.value === s.effects ? "true" : "false")));
   feel.append(seg);
   root.append(feel);
+
+  // ——— Lot P2 : les fantômes ———
+  const ghosts = el("section", "msection");
+  ghosts.append(el("h3", undefined, "Fantômes"));
+  const firstGhost = el("button", "mbtn mtoggle");
+  firstGhost.type = "button";
+  firstGhost.dataset.setting = "firstGhost";
+  firstGhost.id = "menu-first-ghost";
+  shows.push(() => {
+    firstGhost.setAttribute("aria-pressed", s.firstGhost ? "true" : "false");
+    firstGhost.textContent = `Fantôme du premier : ${s.firstGhost ? "oui" : "non"}`;
+  });
+  firstGhost.addEventListener("click", () => {
+    s = { ...s, firstGhost: !s.firstGhost };
+    shows.forEach((f) => f());
+    change("firstGhost");
+  });
+  ghosts.append(firstGhost, el("p", "mhint", "Le meilleur essai du jour, en mauve, avec son pseudo, à côté de ton fantôme (cyan). Ton fantôme : bouton 👻 ou touche G."));
+  root.append(ghosts);
+
+  // ——— Lot P2 : Réglages › Profil ———
+  if (opts.profile) root.append(opts.profile);
 
   // ——— Commandes ———
   const help = el("section", "msection mhelp");

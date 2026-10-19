@@ -5,6 +5,8 @@
 // Lot P1 : le classement — `POST /api/jump/submit` (premier essai qui crée le joueur, essai amélioré, essai qui n'améliore pas, refus de
 // version), `GET /api/jump/day/<date>/board` (sans et avec joueur, avec 30 classés), puis **un joueur type** (chargement, une arrivée, un
 // partage) sur une journée, à comparer avec celui de DailyTrack (`npm run measure:budget`).
+// Lot P2 : le fantôme du premier (`GET /api/jump/day/<date>/ghost/first`, jour en cours et jour passé) et le profil DailyJump
+// (`GET /api/jump/me`, 1 jour puis 30 jours d'historique), et le joueur type avec eux.
 //
 //   docker run -d -p 8081:8080 ghcr.io/tursodatabase/libsql-server     (un sqld local)
 //   SQLD_URL=http://localhost:8081 npm run measure:jump-api -w @cdj/api
@@ -133,6 +135,21 @@ const fresh = make();
 await fresh.handle(new Request("http://api.test/api/health"));
 await measure("instance neuve : submit (niveau lu en base, puis rejoué)", fresh, "/api/jump/submit", post(day.code, me));
 
+// --- Lot P2 : le fantôme du premier et le profil DailyJump --------------------------------------------------------------------------
+console.log(`\n--- Fantôme du premier et profil (lot P2) ---\n`);
+await measure("ghost/first, jour en cours (sans joueur)", c, `/api/jump/day/${date}/ghost/first`);
+await measure("ghost/first, jour en cours (joueur)", c, `/api/jump/day/${date}/ghost/first`, { headers: { "X-Player-Id": me } });
+await measure("/api/jump/me, 1 jour classé", c, "/api/jump/me", { headers: { "X-Player-Id": me } });
+// 29 autres jours d'historique pour ce joueur (lignes posées directement : seule la lecture est mesurée ici).
+for (let k = 1; k < 30; k++) {
+  await db.run("INSERT OR IGNORE INTO jump_levels (day, rule, level_id, hash, author_ticks, medals, theme, source, ascii, created_at) SELECT ?, rule, level_id, hash, author_ticks, medals, theme, source, '', created_at FROM jump_levels WHERE day = ?", [today - k, today]);
+  await db.run("INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at) SELECT ?, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at FROM jump_results WHERE day = ? AND player_id = ?", [today - k, today, me]);
+}
+await measure("/api/jump/me, 30 jours classés", c, "/api/jump/me", { headers: { "X-Player-Id": me } });
+const past = formatDay(today - 1);
+await measure("ghost/first, jour passé (première lecture)", c, `/api/jump/day/${past}/ghost/first`);
+await measure("ghost/first, jour passé (gardé en mémoire)", c, `/api/jump/day/${past}/ghost/first`);
+
 const sum = (items: [number, string][]) =>
   items.reduce((acc, [n, label]) => {
     const k = costs.get(label)!;
@@ -155,5 +172,18 @@ const visit = sum([
   [1, "submit : essai amélioré"],
   [1, "board, joueur classé"],
 ]);
+// Lot P2 : le jeu lit le fantôme du premier à chaque chargement et à chaque arrivée, et son profil au chargement (au plus une fois par 30 s)
+// et après chaque envoi accepté : 2 chargements (2 fantômes + 2 profils), 4 arrivées (4 fantômes), 2 envois acceptés (2 profils).
+const typicalP2 = sum([
+  [1, "pseudo libre ? (GET /api/name, la plateforme)"],
+  [1, "submit : premier essai (crée le joueur)"],
+  [1, "submit : essai amélioré"],
+  [6, "board, joueur classé"],
+  [6, "ghost/first, jour en cours (joueur)"],
+  [4, "/api/jump/me, 30 jours classés"],
+]);
+console.log(
+  `Joueur type avec le lot P2 (fantôme du premier ×6, profil ×4, historique de 30 jours) : ${typicalP2.requests} requêtes · ${typicalP2.statements} instructions · ${typicalP2.read} lignes lues · ${typicalP2.written} lignes écrites`,
+);
 console.log(`  une arrivée qui améliore : ${visit.requests} requêtes, ${visit.read} lignes lues, ${visit.written} écrites ; un partage : 0 requête ; un chargement (rang connu) : 1 requête, ${costs.get("board, joueur classé")!.read} lignes lues`);
 for (const t of ["jump_levels", "jump_results", "players", "rate", "revoked_codes", "meta"]) await db.run(`DROP TABLE IF EXISTS ${t}`);

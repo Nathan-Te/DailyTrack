@@ -1,4 +1,5 @@
 import { defineConfig, devices, type Project } from "@playwright/test";
+import { FIXED_NOW } from "./e2e/clock";
 
 // Tests de navigateur de DailyJump : ils portent sur le jeu construit (`npm run build -w @cdj/jump`) servi par `vite preview`.
 //   npm run e2e -w @cdj/jump                       → Chromium
@@ -39,9 +40,22 @@ export default defineConfig({
     trace: CI ? { mode: "retain-on-failure", screenshots: false, snapshots: false } : "off",
   },
   projects,
-  webServer: {
-    command: "npx vite preview --port 4174 --strictPort",
-    url: "http://localhost:4174",
-    reuseExistingServer: true,
-  },
+  webServer: [
+    {
+      command: "npx vite preview --port 4174 --strictPort",
+      url: "http://localhost:4174",
+      reuseExistingServer: true,
+    },
+    // Lot P2 (plateforme) : le vrai serveur de la plateforme (SQLite en mémoire), port 8791 réservé à `e2e/profil-commun.spec.ts` (deux appareils,
+    // un code de transfert). Construit ici (`build-node.mjs`, ≈ 1 s) : la part DailyJump de la CI ne construit que le jeu. Son horloge est celle des
+    // pages (`TEST_CLOCK_OFFSET_MS` : midi UTC le 20/10/2026, `e2e/clock.ts`), refusée en production par `config.ts`.
+    {
+      command: "node scripts/build-node.mjs && node dist/server.mjs",
+      cwd: "../api",
+      url: "http://127.0.0.1:8791/api/health",
+      reuseExistingServer: true,
+      timeout: 120_000,
+      env: { PORT: "8791", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS: String(FIXED_NOW - Date.now()) },
+    },
+  ],
 });

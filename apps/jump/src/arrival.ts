@@ -38,6 +38,8 @@ export interface ArrivalOptions {
   onName?(name: string): void;
   /** Lot P1 : « Recharger » (une nouvelle version du jeu). */
   onReload?(): void;
+  /** Lot P2 : « Regarder le premier » (la lecture de son essai). */
+  onFirst?(): void;
 }
 
 export interface Arrival {
@@ -52,6 +54,9 @@ export interface Arrival {
   setRank(view: RankView): void;
   /** Lot P1 : ce qui est affiché du classement (tests). */
   readonly rank: { shown: boolean; status: string; rows: number };
+  /** Lot P2 : le bouton « Regarder le premier » (son texte), ou `null` : caché (pas de premier, ou c'est toi). */
+  setFirst(text: string | null): void;
+  readonly first: string | null;
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
@@ -127,7 +132,10 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   const share = button("arrival-share", "abtn", "Partager");
   const carnage = button("arrival-carnage", "abtn", "Revoir le carnage");
   const home = button("arrival-home", "abtn", "Accueil");
-  buttons.append(replay, share, carnage, home);
+  // Lot P2 : la lecture de l'essai du premier (quand il y en a un, et que ce n'est pas toi).
+  const first = button("arrival-first", "abtn", "Regarder le premier");
+  first.hidden = true;
+  buttons.append(replay, share, carnage, first, home);
   const message = el("div", "amessage");
   message.setAttribute("role", "status");
   const fallback = el("textarea", "afallback");
@@ -156,14 +164,24 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   on(carnage, () => opts.onCarnage());
   on(home, () => opts.onHome());
   on(reload, () => opts.onReload?.());
+  on(first, () => opts.onFirst?.());
 
   let shown = false;
   let note = "";
   let rankShown = { shown: false, status: "", rows: 0 };
   let suggestionKey = "";
+  let firstText: string | null = null;
   return {
     get rank() {
       return rankShown;
+    },
+    get first() {
+      return firstText;
+    },
+    setFirst(text) {
+      firstText = text;
+      first.hidden = text === null;
+      if (text !== null) first.textContent = text;
     },
     setRank(v) {
       rankShown = { shown: v.shown, status: v.status, rows: v.rows.length };

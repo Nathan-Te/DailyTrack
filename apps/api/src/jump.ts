@@ -30,6 +30,11 @@ import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } f
 //                                          médailles, thème ; jamais la grille)
 //   POST /api/jump/submit                  (lot P1) un essai : la rediffusion est rejouée, le serveur garde **son** temps et ses morts
 //   GET  /api/jump/day/<AAAA-MM-JJ>/board  (lot P1) le classement de ce jour : top 10, nombre de classés, la ligne du joueur (`X-Player-Id`)
+//   GET  /api/jump/day/<AAAA-MM-JJ>/ghost/first  (lot P2) la rediffusion du premier de ce jour (son pseudo, son temps, les versions)
+//   GET  /api/jump/me                      (lot P2) le profil DailyJump du joueur (`X-Player-Id`) : chaque jour classé (temps, morts, médaille)
+//
+// **Lot P2 : un profil par jeu.** `GET /api/me` reste celui de DailyTrack (DailyJump ne fournit pas de crochet `profile` : la réponse de
+// `/api/me` ne change pas) ; DailyJump a le sien, `/api/jump/me`, sous son préfixe. Toutes deux sont des lectures : débit **en mémoire**.
 //
 // **Le serveur calcule le niveau par la même règle que le jeu** (`apps/jump/src/dailyLoader.ts`) : d'abord le **fichier figé** de la date
 // (`apps/jump/public/levels/AAAA-MM-JJ.json`, inclus dans l'image), accepté seulement si `thawLevel` (`@cdj/jump-sim`, **la fonction même du
@@ -57,6 +62,10 @@ export const JUMP_GRACE_MS = 10 * 60_000;
 export const JUMP_BOARD_TOP = 10;
 /** Lectures de `/api/jump/*` par adresse et par fenêtre de débit (10 minutes) : un jeu en fait quelques-unes par partie. */
 export const JUMP_READS_PER_CLIENT = 120;
+/** Lot P2 : lectures du profil par joueur et par fenêtre (le jeu se synchronise au plus toutes les 30 s, et après chaque envoi accepté). */
+export const JUMP_ME_PER_PLAYER = 60;
+/** Lot P2 : fantômes du premier d'un jour passé gardés en mémoire (figés : le premier d'un jour fini ne change plus). */
+const GHOST_CACHE_MAX = 64;
 
 /** Les tables de DailyJump : le cache des niveaux du jour (aucune donnée de joueur) et les meilleurs essais (lot P1). */
 export const JUMP_SCHEMA: string[] = [
@@ -145,6 +154,43 @@ export interface JumpSubmitResult {
   medal: JumpMedal | null;
   rank: number;
   participants: number;
+}
+
+/** `GET /api/jump/day/<date>/ghost/first` (lot P2) : le meilleur essai du jour, tel que le serveur l'a rejoué et classé premier. */
+export interface JumpFirstGhost {
+  date: string;
+  levelId: string;
+  name: string;
+  /** Temps (pas) et morts **du rejeu du serveur**. */
+  ticks: number;
+  deaths: number;
+  /** La rediffusion (base64url) et les versions qui l'ont rejouée : le jeu ignore une rediffusion d'une autre version. */
+  replay: string;
+  simVersion: number;
+  generatorVersion: number;
+  /** Le premier, c'est toi (en-tête `X-Player-Id`) : pas de doublon de fantôme. */
+  mine: boolean;
+}
+
+/** Un jour du profil DailyJump (`GET /api/jump/me`, lot P2). */
+export interface JumpMeDay {
+  date: string;
+  levelId: string;
+  /** Meilleur temps (pas) **rejoué par le serveur**, ses morts, sa médaille (celle du niveau de ce jour-là ; `null` sans médaille). */
+  ticks: number;
+  deaths: number;
+  medal: JumpMedal | null;
+}
+
+/** `GET /api/jump/me` (lot P2) : le profil DailyJump du joueur, tel que le serveur le connaît. */
+export interface JumpMe {
+  name: string;
+  renameRequired: boolean;
+  today: string;
+  simVersion: number;
+  generatorVersion: number;
+  days: JumpMeDay[];
+  stats: { days: number; medals: { author: number; gold: number; silver: number; bronze: number }; streak: number };
 }
 
 const LEVEL_ID = /^jour-(\d{4}-\d{2}-\d{2})-g(\d{1,4})(-t[a-z]+)?$/;
@@ -460,6 +506,81 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     return { ...base, levelId: level.id, top, me: mine };
   }
 
+  /** Fantômes du premier des jours **fermés** (figés) : une lecture par jour et par instance. Le jour en cours est relu à chaque fois. */
+  const firstOfClosed = new Map<number, (Omit<JumpFirstGhost, "mine"> & { playerId: string }) | null>();
+
+  /**
+   * Lot P2 : la rediffusion du premier d'un jour (la règle du classement : temps, puis premier envoyé, puis identifiant). Un jour passé est figé
+   * (plus aucun envoi après la grâce) : son premier est gardé en mémoire. 404 `no_ghost` si personne n'est classé.
+   */
+  async function firstGhost(date: string, req: Request): Promise<JumpFirstGhost> {
+    const day = dayOf(date);
+    const me = headerPlayer(req, false);
+    let first = firstOfClosed.get(day);
+    if (first === undefined) {
+      const row = await db.first<{ player_id: string; name: string; level_id: string; ticks: number; deaths: number; replay: string; sim_version: number; generator_version: number }>(
+        "SELECT r.player_id AS player_id, p.name AS name, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.replay AS replay, r.sim_version AS sim_version, r.generator_version AS generator_version FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT 1",
+        [day],
+      );
+      first = row
+        ? { playerId: row.player_id, date: formatDay(day), levelId: row.level_id, name: row.name, ticks: row.ticks, deaths: row.deaths, replay: row.replay, simVersion: row.sim_version, generatorVersion: row.generator_version }
+        : null;
+      if (!isOpen(day) && first) {
+        if (firstOfClosed.size >= GHOST_CACHE_MAX) firstOfClosed.delete(firstOfClosed.keys().next().value!);
+        firstOfClosed.set(day, first);
+      }
+    }
+    if (!first) throw new HttpError(404, "no_ghost", "Personne n'est encore classé ce jour-là");
+    const { playerId, ...ghost } = first;
+    return { ...ghost, mine: me !== null && me === playerId };
+  }
+
+  /**
+   * Lot P2 : le profil DailyJump du joueur (`X-Player-Id`) : chaque jour classé, son meilleur temps rejoué, ses morts, sa médaille (celle du
+   * niveau que le serveur a gardé pour ce jour, s'il est bien celui de l'essai), plus le nombre de jours, les médailles et la série. 404
+   * `unknown_player` (jamais classé, dans aucun jeu), 410 `code_revoked`. Débit en mémoire (une lecture n'écrit rien).
+   */
+  async function myProfile(req: Request, info: RequestInfo): Promise<JumpMe> {
+    const id = headerPlayer(req, true)!;
+    if (info.clientKey) readHit(await hashKey("jmeip", info.clientKey), JUMP_READS_PER_CLIENT);
+    readHit(await hashKey("jme", id), JUMP_ME_PER_PLAYER);
+    await players.assertActive(id);
+    const [player, rows] = await Promise.all([
+      players.find(id),
+      db.all<{ day: number; level_id: string; ticks: number; deaths: number; l_id: string | null; medals: string | null }>(
+        "SELECT r.day AS day, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, l.level_id AS l_id, l.medals AS medals FROM jump_results r LEFT JOIN jump_levels l ON l.day = r.day WHERE r.player_id = ? ORDER BY r.day ASC",
+        [id],
+      ),
+    ]);
+    if (!player) throw new HttpError(404, "unknown_player", "Ce profil n'existe pas sur le serveur : joue une partie pour l'ouvrir");
+    const medals = { author: 0, gold: 0, silver: 0, bronze: 0 };
+    const days: JumpMeDay[] = rows.map((r) => {
+      let medal: JumpMedal | null = null;
+      if (r.medals !== null && r.l_id === r.level_id) {
+        try {
+          medal = jumpMedalFor(r.ticks, JSON.parse(r.medals) as JumpMedals);
+        } catch {
+          medal = null;
+        }
+      }
+      if (medal) medals[medal]++;
+      return { date: formatDay(r.day), levelId: r.level_id, ticks: r.ticks, deaths: r.deaths, medal };
+    });
+    const played = new Set(rows.map((r) => r.day));
+    const t = today();
+    let streak = 0;
+    for (let d = played.has(t) ? t : t - 1; played.has(d); d--) streak++;
+    return {
+      name: player.name,
+      renameRequired: player.rename_required === 1,
+      today: formatDay(t),
+      simVersion: JUMP_SIM_VERSION,
+      generatorVersion: JUMP_GENERATOR_VERSION,
+      days,
+      stats: { days: days.length, medals, streak },
+    };
+  }
+
   async function route(path: string, req: Request, _url: URL, info: RequestInfo): Promise<unknown> {
     if (path === "/api/jump/info") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
@@ -470,7 +591,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
       return await submit(req, info);
     }
-    const m = /^\/api\/jump\/day\/([^/]+)(\/board)?$/.exec(path);
+    if (path === "/api/jump/me") {
+      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+      return await myProfile(req, info);
+    }
+    const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first)?$/.exec(path);
     if (m) {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       await limitReads(info);
@@ -480,7 +605,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       } catch {
         throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
       }
-      if (m[2]) return await board(date, req);
+      if (m[2] === "/board") return await board(date, req);
+      if (m[2] === "/ghost/first") return await firstGhost(date, req);
       return await getLevel(dayOf(date));
     }
     if (path === "/api/jump" || path.startsWith("/api/jump/")) throw new HttpError(404, "not_found", "Route inconnue");
@@ -496,8 +622,15 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       const v = await validateJump({ levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: code });
       return { ms: Math.round((v.ticks * 1000) / TICK_RATE), ticks: v.ticks, deaths: v.deaths };
     },
-    // « Changer mon code » : les essais classés suivent le joueur.
-    rotateStatements: (oldId, newId): Statement[] => [{ sql: "UPDATE jump_results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }],
+    // « Changer mon code » : les essais classés suivent le joueur (les premiers gardés en mémoire sont oubliés : leur identifiant a changé).
+    rotateStatements: (oldId, newId): Statement[] => {
+      firstOfClosed.clear();
+      return [{ sql: "UPDATE jump_results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }];
+    },
+    // Un pseudo changé : le premier d'un jour passé gardé en mémoire le reprend à la prochaine lecture.
+    onRename: async () => {
+      firstOfClosed.clear();
+    },
   };
 }
 

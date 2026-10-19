@@ -377,7 +377,7 @@ function memoryStore(fail: "get" | "set" | null = null): KeyValue & { data: Map<
 
 describe("réglages du joueur", () => {
   it("défauts : tout actif, mouvement réduit selon le système", () => {
-    expect(defaultSettings()).toEqual({ volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: false });
+    expect(defaultSettings()).toEqual({ volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: false, firstGhost: true });
     expect(defaultSettings(true).reducedMotion).toBe(true);
     expect(loadSettings(memoryStore(), true).reducedMotion).toBe(true);
   });

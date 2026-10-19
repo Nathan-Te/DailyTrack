@@ -43,6 +43,8 @@ export interface JumpDemoDay {
   top: JumpBoardRow[];
   /** « Aujourd'hui » seulement : tous les classés, dans l'ordre du classement (le jeu de démonstration calcule ton rang). */
   rows?: { name: string; ticks: number; deaths: number }[];
+  /** Lot P2 : le fantôme du premier, tel que `GET /api/jump/day/<date>/ghost/first` le rend (sans `mine`). */
+  first?: { name: string; ticks: number; deaths: number; replay: string; simVersion: number; generatorVersion: number } | null;
 }
 
 export interface JumpDemoIndex {
@@ -152,7 +154,10 @@ export async function seedJumpDemo(options: { db: SqlDb; frozen: Readonly<Record
     const date = formatDay(day);
     const board = (await (await api.handle(new Request(`http://seed.local/api/jump/day/${date}/board`))).json()) as { levelId: string; participants: number; top: JumpBoardRow[] };
     const level = (await (await api.handle(new Request(`http://seed.local/api/jump/day/${date}`))).json()) as { number: number; medals: JumpMedals };
-    const entry: JumpDemoDay = { date, number: level.number, levelId: board.levelId, medals: level.medals, participants: board.participants, top: board.top };
+    const ghost = await api.handle(new Request(`http://seed.local/api/jump/day/${date}/ghost/first`));
+    const g = ghost.status === 200 ? ((await ghost.json()) as NonNullable<JumpDemoDay["first"]>) : null;
+    const first = g ? { name: g.name, ticks: g.ticks, deaths: g.deaths, replay: g.replay, simVersion: g.simVersion, generatorVersion: g.generatorVersion } : null;
+    const entry: JumpDemoDay = { date, number: level.number, levelId: board.levelId, medals: level.medals, participants: board.participants, top: board.top, first };
     if (day === JUMP_DEMO_TODAY) {
       entry.rows = await options.db.all<{ name: string; ticks: number; deaths: number }>(
         "SELECT p.name AS name, r.ticks AS ticks, r.deaths AS deaths FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC",

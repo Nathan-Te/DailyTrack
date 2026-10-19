@@ -1,7 +1,8 @@
 name: Production
 # Lot R1 (plateforme) : une fusion dans main part en production en trois temps, et seulement après la validation de Nathan.
 #   1. recette : si la fusion touche le serveur (SERVER_PATHS, scripts/recette.mjs), la révision par défaut de la recette est mise à jour
-#      (contrôle de /api/health et essai de bout en bout) ; sautée avec un message si la recette n'est pas configurée ;
+#      (contrôle de /api/health et essai de bout en bout) ; sautée avec un message si la recette n'est pas configurée ; ses joueurs fictifs
+#      (`recette:seed`, lot P2) sont réécrits à côté, sans retenir la suite ;
 #   2. validation : les deux jobs suivants attendent ensemble l'approbation d'un relecteur de l'environnement GitHub `production` (Nathan) :
 #      un seul clic (« Review deployments » → production → Approve) les libère tous les deux ;
 #   3. l'API de production (si la fusion touche le serveur) et le site publié depuis main (DailyTrack et DailyJump) partent ensemble.
@@ -59,6 +60,17 @@ jobs:
     uses: ./.github/workflows/deploy-api.yml
     with:
       target: recette
+    secrets: inherit
+
+  # Lot P2 : la révision par défaut de la recette vient d'être mise à jour : ses joueurs fictifs (`recette:seed`, recette-seed.yml). Rien
+  # n'en dépend : la production ne l'attend pas.
+  recette-seed:
+    needs: recette
+    if: needs.recette.outputs.enabled == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/recette-seed.yml
     secrets: inherit
 
   api:

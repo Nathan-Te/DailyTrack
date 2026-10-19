@@ -129,6 +129,14 @@ gcloud run services describe cdj-api-recette --region=europe-west1 --format='val
 
 ## Étape 7 — Les joueurs fictifs de la recette (5 min)
 
+> **Depuis le lot P2, c'est automatique** : le workflow **« Recette — joueurs fictifs »** (`recette-seed.yml`) lance `recette:seed` chaque jour (00:17 UTC) et après chaque déploiement de recette, avec les accès du workflow « Recette » (aucun secret GitHub de plus). Il lui faut seulement **lire le jeton de la base de recette** dans Secret Manager — une commande, **une fois**, dans Cloud Shell :
+>
+> ```bash
+> gcloud secrets add-iam-policy-binding cdj-recette-turso-token --member=serviceAccount:cdj-deploy@dailytrack-511513.iam.gserviceaccount.com --role=roles/secretmanager.secretAccessor
+> ```
+>
+> - **Tu dois voir** `Updated IAM policy for secret [cdj-recette-turso-token]`. Ensuite, dans le résumé du job `seed` : « Joueurs fictifs de la recette (`recette:seed`, 7 jours, … s) ». Sans cette commande, le job reste vert et le dit (« non lancés », avec la commande). Le lancement à la main ci-dessous reste possible (essais, autre date : `-- --today`).
+
 Dans Cloud Shell (Node 20 ou plus suffit contre Turso) :
 
 ```bash

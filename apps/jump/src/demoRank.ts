@@ -2,6 +2,8 @@ import { formatDay } from "@cdj/core";
 import { PREMIER_JOUR_JUMP, jumpMedalFor, type JumpMedals } from "@cdj/jump-sim";
 import type { ApiResult, FetchLike, MeProfile, NameCheck } from "@cdj/profile";
 import type { KeyValue } from "./memory";
+import type { FirstGhostData } from "./firstGhost";
+import type { JumpMe } from "./jumpProfile";
 import type { JumpBoard, JumpBoardRow, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
 import { storageKey } from "./storage";
 
@@ -37,6 +39,8 @@ export interface DemoDay {
   participants: number;
   top: JumpBoardRow[];
   rows?: { name: string; ticks: number; deaths: number }[];
+  /** Lot P2 : le fantôme du premier du jour (sa rediffusion, validée par le vrai serveur à la fabrication du jeu de données). */
+  first?: Omit<FirstGhostData, "date" | "levelId" | "mine"> | null;
 }
 
 interface DemoEntry {
@@ -151,6 +155,23 @@ export class DemoRankSource implements RankSource {
     if (!day.ok) return day;
     const mine = this.mine();
     return { ok: true, data: { ...demoBoard(day.data, mine?.date === date && mine.levelId === day.data.levelId ? mine : null), open: date === formatDay(DEMO_TODAY) } };
+  }
+
+  /**
+   * Lot P2 : le premier du jeu de données (un joueur fictif). Ton propre essai de démonstration n'a pas de rediffusion ici : s'il est plus
+   * rapide, le jeu le sait (`showFirstGhost` : ton fantôme est alors celui du premier).
+   */
+  async firstGhost(date: string, _playerId: string | null): Promise<ApiResult<FirstGhostData>> {
+    const day = await this.json<DemoDay>(`${date}.json`);
+    if (!day.ok) return day;
+    const f = day.data.first;
+    if (!f) return fail(404, "no_ghost", "Personne n'est encore classé ce jour-là");
+    return { ok: true, data: { ...f, date: day.data.date, levelId: day.data.levelId, mine: false } };
+  }
+
+  // Le profil DailyJump n'existe pas en démonstration (comme la synchronisation de DailyTrack) : rien n'est synchronisé.
+  async jumpMe(): Promise<ApiResult<JumpMe>> {
+    return fail(404, "unknown_player", "Pas de profil en démonstration");
   }
 
   async checkName(name: string): Promise<ApiResult<NameCheck>> {
