@@ -74,6 +74,15 @@ describe(`POST /api/jump/submit (${TEST_DB})`, () => {
       medal: jumpMedalFor(slow.ticks, D.medals),
       rank: 1,
       participants: 1,
+      // Lot P4 : l'envoi rend aussi le classement d'après l'envoi (le jeu ne relit pas `/board`).
+      board: {
+        date: DATE,
+        open: true,
+        participants: 1,
+        levelId: D.id,
+        top: [{ rank: 1, name: "Alice", ticks: slow.ticks, deaths: slow.deaths, medal: jumpMedalFor(slow.ticks, D.medals) }],
+        me: { rank: 1, name: "Alice", ticks: slow.ticks, deaths: slow.deaths, medal: jumpMedalFor(slow.ticks, D.medals) },
+      },
     });
     const row = await t.db.first<Record<string, unknown>>("SELECT * FROM jump_results WHERE day = ? AND player_id = ?", [DAY, playerId(1)]);
     expect(row).toMatchObject({ level_id: D.id, ticks: slow.ticks, deaths: slow.deaths, replay: slow.code, sim_version: JUMP_SIM_VERSION, generator_version: JUMP_GENERATOR_VERSION, first_at: NOON, submitted_at: NOON });

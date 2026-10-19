@@ -1,7 +1,7 @@
 import { formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION } from "@cdj/jump-sim";
 import { NAME_TAKEN_MESSAGE, Profile, isValidName, normalizeName, readIdentity, readPlayerId, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
-import type { JumpBoard, RankEntry, RankSource } from "./rankApi";
+import type { JumpBoard, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
 import type { KnownRank, RankQueue } from "./rankQueue";
 
 // Le classement du jour, côté jeu (lot P1 de la plateforme), **sans DOM** (testé sous Node) : envoi des essais, file hors ligne, pseudo,
@@ -55,8 +55,11 @@ export interface RankingDeps {
   now(): number;
   /** Lot P2 : la synchronisation du profil DailyJump (ce que le pseudo et le code demandent d'elle) ; sans elle, aucune. */
   sync?: SyncView;
-  /** Lot P2 : un envoi vient d'être accepté (le jeu relit alors son profil sur le serveur). */
-  onAccepted?(): void;
+  /**
+   * Lot P2 : un envoi vient d'être accepté. Lot P4 : la réponse du serveur est passée (son classement `board` : le jeu n'a rien à relire, sauf
+   * le fantôme du premier si le premier a changé).
+   */
+  onAccepted?(result: JumpSubmitResult): void;
 }
 
 /** Sans synchronisation du profil (tests, démonstration) : le pseudo ne passe que par la vérification « libre ou non ». */
@@ -178,8 +181,10 @@ export class Ranking {
         this.lastResult = { date: d.date, ticks: d.ticks, deaths: d.deaths, rank: d.rank, participants: d.participants };
         this.set({ status: "ranked", message: "", suggestions: [] });
         this.deps.sync?.noteServerKnows(true);
-        this.deps.onAccepted?.();
-        void this.loadBoard(p.date);
+        // Lot P4 : le classement d'après l'envoi est dans la réponse : pas de relecture (un serveur plus ancien : `/board`, comme avant).
+        if (d.board) this.noteBoard(p.date, d.board);
+        else void this.loadBoard(p.date);
+        this.deps.onAccepted?.(d);
         continue;
       }
       if (r.status === 0 || r.status === 429 || r.status >= 500 || r.code === "not_found") {
@@ -222,6 +227,31 @@ export class Ranking {
     this.set({ status: "idle", message: "", suggestions: [] });
     await this.flush();
     return r;
+  }
+
+  /**
+   * Lot P4 : un classement lu ailleurs (la lecture regroupée du jour, la réponse d'un envoi) : gardé comme une lecture de `/board` (rang connu
+   * compris), sans requête.
+   */
+  noteBoard(date: string, board: JumpBoard): void {
+    if (!this.enabled) return;
+    this.boards.set(date, { status: "ok", board, message: "" });
+    this.deps.queue.noteBoard(date, board.levelId, board.me, board.participants);
+    this.changed();
+  }
+
+  /** Un classement attendu d'une lecture en cours (la lecture regroupée) : « chargement » si rien n'est encore connu ; un échec le dit. */
+  noteBoardLoading(date: string): void {
+    if (!this.enabled || this.boards.get(date)?.board) return;
+    this.boards.set(date, { status: "loading", board: null, message: "" });
+    this.changed();
+  }
+
+  noteBoardFailed(date: string, offline: boolean, message: string): void {
+    if (!this.enabled) return;
+    const prev = this.boards.get(date);
+    this.boards.set(date, { status: offline ? "offline" : "error", board: prev?.board ?? null, message: offline ? "Classement indisponible" : message });
+    this.changed();
   }
 
   /** Lit le classement d'un jour (ta ligne si tu as une identité, jamais créée ici). Ne lève jamais. */

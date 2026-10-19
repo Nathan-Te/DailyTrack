@@ -116,7 +116,9 @@ test("temps de fil principal du carnage de tout le monde à 150 vies", async ({ 
             audio: { played: Record<string, number> };
             effects: { carnageDropped: number };
           };
-          const j = (window as unknown as { __jump: J }).__jump;
+          const j = (window as unknown as { __jump: J & { carnage: { govern?(l: number | null): void } } }).__jump;
+          // Lot P4 : le carnage complet (palier 0), comme au lot P3 ; le carnage adaptatif a son propre outil, plus bas.
+          j.carnage.govern?.(0);
           if (!j.startEveryone(lives || 1)) return null;
           const label = j.carnage.state.label;
           const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -147,6 +149,89 @@ test("temps de fil principal du carnage de tout le monde à 150 vies", async ({ 
   console.log(
     [
       "| Processeur | Vies | Compteur | En course (moy.) | Sons joués · événements écartés | Simulation / pas | Dessin / image | Image à 60 i/s (2 pas + dessin) | Image mesurée (moy. · 95e c.) | Images/s (SwiftShader) |",
+      "|---|---|---|---|---|---|---|---|---|---|",
+      ...rows,
+    ].join("\n"),
+  );
+});
+
+// Lot P4 (plateforme) : le carnage de tout le monde **adaptatif** à 150 vies, palier par palier (imposé par `__jump.carnage.govern`), puis
+// laissé au gouverneur (« auto » : le palier qu'il choisit sur cette machine, mesuré après sa fenêtre d'observation). Même méthode que les
+// lots 3 et P3 : simulation par pas, dessin par image, image estimée à 60 i/s = 2 pas + 1 dessin (SwiftShader ne fait que ~12 images/s).
+//   MESURE=1 npx playwright test mesure-carnage -g "adaptatif" --project=chromium      (RATES=4 PALIERS=0,2,4,auto : un sous-ensemble)
+test("temps de fil principal du carnage de tout le monde adaptatif, palier par palier", async ({ browser, browserName }) => {
+  test.skip(browserName !== "chromium", "ralentissement du processeur : Chromium seulement");
+  const rows: string[] = [];
+  for (const rate of (process.env.RATES ?? "1,4").split(",").map(Number)) {
+    for (const palier of (process.env.PALIERS ?? "0,1,2,3,4,auto").split(",")) {
+      const context = await browser.newContext({ viewport: { width: 844, height: 390 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+      try {
+        const page = await context.newPage();
+        await page.goto("/?debug&touch=1&api=demo&accueil=0");
+        await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: { phase: string } }).__jump?.phase ?? ""));
+        await page.keyboard.press("Shift");
+        await page.evaluate(() => {
+          type W = { manual(on: boolean): void; autoplay(): number; advance(n: number): unknown; phase: string; carnage: { skip(): void } };
+          const w = (window as unknown as { __jump: W }).__jump;
+          w.manual(true);
+          const total = w.autoplay();
+          for (let t = 0; t < total + 5 && w.phase !== "carnage"; t++) w.advance(1);
+          w.carnage.skip();
+          w.manual(false);
+        });
+        await page.waitForFunction(() => (window as unknown as { __jump: { everyone: { loaded: boolean } } }).__jump.everyone.loaded);
+        // Échauffement : un premier carnage de tout le monde (8 s) fait dessiner une fois ce que l'essai joué pas à pas (sans rendu) n'a jamais
+        // montré — les fanions des points de passage atteints : leur programme de rendu se compile alors (≈ 0,3 s en rendu logiciel), hors de
+        // la fenêtre mesurée. Dans une vraie partie, ils ont été dessinés pendant le jeu.
+        await page.evaluate(async () => {
+          const j = (window as unknown as { __jump: { startEveryone(max?: number): boolean; carnage: { skip(): void; govern(l: number | null): void } } }).__jump;
+          j.carnage.govern(0);
+          j.startEveryone(150);
+          await new Promise((r) => setTimeout(r, 8000));
+          j.carnage.skip();
+        });
+        const cdp = await context.newCDPSession(page);
+        await cdp.send("Emulation.setCPUThrottlingRate", { rate });
+        const result = await page.evaluate(async (level) => {
+          type J = {
+            startEveryone(max?: number): boolean;
+            carnage: { govern(level: number | null): void; state: { running: number; active: boolean; label: string; governor?: { level: number; maxLives: number; particles: number } | null } };
+            frameTimes: { mean: number; p95: number; frames: number; stepMs: number; drawMs: number; reset(): void };
+          };
+          const j = (window as unknown as { __jump: J }).__jump;
+          j.carnage.govern(level === "auto" ? null : Number(level));
+          if (!j.startEveryone(150)) return null;
+          const label = j.carnage.state.label;
+          const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+          // « auto » : la fenêtre d'observation du gouverneur (5 s) d'abord ; un palier imposé : 1 s d'échauffement comme au lot P3.
+          await wait(level === "auto" ? 5200 : 1000);
+          j.frameTimes.reset();
+          let running = 0;
+          let samples = 0;
+          const t0 = performance.now();
+          while (performance.now() - t0 < 4000 && j.carnage.state.active) {
+            running += j.carnage.state.running;
+            samples++;
+            await wait(100);
+          }
+          const f = j.frameTimes;
+          const g = j.carnage.state.governor ?? null;
+          return { label, governor: g, mean: f.mean, p95: f.p95, frames: f.frames, stepMs: f.stepMs, drawMs: f.drawMs, seconds: (performance.now() - t0) / 1000, running: samples ? running / samples : 0 };
+        }, palier);
+        if (!result) throw new Error("carnage de tout le monde indisponible");
+        const f = (v: number) => `${v.toFixed(2).replace(".", ",")} ms`;
+        const g = result.governor;
+        rows.push(
+          `| ×${rate} | ${palier === "auto" ? `auto → ${g?.level ?? "?"}` : palier} | ${g?.maxLives ?? "?"} · ${g?.particles ?? "?"} | ${result.label} | ${result.running.toFixed(0)} | ${f(result.stepMs)} | ${f(result.drawMs)} | **${f(2 * result.stepMs + result.drawMs)}** | ${f(result.mean)} · ${f(result.p95)} | ${(result.frames / result.seconds).toFixed(0)} |`,
+        );
+      } finally {
+        await context.close();
+      }
+    }
+  }
+  console.log(
+    [
+      "| Processeur | Palier | Vies au plus · particules | Compteur | En course (moy.) | Simulation / pas | Dessin / image | Image à 60 i/s (2 pas + dessin) | Image mesurée (moy. · 95e c.) | Images/s (SwiftShader) |",
       "|---|---|---|---|---|---|---|---|---|---|",
       ...rows,
     ].join("\n"),

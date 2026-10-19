@@ -11,10 +11,29 @@
 // ce qui ne concerne que DailyTrack : la lecture des anciens codes `CDJ1` (records de DailyTrack) et le cache des records à vider au changement
 // d'identité.
 import { decodeReplay } from "@cdj/sim";
-import { crc32, decodeTransfer as decodePlatformTransfer, fromBase64Url, keysWith, writeIdentity, type DecodeResult, type TransferData, type TransferRecord } from "@cdj/profile";
+import {
+  NAME_KEY,
+  crc32,
+  decodeTransfer as decodePlatformTransfer,
+  fromBase64Url,
+  identityRevisionSeen,
+  keysWith,
+  noteIdentityChange,
+  readPlayerId,
+  writeIdentity,
+  type DecodeResult,
+  type TransferData,
+  type TransferRecord,
+} from "@cdj/profile";
 import { clearRanks, parseRank, type RankMark } from "./profile";
 
 export { LEGACY_PREFIX, MAX_CODE_LENGTH, TRANSFER_PREFIX, crc32, encodeTransfer, readPlayerId } from "@cdj/profile";
+
+/**
+ * Lot P4 (plateforme) : la dernière révision d'identité de la plateforme que DailyTrack a vue (`@cdj/profile`, `identityRevisionSeen`). Un code
+ * chargé dans un autre jeu (DailyJump) depuis : au démarrage, DailyTrack fait ce qu'il fait quand le code est chargé chez lui (`applyIdentity`).
+ */
+export const SEEN_IDENTITY_KEY = "cdj:identite:vue";
 export type { DecodeResult, TransferData, TransferRecord } from "@cdj/profile";
 
 const BEST = "cdj:best:";
@@ -129,5 +148,30 @@ export function applyIdentity(identity: { id: string; name: string | null }, sto
     return true;
   } catch {
     return false;
+  }
+}
+
+/**
+ * Lot P4 (plateforme) : un code chargé chez DailyTrack avance la révision d'identité de la plateforme (les autres jeux videront leur cache de
+ * l'ancienne identité à leur prochain démarrage) et la note comme vue ici (le cache vient d'être vidé : rien à refaire au rechargement).
+ */
+export function noteCodeLoaded(storage: WriteStorage): void {
+  noteIdentityChange(storage, "code", SEEN_IDENTITY_KEY);
+}
+
+/**
+ * Lot P4 (plateforme) : au démarrage de DailyTrack. Si un code a été chargé **dans un autre jeu** de la plateforme depuis sa dernière visite
+ * (le compteur de révision d'identité, `@cdj/profile`), le cache des records de l'ancienne identité est vidé exactement comme au chargement
+ * d'un code ici (`applyIdentity`, avec l'identité qui est maintenant celle du navigateur ; le record d'aujourd'hui non confirmé reste,
+ * `pendingTrackIds`). Sinon rien ne change. Rend vrai si le cache a été vidé.
+ */
+export function followIdentityRevision(storage: WriteStorage, today: string): boolean {
+  try {
+    if (identityRevisionSeen(storage, SEEN_IDENTITY_KEY) !== "code") return false;
+    const id = readPlayerId(storage);
+    if (!id) return false;
+    return applyIdentity({ id, name: storage.getItem(NAME_KEY) }, storage, pendingTrackIds(storage, today));
+  } catch {
+    return false; // stockage illisible : le cache reste tel quel (le serveur reste la vérité)
   }
 }

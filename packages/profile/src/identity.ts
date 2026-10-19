@@ -16,6 +16,16 @@ export const NEXT_KEY = "cdj:player:next";
 export const NOTICE_PREFIX = "cdj:notice:";
 /** Identifiant de joueur : 128 bits, en hexadécimal minuscule. */
 export const PLAYER_ID = /^[0-9a-f]{32}$/;
+/**
+ * Lot P4 : le **compteur de révision d'identité de la plateforme**. Tout jeu qui change l'identité de ce navigateur l'avance : un code chargé
+ * (`noteIdentityChange(…, "code")`, appelé par le jeu qui le charge), une rotation (« Changer mon code ») et la première création de
+ * l'identifiant (faites ici, par `createIdentity`). Chaque jeu retient la dernière révision qu'il a vue (sa propre clé) et la compare au
+ * démarrage (`identityRevisionSeen`) : un code chargé **dans un autre jeu** depuis sa dernière visite = vider son cache de l'ancienne identité.
+ */
+export const IDENTITY_REV_KEY = "cdj:identite:rev";
+/** La révision du dernier **code chargé** (seul changement qui fait vider le cache d'un jeu : une rotation garde le même profil). */
+export const IDENTITY_CODE_REV_KEY = "cdj:identite:code";
+export type IdentityChange = "code" | "rotation" | "creation";
 
 /** Ce que le module demande d'un stockage (`Storage` du navigateur, ou un faux en mémoire dans les tests). */
 export interface KeyValueStore {
@@ -98,6 +108,60 @@ export function writeIdentity(identity: { id: string; name: string | null }, sto
   else storage.removeItem(NAME_KEY);
 }
 
+const revOf = (raw: string | null): number => {
+  const n = Number(raw);
+  return raw !== null && Number.isSafeInteger(n) && n >= 0 ? n : 0;
+};
+
+/** La révision d'identité de la plateforme et celle du dernier code chargé (0 si rien n'a encore changé, ou stockage illisible). */
+export function readIdentityRevision(storage: Pick<KeyValueStore, "getItem">): { rev: number; code: number } {
+  try {
+    return { rev: revOf(storage.getItem(IDENTITY_REV_KEY)), code: revOf(storage.getItem(IDENTITY_CODE_REV_KEY)) };
+  } catch {
+    return { rev: 0, code: 0 };
+  }
+}
+
+/**
+ * Avance la révision d'identité (lot P4) : `kind` dit pourquoi. `seenKey` : la clé du jeu qui fait le changement — il a déjà mis son cache en
+ * ordre, il note donc la nouvelle révision comme vue. Rend la nouvelle révision (0 si le stockage refuse : rien n'est alors signalé).
+ */
+export function noteIdentityChange(storage: KeyValueStore, kind: IdentityChange, seenKey?: string): number {
+  try {
+    const rev = readIdentityRevision(storage).rev + 1;
+    storage.setItem(IDENTITY_REV_KEY, String(rev));
+    if (kind === "code") storage.setItem(IDENTITY_CODE_REV_KEY, String(rev));
+    if (seenKey) storage.setItem(seenKey, String(rev));
+    return rev;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Au démarrage d'un jeu (lot P4) : la révision a-t-elle changé depuis sa dernière visite, et un **code a-t-il été chargé** entre-temps (dans
+ * un autre jeu) ? `"code"` : le jeu vide son cache de l'ancienne identité (DailyTrack : `applyIdentity`). `"aucun"` sinon : rien ne change
+ * (première visite depuis le lot P4, aucune révision, ou seulement une rotation ou une création : même profil). La révision courante est notée
+ * comme vue dans les deux cas. Un stockage illisible répond `"aucun"`.
+ */
+export function identityRevisionSeen(storage: KeyValueStore, seenKey: string): "code" | "aucun" {
+  try {
+    const { rev, code } = readIdentityRevision(storage);
+    const raw = storage.getItem(seenKey);
+    if (raw === null) {
+      // Première visite depuis le lot P4 : on ne sait pas ce qui précède, on n'efface rien (le comportement d'avant).
+      storage.setItem(seenKey, String(rev));
+      return "aucun";
+    }
+    const seen = revOf(raw);
+    if (seen === rev) return "aucun";
+    storage.setItem(seenKey, String(rev));
+    return code > seen ? "code" : "aucun";
+  } catch {
+    return "aucun";
+  }
+}
+
 /** L'identité d'un navigateur : lecture et création de l'identifiant, pseudo, « Changer mon code » en cours. */
 export interface Identity {
   /** Identifiant du joueur (32 caractères hexadécimaux), créé au premier appel. C'est le secret du profil : le code de transfert n'est que lui. */
@@ -135,6 +199,13 @@ export function createIdentity(storage: () => KeyValueStore): Identity {
     }
   };
   let memoryId: string | null = null;
+  const bump = (kind: IdentityChange): void => {
+    try {
+      noteIdentityChange(storage(), kind);
+    } catch {
+      /* stockage absent : rien à signaler aux autres jeux */
+    }
+  };
   const pendingNextId = (): string | null => {
     const v = read(NEXT_KEY);
     return v && PLAYER_ID.test(v) ? v : null;
@@ -147,11 +218,16 @@ export function createIdentity(storage: () => KeyValueStore): Identity {
       const id = randomPlayerId();
       memoryId = id;
       write(PLAYER_KEY, id);
+      // Lot P4 : la première identité de ce navigateur fait avancer la révision (les autres jeux le verront, sans rien effacer).
+      bump("creation");
       return id;
     },
     setPlayerId(id) {
+      const before = read(PLAYER_KEY);
       memoryId = id;
       write(PLAYER_KEY, id);
+      // Lot P4 : « Changer mon code » réussi (ou adopté après une réponse perdue) : une rotation, même profil.
+      if (before !== id) bump("rotation");
     },
     pendingNextId,
     takeNextId() {

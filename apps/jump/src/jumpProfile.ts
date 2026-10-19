@@ -1,8 +1,9 @@
 import { parseDay } from "@cdj/core";
 import type { JumpMedal } from "@cdj/jump-sim";
-import { mergeName, writeIdentity, type KeyValueStore, type ListableStore } from "@cdj/profile";
+import { identityRevisionSeen, mergeName, noteIdentityChange, writeIdentity, type KeyValueStore, type ListableStore } from "@cdj/profile";
 import { HISTORY_KEY, HISTORY_VERSION, isDayRecord, mergeDay, streakOf, type DayRecord } from "./history";
 import { RANKS_KEY } from "./rankQueue";
+import { storageKey } from "./storage";
 
 // Le profil DailyJump synchronisé par le serveur (lot P2 de la plateforme), **logique pure** (testée sous Node) : ce que rend
 // `GET /api/jump/me`, la **fusion « le meilleur gagne »** avec l'historique local (`jump:historique`, lot 10), les statistiques de la carte du
@@ -100,10 +101,35 @@ export function applyJumpProfile(me: JumpMe, storage: KeyValueStore, local: read
  */
 export function applyJumpIdentity(identity: { id: string; name: string | null }, storage: ListableStore, local: readonly DayRecord[], today: string): boolean {
   try {
-    const kept = local.filter((r) => r.date === today);
-    storage.setItem(HISTORY_KEY, JSON.stringify({ v: HISTORY_VERSION, jours: kept }));
-    storage.removeItem(RANKS_KEY);
+    forgetIdentityCache(storage, local, today);
     writeIdentity(identity, storage);
+    // Lot P4 : les autres jeux de la plateforme (DailyTrack) videront leur cache de l'ancienne identité à leur prochain démarrage.
+    noteIdentityChange(storage, "code", JUMP_SEEN_IDENTITY_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Ce que DailyJump gardait au nom d'une identité : les rangs connus et les jours passés de l'historique (aujourd'hui reste). */
+function forgetIdentityCache(storage: KeyValueStore, local: readonly DayRecord[], today: string): void {
+  const kept = local.filter((r) => r.date === today);
+  storage.setItem(HISTORY_KEY, JSON.stringify({ v: HISTORY_VERSION, jours: kept }));
+  storage.removeItem(RANKS_KEY);
+}
+
+/** Lot P4 : la dernière révision d'identité de la plateforme que DailyJump a vue (`@cdj/profile`, `identityRevisionSeen`). */
+export const JUMP_SEEN_IDENTITY_KEY = storageKey("identite:vue");
+
+/**
+ * Lot P4 (plateforme) : au démarrage de DailyJump. Si un code a été chargé **dans un autre jeu** (DailyTrack) depuis sa dernière visite, ce que
+ * DailyJump gardait au nom de l'ancienne identité est oublié, comme quand le code est chargé ici (`applyJumpIdentity`, sans réécrire
+ * l'identité : c'est déjà celle du navigateur). Sinon rien ne change. Rend vrai si le cache a été vidé.
+ */
+export function followJumpIdentity(storage: KeyValueStore, local: readonly DayRecord[], today: string): boolean {
+  try {
+    if (identityRevisionSeen(storage, JUMP_SEEN_IDENTITY_KEY) !== "code") return false;
+    forgetIdentityCache(storage, local, today);
     return true;
   } catch {
     return false;

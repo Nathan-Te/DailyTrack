@@ -80,5 +80,19 @@ export default defineConfig({
       reuseExistingServer: false,
       env: { PORT: "8790", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
     },
+    {
+      // Lot P4 (plateforme) : les deux jeux construits sur la même origine (`/` et `/jump/`, comme GitHub Pages) : e2e/identite-plateforme.spec.ts.
+      command: "node e2e/deux-jeux.mjs 4175",
+      url: "http://localhost:4175/",
+      reuseExistingServer: false,
+    },
+    {
+      // Lot P4 (plateforme) : réservé à e2e/identite-plateforme.spec.ts (un code chargé dans DailyJump, puis DailyTrack ouvert : le cache des records
+      // de l'ancienne identité est vidé). Un serveur par spec : ses joueurs ne se mêlent pas à ceux de profil.spec.ts.
+      command: "node ../api/dist/server.mjs",
+      url: "http://127.0.0.1:8792/api/health",
+      reuseExistingServer: false,
+      env: { PORT: "8792", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
+    },
   ],
 });

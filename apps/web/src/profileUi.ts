@@ -10,7 +10,7 @@ import type { ChangeCodeResult, RenameResult } from "./online";
 import { dayShort, listPlayedDays, loadRanks, playedFromRecords, profileStats, type ProfileStats } from "./profile";
 import type { ProfileSync } from "./profileSync";
 import { MEDAL_ICON, ordinal } from "./share";
-import { applyIdentity, decodeTransfer, encodeTransfer, legacyReplays, pendingTrackIds, type TransferData } from "./transfer";
+import { applyIdentity, decodeTransfer, encodeTransfer, legacyReplays, noteCodeLoaded, pendingTrackIds, type TransferData } from "./transfer";
 import { gameStorage } from "./storage";
 
 export interface ProfileHost {
@@ -360,6 +360,8 @@ export function mountProfileCard(host: ProfileHost): ProfileCard {
         resetPreview();
         return say("Le navigateur refuse d'écrire (navigation privée ou stockage plein) : rien n'a changé.", "error");
       }
+      // Lot P4 : les autres jeux de la plateforme (DailyJump) videront leur cache de l'ancienne identité à leur prochain démarrage.
+      noteCodeLoaded(storage);
       if (chosen.version === 1 && host.submitLegacy) await host.submitLegacy(chosen.id, found.onServer ? null : chosen.name, legacyReplays(chosen));
       resetPreview();
       area.value = "";

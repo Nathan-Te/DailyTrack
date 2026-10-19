@@ -77,6 +77,11 @@ test("deux appareils : finir → copier le code → le charger sur l'autre → h
   const b = await device(browser);
   try {
     // ——— 1. A finit le niveau du jour et choisit son pseudo : premier du classement (le fantôme du premier, c'est le sien) ———
+    // Lot P4 : les requêtes d'une partie complète (chargement, arrivée, pseudo, envoi) sont relevées : la lecture du jour est regroupée.
+    const sent: string[] = [];
+    a.page.on("request", (r) => {
+      if (r.url().startsWith(API)) sent.push(`${r.method()} ${new URL(r.url()).pathname.replace(TODAY, "<jour>")}`);
+    });
     await a.page.goto(`/?${GAME}&accueil=0`);
     test.skip(!(await hasWebGL(a.page)), SKIP);
     await a.page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
@@ -93,6 +98,18 @@ test("deux appareils : finir → copier le code → le charger sur l'autre → h
     await a.page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.firstGhost.mine === true, undefined, { timeout: 30_000 });
     expect(await read(a.page, "firstGhost")).toMatchObject({ loaded: true, shown: false, mine: true, name });
     await expect(a.page.locator("#arrival-first")).toBeHidden();
+    // Lot P4 : une partie complète d'un joueur neuf = 5 requêtes — la lecture du jour au chargement (classement, premier, carte : une
+    // seule), l'échantillon du carnage à l'arrivée, le pseudo, l'envoi (qui rend le classement), puis, le serveur le connaissant enfin, son
+    // profil (avec le jour : une seule lecture). Rien n'est relu à l'arrivée (moins de 3 minutes) ni après l'envoi.
+    expect(sent.sort()).toEqual(
+      [
+        "GET /api/jump/day/<jour>/bundle",
+        "GET /api/jump/day/<jour>/carnage",
+        "GET /api/name",
+        "POST /api/jump/submit",
+        "GET /api/jump/day/<jour>/bundle",
+      ].sort(),
+    );
     const authorTicks = (await read(a.page, "daily"))!.authorTicks;
     const idA = await a.page.evaluate(() => localStorage.getItem("cdj:player"));
     expect(idA).toMatch(/^[0-9a-f]{32}$/);

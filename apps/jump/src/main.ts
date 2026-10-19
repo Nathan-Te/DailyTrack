@@ -97,16 +97,18 @@ import { mountHome, type Home, type HomeView } from "./home";
 import { mountArrival } from "./arrival";
 import { shareText } from "./share";
 import { sendShare } from "./clipboard";
+import { CarnageGovernor } from "./carnageGovernor";
 import { CarnageFilter, EventLog, causeName, eventsBetween, type GameEvent } from "./events";
 import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
 import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
 import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
-import { applyJumpIdentity, applyJumpProfile, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
+import { applyJumpIdentity, applyJumpProfile, followJumpIdentity, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
 import { mountProfileUi } from "./profileUi";
 import { copyText } from "./clipboard";
-import { HttpRankSource, rankApiBase, type RankSource } from "./rankApi";
+import { HttpRankSource, rankApiBase, type JumpBoard, type RankSource } from "./rankApi";
+import { ARRIVAL_REFRESH_MS, DayReads, type DayBundle, type LoadOptions } from "./dayReads";
 import { RankQueue } from "./rankQueue";
 import { LIVES_EVERY_MS, LivesQueue, type LifeCandidate } from "./livesQueue";
 import { LivesSender } from "./livesSender";
@@ -304,6 +306,8 @@ export interface JumpDebug {
     demo(lives?: number, crowd?: boolean): boolean;
     /** Comme une commande : passe le carnage. */
     skip(): void;
+    /** Lot P4 : impose un palier au carnage de tout le monde (0 : complet … 4 : 60 vies, sans particules) ; `null` : l'appareil décide. */
+    govern(level: number | null): void;
   };
   /** Lot 3 : stockage local (`jump:*`). */
   readonly storage: { clear(): number; size(): number; readonly memory: { best: number | null; lives: number; deaths: number; positions: { x: number; y: number }[] } };
@@ -339,6 +343,8 @@ export interface JumpDebug {
   readonly othersStains: { date: string | null; enabled: boolean; loaded: boolean; tiles: number; drawn: number; discs: number; visible: boolean; players: number; deaths: number; miss: string; closest: number };
   /** Lot P3 : l'envoi des vies (branché, état, lots envoyés, file du jour, dernière réponse du serveur). */
   readonly lives: unknown;
+  /** Lot P4 : les lectures du jour (requêtes parties, lectures regroupées, lectures servies sans réseau, repli sur les routes séparées, jours lus). */
+  readonly reads: unknown;
   /** Lot P3 : l'échantillon du carnage de tout le monde (chargé, vies jouables, joueurs, écartées, à toi, bouton de l'arrivée). */
   readonly everyone: { loaded: boolean; lives: number; players: number; rejected: number; own: number; miss: string; button: string | null };
   /**
@@ -455,6 +461,8 @@ export interface CarnageView {
   tick: number;
   heroTicks: number;
   label: string;
+  /** Lot P4 : le carnage de tout le monde s'adapte à l'appareil (palier, vies montrées au plus, part des particules, fenêtres mesurées). */
+  governor?: { level: number; maxLives: number; particles: number; windows: { work: number; interval: number; level: number }[] } | null;
 }
 
 declare global {
@@ -493,6 +501,9 @@ if (demoRank && store) {
     /* stockage illisible : la démonstration demandera un pseudo */
   }
 }
+// Lot P4 (plateforme) : un code chargé dans un autre jeu (DailyTrack) depuis la dernière visite : les rangs connus et les jours passés de
+// l'ancienne identité sont oubliés, comme quand le code est chargé ici. Avant la file du classement et l'historique (ils lisent ces clés).
+if (store && !demoRank) followJumpIdentity(store, new History(store).entries, formatDay(gameDay()));
 /** L'identifiant de la plateforme de ce navigateur s'il existe (jamais créé ici). */
 const ownId = (): string | null => {
   try {
@@ -502,6 +513,9 @@ const ownId = (): string | null => {
   }
 };
 const rankSource: RankSource | null = apiBase === null ? null : demoRank ? new DemoRankSource(new URL("demo/", document.baseURI).href, store) : new HttpRankSource(apiBase);
+// Lot P4 (plateforme) : les lectures du jour regroupées (classement, fantôme du premier, carte des morts ; le profil au chargement) en une
+// requête, jamais deux fois en moins de 30 s (`dayReads.ts`).
+const reads = new DayReads({ source: rankSource, now: () => Date.now() });
 const identity = createIdentity(() => {
   if (!store) throw new Error("stockage indisponible");
   return store;
@@ -512,11 +526,20 @@ const identity = createIdentity(() => {
 // lire). Un code remplacé ailleurs (410) : la carte du profil le dit, rien n'est effacé ici.
 const NO_STORE: KeyValueStore = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 type JumpSyncResult = JumpMergeResult & { nameChanged: boolean };
+/** Lot P4 : la prochaine lecture du profil doit-elle ignorer la lecture du jour gardée (`syncProfile(true)`) ? */
+let profileForce = false;
 const jumpSync = new ProfileSync<JumpSyncResult, KeyValueStore, JumpMe>({
   api: () => {
     const src = rankSource;
     if (!src || demoRank || !src.jumpMe || !ownId()) return null;
-    return { me: (id: string) => src.jumpMe!(id) };
+    // Lot P4 : le profil vient de la lecture regroupée du jour (celle du chargement s'il a moins de 30 s).
+    return {
+      me: (id: string) => {
+        const force = profileForce;
+        profileForce = false;
+        return reads.profile(formatDay(gameDay()), id, { force });
+      },
+    };
   },
   playerId: () => ownId() ?? "",
   adopt: (id) => identity.setPlayerId(id),
@@ -547,10 +570,16 @@ const ranking = new Ranking({
   queue: new RankQueue(store, () => Date.now()),
   identity,
   sync: jumpSync,
-  // Lot P2 : un envoi accepté : le profil est relu (le meilleur gagne) et le premier aussi (c'est peut-être toi maintenant).
-  onAccepted: () => {
-    void syncProfile(true);
-    void loadFirst();
+  // Lot P2 : un envoi accepté : le premier est revu (c'est peut-être toi maintenant). Lot P4 : sans relecture — le classement est dans la
+  // réponse de l'envoi, l'historique local a déjà cet essai (le profil n'est plus relu après un envoi) ; le fantôme du premier n'est relu que
+  // si le premier de ce classement n'est plus celui qu'on a (un autre est passé devant).
+  onAccepted: (result) => {
+    if (jumpSync.state.status !== "ok") void syncProfile(true); // un joueur que le serveur ne connaissait pas : son profil, avec le jour (une lecture)
+    else if (firstStale(result.board)) void refreshDay({ force: true });
+    else {
+      if (result.board?.me?.rank === 1) noteOwnFirst(result.board.me.name, result.board.me.ticks);
+      if (dayReady) showFirst();
+    }
     // Lot P3 : le joueur existe maintenant sur le serveur : ses vies en attente partent.
     livesSender.wake();
   },
@@ -615,6 +644,7 @@ function homeProfile(): NonNullable<HomeView["profile"]> {
 
 /** Lot P2 : synchronise le profil (au plus une fois par 30 s, sauf `force`) ; l'accueil, Réglages › Profil et l'arrivée suivent. Ne bloque jamais. */
 async function syncProfile(force = false): Promise<void> {
+  if (force) profileForce = true;
   const r = await jumpSync.run({ force });
   // Réglages › Profil suit la synchronisation par lui-même (`jumpSync.subscribe`).
   if (!r.ran) return;
@@ -681,21 +711,57 @@ const firstDate = daily && choice && (choice.mode === "jour" || choice.mode === 
 /** Le premier tel que le serveur l'a rendu et que le jeu l'a rejoué, ou `null`. */
 let firstRemote = null as FirstGhost | null;
 /** Pourquoi il n'y en a pas (« no_ghost », « network », « autre version du jeu »…) : `__jump.firstGhost`. */
-let firstMiss = firstDate && rankSource?.firstGhost ? "" : "aucun serveur";
-/** Demande le premier ; le garde s'il se vérifie, l'oublie si le serveur n'en a pas (ou d'une autre version), le garde tel quel hors ligne. */
-async function fetchFirst(): Promise<void> {
-  if (!firstDate || !rankSource?.firstGhost) return;
-  const r = await rankSource.firstGhost(firstDate, ownId());
-  if (!r.ok) {
-    firstMiss = r.code;
-    if (r.status !== 0) firstRemote = null;
-    return;
-  }
-  const c = checkFirstGhost(r.data, level, levelId);
-  firstMiss = c.ok ? "" : c.reason;
-  firstRemote = c.ok ? c.ghost : null;
+let firstMiss = firstDate && rankSource ? "" : "aucun serveur";
+/** Lot P3 : pourquoi la carte des morts n'est pas là (`__jump.othersStains`) ; déclaré ici : une lecture du jour peut arriver avant la scène. */
+let othersMiss = firstDate && rankSource ? "" : "aucun serveur";
+/** Lot P4 : vrai une fois le jeu monté (scène, taches, écran d'arrivée) : une lecture arrivée avant n'est appliquée qu'alors (`showDay`). */
+let dayReady = false;
+/**
+ * Lot P4 : lit le jour (classement, fantôme du premier, carte des morts ; le profil du jour avec une identité) **en une requête**, sauf si la
+ * dernière lecture suffit (moins de 30 s, ou `maxAgeMs`). Ne bloque jamais ; un échec réseau garde ce qu'on avait.
+ */
+async function refreshDay(o: LoadOptions = {}): Promise<void> {
+  if (!firstDate || !reads.enabled) return;
+  ranking.noteBoardLoading(firstDate);
+  const r = await reads.load(firstDate, ownId(), o);
+  if (r.ok) return; // appliquée par `onDay` (toute lecture réussie l'est)
+  firstMiss = r.code;
+  othersMiss = r.code;
+  if (r.status !== 0) firstRemote = null;
+  ranking.noteBoardFailed(firstDate, r.status === 0, r.message);
 }
-if (options.watchFirst) await fetchFirst();
+/** Une lecture du jour réussie (quelle qu'en soit la raison) : le premier (vérifié par le rejeu du jeu), le classement ; puis l'affichage. */
+function onDay(b: DayBundle): void {
+  if (b.date !== firstDate) return;
+  if (!b.ghost) {
+    firstMiss = "no_ghost";
+    firstRemote = null;
+  } else {
+    const c = checkFirstGhost(b.ghost, level, levelId);
+    firstMiss = c.ok ? "" : c.reason;
+    firstRemote = c.ok ? c.ghost : null;
+  }
+  ranking.noteBoard(b.date, b.board);
+  if (dayReady) showDay(b);
+}
+reads.onLoad(onDay);
+/** Lot P4 : le serveur dit que tu es premier (réponse de ton envoi) : le premier, c'est ton meilleur essai (sans relire le fantôme). */
+function noteOwnFirst(name: string, ticks: number): void {
+  const best = memory.best;
+  const replay = memory.bestReplay();
+  if (!best || !replay || best.time !== ticks) return;
+  firstRemote = { name, replay, code: best.code, ticks: best.time, deaths: best.deaths, mine: true };
+  firstMiss = "";
+}
+/** Le premier d'un classement (réponse d'un envoi) n'est plus celui qu'on a : à relire. Toi premier : ton fantôme suffit. */
+function firstStale(board: JumpBoard | undefined): boolean {
+  if (!firstDate) return false;
+  if (!board) return true; // serveur d'avant le lot P4 : relire, comme avant
+  const top = board.top[0];
+  if (!top || board.me?.rank === 1) return false;
+  return !firstRemote || firstRemote.name !== top.name || firstRemote.ticks !== top.ticks;
+}
+if (options.watchFirst) await refreshDay();
 // `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
 // `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
 // `&solution` sur le niveau du jour (lot 5) : la rediffusion de l'auteur, la preuve du niveau.
@@ -793,12 +859,19 @@ function refreshFirstGhost(): void {
     firstGhostMesh?.setLabel(null, FIRST_GHOST_COLOR);
   }
 }
-/** Lot P2 : relit le premier (au chargement, puis à chaque arrivée) ; ne bloque jamais, rien sans réseau. */
-async function loadFirst(): Promise<void> {
+/** Lot P2 : le fantôme du premier tel qu'on le connaît (dans le niveau, et « Regarder le premier » à l'arrivée). Lot P4 : sans requête. */
+function showFirst(): void {
   if (!firstDate) return;
-  await fetchFirst();
   refreshFirstGhost();
   if (arrival.shown) arrival.setFirst(firstRemote && !watching && showFirstGhost(firstRemote, memory.best ? { ticks: memory.best.time, code: memory.best.code } : null) ? `Regarder le premier (${firstRemote.name})` : null);
+}
+/** Lot P4 : ce qu'une lecture du jour change à l'écran : le fantôme du premier, les taches de tout le monde. */
+function showDay(b: DayBundle): void {
+  showFirst();
+  const other = b.deaths.levelId !== null && b.deaths.levelId !== levelId;
+  othersMiss = other ? "autre niveau" : "";
+  othersMap = other ? null : b.deaths;
+  drawOthers();
 }
 const stains = scene ? new StainLayer(scene.world, palette.player, palette.tile) : null;
 const storedStains = () => memory.deaths.map((d) => stainFor(level, d.x, d.y));
@@ -808,7 +881,6 @@ stains?.reset(storedStains());
 // niveau, rafraîchie à l'arrivée ; une archive montre la carte figée de son jour. Réglage « Taches de tout le monde » (menu ⏸, mémorisé).
 const othersLayer = scene ? new StainLayer(scene.world, palette.player, palette.tile, { capacity: OTHERS_MAX_TILES, z: 0.005 }) : null;
 let othersMap: DeathMapData | null = null;
-let othersMiss = firstDate && rankSource?.deaths ? "" : "aucun serveur";
 let othersKeepout: Keepout | null = null;
 let othersDrawn: { count: number; discs: number; closest: number } = { count: 0, discs: 0, closest: Infinity };
 const othersOn = (): boolean => settings.othersStains && !watching;
@@ -827,19 +899,6 @@ function othersKeepoutDistance(x: number, y: number): number {
 /** La couche des autres : visible selon le réglage, jamais pendant un carnage ni une lecture. */
 function showOthers(): void {
   if (othersLayer) othersLayer.visible = othersOn() && !carnage;
-}
-/** Lit la carte des morts du jour (ne bloque jamais ; un échec réseau garde la carte déjà lue). */
-async function loadOthers(): Promise<void> {
-  if (!firstDate || !rankSource?.deaths) return;
-  const r = await rankSource.deaths(firstDate);
-  if (!r.ok) {
-    othersMiss = r.code;
-    return;
-  }
-  const other = r.data.levelId !== null && r.data.levelId !== levelId;
-  othersMiss = other ? "autre niveau" : "";
-  othersMap = other ? null : r.data;
-  drawOthers();
 }
 
 const T = UNITS_PER_TILE;
@@ -970,8 +1029,22 @@ interface CarnageRun {
   prevBits: number;
   /** Lot P3 : le carnage de tout le monde et son compteur (« 142 vies de 37 joueurs »), `null` : le tien. */
   everyone: string | null;
+  /** Lot P4 : le carnage de tout le monde s'allège sur un appareil lent (vies montrées, particules) ; `null` : le tien, jamais allégé. */
+  governor: CarnageGovernor | null;
 }
 let carnage: CarnageRun | null = null;
+/** Lot P4 (`__jump.carnage.govern(palier)`, mesure et tests) : le palier imposé aux carnages de tout le monde, ou `null` (l'appareil décide). */
+let forcedGovernorLevel: number | null = null;
+/** Lot P4 : le gouverneur décide (ou le palier imposé) : vies montrées au plus. Le compteur garde le vrai total. */
+function applyGovernor(c: CarnageRun): void {
+  if (c.governor) c.run.limit = c.governor.maxLives;
+}
+/** Lot P4 : les réglages d'effets du carnage allégé (particules réduites), gardés tant que ni les réglages ni la part ne changent. */
+let governed: { from: FeelLevels; part: number; levels: FeelLevels } | null = null;
+function governedLevels(part: number): FeelLevels {
+  if (!governed || governed.from !== levels || governed.part !== part) governed = { from: levels, part, levels: { ...levels, particles: levels.particles * part } };
+  return governed.levels;
+}
 /** Lot 10 : le dernier carnage joué (héros et autres vies), pour « Revoir le carnage ». */
 let lastCarnage: { hero: JumpReplay; others: JumpReplay[] } | null = null;
 let carnageBurst: { pool: BurstPool; mesh: BurstMesh } | null = null;
@@ -993,7 +1066,9 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
     const pool = new BurstPool(384);
     carnageBurst = { pool, mesh: new BurstMesh(pool, palette.player, scene.world) };
   }
-  carnage = { run, crowd, demo, prevBits: bits, everyone };
+  // Lot P4 : seul le carnage de tout le monde (≈ 150 vies d'autres joueurs) s'adapte à l'appareil ; le tien reste tel quel.
+  carnage = { run, crowd, demo, prevBits: bits, everyone, governor: everyone !== null ? new CarnageGovernor({ locked: forcedGovernorLevel }) : null };
+  applyGovernor(carnage);
   // Lot 10 : « Revoir le carnage » (écran d'arrivée) le relance tel quel (le tien, pas celui de tout le monde).
   if (!demo && everyone === null) lastCarnage = { hero, others };
   arrival.hide();
@@ -1083,15 +1158,18 @@ function centerOf(p: PlayerState | undefined): { x: number; y: number } {
  */
 function dispatch(events: readonly GameEvent[]): void {
   if (events.length === 0) return;
+  const part = carnage?.governor?.particles ?? 1;
   for (const e of events) {
     eventLog.push(e);
-    const out = feelEvent(e, particles, colors, levels);
+    const out = feelEvent(e, particles, colors, part < 1 && e.source !== "jeu" ? governedLevels(part) : levels);
     if (out.shake > 0) shake.start(out.shake);
     if (out.vibrate !== null && !watching) vibrator.play(out.vibrate, performance.now());
-    if (e.kind === "mort" && levels.particles > 0) {
+    // Lot P4 : le carnage de tout le monde allégé (gouverneur) a moins de particules, ou aucune.
+    const amount = e.source === "jeu" ? levels.particles : levels.particles * part;
+    if (e.kind === "mort" && amount > 0) {
       // Éclatement à la couleur du personnage : celui de la partie, ou le pool du carnage (héros et autres vies).
-      if (e.source === "jeu") burst.burst(e.x, -e.y, Math.max(1, Math.round(28 * levels.particles)));
-      else if (carnageBurst) carnageBurst.pool.burst(e.x, -e.y, Math.max(1, Math.round((e.source === "heros" ? 20 : 8) * levels.particles)));
+      if (e.source === "jeu") burst.burst(e.x, -e.y, Math.max(1, Math.round(28 * amount)));
+      else if (carnageBurst) carnageBurst.pool.burst(e.x, -e.y, Math.max(1, Math.round((e.source === "heros" ? 20 : 8) * amount)));
     }
     if (e.source !== "vie") {
       if (e.kind === "glisseDebut") slideSide = e.side;
@@ -1213,15 +1291,14 @@ function showFinish(): void {
   });
   // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
   refreshRank();
-  // Lot P2 : le fantôme du premier est relu (un autre a pu passer devant, ou c'est toi maintenant) ; « Regarder le premier » s'il y en a un.
+  // Lot P2 : le fantôme du premier ; « Regarder le premier » s'il y en a un. Lot P3 : la carte des morts ; « Le carnage de tout le monde »
+  // apparaît quand l'échantillon est là. Lot P4 : le top 10 et le premier connus s'affichent tout de suite ; le jour n'est relu (une requête :
+  // classement, premier, carte) que si la dernière lecture a plus de 3 minutes ; après ton envoi, le classement vient de sa réponse.
   arrival.setFirst(null);
-  void loadFirst();
-  // Lot P3 : la carte des morts est rafraîchie ; « Le carnage de tout le monde » apparaît quand l'échantillon est là.
-  void loadOthers();
+  showFirst();
+  void refreshDay({ maxAgeMs: ARRIVAL_REFRESH_MS });
   arrival.setEveryone(null);
   void loadEveryone();
-  // Le top 10 se lit tout de suite, même pendant l'envoi ou le choix du pseudo (il est relu après la réponse du serveur).
-  if (ranking.enabled && (c.mode === "archive" || c.mode === "jour")) void ranking.loadBoard(d.date);
 }
 
 /** Lot P1 : le classement de l'écran d'arrivée et le rang de l'accueil suivent l'état du classement. */
@@ -1310,10 +1387,10 @@ function goHome(): void {
   hud.hideFinish();
   home.open(homeView());
   syncPause();
-  // Lot P2 : le profil, relu (au plus une fois par 30 s).
+  // Lot P2 : le profil, relu (au plus une fois par 30 s). Lot P1 : le rang du jour. Lot P4 : les deux dans la même lecture du jour (au plus
+  // une fois par 30 s ; la synchronisation prend le profil dans cette lecture).
+  void refreshDay();
   void syncProfile();
-  // Lot P1 : le rang du jour, relu (sans attendre : l'accueil se met à jour quand la réponse arrive).
-  if (ranking.enabled && daily && ranking.known(daily.date)) void ranking.loadBoard(daily.date);
 }
 
 /** Lot 10 : Jouer (le geste réveille aussi le son). Après une arrivée, un nouvel essai ; après minuit, le niveau du nouveau jour. */
@@ -1451,14 +1528,15 @@ document.addEventListener("visibilitychange", () => {
 // le rang du jour de l'accueil est relu (les autres joueurs ont pu passer devant).
 offerBest();
 void ranking.flush();
-if (ranking.enabled && home && ranking.known(formatDay(today))) void ranking.loadBoard(formatDay(today));
-// Lot P2 : le profil DailyJump, au chargement (le meilleur gagne) ; puis le fantôme du premier (déjà lu pour `?watch=first`).
+// Lot P4 : **une** lecture du jour au chargement — le rang (lot P1), le fantôme du premier (lot P2, déjà lu pour `?watch=first`), la carte
+// des morts (lot P3) et le profil DailyJump (lot P2 : la synchronisation le prend dans cette lecture) — au lieu de quatre requêtes.
+dayReady = true;
+const keptDay = firstDate ? reads.last(firstDate) : null;
+if (keptDay) showDay(keptDay.data);
+void refreshDay();
 void syncProfile();
-if (options.watchFirst) refreshFirstGhost();
-else void loadFirst();
-// Lot P3 : les vies en attente (une autre page, une coupure) repartent ; la carte des morts du jour se charge avec le niveau.
+// Lot P3 : les vies en attente (une autre page, une coupure) repartent.
 void livesSender.flush();
-void loadOthers();
 
 // ——— Lot 5 : ligne du jour (DailyJump #N, mode, médaille visée), message discret, passage de minuit ———
 const dayLineEl = document.getElementById("dayline")!;
@@ -1706,7 +1784,17 @@ const info: JumpDebug = {
         tick: c.run.tick,
         heroTicks: c.run.heroTicks,
         label: c.everyone ?? carnageLabel(c.run.total, c.run.arrivals),
+        governor: c.governor ? { level: c.governor.level, maxLives: c.governor.maxLives, particles: c.governor.particles, windows: [...c.governor.windows] } : null,
       };
+    },
+    /** Lot P4 : impose un palier au carnage de tout le monde (celui en cours et les suivants) ; `null` : l'appareil décide de nouveau. */
+    govern(level: number | null) {
+      forcedGovernorLevel = level;
+      const c = carnage;
+      if (c?.governor) {
+        c.governor = new CarnageGovernor({ locked: level });
+        applyGovernor(c);
+      }
     },
     start() {
       const best = memory.bestReplay();
@@ -1777,6 +1865,9 @@ const info: JumpDebug = {
   ghostColors: { own: OWN_GHOST_COLOR, first: FIRST_GHOST_COLOR },
   get stains() {
     return { count: stains?.count ?? 0, discs: stains?.discs ?? 0, added: stains?.added ?? 0 };
+  },
+  get reads() {
+    return reads.debug();
   },
   get othersStains() {
     return {
@@ -2266,6 +2357,7 @@ if (!scene) {
   let last = performance.now();
   const frame = (now: number) => {
     const t0 = performance.now();
+    const interval = now - last;
     const dt = Math.min(Math.max((now - last) / 1000, 0), 0.25);
     last = now;
     controls.pollPad();
@@ -2285,6 +2377,9 @@ if (!scene) {
     workStats.draws++;
     frameWork.push(t2 - t0);
     if (frameWork.length > 600) frameWork.shift();
+    // Lot P4 : le carnage de tout le monde s'adapte à l'appareil (pas en pas à pas : les tests et la mesure imposent leur palier).
+    const c = carnage;
+    if (c?.governor && !manual && c.governor.observe(t2 - t0, interval, now)) applyGovernor(c);
     requestAnimationFrame(frame);
   };
   draw(1, 0);

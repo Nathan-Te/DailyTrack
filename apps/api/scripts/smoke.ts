@@ -11,14 +11,35 @@
 // Lot P3 : les morts de tout le monde. Le joueur d'essai envoie un lot de vies (des morts d'essais fictifs du niveau du jour) et une vie forgée
 // (en-tête incohérent) : le lot est accepté, la vie forgée écartée seule ; la carte des morts et l'échantillon du carnage répondent ; un
 // inconnu est refusé (404). Relancé sur la même base, un autre joueur « Fumée » : rien ne s'accumule de façon gênante (30 morts au plus chacun).
-import { readFileSync, readdirSync } from "node:fs";
+// Lot P4 : **`--lecture-seule`**, la vérification de la production après chaque déploiement (`production.yml`) : des GET seulement, sans
+// identifiant de joueur, **rien n'est jamais écrit** (`smokeRead.ts`) ; c'est **le seul mode permis contre la production**. Options :
+// `--environnement production` (ce que `/api/jump/info` doit dire), `--resume <fichier>` (le résumé du run, Markdown), `--retour <commande>`
+// (la commande de retour arrière à copier, écrite dans le résumé en cas d'échec). Le mode complet vérifie aussi la lecture regroupée.
+//   npm run smoke -w @cdj/api -- https://<API> --lecture-seule --environnement production
+import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, lifeReplay, replayAttempt } from "@cdj/jump-sim";
 import { jumpDailyOf } from "../src/jump";
+import { readOnlySmoke, smokeRefusal, smokeSummary } from "./smokeRead";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
-const originAt = process.argv.indexOf("--origin");
-const origin = originAt > 0 ? process.argv[originAt + 1] : undefined;
+const option = (name: string): string | undefined => {
+  const at = process.argv.indexOf(name);
+  return at > 0 ? process.argv[at + 1] : undefined;
+};
+const origin = option("--origin");
+const readOnly = process.argv.includes("--lecture-seule");
+
+// Lot P4 : la vérification en lecture seule (production comprise) : aucune écriture, puis la sortie.
+if (readOnly) {
+  const checks = await readOnlySmoke(base, (u, i) => fetch(u, i), { expectEnvironment: option("--environnement"), origin });
+  for (const c of checks) console.log(`${c.ok ? "✓" : "✗"} ${c.label} — ${c.route} ${c.status}${c.detail ? ` — ${c.detail}` : ""}`);
+  const failedChecks = checks.filter((c) => !c.ok).length;
+  const summary = option("--resume");
+  if (summary) appendFileSync(summary, smokeSummary(base, checks, option("--retour") ?? null));
+  console.log(failedChecks ? `\n${failedChecks} vérification(s) en échec` : "\nTout est bon (lecture seule : rien n'a été écrit).");
+  process.exit(failedChecks ? 1 : 0);
+}
 
 async function call(method: string, path: string, body?: unknown): Promise<{ status: number; body: any; ms: number; headers: Headers }> {
   const t0 = performance.now();
@@ -40,10 +61,12 @@ const player = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.t
 // Un pseudo appartient à son premier propriétaire (lot 30) : chaque exécution prend le sien, pour qu'on puisse relancer l'essai sur la même base.
 const NAME = `Fumée${Math.floor(1000 + Math.random() * 9000)}`;
 
-// Garde-fou (lot P1) : jamais contre la production (sauf l'image lancée en local par la CI, contre son propre sqld).
+// Garde-fou (lot P1, lot P4) : le mode complet jamais contre la production (sauf l'image lancée en local par la CI, contre son propre sqld) ;
+// contre la production, seul `--lecture-seule` est permis (`smokeRefusal`, testé).
 const where = await call("GET", "/api/jump/info").catch(() => null);
-if (where?.body?.environment === "production" && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) {
-  console.error(`smoke refuse ${base} : c'est un serveur de production. Il crée des joueurs « Fumée » : recette ou serveur local seulement.`);
+const refusal = smokeRefusal({ base, environment: typeof where?.body?.environment === "string" ? where.body.environment : null, readOnly });
+if (refusal) {
+  console.error(refusal);
   process.exit(1);
 }
 
@@ -206,6 +229,22 @@ check(
   "DailyJump : échantillon du carnage (rediffusions, sans identifiant)",
   jcarnage.status === 200 && Array.isArray(jcarnage.body.lives) && jcarnage.body.simVersion === JUMP_SIM_VERSION && !JSON.stringify(jcarnage.body).includes(player),
   `${jcarnage.body.lives?.length} vie(s) de ${jcarnage.body.players} joueur(s), ${jcarnage.ms} ms`,
+);
+
+// --- Lot P4 : la lecture regroupée (classement, fantôme, carte) et ses en-têtes de cache ------------------------------------------------
+const jbundle = await fetch(`${base}/api/jump/day/${date}/bundle`, { headers: { "X-Player-Id": player, ...(origin ? { Origin: origin } : {}) } });
+const bundleBody = (await jbundle.json()) as any;
+check(
+  "DailyJump : lecture regroupée (classement avec ta ligne, fantôme, carte, profil) en une requête, jamais en cache partagé",
+  jbundle.status === 200 &&
+    bundleBody.board?.me?.name === NAME &&
+    bundleBody.board?.participants >= 1 &&
+    typeof bundleBody.ghost?.replay === "string" &&
+    Array.isArray(bundleBody.deaths?.tiles) &&
+    bundleBody.profile?.name === NAME &&
+    /\bprivate\b/.test(jbundle.headers.get("cache-control") ?? "") &&
+    /x-player-id/i.test(jbundle.headers.get("vary") ?? ""),
+  `${jbundle.status} ${String(bundleBody.board?.participants)} classé(s), Cache-Control « ${String(jbundle.headers.get("cache-control"))} »`,
 );
 
 console.log(failed ? `\n${failed} vérification(s) en échec` : "\nTout est bon.");

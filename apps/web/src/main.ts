@@ -107,6 +107,11 @@ import { RunSession } from "./session";
 import { buildTrackScene, type TrackScene } from "./trackMesh";
 import { loadTunedParams, mountTunePanel } from "./tune";
 import { gameStorage } from "./storage";
+import { followIdentityRevision } from "./transfer";
+
+// Lot P4 (plateforme) : un code chargé dans un autre jeu de la plateforme (DailyJump) depuis la dernière visite : le cache des records de
+// l'ancienne identité est vidé, comme quand le code est chargé ici (`applyIdentity`). Avant toute lecture des records. Sinon, rien ne change.
+followIdentityRevision(gameStorage(), formatDay(parisDay(Date.now())));
 
 const params = new URLSearchParams(location.search);
 // Scénarios : `jour` (par défaut : le circuit du jour, `?seed=AAAA-MM-JJ` pour une autre date),

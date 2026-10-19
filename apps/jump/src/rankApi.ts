@@ -1,5 +1,6 @@
 import { ProfileClient, TIMEOUT_MS, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { JumpMedal } from "@cdj/jump-sim";
+import type { DayBundle } from "./dayReads";
 import type { FirstGhostData } from "./firstGhost";
 import type { JumpMe } from "./jumpProfile";
 import type { LifeVerdict } from "./livesQueue";
@@ -54,6 +55,8 @@ export interface JumpSubmitResult {
   medal: JumpMedal | null;
   rank: number;
   participants: number;
+  /** Lot P4 : le classement juste après l'envoi (top 10 et ta ligne) ; absent d'un serveur plus ancien (le jeu relit alors `/board`). */
+  board?: JumpBoard;
 }
 
 /** Lot P3 : un lot de vies (rediffusions de vies qui finissent par une mort) ; jamais une position ni une cause : le serveur rejoue. */
@@ -114,6 +117,11 @@ export interface RankSource extends ProfileApi {
   deaths?(date: string): Promise<ApiResult<DeathMapData>>;
   /** Lot P3 : l'échantillon du carnage de tout le monde d'un jour (figé pour une archive). */
   carnage?(date: string): Promise<ApiResult<CarnageSampleData>>;
+  /**
+   * Lot P4 : la lecture regroupée d'un jour (classement, fantôme du premier, carte des morts ; le profil du jour en cours avec un identifiant)
+   * en une requête. `fresh` : le navigateur revalide au lieu de servir sa copie (une lecture voulue malgré le cache court du jour en cours).
+   */
+  bundle?(date: string, playerId: string | null, options?: { fresh?: boolean }): Promise<ApiResult<DayBundle>>;
 }
 
 /** Le serveur de la plateforme. */
@@ -153,6 +161,16 @@ export class HttpRankSource extends ProfileClient implements RankSource {
 
   carnage(date: string) {
     return this.call<CarnageSampleData>("GET", `/api/jump/day/${encodeURIComponent(date)}/carnage`);
+  }
+
+  bundle(date: string, playerId: string | null, options: { fresh?: boolean } = {}) {
+    // Une seule adresse par jour pour toutes les lectures personnelles : un seul pré-vol CORS (OPTIONS) par 2 heures dans le navigateur.
+    const path = `/api/jump/day/${encodeURIComponent(date)}/bundle`;
+    const headers = playerId ? { "X-Player-Id": playerId } : undefined;
+    if (!options.fresh) return this.call<DayBundle>("GET", path, undefined, headers);
+    // Lecture voulue malgré le cache court du jour (`Cache-Control: private, max-age=30`) : le navigateur revalide.
+    const base = this.fetchImpl ?? ((u: string, i: RequestInit) => fetch(u, i));
+    return call<DayBundle>(this.base, "GET", path, undefined, TIMEOUT_MS, headers, (u, init) => base(u, { ...init, cache: "no-cache" }));
   }
 }
 
