@@ -12,6 +12,8 @@ import {
   MeshBasicMaterial,
   PlaneGeometry,
   RingGeometry,
+  CanvasTexture,
+  LinearFilter,
   type Object3D,
 } from "three";
 import { PLAYER_HEIGHT, PLAYER_WIDTH, UNITS_PER_TILE } from "@cdj/jump-sim";
@@ -35,11 +37,17 @@ export const STAIN_FADE = 1.6;
 /** Repère du pochoir écrit par les blocs pleins (`scene.ts`). */
 export const SOLID_STENCIL = 1;
 
+/** Lot P2 : hauteur de l'étiquette du fantôme du premier (tuiles) et son écart au-dessus du fantôme. Discrète : moins d'une demi-tuile. */
+export const GHOST_LABEL_HEIGHT = 0.42;
+const GHOST_LABEL_GAP = 0.3;
+
 export class GhostMesh {
   readonly group = new Group();
   private readonly body: Mesh;
   private readonly ring: Mesh;
   private readonly ringMat: MeshBasicMaterial;
+  /** Lot P2 : l'étiquette (pseudo) au-dessus du fantôme du premier, dessinée une fois dans une texture (rien n'est créé en jeu). */
+  private label: Mesh | null = null;
 
   constructor(parent: Object3D, color: number) {
     this.body = new Mesh(new PlaneGeometry(PW, PH), new MeshBasicMaterial({ color, transparent: true, opacity: 0.38, depthWrite: false }));
@@ -60,6 +68,10 @@ export class GhostMesh {
     this.group.visible = !!pose || !!death;
     this.body.visible = !!pose;
     if (pose) this.body.position.set(pose.x + PW / 2, -(pose.y + PH / 2), 0.18);
+    if (this.label) {
+      this.label.visible = !!pose;
+      if (pose) this.label.position.set(pose.x + PW / 2, -pose.y + GHOST_LABEL_GAP + GHOST_LABEL_HEIGHT / 2, 0.19);
+    }
     this.ring.visible = !!death;
     if (death) {
       this.ring.position.set(death.x, -death.y, 0.18);
@@ -71,6 +83,51 @@ export class GhostMesh {
 
   hide(): void {
     this.group.visible = false;
+  }
+
+  /**
+   * Lot P2 : le texte au-dessus du fantôme (le pseudo du premier), ou `null` pour l'enlever. Dessiné une fois dans une texture (`canvas`), à la
+   * couleur du fantôme, cerné de sombre pour se lire sur tous les ciels. Rien à faire sans document (tests sous Node).
+   */
+  setLabel(text: string | null, color: number): void {
+    if (this.label) {
+      this.group.remove(this.label);
+      (this.label.material as MeshBasicMaterial).map?.dispose();
+      (this.label.material as MeshBasicMaterial).dispose();
+      this.label.geometry.dispose();
+      this.label = null;
+    }
+    if (!text || typeof document === "undefined") return;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const px = 48;
+    const font = `600 ${px}px system-ui, sans-serif`;
+    ctx.font = font;
+    const width = Math.ceil(ctx.measureText(text).width) + 16;
+    canvas.width = width;
+    canvas.height = Math.round(px * 1.35);
+    ctx.font = font;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = "rgba(6, 4, 14, 0.85)";
+    ctx.strokeText(text, width / 2, canvas.height / 2);
+    ctx.fillStyle = `#${color.toString(16).padStart(6, "0")}`;
+    ctx.fillText(text, width / 2, canvas.height / 2);
+    const map = new CanvasTexture(canvas);
+    map.minFilter = LinearFilter;
+    const h = GHOST_LABEL_HEIGHT;
+    const mesh = new Mesh(new PlaneGeometry((h * canvas.width) / canvas.height, h), new MeshBasicMaterial({ map, transparent: true, opacity: 0.8, depthWrite: false }));
+    mesh.visible = false;
+    this.label = mesh;
+    this.group.add(mesh);
+  }
+
+  /** Lot P2 : l'étiquette est-elle posée (tests : `__jump.ghosts`) ? */
+  get labelled(): boolean {
+    return this.label !== null;
   }
 }
 

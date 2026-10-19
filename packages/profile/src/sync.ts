@@ -1,4 +1,4 @@
-import type { ApiResult, MeProfile, ProfileApi } from "./client";
+import type { ApiResult, MeProfile } from "./client";
 import { NAME_KEY, type Identity, type KeyValueStore } from "./identity";
 
 // Synchronisation du profil (lot 30 de DailyTrack, extraite au lot P0 sans changement) : le serveur fait foi, le stockage du navigateur n'est
@@ -29,7 +29,17 @@ export function mergeName(me: Pick<MeProfile, "name">, storage: KeyValueStore): 
 
 export type SyncStatus = "idle" | "syncing" | "ok" | "offline" | "revoked" | "unknown" | "disabled";
 
-export interface SyncState {
+/**
+ * Ce qu'un profil du serveur doit au moins contenir pour être synchronisé : le pseudo, le drapeau « à renommer » et des statistiques (celles du
+ * jeu). Lot P2 : un profil par jeu — `MeProfile` (`GET /api/me`, DailyTrack, le défaut) ou celui d'un autre jeu (`GET /api/jump/me`).
+ */
+export interface SyncedProfile {
+  name: string;
+  renameRequired: boolean;
+  stats: unknown;
+}
+
+export interface SyncState<P extends SyncedProfile = MeProfile> {
   status: SyncStatus;
   /** Heure de la dernière synchronisation réussie (ms), ou `null`. */
   at: number | null;
@@ -38,22 +48,22 @@ export interface SyncState {
   /** Compte renommé par la migration des doublons : proposer un nouveau pseudo. */
   renameRequired: boolean;
   /** Statistiques vues par le serveur (le cache n'en a qu'une partie). */
-  stats: MeProfile["stats"] | null;
+  stats: P["stats"] | null;
   /** Un envoi fait en arrière-plan a été refusé parce que le pseudo est déjà pris : la carte du profil propose d'en choisir un autre ou de charger son code. */
   nameProblem: { message: string; suggestions: string[] } | null;
   /** Pourquoi la dernière synchronisation a échoué (« 0:timeout », « 500:internal »…), pour le diagnostic ; jamais montré au joueur. */
   error: string | null;
 }
 
-export interface SyncDeps<M, S extends KeyValueStore = KeyValueStore> {
-  /** L'API du profil, ou `null` (aucun serveur, démonstration) : rien n'est alors synchronisé. */
-  api: () => Pick<ProfileApi, "me"> | null;
+export interface SyncDeps<M, S extends KeyValueStore = KeyValueStore, P extends SyncedProfile = MeProfile> {
+  /** L'API du profil (celle du jeu : `GET /api/me` pour DailyTrack), ou `null` (aucun serveur, démonstration) : rien n'est alors synchronisé. */
+  api: () => { me(playerId: string): Promise<ApiResult<P>> } | null;
   playerId: () => string;
   /** Adopte un autre identifiant (un « Changer mon code » dont la réponse s'était perdue). */
   adopt: (id: string) => void;
   storage: S;
   /** La fusion du jeu (le meilleur gagne) ; son résultat est rendu tel quel. */
-  merge: (me: MeProfile, storage: S) => M;
+  merge: (me: P, storage: S) => M;
   /** Le « Changer mon code » en cours (`cdj:player:next`). */
   identity: Pick<Identity, "pendingNextId" | "clearNextId">;
   now?: () => number;
@@ -71,20 +81,20 @@ export interface SyncOutcome<M> {
 
 export const SYNC_GAP_MS = 30_000;
 
-export class ProfileSync<M, S extends KeyValueStore = KeyValueStore> {
-  state: SyncState = { status: "idle", at: null, known: null, renameRequired: false, stats: null, nameProblem: null, error: null };
+export class ProfileSync<M, S extends KeyValueStore = KeyValueStore, P extends SyncedProfile = MeProfile> {
+  state: SyncState<P> = { status: "idle", at: null, known: null, renameRequired: false, stats: null, nameProblem: null, error: null };
   private readonly listeners = new Set<() => void>();
   private inflight: Promise<SyncOutcome<M>> | null = null;
   private lastTry = Number.NEGATIVE_INFINITY;
 
-  constructor(private readonly deps: SyncDeps<M, S>) {}
+  constructor(private readonly deps: SyncDeps<M, S, P>) {}
 
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
 
-  private set(patch: Partial<SyncState>): void {
+  private set(patch: Partial<SyncState<P>>): void {
     this.state = { ...this.state, ...patch };
     for (const fn of this.listeners) fn();
   }
@@ -104,7 +114,7 @@ export class ProfileSync<M, S extends KeyValueStore = KeyValueStore> {
     this.set({ renameRequired: false, nameProblem: null });
   }
 
-  noteNameProblem(problem: SyncState["nameProblem"]): void {
+  noteNameProblem(problem: SyncState<P>["nameProblem"]): void {
     this.set({ nameProblem: problem });
   }
 
@@ -123,8 +133,8 @@ export class ProfileSync<M, S extends KeyValueStore = KeyValueStore> {
     return this.inflight;
   }
 
-  private async go(api: Pick<ProfileApi, "me">, now: number): Promise<SyncOutcome<M>> {
-    let r: ApiResult<MeProfile> = await api.me(this.deps.playerId());
+  private async go(api: { me(playerId: string): Promise<ApiResult<P>> }, now: number): Promise<SyncOutcome<M>> {
+    let r: ApiResult<P> = await api.me(this.deps.playerId());
     if (!r.ok && r.code === "code_revoked") {
       // Notre propre « Changer mon code » a peut-être réussi sans que la réponse nous parvienne : le nouvel identifiant est gardé exactement pour ce cas.
       const next = this.deps.identity.pendingNextId();

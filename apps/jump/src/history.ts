@@ -106,6 +106,17 @@ export class History {
     }
   }
 
+  /** Lot P2 : remplace tout l'historique (fusion avec le profil du serveur : rien n'y est jamais retiré) ; rend vrai si le stockage l'a pris. */
+  replaceAll(list: readonly DayRecord[]): boolean {
+    this.list = tidy(list.filter(isDayRecord).map((r) => ({ ...r })));
+    try {
+      this.store?.setItem(HISTORY_KEY, JSON.stringify({ v: HISTORY_VERSION, jours: this.list } satisfies Stored));
+      return this.store !== null;
+    } catch {
+      return false;
+    }
+  }
+
   /** Le jour `date` (AAAA-MM-JJ) : ses entrées réunies (un changement de générateur peut en laisser deux), null s'il n'a pas été joué. */
   forDate(date: string): DayRecord | null {
     return mergeDay(this.list.filter((r) => r.date === date));

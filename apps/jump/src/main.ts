@@ -70,7 +70,8 @@ import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadTuned, mountTunePanel } from "./tune";
 import { LAUNCH_TILES, moduleTheme, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
-import { archiveHref, dailyHref, homeHref, moduleHref, readUrlOptions, type Scenario } from "./urlOptions";
+import { archiveHref, dailyHref, homeHref, moduleHref, readUrlOptions, watchFirstHref, type Scenario } from "./urlOptions";
+import { FIRST_GHOST_COLOR, OWN_GHOST_COLOR, checkFirstGhost, firstGhostLabel, showFirstGhost, type FirstGhost } from "./firstGhost";
 import { browserFrozen, browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
 import { MEDAL_ICON, NEW_DAY_TEXT, REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, shortDate, type DayChoice } from "./dailyInfo";
 import { FROZEN_DAYS } from "./frozen";
@@ -99,7 +100,10 @@ import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
 import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
-import { NAME_KEY, createIdentity, readIdentity } from "@cdj/profile";
+import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
+import { applyJumpIdentity, applyJumpProfile, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
+import { mountProfileUi } from "./profileUi";
+import { copyText } from "./clipboard";
 import { HttpRankSource, rankApiBase, type RankSource } from "./rankApi";
 import { RankQueue } from "./rankQueue";
 import { Ranking, mayRank } from "./ranking";
@@ -298,6 +302,25 @@ export interface JumpDebug {
   readonly storage: { clear(): number; size(): number; readonly memory: { best: number | null; lives: number; deaths: number; positions: { x: number; y: number }[] } };
   /** Lot 3 : fantôme (réglage, visible, où il en est). */
   readonly ghost: { enabled: boolean; available: boolean; visible: boolean; tick: number; status: string; x: number; y: number };
+  /** Lot P2 : le fantôme du premier (date, réglage, chargé, montré, dessiné, étiquette, pseudo, temps rejoué, « c'est toi », raison d'absence). */
+  readonly firstGhost: {
+    date: string | null;
+    enabled: boolean;
+    loaded: boolean;
+    shown: boolean;
+    visible: boolean;
+    labelled: boolean;
+    name: string | null;
+    label: string | null;
+    ticks: number | null;
+    mine: boolean;
+    miss: string;
+    tick: number;
+    x: number;
+    y: number;
+  };
+  /** Lot P2 : les couleurs des deux fantômes. */
+  readonly ghostColors: { own: number; first: number };
   /** Bascule le fantôme (comme G ou le bouton 👻). */
   toggleGhost(): boolean;
   /** Lot 3 : taches à l'écran. */
@@ -339,6 +362,8 @@ export interface JumpDebug {
    * `offline`, `version`, `name`…), envois en attente (la file hors ligne), rang connu du jour, dernier classement lu, dernière réponse.
    */
   readonly rank: unknown;
+  /** Lot P2 : la synchronisation du profil DailyJump (état, carte de l'accueil, dernier message de Réglages › Profil). */
+  readonly sync: unknown;
   /** Lot P1 : le classement relit ce qui attend et repart (comme le retour du réseau). */
   rankWake(): void;
   /** Lot 10 (tests) : joue une rediffusion (par défaut la preuve de l'auteur) comme les commandes du joueur ; rend son nombre de pas. */
@@ -445,14 +470,51 @@ if (demoRank && store) {
     /* stockage illisible : la démonstration demandera un pseudo */
   }
 }
+/** L'identifiant de la plateforme de ce navigateur s'il existe (jamais créé ici). */
+const ownId = (): string | null => {
+  try {
+    return store ? readPlayerId(store) : null;
+  } catch {
+    return null;
+  }
+};
 const rankSource: RankSource | null = apiBase === null ? null : demoRank ? new DemoRankSource(new URL("demo/", document.baseURI).href, store) : new HttpRankSource(apiBase);
+const identity = createIdentity(() => {
+  if (!store) throw new Error("stockage indisponible");
+  return store;
+});
+// ——— Lot P2 (plateforme) : le profil DailyJump synchronisé par le serveur (`GET /api/jump/me`), fusionné avec l'historique local — le meilleur
+// gagne, morts et essais locaux gardés, jours d'un autre appareil ajoutés (`jumpProfile.ts`). Au chargement, au retour sur l'accueil (au plus
+// une fois par 30 s) et après chaque envoi accepté. Seulement avec un serveur (pas la démonstration) et une identité déjà là (jamais créée pour
+// lire). Un code remplacé ailleurs (410) : la carte du profil le dit, rien n'est effacé ici.
+const NO_STORE: KeyValueStore = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+type JumpSyncResult = JumpMergeResult & { nameChanged: boolean };
+const jumpSync = new ProfileSync<JumpSyncResult, KeyValueStore, JumpMe>({
+  api: () => {
+    const src = rankSource;
+    if (!src || demoRank || !src.jumpMe || !ownId()) return null;
+    return { me: (id: string) => src.jumpMe!(id) };
+  },
+  playerId: () => ownId() ?? "",
+  adopt: (id) => identity.setPlayerId(id),
+  storage: store ?? NO_STORE,
+  merge: (me, st) => {
+    const r = applyJumpProfile(me, st, history.entries);
+    if (r.changed) history.replaceAll(r.list);
+    return r;
+  },
+  identity,
+});
 const ranking = new Ranking({
   source: rankSource,
   queue: new RankQueue(store, () => Date.now()),
-  identity: createIdentity(() => {
-    if (!store) throw new Error("stockage indisponible");
-    return store;
-  }),
+  identity,
+  sync: jumpSync,
+  // Lot P2 : un envoi accepté : le profil est relu (le meilleur gagne) et le premier aussi (c'est peut-être toi maintenant).
+  onAccepted: () => {
+    void syncProfile(true);
+    void loadFirst();
+  },
   identityStore: () => store,
   today: () => gameDay(),
   sinceMidnight: () => Date.now() - parisDayStart(parisDay(Date.now())),
@@ -464,7 +526,7 @@ const ranking = new Ranking({
 // ——— Lot 10 : historique et accueil, montés avant le chargement du niveau (l'accueil s'affiche tout de suite, Jouer attend le niveau) ———
 const history = new History(store);
 /** L'accueil existe sur la page du niveau du jour (hors lecture) ; il s'ouvre au chargement si `wantsHome`, sinon par le menu ⏸ ou l'arrivée. */
-const homeHere = choice !== null && choice.mode === "jour" && trialTheme === null && !options.solution && !options.watchBest && !options.carnageDemo;
+const homeHere = choice !== null && choice.mode === "jour" && trialTheme === null && !options.solution && !options.watchBest && !options.watchFirst && !options.carnageDemo;
 const homeAtStart = homeHere && wantsHome(options);
 const homeTheme = themeByName(options.theme) ?? themeForDay(today);
 /** Vrai une fois le jeu entièrement prêt : avant, ouvrir ou fermer une fenêtre de l'accueil ne touche pas encore à la pause. */
@@ -473,6 +535,11 @@ const home: Home | null = homeHere
   ? mountHome({
       onPlay: () => playFromHome(),
       onSettings: () => setMenu(true),
+      // Lot P2 : la carte du profil ouvre Réglages › Profil.
+      onProfile: () => {
+        setMenu(true);
+        document.getElementById("profile")?.scrollIntoView({ block: "start" });
+      },
       archiveRows: () => archiveDays(gameDay()).map((d) => archiveRow(d, themeForDay(d).label, history.forDate(formatDay(d)))),
       archiveHref: (date) => archiveHref(date, options),
       onChange: () => {
@@ -497,7 +564,22 @@ function homeView(): HomeView {
   const status = homeStatus(history.forDate(formatDay(today)));
   // Lot P1 : ton rang du jour (un temps classé aujourd'hui).
   const rank = homeRankText(ranking.enabled, ranking.known(formatDay(today)));
-  return { ...heading, status: status.text, finished: status.finished, streak: streakText(history.streak(gameDay(now))), countdown: countdownText(now), rank };
+  return { ...heading, status: status.text, finished: status.finished, streak: streakText(history.streak(gameDay(now))), countdown: countdownText(now), rank, profile: homeProfile() };
+}
+
+/** Lot P2 : la petite carte du profil de l'accueil : pseudo, série, nombre de médailles (historique fusionné) ; un code remplacé ailleurs le dit. */
+function homeProfile(): NonNullable<HomeView["profile"]> {
+  const st = jumpStats(history.entries, gameDay());
+  const medals = st.medals.author + st.medals.gold + st.medals.silver + st.medals.bronze;
+  return { name: readIdentity(store).name, streak: st.streak, medals, revoked: jumpSync.state.status === "revoked" };
+}
+
+/** Lot P2 : synchronise le profil (au plus une fois par 30 s, sauf `force`) ; l'accueil, Réglages › Profil et l'arrivée suivent. Ne bloque jamais. */
+async function syncProfile(force = false): Promise<void> {
+  const r = await jumpSync.run({ force });
+  // Réglages › Profil suit la synchronisation par lui-même (`jumpSync.subscribe`).
+  if (!r.ran) return;
+  if (home?.isOpen) home.update(homeView());
 }
 
 // Lot 7b : le niveau se charge hors du fil principal (cache vérifié, sinon worker, sinon repli ; `dailyLoader.ts`). Attente au niveau du module.
@@ -553,10 +635,41 @@ if (options.sprint) Object.assign(params, SPRINT_TRIAL_PARAMS);
 // Un morceau : `module:<id>:<variante>` (lot 4), rangé à part selon l'entrée (le niveau à couloir n'est pas le même).
 const levelId: string = built ? built.levelId : daily ? daily.id : (options.scenario ?? "essai");
 const memory = new DayMemory({ store, level, levelId, key: mod ? `${levelId}:${mod.entry}` : levelId, today: () => formatDay(gameDay()) });
+// ——— Lot P2 (plateforme) : le fantôme du premier de ce jour (niveau du jour ou archive ; jamais un essai de thème forcé ni un jour à venir),
+// lu sur le serveur (ou la démonstration) et **vérifié par le rejeu du jeu** (`checkFirstGhost` : une autre version est ignorée). Sans réseau :
+// rien. `?watch=first` l'attend avant de commencer (lien direct : le délai du client, 8 s, borne l'attente ; sinon partie normale).
+const firstDate = daily && choice && (choice.mode === "jour" || choice.mode === "archive") && !isTrial ? daily.date : null;
+/** Le premier tel que le serveur l'a rendu et que le jeu l'a rejoué, ou `null`. */
+let firstRemote = null as FirstGhost | null;
+/** Pourquoi il n'y en a pas (« no_ghost », « network », « autre version du jeu »…) : `__jump.firstGhost`. */
+let firstMiss = firstDate && rankSource?.firstGhost ? "" : "aucun serveur";
+/** Demande le premier ; le garde s'il se vérifie, l'oublie si le serveur n'en a pas (ou d'une autre version), le garde tel quel hors ligne. */
+async function fetchFirst(): Promise<void> {
+  if (!firstDate || !rankSource?.firstGhost) return;
+  const r = await rankSource.firstGhost(firstDate, ownId());
+  if (!r.ok) {
+    firstMiss = r.code;
+    if (r.status !== 0) firstRemote = null;
+    return;
+  }
+  const c = checkFirstGhost(r.data, level, levelId);
+  firstMiss = c.ok ? "" : c.reason;
+  firstRemote = c.ok ? c.ghost : null;
+}
+if (options.watchFirst) await fetchFirst();
 // `?watch=best` : lecture du meilleur essai, sans jouer (rien n'est enregistré). Sans meilleur essai : partie normale et un message.
 // `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
 // `&solution` sur le niveau du jour (lot 5) : la rediffusion de l'auteur, la preuve du niveau.
-const watchReplay = mod?.solution ? solutionReplay(mod.id, mod.variant, mod.entry) : daily && options.solution ? daily.replay : options.watchBest ? memory.bestReplay() : null;
+// `?watch=first` (lot P2) : l'essai du premier du classement de ce jour.
+const watchReplay = mod?.solution
+  ? solutionReplay(mod.id, mod.variant, mod.entry)
+  : daily && options.solution
+    ? daily.replay
+    : options.watchBest
+      ? memory.bestReplay()
+      : options.watchFirst
+        ? (firstRemote?.replay ?? null)
+        : null;
 const watching = watchReplay !== null;
 const watchInputs = watchReplay ? fromRuns(watchReplay.runs) : [];
 let watchIndex = 0;
@@ -613,7 +726,41 @@ const refreshGhost = () => {
   }
 };
 refreshGhost();
-const ghostMesh = scene ? new GhostMesh(scene.world, palette.player) : null;
+// Lot P2 : ton fantôme a sa couleur (cyan clair), plus le jaune du personnage ; celui du premier est mauve, avec son pseudo.
+const ghostMesh = scene ? new GhostMesh(scene.world, OWN_GHOST_COLOR) : null;
+let firstGhost: Ghost | null = null;
+const firstGhostMesh = scene ? new GhostMesh(scene.world, FIRST_GHOST_COLOR) : null;
+/** Le fantôme du premier est-il voulu ? Le réglage du menu (« Fantôme du premier »), sauf `?ghost=off|best`. */
+const firstGhostOn = (): boolean => settings.firstGhost && !options.firstGhostOff;
+/**
+ * Lot P2 : monte (ou retire) le fantôme du premier : pas en lecture, pas de doublon (si le premier, c'est toi, ton fantôme est le sien :
+ * `showFirstGhost`). Calé sur le chrono de l'essai en cours, comme le tien.
+ */
+function refreshFirstGhost(): void {
+  const own = memory.best ? { ticks: memory.best.time, code: memory.best.code } : null;
+  const f = firstRemote;
+  if (!watching && f && showFirstGhost(f, own)) {
+    if (firstGhost?.replay !== f.replay) {
+      try {
+        firstGhost = new Ghost(level, f.replay);
+        firstGhost.sync(session.state.time);
+        firstGhostMesh?.setLabel(firstGhostLabel(f.name), FIRST_GHOST_COLOR);
+      } catch {
+        firstGhost = null;
+      }
+    }
+  } else if (firstGhost) {
+    firstGhost = null;
+    firstGhostMesh?.setLabel(null, FIRST_GHOST_COLOR);
+  }
+}
+/** Lot P2 : relit le premier (au chargement, puis à chaque arrivée) ; ne bloque jamais, rien sans réseau. */
+async function loadFirst(): Promise<void> {
+  if (!firstDate) return;
+  await fetchFirst();
+  refreshFirstGhost();
+  if (arrival.shown) arrival.setFirst(firstRemote && !watching && showFirstGhost(firstRemote, memory.best ? { ticks: memory.best.time, code: memory.best.code } : null) ? `Regarder le premier (${firstRemote.name})` : null);
+}
 const stains = scene ? new StainLayer(scene.world, palette.player, palette.tile) : null;
 const storedStains = () => memory.deaths.map((d) => stainFor(level, d.x, d.y));
 stains?.reset(storedStains());
@@ -688,6 +835,7 @@ function drainEssais(): RecordedEssai | null {
     last = rec;
     if (rec.newBest) {
       refreshGhost();
+      refreshFirstGhost();
       // Lot P1 : un meilleur essai du niveau du jour part au classement (en arrière-plan ; la file garde le meilleur s'il n'y a pas de réseau).
       if (!e.tuned) offerBest();
     }
@@ -767,6 +915,7 @@ function startCarnage(hero: JumpReplay, others: JumpReplay[], demo: boolean, bit
   trail.clear();
   hud.hideFinish();
   ghostMesh?.hide();
+  firstGhostMesh?.hide();
   stains?.reset([]);
   scene.zoom = CARNAGE_ZOOM;
   scene.resize(touchOn);
@@ -905,7 +1054,11 @@ function onEvent(e: SessionEvent): void {
     if (watching) {
       // Une lecture n'est pas un temps du joueur : le meilleur affiché reste celui du jour.
       session.best = memory.best?.time ?? null;
-      hud.finish(session, { ...finishOptions(), title: mod?.solution ? "Solution" : daily && options.solution ? "Rediffusion de l'auteur" : "Rediffusion", watching: true });
+      hud.finish(session, {
+        ...finishOptions(),
+        title: mod?.solution ? "Solution" : daily && options.solution ? "Rediffusion de l'auteur" : options.watchFirst && firstRemote ? `Rediffusion du premier : ${firstRemote.name}` : "Rediffusion",
+        watching: true,
+      });
       return;
     }
     // Lot 8 : la médaille obtenue sur le niveau du jour a sa phrase musicale (après la fanfare d'arrivée). Lot 10 : avec l'écran d'arrivée,
@@ -968,6 +1121,9 @@ function showFinish(): void {
   });
   // Lot P1 : le classement (jour : rang et top 10 après l'envoi ; archive : le classement figé de ce jour, rien n'est envoyé).
   refreshRank();
+  // Lot P2 : le fantôme du premier est relu (un autre a pu passer devant, ou c'est toi maintenant) ; « Regarder le premier » s'il y en a un.
+  arrival.setFirst(null);
+  void loadFirst();
   // Le top 10 se lit tout de suite, même pendant l'envoi ou le choix du pseudo (il est relu après la réponse du serveur).
   if (ranking.enabled && (c.mode === "archive" || c.mode === "jour")) void ranking.loadBoard(d.date);
 }
@@ -1029,6 +1185,8 @@ function goHome(): void {
   hud.hideFinish();
   home.open(homeView());
   syncPause();
+  // Lot P2 : le profil, relu (au plus une fois par 30 s).
+  void syncProfile();
   // Lot P1 : le rang du jour, relu (sans attendre : l'accueil se met à jour quand la réponse arrive).
   if (ranking.enabled && daily && ranking.known(daily.date)) void ranking.loadBoard(daily.date);
 }
@@ -1089,6 +1247,7 @@ function stepOnce(): void {
   dispatch(eventsBetween(prev, session.state, level, session.params, eventTick++, "jeu", { bits, prevBits }));
   if (session.state.status !== ATTEMPT_DEAD && prev.status !== ATTEMPT_DEAD) look = onStep(look, prev.player, session.state.player, session.params.fallSpeed);
   ghost?.sync(session.state.time);
+  firstGhost?.sync(session.state.time);
   if (phase !== "loading" && phase !== "no-webgl") phase = phaseOf(session.state);
   if (event) onEvent(event);
   if (!carnage) drainEssais();
@@ -1122,6 +1281,7 @@ function restart(): void {
     session.prev = session.state;
   }
   ghost?.sync(0);
+  firstGhost?.sync(0);
   controls.resetLatch();
   stepper.reset();
   look = restLook();
@@ -1140,9 +1300,15 @@ const arrival = mountArrival({
   // Lot P1 : le premier pseudo (ou un autre après un refus) : vérifié par le serveur, puis l'envoi en attente part avec lui.
   onName: (name) => void ranking.chooseName(name).then(() => refreshRank()),
   onReload: () => location.reload(),
+  // Lot P2 : « Regarder le premier » : la lecture de son essai (`?watch=first`, la date pour une archive).
+  onFirst: () => location.assign(location.pathname + watchFirstHref(choice?.mode === "archive" && daily ? daily.date : null, options)),
 });
 // Lot P1 : l'état du classement change (envoi, réponse, lecture) : l'écran d'arrivée et l'accueil suivent. Le réseau revient : ce qui attend repart.
-ranking.onChange(() => refreshRank());
+ranking.onChange(() => {
+  refreshRank();
+  // Lot P2 : un envoi refusé parce que le code a été remplacé ailleurs (410) : la synchronisation le constate, la carte du profil le dit.
+  if (ranking.state.status === "revoked" && jumpSync.state.status !== "revoked") void syncProfile(true);
+});
 window.addEventListener("online", () => ranking.wake());
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") ranking.wake();
@@ -1152,6 +1318,10 @@ document.addEventListener("visibilitychange", () => {
 offerBest();
 void ranking.flush();
 if (ranking.enabled && home && ranking.known(formatDay(today))) void ranking.loadBoard(formatDay(today));
+// Lot P2 : le profil DailyJump, au chargement (le meilleur gagne) ; puis le fantôme du premier (déjà lu pour `?watch=first`).
+void syncProfile();
+if (options.watchFirst) refreshFirstGhost();
+else void loadFirst();
 
 // ——— Lot 5 : ligne du jour (DailyJump #N, mode, médaille visée), message discret, passage de minuit ———
 const dayLineEl = document.getElementById("dayline")!;
@@ -1226,7 +1396,15 @@ function updateOverlay(): void {
     `position  colonne ${fmt(v.x, 2)} · rangée ${fmt(v.y, 2)}   pas ${session.ticks}`,
     options.hitbox ? "boîtes justes (hitbox)" : "",
     manual ? "pas à pas (manual)" : "",
-    watching ? (mod?.solution ? "lecture de la solution du morceau (solution)" : daily && options.solution ? "lecture de la rediffusion de l'auteur (solution)" : "lecture du meilleur essai (watch=best)") : "",
+    watching
+      ? mod?.solution
+        ? "lecture de la solution du morceau (solution)"
+        : daily && options.solution
+          ? "lecture de la rediffusion de l'auteur (solution)"
+          : options.watchFirst
+            ? "lecture de l'essai du premier (watch=first)"
+            : "lecture du meilleur essai (watch=best)"
+      : "",
     daily ? dailyOverlay() : "",
     `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
   ]
@@ -1428,6 +1606,27 @@ const info: JumpDebug = {
   toggleGhost() {
     return toggleGhost();
   },
+  get firstGhost() {
+    const g = firstGhost;
+    const p = g?.state.player;
+    return {
+      date: firstDate,
+      enabled: firstGhostOn(),
+      loaded: firstRemote !== null,
+      shown: g !== null,
+      visible: firstGhostMesh?.group.visible ?? false,
+      labelled: firstGhostMesh?.labelled ?? false,
+      name: firstRemote?.name ?? null,
+      label: firstRemote ? firstGhostLabel(firstRemote.name) : null,
+      ticks: firstRemote?.ticks ?? null,
+      mine: firstRemote?.mine ?? false,
+      miss: firstMiss,
+      tick: g?.tick ?? 0,
+      x: p ? p.x / T : 0,
+      y: p ? p.y / T : 0,
+    };
+  },
+  ghostColors: { own: OWN_GHOST_COLOR, first: FIRST_GHOST_COLOR },
   get stains() {
     return { count: stains?.count ?? 0, discs: stains?.discs ?? 0, added: stains?.added ?? 0 };
   },
@@ -1523,6 +1722,9 @@ const info: JumpDebug = {
   get rank() {
     return { ...(ranking.debug(today) as object), demo: demoRank };
   },
+  get sync() {
+    return { ...jumpSync.state, profile: homeProfile(), message: profileUi.message };
+  },
   rankWake() {
     ranking.wake();
   },
@@ -1612,7 +1814,31 @@ function applySettings(next: PlayerSettings, changed: keyof PlayerSettings): voi
   }
   if (changed === "vibration" && settings.vibration) vibrator.play(25, now);
 }
+// Lot P2 : Réglages › Profil (le profil commun de la plateforme, le même que DailyTrack), dans le menu ⏸.
+const profileUi = mountProfileUi({
+  online: rankSource !== null && !demoRank && !!rankSource.jumpMe,
+  name: () => readIdentity(store).name,
+  playerId: ownId,
+  ensurePlayerId: () => identity.getPlayerId(),
+  stats: () => jumpStats(history.entries, gameDay()),
+  sync: () => jumpSync.state,
+  rename: (name) => ranking.profile.rename(name),
+  changeCode: async () => {
+    const r = await ranking.profile.changeCode();
+    if (r.ok) void syncProfile(true);
+    return r;
+  },
+  fetchProfile: (id) => rankSource!.jumpMe!(id),
+  applyIdentity: (who) => (store ? applyJumpIdentity(who, store, history.entries, formatDay(gameDay())) : false),
+  copy: copyText,
+  reload: () => location.reload(),
+  onChange: () => {
+    if (home?.isOpen) home.update(homeView());
+  },
+});
+jumpSync.subscribe(() => profileUi.refresh());
 const menu = mountPauseMenu({
+  profile: profileUi.root,
   settings,
   canVibrate: typeof navigator.vibrate === "function",
   onChange: applySettings,
@@ -1728,6 +1954,7 @@ function draw(alpha: number, dt: number): void {
   scene.setWorld(sa, sb, alpha, clock);
   feelFrame(scene, sb, x, y, alive, dt, session.params.runSpeed);
   drawGhost(alpha);
+  drawFirstGhost(alpha);
   // Mort : la caméra reste où l'on est mort (l'éclatement se voit) ; le nouvel essai la repose au départ.
   if (sb.status !== ATTEMPT_DEAD) {
     const f = follow(b);
@@ -1800,6 +2027,18 @@ function drawGhost(alpha: number): void {
   else ghostMesh.set(poseBetween(g.prev.player, gs.player, alpha), null);
 }
 
+/** Lot P2 : le fantôme du premier, dessiné comme le tien (sa couleur, son pseudo au-dessus). */
+function drawFirstGhost(alpha: number): void {
+  if (!firstGhostMesh) return;
+  const g = firstGhost;
+  if (!g || !firstGhostOn() || watching) {
+    firstGhostMesh.hide();
+    return;
+  }
+  const gs = g.state;
+  if (gs.status === ATTEMPT_DEAD) firstGhostMesh.set(null, { x: gs.deathX / T, y: gs.deathY / T, dying: Math.min(1, gs.deathTicks / RESPAWN_TICKS) });
+  else firstGhostMesh.set(poseBetween(g.prev.player, gs.player, alpha), null);
+}
 
 /** Le carnage : le héros (le personnage, avec ses yeux), la foule (un carré translucide par vie), le monde du héros, la caméra sur lui. */
 function drawCarnage(sc: NonNullable<typeof scene>, c: CarnageRun, alpha: number, dt: number): void {
@@ -1883,6 +2122,8 @@ if (!scene) {
   else if (mod?.solution && !watching) hud.toast("Pas de solution stockée pour ce morceau");
   else if (mod?.solution) hud.toast("Solution du morceau");
   else if (options.watchBest && !watching) hud.toast("Pas encore de meilleur essai aujourd'hui : à toi de jouer");
+  else if (options.watchFirst && !watching) hud.toast(firstMiss === "no_ghost" ? "Personne n'est encore classé ce jour-là : à toi de jouer" : "Fantôme du premier indisponible : à toi de jouer");
+  else if (options.watchFirst && firstRemote) hud.toast(`Rediffusion de ${firstRemote.name}, premier du jour`);
   else if (watching) hud.toast("Rediffusion de ton meilleur essai");
   if (options.carnageDemo) startDemo();
 }

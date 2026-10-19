@@ -1,6 +1,6 @@
 import type { ProfileApi } from "./client";
-import { normalizeName, type Identity } from "./identity";
-import type { ProfileSync } from "./sync";
+import { normalizeName, type Identity, type KeyValueStore } from "./identity";
+import type { ProfileSync, SyncState, SyncedProfile } from "./sync";
 
 // Le pseudo et le code d'un joueur de la plateforme (lot 30 de DailyTrack : `Online.rename` et `Online.changeCode`, extraits au lot P0 sans
 // changement). Un pseudo appartient à son premier propriétaire, sur toute la base et pour tous les jeux : le serveur dit s'il est libre et
@@ -12,8 +12,11 @@ export const NAME_TAKEN_MESSAGE = "Ce pseudo est déjà utilisé. C'est le tien 
 export type RenameResult = { ok: true; name: string } | { ok: false; code: string; message: string; suggestions?: string[] };
 export type ChangeCodeResult = { ok: true } | { ok: false; code: string; message: string };
 
-/** Ce que le pseudo et le code demandent de la synchronisation (ce que le serveur sait de ce profil). */
-export type SyncView = Pick<ProfileSync<unknown>, "state" | "noteRenamed" | "noteServerKnows" | "reset">;
+/**
+ * Ce que le pseudo et le code demandent de la synchronisation (ce que le serveur sait de ce profil). Lot P2 : n'importe quel profil de jeu
+ * (`ProfileSync<…, P>`), le pseudo et le code ne lisent que `state.known`.
+ */
+export type SyncView = Pick<ProfileSync<unknown, KeyValueStore, SyncedProfile>, "noteRenamed" | "noteServerKnows" | "reset"> & { readonly state: Pick<SyncState<SyncedProfile>, "known"> };
 
 export interface ProfileDeps<S extends SyncView> {
   /** L'API du profil, ou `null` sans serveur. */

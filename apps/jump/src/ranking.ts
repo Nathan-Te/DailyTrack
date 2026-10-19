@@ -53,11 +53,15 @@ export interface RankingDeps {
   setTimer(fn: () => void, ms: number): unknown;
   clearTimer(handle: unknown): void;
   now(): number;
+  /** Lot P2 : la synchronisation du profil DailyJump (ce que le pseudo et le code demandent d'elle) ; sans elle, aucune. */
+  sync?: SyncView;
+  /** Lot P2 : un envoi vient d'être accepté (le jeu relit alors son profil sur le serveur). */
+  onAccepted?(): void;
 }
 
-/** La synchronisation du profil n'existe pas encore pour DailyJump (lot P2) : le pseudo ne passe que par la vérification « libre ou non ». */
+/** Sans synchronisation du profil (tests, démonstration) : le pseudo ne passe que par la vérification « libre ou non ». */
 const NO_SYNC: SyncView = {
-  state: { status: "disabled", at: null, known: null, renameRequired: false, stats: null, nameProblem: null, error: null },
+  state: { known: null },
   noteRenamed() {},
   noteServerKnows() {},
   reset() {},
@@ -76,7 +80,7 @@ export class Ranking {
 
   constructor(private readonly deps: RankingDeps) {
     this.state = { status: deps.source ? "idle" : "off", message: "", suggestions: [] };
-    this.profile = new Profile({ api: deps.source, demo: false, identity: deps.identity, sync: NO_SYNC });
+    this.profile = new Profile({ api: deps.source, demo: false, identity: deps.identity, sync: deps.sync ?? NO_SYNC });
     deps.queue.purge(deps.today(), deps.sinceMidnight());
   }
 
@@ -173,6 +177,8 @@ export class Ranking {
         queue.confirm(p, { date: p.date, levelId: d.levelId, ticks: d.bestTicks, rank: d.rank, participants: d.participants, medal: d.medal });
         this.lastResult = { date: d.date, ticks: d.ticks, deaths: d.deaths, rank: d.rank, participants: d.participants };
         this.set({ status: "ranked", message: "", suggestions: [] });
+        this.deps.sync?.noteServerKnows(true);
+        this.deps.onAccepted?.();
         void this.loadBoard(p.date);
         continue;
       }

@@ -66,8 +66,9 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "ghost",
-    description: "`off` cache le fantôme de ton meilleur essai du jour (sans changer le réglage mémorisé, bouton 👻 ou touche G).",
-    values: ["off"],
+    description:
+      "Les fantômes, sans changer les réglages mémorisés (bouton 👻 ou touche G pour le tien, « Fantôme du premier » du menu ⏸ pour l'autre). `off` : aucun fantôme ; lot P2 (plateforme) : `best` : seulement le tien (le fantôme du premier caché) ; `first` : seulement celui du premier (le tien caché).",
+    values: ["off", "best", "first"],
   },
   {
     name: "carnage",
@@ -77,8 +78,9 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   },
   {
     name: "watch",
-    description: "`best` rejoue ton meilleur essai du jour, seul, sans pouvoir jouer (R le relance). Sans meilleur essai, la partie est normale.",
-    values: ["best"],
+    description:
+      "`best` rejoue ton meilleur essai du jour, seul, sans pouvoir jouer (R le relance). Sans meilleur essai, la partie est normale. Lot P2 (plateforme) : `first` rejoue l'essai du **premier du classement** de ce jour (le niveau du jour, ou une archive avec `seed`), lu sur le serveur (ou la démonstration) et vérifié par le rejeu du jeu ; sans serveur, sans premier ou d'une autre version, la partie est normale et un message le dit.",
+    values: ["best", "first"],
   },
   {
     name: "modules",
@@ -166,12 +168,18 @@ export interface UrlChoices {
   hitbox: boolean;
   /** Effets visuels (particules, secousses, traînée) ; `?fx=off` les coupe (pas les taches). */
   fx: boolean;
-  /** Fantôme forcé à « caché » (`?ghost=off`). */
+  /** Fantôme forcé à « caché » (`?ghost=off`, ou `?ghost=first` : seulement celui du premier). */
   ghostOff: boolean;
+  /** Lot P2 : fantôme du premier forcé à « caché » (`?ghost=off` ou `?ghost=best`). */
+  firstGhostOff: boolean;
+  /** Lot P2 : la valeur de `?ghost=` (gardée par les liens internes), ou `null`. */
+  ghost: "off" | "best" | "first" | null;
   /** Carnage de démonstration au chargement (`?carnage=demo`). */
   carnageDemo: boolean;
   /** Lecture du meilleur essai, sans jouer (`?watch=best`). */
   watchBest: boolean;
+  /** Lot P2 : lecture de l'essai du premier du classement, sans jouer (`?watch=first`). */
+  watchFirst: boolean;
   /** La galerie des morceaux (`?modules`, ou un `?module=` inconnu). */
   gallery: boolean;
   /** Le morceau à jouer (`?module=<id>`), sa variante, son entrée, et la lecture de sa solution (`&solution`) ; null : un scénario. */
@@ -196,6 +204,8 @@ export function readUrlOptions(search: string): UrlChoices {
   const gallery = params.has("modules") || (params.has("module") && mod === null);
   const chosen = scenario === null ? null : (SCENARIOS as readonly string[]).includes(scenario) ? (scenario as Scenario) : "essai";
   const daily = chosen === null && mod === null && !gallery;
+  const g = params.get("ghost");
+  const ghost = g === "off" || g === "best" || g === "first" ? g : null;
   return {
     scenario: chosen,
     daily,
@@ -208,9 +218,12 @@ export function readUrlOptions(search: string): UrlChoices {
     zones: params.has("zones"),
     hitbox: debug && params.has("hitbox"),
     fx: params.get("fx") !== "off",
-    ghostOff: params.get("ghost") === "off",
+    ghostOff: ghost === "off" || ghost === "first",
+    firstGhostOff: ghost === "off" || ghost === "best",
+    ghost,
     carnageDemo: params.get("carnage") === "demo",
     watchBest: params.get("watch") === "best",
+    watchFirst: daily && params.get("watch") === "first",
     gallery,
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
@@ -239,7 +252,7 @@ function carried(from: UrlChoices, home = false): string[] {
   if (from.debug) out.push("debug");
   if (from.touch) out.push(`touch=${from.touch}`);
   if (!from.fx) out.push("fx=off");
-  if (from.ghostOff) out.push("ghost=off");
+  if (from.ghost) out.push(`ghost=${from.ghost}`);
   if (from.theme) out.push(`theme=${from.theme}`);
   if (!from.metronome) out.push("metronome=off");
   if (home && from.home === false) out.push("accueil=0");
@@ -271,6 +284,11 @@ export function dailyHref(from: UrlChoices): string {
 /** Lot 10 : lien vers l'accueil (le niveau du jour, accueil montré) : sans `seed` ni `solution`, avec les outils d'affichage gardés. */
 export function homeHref(from: UrlChoices): string {
   return `?${carried(from).join("&")}`;
+}
+
+/** Lot P2 : lien vers la lecture de l'essai du premier (`?watch=first`) d'une date (`seed` pour une archive), avec les outils d'affichage gardés. */
+export function watchFirstHref(date: string | null, from: UrlChoices): string {
+  return `?${[...(date ? [`seed=${date}`] : []), "watch=first", ...carried(from)].join("&")}`;
 }
 
 /** Lot 10 : lien vers l'archive d'une date (`?seed=AAAA-MM-JJ`), avec les outils d'affichage gardés. */

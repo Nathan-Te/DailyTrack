@@ -15,8 +15,8 @@ import type { UrlChoices } from "./urlOptions";
  * L'accueil s'ouvre-t-il ? Sur la page du niveau du jour, oui, sauf `?accueil=0` ; jamais pour un lien direct (`seed`, `solution`, `watch`,
  * `carnage`, et bien sûr `module`, `modules`, `scenario`, qui ne sont pas le niveau du jour). `?archives` l'ouvre (sur la liste).
  */
-export function wantsHome(o: Pick<UrlChoices, "daily" | "seed" | "solution" | "watchBest" | "carnageDemo" | "home" | "archives">): boolean {
-  if (!o.daily || o.seed !== null || o.solution || o.watchBest || o.carnageDemo) return false;
+export function wantsHome(o: Pick<UrlChoices, "daily" | "seed" | "solution" | "watchBest" | "carnageDemo" | "home" | "archives"> & Partial<Pick<UrlChoices, "watchFirst">>): boolean {
+  if (!o.daily || o.seed !== null || o.solution || o.watchBest || o.watchFirst || o.carnageDemo) return false;
   return o.archives || o.home !== false;
 }
 

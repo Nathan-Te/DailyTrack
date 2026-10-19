@@ -1,5 +1,7 @@
 import { ProfileClient, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { JumpMedal } from "@cdj/jump-sim";
+import type { FirstGhostData } from "./firstGhost";
+import type { JumpMe } from "./jumpProfile";
 
 // Le classement du jour de DailyJump vu du jeu (lot P1 de la plateforme) : ce qu'on envoie et ce que le serveur rend, et le client HTTP
 // (`POST /api/jump/submit`, `GET /api/jump/day/<date>/board`) bâti sur celui du profil commun (`@cdj/profile` : délai de 8 s, erreurs
@@ -57,6 +59,10 @@ export interface JumpSubmitResult {
 export interface RankSource extends ProfileApi {
   submit(playerId: string, name: string | null, entry: RankEntry, versions: { simVersion: number; generatorVersion: number }): Promise<ApiResult<JumpSubmitResult>>;
   board(date: string, playerId: string | null): Promise<ApiResult<JumpBoard>>;
+  /** Lot P2 : le fantôme du premier d'un jour (`mine` si l'identifiant fourni est le sien). 404 `no_ghost` : personne n'est classé. */
+  firstGhost?(date: string, playerId: string | null): Promise<ApiResult<FirstGhostData>>;
+  /** Lot P2 : le profil DailyJump du joueur (`GET /api/jump/me`) ; la démonstration n'en a pas. */
+  jumpMe?(playerId: string): Promise<ApiResult<JumpMe>>;
 }
 
 /** Le serveur de la plateforme. */
@@ -73,6 +79,14 @@ export class HttpRankSource extends ProfileClient implements RankSource {
 
   board(date: string, playerId: string | null) {
     return this.call<JumpBoard>("GET", `/api/jump/day/${encodeURIComponent(date)}/board`, undefined, playerId ? { "X-Player-Id": playerId } : undefined);
+  }
+
+  firstGhost(date: string, playerId: string | null) {
+    return this.call<FirstGhostData>("GET", `/api/jump/day/${encodeURIComponent(date)}/ghost/first`, undefined, playerId ? { "X-Player-Id": playerId } : undefined);
+  }
+
+  jumpMe(playerId: string) {
+    return this.call<JumpMe>("GET", "/api/jump/me", undefined, { "X-Player-Id": playerId });
   }
 }
 
