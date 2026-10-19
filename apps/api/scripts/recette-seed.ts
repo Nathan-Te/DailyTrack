@@ -49,6 +49,13 @@ if (today === null || today === undefined) {
 // SQLite (`node:sqlite`, Node 22) n'est chargé que pour une base locale : contre Turso, le script tourne aussi sur un Node plus ancien.
 const db: SqlDb = target.kind === "turso" ? await openLibsql({ url: target.url, authToken: target.authToken }) : (await import("../src/node-sqlite")).openSqlite(target.path);
 console.log(`base de recette : ${target.kind === "turso" ? new URL(target.url.replace(/^libsql:/, "https:")).hostname : target.path} · ${days} jour(s) jusqu'au ${formatDay(today)}`);
+// La base répond-elle ? Sinon chaque course serait refusée (erreur 500) sans dire pourquoi.
+try {
+  await db.first("SELECT 1 AS ok");
+} catch (e) {
+  console.error(`recette:seed : la base de recette ne répond pas (adresse ou jeton faux ?) — ${e instanceof Error ? e.message : String(e)}`);
+  process.exit(1);
+}
 
 let clock = 0;
 const api = createApi({ db, now: () => clock, demoPlayers: true, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });

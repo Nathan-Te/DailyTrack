@@ -115,7 +115,7 @@ Aucun nouveau **secret** GitHub : la recette utilise les mêmes `GCP_WORKLOAD_ID
 
 ## Étape 6 — Créer le service de recette (5 min)
 
-Ouvre la PR du lot R1 → onglet **Checks** → workflow **Recette** (il a été « sauté », recette non configurée) → **Re-run all jobs**.
+Onglet **Actions** du dépôt → dans la colonne de gauche, le workflow **Recette** (pas **CI** : la CI ne fait que les tests, elle ne déploie rien) → son run sur la PR du lot R1 (il a été « sauté », recette non configurée) → **Re-run all jobs**.
 - **Tu dois voir**, au bout de 4 à 6 minutes, le job `deploy / deploy` vert, et dans le **résumé** : « API de recette déployée (révision b-…, sans trafic) », puis « Essai de bout en bout : réussi ». Comme le service n'existait pas, cette première révision reçoit aussi le trafic de recette (annonce « Service de recette créé »).
 - Sur la PR, un commentaire **« Recette »** avec l'adresse de la révision (`https://b-…---cdj-api-recette-xxxxxxxxxx-ew.a.run.app`) et le lien de l'aperçu.
 
