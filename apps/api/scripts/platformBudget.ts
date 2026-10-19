@@ -1,0 +1,119 @@
+// Lot P4 (plateforme) : la projection du coût d'un mois, à partir du nombre de joueurs par jour de chaque jeu (saisis à la main). Logique pure
+// (testée : `apps/api/test/platformBudget.test.ts`) ; `scripts/measure-platform.ts` l'affiche. Les coûts unitaires sont **mesurés**, pas
+// supposés : chaque chiffre dit d'où il vient (README de lot, `npm run measure:budget`, `npm run measure:jump-api -w @cdj/api`). Ils sont à
+// remesurer quand un jeu change ce qu'il lit ou écrit (le README du lot qui le change le dit).
+
+/** L'offre gratuite, par mois (Cloud Run : niveau 1, requêtes et calcul ; Turso : offre gratuite). */
+export const FREE_TIER = {
+  requests: 2_000_000,
+  vcpuS: 180_000,
+  gibS: 360_000,
+  tursoRead: 500_000_000,
+  tursoWritten: 10_000_000,
+} as const;
+
+/**
+ * Prix au-delà de l'offre gratuite (Cloud Run, facturation à la requête, niveau 1 — `europe-west1`), en dollars US : tarifs publics de Google
+ * au moment du lot, **à vérifier dans la console** (Facturation → Tarifs). Turso : au-delà de l'offre gratuite, il faut une offre payante (prix
+ * sur turso.tech/pricing) : pas de chiffre ici.
+ */
+export const PRICES_USD = { perMillionRequests: 0.4, perVcpuS: 0.000024, perGibS: 0.0000025 } as const;
+
+/** Mémoire d'une instance (512 Mio, `deploy-api.yml`) : facturée pendant le même temps que le processeur. */
+const GIB_PER_INSTANCE = 0.5;
+/** Borne haute du calcul facturé : chaque requête seule, arrondie aux 100 ms (comme `measure:budget`). */
+const BILLED_S_PER_REQUEST = 0.1;
+
+/** Ce que coûte un joueur pendant une journée (ou une demi-heure de Salon). */
+export interface UnitCost {
+  /** Requêtes applicatives, plus les pré-vols CORS (OPTIONS) : toutes passent par Cloud Run. */
+  requests: number;
+  preflights: number;
+  read: number;
+  written: number;
+  /** Secondes de calcul mesurées (sans l'arrondi de facturation). */
+  cpuS: number;
+  /** Secondes facturées au plus (arrondi aux 100 ms par requête, et plus pour les requêtes longues). */
+  billedS: number;
+}
+
+/**
+ * **DailyJump**, un joueur type d'une journée (lot P4 : `npm run measure:jump-api -w @cdj/api`, sqld local, 19/10/2026) : 2 chargements, 4
+ * arrivées dont 2 envois, 1 pseudo, 50 morts dont 30 envoyées en 3 lots, le carnage de tout le monde regardé 2 fois, 30 jours d'historique ;
+ * pré-vols : deux visites à plus de 2 heures d'écart (P4 : 7). Calcul : envois ≈ 50 ms, lecture regroupée ≈ 30 ms, lot de vies ≈ 60 ms.
+ */
+export const JUMP_PLAYER: UnitCost = { requests: 12, preflights: 7, read: 1120, written: 32, cpuS: 0.45, billedS: 1.9 };
+/**
+ * **DailyJump**, ce qui ne dépend pas d'un joueur, par jour (lot P3) : la carte recalculée au plus toutes les 3 min (480 fois au pire, une ligne lue
+ * par joueur du jour), l'oubli de fin de jour (3 lignes lues et 1 écrite par joueur).
+ */
+export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlayerForget: 3, writtenPerPlayerForget: 1, rebuildS: 0.25 };
+/**
+ * **DailyTrack**, un joueur du circuit du jour avec la synchronisation du profil (lot 30 : 4 lectures, 14 jours d'historique ; `npm run
+ * measure:budget`, sqld local, 19/10/2026) : 13 requêtes, 1 650 lignes lues, 42 écrites, 0,5 s de calcul, 3 vCPU-s facturées au plus. Pré-vols
+ * (estimés, non mesurés) : `/api/me` et l'envoi, deux visites = 4.
+ */
+export const TRACK_PLAYER: UnitCost = { requests: 13, preflights: 4, read: 1650, written: 42, cpuS: 0.5, billedS: 3 };
+/**
+ * **Salon de DailyTrack**, 30 minutes d'un joueur (3 sessions ; `measure:budget` : 558 requêtes, 12 763 lignes lues à 10 présents — 63 025 à 50 —,
+ * 265 écrites, 5,8 s de calcul, 97 vCPU-s au plus ; `measure:salon` : 0,64 ms de calcul par joueur et par seconde, une instance tient ≈ 770
+ * joueurs à 50 %). Pré-vols : un envoi par session (adresse propre à la session) = 3.
+ */
+export const SALON_HALF_HOUR: UnitCost = { requests: 558, preflights: 3, read: 12_763, written: 265, cpuS: 5.8, billedS: 97 };
+
+export interface PlatformInput {
+  /** Joueurs par jour de DailyJump, de DailyTrack (circuit du jour), et joueurs qui passent 30 minutes au Salon chaque jour. */
+  jump: number;
+  track: number;
+  salon: number;
+  days?: number;
+}
+
+export interface Resource {
+  name: string;
+  used: number;
+  free: number;
+  /** Part de l'offre gratuite utilisée (1 = tout). */
+  share: number;
+  /** Au-delà de l'offre gratuite, en dollars US (Cloud Run) ; `null` : Turso, offre payante à choisir. */
+  overUsd: number | null;
+}
+
+/** Le mois projeté : chaque ressource, sa part de l'offre gratuite, ce qui dépasse ; et le jeu qui pèse le plus sur chacune. */
+export function projectMonth(input: PlatformInput): { resources: Resource[]; byGame: Record<string, { requests: number; read: number; written: number; billedS: number }>; firstLimit: string | null; headroom: number } {
+  const days = input.days ?? 30;
+  const games = {
+    DailyJump: {
+      requests: input.jump * (JUMP_PLAYER.requests + JUMP_PLAYER.preflights),
+      read: input.jump * JUMP_PLAYER.read + (input.jump > 0 ? JUMP_DAY.rebuilds * (input.jump * JUMP_DAY.readPerPlayerPerRebuild + 2) : 0) + input.jump * JUMP_DAY.readPerPlayerForget,
+      written: input.jump * JUMP_PLAYER.written + (input.jump > 0 ? JUMP_DAY.rebuilds : 0) + input.jump * JUMP_DAY.writtenPerPlayerForget,
+      billedS: input.jump * JUMP_PLAYER.billedS + (input.jump > 0 ? JUMP_DAY.rebuilds * JUMP_DAY.rebuildS : 0),
+    },
+    DailyTrack: {
+      requests: input.track * (TRACK_PLAYER.requests + TRACK_PLAYER.preflights),
+      read: input.track * TRACK_PLAYER.read,
+      written: input.track * TRACK_PLAYER.written,
+      billedS: input.track * TRACK_PLAYER.billedS,
+    },
+    Salon: {
+      requests: input.salon * (SALON_HALF_HOUR.requests + SALON_HALF_HOUR.preflights),
+      read: input.salon * SALON_HALF_HOUR.read,
+      written: input.salon * SALON_HALF_HOUR.written,
+      billedS: input.salon * SALON_HALF_HOUR.billedS,
+    },
+  };
+  const byGame = Object.fromEntries(Object.entries(games).map(([k, v]) => [k, { requests: v.requests * days, read: v.read * days, written: v.written * days, billedS: v.billedS * days }]));
+  const total = (key: "requests" | "read" | "written" | "billedS") => Object.values(byGame).reduce((s, g) => s + g[key], 0);
+  const vcpu = total("billedS");
+  const over = (used: number, free: number, price: number) => Math.max(0, used - free) * price;
+  const resources: Resource[] = [
+    { name: "requêtes Cloud Run (pré-vols compris)", used: total("requests"), free: FREE_TIER.requests, share: 0, overUsd: over(total("requests"), FREE_TIER.requests, PRICES_USD.perMillionRequests / 1e6) },
+    { name: "calcul Cloud Run, vCPU-s (borne haute)", used: vcpu, free: FREE_TIER.vcpuS, share: 0, overUsd: over(vcpu, FREE_TIER.vcpuS, PRICES_USD.perVcpuS) },
+    { name: "mémoire Cloud Run, Gio-s (borne haute)", used: vcpu * GIB_PER_INSTANCE, free: FREE_TIER.gibS, share: 0, overUsd: over(vcpu * GIB_PER_INSTANCE, FREE_TIER.gibS, PRICES_USD.perGibS) },
+    { name: "lignes lues Turso", used: total("read"), free: FREE_TIER.tursoRead, share: 0, overUsd: null },
+    { name: "lignes écrites Turso", used: total("written"), free: FREE_TIER.tursoWritten, share: 0, overUsd: null },
+  ].map((r) => ({ ...r, share: r.used / r.free }));
+  const worst = resources.reduce((a, b) => (b.share > a.share ? b : a));
+  // Tout est proportionnel au nombre de joueurs (à la carte recalculée près, négligeable) : la marge est l'inverse de la part la plus haute.
+  return { resources, byGame, firstLimit: worst.share >= 1 ? worst.name : null, headroom: worst.share > 0 ? 1 / worst.share : Number.POSITIVE_INFINITY };
+}

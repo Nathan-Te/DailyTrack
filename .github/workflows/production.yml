@@ -5,7 +5,9 @@ name: Production
 #      (`recette:seed`, lot P2) sont réécrits à côté, sans retenir la suite ;
 #   2. validation : les deux jobs suivants attendent ensemble l'approbation d'un relecteur de l'environnement GitHub `production` (Nathan) :
 #      un seul clic (« Review deployments » → production → Approve) les libère tous les deux ;
-#   3. l'API de production (si la fusion touche le serveur) et le site publié depuis main (DailyTrack et DailyJump) partent ensemble.
+#   3. l'API de production (si la fusion touche le serveur) et le site publié depuis main (DailyTrack et DailyJump) partent ensemble ;
+#   4. lot P4 : la production déployée est vérifiée **en lecture seule** (`smoke --lecture-seule` : des GET seulement, rien n'est écrit) ; un
+#      échec rend le run rouge et le résumé dit quelle route et quelle réponse, avec la commande de retour arrière à copier (le retour reste manuel).
 # Deux fusions rapprochées : la seconde attend la fin de la première (validée ou refusée) ; une troisième remplace la seconde en attente.
 # « Run workflow » sur main : republie le site et, si demandé, redéploie l'API (validation demandée aussi). Pas à pas : docs/plateforme/recette.md.
 on:
@@ -93,3 +95,33 @@ jobs:
     with:
       production: true
     secrets: inherit
+
+  # Lot P4 : la production vient d'être déployée : on la vérifie **sans rien écrire** (`smoke --lecture-seule`, apps/api/scripts/smokeRead.ts :
+  # des GET seulement, aucun identifiant de joueur, le seul mode de `smoke` permis contre la production). Un échec rend le run rouge ; le résumé
+  # dit quelle route et quelle réponse, et donne la commande de retour arrière (manuel : rien n'est annulé automatiquement).
+  verification:
+    needs: [api, pages]
+    if: ${{ !cancelled() && needs.api.result == 'success' && needs.api.outputs.enabled == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Vérifier la production en lecture seule
+        env:
+          API_URL: ${{ needs.api.outputs.url }}
+          REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+          SERVICE: ${{ vars.GCP_SERVICE || 'cdj-api' }}
+        run: |
+          npm ci -w @cdj/api --ignore-scripts
+          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          retour="gcloud run revisions list --service $SERVICE --region $REGION   # repérer la révision d'avant
+          gcloud run services update-traffic $SERVICE --region $REGION --to-revisions=<révision d'avant>=100"
+          if ! npm run smoke -w @cdj/api -- "$API_URL" --lecture-seule --environnement production --origin "https://${owner}.github.io" --resume "$GITHUB_STEP_SUMMARY" --retour "$retour"; then
+            echo "::error title=Production : vérification en échec::Une route de la production ne répond pas comme prévu (détail dans le résumé du run). Le retour arrière est manuel : commande dans le résumé."
+            exit 1
+          fi

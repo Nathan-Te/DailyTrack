@@ -19,6 +19,7 @@ import {
   type JumpReplay,
   type Level,
 } from "@cdj/jump-sim";
+import { WithHeaders, cacheHeaders } from "./cache";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } from "./games";
 import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
@@ -36,6 +37,14 @@ import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
 //   POST /api/jump/lives                   (lot P3) un lot de vies du jour, chacune rejouée ; seules les morts rejouées comptent (`jumpLives.ts`)
 //   GET  /api/jump/day/<AAAA-MM-JJ>/deaths (lot P3) la carte des morts du jour (comptes agrégés par tuile, cause dominante)
 //   GET  /api/jump/day/<AAAA-MM-JJ>/carnage (lot P3) l'échantillon du carnage de tout le monde (≈ 150 vies d'autres joueurs)
+//   GET  /api/jump/day/<AAAA-MM-JJ>/bundle (lot P4) **la lecture regroupée** : classement, fantôme du premier et carte des morts en une
+//                                          réponse (+ le profil DailyJump du jour en cours avec `X-Player-Id`) ; l'échantillon reste à part
+//
+// **Lot P4 : moins de requêtes.** Un jeu lit au chargement et à l'arrivée le classement, le fantôme du premier et la carte des morts : la lecture
+// regroupée les rend en une requête (Cloud Run facture les requêtes : 2 M par mois gratuites, partagées avec DailyTrack et son Salon). Les
+// routes séparées restent (compatibilité, `smoke`). Les lectures portent un `Cache-Control` (`cache.ts`) : long pour un jour fermé, court pour
+// le jour en cours, **jamais partagé** quand la réponse dépend de `X-Player-Id` (`private` + `Vary`). L'envoi d'un essai rend aussi le
+// classement (`board`) : le jeu n'a pas à le relire après son envoi.
 //
 // **Lot P2 : un profil par jeu.** `GET /api/me` reste celui de DailyTrack (DailyJump ne fournit pas de crochet `profile` : la réponse de
 // `/api/me` ne change pas) ; DailyJump a le sien, `/api/jump/me`, sous son préfixe. Toutes deux sont des lectures : débit **en mémoire**.
@@ -160,6 +169,18 @@ export interface JumpSubmitResult {
   medal: JumpMedal | null;
   rank: number;
   participants: number;
+  /** Lot P4 : le classement du jour juste après cet envoi (celui de `/board`, ta ligne comprise) : le jeu ne le relit pas. */
+  board: JumpBoard;
+}
+
+/** `GET /api/jump/day/<date>/board` : top 10, nombre de classés, ta ligne (`X-Player-Id`). */
+export interface JumpBoard {
+  date: string;
+  open: boolean;
+  participants: number;
+  levelId: string | null;
+  top: JumpBoardRow[];
+  me: JumpBoardRow | null;
 }
 
 /** `GET /api/jump/day/<date>/ghost/first` (lot P2) : le meilleur essai du jour, tel que le serveur l'a rejoué et classé premier. */
@@ -197,6 +218,22 @@ export interface JumpMe {
   generatorVersion: number;
   days: JumpMeDay[];
   stats: { days: number; medals: { author: number; gold: number; silver: number; bronze: number }; streak: number };
+}
+
+/**
+ * `GET /api/jump/day/<date>/bundle` (lot P4) : ce que le jeu lit au chargement et à l'arrivée, en une réponse. `ghost` vaut `null` si personne
+ * n'est classé (la route séparée répond 404 `no_ghost`). Avec `X-Player-Id`, pour le jour en cours : le profil DailyJump (`/api/jump/me`), ou
+ * `null` et la raison (`profileError` : `unknown_player`, `code_revoked`) ; jamais pour un jour passé. **Une seule adresse par jour** pour toutes
+ * les lectures personnelles : le navigateur ne fait qu'un pré-vol CORS (OPTIONS, facturé comme une requête) par adresse et par 2 heures.
+ */
+export interface JumpBundle {
+  date: string;
+  open: boolean;
+  board: JumpBoard;
+  ghost: JumpFirstGhost | null;
+  deaths: unknown;
+  profile?: JumpMe | null;
+  profileError?: string;
 }
 
 const LEVEL_ID = /^jour-(\d{4}-\d{2}-\d{2})-g(\d{1,4})(-t[a-z]+)?$/;
@@ -489,7 +526,17 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     const bestTicks = improved ? v.ticks : previous!.ticks;
     const bestDeaths = improved ? v.deaths : previous!.deaths;
     const bestAt = improved ? t : previous!.submitted_at;
-    const [rank, total] = await Promise.all([rankOf(v.day, bestTicks, bestAt, playerId), participants(v.day)]);
+    const [rank, total, rows] = await Promise.all([rankOf(v.day, bestTicks, bestAt, playerId), participants(v.day), topOf(v.day)]);
+    const medal = jumpMedalFor(bestTicks, v.info.medals);
+    // Lot P4 : le classement d'après l'envoi (le top 10 et ta ligne) : le jeu n'a pas à relire `/board`.
+    const board: JumpBoard = {
+      date: v.info.date,
+      open: isOpen(v.day),
+      participants: total,
+      levelId: v.info.id,
+      top: rows.map((r, i) => ({ rank: i + 1, name: r.name, ticks: r.ticks, deaths: r.deaths, medal: jumpMedalFor(r.ticks, v.info.medals) })),
+      me: { rank, name, ticks: bestTicks, deaths: bestDeaths, medal },
+    };
     return {
       accepted: true,
       date: v.info.date,
@@ -499,22 +546,26 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       improved,
       bestTicks,
       bestDeaths,
-      medal: jumpMedalFor(bestTicks, v.info.medals),
+      medal,
       rank,
       participants: total,
+      board,
     };
   }
 
+  /** Les 10 premiers d'un jour (la règle des égalités). */
+  function topOf(day: number): Promise<{ ticks: number; deaths: number; name: string }[]> {
+    return db.all<{ ticks: number; deaths: number; name: string }>(
+      "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
+      [day, JUMP_BOARD_TOP],
+    );
+  }
+
   /** Le classement d'un jour : top 10, nombre de classés, la ligne du joueur (en-tête `X-Player-Id`). Un jour passé est figé, toujours lisible. */
-  async function board(date: string, req: Request): Promise<unknown> {
-    const day = dayOf(date);
-    const me = headerPlayer(req, false);
+  async function board(day: number, me: string | null): Promise<JumpBoard> {
     const [count, rows, own] = await Promise.all([
       participants(day),
-      db.all<{ ticks: number; deaths: number; name: string }>(
-        "SELECT r.ticks AS ticks, r.deaths AS deaths, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT ?",
-        [day, JUMP_BOARD_TOP],
-      ),
+      topOf(day),
       me
         ? db.first<{ ticks: number; deaths: number; submitted_at: number; name: string }>(
             "SELECT r.ticks AS ticks, r.deaths AS deaths, r.submitted_at AS submitted_at, p.name AS name FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? AND r.player_id = ?",
@@ -537,9 +588,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
    * Lot P2 : la rediffusion du premier d'un jour (la règle du classement : temps, puis premier envoyé, puis identifiant). Un jour passé est figé
    * (plus aucun envoi après la grâce) : son premier est gardé en mémoire. 404 `no_ghost` si personne n'est classé.
    */
-  async function firstGhost(date: string, req: Request): Promise<JumpFirstGhost> {
-    const day = dayOf(date);
-    const me = headerPlayer(req, false);
+  async function firstGhost(day: number, me: string | null): Promise<JumpFirstGhost> {
     let first = firstOfClosed.get(day);
     if (first === undefined) {
       const row = await db.first<{ player_id: string; name: string; level_id: string; ticks: number; deaths: number; replay: string; sim_version: number; generator_version: number }>(
@@ -564,8 +613,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
    * niveau que le serveur a gardé pour ce jour, s'il est bien celui de l'essai), plus le nombre de jours, les médailles et la série. 404
    * `unknown_player` (jamais classé, dans aucun jeu), 410 `code_revoked`. Débit en mémoire (une lecture n'écrit rien).
    */
-  async function myProfile(req: Request, info: RequestInfo): Promise<JumpMe> {
-    const id = headerPlayer(req, true)!;
+  async function myProfile(id: string, info: RequestInfo): Promise<JumpMe> {
     if (info.clientKey) readHit(await hashKey("jmeip", info.clientKey), JUMP_READS_PER_CLIENT);
     readHit(await hashKey("jme", id), JUMP_ME_PER_PLAYER);
     await players.assertActive(id);
@@ -605,6 +653,39 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     };
   }
 
+  /**
+   * Lot P4 : la lecture regroupée d'un jour — le classement (ta ligne avec `X-Player-Id`), le fantôme du premier (`null` sans classé) et la carte
+   * des morts, en **une** requête ; avec `X-Player-Id` et pour le jour en cours, le profil DailyJump aussi (ses limites de débit, ses refus
+   * rendus comme une valeur : `profileError`). Les mêmes fonctions que les routes séparées : mêmes réponses, mêmes lignes lues.
+   */
+  async function bundle(day: number, req: Request, info: RequestInfo): Promise<WithHeaders> {
+    const me = headerPlayer(req, false);
+    const open = isOpen(day);
+    const date = formatDay(day);
+    const wantProfile = me !== null && day === today();
+    const profile = wantProfile
+      ? myProfile(me, info).then(
+          (p): { profile: JumpMe | null; profileError?: string } => ({ profile: p }),
+          (e: unknown) => {
+            if (e instanceof HttpError && (e.code === "unknown_player" || e.code === "code_revoked")) return { profile: null, profileError: e.code };
+            throw e;
+          },
+        )
+      : Promise.resolve(null);
+    const [b, ghost, deaths, p] = await Promise.all([
+      board(day, me),
+      firstGhost(day, me).catch((e: unknown) => {
+        if (e instanceof HttpError && e.code === "no_ghost") return null;
+        throw e;
+      }),
+      lives.deathMap(date),
+      profile,
+    ]);
+    const body: JumpBundle = { date, open, board: b, ghost, deaths, ...(p ?? {}) };
+    // Le profil change avec le joueur et ailleurs (un code changé sur un autre appareil) : revalidé à chaque fois. Le reste : la règle commune.
+    return new WithHeaders(body, cacheHeaders({ open, perPlayer: true, noCache: wantProfile }));
+  }
+
   async function route(path: string, req: Request, _url: URL, info: RequestInfo): Promise<unknown> {
     // Lot P3 : la première requête qui voit un jour terminé fige sa carte et son échantillon et oublie ses vies brutes (une comparaison
     // d'entiers ensuite, par instance).
@@ -624,9 +705,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     }
     if (path === "/api/jump/me") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-      return await myProfile(req, info);
+      return await myProfile(headerPlayer(req, true)!, info);
     }
-    const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first|\/deaths|\/carnage)?$/.exec(path);
+    const m = /^\/api\/jump\/day\/([^/]+)(\/board|\/ghost\/first|\/deaths|\/carnage|\/bundle)?$/.exec(path);
     if (m) {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       await limitReads(info);
@@ -636,11 +717,17 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       } catch {
         throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
       }
-      if (m[2] === "/board") return await board(date, req);
-      if (m[2] === "/ghost/first") return await firstGhost(date, req);
-      if (m[2] === "/deaths") return await lives.deathMap(date);
-      if (m[2] === "/carnage") return await lives.carnage(date);
-      return await getLevel(dayOf(date));
+      const day = dayOf(date);
+      // Lot P4 : chaque lecture porte son cache (`cache.ts`) ; celles qui dépendent de `X-Player-Id` ne sont jamais partagées.
+      const open = isOpen(day);
+      const personal = (body: unknown) => new WithHeaders(body, cacheHeaders({ open, perPlayer: true }));
+      const common = (body: unknown) => new WithHeaders(body, cacheHeaders({ open, perPlayer: false }));
+      if (m[2] === "/board") return personal(await board(day, headerPlayer(req, false)));
+      if (m[2] === "/ghost/first") return personal(await firstGhost(day, headerPlayer(req, false)));
+      if (m[2] === "/deaths") return common(await lives.deathMap(date));
+      if (m[2] === "/carnage") return common(await lives.carnage(date));
+      if (m[2] === "/bundle") return await bundle(day, req, info);
+      return common(await getLevel(day));
     }
     if (path === "/api/jump" || path.startsWith("/api/jump/")) throw new HttpError(404, "not_found", "Route inconnue");
     return undefined;

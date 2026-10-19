@@ -1,6 +1,7 @@
 import { GENERATOR_VERSION, SIM_VERSION, formatDay } from "@cdj/sim";
 import { parisClockSource } from "@cdj/clock";
 import type { CdjInstance, CdjOptions } from "./cdj";
+import { WithHeaders, mergeVary } from "./cache";
 import type { SqlDb } from "./db";
 import { HttpError } from "./errors";
 import type { GameInstance, RequestInfo } from "./games";
@@ -114,12 +115,17 @@ export function createApi(options: ApiOptions) {
   }
   const replier = (req: Request) => {
     const cors = corsFor(req);
-    return (status: number, body: unknown, extra: Record<string, string> = {}) =>
-      new Response(status === 204 ? null : JSON.stringify(body), {
+    return (status: number, body: unknown, extra: Record<string, string> = {}) => {
+      // Lot P4 : une lecture d'un jeu peut porter son `Cache-Control` et son `Vary` (`cache.ts`) ; `Vary: Origin` de CORS est gardé.
+      const vary = mergeVary(cors.Vary, extra.Vary);
+      return new Response(status === 204 ? null : JSON.stringify(body), {
         status,
-        headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra },
+        headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra, ...(vary ? { Vary: vary } : {}) },
       });
+    };
   };
+  /** Le corps d'une route : tel quel, ou avec ses en-têtes (`WithHeaders`, lot P4). */
+  const answer = (reply: ReturnType<typeof replier>, body: unknown) => (body instanceof WithHeaders ? reply(200, body.body, body.headers) : reply(200, body));
 
   /** Santé : version, base joignable, durée du Salon. Toujours en 200 si la base répond, en 503 sinon (la sonde de Cloud Run et la CI s'y fient). */
   async function health(reply: ReturnType<typeof replier>): Promise<Response> {
@@ -156,11 +162,11 @@ export function createApi(options: ApiOptions) {
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
       const common = await identity.route(path, req, url, info);
-      if (common !== undefined) return reply(200, common);
+      if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;
         const body = await g.instance.route(path, req, url, info);
-        if (body !== undefined) return reply(200, body);
+        if (body !== undefined) return answer(reply, body);
       }
       throw new HttpError(404, "not_found", "Route inconnue");
     } catch (e) {

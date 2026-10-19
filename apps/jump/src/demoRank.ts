@@ -4,6 +4,7 @@ import type { ApiResult, FetchLike, MeProfile, NameCheck } from "@cdj/profile";
 import type { KeyValue } from "./memory";
 import type { FirstGhostData } from "./firstGhost";
 import type { JumpMe } from "./jumpProfile";
+import type { DayBundle } from "./dayReads";
 import type { CarnageSampleData, DeathMapData, JumpBoard, JumpBoardRow, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
 import { storageKey } from "./storage";
 
@@ -145,6 +146,8 @@ export class DemoRankSource implements RankSource {
         medal: jumpMedalFor(best.ticks, day.data.medals),
         rank: board.me!.rank,
         participants: board.participants,
+        // Lot P4 : le classement d'après l'envoi, comme le serveur.
+        board: { ...board, open: entry.date === formatDay(DEMO_TODAY) },
       },
     };
   }
@@ -170,6 +173,30 @@ export class DemoRankSource implements RankSource {
     const f = day.data.first;
     if (!f) return fail(404, "no_ghost", "Personne n'est encore classé ce jour-là");
     return { ok: true, data: { ...f, date: day.data.date, levelId: day.data.levelId, mine: false } };
+  }
+
+  /**
+   * Lot P4 : la lecture regroupée, comme le serveur : le classement, le fantôme du premier et la carte du jour, **un seul fichier lu**. La
+   * démonstration n'a pas de profil (le jeu ne le demande jamais : la synchronisation y est coupée).
+   */
+  async bundle(date: string, _playerId: string | null): Promise<ApiResult<DayBundle>> {
+    const day = await this.json<DemoDay>(`${date}.json`);
+    if (!day.ok) return day;
+    const open = date === formatDay(DEMO_TODAY);
+    const mine = this.mine();
+    const board = { ...demoBoard(day.data, mine?.date === date && mine.levelId === day.data.levelId ? mine : null), open };
+    const f = day.data.first;
+    const m = day.data.deaths ?? { players: 0, deaths: 0, tiles: [] };
+    return {
+      ok: true,
+      data: {
+        date,
+        open,
+        board,
+        ghost: f ? { ...f, date: day.data.date, levelId: day.data.levelId, mine: false } : null,
+        deaths: { date, levelId: day.data.levelId, open, ...m },
+      },
+    };
   }
 
   /** Lot P3 : la carte des morts du jeu de données (tes morts de démonstration n'y sont pas : rien n'est envoyé). */

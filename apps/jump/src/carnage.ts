@@ -83,6 +83,11 @@ export class Carnage {
   deaths = 0;
   /** Vies en course en ce moment (héros non compris). */
   running = 0;
+  /**
+   * Lot P4 : vies montrées au plus (rendu seul : le carnage de tout le monde s'allège sur un appareil lent, `carnageGovernor.ts`). Les vies au-delà
+   * (dans l'ordre de l'échantillon : réparti entre les sections) ne partent plus, celles en course s'arrêtent. `total` ne change pas.
+   */
+  limit = Number.POSITIVE_INFINITY;
   private ended = false;
 
   constructor(
@@ -126,6 +131,11 @@ export class Carnage {
     let running = 0;
     for (let i = 0; i < this.lives.length; i++) {
       const life = this.lives[i]!;
+      if (i >= this.limit) {
+        // Lot P4 : au-delà de la limite, la vie n'est plus montrée (elle ne part plus, ou s'arrête là où elle est).
+        if (life.status === "attend" || life.status === "court") life.status = "finie";
+        continue;
+      }
       if (life.status === "attend") {
         if (life.depart < 0 || life.depart > t) continue;
         life.runner = new ReplayRunner(this.level, life.replay);

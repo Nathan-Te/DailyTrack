@@ -157,6 +157,57 @@ test("démo : après ton carnage, « Le carnage de tout le monde » se joue, ton
   });
 });
 
+// Lot P4 (plateforme) : le carnage de tout le monde s'adapte à l'appareil (`carnageGovernor.ts`). Un palier imposé (`__jump.carnage.govern`,
+// comme le ferait le gouverneur sur un téléphone lent), en pas à pas : moins de vies en course, le compteur garde le vrai total.
+test("démo : le carnage de tout le monde adaptatif — au palier 60 vies, jamais plus de 60 en course ; le compteur dit toujours le vrai total", async ({ browser }) => {
+  test.setTimeout(150_000);
+  const code = arrivingRun(TODAY_DEMO);
+  await atInstant(browser, FIXED_NOW, async (page, context) => {
+    await context.addInitScript(() => {
+      if (!localStorage.getItem("cdj:name")) localStorage.setItem("cdj:name", "Témoin");
+    });
+    await page.goto("/?debug&api=demo&accueil=0");
+    test.skip(!(await hasWebGL(page)), SKIP);
+    await ready(page);
+    await play(page, code);
+    await expect(page.locator("#arrival-everyone")).toHaveText("Le carnage de tout le monde");
+    const run = (level: number) =>
+      page.evaluate((palier) => {
+        type G = { level: number; maxLives: number; particles: number } | null;
+        const j = (window as unknown as {
+          __jump: J & { startEveryone(max?: number): boolean; carnage: { govern(l: number | null): void; state: { running: number; governor?: G } } };
+        }).__jump;
+        j.manual(true);
+        j.carnage.govern(palier);
+        if (!j.startEveryone(150)) return null;
+        const label = j.carnage.state.label;
+        let max = 0;
+        for (let t = 0; t < 900 && j.carnage.state.active; t++) {
+          j.advance(1);
+          max = Math.max(max, j.carnage.state.running);
+          if (j.carnage.state.label !== label) return { label, changed: j.carnage.state.label, max, governor: j.carnage.state.governor ?? null };
+        }
+        const governor = j.carnage.state.governor ?? null;
+        j.carnage.skip();
+        j.carnage.govern(null);
+        return { label, changed: null, max, governor };
+      }, level);
+    const light = await run(2);
+    expect(light).not.toBeNull();
+    expect(light!.label).toMatch(/^150 vies de \d+ joueurs?$/); // le vrai total (l'échantillon repris jusqu'à 150 vies)
+    expect(light!.changed).toBeNull();
+    expect(light!.governor).toMatchObject({ level: 2, maxLives: 60, particles: 1 });
+    expect(light!.max).toBeGreaterThan(0);
+    expect(light!.max).toBeLessThanOrEqual(60);
+    // Le carnage complet (palier 0) : plus de 60 vies en course à la fois, le même compteur.
+    await expect(page.locator("#arrival")).toBeVisible();
+    const full = await run(0);
+    expect(full!.label).toBe(light!.label);
+    expect(full!.governor).toMatchObject({ level: 0, maxLives: 150, particles: 1 });
+    expect(full!.max).toBeGreaterThan(60);
+  });
+});
+
 test("démo : une archive montre la carte figée de son jour", async ({ browser }) => {
   test.setTimeout(90_000);
   const date = "2026-10-20";
