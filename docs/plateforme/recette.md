@@ -26,7 +26,7 @@ GitHub → dépôt → **Settings** → **General** → **Default branch** → �
 
 1. <https://turso.tech> → ta console → **Create database**. Nom : **`dailytrack-recette`** (le nom **doit** contenir `recette` : le serveur refuse de démarrer sinon). Même emplacement que la base de production.
    - **Tu dois voir** la base `dailytrack-recette` « Active » à côté de `dailytrack`.
-2. Ouvre-la, copie son **URL** : `libsql://dailytrack-recette-misterzcool.turso.io`. C'est **`RECETTE_TURSO_DATABASE_URL`**. Vérifie qu'elle contient bien `recette` **avant** le premier `.turso.io`.
+2. Ouvre-la, copie son **URL** telle quelle (de la forme `libsql://dailytrack-recette-<compte>.<région>.turso.io` : la partie région peut y être, ne la retire pas). C'est **`RECETTE_TURSO_DATABASE_URL`**. Vérifie qu'elle contient bien `recette` **avant** le premier `.turso.io`.
 3. **Generate token** sur **cette** base : Read & Write, expiration jamais. Copie-le (il commence par `eyJ`, il ne s'affiche qu'une fois). **Ne prends pas le jeton de la production.**
 
 ## Étape 2 — Dépôt d'images, compte d'exécution et secrets de recette (10 min)
@@ -103,7 +103,7 @@ GitHub → **Settings** → **Secrets and variables** → **Actions** → onglet
 
 | Nom | Valeur | Obligatoire |
 |---|---|---|
-| `RECETTE_TURSO_DATABASE_URL` | `libsql://dailytrack-recette-misterzcool.turso.io` (étape 1.2) | oui |
+| `RECETTE_TURSO_DATABASE_URL` | l'URL copiée à l'étape 1.2, telle quelle | oui |
 | `RECETTE_API_URL` | *(étape 6 : l'adresse du service de recette, une fois créé)* | pour les aperçus |
 | `RECETTE_GCP_SERVICE` | `cdj-api-recette` | non (défaut) |
 | `RECETTE_GCP_AR_REPO` | `cdj-recette` | non (défaut) |
@@ -134,11 +134,17 @@ Dans Cloud Shell (Node 20 ou plus suffit contre Turso) :
 ```bash
 git clone --depth 1 https://github.com/Nathan-Te/DailyTrack.git && cd DailyTrack
 npm ci -w @cdj/api --ignore-scripts
+# L'adresse exacte de la base de recette : celle que le service de recette utilise déjà (étape 6)
+RECETTE_DB="$(gcloud run services describe cdj-api-recette --region=europe-west1 --format=json \
+  | jq -r '.spec.template.spec.containers[0].env[] | select(.name=="TURSO_DATABASE_URL") | .value')"
+echo "$RECETTE_DB"
 ENVIRONMENT=recette \
-TURSO_DATABASE_URL=libsql://dailytrack-recette-misterzcool.turso.io \
+TURSO_DATABASE_URL="$RECETTE_DB" \
 TURSO_AUTH_TOKEN="$(gcloud secrets versions access latest --secret=cdj-recette-turso-token)" \
 npm run recette:seed
 ```
+
+- Le `echo` doit afficher une adresse `libsql://…recette….turso.io`. « la base de recette ne répond pas … HTTP status 404 » : l'adresse ne désigne aucune base (recopiée à la main ?) ; « … 401 » : le jeton n'est pas celui de cette base.
 
 (Avant la fusion du lot R1, ajoute `--branch lot-R1-recette` — ou le nom de la branche de la PR — au `git clone`.)
 - **Tu dois voir** une ligne par jour (`2026-10-…  : 11 pilote(s) classé(s)`, 7 jours jusqu'à aujourd'hui), puis « N temps envoyés par createApi (rejoués par le serveur) ». Relancer ne crée aucun doublon (mêmes pilotes « Démo … »).
