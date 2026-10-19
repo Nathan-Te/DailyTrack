@@ -4,6 +4,7 @@ name: Recette
 #   - PR ouverte ou mise à jour : révision `b-<branche>-<empreinte>` (scripts/recette.mjs), contrôle de /api/health, `npm run smoke`,
 #     commentaire sur la PR (adresse de la révision et de l'aperçu), puis l'aperçu de la branche est reconstruit pour viser la révision.
 #   - PR fermée (fusionnée ou non) : l'étiquette est retirée (la révision ne reçoit plus rien).
+#   - Lot P2 : après chaque déploiement, les joueurs fictifs de la recette (`recette:seed`, recette-seed.yml, qui tourne aussi chaque jour).
 #   - « Run workflow » : sur main, (re)crée la révision par défaut de la recette (celle que la fusion dans main met à jour, voir
 #     production.yml) ; sur une branche, sa révision étiquetée, avec au besoin un Salon court ou une horloge de test.
 # Jamais pour une PR venue d'un fork : les secrets ne sortent pas du dépôt. Tant que la recette n'est pas configurée, tout est sauté avec
@@ -89,6 +90,17 @@ jobs:
       tag: ${{ needs.plan.outputs.tag }}
       salon_minutes: ${{ inputs.salon_minutes || '' }}
       test_clock_offset_ms: ${{ inputs.test_clock_offset_ms || '' }}
+    secrets: inherit
+
+  # Lot P2 : les joueurs fictifs de la recette (`recette:seed`), tout de suite après le déploiement d'une révision (recette-seed.yml : mêmes accès,
+  # aucun secret GitHub de plus ; refuse la production). Il tourne aussi chaque jour, seul.
+  seed:
+    needs: [plan, deploy]
+    if: needs.deploy.outputs.enabled == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/recette-seed.yml
     secrets: inherit
 
   # Commentaire sur la PR (un seul, mis à jour à chaque poussée) et aperçu reconstruit pour viser la révision qui vient d'être déployée.

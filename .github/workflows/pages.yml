@@ -79,7 +79,8 @@ jobs:
           fi
           echo "api=$api" >> "$GITHUB_OUTPUT"
 
-      # Construit DailyTrack (apps/web) puis DailyJump (apps/jump) ; VITE_API_URL ne concerne que DailyTrack.
+      # Construit DailyTrack (apps/web) puis DailyJump (apps/jump). VITE_API_URL vaut pour les deux jeux : DailyJump la lit aussi depuis le lot P1
+      # de la plateforme (classement, fantôme du premier, profil : apps/jump/src/storage.ts, BUILD_API_URL).
       - run: npm run build
         env:
           VITE_API_URL: ${{ steps.target.outputs.api }}
