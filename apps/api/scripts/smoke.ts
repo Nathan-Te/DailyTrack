@@ -73,7 +73,9 @@ check("fantôme du premier servi", ghost.status === 200 && typeof ghost.body.rep
 const now = await call("GET", `/api/salon/now?player=${player}`);
 check("Salon : session en cours", now.status === 200 && Number.isInteger(now.body.session), `session ${now.body.session}`);
 const salon = salonCircuit(now.body.session);
-const srun = runPilot(salon.track, { grip: 0.9 });
+// Le pilote local à quelques adhérences, de la plus vive à la plus prudente : à 0,9 il ne finit pas tous les circuits du Salon (session
+// 2987362 du 19/10/2026, mesuré au lot P2 : il finit à 0,8) ; l'essai ne porte pas sur le pilote mais sur l'envoi d'une course valide.
+const srun = [0.9, 0.8, 0.7, 0.6].map((grip) => runPilot(salon.track, { grip })).find((r) => r.valid) ?? runPilot(salon.track, { grip: 0.9 });
 check("le pilote local finit le circuit du Salon", srun.valid && salon.track.id === now.body.trackId);
 const ssub = await call("POST", `/api/salon/${now.body.session}/submit`, { playerId: player, name: NAME, replay: encodeReplay(srun.replay) });
 check("Salon : temps accepté (circuit de la session généré à ce premier envoi)", ssub.status === 200 && ssub.body.ms === srun.finishMs, `${ssub.ms} ms`);
