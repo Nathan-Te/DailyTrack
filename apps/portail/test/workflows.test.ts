@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -125,7 +125,7 @@ describe("déclencheurs", () => {
     expect(yml("deploy-api.yml")).toContain("name: ${{ inputs.target == 'production' && 'production' || 'recette' }}");
     expect(yml("retour-arriere.yml")).toMatch(/retour:\n(?:.*\n)*?\s+environment: production/);
     // Aucun autre workflow ne déploie la production.
-    for (const f of ["recette.yml", "apercu.yml", "pages.yml", "ci.yml"]) expect(yml(f), f).not.toMatch(/target: production|cible: production/);
+    for (const f of ["recette.yml", "apercu.yml", "ci.yml"]) expect(yml(f), f).not.toMatch(/target: production|cible: production/);
   });
 
   it("chaque fusion dans main met à jour la recette (serveur, joueurs fictifs, site)", () => {
@@ -133,11 +133,12 @@ describe("déclencheurs", () => {
     expect(yml("recette.yml")).toMatch(/site:\n(?:.*\n)*?\s+uses: \.\/\.github\/workflows\/deploy-site\.yml\n\s+with:\n\s+cible: recette/);
   });
 
-  it("un aperçu par PR ; GitHub Pages ne publie plus que des redirections, jamais à la poussée", () => {
+  it("un aperçu par PR ; plus aucune publication sur GitHub Pages (lot R5) : ni workflow, ni bascule, ni redirections", () => {
     expect(on("apercu.yml")).toMatch(/pull_request:\n\s+types: \[opened, synchronize, reopened, closed\]/);
-    expect(on("pages.yml")).not.toMatch(/push:/);
-    expect(yml("pages.yml")).toContain("node scripts/site.mjs redirections");
-    expect(yml("pages.yml")).not.toMatch(/npm run build\b/);
+    expect(existsSync(join(DIR, "pages.yml"))).toBe(false);
+    for (const f of readdirSync(DIR).filter((n) => n.endsWith(".yml"))) {
+      expect(yml(f), f).not.toMatch(/gh-pages|pages\.yml|site\.mjs redirections|actions\/deploy-pages|bascule:/);
+    }
   });
 
   it("les appels de workflows réutilisables transmettent les secrets", () => {

@@ -295,12 +295,3 @@ export function watchFirstHref(date: string | null, from: UrlChoices): string {
 export function archiveHref(date: string, from: UrlChoices): string {
   return `?${[`seed=${date}`, ...carried(from)].join("&")}`;
 }
-
-/**
- * Lot R4 (plateforme) : l'adresse de la page pour l'import depuis l'ancienne adresse (`src/migration.ts`) — le fragment `#dujour=…` (identité
- * passée par les pages de redirection de GitHub Pages ; ce n'est pas un paramètre : jamais envoyé au serveur, effacé aussitôt lu). Lue ici,
- * comme toute l'adresse (`test/jeu.test.ts`).
- */
-export function pageAddress(): { pathname: string; search: string; hash: string } {
-  return { pathname: location.pathname, search: location.search, hash: location.hash };
-}

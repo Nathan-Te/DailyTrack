@@ -79,6 +79,8 @@ export const JUMP_READS_PER_CLIENT = 120;
 export const JUMP_ME_PER_PLAYER = 60;
 /** Lot P2 : fantômes du premier d'un jour passé gardés en mémoire (figés : le premier d'un jour fini ne change plus). */
 const GHOST_CACHE_MAX = 64;
+/** Lot R5 : durée de vie en mémoire du premier d'un jour fermé (un effacement fait sur une autre instance s'y voit au plus après ce délai). */
+export const CLOSED_GHOST_TTL_MS = 10 * 60_000;
 
 /** Les tables de DailyJump : le cache des niveaux du jour (aucune donnée de joueur) et les meilleurs essais (lot P1). */
 export const JUMP_SCHEMA: string[] = [
@@ -400,7 +402,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   const isOpen = (day: number): boolean => day === today() || (day === today() - 1 && sinceMidnight() < JUMP_GRACE_MS);
 
   async function limitReads(info: RequestInfo): Promise<void> {
-    if (info.clientKey) readHit(await hashKey("jrd", info.clientKey), JUMP_READS_PER_CLIENT);
+    await platform.readHitAddress(info, "jrd", JUMP_READS_PER_CLIENT);
   }
 
   /** L'identifiant secret de l'en-tête `X-Player-Id` (jamais dans l'adresse : elle finit dans les journaux de l'hébergeur). */
@@ -455,6 +457,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       throw new HttpError(400, "invalid_replay", "Un essai part du départ du niveau");
     }
     await beforeReplay?.();
+    platform.spendReplays(); // lot R5 : plafond global de rejeux de l'instance (503 au-delà)
     // 5. Le rejeu : la seule source du temps et des morts.
     let r;
     try {
@@ -490,7 +493,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   async function submit(req: Request, info: RequestInfo): Promise<JumpSubmitResult> {
     // 1. Débit, compté en base (exact quelle que soit l'instance), avant de lire le corps et avant tout rejeu. Compteurs propres à DailyJump :
     // ceux de DailyTrack (`ip`, `p`) ne bougent pas.
-    if (info.clientKey) await hit(await hashKey("jip", info.clientKey), limits.perClient);
+    await platform.hitAddress(info, "jip", limits.perClient);
     const playerId = headerPlayer(req, true)!;
     await hit(await hashKey("jp", playerId), limits.perPlayer);
     // 2. Taille du corps (413 au-delà de `MAX_BODY_BYTES`, lu sans tout charger).
@@ -581,15 +584,19 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     return { ...base, levelId: level.id, top, me: mine };
   }
 
-  /** Fantômes du premier des jours **fermés** (figés) : une lecture par jour et par instance. Le jour en cours est relu à chaque fois. */
-  const firstOfClosed = new Map<number, (Omit<JumpFirstGhost, "mine"> & { playerId: string }) | null>();
+  /**
+   * Fantômes du premier des jours **fermés** (figés) : une lecture par jour et par instance et par `CLOSED_GHOST_TTL_MS`. Le jour en cours est
+   * relu à chaque fois. Lot R5 : la mémoire expire (10 min) — un joueur effacé sur une autre instance n'y reste pas plus longtemps.
+   */
+  const firstOfClosed = new Map<number, { at: number; first: (Omit<JumpFirstGhost, "mine"> & { playerId: string }) | null }>();
 
   /**
    * Lot P2 : la rediffusion du premier d'un jour (la règle du classement : temps, puis premier envoyé, puis identifiant). Un jour passé est figé
    * (plus aucun envoi après la grâce) : son premier est gardé en mémoire. 404 `no_ghost` si personne n'est classé.
    */
   async function firstGhost(day: number, me: string | null): Promise<JumpFirstGhost> {
-    let first = firstOfClosed.get(day);
+    const kept = firstOfClosed.get(day);
+    let first = kept && now() - kept.at < CLOSED_GHOST_TTL_MS ? kept.first : undefined;
     if (first === undefined) {
       const row = await db.first<{ player_id: string; name: string; level_id: string; ticks: number; deaths: number; replay: string; sim_version: number; generator_version: number }>(
         "SELECT r.player_id AS player_id, p.name AS name, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.replay AS replay, r.sim_version AS sim_version, r.generator_version AS generator_version FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT 1",
@@ -599,8 +606,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
         ? { playerId: row.player_id, date: formatDay(day), levelId: row.level_id, name: row.name, ticks: row.ticks, deaths: row.deaths, replay: row.replay, simVersion: row.sim_version, generatorVersion: row.generator_version }
         : null;
       if (!isOpen(day) && first) {
-        if (firstOfClosed.size >= GHOST_CACHE_MAX) firstOfClosed.delete(firstOfClosed.keys().next().value!);
-        firstOfClosed.set(day, first);
+        if (firstOfClosed.size >= GHOST_CACHE_MAX && !firstOfClosed.has(day)) firstOfClosed.delete(firstOfClosed.keys().next().value!);
+        firstOfClosed.set(day, { at: now(), first });
       }
     }
     if (!first) throw new HttpError(404, "no_ghost", "Personne n'est encore classé ce jour-là");
@@ -614,7 +621,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
    * `unknown_player` (jamais classé, dans aucun jeu), 410 `code_revoked`. Débit en mémoire (une lecture n'écrit rien).
    */
   async function myProfile(id: string, info: RequestInfo): Promise<JumpMe> {
-    if (info.clientKey) readHit(await hashKey("jmeip", info.clientKey), JUMP_READS_PER_CLIENT);
+    await platform.readHitAddress(info, "jmeip", JUMP_READS_PER_CLIENT);
     readHit(await hashKey("jme", id), JUMP_ME_PER_PLAYER);
     await players.assertActive(id);
     const [player, rows] = await Promise.all([
@@ -750,6 +757,20 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     // Un pseudo changé : le premier d'un jour passé gardé en mémoire le reprend à la prochaine lecture.
     onRename: async () => {
       firstOfClosed.clear();
+    },
+    // Lot R5 — effacement d'un joueur : ses essais classés (un premier effacé n'est plus servi : le suivant devient le premier) et ses vies du
+    // jour en cours (`jumpLives.ts`). La carte et l'échantillon figés des jours passés n'ont plus aucun lien avec lui (vies brutes oubliées).
+    erase: async (playerId) => {
+      const n = await db.first<{ n: number }>("SELECT COUNT(*) AS n FROM jump_results WHERE player_id = ?", [playerId]);
+      const l = await lives.erase(playerId);
+      return {
+        counts: { essaisDailyJump: n?.n ?? 0, ...l.counts },
+        statements: [{ sql: "DELETE FROM jump_results WHERE player_id = ?", params: [playerId] }, ...l.statements],
+      };
+    },
+    onErased: () => {
+      firstOfClosed.clear();
+      lives.onErased();
     },
   };
 }

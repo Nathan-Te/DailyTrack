@@ -151,5 +151,21 @@ export function createPlayers({ db, now, demoPlayers, rotateStatements }: Player
     return { replayed: false };
   }
 
-  return { find, isRevoked, assertActive, suggest, checkForm, assertFree, check, resolveName, save, rotate };
+  /**
+   * Lot R5 — effacement : la ligne du joueur (son pseudo est libéré : `name_key` part avec elle) et la chaîne de ses anciens codes révoqués
+   * (des empreintes, reliées à lui par `successor`). Les instructions sont exécutées par la plateforme, avec celles des jeux.
+   */
+  async function eraseStatements(id: string): Promise<Statement[]> {
+    const out: Statement[] = [];
+    let successors = [await sha256Hex(id)];
+    for (let depth = 0; depth < 50 && successors.length; depth++) {
+      const rows = await db.all<{ hash: string }>(`SELECT hash FROM revoked_codes WHERE successor IN (${successors.map(() => "?").join(", ")})`, successors);
+      for (const r of rows) out.push({ sql: "DELETE FROM revoked_codes WHERE hash = ?", params: [r.hash] });
+      successors = rows.map((r) => r.hash);
+    }
+    out.push({ sql: "DELETE FROM players WHERE id = ?", params: [id] });
+    return out;
+  }
+
+  return { find, isRevoked, assertActive, suggest, checkForm, assertFree, check, resolveName, save, rotate, eraseStatements };
 }

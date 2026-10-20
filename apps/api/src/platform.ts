@@ -1,7 +1,7 @@
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { ensureSchemaOn, schemaVersion, type SqlDb } from "./db";
 import { HttpError } from "./errors";
-import type { Platform, Statement } from "./games";
+import type { Platform, RequestInfo, Statement } from "./games";
 import type { Logger } from "./log";
 import { createPlayers } from "./players";
 import { PLAYER_ID } from "./validate";
@@ -16,6 +16,21 @@ export const MAX_BODY_BYTES = 400_000;
 
 export const DEFAULT_LIMITS = { windowMs: 10 * 60_000, perClient: 60, perPlayer: 30 };
 
+/**
+ * Lot R5 : une limite par adresse compte aussi l'**adresse de connexion** (`RequestInfo.peerKey`, écrite par le frontal de Google), à `limite ×
+ * PEER_FACTOR`, en mémoire par instance. Un appel direct à `run.app` qui invente une adresse différente à chaque fois reste borné par son
+ * adresse réelle ; par Firebase, l'adresse de connexion est un relais partagé par des joueurs, d'où la marge (mesurée au lot R5 : voir le
+ * README du lot et `apps/api/CLAUDE.md`, « Adresse du client »).
+ */
+export const PEER_FACTOR = 10;
+
+/**
+ * Lot R5 : plafond global de rejeux par minute et **par instance** (`server.ts` le règle ; `createApi` sans réglage : aucun plafond, pour les
+ * outils qui rejouent en masse en mémoire, `history:seed`, `jump:seed`, `recette:seed`). Un rejeu coûte ≈ 20 à 30 ms : 600 par minute ≈ 10
+ * par seconde, un quart à la moitié d'un vCPU. Au-delà : 503 `busy` (propre, avec `Retry-After`), jamais une file qui s'allonge.
+ */
+export const REPLAYS_PER_MINUTE = 600;
+
 export interface PlatformOptions {
   db: SqlDb;
   now: () => number;
@@ -23,6 +38,8 @@ export interface PlatformOptions {
   environment: string;
   limits: { windowMs: number; perClient: number; perPlayer: number };
   rateSalt?: string;
+  /** Lot R5 : plafond de rejeux par minute de cette instance (`REPLAYS_PER_MINUTE` en production ; absent : aucun). */
+  replaysPerMinute?: number;
   demoPlayers: boolean;
   /** Les lignes des jeux qui suivent un « Changer mon code » (dans la même transaction que la plateforme). */
   rotateStatements: (oldId: string, newId: string) => Statement[];
@@ -89,6 +106,45 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
     }
   }
 
+  // --- Lot R5 : adresse de connexion et plafond de rejeux ---------------------------------------------------
+  async function peerHit(info: RequestInfo, prefix: string, limit: number): Promise<void> {
+    if (!info.peerKey || info.peerKey === info.clientKey) return;
+    try {
+      readHit(await hashKey(`${prefix}~c`, info.peerKey), limit * PEER_FACTOR);
+    } catch (e) {
+      log("WARNING", "débit : limite de l'adresse de connexion", { prefix }); // jamais l'adresse
+      throw e;
+    }
+  }
+
+  async function hitAddress(info: RequestInfo, prefix: string, limit: number): Promise<void> {
+    if (info.clientKey) await hit(await hashKey(prefix, info.clientKey), limit);
+    await peerHit(info, prefix, limit);
+  }
+
+  async function readHitAddress(info: RequestInfo, prefix: string, limit: number): Promise<void> {
+    if (info.clientKey) readHit(await hashKey(prefix, info.clientKey), limit);
+    await peerHit(info, prefix, limit);
+  }
+
+  let replayMinute = -1;
+  let replaysThisMinute = 0;
+  function spendReplays(units = 1): void {
+    const cap = options.replaysPerMinute;
+    if (cap === undefined || !Number.isFinite(cap)) return;
+    const minute = Math.floor(now() / 60_000);
+    if (minute !== replayMinute) {
+      replayMinute = minute;
+      replaysThisMinute = 0;
+    }
+    if (replaysThisMinute + units > cap) {
+      log("WARNING", "plafond de rejeux atteint", { cap });
+      const retry = Math.max(1, Math.ceil(((minute + 1) * 60_000 - now()) / 1000));
+      throw new HttpError(503, "busy", "Le serveur est très demandé : réessaie dans une minute", { "Retry-After": String(retry) });
+    }
+    replaysThisMinute += units;
+  }
+
   // --- Entrées ----------------------------------------------------------------------------------------------
   async function readJson(req: Request): Promise<Record<string, unknown>> {
     const declared = Number(req.headers.get("content-length") ?? 0);
@@ -126,5 +182,24 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
 
   const players = createPlayers({ db, now, demoPlayers: options.demoPlayers, rotateStatements: options.rotateStatements });
 
-  return { db, now, log, environment: options.environment, limits, today, sinceMidnight, players, hashKey, hit, readHit, readJson, playerIdOf, ensureSchema };
+  return {
+    db,
+    now,
+    log,
+    environment: options.environment,
+    limits,
+    today,
+    sinceMidnight,
+    players,
+    hashKey,
+    hit,
+    readHit,
+    hitAddress,
+    readHitAddress,
+    peerHit,
+    spendReplays,
+    readJson,
+    playerIdOf,
+    ensureSchema,
+  };
 }

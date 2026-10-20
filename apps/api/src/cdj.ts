@@ -144,7 +144,11 @@ interface Circuit {
   track: Track;
 }
 
-export type CdjInstance = GameInstance & { salon: ReturnType<typeof createSalon> };
+export type CdjInstance = GameInstance & {
+  salon: ReturnType<typeof createSalon>;
+  /** Lot R5 : la garde de l'admin (jeton `ADMIN_TOKEN`, échecs comptés), pour les routes d'admin de la plateforme (`POST /api/admin/effacer`). */
+  requireAdmin(req: Request, info: RequestInfo): Promise<void>;
+};
 
 export function createCdj(platform: Platform, options: CdjOptions): CdjInstance {
   const { db, now, log, limits, players, hashKey, hit, readJson, playerIdOf, today, sinceMidnight } = platform;
@@ -247,6 +251,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     sessionMs,
     hashKey,
     hit,
+    hitAddress: platform.hitAddress,
+    peerHit: platform.peerHit,
+    spendReplays: platform.spendReplays,
     readJson,
     playerIdOf,
     limits: { ...DEFAULT_SALON_LIMITS, ...options.salonLimits },
@@ -293,6 +300,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const circuit = await getCircuit(day);
     if (replay.trackId !== circuit.trackId) throw new HttpError(409, "track_mismatch", "Cette rediffusion n'est pas celle du circuit de ce jour");
 
+    platform.spendReplays(); // lot R5 : plafond global de rejeux de l'instance (503 au-delà)
     const result = replayRace(circuit.track, replay); // la seule source du temps
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 
@@ -304,7 +312,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const playerId = playerIdOf(body.playerId);
     const day = dayOf(body.date, true);
     if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
-    if (info.clientKey) await hit(await hashKey("ip", info.clientKey), limits.perClient);
+    await platform.hitAddress(info, "ip", limits.perClient);
     await hit(await hashKey("p", playerId), limits.perPlayer);
 
     // Pseudo (lot 30) : réservé à son premier propriétaire, vérifié avant le rejeu (bon marché) et garanti par la base à l'écriture.
@@ -458,6 +466,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
   async function requireAdmin(req: Request, info: RequestInfo): Promise<void> {
     if (!adminToken) throw new HttpError(404, "not_found", "Route inconnue"); // admin désactivé : la route n'existe pas
+    // Lot R5 : chaque requête d'admin compte aussi sur l'adresse de connexion (une adresse inventée par un appel direct ne remet pas les
+    // échecs à zéro) : au plus ADMIN_MAX_FAILURES × PEER_FACTOR requêtes par fenêtre et par adresse de connexion.
+    await platform.peerHit(info, "adm", ADMIN_MAX_FAILURES);
     const key = await hashKey("adm", info.clientKey ?? "inconnu");
     const bucket = Math.floor(now() / limits.windowMs);
     const failures = (await db.first<{ count: number }>("SELECT count FROM rate WHERE key = ? AND bucket = ?", [key, bucket]))?.count ?? 0;
@@ -666,6 +677,28 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       { sql: "UPDATE results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] },
       { sql: "DELETE FROM salon_runs WHERE player_id = ?", params: [oldId] },
     ],
+    // Lot R5 — effacement d'un joueur : ses temps (le classement d'un jour passé est recalculé sans lui : places finales oubliées, recalculées à
+    // la prochaine lecture du profil des autres), ses courses du Salon (version de la session avancée : le classement se recharge), sa présence
+    // et son délai d'envoi du Salon (des empreintes). Le fantôme du premier est relu en base : un premier effacé n'est plus servi.
+    erase: async (playerId) => {
+      const [results, salonRuns] = await Promise.all([
+        db.first<{ n: number }>("SELECT COUNT(*) AS n FROM results WHERE player_id = ?", [playerId]),
+        db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs WHERE player_id = ?", [playerId]),
+      ]);
+      const [presence, throttle] = await Promise.all([hashKey("pr", playerId), hashKey("sgp", playerId)]);
+      return {
+        counts: { tempsDailyTrack: results?.n ?? 0, coursesSalon: salonRuns?.n ?? 0 },
+        statements: [
+          { sql: "UPDATE results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM results WHERE player_id = ?)", params: [playerId] },
+          { sql: "DELETE FROM results WHERE player_id = ?", params: [playerId] },
+          { sql: "UPDATE salon_sessions SET version = version + 1 WHERE session IN (SELECT session FROM salon_runs WHERE player_id = ?)", params: [playerId] },
+          { sql: "DELETE FROM salon_runs WHERE player_id = ?", params: [playerId] },
+          { sql: "DELETE FROM salon_presence WHERE key = ?", params: [presence] },
+          { sql: "DELETE FROM salon_throttle WHERE key = ?", params: [throttle] },
+        ],
+      };
+    },
+    requireAdmin,
     tick: () => salon.tick(),
   };
 }

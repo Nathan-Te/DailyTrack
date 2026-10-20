@@ -1,36 +1,29 @@
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { ADRESSES, ANCIENNE_ORIGINE, RETRAIT_ANCIENNE_ORIGINE, RETRAIT_REDIRECTIONS, allowedOrigins, assertPreviewSite, previewChannel, storageIsolatedFromProduction } from "../../../scripts/domaine.mjs";
+import { ADRESSES, allowedOrigins, assertPreviewSite, previewChannel, storageIsolatedFromProduction } from "../../../scripts/domaine.mjs";
 
 // Lot R4 : les adresses de la plateforme, les origines permises par le serveur, et la séparation du stockage par origine.
 
 describe("origines permises (ALLOWED_ORIGINS)", () => {
-  it("production : playdujour.com, et l'ancienne origine jusqu'à sa date de retrait comprise", () => {
-    expect(allowedOrigins("production", { jour: "2026-10-20" })).toEqual(["https://playdujour.com", "https://nathan-te.github.io"]);
-    expect(allowedOrigins("production", { jour: RETRAIT_ANCIENNE_ORIGINE })).toContain(ANCIENNE_ORIGINE);
-    expect(allowedOrigins("production", { jour: "2027-01-01" })).toEqual(["https://playdujour.com"]);
+  it("production : playdujour.com seulement (lot R5 : l'ancienne origine GitHub Pages n'est plus permise)", () => {
+    expect(allowedOrigins("production")).toEqual(["https://playdujour.com"]);
+    expect(allowedOrigins("recette")).toEqual(["https://recette.playdujour.com"]);
+    for (const cible of ["production", "recette"]) expect(allowedOrigins(cible).join(";")).not.toContain("github.io");
   });
 
-  it("recette : recette.playdujour.com, l'ancienne origine (même date), et l'origine du canal d'aperçu d'une PR", () => {
-    expect(allowedOrigins("recette", { jour: "2026-10-20", enPlus: ["https://cdj-recette--pr-12-a1b2c3.web.app/;http://localhost:5173"] })).toEqual([
+  it("recette : recette.playdujour.com et l'origine du canal d'aperçu d'une PR", () => {
+    expect(allowedOrigins("recette", { enPlus: ["https://cdj-recette--pr-12-a1b2c3.web.app/;http://localhost:5173"] })).toEqual([
       "https://recette.playdujour.com",
-      "https://nathan-te.github.io",
       "https://cdj-recette--pr-12-a1b2c3.web.app",
       "http://localhost:5173",
     ]);
   });
 
   it("la production refuse la recette et tout aperçu Firebase ; une origine avec un chemin est refusée", () => {
-    expect(() => allowedOrigins("production", { jour: "2026-10-20", enPlus: ["https://recette.playdujour.com"] })).toThrow(/jamais/);
-    expect(() => allowedOrigins("production", { jour: "2026-10-20", enPlus: ["https://x--pr-1-abc.web.app"] })).toThrow(/jamais/);
-    expect(() => allowedOrigins("recette", { jour: "2026-10-20", enPlus: ["https://nathan-te.github.io/DailyTrack/"] })).toThrow(/origine invalide/);
-    expect(() => allowedOrigins("staging" as never, { jour: "2026-10-20" })).toThrow(/cible inconnue/);
-    expect(() => allowedOrigins("production", { jour: "20/10/2026" })).toThrow(/jour/);
-  });
-
-  it("les redirections restent au moins 6 mois après la dernière date d'origine permise", () => {
-    const months = (a: string, b: string) => (Number(b.slice(0, 4)) - Number(a.slice(0, 4))) * 12 + Number(b.slice(5, 7)) - Number(a.slice(5, 7));
-    expect(months("2026-11-01", RETRAIT_REDIRECTIONS)).toBeGreaterThanOrEqual(6);
+    expect(() => allowedOrigins("production", { enPlus: ["https://recette.playdujour.com"] })).toThrow(/jamais/);
+    expect(() => allowedOrigins("production", { enPlus: ["https://x--pr-1-abc.web.app"] })).toThrow(/jamais/);
+    expect(() => allowedOrigins("recette", { enPlus: ["https://nathan-te.github.io/DailyTrack/"] })).toThrow(/origine invalide/);
+    expect(() => allowedOrigins("staging" as never)).toThrow(/cible inconnue/);
   });
 });
 

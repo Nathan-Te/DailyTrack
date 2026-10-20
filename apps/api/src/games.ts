@@ -15,8 +15,18 @@ export interface Statement {
 
 /** Ce que l'hébergeur dit d'une requête. */
 export interface RequestInfo {
-  /** Identifie l'appelant pour la limitation de débit (adresse IP) ; fournie par l'hébergeur. */
+  /**
+   * Identifie l'appelant pour la limitation de débit (adresse IP) ; fournie par l'hébergeur. Derrière Firebase : l'adresse du joueur, lue à
+   * la position `TRUST_PROXY` de `X-Forwarded-For` — **falsifiable par un appel direct** à l'adresse `run.app` (lot R5).
+   */
   clientKey?: string;
+  /**
+   * Lot R5 : l'**adresse de connexion**, la dernière entrée de `X-Forwarded-For`, écrite par le frontal de Google qui a reçu la connexion (jamais
+   * par le client) : l'appelant lui-même pour un appel direct, un relais de Firebase sinon. Absente sans proxy de confiance (local, tests).
+   * Chaque limite par adresse la compte aussi, plus largement (`PEER_FACTOR`) : un appel direct ne contourne plus la limite en changeant
+   * d'adresse inventée.
+   */
+  peerKey?: string;
 }
 
 /** La plateforme, telle qu'un jeu la voit : écrite une fois pour tous les jeux. */
@@ -37,6 +47,20 @@ export interface Platform {
   hit(key: string, limit: number): Promise<void>;
   /** Compteur de débit **en mémoire** (par instance, aucune écriture) pour les lectures : lève 429 au-delà de `limit` dans la fenêtre. */
   readHit(key: string, limit: number): void;
+  /**
+   * Lot R5 : la limite **par adresse** d'un envoi — l'adresse du joueur comptée **en base** à `limit` (`hit`), puis l'adresse de connexion
+   * comptée **en mémoire** à `limit × PEER_FACTOR` (`peerHit`). À utiliser pour toute limite par adresse (jamais `hit` sur `clientKey` seul).
+   */
+  hitAddress(info: RequestInfo, prefix: string, limit: number): Promise<void>;
+  /** Lot R5 : la limite par adresse d'une lecture (tout en mémoire) : l'adresse du joueur à `limit`, l'adresse de connexion à `limit × PEER_FACTOR`. */
+  readHitAddress(info: RequestInfo, prefix: string, limit: number): Promise<void>;
+  /** Lot R5 : l'adresse de connexion seule, en mémoire, à `limit × PEER_FACTOR` (rien si elle est absente ou égale à l'adresse du joueur). */
+  peerHit(info: RequestInfo, prefix: string, limit: number): Promise<void>;
+  /**
+   * Lot R5 : le plafond global de rejeux de **cette instance** (par minute) — à appeler juste avant tout rejeu, après les vérifications bon
+   * marché. `units` : le poids du rejeu (1 pour un essai ; un lot de vies compte une unité par 10 vies). Au-delà : 503 `busy` propre.
+   */
+  spendReplays(units?: number): void;
   /** Fenêtre et limites des compteurs de la plateforme. */
   limits: { windowMs: number; perClient: number; perPlayer: number };
   readJson(req: Request): Promise<Record<string, unknown>>;
@@ -59,6 +83,14 @@ export interface GameInstance {
   onRename?(playerId: string, name: string): Promise<void>;
   /** « Changer mon code » : les lignes du jeu passent au nouvel identifiant (dans la transaction de la plateforme). */
   rotateStatements?(oldId: string, newId: string): Statement[];
+  /**
+   * Lot R5 — effacement d'un joueur (`POST /api/admin/effacer`) : ce que le jeu garde de lui (`counts`, pour la réponse) et les instructions
+   * qui l'effacent (`statements`, exécutées dans la transaction de la plateforme, avant la ligne `players`). Un jeu qui garde une nouvelle
+   * donnée d'un joueur l'efface ici (et la page de confidentialité le dit).
+   */
+  erase?(playerId: string): Promise<{ counts: Record<string, number>; statements: Statement[] }>;
+  /** Lot R5 : après un effacement, oublier ce que l'instance garde en mémoire (fantôme du premier d'un jour passé…). */
+  onErased?(): void;
   /** Le contenu du profil du joueur (`GET /api/me`), pour le jeu qui le fournit (DailyTrack jusqu'au lot P2). */
   profile?(playerId: string): Promise<Record<string, unknown>>;
   /** Tâche facultative (hors production), toutes les 15 s sous Node. */

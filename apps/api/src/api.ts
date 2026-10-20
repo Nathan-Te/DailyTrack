@@ -44,6 +44,11 @@ export interface ApiOptions {
   rateSalt?: string;
   limits?: { windowMs: number; perClient: number; perPlayer: number };
   /**
+   * Lot R5 : plafond global de rejeux par minute de cette instance (503 `busy` au-delà). `server.ts` pose `REPLAYS_PER_MINUTE` ; absent :
+   * aucun plafond (outils qui rejouent en masse en mémoire, tests).
+   */
+  replaysPerMinute?: number;
+  /**
    * Marque `demo` les joueurs créés par cette instance : réservé au script `history:seed` (lot 11), qui fait courir des
    * pilotes fictifs par le même chemin de validation que les vrais. Le serveur de production ne le règle jamais.
    */
@@ -85,6 +90,7 @@ export function createApi(options: ApiOptions) {
     environment: options.environment ?? "local",
     limits: options.limits ?? DEFAULT_LIMITS,
     rateSalt: options.rateSalt,
+    replaysPerMinute: options.replaysPerMinute,
     demoPlayers: options.demoPlayers === true,
     rotateStatements: (oldId, newId) => instances.flatMap((g) => g.instance.rotateStatements?.(oldId, newId) ?? []),
   });
@@ -95,8 +101,14 @@ export function createApi(options: ApiOptions) {
   };
   for (const g of GAMES) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
   const byPrefix = [...instances].sort((a, b) => b.prefix.length - a.prefix.length);
-  const identity = createIdentityRoutes(platform, instances.map((g) => g.instance));
-  const salon = (instances.find((g) => g.code === "cdj")!.instance as CdjInstance).salon;
+  const cdj = instances.find((g) => g.code === "cdj")!.instance as CdjInstance;
+  // Lot R5 : les routes d'admin de la plateforme (effacement d'un joueur) gardées par le jeton de l'admin de DailyTrack (`ADMIN_TOKEN`).
+  const identity = createIdentityRoutes(
+    platform,
+    instances.map((g) => g.instance),
+    (req, info) => cdj.requireAdmin(req, info),
+  );
+  const salon = cdj.salon;
   const today = platform.today;
 
   // --- Entrée -----------------------------------------------------------------------------------------------
@@ -151,6 +163,25 @@ export function createApi(options: ApiOptions) {
     }
   }
 
+  /**
+   * Lot R5 — **recette seulement** (`ENVIRONMENT=recette` ; 404 ailleurs) : ce qu'un appel porte jusqu'au serveur, pour comparer un appel passé
+   * par Firebase et un appel direct à `run.app` (`node scripts/sonde-proxy.mjs entetes …`). Rien n'est écrit ni journalisé. Rend les **noms**
+   * des en-têtes (jamais leurs valeurs, sauf les hôtes), le nombre d'entrées de `X-Forwarded-For` et l'adresse de connexion (`peerKey` :
+   * l'appelant lui-même pour un appel direct, un relais de Firebase sinon).
+   */
+  function probeHeaders(req: Request, info: RequestInfo): Record<string, unknown> {
+    const xff = req.headers.get("x-forwarded-for");
+    return {
+      hote: req.headers.get("host"),
+      hoteTransmis: req.headers.get("x-forwarded-host"),
+      hoteFirebase: req.headers.get("x-fh-requested-host"),
+      entetes: [...req.headers.keys()].sort(),
+      relais: xff ? xff.split(",").filter((p) => p.trim()).length : 0,
+      connexion: info.peerKey ?? null,
+      adresseLueEgaleConnexion: info.clientKey !== undefined && info.clientKey === info.peerKey,
+    };
+  }
+
   async function handle(req: Request, info: RequestInfo = {}): Promise<Response> {
     const reply = replier(req);
     try {
@@ -158,6 +189,7 @@ export function createApi(options: ApiOptions) {
       const url = new URL(req.url);
       const path = url.pathname.replace(/\/+$/, "");
       if (path === "/api/health" && req.method === "GET") return await health(reply);
+      if (path === "/api/sonde/entetes" && req.method === "GET" && options.environment === "recette") return reply(200, probeHeaders(req, info));
       await ensureSchema();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.

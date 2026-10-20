@@ -13,6 +13,15 @@ export interface NodeServerOptions {
   trustProxy?: boolean | number;
 }
 
+/**
+ * Lot R5 : l'**adresse de connexion**, la dernière entrée de `X-Forwarded-For`. Le frontal de Google (Cloud Run) y écrit l'adresse qui lui
+ * a ouvert la connexion : l'appelant lui-même pour un appel direct à `run.app`, un relais de Firebase sinon. Elle n'est jamais écrite par le
+ * client (ce qu'il envoie se retrouve **avant**). Sans en-tête : l'adresse du socket.
+ */
+export function peerFromForwarded(header: string | string[] | undefined): string | undefined {
+  return clientFromForwarded(header, 1);
+}
+
 /** Adresse du client d'après `X-Forwarded-For`, en comptant `hops` proxys de confiance depuis la droite. */
 export function clientFromForwarded(header: string | string[] | undefined, hops: number): string | undefined {
   const text = Array.isArray(header) ? header.join(",") : header;
@@ -39,7 +48,10 @@ export function createNodeServer(api: ReturnType<typeof createApi>, options: Nod
     try {
       const hops = options.trustProxy === true ? 1 : options.trustProxy || 0;
       const clientKey = (hops ? clientFromForwarded(req.headers["x-forwarded-for"], hops) : undefined) ?? req.socket.remoteAddress ?? undefined;
-      const response = await api.handle(toRequest(req), { clientKey });
+      // Lot R5 : avec un proxy de confiance, l'adresse de connexion (dernière entrée, écrite par le proxy) compte aussi dans chaque limite par
+      // adresse : avec `TRUST_PROXY` ≥ 2, `clientKey` peut être inventée par un appel direct, pas elle.
+      const peerKey = hops ? (peerFromForwarded(req.headers["x-forwarded-for"]) ?? req.socket.remoteAddress ?? undefined) : undefined;
+      const response = await api.handle(toRequest(req), { clientKey, peerKey });
       const headers = Object.fromEntries(response.headers);
       // Corps refusé sans avoir été lu en entier : on ferme la connexion plutôt que de la réutiliser.
       if (response.status === 413) headers["connection"] = "close";

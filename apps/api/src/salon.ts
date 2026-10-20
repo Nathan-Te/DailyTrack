@@ -93,6 +93,12 @@ export interface SalonKit {
   hashKey: (prefix: string, value: string) => Promise<string>;
   /** Compte un appel dans la fenêtre de débit de la clé ; lève 429 au-delà de `limit`. */
   hit: (key: string, limit: number) => Promise<void>;
+  /** Lot R5 : la limite par adresse d'un envoi (adresse du joueur en base, adresse de connexion en mémoire : `Platform.hitAddress`). */
+  hitAddress: (info: SalonRequestInfo, prefix: string, limit: number) => Promise<void>;
+  /** Lot R5 : l'adresse de connexion seule, en mémoire (`Platform.peerHit`). */
+  peerHit: (info: SalonRequestInfo, prefix: string, limit: number) => Promise<void>;
+  /** Lot R5 : le plafond global de rejeux de l'instance (`Platform.spendReplays`). */
+  spendReplays: (units?: number) => void;
   readJson: (req: Request) => Promise<Record<string, unknown>>;
   playerIdOf: (value: unknown) => string;
   /** Joueurs (lot 30) : pseudos réservés et codes révoqués, mêmes règles que le classement du jour. */
@@ -106,6 +112,8 @@ export interface SalonKit {
 
 export interface SalonRequestInfo {
   clientKey?: string;
+  /** Lot R5 : l'adresse de connexion (voir `RequestInfo.peerKey`, `games.ts`). */
+  peerKey?: string;
 }
 
 export interface SalonTrack {
@@ -241,6 +249,7 @@ export function createSalon(kit: SalonKit) {
    * envois, eux, gardent leur compteur en base (exact, et c'est lui qui protège le rejeu).
    */
   async function limitReads(info: SalonRequestInfo): Promise<void> {
+    await kit.peerHit(info, "srd", limits.readsPerClient); // lot R5 : l'adresse de connexion aussi (une adresse inventée ne remet pas à zéro)
     if (!info.clientKey) return;
     const key = await kit.hashKey("srd", info.clientKey);
     const bucket = Math.floor(now() / READ_WINDOW_MS);
@@ -403,7 +412,7 @@ export function createSalon(kit: SalonKit) {
     if (t > salonSessionEnd(session, sessionMs) + SALON_GRACE_MS) throw new HttpError(409, "session_closed", "Trop tard : cette session est terminée");
 
     // Débit : par adresse (avant tout rejeu), puis par joueur.
-    if (info.clientKey) await kit.hit(await kit.hashKey("ssb", info.clientKey), limits.submitsPerClient);
+    await kit.hitAddress(info, "ssb", limits.submitsPerClient);
     await kit.players.assertActive(playerId);
     const known = await kit.players.find(playerId);
     const name = await kit.players.resolveName(playerId, body.name, known); // pseudo réservé à son premier propriétaire (lot 30)
@@ -422,6 +431,7 @@ export function createSalon(kit: SalonKit) {
     if (replay.trackId !== salonTrackId(session)) throw new HttpError(409, "track_mismatch", "Cette rediffusion n'est pas celle du circuit de cette session");
 
     const circuit = await circuitFor(session);
+    kit.spendReplays(); // lot R5 : plafond global de rejeux de l'instance (503 au-delà)
     const result = replayRace(circuit.track, replay); // la seule source du temps
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 

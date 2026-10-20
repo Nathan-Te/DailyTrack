@@ -18,7 +18,49 @@
 // Puis régler la variable du dépôt RECETTE_TRUST_PROXY (et, la même valeur, TRUST_PROXY pour la production), redéployer, relancer la sonde
 // (attendre 10 minutes entre deux essais : la fenêtre du débit).
 
+//
+// Lot R5 — deux autres mesures, toujours contre la recette seulement :
+//   node scripts/sonde-proxy.mjs entetes <adresse directe> <adresse par Firebase> [--essais 20]
+//        → ce que le serveur reçoit d'un appel direct et d'un appel par Firebase (route `/api/sonde/entetes`, recette seulement) : hôte,
+//          noms des en-têtes, nombre d'entrées de X-Forwarded-For, adresses de connexion (combien de relais de Firebase différents) ;
+//   node scripts/sonde-proxy.mjs faille <adresse directe (une révision de recette)> [--max 600]
+//        → la preuve que la faille est fermée : des appels DIRECTS à `GET /api/name`, chacun avec une adresse inventée différente dans
+//          X-Forwarded-For. Avant le lot R5, aucun n'était refusé (la limite de 40 par adresse était contournée) ; depuis, l'adresse de
+//          connexion est comptée aussi : un refus (429) arrive au plus tard après 40 × PEER_FACTOR (= 400) appels.
+
 export const NAME_CHECKS = 40;
+/** `PEER_FACTOR` du serveur (apps/api/src/platform.ts ; le test apps/portail/test/domaine.test.ts vérifie l'accord). */
+export const PEER_FACTOR = 10;
+
+/**
+ * Le verdict de la preuve « faille fermée » : `firstRefusal` = numéro du premier appel direct refusé (429), ou `null`.
+ * Fermée si un refus arrive au plus tard au `NAME_CHECKS × PEER_FACTOR + 1`ᵉ appel (une fenêtre de débit qui change pendant la mesure
+ * peut le retarder d'au plus une limite : on tolère le double).
+ */
+export function failleVerdict(firstRefusal, sent) {
+  const bound = NAME_CHECKS * PEER_FACTOR + 1;
+  if (firstRefusal !== null && firstRefusal <= 2 * bound) return { ok: true, text: `Faille fermée : ${sent} appels directs avec une adresse inventée différente à chaque fois, refusés (429) dès le ${firstRefusal}ᵉ (borne : ${bound}).` };
+  if (firstRefusal !== null) return { ok: false, text: `Refus tardif (${firstRefusal}ᵉ appel, borne ${bound}) : plusieurs instances, ou une fenêtre qui a changé ; relancer dans 10 minutes.` };
+  return { ok: false, text: `FAILLE OUVERTE : ${sent} appels directs avec une adresse inventée différente à chaque fois, aucun refusé : la limite par adresse est contournée.` };
+}
+
+/** Le résumé de la comparaison des en-têtes (réponses de `/api/sonde/entetes`). */
+export function compareHeaders(direct, viaFirebase) {
+  const names = (r) => new Set(r.entetes ?? []);
+  const d = names(direct[0] ?? {});
+  const onlyFirebase = [...new Set(viaFirebase.flatMap((r) => r.entetes ?? []))].filter((n) => !d.has(n)).sort();
+  const peers = new Set(viaFirebase.map((r) => r.connexion).filter(Boolean));
+  return {
+    hoteDirect: direct[0]?.hote ?? null,
+    hotesFirebase: [...new Set(viaFirebase.map((r) => r.hote))],
+    hotesTransmisFirebase: [...new Set(viaFirebase.map((r) => r.hoteTransmis))],
+    relaisDirect: direct[0]?.relais ?? null,
+    relaisFirebase: [...new Set(viaFirebase.map((r) => r.relais))],
+    entetesSeulementParFirebase: onlyFirebase,
+    adressesDeConnexionFirebase: peers.size,
+    adressesDeConnexionFirebaseListe: [...peers],
+  };
+}
 
 /** La sonde ne vise jamais la production (elle consomme une limite de débit, en base). */
 export function probeRefusal(direct, viaFirebase) {
@@ -53,7 +95,53 @@ async function status(url, headers = {}) {
   return res.status;
 }
 
+async function entetes(argv) {
+  const [direct, viaFirebase] = argv.filter((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"));
+  const at = argv.indexOf("--essais");
+  const n = at >= 0 ? Number(argv[at + 1]) : 20;
+  const refusal = probeRefusal(direct, viaFirebase);
+  if (refusal) {
+    console.error(refusal);
+    process.exit(2);
+  }
+  const get = async (base) => {
+    const res = await fetch(`${base.replace(/\/+$/, "")}/api/sonde/entetes`, { headers: { "Cache-Control": "no-cache" } });
+    if (!res.ok) throw new Error(`${base} : ${res.status} (la route n'existe que sur la recette, depuis le lot R5)`);
+    return res.json();
+  };
+  const d = [await get(direct)];
+  const f = [];
+  for (let i = 0; i < n; i++) f.push(await get(viaFirebase));
+  console.log(JSON.stringify(compareHeaders(d, f), null, 2));
+}
+
+async function faille(argv) {
+  const [direct] = argv.filter((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"));
+  const at = argv.indexOf("--max");
+  const max = at >= 0 ? Number(argv[at + 1]) : 2 * (NAME_CHECKS * PEER_FACTOR + 1);
+  const refusal = probeRefusal(direct, direct);
+  if (refusal) {
+    console.error(refusal);
+    process.exit(2);
+  }
+  const d = direct.replace(/\/+$/, "");
+  const stamp = Date.now() % 200;
+  let first = null;
+  let sent = 0;
+  for (let i = 0; i < max && first === null; i++) {
+    sent++;
+    // Une adresse inventée différente à chaque appel (plage de documentation 198.18.0.0/15, jamais routée).
+    const forged = `198.${18 + ((i >> 16) & 1)}.${(stamp + (i >> 8)) % 256}.${i % 256}`;
+    if ((await status(`${d}/api/name?name=Sonde${i}`, { "X-Forwarded-For": forged })) === 429) first = i + 1;
+  }
+  const v = failleVerdict(first, sent);
+  console.log(v.text);
+  process.exit(v.ok ? 0 : 1);
+}
+
 async function main(argv) {
+  if (argv[0] === "entetes") return entetes(argv.slice(1));
+  if (argv[0] === "faille") return faille(argv.slice(1));
   const [direct, viaFirebase] = argv.filter((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"));
   const trustAt = argv.indexOf("--trust-proxy");
   const trustProxy = trustAt >= 0 ? Number(argv[trustAt + 1]) : null;

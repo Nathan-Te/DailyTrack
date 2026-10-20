@@ -6,6 +6,7 @@ import { openLibsql } from "./libsql-open";
 import { consoleLog } from "./log";
 import { createNodeServer } from "./node-server";
 import { openSqlite } from "./node-sqlite";
+import { REPLAYS_PER_MINUTE } from "./platform";
 
 // Point d'entrée du serveur Node : conteneur Cloud Run (Turso) ou Docker / poste local (SQLite). Variables : voir `config.ts`.
 // **Aucune tâche de fond** n'est indispensable (Cloud Run éteint le conteneur sans requête, et n'alloue du calcul que pendant une requête) :
@@ -55,6 +56,7 @@ const api = createApi({
   allowOrigin: config.allowOrigin ?? "*",
   allowedOrigins: config.allowedOrigins,
   rateSalt: config.rateSalt,
+  replaysPerMinute: REPLAYS_PER_MINUTE, // lot R5 : plafond global de rejeux de chaque instance (503 au-delà)
   adminToken: config.adminToken,
   salonMinutes: config.salonMinutes,
   now,
