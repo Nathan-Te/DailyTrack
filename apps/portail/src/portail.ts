@@ -32,7 +32,9 @@ import {
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { avancement, formatCompte, lireJour, prochainMinuit, type Etat, type JeuDuJour, type Lecture } from "./jour";
-import { cartes, type CarteJeu } from "./jours";
+import { cartes, numeroDeJournee, type CarteJeu } from "./jours";
+import { construireOptions } from "./partageDuJour";
+import { envoyer, lienDuPortail, textePartage } from "./partage";
 import { stockageDuPortail } from "./stockage";
 
 // Le portail « Du Jour » (lot R4 ; lot I1 : passé au socle `@cdj/ui` ; lot I2 : l'accueil riche). Un joueur qui l'ouvre voit en trois secondes
@@ -41,7 +43,8 @@ import { stockageDuPortail } from "./stockage";
 //     données du nouveau jour sont relues **sans recharger la page** ;
 //   - une cartouche par jeu, affichée **tout de suite** (numéro du jour connu sans le serveur) ; le thème et le statut du joueur arrivent dans
 //     une **place réservée** (rien ne saute) : pas encore joué · en cours · fini (temps, médaille, rang) ;
-//   - la tuile Série (série tous jeux confondus, journées parfaites) ;
+//   - la tuile Série (série tous jeux confondus, journées parfaites) et (lot I3) la tuile Classement du jour (sa place et ses points, tous jeux) qui mène à
+//     `/classement/` ; le numéro de la journée commune (« Journée n° 12 ») à droite de la date ; le bouton « Partager ma journée » et sa ligne (`partage.ts`) ;
 //   - **une seule requête** à l'API au chargement (`GET /api/portail/jour`, `jour.ts`) ; sans identité, aucune donnée personnelle : la réponse
 //     publique et une phrase d'accueil ; serveur injoignable : rien de bloquant, un message discret du catalogue.
 // Langue : celle de la plateforme (`cdj:langue`, `@cdj/profile`) ; la changer met à jour l'écran sans recharger, `<html lang>` et le titre.
@@ -51,6 +54,8 @@ let langue: Langue = lireLangue(stockage, navigator.languages).langue;
 /** Ce que le serveur a rendu (`null` : pas encore de réponse). */
 let lecture: Lecture | null = null;
 let chargement = false;
+/** Lot I3 : le message du dernier partage (« Ligne copiée… »), sous le bouton. */
+let messagePartage: string | null = null;
 
 const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMUN);
 type T = ReturnType<typeof traduire>;
@@ -130,6 +135,49 @@ function tuileSerie(t: T): HTMLElement | null {
   return t1;
 }
 
+/**
+ * Lot I3 — la tuile Classement du jour : « 9e », « 38 points, tous jeux » ; elle mène à `/classement/`. Un joueur neuf, ou qui n'a encore fini aucun jeu
+ * aujourd'hui, est invité à jouer (« Finis un jeu pour entrer au classement »), sans chiffre inventé. `null` : le serveur n'a pas répondu (la page du classement
+ * ne s'ouvrirait pas non plus).
+ */
+function tuileClassement(t: T, neuf: boolean): HTMLElement | null {
+  const joueur = lecture?.jour?.joueur;
+  const place = joueur && joueur.rangDuJour != null ? joueur : null;
+  // Le serveur n'a pas répondu (injoignable, délai) : pas de tuile, la page du classement ne s'ouvrirait pas non plus.
+  if (lecture && !lecture.jour) return null;
+  // Pendant le chargement, sa place est réservée (sauf pour un joueur neuf, qui n'attend rien du serveur).
+  if (!place && !neuf && !joueur) return lecture ? null : el("div", { classe: "portail-tuile-reservee", attrs: { "aria-hidden": "true" } });
+  const contenu = place
+    ? tuile({ legende: t.t("portail.classement.legende"), valeur: formatRang(place.rangDuJour!, langue), sousTexte: t.t("portail.classement.points", { n: place.points ?? 0 }) })
+    : tuile({ legende: t.t("portail.classement.legende"), valeur: "—", sousTexte: t.t("portail.classement.inviter") });
+  return el("a", { classe: "portail-tuile-lien", attrs: { id: "classement", href: "classement/", "data-cle": "classement" } }, contenu);
+}
+
+/** Lot I3 — « Partager ma journée » dès qu'au moins un jeu est fini aujourd'hui : le bouton, la ligne qu'il enverra (le joueur voit ce qu'il envoie), le message. */
+function partage(t: T): HTMLElement | null {
+  const jour = lecture?.jour;
+  const options = jour ? construireOptions(t, jour, lienDuPortail(location)) : null;
+  if (!options) return null;
+  const texte = textePartage(options);
+  const bouton_ = bouton({ texte: t.t("portail.partager"), variante: "marque", pleineLargeur: true, onClick: () => void partager(texte) });
+  bouton_.id = "partager";
+  bouton_.setAttribute("data-cle", "partager");
+  return el(
+    "section",
+    { classe: "portail-partage", attrs: { "aria-label": t.t("portail.partager") } },
+    bouton_,
+    el("p", { classe: "portail-partage__apercu", attrs: { id: "partage-apercu", "aria-label": t.t("portail.partage.apercu") }, texte }),
+    messagePartage ? el("p", { classe: "portail-message", attrs: { id: "partage-message", role: "status" }, texte: messagePartage }) : null,
+  );
+}
+
+async function partager(texte: string): Promise<void> {
+  const t = traduire(langue);
+  const r = await envoyer(texte);
+  messagePartage = r === "partage" ? t.t("portail.partage.partage") : r === "copie" ? t.t("portail.partage.copie") : r === "echec" ? t.t("portail.partage.pasDeCopie") : null;
+  rendre();
+}
+
 /** Le message discret quand le serveur n'a pas rendu le jour du joueur (un code du serveur traduit, sinon panne du réseau). */
 function message(t: T): string | null {
   const e = lecture?.erreur;
@@ -155,11 +203,18 @@ function rendre(): void {
   const statuts = jour?.joueur ? montrees.map((c) => parJeu.get(c.jeu)!) : [];
   const { finis, total } = avancement(statuts);
   const neuf = !identite.exists || lecture?.erreur === "unknown_player";
+  const journee = jour ? (jour.journee ?? null) : numeroDeJournee(day);
   const texteMessage = message(t);
   racine.replaceChildren(
     el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
     barrePortail(t, { langue, onLangue: changerLangue, pseudo: identite.exists ? identite.name : null, profil: "profil/" }),
-    el("p", { classe: "portail-date", attrs: { id: "date" }, texte: formatDate(day, langue, { capitale: true }) }),
+    el(
+      "div",
+      { classe: "portail-date" },
+      el("p", { classe: "portail-date__jour", attrs: { id: "date" }, texte: formatDate(day, langue, { capitale: true }) }),
+      // Lot I3 : le numéro de la journée commune, à droite de la date (le serveur fait foi ; sinon la constante recopiée) ; rien avant le 23/10/2026.
+      journee ? el("span", { classe: "portail-date__journee", attrs: { id: "journee" }, texte: t.t("portail.journee", { numero: formatNumeroJour(journee, langue) }) }) : null,
+    ),
     afficheurDuCompte(t),
     el(
       "section",
@@ -181,7 +236,9 @@ function rendre(): void {
         }),
       ),
     ),
-    ...[neuf ? el("p", { classe: "portail-accueil", attrs: { id: "accueil" }, texte: t.t("portail.accueil") }) : tuileSerie(t)].filter((e): e is HTMLElement => e !== null),
+    ...(neuf ? [el("p", { classe: "portail-accueil", attrs: { id: "accueil" }, texte: t.t("portail.accueil") })] : []),
+    ...[el("div", { classe: "portail-tuiles" }, ...[neuf ? null : tuileSerie(t), tuileClassement(t, neuf)].filter((e): e is HTMLElement => e !== null))].filter((g) => g.childElementCount > 0),
+    ...[partage(t)].filter((e): e is HTMLElement => e !== null),
     ...(texteMessage ? [el("p", { classe: "portail-message", attrs: { id: "message", role: "status" }, texte: texteMessage })] : []),
     el(
       "footer",

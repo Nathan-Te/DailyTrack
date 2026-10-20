@@ -13,7 +13,7 @@ const pilot = runPilot(circuit.track, { grip: 0.9 });
 const code = encodeReplay(pilot.replay);
 // API simulée : ces tests ne doivent rien envoyer au vrai serveur (les rangs des autres tests en dépendent).
 const API = "http://api.test";
-const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
+const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, X-Player-Id", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
 const json = (body: unknown, status = 200) => ({ status, headers: CORS, contentType: "application/json", body: JSON.stringify(body) });
 
 for (const viewport of [
@@ -40,6 +40,11 @@ for (const viewport of [
       if (url.pathname.endsWith("/leaderboard")) {
         const top = [{ rank: 1, name: "Alice", ms: pilot.finishMs - 3000, medal: "author" }, { rank: 2, name: "Bob", ms: pilot.finishMs - 1000, medal: "gold" }, me];
         return route.fulfill(json({ date: circuit.date, participants: 12, top, me }));
+      }
+      // Lot I3 : « Jeu suivant du jour » (la lecture de l'arrivée) : Track fini, Jump pas joué.
+      if (url.pathname === "/api/portail/jour") {
+        const fini = { statut: "fini", tempsMs: pilot.finishMs, medaille: null, rang: 3, classes: 12 };
+        return route.fulfill(json({ date: circuit.date, jeux: [{ jeu: "cdj", site: "track", nom: "Track", etat: fini }, { jeu: "jump", site: "jump", nom: "Jump", etat: { statut: "pas_joue" } }] }));
       }
       return route.fulfill(json({ error: "no_ghost", message: "Aucun fantôme" }, 404));
     });
@@ -76,8 +81,17 @@ for (const viewport of [
       await page.locator("#board .bhead").click();
       await expect(page.locator("#board")).not.toHaveClass(/folded/);
     }
+    // Lot I3 : « Jeu suivant du jour : Jump › » s'ajoute au panneau d'arrivée sans rien cacher de ce qu'il montrait (cible de 44 px, tout reste dans l'écran).
+    const next = page.locator("#finish-next-game");
+    await expect(next).toBeVisible({ timeout: 20_000 });
+    await expect(next).toHaveText("Jeu suivant du jour : Jump ›");
+    await expect(next).toHaveAttribute("href", "../jump/");
+    await page.locator("#finish").evaluate((e) => e.scrollTo(0, 0));
+    expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
     const finished = ["#meta", "#medals", "#timer", "#menu", "#ghostinfo", "#board", "#finish"];
     expectNoOverlap(await boxes(page, finished), viewport);
+    // Tout ce que l'arrivée montrait déjà reste visible et touchable (le panneau défile, rien n'est masqué par le nouveau bouton).
+    for (const sel of ["#finish .big", "#finish .online .rank", "#finish .actions button:first-child"]) await expect(page.locator(sel).first()).toBeVisible();
     for (const b of await page.locator("#finish .actions button").all()) {
       const box = (await b.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(34);

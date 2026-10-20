@@ -50,8 +50,8 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `name_required` | 400 | Premier envoi d'un joueur inconnu sans pseudo. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit` |
 | `invalid_code` | 400 | Admin, effacement : code de transfert mal formé ou abîmé (somme de contrôle). | `POST /api/admin/effacer` |
 | `unauthorized` | 401 | Admin : jeton manquant ou incorrect. | `/api/admin/*` |
-| `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…` (lot I2 : un encodage illisible aussi, plus jamais 500), `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…` |
-| `unknown_day` | 404 | Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu. | `/api/day/<j>…`, `/api/submit`, `/api/jump/day/<j>…` |
+| `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…` (lot I2 : un encodage illisible aussi, plus jamais 500), `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3) |
+| `unknown_day` | 404 | Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu. | `/api/day/<j>…`, `/api/submit`, `/api/jump/day/<j>…`, `/api/portail/classement?date=` (lot I3 : un jour futur, ou d'avant les jeux) |
 | `day_closed` | 409 | Envoi pour un jour dont le classement est figé (jour passé, après la grâce de 10 minutes). | `POST /api/submit`, `/api/jump/submit`, `/api/jump/lives` |
 | `day_started` | 409 | Admin, planning : ce jour a déjà commencé, son circuit ne peut plus être remplacé. | `PUT` / `DELETE /api/admin/planning/<j>` |
 | `too_far` | 400 | Admin, planning : jour trop loin dans le futur (plus de `PLANNING_HORIZON` jours). | `PUT` / `DELETE /api/admin/planning/<j>` |

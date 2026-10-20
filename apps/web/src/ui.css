@@ -233,6 +233,11 @@ body.paused #pause { display: flex; }
 #finish .status.error { color: #ff8a80; }
 #finish .status .rank { font-weight: 800; color: #9bd0ff; }
 #finish .done { font-size: 17px; font-weight: 800; }
+/* Lot I3 : « Jeu suivant du jour » (ou « Journée parfaite ! » et le retour au portail) sous le résultat : des liens de 44 px. */
+#finish .next { margin-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#finish .next[hidden] { display: none; }
+#finish .next-game { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 44px; padding: 8px 14px; border-radius: 8px; border: 2px solid #ffd22e; color: #ffd22e; font-size: 15px; font-weight: 700; text-decoration: none; }
+#finish .next-perfect { font-size: 17px; font-weight: 800; color: #ffd22e; }
 
 /* Réglage « temps intermédiaires » désactivé. */
 body.no-splits #splits { display: none; }

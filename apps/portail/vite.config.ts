@@ -34,6 +34,7 @@ export default defineConfig({
         index: resolve(import.meta.dirname, "index.html"),
         mentions: resolve(import.meta.dirname, "mentions-legales/index.html"),
         profil: resolve(import.meta.dirname, "profil/index.html"),
+        classement: resolve(import.meta.dirname, "classement/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },
     },

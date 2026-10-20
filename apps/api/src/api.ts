@@ -113,10 +113,12 @@ export function createApi(options: ApiOptions) {
   const byPrefix = [...instances].sort((a, b) => b.prefix.length - a.prefix.length);
   const cdj = instances.find((g) => g.code === "cdj")!.instance as CdjInstance; // DailyTrack est toujours au registre (admin, Salon)
   // Lot R5 : les routes d'admin de la plateforme (effacement d'un joueur) gardées par le jeton de l'admin de DailyTrack (`ADMIN_TOKEN`).
+  // Lot I3 : l'effacement d'un joueur vide aussi la mémoire du portail (`portail.oublier`, défini juste après).
   const identity = createIdentityRoutes(
     platform,
     instances.map((g) => g.instance),
     (req, info) => cdj.requireAdmin(req, info),
+    () => portail.oublier(),
   );
   // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
   const portail = createPortailRoutes(

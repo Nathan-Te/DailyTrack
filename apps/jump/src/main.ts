@@ -107,6 +107,7 @@ import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type
 import { applyJumpIdentity, applyJumpProfile, followJumpIdentity, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
 import { mountProfileUi } from "./profileUi";
 import { copyText } from "./clipboard";
+import { lireSuite, type Suite } from "./jeuSuivant";
 import { HttpRankSource, rankApiBase, type JumpBoard, type RankSource } from "./rankApi";
 import { ARRIVAL_REFRESH_MS, DayReads, type DayBundle, type LoadOptions } from "./dayReads";
 import { RankQueue } from "./rankQueue";
@@ -582,6 +583,8 @@ const ranking = new Ranking({
     }
     // Lot P3 : le joueur existe maintenant sur le serveur : ses vies en attente partent.
     livesSender.wake();
+    // Lot I3 : l'envoi est accepté : la suite de la journée (une lecture de `GET /api/portail/jour`).
+    void loadSuite(true);
   },
   identityStore: () => store,
   today: () => gameDay(),
@@ -1295,10 +1298,34 @@ function showFinish(): void {
   // apparaît quand l'échantillon est là. Lot P4 : le top 10 et le premier connus s'affichent tout de suite ; le jour n'est relu (une requête :
   // classement, premier, carte) que si la dernière lecture a plus de 3 minutes ; après ton envoi, le classement vient de sa réponse.
   arrival.setFirst(null);
+  // Lot I3 : la suite de la journée, si elle est déjà connue (envoi accepté pendant le carnage) ; sinon elle arrive avec l'envoi.
+  arrival.setSuite(suiteDuJour);
+  void loadSuite();
   showFirst();
   void refreshDay({ maxAgeMs: ARRIVAL_REFRESH_MS });
   arrival.setEveryone(null);
   void loadEveryone();
+}
+
+// ——— Lot I3 (plateforme) : « Jeu suivant du jour » à l'arrivée : une lecture de `GET /api/portail/jour` après l'envoi accepté (le classement prouvé dit que ce jeu est
+// fini), jamais d'une connaissance codée de l'autre jeu. Serveur injoignable : pas de bouton, rien de bloquant. ———
+let suiteDuJour: Suite | null = null;
+let suiteLue = 0;
+let suiteEnCours = false;
+/** Lit la suite (au plus une fois par 10 s, sauf `force` : un envoi vient d'être accepté) ; le niveau du jour classé seulement, jamais en démonstration. */
+async function loadSuite(force = false): Promise<void> {
+  if (suiteEnCours || !apiBase || demoRank || !daily || !choice || choice.mode !== "jour" || watching || session.tuned || isTrial) return;
+  // Sans envoi accepté à l'instant, seulement si le serveur connaît déjà le résultat du jour (envoyé plus tôt, ou relu au chargement).
+  if (!force && ((ranking.state.status !== "ranked" && ranking.known(daily.date) === null) || Date.now() - suiteLue < 10_000)) return;
+  const id = ownId();
+  if (!id) return;
+  suiteEnCours = true;
+  suiteLue = Date.now();
+  const lue = await lireSuite(apiBase, id, "jump");
+  suiteEnCours = false;
+  if (lue === null) return; // injoignable, ou ce jeu n'est pas encore fini côté serveur : rien
+  suiteDuJour = lue;
+  if (arrival.shown) arrival.setSuite(lue);
 }
 
 /** Lot P1 : le classement de l'écran d'arrivée et le rang de l'accueil suivent l'état du classement. */

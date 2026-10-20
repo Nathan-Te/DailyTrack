@@ -192,6 +192,37 @@ jobs:
       api: /
     secrets: inherit
 
+  # Lot I3 : le cache de Firebase Hosting respecte-t-il `Vary: X-Player-Id` ? Le portail rend la même adresse (`/api/portail/jour`, `/api/portail/classement`) en version
+  # publique (gardée par le CDN, 60 s au plus) et en version personnelle (avec l'identifiant, `private`). Par l'adresse de Hosting (jamais Cloud Run en direct : sans CDN,
+  # la vérification ne prouverait rien), une lecture avec l'identifiant du joueur de démonstration faite juste après une lecture sans doit recevoir l'état du joueur, et
+  # l'inverse (`smoke --lecture-seule --par-hosting --joueur-demo`, apps/api/scripts/smokeRead.ts : des GET seulement, rien n'est écrit). Fusion dans main seulement (la
+  # révision d'une PR n'a pas le trafic : l'adresse de Hosting sert la recette par défaut).
+  hosting:
+    needs: [plan, deploy, seed, site]
+    if: ${{ !cancelled() && needs.plan.outputs.action == 'default' && needs.deploy.result == 'success' && needs.deploy.outputs.enabled == 'true' && needs.site.result == 'success' && needs.site.outputs.enabled == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Cache de Firebase Hosting (Vary X-Player-Id)
+        env:
+          SITE_URL: ${{ needs.site.outputs.url }}
+          SEED: ${{ needs.seed.result }}
+        run: |
+          npm ci -w @cdj/api --ignore-scripts
+          # Le joueur de démonstration est créé par recette:seed (job précédent) ; sans lui, un identifiant inventé (404 `unknown_player` attendu, jamais la réponse publique).
+          demo=""
+          [ "$SEED" = success ] && demo="--joueur-demo" || echo "- recette:seed n'a pas tourné (${SEED:-sauté}) : identifiant inventé à la place du joueur de démonstration" >> "$GITHUB_STEP_SUMMARY"
+          if ! npm run smoke -w @cdj/api -- "${SITE_URL%/}" --lecture-seule --environnement recette --par-hosting $demo --origin "$(node scripts/domaine.mjs adresse recette)" --resume "$GITHUB_STEP_SUMMARY"; then
+            echo "::error title=Recette : le cache de Firebase Hosting::Une lecture du portail n'a pas la réponse attendue par l'adresse de Hosting (détail dans le résumé du run). Si Hosting ignorait Vary, séparer la réponse publique de la réponse personnelle (voir docs/plateforme/lots/lot-I3-journee-partagee.md)."
+            exit 1
+          fi
+
   # Lot R4 : l'aperçu d'une PR qui touche le serveur, construit pour parler à SA révision (adresse directe). Sans révision (recette non
   # configurée), il vise la recette par défaut (/api/, même origine).
   apercu:

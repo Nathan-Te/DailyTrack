@@ -1,4 +1,5 @@
-// `npm run measure:portail -w @cdj/api` (lot I2 de la plateforme) : ce que coûtent les lectures du portail — `GET /api/portail/jour` (sans
+// `npm run measure:portail -w @cdj/api` (lot I2 de la plateforme ; lot I3 : le classement du jour et la place du joueur, pour 100, 1 000 et 10 000 joueurs du
+// jour — voir la fin du script) : ce que coûtent les lectures du portail — `GET /api/portail/jour` (sans
 // joueur, puis avec un joueur de 30 et de 365 jours d'historique dans les deux jeux) et le profil commun `GET /api/portail/profil` (premier
 // appel : places finales des jours fermés calculées et gardées ; ensuite : relues). Les requêtes passent par le **vrai code** de l'API
 // (`api.handle`), sur un **vrai serveur libSQL** (`sqld`, le moteur et le protocole de Turso), qui répond pour chaque instruction le nombre de
@@ -142,3 +143,68 @@ const p365 = await measure("profil, 365 jours : ensuite (places finales gardées
 console.log(`\nContrôle : série de 30 jours = ${(j30.joueur as { serie: number }).serie}, profil 365 jours = ${(p365.jeux as { joursFinis: number }[]).map((j) => j.joursFinis).join(" / ")} jours finis`);
 console.log("\nRésumé (instructions / lignes lues / écrites) :");
 for (const c of costs) console.log(`  ${c.label} : ${c.statements} / ${c.read} / ${c.written}`);
+
+// --- Lot I3 : le classement du jour tous jeux confondus, pour 100, 1 000 et 10 000 joueurs du jour --------------------------------------------------------
+// Le classement du jour est calculé **au plus une fois par fenêtre (45 s) et par instance** : une lecture de `results` et de `jump_results` (une ligne par classé
+// et par jeu). Mesuré ici : ce calcul (premier appel), la lecture suivante (en mémoire : zéro), la place d'un joueur du milieu dans `GET /api/portail/jour` (ses
+// états : le rang d'un jeu lit une ligne par classé devant lui) et le haut du classement avec sa ligne. `CLASSEMENT=100,1000` pour changer les tailles.
+const SIZES = (process.env.CLASSEMENT ?? "100,1000,10000").split(",").map((x) => Number(x.trim())).filter((x) => x > 0);
+const classementRows: { n: number; label: string; statements: number; read: number; written: number; ms: number; size: number }[] = [];
+
+async function peupler(n: number): Promise<void> {
+  for (const t of ["results", "jump_results", "players", "jump_lives", "jump_deaths", "rate"]) await db.run(`DELETE FROM ${t}`);
+  for (let from = 0; from < n; from += 250) {
+    const statements: { sql: string; params?: SqlValue[] }[] = [];
+    for (let j = from; j < Math.min(n, from + 250); j++) {
+      const id = hex(1_000_000 + j);
+      statements.push({ sql: "INSERT INTO players (id, name, created_at, updated_at, name_key) VALUES (?, ?, 0, 0, ?)", params: [id, `Joueur ${j}`, `joueur ${j}`] });
+      // Des temps étalés de part et d'autre des seuils des médailles (le circuit et le niveau du jour sont ceux de l'instance) ; un joueur sur dix n'a fini qu'un jeu.
+      statements.push({ sql: "INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at) VALUES (?, ?, ?, '[]', 'x', 0, ?)", params: [today, id, 30_000 + j * 7, 1_000 + j] });
+      if (j % 10 !== 9) {
+        statements.push({
+          sql: "INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at) VALUES (?, ?, ?, ?, 0, 'x', 1, 1, 0, ?)",
+          params: [today, id, `jour-${formatDay(today)}-g1`, 4_000 + ((j * 13) % n) * 2, 1_000 + j],
+        });
+      }
+    }
+    await db.batch!(statements);
+  }
+}
+
+async function mesureClassement(n: number, label: string, api: ReturnType<typeof make>, path: string, player?: string): Promise<Record<string, any>> {
+  const before = { ...tally };
+  const t0 = performance.now();
+  const res = await api.handle(new Request(`http://api.test${path}`, { headers: player ? { "X-Player-Id": player } : {} }), { clientKey: `203.0.113.${(classementRows.length % 200) + 10}` });
+  const ms = performance.now() - t0;
+  const text = await res.text();
+  const c = { n, label, statements: tally.statements - before.statements, read: tally.read - before.read, written: tally.written - before.written, ms, size: text.length };
+  classementRows.push(c);
+  console.log(`${String(n).padStart(6)} joueurs · ${label.padEnd(58)} ${String(res.status).padStart(3)}  ${ms.toFixed(1).padStart(8)} ms  instructions ${String(c.statements).padStart(2)}  lues ${String(c.read).padStart(6)}  écrites ${String(c.written).padStart(3)}  ${String(c.size).padStart(6)} o`);
+  if (res.status !== 200) throw new Error(`${label} : ${res.status} ${text.slice(0, 200)}`);
+  return JSON.parse(text) as Record<string, any>;
+}
+
+console.log("\n--- Lot I3 : le classement du jour ---");
+for (const n of SIZES) {
+  await peupler(n);
+  const api = make();
+  await api.handle(new Request("http://api.test/api/health"));
+  await api.handle(new Request("http://api.test/api/portail/jour"), { clientKey: "203.0.113.1" }); // le circuit et le niveau du jour (hors mesure)
+  const milieu = hex(1_000_000 + Math.floor(n / 2));
+  const heapAvant = process.memoryUsage().heapUsed;
+  const premier = await mesureClassement(n, "classement, sans joueur : premier appel (le calcul)", api, "/api/portail/classement");
+  const tas = process.memoryUsage().heapUsed - heapAvant;
+  await mesureClassement(n, "classement, sans joueur : ensuite (en mémoire)", api, "/api/portail/classement");
+  const moi = await mesureClassement(n, "classement, joueur du milieu : sa ligne (ses états + le classement gardé)", api, "/api/portail/classement", milieu);
+  const jour = await mesureClassement(n, "jour, joueur du milieu : points et place (classement gardé)", api, "/api/portail/jour", milieu);
+  // Une instance neuve : le calcul se refait (une fois par fenêtre et par instance), puis l'accueil du joueur du milieu.
+  const autre = make();
+  await autre.handle(new Request("http://api.test/api/health"));
+  await mesureClassement(n, "jour, joueur du milieu : instance neuve (calcul compris)", autre, "/api/portail/jour", milieu);
+  console.log(
+    `        contrôle : ${premier.classes} classés, haut ${premier.top.length}, sa ligne ${moi.moi?.rang}e sur ${moi.moi?.classes}, jour ${jour.joueur?.rangDuJour}e sur ${jour.joueur?.classesDuJour} (${jour.joueur?.points} points) ; mémoire de l'instance ≈ ${(tas / 1024 / 1024).toFixed(1)} Mo`,
+  );
+}
+console.log("\nRésumé du lot I3 (joueurs · lecture : instructions / lignes lues / écrites / ms) :");
+for (const c of classementRows) console.log(`  ${c.n} · ${c.label} : ${c.statements} / ${c.read} / ${c.written} / ${c.ms.toFixed(0)} ms`);
+

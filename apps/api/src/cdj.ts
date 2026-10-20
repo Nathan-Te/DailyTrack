@@ -691,20 +691,31 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
   }
 
   const portail: PortailDuJeu = {
+    site: "track",
+    nom: "Track",
     premierJour: PREMIER_JOUR,
     async jour(day) {
       const c = await getCircuit(day);
       const m = medalsFor(c.authorMs);
       return { numero: circuitNumber(day), theme: c.theme ?? themeForDay(day).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } };
     },
-    async etat(id, day) {
+    async etat(id, day, connu) {
       const own = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, id]);
       if (!own) return { statut: "pas_joue" };
-      const [rang, classes, circuit] = await Promise.all([rankOf(day, own.ms, own.submitted_at), classesDuJour(day), getCircuit(day)]);
+      // Lot I3 : la place et les classés du classement du jour gardé par le portail, quand il les a ; sinon on les compte (une ligne lue par classé).
+      const [rang, classes, circuit] = await Promise.all([connu ? connu.rang : rankOf(day, own.ms, own.submitted_at), connu ? connu.classes : classesDuJour(day), getCircuit(day)]);
       // Les classés gardés en mémoire peuvent dater de quelques secondes : jamais moins que le rang.
       return { statut: "fini", tempsMs: own.ms, medaille: medalFor(own.ms, medalsFor(circuit.authorMs)) as Medal | null, rang, classes: Math.max(classes, rang) };
     },
     joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM results WHERE player_id = ?", [id])).map((r) => r.day),
+    // Lot I3 : tous les classés du jour, dans l'ordre du classement (même tri que `rankOf` : temps, puis premier envoyé), médaille lue sur les
+    // seuils du circuit en vigueur (comme `etat`). Une ligne par classé ; aucun calcul de circuit pour un jour sans classé.
+    async classes(day) {
+      const rows = await db.all<{ player_id: string; ms: number; submitted_at: number }>("SELECT player_id, ms, submitted_at FROM results WHERE day = ? ORDER BY ms ASC, submitted_at ASC", [day]);
+      if (rows.length === 0) return [];
+      const m = medalsFor((await getCircuit(day)).authorMs);
+      return rows.map((r) => ({ playerId: r.player_id, medaille: medalFor(r.ms, m) as Medal | null, at: r.submitted_at }));
+    },
     // Le même calcul que `GET /api/me` (places des jours fermés gardées une fois calculées) : le profil commun dit la même chose que le jeu.
     async profil(id) {
       const stats = (await profile(id)).stats as { days: number; medals: Record<Medal, number>; bestRank: { date: string; rank: number; participants: number } | null };

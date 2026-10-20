@@ -16,11 +16,13 @@
 // `--environnement production` (ce que `/api/jump/info` doit dire), `--resume <fichier>` (le résumé du run, Markdown), `--retour <commande>`
 // (la commande de retour arrière à copier, écrite dans le résumé en cas d'échec). Le mode complet vérifie aussi la lecture regroupée.
 //   npm run smoke -w @cdj/api -- https://<API> --lecture-seule --environnement production
+//   npm run smoke -w @cdj/api -- https://recette.playdujour.com --lecture-seule --environnement recette --par-hosting --joueur-demo   (lot I3 : le cache de Hosting)
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, lifeReplay, replayAttempt } from "@cdj/jump-sim";
 import { jumpDailyOf } from "../src/jump";
-import { readOnlySmoke, smokeRefusal, smokeSummary } from "./smokeRead";
+import { DEMO_JOUEUR_ID } from "../src/portailDemo";
+import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting } from "./smokeRead";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const option = (name: string): string | undefined => {
@@ -31,8 +33,19 @@ const origin = option("--origin");
 const readOnly = process.argv.includes("--lecture-seule");
 
 // Lot P4 : la vérification en lecture seule (production comprise) : aucune écriture, puis la sortie.
+// Lot I3 : `--par-hosting` (à lancer sur l'adresse de Firebase Hosting, jamais sur Cloud Run en direct) ajoute la vérification du cache : le portail
+// rend la même adresse en version publique et en version personnelle (`Vary: X-Player-Id`), et Hosting doit les distinguer. `--joueur-demo` (recette
+// seulement : `--environnement recette`) lit avec l'identifiant connu du joueur de démonstration pour constater qu'il reçoit son état ; sans lui,
+// un identifiant inventé (rien n'est créé : la lecture rend 404 `unknown_player`).
 if (readOnly) {
+  const parHosting = process.argv.includes("--par-hosting");
+  const demo = process.argv.includes("--joueur-demo");
+  if (demo && option("--environnement") !== "recette") {
+    console.error("--joueur-demo : le joueur de démonstration n'existe qu'en recette (--environnement recette)");
+    process.exit(1);
+  }
   const checks = await readOnlySmoke(base, (u, i) => fetch(u, i), { expectEnvironment: option("--environnement"), origin });
+  if (parHosting) checks.push(...(await varyParHosting(base, (u, i) => fetch(u, i), { joueur: demo ? DEMO_JOUEUR_ID : undefined })));
   for (const c of checks) console.log(`${c.ok ? "✓" : "✗"} ${c.label} — ${c.route} ${c.status}${c.detail ? ` — ${c.detail}` : ""}`);
   const failedChecks = checks.filter((c) => !c.ok).length;
   const summary = option("--resume");
@@ -155,7 +168,7 @@ const jcall = async (method: string, path: string, body?: unknown) => {
     headers: { "X-Player-Id": player, ...(body ? { "Content-Type": "application/json" } : {}), ...(origin ? { Origin: origin } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
-  return { status: res.status, body: (await res.json()) as any, ms: Math.round(performance.now() - t0) };
+  return { status: res.status, body: (await res.json()) as any, ms: Math.round(performance.now() - t0), headers: res.headers };
 };
 check("DailyJump : le niveau du jour du serveur est celui du jeu", jday.body.id === level.id && jday.body.hash === level.hash, `${level.id} ${level.hash}`);
 const jsub = await jcall("POST", "/api/jump/submit", jbody);
@@ -264,6 +277,27 @@ check(
     pjour.body.joueur?.aujourdhuiParfaite === true,
   `${pjour.status} Track ${String(etats.cdj?.statut)} (${String(etats.cdj?.rang)}e sur ${String(etats.cdj?.classes)}), Jump ${String(etats.jump?.statut)}, série ${String(pjour.body.joueur?.serie)}, ${pjour.ms} ms`,
 );
+// Lot I3 : les points du jour et le classement du jour (le joueur d'essai a fini les deux jeux : l'auteur de Jump vaut 4 points au moins).
+check(
+  "portail : les points, la place et le nombre de classés du jour ; le numéro de journée commun",
+  pjour.status === 200 && pjour.body.joueur?.points >= 4 && pjour.body.joueur?.rangDuJour >= 1 && pjour.body.joueur?.classesDuJour >= pjour.body.joueur?.rangDuJour && (pjour.body.journee === null || pjour.body.journee >= 1),
+  `${String(pjour.body.joueur?.points)} points, ${String(pjour.body.joueur?.rangDuJour)}e sur ${String(pjour.body.joueur?.classesDuJour)}, journée ${String(pjour.body.journee)}`,
+);
+const pclass = await jcall("GET", "/api/portail/classement");
+check(
+  "portail : le classement du jour (barème, haut du classement, ta ligne avec ses médailles), jamais public avec ton identifiant",
+  pclass.status === 200 &&
+    pclass.body.bareme?.author === 4 &&
+    Array.isArray(pclass.body.top) &&
+    pclass.body.moi?.pseudo === NAME &&
+    pclass.body.moi?.points === pjour.body.joueur?.points &&
+    pclass.body.moi?.resultats?.jump?.medaille === "author" &&
+    /\bprivate\b/.test(pclass.headers.get("cache-control") ?? "") &&
+    !JSON.stringify(pclass.body).includes(player),
+  `${pclass.status} ${String(pclass.body.classes)} classé(s), toi : ${String(pclass.body.moi?.rang)}e, ${pclass.ms} ms`,
+);
+const pclassPublic = await call("GET", "/api/portail/classement");
+check("portail : le classement du jour sans joueur est public (30 s au plus) et sans ta ligne", pclassPublic.status === 200 && !("moi" in pclassPublic.body) && /\bpublic\b/.test(pclassPublic.headers.get("cache-control") ?? ""));
 const pprofil = await jcall("GET", "/api/portail/profil");
 check(
   "portail : le profil commun (pseudo, série, jours finis par jeu)",

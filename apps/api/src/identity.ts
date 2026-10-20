@@ -48,7 +48,7 @@ export function crc32Hex(bytes: Uint8Array): string {
   return ((c ^ 0xffffffff) >>> 0).toString(16).padStart(8, "0");
 }
 
-export function createIdentityRoutes(platform: Platform, games: readonly GameInstance[], requireAdmin?: (req: Request, info: RequestInfo) => Promise<void>) {
+export function createIdentityRoutes(platform: Platform, games: readonly GameInstance[], requireAdmin?: (req: Request, info: RequestInfo) => Promise<void>, onErased?: () => void) {
   const { db, log, limits, players, hashKey, hit, readJson, playerIdOf } = platform;
 
   /** L'identifiant secret du joueur, lu dans l'en-tête `X-Player-Id` (jamais dans l'adresse, qui finit dans les journaux de l'hébergeur). */
@@ -130,6 +130,7 @@ export function createIdentityRoutes(platform: Platform, games: readonly GameIns
     if (db.batch) await db.batch(statements);
     else for (const s of statements) await db.run(s.sql, s.params);
     for (const g of games) g.onErased?.();
+    onErased?.(); // lot I3 : la mémoire du portail (classement du jour) aussi
     log("INFO", "joueur effacé", counts);
     return { efface: true, pseudo: row.name, ...counts };
   }

@@ -108,18 +108,44 @@ export interface ProfilPortail {
   meilleurRang: { date: string; rang: number; classes: number } | null;
 }
 
+/**
+ * Lot I3 : un joueur classé dans un jeu un jour donné, tel que le classement du jour (tous jeux confondus) le lit. Les classés d'un jour sont
+ * rendus **dans l'ordre du classement du jeu** (le premier d'abord) : le rang d'un classé est sa position, à partir de 1.
+ */
+export interface ClasseDuJour {
+  playerId: string;
+  /** La médaille de son essai classé (la lecture des seuils du jour est celle du jeu, comme dans `etat`), ou `null` : fini sans médaille. */
+  medaille: MedaillePortail | null;
+  /** L'horodatage (ms) de l'essai classé : l'ultime départage du classement du jour (le premier à avoir atteint son total). */
+  at: number;
+}
+
 /** Le crochet `portail` d'un jeu (lot I2). */
 export interface PortailDuJeu {
+  /** Lot I3 : le dossier du jeu sur le site (`track`, `jump`) : l'écran d'arrivée d'un autre jeu y mène (`../<site>/`). */
+  site: string;
+  /** Lot I3 : le nom du jeu tel qu'on l'écrit (« Track », « Jump ») : « Jeu suivant du jour : Jump ». */
+  nom: string;
   /** Le premier jour du jeu (numéro de jour) : avant, le jeu n'existe pas (ni cartouche, ni compte dans les journées parfaites). */
   premierJour: number;
   /** Numéro, thème et seuils du jour (le niveau du jour, calculé une fois et gardé, comme pour ses routes). */
   jour(day: number): Promise<JourPortail>;
-  /** L'état du joueur ce jour-là (les données et requêtes du classement prouvé du jeu). */
-  etat(playerId: string, day: number): Promise<EtatPortail>;
+  /**
+   * L'état du joueur ce jour-là (les données et requêtes du classement prouvé du jeu). Lot I3 : `connu` = sa place et le nombre de classés lus dans le
+   * classement du jour gardé en mémoire par le portail (au plus quelques dizaines de secondes de retard) ; le jeu les prend tels quels au lieu de compter
+   * les classés devant lui (une ligne lue par classé : le coût de l'accueil du portail ne croît plus avec le nombre de joueurs du jour).
+   */
+  etat(playerId: string, day: number, connu?: { rang: number; classes: number }): Promise<EtatPortail>;
   /** Les jours où le joueur est classé (une lecture d'index : un jour par ligne). */
   joursFinis(playerId: string): Promise<number[]>;
   /** Ses statistiques pour le profil commun. */
   profil(playerId: string): Promise<ProfilPortail>;
+  /**
+   * Lot I3 : **tous** les classés du jour dans l'ordre du classement du jeu (le classement prouvé : rien n'est cru), pour le classement du
+   * jour tous jeux confondus (`portail.ts`, calculé au plus une fois par fenêtre et par instance). Un jour sans classé rend `[]` (sans même
+   * calculer le niveau).
+   */
+  classes(day: number): Promise<ClasseDuJour[]>;
 }
 
 /** Un jeu en marche, créé par la plateforme. */
