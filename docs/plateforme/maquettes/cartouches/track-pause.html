@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Track — Pause</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Archivo:wght@400;600;700&amp;family=JetBrains+Mono:wght@700&amp;family=Barlow+Condensed:ital,wght@0,600;1,700;1,800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#F4EFE6}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:390px;height:844px;position:relative;overflow:hidden;background:#F1C894;font-family:Archivo, sans-serif;color:#F4EFE6">
+  <svg aria-hidden="true" width="390" height="844" viewBox="0 0 390 844" style="position:absolute;inset:0">
+    <rect x="0" y="0" width="390" height="300" fill="#F1C894"/>
+    <path d="M0 300 L0 170 L40 150 L70 190 L120 140 L160 200 L190 300 Z" fill="#C8693A"/>
+    <path d="M390 300 L390 160 L350 130 L310 180 L270 150 L220 220 L200 300 Z" fill="#A84F2A"/>
+    <rect x="0" y="300" width="390" height="544" fill="#D9874E"/>
+    <path d="M178 300 L212 300 L390 844 L0 844 Z" fill="#5A524C"/>
+    <path d="M178 300 L184 300 L40 844 L0 844 Z" fill="#F4EFE6"/>
+    <path d="M206 300 L212 300 L390 844 L350 844 Z" fill="#E8552D"/>
+  </svg>
+  <div aria-hidden="true" style="position:absolute;inset:0;background:repeating-linear-gradient(115deg,#1E1B19 0 3px,transparent 3px 9px)"></div>
+
+  <section role="dialog" aria-label="Pause" style="position:absolute;left:16px;right:16px;top:120px;background:#1E1B19;border:3px solid #2A1E16;border-radius:10px 10px 4px 4px;box-shadow:5px 5px 0 #2A1E16;padding:16px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+    <div aria-hidden="true" style="position:absolute;right:-24px;top:0;width:110px;height:70px;background:repeating-linear-gradient(115deg,#E8552D 0 10px,transparent 10px 18px)"></div>
+    <h1 style="position:relative;margin:0;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:52px;line-height:.9">PAUSE</h1>
+    <div style="position:relative;display:flex;justify-content:space-between;font-size:13px;color:#CFC6BA;border-bottom:1px solid #4A4440;padding-bottom:10px">
+      <span>Circuit n° 8 · Canyon</span>
+      <span>record <b style="font-family:'JetBrains Mono', monospace;color:#F4EFE6">31,402</b></span>
+    </div>
+    <button style="height:56px;border:0;border-radius:2px;background:#E8552D;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:28px;letter-spacing:2px;box-shadow:0 4px 0 #8E2E14">REPRENDRE</button>
+    <button style="height:48px;border:2px solid #5A524C;border-radius:2px;background:transparent;color:#F4EFE6;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:700;font-size:22px;letter-spacing:1px">RECOMMENCER</button>
+    <button style="height:44px;border:2px solid #5A524C;border-radius:2px;background:transparent;color:#F4EFE6;font-weight:600;font-size:14px">Réglages</button>
+    <button style="height:44px;border:2px solid #5A524C;border-radius:2px;background:transparent;color:#F4EFE6;font-weight:600;font-size:14px">Accueil de Track</button>
+    <a href="portail.html" style="height:44px;display:flex;align-items:center;gap:6px;text-decoration:none;font-family:'Archivo Black', sans-serif;font-size:14px;color:#F4EFE6">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M11 3 5 9l6 6" fill="none" stroke="#F4EFE6" stroke-width="2.5" stroke-linecap="square"/></svg>DU JOUR</a>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

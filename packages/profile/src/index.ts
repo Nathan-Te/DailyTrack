@@ -7,3 +7,4 @@ export * from "./client";
 export * from "./sync";
 export * from "./profile";
 export * from "./langue";
+export * from "./jeuSuivant";

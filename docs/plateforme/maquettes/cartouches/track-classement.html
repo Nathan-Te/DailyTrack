@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Track — Classement du jour</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Archivo:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;family=Barlow+Condensed:ital,wght@0,600;1,700;1,800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2A1E16}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;background:#EDE3CF;color:#2A1E16;font-family:Archivo, sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px">
+    <a href="track.html" style="height:44px;display:flex;align-items:center;gap:6px;text-decoration:none;font-family:'Archivo Black', sans-serif;font-size:14px">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M11 3 5 9l6 6" fill="none" stroke="#2A1E16" stroke-width="2.5" stroke-linecap="square"/></svg>TRACK</a>
+    <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:12px">Mar. 20 oct. · n° 8</span>
+  </header>
+
+  <main style="flex:1;margin:0 10px 10px;background:#1E1B19;color:#F4EFE6;border:3px solid #2A1E16;border-radius:10px 10px 4px 4px;box-shadow:4px 4px 0 #2A1E16;padding:14px 12px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden">
+    <div aria-hidden="true" style="position:absolute;right:-30px;top:0;width:120px;height:70px;background:repeating-linear-gradient(115deg,#E8552D 0 10px,transparent 10px 18px)"></div>
+    <div style="position:relative;display:flex;flex-direction:column">
+      <h1 style="margin:0;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:44px;line-height:.9">CLASSEMENT</h1>
+      <span style="font-family:'Barlow Condensed', sans-serif;font-weight:600;font-size:16px;color:#CFC6BA;letter-spacing:1px">CANYON · 212 CLASSÉS</span>
+    </div>
+
+    <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="10">
+        <li style="{{r.style}}">
+          <span style="width:30px;font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">{{r.rang}}</span>
+          <span style="flex:1;min-width:0;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.pseudo}}</span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700;width:60px"><span aria-hidden="true" style="{{r.pastille}}"></span>{{r.medaille}}</span>
+          <span style="width:62px;text-align:right;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:20px;font-variant-numeric:tabular-nums">{{r.temps}}</span>
+          <button aria-label="Voir son fantôme" style="{{r.bouton}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M3 16V8a6 6 0 0 1 12 0v8l-2-2-2 2-2-2-2 2-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><rect x="6" y="7" width="2" height="2" fill="currentColor"/><rect x="10" y="7" width="2" height="2" fill="currentColor"/></svg></button>
+        </li>
+      </sc-for>
+    </ol>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const medals = { auteur: ['#2E9E5B', 'Auteur'], or: ['#D9A21B', 'Or'], argent: ['#A7A9AC', 'Argent'], bronze: ['#C07A42', 'Bronze'] };
+    const data = [
+      ['1er', 'Kiwi', 'auteur', '29,955'],
+      ['2e', 'Léa_V', 'or', '30,118'],
+      ['3e', 'TurboMamie', 'or', '30,240'],
+      ['4e', 'Pistache', 'or', '30,377'],
+      ['5e', 'Gégé', 'or', '30,512'],
+      ['6e', 'Moustique', 'or', '30,866'],
+      ['7e', 'Zorglub', 'or', '30,904'],
+      ['8e', 'Nina', 'or', '31,011'],
+      ['…', '', '', ''],
+      ['13e', 'Brindille', 'or', '31,377'],
+      ['14e', 'Nathan', 'or', '31,402', true],
+      ['15e', 'Coyote', 'argent', '31,598']
+    ];
+    const rows = data.map(([rang, pseudo, m, temps, moi]) => {
+      const sep = rang === '…';
+      const base = 'display:flex;align-items:center;gap:8px;min-height:44px;padding:0 6px;';
+      const style = sep ? base + 'min-height:24px;color:#8A8079;justify-content:center'
+        : moi ? base + 'background:#E8B23A;color:#2A1E16;border:3px solid #2A1E16;box-shadow:3px 3px 0 #000;margin:4px 0'
+        : base + 'border-bottom:1px solid #4A4440';
+      const md = medals[m];
+      return {
+        rang, pseudo, temps,
+        style,
+        medaille: md ? md[1] : '',
+        pastille: md ? 'width:12px;height:12px;border-radius:50%;border:2px solid ' + (moi ? '#2A1E16' : '#F4EFE6') + ';background:' + md[0] : 'display:none',
+        bouton: sep ? 'display:none' : 'width:44px;height:40px;background:transparent;border:2px solid ' + (moi ? '#2A1E16' : '#5A524C') + ';border-radius:2px;color:inherit;display:flex;align-items:center;justify-content:center'
+      };
+    });
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

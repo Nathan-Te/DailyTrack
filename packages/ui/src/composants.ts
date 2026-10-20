@@ -179,16 +179,28 @@ export function barrePortail(t: TraducteurCommun, o: { langue: Langue; onLangue?
   );
 }
 
+export interface OptionsBarreJeu {
+  href: string;
+  jour: number;
+  numero?: number;
+  /**
+   * Lot I4 : un autre retour que « ‹ DU JOUR » — « ‹ TRACK » sur les écrans d'un jeu (réglages, classement, Salon…), qui ramène à l'accueil du jeu.
+   * `onClick` : le retour est alors un bouton (il ne quitte pas la page) ; sans lui, un lien vers `href`.
+   */
+  retour?: { texte: string; ariaLabel: string; onClick?: () => void };
+}
+
 /** La barre des jeux : « ‹ DU JOUR » (lien vers le portail, 44 px) et, à droite en mono, la date et le numéro du jour. */
-export function barreJeu(t: TraducteurCommun, o: { href: string; jour: number; numero?: number }): HTMLElement {
+export function barreJeu(t: TraducteurCommun, o: OptionsBarreJeu): HTMLElement {
   const date = formatDateCourte(o.jour, t.langue, { capitale: true });
   const texte = o.numero !== undefined && o.numero > 0 ? t.t("barre.jour", { date, numero: formatNumeroJour(o.numero, t.langue) }) : majuscule(date, t.langue);
-  return el(
-    "header",
-    { classe: "dj-barre-jeu" },
-    el("a", { classe: "dj-barre-jeu__retour", attrs: { href: o.href, "aria-label": t.t("barre.retour.aria") } }, icone("chevron", { taille: 18 }), el("span", { classe: "dj-logo dj-logo--petit", texte: t.t("barre.retour") })),
-    el("span", { classe: "dj-barre-jeu__jour", texte }),
-  );
+  const contenu = [icone("chevron", { taille: 18 }), el("span", { classe: "dj-logo dj-logo--petit", texte: o.retour?.texte ?? t.t("barre.retour") })];
+  const ariaLabel = o.retour?.ariaLabel ?? t.t("barre.retour.aria");
+  const retour = o.retour?.onClick
+    ? el("button", { classe: "dj-barre-jeu__retour", attrs: { type: "button", "aria-label": ariaLabel } }, ...contenu)
+    : el("a", { classe: "dj-barre-jeu__retour", attrs: { href: o.href, "aria-label": ariaLabel } }, ...contenu);
+  if (o.retour?.onClick) retour.addEventListener("click", o.retour.onClick);
+  return el("header", { classe: "dj-barre-jeu" }, retour, el("span", { classe: "dj-barre-jeu__jour", texte }));
 }
 
 const NOM_MEDAILLE = { auteur: "medaille.auteur", or: "medaille.or", argent: "medaille.argent", bronze: "medaille.bronze" } as const;

@@ -1,8 +1,25 @@
 import { defineConfig } from "vite";
+import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
+import { pagesDuSocle } from "../../packages/ui/outils/vite";
+import { CATALOGUE_TRACK } from "./src/catalogue";
+
+// Lot I4 (plateforme) : DailyTrack passe au socle `@cdj/ui` — textes du HTML pré-remplis depuis le catalogue français (`pagesDuSocle`), couleur de
+// l'onglet et icône tirées des jetons, polices du premier écran préchargées. Les polices sont servies par un chemin absolu et unique
+// (`/assets/<nom>-<empreinte>.woff2`), **les mêmes fichiers que ceux du portail** : un joueur qui vient du portail les a déjà en cache ; l'assemblage du
+// site (scripts/site.mjs) met dans le dossier `assets/` du portail celles que le portail n'utilise pas lui-même et vérifie qu'elles sont identiques.
+const FACES_PRECHARGEES = ["barlow-condensed-latin-800-italic", "archivo-latin-400-normal"];
 
 export default defineConfig({
   // Chemins relatifs : fonctionne à la racine (Cloudflare Pages) comme sous /DailyTrack/ (GitHub Pages).
   base: "./",
+  plugins: [pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_TRACK.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
+  experimental: {
+    // Une police est demandée à `/assets/…` (la racine du site, partagée avec le portail), jamais relativement à la page : `/track/assets/…` ferait un second
+    // téléchargement des mêmes octets. Tout le reste reste relatif à la page.
+    renderBuiltUrl(fichier) {
+      return fichier.endsWith(".woff2") ? `/${fichier}` : undefined;
+    },
+  },
   build: {
     target: "es2022",
     // Trois pages : le jeu, `verify.html` (rejeu de rediffusion sans rendu, pour les tests de navigateur) et `admin/` (menu des outils de test).

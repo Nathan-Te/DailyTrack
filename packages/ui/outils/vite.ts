@@ -40,7 +40,11 @@ export function remplirHtml(html: string, catalogue: Catalogue): string {
     .replace(/<link rel="icon" data-icone-du-jour\s*\/?>/g, `<link rel="icon" href="${iconeDuJour()}" />`);
 }
 
-export function pagesDuSocle(o: { catalogue: Catalogue; prechargees?: readonly string[] }): Plugin {
+/**
+ * `absolues` (lot I4) : les polices sont servies par un chemin absolu (`/assets/<nom>.woff2`, le même pour toutes les applications du site : un joueur qui
+ * vient du portail les a déjà en cache) ; le préchargement doit alors viser ce même chemin.
+ */
+export function pagesDuSocle(o: { catalogue: Catalogue; prechargees?: readonly string[]; absolues?: boolean }): Plugin {
   return {
     name: "cdj-pages-du-socle",
     transformIndexHtml: {
@@ -55,7 +59,8 @@ export function pagesDuSocle(o: { catalogue: Catalogue; prechargees?: readonly s
             if (!asset) throw new Error(`police à précharger absente de la construction : ${nom}`);
             // Chemin relatif à la page (base « ./ ») : la profondeur de la page dans dist/.
             const profondeur = ctx.path.split("/").length - 2;
-            liens.push(`<link rel="preload" as="font" type="font/woff2" crossorigin href="${"../".repeat(profondeur) || "./"}${asset.fileName}" />`);
+            const prefixe = o.absolues ? "/" : "../".repeat(profondeur) || "./";
+            liens.push(`<link rel="preload" as="font" type="font/woff2" crossorigin href="${prefixe}${asset.fileName}" />`);
           }
           out = out.replace(/\sdata-precharge-polices/, "").replace("</title>", `</title>\n    ${liens.join("\n    ")}`);
         }

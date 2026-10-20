@@ -1,0 +1,463 @@
+/* Interface de DailyTrack (lot I4, charte « Cartouches » : docs/plateforme/identite.md, maquettes docs/plateforme/maquettes/cartouches/track-*.html).
+   Les primitives communes à tous les écrans hors partie : le cadre crème de Du Jour avec sa barre, l'étiquette Track (asphalte, livrée à 115°, coque),
+   les boutons et choix sur asphalte, les lignes de classement, le dialogue de pause. Chaque zone a sa feuille (accueil.css, arrivee.css, reglages.css,
+   salon.css, hud.css) ; elles n'écrivent ni couleur, ni police, ni ombre floue, ni transparence : tout vient des jetons de @cdj/ui (test
+   apps/web/test/interface.test.ts). Seule exception, assumée : effets.css (les effets de rendu de la course). */
+
+/* --- Couches -------------------------------------------------------------------------------------------------------------------------------- */
+:root {
+  --z-hud: 1;
+  --z-menu: 2;
+  --z-pause: 4;
+  --z-cadre: 6;
+  --z-cadre-haut: 8;
+  --z-chargement: 10;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--track-asphalte);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* --- Le cadre crème de Du Jour : barre des jeux + étiquette Track ------------------------------------------------------------------------------- */
+.cadre {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-cadre);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  touch-action: pan-y;
+}
+.cadre--haut {
+  z-index: var(--z-cadre-haut);
+}
+.cadre > .dj-barre-jeu {
+  flex: none;
+  width: 100%;
+  max-width: 960px;
+}
+.cadre > .etiquette {
+  flex: 1;
+  min-height: 0;
+  width: calc(100% - 20px);
+  max-width: 940px;
+  margin: 0 0 10px;
+}
+
+/* --- L'étiquette Track ----------------------------------------------------------------------------------------------------------------------- */
+.etiquette {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: var(--dj-ombre-cartouche);
+  overflow: hidden;
+}
+/* Bandes de livrée : rayures obliques à 115° sur le bord droit, 10 px d'orange pour 8 px de vide (charte § 5). */
+.etiquette::before {
+  content: "";
+  position: absolute;
+  right: -30px;
+  top: 0;
+  width: 120px;
+  height: 70px;
+  background: repeating-linear-gradient(115deg, var(--track-livree) 0 10px, transparent 10px 18px);
+  pointer-events: none;
+}
+.etiquette__corps {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.etiquette__titre {
+  position: relative;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-38);
+  line-height: 0.95;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+.etiquette__sous-titre {
+  font-family: var(--track-police);
+  font-weight: 600;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--track-texte-doux);
+}
+.etiquette__tete {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 90px; /* la livrée */
+}
+.legende {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--track-texte-doux);
+}
+.chiffres {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.temps {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 0.95;
+}
+.note {
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+.note--erreur,
+.message--erreur {
+  color: var(--track-livree-texte);
+}
+.message--ok {
+  color: var(--dj-auteur);
+}
+.separateur {
+  border: 0;
+  border-top: 1px solid var(--track-coque);
+  margin: 0;
+}
+
+/* --- Boutons sur asphalte -------------------------------------------------------------------------------------------------------------------- */
+.etiquette .dj-bouton--secondaire,
+.dialogue .dj-bouton--secondaire {
+  background: transparent;
+  color: var(--track-texte);
+  border-color: var(--track-route);
+  box-shadow: none;
+}
+.etiquette .dj-bouton--secondaire:hover,
+.dialogue .dj-bouton--secondaire:hover {
+  background: var(--track-coque);
+}
+.etiquette .dj-bouton--secondaire:active,
+.dialogue .dj-bouton--secondaire:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+}
+.etiquette .dj-bouton--secondaire:disabled,
+.etiquette .dj-bouton--secondaire[aria-disabled="true"] {
+  background: var(--dj-creme-2);
+  color: var(--dj-encre-douce);
+  border-color: var(--dj-encre-douce);
+}
+.bouton--tete {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--dj-taille-22);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+/* Un lien discret sur asphalte (« Réessayer », « Revoir le meilleur tour ») : texte de livrée souligné, 44 px de haut. */
+.lien {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0 4px;
+  background: transparent;
+  border: 0;
+  color: var(--track-livree-texte);
+  font-size: var(--dj-taille-14);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.lien:hover {
+  color: var(--track-texte);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions > * {
+  flex: 1 1 auto;
+}
+.actions--colonne {
+  flex-direction: column;
+}
+.actions--duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Le choix de la langue sur asphalte (maquette track-reglages) : contour crème, le choix actif en crème. */
+.dj-sombre .dj-choix-langue {
+  border-color: var(--track-texte);
+  border-radius: var(--dj-rayon-etiquette);
+}
+.dj-sombre .dj-choix-langue__bouton {
+  background: transparent;
+  color: var(--track-texte);
+}
+.dj-sombre .dj-choix-langue__bouton[aria-pressed="true"] {
+  background: var(--track-texte);
+  color: var(--track-asphalte);
+}
+
+/* --- Choix exclusifs, curseurs, lignes de réglage --------------------------------------------------------------------------------------------- */
+.segment {
+  display: flex;
+  flex-wrap: wrap;
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+  overflow: hidden;
+}
+.segment__bouton {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--track-texte);
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  touch-action: manipulation;
+}
+.segment__bouton:hover {
+  background: var(--track-coque);
+}
+.segment__bouton[aria-checked="true"],
+.segment__bouton[aria-pressed="true"] {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+  font-weight: 800;
+}
+.curseur {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--dj-cible);
+}
+.curseur input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--track-livree);
+}
+.curseur__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  text-align: right;
+}
+.champ {
+  min-height: var(--dj-cible);
+  padding: 0 12px;
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--track-piste);
+  color: var(--track-texte);
+  font-size: var(--dj-taille-15);
+  font-weight: 600;
+}
+textarea.champ {
+  padding: 8px 12px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  resize: vertical;
+}
+
+/* --- Lignes de classement : ta ligne en moutarde (charte § 9) ---------------------------------------------------------------------------------- */
+.lignes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--dj-cible);
+  padding: 0 6px;
+  border-bottom: 1px solid var(--track-coque);
+}
+.ligne--moi {
+  margin: 4px 0;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.ligne--trou {
+  min-height: 24px;
+  justify-content: center;
+  color: var(--track-texte-doux);
+}
+.ligne__rang {
+  flex: none;
+  width: 34px;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.ligne__nom {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-size: var(--dj-taille-14);
+}
+.ligne__temps {
+  flex: none;
+  min-width: 62px;
+  text-align: right;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-21);
+  font-variant-numeric: tabular-nums;
+}
+.ligne__action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--dj-cible);
+  height: 40px;
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+  background: transparent;
+  color: inherit;
+}
+.ligne--moi .ligne__action {
+  border-color: var(--dj-encre);
+}
+
+/* --- Dialogue (pause, confirmations) : voile à rayures, étiquette au premier plan ------------------------------------------------------------------ */
+.voile {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-pause);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  background: repeating-linear-gradient(115deg, var(--track-asphalte) 0 3px, transparent 3px 9px);
+  touch-action: none;
+}
+.dialogue {
+  position: relative;
+  width: min(380px, calc(100vw - 32px));
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 5px 5px 0 var(--dj-encre);
+  overflow: hidden;
+}
+.dialogue::before {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: 0;
+  width: 110px;
+  height: 70px;
+  background: repeating-linear-gradient(115deg, var(--track-livree) 0 10px, transparent 10px 18px);
+  pointer-events: none;
+}
+.dialogue__corps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+.dialogue__titre {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-38);
+  line-height: 0.9;
+  text-transform: uppercase;
+}
+
+/* Petits écrans en paysage : le cadre se resserre (barre plus basse, marges réduites). */
+@media (max-height: 520px) {
+  .cadre > .dj-barre-jeu {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  .etiquette__corps {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+  .etiquette__titre {
+    font-size: var(--dj-taille-32);
+  }
+  .cadre > .etiquette {
+    margin-bottom: 6px;
+  }
+}

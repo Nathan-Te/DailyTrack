@@ -8,6 +8,6 @@
     "noEmit": false,
     "emitDeclarationOnly": true
   },
-  "include": ["src", "test", "vite.config.ts"],
-  "references": [{ "path": "../../packages/sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }]
+  "include": ["src", "test"],
+  "references": [{ "path": "../../packages/sim" }, { "path": "../../packages/clock" }, { "path": "../../packages/profile" }, { "path": "../../packages/ui" }]
 }

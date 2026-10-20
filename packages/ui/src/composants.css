@@ -370,6 +370,13 @@
   color: var(--dj-encre);
   text-decoration: none;
 }
+button.dj-barre-jeu__retour {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
 .dj-barre-jeu__retour:hover .dj-logo,
 .dj-barre-jeu__retour.est-survol .dj-logo {
   text-decoration: underline;
