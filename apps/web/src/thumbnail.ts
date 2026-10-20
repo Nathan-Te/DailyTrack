@@ -161,7 +161,7 @@ function render3d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
     renderer.toneMappingExposure = look.exposure;
     const camera = frameCamera(focus, out.width / out.height, view);
     renderer.render(scene, camera);
-    const ctx = out.getContext("2d")!;
+    const ctx = outContext(out);
     // Copie immédiate : le tampon de dessin n'est valable que jusqu'à la fin de la tâche en cours.
     ctx.drawImage(renderer.domElement, 0, 0, out.width, out.height);
     return !renderer.getContext().isContextLost();
@@ -179,8 +179,17 @@ function render3d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElemen
 const css = (hex: number) => `#${hex.toString(16).padStart(6, "0")}`;
 
 /** Tracé 2D du circuit vu de dessus, aux couleurs du thème, dans le même cadrage que la vue 3D (même portion, même orientation). */
+/**
+ * Le contexte du canvas de sortie : une miniature est TOUJOURS relue (encodée par `toBlob`), donc dessinée en mémoire du processeur
+ * (`willReadFrequently`). Lot R3 : accéléré, ce canvas était dessiné par le processus graphique, et `toBlob` attendait sur le fil principal
+ * que tout y soit fini pour relire les pixels — jusqu'à 2,7 s d'un bloc (rendu logiciel, 2 cœurs, processeur ×4 : profil CDP).
+ */
+function outContext(out: HTMLCanvasElement): CanvasRenderingContext2D {
+  return out.getContext("2d", { willReadFrequently: true })!;
+}
+
 function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElement) {
-  const ctx = out.getContext("2d")!;
+  const ctx = outContext(out);
   const pal = PALETTE_DEFS[circuit.palette];
   const W = out.width;
   const H = out.height;
