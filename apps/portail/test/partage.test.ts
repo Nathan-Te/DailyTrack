@@ -25,21 +25,21 @@ describe("la ligne de partage de la journée", () => {
     expect(textePartage(o)).toBe("Du Jour #1 — Track 🥇 · Jump 🥈 — 🔥 5\nhttps://playdujour.com/");
   });
 
-  it("chaque médaille a son émoji (ceux des jeux) ; fini sans médaille : une coche ; pas fini (pas joué, en cours) : `—`", () => {
+  it("chaque médaille a son émoji (ceux des jeux) ; fini sans médaille : une coche ; pas fini (pas joué, en cours) : `⬜`", () => {
     expect(EMOJIS).toMatchObject({ author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" });
     for (const [medaille, emoji] of [["author", "🏆"], ["gold", "🥇"], ["silver", "🥈"], ["bronze", "🥉"], [null, "✅"]] as const) {
       expect(morceauDeJeu({ nom: "Track", statut: fini(medaille) })).toBe(`Track ${emoji}`);
     }
-    expect(morceauDeJeu({ nom: "Jump", statut: pas })).toBe("Jump —");
+    expect(morceauDeJeu({ nom: "Jump", statut: pas })).toBe("Jump ⬜");
   });
 
   it("toutes les combinaisons de statuts des deux jeux, avec la série (le premier jeu fini : série 1)", () => {
     const statuts: [string, StatutPartage][] = [["pas joué ou en cours", pas], ["auteur", fini("author")], ["or", fini("gold")], ["argent", fini("silver")], ["bronze", fini("bronze")], ["sans médaille", fini(null)]];
-    const attendu: Record<string, string> = { "pas joué ou en cours": "—", auteur: "🏆", or: "🥇", argent: "🥈", bronze: "🥉", "sans médaille": "✅" };
+    const attendu: Record<string, string> = { "pas joué ou en cours": "⬜", auteur: "🏆", or: "🥇", argent: "🥈", bronze: "🥉", "sans médaille": "✅" };
     let n = 0;
     for (const [a, sa] of statuts) {
       for (const [b, sb] of statuts) {
-        const morceau = (nom: string, nomStatut: string) => (nomStatut === "pas joué ou en cours" ? `${nom} —` : `${nom} ${attendu[nomStatut]}`);
+        const morceau = (nom: string, nomStatut: string) => `${nom} ${attendu[nomStatut]}`;
         expect(lignePartage(base({ jeux: jeux(sa, sb), serie: 3 })), `${a} / ${b}`).toBe(`Du Jour #1 — ${morceau("Track", a)} · ${morceau("Jump", b)} — 🔥 3`);
         n++;
       }
@@ -48,14 +48,14 @@ describe("la ligne de partage de la journée", () => {
   });
 
   it("sans série, la partie 🔥 disparaît ; journée parfaite : une étoile après la série", () => {
-    expect(lignePartage(base({ jeux: jeux(fini("bronze"), pas), serie: 0 }))).toBe("Du Jour #1 — Track 🥉 · Jump —");
+    expect(lignePartage(base({ jeux: jeux(fini("bronze"), pas), serie: 0 }))).toBe("Du Jour #1 — Track 🥉 · Jump ⬜");
     expect(lignePartage(base({ jeux: jeux(fini("gold"), fini("author")), serie: 12, parfaite: true }))).toBe("Du Jour #1 — Track 🥇 · Jump 🏆 — 🔥 12 ⭐");
     expect(lignePartage(base({ jeux: jeux(fini("gold"), fini("author")), serie: 1, parfaite: true }))).toBe("Du Jour #1 — Track 🥇 · Jump 🏆 — 🔥 1 ⭐");
   });
 
   it("un jeu de plus (n° 3) entre dans la ligne sans rien changer", () => {
     const trois = [...jeux(fini("gold"), pas), { nom: "Lune", statut: fini("silver") as StatutPartage }];
-    expect(lignePartage(base({ jeux: trois, serie: 2 }))).toBe("Du Jour #1 — Track 🥇 · Jump — · Lune 🥈 — 🔥 2");
+    expect(lignePartage(base({ jeux: trois, serie: 2 }))).toBe("Du Jour #1 — Track 🥇 · Jump ⬜ · Lune 🥈 — 🔥 2");
   });
 
   it("le lien est l'origine courante : la production, la recette, un aperçu", () => {
@@ -94,11 +94,11 @@ describe("la ligne de partage depuis la réponse du serveur", () => {
 
     it(`(${langue}) après le 23/10 : le numéro de la journée, les médailles, la série`, () => {
       expect(texte(jour(1, [finiEtat("gold"), finiEtat("silver")]))).toBe("Du Jour #1 — Track 🥇 · Jump 🥈 — 🔥 5\nhttps://playdujour.com/");
-      expect(texte(jour(42, [finiEtat("author"), enCours], { serie: 17 }))).toBe("Du Jour #42 — Track 🏆 · Jump — — 🔥 17\nhttps://playdujour.com/");
+      expect(texte(jour(42, [finiEtat("author"), enCours], { serie: 17 }))).toBe("Du Jour #42 — Track 🏆 · Jump ⬜ — 🔥 17\nhttps://playdujour.com/");
     });
 
     it(`(${langue}) avant le 23/10 : « Du Jour » sans numéro`, () => {
-      expect(texte(jour(null, [finiEtat(null), pasJoue], { serie: 1 }))).toBe("Du Jour — Track ✅ · Jump — — 🔥 1\nhttps://playdujour.com/");
+      expect(texte(jour(null, [finiEtat(null), pasJoue], { serie: 1 }))).toBe("Du Jour — Track ✅ · Jump ⬜ — 🔥 1\nhttps://playdujour.com/");
     });
 
     it(`(${langue}) journée parfaite : l'étoile ; rien de fini : pas de ligne à partager`, () => {

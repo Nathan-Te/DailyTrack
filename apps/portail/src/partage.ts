@@ -5,7 +5,7 @@ import type { Medaille } from "./jour";
 //   Du Jour #1 — Track 🥇 · Jump 🥈 — 🔥 5
 //   https://playdujour.com/
 //
-// Un jeu non fini (pas joué, ou en cours : le classement prouvé n'a rien) s'écrit « son nom suivi de — » ; un jeu fini sans médaille porte une coche ; la
+// Un jeu non fini (pas joué, ou en cours : le classement prouvé n'a rien) s'écrit « son nom suivi de ⬜ » (et non d'un tiret : il se lirait collé au « — » qui sépare la série) ; un jeu fini sans médaille porte une coche ; la
 // journée parfaite ajoute une étoile après la série ; avant le 23/10/2026 le titre est « Du Jour » sans numéro ; sans série, la partie « 🔥 » disparaît.
 // **Rien d'identifiant** dedans : ni pseudo, ni code, ni identifiant (le titre, les noms des jeux, les médailles et la série suffisent).
 // Les émojis sont ceux que les jeux emploient déjà dans leur propre partage (`MEDAL_ICON` de `apps/web/src/share.ts` et `apps/jump/src/dailyInfo.ts`) ;
@@ -21,6 +21,8 @@ export const EMOJIS = {
   bronze: "🥉",
   /** Fini, sans médaille. */
   fini: "✅",
+  /** Pas fini : pas joué, ou en cours. */
+  vide: "⬜",
   serie: "🔥",
   parfaite: "⭐",
 } as const;
@@ -46,9 +48,9 @@ export interface OptionsPartage {
   lien: string;
 }
 
-/** Le morceau d'un jeu : « Track 🥇 », « Track ✅ » (fini sans médaille), « Jump — » (pas fini). */
+/** Le morceau d'un jeu : « Track 🥇 », « Track ✅ » (fini sans médaille), « Jump ⬜ » (pas fini). */
 export function morceauDeJeu(j: JeuPartage): string {
-  if (!j.statut.fini) return `${j.nom} —`;
+  if (!j.statut.fini) return `${j.nom} ${EMOJIS.vide}`;
   return `${j.nom} ${j.statut.medaille ? EMOJIS[j.statut.medaille] : EMOJIS.fini}`;
 }
 
