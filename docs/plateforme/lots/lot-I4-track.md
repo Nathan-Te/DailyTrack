@@ -10,7 +10,7 @@ Aucun changement de `packages/sim`, `packages/core`, `packages/clock`, de la phy
 ## 1. Inventaire des écrans et des surimpressions
 | Écran / surimpression | Avant (lots 29 à 31) | Après (lot I4) | Fichiers |
 |---|---|---|---|
-| **Accueil** `#home` | panneau bleu nuit translucide, titre « Circuit du Jour », cartes, carte du profil | cadre crème de Du Jour (`barreJeu` : « ‹ DU JOUR », date, n° du circuit) + étiquette Track : « TRACK », « Circuit du jour · Canyon », aperçu du tracé (miniature du lot 13), meilleur temps en grand et « 14e sur 212 », quatre médailles en cases, fantôme à battre, **« Courir »** (principal Track), « Revoir le meilleur tour », Salon (“Room”), archives, réglages, aide, « Mon profil Du Jour › » | `homeUi.ts`, `homeLogic.ts`, `accueil.css` |
+| **Accueil** `#home` | panneau bleu nuit translucide sur la vue 3D du départ, titre « Circuit du Jour », cartes, carte du profil | **la vue 3D autour du point de départ reste visible** (retour de Nathan : pas de fond crème plein écran) ; la barre des jeux (« ‹ DU JOUR », date, n° du circuit) est une plaque crème nette et l'étiquette Track, opaque, s'arrête à la hauteur de son contenu : à gauche (500 px) sur grand écran et en paysage téléphone, sous une fenêtre de scène (40 % de la hauteur) en portrait, deux colonnes sur tablette. L'étiquette : « TRACK », « Circuit du jour · Canyon », aperçu du tracé (miniature du lot 13), meilleur temps en grand et « 14e sur 212 », quatre médailles en cases, fantôme à battre, **« Courir »** (principal Track), « Revoir le meilleur tour », Salon (“Room”), archives, réglages, aide, « Mon profil Du Jour › » | `homeUi.ts`, `homeLogic.ts`, `accueil.css` |
 | **Classement du jour** | 10 lignes dans la carte de l'accueil, coin de la course | page `#board-screen` (maquette `track-classement.html`, ta ligne en moutarde, médaille en pastille et en toutes lettres), cinq lignes à l'accueil, coin compact de la course | `boardScreen.ts`, `boardView.ts`, `boardPanel.ts` |
 | **Archives** `#archive` | fenêtre translucide | cadre « ‹ TRACK » : dé, thèmes, jours avec miniatures (inchangées), seuils, « Revoir le meilleur tour » | `archive.ts`, `archiveExtras.ts` |
 | **Réglages** `#settings` | fenêtre à onglets (Graphismes, Son, Jeu, Commandes, **Profil**) | cadre « ‹ TRACK » (maquette `track-reglages.html`), mêmes onglets **sans Profil**, curseurs et choix de la charte, **langue** (`choixLangue`), liens « Mon profil Du Jour › » et « Mentions légales » | `settingsUi.ts`, `settings.ts`, `reglages.css` |
@@ -55,7 +55,7 @@ Chaînes : **450 clés** par langue (base 26, accueil 61 + classement, course et
 ## 4. Construction, poids et polices
 - **`pagesDuSocle`** (`vite.config.ts`) : `data-t`, `data-t-<attr>`, `data-jeton-*`, préchargement ; option **`absolues`** ajoutée à `packages/ui/outils/vite.ts` pour que les polices soient servies par `/assets/<nom>-<empreinte>.woff2` (`renderBuiltUrl`).
 - **Polices partagées avec le portail** : mêmes fichiers à empreinte, un seul chemin `/assets/` pour tout le site ; `partagerPolices` (`scripts/site.mjs`) copie dans `assets/` du portail celles qu'il n'a pas, vérifie qu'un fichier de même nom est identique (sinon l'assemblage échoue) et **retire les copies sous `track/assets/`**. Tests : `apps/portail/test/site.test.ts` (3), `domaine.spec.ts` (le HTML de Track ne référence que `/assets/…`), `perf.spec.ts`.
-  - **Vérification du cache au second chargement sur l'aperçu de PR : à faire** — l'aperçu n'existe pas encore au moment de cette rédaction (§ 9).
+  - **Aperçu de PR vérifié** (`playdujour-recette--pr-94-…web.app`) : le HTML de Track précharge `/assets/barlow-condensed-latin-800-italic-….woff2` et `/assets/archivo-latin-400-normal-….woff2` ; les sept faces répondent 200 sous `/assets/` avec `cache-control: public, max-age=31536000, immutable` ; `/track/assets/` n'existe pas (404, aucune copie) ; **Archivo 400 a la même empreinte (`C81ewxNO`) dans le portail et dans Track**, donc un joueur venu du portail la trouve en cache. Le second chargement lui-même n'a pas été observé dans un navigateur (en-têtes seulement).
 - **Poids** (compressé gzip, `perf.spec.ts`, mesuré sur le build de ce lot) :
 
 | | avant (lot R4) | après | budget |
@@ -92,6 +92,7 @@ Chromium, **390×844 (portrait) et 844×390 (paysage)**, **français et anglais*
 **Pas de capture « Salon en attente »** : le Salon n'a pas de salle d'attente ni de statuts PRÊT / EN ATTENTE (il tourne en continu) ; la maquette `track-salon.html` en montre, ce lot ne les invente pas (voir § 8). Les captures portrait du HUD montrent la surimpression « Tourne ton téléphone » (le jeu se joue en paysage) par-dessus la scène.
 
 ## 8. Écarts à la charte et aux maquettes (à décider avec Nathan)
+0. **Accueil sur la scène 3D** (retour de Nathan après la première version) : la maquette n'en parle pas ; la charte demande des plaques opaques, ce qui est respecté (la scène se voit *autour* des plaques, rien n'est translucide). En portrait téléphone la voiture au départ est à peine visible (la fenêtre de scène est de 40 % de la hauteur) ; à ajuster selon le goût de Nathan.
 1. **Accueil plus chargé que la maquette** : il garde les cinq premières lignes du classement et la carte du Salon (le lot 29 les montrait à l'accueil) ; la charte n'en parle pas.
 2. **« Revoir le meilleur tour »** (et non « mon ») : c'est le meilleur tour du jour, pas le tien (fantôme du premier ou record local).
 3. **Perte de fonction à confirmer — « Changer mon code »** : le jeu ne le propose plus (le profil commun du portail le fait, `/profil/?retour=<chemin du jeu>`). Le **message « code révoqué »** n'existe plus dans les réglages (il reste à l'envoi d'un temps, avec le lien vers le profil). À remettre si Nathan veut les garder dans le jeu.
@@ -111,7 +112,7 @@ Chromium, **390×844 (portrait) et 844×390 (paysage)**, **français et anglais*
 
 **Non vérifié** :
 - **Firefox et WebKit** (non installés ici) : le sous-ensemble multi-navigateurs ne s'est pas exécuté en local — la CI le fait.
-- **Aperçu de PR et cache des polices au second chargement** : à relever sur l'aperçu une fois déployé.
+- **Second chargement des polices dans un navigateur sur l'aperçu** : en-têtes et chemins vérifiés (§ 4), le chargement lui-même pas observé.
 - **Fluidité sur un vrai téléphone** ; **rendu validé par Nathan** (critère d'arrêt : avant fusion).
 - Les maquettes sont des références : la charte prime en cas d'écart.
 

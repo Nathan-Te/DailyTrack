@@ -165,7 +165,7 @@ body.home #tbar {
 /* Actions : « Courir » reste collé en bas de l'étiquette, toujours visible sans défiler. */
 .home-actions {
   position: sticky;
-  bottom: 0;
+  bottom: calc(-1 * var(--corps-y)); /* jusqu'au bord de l'étiquette : rien ne défile sous la barre */
   z-index: 1;
   margin: auto calc(-1 * var(--corps-x)) calc(-1 * var(--corps-y));
   padding: 10px var(--corps-x) var(--corps-y);
@@ -173,14 +173,16 @@ body.home #tbar {
   border-top: 1px solid var(--track-coque);
 }
 
-/* Large (ordinateur, téléphone en paysage) : deux colonnes. */
-@media (min-width: 700px) {
+/* Tablette : deux colonnes ; un grand écran ou un téléphone en paysage garde une colonne à gauche (la scène occupe le reste, voir plus bas). */
+@media (min-width: 700px) and (max-width: 999px) and (min-height: 521px) {
   .home-grille {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
     gap: 18px;
   }
+}
+@media (min-width: 700px) {
   .home-liens {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -518,5 +520,61 @@ body.finished #board {
 @media (max-height: 520px) {
   #board {
     top: 84px;
+  }
+}
+
+/* --- L'accueil garde la vue 3D autour du point de départ (retour de Nathan) : plus de fond crème plein écran ; la barre des jeux devient une plaque crème nette, l'étiquette Track
+   (opaque, ombre dure) s'arrête à la hauteur de son contenu, et la scène se voit autour d'elles. Les autres écrans restent des cadres crème. ---------------------------------------- */
+#home {
+  background: transparent;
+}
+#home > .dj-barre-jeu {
+  box-sizing: border-box;
+  width: calc(100% - 20px);
+  max-width: 940px;
+  margin: 10px 0 8px;
+  padding: 0 var(--dj-marge);
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+}
+#home > .etiquette {
+  flex: 0 1 auto;
+}
+/* Téléphone en portrait : une fenêtre sur la scène entre la barre et l'étiquette (l'étiquette, collée en bas, défile). */
+@media (max-width: 699px) and (orientation: portrait) {
+  #home > .etiquette {
+    margin-top: auto;
+    max-height: calc(100% - 64px - 40vh);
+  }
+}
+/* Grand écran et téléphone en paysage : l'étiquette à gauche sur une colonne, la scène (et la voiture au départ) à droite. */
+@media (min-width: 1000px) and (min-height: 521px) {
+  #home {
+    align-items: flex-start;
+  }
+  #home > .dj-barre-jeu {
+    margin-left: 20px;
+    width: 500px;
+  }
+  #home > .etiquette {
+    margin-left: 20px;
+    width: 500px;
+  }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  #home {
+    align-items: flex-start;
+  }
+  #home > .dj-barre-jeu {
+    margin: 6px 0 6px 10px;
+    width: min(560px, calc(100% - 20px));
+  }
+  #home > .etiquette {
+    flex: 1 1 auto;
+    width: min(560px, calc(100% - 20px));
+    margin-left: 10px;
+    margin-bottom: 6px;
   }
 }
