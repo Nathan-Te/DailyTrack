@@ -1,6 +1,7 @@
 // Lot R4 (plateforme) : deux serveurs locaux pour e2e/domaine.spec.ts, lancés DANS le spec (rien dans playwright.config.ts) :
 //   - `startSite` : le site de playdujour.com comme Firebase Hosting le sert — le site assemblé par `node scripts/site.mjs site` (portail à la
-//     racine, DailyTrack sous /track/, DailyJump sous /jump/), `/track` et `/jump` redirigés vers `/track/` et `/jump/`, et `/api/**` renvoyé
+//     racine, DailyTrack sous /track/, DailyJump sous /jump/), `/track` et `/jump` redirigés vers `/track/` et `/jump/` (ce que Hosting fait par défaut
+//     pour un dossier avec `index.html`, sans règle dans firebase.json), et `/api/**` renvoyé
 //     vers un serveur de la plateforme (même origine : aucune requête CORS) ;
 //   - `startOldPages` : l'ancienne adresse comme GitHub Pages la sert — les pages de redirection sous `/DailyTrack/` (`index.html` d'un
 //     dossier, sinon `404.html` avec le statut 404).

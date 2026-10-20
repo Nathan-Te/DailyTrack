@@ -156,7 +156,7 @@ README : `docs/plateforme/lots/lot-P4-consolidation.md`. Serveur : `apps/api/CLA
 
 ## Plateforme (lot R4) — playdujour.com
 README : `docs/plateforme/lots/lot-R4-domaine.md` ; carte des adresses : `CLAUDE.md` racine, « Adresses et mise en production ».
-- **Chemins** : DailyJump est servi sous **`/jump/`** de playdujour.com, de la recette et de chaque aperçu de PR (canal Firebase). `base: "./"` ne change pas : niveaux figés (`levels/AAAA-MM-JJ.json`), démonstration (`demo/`), ressources restent **relatifs à la page**. Test : `apps/web/e2e/domaine.spec.ts` (le site assemblé).
+- **Chemins** : DailyJump est servi sous **`/jump/`** de playdujour.com, de la recette et de chaque aperçu de PR (canal Firebase). `base: "./"` ne change pas : niveaux figés (`levels/AAAA-MM-JJ.json`), démonstration (`demo/`), ressources restent **relatifs à la page**. `/jump` sans `/` final est redirigé par Firebase lui-même (dossier avec `index.html`) : **aucune redirection de dossier dans `firebase.json`** (elle boucle). Test : `apps/web/e2e/domaine.spec.ts` (le site assemblé).
 - **Serveur** : `VITE_API_URL=/` (`deploy-site.yml`) → `rankApiBase` rend l'**origine de la page** : `/api/jump/…` sur la même adresse, aucun pré-vol CORS. `?api=/` de même.
 - **Aperçu** (`isPreview`, `dailyInfo.ts`) : un canal d'aperçu Firebase (`<site>--<canal>.web.app`) et la recette (`recette.…`) ouvrent toutes les dates, comme l'ancien `/b/<branche>/` et le serveur local ; la production les refuse (test `test/jour.test.ts`).
 - **Liens partagés** : `shareUrl` part de l'origine et du chemin courants (`playdujour.com/jump/`), jamais d'une adresse écrite en dur.
