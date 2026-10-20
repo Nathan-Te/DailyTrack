@@ -80,7 +80,7 @@ e2e (`apps/web/e2e/portail-jour.spec.ts`, 8 tests, ≈ 45 s ; ports 4179–4181,
 4. Pas de « Journée n° 12 » ni de tuile « Classement du jour » (lot I3).
 
 ## 9. Vérifié / non vérifié
-**Vérifié en local** : `npm run typecheck`, `npx tsc -p apps/portail` ; Vitest (SQLite et libSQL) des zones touchées (`apps/api`, `apps/portail`, `packages`) ; `measure:portail` contre un sqld local ; `smoke` complet et `--lecture-seule` contre `dist/server.mjs` ; e2e Chromium `portail-jour.spec.ts` (8/8), `portail.spec.ts` et `domaine.spec.ts` (14/14 avec le retour depuis les jeux), `accueil.spec.ts` (DailyTrack) et les specs d'accueil de DailyJump (voir la PR) ; captures regardées.
+**Vérifié en local** : `npm run typecheck`, `npx tsc -p apps/portail` ; Vitest (SQLite et libSQL) des zones touchées (`apps/api`, `apps/portail`, `packages`) ; `measure:portail` contre un sqld local ; `smoke` complet et `--lecture-seule` contre `dist/server.mjs` ; e2e Chromium `portail-jour.spec.ts` (8/8), `portail.spec.ts` et `domaine.spec.ts` (14/14 avec le retour depuis les jeux), `accueil.spec.ts` de DailyTrack (27/27 : chevauchements et cibles de l'accueil avec le lien) et `mobile`, `arrivee`, `sensations` de DailyJump (43/43) ; captures regardées.
 **Non vérifié** : Firefox et WebKit (le run complet de `main` les lance) ; l'aperçu de la PR et la recette (commentaires « Aperçu » / « Recette » de la PR) ; un vrai téléphone ; le comportement du CDN de Hosting avec `Vary: X-Player-Id` sur la réponse publique (documenté par Firebase ; s'il l'ignorait, une réponse publique pourrait être servie à un joueur : il verrait le portail sans statut, jamais les données d'un autre — les réponses personnelles sont `private`).
 **CI** : voir la PR (runs et résultats).
 
