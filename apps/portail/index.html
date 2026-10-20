@@ -22,6 +22,7 @@
       .accroche { color: var(--doux); margin: 8px 0 16px; }
       .jouer { font-weight: 600; }
       footer { margin-top: auto; padding-top: 40px; color: var(--doux); font-size: 13px; text-align: center; }
+      footer a { display: flex; justify-content: center; align-items: center; min-height: 44px; color: #8fd8ff; }
     </style>
   </head>
   <body>
@@ -32,7 +33,11 @@
       <a class="carte" href="track/" data-jeu="track"><h2>DailyTrack</h2><p class="accroche">Un circuit par jour, le même pour tous.</p><span class="jouer">Jouer →</span></a>
       <a class="carte" href="jump/" data-jeu="jump"><h2>DailyJump</h2><p class="accroche">Un niveau de plateforme par jour, le même pour tous.</p><span class="jouer">Jouer →</span></a>
     </main>
-    <footer>Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux.</footer>
+    <footer>
+      Nouveau jour à minuit, heure de Paris. Ton profil est le même dans tous les jeux.
+      <!-- Lot R5 : la page des mentions légales et de la confidentialité. -->
+      <a id="mentions" href="mentions-legales/">Mentions légales et confidentialité</a>
+    </footer>
     <script type="module" src="./src/portail.ts"></script>
   </body>
 </html>

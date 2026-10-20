@@ -426,7 +426,7 @@ export function createJumpLives(deps: JumpLivesDeps) {
   /** `POST /api/jump/lives` : un lot de vies du jour (voir l'en-tête du fichier pour l'ordre de validation). */
   async function receive(req: Request, info: RequestInfo): Promise<JumpLivesResult> {
     // 1. Débit, en base, avant de lire le corps et avant tout rejeu (compteurs propres aux vies de DailyJump).
-    if (info.clientKey) await hit(await hashKey("jlip", info.clientKey), limits.perClient);
+    await platform.hitAddress(info, "jlip", limits.perClient);
     const playerId = headerPlayer(req, true)!;
     await hit(await hashKey("jlp", playerId), JUMP_LIVES_LOTS_PER_PLAYER);
     await forget();
@@ -482,6 +482,8 @@ export function createJumpLives(deps: JumpLivesDeps) {
 
     let accepted = 0;
     let dayCount = 0;
+    // Lot R5 : plafond global de rejeux de l'instance (503 au-delà) — un lot compte une unité par 10 vies à rejouer (une vie ≈ 0,5 ms).
+    platform.spendReplays(Math.max(1, Math.ceil(decoded.filter((d) => d !== null).length / 10)));
     for (let round = 0; ; round++) {
       // La ligne du joueur (une lecture) : ses vies déjà retenues (déduplication) et le plafond du jour.
       const row = await db.first<{ count: number; lives: string; rev: number }>("SELECT count, lives, rev FROM jump_lives WHERE day = ? AND player_id = ?", [day, playerId]);
@@ -571,5 +573,20 @@ export function createJumpLives(deps: JumpLivesDeps) {
     forget,
     /** « Changer mon code » : les vies du jour suivent le joueur. */
     rotateStatements: (oldId: string, newId: string): Statement[] => [{ sql: "UPDATE jump_lives SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }],
+    /**
+     * Lot R5 — effacement : les vies brutes du joueur (jours pas encore oubliés) ; la version de ces jours avance, la carte et l'échantillon sont
+     * recalculés sans elles à la prochaine lecture (la mémoire de cette instance est vidée : `onErased`).
+     */
+    erase: async (playerId: string): Promise<{ counts: Record<string, number>; statements: Statement[] }> => {
+      const row = await db.first<{ n: number; lives: number | null }>("SELECT COUNT(*) AS n, SUM(count) AS lives FROM jump_lives WHERE player_id = ?", [playerId]);
+      return {
+        counts: { viesDailyJump: row?.lives ?? 0 },
+        statements: [
+          { sql: "UPDATE jump_deaths SET version = version + 1 WHERE frozen = 0 AND day IN (SELECT day FROM jump_lives WHERE player_id = ?)", params: [playerId] },
+          { sql: "DELETE FROM jump_lives WHERE player_id = ?", params: [playerId] },
+        ],
+      };
+    },
+    onErased: () => memo.clear(),
   };
 }

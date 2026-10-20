@@ -181,7 +181,7 @@ jobs:
             fi
           fi
           region="${GCP_REGION:-europe-west1}"
-          # Lot R4 : les origines permises de la cible (scripts/domaine.mjs : son adresse, l'ancienne origine jusqu'à sa date de retrait), plus
+          # Lot R4 : les origines permises de la cible (scripts/domaine.mjs : son adresse ; lot R5 : plus l'ancienne origine GitHub Pages), plus
           # celles des variables du dépôt et, pour une révision de recette, l'origine du canal d'aperçu de sa PR. La production refuse la recette
           # et tout aperçu (le script s'arrête en erreur).
           if [ "$TARGET" = recette ]; then
@@ -197,7 +197,7 @@ jobs:
             extra="${PROD_ORIGINS};${EXTRA_ORIGINS}"
             trust="$PROD_TRUST_PROXY"
           fi
-          origins="$(node scripts/domaine.mjs origines "$TARGET" --jour "$(date -u +%F)" --en-plus "$extra")"
+          origins="$(node scripts/domaine.mjs origines "$TARGET" --en-plus "$extra")"
           case "$trust" in [0-5]) ;; *) echo "::error::TRUST_PROXY / RECETTE_TRUST_PROXY : un nombre de proxys de 0 à 5, reçu « $trust »"; exit 1 ;; esac
           if [ -n "$TAG" ] && ! printf '%s' "$TAG" | grep -Eq '^b-[a-z0-9-]{1,22}$'; then echo "::error::étiquette invalide : « $TAG » (scripts/recette.mjs)"; exit 1; fi
           sha="$(git rev-parse HEAD)"
@@ -377,3 +377,23 @@ jobs:
           # Lot R4 : l'origine de la recette (toujours permise, scripts/domaine.mjs).
           npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --origin "$(node scripts/domaine.mjs adresse recette)"
           echo "- Essai de bout en bout (\`npm run smoke\`) : réussi." >> "$GITHUB_STEP_SUMMARY"
+
+      # Lot R5 — la faille d'adresse : depuis ce runner (adresse publique), des appels DIRECTS à la révision, chacun avec une adresse inventée
+      # différente dans X-Forwarded-For, doivent être refusés (429) au plus tard après 40 × PEER_FACTOR (scripts/sonde-proxy.mjs faille).
+      # Révision d'une PR seulement (≈ 400 vérifications de pseudo comptées dans la base de recette, rien d'autre n'est écrit).
+      - name: Faille d'adresse fermée (appels directs forgés)
+        if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette' && inputs.tag != ''
+        run: |
+          node scripts/sonde-proxy.mjs faille "${{ steps.result.outputs.url }}" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Lot R5 — la mesure par Firebase (révision par défaut, celle que recette.playdujour.com sert) : ce que le serveur reçoit d'un appel direct
+      # et d'un appel par Firebase (hôte, en-têtes, adresses de connexion). Pour information : n'échoue jamais.
+      - name: En-têtes reçus, direct et par Firebase (information)
+        if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette' && inputs.tag == ''
+        continue-on-error: true
+        run: |
+          {
+            echo "#### En-têtes reçus par le serveur de recette (lot R5)"
+            echo '```json'
+            node scripts/sonde-proxy.mjs entetes "${{ steps.result.outputs.url }}" "$(node scripts/domaine.mjs adresse recette)" --essais 20
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"

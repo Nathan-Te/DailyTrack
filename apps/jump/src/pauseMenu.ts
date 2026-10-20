@@ -203,6 +203,14 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   }
   root.append(help);
 
+  // ——— Lot R5 (plateforme) : la page « Mentions légales et confidentialité » du site (racine de playdujour.com) ———
+  const legal = el("p", "mhint mlegal");
+  const mentions = el("a", undefined, "Mentions légales et confidentialité");
+  mentions.id = "menu-mentions";
+  mentions.href = "../mentions-legales/";
+  legal.append(mentions);
+  root.append(legal);
+
   document.body.append(root);
   shows.forEach((f) => f());
 

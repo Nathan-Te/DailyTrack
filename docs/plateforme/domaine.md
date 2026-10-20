@@ -8,7 +8,7 @@ Guide pas à pas pour Nathan (lot R4), **à faire une fois**. Compte **≈ 1 h 3
 | `https://playdujour.com/track/` · `/jump/` | DailyTrack · DailyJump (production) | `cdj-api` (production), même adresse |
 | `https://recette.playdujour.com/` (`/track/`, `/jump/`) | `main` en entier, à chaque fusion | `cdj-api-recette` (recette par défaut), même adresse |
 | `https://<site de recette>--pr-<n>-<empreinte>.web.app/` | l'aperçu de la PR n° n (lien commenté sur la PR, 7 jours) | recette par défaut ; **sa révision** si la PR touche le serveur |
-| `https://nathan-te.github.io/DailyTrack/…` | après la bascule : des redirections vers playdujour.com, profil compris | — |
+| `https://playdujour.com/mentions-legales/` | mentions légales et confidentialité (lot R5) | — |
 
 Le flux : **PR → aperçu → fusion → recette → bouton « Mettre en production » → production**. Plus aucun déploiement automatique de la production. Le serveur est servi **sous la même adresse** que les jeux (Firebase Hosting renvoie `/api/**` vers Cloud Run, `europe-west1`) : plus aucune requête CORS de vérification préalable.
 
@@ -16,7 +16,7 @@ Le flux : **PR → aperçu → fusion → recette → bouton « Mettre en produc
 
 **Avant de commencer** : la production (lot 28, `docs/mise-en-ligne.md`) et la recette (lot R1, `docs/plateforme/recette.md`) sont en place : projet `dailytrack-511513`, région `europe-west1`, comptes `cdj-deploy` (déploiement, fédération d'identité `github`) et services `cdj-api`, `cdj-api-recette`. Tout se fait dans **Cloud Shell** (console Google → icône `>_`), dans la **console Firebase**, chez **OVH** et dans les réglages du dépôt. Chaque étape dit quoi faire, puis **« Tu dois voir »**.
 
-**Ordre** : étapes 1 à 6 quand tu veux (rien ne change pour les joueurs : GitHub Pages sert toujours les jeux) ; l'étape 7 (la mesure de `TRUST_PROXY`) **avant** l'étape 8 ; **la bascule a lieu à l'étape 8**, à la première « Mettre en production ».
+**Ordre** : étapes 1 à 6, puis l'étape 7 (la mesure de `TRUST_PROXY`) **avant** l'étape 8 (la première « Mettre en production »). Lot R5 : **plus aucune redirection depuis GitHub Pages** (décision de Nathan) — l'ancienne adresse disparaît avec le dépôt privé ; un joueur de l'ancienne adresse retrouve son profil avec son code de transfert (Réglages › Profil). Pour couper GitHub Pages : § « GitHub Pages » en bas.
 
 ---
 
@@ -100,8 +100,8 @@ GitHub → dépôt → **Settings** → **Secrets and variables** → **Actions*
 |---|---|---|
 | `FIREBASE_SITE_PRODUCTION` | `playdujour` (l'identifiant de l'étape 2) | oui |
 | `FIREBASE_SITE_RECETTE` | `playdujour-recette` | oui |
-| `RECETTE_TRUST_PROXY` | *(étape 7 : la valeur mesurée)* | avant la bascule |
-| `TRUST_PROXY` | *(étape 7 : la même valeur, pour la production)* | avant la bascule |
+| `RECETTE_TRUST_PROXY` | *(étape 7 : la valeur mesurée)* | avant la première mise en production |
+| `TRUST_PROXY` | *(étape 7 : la même valeur, pour la production)* | avant la première mise en production |
 
 Les secrets ne changent pas (`GCP_WORKLOAD_IDENTITY_PROVIDER`, `GCP_SERVICE_ACCOUNT`). `VITE_API_URL` et `RECETTE_API_URL` ne servent plus aux jeux publiés (ils appellent `/api/` sur leur propre adresse) ; garde `VITE_API_URL` (le garde-fou « un aperçu ne vise jamais la production » la lit) ; `RECETTE_API_URL` n'est plus lue, tu peux la laisser.
 
@@ -125,7 +125,7 @@ L'environnement **`production`** (toi comme relecteur, branche `main`) reste tel
 5. **Fusionne une PR** (celle du lot R4, par exemple). Onglet **Actions** → workflow **Recette** (événement `push`) : `deploy` (révision par défaut), `seed`, `site`.
    - **Tu dois voir** <https://recette.playdujour.com/> (le portail), `/track/`, `/jump/` à jour, et <https://recette.playdujour.com/api/health> → `"ok":true,"db":"ok"`. **Aucune** production ne part.
 
-## Étape 7 — Mesurer `TRUST_PROXY` sur la recette (10 min) — **avant la bascule**
+## Étape 7 — Mesurer `TRUST_PROXY` sur la recette (10 min) — **avant la première mise en production**
 
 **Pourquoi** : le serveur limite le débit **par adresse** du joueur, lue dans `X-Forwarded-For` en comptant `TRUST_PROXY` proxys depuis la droite. Derrière Firebase Hosting, Cloud Run voit un relais de plus. Avec la valeur d'aujourd'hui (1), il risque de lire l'adresse **du relais de Firebase** : tous les joueurs partageraient alors la même limite (des « Trop de requêtes » pour tout le monde). Firebase ne documente pas ce nombre : on le **mesure** (`scripts/sonde-proxy.mjs`, contre la recette seulement ; il n'observe que des réponses 429, rien de personnel).
 
@@ -140,33 +140,27 @@ node scripts/sonde-proxy.mjs "$DIRECT" https://recette.playdujour.com --trust-pr
   - « **TRUST_PROXY est juste** » → mets `RECETTE_TRUST_PROXY` **et** `TRUST_PROXY` à la valeur essayée (1) ;
   - « **TROP BAS** » → mets `RECETTE_TRUST_PROXY` à **2**, relance la recette (Actions → **Recette** → **Run workflow** sur `main`), **attends 10 minutes** (la fenêtre du débit), relance la sonde avec `--trust-proxy 2` ; recommence jusqu'à « juste » ; puis mets **`TRUST_PROXY`** (production) à la même valeur ;
   - « TROP HAUT » → diminue de 1, même démarche.
-- **Ce qui reste ouvert**, quelle que soit la valeur : quelqu'un qui appelle **directement** l'adresse `run.app` du service (sans passer par playdujour.com) peut, avec une valeur ≥ 2, inventer son adresse et contourner la limite **par adresse** (pas celle par joueur, comptée en base). Le fermer demande un petit lot du serveur (lire l'en-tête posé par Firebase, ou n'accepter que le trafic de Firebase) : décision pour toi, README du lot R4.
+- **Mesuré au lot R5 sur la recette** : la valeur juste derrière Firebase est **2**. Un appel **direct** à l'adresse `run.app` peut alors inventer l'avant-dernière entrée de `X-Forwarded-For` ; depuis le lot R5, le serveur compte aussi la **dernière** (écrite par Google, jamais par le client) dans chaque limite par adresse, et plafonne les rejeux par minute : README du lot R5 et `apps/api/CLAUDE.md`, « Adresse du client ». Vérification : `node scripts/sonde-proxy.mjs faille <adresse directe de la recette>` (« Faille fermée »).
 
-## Étape 8 — « Mettre en production » : la première fois, c'est la bascule (15 min)
+## Étape 8 — « Mettre en production » (15 min)
 
 Onglet **Actions** → **Mettre en production** → **Run workflow** → **Branch : main**, laisse « commit » vide (le dernier de `main`) et « reference » vide → **Run workflow**.
 
-1. **`verifier`** — la CI complète du commit doit être verte (sinon : refus, avec le lien du run) ; le résumé liste **les PR et les commits** depuis la dernière mise en production, et **le code en production**. La première fois (aucune étiquette `prod-…`), c'est le commit du dernier run réussi de l'ancienne « Production » : **vérifie-le** (c'est le code que les joueurs ont aujourd'hui sur GitHub Pages) ; s'il est faux, annule et relance en donnant **reference** (le bon commit).
+1. **`verifier`** — la CI complète du commit doit être verte (sinon : refus, avec le lien du run) ; le résumé liste **les PR et les commits** depuis la dernière mise en production, et **le code en production** (le commit de la dernière étiquette `prod-…`).
 2. **`figer`** — `freeze:days -- demain` **avec le code en production** : aujourd'hui et demain gardent le niveau que les joueurs voient déjà, même si le commit déployé change le générateur de DailyJump.
 3. **`serveur`** attend ton clic : **Review deployments** → coche **production** → **Approve and deploy**. *(Un seul clic : le site et la suite partent après.)*
 4. **`site`** — playdujour.com publié (avec les jours figés). **`verification`** — `smoke --lecture-seule` contre `https://playdujour.com/api/…` (des GET seulement, rien n'est écrit).
 5. **`etiquette`** — le commit reçoit `prod-AAAA-MM-JJ-HHMM` (heure de Paris), avec l'image du serveur et la version du site.
-6. **`bascule`** — **la première fois** : GitHub Pages ne sert plus que des redirections vers playdujour.com (sans effet les fois suivantes).
-7. **`depot`** — une PR « **Jours figés — prod-…** » : fusionnée toute seule quand sa CI est verte (avec `ROBOT_TOKEN`), sinon **à fusionner par toi**.
-8. **`resume`** — le tableau des étapes.
+6. **`depot`** — une PR « **Jours figés — prod-…** » : fusionnée toute seule quand sa CI est verte (avec `ROBOT_TOKEN`), sinon **à fusionner par toi**.
+7. **`resume`** — le tableau des étapes.
 
 - **Tu dois voir** tout en vert, <https://playdujour.com/> avec les deux cartes, <https://playdujour.com/api/health> → `ok: true, db: "ok", salonOverride: false`, et l'étiquette dans **Code** → **Tags**.
 - **Ensuite, à chaque mise en production** : le même bouton. Une mise en production à la fois (une seconde attend la première).
 
-## Étape 9 — Vérifier la migration : ton profil sur la nouvelle adresse (10 min)
+## Étape 9 — La conservation des versions de Firebase (2 min, une fois)
 
-1. Sur un appareil où tu as joué sur l'ancienne adresse (avec ton pseudo) : ouvre **<https://nathan-te.github.io/DailyTrack/>**.
-   - **Tu dois voir** « Le jeu a déménagé… » un instant, puis **<https://playdujour.com/track/>**, l'adresse **sans** `#dujour=…` (effacé aussitôt), et dans **Réglages › Profil** **ton pseudo** et **ton code** (le même qu'avant). Tes records reviennent par la synchronisation du serveur.
-2. **<https://nathan-te.github.io/DailyTrack/jump/?seed=2026-10-18>** → **<https://playdujour.com/jump/?seed=2026-10-18>** (les paramètres sont gardés) ; même profil dans DailyJump.
-3. **<https://nathan-te.github.io/DailyTrack/b/nimporte/>** → « Les aperçus ont déménagé ».
-4. *(Facultatif)* sur un appareil où tu as **déjà** un profil **différent** sur playdujour.com : ouvre l'ancienne adresse. **Tu dois voir** une question (« OK : prendre le profil de l'ancienne adresse ; Annuler : garder celui de cet appareil »). Elle n'est posée qu'une fois pour ce lien.
-
-**Ce qui passe** dans l'adresse (le fragment `#dujour=…`, jamais envoyé à un serveur) : l'identité (code `CDJ2`), le pseudo, et de DailyJump ce qui n'existe qu'en local et tient dans 16 000 caractères (un meilleur essai pas encore classé, les vies en attente d'envoi, la mémoire du jour). **Ce qui ne passe pas** : les réglages (son, caméra, commandes), la série et l'historique locaux, les records non envoyés des jours passés. Un joueur **sans identité** (jamais classé) arrive sans profil : il n'avait rien sur le serveur.
+Firebase garde **toutes** les versions publiées de chaque site (une par mise en production, par fusion pour la recette) : ≈ 3 Mo chacune, sur les 10 Go gratuits. Décision 3 du lot R4 : **50 versions par site** (assez pour revenir en arrière de plusieurs semaines). Console Firebase → **Hosting** → site `playdujour` → onglet du tableau de bord → **⋮** (en haut du « Historique des versions ») → **Paramètres de conservation des versions** → **50** → Enregistrer ; **même chose** pour `playdujour-recette`.
+- **Tu dois voir** « Conserver les 50 dernières versions » sur les deux sites. Le retour arrière (`retour-arriere.yml`) ne revient qu'à la version de l'étiquette précédente : elle est toujours dans les 50.
 
 ## Le retour arrière
 
@@ -175,16 +169,19 @@ Actions → **Retour arrière** → **Run workflow** (sur `main`) ; « étiquett
 - **Limite** : les jours figés **après** l'étiquette remise ne sont pas dans son image ; si le générateur de DailyJump a changé entre les deux, un de ces jours peut changer de niveau sur le serveur. Une mise en production de correctif le règle.
 - **À la main**, si GitHub ne répond pas : `gcloud run services update-traffic cdj-api --region europe-west1 --to-revisions=<révision d'avant>=100` ; console Firebase → Hosting → site → **Historique des versions** → ⋮ → **Restaurer**.
 
-## Les dates à retenir
+## GitHub Pages (lot R5 : plus rien n'y est publié)
 
-- **31/12/2026** — dernière journée où le serveur accepte l'ancienne origine `https://nathan-te.github.io` (`scripts/domaine.mjs`, `RETRAIT_ANCIENNE_ORIGINE`) : passé ce jour, les déploiements ne la mettent plus dans `ALLOWED_ORIGINS`. Rien à faire de ton côté.
-- **01/06/2027** au plus tôt — retrait des redirections de GitHub Pages (au moins 6 mois après la bascule ; `RETRAIT_REDIRECTIONS`). Ce jour-là (ou plus tard) : GitHub → **Settings** → **Pages** → **Unpublish site**, puis supprimer la branche `gh-pages`. Les liens anciens tombent alors en erreur 404.
+Le workflow `pages.yml` est retiré : plus aucune publication, plus de redirection. Si GitHub Pages sert encore l'ancien site (branche `gh-pages`) :
+1. GitHub → dépôt → **Settings** → **Pages** → **Build and deployment** : si une source est réglée (« Deploy from a branch » → `gh-pages`), **Unpublish site** (en haut de la page, menu « … »), ou règle la source sur **None**.
+2. **Code** → **Branches** → supprime la branche `gh-pages` (elle ne sert plus).
+3. **Tu dois voir** `https://nathan-te.github.io/DailyTrack/` répondre « 404 ». Quand le dépôt repasse en **privé**, Pages s'arrête de toute façon sur l'offre gratuite de GitHub.
+- Un joueur de l'ancienne adresse retrouve son profil sur playdujour.com avec son **code de transfert** (Réglages › Profil › « Copier mon code » sur l'ancienne adresse, tant qu'elle répond, puis « Charger un code »). Le serveur n'accepte plus l'origine `https://nathan-te.github.io` (lot R5).
 
 ## Le coût
 
 | poste | gratuit | au-delà | nous |
 |---|---|---|---|
-| Firebase Hosting, stockage | 10 Go | 0,026 $/Go/mois | ≈ 3 Mo par version ; Firebase garde l'historique des versions (mets une limite de 50 versions par site : console → Hosting → ⋮ → **Paramètres de conservation des versions**) |
+| Firebase Hosting, stockage | 10 Go | 0,026 $/Go/mois | ≈ 3 Mo par version ; **50 versions par site** (étape 9) : ≈ 300 Mo pour les deux sites |
 | Firebase Hosting, transfert | **360 Mo par jour** (≈ 10,8 Go/mois) | **0,15 $/Go** | premier chargement : DailyTrack ≈ 0,26 Mo, DailyJump ≈ 0,35 Mo (compressés) ; ensuite le navigateur garde les fichiers à empreinte (un an) |
 | Domaines, certificats, deux sites, canaux d'aperçu | inclus | — | — |
 | Cloud Run, Turso | inchangés | `couts.md` | **moins** de requêtes : plus de pré-vols CORS, et Firebase garde en cache les lectures publiques |

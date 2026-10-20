@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0b1020" />
+    <meta name="description" content="Du Jour : mentions légales et confidentialité. Qui publie le site, qui l'héberge, ce que le site garde et comment le faire effacer." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23e8283a'/%3E%3C/svg%3E" />
+    <title>Mentions légales et confidentialité — Du Jour</title>
+    <!--
+      Lot R5 (plateforme) : page statique, sans script, sans ressource extérieure. Elle décrit exactement ce que le code fait :
+      chaque durée ou nombre tiré du code porte `data-constante` (son nom dans le code) et `data-valeur` (sa valeur, en millisecondes pour
+      une durée) ; le test apps/portail/test/mentions.test.ts les compare aux constantes du serveur et vérifie que chaque table de la base
+      y est décrite. Toute nouvelle donnée gardée met à jour cette page (apps/api/CLAUDE.md).
+    -->
+    <style>
+      :root { color-scheme: dark; --fond: #0b1020; --carte: #151c33; --texte: #eef1f8; --doux: #a9b3cf; --accent: #e8283a; --lien: #8fd8ff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: var(--fond); color: var(--texte); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 32px 16px 48px; }
+      main { max-width: 760px; margin: 0 auto; }
+      h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
+      h2 { font-size: 22px; margin: 40px 0 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
+      h3 { font-size: 17px; margin: 24px 0 4px; }
+      p, li { overflow-wrap: anywhere; }
+      a { color: var(--lien); }
+      .retour { display: inline-flex; align-items: center; min-height: 44px; }
+      .doux { color: var(--doux); }
+      .bref { background: var(--carte); border-radius: 12px; padding: 12px 16px; }
+      .bref li { margin: 4px 0; }
+      .donnees { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+      .donnees > li { background: var(--carte); border-radius: 12px; padding: 12px 16px; }
+      .donnees h3 { margin: 0 0 4px; }
+      .donnees p { margin: 4px 0; }
+      .donnees .duree { color: var(--doux); }
+      code { font-size: 14px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 0 4px; }
+      footer { margin-top: 48px; color: var(--doux); font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p><a class="retour" href="../">← Du Jour</a></p>
+      <h1>Mentions légales et confidentialité</h1>
+      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-20">20 octobre 2026</time>.</p>
+
+      <section class="bref" aria-label="En bref">
+        <ul>
+          <li>Pas de compte, pas d'e-mail, pas de mot de passe : ton profil est un identifiant tiré au hasard par ton navigateur, et un pseudo que tu choisis.</li>
+          <li>Pas de publicité, pas de mesure d'audience, aucun traceur ni cookie tiers : le site ne pose <strong>aucun cookie</strong>.</li>
+          <li>Le serveur garde tes temps (pour les classements) ; tu peux tout faire effacer en écrivant à <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> avec ton code de transfert.</li>
+        </ul>
+      </section>
+
+      <h2 id="editeur">Éditeur</h2>
+      <p>Le site est publié par <strong>MZC Studios</strong>, éditeur <strong>particulier</strong> (le site est publié à titre non professionnel).</p>
+      <p>Contact : <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a>.</p>
+      <p>Conformément à la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l'économie numérique (LCEN, article 1-1, II, issu de l'ancien article 6 depuis la loi n° 2024-449 du 21 mai 2024), l'éditeur, qui publie à titre non professionnel, a communiqué son identité à l'hébergeur ; seules les coordonnées de l'hébergeur sont publiées ci-dessous.</p>
+
+      <h2 id="hebergeur">Hébergement</h2>
+      <p><strong>Le site et le serveur</strong> : Firebase Hosting et Google Cloud Run (région europe-west1, Belgique), fournis par <strong>Google Cloud France</strong>, 8 rue de Londres, 75009 Paris, France (<a href="https://cloud.google.com/terms/google-entity">entité contractante de Google Cloud pour la France</a>).</p>
+      <p><strong>La base de données</strong> : Turso, fournie par <strong>ChiselStrike Inc.</strong> (« Turso »), 2093 Philadelphia Pike, #6336, Claymont, Delaware 19703, États-Unis — <a href="mailto:support@turso.tech">support@turso.tech</a>.</p>
+
+      <h2 id="confidentialite">Confidentialité</h2>
+      <p>Responsable du traitement : MZC Studios (éditeur particulier), <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a>.</p>
+
+      <h3 id="serveur">Ce que le serveur garde</h3>
+      <p>Ton profil n'existe sur le serveur qu'après ta première arrivée classée : avant, le serveur ne garde de toi que les compteurs de débit décrits plus bas (adresse IP hachée, quelques minutes).</p>
+      <ul class="donnees">
+        <li data-tables="players">
+          <h3>Ton identifiant secret</h3>
+          <p>128 bits tirés au hasard par ton navigateur, sans compte ni e-mail. C'est lui que contient ton code de transfert (Réglages › Profil) : garde-le comme un mot de passe.</p>
+          <p>But : relier tes temps entre tes appareils et entre les jeux.</p>
+          <p class="duree">Durée : tant que tu ne demandes pas l'effacement.</p>
+        </li>
+        <li data-tables="players">
+          <h3>Ton pseudo</h3>
+          <p>Celui que tu choisis ; il est réservé à son premier propriétaire et montré dans les classements.</p>
+          <p class="duree">Durée : tant que tu ne demandes pas l'effacement (il est alors libéré).</p>
+        </li>
+        <li data-tables="revoked_codes">
+          <h3>Tes anciens codes remplacés</h3>
+          <p>Quand tu changes de code, l'ancien est refusé ensuite : le serveur n'en garde qu'une empreinte (SHA-256), jamais le code lui-même.</p>
+          <p class="duree">Durée : tant que tu ne demandes pas l'effacement.</p>
+        </li>
+        <li data-tables="results jump_results">
+          <h3>Tes résultats et tes rediffusions</h3>
+          <p>Pour chaque jour : ton meilleur temps et sa rediffusion (la suite de tes commandes, que le serveur rejoue pour vérifier le temps), dans DailyTrack et dans DailyJump.</p>
+          <p>But : les classements du jour et des archives, le fantôme du premier, tes médailles et ta série.</p>
+          <p class="duree">Durée : tant que tu ne demandes pas l'effacement (les classements passés restent consultables).</p>
+        </li>
+        <li data-tables="salon_runs salon_sessions">
+          <h3>Tes courses du Salon</h3>
+          <p>Ton meilleur temps de la session, sa rediffusion et ton pseudo.</p>
+          <p class="duree">Durée : oubliées <span data-constante="SALON_SERVE_MS" data-valeur="20000">20 secondes</span> après la fin de la session (une session dure <span data-constante="SALON_SESSION_MS" data-valeur="600000">10 minutes</span>).</p>
+        </li>
+        <li data-tables="jump_lives jump_deaths">
+          <h3>Tes morts dans DailyJump</h3>
+          <p>Au plus <span data-constante="JUMP_LIVES_PER_DAY" data-valeur="30">30</span> par jour : la rediffusion de la vie et l'endroit où elle s'arrête.</p>
+          <p>But : la carte des morts de tout le monde et le « carnage ».</p>
+          <p class="duree">Durée : oubliées à la fin du jour (minuit, heure de Paris, plus <span data-constante="GRACE_MS" data-valeur="600000">10 minutes</span>). Il ne reste alors que la carte (le nombre de morts par case, sans personne) et un échantillon d'environ <span data-constante="JUMP_SAMPLE_SIZE" data-valeur="150">150</span> vies (au plus <span data-constante="JUMP_SAMPLE_PER_PLAYER" data-valeur="3">3</span> par joueur), sans identifiant ni pseudo, impossibles à relier à toi.</p>
+        </li>
+        <li data-tables="rate salon_throttle salon_presence">
+          <h3>Ton adresse IP, seulement hachée</h3>
+          <p>Pour limiter le nombre d'envois (contre les abus), le serveur compte les requêtes par adresse IP et par identifiant : il n'en garde qu'une empreinte salée (SHA-256 avec un sel secret), jamais l'adresse en clair. Certaines lectures ne sont comptées qu'en mémoire, jamais écrites.</p>
+          <p class="duree">Durée : environ <span data-constante="RATE_KEEP_MS" data-valeur="2400000">40 minutes</span>, puis effacées au passage ; présence au Salon : <span data-constante="PRESENCE_KEEP_MS" data-valeur="600000">10 minutes</span> ; délai entre deux envois au Salon : <span data-constante="THROTTLE_KEEP_MS" data-valeur="3600000">1 heure</span>.</p>
+        </li>
+        <li data-tables="journaux">
+          <h3>Les journaux techniques du serveur</h3>
+          <p>Démarrage, erreurs, temps accepté (jour, temps), refus : jamais de pseudo, d'identifiant, d'adresse IP ni de rediffusion.</p>
+          <p>But : savoir si le service marche.</p>
+          <p class="duree">Durée : 30 jours (durée par défaut des journaux chez Google Cloud).</p>
+        </li>
+        <li data-tables="circuits planning salon_circuits jump_levels meta">
+          <h3>Et rien d'autre</h3>
+          <p>Le reste de la base ne parle pas des joueurs : les circuits et niveaux du jour, le planning, la version de la base.</p>
+        </li>
+      </ul>
+
+      <h3 id="hebergeurs-voient">Ce que les hébergeurs voient</h3>
+      <p>Comme pour tout site, Google (qui sert les pages et le serveur) reçoit ton adresse IP à chaque requête :</p>
+      <ul>
+        <li>Cloud Run tient un journal des requêtes reçues par le serveur (adresse IP, heure, adresse demandée — pour certaines lectures de DailyTrack, elle contient ton identifiant —, navigateur), gardé 30 jours ; nous ne le lisons que pour diagnostiquer une panne ou un abus ;</li>
+        <li>Firebase Hosting se sert des adresses IP pour détecter les abus et les garde « quelques mois » (selon Google : <a href="https://firebase.google.com/support/privacy">firebase.google.com/support/privacy</a>).</li>
+      </ul>
+      <p>La base de données est chez Turso (société établie aux États-Unis), dans la région choisie à sa création.</p>
+
+      <h3 id="navigateur">Ce que ton navigateur garde</h3>
+      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), tes réglages (son, caméra, commandes), tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun) et <code>jump:…</code> (DailyJump).</p>
+      <p>Ce stockage est <strong>strictement nécessaire</strong> au jeu que tu demandes (sans lui, ni profil, ni réglages, ni records) : il est donc permis sans demander ton consentement, et le site n'affiche pas de bandeau (article 82 de la loi Informatique et Libertés : traceurs « strictement nécessaires à la fourniture d'un service de communication en ligne à la demande expresse de l'utilisateur » ; <a href="https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf">lignes directrices de la CNIL</a>, délibération n° 2020-091 du 17 septembre 2020, qui couvrent aussi le stockage local). <strong>Aucun traceur ni cookie tiers, aucune publicité, aucune mesure d'audience</strong> aujourd'hui. Tu peux tout effacer à tout moment en effaçant les données du site playdujour.com dans ton navigateur.</p>
+
+      <h3 id="base-legale">Base légale</h3>
+      <p>L'intérêt légitime de l'éditeur (article 6.1.f du RGPD) : faire marcher le jeu et ses classements que tu choisis d'utiliser en envoyant tes temps, et le protéger contre les abus. Aucune donnée n'est vendue, aucune n'est utilisée pour de la publicité ou du profilage.</p>
+
+      <h3 id="droits">Tes droits</h3>
+      <ul>
+        <li><strong>Accès</strong> : ton pseudo, tes temps et tes médailles sont dans Réglages › Profil ; pour le reste, écris-nous.</li>
+        <li><strong>Rectification</strong> : change ton pseudo dans Réglages › Profil.</li>
+        <li><strong>Effacement</strong> et <strong>opposition</strong> : écris à <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> en joignant ton <strong>code de transfert</strong> (Réglages › Profil › « Copier mon code ») : c'est la seule preuve que le profil est à toi. Nous effaçons ton profil, tes temps et rediffusions, tes morts et tes courses, et ton pseudo est libéré ; dans les classements passés ta ligne disparaît (les suivants montent d'une place). Réponse sous un mois.</li>
+      </ul>
+      <p>Si tu estimes que tes droits ne sont pas respectés, tu peux adresser une réclamation à la CNIL (Commission nationale de l'informatique et des libertés) : <a href="https://www.cnil.fr/fr/plaintes">www.cnil.fr/fr/plaintes</a>, ou par courrier : CNIL, Service des plaintes, 3 place de Fontenoy, 75007 Paris.</p>
+
+      <footer>
+        <p>MZC Studios — éditeur particulier · <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> · <a href="../">Du Jour</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

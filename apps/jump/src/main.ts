@@ -105,7 +105,6 @@ import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
 import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
 import { applyJumpIdentity, applyJumpProfile, followJumpIdentity, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
-import { browserMigrationPage, importFromOldAddress } from "./migration";
 import { mountProfileUi } from "./profileUi";
 import { copyText } from "./clipboard";
 import { HttpRankSource, rankApiBase, type JumpBoard, type RankSource } from "./rankApi";
@@ -504,15 +503,6 @@ if (demoRank && store) {
 }
 // Lot P4 (plateforme) : un code chargé dans un autre jeu (DailyTrack) depuis la dernière visite : les rangs connus et les jours passés de
 // l'ancienne identité sont oubliés, comme quand le code est chargé ici. Avant la file du classement et l'historique (ils lisent ces clés).
-// Lot R4 (plateforme) : arrivée depuis l'ancienne adresse (GitHub Pages) avec l'identité dans le fragment (`#dujour=…`) : effacé de l'adresse
-// aussitôt, importé une seule fois (une autre identité déjà là : le joueur choisit). Jamais dans la démonstration (son stockage est à part).
-if (store && !demoRank) {
-  try {
-    importFromOldAddress(store, new History(store).entries, formatDay(gameDay()), browserMigrationPage());
-  } catch {
-    /* stockage illisible : rien à importer */
-  }
-}
 if (store && !demoRank) followJumpIdentity(store, new History(store).entries, formatDay(gameDay()));
 /** L'identifiant de la plateforme de ce navigateur s'il existe (jamais créé ici). */
 const ownId = (): string | null => {

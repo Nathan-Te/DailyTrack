@@ -69,7 +69,12 @@ export interface TestApi {
   db: SqlDb & { close(): void };
   clock: { now: number };
   api: ReturnType<typeof createApi>;
-  call(method: string, path: string, body?: unknown, opts?: { raw?: string; clientKey?: string; headers?: Record<string, string> }): Promise<{ status: number; body: any; headers: Headers }>;
+  call(
+    method: string,
+    path: string,
+    body?: unknown,
+    opts?: { raw?: string; clientKey?: string; peerKey?: string; headers?: Record<string, string> },
+  ): Promise<{ status: number; body: any; headers: Headers }>;
 }
 
 /** API de test : SQLite en mémoire, horloge réglable, circuit du jour déjà en cache (sauf `seed: false`). */
@@ -100,7 +105,7 @@ export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } 
       const init: RequestInit = { method, headers: { ...(body !== undefined || opts.raw !== undefined ? { "Content-Type": "application/json" } : {}), ...opts.headers } };
       if (opts.raw !== undefined) init.body = opts.raw;
       else if (body !== undefined) init.body = JSON.stringify(body);
-      const res = await api.handle(new Request(`http://api.test${path}`, init), { clientKey: opts.clientKey ?? "203.0.113.7" });
+      const res = await api.handle(new Request(`http://api.test${path}`, init), { clientKey: opts.clientKey ?? "203.0.113.7", peerKey: opts.peerKey });
       const text = await res.text();
       return { status: res.status, body: text ? JSON.parse(text) : null, headers: res.headers };
     },

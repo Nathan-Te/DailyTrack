@@ -1,10 +1,9 @@
-// Lot R4 (plateforme) : deux serveurs locaux pour e2e/domaine.spec.ts, lancés DANS le spec (rien dans playwright.config.ts) :
+// Lot R4 (plateforme) : un serveur local pour e2e/domaine.spec.ts, lancé DANS le spec (rien dans playwright.config.ts) :
 //   - `startSite` : le site de playdujour.com comme Firebase Hosting le sert — le site assemblé par `node scripts/site.mjs site` (portail à la
-//     racine, DailyTrack sous /track/, DailyJump sous /jump/), `/track` et `/jump` redirigés vers `/track/` et `/jump/` (ce que Hosting fait par défaut
+//     racine, DailyTrack sous /track/, DailyJump sous /jump/), un dossier sans « / » final (`/track`, `/jump`, `/mentions-legales`) redirigé vers `<dossier>/` (ce que Hosting fait par défaut
 //     pour un dossier avec `index.html`, sans règle dans firebase.json), et `/api/**` renvoyé
-//     vers un serveur de la plateforme (même origine : aucune requête CORS) ;
-//   - `startOldPages` : l'ancienne adresse comme GitHub Pages la sert — les pages de redirection sous `/DailyTrack/` (`index.html` d'un
-//     dossier, sinon `404.html` avec le statut 404).
+//     vers un serveur de la plateforme (même origine : aucune requête CORS).
+// (Lot R5 : plus de serveur de l'ancienne adresse GitHub Pages : les redirections sont retirées.)
 // Lecture seule, rien hors des dossiers donnés.
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer, request, type Server } from "node:http";
@@ -55,7 +54,8 @@ export function startSite(dir: string, port: number, apiPort: number): Promise<S
         req.pipe(up);
         return;
       }
-      if (path === "/track" || path === "/jump") {
+      const dirPath = resolve(dir, `.${path}`);
+      if (path !== "/" && !path.endsWith("/") && dirPath.startsWith(resolve(dir)) && existsSync(dirPath) && statSync(dirPath).isDirectory()) {
         res.writeHead(301, { Location: `${path}/${url.search}` }).end();
         return;
       }
@@ -65,21 +65,6 @@ export function startSite(dir: string, port: number, apiPort: number): Promise<S
         return;
       }
       send(res, file);
-    }),
-    port,
-  );
-}
-
-/** L'ancienne adresse (GitHub Pages) : `dir` publié sous `base` (`/DailyTrack/`), `404.html` pour tout chemin absent. */
-export function startOldPages(dir: string, port: number, base = "/DailyTrack/"): Promise<Server> {
-  return listen(
-    createServer((req, res) => {
-      const path = decodeURIComponent(new URL(req.url ?? "/", "http://localhost").pathname);
-      const inside = path.startsWith(base) ? path.slice(base.length - 1) : null;
-      const file = inside === null ? null : fileFor(dir, inside);
-      if (file) return send(res, file);
-      if (inside !== null) return send(res, join(dir, "404.html"), 404);
-      res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" }).end("<!doctype html><title>404</title><p>Pas ici.</p>");
     }),
     port,
   );

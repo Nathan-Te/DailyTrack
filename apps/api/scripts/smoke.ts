@@ -128,7 +128,9 @@ const jagain = await call("GET", `/api/jump/day/${date}`);
 check("DailyJump : deuxième lecture servie du cache", jagain.status === 200 && jagain.body.hash === jday.body.hash, `${jagain.ms} ms`);
 for (const d of frozenDays) {
   const r = await call("GET", `/api/jump/day/${d}`);
-  check(`DailyJump : jour figé ${d} servi depuis son fichier (preuve rejouée)`, r.status === 200 && r.body.source === "fige", `${r.body.id} ${r.body.hash}`);
+  // « Mettre en production » fige aussi demain (freeze:days -- demain) : un jour figé à venir n'est pas encore servi (404), comme tout futur.
+  if (d > date) check(`DailyJump : jour figé à venir ${d} pas encore servi`, r.status === 404, String(r.status));
+  else check(`DailyJump : jour figé ${d} servi depuis son fichier (preuve rejouée)`, r.status === 200 && r.body.source === "fige", `${r.body.id} ${r.body.hash}`);
 }
 const jfuture = await call("GET", `/api/jump/day/${formatDay(day + 1)}`);
 check("DailyJump : demain est refusé", jfuture.status === 404);

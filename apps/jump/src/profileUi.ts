@@ -140,7 +140,13 @@ export function mountProfileUi(host: ProfileUiHost): ProfileUi {
   msg.id = "profile-msg";
   msg.setAttribute("role", "status");
 
-  root.append(notice, nameForm, nameMsg, suggestions, stats, tools, warn, changeBox, msg, loadBox);
+  // Lot R5 (plateforme) : ce que le site garde de ton profil, et comment le faire effacer.
+  const legal = el("p", "mhint");
+  const mentions = el("a", undefined, "Mentions légales et confidentialité");
+  mentions.id = "profile-mentions";
+  mentions.href = "../mentions-legales/";
+  legal.append(mentions);
+  root.append(notice, nameForm, nameMsg, suggestions, stats, tools, warn, changeBox, msg, loadBox, legal);
 
   let said = "";
   const say = (text: string, kind: "ok" | "error" | "" = "") => {

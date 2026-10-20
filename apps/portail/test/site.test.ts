@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { LAYOUT, REDIRECTION_PAGES, REGION, firebaseConfig } from "../../../scripts/site.mjs";
+import { LAYOUT, REGION, firebaseConfig } from "../../../scripts/site.mjs";
 
 // Lot R4 : la configuration Firebase (firebase.json du dépôt) et la disposition du site.
 const template = JSON.parse(readFileSync(join(__dirname, "../../../firebase.json"), "utf8"));
@@ -52,12 +52,11 @@ describe("firebase.json", () => {
 });
 
 describe("disposition du site", () => {
-  it("portail à la racine, DailyTrack sous /track/, DailyJump sous /jump/ ; trois pages de redirection sur GitHub Pages", () => {
+  it("portail à la racine, DailyTrack sous /track/, DailyJump sous /jump/", () => {
     expect(LAYOUT).toEqual([
       { from: "apps/portail/dist", to: "" },
       { from: "apps/web/dist", to: "track" },
       { from: "apps/jump/dist", to: "jump" },
     ]);
-    expect(REDIRECTION_PAGES).toEqual(["index.html", "jump/index.html", "404.html"]);
   });
 });

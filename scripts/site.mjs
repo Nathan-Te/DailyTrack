@@ -1,13 +1,12 @@
-// Le site de playdujour.com (lot R4 de la plateforme) : assemblage, configuration Firebase, pages de redirection de l'ancienne adresse.
+// Le site de playdujour.com (lot R4 de la plateforme) : assemblage et configuration Firebase. (Lot R5 : plus de pages de redirection de
+// l'ancienne adresse GitHub Pages.)
 // Fonctions pures testées (apps/portail/test/site.test.ts) ; ligne de commande utilisée par .github/workflows/*.yml et les e2e :
 //   node scripts/site.mjs site [--sortie site]
 //        → construit le portail (apps/portail) et assemble `site/` : portail à la racine, DailyTrack (apps/web/dist) sous /track/, DailyJump
-//          (apps/jump/dist) sous /jump/ ; vérifie que chaque niveau figé (apps/jump/public/levels) est dans le site, identique. Les deux jeux
+//          (apps/jump/dist) sous /jump/, la page des mentions légales (lot R5) sous /mentions-legales/ ; vérifie que chaque niveau figé (apps/jump/public/levels) est dans le site, identique. Les deux jeux
 //          doivent être construits avant (`npm run build`).
 //   node scripts/site.mjs firebase --site <identifiant du site> --service <service Cloud Run> [--region europe-west1] [--public site] [--sortie firebase.deploy.json]
 //        → la configuration Firebase d'un déploiement : `firebase.json` (en-têtes, renvoi /api/**), avec le site et le service de la cible.
-//   node scripts/site.mjs redirections [--sortie pages] [--cible https://playdujour.com] [--base /DailyTrack/]
-//        → les pages de redirection de GitHub Pages : index.html, jump/index.html, 404.html (tout le reste, anciens aperçus compris).
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -21,9 +20,6 @@ export const LAYOUT = [
   { from: "apps/web/dist", to: "track" },
   { from: "apps/jump/dist", to: "jump" },
 ];
-
-/** Les pages de redirection publiées sur GitHub Pages (toutes la même page : elle lit son chemin). */
-export const REDIRECTION_PAGES = ["index.html", "jump/index.html", "404.html"];
 
 /** Région des renvois vers Cloud Run (prise en charge par Firebase Hosting, vérifié au lot R4). */
 export const REGION = "europe-west1";
@@ -51,19 +47,15 @@ function option(argv, name, fallback) {
   return at >= 0 && argv[at + 1] !== undefined ? argv[at + 1] : fallback;
 }
 
-function viteBuild(mode, env = {}) {
+function viteBuild() {
   execFileSync("npx", ["tsc", "-p", "apps/portail"], { cwd: ROOT, stdio: "inherit" });
-  execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--logLevel", "warn", ...(mode ? ["--mode", mode] : [])], {
-    cwd: ROOT,
-    stdio: "inherit",
-    env: { ...process.env, ...env },
-  });
+  execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--logLevel", "warn"], { cwd: ROOT, stdio: "inherit" });
 }
 
 /** Assemble le site (portail, /track/, /jump/) ; rend le nombre de niveaux figés vérifiés. */
 export function assembleSite(out) {
   for (const part of LAYOUT.slice(1)) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
-  viteBuild(null);
+  viteBuild();
   rmSync(out, { recursive: true, force: true });
   for (const part of LAYOUT) {
     const dest = join(out, part.to);
@@ -80,21 +72,6 @@ export function assembleSite(out) {
   return files.length;
 }
 
-/** Les pages de redirection (GitHub Pages) dans `out`. */
-export function buildRedirections(out, { cible, base }) {
-  viteBuild("redirection", { CIBLE: cible, ANCIENNE_BASE: base });
-  const built = join(ROOT, "apps/portail/dist-redirection");
-  rmSync(out, { recursive: true, force: true });
-  mkdirSync(out, { recursive: true });
-  cpSync(join(built, "assets"), join(out, "assets"), { recursive: true });
-  const page = readFileSync(join(built, "redirection.html"));
-  for (const p of REDIRECTION_PAGES) {
-    mkdirSync(dirname(join(out, p)), { recursive: true });
-    writeFileSync(join(out, p), page);
-  }
-  writeFileSync(join(out, ".nojekyll"), "");
-}
-
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isMain) {
   const [cmd, ...argv] = process.argv.slice(2);
@@ -109,12 +86,8 @@ if (isMain) {
       const out = option(argv, "--sortie", "firebase.deploy.json");
       writeFileSync(out, JSON.stringify(config, null, 2) + "\n");
       console.log(`configuration Firebase : ${out} (site ${config.hosting.site}, /api/** → ${config.hosting.rewrites.find((r) => r.run).run.serviceId})`);
-    } else if (cmd === "redirections") {
-      const out = resolve(option(argv, "--sortie", "pages"));
-      buildRedirections(out, { cible: option(argv, "--cible", "https://playdujour.com"), base: option(argv, "--base", "/DailyTrack/") });
-      console.log(`pages de redirection dans ${out} : ${REDIRECTION_PAGES.join(", ")}`);
     } else {
-      console.error("usage : node scripts/site.mjs site [--sortie site] · firebase --site <id> --service <svc> · redirections [--sortie pages] [--cible <origine>]");
+      console.error("usage : node scripts/site.mjs site [--sortie site] · firebase --site <id> --service <svc>");
       process.exit(2);
     }
   } catch (e) {

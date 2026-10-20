@@ -42,7 +42,7 @@ Puis, sur ton poste ou dans Cloud Shell (dans le dépôt, après `npm ci`) :
 npm run measure:platform -w @cdj/api -- --jump 800 --track 300 --salon 40
 ```
 
-`--jump` : joueurs DailyJump par jour · `--track` : joueurs du circuit du jour de DailyTrack · `--salon` : joueurs qui passent 30 minutes au Salon par jour. Le script affiche, pour un mois de 30 jours, chaque ressource (requêtes Cloud Run **pré-vols CORS compris**, calcul, mémoire, lignes Turso), sa part de l'offre gratuite, ce qui dépasse (Cloud Run en dollars, au tarif public), le jeu qui pèse le plus, et la **marge** : par combien multiplier les joueurs avant le premier plafond.
+`--jump` : joueurs DailyJump par jour · `--track` : joueurs du circuit du jour de DailyTrack · `--salon` : joueurs qui passent 30 minutes au Salon par jour. Le script affiche, pour un mois de 30 jours, chaque ressource (requêtes Cloud Run — **sans pré-vols** depuis le lot R5 : il n'y en a plus —, calcul, mémoire, lignes Turso), sa part de l'offre gratuite, ce qui dépasse (Cloud Run en dollars, au tarif public), le jeu qui pèse le plus, et la **marge** : par combien multiplier les joueurs avant le premier plafond.
 
 **Lire le résultat** : le calcul de Cloud Run est compté **au plus** (chaque requête facturée seule, arrondie à 100 ms) ; avec beaucoup de joueurs simultanés, les requêtes se partagent le temps facturé et la vraie dépense est plus basse. Les requêtes et les lignes Turso, elles, sont exactes à l'hypothèse du joueur type près.
 
@@ -85,7 +85,7 @@ Three.js pèse à lui seul ≈ 140 ko compressés par jeu. Les fichiers à empre
 
 **Ce que cela donne** : ≈ **1 000 premiers chargements de DailyJump par jour** (360 Mo ÷ 0,355 Mo), ou ≈ 1 400 de DailyTrack, tiennent dans le gratuit. Au-delà : 1 000 nouveaux joueurs de plus par jour ≈ 10,7 Go par mois ≈ **1,6 $ par mois**. Les réponses de `/api/` passent aussi par Hosting (quelques dizaines de ko par joueur et par jour, à mesurer en production : console Firebase → Hosting → **Utilisation**).
 
-**Ce que Firebase fait gagner** : plus de pré-vols CORS (≈ 7 requêtes de moins par joueur DailyJump et par jour ; `measure:platform` les compte encore : c'est désormais une borne haute, à retirer de `apps/api/scripts/platformBudget.ts` par un lot du serveur) ; et le CDN de Hosting **garde en cache** les lectures `public` du serveur (lot P4 : niveau, carte des morts, échantillon ; jour fermé 24 h, jour ouvert 30 s) : autant de requêtes Cloud Run en moins. Les réponses personnelles (`private`, `Vary: X-Player-Id`) ne sont jamais gardées par le CDN.
+**Ce que Firebase fait gagner** : plus de pré-vols CORS (≈ 7 requêtes de moins par joueur DailyJump et par jour ; retirés de `measure:platform` au lot R5) ; et le CDN de Hosting **garde en cache** les lectures `public` du serveur (lot P4 : niveau, carte des morts, échantillon ; jour fermé 24 h, jour ouvert 30 s) : autant de requêtes Cloud Run en moins. Les réponses personnelles (`private`, `Vary: X-Player-Id`) ne sont jamais gardées par le CDN.
 
 **Surveiller** : console Firebase → **Hosting** → **Utilisation** (transfert par jour) chaque lundi, avec Turso (§ 2). Si le transfert dépasse 360 Mo par jour de façon durable : rien à faire tant que le budget de 5 € (§ 1) n'alerte pas (il couvre ≈ 33 Go de transfert par mois) ; ensuite, la piste la moins chère est d'alléger le premier chargement (lot de jeu : Three.js plus petit, chargement différé).
 

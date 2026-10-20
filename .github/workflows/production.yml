@@ -10,8 +10,7 @@ name: Mettre en production
 #   4. vérifier en lecture seule (`smoke --lecture-seule`, lot P4) contre playdujour.com/api/ (ou l'adresse du service tant que Firebase
 #      n'est pas configuré) ;
 #   5. étiqueter le commit `prod-AAAA-MM-JJ-HHMM` (heure de Paris), l'image et la version du site notées dans l'étiquette (retour arrière) ;
-#   6. bascule de l'ancienne adresse (lot R4) : GitHub Pages ne sert plus que des redirections (pages.yml) — à la première mise en production
-#      avec Firebase configuré, sans effet ensuite ;
+#   6. (lot R5 : plus de bascule de l'ancienne adresse GitHub Pages, ni de redirections)
 #   7. les jours figés entrent dans le dépôt par une PR « robot » fusionnée automatiquement (avec le jeton ROBOT_TOKEN), dans le respect de la
 #      protection de main (statuts `test` et `e2e`) ; sans ROBOT_TOKEN, la PR est ouverte, sa CI lancée, et Nathan la fusionne (un clic) ;
 #   8. résumer : changements, résultat de la vérification, étiquette.
@@ -223,14 +222,6 @@ jobs:
           git push origin "refs/tags/$TAG"
           echo "### Étiquette \`$TAG\` posée sur \`${SHA::7}\`" >> "$GITHUB_STEP_SUMMARY"
 
-  # 6. La bascule de l'ancienne adresse (GitHub Pages → redirections), seulement quand playdujour.com est en ligne et vérifié.
-  bascule:
-    needs: [site, verification]
-    if: ${{ !cancelled() && needs.site.outputs.enabled == 'true' && needs.verification.result == 'success' }}
-    permissions:
-      contents: write
-    uses: ./.github/workflows/pages.yml
-
   # 7. Les jours figés entrent dans le dépôt (le prochain déploiement et l'image du serveur les gardent).
   depot:
     needs: [verifier, serveur]
@@ -285,7 +276,7 @@ jobs:
 
   # 8. Le résumé.
   resume:
-    needs: [verifier, figer, serveur, site, verification, etiquette, bascule, depot]
+    needs: [verifier, figer, serveur, site, verification, etiquette, depot]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -306,7 +297,6 @@ jobs:
             echo "| 3b. site playdujour.com | $(r '${{ needs.site.result }}')$( [ '${{ needs.site.outputs.enabled }}' = true ] || echo ' — Firebase non configuré : voir docs/plateforme/domaine.md' ) |"
             echo "| 4. vérification en lecture seule (${{ needs.verification.outputs.url }}) | $(r '${{ needs.verification.result }}') |"
             echo "| 5. étiquette \`$TAG\` | $(r '${{ needs.etiquette.result }}') |"
-            echo "| 6. redirections de l'ancienne adresse | $(r '${{ needs.bascule.result }}') |"
             echo "| 7. jours figés dans le dépôt | $(r '${{ needs.depot.result }}') |"
             echo ""
             echo "Les changements (PR et commits depuis la dernière mise en production) sont dans le résumé du job « verifier » ci-dessus."

@@ -12,11 +12,13 @@ describe("projection du mois (measure:platform)", () => {
     expect(p.headroom).toBe(Number.POSITIVE_INFINITY);
   });
 
-  it("les requêtes comptent les pré-vols CORS ; chaque jeu à part ; 30 jours", () => {
+  it("lot R5 : plus de pré-vols CORS (l'API est servie sous la même adresse) ; chaque jeu à part ; 30 jours", () => {
     const p = projectMonth({ jump: 100, track: 10, salon: 1 });
-    expect(p.byGame.DailyJump!.requests).toBe(30 * 100 * (JUMP_PLAYER.requests + JUMP_PLAYER.preflights));
-    expect(p.byGame.DailyTrack!.requests).toBe(30 * 10 * (TRACK_PLAYER.requests + TRACK_PLAYER.preflights));
-    expect(p.byGame.Salon!.requests).toBe(30 * (SALON_HALF_HOUR.requests + SALON_HALF_HOUR.preflights));
+    for (const unit of [JUMP_PLAYER, TRACK_PLAYER, SALON_HALF_HOUR]) expect(Object.keys(unit)).not.toContain("preflights");
+    expect(p.resources[0]!.name).not.toMatch(/pré-vol/);
+    expect(p.byGame.DailyJump!.requests).toBe(30 * 100 * JUMP_PLAYER.requests);
+    expect(p.byGame.DailyTrack!.requests).toBe(30 * 10 * TRACK_PLAYER.requests);
+    expect(p.byGame.Salon!.requests).toBe(30 * SALON_HALF_HOUR.requests);
     expect(p.resources[0]!.used).toBe(p.byGame.DailyJump!.requests + p.byGame.DailyTrack!.requests + p.byGame.Salon!.requests);
   });
 

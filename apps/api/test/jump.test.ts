@@ -28,7 +28,7 @@ const noonOf = (day: number) => day * DAY_MS + 12 * 3_600_000;
 const DATES = Array.from({ length: 60 }, (_, i) => PREMIER_JOUR_JUMP + i);
 const AFTER = noonOf(PREMIER_JOUR_JUMP + 60);
 
-async function jumpApi(at = AFTER, extra: { log?: Logger; db?: Awaited<ReturnType<typeof openTestDb>> } = {}) {
+async function jumpApi(at = AFTER, extra: { log?: Logger; db?: Awaited<ReturnType<typeof openTestDb>>; jumpFrozen?: Record<string, unknown> } = {}) {
   const t = await makeApi({ seed: false, jumpFrozen: FROZEN, environment: "recette", ...extra });
   t.clock.now = at;
   return t;
@@ -81,7 +81,8 @@ describe(`/api/jump/day (${TEST_DB})`, () => {
     const logs: string[] = [];
     const log: Logger = (_s, message) => logs.push(message);
     const db = await openTestDb();
-    const t = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)), { log, db });
+    // Le chemin « généré » : sans fichier figé (le 19/10 est figé depuis la mise en production du 20/10 ; un autre jour le sera un jour aussi).
+    const t = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)), { log, db, jumpFrozen: {} });
     const [a, b] = await Promise.all([t.call("GET", "/api/jump/day/2026-10-19"), t.call("GET", "/api/jump/day/2026-10-19")]);
     expect(a.body).toEqual(b.body);
     expect(a.body).toMatchObject({ id: `jour-2026-10-19-g${JUMP_GENERATOR_VERSION}`, source: "genere" });
@@ -89,7 +90,7 @@ describe(`/api/jump/day (${TEST_DB})`, () => {
     expect((await t.call("GET", "/api/jump/day/2026-10-19")).body).toEqual(a.body);
     expect(logs.filter((m) => m === "DailyJump : niveau du jour calculé")).toHaveLength(1);
     // Une autre instance sur la même base : lu en base, pas recalculé.
-    const other = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)), { log, db });
+    const other = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)), { log, db, jumpFrozen: {} });
     expect((await other.call("GET", "/api/jump/day/2026-10-19")).body).toEqual(a.body);
     expect(logs.filter((m) => m === "DailyJump : niveau du jour calculé")).toHaveLength(1);
     const row = await db.first<{ level_id: string; rule: string; ascii: string }>("SELECT level_id, rule, ascii FROM jump_levels WHERE day = ?", [daysFromCivil(2026, 10, 19)]);
@@ -97,7 +98,7 @@ describe(`/api/jump/day (${TEST_DB})`, () => {
     expect(row!.ascii.length).toBeGreaterThan(100);
     // Une ligne d'une autre règle (autre version, fichier figé ajouté) est recalculée.
     await db.run("UPDATE jump_levels SET rule = 'ancienne', hash = 'faux' WHERE day = ?", [daysFromCivil(2026, 10, 19)]);
-    const third = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)), { log, db });
+    const third = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)), { log, db, jumpFrozen: {} });
     expect((await third.call("GET", "/api/jump/day/2026-10-19")).body).toEqual(a.body);
     expect(logs.filter((m) => m === "DailyJump : niveau du jour calculé")).toHaveLength(2);
   });
