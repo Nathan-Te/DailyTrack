@@ -133,6 +133,17 @@ describe("déclencheurs", () => {
     expect(yml("recette.yml")).toMatch(/site:\n(?:.*\n)*?\s+uses: \.\/\.github\/workflows\/deploy-site\.yml\n\s+with:\n\s+cible: recette/);
   });
 
+  it("lot I3 : après la fusion, la recette vérifie par l'adresse de Hosting que le cache respecte Vary: X-Player-Id (lecture seule, joueur de démonstration)", () => {
+    const y = yml("recette.yml");
+    const job = y.slice(y.indexOf("\n  hosting:"), y.indexOf("\n  apercu:"));
+    expect(job).toContain("needs: [plan, deploy, seed, site]");
+    expect(job).toContain("needs.plan.outputs.action == 'default'"); // la fusion dans main : la révision d'une PR n'a pas le trafic
+    expect(job).toContain("needs.site.outputs.url"); // l'adresse de Firebase Hosting, jamais Cloud Run en direct
+    expect(job).toMatch(/--lecture-seule --environnement recette --par-hosting \$demo/);
+    expect(job).toContain("--joueur-demo");
+    expect(job).not.toMatch(/target: production|cdj-api\b[^-]|run\.app/);
+  });
+
   it("un aperçu par PR ; plus aucune publication sur GitHub Pages (lot R5) : ni workflow, ni bascule, ni redirections", () => {
     expect(on("apercu.yml")).toMatch(/pull_request:\n\s+types: \[opened, synchronize, reopened, closed\]/);
     expect(existsSync(join(DIR, "pages.yml"))).toBe(false);

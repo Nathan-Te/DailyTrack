@@ -3,6 +3,7 @@
 Charte de la phase 3 (`seed-phase-3.md` § 6), choisie par Nathan au lot I0 le 20 octobre 2026. Vit dans `docs/plateforme/identite.md`. Seul Nathan la modifie ; un lot qui a besoin d'un écart le propose dans son README, il ne l'applique pas.
 
 Révision 2 (après le lot I1) : écarts 1 à 5 du README du lot I1 inscrits (afficheur opaque, jetons de texte des médailles, tailles 14 · 16 · 21 px, espaces insécables, états des boutons).
+Révision 3 (après le lot I2) : écarts 1 à 3 du README du lot I2 inscrits (numéro et thème sous le nom du jeu, bouton de cartouche pleine largeur, profil posé sur les étiquettes) ; numéro de journée commun.
 
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
@@ -148,6 +149,9 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - En paysage et sur grand écran : l'étagère passe à plusieurs cartouches côte à côte, largeur de contenu limitée (environ 720 px pour le portail), fond crème sur toute la fenêtre.
 - **Barre du portail** : logo à gauche ; à droite le choix de langue (FR/EN, deux boutons de 44 px) et l'avatar.
 - **Barre des jeux** : « ‹ DU JOUR » à gauche (lien vers le portail, 44 px de haut), date et numéro du jour à droite en mono.
+- **Étiquette d'une cartouche du portail** : le nom du jeu seul sur sa ligne ; le numéro du jour du jeu et le thème **en dessous** (« n° 8 · Nuit ») ; le statut sur deux rangées dont la place est réservée avant l'arrivée des données ; le bouton de la cartouche (« Jouer », « Continuer », « Rejouer ») **prend toute la largeur** et garde la même hauteur quel que soit le statut. Raison : rien ne bouge quand le statut arrive.
+- **Journée commune** : « Journée n° *N* » à droite de la date sur le portail, et « Du Jour #*N* » dans la ligne à partager. La journée n° 1 est le **23 octobre 2026** (ouverture publique) ; avant, aucun numéro n'est affiché.
+- **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.
 
 ## 10. Accessibilité
 

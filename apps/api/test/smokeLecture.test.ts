@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, type DailyLevel } from "@cdj/jump-sim";
-import { HEALTH_FIELDS, isLocalBase, readOnlyFetch, readOnlySmoke, smokeRefusal, smokeSummary, type FetchFn } from "../scripts/smokeRead";
+import { HEALTH_FIELDS, isLocalBase, readOnlyFetch, readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, type FetchFn } from "../scripts/smokeRead";
 import { makeApi, parisDayStart, playerId, TEST_DB, verifierErreur, type TestApi } from "./helpers";
 
 // Lot P4 (plateforme) : `smoke --lecture-seule`, la vérification de la production après chaque déploiement. Elle **n'écrit jamais rien**
@@ -64,6 +64,7 @@ describe(`smoke --lecture-seule (${TEST_DB})`, () => {
       `/api/jump/day/${DATE}/bundle`,
       `/api/jump/day/${formatDay(DAY - 1)}/bundle`,
       "/api/portail/jour", // lot I2
+      "/api/portail/classement", // lot I3
     ]);
     expect(new Set(methods)).toEqual(new Set(["GET"]));
     expect(await snapshot(t)).toEqual(before);
@@ -134,5 +135,87 @@ describe(`smoke --lecture-seule (${TEST_DB})`, () => {
       return new Response(JSON.stringify({ ...(await res.json()), nouveau: 1 }), { status: 200 });
     };
     expect((await readOnlySmoke(BASE, extra)).find((c) => c.route === "/api/health")!.ok).toBe(false);
+  });
+});
+
+// --- Lot I3 : la vérification `Vary: X-Player-Id` « par Hosting » ------------------------------------------------------------------
+/**
+ * Un CDN comme Firebase Hosting : une réponse `public, max-age=N` est gardée N secondes et resservie ; avec `Vary: X-Player-Id` honoré, la clé
+ * contient l'identifiant de la requête (`honorerVary: false` : un cache qui ignore `Vary` et resservirait la réponse publique à tout le monde).
+ */
+function cdn(t: TestApi, o: { honorerVary: boolean }): FetchFn {
+  const gardees = new Map<string, { body: string; status: number; headers: [string, string][]; expire: number }>();
+  const direct = fetchOf(t, []);
+  return async (url, init = {}) => {
+    const joueur = new Headers(init.headers).get("x-player-id") ?? "";
+    const cle = o.honorerVary ? `${url}|${joueur}` : url;
+    const kept = gardees.get(cle);
+    if (kept && kept.expire > t.clock.now) return new Response(kept.body, { status: kept.status, headers: kept.headers });
+    const res = await direct(url, init);
+    const control = res.headers.get("cache-control") ?? "";
+    const age = /\bpublic\b.*max-age=(\d+)/.exec(control)?.[1];
+    if (age && res.status === 200) {
+      const body = await res.clone().text();
+      gardees.set(cle, { body, status: res.status, headers: [...res.headers.entries()], expire: t.clock.now + Number(age) * 1000 });
+    }
+    return res;
+  };
+}
+
+describe(`smoke --lecture-seule --par-hosting : le cache respecte Vary: X-Player-Id (${TEST_DB})`, () => {
+  async function avecJoueur(): Promise<{ t: TestApi; id: string }> {
+    const t = await makeApi({ seed: false, environment: "recette" });
+    t.clock.now = NOON;
+    const id = playerId(30);
+    // Un joueur connu qui a fini Track aujourd'hui (comme le joueur de démonstration de la recette).
+    await t.call("GET", "/api/health");
+    await t.db.run("INSERT INTO players (id, name, created_at, updated_at, name_key) VALUES (?, 'Démo', 0, 0, 'demo')", [id]);
+    await t.call("GET", "/api/day/" + DATE); // le circuit du jour
+    await t.db.run("INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at) VALUES (?, ?, 40000, '[]', 'x', 0, 1)", [DAY, id]);
+    return { t, id };
+  }
+
+  it("un cache qui honore Vary : l'état du joueur arrive juste après la réponse publique, et jamais sans identifiant", async () => {
+    const { t, id } = await avecJoueur();
+    const checks = await varyParHosting(BASE, cdn(t, { honorerVary: true }), { joueur: id });
+    expect(checks.filter((c) => !c.ok), JSON.stringify(checks, null, 1)).toEqual([]);
+    expect(checks.map((c) => c.route)).toEqual(["/api/portail/jour", "/api/portail/jour", "/api/portail/jour", "/api/portail/classement", "/api/portail/classement", "/api/portail/classement"]);
+  });
+
+  it("sans joueur connu (production) : un identifiant inventé rend 404 `unknown_player`, jamais la réponse publique gardée ; rien n'est écrit", async () => {
+    const t = await makeApi({ seed: false, environment: "production" });
+    t.clock.now = NOON;
+    await readOnlySmoke(BASE, fetchOf(t, []), { expectEnvironment: "production" });
+    const before = await snapshot(t);
+    const checks = await varyParHosting(BASE, cdn(t, { honorerVary: true }));
+    expect(checks.filter((c) => !c.ok), JSON.stringify(checks, null, 1)).toEqual([]);
+    expect(await snapshot(t)).toEqual(before);
+  });
+
+  it("un cache qui ignorerait Vary est détecté : la lecture avec identifiant reçoit la réponse publique gardée", async () => {
+    const { t, id } = await avecJoueur();
+    const checks = await varyParHosting(BASE, cdn(t, { honorerVary: false }), { joueur: id });
+    const echecs = checks.filter((c) => !c.ok);
+    expect(echecs.length).toBeGreaterThanOrEqual(2);
+    expect(echecs.map((c) => c.label).join("\n")).toMatch(/avec identifiant juste après/);
+    // L'inconnu aussi : il recevrait la réponse publique (200) au lieu du 404.
+    const inconnu = await varyParHosting(BASE, cdn(t, { honorerVary: false }));
+    expect(inconnu.filter((c) => !c.ok).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("l'identifiant de la vérification est le seul permis, et seulement sur des lectures du portail", async () => {
+    const sent: string[] = [];
+    const f = readOnlyFetch(
+      async (url, init) => {
+        sent.push(`${url} ${new Headers(init?.headers).get("x-player-id")}`);
+        return new Response("{}");
+      },
+      { joueurPermis: playerId(1) },
+    );
+    await f(`${BASE}/api/portail/jour`, { headers: { "X-Player-Id": playerId(1) } });
+    await expect(f(`${BASE}/api/portail/jour`, { headers: { "X-Player-Id": playerId(2) } })).rejects.toThrow(/identifiant/);
+    await expect(f(`${BASE}/api/jump/day/${DATE}/bundle`, { headers: { "X-Player-Id": playerId(1) } })).rejects.toThrow(/identifiant/);
+    await expect(f(`${BASE}/api/portail/jour`, { method: "POST", headers: { "X-Player-Id": playerId(1) } })).rejects.toThrow(/refusé/);
+    expect(sent).toEqual([`${BASE}/api/portail/jour ${playerId(1)}`]);
   });
 });

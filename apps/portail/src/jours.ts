@@ -9,6 +9,15 @@ export const PREMIER_JOUR_TRACK = daysFromCivil(2026, 10, 13);
 /** DailyJump : le niveau n° 1, le 16/10/2026 (`PREMIER_JOUR_JUMP` de `@cdj/jump-sim`). */
 export const PREMIER_JOUR_JUMP = daysFromCivil(2026, 10, 16);
 
+/**
+ * Lot I3 : la journée n° 1 de Du Jour est le 23/10/2026 (l'ouverture publique) — la constante de la plateforme, recopiée du serveur
+ * (`PREMIER_JOUR_DU_JOUR`, `apps/api/src/portail.ts` ; testée dans `test/jours.test.ts`). Le serveur fait foi quand il répond ; cette copie
+ * affiche le numéro tout de suite, sans qu'il saute quand les données arrivent.
+ */
+export const PREMIER_JOUR_DU_JOUR = daysFromCivil(2026, 10, 23);
+/** Le numéro de la journée commune d'un jour de Paris, ou `null` avant le 23/10/2026 (rien n'est affiché). */
+export const numeroDeJournee = (day: number): number | null => (day >= PREMIER_JOUR_DU_JOUR ? day - PREMIER_JOUR_DU_JOUR + 1 : null);
+
 export interface CarteJeu {
   /** Le code du jeu (son dossier sur le site : `/track/`, `/jump/`). */
   code: "track" | "jump";

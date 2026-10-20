@@ -101,6 +101,7 @@ test("deux appareils : finir → copier le code → le charger sur l'autre → h
     // Lot P4 : une partie complète d'un joueur neuf = 5 requêtes — la lecture du jour au chargement (classement, premier, carte : une
     // seule), l'échantillon du carnage à l'arrivée, le pseudo, l'envoi (qui rend le classement), puis, le serveur le connaissant enfin, son
     // profil (avec le jour : une seule lecture). Rien n'est relu à l'arrivée (moins de 3 minutes) ni après l'envoi.
+    // Lot I3 : une requête de plus, « Jeu suivant du jour » (`GET /api/portail/jour`, après l'envoi accepté) : 6 requêtes.
     expect(sent.sort()).toEqual(
       [
         "GET /api/jump/day/<jour>/bundle",
@@ -108,8 +109,10 @@ test("deux appareils : finir → copier le code → le charger sur l'autre → h
         "GET /api/name",
         "POST /api/jump/submit",
         "GET /api/jump/day/<jour>/bundle",
+        "GET /api/portail/jour",
       ].sort(),
     );
+    await expect(a.page.locator("#arrival-next-game")).toHaveText("Jeu suivant du jour : Track ›");
     const authorTicks = (await read(a.page, "daily"))!.authorTicks;
     const idA = await a.page.evaluate(() => localStorage.getItem("cdj:player"));
     expect(idA).toMatch(/^[0-9a-f]{32}$/);

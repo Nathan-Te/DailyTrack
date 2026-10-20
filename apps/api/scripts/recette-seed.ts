@@ -22,6 +22,7 @@ import { ConfigError, recetteSeedTarget } from "../src/config";
 import type { SqlDb } from "../src/db";
 import { fictionalId } from "../src/history";
 import { seedJumpDays } from "../src/jumpHistory";
+import { seedClassementDemo } from "../src/classementDemo";
 import { seedPortailDemo } from "../src/portailDemo";
 import { openLibsql } from "../src/libsql-open";
 
@@ -124,6 +125,16 @@ const jumps = await seedJumpDays({
   onDay: (d) => console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s), ${d.lives} vie(s) gardée(s) (morts rejouées)${d.refused || d.firstError ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`),
 });
 console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);
+
+// Lot I3 : les joueurs du classement du jour (avant « Démo » : son rang du jour se lit parmi eux).
+// `--demo-seulement` les saute (les e2e du portail, en quelques secondes) sauf avec `--classement` (les e2e du classement du jour).
+if (!demoSeulement || process.argv.includes("--classement")) {
+  const classementStarted = Date.now();
+  const classement = await seedClassementDemo({ db, frozen, today });
+  console.log(
+    `Classement du jour (lot I3) : ${classement.joueurs} joueurs de démonstration (${classement.effaces} effacés puis recréés) — ${classement.track} course(s) Track, ${classement.jump} essai(s) Jump rejoués par le serveur en ${((Date.now() - classementStarted) / 1000).toFixed(0)} s${classement.refus.length ? `, ${classement.refus.length} refus (${classement.refus[0]}) — ne comptent pas` : ""}.`,
+  );
+}
 
 // Lot I2 : le joueur de démonstration du portail (après les autres : son rang du jour se lit parmi eux).
 const demoStarted = Date.now();

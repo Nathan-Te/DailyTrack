@@ -13,6 +13,9 @@ export type Etat =
 export interface JeuDuJour {
   /** Le code du jeu au registre du serveur (`cdj`, `jump`). */
   jeu: string;
+  /** Lot I3 : son dossier sur le site (`track`, `jump`) et son nom : « Jeu suivant du jour » n'a besoin d'aucune connaissance d'un jeu. */
+  site?: string;
+  nom?: string;
   numero: number;
   theme: string | null;
   seuils: Record<Medaille, number> | null;
@@ -27,10 +30,16 @@ export interface JoueurDuJour {
   aProlonger: boolean;
   journeesParfaites: number;
   aujourdhuiParfaite: boolean;
+  /** Lot I3 : ses points du jour (tous jeux), sa place et le nombre de classés du jour (`null` tant qu'il n'a fini aucun jeu aujourd'hui). */
+  points?: number;
+  rangDuJour?: number | null;
+  classesDuJour?: number | null;
 }
 
 export interface Jour {
   date: string;
+  /** Lot I3 : le numéro de la journée commune (`null` avant le 23/10/2026). */
+  journee?: number | null;
   maintenant: string;
   prochainJour: string;
   jeux: JeuDuJour[];
@@ -78,7 +87,7 @@ export async function lireJour(fetchImpl: typeof fetch, joueur: string | null, m
     const res = await fetchImpl(`${base}/api/portail/jour`, { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
     const recu = maintenant();
     const corps = (await res.json().catch(() => null)) as (Partial<Jour> & { error?: unknown }) | null;
-    const jour = estJour(corps) ? { date: corps.date, maintenant: corps.maintenant, prochainJour: corps.prochainJour, jeux: corps.jeux, ...(res.ok && corps.joueur ? { joueur: corps.joueur } : {}) } : null;
+    const jour = estJour(corps) ? { date: corps.date, journee: corps.journee ?? null, maintenant: corps.maintenant, prochainJour: corps.prochainJour, jeux: corps.jeux, ...(res.ok && corps.joueur ? { joueur: corps.joueur } : {}) } : null;
     // L'heure du serveur au milieu de l'aller-retour, plus l'âge de la réponse si un cache partagé l'a gardée.
     const age = Number(res.headers.get("age") ?? 0);
     const decalage = jour ? Date.parse(jour.maintenant) + (Number.isFinite(age) ? age * 1000 : 0) - (envoi + recu) / 2 : 0;

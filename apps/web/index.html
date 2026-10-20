@@ -229,6 +229,12 @@
       @media (max-width: 520px) {
         #timer { left: 16px; transform: none; }
       }
+      /* Lot I3 : « Jeu suivant du jour » s'ajoute au panneau d'arrivée ; sur un petit téléphone en portrait (360 × 640), des interlignes plus serrés lui font de la place
+         pour qu'il ne recouvre pas le chrono (rien de ce que l'arrivée montrait n'est retiré). */
+      @media (max-width: 520px) and (max-height: 700px) {
+        #finish { line-height: 1.4; top: 58%; }
+        #finish .hint { margin-top: 6px; }
+      }
       /* Étroit : les médailles gardent leur icône et leur temps ; leur nom reste dans l'accueil et l'arrivée. */
       @media (max-width: 1300px) { #medals .nm { display: none; } }
       @media (max-width: 600px) { #medals { max-width: calc(100vw - 32px); } }
@@ -244,8 +250,9 @@
         #finish .hint { display: none; }
         /* Peu de hauteur : les boutons passent juste après le résultat, et ce qui est secondaire (rang, ligne à partager) après eux. */
         #finish .actions { order: 1; margin-top: 8px; }
-        #finish .online { order: 2; margin-top: 6px; font-size: 13px; }
-        #finish .share { order: 3; margin-top: 6px; font-size: 12px; }
+        #finish .next { order: 2; margin-top: 6px; }
+        #finish .online { order: 3; margin-top: 6px; font-size: 13px; }
+        #finish .share { order: 4; margin-top: 6px; font-size: 12px; }
         #finish button { font-size: 14px; padding: 6px 12px; }
       }
     </style>

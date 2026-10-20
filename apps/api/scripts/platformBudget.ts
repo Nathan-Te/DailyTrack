@@ -43,9 +43,10 @@ export interface UnitCost {
  * **DailyJump**, un joueur type d'une journée (lot P4 : `npm run measure:jump-api -w @cdj/api`, sqld local, 19/10/2026) : 2 chargements, 4
  * arrivées dont 2 envois, 1 pseudo, 50 morts dont 30 envoyées en 3 lots, le carnage de tout le monde regardé 2 fois, 30 jours d'historique.
  * Calcul : envois ≈ 50 ms, lecture regroupée ≈ 30 ms, lot de vies ≈ 60 ms. Facturé au plus : 12 requêtes × 100 ms (lot P4 : 1,9 s avec les 7
- * pré-vols, retirés au lot R5).
+ * pré-vols, retirés au lot R5). **Lot I3** : une requête de plus, « Jeu suivant du jour » (`GET /api/portail/jour` après l'envoi accepté : 8 instructions,
+ * ≈ 172 lignes lues avec 30 jours d'historique, 0 écrite) : 13 requêtes, 1 292 lignes lues.
  */
-export const JUMP_PLAYER: UnitCost = { requests: 12, read: 1120, written: 32, cpuS: 0.45, billedS: 1.2 };
+export const JUMP_PLAYER: UnitCost = { requests: 13, read: 1292, written: 32, cpuS: 0.47, billedS: 1.3 };
 /**
  * **DailyJump**, ce qui ne dépend pas d'un joueur, par jour (lot P3) : la carte recalculée au plus toutes les 3 min (480 fois au pire, une ligne lue
  * par joueur du jour), l'oubli de fin de jour (3 lignes lues et 1 écrite par joueur).
@@ -54,9 +55,10 @@ export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlay
 /**
  * **DailyTrack**, un joueur du circuit du jour avec la synchronisation du profil (lot 30 : 4 lectures, 14 jours d'historique ; `npm run
  * measure:budget`, sqld local, 19/10/2026) : 13 requêtes, 1 650 lignes lues, 42 écrites, 0,5 s de calcul, 3 vCPU-s facturées au plus (mesurées
- * sans pré-vols ; lot P4 : 4 pré-vols estimés en plus, retirés au lot R5).
+ * sans pré-vols ; lot P4 : 4 pré-vols estimés en plus, retirés au lot R5). **Lot I3** : « Jeu suivant du jour » à l'arrivée (une requête de plus,
+ * ≈ 172 lignes lues) : 14 requêtes, 1 822 lignes lues.
  */
-export const TRACK_PLAYER: UnitCost = { requests: 13, read: 1650, written: 42, cpuS: 0.5, billedS: 3 };
+export const TRACK_PLAYER: UnitCost = { requests: 14, read: 1822, written: 42, cpuS: 0.52, billedS: 3.1 };
 /**
  * **Salon de DailyTrack**, 30 minutes d'un joueur (3 sessions ; `measure:budget` : 558 requêtes, 12 763 lignes lues à 10 présents — 63 025 à 50 —,
  * 265 écrites, 5,8 s de calcul, 97 vCPU-s au plus ; `measure:salon` : 0,64 ms de calcul par joueur et par seconde, une instance tient ≈ 770
@@ -65,12 +67,27 @@ export const TRACK_PLAYER: UnitCost = { requests: 13, read: 1650, written: 42, c
 export const SALON_HALF_HOUR: UnitCost = { requests: 558, read: 12_763, written: 265, cpuS: 5.8, billedS: 97 };
 
 /**
- * **Portail** (lot I2), un visiteur d'une journée : 2 chargements de l'accueil (`GET /api/portail/jour`, une requête chacun) avec 30 jours
- * d'historique dans les deux jeux (`npm run measure:portail -w @cdj/api`, sqld local, 20/10/2026 : 12 instructions, 275 lignes lues, 0
- * écrite, ≈ 30 ms) ; le profil commun n'est pas compté (ouvert rarement : 11 instructions, 393 lignes lues ensuite, une fois 6 775 et 58
- * écrites pour calculer les places finales de 30 jours). Facturé au plus : 2 × 100 ms.
+ * **Portail** (lot I2, mis à jour au lot I3), un visiteur d'une journée : 2 chargements de l'accueil (`GET /api/portail/jour`, une requête chacun) avec 30
+ * jours d'historique dans les deux jeux (`npm run measure:portail -w @cdj/api`, sqld local, 20/10/2026 : 8 à 11 instructions, **172 lignes lues**, 0 écrite,
+ * ≈ 20 ms) et **une page du classement du jour** (`GET /api/portail/classement` : publique, 30 s de cache de Hosting ; elle ne lit rien en base tant que le
+ * classement gardé de l'instance dure) ; le profil commun n'est pas compté (ouvert rarement : 11 instructions, 393 lignes lues ensuite, une fois 6 775 et 58
+ * écrites pour calculer les places finales de 30 jours). **Le classement du jour lui-même** (`CLASSEMENT_JOUR`) est une charge par instance, pas par
+ * visiteur. Facturé au plus : 3 × 100 ms.
  */
-export const PORTAIL_VISITOR: UnitCost = { requests: 2, read: 550, written: 0, cpuS: 0.06, billedS: 0.2 };
+export const PORTAIL_VISITOR: UnitCost = { requests: 3, read: 350, written: 0, cpuS: 0.07, billedS: 0.3 };
+
+/**
+ * **Le classement du jour** (lot I3) : calculé **au plus une fois par fenêtre de 45 s et par instance**, quand quelqu'un le lit (une lecture de `results` et de
+ * `jump_results` : mesuré **1,9 ligne lue par joueur du jour**, 4 instructions, 0 écrite : 341 lignes à 100 joueurs, 2 051 à 1 000, 19 151 à 10 000 ; ≈ 190 ms
+ * et ≈ 2 à 10 Mo en mémoire à 10 000). Pire cas d'un jour : `maxInstances` instances qui le recalculent chaque fenêtre pendant `heuresActives` heures.
+ * Les lectures suivantes (page, tuile, arrivées des jeux) ne lisent rien : 0 à 9 lignes.
+ */
+export const CLASSEMENT_JOUR = { windowS: 45, readPerPlayer: 1.9, maxInstances: 2, heuresActives: 12 };
+
+/** Lignes lues par jour, au pire, pour le classement du jour de `players` joueurs du jour (voir `CLASSEMENT_JOUR`). */
+export function classementReadsPerDay(players: number, c = CLASSEMENT_JOUR): number {
+  return Math.round(players * c.readPerPlayer * ((c.heuresActives * 3600) / c.windowS) * c.maxInstances);
+}
 
 export interface PlatformInput {
   /** Joueurs par jour de DailyJump, de DailyTrack (circuit du jour), et joueurs qui passent 30 minutes au Salon chaque jour. */

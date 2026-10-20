@@ -807,6 +807,8 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   }
 
   const portail: PortailDuJeu = {
+    site: "jump",
+    nom: "Jump",
     premierJour: PREMIER_JOUR_JUMP,
     async jour(day) {
       const l = await getLevel(day);
@@ -816,10 +818,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
         seuils: { author: msOfTicks(l.medals.author), gold: msOfTicks(l.medals.gold), silver: msOfTicks(l.medals.silver), bronze: msOfTicks(l.medals.bronze) },
       };
     },
-    async etat(id, day) {
+    async etat(id, day, connu) {
       const own = await db.first<{ ticks: number; submitted_at: number }>("SELECT ticks, submitted_at FROM jump_results WHERE day = ? AND player_id = ?", [day, id]);
       if (own) {
-        const [rang, classes, level] = await Promise.all([rankOf(day, own.ticks, own.submitted_at, id), classesDuJour(day), getLevel(day)]);
+        // Lot I3 : la place et les classés du classement du jour gardé par le portail, quand il les a ; sinon on les compte (une ligne lue par classé).
+        const [rang, classes, level] = await Promise.all([connu ? connu.rang : rankOf(day, own.ticks, own.submitted_at, id), connu ? connu.classes : classesDuJour(day), getLevel(day)]);
         return { statut: "fini", tempsMs: msOfTicks(own.ticks), medaille: jumpMedalFor(own.ticks, level.medals), rang, classes: Math.max(classes, rang) };
       }
       // Pas d'essai classé : des morts envoyées ce jour-là (les vies du jour, oubliées à la fin du jour) disent que le joueur a commencé.
@@ -828,6 +831,17 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     },
     joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM jump_results WHERE player_id = ?", [id])).map((r) => r.day),
     profil: profilPortail,
+    // Lot I3 : tous les classés du jour, dans l'ordre du classement du jeu (temps en pas, premier envoyé, identifiant : `RANK_SQL`), médaille lue
+    // sur les seuils du niveau du jour (comme `etat`). Aucun calcul de niveau pour un jour sans classé.
+    async classes(day) {
+      const rows = await db.all<{ player_id: string; ticks: number; submitted_at: number }>(
+        "SELECT player_id, ticks, submitted_at FROM jump_results WHERE day = ? ORDER BY ticks ASC, submitted_at ASC, player_id ASC",
+        [day],
+      );
+      if (rows.length === 0) return [];
+      const level = await getLevel(day);
+      return rows.map((r) => ({ playerId: r.player_id, medaille: jumpMedalFor(r.ticks, level.medals), at: r.submitted_at }));
+    },
   };
 
   return {

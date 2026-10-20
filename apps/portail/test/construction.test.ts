@@ -118,6 +118,17 @@ describe("construction du portail", () => {
     }
   });
 
+  it("lot I3 : la page du classement du jour /classement/ est dans la production comme dans la recette, sans ressource extérieure ni trace du joueur de démonstration", () => {
+    for (const sortie of [sorties.production, sorties.recette]) {
+      const html = readFileSync(join(sortie, "classement/index.html"), "utf8");
+      expect(html).toContain('<title data-t="classement.titre">Classement du jour</title>');
+      expect(html).not.toMatch(/(?:src|href)="https?:/);
+    }
+    // Le bouton de partage et la ligne partagée (leurs émojis) sont dans la page d'accueil de la production.
+    const accueil = readdirSync(join(sorties.production, "assets")).filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(sorties.production, "assets", f), "utf8")).join("\n");
+    expect(accueil).toContain("🥇");
+  });
+
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {
     const yml = readFileSync(join(ROOT, ".github/workflows/deploy-site.yml"), "utf8");
     expect(yml).toContain("node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }}");

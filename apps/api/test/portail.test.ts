@@ -115,12 +115,15 @@ describe(`portail : GET /api/portail/jour sans joueur (${TEST_DB})`, () => {
     const m = medalsFor(circuitOf(TODAY).authorMs);
     expect(r.body).toEqual({
       date: DATE,
+      journee: null, // lot I3 : la journée n° 1 est le 23/10/2026
       maintenant: new Date(NOON).toISOString(),
       prochainJour: "2026-10-20T22:00:00.000Z", // minuit de Paris (heure d'été : UTC+2)
       jeux: [
-        { jeu: "cdj", premierJour: formatDay(PREMIER_JOUR), numero: circuitNumber(TODAY), theme: themeForDay(TODAY).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } },
+        { jeu: "cdj", site: "track", nom: "Track", premierJour: formatDay(PREMIER_JOUR), numero: circuitNumber(TODAY), theme: themeForDay(TODAY).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } },
         {
           jeu: "jump",
+          site: "jump",
+          nom: "Jump",
           premierJour: formatDay(PREMIER_JOUR_JUMP),
           numero: J.number,
           theme: J.theme,
@@ -183,7 +186,8 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     const [cdj, jump] = r.body.jeux;
     expect(cdj.etat).toEqual({ statut: "fini", tempsMs: s.body.ms, medaille: medalFor(s.body.ms, medalsFor(circuitOf(TODAY).authorMs)), rang: 1, classes: 1 });
     expect(jump.etat).toEqual({ statut: "pas_joue" });
-    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false });
+    const pointsTrack = { author: 4, gold: 3, silver: 2, bronze: 1 }[cdj.etat.medaille as "gold"] ?? 0;
+    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 0, aujourdhuiParfaite: false, points: pointsTrack, rangDuJour: 1, classesDuJour: 1 });
     expect(r.headers.get("cache-control")).toBe("private, no-cache");
     expect(r.headers.get("vary")).toContain("X-Player-Id");
     // DailyJump en cours : des morts envoyées (rejouées), aucun essai classé.
@@ -195,7 +199,7 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     expect(j.status, JSON.stringify(j.body)).toBe(200);
     r = await t.call("GET", "/api/portail/jour", undefined, as(1));
     expect(r.body.jeux[1].etat).toEqual({ statut: "fini", tempsMs: Math.round((jumpRun.ticks * 1000) / TICK_RATE), medaille: jumpMedalFor(jumpRun.ticks, J.medals), rang: 1, classes: 1 });
-    expect(r.body.joueur).toEqual({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 1, aujourdhuiParfaite: true });
+    expect(r.body.joueur).toMatchObject({ pseudo: "Alice", serie: 1, aProlonger: false, journeesParfaites: 1, aujourdhuiParfaite: true, rangDuJour: 1, classesDuJour: 1 });
     // Un second classé plus lent : Alice reste première sur 2.
     expect((await t.call("POST", "/api/submit", { playerId: playerId(2), name: "Bruno", date: DATE, replay: pilotReplay(TODAY, 0.5).code })).status).toBe(200);
     t.clock.now += 31_000; // le nombre de classés est gardé 30 s par instance
@@ -211,7 +215,7 @@ describe(`portail : GET /api/portail/jour avec un joueur (${TEST_DB})`, () => {
     const r = await t.call("GET", "/api/portail/jour", undefined, as(7));
     // Parfaites : hier, avant-hier, et le 15/10 (la veille du premier jour de Jump : Track seul existait) ; pas le 16 (Jump existait, pas fini).
     expect(formatDay(TODAY - 5)).toBe("2026-10-15");
-    expect(r.body.joueur).toEqual({ pseudo: "J0007", serie: 5, aProlonger: true, journeesParfaites: 3, aujourdhuiParfaite: false });
+    expect(r.body.joueur).toEqual({ pseudo: "J0007", serie: 5, aProlonger: true, journeesParfaites: 3, aujourdhuiParfaite: false, points: 0, rangDuJour: null, classesDuJour: null });
     expect(r.body.jeux.map((j: { etat: { statut: string } }) => j.etat.statut)).toEqual(["pas_joue", "pas_joue"]);
   });
 
@@ -292,11 +296,14 @@ describe(`portail : un jeu n° 3 se déclare au registre, la route ne change pas
     const premier = TODAY - 1;
     const finis = new Map<string, number[]>([[playerId(7), [TODAY - 1, TODAY]]]);
     const faux: PortailDuJeu = {
+      site: "lune",
+      nom: "Lune",
       premierJour: premier,
       jour: async (day) => ({ numero: day - premier + 1, theme: "lune", seuils: { author: 1000, gold: 2000, silver: 3000, bronze: 4000 } }),
       etat: async (id, day) => (finis.get(id)?.includes(day) ? { statut: "fini", tempsMs: 1500, medaille: "gold", rang: 1, classes: 1 } : { statut: "pas_joue" }),
       joursFinis: async (id) => finis.get(id) ?? [],
       profil: async () => ({ joursFinis: 0, medailles: { author: 0, gold: 0, silver: 0, bronze: 0 }, meilleurRang: null }),
+      classes: async () => [],
     };
     const FAUX: GameDefinition<never> = {
       code: "lune",
@@ -311,7 +318,7 @@ describe(`portail : un jeu n° 3 se déclare au registre, la route ne change pas
     await historique(t, playerId(7), { track: [TODAY - 2, TODAY - 1, TODAY], jump: [TODAY - 2, TODAY - 1] });
     const pub = await t.call("GET", "/api/portail/jour");
     expect(pub.body.jeux.map((j: { jeu: string }) => j.jeu)).toEqual(["cdj", "jump", "lune"]);
-    expect(pub.body.jeux[2]).toEqual({ jeu: "lune", premierJour: formatDay(premier), numero: 2, theme: "lune", seuils: { author: 1000, gold: 2000, silver: 3000, bronze: 4000 } });
+    expect(pub.body.jeux[2]).toEqual({ jeu: "lune", site: "lune", nom: "Lune", premierJour: formatDay(premier), numero: 2, theme: "lune", seuils: { author: 1000, gold: 2000, silver: 3000, bronze: 4000 } });
     const r = await t.call("GET", "/api/portail/jour", undefined, as(7));
     expect(r.body.jeux[2].etat).toMatchObject({ statut: "fini", tempsMs: 1500 });
     // Avant-hier : le faux jeu n'existait pas (Track et Jump suffisent) ; hier : les trois ; aujourd'hui : Jump manque.

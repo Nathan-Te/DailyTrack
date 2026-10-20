@@ -89,24 +89,40 @@ Three.js pèse à lui seul ≈ 140 ko compressés par jeu. Les fichiers à empre
 
 **Surveiller** : console Firebase → **Hosting** → **Utilisation** (transfert par jour) chaque lundi, avec Turso (§ 2). Si le transfert dépasse 360 Mo par jour de façon durable : rien à faire tant que le budget de 5 € (§ 1) n'alerte pas (il couvre ≈ 33 Go de transfert par mois) ; ensuite, la piste la moins chère est d'alléger le premier chargement (lot de jeu : Three.js plus petit, chargement différé).
 
-## 6. Le portail (lot I2)
+## 6. Le portail (lot I2, mis à jour au lot I3)
 
-**Une requête par chargement de l'accueil** : `GET /api/portail/jour` (jeux du jour, état du joueur dans chaque jeu, série, journées parfaites). Mesuré par `npm run measure:portail -w @cdj/api` (sqld local, 20/10/2026 ; 50 autres classés par jour et par jeu) :
+**Une requête par chargement de l'accueil** : `GET /api/portail/jour` (jeux du jour, état du joueur dans chaque jeu, série, journées parfaites ; lot I3 : numéro de journée, points et place du jour). Mesuré par `npm run measure:portail -w @cdj/api` (sqld local, 20/10/2026 ; 50 autres classés par jour et par jeu) :
 
 | lecture | instructions | lignes lues | écrites | durée |
 |---|---|---|---|---|
 | jour, sans joueur (niveaux en mémoire de l'instance) | 1 | 1 | 0 | ≈ 4 ms |
 | jour, sans joueur, instance neuve (niveaux lus en base) | 3 | 3 | 0 | ≈ 9 ms |
 | jour, sans joueur, premier appel du jour (circuit et niveau calculés une fois) | 5 | 5 | 2 | ≈ 0,6 s |
-| **jour, joueur de 30 jours** | 12 | **275** | 0 | ≈ 32 ms |
-| **jour, joueur de 365 jours** | 10 | **841** | 0 | ≈ 25 ms |
+| **jour, joueur de 30 jours** (lot I3 : place lue dans le classement gardé) | 11 | **172** (lot I2 : 275) | 0 | ≈ 25 ms |
+| **jour, joueur de 365 jours** | 8 | **737** (lot I2 : 841) | 0 | ≈ 20 ms |
 | profil commun, 30 jours (ensuite) | 11 | 393 | 0 | ≈ 34 ms |
 | profil commun, 365 jours (ensuite) | 11 | 2 404 | 0 | ≈ 38 ms |
 | profil commun, 365 jours, **premier appel** (places finales des jours fermés calculées une fois et gardées) | 13 | 81 146 | 728 | ≈ 48 ms |
 
-**Borné** : sans joueur, une ligne ; avec un joueur, une ligne par jour fini (série et journées parfaites : un parcours d'index par jeu) plus le rang du jour (une ligne par classé devant lui) et le nombre de classés du jour (gardé 30 s par instance). Le premier appel du profil commun calcule une fois les places finales de chaque jour fermé (comme `GET /api/me` de DailyTrack depuis le lot 30) ; ensuite elles sont lues. **Aucune écriture** pour l'accueil. La réponse sans joueur est **publique** (60 s au plus, jamais au-delà de minuit de Paris : le CDN de Hosting la garde, autant de requêtes Cloud Run en moins) ; avec un joueur, `private, no-cache`.
+**Borné** : sans joueur, une ligne ; avec un joueur, une ligne par jour fini (série et journées parfaites : un parcours d'index par jeu). Le premier appel du profil commun calcule une fois les places finales de chaque jour fermé (comme `GET /api/me` de DailyTrack depuis le lot 30) ; ensuite elles sont lues. **Aucune écriture** pour l'accueil. La réponse sans joueur est **publique** (60 s au plus, jamais au-delà de minuit de Paris : le CDN de Hosting la garde, autant de requêtes Cloud Run en moins) ; avec un joueur, `private, no-cache`.
 
-**Projection** : `PORTAIL_VISITOR` dans `scripts/platformBudget.ts` (2 requêtes, 550 lignes lues, 0 écrite par visiteur et par jour) : 1 000 visiteurs par jour ≈ 0,06 M requêtes et 16,5 M lignes lues par mois (`measure:platform -- --portail 1000`).
+### Le classement du jour (lot I3)
+
+Le classement du jour tous jeux confondus est calculé **au plus une fois par fenêtre de 45 s et par instance** (une lecture de `results` et de `jump_results`), jamais à chaque requête ; la page `/classement/`, la tuile du portail et les arrivées des jeux le lisent en mémoire. **La place d'un joueur déjà classé vient de ce classement gardé** (avant : une ligne lue par classé devant lui, à chaque visite : 38 009 lignes à 10 000 joueurs). Mesuré (`measure:portail`, sqld local, 20/10/2026, joueur du milieu) :
+
+| joueurs du jour | calcul du classement (une fois par fenêtre et par instance) | lecture suivante (page publique, en mémoire) | page avec ta ligne | accueil d'un joueur classé (instance qui a le classement) | accueil, instance neuve (calcul compris) | mémoire de l'instance |
+|---|---|---|---|---|---|---|
+| 100 | 4 instr., **341** lignes lues, ≈ 15 ms | 0 | 2 instr., 1 ligne | 8 instr., **9** lignes | 13 instr., 202 lignes, ≈ 29 ms | ≈ 1 Mo |
+| 1 000 | 4 instr., **2 051** lignes lues, ≈ 25 ms | 0 | 2 instr., 1 ligne | 8 instr., **9** lignes | 13 instr., 1 912 lignes, ≈ 51 ms | ≈ 4 Mo |
+| 10 000 | 4 instr., **19 151** lignes lues, ≈ 190 ms | 0 | 2 instr., 1 ligne | 8 instr., **9** lignes | 13 instr., 19 012 lignes, ≈ 193 ms | ≈ 2 à 10 Mo |
+
+Soit **≈ 1,9 ligne lue par joueur du jour et par calcul**, 0 écrite. Une lecture (page, tuile, arrivée) sur une instance qui a le classement coûte **0 à 9 lignes quel que soit le nombre de joueurs** ; un joueur qui vient de finir (absent du classement gardé) est inséré à sa place sans relecture globale, et ses jeux comptent ses classés devant lui (une fois : le rang de chaque jeu, comme à l'envoi). **Pire cas d'un jour** (`classementReadsPerDay`, `scripts/platformBudget.ts`) : 2 instances qui le recalculent chaque fenêtre pendant 12 heures actives = 100 000 lignes à 100 joueurs (soit ≈ 0,1 M par mois), 1,1 M à 1 000 (≈ 3,3 M par mois), **36,5 M à 10 000 (≈ 1,1 Md par mois : au-delà de l'offre gratuite de Turso, 500 M — à 10 000 joueurs par jour on est de toute façon sur l'offre payante)**. Le réglage à tourner si besoin : `CLASSEMENT_FENETRE_MS` (45 s → 60 s ou plus : −25 %). Ce que le calcul ne fait pas : écrire, lire les rediffusions, rejouer quoi que ce soit.
+
+### Vérification de `Vary: X-Player-Id` par Firebase Hosting (lot I3)
+
+Le portail rend la **même adresse** en deux versions (publique et personnelle) : tout repose sur `Vary: X-Player-Id` dans le cache de Hosting. **Mesuré sur la recette, par l'adresse de Hosting (`https://recette.playdujour.com`, pas Cloud Run en direct), le 20/10/2026** : deux lectures de `/api/portail/jour` sans identifiant (`public, max-age=60`, `x-cache: HIT`), puis une lecture avec l'identifiant du joueur de démonstration → **l'état du joueur** (`private, no-cache`, `x-cache: MISS`, `joueur`, `etat` de chaque jeu), puis une lecture sans identifiant → la réponse publique sans `joueur` (`HIT`). Hosting **honore** `Vary` (sa réponse liste `Vary: Origin, X-Player-Id, cookie, …`). **Rien à changer côté serveur** : une seule adresse, deux réponses ; pas de seconde adresse. La vérification est refaite **après chaque fusion** par le job `hosting` de `recette.yml` (`smoke --lecture-seule --par-hosting --joueur-demo`, pour `/api/portail/jour` **et** `/api/portail/classement`, des `GET` seulement, rien n'est écrit) ; sans joueur connu (production), la même commande utilise un identifiant inventé (404 `unknown_player`, jamais la réponse publique gardée).
+
+**Projection** : `PORTAIL_VISITOR` dans `scripts/platformBudget.ts` (3 requêtes, 350 lignes lues, 0 écrite par visiteur et par jour : 2 chargements de l'accueil et la page du classement) : 1 000 visiteurs par jour ≈ 0,09 M requêtes et 10,5 M lignes lues par mois (`measure:platform -- --portail 1000`) ; à ajouter, le classement du jour (ci-dessus) ; et « Jeu suivant du jour » ajoute **une requête** à l'arrivée de chaque jeu (`JUMP_PLAYER` 13 requêtes, `TRACK_PLAYER` 14).
 
 ## Checklist (une fois)
 - ☐ Budget `plateforme-5-euros` : 50 / 90 / 100 % réels + 100 % prévu, e-mail.

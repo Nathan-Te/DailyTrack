@@ -268,6 +268,12 @@
       #arrival .abtn { box-sizing: border-box; min-height: 48px; min-width: 48px; padding: 0 12px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
       #arrival .abtn[hidden] { display: none; }
       #arrival .abtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
+      /* Lot I3 (plateforme) : « Jeu suivant du jour » (ou « Journée parfaite ! » et le retour au portail) : des liens de 48 px sous les boutons. */
+      #arrival .anext { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+      #arrival .anext[hidden] { display: none; }
+      #arrival .anext-link { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 14px; border: 2px solid #ffd22e; border-radius: 12px; color: #ffd22e; font: 700 15px system-ui, sans-serif; text-decoration: none; touch-action: manipulation; }
+      #arrival .anext-link:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
+      #arrival .anext-perfect { font-size: 17px; font-weight: 800; color: #39ff88; }
       #arrival .amessage { min-height: 1.2em; color: #39ff88; font-size: 13px; }
       #arrival .afallback { width: 100%; box-sizing: border-box; font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 8px; padding: 6px; user-select: text; -webkit-user-select: text; resize: none; }
       #arrival .afallback[hidden] { display: none; }

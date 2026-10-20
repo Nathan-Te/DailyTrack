@@ -73,6 +73,7 @@ import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { archiveDays, disposeArchive, nextTheme, randomSeedHref, renderArchive, themeHref, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
+import { elementsDeSuite, lireSuite } from "./jeuSuivant";
 import { DEMO_TODAY } from "./demo";
 import { NO_PLAN, fetchDayPlan, fetchPlanning, loadDemoPlan, type PlanEntry } from "./planning";
 import { buildFlatArena } from "./arena";
@@ -690,6 +691,19 @@ function openLoadCode() {
 // --- Partage et archives --------------------------------------------------------------------
 let lastRank: { rank: number; participants: number } | null = null;
 let shareEl: HTMLElement | null = null;
+/** Lot I3 de la plateforme : l'emplacement de « Jeu suivant du jour » de l'écran d'arrivée en cours (rempli une fois le classement connu). */
+let finishNext: HTMLElement | null = null;
+/** « Jeu suivant du jour » (lot I3) : une lecture de `GET /api/portail/jour` après l'envoi accepté, jamais d'une connaissance codée de l'autre jeu ; serveur injoignable : rien. */
+async function showNextGame(): Promise<void> {
+  const box = finishNext;
+  const base = apiBase();
+  if (!box || box.dataset.lu || !base || base === DEMO_BASE || online.demo) return;
+  box.dataset.lu = "1";
+  const suite = await lireSuite(base, online.playerId, "cdj");
+  if (!suite || finishNext !== box || phase !== "finished" || !box.isConnected) return;
+  box.replaceChildren(...elementsDeSuite(suite));
+  box.hidden = false;
+}
 
 /** Le résultat à partager : le meilleur temps du jour, avec sa médaille et son rang si le serveur l'a donné. */
 function currentShare(): ShareResult | null {
@@ -813,6 +827,7 @@ function startAttempt(force = false) {
   autoplay = null;
   lastRank = null;
   shareEl = null;
+  finishNext = null;
   accumulator = 0;
   pendingRespawn = false;
   shownSplits = 0;
@@ -1061,6 +1076,7 @@ function startOnlineFlow(box: HTMLElement) {
     lastRank = { rank, participants };
     rememberRank(daily!.date, { rank, participants });
     updateShareLine();
+    void showNextGame();
     const line = text("", "ok");
     line.append("Temps enregistré · ", Object.assign(document.createElement("span"), { className: "rank", textContent: `${ordinal(rank)} sur ${participants}` }), extra);
     box.replaceChildren(line, button("Changer de pseudo", () => nameForm()));
@@ -1387,10 +1403,16 @@ function finishRun() {
     });
   }
   action("Accueil", () => goHome());
+  // Lot I3 de la plateforme : « Jeu suivant du jour », juste avant les actions (rempli quand le classement est connu).
+  const nextBox = document.createElement("div");
+  nextBox.id = "finish-next";
+  nextBox.className = "next";
+  nextBox.hidden = true;
+  finishNext = nextBox;
   const showOnline = online.enabled && counted;
   // Sans classement, on le dit : la course n'est pas perdue, elle n'est simplement pas envoyée.
   if (counted && !online.enabled) onlineBox.append(Object.assign(document.createElement("div"), { className: "status", textContent: apiBase() === null ? "Course non classée : ce jeu n'est pas relié à un serveur. Ton record reste sur cet appareil." : "Hors ligne : course non classée. Ton record reste sur cet appareil." }));
-  hudFinish.replaceChildren(...rows, ...(showOnline || (counted && !online.enabled) ? [onlineBox] : []), ...(shareEl && best ? [shareEl] : []), actions, hint);
+  hudFinish.replaceChildren(...rows, ...(showOnline || (counted && !online.enabled) ? [onlineBox] : []), ...(shareEl && best ? [shareEl] : []), nextBox, actions, hint);
   hudFinish.hidden = false;
   document.body.classList.add("finished");
   if (showOnline) startOnlineFlow(onlineBox);

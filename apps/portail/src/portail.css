@@ -11,12 +11,27 @@
   margin: 0 auto;
   padding: var(--dj-espace-6) var(--dj-marge);
 }
+/* La date à gauche et (lot I3) « Journée n° 12 » à droite, sur la même ligne, sous un seul trait (maquette portail.html). */
 .portail-date {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--dj-espace-4);
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+  padding-bottom: var(--dj-espace-2);
+}
+.portail-date__jour {
   font-family: var(--dj-police-marque);
   font-size: var(--dj-taille-22);
   line-height: 1.2;
-  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
-  padding-bottom: var(--dj-espace-2);
+}
+.portail-date__journee {
+  flex: none;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .portail-jeux {
   display: flex;
@@ -139,20 +154,33 @@
 .portail-etagere .dj-cartouche__action .dj-bouton {
   min-height: var(--dj-cible-portail);
 }
-/* La tuile Série (une colonne en portrait ; la moitié de la largeur à partir de 600 px) et la place qu'elle réserve pendant le chargement. */
-.portail-tuile-reservee,
-.portail-etagere ~ #serie,
-#serie {
-  max-width: 100%;
+/* Les tuiles (lot I3 : Série et Classement du jour, deux colonnes comme la maquette ; une tuile seule prend toute la largeur) et la place qu'elles
+   réservent pendant le chargement. */
+.portail-tuiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-4);
+  align-items: stretch;
+}
+.portail-tuiles > :only-child {
+  grid-column: 1 / -1;
+}
+.portail-tuiles > * {
+  min-width: 0;
 }
 .portail-tuile-reservee {
   min-height: 86px;
 }
-@media (min-width: 600px) {
-  #serie,
-  .portail-tuile-reservee {
-    width: calc(50% - var(--dj-espace-7) / 2);
-  }
+/* La tuile Classement du jour est un lien : toute la tuile se touche (au moins 44 px), sans soulignement. */
+.portail-tuile-lien {
+  display: block;
+  min-height: var(--dj-cible);
+  color: inherit;
+  text-decoration: none;
+}
+.portail-tuile-lien > .dj-tuile {
+  height: 100%;
+  box-sizing: border-box;
 }
 /* À prolonger : en encre et en gras (la terre cuite sur crème 2 n'a que 3,6:1). */
 .portail-serie__prolonger {
@@ -171,6 +199,29 @@
   margin-top: var(--dj-espace-1);
   font-size: var(--dj-taille-13);
   font-weight: 700;
+}
+/* Lot I3 : « Partager ma journée » (bouton de marque pleine largeur) et la ligne qu'il enverra, en JetBrains Mono : le joueur voit ce qu'il envoie. */
+.portail-partage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+}
+.portail-partage .dj-bouton {
+  min-height: var(--dj-cible-portail);
+}
+.portail-partage__apercu {
+  margin: 0;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) dashed var(--dj-encre-douce);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: all;
 }
 .portail-accueil {
   font-size: var(--dj-taille-15);
@@ -318,4 +369,128 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--dj-espace-2);
   margin-top: var(--dj-espace-2);
+}
+
+/* --- Lot I3 : le classement du jour (/classement/) ------------------------------------------------------------------------------------ */
+.classement .dj-barre-jeu {
+  padding: 0;
+}
+.classement-titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-32);
+  line-height: 1.1;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+  padding-bottom: var(--dj-espace-2);
+}
+/* « ‹ Veille » · la date · « Lendemain › » : deux boutons de 44 px et la date au milieu. */
+.classement-jours {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+}
+.classement-jours__date {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  text-align: center;
+}
+.classement-jours .dj-bouton {
+  flex: none;
+}
+.classement-etat,
+.classement-vide,
+.classement-invite {
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+}
+.classement-bareme {
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.classement-egalite,
+.classement-compte {
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+.classement-liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Une ligne : la place, le pseudo, les points ; dessous la médaille de chaque jeu (le nom est toujours dit). */
+.classement-ligne {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-creme-2);
+}
+/* Ta ligne : surlignée en moutarde (charte § 3.1), bordure épaisse et ombre nette ; « Toi » le dit aussi en texte. */
+.classement-ligne--moi {
+  background: var(--dj-moutarde);
+  border-width: var(--dj-trait-fort);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.classement-ligne__tete {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--dj-espace-3);
+}
+.classement-rang,
+.classement-points {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+  font-variant-numeric: tabular-nums;
+}
+.classement-pseudo {
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+  overflow-wrap: anywhere;
+}
+.classement-toi {
+  margin-left: var(--dj-espace-3);
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.classement-ligne__jeux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-2) var(--dj-espace-7);
+  padding-left: calc(2.4rem + var(--dj-espace-3));
+  font-size: var(--dj-taille-13);
+}
+.classement-jeu {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  min-height: 22px;
+}
+.classement-jeu__nom {
+  font-weight: 600;
+}
+.classement-jeu__fini {
+  font-weight: 600;
+}
+.classement-coupure {
+  margin: var(--dj-espace-2) 0;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  text-align: center;
+  color: var(--dj-encre-douce);
 }

@@ -1,4 +1,5 @@
 import type { JumpMedal } from "@cdj/jump-sim";
+import { elementsDeSuite, type Suite } from "./jeuSuivant";
 import type { RankView } from "./rankView";
 
 // L'écran d'arrivée du niveau du jour (lot 10, remplace le bandeau du lot 2 pour le niveau du jour ; les morceaux, les scénarios et les
@@ -62,6 +63,9 @@ export interface Arrival {
   /** Lot P3 : le bouton « Le carnage de tout le monde » (son texte, avec le compteur), ou `null` : caché (pas d'échantillon). */
   setEveryone(text: string | null): void;
   readonly everyone: string | null;
+  /** Lot I3 (plateforme) : « Jeu suivant du jour : Track › » ou « Journée parfaite ! » + « ‹ Du Jour » (`null` : rien, le serveur n'a pas répondu). */
+  setSuite(suite: Suite | null): void;
+  readonly suite: Suite | null;
 }
 
 const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: string): HTMLElementTagNameMap[K] => {
@@ -144,6 +148,10 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   const everyone = button("arrival-everyone", "abtn", "Le carnage de tout le monde");
   everyone.hidden = true;
   buttons.append(replay, share, carnage, everyone, first, home);
+  // Lot I3 (plateforme) : la suite de la journée, sous les boutons (rempli une fois l'envoi accepté : `setSuite`).
+  const suiteBox = el("div", "anext");
+  suiteBox.id = "arrival-next";
+  suiteBox.hidden = true;
   const message = el("div", "amessage");
   message.setAttribute("role", "status");
   const fallback = el("textarea", "afallback");
@@ -152,7 +160,7 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   fallback.hidden = true;
   const countdown = el("div", "acount");
   const hint = el("div", "ahint", "R : rejouer");
-  side.append(stats, run, streak, buttons, message, fallback, countdown, hint);
+  side.append(stats, run, streak, buttons, suiteBox, message, fallback, countdown, hint);
   card.append(main, side);
   root.append(card);
   document.body.append(root);
@@ -181,7 +189,16 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
   let suggestionKey = "";
   let firstText: string | null = null;
   let everyoneText: string | null = null;
+  let suiteShown: Suite | null = null;
   return {
+    get suite() {
+      return suiteShown;
+    },
+    setSuite(suite) {
+      suiteShown = suite;
+      suiteBox.hidden = suite === null;
+      suiteBox.replaceChildren(...(suite ? elementsDeSuite(suite) : []));
+    },
     get everyone() {
       return everyoneText;
     },

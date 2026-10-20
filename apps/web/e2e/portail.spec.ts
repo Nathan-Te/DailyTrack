@@ -132,7 +132,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
   const page = await (await newClockedContext(browser, { viewport: { width: 1024, height: 768 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
-  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#mentions"];
+  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#mentions"]; // lot I3 : sans réponse du serveur (ici, aucun), la tuile « Classement du jour » n'est pas là
   for (const sel of attendus) {
     await page.keyboard.press("Tab");
     await expect(page.locator(sel), sel).toBeFocused();

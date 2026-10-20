@@ -92,6 +92,9 @@ const ROUTES = [
   "/api/portail",
   "/api/portail/jour",
   "/api/portail/profil",
+  "/api/portail/classement",
+  "/api/portail/classement?date=2026-02-30",
+  "/api/portail/classement?date=2099-01-01",
   "/api/portail/autre",
 ];
 

@@ -31,14 +31,21 @@ export function smokeRefusal(o: { base: string; environment: string | null; read
 
 export type FetchFn = (input: string, init?: RequestInit) => Promise<Response>;
 
-/** Un `fetch` qui **refuse d'écrire** : tout ce qui n'est pas une lecture (`GET`, `HEAD`) lève avant de partir. */
-export function readOnlyFetch(inner: FetchFn): FetchFn {
+/**
+ * Un `fetch` qui **refuse d'écrire** : tout ce qui n'est pas une lecture (`GET`, `HEAD`) lève avant de partir. Jamais d'identifiant de joueur, sauf
+ * (lot I3, la vérification `Vary` « par Hosting ») **un seul identifiant**, nommé d'avance, et pour des `GET` du portail seulement
+ * (`/api/portail/`) : une lecture ne crée ni ne compte rien pour un joueur (en mémoire, aucune ligne de débit).
+ */
+export function readOnlyFetch(inner: FetchFn, o: { joueurPermis?: string } = {}): FetchFn {
   return (input, init = {}) => {
     const method = (init.method ?? "GET").toUpperCase();
     if (method !== "GET" && method !== "HEAD") return Promise.reject(new Error(`smoke --lecture-seule : ${method} ${input} refusé (ce mode n'écrit jamais rien)`));
     if (init.body !== undefined && init.body !== null) return Promise.reject(new Error(`smoke --lecture-seule : corps refusé pour ${input}`));
     const headers = new Headers(init.headers);
-    if (headers.has("x-player-id")) return Promise.reject(new Error(`smoke --lecture-seule : identifiant de joueur refusé pour ${input}`));
+    const joueur = headers.get("x-player-id");
+    if (joueur !== null && !(o.joueurPermis !== undefined && joueur === o.joueurPermis && /^https?:\/\/[^/]+\/api\/portail\//.test(input))) {
+      return Promise.reject(new Error(`smoke --lecture-seule : identifiant de joueur refusé pour ${input}`));
+    }
     return inner(input, { ...init, method });
   };
 }
@@ -199,11 +206,101 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
       !("joueur" in p) &&
       /\bpublic\b/.test(portail.headers.get("cache-control") ?? "") &&
       maxAge <= 60 &&
-      /x-player-id/i.test(portail.headers.get("vary") ?? ""),
+      /x-player-id/i.test(portail.headers.get("vary") ?? "") &&
+      // Lot I3 : le numéro de journée commun (null avant le 23/10/2026) et, pour chaque jeu, son dossier et son nom (« jeu suivant du jour »).
+      (p.journee === null || (Number.isInteger(p.journee) && p.journee >= 1)) &&
+      jeux.every((j) => typeof j.site === "string" && j.site !== "" && typeof j.nom === "string" && j.nom !== ""),
     "/api/portail/jour",
     portail,
-    jeux.map((j) => `${String(j.jeu)} n° ${String(j.numero)} (${String(j.theme)})`).join(", "),
+    `journée ${String(p?.journee)} — ${jeux.map((j) => `${String(j.jeu)} n° ${String(j.numero)} (${String(j.theme)})`).join(", ")}`,
   );
+  // Lot I3 : le classement du jour tous jeux confondus (sans joueur : public, 30 s au plus, jamais d'identifiant dans la réponse).
+  const classement = await get("/api/portail/classement");
+  check(
+    "portail : le classement du jour (barème, jeux, haut du classement), public, 30 s au plus",
+    estClassement(classement.body, date) && /\bpublic\b/.test(classement.headers.get("cache-control") ?? "") && Number(/max-age=(\d+)/.exec(classement.headers.get("cache-control") ?? "")?.[1] ?? NaN) <= 30 && /x-player-id/i.test(classement.headers.get("vary") ?? ""),
+    "/api/portail/classement",
+    classement,
+    `${String(classement.body?.classes)} classé(s)`,
+  );
+  return checks;
+}
+
+/** La forme du classement du jour (`GET /api/portail/classement`). */
+function estClassement(b: unknown, date: string): boolean {
+  const o = b as Record<string, any> | null;
+  return (
+    !!o &&
+    o.date === date &&
+    typeof o.ouvert === "boolean" &&
+    Number.isInteger(o.classes) &&
+    ["author", "gold", "silver", "bronze"].every((m) => Number.isInteger(o.bareme?.[m])) &&
+    Array.isArray(o.jeux) &&
+    o.jeux.length >= 2 &&
+    Array.isArray(o.top) &&
+    o.top.length <= 50 &&
+    o.top.every((l: any) => Number.isInteger(l.rang) && typeof l.pseudo === "string" && Number.isInteger(l.points) && typeof l.resultats === "object" && !("id" in l) && !("playerId" in l)) &&
+    !("moi" in o)
+  );
+}
+
+/**
+ * Lot I3 — **la vérification `Vary` « par Hosting »**. Le portail rend la même adresse (`/api/portail/jour`, `/api/portail/classement`) en deux
+ * versions : publique (gardée par le cache de Firebase Hosting, 60 s au plus) et personnelle (avec `X-Player-Id`, `private`). Tout repose sur le
+ * `Vary: X-Player-Id` : si Hosting l'ignorait, une lecture avec identifiant faite juste après une lecture sans recevrait la réponse publique (sans
+ * l'état du joueur), et surtout une lecture sans identifiant ne doit **jamais** recevoir l'état d'un joueur. À lancer sur l'adresse de Firebase
+ * Hosting (pas directement Cloud Run : sans CDN, la vérification ne prouve rien). `joueur` : un identifiant **connu** du serveur (le joueur de
+ * démonstration de la recette, qui a fini Track aujourd'hui) pour constater qu'il reçoit son état ; sans lui, un identifiant inventé (production :
+ * aucun joueur n'est créé, la lecture rend `404 unknown_player`, jamais la réponse publique mise en cache).
+ */
+export async function varyParHosting(base: string, fetchImpl: FetchFn, o: { joueur?: string } = {}): Promise<SmokeCheck[]> {
+  const root = base.replace(/\/+$/, "");
+  const connu = o.joueur !== undefined;
+  const joueur = o.joueur ?? Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+  const f = readOnlyFetch(fetchImpl, { joueurPermis: joueur });
+  const checks: SmokeCheck[] = [];
+  const get = async (route: string, avecJoueur: boolean) => {
+    try {
+      const res = await f(root + route, { method: "GET", headers: avecJoueur ? { "X-Player-Id": joueur } : {} });
+      const text = await res.text();
+      let body: any = null;
+      try {
+        body = text ? JSON.parse(text) : null;
+      } catch {
+        body = { illisible: text.slice(0, 120) };
+      }
+      return { status: res.status, body, headers: res.headers };
+    } catch (e) {
+      return { status: 0, body: { erreur: e instanceof Error ? e.message : String(e) }, headers: new Headers() };
+    }
+  };
+  const check = (label: string, ok: boolean, route: string, r: { status: number; body: unknown; headers: Headers }, detail = "") =>
+    checks.push({ label, ok, route, status: r.status, detail: ok ? detail : `${detail}${detail ? " — " : ""}réponse ${r.status} ${JSON.stringify(r.body).slice(0, 200)}` });
+  const sansEtat = (b: any) => !!b && !("joueur" in b) && Array.isArray(b.jeux) && b.jeux.every((j: any) => !("etat" in j));
+  const detailCache = (h: Headers) => `x-cache ${h.get("x-cache") ?? "—"}, age ${h.get("age") ?? "—"}, vary ${h.get("vary") ?? "—"}`;
+
+  for (const route of ["/api/portail/jour", "/api/portail/classement"]) {
+    const jour = route.endsWith("/jour");
+    // 1. Deux lectures sans identifiant : la réponse publique, que le cache de Hosting garde.
+    await get(route, false);
+    const publique = await get(route, false);
+    check(`par Hosting (${route}) : sans identifiant, la réponse publique`, publique.status === 200 && (jour ? sansEtat(publique.body) : !("moi" in publique.body)) && /\bpublic\b/.test(publique.headers.get("cache-control") ?? ""), route, publique, detailCache(publique.headers));
+    // 2. Tout de suite après : avec identifiant. Elle doit recevoir SA réponse (l'état du joueur), pas la publique gardée.
+    const perso = await get(route, true);
+    const bonne = connu
+      ? perso.status === 200 && (jour ? perso.body?.joueur?.pseudo !== undefined && perso.body.jeux.every((j: any) => j.etat?.statut !== undefined) : "moi" in perso.body)
+      : perso.status === 404 && perso.body?.error === "unknown_player";
+    check(
+      `par Hosting (${route}) : avec identifiant juste après, ${connu ? "l'état du joueur (pas la réponse publique gardée)" : "la réponse du serveur pour un inconnu (404), pas la réponse publique gardée"}`,
+      bonne && /\bprivate\b|no-store/.test(perso.headers.get("cache-control") ?? "") && (!connu || /x-player-id/i.test(perso.headers.get("vary") ?? "")),
+      route,
+      perso,
+      `${detailCache(perso.headers)}, Cache-Control « ${perso.headers.get("cache-control") ?? "—"} »`,
+    );
+    // 3. Et l'inverse : sans identifiant, jamais l'état d'un joueur.
+    const apres = await get(route, false);
+    check(`par Hosting (${route}) : sans identifiant juste après, jamais l'état d'un joueur`, apres.status === 200 && (jour ? sansEtat(apres.body) : !("moi" in apres.body)), route, apres, detailCache(apres.headers));
+  }
   return checks;
 }
 
