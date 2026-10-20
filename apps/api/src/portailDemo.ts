@@ -1,0 +1,115 @@
+import { formatDay } from "@cdj/core";
+import { parisDayStart } from "@cdj/clock";
+import { encodeReplay, medalFor, medalsFor, dailyCircuit, runPilot } from "@cdj/sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, demoAttempts, encodeReplay as encodeJump, lifeReplay, replayAttempt } from "@cdj/jump-sim";
+import { createApi } from "./api";
+import type { SqlDb } from "./db";
+import { crc32Hex } from "./identity";
+import { jumpDailyOf } from "./jump";
+
+// Lot I2 (plateforme) : le **joueur de démonstration du portail**, « Démo », pour juger le portail plein en deux clics (`/?demo=joueur` sur la
+// recette et les aperçus). **Recette seulement** : il n'est créé que par `recette:seed` (garde `recetteSeedTarget` : ENVIRONMENT=recette et
+// une base dont le nom contient « recette »), par le **vrai `createApi`** (rejeu serveur de chaque course, de chaque essai et de chaque vie,
+// horloge injectée sur chaque jour) avec `demoPlayers: true` (joueur marqué `demo`), une option que le serveur de production ne règle jamais.
+//
+// Son historique, chaque fois le même quel que soit le jour : **série de 5 jours** (Track fini les 5 derniers jours), **2 journées parfaites**
+// (Jump fini avant-hier et hier), et **aujourd'hui Track fini avec la médaille d'or, Jump en cours** (des morts envoyées, aucun essai classé).
+// Pour que la série reste de 5 jours quand le script repasse chaque jour (`recette-seed.yml`), le joueur est d'abord **effacé** par la route
+// d'admin de la plateforme (`POST /api/admin/effacer`, lot R5), puis recréé.
+
+/** Le pseudo du joueur de démonstration. */
+export const DEMO_JOUEUR_NOM = "Démo";
+/**
+ * Son identifiant (fixe, connu : c'est un compte de démonstration de la recette, son code n'est pas un secret). Le portail l'installe par
+ * `/?demo=joueur` (`apps/portail/src/demo.ts`, absent de la construction de production) ; un test vérifie que les deux sont le même.
+ */
+export const DEMO_JOUEUR_ID = "de30de30de30de30de30de30de30de30";
+/** Son code de transfert (`CDJ2.<identifiant>.<CRC-32>`, la forme de `@cdj/profile`). */
+export const DEMO_JOUEUR_CODE = `CDJ2.${DEMO_JOUEUR_ID}.${crc32Hex(new TextEncoder().encode(DEMO_JOUEUR_ID))}`;
+/** Jours finis dans Track (aujourd'hui compris) et dans Jump (avant aujourd'hui). */
+export const DEMO_JOURS_TRACK = 5;
+export const DEMO_JOURS_JUMP = 2;
+/** Morts envoyées aujourd'hui dans Jump (en cours). */
+export const DEMO_MORTS = 12;
+
+const ADMIN = "jeton-du-joueur-de-demonstration-0123456789";
+
+export interface DemoReport {
+  track: { date: string; ms: number; medal: string | null }[];
+  jump: { date: string; ticks: number }[];
+  morts: number;
+}
+
+/** Crée (ou recrée) le joueur « Démo » dans la base donnée, jusqu'au jour `today` (numéro de jour de Paris). Lève si un envoi est refusé. */
+export async function seedPortailDemo(o: { db: SqlDb; frozen: Readonly<Record<string, unknown>>; today: number }): Promise<DemoReport> {
+  let clock = parisDayStart(o.today) + 12 * 3_600_000;
+  const api = createApi({ db: o.db, now: () => clock, demoPlayers: true, jumpFrozen: o.frozen, adminToken: ADMIN, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
+  const call = async (method: string, path: string, body?: unknown, headers: Record<string, string> = {}) => {
+    const res = await api.handle(
+      new Request(`http://recette.local${path}`, { method, headers: { ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }),
+      { clientKey: "192.0.2.10" },
+    );
+    const text = await res.text();
+    return { status: res.status, body: (text ? JSON.parse(text) : null) as Record<string, any> };
+  };
+  const must = (label: string, r: { status: number; body: Record<string, any> }) => {
+    if (r.status !== 200) throw new Error(`joueur de démonstration : ${label} refusé (${r.status} ${String(r.body?.error ?? "")} ${String(r.body?.message ?? "")})`);
+    return r.body;
+  };
+
+  // 1. Repartir de zéro : effacé par la route d'admin (rien s'il n'existe pas encore).
+  const erased = await call("POST", "/api/admin/effacer", { code: DEMO_JOUEUR_CODE, confirmer: true }, { Authorization: `Bearer ${ADMIN}` });
+  if (erased.status !== 200 && erased.body?.error !== "unknown_player") must("effacement", erased);
+
+  const report: DemoReport = { track: [], jump: [], morts: 0 };
+  // 2. Track : les 5 derniers jours (aujourd'hui compris), chaque course rejouée par le serveur. Aujourd'hui : la médaille d'or (le pilote,
+  // de plus en plus prudent, jusqu'à passer sous le seuil de l'auteur sans dépasser celui de l'or).
+  for (let day = o.today - DEMO_JOURS_TRACK + 1; day <= o.today; day++) {
+    const circuit = dailyCircuit(day);
+    const medals = medalsFor(circuit.authorMs);
+    let chosen: { code: string; ms: number } | null = null;
+    for (let grip = 0.98; grip >= 0.5 && !chosen; grip -= 0.02) {
+      const run = runPilot(circuit.track, { grip });
+      if (!run.valid) continue;
+      const medal = medalFor(run.finishMs, medals);
+      if (day < o.today ? medal !== null : medal === "gold") chosen = { code: encodeReplay(run.replay), ms: run.finishMs };
+    }
+    if (!chosen) {
+      // Aucun réglage du pilote ne tombe dans l'or ce jour-là : la course la plus proche (le portail montre alors une autre médaille).
+      const run = runPilot(circuit.track, { grip: 0.9 });
+      if (!run.valid) throw new Error(`joueur de démonstration : le pilote ne finit pas le circuit du ${formatDay(day)}`);
+      chosen = { code: encodeReplay(run.replay), ms: run.finishMs };
+    }
+    clock = parisDayStart(day) + 12 * 3_600_000;
+    const r = must(`Track ${formatDay(day)}`, await call("POST", "/api/submit", { playerId: DEMO_JOUEUR_ID, name: DEMO_JOUEUR_NOM, date: formatDay(day), replay: chosen.code }));
+    report.track.push({ date: formatDay(day), ms: r.ms as number, medal: (r.medal as string | null) ?? null });
+  }
+
+  // 3. Jump : avant-hier et hier, un essai qui arrive (rejoué) ; les jours d'avant le premier niveau sont sautés.
+  const asDemo = { "X-Player-Id": DEMO_JOUEUR_ID };
+  for (let day = o.today - DEMO_JOURS_JUMP; day < o.today; day++) {
+    if (day < PREMIER_JOUR_JUMP) continue;
+    const d = jumpDailyOf(day, o.frozen);
+    const attempt = demoAttempts(d.level, d.replay, 0xde30 + day, { attempts: 24 }).find((a) => a.end === "arrivée" && replayAttempt(d.level, a.replay, d.id).finished);
+    clock = parisDayStart(day) + 12 * 3_600_000;
+    const body = { levelId: d.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: attempt ? encodeJump(attempt.replay) : d.code };
+    const r = must(`Jump ${formatDay(day)}`, await call("POST", "/api/jump/submit", body, asDemo));
+    report.jump.push({ date: formatDay(day), ticks: r.ticks as number });
+  }
+
+  // 4. Jump aujourd'hui : en cours — des morts (des vies rejouées qui finissent par une mort), aucun essai classé.
+  if (o.today >= PREMIER_JOUR_JUMP) {
+    const d = jumpDailyOf(o.today, o.frozen);
+    const lives: string[] = [];
+    for (const a of demoAttempts(d.level, d.replay, 0xde31, { attempts: 30, maxLives: 8 })) {
+      for (const life of replayAttempt(d.level, a.replay, d.id).lives) {
+        const code = encodeJump(lifeReplay(a.replay, life));
+        if (life.end === "mort" && lives.length < DEMO_MORTS && !lives.includes(code)) lives.push(code);
+      }
+    }
+    clock = parisDayStart(o.today) + 12 * 3_600_000;
+    const r = must("vies de Jump", await call("POST", "/api/jump/lives", { levelId: d.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives }, asDemo));
+    report.morts = r.dayCount as number;
+  }
+  return report;
+}

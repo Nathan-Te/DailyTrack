@@ -36,13 +36,13 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `method_not_allowed` | 405 | La route existe, mais pas pour cette méthode HTTP (le message dit laquelle est attendue). | toutes les routes |
 | `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON. | tous les envois (`POST`, `PUT`) |
 | `too_large` | 413 | Le corps dépasse la taille permise (`MAX_BODY_BYTES`), annoncée ou lue. | tous les envois |
-| `rate_limited` | 429 | Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (`Retry-After`). | envois, `/api/name`, `/api/me`, lectures du Salon et de DailyJump, `/api/admin/*` |
+| `rate_limited` | 429 | Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (`Retry-After`). | envois, `/api/name`, `/api/me`, lectures du Salon, de DailyJump et du portail, `/api/admin/*` |
 | `busy` | 503 | Serveur saturé : plafond de rejeux par minute de l'instance atteint (`Retry-After`), ou envois simultanés de vies du même joueur impossibles à fusionner. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit`, `/api/jump/lives` |
 | `internal` | 500 | Erreur inattendue du serveur (défaut du code, base qui ne répond plus pendant une route) ; aucun détail. | toutes |
 | `db_unavailable` | 503 | `/api/health` : la base de données ne répond pas. | `GET /api/health` |
-| `invalid_player` | 400 | Identifiant de joueur manquant ou mal formé (en-tête `X-Player-Id` ou corps), ou nouvel identifiant identique à l'ancien. | `/api/me`, `/api/me/code`, `PUT /api/player`, `/api/submit`, Salon, `/api/jump/me`, `/api/jump/submit`, `/api/jump/lives`, lectures avec `X-Player-Id` |
-| `unknown_player` | 404 | Aucun joueur sur le serveur pour cet identifiant (jamais classé), ou aucun profil à effacer pour ce code. | `GET /api/me`, `PUT /api/player`, `POST /api/me/code`, `GET /api/jump/me`, `POST /api/jump/lives`, `POST /api/admin/effacer` |
-| `code_revoked` | 410 | Ce code (identifiant secret) a été remplacé par « Changer mon code ». | `/api/me`, `/api/me/code`, `PUT /api/player`, envois des deux jeux, `/api/jump/me`, `POST /api/admin/effacer` |
+| `invalid_player` | 400 | Identifiant de joueur manquant ou mal formé (en-tête `X-Player-Id` ou corps), ou nouvel identifiant identique à l'ancien. | `/api/me`, `/api/me/code`, `PUT /api/player`, `/api/submit`, Salon, `/api/jump/me`, `/api/jump/submit`, `/api/jump/lives`, `/api/portail/*`, lectures avec `X-Player-Id` |
+| `unknown_player` | 404 | Aucun joueur sur le serveur pour cet identifiant (jamais classé), ou aucun profil à effacer pour ce code. | `GET /api/me`, `PUT /api/player`, `POST /api/me/code`, `GET /api/jump/me`, `POST /api/jump/lives`, `POST /api/admin/effacer`, `GET /api/portail/jour` et `/api/portail/profil` (lot I2 : le corps porte quand même les jeux du jour) |
+| `code_revoked` | 410 | Ce code (identifiant secret) a été remplacé par « Changer mon code ». | `/api/me`, `/api/me/code`, `PUT /api/player`, envois des deux jeux, `/api/jump/me`, `POST /api/admin/effacer`, `/api/portail/*` (lot I2) |
 | `id_taken` | 409 | « Changer mon code » : le nouvel identifiant est déjà pris (recommencer). | `POST /api/me/code` |
 | `invalid_name` | 400 | Pseudo invalide (longueur ou caractères hors des règles). | `GET /api/name`, `PUT /api/player`, envois avec `name` |
 | `name_forbidden` | 400 | Pseudo refusé : mot interdit ou nom réservé. | `GET /api/name`, `PUT /api/player`, envois avec `name` |
@@ -50,7 +50,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `name_required` | 400 | Premier envoi d'un joueur inconnu sans pseudo. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit` |
 | `invalid_code` | 400 | Admin, effacement : code de transfert mal formé ou abîmé (somme de contrôle). | `POST /api/admin/effacer` |
 | `unauthorized` | 401 | Admin : jeton manquant ou incorrect. | `/api/admin/*` |
-| `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…`, `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…` |
+| `invalid_date` | 400 | Date illisible (`AAAA-MM-JJ` attendue). | `/api/day/<j>…` (lot I2 : un encodage illisible aussi, plus jamais 500), `/api/submit`, `/api/admin/planning/<j>`, `/api/jump/day/<j>…` |
 | `unknown_day` | 404 | Ce jour n'a pas (encore) de circuit ou de niveau : futur, ou avant le premier jour du jeu. | `/api/day/<j>…`, `/api/submit`, `/api/jump/day/<j>…` |
 | `day_closed` | 409 | Envoi pour un jour dont le classement est figé (jour passé, après la grâce de 10 minutes). | `POST /api/submit`, `/api/jump/submit`, `/api/jump/lives` |
 | `day_started` | 409 | Admin, planning : ce jour a déjà commencé, son circuit ne peut plus être remplacé. | `PUT` / `DELETE /api/admin/planning/<j>` |

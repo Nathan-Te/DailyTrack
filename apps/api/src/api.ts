@@ -5,10 +5,11 @@ import { WithHeaders, mergeVary } from "./cache";
 import type { SqlDb } from "./db";
 import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
-import type { GameInstance, RequestInfo } from "./games";
+import type { GameDefinition, GameInstance, RequestInfo } from "./games";
 import { createIdentityRoutes } from "./identity";
 import { silentLog, type Logger } from "./log";
 import { DEFAULT_LIMITS, createPlatform } from "./platform";
+import { createPortailRoutes } from "./portail";
 import { GAMES } from "./registry";
 import { salonSessionMs, type SalonLimits } from "./salon";
 
@@ -74,6 +75,11 @@ export interface ApiOptions {
   environment?: string;
   /** Lot P0 : les niveaux figés de DailyJump inclus dans l'image (date → contenu du fichier), lus à la construction. */
   jumpFrozen?: Readonly<Record<string, unknown>>;
+  /**
+   * Lot I2 : le registre des jeux (`GAMES` par défaut). **Tests seulement** (un faux jeu n° 3 prouve que le portail ne change pas) : `server.ts`
+   * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
+   */
+  games?: readonly GameDefinition<never>[];
 }
 
 export function createApi(options: ApiOptions) {
@@ -103,14 +109,19 @@ export function createApi(options: ApiOptions) {
     cdj: { adminToken: options.adminToken, salonMinutes: options.salonMinutes, salonLimits: options.salonLimits, demoPlayers: options.demoPlayers } satisfies CdjOptions,
     jump: { frozen: options.jumpFrozen },
   };
-  for (const g of GAMES) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
+  for (const g of options.games ?? GAMES) instances.push({ code: g.code, prefix: g.prefix, instance: g.create(platform, gameOptions[g.code] as never) });
   const byPrefix = [...instances].sort((a, b) => b.prefix.length - a.prefix.length);
-  const cdj = instances.find((g) => g.code === "cdj")!.instance as CdjInstance;
+  const cdj = instances.find((g) => g.code === "cdj")!.instance as CdjInstance; // DailyTrack est toujours au registre (admin, Salon)
   // Lot R5 : les routes d'admin de la plateforme (effacement d'un joueur) gardées par le jeton de l'admin de DailyTrack (`ADMIN_TOKEN`).
   const identity = createIdentityRoutes(
     platform,
     instances.map((g) => g.instance),
     (req, info) => cdj.requireAdmin(req, info),
+  );
+  // Lot I2 : le portail (accueil et profil commun), à partir de ce que chaque jeu déclare (crochet `portail`).
+  const portail = createPortailRoutes(
+    platform,
+    instances.flatMap((g) => (g.instance.portail ? [{ code: g.code, portail: g.instance.portail }] : [])),
   );
   const salon = cdj.salon;
   const today = platform.today;
@@ -201,7 +212,7 @@ export function createApi(options: ApiOptions) {
       await ensureSchema();
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
-      const common = await identity.route(path, req, url, info);
+      const common = (await identity.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));
       if (common !== undefined) return answer(reply, common);
       for (const g of byPrefix) {
         if (path !== g.prefix && !path.startsWith(`${g.prefix}/`)) continue;

@@ -63,7 +63,14 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
 
   // --- Entête ---
   const head = el("header", "home-head");
-  head.append(el("h1", "", "Circuit du Jour"), el("p", "tagline", TAGLINE));
+  // Lot I2 de la plateforme : le retour discret au portail « Du Jour » (à garder quand l'interface passera au socle, lot I4 : la barre
+  // `barreJeu` de @cdj/ui le porte). Texte en français tant que le jeu l'est ; clés prêtes : `barre.retour`, `barre.retour.aria` (catalogue commun).
+  const portail = el("a", "btn link home-portail", "‹ Du Jour");
+  portail.id = "home-portail";
+  portail.setAttribute("href", "../");
+  portail.setAttribute("aria-label", "Retour au portail Du Jour");
+  portail.dataset.t = "barre.retour";
+  head.append(portail, el("h1", "", "Circuit du Jour"), el("p", "tagline", TAGLINE));
 
   // --- Circuit du jour ---
   const today = el("section", "card today");

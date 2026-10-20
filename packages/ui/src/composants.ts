@@ -73,6 +73,8 @@ export interface OptionsEtiquette {
   texte?: string;
   /** Le niveau de titre (h2 par défaut). */
   niveau?: "h2" | "h3";
+  /** Lot I2 : ce qui suit le texte dans l'étiquette (le statut du joueur sur le portail), fourni par l'appelant. */
+  suite?: HTMLElement;
 }
 
 /** L'étiquette Track : asphalte, bandes de livrée à 115° sur le bord droit, nom en Barlow Condensed italique. */
@@ -83,6 +85,7 @@ export function etiquetteTrack(o: OptionsEtiquette): HTMLElement {
     el("div", { classe: "track-etiquette__livree", attrs: { "aria-hidden": "true" } }),
     el("div", { classe: "track-etiquette__tete" }, el(o.niveau ?? "h2", { classe: "track-etiquette__titre", texte: o.titre }), o.numero ? el("span", { classe: "track-etiquette__numero", texte: o.numero }) : null),
     o.texte ? el("p", { classe: "track-etiquette__texte", texte: o.texte }) : null,
+    o.suite ? el("div", { classe: "track-etiquette__suite" }, o.suite) : null,
   );
 }
 
@@ -110,6 +113,7 @@ export function etiquetteJump(o: OptionsEtiquette): HTMLElement {
       { classe: "jump-etiquette__corps" },
       el("div", { classe: "jump-etiquette__tete" }, el(o.niveau ?? "h2", { classe: "jump-etiquette__titre", texte: o.titre }), o.numero ? el("span", { classe: "jump-etiquette__numero", texte: o.numero }) : null),
       o.texte ? el("p", { classe: "jump-etiquette__texte", texte: o.texte }) : null,
+      o.suite ? el("div", { classe: "jump-etiquette__suite" }, o.suite) : null,
     ),
     dessinJump(),
   );
@@ -153,19 +157,26 @@ export function initiales(pseudo: string, langue: Langue): string {
   return [...pseudo.normalize("NFC").replace(/[^\p{L}\p{N}]/gu, "")].slice(0, 2).join("").toLocaleUpperCase(langue === "fr" ? "fr-FR" : "en-US");
 }
 
-/** L'avatar : les initiales du pseudo s'il y en a un, sinon l'icône profil. Non interactif au lot I1 (le profil commun arrive au lot I2). */
-export function avatar(t: TraducteurCommun, o: { pseudo: string | null }): HTMLElement {
+/**
+ * L'avatar : les initiales du pseudo s'il y en a un, sinon l'icône profil. Lot I2 : avec `href`, un lien vers le profil commun (cible de 44 px,
+ * nommé « Ton profil… ») ; sans, une image (lot I1).
+ */
+export function avatar(t: TraducteurCommun, o: { pseudo: string | null; href?: string }): HTMLElement {
   const ini = o.pseudo ? initiales(o.pseudo, t.langue) : "";
-  return el(
-    "span",
-    { classe: ["dj-avatar", !ini && "dj-avatar--vide"], attrs: { role: "img", "aria-label": ini ? t.t("profil.avatar", { nom: o.pseudo! }) : t.t("profil.aucun") } },
-    ini ? el("span", { attrs: { "aria-hidden": "true" }, texte: ini }) : icone("profil", { taille: 22 }),
-  );
+  const nom = ini ? t.t("profil.avatar", { nom: o.pseudo! }) : t.t(o.href !== undefined ? "profil.ouvrir" : "profil.aucun");
+  const contenu = ini ? el("span", { attrs: { "aria-hidden": "true" }, texte: ini }) : icone("profil", { taille: 22 });
+  const classe = ["dj-avatar", !ini && "dj-avatar--vide", o.href !== undefined && "dj-avatar--lien"];
+  return o.href !== undefined ? el("a", { classe, attrs: { href: o.href, "aria-label": nom } }, contenu) : el("span", { classe, attrs: { role: "img", "aria-label": nom } }, contenu);
 }
 
-/** La barre du portail : logo à gauche ; à droite le choix de langue et l'avatar. */
-export function barrePortail(t: TraducteurCommun, o: { langue: Langue; onLangue?: (l: Langue) => void; pseudo: string | null }): HTMLElement {
-  return el("header", { classe: "dj-barre-portail" }, logo(t), el("div", { classe: "dj-barre-portail__droite" }, choixLangue(t, { langue: o.langue, onChange: o.onLangue }), avatar(t, { pseudo: o.pseudo })));
+/** La barre du portail : logo à gauche ; à droite le choix de langue et l'avatar (lot I2 : un lien vers le profil commun avec `profil`). */
+export function barrePortail(t: TraducteurCommun, o: { langue: Langue; onLangue?: (l: Langue) => void; pseudo: string | null; profil?: string }): HTMLElement {
+  return el(
+    "header",
+    { classe: "dj-barre-portail" },
+    logo(t),
+    el("div", { classe: "dj-barre-portail__droite" }, choixLangue(t, { langue: o.langue, onChange: o.onLangue }), avatar(t, { pseudo: o.pseudo, href: o.profil })),
+  );
 }
 
 /** La barre des jeux : « ‹ DU JOUR » (lien vers le portail, 44 px) et, à droite en mono, la date et le numéro du jour. */

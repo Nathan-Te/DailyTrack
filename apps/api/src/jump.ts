@@ -21,7 +21,7 @@ import {
 } from "@cdj/jump-sim";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { HttpError } from "./errors";
-import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } from "./games";
+import type { GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
 
 // DailyJump (`jump`) au registre des jeux. Lot P0 de la plateforme : l'espace `/api/jump/` en lecture ; lot P1 : **le classement du jour
@@ -79,6 +79,8 @@ export const JUMP_READS_PER_CLIENT = 120;
 export const JUMP_ME_PER_PLAYER = 60;
 /** Lot P2 : fantômes du premier d'un jour passé gardés en mémoire (figés : le premier d'un jour fini ne change plus). */
 const GHOST_CACHE_MAX = 64;
+/** Lot I2 : durée de vie en mémoire du nombre de classés du jour montré par le portail (l'écart minimal entre deux relectures du jeu). */
+export const JUMP_CLASSES_MEMO_MS = 30_000;
 /** Lot R5 : durée de vie en mémoire du premier d'un jour fermé (un effacement fait sur une autre instance s'y voit au plus après ce délai). */
 export const CLOSED_GHOST_TTL_MS = 10 * 60_000;
 
@@ -101,7 +103,8 @@ export const JUMP_SCHEMA: string[] = [
    )`,
   // Lot P1 : meilleur essai de chaque joueur pour chaque jour, **rejoué par le serveur** : sa rediffusion (le fantôme du premier, lot P2), son
   // temps en pas et ses morts (ceux du rejeu), les versions qui l'ont rejoué, le premier envoi valide du jour et l'envoi du meilleur (qui
-  // départage les égalités). Remplacé seulement par un temps strictement meilleur.
+  // départage les égalités). Remplacé seulement par un temps strictement meilleur. Lot I2 : `final_rank` / `final_total`, la place et le nombre
+  // de classés d'un jour fermé, calculés une fois (au premier profil commun lu après la grâce) puis gardés, comme `results` de DailyTrack.
   `CREATE TABLE IF NOT EXISTS jump_results (
      day INTEGER NOT NULL,
      player_id TEXT NOT NULL,
@@ -113,6 +116,8 @@ export const JUMP_SCHEMA: string[] = [
      generator_version INTEGER NOT NULL,
      first_at INTEGER NOT NULL,
      submitted_at INTEGER NOT NULL,
+     final_rank INTEGER,
+     final_total INTEGER,
      PRIMARY KEY (day, player_id)
    )`,
   `CREATE INDEX IF NOT EXISTS jump_results_by_time ON jump_results (day, ticks, submitted_at, player_id)`,
@@ -740,8 +745,94 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     return undefined;
   }
 
+  // --- Lot I2 : ce que le portail montre de DailyJump (`portail.ts`) -----------------------------------------------------------
+  // Le niveau du jour (`getLevel` : figé ou généré, gardé) donne le numéro, le thème et les seuils (en pas, rendus en ms) ; l'état du joueur vient
+  // de `jump_results` (classement prouvé) puis, sans essai classé, de `jump_lives` (des morts envoyées ce jour-là : `en_cours`).
+  const msOfTicks = (ticks: number) => Math.round((ticks * 1000) / TICK_RATE);
+  const classesMemo = new Map<number, { at: number; n: number }>();
+  async function classesDuJour(day: number): Promise<number> {
+    const kept = classesMemo.get(day);
+    if (kept && now() - kept.at < JUMP_CLASSES_MEMO_MS) return kept.n;
+    const n = await participants(day);
+    if (classesMemo.size > 8) classesMemo.clear();
+    classesMemo.set(day, { at: now(), n });
+    return n;
+  }
+
+  /**
+   * Le profil commun : jours classés, médailles, meilleure place. La place d'un jour fermé est calculée une fois (`final_rank`, `final_total`)
+   * puis gardée (un jour fermé est figé : la relire coûterait une ligne par classé et par jour) ; aujourd'hui (et hier pendant la grâce) : la
+   * place du moment.
+   */
+  async function profilPortail(id: string): Promise<{ joursFinis: number; medailles: Record<MedaillePortail, number>; meilleurRang: { date: string; rang: number; classes: number } | null }> {
+    const rows = await db.all<{ day: number; level_id: string; ticks: number; submitted_at: number; final_rank: number | null; final_total: number | null; l_id: string | null; medals: string | null }>(
+      "SELECT r.day AS day, r.level_id AS level_id, r.ticks AS ticks, r.submitted_at AS submitted_at, r.final_rank AS final_rank, r.final_total AS final_total, l.level_id AS l_id, l.medals AS medals FROM jump_results r LEFT JOIN jump_levels l ON l.day = r.day WHERE r.player_id = ?",
+      [id],
+    );
+    const closedBefore = isOpen(today() - 1) ? today() - 1 : today();
+    if (rows.some((r) => r.final_rank === null && r.day < closedBefore)) {
+      const done = await db.all<{ day: number; final_rank: number; final_total: number }>(
+        `UPDATE jump_results SET
+           final_rank = (SELECT COUNT(*) FROM jump_results x WHERE x.day = jump_results.day AND (x.ticks < jump_results.ticks OR (x.ticks = jump_results.ticks
+             AND (x.submitted_at < jump_results.submitted_at OR (x.submitted_at = jump_results.submitted_at AND x.player_id < jump_results.player_id))))) + 1,
+           final_total = (SELECT COUNT(*) FROM jump_results x WHERE x.day = jump_results.day)
+         WHERE player_id = ? AND final_rank IS NULL AND day < ? RETURNING day, final_rank, final_total`,
+        [id, closedBefore],
+      );
+      const byDay = new Map(done.map((d) => [d.day, d]));
+      for (const r of rows) {
+        const d = byDay.get(r.day);
+        if (d) {
+          r.final_rank = d.final_rank;
+          r.final_total = d.final_total;
+        }
+      }
+    }
+    const medailles: Record<MedaillePortail, number> = { author: 0, gold: 0, silver: 0, bronze: 0 };
+    let meilleurRang: { date: string; rang: number; classes: number } | null = null;
+    for (const r of rows) {
+      if (r.medals !== null && r.l_id === r.level_id) {
+        try {
+          const m = jumpMedalFor(r.ticks, JSON.parse(r.medals) as JumpMedals);
+          if (m) medailles[m]++;
+        } catch {
+          /* médailles illisibles : le jour compte, pas sa médaille */
+        }
+      }
+      const rang = r.final_rank ?? (await rankOf(r.day, r.ticks, r.submitted_at, id));
+      const classes = r.final_total ?? (await participants(r.day));
+      if (!meilleurRang || rang < meilleurRang.rang || (rang === meilleurRang.rang && classes > meilleurRang.classes)) meilleurRang = { date: formatDay(r.day), rang, classes };
+    }
+    return { joursFinis: rows.length, medailles, meilleurRang };
+  }
+
+  const portail: PortailDuJeu = {
+    premierJour: PREMIER_JOUR_JUMP,
+    async jour(day) {
+      const l = await getLevel(day);
+      return {
+        numero: l.number,
+        theme: l.theme,
+        seuils: { author: msOfTicks(l.medals.author), gold: msOfTicks(l.medals.gold), silver: msOfTicks(l.medals.silver), bronze: msOfTicks(l.medals.bronze) },
+      };
+    },
+    async etat(id, day) {
+      const own = await db.first<{ ticks: number; submitted_at: number }>("SELECT ticks, submitted_at FROM jump_results WHERE day = ? AND player_id = ?", [day, id]);
+      if (own) {
+        const [rang, classes, level] = await Promise.all([rankOf(day, own.ticks, own.submitted_at, id), classesDuJour(day), getLevel(day)]);
+        return { statut: "fini", tempsMs: msOfTicks(own.ticks), medaille: jumpMedalFor(own.ticks, level.medals), rang, classes: Math.max(classes, rang) };
+      }
+      // Pas d'essai classé : des morts envoyées ce jour-là (les vies du jour, oubliées à la fin du jour) disent que le joueur a commencé.
+      const vies = await db.first<{ count: number }>("SELECT count FROM jump_lives WHERE day = ? AND player_id = ?", [day, id]);
+      return vies && vies.count > 0 ? { statut: "en_cours", morts: vies.count } : { statut: "pas_joue" };
+    },
+    joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM jump_results WHERE player_id = ?", [id])).map((r) => r.day),
+    profil: profilPortail,
+  };
+
   return {
     route,
+    portail,
     dailyLevel: getLevel,
     // Le registre : la validation d'un essai (le niveau du jour, les versions du code, le rejeu). Le temps rendu est celui du rejeu, en ms.
     validate: async (day, code) => {
@@ -765,7 +856,12 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       const l = await lives.erase(playerId);
       return {
         counts: { essaisDailyJump: n?.n ?? 0, ...l.counts },
-        statements: [{ sql: "DELETE FROM jump_results WHERE player_id = ?", params: [playerId] }, ...l.statements],
+        statements: [
+          // Lot I2 : les places finales des jours concernés sont recalculées sans lui (à la prochaine lecture du profil commun des autres).
+          { sql: "UPDATE jump_results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM jump_results WHERE player_id = ?)", params: [playerId] },
+          { sql: "DELETE FROM jump_results WHERE player_id = ?", params: [playerId] },
+          ...l.statements,
+        ],
       };
     },
     onErased: () => {

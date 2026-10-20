@@ -23,7 +23,7 @@ import {
   type Track,
 } from "@cdj/sim";
 import { HttpError } from "./errors";
-import type { GameDefinition, GameInstance, Platform, RequestInfo, Statement } from "./games";
+import type { GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
 
 // DailyTrack (`cdj`) au registre des jeux (lot P0 de la plateforme) : le classement du jour (lot 5), le planning et l'admin (lot 14), le Salon
@@ -42,6 +42,8 @@ export const ADMIN_TOKEN_MIN = 16;
 export const PLANNING_HORIZON = 60;
 /** Mauvais jetons tolérés par fenêtre de débit et par adresse, avant de bloquer (même avec le bon jeton). */
 export const ADMIN_MAX_FAILURES = 10;
+/** Lot I2 : durée de vie en mémoire du nombre de classés du jour montré par le portail (l'écart minimal entre deux relectures d'un jeu). */
+export const CLASSES_MEMO_MS = 30_000;
 
 /** Tables de DailyTrack. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
 export const CDJ_SCHEMA: string[] = [
@@ -603,6 +605,18 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     return { name: row.name, rank: offset + 1, ms: row.ms, splits: JSON.parse(row.splits) as number[], replay: row.replay, simVersion: SIM_VERSION };
   }
 
+  /**
+   * Lot I2 : la date d'une adresse (`/api/day/<date>`, `/api/admin/planning/<date>`). Un encodage illisible (`%E0`) est une date invalide
+   * (400 `invalid_date`, comme le Salon et DailyJump), jamais une erreur interne.
+   */
+  function decodeDate(raw: string): string {
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
+    }
+  }
+
   /** Les routes de DailyTrack (chemins historiques, sous `/api`) ; `undefined` : ce chemin n'est pas à DailyTrack. */
   async function route(path: string, req: Request, url: URL, info: RequestInfo): Promise<unknown> {
     if (path === "/api/submit") {
@@ -621,7 +635,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       }
       const pm = /^\/api\/admin\/planning\/([^/]+)$/.exec(path);
       if (pm) {
-        const date = decodeURIComponent(pm[1]!);
+        const date = decodeDate(pm[1]!);
         if (req.method === "PUT") return await replaceCircuit(req, date);
         if (req.method === "DELETE") return await revertCircuit(date);
         throw new HttpError(405, "method_not_allowed", "PUT ou DELETE attendu");
@@ -654,7 +668,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const m = /^\/api\/day\/([^/]+)(?:\/(leaderboard|ghost))?$/.exec(path);
     if (m) {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-      const date = decodeURIComponent(m[1]!);
+      const date = decodeDate(m[1]!);
       if (m[2] === "leaderboard") return await leaderboard(date, url);
       if (m[2] === "ghost") return await ghost(date, url);
       return await dayInfo(date);
@@ -662,9 +676,50 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     return undefined;
   }
 
+  // --- Lot I2 : ce que le portail montre de DailyTrack (`portail.ts`) --------------------------------------------------------
+  // Le circuit en vigueur (planning compris) donne le thème et les seuils ; l'état du joueur vient de `results` (le classement prouvé :
+  // temps rejoué par le serveur). DailyTrack ne sait pas qu'un joueur a commencé sans finir : il ne déclare jamais `en_cours`.
+  /** Classés du jour en cours, gardés `CLASSES_MEMO_MS` par instance : le portail se lit souvent, et compter les classés lit une ligne par classé. */
+  const classesMemo = new Map<number, { at: number; n: number }>();
+  async function classesDuJour(day: number): Promise<number> {
+    const kept = classesMemo.get(day);
+    if (kept && now() - kept.at < CLASSES_MEMO_MS) return kept.n;
+    const n = await participants(day);
+    if (classesMemo.size > 8) classesMemo.clear();
+    classesMemo.set(day, { at: now(), n });
+    return n;
+  }
+
+  const portail: PortailDuJeu = {
+    premierJour: PREMIER_JOUR,
+    async jour(day) {
+      const c = await getCircuit(day);
+      const m = medalsFor(c.authorMs);
+      return { numero: circuitNumber(day), theme: c.theme ?? themeForDay(day).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } };
+    },
+    async etat(id, day) {
+      const own = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, id]);
+      if (!own) return { statut: "pas_joue" };
+      const [rang, classes, circuit] = await Promise.all([rankOf(day, own.ms, own.submitted_at), classesDuJour(day), getCircuit(day)]);
+      // Les classés gardés en mémoire peuvent dater de quelques secondes : jamais moins que le rang.
+      return { statut: "fini", tempsMs: own.ms, medaille: medalFor(own.ms, medalsFor(circuit.authorMs)) as Medal | null, rang, classes: Math.max(classes, rang) };
+    },
+    joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM results WHERE player_id = ?", [id])).map((r) => r.day),
+    // Le même calcul que `GET /api/me` (places des jours fermés gardées une fois calculées) : le profil commun dit la même chose que le jeu.
+    async profil(id) {
+      const stats = (await profile(id)).stats as { days: number; medals: Record<Medal, number>; bestRank: { date: string; rank: number; participants: number } | null };
+      return {
+        joursFinis: stats.days,
+        medailles: stats.medals,
+        meilleurRang: stats.bestRank ? { date: stats.bestRank.date, rang: stats.bestRank.rank, classes: stats.bestRank.participants } : null,
+      };
+    },
+  };
+
   return {
     route,
     salon,
+    portail,
     dailyLevel: (day) => getCircuit(day),
     validate: async (day, code) => ({ ms: (await validateRun(day, code)).result.finishMs }),
     profile,

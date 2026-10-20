@@ -28,6 +28,8 @@ Un seul serveur (`createApi`, Cloud Run + Turso), une seule identité, un seul p
 | `GET /api/jump/day/<date>/deaths` · `/carnage` | carte des morts · échantillon du carnage (≈ 150 vies) | P3 |
 | **`GET /api/jump/day/<date>/bundle`** | **lecture regroupée** : classement, premier, carte (+ profil du jour avec `X-Player-Id`) | P4 |
 
+**Portail** (lot I2, `portail.ts`) : `GET /api/portail/jour` (les jeux du jour, l'heure du serveur, le prochain minuit de Paris ; avec `X-Player-Id` : l'état du joueur dans chaque jeu, la série tous jeux confondus, les journées parfaites ; publique ≤ 60 s sans joueur, `private` avec) · `GET /api/portail/profil` (le profil commun). Chaque jeu déclare au registre ce que le portail montre de lui (crochet `portail` : numéro, thème, seuils, premier jour, état du joueur) : `apps/api/CLAUDE.md`, « Portail (lot I2) ».
+
 **En-têtes de cache (P4)** : lectures d'un jour fermé `max-age=86400`, du jour en cours `max-age=30` ; **tout ce qui dépend de `X-Player-Id` est `private` + `Vary: X-Player-Id`, jamais en cache partagé** ; le reste `public` ; erreurs, envois et DailyTrack : `no-store` (`cache.ts`).
 
 ## 4. Les tables et leur durée de vie
@@ -42,7 +44,7 @@ Un seul serveur (`createApi`, Cloud Run + Turso), une seule identité, un seul p
 | `salon_runs`, `salon_sessions`, `salon_circuits` | une session du Salon | **oubliée à fin + 20 s** | 27, 27b |
 | `salon_presence`, `salon_throttle` | présence, débit du Salon | 10 min, 1 h | 27b |
 | `jump_levels` | niveau du jour de chaque date (texte compris, jamais rendu) | permanente (cache recalculable) | P0 |
-| `jump_results` | meilleur essai par joueur et par jour, avec sa rediffusion | permanente | P1 |
+| `jump_results` | meilleur essai par joueur et par jour, avec sa rediffusion (lot I2 : et sa place finale, une fois le jour fermé) | permanente | P1, I2 |
 | `jump_lives` | les vies du jour (une ligne par joueur) | **oubliée à la fin du jour** | P3 |
 | `jump_deaths` | carte et échantillon du jour (une ligne par jour), figés à la fin du jour | permanente | P3 |
 

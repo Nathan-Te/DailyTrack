@@ -13,6 +13,8 @@ import { startSite } from "./domaine-serveurs";
 //   - captures (portrait 390 × 844, paysage 844 × 390, FR et EN, portail et vitrine) jointes au rapport ; avec `CAPTURES=1`, écrites aussi
 //     dans docs/plateforme/lots/img/ (README du lot I1).
 // Le portail est construit ici (vite build, avec la vitrine : comme la recette) et servi sur le port 4178 (réservé) ; aucun jeu n'est nécessaire.
+// Lot I2 : ici le serveur est injoignable (port 9) — le portail reste entier (cartouches, liens) ; l'accueil riche avec un serveur est testé
+// par portail-jour.spec.ts.
 test.describe.configure({ mode: "serial" });
 const expect = baseExpect.configure({ timeout: 15_000 });
 
@@ -68,8 +70,9 @@ test("portail en français : barre, date, une cartouche par jeu (numéro du jour
   await expect(page.locator('[data-jeu="track"] a.dj-bouton')).toHaveAccessibleName("Jouer à Track");
   await expect(page.locator("#mentions")).toHaveText("Mentions légales et confidentialité");
   await expect(page.locator("#mentions")).toHaveAttribute("href", "mentions-legales/");
-  // Sans pseudo : l'icône profil ; les polices de la charte chargées (aucune police système).
-  await expect(page.locator(".dj-avatar")).toHaveAccessibleName("Pas encore de profil");
+  // Sans pseudo : l'icône profil (lot I2 : un lien vers le profil commun) ; les polices de la charte chargées (aucune police système).
+  await expect(page.locator(".dj-avatar")).toHaveAccessibleName("Ton profil");
+  await expect(page.locator(".dj-avatar")).toHaveAttribute("href", "profil/");
   expect(await page.evaluate(async () => (await document.fonts.ready, ["Archivo Black", "Archivo", "JetBrains Mono", "Lilita One"].every((f) => document.fonts.check(`16px "${f}"`))))).toBe(true);
   await capture(page, "portail-portrait-fr");
 });
@@ -129,7 +132,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
   const page = await (await newClockedContext(browser, { viewport: { width: 1024, height: 768 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
-  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#mentions"];
+  const attendus = ['[data-langue="fr"]', '[data-langue="en"]', ".dj-avatar", '[data-jeu="track"] a.dj-bouton', '[data-jeu="jump"] a.dj-bouton', "#mentions"];
   for (const sel of attendus) {
     await page.keyboard.press("Tab");
     await expect(page.locator(sel), sel).toBeFocused();

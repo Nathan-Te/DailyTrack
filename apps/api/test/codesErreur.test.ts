@@ -48,7 +48,8 @@ const ROUTES = [
   `/api/day/${D}/ghost?kind=ahead&player=${playerId(77)}`,
   `/api/day/${D}/autre`,
   "/api/day/pas-une-date",
-  "/api/day/%E0", // encodage illisible : aujourd'hui 500 `internal` (decodeURIComponent non gardé dans cdj.ts), code de la liste quand même
+  "/api/day/%E0", // encodage illisible : 400 `invalid_date` depuis le lot I2 (était 500 `internal` : decodeURIComponent non gardé dans cdj.ts)
+  "/api/day/%E0/leaderboard",
   "/api/day/2099-01-01",
   "/api/day/2020-01-01",
   "/api/admin/overview",
@@ -56,6 +57,7 @@ const ROUTES = [
   `/api/admin/planning/${formatDay(TODAY + 5)}`,
   `/api/admin/planning/${J}`,
   "/api/admin/planning/pas-une-date",
+  "/api/admin/planning/%E0",
   "/api/admin/inconnue",
   // Salon (salon.ts)
   "/api/salon/now",
@@ -86,6 +88,11 @@ const ROUTES = [
   "/api/jump/day/pas-une-date",
   "/api/jump/day/%ZZ",
   "/api/jump/inconnue",
+  // Portail (portail.ts, lot I2)
+  "/api/portail",
+  "/api/portail/jour",
+  "/api/portail/profil",
+  "/api/portail/autre",
 ];
 
 const METHODS = ["GET", "POST", "PUT", "DELETE"] as const;
@@ -143,6 +150,8 @@ describe(`codes d'erreur : parcours des routes (${TEST_DB})`, () => {
     ] satisfies CodeErreur[]) {
       expect(seen.get(code) ?? 0, `code « ${code} » jamais rendu par le parcours`).toBeGreaterThan(0);
     }
+    // Lot I2 : plus aucune erreur interne sur une entrée mal formée (le parcours n'envoie que des entrées fausses, jamais une panne).
+    expect(seen.get("internal") ?? 0, "une entrée mal formée a rendu 500 `internal`").toBe(0);
   }, 120_000);
 
   it("admin désactivé (sans jeton) : ses routes répondent `not_found`, avec le statut de la liste", async () => {

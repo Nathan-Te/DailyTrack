@@ -111,10 +111,21 @@ function bloc(l: Langue): HTMLElement {
       t.t("vitrine.section.marque"),
       `marque-${l}`,
       el("div", { classe: "vitrine-ligne" }, logo(t), logo(t, { taille: "petit" })),
-      barrePortail(t, { langue: l, pseudo: "Nathan" }),
-      barrePortail(t, { langue: l, pseudo: null }),
+      barrePortail(t, { langue: l, pseudo: "Nathan", profil: "#" }),
+      barrePortail(t, { langue: l, pseudo: null, profil: "#" }),
       barreJeu(t, { href: "../", jour, numero: 12 }),
       el("div", { classe: "vitrine-ligne" }, choixLangue(t, { langue: l }), avatar(t, { pseudo: "Kiwi" }), avatar(t, { pseudo: null })),
+      // Lot I2 : l'avatar lien vers le profil commun (normal, survol, appui, focus ; sans pseudo).
+      el(
+        "div",
+        { classe: "vitrine-ligne" },
+        ...["", "est-survol", "est-appui", "est-focus"].map((etat) => {
+          const a = avatar(t, { pseudo: "Kiwi", href: "#" });
+          if (etat) a.classList.add(etat);
+          return a;
+        }),
+        avatar(t, { pseudo: null, href: "#" }),
+      ),
     ),
     section(
       t.t("vitrine.section.boutons"),
