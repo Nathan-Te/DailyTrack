@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { dailyLevel, demoAttempts, encodeReplay, replayAttempt } from "@cdj/jump-sim";
-import { parseDay } from "@cdj/core";
+import { demoAttempts, encodeReplay, replayAttempt } from "@cdj/jump-sim";
 import { FIXED_NOW, atInstant } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
+import { pageLevel } from "./jours";
 
 // Lot P3 (plateforme) : les morts de tout le monde, avec la démonstration (`?api=demo` : les vies des joueurs fictifs, validées par le vrai
 // serveur à la fabrication du jeu de données). Les taches de tout le monde sont visibles (la carte du jour), le réglage « Taches de tout le
@@ -47,7 +47,7 @@ const ready = (page: Page) => page.waitForFunction(() => ["ready", "playing"].in
 
 /** Un essai du jour de la démonstration qui arrive (une perturbation de la preuve de l'auteur, avec des morts). */
 function arrivingRun(date: string): string {
-  const d = dailyLevel(parseDay(date)!);
+  const d = pageLevel(date); // le niveau que la page joue (figé s'il l'est, sinon généré)
   for (const a of demoAttempts(d.level, d.replay, 0xa11, { attempts: 40 })) {
     if (a.end !== "arrivée") continue;
     const r = replayAttempt(d.level, a.replay, d.id);

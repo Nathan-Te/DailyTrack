@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
-import { dailyLevel, demoAttempts, encodeReplay, replayAttempt } from "@cdj/jump-sim";
-import { parseDay } from "@cdj/core";
+import { demoAttempts, encodeReplay, replayAttempt } from "@cdj/jump-sim";
 import { FIXED_NOW, atInstant } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
+import { pageLevel } from "./jours";
 
 // Lot P2 (plateforme) : le fantôme du premier, avec la démonstration (`?api=demo` : la rediffusion du premier de chaque jour, validée par le vrai
 // serveur à la fabrication du jeu de données, puis par le rejeu du jeu à la lecture). Visible avec son pseudo à côté de ton fantôme ; le
@@ -87,7 +87,7 @@ async function play(page: Page, code: string, pass?: () => Promise<void>): Promi
 
 /** Un essai du jour de la démonstration plus lent que le premier (une perturbation de la preuve qui arrive). */
 function slowerRun(date: string): { code: string; ticks: number } {
-  const d = dailyLevel(parseDay(date)!);
+  const d = pageLevel(date); // le niveau que la page joue (figé s'il l'est, sinon généré)
   for (const a of demoAttempts(d.level, d.replay, 0xf1, { attempts: 40 })) {
     if (a.end !== "arrivée") continue;
     const r = replayAttempt(d.level, a.replay, d.id);
