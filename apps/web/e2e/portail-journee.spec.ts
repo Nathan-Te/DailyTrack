@@ -113,8 +113,8 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   expect(demo.journee).toBe(2);
   expect(demo.joueur.rangDuJour).not.toBeNull();
   const medailleTrack = demo.jeux[0]!.etat.medaille ?? null;
-  expect(demo.jeux[1]!.etat.statut).toBe("en_cours"); // Jump en cours : « Jump — » dans la ligne
-  const ligne = `Du Jour #2 — Track ${medailleTrack ? EMOJI[medailleTrack] : "✅"} · Jump — — 🔥 ${demo.joueur.serie}`;
+  expect(demo.jeux[1]!.etat.statut).toBe("en_cours"); // Jump en cours : « Jump ⬜ » dans la ligne
+  const ligne = `Du Jour #2 — Track ${medailleTrack ? EMOJI[medailleTrack] : "✅"} · Jump ⬜ — 🔥 ${demo.joueur.serie}`;
 
   const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });
   await sansFeuilleDePartage(context);

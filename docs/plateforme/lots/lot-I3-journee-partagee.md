@@ -43,17 +43,17 @@ Constante de la **plateforme** : `PREMIER_JOUR_DU_JOUR` = **23/10/2026** (jour d
 
 ## 3. La ligne de partage de la journée
 Bouton **« Partager ma journée »** (bouton de marque pleine largeur, 46 px) dès qu'au moins un jeu est fini aujourd'hui ; **sous le bouton, la ligne qu'il enverra** (JetBrains Mono 700 sur papier, bordure pointillée). Envoi : **`navigator.share`** quand il existe, sinon **copie** (message « Ligne copiée : colle-la où tu veux. » / “Line copied: paste it wherever you like.”), sinon « sélectionne la ligne à la main ». Le lien est l'**origine courante** + `/` : `https://playdujour.com/` en production, la recette ou l'aperçu ailleurs (le sujet écrit `playdujour.com` : j'ai gardé l'adresse complète, que les messageries rendent cliquable et que les jeux écrivent déjà ainsi).
-**Émojis** (`apps/portail/src/partage.ts`, **les seuls du portail** : charte § 6) : ceux des jeux (`MEDAL_ICON` de `apps/web/src/share.ts` et `apps/jump/src/dailyInfo.ts`) — **🏆 auteur, 🥇 or, 🥈 argent, 🥉 bronze** — plus **✅** (fini sans médaille : les jeux omettent la médaille ; ici il faut dire que le jeu est fini), **🔥** (série), **⭐** (journée parfaite). Rien d'identifiant (ni pseudo, ni code) : testé.
+**Émojis** (`apps/portail/src/partage.ts`, **les seuls du portail** : charte § 6) : ceux des jeux (`MEDAL_ICON` de `apps/web/src/share.ts` et `apps/jump/src/dailyInfo.ts`) — **🏆 auteur, 🥇 or, 🥈 argent, 🥉 bronze** — plus **✅** (fini sans médaille : les jeux omettent la médaille ; ici il faut dire que le jeu est fini), **⬜** (jeu pas fini, pas joué comme en cours : un tiret se lisait collé au « — » qui précède la série, `Jump — — 🔥 5`), **🔥** (série), **⭐** (journée parfaite). Rien d'identifiant (ni pseudo, ni code) : testé.
 
 | cas | ligne (français **et** anglais : les mots du catalogue sont les mêmes) |
 |---|---|
 | Track or, Jump argent, série 5 | `Du Jour #1 — Track 🥇 · Jump 🥈 — 🔥 5` |
 | Track auteur, Jump bronze, série 17, journée parfaite | `Du Jour #42 — Track 🏆 · Jump 🥉 — 🔥 17 ⭐` |
-| Track fini sans médaille, Jump pas joué, série 1 | `Du Jour #2 — Track ✅ · Jump — — 🔥 1` |
-| Track or, Jump en cours (12 morts), série 5 *(le joueur « Démo » de la recette)* | `Du Jour #2 — Track 🥇 · Jump — — 🔥 5` |
-| avant le 23/10 (pas de numéro), Track bronze, série 1 | `Du Jour — Track 🥉 · Jump — — 🔥 1` |
-| série 0 (cas d'école) | `Du Jour #1 — Track 🥉 · Jump —` |
-| un jeu n° 3 | `Du Jour #1 — Track 🥇 · Jump — · Lune 🥈 — 🔥 2` |
+| Track fini sans médaille, Jump pas joué, série 1 | `Du Jour #2 — Track ✅ · Jump ⬜ — 🔥 1` |
+| Track or, Jump en cours (12 morts), série 5 *(le joueur « Démo » de la recette)* | `Du Jour #2 — Track 🥇 · Jump ⬜ — 🔥 5` |
+| avant le 23/10 (pas de numéro), Track bronze, série 1 | `Du Jour — Track 🥉 · Jump ⬜ — 🔥 1` |
+| série 0 (cas d'école) | `Du Jour #1 — Track 🥉 · Jump ⬜` |
+| un jeu n° 3 | `Du Jour #1 — Track 🥇 · Jump ⬜ · Lune 🥈 — 🔥 2` |
 
 chacune suivie, à la ligne, de `https://playdujour.com/`. Rien de fini : pas de bouton. Tests (`apps/portail/test/partage.test.ts`) : **les 36 combinaisons** de statuts des deux jeux (pas joué ou en cours, auteur, or, argent, bronze, sans médaille), avec et sans série, journée parfaite, avant et après le 23/10, en FR **et** en EN, et « rien d'identifiant ».
 
