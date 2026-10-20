@@ -269,6 +269,7 @@ body.paused #watchbar {
   flex-wrap: nowrap;
 }
 .lecture__vitesses .segment__bouton {
+  min-width: 40px;
   padding: 0 4px;
   font-size: var(--dj-taille-15);
   letter-spacing: 0;

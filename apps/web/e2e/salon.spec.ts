@@ -345,7 +345,7 @@ test("sans API : message clair et circuit du jour", async ({ page }) => {
   await page.goto("/?mode=salon&debug");
   await page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 30_000 });
   expect(await page.evaluate(() => window.__cdj.salon)).toBeNull();
-  await expect(page.locator("#meta")).toContainText("Circuit du Jour");
+  await expect(page.locator("#meta")).toContainText("Circuit n°");
   await expect(page.locator("#meta")).toContainText("Le Salon a besoin du serveur");
   await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
   await expect(page.locator("#banner")).toContainText("Le Salon a besoin du serveur"); // et rappelé au départ
@@ -359,13 +359,14 @@ test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'ac
   await page.waitForURL(/mode=salon/);
   expect(new URL(page.url()).searchParams.get("api")).toBe("demo");
   await loaded(page);
-  await page.locator("#btn-home").click(); // retour à l'accueil depuis le Salon
+  await page.locator("#btn-pause").click();
+  await page.locator("#pause-home").click(); // retour à l'accueil depuis le Salon
   await page.waitForURL(/home=1/);
   expect(new URL(page.url()).searchParams.get("api")).toBe("demo");
   await page.waitForFunction(() => window.__cdj?.phase);
   await expect(page.locator("#home")).toBeVisible();
   await page.locator("#home-daily").click();
-  await expect(page.locator("#meta")).toContainText("Circuit du Jour");
+  await expect(page.locator("#meta")).toContainText("Circuit n°");
   // La pause du Salon propose aussi l'accueil.
   await page.goto("/?api=demo&debug&mode=salon");
   await loaded(page);
@@ -407,8 +408,10 @@ for (const viewport of [
     for (let guard = 0; guard < 100 && (await page.evaluate(() => window.__cdj.phase)) !== "finished"; guard++) await page.evaluate(() => window.__cdj.advance(240));
     await page.evaluate(() => window.__cdj.manual(false));
     await expect(page.locator("#finish .rank")).toContainText(/\d+(er|e) sur \d+/, { timeout: 30_000 });
-    expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#finish"]), viewport);
+    // Lot I4 : l'arrivée est un cadre plein écran (barre des jeux, étiquette) ; la page défile dans l'étiquette, chaque bouton amené à l'écran doit y tenir.
+    expectNoOverlap(await boxes(page, ["#finish .dj-barre-jeu", "#finish .etiquette"]), viewport);
     for (const b of await page.locator("#finish .actions button:visible").all()) {
+      await b.scrollIntoViewIfNeeded();
       const box = (await b.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(34);
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);

@@ -28,7 +28,7 @@ test("l'écran d'arrivée donne la ligne à partager, et le bouton la copie avec
   await finishRace(page);
   const expected = shareLine({ number: circuit.number, date: circuit.date, ms: run.finishMs, medal });
   await expect(page.locator("#finish .share")).toHaveText(expected);
-  expect(expected).toMatch(/^Circuit du Jour #\d+ — \d+,\d{3} s( — .+)?$/);
+  expect(expected).toMatch(/^Circuit du Jour #\d+ — \d+,\d{3}\ss( — .+)?$/);
 
   await page.getByRole("button", { name: "Partager mon temps" }).click();
   await expect(page.getByRole("button", { name: "Copié" })).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("archives", () => {
     await expect(days.nth(0)).toContainText("aujourd'hui");
     await expect(days.nth(0)).toHaveClass(/current/);
     await expect(days.nth(1)).toHaveAttribute("data-date", "2026-10-29");
-    await expect(days.nth(1)).toContainText(/Or\s*40,123 s/); // la médaille est nommée (plus d'émoji dans l'interface)
+    await expect(days.nth(1)).toContainText(/Or\s*40,123\ss/); // la médaille est nommée (plus d'émoji dans l'interface)
     await expect(days.nth(17)).toContainText(/n°\s1(?!\d)/);
     await expect(days.nth(17)).toHaveAttribute("data-date", "2026-10-13");
 

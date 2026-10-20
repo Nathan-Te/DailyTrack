@@ -263,7 +263,7 @@ test("lot I2 : portail → jeu → « ‹ Du Jour » → portail, au doigt en po
     }
     const retour = page.locator("#home-portail");
     await expect(retour, jeu).toBeVisible({ timeout: 30_000 });
-    await expect(retour, jeu).toHaveText("‹ Du Jour");
+    await expect(retour, jeu).toHaveText(/^(‹ )?du jour$/i); // lot I4 : Track a la barre du socle (« DU JOUR »), Jump garde « ‹ Du Jour » jusqu'au lot I5
     await expect(retour, jeu).toHaveAccessibleName("Retour au portail Du Jour");
     await bigEnough(page, "#home-portail");
     // Le même lien dans le menu ⏸.

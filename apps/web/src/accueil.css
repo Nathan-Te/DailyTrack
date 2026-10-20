@@ -513,3 +513,10 @@ body.finished #board {
     min-width: 0;
   }
 }
+
+/* Téléphone en paysage : le titre du circuit (#meta) passe sous le chrono, plus bas que la pause ; le classement du coin se range dessous. */
+@media (max-height: 520px) {
+  #board {
+    top: 84px;
+  }
+}

@@ -21,7 +21,7 @@ test("depuis les archives (démo) : la lecture finit sur exactement le temps du 
   await page.goto("/?api=demo&debug&timescale=8");
   await page.waitForFunction(() => window.__cdj?.phase);
   await page.keyboard.press("KeyH");
-  const row = page.locator("#archive .day", { hasText: DAY });
+  const row = page.locator(`#archive .day[data-date="${DAY}"]`);
   const link = row.locator(".watch");
   await expect(link).toBeVisible({ timeout: 20_000 }); // les détails (nombre de pilotes) arrivent après la liste
   await link.click();

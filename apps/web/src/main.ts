@@ -2138,12 +2138,12 @@ const salonHost: SalonHost = {
   },
 };
 if (salon) {
+  document.body.classList.add("salon"); // le compte à rebours du Salon est plus large que l'objectif (hud.css)
   salon.attachHost(salonHost);
   syncBoardFold();
 }
-// Salon injoignable (lot 26) : dit dans l'en-tête, et rappelé au départ (le décompte écrase le bandeau jusque-là).
-let salonNoticePending = salonNotice || addressNotice;
-if (salonNotice || addressNotice) $("meta").append(` · ${salonNotice || addressNotice}`);
+// Salon injoignable (lot 26) : dit dans l'en-tête (`renderHudTitle`), et rappelé au départ (le décompte écrase le bandeau jusque-là).
+let salonNoticePending = salonNotice || (addressNotice ? t(addressNotice) : "");
 
 // Revoir le meilleur tour (lot 27b) : `?watch=best`. Le tour vient du classement (jour ou session), sinon de ton record local ; s'il n'y
 // en a pas, une course normale (dans le Salon : on attend le premier temps de la session).

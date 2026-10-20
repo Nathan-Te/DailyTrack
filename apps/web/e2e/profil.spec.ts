@@ -104,7 +104,6 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
   await expect(b.locator("#finish .online").getByRole("link", { name: /Mon profil Du Jour/ })).toBeVisible(); // lot I4 : le code se charge dans le profil commun
   expect(await b.evaluate(() => localStorage.getItem("cdj:name"))).toBeNull(); // refusé : rien n'est retenu
   expect((await board()).participants).toBe(1); // la course refusée n'a rien créé
-  await b.screenshot({ path: "../../docs/lots/img/lot-30-pseudo-pris.png" });
   // Un pseudo libre proposé : un toucher, et le temps entre au classement (B est plus rapide qu'A).
   await suggestions.first().click();
   await expect(b.locator("#finish .online .rank")).toHaveText("1er sur 2");
@@ -163,7 +162,6 @@ test("un record fait sur un appareil apparaît sur l'autre : temps, fantôme « 
   await c.keyboard.press("KeyH");
   const today = c.locator("#archive a.day.current, #archive a.day").first();
   await expect(today).toContainText(formatTime(fast.finishMs));
-  await c.screenshot({ path: "../../docs/lots/img/lot-30-archives.png" });
   await sleep(c);
 });
 
@@ -228,7 +226,6 @@ test("hors ligne : le cache sert et le dit discrètement ; le record fait hors l
   await d.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
   expect(await d.evaluate(() => window.__cdj.sync.status)).toBe("offline"); // le cache sert, la synchronisation se dit hors ligne
   expect(await d.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Voyageur");
-  await d.screenshot({ path: "../../docs/lots/img/lot-30-hors-ligne.png" });
   expect((await board()).participants).toBe(before);
   // Le réseau revient : au lancement suivant, le record est envoyé, rejoué et classé.
   await ctx.unroute(`${API}/**`);

@@ -74,6 +74,6 @@ test("sortir sur l'herbe : le revêtement sous la voiture change, le bandeau le 
   expect(got.x).toBe(race.car.x);
   expect(got.z).toBe(race.car.z);
   expect(got.surface).toBe("grass");
-  expect(got.hud).toContain("HERBE");
+  expect(got.hud).toContain("Herbe");
   expect(errors).toEqual([]);
 });

@@ -45,7 +45,7 @@ test("la première visite suit la langue du navigateur ; le choix du joueur l'em
 test("Réglages › Langue : FR ↔ EN sans recharger, l'écran se met à jour, le choix est écrit pour toute la plateforme", async ({ browser }) => {
   const ctx = await newClockedContext(browser, { locale: "en-US" });
   const page = await ctx.newPage();
-  await ouvrir(page, "/?api=demo&home=1");
+  await ouvrir(page, "/?api=demo&home=1&debug");
   await page.evaluate(() => ((window as unknown as { __marque: number }).__marque = 1)); // preuve qu'on ne recharge pas
   await expect(page.locator("#home h1")).toHaveText("TRACK");
   await expect(page.locator("#home-daily")).toContainText("Race");
@@ -102,7 +102,7 @@ test("en anglais : le HUD, l'arrivée (médaille, rang, « Next game of the day 
   });
   const page = await ctx.newPage();
   await ouvrir(page, `/?debug&home=0&timescale=6&api=${encodeURIComponent(API)}`);
-  await expect(page.locator("#medals")).toContainText("Silver"); // objectif : la médaille au-dessus de celle du record (or → auteur ; ici record à +0,8 s : or)
+  await expect(page.locator("#medals")).toContainText("Author"); // objectif : la médaille au-dessus de celle du record (ici un record à +0,8 s de l'auteur : or, donc l'auteur)
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
   await expect(page.locator("#splits .pc")).toContainText(/CP \d\/\d/, { timeout: 90_000 }); // « CP 1/3 » : point de contrôle
   await expect(page.locator("#splits .ecart")).toContainText(/^[+−]\d[.]\d{3}$/); // écart signé, virgule anglaise
