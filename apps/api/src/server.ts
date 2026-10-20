@@ -57,6 +57,7 @@ const api = createApi({
   allowedOrigins: config.allowedOrigins,
   rateSalt: config.rateSalt,
   replaysPerMinute: REPLAYS_PER_MINUTE, // lot R5 : plafond global de rejeux de chaque instance (503 au-delà)
+  peerFactor: config.peerFactor, // lot R5 : l'adresse de connexion dans chaque limite par adresse (PEER_FACTOR, 0 = coupé)
   adminToken: config.adminToken,
   salonMinutes: config.salonMinutes,
   now,

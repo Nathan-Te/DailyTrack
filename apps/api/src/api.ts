@@ -48,6 +48,8 @@ export interface ApiOptions {
    * aucun plafond (outils qui rejouent en masse en mémoire, tests).
    */
   replaysPerMinute?: number;
+  /** Lot R5 : multiple des limites par adresse pour l'adresse de connexion (`PEER_FACTOR`, défaut 10 ; 0 : coupé). */
+  peerFactor?: number;
   /**
    * Marque `demo` les joueurs créés par cette instance : réservé au script `history:seed` (lot 11), qui fait courir des
    * pilotes fictifs par le même chemin de validation que les vrais. Le serveur de production ne le règle jamais.
@@ -91,6 +93,7 @@ export function createApi(options: ApiOptions) {
     limits: options.limits ?? DEFAULT_LIMITS,
     rateSalt: options.rateSalt,
     replaysPerMinute: options.replaysPerMinute,
+    peerFactor: options.peerFactor,
     demoPlayers: options.demoPlayers === true,
     rotateStatements: (oldId, newId) => instances.flatMap((g) => g.instance.rotateStatements?.(oldId, newId) ?? []),
   });
@@ -177,6 +180,9 @@ export function createApi(options: ApiOptions) {
       hoteFirebase: req.headers.get("x-fh-requested-host"),
       entetes: [...req.headers.keys()].sort(),
       relais: xff ? xff.split(",").filter((p) => p.trim()).length : 0,
+      // L'appelant lit ce qu'il a lui-même envoyé, plus ce que Google y a ajouté (son adresse, ou celle d'un relais de Firebase) : recette seulement.
+      xForwardedFor: xff,
+      forwarded: req.headers.get("forwarded"),
       connexion: info.peerKey ?? null,
       adresseLueEgaleConnexion: info.clientKey !== undefined && info.clientKey === info.peerKey,
     };

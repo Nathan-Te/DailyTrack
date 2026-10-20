@@ -8,6 +8,7 @@
  *   ENVIRONMENT : `production` | `recette` | `local` (lot R1 de la plateforme) ; absente : `production` si NODE_ENV=production, sinon `local`
  *   SALON_MINUTES : tests, essais locaux et recette seulement, refusée en production
  *   TEST_CLOCK_OFFSET_MS : décalage (ms, entier) ajouté à l'heure réelle : l'horloge du serveur avance en temps réel mais à une date choisie ; tests et recette seulement, refusée en production
+ *   PEER_FACTOR : lot R5 — l'adresse de connexion compte dans chaque limite par adresse à `limite × PEER_FACTOR` (0 à 100, défaut 10 ; 0 = coupé)
  *   GIT_SHA, K_REVISION, K_SERVICE : posées par le déploiement / Cloud Run
  *
  * Règle des noms de base (lot R1) : en `recette`, le nom de la base doit contenir « recette » ; en `production`, il ne doit pas le contenir.
@@ -32,6 +33,8 @@ export interface ServerConfig {
   rateSalt: string;
   adminToken?: string;
   trustProxy: number;
+  /** Lot R5 : multiple de chaque limite par adresse appliqué à l'adresse de connexion (`PEER_FACTOR`, 0 = coupé). */
+  peerFactor: number;
   salonMinutes?: number;
   /** Décalage (ms) de l'horloge de test du serveur (`TEST_CLOCK_OFFSET_MS`) ; absent : heure réelle. */
   testClockOffsetMs?: number;
@@ -154,6 +157,9 @@ export function readConfig(env: Env): ServerConfig {
   const trust = env.TRUST_PROXY === undefined || env.TRUST_PROXY === "" ? 0 : Number(env.TRUST_PROXY);
   if (!Number.isInteger(trust) || trust < 0 || trust > 5) throw new ConfigError(`TRUST_PROXY : un nombre de proxys entre 0 et 5 (reçu : ${env.TRUST_PROXY})`);
 
+  const peer = env.PEER_FACTOR === undefined || env.PEER_FACTOR === "" ? 10 : Number(env.PEER_FACTOR);
+  if (!Number.isInteger(peer) || peer < 0 || peer > 100) throw new ConfigError(`PEER_FACTOR : un entier de 0 (coupé) à 100 (reçu : ${env.PEER_FACTOR})`);
+
   return {
     port,
     production,
@@ -164,6 +170,7 @@ export function readConfig(env: Env): ServerConfig {
     rateSalt: env.RATE_SALT ?? "",
     adminToken: env.ADMIN_TOKEN,
     trustProxy: trust,
+    peerFactor: peer,
     salonMinutes,
     testClockOffsetMs,
     revision: env.K_REVISION ?? env.GIT_SHA,

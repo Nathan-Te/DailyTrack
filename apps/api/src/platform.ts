@@ -47,6 +47,8 @@ export interface PlatformOptions {
   rateSalt?: string;
   /** Lot R5 : plafond de rejeux par minute de cette instance (`REPLAYS_PER_MINUTE` en production ; absent : aucun). */
   replaysPerMinute?: number;
+  /** Lot R5 : multiple des limites par adresse pour l'adresse de connexion (`PEER_FACTOR` par défaut ; 0 : coupé). */
+  peerFactor?: number;
   demoPlayers: boolean;
   /** Les lignes des jeux qui suivent un « Changer mon code » (dans la même transaction que la plateforme). */
   rotateStatements: (oldId: string, newId: string) => Statement[];
@@ -115,9 +117,10 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
 
   // --- Lot R5 : adresse de connexion et plafond de rejeux ---------------------------------------------------
   async function peerHit(info: RequestInfo, prefix: string, limit: number): Promise<void> {
-    if (!info.peerKey || info.peerKey === info.clientKey) return;
+    const factor = options.peerFactor ?? PEER_FACTOR;
+    if (!info.peerKey || info.peerKey === info.clientKey || factor <= 0) return;
     try {
-      readHit(await hashKey(`${prefix}~c`, info.peerKey), limit * PEER_FACTOR);
+      readHit(await hashKey(`${prefix}~c`, info.peerKey), limit * factor);
     } catch (e) {
       log("WARNING", "débit : limite de l'adresse de connexion", { prefix }); // jamais l'adresse
       throw e;

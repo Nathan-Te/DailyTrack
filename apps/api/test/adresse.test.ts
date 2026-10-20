@@ -4,7 +4,8 @@ import { formatDay } from "@cdj/sim";
 import { createApi } from "../src/api";
 import { SCHEMA } from "../src/db";
 import type { Logger } from "../src/log";
-import { createNodeServer, peerFromForwarded } from "../src/node-server";
+import { readConfig } from "../src/config";
+import { createNodeServer, isPublicAddress, peerFromForwarded } from "../src/node-server";
 import { PEER_FACTOR, REPLAYS_PER_MINUTE } from "../src/platform";
 import { DAY, NOON, TEST_DB, makeApi, openTestDb, pilotReplay, playerId } from "./helpers";
 
@@ -21,6 +22,27 @@ describe("l'adresse de connexion (dernière entrée de X-Forwarded-For)", () => 
     expect(peerFromForwarded("203.0.113.9")).toBe("203.0.113.9");
     expect(peerFromForwarded(["198.51.100.7", "203.0.113.9"])).toBe("203.0.113.9");
     expect(peerFromForwarded(undefined)).toBeUndefined();
+  });
+});
+
+describe("seule une adresse de connexion publique est comptée", () => {
+  it("0.0.0.0 (mesuré sur la recette pour un appel venu du réseau de Google), privées, locales, réservées : jamais comptées", () => {
+    for (const ip of ["203.0.113.9", "35.191.0.1", "8.8.8.8", "2001:4860:4860::8888", "::ffff:8.8.8.8", "[2001:db8::1]"]) expect(isPublicAddress(ip), ip).toBe(true);
+    for (const ip of ["0.0.0.0", "10.1.2.3", "127.0.0.1", "169.254.1.1", "172.16.0.1", "172.31.255.1", "192.168.1.1", "100.64.0.1", "224.0.0.1", "255.255.255.255", "::", "::1", "fd00::1", "fe80::1", "::ffff:10.0.0.1", "inconnu", "", "300.1.1.1"]) {
+      expect(isPublicAddress(ip), ip).toBe(false);
+    }
+  });
+
+  it("PEER_FACTOR : 10 par défaut, 0 coupe, hors de 0–100 refusé", () => {
+    expect(readConfig({}).peerFactor).toBe(10);
+    expect(readConfig({ PEER_FACTOR: "0" }).peerFactor).toBe(0);
+    expect(() => readConfig({ PEER_FACTOR: "-1" })).toThrow(/PEER_FACTOR/);
+    expect(() => readConfig({ PEER_FACTOR: "1.5" })).toThrow(/PEER_FACTOR/);
+  });
+
+  it("PEER_FACTOR = 0 : l'adresse de connexion n'est plus comptée", async () => {
+    const t = await makeApi({ seed: false, peerFactor: 0 });
+    for (let i = 0; i <= NAME_LIMIT * PEER_FACTOR; i++) expect((await t.call("GET", `/api/name?name=Z${i}`, undefined, { clientKey: `198.18.1.${i % 250}-${i}`, peerKey: "203.0.113.60" })).status).toBe(200);
   });
 });
 
@@ -49,6 +71,10 @@ describe(`appel direct avec des adresses inventées, par le vrai serveur HTTP (T
     expect(await nameCheck(0, direct("198.18.200.1", "203.0.113.10"))).toBe(200);
   });
 
+  it("une adresse de connexion qui n'est pas publique (0.0.0.0) n'est pas comptée : seule l'adresse lue l'est, comme avant le lot R5", async () => {
+    for (let i = 1; i <= NAME_LIMIT * PEER_FACTOR + 1; i++) expect(await nameCheck(i, direct(`198.18.100.${i & 255}-${i}`, "0.0.0.0")), `appel ${i}`).toBe(200);
+  });
+
   it("la même adresse inventée est limitée comme avant (40), et la route de sonde dit ce que le serveur a reçu (recette seulement)", async () => {
     let first = 0;
     for (let i = 1; i <= NAME_LIMIT + 1 && !first; i++) if ((await nameCheck(i, direct("198.51.100.77", "203.0.113.11"))) === 429) first = i;
@@ -56,7 +82,7 @@ describe(`appel direct avec des adresses inventées, par le vrai serveur HTTP (T
     const probe = await fetch(`${base}/api/sonde/entetes`, { headers: { ...direct("198.51.100.1", "203.0.113.12"), "X-Forwarded-Host": "recette.playdujour.com" } });
     expect(probe.status).toBe(200);
     const body = await probe.json();
-    expect(body).toMatchObject({ relais: 2, connexion: "203.0.113.12", adresseLueEgaleConnexion: false, hoteTransmis: "recette.playdujour.com" });
+    expect(body).toMatchObject({ relais: 2, connexion: "203.0.113.12", adresseLueEgaleConnexion: false, hoteTransmis: "recette.playdujour.com", xForwardedFor: "198.51.100.1, 203.0.113.12" });
     expect(body.entetes).toContain("x-forwarded-for");
   });
 });
