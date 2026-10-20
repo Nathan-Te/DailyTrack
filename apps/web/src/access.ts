@@ -9,8 +9,8 @@
 // le code ; on supprime l'accès facile, pas la possibilité technique (il faudrait une graine secrète côté serveur : voir le README du lot 31).
 
 /**
- * Mode restreint = production. Le site publié depuis `main` est construit avec `VITE_PRODUCTION=1` (`pages.yml`) ; les aperçus de branche, le
- * serveur de développement et les tests ne l'ont pas. `?prod` force le mode restreint (essais) : il ne peut que **restreindre** — rien dans
+ * Mode restreint = production. Le site de production (playdujour.com) est construit avec `VITE_PRODUCTION=1` (`deploy-site.yml`, lot R4) ; la
+ * recette, les aperçus de PR, le serveur de développement et les tests ne l'ont pas. `?prod` force le mode restreint (essais) : il ne peut que **restreindre** — rien dans
  * l'adresse ne peut lever la restriction d'une construction de production, pas même `?debug`.
  */
 export function isRestricted(search: string, buildFlag: string | undefined = import.meta.env.VITE_PRODUCTION as string | undefined): boolean {

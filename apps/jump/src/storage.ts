@@ -9,12 +9,12 @@ export function storageKey(name: string): string {
 // Seul point d'accès au stockage local de DailyJump (lot R1 de la plateforme) : `gameStorage()` ci-dessous. Un test (`test/storage.test.ts`)
 // vérifie qu'aucun autre fichier de `src/` ne touche `localStorage` directement.
 //
-// Les aperçus de branche sont servis par la MÊME origine que le jeu publié (`nathan-te.github.io`) : sans préfixe, jouer sur un aperçu
-// écrivait l'historique, la série et les réglages de la production. Le préfixe physique est fixé À LA CONSTRUCTION (`VITE_STORAGE`, posée
-// par `.github/workflows/pages.yml`), avec la même règle que DailyTrack (`apps/web/src/storage.ts`) :
-//   - `production` (construction de `main`)  → aucun préfixe : les clés restent `jump:*` ;
-//   - `apercu` (aperçu de branche)           → `apercu:jump:*` ;
-//   - absente : serveur de développement → `apercu:` ; `vite build` sans variable (tests e2e, CI) et Vitest → aucun préfixe.
+// Lot R1 : les aperçus de branche étaient servis par la MÊME origine que le jeu publié (`nathan-te.github.io`) ; un préfixe les séparait.
+// Depuis le lot R4 (playdujour.com), production, recette et canaux d'aperçu sont des ORIGINES distinctes : le navigateur sépare leur stockage
+// et aucun déploiement ne pose plus `VITE_STORAGE` (clés `jump:*` partout). Le préfixe reste pour le développement local, même règle que
+// DailyTrack (`apps/web/src/storage.ts`) :
+//   - `production` → aucun préfixe ; toute autre valeur (`apercu`) → `apercu:jump:*` ;
+//   - absente : serveur de développement → `apercu:` ; `vite build` sans variable (déploiements, tests e2e, CI) et Vitest → aucun préfixe.
 // Le reste du code ne voit que les clés logiques (`jump:*`) ; sans préfixe, `gameStorage()` rend `localStorage` lui-même.
 
 /** Préfixe physique des aperçus et du développement local (le même que DailyTrack : `apercu:cdj:*`). */
@@ -45,8 +45,9 @@ function buildFlags(): { flag?: string; mode?: string; api?: string } {
 }
 const flags = buildFlags();
 /**
- * Lot P1 (plateforme) : l'adresse du serveur du classement fixée à la construction (`VITE_API_URL`, posée par `pages.yml` : la production pour
- * `main`, la recette pour un aperçu de branche ; absente : pas de classement, sauf `?api=`).
+ * Lot P1 (plateforme) : l'adresse du serveur du classement fixée à la construction (`VITE_API_URL`, posée par `deploy-site.yml` depuis le lot
+ * R4 : `/` — la même origine — sur la production, la recette et les aperçus ; l'adresse d'une révision de recette pour l'aperçu d'une PR qui
+ * touche le serveur ; absente : pas de classement, sauf `?api=`).
  */
 export const BUILD_API_URL: string | undefined = flags.api || undefined;
 /** Préfixe physique de cette construction (`""` en production). */

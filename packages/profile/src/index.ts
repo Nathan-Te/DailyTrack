@@ -6,3 +6,4 @@ export * from "./transfer";
 export * from "./client";
 export * from "./sync";
 export * from "./profile";
+export * from "./migration";

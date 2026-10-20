@@ -1,0 +1,163 @@
+name: Retour arrière
+# Lot R4 (plateforme) : remet en production le serveur et le site d'une mise en production précédente (par défaut : celle d'avant la dernière),
+# puis vérifie (`smoke --lecture-seule`). Lancé à la main (Actions → « Retour arrière » → Run workflow, sur main) ; validation de Nathan
+# (environnement `production`).
+#   - serveur : l'image notée dans l'étiquette `prod-…` (« image: … ») redéployée sur le service de production (`gcloud run deploy --image` :
+#     variables et secrets du service inchangés) ;
+#   - site : la version Firebase notée dans l'étiquette (« site: <site>@<version> »), remise en « live » (`firebase hosting:clone`, l'historique
+#     des versions de Firebase) ;
+#   - une nouvelle étiquette `prod-…` est posée sur le commit remis en place : la prochaine mise en production fige les jours avec CE code.
+# Limite (docs/plateforme/domaine.md) : les jours figés après l'étiquette remise ne sont pas dans son image ; si le générateur de DailyJump a
+# changé entre les deux, un de ces jours peut changer de niveau sur le serveur. La prochaine mise en production les refige.
+on:
+  workflow_dispatch:
+    inputs:
+      etiquette:
+        description: "Étiquette prod-… à remettre en production (vide : celle d'avant la dernière)"
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+env:
+  FIREBASE_TOOLS: firebase-tools@15.34.0
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      etiquette: ${{ steps.plan.outputs.etiquette }}
+      sha: ${{ steps.plan.outputs.sha }}
+      image: ${{ steps.plan.outputs.image }}
+      site: ${{ steps.plan.outputs.site }}
+      version: ${{ steps.plan.outputs.version }}
+      nouvelle: ${{ steps.plan.outputs.nouvelle }}
+    steps:
+      - run: |
+          [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::« Retour arrière » se lance sur main"; exit 1; }
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Quelle mise en production remettre ?
+        id: plan
+        env:
+          WANTED: ${{ inputs.etiquette }}
+        run: |
+          derniere="$(node scripts/mise-en-production.mjs derniere)"
+          [ -n "$derniere" ] || { echo "::error::aucune étiquette prod-… : rien à remettre"; exit 1; }
+          if [ -n "$WANTED" ]; then target="$WANTED"; else target="$(node scripts/mise-en-production.mjs derniere --avant "$derniere")"; fi
+          if [ -z "$target" ] || ! git rev-parse -q --verify "refs/tags/$target" >/dev/null; then
+            echo "::error::étiquette introuvable : « ${target:-celle d’avant $derniere} »"; exit 1
+          fi
+          note="$(git tag -l --format='%(contents)' "$target")"
+          image="$(printf '%s\n' "$note" | sed -n 's/^image: *//p' | head -n1)"
+          siteversion="$(printf '%s\n' "$note" | sed -n 's/^site: *//p' | head -n1)"
+          sha="$(git rev-parse "$target^{commit}")"
+          {
+            echo "etiquette=$target"; echo "sha=$sha"; echo "image=$image"
+            echo "site=${siteversion%@*}"; echo "version=$( [ -n "$siteversion" ] && echo "${siteversion#*@}" )"
+            echo "nouvelle=$(node scripts/mise-en-production.mjs etiquette)"
+          } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Retour arrière : $derniere → \`$target\` (\`${sha::7}\`)"
+            echo "- Image du serveur : \`${image:-(non notée : le serveur ne change pas)}\`"
+            echo "- Version du site : \`${siteversion:-(non notée : le site ne change pas)}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  retour:
+    needs: plan
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      url: ${{ steps.done.outputs.url }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      SERVICE: ${{ vars.GCP_SERVICE || 'cdj-api' }}
+      REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+      IMAGE: ${{ needs.plan.outputs.image }}
+      SITE: ${{ needs.plan.outputs.site }}
+      VERSION: ${{ needs.plan.outputs.version }}
+      SHA: ${{ needs.plan.outputs.sha }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      # Le dépôt d'abord : `actions/checkout` vide le dossier de travail, où l'authentification écrit son fichier d'identifiants.
+      - uses: actions/checkout@v4
+      - name: Configuration présente ?
+        id: cfg
+        run: |
+          if [ -n "$GCP_PROJECT_ID" ] && { { [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; } || [ "$HAS_SA_KEY" = true ]; }; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Production non configurée : rien à remettre (docs/mise-en-ligne.md, docs/plateforme/domaine.md)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v3
+        if: steps.cfg.outputs.enabled == 'true'
+      - name: Serveur — l'image de l'étiquette
+        if: steps.cfg.outputs.enabled == 'true' && env.IMAGE != ''
+        run: |
+          gcloud run deploy "$SERVICE" --region "$REGION" --image "$IMAGE" --update-env-vars "GIT_SHA=$SHA" --quiet
+          echo "- Serveur remis sur \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: Site — la version de l'étiquette (historique de Firebase)
+        if: steps.cfg.outputs.enabled == 'true' && env.SITE != '' && env.VERSION != ''
+        run: |
+          npx --yes "$FIREBASE_TOOLS" hosting:clone "$SITE@$VERSION" "$SITE:live" --project "$GCP_PROJECT_ID"
+          echo "- Site \`$SITE\` remis sur la version \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+      - name: Adresse à vérifier
+        id: done
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          if [ -n "$SITE" ]; then url="$(node scripts/domaine.mjs adresse production)"
+          else url="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"; fi
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+
+  verification:
+    needs: [plan, retour]
+    if: needs.retour.outputs.url != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Vérifier en lecture seule
+        env:
+          URL: ${{ needs.retour.outputs.url }}
+        run: |
+          npm ci -w @cdj/api --ignore-scripts
+          npm run smoke -w @cdj/api -- "${URL%/}" --lecture-seule --environnement production --origin "$(node scripts/domaine.mjs adresse production)" --resume "$GITHUB_STEP_SUMMARY" --retour "relancer « Retour arrière » avec une autre étiquette, ou « Mettre en production » un correctif"
+      - name: Nouvelle étiquette sur le commit remis
+        env:
+          TAG: ${{ needs.plan.outputs.nouvelle }}
+          FROM: ${{ needs.plan.outputs.etiquette }}
+          SHA: ${{ needs.plan.outputs.sha }}
+        run: |
+          git fetch -q --tags origin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          { echo "Retour arrière vers $FROM (run $GITHUB_RUN_ID)"; echo ""; git tag -l --format='%(contents)' "$FROM" | grep -E '^(image|api|site):'; } > message.txt
+          git tag -a "$TAG" "$SHA" -F message.txt
+          git push origin "refs/tags/$TAG"
+          echo "### Étiquette \`$TAG\` posée (= \`$FROM\`) : la prochaine mise en production fige les jours avec ce code" >> "$GITHUB_STEP_SUMMARY"

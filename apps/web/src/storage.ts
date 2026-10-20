@@ -2,14 +2,16 @@
 // `cdj:best:…`) et passe toujours par `gameStorage()` ; un test (`test/storage.test.ts`) vérifie qu'aucun autre fichier de `src/` ne
 // touche `localStorage` directement.
 //
-// Pourquoi : les aperçus de branche sont servis par la MÊME origine que le jeu publié (`nathan-te.github.io`), donc par le même
-// `localStorage`. Sans préfixe, jouer sur un aperçu écrivait l'identité, les records, l'historique et la série de la production.
+// Pourquoi (lot R1) : les aperçus de branche étaient servis par la MÊME origine que le jeu publié (`nathan-te.github.io`), donc par le même
+// `localStorage` ; un préfixe les séparait. Depuis le lot R4 (playdujour.com, Firebase Hosting), la production, la recette et chaque canal
+// d'aperçu sont des ORIGINES distinctes : le navigateur sépare leur stockage, et aucun déploiement ne pose plus `VITE_STORAGE` (les clés
+// restent `cdj:*` partout, la production garde exactement les siennes). Test : apps/portail/test/domaine.test.ts.
 //
-// Le préfixe est fixé À LA CONSTRUCTION (`VITE_STORAGE`, posée par `.github/workflows/pages.yml`) :
-//   - `production` (construction de `main`)  → aucun préfixe : les clés restent `cdj:*`, rien ne change pour les joueurs ;
-//   - `apercu` (aperçu de branche)           → `apercu:cdj:*` ;
-//   - absente : serveur de développement (`npm run dev`) → `apercu:` ; `vite build` sans variable (tests e2e, CI) et Vitest → aucun préfixe,
-//     pour que les tests portent sur les clés de la production.
+// Le préfixe reste pour le développement local et les essais (`VITE_STORAGE`, à la construction) :
+//   - `production` → aucun préfixe ;
+//   - toute autre valeur (`apercu`) → `apercu:cdj:*` ;
+//   - absente : serveur de développement (`npm run dev`) → `apercu:` ; `vite build` sans variable (déploiements, tests e2e, CI) et Vitest →
+//     aucun préfixe.
 // Sans préfixe, `gameStorage()` rend `localStorage` lui-même : en production le comportement est exactement celui d'avant.
 
 /** Préfixe physique des aperçus et du développement local (le même pour DailyJump : `apercu:jump:*`). */

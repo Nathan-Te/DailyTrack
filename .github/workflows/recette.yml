@@ -1,15 +1,21 @@
 name: Recette
-# Lot R1 (plateforme) : chaque PR qui touche le serveur déploie SA version sur le serveur de recette (service Cloud Run et base Turso
-# séparés de la production), en révision étiquetée SANS trafic ; l'aperçu Pages de sa branche lui parle. Pas à pas : docs/plateforme/recette.md.
-#   - PR ouverte ou mise à jour : révision `b-<branche>-<empreinte>` (scripts/recette.mjs), contrôle de /api/health, `npm run smoke`,
-#     commentaire sur la PR (adresse de la révision et de l'aperçu), puis l'aperçu de la branche est reconstruit pour viser la révision.
-#   - PR fermée (fusionnée ou non) : l'étiquette est retirée (la révision ne reçoit plus rien).
-#   - Lot P2 : après chaque déploiement, les joueurs fictifs de la recette (`recette:seed`, recette-seed.yml, qui tourne aussi chaque jour).
-#   - « Run workflow » : sur main, (re)crée la révision par défaut de la recette (celle que la fusion dans main met à jour, voir
-#     production.yml) ; sur une branche, sa révision étiquetée, avec au besoin un Salon court ou une horloge de test.
-# Jamais pour une PR venue d'un fork : les secrets ne sortent pas du dépôt. Tant que la recette n'est pas configurée, tout est sauté avec
-# le message « recette non configurée : voir docs/plateforme/recette.md » et la CI reste verte.
+# Lot R1 (plateforme), repris au lot R4 (playdujour.com). Le serveur de recette (service Cloud Run `cdj-api-recette`, base Turso de recette) et le
+# site de recette (recette.playdujour.com, Firebase Hosting), séparés de la production. Pas à pas : docs/plateforme/recette.md, docs/plateforme/domaine.md.
+#   - Fusion dans main (lot R4) : la recette prend `main` en entier — révision par défaut du serveur, joueurs fictifs (`recette:seed`), puis le
+#     site de recette (/api/** renvoyé vers cdj-api-recette). Plus aucun déploiement automatique de la production (bouton : production.yml).
+#   - PR qui touche le serveur (SERVER_PATHS) : révision `b-<branche>-<empreinte>` SANS trafic, contrôle de /api/health, `npm run smoke`, puis
+#     son canal d'aperçu Firebase (`pr-<n>`, site de recette) construit pour parler à CETTE révision par son adresse directe (l'origine du canal
+#     est ajoutée aux origines permises de la révision) ; commentaire « Recette » sur la PR. Les autres PR : apercu.yml (recette par défaut).
+#     Pourquoi une adresse directe et pas un renvoi épinglé : README du lot R4 (`pinTag` de Firebase est expérimental, suit la dernière révision
+#     créée du service et exige d'épingler aussi le site de recette « live »).
+#   - PR fermée : l'étiquette est retirée (le canal d'aperçu, lui, est supprimé par apercu.yml).
+#   - « Run workflow » : sur main, comme une fusion ; sur une branche, sa révision étiquetée, avec au besoin un Salon court ou une horloge de test.
+# Jamais pour une PR venue d'un fork : les secrets ne sortent pas du dépôt. Tant que la recette n'est pas configurée, tout est sauté avec le
+# message « recette non configurée : voir docs/plateforme/recette.md » (Firebase : « Firebase non configuré : voir docs/plateforme/domaine.md »)
+# et la CI reste verte.
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, closed]
     # Recopié de SERVER_PATHS (scripts/recette.mjs) ; apps/api/test/recette.test.ts vérifie que les deux listes sont identiques.
@@ -40,14 +46,23 @@ on:
 permissions:
   contents: read
 
+# Une fusion à la fois dans la recette (une nouvelle attend la précédente) ; une PR : une poussée remplace la précédente.
+concurrency:
+  group: recette-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  FIREBASE_TOOLS: firebase-tools@15.34.0
+
 jobs:
-  # Ce qui est à faire, et pour quelle étiquette (même calcul que le workflow Pages).
+  # Ce qui est à faire, et pour quelle étiquette (même calcul que le workflow Aperçu).
   plan:
     runs-on: ubuntu-latest
     outputs:
       action: ${{ steps.plan.outputs.action }}
       tag: ${{ steps.plan.outputs.tag }}
       branch: ${{ steps.plan.outputs.branch }}
+      canal: ${{ steps.plan.outputs.canal }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -59,7 +74,9 @@ jobs:
           PR_ACTION: ${{ github.event.action }}
           HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          PR: ${{ github.event.pull_request.number }}
         run: |
+          canal=""
           if [ "$EVENT" = pull_request ]; then
             branch="$HEAD_REF"
             if [ "$HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
@@ -67,7 +84,7 @@ jobs:
               echo "### Recette : PR venue d'un fork, rien n'est déployé (les secrets ne sortent pas du dépôt)" >> "$GITHUB_STEP_SUMMARY"
               echo "::notice title=Recette::PR venue d'un fork ($HEAD_REPO) : pas de révision de recette."
             elif [ "$PR_ACTION" = closed ]; then action=cleanup
-            else action=deploy
+            else action=deploy; canal="$(node scripts/domaine.mjs canal "$PR")"
             fi
           else
             branch="$GITHUB_REF_NAME"
@@ -75,12 +92,66 @@ jobs:
           fi
           tag=""
           [ "$action" = deploy ] || [ "$action" = cleanup ] && tag="$(node scripts/recette.mjs tag "$branch")"
-          { echo "action=$action"; echo "tag=$tag"; echo "branch=$branch"; } >> "$GITHUB_OUTPUT"
-          echo "branche : $branch · action : $action · étiquette : ${tag:-(révision par défaut)}"
+          { echo "action=$action"; echo "tag=$tag"; echo "branch=$branch"; echo "canal=$canal"; } >> "$GITHUB_OUTPUT"
+          echo "branche : $branch · action : $action · étiquette : ${tag:-(révision par défaut)}${canal:+ · canal d’aperçu : $canal}"
+
+  # Lot R4 : le canal d'aperçu de la PR existe AVANT la révision (son adresse — `https://<site>--pr-<n>-<empreinte>.web.app`, fixée à la
+  # création — doit être dans les origines permises de la révision : l'aperçu l'appelle par son adresse directe, donc en CORS).
+  canal:
+    needs: plan
+    if: needs.plan.outputs.canal != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      origin: ${{ steps.canal.outputs.origin }}
+    env:
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      SITE: ${{ vars.FIREBASE_SITE_RECETTE }}
+      CANAL: ${{ needs.plan.outputs.canal }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - name: Configuration présente ?
+        id: cfg
+        run: |
+          if [ -n "$GCP_PROJECT_ID" ] && [ -n "$SITE" ] && { { [ -n "$WIF_PROVIDER" ] && [ -n "$WIF_SERVICE_ACCOUNT" ]; } || [ "$HAS_SA_KEY" = true ]; }; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Firebase non configuré : voir docs/plateforme/domaine.md (pas de canal d'aperçu)" >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Firebase non configuré::Firebase non configuré : voir docs/plateforme/domaine.md"
+          fi
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/auth@v3
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - name: Créer (ou retrouver) le canal d'aperçu
+        id: canal
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          list() { npx --yes "$FIREBASE_TOOLS" hosting:channel:list --site "$SITE" --project "$GCP_PROJECT_ID" --json | jq -r --arg c "$CANAL" '.result.channels[]? | select(.name | endswith("/channels/" + $c)) | .url'; }
+          url="$(list)"
+          if [ -z "$url" ]; then
+            npx --yes "$FIREBASE_TOOLS" hosting:channel:create "$CANAL" --site "$SITE" --project "$GCP_PROJECT_ID" --expires 7d --json > created.json || { cat created.json; exit 1; }
+            url="$(jq -r '.result.url // empty' created.json)"
+            [ -n "$url" ] || url="$(list)"
+          fi
+          [ -n "$url" ] || { echo "::error::adresse du canal $CANAL introuvable"; exit 1; }
+          origin="$(node -e 'console.log(new URL(process.argv[1]).origin)' "$url")"
+          echo "origin=$origin" >> "$GITHUB_OUTPUT"
+          echo "- Canal d'aperçu \`$CANAL\` : $url (origine permise par la révision de recette)" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
-    needs: plan
-    if: needs.plan.outputs.action == 'deploy' || needs.plan.outputs.action == 'default'
+    needs: [plan, canal]
+    if: ${{ !cancelled() && (needs.plan.outputs.action == 'deploy' || needs.plan.outputs.action == 'default') && needs.canal.result != 'failure' }}
     permissions:
       contents: read
       id-token: write
@@ -90,63 +161,85 @@ jobs:
       tag: ${{ needs.plan.outputs.tag }}
       salon_minutes: ${{ inputs.salon_minutes || '' }}
       test_clock_offset_ms: ${{ inputs.test_clock_offset_ms || '' }}
+      extra_origins: ${{ needs.canal.outputs.origin || '' }}
     secrets: inherit
 
   # Lot P2 : les joueurs fictifs de la recette (`recette:seed`), tout de suite après le déploiement d'une révision (recette-seed.yml : mêmes accès,
   # aucun secret GitHub de plus ; refuse la production). Il tourne aussi chaque jour, seul.
   seed:
     needs: [plan, deploy]
-    if: needs.deploy.outputs.enabled == 'true'
+    if: ${{ !cancelled() && needs.deploy.outputs.enabled == 'true' }}
     permissions:
       contents: read
       id-token: write
     uses: ./.github/workflows/recette-seed.yml
     secrets: inherit
 
-  # Commentaire sur la PR (un seul, mis à jour à chaque poussée) et aperçu reconstruit pour viser la révision qui vient d'être déployée.
-  announce:
+  # Lot R4 : le site de recette (recette.playdujour.com) prend main en entier, après le serveur. Sans recette serveur configurée, il est publié
+  # quand même (les jeux marchent sans serveur ; /api/ ne répond pas).
+  site:
     needs: [plan, deploy]
-    if: needs.deploy.outputs.enabled == 'true' && needs.plan.outputs.action == 'deploy'
+    if: ${{ !cancelled() && needs.plan.outputs.action == 'default' && needs.deploy.result != 'failure' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      cible: recette
+      api: /
+    secrets: inherit
+
+  # Lot R4 : l'aperçu d'une PR qui touche le serveur, construit pour parler à SA révision (adresse directe). Sans révision (recette non
+  # configurée), il vise la recette par défaut (/api/, même origine).
+  apercu:
+    needs: [plan, deploy]
+    if: ${{ !cancelled() && needs.plan.outputs.action == 'deploy' && needs.plan.outputs.canal != '' && needs.deploy.result != 'failure' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-site.yml
+    with:
+      cible: recette
+      canal: ${{ needs.plan.outputs.canal }}
+      api: ${{ needs.deploy.outputs.enabled == 'true' && needs.deploy.outputs.url || '/' }}
+    secrets: inherit
+
+  # Commentaire sur la PR (un seul, mis à jour à chaque poussée) : la révision de recette et son aperçu.
+  announce:
+    needs: [plan, deploy, apercu]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.plan.outputs.action == 'deploy' && (needs.deploy.outputs.enabled == 'true' || needs.apercu.outputs.enabled == 'true') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: write # relancer le workflow Pages de la branche (workflow_dispatch : permis au GITHUB_TOKEN)
       pull-requests: write
     env:
       GH_TOKEN: ${{ github.token }}
       URL: ${{ needs.deploy.outputs.url }}
       TAG: ${{ needs.plan.outputs.tag }}
-      BRANCH: ${{ needs.plan.outputs.branch }}
+      PREVIEW: ${{ needs.apercu.outputs.url }}
       PR: ${{ github.event.pull_request.number }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: scripts
-      - name: Reconstruire l'aperçu de la branche
-        run: |
-          # Le workflow Pages de la branche a pu se terminer avant que la révision existe (il visait alors la recette par défaut).
-          if gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"; then
-            echo "- Aperçu de \`$BRANCH\` reconstruit pour viser $URL (workflow Pages)." >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "::warning::impossible de relancer le workflow Pages de $BRANCH (branche partie d'avant le lot R1 ?) : l'aperçu vise la recette par défaut jusqu'à la prochaine poussée"
-          fi
       - name: Commentaire sur la PR
-        if: github.event_name == 'pull_request'
         run: |
-          slug="$(node scripts/recette.mjs slug "$BRANCH")"
-          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
-          preview="https://${owner}.github.io/${GITHUB_REPOSITORY#*/}/b/${slug}/"
           marker="<!-- recette-r1 -->"
           {
             echo "$marker"
             echo "### Recette"
             echo ""
-            echo "- Révision de recette : $URL (étiquette \`$TAG\`, sans trafic ; construite depuis la PR fusionnée avec main, \`${GITHUB_SHA::7}\`)"
-            echo "- Santé : $URL/api/health"
-            echo "- Aperçu DailyTrack : ${preview} · DailyJump : ${preview}jump/"
-            echo "- L'aperçu est reconstruit pour viser cette révision (workflow Pages, 2 à 3 min). Son stockage local est séparé de la production (\`apercu:*\`)."
+            if [ -n "$URL" ]; then
+              echo "- Révision de recette : $URL (étiquette \`$TAG\`, sans trafic ; construite depuis la PR fusionnée avec main, \`${GITHUB_SHA::7}\`)"
+              echo "- Santé : $URL/api/health"
+            else
+              echo "- Révision de recette : non déployée (recette non configurée : voir docs/plateforme/recette.md)"
+            fi
+            if [ -n "$PREVIEW" ]; then
+              echo "- **Aperçu** : ${PREVIEW%/}/ · DailyTrack : ${PREVIEW%/}/track/ · DailyJump : ${PREVIEW%/}/jump/"
+              echo "- L'aperçu parle à ${URL:-la recette par défaut} ; son stockage local est le sien (une autre origine que la production). Il expire 7 jours après la dernière poussée et disparaît à la fermeture de la PR."
+            else
+              echo "- Aperçu : non publié (Firebase non configuré : voir docs/plateforme/domaine.md)"
+            fi
             echo ""
-            echo "_Mis à jour à chaque poussée ; l'étiquette est retirée à la fermeture de la PR._"
+            echo "_Mis à jour à chaque poussée ; l'étiquette est retirée et l'aperçu supprimé à la fermeture de la PR._"
           } > body.md
           id="$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate --jq ".[] | select(.body | contains(\"$marker\")) | .id" | tail -n1)"
           if [ -n "$id" ]; then

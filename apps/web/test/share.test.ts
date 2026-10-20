@@ -39,5 +39,7 @@ describe("shareText / shareUrl", () => {
   it("l'adresse du jour n'a pas de réglages ; celle d'une archive porte la date", () => {
     expect(shareUrl(loc, "2026-10-06", true)).toBe("https://nathan-te.github.io/DailyTrack/");
     expect(shareUrl(loc, "2026-10-04", false)).toBe("https://nathan-te.github.io/DailyTrack/?seed=2026-10-04");
+    // Lot R4 : le lien est construit sur l'origine courante (playdujour.com/track/, la recette, un aperçu…).
+    expect(shareUrl({ origin: "https://playdujour.com", pathname: "/track/" }, "2026-10-04", false)).toBe("https://playdujour.com/track/?seed=2026-10-04");
   });
 });

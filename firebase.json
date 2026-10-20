@@ -1,0 +1,27 @@
+{
+  "hosting": {
+    "public": "site",
+    "ignore": ["**/.*"],
+    "redirects": [
+      { "source": "/track", "destination": "/track/", "type": 301 },
+      { "source": "/jump", "destination": "/jump/", "type": 301 }
+    ],
+    "rewrites": [
+      { "source": "/api/**", "run": { "serviceId": "cdj-api", "region": "europe-west1" } }
+    ],
+    "headers": [
+      {
+        "source": "**/assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+      },
+      {
+        "source": "**/*.@(html|json|webmanifest)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "regex": "^(?:/[^/]+)*/$",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      }
+    ]
+  }
+}

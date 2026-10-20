@@ -41,6 +41,9 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
         if: matrix.part == '1/3'
+      # Lot R4 : le portail (apps/portail, hors des espaces de travail npm : il n'est pas dans `tsc -b`).
+      - run: npx tsc -p apps/portail
+        if: matrix.part == '1/3'
       - run: npx vitest run --project sqlite --shard=${{ matrix.part }} && npx vitest run --project libsql --shard=${{ matrix.part }}
       - run: npm run build
         if: matrix.part == '1/3'

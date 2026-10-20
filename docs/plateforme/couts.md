@@ -61,10 +61,37 @@ Ce sont des **propositions de l'agent, à valider par Nathan** (cocher ou corrig
 
 Déjà fait par le lot P4 (ne compte plus comme réserve) : la lecture regroupée de DailyJump (30 → 12 requêtes par joueur et par jour), l'envoi qui rend le classement, les en-têtes de cache.
 
-**Piste plus forte, phase 3** : servir l'API sur **la même origine** que les jeux (le nom de domaine, avec un équilibreur ou une réécriture d'adresse) supprimerait **tous les pré-vols CORS** (≈ 7 requêtes par joueur DailyJump et par jour, ≈ 37 % de ses requêtes). Et si tu acceptes d'envoyer l'identifiant dans le **corps** des `POST` (`text/plain`) plutôt qu'en en-tête, les pré-vols de l'envoi et des vies disparaissent dès maintenant (une entorse à la règle « identifiant en `X-Player-Id` », à décider).
+**Fait au lot R4** : l'API est servie sur **la même origine** que les jeux (playdujour.com, renvoi `/api/**` de Firebase Hosting vers Cloud Run) : **plus aucun pré-vol CORS** (≈ 7 requêtes par joueur DailyJump et par jour, ≈ 37 % de ses requêtes ; § 5).
+
+## 5. Firebase Hosting (lot R4 : playdujour.com)
+
+Le site (portail, DailyTrack, DailyJump) est servi par **Firebase Hosting** : deux sites (production, recette) et les canaux d'aperçu des PR, dans le projet `dailytrack-511513` (offre Blaze : celle du compte de facturation de Cloud Run). Tarifs publics vérifiés le 20/10/2026 (<https://firebase.google.com/pricing>) :
+
+| ressource | gratuit | au-delà |
+|---|---|---|
+| stockage des versions | 10 Go | 0,026 $ par Go et par mois |
+| transfert (fichiers **et** réponses de `/api/` passées par Hosting) | **360 Mo par jour** (≈ 10,8 Go par mois) | **0,15 $ par Go** |
+| domaines, certificats, plusieurs sites, canaux d'aperçu | inclus | — |
+
+**Poids d'un premier chargement** (mesuré au lot R4 sur le site assemblé, `node scripts/site.mjs site` ; fichiers demandés par la page jusqu'au jeu prêt, compressés gzip / brotli comme Hosting les sert) :
+
+| page | fichiers | brut | gzip | brotli |
+|---|---|---|---|---|
+| portail `/` | 2 | 5,8 ko | 2,8 ko | 2,4 ko |
+| DailyTrack `/track/` | 6 | 890 ko | **259 ko** | 220 ko |
+| DailyJump `/jump/` | 9 | 1 407 ko | **355 ko** | 298 ko |
+
+Three.js pèse à lui seul ≈ 140 ko compressés par jeu. Les fichiers à empreinte (`assets/`) sont gardés **un an** par le navigateur (`immutable`) : une visite suivante ne retélécharge que le HTML (≈ 6 à 8 ko compressés) et ce qu'une nouvelle version a changé ; le chunk `three` ne change presque jamais.
+
+**Ce que cela donne** : ≈ **1 000 premiers chargements de DailyJump par jour** (360 Mo ÷ 0,355 Mo), ou ≈ 1 400 de DailyTrack, tiennent dans le gratuit. Au-delà : 1 000 nouveaux joueurs de plus par jour ≈ 10,7 Go par mois ≈ **1,6 $ par mois**. Les réponses de `/api/` passent aussi par Hosting (quelques dizaines de ko par joueur et par jour, à mesurer en production : console Firebase → Hosting → **Utilisation**).
+
+**Ce que Firebase fait gagner** : plus de pré-vols CORS (≈ 7 requêtes de moins par joueur DailyJump et par jour ; `measure:platform` les compte encore : c'est désormais une borne haute, à retirer de `apps/api/scripts/platformBudget.ts` par un lot du serveur) ; et le CDN de Hosting **garde en cache** les lectures `public` du serveur (lot P4 : niveau, carte des morts, échantillon ; jour fermé 24 h, jour ouvert 30 s) : autant de requêtes Cloud Run en moins. Les réponses personnelles (`private`, `Vary: X-Player-Id`) ne sont jamais gardées par le CDN.
+
+**Surveiller** : console Firebase → **Hosting** → **Utilisation** (transfert par jour) chaque lundi, avec Turso (§ 2). Si le transfert dépasse 360 Mo par jour de façon durable : rien à faire tant que le budget de 5 € (§ 1) n'alerte pas (il couvre ≈ 33 Go de transfert par mois) ; ensuite, la piste la moins chère est d'alléger le premier chargement (lot de jeu : Three.js plus petit, chargement différé).
 
 ## Checklist (une fois)
 - ☐ Budget `plateforme-5-euros` : 50 / 90 / 100 % réels + 100 % prévu, e-mail.
 - ☐ Turso : alerte d'usage activée, ou rappel « Usage chaque lundi » dans ton agenda.
 - ☐ `npm run measure:platform -w @cdj/api -- --jump … --track … --salon …` lancé une fois avec les vrais chiffres.
 - ☐ Le tableau du § 4 relu : chaque ligne acceptée ou corrigée (réponds dans la PR du lot P4 ou dans le prochain prompt).
+- ☐ Lot R4 : console Firebase → Hosting → Utilisation regardée une fois après la bascule ; conservation des versions limitée à 50 par site (`domaine.md`, « Le coût »).

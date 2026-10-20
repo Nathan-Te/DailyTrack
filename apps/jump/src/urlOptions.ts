@@ -136,7 +136,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "api",
     description:
-      "Lot P1 (plateforme) : adresse du serveur du classement (`?api=https://…`, essais), ou `demo` : le classement de démonstration (des joueurs fictifs « Démo … » sur 14 jours plus « aujourd'hui », lu dans `demo/` ; on y joue le niveau du 30/10/2026 comme niveau du jour ; rien n'est envoyé, tout est gardé à part, sous `demo:`). Sans elle : `VITE_API_URL` de la construction (la production pour `main`, la recette pour un aperçu), sinon pas de classement. Gardée par les liens internes.",
+      "Lot P1 (plateforme) : adresse du serveur du classement (`?api=https://…`, essais), ou `demo` : le classement de démonstration (des joueurs fictifs « Démo … » sur 14 jours plus « aujourd'hui », lu dans `demo/` ; on y joue le niveau du 30/10/2026 comme niveau du jour ; rien n'est envoyé, tout est gardé à part, sous `demo:`). Lot R4 : `/` = le serveur de la même origine (`/api/…` sur l'adresse de la page). Sans elle : `VITE_API_URL` de la construction (`/` sur la production, la recette et les aperçus Firebase ; l'adresse d'une révision de recette pour l'aperçu d'une PR qui touche le serveur), sinon pas de classement. Gardée par les liens internes.",
     values: ["demo"],
   },
   {
@@ -294,4 +294,13 @@ export function watchFirstHref(date: string | null, from: UrlChoices): string {
 /** Lot 10 : lien vers l'archive d'une date (`?seed=AAAA-MM-JJ`), avec les outils d'affichage gardés. */
 export function archiveHref(date: string, from: UrlChoices): string {
   return `?${[`seed=${date}`, ...carried(from)].join("&")}`;
+}
+
+/**
+ * Lot R4 (plateforme) : l'adresse de la page pour l'import depuis l'ancienne adresse (`src/migration.ts`) — le fragment `#dujour=…` (identité
+ * passée par les pages de redirection de GitHub Pages ; ce n'est pas un paramètre : jamais envoyé au serveur, effacé aussitôt lu). Lue ici,
+ * comme toute l'adresse (`test/jeu.test.ts`).
+ */
+export function pageAddress(): { pathname: string; search: string; hash: string } {
+  return { pathname: location.pathname, search: location.search, hash: location.hash };
 }

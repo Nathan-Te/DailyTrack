@@ -362,6 +362,10 @@ describe("écran d'arrivée et accueil", () => {
   it("adresse : ?api= d'abord, sinon celle de la construction, sinon pas de classement", () => {
     expect(rankApiBase(null, undefined)).toBeNull();
     expect(rankApiBase(null, "https://recette.test/")).toBe("https://recette.test");
+    // Lot R4 : « / » = le serveur de la même origine ; sans origine connue, pas de classement.
+    expect(rankApiBase(null, "/", "https://playdujour.com")).toBe("https://playdujour.com");
+    expect(rankApiBase("/", "https://ailleurs.test", "https://recette.playdujour.com/")).toBe("https://recette.playdujour.com");
+    expect(rankApiBase(null, "/")).toBeNull();
     expect(rankApiBase("demo", "https://recette.test")).toBe("demo");
   });
 });

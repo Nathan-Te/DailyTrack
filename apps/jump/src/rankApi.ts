@@ -175,13 +175,19 @@ export class HttpRankSource extends ProfileClient implements RankSource {
 }
 
 /**
- * Adresse de l'API : `?api=https://…` (essais), `?api=demo` (démonstration), sinon `VITE_API_URL` (fixée à la construction : celle de la
- * production dans `main`, celle de la recette dans un aperçu de branche), sinon rien : pas de classement, le jeu marche comme avant.
+ * Adresse de l'API : `?api=https://…` (essais), `?api=demo` (démonstration), sinon `VITE_API_URL` (fixée à la construction : `/`, la même
+ * origine, sur la production, la recette et les aperçus depuis le lot R4 ; l'adresse directe d'une révision de recette pour l'aperçu d'une PR
+ * qui touche le serveur), sinon rien : pas de classement, le jeu marche comme avant.
  */
-export function rankApiBase(fromUrl: string | null, env: string | undefined): string | null {
+export function rankApiBase(fromUrl: string | null, env: string | undefined, origin?: string): string | null {
   const base = fromUrl || env || "";
+  // Lot R4 (plateforme) : `/` = le serveur de la même origine (Firebase Hosting renvoie `/api/**` vers Cloud Run) : aucune requête CORS.
+  if (base === SAME_ORIGIN_API) return origin ? origin.replace(/\/+$/, "") : null;
   return base ? base.replace(/\/+$/, "") : null;
 }
+
+/** Lot R4 : la valeur de `VITE_API_URL` (ou de `?api=`) qui veut dire « le serveur de la même origine » (`/api/…` sur l'adresse de la page). */
+export const SAME_ORIGIN_API = "/";
 
 /** « 1ᵉʳ », « 3ᵉ » (rang en français, lettres en exposant). */
 export function ordinal(rank: number): string {

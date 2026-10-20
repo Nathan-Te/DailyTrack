@@ -42,10 +42,14 @@ describe("la production exige la CI complète", () => {
   it("production.yml : le garde tourne d'abord, et tous les jobs qui déploient en dépendent", () => {
     const wf = readFileSync(new URL("../../../.github/workflows/production.yml", import.meta.url), "utf8");
     expect(wf).toContain("node scripts/ci-complete.mjs");
-    expect(wf).toMatch(/\n {2}ci-complete:\n/);
-    // `changes` (la première étape de tous les autres) attend le garde : recette, validation, API, Pages et vérification en découlent.
-    expect(wf).toMatch(/\n {2}changes:\n {4}needs: ci-complete\n/);
-    for (const job of ["recette", "api", "pages"]) expect(new RegExp(`\\n  ${job}:\\n    needs: \\[?[^\\n]*changes`).test(wf), job).toBe(true);
+    // Lot R4 (« Mettre en production ») : le garde est la première étape du premier job, `verifier` ; `figer` l'attend, le serveur attend les
+    // deux, le site attend le serveur (validation, puis vérification, étiquette et bascule en découlent).
+    const verifier = /\n {2}verifier:\n[\s\S]*?(?=\n {2}[a-z-]+:\n)/.exec(wf)![0];
+    expect(verifier).toContain("node scripts/ci-complete.mjs");
+    expect(verifier.indexOf("ci-complete.mjs")).toBeLessThan(verifier.indexOf("mise-en-production.mjs"));
+    expect(wf).toMatch(/\n {2}figer:\n {4}needs: verifier\n/);
+    expect(wf).toMatch(/\n {2}serveur:\n {4}needs: \[verifier, figer\]\n/);
+    for (const job of ["site", "verification", "etiquette", "bascule", "depot"]) expect(new RegExp(`\\n  ${job}:\\n    needs: \\[[^\\n]*(serveur|site|verification)`).test(wf), job).toBe(true);
     expect(wf).toContain("actions: read");
   });
 });

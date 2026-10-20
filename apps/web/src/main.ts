@@ -108,6 +108,15 @@ import { buildTrackScene, type TrackScene } from "./trackMesh";
 import { loadTunedParams, mountTunePanel } from "./tune";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
+import { browserMigrationPage, importFromOldAddress } from "./migration";
+
+// Lot R4 (plateforme) : arrivée depuis l'ancienne adresse (GitHub Pages) avec l'identité dans le fragment (`#dujour=…`) : effacé de l'adresse
+// aussitôt, importé une seule fois (une autre identité déjà là : le joueur choisit). Avant tout le reste (identité, records, synchronisation).
+try {
+  importFromOldAddress(gameStorage(), formatDay(parisDay(Date.now())), browserMigrationPage());
+} catch {
+  /* stockage illisible : rien à importer, le jeu marche comme avant */
+}
 
 // Lot P4 (plateforme) : un code chargé dans un autre jeu de la plateforme (DailyJump) depuis la dernière visite : le cache des records de
 // l'ancienne identité est vidé, comme quand le code est chargé ici (`applyIdentity`). Avant toute lecture des records. Sinon, rien ne change.

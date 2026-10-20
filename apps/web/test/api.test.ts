@@ -10,6 +10,9 @@ describe("apiBase", () => {
     expect(apiBase("?api=https://a.test", "https://b.test")).toBe("https://a.test");
     expect(apiBase("", undefined)).toBeNull();
     expect(apiBase("?seed=2026-10-06", "")).toBeNull();
+    // Lot R4 : « / » = le serveur de la même origine (Firebase Hosting renvoie /api/** vers Cloud Run).
+    expect(apiBase("", "/", "https://playdujour.com")).toBe("https://playdujour.com");
+    expect(apiBase("?api=/", "https://prod.test", "https://recette.playdujour.com/")).toBe("https://recette.playdujour.com");
   });
 });
 

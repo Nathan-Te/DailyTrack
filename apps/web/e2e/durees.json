@@ -16,6 +16,7 @@
     "cuves.spec.ts": 30,
     "daily.spec.ts": 128,
     "demo.spec.ts": 59,
+    "domaine.spec.ts": 60,
     "figures.spec.ts": 45,
     "futur.spec.ts": 112,
     "ghost.spec.ts": 52,
