@@ -1,13 +1,18 @@
-import { PREMIER_JOUR, THEMES, THEME_NAMES, circuitNumber, formatDay, medalsFor, themeForDay } from "@cdj/sim";
-import { formatTime } from "./format";
+import { PREMIER_JOUR, THEME_NAMES, circuitNumber, formatDay, medalsFor, themeForDay } from "@cdj/sim";
+import { medaille, nomMedaille } from "@cdj/ui";
+import { MEDAL_TYPE } from "./boardView";
+import { creerCadre } from "./cadre";
+import { el } from "./dom";
+import { fDate, fDateCourte, fNumero, fRang, fTemps, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
+import { iconeTrack } from "./icones";
 import type { DayBest } from "./records";
-import { MEDAL_ICON } from "./share";
 import { watchHrefFor } from "./watch";
 
 export interface ArchiveDay {
   day: number;
   date: string;
   number: number;
+  /** Le thème du jour : son code (`rallye`, `col`…), traduit à l'affichage par `nomTheme`. */
   theme: string;
   isToday: boolean;
   best: DayBest | null;
@@ -18,7 +23,7 @@ export function archiveDays(today: number, bests: Map<string, DayBest>, max = 12
   const days: ArchiveDay[] = [];
   for (let day = today; day >= PREMIER_JOUR && days.length < max; day--) {
     const date = formatDay(day);
-    days.push({ day, date, number: circuitNumber(day), theme: themeForDay(day).label, isToday: day === today, best: bests.get(date) ?? null });
+    days.push({ day, date, number: circuitNumber(day), theme: themeForDay(day).name, isToday: day === today, best: bests.get(date) ?? null });
   }
   return days;
 }
@@ -94,11 +99,11 @@ export function disposeArchive() {
   shownDays = new Set();
 }
 
-const THUMB_LABEL = (d: ArchiveDay) => `Vue aérienne du circuit${d.number >= 1 ? ` n° ${d.number}` : ""} du ${d.date}`;
+const thumbLabel = (d: ArchiveDay) => (d.number >= 1 ? t("archives.vignette", { numero: d.number, date: fDate(d.day) }) : t("archives.vignetteSansNumero", { date: fDate(d.day) }));
 
 function showThumb(box: HTMLElement, day: ArchiveDay, url: string) {
   const img = new Image();
-  img.alt = THUMB_LABEL(day);
+  img.alt = thumbLabel(day);
   img.decoding = "async";
   img.draggable = false;
   img.src = url;
@@ -106,47 +111,66 @@ function showThumb(box: HTMLElement, day: ArchiveDay, url: string) {
   box.replaceChildren(img);
 }
 
-/** « 1ᵉʳ », « 4ᵉ » : le rang en français. */
-export function ordinal(rank: number): string {
-  return rank === 1 ? "1ᵉʳ" : `${rank}ᵉ`;
+/** Les arguments de `renderArchive` gardés par `mountArchive` pour redessiner la liste quand la langue change. */
+export interface ArchiveArgs {
+  days: ArchiveDay[];
+  search: string;
+  currentDate: string | null;
+  currentTheme: string | null;
+  extras: ArchiveExtras | null;
+  thumbs: ThumbSource | null;
+  trialTools: boolean;
+}
+
+export interface ArchiveView {
+  /** Le contenu défilant de l'étiquette (la racine des `IntersectionObserver` des miniatures). */
+  corps: HTMLElement;
+  render(args: ArchiveArgs): void;
+}
+
+/**
+ * Les archives (lot I4) : le cadre crème de Du Jour (retour « ‹ TRACK » = `onClose`) et l'étiquette Track qui porte la liste. `root` est `#archive`
+ * (déjà dans la page). La liste se redessine toute seule quand la langue change, si elle est ouverte.
+ */
+export function mountArchive(root: HTMLElement, onClose: () => void): ArchiveView {
+  const cadre = creerCadre({ racine: root, titreAria: "archives.aria", retour: "jeu", onRetour: onClose });
+  cadre.corps.classList.add("panel"); // le panneau que visent les tests (`#archive .panel`)
+  let last: ArchiveArgs | null = null;
+  const view: ArchiveView = {
+    corps: cadre.corps,
+    render(args) {
+      last = args;
+      renderArchive(cadre.corps, args.days, args.search, args.currentDate, args.currentTheme, args.extras, args.thumbs, args.trialTools);
+    },
+  };
+  onLangue(() => {
+    if (last && !root.hidden) view.render(last);
+  });
+  return view;
 }
 
 /** Remplit le panneau des archives : une ligne-lien par jour. */
-export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, onClose: () => void, currentTheme: string | null = null, extras: ArchiveExtras | null = null, thumbs: ThumbSource | null = null, trialTools = true) {
+export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: string, currentDate: string | null, currentTheme: string | null = null, extras: ArchiveExtras | null = null, thumbs: ThumbSource | null = null, trialTools = true) {
   stopObserving(); // redessin : les jours à l'écran restent voulus (`shownDays`) jusqu'à la réponse du nouvel observateur
   currentPanel = {};
-  const head = document.createElement("div");
-  head.className = "head";
-  const title = document.createElement("div");
-  title.className = "title";
-  title.textContent = "Archives";
-  const close = document.createElement("button");
-  close.type = "button";
-  close.className = "close";
-  close.textContent = "✕";
-  close.setAttribute("aria-label", "Fermer");
-  close.addEventListener("click", onClose);
-  head.append(title, close);
+  const head = el("div", "etiquette__tete");
+  head.append(el("h1", "etiquette__titre title", t("archives.titre")));
 
   // Essais : un circuit tiré au hasard, et le choix du thème (circuits d'essai : jamais classés).
-  const tools = document.createElement("div");
-  tools.className = "tools";
-  const dice = document.createElement("button");
+  const tools = el("div", "tools");
+  const dice = el("button", "dj-bouton dj-bouton--secondaire dice", t("archives.hasard"));
   dice.type = "button";
-  dice.className = "dice";
-  dice.textContent = "🎲 Circuit au hasard";
   dice.addEventListener("click", () => location.assign(randomSeedHref(location.search)));
-  const chips = document.createElement("div");
-  chips.className = "chips";
+  const chips = el("div", "chips");
+  chips.setAttribute("role", "group");
+  chips.setAttribute("aria-label", t("archives.themes"));
   const chip = (label: string, theme: string | null) => {
-    const a = document.createElement("a");
+    const a = el("a", theme === currentTheme ? "puce on" : "puce", label);
     a.href = themeHref(search, theme);
-    a.textContent = label;
-    if (theme === currentTheme) a.className = "on";
     chips.append(a);
   };
-  chip("Thème du jour", null);
-  for (const name of THEME_NAMES) chip(THEMES[name].label, name);
+  chip(t("archives.themeDuJour"), null);
+  for (const name of THEME_NAMES) chip(nomTheme(name), name);
   tools.append(dice, chips);
 
   // Miniatures : une case de taille fixe par ligne (la liste ne bouge pas quand l'image arrive), remplie quand la ligne
@@ -177,14 +201,12 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
     );
   }
 
-  const list = document.createElement("div");
-  list.className = "list";
+  const list = el("div", "list");
   for (const d of days) {
-    const a = document.createElement("a");
+    const a = el("a", d.date === currentDate ? "day current" : "day");
     a.href = archiveHref(search, d.date, d.isToday);
-    a.className = d.date === currentDate ? "day current" : "day";
-    const box = document.createElement("span");
-    box.className = "thumb";
+    a.dataset.date = d.date;
+    const box = el("span", "thumb");
     box.dataset.state = thumbs ? "idle" : "none";
     box.setAttribute("role", "img");
     a.append(box);
@@ -198,26 +220,23 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
         ask(box, d);
       }
     }
-    const what = document.createElement("span");
-    what.className = "what";
+    const what = el("span", "what");
     const cell = (cls: string, text: string, into: HTMLElement) => {
-      const span = document.createElement("span");
-      span.className = cls;
-      span.textContent = text;
+      const span = el("span", cls, text);
       into.append(span);
+      return span;
     };
-    cell("num", d.number >= 1 ? `#${d.number}` : "—", what);
-    cell("date", d.isToday ? `${d.date} · aujourd'hui` : d.date, what);
-    cell("theme", d.theme, what);
+    cell("num", d.number >= 1 ? fNumero(d.number) : "—", what);
+    cell("date", d.isToday ? `${fDateCourte(d.day)} · ${t("archives.aujourdhui")}` : fDateCourte(d.day), what);
+    cell("theme", nomTheme(d.theme), what);
     // Revoir le meilleur tour (lot 27b) : seulement pour un jour qui a un classement (connu quand les détails sont arrivés).
     if ((extras?.meta.get(d.date)?.participants ?? 0) > 0) {
       const href = watchHrefFor(archiveHref(search, d.date, d.isToday));
-      const watch = document.createElement("span");
-      watch.className = "watch";
+      const watch = el("span", "watch");
       watch.setAttribute("role", "link");
       watch.tabIndex = 0;
-      watch.title = "Revoir le tour du premier";
-      watch.textContent = "▶ Revoir le meilleur tour";
+      watch.title = t("archives.revoir.titre");
+      watch.append(iconeTrack("lecture", 14), t("archives.revoir"));
       const go = (e: Event) => {
         e.preventDefault(); // la ligne est un lien vers le jour : celui-ci mène à sa rediffusion
         e.stopPropagation();
@@ -229,17 +248,22 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
     }
     a.append(what);
     const rank = extras?.ranks.get(d.date);
-    cell("best", d.best ? `${d.best.medal ? MEDAL_ICON[d.best.medal] + " " : ""}${formatTime(d.best.ms)}${rank ? ` · ${ordinal(rank.rank)}/${rank.participants}` : ""}` : "—", a);
+    const best = el("span", "best");
+    if (d.best) {
+      if (d.best.medal) best.append(medaille(traducteurDuSocle(), { type: MEDAL_TYPE[d.best.medal], obtenue: true, forme: "pastille", jeu: "track" }), " ");
+      best.append(el("span", "chiffres", fTemps(d.best.ms)));
+      if (rank) best.append(` · ${fRang(rank.rank)}/${rank.participants}`);
+    } else best.textContent = "—";
+    a.append(best);
     const meta = extras?.meta.get(d.date);
     if (meta) {
       const m = medalsFor(meta.authorMs);
-      cell("sub", `${MEDAL_ICON.author} ${formatTime(m.author)}  ${MEDAL_ICON.gold} ${formatTime(m.gold)}  ${MEDAL_ICON.silver} ${formatTime(m.silver)}  ${MEDAL_ICON.bronze} ${formatTime(m.bronze)}  · ${meta.participants} pilotes`, a);
+      const nom = (type: "auteur" | "or" | "argent" | "bronze") => nomMedaille(traducteurDuSocle(), type);
+      cell("sub", `${nom("auteur")} ${fTemps(m.author)}  ${nom("or")} ${fTemps(m.gold)}  ${nom("argent")} ${fTemps(m.silver)}  ${nom("bronze")} ${fTemps(m.bronze)}  · ${t("archives.pilotes", { n: meta.participants })}`, a);
     }
     list.append(a);
   }
-  const note = document.createElement("div");
-  note.className = "note";
-  note.textContent = "Les jours passés, les circuits au hasard et les thèmes forcés se rejouent sans classement (touches N : au hasard, T : thème suivant).";
+  const note = el("p", "note", t("archives.note"));
   const top = panel.scrollTop; // redessiné quand les détails arrivent : on reste où le joueur a défilé
   // Production (lot 31) : ni circuit au hasard (il pourrait tomber après aujourd'hui), ni thème forcé.
   panel.replaceChildren(head, ...(trialTools ? [tools] : []), list, note);

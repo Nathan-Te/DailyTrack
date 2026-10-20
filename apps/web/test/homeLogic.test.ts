@@ -1,9 +1,16 @@
-import { describe, expect, it } from "vitest";
-import { SALON_SESSION_MS, THEMES, salonTheme } from "@cdj/sim";
-import { DIRECT_KEYS, dailyTitle, demoSalonStatus, homeHref, lookupSalon, mmss, remainingMs, salonStatusFromNow, wantsHome, withoutHome } from "../src/homeLogic";
+import { beforeAll, describe, expect, it } from "vitest";
+import { SALON_SESSION_MS, salonTheme } from "@cdj/sim";
+import { DIRECT_KEYS, dailyTitle, demoSalonStatus, homeHref, lookupSalon, medalWord, mmss, remainingMs, salonStatusFromNow, wantsHome, withoutHome } from "../src/homeLogic";
+import { chargerLangue, setLangue } from "../src/i18n";
 import { modeHref } from "../src/salon";
 
+// L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
+beforeAll(() => chargerLangue("en"));
+
 const params = (q: string) => new URLSearchParams(q);
+
+// Les titres sont écrits dans la langue du jeu (i18n.ts) : ce fichier teste le français, puis l'anglais.
+beforeAll(() => setLangue("fr", { ecrire: false }));
 
 describe("l'accueil s'affiche… sauf lien direct", () => {
   it("au chargement simple, avec ou sans réglages d'affichage", () => {
@@ -39,10 +46,23 @@ describe("adresses", () => {
 });
 
 describe("titres", () => {
-  it("« Circuit du Jour n° 1 · 13 oct. · Rallye »", () => {
-    expect(dailyTitle(1, "2026-10-13", "Rallye")).toBe("Circuit du Jour n° 1 · 13 oct. · Rallye");
-    expect(dailyTitle(16, "2026-10-28", "Nuit", false)).toBe("n° 16 · 28 oct. · Nuit");
-    expect(dailyTitle(0, "2026-10-12", "Ville")).toBe("Circuit du Jour 12 oct. · Ville"); // avant le premier jour : pas de numéro
+  it("« Circuit du Jour n° 1 · mar. 13 oct. · Rallye »", () => {
+    setLangue("fr", { ecrire: false });
+    expect(dailyTitle(1, "2026-10-13", "Rallye")).toBe("Circuit du Jour n°\u00a01 · mar. 13 oct. · Rallye");
+    expect(dailyTitle(16, "2026-10-28", "Nuit", false)).toBe("n°\u00a016 · mer. 28 oct. · Nuit");
+    expect(dailyTitle(0, "2026-10-12", "Ville")).toBe("Circuit du Jour · lun. 12 oct. · Ville"); // avant le premier jour : pas de numéro
+  });
+  it("en anglais : « Track of the Day #1 · Tue, Oct 13 · Rally »", () => {
+    setLangue("en", { ecrire: false });
+    expect(dailyTitle(1, "2026-10-13", "Rally")).toBe("Track of the Day #1 · Tue, Oct 13 · Rally");
+    expect(dailyTitle(16, "2026-10-28", "Night", false)).toBe("#16 · Wed, Oct 28 · Night");
+    setLangue("fr", { ecrire: false });
+  });
+  it("médailles nommées dans la langue", () => {
+    setLangue("en", { ecrire: false });
+    expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Author", "Gold", "Silver", "Bronze"]);
+    setLangue("fr", { ecrire: false });
+    expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Auteur", "Or", "Argent", "Bronze"]);
   });
   it("temps restant", () => {
     expect(mmss(462_000)).toBe("07:42");
@@ -56,7 +76,7 @@ describe("le Salon vu depuis l'accueil", () => {
     const at = 5 * SALON_SESSION_MS + 123_000; // 2 min 3 s dans la session 5
     const s = demoSalonStatus(at);
     expect(s.session).toBe(5);
-    expect(s.themeLabel).toBe(THEMES[salonTheme(5)].label);
+    expect(s.theme).toBe(salonTheme(5));
     expect(remainingMs(s, at)).toBe(SALON_SESSION_MS - 123_000);
     expect(s.players).toBeGreaterThanOrEqual(0);
     expect(demoSalonStatus(at)).toEqual(s); // déterministe
@@ -74,8 +94,9 @@ describe("le Salon vu depuis l'accueil", () => {
     const none = await lookupSalon(null);
     expect(none.ok).toBe(false);
     const down = await lookupSalon("http://x", SALON_SESSION_MS, { now: async () => ({ ok: false as const, status: 0, code: "network", message: "Classement injoignable" }) });
-    expect(down).toEqual({ ok: false, message: expect.stringContaining("ne répond pas") });
+    expect(down).toEqual({ ok: false, reason: "muet" });
     const no404 = await lookupSalon("http://x", SALON_SESSION_MS, { now: async () => ({ ok: false as const, status: 404, code: "x", message: "x" }) });
-    expect(no404.ok === false && no404.message).toContain("besoin du serveur");
+    expect(no404).toEqual({ ok: false, reason: "sans_serveur" });
+    expect(none).toEqual({ ok: false, reason: "sans_serveur" });
   });
 });

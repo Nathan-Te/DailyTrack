@@ -1,6 +1,8 @@
 import { gameStorage } from "./storage";
 
-// « Comment jouer » (lot 29) : le texte de l'aide, par appareil, et le souvenir de l'avoir vue. Logique pure ; le DOM est dans howtoUi.ts.
+// « Comment jouer » (lot 29) : le contenu de l'aide, par appareil, et le souvenir de l'avoir vue. Logique pure ; le DOM est dans howtoUi.ts. Lot I4 : aucun texte ici,
+// seulement des clés du catalogue (`aide.*`, catalogue.reglages.ts) ; une touche est écrite telle quelle (« Z », « R ») ou donnée par une clé `aide.touche.*`, une
+// icône par `icone:<nom>`.
 
 export type Device = "keyboard" | "touch";
 
@@ -35,55 +37,57 @@ export function markHowtoSeen(storage: KV | null = safeStorage()): void {
   }
 }
 
-/** Une commande : les touches (ou gestes) et ce qu'elles font. */
+/** Une commande : les touches (ou gestes) et ce qu'elles font. `keys` : un nom de touche littéral, une clé `aide.touche.*`, ou `icone:<nom>` ; `does` : une clé du catalogue. */
 export interface Control {
   keys: string[];
   does: string;
 }
 
 export const KEYBOARD_CONTROLS: Control[] = [
-  { keys: ["Z", "Q", "S", "D"], does: "Accélérer, tourner à gauche, freiner / reculer, tourner à droite (aussi W A S D et les flèches)" },
-  { keys: ["Espace"], does: "Freiner — en tournant, la voiture dérape" },
-  { keys: ["R"], does: "Retour au dernier point de contrôle (le chrono continue)" },
-  { keys: ["Entrée"], does: "Recommencer depuis le départ" },
-  { keys: ["C"], does: "Changer de caméra (proche, loin, capot)" },
-  { keys: ["P", "Échap"], does: "Pause et menu" },
-  { keys: ["L"], does: "Montrer ou replier le classement" },
-  { keys: ["G"], does: "Changer de fantôme" },
-  { keys: ["M"], does: "Couper ou remettre le son" },
+  { keys: ["Z", "Q", "S", "D"], does: "aide.clavier.deplacer" },
+  { keys: ["aide.touche.espace"], does: "aide.clavier.frein" },
+  { keys: ["R"], does: "aide.clavier.pointDeControle" },
+  { keys: ["aide.touche.entree"], does: "aide.clavier.depart" },
+  { keys: ["C"], does: "aide.clavier.camera" },
+  { keys: ["P", "aide.touche.echap"], does: "aide.clavier.pause" },
+  { keys: ["L"], does: "aide.clavier.classement" },
+  { keys: ["G"], does: "aide.clavier.fantome" },
+  { keys: ["M"], does: "aide.clavier.son" },
 ];
 
 export const GAMEPAD_CONTROLS: Control[] = [
-  { keys: ["Stick gauche", "Croix"], does: "Tourner" },
-  { keys: ["RT", "A"], does: "Accélérer" },
-  { keys: ["LT", "B"], does: "Freiner / reculer" },
-  { keys: ["Y"], does: "Retour au dernier point de contrôle" },
-  { keys: ["X"], does: "Recommencer depuis le départ" },
-  { keys: ["Start"], does: "Pause et menu" },
-  { keys: ["Vue"], does: "Changer de caméra" },
+  { keys: ["aide.touche.stickGauche", "aide.touche.croix"], does: "aide.manette.tourner" },
+  { keys: ["RT", "A"], does: "aide.manette.accelerer" },
+  { keys: ["LT", "B"], does: "aide.manette.freiner" },
+  { keys: ["Y"], does: "aide.manette.pointDeControle" },
+  { keys: ["X"], does: "aide.manette.depart" },
+  { keys: ["Start"], does: "aide.manette.pause" },
+  { keys: ["aide.touche.vue"], does: "aide.manette.camera" },
 ];
 
 export const TOUCH_CONTROLS: Control[] = [
-  { keys: ["Moitié gauche"], does: "Glisse le pouce pour tourner (ou touche ◀ ▶ selon tes réglages)" },
-  { keys: ["Moitié droite"], does: "Gaz et frein : deux pédales (ou accélérateur automatique, dans les réglages)" },
-  { keys: ["↺"], does: "Retour au dernier point de contrôle" },
-  { keys: ["⟲"], does: "Recommencer depuis le départ" },
-  { keys: ["🎥"], does: "Changer de caméra" },
-  { keys: ["⏸"], does: "Pause et menu" },
+  { keys: ["aide.touche.moitieGauche"], does: "aide.doigts.tourner" },
+  { keys: ["aide.touche.moitieDroite"], does: "aide.doigts.pedales" },
+  { keys: ["icone:drapeau"], does: "aide.doigts.pointDeControle" },
+  { keys: ["icone:recommencer"], does: "aide.doigts.depart" },
+  { keys: ["icone:camera"], does: "aide.doigts.camera" },
+  { keys: ["aide.touche.pause"], does: "aide.doigts.pause" },
 ];
 
 export interface Tip {
+  /** Une icône du socle (`drapeau`, `flamme`) ou de Track (`recommencer`, `fantome`, `classement`, `calendrier`). */
   icon: string;
-  title: string;
-  text: string;
+  /** Clés du catalogue. */
+  heading: string;
+  body: string;
 }
 
 /** Les idées à retenir, quel que soit l'appareil. */
 export const TIPS: Tip[] = [
-  { icon: "🏁", title: "Le but", text: "Chaque jour un circuit, le même pour tout le monde. Passe tous les points de contrôle et franchis la ligne le plus vite possible : ton meilleur temps compte, tu recommences autant que tu veux." },
-  { icon: "↺", title: "Points de contrôle", text: "Tu es tombé ou raté un virage ? Reprends au dernier point de contrôle : le chrono, lui, continue de tourner. Le temps de chaque point est comparé à ton record." },
-  { icon: "🛬", title: "En l'air", text: "Le frein, en l'air, fige la voiture : elle garde son angle et se pose sans rebondir. Arrive à plat, tu gardes ta vitesse ; de travers, tu en perds." },
-  { icon: "🏅", title: "Médailles", text: "Bronze, Argent et Or sont des temps à battre, calculés chaque jour. La médaille Auteur est le temps du pilote automatique qui a validé le circuit : le battre, c'est être meilleur que lui." },
-  { icon: "👻", title: "Fantômes", text: "Une voiture transparente rejoue ton record, ou celui du premier, ou du joueur juste devant toi (touche G, ou le bouton Fantôme). Rien de tout ça ne change ton temps." },
-  { icon: "🌐", title: "Salon live", text: "Un circuit tout neuf toutes les 10 minutes, identique pour les joueurs présents, avec leurs fantômes et un classement de session. Le Salon ne touche jamais à tes records du jour." },
+  { icon: "drapeau", heading: "aide.conseil.but.titre", body: "aide.conseil.but.texte" },
+  { icon: "recommencer", heading: "aide.conseil.controle.titre", body: "aide.conseil.controle.texte" },
+  { icon: "flamme", heading: "aide.conseil.air.titre", body: "aide.conseil.air.texte" },
+  { icon: "classement", heading: "aide.conseil.medailles.titre", body: "aide.conseil.medailles.texte" },
+  { icon: "fantome", heading: "aide.conseil.fantomes.titre", body: "aide.conseil.fantomes.texte" },
+  { icon: "calendrier", heading: "aide.conseil.salon.titre", body: "aide.conseil.salon.texte" },
 ];

@@ -1,8 +1,11 @@
 import { expect as baseExpect, test, type Browser, type Page, TODAY, keepOpen, newClockedContext } from "./fixtures";
 import { SIM_VERSION, dailyCircuit, encodeReplay, formatDay, runPilot } from "@cdj/sim";
-import { encodeTransfer } from "../src/transfer";
-import { formatTime } from "../src/format";
+import { encodeTransfer } from "@cdj/profile";
+/** `31,402 s` (le format français du socle, recopié : les tests ne dépendent pas du code qu'ils vérifient). */
+const formatTime = (ms: number) => `${Math.floor(ms / 1000)},${String(ms % 1000).padStart(3, "0")}\u00a0s`;
 
+// Lot I4 : le jeu n'a plus d'écran de profil (Réglages › « Mon profil Du Jour › » mène au profil commun du portail, qui a ses propres e2e : portail-jour.spec.ts) ;
+// ce fichier garde ce qui reste au jeu : pseudos réservés à l'envoi, synchronisation du profil (records, pseudo, code remplacé) lue dans `__cdj.sync` et le stockage.
 // Pseudos réservés et profil synchronisé (lot 30), avec le vrai serveur (SQLite en mémoire, port 8790, réservé à ce fichier) et plusieurs
 // « appareils » = contextes de navigateur isolés. Chaque course est jouée en accéléré (`?debug&timescale=6`) avec la rediffusion d'un pilote.
 // Les scénarios se suivent (mode série) : A, B et C sont les mêmes appareils d'un bout à l'autre. Le rendu 3D demande WebGL : Chromium seulement.
@@ -98,7 +101,7 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
   const suggestions = b.locator("#finish .online .suggestions button");
   await expect(suggestions.first()).toHaveText("nówy2");
   await expect(suggestions.nth(1)).toHaveText("nówy_FR");
-  await expect(b.locator("#finish .online").getByRole("button", { name: "Charger un code" })).toBeVisible();
+  await expect(b.locator("#finish .online").getByRole("link", { name: /Mon profil Du Jour/ })).toBeVisible(); // lot I4 : le code se charge dans le profil commun
   expect(await b.evaluate(() => localStorage.getItem("cdj:name"))).toBeNull(); // refusé : rien n'est retenu
   expect((await board()).participants).toBe(1); // la course refusée n'a rien créé
   await b.screenshot({ path: "../../docs/lots/img/lot-30-pseudo-pris.png" });
@@ -113,21 +116,22 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
   await race(c, slowCode);
   await chooseName(c, "NOWY");
   await expect(c.locator("#finish .online .error")).toContainText("déjà utilisé");
-  await c.locator("#finish .online").getByRole("button", { name: "Charger un code" }).click();
-  await expect(c.locator("#page-profile")).toBeVisible();
-  await c.locator("#page-profile .tr-code").fill(nowyCode);
-  const preview = c.locator("#page-profile .tr-preview");
-  await expect(preview).toContainText("« Nowy »");
-  await expect(preview).toContainText("Jours joués1");
-  await c.screenshot({ path: "../../docs/lots/img/lot-30-charger-un-code.png" });
-  const reloaded = c.waitForEvent("load");
-  await c.locator("#page-profile .tr-apply").click();
-  await reloaded;
+  // Lot I4 : « Charger un code » mène au profil commun du portail (`../profil/?retour=<page du jeu>`) ; le code s'y charge (portail-jour.spec.ts) et
+  // l'identité change dans le stockage de la plateforme. Ici : le lien, puis l'identité de Nowy installée comme le fait le portail.
+  const versProfil = c.waitForRequest((r) => /\/profil\/\?retour=%2F/.test(r.url()));
+  await c.locator("#finish .online").getByRole("link", { name: /Mon profil Du Jour/ }).click();
+  await versProfil;
+  await c.goto(`/?${GAME}`);
   await c.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
-  expect(await idOf(c)).toBe(await idOf(a));
+  const idA = await idOf(a);
+  await c.evaluate((id) => {
+    localStorage.setItem("cdj:player", id);
+    localStorage.setItem("cdj:name", "Nowy");
+  }, idA);
+  await c.reload();
+  await c.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
+  expect(await idOf(c)).toBe(idA);
   expect(await c.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Nowy");
-  await goHomeAndWait(c);
-  await expect(c.locator("#home .profile input.name")).toHaveValue("Nowy");
   expect((await board()).participants).toBe(2); // C est devenu Nowy : personne de plus au classement
   await b.context().close();
   await sleep(a);
@@ -188,29 +192,23 @@ test("les médailles des jours passés viennent du serveur (archives d'un appare
   const page = await context.newPage();
   await page.goto(`/?home=1&${GAME}`);
   await page.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
-  await expect(page.locator("#home .profile input.name")).toHaveValue("Voyageur");
-  await expect(page.locator("#home .profile .stats")).toContainText("🥈 1");
-  await expect(page.locator("#home .profile .stats")).toContainText("3e sur 11");
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("cdj:name")), { timeout: 30_000 }).toBe("Voyageur"); // le profil du serveur est fusionné au cache
   await page.getByRole("button", { name: /Archives/ }).click();
-  const row = page.locator("#archive a.day", { hasText: formatDay(day) });
-  await expect(row).toContainText("🥈");
+  const row = page.locator(`#archive a.day[data-date="${formatDay(day)}"]`);
+  await expect(row).toContainText("Argent"); // lot I4 : la médaille est nommée (plus d'émoji dans l'interface)
   await context.close();
 });
 
-test("un pseudo changé sur un appareil se voit sur l'autre", async () => {
-  await wake(a);
-  await goHomeAndWait(a);
-  await a.locator("#home .profile input.name").fill("Nowy Pro");
-  await a.getByRole("button", { name: "Enregistrer" }).click();
-  await expect(a.locator("#home .profile")).toContainText("Pseudo enregistré : Nowy Pro");
+test("un pseudo changé sur un appareil (dans le profil commun du portail) se voit sur l'autre", async () => {
+  // Le portail change le pseudo par `PUT /api/player` (les mêmes règles et refus que dans le jeu avant le lot I4).
+  const res = await fetch(`${API}/api/player`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ playerId: await idOf(a), name: "Nowy Pro" }) });
+  expect(res.status).toBe(200);
   await expect.poll(async () => (await board()).top.map((r) => r.name)).toContain("Nowy Pro");
-  await sleep(a);
   // L'ancien pseudo est libre pour un autre : le pseudo n'appartient qu'à qui l'a.
   expect((await (await fetch(`${API}/api/name?name=nowy`)).json()).available).toBe(true);
 
   await syncedGoto(c, `/?home=1&${GAME}`);
-  await expect(c.locator("#home .profile input.name")).toHaveValue("Nowy Pro", { timeout: 20_000 });
-  expect(await c.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Nowy Pro");
+  await expect.poll(() => c.evaluate(() => localStorage.getItem("cdj:name")), { timeout: 20_000 }).toBe("Nowy Pro");
   await sleep(c);
 });
 
@@ -228,67 +226,44 @@ test("hors ligne : le cache sert et le dit discrètement ; le record fait hors l
   // L'accueil, sans réseau : le profil de l'appareil, et une mention discrète.
   await d.goto(`/?home=1&${GAME}`);
   await d.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
-  await expect(d.locator("#home .profile .notice.quiet")).toContainText("Hors ligne");
-  await expect(d.locator("#home .profile input.name")).toHaveValue("Voyageur");
-  await expect(d.locator("#home .profile .stats")).toContainText("Jours joués1");
+  expect(await d.evaluate(() => window.__cdj.sync.status)).toBe("offline"); // le cache sert, la synchronisation se dit hors ligne
+  expect(await d.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Voyageur");
   await d.screenshot({ path: "../../docs/lots/img/lot-30-hors-ligne.png" });
   expect((await board()).participants).toBe(before);
   // Le réseau revient : au lancement suivant, le record est envoyé, rejoué et classé.
   await ctx.unroute(`${API}/**`);
   await syncedGoto(d, `/?home=1&${GAME}`);
   await expect.poll(async () => (await board()).top.find((r) => r.name === "Voyageur")?.ms, { timeout: 30_000 }).toBe(slow.finishMs);
-  await expect(d.locator("#home .profile .notice.quiet")).toHaveCount(0);
   await expect(d.locator("#home .mine .rank")).toContainText(/sur \d+/, { timeout: 20_000 });
   await ctx.close();
 });
 
-test("« Changer mon code » : l'ancien code ne vaut plus rien, l'autre appareil le voit et charge le nouveau", async () => {
+test("un code remplacé ailleurs : l'ancien ne vaut plus rien, le jeu le sait (code révoqué) et le nouveau garde tout", async () => {
+  // Lot I4 : « Changer mon code » n'est plus dans le jeu ; la rotation est une route de la plateforme (`POST /api/me/code`, packages/profile), testée ici côté serveur.
   const oldId = await idOf(a);
   expect((await me(oldId)).status).toBe(200);
+  const newId = "0f".repeat(16);
+  const rot = await fetch(`${API}/api/me/code`, { method: "POST", headers: { "Content-Type": "application/json", "X-Player-Id": oldId }, body: JSON.stringify({ newId }) });
+  expect(rot.status).toBe(200);
 
-  // Sur C : confirmation obligatoire, puis le nouveau code est copié.
-  await syncedGoto(c, `/?home=1&${GAME}`);
-  await expect(c.locator("#home .profile input.name")).toHaveValue("Nowy Pro", { timeout: 20_000 });
-  await c.getByRole("button", { name: "Changer mon code" }).click();
-  await expect(c.locator("#home .tr-confirm")).toContainText("ne marchera plus");
-  expect(await idOf(c)).toBe(oldId); // rien n'a changé tant qu'on n'a pas confirmé
-  await c.locator("#home .tr-change-no").click();
-  expect(await idOf(c)).toBe(oldId);
-  await c.getByRole("button", { name: "Changer mon code" }).click();
-  await c.locator("#home .tr-change-yes").click();
-  await expect(c.locator("#home .tr-msg")).toContainText("Code changé");
-  const newId = await idOf(c);
-  expect(newId).not.toBe(oldId);
-  const newCode = await c.evaluate(() => navigator.clipboard.readText());
-  expect(newCode).toBe(encodeTransfer(newId));
-
-  // Le serveur : l'ancien est refusé avec un message clair, le nouveau garde tout.
+  // Le serveur : l'ancien est refusé avec le code d'erreur `code_revoked` (le jeu le traduit : `erreur.code_revoked`), le nouveau garde tout.
   const old = await me(oldId);
   expect(old.status).toBe(410);
-  expect((await old.json()).message).toContain("n'est plus valide");
+  expect((await old.json()).error).toBe("code_revoked");
   const kept = await (await me(newId)).json();
   expect(kept).toMatchObject({ name: "Nowy Pro", stats: { days: 1 }, best: { ms: fast.finishMs } });
   expect((await board()).top.find((r) => r.name === "Nowy Pro")!.ms).toBe(fast.finishMs); // les temps et le pseudo sont conservés
 
-  await sleep(c); // c ne sert plus : il affamerait la page suivante (rendu logiciel)
-  // Sur A (qui a encore l'ancien code) : le jeu signale que son code n'est plus valide…
+  await sleep(c);
+  // Sur A (qui a encore l'ancien code) : la synchronisation le voit et ne détruit rien.
   await syncedGoto(a, `/?home=1&${GAME}`);
-  const notice = a.locator("#home .profile .notice.error");
-  await expect(notice).toContainText("Ce code n'est plus valide", { timeout: 20_000 });
-  await a.screenshot({ path: "../../docs/lots/img/lot-30-code-invalide.png" });
-  // … et on y charge le nouveau code.
-  await notice.getByRole("button", { name: "Charger un code" }).click();
-  await a.locator("#home .tr-code").fill(newCode);
-  await expect(a.locator("#home .tr-preview")).toContainText("« Nowy Pro »");
-  const reloaded = a.waitForEvent("load");
-  await a.locator("#home .tr-apply").click();
-  await reloaded;
-  await a.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
-  expect(await idOf(a)).toBe(newId);
-  await a.goto(`/?home=1&${GAME}`); // une course est déjà lancée après le rechargement : on repart de l'accueil
-  await a.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
-  await expect(a.locator("#home .profile input.name")).toHaveValue("Nowy Pro");
-  await expect(a.locator("#home .profile .notice.error")).toHaveCount(0);
+  expect(await a.evaluate(() => window.__cdj.sync.status)).toBe("revoked");
+  expect(await idOf(a)).toBe(oldId);
+  // L'identité du nouveau code s'installe comme le fait le profil commun du portail, et le jeu repart avec.
+  await a.evaluate((id) => localStorage.setItem("cdj:player", id), newId);
+  await syncedGoto(a, `/?home=1&${GAME}`);
+  expect(await a.evaluate(() => window.__cdj.sync.status)).not.toBe("revoked");
+  expect(await a.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Nowy Pro");
 
   for (const page of [a, c]) await page.context().close();
 });

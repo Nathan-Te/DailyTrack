@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { Mesh, MeshStandardMaterial } from "three";
 import { ReplayPlayer, TICK_RATE, bestPilotRun, createTestTrack, encodeReplay, replayRace, salonSessionStart } from "@cdj/sim";
 import { createCarMesh } from "../src/carMesh";
@@ -30,6 +30,13 @@ import {
   watchTitle,
 } from "../src/watch";
 import { archiveHref } from "../src/archive";
+import { chargerLangue, setLangue } from "../src/i18n";
+
+// L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
+beforeAll(() => chargerLangue("en"));
+
+// Lot I4 : les textes viennent des catalogues ; ces tests sont écrits pour le français, l'anglais a le sien plus bas.
+beforeAll(() => setLangue("fr", { ecrire: false }));
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -39,7 +46,14 @@ describe("règles du mode spectateur (watch.ts)", () => {
     expect([...WATCH_SPEEDS]).toEqual([0.25, 0.5, 1, 2]);
     expect(WATCH_SPEEDS.map(speedLabel)).toEqual(["×0,25", "×0,5", "×1", "×2"]);
     expect(WATCH_SPEEDS.map(speedShort)).toEqual(["¼", "½", "1×", "2×"]);
-    expect(watchTitle("Alice", 31_456)).toBe("Rediffusion de Alice — 31,456 s");
+    expect(watchTitle("Alice", 31_456)).toBe("Rediffusion de Alice — 31,456\u00a0s");
+    setLangue("en", { ecrire: false });
+    try {
+      expect(WATCH_SPEEDS.map(speedLabel)).toEqual(["×0.25", "×0.5", "×1", "×2"]);
+      expect(watchTitle("Alice", 31_456)).toBe("Replay of Alice — 31.456\u00a0s");
+    } finally {
+      setLangue("fr", { ecrire: false });
+    }
   });
 
   it("les sauts restent entre le départ et l'arrivée", () => {

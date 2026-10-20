@@ -1,1 +1,390 @@
-/* DailyTrack (lot I4) — la pause et l'écran d'arrivée. Primitives communes : interface.css ; plaques de course : hud.css. Valeurs : jetons de @cdj/ui seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
+/* DailyTrack (lot I4) — la pause et l'écran d'arrivée (maquettes track-pause.html et track-arrivee.html). Primitives communes : interface.css ; plaques de course :
+   hud.css. Valeurs : jetons de @cdj/ui seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
+
+/* --- Pause ------------------------------------------------------------------------------------------------------------------------------------------ */
+#pause {
+  display: none;
+}
+body.paused #pause {
+  display: flex;
+}
+.pause__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--track-coque);
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+.pause__ligne b {
+  font-family: var(--dj-police-chiffres);
+  color: var(--track-texte);
+}
+.pause__menu {
+  display: grid;
+  gap: 8px;
+}
+.pause__menu .dj-bouton--track {
+  width: 100%;
+}
+.pause__menu .lien {
+  gap: 6px;
+  justify-content: flex-start;
+  text-decoration: none;
+  color: var(--track-texte);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-14);
+}
+.pause__menu .lien:hover {
+  text-decoration: underline;
+}
+#pause-mentions {
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+.pause__confirmation p {
+  margin: 0 0 10px;
+  font-weight: 600;
+}
+.pause__confirmation .actions {
+  flex-direction: column;
+}
+@media (max-height: 520px) {
+  /* Paysage : deux colonnes de boutons, le dialogue plus large. */
+  #pause .dialogue {
+    width: min(620px, calc(100vw - 32px));
+  }
+  .pause__menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pause__menu .dj-bouton--track {
+    grid-column: 1 / -1;
+  }
+  .dialogue__titre {
+    font-size: var(--dj-taille-32);
+  }
+}
+
+/* --- Arrivée ---------------------------------------------------------------------------------------------------------------------------------------- */
+#finish .etiquette__tete {
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-right: 90px;
+}
+#finish .etiquette__titre {
+  font-size: var(--dj-taille-32);
+}
+.arrivee__circuit {
+  font-size: var(--dj-taille-14);
+}
+.arrivee__grille {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.arrivee__colonne {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.arrivee__resultat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.arrivee__temps {
+  font-size: var(--dj-taille-72);
+}
+.arrivee__unite {
+  font-size: var(--dj-taille-32);
+  color: var(--track-texte-doux);
+}
+.arrivee__badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.arrivee__badge {
+  padding: 3px 7px;
+  border-radius: 2px;
+  background: var(--track-route);
+  color: var(--track-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.arrivee__badge--ok {
+  background: var(--dj-auteur);
+  color: var(--dj-auteur-texte);
+}
+.arrivee__ecart {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+}
+.arrivee__ecart--devant {
+  color: var(--dj-auteur);
+}
+.arrivee__ecart--derriere {
+  color: var(--track-livree-texte);
+}
+.arrivee__note {
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+/* L'autocollant de médaille : un bandeau un peu penché, bordure encre, ombre nette (maquette). */
+.arrivee__medaille {
+  display: flex;
+  align-items: stretch;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  transform: rotate(-1deg);
+}
+.arrivee__medaille-nom {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  color: var(--track-asphalte);
+}
+.arrivee__medaille-nom--auteur {
+  background: var(--dj-auteur);
+  color: var(--dj-auteur-texte);
+}
+.arrivee__medaille-nom--or {
+  background: var(--dj-or);
+}
+.arrivee__medaille-nom--argent {
+  background: var(--dj-argent);
+}
+.arrivee__medaille-nom--bronze {
+  background: var(--dj-bronze);
+}
+.arrivee__medaille-nom .pastille {
+  width: 28px;
+  height: 28px;
+  border-color: var(--track-asphalte);
+}
+.arrivee__medaille-texte {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-32);
+  line-height: 1;
+  text-transform: uppercase;
+}
+.arrivee__auteur {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 6px 10px;
+  background: var(--track-piste);
+}
+.arrivee__auteur-legende {
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-auteur);
+}
+.arrivee__auteur-valeur {
+  font-size: var(--dj-taille-13);
+}
+.arrivee__medaille--aucune {
+  padding: 10px 14px;
+  border: var(--dj-trait) dashed var(--track-route);
+  box-shadow: none;
+  transform: none;
+}
+.arrivee__medaille--aucune .arrivee__medaille-texte {
+  font-family: var(--dj-police-texte);
+  font-style: normal;
+  font-weight: 600;
+  font-size: var(--dj-taille-14);
+  text-transform: none;
+  color: var(--track-texte-doux);
+}
+/* Le rang au classement du jour. */
+.arrivee__rang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--track-coque);
+  border-bottom: 1px solid var(--track-coque);
+}
+.arrivee__rang-legende {
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+.arrivee__rang-valeur {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.arrivee__rang-ordre {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-24);
+}
+.arrivee__rang .rank {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.arrivee__rang-total {
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+.arrivee__rang-gain {
+  font-size: var(--dj-taille-13);
+  color: var(--dj-auteur);
+}
+/* L'envoi, les erreurs et le pseudo. */
+.arrivee__classement .status {
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.arrivee__classement .status.ok {
+  color: var(--track-texte);
+}
+.arrivee__classement .status.error,
+.arrivee__classement .error {
+  color: var(--track-livree-texte);
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.arrivee__classement form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.arrivee__classement form .label {
+  flex: 1 0 100%;
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+  color: var(--track-texte-doux);
+}
+.arrivee__classement form input {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.arrivee__classement .suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  flex: 1 0 100%;
+}
+.arrivee__partage {
+  padding: 6px 8px;
+  border: 1px solid var(--track-coque);
+  background: var(--track-piste);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  overflow-wrap: anywhere;
+}
+.arrivee__partage:empty {
+  display: none;
+}
+.arrivee__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.arrivee__actions .dj-bouton--track {
+  grid-column: 1 / -1;
+}
+.arrivee__secondaire {
+  padding: 0 8px;
+}
+.arrivee__actions > :last-child:nth-child(even) {
+  grid-column: 1 / -1;
+}
+.arrivee__indice {
+  text-align: center;
+}
+.arrivee__indice:empty {
+  display: none;
+}
+body.touch .arrivee__indice {
+  display: none;
+}
+/* Sous l'étiquette : « Il te reste aujourd'hui » et le jeu suivant. */
+.arrivee__pied {
+  flex: none;
+  width: calc(100% - 20px);
+  max-width: 940px;
+  padding: 0 0 10px;
+}
+.arrivee__suite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+.arrivee__suite[hidden] {
+  display: none;
+}
+.arrivee__legende {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.arrivee__parfaite {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-21);
+  color: var(--dj-encre);
+}
+.arrivee__suite .dj-bouton {
+  min-height: 48px;
+}
+/* Un petit téléphone en portrait : tout doit tenir sans recouvrir la barre (360 × 640). */
+@media (max-height: 700px) and (orientation: portrait) {
+  .arrivee__temps {
+    font-size: var(--dj-taille-64);
+  }
+  #finish .etiquette__corps {
+    gap: 8px;
+  }
+}
+/* Paysage : deux colonnes (le résultat à gauche, les actions à droite). */
+@media (orientation: landscape) and (max-height: 520px) {
+  .arrivee__grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+  }
+  .arrivee__temps {
+    font-size: var(--dj-taille-64);
+  }
+  .arrivee__medaille-texte {
+    font-size: var(--dj-taille-24);
+  }
+  .arrivee__pied {
+    padding-bottom: 6px;
+  }
+}
+@media (min-width: 700px) and (min-height: 521px) {
+  .arrivee__grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+}

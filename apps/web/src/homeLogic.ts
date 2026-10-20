@@ -1,8 +1,10 @@
-import { SALON_SESSION_MS, THEMES, formatDay, salonSessionAt, salonSessionEnd, salonSessionStart, salonTheme, type Medal, type ThemeName } from "@cdj/sim";
+import { SALON_SESSION_MS, formatDay, salonSessionAt, salonSessionEnd, salonSessionStart, salonTheme, type Medal, type ThemeName } from "@cdj/sim";
+import { nomMedaille } from "@cdj/ui";
 import { DEMO_BASE, type ApiResult } from "./api";
+import { fNumero, t, traducteurDuSocle } from "./i18n";
 import { HttpSalonApi, type SalonNow } from "./salonApi";
 import { demoPlan } from "./salonPlan";
-import { dayShort } from "./profile";
+import { dayShort } from "./dates";
 
 // Logique de l'écran d'accueil (lot 29), sans DOM : quand l'afficher, où mène « Accueil », l'état du Salon, les titres. Testée par Vitest.
 
@@ -39,22 +41,23 @@ export function withoutHome(search: string): string {
   return q ? `?${q}` : "?";
 }
 
-export const MEDAL_WORD: Record<Medal, string> = { author: "Auteur", gold: "Or", silver: "Argent", bronze: "Bronze" };
-
-/** « Circuit du Jour n° 1 · 13 oct. · Rallye » (le numéro manque pour les jours d'avant le premier). */
-export function dailyTitle(number: number, date: string, themeLabel: string, long = true): string {
-  return `${long ? "Circuit du Jour " : ""}${number >= 1 ? `n° ${number} · ` : ""}${dayShort(date)} · ${themeLabel}`;
+/** Le nom d'une médaille dans la langue du jeu (« Auteur », « Or »…) ; le nom est toujours écrit : la couleur seule ne porte pas l'information. */
+export function medalWord(m: Medal): string {
+  return nomMedaille(traducteurDuSocle(), m === "author" ? "auteur" : m === "gold" ? "or" : m === "silver" ? "argent" : "bronze");
 }
 
-/** Fond de l'en-tête de l'accueil : en une phrase, ce que le jeu propose. */
-export const TAGLINE = "Un circuit court par jour, le même pour tout le monde. Bats ton temps, bats le fantôme, partage ton résultat.";
+/** « Circuit du Jour n° 1 · mar. 13 oct. · Rallye » (le numéro manque pour les jours d'avant le premier) ; `long: false` sans « Circuit du Jour ». */
+export function dailyTitle(number: number, date: string, themeLabel: string, long = true): string {
+  const tete = [long ? t("accueil.circuitDuJour") : "", number >= 1 ? fNumero(number) : ""].filter(Boolean).join(" ");
+  return [tete, dayShort(date), themeLabel].filter(Boolean).join(" · ");
+}
 
 // --- Le Salon vu depuis l'accueil -------------------------------------------------------------------------------------
 
 export interface SalonStatus {
   session: number;
-  /** Thème du circuit en cours. */
-  themeLabel: string;
+  /** Thème du circuit en cours (le code de `@cdj/sim`, traduit à l'affichage par `nomTheme`). */
+  theme: ThemeName;
   /** Fin de la session en cours, en heure du serveur. */
   endMs: number;
   /** Joueurs présents en ce moment. */
@@ -65,7 +68,9 @@ export interface SalonStatus {
   sessionMs: number;
 }
 
-export type SalonLookup = { ok: true; status: SalonStatus } | { ok: false; message: string };
+/** Pourquoi le Salon ne se montre pas : le jeu n'est relié à aucun serveur qui en ait un, ou le serveur ne répond pas. L'écran en dit la raison (catalogue). */
+export type SalonProblem = "sans_serveur" | "muet";
+export type SalonLookup = { ok: true; status: SalonStatus } | { ok: false; reason: SalonProblem };
 
 /** Temps restant (ms) avant la fin de la session, d'après l'heure locale `localMs`. */
 export const remainingMs = (s: SalonStatus, localMs: number): number => Math.max(0, s.endMs - (localMs + s.skewMs));
@@ -83,7 +88,7 @@ export function hhmmss(ms: number): string {
   return `${two(Math.floor(total / 3600))}:${two(Math.floor(total / 60) % 60)}:${two(total % 60)}`;
 }
 
-const salonThemeLabel = (session: number): string => THEMES[salonTheme(session) as ThemeName].label;
+const salonThemeOf = (session: number): ThemeName => salonTheme(session) as ThemeName;
 
 /**
  * Salon de démonstration (`?api=demo`) : tout se déduit de l'heure et du numéro de session, sans rien faire rouler. Les joueurs présents
@@ -93,26 +98,22 @@ export function demoSalonStatus(localMs: number, sessionMs: number = SALON_SESSI
   const session = salonSessionAt(localMs, sessionMs);
   const elapsed = localMs - salonSessionStart(session, sessionMs);
   const players = demoPlan(session, sessionMs).filter((p) => p.joinAt <= elapsed && elapsed <= p.attempts[p.attempts.length - 1]!.at + 60_000).length;
-  return { session, themeLabel: salonThemeLabel(session), endMs: salonSessionEnd(session, sessionMs), players, skewMs: 0, sessionMs };
+  return { session, theme: salonThemeOf(session), endMs: salonSessionEnd(session, sessionMs), players, skewMs: 0, sessionMs };
 }
 
 /** Réponse de `GET /api/salon/now` → état affiché. L'heure du serveur est recalée sur l'aller-retour, comme dans `SalonClock`. */
 export function salonStatusFromNow(now: SalonNow, sentAt: number, receivedAt: number): SalonStatus {
   const skewMs = now.serverMs + (receivedAt - sentAt) / 2 - receivedAt;
-  return { session: now.session, themeLabel: salonThemeLabel(now.session), endMs: now.endMs, players: now.players, skewMs, sessionMs: now.endMs - now.startMs };
+  return { session: now.session, theme: salonThemeOf(now.session), endMs: now.endMs, players: now.players, skewMs, sessionMs: now.endMs - now.startMs };
 }
-
-/** Message affiché quand le Salon ne répond pas. */
-export const SALON_DOWN = "Le Salon ne répond pas pour l'instant. Le circuit du jour reste jouable.";
-export const SALON_NO_SERVER = "Le Salon a besoin du serveur : il n'est pas relié à celui-ci.";
 
 /** Interroge le Salon sans être un joueur (aucun identifiant n'est envoyé : l'accueil ne compte pas dans la présence). */
 export async function lookupSalon(base: string | null, sessionMs: number = SALON_SESSION_MS, api?: { now(id: string | null): Promise<ApiResult<SalonNow>> }): Promise<SalonLookup> {
-  if (!base) return { ok: false, message: SALON_NO_SERVER };
+  if (!base) return { ok: false, reason: "sans_serveur" };
   if (base === DEMO_BASE) return { ok: true, status: demoSalonStatus(Date.now(), sessionMs) };
   const t0 = Date.now();
   const r = await (api ?? new HttpSalonApi(base)).now(null);
-  if (!r.ok) return { ok: false, message: r.status === 404 ? SALON_NO_SERVER : SALON_DOWN };
+  if (!r.ok) return { ok: false, reason: r.status === 404 ? "sans_serveur" : "muet" };
   return { ok: true, status: salonStatusFromNow(r.data, t0, Date.now()) };
 }
 

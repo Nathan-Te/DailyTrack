@@ -1,6 +1,10 @@
 import { expect, test, type Browser, type Page, TODAY, newClockedContext } from "./fixtures";
 import { dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
 import { shareLine } from "../src/share";
+import { setLangue } from "../src/i18n";
+
+// Ce processus Node a un `navigator` (langue de la machine) : la ligne attendue se calcule en français, comme celle du navigateur de test (`locale: "fr-FR"`).
+void setLangue("fr", { ecrire: false });
 
 // Deux « appareils » (deux contextes de navigateur isolés : chacun son identité) jouent chacun une course
 // complète du circuit d'aujourd'hui, en accéléré (`?debug&timescale=6`) avec la rediffusion d'un pilote à la place du

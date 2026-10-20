@@ -1,1 +1,233 @@
-/* DailyTrack (lot I4) — les commandes tactiles de la course (zones, boutons, invitation à tourner le téléphone). Primitives communes : interface.css ; plaques de course : hud.css. Valeurs : jetons de @cdj/ui seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
+/* DailyTrack (lot I4) — les commandes tactiles de la course (maquettes track-hud.html et track-hud-paysage.html) : même disposition et même comportement qu'au lot 10
+   (les zones actives et la place des boutons dessinés viennent de touch.ts, inchangés) ; seul l'habillage change — plaques asphalte (bordure encre de 3 px, ombre nette),
+   « FREIN » en Barlow Condensed italique, « GAZ » en livrée, état actif en livrée. Tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`).
+   Place prise en bas de l'écran : les boutons dessinés de touch.ts occupent de (H − 112 − h) à (H − 112), h = 72 à 130 px ; la barre d'actions #tbar (44 px)
+   de 8 à 52 px du bas ; la vitesse et les effets (#speed, #fx) de 60 à ≈ 96 px du bas. Valeurs : jetons de @cdj/ui seulement. */
+
+#touch,
+#tbar,
+#rotate {
+  display: none;
+}
+body.touch #touch {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Barre d'actions compacte et centrée (entre les pouces : de ≈ 36 % à 64 % de la largeur sur un écran de 844 px) : un bouton attire les appuis voisins (le navigateur
+   « corrige » le toucher vers lui), donc elle ne touche ni la frontière ← | → (25 %) ni frein | gaz (75 %). */
+body.touch #tbar {
+  display: flex;
+  position: fixed;
+  left: 50%;
+  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  gap: 2px;
+  pointer-events: none;
+}
+body.touch #tbar button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+  cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
+}
+body.touch #tbar button:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+body.touch #tbar button[hidden] {
+  display: none;
+}
+body.touch.finished #touch,
+body.touch.finished #tbar,
+body.touch.home #touch,
+body.touch.home #tbar {
+  display: none;
+}
+body.touch #info {
+  display: none;
+}
+/* La vitesse entre les commandes, centrée au-dessus de la barre ; les effets en cours à sa gauche. */
+body.touch #speed {
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+body.touch #fx {
+  left: 12px;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
+}
+
+/* Aides à l'écran : le toucher passe au travers (tout est géré par #touch). */
+#touch > * {
+  pointer-events: none;
+  position: absolute;
+}
+#touch [hidden] {
+  display: none;
+}
+#touch .ring {
+  left: 0;
+  top: 0;
+  width: 96px;
+  height: 96px;
+  border-radius: var(--dj-rayon-avatar);
+  border: var(--dj-trait-fort) solid var(--track-texte);
+}
+#touch .knob {
+  left: 0;
+  top: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--track-livree);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+/* Les boutons dessinés suivent EXACTEMENT les zones tactiles (voir `zoneAt`, touch.ts), en parts de la largeur : ◀ 0–25 %, ▶ 25–50 %, frein 50–100 % (ou 50–75 % avec le
+   bouton gaz), gaz 75–100 %. Placés et dimensionnés par `buttonRects` (touch.ts) ; la zone active, elle, couvre tout l'écran. */
+#touch .tbtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-24);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+#touch .tbtn[hidden] {
+  display: none;
+}
+#touch .pedal-gas {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+  box-shadow: 3px 3px 0 var(--track-livree-ombre);
+}
+/* Appuyé : fond de livrée (le gaz, déjà de livrée, s'éclaircit). */
+#touch .tbtn.on {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: 1px 1px 0 var(--dj-encre);
+}
+#touch .pedal-gas.on {
+  background: var(--track-livree-texte);
+  box-shadow: 1px 1px 0 var(--track-livree-ombre);
+}
+/* L'aide du premier toucher : une plaque nette. */
+#touch .hint {
+  left: 50%;
+  top: 64%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  padding: 4px 10px;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  text-align: center;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+/* Diagnostic `?zones=1` : zones actives et un point par doigt (outil de test). */
+#touch .zones {
+  inset: 0;
+}
+#touch .zspan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  padding: 6px;
+  border: var(--dj-trait) dashed;
+  color: var(--track-texte);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.fdot {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 9;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--dj-rayon-avatar);
+  border: var(--dj-trait-fort) solid var(--track-texte);
+  pointer-events: none;
+}
+.safe-probe {
+  position: fixed;
+  visibility: hidden;
+  pointer-events: none;
+  padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
+
+/* L'invitation à tourner le téléphone (portrait) : une plaque nette au milieu de l'écran. */
+#rotate {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 42%;
+  z-index: 2;
+  justify-content: center;
+  pointer-events: none;
+}
+#rotate .card {
+  pointer-events: auto;
+  width: min(300px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+  text-align: center;
+  font-size: var(--dj-taille-15);
+  font-weight: 600;
+  line-height: 1.4;
+}
+#rotate .icon {
+  color: var(--track-livree-texte);
+}
+#rotate .dj-bouton--secondaire {
+  background: transparent;
+  color: var(--track-texte);
+  border-color: var(--track-route);
+  box-shadow: none;
+}
+#rotate .dj-bouton--secondaire:hover {
+  background: var(--track-coque);
+}
+@media (orientation: portrait) {
+  body.touch:not(.rotate-ok):not(.finished) #rotate {
+    display: flex;
+  }
+}

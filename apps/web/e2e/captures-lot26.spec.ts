@@ -43,7 +43,7 @@ test("le Salon en course avec ses fantômes, puis le podium", async ({ page }) =
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
   for (let guard = 0; guard < 120 && (await page.evaluate(() => window.__cdj.phase)) !== "finished"; guard++) await page.evaluate(() => window.__cdj.advance(240));
   await page.evaluate(() => window.__cdj.manual(false));
-  await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 240_000 });
+  await expect(page.locator("#finish .rank")).toContainText(/\d+(er|e) sur \d+/, { timeout: 240_000 });
   await page.evaluate(() => window.__cdj.salon!.setNow(window.__cdj.salon!.endMs + 200));
   await expect(page.locator("#podium .place")).toHaveCount(3, { timeout: 30_000 });
   await page.waitForTimeout(1200);

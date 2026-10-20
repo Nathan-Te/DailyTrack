@@ -1,32 +1,27 @@
-// Réglages (lot 29) : un panneau à onglets — Graphismes, Son, Jeu, Commandes, Profil. Tout s'applique tout de suite et se mémorise.
-// Le DOM seulement : les valeurs sont dans settings.ts (`cdj:settings`), audioLogic.ts (`cdj:audio`) et touch.ts (`cdj:touch`) ; main.ts applique.
+// Réglages (lot 29, passés au socle au lot I4 ; maquette track-reglages.html) : un écran dans le cadre de Du Jour, à onglets — Graphismes, Son, Jeu,
+// Commandes — puis la langue (`choixLangue` du socle), le lien vers le profil commun du portail et les mentions légales. Tout s'applique tout de suite et
+// se mémorise. Le DOM seulement : les valeurs sont dans settings.ts (`cdj:settings`), audioLogic.ts (`cdj:audio`) et touch.ts (`cdj:touch`) ; main.ts applique.
+// Les textes viennent du catalogue (`reglages.*`) ; changer de langue redessine l'écran tout de suite, le focus reste sur le choix de langue.
+import { bouton, choixLangue, icone } from "@cdj/ui";
 import { CAMERA_NAMES } from "./cameras";
-import { button, el, overlay, row, segmented, slider, type Control } from "./dom";
+import { creerCadre } from "./cadre";
+import { el, row, segmented, slider, type Control } from "./dom";
 import { withVolume, type AudioSettings } from "./audioLogic";
 import { GAMEPAD_CONTROLS, KEYBOARD_CONTROLS } from "./howto";
-import { mountProfileCard, type ProfileCard, type ProfileHost } from "./profileUi";
-import {
-  DEFAULT_SETTINGS,
-  GHOST_CHOICES,
-  GHOST_LABEL,
-  QUALITY_CHOICES,
-  QUALITY_LABEL,
-  SPEED_FEEL_CHOICES,
-  SPEED_FEEL_LABEL,
-  type GameSettings,
-  type QualityChoice,
-} from "./settings";
+import { controlsTable } from "./howtoUi";
+import { langueCourante, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
+import { profilHref } from "./profilLien";
+import { DEFAULT_SETTINGS, GHOST_CHOICES, GHOST_KEY, QUALITY_CHOICES, QUALITY_KEY, SPEED_FEEL_CHOICES, SPEED_FEEL_KEY, type GameSettings, type QualityChoice } from "./settings";
 import { touchSettingsControls } from "./touchUi";
 import type { TouchPad } from "./touch";
 
-export type SettingsTab = "graphics" | "sound" | "game" | "controls" | "profile";
+export type SettingsTab = "graphics" | "sound" | "game" | "controls";
 
 export const TABS: readonly (readonly [SettingsTab, string])[] = [
-  ["graphics", "Graphismes"],
-  ["sound", "Son"],
-  ["game", "Jeu"],
-  ["controls", "Commandes"],
-  ["profile", "Profil"],
+  ["graphics", "reglages.onglet.graphics"],
+  ["sound", "reglages.onglet.sound"],
+  ["game", "reglages.onglet.game"],
+  ["controls", "reglages.onglet.controls"],
 ];
 
 export interface SettingsHost {
@@ -43,7 +38,6 @@ export interface SettingsHost {
   qualityLevel(): number;
   /** Commandes tactiles (appareil tactile seulement) ; `changed` redessine les aides à l'écran. */
   touch: { pad: TouchPad; changed(): void } | null;
-  profile: ProfileHost;
   /** Une qualité figée par l'adresse (`?quality=`) l'emporte : on le dit. */
   qualityFromUrl: boolean;
   openHowto(): void;
@@ -55,193 +49,210 @@ export interface SettingsUi {
   isOpen(): boolean;
   /** Relit les valeurs (après un changement venu d'ailleurs : touche M, touche C, qualité automatique). */
   sync(): void;
-  /** Ouvre la zone « Charger un code » de l'onglet Profil. */
-  showLoad(): void;
 }
-
-const LEVEL_NAME = ["basse", "moyenne", "haute"] as const;
-const CAMERA_LABEL: Record<string, string> = { proche: "Proche", loin: "Loin", capot: "Capot" };
-const yesNo = [[true, "Oui"], [false, "Non"]] as const;
 
 export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi {
   let tab: SettingsTab = "graphics";
   let onClose: (() => void) | undefined;
+  let opened = false;
   const close = () => {
-    if (ov.root.hidden) return;
-    ov.root.hidden = true;
+    if (!opened) return;
+    opened = false;
+    cadre.racine.hidden = true;
     const f = onClose;
     onClose = undefined;
     f?.();
   };
-  const ov = overlay("settings", "Réglages", close);
-  ov.root.classList.add("settings");
+  const cadre = creerCadre({ id: "settings", titreAria: "reglages.titre", retour: "jeu", onRetour: close, haut: true });
+  cadre.racine.hidden = true;
+  cadre.racine.classList.add("settings");
 
-  const controls: Control[] = [];
-  const reg = <T extends Control>(c: T): T => {
+  let controls: Control[] = [];
+  let qualityNote: HTMLElement;
+  let tabButtons = new Map<SettingsTab, HTMLButtonElement>();
+  let pages: Record<SettingsTab, HTMLElement>;
+
+  const reg = <C extends Control>(c: C): C => {
     controls.push(c);
     return c;
   };
   const s = host.settings;
-  const bool = (key: "particles" | "skids" | "shake" | "shadows" | "board" | "splits", label: string) =>
-    reg(segmented<boolean>(yesNo, () => s[key], (v) => host.apply({ [key]: v }), label));
+  const yesNo = (): readonly (readonly [boolean, string])[] => [[true, t("reglages.oui")], [false, t("reglages.non")]];
+  const bool = (key: "particles" | "skids" | "shake" | "shadows" | "board" | "splits", label: string) => reg(segmented<boolean>(yesNo(), () => s[key], (v) => host.apply({ [key]: v }), label));
 
-  // --- Graphismes ---
-  const quality = reg(segmented<QualityChoice>(QUALITY_CHOICES.map((q) => [q, QUALITY_LABEL[q]] as const), () => s.quality, (v) => host.apply({ quality: v }), "Qualité graphique"));
-  const qualityNote = el("p", "note");
-  const speedFeel = reg(segmented(SPEED_FEEL_CHOICES.map((v) => [v, SPEED_FEEL_LABEL[v]] as const), () => s.speedFeel, (v) => host.apply({ speedFeel: v }), "Sensation de vitesse"));
-  const graphics = el("div", "tabpage");
-  graphics.append(
-    row("Qualité", quality.box, "Automatique : le jeu baisse seul les détails s'il ramerait, et les remonte ensuite."),
-    qualityNote,
-    row("Particules", bool("particles", "Particules").box, "Fumée, poussière, étincelles, flammes, confettis."),
-    row("Traces de pneus", bool("skids", "Traces de pneus").box),
-    row("Secousses de caméra", bool("shake", "Secousses de caméra").box, "Chocs, réceptions et vibreurs."),
-    row("Sensation de vitesse", speedFeel.box, "Champ de vision qui s'ouvre, lignes de vitesse, vibration à très haute vitesse."),
-    row("Ombres", bool("shadows", "Ombres").box, "Ombres portées de la voiture (qualité moyenne et haute)."),
-  );
+  /** Bâtit tout l'écran dans la langue courante (à l'ouverture et à chaque changement de langue). */
+  function build(): void {
+    controls = [];
+    // --- Graphismes ---
+    const quality = reg(segmented<QualityChoice>(QUALITY_CHOICES.map((q) => [q, t(QUALITY_KEY[q])] as const), () => s.quality, (v) => host.apply({ quality: v }), t("reglages.qualite.nom")));
+    qualityNote = el("p", "note");
+    const speedFeel = reg(segmented(SPEED_FEEL_CHOICES.map((v) => [v, t(SPEED_FEEL_KEY[v])] as const), () => s.speedFeel, (v) => host.apply({ speedFeel: v }), t("reglages.sensation.nom")));
+    const graphics = el("div", "reglages__page");
+    graphics.append(
+      row(t("reglages.qualite.nom"), quality.box, t("reglages.qualite.aide")),
+      qualityNote,
+      row(t("reglages.particules.nom"), bool("particles", t("reglages.particules.nom")).box, t("reglages.particules.aide")),
+      row(t("reglages.traces.nom"), bool("skids", t("reglages.traces.nom")).box),
+      row(t("reglages.secousses.nom"), bool("shake", t("reglages.secousses.nom")).box, t("reglages.secousses.aide")),
+      row(t("reglages.sensation.nom"), speedFeel.box, t("reglages.sensation.aide")),
+      row(t("reglages.ombres.nom"), bool("shadows", t("reglages.ombres.nom")).box, t("reglages.ombres.aide")),
+    );
 
-  // --- Son ---
-  const pct = (v: number) => `${Math.round(v * 100)} %`;
-  const range = { min: 0, max: 1, step: 0.05 };
-  const vol = reg(slider(range, () => host.audio().volume, (v) => host.setAudio(withVolume(host.audio(), v)), pct, "Volume général"));
-  const engine = reg(slider(range, () => host.audio().engine, (v) => host.setAudio({ ...host.audio(), engine: v }), pct, "Moteur"));
-  const effects = reg(slider(range, () => host.audio().effects, (v) => host.setAudio({ ...host.audio(), effects: v }), pct, "Effets"));
-  const ambience = reg(slider(range, () => host.audio().ambience, (v) => host.setAudio({ ...host.audio(), ambience: v }), pct, "Ambiance"));
-  const mute = reg(
-    segmented<boolean>([[false, "Son"], [true, "Muet"]], () => host.audio().volume <= 0, (v) => {
-      const a = host.audio();
-      host.setAudio(v ? { ...a, volume: 0, last: a.volume > 0 ? a.volume : a.last } : { ...a, volume: a.last > 0 ? a.last : 0.55 });
-    }, "Muet"),
-  );
-  const sound = el("div", "tabpage");
-  sound.append(
-    row("Muet", mute.box, "La touche M fait de même."),
-    row("Volume général", vol.box),
-    row("Moteur", engine.box),
-    row("Effets", effects.box, "Crissements, roulement, vent, bruitages."),
-    row("Ambiance", ambience.box, "Le fond sonore du thème du jour."),
-  );
+    // --- Son ---
+    const pct = (v: number) => `${Math.round(v * 100)} %`;
+    const range = { min: 0, max: 1, step: 0.05 };
+    const vol = reg(slider(range, () => host.audio().volume, (v) => host.setAudio(withVolume(host.audio(), v)), pct, t("reglages.son.volume")));
+    const engine = reg(slider(range, () => host.audio().engine, (v) => host.setAudio({ ...host.audio(), engine: v }), pct, t("reglages.son.moteur")));
+    const effects = reg(slider(range, () => host.audio().effects, (v) => host.setAudio({ ...host.audio(), effects: v }), pct, t("reglages.son.effets.nom")));
+    const ambience = reg(slider(range, () => host.audio().ambience, (v) => host.setAudio({ ...host.audio(), ambience: v }), pct, t("reglages.son.ambiance.nom")));
+    const mute = reg(
+      segmented<boolean>([[false, t("reglages.son.avec")], [true, t("reglages.son.muet.nom")]], () => host.audio().volume <= 0, (v) => {
+        const a = host.audio();
+        host.setAudio(v ? { ...a, volume: 0, last: a.volume > 0 ? a.volume : a.last } : { ...a, volume: a.last > 0 ? a.last : 0.55 });
+      }, t("reglages.son.muet.nom")),
+    );
+    const sound = el("div", "reglages__page");
+    sound.append(
+      row(t("reglages.son.muet.nom"), mute.box, t("reglages.son.muet.aide")),
+      row(t("reglages.son.volume"), vol.box),
+      row(t("reglages.son.moteur"), engine.box),
+      row(t("reglages.son.effets.nom"), effects.box, t("reglages.son.effets.aide")),
+      row(t("reglages.son.ambiance.nom"), ambience.box, t("reglages.son.ambiance.aide")),
+    );
 
-  // --- Jeu ---
-  const camera = reg(segmented(CAMERA_NAMES.map((n) => [n, CAMERA_LABEL[n] ?? n] as const), () => host.camera() as (typeof CAMERA_NAMES)[number], (v) => host.setCamera(v), "Caméra par défaut"));
-  const ghost = reg(segmented(GHOST_CHOICES.map((g) => [g, GHOST_LABEL[g]] as const), () => s.ghost, (v) => host.apply({ ghost: v }), "Fantôme affiché"));
-  const unit = reg(segmented<GameSettings["unit"]>([["kmh", "km/h"], ["mph", "mph"]], () => s.unit, (v) => host.apply({ unit: v }), "Unité de vitesse"));
-  const game = el("div", "tabpage");
-  game.append(
-    row("Caméra par défaut", camera.box, "Au départ ; la touche C ou le bouton 🎥 la change aussi."),
-    row("Fantôme affiché", ghost.box, "Au prochain départ. Le premier et le joueur devant demandent le classement."),
-    row("Classement en course", bool("board", "Classement en course").box, "Affiché dans un coin ; la touche L le replie."),
-    row("Temps intermédiaires", bool("splits", "Temps intermédiaires").box, "Ton temps à chaque point de contrôle, comparé au fantôme."),
-    row("Unité de vitesse", unit.box),
-  );
+    // --- Jeu ---
+    const camera = reg(segmented(CAMERA_NAMES.map((n) => [n, t(`reglages.camera.${n}`)] as const), () => host.camera() as (typeof CAMERA_NAMES)[number], (v) => host.setCamera(v), t("reglages.camera.nom")));
+    const ghost = reg(segmented(GHOST_CHOICES.map((g) => [g, t(GHOST_KEY[g])] as const), () => s.ghost, (v) => host.apply({ ghost: v }), t("reglages.fantome.nom")));
+    const unit = reg(segmented<GameSettings["unit"]>([["kmh", "km/h"], ["mph", "mph"]], () => s.unit, (v) => host.apply({ unit: v }), t("reglages.unite.nom"))); // i18n-ok: unités, les mêmes dans les deux langues
+    const game = el("div", "reglages__page");
+    game.append(
+      row(t("reglages.camera.nom"), camera.box, t("reglages.camera.aide")),
+      row(t("reglages.fantome.nom"), ghost.box, t("reglages.fantome.aide")),
+      row(t("reglages.classement.nom"), bool("board", t("reglages.classement.nom")).box, t("reglages.classement.aide")),
+      row(t("reglages.temps.nom"), bool("splits", t("reglages.temps.nom")).box, t("reglages.temps.aide")),
+      row(t("reglages.unite.nom"), unit.box),
+    );
 
-  // --- Commandes ---
-  const commands = el("div", "tabpage");
-  const reminder = (title: string, list: typeof KEYBOARD_CONTROLS) => {
-    const d = el("details", "dev");
-    d.open = title === "Clavier" && !host.touch;
-    const body = el("div", "controls");
-    for (const c of list) {
-      const r = el("div", "ctl");
-      const keys = el("span", "keys");
-      c.keys.forEach((k, i) => {
-        if (i > 0) keys.append(el("span", "or", "·"));
-        keys.append(el("kbd", "", k));
-      });
-      r.append(keys, el("span", "does", c.does));
-      body.append(r);
+    // --- Commandes ---
+    const commands = el("div", "reglages__page");
+    const reminder = (title: string, list: typeof KEYBOARD_CONTROLS, open: boolean) => {
+      const d = el("details", "repli");
+      d.open = open;
+      d.append(el("summary", "", title), controlsTable(list));
+      return d;
+    };
+    commands.append(reminder(t("reglages.clavier"), KEYBOARD_CONTROLS, !host.touch), reminder(t("reglages.manette"), GAMEPAD_CONTROLS, false));
+    if (host.touch) {
+      const touch = touchSettingsControls(host.touch.pad, host.touch.changed);
+      controls.push(touch);
+      const box = el("section", "reglages__tactile");
+      box.append(el("h2", "reglages__section", t("reglages.tactile.titre")), touch.box);
+      commands.append(box);
+    } else {
+      commands.append(el("p", "note", t("reglages.tactile.absent")));
     }
-    d.append(el("summary", "", title), body);
-    return d;
-  };
-  commands.append(reminder("Clavier", KEYBOARD_CONTROLS), reminder("Manette", GAMEPAD_CONTROLS));
-  if (host.touch) {
-    const t = touchSettingsControls(host.touch.pad, host.touch.changed);
-    controls.push(t);
-    const box = el("section", "touchbox");
-    box.append(el("h3", "", "Commandes tactiles"), t.box);
-    commands.append(box);
-  } else {
-    commands.append(el("p", "note", "Sur un téléphone ou une tablette, les réglages des commandes tactiles (direction, sensibilité, taille des boutons, accélérateur automatique, vibration) apparaissent ici."));
+    const howto = bouton({ texte: t("reglages.aide"), variante: "secondaire", onClick: () => host.openHowto() });
+    howto.id = "settings-howto";
+    commands.append(howto);
+
+    pages = { graphics, sound, game, controls: commands };
+    const tabs = el("div", "segment reglages__onglets");
+    tabs.setAttribute("role", "tablist");
+    tabs.setAttribute("aria-label", t("reglages.sections"));
+    tabButtons = new Map();
+    for (const [id, cle] of TABS) {
+      const b = el("button", "segment__bouton", t(cle));
+      b.type = "button";
+      b.id = `tab-${id}`;
+      b.setAttribute("role", "tab");
+      b.setAttribute("aria-controls", `page-${id}`);
+      b.addEventListener("click", () => show(id));
+      tabs.append(b);
+      tabButtons.set(id, b);
+      pages[id].id = `page-${id}`;
+      pages[id].setAttribute("role", "tabpanel");
+      pages[id].setAttribute("aria-labelledby", b.id);
+    }
+    // Flèches gauche / droite entre les onglets.
+    tabs.addEventListener("keydown", (e) => {
+      const ids = TABS.map(([i]) => i);
+      const i = ids.indexOf(tab);
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        const next = ids[(i + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length]!;
+        show(next);
+        tabButtons.get(next)!.focus();
+      }
+    });
+
+    // --- Bas de l'écran : langue, profil commun, mentions légales, réinitialisation ---
+    const langue = el("section", "reglages__langue");
+    const langueTitre = el("h2", "reglages__section", t("reglages.langue.titre"));
+    langue.append(langueTitre, choixLangue(traducteurDuSocle(), { langue: langueCourante(), onChange: (l) => setLangue(l) }));
+    const liens = el("div", "reglages__liens");
+    const profil = el("a", "reglages__lien reglages__lien--profil", t("reglages.profil"));
+    profil.id = "settings-profile";
+    profil.setAttribute("href", profilHref(location.origin, location.pathname));
+    const mentions = el("a", "reglages__lien", t("reglages.mentions"));
+    mentions.id = "settings-mentions";
+    mentions.setAttribute("href", "../mentions-legales/");
+    for (const a of [profil, mentions]) a.append(icone("chevron", { taille: 16 }));
+    liens.append(profil, mentions);
+    const reset = bouton({
+      texte: t("reglages.reinit"),
+      variante: "secondaire",
+      onClick: () => {
+        host.apply({ ...DEFAULT_SETTINGS });
+        host.setAudio({ ...host.audio(), engine: 1, effects: 1, ambience: 1 });
+      },
+    });
+    reset.id = "settings-reset";
+
+    const tete = el("div", "etiquette__tete");
+    tete.append(el("h1", "etiquette__titre", t("reglages.titre")));
+    cadre.corps.replaceChildren(tete, tabs, graphics, sound, game, commands, reset, langue, liens);
+    show(tab);
   }
-  commands.append(button("❓ Comment jouer", "link", () => host.openHowto()));
 
-  // --- Profil ---
-  const profile: ProfileCard = mountProfileCard(host.profile);
-  const profilePage = el("div", "tabpage");
-  // Lot R5 (plateforme) : ce que le site garde de ton profil, et comment le faire effacer.
-  const mentions = el("a", "btn link", "Mentions légales et confidentialité");
-  mentions.id = "settings-mentions";
-  mentions.setAttribute("href", "../mentions-legales/");
-  profilePage.append(profile.root, mentions);
-
-  const reset = button("Rétablir les réglages par défaut", "small reset", () => {
-    host.apply({ ...DEFAULT_SETTINGS });
-    host.setAudio({ ...host.audio(), engine: 1, effects: 1, ambience: 1 });
-  });
-  reset.id = "settings-reset";
-
-  const pages: Record<SettingsTab, HTMLElement> = { graphics, sound, game, controls: commands, profile: profilePage };
-  const tabs = el("div", "tabs");
-  tabs.setAttribute("role", "tablist");
-  const tabButtons = new Map<SettingsTab, HTMLButtonElement>();
-  for (const [id, label] of TABS) {
-    const b = el("button", "tab", label);
-    b.type = "button";
-    b.id = `tab-${id}`;
-    b.setAttribute("role", "tab");
-    b.setAttribute("aria-controls", `page-${id}`);
-    b.addEventListener("click", () => show(id));
-    tabs.append(b);
-    tabButtons.set(id, b);
-    pages[id].id = `page-${id}`;
-    pages[id].setAttribute("role", "tabpanel");
-    pages[id].setAttribute("aria-labelledby", b.id);
-  }
-  ov.body.append(tabs, graphics, sound, game, commands, profilePage, reset);
-  root.append(ov.root);
-
-  function show(id: SettingsTab) {
+  function show(id: SettingsTab): void {
     tab = id;
-    for (const [t, b] of tabButtons) {
-      b.classList.toggle("on", t === id);
-      b.setAttribute("aria-selected", String(t === id));
-      b.tabIndex = t === id ? 0 : -1;
-      pages[t].hidden = t !== id;
+    for (const [i, b] of tabButtons) {
+      b.setAttribute("aria-selected", String(i === id));
+      b.setAttribute("aria-pressed", String(i === id));
+      b.tabIndex = i === id ? 0 : -1;
+      pages[i].hidden = i !== id;
     }
-    ov.body.scrollTop = 0;
+    cadre.corps.scrollTop = 0;
     sync();
   }
-  // Flèches gauche / droite entre les onglets.
-  tabs.addEventListener("keydown", (e) => {
-    const ids = TABS.map(([t]) => t);
-    const i = ids.indexOf(tab);
-    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-      const next = ids[(i + (e.key === "ArrowRight" ? 1 : ids.length - 1)) % ids.length]!;
-      show(next);
-      tabButtons.get(next)!.focus();
-    }
-  });
 
-  function sync() {
+  function sync(): void {
+    // Rien à relire tant que la fenêtre n'a pas été ouverte : au montage, main.ts n'a pas fini d'initialiser ce que `host` lit (caméra, qualité).
+    if (!opened) return;
     for (const c of controls) c.sync();
-    const level = LEVEL_NAME[host.qualityLevel()] ?? "haute";
-    qualityNote.textContent = host.qualityFromUrl ? "La qualité est imposée par l'adresse de la page (?quality=)." : s.quality === "auto" ? `Niveau actuel : ${level}.` : "";
+    const level = t(`reglages.qualite.niveau.${host.qualityLevel()}`);
+    qualityNote.textContent = host.qualityFromUrl ? t("reglages.qualite.adresse") : s.quality === "auto" ? t("reglages.qualite.actuelle", { niveau: level }) : "";
     qualityNote.hidden = !qualityNote.textContent;
-    profile.refresh();
   }
+
+  build();
+  root.append(cadre.racine);
+  // La langue change : tout l'écran se redessine, le focus reste sur le bouton de langue touché.
+  onLangue((l) => {
+    const avait = cadre.racine.contains(document.activeElement);
+    build();
+    if (avait) cadre.racine.querySelector<HTMLElement>(`.dj-choix-langue [data-langue="${l}"]`)?.focus({ preventScroll: true });
+  });
 
   return {
     open(id = tab, cb) {
       onClose = cb;
-      ov.root.hidden = false;
+      opened = true;
+      cadre.racine.hidden = false;
       show(id);
       tabButtons.get(id)!.focus({ preventScroll: true });
     },
     close,
-    isOpen: () => !ov.root.hidden,
+    isOpen: () => opened,
     sync,
-    /** Ouvre la zone « Charger un code » de l'onglet Profil. */
-    showLoad: () => profile.showLoad(),
   };
 }

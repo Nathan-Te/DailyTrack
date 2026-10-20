@@ -103,6 +103,11 @@
   cursor: pointer;
   touch-action: manipulation;
 }
+/* Focus visible sur asphalte (charte § 10) : contour ambre. */
+.plaque:focus-visible,
+#helpchip:focus-visible {
+  outline-color: var(--dj-ambre);
+}
 .plaque--bouton:hover {
   background: var(--track-coque);
 }
@@ -190,6 +195,10 @@
   background: var(--dj-auteur);
   color: var(--dj-auteur-texte);
 }
+.plaque--pc .ecart--neutre {
+  background: var(--track-route);
+  color: var(--track-texte);
+}
 #ghostinfo,
 #meta {
   max-width: 100%;
@@ -221,6 +230,11 @@
   text-transform: uppercase;
   color: var(--track-texte-doux);
   white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .objectif__mot {
+    display: none;
+  }
 }
 .objectif__valeur {
   font-family: var(--dj-police-chiffres);
@@ -266,8 +280,9 @@
   overflow-wrap: anywhere;
 }
 #banner.small {
-  font-size: var(--dj-taille-32);
+  font-size: var(--dj-taille-22);
   padding: 4px 16px 3px;
+  letter-spacing: 1px;
 }
 #freeze {
   left: 50%;
@@ -383,6 +398,14 @@ body.home #lines,
 body.home #flash {
   display: none !important;
 }
+/* En pause, le voile à rayures couvre la scène : les plaques de course s'effacent (maquette track-pause.html) plutôt que d'apparaître hachées. */
+body.paused #menu,
+body.paused #hud-centre,
+body.paused .hud,
+body.paused #helpchip,
+body.paused #board {
+  visibility: hidden;
+}
 body.no-splits #splits {
   display: none;
 }
@@ -414,20 +437,38 @@ body.no-splits #splits {
     top: 12px;
   }
   #banner {
-    top: 22%;
+    top: 34%;
     font-size: var(--dj-taille-38);
   }
   #banner.small {
-    font-size: var(--dj-taille-22);
+    font-size: var(--dj-taille-21);
   }
   #speed {
     font-size: var(--dj-taille-24);
   }
 }
-/* Très étroit (360 px) : le chrono et la pause se partagent la ligne, l'objectif passe sous eux. */
+/* Téléphone en portrait : l'objectif (en haut à droite, ~ 90 px) partage la première ligne avec le chrono, qui se resserre ; dessous (point de contrôle, « vs », titre)
+   la colonne du centre a toute la largeur, l'objectif ayant fini sa hauteur (la police large de la CI élargit les plaques). */
+@media (max-width: 480px) and (orientation: portrait) {
+  #hud-centre {
+    gap: 8px;
+  }
+  #medals {
+    top: 12px;
+  }
+  .plaque--chrono {
+    min-height: 42px; /* la hauteur de l'objectif : la plaque du point de contrôle commence dessous, à toute taille de chrono */
+  }
+}
 @media (max-width: 420px) and (orientation: portrait) {
   .plaque--chrono {
     padding-left: 10px;
     font-size: var(--dj-taille-32);
+  }
+}
+@media (max-width: 380px) and (orientation: portrait) {
+  .plaque--chrono {
+    padding: 3px 14px 1px 8px;
+    font-size: var(--dj-taille-24);
   }
 }

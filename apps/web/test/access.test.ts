@@ -28,7 +28,7 @@ describe("adresse d'un jour (judgeAddress)", () => {
   const base = { seedDay: null, trial: false, today: TODAY, restricted: true };
 
   it("production : un jour à venir est refusé (circuit du jour + message), aujourd'hui et les jours passés sont acceptés", () => {
-    expect(judgeAddress({ ...base, seedDay: TODAY + 1 })).toMatchObject({ seedDay: null, notice: expect.stringContaining("pas encore disponible") });
+    expect(judgeAddress({ ...base, seedDay: TODAY + 1 })).toMatchObject({ seedDay: null, notice: "course.notice.pasDisponible" });
     expect(judgeAddress({ ...base, seedDay: TODAY + 400 }).seedDay).toBeNull();
     expect(judgeAddress({ ...base, seedDay: TODAY })).toEqual({ seedDay: TODAY, dropTrial: false, notice: "" });
     expect(judgeAddress({ ...base, seedDay: TODAY - 5 })).toEqual({ seedDay: TODAY - 5, dropTrial: false, notice: "" });
@@ -36,7 +36,7 @@ describe("adresse d'un jour (judgeAddress)", () => {
   });
 
   it("production : thème et variante forcés refusés pour aujourd'hui et le futur, acceptés pour un jour passé", () => {
-    expect(judgeAddress({ ...base, trial: true })).toMatchObject({ dropTrial: true, notice: expect.stringContaining("réservés aux essais") });
+    expect(judgeAddress({ ...base, trial: true })).toMatchObject({ dropTrial: true, notice: "course.notice.essaisReserves" });
     expect(judgeAddress({ ...base, trial: true, seedDay: TODAY })).toMatchObject({ dropTrial: true });
     expect(judgeAddress({ ...base, trial: true, seedDay: TODAY + 2 })).toMatchObject({ seedDay: null, dropTrial: true });
     expect(judgeAddress({ ...base, trial: true, seedDay: TODAY - 1 })).toEqual({ seedDay: TODAY - 1, dropTrial: false, notice: "" });

@@ -3,7 +3,6 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GENERATOR_VERSION, PREMIER_JOUR, SIM_VERSION, dailyCircuit, decodeReplay, formatDay, medalFor, medalsFor, parseDay, replayRace } from "@cdj/sim";
 import { DEMO_DAYS, DEMO_TODAY, DemoApi, demoProblem, rankAmong, withMe, type DemoDayData, type DemoIndex } from "../src/demo";
-import { ordinal } from "../src/archive";
 
 // Le jeu de données du mode `?api=demo` (apps/web/public/demo/) est fabriqué par `npm run history:seed`. Ces tests le
 // vérifient tel qu'il est dans le dépôt : si une version change, ils disent de le régénérer.
@@ -111,8 +110,6 @@ describe("classement figé avec toi dedans", () => {
   it("rankAmong : place qu'aurait un temps parmi les pilotes, sur n + 1", () => {
     expect(rankAmong(day, 39_000)).toEqual({ rank: 1, participants: 4 });
     expect(rankAmong(day, 43_000)).toEqual({ rank: 3, participants: 4 });
-    expect(ordinal(1)).toBe("1ᵉʳ");
-    expect(ordinal(4)).toBe("4ᵉ");
   });
 });
 

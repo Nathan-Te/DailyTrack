@@ -1,12 +1,10 @@
 import type { Medal } from "@cdj/sim";
-import { formatTime } from "./format";
+import { fNombre, fRang, fTemps, t } from "./i18n";
+
+// La ligne à partager (lot 6, repris au lot I4) : façon Wordle, dans la langue du joueur. **Les émojis ne vivent que dans ce texte à coller** (charte § 6),
+// jamais dans l'interface. Les mots viennent du catalogue (`partage.*`), le temps et le rang des formats du socle.
 
 export const MEDAL_ICON: Record<Medal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
-
-/** 1 → « 1er », 2 → « 2e », 23 → « 23e » (rang à la française). */
-export function ordinal(n: number): string {
-  return n === 1 ? "1er" : `${n}e`;
-}
 
 export interface ShareResult {
   /** Numéro du circuit (« #142 ») ; ≤ 0 avant le lancement : on affiche alors la date. */
@@ -19,13 +17,13 @@ export interface ShareResult {
 }
 
 /**
- * La ligne à partager, façon Wordle : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812`.
+ * La ligne à partager, façon Wordle : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812` (`Daily Track #142 — 47.312 s — 🥇 — 23rd/812`).
  * Les morceaux qu'on ne connaît pas (pas de médaille, pas de classement) sont simplement omis.
  */
 export function shareLine(r: ShareResult): string {
-  const parts = [r.number >= 1 ? `Circuit du Jour #${r.number}` : `Circuit du Jour ${r.date}`, formatTime(r.ms)];
+  const parts = [r.number >= 1 ? t("lignePartage.titre", { numero: r.number }) : t("lignePartage.titreSansNumero", { date: r.date }), fTemps(r.ms)];
   if (r.medal) parts.push(MEDAL_ICON[r.medal]);
-  if (r.rank && r.participants) parts.push(`${ordinal(r.rank)}/${r.participants}`);
+  if (r.rank && r.participants) parts.push(`${fRang(r.rank)}/${fNombre(r.participants)}`);
   return parts.join(" — ");
 }
 

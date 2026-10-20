@@ -12,6 +12,7 @@
   --z-cadre: 6;
   --z-cadre-haut: 8;
   --z-chargement: 10;
+  --z-outil: 12; /* l'outil de réglage interne (?debug&tune) passe devant tout */
 }
 html,
 body {
@@ -104,12 +105,18 @@ canvas {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 14px 16px;
+  --corps-x: 16px;
+  --corps-y: 14px;
+  padding: var(--corps-y) var(--corps-x);
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
+}
+/* Les blocs de l'étiquette ne rétrécissent jamais (un bloc à `overflow: hidden`, comme un choix segmenté, s'écraserait sinon) : c'est le corps qui défile. */
+.etiquette__corps > * {
+  flex-shrink: 0;
 }
 .etiquette__titre {
   position: relative;
@@ -451,7 +458,8 @@ textarea.champ {
     padding-bottom: 2px;
   }
   .etiquette__corps {
-    padding: 10px 14px;
+    --corps-x: 14px;
+    --corps-y: 10px;
     gap: 8px;
   }
   .etiquette__titre {

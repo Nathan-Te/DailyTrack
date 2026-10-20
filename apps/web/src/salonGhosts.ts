@@ -2,6 +2,7 @@ import { CanvasTexture, Group, Sprite, SpriteMaterial, SRGBColorSpace } from "th
 import { DEFAULT_CAR_PARAMS, ReplayPlayer, SIM_VERSION, copyCar, createCar, createRace, decodeReplay, forwardSpeed, stepRace, steerLimit, wrapAngle, type CarState, type RaceState, type Track } from "@cdj/sim";
 import { createCarMesh, type CarModel, type WheelPose } from "./carMesh";
 import { CarPose } from "./carPose";
+import { t } from "./i18n";
 import { GHOST_COLORS, MAX_GHOSTS, MY_GHOST_COLOR, ghostShown, type SalonGhostMode } from "./salon";
 
 // Fantômes du Salon (lot 26) : jusqu'à cinq autres joueurs plus ton meilleur tour de la session, chacun d'une couleur, translucide,
@@ -255,7 +256,7 @@ export class GhostField {
       s.wheel.dt = dt;
       s.model.update(s.wheel);
       // Étiquette : toujours à plat face à la caméra (un sprite), au-dessus de la caisse, sans suivre son roulis.
-      paintLabel(s, a.entry.rank === null ? "Ton tour" : `${a.entry.rank}. ${a.entry.name}`, a.entry.rank === null ? MY_GHOST_COLOR : GHOST_COLORS[a.slot]!);
+      paintLabel(s, a.entry.rank === null ? t("salon.tonTour") : `${a.entry.rank}. ${a.entry.name}`, a.entry.rank === null ? MY_GHOST_COLOR : GHOST_COLORS[a.slot]!);
       const g = s.model.group.position;
       const dist = Math.hypot(g.x - eye.x, g.y - eye.y, g.z - eye.z);
       // Hauteur de la ligne de texte : LABEL_PX pixels à l'écran ; masquée tout près (elle cacherait la voiture) et très loin (illisible).

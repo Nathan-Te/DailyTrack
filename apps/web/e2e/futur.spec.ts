@@ -132,7 +132,7 @@ test.describe("jour de Paris", () => {
       await expect(line).toContainText(/Prochain circuit dans 00:00:0\d/);
       const next = dailyCircuit(TODAY + 1);
       // À zéro l'accueil se recharge sur le nouveau circuit (n° suivant).
-      await expect(page.locator("#home .today h2")).toContainText(`n° ${next.number}`, { timeout: 40_000 });
+      await expect(page.locator("#home .dj-barre-jeu__jour")).toContainText(new RegExp(`n°\\s${next.number}(?!\\d)`), { timeout: 40_000 });
     } finally {
       await ctx.close();
     }

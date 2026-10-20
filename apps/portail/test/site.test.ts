@@ -1,8 +1,9 @@
-import { readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { LAYOUT, REGION, firebaseConfig } from "../../../scripts/site.mjs";
+import { LAYOUT, REGION, firebaseConfig, partagerPolices } from "../../../scripts/site.mjs";
 
 // Lot R4 : la configuration Firebase (firebase.json du dépôt) et la disposition du site.
 const template = JSON.parse(readFileSync(join(__dirname, "../../../firebase.json"), "utf8"));
@@ -58,5 +59,39 @@ describe("disposition du site", () => {
       { from: "apps/web/dist", to: "track" },
       { from: "apps/jump/dist", to: "jump" },
     ]);
+  });
+});
+
+// Lot I4 : les polices de Track sont servies par `/assets/…`, le même chemin que celles du portail (un joueur qui vient du portail les a déjà en cache).
+describe("polices partagées entre le portail et Track", () => {
+  function site(portail: Record<string, string>, track: Record<string, string>, css: string) {
+    const out = mkdtempSync(join(tmpdir(), "site-"));
+    mkdirSync(join(out, "assets"), { recursive: true });
+    mkdirSync(join(out, "track/assets"), { recursive: true });
+    for (const [nom, contenu] of Object.entries(portail)) writeFileSync(join(out, "assets", nom), contenu);
+    for (const [nom, contenu] of Object.entries(track)) writeFileSync(join(out, "track/assets", nom), contenu);
+    writeFileSync(join(out, "track/assets/main-abc.css"), css);
+    return out;
+  }
+  const css = "@font-face{src:url(/assets/archivo-400-aaa.woff2)}@font-face{src:url(/assets/barlow-600-bbb.woff2)}.x{background:url(./image.png)}";
+
+  it("une police que le portail a aussi n'est servie qu'une fois ; celle qu'il n'a pas rejoint `assets/` du portail", () => {
+    const out = site({ "archivo-400-aaa.woff2": "AAA" }, { "archivo-400-aaa.woff2": "AAA", "barlow-600-bbb.woff2": "BBB" }, css);
+    expect(partagerPolices(out)).toEqual({ communes: ["archivo-400-aaa.woff2"], ajoutees: ["barlow-600-bbb.woff2"] });
+    for (const nom of ["archivo-400-aaa.woff2", "barlow-600-bbb.woff2"]) {
+      expect(existsSync(join(out, "assets", nom)), nom).toBe(true);
+      expect(existsSync(join(out, "track/assets", nom)), `${nom} : plus de copie sous /track/`).toBe(false);
+    }
+    expect(readFileSync(join(out, "assets/barlow-600-bbb.woff2"), "utf8")).toBe("BBB");
+  });
+
+  it("un même nom avec d'autres octets arrête l'assemblage (le nom porte l'empreinte du contenu)", () => {
+    const out = site({ "archivo-400-aaa.woff2": "AAA" }, { "archivo-400-aaa.woff2": "AUTRE", "barlow-600-bbb.woff2": "BBB" }, css);
+    expect(() => partagerPolices(out)).toThrow(/différente/);
+  });
+
+  it("une police demandée mais absente de la construction de Track arrête l'assemblage", () => {
+    const out = site({}, { "archivo-400-aaa.woff2": "AAA" }, css);
+    expect(() => partagerPolices(out)).toThrow(/absente/);
   });
 });

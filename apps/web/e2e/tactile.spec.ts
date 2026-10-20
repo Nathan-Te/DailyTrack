@@ -152,7 +152,7 @@ for (const p of PHONES) {
       // Le joueur choisit l'accélérateur automatique : la sauvegarde porte la version, un rechargement le garde.
       await page.locator("#tbar .gear").click();
       await page.getByRole("radio", { name: "Automatique" }).click();
-      await page.getByRole("button", { name: "Fermer" }).click();
+      await page.locator("#settings .dj-barre-jeu__retour").click();
       await polled(page, (i) => i.throttle).toBe(64);
       await page.reload();
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
@@ -215,7 +215,7 @@ for (const p of PHONES) {
       for (const b of await page.locator("#page-controls button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
       await page.getByRole("radio", { name: "Boutons ← →" }).click();
       await page.getByRole("radio", { name: "Bouton gaz" }).click();
-      await page.getByRole("button", { name: "Fermer" }).click();
+      await page.locator("#settings .dj-barre-jeu__retour").click();
       await expect(page.locator("#settings")).toBeHidden();
       await expect(page.locator("#touch .steer-left")).toBeVisible();
       await expect(page.locator("#touch .pedal-gas")).toBeVisible();
@@ -608,12 +608,12 @@ for (const p of PHONES) {
       const medium = await width();
       await page.locator("#tbar .gear").click();
       await page.getByRole("radio", { name: "Grands" }).click();
-      await page.getByRole("button", { name: "Fermer" }).click();
+      await page.locator("#settings .dj-barre-jeu__retour").click();
       expect(await width()).toBeGreaterThan(medium);
       expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).buttonSize)).toBe("large");
       await page.locator("#tbar .gear").click();
       await page.getByRole("radio", { name: "Petits" }).click();
-      await page.getByRole("button", { name: "Fermer" }).click();
+      await page.locator("#settings .dj-barre-jeu__retour").click();
       expect(await width()).toBeLessThan(medium);
       // le visuel respecte les marges des bords (bandes de gestes système)
       const b = (await page.locator("#touch .steer-left").boundingBox())!;

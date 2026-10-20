@@ -236,6 +236,26 @@ test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, s
   }
 });
 
+test("profil commun : ?retour= ramène au jeu d'où l'on vient (un chemin du site seulement, jamais une adresse extérieure)", async ({ browser }) => {
+  const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
+  const page = await context.newPage();
+  const retour = page.locator(".dj-barre-jeu__retour");
+  // Le jeu d'où l'on vient : « ‹ TRACK » vers /track/ (Réglages › « Mon profil Du Jour › » ajoute ?retour=/track/).
+  await page.goto(`http://localhost:${SITES.midi}/profil/?retour=${encodeURIComponent("/track/")}`);
+  await expect(retour).toHaveAttribute("href", "/track/");
+  await expect(retour).toContainText("TRACK");
+  await expect(retour).toHaveAttribute("aria-label", "Retour à Track");
+  await page.locator('.dj-choix-langue [data-langue="en"]').click();
+  await expect(retour).toHaveAttribute("aria-label", "Back to Track");
+  // Tout le reste est ignoré : le retour par défaut, vers le portail.
+  for (const hostile of ["https://evil.example/track/", "//evil.example/", "javascript:alert(1)", "/track/../../x", "/%2e%2e/"]) {
+    await page.goto(`http://localhost:${SITES.midi}/profil/?retour=${encodeURIComponent(hostile)}`);
+    await expect(retour, hostile).toHaveAttribute("href", "../");
+    await expect(retour, hostile).toContainText(/DU JOUR/i);
+  }
+  await context.close();
+});
+
 test("profil commun : un code chargé ici (lu sur le serveur, confirmé) devient l'identité de tous les jeux", async ({ browser }) => {
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
   const page = await context.newPage();

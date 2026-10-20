@@ -42,7 +42,14 @@ export interface Cadre {
   majBarre(): void;
 }
 
+const existants = new WeakMap<HTMLElement, Cadre>();
+
+/** Le cadre d'un élément : créé la première fois, le même ensuite (l'arrivée du jour et celle du Salon partagent `#finish`). */
 export function creerCadre(o: OptionsCadre): Cadre {
+  if (o.racine) {
+    const deja = existants.get(o.racine);
+    if (deja) return deja;
+  }
   const racine = o.racine ?? el("div");
   if (o.id) racine.id = o.id;
   racine.classList.add("cadre");
@@ -69,5 +76,7 @@ export function creerCadre(o: OptionsCadre): Cadre {
   racine.append(etiquette);
   barres.add(majBarre);
   onLangue(majBarre);
-  return { racine, etiquette, corps, majBarre };
+  const cadre: Cadre = { racine, etiquette, corps, majBarre };
+  existants.set(racine, cadre);
+  return cadre;
 }

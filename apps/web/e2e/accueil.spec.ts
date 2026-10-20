@@ -18,37 +18,43 @@ async function open(page: Page, url: string, { wide = false }: { wide?: boolean 
 
 const ui = (page: Page) => page.evaluate(() => window.__cdj.ui);
 
+/** Lot I4 : les réglages s'ouvrent depuis le menu de pause en course (la barre du haut n'a plus que la pause, variante A du HUD) ; à l'accueil, c'est `#home-settings`. */
+async function openSettings(page: Page) {
+  await page.locator("#btn-pause").click();
+  await page.locator("#pause-settings").click();
+}
+
 async function fresh(browser: Browser, viewport = DESKTOP, touch = false): Promise<BrowserContext> {
   return newClockedContext(browser, { viewport, hasTouch: touch, isMobile: touch, permissions: ["clipboard-read", "clipboard-write"] });
 }
 
 test.describe("l'accueil", () => {
-  test("ouvrir le jeu : titre, circuit du jour, classement, deux grands boutons, profil, liens", async ({ browser }) => {
+  test("ouvrir le jeu : TRACK, circuit du jour, médailles, classement, Courir, Salon, profil, liens", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?api=demo");
     await expect(page.locator("body")).toHaveClass(/home/);
-    await expect(page.locator("#home h1")).toHaveText("Circuit du Jour");
-    await expect(page.locator("#home .today h2")).toContainText("Circuit du Jour n°");
-    await expect(page.locator("#home .today .when")).toContainText("thème");
-    // Les quatre médailles, nommées, avec leur temps.
-    const medals = page.locator("#home .medals li");
+    // Lot I4 : l'étiquette Track dans le cadre crème de Du Jour (barre « ‹ DU JOUR », date et numéro du circuit).
+    await expect(page.locator("#home h1")).toHaveText("TRACK");
+    await expect(page.locator("#home .home-circuit")).toContainText("Circuit du jour ·");
+    await expect(page.locator("#home .dj-barre-jeu")).toContainText("n°");
+    await expect(page.locator("#home-portail")).toBeVisible();
+    // Les quatre médailles en cases, nommées, avec leur temps.
+    const medals = page.locator("#home .home-medailles .dj-medaille--case");
     await expect(medals).toHaveCount(4);
     for (const [i, name] of ["Auteur", "Or", "Argent", "Bronze"].entries()) await expect(medals.nth(i)).toContainText(name);
-    await expect(medals.nth(0)).toContainText(/\d,\d{3} s/);
+    await expect(medals.nth(0)).toContainText(/\d,\d{3}\ss/); // lot I4 : le temps s'écrit avec l'espace insécable du socle (« 36,892\u00a0s »), `\s` la couvre
     await expect(page.locator("#home .board-card .row").first()).toBeVisible({ timeout: 15_000 }); // classement (de démonstration)
-    await expect(page.locator("#home-daily")).toContainText("Circuit du jour");
-    await expect(page.locator("#home-salon")).toContainText("Salon live");
+    await expect(page.locator("#home-daily")).toContainText("Courir");
+    await expect(page.locator("#home-salon")).toContainText("Rejoindre le Salon");
     await expect(page.locator("#home .salon-state")).toContainText("En cours :", { timeout: 15_000 });
     await expect(page.locator("#home .salon-state")).toContainText("prochain circuit dans");
-    await expect(page.locator("#home .profile h3")).toHaveText("Ton profil");
-    await expect(page.getByRole("button", { name: "Copier mon code" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Charger un code" })).toBeVisible();
+    // Plus de carte de profil sur l'accueil : un lien vers le profil commun du portail, avec le chemin de retour vers le jeu.
+    await expect(page.locator("#home-profile")).toHaveAttribute("href", /profil\/\?retour=/);
     for (const label of ["Archives", "Réglages", "Comment jouer"]) await expect(page.locator("#home .links").getByRole("button", { name: new RegExp(label) })).toBeVisible();
     // Le HUD de course n'est pas là : on est à l'accueil.
     await expect(page.locator("#menu")).toBeHidden();
     await expect(page.locator("#speed")).toBeHidden();
-    await page.screenshot({ path: "../../docs/lots/img/lot-29-accueil-ordinateur.png" });
     await ctx.close();
   });
 
@@ -79,16 +85,19 @@ test.describe("l'accueil", () => {
     const page = await ctx.newPage();
     await open(page, "/?home=1&debug&api=demo"); // temps réel : le décompte dure 3 s, le temps de cliquer
     await page.locator("#home-daily").click();
-    // Décompte : pas de tour à perdre, on revient tout de suite.
+    // Décompte : pas de tour à perdre, on revient tout de suite. Lot I4 : la barre du haut n'a plus que la pause (variante A du HUD) ; « Accueil de Track » est dans son menu.
     expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
-    await page.locator("#btn-home").click();
+    await page.locator("#btn-pause").click();
+    await expect(page.locator("#pause")).toBeVisible();
+    await page.locator("#pause-home").click();
     await expect(page.locator("#home")).toBeVisible();
     expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
     await page.locator("#home-daily").click();
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    // En pleine course : la pause s'ouvre avec la question, « Rester » reprend le menu de pause.
-    await page.locator("#btn-home").click();
+    // En pleine course : « Accueil de Track » demande confirmation, « Rester » reprend le menu de pause.
+    await page.locator("#btn-pause").click();
     await expect(page.locator("#pause")).toBeVisible();
+    await page.locator("#pause-home").click();
     await expect(page.locator("#pause-confirm")).toBeVisible();
     await expect(page.locator("#pause-menu")).toBeHidden();
     await page.locator("#pause-stay").click();
@@ -115,12 +124,39 @@ test.describe("l'accueil", () => {
     await page.waitForFunction(() => window.__cdj?.salon);
     await expect(page.locator("#meta")).toContainText("Salon");
     await expect(page.locator("#home")).toBeHidden();
-    // Dans le Salon, la barre du haut garde Accueil ; il n'y a plus de bouton Salon ; l'accueil est un lien de la page.
-    await expect(page.locator("#btn-home")).toBeVisible();
+    // Dans le Salon, la pause garde « Accueil de Track » ; il n'y a plus de bouton Salon ; l'accueil est un lien de la page.
+    await expect(page.locator("#btn-pause")).toBeVisible();
     await expect(page.locator("#btn-mode")).toHaveCount(0);
-    await page.locator("#btn-home").click();
+    await page.locator("#btn-pause").click();
+    await page.locator("#pause-home").click();
     await page.waitForURL(/home=1/);
     await expect(page.locator("#home")).toBeVisible();
+    await ctx.close();
+  });
+
+  test("clavier : tout l'accueil se parcourt à la tabulation, focus visible (contour ambre de 3 px sur l'asphalte)", async ({ browser }) => {
+    const ctx = await fresh(browser);
+    const page = await ctx.newPage();
+    await open(page, "/?api=demo&home=1");
+    await expect(page.locator("#home-daily")).toBeVisible();
+    const vus = new Map<string, { sombre: boolean; style: string; largeur: string; couleur: string }>();
+    for (let i = 0; i < 40; i++) {
+      await page.keyboard.press("Tab");
+      const info = await page.evaluate(() => {
+        const e = document.activeElement as HTMLElement | null;
+        if (!e || !e.closest("#home")) return null;
+        const cs = getComputedStyle(e);
+        return { cle: e.id || (e.getAttribute("aria-label") ?? e.textContent ?? "").trim().slice(0, 40), sombre: !!e.closest(".etiquette"), style: cs.outlineStyle, largeur: cs.outlineWidth, couleur: cs.outlineColor };
+      });
+      if (info) vus.set(info.cle, info);
+    }
+    // Tout ce que l'accueil propose est joignable au clavier : retour au portail, Courir, le Salon, les archives, les réglages, l'aide, le profil.
+    for (const id of ["home-portail", "home-daily", "home-salon", "home-archive", "home-settings", "home-howto", "home-profile"]) expect([...vus.keys()], id).toContain(id);
+    for (const [cle, v] of vus) {
+      expect(v.style, `${cle} : un contour au focus`).toBe("solid");
+      expect(parseFloat(v.largeur), `${cle} : contour d'au moins 3 px`).toBeGreaterThanOrEqual(3);
+      if (v.sombre) expect(v.couleur, `${cle} : ambre sur asphalte`).toBe("rgb(242, 181, 68)"); // --dj-ambre
+    }
     await ctx.close();
   });
 
@@ -176,7 +212,6 @@ test.describe("« Comment jouer »", () => {
     await expect(page.locator("#howto")).toContainText("Points de contrôle");
     await expect(page.locator("#howto")).toContainText("Médailles");
     await expect(page.locator("#howto kbd", { hasText: "Espace" })).toBeVisible();
-    await page.screenshot({ path: "../../docs/lots/img/lot-29-comment-jouer.png" });
     await expect(page.locator("#home")).toBeVisible(); // la course n'est pas lancée tant qu'on n'a pas fermé l'aide
     await page.locator("#howto-done").click();
     await expect(page.locator("#howto")).toBeHidden();
@@ -217,9 +252,9 @@ test.describe("« Comment jouer »", () => {
     const ctx = await fresh(browser, { width: 390, height: 844 }, true);
     const page = await ctx.newPage();
     await open(page, "/?api=demo&touch=1&scenario=essai");
-    await expect(page.locator("#howto details.dev").first()).toHaveJSProperty("open", true);
-    await expect(page.locator("#howto details.dev").first().locator("summary")).toHaveText("Avec les doigts");
-    await expect(page.locator("#howto .tdiagram")).toBeVisible();
+    await expect(page.locator("#howto details.repli").first()).toHaveJSProperty("open", true);
+    await expect(page.locator("#howto details.repli").first().locator("summary")).toHaveText("Avec les doigts");
+    await expect(page.locator("#howto .schema")).toBeVisible();
     await ctx.close();
   });
 });
@@ -229,7 +264,7 @@ test.describe("réglages", () => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?debug&api=demo"); // sans accueil : derrière l'accueil la scène est plafonnée à « moyenne »
-    await page.locator("#btn-settings").click();
+    await openSettings(page);
     await expect(page.locator("#settings")).toBeVisible();
     await expect(page.locator("#tab-graphics")).toHaveAttribute("aria-selected", "true");
     await page.getByRole("radio", { name: "Basse", exact: true }).click();
@@ -255,7 +290,7 @@ test.describe("réglages", () => {
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!).quality)).toBe("medium");
     // Retour à l'automatique.
     await open(page, "/?debug&api=demo");
-    await page.locator("#btn-settings").click();
+    await openSettings(page);
     await page.getByRole("radio", { name: "Automatique" }).click();
     state = await ui(page);
     expect(state.settingsValues.quality).toBe("auto");
@@ -269,28 +304,27 @@ test.describe("réglages", () => {
     await open(page, "/?home=1&debug&api=demo&timescale=4", { wide: true });
     await page.locator("#home-daily").click();
     await page.waitForFunction(() => window.__cdj.phase === "racing");
-    await page.locator("#btn-settings").click();
+    await openSettings(page);
     expect((await ui(page)).settings).toBe(true);
-    expect((await ui(page)).paused).toBe(false); // ouvrir les réglages gèle le jeu sans mettre en pause
+    expect((await ui(page)).paused).toBe(true); // lot I4 : on y arrive par le menu de pause (qui reste dessous) ; le jeu est gelé
     const t0 = await page.locator("#timer").textContent();
     await page.waitForTimeout(800);
     expect(await page.locator("#timer").textContent()).toBe(t0); // gelé : le chrono ne bouge pas
 
-    const shots: Record<string, string> = { graphics: "graphismes", sound: "son", game: "jeu", controls: "commandes", profile: "profil" };
-    for (const [tab, name] of Object.entries(shots)) {
+    const shots: Record<string, string> = { graphics: "graphismes", sound: "son", game: "jeu", controls: "commandes" }; // lot I4 : plus d'onglet Profil (le profil est au portail)
+    for (const [tab] of Object.entries(shots)) {
       await page.locator(`#tab-${tab}`).click();
       await expect(page.locator(`#page-${tab}`)).toBeVisible();
       for (const b of await page.locator(`#page-${tab} button:visible, #page-${tab} summary:visible`).all()) {
         const box = (await b.boundingBox())!;
         expect(box.height, `${tab} : un bouton fait moins de 44 px`).toBeGreaterThanOrEqual(43.5);
       }
-      expectNoOverlap(await boxes(page, ["#settings .panel"]), DESKTOP);
-      await page.screenshot({ path: `../../docs/lots/img/lot-29-reglages-${name}.png` });
+      expectNoOverlap(await boxes(page, ["#settings .etiquette"]), DESKTOP);
     }
 
     // Graphismes : secousses, particules, vitesse.
     await page.locator("#tab-graphics").click();
-    const row = (label: string) => page.locator("#page-graphics .setrow", { hasText: label });
+    const row = (label: string) => page.locator("#page-graphics .reglage", { hasText: label });
     await row("Secousses de caméra").getByRole("radio", { name: "Non" }).click();
     await row("Particules").getByRole("radio", { name: "Non" }).click();
     await row("Traces de pneus").getByRole("radio", { name: "Non" }).click();
@@ -311,7 +345,7 @@ test.describe("réglages", () => {
     await page.getByRole("radio", { name: "Muet" }).click();
     audio = await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:audio")!));
     expect(audio.volume).toBe(0);
-    await expect(page.locator("#btn-sound")).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#pause-sound")).toHaveAttribute("aria-pressed", "true");
     await page.getByRole("radio", { name: "Son", exact: true }).click();
     audio = await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:audio")!));
     expect(audio.volume).toBe(0.8); // le dernier volume revient
@@ -322,8 +356,8 @@ test.describe("réglages", () => {
     expect(await page.evaluate(() => localStorage.getItem("cdj:camera"))).toBe("capot");
     await page.getByRole("radio", { name: "mph" }).click();
     await page.getByRole("radio", { name: "Le premier" }).click();
-    await page.locator("#page-game .setrow", { hasText: "Temps intermédiaires" }).getByRole("radio", { name: "Non" }).click();
-    await page.locator("#page-game .setrow", { hasText: "Classement en course" }).getByRole("radio", { name: "Non" }).click();
+    await page.locator("#page-game .reglage", { hasText: "Temps intermédiaires" }).getByRole("radio", { name: "Non" }).click();
+    await page.locator("#page-game .reglage", { hasText: "Classement en course" }).getByRole("radio", { name: "Non" }).click();
     s = (await ui(page)).settingsValues;
     expect(s).toMatchObject({ unit: "mph", ghost: "first", splits: false, board: false });
     await expect(page.locator("#board")).toHaveClass(/folded/);
@@ -340,7 +374,7 @@ test.describe("réglages", () => {
     expect(s).toMatchObject({ unit: "mph", ghost: "first", splits: false, board: false });
     expect((await ui(page)).boardFolded).toBe(true);
     // Rétablir les réglages par défaut.
-    await page.locator("#btn-settings").click();
+    await openSettings(page);
     await page.locator("#settings-reset").click();
     s = (await ui(page)).settingsValues;
     expect(s).toMatchObject({ unit: "kmh", ghost: "mine", splits: true, board: true, shake: true, speedFeel: "normal" });
@@ -460,121 +494,9 @@ test.describe("pause et touches", () => {
   });
 });
 
-test.describe("profil", () => {
-  test("pseudo modifiable, statistiques d'après les records, meilleure place retenue", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    // En démonstration, « aujourd'hui » est figé au 27/10/2026 (le lendemain de l'historique).
-    const today = "2026-10-27";
-    const yesterday = "2026-10-26";
-    await page.addInitScript(
-      ([t, y]) => {
-        if (localStorage.getItem("cdj:player")) return;
-        localStorage.setItem("cdj:player", "0123456789abcdef0123456789abcdef");
-        localStorage.setItem("cdj:name", "Alice");
-        localStorage.setItem(`cdj:best:jour-${t}-g15`, JSON.stringify({ ms: 41000, splits: [], simVersion: 1, medal: "gold" }));
-        localStorage.setItem(`cdj:best:jour-${y}-g15`, JSON.stringify({ ms: 44000, splits: [], simVersion: 1, medal: "bronze" }));
-        localStorage.setItem(`cdj:rank:${y}`, JSON.stringify({ rank: 3, participants: 12 }));
-      },
-      [today, yesterday],
-    );
-    await open(page, "/?home=1&debug&api=demo");
-    const stats = page.locator("#home .profile .stats");
-    await expect(page.locator("#home .profile input.name")).toHaveValue("Alice");
-    await expect(stats).toContainText("Jours joués2");
-    await expect(stats).toContainText("2 jours de suite");
-    await expect(stats).toContainText("3e sur 12");
-    await expect(stats).toContainText("🥇 1");
-    await expect(stats).toContainText("🥉 1");
-    await page.locator("#home .profile input.name").fill("Alice 2");
-    await page.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page.locator("#home .profile")).toContainText("Pseudo enregistré : Alice 2");
-    expect(await page.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Alice 2");
-    await page.locator("#home .profile input.name").fill("<b>");
-    await page.getByRole("button", { name: "Enregistrer" }).click();
-    await expect(page.locator("#home .profile")).toContainText("1 à 20 caractères");
-    expect(await page.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Alice 2"); // refusé : rien n'a changé
-    await page.screenshot({ path: "../../docs/lots/img/lot-29-profil.png" });
-    await ctx.close();
-  });
-
-  test("« Copier mon code » donne un code court (l'identifiant et une somme de contrôle) ; sans serveur, on ne peut pas en charger un", async ({ browser }) => {
-    // Charger un code récupère le profil depuis le serveur (lot 30) : le parcours complet, avec un vrai serveur et deux appareils, est dans profil.spec.ts.
-    const ID = "0123456789abcdef0123456789abcdef";
-    const a = await fresh(browser);
-    const pa = await a.newPage();
-    await pa.addInitScript((id) => {
-      if (!localStorage.getItem("cdj:player")) {
-        localStorage.setItem("cdj:player", id!);
-        localStorage.setItem("cdj:name", "Alice");
-      }
-    }, ID);
-    await open(pa, "/?home=1&debug&api=demo");
-    await pa.getByRole("button", { name: "Copier mon code" }).click();
-    await expect(pa.locator("#home .tr-msg")).toContainText("Code copié");
-    await expect(pa.locator("#home .tr-msg")).toContainText("Garde-le pour toi");
-    await expect(pa.locator("#home .profile .warn")).toContainText("ne le partage pas"); // l'avertissement est toujours là
-    const code = await pa.evaluate(() => navigator.clipboard.readText());
-    expect(code).toMatch(/^CDJ2\.[0-9a-f]{32}\.[0-9a-f]{8}$/);
-    expect(code).toContain(ID);
-    expect(await pa.locator("#home .tr-code").inputValue()).toBe(""); // le code n'est pas montré à l'écran
-
-    // Autre navigateur : sans serveur (démonstration), il n'y a pas de profil à retrouver : le jeu le dit, rien ne change.
-    const b = await fresh(browser);
-    const pb = await b.newPage();
-    await open(pb, "/?home=1&debug&api=demo");
-    const before = await pb.evaluate(() => localStorage.getItem("cdj:player"));
-    await pb.getByRole("button", { name: "Charger un code" }).click();
-    await pb.locator("#home .tr-code").fill(code);
-    await expect(pb.locator("#home .tr-msg")).toContainText("Pas de serveur ici");
-    await expect(pb.locator("#home .tr-preview")).toBeHidden();
-    expect(await pb.evaluate(() => localStorage.getItem("cdj:player"))).toBe(before);
-    await a.close();
-    await b.close();
-  });
-
-  test("un code abîmé est refusé sans rien changer ; taper dans la zone ne commande pas le jeu", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    await page.addInitScript(() => {
-      if (!localStorage.getItem("cdj:player")) {
-        localStorage.setItem("cdj:player", "0123456789abcdef0123456789abcdef");
-        localStorage.setItem("cdj:name", "Alice");
-      }
-    });
-    await open(page, "/?home=1&debug&api=demo");
-    await page.getByRole("button", { name: "Copier mon code" }).click();
-    const code = await page.evaluate(() => navigator.clipboard.readText());
-    await page.getByRole("button", { name: "Charger un code" }).click();
-    await page.locator("#home .tr-code").fill(code.slice(0, -1) + (code.endsWith("0") ? "1" : "0"));
-    await expect(page.locator("#home .tr-msg")).toContainText("somme de contrôle");
-    await expect(page.locator("#home .tr-preview")).toBeHidden();
-    await page.locator("#home .tr-code").fill(code.slice(0, 20) + code.slice(24));
-    await expect(page.locator("#home .tr-msg")).toContainText("abîmé");
-    await page.locator("#home .tr-code").fill("bonjour");
-    await expect(page.locator("#home .tr-msg")).toContainText("Ce n'est pas un code de transfert");
-    expect(await page.evaluate(() => localStorage.getItem("cdj:player"))).toBe("0123456789abcdef0123456789abcdef");
-    await page.locator("#home .tr-code").fill("");
-    await page.locator("#home .tr-code").press("p");
-    await page.locator("#home .tr-code").press("Enter");
-    expect(await page.evaluate(() => window.__cdj.paused)).toBe(false); // rien n'a été pris pour une commande
-    expect(await page.evaluate(() => window.__cdj.phase)).toBe("countdown");
-    await ctx.close();
-  });
-
-  test("les mêmes actions sont dans Réglages › Profil", async ({ browser }) => {
-    const ctx = await fresh(browser);
-    const page = await ctx.newPage();
-    await open(page, "/?debug&api=demo&scenario=essai");
-    await page.locator("#btn-settings").click();
-    await page.locator("#tab-profile").click();
-    await expect(page.locator("#page-profile input.name")).toBeVisible();
-    await expect(page.locator("#page-profile").getByRole("button", { name: "Copier mon code" })).toBeVisible();
-    await expect(page.locator("#page-profile").getByRole("button", { name: "Charger un code" })).toBeVisible();
-    await expect(page.locator("#page-profile .warn")).toContainText("ne le partage pas");
-    await ctx.close();
-  });
-});
+// Lot I4 : la carte du profil (pseudo, statistiques, copier / charger un code) n'existe plus dans le jeu — « plus d'écran de profil propre au jeu » : Réglages › « Mon profil Du Jour › » et
+// l'accueil mènent au profil commun du portail (`?retour=`). Les cas qui vivaient ici (pseudo modifiable, statistiques d'après les records, meilleure place, code copié / chargé, code
+// invalide) sont ceux du profil du portail : `apps/web/e2e/portail-jour.spec.ts` (« profil », « code chargé dans le profil ») ; le lien du jeu vers le profil : `accueil` (plus haut) et `profil.spec.ts`.
 
 // --- Classement et arrivée, avec une API simulée ---------------------------------------------------------------------------------------
 const API = "http://api.test";
@@ -621,8 +543,8 @@ test.describe("classement", () => {
     await expect(board.locator(".you")).toHaveCount(1);
     // Le Salon, vu par l'accueil : thème, temps restant, joueurs (réponse du serveur simulé).
     await expect(page.locator("#home .salon-state")).toContainText("4 joueurs présents", { timeout: 15_000 });
-    // Ta meilleure place est retenue pour le profil.
-    await expect(page.locator("#home .profile .stats")).toContainText("11e sur 12");
+    // Ta meilleure place est retenue pour le profil (le profil commun du portail la relit).
+    await expect.poll(() => page.evaluate((date) => localStorage.getItem(`cdj:rank:${date}`), circuit.date)).toContain('"rank":11');
     await ctx.close();
   });
 
@@ -635,7 +557,6 @@ test.describe("classement", () => {
     await expect(page.locator("#board .row")).toHaveCount(4, { timeout: 15_000 });
     await expect(page.locator("#board .row.me .you")).toHaveText("toi");
     await expect(page.locator("#board .row").nth(2)).toContainText("Nowy·2");
-    await page.screenshot({ path: "../../docs/lots/img/lot-29-course-classement.png" });
     await page.locator("#board .bhead").click();
     await expect(page.locator("#board")).toHaveClass(/folded/);
     await ctx.close();
@@ -659,12 +580,13 @@ for (const vp of PHONES) {
 
     // Accueil : rien ne déborde à droite, les cartes ne se chevauchent pas, tout se touche du doigt.
     const sizes = await page.evaluate(() => {
-      const home = document.getElementById("home")!;
-      const cards = [...document.querySelectorAll("#home .home-head, #home .card, #home .links")].map((e) => {
+      // Lot I4 : le défilement est celui de l'étiquette (`.etiquette__corps`) ; « Courir » est collé en bas (sticky) : il recouvre exprès ce qui défile dessous.
+      const corps = document.querySelector<HTMLElement>("#home .etiquette__corps")!;
+      const cards = [...document.querySelectorAll("#home .etiquette__tete, #home .home-apercu, #home .home-resume, #home .home-medailles, #home .home-fantome, #home .card, #home .home-liens")].filter((e) => (e as HTMLElement).offsetParent).map((e) => {
         const r = e.getBoundingClientRect();
-        return { name: e.className, x: r.x, y: r.y + home.scrollTop, w: r.width, h: r.height };
+        return { name: e.className, x: r.x, y: r.y + corps.scrollTop, w: r.width, h: r.height };
       });
-      return { overflowX: home.scrollWidth - home.clientWidth, cards, clip: [...document.querySelectorAll("#home .card")].map((c) => c.scrollWidth - c.clientWidth) };
+      return { overflowX: corps.scrollWidth - corps.clientWidth, cards, clip: [...document.querySelectorAll("#home .card")].map((c) => c.scrollWidth - c.clientWidth) };
     });
     expect(sizes.overflowX, "l'accueil déborde en largeur").toBeLessThanOrEqual(1);
     for (const c of sizes.clip) expect(c, "une carte coupe son contenu").toBeLessThanOrEqual(1);
@@ -679,33 +601,32 @@ for (const vp of PHONES) {
     }
     for (const b of await page.locator("#home button:visible").all()) expect((await b.boundingBox())!.height, `un bouton de l'accueil est trop petit (${await b.textContent()})`).toBeGreaterThanOrEqual(43.5);
     await expect(page.locator("#home-daily")).toBeInViewport(); // le grand bouton se voit sans défiler
-    if (vp.name === "portrait") {
-      await page.screenshot({ path: "../../docs/lots/img/lot-29-accueil-telephone.png" });
-      await page.locator("#home").evaluate((e) => e.scrollTo(0, 99999));
-      await page.screenshot({ path: "../../docs/lots/img/lot-29-accueil-telephone-bas.png" });
-      await page.locator("#home").evaluate((e) => e.scrollTo(0, 0));
-    }
+    // Défiler jusqu'en bas : « Courir » reste visible (collé en bas de l'étiquette), le dernier bloc se voit.
+    await page.locator("#home .etiquette__corps").evaluate((e) => e.scrollTo(0, 99999));
+    await expect(page.locator("#home-daily")).toBeInViewport();
+    await expect(page.locator("#home .home-liens")).toBeInViewport();
+    await page.locator("#home .etiquette__corps").evaluate((e) => e.scrollTo(0, 0));
 
     // Réglages, onglet par onglet.
     await page.locator("#home-settings").click();
-    for (const tab of ["graphics", "sound", "game", "controls", "profile"]) {
+    for (const tab of ["graphics", "sound", "game", "controls"]) {
       await page.locator(`#tab-${tab}`).click();
-      expectNoOverlap(await boxes(page, ["#settings .panel"]), vp);
+      expectNoOverlap(await boxes(page, ["#settings .etiquette"]), vp);
       for (const b of await page.locator(`#page-${tab} button:visible, #page-${tab} summary:visible`).all()) expect((await b.boundingBox())!.height, `${tab} : bouton trop petit`).toBeGreaterThanOrEqual(43.5);
       const over = await page.locator(`#page-${tab}`).evaluate((e) => e.scrollWidth - e.clientWidth);
       expect(over, `${tab} déborde en largeur`).toBeLessThanOrEqual(1);
     }
     await page.locator("#tab-controls").click();
-    await expect(page.locator("#page-controls .touchbox")).toBeVisible(); // les réglages tactiles sont dans Commandes
+    await expect(page.locator("#page-controls .reglages__tactile")).toBeVisible(); // les réglages tactiles sont dans Commandes
     await page.getByRole("radio", { name: "Boutons ← →" }).click();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).steerMode)).toBe("buttons");
     await page.getByRole("radio", { name: "Glisser" }).click();
-    await page.locator("#settings .head .btn").click();
+    await page.locator("#settings .dj-barre-jeu__retour").click();
     await expect(page.locator("#settings")).toBeHidden();
 
     // Aide.
     await page.locator("#home-howto").click();
-    expectNoOverlap(await boxes(page, ["#howto .panel"]), vp);
+    expectNoOverlap(await boxes(page, ["#howto .etiquette"]), vp);
     await page.locator("#howto-done").click();
 
     // Course, pause, HUD.
@@ -716,18 +637,16 @@ for (const vp of PHONES) {
       // paysage : on conduit ; le HUD complet ne se chevauche pas (classement compris)
       await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
       expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]), vp);
-      await page.screenshot({ path: "../../docs/lots/img/lot-29-course-telephone.png" });
     } else {
       await page.locator("#rotate button").click().catch(() => undefined); // portrait : « Jouer quand même »
       await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
       expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]), vp);
     }
     for (const b of await page.locator("#menu button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-    await page.locator("#tbar .pause").click();
+    await page.locator("#btn-pause").click(); // lot I4 : la pause est le bouton du HUD en haut à gauche
     await expect(page.locator("#pause")).toBeVisible();
-    expectNoOverlap(await boxes(page, ["#pause .panel"]), vp);
+    expectNoOverlap(await boxes(page, ["#pause .dialogue"]), vp);
     for (const b of await page.locator("#pause button:visible").all()) expect((await b.boundingBox())!.height, `pause : ${await b.textContent()}`).toBeGreaterThanOrEqual(43.5);
-    if (vp.name === "paysage") await page.screenshot({ path: "../../docs/lots/img/lot-29-pause-telephone.png" });
     await ctx.close();
   });
 }
@@ -760,8 +679,12 @@ test("plus de bouton Salon ni de ligne d'aide minuscule en course ; « Comment j
   await expect(page.locator("#info")).toHaveText("");
   await expect(page.locator("#helpchip")).toContainText("Comment jouer");
   const labels = await page.locator("#menu button:visible").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") || e.textContent));
-  expect(labels.slice(0, 3)).toEqual(["Accueil", "Réglages", "Fantôme"]);
-  expect(labels).toHaveLength(4);
-  expect(labels[3]).toMatch(/son/i); // « Couper le son (M) » : l'icône du son change avec le muet
+  // Lot I4 (HUD « plaques en haut ») : la barre du haut n'a plus que la pause ; Accueil, Réglages, Fantôme et Son sont dans son menu.
+  expect(labels).toEqual(["Pause"]);
+  await page.locator("#btn-pause").click();
+  await expect(page.locator("#pause-settings")).toHaveText("Réglages");
+  await expect(page.locator("#pause-home")).toHaveText("Accueil de Track");
+  await expect(page.locator("#pause-ghost")).toContainText("Fantôme");
+  await expect(page.locator("#pause-sound")).toContainText("Son");
   await ctx.close();
 });

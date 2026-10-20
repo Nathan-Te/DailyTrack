@@ -72,7 +72,7 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   const play = async (page: Page, code: string) => {
     await page.waitForFunction(() => window.__cdj.phase === "racing" || window.__cdj.phase === "countdown", undefined, { timeout: 30_000 });
     await page.evaluate((c) => window.__cdj.autoplay(c), code);
-    await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 120_000 });
+    await expect(page.locator("#finish .rank")).toContainText(/\d+(er|e) sur \d+/, { timeout: 120_000 });
   };
   await play(alice, fastCode);
   await play(bob, slowCode);

@@ -35,14 +35,14 @@ test("depuis les archives (démo) : la lecture finit sur exactement le temps du 
   expect(w.mode).toBe("first");
   expect(w.total).toBeGreaterThan(1500);
   await expect(page.locator("#ghostinfo")).toContainText("Rediffusion de Démo");
-  await expect(page.locator("#ghostinfo")).toContainText(/\d+,\d{3} s/);
+  await expect(page.locator("#ghostinfo")).toContainText(/\d+,\d{3}\u00a0s/);
   await expect(page.locator("body")).toHaveClass(/watch/);
   expect(w.carVisible).toBe(true);
   await finished(page);
   const end = await state(page);
   expect(end.finishMs).toBe(end.announcedMs); // le temps rejoué = le temps du classement, à la milliseconde
   await expect(page.locator("#finish")).toContainText("Rediffusion de Démo");
-  await expect(page.locator("#finish .big")).toHaveText(await page.evaluate((ms) => `${(ms / 1000).toFixed(3).replace(".", ",")} s`, end.finishMs));
+  await expect(page.locator("#finish .big")).toHaveText(await page.evaluate((ms) => `${(ms / 1000).toFixed(3).replace(".", ",")}\u00a0s`, end.finishMs));
   // Rien n'est envoyé au serveur, rien n'est enregistré.
   expect(requests.filter((r) => r.startsWith("POST") || /\/api\/(submit|rename)/.test(r))).toEqual([]);
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("cdj:best:")))).toEqual([]);
@@ -60,7 +60,7 @@ test("pause, ralenti, accéléré et retour de 5 s ne changent pas le temps fina
   const paused = (await state(page)).tick;
   await page.waitForTimeout(600);
   expect((await state(page)).tick).toBe(paused);
-  await expect(page.locator("#watch-play")).toHaveText("▶");
+  await expect(page.locator("#watch-play")).toHaveAttribute("data-etat", "pause"); // lot I4 : une icône, plus un texte ; l'état est dans data-etat
   // Retour de 5 s (600 pas exactement) pendant la pause.
   await page.locator("#watch-back").click();
   expect((await state(page)).tick).toBe(Math.max(0, paused - 600));
@@ -129,7 +129,7 @@ test("« Courir contre ce fantôme » lance une course normale avec le bon fant�
   await expect(page.locator("body")).not.toHaveClass(/watch/);
   expect(await page.evaluate(() => window.__cdj.watch)).toBeNull();
   await expect(page.locator("#ghostinfo")).toContainText(`premier : ${name}`);
-  await expect(page.locator("#ghostinfo")).toContainText(/\d+,\d{3} s/);
+  await expect(page.locator("#ghostinfo")).toContainText(/\d+,\d{3}\u00a0s/);
   await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
   await page.waitForFunction(() => (window.__cdj.ghost?.tick ?? 0) > 60, undefined, { timeout: 30_000 });
   expect(announcedMs).toBeGreaterThan(0);

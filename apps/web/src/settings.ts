@@ -1,3 +1,4 @@
+import { fNombre } from "./i18n";
 import { gameStorage } from "./storage";
 
 // Réglages du jeu (lot 29) : graphismes et jeu, mémorisés dans le navigateur (`cdj:settings`) et versionnés comme les réglages tactiles
@@ -56,18 +57,20 @@ export const SETTINGS_VERSION = 1;
 export const SETTINGS_KEY = "cdj:settings";
 
 export const QUALITY_CHOICES: readonly QualityChoice[] = ["auto", "low", "medium", "high"];
-export const QUALITY_LABEL: Record<QualityChoice, string> = { auto: "Automatique", low: "Basse", medium: "Moyenne", high: "Haute" };
+/** Lot I4 : les libellés viennent du catalogue (`reglages.*`) ; ici, la clé de chaque choix. */
+export const QUALITY_KEY: Record<QualityChoice, string> = { auto: "reglages.qualite.auto", low: "reglages.qualite.low", medium: "reglages.qualite.medium", high: "reglages.qualite.high" };
 /** Niveau de qualité du rendu (0 basse, 1 moyenne, 2 haute) d'un choix fixe ; `null` pour l'automatique. */
 export const QUALITY_LEVEL: Record<QualityChoice, 0 | 1 | 2 | null> = { auto: null, low: 0, medium: 1, high: 2 };
 
 export const SPEED_FEEL_CHOICES: readonly SpeedFeel[] = ["off", "soft", "normal", "strong"];
-export const SPEED_FEEL_LABEL: Record<SpeedFeel, string> = { off: "Aucune", soft: "Douce", normal: "Normale", strong: "Forte" };
+export const SPEED_FEEL_KEY: Record<SpeedFeel, string> = { off: "reglages.sensation.off", soft: "reglages.sensation.soft", normal: "reglages.sensation.normal", strong: "reglages.sensation.strong" };
 /** Facteur appliqué à l'ouverture du champ de vision, aux lignes de vitesse et à la vibration de la caméra. */
 export const SPEED_FEEL_FACTOR: Record<SpeedFeel, number> = { off: 0, soft: 0.5, normal: 1, strong: 1.5 };
 
 export const GHOST_CHOICES: readonly GhostChoice[] = ["mine", "first", "ahead", "none"];
-export const GHOST_LABEL: Record<GhostChoice, string> = { mine: "Mon record", first: "Le premier", ahead: "Le joueur devant", none: "Aucun" };
+export const GHOST_KEY: Record<GhostChoice, string> = { mine: "reglages.fantome.mine", first: "reglages.fantome.first", ahead: "reglages.fantome.ahead", none: "reglages.fantome.none" };
 
+/** Les unités s'écrivent pareil dans les deux langues. */
 export const UNIT_LABEL: Record<SpeedUnit, string> = { kmh: "km/h", mph: "mph" };
 
 const oneOf = <T extends string>(list: readonly T[], v: unknown): T | null => (typeof v === "string" && (list as readonly string[]).includes(v) ? (v as T) : null);
@@ -105,9 +108,9 @@ export function saveSettings(s: Readonly<GameSettings>): void {
   }
 }
 
-/** Vitesse affichée (`ms` m/s) dans l'unité choisie : « 142 km/h » ou « 88 mph ». */
+/** Vitesse affichée (`ms` m/s) dans l'unité choisie : « 142 km/h » ou « 88 mph » (espace insécable entre le nombre et l'unité, nombre au format de la langue). */
 export function formatSpeed(ms: number, unit: SpeedUnit): string {
-  return unit === "mph" ? `${Math.round(ms * 2.2369363)} mph` : `${Math.round(ms * 3.6)} km/h`;
+  return `${fNombre(Math.round(unit === "mph" ? ms * 2.2369363 : ms * 3.6))}\u00a0${UNIT_LABEL[unit]}`;
 }
 
 /**

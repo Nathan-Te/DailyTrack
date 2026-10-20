@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, QUALITY_CHOICES, SETTINGS_VERSION, formatSpeed, parseSettings, qualityPlan, saveSettings, SETTINGS_KEY } from "../src/settings";
 import { DEFAULT_AUDIO, nextVolume, parseAudioSettings, toggleMute, withVolume } from "../src/audioLogic";
+import { chargerLangue, setLangue } from "../src/i18n";
 import { HOWTO_KEY, HOWTO_VERSION, howtoSeen, markHowtoSeen } from "../src/howto";
+
+// L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
+beforeAll(() => chargerLangue("en"));
 
 describe("réglages du jeu (lot 29)", () => {
   it("rien d'enregistré, ou illisible : valeurs par défaut", () => {
@@ -41,10 +45,14 @@ describe("réglages du jeu (lot 29)", () => {
     expect(QUALITY_CHOICES).toEqual(["auto", "low", "medium", "high"]);
   });
 
-  it("l'unité de vitesse", () => {
-    expect(formatSpeed(40, "kmh")).toBe("144 km/h");
-    expect(formatSpeed(40, "mph")).toBe("89 mph");
-    expect(formatSpeed(0, "kmh")).toBe("0 km/h");
+  it("l'unité de vitesse (nombre au format de la langue, espace insécable avant l'unité)", () => {
+    setLangue("fr", { ecrire: false });
+    expect(formatSpeed(40, "kmh")).toBe("144\u00a0km/h");
+    expect(formatSpeed(40, "mph")).toBe("89\u00a0mph");
+    expect(formatSpeed(0, "kmh")).toBe("0\u00a0km/h");
+    setLangue("en", { ecrire: false });
+    expect(formatSpeed(40, "kmh")).toBe("144\u00a0km/h");
+    setLangue("fr", { ecrire: false });
   });
 });
 

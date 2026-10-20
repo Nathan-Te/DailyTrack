@@ -71,7 +71,7 @@ test("on arrive en cours de session : compte à rebours, joueurs fictifs au clas
   expect(s.trackId).toBe(circuit.id); // le même circuit que le serveur et le générateur
   expect(s.theme).toBe(salonTheme(SESSION));
   await expect(page.locator("#meta")).toContainText("Salon");
-  await expect(page.locator("#medals")).toContainText(/⏱ 0[45]:\d\d/);
+  await expect(page.locator("#medals")).toContainText(/0[45]:\d\d/);
   await expect(page.locator("#medals")).toContainText("joueurs");
   // classement : trié, premier à écart nul, pseudos fictifs
   const rows = s.board!.rows;
@@ -99,12 +99,12 @@ test("ta course est rejouée et classée dans la session ; le Salon ne touche ni
   await withRows(page, 2);
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
   await expect(page.locator("#finish")).toBeVisible({ timeout: 90_000 });
-  await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 20_000 });
+  await expect(page.locator("#finish .rank")).toContainText(/\d+(er|e) sur \d+/, { timeout: 20_000 });
   const s = await page.evaluate(() => window.__cdj.salon!);
   expect(s.best).toBe(pilot.finishMs); // le temps du rejeu
   expect(s.board!.me).toMatchObject({ name: "Testeur", ms: pilot.finishMs });
   expect(s.stats.submits).toBe(1);
-  await expect(page.locator("#finish .share")).toHaveText(/^Salon \d\d:\d\d — \d+,\d{3} s — \d+(er|e)\/\d+$/);
+  await expect(page.locator("#finish .share")).toHaveText(/^Salon \d\d:\d\d — \d+,\d{3}\u00a0s — \d+(er|e)\/\d+$/);
   // Aucun record du circuit du jour ou de la session n'est écrit.
   const keys = await page.evaluate(() => Object.keys(localStorage));
   expect(keys.filter((k) => k.startsWith("cdj:best:") || k.startsWith("cdj:sub:"))).toEqual([]);
@@ -119,13 +119,13 @@ test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebo
   await loaded(page);
   await withRows(page, 1);
   await page.waitForFunction(() => window.__cdj.phase === "racing" || window.__cdj.phase === "countdown");
-  await expect(page.locator("#medals")).not.toContainText("DERNIÈRE CHANCE");
+  await expect(page.locator("#medals")).not.toContainText("Dernière chance");
   await expect(page.locator("#finale")).toBeHidden();
   expect(await page.evaluate(() => window.__cdj.salon!.startLocked)).toBe(false);
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - FINALE - 400);
   await expect(page.locator("#finale")).toBeHidden(); // 400 ms avant la finale
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 10_500);
-  await expect(page.locator("#medals")).toContainText("DERNIÈRE CHANCE");
+  await expect(page.locator("#medals")).toContainText("Dernière chance");
   await expect(page.locator("#medals")).toHaveClass(/last/);
   await expect(page.locator("#finale")).toBeVisible();
   // Le nombre décroît en temps réel pendant l'attente (rendu logiciel lent) : il est entre 1 et 11 (jamais 15 : la finale a commencé à 10,5 s de la fin).
@@ -186,7 +186,7 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
   await expect(page.locator("#podium")).toContainText("terminé");
   await expect(page.locator("#podium .place")).toHaveCount(3);
   await expect(page.locator("#podium .place .who").first()).toContainText("Démo ");
-  await expect(page.locator("#podium")).toContainText("Départ du circuit suivant dans");
+  await expect(page.locator("#podium")).toContainText("Circuit suivant dans");
   // Le circuit suivant est déjà là, derrière le podium (lot 31) : un autre identifiant, un autre thème, la page n'a pas été rechargée.
   const behind = await page.evaluate(() => ({ id: window.__cdj.salon!.trackId, state: window.__cdj.salon!.state }));
   expect(behind.id).not.toBe(before.id);
@@ -240,7 +240,7 @@ test("une course commencée avant la fin et finie avant l'heure pile est accept�
   await page.waitForFunction(() => window.__cdj.phase === "racing" && window.__cdj.car.tick > 120, undefined, { timeout: 60_000 });
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 40_000); // 40 s réelles pour finir (le tour dure ≈ 35 s de simulation, ×4)
   await expect(page.locator("#finish")).toBeVisible({ timeout: 60_000 });
-  await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 20_000 }); // envoyée avant la fin : acceptée
+  await expect(page.locator("#finish .rank")).toContainText(/\d+(er|e) sur \d+/, { timeout: 20_000 }); // envoyée avant la fin : acceptée
   expect((await page.evaluate(() => window.__cdj.salon!.best))).toBe(pilot.finishMs);
   // À l'heure pile, le podium s'affiche avec ta place.
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 300);
@@ -406,7 +406,7 @@ for (const viewport of [
     await page.evaluate((c) => window.__cdj.autoplay(c), code);
     for (let guard = 0; guard < 100 && (await page.evaluate(() => window.__cdj.phase)) !== "finished"; guard++) await page.evaluate(() => window.__cdj.advance(240));
     await page.evaluate(() => window.__cdj.manual(false));
-    await expect(page.locator("#finish .rank")).toContainText("Rang", { timeout: 30_000 });
+    await expect(page.locator("#finish .rank")).toContainText(/\d+(er|e) sur \d+/, { timeout: 30_000 });
     expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#finish"]), viewport);
     for (const b of await page.locator("#finish .actions button:visible").all()) {
       const box = (await b.boundingBox())!;

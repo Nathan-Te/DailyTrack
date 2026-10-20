@@ -86,7 +86,7 @@ test("?debug&tune : les curseurs changent la voiture en direct ; la course n'est
 
   // Retour aux réglages par défaut : la tentative suivante compte de nouveau.
   await panel.getByRole("button", { name: "Par défaut" }).click();
-  await page.getByRole("button", { name: "Rejouer" }).click();
+  await page.getByRole("button", { name: "Recourir" }).click();
   await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 15_000 });
   await expect(page.locator("#tuned")).toBeEmpty();
 });
