@@ -1,0 +1,115 @@
+/* La page « Mentions légales et confidentialité » (lot R5 ; lot I1 : passée aux jetons et aux polices du socle `@cdj/ui`, charte
+   docs/plateforme/identite.md). Une feuille seulement : la page reste statique, sans script ni ressource extérieure (la feuille et les
+   polices sont servies par le site). Texte long : Archivo pour la lecture, Archivo Black pour les titres, encre sur crème. */
+@import "@cdj/ui/src/styles.css";
+@import "@cdj/ui/src/polices/archivo-black-400.css";
+@import "@cdj/ui/src/polices/archivo-400.css";
+@import "@cdj/ui/src/polices/archivo-700.css";
+@import "@cdj/ui/src/polices/jetbrains-mono-500.css";
+
+body {
+  font-size: var(--dj-taille-16);
+  line-height: 1.6;
+}
+.mentions-barre {
+  max-width: 760px;
+  margin: 0 auto;
+  padding-left: var(--dj-marge);
+  padding-right: var(--dj-marge);
+}
+.mentions {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 var(--dj-marge) var(--dj-espace-9);
+}
+.mentions h1 {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-32);
+  line-height: 1.15;
+  margin: var(--dj-espace-3) 0 var(--dj-espace-3);
+}
+.mentions h2 {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-22);
+  line-height: 1.2;
+  margin: var(--dj-espace-9) 0 var(--dj-espace-3);
+  padding-bottom: var(--dj-espace-2);
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.mentions h3 {
+  font-size: var(--dj-taille-16);
+  font-weight: 700;
+  margin: var(--dj-espace-8) 0 var(--dj-espace-1);
+}
+.mentions p,
+.mentions li {
+  overflow-wrap: anywhere;
+}
+.mentions p {
+  margin: var(--dj-espace-3) 0;
+}
+.mentions a {
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration-thickness: var(--dj-trait);
+  text-underline-offset: 3px;
+}
+.mentions a:hover {
+  background: var(--dj-creme-2);
+}
+.mentions .doux,
+.mentions .duree {
+  color: var(--dj-encre-douce);
+}
+.mentions strong {
+  font-weight: 700;
+}
+/* « En bref » et l'inventaire des données : des tuiles (charte § 5). */
+.mentions .bref,
+.mentions .donnees > li {
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  padding: var(--dj-espace-5) var(--dj-espace-7);
+}
+.mentions .bref {
+  box-shadow: var(--dj-ombre-bouton);
+  margin: var(--dj-espace-8) 0;
+}
+.mentions .bref ul {
+  margin: 0;
+  padding-left: var(--dj-espace-7);
+}
+.mentions .bref li {
+  margin: var(--dj-espace-1) 0;
+}
+.mentions .donnees {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--dj-espace-5);
+}
+.mentions .donnees h3 {
+  margin: 0 0 var(--dj-espace-1);
+}
+.mentions .donnees p {
+  margin: var(--dj-espace-1) 0;
+}
+.mentions code {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-14);
+  background: var(--dj-papier);
+  border: 1px solid var(--dj-creme-2);
+  border-radius: var(--dj-rayon-etiquette);
+  padding: 0 var(--dj-espace-1);
+}
+.mentions footer {
+  margin-top: var(--dj-espace-9);
+  padding-top: var(--dj-espace-3);
+  border-top: var(--dj-trait) solid var(--dj-encre);
+  color: var(--dj-encre-douce);
+  font-size: var(--dj-taille-14);
+}

@@ -80,6 +80,18 @@ describe("construction du portail", () => {
     expect(html).not.toMatch(/(?:src|href)="https?:/);
   });
 
+  it("la page des mentions passe aux jetons du socle sans script ni ressource extérieure (une feuille et des polices du site)", () => {
+    const html = readFileSync(join(sorties.production, "mentions-legales/index.html"), "utf8");
+    expect(html).not.toMatch(/<script\b/i);
+    expect(html).not.toMatch(/<(?:link|img|iframe)\b[^>]*\b(?:href|src)="https?:/i);
+    expect(html).toContain('name="theme-color" content="#EDE3CF"');
+    const feuilles = [...html.matchAll(/<link rel="stylesheet"[^>]*href="\.\.\/(assets\/[^"]+\.css)"/g)].map((m) => m[1]!);
+    expect(feuilles).toHaveLength(1);
+    const css = readFileSync(join(sorties.production, feuilles[0]!), "utf8");
+    expect(css).toContain("--dj-creme:");
+    for (const m of css.matchAll(/url\(["']?([^)"']+)["']?\)/g)) expect(m[1], m[1]).toMatch(/^(\.\/|\.\.\/|data:)/);
+  });
+
   it("la vitrine /ui/ : construite pour la recette et les aperçus, jamais pour la production", () => {
     expect(VITRINE).toBe("ui");
     expect(existsSync(join(sorties.recette, "ui/index.html"))).toBe(true);
