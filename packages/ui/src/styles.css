@@ -1,0 +1,5 @@
+/* Feuille commune de packages/ui (lot I1) : jetons, base, composants. Les polices se chargent à part, une feuille par face
+   (`polices/<famille>-<graisse>[-italique].css`) : chaque application ne charge que les siennes. */
+@import "./jetons.css";
+@import "./socle.css";
+@import "./composants.css";

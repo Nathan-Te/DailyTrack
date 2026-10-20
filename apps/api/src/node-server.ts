@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import { Readable } from "node:stream";
 import type { createApi } from "./api";
+import { CODES_ERREUR, ERREUR_INTERNE } from "./codesErreur";
 import { consoleLog } from "./log";
 
 export interface NodeServerOptions {
@@ -88,8 +89,8 @@ export function createNodeServer(api: ReturnType<typeof createApi>, options: Nod
       res.end(Buffer.from(await response.arrayBuffer()));
     } catch (e) {
       consoleLog("ERROR", "erreur serveur", { error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 300) : "inconnue" });
-      if (!res.headersSent) res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "internal", message: "Erreur interne" }));
+      if (!res.headersSent) res.writeHead(CODES_ERREUR.internal.status, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(ERREUR_INTERNE));
     }
   });
 }

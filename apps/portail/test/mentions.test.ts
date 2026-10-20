@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { SALON_SESSION_MS } from "@cdj/sim";
+import { LANGUE_KEY } from "@cdj/profile";
 import { GRACE_MS } from "../../api/src/cdj";
 import { CACHE_CLOSED_S } from "../../api/src/cache";
 import { SCHEMA } from "../../api/src/db";
@@ -89,6 +90,9 @@ describe("page des mentions légales et de la confidentialité", () => {
     expect(idb.map((f) => f.slice(ROOT.length + 1))).toEqual(["apps/web/src/thumbnails.ts"]);
     expect(PAGE).toContain("miniatures");
     expect(PAGE).toContain("<code>cdj:…</code>");
+    // Lot I1 : la langue commune (`cdj:langue`, écrite par le portail) est une donnée gardée : la page le dit.
+    expect(LANGUE_KEY.startsWith("cdj:")).toBe(true);
+    expect(PAGE).toContain("ta langue (français ou anglais");
     expect(PAGE).toContain("<code>jump:…</code>");
   });
 

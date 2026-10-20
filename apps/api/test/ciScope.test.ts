@@ -107,6 +107,11 @@ describe("portée d'une PR", () => {
     expect(scopeOf(["packages/sim/src/car.ts"])).toMatchObject({ track: true, jump: false, server: true });
   });
 
+  it("lot I1 : le socle de l'interface lance tout ; le portail lance la suite DailyTrack (ses e2e), sans l'image du serveur", () => {
+    expect(scopeOf(["packages/ui/src/composants.ts"])).toMatchObject({ track: true, jump: true, plateforme: true });
+    expect(scopeOf(["apps/portail/src/portail.ts", "apps/portail/index.html"])).toMatchObject({ track: true, jump: false, plateforme: true, server: false });
+  });
+
   it("une zone partagée lance tout", () => {
     for (const f of ["apps/api/src/api.ts", "packages/core/src/index.ts", ".github/workflows/ci.yml", "package-lock.json", "CLAUDE.md"])
       expect(scopeOf([f, "apps/jump/src/main.ts"]), f).toMatchObject({ track: true, jump: true, plateforme: true, server: expect.anything() });

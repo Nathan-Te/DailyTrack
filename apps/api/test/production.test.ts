@@ -6,7 +6,7 @@ import { SCHEMA, ensureSchemaOn, schemaVersion, type SqlDb } from "../src/db";
 import { libsqlDb } from "../src/libsql";
 import type { Logger } from "../src/log";
 import { clientFromForwarded } from "../src/node-server";
-import { DAY, NOON, makeApi, openTestDb, TEST_DB } from "./helpers";
+import { DAY, NOON, makeApi, openTestDb, TEST_DB, verifierErreur } from "./helpers";
 
 // Mise en ligne (lot 28) : base, schéma, circuit unique, CORS, santé, configuration. Tournent sur SQLite *et* libSQL (voir vitest.config.ts).
 const DATE = formatDay(DAY);
@@ -78,6 +78,7 @@ describe(`schéma (${TEST_DB})`, () => {
     state.failing = true;
     const down = await api.handle(new Request("http://x/api/day/" + DATE));
     expect(down.status).toBe(500);
+    verifierErreur(down.status, await down.json()); // lot I1 : `internal`, son statut et un message
     state.failing = false;
     const health = await api.handle(new Request("http://x/api/health"));
     expect(health.status).toBe(200);
@@ -106,7 +107,9 @@ describe(`santé (${TEST_DB})`, () => {
     state.failing = true;
     const res = await api.handle(new Request("http://x/api/health"));
     expect(res.status).toBe(503);
-    expect(await res.json()).toMatchObject({ ok: false, db: "error" });
+    const body = await res.json();
+    verifierErreur(res.status, body); // lot I1 : `db_unavailable`, en plus de `ok` et `db`
+    expect(body).toMatchObject({ ok: false, db: "error" });
     expect(logs).toContain("santé : base injoignable");
   });
 

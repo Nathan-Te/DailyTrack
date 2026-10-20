@@ -35,6 +35,11 @@ export const RULES = [
   { glob: "apps/api/scripts/measure-generator.ts", cats: ["track", "plateforme"] },
   { glob: "apps/api/scripts/measure-budget.ts", cats: ["track", "plateforme"] },
   { glob: "apps/api/scripts/history-seed.ts", cats: ["track", "plateforme"] },
+  // Lot I1 — le socle de l'interface (`packages/ui`) sert à toutes les applications : les trois (comme une zone partagée, explicitement). Le
+  // portail (`apps/portail`) : ses tests unitaires (toujours lancés) et ses e2e, qui vivent dans la suite DailyTrack (apps/web/e2e :
+  // portail.spec.ts, domaine.spec.ts, qui assemblent le site) → DailyTrack + plateforme ; il ne touche pas le serveur.
+  { glob: "packages/ui/**", cats: ["track", "jump", "plateforme"] },
+  { glob: "apps/portail/**", cats: ["track", "plateforme"] },
   { glob: "apps/web/**", cats: ["track"] },
   { glob: "packages/sim/**", cats: ["track"] },
   { glob: "docs/lots/**", cats: ["track"] },

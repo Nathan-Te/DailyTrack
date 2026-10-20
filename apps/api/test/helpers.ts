@@ -14,6 +14,7 @@ import {
   type SalonCircuit,
 } from "@cdj/sim";
 import { createApi, type ApiOptions } from "../src/api";
+import { CODES_ERREUR, estCodeErreur } from "../src/codesErreur";
 import type { SqlDb } from "../src/db";
 import { openLibsql } from "../src/libsql-open";
 import { openSqlite } from "../src/node-sqlite";
@@ -65,6 +66,21 @@ export function pilotReplay(day: number, grip: number): { code: string; replay: 
 
 export const playerId = (n: number) => n.toString(16).padStart(32, "0");
 
+/**
+ * Lot I1 : une réponse d'erreur du serveur (statut ≥ 400) a la forme `{ error: <code de la liste>, message, …détails }` et le statut de la
+ * liste (`src/codesErreur.ts`) ; sinon une erreur explicite est levée. `makeApi().call` l'applique à chaque réponse (toute erreur déjà testée
+ * est donc vérifiée) ; les tests qui appellent `createApi(...).handle` ou le serveur HTTP l'appellent là où ils lisent une réponse d'erreur.
+ */
+export function verifierErreur(status: number, body: unknown): void {
+  if (status < 400) return;
+  const shown = JSON.stringify(body)?.slice(0, 300);
+  if (!body || typeof body !== "object" || Array.isArray(body)) throw new Error(`Réponse ${status} sans corps JSON d'erreur : ${shown}`);
+  const { error, message } = body as { error?: unknown; message?: unknown };
+  if (!estCodeErreur(error)) throw new Error(`Réponse ${status} dont le code n'est pas dans CODES_ERREUR (apps/api/src/codesErreur.ts) : ${shown}`);
+  if (CODES_ERREUR[error].status !== status) throw new Error(`Réponse ${status} avec le code « ${error} », dont le statut de la liste est ${CODES_ERREUR[error].status} : ${shown}`);
+  if (typeof message !== "string" || message.trim() === "") throw new Error(`Réponse ${status} (« ${error} ») sans message : ${shown}`);
+}
+
 export interface TestApi {
   db: SqlDb & { close(): void };
   clock: { now: number };
@@ -107,7 +123,9 @@ export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } 
       else if (body !== undefined) init.body = JSON.stringify(body);
       const res = await api.handle(new Request(`http://api.test${path}`, init), { clientKey: opts.clientKey ?? "203.0.113.7", peerKey: opts.peerKey });
       const text = await res.text();
-      return { status: res.status, body: text ? JSON.parse(text) : null, headers: res.headers };
+      const parsed = text ? JSON.parse(text) : null;
+      verifierErreur(res.status, parsed); // lot I1 : toute réponse d'erreur a un code de la liste, son statut et un message
+      return { status: res.status, body: parsed, headers: res.headers };
     },
   };
 }

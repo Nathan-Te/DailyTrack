@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0b1020" />
+    <meta name="theme-color" data-jeton-content="dj-creme" />
     <meta name="description" content="Du Jour : mentions légales et confidentialité. Qui publie le site, qui l'héberge, ce que le site garde et comment le faire effacer." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23e8283a'/%3E%3C/svg%3E" />
+    <link rel="icon" data-icone-du-jour />
     <title>Mentions légales et confidentialité — Du Jour</title>
     <!--
       Lot R5 (plateforme) : page statique, sans script, sans ressource extérieure. Elle décrit exactement ce que le code fait :
@@ -13,32 +13,14 @@
       une durée) ; le test apps/portail/test/mentions.test.ts les compare aux constantes du serveur et vérifie que chaque table de la base
       y est décrite. Toute nouvelle donnée gardée met à jour cette page (apps/api/CLAUDE.md).
     -->
-    <style>
-      :root { color-scheme: dark; --fond: #0b1020; --carte: #151c33; --texte: #eef1f8; --doux: #a9b3cf; --accent: #e8283a; --lien: #8fd8ff; }
-      * { box-sizing: border-box; }
-      body { margin: 0; background: var(--fond); color: var(--texte); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 32px 16px 48px; }
-      main { max-width: 760px; margin: 0 auto; }
-      h1 { font-size: 30px; line-height: 1.2; margin: 0 0 8px; }
-      h2 { font-size: 22px; margin: 40px 0 8px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.12); }
-      h3 { font-size: 17px; margin: 24px 0 4px; }
-      p, li { overflow-wrap: anywhere; }
-      a { color: var(--lien); }
-      .retour { display: inline-flex; align-items: center; min-height: 44px; }
-      .doux { color: var(--doux); }
-      .bref { background: var(--carte); border-radius: 12px; padding: 12px 16px; }
-      .bref li { margin: 4px 0; }
-      .donnees { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-      .donnees > li { background: var(--carte); border-radius: 12px; padding: 12px 16px; }
-      .donnees h3 { margin: 0 0 4px; }
-      .donnees p { margin: 4px 0; }
-      .donnees .duree { color: var(--doux); }
-      code { font-size: 14px; background: rgba(255, 255, 255, 0.08); border-radius: 4px; padding: 0 4px; }
-      footer { margin-top: 48px; color: var(--doux); font-size: 14px; }
-    </style>
+    <!-- Lot I1 : la charte « Cartouches » (jetons et polices de @cdj/ui), par une feuille servie par le site ; toujours aucun script. -->
+    <link rel="stylesheet" href="../src/mentions.css" />
   </head>
   <body>
-    <main>
-      <p><a class="retour" href="../">← Du Jour</a></p>
+    <header class="dj-barre-jeu mentions-barre">
+      <a class="dj-barre-jeu__retour retour" href="../" aria-label="Retour au portail Du Jour"><svg class="dj-icone" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="square" aria-hidden="true" focusable="false"><path d="M15 4 7 12l8 8" /></svg><span class="dj-logo dj-logo--petit">DU JOUR</span></a>
+    </header>
+    <main class="mentions">
       <h1>Mentions légales et confidentialité</h1>
       <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-20">20 octobre 2026</time>.</p>
 
@@ -124,7 +106,7 @@
       <p>La base de données est chez Turso (société établie aux États-Unis), dans la région choisie à sa création.</p>
 
       <h3 id="navigateur">Ce que ton navigateur garde</h3>
-      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), tes réglages (son, caméra, commandes), tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun) et <code>jump:…</code> (DailyJump).</p>
+      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), ta langue (français ou anglais, si tu l'as choisie sur le portail : commune au portail et aux jeux), tes réglages (son, caméra, commandes), tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun) et <code>jump:…</code> (DailyJump).</p>
       <p>Ce stockage est <strong>strictement nécessaire</strong> au jeu que tu demandes (sans lui, ni profil, ni réglages, ni records) : il est donc permis sans demander ton consentement, et le site n'affiche pas de bandeau (article 82 de la loi Informatique et Libertés : traceurs « strictement nécessaires à la fourniture d'un service de communication en ligne à la demande expresse de l'utilisateur » ; <a href="https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf">lignes directrices de la CNIL</a>, délibération n° 2020-091 du 17 septembre 2020, qui couvrent aussi le stockage local). <strong>Aucun traceur ni cookie tiers, aucune publicité, aucune mesure d'audience</strong> aujourd'hui. Tu peux tout effacer à tout moment en effaçant les données du site playdujour.com dans ton navigateur.</p>
 
       <h3 id="base-legale">Base légale</h3>

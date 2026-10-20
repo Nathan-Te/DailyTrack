@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Piste A — Portail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Archivo:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;family=Barlow+Condensed:ital,wght@1,700;1,800&amp;family=Lilita+One&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2A1E16}a:hover{color:#B83A20}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;background:#EDE3CF;color:#2A1E16;font-family:Archivo, sans-serif;padding:14px 16px 14px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+    <div style="background:#2A1E16;color:#EDE3CF;font-family:'Archivo Black', sans-serif;font-size:21px;letter-spacing:1px;padding:7px 11px 6px;border-radius:3px;box-shadow:3px 3px 0 #C2401F">DU JOUR</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div role="group" aria-label="Langue" style="display:flex;border:2px solid #2A1E16;border-radius:4px;overflow:hidden">
+        <button aria-pressed="true" style="width:44px;height:40px;border:0;background:#2A1E16;color:#EDE3CF;font-weight:700;font-size:13px">FR</button>
+        <button aria-pressed="false" style="width:44px;height:40px;border:0;background:transparent;color:#2A1E16;font-weight:700;font-size:13px">EN</button>
+      </div>
+      <button aria-label="Profil de Nathan" style="width:44px;height:44px;border-radius:50%;border:2px solid #2A1E16;background:#E8B23A;color:#2A1E16;font-family:'Archivo Black', sans-serif;font-size:14px">NA</button>
+    </div>
+  </header>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:3px solid #2A1E16;padding-bottom:6px">
+    <span style="font-family:'Archivo Black', sans-serif;font-size:22px">Mardi 20 octobre</span>
+    <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">Journée n° 12</span>
+  </div>
+
+  <div style="background:#3A2C20;border-radius:6px;padding:9px 14px;box-shadow:inset 0 3px 0 rgba(0,0,0,.35), inset 0 -2px 0 rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between">
+    <span style="color:#E9DCC2;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;line-height:1.3">Prochains jeux<br>dans</span>
+    <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:32px;color:#F2B544;letter-spacing:1px">07:42:18</span>
+  </div>
+
+  <div style="display:flex;justify-content:space-between;align-items:baseline">
+    <h2 style="margin:0;font-family:'Archivo Black', sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:1px">Les jeux du jour</h2>
+    <span style="font-size:13px;color:#6B5847;font-weight:600">1 fini sur 2</span>
+  </div>
+
+  <article style="background:#4A4440;border:3px solid #2A1E16;border-radius:12px 12px 3px 3px;box-shadow:4px 4px 0 #2A1E16;padding:0 10px 10px;display:flex;flex-direction:column;gap:8px">
+    <div aria-hidden="true" style="height:12px;margin:0 40px;background:repeating-linear-gradient(90deg,#2A1E16 0 3px,transparent 3px 8px)"></div>
+    <div style="background:#1E1B19;border-radius:3px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden">
+      <div aria-hidden="true" style="position:absolute;right:-20px;top:0;bottom:0;width:120px;background:repeating-linear-gradient(115deg,#E8552D 0 10px,transparent 10px 18px);opacity:.9"></div>
+      <div style="display:flex;align-items:baseline;gap:10px;position:relative">
+        <span style="font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:38px;line-height:1;color:#F4EFE6;letter-spacing:1px">TRACK</span>
+        <span style="font-family:'JetBrains Mono', monospace;font-size:12px;color:#CFC6BA">n° 12 · Canyon</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;position:relative;color:#F4EFE6;font-size:13px">
+        <span style="background:#2E9E5B;color:#0E1F14;font-weight:700;font-size:11px;padding:3px 6px;border-radius:2px;letter-spacing:1px">FINI</span>
+        <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:15px">31,402 s</span>
+        <span style="display:flex;align-items:center;gap:4px"><span aria-hidden="true" style="width:13px;height:13px;border-radius:50%;background:#D9A21B;border:2px solid #F4EFE6"></span>Or</span>
+        <span>14e</span>
+      </div>
+    </div>
+    <a href="track.html" style="align-self:flex-start;height:44px;display:flex;align-items:center;padding:0 18px;background:#EDE3CF;color:#2A1E16;border:2px solid #2A1E16;border-radius:3px;font-weight:700;font-size:14px;text-decoration:none">Rejouer</a>
+  </article>
+
+  <article style="background:#E8B23A;border:3px solid #2A1E16;border-radius:12px 12px 3px 3px;box-shadow:4px 4px 0 #2A1E16;padding:0 10px 10px;display:flex;flex-direction:column;gap:8px">
+    <div aria-hidden="true" style="height:12px;margin:0 40px;background:repeating-linear-gradient(90deg,#2A1E16 0 3px,transparent 3px 8px);opacity:.7"></div>
+    <div style="background:#FFF6E0;border:2px solid #2A1E16;border-radius:3px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;align-items:baseline;gap:10px">
+          <span style="font-family:'Lilita One', sans-serif;font-size:38px;line-height:1;color:#2A1E16">JUMP</span>
+          <span style="font-family:'JetBrains Mono', monospace;font-size:12px;color:#6B5847">n° 12 · Usine</span>
+        </div>
+        <span style="font-size:13px;font-weight:600">En cours · 37 morts</span>
+      </div>
+      <svg aria-hidden="true" width="76" height="52" viewBox="0 0 76 52">
+        <rect x="0" y="44" width="76" height="8" fill="#2A1E16"/>
+        <circle cx="52" cy="40" r="9" fill="#D7263D"/>
+        <path d="M52 29 l3 6 6-3-3 6 6 3-6 3 3 6-6-3-3 6-3-6-6 3 3-6-6-3 6-3-3-6 6 3z" fill="#D7263D"/>
+        <rect x="14" y="10" width="16" height="16" rx="2" fill="#FFD23F" stroke="#2A1E16" stroke-width="2.5"/>
+        <rect x="23" y="15" width="3" height="4" fill="#2A1E16"/>
+        <path d="M6 30 q6-14 16-18" fill="none" stroke="#2A1E16" stroke-width="2" stroke-dasharray="2 3"/>
+      </svg>
+    </div>
+    <a href="jump.html" style="height:46px;display:flex;align-items:center;justify-content:center;background:#C2401F;color:#FFF4E0;border:2px solid #2A1E16;border-radius:3px;font-family:'Archivo Black', sans-serif;font-size:16px;letter-spacing:1px;text-decoration:none">CONTINUER</a>
+  </article>
+
+  <div style="display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:10px">
+    <div style="background:#E3D6BC;border:2px solid #2A1E16;border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6B5847">Série</span>
+      <span style="display:flex;align-items:center;gap:6px;font-family:'Archivo Black', sans-serif;font-size:24px">
+        <svg aria-hidden="true" width="20" height="22" viewBox="0 0 20 22"><path d="M10 1c1 5 7 7 7 13a7 7 0 0 1-14 0c0-4 3-5 3-8 2 1 3 3 3 5 2-2 2-6 1-10z" fill="#C2401F" stroke="#2A1E16" stroke-width="1.8" stroke-linejoin="round"/></svg>5 jours</span>
+      <span style="font-size:12px;color:#6B5847">2 journées parfaites</span>
+    </div>
+    <div style="background:#E3D6BC;border:2px solid #2A1E16;border-radius:4px;padding:10px 12px;display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#6B5847">Classement du jour</span>
+      <span style="font-family:'Archivo Black', sans-serif;font-size:24px">9e</span>
+      <span style="font-size:12px;color:#6B5847">38 points, tous jeux</span>
+    </div>
+  </div>
+
+  <button style="height:48px;background:#2A1E16;color:#EDE3CF;border:0;border-radius:3px;font-family:'Archivo Black', sans-serif;font-size:15px;letter-spacing:1px">Partager ma journée</button>
+
+  <nav style="display:flex;justify-content:center;gap:18px;font-size:12px">
+    <a href="#">Profil</a><a href="#">Classements</a><a href="#">Mentions légales</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

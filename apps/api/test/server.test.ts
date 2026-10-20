@@ -4,7 +4,7 @@ import { formatDay } from "@cdj/sim";
 import { createApi } from "../src/api";
 import { SCHEMA } from "../src/db";
 import { createNodeServer } from "../src/node-server";
-import { DAY, NOON, circuitOf, openTestDb, pilotReplay, playerId } from "./helpers";
+import { DAY, NOON, circuitOf, openTestDb, pilotReplay, playerId, verifierErreur } from "./helpers";
 
 // Le vrai serveur HTTP Node (celui du conteneur Docker), de bout en bout : deux « appareils », deux temps, un classement.
 const DATE = formatDay(DAY);
@@ -74,6 +74,8 @@ describe("serveur HTTP Node", () => {
     expect((await fetch(base + "/api/health")).status).toBe(200);
     const res = await fetch(base + "/nimporte-quoi");
     expect(res.status).toBe(404);
-    expect(await res.json()).toMatchObject({ error: "not_found" });
+    const body = await res.json();
+    verifierErreur(res.status, body); // lot I1
+    expect(body).toMatchObject({ error: "not_found" });
   });
 });

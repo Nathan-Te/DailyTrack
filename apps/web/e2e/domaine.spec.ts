@@ -8,7 +8,7 @@ import { expect as baseExpect, hasWebGL, newClockedContext, test, type Page } fr
 import { startSite } from "./domaine-serveurs";
 
 // Lot R4 (plateforme) : playdujour.com en local.
-//   1. le portail « Du Jour » (une carte par jeu, numéro du jour) ;
+//   1. le portail « Du Jour » (une cartouche par jeu, numéro du jour ; lot I1 : le reste du portail dans portail.spec.ts) ;
 //   2. les deux jeux servis sous /track/ et /jump/ du site assemblé (`node scripts/site.mjs site`, comme Firebase Hosting) : ressources, niveaux
 //      figés, démonstration, et le serveur sous la même adresse (`?api=/` = `VITE_API_URL=/` : `/api/…` sur l'origine de la page) ;
 //   3. lot R5 : plus aucun import par l'adresse — un lien `#dujour=…` (l'ancienne migration du lot R4) n'a aucun effet ;
@@ -59,16 +59,17 @@ async function failures(page: Page, run: () => Promise<void>): Promise<string[]>
   return bad;
 }
 
-test("portail : une carte par jeu, le numéro du jour, un lien relatif", async ({ browser }) => {
-  const page = await (await newClockedContext(browser)).newPage();
+test("portail : une cartouche par jeu, le numéro du jour, un lien relatif", async ({ browser }) => {
+  // Lot I1 : le portail passe au socle (cartouches, français et anglais) ; ici en français, le reste dans portail.spec.ts.
+  const page = await (await newClockedContext(browser, { locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page).toHaveTitle("Du Jour");
-  const cards = page.locator("#jeux a.carte");
+  const cards = page.locator("#jeux .dj-cartouche[data-jeu]");
   await expect(cards).toHaveCount(2);
-  await expect(page.locator('a[data-jeu="track"] .numero')).toHaveText("Circuit n° 8"); // 20/10/2026 (TODAY)
-  await expect(page.locator('a[data-jeu="jump"] .numero')).toHaveText("Niveau n° 5");
-  await expect(page.locator("#date")).toHaveText("20/10/2026");
-  await page.locator('a[data-jeu="jump"]').click();
+  await expect(page.locator('[data-jeu="track"] .track-etiquette__numero')).toHaveText("n° 8"); // 20/10/2026 (TODAY)
+  await expect(page.locator('[data-jeu="jump"] .jump-etiquette__numero')).toHaveText("n° 5");
+  await expect(page.locator("#date")).toHaveText("Mardi 20 octobre");
+  await page.locator('[data-jeu="jump"] a.dj-bouton').click();
   await expect(page).toHaveURL(`${SITE}/jump/`);
 });
 
