@@ -80,7 +80,7 @@ test("les deux jeux sous /track/ et /jump/ : ressources, niveaux figés, démons
   await page.goto(`${SITE}/`);
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas (portail et migration testés à part)");
 
-  // /track et /jump sans « / » final : redirigés (les chemins relatifs des jeux en dépendent).
+  // /track et /jump sans « / » final : redirigés vers le dossier (Firebase le fait par défaut ; le serveur local l'imite).
   const bad = await failures(page, async () => {
     await page.goto(`${SITE}/track?debug`);
     await expect(page).toHaveURL(`${SITE}/track/?debug`);

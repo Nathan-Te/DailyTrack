@@ -42,11 +42,12 @@ describe("firebase.json", () => {
     expect(headers.every((h) => !(h.source ?? h.regex ?? "").includes("api"))).toBe(true);
   });
 
-  it("/track et /jump sans « / » final sont redirigés (les chemins relatifs des jeux en dépendent)", () => {
-    expect(template.hosting.redirects).toEqual([
-      { source: "/track", destination: "/track/", type: 301 },
-      { source: "/jump", destination: "/jump/", type: 301 },
-    ]);
+  it("aucune redirection maison de /track ou /jump : Firebase ajoute lui-même le « / » final des dossiers (trailingSlash non réglé)", () => {
+    // Une redirection { source: "/track", destination: "/track/" } bouclait : Hosting fait correspondre /track/ à /track (vu en recette,
+    // « redirigé à de trop nombreuses reprises »). Sans `trailingSlash`, Hosting redirige /track vers /track/ (dossier avec index.html).
+    expect(template.hosting.redirects ?? []).toEqual([]);
+    expect(template.hosting.trailingSlash).toBeUndefined();
+    expect(template.hosting.cleanUrls).toBeUndefined();
   });
 });
 

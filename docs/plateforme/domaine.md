@@ -73,21 +73,22 @@ Pour chaque domaine, Firebase donne **un enregistrement TXT** (preuve de propri�
 
 ### 4.2 Chez OVH
 <https://www.ovh.com/manager> → **Web Cloud** → **Noms de domaine** → `playdujour.com` → onglet **Zone DNS**.
-1. **Supprime d'abord** les entrées par défaut d'OVH qui entreraient en conflit : les **A** et **AAAA** de `playdujour.com` (sous-domaine vide) et de `www` (souvent un A vers une page de parking d'OVH), et un éventuel **CNAME** `www`. Ne touche ni aux **NS**, ni aux **MX** / **SPF** (le courrier, si tu en as).
+1. **Supprime d'abord** les entrées par défaut d'OVH qui entreraient en conflit : les **A** (`213.186.33.5`, la page d'attente d'OVH) et **AAAA** de `@` et de `www`, leurs **TXT** de redirection OVH (`"1|www…"`, `"3|welcome"`), et un éventuel **CNAME** `www`. Chez OVH, la racine s'écrit **`@`** dans le champ « Sous-domaine ». Ne touche ni aux **NS**, ni aux **MX** / **SPF** (le courrier, si tu en as).
 2. **Ajouter une entrée** pour chaque ligne donnée par Firebase :
 
 | sous-domaine (OVH) | type | valeur | pour |
 |---|---|---|---|
-| *(vide)* | TXT | `hosting-site=playdujour` (copié de Firebase) | preuve, `playdujour.com` |
-| *(vide)* | A | l'IP donnée par Firebase (une ligne par IP) | `playdujour.com` |
+| `@` | TXT | `hosting-site=playdujour` (copié de Firebase) | preuve, `playdujour.com` |
+| `@` | A | l'IP donnée par Firebase (une ligne par IP, ex. `199.36.158.100`) | `playdujour.com` |
 | `www` | TXT / A (ou CNAME) | ce que Firebase affiche pour `www` | redirection `www` |
 | `recette` | TXT | `hosting-site=playdujour-recette` (copié de Firebase) | preuve, recette |
 | `recette` | A (ou CNAME) | ce que Firebase affiche pour `recette` | `recette.playdujour.com` |
 | `_acme-challenge…` | TXT | seulement si Firebase le demande | certificat |
 
-   Laisse le TTL par défaut. Si la zone contient un enregistrement **CAA**, il doit permettre `letsencrypt.org` et `pki.goog` (sans CAA, rien à faire).
+   Laisse le TTL par défaut. **Un CNAME ne peut pas cohabiter avec une autre entrée du même sous-domaine** (« CNAME and other data ») : pour `recette`, soit un CNAME seul vers `playdujour-recette.web.app`, soit A + TXT, comme Firebase le propose. Si la zone contient un enregistrement **CAA**, il doit permettre `letsencrypt.org` et `pki.goog` (sans CAA, rien à faire).
 3. Reviens dans la console Firebase → **Vérifier** sur chaque domaine.
 
+- Firebase garde sa dernière lecture du DNS (« Valeur(s) découverte(s) ») : après une suppression, l'ancienne adresse peut y rester **jusqu'à une heure** (TTL de 3600 s), avec l'erreur « défi ACME … 213.186.33.5 ». Vérifie les deux serveurs d'OVH (`dig +short playdujour.com A @dns103.ovh.net` et `@ns103.ovh.net`), puis reclique sur **Valider** plus tard ; si ça dure, mode **Avancé** → TXT `_acme-challenge`.
 - **Tu dois voir** les domaines passer à « **Configuration en cours** » (DNS vu), puis « **Connecté** » quand le certificat HTTPS est prêt. **Délai** : le DNS d'OVH se propage en quelques minutes à quelques heures ; le certificat suit, **jusqu'à 24 h** (souvent moins d'une heure). Pendant ce temps, `https://playdujour.com` peut afficher une erreur de certificat : c'est normal, attends.
 - Vérification depuis Cloud Shell : `dig +short playdujour.com A`, `dig +short recette.playdujour.com`, `dig +short TXT playdujour.com` doivent rendre les valeurs de Firebase.
 
@@ -208,4 +209,5 @@ Détail et seuils : `docs/plateforme/couts.md`, § 5. **Ordre de grandeur** : �
 | « Mettre en production » refuse : « CI complète … pas verte » | le run `push` de `main` de ce commit est rouge ou en cours | attendre, ou réparer, fusionner, relancer |
 | « jour(s) figé(s) différent(s) » | un jour figé du commit diffère de celui du code en production | ne jamais réécrire un jour figé : enquêter (README du lot R4) |
 | La PR « Jours figés » ne se fusionne pas | pas de `ROBOT_TOKEN`, ou « Allow auto-merge » décoché | étape 5 ; ou fusionner à la main |
+| « redirigé à de trop nombreuses reprises » sur `/track/` ou `/jump/` | une redirection `/track` → `/track/` dans `firebase.json` (corrigé après le lot R4) | aucune redirection de dossier dans `firebase.json` : Hosting ajoute le « / » lui-même |
 | L'aperçu d'une PR ne parle pas à sa révision | la PR ne touche pas le serveur (normal : recette par défaut), ou la recette n'est pas configurée | `docs/plateforme/recette.md` |
