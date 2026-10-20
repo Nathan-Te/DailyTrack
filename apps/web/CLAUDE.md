@@ -2,6 +2,8 @@
 
 Chargé quand on lit un fichier de `apps/web`. Le jeu affiche ce que calcule `packages/sim` : **jamais l'inverse**. Synthèse : `docs/orchestration.md`. Autres consignes : `packages/sim/CLAUDE.md` (simulation, générateur), `apps/api/CLAUDE.md` (serveur, Salon côté serveur, profil). Règles de tests et de CI (retouche 29b, 31b) : `CLAUDE.md` racine, rubrique « Tests et CI ».
 
+> **Tests entre navigateurs (lot R3 de la plateforme)** : sur une PR, Firefox et WebKit ne lancent que `e2e/multi-navigateurs.json` (`replay.spec.ts`, `daily.spec.ts` : rejeu et circuits du jour identiques à Node) ; tout tourne sur `main`, la nuit et à la demande. **Tout nouveau test de comparaison entre navigateurs (rejeu, déterminisme) rejoint cette liste**, avec sa raison (`test/multiNavigateurs.test.ts`). La page d'admin se teste après `openAdmin` / `adminSettled` (`e2e/adminPage.ts` : elle se construit encore quelques secondes et déplace ses outils). Quarantaine et règle d'arrêt : `CLAUDE.md` racine, « Tests et CI ».
+
 > **Renvois « voir <rubrique> »** : une rubrique citée mais absente de ce fichier se trouve dans un autre `CLAUDE.md` du dépôt ; l'index des rubriques est dans le `CLAUDE.md` racine. Pour l'état d'ensemble, partir de la synthèse ; n'ouvrir un README de lot que pour un détail.
 
 ## Arrivée, partage, archives, mobile (lot 6)
@@ -49,6 +51,7 @@ Chargé quand on lit un fichier de `apps/web`. Le jeu affiche ce que calcule `pa
 - **Règle : jamais de rendu de miniature pendant une course.** Le service ne travaille que si `canRun()` : `phase !== "racing"` ou jeu gelé. **Les archives ouvertes gèlent le jeu** (`isFrozen`, main.ts, tous les modes : le chrono compte des pas de simulation, geler ne coûte rien) ; fermées, la file est abandonnée. Compteurs de contrôle (`__cdj.thumbs.stats`) : `ranWhileBlocked` et `mainThreadGenerations` doivent rester 0.
 - **Ouvrir un jour passé** (ou un circuit d'essai) : sa miniature s'affiche dans `#daycard` pendant le décompte seulement (le circuit est déjà construit : pas de génération).
 - Outils : `?thumbs=2d|top|off`, `?debug` → `__cdj.thumbs` (compteurs, durées) et `__cdj.thumbnail(date, options)`. Test : `e2e/thumbnails.spec.ts` (**contenu des pixels** vérifié, pas un compteur), `test/thumbFocus.test.ts`, `test/thumbnails.test.ts`. Mesures : `docs/lots/lot-13-miniatures.md`.
+- **Lot R3 de la plateforme** : (1) le canvas de sortie d'une miniature est créé avec `willReadFrequently` (`outContext`, `thumbnail.ts`) : il est toujours relu par `toBlob`, et accéléré il bloquait le fil principal jusqu'à 2,7 s (téléphone lent, rendu logiciel) ; **tout canvas qu'on relit se crée ainsi**. (2) Une miniature d'archive est voulue tant que **son jour** est à l'écran (`shownDays`, `archive.ts`) : un redessin du panneau (les détails arrivent) ne fait plus perdre la demande en cours.
 - Aucune modification de `sim` (golden inchangés). Le rendu 3D des miniatures est **lent en rendu logiciel** (SwiftShader, CI) : mesurer les temps JS séparément (2D, durées `generateMs`/`renderMs`).
 
 ## Profil commun (lot P0 de la plateforme)

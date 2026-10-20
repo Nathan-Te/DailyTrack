@@ -1,6 +1,14 @@
 name: CI
+# Lot R3 (plateforme) — deux régimes (docs/plateforme/lots/lot-R3-ci.md) :
+#   - PR (`pull_request`) : les e2e des jeux touchés (scripts/ci-scope.mjs) sur Chromium, plus le SOUS-ENSEMBLE multi-navigateurs sur Firefox et
+#     WebKit (`e2e/multi-navigateurs.json` de chaque jeu : rejeu Node ↔ navigateurs, déterminisme) ; un test de `e2e/quarantaine.json` n'y est
+#     qu'un avertissement ;
+#   - complet (`push` sur main, chaque fusion ; `workflow_dispatch`) et nuit (`schedule`) : TOUT, sur les trois navigateurs, sans filtre,
+#     quarantaine bloquante ; la nuit, un instable ou une dette expirée fait aussi échouer. production.yml exige le run `push` de main vert.
+# Un `push` sur une autre branche ne lance plus rien : la PR (brouillon) le fait, une fois (avant : deux runs par commit, `push` et `pull_request`).
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
   # Garde-fou (retouche 29b) : la suite complète tourne chaque nuit sur `main` (03 h 17 UTC : loin d'un changement de jour, jamais sur
@@ -13,8 +21,17 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  test:
+  # Lot R3 : les tests unitaires (toujours TOUS : rapides, ils protègent les imports croisés) en trois parts parallèles (`vitest --shard`), chacune
+  # SQLite puis libSQL comme `npm test` (l'un après l'autre : le test de durée de génération se ferait voler le processeur) ; la part 1 fait
+  # aussi le typecheck et la construction. Mesuré : `npm test` seul prenait 5 min 21 s du job `test` (run 39318954261), le chemin le plus long
+  # d'une PR DailyJump.
+  unit:
+    name: unit (${{ matrix.part }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        part: ["1/3", "2/3", "3/3"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,8 +40,19 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+        if: matrix.part == '1/3'
+      - run: npx vitest run --project sqlite --shard=${{ matrix.part }} && npx vitest run --project libsql --shard=${{ matrix.part }}
       - run: npm run build
+        if: matrix.part == '1/3'
+
+  # Verdict des tests unitaires : le statut requis `test` (protection de main) ; il tourne toujours et échoue si une part a échoué.
+  test:
+    needs: unit
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          [ "${{ needs.unit.result }}" = success ] || { echo "::error::une part des tests unitaires a échoué (jobs unit)"; exit 1; }
 
   # Lot R2 (plateforme) — portée de la PR : quels fichiers sont changés, donc quelles suites e2e et quelle image ont un sens. Typecheck et tests
   # unitaires (`test`) tournent TOUJOURS en entier (rapides, et ils protègent les imports croisés). Les e2e ne tournent que pour les jeux touchés,
@@ -37,6 +65,7 @@ jobs:
       jump: ${{ steps.scope.outputs.jump }}
       server: ${{ steps.scope.outputs.server }}
       full: ${{ steps.scope.outputs.full }}
+      mode: ${{ steps.scope.outputs.mode }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -50,9 +79,16 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           full=""
           if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
+          # Lot R3 — « à la demande » depuis une PR : un commit dont le message contient « [ci complet] » lance la CI complète (trois
+          # navigateurs, sans filtre, quarantaine bloquante). Pour un agent (« Run workflow » lui est refusé : 403) et avant une fusion délicate.
+          if [ -z "$full" ] && [ -n "$HEAD_SHA" ] && git log -1 --format=%B "$HEAD_SHA" 2>/dev/null | grep -qF "[ci complet]"; then full="--full"; echo "commit « [ci complet] » : CI complète demandée"; fi
+          # Lot R3 : pr (filtré, Chromium + sous-ensemble multi-navigateurs, quarantaine non bloquante) | complet (main, à la demande) | nuit.
+          mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = schedule ] && mode=nuit
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
           : > "$RUNNER_TEMP/files.txt"
           if [ -z "$full" ]; then
             git fetch --no-tags origin "$BASE" || full="--full"
@@ -64,7 +100,7 @@ jobs:
           {
             echo "### Portée de la CI"
             echo
-            echo "Événement : \`$EVENT\` ${full:+(lancement complet, aucun filtre)}"
+            echo "Événement : \`$EVENT\` — mode \`$mode\` ${full:+(lancement complet : aucun filtre, trois navigateurs)}"
             echo
             echo '```'; cat "$RUNNER_TEMP/scope.txt"; echo '```'
             echo "Fichiers changés : $(wc -l < "$RUNNER_TEMP/files.txt")"
@@ -98,8 +134,10 @@ jobs:
           - { browser: firefox, shard: "2/2" }
           - { browser: webkit, shard: "1/2" }
           - { browser: webkit, shard: "2/2" }
-          - { suite: jump, shard: "1/2", browser: chromium }
-          - { suite: jump, shard: "2/2", browser: chromium }
+          # Lot R3 : trois parts Chromium pour DailyJump (deux avant : 3 min 31 s pour la plus longue, run 39316002232).
+          - { suite: jump, shard: "1/3", browser: chromium }
+          - { suite: jump, shard: "2/3", browser: chromium }
+          - { suite: jump, shard: "3/3", browser: chromium }
           - { suite: jump, shard: "1/1", browser: firefox }
           - { suite: jump, shard: "1/1", browser: webkit }
     env:
@@ -107,15 +145,27 @@ jobs:
     steps:
       # Lot R2 : la matrice reste fixe (apps/web/test/e2eParts.test.ts et apps/jump/test/ciE2e.test.ts la lisent) ; une part dont le jeu n'est pas
       # touché ne fait QUE cette étape et réussit (chaque étape suivante est conditionnée par elle) : le verdict `e2e` voit « réussi », jamais un trou.
+      # Lot R3 : sur une PR, Firefox et WebKit ne lancent que le sous-ensemble multi-navigateurs du jeu (`multi=true`), sur leur première part ;
+      # leurs autres parts réussissent sans rien faire. En mode complet ou nuit, chaque part lance sa tranche de tout (`--shard`).
       - name: Cette part est-elle concernée ?
         id: gate
+        env:
+          TOUCHED: ${{ matrix.suite == 'jump' && needs.scope.outputs.jump || needs.scope.outputs.track }}
+          MODE: ${{ needs.scope.outputs.mode }}
+          BROWSER: ${{ matrix.browser }}
+          SHARD: ${{ matrix.shard }}
+          GAME: ${{ matrix.suite == 'jump' && 'DailyJump' || 'DailyTrack' }}
         run: |
-          if [ "${{ matrix.suite == 'jump' && needs.scope.outputs.jump || needs.scope.outputs.track }}" = true ]; then
-            echo "run=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "run=false" >> "$GITHUB_OUTPUT"
-            echo "part sautée : le jeu (${{ matrix.suite == 'jump' && 'DailyJump' || 'DailyTrack' }}) n'est pas touché par cette PR (portée : job scope)" | tee -a "$GITHUB_STEP_SUMMARY"
+          run=false; multi=false; why=""
+          if [ "$TOUCHED" != true ]; then why="le jeu ($GAME) n'est pas touché par cette PR (portée : job scope)"
+          elif [ "$BROWSER" = chromium ] || [ "$MODE" != pr ]; then run=true
+          elif [ "${SHARD%%/*}" = 1 ]; then run=true; multi=true
+          else why="PR : $BROWSER ne lance que le sous-ensemble multi-navigateurs de $GAME, sur sa part 1 (tout tourne sur main, la nuit et à la demande)"
           fi
+          echo "run=$run" >> "$GITHUB_OUTPUT"
+          echo "multi=$multi" >> "$GITHUB_OUTPUT"
+          [ -z "$why" ] || echo "part sautée : $why" | tee -a "$GITHUB_STEP_SUMMARY"
+          [ "$multi" = false ] || echo "PR : $BROWSER lance le sous-ensemble multi-navigateurs de $GAME (e2e/multi-navigateurs.json)" | tee -a "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v4
         if: steps.gate.outputs.run == 'true'
       - uses: actions/setup-node@v4
@@ -156,6 +206,9 @@ jobs:
           if [ "${{ matrix.browser }}" = chromium ]; then
             node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium > "$RUNNER_TEMP/part.txt"
             npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt"
+          elif [ "${{ steps.gate.outputs.multi }}" = true ]; then
+            node scripts/e2e-parts.mjs multi ${{ matrix.browser }} > "$RUNNER_TEMP/part.txt"
+            npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --test-list "$RUNNER_TEMP/part.txt"
           else
             npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
           fi
@@ -168,6 +221,9 @@ jobs:
           if [ "${{ matrix.browser }}" = chromium ]; then
             node scripts/e2e-parts.mjs ${{ matrix.shard }} jump-chromium > "$RUNNER_TEMP/part.txt"
             npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt"
+          elif [ "${{ steps.gate.outputs.multi }}" = true ]; then
+            node scripts/e2e-parts.mjs multi jump-${{ matrix.browser }} > "$RUNNER_TEMP/part.txt"
+            npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }} --test-list "$RUNNER_TEMP/part.txt"
           else
             npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }} --shard=${{ matrix.shard }}
           fi
@@ -245,10 +301,11 @@ jobs:
             echo "### e2e : aucun rapport, les jobs de part ont échoué avant les tests" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
-          # Run de nuit : un test instable fait échouer le job (c'est le but : voir une instabilité qui revient).
-          flags=""; [ "${{ github.event_name }}" = "schedule" ] && flags="--fail-on-flaky"
+          # Mode (lot R3) : `pr` — un test de e2e/quarantaine.json n'est qu'un avertissement ; `complet` (main, à la demande) — tout est bloquant ;
+          # `nuit` — tout est bloquant, un instable aussi (c'est le but : voir une instabilité qui revient), une dette de plus de 14 jours aussi.
+          # Une quarantaine qui ne respecte pas ses garde-fous fait échouer le run, quel que soit le mode.
           set +e
-          node scripts/e2e-summary.mjs apps/web/merged/report.json $flags > summary.md
+          node scripts/e2e-summary.mjs apps/web/merged/report.json --mode "${{ needs.scope.outputs.mode }}" --quarantaine e2e/quarantaine.json > summary.md
           code=$?
           cat summary.md >> "$GITHUB_STEP_SUMMARY"
           cat summary.md

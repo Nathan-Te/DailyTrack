@@ -1,5 +1,8 @@
 name: Production
 # Lot R1 (plateforme) : une fusion dans main part en production en trois temps, et seulement après la validation de Nathan.
+#   0. lot R3 : la CI COMPLÈTE du commit doit être verte (le run `push` de main de ci.yml : tous les jeux, Chromium, Firefox et WebKit, quarantaine
+#      bloquante ; scripts/ci-complete.mjs) — le job `ci-complete` l'attend (elle démarre en même temps), puis refuse si elle n'est pas verte,
+#      le résumé dit pourquoi et donne le lien du run. Tout le reste en dépend : la validation de Nathan ne contourne jamais ce refus ;
 #   1. recette : si la fusion touche le serveur (SERVER_PATHS, scripts/recette.mjs), la révision par défaut de la recette est mise à jour
 #      (contrôle de /api/health et essai de bout en bout) ; sautée avec un message si la recette n'est pas configurée ; ses joueurs fictifs
 #      (`recette:seed`, lot P2) sont réécrits à côté, sans retenir la suite ;
@@ -28,7 +31,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Lot R3 : rien ne part (ni recette, ni validation, ni production) sans la CI complète verte de ce commit. « Run workflow » aussi : il vise
+  # le dernier commit de main, dont le run `push` doit être vert.
+  ci-complete:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: La CI complète de ce commit est-elle verte ?
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci-complete.mjs "$GITHUB_REPOSITORY" "$GITHUB_SHA" --attente-max 90 --resume "$GITHUB_STEP_SUMMARY"
+
   changes:
+    needs: ci-complete
     runs-on: ubuntu-latest
     outputs:
       server: ${{ steps.diff.outputs.server }}

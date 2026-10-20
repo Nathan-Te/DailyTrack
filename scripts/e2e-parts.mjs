@@ -7,6 +7,9 @@
 // ET le spectateur (16 min), la part 5 le planning à côté du profil et du Salon. Ici chaque fichier pèse sa durée mesurée en CI
 // (`apps/web/e2e/durees.json`, secondes, un seul worker), et les fichiers sont posés du plus long au plus court sur la part la moins chargée.
 // Un fichier absent du tableau pèse `DEFAULT_S` (et le script le signale sur stderr) : aucun spec n'est jamais oublié.
+//
+// Lot R3 (plateforme) — sous-ensemble multi-navigateurs : `node scripts/e2e-parts.mjs multi firefox` (ou `jump-webkit`…) rend la liste des specs
+// de `e2e/multi-navigateurs.json` du jeu : sur une PR, Firefox et WebKit ne lancent qu'eux (comparaison entre navigateurs : rejeu, déterminisme).
 
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -45,12 +48,24 @@ export function assignParts(files, durations, total) {
   return parts;
 }
 
+/** Sous-ensemble multi-navigateurs d'un jeu (lot R3) : `{ fichier: raison }`, lu dans `e2e/multi-navigateurs.json`. */
+export function multiSpecs(dir = E2E) {
+  return JSON.parse(readFileSync(join(dir, "multi-navigateurs.json"), "utf8")).specs;
+}
+
 /** Contenu d'un fichier `--test-list` : une ligne par spec (« [projet] › fichier » = tous les tests du fichier). */
 export function testList(files, project) {
   return files.map((f) => `[${project}] › ${f}`).join("\n") + "\n";
 }
 
 function main(argv) {
+  if (argv[0] === "multi") {
+    const project = argv[1] ?? "firefox";
+    const files = Object.keys(multiSpecs(gameOf(project).dir)).sort();
+    console.error(`e2e-parts : sous-ensemble multi-navigateurs (${project}) — ${files.join(", ")}`);
+    process.stdout.write(testList(files, project));
+    return;
+  }
   const [spec, project = "chromium"] = argv;
   const m = /^(\d+)\/(\d+)$/.exec(spec ?? "");
   if (!m || +m[1] < 1 || +m[1] > +m[2]) {

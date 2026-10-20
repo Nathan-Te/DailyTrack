@@ -1,0 +1,91 @@
+name: Stabilité
+# Lot R3 (plateforme) : preuve qu'un test réparé ne vacille plus — `repetitions` passages DE SUITE (`--repeat-each`, `--retries=0` : aucune
+# relance), sur son navigateur, sur le runner de la CI (2 parts de rendu logiciel, mêmes réglages que ci.yml). Liste : e2e/stabilite.json
+# (testée par apps/web/test/stabilite.test.ts). Se lance sur une PR qui change cette liste ou ce workflow, et à la demande. Non requis pour
+# fusionner : c'est une preuve, donnée par le README du lot qui répare.
+on:
+  pull_request:
+    paths:
+      - e2e/stabilite.json
+      - .github/workflows/stabilite.yml
+  workflow_dispatch:
+
+concurrency:
+  group: stabilite-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  liste:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.liste.outputs.matrix }}
+      repetitions: ${{ steps.liste.outputs.repetitions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: liste
+        run: |
+          node -e '
+            const s = JSON.parse(require("fs").readFileSync("e2e/stabilite.json", "utf8"));
+            const include = s.tests.map((t) => ({ ...t, nom: `${t.jeu}/${t.fichier}${t.titre ? " › " + t.titre : ""} (${t.navigateur})` }));
+            console.log(`matrix=${JSON.stringify({ include })}`);
+            console.log(`repetitions=${s.repetitions}`);
+          ' >> "$GITHUB_OUTPUT"
+
+  repetition:
+    needs: liste
+    name: ${{ matrix.nom }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.liste.outputs.matrix) }}
+    env:
+      E2E_ALL_BROWSERS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v4
+        id: browsers
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.navigateur }}
+      - run: npx playwright install --with-deps ${{ matrix.navigateur }}
+        working-directory: apps/web
+        if: steps.browsers.outputs.cache-hit != 'true'
+      - run: npx playwright install-deps ${{ matrix.navigateur }}
+        working-directory: apps/web
+        if: steps.browsers.outputs.cache-hit == 'true'
+      - run: npm run build && npm run build:node -w @cdj/api
+        if: matrix.jeu == 'web'
+      - run: npm run build -w @cdj/jump
+        if: matrix.jeu == 'jump'
+      - name: ${{ needs.liste.outputs.repetitions }} passages de suite, sans relance
+        env:
+          FICHIER: ${{ matrix.fichier }}
+          TITRE: ${{ matrix.titre }}
+          PROJET: ${{ matrix.jeu == 'jump' && format('jump-{0}', matrix.navigateur) || matrix.navigateur }}
+          N: ${{ needs.liste.outputs.repetitions }}
+        working-directory: ${{ matrix.jeu == 'jump' && 'apps/jump' || 'apps/web' }}
+        run: |
+          set -o pipefail
+          args=(--project="$PROJET" --workers=1 --retries=0 --repeat-each="$N" --reporter=list)
+          [ -z "$TITRE" ] || args+=(--grep "$TITRE")
+          set +e
+          npx playwright test "e2e/$FICHIER" "${args[@]}" 2>&1 | tee "$RUNNER_TEMP/sortie.txt"
+          code=${PIPESTATUS[0]}
+          # Le compte de la fin de sortie de Playwright (« 30 passed », « 1 failed ») ; absent = 0 (sans faire échouer l'étape).
+          count() { grep -Eo "^ +[0-9]+ $1" "$RUNNER_TEMP/sortie.txt" | grep -Eo '[0-9]+' | tail -1; }
+          passed=$(count passed); failed=$(count failed); flaky=$(count flaky)
+          echo "### $FICHIER${TITRE:+ › $TITRE} ($PROJET) : ${passed:-0} réussis, ${failed:-0} échecs, ${flaky:-0} instables, $N passages demandés par test, sans relance" >> "$GITHUB_STEP_SUMMARY"
+          exit $code
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: stabilite-${{ strategy.job-index }}
+          path: ${{ matrix.jeu == 'jump' && 'apps/jump' || 'apps/web' }}/test-results/
+          retention-days: 7
+          if-no-files-found: ignore

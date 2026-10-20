@@ -17,6 +17,7 @@ Chargé quand on lit un fichier de `apps/jump`. Le jeu affiche ce que calcule `p
 - **Publication sous `/jump/`** du même site GitHub Pages : `pages.yml` construit `apps/web` à la racine et `apps/jump` dans `jump/` (aperçu de branche : `…/b/<branche>/jump/`). Chemins **relatifs** (`base: "./"`) pour que les aperçus de branche marchent.
 - **Tout nouveau paramètre d'adresse rejoint la page d'admin** (à créer côté `apps/jump` avec le premier paramètre qui le demande). Le lot 0 n'en a pas d'autre que `?debug`.
 - Rendu, son, effets : lecture seule de la simulation ; jamais l'inverse. Texte en français.
+- **Tests entre navigateurs (lot R3 de la plateforme)** : sur une PR, Firefox et WebKit ne lancent que `e2e/multi-navigateurs.json` (aujourd'hui `replay.spec.ts` : empreintes de Node rejouées dans chaque navigateur) ; tout tourne sur `main`, la nuit et à la demande. **Tout nouveau test de comparaison entre navigateurs (rejeu, déterminisme) rejoint cette liste**, avec sa raison (`apps/web/test/multiNavigateurs.test.ts` la vérifie). Règles de CI, quarantaine et règle d'arrêt : `CLAUDE.md` racine, « Tests et CI ».
 
 ## Commandes
 - `npm run dev:jump` — serveur de développement de `apps/jump`.

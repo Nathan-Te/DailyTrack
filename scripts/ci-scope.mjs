@@ -4,7 +4,8 @@
 //   git diff --name-only origin/main...HEAD | node scripts/ci-scope.mjs [--full]   → lignes `clé=valeur` pour $GITHUB_OUTPUT
 //
 // Règles (docs/plateforme/lots/lot-R2-hygiene.md) :
-//   - un fichier propre à un jeu compte pour ce jeu seul ; une zone partagée (apps/api, packages/core, packages/clock, le module de profil, les
+//   - lot R3 : dans `apps/api`, les fichiers propres à DailyJump (jump*.ts…) ou à DailyTrack (cdj.ts, salon.ts…) comptent pour ce jeu + plateforme ;
+//   - un fichier propre à un jeu compte pour ce jeu seul ; une zone partagée (le reste d'apps/api, packages/core, packages/clock, le module de profil, les
 //     workflows, les scripts de CI, la configuration racine, package.json et son verrou, le CLAUDE.md racine…) compte pour LES TROIS ;
 //   - tout fichier qu'aucune règle ne reconnaît compte pour les trois (le doute ne saute jamais un test) ; une liste vide aussi ;
 //   - typecheck et tests unitaires : toujours tout (hors de ce script) ; e2e : les suites des catégories touchées ; api-image : si le serveur est touché (SERVER_PATHS, ou toute zone partagée / tout doute).
@@ -16,6 +17,24 @@ export const CATEGORIES = ["track", "jump", "plateforme"];
 export const RULES = [
   // Les niveaux figés de DailyJump sont lus par le serveur (SERVER_PATHS) : DailyJump et plateforme.
   { glob: "apps/jump/public/levels/**", cats: ["jump", "plateforme"] },
+  // Lot R3 — le serveur (`apps/api`) n'est plus d'un bloc. Ce qui ne sert qu'à un jeu compte pour ce jeu et la plateforme (l'image de l'API
+  // tourne toujours : SERVER_PATHS) ; le cœur (registre, identité, configuration, serveur, base, Dockerfile, CLAUDE.md…) et tout fichier
+  // non listé ici restent « les trois » (règle par défaut). Liste FERMÉE, fichier par fichier : un nouveau fichier du serveur est un doute.
+  // DailyJump côté serveur : jump*.ts (jump, jumpHistory, jumpLives), leurs tests, leurs scripts.
+  { glob: "apps/api/src/jump*.ts", cats: ["jump", "plateforme"] },
+  { glob: "apps/api/test/jump*.test.ts", cats: ["jump", "plateforme"] },
+  { glob: "apps/api/scripts/jump-*.ts", cats: ["jump", "plateforme"] },
+  { glob: "apps/api/scripts/measure-jump.ts", cats: ["jump", "plateforme"] },
+  // DailyTrack côté serveur : son jeu (`cdj.ts` : jour, planning, classement) et son Salon, leurs tests, ses outils de mesure et d'historique.
+  // `history.ts` n'y est pas : jumpHistory.ts l'importe (doute → les trois).
+  { glob: "apps/api/src/cdj.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/src/salon.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/test/salon.test.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/test/planning.test.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/scripts/measure-salon.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/scripts/measure-generator.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/scripts/measure-budget.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/scripts/history-seed.ts", cats: ["track", "plateforme"] },
   { glob: "apps/web/**", cats: ["track"] },
   { glob: "packages/sim/**", cats: ["track"] },
   { glob: "docs/lots/**", cats: ["track"] },

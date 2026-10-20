@@ -35,6 +35,29 @@ describe("catégorie d'un fichier", () => {
     for (const p of shared) expect(cats(p), p).toEqual(ALL);
   });
 
+  it("lot R3 — serveur de DailyJump (jump*.ts, leurs tests, leurs scripts) : DailyJump et plateforme", () => {
+    for (const p of ["apps/api/src/jump.ts", "apps/api/src/jumpHistory.ts", "apps/api/src/jumpLives.ts", "apps/api/test/jump.test.ts", "apps/api/test/jumpBundle.test.ts", "apps/api/test/jumpLives.test.ts", "apps/api/scripts/jump-seed.ts", "apps/api/scripts/measure-jump.ts"])
+      expect(cats(p), p).toEqual(["jump", "plateforme"]);
+  });
+
+  it("lot R3 — serveur de DailyTrack (cdj.ts, Salon, leurs tests, ses outils) : DailyTrack et plateforme", () => {
+    for (const p of ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "apps/api/test/planning.test.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/measure-generator.ts", "apps/api/scripts/measure-budget.ts", "apps/api/scripts/history-seed.ts"])
+      expect(cats(p), p).toEqual(["plateforme", "track"]);
+  });
+
+  it("lot R3 — cœur de la plateforme (registre, identité, configuration, serveur, base, Dockerfile) et tout le reste d'apps/api : les trois", () => {
+    const core = [
+      "apps/api/src/registry.ts", "apps/api/src/identity.ts", "apps/api/src/config.ts", "apps/api/src/server.ts", "apps/api/src/node-server.ts", "apps/api/src/api.ts",
+      "apps/api/src/db.ts", "apps/api/src/games.ts", "apps/api/src/platform.ts", "apps/api/src/players.ts", "apps/api/src/history.ts", "apps/api/Dockerfile",
+      "apps/api/package.json", "apps/api/CLAUDE.md", "apps/api/test/api.test.ts", "apps/api/test/helpers.ts", "apps/api/scripts/smoke.ts", "apps/api/src/nouveau.ts",
+    ];
+    for (const p of core) expect(cats(p), p).toEqual(ALL);
+  });
+
+  it("lot R3 — un faux ami de nom dans apps/api n'est pas reconnu comme propre à un jeu", () => {
+    for (const p of ["apps/api/src/sub/jump.ts", "apps/api/jump.ts", "apps/api/src/cdj.ts.bak", "apps/api/test/jump.ts", "apps/api/scripts/jump-seed.mjs"]) expect(cats(p), p).toEqual(ALL);
+  });
+
   it("le doute compte pour les trois : fichier inconnu, racine, chemin étrange", () => {
     for (const p of ["docs/credits.md", "README.md", "nouveau-dossier/x.ts", "apps/nouveau/src/x.ts", "packages/autre/x.ts", ".gitignore", "", "../apps/web/x.ts", "apps/web/../api/x.ts"])
       expect(cats(p), JSON.stringify(p)).toEqual(ALL);
@@ -93,6 +116,18 @@ describe("portée d'une PR", () => {
     expect(scopeOf([".github/workflows/ci.yml"])).toMatchObject({ server: true });
     expect(scopeOf(["scripts/ci-scope.mjs"])).toMatchObject({ server: true });
     expect(scopeOf(["docs/credits.md"])).toMatchObject({ server: true });
+  });
+
+  it("lot R3 — une PR du serveur de DailyJump : e2e de DailyJump et image de l'API, pas les e2e de DailyTrack", () => {
+    expect(scopeOf(["apps/api/src/jumpLives.ts", "apps/api/test/jumpLives.test.ts", "apps/jump/src/main.ts"])).toMatchObject({ track: false, jump: true, plateforme: true, server: true });
+  });
+
+  it("lot R3 — une PR du serveur de DailyTrack : e2e de DailyTrack et image de l'API, pas les e2e de DailyJump", () => {
+    expect(scopeOf(["apps/api/src/salon.ts", "apps/api/test/salon.test.ts"])).toMatchObject({ track: true, jump: false, plateforme: true, server: true });
+  });
+
+  it("lot R3 — un fichier du cœur dans la même PR qu'un fichier de DailyJump : tout", () => {
+    expect(scopeOf(["apps/api/src/jump.ts", "apps/api/src/registry.ts"])).toMatchObject({ track: true, jump: true, plateforme: true, server: true });
   });
 
   it("documentation de la plateforme seule : aucune suite de jeu, pas d'image", () => {
