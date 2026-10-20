@@ -64,11 +64,21 @@ export const TRACK_PLAYER: UnitCost = { requests: 13, read: 1650, written: 42, c
  */
 export const SALON_HALF_HOUR: UnitCost = { requests: 558, read: 12_763, written: 265, cpuS: 5.8, billedS: 97 };
 
+/**
+ * **Portail** (lot I2), un visiteur d'une journée : 2 chargements de l'accueil (`GET /api/portail/jour`, une requête chacun) avec 30 jours
+ * d'historique dans les deux jeux (`npm run measure:portail -w @cdj/api`, sqld local, 20/10/2026 : 12 instructions, 275 lignes lues, 0
+ * écrite, ≈ 30 ms) ; le profil commun n'est pas compté (ouvert rarement : 11 instructions, 393 lignes lues ensuite, une fois 6 775 et 58
+ * écrites pour calculer les places finales de 30 jours). Facturé au plus : 2 × 100 ms.
+ */
+export const PORTAIL_VISITOR: UnitCost = { requests: 2, read: 550, written: 0, cpuS: 0.06, billedS: 0.2 };
+
 export interface PlatformInput {
   /** Joueurs par jour de DailyJump, de DailyTrack (circuit du jour), et joueurs qui passent 30 minutes au Salon chaque jour. */
   jump: number;
   track: number;
   salon: number;
+  /** Lot I2 : visiteurs du portail par jour (0 par défaut). */
+  portail?: number;
   days?: number;
 }
 
@@ -103,6 +113,12 @@ export function projectMonth(input: PlatformInput): { resources: Resource[]; byG
       read: input.salon * SALON_HALF_HOUR.read,
       written: input.salon * SALON_HALF_HOUR.written,
       billedS: input.salon * SALON_HALF_HOUR.billedS,
+    },
+    Portail: {
+      requests: (input.portail ?? 0) * PORTAIL_VISITOR.requests,
+      read: (input.portail ?? 0) * PORTAIL_VISITOR.read,
+      written: (input.portail ?? 0) * PORTAIL_VISITOR.written,
+      billedS: (input.portail ?? 0) * PORTAIL_VISITOR.billedS,
     },
   };
   const byGame = Object.fromEntries(Object.entries(games).map(([k, v]) => [k, { requests: v.requests * days, read: v.read * days, written: v.written * days, billedS: v.billedS * days }]));

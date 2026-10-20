@@ -71,3 +71,251 @@
   align-items: center;
   min-height: var(--dj-cible);
 }
+
+/* --- Lot I2 : l'accueil riche ---------------------------------------------------------------------------------------------------- */
+/* Le titre des jeux et l'avancement (« 1 fini sur 2 ») sur la même ligne : l'avancement arrive sans rien décaler. */
+.portail-jeux__tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--dj-espace-4);
+  min-height: 20px;
+}
+.portail-jeux__avancement {
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+  color: var(--dj-encre-douce);
+}
+/* Le numéro et le thème du jour sous le nom du jeu (une ligne à eux : le thème arrive sans faire passer le numéro à la ligne). */
+.portail-etagere .track-etiquette__tete,
+.portail-etagere .jump-etiquette__tete {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+/* Jump : la réplique du thème (deux lignes réservées). */
+.portail-etagere .jump-etiquette__texte {
+  min-height: calc(2 * 1.3em);
+  line-height: 1.3;
+}
+/* Le statut du joueur : deux rangées réservées, vides tant que le serveur n'a pas répondu. */
+.portail-statut {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-height: 46px;
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.portail-statut__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dj-espace-2) var(--dj-espace-4);
+  min-height: 22px;
+}
+.portail-statut__temps {
+  font-family: var(--dj-police-chiffres);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+}
+.portail-statut__rang {
+  font-variant-numeric: tabular-nums;
+}
+/* La pastille « Fini » (charte § 3.2 : le vert de l'auteur et son texte, comme la maquette). */
+.portail-pastille-fini {
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: var(--dj-auteur);
+  color: var(--dj-auteur-texte);
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+/* Toutes les actions des cartouches ont la hauteur de l'action principale du portail : « Rejouer » (secondaire) ne fait rien sauter. */
+.portail-etagere .dj-cartouche__action .dj-bouton {
+  min-height: var(--dj-cible-portail);
+}
+/* La tuile Série (une colonne en portrait ; la moitié de la largeur à partir de 600 px) et la place qu'elle réserve pendant le chargement. */
+.portail-tuile-reservee,
+.portail-etagere ~ #serie,
+#serie {
+  max-width: 100%;
+}
+.portail-tuile-reservee {
+  min-height: 86px;
+}
+@media (min-width: 600px) {
+  #serie,
+  .portail-tuile-reservee {
+    width: calc(50% - var(--dj-espace-7) / 2);
+  }
+}
+/* À prolonger : en encre et en gras (la terre cuite sur crème 2 n'a que 3,6:1). */
+.portail-serie__prolonger {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+/* Journée parfaite : sobre — une bordure épaisse et une ligne avec le drapeau, sans animation. */
+.portail-serie--parfaite {
+  border-width: var(--dj-trait-fort);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.portail-serie__parfaite {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  margin-top: var(--dj-espace-1);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.portail-accueil {
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+}
+.portail-message {
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+/* Le lien de démonstration (recette et aperçus) : la confirmation. */
+.portail-demo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+  padding: var(--dj-espace-6) 0;
+}
+.portail-demo__titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-22);
+}
+.portail-demo__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-4);
+}
+
+/* --- Lot I2 : le profil commun (/profil/) ------------------------------------------------------------------------------------------ */
+.profil .dj-barre-jeu {
+  padding: 0;
+}
+.profil-titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-32);
+  line-height: 1.1;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+  padding-bottom: var(--dj-espace-2);
+}
+.profil-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dj-espace-4);
+}
+.profil-section > * {
+  max-width: 100%;
+}
+.profil-section__titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-15);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.profil-sous-titre {
+  font-size: var(--dj-taille-15);
+  font-weight: 700;
+}
+.profil-pseudo {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-24);
+  overflow-wrap: anywhere;
+}
+.profil-formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  width: 100%;
+}
+.profil-etiquette-champ {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.profil-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-3);
+}
+.profil-champ {
+  flex: 1 1 12rem;
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  font-size: var(--dj-taille-16);
+}
+.profil-champ--code,
+.profil-code {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+}
+.profil-code {
+  display: block;
+  width: 100%;
+  padding: var(--dj-espace-3) var(--dj-espace-4);
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.profil-aide,
+.profil-message,
+.profil-etat {
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+.profil-message,
+.profil-etat {
+  color: var(--dj-encre);
+  font-weight: 600;
+}
+.profil-apercu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-4);
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.profil-tuiles,
+.profil-jeux {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-5);
+  width: 100%;
+}
+.profil-jeux {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 600px) {
+  .profil-jeux {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Les médailles par type : deux par ligne (le nom de chaque médaille tient en entier, même sur l'étiquette Track et sa livrée). */
+.profil-medailles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--dj-espace-2);
+  margin-top: var(--dj-espace-2);
+}

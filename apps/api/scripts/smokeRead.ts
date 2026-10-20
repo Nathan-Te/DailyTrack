@@ -184,6 +184,26 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
       past,
     );
   }
+  // Lot I2 : le portail (sans joueur : la réponse publique, gardée au plus 60 s et jamais au-delà du prochain minuit de Paris).
+  const portail = await get("/api/portail/jour");
+  const p = portail.body as Record<string, any> | null;
+  const maxAge = Number(/max-age=(\d+)/.exec(portail.headers.get("cache-control") ?? "")?.[1] ?? NaN);
+  const jeux: any[] = Array.isArray(p?.jeux) ? p.jeux : [];
+  check(
+    "portail : les jeux du jour (numéro, thème, seuils), l'heure du serveur, le prochain minuit ; public, 60 s au plus",
+    portail.status === 200 &&
+      !!p &&
+      p.date === date &&
+      Date.parse(p.prochainJour) > Date.parse(p.maintenant) &&
+      ["cdj", "jump"].every((code) => jeux.some((j) => j.jeu === code && Number.isInteger(j.numero) && j.numero > 0)) &&
+      !("joueur" in p) &&
+      /\bpublic\b/.test(portail.headers.get("cache-control") ?? "") &&
+      maxAge <= 60 &&
+      /x-player-id/i.test(portail.headers.get("vary") ?? ""),
+    "/api/portail/jour",
+    portail,
+    jeux.map((j) => `${String(j.jeu)} n° ${String(j.numero)} (${String(j.theme)})`).join(", "),
+  );
   return checks;
 }
 

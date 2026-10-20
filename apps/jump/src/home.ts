@@ -99,7 +99,14 @@ export function mountHome(opts: HomeOptions): Home {
   // Lot P2 : la carte du profil (un bouton : il ouvre Réglages › Profil).
   const profile = button("home-profile", "hprofile", "");
   profile.hidden = true;
-  card.append(title, subtitle, status, rank, streak, play, row, profile, countdown);
+  // Lot I2 de la plateforme : le retour discret au portail « Du Jour » (à garder quand l'interface passera au socle, lot I5 : la barre
+  // `barreJeu` de @cdj/ui le porte). Texte en français tant que le jeu l'est ; clés prêtes : `barre.retour`, `barre.retour.aria` (catalogue commun).
+  const portail = el("a", "hportail", "‹ Du Jour");
+  portail.id = "home-portail";
+  portail.href = "../";
+  portail.setAttribute("aria-label", "Retour au portail Du Jour");
+  portail.dataset.t = "barre.retour";
+  card.append(portail, title, subtitle, status, rank, streak, play, row, profile, countdown);
   root.append(card);
 
   // ——— Comment jouer ———

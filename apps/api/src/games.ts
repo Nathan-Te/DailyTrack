@@ -67,6 +67,61 @@ export interface Platform {
   playerIdOf(value: unknown): string;
 }
 
+// --- Lot I2 (phase 3) : ce que le portail montre de chaque jeu -------------------------------------------------------------------
+// Chaque jeu déclare, par le crochet `portail` de son instance, ce que la route regroupée `GET /api/portail/jour` (`portail.ts`) et le profil
+// commun (`GET /api/portail/profil`) montrent de lui : son numéro et son thème du jour, ses seuils de médailles, son premier jour, l'état du
+// joueur un jour donné, ses jours finis (série tous jeux, journées parfaites) et ses statistiques. Le portail et la route ne connaissent aucun
+// jeu : ajouter le jeu n° 3, c'est fournir ce crochet (test `portail.test.ts`, avec un faux jeu). **Aucun temps n'est cru** : `fini` ne vient
+// que du classement prouvé (rejoué par le serveur).
+
+/** Les médailles, communes à tous les jeux (les codes des réponses existantes). */
+export type MedaillePortail = "author" | "gold" | "silver" | "bronze";
+
+/** Ce que le portail affiche d'un jeu pour un jour, sans joueur (réponse publique). */
+export interface JourPortail {
+  /** Numéro du jour dans ce jeu (n° 1 au premier jour). */
+  numero: number;
+  /** Code du thème du jour (traduit par le portail : `portail.theme.<jeu>.<code>`), ou `null` s'il n'est pas connu. */
+  theme: string | null;
+  /** Seuils de médailles du jour, **en millisecondes** (le temps de l'auteur, puis or, argent, bronze), ou `null` s'ils ne sont pas connus. */
+  seuils: Record<MedaillePortail, number> | null;
+}
+
+/**
+ * L'état du joueur dans un jeu, un jour donné :
+ *   - `fini` : un essai **classé** existe (le classement prouvé : temps rejoué, médaille, rang parmi les classés de ce jour) ;
+ *   - `en_cours` : le jeu sait que le joueur a commencé sans être classé (DailyJump : des vies envoyées ce jour-là ; `morts` = leur nombre) ;
+ *     un jeu qui ne peut pas le savoir (DailyTrack) ne le déclare jamais ;
+ *   - `pas_joue` sinon.
+ */
+export type EtatPortail =
+  | { statut: "pas_joue" }
+  | { statut: "en_cours"; morts?: number }
+  | { statut: "fini"; tempsMs: number; medaille: MedaillePortail | null; rang: number; classes: number };
+
+/** Les statistiques d'un jeu pour le profil commun (`GET /api/portail/profil`). */
+export interface ProfilPortail {
+  /** Nombre de jours finis (classés). */
+  joursFinis: number;
+  medailles: Record<MedaillePortail, number>;
+  /** La meilleure place d'un jour (à place égale, le jour aux plus nombreux classés), ou `null` sans jour classé. */
+  meilleurRang: { date: string; rang: number; classes: number } | null;
+}
+
+/** Le crochet `portail` d'un jeu (lot I2). */
+export interface PortailDuJeu {
+  /** Le premier jour du jeu (numéro de jour) : avant, le jeu n'existe pas (ni cartouche, ni compte dans les journées parfaites). */
+  premierJour: number;
+  /** Numéro, thème et seuils du jour (le niveau du jour, calculé une fois et gardé, comme pour ses routes). */
+  jour(day: number): Promise<JourPortail>;
+  /** L'état du joueur ce jour-là (les données et requêtes du classement prouvé du jeu). */
+  etat(playerId: string, day: number): Promise<EtatPortail>;
+  /** Les jours où le joueur est classé (une lecture d'index : un jour par ligne). */
+  joursFinis(playerId: string): Promise<number[]>;
+  /** Ses statistiques pour le profil commun. */
+  profil(playerId: string): Promise<ProfilPortail>;
+}
+
 /** Un jeu en marche, créé par la plateforme. */
 export interface GameInstance {
   /** Répond à une route du jeu (le corps d'une réponse 200), ou `undefined` si ce chemin n'est pas à lui. Lève `HttpError` pour un refus. */
@@ -93,6 +148,8 @@ export interface GameInstance {
   onErased?(): void;
   /** Le contenu du profil du joueur (`GET /api/me`), pour le jeu qui le fournit (DailyTrack jusqu'au lot P2). */
   profile?(playerId: string): Promise<Record<string, unknown>>;
+  /** Lot I2 : ce que le portail montre du jeu (`portail.ts`) ; un jeu sans ce crochet n'apparaît pas sur le portail. */
+  portail?: PortailDuJeu;
   /** Tâche facultative (hors production), toutes les 15 s sous Node. */
   tick?(): Promise<void>;
 }

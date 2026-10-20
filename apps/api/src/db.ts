@@ -31,6 +31,9 @@ export const MIGRATIONS: string[] = [
   // fermé est figé, relire son classement à chaque synchronisation coûterait une lecture par concurrent et par jour.
   "ALTER TABLE results ADD COLUMN final_rank INTEGER",
   "ALTER TABLE results ADD COLUMN final_total INTEGER",
+  // Lot I2 : la même chose pour DailyJump (meilleure place du profil commun du portail).
+  "ALTER TABLE jump_results ADD COLUMN final_rank INTEGER",
+  "ALTER TABLE jump_results ADD COLUMN final_total INTEGER",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */

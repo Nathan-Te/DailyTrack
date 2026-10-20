@@ -12,6 +12,8 @@ export const PREMIER_JOUR_JUMP = daysFromCivil(2026, 10, 16);
 export interface CarteJeu {
   /** Le code du jeu (son dossier sur le site : `/track/`, `/jump/`). */
   code: "track" | "jump";
+  /** Lot I2 : son code au registre du serveur (`GET /api/portail/jour`). */
+  jeu: "cdj" | "jump";
   /** Lien relatif à la page du portail. */
   lien: string;
   /** Numéro du jour (≤ 0 avant le premier : la cartouche ne l'affiche pas). */
@@ -21,7 +23,7 @@ export interface CarteJeu {
 /** Les cartouches du portail pour un jour de Paris (`parisDay`). Pure. */
 export function cartes(day: number): CarteJeu[] {
   return [
-    { code: "track", lien: "track/", numero: day - PREMIER_JOUR_TRACK + 1 },
-    { code: "jump", lien: "jump/", numero: day - PREMIER_JOUR_JUMP + 1 },
+    { code: "track", jeu: "cdj", lien: "track/", numero: day - PREMIER_JOUR_TRACK + 1 },
+    { code: "jump", jeu: "jump", lien: "jump/", numero: day - PREMIER_JOUR_JUMP + 1 },
   ];
 }

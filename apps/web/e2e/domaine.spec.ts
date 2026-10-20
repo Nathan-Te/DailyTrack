@@ -215,3 +215,31 @@ test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyJum
   await page.locator("#menu-mentions").tap();
   await mentionsShown(page);
 });
+
+// ——— Lot I2 : le retour au portail depuis les jeux (« ‹ Du Jour », accueil et menu ⏸), au doigt en portrait ———
+test("lot I2 : portail → jeu → « ‹ Du Jour » → portail, au doigt en portrait, dans les deux jeux", async ({ browser }) => {
+  const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" })).newPage();
+  await page.goto(`${SITE}/`);
+  test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas (portail testé à part)");
+  for (const [jeu, chemin, pause] of [["track", "/track/", "#pause-portail"], ["jump", "/jump/", "#menu-portail"]] as const) {
+    await page.goto(`${SITE}/`);
+    await page.locator(`[data-jeu="${jeu}"] a.dj-bouton`).tap();
+    await expect(page).toHaveURL(`${SITE}${chemin}`);
+    // DailyJump ouvre « Comment jouer » à la première visite : on le ferme d'abord.
+    const aide = page.locator("#help-close");
+    if (jeu === "jump") {
+      await aide.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
+      if (await aide.isVisible()) await aide.tap();
+    }
+    const retour = page.locator("#home-portail");
+    await expect(retour, jeu).toBeVisible({ timeout: 30_000 });
+    await expect(retour, jeu).toHaveText("‹ Du Jour");
+    await expect(retour, jeu).toHaveAccessibleName("Retour au portail Du Jour");
+    await bigEnough(page, "#home-portail");
+    // Le même lien dans le menu ⏸.
+    await expect(page.locator(pause), jeu).toHaveAttribute("href", "../");
+    await retour.tap();
+    await expect(page, jeu).toHaveURL(`${SITE}/`);
+    await expect(page.locator("#portail-jeux-titre")).toHaveText("Les jeux du jour");
+  }
+});

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="fr" data-precharge-polices>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" data-jeton-content="dj-creme" />
+    <meta name="description" data-t-content="profil.description" />
+    <link rel="icon" data-icone-du-jour />
+    <title data-t="profil.titre"></title>
+  </head>
+  <body>
+    <!-- Lot I2 : le profil commun (le même que Réglages › Profil des jeux : stockage cdj:*, révision d'identité du lot P4), construit par
+         src/profil.ts avec les composants de @cdj/ui ; textes des catalogues (pré-remplis en français à la construction). -->
+    <main id="profil" class="portail profil"></main>
+    <noscript>
+      <nav class="portail-sans-script">
+        <a href="../" data-t="marque.nom"></a>
+      </nav>
+    </noscript>
+    <script type="module" src="../src/profil.ts"></script>
+  </body>
+</html>

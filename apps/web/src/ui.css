@@ -133,6 +133,8 @@ kbd { font: 700 12px var(--font); background: rgba(255, 255, 255, 0.16); border:
 body.home #rotate, body.home #touch, body.home #tbar { display: none !important; }
 .home-wrap { max-width: 1040px; margin: 0 auto; padding: 14px 16px 24px; box-sizing: border-box; }
 .home-head { text-align: center; margin-bottom: 12px; }
+/* Lot I2 (plateforme) : le retour au portail, discret, en haut à gauche de l'accueil. */
+.home-head .home-portail { display: flex; width: fit-content; margin: 0 0 4px -10px; font-size: 14px; }
 .home-head h1 { margin: 0; font: 900 clamp(32px, 6vw, 48px) / 1.05 var(--font); letter-spacing: 0.01em; text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6); }
 .home-head h1::after { content: ""; display: block; width: 64px; height: 5px; margin: 10px auto 0; border-radius: 3px; background: var(--accent); }
 .tagline { margin: 8px auto 0; max-width: 640px; color: var(--muted); font-size: 15px; }

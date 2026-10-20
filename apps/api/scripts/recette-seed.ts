@@ -11,6 +11,9 @@
 // Lot P1 : DailyJump aussi, **sur le jour courant** (celui qu'on teste sur l'aperçu : finir le niveau et voir son rang parmi eux) : les mêmes
 // joueurs « Démo … » envoient de vraies rediffusions (perturbations de la preuve de l'auteur), par le même code que la démonstration
 // (`seedJumpDays`, apps/api/src/jumpHistory.ts) et le vrai `createApi` (rejeu serveur). Relancer ne crée aucun doublon (meilleur essai gardé).
+// Lot I2 : le **joueur de démonstration du portail** (« Démo », `seedPortailDemo`, apps/api/src/portailDemo.ts) : série de 5 jours, 2 journées
+// parfaites, aujourd'hui Track fini (or) et Jump en cours ; le portail l'installe par `/?demo=joueur` (recette et aperçus seulement). Effacé
+// puis recréé à chaque passage (la série reste de 5 jours). `--demo-seulement` : lui seul (les e2e du portail, en quelques secondes).
 import { FICTIONAL_NAMES, Rng, dailyCircuit, formatDay, mixSeed, parseDay, runFictional, styleFor } from "@cdj/sim";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { readFileSync, readdirSync } from "node:fs";
@@ -19,6 +22,7 @@ import { ConfigError, recetteSeedTarget } from "../src/config";
 import type { SqlDb } from "../src/db";
 import { fictionalId } from "../src/history";
 import { seedJumpDays } from "../src/jumpHistory";
+import { seedPortailDemo } from "../src/portailDemo";
 import { openLibsql } from "../src/libsql-open";
 
 const HOUR_MS = 3_600_000;
@@ -39,6 +43,7 @@ try {
   throw e;
 }
 
+const demoSeulement = process.argv.includes("--demo-seulement");
 const days = Number(arg("days") ?? 7);
 if (!Number.isInteger(days) || days < 1 || days > 30) {
   console.error("--days : un nombre de jours entre 1 et 30");
@@ -62,6 +67,14 @@ try {
   process.exit(1);
 }
 
+// Les niveaux figés de DailyJump du dépôt (les mêmes que ceux de l'image du serveur).
+const levelsDir = new URL("../../jump/public/levels/", import.meta.url);
+const frozen: Record<string, unknown> = {};
+for (const f of readdirSync(levelsDir).sort()) {
+  const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
+  if (date) frozen[date] = JSON.parse(readFileSync(new URL(f, levelsDir), "utf8"));
+}
+
 let clock = 0;
 const api = createApi({ db, now: () => clock, demoPlayers: true, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
 const submit = async (body: unknown) => {
@@ -71,7 +84,7 @@ const submit = async (body: unknown) => {
 
 const started = Date.now();
 let total = 0;
-for (let day = today - days + 1; day <= today; day++) {
+for (let day = today - days + 1; day <= today && !demoSeulement; day++) {
   const date = formatDay(day);
   const circuit = dailyCircuit(day);
   // Même tirage que l'historique de démonstration (graine propre au jour) : 8 à 15 pilotes, niveaux variés.
@@ -102,18 +115,19 @@ for (let day = today - days + 1; day <= today; day++) {
 }
 console.log(`\n${total} temps envoyés par createApi (rejoués par le serveur) en ${((Date.now() - started) / 1000).toFixed(0)} s.`);
 
-// DailyJump : les niveaux figés du dépôt (les mêmes que ceux de l'image du serveur), puis les joueurs fictifs du jour courant.
-const levelsDir = new URL("../../jump/public/levels/", import.meta.url);
-const frozen: Record<string, unknown> = {};
-for (const f of readdirSync(levelsDir).sort()) {
-  const date = /^(\d{4}-\d{2}-\d{2})\.json$/.exec(f)?.[1];
-  if (date) frozen[date] = JSON.parse(readFileSync(new URL(f, levelsDir), "utf8"));
-}
+// DailyJump : les joueurs fictifs du jour courant.
 const jumpStarted = Date.now();
 const jumps = await seedJumpDays({
   db,
   frozen,
-  days: [today],
+  days: demoSeulement ? [] : [today],
   onDay: (d) => console.log(`DailyJump ${d.date} : ${d.accepted} joueur(s) classé(s), ${d.lives} vie(s) gardée(s) (morts rejouées)${d.refused || d.firstError ? `, ${d.refused} refus (${d.firstError}) — l'essai ne compte pas` : ""}`),
 });
 console.log(`${jumps} essais DailyJump envoyés par createApi (rejoués par le serveur) en ${((Date.now() - jumpStarted) / 1000).toFixed(0)} s.`);
+
+// Lot I2 : le joueur de démonstration du portail (après les autres : son rang du jour se lit parmi eux).
+const demoStarted = Date.now();
+const demo = await seedPortailDemo({ db, frozen, today });
+console.log(
+  `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
+);

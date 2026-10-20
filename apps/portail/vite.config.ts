@@ -16,6 +16,9 @@ const vitrine = process.env.PORTAIL_VITRINE !== "0";
 export default defineConfig({
   root: import.meta.dirname,
   base: "./",
+  // Lot I2 : le lien de démonstration `/?demo=joueur` n'existe que là où la vitrine existe (recette et aperçus) : la construction de production
+  // ne contient ni le chemin, ni l'identifiant, ni ses textes (code mort retiré par la construction ; test construction.test.ts).
+  define: { __PORTAIL_DEMO__: JSON.stringify(vitrine) },
   plugins: [
     pagesDuSocle({
       catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_VITRINE.fr },
@@ -30,6 +33,7 @@ export default defineConfig({
       input: {
         index: resolve(import.meta.dirname, "index.html"),
         mentions: resolve(import.meta.dirname, "mentions-legales/index.html"),
+        profil: resolve(import.meta.dirname, "profil/index.html"),
         ...(vitrine ? { vitrine: resolve(import.meta.dirname, "ui/index.html") } : {}),
       },
     },

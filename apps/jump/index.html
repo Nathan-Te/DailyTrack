@@ -221,6 +221,10 @@
       #home .hbtn:disabled { opacity: 0.5; cursor: progress; }
       .sbtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
       #home button:focus-visible, .sheet button:focus-visible, .sheet a:focus-visible, #arrival button:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
+      /* Lot I2 (plateforme) : le retour au portail, discret, en haut à gauche de l'accueil (cible de 44 px). */
+      #home .hportail { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; margin-left: -10px; color: #fff; font: 700 14px system-ui, sans-serif; text-decoration: underline; touch-action: manipulation; }
+      #home .hportail:focus-visible, #menu .mportail:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
+      #menu .mportail { display: inline-flex; align-items: center; text-decoration: none; }
       #home .hcount { margin: 8px 0 0; font-size: 13px; opacity: 0.75; font-variant-numeric: tabular-nums; }
       @media (max-height: 520px) { #home .htitle { font-size: 26px; } #home .hplay { min-height: 56px; margin-top: 4px; } #home .hcard { gap: 3px; } }
       #help, #archives { position: fixed; inset: 0; z-index: 38; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 16, 0.6); }

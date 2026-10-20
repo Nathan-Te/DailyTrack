@@ -2,6 +2,8 @@
 
 Charte de la phase 3 (`seed-phase-3.md` § 6), choisie par Nathan au lot I0 le 20 octobre 2026. Vit dans `docs/plateforme/identite.md`. Seul Nathan la modifie ; un lot qui a besoin d'un écart le propose dans son README, il ne l'applique pas.
 
+Révision 2 (après le lot I1) : écarts 1 à 5 du README du lot I1 inscrits (afficheur opaque, jetons de texte des médailles, tailles 14 · 16 · 21 px, espaces insécables, états des boutons).
+
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
 Chaque règle porte sa raison. Une règle dont la raison ne s'applique plus se discute avec Nathan ; elle ne se contourne pas.
@@ -44,15 +46,17 @@ Toutes les couleurs passent par des **jetons** (`packages/ui`). Aucune couleur �
 | `--dj-ecran` | `#3A2C20` | afficheur encastré (compte à rebours) |
 | `--dj-ambre` | `#F2B544` | chiffres de l'afficheur |
 | `--dj-ecran-texte` | `#E9DCC2` | légendes de l'afficheur |
+| `--dj-ecran-ombre` | `#261D15` | ombre interne haute de l'afficheur (opaque) |
+| `--dj-ecran-reflet` | `#4A3D32` | reflet interne bas de l'afficheur (opaque) |
 
 ### 3.2 Médailles (communes à tous les jeux)
 
 | Jeton | Valeur | Texte dessus |
 |---|---|---|
-| `--dj-auteur` | `#2E9E5B` | `#0E1F14` |
-| `--dj-or` | `#D9A21B` | `--dj-encre` ou `#1E1B19` |
-| `--dj-argent` | `#A7A9AC` | `--dj-encre` ou `#1E1B19` |
-| `--dj-bronze` | `#C07A42` | `--dj-encre` ou `#1E1B19` |
+| `--dj-auteur` | `#2E9E5B` | `--dj-auteur-texte` (`#0E1F14`) |
+| `--dj-or` | `#D9A21B` | `--dj-medaille-texte` (= `--dj-encre`) ou `#1E1B19` |
+| `--dj-argent` | `#A7A9AC` | `--dj-medaille-texte` ou `#1E1B19` |
+| `--dj-bronze` | `#C07A42` | `--dj-medaille-texte` ou `#1E1B19` |
 
 Une médaille obtenue est un aplat de sa couleur ; une médaille pas encore obtenue est un contour de la couleur (Track) ou un aplat neutre (Jump), jamais grisée jusqu'à l'illisible. Le texte dit toujours le nom de la médaille : la couleur seule ne porte pas l'information.
 
@@ -95,7 +99,8 @@ Raison du rouge réservé : dans le jeu, rouge = ça tue. L'interface ne doit pa
 - Toutes sous licence SIL Open Font License ; les fichiers de licence accompagnent les polices.
 - **Budget** : le portail charge au plus 150 Ko de polices ; seules Archivo Black et Archivo 400 sont préchargées.
 - Les **chiffres** (temps, compte à rebours, rangs dans les tableaux) sont en JetBrains Mono ou dans la police du jeu, jamais dans une police à chasse variable sans chiffres tabulaires : un temps qui change ne doit pas faire bouger la ligne.
-- Échelle : 12 · 13 · 15 · 22 · 24 · 32 · 38 · 64-72 px. Pas de texte d'interface sous 12 px (sauf légendes en capitales de 10-11 px, graisse 700, contraste ≥ 4,5:1).
+- Échelle : 12 · 13 · 14 · 15 · 16 · 21 · 22 · 24 · 32 · 38 · 64-72 px.
+- Espaces : les polices n'ont pas l'espace fine insécable (U+202F) ; les formats utilisent l'espace insécable (U+00A0) entre milliers et avant les unités. Pas de texte d'interface sous 12 px (sauf légendes en capitales de 10-11 px, graisse 700, contraste ≥ 4,5:1).
 
 Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l'afficheur ; Barlow Condensed italique est tendue comme un chronométrage de course (Trackmania) ; Lilita One est ronde, lourde et drôle (Super Meat Boy, Mario).
 
@@ -108,7 +113,8 @@ Raison : Archivo Black donne le côté boîte de jeu imprimée ; la mono donne l
   - principal Track : fond `--track-livree`, texte asphalte, Barlow Condensed 800 italique, épaisseur `0 4px 0 var(--track-livree-ombre)` ;
   - principal Jump : fond encre, texte jaune, Lilita One, épaisseur `0 5px 0 var(--dj-terre)`.
 - **Tuile** : fond `--dj-creme-2`, bordure 2 px encre, coins 4 px ; légende en capitales 11 px `--dj-encre-douce`, valeur en Archivo Black 24 px.
-- **Afficheur encastré** (compte à rebours, futur chronomètre du portail) : fond `--dj-ecran`, coins 6 px, ombres internes (sombre en haut, reflet clair en bas), chiffres JetBrains Mono 700 en `--dj-ambre`.
+- **Afficheur encastré** (compte à rebours, futur chronomètre du portail) : fond `--dj-ecran`, coins 6 px, ombres internes opaques (`--dj-ecran-ombre` en haut, `--dj-ecran-reflet` en bas), chiffres JetBrains Mono 700 en `--dj-ambre`.
+- **États des boutons** : survol du bouton de marque = fond encre ; du secondaire = `--dj-creme-2` ; de « Courir » = `--track-livree-texte` ; du principal Jump = texte papier. **Désactivé** = aplat `--dj-creme-2`, texte `--dj-encre-douce`, bordure pointillée, sans ombre (jamais de transparence). Le bouton de marque ne se pose pas sur l'asphalte.
 - **Ombres** : toujours **nettes** (sans flou), décalées vers le bas et la droite. Aucune ombre floue, aucune transparence d'arrière-plan (pas de verre dépoli).
 - **Coins** : jamais uniformes partout. 3 px (boutons, étiquettes), 4 px (tuiles), 6 px (afficheur), 12/3 px (coques), cercle (avatar uniquement).
 - **Bandes de livrée Track** : rayures obliques à 115°, 10-12 px d'orange pour 8-10 px de vide, sur le bord droit de l'étiquette.

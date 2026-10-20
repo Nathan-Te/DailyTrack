@@ -64,7 +64,13 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   home.type = "button";
   home.id = "menu-home";
   home.hidden = !opts.onHome;
-  actions.append(home);
+  // Lot I2 de la plateforme : le retour au portail « Du Jour » (clé prête à traduire : barre.retour du catalogue commun, lot I5).
+  const portail = el("a", "mbtn mportail", "‹ Du Jour");
+  portail.id = "menu-portail";
+  portail.href = "../";
+  portail.setAttribute("aria-label", "Retour au portail Du Jour");
+  portail.dataset.t = "barre.retour";
+  actions.append(home, portail);
   head.append(actions);
   root.append(head);
 

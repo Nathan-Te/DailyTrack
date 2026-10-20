@@ -63,6 +63,7 @@ describe(`smoke --lecture-seule (${TEST_DB})`, () => {
       `/api/jump/day/${DATE}/deaths`,
       `/api/jump/day/${DATE}/bundle`,
       `/api/jump/day/${formatDay(DAY - 1)}/bundle`,
+      "/api/portail/jour", // lot I2
     ]);
     expect(new Set(methods)).toEqual(new Set(["GET"]));
     expect(await snapshot(t)).toEqual(before);

@@ -26,6 +26,7 @@ const fr = {
   // Profil
   "profil.avatar": "Ton profil : {nom}",
   "profil.aucun": "Pas encore de profil",
+  "profil.ouvrir": "Ton profil",
   // Médailles (le nom est toujours écrit : la couleur seule ne porte pas l'information)
   "medaille.auteur": "Auteur",
   "medaille.or": "Or",
@@ -107,6 +108,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "langue.en.nom": "English",
   "profil.avatar": "Your profile: {nom}",
   "profil.aucun": "No profile yet",
+  "profil.ouvrir": "Your profile",
   "medaille.auteur": "Author",
   "medaille.or": "Gold",
   "medaille.argent": "Silver",

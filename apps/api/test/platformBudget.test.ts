@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FREE_TIER, JUMP_PLAYER, SALON_HALF_HOUR, TRACK_PLAYER, projectMonth } from "../scripts/platformBudget";
+import { FREE_TIER, JUMP_PLAYER, PORTAIL_VISITOR, SALON_HALF_HOUR, TRACK_PLAYER, projectMonth } from "../scripts/platformBudget";
 
 // Lot P4 (plateforme) : `npm run measure:platform -w @cdj/api` projette le coût d'un mois à partir des joueurs par jour de chaque jeu. Calcul pur :
 // proportionnel aux joueurs, chaque jeu compté à part, l'offre gratuite et ce qui la dépasse.
@@ -20,6 +20,14 @@ describe("projection du mois (measure:platform)", () => {
     expect(p.byGame.DailyTrack!.requests).toBe(30 * 10 * TRACK_PLAYER.requests);
     expect(p.byGame.Salon!.requests).toBe(30 * SALON_HALF_HOUR.requests);
     expect(p.resources[0]!.used).toBe(p.byGame.DailyJump!.requests + p.byGame.DailyTrack!.requests + p.byGame.Salon!.requests);
+  });
+
+  it("lot I2 : le visiteur du portail compte à part (une requête par chargement, aucune ligne écrite)", () => {
+    const p = projectMonth({ jump: 0, track: 0, salon: 0, portail: 1000 });
+    expect(p.byGame.Portail!.requests).toBe(30 * 1000 * PORTAIL_VISITOR.requests);
+    expect(PORTAIL_VISITOR.requests).toBe(2);
+    expect(PORTAIL_VISITOR.written).toBe(0);
+    expect(projectMonth({ jump: 1, track: 1, salon: 0 }).byGame.Portail!.requests).toBe(0);
   });
 
   it("le joueur type de DailyJump du lot P4 : au plus 12 requêtes par jour (hors pré-vols)", () => {

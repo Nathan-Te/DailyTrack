@@ -250,5 +250,26 @@ check(
   `${jbundle.status} ${String(bundleBody.board?.participants)} classé(s), Cache-Control « ${String(jbundle.headers.get("cache-control"))} »`,
 );
 
+// --- Lot I2 : le portail (la route regroupée de l'accueil et le profil commun) ---------------------------------------------------------
+const pjour = await jcall("GET", "/api/portail/jour");
+const etats = Object.fromEntries((Array.isArray(pjour.body.jeux) ? pjour.body.jeux : []).map((j: { jeu: string; etat?: unknown }) => [j.jeu, j.etat])) as Record<string, any>;
+check(
+  "portail : l'état du joueur d'essai dans chaque jeu (fini : temps rejoué, rang), sa série, sa journée parfaite ; jamais public",
+  pjour.status === 200 &&
+    etats.cdj?.statut === "fini" &&
+    etats.cdj?.tempsMs === run.finishMs &&
+    etats.jump?.statut === "fini" &&
+    etats.jump?.medaille === "author" &&
+    pjour.body.joueur?.serie >= 1 &&
+    pjour.body.joueur?.aujourdhuiParfaite === true,
+  `${pjour.status} Track ${String(etats.cdj?.statut)} (${String(etats.cdj?.rang)}e sur ${String(etats.cdj?.classes)}), Jump ${String(etats.jump?.statut)}, série ${String(pjour.body.joueur?.serie)}, ${pjour.ms} ms`,
+);
+const pprofil = await jcall("GET", "/api/portail/profil");
+check(
+  "portail : le profil commun (pseudo, série, jours finis par jeu)",
+  pprofil.status === 200 && pprofil.body.pseudo === NAME && Array.isArray(pprofil.body.jeux) && pprofil.body.jeux.every((j: { joursFinis: number }) => j.joursFinis >= 1),
+  `${pprofil.status} ${pprofil.ms} ms`,
+);
+
 console.log(failed ? `\n${failed} vérification(s) en échec` : "\nTout est bon.");
 process.exit(failed ? 1 : 0);

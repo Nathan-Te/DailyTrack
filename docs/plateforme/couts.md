@@ -42,7 +42,7 @@ Puis, sur ton poste ou dans Cloud Shell (dans le dépôt, après `npm ci`) :
 npm run measure:platform -w @cdj/api -- --jump 800 --track 300 --salon 40
 ```
 
-`--jump` : joueurs DailyJump par jour · `--track` : joueurs du circuit du jour de DailyTrack · `--salon` : joueurs qui passent 30 minutes au Salon par jour. Le script affiche, pour un mois de 30 jours, chaque ressource (requêtes Cloud Run — **sans pré-vols** depuis le lot R5 : il n'y en a plus —, calcul, mémoire, lignes Turso), sa part de l'offre gratuite, ce qui dépasse (Cloud Run en dollars, au tarif public), le jeu qui pèse le plus, et la **marge** : par combien multiplier les joueurs avant le premier plafond.
+`--jump` : joueurs DailyJump par jour · `--track` : joueurs du circuit du jour de DailyTrack · `--salon` : joueurs qui passent 30 minutes au Salon par jour · `--portail` (lot I2) : visiteurs du portail par jour (deux chargements de l'accueil chacun). Le script affiche, pour un mois de 30 jours, chaque ressource (requêtes Cloud Run — **sans pré-vols** depuis le lot R5 : il n'y en a plus —, calcul, mémoire, lignes Turso), sa part de l'offre gratuite, ce qui dépasse (Cloud Run en dollars, au tarif public), le jeu qui pèse le plus, et la **marge** : par combien multiplier les joueurs avant le premier plafond.
 
 **Lire le résultat** : le calcul de Cloud Run est compté **au plus** (chaque requête facturée seule, arrondie à 100 ms) ; avec beaucoup de joueurs simultanés, les requêtes se partagent le temps facturé et la vraie dépense est plus basse. Les requêtes et les lignes Turso, elles, sont exactes à l'hypothèse du joueur type près.
 
@@ -88,6 +88,25 @@ Three.js pèse à lui seul ≈ 140 ko compressés par jeu. Les fichiers à empre
 **Ce que Firebase fait gagner** : plus de pré-vols CORS (≈ 7 requêtes de moins par joueur DailyJump et par jour ; retirés de `measure:platform` au lot R5) ; et le CDN de Hosting **garde en cache** les lectures `public` du serveur (lot P4 : niveau, carte des morts, échantillon ; jour fermé 24 h, jour ouvert 30 s) : autant de requêtes Cloud Run en moins. Les réponses personnelles (`private`, `Vary: X-Player-Id`) ne sont jamais gardées par le CDN.
 
 **Surveiller** : console Firebase → **Hosting** → **Utilisation** (transfert par jour) chaque lundi, avec Turso (§ 2). Si le transfert dépasse 360 Mo par jour de façon durable : rien à faire tant que le budget de 5 € (§ 1) n'alerte pas (il couvre ≈ 33 Go de transfert par mois) ; ensuite, la piste la moins chère est d'alléger le premier chargement (lot de jeu : Three.js plus petit, chargement différé).
+
+## 6. Le portail (lot I2)
+
+**Une requête par chargement de l'accueil** : `GET /api/portail/jour` (jeux du jour, état du joueur dans chaque jeu, série, journées parfaites). Mesuré par `npm run measure:portail -w @cdj/api` (sqld local, 20/10/2026 ; 50 autres classés par jour et par jeu) :
+
+| lecture | instructions | lignes lues | écrites | durée |
+|---|---|---|---|---|
+| jour, sans joueur (niveaux en mémoire de l'instance) | 1 | 1 | 0 | ≈ 4 ms |
+| jour, sans joueur, instance neuve (niveaux lus en base) | 3 | 3 | 0 | ≈ 9 ms |
+| jour, sans joueur, premier appel du jour (circuit et niveau calculés une fois) | 5 | 5 | 2 | ≈ 0,6 s |
+| **jour, joueur de 30 jours** | 12 | **275** | 0 | ≈ 32 ms |
+| **jour, joueur de 365 jours** | 10 | **841** | 0 | ≈ 25 ms |
+| profil commun, 30 jours (ensuite) | 11 | 393 | 0 | ≈ 34 ms |
+| profil commun, 365 jours (ensuite) | 11 | 2 404 | 0 | ≈ 38 ms |
+| profil commun, 365 jours, **premier appel** (places finales des jours fermés calculées une fois et gardées) | 13 | 81 146 | 728 | ≈ 48 ms |
+
+**Borné** : sans joueur, une ligne ; avec un joueur, une ligne par jour fini (série et journées parfaites : un parcours d'index par jeu) plus le rang du jour (une ligne par classé devant lui) et le nombre de classés du jour (gardé 30 s par instance). Le premier appel du profil commun calcule une fois les places finales de chaque jour fermé (comme `GET /api/me` de DailyTrack depuis le lot 30) ; ensuite elles sont lues. **Aucune écriture** pour l'accueil. La réponse sans joueur est **publique** (60 s au plus, jamais au-delà de minuit de Paris : le CDN de Hosting la garde, autant de requêtes Cloud Run en moins) ; avec un joueur, `private, no-cache`.
+
+**Projection** : `PORTAIL_VISITOR` dans `scripts/platformBudget.ts` (2 requêtes, 550 lignes lues, 0 écrite par visiteur et par jour) : 1 000 visiteurs par jour ≈ 0,06 M requêtes et 16,5 M lignes lues par mois (`measure:platform -- --portail 1000`).
 
 ## Checklist (une fois)
 - ☐ Budget `plateforme-5-euros` : 50 / 90 / 100 % réels + 100 % prévu, e-mail.

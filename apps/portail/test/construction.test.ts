@@ -103,6 +103,21 @@ describe("construction du portail", () => {
     for (const f of js) expect(readFileSync(join(sorties.production, "assets", f), "utf8"), f).not.toContain("vitrine");
   });
 
+  it("lot I2 : le lien de démonstration (/?demo=joueur) n'existe pas dans la construction de production ; le profil commun /profil/ y est", () => {
+    const fichiers = (dir: string) => readdirSync(join(dir, "assets")).filter((f) => f.endsWith(".js")).map((f) => readFileSync(join(dir, "assets", f), "utf8"));
+    const prod = fichiers(sorties.production).join("\n");
+    for (const trace of ["de30de30de30de30de30de30de30de30", "demo", "Joueur de démonstration", "Demo player"]) expect(prod, trace).not.toContain(trace);
+    // La recette et les aperçus l'ont (un module chargé à la demande, seulement avec ?demo=joueur).
+    const recette = fichiers(sorties.recette).join("\n");
+    expect(recette).toContain("de30de30de30de30de30de30de30de30");
+    expect(recette).toMatch(/\bdemo\b/);
+    for (const sortie of [sorties.production, sorties.recette]) {
+      const html = readFileSync(join(sortie, "profil/index.html"), "utf8");
+      expect(html).toContain('<title data-t="profil.titre">Ton profil</title>');
+      expect(html).not.toMatch(/(?:src|href)="https?:/);
+    }
+  });
+
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {
     const yml = readFileSync(join(ROOT, ".github/workflows/deploy-site.yml"), "utf8");
     expect(yml).toContain("node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }}");
