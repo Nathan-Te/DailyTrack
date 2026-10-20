@@ -1,10 +1,19 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { FIXED_NOW, atInstant } from "./clock";
+import { atInstant } from "./clock";
+import { FROZEN_DATES, generatedDay, noonOf } from "./jours";
 import { hasWebGL } from "./phone";
 
 // Lot 7b : le niveau du jour se génère hors du fil principal (worker de module), derrière « Préparation du niveau… », et se relit du cache
 // (preuve rejouée) au rechargement. Horloge maîtrisée par décalage de `Date` ; tout ce qui dépend du nombre de pas se lit en pas à pas.
+
+/**
+ * Ces tests ont besoin d'un niveau du jour **généré** (worker, fil principal, cache) : l'horloge est placée sur un jour sans fichier figé,
+ * calculé à l'exécution (le lendemain du dernier jour figé de `public/levels/`), jamais sur une date écrite en dur — chaque mise en production
+ * fige de nouveaux jours (`freeze:days -- demain`), et le 20/10/2026 (`FIXED_NOW`) l'est depuis le 20/10.
+ */
+const GENERATED = generatedDay();
+const GENERATED_NOW = noonOf(GENERATED);
 
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
 const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
@@ -39,7 +48,7 @@ async function slowWorker(page: Page, ms: number, seen: string[] = []): Promise<
 }
 
 test("la page par défaut montre « Préparation du niveau… », puis le niveau du jour, généré par le worker", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
     const seen: string[] = [];
     await slowWorker(page, 700, seen);
     await page.goto("/?debug&accueil=0", { waitUntil: "commit" });
@@ -53,12 +62,13 @@ test("la page par défaut montre « Préparation du niveau… », puis le niveau
     const d = await daily(page);
     expect(d.load).toMatchObject({ source: "worker", generated: true, cacheMiss: "" });
     expect(seen.length).toBeGreaterThanOrEqual(1);
-    expect(d.id).toBe(`jour-2026-10-20-g${GENERATOR}`);
+    expect(d.id).toBe(`jour-${GENERATED}-g${GENERATOR}`);
+    expect(FROZEN_DATES).not.toContain(GENERATED);
   });
 });
 
 test("au rechargement le niveau vient du cache : pas de worker, pas de nouvelle génération, même empreinte", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
     const seen: string[] = [];
     await slowWorker(page, 0, seen);
     await page.goto("/?debug&accueil=0");
@@ -83,7 +93,7 @@ test("au rechargement le niveau vient du cache : pas de worker, pas de nouvelle 
 });
 
 test("un cache corrompu est écarté (la preuve ne se rejoue pas) : le niveau est régénéré, puis le cache redevient sain", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
     await page.goto("/?debug&accueil=0");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
@@ -111,7 +121,7 @@ test("un cache corrompu est écarté (la preuve ne se rejoue pas) : le niveau es
 
 test("sans worker (indisponible) : repli sur le fil principal, même niveau qu'avec le worker", async ({ browser }) => {
   let hashViaWorker = "";
-  await atInstant(browser, FIXED_NOW, async (page) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
     await page.goto("/?debug&accueil=0");
     if (!(await hasWebGL(page))) {
       test.skip(true, SKIP);
@@ -120,7 +130,7 @@ test("sans worker (indisponible) : repli sur le fil principal, même niveau qu'a
     await ready(page);
     hashViaWorker = (await daily(page)).hash;
   });
-  await atInstant(browser, FIXED_NOW, async (page) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
     await page.addInitScript(() => {
       delete (window as unknown as { Worker?: unknown }).Worker;
     });
@@ -134,7 +144,7 @@ test("sans worker (indisponible) : repli sur le fil principal, même niveau qu'a
 });
 
 test("stockage refusé : le jeu se charge quand même, par le worker, et rien n'est gardé", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
     await page.addInitScript(() => {
       const refuse = () => {
         throw new Error("SecurityError");
@@ -152,8 +162,8 @@ test("stockage refusé : le jeu se charge quand même, par le worker, et rien n'
 });
 
 test("?seed=…&solution finit toujours au temps de l'auteur, que le niveau vienne du worker ou du cache", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    const url = "/?seed=2026-11-03&solution&debug";
+  await atInstant(browser, GENERATED_NOW, async (page) => {
+    const url = `/?seed=${GENERATED}&solution&debug`;
     for (const source of ["worker", "cache"]) {
       await page.goto(url);
       if (!(await hasWebGL(page))) {

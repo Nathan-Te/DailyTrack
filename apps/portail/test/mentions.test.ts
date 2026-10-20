@@ -63,7 +63,7 @@ describe("page des mentions légales et de la confidentialité", () => {
   });
 
   it("éditeur, contact, hébergeurs, droits, CNIL ; aucun cookie, aucun script, aucune ressource extérieure", () => {
-    for (const texte of ["MZC Studios", "particulier", "mzc.studios.gamedev@gmail.com", "Google Cloud France", "8 rue de Londres", "ChiselStrike Inc.", "Claymont", "code de transfert", "www.cnil.fr/fr/plaintes", "article 82", "aucun cookie"]) {
+    for (const texte of ["MZC Studios", "particulier", "mzc.studios.gamedev@gmail.com", "Google Cloud France", "8 rue de Londres", "01 42 68 53 00", "ChiselStrike Inc.", "Claymont", "code de transfert", "www.cnil.fr/fr/plaintes", "article 82", "aucun cookie"]) {
       expect(PAGE, texte).toContain(texte);
     }
     expect(PAGE).not.toMatch(/<script\b/i);
