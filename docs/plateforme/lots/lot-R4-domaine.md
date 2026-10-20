@@ -55,4 +55,8 @@ Premier chargement, compressé : **portail 2,8 ko**, **DailyTrack 259 ko** (890 
 - ☐ PR « Jours figés » fusionnée.
 
 ## 7. CI de la PR
-*(rempli après le run de la PR.)*
+PR #84, commit `d740727` (`[ci complet]` : **trois navigateurs, sans filtre**) :
+- **CI** [39370981992](https://github.com/Nathan-Te/DailyTrack/actions/runs/39370981992) : **verte** — unitaires (3 parts, typecheck, `tsc -p apps/portail`, build), `api-image`, e2e en mode `complet` : **506 réussis, 0 échec**, 543 sautés (navigateurs sans WebGL, outils de mesure et de captures). `domaine.spec.ts` : 21 s en Chromium ; en Firefox et WebKit, portail et deux scénarios de migration **réussis**, le test des jeux sauté (pas de WebGL, `hasWebGL`).
+- **1 instable, hors de ce lot** : `chromium` · `relief.spec.ts` › « un saut raté : la voiture tombe, le voile de chute monte, la reprise a lieu au point de contrôle après le délai (comme dans Node) » — `expect(received).toBe(expected)` au premier essai, réussi à la relance. Zone DailyTrack (physique, `apps/web/e2e/relief.spec.ts`) que ce lot ne touche pas : signalé ici, non corrigé (règle d'arrêt des agents) ; à suivre dans `docs/orchestration.md` § 8 si il revient.
+- **Recette** [39370982003](https://github.com/Nathan-Te/DailyTrack/actions/runs/39370982003) : **vert, pour de vrai** — le `deploy-api.yml` modifié a déployé la révision `b-claude-playdujo-bx1abq` sur `cdj-api-recette` (origines calculées par `scripts/domaine.mjs`), `smoke` complet passé, joueurs fictifs écrits ; le canal et l'aperçu Firebase **sautés** avec « Firebase non configuré : voir docs/plateforme/domaine.md » ; commentaire « Recette » posté sur la PR.
+- **Aperçu** [39370982095](https://github.com/Nathan-Te/DailyTrack/actions/runs/39370982095) : vert ; la PR touche le serveur → laissé à « Recette », comme prévu.
