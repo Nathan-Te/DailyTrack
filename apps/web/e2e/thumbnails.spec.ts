@@ -91,8 +91,8 @@ test("archives de démonstration : les 15 miniatures apparaissent au défilement
   expect(errors).toEqual([]);
   // La ligne garde ses informations (numéro, date, thème, médailles, pilotes) à côté de l'image.
   const first = page.locator("#archive .day").nth(1);
-  await expect(first).toContainText("#14");
-  await expect(first).toContainText("2026-10-26");
+  await expect(first).toContainText(/n°\s14(?!\d)/);
+  await expect(first).toHaveAttribute("data-date", "2026-10-26");
   await expect(first.locator(".sub")).toContainText("pilotes");
   test.info().annotations.push({
     type: "mesure",

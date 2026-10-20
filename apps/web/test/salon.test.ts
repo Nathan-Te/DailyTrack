@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ReplayRecorder, bestPilotRun, encodeReplay, salonCircuit, salonSessionStart, salonTheme, SIM_VERSION } from "@cdj/sim";
 import {
   FINALE_MS,
@@ -28,6 +28,14 @@ import { DemoSalonApi, myRef } from "../src/salonDemo";
 import { loadCircuit, type SalonEngine } from "../src/salonEngine";
 import { computeCircuit, computePilotRun, type PilotRunData } from "../src/salonJobs";
 import type { SalonBoard, SalonRow } from "../src/salonApi";
+import { chargerLangue, setLangue } from "../src/i18n";
+import { ghostModeLabel } from "../src/salon";
+
+// L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
+beforeAll(() => chargerLangue("en"));
+
+// Lot I4 : les textes du Salon viennent des catalogues ; ces tests sont écrits pour le français, l'anglais a les siens plus bas.
+beforeAll(() => setLangue("fr", { ecrire: false }));
 
 const row = (rank: number, ref: string, ms = 30_000 + rank * 500, mine = false): SalonRow => ({ rank, ref, name: `P${rank}`, ms, gap: ms - 30_500, ...(mine ? { mine: true } : {}) });
 const board = (rows: SalonRow[]): Pick<SalonBoard, "rows" | "me"> => ({ rows, me: rows.find((r) => r.mine) ?? null });
@@ -87,9 +95,21 @@ describe("horloge et déroulé d'une session", () => {
   });
 
   it("la ligne à partager suit le modèle `Salon 14:20 — 31,402 s — 3e/17`", () => {
-    expect(salonShareLine("14:20", 31_402, 3, 17)).toBe("Salon 14:20 — 31,402 s — 3e/17");
-    expect(salonShareLine("14:20", 31_402, 1, 4)).toBe("Salon 14:20 — 31,402 s — 1er/4");
-    expect(salonShareLine("14:20", 31_402)).toBe("Salon 14:20 — 31,402 s");
+    expect(salonShareLine("14:20", 31_402, 3, 17)).toBe("Salon 14:20 — 31,402\u00a0s — 3e/17");
+    expect(salonShareLine("14:20", 31_402, 1, 4)).toBe("Salon 14:20 — 31,402\u00a0s — 1er/4");
+    expect(salonShareLine("14:20", 31_402)).toBe("Salon 14:20 — 31,402\u00a0s");
+  });
+
+  it("la ligne à partager en anglais : « Room », point décimal, rang anglais (les émojis restent dans les lignes de partage, jamais dans l'interface)", () => {
+    setLangue("en", { ecrire: false });
+    try {
+      expect(salonShareLine("14:20", 31_402, 3, 17)).toBe("Room 14:20 — 31.402\u00a0s — 3rd/17");
+      expect(salonShareLine("14:20", 31_402, 1, 4)).toBe("Room 14:20 — 31.402\u00a0s — 1st/4");
+      expect(ghostModeLabel("top")).toBe("top ghosts only");
+    } finally {
+      setLangue("fr", { ecrire: false });
+    }
+    expect(ghostModeLabel("top")).toBe("les premiers seulement");
   });
 });
 

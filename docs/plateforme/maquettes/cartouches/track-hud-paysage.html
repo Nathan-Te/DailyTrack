@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Track — HUD A paysage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&amp;family=JetBrains+Mono:wght@700&amp;family=Barlow+Condensed:ital,wght@1,700;1,800&amp;display=swap">
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:844px;height:390px;position:relative;overflow:hidden;background:#F1C894;font-family:Archivo, sans-serif;color:#F4EFE6">
+
+  <svg aria-hidden="true" width="844" height="390" viewBox="0 0 844 390" style="position:absolute;inset:0">
+    <rect x="0" y="0" width="844" height="150" fill="#F1C894"/>
+    <path d="M0 150 L0 80 L60 60 L120 100 L200 50 L280 110 L400 150 Z" fill="#C8693A"/>
+    <path d="M844 150 L844 70 L780 50 L700 95 L620 60 L520 120 L440 150 Z" fill="#A84F2A"/>
+    <rect x="0" y="150" width="844" height="240" fill="#D9874E"/>
+    <path d="M405 150 L440 150 L760 390 L84 390 Z" fill="#5A524C"/>
+    <path d="M405 150 L411 150 L130 390 L84 390 Z" fill="#F4EFE6"/>
+    <path d="M434 150 L440 150 L760 390 L714 390 Z" fill="#E8552D"/>
+    <path d="M420 165 L424 165 L426 200 L418 200 Z M416 240 L428 240 L432 300 L412 300 Z" fill="#F4EFE6"/>
+    <g transform="translate(372 250)">
+      <rect x="0" y="30" width="100" height="70" fill="#1E1B19"/>
+      <rect x="12" y="4" width="76" height="38" fill="#2A1E16"/>
+      <rect x="0" y="62" width="100" height="10" fill="#E8552D"/>
+      <rect x="-8" y="80" width="22" height="26" fill="#2A1E16"/>
+      <rect x="86" y="80" width="22" height="26" fill="#2A1E16"/>
+    </g>
+  </svg>
+
+  <button aria-label="Pause" style="position:absolute;left:14px;top:12px;width:44px;height:44px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;display:flex;align-items:center;justify-content:center;gap:5px">
+    <span style="width:5px;height:16px;background:#F4EFE6"></span><span style="width:5px;height:16px;background:#F4EFE6"></span>
+  </button>
+
+  <div style="position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px">
+    <div style="position:relative;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;padding:3px 20px 1px 14px;overflow:hidden">
+      <span aria-hidden="true" style="position:absolute;right:-6px;top:0;bottom:0;width:18px;background:repeating-linear-gradient(115deg,#E8552D 0 4px,transparent 4px 7px)"></span>
+      <span style="font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:40px;line-height:1;font-variant-numeric:tabular-nums">0:24,318</span>
+    </div>
+    <div style="display:flex;border:2px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;overflow:hidden">
+      <span style="background:#F4EFE6;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:700;font-size:18px;padding:1px 9px">PC 3/5</span>
+      <span style="background:#E8552D;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:22px;line-height:1.1;padding:1px 10px;font-variant-numeric:tabular-nums">+0,412</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;right:14px;top:12px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;padding:4px 8px;display:flex;flex-direction:column;align-items:flex-end">
+    <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:1px;color:#CFC6BA"><span aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#D9A21B"></span>OBJECTIF OR</span>
+    <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:14px">31,500</span>
+  </div>
+
+  <div style="position:absolute;left:14px;bottom:16px;display:flex;gap:10px">
+    <button aria-label="Tourner à gauche" style="width:80px;height:80px;background:#1E1B19;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><path d="M19 5 9 15l10 10" fill="none" stroke="#F4EFE6" stroke-width="4" stroke-linecap="square"/></svg></button>
+    <button aria-label="Tourner à droite" style="width:80px;height:80px;background:#1E1B19;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><path d="M11 5l10 10-10 10" fill="none" stroke="#F4EFE6" stroke-width="4" stroke-linecap="square"/></svg></button>
+  </div>
+  <div style="position:absolute;right:14px;bottom:16px;display:flex;gap:10px;align-items:flex-end">
+    <button style="width:72px;height:60px;background:#1E1B19;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;color:#F4EFE6;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:18px">FREIN</button>
+    <button style="width:96px;height:96px;background:#E8552D;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #8E2E14;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:24px">GAZ</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

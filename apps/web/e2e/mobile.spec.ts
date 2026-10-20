@@ -56,31 +56,30 @@ for (const viewport of [
     await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
     await page.evaluate((c) => window.__cdj.autoplay(c), code);
 
-    // En course, après deux points de contrôle : bandeau complet (titre, médailles, chrono, intermédiaires, fantôme, menu, vitesse).
-    await expect(page.locator("#splits div")).toHaveCount(2, { timeout: 60_000 });
-    await page.waitForTimeout(700); // la bannière de point de contrôle disparaît
+    // En course, après deux points de contrôle : les plaques au complet (titre, objectif, chrono, point de contrôle, fantôme, pause, vitesse). Lot I4 : la plaque
+    // du point de contrôle ne montre que le dernier (« PC 2/5 » collé à son écart), plus une ligne par point.
+    await expect(page.locator("#splits .pc")).toContainText("2/", { timeout: 60_000 });
+    await page.waitForTimeout(300);
     const racing = ["#meta", "#medals", "#timer", "#splits", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]; // #tbar : boutons tactiles (le téléphone est tactile)
     const racingBoxes = await boxes(page, racing);
     expect(racingBoxes.map((b) => b.name)).toEqual(expect.arrayContaining(racing));
     expectNoOverlap(racingBoxes, viewport);
+    // Le classement (lot 29) reste dans son coin, compact ; son en-tête le replie (cible de 44 px).
+    await expect(page.locator("#board .row")).toHaveCount(3);
+    expect((await page.locator("#board .bhead").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+    await page.locator("#board .bhead").click();
+    await expect(page.locator("#board")).toHaveClass(/folded/);
+    await page.locator("#board .bhead").click();
+    await expect(page.locator("#board")).not.toHaveClass(/folded/);
 
     // À l'arrivée : panneau, boutons (au moins 34 px de haut : on les touche du doigt), classement.
     await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
     await page.locator("#finish .online input").fill("Mobile");
     await page.locator("#finish .online button[type=submit]").click();
     await expect(page.locator("#finish .online .rank")).toBeVisible({ timeout: 20_000 });
-    // Le classement (lot 29) reste dans son coin, compact, sans recouvrir le panneau d'arrivée ; son en-tête le replie (cible de 44 px).
+    // Lot I4 : l'arrivée est un cadre plein écran, le classement du coin de la course disparaît derrière (les tests de son coin, repliable, sont plus haut, en course).
     await page.waitForTimeout(500);
-    const narrow = viewport.width <= 520; // portrait : le classement laisse sa place au panneau d'arrivée
-    if (narrow) await expect(page.locator("#board")).toBeHidden();
-    else {
-      await expect(page.locator("#board .row")).toHaveCount(3);
-      expect((await page.locator("#board .bhead").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-      await page.locator("#board .bhead").click();
-      await expect(page.locator("#board")).toHaveClass(/folded/);
-      await page.locator("#board .bhead").click();
-      await expect(page.locator("#board")).not.toHaveClass(/folded/);
-    }
+    await expect(page.locator("#board")).toBeHidden();
     // Lot I3 : « Jeu suivant du jour : Jump › » s'ajoute au panneau d'arrivée sans rien cacher de ce qu'il montrait (cible de 44 px, tout reste dans l'écran).
     const next = page.locator("#finish-next-game");
     await expect(next).toBeVisible({ timeout: 20_000 });
@@ -88,11 +87,16 @@ for (const viewport of [
     await expect(next).toHaveAttribute("href", "../jump/");
     await page.locator("#finish").evaluate((e) => e.scrollTo(0, 0));
     expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-    const finished = ["#meta", "#medals", "#timer", "#menu", "#ghostinfo", "#board", "#finish"];
-    expectNoOverlap(await boxes(page, finished), viewport);
+    // Lot I4 : l'arrivée est un cadre qui couvre tout l'écran (barre des jeux, étiquette Track, puis « Jeu suivant du jour » dessous) : plus de plaques de course à
+    // éviter ; ses blocs ne se chevauchent pas et restent dans l'écran (la page défile dans l'étiquette si besoin).
+    const blocs = ["#finish .dj-barre-jeu", "#finish .etiquette", "#finish .arrivee__pied"];
+    const blocBoxes = await boxes(page, blocs);
+    expect(blocBoxes.map((b) => b.name)).toEqual(expect.arrayContaining(blocs));
+    expectNoOverlap(blocBoxes, viewport);
     // Tout ce que l'arrivée montrait déjà reste visible et touchable (le panneau défile, rien n'est masqué par le nouveau bouton).
     for (const sel of ["#finish .big", "#finish .online .rank", "#finish .actions button:first-child"]) await expect(page.locator(sel).first()).toBeVisible();
     for (const b of await page.locator("#finish .actions button").all()) {
+      await b.scrollIntoViewIfNeeded(); // lot I4 : le cadre défile dans l'étiquette (360×640 ne montre pas tout d'un coup) : chaque bouton, amené à l'écran, doit y tenir
       const box = (await b.boundingBox())!;
       expect(box.height).toBeGreaterThanOrEqual(34);
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);

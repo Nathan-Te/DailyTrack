@@ -1,6 +1,5 @@
 import { SALON_SESSION_MS, salonSessionEnd, salonSessionStart } from "@cdj/sim";
-import { formatTime } from "./format";
-import { ordinal } from "./share";
+import { fRang, fTemps, t } from "./i18n";
 import type { SalonBoard, SalonRow } from "./salonApi";
 
 // Le Salon (lot 26) : logique pure (horloge, déroulé d'une session, choix des fantômes, ligne à partager). Aucun DOM, aucun
@@ -71,10 +70,10 @@ export function sessionLabel(session: number, sessionMs: number = SALON_SESSION_
   return `${String(h).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
-/** La ligne à partager : `Salon 14:20 — 31,402 s — 3e/17`. Les morceaux inconnus sont omis. */
+/** La ligne à partager : `Salon 14:20 — 31,402 s — 3e/17` / `Room 14:20 — 31.402 s — 3rd/17` (les mots et les formats suivent la langue). Les morceaux inconnus sont omis. */
 export function salonShareLine(label: string, ms: number, rank?: number | null, participants?: number | null): string {
-  const parts = [`Salon ${label}`, formatTime(ms)];
-  if (rank && participants) parts.push(`${ordinal(rank)}/${participants}`);
+  const parts = [t("salon.partage.titre", { heure: label }), fTemps(ms)];
+  if (rank && participants) parts.push(`${fRang(rank)}/${participants}`);
   return parts.join(" — ");
 }
 
@@ -143,7 +142,8 @@ export function overtakenBy(before: Pick<SalonBoard, "rows" | "me"> | null, afte
 /** Fantômes affichés (touche G) : tous, les premiers seulement (les trois premières places), aucun. */
 export type SalonGhostMode = "all" | "top" | "off";
 export const SALON_GHOST_MODES: readonly SalonGhostMode[] = ["all", "top", "off"];
-export const SALON_GHOST_LABEL: Record<SalonGhostMode, string> = { all: "tous les fantômes", top: "les premiers seulement", off: "aucun fantôme" };
+/** Le nom d'un mode d'affichage des fantômes, dans la langue courante (« tous les fantômes » / “all ghosts”). */
+export const ghostModeLabel = (mode: SalonGhostMode): string => t(`salon.fantomes.${mode}`);
 
 export function nextSalonGhostMode(mode: SalonGhostMode): SalonGhostMode {
   return SALON_GHOST_MODES[(SALON_GHOST_MODES.indexOf(mode) + 1) % SALON_GHOST_MODES.length]!;

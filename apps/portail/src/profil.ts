@@ -46,6 +46,7 @@ import {
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { baseApi } from "./jour";
 import { cartes } from "./jours";
+import { lireRetour } from "./retour";
 import { stockageDuPortail } from "./stockage";
 
 // Lot I2 : le profil commun (`/profil/`), ouvert par l'avatar du portail. **Le même profil** que Réglages › Profil des jeux : même stockage
@@ -62,6 +63,14 @@ type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
 const API = baseApi();
 const client = new ProfileClient(API);
+
+/** Lot I4 : `?retour=/track/` (Réglages › « Mon profil Du Jour › » d'un jeu) : la barre ramène au jeu d'où l'on vient, par un chemin du site seulement (`retour.ts`). */
+const retour = lireRetour(location.search);
+function retourAuJeu(t: ReturnType<typeof traduire>): { href?: string; retour?: { texte: string; ariaLabel: string } } {
+  if (!retour) return {};
+  const nom = t.t(`jeu.${retour.jeu}.nom`);
+  return { href: retour.chemin, retour: { texte: t.t(`jeu.${retour.jeu}.titre`), ariaLabel: t.t("profil.retour.aria", { jeu: nom }) } };
+}
 
 interface ProfilJeu {
   jeu: string;
@@ -182,7 +191,7 @@ function rendre(): void {
   });
 
   const enfants: (HTMLElement | null)[] = [
-    barreJeu(t, { href: "../", jour: day }),
+    barreJeu(t, { href: "../", jour: day, ...retourAuJeu(t) }),
     el("h1", { classe: "profil-titre", texte: t.t("profil.titre") }),
     etat ? el("p", { classe: "profil-etat", attrs: { id: "profil-etat", role: "status" }, texte: etat }) : null,
     section(t.t("profil.pseudo.titre"), "titre-pseudo", el("p", { classe: "profil-pseudo", attrs: { id: "pseudo-actuel" }, texte: pseudo ?? "—" }), formPseudo),

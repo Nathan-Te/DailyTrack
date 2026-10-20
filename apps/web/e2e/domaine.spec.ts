@@ -1,5 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from "node:child_process";
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -171,7 +171,6 @@ test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTra
   await page.waitForFunction(() => !!(window as unknown as { __cdj?: unknown }).__cdj);
   // Réglages › Profil.
   await page.locator("#home-settings").tap();
-  await page.locator("#tab-profile").tap();
   await page.locator("#settings-mentions").scrollIntoViewIfNeeded();
   await bigEnough(page, "#settings-mentions");
   await page.locator("#settings-mentions").tap();
@@ -183,7 +182,7 @@ test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTra
   await page.waitForFunction(() => (window as unknown as { __cdj: { phase: string } }).__cdj.phase === "racing");
   const rotateOk = page.getByRole("button", { name: "Jouer quand même" });
   if (await rotateOk.isVisible()) await rotateOk.tap();
-  await page.locator("#tbar button.pause").tap();
+  await page.locator("#btn-pause").tap(); // lot I4 : la pause est le bouton en haut à gauche du HUD (plus de bouton ⏸ dans la barre tactile)
   await expect(page.locator("#pause-menu")).toBeVisible();
   await page.locator("#pause-mentions").scrollIntoViewIfNeeded();
   await bigEnough(page, "#pause-mentions");
@@ -216,6 +215,37 @@ test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyJum
   await mentionsShown(page);
 });
 
+// ——— Lot I4 : les polices de Track sont celles du portail (un seul chemin sur le site : `/assets/…`) ———
+test("lot I4 : Track demande ses polices à /assets/, les mêmes fichiers que le portail, et le site n'en garde qu'un exemplaire", async ({ browser }) => {
+  const context = await newClockedContext(browser, { locale: "fr-FR" });
+  const page = await context.newPage();
+  test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
+  const polices = new Map<string, number>();
+  page.on("response", (r) => {
+    if (r.url().endsWith(".woff2")) polices.set(r.url().replace(SITE, ""), r.status());
+  });
+  await page.goto(`${SITE}/`);
+  await page.waitForLoadState("networkidle");
+  const duPortail = [...polices.keys()];
+  expect(duPortail.length, "le portail charge ses polices").toBeGreaterThan(3);
+  polices.clear();
+  await page.goto(`${SITE}/track/?api=demo`);
+  await page.waitForSelector("#splash", { state: "detached", timeout: 90_000 });
+  await page.waitForLoadState("networkidle");
+  const deTrack = [...polices.keys()];
+  expect(deTrack.length, "Track charge ses polices").toBeGreaterThan(3);
+  for (const [chemin, statut] of polices) {
+    expect(chemin, "chemin unique du site, pas sous /track/").toMatch(/^\/assets\/[a-z-]+-latin-\d+-(normal|italic)-[\w-]+\.woff2$/);
+    expect(statut, chemin).toBe(200);
+  }
+  // Au moins quatre des faces de Track (Archivo Black, Archivo 400, JetBrains Mono 700, Barlow Condensed 800 italique) sont celles du portail : même chemin, donc déjà en cache.
+  expect(deTrack.filter((c) => duPortail.includes(c)).length).toBeGreaterThanOrEqual(3);
+  // Le site n'a qu'un exemplaire de chaque police : plus aucune sous /track/assets/, et celles que le portail n'utilise pas sont dans son dossier assets/.
+  expect(readdirSync(join(tmp, "site/track/assets")).filter((f) => f.endsWith(".woff2"))).toEqual([]);
+  for (const chemin of deTrack) expect(existsSync(join(tmp, "site", chemin)), chemin).toBe(true);
+  await context.close();
+});
+
 // ——— Lot I2 : le retour au portail depuis les jeux (« ‹ Du Jour », accueil et menu ⏸), au doigt en portrait ———
 test("lot I2 : portail → jeu → « ‹ Du Jour » → portail, au doigt en portrait, dans les deux jeux", async ({ browser }) => {
   const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" })).newPage();
@@ -233,7 +263,7 @@ test("lot I2 : portail → jeu → « ‹ Du Jour » → portail, au doigt en po
     }
     const retour = page.locator("#home-portail");
     await expect(retour, jeu).toBeVisible({ timeout: 30_000 });
-    await expect(retour, jeu).toHaveText("‹ Du Jour");
+    await expect(retour, jeu).toHaveText(/^(‹ )?du jour$/i); // lot I4 : Track a la barre du socle (« DU JOUR »), Jump garde « ‹ Du Jour » jusqu'au lot I5
     await expect(retour, jeu).toHaveAccessibleName("Retour au portail Du Jour");
     await bigEnough(page, "#home-portail");
     // Le même lien dans le menu ⏸.

@@ -1,0 +1,559 @@
+/* Surimpressions de course de DailyTrack (lot I4) — variante A « Plaques en haut » (charte § 9 ; maquettes track-hud.html et track-hud-paysage.html) :
+   pause à gauche, chronomètre au centre en haut, point de contrôle et écart juste dessous, objectif de médaille à droite ; le bas est laissé aux
+   commandes tactiles (tactile.css). Chaque information est sur sa propre plaque asphalte NETTE (bordure encre, ombre décalée sans flou, jamais de
+   transparence ni d'ombre portée sur le texte) : lisible sur tous les thèmes du rendu, du Stade à la Nuit. Chiffres à chasse fixe (Barlow Condensed
+   italique et JetBrains Mono, `tabular-nums`) : le chrono ne fait pas bouger la ligne. Valeurs : jetons de @cdj/ui seulement. */
+
+/* --- Écran de chargement (affiché dès le HTML reçu, avant le JavaScript) -------------------------------------------------------------------------- */
+#splash {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-chargement);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+}
+.splash__nom {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-64);
+  line-height: 0.9;
+  letter-spacing: 2px;
+}
+.splash__barre {
+  width: 140px;
+  height: 6px;
+  overflow: hidden;
+  background: var(--track-route);
+}
+.splash__barre::after {
+  content: "";
+  display: block;
+  width: 45%;
+  height: 100%;
+  background: var(--track-livree);
+  animation: splash-glisse 1.1s ease-in-out infinite;
+}
+@keyframes splash-glisse {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(240%);
+  }
+}
+.sans-js {
+  margin: 0;
+  padding: 24px;
+  color: var(--track-texte);
+  font-size: var(--dj-taille-16);
+}
+
+/* --- Les plaques ------------------------------------------------------------------------------------------------------------------------------------ */
+.plaque {
+  box-sizing: border-box;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-variant-numeric: tabular-nums;
+}
+.plaque:empty {
+  display: none;
+}
+.hud {
+  position: fixed;
+  pointer-events: none;
+}
+#hud-centre > .hud {
+  position: static;
+}
+#hud-centre > .plaque--chrono {
+  position: relative; /* le liseré de livrée (::after) se cale sur la plaque du chrono, pas sur la colonne */
+}
+.plaque--petite {
+  padding: 2px 8px;
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--track-texte-doux);
+  box-shadow: none;
+}
+
+/* La pause : à gauche, deux barres dessinées (maquette). */
+#menu {
+  position: fixed;
+  left: 12px;
+  top: 14px;
+  z-index: var(--z-menu);
+}
+.plaque--bouton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  gap: 5px;
+  box-shadow: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+/* Focus visible sur asphalte (charte § 10) : contour ambre. */
+.plaque:focus-visible,
+#helpchip:focus-visible {
+  outline-color: var(--dj-ambre);
+}
+.plaque--bouton:hover {
+  background: var(--track-coque);
+}
+.plaque--bouton:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+}
+.pause-barres {
+  display: flex;
+  gap: 5px;
+}
+.pause-barres > span {
+  width: 5px;
+  height: 16px;
+  background: var(--track-texte);
+}
+
+/* Le centre : chronomètre, puis point de contrôle et écart, puis « vs ton record » et le titre du circuit. Une colonne : jamais de chevauchement. */
+#hud-centre {
+  position: fixed;
+  left: 50%;
+  top: 12px;
+  z-index: var(--z-hud);
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 2 * (var(--dj-cible) + 20px));
+  pointer-events: none;
+}
+.plaque--chrono {
+  position: relative;
+  overflow: hidden;
+  padding: 4px 22px 2px 14px;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-38);
+  line-height: 1;
+  letter-spacing: 0;
+}
+/* Le liseré de livrée sur le bord droit de la plaque du chronomètre. */
+.plaque--chrono::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -6px;
+  bottom: 0;
+  width: 18px;
+  background: repeating-linear-gradient(115deg, var(--track-livree) 0 4px, transparent 4px 7px);
+}
+.plaque--pc {
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  padding: 0;
+}
+.plaque--pc .pc {
+  display: flex;
+  align-items: center;
+  padding: 2px 10px;
+  background: var(--track-texte);
+  color: var(--track-asphalte);
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--dj-taille-21);
+}
+.plaque--pc .ecart {
+  display: flex;
+  align-items: center;
+  padding: 2px 12px;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-24);
+  line-height: 1.1;
+}
+/* Derrière : livrée orange, texte asphalte. Devant : vert « auteur ». Le signe + / − est écrit : la couleur seule ne porte pas l'information. */
+.plaque--pc .ecart--derriere {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+.plaque--pc .ecart--devant {
+  background: var(--dj-auteur);
+  color: var(--dj-auteur-texte);
+}
+.plaque--pc .ecart--neutre {
+  background: var(--track-route);
+  color: var(--track-texte);
+}
+#ghostinfo,
+#meta {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#meta .long {
+  display: inline;
+}
+
+/* L'objectif de médaille : en haut à droite, pastille + seuil. Le Salon y montre son compte à rebours (salon.css). */
+#medals {
+  right: 12px;
+  top: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  padding: 4px 8px;
+}
+.objectif__legende {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--track-texte-doux);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .objectif__mot {
+    display: none;
+  }
+}
+.objectif__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.pastille {
+  flex: none;
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--dj-rayon-avatar);
+  border: var(--dj-trait) solid var(--track-texte);
+}
+.pastille--auteur {
+  background: var(--dj-auteur);
+}
+.pastille--or {
+  background: var(--dj-or);
+}
+.pastille--argent {
+  background: var(--dj-argent);
+}
+.pastille--bronze {
+  background: var(--dj-bronze);
+}
+
+/* L'annonce (« 3 », « PARTEZ ! », messages courts) : une grande plaque au premier tiers de l'écran. */
+#banner {
+  left: 50%;
+  top: 26%;
+  max-width: calc(100vw - 24px);
+  transform: translateX(-50%);
+  padding: 6px 22px 4px;
+  text-align: center;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-64);
+  line-height: 1;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+#banner.small {
+  font-size: var(--dj-taille-22);
+  padding: 4px 16px 3px;
+  letter-spacing: 1px;
+}
+#freeze {
+  left: 50%;
+  top: 38%;
+  transform: translateX(-50%);
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--track-texte);
+  visibility: hidden;
+}
+#freeze.on {
+  visibility: visible;
+}
+
+/* La vitesse (en bas à droite au clavier ; entre les commandes sur téléphone, tactile.css) et les effets en cours. */
+#speed {
+  right: 16px;
+  bottom: 16px;
+  padding: 2px 12px 0;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-32);
+  line-height: 1.1;
+}
+#speed[data-level="1"] {
+  color: var(--dj-ambre);
+}
+#speed[data-level="2"] {
+  color: var(--track-livree-texte);
+}
+#speed[data-level="3"] {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+#fx {
+  left: 16px;
+  bottom: 52px;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-21);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-ambre);
+}
+#fx[data-cut="1"] {
+  color: var(--track-livree-texte);
+}
+#info {
+  left: 16px;
+  bottom: 14px;
+  max-width: 78vw;
+}
+#helpchip {
+  position: fixed;
+  left: 16px;
+  bottom: 14px;
+  z-index: var(--z-hud);
+  min-height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+#helpchip:hover {
+  color: var(--track-texte);
+  background: var(--track-coque);
+}
+body.touch #helpchip,
+body.watch #helpchip {
+  display: none;
+}
+#tuned {
+  left: 50%;
+  top: 48px;
+  transform: translateX(-50%);
+  font-size: var(--dj-taille-12);
+  color: var(--dj-ambre);
+}
+#tuned:empty {
+  display: none;
+}
+
+/* Effets de rendu de la course (présentation seule, jamais d'événement ; leur opacité est animée par main.ts) : lignes de vitesse sur les bords, cadre de
+   point de contrôle, voile de chute. Aucun dégradé de fond ni couleur en dur : un motif de rayons (charte § 11), un cadre net, un aplat asphalte. */
+#lines,
+#flash,
+#fall {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+#lines {
+  background: repeating-conic-gradient(from 0deg at 50% 52%, var(--track-texte) 0deg 0.35deg, transparent 0.35deg 7deg);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 52%, transparent 38%, black 80%);
+  mask-image: radial-gradient(ellipse at 50% 52%, transparent 38%, black 80%);
+}
+#flash {
+  box-shadow: inset 0 0 0 10px var(--dj-ambre);
+}
+#fall {
+  background: var(--track-asphalte);
+}
+
+/* Le chrono ne tourne pas à l'accueil ni derrière un écran : les plaques de course se retirent. */
+body.home #menu,
+body.home #hud-centre,
+body.home .hud,
+body.home #helpchip,
+body.home #board,
+body.home #lines,
+body.home #flash {
+  display: none !important;
+}
+/* En pause, le voile à rayures couvre la scène : les plaques de course s'effacent (maquette track-pause.html) plutôt que d'apparaître hachées. */
+body.paused #menu,
+body.paused #hud-centre,
+body.paused .hud,
+body.paused #helpchip,
+body.paused #board {
+  visibility: hidden;
+}
+body.no-splits #splits {
+  display: none;
+}
+
+/* Téléphone en paysage : peu de hauteur, les plaques se resserrent (maquette track-hud-paysage.html). */
+@media (max-height: 520px) {
+  #menu {
+    left: 14px;
+    top: 12px;
+  }
+  #hud-centre {
+    top: 10px;
+    gap: 4px;
+  }
+  .plaque--chrono {
+    padding: 3px 20px 1px 14px;
+    font-size: var(--dj-taille-32);
+  }
+  .plaque--pc .pc {
+    padding: 1px 9px;
+    font-size: var(--dj-taille-16);
+  }
+  .plaque--pc .ecart {
+    padding: 1px 10px;
+    font-size: var(--dj-taille-22);
+  }
+  #medals {
+    right: 14px;
+    top: 12px;
+  }
+  #banner {
+    top: 34%;
+    font-size: var(--dj-taille-38);
+  }
+  #banner.small {
+    font-size: var(--dj-taille-21);
+  }
+  #speed {
+    font-size: var(--dj-taille-24);
+  }
+}
+/* Téléphone en portrait : l'objectif (en haut à droite, ~ 90 px) partage la première ligne avec le chrono, qui se resserre ; dessous (point de contrôle, « vs », titre)
+   la colonne du centre a toute la largeur, l'objectif ayant fini sa hauteur (la police large de la CI élargit les plaques). */
+@media (max-width: 480px) and (orientation: portrait) {
+  #hud-centre {
+    gap: 8px;
+  }
+  #medals {
+    top: 12px;
+  }
+  .plaque--chrono {
+    min-height: 42px; /* la hauteur de l'objectif : la plaque du point de contrôle commence dessous, à toute taille de chrono */
+  }
+  /* Le Salon : son compte à rebours (« Suivant dans », temps, joueurs) est plus large et plus haut que l'objectif ; le titre passe dessous. */
+  body.salon #medals .salon-compte {
+    max-width: 68px;
+  }
+  body.salon #meta {
+    margin-top: 48px;
+  }
+}
+@media (max-width: 420px) and (orientation: portrait) {
+  .plaque--chrono {
+    padding-left: 10px;
+    font-size: var(--dj-taille-32);
+  }
+}
+@media (max-width: 380px) and (orientation: portrait) {
+  .plaque--chrono {
+    padding: 3px 14px 1px 8px;
+    font-size: var(--dj-taille-24);
+  }
+}
+
+/* L'outil de réglage de la conduite (`?debug&tune`, lot 7) : un outil interne de Nathan, qui reste en français et garde son fonctionnement ; seul son habillage suit
+   les jetons (plaque asphalte nette, devant tout, même devant l'arrivée). Exempté du test des chaînes en dur (packages/ui/test/applications.ts). */
+#tune {
+  position: fixed;
+  right: 12px;
+  top: 150px;
+  z-index: var(--z-outil);
+  width: 290px;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+#tune[hidden] {
+  display: none;
+}
+#tune .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+#tune .head button {
+  font: inherit;
+  color: var(--track-texte);
+  background: var(--track-coque);
+  border: 0;
+  border-radius: var(--dj-rayon-bouton);
+  width: 26px;
+  height: 22px;
+  cursor: pointer;
+}
+#tune.folded .body {
+  display: none;
+}
+#tune .row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  margin-top: 6px;
+}
+#tune .row input {
+  grid-column: 1 / 3;
+  width: 100%;
+  margin: 2px 0 0;
+}
+#tune .row.changed {
+  color: var(--dj-moutarde);
+}
+#tune .status {
+  margin-top: 8px;
+  color: var(--track-texte-doux);
+}
+#tune .actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+#tune .actions button {
+  font: inherit;
+  color: var(--track-texte);
+  background: var(--track-coque);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  padding: 4px 8px;
+  cursor: pointer;
+}

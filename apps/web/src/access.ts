@@ -32,6 +32,7 @@ export interface AddressVerdict {
   /** Le thème et la variante demandés sont ignorés. */
   dropTrial: boolean;
   /** Message court à montrer, ou chaîne vide. */
+  /** Clé du catalogue du message à montrer au joueur (`course.notice.*`), ou `""`. */
   notice: string;
 }
 
@@ -42,8 +43,8 @@ export function judgeAddress(a: AddressRequest): AddressVerdict {
   const seedDay = futureSeed ? null : a.seedDay;
   const target = seedDay ?? a.today;
   const dropTrial = a.trial && target >= a.today; // un thème ou une variante forcés ne valent que pour un jour passé
-  if (futureSeed) return { seedDay, dropTrial, notice: "Ce circuit n'est pas encore disponible : voici celui du jour" };
-  if (dropTrial) return { seedDay, dropTrial, notice: "Thème et variante forcés : réservés aux essais" };
+  if (futureSeed) return { seedDay, dropTrial, notice: "course.notice.pasDisponible" };
+  if (dropTrial) return { seedDay, dropTrial, notice: "course.notice.essaisReserves" };
   return { seedDay, dropTrial, notice: "" };
 }
 

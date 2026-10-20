@@ -1,0 +1,5 @@
+import { fr } from "./catalogue.reglages.fr";
+import { en } from "./catalogue.reglages.en";
+
+// La zone « reglages » en français et en anglais, réunis : pour les tests (parité des catalogues). Le jeu, lui, ne charge que le français au départ (i18n.ts).
+export const CATALOGUE_REGLAGES = { fr, en };

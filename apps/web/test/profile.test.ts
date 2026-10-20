@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLong, dayShort, disambiguateNames, listPlayedDays, loadRanks, parseRank, playedFromRecords, profileStats, rememberRank, streakOf } from "../src/profile";
+import { disambiguateNames, listPlayedDays, loadRanks, parseRank, playedFromRecords, profileStats, rememberRank, streakOf } from "../src/profile";
 import { dayLines } from "../src/boardView";
 
 function memory(initial: Record<string, string> = {}) {
@@ -83,16 +83,6 @@ describe("places gardées", () => {
     rememberRank("pas-une-date", { rank: 1, participants: 1 }, store);
     rememberRank("2026-10-14", { rank: 99, participants: 5 }, store); // invalide
     expect([...loadRanks(store)]).toEqual([["2026-10-13", { rank: 4, participants: 9 }]]);
-  });
-});
-
-describe("dates en français", () => {
-  it("court et long", () => {
-    expect(dayShort("2026-10-13")).toBe("13 oct.");
-    expect(dayShort("2026-01-05")).toBe("5 janv.");
-    expect(dayLong("2026-10-13")).toBe("13 octobre 2026");
-    expect(dayShort("n'importe quoi")).toBe("n'importe quoi");
-    expect(dayShort("2026-13-01")).toBe("2026-13-01");
   });
 });
 

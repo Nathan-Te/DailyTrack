@@ -1,0 +1,290 @@
+/* DailyTrack (lot I4) — le Salon (salle d'attente, finale, résultats), le podium et la barre « Revoir le meilleur tour ». Primitives communes : interface.css ; plaques de course : hud.css. Valeurs : jetons de @cdj/ui seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
+
+/* --- La plaque du compte à rebours (#medals dans le Salon) : « Suivant dans », le temps restant en mono, les joueurs présents ------------------------------ */
+#medals .salon-compte {
+  max-width: 96px;
+  text-align: right;
+  white-space: normal;
+  line-height: 1.15;
+}
+#medals .salon-temps {
+  font-size: var(--dj-taille-16);
+}
+#medals .salon-joueurs {
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+  white-space: nowrap;
+}
+/* La finale : la plaque passe en livrée (le signe est écrit : « Dernière chance »). */
+#medals.last {
+  background: var(--track-livree);
+}
+#medals.last .objectif__legende,
+#medals.last .objectif__valeur,
+#medals.last .salon-joueurs {
+  color: var(--track-asphalte);
+}
+
+/* --- La finale : le grand compte à rebours 15 → 0, au centre (plaque asphalte nette, jamais d'ombre floue ni de transparence) ------------------------------ */
+#finale {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  z-index: 4;
+  transform: translate(-50%, -50%);
+  min-width: 2.2em;
+  padding: 0 24px;
+  background: var(--track-asphalte);
+  color: var(--dj-ambre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 5px 5px 0 var(--dj-encre);
+  text-align: center;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-72);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+body.podium #finale {
+  display: none;
+}
+@media (max-height: 520px) {
+  #finale {
+    top: 48%;
+    font-size: var(--dj-taille-64);
+  }
+}
+
+/* Dernière chance : plus aucun départ. Les boutons « Recommencer » et « Rejouer » prennent l'état désactivé du socle (aplat neutre lisible, bordure
+   pointillée, sans ombre — jamais de transparence ni de gris filtré). */
+.dialogue .dj-bouton[aria-disabled="true"],
+#finish .dj-bouton[aria-disabled="true"],
+body.start-locked #touch .restart,
+body.start-locked #tbar .restart {
+  background: var(--dj-creme-2);
+  color: var(--dj-encre-douce);
+  border: var(--dj-trait) dashed var(--dj-encre-douce);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* --- Le classement de la session (#board dans le Salon) -------------------------------------------------------------------------------------------------- */
+#board.salon {
+  width: min(300px, 62vw);
+}
+
+/* --- L'arrivée d'une course du Salon et de la rediffusion (#finish) ------------------------------------------------------------------------------------ */
+.salon-arrivee,
+.etiquette__corps:has(> .salon-arrivee__gauche) {
+  gap: 12px;
+}
+.salon-arrivee__gauche,
+.salon-arrivee__droite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.salon-arrivee__resultat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.salon-arrivee .big,
+.salon-arrivee__resultat .big {
+  font-size: var(--dj-taille-72);
+}
+.salon-arrivee__ligne {
+  font-size: var(--dj-taille-14);
+  color: var(--track-texte-doux);
+}
+/* Meilleur tour de la session : l'étiquette verte « auteur » de la maquette (le texte dit le sens, la couleur le renforce). */
+.salon-arrivee__ligne.record {
+  align-self: flex-start;
+  padding: 3px 8px;
+  background: var(--dj-auteur);
+  color: var(--dj-auteur-texte);
+  border-radius: var(--dj-rayon-etiquette);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.salon-arrivee .online {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--track-coque);
+  border-bottom: 1px solid var(--track-coque);
+}
+.salon-arrivee .rank {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+}
+.salon-arrivee__rang {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-32);
+  line-height: 1;
+}
+.salon-arrivee__pseudo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.salon-arrivee__pseudo > .legende {
+  flex: 1 0 100%;
+}
+.salon-arrivee__pseudo > .champ {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.salon-arrivee__pseudo > .dj-bouton {
+  flex: none;
+}
+.salon-arrivee__pseudo > .error,
+.salon-arrivee__pseudo > .suggestions {
+  flex: 1 0 100%;
+}
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+}
+.salon-arrivee .share,
+.etiquette__corps .share {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--track-piste);
+  border: 1px solid var(--track-coque);
+  border-radius: var(--dj-rayon-etiquette);
+  font-size: var(--dj-taille-12);
+  overflow-wrap: anywhere;
+}
+.salon-arrivee .share[hidden] {
+  display: none;
+}
+.salon-arrivee__droite .actions--duo {
+  display: grid;
+}
+@media (min-width: 700px), (max-height: 520px) and (orientation: landscape) {
+  .etiquette__corps:has(> .salon-arrivee__gauche) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-content: start;
+    align-items: start;
+    gap: 10px 16px;
+  }
+  .etiquette__corps:has(> .salon-arrivee__gauche) > .etiquette__tete {
+    grid-column: 1 / -1;
+  }
+  .salon-arrivee .big {
+    font-size: var(--dj-taille-64);
+  }
+}
+
+/* --- Le podium de fin de session (#podium) -------------------------------------------------------------------------------------------------------- */
+#podium .places {
+  gap: 2px;
+}
+#podium .place .medal {
+  width: 38px;
+}
+#podium .place .time {
+  min-width: 80px;
+}
+#podium .mine {
+  font-weight: 600;
+  font-size: var(--dj-taille-15);
+}
+#podium .none {
+  margin: 0;
+}
+#podium .share {
+  margin: 0;
+}
+#podium .next {
+  margin-top: auto;
+}
+
+/* --- Revoir le meilleur tour : la barre de lecture (#watchbar), une plaque asphalte nette -------------------------------------------------------------- */
+#watchbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(40px + env(safe-area-inset-bottom, 0px));
+  z-index: 4;
+  width: min(440px, calc(100vw - 24px));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  touch-action: manipulation;
+}
+body.touch #watchbar {
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+}
+body.finished #watchbar,
+body.podium #watchbar,
+body.paused #watchbar {
+  display: none;
+}
+.lecture__progression {
+  width: 100%;
+  min-height: 24px;
+  margin: 0;
+  accent-color: var(--track-livree);
+  cursor: pointer;
+}
+.lecture__ligne {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.lecture__bouton {
+  flex: none;
+  width: auto;
+  min-width: var(--dj-cible);
+  padding: 0 8px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  color: var(--track-texte);
+}
+.lecture__vitesses {
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+.lecture__vitesses .segment__bouton {
+  min-width: 40px;
+  padding: 0 4px;
+  font-size: var(--dj-taille-15);
+  letter-spacing: 0;
+}
+/* La vitesse et les indicateurs passent au-dessus de la barre sur petit écran (elle occupe presque toute la largeur). */
+@media (max-width: 900px), (max-height: 520px) {
+  body.watch #speed,
+  body.watch.touch #speed {
+    bottom: 118px;
+  }
+  body.watch #fx,
+  body.watch.touch #fx {
+    bottom: 150px;
+  }
+}
+body.watch #pause-ghost {
+  display: none;
+}

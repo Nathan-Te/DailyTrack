@@ -38,6 +38,9 @@ export default defineConfig({
   reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : "list",
   use: {
     baseURL: "http://localhost:4173",
+    // Lot I4 : le jeu est en français ou en anglais selon la langue du navigateur (cdj:langue, @cdj/profile) ; les tests sont écrits pour le français. Un test
+    // de l'anglais ouvre un contexte `locale: "en-US"` (ou choisit EN dans les Réglages).
+    locale: "fr-FR",
     // CI : la trace (actions, réseau, console — sans captures, qui alourdiraient des pages déjà lentes) de tout essai raté est gardée, y compris
     // celui d'un test qui réussit ensuite à la relance : c'est ce qui permet de trouver la cause d'une instabilité.
     trace: CI ? { mode: "retain-on-failure", screenshots: false, snapshots: false } : "off",

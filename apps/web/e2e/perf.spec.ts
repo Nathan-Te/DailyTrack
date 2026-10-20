@@ -12,12 +12,42 @@ test("le jeu pèse peu : budget de poids compressé", () => {
   const worker = Object.entries(gz).find(([f]) => f.startsWith("circuitWorker-"))?.[1] ?? 0;
   // Le fil de travail du Salon (lot 26) non plus : il ne se charge que dans le Salon (circuit de la session, pilotes fictifs de la démo).
   const salonWorker = Object.entries(gz).find(([f]) => f.startsWith("salonWorker-"))?.[1] ?? 0;
-  const total = Object.values(gz).reduce((a, b) => a + b, 0) - worker - salonWorker;
+  // Lot I4 : le catalogue anglais est un fichier à part, chargé par `import()` seulement pour un joueur en anglais (i18n.ts) ; l'outil de réglage `?debug&tune`
+  // (tune.ts) ne se charge qu'à la demande : ni l'un ni l'autre ne pèse sur le premier chargement d'un joueur en français.
+  const anglais = Object.entries(gz).find(([f]) => f.startsWith("catalogue.en-"))?.[1] ?? 0;
+  const tune = Object.entries(gz).find(([f]) => f.startsWith("tune-"))?.[1] ?? 0;
+  const total = Object.values(gz).reduce((a, b) => a + b, 0) - worker - salonWorker - anglais - tune;
   const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
+  const css = readdirSync(dist)
+    .filter((f) => f.endsWith(".css"))
+    .reduce((n, f) => n + gzipSync(readFileSync(new URL(f, dist))).length, 0);
   expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
-  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(262_000); // ≈ 256,5 ko aujourd'hui (lot 30 : +5,4 ko, synchronisation du profil, pseudos réservés, code de transfert CDJ2, changer son code, messages de la carte du profil) ; ≈ 251,1 ko avant (lot 29 : +8,7 ko, accueil, réglages à onglets, aide, profil, classement compact, trois bus sonores ; la feuille de style `ui.css` pèse ≈ 3,3 ko de plus, hors de ce compte) ; ≈ 242,4 ko avant (lot 28 : +3,1 ko, code de transfert et fenêtre Réglages ; `main` mesuré à 239,3 ko avant le lot : le spectateur du 27b avait déjà dépassé l'ancien budget de 240 ko) ; ≈ 234 ko au lot 26 (lot 26 : +10 ko, le Salon : contrôleur, démonstration, fantômes, classement, podium, changement de scène) ; ≈ 222,6 ko avant (lot 23 : +5,6 ko, panneaux, arches, halos, ambiances sonores, caméra capot) ; ≈ 217 ko avant ; ≈ 210 ko au lot 20 (lot 20 : +7 ko, la bibliothèque de figures) ; ≈ 203 ko avant ( (lot 18 : +5 ko, cuves : surface paramétrée, contact par la normale, rendu des parois, pilote sur la paroi ; lot 17 : +4 ko, relief, sauts, rendu des piliers et ombre d'atterrissage ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
-  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(128_000); // ≈ 123,7 ko aujourd'hui (lot 30 : +4,1 ko) ; ≈ 119,6 ko avant (lot 29 : +10 ko) ; ≈ 109,6 ko avant (lot 28 : +3,1 ko ; `main` : 106,5 ko) ; ≈ 101,7 ko au lot 26 (lot 26 : +10 ko) ; ≈ 91,3 ko avant (lot 23 : +5,6 ko) ; ≈ 85,7 ko avant (lot 22 : +6 ko, trois palettes, décors de Canyon, Col et Ville, quatre figures) ; ≈ 79 ko avant (lot 20 : +7 ko) ; ≈ 72 ko avant ( (lot 18 : +5 ko ; lot 17 : +5 ko ; le panneau d'admin du lot 14 pèse ≈ 8 ko, chargé seulement sur /admin/)
+  // Lot I4 (budget de la phase 3) : premier chargement ≤ aujourd'hui + 20 ko de JS et de CSS compressés. « Aujourd'hui » = le lot R4 : 260,2 ko de JS (le « 259 ko » du lot)
+  // et 3,8 ko de CSS, soit 264,1 ko ; le lot I4 ajoute le socle (@cdj/ui : composants, jetons), le catalogue français, la langue, les nouveaux écrans et leurs feuilles.
+  expect(total + css, `JS ${total} + CSS ${css} compressés : ${JSON.stringify(gz)}`).toBeLessThan(264_100 + 20_000);
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(274_000); // ≈ 271,5 ko aujourd'hui (lot I4 : +11,3 ko, hors catalogue anglais et réglage de conduite) ; ≈ 260,2 ko au lot R4 (lot 30 : +5,4 ko, synchronisation du profil, pseudos réservés, code de transfert CDJ2, changer son code ; lot 29 : +8,7 ko, accueil, réglages à onglets, aide, profil, classement compact, trois bus sonores ; lot 28 : +3,1 ko ; lot 26 : +10 ko, le Salon ; lot 23 : +5,6 ko ; lot 20 : +7 ko, la bibliothèque de figures ; lot 18 : +5 ko, cuves ; lot 17 : +4 ko ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
+  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(141_000); // ≈ 138,7 ko aujourd'hui (lot I4 : +15 ko) ; ≈ 123,7 ko au lot R4 (lot 30 : +4,1 ko ; lot 29 : +10 ko ; lot 28 : +3,1 ko ; lot 26 : +10 ko ; lot 23 : +5,6 ko ; lot 22 : +6 ko ; lot 20 : +7 ko ; lots 17 et 18 : +10 ko ; le panneau d'admin du lot 14 pèse ≈ 8 ko, chargé seulement sur /admin/)
+  expect(anglais, "le catalogue anglais, chargé à la demande").toBeLessThan(8_000); // ≈ 6,6 ko aujourd'hui
   expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(26_000); // ≈ 24,4 ko aujourd'hui (lot 21 : +2 ko, bas-côtés, route bosselée, règles d'identité des thèmes, moments de choix) ; ≈ 22,4 ko au lot 20 (+5,6 ko, les figures) ; ≈ 16,7 ko avant ( (lot 18 : +3 ko, les cuves du générateur et du pilote ; lot 17 : +3,6 ko, le générateur et le pilote ont grandi)
+});
+
+// Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
+// déjà en cache), et seules les deux faces du premier écran sont préchargées.
+test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deux faces préchargées", () => {
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css"));
+  const faces = new Set<string>();
+  for (const f of css) for (const m of readFileSync(new URL(f, dist), "utf8").matchAll(/url\(["']?([^)"']+\.woff2)["']?\)/g)) faces.add(m[1]!);
+  expect(faces.size, "Archivo Black, Archivo 400 et 700, JetBrains Mono 700, Barlow Condensed 600, 700 italique et 800 italique").toBe(7);
+  let octets = 0;
+  for (const face of faces) {
+    expect(face, "les polices sont servies par /assets/ (la racine du site, comme le portail), pas relativement à la page").toMatch(/^\/assets\/[a-z-]+-latin-\d+-(normal|italic)-[\w-]+\.woff2$/);
+    octets += readFileSync(new URL(`.${face}`, new URL("../dist/", import.meta.url))).length;
+  }
+  expect(octets, `polices : ${(octets / 1024).toFixed(1)} ko`).toBeLessThanOrEqual(150 * 1024); // ≈ 136,3 Ko
+  const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
+  const precharges = [...html.matchAll(/<link rel="preload" as="font" type="font\/woff2" crossorigin href="([^"]+)"/g)].map((m) => m[1]!);
+  expect(precharges.map((p) => p.replace(/^\/assets\//, "").replace(/-[\w-]{8}\.woff2$/, "")).sort()).toEqual(["archivo-latin-400-normal", "barlow-condensed-latin-800-italic"]);
+  for (const p of precharges) expect(faces.has(p), `${p} : le préchargement vise le même chemin que la feuille`).toBe(true);
 });
 
 test("le fil de travail du Salon pèse peu (une copie de sim : générateur et pilote, chargée seulement dans le Salon)", () => {

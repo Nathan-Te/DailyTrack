@@ -43,15 +43,15 @@ test("?scenario=surfaces : le circuit se charge, chaque revêtement et chaque ef
   const firstOf = (pred: (b: (typeof track.blocks)[number]) => boolean) => track.blocks.find(pred)!.index;
   const fx = page.locator("#fx");
 
-  for (const [surface, label] of [["dirt", "TERRE"], ["ice", "GLACE"], ["grass", "HERBE"]] as const) {
+  for (const [surface, label] of [["dirt", "Terre"], ["ice", "Glace"], ["grass", "Herbe"]] as const) {
     await placeOn(page, firstOf((b) => b.surface === surface && b.kind === "straight"));
     await expect(fx).toContainText(label, { timeout: 5_000 });
   }
   await placeOn(page, firstOf((b) => b.kind === "turbo"), { vx: 0, vz: 0 });
   // Le bloc de turbo est sur la route : le centre de la plaque active l'effet.
-  await expect(fx).toContainText("SUPER TURBO", { timeout: 5_000 });
+  await expect(fx).toContainText("Super turbo", { timeout: 5_000 });
   await placeOn(page, firstOf((b) => b.kind === "cut"), { turbo: 0, boost: 0 }); // le turbo d'avant ne doit pas pousser
-  await expect(fx).toContainText("MOTEUR COUPÉ", { timeout: 5_000 });
+  await expect(fx).toContainText("Moteur coupé", { timeout: 5_000 });
   expect(await page.evaluate(() => (window.__cdj.race as unknown as { car: { cut: number } }).car.cut)).toBe(1);
   await expect(fx).toHaveAttribute("data-cut", "1");
   // Moteur coupé : plein gaz, et pourtant la voiture n'accélère pas.

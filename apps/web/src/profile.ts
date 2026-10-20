@@ -175,25 +175,6 @@ export function profileStats(days: readonly PlayedDay[], ranks: ReadonlyMap<stri
   return { days: days.length, medals, bestRank, streak: streakOf(days.map((d) => d.date), today) };
 }
 
-// --- Dates en français -------------------------------------------------------------------------------------------------
-
-const MONTHS_SHORT = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
-const MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"];
-
-/** « 2026-10-13 » → « 13 oct. » (la date elle-même si elle est illisible). */
-export function dayShort(date: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  const month = m ? Number(m[2]) : 0;
-  return m && month >= 1 && month <= 12 ? `${Number(m[3])} ${MONTHS_SHORT[month - 1]}` : date;
-}
-
-/** « 2026-10-13 » → « 13 octobre 2026 ». */
-export function dayLong(date: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  const month = m ? Number(m[2]) : 0;
-  return m && month >= 1 && month <= 12 ? `${Number(m[3])} ${MONTHS[month - 1]} ${m[1]}` : date;
-}
-
 // --- Pseudos ---------------------------------------------------------------------------------------------------------------
 
 /**

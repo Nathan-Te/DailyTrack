@@ -1,0 +1,228 @@
+/* DailyTrack (lot I4) — les réglages et l'aide « Comment jouer » (maquette track-reglages.html) : deux écrans dans le cadre de Du Jour, sur l'étiquette Track.
+   Primitives communes : interface.css (cadre, étiquette, boutons, choix `.segment`, curseurs `.curseur`) ; plaques de course : hud.css. Valeurs : jetons de @cdj/ui
+   seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
+
+/* --- Réglages ------------------------------------------------------------------------------------------------------------------------------------- */
+.reglages__page {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reglages__section {
+  margin: 8px 0 2px;
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--track-texte-doux);
+}
+.reglage {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
+  gap: 6px 14px;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--track-coque);
+}
+.reglage__titre {
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.reglage__aide {
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-12);
+  font-weight: 400;
+}
+@media (max-width: 560px) {
+  .reglage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.reglages__onglets .segment__bouton {
+  font-size: var(--dj-taille-14);
+}
+.reglages__tactile {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.reglages__tactile-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* La langue, puis le lien vers le profil commun et les mentions légales, en bas de la carte (maquette). */
+.reglages__langue {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+.reglages__langue .reglages__section {
+  margin: 0;
+}
+.reglages__liens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid var(--track-coque);
+}
+.reglages__lien {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--dj-cible);
+  color: var(--track-texte);
+  font-size: var(--dj-taille-14);
+  font-weight: 400;
+  text-decoration: none;
+}
+.reglages__lien--profil {
+  font-weight: 700;
+  font-size: var(--dj-taille-15);
+}
+.reglages__lien:not(.reglages__lien--profil) {
+  color: var(--track-texte-doux);
+}
+.reglages__lien:hover {
+  color: var(--track-livree-texte);
+}
+
+/* --- Commandes (réglages et aide) : touches, listes repliables ----------------------------------------------------------------------------------- */
+.repli {
+  margin: 4px 0;
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+}
+.repli > summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0 12px;
+  cursor: pointer;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.commandes {
+  display: grid;
+  gap: 8px;
+  padding: 4px 12px 12px;
+}
+.commande {
+  display: grid;
+  grid-template-columns: minmax(96px, 150px) 1fr;
+  gap: 4px 12px;
+  align-items: baseline;
+  font-size: var(--dj-taille-13);
+}
+@media (max-width: 480px) {
+  .commande {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.touches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.touches .ou {
+  color: var(--track-texte-doux);
+}
+kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  background: var(--track-piste);
+  border: var(--dj-trait) solid var(--track-route);
+  border-bottom-width: var(--dj-trait-fort);
+  border-radius: var(--dj-rayon-bouton);
+  color: var(--track-texte);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* --- Aide « Comment jouer » ------------------------------------------------------------------------------------------------------------------------ */
+.conseils {
+  display: grid;
+  gap: 8px;
+}
+.conseil {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--track-piste);
+  border: var(--dj-trait) solid var(--track-coque);
+  border-radius: var(--dj-rayon-bouton);
+}
+.conseil__icone {
+  display: flex;
+  justify-content: center;
+  padding-top: 2px;
+  color: var(--track-livree-texte);
+}
+.conseil h3 {
+  margin: 0 0 2px;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 700;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.conseil p {
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-13);
+}
+.conduire {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* Schéma de l'écran tactile : où poser les doigts (contours de la charte, jamais de transparence). */
+.schema {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 6px;
+  margin: 8px 12px;
+  aspect-ratio: 16 / 6;
+  max-height: 150px;
+}
+.schema__zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border: var(--dj-trait) dashed var(--track-texte-doux);
+  border-radius: var(--dj-rayon-bouton);
+  text-align: center;
+  font-size: var(--dj-taille-13);
+}
+.schema__zone b {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-16);
+  text-transform: uppercase;
+}
+.schema__zone--frein {
+  border-color: var(--track-livree-texte);
+}
+.schema__zone--gaz {
+  border-style: solid;
+  border-color: var(--track-livree);
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}

@@ -1,5 +1,6 @@
 import type { JumpMedal } from "@cdj/jump-sim";
-import { elementsDeSuite, type Suite } from "./jeuSuivant";
+import type { Suite } from "@cdj/profile";
+import { elementsDeSuite } from "./jeuSuivant";
 import type { RankView } from "./rankView";
 
 // L'écran d'arrivée du niveau du jour (lot 10, remplace le bandeau du lot 2 pour le niveau du jour ; les morceaux, les scénarios et les

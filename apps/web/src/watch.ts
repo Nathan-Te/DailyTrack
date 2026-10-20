@@ -1,5 +1,5 @@
 import { TICK_RATE, replayTicks, type Replay } from "@cdj/sim";
-import { formatTime } from "./format";
+import { fNombre, fTemps, t } from "./i18n";
 
 // Revoir le meilleur tour (lot 27b) : logique pure du mode spectateur (aucun DOM, aucun rendu), testée par Vitest. La lecture rejoue la
 // rediffusion avec le **même code** que le serveur et que le fantôme (`RunSession` + `ReplayPlayer`) : `packages/sim` n'a pas bougé et
@@ -30,19 +30,19 @@ export interface WatchEntry {
   color: number;
 }
 
-/** « Rediffusion de Alice — 0:31.456 ». */
+/** « Rediffusion de Alice — 31,456 s » / “Replay of Alice — 31.456 s”. */
 export function watchTitle(name: string, ms: number): string {
-  return `Rediffusion de ${name} — ${formatTime(ms)}`;
+  return t("revoir.titre", { nom: name, temps: fTemps(ms) });
 }
 
-/** Libellé court d'une vitesse : « ×0,25 », « ×2 ». */
+/** Libellé court d'une vitesse : « ×0,25 », « ×2 » (« ×0.25 » en anglais). */
 export function speedLabel(speed: number): string {
-  return `×${String(speed).replace(".", ",")}`;
+  return `×${fNombre(speed, Number.isInteger(speed) ? 0 : speed === 0.25 ? 2 : 1)}`;
 }
 
 /** Libellé du bouton (court : huit commandes tiennent sur la largeur d'un téléphone) : « ¼ », « ½ », « 1× », « 2× ». */
 export function speedShort(speed: number): string {
-  return speed === 0.25 ? "¼" : speed === 0.5 ? "½" : `${speed}×`;
+  return speed === 0.25 ? "¼" : speed === 0.5 ? "½" : `${fNombre(speed)}×`;
 }
 
 /** Pas de la rediffusion à rejouer pour arriver à `current + delta`, borné entre le départ et l'arrivée. */

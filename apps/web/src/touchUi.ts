@@ -1,4 +1,7 @@
+import { icone, svg } from "@cdj/ui";
 import { el as makeEl, row, segmented, slider, type Control } from "./dom";
+import { iconeTrack } from "./icones";
+import { fNombre, onLangue, t } from "./i18n";
 import { isTyping } from "./input";
 import {
   buttonRects,
@@ -15,15 +18,15 @@ import {
   type TouchSettings,
 } from "./touch";
 
-// Interface tactile (lot 10) : zones de jeu, aides à l'écran, boutons d'action, réglages, invitation à tourner
-// le téléphone, plein écran. Toute la logique des doigts est dans `touch.ts` ; ici, seulement du DOM.
+// Interface tactile (lot 10, habillée au lot I4 : plaques asphalte, flèches SVG, « FREIN » en Barlow italique, « GAZ » en livrée — maquettes track-hud*.html) :
+// zones de jeu, aides à l'écran, boutons d'action, réglages, invitation à tourner le téléphone, plein écran. Même disposition et même comportement qu'au
+// lot 10 (zones et `buttonRects` de touch.ts inchangés) ; seul l'habillage change (tactile.css). Toute la logique des doigts est dans `touch.ts` ; ici, seulement du DOM.
 // Les conteneurs (`#touch`, `#tbar`, `#tsettings`, `#rotate`) sont dans `index.html`, cachés tant que la page n'est
 // pas en mode tactile (`body.touch`).
 
 export interface TouchHooks {
   /** `?zones=1` : dessine les zones actives et un point par doigt (diagnostic). */
   showZones?: boolean;
-  onPause(): void;
   onRespawn(): void;
   onRestart(): void;
   /** Caméra suivante (proche, loin, capot). */
@@ -33,7 +36,7 @@ export interface TouchHooks {
 }
 
 export interface TouchUi {
-  /** Montre l'état de pause sur le bouton. */
+  /** Gardé pour main.ts (lot I4 : la barre n'a plus de bouton pause, la plaque du HUD le remplace). */
   setPaused(paused: boolean): void;
   /** Redessine les aides (après un changement de réglage, d'écran ou de phase). */
   refresh(): void;
@@ -47,9 +50,9 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = "", text = ""):
 }
 
 export function hintText(s: Readonly<TouchSettings>): string {
-  const steer = s.steerMode === "drag" ? "Glisse à gauche pour tourner" : "← → à gauche pour tourner";
-  const pedals = s.autoThrottle ? "touche à droite pour freiner" : "frein et gaz à droite";
-  return `${steer} · ${pedals}`;
+  const direction = t(s.steerMode === "drag" ? "tactile.indice.glisser" : "tactile.indice.fleches");
+  const pedales = t(s.autoThrottle ? "tactile.indice.auto" : "tactile.indice.pedales");
+  return t("tactile.indice", { direction, pedales });
 }
 
 type FullscreenDoc = Document & {
@@ -92,23 +95,23 @@ export function touchSettingsControls(pad: TouchPad, onChange: () => void): Cont
     sync();
     onChange();
   };
-  const steerMode = segmented<TouchSettings["steerMode"]>([["drag", "Glisser"], ["buttons", "Boutons ← →"]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }), "Direction");
-  const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${v.toFixed(2)}`, "Sensibilité");
-  const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${Math.round(v * 100)} %`, "Zone morte");
-  const throttle = segmented<boolean>([[false, "Bouton gaz"], [true, "Automatique"]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }), "Accélérateur");
-  const size = segmented<ButtonSize>([["small", "Petits"], ["medium", "Moyens"], ["large", "Grands"]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }), "Taille des boutons");
-  const vibration = segmented<boolean>([[true, "Oui"], [false, "Non"]], () => pad.settings.vibration, (v) => apply({ vibration: v }), "Vibration");
-  const reset = makeEl("button", "btn small", "Réglages tactiles par défaut");
+  const steerMode = segmented<TouchSettings["steerMode"]>([["drag", t("tactile.direction.glisser")], ["buttons", t("tactile.direction.boutons")]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }), t("tactile.direction.nom"));
+  const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${fNombre(v, 2)}`, t("tactile.sensibilite.nom"));
+  const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${fNombre(Math.round(v * 100))} %`, t("tactile.zoneMorte.nom"));
+  const throttle = segmented<boolean>([[false, t("tactile.accelerateur.bouton")], [true, t("tactile.accelerateur.auto")]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }), t("tactile.accelerateur.nom"));
+  const size = segmented<ButtonSize>([["small", t("tactile.taille.small")], ["medium", t("tactile.taille.medium")], ["large", t("tactile.taille.large")]], () => pad.settings.buttonSize, (v) => apply({ buttonSize: v }), t("tactile.taille.nom"));
+  const vibration = segmented<boolean>([[true, t("reglages.oui")], [false, t("reglages.non")]], () => pad.settings.vibration, (v) => apply({ vibration: v }), t("tactile.vibration.nom"));
+  const reset = makeEl("button", "dj-bouton dj-bouton--secondaire", t("tactile.reinit"));
   reset.type = "button";
   reset.addEventListener("click", () => apply({ ...DEFAULT_TOUCH_SETTINGS }));
-  const box = makeEl("div", "touchset");
+  const box = makeEl("div", "reglages__tactile-liste");
   box.append(
-    row("Direction", steerMode.box, "Glisser le pouce, ou deux boutons ◀ ▶."),
-    row("Taille des boutons", size.box),
-    row("Sensibilité", sensitivity.box, "Glisser : plus c'est haut, moins il faut de mouvement."),
-    row("Zone morte", deadzone.box),
-    row("Accélérateur", throttle.box, "Automatique : la voiture accélère seule, tu ne touches que le frein."),
-    row("Vibration", vibration.box, "Au point de contrôle et aux chocs, si ton téléphone sait vibrer."),
+    row(t("tactile.direction.nom"), steerMode.box, t("tactile.direction.aide")),
+    row(t("tactile.taille.nom"), size.box),
+    row(t("tactile.sensibilite.nom"), sensitivity.box, t("tactile.sensibilite.aide")),
+    row(t("tactile.zoneMorte.nom"), deadzone.box),
+    row(t("tactile.accelerateur.nom"), throttle.box, t("tactile.accelerateur.aide")),
+    row(t("tactile.vibration.nom"), vibration.box, t("tactile.vibration.aide")),
     reset,
   );
   function sync() {
@@ -116,6 +119,21 @@ export function touchSettingsControls(pad: TouchPad, onChange: () => void): Cont
   }
   sync();
   return { box, sync };
+}
+
+/** Une flèche de direction de la maquette (trait de 4, extrémités carrées). */
+function fleche(d: string): SVGSVGElement {
+  return svg("svg", { attrs: { viewBox: "0 0 30 30", width: 30, height: 30, "aria-hidden": "true", focusable: "false" } }, svg("path", { attrs: { d, fill: "none", stroke: "currentColor", "stroke-width": 4, "stroke-linecap": "square" } }));
+}
+
+/** Le téléphone qu'on tourne (invitation du portrait) : un rectangle debout et sa flèche. */
+function telephone(): SVGSVGElement {
+  return svg(
+    "svg",
+    { classe: "dj-icone", attrs: { viewBox: "0 0 40 40", width: 40, height: 40, "aria-hidden": "true", focusable: "false", fill: "none", stroke: "currentColor", "stroke-linecap": "square" } },
+    svg("rect", { attrs: { x: 13, y: 6, width: 14, height: 24 } }),
+    svg("path", { attrs: { d: "M18 26h4M30 12c4 2 6 5 6 8M36 20l-3-3M36 20l3-3" } }),
+  );
 }
 
 /** Construit l'interface tactile dans les conteneurs de la page et branche les doigts sur `pad`. */
@@ -127,10 +145,12 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   // --- Aides à l'écran (aucune ne reçoit de toucher : tout passe par `zone`) ------------------------
   const ring = el("div", "ring");
   const knob = el("div", "knob");
-  const left = el("div", "tbtn pad steer-left", "◀");
-  const right = el("div", "tbtn pad steer-right", "▶");
-  const brake = el("div", "tbtn pad pedal-brake", "FREIN");
-  const gas = el("div", "tbtn pad pedal-gas", "GAZ");
+  const left = el("div", "tbtn pad steer-left");
+  const right = el("div", "tbtn pad steer-right");
+  left.append(fleche("M19 5 9 15l10 10"));
+  right.append(fleche("M11 5l10 10-10 10"));
+  const brake = el("div", "tbtn pad pedal-brake", t("tactile.frein"));
+  const gas = el("div", "tbtn pad pedal-gas", t("tactile.gaz"));
   const hint = el("div", "hint");
   const buttonEls: Record<string, HTMLElement> = { left, right, brake, gas };
   // Zones actives (diagnostic `?zones=1`) : une tranche par zone, de bord à bord, avec son nom.
@@ -146,6 +166,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     const c = getComputedStyle(probe);
     return { left: parseFloat(c.paddingLeft) || 0, right: parseFloat(c.paddingRight) || 0, top: parseFloat(c.paddingTop) || 0, bottom: parseFloat(c.paddingBottom) || 0 };
   };
+  // Diagnostic `?zones=1` seulement (outil de test, jamais montré aux joueurs) : couleurs libres, en dehors de la charte.
   const ZONE_COLORS: Record<Zone, string> = { steer: "#4cc9f0", left: "#4cc9f0", right: "#7bd88f", brake: "#ff6b6b", gas: "#ffd22e" };
 
   function layout() {
@@ -254,47 +275,64 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     render();
   });
 
-  // --- Boutons d'action ---------------------------------------------------------------------------
-  const button = (cls: string, label: string, title: string, onClick: () => void) => {
-    const b = el("button", cls, label);
+  // --- Boutons d'action : des plaques de 44 px, icônes au trait (aucun émoji) ----------------------------------------------------------------------
+  // Lot I4 : la pause est la plaque du HUD (`#btn-pause`, en haut à gauche) ; la barre n'a plus son propre bouton pause.
+  const button = (cls: string, icon: SVGSVGElement, cle: string, onClick: () => void) => {
+    const b = el("button", cls);
     b.type = "button";
-    b.title = title;
-    b.setAttribute("aria-label", title);
+    b.dataset.cle = cle;
+    b.append(icon);
     b.addEventListener("click", () => {
       b.blur();
       onClick();
     });
     return b;
   };
-  const pauseBtn = button("pause", "⏸", "Pause", () => hooks.onPause());
-  const full = button("full", "⛶", "Plein écran", () => void toggleFullscreen());
+  const full = button("full", iconeTrack("plein-ecran", 20), "tactile.pleinEcran", () => void toggleFullscreen());
   full.hidden = !canFullscreen();
-  // Le bouton caméra est le premier de la barre : la barre va de ≈ 34 % à 66 % de la largeur et le bouton tombe à ≈ 34–39 %, loin des
+  // Le bouton caméra est le premier de la barre : la barre va de ≈ 36 % à 64 % de la largeur et le bouton tombe à ≈ 36–41 %, loin des
   // frontières entre zones (25 / 50 / 75 %) ; un test (`cameras.spec.ts`) mesure l'écart avec `?zones=1`.
-  bar.replaceChildren(
-    button("camera", "🎥", "Changer de caméra", () => hooks.onCamera()),
-    pauseBtn,
-    button("respawn", "↺", "Recommencer au dernier point de contrôle", () => hooks.onRespawn()),
-    button("restart", "⟲", "Recommencer depuis le départ", () => hooks.onRestart()),
-    button("gear", "⚙", "Réglages", () => hooks.onSettings()),
+  const actions = [
+    button("camera", iconeTrack("camera", 20), "tactile.camera", () => hooks.onCamera()),
+    button("respawn", icone("drapeau", { taille: 20 }), "tactile.pointDeControle", () => hooks.onRespawn()),
+    button("restart", iconeTrack("recommencer", 20), "tactile.depart", () => hooks.onRestart()),
+    button("gear", iconeTrack("reglages", 20), "tactile.reglages", () => hooks.onSettings()),
     full,
-  );
+  ];
+  bar.replaceChildren(...actions);
 
   // --- Invitation à tourner le téléphone (portrait) ----------------------------------------------
   const card = el("div", "card");
-  const dismiss = el("button", "", "Jouer quand même");
+  const dismiss = el("button", "dj-bouton dj-bouton--secondaire");
   dismiss.type = "button";
   dismiss.addEventListener("click", () => document.body.classList.add("rotate-ok"));
-  card.append(el("div", "icon", "📱"), el("div", "", "Tourne ton téléphone : on conduit mieux en paysage."), dismiss);
+  const message = el("div", "message");
+  const icon = el("div", "icon");
+  icon.append(telephone());
+  card.append(icon, message, dismiss);
   rotate.replaceChildren(card);
+
+  /** Les textes dans la langue courante (au montage et à chaque changement de langue). */
+  function libelles() {
+    brake.textContent = t("tactile.frein");
+    gas.textContent = t("tactile.gaz");
+    for (const b of actions) {
+      const nom = t(b.dataset.cle!);
+      b.title = nom;
+      b.setAttribute("aria-label", nom);
+    }
+    message.textContent = t("tactile.rotation");
+    dismiss.textContent = t("tactile.rotation.ok");
+    hint.textContent = hintText(pad.settings);
+  }
+  libelles();
+  onLangue(libelles);
 
   layout();
   render();
   return {
-    setPaused(paused) {
-      pauseBtn.textContent = paused ? "▶" : "⏸";
-      pauseBtn.title = paused ? "Reprendre" : "Pause";
-      pauseBtn.setAttribute("aria-label", pauseBtn.title);
+    setPaused() {
+      /* lot I4 : la pause est la plaque du HUD (#btn-pause, main.ts) ; rien à montrer ici */
     },
     refresh() {
       layout();

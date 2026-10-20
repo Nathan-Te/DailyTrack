@@ -59,6 +59,7 @@ const fr = {
   "portail.jump.replique.neon": "Une plateforme sur deux. Devine laquelle.",
   // Lot I2 : le profil commun (/profil/)
   "profil.titre": "Ton profil",
+  "profil.retour.aria": "Retour à {jeu}",
   "profil.description": "Ton profil Du Jour : pseudo, code de transfert, série et statistiques de chaque jeu.",
   "profil.sansProfil": "Pas encore de profil sur le serveur : finis un jeu pour l'ouvrir. Tu as un code ? Charge-le ci-dessous.",
   "profil.inconnu": "Ce profil n'a encore aucun résultat : finis un jeu pour l'ouvrir.",
@@ -175,6 +176,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.jump.replique.nuit": "The platforms blink. You won't see it coming.",
   "portail.jump.replique.neon": "Every other platform is there. Guess which.",
   "profil.titre": "Your profile",
+  "profil.retour.aria": "Back to {jeu}",
   "profil.description": "Your Du Jour profile: name, transfer code, streak and stats for each game.",
   "profil.sansProfil": "No profile on the server yet: finish a game to open one. Got a code? Load it below.",
   "profil.inconnu": "This profile has no results yet: finish a game to open it.",

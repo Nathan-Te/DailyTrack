@@ -107,7 +107,7 @@ import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type
 import { applyJumpIdentity, applyJumpProfile, followJumpIdentity, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
 import { mountProfileUi } from "./profileUi";
 import { copyText } from "./clipboard";
-import { lireSuite, type Suite } from "./jeuSuivant";
+import { lireSuite, type Suite } from "@cdj/profile";
 import { HttpRankSource, rankApiBase, type JumpBoard, type RankSource } from "./rankApi";
 import { ARRIVAL_REFRESH_MS, DayReads, type DayBundle, type LoadOptions } from "./dayReads";
 import { RankQueue } from "./rankQueue";

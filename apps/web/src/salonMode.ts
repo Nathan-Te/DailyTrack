@@ -1,6 +1,7 @@
-import { THEMES, salonSessionAt, salonSessionEnd } from "@cdj/sim";
+import { salonSessionAt, salonSessionEnd } from "@cdj/sim";
 import { DEMO_BASE, apiBase, type ApiResult } from "./api";
 import { copyText } from "./clipboard";
+import { messageErreur, nomTheme, onLangue, t } from "./i18n";
 import { getName, getPlayerId } from "./identity";
 import {
   BOARD_POLL_MS,
@@ -18,7 +19,7 @@ import {
   sessionLabel,
   sessionMsFromParams,
   submitOpen,
-  SALON_GHOST_LABEL,
+  ghostModeLabel,
   type SalonGhostMode,
 } from "./salon";
 import { HttpSalonApi, type SalonApi, type SalonBoard, type SalonGhost, type SalonSubmitResult } from "./salonApi";
@@ -26,7 +27,7 @@ import { DemoSalonApi } from "./salonDemo";
 import { createSalonEngine, type LoadedSalonCircuit, type SalonEngine } from "./salonEngine";
 import type { GhostEntry } from "./salonGhosts";
 import type { BoardPanel } from "./boardPanel";
-import { renderPodium, renderSalonBoard } from "./salonUi";
+import { renderCountdown, renderPodium, renderSalonBoard, renderSalonBoardError } from "./salonUi";
 import { watchHref } from "./watch";
 
 // Le Salon, côté jeu (lot 26) : tout ce qui vit autour de la course — horloge, déroulé d'une session (compte à rebours, dernier essai,
@@ -59,7 +60,7 @@ export interface SalonHost {
 }
 
 export interface SalonDom {
-  /** Ligne du compte à rebours. */
+  /** La plaque du compte à rebours (`#medals`, en haut à droite). */
   countdown: HTMLElement;
   /** Grand compte à rebours de la finale (15 → 0), au centre. */
   finale: HTMLElement;
@@ -172,7 +173,7 @@ export class SalonController {
   }
 
   title(): string {
-    return `Salon ${this.label} · ${THEMES[this.circuit.theme].label}`;
+    return t("salon.circuit", { heure: this.label, theme: nomTheme(this.circuit.theme) });
   }
 
   /** Place de ta meilleure course dans la dernière version du classement. */
@@ -198,12 +199,7 @@ export class SalonController {
       // Finale : les 15 dernières secondes. Plus aucun départ, grand compte à rebours, classement d'office, rafraîchi plus souvent.
       if (c.finale && !this.finaleOn) this.enterFinale();
       else if (!c.finale && this.finaleOn) this.leaveFinale();
-      const text = `⏱ ${countdownText(c.remainingMs)}${c.finale ? " · DERNIÈRE CHANCE" : ""} · ${this.players} joueur${this.players > 1 ? "s" : ""}`;
-      if (text !== this.lastCountdown && this.dom) {
-        this.lastCountdown = text;
-        this.dom.countdown.textContent = text;
-        this.dom.countdown.classList.toggle("last", c.finale);
-      }
+      if (this.dom) this.lastCountdown = renderCountdown(this.dom.countdown, { remainingMs: c.remainingMs, finale: c.finale, players: this.players });
       if (this.finaleOn && this.dom) {
         const n = String(Math.max(0, Math.ceil(c.remainingMs / 1000)));
         if (this.dom.finale.textContent !== n) this.dom.finale.textContent = n;
@@ -248,7 +244,7 @@ export class SalonController {
       this.dom.finale.textContent = String(Math.ceil((this.endMs - this.clock.now()) / 1000));
     }
     this.host?.finale(true);
-    this.host?.banner("Dernière chance : plus de départ", 3, true);
+    this.host?.banner(t("salon.finale.derniere"), 3, true);
     this.lastBoardPoll = -1e9; // classement tout de suite
   }
 
@@ -278,7 +274,7 @@ export class SalonController {
       const r = await this.api.board(session, this.pid, this.board?.version);
       if (session !== this.session) return;
       if (!r.ok) {
-        this.lastError = r.message;
+        this.lastError = r.code;
         if (!this.board) this.renderBoard();
         return;
       }
@@ -294,7 +290,7 @@ export class SalonController {
       const by = overtakenBy(before, r.data);
       if (by) {
         this.stats.overtaken++;
-        this.host?.banner(`${by} t'a dépassé`, 1.8, true);
+        this.host?.banner(t("salon.depasse", { nom: by }), 1.8, true);
         this.host?.flash();
       }
       this.renderBoard();
@@ -306,7 +302,7 @@ export class SalonController {
 
   renderBoard(): void {
     if (this.dom) renderSalonBoard(this.dom.board, this.board, this.label, this.spectator ? undefined : watchHref(location.search));
-    if (this.dom && this.lastError && !this.board) this.dom.board.body.append(Object.assign(document.createElement("div"), { className: "error", textContent: this.lastError }));
+    if (this.dom && this.lastError && !this.board) renderSalonBoardError(this.dom.board, this.lastError);
   }
 
   /** Charge les fantômes utiles (trois premiers, devant, derrière) et prévient le jeu quand l'ensemble change. */
@@ -327,14 +323,14 @@ export class SalonController {
     const entries: GhostEntry[] = [];
     for (const w of wanted) {
       const gh = this.ghostCache.get(w.key);
-      if (gh) entries.push({ key: w.key, rank: w.rank, name: w.rank === null ? "Toi" : gh.name, ms: gh.ms, replay: gh.replay });
+      if (gh) entries.push({ key: w.key, rank: w.rank, name: w.rank === null ? t("commun.toi") : gh.name, ms: gh.ms, replay: gh.replay });
     }
     this.pushGhosts(entries);
   }
 
   private pushGhosts(others: GhostEntry[]): void {
     const entries = [...others];
-    if (this.best) entries.push({ key: `mine:${this.best.ms}`, rank: null, name: "Toi", ms: this.best.ms, replay: this.best.replay });
+    if (this.best) entries.push({ key: `mine:${this.best.ms}`, rank: null, name: t("commun.toi"), ms: this.best.ms, replay: this.best.replay });
     const signature = entries.map((e) => e.key).join("|");
     if (signature === this.ghostSignature) return;
     this.ghostSignature = signature;
@@ -364,11 +360,12 @@ export class SalonController {
     this.host = host;
     this.ghostSignature = "";
     void this.refreshGhosts();
+    onLangue(() => this.renderBoard()); // le titre et les lignes du classement suivent la langue
   }
 
   cycleGhostMode(): SalonGhostMode {
     this.ghostMode = nextSalonGhostMode(this.ghostMode);
-    this.host?.banner(SALON_GHOST_LABEL[this.ghostMode], 1.4, true);
+    this.host?.banner(ghostModeLabel(this.ghostMode), 1.4, true);
     return this.ghostMode;
   }
 
@@ -438,7 +435,7 @@ export class SalonController {
     if (!circuit) {
       this.circuits.delete(target);
       this.retryAt = performance.now() + 3000;
-      this.host?.banner("Circuit indisponible, nouvel essai…", 2.5, true);
+      this.host?.banner(t("salon.circuit.indisponible"), 2.5, true);
       setTimeout(() => void this.installNext(), 3000);
       return;
     }
@@ -491,11 +488,7 @@ export class SalonController {
       mine,
       shareLine: line,
       secondsLeft,
-      onCopy: line ? async (b) => {
-        const label = b.textContent;
-        b.textContent = (await copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`)) ? "Copié ✓" : "Copie impossible";
-        setTimeout(() => (b.textContent = label), 1600);
-      } : undefined,
+      onCopy: line ? () => copyText(`${line}\n${location.origin}${location.pathname}?mode=salon`) : undefined,
     });
   }
 
@@ -534,13 +527,13 @@ export async function bootSalon(opts: SalonOptions): Promise<SalonController | S
     api = new HttpSalonApi(opts.base);
     const t0 = Date.now();
     const r = await api.now(opts.spectator ? null : getPlayerId());
-    if (!r.ok) return { error: r.status === 404 ? "Le Salon a besoin du serveur (cette API n'a pas de Salon)" : `Salon injoignable : ${r.message}` };
+    if (!r.ok) return { error: r.status === 404 ? t("salon.boot.sansSalon") : t("salon.boot.injoignable", { raison: messageErreur(r.code) }) };
     clock.sync(r.data.serverMs, t0, Date.now());
     sessionMs = r.data.endMs - r.data.startMs; // la durée vient du serveur : on ne triche pas sur le nombre de minutes
   }
   const session = salonSessionAt(clock.now(), sessionMs);
   const circuit = await engine.circuit(session);
-  if (!circuit) return { error: "Le circuit de cette session n'a pas pu être préparé" };
+  if (!circuit) return { error: t("salon.boot.circuit") };
   controller = new SalonController(api, engine, clock, sessionMs, circuit, demo);
   controller.spectator = !!opts.spectator;
   controller.stats.mainThreadGenerations = bootGenerations;

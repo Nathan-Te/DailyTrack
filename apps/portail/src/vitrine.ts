@@ -114,6 +114,8 @@ function bloc(l: Langue): HTMLElement {
       barrePortail(t, { langue: l, pseudo: "Nathan", profil: "#" }),
       barrePortail(t, { langue: l, pseudo: null, profil: "#" }),
       barreJeu(t, { href: "../", jour, numero: 12 }),
+      // Lot I4 : le retour d'un écran d'un jeu vers l'accueil du jeu (« ‹ TRACK », un bouton).
+      barreJeu(t, { href: "#", jour, numero: 12, retour: { texte: t.t("jeu.track.titre"), ariaLabel: t.t("jeu.track.nom"), onClick: () => undefined } }),
       el("div", { classe: "vitrine-ligne" }, choixLangue(t, { langue: l }), avatar(t, { pseudo: "Kiwi" }), avatar(t, { pseudo: null })),
       // Lot I2 : l'avatar lien vers le profil commun (normal, survol, appui, focus ; sans pseudo).
       el(

@@ -91,15 +91,16 @@ test("décompte, départ et point de contrôle sonnent ; M coupe le son et le r�
   expect(log).toContain("go");
   await page.keyboard.press("KeyM");
   expect(await page.evaluate(() => window.__cdj.audio.settings.volume)).toBe(0);
-  await expect(page.locator("#btn-sound")).toContainText("🔇");
+  await expect(page.locator("#pause-sound")).toContainText("coupé"); // lot I4 : le bouton Son est dans le menu de pause (« Son : coupé »), plus dans la barre du haut
   await page.reload();
   await page.waitForFunction(() => window.__cdj?.phase);
   expect(await page.evaluate(() => window.__cdj.audio.settings.volume)).toBe(0);
   await page.keyboard.press("KeyM");
   expect(await page.evaluate(() => window.__cdj.audio.settings.volume)).toBeGreaterThan(0);
-  // le bouton fait le tour des crans
+  // le bouton du menu de pause (lot I4) coupe et remet le son
   const before = await page.evaluate(() => window.__cdj.audio.settings.volume);
-  await page.locator("#btn-sound").click();
+  await page.keyboard.press("KeyP");
+  await page.locator("#pause-sound").click();
   expect(await page.evaluate(() => window.__cdj.audio.settings.volume)).not.toBe(before);
 });
 

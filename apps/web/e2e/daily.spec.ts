@@ -51,7 +51,9 @@ test.describe("jeu (rendu 3D)", () => {
       if (expected.number >= 1) await expect(page.locator("#meta")).toContainText(`n° ${expected.number}`);
       else await expect(page.locator("#meta")).not.toContainText("n°");
       await expect(page.locator("#meta")).toContainText(dayShort(date));
-      await expect(page.locator("#medals")).toContainText("🥇");
+      // Lot I4 : l'objectif de médaille (plaque en haut à droite) : sans record, la première médaille à décrocher — le bronze — et son seuil.
+      await expect(page.locator("#medals")).toContainText("Bronze");
+      await expect(page.locator("#medals")).toContainText(/\d,\d{3}\ss/);
 
       // Pas à pas (lot 29b) : « la voiture roule » se mesure en 300 pas (2,5 s de simulation), pas en 2,5 s de temps réel — en rendu logiciel
       // la boucle ne fait que quelques pas par seconde et la distance parcourue dépendait de la charge de la machine (10,6 m relevés pour 13 attendus).

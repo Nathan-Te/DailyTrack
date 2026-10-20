@@ -4,6 +4,8 @@ Charte de la phase 3 (`seed-phase-3.md` § 6), choisie par Nathan au lot I0 le 2
 
 Révision 2 (après le lot I1) : écarts 1 à 5 du README du lot I1 inscrits (afficheur opaque, jetons de texte des médailles, tailles 14 · 16 · 21 px, espaces insécables, états des boutons).
 Révision 3 (après le lot I2) : écarts 1 à 3 du README du lot I2 inscrits (numéro et thème sous le nom du jeu, bouton de cartouche pleine largeur, profil posé sur les étiquettes) ; numéro de journée commun.
+Révision 4 (après le lot I3) : émojis de la ligne de la journée (§ 6) ; ta ligne d'un classement en moutarde (§ 9).
+Révision 5 (avant le lot I4) : surimpressions de course de Track (§ 9), maquettes `track-*.html` choisies par Nathan.
 
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
@@ -126,7 +128,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 ## 6. Les icônes
 
 - SVG au **trait** de 2 à 2,5 px, extrémités carrées, couleur `currentColor` ; formes simples (chevron, flamme, crâne, drapeau, horloge).
-- **Aucun émoji dans l'interface.** Les émojis n'apparaissent que dans les **lignes à partager** (texte collé dans une messagerie), où ils sont la convention.
+- **Aucun émoji dans l'interface.** Les émojis n'apparaissent que dans les **lignes à partager** (texte collé dans une messagerie), où ils sont la convention. Ligne de la journée : 🏆 🥇 🥈 🥉 (médailles, ceux des jeux), ✅ fini sans médaille, ⬜ pas fini, 🔥 série, ⭐ journée parfaite.
 - Une icône seule a toujours un `aria-label` ; une icône décorative est `aria-hidden`.
 
 ## 7. Les textes (le ton)
@@ -151,6 +153,8 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **Barre des jeux** : « ‹ DU JOUR » à gauche (lien vers le portail, 44 px de haut), date et numéro du jour à droite en mono.
 - **Étiquette d'une cartouche du portail** : le nom du jeu seul sur sa ligne ; le numéro du jour du jeu et le thème **en dessous** (« n° 8 · Nuit ») ; le statut sur deux rangées dont la place est réservée avant l'arrivée des données ; le bouton de la cartouche (« Jouer », « Continuer », « Rejouer ») **prend toute la largeur** et garde la même hauteur quel que soit le statut. Raison : rien ne bouge quand le statut arrive.
 - **Journée commune** : « Journée n° *N* » à droite de la date sur le portail, et « Du Jour #*N* » dans la ligne à partager. La journée n° 1 est le **23 octobre 2026** (ouverture publique) ; avant, aucun numéro n'est affiché.
+- **Surimpressions de course (Track)** : « plaques en haut » — chronomètre au centre en haut, point de contrôle et écart juste dessous, objectif de médaille à droite, pause à gauche ; le bas de l'écran est laissé aux commandes tactiles. Chaque information sur sa propre plaque asphalte nette (pas de bandeau plein, pas de transparence) ; écart signé (`+` / `−`). Maquettes : `track-hud.html`, `track-hud-paysage.html`.
+- **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place.
 - **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.
 
 ## 10. Accessibilité
