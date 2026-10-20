@@ -1,0 +1,528 @@
+/* Composants de la charte « Cartouches » (lot I1, docs/plateforme/identite.md § 2, 5, 8, 9) : classes posées par composants.ts. États :
+   survol, appui qui s'enfonce (2 px vers le bas et la droite, ombre réduite d'autant), focus (socle.css), désactivé. Les classes
+   `est-survol`, `est-appui`, `est-focus` forcent un état pour la vitrine `/ui/`. Valeurs : jetons seulement. */
+
+/* --- Logo ------------------------------------------------------------------------------------------------------------------ */
+.dj-logo {
+  display: inline-block;
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  letter-spacing: 1px;
+  line-height: 1;
+  white-space: nowrap;
+}
+.dj-logo--grand {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  font-size: var(--dj-taille-21);
+  padding: 7px 11px 6px;
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: var(--dj-ombre-logo);
+}
+.dj-logo--petit {
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-14);
+  letter-spacing: 0;
+}
+
+/* --- Boutons --------------------------------------------------------------------------------------------------------------- */
+.dj-bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dj-espace-3);
+  min-height: var(--dj-cible);
+  min-width: var(--dj-cible);
+  padding: 0 var(--dj-espace-7);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font-family: var(--dj-police-texte);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  line-height: 1.1;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform var(--dj-duree-courte), box-shadow var(--dj-duree-courte), background-color var(--dj-duree-courte);
+}
+.dj-bouton--large {
+  display: flex;
+  width: 100%;
+}
+.dj-bouton--marque {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  min-height: var(--dj-cible-portail);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.dj-bouton--secondaire {
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.dj-bouton--track {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+  border: 0;
+  border-radius: 2px;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-24);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  min-height: var(--dj-cible-jeu);
+  box-shadow: var(--track-epaisseur-courir);
+}
+.dj-bouton--jump {
+  background: var(--jump-encre);
+  color: var(--jump-jaune);
+  border: 0;
+  border-radius: var(--dj-rayon-tuile);
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  min-height: var(--dj-cible-jeu);
+  box-shadow: var(--jump-epaisseur-jouer);
+}
+/* Survol : le fond se fonce d'un cran (couleurs de la charte, sans transparence). */
+.dj-bouton--marque:hover,
+.dj-bouton--marque.est-survol {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+}
+.dj-bouton--secondaire:hover,
+.dj-bouton--secondaire.est-survol {
+  background: var(--dj-creme-2);
+}
+.dj-bouton--track:hover,
+.dj-bouton--track.est-survol {
+  background: var(--track-livree-texte);
+}
+.dj-bouton--jump:hover,
+.dj-bouton--jump.est-survol {
+  color: var(--dj-papier);
+}
+/* Appui : le bouton s'enfonce (décalage de 2 px, ombre réduite d'autant). */
+.dj-bouton--marque:active,
+.dj-bouton--secondaire:active,
+.dj-bouton--marque.est-appui,
+.dj-bouton--secondaire.est-appui {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.dj-bouton--track:active,
+.dj-bouton--jump:active,
+.dj-bouton--track.est-appui,
+.dj-bouton--jump.est-appui {
+  transform: translateY(var(--dj-enfonce));
+  box-shadow: 0 var(--dj-enfonce) 0 var(--track-livree-ombre);
+}
+.dj-bouton--jump:active,
+.dj-bouton--jump.est-appui {
+  box-shadow: 0 3px 0 var(--dj-terre);
+}
+/* Désactivé : aplat neutre lisible (jamais de transparence), aucune ombre, rien ne s'enfonce. */
+.dj-bouton:disabled,
+.dj-bouton[aria-disabled="true"] {
+  background: var(--dj-creme-2);
+  color: var(--dj-encre-douce);
+  border: var(--dj-trait) dashed var(--dj-encre-douce);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* --- Cartouche --------------------------------------------------------------------------------------------------------------- */
+.dj-cartouche {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-3);
+  padding: 0 var(--dj-espace-4) var(--dj-espace-4);
+  background: var(--dj-creme-2);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.dj-cartouche--track {
+  background: var(--track-coque);
+}
+.dj-cartouche--jump {
+  background: var(--dj-moutarde);
+}
+/* Stries de préhension : bande de 12 px, traits de 3 px tous les 8 px, en retrait de 40 px (un motif, pas un dégradé de fond). */
+.dj-cartouche__stries {
+  height: 12px;
+  margin: 0 var(--dj-stries-retrait);
+  background: repeating-linear-gradient(90deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+}
+.dj-cartouche__action {
+  display: flex;
+}
+.dj-cartouche__action > * {
+  flex: 1;
+}
+
+/* --- Étiquettes ------------------------------------------------------------------------------------------------------------- */
+.dj-etiquette {
+  border-radius: var(--dj-rayon-etiquette);
+  padding: var(--dj-espace-4) var(--dj-espace-5);
+}
+.track-etiquette {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-2);
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  min-height: 92px;
+}
+/* Bandes de livrée : rayures à 115°, 10 px d'orange pour 8 px de vide, sur le bord droit. */
+.track-etiquette__livree {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -20px;
+  width: 120px;
+  background: repeating-linear-gradient(115deg, var(--track-livree) 0 10px, transparent 10px 18px);
+}
+.track-etiquette__tete,
+.track-etiquette__texte {
+  position: relative;
+  max-width: calc(100% - 96px);
+}
+.track-etiquette__tete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--dj-espace-4);
+}
+.track-etiquette__titre {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-38);
+  line-height: 1;
+  letter-spacing: 1px;
+}
+.track-etiquette__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+}
+.track-etiquette__texte {
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+.jump-etiquette {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+  background: var(--jump-papier);
+  color: var(--jump-encre);
+  border: var(--dj-trait) solid var(--jump-encre);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
+  min-height: 92px;
+}
+.jump-etiquette__corps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-1);
+}
+.jump-etiquette__tete {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 var(--dj-espace-4);
+}
+.jump-etiquette__titre {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-38);
+  line-height: 1;
+}
+.jump-etiquette__numero {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.jump-etiquette__texte {
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.jump-etiquette__dessin {
+  flex: none;
+}
+.jump-dessin__sol,
+.jump-dessin__oeil {
+  fill: var(--jump-encre);
+}
+.jump-dessin__danger {
+  fill: var(--jump-danger);
+}
+.jump-dessin__heros {
+  fill: var(--jump-jaune);
+  stroke: var(--jump-encre);
+  stroke-width: 2.5;
+}
+.jump-dessin__trajet {
+  fill: none;
+  stroke: var(--jump-encre);
+  stroke-width: 2;
+  stroke-dasharray: 2 3;
+}
+
+/* --- Tuile, afficheur ------------------------------------------------------------------------------------------------------- */
+.dj-tuile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--dj-espace-4) var(--dj-espace-5);
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+}
+.dj-tuile__legende {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.dj-tuile__valeur {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-24);
+  line-height: 1.15;
+}
+.dj-tuile__sous-texte {
+  font-size: var(--dj-taille-12);
+  color: var(--dj-encre-douce);
+}
+.dj-afficheur {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-5);
+  padding: 9px var(--dj-espace-6);
+  background: var(--dj-ecran);
+  border-radius: var(--dj-rayon-afficheur);
+  box-shadow: var(--dj-ombre-afficheur);
+}
+.dj-afficheur__legende {
+  max-width: 12ch;
+  color: var(--dj-ecran-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  line-height: 1.3;
+}
+.dj-afficheur__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: var(--dj-taille-32);
+  letter-spacing: 1px;
+  color: var(--dj-ambre);
+}
+
+/* --- Barres ------------------------------------------------------------------------------------------------------------------ */
+.dj-barre-portail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+}
+.dj-barre-portail__droite {
+  display: flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+}
+.dj-barre-jeu {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dj-espace-3);
+  padding: var(--dj-espace-4) var(--dj-marge);
+}
+.dj-barre-jeu__retour {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-2);
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  text-decoration: none;
+}
+.dj-barre-jeu__retour:hover .dj-logo,
+.dj-barre-jeu__retour.est-survol .dj-logo {
+  text-decoration: underline;
+  text-decoration-thickness: var(--dj-trait);
+  text-underline-offset: 3px;
+}
+.dj-barre-jeu__jour {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-12);
+}
+
+/* --- Choix de la langue, avatar ------------------------------------------------------------------------------------------------ */
+.dj-choix-langue {
+  display: flex;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-tuile);
+  overflow: hidden;
+}
+.dj-choix-langue__bouton {
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  border: 0;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+  transition: background-color var(--dj-duree-courte);
+}
+.dj-choix-langue__bouton:hover,
+.dj-choix-langue__bouton.est-survol {
+  background: var(--dj-creme-2);
+}
+.dj-choix-langue__bouton[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-creme);
+  cursor: default;
+}
+.dj-choix-langue__bouton:focus-visible,
+.dj-choix-langue__bouton.est-focus {
+  outline-offset: -5px;
+  outline-color: var(--dj-moutarde);
+}
+.dj-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-14);
+}
+.dj-avatar--vide {
+  background: var(--dj-creme-2);
+}
+
+/* --- Icônes ------------------------------------------------------------------------------------------------------------------ */
+.dj-icone {
+  flex: none;
+  stroke-width: var(--dj-trait-icone);
+  vertical-align: middle;
+}
+.dj-icone--flamme {
+  fill: var(--dj-terre);
+  stroke: var(--dj-encre);
+}
+
+/* --- Médailles --------------------------------------------------------------------------------------------------------------- */
+.dj-medaille {
+  --medaille: var(--dj-or);
+  --medaille-texte: var(--dj-medaille-texte);
+}
+.dj-medaille--auteur {
+  --medaille: var(--dj-auteur);
+  --medaille-texte: var(--dj-auteur-texte);
+}
+.dj-medaille--argent {
+  --medaille: var(--dj-argent);
+}
+.dj-medaille--bronze {
+  --medaille: var(--dj-bronze);
+}
+.dj-medaille--track:not(.dj-medaille--auteur) {
+  --medaille-texte: var(--track-asphalte);
+}
+/* Pastille : un rond de la couleur (vide si pas encore) et le nom. */
+.dj-medaille--pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-1);
+  font-weight: 600;
+  font-size: var(--dj-taille-13);
+}
+.dj-medaille__pastille {
+  width: 14px;
+  height: 14px;
+  border-radius: var(--dj-rayon-avatar);
+  border: var(--dj-trait) solid currentColor;
+  background: var(--medaille);
+}
+.dj-medaille--pastille.dj-medaille--pas-encore .dj-medaille__pastille {
+  background: transparent;
+  border: var(--dj-trait-fort) solid var(--medaille);
+}
+/* Case : légende en capitales et valeur mono (grille des seuils). */
+.dj-medaille--case {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 6px 5px;
+  border: var(--dj-trait) solid var(--medaille);
+  border-radius: 2px;
+}
+.dj-medaille--case .dj-medaille__nom {
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.dj-medaille__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.dj-medaille--case.dj-medaille--obtenue {
+  background: var(--medaille);
+  color: var(--medaille-texte);
+}
+/* Track, pas encore : contour de la couleur, nom dans la couleur, sur asphalte. */
+.dj-medaille--case.dj-medaille--track.dj-medaille--pas-encore {
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+}
+.dj-medaille--case.dj-medaille--track.dj-medaille--pas-encore .dj-medaille__nom {
+  color: var(--medaille);
+}
+/* Jump : bordure épaisse encre ; pas encore = aplat neutre (jaune de l'étiquette), obtenue = aplat de la couleur. */
+.dj-medaille--case.dj-medaille--jump {
+  border: var(--dj-trait-fort) solid var(--jump-encre);
+  border-radius: 0;
+}
+.dj-medaille--case.dj-medaille--jump.dj-medaille--pas-encore {
+  background: var(--jump-jaune);
+  color: var(--jump-encre);
+}
+/* Marque, pas encore : contour de la couleur sur crème, texte encre. */
+.dj-medaille--case.dj-medaille--pas-encore:not(.dj-medaille--track):not(.dj-medaille--jump) {
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border-width: var(--dj-trait-fort);
+}

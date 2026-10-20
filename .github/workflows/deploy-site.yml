@@ -157,7 +157,8 @@ jobs:
           VITE_PRODUCTION: ${{ inputs.cible == 'production' && '1' || '' }}
         run: |
           npm run build
-          node scripts/site.mjs site --sortie site
+          # Lot I1 : la vitrine des composants (/ui/) n'est jamais publiée en production (recette et aperçus seulement).
+          node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }}
           node scripts/site.mjs firebase --site "${{ steps.cfg.outputs.site }}" --service "${{ steps.cfg.outputs.service }}" --region "$REGION" --public site --sortie firebase.json
 
       - name: Authentification Google Cloud (fédération d'identité)

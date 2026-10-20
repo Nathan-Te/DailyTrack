@@ -1,0 +1,73 @@
+/* Mise en page du portail (lot I1, charte § 9) : mobile d'abord (portrait 390 px, marges de 16 px), contenu aligné à gauche, hiérarchie nette
+   (barre, date, titre de section, cartouches, pied) ; en paysage et sur grand écran, les cartouches côte à côte, largeur limitée à ≈ 720 px,
+   fond crème sur toute la fenêtre. Valeurs : jetons de @cdj/ui seulement. */
+.portail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+  max-width: var(--dj-largeur-portail);
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0 auto;
+  padding: var(--dj-espace-6) var(--dj-marge);
+}
+.portail-date {
+  font-family: var(--dj-police-marque);
+  font-size: var(--dj-taille-22);
+  line-height: 1.2;
+  border-bottom: var(--dj-trait-fort) solid var(--dj-encre);
+  padding-bottom: var(--dj-espace-2);
+}
+.portail-jeux {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dj-espace-5);
+}
+.portail-jeux__titre {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  font-size: var(--dj-taille-15);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.portail-etagere {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--dj-espace-7);
+  align-items: start;
+}
+@media (min-width: 600px) {
+  .portail-etagere {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.portail-pied {
+  margin-top: auto;
+  padding-top: var(--dj-espace-8);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--dj-espace-1);
+  font-size: var(--dj-taille-13);
+  color: var(--dj-encre-douce);
+}
+.portail-pied__lien {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  font-weight: 600;
+  text-decoration-thickness: var(--dj-trait);
+  text-underline-offset: 3px;
+}
+.portail-sans-script {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dj-espace-7);
+  padding: var(--dj-marge);
+}
+.portail-sans-script a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+}

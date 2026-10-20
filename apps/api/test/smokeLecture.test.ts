@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, type DailyLevel } from "@cdj/jump-sim";
 import { HEALTH_FIELDS, isLocalBase, readOnlyFetch, readOnlySmoke, smokeRefusal, smokeSummary, type FetchFn } from "../scripts/smokeRead";
-import { makeApi, parisDayStart, playerId, TEST_DB, type TestApi } from "./helpers";
+import { makeApi, parisDayStart, playerId, TEST_DB, verifierErreur, type TestApi } from "./helpers";
 
 // Lot P4 (plateforme) : `smoke --lecture-seule`, la vérification de la production après chaque déploiement. Elle **n'écrit jamais rien**
 // (des GET seulement, sans identifiant de joueur : la base est identique avant et après), et c'est **le seul mode permis contre la production**
@@ -22,7 +22,9 @@ beforeAll(() => {
 function fetchOf(t: TestApi, methods: string[]): FetchFn {
   return async (url, init = {}) => {
     methods.push((init.method ?? "GET").toUpperCase());
-    return t.api.handle(new Request(url.replace(BASE, "http://api.test"), init), { clientKey: "198.51.100.9" });
+    const res = await t.api.handle(new Request(url.replace(BASE, "http://api.test"), init), { clientKey: "198.51.100.9" });
+    if (res.status >= 400) verifierErreur(res.status, await res.clone().json()); // lot I1 : une erreur a un code de la liste
+    return res;
   };
 }
 

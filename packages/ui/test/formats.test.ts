@@ -1,0 +1,46 @@
+import { daysFromCivil } from "@cdj/core";
+import { describe, expect, it } from "vitest";
+import { formatDate, formatDateCourte, formatNombre, formatNumeroJour, formatRang, formatTemps, majuscule } from "../src/formats";
+
+// Lot I1 (charte § 7) : les formats par langue, avec Intl. Espace insécable (U+00A0) entre un nombre et son unité.
+const NB = " ";
+const MARDI = daysFromCivil(2026, 10, 20);
+
+describe("formats par langue", () => {
+  it("temps : 31,402 s / 31.402 s ; au-delà d'une minute, 1:02,345 / 1:02.345", () => {
+    expect(formatTemps(31_402, "fr")).toBe(`31,402${NB}s`);
+    expect(formatTemps(31_402, "en")).toBe(`31.402${NB}s`);
+    expect(formatTemps(5, "fr")).toBe(`0,005${NB}s`);
+    expect(formatTemps(59_999.6, "fr")).toBe("1:00,000");
+    expect(formatTemps(62_345, "fr")).toBe("1:02,345");
+    expect(formatTemps(62_345, "en")).toBe("1:02.345");
+    expect(formatTemps(-3, "en")).toBe(`0.000${NB}s`);
+  });
+
+  it("nombres : séparateurs de la langue", () => {
+    expect(formatNombre(1284, "fr")).toBe("1\u00a0284");
+    expect(formatNombre(1284, "en")).toBe("1,284");
+    expect(formatNombre(31.4, "fr", 3)).toBe("31,400");
+    expect(formatNombre(31.4, "en", 3)).toBe("31.400");
+  });
+
+  it("rangs : 1er, 2e, 14e / 1st, 2nd, 3rd, 14th, 21st, 112th", () => {
+    expect([1, 2, 14].map((r) => formatRang(r, "fr"))).toEqual(["1er", "2e", "14e"]);
+    expect([1, 2, 3, 4, 11, 12, 13, 14, 21, 22, 23, 112].map((r) => formatRang(r, "en"))).toEqual(["1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "14th", "21st", "22nd", "23rd", "112th"]);
+  });
+
+  it("dates : « mardi 20 octobre » / « Tuesday, October 20 », capitale en tête de ligne, jamais le fuseau du navigateur", () => {
+    expect(formatDate(MARDI, "fr")).toBe("mardi 20 octobre");
+    expect(formatDate(MARDI, "en")).toBe("Tuesday, October 20");
+    expect(formatDate(MARDI, "fr", { capitale: true })).toBe("Mardi 20 octobre");
+    expect(formatDate(daysFromCivil(2027, 1, 1), "fr")).toBe("vendredi 1 janvier");
+    expect(formatDateCourte(MARDI, "fr", { capitale: true })).toBe("Mar. 20 oct.");
+    expect(formatDateCourte(MARDI, "en")).toBe("Tue, Oct 20");
+    expect(majuscule("été", "fr")).toBe("Été");
+  });
+
+  it("numéro du jour : n° 12 / #12", () => {
+    expect(formatNumeroJour(12, "fr")).toBe(`n°${NB}12`);
+    expect(formatNumeroJour(12, "en")).toBe("#12");
+  });
+});

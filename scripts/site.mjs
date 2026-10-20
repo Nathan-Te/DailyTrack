@@ -1,10 +1,11 @@
 // Le site de playdujour.com (lot R4 de la plateforme) : assemblage et configuration Firebase. (Lot R5 : plus de pages de redirection de
 // l'ancienne adresse GitHub Pages.)
 // Fonctions pures testées (apps/portail/test/site.test.ts) ; ligne de commande utilisée par .github/workflows/*.yml et les e2e :
-//   node scripts/site.mjs site [--sortie site]
+//   node scripts/site.mjs site [--sortie site] [--production]
 //        → construit le portail (apps/portail) et assemble `site/` : portail à la racine, DailyTrack (apps/web/dist) sous /track/, DailyJump
 //          (apps/jump/dist) sous /jump/, la page des mentions légales (lot R5) sous /mentions-legales/ ; vérifie que chaque niveau figé (apps/jump/public/levels) est dans le site, identique. Les deux jeux
-//          doivent être construits avant (`npm run build`).
+//          doivent être construits avant (`npm run build`). Lot I1 : la vitrine des composants (`/ui/`) est dans le site de la recette et des
+//          aperçus, **jamais en production** : `--production` (deploy-site.yml, cible production) ne la construit pas, et vérifie qu'elle est absente.
 //   node scripts/site.mjs firebase --site <identifiant du site> --service <service Cloud Run> [--region europe-west1] [--public site] [--sortie firebase.deploy.json]
 //        → la configuration Firebase d'un déploiement : `firebase.json` (en-têtes, renvoi /api/**), avec le site et le service de la cible.
 import { execFileSync } from "node:child_process";
@@ -47,15 +48,23 @@ function option(argv, name, fallback) {
   return at >= 0 && argv[at + 1] !== undefined ? argv[at + 1] : fallback;
 }
 
-function viteBuild() {
-  execFileSync("npx", ["tsc", "-p", "apps/portail"], { cwd: ROOT, stdio: "inherit" });
-  execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--logLevel", "warn"], { cwd: ROOT, stdio: "inherit" });
+/** Lot I1 : le dossier de la vitrine des composants dans le site (recette et aperçus seulement). */
+export const VITRINE = "ui";
+
+/** L'environnement de la construction du portail : la production ne construit pas la vitrine (`PORTAIL_VITRINE=0`, apps/portail/vite.config.ts). */
+export function portailEnv({ production = false } = {}, env = process.env) {
+  return { ...env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", PORTAIL_VITRINE: production ? "0" : "1" };
 }
 
-/** Assemble le site (portail, /track/, /jump/) ; rend le nombre de niveaux figés vérifiés. */
-export function assembleSite(out) {
+function viteBuild(options) {
+  execFileSync("npx", ["tsc", "-p", "apps/portail"], { cwd: ROOT, stdio: "inherit" });
+  execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--logLevel", "warn"], { cwd: ROOT, stdio: "inherit", env: portailEnv(options) });
+}
+
+/** Assemble le site (portail, /track/, /jump/) ; rend le nombre de niveaux figés vérifiés. `production` : sans la vitrine `/ui/`. */
+export function assembleSite(out, { production = false } = {}) {
   for (const part of LAYOUT.slice(1)) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
-  viteBuild();
+  viteBuild({ production });
   rmSync(out, { recursive: true, force: true });
   for (const part of LAYOUT) {
     const dest = join(out, part.to);
@@ -69,6 +78,10 @@ export function assembleSite(out) {
     const got = join(out, "jump/levels", f);
     if (!existsSync(got) || !readFileSync(got).equals(readFileSync(join(levels, f)))) throw new Error(`niveau figé absent ou différent du site : jump/levels/${f}`);
   }
+  // Lot I1 : la vitrine n'est jamais publiée en production ; ailleurs elle doit y être.
+  const vitrine = existsSync(join(out, VITRINE, "index.html"));
+  if (production && vitrine) throw new Error(`la vitrine /${VITRINE}/ ne doit pas être dans le site de production`);
+  if (!production && !vitrine) throw new Error(`vitrine /${VITRINE}/ absente du site`);
   return files.length;
 }
 
@@ -78,8 +91,9 @@ if (isMain) {
   try {
     if (cmd === "site") {
       const out = resolve(option(argv, "--sortie", "site"));
-      const n = assembleSite(out);
-      console.log(`site assemblé dans ${out} : portail, /track/, /jump/ ; ${n} niveau(x) figé(s) vérifié(s)`);
+      const production = argv.includes("--production");
+      const n = assembleSite(out, { production });
+      console.log(`site assemblé dans ${out} : portail, /track/, /jump/${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${n} niveau(x) figé(s) vérifié(s)`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));
       const config = firebaseConfig(template, { site: option(argv, "--site"), service: option(argv, "--service"), region: option(argv, "--region", REGION), publicDir: option(argv, "--public") });
@@ -87,7 +101,7 @@ if (isMain) {
       writeFileSync(out, JSON.stringify(config, null, 2) + "\n");
       console.log(`configuration Firebase : ${out} (site ${config.hosting.site}, /api/** → ${config.hosting.rewrites.find((r) => r.run).run.serviceId})`);
     } else {
-      console.error("usage : node scripts/site.mjs site [--sortie site] · firebase --site <id> --service <svc>");
+      console.error("usage : node scripts/site.mjs site [--sortie site] [--production] · firebase --site <id> --service <svc>");
       process.exit(2);
     }
   } catch (e) {

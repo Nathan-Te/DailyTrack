@@ -3,6 +3,7 @@ import { parisClockSource } from "@cdj/clock";
 import type { CdjInstance, CdjOptions } from "./cdj";
 import { WithHeaders, mergeVary } from "./cache";
 import type { SqlDb } from "./db";
+import { CODES_ERREUR, ERREUR_INTERNE, corpsErreur } from "./codesErreur";
 import { HttpError } from "./errors";
 import type { GameInstance, RequestInfo } from "./games";
 import { createIdentityRoutes } from "./identity";
@@ -162,7 +163,8 @@ export function createApi(options: ApiOptions) {
       return reply(200, { ok: true, db: "ok", ...body });
     } catch (e) {
       log("ERROR", "santé : base injoignable", { error: e instanceof Error ? e.message.slice(0, 200) : "inconnue" });
-      return reply(503, { ok: false, db: "error", ...body });
+      // Lot I1 : le code et le message des autres erreurs, en plus de `ok` et `db` (que la sonde, `smoke` et la CI lisent).
+      return reply(CODES_ERREUR.db_unavailable.status, { ok: false, db: "error", ...corpsErreur("db_unavailable", "Base de données injoignable"), ...body });
     }
   }
 
@@ -213,7 +215,7 @@ export function createApi(options: ApiOptions) {
         return reply(e.status, { error: e.code, message: e.message, ...e.details }, e.headers);
       }
       log("ERROR", "erreur interne", { error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 300) : "inconnue" });
-      return reply(500, { error: "internal", message: "Erreur interne" });
+      return reply(CODES_ERREUR.internal.status, ERREUR_INTERNE);
     }
   }
 

@@ -1,0 +1,77 @@
+/* Styles de base de la charte « Cartouches » (lot I1, docs/plateforme/identite.md) : remise à zéro légère, fond et texte de page, focus
+   visible (§ 10), mouvement réduit (§ 8), cibles tactiles. Toutes les valeurs viennent des jetons (jetons.css). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+body {
+  margin: 0;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  font-weight: 400;
+  line-height: 1.4;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  cursor: pointer;
+}
+a {
+  color: inherit;
+}
+/* Focus visible : contour encre décalé sur fond clair, ambre sur fond sombre (asphalte, afficheur : classe `dj-sombre`). */
+:focus-visible,
+.est-focus {
+  outline: var(--dj-focus) solid var(--dj-encre);
+  outline-offset: var(--dj-focus-ecart);
+}
+.dj-sombre :focus-visible,
+.dj-sombre .est-focus,
+.dj-sombre:focus-visible {
+  outline-color: var(--dj-ambre);
+}
+/* Une cible tactile : 44 px au moins. */
+.dj-cible {
+  min-width: var(--dj-cible);
+  min-height: var(--dj-cible);
+}
+/* Lu par les lecteurs d'écran, invisible à l'œil. */
+.dj-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.dj-chiffres {
+  font-family: var(--dj-police-chiffres);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}

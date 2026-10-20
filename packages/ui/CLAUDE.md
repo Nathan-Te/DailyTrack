@@ -1,0 +1,24 @@
+# `packages/ui` (`@cdj/ui`) : le socle commun de l'interface (lot I1, phase 3)
+
+Chargé quand on lit un fichier de `packages/ui`. **Zone partagée par toutes les applications** (portail, Track, Jump : un seul propriétaire à la fois ; un lot n'y touche que si son prompt le dit). README : `docs/plateforme/lots/lot-I1-socle-ui.md`. Vision : `docs/plateforme/seed-phase-3.md` (ne pas modifier).
+
+**La charte `docs/plateforme/identite.md` fait foi** (direction « Cartouches », lot I0) ; seul Nathan la modifie. Un écart nécessaire se **propose** dans le README du lot, il ne s'applique pas. Maquettes de référence (à lire, jamais construites ni servies) : `docs/plateforme/maquettes/cartouches/`.
+
+## Ce que contient le paquet
+- `src/jetons.ts` — **la seule source** des jetons (couleurs § 3, polices, échelle typographique, rayons, traits, ombres nettes, espacements, cibles, durées) ; `src/jetons.css` (`--dj-*`, `--track-*`, `--jump-*`) en est **généré** : `MAJ_JETONS=1 npx vitest run packages/ui/test/jetons.test.ts`. `valeurJeton`, `varJeton`.
+- `src/socle.css` (base : fond, texte, focus visible, mouvement réduit, `.dj-cible`, `.dj-cache`), `src/composants.css`, `src/styles.css` (les trois) ; `src/polices/<famille>-<graisse>[-italique].css` : **une feuille par face**, l'application n'importe que les siennes. Fichiers `woff2` (sous-ensemble latin) et licences OFL dans `polices/`, copiés des paquets `@fontsource` par `node packages/ui/scripts/polices.mjs` (`polices/sources.json` : version, taille, empreinte).
+- `src/composants.ts` — `logo`, `bouton` (marque, secondaire, track, jump), `cartouche` + `etiquetteTrack` / `etiquetteJump`, `tuile`, `afficheur`, `barrePortail`, `barreJeu`, `choixLangue`, `avatar`, `medaille` (pastille, case) ; `src/icones.ts` (chevron, flamme, crâne, drapeau, horloge, profil) ; `src/dom.ts` (`el`, `svg` : jamais `innerHTML`).
+- `src/i18n.ts` — `traducteur(langue, ...catalogues)` : clés `zone.objet.detail`, paramètres `{nom}` (nombres au format de la langue), pluriels par `Intl.PluralRules` sur le paramètre `n` (`{ one, other }`). `src/formats.ts` — `formatTemps`, `formatNombre`, `formatRang`, `formatDate`, `formatDateCourte`, `formatNumeroJour`, `majuscule` (espaces insécables U+00A0 ; aucune police de la charte n'a U+202F).
+- `src/catalogue.ts` — le **catalogue commun** (composants, noms des jeux, **chaque code d'erreur du serveur** sous `erreur.<code>` : liste unique `apps/api/src/codesErreur.ts`). `src/contraste.ts` — les **paires texte / fond** déclarées et leur rapport WCAG.
+- `outils/vite.ts` (Node, construction) — `pagesDuSocle` : textes du HTML pré-remplis depuis le catalogue (`data-t`, `data-t-<attr>`), couleurs des jetons (`data-jeton-<attr>`), icône d'onglet (`data-icone-du-jour`), préchargement des polices (`data-precharge-polices`).
+- La **langue commune** (`cdj:langue`, détection, lecture, écriture) est dans `@cdj/profile` (`lireLangue`, `ecrireLangue`) : ce paquet ne touche ni au stockage ni à `navigator`.
+
+## Consignes
+- **Toute couleur, police, rayon, ombre et durée vient des jetons** (`var(--…)`) : aucune valeur en dur dans une feuille, un composant ou une application (test `jetons.test.ts`).
+- **Aucune chaîne d'interface en dur** : toujours une clé de catalogue `fr` **et** `en` (parité : `catalogues.test.ts`) ; les noms propres passent aussi par le catalogue, ou portent une marque `i18n-ok: <raison>` (`chainesEnDur.test.ts`, dossiers vérifiés et catalogues des applications : `test/applications.ts` — **les lots I4 et I5 y ajoutent leurs dossiers et catalogues**).
+- **Pas d'émoji dans l'interface** (seulement dans les lignes à partager) ; icônes SVG au trait, `currentColor`, `aria-hidden` si décoratives, `aria-label` si seules.
+- **Ombres nettes seulement**, pas de dégradé de fond (seuls les motifs : stries, livrée), **pas de translucidité** (ni `opacity`, ni `rgba`, ni flou).
+- **Cibles de 44 px**, **focus visible** (contour 3 px encre, ambre sur fond sombre : classe `dj-sombre`), mouvement réduit respecté, vrais éléments (`button`, `a`).
+- **Ajouter un composant = l'ajouter à la vitrine `/ui/`** (`apps/portail/src/vitrine.ts`) dans tous ses états ; **ajouter une paire de couleurs = une ligne de `PAIRES`** (`src/contraste.ts`), qui doit passer le test de contraste (4,5:1 ; 3:1 pour 24 px et plus).
+- **Une modification de `packages/ui` relance les tests de toutes les applications** (`scripts/ci-scope.mjs` : les trois catégories).
+- Tests : `npx vitest run packages/ui` (jetons, contrastes, formats, traduction, catalogues et codes d'erreur, chaînes en dur, polices) ; e2e du portail et de la vitrine : `apps/web/e2e/portail.spec.ts`.

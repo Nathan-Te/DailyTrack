@@ -1,0 +1,236 @@
+import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/polices/archivo-black-400.css";
+import "@cdj/ui/src/polices/archivo-400.css";
+import "@cdj/ui/src/polices/archivo-600.css";
+import "@cdj/ui/src/polices/archivo-700.css";
+import "@cdj/ui/src/polices/jetbrains-mono-500.css";
+import "@cdj/ui/src/polices/jetbrains-mono-700.css";
+import "@cdj/ui/src/polices/barlow-condensed-600.css";
+import "@cdj/ui/src/polices/barlow-condensed-700-italique.css";
+import "@cdj/ui/src/polices/barlow-condensed-800-italique.css";
+import "@cdj/ui/src/polices/lilita-one-400.css";
+import "./vitrine.css";
+import { parisDay } from "@cdj/clock";
+import { ecrireLangue, lireLangue, type Langue } from "@cdj/profile";
+import {
+  CATALOGUE_COMMUN,
+  COULEURS,
+  ICONES,
+  LANGUES,
+  MEDAILLES,
+  PAIRES,
+  afficheur,
+  avatar,
+  barreJeu,
+  barrePortail,
+  bouton,
+  cartouche,
+  choixLangue,
+  el,
+  etiquetteJump,
+  etiquetteTrack,
+  formatNombre,
+  formatNumeroJour,
+  formatTemps,
+  icone,
+  logo,
+  medaille,
+  traducteur,
+  tuile,
+  valeurJeton,
+  verifierPaire,
+  type Jeu,
+  type NomCouleur,
+  type VarianteBouton,
+} from "@cdj/ui";
+import { CATALOGUE_VITRINE } from "./catalogueVitrine";
+import { stockageDuPortail } from "./stockage";
+
+// La vitrine des composants (`/ui/`, lot I1) : chaque composant de @cdj/ui dans tous ses états, en français ET en anglais (côte à côte), sur
+// fond crème et sur asphalte, les médailles, la table des couleurs et les contrastes calculés des paires déclarées. Pour que Nathan valide le
+// rendu à l'œil (seed-phase-3.md § 8). Recette et aperçus seulement : jamais construite pour la production (scripts/site.mjs).
+// Les textes de la page suivent la langue de la plateforme ; les blocs « fr » et « en » montrent chacun les composants dans leur langue.
+
+const stockage = stockageDuPortail();
+let langue: Langue = lireLangue(stockage, navigator.languages).langue;
+const traduire = (l: Langue) => traducteur(l, CATALOGUE_VITRINE, CATALOGUE_COMMUN);
+type T = ReturnType<typeof traduire>;
+
+const ETATS = ["normal", "survol", "appui", "focus", "desactive"] as const;
+const VARIANTES: readonly VarianteBouton[] = ["marque", "secondaire", "track", "jump"];
+const CLE_ETAT = { normal: "vitrine.etat.normal", survol: "vitrine.etat.survol", appui: "vitrine.etat.appui", focus: "vitrine.etat.focus", desactive: "vitrine.etat.desactive" } as const;
+const CLE_BOUTON = { marque: "vitrine.bouton.marque", secondaire: "vitrine.bouton.secondaire", track: "vitrine.bouton.track", jump: "vitrine.bouton.jump" } as const;
+const CLE_ICONE = { chevron: "icone.chevron", flamme: "icone.flamme", crane: "icone.crane", drapeau: "icone.drapeau", horloge: "icone.horloge", profil: "icone.profil" } as const;
+/** Seuils de démonstration (ms) et médailles obtenues pour l'exemple. */
+const SEUILS = { auteur: 29_880, or: 31_500, argent: 34_000, bronze: 38_000 } as const;
+
+function section(titre: string, id: string, ...contenu: HTMLElement[]): HTMLElement {
+  return el("section", { classe: "vitrine-section", attrs: { id, "aria-labelledby": `${id}-titre` } }, el("h2", { classe: "vitrine-section__titre", attrs: { id: `${id}-titre` }, texte: titre }), ...contenu);
+}
+
+function etiquetteEtat(t: T, cle: keyof typeof CLE_ETAT): HTMLElement {
+  return el("span", { classe: "vitrine-etat", texte: t.t(CLE_ETAT[cle]) });
+}
+
+/** La grille des boutons : variantes × états. */
+function boutons(t: T): HTMLElement {
+  return el(
+    "div",
+    { classe: "vitrine-grille vitrine-grille--boutons" },
+    ...VARIANTES.flatMap((v) =>
+      ETATS.map((e) =>
+        el(
+          "div",
+          { classe: "vitrine-case" },
+          bouton({ texte: t.t(CLE_BOUTON[v]), variante: v, desactive: e === "desactive", etat: e === "survol" ? "est-survol" : e === "appui" ? "est-appui" : e === "focus" ? "est-focus" : undefined }),
+          etiquetteEtat(t, e),
+        ),
+      ),
+    ),
+  );
+}
+
+function medailles(t: T, jeu: Jeu | undefined): HTMLElement {
+  return el(
+    "div",
+    { classe: "vitrine-medailles" },
+    el("div", { classe: "vitrine-grille vitrine-grille--4" }, ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: m !== "auteur", forme: "case", jeu, valeur: formatTemps(SEUILS[m], t.langue) }))),
+    el("div", { classe: "vitrine-grille vitrine-grille--4" }, ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: false, forme: "case", jeu, valeur: formatTemps(SEUILS[m], t.langue) }))),
+  );
+}
+
+/** Tous les composants dans une langue. */
+function bloc(l: Langue): HTMLElement {
+  const t = traduire(l);
+  const jour = parisDay(Date.now());
+  return el(
+    "div",
+    { classe: "vitrine-langue", attrs: { lang: l, "data-langue-bloc": l } },
+    el("h2", { classe: "vitrine-langue__titre", texte: t.t(l === "fr" ? "langue.fr.nom" : "langue.en.nom") }),
+    section(
+      t.t("vitrine.section.marque"),
+      `marque-${l}`,
+      el("div", { classe: "vitrine-ligne" }, logo(t), logo(t, { taille: "petit" })),
+      barrePortail(t, { langue: l, pseudo: "Nathan" }),
+      barrePortail(t, { langue: l, pseudo: null }),
+      barreJeu(t, { href: "../", jour, numero: 12 }),
+      el("div", { classe: "vitrine-ligne" }, choixLangue(t, { langue: l }), avatar(t, { pseudo: "Kiwi" }), avatar(t, { pseudo: null })),
+    ),
+    section(
+      t.t("vitrine.section.boutons"),
+      `boutons-${l}`,
+      el("h3", { classe: "vitrine-sous-titre", texte: t.t("vitrine.fond.creme") }),
+      boutons(t),
+      el("div", { classe: "vitrine-asphalte dj-sombre" }, el("h3", { classe: "vitrine-sous-titre", texte: t.t("vitrine.fond.asphalte") }), boutons(t)),
+    ),
+    section(
+      t.t("vitrine.section.cartouches"),
+      `cartouches-${l}`,
+      el(
+        "div",
+        { classe: "vitrine-etagere" },
+        cartouche({
+          jeu: "track",
+          etiquette: etiquetteTrack({ titre: t.t("jeu.track.titre"), numero: formatNumeroJour(12, l), texte: t.t("vitrine.etiquette.track"), niveau: "h3" }),
+          action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", pleineLargeur: true }),
+        }),
+        cartouche({
+          jeu: "jump",
+          etiquette: etiquetteJump({ titre: t.t("jeu.jump.titre"), numero: formatNumeroJour(12, l), texte: t.t("vitrine.etiquette.jump"), niveau: "h3" }),
+          action: bouton({ texte: t.t("vitrine.bouton.marque"), href: "#", pleineLargeur: true }),
+        }),
+        cartouche({ etiquette: el("div", { classe: "dj-etiquette vitrine-etiquette-vide" }, logo(t)) }),
+      ),
+    ),
+    section(
+      t.t("vitrine.section.tuiles"),
+      `tuiles-${l}`,
+      el(
+        "div",
+        { classe: "vitrine-grille vitrine-grille--2" },
+        tuile({ legende: t.t("vitrine.tuile.legende"), valeur: t.t("vitrine.tuile.valeur", { n: 5 }), sousTexte: t.t("vitrine.tuile.sous", { n: 2 }), icone: icone("flamme", { taille: 22 }) }),
+        tuile({ legende: t.t("vitrine.tuile.legende"), valeur: t.t("vitrine.tuile.valeur", { n: 1 }), sousTexte: t.t("vitrine.tuile.sous", { n: 1 }) }),
+      ),
+      afficheur({ legende: t.t("vitrine.afficheur.legende"), valeur: "07:42:18" }),
+    ),
+    section(
+      t.t("vitrine.section.medailles"),
+      `medailles-${l}`,
+      el("div", { classe: "vitrine-ligne" }, ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: true })), ...MEDAILLES.map((m) => medaille(t, { type: m, obtenue: false }))),
+      medailles(t, undefined),
+      el("div", { classe: "vitrine-asphalte dj-sombre" }, medailles(t, "track")),
+      el("div", { classe: "vitrine-jaune" }, medailles(t, "jump")),
+    ),
+    section(
+      t.t("vitrine.section.icones"),
+      `icones-${l}`,
+      el("div", { classe: "vitrine-ligne" }, ...ICONES.map((n) => el("span", { classe: "vitrine-icone" }, icone(n, { label: t.t(CLE_ICONE[n]), taille: 28 }), el("span", { attrs: { "aria-hidden": "true" }, texte: t.t(CLE_ICONE[n]) })))),
+      el("div", { classe: "vitrine-asphalte dj-sombre vitrine-ligne" }, ...ICONES.map((n) => icone(n, { label: t.t(CLE_ICONE[n]), taille: 28 }))),
+    ),
+  );
+}
+
+/** La table des couleurs et celle des contrastes (rapports calculés, seuils de la charte § 10). */
+function couleurs(t: T): HTMLElement[] {
+  const table = el(
+    "div",
+    { classe: "vitrine-nuancier" },
+    ...(Object.keys(COULEURS) as NomCouleur[]).map((nom) =>
+      el("div", { classe: "vitrine-nuance" }, el("span", { classe: "vitrine-nuance__pastille", style: { background: `var(--${nom})` } }), el("code", { texte: `--${nom}` }), el("code", { classe: "vitrine-nuance__valeur", texte: valeurJeton(nom) })),
+    ),
+  );
+  const lignes = PAIRES.map((p) => {
+    const r = verifierPaire(p);
+    return el(
+      "tr",
+      { attrs: { "data-ok": String(r.ok) } },
+      el("td", {}, el("span", { classe: "vitrine-exemple", style: { color: `var(--${p.couleur})`, background: `var(--${p.fond})` }, texte: t.t("vitrine.contraste.exemple") })),
+      el("td", {}, el("code", { texte: p.couleur })),
+      el("td", {}, el("code", { texte: p.fond })),
+      el("td", { classe: "dj-chiffres", texte: `${formatNombre(r.rapport, t.langue, 2)}:1` }),
+      el("td", { classe: "dj-chiffres", texte: `${formatNombre(r.seuil, t.langue, 1)}:1` }),
+      el("td", { texte: t.t(r.ok ? "vitrine.contraste.ok" : "vitrine.contraste.ko") }),
+    );
+  });
+  const contrastes = el(
+    "table",
+    { classe: "vitrine-contrastes" },
+    el(
+      "thead",
+      {},
+      el(
+        "tr",
+        {},
+        el("th", { attrs: { scope: "col" } }),
+        ...(["vitrine.contraste.texte", "vitrine.contraste.fond", "vitrine.contraste.rapport", "vitrine.contraste.seuil"] as const).map((k) => el("th", { attrs: { scope: "col" }, texte: t.t(k) })),
+        el("th", { attrs: { scope: "col" } }),
+      ),
+    ),
+    el("tbody", {}, ...lignes),
+  );
+  return [section(t.t("vitrine.section.couleurs"), "couleurs", table), section(t.t("vitrine.section.contrastes"), "contrastes", el("div", { classe: "vitrine-defile" }, contrastes))];
+}
+
+function rendre(): void {
+  const racine = document.getElementById("vitrine");
+  if (!racine) return;
+  const t = traduire(langue);
+  document.documentElement.lang = langue;
+  document.title = t.t("vitrine.titre");
+  racine.replaceChildren(
+    barrePortail(t, { langue, onLangue: changerLangue, pseudo: null }),
+    el("h1", { classe: "vitrine-titre", texte: t.t("vitrine.titre") }),
+    el("p", { classe: "vitrine-intro", texte: t.t("vitrine.intro") }),
+    el("div", { classe: "vitrine-langues" }, ...LANGUES.map(bloc)),
+    el("div", { classe: "vitrine-section", attrs: { id: "couleurs-contrastes" } }, ...couleurs(t)),
+  );
+}
+
+function changerLangue(l: Langue): void {
+  langue = l;
+  ecrireLangue(stockage, l);
+  rendre();
+  document.querySelector<HTMLElement>(`.vitrine > .dj-barre-portail [data-langue="${l}"]`)?.focus();
+}
+
+rendre();
