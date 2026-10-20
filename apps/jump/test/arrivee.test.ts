@@ -110,6 +110,8 @@ describe("la ligne à partager", () => {
     expect(shareUrl(published, "2026-10-20", "jour")).toBe("https://nathan-te.github.io/DailyTrack/jump/");
     expect(shareUrl(preview, "2026-10-20", "jour")).toBe("https://nathan-te.github.io/DailyTrack/b/claude-lot-10/jump/");
     expect(shareUrl(published, "2026-10-18", "archive")).toBe("https://nathan-te.github.io/DailyTrack/jump/?seed=2026-10-18");
+    // Lot R4 : le lien est construit sur l'origine courante (playdujour.com/jump/, la recette, un aperçu…).
+    expect(shareUrl({ origin: "https://playdujour.com", pathname: "/jump/" }, "2026-10-20", "jour")).toBe("https://playdujour.com/jump/");
     expect(shareText({ number: 5, date: "2026-10-20", ticks: 3000, medal: "gold", deaths: 4, kind: "jour" }, published)).toBe("DailyJump #5 — 25,000 s — 🥇 — 4 💀\nhttps://nathan-te.github.io/DailyTrack/jump/");
   });
 });

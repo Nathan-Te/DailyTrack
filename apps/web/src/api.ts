@@ -42,12 +42,20 @@ export interface GhostData {
 }
 
 /**
- * Adresse de l'API : `?api=https://…` (essais), sinon `VITE_API_URL` (fixée à la construction du jeu), sinon
- * rien : le classement est alors désactivé.
+ * Lot R4 (plateforme) : `VITE_API_URL=/` (ou `?api=/`) = le serveur **de la même origine** : le jeu appelle `/api/…` sur l'adresse où il est
+ * servi (`playdujour.com`, `recette.playdujour.com`, un canal d'aperçu : Firebase Hosting renvoie `/api/**` vers Cloud Run). Aucune requête
+ * CORS, donc aucun pré-vol.
  */
-export function apiBase(search = location.search, env = import.meta.env.VITE_API_URL as string | undefined): string | null {
+export const SAME_ORIGIN_API = "/";
+
+/**
+ * Adresse de l'API : `?api=https://…` (essais), sinon `VITE_API_URL` (fixée à la construction du jeu), sinon
+ * rien : le classement est alors désactivé. `/` : l'origine de la page (`origin`).
+ */
+export function apiBase(search = location.search, env = import.meta.env.VITE_API_URL as string | undefined, origin?: string): string | null {
   const fromUrl = new URLSearchParams(search).get("api");
   const base = fromUrl || env || "";
+  if (base === SAME_ORIGIN_API) return (origin ?? location.origin).replace(/\/+$/, "");
   return base ? base.replace(/\/+$/, "") : null;
 }
 

@@ -5,15 +5,20 @@ name: Deploy API
 #     Appelé par production.yml (fusion dans main, après la recette) ; « Run workflow » ici redéploie à la main (validation demandée aussi).
 #   - recette    : service `cdj-api-recette`, base Turso de recette, ses propres secrets (Secret Manager). Appelé par recette.yml :
 #     une révision étiquetée SANS trafic par PR (`tag`), ou la révision qui reçoit le trafic de recette (fusion dans main, `tag` vide).
+# Lot R4 : la production n'est plus déployée par une fusion, mais par le bouton « Mettre en production » (production.yml), qui construit un
+# commit choisi (`ref`) avec les jours figés par le code en production (`jours_figes`). Les origines permises viennent de scripts/domaine.mjs
+# (playdujour.com, recette.playdujour.com, l'ancienne origine jusqu'à sa date de retrait) ; `TRUST_PROXY` : variable du dépôt (Firebase Hosting
+# ajoute un proxy devant Cloud Run, à mesurer : scripts/sonde-proxy.mjs, docs/plateforme/domaine.md).
 # Tant qu'une cible n'est pas configurée (variables et secrets ci-dessous), le job ne fait rien et le dit dans son résumé.
 # Pas à pas pour Nathan : docs/mise-en-ligne.md (production), docs/plateforme/recette.md (recette).
 #
 # Variables GitHub (Settings → Secrets and variables → Actions → Variables) :
 #   GCP_PROJECT_ID              identifiant du projet Google Cloud (commun aux deux cibles)
 #   GCP_REGION                  région Cloud Run (défaut : europe-west1, Belgique, tarif de niveau 1)
-#   production : TURSO_DATABASE_URL, GCP_SERVICE (cdj-api), GCP_AR_REPO (cdj), GCP_RUNTIME_SA (cdj-api-runtime@…), ALLOWED_ORIGINS (facultatif)
+#   production : TURSO_DATABASE_URL, GCP_SERVICE (cdj-api), GCP_AR_REPO (cdj), GCP_RUNTIME_SA (cdj-api-runtime@…), ALLOWED_ORIGINS (facultatif,
+#                en plus de scripts/domaine.mjs), TRUST_PROXY (défaut 1)
 #   recette    : RECETTE_TURSO_DATABASE_URL (son nom contient « recette »), RECETTE_GCP_SERVICE (cdj-api-recette), RECETTE_GCP_AR_REPO
-#                (cdj-recette), RECETTE_GCP_RUNTIME_SA (cdj-recette-runtime@…), RECETTE_ALLOWED_ORIGINS (facultatif)
+#                (cdj-recette), RECETTE_GCP_RUNTIME_SA (cdj-recette-runtime@…), RECETTE_ALLOWED_ORIGINS (facultatif), RECETTE_TRUST_PROXY (défaut 1)
 # Secrets GitHub : GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT (fédération d'identité, recommandé) ou GCP_SA_KEY (clé JSON).
 # Les secrets de l'API elle-même vivent dans Secret Manager, jamais ici ni dans le dépôt :
 #   production : cdj-turso-token, cdj-admin-token, cdj-rate-salt · recette : cdj-recette-turso-token, cdj-recette-admin-token, cdj-recette-rate-salt
@@ -36,6 +41,18 @@ on:
         description: "recette seulement : horloge de test du serveur (TEST_CLOCK_OFFSET_MS)"
         type: string
         default: ""
+      ref:
+        description: "lot R4 : commit à construire (défaut : celui du workflow)"
+        type: string
+        default: ""
+      jours_figes:
+        description: "lot R4 : artefact de jours figés ajoutés à l'image (production.yml) ; vide : aucun"
+        type: string
+        default: ""
+      extra_origins:
+        description: "lot R4 : origines permises en plus (recette : l'origine du canal d'aperçu de la PR), séparées par « ; »"
+        type: string
+        default: ""
     outputs:
       enabled:
         description: "« true » si la cible est configurée et déployée"
@@ -43,13 +60,18 @@ on:
       url:
         description: "adresse du service (production, recette par défaut) ou de la révision étiquetée"
         value: ${{ jobs.deploy.outputs.url }}
+      image:
+        description: "lot R4 : l'image déployée (retour arrière : production.yml la note dans l'étiquette prod-…)"
+        value: ${{ jobs.deploy.outputs.image }}
   workflow_dispatch:
     inputs:
+      # Lot R4 : la production ne se déploie plus d'ici (ni à la fusion) : bouton « Mettre en production » (production.yml), qui fige les
+      # jours, vérifie et étiquette. Ici : la recette seulement.
       target:
-        description: "production (validation de Nathan demandée) ou recette"
+        description: "recette (la production passe par « Mettre en production »)"
         type: choice
-        options: [production, recette]
-        default: production
+        options: [recette]
+        default: recette
       tag:
         description: "recette : étiquette de la révision (vide : révision par défaut de la recette)"
         type: string
@@ -80,6 +102,7 @@ jobs:
     outputs:
       enabled: ${{ steps.cfg.outputs.enabled }}
       url: ${{ steps.result.outputs.url }}
+      image: ${{ steps.cfg.outputs.image }}
     env:
       TARGET: ${{ inputs.target }}
       TAG: ${{ inputs.tag }}
@@ -97,11 +120,17 @@ jobs:
       RECETTE_AR_REPO: ${{ vars.RECETTE_GCP_AR_REPO }}
       RECETTE_RUNTIME_SA: ${{ vars.RECETTE_GCP_RUNTIME_SA }}
       RECETTE_ORIGINS: ${{ vars.RECETTE_ALLOWED_ORIGINS }}
+      PROD_TRUST_PROXY: ${{ vars.TRUST_PROXY || '1' }}
+      RECETTE_TRUST_PROXY: ${{ vars.RECETTE_TRUST_PROXY || '1' }}
+      EXTRA_ORIGINS: ${{ inputs.extra_origins }}
+      JOURS_FIGES: ${{ inputs.jours_figes }}
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Configuration présente ?
         id: cfg
@@ -152,29 +181,51 @@ jobs:
             fi
           fi
           region="${GCP_REGION:-europe-west1}"
-          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
-          origins="https://${owner}.github.io"
+          # Lot R4 : les origines permises de la cible (scripts/domaine.mjs : son adresse, l'ancienne origine jusqu'à sa date de retrait), plus
+          # celles des variables du dépôt et, pour une révision de recette, l'origine du canal d'aperçu de sa PR. La production refuse la recette
+          # et tout aperçu (le script s'arrête en erreur).
           if [ "$TARGET" = recette ]; then
             service="${RECETTE_SERVICE:-cdj-api-recette}"
             repo="${RECETTE_AR_REPO:-cdj-recette}"
             runtime_sa="${RECETTE_RUNTIME_SA:-cdj-recette-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
-            [ -z "$RECETTE_ORIGINS" ] || origins="${origins};${RECETTE_ORIGINS}"
+            extra="${RECETTE_ORIGINS};${EXTRA_ORIGINS}"
+            trust="$RECETTE_TRUST_PROXY"
           else
             service="${PROD_SERVICE:-cdj-api}"
             repo="${PROD_AR_REPO:-cdj}"
             runtime_sa="${PROD_RUNTIME_SA:-cdj-api-runtime@${GCP_PROJECT_ID}.iam.gserviceaccount.com}"
-            [ -z "$PROD_ORIGINS" ] || origins="${origins};${PROD_ORIGINS}"
+            extra="${PROD_ORIGINS};${EXTRA_ORIGINS}"
+            trust="$PROD_TRUST_PROXY"
           fi
+          origins="$(node scripts/domaine.mjs origines "$TARGET" --jour "$(date -u +%F)" --en-plus "$extra")"
+          case "$trust" in [0-5]) ;; *) echo "::error::TRUST_PROXY / RECETTE_TRUST_PROXY : un nombre de proxys de 0 à 5, reçu « $trust »"; exit 1 ;; esac
           if [ -n "$TAG" ] && ! printf '%s' "$TAG" | grep -Eq '^b-[a-z0-9-]{1,22}$'; then echo "::error::étiquette invalide : « $TAG » (scripts/recette.mjs)"; exit 1; fi
+          sha="$(git rev-parse HEAD)"
+          # Une image avec des jours figés ajoutés n'est plus exactement le commit : son nom le dit (retour arrière : l'étiquette prod-… le note).
+          image_tag="$sha"; [ -z "$JOURS_FIGES" ] || image_tag="${sha}-f${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           {
             echo "enabled=true"
             echo "region=$region"
             echo "service=$service"
             echo "db=$db"
-            echo "image=${region}-docker.pkg.dev/${GCP_PROJECT_ID}/${repo}/api:${GITHUB_SHA}"
+            echo "image=${region}-docker.pkg.dev/${GCP_PROJECT_ID}/${repo}/api:${image_tag}"
             echo "runtime_sa=$runtime_sa"
             echo "origins=$origins"
+            echo "trust=$trust"
+            echo "sha=$sha"
           } >> "$GITHUB_OUTPUT"
+          echo "Origines permises ($TARGET) : $origins · TRUST_PROXY=$trust" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/download-artifact@v4
+        if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
+        with:
+          name: ${{ inputs.jours_figes }}
+          path: ${{ runner.temp }}/jours-figes
+
+      # Lot R4 : les jours figés avec le code en production (production.yml) entrent dans l'image (le serveur les lit : apps/jump/public/levels).
+      - name: Jours figés de la mise en production
+        if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
+        run: node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Authentification Google Cloud (fédération d'identité)
         if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
@@ -214,8 +265,8 @@ jobs:
             ENVIRONMENT=production
             TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }}
             ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }}
-            TRUST_PROXY=1
-            GIT_SHA=${{ github.sha }}
+            TRUST_PROXY=${{ steps.cfg.outputs.trust }}
+            GIT_SHA=${{ steps.cfg.outputs.sha }}
           # Secrets : Secret Manager → variables d'environnement du conteneur (jamais dans la configuration en clair, ni dans les journaux).
           secrets: |
             TURSO_AUTH_TOKEN=cdj-turso-token:latest
@@ -248,7 +299,7 @@ jobs:
           service="${{ steps.cfg.outputs.service }}"
           region="${{ steps.cfg.outputs.region }}"
           suffix="r${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
-          envs="ENVIRONMENT=recette,TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }},ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }},TRUST_PROXY=1,GIT_SHA=${GITHUB_SHA}"
+          envs="ENVIRONMENT=recette,TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }},ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }},TRUST_PROXY=${{ steps.cfg.outputs.trust }},GIT_SHA=${{ steps.cfg.outputs.sha }}"
           if [ -n "$SALON_MINUTES_IN" ]; then envs="$envs,SALON_MINUTES=$SALON_MINUTES_IN"; fi
           if [ -n "$TEST_CLOCK_IN" ]; then envs="$envs,TEST_CLOCK_OFFSET_MS=$TEST_CLOCK_IN"; fi
           traffic=""
@@ -302,9 +353,9 @@ jobs:
             if [ "$TARGET" = production ]; then echo "### API déployée (production)"; else echo "### API de recette déployée${TAG:+ (révision $TAG, sans trafic)}"; fi
             echo "- Adresse : $url"
             echo "- Santé : \`$url/api/health\`"
-            echo "- Commit : \`${GITHUB_SHA::7}\`"
-            [ "$TARGET" = production ] && echo "- À renseigner dans la variable GitHub \`VITE_API_URL\` si ce n'est pas déjà fait."
-            [ "$TARGET" = recette ] && [ -z "$TAG" ] && echo "- Révision par défaut de la recette : à renseigner dans la variable GitHub \`RECETTE_API_URL\` si ce n'est pas déjà fait."
+            echo "- Commit : \`$(git rev-parse --short HEAD)\`${JOURS_FIGES:+ + jours figés de la mise en production}"
+            [ "$TARGET" = production ] && echo "- Image : \`${{ steps.cfg.outputs.image }}\`"
+            [ "$TARGET" = recette ] && [ -z "$TAG" ] && echo "- Révision par défaut de la recette : servie par https://recette.playdujour.com/api/ (lot R4)."
             true
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -323,6 +374,6 @@ jobs:
             exit 0
           fi
           npm ci -w @cdj/api --ignore-scripts
-          owner="$(echo "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
-          npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --origin "https://${owner}.github.io"
+          # Lot R4 : l'origine de la recette (toujours permise, scripts/domaine.mjs).
+          npm run smoke -w @cdj/api -- "${{ steps.result.outputs.url }}" --origin "$(node scripts/domaine.mjs adresse recette)"
           echo "- Essai de bout en bout (\`npm run smoke\`) : réussi." >> "$GITHUB_STEP_SUMMARY"

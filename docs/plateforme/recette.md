@@ -1,5 +1,7 @@
 # Mettre en place la recette
 
+> **Lot R4 (playdujour.com)** : ce guide reste valable pour le serveur de recette. Ce qui a changé : les aperçus ne sont plus sur GitHub Pages (`/b/<branche>/`) mais dans des **canaux d'aperçu Firebase** (lien commenté sur la PR) ; une fusion dans `main` met à jour **la recette seulement** (serveur, `recette:seed` et site `recette.playdujour.com`) ; la production part par le bouton **« Mettre en production »**. Étapes 4 à 9 ci-dessous : lire avec `docs/plateforme/domaine.md`, qui les remplace pour l'aperçu et la production.
+
 Guide pas à pas pour Nathan, **à faire une fois**, environ **45 minutes**. À la fin :
 - un **serveur de recette** (service Cloud Run `cdj-api-recette` et base Turso `dailytrack-recette`), entièrement séparé de la production ;
 - chaque PR qui touche le serveur y déploie **sa** version, commente l'adresse sur la PR, et l'aperçu de sa branche lui parle ;

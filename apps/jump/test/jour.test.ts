@@ -24,6 +24,14 @@ describe("isPreview : aperçu de branche et serveur local, sinon site publié", 
     expect(isPreview({ hostname: "nathan-te.github.io", pathname: "/DailyTrack/b/ccr-4577740d-3047yh/jump/index.html" })).toBe(true);
   });
 
+  it("lot R4 : un canal d'aperçu Firebase d'une PR et la recette en sont ; la production et le site Firebase lui-même non", () => {
+    expect(isPreview({ hostname: "playdujour-recette--pr-12-a1b2c3d4.web.app", pathname: "/jump/" })).toBe(true);
+    expect(isPreview({ hostname: "recette.playdujour.com", pathname: "/jump/" })).toBe(true);
+    expect(isPreview({ hostname: "playdujour.com", pathname: "/jump/" })).toBe(false);
+    expect(isPreview({ hostname: "www.playdujour.com", pathname: "/jump/" })).toBe(false);
+    expect(isPreview({ hostname: "playdujour.web.app", pathname: "/jump/" })).toBe(false);
+  });
+
   it("le serveur local (machine ou réseau local) en est un", () => {
     for (const hostname of ["localhost", "127.0.0.1", "[::1]", "::1", "0.0.0.0", "192.168.1.20", "10.0.0.5", "172.20.3.4", "mon-pc.local", ""]) {
       expect(isPreview({ hostname, pathname: "/" }), hostname).toBe(true);

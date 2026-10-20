@@ -13,3 +13,7 @@ blob-report/
 playwright-report/
 apps/web/all-blobs/
 apps/web/merged/
+apps/portail/dist-redirection/
+site/
+.firebase-deploy/
+.firebase/

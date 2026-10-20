@@ -32,11 +32,20 @@ function isLocalHost(hostname: string): boolean {
 }
 
 /**
- * **Aperçu** : un aperçu de branche (chemin contenant `/b/<branche>/`, publié par `pages.yml`) ou le serveur local ; toutes les dates y
- * sont ouvertes. Sinon, c'est le site publié depuis `main` : les dates futures y sont refusées.
+ * Lot R4 (plateforme) : un canal d'aperçu Firebase d'une PR (`<site>--<canal>-<empreinte>.web.app`) ou le site de recette
+ * (`recette.<domaine>`, qui sert `main` en entier).
+ */
+export function isFirebasePreviewHost(hostname: string): boolean {
+  const h = hostname.toLowerCase();
+  return /^[a-z0-9-]+--[a-z0-9-]+\.web\.app$/.test(h) || h.startsWith("recette.");
+}
+
+/**
+ * **Aperçu** : un aperçu de PR (canal Firebase, lot R4 ; avant : chemin contenant `/b/<branche>/` sur GitHub Pages), le site de recette ou le
+ * serveur local ; toutes les dates y sont ouvertes. Sinon, c'est le site de production : les dates futures y sont refusées.
  */
 export function isPreview(loc: PageLocation): boolean {
-  return /\/b\/[^/]+\//.test(loc.pathname) || isLocalHost(loc.hostname);
+  return /\/b\/[^/]+\//.test(loc.pathname) || isLocalHost(loc.hostname) || isFirebasePreviewHost(loc.hostname);
 }
 
 /**

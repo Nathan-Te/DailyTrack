@@ -2,7 +2,7 @@ name: Recette — joueurs fictifs
 # Lot P2 (plateforme) : `npm run recette:seed` automatique — les joueurs fictifs « Démo … » de la recette (DailyTrack : 7 jours ; DailyJump : le
 # jour courant), sans que Nathan ait à le lancer :
 #   - chaque jour (cron, 00:17 UTC = 01:17 ou 02:17 à Paris : le nouveau jour de Paris a commencé) ;
-#   - après chaque déploiement d'une révision de recette (appelé par recette.yml pour une PR, par production.yml pour une fusion dans main) ;
+#   - après chaque déploiement d'une révision de recette (appelé par recette.yml : une PR, ou une fusion dans main depuis le lot R4) ;
 #   - « Run workflow » à la main, au besoin.
 # **Aucun secret GitHub de plus** : mêmes accès que le workflow « Recette » (fédération d'identité, ou clé JSON), le jeton de la base de
 # recette est lu dans Secret Manager (`apps/api/scripts/recette-seed-auto.sh`). **Il refuse la production** : la base visée est

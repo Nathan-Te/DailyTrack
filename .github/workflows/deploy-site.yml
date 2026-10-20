@@ -1,0 +1,200 @@
+name: Deploy site
+# Lot R4 (plateforme) : publie le site (portail « Du Jour » à la racine, DailyTrack sous /track/, DailyJump sous /jump/) sur Firebase Hosting.
+# Appelé par les autres workflows, jamais seul :
+#   - production : site de production (playdujour.com), version « live » — production.yml (« Mettre en production »), après le serveur ;
+#   - recette    : site de recette (recette.playdujour.com), « live » — recette.yml, à chaque fusion dans main ;
+#   - recette + canal : un canal d'aperçu `pr-<n>` du site de RECETTE (adresse `https://<site>--pr-<n>-<empreinte>.web.app`, 7 jours) —
+#     apercu.yml (toute PR), ou recette.yml (PR qui touche le serveur : l'aperçu vise alors sa révision de recette par son adresse directe).
+# Le serveur est sous la même adresse : firebase.json renvoie /api/** vers le service Cloud Run de la cible (production → cdj-api, recette et
+# aperçus → cdj-api-recette, europe-west1) ; les jeux sont construits avec VITE_API_URL=/ (`/api/` sur leur propre origine, aucun pré-vol CORS).
+# Chaque site et chaque canal est une origine à part : leur stockage local est séparé de celui de la production par le navigateur.
+# Tant que Firebase n'est pas configuré (variables ci-dessous), tout est sauté avec le message « Firebase non configuré : voir
+# docs/plateforme/domaine.md » et le job reste vert.
+#
+# Variables GitHub : FIREBASE_SITE_PRODUCTION, FIREBASE_SITE_RECETTE (identifiants des deux sites), GCP_PROJECT_ID ; facultatives :
+# GCP_SERVICE (cdj-api), RECETTE_GCP_SERVICE (cdj-api-recette), GCP_REGION (europe-west1). Secrets : les mêmes que le serveur
+# (GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT, ou GCP_SA_KEY) ; le compte de déploiement a le rôle « Firebase Hosting Admin ».
+on:
+  workflow_call:
+    inputs:
+      cible:
+        description: "production ou recette"
+        type: string
+        required: true
+      canal:
+        description: "canal d'aperçu (recette seulement, ex. pr-12) ; vide : la version « live » du site"
+        type: string
+        default: ""
+      api:
+        description: "VITE_API_URL : « / » (la même origine, défaut) ou l'adresse directe d'une révision de recette (aperçu d'une PR qui touche le serveur)"
+        type: string
+        default: "/"
+      ref:
+        description: "commit à construire (défaut : celui du workflow)"
+        type: string
+        default: ""
+      jours_figes:
+        description: "artefact de jours figés à ajouter avant la construction (production.yml) ; vide : aucun"
+        type: string
+        default: ""
+      expire:
+        description: "durée d'un canal d'aperçu"
+        type: string
+        default: "7d"
+    outputs:
+      enabled:
+        description: "« true » si Firebase est configuré et le site déployé"
+        value: ${{ jobs.deploy.outputs.enabled }}
+      url:
+        description: "adresse publique (production, recette) ou du canal d'aperçu"
+        value: ${{ jobs.deploy.outputs.url }}
+      version:
+        description: "version Firebase déployée (identifiant : retour arrière par hosting:clone)"
+        value: ${{ jobs.deploy.outputs.version }}
+      site:
+        description: "identifiant du site Firebase"
+        value: ${{ jobs.deploy.outputs.site }}
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  # Outil officiel de Firebase, version épinglée (lancé par npx : aucune dépendance ajoutée au dépôt). Changer de version = relire le README du lot R4.
+  FIREBASE_TOOLS: firebase-tools@15.34.0
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: deploy-site-${{ inputs.cible }}-${{ inputs.canal || 'live' }}
+      cancel-in-progress: false
+    outputs:
+      enabled: ${{ steps.cfg.outputs.enabled }}
+      url: ${{ steps.deploy.outputs.url }}
+      version: ${{ steps.deploy.outputs.version }}
+      site: ${{ steps.cfg.outputs.site }}
+    env:
+      CIBLE: ${{ inputs.cible }}
+      CANAL: ${{ inputs.canal }}
+      API: ${{ inputs.api }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      SITE_PRODUCTION: ${{ vars.FIREBASE_SITE_PRODUCTION }}
+      SITE_RECETTE: ${{ vars.FIREBASE_SITE_RECETTE }}
+      PROD_SERVICE: ${{ vars.GCP_SERVICE || 'cdj-api' }}
+      RECETTE_SERVICE: ${{ vars.RECETTE_GCP_SERVICE || 'cdj-api-recette' }}
+      REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
+      PROD_API_URL: ${{ vars.VITE_API_URL }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - name: Configuration présente ?
+        id: cfg
+        run: |
+          if [ "$CIBLE" != production ] && [ "$CIBLE" != recette ]; then echo "::error::cible inconnue : « $CIBLE » (production ou recette)"; exit 1; fi
+          # Garde-fous (avant toute configuration) : un aperçu ne vit que sur le site de recette ; la production ne parle qu'à elle-même.
+          if [ "$CIBLE" = production ] && [ -n "$CANAL" ]; then echo "::error::les canaux d'aperçu vont sur le site de recette, jamais sur celui de la production"; exit 1; fi
+          if [ "$CIBLE" = production ] && [ "$API" != / ]; then echo "::error::la production appelle /api/ sur sa propre origine (VITE_API_URL=/), reçu « $API »"; exit 1; fi
+          if [ "$CIBLE" = recette ] && [ "$API" != / ]; then
+            api_host="$(printf '%s' "$API" | sed -E 's#^https?://##; s#/.*$##')"
+            case "$api_host" in *playdujour.com) [ "$api_host" = "recette.playdujour.com" ] || { echo "::error title=Aperçu branché sur la production::$API"; exit 1; } ;; esac
+            if [ -n "$PROD_API_URL" ]; then
+              prod_host="$(printf '%s' "$PROD_API_URL" | sed -E 's#^https?://##; s#/.*$##')"
+              case "$api_host" in "$prod_host"|*"---$prod_host") echo "::error title=Aperçu branché sur la production::$API est l'adresse du serveur de production"; exit 1 ;; esac
+            fi
+          fi
+          if [ "$CIBLE" = production ]; then site="$SITE_PRODUCTION"; sitevar=FIREBASE_SITE_PRODUCTION; service="$PROD_SERVICE"; else site="$SITE_RECETTE"; sitevar=FIREBASE_SITE_RECETTE; service="$RECETTE_SERVICE"; fi
+          missing=""
+          [ -n "$GCP_PROJECT_ID" ] || missing="$missing GCP_PROJECT_ID"
+          [ -n "$site" ] || missing="$missing $sitevar"
+          if [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; then
+            [ "$HAS_SA_KEY" = true ] || missing="$missing (GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT, ou GCP_SA_KEY)"
+          fi
+          if [ -n "$missing" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "### Firebase non configuré : voir docs/plateforme/domaine.md" >> "$GITHUB_STEP_SUMMARY"
+            echo "Site ($CIBLE${CANAL:+, canal $CANAL}) non publié. Il manque :$missing." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Firebase non configuré::Firebase non configuré : voir docs/plateforme/domaine.md (il manque :$missing)"
+            exit 0
+          fi
+          if [ "$CIBLE" = recette ] && [ "$SITE_RECETTE" = "$SITE_PRODUCTION" ]; then echo "::error::FIREBASE_SITE_RECETTE est le site de production"; exit 1; fi
+          { echo "enabled=true"; echo "site=$site"; echo "service=$service"; } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - uses: actions/download-artifact@v4
+        if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
+        with:
+          name: ${{ inputs.jours_figes }}
+          path: ${{ runner.temp }}/jours-figes
+
+      # Les jours figés avec le code en production (production.yml) rejoignent le site : ajoutés s'ils manquent, refusés s'ils diffèrent.
+      - name: Jours figés de la mise en production
+        if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
+        run: node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/setup-node@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: steps.cfg.outputs.enabled == 'true'
+
+      # Les deux jeux, puis le site assemblé (scripts/site.mjs : portail, /track/, /jump/, niveaux figés vérifiés).
+      # Plus de VITE_STORAGE : chaque site et chaque canal est une origine à part, son stockage est séparé par le navigateur (lot R4).
+      - name: Construire les jeux et le site
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          VITE_API_URL: ${{ inputs.api }}
+          # Lot 31 : la production n'a ni touches N et T, ni circuit à venir, ni ?variant= / ?theme= pour aujourd'hui (apps/web/src/access.ts) ;
+          # la recette (main en entier) et les aperçus les gardent.
+          VITE_PRODUCTION: ${{ inputs.cible == 'production' && '1' || '' }}
+        run: |
+          npm run build
+          node scripts/site.mjs site --sortie site
+          node scripts/site.mjs firebase --site "${{ steps.cfg.outputs.site }}" --service "${{ steps.cfg.outputs.service }}" --region "$REGION" --public site --sortie firebase.json
+
+      - name: Authentification Google Cloud (fédération d'identité)
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Authentification Google Cloud (clé JSON)
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Publier sur Firebase Hosting
+        id: deploy
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          SITE: ${{ steps.cfg.outputs.site }}
+          EXPIRE: ${{ inputs.expire }}
+        run: |
+          message="${GITHUB_REPOSITORY}@${{ inputs.ref || github.sha }} (run ${GITHUB_RUN_ID})"
+          if [ -n "$CANAL" ]; then
+            npx --yes "$FIREBASE_TOOLS" hosting:channel:deploy "$CANAL" --project "$GCP_PROJECT_ID" --expires "$EXPIRE" --no-authorized-domains --json > deploy.json || { cat deploy.json; exit 1; }
+            url="$(jq -r --arg s "$SITE" '.result[$s].url // ([.result[]][0].url) // empty' deploy.json)"
+            version="$(jq -r --arg s "$SITE" '.result[$s].version // ([.result[]][0].version) // empty' deploy.json)"
+          else
+            npx --yes "$FIREBASE_TOOLS" deploy --only hosting --project "$GCP_PROJECT_ID" --message "$message" --non-interactive --json > deploy.json || { cat deploy.json; exit 1; }
+            version="$(jq -r '.result.hosting // empty | if type == "array" then .[0] else . end' deploy.json | sed -E 's#.*/versions/##')"
+            url="$(node scripts/domaine.mjs adresse "$CIBLE")"
+          fi
+          [ -n "$url" ] || { echo "::error::adresse du site introuvable dans la réponse de Firebase"; cat deploy.json; exit 1; }
+          { echo "url=$url"; echo "version=$version"; } >> "$GITHUB_OUTPUT"
+          {
+            echo "### Site publié ($CIBLE${CANAL:+, canal d’aperçu \`$CANAL\`})"
+            echo "- Adresse : $url — DailyTrack : ${url%/}/track/ · DailyJump : ${url%/}/jump/"
+            echo "- Site Firebase : \`$SITE\` (https://$SITE.web.app), version \`${version:-?}\`"
+            echo "- Serveur : \`/api/\` → $( [ "$API" = / ] && echo "même origine (renvoi vers ${{ steps.cfg.outputs.service }})" || echo "$API (adresse directe)")"
+            [ -z "$CANAL" ] || echo "- Expire dans $EXPIRE (supprimé à la fermeture de la PR)."
+          } >> "$GITHUB_STEP_SUMMARY"
