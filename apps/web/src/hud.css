@@ -152,15 +152,37 @@
   line-height: 1;
   letter-spacing: 0;
 }
-/* Le liseré de livrée sur le bord droit de la plaque du chronomètre. */
-.plaque--chrono::after {
-  content: "";
+/* Ce qui change à chaque image (le chrono, la vitesse) : le texte seulement, dans un bloc **de taille stable** (chiffres tabulaires de Barlow, largeur réservée pour « 1:01,402 » ou
+   « 888 km/h ») isolé du reste (`contain: layout paint style`) : un nouveau chiffre ne déplace rien et ne repeint que ce bloc, jamais la plaque, son ombre ni son liseré. */
+.plaque__chiffres {
+  display: block;
+  contain: layout paint style;
+  min-width: 3.54em;
+  padding: 0 0.12em 0 0;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+#speed .plaque__chiffres {
+  min-width: 3.7em;
+}
+/* Le liseré de livrée sur le bord droit de la plaque du chronomètre : un élément à part, que le texte ne repeint jamais. */
+.chrono__livree {
   position: absolute;
   top: 0;
   right: -6px;
   bottom: 0;
   width: 18px;
+  contain: layout paint style;
   background: repeating-linear-gradient(115deg, var(--track-livree) 0 4px, transparent 4px 7px);
+}
+/* Pendant la course seulement, la colonne du centre a son propre calque (sa mise à jour ne touche pas le reste de la page) ; hors course, le calque est retiré. */
+body.en-course #hud-centre {
+  will-change: transform;
+}
+/* Les rayons de vitesse changent d'opacité à chaque image : sur leur propre calque, ils ne sont plus repeints (le motif et son masque restent tels quels) ; calque retiré hors course. */
+body.en-course #lines {
+  will-change: opacity;
 }
 .plaque--pc {
   display: flex;
@@ -169,6 +191,7 @@
   padding: 0;
 }
 .plaque--pc .pc {
+  contain: layout paint style;
   display: flex;
   align-items: center;
   padding: 2px 10px;
@@ -180,6 +203,10 @@
   font-size: var(--dj-taille-21);
 }
 .plaque--pc .ecart {
+  contain: layout paint style;
+  min-width: 3.9em;
+  justify-content: flex-end;
+  font-variant-numeric: tabular-nums;
   display: flex;
   align-items: center;
   padding: 2px 12px;
@@ -222,6 +249,10 @@
   align-items: flex-end;
   gap: 1px;
   padding: 4px 8px;
+}
+.objectif__legende,
+.objectif__valeur {
+  contain: layout paint style;
 }
 .objectif__legende {
   display: flex;

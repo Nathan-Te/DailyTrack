@@ -6,6 +6,7 @@ Révision 2 (après le lot I1) : écarts 1 à 5 du README du lot I1 inscrits (af
 Révision 3 (après le lot I2) : écarts 1 à 3 du README du lot I2 inscrits (numéro et thème sous le nom du jeu, bouton de cartouche pleine largeur, profil posé sur les étiquettes) ; numéro de journée commun.
 Révision 4 (après le lot I3) : émojis de la ligne de la journée (§ 6) ; ta ligne d'un classement en moutarde (§ 9).
 Révision 5 (avant le lot I4) : surimpressions de course de Track (§ 9), maquettes `track-*.html` choisies par Nathan.
+Révision 6 (après le lot I4) : accueil d'un jeu posé sur sa scène sous un voile à rayures (§ 9) ; nom des jeux dans leurs lignes à partager (§ 2).
 
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
@@ -28,6 +29,7 @@ Raison : une seule image (la cartouche) relie la marque et les jeux, se comprend
 - **Logo** : le mot `DU JOUR` en Archivo Black, crème `--dj-creme` sur un rectangle `--dj-encre`, coins de 3 px, ombre nette décalée de 3 px vers le bas et la droite en `--dj-terre`. Marges internes : 7 px en haut, 11 px sur les côtés, 6 px en bas. Taille d'usage : 21 px dans la barre du portail, 14 px dans la barre de retour des jeux (sans rectangle : texte encre seul, précédé du chevron).
   Raison : l'étiquette tamponnée évoque un nom imprimé sur une boîte de jeu ; l'ombre terre cuite est la signature de couleur de la marque.
 - **Nom des jeux** : `TRACK` et `JUMP`, en capitales, chacun dans sa typographie (§ 4). Le nom complet en texte courant est « Track » et « Jump ». (Noms d'affichage provisoires : si Nathan en choisit d'autres, seuls les catalogues de traduction changent.)
+- **Dans les lignes à partager d'un jeu** : `Du Jour · Track #8`, `Du Jour · Jump #8` (même forme en français et en anglais).
 - **Titre de la plateforme dans le navigateur** : « Du Jour », puis « Track — Du Jour », « Jump — Du Jour ».
 
 ## 3. Les couleurs
@@ -153,6 +155,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **Barre des jeux** : « ‹ DU JOUR » à gauche (lien vers le portail, 44 px de haut), date et numéro du jour à droite en mono.
 - **Étiquette d'une cartouche du portail** : le nom du jeu seul sur sa ligne ; le numéro du jour du jeu et le thème **en dessous** (« n° 8 · Nuit ») ; le statut sur deux rangées dont la place est réservée avant l'arrivée des données ; le bouton de la cartouche (« Jouer », « Continuer », « Rejouer ») **prend toute la largeur** et garde la même hauteur quel que soit le statut. Raison : rien ne bouge quand le statut arrive.
 - **Journée commune** : « Journée n° *N* » à droite de la date sur le portail, et « Du Jour #*N* » dans la ligne à partager. La journée n° 1 est le **23 octobre 2026** (ouverture publique) ; avant, aucun numéro n'est affiché.
+- **Accueil d'un jeu qui a une scène** (Track) : l'étiquette opaque est posée **sur la scène du jeu**, derrière un **voile à rayures** (motif net, ni flou ni transparence), avec la barre des jeux en plaque crème. Raison : on voit le jeu dès l'accueil sans casser la règle des surfaces nettes.
 - **Surimpressions de course (Track)** : « plaques en haut » — chronomètre au centre en haut, point de contrôle et écart juste dessous, objectif de médaille à droite, pause à gauche ; le bas de l'écran est laissé aux commandes tactiles. Chaque information sur sa propre plaque asphalte nette (pas de bandeau plein, pas de transparence) ; écart signé (`+` / `−`). Maquettes : `track-hud.html`, `track-hud-paysage.html`.
 - **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place.
 - **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.

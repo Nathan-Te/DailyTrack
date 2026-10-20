@@ -28,7 +28,7 @@ test("l'écran d'arrivée donne la ligne à partager, et le bouton la copie avec
   await finishRace(page);
   const expected = shareLine({ number: circuit.number, date: circuit.date, ms: run.finishMs, medal });
   await expect(page.locator("#finish .share")).toHaveText(expected);
-  expect(expected).toMatch(/^Circuit du Jour #\d+ — \d+,\d{3}\ss( — .+)?$/);
+  expect(expected).toMatch(/^Du Jour · Track #\d+ — \d+,\d{3}\ss( — .+)?$/);
 
   await page.getByRole("button", { name: "Partager mon temps" }).click();
   await expect(page.getByRole("button", { name: "Copié" })).toBeVisible();

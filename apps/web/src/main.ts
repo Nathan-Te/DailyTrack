@@ -339,13 +339,28 @@ resize();
 
 const $ = (id: string) => document.getElementById(id)!;
 const hudSpeed = $("speed");
-const hudTimer = $("timer");
-/** Le chrono change à chaque image : on n'écrit dans le DOM que si le texte a changé (chiffres à chasse fixe, la plaque ne bouge pas). */
+const hudTimerText = $("timer-texte");
+const hudSpeedText = $("speed-texte");
+/** Le chrono change à chaque image : on n'écrit dans le DOM que si le texte a changé. Seul le texte de la plaque change (`.plaque__chiffres`, largeur réservée, `contain` : hud.css) : la plaque et son liseré ne sont jamais repeints. */
 let timerShown = "";
 function setTimerText(text: string) {
   if (text === timerShown) return;
   timerShown = text;
-  hudTimer.textContent = text;
+  hudTimerText.textContent = text;
+}
+/** La vitesse de même : le texte seulement, et seulement s'il change. */
+let speedShown = "";
+function setSpeedText(text: string) {
+  if (text === speedShown) return;
+  speedShown = text;
+  hudSpeedText.textContent = text;
+}
+/** La colonne du centre n'a son propre calque que pendant la course (hud.css : `body.en-course`) ; retiré dès que le jeu est gelé, en pause, à l'arrivée ou à l'accueil. */
+let enCourse = false;
+function syncCalqueHud(live: boolean) {
+  if (live === enCourse) return;
+  enCourse = live;
+  document.body.classList.toggle("en-course", live);
 }
 const hudSplits = $("splits");
 const hudBanner = $("banner");
@@ -1796,6 +1811,7 @@ function frame(now: number) {
     }
     if (race.finishMs >= 0 && phase === "racing") finishRun();
     setTimerText(phase === "countdown" ? fTemps(0) : fTemps(raceElapsedMs(race)));
+    syncCalqueHud((phase === "racing" || phase === "countdown") && !frozen);
     // Le chrono part au « PARTEZ ! », voiture immobile ou non (comme sur Trackmania) : si le joueur n'a pas bougé, on lui dit quoi faire.
     if (phase === "racing" && !frozen && !idleHintShown && !watch && race.splits.length === 0 && carSpeed(car) < 0.5 && raceElapsedMs(race) > 2500) {
       idleHintShown = true;
@@ -1803,6 +1819,7 @@ function frame(now: number) {
     }
   } else {
     setTimerText("");
+    syncCalqueHud(false);
   }
 
   if (bannerTimer > 0) {
@@ -2008,8 +2025,9 @@ function frame(now: number) {
   const veilTarget = race && race.fallTicks > 0 ? Math.min(1, (race.fallTicks / FALL_TICKS) * 1.25) : 0;
   fallVeil += (veilTarget - fallVeil) * (1 - Math.exp(-(veilTarget > fallVeil ? 14 : 7) * elapsed));
   hudFall.style.opacity = fallVeil < 0.01 ? "0" : fallVeil.toFixed(2);
-  hudSpeed.textContent = formatSpeed(speed, settings.unit);
-  hudSpeed.dataset.level = String(speedLevel(speed)); // jaune, orange puis rouge au-delà de la pointe
+  setSpeedText(formatSpeed(speed, settings.unit));
+  const speedLevelNow = String(speedLevel(speed));
+  if (hudSpeed.dataset.level !== speedLevelNow) hudSpeed.dataset.level = speedLevelNow; // jaune, orange puis rouge au-delà de la pointe
   updateEffects();
   // Accueil ouvert : la scène tourne derrière, mais à 30 images par seconde (20 sur téléphone) : c'est un décor, pas une course.
   const homeSkip = homeOpen && lastHomeRender > 0 && now - lastHomeRender < (touchMode ? 48 : 31);

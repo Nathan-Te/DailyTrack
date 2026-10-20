@@ -3,7 +3,7 @@
 Aucun changement de `packages/sim`, `packages/core`, `packages/clock`, de la physique, du générateur, d'un classement, d'une rediffusion ni du Salon (règles) : **golden des deux jeux inchangés**. Le rendu 3D, les voitures, les effets et les sons ne changent pas. **Aucune dépendance npm ajoutée** (le verrou ne gagne qu'une ligne : `@cdj/ui` déclaré dans `apps/web/package.json`, un espace de travail déjà là). Vision : `docs/plateforme/seed-phase-3.md` ; charte : `docs/plateforme/identite.md` (**révision 5**, placée par ce lot) ; consignes : `apps/web/CLAUDE.md` (« Interface Du Jour (lot I4) »).
 
 ## 0. Préalables
-- **Charte révision 5** : `docs/plateforme/identite.md` remplacée par le fichier joint (surimpressions de course de Track, § 9). **Sept maquettes** placées dans `docs/plateforme/maquettes/cartouches/` : `track-hud.html`, `track-hud-paysage.html`, `track-arrivee.html`, `track-pause.html`, `track-classement.html`, `track-salon.html`, `track-reglages.html` (références : jamais construites ni servies ; la charte prime en cas d'écart).
+- **Charte révision 6** (retouche avant fusion de la PR n° 94) : `docs/plateforme/identite.md` remplacée par le fichier de Nathan (accueil d'un jeu posé sur sa scène sous un voile à rayures, § 9 ; nom des jeux dans leurs lignes à partager, § 2). **Charte révision 5** (au début du lot) : `docs/plateforme/identite.md` remplacée par le fichier joint (surimpressions de course de Track, § 9). **Sept maquettes** placées dans `docs/plateforme/maquettes/cartouches/` : `track-hud.html`, `track-hud-paysage.html`, `track-arrivee.html`, `track-pause.html`, `track-classement.html`, `track-salon.html`, `track-reglages.html` (références : jamais construites ni servies ; la charte prime en cas d'écart).
 - **`jeuSuivant.ts` remonté dans `@cdj/profile`** : la logique pure (`suiteDuJour`) et la lecture (`lireSuite`, une requête vers `GET /api/portail/jour`) sont dans `packages/profile/src/jeuSuivant.ts` ; **tests déplacés sans changement** dans `packages/profile/test/jeuSuivant.test.ts` (les deux séries — Track puis Jump — dans un seul fichier, une boucle par jeu) ; les deux jeux importent depuis `@cdj/profile`. Le DOM (le bouton, « Journée parfaite ! ») reste dans chaque jeu : Track le compose avec le socle (`apps/web/src/jeuSuivant.ts`), Jump garde le sien jusqu'au lot I5. Aucun DOM dans le module (test `purete.test.ts`).
 - **Nom anglais du Salon : “Room”** (décision de Nathan) : dans les codes d'erreur du Salon du catalogue commun (« Invalid Room session. »…) et dans tout le catalogue de Track. Test : `apps/web/test/catalogue.test.ts` (aucun « Lounge » nulle part).
 
@@ -29,27 +29,37 @@ Chaînes : **450 clés** par langue (base 26, accueil 61 + classement, course et
 **Mise en page** (`hud.css`, `index.html`, `main.ts` ; maquettes `track-hud.html` et `track-hud-paysage.html`) : la pause en haut à gauche (`#btn-pause`, 44 px) ; une **colonne centrale** (`#hud-centre`) : le chrono (Barlow Condensed 800 italique, liseré de livrée à droite), la plaque **« PC 3/5 »** collée à l'écart signé (**`+` sur livrée orange** derrière, **`−` sur `--dj-auteur`** devant, temps intermédiaire sur fond route quand il n'y a pas de référence), « vs ton record » (ou le nom du fantôme), puis le titre du circuit ; l'**objectif de médaille** en haut à droite (la première médaille que tu n'as pas : bronze si tu n'as rien, l'auteur si tu les as toutes). Plaques asphalte à bords nets et ombre dure, **ni transparence ni ombre floue**, JetBrains Mono pour les chiffres secondaires ; en pause tout est masqué. Une seule plaque de point de contrôle (le dernier) remplace la liste de tous les points.
 - **Lisible sur tous les thèmes** : une plaque opaque ne dépend pas du décor. Captures des **huit thèmes** (stade, rallye, campagne, nuit, ville, canyon, col alpin, banquise), alternées portrait FR / paysage EN : `img/lot-I4-hud-<thème>-portrait-fr.png`, `…-paysage-en.png`.
 - **Étroit** : à 360 px, le chrono passe à 24 px et la plaque du point de contrôle commence sous l'objectif (`min-height: 42px` du chrono, `gap: 8px`) ; sous 480 px le mot « Objectif » disparaît. En paysage, le classement du coin descend à 84 px sous le titre. Le Salon (compte à rebours plus large dans `#medals`) range son titre sous la plaque (`body.salon`). Tests de chevauchement en portrait, paysage et 360×640 : `mobile.spec.ts`, `accueil.spec.ts`, `salon.spec.ts`, `watch.spec.ts`, avec la **police large de la CI** (DejaVu Sans) imposée.
-- **Pas de perte de fluidité.** Mesure `mesure-lot23.spec.ts` (outil des lots 9 et 23 : temps de fil principal par image, CDP `Performance.getMetrics`, profil mobile 844×390 @2, rendu logiciel SwiftShader, 4 cœurs au repos, 5 min par série) : « avant » = build de `main` (`23b826a`) servi à côté, « après » = ce lot. En ms par image (script entre parenthèses), `×1` = processeur normal, `×4` = ralenti quatre fois ; q0 / q1 / q2 = niveaux de qualité.
+- **Fluidité du HUD : ce qui est repeint (retouche avant fusion de la PR n° 94).** Les chiffres qui changent à chaque image (chrono, vitesse) sont **le texte seulement**, dans un bloc `.plaque__chiffres` de **taille stable** (chiffres tabulaires de Barlow : mesuré, `0` à `9` font tous 0,505 em ; largeur réservée de 3,54 em pour « 1:01,402 » et 3,7 em pour « 888 km/h » ; `contain: layout paint style`) ; le liseré de livrée est un élément à part (`.chrono__livree`) ; la colonne `#hud-centre` a **son propre calque pendant la course seulement** (`body.en-course` : `will-change: transform`, retiré en pause, à l'arrivée et à l'accueil) ; l'écart du point de contrôle (`.ecart`, 3,9 em réservés) et l'objectif sont dans des blocs `contain` ; aucune ombre n'est recalculée (elles sont dures, décalées, sans flou, jamais animées). **Vérifié par CDP** (`LayerTree.layerPainted`, outil `repaint.cjs` du bac à sable : 3 s de course en démo, téléphone 844×390 @2, rendu logiciel) :
 
-| scène | qualité | ×1 avant → après | ×4 avant → après |
-|---|---|---|---|
-| pilotage | q0 | 3,56 → 3,28 | 11,49 → 12,63 |
-| pilotage | q1 | 4,36 → 4,85 | 13,10 → 17,24 |
-| pilotage | q2 | 4,22 → 4,37 | 11,83 → 15,08 |
-| nuit | q0 | 5,95 → 12,89 (rejoué : 14,78 avant, 13,81 après) | 24,11 → 10,91 |
-| nuit | q1 | 4,32 → 5,21 | 14,24 → 15,31 |
-| nuit | q2 | 4,93 → 5,32 | 17,12 → 15,54 |
-| ville | q0 | 3,96 → 3,26 | 12,40 → 10,79 |
-| ville | q1 | 4,37 → 4,44 | 15,97 → 15,27 |
-| ville | q2 | 5,69 → 4,02 | 11,42 → 15,30 |
+| calque | avant la retouche (main) | après |
+|---|---|---|
+| `#hud-centre` (chrono, titre) | pas de calque propre : repeint avec le reste de la page | calque 155×71 : **seul le texte du chrono est repeint** (zone 94×32, la plaque, l'ombre et le liseré ne le sont pas) |
+| `#speed` | calque 121×36, repeint sur 91×29 | calque 124×40, repeint sur **91×27** (le texte) |
+| `#lines` (rayons de vitesse, plein écran) | **repeint en entier à chaque image** (844×390, 12 fois en 3 s) | **plus jamais repeint** (calque d'opacité, `will-change: opacity` en course) |
+| `#flash`, `#fall` | opacité 0 : pas de peinture | idem |
 
-  **Lecture honnête** : à ×1 la différence est de l'ordre de la mesure (moyenne ≈ −0,1 ms hors nuit q0, qui vaut ≈ 14 ms **dans les deux builds** quand on le rejoue : le 5,95 de la première série était un faux départ). À ×4, avec 8 à 29 images par fenêtre de 4,5 s en rendu logiciel, la dispersion d'une série à l'autre est du même ordre que les écarts. Mais **onze cas sur dix-huit montent contre sept qui descendent**, et la scène « pilotage » monte dans cinq cas sur six (jusqu'à +4,1 ms par image à ×4, q1) : **je ne peux pas affirmer, avec cette méthode, qu'il n'y a aucune perte**, seulement qu'elle reste de quelques millisecondes à ×4 et sous le bruit à ×1. Ce qui est garanti par le code : le HUD **n'écrit le DOM que si le texte change** (`setTimerText`, `renderHudTitle`, `renderSplits`), comme avant, et les plaques sont opaques (pas de flou ni de transparence à composer). **À confirmer sur un vrai téléphone** (non fait ici) ; Nathan tranche si l'écart de « pilotage » à ×4 compte.
+  Autrement dit : quand le chrono change, **seule sa zone de texte est repeinte** ; le gain le plus net n'est pas dans les plaques mais dans **`#lines`**, qui se repeignait en plein écran à chaque image depuis le lot 15 (le test CSS n'y changeait rien : l'opacité se modifiait sur un élément sans calque, avec un masque radial).
+- **Remesure** (`mesure-lot23.spec.ts`, outil des lots 9 et 23 : temps de fil principal par image, CDP `Performance.getMetrics`, profil mobile 844×390 @2, **×4**, rendu logiciel SwiftShader, 4 cœurs au repos ; **trois séries par cas, médiane**, séries **entrelacées** (avant, avant la retouche, après, puis on recommence) pour que la dérive de la machine joue pareil). « avant » = `main` au lot R4 (`23b826a`, l'ancien HUD) ; « avant la retouche » = le lot I4 fusionné ; « après » = la retouche. Médianes en ms par image :
+
+| scène | qualité | avant (`23b826a`) | avant la retouche | après | écart après − avant |
+|---|---|---|---|---|---|
+| pilotage | q0 | 11.56 | 11.95 | **12.27** | **+0.71** |
+| pilotage | q1 | 14.09 | 13.44 | **13.96** | **-0.13** |
+| pilotage | q2 | 15.16 | 15.91 | **13.37** | **-1.79** |
+| nuit | q0 | 26.04 | 25.52 | **25.71** | **-0.33** |
+| nuit | q1 | 14.06 | 15.17 | **14.19** | **+0.13** |
+| nuit | q2 | 16.54 | 15.76 | **16.29** | **-0.25** |
+| ville | q0 | 11.11 | 14.87 | **11.38** | **+0.27** |
+| ville | q1 | 17.00 | 13.58 | **18.16** | **+1.16** |
+| ville | q2 | 15.85 | 15.46 | **21.51** | **+5.66** |
+
+  **Objectif demandé : aucune scène ni qualité à plus de +1 ms (médiane) à ×4. Il est atteint pour 7 cas sur 9 et pas pour 2 : ville q1 (+1,16 ms) et ville q2 (+5,66 ms).** Ce que montrent les chiffres bruts : les séries d'un même cas sont très dispersées, dans **tous** les builds (ville q2 : 12,4 / 20,8 / 15,8 ms avant, 12,8 / 21,5 / 22,8 après ; nuit q0 ×4 : de 17 à 30 ms partout) ; à ×4 en rendu logiciel la fenêtre de 4,5 s ne contient que 8 à 29 images, et un cas est tantôt à ≈ 12 ms, tantôt à ≈ 21 ms. Pour ne pas conclure sur du bruit, **j'ai refait les trois cas de la ville sur huit séries** (les trois du tableau + cinq de plus, avant et après entrelacés) : médianes **avant 11,71 / 17,02 / 16,39 ms, après 12,27 / 15,45 / 15,77 ms**, soit **+0,56 / −1,57 / −0,62 ms** (q0 / q1 / q2). Je n'ai trouvé **aucun élément du HUD qui coûte** : aucune des deux cases hors objectif ne se confirme à huit séries, et les zones repeintes (tableau ci-dessus) sont celles d'un chrono sans effet sur le reste. Constat honnête : **avec le protocole demandé (trois séries), l'objectif n'est pas tenu dans 2 cas sur 9** ; la cause mesurée est la dispersion de la mesure (bimodale, indépendante du build), pas un élément du HUD. Je m'arrête là, comme demandé : Nathan tranche. **À confirmer sur un vrai téléphone** (non fait ici).
 
 ## 3. L'anglais
 - **Catalogues** : `catalogue.<zone>.fr.ts` + `.en.ts` (base, accueil, course, réglages, Salon) — 450 clés par langue, parité vérifiée (`packages/ui/test/catalogues.test.ts`), aucune clé en double avec le catalogue commun. **Nom anglais du Salon : “Room”.** Le catalogue anglais est un **module à part chargé par `import()`** (`i18n.ts`, `chargerLangue`) pour tenir le budget : un joueur en français ne le charge jamais (+6,6 ko compressés, une requête de plus, pour un joueur en anglais seulement).
 - **Langue** : lue par `lireLangue` de `@cdj/profile` sur la clé commune `cdj:langue` (langue du navigateur sinon) ; **Réglages › Langue** (`choixLangue` du socle) l'écrit pour toute la plateforme et change tout **sans recharger** (le HTML porte `data-t`, chaque écran construit en JavaScript s'abonne par `onLangue`) ; `<html lang>` et le titre « **Track — Du Jour** » suivent. Test : `langue.spec.ts` (détection et choix, bascule FR ↔ EN sans recharger — un témoin posé sur `window` prouve l'absence de rechargement —, arrivée en anglais).
 - **Erreurs du serveur** : `t("erreur." + code)` (catalogue commun du socle), `erreur.local.*` pour le réseau et les délais ; le `message` du serveur n'est plus lu (`messageErreur`). **Formats du socle partout** : `formatTemps`, `formatRang`, `formatDate`, `formatNumeroJour` (`n° 8` / `#8`, `14e` / `14th`, `31,402 s` / `31.402 s`), plus de pluriel ni de date écrits à la main — **sauf** `mmss` / `hhmmss` (décomptes) restés à la main (voir § 8).
-- **Ligne à partager** : `lignePartage.*`, mêmes émojis (🥇 🏆 🥈 🥉 ⬜), « Circuit du Jour #8 — … » / « Daily Track #8 — … » ; `share.test.ts` (fr + en, espaces insécables `\u00a0`).
+- **Ligne à partager** : `lignePartage.*`, mêmes émojis (🥇 🏆 🥈 🥉 ⬜), **`Du Jour · Track #8 — …` dans les deux langues, même forme** (charte rév. 6, § 2 ; avant la retouche : « Circuit du Jour #8 » et « Daily Track #8 ») ; sans numéro de circuit : `Du Jour · Track 2026-10-05 — …` ; le reste de la ligne ne change pas ; `share.test.ts` (fr + en, espaces insécables `\u00a0`).
 - **Un piège** : `Intl` met des espaces insécables dans les temps (« 31,402 s ») ; les tests les comparent avec `\s` ou `\u00a0`.
 
 ## 4. Construction, poids et polices
@@ -60,16 +70,16 @@ Chaînes : **450 clés** par langue (base 26, accueil 61 + classement, course et
 
 | | avant (lot R4) | après | budget |
 |---|---|---|---|
-| JS du premier chargement | 260,2 ko | **271,5 ko** | — |
-| CSS | 3,8 ko | **10,7 ko** | — |
-| **JS + CSS** | **264,1 ko** | **282,2 ko** (+18,1) | **≤ 284,1 ko** (+20) |
+| JS du premier chargement | 260,2 ko | **271,6 ko** | — |
+| CSS | 3,8 ko | **11,1 ko** | — |
+| **JS + CSS** | **264,1 ko** | **282,7 ko** (+18,6) | **≤ 284,1 ko** (+20) |
 | dont three.js | 133 ko | 132,8 ko | fichier à part |
 | JS hors three | 123,7 ko | 138,7 ko | < 141 ko |
 | catalogue anglais (à la demande) | — | 6,6 ko | < 8 ko |
 | `tune` (à la demande) | (dans le JS) | 2,2 ko | — |
 | polices (7 faces) | — | 139,6 ko | ≤ 150 ko |
 
-  La marge restante est de **1,9 ko** : le lot I5 n'y touche pas (Jump a son propre budget) mais tout ajout à Track doit le savoir. Polices : Archivo Black 400, Archivo 400 et 700, JetBrains Mono 700, Barlow Condensed 600 / 700 italique / 800 italique ; **seules Barlow Condensed 800 italique et Archivo 400 sont préchargées** (le premier écran).
+  La marge restante est de **1,4 ko** (1,9 ko avant la retouche du HUD : `contain`, élément du liseré, `.plaque__chiffres`) : le lot I5 n'y touche pas (Jump a son propre budget) mais tout ajout à Track doit le savoir. Polices : Archivo Black 400, Archivo 400 et 700, JetBrains Mono 700, Barlow Condensed 600 / 700 italique / 800 italique ; **seules Barlow Condensed 800 italique et Archivo 400 sont préchargées** (le premier écran).
 
 ## 5. Garder ce qui marche
 - **Golden inchangés** ; **aucun fichier de `packages/sim`, `packages/core`, `packages/clock` touché** (`git diff main --stat` le montre). Rendu 3D, voitures, effets, sons : inchangés.
@@ -91,17 +101,19 @@ Chromium, **390×844 (portrait) et 844×390 (paysage)**, **français et anglais*
 
 **Pas de capture « Salon en attente »** : le Salon n'a pas de salle d'attente ni de statuts PRÊT / EN ATTENTE (il tourne en continu) ; la maquette `track-salon.html` en montre, ce lot ne les invente pas (voir § 8). Les captures portrait du HUD montrent la surimpression « Tourne ton téléphone » (le jeu se joue en paysage) par-dessus la scène.
 
-## 8. Écarts à la charte et aux maquettes (à décider avec Nathan)
-0. **Accueil sur la scène 3D** (retours de Nathan après la première version) : la maquette n'en parle pas. **Le masque est un voile à rayures, pas un flou** : la charte (§ 5 et § 11) interdit « verre dépoli », flou et translucidité, et le test `interface.test.ts` le vérifie ; si Nathan veut vraiment un flou ou une teinte translucide sur la scène, c'est un écart à la charte à décider (une ligne de CSS + un assouplissement du test). Les plaques restent opaques. En portrait téléphone la voiture au départ est à peine visible (fenêtre de scène de 40 %). La barre de défilement de l'étiquette est masquée sur l'accueil seulement : au clavier, Tab fait défiler jusqu'à l'élément focalisé.
-1. **Accueil plus chargé que la maquette** : il garde les cinq premières lignes du classement et la carte du Salon (le lot 29 les montrait à l'accueil) ; la charte n'en parle pas.
-2. **« Revoir le meilleur tour »** (et non « mon ») : c'est le meilleur tour du jour, pas le tien (fantôme du premier ou record local).
-3. **Perte de fonction à confirmer — « Changer mon code »** : le jeu ne le propose plus (le profil commun du portail le fait, `/profil/?retour=<chemin du jeu>`). Le **message « code révoqué »** n'existe plus dans les réglages (il reste à l'envoi d'un temps, avec le lien vers le profil). À remettre si Nathan veut les garder dans le jeu.
+## 8. Écarts à la charte et aux maquettes — décisions de Nathan
+**Décisions de Nathan (retouche avant fusion de la PR n° 94, rien à changer)** : voile à rayures **gardé** (pas de flou) ; accueil avec les cinq lignes du classement et la carte du Salon : **accepté** ; « Revoir le meilleur tour » : **accepté** ; « Changer mon code » seulement dans le profil commun : **accepté** ; Salon sans salle d'attente : **accepté** ; « CP » en anglais : **validé**. Les points 0, 1, 2, 3, 5 et 7 ci-dessous sont donc **tranchés** ; les points 4, 6, 8, 9 et 10 sont des constats, sans décision demandée.
+
+0. **[tranché : voile à rayures gardé] Accueil sur la scène 3D** (retours de Nathan après la première version) : la maquette n'en parle pas. **Le masque est un voile à rayures, pas un flou** : la charte (§ 5 et § 11) interdit « verre dépoli », flou et translucidité, et le test `interface.test.ts` le vérifie ; Nathan a gardé le voile à rayures (révision 6 de la charte, § 9). Les plaques restent opaques. En portrait téléphone la voiture au départ est à peine visible (fenêtre de scène de 40 %). La barre de défilement de l'étiquette est masquée sur l'accueil seulement : au clavier, Tab fait défiler jusqu'à l'élément focalisé.
+1. **[accepté] Accueil plus chargé que la maquette** : il garde les cinq premières lignes du classement et la carte du Salon (le lot 29 les montrait à l'accueil) ; la charte n'en parle pas.
+2. **[accepté] « Revoir le meilleur tour »** (et non « mon ») : c'est le meilleur tour du jour, pas le tien (fantôme du premier ou record local).
+3. **[accepté] « Changer mon code » seulement dans le profil commun** : le jeu ne le propose plus (le profil commun du portail le fait, `/profil/?retour=<chemin du jeu>`). Le **message « code révoqué »** n'existe plus dans les réglages (il reste à l'envoi d'un temps, avec le lien vers le profil).
 4. **Pause** : Fantôme et Son s'y trouvent (la barre du haut n'a plus que la pause, variante A) ; la barre du bas garde les cinq boutons tactiles (caméra, point de contrôle, recommencer, graphismes, plein écran).
-5. **Salon** : ni salle d'attente ni statuts PRÊT / EN ATTENTE (le Salon n'en a pas) ; le compte à rebours occupe la plaque d'objectif.
+5. **[accepté] Salon** : ni salle d'attente ni statuts PRÊT / EN ATTENTE (le Salon n'en a pas) ; le compte à rebours occupe la plaque d'objectif.
 6. **Décomptes** `mmss` / `hhmmss` écrits à la main (pas de format du socle pour une durée de décompte) : à ajouter au socle si I5 en a besoin.
-7. **Abréviation anglaise du point de contrôle : « CP »** (« PC » en français) ; à valider.
+7. **[validé] Abréviation anglaise du point de contrôle : « CP »** (« PC » en français).
 8. **Premier chargement en anglais** : +6,6 ko et une requête (catalogue à la demande), pour tenir le budget de +20 ko.
-9. **Marge de budget : 1,9 ko** (§ 4).
+9. **Marge de budget : 1,4 ko** (§ 4).
 10. **Plaque « Tourne ton téléphone »** en portrait : inchangée dans sa logique, habillée aux jetons ; elle cache la scène sur les captures.
 
 ## 9. Vérifié / non vérifié

@@ -134,8 +134,8 @@ export const fr = {
   "arrivee.monProfil": "Mon profil Du Jour ›",
   "arrivee.sessionTerminee": "Session terminée : tour non compté",
   // --- Ligne à partager (les émojis y sont voulus : c'est un texte à coller) ---
-  "lignePartage.titre": "Circuit du Jour #{numero}",
-  "lignePartage.titreSansNumero": "Circuit du Jour {date}",
+  "lignePartage.titre": "Du Jour · Track #{numero}",
+  "lignePartage.titreSansNumero": "Du Jour · Track {date}",
   "lignePartage.copie": "Copié",
   "lignePartage.copieImpossible": "Copie impossible",
   "miniature.alt": "Vue aérienne du circuit du {date}",
