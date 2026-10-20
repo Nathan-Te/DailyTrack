@@ -131,3 +131,86 @@ test("lot R5 : un lien #dujour=… (l'ancien import par l'adresse) n'a aucun eff
     expect(stored.vue, path).toBeNull();
   }
 });
+
+// ——— Lot R5 : la page « Mentions légales et confidentialité », au doigt en portrait ———
+const PORTRAIT = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
+
+/** La page des mentions est bien là : titre, éditeur, hébergeurs, droits ; lisible au téléphone (aucun défilement horizontal). */
+async function mentionsShown(page: Page): Promise<void> {
+  await expect(page).toHaveURL(`${SITE}/mentions-legales/`);
+  await expect(page.getByRole("heading", { level: 1, name: "Mentions légales et confidentialité" })).toBeVisible();
+  for (const text of ["MZC Studios", "Google Cloud France", "ChiselStrike Inc.", "code de transfert"]) await expect(page.locator("main")).toContainText(text);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+}
+
+/** Une cible au doigt d'au moins 44 px de haut. */
+async function bigEnough(page: Page, selector: string): Promise<void> {
+  const box = await page.locator(selector).boundingBox();
+  expect(box, selector).not.toBeNull();
+  expect(box!.height, selector).toBeGreaterThanOrEqual(44);
+}
+
+test("mentions légales : depuis le portail, au doigt en portrait ; retour au portail", async ({ browser }) => {
+  const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
+  await page.goto(`${SITE}/`);
+  await bigEnough(page, "#mentions");
+  await page.locator("#mentions").tap();
+  await mentionsShown(page);
+  // Sans « / » final, comme Firebase : redirigé vers le dossier.
+  await page.goto(`${SITE}/mentions-legales`);
+  await expect(page).toHaveURL(`${SITE}/mentions-legales/`);
+  await page.locator("a.retour").tap();
+  await expect(page).toHaveURL(`${SITE}/`);
+});
+
+test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTrack, au doigt en portrait", async ({ browser }) => {
+  const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
+  await page.goto(`${SITE}/track/?home=1&debug&api=demo&touch=1`);
+  test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
+  await page.waitForFunction(() => !!(window as unknown as { __cdj?: unknown }).__cdj);
+  // Réglages › Profil.
+  await page.locator("#home-settings").tap();
+  await page.locator("#tab-profile").tap();
+  await page.locator("#settings-mentions").scrollIntoViewIfNeeded();
+  await bigEnough(page, "#settings-mentions");
+  await page.locator("#settings-mentions").tap();
+  await mentionsShown(page);
+  // Le menu ⏸ : une course, la pause au doigt (bouton ⏸ de la barre tactile).
+  await page.goto(`${SITE}/track/?home=1&debug&api=demo&touch=1`);
+  await page.waitForFunction(() => !!(window as unknown as { __cdj?: unknown }).__cdj);
+  await page.locator("#home-daily").tap();
+  await page.waitForFunction(() => (window as unknown as { __cdj: { phase: string } }).__cdj.phase === "racing");
+  const rotateOk = page.getByRole("button", { name: "Jouer quand même" });
+  if (await rotateOk.isVisible()) await rotateOk.tap();
+  await page.locator("#tbar button.pause").tap();
+  await expect(page.locator("#pause-menu")).toBeVisible();
+  await page.locator("#pause-mentions").scrollIntoViewIfNeeded();
+  await bigEnough(page, "#pause-mentions");
+  await page.locator("#pause-mentions").tap();
+  await mentionsShown(page);
+});
+
+test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyJump, au doigt en portrait", async ({ browser }) => {
+  const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
+  await page.goto(`${SITE}/jump/?debug&touch=1`);
+  test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
+  const help = page.locator("#help-close");
+  await help.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
+  if (await help.isVisible()) await help.tap();
+  // L'accueil : « Réglages » ouvre le menu ⏸ (Réglages › Profil en fait partie).
+  await page.locator("#home-settings").tap();
+  await expect(page.locator("#menu")).toBeVisible();
+  for (const id of ["#profile-mentions", "#menu-mentions"]) {
+    await page.locator(id).scrollIntoViewIfNeeded();
+    await bigEnough(page, id);
+  }
+  await page.locator("#profile-mentions").tap();
+  await mentionsShown(page);
+  await page.goBack();
+  await expect(page).toHaveURL(`${SITE}/jump/?debug&touch=1`);
+  await page.locator("#home-settings").tap();
+  await expect(page.locator("#menu")).toBeVisible();
+  await page.locator("#menu-mentions").scrollIntoViewIfNeeded();
+  await page.locator("#menu-mentions").tap();
+  await mentionsShown(page);
+});

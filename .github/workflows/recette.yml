@@ -137,6 +137,9 @@ jobs:
         id: canal
         if: steps.cfg.outputs.enabled == 'true'
         run: |
+          # Lot R5 : `hosting:channel:create` refuse de tourner hors d'un dossier d'application Firebase (« could not locate firebase.json ») ;
+          # ce job n'a pas le dépôt : un firebase.json minimal (le site seulement) suffit, rien n'est publié ici.
+          printf '{"hosting":{"site":"%s","public":"."}}\n' "$SITE" > firebase.json
           list() { npx --yes "$FIREBASE_TOOLS" hosting:channel:list --site "$SITE" --project "$GCP_PROJECT_ID" --json | jq -r --arg c "$CANAL" '.result.channels[]? | select(.name | endswith("/channels/" + $c)) | .url'; }
           url="$(list)"
           if [ -z "$url" ]; then

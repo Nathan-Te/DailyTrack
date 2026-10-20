@@ -26,9 +26,11 @@ const BILLED_S_PER_REQUEST = 0.1;
 
 /** Ce que coûte un joueur pendant une journée (ou une demi-heure de Salon). */
 export interface UnitCost {
-  /** Requêtes applicatives, plus les pré-vols CORS (OPTIONS) : toutes passent par Cloud Run. */
+  /**
+   * Requêtes applicatives : toutes passent par Cloud Run. Lot R5 : **plus de pré-vols CORS** — depuis le lot R4, les jeux appellent `/api/` sur
+   * leur propre adresse (Firebase Hosting renvoie vers Cloud Run) : aucune requête `OPTIONS`.
+   */
   requests: number;
-  preflights: number;
   read: number;
   written: number;
   /** Secondes de calcul mesurées (sans l'arrondi de facturation). */
@@ -39,10 +41,11 @@ export interface UnitCost {
 
 /**
  * **DailyJump**, un joueur type d'une journée (lot P4 : `npm run measure:jump-api -w @cdj/api`, sqld local, 19/10/2026) : 2 chargements, 4
- * arrivées dont 2 envois, 1 pseudo, 50 morts dont 30 envoyées en 3 lots, le carnage de tout le monde regardé 2 fois, 30 jours d'historique ;
- * pré-vols : deux visites à plus de 2 heures d'écart (P4 : 7). Calcul : envois ≈ 50 ms, lecture regroupée ≈ 30 ms, lot de vies ≈ 60 ms.
+ * arrivées dont 2 envois, 1 pseudo, 50 morts dont 30 envoyées en 3 lots, le carnage de tout le monde regardé 2 fois, 30 jours d'historique.
+ * Calcul : envois ≈ 50 ms, lecture regroupée ≈ 30 ms, lot de vies ≈ 60 ms. Facturé au plus : 12 requêtes × 100 ms (lot P4 : 1,9 s avec les 7
+ * pré-vols, retirés au lot R5).
  */
-export const JUMP_PLAYER: UnitCost = { requests: 12, preflights: 7, read: 1120, written: 32, cpuS: 0.45, billedS: 1.9 };
+export const JUMP_PLAYER: UnitCost = { requests: 12, read: 1120, written: 32, cpuS: 0.45, billedS: 1.2 };
 /**
  * **DailyJump**, ce qui ne dépend pas d'un joueur, par jour (lot P3) : la carte recalculée au plus toutes les 3 min (480 fois au pire, une ligne lue
  * par joueur du jour), l'oubli de fin de jour (3 lignes lues et 1 écrite par joueur).
@@ -50,16 +53,16 @@ export const JUMP_PLAYER: UnitCost = { requests: 12, preflights: 7, read: 1120, 
 export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlayerForget: 3, writtenPerPlayerForget: 1, rebuildS: 0.25 };
 /**
  * **DailyTrack**, un joueur du circuit du jour avec la synchronisation du profil (lot 30 : 4 lectures, 14 jours d'historique ; `npm run
- * measure:budget`, sqld local, 19/10/2026) : 13 requêtes, 1 650 lignes lues, 42 écrites, 0,5 s de calcul, 3 vCPU-s facturées au plus. Pré-vols
- * (estimés, non mesurés) : `/api/me` et l'envoi, deux visites = 4.
+ * measure:budget`, sqld local, 19/10/2026) : 13 requêtes, 1 650 lignes lues, 42 écrites, 0,5 s de calcul, 3 vCPU-s facturées au plus (mesurées
+ * sans pré-vols ; lot P4 : 4 pré-vols estimés en plus, retirés au lot R5).
  */
-export const TRACK_PLAYER: UnitCost = { requests: 13, preflights: 4, read: 1650, written: 42, cpuS: 0.5, billedS: 3 };
+export const TRACK_PLAYER: UnitCost = { requests: 13, read: 1650, written: 42, cpuS: 0.5, billedS: 3 };
 /**
  * **Salon de DailyTrack**, 30 minutes d'un joueur (3 sessions ; `measure:budget` : 558 requêtes, 12 763 lignes lues à 10 présents — 63 025 à 50 —,
  * 265 écrites, 5,8 s de calcul, 97 vCPU-s au plus ; `measure:salon` : 0,64 ms de calcul par joueur et par seconde, une instance tient ≈ 770
- * joueurs à 50 %). Pré-vols : un envoi par session (adresse propre à la session) = 3.
+ * joueurs à 50 %). (Lot P4 : 3 pré-vols en plus, retirés au lot R5.)
  */
-export const SALON_HALF_HOUR: UnitCost = { requests: 558, preflights: 3, read: 12_763, written: 265, cpuS: 5.8, billedS: 97 };
+export const SALON_HALF_HOUR: UnitCost = { requests: 558, read: 12_763, written: 265, cpuS: 5.8, billedS: 97 };
 
 export interface PlatformInput {
   /** Joueurs par jour de DailyJump, de DailyTrack (circuit du jour), et joueurs qui passent 30 minutes au Salon chaque jour. */
@@ -84,19 +87,19 @@ export function projectMonth(input: PlatformInput): { resources: Resource[]; byG
   const days = input.days ?? 30;
   const games = {
     DailyJump: {
-      requests: input.jump * (JUMP_PLAYER.requests + JUMP_PLAYER.preflights),
+      requests: input.jump * JUMP_PLAYER.requests,
       read: input.jump * JUMP_PLAYER.read + (input.jump > 0 ? JUMP_DAY.rebuilds * (input.jump * JUMP_DAY.readPerPlayerPerRebuild + 2) : 0) + input.jump * JUMP_DAY.readPerPlayerForget,
       written: input.jump * JUMP_PLAYER.written + (input.jump > 0 ? JUMP_DAY.rebuilds : 0) + input.jump * JUMP_DAY.writtenPerPlayerForget,
       billedS: input.jump * JUMP_PLAYER.billedS + (input.jump > 0 ? JUMP_DAY.rebuilds * JUMP_DAY.rebuildS : 0),
     },
     DailyTrack: {
-      requests: input.track * (TRACK_PLAYER.requests + TRACK_PLAYER.preflights),
+      requests: input.track * TRACK_PLAYER.requests,
       read: input.track * TRACK_PLAYER.read,
       written: input.track * TRACK_PLAYER.written,
       billedS: input.track * TRACK_PLAYER.billedS,
     },
     Salon: {
-      requests: input.salon * (SALON_HALF_HOUR.requests + SALON_HALF_HOUR.preflights),
+      requests: input.salon * SALON_HALF_HOUR.requests,
       read: input.salon * SALON_HALF_HOUR.read,
       written: input.salon * SALON_HALF_HOUR.written,
       billedS: input.salon * SALON_HALF_HOUR.billedS,
@@ -107,7 +110,7 @@ export function projectMonth(input: PlatformInput): { resources: Resource[]; byG
   const vcpu = total("billedS");
   const over = (used: number, free: number, price: number) => Math.max(0, used - free) * price;
   const resources: Resource[] = [
-    { name: "requêtes Cloud Run (pré-vols compris)", used: total("requests"), free: FREE_TIER.requests, share: 0, overUsd: over(total("requests"), FREE_TIER.requests, PRICES_USD.perMillionRequests / 1e6) },
+    { name: "requêtes Cloud Run", used: total("requests"), free: FREE_TIER.requests, share: 0, overUsd: over(total("requests"), FREE_TIER.requests, PRICES_USD.perMillionRequests / 1e6) },
     { name: "calcul Cloud Run, vCPU-s (borne haute)", used: vcpu, free: FREE_TIER.vcpuS, share: 0, overUsd: over(vcpu, FREE_TIER.vcpuS, PRICES_USD.perVcpuS) },
     { name: "mémoire Cloud Run, Gio-s (borne haute)", used: vcpu * GIB_PER_INSTANCE, free: FREE_TIER.gibS, share: 0, overUsd: over(vcpu * GIB_PER_INSTANCE, FREE_TIER.gibS, PRICES_USD.perGibS) },
     { name: "lignes lues Turso", used: total("read"), free: FREE_TIER.tursoRead, share: 0, overUsd: null },

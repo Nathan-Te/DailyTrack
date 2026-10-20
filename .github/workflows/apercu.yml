@@ -140,6 +140,8 @@ jobs:
       - name: Supprimer le canal d'aperçu
         if: steps.cfg.outputs.enabled == 'true'
         run: |
+          # Lot R5 : comme `hosting:channel:create` (recette.yml), la commande veut un firebase.json ; ce job n'a pas le dépôt.
+          printf '{"hosting":{"site":"%s","public":"."}}\n' "$SITE" > firebase.json
           if npx --yes "$FIREBASE_TOOLS" hosting:channel:delete "$CANAL" --site "$SITE" --project "$GCP_PROJECT_ID" --force; then
             echo "- Canal d'aperçu \`$CANAL\` supprimé." >> "$GITHUB_STEP_SUMMARY"
           else

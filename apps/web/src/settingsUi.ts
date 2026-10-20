@@ -169,7 +169,11 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   // --- Profil ---
   const profile: ProfileCard = mountProfileCard(host.profile);
   const profilePage = el("div", "tabpage");
-  profilePage.append(profile.root);
+  // Lot R5 (plateforme) : ce que le site garde de ton profil, et comment le faire effacer.
+  const mentions = el("a", "btn link", "Mentions légales et confidentialité");
+  mentions.id = "settings-mentions";
+  mentions.setAttribute("href", "../mentions-legales/");
+  profilePage.append(profile.root, mentions);
 
   const reset = button("Rétablir les réglages par défaut", "small reset", () => {
     host.apply({ ...DEFAULT_SETTINGS });

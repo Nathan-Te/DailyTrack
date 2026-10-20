@@ -17,6 +17,13 @@ export const MAX_BODY_BYTES = 400_000;
 export const DEFAULT_LIMITS = { windowMs: 10 * 60_000, perClient: 60, perPlayer: 30 };
 
 /**
+ * Lot R5 : les compteurs de débit en base (`rate` : empreintes salées des adresses et des identifiants, jamais en clair) gardent la fenêtre en
+ * cours et les `RATE_KEEP_WINDOWS` précédentes, puis sont effacés au passage (au premier compteur d'une nouvelle fenêtre). Durée affichée
+ * par la page « Mentions légales et confidentialité » : `(RATE_KEEP_WINDOWS + 1) × windowMs` (testé).
+ */
+export const RATE_KEEP_WINDOWS = 3;
+
+/**
  * Lot R5 : une limite par adresse compte aussi l'**adresse de connexion** (`RequestInfo.peerKey`, écrite par le frontal de Google), à `limite ×
  * PEER_FACTOR`, en mémoire par instance. Un appel direct à `run.app` qui invente une adresse différente à chaque fois reste borné par son
  * adresse réelle ; par Firebase, l'adresse de connexion est un relais partagé par des joueurs, d'où la marge (mesurée au lot R5 : voir le
@@ -81,7 +88,7 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
       [key, bucket],
     );
     const count = row?.count ?? 1;
-    if (count === 1) await db.run("DELETE FROM rate WHERE bucket < ?", [bucket - 3]); // ménage au passage
+    if (count === 1) await db.run("DELETE FROM rate WHERE bucket < ?", [bucket - RATE_KEEP_WINDOWS]); // ménage au passage
     if (count > limit) {
       const retry = Math.max(1, Math.ceil(((bucket + 1) * limits.windowMs - now()) / 1000));
       throw new HttpError(429, "rate_limited", "Trop de requêtes, réessaie dans un moment", { "Retry-After": String(retry) });
