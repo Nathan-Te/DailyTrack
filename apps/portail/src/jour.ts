@@ -48,6 +48,16 @@ export interface Lecture {
   erreur: string | null;
 }
 
+/**
+ * L'adresse du serveur, fixée à la construction comme pour les jeux (`VITE_API_URL`, posée par `deploy-site.yml`) : `/` ou rien = la même
+ * origine (Firebase renvoie `/api/**` vers Cloud Run) ; l'adresse directe d'une révision de recette pour l'aperçu d'une PR qui touche le
+ * serveur (sinon l'aperçu parlerait à la recette par défaut, sans le code de la PR). Rend le préfixe des chemins (`""` : même origine).
+ */
+export function baseApi(env: string | undefined = import.meta.env.VITE_API_URL as string | undefined): string {
+  const base = (env ?? "").trim().replace(/\/+$/, "");
+  return base === "" ? "" : base;
+}
+
 /** Délai d'attente de la requête du portail (le reste de la page ne l'attend pas). */
 export const DELAI_MS = 8000;
 
@@ -60,12 +70,12 @@ const estJour = (b: unknown): b is Jour => {
  * La requête du portail : l'identifiant secret dans l'en-tête `X-Player-Id` (jamais dans l'adresse). Le cache du navigateur n'est pas utilisé
  * (`no-store`) : l'heure du serveur doit être fraîche ; celle d'un cache partagé est corrigée par son en-tête `Age`. Ne lève jamais.
  */
-export async function lireJour(fetchImpl: typeof fetch, joueur: string | null, maintenant: () => number = Date.now, delaiMs = DELAI_MS): Promise<Lecture> {
+export async function lireJour(fetchImpl: typeof fetch, joueur: string | null, maintenant: () => number = Date.now, delaiMs = DELAI_MS, base = baseApi()): Promise<Lecture> {
   const controle = new AbortController();
   const minuterie = setTimeout(() => controle.abort(), delaiMs);
   try {
     const envoi = maintenant();
-    const res = await fetchImpl("/api/portail/jour", { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
+    const res = await fetchImpl(`${base}/api/portail/jour`, { headers: joueur ? { "X-Player-Id": joueur } : {}, cache: "no-store", signal: controle.signal });
     const recu = maintenant();
     const corps = (await res.json().catch(() => null)) as (Partial<Jour> & { error?: unknown }) | null;
     const jour = estJour(corps) ? { date: corps.date, maintenant: corps.maintenant, prochainJour: corps.prochainJour, jeux: corps.jeux, ...(res.ok && corps.joueur ? { joueur: corps.joueur } : {}) } : null;

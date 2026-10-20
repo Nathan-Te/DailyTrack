@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { avancement, formatCompte, lireJour, prochainMinuit, type Jour } from "../src/jour";
+import { avancement, baseApi, formatCompte, lireJour, prochainMinuit, type Jour } from "../src/jour";
 
 // Lot I2 : la lecture du jour par le portail (une requête, l'heure du serveur, l'âge d'un cache partagé, les erreurs comme des valeurs) et le
 // compte à rebours (jusqu'au prochain minuit de Paris, journées de 25 h comprises).
@@ -27,6 +27,16 @@ describe("portail : lecture du jour", () => {
     expect(vues[0]!.init.headers).toEqual({ "X-Player-Id": "0123456789abcdef0123456789abcdef" });
     expect(vues[1]!.init.headers).toEqual({});
     expect(vues[0]!.init.cache).toBe("no-store");
+  });
+
+  it("l'adresse du serveur fixée à la construction : la même origine (« / » ou rien), ou la révision de recette d'un aperçu", async () => {
+    expect(baseApi(undefined)).toBe("");
+    expect(baseApi("/")).toBe("");
+    expect(baseApi("https://b-x---cdj-api-recette.run.app/")).toBe("https://b-x---cdj-api-recette.run.app");
+    const vues: string[] = [];
+    const f = (async (url: string) => (vues.push(url), new Response(JSON.stringify(JOUR), { status: 200 }))) as unknown as typeof fetch;
+    await lireJour(f, null, Date.now, 1000, "https://b-x---cdj-api-recette.run.app");
+    expect(vues).toEqual(["https://b-x---cdj-api-recette.run.app/api/portail/jour"]);
   });
 
   it("le décalage de l'horloge : l'heure du serveur au milieu de l'aller-retour, plus l'âge d'un cache partagé", async () => {

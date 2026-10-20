@@ -44,6 +44,7 @@ import {
   tuile,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
+import { baseApi } from "./jour";
 import { cartes } from "./jours";
 import { stockageDuPortail } from "./stockage";
 
@@ -59,7 +60,8 @@ const traduire = (l: Langue) => traducteur(l, CATALOGUE_PORTAIL, CATALOGUE_COMMU
 type T = ReturnType<typeof traduire>;
 type Cle = Parameters<T["t"]>[0];
 const cleConnue = (cle: string): Cle | null => (cle in CATALOGUE_PORTAIL.fr || cle in CATALOGUE_COMMUN.fr ? (cle as Cle) : null);
-const client = new ProfileClient("");
+const API = baseApi();
+const client = new ProfileClient(API);
 
 interface ProfilJeu {
   jeu: string;
@@ -78,7 +80,7 @@ interface Profil {
   jeux: ProfilJeu[];
 }
 
-const lireProfil = (id: string) => call<Profil>("", "GET", "/api/portail/profil", undefined, 8000, { "X-Player-Id": id });
+const lireProfil = (id: string) => call<Profil>(API, "GET", "/api/portail/profil", undefined, 8000, { "X-Player-Id": id });
 
 /** L'état de la page. */
 let profil: ApiResult<Profil> | null = null;
