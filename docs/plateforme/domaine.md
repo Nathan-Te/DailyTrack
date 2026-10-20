@@ -1,6 +1,6 @@
 # playdujour.com : le domaine, l'hébergement et la mise en production
 
-Guide pas à pas pour Nathan (lot R4), **à faire une fois**. Compte **≈ 1 h 30 de travail**, plus l'attente du DNS et des certificats (de quelques minutes à 24 h). À la fin :
+Test Guide pas à pas pour Nathan (lot R4), **à faire une fois**. Compte **≈ 1 h 30 de travail**, plus l'attente du DNS et des certificats (de quelques minutes à 24 h). À la fin :
 
 | adresse | ce qu'elle sert | serveur (`/api/`) |
 |---|---|---|
