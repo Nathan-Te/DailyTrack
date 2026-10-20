@@ -173,13 +173,16 @@ body.home #tbar {
   border-top: 1px solid var(--track-coque);
 }
 
-/* Tablette : deux colonnes ; un grand écran ou un téléphone en paysage garde une colonne à gauche (la scène occupe le reste, voir plus bas). */
+/* Tablette : deux colonnes (le Salon et les liens sous les deux). Grand écran : trois colonnes, voir plus bas. */
 @media (min-width: 700px) and (max-width: 999px) and (min-height: 521px) {
   .home-grille {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
     gap: 18px;
+  }
+  .home-col--c {
+    grid-column: 1 / -1;
   }
 }
 @media (min-width: 700px) {
@@ -523,10 +526,17 @@ body.finished #board {
   }
 }
 
-/* --- L'accueil garde la vue 3D autour du point de départ (retour de Nathan) : plus de fond crème plein écran ; la barre des jeux devient une plaque crème nette, l'étiquette Track
-   (opaque, ombre dure) s'arrête à la hauteur de son contenu, et la scène se voit autour d'elles. Les autres écrans restent des cadres crème. ---------------------------------------- */
+/* --- L'accueil reste posé sur la vue 3D du départ (retour de Nathan) : plus de fond crème plein écran, mais le **voile à rayures** de la pause (un masque : motif, jamais de flou ni de
+   translucidité) sur la scène ; la barre des jeux devient une plaque crème nette et l'étiquette Track (opaque, ombre dure) est centrée dans la page. Les autres écrans restent
+   des cadres crème. La barre de défilement de l'étiquette est masquée (on défile à la molette ou au doigt). ----------------------------------------------------------------------- */
 #home {
-  background: transparent;
+  background: repeating-linear-gradient(115deg, var(--track-asphalte) 0 5px, transparent 5px 8px);
+}
+#home .etiquette__corps {
+  scrollbar-width: none;
+}
+#home .etiquette__corps::-webkit-scrollbar {
+  display: none;
 }
 #home > .dj-barre-jeu {
   box-sizing: border-box;
@@ -549,32 +559,45 @@ body.finished #board {
     max-height: calc(100% - 64px - 40vh);
   }
 }
-/* Grand écran et téléphone en paysage : l'étiquette à gauche sur une colonne, la scène (et la voiture au départ) à droite. */
-@media (min-width: 1000px) and (min-height: 521px) {
+/* Tablette et grand écran : la barre et l'étiquette, groupées au milieu de la page. */
+@media (min-width: 700px) and (min-height: 521px) {
   #home {
-    align-items: flex-start;
-  }
-  #home > .dj-barre-jeu {
-    margin-left: 20px;
-    width: 500px;
-  }
-  #home > .etiquette {
-    margin-left: 20px;
-    width: 500px;
+    justify-content: center;
   }
 }
-@media (max-height: 520px) and (orientation: landscape) {
-  #home {
-    align-items: flex-start;
+/* Grand écran : trois colonnes (le circuit et tes temps · le classement · le Salon et les liens), centrées dans la page. */
+@media (min-width: 1000px) and (min-height: 521px) {
+  #home > .dj-barre-jeu,
+  #home > .etiquette {
+    width: min(1160px, calc(100% - 40px));
+    max-width: none;
   }
   #home > .dj-barre-jeu {
-    margin: 6px 0 6px 10px;
-    width: min(560px, calc(100% - 20px));
+    margin-top: 18px;
+  }
+  #home > .etiquette {
+    flex: 0 1 auto;
+    margin-bottom: 18px;
+  }
+  .home-grille {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 22px;
+  }
+  .home-col--c .home-liens {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+/* Téléphone en paysage : une colonne, centrée. */
+@media (max-height: 520px) and (orientation: landscape) {
+  #home > .dj-barre-jeu {
+    margin: 6px 0;
+    width: min(640px, calc(100% - 20px));
   }
   #home > .etiquette {
     flex: 1 1 auto;
-    width: min(560px, calc(100% - 20px));
-    margin-left: 10px;
+    width: min(640px, calc(100% - 20px));
     margin-bottom: 6px;
   }
 }

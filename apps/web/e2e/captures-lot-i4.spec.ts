@@ -76,6 +76,27 @@ async function ouvrir(page: Page, query: string) {
 
 const photo = (page: Page, nom: string, vue: (typeof VUES)[number], langue: (typeof LANGUES)[number]) => page.screenshot({ path: join(OUT, `lot-I4-${nom}-${vue.slug}-${langue.slug}.png`) });
 
+// L'accueil sur grand écran (1440 × 900, souris) : trois colonnes centrées sur la vue 3D du départ (lot I4, retour de Nathan).
+for (const langue of LANGUES) {
+  test(`accueil — bureau ${langue.slug}`, async ({ browser }) => {
+    const context = await newClockedContext(browser, { viewport: { width: 1440, height: 900 }, locale: langue.locale, deviceScaleFactor: 1 });
+    await context.addInitScript(
+      ([id, replay, ms, simVersion]) => {
+        localStorage.setItem("cdj:name", "Nathan");
+        localStorage.setItem("cdj:howto", "1");
+        localStorage.setItem(`cdj:best:${id}`, JSON.stringify({ ms, splits: [9000, 18000, 27000], replay, simVersion, medal: "gold" }));
+      },
+      [circuit.track.id, codeOr, pilote.finishMs, SIM_VERSION] as const,
+    );
+    await simulerApi(context, pilote.finishMs);
+    const page = await context.newPage();
+    await ouvrir(page, "&home=1&debug");
+    await expect(page.locator("#home .home-classement .ligne").first()).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: join(OUT, `lot-I4-accueil-bureau-${langue.slug}.png`) });
+  });
+}
+
 for (const vue of VUES) {
   for (const langue of LANGUES) {
     test(`écrans hors partie — ${vue.slug} ${langue.slug}`, async ({ browser }) => {

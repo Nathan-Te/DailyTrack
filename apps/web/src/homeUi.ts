@@ -151,13 +151,16 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   const actions = el("div", "home-actions");
   actions.append(playDaily);
 
+  // Trois colonnes sur grand écran (le circuit et tes temps · le classement · le Salon et les liens), une seule sur téléphone : même ordre de lecture.
   const colA = el("div", "home-col home-col--a");
-  colA.append(apercu, mine);
+  colA.append(apercu, mine, medailles, fantome);
   const colB = el("div", "home-col home-col--b");
-  colB.append(medailles, fantome, boardCard, salonCard);
+  colB.append(boardCard);
+  const colC = el("div", "home-col home-col--c");
+  colC.append(salonCard, links);
   const grille = el("div", "home-grille");
-  grille.append(colA, colB);
-  cadre.corps.append(tete, grille, links, touchNote, nextDay, actions);
+  grille.append(colA, colB, colC);
+  cadre.corps.append(tete, grille, touchNote, nextDay, actions);
 
   // --- Rendu ---
   function renderTexts() {

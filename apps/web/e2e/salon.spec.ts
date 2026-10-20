@@ -370,7 +370,7 @@ test("accueil ⇄ Salon : on passe de l'un à l'autre en gardant l'API, par l'ac
   // La pause du Salon propose aussi l'accueil.
   await page.goto("/?api=demo&debug&mode=salon");
   await loaded(page);
-  await page.keyboard.press("KeyP");
+  await page.locator("#btn-pause").click(); // (la touche P pressée dès le chargement pouvait précéder l'écoute du clavier : le bouton attend qu'il soit actionnable)
   await expect(page.locator("#pause-home")).toBeVisible();
   await expect(page.locator("#pause-archive")).toBeHidden(); // pas d'archives dans le Salon
 });
