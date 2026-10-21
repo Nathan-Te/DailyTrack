@@ -451,10 +451,9 @@ function renderObjective() {
     if (!watch) controls.requestRestart();
   });
   // Lot I7 : la caméra (celle de la touche C et de la pause, même fonction) et le plein écran restent en vue, à droite de la pause.
-  bouton("btn-camera", icone("camera", { taille: 20 }), "course.camera.bouton", () => cycleCamera(), false);
+  bouton("btn-camera", icone("camera", { taille: 20 }), "course.camera.proche", () => cycleCamera(), false);
   $("btn-camera").removeAttribute("data-t-aria-label"); // son nom lu porte la caméra courante : `syncCameraButton`
-  menu.append(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["plaque", "plaque--bouton"] }));
-  menu.lastElementChild!.id = "btn-fullscreen";
+  menu.append(boutonPleinEcran({ t, id: "btn-fullscreen", classe: ["plaque", "plaque--bouton"] }));
   appliquerTextes(menu);
 })();
 onLangue(majPleinEcran);
@@ -472,7 +471,7 @@ function syncCameraButton() {
   const key = `${cameraIndex}|${langueCourante()}|${dansLaRangee}`;
   if (key === cameraShown) return;
   cameraShown = key;
-  cameraBtn.setAttribute("aria-label", t("course.camera.bouton", { nom: t(`course.camera.nom.${CAMERAS[cameraIndex]!.name}`) }));
+  cameraBtn.setAttribute("aria-label", t(`course.camera.${CAMERAS[cameraIndex]!.name}`));
   if (dansLaRangee) $("menu").insertBefore(cameraBtn, $("btn-fullscreen"));
   else $("hud-droite").prepend(cameraBtn);
 }
@@ -726,7 +725,7 @@ $("pause-camera").addEventListener("click", () => {
   renderPause();
 });
 // Lot I7 : le plein écran de la pause est le bouton du socle, en texte (même logique que celui du HUD et de l'accueil).
-$("pause-fullscreen").replaceWith(Object.assign(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }), { id: "pause-fullscreen" }));
+$("pause-fullscreen").replaceWith(boutonPleinEcran({ t, id: "pause-fullscreen", classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }));
 $("pause-respawn").addEventListener("click", () => {
   setPaused(false);
   controls.requestRespawn();

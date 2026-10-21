@@ -2370,7 +2370,7 @@ function syncPause(): void {
 }
 const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
 // Lot I7 : le plein écran reste en vue, juste après la pause (la plaque du HUD) ; caché s'il n'est pas possible. Même logique que l'accueil et la pause (socle).
-pauseButton.after(Object.assign(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["plaque", "plaque--bouton"] }), { id: "fullscreenbtn" }));
+pauseButton.after(boutonPleinEcran({ t, id: "fullscreenbtn", classe: ["plaque", "plaque--bouton"] }));
 onLangue(majPleinEcran);
 pauseButton.addEventListener("click", () => {
   pauseButton.blur();

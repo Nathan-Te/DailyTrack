@@ -399,7 +399,6 @@ button.dj-barre-jeu__retour {
 .dj-plein-ecran {
   cursor: pointer;
   touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
 }
 .dj-plein-ecran--icone {
   display: inline-flex;
@@ -422,9 +421,6 @@ button.dj-barre-jeu__retour {
   border-radius: var(--dj-rayon-bouton);
   box-shadow: 2px 2px 0 var(--dj-encre);
 }
-.dj-plein-ecran--barre:hover {
-  background: var(--dj-creme-2);
-}
 .dj-plein-ecran--barre:active {
   transform: translate(var(--dj-enfonce), var(--dj-enfonce));
   box-shadow: none;
@@ -433,22 +429,16 @@ button.dj-barre-jeu__retour {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--dj-espace-3);
   margin: 0;
-  padding: 0 0 0 var(--dj-espace-4);
+  padding-left: var(--dj-espace-4);
   border: var(--dj-trait) solid var(--dj-encre);
   border-radius: var(--dj-rayon-bouton);
   background: var(--dj-creme);
   color: var(--dj-encre);
-  font-family: var(--dj-police-texte);
   font-size: var(--dj-taille-12);
   font-weight: 700;
-  line-height: 1.3;
 }
 .dj-astuce__fermer {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   flex: none;
   width: var(--dj-cible);
   height: var(--dj-cible);

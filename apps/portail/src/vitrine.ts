@@ -33,7 +33,6 @@ import {
   el,
   etiquetteJump,
   etiquetteTrack,
-  type Environnement,
   formatNombre,
   formatNumeroJour,
   formatTemps,
@@ -121,25 +120,34 @@ function cadreSurScene(t: T, jeu: Jeu, jour: number): HTMLElement {
   return el("div", { classe: ["vitrine-scene", `vitrine-scene--${jeu}`] }, cadre.racine);
 }
 
-/** Un navigateur fictif pour montrer le plein écran dans tous ses états, même là où il n'existe pas (la vitrine est une recette). */
-function envFictif(opts: { actif?: boolean; iphone?: boolean }): Environnement {
-  const doc = {
-    fullscreenEnabled: !opts.iphone,
-    fullscreenElement: opts.actif ? document.documentElement : null,
-    documentElement: { requestFullscreen: async () => undefined },
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-  };
-  return { doc: doc as unknown as Environnement["doc"], navigator: { userAgent: opts.iphone ? "iPhone" : "" } };
+/** Un iPhone, le temps d'un appel : sans plein écran de page, agent d'iPhone (la vitrine est une recette : l'astuce ne se montre que là). */
+function surIphone<T>(construire: () => T): T {
+  Object.defineProperty(navigator, "userAgent", { value: "iPhone", configurable: true });
+  Object.defineProperty(document, "fullscreenEnabled", { value: false, configurable: true });
+  try {
+    return construire();
+  } finally {
+    Reflect.deleteProperty(navigator, "userAgent");
+    Reflect.deleteProperty(document, "fullscreenEnabled");
+  }
 }
 
 /** Lot I7 : le bouton plein écran (normal, en plein écran, sur asphalte, dans la barre des jeux) et l'astuce de l'iPhone. */
 function pleinEcran(t: T, jour: number): HTMLElement[] {
-  const libelle = (actif: boolean) => t.t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer");
-  const mettre = (actif: boolean, classe: string) => boutonPleinEcran({ libelle, classe, env: envFictif({ actif }) });
+  // Les deux états côte à côte : le bouton réel, puis l'état « en plein écran » posé à la main (la vitrine ne bascule pas la page).
+  const mettre = (actif: boolean, classe: string) => {
+    const b = boutonPleinEcran({ t: (cle) => t.t(cle), classe });
+    b.hidden = false;
+    if (actif) {
+      b.setAttribute("aria-pressed", "true");
+      b.setAttribute("aria-label", t.t("pleinEcran.quitter"));
+      b.replaceChildren(icone("pleinEcranQuitter", { taille: 20 }));
+    }
+    return b;
+  };
   const memoire = new Map<string, string>();
   const stockage = { getItem: (k: string) => memoire.get(k) ?? null, setItem: (k: string, v: string) => void memoire.set(k, v) };
-  const astuce = astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage, env: envFictif({ iphone: true }) });
+  const astuce = surIphone(() => astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage }));
   return [
     el("div", { classe: "vitrine-ligne" }, mettre(false, "dj-plein-ecran--barre"), mettre(true, "dj-plein-ecran--barre")),
     el("div", { classe: "vitrine-asphalte dj-sombre vitrine-ligne" }, mettre(false, "plaque-vitrine"), mettre(true, "plaque-vitrine")),

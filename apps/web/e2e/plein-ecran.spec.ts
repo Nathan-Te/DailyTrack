@@ -155,9 +155,9 @@ test("caméra : chaque appui passe à la caméra suivante, comme la touche C ; l
   expect(await memorisee()).toBe("proche");
   // La pause montre la même caméra et la change avec le même résultat.
   await page.locator("#btn-pause").click();
-  await expect(page.locator("#pause-camera")).toHaveText("Caméra proche");
+  await expect(page.locator("#pause-camera")).toHaveText("Caméra : proche");
   await page.locator("#pause-camera").click();
-  await expect(page.locator("#pause-camera")).toHaveText("Caméra loin");
+  await expect(page.locator("#pause-camera")).toHaveText("Caméra : loin");
   await page.locator("#pause-resume").click();
   await expect(camera).toHaveAttribute("aria-label", "Caméra : loin");
   await context.close();

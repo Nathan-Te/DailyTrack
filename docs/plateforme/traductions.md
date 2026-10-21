@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-927 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+923 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -567,13 +567,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.chute` | Chute ! | Fall! |
 | `course.chronoTourne.tactile` | Le chrono tourne : GAZ, en bas à droite | The clock is running: GAS, bottom right |
 | `course.chronoTourne.clavier` | Le chrono tourne : ↑ ou Z pour accélérer | The clock is running: ↑ or W to accelerate |
-| `course.camera.proche` | Caméra proche | Close camera |
-| `course.camera.loin` | Caméra loin | Far camera |
-| `course.camera.capot` | Caméra capot | Hood camera |
-| `course.camera.bouton` | Caméra : {nom} | Camera: {nom} |
-| `course.camera.nom.proche` | proche | close |
-| `course.camera.nom.loin` | loin | far |
-| `course.camera.nom.capot` | capot | hood |
+| `course.camera.proche` | Caméra : proche | Camera: close |
+| `course.camera.loin` | Caméra : loin | Camera: far |
+| `course.camera.capot` | Caméra : capot | Camera: hood |
 | `course.camera.libre` | Caméra libre : glisse pour tourner, molette ou pincement pour zoomer | Free camera: drag to turn, wheel or pinch to zoom |
 | `course.effet.moteurCoupe` | Moteur coupé | Engine cut |
 | `course.effet.superTurbo` | Super turbo | Super turbo |

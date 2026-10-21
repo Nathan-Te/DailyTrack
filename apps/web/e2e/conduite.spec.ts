@@ -94,10 +94,10 @@ test("?debug&tune : les curseurs changent la voiture en direct ; la course n'est
 test("C change de caméra (proche → loin → capot), et le choix est gardé", async ({ page }) => {
   await racing(page, "/?debug&scenario=pilotage");
   await page.keyboard.press("KeyC");
-  await expect(page.locator("#banner")).toHaveText("Caméra loin");
+  await expect(page.locator("#banner")).toHaveText("Caméra : loin");
   expect(await page.evaluate(() => localStorage.getItem("cdj:camera"))).toBe("loin");
   await page.reload();
   await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 15_000 }); // le décompte occupe le bandeau
   await page.keyboard.press("KeyC");
-  await expect(page.locator("#banner")).toHaveText("Caméra capot"); // lot 23 : le rechargement garde « loin », la suivante est le capot
+  await expect(page.locator("#banner")).toHaveText("Caméra : capot"); // lot 23 : le rechargement garde « loin », la suivante est le capot
 });
