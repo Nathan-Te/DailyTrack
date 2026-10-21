@@ -104,7 +104,9 @@ Résultat sur le catalogue actuel (`modules/voies.json`) :
 5. **Joueurs fictifs v4** après une mort (démo, carnage de démonstration) : ils reprennent mal (limite du lot 15) ; une vraie reprise (attendre la bonne phase pour chaque section) serait un petit lot.
 
 ## 11. Scénario en 2 clics
-Le jour régénéré qui a le plus de voies lentes : le **24/10/2026** (3 voies : `puits`, `cheminee`, `mur-seul`). Liens de l'aperçu de la PR : voir la section suivante (ajoutée quand l'aperçu est publié).
+Le jour régénéré qui a le plus de voies lentes : le **24/10/2026** (3 voies : `puits`, `cheminee`, `mur-seul`). Aperçu de la PR (branché sur la révision de recette `https://b-claude-wizardly-d6vd43---cdj-api-recette-5qi6aa4qqa-ew.a.run.app`) :
+- https://playdujour-recette--pr-109-kdlto4xm.web.app/jump/?seed=2026-10-24
+- https://playdujour-recette--pr-109-kdlto4xm.web.app/jump/?seed=2026-10-24&debug
 
 En local (`npm run dev:jump`) : `http://localhost:5173/?seed=2026-10-24` et `…&debug`.
 
