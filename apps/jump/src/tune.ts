@@ -538,7 +538,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   fallback.hidden = true;
   fallback.setAttribute("aria-label", "Valeurs à copier");
   button("Copier les valeurs", async (b) => {
-    const text = `${paramsJson(params)}\n${cameraJson()}`;
+    const text = paramsJson(params);
     const ok = await copyText(text);
     fallback.hidden = ok;
     if (!ok) {
@@ -549,6 +549,11 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
     }
     b.textContent = ok ? "Copié ✓" : "Copie impossible : texte ci-dessous";
     setTimeout(() => (b.textContent = "Copier les valeurs"), 2400);
+  });
+  button("Copier la caméra", async (b) => {
+    const ok = await copyText(cameraJson());
+    b.textContent = ok ? "Copié ✓" : "Copie impossible";
+    setTimeout(() => (b.textContent = "Copier la caméra"), 2400);
   });
   button("Réinitialiser", () => {
     for (const s of CAMERA_SLIDERS) setCamera(s.key, cameraDefault(s.key));
