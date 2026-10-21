@@ -207,8 +207,18 @@ test("mouvement réduit demandé par le système : actif par défaut, ni particu
     await run(page, JUMP, 2);
     await run(page, 0, 90, "ground");
     expect(await get(page, (j) => j.effects.emitted)).toBeGreaterThan(0); // poussière du saut et de l'atterrissage
-    expect(await run(page, RIGHT, 400, "dead")).toBeLessThan(400);
-    const fx = await get(page, (j) => j.fx);
+    // La secousse de la mort (0,12 s) s'use à chaque image affichée, même en pas à pas : on la lit dans la même évaluation que le pas de la
+    // mort, avant qu'une image ne passe (sur WebKit, plus lent, une seule image entre deux évaluations suffisait à l'éteindre).
+    const { steps, fx } = await page.evaluate((bits) => {
+      const j = (window as unknown as { __jump: J }).__jump;
+      j.input(bits);
+      for (let t = 1; t <= 400; t++) {
+        j.advance(1);
+        if (j.phase === "dead") return { steps: t, fx: j.fx };
+      }
+      return { steps: 400, fx: j.fx };
+    }, RIGHT);
+    expect(steps).toBeLessThan(400);
     expect(fx.emitted).toBeGreaterThan(0);
     expect(fx.shaking).toBe(true);
   } finally {
