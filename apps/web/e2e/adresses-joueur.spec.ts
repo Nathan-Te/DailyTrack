@@ -35,14 +35,15 @@ test.afterAll(() => void server?.kill());
 
 type Seen = { url: string; method: string; player: string | undefined };
 
-/** Relève chaque requête du contexte : son adresse complète, sa méthode et l'en-tête `X-Player-Id` tel qu'il part. */
-function watchRequests(context: BrowserContext): { seen: Seen[]; settled: () => Promise<void> } {
+/**
+ * Relève chaque requête du contexte : son adresse complète, sa méthode et l'en-tête `X-Player-Id` tel qu'il part. `headers()` est lu tout de
+ * suite : `allHeaders()` attend les en-têtes « réels » et ne se résout jamais pour une requête qu'une navigation a annulée (le test attendait alors
+ * jusqu'à son délai, en CI).
+ */
+function watchRequests(context: BrowserContext): { seen: Seen[] } {
   const seen: Seen[] = [];
-  const pending: Promise<void>[] = [];
-  context.on("request", (request) => {
-    pending.push(request.allHeaders().then((h) => void seen.push({ url: request.url(), method: request.method(), player: h["x-player-id"] })));
-  });
-  return { seen, settled: async () => void (await Promise.all(pending)) };
+  context.on("request", (request) => void seen.push({ url: request.url(), method: request.method(), player: request.headers()["x-player-id"] }));
+  return { seen };
 }
 
 /** Le nom de la route de DailyTrack qu'une requête de l'API vise (`ghost?kind=ahead`, `salon/board`…), ou null hors de l'API. */
@@ -88,21 +89,26 @@ test("aucune adresse ne porte l'identifiant du joueur : course du jour, Salon, r
   const watching = watchRequests(context);
   const page = await context.newPage();
 
-  // --- La course du jour : classement et fantôme du premier au chargement, « devant moi » par la touche G, puis l'envoi -----------------------
+  // --- La course du jour : classement au chargement, l'envoi, puis les fantômes par la touche G (le premier, le joueur devant) -----------------
   await page.goto(`/?debug&timescale=6&api=${encodeURIComponent(API)}`);
   await page.waitForFunction(() => window.__cdj?.phase === "countdown" || window.__cdj?.phase === "racing");
+  const asked = (route: string) => watching.seen.some((s) => routeOf(s.url) === route);
   const id = await idOf(page);
   expect(id).toMatch(/^[0-9a-f]{32}$/);
-  const asked = (route: string) => watching.seen.some((s) => routeOf(s.url) === route);
-  await page.keyboard.press("g"); // fantôme suivant : le premier
-  await expect.poll(() => asked("ghost?kind=first"), { timeout: 30_000 }).toBe(true);
-  await page.keyboard.press("g"); // puis le joueur devant (aucun temps encore : la requête part, la réponse est « personne »)
-  await expect.poll(() => asked("ghost?kind=ahead"), { timeout: 30_000 }).toBe(true);
   await page.evaluate((c) => window.__cdj.autoplay(c), slowCode);
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
   await page.locator("#finish .online input").fill("Alice");
   await page.locator("#finish .online button[type=submit]").click();
   await expect(page.locator("#finish .online .rank")).toHaveText("2e sur 2");
+
+  // G : fantôme suivant (le premier, puis le joueur devant : Alice est classée, c'est Bob). Une pression pendant qu'un changement de fantôme est
+  // en cours est ignorée par le jeu : on appuie jusqu'à ce que la requête voulue soit partie. (Avant la course, le cycle de G relancerait la tentative
+  // — `setGhost` hors course appelle `startAttempt` — et effacerait l'`autoplay`.)
+  for (const route of ["ghost?kind=first", "ghost?kind=ahead"]) {
+    await expect
+      .poll(async () => (asked(route) ? true : (await page.keyboard.press("g"), asked(route))), { timeout: 60_000, intervals: [250, 500, 1000] })
+      .toBe(true);
+  }
 
   // --- Le Salon : l'heure, le classement, les fantômes (Bob a un temps dans cette session) --------------------------------------------------
   await page.goto(`/?mode=salon&debug&api=${encodeURIComponent(API)}`);
@@ -118,7 +124,6 @@ test("aucune adresse ne porte l'identifiant du joueur : course du jour, Salon, r
   await page.waitForFunction(() => window.__cdj.salon!.trackId, undefined, { timeout: 60_000 });
   await page.evaluate(() => window.__cdj.salon!.refresh());
 
-  await watching.settled();
   const { seen } = watching;
 
   // L'identifiant n'est dans aucune adresse (et `player=` n'est revenu nulle part).
