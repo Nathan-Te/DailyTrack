@@ -125,6 +125,8 @@ const HOLD = 24;
 const QUARTER = idiv(UNITS_PER_TILE, 4);
 /** Pas contre le mur après chaque pose, avant le saut suivant (un joueur se pose, puis saute ; la gigue ±3 ne fait plus rater la corniche). */
 const SETTLE = 10;
+/** Vitesse sous laquelle on part de l'arrêt pour monter sur le toit (unités/pas). */
+const RUN_SLOW = 64;
 /** Pas au plus du script d'une voie (au-delà : elle n'aboutit pas). */
 const SCRIPT_MAX = 40 * TICK_RATE;
 
@@ -158,11 +160,13 @@ export function slowScript(level: Level, start: AttemptState, route: Pick<SlowRo
     if (stage === 0) {
       // On s'arrête sur le palier (gauche tenue tant qu'on avance), puis un saut tenu, droite tenue : il passe l'ouverture et se pose sur le
       // toit de la cage (le mur de droite de la cage l'arrête).
+      // Arrivé trop vite, on est passé sous le toit : on revient sur le palier (gauche tenue), puis on freine ce recul (droite tenue).
       const floor = s.player.ground === 1 && feet(s) === lane;
-      if (floor && tileOf(center(s) + idiv(PLAYER_WIDTH, 2)) >= route.zone) return "la voie lente : passée sous la cage sans sauter";
+      const under = s.player.x + PLAYER_WIDTH > route.zone * T;
+      if (floor && tileOf(center(s)) > route.zone + 1) return "la voie lente : passée sous la cage sans sauter";
       if (press < 0 && landed) {
-        dir = onRow(s, route.entryRow - 2) ? INPUT_RIGHT : !floor ? 0 : s.player.vx > 0 ? INPUT_LEFT : INPUT_RIGHT;
-        trigger = floor && s.player.vx <= 0;
+        dir = onRow(s, route.entryRow - 2) ? INPUT_RIGHT : !floor ? 0 : s.player.vx > 0 || under ? INPUT_LEFT : INPUT_RIGHT;
+        trigger = floor && !under && s.player.vx >= 0 && s.player.vx < RUN_SLOW;
       }
     } else if (stage <= ledges.length) {
       // Posé : on reste un moment contre son mur (la corniche fait une tuile), puis on saute vers la suivante en tenant sa direction.

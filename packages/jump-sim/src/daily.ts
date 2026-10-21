@@ -1256,16 +1256,17 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
     { id: "plongeon", variant: 1 },
     { id: "nuit-portes", variant: 0 },
   ],
+  // Lot 16 : l'ancienne suite dépassait 56 rangées avec la galerie de ses voies lentes ; rechoisie (`secours:modules -- --theme=neon`).
   neon: [
-    { id: "neon-cheminee", variant: 1 },
-    { id: "ressort-scie", variant: 1 },
-    { id: "paroi-friable", variant: 2 },
-    { id: "escalier-scies", variant: 0 },
-    { id: "puits", variant: 2 },
-    { id: "petits-trous", variant: 5 },
-    { id: "piliers-scie", variant: 5 },
-    { id: "demi-tour", variant: 3 },
-    { id: "pont-friable", variant: 4 },
+    { id: "neon-pics", variant: 2 },
+    { id: "mur-trous", variant: 4 },
+    { id: "cheminee-scie", variant: 2 },
+    { id: "petits-trous", variant: 1 },
+    { id: "neon-cheminee", variant: 0 },
+    { id: "saut-long", variant: 3 },
+    { id: "descente-scies", variant: 0 },
+    { id: "cheminee-vide", variant: 3 },
+    { id: "grande-scie", variant: 4 },
     { id: "neon-couloir", variant: 2 },
   ],
   // Lot 13 : la forêt (courants d'air), choisie de même (`secours:modules -- --theme=foret`, 80 dates valides sur 80).
@@ -1284,8 +1285,23 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
   ],
 };
 
-/** La suite de secours d'un thème. */
-export function fallbackFor(theme: JumpThemeName): readonly { id: string; variant: number }[] {
+/** Lot 16 : la suite de secours du néon d'avant (lot 12), gardée pour la référence v3 (`dailyLevel(jour, thème, 3)` ne change pas). */
+const FALLBACK_NEON_V3: readonly { id: string; variant: number }[] = [
+  { id: "neon-cheminee", variant: 1 },
+  { id: "ressort-scie", variant: 1 },
+  { id: "paroi-friable", variant: 2 },
+  { id: "escalier-scies", variant: 0 },
+  { id: "puits", variant: 2 },
+  { id: "petits-trous", variant: 5 },
+  { id: "piliers-scie", variant: 5 },
+  { id: "demi-tour", variant: 3 },
+  { id: "pont-friable", variant: 4 },
+  { id: "neon-couloir", variant: 2 },
+];
+
+/** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4). */
+export function fallbackFor(theme: JumpThemeName, simVersion = SINGLE_CLOCK_VERSION): readonly { id: string; variant: number }[] {
+  if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
 }
 
@@ -1339,7 +1355,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
   let out: DailyLevel;
   if (best) out = { ...best.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };
   else {
-    const proof = prove(fallbackFor(theme), id, theme, simVersion);
+    const proof = prove(fallbackFor(theme, simVersion), id, theme, simVersion);
     if (typeof proof === "string" || proof.problems.length > 0) throw new Error(`Niveau de secours invalide : ${typeof proof === "string" ? proof : proof.problems.join(" ; ")}`);
     out = { ...proof.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: -1, fallback: true };
   }
@@ -1351,7 +1367,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
-  const proof = prove(fallbackFor(theme), dailyLevelId(day, theme, simVersion), theme, simVersion);
+  const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);
   if (typeof proof === "string") return proof;
   if (proof.problems.length > 0) return proof.problems.join(" ; ");
   return { ...proof.built, theme, forcedTheme: theme !== natural, day, date: formatDay(day), number: levelNumber(day), attempts: [], chosen: -1, fallback: true };
