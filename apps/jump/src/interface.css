@@ -115,6 +115,30 @@ canvas {
 .cadre__pied:empty {
   display: none;
 }
+/* Lot I5 (retour de Nathan) : réglages, archives et classement du jour restent **dans le jeu** — sur la scène sous le voile à rayures, comme l'accueil : la
+   barre des jeux en plaque crème, l'étiquette dans sa coque moutarde, le tout centré en hauteur (et qui défile s'il dépasse). L'écran ouvert dessous (accueil,
+   pause) s'efface le temps qu'ils sont ouverts : un seul voile, une seule étiquette. */
+.cadre--scene {
+  background: var(--voile-rayures);
+  justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+.cadre--scene > .dj-barre-jeu {
+  margin-bottom: 10px;
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  padding: 0 12px;
+}
+.cadre--scene .cadre__defile {
+  flex: 0 1 auto;
+  padding: 0 6px 6px 0;
+}
+body:has(.cadre--scene:not([hidden])) #home,
+body:has(.cadre--scene:not([hidden])) #menu {
+  visibility: hidden;
+}
 
 /* --- L'étiquette jaune ----------------------------------------------------------------------------------------------------------------------------- */
 .etiquette {

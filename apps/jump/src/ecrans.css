@@ -15,11 +15,13 @@
   line-height: 1.3;
   padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
   touch-action: pan-y;
+  /* Lot I5 (retour de Nathan) : la barre et la coque centrées ensemble en hauteur ; la coque défile si elle dépasse. */
+  justify-content: center;
 }
 .accueil__barre {
   flex: none;
   align-self: stretch;
-  max-width: 960px;
+  max-width: 900px;
   width: 100%;
   margin: 0 auto 10px;
 }
@@ -31,7 +33,7 @@
   padding: 0 12px;
 }
 .accueil__defile {
-  flex: 1;
+  flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;

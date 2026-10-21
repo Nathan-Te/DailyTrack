@@ -20,7 +20,7 @@ interface Ecran {
 
 function ecran(id: string, aria: string, onToggle: (open: boolean) => void) {
   let open = false;
-  const cadre = creerCadre({ id, titreAria: aria, retour: "jeu", onRetour: () => self.close() });
+  const cadre = creerCadre({ id, titreAria: aria, retour: "jeu", scene: true, onRetour: () => self.close() });
   const self = {
     cadre,
     get isOpen() {

@@ -42,6 +42,11 @@ export interface OptionsCadre {
   onRetour?: () => void;
   /** Au-dessus des autres écrans (réglages ouverts depuis la pause ou l'accueil). */
   haut?: boolean;
+  /**
+   * Lot I5, retour de Nathan : l'écran reste **dans le jeu** — posé sur la scène sous le voile à rayures, la barre des jeux en plaque crème, l'étiquette dans
+   * sa coque moutarde (comme l'accueil), au lieu d'une page crème qui fait quitter le jeu. Les réglages, les archives et le classement du jour.
+   */
+  scene?: boolean;
 }
 
 export interface Cadre {
@@ -54,13 +59,14 @@ export interface Cadre {
   pied: HTMLElement;
 }
 
-/** Un cadre crème plein écran, caché au départ ; `document.body` le reçoit. */
+/** Un cadre crème plein écran (ou, avec `scene`, posé sur la scène), caché au départ ; `document.body` le reçoit. */
 export function creerCadre(o: OptionsCadre): Cadre {
-  const racine = el("div", { classe: ["cadre", o.haut && "cadre--haut"], attrs: { id: o.id, role: "dialog", "aria-modal": "true", hidden: true } });
+  const racine = el("div", { classe: ["cadre", o.haut && "cadre--haut", o.scene && "cadre--scene"], attrs: { id: o.id, role: "dialog", "aria-modal": "true", hidden: true } });
   const corps = el("div", { classe: "etiquette__corps" });
   const etiquette = el("main", { classe: "etiquette" }, corps);
   const pied = el("div", { classe: "cadre__pied" });
-  const defile = el("div", { classe: "cadre__defile" }, etiquette, pied);
+  const dessus = o.scene ? el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette) : etiquette;
+  const defile = el("div", { classe: "cadre__defile" }, dessus, pied);
   let barre: HTMLElement | null = null;
   const majBarre = () => {
     racine.setAttribute("aria-label", t(o.titreAria));

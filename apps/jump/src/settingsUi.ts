@@ -36,7 +36,7 @@ const EFFECTS: readonly EffectsLevel[] = ["normal", "reduit", "aucun"];
 export function mountSettings(opts: SettingsUiOptions): SettingsUi {
   let s = { ...opts.settings };
   let open = false;
-  const cadre = creerCadre({ id: "settings", titreAria: "reglages.aria", retour: "jeu", haut: true, onRetour: () => self.close() });
+  const cadre = creerCadre({ id: "settings", titreAria: "reglages.aria", retour: "jeu", haut: true, scene: true, onRetour: () => self.close() });
   const change = (key: keyof PlayerSettings) => opts.onChange({ ...s }, key);
   const shows: (() => void)[] = [];
 

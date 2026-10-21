@@ -2,14 +2,16 @@ import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { expect as baseExpect, test, TODAY, type BrowserContext, type Page, newClockedContext } from "./fixtures";
 import { dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
-import { encodeTransfer } from "../src/transfer";
+import { noteIdentityChange, writeIdentity, type ListableStore } from "@cdj/profile";
 
-// Lot P4 (plateforme) : le scénario « deux appareils » du lot P2, **étendu à DailyTrack**. Un code chargé dans DailyJump doit vider, sur cet
+// Lot P4 (plateforme) : le scénario « deux appareils » du lot P2, **étendu à DailyTrack**. Un code chargé ailleurs (lot I5 : au portail, `/profil/`,
+// puisque Jump n'a plus de profil dans le jeu) doit vider, sur cet
 // appareil, le cache des records de DailyTrack de l'ancienne identité (le compteur de révision d'identité de `@cdj/profile` : DailyTrack le
 // lit au démarrage et fait ce qu'il fait quand le code est chargé chez lui, `applyIdentity`). Sans changement d'identité : aucun effet.
 //   1. l'appareil A joue DailyJump (la preuve de l'auteur, pas à pas) et choisit son pseudo : son code existe ;
 //   2. l'appareil B joue DailyTrack sous sa propre identité : un record du jour, confirmé par le serveur ;
-//   3. B charge le code d'A **dans DailyJump** (Réglages › Profil) ;
+//   3. B charge le code d'A **comme le fait le portail** (`writeIdentity` + `noteIdentityChange(…, "code")`, même stockage), puis ouvre DailyJump, qui
+//      le suit et se synchronise ;
 //   4. B ouvre DailyTrack : le cache des records de son ancienne identité est vidé, le profil est celui d'A ;
 //   5. B court sous ce profil, recharge DailyTrack : rien n'est plus vidé.
 // Les deux jeux partagent le stockage parce qu'ils sont servis par la **même origine** (`/` et `/jump/`, comme sur GitHub Pages) : le serveur
@@ -66,6 +68,30 @@ async function race(page: Page, code: string): Promise<void> {
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
 }
 
+/** « Charger un code » du portail (apps/portail/src/profil.ts) : `writeIdentity` puis `noteIdentityChange(…, "code")`, dans le stockage de la page. */
+async function chargerCommeLePortail(page: Page, id: string, name: string): Promise<void> {
+  const avant = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)!])));
+  const m = new Map(Object.entries(avant));
+  const store: ListableStore = {
+    get length() {
+      return m.size;
+    },
+    key: (i) => [...m.keys()][i] ?? null,
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k),
+  };
+  writeIdentity({ id, name }, store);
+  noteIdentityChange(store, "code");
+  await page.evaluate(
+    ([ecrites, retirees]) => {
+      for (const k of retirees) localStorage.removeItem(k);
+      for (const [k, v] of ecrites) localStorage.setItem(k, v);
+    },
+    [[...m], Object.keys(avant).filter((k) => !m.has(k))] as const,
+  );
+}
+
 const storageOf = (page: Page, keys: string[]) => page.evaluate((ks) => Object.fromEntries(ks.map((k) => [k, localStorage.getItem(k)])), keys);
 
 test("deux appareils jusqu'à DailyTrack : un code chargé dans DailyJump vide le cache des records de DailyTrack de l'ancienne identité ; sans changement, rien", async ({ browser }) => {
@@ -82,10 +108,10 @@ test("deux appareils jusqu'à DailyTrack : un code chargé dans DailyJump vide l
   await playJump(a.page);
   await a.page.locator("#arrival-name").fill(nameA);
   await a.page.locator("#arrival-name-ok").click();
-  await expect(a.page.locator("#arrival-rank")).toHaveText(/^1ᵉʳ sur \d+$/);
+  // Classé (lot I5 : le rang au format du socle, « 1er », « 2e » ; un essai relancé partage la base en mémoire du premier : A peut y être 2e).
+  await expect(a.page.locator("#arrival-rank")).toHaveText(/^(1er|\d+e) sur \d+$/);
   const idA = (await a.page.evaluate(() => localStorage.getItem("cdj:player")))!;
   expect(idA).toMatch(/^[0-9a-f]{32}$/);
-  const code = encodeTransfer(idA);
   await a.context.close();
 
   // ——— 2. B joue DailyTrack sous sa propre identité : un record du jour, confirmé par le serveur ———
@@ -102,17 +128,11 @@ test("deux appareils jusqu'à DailyTrack : un code chargé dans DailyJump vide l
   expect(before["cdj:identite:vue"]).not.toBeNull(); // DailyTrack note la révision vue dès sa première ouverture
   await b.page.evaluate(() => window.__cdj.manual(true));
 
-  // ——— 3. B charge le code d'A dans DailyJump ———
+  // ——— 3. B charge le code d'A ailleurs que dans DailyTrack (comme le portail), puis ouvre DailyJump, qui suit et se synchronise ———
+  await chargerCommeLePortail(b.page, idA, nameA);
   await b.page.goto(`${SITE}/jump/?${JUMP_GAME}`);
-  await b.page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
-  if (await b.page.locator("#help").isVisible()) await b.page.locator("#help-close").click();
-  await b.page.locator("#home-profile").click();
-  await b.page.locator("#profile-load").click();
-  await b.page.locator("#profile-code").fill(code);
-  await expect(b.page.locator("#profile .pfound")).toContainText(`« ${nameA} »`);
-  await b.page.locator("#profile-apply").click();
   await b.page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.sync.status === "ok", undefined, { timeout: 60_000 });
-  // DailyJump a écrit l'identité et avancé la révision (un code) ; le cache de DailyTrack, lui, n'a pas encore bougé.
+  // L'identité est écrite et la révision avancée (un code) ; le cache de DailyTrack, lui, n'a pas encore bougé.
   const inJump = await storageOf(b.page, ["cdj:player", "cdj:name", best, "cdj:identite:rev", "cdj:identite:code"]);
   expect([inJump["cdj:player"], inJump["cdj:name"]]).toEqual([idA, nameA]);
   expect(inJump[best]).not.toBeNull();
