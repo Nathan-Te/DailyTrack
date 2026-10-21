@@ -16,7 +16,6 @@ const fr = {
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Retour au portail Du Jour",
   "barre.jour": "{date} · {numero}",
-  "barre.portail.aria": "Du Jour, les jeux du jour",
   // Lot I3 : l'écran d'arrivée d'un jeu propose le jeu suivant du jour (ou fête la journée parfaite). Clés prêtes pour les lots I4 et I5.
   "arrivee.jeuSuivant": "Jeu suivant du jour : {jeu} ›",
   "arrivee.jeuSuivant.aria": "Jouer au jeu suivant du jour : {jeu}",
@@ -111,7 +110,6 @@ const en: Catalogues<typeof fr>["en"] = {
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Back to Du Jour",
   "barre.jour": "{date} · {numero}",
-  "barre.portail.aria": "Du Jour, today's games",
   "arrivee.jeuSuivant": "Next game of the day: {jeu} ›",
   "arrivee.jeuSuivant.aria": "Play today's next game: {jeu}",
   "arrivee.parfaite": "Perfect day!",

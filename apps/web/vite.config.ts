@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
+import { CATALOGUE_APERCU } from "./src/catalogue.apercu";
 import { CATALOGUE_FR } from "./src/catalogue.fr";
 
 // Lot I4 (plateforme) : DailyTrack passe au socle `@cdj/ui` — textes du HTML pré-remplis depuis le catalogue français (`pagesDuSocle`), couleur de
@@ -12,7 +13,7 @@ const FACES_PRECHARGEES = ["barlow-condensed-latin-800-italic", "archivo-latin-4
 export default defineConfig({
   // Chemins relatifs : fonctionne à la racine (Cloudflare Pages) comme sous /DailyTrack/ (GitHub Pages).
   base: "./",
-  plugins: [pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR }, prechargees: FACES_PRECHARGEES, absolues: true })],
+  plugins: [pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR, ...CATALOGUE_APERCU.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
   experimental: {
     // Une police est demandée à `/assets/…` (la racine du site, partagée avec le portail), jamais relativement à la page : `/track/assets/…` ferait un second
     // téléchargement des mêmes octets. Tout le reste reste relatif à la page.

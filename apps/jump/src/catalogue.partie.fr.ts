@@ -8,7 +8,6 @@ export const fr = {
   "hud.pause.aria": "Pause",
   "hud.pc.aria": "Point de passage {pc} sur {total}",
   "hud.ecart.aria": "Écart avec ton record : {ecart}",
-  "hud.objectif": "{medaille} {temps}",
   "hud.objectif.aria": "Médaille visée : {medaille}, {temps}",
   "hud.objectif.auteurBattu": "Auteur battu",
   "hud.mode.archive": "Archive",
@@ -89,7 +88,6 @@ export const fr = {
   "aide.schema.legende": "À gauche, la direction ; à droite, le saut. Le milieu de l'écran reste au jeu.",
   "aide.zone.libre": "le jeu",
   // Le carnage (maquette jump-carnage.html)
-  "carnage.aria": "Carnage",
   "carnage.titre": "CARNAGE",
   "carnage.vies": { one: "{n} vie", other: "{n} vies" },
   "carnage.arrivees": { one: "{n} arrivée", other: "{n} arrivées" },
@@ -107,7 +105,6 @@ export const fr = {
   "carnage.fermer": "Fermer",
   "carnage.aide": "Une commande pour passer",
   // Commandes tactiles (lot 1b : mêmes zones ; boutons aux bords)
-  "tactile.aria": "Commandes tactiles",
   "tactile.gauche": "Gauche",
   "tactile.droite": "Droite",
   "tactile.saut": "SAUT",

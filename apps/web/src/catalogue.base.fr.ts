@@ -8,11 +8,6 @@
 export const fr = {
   "page.titre": "Track — Du Jour",
   "page.description": "Un circuit court par jour, le même pour tout le monde : une minute dans le navigateur, un fantôme à battre, un résultat à partager.",
-  // Lot I6 : l'aperçu quand on colle le lien de Track (Open Graph). Ton de Track (charte § 7) : sec, les chiffres d'abord.
-  "apercu.titre": "Track — Du Jour",
-  "apercu.description": "Un circuit par jour, le même pour tous. Un tour, un chrono, le fantôme du premier à battre.",
-  "apercu.image": "L'étiquette de Track : asphalte, bandes de livrée orange, TRACK en capitales.",
-  "page.chargement": "Chargement…",
   "page.sansJs": "Track a besoin de JavaScript.",
   // Thèmes du jour (codes de @cdj/sim : THEME_NAMES) ; les mêmes noms que le portail (`portail.theme.cdj.*`)
   "theme.stade": "Stade",
@@ -24,18 +19,12 @@ export const fr = {
   "theme.col": "Col alpin",
   "theme.ville": "Ville",
   // Médailles de Track (les noms viennent du catalogue commun : medaille.auteur…) ; mot court pour les lignes de classement
-  "medaille.aucune": "Pas de médaille",
   // Le cadre crème de Du Jour (barre des jeux)
   "cadre.retourTrack": "Retour à l'accueil de Track",
   // Mots courants
-  "commun.fermer": "Fermer",
   "commun.reessayer": "Réessayer",
-  "commun.copier": "Copier",
-  "commun.copie": "Copié",
-  "commun.annuler": "Annuler",
   "commun.valider": "Valider",
   "commun.toi": "Toi",
-  "commun.pilote": { one: "{n} pilote", other: "{n} pilotes" },
   // Erreurs qui ne viennent pas du serveur (pas de réponse, délai dépassé) : celles du serveur sont `erreur.<code>` (catalogue commun)
   "erreur.local.network": "Serveur injoignable.",
   "erreur.local.timeout": "Le serveur ne répond pas.",

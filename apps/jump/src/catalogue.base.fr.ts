@@ -9,10 +9,6 @@
 export const fr = {
   "page.titre": "Jump — Du Jour",
   "page.description": "Jump : un niveau de plateformes court et brutal par jour, le même pour tout le monde. Tu vas mourir. Beaucoup.",
-  // Lot I6 : l'aperçu quand on colle le lien de Jump (Open Graph). Ton de Jump (charte § 7) : drôle et un peu cruel.
-  "apercu.titre": "Jump — Du Jour",
-  "apercu.description": "Un niveau par jour, le même pour tous. Les scies tournent déjà. Tu vas mourir. Beaucoup.",
-  "apercu.image": "L'étiquette jaune de Jump : JUMP, le petit personnage carré et une scie.",
   "page.preparation": "Préparation du niveau…",
   "page.sansWebgl": "WebGL n'est pas disponible dans ce navigateur : Jump ne peut pas s'afficher.",
   // Thèmes du jour (codes de @cdj/jump-sim : JUMP_THEME_NAMES) ; les mêmes noms que le portail (`portail.theme.jump.*`)
@@ -26,7 +22,6 @@ export const fr = {
   // Mots courants et pluriels
   "commun.morts": { one: "{n} mort", other: "{n} morts" },
   "commun.essais": { one: "{n} essai", other: "{n} essais" },
-  "commun.fermer": "Fermer",
   "commun.oui": "Oui",
   "commun.non": "Non",
   "commun.montrer": "Montrer",

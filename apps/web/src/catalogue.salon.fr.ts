@@ -35,7 +35,6 @@ export const fr = {
   "salon.classement.titre": "Salon {heure} · {classes} · {presents}",
   "salon.classement.classes": { one: "{n} classé", other: "{n} classés" },
   "salon.classement.presents": { one: "{n} présent", other: "{n} présents" },
-  "salon.classement.revoir": "Revoir le meilleur tour",
   // Ligne à partager : « Salon 14:20 — 31,402 s — 3e/17 »
   "salon.partage.titre": "Salon {heure}",
   // Arrivée d'une course du Salon
@@ -82,7 +81,6 @@ export const fr = {
   "revoir.retourCourt": "−{n} s",
   "revoir.vitesse": "Vitesse {vitesse}",
   "revoir.vitesses": "Vitesse de lecture",
-  "revoir.camera": "Caméra suivante",
   "revoir.cameraActive": "Caméra : {nom} (C)",
   "revoir.cameras.proche": "proche",
   "revoir.cameras.loin": "loin",

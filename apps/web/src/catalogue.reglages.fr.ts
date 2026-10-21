@@ -104,11 +104,8 @@ export const fr = {
   "tactile.indice.auto": "touche à droite pour freiner",
   "tactile.frein": "Frein",
   "tactile.gaz": "Gaz",
-  "tactile.camera": "Changer de caméra",
   "tactile.pointDeControle": "Recommencer au dernier point de contrôle",
   "tactile.depart": "Recommencer depuis le départ",
-  "tactile.reglages": "Réglages",
-  "tactile.pleinEcran": "Plein écran",
   "tactile.rotation": "Tourne ton téléphone : on conduit mieux en paysage.",
   "tactile.rotation.ok": "Jouer quand même",
   // --- Aide « Comment jouer » ------------------------------------------------------------------------------------------------------------------

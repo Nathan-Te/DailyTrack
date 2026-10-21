@@ -2,6 +2,7 @@ import { readdirSync } from "node:fs";
 import { defineConfig } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
+import { CATALOGUE_APERCU } from "./src/catalogue.apercu";
 import { CATALOGUE_FR } from "./src/catalogue.fr";
 
 // Lot I5 (plateforme) : Jump passe au socle `@cdj/ui`, comme Track au lot I4 — textes du HTML pré-remplis depuis le catalogue français (`pagesDuSocle`), couleur
@@ -30,7 +31,7 @@ export default defineConfig({
   // Chemins relatifs, comme DailyTrack : le jeu est publié sous `<site>/jump/` (GitHub Pages : `/DailyTrack/jump/` et, pour une branche,
   // `/DailyTrack/b/<branche>/jump/`) ; une base absolue `/jump/` casserait les aperçus de branche.
   base: "./",
-  plugins: [pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR }, prechargees: FACES_PRECHARGEES, absolues: true })],
+  plugins: [pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR, ...CATALOGUE_APERCU.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
   experimental: {
     // Une police est demandée à `/assets/…` (la racine du site, partagée avec le portail et Track), jamais relativement à la page : `/jump/assets/…` ferait un
     // second téléchargement des mêmes octets. Tout le reste reste relatif à la page.

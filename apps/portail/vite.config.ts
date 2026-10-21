@@ -3,6 +3,7 @@ import { defineConfig, type Plugin } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
 import { CATALOGUE_PORTAIL } from "./src/catalogue";
+import { CATALOGUE_APERCU } from "./src/catalogueApercu";
 import { CATALOGUE_VITRINE } from "./src/catalogueVitrine";
 
 // Lot R4 (plateforme) : le portail, construit sans `package.json` (le dossier n'est pas un espace de travail npm) par
@@ -35,7 +36,7 @@ export default defineConfig({
   define: { __PORTAIL_DEMO__: JSON.stringify(vitrine) },
   plugins: [
     pagesDuSocle({
-      catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_VITRINE.fr },
+      catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_PORTAIL.fr, ...CATALOGUE_VITRINE.fr, ...CATALOGUE_APERCU.fr },
       prechargees: ["archivo-black-latin-400-normal", "archivo-latin-400-normal"],
     }),
     introuvableAbsolue(),

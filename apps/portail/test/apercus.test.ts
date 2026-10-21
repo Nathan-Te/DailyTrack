@@ -6,9 +6,9 @@ import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { JETON_ORIGINE, MANIFESTE, manifeste, origineDuSite, poserOrigine } from "../../../scripts/site.mjs";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { DOSSIER_PARTAGE, ICONES, IMAGES_PARTAGE, POIDS_MAX, SOURCE_IMAGES, taillePng } from "../../../scripts/images-partage.mjs";
-import { CATALOGUE_PORTAIL } from "../src/catalogue";
-import { CATALOGUE_BASE as BASE_TRACK } from "../../web/src/catalogue.base";
-import { CATALOGUE_BASE as BASE_JUMP } from "../../jump/src/catalogue.base";
+import { CATALOGUE_APERCU as APERCU_PORTAIL } from "../src/catalogueApercu";
+import { CATALOGUE_APERCU as APERCU_TRACK } from "../../web/src/catalogue.apercu";
+import { CATALOGUE_APERCU as APERCU_JUMP } from "../../jump/src/catalogue.apercu";
 
 // Lot I6 (plateforme) : ce qu'on voit quand on colle un lien de playdujour.com (Open Graph, Twitter), les icônes de l'écran d'accueil et le
 // manifeste, la page 404. Les images elles-mêmes (tailles, poids, adresses servies) sont vérifiées sur le site assemblé : e2e
@@ -18,9 +18,9 @@ const lire = (f: string) => readFileSync(join(ROOT, f), "utf8");
 
 /** Les trois pages qu'on partage : la page source, son chemin public, son image et son catalogue. */
 const PAGES = [
-  { page: "apps/portail/index.html", chemin: "/", image: "portail", catalogue: CATALOGUE_PORTAIL },
-  { page: "apps/web/index.html", chemin: "/track/", image: "track", catalogue: BASE_TRACK },
-  { page: "apps/jump/index.html", chemin: "/jump/", image: "jump", catalogue: BASE_JUMP },
+  { page: "apps/portail/index.html", chemin: "/", image: "portail", catalogue: APERCU_PORTAIL },
+  { page: "apps/web/index.html", chemin: "/track/", image: "track", catalogue: APERCU_TRACK },
+  { page: "apps/jump/index.html", chemin: "/jump/", image: "jump", catalogue: APERCU_JUMP },
 ] as const;
 
 /** La valeur d'une balise `<meta property|name="…">` (attribut `content`, ou la clé `data-t-content` pré-remplie à la construction). */
@@ -58,6 +58,9 @@ describe("lot I6 : chaque page partagée déclare ses balises de partage", () =>
       expect(c["apercu.image"]!.length, `${page} ${langue}`).toBeGreaterThan(20);
     }
     expect(IMAGES_PARTAGE.map((i: { nom: string }) => i.nom)).toContain(image);
+    // Lus seulement à la construction : le jeu (ou le portail) ne les embarque pas (aucun poids au premier chargement).
+    const vite = lire(page.replace("index.html", "vite.config.ts"));
+    expect(vite, page).toContain("...CATALOGUE_APERCU.fr");
   });
 
   it("les images : 1200 × 630, au plus 150 ko ; les icônes 180, 192 et 512 ; la source est dans le dépôt, sans ressource extérieure", () => {
