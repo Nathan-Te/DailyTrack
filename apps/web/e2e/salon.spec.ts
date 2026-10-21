@@ -147,7 +147,7 @@ test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebo
   await page.keyboard.up("ArrowUp");
 });
 
-test("fin de session : classement final (trois premiers) sur l'ancien circuit, puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", async ({ page }) => {
+test("fin de session : podium (trois premiers) sur l'ancien circuit, puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", async ({ page }) => {
   await page.addInitScript(() => {
     // Plus longue tâche du fil principal (outil de mesure : `PerformanceObserver` « longtask »).
     (window as unknown as { __long: { at: number; ms: number }[] }).__long = [];
@@ -253,7 +253,7 @@ test("une course commencée avant la fin et finie avant l'heure pile est accept�
   await page.locator("#podium").getByRole("button", { name: "Copier" }).click();
   await expect(page.locator("#podium").getByRole("button", { name: "Copié" })).toBeVisible();
   const [ligne, lien] = (await page.evaluate(() => navigator.clipboard.readText())).split("\n");
-  expect(ligne).toMatch(/^Du Jour · Track Salon \d\d:\d\d — \d+,\d{3} s — \d+(er|e)\/\d+$/);
+  expect(ligne).toMatch(/^Salon \d\d:\d\d — \d+,\d{3}\ss — \d+(er|e)\/\d+$/);
   expect(lien).toBe(`${new URL(page.url()).origin}/?mode=salon`);
 });
 

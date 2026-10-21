@@ -39,18 +39,20 @@ Avant : à l'heure pile, le circuit suivant s'installait tout de suite et le pod
 | `e2e/salon.spec.ts` « une course non finie… » | course coupée, rien envoyé, session toujours l'ancienne sous le classement, puis la suivante |
 | `e2e/salon.spec.ts` « le classement final reste 8 s… » | `?salonMinutes=1`, **deux contextes de navigateur** : aucun changement avant `fin + 8 s` (horloge du Salon), classement visible et identifiant inchangé pendant ces 8 s, changement au même instant à une image près |
 
-Tests unitaires : `npm test` en entier (voir « Rapport »).
+Tests unitaires : Vitest du jeu, de `@cdj/ui` et du portail verts (549 tests), `tsc -b` vert.
+
+**Résultats locaux des e2e (Chromium, rendu logiciel)** : `share.spec.ts` (3 nouveaux) et, dans `salon.spec.ts`, la copie du classement final, la course coupée et le test à deux contextes passent. Deux tests de `salon.spec.ts` échouent **aussi sur `main` dans cet environnement** (mesurés sur `eb6647d`) et ne sont pas corrigés ici : « accueil ⇄ Salon » (la confirmation de départ apparaît parce que la course a commencé avant le clic ; sensible à la vitesse de la machine) et, dans « fin de session… », le seuil de 250 ms de tâche longue après la bascule (361 ms ici ; sur `main` aussi). Les shaders de la nouvelle scène sont compilés derrière le classement final (`renderer.compile` dans `prebuild`) pour que la saccade ne tombe pas au départ du décompte. À confirmer par la CI de la PR.
 
 ## 4. Budget de Track (premier chargement, octets compressés)
 
 | Mesure | Avant (`main` à `eb6647d`) | Après | Budget | Marge |
 |---|---|---|---|---|
-| JS + CSS | 283 440 | **283 832** | 284 100 | 268 |
-| JS | 272 185 | 272 577 | 274 000 | 1 423 |
-| hors three.js | 139 419 | 139 811 | 141 000 | 1 189 |
+| JS + CSS | 283 440 | **283 844** | 284 100 | 256 |
+| JS | 272 185 | 272 589 | 274 000 | 1 411 |
+| hors three.js | 139 419 | 139 823 | 141 000 | 1 177 |
 | catalogue anglais (à la demande) | 7 245 | 7 224 | 8 000 | 776 |
 
-+392 o au total, **sous le budget** sans le relever ; les retraits (ancienne copie, 7 clés, reconstruction du podium) sont déjà comptés. `docs/plateforme/budgets.md` mis à jour. **La marge de Track tombe à 268 o** : le prochain lot qui ajoute du code doit en retirer ailleurs ou demander à Nathan de relever le budget.
++404 o au total, **sous le budget** sans le relever ; les retraits (ancienne copie, 7 clés, reconstruction du podium) sont déjà comptés. `docs/plateforme/budgets.md` mis à jour. **La marge de Track tombe à 256 o** : le prochain lot qui ajoute du code doit en retirer ailleurs ou demander à Nathan de relever le budget.
 
 ## 5. Rapport
 

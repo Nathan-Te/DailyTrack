@@ -2200,6 +2200,7 @@ const salonHost: SalonHost = {
     if (prebuilt?.id === c.id) return;
     prebuilt?.scene.dispose();
     prebuilt = { id: c.id, scene: buildSalonScene(c) };
+    renderer.compile(prebuilt.scene.scene, camera); // shaders compilés derrière le classement final : pas de saccade quand le décompte repart (lot 33)
     salonStats.prebuilds++;
   },
   // « Une course est en cours » : elle roule vraiment (une voiture immobile sur la ligne n'a rien commencé : le podium n'attend pas).
