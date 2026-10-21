@@ -47,7 +47,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.son.ambiance.aide": "The background sound of today's theme.",
   "reglages.camera.nom": "Default camera",
   "reglages.camera.aide": "At the start; the C key or the camera button changes it too.",
-  "reglages.camera.proche": "Near",
+  "reglages.camera.proche": "Close",
   "reglages.camera.loin": "Far",
   "reglages.camera.capot": "Hood",
   "reglages.fantome.nom": "Ghost shown",

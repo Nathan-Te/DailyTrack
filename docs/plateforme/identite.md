@@ -9,6 +9,7 @@ Révision 5 (avant le lot I4) : surimpressions de course de Track (§ 9), maquet
 Révision 6 (après le lot I4) : accueil d'un jeu posé sur sa scène sous un voile à rayures (§ 9) ; nom des jeux dans leurs lignes à partager (§ 2).
 Révision 7 (essai de Nathan sur téléphone) : surimpressions compactes pour les deux jeux, commandes aux bords et boutons par défaut, « Comment jouer » dans le jeu (§ 9).
 Révision 8 (après le lot I5) : « quand on entre dans un jeu, on y reste » — tous les écrans d'un jeu sur sa scène, le cadre crème réservé aux écrans Du Jour (§ 9).
+Révision 9 (après les lots I4b et I6) : la pause et « Comment jouer » sont des dialogues sans barre des jeux ; l'étiquette de Track n'a pas de coque (§ 9) ; vocabulaire anglais (§ 7).
 
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
@@ -141,6 +142,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
 - **Du Jour** : chaleureux, simple, court. « Les jeux du jour », « Prochains jeux dans », « Partager ma journée ».
 - **Track** : sec, précis, les chiffres d'abord. « Courir », « Meilleur temps », « Fantôme à battre ».
 - **Jump** : drôle et un peu cruel, **une seule réplique par écran au plus**, liée au thème ou à la mécanique du jour (« Les tapis roulants ne t'attendront pas. La scie non plus. »). Les répliques vivent dans les catalogues de traduction, par thème, et existent dans les deux langues (adaptées, pas traduites littéralement).
+- **Vocabulaire anglais fixé** : « Pseudo » → “Name” ; « Classement » → “Leaderboard” partout (jeux et portail ; « Classement du jour » → “Today's leaderboard”) ; « Fini » → “Done” ; « Point de contrôle » / « point de passage » → “Checkpoint” (« PC » → “CP”) ; médaille « Auteur » → “Author” ; « Salon » → “Room” ; caméra « proche » → “Close” partout.
 - Formats : `31,402 s` / `31.402 s` ; `14e` / `14th` ; « Mardi 20 octobre » / « Tuesday, October 20 » ; `n° 12` / `#12`.
 
 ## 8. Le mouvement
@@ -166,6 +168,7 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
   - Les actions rares (caméra, graphismes, plein écran, son, fantôme) vont dans la pause.
   - Bordures de 2 px, ombre nette de 2 px. Maquettes : `track-hud-paysage.html` (compact, retenu), `jump-hud.html`.
 - **Quand on entre dans un jeu, on y reste tant qu'on ne choisit pas de le quitter** (règle de Nathan). **Tous les écrans d'un jeu** — accueil, « Comment jouer », pause, arrivée, carnage, classement du jeu, archives, réglages — sont **posés sur la scène du jeu** sous le voile à rayures : barre des jeux en plaque crème, étiquette du jeu dans sa coque ; l'écran du dessous s'efface pendant ce temps (un seul voile). « Jeu suivant du jour » et « ‹ DU JOUR » sont les seules portes de sortie, et ce sont des choix du joueur.
+- Exceptions : la **pause** et **« Comment jouer »** sont des **dialogues** posés sur le voile, sans barre des jeux (une seule façon de les fermer). L'étiquette de **Track** n'a pas de coque (place et poids) ; celle de **Jump** garde sa coque moutarde.
 - **Le cadre crème pleine page** est réservé aux écrans **Du Jour** : portail, profil commun, classement du jour, mentions légales.
 - **« Comment jouer »** : dans le jeu, trois points courts, schéma des commandes, « C'est parti » ; montré une seule fois au premier lancement, puis depuis la pause et l'accueil.
 - **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place. **Sur l'étiquette jaune de Jump**, ta ligne est en **encre** (texte jaune, ombre papier) : la moutarde ne s'y distinguerait pas.

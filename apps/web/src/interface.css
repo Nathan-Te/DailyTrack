@@ -249,7 +249,7 @@ body:has(#howto:not([hidden])) :is(.cadre, #pause) {
   overflow: hidden;
 }
 .segment__bouton {
-  flex: 1 1 0;
+  flex: 1 1 auto; /* lot I6 : la case suit son texte (« AUTOMATIC » en anglais touchait le bord) ; trop long, le choix passe à la ligne */
   min-width: 0;
   min-height: var(--dj-cible);
   padding: 0 10px;

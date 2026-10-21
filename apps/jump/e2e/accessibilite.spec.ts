@@ -39,7 +39,9 @@ for (const [langue, locale] of [["fr", "fr-FR"], ["en", "en-US"]] as const) {
         await expect(page.locator("#help")).toBeVisible();
         await dialogueNomme(page, "#help [role=dialog]");
         await expect.poll(() => focusSur(page)).toBe("help-close");
-        await auditAxe(page, `jump-aide-${langue}`);
+        // L'audit se limite au dialogue ouvert : l'accueil, dessous, est audité seul juste après. Audité sous le voile, son bouton « Jouer »
+        // donnait à WebKit un contraste calculé contre le voile (« color-contrast » sur #home-play, une fois sur deux : run 39604752428).
+        await auditAxe(page, `jump-aide-${langue}`, "#help");
         await page.locator("#help-close").click();
         await expect(page.locator("#help")).toBeHidden();
 
@@ -54,7 +56,7 @@ for (const [langue, locale] of [["fr", "fr-FR"], ["en", "en-US"]] as const) {
         await expect(page.locator("#settings")).toBeVisible();
         await dialogueNomme(page, "#settings");
         await expect.poll(() => focusDans(page, "#settings")).toBe(true);
-        await auditAxe(page, `jump-reglages-${langue}`);
+        await auditAxe(page, `jump-reglages-${langue}`, "#settings"); // le dialogue ouvert seul (voir « Comment jouer » ci-dessus)
         await page.keyboard.press("Escape");
         await expect(page.locator("#settings")).toBeHidden();
         await expect.poll(() => focusSur(page), { message: "le focus revient au bouton qui a ouvert les réglages" }).toBe("home-settings");

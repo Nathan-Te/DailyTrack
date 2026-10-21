@@ -153,22 +153,22 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `classement.titre` | Classement du jour | Today's ranking |
-| `classement.description` | Le classement du jour de Du Jour : tes points sur tous les jeux, les médailles de chaque joueur. | Today's Du Jour ranking: your points across every game, and each player's medals. |
+| `classement.titre` | Classement du jour | Today's leaderboard |
+| `classement.description` | Le classement du jour de Du Jour : tes points sur tous les jeux, les médailles de chaque joueur. | Today's Du Jour leaderboard: your points across every game, and each player's medals. |
 | `classement.bareme` | Points par jeu : {auteur} {pa}, {or} {po}, {argent} {pg}, {bronze} {pb}, fini sans médaille {zero}. | Points per game: {auteur} {pa}, {or} {po}, {argent} {pg}, {bronze} {pb}, finished with no medal {zero}. |
 | `classement.egalite` | À égalité : la somme des places dans les jeux, puis le premier arrivé. | Tie: the sum of your places in the games, then whoever got there first. |
 | `classement.veille` | ‹ Veille | ‹ Previous day |
 | `classement.lendemain` | Lendemain › | Next day › |
-| `classement.veille.aria` | Voir le classement de la veille | See the previous day's ranking |
-| `classement.lendemain.aria` | Voir le classement du lendemain | See the next day's ranking |
+| `classement.veille.aria` | Voir le classement de la veille | See the previous day's leaderboard |
+| `classement.lendemain.aria` | Voir le classement du lendemain | See the next day's leaderboard |
 | `classement.classes` | one : {n} joueur classé · other : {n} joueurs classés | one : {n} player ranked · other : {n} players ranked |
 | `classement.pts` | one : {n} pt · other : {n} pts | one : {n} pt · other : {n} pts |
 | `classement.toi` | Toi | You |
 | `classement.pasFini` | pas fini | not finished |
 | `classement.vide` | Personne n'a encore fini de jeu ce jour-là. | Nobody has finished a game that day yet. |
-| `classement.chargement` | Chargement du classement… | Loading the ranking… |
-| `classement.ferme` | Jour terminé : ce classement est figé. | Day over: this ranking is final. |
-| `classement.invite` | Finis un jeu pour entrer au classement. | Finish a game to enter the ranking. |
+| `classement.chargement` | Chargement du classement… | Loading the leaderboard… |
+| `classement.ferme` | Jour terminé : ce classement est figé. | Day over: this leaderboard is final. |
+| `classement.invite` | Finis un jeu pour entrer au classement. | Finish a game to enter the leaderboard. |
 
 ### Démonstration (recette seulement) (`demo.*`, `apps/portail/src/catalogueDemo.ts`)
 
@@ -221,7 +221,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.delai` | Le serveur ne répond pas : tes statuts reviendront plus tard. | The server isn't answering: your progress will show up later. |
 | `portail.theme.cdj.stade` | Stade | Stadium |
 | `portail.theme.cdj.rallye` | Rallye | Rally |
-| `portail.theme.cdj.banquise` | Banquise | Pack ice |
+| `portail.theme.cdj.banquise` | Banquise | Ice floe |
 | `portail.theme.cdj.nuit` | Nuit | Night |
 | `portail.theme.cdj.campagne` | Campagne | Countryside |
 | `portail.theme.cdj.canyon` | Canyon | Canyon |
@@ -233,9 +233,9 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.theme.jump.nuit` | Nuit | Night |
 | `portail.theme.jump.neon` | Néon | Neon |
 | `portail.journee` | Journée {numero} | Day {numero} |
-| `portail.classement.legende` | Classement du jour | Today's ranking |
+| `portail.classement.legende` | Classement du jour | Today's leaderboard |
 | `portail.classement.points` | one : {n} point, tous jeux · other : {n} points, tous jeux | one : {n} point, all games · other : {n} points, all games |
-| `portail.classement.inviter` | Finis un jeu pour entrer au classement | Finish a game to enter the ranking |
+| `portail.classement.inviter` | Finis un jeu pour entrer au classement | Finish a game to enter the leaderboard |
 | `portail.partager` | Partager ma journée | Share my day |
 | `portail.partage.apercu` | Ce que tu partages | What you're sharing |
 | `portail.partage.partage` | Journée partagée. | Day shared. |
@@ -380,7 +380,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `archives.vignette` | Vue aérienne du circuit n° {numero} du {date} | Aerial view of track #{numero} of {date} |
 | `archives.vignetteSansNumero` | Vue aérienne du circuit du {date} | Aerial view of the track of {date} |
 | `archives.pilotes` | one : {n} pilote · other : {n} pilotes | one : {n} driver · other : {n} drivers |
-| `archives.note` | Les jours passés, les circuits au hasard et les thèmes forcés se rejouent sans classement (touches N : au hasard, T : thème suivant). | Past days, random tracks and forced themes are replayed without ranking (N key: random, T key: next theme). |
+| `archives.note` | Les jours passés, les circuits au hasard et les thèmes forcés se rejouent sans classement (touches N : au hasard, T : thème suivant). | Past days, random tracks and forced themes are replayed unranked (N key: random, T key: next theme). |
 
 ### Arrivée (`arrivee.*`, `apps/web/src/catalogue.course.*.ts`)
 
@@ -397,7 +397,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.auteur` | Auteur | Author |
 | `arrivee.auteurA` | à {temps} | {temps} behind |
 | `arrivee.sansMedaille` | Pas de médaille · bronze à {temps} | No medal · bronze at {temps} |
-| `arrivee.classement` | Classement du jour | Today's ranking |
+| `arrivee.classement` | Classement du jour | Today's leaderboard |
 | `arrivee.sur` | sur {total} | of {total} |
 | `arrivee.places` | one : +{n} place · other : +{n} places | one : +{n} place · other : +{n} places |
 | `arrivee.reprises` | one : {n} reprise au point de contrôle · other : {n} reprises au point de contrôle | one : {n} respawn at a checkpoint · other : {n} respawns at a checkpoint |
@@ -413,12 +413,12 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.sansServeur` | Course non classée : ce jeu n'est pas relié à un serveur. Ton record reste sur cet appareil. | Run not ranked: this game isn't linked to a server. Your record stays on this device. |
 | `arrivee.horsLigne` | Hors ligne : course non classée. Ton record reste sur cet appareil. | Offline: run not ranked. Your record stays on this device. |
 | `arrivee.horsLigneDetail` | Hors ligne : course non classée ({detail}) | Offline: run not ranked ({detail}) |
-| `arrivee.jourPasse` | Jour passé : le classement est figé, ce temps n'y entre pas. | Past day: the ranking is frozen, this time doesn't count. |
-| `arrivee.envoi` | Envoi au classement… | Sending to the ranking… |
-| `arrivee.chargement` | Chargement du classement… | Loading the ranking… |
+| `arrivee.jourPasse` | Jour passé : le classement est figé, ce temps n'y entre pas. | Past day: the leaderboard is frozen, this time doesn't count. |
+| `arrivee.envoi` | Envoi au classement… | Sending to the leaderboard… |
+| `arrivee.chargement` | Chargement du classement… | Loading the leaderboard… |
 | `arrivee.tempsServeur` | temps du serveur : {temps} | server time: {temps} |
 | `arrivee.changerPseudo` | Changer de pseudo | Change name |
-| `arrivee.choisirPseudo` | Choisis ton pseudo pour entrer au classement | Pick a name to enter the ranking |
+| `arrivee.choisirPseudo` | Choisis ton pseudo pour entrer au classement | Pick a name to enter the leaderboard |
 | `arrivee.nouveauPseudo` | Nouveau pseudo | New name |
 | `arrivee.pseudo.placeholder` | Ton pseudo | Your name |
 | `arrivee.pseudo.invalide` | 1 à 20 caractères : lettres, chiffres, espace . _ ' - | 1 to 20 characters: letters, digits, space . _ ' - |
@@ -509,8 +509,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `course.menu.aria` | Menu du jeu | Game menu |
-| `course.rang.aria` | Classement du jour : {rang}, ouvrir ou fermer | Today's ranking: {rang}, open or close |
-| `course.rang.salon.aria` | Classement de la session : {rang}, ouvrir ou fermer | Session ranking: {rang}, open or close |
+| `course.rang.aria` | Classement du jour : {rang}, ouvrir ou fermer | Today's leaderboard: {rang}, open or close |
+| `course.rang.salon.aria` | Classement de la session : {rang}, ouvrir ou fermer | Session leaderboard: {rang}, open or close |
 | `course.pause.aria` | Pause | Pause |
 | `course.fige` | FIGÉ | FROZEN |
 | `course.aide.puce` | Comment jouer · P : pause | How to play · P: pause |
@@ -664,7 +664,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `podium.titre` | Salon {heure} · terminé | Room {heure} · over |
 | `podium.aucun` | Personne n'a terminé de tour. | Nobody finished a lap. |
-| `podium.indisponible` | Classement indisponible. | Standings unavailable. |
+| `podium.indisponible` | Classement indisponible. | Leaderboard unavailable. |
 | `podium.maPlace` | Ta place : {rang} sur {total} · {temps} | Your place: {rang} of {total} · {temps} |
 | `podium.sansTemps` | Tu n'as pas de temps dans cette session. | You have no time in this session. |
 | `podium.copier` | Copier le résultat | Copy the result |
@@ -720,7 +720,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.son.ambiance.aide` | Le fond sonore du thème du jour. | The background sound of today's theme. |
 | `reglages.camera.nom` | Caméra par défaut | Default camera |
 | `reglages.camera.aide` | Au départ ; la touche C ou le bouton caméra la change aussi. | At the start; the C key or the camera button changes it too. |
-| `reglages.camera.proche` | Proche | Near |
+| `reglages.camera.proche` | Proche | Close |
 | `reglages.camera.loin` | Loin | Far |
 | `reglages.camera.capot` | Capot | Hood |
 | `reglages.fantome.nom` | Fantôme affiché | Ghost shown |
@@ -795,7 +795,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `salon.boot.injoignable` | Salon injoignable : {raison} | Room unreachable: {raison} |
 | `salon.boot.circuit` | Le circuit de cette session n'a pas pu être préparé | This session's track couldn't be prepared |
 | `salon.boot.repli` | {raison} : circuit du jour à la place | {raison}: today's track instead |
-| `salon.classement.chargement` | Salon {heure} · classement en chargement… | Room {heure} · loading the standings… |
+| `salon.classement.chargement` | Salon {heure} · classement en chargement… | Room {heure} · loading the leaderboard… |
 | `salon.classement.vide` | Salon {heure} · personne n'a encore de temps | Room {heure} · no time yet |
 | `salon.classement.titre` | Salon {heure} · {classes} · {presents} | Room {heure} · {classes} · {presents} |
 | `salon.classement.classes` | one : {n} classé · other : {n} classés | one : {n} ranked · other : {n} ranked |
@@ -808,11 +808,11 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `salon.arrivee.reprises` | one : {n} reprise au point de contrôle · other : {n} reprises au point de contrôle | one : {n} respawn at a checkpoint · other : {n} respawns at a checkpoint |
 | `salon.arrivee.sansReprise` | Sans reprise | No respawn |
 | `salon.arrivee.rang` | {rang} sur {total} | {rang} of {total} |
-| `salon.arrivee.rangLegende` | Classement de la session | Session standings |
+| `salon.arrivee.rangLegende` | Classement de la session | Session leaderboard |
 | `salon.arrivee.tempsServeur` | temps du serveur : {temps} | server time: {temps} |
-| `salon.arrivee.envoi` | Envoi au classement de la session… | Sending to the session standings… |
+| `salon.arrivee.envoi` | Envoi au classement de la session… | Sending to the session leaderboard… |
 | `salon.arrivee.tropTard` | Trop tard : cette session est terminée | Too late: this session is over |
-| `salon.arrivee.pseudo` | Choisis ton pseudo pour entrer au classement du Salon | Pick a name to enter the Room standings |
+| `salon.arrivee.pseudo` | Choisis ton pseudo pour entrer au classement du Salon | Pick a name to enter the Room leaderboard |
 | `salon.arrivee.pseudoChamp` | Ton pseudo | Your name |
 | `salon.arrivee.pseudoInvalide` | 1 à 20 caractères : lettres, chiffres, espace . _ ' - | 1 to 20 characters: letters, digits, space . _ ' - |
 | `salon.arrivee.chargerCode` | Charger un code | Load a code |
@@ -820,7 +820,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `salon.arrivee.revoir` | Revoir le meilleur tour | Watch the best lap |
 | `salon.arrivee.partager` | Partager | Share |
 | `salon.arrivee.accueil` | Accueil de Track | Track home |
-| `salon.arrivee.aide` | Entrée : rejouer · Tab : classement | Enter: race again · Tab: standings |
+| `salon.arrivee.aide` | Entrée : rejouer · Tab : classement | Enter: race again · Tab: leaderboard |
 | `salon.arrivee.terminee` | Session terminée | Session over |
 | `salon.arrivee.nonCompte` | Session terminée : tour non compté | Session over: lap not counted |
 
@@ -830,7 +830,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 |---|---|---|
 | `theme.stade` | Stade | Stadium |
 | `theme.rallye` | Rallye | Rally |
-| `theme.banquise` | Banquise | Pack ice |
+| `theme.banquise` | Banquise | Ice floe |
 | `theme.nuit` | Nuit | Night |
 | `theme.campagne` | Campagne | Countryside |
 | `theme.canyon` | Canyon | Canyon |

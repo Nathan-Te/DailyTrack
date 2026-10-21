@@ -49,13 +49,43 @@ jobs:
         if: matrix.part == '1/3'
 
   # Verdict des tests unitaires : le statut requis `test` (protection de main) ; il tourne toujours et échoue si une part a échoué.
+  # Retouche du lot I6 : il porte aussi le verdict de `zones` (une PR de jeu restée dans ses zones).
   test:
-    needs: unit
+    needs: [unit, zones]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - run: |
           [ "${{ needs.unit.result }}" = success ] || { echo "::error::une part des tests unitaires a échoué (jobs unit)"; exit 1; }
+          [ "${{ needs.zones.result }}" = success ] || { echo "::error::une PR de jeu sort de ses zones (job zones, docs/orchestration.md « Lots en parallèle »)"; exit 1; }
+
+  # Retouche du lot I6 — « Lots en parallèle » (docs/orchestration.md) : une PR de jeu (étiquette `jeu:track` / `jeu:jump`, ou `track` / `jump`
+  # dans le nom de branche) ne change que les fichiers de ses zones ; une zone partagée = un lot de la plateforme (scripts/zones-jeu.mjs, testé).
+  # Une PR de la plateforme n'a pas de garde ; hors PR (main, nuit, manuel), rien à garder. L'étiquette est lue à chaque run : posée après le
+  # dernier push, elle compte au push suivant.
+  zones:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        if: github.event_name == 'pull_request'
+        with:
+          fetch-depth: 0
+      - name: Zones d'une PR de jeu
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.ref }}
+          BRANCHE: ${{ github.head_ref }}
+          ETIQUETTES: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: |
+          git fetch --no-tags origin "$BASE"
+          git diff --name-only "origin/$BASE...HEAD" > "$RUNNER_TEMP/fichiers.txt"
+          set +e
+          node scripts/zones-jeu.mjs --etiquettes "$ETIQUETTES" --branche "$BRANCHE" < "$RUNNER_TEMP/fichiers.txt" > "$RUNNER_TEMP/zones.txt"
+          code=$?
+          set -e
+          cat "$RUNNER_TEMP/zones.txt"
+          { echo "### Zones d'une PR de jeu"; echo; echo '```'; cat "$RUNNER_TEMP/zones.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          [ "$code" = 0 ] || { echo "::error::$(head -1 "$RUNNER_TEMP/zones.txt")"; exit 1; }
 
   # Lot R2 (plateforme) — portée de la PR : quels fichiers sont changés, donc quelles suites e2e et quelle image ont un sens. Typecheck et tests
   # unitaires (`test`) tournent TOUJOURS en entier (rapides, et ils protègent les imports croisés). Les e2e ne tournent que pour les jeux touchés,
