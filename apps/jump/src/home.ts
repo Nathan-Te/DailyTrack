@@ -141,12 +141,12 @@ export function mountHome(opts: HomeOptions): Home {
   const coque = el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette);
   root.append(plaque, el("div", { classe: "accueil__defile" }, coque));
   document.body.append(root);
-  suivreDialogue(root);
+  suivreDialogue(root); // lot I6 : focus mis dedans à l'ouverture, rendu à la fermeture
   // Lot I6 : « JOUER » prend le focus, sauf si un dialogue posé au-dessus de l'accueil l'a (« Comment jouer » à la première visite).
   const focusJouer = () => {
     const dessus = document.activeElement?.closest('[role="dialog"]');
     if (!dessus || dessus === root) play.focus({ preventScroll: true });
-  }; // lot I6 : focus mis dedans à l'ouverture, rendu à la fermeture
+  };
 
   let open = false;
   let ready = false;
