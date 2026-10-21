@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION as G, PREMIER_JOUR, SIM_VERSION, formatDay } from "@cdj/sim";
+import { GENERATOR_BEFORE_34 as G15, GENERATOR_VERSION as G, PREMIER_JOUR, SIM_VERSION, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN, archiveDays, archiveHref, nextTheme, randomSeedHref, themeHref } from "../src/archive";
 import { listDayBests, type DayBest } from "../src/records";
 
@@ -72,26 +72,30 @@ describe("listDayBests", () => {
   it("une entrée illisible, même au milieu, ne masque pas les autres", () => {
     const m = listDayBests(
       store({
-        [`cdj:best:jour-2026-10-05-g${G}`]: JSON.stringify({ ms: 50000, splits: [], simVersion: SIM_VERSION }),
-        [`cdj:best:jour-2026-10-06-g${G}`]: "pas du json",
-        [`cdj:best:jour-2026-10-07-g${G}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-05-g${G15}`]: JSON.stringify({ ms: 50000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-06-g${G15}`]: "pas du json",
+        [`cdj:best:jour-2026-10-07-g${G15}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
       }),
     );
     expect([...m.keys()].sort()).toEqual(["2026-10-05", "2026-10-07"]);
   });
 
-  it("retrouve les records des circuits du jour, et seulement ceux du générateur et de la simulation actuels", () => {
+  it("retrouve les records des circuits du jour, et seulement ceux du générateur de leur jour et de la simulation actuelle", () => {
     const m = listDayBests(
       store({
-        [`cdj:best:jour-2026-10-06-g${G}`]: JSON.stringify({ ms: 40123, splits: [], medal: "silver", simVersion: SIM_VERSION }),
-        [`cdj:best:jour-2026-10-07-g${G}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
-        [`cdj:best:jour-2026-10-08-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION - 1 }), // ancienne physique
+        [`cdj:best:jour-2026-10-06-g${G15}`]: JSON.stringify({ ms: 40123, splits: [], medal: "silver", simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-07-g${G15}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-08-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION - 1 }), // ancienne physique
         "cdj:best:jour-2026-10-08-g99": JSON.stringify({ ms: 1, splits: [], simVersion: SIM_VERSION }), // autre générateur : autre circuit
+        // Lot 34 : un jour d'avant la bascule garde la v15 (la dernière version y serait un autre circuit) ; un jour d'après prend la dernière.
+        [`cdj:best:jour-2026-10-09-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-29-g${G}`]: JSON.stringify({ ms: 38000, splits: [], simVersion: SIM_VERSION }),
+        [`cdj:best:jour-2026-10-30-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
         "cdj:best:essai": JSON.stringify({ ms: 35000, splits: [] }), // circuit d'essai : pas une archive
         "cdj:name": "Alice",
       }),
     );
-    expect([...m.keys()].sort()).toEqual(["2026-10-06", "2026-10-07"]);
+    expect([...m.keys()].sort()).toEqual(["2026-10-06", "2026-10-07", "2026-10-29"]);
     expect(m.get("2026-10-06")).toEqual({ date: "2026-10-06", ms: 40123, medal: "silver" });
     expect(m.get("2026-10-07")!.medal).toBeNull();
   });

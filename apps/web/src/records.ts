@@ -1,4 +1,4 @@
-import { GENERATOR_VERSION, SIM_VERSION, type Medal } from "@cdj/sim";
+import { SIM_VERSION, generatorVersionOf, parseDay, type Medal } from "@cdj/sim";
 import { gameStorage } from "./storage";
 
 export interface BestRun {
@@ -26,7 +26,7 @@ function current(r: BestRun | null): r is BestRun {
 
 /**
  * Meilleurs temps locaux de tous les circuits du jour joués dans ce navigateur, par date. Seuls comptent ceux du
- * générateur et de la simulation actuels : avec une autre version, le circuit ou la conduite ne sont plus les mêmes.
+ * générateur de leur jour et de la simulation actuelle : avec une autre version, le circuit ou la conduite ne sont plus les mêmes.
  */
 export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"> = gameStorage()): Map<string, DayBest> {
   const out = new Map<string, DayBest>();
@@ -39,7 +39,8 @@ export function listDayBests(storage: Pick<Storage, "length" | "key" | "getItem"
   for (let i = 0; i < count; i++) {
     try {
       const m = /^cdj:best:jour-(\d{4}-\d{2}-\d{2})-g(\d+)$/.exec(storage.key(i) ?? "");
-      if (!m || Number(m[2]) !== GENERATOR_VERSION) continue;
+      // Lot 34 : chaque jour a sa version du générateur (15 avant la bascule du 28/10/2026), celle de son identifiant.
+      if (!m || Number(m[2]) !== generatorVersionOf(parseDay(m[1]!) ?? 0)) continue;
       const r = JSON.parse(storage.getItem(m[0]) ?? "null") as BestRun | null;
       if (current(r)) out.set(m[1]!, { date: m[1]!, ms: r.ms, medal: r.medal ?? null });
     } catch {

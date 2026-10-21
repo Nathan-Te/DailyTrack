@@ -18,6 +18,8 @@ export interface DailyResult {
   authorMs: number;
   palette: string;
   theme: string;
+  /** Lot 34 : l'identifiant porte la version du générateur du jour. */
+  trackId: string;
 }
 
 declare global {
@@ -44,7 +46,7 @@ window.__daily = (date) => {
   const day = parseDay(date);
   if (day === null) throw new Error(`Date invalide : ${date}`);
   const c = dailyCircuit(day);
-  return { number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette, theme: c.theme };
+  return { number: c.number, attempt: c.attempt, spec: c.spec, authorMs: c.authorMs, palette: c.palette, theme: c.theme, trackId: c.track.id };
 };
 
 document.documentElement.dataset.ready = "true";

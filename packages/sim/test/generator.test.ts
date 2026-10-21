@@ -4,6 +4,8 @@ import {
   AUTHOR_MIN_MS,
   FAST_PEAK,
   GENERATOR_VERSION,
+  GENERATOR_BEFORE_34,
+  BASCULE_LOT_34,
   daysFromCivil,
   figureByName,
   PALETTES,
@@ -213,12 +215,15 @@ describe("circuit du jour : largeurs de route et courbes amples (lot 12)", () =>
     }
   });
 
-  it("préfère les courbes amples : en moyenne, plus de trois fois plus de virages larges ou amples que de virages serrés (cinq fois avant les figures du lot 20 : les techniques en ont plus)", () => {
+  it("préfère les courbes amples : en moyenne, près de trois fois plus de virages larges ou amples que de virages serrés (cinq fois avant les figures du lot 20 : les techniques en ont plus)", () => {
     // Ville (lot 22) fait des angles droits son identité : elle est comptée à part.
     const blocks = DAYS.map(circuit).filter((c) => c.theme !== "ville").flatMap((c) => c.track.blocks);
     const wide = blocks.filter((b) => isWide(b.kind)).length;
     const tight = blocks.filter((b) => isTight(b.kind)).length;
-    expect(wide).toBeGreaterThan(3 * tight);
+    // Lot 34 : 3× jusqu'à la v15 (mesuré sur ces dates : 3,28 ; 2,86 sur 240 autres dates) ; les droites de freinage du générateur v16 (jours
+    // d'après le 28/10/2026) allongent les circuits, et à durée égale la fenêtre de 30–40 s garde moins de virages larges (lents) : 2,90 mesuré,
+    // le même nombre de serrés (148). Seuil 2,8× (README du lot 34).
+    expect(wide).toBeGreaterThan(2.8 * tight);
     expect(blocks.some((b) => b.kind === "grandL")).toBe(true);
     expect(blocks.some((b) => b.kind === "grandR")).toBe(true);
   });
@@ -278,7 +283,10 @@ describe("palette et identifiant", () => {
 
   it("l'identifiant du circuit est une date et la version du générateur, accepté par les rediffusions", () => {
     const id = dailyTrackId(parseDay("2026-10-06")!);
-    expect(id).toBe(`jour-2026-10-06-g${GENERATOR_VERSION}`);
+    // Lot 34 : la version est celle du jour (15 avant la bascule du 28/10/2026, la dernière ensuite).
+    expect(id).toBe(`jour-2026-10-06-g${GENERATOR_BEFORE_34}`);
+    expect(dailyTrackId(parseDay("2026-10-27")!)).toBe(`jour-2026-10-27-g${GENERATOR_BEFORE_34}`);
+    expect(dailyTrackId(BASCULE_LOT_34)).toBe(`jour-2026-10-28-g${GENERATOR_VERSION}`);
     expect(id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(formatDay(JOUR_TEST)).toBe("2026-10-06");
   });

@@ -32,7 +32,15 @@ import {
   themeByName,
   choiceMoments,
   runPilot,
+  turnReports,
+  humanRun,
+  composeFigures,
+  generatorVersionOf,
+  BASCULE_LOT_34,
+  formatDay,
+  TRAP_SLACK,
   type ChoiceMoments,
+  type ThemeName,
   type Block,
   type DailyCircuit,
 } from "@cdj/sim";
@@ -42,13 +50,20 @@ import {
 // (durées, taux de validation par thème), pas seulement par les tests ».
 //   - durées d'auteur, largeurs, virages serrés, temps de génération, coût d'un rejeu : 60 dates consécutives ;
 //   - taux de validation par thème : 12 dates × 6 tentatives, chaque thème forcé.
+//   - lot 34 : virages-pièges et contacts du pilote « humain correct », générateur d'avant (v15) et d'après (v16) sur les mêmes dates.
 // Variables : `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
+// Lot 34 : `GENERATOR` (version imposée aux sections 1 et 2, la dernière par défaut, quelle que soit la date), `COMPARE` (« 15,16 » : versions
+// comparées par la section 3 et la section 2), `TRAP_DAYS` (60) et `TRAP_THEME_DAYS` (12) : dates de la section 3 (à partir de `FROM`).
 
 const DAYS = Number(process.env.DAYS ?? (process.env.FAST ? 20 : 60));
 const VALIDATION_DAYS = Number(process.env.VALIDATION_DAYS ?? (process.env.FAST ? 6 : 12));
 const VALIDATION_ATTEMPTS = Number(process.env.VALIDATION_ATTEMPTS ?? 6);
 const [fy = 2026, fm = 10, fd = 6] = (process.env.FROM ?? "2026-10-06").split("-").map(Number);
 const FIRST_DAY = daysFromCivil(fy, fm, fd);
+const GENERATOR = Number(process.env.GENERATOR ?? GENERATOR_VERSION);
+const COMPARE = (process.env.COMPARE ?? "15,16").split(",").map(Number);
+const TRAP_DAYS = Number(process.env.TRAP_DAYS ?? (process.env.FAST ? 20 : 60));
+const TRAP_THEME_DAYS = Number(process.env.TRAP_THEME_DAYS ?? (process.env.FAST ? 4 : 12));
 
 const mean = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
 const pct = (a: number, b: number) => (b ? `${((100 * a) / b).toFixed(0)} %` : "—");
@@ -80,14 +95,14 @@ function tightTurns(blocks: Block[]): { total: number; run: number } {
   return { total, run: best };
 }
 
-console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
+console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} (sections 1 et 2 : v${GENERATOR} imposée ; bascule du lot 34 : ${formatDay(BASCULE_LOT_34)}, v${generatorVersionOf(BASCULE_LOT_34 - 1)} avant) · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
 
 // --- 1. Soixante dates -------------------------------------------------------------------------
 
 const rows: { c: DailyCircuit; genMs: number; tight: { total: number; run: number }; widths: number[]; replayMs: number; maxSpeed: number; fastShare: number }[] = [];
 for (let i = 0; i < DAYS; i++) {
   const t0 = performance.now();
-  const c = dailyCircuit(FIRST_DAY + i);
+  const c = dailyCircuit(FIRST_DAY + i, 0, null, GENERATOR);
   const genMs = performance.now() - t0;
   const t1 = performance.now();
   const pilot = c.fallback ? null : bestPilotRun(c.track);
@@ -262,7 +277,8 @@ console.log(`plein gaz par thème (du jour) : ${THEME_NAMES.map((n) => { const i
 
 // --- 2. Taux de validation par thème -----------------------------------------------------------
 
-console.log(`\n## Taux de validation par thème (${VALIDATION_DAYS} dates × ${VALIDATION_ATTEMPTS} tentatives, thème forcé)`);
+for (const G of COMPARE) {
+console.log(`\n## Taux de validation par thème (${VALIDATION_DAYS} dates × ${VALIDATION_ATTEMPTS} tentatives, thème forcé, générateur v${G})`);
 console.log("thème      | construit | pilote finit | dans la fenêtre | portion rapide | durée moyenne | vitesse max | génération/tentative");
 for (const name of THEME_NAMES) {
   const theme = themeByName(name)!;
@@ -277,7 +293,7 @@ for (const name of THEME_NAMES) {
   for (let d = 0; d < VALIDATION_DAYS; d++) {
     for (let a = 0; a < VALIDATION_ATTEMPTS; a++) {
       total++;
-      const spec = composeSpec(FIRST_DAY + d, a, theme);
+      const spec = composeSpec(FIRST_DAY + d, a, theme, 0, G);
       if (!spec) continue;
       composed++;
       const pilot = bestPilotRun(parseTrack("mesure", spec));
@@ -296,4 +312,58 @@ for (const name of THEME_NAMES) {
     `${name.padEnd(10)} | ${pct(composed, total).padStart(9)} | ${pct(finished, composed).padStart(12)} | ${pct(accepted, composed).padStart(15)} | ${pct(accepted2, composed).padStart(14)} | ${durations.length ? sec(mean(durations)).padStart(10) + " s" : "—".padStart(12)} | ${peaksTheme.length ? mean(peaksTheme).toFixed(0).padStart(7) + " m/s" : "—".padStart(11)} | ${per.toFixed(0)} ms`,
   );
 }
+}
 console.log(`\n(MAX_ATTEMPTS = ${MAX_ATTEMPTS}. « construit » : le générateur a posé tous les blocs ; « pilote finit » : sur les circuits construits ; « fenêtre » : sur les circuits construits ; « portion rapide » : dans la fenêtre ET pilote ≥ +30 % de la pointe du plat, sur les circuits construits.)`);
+
+// --- 3. Lot 34 : virages-pièges après les boosts ------------------------------------------------
+// Pour chaque virage (`turnReports`, traps.ts) : point libre (fin de la dernière poussée, ou sortie du virage précédent), vitesse d'arrivée
+// possible (plein gaz depuis ce point), vitesse de passage du pilote d'auteur, distance de freinage nécessaire contre distance disponible.
+// Virage-piège : une approche rapide (poussée ou > 52,8 m/s), un vrai freinage, une marge sous 0,3 s et un mur à l'extérieur ; « techniques » :
+// les mêmes marges courtes sans approche rapide (un large puis un serré), hors de la définition, comptées à part. Pilote « humain correct » (`humanRun`) : l'auteur, qui ne freine
+// ni pendant une poussée ni dans les 0,3 s qui suivent sa fin, la sortie d'un virage ou une réception ; on compte ses contacts avec un rebord.
+
+interface TrapRow { theme: ThemeName; traps: number; technical: number; contacts: number; boosted: number; authorContacts: number; ms: number; fallback: boolean; braking: { kept: number; added: number; escapes: number }; turns: ReturnType<typeof turnReports> }
+function trapRow(day: number, theme: ThemeName | null, G: number): TrapRow {
+  const c = dailyCircuit(day, 0, theme, G);
+  const empty = { kept: 0, added: 0, escapes: 0 };
+  if (c.fallback) return { theme: c.theme, traps: 0, technical: 0, contacts: 0, boosted: 0, authorContacts: 0, ms: c.authorMs, fallback: true, braking: empty, turns: [] };
+  const run = bestPilotRun(c.track)!;
+  const turns = turnReports(c.track, run);
+  const human = humanRun(c.track, run);
+  const author = humanRun(c.track, run, 0);
+  const braking = composeFigures(day, c.attempt, themeByName(c.theme)!, 0, G)?.braking ?? empty;
+  // Hors de la définition (approche sous la pointe, sans poussée) : les enchaînements techniques à marge courte, comptés à part.
+  const technical = turns.filter((t) => !t.fast && t.wall && t.slack < TRAP_SLACK && t.free - t.turn >= 8).length;
+  return { theme: c.theme, traps: turns.filter((t) => t.trap).length, technical, contacts: human.contacts, boosted: human.boostedContacts, authorContacts: author.contacts, ms: c.authorMs, fallback: false, braking, turns };
+}
+const trapSummary = (label: string, list: TrapRow[]) => {
+  const ok = list.filter((r) => !r.fallback);
+  if (!ok.length) return `  ${label.padEnd(10)} | —`;
+  const traps = ok.map((r) => r.traps);
+  const ms = ok.map((r) => r.ms);
+  return `  ${label.padEnd(10)} | ${String(ok.length).padStart(3)} | ${mean(traps).toFixed(2).padStart(6)} | ${String(Math.max(...traps)).padStart(3)} | ${String(traps.filter((t) => t > 1).length).padStart(4)} | ${mean(ok.map((r) => r.technical)).toFixed(2).padStart(10)} | ${mean(ok.map((r) => r.contacts)).toFixed(2).padStart(8)} | ${mean(ok.map((r) => r.boosted)).toFixed(2).padStart(13)} | ${mean(ok.map((r) => r.authorContacts)).toFixed(2).padStart(6)} | ${sec(mean(ms)).padStart(5)} s [${sec(Math.min(...ms))}–${sec(Math.max(...ms))}] | ${String(list.length - ok.length).padStart(7)}`;
+};
+for (const G of COMPARE) {
+  const t0 = performance.now();
+  const daily: TrapRow[] = [];
+  for (let i = 0; i < TRAP_DAYS; i++) daily.push(trapRow(FIRST_DAY + i, null, G));
+  const themed = new Map<ThemeName, TrapRow[]>();
+  for (const name of THEME_NAMES) {
+    const list: TrapRow[] = [];
+    for (let i = 0; i < TRAP_THEME_DAYS; i++) list.push(trapRow(FIRST_DAY + i, name, G));
+    themed.set(name, list);
+  }
+  console.log(`\n## Lot 34 : virages-pièges et contacts, générateur v${G} (${TRAP_DAYS} dates du jour, puis ${TRAP_THEME_DAYS} circuits par thème forcé, à partir du ${formatDay(FIRST_DAY)})`);
+  console.log("  circuits   |   n | pièges | max | > 1 | techniques | contacts | après poussée | auteur | durée de l'auteur      | secours");
+  console.log(trapSummary("du jour", daily));
+  for (const name of THEME_NAMES) console.log(trapSummary(name, themed.get(name)!));
+  const all = [...daily, ...[...themed.values()].flat()].filter((r) => !r.fallback);
+  console.log(trapSummary("ensemble", all));
+  const b = (k: keyof TrapRow["braking"]) => mean(all.map((r) => r.braking[k])).toFixed(2);
+  console.log(`  règle du lot 34 (par circuit, ${all.length} circuits) : droites de freinage ajoutées ${b("added")} · bas-côtés imposés ${b("escapes")} · pièges gardés (signature, Ville) ${b("kept")}`);
+  const turns = all.flatMap((r) => r.turns);
+  const fast = turns.filter((t) => t.fast);
+  const short = fast.filter((t) => t.slack < TRAP_SLACK);
+  console.log(`  virages : ${turns.length} (${(turns.length / all.length).toFixed(1)} par circuit), abordés vite (poussée ou > 52,8 m/s) ${fast.length} ; parmi eux : arrivée possible ${mean(fast.map((t) => t.arrive)).toFixed(0)} m/s (max ${Math.max(...fast.map((t) => t.arrive)).toFixed(0)}), passage ${mean(fast.map((t) => t.turn)).toFixed(0)} m/s, freinage nécessaire ${mean(fast.map((t) => t.needed)).toFixed(0)} m pour ${mean(fast.map((t) => t.available)).toFixed(0)} m disponibles, marge < 0,3 s : ${short.length} (dont mur à l'extérieur : ${short.filter((t) => t.wall).length}) ; marge médiane ${fast.length ? [...fast.map((t) => t.slack)].sort((x, y) => x - y)[Math.floor(fast.length / 2)]!.toFixed(2) : "—"} s`);
+  console.log(`  (${((performance.now() - t0) / 1000).toFixed(0)} s)`);
+}
