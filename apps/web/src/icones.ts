@@ -4,14 +4,12 @@ import { svg } from "@cdj/ui";
 // (`dj-icone` : épaisseur de trait des jetons). Aucun émoji dans l'interface. Une icône seule porte un `aria-label` (posé par l'appelant sur
 // son bouton) ; l'icône elle-même est décorative.
 
-export const ICONES_TRACK = ["reglages", "camera", "recommencer", "plein-ecran", "son", "muet", "fantome", "aide", "calendrier", "classement", "lecture", "pause", "fermer", "accueil"] as const;
+export const ICONES_TRACK = ["reglages", "recommencer", "son", "muet", "fantome", "aide", "calendrier", "classement", "lecture", "pause", "fermer", "accueil"] as const;
 export type IconeTrack = (typeof ICONES_TRACK)[number];
 
 const TRACES: Record<IconeTrack, readonly string[]> = {
   reglages: ["M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z", "M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2.2 2.2M16.8 16.8 19 19M19 5l-2.2 2.2M7.2 16.8 5 19"],
-  camera: ["M3 7h4l1.5-2h7L17 7h4v12H3z", "M12 10a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"],
   recommencer: ["M20 12a8 8 0 1 1-2.6-5.9", "M20 3v5h-5"],
-  "plein-ecran": ["M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"],
   son: ["M4 9v6h4l5 4V5L8 9z", "M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"],
   muet: ["M4 9v6h4l5 4V5L8 9z", "M17 9l5 6M22 9l-5 6"],
   fantome: ["M3 21V10a9 9 0 0 1 18 0v11l-3-3-3 3-3-3-3 3-3-3z", "M9 10h1.5v2H9zM13.5 10H15v2h-1.5z"],

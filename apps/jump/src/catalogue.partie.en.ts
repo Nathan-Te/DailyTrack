@@ -68,8 +68,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "pause.son.non": "Sound: off",
   "pause.reglages": "Settings",
   "pause.aide": "How to play",
-  "pause.pleinEcran": "Full screen",
-  "pause.quitterPleinEcran": "Exit full screen",
   "pause.accueil": "Jump home",
   "pause.mentions": "Legal notice",
   "aide.aria": "How to play",

@@ -86,8 +86,9 @@
   box-shadow: none;
 }
 
-/* Surimpressions compactes (charte rév. 7, § 9 ; maquette track-hud-paysage.html) : le jeu se lit d'abord. En haut à gauche, trois boutons de 44 px : pause, dernier point de
-   contrôle et recommencer (les deux derniers sur un appareil tactile seulement : le clavier a ses touches). */
+/* Surimpressions compactes (charte rév. 7, § 9 ; maquette track-hud-paysage.html) : le jeu se lit d'abord. En haut à gauche, des boutons de 44 px : pause, dernier point de
+   contrôle et recommencer (les deux derniers sur un appareil tactile seulement : le clavier a ses touches), puis — lot I7 — la caméra et le plein écran (si le navigateur le permet) ;
+   quand la rangée toucherait la bande du centre, la caméra passe en tête du groupe de droite (`syncCameraButton`, main.ts). */
 #menu {
   position: fixed;
   left: 10px;
@@ -95,6 +96,16 @@
   z-index: var(--z-menu);
   display: flex;
   gap: 6px;
+}
+/* Petit portrait (360 px) : pas de place pour cinq plaques ; le plein écran reste dans la pause et sur l'accueil, et les rangées se resserrent. */
+@media (orientation: portrait) and (max-width: 500px) {
+  #btn-fullscreen {
+    display: none;
+  }
+  #menu,
+  #hud-droite {
+    gap: 4px;
+  }
 }
 .plaque--bouton {
   display: flex;
@@ -289,8 +300,9 @@ body.en-course #lines {
 body.watch #intro {
   display: flex;
 }
-body.watch #menu .plaque--action {
-  display: none; /* pas de conduite en rediffusion : ni point de contrôle ni recommencer */
+body.watch #menu .plaque--action,
+body.watch #btn-camera {
+  display: none; /* pas de conduite en rediffusion : ni point de contrôle ni recommencer ; la caméra est dans la barre de lecture */
 }
 
 /* En haut à droite : l'objectif de médaille (pastille et seuil, sans le mot « Objectif ») et le rang du jour en pastille qui ouvre le classement. Le Salon montre son compte à rebours à la place de l'objectif. */

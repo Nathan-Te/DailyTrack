@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-923 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+930 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -83,6 +83,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `icone.drapeau` | Arrivée | Finish |
 | `icone.horloge` | Temps | Time |
 | `icone.profil` | Profil | Profile |
+| `icone.camera` | Caméra | Camera |
 
 ### Langue (`langue.*`, `packages/ui/src/catalogue.ts`)
 
@@ -120,6 +121,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `jeu.track.titre` | TRACK | TRACK |
 | `jeu.jump.nom` | Jump | Jump |
 | `jeu.jump.titre` | JUMP | JUMP |
+
+### pleinEcran (`pleinEcran.*`, `packages/ui/src/catalogue.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `pleinEcran.entrer` | Plein écran | Full screen |
+| `pleinEcran.quitter` | Quitter le plein écran | Exit full screen |
+| `pleinEcran.iphone` | Pour jouer en plein écran : Partager › Sur l'écran d'accueil | To play full screen: Share › Add to Home Screen |
+| `pleinEcran.iphone.fermer` | Fermer cette astuce | Dismiss this tip |
 
 ### Profil (`profil.*`, `packages/ui/src/catalogue.ts`)
 
@@ -289,6 +299,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `vitrine.intro` | Chaque composant de @cdj/ui dans tous ses états, en français et en anglais, sur fond crème et sur asphalte. Page de recette : elle n'existe pas en production. | Every @cdj/ui component in every state, in French and English, on cream and on asphalt. A staging page: it doesn't exist in production. |
 | `vitrine.section.marque` | Logo et barres | Logo and bars |
 | `vitrine.section.boutons` | Boutons | Buttons |
+| `vitrine.section.pleinEcran` | Plein écran et astuce de l'iPhone | Full screen and iPhone tip |
 | `vitrine.section.cartouches` | Cartouches | Cartridges |
 | `vitrine.section.cadre` | Écran posé sur la scène d'un jeu | Screen on a game's scene |
 | `vitrine.cadre.intro` | creerCadre : voile à rayures sur la scène, barre des jeux en plaque crème, l'étiquette du jeu, puis le pied (Track, puis Jump). | creerCadre: striped veil over the scene, game bar on a cream plate, the game's label, then the footer (Track, then Jump). |
@@ -560,6 +571,10 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.camera.proche` | Caméra proche | Close camera |
 | `course.camera.loin` | Caméra loin | Far camera |
 | `course.camera.capot` | Caméra capot | Hood camera |
+| `course.camera.bouton` | Caméra : {nom} | Camera: {nom} |
+| `course.camera.nom.proche` | proche | close |
+| `course.camera.nom.loin` | loin | far |
+| `course.camera.nom.capot` | capot | hood |
 | `course.camera.libre` | Caméra libre : glisse pour tourner, molette ou pincement pour zoomer | Free camera: drag to turn, wheel or pinch to zoom |
 | `course.effet.moteurCoupe` | Moteur coupé | Engine cut |
 | `course.effet.superTurbo` | Super turbo | Super turbo |
@@ -645,7 +660,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.reprendre` | Reprendre | Resume |
 | `pause.recommencer` | Recommencer | Restart |
 | `pause.pointDeControle` | Dernier point de contrôle | Last checkpoint |
-| `pause.pleinEcran` | Plein écran | Full screen |
 | `pause.fantome` | Fantôme · {nom} | Ghost · {nom} |
 | `pause.son.actif` | Son : activé | Sound: on |
 | `pause.son.coupe` | Son : coupé | Sound: off |
@@ -1168,8 +1182,6 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `pause.son.non` | Son : non | Sound: off |
 | `pause.reglages` | Réglages | Settings |
 | `pause.aide` | Comment jouer | How to play |
-| `pause.pleinEcran` | Plein écran | Full screen |
-| `pause.quitterPleinEcran` | Quitter le plein écran | Exit full screen |
 | `pause.accueil` | Accueil de Jump | Jump home |
 | `pause.mentions` | Mentions légales | Legal notice |
 

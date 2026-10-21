@@ -19,11 +19,12 @@ export function definirJour(jour: number, numero?: number): void {
 }
 
 /** La barre des jeux telle qu'elle est aujourd'hui (l'accueil la pose dans une plaque crème sur la scène). */
-export function barreDuJour(o: { retourJeu?: () => void } = {}): HTMLElement {
+export function barreDuJour(o: { retourJeu?: () => void; pleinEcran?: boolean } = {}): HTMLElement {
   return barreJeu(traducteurDuSocle(), {
     href: "../",
     jour: jourDuJeu.jour,
     numero: jourDuJeu.numero,
+    pleinEcran: o.pleinEcran,
     ...(o.retourJeu ? { retour: { texte: t("jeu.jump.titre"), ariaLabel: t("cadre.retourJump"), onClick: o.retourJeu } } : {}),
   });
 }

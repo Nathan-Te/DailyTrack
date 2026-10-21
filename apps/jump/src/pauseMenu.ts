@@ -1,4 +1,4 @@
-import { bouton, el, icone } from "@cdj/ui";
+import { bouton, boutonPleinEcran, el, icone } from "@cdj/ui";
 import { lier, lierMentions, onLangue, t } from "./i18n";
 
 // La pause (lot 8, **refaite au lot I5** : maquette `jump-pause.html`, charte rév. 7 § 9). Posée **sur la scène, sous le voile à rayures** (motif net, ni flou
@@ -41,24 +41,6 @@ export interface PauseMenu {
   readonly element: HTMLElement;
 }
 
-/** Le plein écran est-il possible ici (Android, tablettes, ordinateurs) ? L'iPhone n'a rien à proposer : aucun bouton. */
-export function fullscreenAvailable(): boolean {
-  return typeof document.fullscreenEnabled === "boolean" && document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === "function";
-}
-
-async function toggleFullscreen(): Promise<void> {
-  try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else {
-      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
-      // Le paysage est la bonne orientation pour jouer ; refusé presque partout hors Android, sans conséquence.
-      await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
-    }
-  } catch {
-    /* refusé par le navigateur : le jeu reste tel quel */
-  }
-}
-
 export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   const root = el("div", { classe: "voile voile--pause", attrs: { id: "menu", hidden: true } });
   const dialog = el("section", { classe: ["dialogue", "dialogue--pause"], attrs: { role: "dialog", "aria-modal": "true" } });
@@ -83,15 +65,8 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   const sound = second("menu-sound", "pause.son.oui", () => opts.onSound());
   const settings = second("menu-settings", "pause.reglages", () => opts.onSettings());
   const help = second("menu-help", "pause.aide", () => opts.onHelp());
-  const full = fullscreenAvailable()
-    ? second("menu-fullscreen", "pause.pleinEcran", () => {
-        void toggleFullscreen().then(majPleinEcran);
-      })
-    : null;
-  const majPleinEcran = () => {
-    if (full) lier(full, document.fullscreenElement ? "pause.quitterPleinEcran" : "pause.pleinEcran");
-  };
-  document.addEventListener("fullscreenchange", majPleinEcran);
+  // Lot I7 : le plein écran de la pause est le bouton du socle, en texte (même logique que celui de la partie et de l'accueil) ; caché s'il n'est pas possible.
+  const full = Object.assign(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }), { id: "menu-fullscreen" });
   const home = second("menu-home", "pause.accueil", () => opts.onHome?.());
   home.hidden = !opts.onHome;
   // Lot I2 de la plateforme : le retour au portail « ‹ DU JOUR » (le logo des barres des jeux, un lien de 44 px).
@@ -119,7 +94,6 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
     lier(sound, v.sound ? "pause.son.oui" : "pause.son.non");
     sound.setAttribute("aria-pressed", v.sound ? "true" : "false");
     version.textContent = v.version;
-    majPleinEcran();
   };
   onLangue(() => {
     if (view) show(view);

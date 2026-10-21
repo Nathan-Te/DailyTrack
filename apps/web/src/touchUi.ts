@@ -19,8 +19,7 @@ import {
 
 // Interface tactile (lot 10, habillée au lot I4, refaite à la retouche 2 : charte rév. 7, maquette track-hud-paysage.html) : les boutons de direction et de
 // pédales **aux bords** de l'écran (jamais devant la voiture), leurs zones de toucher, l'invitation à tourner le téléphone. Plus de barre du bas ni d'aide
-// sur la scène : les actions de course (point de contrôle, recommencer) sont des plaques du HUD (en haut à gauche), la caméra, les graphismes et le plein
-// écran sont dans la pause. Toute la logique des doigts est dans `touch.ts` ; ici, seulement du DOM. Les conteneurs (`#touch`, `#rotate`) sont dans
+// sur la scène : les actions de course (point de contrôle, recommencer) sont des plaques du HUD (en haut à gauche), la caméra et le plein écran ont leur plaque (lot I7), les graphismes sont dans la pause. Toute la logique des doigts est dans `touch.ts` ; ici, seulement du DOM. Les conteneurs (`#touch`, `#rotate`) sont dans
 // `index.html`, cachés tant que la page n'est pas en mode tactile (`body.touch`).
 
 export interface TouchHooks {
@@ -46,35 +45,6 @@ export function hintText(s: Readonly<TouchSettings>): string {
   const direction = t(s.steerMode === "drag" ? "tactile.indice.glisser" : "tactile.indice.fleches");
   const pedales = t(s.autoThrottle ? "tactile.indice.auto" : "tactile.indice.pedales");
   return t("tactile.indice", { direction, pedales });
-}
-
-type FullscreenDoc = Document & {
-  webkitFullscreenElement?: Element | null;
-  webkitFullscreenEnabled?: boolean;
-  webkitExitFullscreen?: () => Promise<void> | void;
-};
-type FullscreenEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
-
-export const canFullscreen = () => {
-  const d = document as FullscreenDoc;
-  return !!(d.fullscreenEnabled || d.webkitFullscreenEnabled);
-};
-
-/** Plein écran (et, sur Android, paysage verrouillé) : le bouton « Plein écran » de la pause. */
-export async function toggleFullscreen(): Promise<void> {
-  const d = document as FullscreenDoc;
-  const root = document.documentElement as FullscreenEl;
-  try {
-    if (d.fullscreenElement || d.webkitFullscreenElement) {
-      await (d.exitFullscreen?.() ?? d.webkitExitFullscreen?.());
-      return;
-    }
-    await (root.requestFullscreen?.({ navigationUI: "hide" }) ?? root.webkitRequestFullscreen?.());
-    // Android : en plein écran, on peut verrouiller le paysage (ailleurs, refusé : tant pis).
-    await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
-  } catch {
-    /* refusé par le navigateur : le jeu reste tel quel */
-  }
 }
 
 /**

@@ -1,4 +1,4 @@
-import { bouton, el, icone, medaille, suivreDialogue } from "@cdj/ui";
+import { astuceIphone, bouton, el, icone, medaille, suivreDialogue } from "@cdj/ui";
 import { barreDuJour, onJour } from "./cadre";
 import { MEDAL_TYPE } from "./dailyInfo";
 import type { EtatDuJour } from "./homeLogic";
@@ -45,6 +45,8 @@ export interface HomeOptions {
   onCarnage(): void;
   /** `../profil/?retour=/jump/` : le profil commun. */
   profilHref: string;
+  /** Lot I7 : le stockage où se souvenir que l'astuce de l'iPhone (plein écran) a été fermée. */
+  store?: Pick<Storage, "getItem" | "setItem"> | null;
   onChange?(): void;
 }
 
@@ -78,7 +80,7 @@ export function mountHome(opts: HomeOptions): Home {
   const plaque = el("div", { classe: "accueil__barre" });
   // Le retour au portail garde l'identifiant du lot I2 (`#home-portail`, e2e de apps/web), comme Track au lot I4.
   const majBarre = () => {
-    plaque.replaceChildren(barreDuJour());
+    plaque.replaceChildren(barreDuJour({ pleinEcran: true })); // lot I7 : le plein écran à côté de la date, avant de jouer
     plaque.querySelector(".dj-barre-jeu__retour")?.setAttribute("id", "home-portail");
   };
   majBarre();
@@ -116,7 +118,9 @@ export function mountHome(opts: HomeOptions): Home {
   });
   settings.disabled = true;
   const revoked = el("a", { classe: "accueil__alerte", attrs: { id: "home-revoked", href: opts.profilHref, hidden: true } });
-  const gauche = el("div", { classe: "accueil__gauche" }, el("div", { classe: "accueil__tete" }, title, subtitle), replique, tuiles, status, play, el("div", { classe: "accueil__actions" }, archives, help, settings), revoked);
+  // Lot I7 : sur iPhone (pas de plein écran de page), une ligne qui dit comment jouer en plein écran ; fermée, elle ne revient pas.
+  const astuce = opts.store ? astuceIphone({ textes: () => ({ astuce: t("pleinEcran.iphone"), fermer: t("pleinEcran.iphone.fermer") }), stockage: opts.store }) : null;
+  const gauche = el("div", { classe: "accueil__gauche" }, el("div", { classe: "accueil__tete" }, title, subtitle), astuce, replique, tuiles, status, play, el("div", { classe: "accueil__actions" }, archives, help, settings), revoked);
 
   // ——— Colonne de droite : le carnage du jour, le classement, le compte à rebours, le profil ———
   const carnageMorts = el("span", { classe: "carnage-jour__morts" });

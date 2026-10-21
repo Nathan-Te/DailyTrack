@@ -87,6 +87,7 @@ import { mountHowto } from "./howtoUi";
 import { mountSettings } from "./settingsUi";
 import { mountArchives, mountBoard, type BoardView } from "./screensUi";
 import { profilHref } from "./profilLien";
+import { boutonPleinEcran, majPleinEcran } from "@cdj/ui";
 import { chargerLangue, demarrerLangue, fNumero, fTicks, nomTheme, onLangue, repliqueTheme, t } from "./i18n";
 import { shareText } from "./share";
 import { sendShare } from "./clipboard";
@@ -626,6 +627,7 @@ const home: Home | null = homeHere
       onBoard: () => openBoard(),
       onCarnage: () => carnageFromHome(),
       profilHref: profil,
+      store,
       onChange: syncIfReady,
     })
   : null;
@@ -2367,6 +2369,9 @@ function syncPause(): void {
   stepper.reset();
 }
 const pauseButton = document.getElementById("pausebtn") as HTMLButtonElement;
+// Lot I7 : le plein écran reste en vue, juste après la pause (la plaque du HUD) ; caché s'il n'est pas possible. Même logique que l'accueil et la pause (socle).
+pauseButton.after(Object.assign(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["plaque", "plaque--bouton"] }), { id: "fullscreenbtn" }));
+onLangue(majPleinEcran);
 pauseButton.addEventListener("click", () => {
   pauseButton.blur();
   setMenu(true);

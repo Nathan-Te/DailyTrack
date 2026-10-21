@@ -33,6 +33,8 @@ export interface OptionsCadre {
   onRetour?: () => void;
   /** Un sous-écran (archives, classement, réglages) : au-dessus des autres, qui s'effacent tant qu'il est ouvert (un seul voile). */
   haut?: boolean;
+  /** Lot I7 : le bouton plein écran dans la barre des jeux (l'accueil seulement : on se met en plein écran avant de jouer). */
+  pleinEcran?: boolean;
 }
 
 const existants = new WeakMap<HTMLElement, Cadre>();
@@ -52,6 +54,7 @@ export function creerCadre(o: OptionsCadre): Cadre {
         href: "../",
         jour: jourDuJeu.jour,
         numero: jourDuJeu.numero,
+        pleinEcran: o.pleinEcran,
         ...(o.retour === "jeu" ? { retour: { texte: t("jeu.track.titre"), ariaLabel: t("cadre.retourTrack"), onClick: () => o.onRetour?.() } } : {}),
       }),
   });

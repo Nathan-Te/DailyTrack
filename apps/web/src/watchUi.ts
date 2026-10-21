@@ -1,3 +1,4 @@
+import { icone } from "@cdj/ui";
 import { iconeTrack } from "./icones";
 import { aCle, fNombre, onLangue, t } from "./i18n";
 import { REWIND_SECONDS, WATCH_SPEEDS, speedLabel, speedShort, type WatchSpeed } from "./watch";
@@ -60,7 +61,7 @@ export function mountWatchUi(root: HTMLElement, h: WatchHandlers): WatchUi {
 
   const back = button("watch-back", "", h.onRewind);
   const play = button("watch-play", "", h.onTogglePause);
-  const cam = button("watch-camera", "", h.onCamera, iconeTrack("camera"));
+  const cam = button("watch-camera", "", h.onCamera, icone("camera"));
   const group = document.createElement("div");
   group.className = "segment lecture__vitesses";
   group.setAttribute("role", "group");

@@ -16,7 +16,7 @@ import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
 import { appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { icone, nomMedaille, suivreDialogue } from "@cdj/ui";
+import { boutonPleinEcran, icone, majPleinEcran, nomMedaille, pleinEcranPossible, suivreDialogue } from "@cdj/ui";
 import { iconeTrack } from "./icones";
 import { definirJour } from "./cadre";
 import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
@@ -116,7 +116,7 @@ import type { Leaderboard } from "./api";
 import { isValidName, normalizeName, setName, getName } from "./identity";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
-import { canFullscreen, hintText, mountTouchUi, toggleFullscreen } from "./touchUi";
+import { hintText, mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import { GhostField, createNameLabel, type GhostEntry, type NameLabel } from "./salonGhosts";
 import { GHOST_COLORS, MY_GHOST_COLOR } from "./salon";
@@ -432,8 +432,8 @@ function renderObjective() {
 // Pause, dernier point de contrôle et recommencer en haut à gauche (les deux derniers sur appareil tactile seulement : le clavier a ses touches) ; la barre du bas n'existe plus.
 (function mountMenuActions() {
   const menu = $("menu");
-  const bouton = (id: string, icon: SVGSVGElement, cle: string, onClick: () => void) => {
-    const b = makeEl("button", "plaque plaque--bouton plaque--action");
+  const bouton = (id: string, icon: SVGSVGElement, cle: string, onClick: () => void, tactile = true) => {
+    const b = makeEl("button", tactile ? "plaque plaque--bouton plaque--action" : "plaque plaque--bouton");
     b.type = "button";
     b.id = id;
     b.setAttribute("data-t-aria-label", cle);
@@ -450,8 +450,32 @@ function renderObjective() {
   bouton("btn-restart", iconeTrack("recommencer", 20), "tactile.depart", () => {
     if (!watch) controls.requestRestart();
   });
+  // Lot I7 : la caméra (celle de la touche C et de la pause, même fonction) et le plein écran restent en vue, à droite de la pause.
+  bouton("btn-camera", icone("camera", { taille: 20 }), "course.camera.bouton", () => cycleCamera(), false);
+  $("btn-camera").removeAttribute("data-t-aria-label"); // son nom lu porte la caméra courante : `syncCameraButton`
+  menu.append(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["plaque", "plaque--bouton"] }));
+  menu.lastElementChild!.id = "btn-fullscreen";
   appliquerTextes(menu);
 })();
+onLangue(majPleinEcran);
+
+/**
+ * Le bouton caméra (lot I7) : son nom lu suit la caméra courante (touche C, pause, réglages, démo : une seule vérité, `cameraIndex`) ; il tient dans la rangée du haut à gauche
+ * tant que celle-ci laisse la place à la bande du centre (`BANDE_MAX_PX`), sinon il passe en tête du groupe de droite. Appelé à chaque image : ne touche au DOM que si la clé change.
+ */
+const BANDE_MAX_PX = 300;
+const cameraBtn = $("btn-camera");
+let cameraShown = "";
+function syncCameraButton() {
+  const rangee = 1 + (document.body.classList.contains("touch") ? 2 : 0) + (pleinEcranPossible() ? 1 : 0) + 1; // pause, [point de contrôle, recommencer], caméra, [plein écran]
+  const dansLaRangee = 10 + rangee * 44 + (rangee - 1) * 6 <= innerWidth / 2 - BANDE_MAX_PX / 2 - 6;
+  const key = `${cameraIndex}|${langueCourante()}|${dansLaRangee}`;
+  if (key === cameraShown) return;
+  cameraShown = key;
+  cameraBtn.setAttribute("aria-label", t("course.camera.bouton", { nom: t(`course.camera.nom.${CAMERAS[cameraIndex]!.name}`) }));
+  if (dansLaRangee) $("menu").insertBefore(cameraBtn, $("btn-fullscreen"));
+  else $("hud-droite").prepend(cameraBtn);
+}
 
 /** Ta place dans le classement du jour (la dernière lue) : la pastille « 14e ˅ » du haut à droite l'affiche ; le Salon donne celle de la session (`salon.myRank`). */
 let dayRank: number | null = null;
@@ -701,8 +725,8 @@ $("pause-camera").addEventListener("click", () => {
   cycleCamera();
   renderPause();
 });
-($("pause-fullscreen") as HTMLButtonElement).hidden = !canFullscreen();
-$("pause-fullscreen").addEventListener("click", () => void toggleFullscreen());
+// Lot I7 : le plein écran de la pause est le bouton du socle, en texte (même logique que celui du HUD et de l'accueil).
+$("pause-fullscreen").replaceWith(Object.assign(boutonPleinEcran({ libelle: (actif) => t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer"), classe: ["dj-bouton", "dj-bouton--secondaire"], texte: true }), { id: "pause-fullscreen" }));
 $("pause-respawn").addEventListener("click", () => {
   setPaused(false);
   controls.requestRespawn();
@@ -1709,6 +1733,7 @@ try {
 }
 // `?camera=proche|loin|capot` (lot 23) : impose la caméra au chargement, sans toucher au choix mémorisé.
 if (params.has("camera")) cameraIndex = cameraIndexOf(params.get("camera"));
+syncCameraButton();
 
 function cycleCamera() {
   if (watch) {
@@ -2005,6 +2030,7 @@ function frame(now: number) {
 
   // Caméra poursuite : cap, hauteur et position suivent la voiture avec un léger retard ; le champ de vision
   // s'ouvre avec la vitesse (sensation de vitesse).
+  syncCameraButton();
   const rig = CAMERAS[cameraIndex]!;
   // Au-delà de la pointe du plat (lot 15) : champ de vision plus ouvert, caméra plus basse et plus en retard, petite vibration.
   const speedRatio = flatRatio(speed);

@@ -74,8 +74,6 @@ export const fr = {
   "pause.son.non": "Son : non",
   "pause.reglages": "Réglages",
   "pause.aide": "Comment jouer",
-  "pause.pleinEcran": "Plein écran",
-  "pause.quitterPleinEcran": "Quitter le plein écran",
   "pause.accueil": "Accueil de Jump",
   "pause.mentions": "Mentions légales",
   // « Comment jouer » dans le jeu (une seule fois, puis depuis la pause et l'accueil)

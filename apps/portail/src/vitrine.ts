@@ -21,16 +21,19 @@ import {
   MEDAILLES,
   PAIRES,
   afficheur,
+  astuceIphone,
   avatar,
   barreJeu,
   barrePortail,
   bouton,
+  boutonPleinEcran,
   cartouche,
   choixLangue,
   creerCadre,
   el,
   etiquetteJump,
   etiquetteTrack,
+  type Environnement,
   formatNombre,
   formatNumeroJour,
   formatTemps,
@@ -62,7 +65,7 @@ const ETATS = ["normal", "survol", "appui", "focus", "desactive"] as const;
 const VARIANTES: readonly VarianteBouton[] = ["marque", "secondaire", "track", "jump"];
 const CLE_ETAT = { normal: "vitrine.etat.normal", survol: "vitrine.etat.survol", appui: "vitrine.etat.appui", focus: "vitrine.etat.focus", desactive: "vitrine.etat.desactive" } as const;
 const CLE_BOUTON = { marque: "vitrine.bouton.marque", secondaire: "vitrine.bouton.secondaire", track: "vitrine.bouton.track", jump: "vitrine.bouton.jump" } as const;
-const CLE_ICONE = { chevron: "icone.chevron", flamme: "icone.flamme", crane: "icone.crane", drapeau: "icone.drapeau", horloge: "icone.horloge", profil: "icone.profil" } as const;
+const CLE_ICONE = { chevron: "icone.chevron", flamme: "icone.flamme", crane: "icone.crane", drapeau: "icone.drapeau", horloge: "icone.horloge", profil: "icone.profil", pleinEcran: "pleinEcran.entrer", pleinEcranQuitter: "pleinEcran.quitter", camera: "icone.camera" } as const;
 /** Seuils de démonstration (ms) et médailles obtenues pour l'exemple. */
 const SEUILS = { auteur: 29_880, or: 31_500, argent: 34_000, bronze: 38_000 } as const;
 
@@ -118,6 +121,33 @@ function cadreSurScene(t: T, jeu: Jeu, jour: number): HTMLElement {
   return el("div", { classe: ["vitrine-scene", `vitrine-scene--${jeu}`] }, cadre.racine);
 }
 
+/** Un navigateur fictif pour montrer le plein écran dans tous ses états, même là où il n'existe pas (la vitrine est une recette). */
+function envFictif(opts: { actif?: boolean; iphone?: boolean }): Environnement {
+  const doc = {
+    fullscreenEnabled: !opts.iphone,
+    fullscreenElement: opts.actif ? document.documentElement : null,
+    documentElement: { requestFullscreen: async () => undefined },
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  };
+  return { doc: doc as unknown as Environnement["doc"], navigator: { userAgent: opts.iphone ? "iPhone" : "" } };
+}
+
+/** Lot I7 : le bouton plein écran (normal, en plein écran, sur asphalte, dans la barre des jeux) et l'astuce de l'iPhone. */
+function pleinEcran(t: T, jour: number): HTMLElement[] {
+  const libelle = (actif: boolean) => t.t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer");
+  const mettre = (actif: boolean, classe: string) => boutonPleinEcran({ libelle, classe, env: envFictif({ actif }) });
+  const memoire = new Map<string, string>();
+  const stockage = { getItem: (k: string) => memoire.get(k) ?? null, setItem: (k: string, v: string) => void memoire.set(k, v) };
+  const astuce = astuceIphone({ textes: () => ({ astuce: t.t("pleinEcran.iphone"), fermer: t.t("pleinEcran.iphone.fermer") }), stockage, env: envFictif({ iphone: true }) });
+  return [
+    el("div", { classe: "vitrine-ligne" }, mettre(false, "dj-plein-ecran--barre"), mettre(true, "dj-plein-ecran--barre")),
+    el("div", { classe: "vitrine-asphalte dj-sombre vitrine-ligne" }, mettre(false, "plaque-vitrine"), mettre(true, "plaque-vitrine")),
+    barreJeu(t, { href: "../", jour, numero: 12, pleinEcran: true }),
+    ...(astuce ? [astuce] : []),
+  ];
+}
+
 /** Tous les composants dans une langue. */
 function bloc(l: Langue): HTMLElement {
   const t = traduire(l);
@@ -148,6 +178,7 @@ function bloc(l: Langue): HTMLElement {
         avatar(t, { pseudo: null, href: "#" }),
       ),
     ),
+    section(t.t("vitrine.section.pleinEcran"), `plein-ecran-${l}`, ...pleinEcran(t, jour)),
     section(
       t.t("vitrine.section.boutons"),
       `boutons-${l}`,

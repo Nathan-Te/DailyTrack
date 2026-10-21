@@ -3,7 +3,7 @@
 // quatre médailles en cases, le fantôme à battre, « Courir » ; puis le classement du jour (cinq lignes et la tienne), le Salon et les liens (archives,
 // réglages, aide, profil). Le DOM seulement : les données viennent de `HomeHost` (main.ts), la logique de homeLogic.ts, profile.ts et boardView.ts.
 import type { Medal } from "@cdj/sim";
-import { bouton, formatDecompte, medaille } from "@cdj/ui";
+import { astuceIphone, bouton, formatDecompte, medaille } from "@cdj/ui";
 import type { ApiResult, Leaderboard } from "./api";
 import { boardTitle, dayLines, linesEls, MEDAL_TYPE } from "./boardView";
 import { creerCadre } from "./cadre";
@@ -11,6 +11,7 @@ import { button, el } from "./dom";
 import { fEcart, fNombre, fRang, fTemps, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
 import { remainingMs, type SalonLookup, type SalonProblem } from "./homeLogic";
 import { rememberRank } from "./profile";
+import { gameStorage } from "./storage";
 
 export interface HomeDaily {
   number: number;
@@ -77,7 +78,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   let previewUrl: string | null | undefined; // undefined : pas encore demandé
   let generation = 0; // une réponse tardive d'une ouverture précédente ne doit rien écrire
 
-  const cadre = creerCadre({ racine: root, titreAria: "accueil.aria", retour: "portail" });
+  const cadre = creerCadre({ racine: root, titreAria: "accueil.aria", retour: "portail", pleinEcran: true });
   root.classList.add("accueil");
   // Le retour au portail garde son identifiant (tests, outils) : la barre est redessinée à chaque langue.
   const marquerRetour = () => cadre.racine.querySelector(".dj-barre-jeu__retour")?.setAttribute("id", "home-portail");
@@ -160,7 +161,9 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   colC.append(salonCard, links);
   const grille = el("div", "home-grille");
   grille.append(colA, colB, colC);
-  cadre.corps.append(tete, grille, touchNote, nextDay, actions);
+  // Lot I7 : sur iPhone (pas de plein écran de page), une ligne sous le titre qui dit comment jouer en plein écran ; fermée, elle ne revient pas.
+  const astuce = astuceIphone({ textes: () => ({ astuce: t("pleinEcran.iphone"), fermer: t("pleinEcran.iphone.fermer") }), stockage: { getItem: (k) => gameStorage().getItem(k), setItem: (k, v) => gameStorage().setItem(k, v) } });
+  cadre.corps.append(tete, ...(astuce ? [astuce] : []), grille, touchNote, nextDay, actions);
 
   // --- Rendu ---
   function renderTexts() {
