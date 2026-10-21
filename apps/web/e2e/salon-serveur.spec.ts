@@ -10,6 +10,7 @@ test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seu
 test.setTimeout(600_000);
 
 const API = "http://127.0.0.1:8788";
+const PODIUM_MS = 8_000; // classement final avant le changement de circuit (lot 33 ; `PODIUM_MS` de src/salon.ts)
 const SESSION_MS = 180_000; // SALON_MINUTES=3 : de la marge pour deux courses complètes en rendu logiciel
 const url = `/?mode=salon&api=${encodeURIComponent(API)}&debug&timescale=6`;
 
@@ -111,15 +112,17 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   // aussi l'attente d'un fil principal occupé par le rendu logiciel — en CI, un simple `evaluate` sur la page d'Alice y a attendu 33 s, et
   // l'écart « mesuré » entre les deux pages (1,5 à 2,1 s) venait de là, pas de la bascule (Bob à fin + 0,28 s, Alice à fin + 2,4 s côté Node).
   const end = (session + 1) * SESSION_MS;
-  type Switch = { before: number; after: number | null };
+  const swapAt = end + PODIUM_MS; // lot 33 : le circuit change après le classement final
+  type Switch = { before: number; after: number | null; podiumSeen: boolean };
   const watchSwitch = (page: Page) =>
     page.evaluate((s) => {
-      const rec: Switch = { before: 0, after: null };
+      const rec: Switch = { before: 0, after: null, podiumSeen: false };
       (window as unknown as { __switch: Switch }).__switch = rec;
       const sample = () => {
         const sal = window.__cdj.salon!;
         if (sal.session > s) rec.after = sal.now;
         else {
+          if (sal.podiumVisible && sal.state === "podium") rec.podiumSeen = true; // classement final, sur l'ancien circuit (session inchangée)
           rec.before = sal.now;
           requestAnimationFrame(sample);
         }
@@ -130,17 +133,18 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
   const switched = async (page: Page) => {
     await page.waitForFunction(() => (window as unknown as { __switch: Switch }).__switch.after !== null, undefined, { timeout: 240_000 });
     const sw = await page.evaluate(() => (window as unknown as { __switch: Switch }).__switch);
-    return { before: sw.before, after: sw.after!, frame: sw.after! - sw.before };
+    return { before: sw.before, after: sw.after!, frame: sw.after! - sw.before, podiumSeen: sw.podiumSeen };
   };
   const [sA, sB] = await Promise.all([switched(alice), switched(bob)]);
   console.log(
-    `bascule (heure du Salon − heure pile) : ${ALICE} +${sA.after - end} ms (image ${sA.frame} ms), ${BOB} +${sB.after - end} ms (image ${sB.frame} ms) ; écart ${Math.abs(sA.after - sB.after)} ms`,
+    `bascule (heure du Salon − fin − classement final) : ${ALICE} +${sA.after - swapAt} ms (image ${sA.frame} ms), ${BOB} +${sB.after - swapAt} ms (image ${sB.frame} ms) ; écart ${Math.abs(sA.after - sB.after)} ms`,
   );
   for (const sw of [sA, sB]) {
     expect(sw.before, "une image de l'ancienne session a été vue").toBeGreaterThan(0);
     // Jamais avant l'heure pile ; et pas plus tard qu'une image (même règle que salon.spec.ts, lot 31) : la bascule ne dépend que de l'heure.
-    expect(sw.after, "bascule avant l'heure pile").toBeGreaterThanOrEqual(end - 50);
-    expect(sw.after - end, "retard de la bascule").toBeLessThan(sw.frame + 600);
+    expect(sw.after, "bascule avant la fin du classement final").toBeGreaterThanOrEqual(swapAt - 50);
+    expect(sw.podiumSeen, "le classement final a été vu sur l'ancien circuit").toBe(true);
+    expect(sw.after - swapAt, "retard de la bascule").toBeLessThan(sw.frame + 600);
   }
   // Le même instant pour les deux (le circuit change à l'heure pile du serveur, lot 31, sans attendre personne) : à une image près.
   expect(Math.abs(sA.after - sB.after)).toBeLessThan(Math.max(sA.frame, sB.frame) + 600);
@@ -149,9 +153,9 @@ test("deux navigateurs, un vrai serveur : chacun classé, chacun voit l'autre, l
     expect(await page.evaluate(() => window.__cdj.salon!.session)).toBe(session + 1);
     expect(await page.evaluate(() => window.__cdj.salon!.trackId)).toBe(next);
     expect(await page.evaluate(() => window.__cdj.salon!.stats.mainThreadGenerations)).toBe(0);
-    await expect(page.locator("#podium")).toBeVisible(); // le podium de la session finie, par-dessus le circuit suivant
+    await expect(page.locator("#podium")).toBeHidden(); // le classement final est fermé : le circuit suivant a pris la place
   }
-  // Le classement de la nouvelle session repart de zéro ; celui de la précédente reste lisible pendant le podium (20 s).
+  // Le classement de la nouvelle session repart de zéro ; celui de la précédente reste lisible (20 s) après la bascule.
   const fresh = await (await fetch(`${API}/api/salon/${session + 1}/board`)).json();
   expect(fresh.participants).toBe(0);
   const old = await (await fetch(`${API}/api/salon/${session}/board`)).json();

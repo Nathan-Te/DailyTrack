@@ -6,21 +6,21 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 ## Le tableau
 
-« Avant » = `main` au début du lot I7 (la fin du lot I6, lot 32 compris) ; « après » = la fin du lot I7. Mesures locales (`node scripts/budgets.mjs`), identiques à celles des tests.
+« Avant » = `main` au début du lot I6 (`df53a33`) ; « après » = la fin du lot I6, retouche avant fusion comprise (vocabulaire anglais, boutons de segment). Mesures locales (`node scripts/budgets.mjs`), identiques à celles des tests.
 
 | Clé | Application | Mesure | Budget (o) | Avant | Après | Marge | Gardé par |
 |---|---|---|---|---|---|---|---|
-| `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 812 | 23 931 | 6 789 | `apps/portail/test/construction.test.ts` |
+| `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 22 812 | 7 908 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 285 100 | 283 440 | 284 973 | 127 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 274 000 | 272 185 | 273 557 | 443 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 141 000 | 139 419 | 140 791 | 209 | `apps/web/e2e/perf.spec.ts` |
-| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 7 245 | 7 333 | 667 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement | 284 100 | 283 365 | 283 844 | 256 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement | 274 000 | 272 142 | 272 589 | 1 411 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js | 141 000 | 139 376 | 139 823 | 1 177 | `apps/web/e2e/perf.spec.ts` |
+| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 224 | 776 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 000 | 25 385 | 25 385 | 615 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 27 372 | 2 628 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 376 242 | 377 637 | 853 | `apps/jump/e2e/poids.spec.ts` |
-| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 5 483 | 5 530 | 2 470 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 376 242 | 2 248 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 483 | 2 517 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
 
@@ -35,15 +35,12 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 - **Track : −40 o** (283 480 → 283 440 o, marge 620 → 660 o ; JS 272 225 → 272 185 o, hors three.js 139 459 → 139 419 o ; catalogue anglais, fils de travail et polices inchangés). Les adresses n'ont plus `&player=…` ni `encodeURIComponent`, l'identifiant n'est plus dans le corps d'un envoi ; l'en-tête s'écrit par une seule fonction (`asPlayer`) et l'appel de `LeaderboardApi` passe par `ProfileClient.call`. Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `2bd5b93`) et après.
 
-## Lot I7 : le plein écran et la caméra en vue
+## Lot 33 (Track) : partage qui se copie, classement final du Salon
 
-- **Track : budget JS + CSS relevé de 1 000 o** (284 100 → 285 100 o ; autorisé par Nathan, au plus 1 024 o) ; **la marge tombe à 127 o**. Le lot ajoute 1 533 o compressés (283 440 → 284 973 o : JS +1 372 o, tout dans le code du jeu et du socle hors three.js, CSS +161 o) : la logique de plein écran du socle (`pleinEcran.ts`), le bouton et l'astuce de l'iPhone (`composants.ts`), deux icônes, la plaque de caméra de la course et la décision de sa place (`main.ts`), les clés de catalogue (français : commun et jeu ; l'anglais, chargé à la demande, +88 o) et un peu de CSS. **Répartition non mesurée poste par poste** (une seule mesure avant / après). Ce qui a été retiré** : la logique de plein écran de la pause de Track (`touchUi.ts`, avec ses types préfixés WebKit) et l'icône `plein-ecran` propre à Track, le bouton caméra réutilisant `cycleCamera` (aucune fonction de plus). Pistes si un lot en a besoin : charger l'astuce de l'iPhone à la demande (`import()` : elle ne sert que sur un iPhone), ou retirer la prise en charge du préfixe WebKit du plein écran (iPad avant iPadOS 16.4).
-- **Jump : −1 395 o de marge** (2 248 → 853 o), dans son budget (pas de relèvement) : mêmes ajouts, sans le bouton caméra.
-- **Portail : +1 119 o** (premier chargement 22 812 → 23 931 o, marge 6 789 o) : le socle a grandi du plein écran (la barre des jeux importe le bouton).
-- Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `d804705`) et après.
+- **Track : +404 o** (283 440 → 283 844 o, marge 660 → 256 o ; JS 272 185 → 272 589 o, hors three.js 139 419 → 139 823 o ; catalogue anglais 7 245 → 7 224 o). Le lot ajoute le champ de repli de « Copier » et la séparation classement final / circuit suivant, et compense en partie en retirant l'ancienne copie par `execCommand`, 7 clés de catalogue (dont l'ancien « Partager mon temps ») et la reconstruction du podium à chaque seconde (le décompte seul est mis à jour). Fils de travail et polices inchangés. Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `eb6647d`) et après.
 
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, JS + CSS : 127 o** (lot I7, après un relèvement de 1 000 o ; 660 o au lot 32). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
+1. **Track, JS + CSS : 256 o** (lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
 2. **Track, fil des miniatures : 615 o** (inchangé depuis le lot 21).
-3. **Track, catalogue anglais : 667 o** (755 o avant le lot I7) (il porte maintenant l'anglais commun).
+3. **Track, catalogue anglais : 755 o** (il porte maintenant l'anglais commun).

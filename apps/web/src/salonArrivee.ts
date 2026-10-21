@@ -1,5 +1,6 @@
 import { isValidName, normalizeName, type RenameResult } from "@cdj/profile";
 import { creerCadre, type Cadre } from "./cadre";
+import { canNativeShare, copyShare, nativeShare } from "./clipboard";
 import { button, el } from "./dom";
 import { fEcart, fRang, fTemps, messageErreur, t } from "./i18n";
 import type { ApiResult } from "./api";
@@ -66,7 +67,10 @@ export interface SalonArrivalParams {
   openLoadCode: () => void;
   onReplay: () => void;
   onWatch: () => void;
-  onShare: (b: HTMLButtonElement) => void | Promise<void>;
+  /** La ligne à partager maintenant (sans attendre la place : le temps seul). */
+  lineNow: () => string;
+  /** Le lien du Salon (`…/track/?mode=salon`). */
+  shareUrl: string;
   onHome: () => void;
 }
 
@@ -169,8 +173,8 @@ export function showSalonArrival(p: SalonArrivalParams): void {
   const duo = el("div", "actions--duo");
   const watch = button(t("salon.arrivee.revoir"), "", () => p.onWatch());
   watch.id = "finish-watch";
-  duo.append(watch, button(t("salon.arrivee.partager"), "", (b) => p.onShare(b)));
-  actions.append(duo, button(t("salon.arrivee.accueil"), "", () => p.onHome()));
+  duo.append(watch, button(t("partage.copier"), "", (b) => copyShare(b, p.lineNow(), p.shareUrl, duo)));
+  actions.append(duo, ...(canNativeShare() ? [button(t("partage.partager"), "", async () => void (await nativeShare({ text: p.lineNow(), url: p.shareUrl })))] : []), button(t("salon.arrivee.accueil"), "", () => p.onHome()));
   // Deux colonnes en paysage (le résultat, puis les actions), une seule en portrait.
   const gauche = el("div", "salon-arrivee__gauche");
   gauche.append(resultat, ...(p.counted ? [box] : []), share);
