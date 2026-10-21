@@ -18,3 +18,5 @@ export * from "./daily";
 export * from "./frozen";
 export * from "./lives";
 export * from "./phases";
+export * from "./parasites";
+export * from "./voies";
