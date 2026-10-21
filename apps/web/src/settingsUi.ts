@@ -216,8 +216,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   function show(id: SettingsTab): void {
     tab = id;
     for (const [i, b] of tabButtons) {
-      b.setAttribute("aria-selected", String(i === id));
-      b.setAttribute("aria-pressed", String(i === id));
+      b.setAttribute("aria-selected", String(i === id)); // lot I6 : un onglet n'a pas d'`aria-pressed` (axe : aria-allowed-attr)
       b.tabIndex = i === id ? 0 : -1;
       pages[i].hidden = i !== id;
     }

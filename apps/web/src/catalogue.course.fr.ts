@@ -109,7 +109,7 @@ export const fr = {
   "arrivee.reglagesModifies": "Réglages modifiés : course non classée ni enregistrée",
   "arrivee.recourir": "Recourir",
   "arrivee.revoir": "Revoir le tour",
-  "arrivee.revoir.aria": "Revoir le meilleur tour",
+  "arrivee.revoir.aria": "Revoir le tour : le meilleur du jour",
   "arrivee.partager": "Partager mon temps",
   "arrivee.accueil": "Accueil de Track",
   "arrivee.indice": "Entrée : rejouer · P : pause",

@@ -104,7 +104,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "arrivee.reglagesModifies": "Modified settings: run neither ranked nor saved",
   "arrivee.recourir": "Race again",
   "arrivee.revoir": "Watch the lap",
-  "arrivee.revoir.aria": "Watch the best lap",
+  "arrivee.revoir.aria": "Watch the lap: today's best",
   "arrivee.partager": "Share my time",
   "arrivee.accueil": "Track home",
   "arrivee.indice": "Enter: race again · P: pause",

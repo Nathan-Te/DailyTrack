@@ -48,6 +48,10 @@ a {
 .dj-sombre:focus-visible {
   outline-color: var(--dj-ambre);
 }
+/* Lot I6 : un écran entier qui reçoit le focus pour être annoncé (`suivreDialogue`, tabindex="-1") n'est pas encadré : le focus visible est celui de ses boutons. */
+[role="dialog"][tabindex="-1"]:focus {
+  outline: none;
+}
 /* Une cible tactile : 44 px au moins. */
 .dj-cible {
   min-width: var(--dj-cible);

@@ -2,7 +2,7 @@
 // scène, sous un voile à rayures (comme la pause), trois points courts, le schéma des commandes (doigts : les boutons aux bords, le centre libre ; clavier : les touches) et
 // un bouton « C'est parti ». Montrée une seule fois (le jeu gelé dessous), puis accessible depuis la pause, l'accueil et les réglages. Les textes viennent du catalogue
 // (`aide.*`) : la fenêtre se redessine au changement de langue.
-import { bouton, icone, svg, type NomIcone } from "@cdj/ui";
+import { bouton, icone, suivreDialogue, svg, type NomIcone } from "@cdj/ui";
 import { el } from "./dom";
 import { HOWTO_POINTS, KEYBOARD_BASICS, type Control, type Device } from "./howto";
 import { ICONES_TRACK, iconeTrack, type IconeTrack } from "./icones";
@@ -113,6 +113,7 @@ export function mountHowto(root: HTMLElement, device: Device, hooks: { onSeen?: 
   }
   render();
   root.append(racine);
+  suivreDialogue(racine, { focusInitial: () => done }); // lot I6 : focus rendu à la fermeture (au bouton qui l'a ouverte)
   // La langue change : la fenêtre se redessine (ouverte ou non), le focus reste sur le bouton de fin.
   onLangue(() => {
     const had = done !== null && document.activeElement === done;

@@ -1,3 +1,4 @@
+import { suivreDialogue } from "./dialogue";
 import { el } from "./dom";
 
 // Le cadre d'un écran de jeu posé sur sa scène (lot I4b, charte rév. 8 § 9 : « quand on entre dans un jeu, on y reste tant qu'on ne choisit pas de
@@ -55,5 +56,6 @@ export function creerCadre(o: OptionsCadre): Cadre {
   const defile = el("div", { classe: "cadre__defile" }, etiquette, pied);
   racine.append(defile);
   if (!racine.isConnected) document.body.append(racine);
+  suivreDialogue(racine); // lot I6 : le focus entre à l'ouverture, revient à la fermeture
   return { racine, etiquette, corps, pied, defile, majBarre };
 }

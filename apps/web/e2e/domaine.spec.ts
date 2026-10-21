@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { encodeTransfer } from "@cdj/profile";
 import { expect as baseExpect, hasWebGL, newClockedContext, test, type Page } from "./fixtures";
 import { startSite } from "./domaine-serveurs";
+import { auditAxe } from "./axe";
 
 // Lot R4 (plateforme) : playdujour.com en local.
 //   1. le portail « Du Jour » (une cartouche par jeu, numéro du jour ; lot I1 : le reste du portail dans portail.spec.ts) ;
@@ -288,6 +289,7 @@ test("lot I6 : une adresse inconnue → la page 404 de la charte (deux langues, 
     expect(await page.evaluate(() => getComputedStyle(document.querySelector("h1")!).fontFamily)).toContain("Archivo Black");
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   }
+  await auditAxe(page, "404"); // lot I6 : la passe d'accessibilité (e2e/axe.ts)
   await bigEnough(page, ".dj-bouton--marque");
   await page.locator(".dj-bouton--marque").tap();
   await expect(page).toHaveURL(`${SITE}/`);
@@ -308,10 +310,12 @@ test("lot I6 : mentions en anglais — le portail en EN ouvre /legal/, qui renvo
   await expect(page.locator("main")).toContainText("The French version is the reference");
   for (const text of ["MZC Studios", "Google Cloud France", "ChiselStrike Inc.", "transfer code"]) await expect(page.locator("main")).toContainText(text);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await auditAxe(page, "mentions-en"); // lot I6 : la passe d'accessibilité (e2e/axe.ts)
   await bigEnough(page, ".mentions-langue");
   await page.locator(".mentions-langue").tap();
   await mentionsShown(page);
   await expect(page.locator(".mentions-langue")).toHaveText("English version");
+  await auditAxe(page, "mentions-fr");
 });
 
 // ——— Lot I4 : les polices de Track sont celles du portail (un seul chemin sur le site : `/assets/…`) ———

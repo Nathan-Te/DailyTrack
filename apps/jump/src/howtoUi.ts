@@ -1,4 +1,4 @@
-import { bouton, el, icone, svg } from "@cdj/ui";
+import { bouton, el, icone, suivreDialogue, svg } from "@cdj/ui";
 import { lier, onLangue, t } from "./i18n";
 
 // « Comment jouer » (lot 10, **refait au lot I5** : charte rév. 7, § 9) : **dans le jeu**, jamais dans le cadre crème du portail — l'étiquette jaune
@@ -65,6 +65,7 @@ export function mountHowto(device: "touch" | "keys", hooks: { onChange?: () => v
   }
   render();
   document.body.append(racine);
+  suivreDialogue(racine, { focusInitial: () => done }); // lot I6 : focus rendu à la fermeture (au bouton qui l'a ouverte)
   onLangue(() => {
     const had = done !== null && document.activeElement === done;
     render();

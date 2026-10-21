@@ -18,7 +18,7 @@ const fr = {
   "barre.jour": "{date} · {numero}",
   // Lot I3 : l'écran d'arrivée d'un jeu propose le jeu suivant du jour (ou fête la journée parfaite). Clés prêtes pour les lots I4 et I5.
   "arrivee.jeuSuivant": "Jeu suivant du jour : {jeu} ›",
-  "arrivee.jeuSuivant.aria": "Jouer au jeu suivant du jour : {jeu}",
+  "arrivee.jeuSuivant.aria": "Jeu suivant du jour : {jeu}, à jouer",
   "arrivee.parfaite": "Journée parfaite !",
   // Lot I5 : les répliques de Jump, une par thème (charte § 7 : drôle et un peu cruel, liée à la mécanique du jour ; adaptée en anglais, pas
   // traduite mot à mot). **Une seule source** : le portail (cartouche Jump) et le jeu (accueil, pause) les lisent ici (test catalogues.test.ts).
@@ -111,7 +111,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "barre.retour.aria": "Back to Du Jour",
   "barre.jour": "{date} · {numero}",
   "arrivee.jeuSuivant": "Next game of the day: {jeu} ›",
-  "arrivee.jeuSuivant.aria": "Play today's next game: {jeu}",
+  "arrivee.jeuSuivant.aria": "Next game of the day: {jeu}, to play",
   "arrivee.parfaite": "Perfect day!",
   "jump.replique.foret": "The wind is blowing. Hardly ever your way.",
   "jump.replique.usine": "The conveyor belts won't wait for you. Neither will the saw.",

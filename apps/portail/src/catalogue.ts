@@ -139,7 +139,7 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.continuer": "Continue",
   "portail.continuer.aria": "Continue {jeu}",
   "portail.rejouer": "Play again",
-  "portail.rejouer.aria": "Play {jeu} again",
+  "portail.rejouer.aria": "Play again: {jeu}",
   "portail.serie.legende": "Streak",
   "portail.serie.valeur": { one: "{n} day", other: "{n} days" },
   "portail.serie.parfaites": { one: "{n} perfect day", other: "{n} perfect days" },

@@ -11,7 +11,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `arrivee.jeuSuivant` | Jeu suivant du jour : {jeu} › | Next game of the day: {jeu} › |
-| `arrivee.jeuSuivant.aria` | Jouer au jeu suivant du jour : {jeu} | Play today's next game: {jeu} |
+| `arrivee.jeuSuivant.aria` | Jeu suivant du jour : {jeu}, à jouer | Next game of the day: {jeu}, to play |
 | `arrivee.parfaite` | Journée parfaite ! | Perfect day! |
 
 ### Barre des jeux (`barre.*`, `packages/ui/src/catalogue.ts`)
@@ -210,7 +210,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `portail.continuer` | Continuer | Continue |
 | `portail.continuer.aria` | Continuer {jeu} | Continue {jeu} |
 | `portail.rejouer` | Rejouer | Play again |
-| `portail.rejouer.aria` | Rejouer à {jeu} | Play {jeu} again |
+| `portail.rejouer.aria` | Rejouer à {jeu} | Play again: {jeu} |
 | `portail.serie.legende` | Série | Streak |
 | `portail.serie.valeur` | one : {n} jour · other : {n} jours | one : {n} day · other : {n} days |
 | `portail.serie.parfaites` | one : {n} journée parfaite · other : {n} journées parfaites | one : {n} perfect day · other : {n} perfect days |
@@ -405,7 +405,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.reglagesModifies` | Réglages modifiés : course non classée ni enregistrée | Modified settings: run neither ranked nor saved |
 | `arrivee.recourir` | Recourir | Race again |
 | `arrivee.revoir` | Revoir le tour | Watch the lap |
-| `arrivee.revoir.aria` | Revoir le meilleur tour | Watch the best lap |
+| `arrivee.revoir.aria` | Revoir le tour : le meilleur du jour | Watch the lap: today's best |
 | `arrivee.partager` | Partager mon temps | Share my time |
 | `arrivee.accueil` | Accueil de Track | Track home |
 | `arrivee.indice` | Entrée : rejouer · P : pause | Enter: race again · P: pause |

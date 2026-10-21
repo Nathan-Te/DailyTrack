@@ -1,6 +1,7 @@
 {
   "_": "Durée de chaque spec dans Chromium (s), un test à la fois, mesurée en CI (run 38612113895 ; salon.spec sans ses essais ratés) : compose les parts de la CI (scripts/e2e-parts.mjs, retouche 31b). Le résumé du run e2e donne les durées par fichier ; captures et mesures sont sautées hors CAPTURES/MESURES. Lot R3 : recalées sur le PLUS LONG de deux runs de la PR du lot R3 (39334891066 et 39343303196, un test à la fois, essais ratés compris) : d'un runner à l'autre les miniatures en WebGL logiciel vont de 246 à 585 s ; avec les anciennes durées les parts allaient de 4 min 53 s à 9 min 52 s.",
   "secondes": {
+    "accessibilite.spec.ts": 150,
     "accueil.spec.ts": 422,
     "admin.spec.ts": 28,
     "air.spec.ts": 36,
