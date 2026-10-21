@@ -34,6 +34,13 @@ const commeApplication = (context: BrowserContext) =>
     const vrai = window.matchMedia.bind(window);
     window.matchMedia = (q: string) => (q.includes("display-mode: standalone") ? ({ matches: true, media: q, onchange: null, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false } as MediaQueryList) : vrai(q));
   });
+/**
+ * L'API plein écran existe-t-elle dans cette page ? Le WebKit de Playwright en `isMobile` émule un appareil d'Apple : après une navigation, ni
+ * `document.fullscreenEnabled` ni `requestFullscreen` n'existent (comme sur iPhone) ; le jeu cache alors, à raison, ses boutons (cas couvert par les
+ * tests « sans API » et « iPhone »). Les tests qui ont besoin du bouton se sautent sur cette capacité, jamais sur le nom du navigateur.
+ */
+const pleinEcranDisponible = (page: Page) => page.evaluate(() => document.fullscreenEnabled === true && typeof document.documentElement.requestFullscreen === "function");
+const SANS_API = "API plein écran absente dans ce navigateur (WebKit mobile, comme l'iPhone) : le bouton est caché à raison";
 const verrous = (page: Page) => page.evaluate(() => (window as unknown as { __verrous: string[] }).__verrous);
 
 async function telephone(browser: Browser, viewport: { width: number; height: number }, options: { locale?: string; userAgent?: string } = {}) {
@@ -43,11 +50,12 @@ async function telephone(browser: Browser, viewport: { width: number; height: nu
   return context;
 }
 
-/** La partie, prête, en police large (le pire cas), pas à pas. */
-async function enPartie(context: BrowserContext): Promise<Page> {
+/** La partie, prête, en police large (le pire cas), pas à pas ; sautée sans API plein écran quand le test a besoin du bouton (`avecBouton`). */
+async function enPartie(context: BrowserContext, avecBouton = true): Promise<Page> {
   const page = await context.newPage();
   await page.goto("/?accueil=0&debug&touch=1");
   test.skip(!(await hasWebGL(page)), "WebGL indisponible");
+  if (avecBouton) test.skip(!(await pleinEcranDisponible(page)), SANS_API);
   await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.phase === "ready");
   await page.addStyleTag({ content: "#debug, #stamp, #tuned { display: none !important; }" });
   await page.evaluate(() => (window as unknown as { __jump: J }).__jump.manual(true));
@@ -116,7 +124,7 @@ test("sans API plein écran ou en mode application : aucun bouton plein écran (
     const context = await telephone(browser, { width: 844, height: 390 });
     try {
       await cache(context);
-      const page = await enPartie(context);
+      const page = await enPartie(context, false);
       await expect(page.locator("#fullscreenbtn")).toBeHidden();
       await page.locator("#pausebtn").click();
       await expect(page.locator("#menu")).toBeVisible();
@@ -143,6 +151,7 @@ for (const viewport of [
       const page = await context.newPage();
       await page.goto("/?debug");
       test.skip(!(await hasWebGL(page)), "WebGL indisponible");
+      test.skip(!(await pleinEcranDisponible(page)), SANS_API);
       await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
       await expect(page.locator("#home")).toBeVisible();
       const bouton = page.locator("#home .dj-plein-ecran");
@@ -172,6 +181,7 @@ test("axe : l'accueil avec son bouton plein écran, la partie avec le sien — a
     const page = await context.newPage();
     await page.goto("/?debug");
     test.skip(!(await hasWebGL(page)), "WebGL indisponible");
+    test.skip(!(await pleinEcranDisponible(page)), SANS_API);
     await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
     await expect(page.locator("#home .dj-plein-ecran")).toBeVisible();
     await auditAxe(page, "jump-plein-ecran-accueil");
