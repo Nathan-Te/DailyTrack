@@ -27,6 +27,11 @@ body.carnage #tbuttons {
   visibility: hidden;
 }
 
+/* L'arrivée est posée sur la scène (lot I5, règle de Nathan : on reste dans le jeu) : les plaques et les boutons de la partie s'effacent dessous. */
+body:has(#arrival:not([hidden])) :is(#hud-gauche, #chrono, #hud-droite, #dayline, #toast, #daynote, #modname, #rotate, #tbuttons) {
+  visibility: hidden;
+}
+
 /* --- Les plaques ------------------------------------------------------------------------------------------------------------------------------------ */
 .plaque {
   box-sizing: border-box;

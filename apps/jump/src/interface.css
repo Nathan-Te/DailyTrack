@@ -135,6 +135,17 @@ canvas {
   flex: 0 1 auto;
   padding: 0 6px 6px 0;
 }
+/* Ce qui est posé sous l'étiquette (« Il te reste aujourd'hui », « Jeu suivant du jour ») : sur une plaque crème, lisible sur les rayures. */
+.cadre--scene .cadre__pied:not(:empty) {
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  padding: 10px 12px 12px;
+}
+.cadre--scene .cadre__pied:has(> [hidden]:only-child) {
+  display: none;
+}
 body:has(.cadre--scene:not([hidden])) #home,
 body:has(.cadre--scene:not([hidden])) #menu {
   visibility: hidden;
