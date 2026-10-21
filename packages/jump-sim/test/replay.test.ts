@@ -188,7 +188,10 @@ describe("format de la rediffusion", () => {
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 5, 101, 115]))).toBe("format"); // tronquée
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 2, 65, 66, 0, 16]))).toBe("format"); // identifiant en majuscules
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 0, 2]))).toBe("format"); // série vide (count 0)
-    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 8, 16]))).toBe("format"); // drapeau inconnu
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 16, 16]))).toBe("format"); // drapeau inconnu
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 8, 0, 16]))).toBe("format"); // lot 15 : reprise au départ sans chrono
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 12, 5, 16]))).toBe("format"); // lot 15 : reprise au départ lancée
+    expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 10, 0, 5, 0, 16]))).toBe("format"); // lot 15 : à la fois sur un point et au départ
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 6, 0, 0, 0, 16]))).toBe("format"); // départ lancé sur un point de passage
     expect(bad(toBase64Url([JUMP_REPLAY_FORMAT, 2, 1, 101, 0, 0xff, 0xff, 0xff, 0xff, 0x7f]))).toBe("format"); // entier trop long
     expect(() => encodeReplay({ ...attemptReplay("essai", [2]), runs: [{ count: 1, bits: 8 }] })).toThrow(JumpReplayError);

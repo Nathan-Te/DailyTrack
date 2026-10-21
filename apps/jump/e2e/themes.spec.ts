@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXED_NOW, atInstant } from "./clock";
+import { dayId } from "./jours";
 
 // Lot 9 — les thèmes visuels : chaque thème s'affiche sans erreur, en portrait et en paysage ; `?theme=` impose le thème ; les effets réduits
 // allègent le décor et la parallaxe, le mouvement réduit la fige. Lot 11 : le thème est une donnée du générateur — un thème **forcé** (différent
@@ -10,7 +11,7 @@ import { FIXED_NOW, atInstant } from "./clock";
 const THEMES = ["foret", "usine", "glace", "nuit", "neon"] as const;
 const DATE = "2026-10-20";
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface ThemeView {
   name: string;
@@ -74,7 +75,7 @@ for (const orientation of ["paysage", "portrait"] as const) {
           expect(v.theme.name).toBe(name);
           // Le thème de la date donne le niveau ordinaire ; un autre thème, un essai à l'identifiant suffixé.
           expect(v.theme.forced).toBe(name !== natural);
-          expect(v.id).toBe(name === natural ? `jour-${DATE}-g${GENERATOR}` : `jour-${DATE}-g${GENERATOR}-t${name}`);
+          expect(v.id).toBe(name === natural ? dayId(DATE) : `jour-${DATE}-g${GENERATOR}-t${name}`);
           const s = v.theme.stats!;
           expect(s.tileChunks).toBeGreaterThan(1);
           expect(s.tileTriangles).toBeGreaterThan(1000);
@@ -109,7 +110,8 @@ test("?theme= impose le thème (un essai s'il n'est pas celui de la date) ; sans
     expect(forced.theme.ofDay).toBe(day.theme.ofDay);
     expect(forced.theme.forced).toBe(true);
     // Lot 11 : un thème forcé est un autre niveau (un essai) ; le thème de la date, lui, redonne le niveau ordinaire.
-    expect(forced.id).toBe(`${day.id}-t${other}`);
+    // Lot 15 : un thème forcé est toujours généré (générateur en vigueur), même un jour figé sous un générateur d'avant.
+    expect(forced.id).toBe(`jour-${DATE}-g${GENERATOR}-t${other}`);
     await open(page, `seed=${DATE}&debug&theme=${day.theme.ofDay}`);
     const same = await info(page);
     expect(same.id).toBe(day.id);

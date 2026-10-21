@@ -35,3 +35,11 @@ export function pageLevel(date: string): DailyLevel {
   }
   return dailyLevel(day);
 }
+
+/**
+ * Lot 15 : l'identifiant du niveau d'une date tel que la page le charge (un jour figé garde celui de son générateur, `…-g9` jusqu'au 22/10/2026 ;
+ * un jour généré prend le générateur en vigueur). Un thème forcé est toujours généré : `jour-<date>-g<générateur en vigueur>-t<thème>`.
+ */
+export function dayId(date: string): string {
+  return pageLevel(date).id;
+}

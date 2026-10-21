@@ -33,6 +33,9 @@ import {
   sawCenters,
   sectionAt,
   sectionPhases,
+  sectionPeriod,
+  singleClock,
+  cycleMod,
   windActive,
   windPhase,
   windPush,
@@ -68,10 +71,10 @@ import type { DynamicStats } from "./dynamicArt";
 import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
-import { JumpSession, formatTicks, type SessionEvent } from "./session";
+import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
-import { loadTuned, mountTunePanel } from "./tune";
+import { loadCameraTune, loadTuned, mountTunePanel } from "./tune";
 import { LAUNCH_TILES, moduleTheme, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
 import { archiveHref, dailyHref, homeHref, moduleHref, readUrlOptions, watchFirstHref, type Scenario } from "./urlOptions";
 import { FIRST_GHOST_COLOR, OWN_GHOST_COLOR, checkFirstGhost, firstGhostLabel, showFirstGhost, type FirstGhost } from "./firstGhost";
@@ -390,6 +393,10 @@ export interface JumpDebug {
   showSuite(suite: Suite | null): void;
   /** Lot 10 (tests) : joue une rediffusion (par défaut la preuve de l'auteur) comme les commandes du joueur ; rend son nombre de pas. */
   autoplay(code?: string): number;
+  /** Lot 15 : donne le départ tout de suite (fin du « Prêt… » d'un niveau à une seule horloge). */
+  go(): void;
+  /** Lot 15 : pas du « Prêt… » qui restent, sa durée, la version de la simulation du niveau. */
+  readonly pret: { ticks: number; total: number; level: number };
 }
 
 /** Le niveau du jour tel que `__jump.daily` le montre (lot 5). */
@@ -727,6 +734,8 @@ document.documentElement.style.background = `#${palette.background.toString(16).
 
 // Réglages : les défauts, sauf en `?debug&tune` où le panneau reprend ceux qu'on avait laissés (`jump:tune`).
 const params: JumpParams = options.tune ? loadTuned() : { ...DEFAULT_JUMP_PARAMS };
+// Lot 15 : la durée du « Prêt… » (section Caméra de `?debug&tune`) vaut dès le premier départ.
+if (options.tune) loadCameraTune();
 // Lot 8b : `?debug&tune&sprint=1` : l'essai d'élan progressif, aux valeurs de départ (la partie est `tuned`).
 if (options.sprint) Object.assign(params, SPRINT_TRIAL_PARAMS);
 
@@ -841,7 +850,9 @@ let scene: JumpScene | null = null;
 try {
   // `?debug` sur le niveau du jour : les limites des morceaux, avec leur identifiant, leur variante et leur exigence.
   // i18n-ok: étiquettes de débogage (`?debug`) dessinées sur le niveau : outil interne, pas un texte d'interface
-  const pieces = options.pieces && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
+  // Lot 15 : à une seule horloge, la phase de la section et sa période (pas), calculées sur la référence.
+  const clockLabel = (k: number) => (singleClock(level) && sectionPeriod(level, k) > 0 ? ` · phase ${level.sections[k]!.phase} / ${sectionPeriod(level, k)}` : "");
+  const pieces = options.pieces && daily ? daily.pieces.map((p, k) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5${clockLabel(k)}` })) : undefined; // i18n-ok: outil ?debug (limites des morceaux et horloge)
   scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels) });
   scene.animate = levels.animate;
   scene.windParticles = levels.particles;
@@ -1607,6 +1618,13 @@ function stepOnce(): void {
     stepCarnage();
     return;
   }
+  // Lot 15 : le « Prêt… » d'un niveau à une seule horloge : l'horloge tourne, aucune commande n'est jouée (ni rediffusion consommée).
+  if (session.ready) {
+    if (session.countdown === readyTicks()) hud.toast(t("toast.pret"));
+    const go = session.step(injected ?? controls.sample());
+    if (go) hud.toast(t("toast.partez"));
+    return;
+  }
   let bits = watching ? (watchInputs[watchIndex++] ?? 0) : (injected ?? controls.sample());
   // Lot 10 (tests) : `__jump.autoplay(code)` joue une rediffusion comme si c'étaient les commandes du joueur (l'essai est enregistré).
   if (autoplayInputs && !watching) {
@@ -1852,7 +1870,14 @@ function dailyOverlay(): string {
   while (k + 1 < daily.pieces.length && col >= daily.pieces[k + 1]!.col0) k++;
   const p = daily.pieces[k];
   const where = p ? `${k + 1}/${daily.pieces.length} ${p.id} v${p.variant} · exigence ${p.exigence}/5 · ${p.entry === "arret" ? "arrêt" : "élan"}` : "—";
-  return `morceau   ${where}\nniveau    ${daily.id} · auteur ${formatTicks(daily.authorTicks)} · tirage ${daily.chosen}${daily.fallback ? " (secours)" : ""}`;
+  // Lot 15 : l'horloge de la section du morceau (v4 : phase de la section, période, position dans le cycle à cet instant).
+  const period = p && singleClock(level) ? sectionPeriod(level, k) : 0;
+  const clock = !singleClock(level)
+    ? `v${level.simVersion} · une horloge par section`
+    : period === 0
+      ? `v${level.simVersion} · rien ne tourne dans ce morceau`
+      : `v${level.simVersion} · phase ${level.sections[k]!.phase} · période ${period} · cycle ${cycleMod(session.state.time + level.sections[k]!.phase, period)}`;
+  return `morceau   ${where}\nhorloge   ${clock}${session.ready ? ` · Prêt… ${session.countdown}` : ""}\nniveau    ${daily.id} · auteur ${formatTicks(daily.authorTicks)} · tirage ${daily.chosen}${daily.fallback ? " (secours)" : ""}`;
 }
 
 const info: JumpDebug = {
@@ -2215,7 +2240,15 @@ const info: JumpDebug = {
     if (!c) throw new Error("rien à jouer : donne une rediffusion");
     autoplayInputs = fromRuns(decodeReplay(c).runs);
     autoplayIndex = 0;
+    // Lot 15 : la rediffusion part au chrono 0 : le départ est donné tout de suite (pas de « Prêt… »).
+    session.go();
     return autoplayInputs.length;
+  },
+  go() {
+    session.go();
+  },
+  get pret() {
+    return { ticks: session.countdown, total: readyTicks(), level: level.simVersion };
   },
   setMenu(open: boolean) {
     setMenu(open);

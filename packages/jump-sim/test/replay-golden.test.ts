@@ -5,7 +5,7 @@ import {
   DANGERS_LEVEL,
   ESSAI_LEVEL,
   ESSAI_SOLUTION_CODE,
-  JUMP_SIM_VERSION,
+  SECTION_CLOCK_VERSION,
   attemptReplay,
   decodeReplay,
   demoAttempts,
@@ -26,6 +26,7 @@ import { expand } from "./helpers";
 // Tout changement (format, simulation, essais fictifs) fait échouer ce test : comprendre pourquoi, puis
 //   UPDATE_GOLDEN=1 npx vitest run packages/jump-sim/test/replay-golden.test.ts
 // (et `JUMP_SIM_VERSION` +1 si c'est la simulation qui a changé, comme pour les autres références).
+// Lot 15 : ce sont les références des niveaux en version 3 (`SECTION_CLOCK_VERSION`, une horloge par section) : inchangées au bit près.
 
 const FILE = join(import.meta.dirname, "fixtures/replay-golden.json");
 
@@ -95,7 +96,7 @@ if (process.env.UPDATE_GOLDEN) {
   const result = replayAttempt(ESSAI_LEVEL, replay);
   const { tiles: _tiles, ...final } = result.final;
   const golden: ReplayGolden = {
-    jumpSimVersion: JUMP_SIM_VERSION,
+    jumpSimVersion: SECTION_CLOCK_VERSION,
     solution: { code, bytes: Math.floor((code.length * 6) / 8), finished: result.finished, ticks: result.ticks, time: result.time, deaths: result.deaths.length, lives: result.lives.length, final },
     replays: fingerprinted(),
   };
@@ -106,7 +107,7 @@ const golden = JSON.parse(readFileSync(FILE, "utf8")) as ReplayGolden;
 
 describe("référence des rediffusions (golden)", () => {
   it("est celle de cette version de la simulation", () => {
-    expect(golden.jumpSimVersion, "JUMP_SIM_VERSION a changé : UPDATE_GOLDEN=1").toBe(JUMP_SIM_VERSION);
+    expect(golden.jumpSimVersion, "JUMP_SIM_VERSION a changé : UPDATE_GOLDEN=1").toBe(SECTION_CLOCK_VERSION);
   });
 
   it("la solution de l'essai a ses octets figés, et c'est le texte que le jeu embarque (ESSAI_SOLUTION_CODE)", () => {

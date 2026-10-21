@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test";
 import { FIXED_NOW, TODAY, atInstant } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
+import { dayId } from "./jours";
 
 // Lot 10 : la boucle quotidienne. Accueil → Jouer → arrivée (la preuve de l'auteur jouée comme les commandes du joueur, en pas à pas) →
 // carnage passé → écran d'arrivée → Partager (presse-papiers ou feuille de partage simulés) → Accueil qui montre le résultat ; « Comment
@@ -11,7 +12,7 @@ import { Fingers, hasWebGL } from "./phone";
 // `#arrival-medal`, `.archive`…), les textes le catalogue français. Les captures du lot 10 restent celles de son README (les nouvelles :
 // `e2e/captures.spec.ts`, lot I5).
 
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
 
 interface DayRecord {
@@ -141,7 +142,7 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     const ticks = await playAuthor(page);
     j = await jump(page);
     expect(ticks).toBe(j.daily!.authorTicks);
-    expect(j.daily!.id).toBe(`jour-${TODAY}-g${GENERATOR}`);
+    expect(j.daily!.id).toBe(dayId(TODAY));
     // Le carnage passe d'abord, puis l'écran d'arrivée (pas le bandeau).
     await expect(page.locator("#arrival")).toBeVisible();
     await expect(page.locator("#finish")).toBeHidden();
@@ -164,7 +165,7 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     j = await jump(page);
     expect(j.arrival.shown).toBe(true);
     expect(j.streak).toBe(1);
-    expect(j.history).toEqual([{ id: `jour-${TODAY}-g${GENERATOR}`, date: TODAY, best: j.daily!.authorTicks, medal: "author", deaths: 0, attempts: 1 }]);
+    expect(j.history).toEqual([{ id: dayId(TODAY), date: TODAY, best: j.daily!.authorTicks, medal: "author", deaths: 0, attempts: 1 }]);
 
     // Partager : sur ordinateur, le presse-papiers (simulé), avec confirmation ; le lien est celui de la page.
     await page.locator("#arrival-share").click();

@@ -130,7 +130,8 @@ describe(`POST /api/jump/lives (${TEST_DB})`, () => {
     await known(t, 3);
     const fromCheckpoint = deaths.find((d) => d.checkpoint >= 1)!;
     const replay = JSON.parse(JSON.stringify((await import("@cdj/jump-sim")).decodeReplay(fromCheckpoint.code))) as JumpReplay;
-    const incoherent = encodeReplay({ ...replay, start: { ...replay.start, sections: replay.start.sections.map(() => -1) } });
+    // Lot 15 : un niveau à une seule horloge (v4) n'a pas de sections dans l'en-tête : en mettre une est incohérent.
+    const incoherent = encodeReplay({ ...replay, start: { ...replay.start, sections: D.level.sections.map(() => -1) } });
     // « Mort inventée » : la vie coupée juste avant sa mort ne meurt pas au rejeu (abandon) ; ce que le jeu en dirait ne compte pas.
     const cut: JumpReplay = { ...replay, runs: replay.runs.slice(0, -1) };
     const otherLevel = encodeReplay({ ...replay, levelId: `jour-${formatDay(DAY - 1)}-g${JUMP_GENERATOR_VERSION}` });

@@ -19,10 +19,14 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 600 | 25 385 | 26 486 | 114 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 446 | 1 554 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 325 | 1 165 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 369 402 | 9 088 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 531 | 2 469 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
+
+## Lot 15 de DailyJump (horloge unique)
+
+- **Jump : −7 923 o** (377 325 → 369 402 o, marge 1 165 → 9 088 o). Le lot ajoute ≈ 3 630 o (la simulation joue deux versions — lecture de `version` et des phases, horloge de section, reprise au départ, « Prêt… » au chrono négatif —, le générateur g10 — phases calculées sur la référence, point de reprise sûr, variantes refusées —, deux fois : paquet principal et fil de travail du générateur ; et le « Prêt… » du jeu). Pour tenir, **le catalogue embarqué est allégé** (`catalogOf`, `packages/jump-sim/tools/files.ts`) : le jeu ne garde de chaque solution que la rediffusion, ses pas et la note ; la gigue, le raccord, la plus rapide et l'appui le plus court restent dans `modules/solutions.json` pour les outils et les tests (≈ 5,5 ko par paquet). Mesuré avec la méthode du test, `main` (`96b55a5`) reconstruit à part sur la même machine : 377 325 o, comme le tableau.
 
 ## Ce que le lot I6 a changé (avant / après)
 

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parseModule, type ModuleDef, type ModuleSolutionsFile } from "../src/index";
+import { parseModule, type CatalogFile, type CatalogSolution, type ModuleDef, type ModuleSolution, type ModuleSolutionsFile } from "../src/index";
 
 // Fichiers du catalogue (lot 4) : les morceaux (`modules/<id>.txt`), leurs solutions (`modules/solutions.json`) et le fichier généré que
 // lit la simulation (`src/catalog.ts`). Outils seulement (Node).
@@ -40,19 +40,26 @@ export function readSolutions(): ModuleSolutionsFile | null {
   }
 }
 
-/** Le texte de `src/catalog.ts` pour ces morceaux et ces solutions. */
+/** Lot 15 : ce que le jeu embarque des solutions (`CatalogFile`) : la rediffusion, ses pas et la note ; le détail reste dans `solutions.json`. */
+export function catalogOf(file: ModuleSolutionsFile): CatalogFile {
+  const slim = (s: ModuleSolution | null): CatalogSolution | null => (s ? { code: s.code, ticks: s.ticks, entryTick: s.entryTick, exitTick: s.exitTick, exigence: s.exigence } : null);
+  const modules = Object.fromEntries(Object.entries(file.modules).map(([id, m]) => [id, { variants: m.variants.map((v) => ({ grid: v.grid, arret: slim(v.arret), elan: slim(v.elan) })) }]));
+  return { jumpSimVersion: file.jumpSimVersion, exigenceVersion: file.exigenceVersion, modules };
+}
+
+/** Le texte de `src/catalog.ts` pour ces morceaux et ces solutions (lot 15 : allégées, `catalogOf`). */
 export function catalogSource(texts: readonly string[], solutions: ModuleSolutionsFile): string {
   return [
     "// Généré par `npm run solve:modules -w @cdj/jump-sim` à partir de `modules/*.txt` et `modules/solutions.json` : ne pas modifier à la main.",
     "// Un test vérifie que ce fichier est exactement celui que le script écrirait (sinon : « relancer solve:modules »).",
-    'import type { ModuleSolutionsFile } from "./modules";',
+    'import type { CatalogFile } from "./modules";',
     "",
     "export const MODULE_TEXTS: readonly string[] = [",
     // `*` (ressort) écrit `\u002a` : le test de pureté refuse `**` (puissance) dans les sources de la simulation, même dans une chaîne.
     ...texts.map((t) => `  ${JSON.stringify(t).replace(/\*/g, "\\u002a")},`),
     "];",
     "",
-    `export const MODULE_SOLUTIONS: ModuleSolutionsFile = ${JSON.stringify(solutions)};`,
+    `export const MODULE_SOLUTIONS: CatalogFile = ${JSON.stringify(catalogOf(solutions))};`,
     "",
   ].join("\n");
 }

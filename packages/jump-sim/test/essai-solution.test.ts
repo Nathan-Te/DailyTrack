@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { ATTEMPT_DEAD, ATTEMPT_FINISHED, DANGERS_ASCII, DANGERS_LEVEL, DEFAULT_JUMP_PARAMS, ESSAI_ASCII, ESSAI_LEVEL, JUMP_SIM_VERSION, TICK_RATE, initialAttempt, stepAttempt } from "../src/index";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, DANGERS_ASCII, DANGERS_LEVEL, DEFAULT_JUMP_PARAMS, ESSAI_ASCII, ESSAI_LEVEL, SECTION_CLOCK_VERSION, TICK_RATE, initialAttempt, stepAttempt } from "../src/index";
 import { compress, expand } from "./helpers";
 import { solve, type Waypoint } from "./solver";
 
@@ -41,11 +41,11 @@ export function textHash(text: string): string {
 if (process.env.SOLVE) {
   const inputs = solve(ESSAI_LEVEL, DEFAULT_JUMP_PARAMS, WAYPOINTS, { beam: 1500 });
   if (!inputs) throw new Error("aucune solution trouvée");
-  const solution: Solution = { jumpSimVersion: JUMP_SIM_VERSION, level: textHash(ESSAI_ASCII), ticks: inputs.length, inputs: compress(inputs) };
+  const solution: Solution = { jumpSimVersion: SECTION_CLOCK_VERSION, level: textHash(ESSAI_ASCII), ticks: inputs.length, inputs: compress(inputs) };
   writeFileSync(FILE, JSON.stringify(solution) + "\n");
   const gallery = solve(DANGERS_LEVEL, DEFAULT_JUMP_PARAMS, DANGERS_WAYPOINTS, { beam: 600 });
   if (!gallery) throw new Error("galerie : aucune solution trouvée");
-  writeFileSync(DANGERS_FILE, JSON.stringify({ jumpSimVersion: JUMP_SIM_VERSION, level: textHash(DANGERS_ASCII), ticks: gallery.length, inputs: compress(gallery) }) + "\n");
+  writeFileSync(DANGERS_FILE, JSON.stringify({ jumpSimVersion: SECTION_CLOCK_VERSION, level: textHash(DANGERS_ASCII), ticks: gallery.length, inputs: compress(gallery) }) + "\n");
 }
 
 const solution = JSON.parse(readFileSync(FILE, "utf8")) as Solution;
@@ -53,7 +53,7 @@ const gallery = JSON.parse(readFileSync(DANGERS_FILE, "utf8")) as Solution;
 
 describe("solution du niveau d'essai", () => {
   it("est celle de ce niveau et de cette version de la simulation", () => {
-    expect(solution.jumpSimVersion, "JUMP_SIM_VERSION a changé : SOLVE=1").toBe(JUMP_SIM_VERSION);
+    expect(solution.jumpSimVersion, "JUMP_SIM_VERSION a changé : SOLVE=1").toBe(SECTION_CLOCK_VERSION);
     expect(textHash(ESSAI_ASCII), "niveau d'essai modifié : SOLVE=1 (et JUMP_SIM_VERSION +1)").toBe(solution.level);
   });
 
@@ -88,7 +88,7 @@ describe("solution du niveau d'essai", () => {
 
 describe("solution de la galerie des dangers", () => {
   it("la galerie se finit sans mourir : chaque danger s'évite", () => {
-    expect(gallery.jumpSimVersion).toBe(JUMP_SIM_VERSION);
+    expect(gallery.jumpSimVersion).toBe(SECTION_CLOCK_VERSION);
     expect(textHash(DANGERS_ASCII), "galerie modifiée : SOLVE=1").toBe(gallery.level);
     let s = initialAttempt(DANGERS_LEVEL);
     for (const input of expand(gallery.inputs)) {

@@ -6,7 +6,7 @@ import {
   INPUT_JUMP,
   INPUT_LEFT,
   INPUT_RIGHT,
-  JUMP_SIM_VERSION,
+  MODULE_SIM_VERSION,
   MODULE_ENTRIES,
   PRESS_MIN,
   RELEASE_MIN,
@@ -34,7 +34,7 @@ import { readModules, readSolutions, writeCatalog } from "./files";
 // rapide, plus tolérante à la gigue et à toutes les positions d'entrée), la finit tout droit jusqu'à l'arrivée du morceau seul, mesure sa
 // marge (`exigence.ts`), puis écrit
 // `modules/solutions.json` et `src/catalog.ts`. **Incrémental** : une solution stockée est gardée tant que l'empreinte de sa grille et
-// `JUMP_SIM_VERSION` n'ont pas changé (la mesure seule est refaite si `EXIGENCE_VERSION` a changé).
+// `MODULE_SIM_VERSION` (lot 15 : la version des morceaux seuls, 3) n'ont pas changé (la mesure seule est refaite si `EXIGENCE_VERSION` a changé).
 //   --force          tout re-résoudre          --only=a,b     seulement ces morceaux (les autres sont gardés tels quels)
 //   --beam=N         largeur du faisceau (600 ; 800 avant le lot 7)  --workers=N    fils de calcul (tous les cœurs)
 //   --dry            ne rien écrire (mesure du temps du solveur : `measure:modules -- --solveur`)
@@ -194,7 +194,7 @@ async function main(): Promise<void> {
   const beam = Number(args.get("--beam") ?? 600);
   const modules = readModules();
   const old = readSolutions();
-  const sameSim = old?.jumpSimVersion === JUMP_SIM_VERSION;
+  const sameSim = old?.jumpSimVersion === MODULE_SIM_VERSION;
   const jobs: Job[] = [];
   const out: Record<string, { variants: ModuleVariantSolutions[] }> = {};
   for (const { text, def } of modules) {
@@ -256,7 +256,7 @@ async function main(): Promise<void> {
   );
   for (const r of results) out[r.job.id]!.variants[r.job.variant]![r.job.entry] = r.solution;
 
-  const file: ModuleSolutionsFile = { jumpSimVersion: JUMP_SIM_VERSION, exigenceVersion: EXIGENCE_VERSION, modules: out };
+  const file: ModuleSolutionsFile = { jumpSimVersion: MODULE_SIM_VERSION, exigenceVersion: EXIGENCE_VERSION, modules: out };
   if (!args.has("--dry")) {
     writeCatalog(
       modules.map((m) => m.text),

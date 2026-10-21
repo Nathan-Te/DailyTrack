@@ -21,7 +21,8 @@ export interface EveryoneLives {
 /** Les vies jouables de l'échantillon pour ce niveau : versions, identifiant du niveau, en-tête atteignable ; sans les tiennes (`ownCodes`). */
 export function everyoneLives(level: Level, levelId: string, sample: CarnageSampleData, ownCodes: ReadonlySet<string>): EveryoneLives {
   const out: EveryoneLives = { lives: [], players: [], rejected: 0, own: 0 };
-  if (sample.simVersion !== JUMP_SIM_VERSION || (sample.levelId !== null && sample.levelId !== levelId)) {
+  // Lot 15 : un serveur plus récent que le jeu est écarté ; chaque vie porte la version de son niveau (un jour figé en v3 garde ses vies v3).
+  if (sample.simVersion > JUMP_SIM_VERSION || (sample.levelId !== null && sample.levelId !== levelId)) {
     out.rejected = sample.lives.length;
     return out;
   }
@@ -32,7 +33,7 @@ export function everyoneLives(level: Level, levelId: string, sample: CarnageSamp
     }
     try {
       const r = decodeReplay(l.replay);
-      if (r.simVersion !== JUMP_SIM_VERSION || r.levelId !== levelId || lifeStartProblem(level, r.start) !== null) {
+      if (r.simVersion !== level.simVersion || r.levelId !== levelId || lifeStartProblem(level, r.start) !== null) {
         out.rejected++;
         continue;
       }

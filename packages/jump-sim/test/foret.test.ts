@@ -33,7 +33,8 @@ describe("les quatre autres thèmes inchangés", () => {
       if (theme === "foret") continue;
       const ref = BEFORE[formatDay(d)];
       expect(ref, formatDay(d)).toBeDefined();
-      const L = dailyLevel(d);
+      // Lot 15 : la référence est celle du générateur v3 (g9), que `dailyLevel(jour, null, 3)` rend encore.
+      const L = dailyLevel(d, null, 3);
       expect(L.theme).toBe(ref!.theme);
       expect(L.pieces.map((p) => `${p.id}:${p.variant}`), formatDay(d)).toEqual(ref!.pieces);
       expect(L.hash, formatDay(d)).toBe(ref!.hash);

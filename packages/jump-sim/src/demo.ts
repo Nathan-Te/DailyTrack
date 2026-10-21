@@ -2,8 +2,9 @@ import { Rng } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, stepAttempt, type AttemptState } from "./attempt";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
-import type { Level } from "./level";
+import { cycleMod, sectionPeriod, type Level } from "./level";
 import { DEFAULT_JUMP_PARAMS, INPUT_MASK, PLAYER_WIDTH } from "./player";
+import { SINGLE_CLOCK_VERSION } from "./constants";
 import { AttemptRecorder, fromRuns, replayStartState, type JumpReplay, type RecordedAttempt } from "./replay";
 
 // Essais fictifs (lot 3) : des **perturbations à graine fixe** d'une solution, jouées par la vraie simulation et enregistrées comme des
@@ -15,6 +16,9 @@ import { AttemptRecorder, fromRuns, replayStartState, type JumpReplay, type Reco
 // reprise sur un point de passage, il reprend la solution au pas qui le fait aller le plus loin depuis ce point (cherché une fois pour toutes
 // parmi les pas voisins de celui où la solution avait touché le point), avec une nouvelle faute possible. Un essai qui n'avance plus pendant
 // 4 s, ou qui a déjà perdu `maxLives` vies, est abandonné (« recommencer »).
+// Lot 15 : dans un niveau à une seule horloge (v4), rien ne revient à zéro à la mort : après une reprise (au départ ou sur un point), le joueur
+// fictif **attend**, comme un vrai joueur qui regarde les scies, que l'horloge retrouve la phase où la solution passait (`alignWait`), puis la
+// reprend. Les niveaux v3 ne changent pas (mêmes essais, mêmes références).
 
 export interface DemoOptions {
   /** Nombre d'essais. */
@@ -27,6 +31,31 @@ export interface DemoOptions {
 const STALL_TICKS = 480;
 
 const centerCol = (s: AttemptState) => tileOf(s.player.x + idiv(PLAYER_WIDTH, 2));
+
+/** Lot 15 : attente la plus longue visée pour remettre plusieurs sections en phase à la fois (au-delà, seulement les premières). */
+const ALIGN_MAX = 2400;
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b);
+}
+
+/**
+ * Lot 15 (v4) : pas à attendre, après une reprise en `s`, pour que le chrono retrouve (modulo les périodes des sections qui restent à
+ * traverser, de proche en proche tant que leur plus petit commun multiple reste sous `ALIGN_MAX`) la phase de la solution au pas `cursor`.
+ */
+function alignWait(level: Level, s: Readonly<AttemptState>, cursor: number): number {
+  const col = s.checkpoint < 0 ? level.start.col : level.checkpoints[s.checkpoint]!.col;
+  let l = 1;
+  for (let i = 0; i < level.sections.length; i++) {
+    if (level.sections[i]!.c1 < col) continue;
+    const p = sectionPeriod(level, i);
+    if (p === 0) continue;
+    const next = idiv(l * p, gcd(l, p));
+    if (next > ALIGN_MAX && l > 1) break;
+    l = next;
+  }
+  return cycleMod(cursor - s.time, l);
+}
 
 interface Plan {
   inputs: number[];
@@ -86,20 +115,25 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
   for (let n = 0; n < options.attempts; n++) {
     // Une faute sur deux tombe dans le premier tiers : beaucoup de vies courtes au départ, de moins en moins loin (comme un vrai joueur).
     const cuts: [number, number, number][] = [fault(0, rng.chance(50) ? idiv(plan.inputs.length, 3) : plan.inputs.length)];
-    const recorder = new AttemptRecorder(solution.levelId);
+    const recorder = new AttemptRecorder(solution.levelId, solution.simVersion);
     let s = start;
     let cursor = 0;
     let lives = 1;
     let far = centerCol(s);
     let since = 0;
+    let wait = 0;
     let done: RecordedAttempt | null = null;
     for (;;) {
-      let bits = plan.inputs[cursor] ?? 0;
-      for (const [a, b, c] of cuts) if (cursor >= a && cursor < b) bits = c;
+      let bits = wait > 0 ? 0 : (plan.inputs[cursor] ?? 0);
+      if (wait === 0) for (const [a, b, c] of cuts) if (cursor >= a && cursor < b) bits = c;
       const before = s;
       s = stepAttempt(before, bits, level, DEFAULT_JUMP_PARAMS);
       done = recorder.step(before, bits, s);
       if (done) break;
+      if (wait > 0) {
+        wait--;
+        continue;
+      }
       cursor++;
       const col = centerCol(s);
       if (col > far) {
@@ -116,6 +150,7 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
         }
         cursor = plan.resume[s.checkpoint] ?? 0;
         if (cursor < 0) cursor = 0;
+        if (level.simVersion >= SINGLE_CLOCK_VERSION) wait = alignWait(level, s, cursor);
         since = 0;
         far = centerCol(s);
         if (rng.chance(70)) cuts.push(fault(cursor, 360));

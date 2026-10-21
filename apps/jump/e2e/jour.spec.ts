@@ -2,12 +2,13 @@ import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
 import { FIXED_NOW, PUBLISHED, TODAY, atInstant, servePublished, shiftDate } from "./clock";
 import { Fingers, hasWebGL } from "./phone";
+import { dayId } from "./jours";
 
 // Lot 5 : le niveau du jour. Horloge maîtrisée par décalage de `Date` (`clock.ts`, jamais `page.clock.install`) ; tout résultat qui dépend
 // du nombre de pas se lit en pas à pas (`manual` + `advance`).
 
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 /** Lot 6 : entre deux morceaux, exactement un palier partagé de 2 colonnes (aucune colonne de raccord). */
 const PALIER_LENGTH = 2;
 
@@ -79,7 +80,7 @@ test("la page par défaut ouvre le niveau du jour (date de Paris, horloge décal
     test.skip(!(await open(page, "/?debug&accueil=0")), SKIP);
     const j = await jump(page);
     expect(j.day).toBe(TODAY);
-    expect(j.daily).toMatchObject({ date: TODAY, today: TODAY, number: 5, id: `jour-${TODAY}-g${GENERATOR}`, mode: "jour", preview: true, refused: false });
+    expect(j.daily).toMatchObject({ date: TODAY, today: TODAY, number: 5, id: dayId(TODAY), mode: "jour", preview: true, refused: false });
     expect(j.daily!.pieces.length).toBeGreaterThanOrEqual(6);
     expect(j.daily!.authorTicks).toBeGreaterThanOrEqual(3000);
     expect(j.daily!.authorTicks).toBeLessThanOrEqual(4800);

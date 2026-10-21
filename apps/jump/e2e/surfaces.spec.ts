@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { decodeReplay, fromRuns, moduleSolutions } from "@cdj/jump-sim";
 import { FIXED_NOW, PUBLISHED, TODAY, atInstant, servePublished } from "./clock";
 import { Fingers, hasWebGL, withPhone } from "./phone";
+import { dayId } from "./jours";
 
 // Lot 11 (partie jeu) : tapis roulants et glace. (a) un niveau du jour **usine** et un niveau **glace**, joués par leur rediffusion d'auteur
 // (`&solution`), finissent au temps de l'auteur, avec les événements de surface, les chevrons construits et aucune erreur de shader ;
@@ -12,7 +13,7 @@ import { Fingers, hasWebGL, withPhone } from "./phone";
 // Horloge maîtrisée par décalage de `Date` (`clock.ts`), jamais `page.clock.install` ; tout résultat qui dépend du nombre de pas se lit en pas à pas.
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 /** Les thèmes des 400 premières dates du lot 9 (le thème d'une date ne change pas : fixture de `jump-sim`). */
 const THEMES = JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/themes-lot9.json", import.meta.url), "utf8")) as { first: number; count: number; names: string };
@@ -270,7 +271,7 @@ test("un thème forcé est un essai : autre niveau (identifiant -t<thème>), arr
     await page.goto("/?debug&accueil=0");
     await ready(page);
     const reloaded = await J(page);
-    expect(reloaded.daily).toMatchObject({ mode: "jour", forcedTheme: false, id: `jour-${TODAY}-g${GENERATOR}` });
+    expect(reloaded.daily).toMatchObject({ mode: "jour", forcedTheme: false, id: dayId(TODAY) });
     expect(reloaded.history).toEqual([]);
     expect(reloaded.memory.best).toBeNull();
   });
@@ -284,7 +285,7 @@ test("?theme= avec le thème de la date donne le niveau ordinaire (pas un essai)
     await ready(page);
     const natural = (await J(page)).theme.ofDay;
     expect(await open(page, `/?theme=${natural}&debug`)).toBe(true);
-    expect((await J(page)).daily).toMatchObject({ mode: "jour", forcedTheme: false, id: `jour-${TODAY}-g${GENERATOR}` });
+    expect((await J(page)).daily).toMatchObject({ mode: "jour", forcedTheme: false, id: dayId(TODAY) });
     const other = natural === "foret" ? "nuit" : "foret";
     expect(await open(page, `${PUBLISHED}?theme=${other}&debug`)).toBe(true);
     expect((await J(page)).daily).toMatchObject({ mode: "essai", forcedTheme: true });

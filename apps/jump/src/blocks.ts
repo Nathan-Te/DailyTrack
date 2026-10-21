@@ -2,8 +2,11 @@ import {
   PLAYER_WIDTH,
   TILE_ALT_ON,
   TILE_BLINK_ON,
+  cycleMod,
   idiv,
+  sectionClock,
   sectionPhases,
+  singleClock,
   tileOf,
   type AttemptState,
   type BlinkCycle,
@@ -51,7 +54,8 @@ export interface BlockLook {
  * que `blinkIsSolid` de la simulation (`b` : plein pour `q < solide` ; `d` : pour `q ≥ solide`, avec `q = (phase + décalage) mod cycle`).
  */
 export function blinkTiming(c: BlinkCycle, group: number, phase: number): { solid: boolean; left: number } {
-  const q = (phase + c.shift) % c.cycle;
+  // Lot 15 : une phase négative (avant le départ, horloge unique) se lit dans le cycle.
+  const q = cycleMod(phase + c.shift, c.cycle);
   const inFirst = q < c.solid;
   const solid = group === 0 ? inFirst : !inFirst;
   return { solid, left: inFirst ? c.solid - q : c.cycle - q };
@@ -94,7 +98,8 @@ export function currentBlinkSection(level: Level, state: Readonly<AttemptState>)
   const col = tileOf(state.player.x + idiv(PLAYER_WIDTH, 2));
   for (let i = 0; i < level.sections.length; i++) {
     const s = level.sections[i]!;
-    if (col >= s.c0 && col <= s.c1) return state.sections[i]! >= 0 && level.blinkCycles[i] ? i : -1;
+    // Lot 15 : à une seule horloge (v4), toute section est en marche.
+    if (col >= s.c0 && col <= s.c1) return (singleClock(level) || state.sections[i]! >= 0) && level.blinkCycles[i] ? i : -1;
   }
   return -1;
 }
@@ -116,9 +121,9 @@ export function metronomeBeats(c: BlinkCycle): { q: number; accent: boolean }[] 
 export function metronomeTick(level: Level, prev: Readonly<AttemptState>, cur: Readonly<AttemptState>): { accent: boolean; beat: number; section: number } | null {
   if (cur.time !== prev.time + 1) return null;
   const section = currentBlinkSection(level, cur);
-  if (section < 0 || prev.sections[section]! < 0) return null;
+  if (section < 0 || (!singleClock(level) && prev.sections[section]! < 0)) return null;
   const cycle = level.blinkCycles[section]!;
-  const q = (cur.time - cur.sections[section]! + cycle.shift) % cycle.cycle;
+  const q = cycleMod(sectionClock(level, cur.sections, cur.time, section) + cycle.shift, cycle.cycle);
   const beats = metronomeBeats(cycle);
   const beat = beats.findIndex((b) => b.q === q);
   return beat < 0 ? null : { accent: beats[beat]!.accent, beat, section };

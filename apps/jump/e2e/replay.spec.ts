@@ -50,6 +50,34 @@ test("le navigateur rejoue chaque rediffusion de référence et trouve exactemen
   expect(results[0]).toMatchObject({ finished: true, time: golden.solution.time, deaths: 0, lives: 1 });
 });
 
+// Lot 15 : le niveau du jour en v4 (une seule horloge : reprises au départ, chrono qui continue, phases des sections) et ses rediffusions
+// (`packages/jump-sim/test/horloge.test.ts`) : les mêmes empreintes dans chaque navigateur.
+const goldenV4 = JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/replay-golden-v4.json", import.meta.url), "utf8")) as {
+  ascii: string;
+  replays: Fingerprinted[];
+};
+
+test("lot 15 : les rediffusions d'un niveau à une seule horloge (v4) donnent exactement l'empreinte de Node", async ({ page }) => {
+  await page.goto("/verify.html");
+  await page.waitForSelector("html[data-ready=true]");
+  expect(goldenV4.replays.length).toBeGreaterThanOrEqual(8);
+  const results = await page.evaluate(
+    ({ ascii, codes }) => codes.map((c) => (window as unknown as { __verifyOn(a: string, code: string): VerifyResult }).__verifyOn(ascii, c)),
+    { ascii: goldenV4.ascii, codes: goldenV4.replays.map((r) => r.code) },
+  );
+  goldenV4.replays.forEach((ref, i) => {
+    const got = results[i]!;
+    expect({ name: ref.name, hash: got.hash, finished: got.finished, ticks: got.ticks, time: got.time, deaths: got.deaths }).toEqual({
+      name: ref.name,
+      hash: ref.hash,
+      finished: ref.finished,
+      ticks: ref.ticks,
+      time: ref.time,
+      deaths: ref.deaths,
+    });
+  });
+});
+
 test("une rediffusion falsifiée ne donne pas la même empreinte (ou elle est refusée)", async ({ page }) => {
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");

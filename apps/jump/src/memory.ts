@@ -1,5 +1,4 @@
 import {
-  JUMP_SIM_VERSION,
   JumpReplayError,
   decodeReplay,
   encodeReplay,
@@ -165,13 +164,14 @@ export class DayMemory {
   private load(): void {
     this.sweep();
     const meta = this.read<Meta>("jour");
-    if (!meta || meta.day !== this.day || meta.simVersion !== JUMP_SIM_VERSION || meta.level !== this.hash) {
+    // Lot 15 : la version est celle du niveau (un jour figé en v3 garde sa mémoire après le passage du code en v4).
+    if (!meta || meta.day !== this.day || meta.simVersion !== this.opts.level.simVersion || meta.level !== this.hash) {
       this.purge();
       return;
     }
     this.essai = Number.isInteger(meta.essai) && meta.essai > 0 ? meta.essai : 1;
     const lives = this.read<StoredLife[]>("vies");
-    this.lives = Array.isArray(lives) ? lives.filter((l) => l && typeof l.code === "string" && isCurrent(l.code)).slice(-MAX_LIVES) : [];
+    this.lives = Array.isArray(lives) ? lives.filter((l) => l && typeof l.code === "string" && isCurrent(l.code, this.opts.level.simVersion)).slice(-MAX_LIVES) : [];
     const deaths = this.read<StoredDeath[]>("morts");
     this.deaths = Array.isArray(deaths) ? deaths.filter((d) => d && Number.isInteger(d.x) && Number.isInteger(d.y)).slice(-MAX_DEATHS) : [];
     this.deathTotal = Number.isInteger(meta.morts) && meta.morts! >= this.deaths.length ? meta.morts! : this.deaths.length;
@@ -224,7 +224,7 @@ export class DayMemory {
   }
 
   private saveMeta(): void {
-    this.write("jour", { day: this.day, simVersion: JUMP_SIM_VERSION, level: this.hash, essai: this.essai, morts: this.deathTotal } satisfies Meta);
+    this.write("jour", { day: this.day, simVersion: this.opts.level.simVersion, level: this.hash, essai: this.essai, morts: this.deathTotal } satisfies Meta);
   }
 
   /** Le jour a-t-il changé depuis le chargement ? Alors la mémoire repart de zéro (minuit à Paris passé, page restée ouverte). */
@@ -340,10 +340,10 @@ export class DayMemory {
   }
 }
 
-/** Une rediffusion de cette version de la simulation ? (Celles d'une autre version sont ignorées.) */
-function isCurrent(code: string): boolean {
+/** Une rediffusion de la version de la simulation du niveau (lot 15) ? (Celles d'une autre version sont ignorées.) */
+function isCurrent(code: string, simVersion: number): boolean {
   try {
-    return decodeReplay(code).simVersion === JUMP_SIM_VERSION;
+    return decodeReplay(code).simVersion === simVersion;
   } catch {
     return false;
   }

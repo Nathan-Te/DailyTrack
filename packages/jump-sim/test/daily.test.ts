@@ -38,6 +38,10 @@ import {
   buildModule,
   centerCol,
   checkpointAttempt,
+  cycleMod,
+  sectionPeriod,
+  withSingleClock,
+  SINGLE_CLOCK_VERSION,
   dailyLevel,
   dailyLevelId,
   dailyProblems,
@@ -92,7 +96,9 @@ describe("niveau du jour : identité et pureté", () => {
     // Le cache rend le même objet ; on recompose aussi à travers un autre ordre de dates (aucun état caché entre deux dates).
     expect(dailyLevel(DATES[3]!)).toBe(levels[3]);
     const fresh = assemble(levels[7]!.pieces.map((p) => ({ id: p.id, variant: p.variant })));
-    expect(fresh.ascii).toBe(levels[7]!.ascii);
+    // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
+    expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase))).toBe(levels[7]!.ascii);
+    expect(levels[7]!.level.simVersion).toBe(SINGLE_CLOCK_VERSION);
   });
 
   it("trois dates voisines donnent trois niveaux différents", () => {
@@ -330,27 +336,30 @@ describe("niveau du jour : assemblage", () => {
     }
   });
 
-  it("la reprise sur un point de passage donne exactement l'entrée « arrêt » du morceau seul, et sa solution en sort", () => {
+  it("la reprise sur un point de passage donne exactement l'entrée « arrêt » du morceau seul, et sa solution en sort (à la phase qu'elle attend)", () => {
     for (const L of levels.slice(0, 20)) {
       const lv = L.level;
       L.pieces.slice(1).forEach((p, i) => {
         const k = i + 1;
         const where = `${L.date} ${p.id}`;
         const m = buildModule(p.id, p.variant);
-        // Un essai qui a pris ce point et qui meurt plus loin : tout a démarré ; reprise.
-        const running = { ...initialAttempt(lv), checkpoint: i, time: 5000, sections: lv.sections.map(() => 1000) };
-        let s = checkpointAttempt(lv, running);
+        const sol = moduleSolutions(p.id, p.variant)!.arret!;
+        const own = fromRuns(decodeReplay(sol.code).runs);
+        // Lot 15 : une seule horloge. Seul, le morceau (v3) met sa section en marche au pas `e` où la solution y entre ; on reprend sur le
+        // point au chrono où l'horloge unique a la même phase (`chrono + phase ≡ −e`), après une mort : la solution doit passer telle quelle.
+        const e = replayAttempt(m.level, decodeReplay(sol.code)).final.sections[0]!;
+        const period = sectionPeriod(lv, k);
+        const time = 5000 + (period === 0 ? 0 : cycleMod(-e - lv.sections[k]!.phase - 5000, period));
+        let s = checkpointAttempt(lv, { ...initialAttempt(lv), checkpoint: i, time });
         const alone = moduleStart(m, "arret");
         const dx = (L.paliers[k]!.col0 - m.palierIn.col0) * T;
         expect(lv.checkpoints[i]!.col, where).toBe(L.paliers[k]!.col0);
         const dy = (p.entryRow - m.entryRow) * T;
         expect({ ...s.player, x: s.player.x - dx, y: s.player.y - dy }, where).toEqual(alone.player);
-        // Les sections de ce morceau et d'après sont à l'arrêt, celles d'avant gardent leur cycle.
-        expect(s.sections.slice(k).every((v) => v === -1), where).toBe(true);
-        expect(s.sections.slice(0, k).every((v) => v === 1000), where).toBe(true);
+        // Rien n'est remis à l'arrêt : une seule horloge (lot 15).
+        expect(s.sections, where).toEqual([]);
+        expect(s.time, where).toBe(time);
         // La solution « arrêt » du morceau seul, jouée depuis là, le traverse et sort en course propre (ou arrive, pour le dernier).
-        const sol = moduleSolutions(p.id, p.variant)!.arret!;
-        const own = fromRuns(decodeReplay(sol.code).runs);
         const last = k === L.pieces.length - 1;
         expect(m.palierIn.col0, where).toBe(PALIER_GUARD);
         for (let t = 0; t < sol.exitTick && s.status !== ATTEMPT_FINISHED; t++) s = stepAttempt(s, own[t]!, lv, DEFAULT_JUMP_PARAMS);

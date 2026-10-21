@@ -8,6 +8,7 @@ import {
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
   SAW_SMALL_RADIUS,
+  SINGLE_CLOCK_VERSION,
   UNITS_PER_TILE,
   isDynamicTile,
   isSolidTile,
@@ -145,9 +146,10 @@ export function sectionClocks(level: Level): number[][] {
   ]);
 }
 
-/** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales). */
+/** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales ; lot 15 : scies mobiles en v4). */
 export function isDynamicLevel(level: Level): boolean {
-  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null);
+  // Lot 15 : à une seule horloge (v4), une scie mobile n'attend plus le joueur : il faut parfois attendre qu'elle passe.
+  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
 }
 
 /** Les phases de chaque section modulo chacune de ses horloges (`shift` : grain, en puissance de 2). */

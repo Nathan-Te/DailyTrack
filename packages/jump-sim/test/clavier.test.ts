@@ -14,6 +14,7 @@ import {
   variantExigence,
 } from "../src/index";
 import { humanized, jittered } from "../tools/exigence";
+import { readSolutions } from "../tools/files";
 
 // Retouche du lot 11 : **jouable au clavier**. Une solution ne peut pas exiger un appui de saut plus court que `PRESS_MIN` pas (un doigt tient
 // une touche au moins ≈ 40 ms) ni un relâchement plus court que `RELEASE_MIN` pas entre deux appuis ; la gigue de la mesure d'exigence
@@ -78,7 +79,8 @@ describe("le catalogue est jouable au clavier", () => {
     let n = 0;
     for (const def of MODULES) {
       for (let v = 0; v < def.variants.length; v++) {
-        const s = moduleSolutions(def.id, v);
+        // Lot 15 : `press` est dans `solutions.json` (le jeu n'embarque que la rediffusion).
+        const s = readSolutions()!.modules[def.id]?.variants[v];
         for (const e of ["arret", "elan"] as const) {
           const sol = s?.[e];
           if (!sol || sol.exigence === 0) continue;

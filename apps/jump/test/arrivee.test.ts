@@ -481,9 +481,11 @@ describe("niveaux figés : le chargement", () => {
 
   it("le niveau figé l'emporte même si le générateur a changé depuis : il garde son identifiant d'origine", async () => {
     // Un fichier figé sous un générateur plus ancien (fictif : g1), même physique. On n'a pas l'ancien générateur ; on fabrique un fichier
-    // valide en réécrivant l'identifiant de la preuve, ce qu'un vrai fichier ancien porterait.
+    // valide en réécrivant l'identifiant de la preuve, ce qu'un vrai fichier ancien porterait. Lot 15 : à partir du niveau v3 de la date (les
+    // générateurs jusqu'à g9 faisaient des niveaux v3).
     if (JUMP_GENERATOR_VERSION < 2) return;
-    const f = frozenOf(DAY);
+    const f = JSON.parse(frozenJson(freezeLevel(dailyLevel(DAY, null, 3)))) as FrozenLevel;
+    expect(f.simVersion).toBe(3);
     const { decodeReplay, encodeReplay } = await import("@cdj/jump-sim");
     const oldId = `jour-${formatDay(DAY)}-g1`;
     const replay = { ...decodeReplay(f.preuve), levelId: oldId };

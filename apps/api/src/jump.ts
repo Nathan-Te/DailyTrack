@@ -272,7 +272,8 @@ export function thawFrozen(raw: unknown, day: number): Computed | string {
     medals: { author: d.medals.author, gold: d.medals.gold, silver: d.medals.silver, bronze: d.medals.bronze },
     theme: d.theme,
     source: "fige",
-    simVersion: JUMP_SIM_VERSION,
+    // Lot 15 : la version de la simulation du niveau (un jour figé en v3 le reste).
+    simVersion: d.level.simVersion,
     generatorVersion: Number(/-g(\d+)$/.exec(d.id)?.[1] ?? JUMP_GENERATOR_VERSION),
   };
   return { info, ascii: d.ascii };
@@ -296,7 +297,7 @@ export function computeJumpDay(day: number, frozen: unknown): Computed & { froze
     medals: { author: d.medals.author, gold: d.medals.gold, silver: d.medals.silver, bronze: d.medals.bronze },
     theme: d.theme,
     source: "genere",
-    simVersion: JUMP_SIM_VERSION,
+    simVersion: d.level.simVersion,
     generatorVersion: JUMP_GENERATOR_VERSION,
   };
   return { info, ascii: d.ascii, frozenMiss };
@@ -453,8 +454,10 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     } catch (e) {
       throw new HttpError(400, "invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
     }
-    if (replay.simVersion !== JUMP_SIM_VERSION) throw versionError(`rediffusion v${replay.simVersion}, serveur v${JUMP_SIM_VERSION}`);
+    if (replay.simVersion > JUMP_SIM_VERSION) throw versionError(`rediffusion v${replay.simVersion}, serveur v${JUMP_SIM_VERSION}`);
     const { info, level } = await playable(day);
+    // Lot 15 : une rediffusion porte la version de son niveau (3 pour un jour figé en v3, 4 ensuite).
+    if (replay.simVersion !== level.simVersion) throw versionError(`rediffusion v${replay.simVersion}, niveau en v${level.simVersion}`);
     if (levelId !== info.id) throw versionError(`niveau ${levelId}, le serveur joue ${info.id}`);
     if (replay.levelId !== info.id) throw new HttpError(400, "invalid_replay", "Cette rediffusion n'est pas celle de ce niveau");
     // Un essai part du départ, à l'arrêt, chrono à zéro : une « vie » qui repartirait d'un point de passage avec un chrono choisi n'est pas un essai.
@@ -607,8 +610,10 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
         "SELECT r.player_id AS player_id, p.name AS name, r.level_id AS level_id, r.ticks AS ticks, r.deaths AS deaths, r.replay AS replay, r.sim_version AS sim_version, r.generator_version AS generator_version FROM jump_results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ticks ASC, r.submitted_at ASC, r.player_id ASC LIMIT 1",
         [day],
       );
+      // Lot 15 : les versions rendues sont celles du serveur qui sert le fantôme (comme `/carnage` et `/me`) : le code v4 rejoue à l'identique
+      // une rediffusion d'un jour v3 ; la version propre de la rediffusion (dans ses octets) est vérifiée par le jeu contre celle du niveau.
       first = row
-        ? { playerId: row.player_id, date: formatDay(day), levelId: row.level_id, name: row.name, ticks: row.ticks, deaths: row.deaths, replay: row.replay, simVersion: row.sim_version, generatorVersion: row.generator_version }
+        ? { playerId: row.player_id, date: formatDay(day), levelId: row.level_id, name: row.name, ticks: row.ticks, deaths: row.deaths, replay: row.replay, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION }
         : null;
       if (!isOpen(day) && first) {
         if (firstOfClosed.size >= GHOST_CACHE_MAX && !firstOfClosed.has(day)) firstOfClosed.delete(firstOfClosed.keys().next().value!);

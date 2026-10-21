@@ -138,8 +138,8 @@ scie m2 0.75 60 boucle 8,0 10,0 10,1
 
   it("lit les sections et les scies mobiles du bloc annexe (rayon en tuiles, cycle, mode, points, section du premier point)", () => {
     expect(lv.sections).toEqual([
-      { name: "a", c0: 0, c1: 6 },
-      { name: "b", c0: 7, c1: 12 },
+      { name: "a", c0: 0, c1: 6, phase: 0 },
+      { name: "b", c0: 7, c1: 12, phase: 0 },
     ]);
     const [m1, m2] = lv.saws.slice(2);
     expect(m1).toMatchObject({ id: "m1", radius: SAW_SMALL_RADIUS, cycle: 120, mode: "aller-retour", section: 0 });

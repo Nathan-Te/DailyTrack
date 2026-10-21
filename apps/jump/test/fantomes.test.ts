@@ -1,9 +1,10 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, encodeReplay, replayAttempt } from "@cdj/jump-sim";
 import { contrastRatio, hueDistance } from "../src/contrast";
+import { thawLevel } from "../src/frozen";
 import { DemoRankSource, DEMO_TODAY } from "../src/demoRank";
 import { FIRST_GHOST_COLOR, OWN_GHOST_COLOR, checkFirstGhost, firstGhostLabel, showFirstGhost, type FirstGhostData } from "../src/firstGhost";
 import { BLOCK_STYLE } from "../src/blocks";
@@ -62,7 +63,9 @@ describe("validation à la lecture (comme le lot 3)", () => {
   });
   it("une autre version, un autre niveau, une rediffusion illisible ou qui n'arrive pas : ignorée", () => {
     expect(checkFirstGhost(data({ simVersion: JUMP_SIM_VERSION + 1 }), D.level, D.id)).toMatchObject({ ok: false, reason: "autre version du jeu" });
-    expect(checkFirstGhost(data({ generatorVersion: JUMP_GENERATOR_VERSION - 1 }), D.level, D.id).ok).toBe(false);
+    expect(checkFirstGhost(data({ generatorVersion: JUMP_GENERATOR_VERSION + 1 }), D.level, D.id).ok).toBe(false);
+    // Lot 15 : c'est la rediffusion qui compte (la version de son niveau, puis le rejeu) : une v3 sur un niveau v4 est d'une autre version.
+    expect(checkFirstGhost(data({ replay: encodeReplay({ ...D.replay, simVersion: 3 }) }), D.level, D.id)).toMatchObject({ ok: false, reason: "rediffusion d'une autre version" });
     expect(checkFirstGhost(data({ levelId: `jour-${D.date}-g${JUMP_GENERATOR_VERSION - 1}` }), D.level, D.id)).toMatchObject({ ok: false, reason: "autre niveau" });
     expect(checkFirstGhost(data({ replay: "pas-une-rediffusion" }), D.level, D.id).ok).toBe(false);
     const other = dailyLevel(DEMO_TODAY - 11);
@@ -127,7 +130,10 @@ describe("démonstration : le fantôme du premier de chaque jour", () => {
   it("lu dans le jeu de données (rediffusion validée par le vrai serveur), accepté par la validation du jeu", async () => {
     const src = new DemoRankSource("demo/", null, fetchFile);
     for (const day of [DEMO_TODAY - 10, DEMO_TODAY]) {
-      const d = dailyLevel(day);
+      // Le niveau que la page joue ce jour-là (lot 15) : son fichier figé s'il existe (en v3 jusqu'au 22/10/2026), sinon le générateur.
+      const file = join(import.meta.dirname, "../public/levels", `${formatDay(day)}.json`);
+      const thawed = existsSync(file) ? thawLevel(JSON.parse(readFileSync(file, "utf8")), day) : null;
+      const d = thawed && typeof thawed !== "string" ? thawed : dailyLevel(day);
       const r = await src.firstGhost(formatDay(day), null);
       expect(r.ok, formatDay(day)).toBe(true);
       if (!r.ok) continue;

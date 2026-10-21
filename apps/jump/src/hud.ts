@@ -213,7 +213,8 @@ export function mountHud(opts: { onRestart(): void; carnage: CarnageControls }):
     update(session, at = session.state.time) {
       lastSession = session;
       lastAt = at;
-      const tx = fChrono(at);
+      // Lot 15 : pendant le « Prêt… », le chrono de l'état montré est négatif : le chrono affiché reste à zéro.
+      const tx = fChrono(at < 0 ? 0 : at);
       if (tx !== lastTime) {
         lastTime = tx;
         ecrireTemps(tx);

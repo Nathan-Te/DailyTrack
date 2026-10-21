@@ -5,7 +5,7 @@ import {
   DEFAULT_JUMP_PARAMS,
   ESSAI_ASCII,
   ESSAI_LEVEL,
-  JUMP_SIM_VERSION,
+  SECTION_CLOCK_VERSION,
   SANDBOX_ASCII,
   SANDBOX_LEVEL,
   SANDBOX_MARKS,
@@ -27,6 +27,7 @@ import { J, L, R, T, climbChimney, climbWall, compress, expand, standAt } from "
 // Lot 2 : la solution du niveau d'essai (`fixtures/essai-solution.json`) rejouée par `stepAttempt` : temps, état final et empreinte
 // de chaque pas (personnage, chrono, statut, blocs friables, sections, point de passage). Les suites du lot 1 n'ont pas bougé (mêmes empreintes) ; seuls
 // les deux nouveaux réglages (`crumbleDelay`, `springSpeed`) sont venus s'ajouter à `params`.
+// Lot 15 : références des niveaux en version 3 (`SECTION_CLOCK_VERSION`) : inchangées au bit près (le code joue aussi la version 4).
 
 const FILE = join(import.meta.dirname, "fixtures/golden.json");
 const FLOOR = SANDBOX_MARKS.floorRow;
@@ -139,7 +140,7 @@ function scripts(): Record<string, Script> {
 if (process.env.UPDATE_GOLDEN) {
   const runs: Record<string, GoldenRun> = {};
   for (const [name, script] of Object.entries(scripts())) runs[name] = play(script);
-  const golden: Golden = { jumpSimVersion: JUMP_SIM_VERSION, params: { ...DEFAULT_JUMP_PARAMS }, sandbox: textHash(SANDBOX_ASCII), runs, essai: playEssai() };
+  const golden: Golden = { jumpSimVersion: SECTION_CLOCK_VERSION, params: { ...DEFAULT_JUMP_PARAMS }, sandbox: textHash(SANDBOX_ASCII), runs, essai: playEssai() };
   writeFileSync(FILE, JSON.stringify(golden, null, 2) + "\n");
 }
 
@@ -147,7 +148,7 @@ const golden = JSON.parse(readFileSync(FILE, "utf8")) as Golden;
 
 describe("référence du personnage (golden)", () => {
   it("est celle de cette version de la simulation, avec les réglages par défaut et le bac à sable actuels", () => {
-    expect(golden.jumpSimVersion, "JUMP_SIM_VERSION a changé : régénérer la référence (UPDATE_GOLDEN=1)").toBe(JUMP_SIM_VERSION);
+    expect(golden.jumpSimVersion, "JUMP_SIM_VERSION a changé : régénérer la référence (UPDATE_GOLDEN=1)").toBe(SECTION_CLOCK_VERSION);
     expect(DEFAULT_JUMP_PARAMS, "réglages par défaut changés : JUMP_SIM_VERSION +1 puis UPDATE_GOLDEN=1").toEqual(golden.params);
     expect(textHash(SANDBOX_ASCII), "bac à sable modifié : JUMP_SIM_VERSION +1 puis UPDATE_GOLDEN=1").toBe(golden.sandbox);
   });

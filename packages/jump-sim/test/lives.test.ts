@@ -34,11 +34,14 @@ function livesOf(level: Level, solution: JumpReplay, seed: number, attempts: num
 }
 
 const DAILY = dailyLevel(daysFromCivil(2026, 10, 20));
+/** Lot 15 : le même jour en version 3 (g9, une horloge par section) : les règles d'en-tête d'avant valent toujours pour lui. */
+const DAILY_V3 = dailyLevel(daysFromCivil(2026, 10, 20), null, 3);
 
 describe("checkLife : les vies vécues sont acceptées, rejouées à l'identique", () => {
   for (const [name, level, solution, id] of [
     ["essai", ESSAI_LEVEL, ESSAI, "essai"],
     ["niveau du 20/10/2026", DAILY.level, DAILY.replay, DAILY.id],
+    ["niveau du 20/10/2026 en v3 (g9)", DAILY_V3.level, DAILY_V3.replay, DAILY_V3.id],
   ] as const) {
     it(name, () => {
       const lives = livesOf(level, solution, 2026, 24);
@@ -59,11 +62,11 @@ describe("checkLife : les vies vécues sont acceptées, rejouées à l'identique
   }
 });
 
-describe("lifeStartProblem : un en-tête qu'aucune partie ne produit est refusé", () => {
-  const lives = livesOf(DAILY.level, DAILY.replay, 7, 30).filter((l) => l.life.start.checkpoint >= 1);
+describe("lifeStartProblem : un en-tête qu'aucune partie ne produit est refusé (niveau v3)", () => {
+  const lives = livesOf(DAILY_V3.level, DAILY_V3.replay, 7, 30).filter((l) => l.life.start.checkpoint >= 1);
   const sample = lives[0]!;
   const start = sample.life.start;
-  const level = DAILY.level;
+  const level = DAILY_V3.level;
   const cp = level.checkpoints[start.checkpoint]!;
   const before = level.sections.map((s, i) => ({ s, i })).filter(({ s }) => s.c1 < cp.col && s.c1 >= level.start.col);
 
@@ -104,9 +107,41 @@ describe("lifeStartProblem : un en-tête qu'aucune partie ne produit est refusé
 
   it("checkLife refuse un en-tête incohérent avant de rejouer", () => {
     const forged: JumpReplay = { ...sample.replay, start: { ...start, sections: start.sections.map(() => -1) } };
-    const r = checkLife(level, forged, DAILY.id);
+    const r = checkLife(level, forged, DAILY_V3.id);
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.code).toBe("start");
+  });
+});
+
+describe("lot 15 — lifeStartProblem d'un niveau à une seule horloge (v4)", () => {
+  const level = DAILY.level;
+  const lives = livesOf(level, DAILY.replay, 7, 30);
+
+  it("des vies reprennent au départ, chrono qui continue (mort avant le premier point) : leur en-tête passe et elles se rejouent", () => {
+    const again = lives.filter((l) => l.life.start.checkpoint < 0 && l.life.start.time > 0);
+    expect(again.length).toBeGreaterThan(0);
+    for (const l of again) {
+      expect(lifeStartProblem(level, l.life.start)).toBeNull();
+      expect(checkLife(level, l.replay, DAILY.id).ok).toBe(true);
+    }
+  });
+
+  it("aucune section dans l'en-tête ; point absent ; chrono trop court pour une reprise ; jamais lancée", () => {
+    const cp = lives.find((l) => l.life.start.checkpoint >= 0)!.life.start;
+    expect(cp.sections).toEqual([]);
+    expect(lifeStartProblem(level, cp)).toBeNull();
+    expect(lifeStartProblem(level, { ...cp, sections: level.sections.map(() => -1) })).toMatch(/sections/);
+    expect(lifeStartProblem(level, { ...cp, checkpoint: level.checkpoints.length })).toMatch(/absent/);
+    expect(lifeStartProblem(level, { ...cp, time: RESPAWN_TICKS })).toMatch(/trop court/);
+    expect(lifeStartProblem(level, { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 })).toBeNull();
+    expect(lifeStartProblem(level, { checkpoint: -1, held: 0, time: 5, sections: [], elan: 0 })).toMatch(/trop court/);
+    expect(lifeStartProblem(level, { checkpoint: -1, held: 0, time: 0, sections: [], elan: 1 })).toMatch(/lancée/);
+  });
+
+  it("une reprise au départ n'existe pas dans un niveau v3", () => {
+    const again = lives.find((l) => l.life.start.checkpoint < 0 && l.life.start.time > 0)!;
+    const r = checkLife(DAILY_V3.level, { ...again.replay, simVersion: 3, levelId: DAILY_V3.id }, DAILY_V3.id);
+    expect(r.ok).toBe(false);
   });
 });
 

@@ -2,12 +2,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, dailyLevel, demoAttempts, encodeReplay, lifeReplay, replayAttempt } from "@cdj/jump-sim";
 import { loadDaily } from "../../jump/src/dailyLoader";
 import { thawLevel } from "../../jump/src/frozen";
 import type { Logger } from "../src/log";
 import { thawFrozen } from "../src/jump";
-import { DAY_MS, makeApi, openTestDb, TEST_DB } from "./helpers";
+import { DAY_MS, makeApi, openTestDb, playerId, TEST_DB } from "./helpers";
 
 // Lot P0 (plateforme) : l'espace `/api/jump/` (lecture seule) et la preuve « serveur = jeu ». Tourne sur SQLite et sur libSQL.
 
@@ -177,5 +177,57 @@ describe(`le serveur calcule le même niveau que le jeu (${TEST_DB})`, () => {
     expect(typeof ok).toBe("object");
     expect(typeof game).toBe("object");
     if (typeof ok !== "string" && typeof game !== "string") expect([ok.info.id, ok.info.hash, ok.info.authorTicks]).toEqual([game.id, game.hash, game.authorTicks]);
+  });
+});
+
+describe(`lot 15 : les rediffusions v3 se vérifient toujours côté serveur (${TEST_DB})`, () => {
+  // Le dernier jour figé (en v3, avant le lot 15) et le lendemain, généré en v4 (horloge unique).
+  const date = FROZEN_DAYS[FROZEN_DAYS.length - 1]!;
+  const day = DATES.find((d) => formatDay(d) === date)!;
+  const thawed = thawLevel(FROZEN[date], day);
+  const as = (n: number) => ({ headers: { "X-Player-Id": playerId(n) } });
+  const body = (levelId: string, replay: string, name?: string) => ({ levelId, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay, ...(name ? { name } : {}) });
+
+  it("un jour figé en v3 : sa preuve (v3) se classe, ses vies v3 sont rejouées ; une rediffusion marquée v4 est refusée (version)", async () => {
+    if (typeof thawed === "string") throw new Error(thawed);
+    expect(thawed.level.simVersion).toBe(SECTION_CLOCK_VERSION);
+    const t = await jumpApi(noonOf(day));
+    const ok = await t.call("POST", "/api/jump/submit", body(thawed.id, thawed.code, "Ancien"), as(1));
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ accepted: true, ticks: thawed.authorTicks, deaths: 0 });
+    const v4 = encodeReplay({ ...thawed.replay, simVersion: SINGLE_CLOCK_VERSION });
+    const refused = await t.call("POST", "/api/jump/submit", body(thawed.id, v4), as(1));
+    expect([refused.status, refused.body.error]).toEqual([409, "version"]);
+    // Des vies v3 vécues sur ce jour (morts, reprises sur un point) : le serveur les rejoue et les garde.
+    const lives = demoAttempts(thawed.level, thawed.replay, 9, { attempts: 6 })
+      .flatMap((a) => replayAttempt(thawed.level, a.replay).lives.filter((l) => l.end === "mort").map((l) => encodeReplay(lifeReplay(a.replay, l))))
+      .slice(0, 5);
+    expect(lives.length).toBeGreaterThan(0);
+    const r = await t.call("POST", "/api/jump/lives", { levelId: thawed.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives }, as(1));
+    expect(r.status).toBe(200);
+    expect(r.body.accepted).toBe(lives.length);
+  });
+
+  it("un premier enregistré par le serveur d'avant (v3, générateur 9) : son fantôme est servi avec les versions du serveur, sa rediffusion reste v3", async () => {
+    if (typeof thawed === "string") throw new Error(thawed);
+    const db = await openTestDb();
+    const t = await jumpApi(noonOf(day), { db });
+    expect((await t.call("POST", "/api/jump/submit", body(thawed.id, thawed.code, "Ancien"), as(3))).status).toBe(200);
+    await db.run("UPDATE jump_results SET sim_version = ?, generator_version = ?", [SECTION_CLOCK_VERSION, 9]);
+    const g = await t.call("GET", `/api/jump/day/${date}/ghost/first`);
+    expect(g.status).toBe(200);
+    expect(g.body).toMatchObject({ name: "Ancien", ticks: thawed.authorTicks, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: thawed.code });
+  });
+
+  it("le lendemain, généré en v4 : la preuve v4 se classe, la même rediffusion marquée v3 est refusée (version)", async () => {
+    const next = dailyLevel(day + 1);
+    expect(next.level.simVersion).toBe(SINGLE_CLOCK_VERSION);
+    const t = await jumpApi(noonOf(day + 1));
+    const ok = await t.call("POST", "/api/jump/submit", body(next.id, next.code, "Nouveau"), as(2));
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ accepted: true, ticks: next.authorTicks });
+    const v3 = encodeReplay({ ...next.replay, simVersion: SECTION_CLOCK_VERSION });
+    const refused = await t.call("POST", "/api/jump/submit", body(next.id, v3), as(2));
+    expect([refused.status, refused.body.error]).toEqual([409, "version"]);
   });
 });
