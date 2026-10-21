@@ -1,7 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { encodeReplay, runPilot, salonCircuit, salonTheme } from "@cdj/sim";
 import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
-import { PODIUM_MS } from "../src/salon";
 
 // Le Salon (lot 26) en mode démonstration : `?mode=salon&api=demo`, sessions de 2 minutes (`salonMinutes=2`) et horloge pilotable
 // (`salonAt=` au chargement, `__cdj.salon.setNow(ms)` ensuite : outils `?debug`). Rendu 3D : Chromium seulement.
@@ -13,6 +12,8 @@ test.setTimeout(240_000);
 // Pas 2 minutes (retouche 31b) : le circuit suivant se prépare dans les 2 dernières minutes d'une session (`PREPARE_MS`) — dès la première
 // seconde d'une session de 2 minutes, donc. Sa scène se construisait alors sur le fil principal juste quand on repart après le podium (tâche
 // longue de 725 à 754 ms en CI, profil à l'appui), ce qui n'arrive jamais avec les vraies sessions de 10 minutes (préparation à la 8e minute).
+// Durée du classement final (lot 33) : `PODIUM_MS` de `src/salon.ts` (non importée : le projet TypeScript des e2e ne contient pas `src/`).
+const PODIUM_MS = 8_000;
 const LONG = 10 * 60_000;
 const SHORT = 3 * 60_000;
 const T0 = 1791549980000;

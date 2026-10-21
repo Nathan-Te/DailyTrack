@@ -280,7 +280,7 @@ test("Salon (démo, sessions de 2 minutes) : la session regardée finit, retour 
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), start2 + SHORT + 500);
   await page.waitForFunction(() => window.__cdj.salon!.state === "podium", undefined, { timeout: 30_000 });
   await expect(page.locator("#podium")).toBeVisible();
-  await page.waitForURL((u) => !u.searchParams.has("watch"), { timeout: 40_000 }); // podium 10 s, puis le Salon normal
+  await page.waitForURL((u) => !u.searchParams.has("watch"), { timeout: 40_000 }); // classement final 8 s, puis le Salon normal
   expect(new URL(page.url()).searchParams.get("mode")).toBe("salon");
 });
 
