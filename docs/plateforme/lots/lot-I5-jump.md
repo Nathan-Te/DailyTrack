@@ -130,7 +130,16 @@ Chaînes : **279 clés** par langue (base 27, partie 105, accueil 47, arrivée 5
 - e2e Chromium de `apps/jump`, toute la suite (143 tests dont 6 sautés : outils et navigateur sans WebGL) : verte au dernier passage après les corrections (specs relancés un à un : `arrivee`, `carnage`, `dangers`, `classement`, `fantome-premier`, `tout-le-monde`, `jour`, `mobile`, `profil-commun`, `sensations`, `smoke`, `hud-compact`, `langue`, `poids`) ; e2e Chromium de `apps/web` touchés : `domaine.spec.ts` et `portail-journee.spec.ts` verts.
 - Mesures de poids (§ 4), de fluidité (§ 2), captures (§ 7).
 
-RUNS_ICI
+**Runs de CI de la PR n° 96** :
+
+| commit | run CI | verdict par job | aperçu / recette |
+|---|---|---|---|
+| `3d06e15` (le lot) | [#532](https://github.com/Nathan-Te/DailyTrack/actions/runs/39575321225) | **rouge** : `e2e-parts (chromium 6/8)` — `apps/web/e2e/identite-plateforme.spec.ts` (lot P4) chargeait encore le code dans le profil de Jump et attendait « 1ᵉʳ » (reçu « 1er sur 1 », puis « 2e sur 2 » à la relance, même base en mémoire) ; tout le reste vert (`unit` ×3, `test`, Chromium 1–5, 7, 8/8, Firefox, WebKit, Jump Chromium ×3, Firefox, WebKit, `api-image`) | [aperçu #44](https://github.com/Nathan-Te/DailyTrack/actions/runs/39575321183), [recette #82](https://github.com/Nathan-Te/DailyTrack/actions/runs/39575321228) verts |
+| `b323ab9` (retours de Nathan + correction du spec) | [#533](https://github.com/Nathan-Te/DailyTrack/actions/runs/39578304765) | **vert** : `unit` 1/3, 2/3, 3/3 ; `test` ; `e2e-parts` Chromium 1/8 à 8/8, Firefox 1/2 et 2/2, WebKit 1/2 et 2/2, Jump Chromium 1/3 à 3/3, Jump Firefox, Jump WebKit ; `e2e` (**394 réussis, 0 instable, 0 échec**, 57 sautés pour navigateur sans WebGL, 9 min 38 s cumulées) ; `api-image` | [aperçu #45](https://github.com/Nathan-Te/DailyTrack/actions/runs/39578305001), [recette #83](https://github.com/Nathan-Te/DailyTrack/actions/runs/39578304853) verts |
+
+**Aperçu** : https://playdujour-recette--pr-96-xltx15r3.web.app/jump/ — vérifié : titre « Jump — Du Jour » ; le HTML précharge `/assets/lilita-one-latin-400-normal-87r-Z-Re.woff2` et `/assets/archivo-latin-400-normal-C81ewxNO.woff2` (200, `cache-control: public, max-age=31536000, immutable`) ; **Archivo 400 a la même empreinte que celle du portail** ; `/jump/assets/` n'existe pas (404 : aucune copie).
+
+**Tests instables** : **aucun** en CI (résumé du run #533 : « Aucun échec, aucun test instable »). Durées Chromium mesurées en CI (`durees.json`) : `hud-compact` 13 s, `langue` 3 s, `poids` < 1 s.
 
 **Non vérifié** :
 - **Firefox et WebKit en local** (non installés ici) : la CI les exécute (sous-ensemble multi-navigateurs de Jump sur une PR : `replay.spec.ts`).
