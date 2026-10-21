@@ -102,11 +102,11 @@ La règle vit dans le générateur, que Track charge au premier écran (le circu
 
 ## 7. À tester (aperçu de la PR)
 
-Les jours d'après la bascule ne sont jouables qu'en aperçu ou avec `?debug` (la production refuse un jour à venir). Adresses à ouvrir sur l'aperçu de la PR (lien dans le commentaire « Aperçu » de la PR) :
+Les jours d'après la bascule ne sont jouables qu'en aperçu ou avec `?debug` (la production refuse un jour à venir). Aperçu de la PR : https://playdujour-recette--pr-104-aond8hhi.web.app/track/ ; révision de recette du serveur : https://b-claude-nifty-tu-7eakgn---cdj-api-recette-5qi6aa4qqa-ew.a.run.app (santé : `/api/health`).
 
-- **Un circuit rapide** — `/track/?seed=2026-11-01` (Campagne : turbos enchaînés, plaque puis épingle ; 3 droites de freinage ajoutées, bas-côtés d'herbe sur les virages rapides) : après chaque poussée, freiner à la fin de la poussée doit suffire.
-- **Un circuit technique** — `/track/?seed=2026-10-28` (Rallye, premier jour de la v16 : épingle sur terre, virage aveugle, saut de terre, turbo puis épingle avec ses droites de freinage, pincement).
-- **Un circuit de Ville** — `/track/?seed=2026-10-29` (turbo puis épingle : le seul piège gardé, chicane d'angles droits).
-- **Un Salon** — `/track/?mode=salon` (serveur de la recette : sessions en v16) ou `/track/?mode=salon&api=demo`.
-- Admin : `/track/admin/` (planning : la ligne « Générateur » montre v15 jusqu'au 27/10, v16 ensuite).
+- **Un circuit rapide** — [`/track/?seed=2026-11-01`](https://playdujour-recette--pr-104-aond8hhi.web.app/track/?seed=2026-11-01) (Campagne : turbos enchaînés, plaque puis épingle ; 3 droites de freinage ajoutées, bas-côtés d'herbe sur les virages rapides) : après chaque poussée, freiner à la fin de la poussée doit suffire.
+- **Un circuit technique** — [`/track/?seed=2026-10-28`](https://playdujour-recette--pr-104-aond8hhi.web.app/track/?seed=2026-10-28) (Rallye, premier jour de la v16 : épingle sur terre, virage aveugle, saut de terre, turbo puis épingle avec ses droites de freinage, pincement).
+- **Un circuit de Ville** — [`/track/?seed=2026-10-29`](https://playdujour-recette--pr-104-aond8hhi.web.app/track/?seed=2026-10-29) (turbo puis épingle : le seul piège gardé, chicane d'angles droits).
+- **Un Salon** — [`/track/?mode=salon`](https://playdujour-recette--pr-104-aond8hhi.web.app/track/?mode=salon) (serveur de la recette : sessions en v16) ou [`/track/?mode=salon&api=demo`](https://playdujour-recette--pr-104-aond8hhi.web.app/track/?mode=salon&api=demo).
+- Admin : [`/track/admin/`](https://playdujour-recette--pr-104-aond8hhi.web.app/track/admin/) (planning : la ligne « Générateur » montre v15 jusqu'au 27/10, v16 ensuite).
 
