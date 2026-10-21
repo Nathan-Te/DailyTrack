@@ -378,8 +378,10 @@ function memoryStore(fail: "get" | "set" | null = null): KeyValue & { data: Map<
 describe("réglages du joueur", () => {
   it("défauts : tout actif, mouvement réduit selon le système", () => {
     // Lot I5 : `sound` (« Son : oui / non » de la pause), oui par défaut.
-    expect(defaultSettings()).toEqual({ volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: false, firstGhost: true, othersStains: true, sound: true });
+    expect(defaultSettings()).toEqual({ volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: "normal", effects: "normal", reducedMotion: false, firstGhost: true, othersStains: true, sound: true });
     expect(defaultSettings(true).reducedMotion).toBe(true);
+    // Lot 14 : le système demande un mouvement réduit → secousses Réduites par défaut.
+    expect(defaultSettings(true).shake).toBe("reduit");
     expect(loadSettings(memoryStore(), true).reducedMotion).toBe(true);
   });
 
@@ -406,7 +408,10 @@ describe("réglages du joueur", () => {
     expect(s.volume).toBe(1);
     expect(s.sfx).toBe(1);
     expect(s.effects).toBe("normal");
-    expect(s.shake).toBe(false);
+    expect(s.shake).toBe("aucun"); // avant le lot 14 : non
+    expect(parseSettings(JSON.stringify({ v: 1, shake: true })).shake).toBe("normal");
+    expect(parseSettings(JSON.stringify({ v: 1, shake: "réduites" }), true).shake).toBe("reduit");
+    expect(parseSettings(JSON.stringify({ v: 1, shake: "reduit" })).shake).toBe("reduit");
   });
 
   it("niveaux d'effets : ?fx=off et le mouvement réduit coupent particules et secousses ; les réglages ne concernent jamais la simulation", () => {
@@ -416,7 +421,8 @@ describe("réglages du joueur", () => {
     expect(feelLevels({ ...d, reducedMotion: true })).toMatchObject({ particles: 0, continuous: false, shake: 0, animate: false });
     expect(feelLevels({ ...d, reducedMotion: true }).squash).toBeLessThan(0.5);
     expect(feelLevels({ ...d, effects: "reduit" })).toMatchObject({ particles: 0.5, continuous: false, shake: 0.5 });
-    expect(feelLevels({ ...d, shake: false }).shake).toBe(0);
+    expect(feelLevels({ ...d, shake: "aucun" }).shake).toBe(0);
+    expect(feelLevels({ ...d, shake: "reduit" }).shake).toBe(0.5);
     expect(feelLevels({ ...d, vibration: false }).vibration).toBe(false);
   });
 });
@@ -425,7 +431,7 @@ describe("effets : particules, secousse, vibrations, traînée, clignement", () 
   const colors = feelColors(PALETTES[0]!);
   const ev = (e: Partial<GameEvent> & Pick<GameEvent, "kind">): GameEvent => ({ tick: 0, source: "jeu", x: 5, y: 5, ...e }) as GameEvent;
 
-  it("poussière d'atterrissage selon l'intensité ; secousse et vibration aux grosses chutes seulement", () => {
+  it("poussière d'atterrissage selon l'intensité ; vibration aux grosses chutes seulement, jamais de secousse", () => {
     const levels = feelLevels(defaultSettings());
     const count = (i: number) => {
       const p = new Particles();
@@ -437,7 +443,7 @@ describe("effets : particules, secousse, vibrations, traînée, clignement", () 
     expect(hard.n).toBeGreaterThan(soft.n);
     expect(soft.out.shake).toBe(0);
     expect(soft.out.vibrate).toBeNull();
-    expect(hard.out.shake).toBeGreaterThan(0);
+    expect(hard.out.shake).toBe(0); // lot 14 : plus de secousse à l'atterrissage, même une grosse chute
     expect(hard.out.vibrate).not.toBeNull();
   });
 
@@ -451,6 +457,22 @@ describe("effets : particules, secousse, vibrations, traînée, clignement", () 
       feelEvent(ev({ kind, side: 1, source: "vie" } as Partial<GameEvent> & Pick<GameEvent, "kind">), q, colors, levels);
       expect(q.emitted, kind).toBe(0);
     }
+  });
+
+  it("lot 14 : aucune secousse pour une action ordinaire ; une secousse courte et légère à la mort ; Aucune : zéro", () => {
+    const run = (levels: ReturnType<typeof feelLevels>, kind: GameEvent["kind"], extra: Partial<GameEvent> = {}) => feelEvent(ev({ kind, intensity: 1, cause: "pic", side: 1, ...extra } as Partial<GameEvent> & Pick<GameEvent, "kind">), new Particles(), colors, levels);
+    const normal = feelLevels(defaultSettings());
+    for (const kind of ["saut", "sautMural", "atterrissage", "ressort", "tapisDebut", "glaceFrein", "derapage", "ventDebut", "rafale", "friableTombe", "bascule"] as const) {
+      expect(run(normal, kind).shake, kind).toBe(0);
+    }
+    const death = run(normal, "mort");
+    expect(death.shake).toBeGreaterThan(0);
+    expect(death.shake).toBeLessThanOrEqual(0.15);
+    expect(death.shakeDuration).toBeGreaterThan(0);
+    expect(death.shakeDuration).toBeLessThan(0.15);
+    expect(run(feelLevels({ ...defaultSettings(), shake: "reduit" }), "mort").shake).toBeCloseTo(death.shake / 2);
+    expect(run(feelLevels({ ...defaultSettings(), shake: "aucun" }), "mort").shake).toBe(0);
+    expect(run(normal, "mort", { source: "vie" }).shake).toBe(0); // les morts des autres vies (carnage) ne secouent jamais
   });
 
   it("effets coupés : aucune particule, aucune secousse (mouvement réduit, ?fx=off)", () => {
