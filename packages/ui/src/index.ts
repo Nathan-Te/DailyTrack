@@ -7,6 +7,7 @@ export * from "./contraste";
 export * from "./i18n";
 export * from "./formats";
 export * from "./catalogue";
+export { CATALOGUE_COMMUN_EN } from "./catalogue.en";
 export * from "./icones";
 export * from "./composants";
 export * from "./cadre";

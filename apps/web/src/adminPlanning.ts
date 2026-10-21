@@ -1,5 +1,5 @@
 import { parisDay } from "@cdj/clock";
-import { CATALOGUE_COMMUN } from "@cdj/ui";
+import { CATALOGUE_COMMUN_FR } from "@cdj/ui";
 import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
 import { DEMO_BASE, apiBase, type ApiResult } from "./api";
 import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
@@ -13,7 +13,7 @@ import type { ThumbnailCircuit } from "./thumbnail";
 
 /** Lot I6 : le serveur ne renvoie plus que le code d'une erreur ; la page d'admin (outil en français) le lit dans le catalogue commun, en français. */
 function texteErreur(r: { code: string; message: string }): string {
-  const v = (CATALOGUE_COMMUN.fr as Record<string, unknown>)[`erreur.${r.code}`];
+  const v = (CATALOGUE_COMMUN_FR as Record<string, unknown>)[`erreur.${r.code}`];
   return typeof v === "string" ? v : r.message;
 }
 

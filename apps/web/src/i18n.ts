@@ -1,5 +1,5 @@
 import { ecrireLangue, lireLangue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, cheminMentions, formatDate, formatDateCourte, formatNombre, formatNumeroJour, formatRang, formatTemps, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
+import { CATALOGUE_COMMUN_FR, cheminMentions, formatDate, formatDateCourte, formatNombre, formatNumeroJour, formatRang, formatTemps, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
 import { CATALOGUE_FR } from "./catalogue.fr";
 import { gameStorage } from "./storage";
 
@@ -20,9 +20,11 @@ function langueInitiale(): Langue {
 let langue: Langue = langueInitiale();
 /** Le catalogue anglais : un autre fichier, chargé à la demande (`chargerLangue`) pour ne pas peser sur le premier chargement des joueurs en français. */
 let anglais: Catalogue | null = null;
+/** Lot I6 : l'anglais du catalogue commun, chargé avec celui du jeu (le même `import()`). */
+let communAnglais: Catalogue | null = null;
 function creerTraducteur(l: Langue): Traducteur {
   // Le français est toujours là ; l'anglais seulement une fois chargé (sans lui, une clé s'écrit telle quelle : `chargerLangue` doit précéder le premier écran).
-  return traducteur(l, { fr: CATALOGUE_FR, en: anglais ?? {} } as never, CATALOGUE_COMMUN);
+  return traducteur(l, { fr: CATALOGUE_FR, en: anglais ?? {} } as never, { fr: CATALOGUE_COMMUN_FR, en: communAnglais ?? {} } as never);
 }
 let traducteurCourant: Traducteur = creerTraducteur(langue);
 
@@ -30,7 +32,9 @@ let traducteurCourant: Traducteur = creerTraducteur(langue);
 export async function chargerLangue(l: Langue = langue): Promise<boolean> {
   if (l === "fr" || anglais) return true;
   try {
-    anglais = (await import("./catalogue.en")).CATALOGUE_EN;
+    const m = await import("./catalogue.en");
+    anglais = m.CATALOGUE_EN;
+    communAnglais = m.CATALOGUE_COMMUN_EN;
     return true;
   } catch {
     return false;
