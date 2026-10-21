@@ -42,7 +42,12 @@ async function open(page: Page, date: string): Promise<boolean> {
 test("niveau v4 : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »", async ({ page }) => {
   const date = v4DayWithSaw();
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
-  await page.evaluate(() => (window as unknown as { __jump: J }).__jump.manual(true));
+  // Un « Prêt… » neuf, en pas à pas : la boucle en temps réel a pu en consommer une partie pendant le chargement (WebKit : 20 pas).
+  await page.evaluate(() => {
+    const j = (window as unknown as { __jump: J }).__jump;
+    j.manual(true);
+    j.restart();
+  });
   const s0 = await jump(page);
   expect(s0.pret.level).toBe(4);
   expect(s0.pret.ticks).toBe(s0.pret.total);
