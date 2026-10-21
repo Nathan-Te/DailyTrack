@@ -181,4 +181,17 @@ La PR du lot ([Nathan-Te/DailyTrack#98](https://github.com/Nathan-Te/DailyTrack/
   - **Questions ouvertes pour Nathan** : (1) **les tests du serveur de DailyTrack** vivent surtout dans `api.test.ts` et `classement.test.ts`, qui passent par le cœur du serveur (zones partagées) : un lot Track qui change `cdj.ts` et doit changer ces tests s'arrêtera — proposition : un `apps/api/test/cdj*.test.ts` propre à Track (comme `jump*.test.ts`), à créer par un lot de la plateforme ; (2) **`docs/orchestration.md` est mis dans la zone de Track** (c'est sa synthèse, comme `docs/jump/synthese.md` pour Jump, que la règle range dans `docs/jump/**`) ; (3) **`docs/plateforme/traductions.md` est une exception tolérée** : `npm run traductions` le régénère après tout changement de catalogue, et son test échoue s'il n'est pas à jour — sans l'exception, aucun lot de jeu ne pourrait changer une clé ; (4) la garde vérifie **le fichier**, pas **la ligne** (`budgets.md`, `applications.ts`) : la relecture vérifie qu'un lot de jeu n'y change que la sienne ; (5) l'étiquette n'est relue qu'au push suivant (ajouter `labeled` aux événements de la CI relancerait toute la CI à chaque étiquette).
 - **Les rouges de `main` (§ 10)** : `domaine.spec.ts` lit la hauteur d'une cible à l'unité de mise en page de Firefox près (1/60 px ; un vrai manque compte au moins 1/60 px) ; `portail-journee.spec.ts` vérifie WebGL **avant** d'attendre le jeu (Track et Jump) ; `accessibilite.spec.ts` (Track et Jump) audite **le dialogue ouvert seul** à « Comment jouer » et aux Réglages — l'écran dessous est audité seul à l'étape d'avant (aucune couverture perdue). `cuves.spec.ts` (instable, Chromium) : hors zone, non touché.
 - **Budgets remesurés** (`node scripts/budgets.mjs`) : Track JS + CSS 283 480 o (marge **620 o**, +6), anglais de Track 7 245 o, portail 22 812 o, Jump inchangé ; `budgets.md` à jour.
-- **CI de la PR de la retouche** : commit marqué `[ci complet]` (tout, trois navigateurs : les deux échecs de `main` sont des tests Firefox hors du sous-ensemble d'une PR) — runs et verdicts ci-dessous.
+- **CI de la PR de la retouche** ([Nathan-Te/DailyTrack#99](https://github.com/Nathan-Te/DailyTrack/pull/99)) : commit `ec4754a` marqué `[ci complet]` (tout, trois navigateurs : les deux échecs de `main` sont des tests Firefox hors du sous-ensemble d'une PR) — run [39607893430](https://github.com/Nathan-Te/DailyTrack/actions/runs/39607893430), mode `complet` : **vert**.
+
+| Job | Verdict | Durée |
+|---|---|---|
+| `zones` | ✔ — « PR de la plateforme (aucune étiquette de jeu ni jeu dans le nom de branche) : pas de garde de zones » | 7 s |
+| `unit (1/3)`, `(2/3)`, `(3/3)` → `test` (qui porte aussi `zones`) | ✔ | 2 min 51 s, 2 min 09 s, 2 min 49 s |
+| `scope` | ✔ (mode `complet`) | 9 s |
+| `api-image` | ✔ | 39 s |
+| `e2e-parts` Chromium 1 à 8 | ✔ | 5 min 27 s à 11 min 20 s par part |
+| `e2e-parts` **Firefox 1–2** (dont `domaine.spec.ts` et `portail-journee.spec.ts`, rouges sur `main`), **WebKit 1–2** | ✔ | 1 min 19 s à 3 min 11 s |
+| `e2e-parts` Jump Chromium 1 à 3, Jump Firefox, Jump WebKit (dont `accessibilite.spec.ts`, instable sur `main`) | ✔ | 1 min 46 s à 4 min 05 s |
+| `e2e` (verdict) | ✔ — **660 réussis, 0 instable, 0 échec**, 723 sautés (sans WebGL) | 21 s |
+
+Recette et aperçu de la PR : verts (runs 39607893475 et 39607893503 ; aperçu `playdujour-recette--pr-99-t4s8obmh.web.app`). En local (Chromium) : `domaine`, `portail-journee`, `accessibilite`, `langue`, `hud-compact` de Track (34/34) et `accessibilite` de Jump (4/4). `cuves.spec.ts` (instable Chromium sur `main`, hors zone) est passé au premier essai ici ; il reste à suivre côté Track.
