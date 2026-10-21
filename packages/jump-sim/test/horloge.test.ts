@@ -305,11 +305,15 @@ function goldenReplays(): GoldenV4["replays"] {
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
   const essais = demoAttempts(L.level, L.replay, 15, { attempts: 10, maxLives: 8 });
   essais.forEach((r, i) => codes.push({ name: `essai fictif ${i} (${r.end})`, code: encodeReplay(r.replay) }));
+  // Trois vies reprises au départ (chrono qui continue) et trois reprises sur un point de passage.
+  const taken = { start: 0, point: 0 };
   let lives = 0;
   for (const r of essais) {
     for (const life of replayAttempt(L.level, r.replay).lives) {
-      if (life.start.time === 0 || lives >= 6) continue;
-      const at = life.start.checkpoint < 0 ? "départ" : `point ${life.start.checkpoint}`;
+      const kind = life.start.checkpoint < 0 ? "start" : "point";
+      if (life.start.time === 0 || taken[kind] >= 3) continue;
+      taken[kind]++;
+      const at = kind === "start" ? "départ" : `point ${life.start.checkpoint}`;
       codes.push({ name: `vie ${lives} (reprise : ${at}, ${life.end})`, code: encodeReplay(lifeReplay(r.replay, life)) });
       lives++;
     }

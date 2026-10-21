@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { decodeReplay, fromRuns, moduleSolutions } from "@cdj/jump-sim";
 import { FIXED_NOW, PUBLISHED, TODAY, atInstant, servePublished } from "./clock";
 import { Fingers, hasWebGL, withPhone } from "./phone";
+import { dayId } from "./jours";
 
 // Lot 11 (partie jeu) : tapis roulants et glace. (a) un niveau du jour **usine** et un niveau **glace**, joués par leur rediffusion d'auteur
 // (`&solution`), finissent au temps de l'auteur, avec les événements de surface, les chevrons construits et aucune erreur de shader ;
@@ -270,7 +271,7 @@ test("un thème forcé est un essai : autre niveau (identifiant -t<thème>), arr
     await page.goto("/?debug&accueil=0");
     await ready(page);
     const reloaded = await J(page);
-    expect(reloaded.daily).toMatchObject({ mode: "jour", forcedTheme: false, id: `jour-${TODAY}-g${GENERATOR}` });
+    expect(reloaded.daily).toMatchObject({ mode: "jour", forcedTheme: false, id: dayId(TODAY) });
     expect(reloaded.history).toEqual([]);
     expect(reloaded.memory.best).toBeNull();
   });
@@ -284,7 +285,7 @@ test("?theme= avec le thème de la date donne le niveau ordinaire (pas un essai)
     await ready(page);
     const natural = (await J(page)).theme.ofDay;
     expect(await open(page, `/?theme=${natural}&debug`)).toBe(true);
-    expect((await J(page)).daily).toMatchObject({ mode: "jour", forcedTheme: false, id: `jour-${TODAY}-g${GENERATOR}` });
+    expect((await J(page)).daily).toMatchObject({ mode: "jour", forcedTheme: false, id: dayId(TODAY) });
     const other = natural === "foret" ? "nuit" : "foret";
     expect(await open(page, `${PUBLISHED}?theme=${other}&debug`)).toBe(true);
     expect((await J(page)).daily).toMatchObject({ mode: "essai", forcedTheme: true });

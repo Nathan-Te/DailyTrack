@@ -28,7 +28,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   const info = await jump(page);
   expect(info.phase).toBe("ready");
-  expect(info.simVersion).toBe(3);
+  expect(info.simVersion).toBe(4); // lot 15 : le code joue les niveaux v3 et v4 (horloge unique)
   expect(info.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
   const canvas = page.locator("canvas");
@@ -38,7 +38,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(box!.height).toBeGreaterThan(100);
 
   // Le coin affiche la version de la simulation et le jour du jeu (lot I5 : avec ?debug seulement ; sinon, petite, dans la pause).
-  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v3 · ${info.day}`);
+  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v4 · ${info.day}`);
 
   // Les pixels : le fond uni, les tuiles, le personnage et l'arrivée font au moins quatre couleurs, et le fond ne couvre pas tout.
   const pixels = await page.evaluate(() => (window as unknown as { __jump: JumpDebugView }).__jump.probe());
@@ -170,7 +170,7 @@ test("?debug&tune : un curseur par réglage, un réglage modifié marque la part
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
   const sliders = page.locator("#tune input[type=range]");
-  await expect(sliders).toHaveCount(36); // 7 de la caméra (lot 14) + 18 réglages du personnage + 2 du lot 2 (friable, ressort) + 3 de l'essai d'élan (lot 8b) + 3 des surfaces (lot 11 : tapis, glace) + 3 du vent (lot 13)
+  await expect(sliders).toHaveCount(37); // 7 de la caméra (lot 14) + 1 « Prêt… » (lot 15) + 18 réglages du personnage + 2 du lot 2 (friable, ressort) + 3 de l'essai d'élan (lot 8b) + 3 des surfaces (lot 11 : tapis, glace) + 3 du vent (lot 13)
   await expect(page.locator("#tuned")).toBeEmpty();
   await expect(page.locator("#debug")).toContainText("vitesse");
   const gravity = page.locator('#tune input[data-key="gravity"]');
