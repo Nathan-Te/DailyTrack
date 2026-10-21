@@ -11,6 +11,8 @@ import { dayId } from "./jours";
 const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 /** Lot 6 : entre deux morceaux, exactement un palier partagé de 2 colonnes (aucune colonne de raccord). */
 const PALIER_LENGTH = 2;
+/** Lot 16 : la zone de bifurcation devant une portion dure (`SLOW_ZONE_WIDTH` de jump-sim). */
+const SLOW_ZONE_WIDTH = 6;
 
 interface DailyDebug {
   date: string;
@@ -22,6 +24,8 @@ interface DailyDebug {
   refused: boolean;
   hash: string;
   pieces: { id: string; variant: number; col0: number; col1: number; start: number; end: number }[];
+  /** Lot 16 : les voies lentes (morceau contourné). */
+  slowRoutes: { piece: number }[];
   authorTicks: number;
   medals: { author: number; gold: number; silver: number; bronze: number };
   lastMedal: string | null;
@@ -131,7 +135,9 @@ test("?seed=…&solution finit au temps de l'auteur, en pas à pas, avec la méd
     // Raccords fluides (lot 6) : un palier partagé entre deux morceaux, et la solution suivante démarre au pas de sortie de la précédente.
     const pieces = start.daily!.pieces;
     for (let k = 1; k < pieces.length; k++) {
-      expect(pieces[k]!.col0 - pieces[k - 1]!.col1 - 1).toBe(PALIER_LENGTH);
+      // Lot 16 : devant une portion dure, la zone de bifurcation (cage et palier bis) s'ajoute au palier.
+      const zoned = start.daily!.slowRoutes.some((r) => r.piece === k);
+      expect(pieces[k]!.col0 - pieces[k - 1]!.col1 - 1).toBe(PALIER_LENGTH + (zoned ? SLOW_ZONE_WIDTH : 0));
       expect(pieces[k]!.start).toBe(pieces[k - 1]!.end);
     }
     const ticks = await until(page, ["finished"], 6000);

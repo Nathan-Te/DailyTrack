@@ -1874,7 +1874,9 @@ function dailyOverlay(): string {
   // Un morceau commence quand le centre passe le bord droit du palier qui le précède (sa première colonne) et va jusqu'au morceau suivant :
   // le palier partagé appartient au morceau d'avant (lot 7 : le décompte commençait une colonne trop tôt) ; avant le premier, le premier.
   let k = 0;
-  while (k + 1 < daily.pieces.length && col >= daily.pieces[k + 1]!.col0) k++;
+  // Lot 16 : une portion dure commence à sa zone de bifurcation (la course sous la cage fait partie de sa portion, comme `DailyPiece.start`).
+  const startCol = (j: number) => daily.slowRoutes.find((r) => r.piece === j)?.zone ?? daily.pieces[j]!.col0;
+  while (k + 1 < daily.pieces.length && col >= startCol(k + 1)) k++;
   const p = daily.pieces[k];
   const where = p ? `${k + 1}/${daily.pieces.length} ${p.id} v${p.variant} · exigence ${p.exigence}/5 · ${p.entry === "arret" ? "arrêt" : "élan"}` : "—";
   // Lot 15 : l'horloge de la section du morceau (v4 : phase de la section, période, position dans le cycle à cet instant).

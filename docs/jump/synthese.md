@@ -1,15 +1,15 @@
-# DailyJump — synthèse de l'état actuel (après le lot 15, le lot 3c et les lots P1, P2 et P3 de la plateforme)
+# DailyJump — synthèse de l'état actuel (après le lot 16, le lot 3c et les lots P1, P2 et P3 de la plateforme)
 
 Point de départ de toute session DailyJump : cet état d'ensemble tient en quelques pages ; **chaque point renvoie au README du lot qui l'a introduit** (`lots/lot-….md`, dans ce dossier) pour le détail. Les règles à respecter sont dans `packages/jump-sim/CLAUDE.md` et `apps/jump/CLAUDE.md` ; la vision est dans `seed-dailyjump.md` (ne pas modifier). **À mettre à jour par chaque lot de DailyJump** (une ligne par point qui change, avec le renvoi).
 
-Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaque niveau porte sa version) · `JUMP_GENERATOR_VERSION` **10** · `EXIGENCE_VERSION` **4** · `MODULE_FORMAT` **3** · premier niveau (`PREMIER_JOUR_JUMP`) : **16/10/2026**.
+Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaque niveau porte sa version) · `JUMP_GENERATOR_VERSION` **11** · `EXIGENCE_VERSION` **4** · `MODULE_FORMAT` **3** · premier niveau (`PREMIER_JOUR_JUMP`) : **16/10/2026**.
 
 ## 1. Architecture et paquets
 | Paquet | Rôle | Lot |
 |---|---|---|
 | `packages/core` (`@cdj/core`) | socle sans logique de jeu, **partagé** avec DailyTrack : PRNG, calendrier, codage d'octets (base64url, varint), test de pureté | [0](lots/lot-0-socle.md) |
 | `packages/clock` | jour de Paris (`parisDay`), **partagé**, jamais importé par une simulation | [0](lots/lot-0-socle.md) |
-| `packages/jump-sim` (`@cdj/jump-sim`) | simulation pure : personnage, niveaux, dangers, rediffusions, morceaux, générateur du jour, thèmes ; outils hors `src/` (`tools/` : solveur, mesures) | 1 à 13 |
+| `packages/jump-sim` (`@cdj/jump-sim`) | simulation pure : personnage, niveaux, dangers, rediffusions, morceaux, générateur du jour, thèmes, voies lentes ; outils hors `src/` (`tools/` : solveur, mesures, voies parasites) | 1 à 16 |
 | `apps/jump` (`@cdj/jump`) | le jeu (Vite + Three.js, caméra orthographique), lecture seule de la sim | 0 à 13 |
 - Publication sous `/jump/` du même site Pages (chemins relatifs, aperçus de branche en `…/b/<branche>/jump/`) ; stockage local préfixé `jump:` (`apercu:jump:` en aperçu) — [lot 0](lots/lot-0-socle.md).
 - CI : les e2e suivent les règles de DailyTrack (matrice, rapport fusionné, une relance, instables nommés), projets `jump-chromium|firefox|webkit`, `apps/jump/e2e/durees.json` — [lot 3c](lots/lot-3c-ci.md) ; depuis le lot R2 une PR qui ne touche pas DailyJump ne lance pas ses e2e (`docs/plateforme/lots/lot-R2-hygiene.md`).
@@ -50,10 +50,13 @@ Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaqu
 
 - **Horloge unique (lot 15, générateur g10, niveaux en sim v4)** : tout ce qui tourne vaut `f(t + phase)` ; **la phase de chaque section est calculée sur la référence** (`−` le pas où la preuve y entre, modulo la période de la section) : la référence passe **sans attente ajoutée**, au même temps qu'en v3 ; **validation toutes phases** : une variante à horloge n'est posée que si, reprise à l'arrêt sur son point de passage à 8 phases réparties sur sa période, elle a une solution jouable par un humain (`npm run phases:modules`, `PHASE_REFUSED`) ; **point de reprise sûr à toute phase** (`respawnProblems`). Les niveaux v3 (essai, morceaux seuls, jours figés jusqu'au 22/10) gardent leurs règles au bit près — [lot 15](lots/lot-15-horloge.md).
 
+- **Seconde voie (lot 16, g11)** : chaque portion notée 4 ou 5 (l'exigence du lot 8c) a une **voie lente** par le haut — zone de bifurcation (piste rapide sous une cage, palier bis), cage à corniches, galerie au-dessus du morceau, descente sur le palier suivant —, sans rien qui tourne, notée 2 au plus, d'un coût ≥ max(+50 %, +3 s) mesuré entre les deux solutions enregistrées, sans raccourci (vérifié case par case et par le solveur) ; or sous le temps de toute voie lente, bronze au-dessus de « toutes voies lentes » + 10 % ; voies parasites détectées par `voies:modules` (aucune fermée sur le catalogue actuel) ; repère d'entrée crème cerné d'encre, jamais rouge ; tirages validés 33 % (50 % avant), secours 0 — [lot 16](lots/lot-16-seconde-voie.md).
+
 ## 6. Jours figés et procédure
 - `apps/jump/public/levels/AAAA-MM-JJ.json` : niveau + preuve + versions, lu en premier par `loadDaily` et **rejoué** ; jamais réécrit — [lot 10](lots/lot-10-arrivee.md).
 - **Règle : figer avant de changer de version.** Dans un worktree sur `main` à jour : `npm run freeze:days -w @cdj/jump -- demain`, copier `public/levels/` dans la branche, commiter — [lot 10](lots/lot-10-arrivee.md), [11](lots/lot-11-themes-jouables.md). Test `apps/jump/test/figes.test.ts` : chaque jour figé se rejoue.
 - **Une seule règle des niveaux figés** (lot P1 de la plateforme) : `thawLevel` vit dans `jump-sim` (`src/frozen.ts`), le jeu et le serveur l'importent — [P1](../plateforme/lots/lot-P1-classement.md).
+- Lot 16 : le 23/10/2026 figé en g10 (v4) avec le code de `main` avant la fusion ; les jours régénérés en g11 commencent le 24/10 — [lot 16](lots/lot-16-seconde-voie.md).
 - Jours figés en g4 (16 et 17/10) contenant des passages que la règle actuelle refuserait — [lot 8c](lots/lot-8c-elan.md). Sort d'une archive sous une ancienne physique : question ouverte pour Nathan — [lot 10](lots/lot-10-arrivee.md).
 
 ## 7. Interface
@@ -74,7 +77,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaqu
 - Classement (lot P1) : `__jump.rank`, `__jump.rankWake()` (`?debug`) ; `npm run measure:jump-api -w @cdj/api` (coût des routes, joueur type) ; `npm run jump:seed -w @cdj/api` (jeu de données de `?api=demo`) — [P1](../plateforme/lots/lot-P1-classement.md).
 - `?debug` expose `window.__jump` (phase, player, params, attempt, daily, events, audio, blocks, wind, history…) ; `?debug&tune` panneau de réglages (jamais enregistré) ; `?debug&hitbox` — [lot 1](lots/lot-1-personnage.md), [2](lots/lot-2-dangers.md).
 - Scénarios : `essai` (défaut hors jour), `dangers`, `bac-a-sable`, `vent`, `?modules`, `?module=<id>&variante=<n>&entree=…`, `&solution`, `?carnage=demo`, `?watch=best`, `?seed=`, `?theme=` ; options listées dans `apps/jump/src/urlOptions.ts` — [lot 2](lots/lot-2-dangers.md), [3](lots/lot-3-rediffusion.md), [4](lots/lot-4-morceaux.md).
-- Mesures : `npm run measure:jump`, `measure:modules`, `repos:modules`, `measure:elan` (`-w @cdj/jump-sim`), `MESURES=1 npx vitest run …/mesures.test.ts`, `MESURE=1` (chargement, thèmes) et `CAPTURES=1` côté e2e (sautés en CI).
+- Mesures : `npm run measure:jump` (lot 16 : tableau « Voies lentes »), `measure:modules`, `repos:modules`, `measure:elan`, `voies:modules` (lot 16 : voies parasites) (`-w @cdj/jump-sim`), `MESURES=1 npx vitest run …/mesures.test.ts`, `MESURE=1` (chargement, thèmes) et `CAPTURES=1` côté e2e (sautés en CI).
 - Tests de jeu **en pas à pas** (`manual(true)` + `input`/`advance`), jamais sur une durée ; horloge maîtrisée par décalage de `Date` (`apps/jump/e2e/clock.ts`).
 
 ## 9. Décisions de Nathan (à ne pas remettre en cause sans lui)
@@ -87,6 +90,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaqu
 - Seed `seed-dailyjump.md` : jamais modifié par un agent ; DailyTrack et DailyJump ne s'importent pas — [lot 0](lots/lot-0-socle.md).
 
 ## 10. Dettes et questions ouvertes
+- Lot 16 : tirages validés à 33 % (à recalibrer au lot 17) ; joueurs fictifs v4 qui reprennent mal après une mort (démo) ; voies parasites : cas de la « remontée par la gauche » à retrouver — [lot 16](lots/lot-16-seconde-voie.md).
 - Archives sous ancienne physique (recommandation : listées, non rejouables) — [lot 10](lots/lot-10-arrivee.md).
 - Difficulté ressentie des morceaux de glace, de nuit et de vent : l'exigence (gigue des commandes) la mesure mal — [lot 11](lots/lot-11-themes-jouables.md), [12](lots/lot-12-nuit-neon.md), [13](lots/lot-13-foret.md).
 - Tests instables de DailyTrack qui ont bloqué des lots DailyJump (`salon.spec.ts:149`, `tactile.spec.ts`) : **réparés au lot R3** de la plateforme (`docs/orchestration.md` § 8, `docs/plateforme/lots/lot-R3-ci.md`). Depuis, une PR DailyJump ne lance plus les e2e de DailyTrack, même quand elle touche `apps/api/src/jump*.ts`. Une dette de test DailyJump se note ici (avec le nom du fichier du test) : c'est le lien qu'exige la quarantaine (`e2e/quarantaine.json`).
