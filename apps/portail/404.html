@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" data-jeton-content="dj-creme" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" data-icone-du-jour />
+    <title>Page introuvable · Page not found — Du Jour</title>
+    <!--
+      Lot I6 (plateforme) : la page 404 du site, servie par Firebase Hosting pour toute adresse inconnue (sauf /api/**, renvoyé au serveur).
+      Statique : aucun script, aucune ressource extérieure ; les deux langues sur la page (l'adresse inconnue ne dit pas la langue du joueur, et
+      sans script la langue choisie n'est pas lue). Cadre crème de la charte (écran Du Jour), logo, lien vers le portail. Ses chemins sont
+      ABSOLUS (`/assets/…`, `/`) : elle est servie à n'importe quelle profondeur (`/a/b/c`) ; apps/portail/vite.config.ts les réécrit.
+    -->
+    <link rel="stylesheet" href="./src/introuvable.css" />
+  </head>
+  <body>
+    <header class="introuvable-barre">
+      <a class="introuvable-logo" href="/" aria-label="Du Jour"><span class="dj-logo">DU JOUR</span></a>
+    </header>
+    <main class="introuvable">
+      <p class="introuvable-code" aria-hidden="true">404</p>
+      <h1>Cette page n'existe pas</h1>
+      <p>L'adresse est peut-être mal tapée, ou la page a déménagé. Les jeux du jour t'attendent sur le portail.</p>
+      <a class="dj-bouton dj-bouton--marque dj-bouton--large" href="/">Aller aux jeux du jour</a>
+      <section class="introuvable-en" lang="en">
+        <h2>This page doesn't exist</h2>
+        <p>The address may be mistyped, or the page has moved. Today's games are waiting for you on the portal.</p>
+        <a class="dj-bouton dj-bouton--secondaire dj-bouton--large" href="/">Go to today's games</a>
+      </section>
+    </main>
+  </body>
+</html>

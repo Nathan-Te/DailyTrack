@@ -10,4 +10,5 @@ export * from "./catalogue";
 export * from "./icones";
 export * from "./composants";
 export * from "./cadre";
+export * from "./mentions";
 export { el, svg } from "./dom";

@@ -48,7 +48,6 @@ describe("un pseudo appartient à son premier propriétaire", () => {
       const r = await submit(t, n, name, slow.code);
       expect(r.status, name).toBe(409);
       expect(r.body.error).toBe("name_taken");
-      expect(r.body.message).toBe("Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.");
       expect(r.body.suggestions.length).toBeGreaterThan(0);
     }
     expect(await t.db.all("SELECT id FROM players")).toHaveLength(1); // aucun joueur créé par une course refusée
@@ -370,7 +369,6 @@ describe("« Changer mon code »", () => {
     for (const r of revoked) {
       expect(r.status).toBe(410);
       expect(r.body.error).toBe("code_revoked");
-      expect(r.body.message).toMatch(/n'est plus valide/);
     }
     expect(await t.db.first("SELECT id FROM players WHERE id = ?", [OLD])).toBeNull(); // pas de joueur recréé par l'ancien code
     // Les lectures publiques ne trahissent rien : l'ancien code n'est plus « moi ».

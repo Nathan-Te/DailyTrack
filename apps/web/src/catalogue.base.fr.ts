@@ -8,6 +8,10 @@
 export const fr = {
   "page.titre": "Track — Du Jour",
   "page.description": "Un circuit court par jour, le même pour tout le monde : une minute dans le navigateur, un fantôme à battre, un résultat à partager.",
+  // Lot I6 : l'aperçu quand on colle le lien de Track (Open Graph). Ton de Track (charte § 7) : sec, les chiffres d'abord.
+  "apercu.titre": "Track — Du Jour",
+  "apercu.description": "Un circuit par jour, le même pour tous. Un tour, un chrono, le fantôme du premier à battre.",
+  "apercu.image": "L'étiquette de Track : asphalte, bandes de livrée orange, TRACK en capitales.",
   "page.chargement": "Chargement…",
   "page.sansJs": "Track a besoin de JavaScript.",
   // Thèmes du jour (codes de @cdj/sim : THEME_NAMES) ; les mêmes noms que le portail (`portail.theme.cdj.*`)

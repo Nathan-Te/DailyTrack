@@ -6,6 +6,9 @@ import type { fr } from "./catalogue.base.fr";
 export const en: Catalogues<typeof fr>["en"] = {
   "page.titre": "Track — Du Jour",
   "page.description": "One short track a day, the same for everyone: a minute in your browser, a ghost to beat, a result to share.",
+  "apercu.titre": "Track — Du Jour",
+  "apercu.description": "One circuit a day, the same for everyone. One lap, one time, the leader's ghost to beat.",
+  "apercu.image": "The Track label: asphalt, orange livery stripes, TRACK in capitals.",
   "page.chargement": "Loading…",
   "page.sansJs": "Track needs JavaScript.",
   "theme.stade": "Stadium",

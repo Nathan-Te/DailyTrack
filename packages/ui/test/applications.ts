@@ -33,7 +33,10 @@ export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packa
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
-  "apps/portail/mentions-legales": "page statique en français, traduite au lot I6",
+  "apps/portail/mentions-legales": "page statique sans script, en français (elle fait foi) : son texte ne passe pas par un catalogue",
+  "apps/portail/legal": "lot I6 : la même page en anglais, statique sans script (mentions.test.ts vérifie qu'elle suit la française)",
+  "apps/portail/404.html": "lot I6 : la page 404, statique sans script, les deux langues sur la page (la langue du joueur n'y est pas lue)",
+  "apps/portail/partage": "lot I6 : la source des images de partage (outil de construction, jamais servie) : seulement les noms de la marque",
   // Lot I4 : les outils internes de Nathan restent en français (hors du périmètre de l'anglais, charte et lot I4 § 1).
   "apps/web/src/tune.ts": "outil de réglage de la conduite (`?debug&tune`) : outil interne, en français",
   "apps/web/src/admin.ts": "page d'administration (`/admin/`) : outil interne, en français",

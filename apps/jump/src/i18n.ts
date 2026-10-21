@@ -1,6 +1,6 @@
 import { TICK_RATE } from "@cdj/jump-sim";
 import { ecrireLangue, lireLangue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, formatDate, formatDateCourte, formatDecompte, formatNombre, formatNumeroJour, formatRang, formatTemps, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
+import { CATALOGUE_COMMUN, cheminMentions, formatDate, formatDateCourte, formatDecompte, formatNombre, formatNumeroJour, formatRang, formatTemps, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
 import { CATALOGUE_FR } from "./catalogue.fr";
 import { gameStorage } from "./storage";
 
@@ -117,6 +117,8 @@ export function appliquerTextes(racine: ParentNode | null = typeof document === 
       e.setAttribute(nom.slice("data-t-".length), t(e.getAttribute(nom)!, parametresDe(e)));
     }
   }
+  // Lot I6 : les liens « Mentions légales » (`data-mentions`) ouvrent la page de la langue choisie (`/mentions-legales/` ou `/legal/`).
+  for (const e of racine.querySelectorAll<HTMLElement>("[data-mentions]")) e.setAttribute("href", cheminMentions(langue, "../"));
 }
 
 function parametresDe(e: HTMLElement): Parametres | undefined {
@@ -142,6 +144,13 @@ export function lier<E extends HTMLElement>(e: E, cle: string, params?: Parametr
   return e;
 }
 
+
+/** Lot I6 : un lien vers les mentions légales de la langue choisie (`../mentions-legales/` ou `../legal/`), qui suit les changements de langue. Rend l'élément. */
+export function lierMentions<E extends HTMLElement>(e: E): E {
+  e.dataset.mentions = "";
+  e.setAttribute("href", cheminMentions(langue, "../"));
+  return e;
+}
 // --- Formats du socle dans la langue courante : plus aucun formatage de nombre à la main ------------------------------------------------------
 /** Un temps en millisecondes : `31,402 s` / `31.402 s` ; `1:02,345` au-delà d'une minute. */
 export const fTemps = (ms: number): string => formatTemps(ms, langue);

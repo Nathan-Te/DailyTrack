@@ -1,7 +1,7 @@
 // Lot I1 (plateforme) : les codes d'erreur du serveur, **liste unique**. Toute réponse d'erreur du serveur a la forme
-// `{ "error": "<code>", "message": "<texte en français>", …détails }` : `error` est un code de cette liste, rendu avec le statut HTTP de la liste
-// (imposé par le typage de `HttpError`, `errors.ts` : un mauvais statut fait échouer `tsc`), et `message` reste tel qu'il était tant que les
-// jeux l'affichent. Le client traduit chaque code sous la clé `erreur.<code>` du catalogue commun (`packages/ui`, français et anglais).
+// `{ "error": "<code>", …détails }` : `error` est un code de cette liste, rendu avec le statut HTTP de la liste (imposé par le typage de
+// `HttpError`, `errors.ts` : un mauvais statut fait échouer `tsc`). Le client traduit chaque code sous la clé `erreur.<code>` du catalogue
+// commun (`packages/ui`, français et anglais). Lot I6 : plus de champ `message` (aucun client ne le lisait plus depuis les lots I4 et I5).
 //
 // Règle : une nouvelle erreur prend un code de cette liste (ou en ajoute un ici, avec son statut et son sens), le décrit dans
 // `docs/plateforme/codes-erreur.md` et l'ajoute au catalogue commun. Tests : `apps/api/test/codesErreur.test.ts` (parcours des routes,
@@ -11,7 +11,7 @@
 export const CODES_ERREUR = {
   // --- Commun à toutes les routes ---------------------------------------------------------------------------
   not_found: { status: 404, sens: "Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous /api/jump/)." },
-  method_not_allowed: { status: 405, sens: "La route existe, mais pas pour cette méthode HTTP (le message dit laquelle est attendue)." },
+  method_not_allowed: { status: 405, sens: "La route existe, mais pas pour cette méthode HTTP." },
   invalid_json: { status: 400, sens: "Le corps de la requête n'est pas un objet JSON." },
   too_large: { status: 413, sens: "Le corps de la requête dépasse la taille permise (MAX_BODY_BYTES), annoncée ou lue." },
   rate_limited: { status: 429, sens: "Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (en-tête Retry-After)." },
@@ -78,10 +78,10 @@ export function estCodeErreur(x: unknown): x is CodeErreur {
   return typeof x === "string" && Object.hasOwn(CODES_ERREUR, x);
 }
 
-/** Le corps d'une réponse d'erreur construite hors de `HttpError` (500 inattendue, santé) : `{ error, message }`. */
-export function corpsErreur<C extends CodeErreur>(code: C, message: string): { error: C; message: string } {
-  return { error: code, message };
+/** Le corps d'une réponse d'erreur construite hors de `HttpError` (500 inattendue, santé) : `{ error }` (lot I6 : sans `message`). */
+export function corpsErreur<C extends CodeErreur>(code: C): { error: C } {
+  return { error: code };
 }
 
 /** Le corps d'une erreur inattendue, le même pour `api.ts` et `node-server.ts` (statut : `CODES_ERREUR.internal.status`). */
-export const ERREUR_INTERNE = corpsErreur("internal", "Erreur interne");
+export const ERREUR_INTERNE = corpsErreur("internal");

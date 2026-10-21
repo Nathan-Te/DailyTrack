@@ -9,7 +9,7 @@ import { el, row, segmented, slider, type Control } from "./dom";
 import { withVolume, type AudioSettings } from "./audioLogic";
 import { GAMEPAD_CONTROLS, KEYBOARD_CONTROLS } from "./howto";
 import { controlsTable } from "./howtoUi";
-import { langueCourante, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
+import { langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import { profilHref } from "./profilLien";
 import { DEFAULT_SETTINGS, GHOST_CHOICES, GHOST_KEY, QUALITY_CHOICES, QUALITY_KEY, SPEED_FEEL_CHOICES, SPEED_FEEL_KEY, type GameSettings, type QualityChoice } from "./settings";
 import { touchSettingsControls } from "./touchUi";
@@ -194,7 +194,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     profil.setAttribute("href", profilHref(location.origin, location.pathname));
     const mentions = el("a", "reglages__lien", t("reglages.mentions"));
     mentions.id = "settings-mentions";
-    mentions.setAttribute("href", "../mentions-legales/");
+    lierMentions(mentions); // lot I6 : la page de la langue choisie
     for (const a of [profil, mentions]) a.append(icone("chevron", { taille: 16 }));
     liens.append(profil, mentions);
     const reset = bouton({

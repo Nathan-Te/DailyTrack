@@ -66,7 +66,7 @@ describe(`/api/jump/day (${TEST_DB})`, () => {
 
   it("refuse les dates futures (comme le jeu publié), celles d'avant le premier niveau et les dates illisibles", async () => {
     const t = await jumpApi(noonOf(daysFromCivil(2026, 10, 19)));
-    expect((await t.call("GET", "/api/jump/day/2026-10-20")).body).toEqual({ error: "unknown_day", message: "Ce niveau n'est pas encore sorti" });
+    expect((await t.call("GET", "/api/jump/day/2026-10-20")).body).toEqual({ error: "unknown_day" });
     expect((await t.call("GET", "/api/jump/day/2026-10-20")).status).toBe(404);
     expect((await t.call("GET", `/api/jump/day/${formatDay(PREMIER_JOUR_JUMP - 1)}`)).status).toBe(404);
     expect((await t.call("GET", "/api/jump/day/hier")).status).toBe(400);

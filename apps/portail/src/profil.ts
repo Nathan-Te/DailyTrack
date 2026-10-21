@@ -42,6 +42,7 @@ import {
   medaille,
   traducteur,
   tuile,
+  cheminMentions,
 } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { baseApi } from "./jour";
@@ -235,7 +236,7 @@ function rendre(): void {
     el(
       "footer",
       { classe: "portail-pied" },
-      el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: "../mentions-legales/", hreflang: langue === "fr" ? null : "fr" }, texte: t.t("portail.mentions") }),
+      el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
     ),
   ];
   racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));

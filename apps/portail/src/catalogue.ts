@@ -9,6 +9,10 @@ import type { Catalogues } from "@cdj/ui";
 const fr = {
   "portail.titre": "Du Jour",
   "portail.description": "Du Jour : un jeu par jour, le même pour tous. Track et Jump.",
+  // Lot I6 : l'aperçu quand on colle le lien du portail (Open Graph : titre, description, texte de l'image). Ton de la charte § 7 (Du Jour : chaleureux, court).
+  "apercu.titre": "Du Jour — les jeux du jour",
+  "apercu.description": "Chaque jour, un circuit Track et un niveau Jump, les mêmes pour tout le monde. Joue, compare, partage ta journée.",
+  "apercu.image": "Le logo DU JOUR et deux cartouches posées sur l'étagère : Track et Jump.",
   "portail.jeux.titre": "Les jeux du jour",
   "portail.track.accroche": "Un circuit par jour, le même pour tous.",
   "portail.jump.accroche": "Un niveau de plateforme par jour, le même pour tous.",
@@ -125,13 +129,16 @@ const fr = {
 const en: Catalogues<typeof fr>["en"] = {
   "portail.titre": "Du Jour",
   "portail.description": "Du Jour: one game a day, the same for everyone. Track and Jump.",
+  "apercu.titre": "Du Jour — today's games",
+  "apercu.description": "Every day, one Track circuit and one Jump level, the same for everyone. Play, compare, share your day.",
+  "apercu.image": "The DU JOUR logo and two cartridges on the shelf: Track and Jump.",
   "portail.jeux.titre": "Today's games",
   "portail.track.accroche": "One track a day, the same for everyone.",
   "portail.jump.accroche": "One platform level a day, the same for everyone.",
   "portail.jouer": "Play",
   "portail.jouer.aria": "Play {jeu}",
   "portail.pied": "A new day at midnight, Paris time. Your profile is the same in every game.",
-  "portail.mentions": "Legal notice and privacy (in French)",
+  "portail.mentions": "Legal notice and privacy",
   "portail.compte.legende": "Next games in",
   "portail.avancement": { one: "{n} of {total} done", other: "{n} of {total} done" },
   "portail.numeroTheme": "{numero} · {theme}",

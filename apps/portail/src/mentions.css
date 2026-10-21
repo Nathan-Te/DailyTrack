@@ -17,6 +17,21 @@ body {
   padding-left: var(--dj-marge);
   padding-right: var(--dj-marge);
 }
+/* Lot I6 : le lien vers l'autre langue, à droite de la barre (cible de 44 px). */
+.mentions-langue {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 0 var(--dj-espace-2);
+  color: var(--dj-encre);
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+  text-decoration-thickness: var(--dj-trait);
+  text-underline-offset: 3px;
+}
+.mentions-langue:hover {
+  background: var(--dj-creme-2);
+}
 .mentions {
   max-width: 760px;
   margin: 0 auto;
@@ -58,6 +73,13 @@ body {
 }
 .mentions a:hover {
   background: var(--dj-creme-2);
+}
+/* Lot I6 : « La version française fait foi » (en tête des deux pages). */
+.mentions .reference {
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  padding: var(--dj-espace-3) var(--dj-espace-5);
 }
 .mentions .doux,
 .mentions .duree {

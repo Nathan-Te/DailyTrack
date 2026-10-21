@@ -5,6 +5,9 @@ import type { fr } from "./catalogue.base.fr";
 export const en: Catalogues<typeof fr>["en"] = {
   "page.titre": "Jump — Du Jour",
   "page.description": "Jump: one short, brutal platform level a day, the same for everyone. You will die. A lot.",
+  "apercu.titre": "Jump — Du Jour",
+  "apercu.description": "One level a day, the same for everyone. The saws are already spinning. You will die. A lot.",
+  "apercu.image": "The yellow Jump label: JUMP, the little square character and a saw.",
   "page.preparation": "Building the level…",
   "page.sansWebgl": "WebGL isn't available in this browser: Jump can't be shown.",
   "theme.foret": "Forest",
