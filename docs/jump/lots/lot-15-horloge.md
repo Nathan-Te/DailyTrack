@@ -34,4 +34,55 @@ Trois mécanismes, tous dans `packages/jump-sim/src/attempt.ts` :
 
 **Validation toutes phases** (`npm run phases:modules -w @cdj/jump-sim`, `tools/phases.ts`) — pour chaque variante utilisable dont l'horloge tourne : le morceau seul passé en v4 à **8 phases réparties sur sa période** (`phasesOf`), repris **à l'arrêt** sur son palier d'entrée (= la reprise sur son point de passage), recherche (attendre est permis), durcissement, repli robuste, puis la règle du lot 8c (gigue ±3 ≥ 50 %, appuis du lot 11). `modules/phases.json` garde verdicts et solutions ; `src/phases.ts` (`PHASE_REFUSED`) liste les variantes refusées, que le générateur v4 ne pose jamais. La règle n'est pas relâchée.
 
-<!-- RÉSULTATS -->
+## 3. Validation toutes phases : morceaux corrigés ou écartés
+- **116 variantes** utilisables ont une horloge (scies mobiles, clignotants, rafales) ; **928 reprises** essayées (8 phases par période ; toutes si la période est plus courte). Calcul : ≈ 1 h sur 4 fils (`phases:modules`), puis une passe de 2,5 min sur les refusées avec le candidat ci-dessous.
+- **Premier passage : 37 variantes refusées.** La recherche seule trouvait des solutions trop justes à certaines phases (attendre au bon moment sur le palier n'émergeait pas du faisceau). **Correction de l'outil, pas de la règle** : premier candidat de chaque phase = attendre sur le palier jusqu'à retrouver la phase où la solution « arrêt » stockée rencontrait l'horloge, puis la jouer ; la gigue ±3 est mesurée sur toute la suite (l'instant du départ compris, ce que la v3 ne mesurait pas : son horloge partait avec le joueur). 35 variantes passent alors.
+- **Écartées (2)**, la règle n'est pas relâchée ; le générateur v4 ne les pose plus (`PHASE_REFUSED`) :
+
+| variante | phases sans solution jouable (sur la période) | ce qui casse |
+|---|---|---|
+| `cheminee-scie` v3 | 0 et 75 (sur 600) | la gigue ±3 tombe sous 50 % : la scie de la cheminée passe juste quand le saut mural doit partir |
+| `nuit-opposition` v4 | 187 et 225 (sur 300) | deux groupes de clignotants en opposition : à ces phases, aucune attente ne laisse une fenêtre assez large |
+
+Aucune n'a été corrigée par un mutateur dans ce lot (proposition : `cheminee-scie` v3 avec un cycle plus lent, `nuit-opposition` v4 avec le profil `lent` ; à résoudre et revalider avec `solve:modules -- --only=…` puis `phases:modules -- --only=…`).
+- **À regarder (décision pour Nathan)** : `scie-sol` v3 a deux scies aux cycles peu compatibles (période commune 6 600 pas = 55 s) ; à la phase 1 650, la seule solution jouable attend ≈ 55 s sur le palier. Elle passe la règle, mais un joueur ne le fera pas : la corriger (cycles commensurables) ou l'écarter. Les autres reprises sortent en moins de 12 s (médiane 3,3 s).
+- **Points de reprise** : la règle « sûr à toute phase » (`respawnProblems`) n'a refusé aucun tirage sur 120 dates (le palier standard du lot 6 l'assurait déjà pour les scies ; elle est maintenant écrite et vérifiée).
+
+## 4. Le générateur g10 mesuré (`npm run measure:jump`, 120 dates)
+- **Secours : 0** ; tirages validés **50,3 %** (64,6 % des composés) ; temps de l'auteur 28,03–31,87 s, moyenne 29,5 s. Par thème : forêt 48,4 %, usine 37,5 % (35,5 % au lot 13), glace 58,0 %, nuit 49,1 %, néon 56,5 % — secours 0 partout, thème forcé compris.
+- Avant le candidat « attendre puis rejouer », les 37 refus vidaient l'usine (`tapis-relais` refusé : 6,9 % de tirages validés, **7 jours de secours sur 16**) : c'est ce qui a fait corriger l'outil plutôt que les seuils.
+
+## 5. Jours régénérés et temps de référence avant / après
+**Aucun jour public n'est touché.** Le 22/10/2026 a été **figé avec le code v3** (`freeze:days -- demain` avant tout changement, g9) ; les jours figés du 16 au 22/10 restent en v3 et se rejouent tels quels (jeu, serveur, fantômes, vies). Il n'y avait aucun jour figé au-delà : **les jours régénérés sont ceux qui seront générés par g10 à partir de J+2** (la PR date du 21/10/2026) ; deux semaines sont testées (`horloge.test.ts` : référence sans attente, toutes phases rejouées dans le niveau, points de reprise sûrs) :
+
+| date | thème | identifiant | auteur v3 (g9) | auteur v4 (g10) | écart (pas) | morceaux | sections qui tournent |
+|---|---|---|---|---|---|---|---|
+| 2026-10-23 | usine | `jour-2026-10-23-g10` | 28,767 s | 28,758 s | −1 | autres (tirage) | 4 / 10 |
+| 2026-10-24 | forêt | `jour-2026-10-24-g10` | 29,858 s | 29,817 s | −5 | autres (tirage) | 3 / 12 |
+| 2026-10-25 | nuit | `jour-2026-10-25-g10` | 29,458 s | 29,508 s | +6 | autres (`nuit-opposition` v4 refusée) | 6 / 12 |
+| 2026-10-26 | glace | `jour-2026-10-26-g10` | 29,283 s | 29,425 s | +17 | autres (tirage) | 1 / 12 |
+| 2026-10-27 | forêt | `jour-2026-10-27-g10` | 29,633 s | 29,633 s | 0 | mêmes | 6 / 12 |
+| 2026-10-28 | néon | `jour-2026-10-28-g10` | 30,925 s | 30,925 s | 0 | mêmes | 3 / 11 |
+| 2026-10-29 | forêt | `jour-2026-10-29-g10` | 30,325 s | 30,325 s | 0 | mêmes | 5 / 11 |
+| 2026-10-30 | néon | `jour-2026-10-30-g10` | 28,708 s | 29,417 s | +85 | autres (tirage) | 4 / 11 |
+| 2026-10-31 | nuit | `jour-2026-10-31-g10` | 29,092 s | 29,208 s | +14 | autres (tirage) | 7 / 12 |
+| 2026-11-01 | forêt | `jour-2026-11-01-g10` | 29,225 s | 29,225 s | 0 | mêmes | 4 / 11 |
+| 2026-11-02 | glace | `jour-2026-11-02-g10` | 30,100 s | 29,083 s | −122 | autres (`cheminee-scie` v3 refusée) | 4 / 10 |
+| 2026-11-03 | forêt | `jour-2026-11-03-g10` | 29,917 s | 29,917 s | 0 | mêmes | 4 / 10 |
+| 2026-11-04 | néon | `jour-2026-11-04-g10` | 29,483 s | 28,825 s | −79 | autres (tirage) | 3 / 9 |
+| 2026-11-05 | glace | `jour-2026-11-05-g10` | 30,042 s | 30,042 s | 0 | mêmes | 3 / 12 |
+
+« autres (tirage) » : le catalogue v4 sans les 2 variantes refusées change les listes où le tirage pioche, donc parfois la suite tirée, même sans variante refusée dans la suite v3. **À composition égale, le temps de la référence est exactement le même** (la référence passe sans attendre : mêmes commandes, même temps, vérifié pour chaque niveau g10 par le générateur). Écarts sur les 14 jours : de −1,02 s à +0,71 s, tous dans la cible 25–40 s. **Calibration des médailles (lot 17) non touchée** : les médailles suivent toujours le temps de l'auteur (×1,10 / ×1,30 / ×1,60).
+
+## 6. Vérifié / non vérifié
+- **Vérifié** : `npm test` (projet sqlite complet : 2 385 tests ; tests DailyJump de l'API aussi sur libSQL) ; `npm run typecheck` ; golden v3 **identiques** (`golden.json`, `replay-golden.json`, `essai-solution.json`, `dangers-solution.json`, `daily-golden.json` rendu par `dailyLevel(jour, thème, 3)`) ; golden v4 ajoutés (`daily-golden-v4.json`, `replay-golden-v4.json` : preuve, essais fictifs, vies reprises au départ et aux points) ; rediffusions v3 côté jeu (mémoire, fantôme du premier, carnage de tout le monde, jours figés) et côté serveur (`apps/api/test/jump.test.ts` : la preuve v3 du 22/10 se classe, ses vies v3 sont rejouées, une rediffusion marquée v4 y est refusée, et l'inverse le lendemain) ; e2e Jump dans Chromium en local (dont `horloge.spec.ts` : les dangers bougent pendant le « Prêt… », départ sans commande, pause qui fige tout, jour v3 qui attend) ; budget de poids (`poids.spec.ts`, −7 923 o) ; zones de la PR (`zones-jeu.mjs`).
+- **Non vérifié en local** : Firefox et WebKit (`replay.spec.ts` compare maintenant aussi les empreintes v4 ; la CI le fait) ; la fluidité ressentie du « Prêt… » sur téléphone.
+
+## 7. Décisions laissées à Nathan
+1. **Mort avant le premier point de passage** : en v4 on reprend **au départ, chrono qui continue** (même essai) ; seul « recommencer » remet le chrono à 0 (avec un nouveau « Prêt… »). C'est la conséquence directe de « une horloge qui ne s'arrête jamais » ; l'ancien « nouvel essai à zéro » aurait remis les dangers à leur phase de départ.
+2. **Friables et blocs alternés** sont remis en état à la reprise (ce ne sont pas des horloges) : à confirmer.
+3. **Carnage** : les dangers dessinés sont ceux du héros ; une vie reprise plus tard (son chrono à elle) voit ses dangers ailleurs. Le léger décalage accepté au lot 3 est plus visible en v4 ; piste : faire partir chaque vie au chrono de son départ.
+4. `scie-sol` v3 (attente de 55 s à une phase) et les 2 variantes écartées (§ 3).
+5. Durée du « Prêt… » : 1 s (`?debug&tune`, section Caméra).
+
+<!-- SCÉNARIO -->
