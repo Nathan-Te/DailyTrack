@@ -146,7 +146,9 @@ describe("mémoire du jour", () => {
   it("lot 4 : une mémoire laissée par la version 2 (points de passage touchés) est purgée au chargement, sans bruit", () => {
     // Ce que la version 2 a réellement écrit : la solution de l'essai codée avec `JUMP_SIM_VERSION` = 2, une vie, une mort.
     const V2_SOLUTION = "AQIFZXNzYWkAygU-6gQewgJm4gEmogNGwgMgQUIhIOIChgGiBSbiAiZCJEVGJSQiZUQhZkQiJSQiISIhIKYBqgOeAeoDHuoCfsoEXsoFXqIEJoIDJoIEpgGiAyaqBb4BogImogMgCh4kogNAKT2GASJEJqoDPiAhIOIBQCIg6gEewgKGAcoDPsIIICIgogUgQSDqBD6qAz6qBB7qAj6qAz66Aw";
-    expect(JUMP_SIM_VERSION).toBe(3);
+    // Lot 15 : le code est en v4, le niveau d'essai reste en v3 (sa version est celle de la mémoire).
+    expect(JUMP_SIM_VERSION).toBe(4);
+    expect(ESSAI_LEVEL.simVersion).toBe(3);
     expect(decodeReplay(V2_SOLUTION).simVersion).toBe(2);
     const store = new MemStore();
     const fresh = memoryOf(store);
@@ -235,7 +237,7 @@ describe("mémoire du jour", () => {
     const m = memoryOf(store);
     m.recordEssai(DEMO[0]!, false);
     const lives = JSON.parse(store.getItem("jump:vies:essai")!) as { code: string; essai: number }[];
-    const old = { ...decodeReplay(lives[0]!.code), simVersion: JUMP_SIM_VERSION - 1 };
+    const old = { ...decodeReplay(lives[0]!.code), simVersion: ESSAI_LEVEL.simVersion - 1 };
     lives.push({ code: encodeReplay(old), essai: 99 }, { code: "n'importe quoi", essai: 98 });
     store.setItem("jump:vies:essai", JSON.stringify(lives));
     expect(memoryOf(store).lives).toHaveLength(lives.length - 2);

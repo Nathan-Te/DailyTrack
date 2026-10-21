@@ -51,7 +51,9 @@ export function checkFirstGhost(data: unknown, level: Level, levelId: string): {
   if (typeof data !== "object" || data === null) return { ok: false, reason: "réponse illisible" };
   const d = data as Partial<FirstGhostData>;
   if (typeof d.replay !== "string" || typeof d.name !== "string") return { ok: false, reason: "réponse incomplète" };
-  if (d.simVersion !== JUMP_SIM_VERSION || d.generatorVersion !== JUMP_GENERATOR_VERSION) return { ok: false, reason: "autre version du jeu" };
+  // Lot 15 : un serveur plus récent que le jeu est « une autre version » ; sinon c'est la rediffusion qui compte : la version de son niveau
+  // (un jour figé en v3 garde ses fantômes v3), puis le rejeu.
+  if (typeof d.simVersion !== "number" || typeof d.generatorVersion !== "number" || d.simVersion > JUMP_SIM_VERSION || d.generatorVersion > JUMP_GENERATOR_VERSION) return { ok: false, reason: "autre version du jeu" };
   if (d.levelId !== levelId) return { ok: false, reason: "autre niveau" };
   let replay: JumpReplay;
   try {
@@ -59,7 +61,7 @@ export function checkFirstGhost(data: unknown, level: Level, levelId: string): {
   } catch (e) {
     return { ok: false, reason: e instanceof JumpReplayError ? e.message : "rediffusion illisible" };
   }
-  if (replay.simVersion !== JUMP_SIM_VERSION) return { ok: false, reason: "rediffusion d'une autre version" };
+  if (replay.simVersion !== level.simVersion) return { ok: false, reason: "rediffusion d'une autre version" };
   if (replay.levelId !== levelId) return { ok: false, reason: "rediffusion d'un autre niveau" };
   if (replay.start.checkpoint !== -1 || replay.start.time !== 0) return { ok: false, reason: "la rediffusion ne part pas du départ" };
   let r;

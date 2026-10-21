@@ -5,6 +5,7 @@ import {
   WIND_LEFT,
   WIND_RIGHT,
   WIND_UP,
+  cycleMod,
   windActive,
   windPhase,
   windZoneOf,
@@ -49,7 +50,7 @@ export const WIND_ARROW_ON = 0.8;
 
 /** Pas restants avant que la rafale change d'état à la phase `phase` (au moins 1), et son état. Même calcul que `windBlows` de la simulation. */
 export function gustTiming(g: Gust, phase: number): { blowing: boolean; left: number } {
-  const q = (phase + g.shift) % g.cycle;
+  const q = cycleMod(phase + g.shift, g.cycle); // lot 15 : phase négative avant le départ
   const blowing = q < g.active;
   return { blowing, left: blowing ? g.active - q : g.cycle - q };
 }

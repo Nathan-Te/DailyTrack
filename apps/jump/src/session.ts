@@ -3,10 +3,13 @@ import {
   ATTEMPT_FINISHED,
   ATTEMPT_READY,
   ATTEMPT_RUNNING,
+  INPUT_JUMP,
   TICK_RATE,
   AttemptRecorder,
   initialAttempt,
   isDefaultJumpParams,
+  readyAttempt,
+  singleClock,
   stepAttempt,
   type AttemptState,
   type JumpParams,
@@ -19,6 +22,16 @@ import {
 // « Recommencer » est un événement de la session, pas une commande de la simulation, et **ce n'est pas une mort**.
 // Lot 3 : chaque essai est enregistré (`AttemptRecorder`) ; un essai clos (arrivée, mort sans point de passage, « recommencer ») attend
 // dans `takeEssai()` que le jeu le confie à la mémoire du jour, qui le **rejoue** avant d'en garder quoi que ce soit.
+// Lot 15 : dans un niveau à une seule horloge (v4), le départ est **à heure fixe** : la session compte d'abord le « Prêt… » (`countdown`, en
+// pas, `START.pret` secondes), pendant lequel rien n'est joué ni enregistré mais où l'état montré est celui du chrono négatif (`readyAttempt` :
+// les dangers tournent déjà) ; au dernier pas du « Prêt… », le chrono part, que le joueur bouge ou non. La pause (aucun pas) fige tout.
+
+/** Lot 15 : durée du « Prêt… » avant le départ d'un niveau à une seule horloge, en secondes (réglable dans `?debug&tune`, jamais `tuned`). */
+export const START_DEFAULTS = { pret: 1 } as const;
+export const START: { pret: number } = { ...START_DEFAULTS };
+
+/** Pas du « Prêt… » (au moins un). */
+export const readyTicks = (): number => Math.max(1, Math.round(START.pret * TICK_RATE));
 
 /** Ce qui vient d'arriver pendant un pas (l'affichage s'en sert : éclatement, tremblement, bandeau). */
 export type SessionEvent =
@@ -27,7 +40,9 @@ export type SessionEvent =
   | { kind: "respawn"; checkpoint: boolean }
   /** Point de passage atteint (lot 2b). */
   | { kind: "checkpoint"; index: number }
-  | { kind: "finish"; time: number; best: boolean };
+  | { kind: "finish"; time: number; best: boolean }
+  /** Lot 15 : la fin du « Prêt… » : le chrono part. */
+  | { kind: "go" };
 
 export interface LastDeath {
   cause: number;
@@ -52,6 +67,8 @@ export class JumpSession {
   attemptDeaths = 0;
   /** Essais commencés (le premier compris). */
   attempts = 1;
+  /** Lot 15 : pas du « Prêt… » qui restent avant le départ (0 : parti, ou niveau v3 qui attend la première commande). */
+  countdown = 0;
   /** Vrai dès que les réglages ont différé des défauts pendant l'essai : il ne sera jamais enregistré (lot 3). */
   private wasTuned: boolean;
   /** Enregistreur des essais (lot 3) ; null : rien n'est enregistré (lecture d'une rediffusion). */
@@ -63,11 +80,35 @@ export class JumpSession {
     readonly level: Level,
     readonly params: JumpParams,
     levelId: string | null = null,
+    /** Lot 15 : compter le « Prêt… » (niveau v4 joué par le joueur ; pas pour une lecture, qui part tout de suite). */
+    readonly withReady = levelId !== null,
   ) {
     this.state = initialAttempt(level);
     this.prev = this.state;
     this.wasTuned = !isDefaultJumpParams(params);
-    this.recorder = levelId ? new AttemptRecorder(levelId) : null;
+    this.recorder = levelId ? new AttemptRecorder(levelId, level.simVersion) : null;
+    this.startReady();
+  }
+
+  /** Lot 15 : le « Prêt… » est-il en cours ? */
+  get ready(): boolean {
+    return this.countdown > 0;
+  }
+
+  /** Lot 15 : donne le départ tout de suite (fin du « Prêt… ») : `__jump.go()`, `__jump.autoplay` (outils de test). */
+  go(): void {
+    if (this.countdown === 0) return;
+    this.countdown = 0;
+    this.state = initialAttempt(this.level);
+    this.prev = this.state;
+  }
+
+  /** Lot 15 : (re)lance le « Prêt… » d'un niveau à une seule horloge : l'état montré est celui du chrono négatif. */
+  private startReady(): void {
+    if (!this.withReady || !singleClock(this.level)) return;
+    this.countdown = readyTicks();
+    this.state = readyAttempt(this.level, -this.countdown);
+    this.prev = this.state;
   }
 
   /** Le prochain essai clos (arrivée, mort sans point de passage, « recommencer »), à confier à la mémoire du jour. */
@@ -88,6 +129,15 @@ export class JumpSession {
 
   /** Un pas ; rend l'événement survenu (mort, réapparition, arrivée), sinon null. */
   step(input: number): SessionEvent | null {
+    // Lot 15 : le « Prêt… » : l'horloge tourne, rien d'autre ; au dernier pas, l'état de départ (un saut tenu ne fera pas sauter).
+    if (this.countdown > 0) {
+      this.countdown--;
+      this.prev = this.state;
+      this.state = readyAttempt(this.level, -this.countdown);
+      if (this.countdown > 0) return null;
+      if (input & INPUT_JUMP) this.state = { ...this.state, player: { ...this.state.player, held: 1 } };
+      return { kind: "go" };
+    }
     if (!isDefaultJumpParams(this.params)) this.wasTuned = true;
     const before = this.state;
     this.prev = before;
@@ -126,6 +176,7 @@ export class JumpSession {
     this.flush();
     this.state = initialAttempt(this.level);
     this.newAttempt();
+    this.startReady();
   }
 
   private newAttempt(): void {

@@ -334,7 +334,8 @@ describe("carnage de tout le monde : vies jouables, calendrier, compteur", () =>
 
   it("écarte les vies d'une autre version, d'un autre niveau, illisibles, à l'en-tête impossible, et les tiennes", () => {
     const cp = DEATHS.find((d) => d.checkpoint >= 1)!;
-    const impossible = encodeReplay({ ...cp.replay, start: { ...cp.replay.start, sections: cp.replay.start.sections.map(() => -1) } });
+    // Lot 15 : un niveau à une seule horloge n'a pas de sections dans l'en-tête ; en mettre une est un en-tête impossible.
+    const impossible = encodeReplay({ ...cp.replay, start: { ...cp.replay.start, sections: D.level.sections.map(() => -1) } });
     const otherVersion = encodeReplay({ ...DEATHS[0]!.replay, simVersion: JUMP_SIM_VERSION + 1 });
     const s = sample([
       { replay: DEATHS[0]!.code, p: 0 },

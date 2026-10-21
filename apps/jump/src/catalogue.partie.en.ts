@@ -22,6 +22,8 @@ export const en: Catalogues<typeof fr>["en"] = {
   "jour.refuse": "This level isn't out yet",
   "jour.nouveau": "New level out: restart to open it",
   "toast.pointDePassage": "Checkpoint",
+  "toast.pret": "Ready…",
+  "toast.partez": "Go!",
   "toast.finDemo": "End of the demo",
   "toast.demoEssai": "Demo: only on ?scenario=essai",
   "toast.rediffAuteur": "Author's replay",

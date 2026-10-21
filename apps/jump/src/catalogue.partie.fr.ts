@@ -25,6 +25,8 @@ export const fr = {
   "jour.nouveau": "Nouveau niveau disponible : recommence pour l'ouvrir",
   // Messages courts (sous la bande)
   "toast.pointDePassage": "Point de passage",
+  "toast.pret": "Prêt…",
+  "toast.partez": "Partez !",
   "toast.finDemo": "Fin de la démonstration",
   "toast.demoEssai": "Démonstration : seulement sur ?scenario=essai",
   "toast.rediffAuteur": "Rediffusion de l'auteur",

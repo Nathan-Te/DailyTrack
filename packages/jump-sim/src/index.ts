@@ -17,3 +17,4 @@ export * from "./modules";
 export * from "./daily";
 export * from "./frozen";
 export * from "./lives";
+export * from "./phases";

@@ -62,7 +62,9 @@ describe("validation à la lecture (comme le lot 3)", () => {
   });
   it("une autre version, un autre niveau, une rediffusion illisible ou qui n'arrive pas : ignorée", () => {
     expect(checkFirstGhost(data({ simVersion: JUMP_SIM_VERSION + 1 }), D.level, D.id)).toMatchObject({ ok: false, reason: "autre version du jeu" });
-    expect(checkFirstGhost(data({ generatorVersion: JUMP_GENERATOR_VERSION - 1 }), D.level, D.id).ok).toBe(false);
+    expect(checkFirstGhost(data({ generatorVersion: JUMP_GENERATOR_VERSION + 1 }), D.level, D.id).ok).toBe(false);
+    // Lot 15 : c'est la rediffusion qui compte (la version de son niveau, puis le rejeu) : une v3 sur un niveau v4 est d'une autre version.
+    expect(checkFirstGhost(data({ replay: encodeReplay({ ...D.replay, simVersion: 3 }) }), D.level, D.id)).toMatchObject({ ok: false, reason: "rediffusion d'une autre version" });
     expect(checkFirstGhost(data({ levelId: `jour-${D.date}-g${JUMP_GENERATOR_VERSION - 1}` }), D.level, D.id)).toMatchObject({ ok: false, reason: "autre niveau" });
     expect(checkFirstGhost(data({ replay: "pas-une-rediffusion" }), D.level, D.id).ok).toBe(false);
     const other = dailyLevel(DEMO_TODAY - 11);

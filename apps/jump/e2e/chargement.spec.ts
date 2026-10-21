@@ -16,7 +16,7 @@ const GENERATED = generatedDay();
 const GENERATED_NOW = noonOf(GENERATED);
 
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface Load {
   source: string;

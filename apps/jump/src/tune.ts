@@ -21,6 +21,7 @@ import {
   type WindParamKey,
 } from "@cdj/jump-sim";
 import { CAMERA, CAMERA_DEFAULTS, SHAKES, SHAKE_DEFAULTS, type CameraKey, type ShakeKey } from "./camera";
+import { START, START_DEFAULTS } from "./session";
 import { gameStorage, storageKey } from "./storage";
 
 // Panneau de réglages du personnage (`?debug&tune`) : un curseur par réglage, en unités humaines, la valeur entière à côté. Effet immédiat
@@ -184,7 +185,8 @@ export const TUNE_STORAGE_KEY = storageKey("tune");
 export const CAMERA_STORAGE_KEY = storageKey("camera");
 
 export interface CameraSlider {
-  key: CameraKey | ShakeKey;
+  /** Lot 15 : `pret`, la durée du « Prêt… » avant le départ d'un niveau à une seule horloge (`START`, session.ts). */
+  key: CameraKey | ShakeKey | "pret";
   label: string;
   min: number;
   max: number;
@@ -200,13 +202,15 @@ export const CAMERA_SLIDERS: readonly CameraSlider[] = [
   { key: "deadZone", label: "Zone morte verticale (demi-hauteur)", min: 0, max: 6, step: 0.1, unit: "tuiles" },
   { key: "settleRate", label: "Recalage doux au sol (vitesse)", min: 0.2, max: 8, step: 0.1, unit: "/s" },
   { key: "verticalRate", label: "Suivi hors de la zone (chutes, longues montées)", min: 1, max: 14, step: 0.5, unit: "/s" },
+  { key: "pret", label: "« Prêt… » avant le départ (horloge unique, lot 15)", min: 0.1, max: 3, step: 0.05, unit: "s" },
 ];
 
 const isShakeKey = (k: CameraSlider["key"]): k is ShakeKey => k in SHAKE_DEFAULTS;
-const cameraValue = (k: CameraSlider["key"]): number => (isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
-const cameraDefault = (k: CameraSlider["key"]): number => (isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
+const cameraValue = (k: CameraSlider["key"]): number => (k === "pret" ? START.pret : isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
+const cameraDefault = (k: CameraSlider["key"]): number => (k === "pret" ? START_DEFAULTS.pret : isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
 const setCamera = (k: CameraSlider["key"], v: number): void => {
-  if (isShakeKey(k)) SHAKES[k] = v;
+  if (k === "pret") START.pret = v;
+  else if (isShakeKey(k)) SHAKES[k] = v;
   else CAMERA[k] = v;
 };
 

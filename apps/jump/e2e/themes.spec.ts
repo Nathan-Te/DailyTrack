@@ -10,7 +10,7 @@ import { FIXED_NOW, atInstant } from "./clock";
 const THEMES = ["foret", "usine", "glace", "nuit", "neon"] as const;
 const DATE = "2026-10-20";
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 interface ThemeView {
   name: string;

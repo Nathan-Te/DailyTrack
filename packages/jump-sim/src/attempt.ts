@@ -189,6 +189,16 @@ export function initialAttempt(level: Level): AttemptState {
   return level.alts.length > 0 ? { ...base, alt: 0 } : base;
 }
 
+/**
+ * Lot 15 (v4) : l'état **avant le départ**, au chrono `time` ≤ 0 (le « Prêt… » du jeu) : rien n'a bougé que les horloges, les blocs clignotants
+ * à leur état de cet instant. Seulement pour l'affichage : la simulation part toujours de `initialAttempt` (chrono 0), qu'il rend pour 0.
+ */
+export function readyAttempt(level: Level, time: number): AttemptState {
+  const s = initialAttempt(level);
+  if (time === 0) return s;
+  return { ...s, time, tiles: settleDynamic(level, s.tiles, s.sections, time, s.alt ?? 0, s.player) };
+}
+
 /** Lot 15 : le niveau a-t-il une seule horloge de course (version 4) ? */
 export function singleClock(level: Pick<Level, "simVersion">): boolean {
   return level.simVersion >= SINGLE_CLOCK_VERSION;

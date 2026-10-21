@@ -1,8 +1,8 @@
-# DailyJump — synthèse de l'état actuel (après le lot 13, le lot 3c et les lots P1, P2 et P3 de la plateforme)
+# DailyJump — synthèse de l'état actuel (après le lot 15, le lot 3c et les lots P1, P2 et P3 de la plateforme)
 
 Point de départ de toute session DailyJump : cet état d'ensemble tient en quelques pages ; **chaque point renvoie au README du lot qui l'a introduit** (`lots/lot-….md`, dans ce dossier) pour le détail. Les règles à respecter sont dans `packages/jump-sim/CLAUDE.md` et `apps/jump/CLAUDE.md` ; la vision est dans `seed-dailyjump.md` (ne pas modifier). **À mettre à jour par chaque lot de DailyJump** (une ligne par point qui change, avec le renvoi).
 
-Versions en vigueur : `JUMP_SIM_VERSION` **3** · `JUMP_GENERATOR_VERSION` **9** · `EXIGENCE_VERSION` **4** · `MODULE_FORMAT` **3** · premier niveau (`PREMIER_JOUR_JUMP`) : **16/10/2026**.
+Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaque niveau porte sa version) · `JUMP_GENERATOR_VERSION` **10** · `EXIGENCE_VERSION` **4** · `MODULE_FORMAT` **3** · premier niveau (`PREMIER_JOUR_JUMP`) : **16/10/2026**.
 
 ## 1. Architecture et paquets
 | Paquet | Rôle | Lot |
@@ -21,6 +21,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **3** · `JUMP_GENERATOR_VERSION` **9**
 - Dangers (pics, scies par sections, blocs friables, ressort), mort, réapparition 0,15 s, temps en pas, arrivée prioritaire sur la mort — [lot 2](lots/lot-2-dangers.md) ; points de passage `C` (franchir la colonne) — lot 2b dans le même README + [lot 4](lots/lot-4-morceaux.md).
 - **Élan progressif : essayé puis écarté** (décision de Nathan), reste un essai `?debug&tune&sprint=1` — [lot 8b](lots/lot-8b-animation-elan.md), [8c](lots/lot-8c-elan.md).
 - Rediffusion : séries `{count, bits}` en varint, bornée à 10 min, version dans l'en-tête, rejeu seule source de vérité de tout temps conservé — [lot 3](lots/lot-3-rediffusion.md).
+- **Version par niveau (lot 15)** : `Level.simVersion` (ligne `version 4` du bloc annexe ; absente : 3) ; une rediffusion porte la version de son niveau. **v4 = horloge unique** : chrono à heure fixe (fin du « Prêt… »), `f(t + phase)`, mort sans remise à zéro, reprise **au départ** (chrono qui continue) quand aucun point n'est pris — [lot 15](lots/lot-15-horloge.md).
 - Tout changement de physique ⇒ `JUMP_SIM_VERSION` +1 et golden (`UPDATE_GOLDEN=1`) ; **les mécaniques de thème sont des ajouts purs** (réglages hors `DEFAULT_JUMP_PARAMS`, champs d'état absents quand inutilisés) — [lot 11](lots/lot-11-themes-jouables.md).
 
 ## 3. Mécaniques par thème (un thème = une mécanique)
@@ -46,6 +47,8 @@ Versions en vigueur : `JUMP_SIM_VERSION` **3** · `JUMP_GENERATOR_VERSION` **9**
 - Validation par **rejeu complet** de la preuve de l'auteur ; 6 tirages, secours jamais utilisé (mesuré) ; budget d'exigence (445–570 dixièmes de point par minute), dernier tiers ≥ deuxième et ≥ premier, repos (7 groupes dont 4 ouverts), enchaînements longs 1 ou 2, plus longue course au sol ≤ 1,2 s en moyenne — [lot 5](lots/lot-5-niveau-du-jour.md), [7](lots/lot-7-variete.md), [7b](lots/lot-7b-retouches.md).
 - Identifiant `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (`-t<thème>` si forcé). Tout changement du niveau d'une date ⇒ `JUMP_GENERATOR_VERSION` +1, `UPDATE_GOLDEN=1` sur `golden-daily`, puis `npm run measure:jump -w @cdj/jump-sim` (toute règle se juge à ses mesures, sur 120 dates).
 - Chargement : worker de module, charge JSON, cache `jump:niveau:…` dont la preuve est rejouée — [lot 7b](lots/lot-7b-retouches.md).
+
+- **Horloge unique (lot 15, générateur g10, niveaux en sim v4)** : tout ce qui tourne vaut `f(t + phase)` ; **la phase de chaque section est calculée sur la référence** (`−` le pas où la preuve y entre, modulo la période de la section) : la référence passe **sans attente ajoutée**, au même temps qu'en v3 ; **validation toutes phases** : une variante à horloge n'est posée que si, reprise à l'arrêt sur son point de passage à 8 phases réparties sur sa période, elle a une solution jouable par un humain (`npm run phases:modules`, `PHASE_REFUSED`) ; **point de reprise sûr à toute phase** (`respawnProblems`). Les niveaux v3 (essai, morceaux seuls, jours figés jusqu'au 22/10) gardent leurs règles au bit près — [lot 15](lots/lot-15-horloge.md).
 
 ## 6. Jours figés et procédure
 - `apps/jump/public/levels/AAAA-MM-JJ.json` : niveau + preuve + versions, lu en premier par `loadDaily` et **rejoué** ; jamais réécrit — [lot 10](lots/lot-10-arrivee.md).
@@ -77,7 +80,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **3** · `JUMP_GENERATOR_VERSION` **9**
 ## 9. Décisions de Nathan (à ne pas remettre en cause sans lui)
 - Élan progressif **écarté** : élargissait les niveaux (382 colonnes contre 293 pour 30 s), moins de technique, passages impossibles à un humain — [lot 8c](lots/lot-8c-elan.md).
 - Règle de jouabilité humaine (retour de Nathan sur un pont friable sous des scies basses) : gigue ±3 pas, appuis ≥ 5 pas — [lot 8c](lots/lot-8c-elan.md), [11](lots/lot-11-themes-jouables.md).
-- Pas de saut automatique à la réapparition ; le monde attend la première commande — [lot 2](lots/lot-2-dangers.md).
+- Pas de saut automatique à la réapparition ; le monde attend la première commande — [lot 2](lots/lot-2-dangers.md). **Remplacé pour les niveaux du jour (v4) au lot 15** : une seule horloge de course, qui ne s'arrête jamais (sauf en pause), départ à heure fixe après un « Prêt… », et à la mort les dangers continuent leur course (rien n'est remis à zéro) — [lot 15](lots/lot-15-horloge.md).
 - La même exigence chaque jour, quel que soit le jour de la semaine — [lot 5](lots/lot-5-niveau-du-jour.md).
 - Le décor ne ressemble jamais à un danger ; couleurs des dangers et du personnage réservées — [lot 9](lots/lot-9-themes.md).
 - Figer avant de changer de version ; le gel se fait avec le code de `main` — [lot 10](lots/lot-10-arrivee.md), [11](lots/lot-11-themes-jouables.md).

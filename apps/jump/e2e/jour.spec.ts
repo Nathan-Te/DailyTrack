@@ -7,7 +7,7 @@ import { Fingers, hasWebGL } from "./phone";
 // du nombre de pas se lit en pas à pas (`manual` + `advance`).
 
 /** Version du générateur des niveaux du jour (identifiants `…-g<N>`), lue dans la référence de `jump-sim`. */
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v4.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 /** Lot 6 : entre deux morceaux, exactement un palier partagé de 2 colonnes (aucune colonne de raccord). */
 const PALIER_LENGTH = 2;
 

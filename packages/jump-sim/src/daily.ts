@@ -1040,9 +1040,16 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
   ],
 };
 
-/** La suite de secours d'un thème. */
-export function fallbackFor(theme: JumpThemeName): readonly { id: string; variant: number }[] {
-  return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
+/**
+ * Lot 15 : les suites de secours des niveaux v4 qui remplacent celles d'avant quand une de leurs variantes est refusée par la validation toutes
+ * phases (choisies de même : `npm run secours:modules -w @cdj/jump-sim -- --theme=<nom>`). Les autres thèmes gardent leur suite.
+ */
+export const FALLBACK_V4: Readonly<Partial<Record<JumpThemeName, readonly { id: string; variant: number }[]>>> = {};
+
+/** La suite de secours d'un thème (lot 15 : en version 4, celle de `FALLBACK_V4` s'il y en a une). */
+export function fallbackFor(theme: JumpThemeName, simVersion = SINGLE_CLOCK_VERSION): readonly { id: string; variant: number }[] {
+  const list = FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
+  return simVersion >= SINGLE_CLOCK_VERSION ? (FALLBACK_V4[theme] ?? list) : list;
 }
 
 const cache = new Map<string, DailyLevel>();
@@ -1093,7 +1100,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
   let out: DailyLevel;
   if (best) out = { ...best.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };
   else {
-    const proof = prove(fallbackFor(theme), id, theme, simVersion);
+    const proof = prove(fallbackFor(theme, simVersion), id, theme, simVersion);
     if (typeof proof === "string" || proof.problems.length > 0) throw new Error(`Niveau de secours invalide : ${typeof proof === "string" ? proof : proof.problems.join(" ; ")}`);
     out = { ...proof.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: -1, fallback: true };
   }
@@ -1105,7 +1112,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
-  const proof = prove(fallbackFor(theme), dailyLevelId(day, theme, simVersion), theme, simVersion);
+  const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);
   if (typeof proof === "string") return proof;
   if (proof.problems.length > 0) return proof.problems.join(" ; ");
   return { ...proof.built, theme, forcedTheme: theme !== natural, day, date: formatDay(day), number: levelNumber(day), attempts: [], chosen: -1, fallback: true };
