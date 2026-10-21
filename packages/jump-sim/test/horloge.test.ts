@@ -327,7 +327,7 @@ describe("lot 15 — déterminisme v4 (fixtures/replay-golden-v4.json)", () => {
     expect(golden.replays.some((r) => r.deaths >= 2)).toBe(true);
     expect(golden.replays.some((r) => r.name.includes("reprise : départ"))).toBe(true);
     expect(golden.replays.some((r) => r.name.includes("reprise : point"))).toBe(true);
-  });
+  }, 60_000); // génération du jour, 24 essais fictifs et ~30 rejeux : ≈ 3 s seul, plus de 5 s sur le runner chargé de la CI
 
   it("deux rejeux de la même rediffusion donnent les mêmes états, et une rediffusion v3 est refusée sur un niveau v4", () => {
     const L = dailyLevel(GOLDEN_DAY);

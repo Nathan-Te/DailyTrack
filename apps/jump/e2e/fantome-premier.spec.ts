@@ -39,6 +39,7 @@ interface J {
   home: { ready: boolean };
   settings: { firstGhost: boolean };
   manual(on: boolean): void;
+  go(): void;
   advance(n: number): unknown;
   input(bits: number | null): void;
   autoplay(code?: string): number;
@@ -125,6 +126,7 @@ test("démo : le fantôme du premier est visible avec son pseudo, à côté du t
     await page.evaluate(() => {
       const w = (window as unknown as { __jump: J }).__jump;
       w.manual(true);
+      w.go(); // lot 15 : le jour de la démo est en v4 ; sans le départ, une partie des pas joués irait au « Prêt… » (selon la vitesse de la page)
       w.input(1 << 1);
       w.advance(120);
       w.input(null);
