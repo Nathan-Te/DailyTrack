@@ -20,5 +20,7 @@ export const SIM_VERSION = 14;
  * Version du générateur de circuits du jour. À incrémenter dès que le circuit d'une date change
  * (règles de construction, pilote de validation, fenêtre de durée) : elle fait partie de l'identifiant du circuit,
  * donc les records et rediffusions d'un autre générateur ne se mélangent pas.
+ * Lot 34 : **la dernière version**, celle des jours à partir de la bascule (`BASCULE_LOT_34`) et du Salon ; un jour garde la version
+ * de son générateur (`generatorVersionOf`, generator.ts) : 15 avant le 28/10/2026, 16 ensuite (freinage possible après un boost).
  */
-export const GENERATOR_VERSION = 15;
+export const GENERATOR_VERSION = 16;

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTHOR_MAX_MS,
   AUTHOR_MIN_MS,
-  GENERATOR_VERSION,
+  generatorVersionOf,
   MAX_VARIANT,
   THEME_NAMES,
   dailyCircuit,
@@ -26,7 +26,7 @@ describe("variantes d'un circuit du jour", () => {
       expect(b.spec).toBe(a.spec);
       expect(b.track.id).toBe(a.track.id);
       expect(b.variant).toBe(0);
-      expect(a.track.id).toBe(`jour-${a.date}-g${GENERATOR_VERSION}`);
+      expect(a.track.id).toBe(`jour-${a.date}-g${generatorVersionOf(day)}`);
       expect(dailyTrackId(day)).toBe(a.track.id);
     }
   }, 30_000);

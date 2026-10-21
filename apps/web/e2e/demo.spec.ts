@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { PREMIER_JOUR, formatDay } from "@cdj/sim";
+import { PREMIER_JOUR, dailyTrackId, formatDay, parseDay } from "@cdj/sim";
 
 // Quatorze jours d'historique (`DEMO_DAYS` de src/demo.ts ; le test Vitest vérifie que le jeu de données en contient autant).
 const DEMO_DAYS = 14;
@@ -62,10 +62,11 @@ test("ton meilleur temps est placé dans la liste des archives (rang figé parmi
   await page.goto("/?api=demo&debug");
   await ready(page);
   // Un record local pour le 30/09 : 1 s, devant tous les pilotes de démonstration.
-  await page.evaluate(async () => {
+  // Lot 34 : l'identifiant porte la version du générateur du jour (15 avant la bascule du 28/10/2026), pas la dernière.
+  await page.evaluate(async (trackId) => {
     const index = await fetch("demo/index.json").then((r) => r.json());
-    localStorage.setItem(`cdj:best:jour-2026-10-21-g${index.generatorVersion}`, JSON.stringify({ ms: 1000, splits: [], medal: "author", simVersion: index.simVersion }));
-  });
+    localStorage.setItem(`cdj:best:${trackId}`, JSON.stringify({ ms: 1000, splits: [], medal: "author", simVersion: index.simVersion }));
+  }, dailyTrackId(parseDay("2026-10-21")!));
   await page.reload();
   await ready(page);
   await page.keyboard.press("KeyH");
