@@ -16,6 +16,12 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/web (course)", "apps/web/src/catalogue.course.ts", "CATALOGUE_COURSE"],
   ["apps/web (réglages)", "apps/web/src/catalogue.reglages.ts", "CATALOGUE_REGLAGES"],
   ["apps/web (Salon)", "apps/web/src/catalogue.salon.ts", "CATALOGUE_SALON"],
+  // Lot I5 : Jump, un catalogue par zone (réunis par apps/jump/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
+  ["apps/jump (base)", "apps/jump/src/catalogue.base.ts", "CATALOGUE_BASE"],
+  ["apps/jump (partie)", "apps/jump/src/catalogue.partie.ts", "CATALOGUE_PARTIE"],
+  ["apps/jump (accueil)", "apps/jump/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
+  ["apps/jump (arrivée)", "apps/jump/src/catalogue.arrivee.ts", "CATALOGUE_ARRIVEE"],
+  ["apps/jump (réglages)", "apps/jump/src/catalogue.reglages.ts", "CATALOGUE_REGLAGES"],
 ];
 
 export async function cataloguesApplications(): Promise<[string, { fr: Catalogue; en: Catalogue }][]> {
@@ -23,7 +29,7 @@ export async function cataloguesApplications(): Promise<[string, { fr: Catalogue
 }
 
 /** Les dossiers et fichiers soumis au refus des chaînes écrites en dur (chainesEnDur.test.ts). Lots I4, I5 : ajouter `apps/web/src`, `apps/jump/src`… */
-export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/web/src", "apps/web/index.html"];
+export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packages/ui/outils", "apps/portail/src", "apps/portail/index.html", "apps/portail/ui", "apps/portail/profil", "apps/portail/classement", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"];
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
@@ -37,4 +43,10 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/web/src/adminPlanning.ts": "planning de l'administration (lot 14) : outil interne, en français",
   "apps/web/src/circuitStats.ts": "statistiques de circuit de l'administration (lot 14) : outil interne, en français",
   "apps/web/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
+  // Lot I5 : les outils internes de Jump restent en français (lot I5 § 2 : `?debug&tune` tel quel ; seul son habillage suit les jetons, outils.css).
+  "apps/jump/src/tune.ts": "outil de réglage du personnage (`?debug&tune`) : outil interne de Nathan, en français",
+  "apps/jump/src/gallery.ts": "galerie des morceaux (`?modules`, lot 4) : outil interne de conception des niveaux, en français",
+  "apps/jump/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
+  "apps/jump/src/themes.ts": "noms internes des thèmes et des décors (`label` : outils `?debug`, galerie, tests) ; l'interface lit `theme.<code>` du catalogue",
+  "apps/jump/src/audioLogic.ts": "noms internes des ambiances sonores (`__jump.theme.ambience` de `?debug`) : jamais affichés au joueur",
 };

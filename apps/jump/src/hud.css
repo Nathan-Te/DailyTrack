@@ -1,0 +1,610 @@
+/* Les surimpressions en partie de Jump (lot I5, charte rév. 7 § 9 « Surimpressions en partie : compactes » ; maquette jump-hud.html) : le jeu se lit d'abord.
+   Une seule bande de 30 px au centre en haut (chrono · point de passage · écart signé), la pause (44 px) en haut à gauche, l'objectif de médaille et
+   l'autocollant des morts en haut à droite ; le centre reste libre. Plaques opaques à bordure et ombre nettes de 2 px : lisibles sur les cinq thèmes, sans
+   transparence ni flou. Fluidité : chaque plaque est `contain: layout paint style` (un chiffre qui change ne repeint qu'elle), aucun motif n'est repeint, rien
+   n'est animé en boucle. Les commandes tactiles aux bords, le carnage (titre en autocollant, vague, barre de lecture) et le bandeau d'arrivée sont ici. */
+
+#hud {
+  display: contents;
+}
+/* Pendant un écran posé par-dessus (accueil, arrivée), les plaques de la partie se cachent. */
+body.home-open #hud-gauche,
+body.home-open #chrono,
+body.home-open #hud-droite,
+body.home-open #dayline,
+body.home-open #modname,
+body.home-open #tbuttons,
+body.home-open #rotate,
+body.home-open #stamp,
+body.home-open #debug,
+body.home-open #tuned,
+body.home-open #daynote,
+body.carnage #hud-gauche,
+body.carnage #chrono,
+body.carnage #hud-droite,
+body.carnage #dayline,
+body.carnage #tbuttons {
+  visibility: hidden;
+}
+
+/* --- Les plaques ------------------------------------------------------------------------------------------------------------------------------------ */
+.plaque {
+  box-sizing: border-box;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+  font-family: var(--dj-police-texte);
+  contain: layout paint style;
+}
+.plaque--petite {
+  display: flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 8px;
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.plaque--bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  border-width: var(--dj-trait-fort);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.plaque--bouton:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: 1px 1px 0 var(--dj-encre);
+}
+.pause-barres {
+  display: inline-flex;
+  gap: 5px;
+}
+.pause-barres > span {
+  width: 5px;
+  height: 16px;
+  background: currentColor;
+}
+
+/* En haut à gauche : la pause (et, avec ?debug&tune au doigt, ⚙), puis le mode (archive, essai). */
+#hud-gauche {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: max(12px, env(safe-area-inset-left));
+  top: max(8px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+#modetag {
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* --- La bande de 30 px : chrono · point de passage · écart (maquette jump-hud.html) ------------------------------------------------------------------ */
+.bande {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: 50%;
+  top: max(8px, env(safe-area-inset-top));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+  overflow: hidden;
+  pointer-events: none;
+  white-space: nowrap;
+  contain: layout paint style;
+}
+.bande > * {
+  display: flex;
+  align-items: center;
+  contain: layout paint style;
+}
+/* Le chrono : Lilita One, chiffres à chasse fixe, place réservée (la plaque ne change jamais de taille quand un chiffre change). */
+.bande .time {
+  justify-content: flex-end;
+  padding: 0 10px;
+  background: var(--dj-papier);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-22);
+}
+/* Les cases du chrono (hud.ts, `chiffresFixes`) : Lilita One n'a pas de chiffres tabulaires, chaque caractère a donc sa case de largeur fixe. */
+.case {
+  display: inline-block;
+  width: 0.64em;
+  text-align: center;
+}
+.case--ponct {
+  width: 0.3em;
+}
+.case--vide {
+  visibility: hidden;
+}
+.bande.done .time {
+  background: var(--jump-jaune);
+}
+.bande .pc {
+  gap: 3px;
+  padding: 0 7px;
+  background: var(--jump-jaune);
+  border-left: var(--dj-trait) solid var(--dj-encre);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-15);
+}
+.pc__mat {
+  fill: none;
+  stroke: var(--dj-encre);
+  stroke-width: 2.5;
+}
+.pc__fanion {
+  fill: var(--dj-auteur);
+  stroke: var(--dj-encre);
+  stroke-width: 1.5;
+}
+/* L'écart signé au record : `+` sur encre (plus lent), `−` sur vert « auteur » (plus rapide) ; le signe est écrit, la couleur ne porte pas seule l'information. */
+.bande .ecart {
+  justify-content: flex-end;
+  min-width: 4.6em;
+  padding: 0 8px;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+  font-variant-numeric: tabular-nums;
+}
+.bande .ecart[data-signe="moins"] {
+  background: var(--dj-auteur);
+  color: var(--dj-auteur-texte);
+}
+
+/* --- En haut à droite : l'objectif de médaille (pastille + seuil) et l'autocollant des morts ------------------------------------------------------------ */
+#hud-droite {
+  position: fixed;
+  z-index: var(--z-hud);
+  right: max(12px, env(safe-area-inset-right));
+  top: max(8px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.plaque--objectif {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+}
+.plaque--objectif .dj-medaille {
+  gap: 4px;
+  font-size: var(--dj-taille-legende);
+}
+.plaque--objectif .dj-medaille__pastille {
+  width: 10px;
+  height: 10px;
+}
+.objectif__seuil {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+#morts {
+  height: 30px;
+  padding: 0 8px;
+  contain: layout paint style;
+}
+#morts .count {
+  min-width: 1.2em;
+  font-family: var(--jump-police);
+  font-size: 19px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Le titre du niveau au départ, les messages courts : sous la bande, jamais au centre ------------------------------------------------------------------ */
+#dayline,
+#toast {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: 50%;
+  top: calc(max(8px, env(safe-area-inset-top)) + 38px);
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#dayline {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-15);
+  font-weight: 400;
+}
+#toast {
+  visibility: hidden;
+}
+#toast.show {
+  visibility: visible;
+}
+/* Un message du jour (date refusée, nouveau niveau) : en haut à gauche, sous la pause, jamais au centre. */
+#daynote {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: max(12px, env(safe-area-inset-left));
+  top: calc(max(8px, env(safe-area-inset-top)) + 54px);
+  max-width: min(30vw, 260px);
+  white-space: normal;
+  background: var(--jump-jaune);
+  display: none;
+}
+#daynote.show {
+  display: flex;
+}
+#modname {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: 50%;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: 40vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#modname:empty {
+  display: none;
+}
+#stamp {
+  position: fixed;
+  z-index: var(--z-hud);
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 2px 6px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  pointer-events: none;
+}
+#nogl {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-16);
+  font-weight: 600;
+  text-align: center;
+}
+
+/* --- Commandes tactiles (lot 1b ; lot I5 : aux bords, plaques papier, gros bouton jaune « SAUT ») ---------------------------------------------------- */
+#touch {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-touch);
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+body.touch-suspended #touch {
+  pointer-events: none;
+}
+#tbuttons {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-touch-boutons);
+  pointer-events: none;
+  visibility: hidden;
+}
+body.touch-seen #tbuttons {
+  visibility: visible;
+}
+body.touch-suspended #tbuttons,
+body.home-open #tbuttons,
+body.carnage #tbuttons {
+  visibility: hidden;
+}
+.tbtn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  contain: layout paint style;
+}
+.tbtn--jump {
+  background: var(--jump-jaune);
+  box-shadow: 0 5px 0 var(--dj-encre);
+  font-family: var(--jump-police);
+  font-size: 28px;
+}
+.tbtn.down {
+  background: var(--jump-jaune);
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: 1px 1px 0 var(--dj-encre);
+}
+.tbtn--jump.down {
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--dj-encre);
+}
+body.touch-suspended #hud-gauche .plaque--bouton {
+  pointer-events: none;
+}
+/* « Tourne ton téléphone » : en portrait seulement, en bas au centre (entre les commandes), il disparaît au premier toucher ou après 9 s. */
+#rotate {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: 44vw;
+  white-space: normal;
+  text-align: center;
+  display: none;
+  animation: rotate-out 0.2s steps(1) 9s forwards;
+}
+@media (orientation: portrait) {
+  body.touch #rotate:not(.gone) {
+    display: flex;
+  }
+}
+@keyframes rotate-out {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* --- Le carnage (maquette jump-carnage.html) : titre en autocollant et total en haut à gauche, la vague en haut à droite, la barre de lecture en bas ---------- */
+#carnage {
+  position: fixed;
+  z-index: var(--z-carnage);
+  inset: 0;
+  pointer-events: none;
+  font-family: var(--dj-police-texte);
+}
+.carnage__tete {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  top: max(10px, env(safe-area-inset-top));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.autocollant--titre {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+  padding: 4px 12px;
+  border-width: var(--dj-trait-fort);
+  box-shadow: 4px 4px 0 var(--dj-encre);
+  transform: rotate(-2deg);
+}
+.carnage__titre {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1;
+}
+.autocollant--titre .count {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.carnage__vague {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: 4px 10px;
+  border-width: var(--dj-trait-fort);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+}
+.carnage__vague-valeur {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-24);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.carnage__barre {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  right: max(12px, env(safe-area-inset-right));
+  bottom: max(12px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-width: var(--dj-trait-fort);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  pointer-events: auto;
+}
+.carnage__bouton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--jump-jaune);
+  color: var(--dj-encre);
+  touch-action: manipulation;
+}
+.carnage__bouton svg path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: square;
+}
+.carnage__bouton--encre {
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+}
+.carnage__bouton--encre .pause-barres > span {
+  width: 4px;
+  height: 14px;
+}
+.carnage__lecture {
+  display: none;
+}
+.carnage__lecture path {
+  fill: currentColor !important;
+  stroke: none !important;
+}
+.carnage__bouton[aria-pressed="true"] .pause-barres {
+  display: none;
+}
+.carnage__bouton[aria-pressed="true"] .carnage__lecture {
+  display: block;
+}
+.carnage__avancement {
+  flex: 1;
+  min-width: 40px;
+  height: 14px;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  background: var(--dj-papier);
+  overflow: hidden;
+}
+.carnage__avancement-plein {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--dj-encre);
+}
+.carnage__aide {
+  flex: none;
+  max-width: 160px;
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  line-height: 1.2;
+}
+body.touch .carnage__aide {
+  display: none;
+}
+#carnage-close {
+  flex: none;
+  background: transparent;
+  border-width: var(--dj-trait-fort);
+  box-shadow: none;
+}
+@media (max-width: 520px) {
+  .carnage__aide {
+    display: none;
+  }
+  .carnage__titre {
+    font-size: var(--dj-taille-24);
+  }
+}
+
+/* --- Le bandeau d'arrivée (morceaux, scénarios, lectures, essais) : une étiquette jaune au-dessus de la couche tactile ------------------------------------- */
+.bandeau {
+  position: fixed;
+  z-index: var(--z-bandeau);
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: calc(100% - 32px);
+  min-width: min(320px, calc(100% - 32px));
+  padding: 14px 18px;
+  background: var(--jump-jaune);
+  color: var(--jump-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 5px 5px 0 var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+  text-align: center;
+  touch-action: manipulation;
+}
+.bandeau .title {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-24);
+}
+.bandeau .time {
+  margin: 2px 0 6px;
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-38);
+  font-variant-numeric: tabular-nums;
+}
+.bandeau .stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.bandeau .ref:empty {
+  display: none;
+}
+.bandeau .buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+.bandeau .buttons > * {
+  min-width: 160px;
+}
+.bandeau .hint {
+  margin-top: 6px;
+  font-size: var(--dj-taille-12);
+}
+body.touch .bandeau .hint {
+  display: none;
+}
+body.paused #finish,
+body.paused #toast {
+  visibility: hidden;
+}
+/* Focus visible sur la scène sombre : contour ambre (charte § 10), le bouton de pause et ⚙ étant posés sur le niveau. */
+#hud-gauche :focus-visible {
+  outline-color: var(--dj-ambre);
+}
+/* « Préparation du niveau… » (lot 7b) : le niveau se génère, sans accueil ouvert. */
+#prep {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-accueil);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-22);
+  pointer-events: none;
+}
+#daynote.show:not(.sticky) {
+  animation: daynote-out 0.2s steps(1) 8s forwards;
+}
+@keyframes daynote-out {
+  to {
+    visibility: hidden;
+  }
+}

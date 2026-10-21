@@ -21,6 +21,13 @@ const fr = {
   "arrivee.jeuSuivant": "Jeu suivant du jour : {jeu} ›",
   "arrivee.jeuSuivant.aria": "Jouer au jeu suivant du jour : {jeu}",
   "arrivee.parfaite": "Journée parfaite !",
+  // Lot I5 : les répliques de Jump, une par thème (charte § 7 : drôle et un peu cruel, liée à la mécanique du jour ; adaptée en anglais, pas
+  // traduite mot à mot). **Une seule source** : le portail (cartouche Jump) et le jeu (accueil, pause) les lisent ici (test catalogues.test.ts).
+  "jump.replique.foret": "Le vent souffle. Rarement dans ton sens.",
+  "jump.replique.usine": "Les tapis roulants ne t'attendront pas. La scie non plus.",
+  "jump.replique.glace": "Ça glisse. Les pics, eux, ne bougent pas.",
+  "jump.replique.nuit": "Les plateformes clignotent. Toi, tu ne verras rien venir.",
+  "jump.replique.neon": "Une plateforme sur deux. Devine laquelle.",
   // Choix de la langue
   "langue.groupe": "Langue",
   "langue.fr.court": "FR",
@@ -108,6 +115,11 @@ const en: Catalogues<typeof fr>["en"] = {
   "arrivee.jeuSuivant": "Next game of the day: {jeu} ›",
   "arrivee.jeuSuivant.aria": "Play today's next game: {jeu}",
   "arrivee.parfaite": "Perfect day!",
+  "jump.replique.foret": "The wind is blowing. Hardly ever your way.",
+  "jump.replique.usine": "The conveyor belts won't wait for you. Neither will the saw.",
+  "jump.replique.glace": "It's slippery. The spikes, sadly, aren't.",
+  "jump.replique.nuit": "The platforms blink. You won't see it coming.",
+  "jump.replique.neon": "Every other platform is there. Guess which.",
   "langue.groupe": "Language",
   "langue.fr.court": "FR",
   "langue.en.court": "EN",

@@ -3,12 +3,12 @@ import { INPUT_JUMP, INPUT_LEFT, INPUT_RIGHT } from "@cdj/jump-sim";
 // Commandes tactiles de DailyJump (lot 1b) : logique pure, sans DOM, testée par Vitest. Le tactile produit les mêmes trois bits de commande
 // que le clavier et la manette (rien ne change dans la simulation).
 //
-// Disposition (paysage comme portrait) : une bande haute (bouton « recommencer ») exclue des zones de jeu ; sous elle, de bord à bord et
-// **sans trou** : [0, ¼[ = ←, [¼, ½[ = →, [½, 1] = saut. Les zones sont définies une fois par taille d'écran (`layoutFor`) ; les boutons dessinés
-// (`buttonRects`) sont plus petits et écartés des frontières, mais le toucher se décide par la zone, jamais par le bouton.
+// Disposition (paysage comme portrait) : une bande haute (lot I5 : la pause et la bande du HUD) exclue des zones de jeu ; sous elle, de bord à bord
+// et **sans trou** : [0, ¼[ = ←, [¼, ½[ = →, [½, 1] = saut. Les zones sont définies une fois par taille d'écran (`layoutFor`) ; les boutons dessinés
+// (`buttonRects`, lot I5 : aux bords de l'écran) sont plus petits et écartés des frontières, mais le toucher se décide par la zone, jamais par le bouton.
 //
 //   ┌──────────────────────────────────────┐
-//   │ ↻  bande haute (pas de zone de jeu)  │
+//   │ ⏸  bande haute (pas de zone de jeu)  │
 //   ├───────────┬───────────┬──────────────┤
 //   │     ←     │     →     │     saut     │
 //   │  0 – ¼    │  ¼ – ½    │    ½ – 1     │
@@ -171,25 +171,35 @@ export interface ButtonRect {
 export const BUTTON_GAP_PX = 12;
 /** Écart du bas : au-dessus de la bande de geste système (barre d'accueil de l'iPhone, retour d'Android). */
 export const BUTTON_BOTTOM_PX = 36;
-const BUTTON_MAX_PX = 104;
+/** Lot I5 (charte rév. 7, maquette `jump-hud.html`) : les flèches font 76 px, le gros bouton jaune « SAUT » 110 × 92 px (moins si l'écran est petit). */
+export const DIR_BUTTON_PX = 76;
+export const JUMP_BUTTON_W = 110;
+export const JUMP_BUTTON_H = 92;
 
 /**
- * Boutons dessinés (pixels CSS) : un carré par zone, centré dans la partie utile de sa zone (écartée des zones sûres), à `BUTTON_GAP_PX`
- * au moins des frontières, posé en bas. N'est qu'un visuel : la zone active va, elle, de bord à bord.
+ * Boutons dessinés (pixels CSS). **Lot I5 : aux bords de l'écran**, jamais devant le personnage (charte rév. 7, § 9) : ← et → en bas à gauche, collés
+ * de part et d'autre de la frontière ¼ (← au bord droit de sa zone, → au bord gauche de la sienne), le gros bouton « SAUT » en bas à droite contre le
+ * bord. **Les zones ne changent pas** (lot 1b : [0, ¼[ = ←, [¼, ½[ = →, [½, 1] = saut, de bord à bord et sans trou) : chaque bouton reste dans sa zone,
+ * à `BUTTON_GAP_PX` au moins de ses frontières et des zones sûres. N'est qu'un visuel : le toucher se décide par la zone, jamais par le bouton.
  */
 export function buttonRects(layout: Layout): ButtonRect[] {
   const { width, height, insets } = layout;
-  const out: ButtonRect[] = [];
+  const left = Math.max(insets.left, 0);
+  const right = width - Math.max(insets.right, 0);
   const bottom = height - Math.max(insets.bottom, 0) - BUTTON_BOTTOM_PX;
-  for (const s of ZONE_SPANS) {
-    const x0 = Math.max(s.x0 * width, s.x0 === 0 ? Math.max(insets.left, 0) : 0) + BUTTON_GAP_PX;
-    const x1 = Math.min(s.x1 * width, s.x1 === 1 ? width - Math.max(insets.right, 0) : width) - BUTTON_GAP_PX;
-    const room = bottom - layout.band - BUTTON_GAP_PX;
-    const size = Math.floor(Math.max(0, Math.min(x1 - x0, room * 0.5, BUTTON_MAX_PX)));
-    const cx = (x0 + x1) / 2;
-    out.push({ zone: s.zone, x: Math.round(cx - size / 2), y: Math.round(bottom - size), w: size, h: size });
-  }
-  return out;
+  const room = bottom - layout.band - BUTTON_GAP_PX;
+  const quarter = width * ZONE_SPANS[0]!.x1;
+  const half = width * ZONE_SPANS[1]!.x1;
+  // ← : au bord droit de sa zone [bord gauche, ¼[ ; → : au bord gauche de la sienne [¼, ½[.
+  const dir = Math.floor(Math.max(0, Math.min(DIR_BUTTON_PX, quarter - BUTTON_GAP_PX - (left + BUTTON_GAP_PX), half - BUTTON_GAP_PX - (quarter + BUTTON_GAP_PX), room * 0.5)));
+  const jumpW = Math.floor(Math.max(0, Math.min(JUMP_BUTTON_W, right - BUTTON_GAP_PX - (half + BUTTON_GAP_PX))));
+  const jumpH = Math.floor(Math.max(0, Math.min(JUMP_BUTTON_H, room * 0.6)));
+  const y = (h: number) => Math.round(bottom - h);
+  return [
+    { zone: "left", x: Math.floor(quarter - BUTTON_GAP_PX - dir), y: y(dir), w: dir, h: dir },
+    { zone: "right", x: Math.ceil(quarter + BUTTON_GAP_PX), y: y(dir), w: dir, h: dir },
+    { zone: "jump", x: Math.floor(right - BUTTON_GAP_PX - jumpW), y: y(jumpH), w: jumpW, h: jumpH },
+  ];
 }
 
 /** Interface tactile ? `?touch=1` la force (la souris simule le doigt), `?touch=0` la coupe ; sinon l'appareil décide (pointeur grossier). */

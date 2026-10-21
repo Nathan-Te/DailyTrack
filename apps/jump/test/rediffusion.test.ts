@@ -30,6 +30,7 @@ import { Ghost } from "../src/ghost";
 import { DayMemory, MAX_DEATHS, MAX_LIVES, clearAll, levelHash, loadGhostSetting, saveGhostSetting, type KeyValue } from "../src/memory";
 import { JumpSession } from "../src/session";
 import { STAIN_DISCS, STAIN_REACH, onSolidFace, stainFor } from "../src/stains";
+import "./francais";
 
 // Lot 3 côté jeu : mémoire du jour, carnage, taches, fantôme, enregistrement par la session.
 

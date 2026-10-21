@@ -11,6 +11,7 @@ import { defaultSettings, parseSettings } from "../src/settings";
 import { HAZARD, PLAYER, THEMES, THEME_NAMES, backdropColors } from "../src/themes";
 import { archiveHref, dailyHref, readUrlOptions, watchFirstHref } from "../src/urlOptions";
 import { wantsHome } from "../src/homeLogic";
+import "./francais";
 
 // Lot P2 (plateforme) : le fantôme du premier vu par le jeu — couleurs des deux fantômes, validation à la lecture, pas de doublon quand on est
 // premier, réglage et paramètres d'adresse, démonstration.
@@ -47,7 +48,7 @@ describe("couleurs des deux fantômes (règle du lot 9)", () => {
     for (const c of ghosts) for (const s of [BLOCK_STYLE.blink, BLOCK_STYLE.altA, BLOCK_STYLE.altB]) expect(hueDistance(c, s.fill), `${c.toString(16)} / ${s.fill.toString(16)}`).toBeGreaterThanOrEqual(20);
   });
   it("le fantôme et l'étiquette du premier : son pseudo, discret", () => {
-    expect(firstGhostLabel("Démo Nitro")).toBe("Démo Nitro · 1ᵉʳ");
+    expect(firstGhostLabel("Démo Nitro")).toBe("Démo Nitro · 1er"); // lot I5 : le rang au format du socle
   });
 });
 

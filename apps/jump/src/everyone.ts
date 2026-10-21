@@ -1,5 +1,6 @@
 import { JUMP_SIM_VERSION, decodeReplay, lifeStartProblem, type JumpReplay, type Level } from "@cdj/jump-sim";
 import { carnageSchedule } from "./carnage";
+import { t } from "./i18n";
 import type { CarnageSampleData } from "./rankApi";
 
 // Le carnage de tout le monde (lot P3 de la plateforme), **logique seule** (testée) : l'échantillon du serveur (≈ 150 vies d'autres joueurs du
@@ -46,7 +47,7 @@ export function everyoneLives(level: Level, levelId: string, sample: CarnageSamp
 
 /** « 142 vies de 37 joueurs » (une vie, un joueur au singulier). */
 export function everyoneLabel(lives: number, players: number): string {
-  return `${lives} ${lives > 1 ? "vies" : "vie"} de ${players} ${players > 1 ? "joueurs" : "joueur"}`;
+  return t("carnage.toutLeMonde", { vies: t("carnage.vies", { n: lives }), joueurs: t("carnage.joueurs", { n: players }) });
 }
 
 /**

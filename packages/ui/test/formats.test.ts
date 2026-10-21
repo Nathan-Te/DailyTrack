@@ -1,6 +1,6 @@
 import { daysFromCivil } from "@cdj/core";
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateCourte, formatNombre, formatNumeroJour, formatRang, formatTemps, majuscule } from "../src/formats";
+import { formatDate, formatDateCourte, formatDecompte, formatNombre, formatNumeroJour, formatRang, formatTemps, majuscule } from "../src/formats";
 
 // Lot I1 (charte § 7) : les formats par langue, avec Intl. Espace insécable (U+00A0) entre un nombre et son unité.
 const NB = " ";
@@ -42,5 +42,21 @@ describe("formats par langue", () => {
   it("numéro du jour : n° 12 / #12", () => {
     expect(formatNumeroJour(12, "fr")).toBe(`n°${NB}12`);
     expect(formatNumeroJour(12, "en")).toBe("#12");
+  });
+});
+
+// Lot I5 : la durée d'un décompte (Jump : prochain niveau ; Track : prochain circuit et Salon, à la place de `hhmmss` et `mmss`, tests repris tels quels).
+describe("formatDecompte", () => {
+  it("heures, minutes, secondes sur deux chiffres, arrondi à la seconde supérieure, jamais négatif", () => {
+    expect(formatDecompte(0)).toBe("00:00:00");
+    expect(formatDecompte(-5)).toBe("00:00:00");
+    expect(formatDecompte(1)).toBe("00:00:01");
+    expect(formatDecompte(3_661_000)).toBe("01:01:01");
+    expect(formatDecompte(25 * 3_600_000 - 1)).toBe("25:00:00"); // le jour du retour à l'heure d'hiver dure 25 h
+  });
+  it("sans les heures (le Salon de Track) : minutes et secondes", () => {
+    expect(formatDecompte(462_000, { heures: false })).toBe("07:42");
+    expect(formatDecompte(461_001, { heures: false })).toBe("07:42"); // arrondi à la seconde supérieure
+    expect(formatDecompte(-5, { heures: false })).toBe("00:00");
   });
 });

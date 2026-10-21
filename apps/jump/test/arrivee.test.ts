@@ -1,32 +1,27 @@
 import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, dailyLevel, jumpMedalsFor, textHash, type DailyLevel } from "@cdj/jump-sim";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { loadDaily, type LoaderOptions } from "../src/dailyLoader";
 import { FROZEN_FORMAT, decodeAscii, encodeAscii, freezeLevel, frozenJson, rleRow, thawLevel, unrleRow, type FrozenLevel } from "../src/frozen";
 import { HISTORY_KEY, HISTORY_MAX, History, mayRecord, mergeDay, readHistory, streakOf, type DayRecord } from "../src/history";
-import {
-  ARCHIVE_STREAK_TEXT,
-  HELP,
-  archiveDays,
-  archiveRow,
-  countdownText,
-  helpSeen,
-  hhmmss,
-  homeHeading,
-  homeStatus,
-  markHelpSeen,
-  medalThresholds,
-  plural,
-  streakText,
-  wantsHome,
-} from "../src/homeLogic";
+import { PALIERS_MORTS, archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalThresholds, palierMorts, recordTile, streakText, wantsHome } from "../src/homeLogic";
+import { COMMANDES, HOWTO_POINTS } from "../src/howtoUi";
+import { CATALOGUE_JUMP } from "../src/catalogue";
+import { setLangue, chargerLangue } from "../src/i18n";
 import { DayMemory, type KeyValue } from "../src/memory";
 import { shareLine, shareText, shareUrl } from "../src/share";
 import { readUrlOptions, archiveHref, dailyHref, homeHref } from "../src/urlOptions";
+import "./francais";
 
 // Lot 10 : la ligne à partager, l'historique et la série, l'accueil, le compte à rebours, les niveaux figés. Dates et instants fixes,
-// jamais l'heure réelle.
+// jamais l'heure réelle. Lot I5 : les textes viennent des catalogues (français par défaut ici ; l'anglais est essayé à part) ; les temps du socle ont
+// une espace insécable avant l'unité (« 31,400 s ») ; la ligne à partager commence par « Du Jour · Jump #12 » (charte § 2).
+const NB = "\u00a0";
+beforeAll(async () => {
+  await chargerLangue("en");
+  await setLangue("fr", { ecrire: false });
+});
 
 const day = (d: string) => parseDay(d)!;
 
@@ -79,29 +74,39 @@ const rec = (date: string, best: number | null, extra: Partial<DayRecord> = {}):
 
 describe("la ligne à partager", () => {
   it("format du seed : numéro, temps à virgule, médaille, morts", () => {
-    expect(shareLine({ number: 12, date: "2026-10-27", ticks: 3768, medal: "gold", deaths: 47, kind: "jour" })).toBe("DailyJump #12 — 31,400 s — 🥇 — 47 💀");
-    // 31,402 s : 3 768,24 pas n'existe pas ; le temps affiché est celui du pas (arrondi à la milliseconde).
-    expect(shareLine({ number: 12, date: "2026-10-27", ticks: 3769, medal: "gold", deaths: 47, kind: "jour" })).toBe("DailyJump #12 — 31,408 s — 🥇 — 47 💀");
+    expect(shareLine({ number: 12, date: "2026-10-27", ticks: 3768, medal: "gold", deaths: 47, kind: "jour" })).toBe(`Du Jour · Jump #12 — 31,400${NB}s — 🥇 — 47 💀`);
+    // 31,402${NB}s : 3 768,24 pas n'existe pas ; le temps affiché est celui du pas (arrondi à la milliseconde).
+    expect(shareLine({ number: 12, date: "2026-10-27", ticks: 3769, medal: "gold", deaths: 47, kind: "jour" })).toBe(`Du Jour · Jump #12 — 31,408${NB}s — 🥇 — 47 💀`);
   });
 
   it("chaque médaille a son icône ; sans médaille, le morceau est omis ; 0 mort s'écrit", () => {
     const base = { number: 5, date: "2026-10-20", ticks: 3000, deaths: 0, kind: "jour" } as const;
-    expect(shareLine({ ...base, medal: "author" })).toBe("DailyJump #5 — 25,000 s — 🏆 — 0 💀");
+    expect(shareLine({ ...base, medal: "author" })).toBe(`Du Jour · Jump #5 — 25,000${NB}s — 🏆 — 0 💀`);
     expect(shareLine({ ...base, medal: "silver" })).toContain("— 🥈 —");
     expect(shareLine({ ...base, medal: "bronze" })).toContain("— 🥉 —");
-    expect(shareLine({ ...base, medal: null })).toBe("DailyJump #5 — 25,000 s — 0 💀");
+    expect(shareLine({ ...base, medal: null })).toBe(`Du Jour · Jump #5 — 25,000${NB}s — 0 💀`);
   });
 
   it("virgule décimale, millisecondes sur trois chiffres", () => {
-    expect(shareLine({ number: 1, date: "2026-10-16", ticks: 121, medal: null, deaths: 1, kind: "jour" })).toBe("DailyJump #1 — 1,008 s — 1 💀");
-    expect(shareLine({ number: 1, date: "2026-10-16", ticks: 4800, medal: null, deaths: 1, kind: "jour" })).toContain("40,000 s");
+    expect(shareLine({ number: 1, date: "2026-10-16", ticks: 121, medal: null, deaths: 1, kind: "jour" })).toBe(`Du Jour · Jump #1 — 1,008${NB}s — 1 💀`);
+    expect(shareLine({ number: 1, date: "2026-10-16", ticks: 4800, medal: null, deaths: 1, kind: "jour" })).toContain(`40,000${NB}s`);
   });
 
   it("une archive porte la mention « (archive) » et son lien ?seed= ; avant le premier jour, la date remplace le numéro", () => {
     const r = { number: 3, date: "2026-10-18", ticks: 3600, medal: "gold" as const, deaths: 2, kind: "archive" as const };
-    expect(shareLine(r)).toBe("DailyJump #3 (archive) — 30,000 s — 🥇 — 2 💀");
+    expect(shareLine(r)).toBe(`Du Jour · Jump #3 (archive) — 30,000${NB}s — 🥇 — 2 💀`);
     expect(shareLine({ ...r, kind: "futur" })).toContain("(à venir)");
-    expect(shareLine({ ...r, number: 0, date: "2026-10-15", kind: "jour" })).toMatch(/^DailyJump 2026-10-15 — /);
+    expect(shareLine({ ...r, number: 0, date: "2026-10-15", kind: "jour" })).toMatch(/^Du Jour · Jump 2026-10-15 — /);
+  });
+
+  it("lot I5 : en anglais, même forme (« Du Jour · Jump #12 »), le temps et le rang au format anglais, mêmes émojis", async () => {
+    await setLangue("en", { ecrire: false });
+    try {
+      expect(shareLine({ number: 12, date: "2026-10-27", ticks: 3768, medal: "gold", deaths: 1284, kind: "jour", rank: { rank: 3, participants: 1280 } })).toBe(`Du Jour · Jump #12 — 31.400${NB}s — 🥇 — 1,284 💀 — 3rd/1,280`);
+      expect(shareLine({ number: 3, date: "2026-10-18", ticks: 3600, medal: null, deaths: 2, kind: "archive" })).toBe(`Du Jour · Jump #3 (archive) — 30.000${NB}s — 2 💀`);
+    } finally {
+      await setLangue("fr", { ecrire: false });
+    }
   });
 
   it("le lien vient de l'adresse courante (aperçu de branche compris), sans aucun paramètre ; ?seed= pour une archive", () => {
@@ -112,7 +117,7 @@ describe("la ligne à partager", () => {
     expect(shareUrl(published, "2026-10-18", "archive")).toBe("https://nathan-te.github.io/DailyTrack/jump/?seed=2026-10-18");
     // Lot R4 : le lien est construit sur l'origine courante (playdujour.com/jump/, la recette, un aperçu…).
     expect(shareUrl({ origin: "https://playdujour.com", pathname: "/jump/" }, "2026-10-20", "jour")).toBe("https://playdujour.com/jump/");
-    expect(shareText({ number: 5, date: "2026-10-20", ticks: 3000, medal: "gold", deaths: 4, kind: "jour" }, published)).toBe("DailyJump #5 — 25,000 s — 🥇 — 4 💀\nhttps://nathan-te.github.io/DailyTrack/jump/");
+    expect(shareText({ number: 5, date: "2026-10-20", ticks: 3000, medal: "gold", deaths: 4, kind: "jour" }, published)).toBe(`Du Jour · Jump #5 — 25,000${NB}s — 🥇 — 4 💀\nhttps://nathan-te.github.io/DailyTrack/jump/`);
   });
 });
 
@@ -223,22 +228,16 @@ describe("la série", () => {
     expect(mayRecord({ ...base, today: today + 1 })).toBe(false); // la page est restée ouverte après minuit
   });
 
-  it("textes de la série", () => {
-    expect(streakText(0)).toBe("Pas de série en cours");
-    expect(streakText(1)).toBe("Série : 1 jour");
-    expect(streakText(12)).toBe("Série : 12 jours");
-    expect(ARCHIVE_STREAK_TEXT).toContain("ne compte pas");
+  it("textes de la série (lot I5 : la tuile « Série Jump » de l'accueil)", () => {
+    expect(streakText(0)).toBe("0 jour");
+    expect(streakText(1)).toBe("1 jour");
+    expect(streakText(12)).toBe("12 jours");
+    expect(archiveStreakText()).toContain("ne compte pas");
   });
 });
 
 describe("compte à rebours jusqu'au prochain niveau (minuit, heure de Paris)", () => {
-  it("format HH:MM:SS, arrondi à la seconde supérieure", () => {
-    expect(hhmmss(0)).toBe("00:00:00");
-    expect(hhmmss(1)).toBe("00:00:01");
-    expect(hhmmss(10 * 3600_000)).toBe("10:00:00");
-    expect(hhmmss(25 * 3600_000)).toBe("25:00:00");
-    expect(hhmmss(-5)).toBe("00:00:00");
-  });
+  // Lot I5 : le format HH:MM:SS est `formatDecompte` du socle (packages/ui/test/formats.test.ts, mêmes cas).
 
   it("midi UTC en heure d'été = 14 h à Paris : 10 h ; en hiver = 13 h : 11 h", () => {
     expect(countdownText(Date.parse("2026-10-20T12:00:00Z"))).toBe("Prochain niveau dans 10:00:00");
@@ -279,15 +278,55 @@ describe("l'accueil", () => {
     expect(homeHref(readUrlOptions(""))).toBe("?");
   });
 
-  it("titre, date et thème ; état du joueur", () => {
-    expect(homeHeading(day("2026-10-20"), "forêt")).toEqual({ title: "DailyJump #5", subtitle: "20 oct. 2026 · Forêt" });
-    expect(homeHeading(day("2026-10-15"), "néon").title).toBe("DailyJump");
+  it("titre, niveau et thème ; état du joueur ; JOUER / CONTINUER / REJOUER ; ton record et la médaille à viser", () => {
+    expect(homeHeading(day("2026-10-20"), "foret")).toEqual({ title: "JUMP", subtitle: `Niveau n°${NB}5 · Forêt` });
+    expect(homeHeading(day("2026-10-15"), "neon").subtitle).toBe("Niveau du Jeu. 15 oct. · Néon"); // avant le premier jour : la date à la place du numéro
     expect(homeStatus(null)).toEqual({ played: false, finished: false, text: "Pas encore joué" });
     expect(homeStatus(rec("2026-10-20", null, { deaths: 12, attempts: 4 }))).toEqual({ played: true, finished: false, text: "Pas encore d'arrivée · 12 morts · 4 essais" });
-    expect(homeStatus(rec("2026-10-20", 3769, { deaths: 47, medal: "gold" }))).toEqual({ played: true, finished: true, text: "🥇 Meilleur : 31,408 s · 47 morts" });
-    expect(homeStatus(rec("2026-10-20", 9000, { deaths: 1, medal: null })).text).toBe("Meilleur : 75,000 s · 1 mort");
-    expect(plural(0, "mort", "morts")).toBe("0 mort");
-    expect(plural(2, "essai", "essais")).toBe("2 essais");
+    expect(homeStatus(rec("2026-10-20", 3769, { deaths: 47, medal: "gold" }))).toEqual({ played: true, finished: true, text: `Or · Meilleur : 31,408${NB}s · 47 morts` });
+    expect(homeStatus(rec("2026-10-20", 9000, { deaths: 1, medal: null })).text).toBe("Meilleur : 1:15,000 · 1 mort"); // au-delà d'une minute : le format du socle (charte § 7)
+    expect([etatDuJour(null), etatDuJour(rec("2026-10-20", null, { deaths: 1, attempts: 1 })), etatDuJour(rec("2026-10-20", 3769))]).toEqual(["pas_joue", "en_cours", "fini"]);
+    const m = jumpMedalsFor(3600);
+    expect(recordTile(null, m).valeur).toBe("Pas encore");
+    expect(recordTile(null, m).sous).toMatch(/^Bronze à \d+,\d{3}\u00a0s$/);
+    expect(recordTile(m.silver, m).sous).toMatch(/^Or à /);
+    expect(recordTile(m.author, m)).toEqual({ valeur: `30,000${NB}s`, sous: "Temps de l'auteur battu" });
+    expect(recordTile(3600, null).sous).toBe("");
+  });
+
+  it("lot I5 : la phrase de l'arrivée selon le nombre de morts du jour (paliers 0, 1–5, 6–20, 21–50, plus de 50), en français et en anglais", async () => {
+    expect([0, 1, 5, 6, 20, 21, 50, 51, 999].map(palierMorts)).toEqual([
+      "arrivee.phrase.zero",
+      "arrivee.phrase.peu",
+      "arrivee.phrase.peu",
+      "arrivee.phrase.moyen",
+      "arrivee.phrase.moyen",
+      "arrivee.phrase.beaucoup",
+      "arrivee.phrase.beaucoup",
+      "arrivee.phrase.carnage",
+      "arrivee.phrase.carnage",
+    ]);
+    expect(PALIERS_MORTS).toHaveLength(5);
+    expect(arrivalLine(1)).toBe("Une seule mort. Les pics sont vexés.");
+    expect(arrivalLine(37)).toBe("37 morts. La scie te remercie pour ta fidélité.");
+    expect(arrivalLine(1284)).toContain(`1${NB}284 morts`);
+    await setLangue("en", { ecrire: false });
+    try {
+      expect(arrivalLine(37)).toBe("37 deaths. The saw thanks you for your loyalty.");
+      expect(arrivalLine(1)).toBe("One death. The spikes are offended.");
+    } finally {
+      await setLangue("fr", { ecrire: false });
+    }
+    // Une seule phrase par écran (charte § 7), courte, sans émoji, dans les deux langues.
+    for (const l of ["fr", "en"] as const) {
+      for (const p of PALIERS_MORTS) {
+        const v = CATALOGUE_JUMP[l][p.cle]!;
+        for (const x of typeof v === "string" ? [v] : Object.values(v)) {
+          expect(x.length, x).toBeLessThanOrEqual(70);
+          expect(x, x).not.toMatch(/\p{Extended_Pictographic}/u);
+        }
+      }
+    }
   });
 
   it("archives : du niveau n° 1 jusqu'à hier, le plus récent d'abord ; jamais aujourd'hui ni le futur", () => {
@@ -295,8 +334,8 @@ describe("l'accueil", () => {
     expect(archiveDays(PREMIER_JOUR_JUMP)).toEqual([]);
     expect(archiveDays(PREMIER_JOUR_JUMP - 3)).toEqual([]);
     expect(archiveDays(PREMIER_JOUR_JUMP + 400)).toHaveLength(400);
-    expect(archiveRow(day("2026-10-18"), "nuit", null)).toEqual({ date: "2026-10-18", number: 3, title: "#3", subtitle: "18 oct. 2026 · Nuit", result: "", medal: null });
-    expect(archiveRow(day("2026-10-18"), "nuit", rec("2026-10-18", 3600, { medal: "silver" })).result).toBe("🥈 30,000 s");
+    expect(archiveRow(day("2026-10-18"), "nuit", null)).toEqual({ date: "2026-10-18", number: 3, title: `n°${NB}3`, subtitle: "Dim. 18 oct. · Nuit", result: "", medal: null });
+    expect(archiveRow(day("2026-10-18"), "nuit", rec("2026-10-18", 3600, { medal: "silver" }))).toMatchObject({ result: `30,000${NB}s`, medal: "silver" });
     expect(archiveRow(day("2026-10-18"), "nuit", rec("2026-10-18", null, { deaths: 9 })).result).toBe("pas d'arrivée · 9 morts");
   });
 
@@ -305,13 +344,15 @@ describe("l'accueil", () => {
     const t = medalThresholds(m, m.silver);
     expect(t.map((x) => x.medal)).toEqual(["author", "gold", "silver", "bronze"]);
     expect(t.map((x) => x.reached)).toEqual([false, false, true, true]);
-    expect(t[0]).toMatchObject({ icon: "🏆", label: "Auteur", time: "30,000 s" });
+    expect(t[0]).toMatchObject({ label: "Auteur", time: `30,000${NB}s` });
     expect(medalThresholds(m, null).some((x) => x.reached)).toBe(false);
   });
 
-  it("« Comment jouer » : commandes, saut variable, murs, élan, points de passage, recommencer, médailles ; vu une seule fois", () => {
-    const text = HELP.flatMap((s) => s.lines).join(" ");
-    for (const w of ["Clavier", "Manette", "Tactile", "Tiens le saut", "mur", "élan", "fanions", "Recommencer", "Bronze"]) expect(text).toContain(w);
+  it("« Comment jouer » (lot I5 : trois points courts, dans le jeu) et les commandes ; vu une seule fois", () => {
+    const text = HOWTO_POINTS.map((k) => CATALOGUE_JUMP.fr[k]).join(" ");
+    for (const w of ["drapeau", "chrono", "mourir", "fanion", "Tiens le saut", "mur"]) expect(text).toContain(w);
+    const commandes = [...COMMANDES.clavier, ...COMMANDES.manette, ...COMMANDES.tactile].map((k) => CATALOGUE_JUMP.fr[k]).join(" ");
+    for (const w of ["courir", "sauter", "recommencer", "pause", "fantôme", "Select", "Start", "SAUT"]) expect(commandes).toContain(w);
     const store = new MemStore();
     expect(helpSeen(store)).toBe(false);
     markHelpSeen(store);

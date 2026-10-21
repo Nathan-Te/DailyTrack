@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jump — Classement du jour</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Black&amp;family=Archivo:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;family=Lilita+One&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#2A1E16}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;background:#EDE3CF;color:#2A1E16;font-family:Archivo, sans-serif;display:flex;flex-direction:column;overflow:hidden">
+
+  <header style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px">
+    <a href="jump.html" style="height:44px;display:flex;align-items:center;gap:6px;text-decoration:none;font-family:'Archivo Black', sans-serif;font-size:14px">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M11 3 5 9l6 6" fill="none" stroke="#2A1E16" stroke-width="2.5" stroke-linecap="square"/></svg>JUMP</a>
+    <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:12px">Mar. 20 oct. · n° 5</span>
+  </header>
+
+  <main style="flex:1;margin:0 10px 10px;background:#FFD23F;border:3px solid #2A1E16;border-radius:10px 10px 4px 4px;box-shadow:4px 4px 0 #2A1E16;padding:14px 12px;display:flex;flex-direction:column;gap:10px;overflow:hidden">
+    <div style="display:flex;flex-direction:column">
+      <h1 style="margin:0;font-family:'Lilita One', sans-serif;font-weight:400;font-size:42px;line-height:.95;text-shadow:3px 3px 0 #FFF6E0">CLASSEMENT</h1>
+      <span style="font-family:'Lilita One', sans-serif;font-size:17px">Forêt · 140 classés · 1 284 morts</span>
+    </div>
+    <div style="display:grid;grid-template-columns:34px minmax(0, 1fr) 70px 64px;gap:0 6px;font-size:10px;font-weight:700;letter-spacing:1px;padding:0 6px"><span>#</span><span>PSEUDO</span><span>MÉDAILLE</span><span style="text-align:right">TEMPS</span></div>
+    <ol style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px">
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="12">
+        <li style="{{r.style}}">
+          <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:13px">{{r.rang}}</span>
+          <span style="display:flex;flex-direction:column;min-width:0"><span style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{r.pseudo}}</span><span style="font-size:11px">{{r.morts}}</span></span>
+          <span style="display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700"><span aria-hidden="true" style="{{r.pastille}}"></span>{{r.medaille}}</span>
+          <span style="text-align:right;font-family:'Lilita One', sans-serif;font-size:19px;font-variant-numeric:tabular-nums">{{r.temps}}</span>
+        </li>
+      </sc-for>
+    </ol>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const medals = { auteur: ['#2E9E5B', 'Auteur'], or: ['#D9A21B', 'Or'], argent: ['#A7A9AC', 'Argent'], bronze: ['#C07A42', 'Bronze'] };
+    const data = [
+      ['1', 'Pistache', '3 morts', 'auteur', '38,840'],
+      ['2', 'Kiwi', '6 morts', 'or', '39,511'],
+      ['3', 'Moustique', '11 morts', 'or', '40,002'],
+      ['4', 'Léa_V', '2 morts', 'or', '41,377'],
+      ['5', 'Gégé', '24 morts', 'or', '42,190'],
+      ['6', 'Zorglub', '9 morts', 'or', '43,005'],
+      ['7', 'Nina', '15 morts', 'or', '43,880'],
+      ['…', '', '', '', ''],
+      ['30', 'Brindille', '28 morts', 'argent', '48,102'],
+      ['31', 'Nathan', '37 morts', 'argent', '48,210', true],
+      ['32', 'Coyote', '51 morts', 'argent', '49,644']
+    ];
+    const rows = data.map(([rang, pseudo, morts, m, temps, moi]) => {
+      const sep = rang === '…';
+      const base = 'display:grid;grid-template-columns:34px minmax(0, 1fr) 70px 64px;gap:0 6px;align-items:center;min-height:46px;padding:0 6px;';
+      const style = sep ? 'text-align:center;font-weight:700;min-height:20px'
+        : moi ? base + 'background:#2A1E16;color:#FFD23F;border:3px solid #2A1E16;box-shadow:3px 3px 0 #FFF6E0;margin:4px 0;transform:rotate(-1deg)'
+        : base + 'background:#FFF6E0;border:2px solid #2A1E16';
+      const md = medals[m];
+      return {
+        rang: sep ? '…' : rang, pseudo, morts, temps,
+        style,
+        medaille: md ? md[1] : '',
+        pastille: md ? 'width:12px;height:12px;border-radius:50%;border:2px solid ' + (moi ? '#FFF6E0' : '#2A1E16') + ';background:' + md[0] : 'display:none'
+      };
+    });
+    return { rows };
+  }
+}
+</script>
+</body>
+</html>

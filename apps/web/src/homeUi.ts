@@ -3,13 +3,13 @@
 // quatre médailles en cases, le fantôme à battre, « Courir » ; puis le classement du jour (cinq lignes et la tienne), le Salon et les liens (archives,
 // réglages, aide, profil). Le DOM seulement : les données viennent de `HomeHost` (main.ts), la logique de homeLogic.ts, profile.ts et boardView.ts.
 import type { Medal } from "@cdj/sim";
-import { bouton, medaille } from "@cdj/ui";
+import { bouton, formatDecompte, medaille } from "@cdj/ui";
 import type { ApiResult, Leaderboard } from "./api";
 import { boardTitle, dayLines, linesEls, MEDAL_TYPE } from "./boardView";
 import { creerCadre } from "./cadre";
 import { button, el } from "./dom";
 import { fEcart, fNombre, fRang, fTemps, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { hhmmss, mmss, remainingMs, type SalonLookup, type SalonProblem } from "./homeLogic";
+import { remainingMs, type SalonLookup, type SalonProblem } from "./homeLogic";
 import { rememberRank } from "./profile";
 
 export interface HomeDaily {
@@ -303,7 +303,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     if (salonStatus) {
       const left = remainingMs(salonStatus, Date.now());
       const line = el("p", "status");
-      line.append(t("accueil.salon.etat", { theme: nomTheme(salonStatus.theme), temps: mmss(left), n: salonStatus.players }));
+      line.append(t("accueil.salon.etat", { theme: nomTheme(salonStatus.theme), temps: formatDecompte(left, { heures: false }), n: salonStatus.players }));
       return salonText.replaceChildren(line);
     }
     if (salonProblem === "recherche" || salonProblem === null) return salonText.replaceChildren(el("p", "status", t("accueil.salon.recherche")));
@@ -320,7 +320,7 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
       host.onNewDay();
       return;
     }
-    const text = t("accueil.prochain", { temps: hhmmss(left) });
+    const text = t("accueil.prochain", { temps: formatDecompte(left) });
     if (nextDay.textContent !== text) nextDay.textContent = text;
   }
 

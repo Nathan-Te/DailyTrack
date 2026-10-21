@@ -1,0 +1,420 @@
+/* Les outils internes de Jump (lot I5 : seul leur **habillage** suit les jetons ; leurs textes restent en français, exemptés du test des chaînes en dur avec
+   leur raison — packages/ui/test/applications.ts) : la surimpression `?debug`, le badge « réglages modifiés » et le panneau `?debug&tune` (réglages du
+   personnage), le dessin des zones tactiles `?zones=1`, la galerie des morceaux `?modules` (lot 4). Plaques encre opaques, aucune transparence. */
+
+/* --- ?debug : la surimpression, le badge des réglages modifiés ------------------------------------------------------------------------------------------ */
+#debug {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: max(10px, env(safe-area-inset-left));
+  top: calc(max(8px, env(safe-area-inset-top)) + 54px);
+  max-width: min(46vw, 520px);
+  margin: 0;
+  padding: 6px 9px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+#tuned {
+  position: fixed;
+  z-index: var(--z-hud);
+  left: 50%;
+  top: calc(max(8px, env(safe-area-inset-top)) + 68px);
+  transform: translateX(-50%);
+  padding: 2px 9px;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  border-radius: var(--dj-rayon-bouton);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  pointer-events: none;
+}
+#tuned:empty {
+  display: none;
+}
+@media (max-height: 520px) {
+  #debug {
+    font-size: var(--dj-taille-legende-petite);
+  }
+}
+
+/* --- ?debug&tune : le panneau des réglages du personnage (outil interne de Nathan) --------------------------------------------------------------------- */
+#tune {
+  position: fixed;
+  z-index: var(--z-outil);
+  right: 10px;
+  top: 10px;
+  width: 300px;
+  max-height: calc(100vh - 56px);
+  overflow: auto;
+  padding: 8px 10px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-papier);
+  border-radius: var(--dj-rayon-tuile);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#tune .head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+#tune .head button,
+#tune .actions button,
+#tune .sprint .switch {
+  padding: 5px 8px;
+  border: var(--dj-trait) solid var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  font: inherit;
+  cursor: pointer;
+}
+#tune.folded .body {
+  display: none;
+}
+#tune .row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 8px;
+  margin-top: 7px;
+}
+#tune .row input {
+  grid-column: 1 / 3;
+  width: 100%;
+  margin: 2px 0 0;
+  accent-color: var(--jump-jaune);
+}
+#tune .row .hint {
+  grid-column: 1 / 3;
+  font-weight: 500;
+  color: var(--dj-creme-2);
+}
+#tune .row .hint:empty {
+  display: none;
+}
+#tune .row.changed {
+  color: var(--jump-jaune);
+}
+#tune .sprint,
+#tune .surfaces,
+#tune .winds {
+  display: flex;
+  flex-direction: column;
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid var(--dj-encre-douce);
+}
+#tune .sprint > .hint,
+#tune .surfaces > .hint,
+#tune .winds > .hint {
+  margin-top: 2px;
+  font-weight: 500;
+  color: var(--dj-creme-2);
+}
+#tune .sprint .switch {
+  align-self: flex-start;
+  margin-top: 6px;
+}
+#tune .sprint.on .switch,
+#tune .actions button:first-child {
+  background: var(--jump-jaune);
+  color: var(--dj-encre);
+}
+#tune .status {
+  margin-top: 8px;
+}
+#tune .actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+#tune textarea.json {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-ecran);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  line-height: 1.35;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#tune textarea.json[hidden] {
+  display: none;
+}
+/* Au téléphone : ouvert par ⚙, en feuille qui prend la page et défile ; curseurs et boutons d'au moins 44 px. */
+body.touch #tune {
+  left: max(8px, env(safe-area-inset-left));
+  right: max(8px, env(safe-area-inset-right));
+  top: max(8px, env(safe-area-inset-top));
+  bottom: max(8px, env(safe-area-inset-bottom));
+  width: auto;
+  max-height: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 8px 12px 16px;
+  font-size: var(--dj-taille-14);
+}
+body.touch #tune .head {
+  position: sticky;
+  top: -8px;
+  z-index: 1;
+  margin: -8px -12px 0;
+  padding: 8px 12px;
+  background: var(--dj-encre);
+}
+body.touch #tune .head button {
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  font-size: 18px;
+}
+body.touch #tune .row {
+  margin-top: 12px;
+}
+body.touch #tune .row input {
+  height: var(--dj-cible);
+  touch-action: pan-y;
+}
+body.touch #tune .actions {
+  flex-wrap: wrap;
+}
+body.touch #tune .actions button,
+body.touch #tune .sprint .switch {
+  min-height: var(--dj-cible);
+  min-width: var(--dj-cible);
+  padding: 0 14px;
+}
+
+/* --- ?zones=1 : les zones tactiles et un point par doigt (diagnostic) ------------------------------------------------------------------------------------ */
+#zones {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-bandeau);
+  pointer-events: none;
+}
+#zones .zone {
+  position: absolute;
+  padding: 2px 4px;
+  border: 1px dashed var(--dj-papier);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+}
+#zones .zone.left {
+  background: repeating-linear-gradient(45deg, var(--dj-argent) 0 1px, transparent 1px 12px);
+}
+#zones .zone.right {
+  background: repeating-linear-gradient(-45deg, var(--dj-auteur) 0 1px, transparent 1px 12px);
+}
+#zones .zone.jump {
+  background: repeating-linear-gradient(45deg, var(--dj-or) 0 1px, transparent 1px 12px);
+}
+#zones .zone.band {
+  background: repeating-linear-gradient(90deg, var(--dj-terre) 0 1px, transparent 1px 12px);
+}
+#zones .dot {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: var(--dj-rayon-avatar);
+  background: var(--dj-terre);
+  border: var(--dj-trait) solid var(--dj-papier);
+}
+#zones .dot.jump {
+  background: var(--dj-or);
+}
+
+/* --- ?modules : la galerie des morceaux (lot 4), qui défile -------------------------------------------------------------------------------------------- */
+body.gallery > :not(#gallery) {
+  display: none !important;
+}
+#gallery {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#gallery h1 {
+  margin: 4px 0 6px;
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+}
+#gallery .lead,
+#gallery .count {
+  margin: 0 0 10px;
+  color: var(--dj-creme-2);
+}
+#gallery .count {
+  font-size: var(--dj-taille-13);
+}
+#gallery .entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+#gallery .entry button {
+  min-height: 46px; /* 44 px au moins, avec une marge : Firefox mesure 43,99997 px à une position fractionnaire */
+  min-width: var(--dj-cible);
+  padding: 0 14px;
+  border: var(--dj-trait) solid var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  background: transparent;
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+#gallery .entry button[aria-pressed="true"] {
+  background: var(--jump-jaune);
+  border-color: var(--jump-jaune);
+  color: var(--dj-encre);
+}
+#gallery .filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 6px;
+}
+#gallery .filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+#gallery .filter select {
+  min-height: 46px;
+  min-width: var(--dj-cible);
+  max-width: 60vw;
+  padding: 0 10px;
+  border: var(--dj-trait) solid var(--dj-papier);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-ecran);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  font-weight: 600;
+  touch-action: manipulation;
+}
+#gallery .cards {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#gallery .card {
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--dj-ecran);
+  border-radius: var(--dj-rayon-tuile);
+}
+#gallery .card[hidden] {
+  display: none;
+}
+#gallery .card h2 {
+  margin: 0;
+  font-size: 17px;
+}
+#gallery .intent {
+  margin: 4px 0;
+}
+#gallery .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 6px;
+}
+#gallery .tag {
+  padding: 1px 8px;
+  border-radius: var(--dj-rayon-tuile);
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  font-size: var(--dj-taille-12);
+}
+#gallery .tag.family {
+  color: var(--dj-argent);
+}
+#gallery .tag.long {
+  color: var(--dj-auteur);
+}
+#gallery .variant {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--dj-encre-douce);
+}
+#gallery .info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: var(--dj-taille-13);
+  font-variant-numeric: tabular-nums;
+}
+#gallery .ex {
+  color: var(--jump-jaune);
+  letter-spacing: 1px;
+}
+#gallery .mut {
+  color: var(--dj-creme-2);
+}
+#gallery .actions {
+  display: flex;
+  gap: 8px;
+}
+#gallery .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  min-width: var(--dj-cible);
+  padding: 0 14px;
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--jump-jaune);
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: none;
+  touch-action: manipulation;
+}
+#gallery .btn.watch {
+  background: var(--dj-encre-douce);
+  color: var(--dj-papier);
+}

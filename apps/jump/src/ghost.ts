@@ -46,3 +46,18 @@ export class Ghost {
     if (!moved) this.runner.prev = this.runner.state;
   }
 }
+
+/**
+ * Lot I5 : les temps de passage d'un essai (son chrono, en pas, au premier franchissement de chaque point de passage) — l'écart signé au record de la bande
+ * du HUD (`+1,204` / `−0,412`) compare l'essai en cours à ceux du meilleur essai du jour. `undefined` : ce point n'a pas été franchi. Rejoue l'essai une fois
+ * (à chaque nouveau record), jamais pendant la partie.
+ */
+export function checkpointTimes(level: Level, replay: JumpReplay): (number | undefined)[] {
+  const out: (number | undefined)[] = level.checkpoints.map(() => undefined);
+  const runner = new ReplayRunner(level, replay);
+  while (runner.step()) {
+    const s = runner.state;
+    if (s.checkpoint >= 0 && s.checkpoint !== runner.prev.checkpoint && out[s.checkpoint] === undefined) out[s.checkpoint] = s.time;
+  }
+  return out;
+}

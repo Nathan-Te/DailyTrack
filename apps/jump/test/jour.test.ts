@@ -2,8 +2,9 @@ import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
 import { PREMIER_JOUR_JUMP, dailyLevel, jumpMedalsFor } from "@cdj/jump-sim";
 import { describe, expect, it } from "vitest";
-import { REFUSED_TEXT, chooseDay, dayLine, finishMedalText, isPreview, levelTitle, nextMedal, shortDate } from "../src/dailyInfo";
+import { refusedText, chooseDay, dayLine, finishMedalText, isPreview, levelTitle, nextMedal, shortDate } from "../src/dailyInfo";
 import { paletteForDay } from "../src/palette";
+import "./francais";
 
 // Le niveau du jour côté jeu (lot 5) : aperçu ou site publié, porte des jours futurs, médaille visée, textes. Dates fixes, jamais l'heure réelle.
 
@@ -72,7 +73,7 @@ describe("la porte des jours futurs", () => {
   });
 
   it("le message du refus est discret et en français", () => {
-    expect(REFUSED_TEXT).toBe("Ce niveau n'est pas encore sorti");
+    expect(refusedText()).toBe("Ce niveau n'est pas encore sorti");
   });
 });
 
@@ -87,20 +88,23 @@ describe("médailles et textes", () => {
     expect(nextMedal(3600, medals)).toBeNull();
   });
 
-  it("titre, date courte, ligne du HUD (archive, à venir, aperçu)", () => {
-    expect(levelTitle(12)).toBe("DailyJump #12");
-    expect(levelTitle(0)).toBe("DailyJump");
-    expect(shortDate("2026-10-16")).toBe("16 oct. 2026");
-    const d = { number: 5, date: "2026-10-20", medals };
-    expect(dayLine(d, { day: day("2026-10-20"), mode: "jour", refused: false }, false, null)).toBe("DailyJump #5 · visée 🥉 48,000 s");
-    expect(dayLine(d, { day: day("2026-10-20"), mode: "archive", refused: false }, false, 4000)).toBe("DailyJump #5 · archive du 20 oct. 2026 · visée 🥇 33,000 s");
-    expect(dayLine(d, { day: day("2026-10-20"), mode: "futur", refused: false }, true, 3600)).toBe("DailyJump #5 · à venir (20 oct. 2026) · aperçu · 🏆 auteur battu");
+  // Lot I5 : « Jump n° 5 » (nom affiché « Jump », charte § 2), la date courte du socle, le titre du départ sans la médaille visée (elle a sa plaque en haut
+  // à droite) et sans émoji ; les temps du socle ont une espace insécable avant l'unité.
+  it("titre, date courte, titre du niveau au départ (archive, à venir, aperçu)", () => {
+    expect(levelTitle(12)).toBe("Jump n°\u00a012");
+    expect(levelTitle(0)).toBe("Jump");
+    expect(shortDate("2026-10-16")).toBe("ven. 16 oct.");
+    const d = { number: 5, date: "2026-10-20", theme: "foret" };
+    expect(dayLine(d, { day: day("2026-10-20"), mode: "jour", refused: false }, false)).toBe("Jump n°\u00a05 · Forêt");
+    expect(dayLine(d, { day: day("2026-10-20"), mode: "archive", refused: false }, false)).toBe("Jump n°\u00a05 · Forêt · archive du mar. 20 oct.");
+    expect(dayLine(d, { day: day("2026-10-20"), mode: "futur", refused: false }, true)).toBe("Jump n°\u00a05 · Forêt · à venir (mar. 20 oct.) · aperçu");
+    expect(dayLine({ number: 5, date: "2026-10-20" }, { day: day("2026-10-20"), mode: "jour", refused: false }, false)).not.toMatch(/\p{Extended_Pictographic}/u);
   });
 
   it("bandeau d'arrivée : la médaille obtenue et le temps de l'auteur", () => {
-    expect(finishMedalText(3600, medals)).toEqual({ medal: "author", text: "🏆 Médaille auteur · Temps de l'auteur : 30,000 s" });
-    expect(finishMedalText(3900, medals).medal).toBe("gold");
-    expect(finishMedalText(9999, medals)).toEqual({ medal: null, text: "Pas de médaille (bronze : 48,000 s) · Temps de l'auteur : 30,000 s" });
+    expect(finishMedalText(3600, medals)).toEqual({ medal: "author", text: "Temps de l'auteur battu ! · Temps de l'auteur : 30,000\u00a0s" });
+    expect(finishMedalText(3900, medals)).toMatchObject({ medal: "gold", text: expect.stringMatching(/^Médaille d'or · /) });
+    expect(finishMedalText(9999, medals)).toEqual({ medal: null, text: "Pas de médaille (bronze : 48,000\u00a0s) · Temps de l'auteur : 30,000\u00a0s" });
   });
 
   it("le niveau du jour d'une date : numéro, médailles entières, palette du jour", () => {

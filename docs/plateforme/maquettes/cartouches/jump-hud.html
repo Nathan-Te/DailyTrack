@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Jump — HUD A</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&amp;family=JetBrains+Mono:wght@700&amp;family=Lilita+One&amp;display=swap">
+<style>
+body{margin:0}
+button{font:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width:844px;height:390px;position:relative;overflow:hidden;background:#0E1719;font-family:Archivo, sans-serif;color:#2A1E16">
+
+  <svg aria-hidden="true" width="844" height="390" viewBox="0 0 844 390" style="position:absolute;inset:0">
+    <rect width="844" height="390" fill="#0E1719"/>
+    <path d="M0 110 L844 170 L844 390 L0 390Z" fill="#122023"/>
+    <g fill="#182A2C"><circle cx="110" cy="200" r="38"/><rect x="102" y="210" width="16" height="80"/><circle cx="330" cy="190" r="46"/><rect x="322" y="200" width="16" height="90"/><circle cx="520" cy="205" r="40"/><rect x="512" y="215" width="16" height="75"/><circle cx="760" cy="180" r="42"/><rect x="752" y="190" width="16" height="100"/></g>
+    <rect x="0" y="0" width="470" height="56" fill="#2C4A2B"/><rect x="0" y="52" width="470" height="4" fill="#6DBF4B"/>
+    <g fill="#2C4A2B"><rect x="0" y="280" width="150" height="110"/><rect x="200" y="280" width="80" height="110"/><rect x="330" y="280" width="80" height="110"/><rect x="460" y="280" width="180" height="110"/><rect x="700" y="268" width="22" height="122"/><rect x="790" y="250" width="22" height="140"/></g>
+    <g fill="#6DBF4B"><rect x="0" y="280" width="150" height="4"/><rect x="200" y="280" width="80" height="4"/><rect x="330" y="280" width="80" height="4"/><rect x="460" y="280" width="180" height="4"/><rect x="700" y="268" width="22" height="4"/><rect x="790" y="250" width="22" height="4"/></g>
+    <g fill="#F04040" stroke="#2A0A0A" stroke-width="2"><path d="M152 345 L164 318 L176 345Z M174 345 L186 318 L198 345Z M282 345 L294 318 L306 345Z M304 345 L316 318 L328 345Z M412 345 L424 318 L436 345Z M434 345 L446 318 L458 345Z"/></g>
+    <g fill="#F04040" stroke="#2A0A0A" stroke-width="2"><path d="M720 112 l5 10 10-5-5 10 10 5-10 5 5 10-10-5-5 10-5-10-10 5 5-10-10-5 10-5-5-10 10 5z"/></g>
+    <rect x="555" y="226" width="4" height="54" fill="#E8B23A"/><rect x="559" y="228" width="20" height="14" fill="#8A9496"/>
+    <g fill="#4FBF8F"><ellipse cx="240" cy="150" rx="5" ry="2"/><ellipse cx="410" cy="120" rx="5" ry="2"/><ellipse cx="600" cy="200" rx="5" ry="2"/><ellipse cx="90" cy="240" rx="5" ry="2"/></g>
+    <rect x="60" y="256" width="24" height="24" fill="#FFD23F"/><rect x="66" y="262" width="5" height="7" fill="#2A1E16"/><rect x="75" y="262" width="5" height="7" fill="#2A1E16"/>
+  </svg>
+
+  <button aria-label="Pause" style="position:absolute;left:12px;top:10px;width:44px;height:44px;background:#FFF6E0;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center;gap:5px">
+    <span style="width:5px;height:16px;background:#2A1E16"></span><span style="width:5px;height:16px;background:#2A1E16"></span>
+  </button>
+
+  <div style="position:absolute;left:50%;top:8px;transform:translateX(-50%);display:flex;align-items:stretch;height:30px;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #2A1E16;overflow:hidden">
+    <span style="display:flex;align-items:center;background:#FFF6E0;padding:0 10px;font-family:'Lilita One', sans-serif;font-size:22px;font-variant-numeric:tabular-nums">12,442</span>
+    <span style="display:flex;align-items:center;gap:3px;background:#FFD23F;border-left:2px solid #2A1E16;padding:0 7px;font-family:'Lilita One', sans-serif;font-size:15px"><svg aria-hidden="true" width="11" height="13" viewBox="0 0 14 16"><path d="M2 16V1" stroke="#2A1E16" stroke-width="2.5"/><path d="M3 2h9l-2 3 2 3H3z" fill="#2E9E5B" stroke="#2A1E16" stroke-width="1.5"/></svg>2/4</span>
+    <span style="display:flex;align-items:center;background:#2A1E16;color:#FFD23F;padding:0 8px;font-family:'Lilita One', sans-serif;font-size:16px;font-variant-numeric:tabular-nums">+1,204</span>
+  </div>
+
+  <div style="position:absolute;right:12px;top:8px;display:flex;align-items:center;gap:6px">
+    <div style="order:2;transform:rotate(3deg);background:#FFD23F;border:2px solid #2A1E16;box-shadow:2px 2px 0 #2A1E16;height:30px;box-sizing:border-box;padding:0 8px;display:flex;align-items:center;gap:5px">
+      <svg aria-hidden="true" width="16" height="16" viewBox="0 0 34 34"><path d="M17 3c-7.5 0-12 5-12 11 0 4 2 6 4 7v5h16v-5c2-1 4-3 4-7 0-6-4.5-11-12-11z" fill="#FFF6E0" stroke="#2A1E16" stroke-width="2.5"/><rect x="10" y="13" width="5" height="6" fill="#2A1E16"/><rect x="19" y="13" width="5" height="6" fill="#2A1E16"/></svg>
+      <span style="font-family:'Lilita One', sans-serif;font-size:19px;line-height:1">7</span>
+    </div>
+    <div style="order:1;background:#FFF6E0;border:2px solid #2A1E16;border-radius:2px;height:24px;box-sizing:border-box;padding:0 6px;display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700">
+      <span aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#C07A42;border:1.5px solid #2A1E16"></span>Bronze <span style="font-family:'JetBrains Mono', monospace">47,642</span>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:14px;bottom:14px;display:flex;gap:10px">
+    <button aria-label="Gauche" style="width:76px;height:76px;background:#FFF6E0;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><path d="M19 5 9 15l10 10" fill="none" stroke="#2A1E16" stroke-width="4.5" stroke-linecap="square"/></svg></button>
+    <button aria-label="Droite" style="width:76px;height:76px;background:#FFF6E0;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><path d="M11 5l10 10-10 10" fill="none" stroke="#2A1E16" stroke-width="4.5" stroke-linecap="square"/></svg></button>
+  </div>
+  <button style="position:absolute;right:14px;bottom:14px;width:110px;height:92px;background:#FFD23F;border:3px solid #2A1E16;border-radius:3px;box-shadow:0 5px 0 #2A1E16;font-family:'Lilita One', sans-serif;font-size:28px;color:#2A1E16">SAUT</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

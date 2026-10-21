@@ -187,17 +187,15 @@ export async function browserFrozen(date: string): Promise<unknown> {
   }
 }
 
-/** « Préparation du niveau… » : un message centré, créé à la demande, retiré dès que le niveau est prêt. */
-export function progressMessage(doc: Document): (on: boolean) => void {
+/** « Préparation du niveau… » : un message centré, créé à la demande, retiré dès que le niveau est prêt (lot I5 : le texte vient du catalogue, l'habillage de hud.css). */
+export function progressMessage(doc: Document, texte: string): (on: boolean) => void {
   let el: HTMLElement | null = null;
   return (on) => {
     if (on && !el) {
       el = doc.createElement("div");
       el.id = "prep";
       el.setAttribute("role", "status");
-      el.textContent = "Préparation du niveau…";
-      el.style.cssText =
-        "position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;color:#fff;font:700 18px system-ui,sans-serif;background:#101820;pointer-events:none";
+      el.textContent = texte;
       doc.body.appendChild(el);
     } else if (!on && el) {
       el.remove();

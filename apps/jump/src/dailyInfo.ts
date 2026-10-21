@@ -1,5 +1,7 @@
+import { parseDay } from "@cdj/core";
 import { jumpMedalFor, type DailyLevel, type JumpMedal, type JumpMedals } from "@cdj/jump-sim";
-import { formatTicks } from "./session";
+import { nomMedaille, type TypeMedaille } from "@cdj/ui";
+import { fDateCourte, fNumero, fTicks, nomTheme, t, traducteurDuSocle } from "./i18n";
 
 // Le niveau du jour vu par le jeu (lot 5), **logique pure** (testée sans DOM) : quel jour ouvrir (`?seed=` et la porte des jours futurs),
 // aperçu ou site publié, la médaille visée, les textes du HUD et du bandeau d'arrivée.
@@ -72,11 +74,16 @@ export function chooseDay(seed: number | null, today: number, preview: boolean):
   return preview ? { day: seed, mode: "futur", refused: false } : { day: today, mode: "jour", refused: true };
 }
 
-export const REFUSED_TEXT = "Ce niveau n'est pas encore sorti";
-export const NEW_DAY_TEXT = "Nouveau niveau disponible : R (ou ↻) pour l'ouvrir";
+/** Lot I5 : les textes du jour viennent du catalogue (dans la langue du joueur). */
+export const refusedText = (): string => t("jour.refuse");
+export const newDayText = (): string => t("jour.nouveau");
 
+/** Les émojis des médailles : **seulement dans la ligne à partager** (charte § 6), jamais dans l'interface (les mêmes que ceux du portail). */
 export const MEDAL_ICON: Record<JumpMedal, string> = { author: "🏆", gold: "🥇", silver: "🥈", bronze: "🥉" };
-export const MEDAL_WORD: Record<JumpMedal, string> = { author: "Auteur", gold: "Or", silver: "Argent", bronze: "Bronze" };
+/** La médaille de Jump vue par le socle (`medaille`, couleurs et noms communs aux jeux). */
+export const MEDAL_TYPE: Record<JumpMedal, TypeMedaille> = { author: "auteur", gold: "or", silver: "argent", bronze: "bronze" };
+/** Le nom d'une médaille dans la langue du joueur (« Or », « Gold »). */
+export const medalWord = (m: JumpMedal): string => nomMedaille(traducteurDuSocle(), MEDAL_TYPE[m]);
 const ORDER: readonly JumpMedal[] = ["bronze", "silver", "gold", "author"];
 
 /** La prochaine médaille visée d'après le meilleur temps (pas) : la première qu'il ne tient pas encore ; null si l'auteur est battu. */
@@ -87,34 +94,34 @@ export function nextMedal(best: number | null, medals: JumpMedals): { medal: Jum
   return medal ? { medal, ticks: medals[medal] } : null;
 }
 
-/** « DailyJump #12 », ou « DailyJump » avant le premier jour. */
+/** « Jump n° 12 » (« Jump #12 »), ou « Jump » avant le premier jour. */
 export function levelTitle(number: number): string {
-  return number >= 1 ? `DailyJump #${number}` : "DailyJump";
+  return number >= 1 ? t("jour.titre", { numero: fNumero(number) }) : t("jeu.jump.nom");
 }
 
-/** La ligne du HUD : titre, mode (archive, à venir, aperçu), médaille visée. */
-export function dayLine(daily: Pick<DailyLevel, "number" | "date" | "medals">, choice: DayChoice, preview: boolean, best: number | null): string {
+/**
+ * Le titre du niveau, montré **au départ seulement** (lot I5, charte § 9 : le centre reste libre, rien d'empilé sous la bande en permanence) :
+ * « Jump n° 5 · Forêt », et le mode (archive, à venir, essai de thème, aperçu). La médaille visée a sa plaque à part (en haut à droite).
+ */
+export function dayLine(daily: Pick<DailyLevel, "number" | "date"> & { theme?: string }, choice: DayChoice, preview: boolean): string {
   const parts = [levelTitle(daily.number)];
-  if (choice.mode === "archive") parts.push(`archive du ${shortDate(daily.date)}`);
-  if (choice.mode === "futur") parts.push(`à venir (${shortDate(daily.date)})`);
-  if (choice.mode === "essai") parts.push(`essai de thème (${shortDate(daily.date)}) : rien n'est enregistré`);
-  if (preview) parts.push("aperçu");
-  const next = nextMedal(best, daily.medals);
-  parts.push(next ? `visée ${MEDAL_ICON[next.medal]} ${formatTicks(next.ticks)}` : `${MEDAL_ICON.author} auteur battu`);
+  if (daily.theme) parts.push(nomTheme(daily.theme));
+  if (choice.mode === "archive") parts.push(t("jour.archive", { date: shortDate(daily.date) }));
+  if (choice.mode === "futur") parts.push(t("jour.futur", { date: shortDate(daily.date) }));
+  if (choice.mode === "essai") parts.push(t("jour.essai", { date: shortDate(daily.date) }));
+  if (preview) parts.push(t("jour.apercu"));
   return parts.join(" · ");
 }
 
-const MONTHS = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."];
-/** « 16 oct. 2026 ». */
+/** « dim. 18 oct. » / « Sun, Oct 18 » (la date courte du socle, dans la langue du joueur). */
 export function shortDate(date: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-  if (!m) return date;
-  return `${Number(m[3])} ${MONTHS[Number(m[2]) - 1]} ${m[1]}`;
+  const d = parseDay(date);
+  return d === null ? date : fDateCourte(d);
 }
 
-/** Bandeau d'arrivée du niveau du jour : la médaille obtenue et le temps de l'auteur. */
+/** Bandeau d'arrivée du niveau du jour (lectures, essais) : la médaille obtenue et le temps de l'auteur. */
 export function finishMedalText(time: number, medals: JumpMedals): { medal: JumpMedal | null; text: string } {
   const medal = jumpMedalFor(time, medals);
-  const got = medal ? `${MEDAL_ICON[medal]} Médaille ${MEDAL_WORD[medal].toLowerCase()}` : `Pas de médaille (bronze : ${formatTicks(medals.bronze)})`;
-  return { medal, text: `${got} · Temps de l'auteur : ${formatTicks(medals.author)}` };
+  const got = medal ? t(`arrivee.medaille.${medal}`) : t("bandeau.sansMedaille", { temps: fTicks(medals.bronze) });
+  return { medal, text: t("bandeau.medailleAuteur", { medaille: got, auteur: fTicks(medals.author) }) };
 }

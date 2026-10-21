@@ -14,6 +14,7 @@ import {
   GOVERNOR_WINDOW_MS,
 } from "../src/carnageGovernor";
 import { everyoneLabel } from "../src/everyone";
+import "./francais";
 
 // Lot P4 (plateforme) : le carnage de tout le monde s'adapte à l'appareil. Le gouverneur (paliers 150 → 100 → 60 vies, puis les particules),
 // la limite des vies montrées dans le carnage (rendu seul : les vies gardées se jouent à l'identique), et le compteur, qui dit toujours le vrai

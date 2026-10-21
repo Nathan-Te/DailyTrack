@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { hhmmss } from "../src/homeLogic";
 import { isRestricted, judgeAddress, trialKeysAllowed, withoutRefused } from "../src/access";
 
 const TODAY = 20_746; // un jour quelconque
@@ -55,12 +54,5 @@ describe("adresse d'un jour (judgeAddress)", () => {
   });
 });
 
-describe("décompte de l'accueil", () => {
-  it("HH:MM:SS, arrondi à la seconde supérieure, jamais négatif", () => {
-    expect(hhmmss(0)).toBe("00:00:00");
-    expect(hhmmss(-5)).toBe("00:00:00");
-    expect(hhmmss(1)).toBe("00:00:01");
-    expect(hhmmss(3_661_000)).toBe("01:01:01");
-    expect(hhmmss(25 * 3_600_000 - 1)).toBe("25:00:00"); // le jour du retour à l'heure d'hiver dure 25 h
-  });
-});
+// Lot I5 : le décompte de l'accueil (« HH:MM:SS ») est `formatDecompte` du socle : ses tests sont dans packages/ui/test/formats.test.ts.
+

@@ -27,10 +27,12 @@ export interface PlayerSettings {
   firstGhost: boolean;
   /** Lot P3 (plateforme) : les taches de tout le monde (les morts des autres joueurs du jour, plus pâles que les tiennes ; oui par défaut). */
   othersStains: boolean;
+  /** Lot I5 : « Son : oui / non » de la pause (coupe tout le son sans toucher aux volumes ; oui par défaut). */
+  sound: boolean;
 }
 
 export function defaultSettings(systemReducedMotion = false): PlayerSettings {
-  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true, othersStains: true };
+  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true, othersStains: true, sound: true };
 }
 
 const unit = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d);
@@ -59,6 +61,7 @@ export function parseSettings(raw: string | null, systemReducedMotion = false): 
     reducedMotion: bool(o.reducedMotion, d.reducedMotion),
     firstGhost: bool(o.firstGhost, d.firstGhost),
     othersStains: bool(o.othersStains, d.othersStains),
+    sound: bool(o.sound, d.sound),
   };
 }
 

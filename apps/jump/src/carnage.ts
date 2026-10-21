@@ -9,6 +9,7 @@ import {
   type JumpReplay,
   type Level,
 } from "@cdj/jump-sim";
+import { t } from "./i18n";
 
 // Le carnage (lot 3), **logique seule** (aucun rendu, testée) : à l'arrivée, toutes les vies du jour rejouées ensemble, par vagues.
 //   - Le **héros** est l'essai qui vient de finir, rejoué depuis le départ (reprises comprises).
@@ -172,7 +173,25 @@ export class Carnage {
   }
 }
 
-/** « 47 vies · 1 arrivée » */
+/** « 47 vies · 1 arrivée » (lot I5 : catalogue et pluriels de la langue). */
 export function carnageLabel(lives: number, arrivals: number): string {
-  return `${lives} ${lives > 1 ? "vies" : "vie"} · ${arrivals} ${arrivals > 1 ? "arrivées" : "arrivée"}`;
+  return t("carnage.compteur", { vies: t("carnage.vies", { n: lives }), arrivees: t("carnage.arrivees", { n: arrivals }) });
+}
+
+/**
+ * Lot I5 : les **vagues** du carnage (« Vague 3 / 12 », barre de lecture) : une vague = les vies qui partent ensemble (au départ, puis quand le héros
+ * passe chaque point de départ). `depart` : le pas du héros où part chaque vie (−1 : jamais). Rend les pas où une vague commence, du premier au dernier
+ * (le départ, 0, est toujours la première).
+ */
+export function waveStarts(depart: readonly number[]): number[] {
+  const s = new Set<number>([0]);
+  for (const d of depart) if (d >= 0) s.add(d);
+  return [...s].sort((a, b) => a - b);
+}
+
+/** La vague en cours au pas `tick` (1 à `total`) et leur nombre. */
+export function waveAt(starts: readonly number[], tick: number): { current: number; total: number } {
+  let current = 0;
+  for (const s of starts) if (s <= tick) current++;
+  return { current: Math.max(1, current), total: starts.length };
 }

@@ -52,11 +52,6 @@ const fr = {
   "portail.theme.jump.nuit": "Nuit",
   "portail.theme.jump.neon": "Néon",
   // Les répliques de Jump, une par thème (la mécanique du jour)
-  "portail.jump.replique.foret": "Le vent souffle. Rarement dans ton sens.",
-  "portail.jump.replique.usine": "Les tapis roulants ne t'attendront pas. La scie non plus.",
-  "portail.jump.replique.glace": "Ça glisse. Les pics, eux, ne bougent pas.",
-  "portail.jump.replique.nuit": "Les plateformes clignotent. Toi, tu ne verras rien venir.",
-  "portail.jump.replique.neon": "Une plateforme sur deux. Devine laquelle.",
   // Lot I2 : le profil commun (/profil/)
   "profil.titre": "Ton profil",
   "profil.retour.aria": "Retour à {jeu}",
@@ -170,11 +165,6 @@ const en: Catalogues<typeof fr>["en"] = {
   "portail.theme.jump.glace": "Ice",
   "portail.theme.jump.nuit": "Night",
   "portail.theme.jump.neon": "Neon",
-  "portail.jump.replique.foret": "The wind is blowing. Hardly ever your way.",
-  "portail.jump.replique.usine": "The conveyor belts won't wait for you. Neither will the saw.",
-  "portail.jump.replique.glace": "It's slippery. The spikes, sadly, aren't.",
-  "portail.jump.replique.nuit": "The platforms blink. You won't see it coming.",
-  "portail.jump.replique.neon": "Every other platform is there. Guess which.",
   "profil.titre": "Your profile",
   "profil.retour.aria": "Back to {jeu}",
   "profil.description": "Your Du Jour profile: name, transfer code, streak and stats for each game.",

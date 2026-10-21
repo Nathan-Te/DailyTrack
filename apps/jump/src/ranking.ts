@@ -1,6 +1,6 @@
 import { formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION } from "@cdj/jump-sim";
-import { NAME_TAKEN_MESSAGE, Profile, isValidName, normalizeName, readIdentity, readPlayerId, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
+import { Profile, isValidName, normalizeName, readIdentity, readPlayerId, type Identity, type KeyValueStore, type RenameResult, type SyncView } from "@cdj/profile";
 import type { JumpBoard, JumpSubmitResult, RankEntry, RankSource } from "./rankApi";
 import type { KnownRank, RankQueue } from "./rankQueue";
 
@@ -32,8 +32,12 @@ export type RankStatus = "off" | "idle" | "sending" | "ranked" | "offline" | "ve
 
 export interface RankState {
   status: RankStatus;
-  /** Le message à montrer (refus, panne), "" sinon. */
-  message: string;
+  /**
+   * Lot I5 : ce qui s'est passé, en **code** (celui du serveur — `name_taken`, `day_closed`, `code_revoked`… — ou un code local : `reseau`, `trop_envois`,
+   * `version`), "" sinon. Le texte vient du catalogue à l'affichage (`rankView.ts`, `messageErreur`) : le `message` du serveur n'est plus lu, et l'écran
+   * suit la langue.
+   */
+  code: string;
   /** Pseudo refusé : des pseudos libres à toucher. */
   suggestions: string[];
 }
@@ -73,7 +77,8 @@ const NO_SYNC: SyncView = {
 export class Ranking {
   state: RankState;
   /** Le dernier classement lu par jour (AAAA-MM-JJ), et son état de lecture. */
-  readonly boards = new Map<string, { status: "loading" | "ok" | "offline" | "error"; board: JumpBoard | null; message: string }>();
+  /** Lot I5 : `code` dit pourquoi un classement manque (`reseau`, ou le code du serveur), "" sinon ; le texte vient du catalogue à l'affichage. */
+  readonly boards = new Map<string, { status: "loading" | "ok" | "offline" | "error"; board: JumpBoard | null; code: string }>();
   /** Le dernier envoi accepté (réponse du serveur), pour les tests et `__jump.rank`. */
   lastResult: { date: string; ticks: number; deaths: number; rank: number; participants: number } | null = null;
   private inflight: Promise<void> | null = null;
@@ -82,7 +87,7 @@ export class Ranking {
   readonly profile: Profile;
 
   constructor(private readonly deps: RankingDeps) {
-    this.state = { status: deps.source ? "idle" : "off", message: "", suggestions: [] };
+    this.state = { status: deps.source ? "idle" : "off", code: "", suggestions: [] };
     this.profile = new Profile({ api: deps.source, demo: false, identity: deps.identity, sync: deps.sync ?? NO_SYNC });
     deps.queue.purge(deps.today(), deps.sinceMidnight());
   }
@@ -169,17 +174,17 @@ export class Ranking {
       const name = this.name;
       // Premier envoi sans pseudo : on attend que le joueur en choisisse un (l'envoi reste dans la file).
       if (!name && readPlayerId(this.deps.identityStore() ?? { getItem: () => null }) === null) {
-        this.set({ status: "name", message: "", suggestions: [] });
+        this.set({ status: "name", code: "", suggestions: [] });
         return;
       }
-      this.set({ status: "sending", message: "", suggestions: [] });
+      this.set({ status: "sending", code: "", suggestions: [] });
       const playerId = this.deps.identity.getPlayerId(); // créé ici, au premier envoi, s'il n'existait pas
       const r = await source.submit(playerId, name, p, { simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION });
       if (r.ok) {
         const d = r.data;
         queue.confirm(p, { date: p.date, levelId: d.levelId, ticks: d.bestTicks, rank: d.rank, participants: d.participants, medal: d.medal });
         this.lastResult = { date: d.date, ticks: d.ticks, deaths: d.deaths, rank: d.rank, participants: d.participants };
-        this.set({ status: "ranked", message: "", suggestions: [] });
+        this.set({ status: "ranked", code: "", suggestions: [] });
         this.deps.sync?.noteServerKnows(true);
         // Lot P4 : le classement d'après l'envoi est dans la réponse : pas de relecture (un serveur plus ancien : `/board`, comme avant).
         if (d.board) this.noteBoard(p.date, d.board);
@@ -189,26 +194,25 @@ export class Ranking {
       }
       if (r.status === 0 || r.status === 429 || r.status >= 500 || r.code === "not_found") {
         queue.failed(p.date);
-        const message = r.status === 429 ? "Trop d'envois : nouvel essai dans un moment." : "Classement indisponible, ton temps sera envoyé.";
-        this.set({ status: "offline", message, suggestions: [] });
+        this.set({ status: "offline", code: r.status === 429 ? "trop_envois" : "reseau", suggestions: [] });
         return;
       }
       if (r.code === "version") {
         queue.drop(p.date);
-        this.set({ status: "version", message: "Une nouvelle version du jeu est disponible : recharge la page pour être classé.", suggestions: [] });
+        this.set({ status: "version", code: "version", suggestions: [] });
         continue;
       }
       if (r.code === "name_taken" || r.code === "name_required" || r.code === "invalid_name" || r.code === "name_forbidden") {
-        this.set({ status: "name", message: r.code === "name_required" ? "" : r.message, suggestions: r.suggestions ?? [] });
+        this.set({ status: "name", code: r.code === "name_required" ? "" : r.code, suggestions: r.suggestions ?? [] });
         return;
       }
       if (r.code === "code_revoked") {
-        this.set({ status: "revoked", message: r.message, suggestions: [] });
+        this.set({ status: "revoked", code: "code_revoked", suggestions: [] });
         return;
       }
       // Refus définitif (jour figé, essai refusé par le rejeu…) : l'envoi ne passera jamais.
       queue.drop(p.date);
-      this.set({ status: "refused", message: r.message, suggestions: [] });
+      this.set({ status: "refused", code: r.code, suggestions: [] });
     }
   }
 
@@ -218,13 +222,17 @@ export class Ranking {
    */
   async chooseName(raw: string): Promise<RenameResult> {
     const name = normalizeName(raw);
-    if (!isValidName(name)) return { ok: false, code: "invalid_name", message: "1 à 20 caractères : lettres, chiffres, espace . _ ' -" };
+    if (!isValidName(name)) {
+      // Lot I5 : le formulaire le dit (avant, rien ne s'affichait) ; le texte vient du catalogue commun (`erreur.invalid_name`).
+      this.set({ status: "name", code: "invalid_name", suggestions: [] });
+      return { ok: false, code: "invalid_name", message: "" };
+    }
     const r = await this.profile.rename(name, { viaSubmit: true });
     if (!r.ok) {
-      this.set({ status: "name", message: r.code === "name_taken" ? NAME_TAKEN_MESSAGE : r.message, suggestions: r.suggestions ?? [] });
+      this.set({ status: "name", code: r.code, suggestions: r.suggestions ?? [] });
       return r;
     }
-    this.set({ status: "idle", message: "", suggestions: [] });
+    this.set({ status: "idle", code: "", suggestions: [] });
     await this.flush();
     return r;
   }
@@ -235,7 +243,7 @@ export class Ranking {
    */
   noteBoard(date: string, board: JumpBoard): void {
     if (!this.enabled) return;
-    this.boards.set(date, { status: "ok", board, message: "" });
+    this.boards.set(date, { status: "ok", board, code: "" });
     this.deps.queue.noteBoard(date, board.levelId, board.me, board.participants);
     this.changed();
   }
@@ -243,14 +251,14 @@ export class Ranking {
   /** Un classement attendu d'une lecture en cours (la lecture regroupée) : « chargement » si rien n'est encore connu ; un échec le dit. */
   noteBoardLoading(date: string): void {
     if (!this.enabled || this.boards.get(date)?.board) return;
-    this.boards.set(date, { status: "loading", board: null, message: "" });
+    this.boards.set(date, { status: "loading", board: null, code: "" });
     this.changed();
   }
 
-  noteBoardFailed(date: string, offline: boolean, message: string): void {
+  noteBoardFailed(date: string, offline: boolean, code: string): void {
     if (!this.enabled) return;
     const prev = this.boards.get(date);
-    this.boards.set(date, { status: offline ? "offline" : "error", board: prev?.board ?? null, message: offline ? "Classement indisponible" : message });
+    this.boards.set(date, { status: offline ? "offline" : "error", board: prev?.board ?? null, code: offline ? "reseau" : code });
     this.changed();
   }
 
@@ -258,15 +266,15 @@ export class Ranking {
   async loadBoard(date: string): Promise<void> {
     if (!this.enabled) return;
     const prev = this.boards.get(date);
-    this.boards.set(date, { status: "loading", board: prev?.board ?? null, message: "" });
+    this.boards.set(date, { status: "loading", board: prev?.board ?? null, code: "" });
     this.changed();
     const id = readPlayerId(this.deps.identityStore() ?? { getItem: () => null });
     const r = await this.deps.source!.board(date, id);
     if (r.ok) {
-      this.boards.set(date, { status: "ok", board: r.data, message: "" });
+      this.boards.set(date, { status: "ok", board: r.data, code: "" });
       this.deps.queue.noteBoard(date, r.data.levelId, r.data.me, r.data.participants);
     } else {
-      this.boards.set(date, { status: r.status === 0 ? "offline" : "error", board: prev?.board ?? null, message: r.status === 0 ? "Classement indisponible" : r.message });
+      this.boards.set(date, { status: r.status === 0 ? "offline" : "error", board: prev?.board ?? null, code: r.status === 0 ? "reseau" : r.code });
     }
     this.changed();
   }

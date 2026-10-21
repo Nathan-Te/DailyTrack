@@ -36,6 +36,7 @@ import { HttpRankSource, type CarnageSampleData, type LivesLot, type LivesResult
 import { GRACE_MS, RETRY_MS } from "../src/rankQueue";
 import { mayRank } from "../src/ranking";
 import { stainFor } from "../src/stains";
+import "./francais";
 
 // Lot P3 (plateforme) : les morts de tout le monde, côté jeu. La file des vies (choix des 30 morts le long du niveau, lots, reprise, purge,
 // ce qui ne part jamais), l'envoi, les taches de tout le monde (plafond, intensité, distance aux dangers et aux fanions), le carnage de tout le

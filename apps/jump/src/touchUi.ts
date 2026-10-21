@@ -1,10 +1,14 @@
+import { el, svg } from "@cdj/ui";
 import type { Controls } from "./input";
+import { lier, t } from "./i18n";
 import { NO_INSETS, TouchPad, ZONE_SPANS, buttonRects, layoutFor, type Insets, type Zone } from "./touch";
 
-// Interface tactile (lot 1b) : la couche qui reçoit les doigts (pointer events, plusieurs à la fois), les boutons dessinés (translucides,
-// sans effet sur le toucher), la bande haute (recommencer, réglages, plein écran) et, avec `?zones=1`, le dessin des zones. Toute la décision
-// (quelle zone, quelle direction) est dans `touch.ts`, pur et testé ; ici on ne fait que brancher le DOM.
-// Lot 8 : ⏸ (menu) en tête des boutons de droite de la bande haute.
+// Interface tactile (lot 1b) : la couche qui reçoit les doigts (pointer events, plusieurs à la fois), les boutons dessinés (sans effet sur le toucher)
+// et, avec `?zones=1`, le dessin des zones. Toute la décision (quelle zone, quelle direction) est dans `touch.ts`, pur et testé ; ici on ne fait que
+// brancher le DOM. **Lot I5 (charte rév. 7, maquette `jump-hud.html`)** : les boutons sont des plaques papier à bordure encre **aux bords** (← → en bas
+// à gauche, le gros bouton jaune « SAUT » en bas à droite), jamais devant le personnage ; **mêmes zones et même comportement** qu'au lot 1b. La bande
+// haute n'a plus de boutons à elle : la pause (en haut à gauche, `#pausebtn`) y est pour tout le monde, et recommencer, le fantôme et le plein écran
+// sont dans la pause. `?debug&tune` garde son bouton ⚙ (`#gear`, outil interne) à côté de la pause.
 
 export interface TouchUiOptions {
   controls: Controls;
@@ -12,36 +16,23 @@ export interface TouchUiOptions {
   forced: boolean;
   /** `?zones=1` : dessine les zones et un point par doigt. */
   zones: boolean;
-  /** `?debug&tune` : un bouton ⚙ ouvre le panneau de réglages. */
+  /** `?debug&tune` : un bouton ⚙ ouvre le panneau de réglages du personnage. */
   tune: boolean;
-  onRestart(): void;
   onGear(): void;
-  /** Lot 8 : bouton ⏸ (menu : pause, réglages du joueur, commandes). */
-  onMenu?(): void;
-  /** Lot 3 : bouton 👻 (fantôme montré ou caché), avec son état de départ. */
-  onGhost?(): void;
-  ghostOn?: boolean;
 }
 
 export interface TouchUi {
   readonly pad: TouchPad;
   /** Panneau ouvert : la couche ne capte plus rien et les doigts posés sont lâchés. */
   suspend(on: boolean): void;
-  /** Vrai si la page peut passer en plein écran (le bouton n'existe pas sinon). */
-  readonly fullscreenButton: boolean;
-  /** Met à jour le bouton 👻 (fantôme montré ou caché). */
-  setGhost(on: boolean): void;
 }
 
-const el = <K extends keyof HTMLElementTagNameMap>(tag: K, id?: string, cls?: string): HTMLElementTagNameMap[K] => {
-  const e = document.createElement(tag);
-  if (id) e.id = id;
-  if (cls) e.className = cls;
-  return e;
-};
-
-const GLYPH: Record<Zone, string> = { left: "◀", right: "▶", jump: "▲" };
-const LABEL: Record<Zone, string> = { left: "Gauche", right: "Droite", jump: "Saut" };
+/** Une flèche des boutons de direction (la forme de la maquette). */
+function fleche(d: string): SVGSVGElement {
+  return svg("svg", { attrs: { viewBox: "0 0 30 30", width: 30, height: 30, "aria-hidden": "true", focusable: "false" } }, svg("path", { attrs: { d, fill: "none", stroke: "currentColor", "stroke-width": 4.5, "stroke-linecap": "square" } }));
+}
+const FLECHES: Record<Exclude<Zone, "jump">, string> = { left: "M19 5 9 15l10 10", right: "M11 5l10 10-10 10" };
+const LABEL: Record<Zone, string> = { left: "tactile.gauche", right: "tactile.droite", jump: "tactile.saut.aria" };
 
 /** Zones sûres (encoche, barre d'accueil) en pixels CSS : on les lit par une sonde, `env()` n'est pas lisible autrement. */
 export function readInsets(): Insets {
@@ -64,122 +55,49 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   let insets: Insets = { ...NO_INSETS };
   const pad = new TouchPad(layoutFor(window.innerWidth, window.innerHeight, insets));
 
-  // La couche qui reçoit les doigts : toute la page, sous les boutons de la bande.
-  const layer = el("div", "touch");
-  const buttons = el("div", "tbuttons");
+  // La couche qui reçoit les doigts : toute la page, sous les boutons du haut.
+  const layer = el("div", { attrs: { id: "touch" } });
+  const buttons = el("div", { attrs: { id: "tbuttons", "aria-hidden": "true" } });
   const visuals = new Map<Zone, HTMLElement>();
   for (const s of ZONE_SPANS) {
-    const b = el("div", undefined, "tbtn");
-    b.dataset.zone = s.zone;
-    b.textContent = GLYPH[s.zone];
-    b.setAttribute("aria-label", LABEL[s.zone]);
+    const b = el("div", { classe: ["tbtn", `tbtn--${s.zone}`], attrs: { "data-zone": s.zone } });
+    if (s.zone === "jump") lier(b, "tactile.saut");
+    else b.append(fleche(FLECHES[s.zone]));
+    lier(b, LABEL[s.zone], undefined, "aria-label");
     visuals.set(s.zone, b);
     buttons.append(b);
   }
 
-  const bar = el("div", "tbar");
-  const restart = el("button", "restart", "tbar-btn");
-  restart.type = "button";
-  restart.textContent = "↻";
-  restart.title = "Recommencer";
-  restart.setAttribute("aria-label", "Recommencer");
-  restart.addEventListener("click", () => {
-    restart.blur();
-    opts.onRestart();
-  });
-  bar.append(restart);
-
-  const side = el("div", "tbar-right");
-  if (opts.onMenu) {
-    const m = el("button", "pause", "tbar-btn");
-    m.type = "button";
-    m.textContent = "⏸";
-    m.title = "Menu";
-    m.setAttribute("aria-label", "Menu");
-    m.addEventListener("click", () => {
-      m.blur();
-      opts.onMenu?.();
-    });
-    side.append(m);
-  }
-  let ghostBtn: HTMLButtonElement | null = null;
-  if (opts.onGhost) {
-    const g = el("button", "ghost", "tbar-btn");
-    g.type = "button";
-    g.textContent = "👻";
-    g.title = "Fantôme";
-    g.setAttribute("aria-label", "Fantôme");
-    g.setAttribute("aria-pressed", opts.ghostOn === false ? "false" : "true");
-    g.addEventListener("click", () => {
-      g.blur();
-      opts.onGhost?.();
-    });
-    side.append(g);
-    ghostBtn = g;
-  }
+  // `?debug&tune` : le bouton ⚙ du panneau de réglages du personnage (outil interne), à côté de la pause.
   if (opts.tune) {
-    const gear = el("button", "gear", "tbar-btn");
-    gear.type = "button";
-    gear.textContent = "⚙";
-    gear.title = "Réglages du personnage";
-    gear.setAttribute("aria-label", "Réglages du personnage");
+    const gear = el("button", { classe: ["plaque", "plaque--bouton"], attrs: { type: "button", id: "gear" } });
+    gear.append(svg("svg", { attrs: { viewBox: "0 0 24 24", width: 20, height: 20, "aria-hidden": "true", focusable: "false" } }, svg("path", { attrs: { d: "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v4M12 18v4M2 12h4M18 12h4", fill: "none", stroke: "currentColor", "stroke-width": 2.5 } })));
+    lier(gear, "hud.gear.aria", undefined, "aria-label");
     gear.addEventListener("click", () => {
       gear.blur();
       opts.onGear();
     });
-    side.append(gear);
+    document.getElementById("hud-gauche")?.append(gear);
   }
-  // Plein écran : là où l'API existe (Android, tablettes, ordinateurs) ; l'iPhone n'a rien à proposer, donc aucun bouton.
-  const fsApi = typeof document.fullscreenEnabled === "boolean" && document.fullscreenEnabled && typeof document.documentElement.requestFullscreen === "function";
-  if (fsApi) {
-    const fs = el("button", "fullscreen", "tbar-btn");
-    fs.type = "button";
-    fs.title = "Plein écran";
-    fs.setAttribute("aria-label", "Plein écran");
-    const label = () => (fs.textContent = document.fullscreenElement ? "✕" : "⛶");
-    label();
-    fs.addEventListener("click", async () => {
-      fs.blur();
-      try {
-        if (document.fullscreenElement) await document.exitFullscreen();
-        else {
-          await document.documentElement.requestFullscreen({ navigationUI: "hide" });
-          // Le paysage est la bonne orientation pour jouer ; refusé presque partout hors Android, sans conséquence.
-          await (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> }).lock?.("landscape");
-        }
-      } catch {
-        /* refusé par le navigateur : le jeu reste tel quel */
-      }
-      label();
-    });
-    document.addEventListener("fullscreenchange", label);
-    side.append(fs);
-  }
-  bar.append(side);
 
-  const rotate = el("div", "rotate");
-  rotate.textContent = "Tourne ton téléphone pour plus de confort";
-  rotate.setAttribute("role", "status");
+  const rotate = el("div", { classe: ["plaque", "plaque--petite"], attrs: { id: "rotate", role: "status" } });
+  lier(rotate, "hud.tourner");
 
-  const hud = document.getElementById("hud");
-  document.body.append(layer, buttons, bar);
-  (hud ?? document.body).prepend(rotate);
+  document.body.append(layer, buttons, rotate);
 
   // ——— Dessin des zones et des doigts (?zones=1) ———
-  const zonesBox = opts.zones ? el("div", "zones") : null;
+  const zonesBox = opts.zones ? el("div", { attrs: { id: "zones" } }) : null;
   const dots = new Map<number, HTMLElement>();
   const drawZones = () => {
     if (!zonesBox) return;
     const l = pad.layout;
     zonesBox.replaceChildren();
-    const band = el("div", undefined, "zone band");
+    const band = el("div", { classe: "zone band", texte: t("tactile.zone.bande") });
     band.style.cssText = `left:0;top:0;width:${l.width}px;height:${l.band}px`;
-    band.textContent = "bande";
     zonesBox.append(band);
     for (const s of ZONE_SPANS) {
-      const z = el("div", undefined, `zone ${s.zone}`);
+      const z = el("div", { classe: `zone ${s.zone}`, texte: t(LABEL[s.zone]) });
       z.style.cssText = `left:${s.x0 * l.width}px;top:${l.band}px;width:${(s.x1 - s.x0) * l.width}px;height:${l.height - l.band}px`;
-      z.textContent = LABEL[s.zone];
       zonesBox.append(z);
     }
   };
@@ -205,7 +123,7 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
       for (const f of pad.list()) {
         let d = dots.get(f.id);
         if (!d) {
-          d = el("div", undefined, `dot ${f.role}`);
+          d = el("div", { classe: `dot ${f.role}` });
           zonesBox.append(d);
           dots.set(f.id, d);
         }
@@ -257,10 +175,6 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
 
   return {
     pad,
-    fullscreenButton: fsApi,
-    setGhost(on) {
-      ghostBtn?.setAttribute("aria-pressed", on ? "true" : "false");
-    },
     suspend(on) {
       suspended = on;
       document.body.classList.toggle("touch-suspended", on);
