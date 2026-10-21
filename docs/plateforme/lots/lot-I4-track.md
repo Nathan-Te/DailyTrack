@@ -149,18 +149,27 @@ Chromium, **844×390 (paysage, le format du jeu)** pour le HUD, la pause et « C
 
 ## 9. Vérifié / non vérifié
 **Vérifié ici (Chromium, `--workers=1`, machine à 4 cœurs)** :
-- `npm run typecheck` ; `npm test` : **171 fichiers / 2 252 tests** (sqlite) et **26 fichiers / 364 tests** (libsql) verts, dont golden, catalogues (parité, aucun doublon), chaînes en dur, contrastes, jetons, `construction.test.ts`, `site.test.ts`, `jeuSuivant.test.ts` (profil).
-- e2e Chromium : toutes les séries de `apps/web/e2e` lancées une à une après corrections (`accueil`, `mobile`, `share`, `leaderboard`, `demo`, `juice`, `daily`, `conduite`, `tactile`, `cameras`, `futur`, `profil`, `identite-plateforme`, `perf`, `langue`, `domaine`, `salon`, `salon-serveur`, `watch`, `watch-serveur`, `portail*`, `thumbnails`, `planning`, `admin`, `graphismes`, `ghost`, `replay`, `air`, `bas-cotes`, `cuves`, `figures`, `glace`, `largeurs`, `relief`, `surfaces`, `vitesse`) : **verts au dernier passage** de chacune ; une série groupée finale **n'a pas été relancée d'un bloc** après la dernière correction CSS (tout ne tient pas dans une session) : la CI complète le fait.
-- Mesures de poids et de fluidité (§ 2 et § 4), captures (§ 7).
+- `npm run typecheck` ; `npm test` : sqlite **172 fichiers / 2 259 tests** verts (dont golden, catalogues — parité et aucun doublon —, chaînes en dur, contrastes, jetons, `interface.test.ts`, `touch.test.ts`, `howto.test.ts`, `share.test.ts`, `e2eParts.test.ts`) ; libsql 26 fichiers / 364 tests (lancés avant les retouches, l'API n'a pas bougé).
+- e2e Chromium de `apps/web`, séries relancées une à une après chaque correction : toutes vertes au dernier passage, dont `hud-compact.spec.ts` (16 essais d'affilée verts après la correction de son attente), `mobile.spec.ts` (paysage 844×390 et 740×360, portrait, 360×640), `tactile.spec.ts`, `accueil.spec.ts`, `salon.spec.ts`, `watch.spec.ts`, `langue.spec.ts`, `perf.spec.ts`.
+- Mesures de poids (§ 4), de fluidité (§ 2), de zones repeintes (§ 2), captures (§ 7).
+
+**Runs de CI de la PR n° 95** (tous verts ; la PR n° 94, fusionnée avant ces retouches, avait eu les siens verts) :
+
+| commit | run CI | verdict par job | aperçu |
+|---|---|---|---|
+| `33c023d` (e2e corrigés, HUD étroit) | [#523](https://github.com/Nathan-Te/DailyTrack/actions/runs/39495657645) | vert : `unit` ×3, `e2e-parts` Chromium ×8, Firefox ×2, WebKit ×2, Jump (Chromium ×3, Firefox, WebKit), `test`, `e2e` | [#36](https://github.com/Nathan-Te/DailyTrack/actions/runs/39495657934) vert |
+| `5bf98a7` (accueil sur la scène) | [#524](https://github.com/Nathan-Te/DailyTrack/actions/runs/39498685501) | vert (mêmes jobs) | [#37](https://github.com/Nathan-Te/DailyTrack/actions/runs/39498685835) vert |
+| `53e1efd` (accueil en trois colonnes) | [#525](https://github.com/Nathan-Te/DailyTrack/actions/runs/39501509940) | vert (mêmes jobs) | [#38](https://github.com/Nathan-Te/DailyTrack/actions/runs/39501510098), [#39](https://github.com/Nathan-Te/DailyTrack/actions/runs/39502436666) verts |
+| `dda999b` (première retouche) | [#527](https://github.com/Nathan-Te/DailyTrack/actions/runs/39510085955) | vert (mêmes jobs) | [#40](https://github.com/Nathan-Te/DailyTrack/actions/runs/39510085964) vert |
+| `76bf82b` (**deuxième retouche**) | [#528](https://github.com/Nathan-Te/DailyTrack/actions/runs/39522557395) | **vert** : `unit` 1/3, 2/3, 3/3 ; `e2e-parts` Chromium 1/8 à 8/8, Firefox 1/2 et 2/2, WebKit 1/2 et 2/2, Jump Chromium 1/3 à 3/3, Firefox et WebKit ; `test` ; `e2e` (253 réussis, **0 instable**, **0 échec**, 44 sautés pour navigateur sans WebGL, 9 min 52 s cumulées) ; `api-image` sauté (le serveur n'est pas touché) | [#41](https://github.com/Nathan-Te/DailyTrack/actions/runs/39522557445) vert |
+
+**Tests instables** : **aucun** dans les runs de CI (le résumé du run #528 : « Aucun échec, aucun test instable »). Un instable a été vu **en local** et corrigé avant le push : `hud-compact.spec.ts` échouait une fois sur quatre, parce que la première image réelle du jeu peut avoir un temps négatif (le décompte restait au-dessus de 3 s après 362 pas) ; son test avance maintenant d'une marge (`3 × 120 + 40` pas) et l'aide ne compte plus le temps de l'image où elle apparaît (`aideFraiche`, `main.ts`) ; le test coupe aussi l'API (aucune synchronisation du profil ne relance le décompte entre deux pas). Un test du Salon (`accueil ⇄ Salon`) a échoué une fois, en local, sous charge, en pressant la touche P dès le chargement : il clique maintenant le bouton de pause.
 
 **Non vérifié** :
-- **Firefox et WebKit** (non installés ici) : le sous-ensemble multi-navigateurs ne s'est pas exécuté en local — la CI le fait.
+- **Firefox et WebKit en local** (non installés ici) : la CI les a exécutés (sous-ensemble multi-navigateurs sur une PR : `replay.spec.ts`, `daily.spec.ts`).
 - **Second chargement des polices dans un navigateur sur l'aperçu** : en-têtes et chemins vérifiés (§ 4), le chargement lui-même pas observé.
-- **Fluidité sur un vrai téléphone** ; **rendu validé par Nathan** (critère d'arrêt : avant fusion).
+- **Fluidité et lisibilité sur un vrai téléphone** : c'est le point qui a motivé la retouche 2 ; mes mesures sont en rendu logiciel à ×4 et mes captures sont des captures de Chromium. **Rendu à valider par Nathan sur son téléphone** (aperçu de la PR).
 - Les maquettes sont des références : la charte prime en cas d'écart.
-
-**Runs de CI** : voir la PR (le lien et le verdict sont ajoutés ici et dans la description de la PR au fil des runs).
-**Tests instables vus** : aucun noté dans les runs locaux (`retries` désactivé en local) ; `tactile.spec.ts` et `salon.spec.ts` sont les plus longs et les plus sensibles à la charge de la machine (un test lancé pendant que la machine était occupée par d'autres exécutions a dépassé son délai, puis passé seul).
 
 ## 10. Pour le lot I5 (Jump)
 - Reprendre **le même patron** : `creerCadre` (`cadre.ts` : cadre crème, `barreJeu` avec `retour`, étiquette) ; `i18n.ts` (`t`, `lier`, `onLangue`, `setLangue`, `chargerLangue` — un seul module de langue par jeu, catalogue anglais **à la demande**) ; catalogues par zone fr / en réunis pour les tests ; `pagesDuSocle` avec `absolues: true` et `renderBuiltUrl` pour les polices partagées.
