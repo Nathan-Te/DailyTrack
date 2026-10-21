@@ -3,7 +3,7 @@ import { bouton, el, nomMedaille, type TypeMedaille } from "@cdj/ui";
 import { creerCadre, type Cadre } from "./cadre";
 import { fEcart, fTemps, t, traducteurDuSocle } from "./i18n";
 
-// L'écran d'arrivée (lot I4, maquette track-arrivee.html) : le cadre crème de Du Jour avec, dedans, l'étiquette Track — « ARRIVÉE », le temps en grand,
+// L'écran d'arrivée (lot I4, maquette track-arrivee.html ; lot I4b : posé sur la scène, sous le voile à rayures) : l'étiquette Track — « ARRIVÉE », le temps en grand,
 // le badge de record et l'écart, l'autocollant de médaille, le rang au classement du jour, les actions — puis, sous l'étiquette, « Jeu suivant du jour ».
 // Le DOM seulement : main.ts calcule (médaille, record, envoi au classement) et remplit les zones. Les classes d'avant (`big`, `medal`, `record`, `online`,
 // `rank`, `share`, `actions`, `restart`, `#finish-next`) sont gardées : les tests et les outils les visent encore.
@@ -94,7 +94,6 @@ export function creerArrivee(racine: HTMLElement): Arrivee {
   return {
     ouvrir({ sousTitre: texte }) {
       // Tout est refait à chaque arrivée : l'arrivée du Salon et celle de la rediffusion partagent le même cadre (`#finish`) et le vident à leur façon.
-      racine.querySelector(".arrivee__pied")?.remove();
       cadre.corps.className = "etiquette__corps arrivee";
       const titre = el("h1", { classe: "etiquette__titre", texte: t("arrivee.titre") });
       const sousTitre = el("span", { classe: "etiquette__sous-titre arrivee__circuit", texte });
@@ -110,7 +109,7 @@ export function creerArrivee(racine: HTMLElement): Arrivee {
         el("div", { classe: "etiquette__tete" }, titre, sousTitre),
         el("div", { classe: "arrivee__grille" }, el("div", { classe: "arrivee__colonne" }, resultat, medaille, classement, partage), el("div", { classe: "arrivee__colonne" }, actions, indice)),
       );
-      racine.append(el("div", { classe: "arrivee__pied" }, suite));
+      cadre.pied.replaceChildren(suite); // sous l'étiquette, sur sa plaque crème (cachée tant que la suite l'est)
       cadre.corps.scrollTop = 0;
       racine.hidden = false;
       ouverte = true;

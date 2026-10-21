@@ -72,7 +72,6 @@
   position: fixed;
   pointer-events: none;
 }
-.hud-statique,
 #hud-centre > .hud,
 #hud-droite > .hud,
 #intro > .hud {

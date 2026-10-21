@@ -1,0 +1,73 @@
+/* Le cadre d'un écran de jeu posé sur sa scène (cadre.ts ; lot I4b, charte rév. 8 § 9). Chargée par les jeux seulement (pas par styles.css : le
+   portail n'en a pas besoin). Le jeu règle : `--cadre-voile` (le motif du voile, encre par défaut), `--cadre-largeur` (largeur de la barre et de ce qui
+   défile), `--z-cadre` et `--z-cadre-haut` (ses couches), l'habillage de son étiquette (et de sa coque). Valeurs : jetons seulement. */
+.cadre {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-cadre);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  /* Un voile à rayures sur la scène : un motif net, ni flou ni transparence (§ 9). */
+  background: var(--cadre-voile, repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px));
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+  touch-action: pan-y;
+}
+.cadre--haut {
+  z-index: var(--z-cadre-haut);
+}
+/* La barre des jeux en plaque crème (« ‹ DU JOUR » ou « ‹ <JEU> », date et numéro). */
+.cadre > .dj-barre-jeu {
+  flex: none;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--cadre-largeur);
+  margin-bottom: 8px;
+  padding: 0 12px;
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+}
+/* L'étiquette, puis le pied : défilent ensemble si l'écran est trop petit ; aucune barre de défilement ne se voit. */
+.cadre__defile {
+  flex: 0 1 auto;
+  min-height: 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: var(--cadre-largeur);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 6px 6px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.cadre__defile::-webkit-scrollbar {
+  display: none;
+}
+.cadre__defile > * {
+  flex-shrink: 0;
+}
+/* Sous l'étiquette (« Jeu suivant du jour ») : une plaque crème, lisible sur les rayures ; rien tant qu'il n'a rien à montrer. */
+.cadre__pied {
+  padding: 10px 12px 12px;
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: var(--dj-ombre-bouton);
+}
+.cadre__pied:not(:has(> :not([hidden]))) {
+  display: none;
+}
+/* Un seul voile : un sous-écran ouvert efface les écrans du dessous. */
+body:has(.cadre--haut:not([hidden])) .cadre:not(.cadre--haut) {
+  visibility: hidden;
+}

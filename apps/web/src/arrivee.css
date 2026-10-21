@@ -322,21 +322,12 @@ body.paused #pause {
 body.touch .arrivee__indice {
   display: none;
 }
-/* Sous l'étiquette : « Il te reste aujourd'hui » et le jeu suivant. */
-.arrivee__pied {
-  flex: none;
-  width: calc(100% - 20px);
-  max-width: 940px;
-  padding: 0 0 10px;
-}
+/* Sous l'étiquette (le pied du cadre, sur sa plaque crème) : « Il te reste aujourd'hui » et le jeu suivant. */
 .arrivee__suite {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding-top: 4px;
-}
-.arrivee__suite[hidden] {
-  display: none;
 }
 .arrivee__legende {
   font-size: var(--dj-taille-legende);
@@ -352,6 +343,7 @@ body.touch .arrivee__indice {
 }
 .arrivee__suite .dj-bouton {
   min-height: 48px;
+  padding: 0 8px;
 }
 /* Un petit téléphone en portrait : tout doit tenir sans recouvrir la barre (360 × 640). */
 @media (max-height: 700px) and (orientation: portrait) {
@@ -375,9 +367,6 @@ body.touch .arrivee__indice {
   }
   .arrivee__medaille-texte {
     font-size: var(--dj-taille-24);
-  }
-  .arrivee__pied {
-    padding-bottom: 6px;
   }
 }
 @media (min-width: 700px) and (min-height: 521px) {

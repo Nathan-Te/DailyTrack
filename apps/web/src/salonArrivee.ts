@@ -6,7 +6,7 @@ import type { ApiResult } from "./api";
 import type { SalonSubmitResult } from "./salonApi";
 
 // L'arrivée d'une course du Salon, la fin de session qui coupe une course, et l'arrivée de « Revoir le meilleur tour » (lots 26, 27b ; charte au lot I4) :
-// un cadre crème et l'étiquette Track (`cadre.ts`), dans `#finish`. Le DOM et les textes sont ici ; les décisions (record de session, envoi, pseudo, partage)
+// le cadre posé sur la scène (lot I4b) et l'étiquette Track (`cadre.ts`), dans `#finish`. Le DOM et les textes sont ici ; les décisions (record de session, envoi, pseudo, partage)
 // restent à `main.ts`, qui passe ses fonctions. Les identifiants et classes que visent les tests restent : `.big` (le temps), `.rank`, `.share`, `.actions`,
 // `.restart` (désactivé pendant la finale), `#finish-watch`, `#watch-replay`, `#watch-race`.
 
@@ -24,6 +24,7 @@ export function arrivalFrame(racine: HTMLElement): Cadre {
   }
   c.corps.className = "etiquette__corps";
   c.corps.replaceChildren();
+  c.pied.replaceChildren();
   c.corps.scrollTop = 0;
   return c;
 }

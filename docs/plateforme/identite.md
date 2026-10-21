@@ -8,6 +8,7 @@ Révision 4 (après le lot I3) : émojis de la ligne de la journée (§ 6) ; ta 
 Révision 5 (avant le lot I4) : surimpressions de course de Track (§ 9), maquettes `track-*.html` choisies par Nathan.
 Révision 6 (après le lot I4) : accueil d'un jeu posé sur sa scène sous un voile à rayures (§ 9) ; nom des jeux dans leurs lignes à partager (§ 2).
 Révision 7 (essai de Nathan sur téléphone) : surimpressions compactes pour les deux jeux, commandes aux bords et boutons par défaut, « Comment jouer » dans le jeu (§ 9).
+Révision 8 (après le lot I5) : « quand on entre dans un jeu, on y reste » — tous les écrans d'un jeu sur sa scène, le cadre crème réservé aux écrans Du Jour (§ 9).
 
 Maquettes de référence (sources HTML, à lire, jamais à copier telles quelles ni à construire) : `docs/plateforme/maquettes/cartouches/portail.html`, `track.html`, `jump.html`. Toutes les valeurs de ce document priment sur les maquettes en cas d'écart.
 
@@ -164,7 +165,9 @@ Raison : les ombres nettes et les coques dissymétriques font « objet » ; le f
   - Commandes tactiles **aux bords** de l'écran (direction en bas à gauche, frein et gaz / saut en bas à droite), jamais devant le véhicule ou le personnage ; par défaut, les **boutons** (pas de joystick).
   - Les actions rares (caméra, graphismes, plein écran, son, fantôme) vont dans la pause.
   - Bordures de 2 px, ombre nette de 2 px. Maquettes : `track-hud-paysage.html` (compact, retenu), `jump-hud.html`.
-- **« Comment jouer » au lancement d'un jeu** : dans le jeu, pas dans le cadre crème du portail — quelques plaques posées sur la scène, l'étiquette du jeu, un bouton « C'est parti » ; montré une seule fois (puis depuis la pause). Le cadre crème est réservé aux écrans « Du Jour » (portail, profil, classement du jour) et à la sortie d'une partie (arrivée).
+- **Quand on entre dans un jeu, on y reste tant qu'on ne choisit pas de le quitter** (règle de Nathan). **Tous les écrans d'un jeu** — accueil, « Comment jouer », pause, arrivée, carnage, classement du jeu, archives, réglages — sont **posés sur la scène du jeu** sous le voile à rayures : barre des jeux en plaque crème, étiquette du jeu dans sa coque ; l'écran du dessous s'efface pendant ce temps (un seul voile). « Jeu suivant du jour » et « ‹ DU JOUR » sont les seules portes de sortie, et ce sont des choix du joueur.
+- **Le cadre crème pleine page** est réservé aux écrans **Du Jour** : portail, profil commun, classement du jour, mentions légales.
+- **« Comment jouer »** : dans le jeu, trois points courts, schéma des commandes, « C'est parti » ; montré une seule fois au premier lancement, puis depuis la pause et l'accueil.
 - **Classements** (portail et jeux) : **ta ligne** sur fond `--dj-moutarde`, bordure 3 px encre et ombre nette ; visible même hors du haut, après « … », à sa vraie place. **Sur l'étiquette jaune de Jump**, ta ligne est en **encre** (texte jaune, ombre papier) : la moutarde ne s'y distinguerait pas.
 - **Profil commun** : une étiquette par jeu (la cartouche agrandie, § 1) porte ses statistiques ; médailles en cases, deux par ligne.
 

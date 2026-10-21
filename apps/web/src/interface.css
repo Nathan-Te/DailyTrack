@@ -1,5 +1,5 @@
 /* Interface de DailyTrack (lot I4, charte « Cartouches » : docs/plateforme/identite.md, maquettes docs/plateforme/maquettes/cartouches/track-*.html).
-   Les primitives communes à tous les écrans hors partie : le cadre crème de Du Jour avec sa barre, l'étiquette Track (asphalte, livrée à 115°, coque),
+   Les primitives communes à tous les écrans hors partie : le cadre posé sur la scène (lot I4b, cadre.css de @cdj/ui), l'étiquette Track (asphalte, livrée à 115°, coque),
    les boutons et choix sur asphalte, les lignes de classement, le dialogue de pause. Chaque zone a sa feuille (accueil.css, arrivee.css, reglages.css,
    salon.css, hud.css) ; elles n'écrivent ni couleur, ni police, ni ombre floue, ni transparence : tout vient des jetons de @cdj/ui (test
    apps/web/test/interface.test.ts). Seule exception, assumée : effets.css (les effets de rendu de la course). */
@@ -43,36 +43,17 @@ canvas {
   display: none !important;
 }
 
-/* --- Le cadre crème de Du Jour : barre des jeux + étiquette Track ------------------------------------------------------------------------------- */
-.cadre {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-cadre);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: var(--dj-creme);
-  color: var(--dj-encre);
-  font-family: var(--dj-police-texte);
-  font-size: var(--dj-taille-15);
-  line-height: 1.4;
-  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-  touch-action: pan-y;
+/* --- Les écrans posés sur la scène (lot I4b, charte rév. 8 § 9 : « on reste dans le jeu ») : le cadre commun de @cdj/ui (cadre.css), réglé pour Track ---- */
+:root {
+  --cadre-voile: repeating-linear-gradient(115deg, var(--track-asphalte) 0 5px, transparent 5px 8px);
+  --cadre-largeur: 940px;
 }
-.cadre--haut {
-  z-index: var(--z-cadre-haut);
-}
-.cadre > .dj-barre-jeu {
-  flex: none;
-  width: 100%;
-  max-width: 960px;
-}
-.cadre > .etiquette {
-  flex: 1;
-  min-height: 0;
-  width: calc(100% - 20px);
-  max-width: 940px;
-  margin: 0 0 10px;
+/* Un seul voile : un écran posé sur la scène efface les plaques et les boutons de la course (tout sauf la scène, ses effets de rendu, les écrans et les
+   dialogues) ; un sous-écran (`.cadre--haut`) efface aussi la pause et l'écran du dessous (cadre.css) ; « Comment jouer » efface tout ce qu'il recouvre. */
+body:has(.cadre:not([hidden])) > :not(.cadre, .voile, canvas, textarea, #lines, #flash, #fall, #tune),
+body:has(.cadre--haut:not([hidden])) #pause,
+body:has(#howto:not([hidden])) :is(.cadre, #pause) {
+  visibility: hidden;
 }
 
 /* --- L'étiquette Track ----------------------------------------------------------------------------------------------------------------------- */
@@ -87,8 +68,9 @@ canvas {
   box-shadow: var(--dj-ombre-cartouche);
   overflow: hidden;
 }
-/* Bandes de livrée : rayures obliques à 115° sur le bord droit, 10 px d'orange pour 8 px de vide (charte § 5). */
-.etiquette::before {
+/* Bandes de livrée : rayures obliques à 115° sur le bord droit, 10 px d'orange pour 8 px de vide (charte § 5) ; les mêmes sur les dialogues (pause, aide). */
+.etiquette::before,
+.dialogue::before {
   content: "";
   position: absolute;
   right: -30px;
@@ -97,6 +79,15 @@ canvas {
   height: 70px;
   background: repeating-linear-gradient(115deg, var(--track-livree) 0 10px, transparent 10px 18px);
   pointer-events: none;
+}
+/* Track : l'étiquette se resserre à la hauteur de l'écran et c'est son corps qui défile (« Courir » reste collé en bas de l'accueil ; le pied du cadre, « Jeu
+   suivant du jour », reste visible sous l'étiquette). */
+.cadre__defile > .etiquette {
+  flex-shrink: 1;
+  min-height: 0;
+}
+.cadre__pied {
+  padding: 4px 8px 8px;
 }
 .etiquette__corps {
   position: relative;
@@ -111,7 +102,6 @@ canvas {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
 }
 /* Les blocs de l'étiquette ne rétrécissent jamais (un bloc à `overflow: hidden`, comme un choix segmenté, s'écraserait sinon) : c'est le corps qui défile. */
@@ -167,17 +157,8 @@ canvas {
   font-size: var(--dj-taille-13);
   color: var(--track-texte-doux);
 }
-.note--erreur,
-.message--erreur {
+.note--erreur {
   color: var(--track-livree-texte);
-}
-.message--ok {
-  color: var(--dj-auteur);
-}
-.separateur {
-  border: 0;
-  border-top: 1px solid var(--track-coque);
-  margin: 0;
 }
 
 /* --- Boutons sur asphalte -------------------------------------------------------------------------------------------------------------------- */
@@ -381,21 +362,6 @@ textarea.champ {
   font-size: var(--dj-taille-21);
   font-variant-numeric: tabular-nums;
 }
-.ligne__action {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--dj-cible);
-  height: 40px;
-  border: var(--dj-trait) solid var(--track-route);
-  border-radius: var(--dj-rayon-bouton);
-  background: transparent;
-  color: inherit;
-}
-.ligne--moi .ligne__action {
-  border-color: var(--dj-encre);
-}
 
 /* --- Dialogue (pause, confirmations) : voile à rayures, étiquette au premier plan ------------------------------------------------------------------ */
 .voile {
@@ -406,7 +372,7 @@ textarea.champ {
   align-items: center;
   justify-content: center;
   padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-  background: repeating-linear-gradient(115deg, var(--track-asphalte) 0 3px, transparent 3px 9px);
+  background: var(--cadre-voile);
   touch-action: none;
 }
 .dialogue {
@@ -421,16 +387,6 @@ textarea.champ {
   border-radius: var(--dj-rayon-coque);
   box-shadow: 5px 5px 0 var(--dj-encre);
   overflow: hidden;
-}
-.dialogue::before {
-  content: "";
-  position: absolute;
-  right: -24px;
-  top: 0;
-  width: 110px;
-  height: 70px;
-  background: repeating-linear-gradient(115deg, var(--track-livree) 0 10px, transparent 10px 18px);
-  pointer-events: none;
 }
 .dialogue__corps {
   position: relative;
@@ -451,11 +407,17 @@ textarea.champ {
   text-transform: uppercase;
 }
 
-/* Petits écrans en paysage : le cadre se resserre (barre plus basse, marges réduites). */
+/* Petits écrans en paysage : le cadre se resserre (marges réduites). */
 @media (max-height: 520px) {
+  .cadre {
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
   .cadre > .dj-barre-jeu {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    margin-bottom: 6px;
+  }
+  .cadre__defile {
+    gap: 6px;
   }
   .etiquette__corps {
     --corps-x: 14px;
@@ -464,8 +426,5 @@ textarea.champ {
   }
   .etiquette__titre {
     font-size: var(--dj-taille-32);
-  }
-  .cadre > .etiquette {
-    margin-bottom: 6px;
   }
 }

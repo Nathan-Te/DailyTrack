@@ -10,7 +10,7 @@ import type { SalonBoard, SalonRow } from "./salonApi";
 import { countdownText, podiumRows } from "./salon";
 
 // DOM du Salon (lot 26, passé à la charte au lot I4) : la plaque du compte à rebours de la session, le classement de la session, le podium de fin de
-// session (un cadre crème et l'étiquette Track, `cadre.ts`). Aucune logique de jeu ici (voir `salon.ts`) ; les textes viennent du catalogue
+// session (le cadre posé sur la scène, lot I4b, et l'étiquette Track, `cadre.ts`). Aucune logique de jeu ici (voir `salon.ts`) ; les textes viennent du catalogue
 // (`catalogue.salon.ts`) et suivent la langue.
 
 /** Lignes à montrer : les premières, puis ton entourage, avec « … » là où des places manquent. */
@@ -118,7 +118,7 @@ const podiums = new WeakMap<HTMLElement, { cadre: Cadre; view: PodiumView | null
 function podiumCadre(box: HTMLElement): { cadre: Cadre; view: PodiumView | null } {
   let p = podiums.get(box);
   if (!p) {
-    const cadre = creerCadre({ racine: box, titreAria: "podium.aria", retour: "portail" });
+    const cadre = creerCadre({ racine: box, titreAria: "podium.aria", retour: "portail", haut: true }); // par-dessus l'arrivée de la session (lot I4b : un seul voile)
     p = { cadre, view: null };
     podiums.set(box, p);
     onLangue(() => {

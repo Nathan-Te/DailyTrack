@@ -129,11 +129,11 @@ export interface ArchiveView {
 }
 
 /**
- * Les archives (lot I4) : le cadre crème de Du Jour (retour « ‹ TRACK » = `onClose`) et l'étiquette Track qui porte la liste. `root` est `#archive`
+ * Les archives (lot I4 ; lot I4b : un sous-écran posé sur la scène) : le cadre (retour « ‹ TRACK » = `onClose`) et l'étiquette Track qui porte la liste. `root` est `#archive`
  * (déjà dans la page). La liste se redessine toute seule quand la langue change, si elle est ouverte.
  */
 export function mountArchive(root: HTMLElement, onClose: () => void): ArchiveView {
-  const cadre = creerCadre({ racine: root, titreAria: "archives.aria", retour: "jeu", onRetour: onClose });
+  const cadre = creerCadre({ racine: root, titreAria: "archives.aria", retour: "jeu", onRetour: onClose, haut: true });
   cadre.corps.classList.add("panel"); // le panneau que visent les tests (`#archive .panel`)
   let last: ArchiveArgs | null = null;
   const view: ArchiveView = {

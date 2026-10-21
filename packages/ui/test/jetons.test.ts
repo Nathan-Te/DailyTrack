@@ -36,7 +36,7 @@ describe("jetons de la charte", () => {
   });
 
   it("feuilles et composants : aucune couleur ni police en dur (jetons seulement), aucune ombre floue ni translucidité", () => {
-    const fichiers = readdirSync(SRC).filter((f) => (f.endsWith(".css") && f !== "jetons.css") || /^(composants|icones|dom)\.ts$/.test(f));
+    const fichiers = readdirSync(SRC).filter((f) => (f.endsWith(".css") && f !== "jetons.css") || /^(composants|cadre|icones|dom)\.ts$/.test(f));
     expect(fichiers.length).toBeGreaterThanOrEqual(5);
     for (const f of fichiers) {
       const texte = readFileSync(join(SRC, f), "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");

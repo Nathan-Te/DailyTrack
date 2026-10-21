@@ -1,4 +1,4 @@
-// Le classement du jour en pleine page (lot I4, maquette track-palmares.html) : le cadre crème de Du Jour (retour « ‹ TRACK »), puis l'étiquette Track avec
+// Le classement du jour en pleine page (lot I4, maquette track-palmares.html) : un sous-écran posé sur la scène (lot I4b ; retour « ‹ TRACK »), puis l'étiquette Track avec
 // « CLASSEMENT », le thème et le nombre de classés, et les lignes (le haut du classement, ta ligne en moutarde même hors du haut après « … »). Ouvert depuis
 // l'accueil (« Tout le classement ») ; la section de l'accueil, elle, n'en montre que cinq lignes. Le DOM seulement : les données viennent de `BoardScreenHost`.
 import type { ApiResult, Leaderboard } from "./api";
@@ -29,7 +29,7 @@ export function mountBoardScreen(host: BoardScreenHost): BoardScreen {
   let open = false;
   let generation = 0;
   let state: { kind: "charge" } | { kind: "sans_serveur" } | { kind: "hors_ligne" } | { kind: "erreur"; code: string } | { kind: "vide" } | { kind: "ok"; lb: Leaderboard } = { kind: "charge" };
-  const cadre = creerCadre({ id: "board-screen", titreAria: "palmares.ecran.aria", retour: "jeu", onRetour: () => api.close() });
+  const cadre = creerCadre({ id: "board-screen", titreAria: "palmares.ecran.aria", retour: "jeu", onRetour: () => api.close(), haut: true });
   cadre.racine.hidden = true;
   cadre.racine.classList.add("classement-page");
   document.body.append(cadre.racine);
