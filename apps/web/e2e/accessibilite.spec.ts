@@ -40,7 +40,7 @@ for (const [langue, locale] of [["fr", "fr-FR"], ["en", "en-US"]] as const) {
     await expect(page.locator("#settings")).toBeVisible();
     await dialogueNomme(page, "#settings");
     await expect.poll(() => focusDans(page, "#settings"), { message: "le focus est dans les réglages" }).toBe(true);
-    await auditAxe(page, `track-reglages-${langue}`);
+    await auditAxe(page, `track-reglages-${langue}`, "#settings"); // le dialogue ouvert seul : l'accueil, dessous, est audité juste avant
     await page.keyboard.press("Escape");
     await expect(page.locator("#settings")).toBeHidden();
     await expect.poll(() => focusSur(page), { message: "le focus revient au bouton qui a ouvert les réglages" }).toBe("home-settings");

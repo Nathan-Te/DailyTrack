@@ -9,7 +9,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "page.sansJs": "Track needs JavaScript.",
   "theme.stade": "Stadium",
   "theme.rallye": "Rally",
-  "theme.banquise": "Pack ice",
+  "theme.banquise": "Ice floe",
   "theme.nuit": "Night",
   "theme.campagne": "Countryside",
   "theme.canyon": "Canyon",

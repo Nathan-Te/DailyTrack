@@ -147,11 +147,12 @@ async function mentionsShown(page: Page): Promise<void> {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 }
 
-/** Une cible au doigt d'au moins 44 px de haut. */
+/** Une cible au doigt d'au moins 44 px de haut. Lot I6 : la hauteur est lue à l'unité de mise en page de Firefox près (1/60 px) — il rend
+ *  43,99994 px pour un `min-height: 44px` posé à une ordonnée fractionnaire (run 39604752428) ; un vrai manque compte au moins 1/60 px. */
 async function bigEnough(page: Page, selector: string): Promise<void> {
   const box = await page.locator(selector).boundingBox();
   expect(box, selector).not.toBeNull();
-  expect(box!.height, selector).toBeGreaterThanOrEqual(44);
+  expect(Math.round(box!.height * 60) / 60, selector).toBeGreaterThanOrEqual(44);
 }
 
 test("mentions légales : depuis le portail, au doigt en portrait ; retour au portail", async ({ browser }) => {

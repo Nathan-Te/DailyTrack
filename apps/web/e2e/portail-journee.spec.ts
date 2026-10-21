@@ -161,7 +161,7 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   await page.locator('.dj-choix-langue [data-langue="en"]').click();
   await expect(page.locator("#journee")).toHaveText("Day #2");
   await expect(page.locator("#date")).toHaveText("Saturday, October 24");
-  await expect(page.locator("#classement .dj-tuile__legende")).toHaveText("Today's ranking");
+  await expect(page.locator("#classement .dj-tuile__legende")).toHaveText("Today's leaderboard");
   await expect(page.locator("#classement .dj-tuile__valeur")).toHaveText(rangEn(demo.joueur.rangDuJour!));
   await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText(`${demo.joueur.points} points, all games`);
   await expect(partager).toHaveText("Share my day");
@@ -216,7 +216,7 @@ test("joueur neuf : la tuile invite à jouer (aucun chiffre inventé), pas de bo
       await page.goto(`${SITE_24}/`);
       await expect(page.locator("#journee")).toHaveText(langue === "fr" ? "Journée n° 2" : "Day #2");
       await expect(page.locator("#classement .dj-tuile__valeur")).toHaveText("—");
-      await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText(langue === "fr" ? "Finis un jeu pour entrer au classement" : "Finish a game to enter the ranking");
+      await expect(page.locator("#classement .dj-tuile__sous-texte")).toHaveText(langue === "fr" ? "Finis un jeu pour entrer au classement" : "Finish a game to enter the leaderboard");
       await expect(page.locator("#serie")).toHaveCount(0);
       await expect(page.locator("#partager")).toHaveCount(0);
       expect(vues).toEqual([{ url: "/api/portail/jour", joueur: null }]);
@@ -312,7 +312,7 @@ for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as c
     expect(vues.filter((v) => v.url === "/api/portail/classement")).toEqual([{ url: "/api/portail/classement", joueur: DEMO_ID }]);
     await capture(page, `classement-${nom}-fr`);
     await page.locator('.dj-choix-langue [data-langue="en"]').click();
-    await expect(page.locator("h1")).toHaveText("Today's ranking");
+    await expect(page.locator("h1")).toHaveText("Today's leaderboard");
     await expect(page.locator("#classement-compte")).toHaveText(`${total} players ranked`);
     await expect(page.locator("#bareme")).toHaveText("Points per game: author 4, gold 3, silver 2, bronze 1, finished with no medal 0.");
     await expect(moi.locator(".classement-toi")).toHaveText("You");
@@ -392,8 +392,9 @@ const codeTrack = encodeReplay(pilote.replay);
 /** DailyTrack : court jusqu'à l'arrivée (rejeu du pilote), choisit un pseudo et attend le classement. */
 async function finirTrack(page: Page, pseudo: string): Promise<void> {
   await page.goto(`${SITE_20}/track/?debug&timescale=6&api=/`);
-  await page.waitForFunction(() => !!(window as unknown as { __cdj?: { phase?: string } }).__cdj);
+  // Lot I6 : WebGL d'abord — sans lui le jeu ne démarre pas et l'attente de `__cdj` durait jusqu'au délai du test (Firefox de la CI, sur main).
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas");
+  await page.waitForFunction(() => !!(window as unknown as { __cdj?: { phase?: string } }).__cdj);
   await page.evaluate((c) => (window as unknown as { __cdj: { autoplay(code: string): void } }).__cdj.autoplay(c), codeTrack);
   await page.waitForFunction(() => (window as unknown as { __cdj: { phase: string } }).__cdj.phase === "finished", undefined, { timeout: 90_000 });
   await page.locator("#finish .online input").fill(pseudo);
@@ -404,8 +405,8 @@ async function finirTrack(page: Page, pseudo: string): Promise<void> {
 /** DailyJump : joue la preuve de l'auteur (pas à pas), passe le carnage, et attend l'écran d'arrivée. */
 async function finirJump(page: Page, pseudo: string | null): Promise<void> {
   await page.goto(`${SITE_20}/jump/?debug&api=/&accueil=0`);
-  await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: { phase: string } }).__jump?.phase ?? ""));
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas");
+  await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: { phase: string } }).__jump?.phase ?? ""));
   const ticks = await page.evaluate(() => {
     const j = (window as unknown as { __jump: { phase: string; manual(on: boolean): void; autoplay(): number; advance(n: number): unknown } }).__jump;
     j.manual(true);

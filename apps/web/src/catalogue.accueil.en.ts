@@ -63,5 +63,5 @@ export const en: Catalogues<typeof fr>["en"] = {
   "archives.vignette": "Aerial view of track #{numero} of {date}",
   "archives.vignetteSansNumero": "Aerial view of the track of {date}",
   "archives.pilotes": { one: "{n} driver", other: "{n} drivers" },
-  "archives.note": "Past days, random tracks and forced themes are replayed without ranking (N key: random, T key: next theme).",
+  "archives.note": "Past days, random tracks and forced themes are replayed unranked (N key: random, T key: next theme).",
 };

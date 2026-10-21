@@ -1,6 +1,6 @@
 # Lot I6 — Finitions (plateforme, phase 3)
 
-Dernier lot de la phase 3 (`docs/plateforme/seed-phase-3.md`, § 9 : « Mentions en anglais, titres et aperçus de partage, relecture des traductions »). Ce qu'on voit quand on partage un lien, ce qu'il restait à traduire, à nettoyer, et une passe d'accessibilité. Branche `claude/jolly-dirac-n7c6cs`. Charte : `docs/plateforme/identite.md` (révision 8, inchangée). Rien ne change dans les règles des jeux (golden, `sim`, `jump-sim` intacts).
+Dernier lot de la phase 3 (`docs/plateforme/seed-phase-3.md`, § 9 : « Mentions en anglais, titres et aperçus de partage, relecture des traductions »). Ce qu'on voit quand on partage un lien, ce qu'il restait à traduire, à nettoyer, et une passe d'accessibilité. Branche `claude/jolly-dirac-n7c6cs`. Charte : `docs/plateforme/identite.md` (révision 8 pendant le lot ; **révision 9** posée par la retouche avant fusion, fournie par Nathan). Rien ne change dans les règles des jeux (golden, `sim`, `jump-sim` intacts).
 
 ## 0. En bref
 
@@ -23,7 +23,7 @@ Dernier lot de la phase 3 (`docs/plateforme/seed-phase-3.md`, § 9 : « Mentions
 
 ## 2. Les aperçus de partage
 
-### Textes (proposition — **à valider par Nathan**)
+### Textes (**validés tels quels par Nathan**, retouche avant fusion)
 Clés `apercu.titre`, `apercu.description`, `apercu.image` (texte de l'image), dans un catalogue **lu seulement à la construction** (`apps/portail/src/catalogueApercu.ts`, `apps/web/src/catalogue.apercu.ts`, `apps/jump/src/catalogue.apercu.ts`) : français au lancement, anglais prêt.
 
 | Page | Titre | Description (FR) | Description (EN, prête) |
@@ -59,7 +59,7 @@ Les pages portent le jeton `__ORIGINE_DU_SITE__` dans `og:url` et `og:image` ; `
 
 - **`npm run traductions`** écrit `docs/plateforme/traductions.md` : **920 clés**, toutes les chaînes anglaises du catalogue commun, du portail (dont la vitrine et la démonstration de la recette, signalées), de Track et de Jump, **rangées par application puis par écran** (le premier mot de la clé), la clé et le français en face. `-- --verifier` échoue si le fichier n'est pas à jour ; **`packages/ui/test/traductions.test.ts`** fait la même vérification et exige que la liste des catalogues soit celle de `packages/ui/test/applications.ts`.
 - **Corrigé à la relecture** : « ↑ or Z to accelerate » → « ↑ or W » (le jeu lit la touche physique `KeyW` : « Z » en AZERTY, « W » sur un clavier anglais ; l'aide anglaise disait déjà W) ; l'aperçu anglais de Track disait « circuit » (le reste dit « track »).
-- **Les choix discutables — pour commencer la relecture** :
+- **Les choix discutables — tranchés par Nathan à la retouche avant fusion** (le détail de chaque choix suit) : 1 « Name » gardé ; 2 **« Leaderboard » partout**, portail compris (« Today's leaderboard ») ; 3 « Done » gardé ; 4 **caméra « Close » partout**, Réglages compris ; 5, 6, 8, 9, 10 gardés ; 7 **« Banquise » → “Ice floe”** (« Mountain pass » et « Countryside » gardés). Appliqué dans les catalogues, puis `npm run traductions`.
   1. **« Pseudo » → “Name”** partout (champ, colonne, messages) — “Nickname” ou “Username” ?
   2. **« Classement » → “Leaderboard” dans les jeux, “Ranking” au portail** (le classement du jour tous jeux) : deux mots exprès, ou un seul ?
   3. **« Fini » → “Done”** (statut du portail, « 3 fini(s) sur 5 » → “3 of 5 done”) — ou “Finished” ?
@@ -89,8 +89,8 @@ Les pages portent le jeton `__ORIGINE_DU_SITE__` dans `og:url` et `og:image` ; `
 - `aria-prohibited-attr` (serious) : le chrono à cases de Jump portait un `aria-label` sur un `span` : il est maintenant un `role="timer"`.
 
 **Restent, « moderate »** (dans les deux jeux, sur tous leurs écrans ; rien au portail, au profil, au classement, aux mentions ni à la 404) :
-1. `meta-viewport` — **le zoom est bloqué** (`maximum-scale=1, user-scalable=no`) : voulu par les jeux (un pincement pendant la partie zoomerait au lieu de conduire ou sauter) ; iOS l'ignore de toute façon. **Non changé — à trancher par Nathan** (une piste : le permettre hors partie n'est pas possible avec une seule page).
-2. `region` — **la scène (`canvas`) et les plaques de la partie hors d'un repère** (`main`…) : la scène n'est pas du contenu lisible ; les écrans, eux, sont dans des dialogues avec leur `main`. Non changé.
+1. `meta-viewport` — **le zoom est bloqué** (`maximum-scale=1, user-scalable=no`) : voulu par les jeux (un pincement pendant la partie zoomerait au lieu de conduire ou sauter) ; iOS l'ignore de toute façon. **Tranché par Nathan (retouche avant fusion) : le zoom reste bloqué dans les jeux** — exception motivée, écrite dans `apps/web/CLAUDE.md`, `apps/jump/CLAUDE.md` et dans la liste des « moderate » acceptés du test (`MODERES_ACCEPTES` de `e2e/axe.ts`, chaque jeu) : un constat « moderate » qui n'y est pas fait maintenant échouer le test.
+2. `region` — **la scène (`canvas`) et les plaques de la partie hors d'un repère** (`main`…) : la scène n'est pas du contenu lisible ; les écrans, eux, sont dans des dialogues avec leur `main`. Non changé ; accepté dans `MODERES_ACCEPTES` avec sa raison.
 
 ### Les écrans en surimpression sont des dialogues
 `suivreDialogue` (nouveau, `packages/ui/src/dialogue.ts`) observe ce qui ouvre un écran (son attribut `hidden`, ou une classe de `body` pour la pause de Track) : **à l'ouverture**, le focus entre dedans (sur le bouton principal donné, sinon l'écran lui-même avec `tabindex="-1"` : le lecteur annonce son nom) — sauf si l'écran s'ouvre **sous** un autre dialogue qui a le focus ; **à la fermeture**, il revient à ce qui l'avait avant quand c'est un élément d'un autre écran encore ouvert (Réglages ouverts depuis l'accueil ou la pause → le bouton « Réglages »), sinon à l'écran resté dessous, **sinon à la page** : la pause et l'arrivée rendent le clavier à la partie (un bouton du HUD qui garderait le focus serait pressé par Espace — c'est la règle que les deux jeux suivaient déjà). Posé d'office par `creerCadre` (tous les écrans des jeux), et pour la pause de Track, « Comment jouer » des deux jeux et l'accueil de Jump. Chaque dialogue a `role="dialog"` et un nom (`aria-label`).
@@ -107,7 +107,7 @@ Les pages portent le jeton `__ORIGINE_DU_SITE__` dans `og:url` et `og:image` ; `
 
 | | `main` (`df53a33`) | fin du lot | budget | marge avant → après |
 |---|---|---|---|---|
-| Track, JS + CSS du premier chargement | 283 365 | 283 486 | < 284 100 | 735 → **614** |
+| Track, JS + CSS du premier chargement | 283 365 | 283 486 | < 284 100 | 735 → **614** (620 après la retouche, § 12) |
 | Jump, JS + CSS du premier chargement | 375 298 | 375 344 | ≤ 378 490 | 3 192 → **3 146** |
 | Portail, premier chargement | 22 360 | 22 810 | ≤ 30 720 | 8 360 → **7 910** |
 
@@ -115,9 +115,12 @@ Le brief annonçait une marge de 1,4 ko pour Track et 3,6 ko pour Jump « après
 
 ## 8. Décisions laissées à Nathan
 
-1. **Les textes des aperçus** (§ 2) et **les choix de traduction** (§ 4) : à relire (`docs/plateforme/traductions.md`).
-2. **Le zoom bloqué dans les jeux** (axe « moderate », § 6).
-3. **Budget de Track** : 614 o de marge ; le prochain lot qui ajoute du code au jeu devra en retirer ailleurs ou relever le budget avec Nathan.
+**Tranchées à la retouche avant fusion** : textes des aperçus validés tels quels (§ 2) ; choix de traduction (§ 4) ; zoom bloqué gardé, en exception motivée (§ 6) ; débordement « AUTOMATIC » corrigé (§ 12) ; lots en parallèle (§ 12).
+
+**Restent à Nathan** :
+1. **Budget de Track** : 620 o de marge ; le prochain lot qui ajoute du code au jeu devra en retirer ailleurs ou relever le budget avec Nathan (règle écrite dans `docs/orchestration.md` § 10).
+2. **Les questions ouvertes des lots en parallèle** (§ 12) : tests du serveur DailyTrack hors des zones, synthèse de Track dans sa zone, relevé des traductions en exception.
+3. **L'étiquette `jeu:track` / `jeu:jump`** : à créer dans le dépôt (réglage GitHub ; un agent ne crée pas de ressource) ; sans elle, le nom de branche suffit.
 
 ## 9. Vérifié / non vérifié
 
@@ -135,13 +138,47 @@ Le brief annonçait une marge de 1,4 ko pour Track et 3,6 ko pour Jump « après
 
 ## 10. Runs de CI
 
-À compléter après la poussée (PR brouillon).
+**PR [Nathan-Te/DailyTrack#98](https://github.com/Nathan-Te/DailyTrack/pull/98)** (le lot, fusionnée) — run [39603336725](https://github.com/Nathan-Te/DailyTrack/actions/runs/39603336725) (mode `pr`, dernier commit `0d224f0`) : **vert**.
+
+| Job | Verdict | Durée |
+|---|---|---|
+| `unit (1/3)`, `unit (2/3)`, `unit (3/3)` → `test` | ✔ | 2 min 42 s, 2 min 25 s, 2 min 48 s |
+| `scope` | ✔ (Track, Jump, serveur) | 10 s |
+| `api-image` | ✔ | 49 s |
+| `e2e-parts` Chromium 1 à 8 | ✔ | 4 à 11 min 19 s par part |
+| `e2e-parts` Firefox 1–2, WebKit 1–2 (sous-ensemble multi-navigateurs) | ✔ | 3 s à 1 min 21 s |
+| `e2e-parts` Jump Chromium 1 à 3, Jump Firefox, Jump WebKit | ✔ | 1 à 3 min 49 s |
+| `e2e` (verdict) | ✔ — **412 réussis, 0 instable, 0 échec**, 73 sautés (sans WebGL) | 22 s |
+
+Aperçu de la PR vérifié (`playdujour-recette--pr-98-…web.app`) : balises `og:*` sur l'origine du canal, `jump.png` 200 (29,6 ko), `/xyz` → 404 de la charte, `/legal/` 200, manifeste servi.
+
+**`main` après la fusion** — run [39604752428](https://github.com/Nathan-Te/DailyTrack/actions/runs/39604752428) (mode `complet` : tout, trois navigateurs) : **rouge** (653 réussis, **2 échecs, 2 instables**). Le run `main` précédent (fusion du lot I4b, [39595973881](https://github.com/Nathan-Te/DailyTrack/actions/runs/39595973881)) était **déjà rouge sur les deux mêmes échecs** : ils ne viennent pas du lot I6, mais tant qu'ils restent, « Mettre en production » est refusé. La retouche les corrige (§ 12) :
+- `firefox` · `domaine.spec.ts` › mentions légales au doigt en portrait : `#mentions` mesuré **43,99994 px** pour un `min-height: 44px` — l'unité de mise en page de Firefox (1/60 px) à une ordonnée fractionnaire, pas une cible trop petite ;
+- `firefox` · `portail-journee.spec.ts` › de Track vers Jump : **délai du test (5 min) dépassé** — sans WebGL (Firefox de la CI), le jeu ne démarre pas et l'attente de `__cdj` passait **avant** le `test.skip` sans WebGL ;
+- instable `jump-webkit` · `accessibilite.spec.ts` (EN) — **le lot I6** : à « Comment jouer », axe auditait toute la page et calculait une fois sur deux le contraste de « Jouer » (accueil, **sous** le voile du dialogue) contre le voile (`color-contrast`, serious) ;
+- instable `chromium` · `cuves.spec.ts` › sur la paroi, la même voiture que Node — **hors de la zone du lot** (simulation de Track) : signalé, non touché (à suivre dans `docs/orchestration.md` § 8 par un lot Track).
+
+**PR de la retouche** : voir § 12.
 
 ## 11. Ce qui reste après la phase 3
 
-- **Relecture des traductions par Nathan** (`traductions.md`) et validation des textes des aperçus ; les choix tranchés passent dans les catalogues (`npm run traductions` ensuite).
 - **Une image de partage du jour** (le circuit ou le niveau du jour, la journée d'un joueur) : hors de ce lot.
 - **Service worker et mode hors ligne** : hors de ce lot (le manifeste est là).
 - **La publicité et le bandeau de consentement** : phase 4 (et la relecture juridique des mentions, qui devront alors changer).
 - **Côté serveur** : l'identifiant de DailyTrack dans l'adresse (`?player=`) et le coût du rang à l'envoi (lots du serveur à venir) ; retirer la lecture de `json.message` de `@cdj/profile` (§ 5).
-- **Accessibilité** : tester avec un vrai lecteur d'écran ; trancher le zoom des jeux.
+- **Accessibilité** : tester avec un vrai lecteur d'écran (le zoom des jeux est tranché : il reste bloqué).
+
+## 12. Retouche avant fusion (décisions de Nathan)
+
+La PR du lot ([Nathan-Te/DailyTrack#98](https://github.com/Nathan-Te/DailyTrack/pull/98)) était **déjà fusionnée** quand la retouche est arrivée : elle part dans **une nouvelle PR** depuis `main` à jour (même branche, repartie de `main`).
+
+- **Charte** : `docs/plateforme/identite.md` remplacée par la **révision 9** fournie par Nathan (aucun autre changement de la charte).
+- **Traductions** (§ 4, puis `npm run traductions`) : « Leaderboard » partout (portail : “Today's leaderboard”, “Finish a game to enter the leaderboard”… ; Track : rang, envoi, Salon — “standings” disparaît) ; caméra « Close » aussi dans les Réglages ; « Banquise » → “Ice floe” (Track et portail). Les trois attentes anglaises de `portail-journee.spec.ts` suivent.
+- **« AUTOMATIC » qui débordait en portrait anglais** (boutons à segments des Réglages de Track) : **corrigé par une règle de mise en page, sans poids notable** — `.segment__bouton { flex: 1 1 auto }` (au lieu de `1 1 0`) : un segment au mot long prend la place dont il a besoin, les autres se partagent le reste ; vérifié à 390 px en français et en anglais (aucun débordement, police réelle et police de repli).
+- **Zoom bloqué dans les jeux** : gardé, **exception motivée** dans `apps/web/CLAUDE.md`, `apps/jump/CLAUDE.md` et `MODERES_ACCEPTES` (`e2e/axe.ts` de chaque jeu : `meta-viewport` et `region`, chacun avec sa raison) ; **tout autre constat « moderate » fait maintenant échouer le test**.
+- **Lots en parallèle** : règles dans `docs/orchestration.md` § 10, résumé dans le `CLAUDE.md` racine ; garde **`scripts/zones-jeu.mjs`** (testé : `apps/api/test/zonesJeu.test.ts`, 15 tests) branchée au job **`zones`** de `ci.yml`, dont le verdict est porté par le statut obligatoire `test` (aucun réglage de protection à changer). Le jeu d'une PR : l'étiquette `jeu:track` / `jeu:jump`, sinon un morceau `track` / `jump` du nom de branche (deux étiquettes : refus ; deux jeux ou aucun dans le nom : PR de la plateforme, sans garde). Le diff part de la base commune (`origin/main...HEAD`) : fusionner `main` n'ajoute rien.
+  - **Fichiers DailyTrack d'`apps/api`** (liste fermée, la même que `scripts/ci-scope.mjs`, vérifiée par le test) : `src/cdj.ts`, `src/salon.ts`, `test/salon.test.ts`, `test/planning.test.ts`, `scripts/measure-salon.ts`, `scripts/measure-generator.ts`, `scripts/measure-budget.ts`, `scripts/history-seed.ts`. **`history.ts` n'y est pas** : `jumpHistory.ts` et `classementDemo.ts` l'importent.
+  - **Questions ouvertes pour Nathan** : (1) **les tests du serveur de DailyTrack** vivent surtout dans `api.test.ts` et `classement.test.ts`, qui passent par le cœur du serveur (zones partagées) : un lot Track qui change `cdj.ts` et doit changer ces tests s'arrêtera — proposition : un `apps/api/test/cdj*.test.ts` propre à Track (comme `jump*.test.ts`), à créer par un lot de la plateforme ; (2) **`docs/orchestration.md` est mis dans la zone de Track** (c'est sa synthèse, comme `docs/jump/synthese.md` pour Jump, que la règle range dans `docs/jump/**`) ; (3) **`docs/plateforme/traductions.md` est une exception tolérée** : `npm run traductions` le régénère après tout changement de catalogue, et son test échoue s'il n'est pas à jour — sans l'exception, aucun lot de jeu ne pourrait changer une clé ; (4) la garde vérifie **le fichier**, pas **la ligne** (`budgets.md`, `applications.ts`) : la relecture vérifie qu'un lot de jeu n'y change que la sienne ; (5) l'étiquette n'est relue qu'au push suivant (ajouter `labeled` aux événements de la CI relancerait toute la CI à chaque étiquette).
+- **Les rouges de `main` (§ 10)** : `domaine.spec.ts` lit la hauteur d'une cible à l'unité de mise en page de Firefox près (1/60 px ; un vrai manque compte au moins 1/60 px) ; `portail-journee.spec.ts` vérifie WebGL **avant** d'attendre le jeu (Track et Jump) ; `accessibilite.spec.ts` (Track et Jump) audite **le dialogue ouvert seul** à « Comment jouer » et aux Réglages — l'écran dessous est audité seul à l'étape d'avant (aucune couverture perdue). `cuves.spec.ts` (instable, Chromium) : hors zone, non touché.
+- **Budgets remesurés** (`node scripts/budgets.mjs`) : Track JS + CSS 283 480 o (marge **620 o**, +6), anglais de Track 7 245 o, portail 22 812 o, Jump inchangé ; `budgets.md` à jour.
+- **CI de la PR de la retouche** : commit marqué `[ci complet]` (tout, trois navigateurs : les deux échecs de `main` sont des tests Firefox hors du sous-ensemble d'une PR) — runs et verdicts ci-dessous.
