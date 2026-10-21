@@ -152,77 +152,180 @@ kbd {
   white-space: nowrap;
 }
 
-/* --- Aide « Comment jouer » ------------------------------------------------------------------------------------------------------------------------ */
-.conseils {
+/* --- Aide « Comment jouer » : un dialogue dans le jeu (charte rév. 7 § 9), l'étiquette asphalte posée sur la scène sous un voile à rayures -------------------------------- */
+#howto {
+  z-index: var(--z-cadre-haut); /* au-dessus de la pause, de l'accueil et des réglages : la fermer revient à l'écran d'où on vient */
+}
+#howto .dialogue {
+  width: min(660px, calc(100vw - 24px));
+}
+.aide {
+  display: grid;
+  gap: 12px;
+  align-items: center;
+}
+@media (min-width: 560px) {
+  .aide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
+  }
+}
+.points {
   display: grid;
   gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.conseil {
+.point {
   display: grid;
-  grid-template-columns: 40px 1fr;
+  grid-template-columns: 28px minmax(0, 1fr);
   gap: 10px;
-  padding: 10px 12px;
-  background: var(--track-piste);
-  border: var(--dj-trait) solid var(--track-coque);
-  border-radius: var(--dj-rayon-bouton);
+  align-items: center;
 }
-.conseil__icone {
+.point__n {
   display: flex;
-  justify-content: center;
-  padding-top: 2px;
-  color: var(--track-livree-texte);
-}
-.conseil h3 {
-  margin: 0 0 2px;
-  font-family: var(--track-police);
-  font-style: italic;
-  font-weight: 700;
-  font-size: var(--dj-taille-16);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.conseil p {
-  color: var(--track-texte-doux);
-  font-size: var(--dj-taille-13);
-}
-.conduire {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-/* Schéma de l'écran tactile : où poser les doigts (contours de la charte, jamais de transparence). */
-.schema {
-  display: grid;
-  grid-template-columns: 2fr 1fr 1fr;
-  gap: 6px;
-  margin: 8px 12px;
-  aspect-ratio: 16 / 6;
-  max-height: 150px;
-}
-.schema__zone {
-  display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4px;
-  border: var(--dj-trait) dashed var(--track-texte-doux);
+  width: 28px;
+  height: 28px;
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
   border-radius: var(--dj-rayon-bouton);
-  text-align: center;
-  font-size: var(--dj-taille-13);
-}
-.schema__zone b {
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
   font-size: var(--dj-taille-16);
+}
+.point__texte {
+  font-size: var(--dj-taille-15);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.aide__schema {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.aide__legende {
+  margin: 0;
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-12);
+  line-height: 1.3;
+}
+/* Schéma de l'écran tactile en paysage : les boutons aux bords, le centre libre (contours de la charte, jamais de transparence). */
+.schema {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 844 / 390;
+  background: var(--track-piste);
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+  overflow: hidden;
+}
+.schema__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 1px 1px 0 var(--dj-encre);
+}
+.schema__haut {
+  position: absolute;
+  left: 4%;
+  top: 6%;
+  display: flex;
+  gap: 3px;
+}
+.schema__haut .schema__btn {
+  width: 22px;
+  height: 22px;
+}
+.schema__bande {
+  position: absolute;
+  left: 50%;
+  top: 6%;
+  width: 34%;
+  height: 12%;
+  transform: translateX(-50%);
+  background: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+}
+.schema__rang {
+  position: absolute;
+  right: 4%;
+  top: 6%;
+  width: 14%;
+  height: 12%;
+  background: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+}
+.schema__centre {
+  position: absolute;
+  left: 28%;
+  right: 28%;
+  top: 28%;
+  bottom: 36%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--dj-trait) dashed var(--track-texte-doux);
+  border-radius: var(--dj-rayon-bouton);
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 700;
+  letter-spacing: 1px;
   text-transform: uppercase;
 }
-.schema__zone--frein {
-  border-color: var(--track-livree-texte);
+.schema__gauche {
+  position: absolute;
+  left: 4%;
+  bottom: 8%;
+  display: flex;
+  gap: 4px;
 }
-.schema__zone--gaz {
-  border-style: solid;
-  border-color: var(--track-livree);
+.schema__fleche {
+  width: 30px;
+  height: 30px;
+}
+.schema__droite {
+  position: absolute;
+  right: 4%;
+  bottom: 8%;
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+}
+.schema__frein,
+.schema__gaz {
+  font-size: var(--dj-taille-legende-petite);
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.schema__frein {
+  width: 36px;
+  height: 26px;
+}
+.schema__gaz {
+  width: 40px;
+  height: 38px;
   background: var(--track-livree);
   color: var(--track-asphalte);
+  box-shadow: 1px 1px 0 var(--track-livree-ombre);
+}
+@media (max-height: 520px) {
+  #howto .dialogue__corps {
+    gap: 8px;
+    padding: 12px 14px;
+  }
+  #howto .dialogue__titre {
+    font-size: var(--dj-taille-32);
+  }
 }

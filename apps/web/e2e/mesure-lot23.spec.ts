@@ -31,6 +31,7 @@ test("fil principal par image", async ({ browser }) => {
         await page.addInitScript(() => localStorage.setItem("cdj:camera", "proche"));
         await page.goto(`${BASE}/${query}&debug&quality=${quality}`);
         await page.waitForFunction(() => window.__cdj?.phase);
+        if (process.env.PERF_CSS) await page.addStyleTag({ content: process.env.PERF_CSS }); // variante d'essai (lot I4) : retirer un élément du HUD pour mesurer ce qu'il coûte
         await page.waitForTimeout(9000); // après le départ, les premiers effets (compilation des shaders) et le premier changement de caméra de la démo (à 7 s)
         await page.evaluate(() => {
           const w = window as unknown as { __frames: number };

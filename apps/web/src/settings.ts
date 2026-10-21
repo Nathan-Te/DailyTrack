@@ -92,9 +92,21 @@ export function parseSettings(raw: string | null): GameSettings {
   return s;
 }
 
+/** Un téléphone (écran tactile ou peu de hauteur) : le classement y est replié par défaut en course (charte rév. 7 : le centre et les bords restent libres) ; la pastille du rang l'ouvre. */
+export function compactDevice(): boolean {
+  return typeof matchMedia === "function" && matchMedia("(pointer: coarse), (max-height: 520px)").matches;
+}
+
+/**
+ * Réglages enregistrés, sinon ceux par défaut. Sans enregistrement, le classement en course est replié sur téléphone ; **un joueur qui a déjà enregistré ses réglages
+ * garde son choix** (limite : un enregistrement ne dit pas si `board` a été choisi ou hérité du défaut).
+ */
 export function loadSettings(): GameSettings {
   try {
-    return parseSettings(gameStorage().getItem(SETTINGS_KEY));
+    const raw = gameStorage().getItem(SETTINGS_KEY);
+    const s = parseSettings(raw);
+    if (raw === null && compactDevice()) s.board = false;
+    return s;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }

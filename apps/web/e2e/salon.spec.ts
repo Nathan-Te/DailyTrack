@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { encodeReplay, runPilot, salonCircuit, salonTheme } from "@cdj/sim";
-import { boxes, expectNoOverlap } from "./layout";
+import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 
 // Le Salon (lot 26) en mode démonstration : `?mode=salon&api=demo`, sessions de 2 minutes (`salonMinutes=2`) et horloge pilotable
 // (`salonAt=` au chargement, `__cdj.salon.setNow(ms)` ensuite : outils `?debug`). Rendu 3D : Chromium seulement.
@@ -389,18 +389,25 @@ for (const viewport of [
     // Même police large que la CI (voir mobile.spec.ts).
     await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
     await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
-    expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#speed"]), viewport);
-    // Classement : affiché d'office dans le coin, replié par son en-tête (cible d'au moins 44 px au toucher).
+    // Charte rév. 7 : la bande du haut, les boutons de 44 px, le compte à rebours du Salon (pastille compacte) ; le titre n'est là qu'au départ ; le centre reste libre.
+    await page.waitForTimeout(1700);
+    const paysage = viewport.width > viewport.height;
+    const hud = await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed"]);
+    expectNoOverlap(hud, viewport);
+    if (paysage) expectCentreLibre(hud, viewport);
+    // Classement : replié sur téléphone (la touche L ou la pastille du rang l'ouvre) ; ouvert, il reste dans le coin du haut à droite, et son en-tête le replie (cible d'au moins 44 px).
+    await expect(page.locator("#board")).toBeHidden();
+    await page.keyboard.press("l");
     const board = page.locator("#board .bhead");
     await expect(page.locator("#board")).toBeVisible();
     const b = await board.boundingBox();
     expect(b!.height).toBeGreaterThanOrEqual(43);
     await page.addStyleTag({ content: "#banner { display: none !important; }" });
-    expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#menu", "#speed", "#board"]), viewport);
+    const withBoard = await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed", "#board"]);
+    expectNoOverlap(withBoard, viewport);
+    if (paysage) expectCentreLibre(withBoard, viewport);
     await board.tap();
     await expect(page.locator("#board")).toHaveClass(/folded/);
-    await board.tap();
-    await expect(page.locator("#board")).not.toHaveClass(/folded/);
     // Arrivée d'un tour complet (pas à pas, indépendant de la vitesse de la machine) : le panneau et ses boutons restent dans l'écran.
     await page.evaluate((n) => localStorage.setItem("cdj:name", n), "Mobile");
     await page.evaluate(() => window.__cdj.manual(true));

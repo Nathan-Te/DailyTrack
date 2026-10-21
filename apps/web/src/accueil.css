@@ -4,7 +4,7 @@
 
 body.home #rotate,
 body.home #touch,
-body.home #tbar {
+body.home #hud-droite {
   display: none !important;
 }
 
@@ -257,10 +257,10 @@ body.home #tbar {
 /* --- Le classement dans le coin de la course : une plaque compacte, repliable ----------------------------------------------------------------------- */
 #board {
   position: fixed;
-  left: 14px;
-  top: 66px;
+  right: 10px;
+  top: 56px; /* sous la pastille du rang (#rang) qui l'ouvre ; jamais au centre (charte rév. 7 : le centre reste libre) */
   z-index: var(--z-hud);
-  width: 260px;
+  width: min(240px, 28vw);
   pointer-events: none;
   box-shadow: none;
   font-size: var(--dj-taille-12);
@@ -305,8 +305,8 @@ body.home #tbar {
 #board .bbody {
   padding: 0 8px 8px;
 }
-#board.folded .bbody {
-  display: none;
+#board.folded {
+  display: none; /* replié : la pastille du rang suffit (#rang) */
 }
 #board .ligne {
   min-height: 26px;
@@ -354,10 +354,10 @@ body.paused #board,
 body.finished #board {
   z-index: var(--z-hud);
 }
-/* Portrait étroit : le classement passe sous la pile du centre (chronomètre, point de contrôle, titre). */
+/* Portrait étroit : le classement passe sous la bande (qui descend d'une ligne). */
 @media (orientation: portrait) and (max-width: 600px) {
   #board {
-    top: 164px;
+    top: 100px;
     width: min(250px, 52vw);
   }
   #board .watchlink {
@@ -516,13 +516,6 @@ body.finished #board {
   #archive .best {
     text-align: left;
     min-width: 0;
-  }
-}
-
-/* Téléphone en paysage : le titre du circuit (#meta) passe sous le chrono, plus bas que la pause ; le classement du coin se range dessous. */
-@media (max-height: 520px) {
-  #board {
-    top: 84px;
   }
 }
 

@@ -1,6 +1,6 @@
 import { expect, test, TODAY, newClockedContext } from "./fixtures";
 import { SIM_VERSION, dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
-import { boxes, expectNoOverlap } from "./layout";
+import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 
 // Téléphone : rien ne se chevauche et tout reste dans l'écran, en portrait comme en paysage.
 // (Le rendu 3D demande WebGL : Chromium seulement.)
@@ -19,6 +19,7 @@ const json = (body: unknown, status = 200) => ({ status, headers: CORS, contentT
 for (const viewport of [
   { name: "portrait", width: 390, height: 844 },
   { name: "paysage", width: 844, height: 390 },
+  { name: "paysage compact", width: 740, height: 360 },
   { name: "petit portrait", width: 360, height: 640 },
 ]) {
   test(`téléphone ${viewport.name} (${viewport.width}×${viewport.height}) : en course puis à l'arrivée, rien ne se chevauche`, async ({ browser }) => {
@@ -60,17 +61,30 @@ for (const viewport of [
     // du point de contrôle ne montre que le dernier (« PC 2/5 » collé à son écart), plus une ligne par point.
     await expect(page.locator("#splits .pc")).toContainText("2/", { timeout: 60_000 });
     await page.waitForTimeout(300);
-    const racing = ["#meta", "#medals", "#timer", "#splits", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]; // #tbar : boutons tactiles (le téléphone est tactile)
+    // Charte rév. 7 : la bande du haut (30 px), trois boutons de 44 px en haut à gauche, l'objectif et la pastille du rang en haut à droite, les commandes aux bords, la vitesse
+    // en bas au centre ; le titre et l'aide ont disparu (ils ne sont là qu'au départ), le classement est replié (la pastille l'ouvre).
+    const paysage = viewport.width > viewport.height;
+    const racing = ["#hud-centre", "#menu", "#medals", "#rang", "#speed", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]; // les commandes sont tactiles : le téléphone est tactile
     const racingBoxes = await boxes(page, racing);
     expect(racingBoxes.map((b) => b.name)).toEqual(expect.arrayContaining(racing));
     expectNoOverlap(racingBoxes, viewport);
-    // Le classement (lot 29) reste dans son coin, compact ; son en-tête le replie (cible de 44 px).
+    if (paysage) expectCentreLibre(racingBoxes, viewport);
+    expect((await page.locator("#hud-centre").boundingBox())!.height, "la bande fait 30 px de haut").toBeLessThanOrEqual(31);
+    for (const b of await page.locator("#menu button").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5); // pause, point de contrôle, recommencer
+    await expect(page.locator("#meta")).toBeHidden(); // le titre du circuit ne s'affiche qu'au départ
+    await expect(page.locator("#ghostinfo")).toBeHidden();
+    // Le classement est replié sur téléphone ; la pastille du rang (« 3e ˅ ») l'ouvre, dans le coin du haut à droite, hors de la zone centrale.
+    await expect(page.locator("#board")).toBeHidden();
+    await expect(page.locator("#rang")).toContainText("3e");
+    expect((await page.locator("#rang").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
+    await page.locator("#rang").click();
+    await expect(page.locator("#board")).toBeVisible();
     await expect(page.locator("#board .row")).toHaveCount(3);
-    expect((await page.locator("#board .bhead").boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-    await page.locator("#board .bhead").click();
-    await expect(page.locator("#board")).toHaveClass(/folded/);
-    await page.locator("#board .bhead").click();
-    await expect(page.locator("#board")).not.toHaveClass(/folded/);
+    const withBoard = await boxes(page, [...racing, "#board"]);
+    expectNoOverlap(withBoard, viewport);
+    if (paysage) expectCentreLibre(withBoard, viewport);
+    await page.locator("#rang").click();
+    await expect(page.locator("#board")).toBeHidden();
 
     // À l'arrivée : panneau, boutons (au moins 34 px de haut : on les touche du doigt), classement.
     await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });

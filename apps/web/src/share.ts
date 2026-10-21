@@ -17,7 +17,7 @@ export interface ShareResult {
 }
 
 /**
- * La ligne à partager, façon Wordle : `Circuit du Jour #142 — 47,312 s — 🥇 — 23e/812` (`Daily Track #142 — 47.312 s — 🥇 — 23rd/812`).
+ * La ligne à partager, façon Wordle : `Du Jour · Track #142 — 47,312 s — 🥇 — 23e/812` (`Du Jour · Track #142 — 47.312 s — 🥇 — 23rd/812` : même forme dans les deux langues, charte § 2).
  * Les morceaux qu'on ne connaît pas (pas de médaille, pas de classement) sont simplement omis.
  */
 export function shareLine(r: ShareResult): string {

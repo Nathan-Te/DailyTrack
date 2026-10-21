@@ -1,15 +1,15 @@
-// Fenêtre « Comment jouer » (lot 29, passée au socle au lot I4) : une page courte et visuelle dans le cadre de Du Jour. Les commandes de l'appareil en cours
-// d'abord (clavier ou doigts), les autres repliées ; les idées à retenir en dessous. Montrée à la première visite, puis accessible depuis l'accueil, la pause
-// et les réglages. Les textes viennent du catalogue (`aide.*`) : la fenêtre se redessine au changement de langue.
-import { bouton, icone, type NomIcone } from "@cdj/ui";
-import { creerCadre } from "./cadre";
+// Fenêtre « Comment jouer » (lot 29 ; retouche du lot I4, charte rév. 7 § 9) : **dans le jeu**, pas dans le cadre crème du portail — l'étiquette asphalte posée sur la
+// scène, sous un voile à rayures (comme la pause), trois points courts, le schéma des commandes (doigts : les boutons aux bords, le centre libre ; clavier : les touches) et
+// un bouton « C'est parti ». Montrée une seule fois (le jeu gelé dessous), puis accessible depuis la pause, l'accueil et les réglages. Les textes viennent du catalogue
+// (`aide.*`) : la fenêtre se redessine au changement de langue.
+import { bouton, icone, svg, type NomIcone } from "@cdj/ui";
 import { el } from "./dom";
-import { GAMEPAD_CONTROLS, KEYBOARD_CONTROLS, TIPS, TOUCH_CONTROLS, type Control, type Device } from "./howto";
+import { HOWTO_POINTS, KEYBOARD_BASICS, type Control, type Device } from "./howto";
 import { ICONES_TRACK, iconeTrack, type IconeTrack } from "./icones";
 import { aCle, onLangue, t } from "./i18n";
 
 export interface HowtoUi {
-  /** Ouvre l'aide ; `onClose` est appelé une fois, à la fermeture (l'accueil enchaîne alors sur la course). */
+  /** Ouvre l'aide ; `onClose` (facultatif) est appelé une fois, à la fermeture. */
   open(onClose?: () => void): void;
   close(): void;
   isOpen(): boolean;
@@ -44,17 +44,30 @@ export function controlsTable(list: Control[]): HTMLElement {
   return table;
 }
 
-/** Schéma de l'écran tactile : où poser les doigts (pas de bitmap : des boîtes CSS, toujours nettes). */
+/** Une flèche de direction du schéma (la même forme que les boutons tactiles). */
+function fleche(d: string): SVGSVGElement {
+  return svg("svg", { attrs: { viewBox: "0 0 30 30", width: 14, height: 14, "aria-hidden": "true", focusable: "false" } }, svg("path", { attrs: { d, fill: "none", stroke: "currentColor", "stroke-width": 5, "stroke-linecap": "square" } }));
+}
+
+/** Schéma des commandes tactiles : le jeu vu en paysage, avec les boutons là où on les trouve (des boîtes CSS, jamais de bitmap). Le centre reste libre. */
 function touchDiagram(): HTMLElement {
   const d = el("div", "schema");
   d.setAttribute("aria-hidden", "true");
-  const left = el("div", "schema__zone schema__zone--tourner");
-  left.append(el("b", "", t("aide.zone.tourner")), el("span", "", t("aide.zone.glisse")));
-  const brake = el("div", "schema__zone schema__zone--frein");
-  brake.append(el("b", "", t("aide.zone.frein")));
-  const gas = el("div", "schema__zone schema__zone--gaz");
-  gas.append(el("b", "", t("aide.zone.gaz")));
-  d.append(left, brake, gas);
+  const btn = (cls: string, content: Node | string) => {
+    const b = el("span", `schema__btn ${cls}`);
+    b.append(content);
+    return b;
+  };
+  const haut = el("div", "schema__haut");
+  haut.append(btn("", iconeTrack("pause", 12)), btn("", icone("drapeau", { taille: 12 })), btn("", iconeTrack("recommencer", 12)));
+  const bande = el("span", "schema__bande");
+  const rang = el("span", "schema__rang");
+  const centre = el("span", "schema__centre", t("aide.zone.libre"));
+  const gauche = el("div", "schema__gauche");
+  gauche.append(btn("schema__fleche", fleche("M19 5 9 15l10 10")), btn("schema__fleche", fleche("M11 5l10 10-10 10")));
+  const droite = el("div", "schema__droite");
+  droite.append(btn("schema__frein", t("aide.zone.frein")), btn("schema__gaz", t("aide.zone.gaz")));
+  d.append(haut, bande, rang, centre, gauche, droite);
   return d;
 }
 
@@ -64,52 +77,42 @@ export function mountHowto(root: HTMLElement, device: Device, hooks: { onSeen?: 
   const close = () => {
     if (!opened) return;
     opened = false;
-    cadre.racine.hidden = true;
+    racine.hidden = true;
     const f = onClose;
     onClose = undefined;
     hooks.onSeen?.();
     f?.();
   };
-  const cadre = creerCadre({ id: "howto", titreAria: "aide.titre", retour: "jeu", onRetour: close, haut: true });
-  cadre.racine.hidden = true;
+  const racine = el("div", "voile voile--aide");
+  racine.id = "howto";
+  racine.hidden = true;
+  const dialogue = el("section", "dialogue dj-sombre");
+  dialogue.setAttribute("role", "dialog");
+  dialogue.setAttribute("aria-modal", "true");
+  const corps = el("div", "dialogue__corps");
+  dialogue.append(corps);
+  racine.append(dialogue);
   let done: HTMLElement | null = null;
 
-  const section = (title: string, content: HTMLElement, open: boolean) => {
-    const d = el("details", "repli");
-    d.open = open;
-    d.append(el("summary", "", title), content);
-    return d;
-  };
-
   function render(): void {
-    const touchBox = () => {
-      const box = el("div");
-      box.append(touchDiagram(), controlsTable(TOUCH_CONTROLS));
-      return box;
-    };
-    const drive = el("section", "conduire");
-    drive.append(el("h2", "reglages__section", t("aide.conduire")));
-    if (device === "touch") {
-      drive.append(section(t("aide.section.doigts"), touchBox(), true), section(t("aide.section.clavier"), controlsTable(KEYBOARD_CONTROLS), false), section(t("aide.section.manette"), controlsTable(GAMEPAD_CONTROLS), false));
-    } else {
-      drive.append(section(t("aide.section.clavier"), controlsTable(KEYBOARD_CONTROLS), true), section(t("aide.section.manette"), controlsTable(GAMEPAD_CONTROLS), false), section(t("aide.section.doigtsAussi"), touchBox(), false));
-    }
-    const tips = el("section", "conseils");
-    for (const tip of TIPS) {
-      const c = el("div", "conseil");
-      c.append(el("div", "conseil__icone", ""), el("div", "conseil__texte"));
-      c.firstElementChild!.append(iconeParNom(tip.icon, 26));
-      c.lastElementChild!.append(el("h3", "", t(tip.heading)), el("p", "", t(tip.body)));
-      tips.append(c);
-    }
-    done = bouton({ texte: t("aide.compris"), variante: "track", pleineLargeur: true, onClick: close });
+    dialogue.setAttribute("aria-label", t("aide.titre"));
+    const points = el("ol", "points");
+    HOWTO_POINTS[device].forEach((cle, i) => {
+      const li = el("li", "point");
+      li.append(el("span", "point__n", String(i + 1)), el("span", "point__texte", t(cle)));
+      points.append(li);
+    });
+    const aside = el("div", "aide__schema");
+    if (device === "touch") aside.append(touchDiagram(), el("p", "aide__legende", t("aide.schema.legende")));
+    else aside.append(controlsTable(KEYBOARD_BASICS));
+    const grille = el("div", "aide");
+    grille.append(points, aside);
+    done = bouton({ texte: t("aide.parti"), variante: "track", pleineLargeur: true, onClick: close });
     done.id = "howto-done";
-    const tete = el("div", "etiquette__tete");
-    tete.append(el("h1", "etiquette__titre", t("aide.titre")));
-    cadre.corps.replaceChildren(tete, tips, drive, done);
+    corps.replaceChildren(el("h2", "dialogue__titre", t("aide.titre")), grille, done);
   }
   render();
-  root.append(cadre.racine);
+  root.append(racine);
   // La langue change : la fenêtre se redessine (ouverte ou non), le focus reste sur le bouton de fin.
   onLangue(() => {
     const had = done !== null && document.activeElement === done;
@@ -121,8 +124,8 @@ export function mountHowto(root: HTMLElement, device: Device, hooks: { onSeen?: 
     open(cb) {
       onClose = cb;
       opened = true;
-      cadre.racine.hidden = false;
-      cadre.corps.scrollTop = 0;
+      racine.hidden = false;
+      corps.scrollTop = 0;
       done?.focus({ preventScroll: true });
     },
     close,

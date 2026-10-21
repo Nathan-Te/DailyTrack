@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-// Caméras (lot 23) : proche, loin, capot. Touche C au clavier, bouton 🎥 au toucher (barre d'actions) ; choix mémorisé.
+// Caméras (lot 23) : proche, loin, capot. Touche C au clavier, au toucher, bouton Caméra de la pause (retouche 2 du lot I4 : plus de barre du bas) ; choix mémorisé.
 // Le rendu 3D demande WebGL : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(120_000);
@@ -64,9 +64,10 @@ const PHONES = [
   { name: "iPhone 14", viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" },
 ] as const;
 
+// Retouche 2 du lot I4 : la barre du bas n'existe plus ; la caméra se change depuis la pause (`#pause-camera`), et plus aucun appui sur l'écran de jeu n'y touche.
 for (const p of PHONES) {
   for (const auto of [true, false]) {
-    test(`${p.name}, ${auto ? "gaz automatique" : "deux pédales"} — le bouton 🎥 change de caméra et ne vole aucun appui (?zones=1)`, async ({ browser }) => {
+    test(`${p.name}, ${auto ? "gaz automatique" : "deux pédales"} — la caméra se change depuis la pause, et aucun appui sur l'écran ne la change (?zones=1)`, async ({ browser }) => {
       const context = await browser.newContext({ ...p, isMobile: true, hasTouch: true });
       const page = await context.newPage();
       await page.addInitScript((a) => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: a, version: 2 })), auto);
@@ -75,18 +76,14 @@ for (const p of PHONES) {
       await page.evaluate(() => window.__cdj.manual(true));
       const W = p.viewport.width;
       const H = p.viewport.height;
-      const btn = page.locator('#tbar button[aria-label="Changer de caméra"]');
+      await expect(page.locator("#tbar button")).toHaveCount(0); // plus de barre du bas : le bas de l'écran est aux commandes
+
+      // 1. la pause propose la caméra : trois appuis font le tour
+      await page.locator("#btn-pause").tap();
+      await expect(page.locator("#pause")).toBeVisible();
+      const btn = page.locator("#pause-camera");
       await expect(btn).toBeVisible();
-      const box = (await btn.boundingBox())!;
-
-      // 1. écart avec les frontières entre zones : au-delà du rayon (≈ 12–14 px) où le navigateur corrige un toucher vers un petit bouton
-      const frontiers = (auto ? [0.25, 0.5] : [0.25, 0.5, 0.75]).map((f) => f * W);
-      for (const fx of frontiers) {
-        const gap = fx < box.x ? box.x - fx : fx > box.x + box.width ? fx - (box.x + box.width) : 0;
-        expect(gap, `le bouton caméra est à ${gap.toFixed(0)} px de la frontière à ${((fx / W) * 100).toFixed(0)} %`).toBeGreaterThanOrEqual(14);
-      }
-
-      // 2. un appui sur le bouton : caméra suivante, trois fois pour faire le tour
+      expect((await btn.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
       const names: string[] = [(await camera(page)).name];
       for (let i = 0; i < 3; i++) {
         await btn.tap();
@@ -95,22 +92,20 @@ for (const p of PHONES) {
       }
       expect(names[0]).toBe(names[3]);
       expect(new Set(names).size).toBe(3);
+      await page.locator("#pause-resume").tap();
+      await expect(page.locator("#pause")).toBeHidden();
 
-      // 3. des appuis tout autour des frontières (à 2 px de chaque côté) et sur toute la hauteur : aucun ne touche la caméra, sauf
-      //    sous les doigts du bouton lui-même (≤ 14 px, où le navigateur corrige vers lui, comme pour les autres boutons de la barre)
+      // 2. des appuis sur tout l'écran de jeu (frontières entre zones, milieu libre, bords) : aucun ne change la caméra
       const before = (await camera(page)).name;
       const hits: string[] = [];
-      for (const fx of frontiers) {
-        for (const dx of [-2, 2]) {
-          for (const fy of [0.12, 0.3, 0.5, 0.7, 0.85, 0.96]) {
-            const x = fx + dx;
-            const y = H * fy;
-            if (x > box.x - 14 && x < box.x + box.width + 14 && y > box.y - 14 && y < box.y + box.height + 14) continue;
-            await page.touchscreen.tap(x, y);
-            await page.evaluate(() => window.__cdj.advance(2));
-            const now = (await camera(page)).name;
-            if (now !== before) hits.push(`(${Math.round(x)}, ${Math.round(y)}) → ${now}`);
-          }
+      for (const fx of [0.12, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.88]) {
+        for (const fy of [0.3, 0.5, 0.7, 0.85, 0.96]) {
+          const x = fx * W;
+          const y = H * fy;
+          await page.touchscreen.tap(x, y);
+          await page.evaluate(() => window.__cdj.advance(2));
+          const now = (await camera(page)).name;
+          if (now !== before) hits.push(`(${Math.round(x)}, ${Math.round(y)}) → ${now}`);
         }
       }
       expect(hits).toEqual([]);

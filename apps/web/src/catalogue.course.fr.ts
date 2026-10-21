@@ -8,6 +8,8 @@
 export const fr = {
   // --- Surimpressions de course ---
   "course.menu.aria": "Menu du jeu",
+  "course.rang.aria": "Classement du jour : {rang}, ouvrir ou fermer",
+  "course.rang.salon.aria": "Classement de la session : {rang}, ouvrir ou fermer",
   "course.pause.aria": "Pause",
   "course.fige": "FIGÉ",
   "course.aide.puce": "Comment jouer · P : pause",
@@ -54,7 +56,7 @@ export const fr = {
   "course.depart": "PARTEZ !",
   "course.arrivee": "ARRIVÉE",
   "course.chute": "Chute !",
-  "course.chronoTourne.tactile": "Le chrono tourne : touche la moitié droite",
+  "course.chronoTourne.tactile": "Le chrono tourne : GAZ, en bas à droite",
   "course.chronoTourne.clavier": "Le chrono tourne : ↑ ou Z pour accélérer",
   "course.camera.proche": "Caméra proche",
   "course.camera.loin": "Caméra loin",
@@ -78,6 +80,7 @@ export const fr = {
   "pause.reprendre": "Reprendre",
   "pause.recommencer": "Recommencer",
   "pause.pointDeControle": "Dernier point de contrôle",
+  "pause.pleinEcran": "Plein écran",
   "pause.fantome": "Fantôme · {nom}",
   "pause.son.actif": "Son : activé",
   "pause.son.coupe": "Son : coupé",
@@ -134,8 +137,8 @@ export const fr = {
   "arrivee.monProfil": "Mon profil Du Jour ›",
   "arrivee.sessionTerminee": "Session terminée : tour non compté",
   // --- Ligne à partager (les émojis y sont voulus : c'est un texte à coller) ---
-  "lignePartage.titre": "Circuit du Jour #{numero}",
-  "lignePartage.titreSansNumero": "Circuit du Jour {date}",
+  "lignePartage.titre": "Du Jour · Track #{numero}",
+  "lignePartage.titreSansNumero": "Du Jour · Track {date}",
   "lignePartage.copie": "Copié",
   "lignePartage.copieImpossible": "Copie impossible",
   "miniature.alt": "Vue aérienne du circuit du {date}",

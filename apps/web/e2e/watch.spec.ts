@@ -298,8 +298,7 @@ test("téléphone : barre de lecture dans l'écran, aucune commande de conduite 
     await page.waitForFunction(() => window.__cdj.watch!.tick > 120);
     // `?zones=1` ne dessine rien : en spectateur, il n'y a pas de zones de conduite.
     expect(await page.locator("#touch > *").count()).toBe(0);
-    expect(await page.locator("#tbar > *").count()).toBe(0);
-    const list = await boxes(page, ["#watchbar", "#meta", "#ghostinfo", "#timer", "#splits", "#menu", "#speed"]);
+    const list = await boxes(page, ["#watchbar", "#intro", "#hud-centre", "#menu", "#speed"]); // (la barre de lecture du bas est l'interface de la rediffusion : le centre libre ne la concerne pas)
     expect(list.some((b) => b.name === "#watchbar")).toBe(true);
     expectNoOverlap(list, viewport);
     // Chaque bouton de lecture est assez grand pour un doigt, et tient dans la barre.

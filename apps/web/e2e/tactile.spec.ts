@@ -2,7 +2,8 @@ import { expect, test, type Browser, type CDPSession, type Page } from "@playwri
 import { createAutopilot, decodeReplay, parseTrack, replayRace, type RaceState } from "@cdj/sim";
 import { boxes, expectNoOverlap } from "./layout";
 
-// Commandes tactiles (lot 10). Gestes synthétiques envoyés par le protocole du navigateur (`Input.dispatchTouchEvent`) :
+// Commandes tactiles (lot 10, refaites à la retouche 2 du lot I4 : boutons par défaut, aux bords de l'écran, zones de toucher qui épousent les boutons, plus de barre du
+// bas : caméra, graphismes et plein écran sont dans la pause, point de contrôle et recommencer en haut à gauche). Gestes synthétiques envoyés par le protocole du navigateur (`Input.dispatchTouchEvent`) :
 // ce sont de vrais événements tactiles, qui deviennent des « pointer events » comme sur un téléphone.
 // Le rendu 3D demande WebGL : Chromium seulement.
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
@@ -25,15 +26,15 @@ const PHONES = [
 ] as const;
 
 /**
- * Un téléphone. Depuis la retouche 18b, le défaut est à deux pédales ; la plupart de ces tests conduisent avec l'accélérateur automatique,
- * qu'on enregistre donc d'entrée (au premier chargement seulement : un rechargement garde ce que le joueur a choisi). `fresh` : aucun
- * réglage enregistré, c'est le vrai défaut ; `stored` : un réglage précis.
+ * Un téléphone. Depuis la retouche 18b, le défaut est à deux pédales, et depuis la retouche 2 du lot I4 aux boutons ← → ; la plupart de ces tests
+ * conduisent au glissement avec l'accélérateur automatique, qu'on enregistre donc d'entrée (au premier chargement seulement : un rechargement
+ * garde ce que le joueur a choisi). `fresh` : aucun réglage enregistré, c'est le vrai défaut ; `stored` : un réglage précis.
  */
 async function phone(browser: Browser, p: (typeof PHONES)[number] | { viewport: { width: number; height: number } }, opts: { fresh?: boolean; stored?: object } = {}) {
   const context = await browser.newContext({ ...p, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   if (!opts.fresh) {
-    const stored = JSON.stringify(opts.stored ?? { autoThrottle: true, version: 2 });
+    const stored = JSON.stringify(opts.stored ?? { steerMode: "drag", autoThrottle: true, version: 2 });
     await page.addInitScript((value) => {
       try {
         if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", value);
@@ -74,6 +75,26 @@ const racing = async (page: Page, url: string) => {
   await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
 };
 const input = (page: Page) => page.evaluate(() => ({ ...window.__cdj.input }));
+/** Le centre d'un bouton dessiné (là où tombe un pouce). */
+const centre = async (page: Page, selector: string) => {
+  const b = (await page.locator(selector).boundingBox())!;
+  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+};
+/** Ouvre les réglages depuis la pause (la barre du bas n'existe plus). */
+const openSettings = async (page: Page) => {
+  await page.locator("#btn-pause").click();
+  await page.locator("#pause-settings").click();
+  await expect(page.locator("#settings")).toBeVisible();
+  await page.getByRole("tab", { name: "Commandes" }).click(); // la pause ouvre l'onglet par défaut : les réglages tactiles sont dans « Commandes »
+  await expect(page.locator("#page-controls")).toBeVisible();
+};
+/** Ferme les réglages, puis reprend la course (la pause, dont on était parti, revient dessous). */
+const closeSettings = async (page: Page) => {
+  await page.locator("#settings .dj-barre-jeu__retour").click();
+  await expect(page.locator("#settings")).toBeHidden();
+  await page.locator("#pause-resume").click();
+  await expect(page.locator("#pause")).toBeHidden();
+};
 const polled = (page: Page, read: (i: { steer: number; throttle: number; brake: number }) => number) =>
   expect.poll(async () => read(await input(page)), { timeout: 5_000 });
 
@@ -84,7 +105,7 @@ for (const p of PHONES) {
       await racing(page, "/?debug&scenario=plat");
       expect(await page.evaluate(() => window.__cdj.touch)).toBe(true);
       await expect(page.locator("body")).toHaveClass(/touch/);
-      await expect(page.locator("#touch .hint")).toBeVisible();
+      await expect(page.locator("#touch .hint")).toHaveCount(0); // plus d'aide sur la scène : le centre reste libre (l'aide de départ est une ligne du HUD)
 
       // Sans doigt : plein gaz tout seul, tout droit ; la voiture avance.
       await polled(page, (i) => i.throttle).toBe(64);
@@ -95,7 +116,6 @@ for (const p of PHONES) {
       const f = await fingersOf(page);
       // Glissement à droite depuis le point de pose (moitié gauche) : braquage proportionnel, analogique.
       await f.down(1, 120, 250);
-      await expect(page.locator("#touch .hint")).toBeHidden();
       await f.move(1, 120 + 40, 250);
       await polled(page, (i) => i.steer).toBeGreaterThan(25);
       expect((await input(page)).steer).toBeLessThan(45); // (40/70 − 0,08) / 0,92 ≈ 0,54 → ≈ 34
@@ -126,21 +146,55 @@ for (const p of PHONES) {
       await context.close();
     });
 
-    test("deux pédales par défaut : sans réglage enregistré, ni gaz ni frein tant qu'on ne touche pas ; gaz et frein dans la moitié droite", async ({ browser }) => {
+    test("par défaut : les boutons ← → et deux pédales ; ni gaz ni frein tant qu'on ne touche pas ; le milieu de l'écran ne répond à rien", async ({ browser }) => {
       const { context, page } = await phone(browser, p, { fresh: true });
       await racing(page, "/?debug&scenario=plat");
+      await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // retouche 2 du lot I4 : les boutons, plus le joystick
       await expect(page.locator("#touch")).toHaveAttribute("data-throttle", "manual");
-      await expect(page.locator("#touch .pedal-gas")).toBeVisible();
+      for (const cls of ["steer-left", "steer-right", "pedal-brake", "pedal-gas"]) await expect(page.locator(`#touch .${cls}`)).toBeVisible();
       await polled(page, (i) => i.throttle).toBe(0);
       const f = await fingersOf(page);
-      await f.down(1, 700 + 60, 250); // quart droit : gaz
+      const gas = await centre(page, "#touch .pedal-gas");
+      await f.down(1, gas.x, gas.y); // le bouton GAZ, tout à droite
       await polled(page, (i) => i.throttle).toBe(64);
       await f.up(1);
       await polled(page, (i) => i.throttle).toBe(0);
-      await f.down(1, 450, 250); // troisième quart : frein
+      const brake = await centre(page, "#touch .pedal-brake");
+      await f.down(1, brake.x, brake.y); // le bouton FREIN, à sa gauche
       await polled(page, (i) => i.brake).toBe(64);
       await f.up(1);
+      await polled(page, (i) => i.brake).toBe(0);
+      // Le milieu de l'écran (devant la voiture) n'a aucune zone : un appui y est ignoré.
+      const { width: W, height: H } = p.viewport;
+      for (const [x, y] of [[W * 0.5, H * 0.5], [W * 0.4, H * 0.8], [W * 0.6, H * 0.3]] as const) {
+        await f.down(1, x, y);
+        await page.waitForTimeout(150);
+        expect(await input(page), `appui au milieu en (${Math.round(x)}, ${Math.round(y)})`).toMatchObject({ steer: 0, throttle: 0, brake: 0 });
+        await f.up(1);
+      }
       await context.close();
+    });
+
+    test("les boutons sont aux bords, jamais devant la voiture, dans les trois tailles", async ({ browser }) => {
+      for (const size of ["small", "medium", "large"] as const) {
+        const { context, page } = await phone(browser, p, { stored: { steerMode: "buttons", autoThrottle: false, buttonSize: size, version: 2 } });
+        await racing(page, "/?debug&scenario=plat");
+        const { width: W, height: H } = p.viewport;
+        for (const cls of ["steer-left", "steer-right", "pedal-brake", "pedal-gas"]) {
+          const b = (await page.locator(`#touch .${cls}`).boundingBox())!;
+          const label = `${size} ${cls} (${Math.round(b.x)}, ${Math.round(b.y)}, ${Math.round(b.width)}×${Math.round(b.height)})`;
+          expect(b.x, label).toBeGreaterThanOrEqual(EDGE_MARGIN_PX - 0.5);
+          expect(b.x + b.width, label).toBeLessThanOrEqual(W - EDGE_MARGIN_PX + 0.5);
+          expect(b.y + b.height, label).toBeLessThanOrEqual(H - EDGE_MARGIN_PX + 0.5);
+          expect(b.width, label).toBeGreaterThanOrEqual(43.5);
+          expect(b.height, label).toBeGreaterThanOrEqual(43.5);
+          // le rectangle central de la course (x de 32 % à 68 %, y de 20 % à 88 %) reste libre
+          const dedans = b.x < W * 0.68 && b.x + b.width > W * 0.32 && b.y < H * 0.88 && b.y + b.height > H * 0.2;
+          expect(dedans, `${label} dans le rectangle central`).toBe(false);
+          expect(b.x + b.width <= W * CENTER_FREE.x0 + 0.5 || b.x >= W * CENTER_FREE.x1 - 0.5, `${label} dans le tiers central`).toBe(true);
+        }
+        await context.close();
+      }
     });
 
     test("un réglage enregistré avec l'ancien défaut (automatique) est remis une fois aux deux pédales ; on peut repasser en automatique", async ({ browser }) => {
@@ -150,9 +204,9 @@ for (const p of PHONES) {
       await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // le reste est gardé
       await polled(page, (i) => i.throttle).toBe(0);
       // Le joueur choisit l'accélérateur automatique : la sauvegarde porte la version, un rechargement le garde.
-      await page.locator("#tbar .gear").click();
+      await openSettings(page); // la pause, puis Réglages › Commandes (plus de barre du bas)
       await page.getByRole("radio", { name: "Automatique" }).click();
-      await page.locator("#settings .dj-barre-jeu__retour").click();
+      await closeSettings(page);
       await polled(page, (i) => i.throttle).toBe(64);
       await page.reload();
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
@@ -191,11 +245,21 @@ for (const p of PHONES) {
       const frozen = await tick();
       await page.waitForTimeout(600);
       expect(await tick()).toBe(frozen); // rien ne bouge
-      await page.locator("#pause-resume").click(); // la pause est une fenêtre : elle recouvre la barre tactile
+      await page.locator("#pause-resume").click();
       await expect(page.locator("#pause")).toBeHidden();
       await expect.poll(tick, { timeout: 5_000 }).toBeGreaterThan(frozen + 20);
 
-      // Reprise au point de contrôle (bouton ↺) : sans point franchi, c'est le départ ; le compteur de reprises monte.
+      // Retouche 2 du lot I4 : dernier point de contrôle et recommencer sont deux boutons de 44 px en haut à gauche, à côté de la pause (plus de barre du bas).
+      const pauseBox = (await page.getByRole("button", { name: "Pause" }).boundingBox())!;
+      for (const name of ["Recommencer au dernier point de contrôle", "Recommencer depuis le départ"]) {
+        const b = (await page.getByRole("button", { name }).boundingBox())!;
+        expect(b.height, name).toBeGreaterThanOrEqual(43.5);
+        expect(b.width, name).toBeGreaterThanOrEqual(43.5);
+        expect(b.x, name).toBeLessThan(p.viewport.width * 0.3);
+        expect(b.y, name).toBeLessThan(p.viewport.height * 0.2);
+        expect(Math.abs(b.y - pauseBox.y), `${name} : sur la même ligne que la pause`).toBeLessThan(8);
+      }
+      // Reprise au point de contrôle (bouton drapeau) : sans point franchi, c'est le départ ; le compteur de reprises monte.
       const respawns = () => page.evaluate(() => (window.__cdj.race as { respawns: number }).respawns);
       await page.getByRole("button", { name: "Recommencer au dernier point de contrôle" }).click();
       await expect.poll(respawns, { timeout: 5_000 }).toBe(1);
@@ -208,14 +272,13 @@ for (const p of PHONES) {
     test("réglages : boutons ← →, accélérateur manuel, gardés d'une visite à l'autre ; cibles de 44 px", async ({ browser }) => {
       const { context, page } = await phone(browser, p);
       await racing(page, "/?debug&scenario=plat");
-      await page.locator("#tbar .gear").click();
-      await expect(page.locator("#settings")).toBeVisible();
-      await expect(page.locator("#page-controls")).toBeVisible(); // le bouton ⚙ ouvre Réglages › Commandes (lot 29)
+      await openSettings(page);
+      await expect(page.locator("#page-controls")).toBeVisible(); // Réglages › Commandes (lot 29) ; on y arrive par la pause
       // La fenêtre figé la partie ; ses cibles font au moins 44 px.
       for (const b of await page.locator("#page-controls button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
       await page.getByRole("radio", { name: "Boutons ← →" }).click();
       await page.getByRole("radio", { name: "Bouton gaz" }).click();
-      await page.locator("#settings .dj-barre-jeu__retour").click();
+      await closeSettings(page);
       await expect(page.locator("#settings")).toBeHidden();
       await expect(page.locator("#touch .steer-left")).toBeVisible();
       await expect(page.locator("#touch .pedal-gas")).toBeVisible();
@@ -223,17 +286,21 @@ for (const p of PHONES) {
       // Accélérateur manuel : sans doigt, pas de gaz.
       await polled(page, (i) => i.throttle).toBe(0);
       const f = await fingersOf(page);
-      await f.down(1, 700 + 60, 250); // quart droit : gaz
+      const gas = await centre(page, "#touch .pedal-gas");
+      await f.down(1, gas.x, gas.y); // le bouton GAZ
       await polled(page, (i) => i.throttle).toBe(64);
       await f.up(1);
-      await f.down(1, 450, 250); // troisième quart : frein
+      const brake = await centre(page, "#touch .pedal-brake");
+      await f.down(1, brake.x, brake.y); // le bouton FREIN
       await polled(page, (i) => i.brake).toBe(64);
       expect((await input(page)).throttle).toBe(0);
       await f.up(1);
-      // Boutons ← → : premier quart = gauche, deuxième quart = droite, plein braquage.
-      await f.down(2, 80, 250);
+      // Boutons ← → : chacun sa zone, plein braquage.
+      const left = await centre(page, "#touch .steer-left");
+      const right = await centre(page, "#touch .steer-right");
+      await f.down(2, left.x, left.y);
       await polled(page, (i) => i.steer).toBe(-64);
-      await f.move(2, 300, 250); // on glisse du ← au →
+      await f.move(2, right.x, right.y); // on glisse du ← au →
       await polled(page, (i) => i.steer).toBe(64);
       await f.up(2);
       await polled(page, (i) => i.steer).toBe(0);
@@ -249,19 +316,19 @@ for (const p of PHONES) {
     });
 
     test("mise en page : paysage, rien ne se chevauche ; boutons de menu et d'action ≥ 44 px", async ({ browser }) => {
-      const { context, page } = await phone(browser, p);
+      const { context, page } = await phone(browser, p, { stored: { steerMode: "drag", autoThrottle: false, version: 2 } }); // joystick et deux pédales : tout est à l'écran
       await racing(page, "/?debug&scenario=pilotage");
       await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
       const f = await fingersOf(page);
       await f.down(1, 100, 250); // le curseur du doigt est aussi à l'écran
       await f.move(1, 150, 250);
-      const names = ["#meta", "#timer", "#menu", "#speed", "#tbar", "#touch .ring", "#touch .knob"];
+      const names = ["#meta", "#timer", "#menu", "#speed", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas", "#touch .ring", "#touch .knob"];
       const list = await boxes(page, names);
-      expect(list.map((b) => b.name)).toEqual(expect.arrayContaining(["#meta", "#timer", "#menu", "#speed", "#tbar"]));
+      expect(list.map((b) => b.name)).toEqual(expect.arrayContaining(["#timer", "#menu", "#touch .pedal-gas"]));
       // Le curseur de glissement est volontairement sous le doigt, où il veut : on ne le compare pas aux autres.
-      expectNoOverlap(list.filter((b) => !b.name.startsWith("#touch")), p.viewport);
+      expectNoOverlap(list.filter((b) => !b.name.startsWith("#touch .ring") && !b.name.startsWith("#touch .knob")), p.viewport);
       await f.up(1);
-      for (const sel of ["#menu button:visible", "#tbar button:visible"]) {
+      for (const sel of ["#menu button:visible"]) {
         for (const b of await page.locator(sel).all()) {
           const box = (await b.boundingBox())!;
           expect(box.height, sel).toBeGreaterThanOrEqual(43.5);
@@ -284,7 +351,7 @@ test("portrait : invitation à tourner le téléphone, qu'on peut écarter ; rie
   const card = (await page.locator("#rotate .card").boundingBox())!;
   expect(card.x).toBeGreaterThanOrEqual(0);
   expect(card.x + card.width).toBeLessThanOrEqual(390);
-  expectNoOverlap(await boxes(page, ["#meta", "#timer", "#menu", "#speed", "#tbar"]), { width: 390, height: 844 });
+  expectNoOverlap(await boxes(page, ["#meta", "#timer", "#menu", "#speed"]), { width: 390, height: 844 });
   await page.getByRole("button", { name: "Jouer quand même" }).click();
   await expect(page.locator("#rotate")).toBeHidden();
   await context.close();
@@ -293,7 +360,7 @@ test("portrait : invitation à tourner le téléphone, qu'on peut écarter ; rie
 test("?touch=1 : sur ordinateur, la souris simule le doigt ; ?touch=0 coupe l'interface tactile", async ({ page }) => {
   // Accélérateur automatique (le défaut est à deux pédales depuis la 18b) : sans doigt, plein gaz.
   await page.addInitScript(() => {
-    if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", JSON.stringify({ autoThrottle: true, version: 2 }));
+    if (localStorage.getItem("cdj:touch") === null) localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "drag", autoThrottle: true, version: 2 }));
   });
   await racing(page, "/?debug&scenario=plat&touch=1");
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(true);
@@ -307,7 +374,7 @@ test("?touch=1 : sur ordinateur, la souris simule le doigt ; ?touch=0 coupe l'in
   await page.goto("/?debug&scenario=plat&touch=0");
   await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 20_000 });
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(false);
-  await expect(page.locator("#tbar")).toBeHidden();
+  await expect(page.locator("#touch")).toBeHidden();
   // Ordinateur sans option : pas de tactile.
   await page.goto("/?debug&scenario=plat");
   expect(await page.evaluate(() => window.__cdj.touch)).toBe(false);
@@ -467,15 +534,22 @@ for (const screen of SCREENS) {
   });
 }
 
-// --- Retouche 10b : zones de toucher en paysage -------------------------------------------------
-// Mode boutons, accélérateur manuel : découpage ← | → | frein | gaz, quatre quarts de la largeur, sur toute la hauteur.
+// Constantes de la charte rév. 7 (touch.ts : `EDGE_MARGIN_PX`, `CENTER_FREE`) ; le spec ne les importe pas (e2e/tsconfig.json ne liste pas `src/`), un test unitaire les vérifie.
+const EDGE_MARGIN_PX = 12;
+const CENTER_FREE = { x0: 0.3, x1: 0.7 } as const;
+type Zone = "left" | "right" | "brake" | "gas";
+
+// --- Retouche 10b (zones de toucher en paysage), refaite à la retouche 2 du lot I4 --------------------------------------------------
+// Les zones du mode boutons ne sont plus quatre quarts de la largeur : chaque zone **épouse son bouton dessiné** (← de 0 à la frontière entre les deux flèches, → un peu
+// au-delà de la flèche, frein et gaz de même jusqu'au bord droit), sur toute la hauteur, et **le milieu de l'écran n'a aucune zone**. Les zones attendues se déduisent des boutons
+// dessinés (lus dans la page) ; `touch.test.ts` vérifie la définition elle-même (`zoneSpans`) sur d'autres écrans.
 type Cmd = { steer: number; throttle: number; brake: number };
-const QUARTERS: [string, (i: Cmd) => boolean][] = [
-  ["←", (i) => i.steer === -64],
-  ["→", (i) => i.steer === 64],
-  ["frein", (i) => i.brake === 64 && i.throttle === 0],
-  ["gaz", (i) => i.throttle === 64 && i.brake === 0],
-];
+const COMMANDES: Record<Zone, (i: Cmd) => boolean> = {
+  left: (i) => i.steer === -64,
+  right: (i) => i.steer === 64,
+  brake: (i) => i.brake === 64 && i.throttle === 0,
+  gas: (i) => i.throttle === 64 && i.brake === 0,
+};
 async function settle(page: Page, ok: (i: Cmd) => boolean): Promise<Cmd> {
   let got = await input(page);
   for (let n = 0; n < 20 && !ok(got); n++) {
@@ -486,45 +560,69 @@ async function settle(page: Page, ok: (i: Cmd) => boolean): Promise<Cmd> {
   return got;
 }
 const BUTTONS_URL = "/?debug&scenario=plat&touch=1&steer=boutons&r=";
+const NOM = { left: "←", right: "→", brake: "frein", gas: "gaz" } as const;
 
 for (const p of PHONES) {
   test.describe(`${p.name} — zones 10b`, () => {
-    test("un appui en n'importe quel point de chaque zone (coins à 8 px du bord compris) déclenche la bonne commande", async ({ browser }) => {
+    test("un appui en n'importe quel point de chaque zone (coins à 8 px du bord compris) déclenche la bonne commande ; au milieu, aucune", async ({ browser }) => {
       const { context, page } = await phone(browser, p);
-      await page.addInitScript(() => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: false })));
+      const reglage = { steerMode: "buttons", autoThrottle: false };
+      await page.addInitScript((r) => localStorage.setItem("cdj:touch", JSON.stringify(r)), reglage);
       await racing(page, BUTTONS_URL + Math.random());
       await page.evaluate(() => window.__cdj.manual(true));
       const { width: W, height: H } = p.viewport;
       const f = await fingersOf(page);
       const wrong: string[] = [];
       const m = 8;
-      // Les petits boutons d'action (barre du bas, menu du haut) attirent les appuis voisins (le navigateur corrige le toucher
-      // vers eux, ~12 px) : on ne teste pas sous leurs doigts, mais la barre doit rester loin des frontières entre zones.
-      const buttons = await page.evaluate(() =>
-        [...document.querySelectorAll<HTMLElement>("#tbar button, #menu button")].filter((b) => b.offsetParent).map((b) => b.getBoundingClientRect().toJSON() as { x: number; y: number; width: number; height: number }),
+      // Les petits boutons du HUD (pause, point de contrôle, recommencer, rang) attirent les appuis voisins (le navigateur corrige le toucher vers eux, ~12 px) : on ne
+      // teste pas sous leurs doigts.
+      const hudButtons = await page.evaluate(() =>
+        [...document.querySelectorAll<HTMLElement>("button")]
+          .filter((b) => !b.closest("#touch, .voile, .cadre") && b.getClientRects().length > 0)
+          .map((b) => b.getBoundingClientRect().toJSON() as { x: number; y: number; width: number; height: number }),
       );
-      const nearButton = (x: number, y: number) => buttons.some((b) => x > b.x - 14 && x < b.x + b.width + 14 && y > b.y - 14 && y < b.y + b.height + 14);
-      const bar = (await page.locator("#tbar").boundingBox())!;
-      for (const border of [0.25, 0.5, 0.75]) expect(bar.x + bar.width < W * border - 8 || bar.x > W * border + 8 || border === 0.5, `la barre d'actions chevauche la frontière à ${border * 100} %`).toBe(true);
-      for (let q = 0; q < 4; q++) {
-        const x0 = (W * q) / 4;
-        const x1 = (W * (q + 1)) / 4;
-        // les bords entre deux zones sont exacts : on reste à 2 px de chaque côté de la frontière intérieure
-        const xs = [q === 0 ? m : x0 + 2, (x0 + x1) / 2, q === 3 ? W - m : x1 - 2];
+      const nearButton = (x: number, y: number) => hudButtons.some((b) => x > b.x - 14 && x < b.x + b.width + 14 && y > b.y - 14 && y < b.y + b.height + 14);
+      // Zones attendues, déduites des boutons dessinés : chaque zone va du bord (ou de la frontière avec son voisin, au milieu de l'écart) au bord du bouton + 14 px côté centre.
+      const rect = async (cls: string) => (await page.locator(`#touch .${cls}`).boundingBox())!;
+      const [bl, br, bb, bg] = [await rect("steer-left"), await rect("steer-right"), await rect("pedal-brake"), await rect("pedal-gas")];
+      const spans: { zone: Zone; x0: number; x1: number }[] = [
+        { zone: "left", x0: 0, x1: (bl.x + bl.width + br.x) / 2 },
+        { zone: "right", x0: (bl.x + bl.width + br.x) / 2, x1: br.x + br.width + 14 },
+        { zone: "brake", x0: bb.x - 14, x1: (bb.x + bb.width + bg.x) / 2 },
+        { zone: "gas", x0: (bb.x + bb.width + bg.x) / 2, x1: W },
+      ];
+      for (const sp of spans) {
+        const x0 = sp.x0;
+        const x1 = sp.x1;
+        // les bords entre deux zones sont exacts : on reste à 2 px de chaque côté de la frontière intérieure ; les bords de l'écran à 8 px
+        const xs = [sp.x0 === 0 ? m : x0 + 2, (x0 + x1) / 2, sp.x1 === W ? W - m : x1 - 2];
         const ys = [m, H * 0.25, H * 0.5, H * 0.75, H - m];
         for (const x of xs) {
           for (const y of ys) {
             if (nearButton(x, y)) continue;
             await f.down(1, x, y);
             // l'événement tactile arrive au jeu un peu après le retour du protocole : on avance pas à pas jusqu'à le voir (≤ 1 s)
-            let got = await settle(page, QUARTERS[q]![1]);
-            if (!QUARTERS[q]![1](got)) {
+            const ok = COMMANDES[sp.zone];
+            const got = await settle(page, ok);
+            if (!ok(got)) {
               const under = await page.evaluate(([px, py]) => { const t = document.elementFromPoint(px!, py!); return t ? `${t.tagName}#${t.id}.${t.className}` : "rien"; }, [x, y]);
-              wrong.push(`${QUARTERS[q]![0]} touché en (${Math.round(x)}, ${Math.round(y)}) sous ${under} → ${JSON.stringify(got)}`);
+              wrong.push(`${NOM[sp.zone]} touché en (${Math.round(x)}, ${Math.round(y)}) sous ${under} → ${JSON.stringify(got)}`);
             }
             await f.up(1);
             await page.evaluate(() => window.__cdj.advance(1));
           }
+        }
+      }
+      // Le milieu de l'écran, entre les deux groupes de boutons : aucune commande, à toute hauteur.
+      for (const x of [W * 0.4, W * 0.5, W * 0.6]) {
+        for (const y of [m, H * 0.25, H * 0.5, H * 0.75, H - m]) {
+          if (nearButton(x, y)) continue;
+          await f.down(1, x, y);
+          await page.evaluate(() => window.__cdj.advance(2));
+          const got = await input(page);
+          if (got.steer !== 0 || got.throttle !== 0 || got.brake !== 0) wrong.push(`milieu touché en (${Math.round(x)}, ${Math.round(y)}) → ${JSON.stringify(got)}`);
+          await f.up(1);
+          await page.evaluate(() => window.__cdj.advance(1));
         }
       }
       expect(wrong).toEqual([]);
@@ -542,8 +640,8 @@ for (const p of PHONES) {
           for (let x = 4; x < W; x += 20) {
             for (let y = Math.floor(H / 2); y < H; y += 12) {
               const t = document.elementFromPoint(x, y);
-              // les petits boutons du menu (pause, réglages…) reçoivent leur propre toucher : seuls eux ont le droit d'être là
-              if (!t || (!t.closest("#touch") && !t.closest("#tbar button"))) bad.push(`(${x}, ${y}) → ${t?.id || t?.tagName}`);
+              // les petits boutons du HUD (pause, actions de course) reçoivent leur propre toucher : seuls eux ont le droit d'être là
+              if (!t || (!t.closest("#touch") && !t.closest("button"))) bad.push(`(${x}, ${y}) → ${t?.id || t?.tagName}`);
             }
           }
           return bad;
@@ -559,30 +657,33 @@ for (const p of PHONES) {
       await page.addInitScript(() => localStorage.setItem("cdj:touch", JSON.stringify({ steerMode: "buttons", autoThrottle: false })));
       await racing(page, BUTTONS_URL + Math.random());
       await page.evaluate(() => window.__cdj.manual(true));
-      const { width: W } = p.viewport;
       const f = await fingersOf(page);
       const step = async () => {
         await page.evaluate(() => window.__cdj.advance(1));
         return input(page);
       };
-      await f.down(1, W * 0.12, 250);
+      const left = await centre(page, "#touch .steer-left");
+      const right = await centre(page, "#touch .steer-right");
+      const gas = await centre(page, "#touch .pedal-gas");
+      const brake = await centre(page, "#touch .pedal-brake");
+      await f.down(1, left.x, left.y);
       expect((await step()).steer).toBe(-64);
-      await f.move(1, W * 0.38, 250);
+      await f.move(1, right.x, right.y);
       expect((await step()).steer).toBe(64);
-      await f.move(1, W * 0.12, 250);
+      await f.move(1, left.x, left.y);
       expect((await step()).steer).toBe(-64);
       // second doigt sur le gaz : on dirige et on accélère en même temps ; glisser du gaz au frein change la pédale
-      await f.down(2, W * 0.9, 250);
+      await f.down(2, gas.x, gas.y);
       let i = await step();
       expect(i.steer).toBe(-64);
       expect(i.throttle).toBe(64);
-      await f.move(2, W * 0.6, 250);
+      await f.move(2, brake.x, brake.y);
       i = await step();
       expect(i).toMatchObject({ steer: -64, brake: 64, throttle: 0 });
       await context.close();
     });
 
-    test("?zones=1 dessine les zones et un point par doigt, de la couleur de la zone ; rouge hors de la zone de jeu", async ({ browser }) => {
+    test("?zones=1 dessine les zones et un point par doigt, de la couleur de la zone ; gris au milieu, rouge hors de la zone de jeu", async ({ browser }) => {
       const { context, page } = await phone(browser, p);
       await racing(page, "/?debug&scenario=plat&touch=1&steer=boutons&zones=1&r=" + Math.random());
       await expect(page.locator("#touch .zspan")).toHaveCount(3); // ←, →, frein (accélérateur automatique)
@@ -592,7 +693,11 @@ for (const p of PHONES) {
       expect(await page.locator(".fdot").evaluate((e) => (e as HTMLElement).style.background)).toContain("76, 201, 240"); // couleur de ←
       await f.up(1);
       await expect(page.locator(".fdot")).toHaveCount(0);
-      // un doigt sur un bouton du menu (hors zone de jeu) : point rouge
+      // le milieu de l'écran n'a aucune zone : point gris
+      await f.down(1, p.viewport.width * 0.5, 200);
+      expect(await page.locator(".fdot").evaluate((e) => (e as HTMLElement).style.background)).toContain("154, 160, 166");
+      await f.up(1);
+      // un doigt sur un bouton du HUD (hors zone de jeu) : point rouge
       const b = (await page.getByRole("button", { name: "Pause" }).boundingBox())!;
       await f.down(2, b.x + b.width / 2, b.y + b.height / 2);
       expect(await page.locator(".fdot").evaluate((e) => (e as HTMLElement).style.background)).toContain("229, 50, 45");
@@ -600,24 +705,24 @@ for (const p of PHONES) {
       await context.close();
     });
 
-    test("taille des boutons : réglage mémorisé, boutons plus grands, zone active inchangée ; ?steer= force le mode", async ({ browser }) => {
+    test("taille des boutons : réglage mémorisé, boutons plus grands, toujours aux bords ; ?steer= force le mode", async ({ browser }) => {
       const { context, page } = await phone(browser, p);
       await racing(page, BUTTONS_URL + Math.random());
       await expect(page.locator("#touch")).toHaveAttribute("data-mode", "buttons"); // forcé par ?steer=boutons
       const width = async () => (await page.locator("#touch .steer-left").boundingBox())!.width;
       const medium = await width();
-      await page.locator("#tbar .gear").click();
+      await openSettings(page);
       await page.getByRole("radio", { name: "Grands" }).click();
-      await page.locator("#settings .dj-barre-jeu__retour").click();
+      await closeSettings(page);
       expect(await width()).toBeGreaterThan(medium);
       expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:touch")!).buttonSize)).toBe("large");
-      await page.locator("#tbar .gear").click();
+      await openSettings(page);
       await page.getByRole("radio", { name: "Petits" }).click();
-      await page.locator("#settings .dj-barre-jeu__retour").click();
+      await closeSettings(page);
       expect(await width()).toBeLessThan(medium);
-      // le visuel respecte les marges des bords (bandes de gestes système)
+      // le visuel respecte les marges des bords
       const b = (await page.locator("#touch .steer-left").boundingBox())!;
-      expect(b.x).toBeGreaterThanOrEqual(24);
+      expect(b.x).toBeGreaterThanOrEqual(EDGE_MARGIN_PX - 0.5);
       await context.close();
     });
   });
