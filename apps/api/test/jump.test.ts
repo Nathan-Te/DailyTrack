@@ -181,8 +181,9 @@ describe(`le serveur calcule le même niveau que le jeu (${TEST_DB})`, () => {
 });
 
 describe(`lot 15 : les rediffusions v3 se vérifient toujours côté serveur (${TEST_DB})`, () => {
-  // Le dernier jour figé (en v3, avant le lot 15) et le lendemain, généré en v4 (horloge unique).
-  const date = FROZEN_DAYS[FROZEN_DAYS.length - 1]!;
+  // Le dernier jour figé en v3 (avant le lot 15) et le lendemain, en v4 (horloge unique). Lot 16 : le lendemain peut être figé lui aussi (en
+  // g10, v4) : le serveur joue alors le fichier figé, et le test aussi.
+  const date = FROZEN_DAYS.filter((d) => (FROZEN[d] as { simVersion: number }).simVersion === SECTION_CLOCK_VERSION).at(-1)!;
   const day = DATES.find((d) => formatDay(d) === date)!;
   const thawed = thawLevel(FROZEN[date], day);
   const as = (n: number) => ({ headers: { "X-Player-Id": playerId(n) } });
@@ -220,7 +221,10 @@ describe(`lot 15 : les rediffusions v3 se vérifient toujours côté serveur (${
   });
 
   it("le lendemain, généré en v4 : la preuve v4 se classe, la même rediffusion marquée v3 est refusée (version)", async () => {
-    const next = dailyLevel(day + 1);
+    const nextFrozen = FROZEN[formatDay(day + 1)];
+    const thawedNext = nextFrozen ? thawLevel(nextFrozen, day + 1) : null;
+    if (typeof thawedNext === "string") throw new Error(thawedNext);
+    const next = thawedNext ?? dailyLevel(day + 1);
     expect(next.level.simVersion).toBe(SINGLE_CLOCK_VERSION);
     const t = await jumpApi(noonOf(day + 1));
     const ok = await t.call("POST", "/api/jump/submit", body(next.id, next.code, "Nouveau"), as(2));
