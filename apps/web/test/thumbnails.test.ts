@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GENERATOR_VERSION, PREMIER_JOUR, SIM_VERSION, parseTrack } from "@cdj/sim";
+import { generatorVersionOf, PREMIER_JOUR, SIM_VERSION, parseTrack } from "@cdj/sim";
 import { ThumbnailService, thumbKey, thumbScale, type ThumbDeps, type ThumbStore } from "../src/thumbnails";
 import type { ThumbnailCircuit } from "../src/thumbnail";
 
@@ -31,7 +31,7 @@ function setup(over: Partial<ThumbDeps> = {}, store: ThumbStore | null = null) {
 describe("clé de cache", () => {
   it("l'id du circuit (version du générateur), les versions et la taille", () => {
     const key = thumbKey(PREMIER_JOUR, null, 2);
-    expect(key).toContain(`g${GENERATOR_VERSION}`);
+    expect(key).toContain(`g${generatorVersionOf(PREMIER_JOUR)}`); // lot 34 : la version du jour
     expect(key).toContain(`s${SIM_VERSION}`);
     expect(key.endsWith("x2")).toBe(true);
     expect(thumbKey(PREMIER_JOUR, null, 1)).not.toBe(key);

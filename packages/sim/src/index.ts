@@ -20,3 +20,5 @@ export * from "./generator";
 export * from "./figures";
 export * from "./fictional";
 export * from "./salon";
+export * from "./traps";
+export * from "./braking";

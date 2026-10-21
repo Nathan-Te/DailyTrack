@@ -3,7 +3,8 @@ import { circuitNumber } from "./calendar";
 import { bestPilotRun, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
-import { Rng, formatDay, mixSeed } from "@cdj/core";
+import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
+import { MAX_BRAKING_ADD, secureBraking } from "./braking";
 import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
@@ -19,6 +20,8 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 // 2. Validation : un pilote automatique parcourt le circuit avec la même physique. S'il ne le finit pas, ou si
 //    sa durée sort de la fenêtre visée, on recommence avec une graine voisine (tentative suivante).
 // 3. Le temps du pilote est le temps de l'auteur ; les médailles en découlent.
+// Lot 34 (générateur v16, à partir du 28/10/2026) : après une plaque, un super turbo ou une portion rapide, le virage suivant se freine
+// (`secureBraking`, braking.ts) ; au plus un virage-piège par circuit (passage signature, Ville). Les jours d'avant gardent la v15.
 
 /** Durée visée du pilote : 30 à 40 s, pour qu'une course correcte (or ≈ ×1,08) tienne en 30 à 45 s. */
 export const AUTHOR_MIN_MS = 30_000;
@@ -74,12 +77,26 @@ export const MAX_VARIANT = 99;
 export const isVariant = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= MAX_VARIANT;
 
 /**
+ * Lot 34 — **date de bascule** : les règles « freinage possible après un boost » (générateur v16) valent à partir du **28/10/2026**, le
+ * premier jour qui n'est ni passé, ni en cours, ni déjà joué à la mise en production du lot ; les jours d'avant gardent le générateur v15,
+ * bit pour bit (texte, temps de l'auteur, identifiant `jour-…-g15` : classements, rediffusions et records intacts). **Versionnement par
+ * date** : la version d'un jour est `generatorVersionOf(jour)`, dans son identifiant ; le Salon (graines au-delà de tous les jours) suit
+ * toujours la dernière. Déplacer la bascule (mise en production plus tardive) : cette constante, puis `UPDATE_GOLDEN=1` sur `golden-daily.test.ts`.
+ */
+export const BASCULE_LOT_34 = daysFromCivil(2026, 10, 28);
+/** Générateur des jours d'avant la bascule du lot 34. */
+export const GENERATOR_BEFORE_34 = 15;
+
+/** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : 15 avant la bascule du lot 34, la dernière ensuite. */
+export const generatorVersionOf = (day: number): number => (day < BASCULE_LOT_34 ? GENERATOR_BEFORE_34 : GENERATOR_VERSION);
+
+/**
  * Identifiant du circuit d'un jour. La variante 0 (le circuit d'origine) n'a pas de suffixe : les circuits d'avant le lot 14
  * gardent leur identifiant (rediffusions et références inchangées) ; une variante n ≥ 1 ajoute `-v<n>`. Un thème imposé
  * (essais, ou remplacement du planning) ajoute son nom : un autre circuit.
  */
-export function dailyTrackId(day: number, theme?: ThemeName | null, variant = 0): string {
-  return `jour-${formatDay(day)}-g${GENERATOR_VERSION}${variant > 0 ? `-v${variant}` : ""}${theme ? `-${theme}` : ""}`;
+export function dailyTrackId(day: number, theme?: ThemeName | null, variant = 0, generator = generatorVersionOf(day)): string {
+  return `jour-${formatDay(day)}-g${generator}${variant > 0 ? `-v${variant}` : ""}${theme ? `-${theme}` : ""}`;
 }
 
 // --- Construction -----------------------------------------------------------------------------
@@ -142,6 +159,12 @@ const FIGURE_BUDGET = 28;
 /** Durée estimée maximale des figures d'un circuit : au-delà, on retire d'autres figures (jusqu'à `SELECTION_TRIES` fois). */
 const FIGURE_TOTAL_MAX = 31;
 const SELECTION_TRIES = 8;
+/**
+ * Lot 34 (v16) : les droites de freinage ajoutées (≈ 2,3 par circuit, ≈ 1,6 s) se prennent en partie sur le budget des figures. Mesuré
+ * (`npm run measure:generator`, validation par thème) : 1 unité garde la part des circuits dans la fenêtre de l'avant-lot (63 → 65 %) ;
+ * 2 la montaient à 68 % mais retiraient trop de virages larges et de figures favorites (Banquise sous son seuil, README du lot 34).
+ */
+const BRAKING_BUDGET = 1;
 
 /** Dénivelé d'un circuit (m, du point le plus bas au plus haut de la route) : le critère `MIN_RELIEF`. */
 export function reliefOf(tokens: readonly string[]): number {
@@ -205,6 +228,8 @@ export interface PlacedFigure {
 export interface Composition {
   spec: string;
   figures: PlacedFigure[];
+  /** Lot 34 (v16) : ce que la règle de freinage a fait (pièges gardés, droites ajoutées, bas-côtés imposés). */
+  braking: { kept: number; added: number; escapes: number };
 }
 
 /** Plafonds de composition : pas plus de deux sauts, une cuve, un moteur coupé ; au plus quatre techniques, deux de chaque autre catégorie. */
@@ -250,7 +275,7 @@ const ownedBy = (f: Figure, theme: Theme): boolean => !f.only || f.only.includes
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
-function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }): Figure[] | null {
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget = FIGURE_BUDGET): Figure[] | null {
   const banned = new Set(theme.figures.ban);
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
@@ -303,12 +328,12 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   if (!chosen.some(isFast) && !add(pick(isFast))) return null;
   // Une figure favorite du thème (en plus de la signature), si elle tient dans le budget : c'est ce qui donne au thème sa couleur.
   const seconds = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
-  if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= FIGURE_BUDGET + FAVORITE_SLACK));
+  if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= budget + FAVORITE_SLACK));
   while (count_((f) => f.category === "technique") < MIN_TECHNIQUES) if (!add(pick((f) => f.category === "technique"))) return null;
   // Le reste, au poids : jusqu'à cinq figures quoi qu'il arrive (les plus courtes si le budget est dépassé), puis tant que le budget le permet.
   const total = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
   while (chosen.length < count) {
-    const room = FIGURE_BUDGET - total();
+    const room = budget - total();
     const fitting = pick((f) => figureSeconds(f) <= room);
     if (fitting) add(fitting);
     else if (chosen.length < FIGURES_MIN) {
@@ -365,7 +390,9 @@ const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], [
  * figure deux fois. Chacune est posée dans un sens (miroir) et avec une variante tirés au sort, la première qui tient sur la grille
  * (sans croisement, sans dépasser les hauteurs permises, dans le budget de virages serrés) l'emporte.
  */
-export function composeFigures(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): Composition | null {
+export function composeFigures(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0, generator = generatorVersionOf(day)): Composition | null {
+  // Lot 34 (v16) : freinage possible après un boost (`secureBraking`, braking.ts) ; v15 : les règles d'avant, au tirage près.
+  const rules34 = generator >= 16;
   // Variante 0 : la graine d'origine. Variante n : une autre graine, décalée de n × 1000 tentatives (au plus `MAX_ATTEMPTS` = 40 sont
   // tirées : jamais de recoupement entre variantes).
   const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
@@ -377,11 +404,11 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   let picked: Figure[] | null = null;
   let best = -Infinity;
   for (let tries = 0; tries < SELECTION_TRIES; tries++) {
-    const candidate = selectFigures(rng, theme, day, count, wants);
+    const candidate = selectFigures(rng, theme, day, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET);
     if (!candidate) continue;
     const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
-    const score = (seconds <= FIGURE_TOTAL_MAX ? 1000 : -seconds) + candidate.reduce((sum, f) => sum + f.off, 0);
+    const score = (seconds <= FIGURE_TOTAL_MAX - (rules34 ? BRAKING_BUDGET : 0) ? 1000 : -seconds) + candidate.reduce((sum, f) => sum + f.off, 0);
     if (score > best) {
       best = score;
       picked = candidate;
@@ -407,6 +434,11 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   let majorHill = false;
   const names = new Set(order.map((f) => f.name));
   const signatureName = SIGNATURE_FIGURE[theme.signature];
+  // Lot 34 : virages qui reçoivent un bas-côté, blocs d'approche protégés, un seul virage-piège (signature, ou Ville).
+  const escapes = new Set<number>();
+  const shielded = new Set<number>();
+  const braking = { kept: 0, added: 0, escapes: 0 };
+  const escapeKind = theme.shoulder.kind !== "void" && theme.shoulder.share > 0;
 
   for (let i = 0; i < order.length; i++) {
     // Une figure qui ne tient pas est remplacée par une autre de la même catégorie (même nature : saut, cuve, moteur coupé) ;
@@ -418,7 +450,7 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
       const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && !isRested(f.name, day));
       alternatives.push(...rng.shuffle(subs).slice(0, 3));
     }
-    let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number } | null = null;
+    let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number; fix: ReturnType<typeof secureBraking> } | null = null;
     for (const figure of alternatives) {
       // Pas de liaison derrière une longue ligne droite (le dégagement d'une figure suffit), ni avant le premier.
       const connector = i === 0 || trailingStraights(w.tokens) > 1 ? [] : [...CONNECTORS[rng.int(CONNECTORS.length)]!];
@@ -436,13 +468,16 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
             const body = banked && !figure.cuve ? bankTurns(plain) : plain;
             // La droite d'amorce d'une figure est celle qui termine la précédente (ou le départ) : on ne la pose pas deux fois.
             const lead = connector.length === 0 && prefix.length === 0 && body[0] === "S" && /^S(\/[a-z]*)?(@start)?$/.test(w.tokens[w.tokens.length - 1] ?? "") ? 1 : 0;
-            const tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...body.slice(lead)];
+            let tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...body.slice(lead)];
+            const fix = rules34 ? secureBraking(w.tokens, tokens, { escape: escapeKind, allowTrap: braking.kept === 0 && (theme.name === "ville" || figure.name === signatureName) }) : null;
+            if (rules34 && !fix) continue;
+            if (fix) tokens = fix.tokens;
             if (tightCount(tokens) > tightLeft || !fits(w.y, tokens)) continue;
             // Le premier relief d'un circuit fait au moins deux niveaux : c'est lui qui garantit le dénivelé minimal.
             if (figure.relief && !majorHill && hillRise(body) < MIN_RELIEF) continue;
             const before = w.tokens.length;
             if (!place(w, tokens)) continue;
-            done = { figure, tokens, variant: v, left, before };
+            done = { figure, tokens, variant: v, left, before, fix };
             break outer;
           }
         }
@@ -455,6 +490,13 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
       names.add(done.figure.name);
     }
     tightLeft -= tightCount(done.tokens);
+    if (done.fix) {
+      for (const k of done.fix.escapes) escapes.add(done.before + k);
+      for (const k of done.fix.protect) shielded.add(done.before + k);
+      braking.kept += done.fix.kept;
+      braking.added += done.fix.added;
+      braking.escapes += done.fix.escapes.length / 2;
+    }
     if (done.figure.relief && hillRise(done.tokens) >= MIN_RELIEF) majorHill = true;
     placed.push({ name: done.figure.name, variant: done.variant, left: done.left, from: done.before, to: w.tokens.length });
     width = widthAfter(done.tokens, width);
@@ -467,7 +509,8 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   if (usedWidths.size < 2) return null; // au moins deux largeurs par circuit
   if (placed.some((p) => figureByName(p.name)!.cuve) && !w.tokens.some((t) => parseToken(t).cuve)) return null;
   w.tokens[0] = `S/${startWidth}@start`;
-  if (longestPlainStraight(w.tokens) > MAX_PLAIN_STRAIGHT) return null;
+  // Lot 34 (v16) : les droites de freinage ajoutées (derrière une portion rapide) s'ajoutent au plafond.
+  if (longestPlainStraight(w.tokens) > MAX_PLAIN_STRAIGHT + (rules34 ? MAX_BRAKING_ADD : 0)) return null;
 
   // Points de contrôle (2 à 4), répartis le long du circuit, sur des lignes droites. Un moteur coupé est suivi d'un
   // point de contrôle deux blocs plus loin : « on vit sur son élan » ~1 s, pas jusqu'à la fin du circuit.
@@ -495,19 +538,22 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
 
   // Zones de revêtement : des suites de 3 à 6 blocs d'un même revêtement (terre, glace, herbe) sur les blocs ordinaires, sauf autour
   // d'un moteur coupé (il veut deux droites ordinaires derrière lui).
-  if (theme.zones) assignZones(w.tokens, theme.zones, rng, cutAt >= 0 ? new Set([cutAt, cutAt + 1, cutAt + 2, cutAt + 3]) : undefined);
+  // Lot 34 : ni sur l'approche d'un virage rapide (le freinage y est compté sur la route).
+  const zoneGuard = new Set<number>(cutAt >= 0 ? [cutAt, cutAt + 1, cutAt + 2, cutAt + 3] : []);
+  for (const k of shielded) zoneGuard.add(k);
+  if (theme.zones) assignZones(w.tokens, theme.zones, rng, zoneGuard);
   // Dénivelé minimal, puis sections sans rebords sur les parties surélevées.
   if (reliefOf(w.tokens) < MIN_RELIEF) return null;
-  if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng);
+  if (theme.openChance > 0 && rng.chance(theme.openChance)) openSection(w.tokens, rng, rules34 ? shielded : undefined);
   // Identité du thème (lot 21) : route bosselée, puis bas-côtés.
-  if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng);
-  assignShoulders(w.tokens, theme.shoulder, rng);
-  return { spec: w.tokens.join(" "), figures: placed };
+  if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng, rules34 ? shielded : undefined);
+  assignShoulders(w.tokens, theme.shoulder, rng, escapes);
+  return { spec: w.tokens.join(" "), figures: placed, braking };
 }
 
 /** Texte d'un circuit pour (jour, tentative, thème), ou `null` si la construction s'est coincée (voir `composeFigures`). */
-export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0): string | null {
-  return composeFigures(day, attempt, theme, variant)?.spec ?? null;
+export function composeSpec(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0, generator = generatorVersionOf(day)): string | null {
+  return composeFigures(day, attempt, theme, variant, generator)?.spec ?? null;
 }
 
 /** Blocs qui reçoivent un revêtement : droites, virages, côtes d'un niveau (pas les effets, bosses, rampes, vides, côtes raides ni le départ / l'arrivée). */
@@ -526,7 +572,7 @@ function surfaceable(token: string, index: number, n: number): boolean {
  * à `OPEN_MIN_HEIGHT` m au moins au-dessus du point le plus bas du circuit, on retire les rebords (modificateur `o`). Rien
  * si aucune suite n'est assez haute.
  */
-function openSection(tokens: string[], rng: Rng): void {
+function openSection(tokens: string[], rng: Rng, shielded?: ReadonlySet<number>): void {
   const n = tokens.length;
   const entry: number[] = [];
   const exit: number[] = [];
@@ -540,7 +586,7 @@ function openSection(tokens: string[], rng: Rng): void {
     low = Math.min(low, y, entry[entry.length - 1]!);
   }
   const ok = (i: number): boolean => {
-    if (i < 1 || i >= n - 2) return false;
+    if (i < 1 || i >= n - 2 || shielded?.has(i)) return false;
     const k = parseToken(tokens[i]!).kind;
     if (k === "kick" || k === "gap" || k === "jump" || parseToken(tokens[i]!).cuve) return false;
     // Le bloc d'avant un saut garde ses rebords (la rampe commence sur une route fermée), comme la réception.
@@ -568,11 +614,11 @@ function openSection(tokens: string[], rng: Rng): void {
  * Route bosselée (lot 21) : `count` séries de 2 à 4 droites ordinaires (`S`, sur route ou sur terre, point de contrôle permis) prennent
  * le modificateur `u` (tôle ondulée). Ni départ, ni arrivée, ni bloc à effet, ni les trois blocs avant une rampe de saut.
  */
-function bumpySections(tokens: string[], count: [number, number], rng: Rng): void {
+function bumpySections(tokens: string[], count: [number, number], rng: Rng, shielded?: ReadonlySet<number>): void {
   const n = tokens.length;
   // Jamais dans les trois blocs avant une rampe de saut : il faut y garder sa vitesse (les pilotes prudents du jeu de démo ne passaient plus).
   const beforeKick = (i: number) => tokens.slice(i + 1, i + 4).some((t) => parseToken(t).kind === "kick");
-  const plain = (i: number) => i > 0 && i < n - 1 && /^S(\/[a-z>]*)?(@cp)?$/.test(tokens[i]!) && !tokens[i]!.includes("u") && !beforeKick(i);
+  const plain = (i: number) => i > 0 && i < n - 1 && !shielded?.has(i) && /^S(\/[a-z>]*)?(@cp)?$/.test(tokens[i]!) && !tokens[i]!.includes("u") && !beforeKick(i);
   const wanted = count[0] + rng.int(count[1] - count[0] + 1);
   for (let k = 0; k < wanted; k++) {
     const length = 2 + rng.int(3);
@@ -602,7 +648,7 @@ const EDGE_MOD: Record<Theme["shoulder"]["kind"], string> = { grass: "~h", grave
  * blocs prennent le bas-côté du thème avec la probabilité `share`. La notation est chaînée : `~x` sur le premier bloc de la série, `~r`
  * sur le bloc qui la suit.
  */
-function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng): void {
+function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng, forced?: ReadonlySet<number>): void {
   const n = tokens.length;
   const parsed = tokens.map((t) => parseToken(t));
   const eligible = (i: number): boolean => {
@@ -640,6 +686,8 @@ function assignShoulders(tokens: string[], shoulder: Theme["shoulder"], rng: Rng
     }
     i = j;
   }
+  // Lot 34 : l'échappatoire d'un virage rapide (son bas-côté, et celui du bloc qui le suit), quel que soit le tirage.
+  if (forced) for (const k of forced) if (eligible(k)) on[k] = true;
   const mod = EDGE_MOD[shoulder.kind];
   for (let i = 1; i < n; i++) {
     if (on[i] && !on[i - 1]) tokens[i] = withMod(tokens[i]!, mod);
@@ -712,9 +760,9 @@ export interface GeneratedCircuit {
  * assemblage de figures, durée estimée dans la fenêtre, puis pilote automatique (il finit, dans la fenêtre 30–40 s, à une vitesse de
  * pointe suffisante). `null` si aucune des `MAX_ATTEMPTS` tentatives n'a abouti.
  */
-export function generateCircuit(seed: number, theme: Theme, variant: number, id: string): GeneratedCircuit | null {
+export function generateCircuit(seed: number, theme: Theme, variant: number, id: string, generator = generatorVersionOf(seed)): GeneratedCircuit | null {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    const composed = composeFigures(seed, attempt, theme, variant);
+    const composed = composeFigures(seed, attempt, theme, variant, generator);
     if (!composed) continue;
     const { spec } = composed;
     const estimate = estimateSeconds(spec.split(" "));
@@ -734,11 +782,11 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
  * planning ; `forced` impose un thème (id et circuit propres). Un thème imposé par un essai (`?theme=`) n'est jamais classé ;
  * celui du planning l'est (c'est le jeu qui sait d'où il vient).
  */
-export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null): DailyCircuit {
+export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null, generator = generatorVersionOf(day)): DailyCircuit {
   const theme = (forced ? themeByName(forced) : null) ?? themeForDay(day);
   const forcedTheme = !!forced && !!themeByName(forced);
-  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant);
-  const found = generateCircuit(day, theme, variant, id);
+  const id = dailyTrackId(day, forcedTheme ? theme.name : undefined, variant, generator);
+  const found = generateCircuit(day, theme, variant, id, generator);
   if (found) {
     return {
       day,

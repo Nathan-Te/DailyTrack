@@ -12,12 +12,12 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 285 124 | 283 365 | 285 067 | 57 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 274 000 | 272 142 | 273 655 | 345 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 141 000 | 139 376 | 140 889 | 111 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement | 286 400 | 285 067 | 286 281 | 119 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement | 275 000 | 273 655 | 274 869 | 131 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js | 142 300 | 140 889 | 142 103 | 197 | `apps/web/e2e/perf.spec.ts` |
 | `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 297 | 703 | `apps/web/e2e/perf.spec.ts` |
-| `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 000 | 25 385 | 25 385 | 615 | `apps/web/e2e/perf.spec.ts` |
-| `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 27 372 | 2 628 | `apps/web/e2e/perf.spec.ts` |
+| `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 600 | 25 385 | 26 486 | 114 | `apps/web/e2e/perf.spec.ts` |
+| `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 446 | 1 554 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
 | `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 325 | 1 165 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 531 | 2 469 | `apps/jump/e2e/poids.spec.ts` |
@@ -47,8 +47,14 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 - Piste si un lot Track en a besoin ensuite : charger l'astuce de l'iPhone à la demande (`import()` : elle ne sert que sur un iPhone ; son fichier serait à sortir du décompte du premier chargement, comme le catalogue anglais — décision de budget à prendre avec Nathan).
 - Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `e5658f9`) et après.
 
+## Lot 34 (Track) : moins de virages-pièges après les boosts
+
+- **Track : budgets relevés, autorisés par Nathan** (21/10/2026) : JS + CSS 285 124 → **286 400 o**, JS 274 000 → **275 000 o**, hors three.js 141 000 → **142 300 o**, fil des miniatures 26 000 → **26 600 o**. La règle « freinage possible après un boost » vit dans le générateur, que le jeu charge au premier écran (le circuit du jour se calcule dans la page) et que les deux fils de travail embarquent : **+1 214 o** au premier chargement (285 067 → 286 281 o, marge 119 o ; JS +1 214 o, CSS inchangé), +1 101 o au fil des miniatures (25 385 → 26 486 o), +1 074 o au fil du Salon (27 372 → 28 446 o, sous son budget). Le module de mesure des virages-pièges (`traps.ts`) n'est pas dans le paquet (mesure et tests seulement).
+- **Ce qui a été essayé pour tenir** : le code resserré (compteurs de mesure, plafond de lignes droites simplifié : −100 o) ; sortir les circuits de scénario d'essai (`?scenario=…`) du premier chargement : **+100 o au lieu d'un gain** (leurs textes se compressent presque pour rien dans le gros morceau, et le morceau à part a son coût), abandonné. Piste suivante si un lot Track en a besoin : calculer le circuit du jour dans un fil de travail (le générateur et les figures sortiraient du premier chargement : ≈ 11 ko compressés à eux deux, mesurés hors paquet), un chantier à part.
+- Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `96b55a5`) et après.
+
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, JS + CSS : 57 o** (lot I7, après un relèvement de 1 024 o ; 256 o au lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
-2. **Track, fil des miniatures : 615 o** (inchangé depuis le lot 21).
+1. **Track, JS + CSS : 119 o** (lot 34, après un relèvement de 1 276 o ; 57 o au lot I7, après un relèvement de 1 024 o ; 256 o au lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
+2. **Track, fil des miniatures : 114 o** (lot 34, après un relèvement de 600 o ; 615 o du lot 21 au lot I7).
 3. **Track, catalogue anglais : 755 o** (il porte maintenant l'anglais commun).

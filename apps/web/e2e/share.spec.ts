@@ -1,5 +1,5 @@
 import { expect, newClockedContext, test, type Page, TODAY } from "./fixtures";
-import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
+import { SIM_VERSION, dailyCircuit, generatorVersionOf, parseDay, encodeReplay, medalFor, runPilot } from "@cdj/sim";
 import { shareLine } from "../src/share";
 import { setLangue } from "../src/i18n";
 
@@ -96,7 +96,7 @@ test.describe("archives", () => {
   test("listent les jours du lancement à aujourd'hui, avec le meilleur temps de chacun, et ouvrent le jour choisi", async ({ page }) => {
     await page.addInitScript(
       ([g, simVersion]) => localStorage.setItem(`cdj:best:jour-2026-10-29-g${g}`, JSON.stringify({ ms: 40123, splits: [], medal: "gold", simVersion })),
-      [GENERATOR_VERSION, SIM_VERSION] as const,
+      [generatorVersionOf(parseDay("2026-10-29")!), SIM_VERSION] as const, // lot 34 : la version du générateur de ce jour
     );
     await page.goto(url);
     await page.waitForFunction(() => window.__cdj?.phase);

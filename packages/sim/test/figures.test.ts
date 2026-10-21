@@ -22,6 +22,8 @@ import {
   isRested,
   isWide,
   longestPlainStraight,
+  generatorVersionOf,
+  MAX_BRAKING_ADD,
   parseTrack,
   reach,
   reliefOf,
@@ -239,7 +241,8 @@ describe("composition d'un circuit par figures", () => {
         expect(run, spec).toBeLessThanOrEqual(1);
       }
       expect(tight, spec).toBeLessThanOrEqual(theme === "ville" ? 4 : 2); // Ville : angles droits (lot 22)
-      expect(longestPlainStraight(spec.split(" ")), spec).toBeLessThanOrEqual(MAX_PLAIN_STRAIGHT);
+      // Lot 34 (v16) : les droites de freinage ajoutées derrière une portion rapide s'ajoutent au plafond.
+      expect(longestPlainStraight(spec.split(" ")), spec).toBeLessThanOrEqual(MAX_PLAIN_STRAIGHT + (generatorVersionOf(day) >= 16 ? MAX_BRAKING_ADD : 0));
     }
   });
 
