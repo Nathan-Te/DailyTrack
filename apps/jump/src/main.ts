@@ -852,7 +852,7 @@ try {
   // i18n-ok: étiquettes de débogage (`?debug`) dessinées sur le niveau : outil interne, pas un texte d'interface
   // Lot 15 : à une seule horloge, la phase de la section et sa période (pas), calculées sur la référence.
   const clockLabel = (k: number) => (singleClock(level) && sectionPeriod(level, k) > 0 ? ` · phase ${level.sections[k]!.phase} / ${sectionPeriod(level, k)}` : "");
-  const pieces = options.pieces && daily ? daily.pieces.map((p, k) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5${clockLabel(k)}` })) : undefined;
+  const pieces = options.pieces && daily ? daily.pieces.map((p, k) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5${clockLabel(k)}` })) : undefined; // i18n-ok: outil ?debug (limites des morceaux et horloge)
   scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels) });
   scene.animate = levels.animate;
   scene.windParticles = levels.particles;
