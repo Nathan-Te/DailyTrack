@@ -208,6 +208,17 @@ describe(`lot 15 : les rediffusions v3 se vérifient toujours côté serveur (${
     expect(r.body.accepted).toBe(lives.length);
   });
 
+  it("un premier enregistré par le serveur d'avant (v3, générateur 9) : son fantôme est servi avec les versions du serveur, sa rediffusion reste v3", async () => {
+    if (typeof thawed === "string") throw new Error(thawed);
+    const db = await openTestDb();
+    const t = await jumpApi(noonOf(day), { db });
+    expect((await t.call("POST", "/api/jump/submit", body(thawed.id, thawed.code, "Ancien"), as(3))).status).toBe(200);
+    await db.run("UPDATE jump_results SET sim_version = ?, generator_version = ?", [SECTION_CLOCK_VERSION, 9]);
+    const g = await t.call("GET", `/api/jump/day/${date}/ghost/first`);
+    expect(g.status).toBe(200);
+    expect(g.body).toMatchObject({ name: "Ancien", ticks: thawed.authorTicks, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: thawed.code });
+  });
+
   it("le lendemain, généré en v4 : la preuve v4 se classe, la même rediffusion marquée v3 est refusée (version)", async () => {
     const next = dailyLevel(day + 1);
     expect(next.level.simVersion).toBe(SINGLE_CLOCK_VERSION);
