@@ -1006,13 +1006,31 @@ export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly 
 }
 
 /**
+ * Lot 15 : ce que le jeu **embarque** d'une solution (`src/catalog.ts`, `CatalogFile`) : la rediffusion et ses pas, et la note. Le reste (gigue,
+ * raccord, plus rapide, appui le plus court) ne sert qu'aux outils et aux tests, qui lisent `modules/solutions.json` (`catalogOf`, `tools/files.ts`).
+ */
+export type CatalogSolution = Pick<ModuleSolution, "code" | "ticks" | "entryTick" | "exitTick" | "exigence">;
+
+export interface CatalogVariant {
+  grid: string;
+  arret: CatalogSolution | null;
+  elan: CatalogSolution | null;
+}
+
+export interface CatalogFile {
+  jumpSimVersion: number;
+  exigenceVersion: number;
+  modules: Readonly<Record<string, { variants: readonly CatalogVariant[] }>>;
+}
+
+/**
  * Lot 15 : la version de la simulation des **morceaux joués seuls** (`buildModule`) : 3, une horloge par section qui démarre à l'entrée du
  * personnage. Le solveur et les solutions stockées s'y rapportent ; le niveau du jour (v4) recale ses horloges sur elles (`daily.ts`).
  */
 export const MODULE_SIM_VERSION = SECTION_CLOCK_VERSION;
 
 /** Les solutions stockées d'un morceau (variante) : null si le catalogue n'en a pas (ou plus : grille ou version changée). */
-export function moduleSolutions(id: string, variant: number): ModuleVariantSolutions | null {
+export function moduleSolutions(id: string, variant: number): CatalogVariant | null {
   if (MODULE_SOLUTIONS.jumpSimVersion !== MODULE_SIM_VERSION) return null;
   return MODULE_SOLUTIONS.modules[id]?.variants[variant] ?? null;
 }
@@ -1021,7 +1039,7 @@ export function moduleSolutions(id: string, variant: number): ModuleVariantSolut
 export const MAX_REST_EXIGENCE = 2;
 
 /** Exigence d'une variante : la plus haute de ses deux solutions (0 s'il en manque une). */
-export function variantExigence(s: ModuleVariantSolutions | null): number {
+export function variantExigence(s: CatalogVariant | null): number {
   if (!s || !s.arret || !s.elan) return 0;
   return s.arret.exigence === 0 || s.elan.exigence === 0 ? 0 : Math.max(s.arret.exigence, s.elan.exigence);
 }

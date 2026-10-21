@@ -53,11 +53,15 @@ import {
   type BuiltModule,
   type ModuleSolution,
   type ModuleSolutionsFile,
+  type CatalogFile,
   variantTheme,
 } from "../src/index";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "../src/catalog";
-import { catalogSource } from "../tools/files";
+import { catalogOf, catalogSource, readSolutions } from "../tools/files";
 import { ELAN_FLAT_MAX, FLAT_MAX, flatLimit, flatsOf, longestFlat } from "../tools/plats";
+
+/** Lot 15 : les solutions complètes (gigue, raccord, plus rapide…), que le jeu n'embarque plus. */
+const FULL = readSolutions()!;
 
 // Les morceaux des lots 4 et 6 : format v2, variantes, palier standard, catalogue et solutions stockées (point canonique au bord droit des
 // paliers). Les solutions sont trouvées hors ligne (`npm run solve:modules -w @cdj/jump-sim`) : ce test ne cherche rien, il **rejoue** ce
@@ -92,7 +96,7 @@ scie s o {cycle} aller-retour 1,0 1',4
 `;
 
 /** Pourquoi une solution stockée n'est plus valable pour ce morceau construit (null : elle l'est). */
-function staleReason(file: ModuleSolutionsFile, built: BuiltModule): string | null {
+function staleReason(file: ModuleSolutionsFile | CatalogFile, built: BuiltModule): string | null {
   if (file.jumpSimVersion !== MODULE_SIM_VERSION) return `version de la simulation ${file.jumpSimVersion} ≠ ${MODULE_SIM_VERSION} : ${STALE}`;
   if (file.exigenceVersion !== EXIGENCE_VERSION) return `mesure d'exigence ${file.exigenceVersion} ≠ ${EXIGENCE_VERSION} : ${STALE}`;
   const v = file.modules[built.id]?.variants[built.variant];
@@ -273,7 +277,7 @@ describe("le catalogue", () => {
       .map((f) => readFileSync(join(DIR, f), "utf8"));
     expect(MODULE_TEXTS, `un fichier de morceau a changé : ${STALE}`).toEqual(texts);
     const stored = JSON.parse(readFileSync(join(DIR, "solutions.json"), "utf8")) as ModuleSolutionsFile;
-    expect(MODULE_SOLUTIONS, STALE).toEqual(stored);
+    expect(MODULE_SOLUTIONS, STALE).toEqual(catalogOf(stored));
     expect(readFileSync(join(import.meta.dirname, "../src/catalog.ts"), "utf8"), STALE).toBe(catalogSource(texts, stored));
   });
 });
@@ -282,7 +286,7 @@ describe("les solutions stockées", () => {
   it("une empreinte de grille ou de version périmée est signalée avec « relancer solve:modules »", () => {
     const m = buildModule("tunnel", 0);
     expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
-    const moved: ModuleSolutionsFile = { ...MODULE_SOLUTIONS, modules: { ...MODULE_SOLUTIONS.modules, tunnel: { ...MODULE_SOLUTIONS.modules.tunnel!, variants: [{ ...MODULE_SOLUTIONS.modules.tunnel!.variants[0]!, grid: "00000000" }] } } };
+    const moved: CatalogFile = { ...MODULE_SOLUTIONS, modules: { ...MODULE_SOLUTIONS.modules, tunnel: { ...MODULE_SOLUTIONS.modules.tunnel!, variants: [{ ...MODULE_SOLUTIONS.modules.tunnel!.variants[0]!, grid: "00000000" }] } } };
     expect(staleReason(moved, m)).toMatch(/relancer solve:modules/);
     expect(staleReason({ ...MODULE_SOLUTIONS, jumpSimVersion: MODULE_SIM_VERSION - 1 }, m)).toMatch(/relancer solve:modules/);
     expect(staleReason({ ...MODULE_SOLUTIONS, exigenceVersion: EXIGENCE_VERSION + 1 }, m)).toMatch(/relancer solve:modules/);
@@ -296,7 +300,8 @@ describe("les solutions stockées", () => {
         const m = buildModule(def.id, v);
         expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
         for (const entry of MODULE_ENTRIES) {
-          const sol = MODULE_SOLUTIONS.modules[def.id]!.variants[v]![entry]!;
+          // Lot 15 : le jeu n'embarque que la rediffusion et ses pas ; la mesure complète est dans `solutions.json`.
+          const sol = FULL.modules[def.id]!.variants[v]![entry]!;
           const where = `${def.id} v${v} ${entry}`;
           const replay = decodeReplay(sol.code);
           expect(replay.start.elan, where).toBe(entry === "elan" ? 1 : 0);
@@ -347,7 +352,7 @@ describe("les solutions stockées", () => {
     const all: { where: string; sol: ModuleSolution }[] = [];
     for (const def of MODULES) {
       def.variants.forEach((_, v) => {
-        for (const e of MODULE_ENTRIES) all.push({ where: `${def.id} v${v} ${e}`, sol: MODULE_SOLUTIONS.modules[def.id]!.variants[v]![e]! });
+        for (const e of MODULE_ENTRIES) all.push({ where: `${def.id} v${v} ${e}`, sol: FULL.modules[def.id]!.variants[v]![e]! });
       });
     }
     for (const { where, sol } of all) {
