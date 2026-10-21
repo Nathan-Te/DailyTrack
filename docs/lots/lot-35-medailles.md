@@ -31,9 +31,12 @@ Prévu : un temps de l'auteur plus exigeant que le temps brut du pilote (facteur
 ## Vérifié / non vérifié
 
 - Vérifié en local : `npm run typecheck` ; tests unitaires (`npm test`, voir la PR) ; `apps/api/test/planning.test.ts` (SQLite et libSQL) ; e2e `planning.spec.ts` sur Chromium (10/10) ; budgets remesurés (`node scripts/budgets.mjs`).
-- Non vérifié : la page sur l'aperçu de la PR et en recette (lien ci-dessous une fois le déploiement fait) ; aucun chiffre de production (c'est l'objet de l'export).
+- CI de la PR verte (unitaires, e2e Chromium / Firefox / WebKit, zones, aperçu déployé).
+- Non vérifié : la page sur l'aperçu à la main (il faut le jeton d'admin de la recette) ; aucun chiffre de production (c'est l'objet de l'export).
 - Golden et classements des jours antérieurs : inchangés (aucun changement de `sim` hors du nouveau module, aucun changement des seuils).
 
 ## Liens
 
-- PR et aperçu : voir la PR du lot (le lien de l'aperçu est commenté par la CI).
+- PR : https://github.com/Nathan-Te/DailyTrack/pull/106 (CI verte au commit `593a227`).
+- Aperçu (canal Firebase de la recette, 7 jours) : page d'admin https://playdujour-recette--pr-106-fkp6afxm.web.app/track/admin/ (section « Médailles », jeton d'admin de la recette, cocher « Compter les pilotes fictifs » : la recette n'a qu'eux) ; il parle à la révision étiquetée `b-claude-epic-cer-0q76up` du serveur de recette, qui porte la route.
+- Un circuit d'après la bascule avec ses nouveaux seuils : à la reprise (étape 3).
