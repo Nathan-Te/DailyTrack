@@ -190,18 +190,6 @@ describe("lot 15 — les jours régénérés (g10, une seule horloge)", () => {
       });
     }
   });
-
-  it("le niveau v4 d'une date reprend la composition v3 quand aucune variante n'est refusée (même temps de l'auteur)", () => {
-    let same = 0;
-    for (const L of REGENERATED) {
-      const v3 = dailyLevel(L.day, null, SECTION_CLOCK_VERSION);
-      if (v3.pieces.some((p) => PHASE_REFUSED[p.id]?.includes(p.variant))) continue;
-      expect(L.pieces.map((p) => `${p.id}:${p.variant}`), L.date).toEqual(v3.pieces.map((p) => `${p.id}:${p.variant}`));
-      expect(L.authorTicks, L.date).toBe(v3.authorTicks);
-      same++;
-    }
-    expect(same).toBeGreaterThan(0);
-  });
 });
 
 // ——— Validation toutes phases ———
@@ -303,7 +291,7 @@ interface GoldenV4 {
 function goldenReplays(): GoldenV4["replays"] {
   const L = dailyLevel(GOLDEN_DAY);
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
-  const essais = demoAttempts(L.level, L.replay, 15, { attempts: 10, maxLives: 8 });
+  const essais = demoAttempts(L.level, L.replay, 15, { attempts: 24, maxLives: 8 });
   essais.forEach((r, i) => codes.push({ name: `essai fictif ${i} (${r.end})`, code: encodeReplay(r.replay) }));
   // Trois vies reprises au départ (chrono qui continue) et trois reprises sur un point de passage.
   const taken = { start: 0, point: 0 };

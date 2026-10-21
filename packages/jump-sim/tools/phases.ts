@@ -8,11 +8,15 @@ import {
   SINGLE_CLOCK_VERSION,
   attemptReplay,
   buildModuleDef,
+  cycleMod,
+  decodeReplay,
   encodeReplay,
+  fromRuns,
   exigenceOf,
   moduleSolutions,
   moduleSpan,
   parseModule,
+  replayAttempt,
   variantExigence,
 } from "../src/index";
 import { beamSolve } from "./beam";
@@ -24,7 +28,9 @@ import { PHASES_PER_PERIOD, PHASES_RULE_VERSION, modulePeriod, phasesOf, readPha
 // variante utilisable du catalogue dont l'horloge tourne (scies mobiles, clignotants, rafales), et pour chaque phase essayée de sa période :
 // le morceau seul passé à l'horloge unique à cette phase, la recherche (`beamSolve`, attendre est permis : le chrono part au premier pas) de
 // la sortie canonique depuis l'arrêt sur le palier d'entrée, puis le durcissement et la mesure de la gigue (`exigence.ts`), avec le repli
-// robuste du solveur (lot 8c : jusqu'à 25 % plus lent, en attendant avant un geste). Une phase passe si sa note est d'au moins 1 (gigue ±3 ≥
+// robuste du solveur (lot 8c : jusqu'à 25 % plus lent, en attendant avant un geste). **Premier candidat** : attendre sur le palier le temps qu'il
+// faut pour retrouver la phase où la solution « arrêt » stockée (v3) rencontrait l'horloge, puis la jouer telle quelle ; s'il tient la règle, il
+// est gardé, sinon la recherche prend le relais. Une phase passe si sa note est d'au moins 1 (gigue ±3 ≥
 // 50 %, appuis ≥ `PRESS_MIN`). Écrit `modules/phases.json` (le détail, avec les solutions) et `src/phases.ts` (les variantes refusées, que le
 // générateur écarte). Incrémental : une variante gardée tant que l'empreinte de sa grille et la règle n'ont pas changé.
 //   --force   tout refaire        --only=a,b   seulement ces morceaux        --workers=N   fils de calcul        --beam=N   faisceau (600)
@@ -64,6 +70,23 @@ function runJob(job: Job): JobResult {
     const start = entryState(m, "arret");
     const goal = canonicalExit(m);
     const lost = lostExit(m);
+    // Le candidat « attendre puis rejouer la solution stockée » : seul, le morceau (v3) mettait son horloge en marche au pas `e` où la solution
+    // entre dans sa section ; attendre `w` pas (`φ + w + e ≡ 0`) remet la même rencontre.
+    const stored = moduleSolutions(job.id, job.variant)?.arret;
+    if (stored) {
+      const v3 = decodeReplay(stored.code);
+      const e = replayAttempt(base.level, v3).final.sections[0]!;
+      const wait = cycleMod(-job.phase - e, period);
+      const inputs = [...new Array<number>(wait).fill(0), ...fromRuns(v3.runs)];
+      const span = moduleSpan(m, "arret", inputs);
+      if (typeof span !== "string") {
+        const margins = measureMargins(m, "arret", inputs);
+        if (exigenceOf(margins.gigue, null) >= 1) {
+          const code = encodeReplay(attemptReplay(m.levelId, inputs, 0, 0, SINGLE_CLOCK_VERSION));
+          return { job, result: { phase: job.phase, code, exitTick: span.exitTick, gigue: margins.gigue, exigence: exigenceOf(margins.gigue, null) }, ms: performance.now() - t0 };
+        }
+      }
+    }
     const found: number[][] = [];
     for (const chunk of CHUNKS) {
       let f = beamSolve(m.level, { start, goal, lost, beam: job.beam, chunk, changePenalty: 128, maxTicks, pressMin: PRESS_MIN, releaseMin: RELEASE_MIN });
