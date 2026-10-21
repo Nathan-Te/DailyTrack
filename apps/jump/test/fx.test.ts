@@ -28,18 +28,30 @@ describe("éclatement en particules", () => {
 });
 
 describe("tremblement d'écran", () => {
-  it("bref : il s'éteint en moins de 0,3 s, et ne fait rien sans mort", () => {
+  it("bref : il s'éteint en moins de 0,15 s par défaut, et ne fait rien sans mort", () => {
     const shake = new Shake();
     expect(shake.offset(1 / 60)).toEqual({ x: 0, y: 0 });
     shake.start();
     expect(shake.active).toBe(true);
     let max = 0;
-    for (let t = 0; t < 18; t++) {
+    for (let t = 0; t < 9; t++) {
       const o = shake.offset(1 / 60);
       max = Math.max(max, Math.abs(o.x), Math.abs(o.y));
     }
     expect(max).toBeGreaterThan(0);
-    expect(max).toBeLessThanOrEqual(0.35);
+    expect(max).toBeLessThanOrEqual(0.1);
+    expect(shake.active).toBe(false);
+  });
+
+  it("la durée demandée est respectée ; amplitude ou durée nulle : rien", () => {
+    const shake = new Shake();
+    shake.start(0.2, 0.3);
+    for (let t = 0; t < 17; t++) shake.offset(1 / 60);
+    expect(shake.active).toBe(true);
+    for (let t = 0; t < 2; t++) shake.offset(1 / 60);
+    expect(shake.active).toBe(false);
+    shake.start(0, 0.3);
+    shake.start(0.2, 0);
     expect(shake.active).toBe(false);
   });
 });

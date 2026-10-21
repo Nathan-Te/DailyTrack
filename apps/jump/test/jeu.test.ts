@@ -439,6 +439,24 @@ describe("caméra", () => {
     for (let i = 0; i < 120; i++) up = followCamera(up, { cx: 100, cy: -8, vx: 0, ground: false }, frame, 1 / 60);
     expect(up.y).toBeCloseTo(-8 - CAMERA.deadZone, 1);
   });
+
+  it("lot 14 : un saut complet depuis le sol ne bouge pas l'image, l'atterrissage la recale doucement, une chute la suit", () => {
+    let cam = snapCamera({ cx: 100, cy: -15, vx: 0, ground: true }, frame);
+    const y0 = cam.y;
+    for (let i = 0; i < 30; i++) {
+      const rise = Math.min(4.2, i * 0.4); // montée jusqu'à ≈ 4,2 tuiles, tout en l'air
+      cam = followCamera(cam, { cx: 100, cy: -15 + rise, vx: 0, ground: false }, frame, 1 / 60);
+      expect(cam.y).toBe(y0);
+    }
+    const land = followCamera(cam, { cx: 100, cy: -15, vx: 0, ground: true }, frame, 1 / 60);
+    expect(land.y).toBe(y0); // déjà recentrée au-dessus du sol : rien à rattraper
+    const off = { x: 100, y: y0 + 2, ahead: 0 };
+    const step = followCamera(off, { cx: 100, cy: y0 - CAMERA.groundLift, vx: 0, ground: true }, frame, 1 / 60);
+    expect(Math.abs(step.y - off.y)).toBeLessThan(0.06); // recalage doux, pas d'à-coup
+    let fall = cam;
+    for (let i = 0; i < 120; i++) fall = followCamera(fall, { cx: 100, cy: -15 - 9, vx: 0, ground: false }, frame, 1 / 60);
+    expect(fall.y).toBeCloseTo(-15 - 9 + CAMERA.deadZone, 1);
+  });
 });
 
 describe("allure du personnage (affichage)", () => {

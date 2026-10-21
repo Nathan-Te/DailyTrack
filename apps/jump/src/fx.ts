@@ -78,17 +78,20 @@ export class BurstPool {
   }
 }
 
-/** Tremblement d'écran : une amplitude qui décroît, un décalage pseudo-aléatoire par image. */
+/** Tremblement d'écran : une amplitude qui décroît linéairement en `duration` s (lot 14), un décalage pseudo-aléatoire par image. */
 export class Shake {
   private amp = 0;
   private t = 0;
-  start(amplitude = 0.35): void {
+  private decay = 1;
+  start(amplitude = 0.1, duration = 0.12): void {
+    if (!(amplitude > 0) || !(duration > 0)) return;
+    if (amplitude >= this.amp) this.decay = amplitude / duration;
     this.amp = Math.max(this.amp, amplitude);
   }
   /** Décalage (tuiles) pour cette image. */
   offset(dt: number): { x: number; y: number } {
     this.t += dt;
-    this.amp = Math.max(0, this.amp - dt * 1.6);
+    this.amp = Math.max(0, this.amp - dt * this.decay);
     if (this.amp === 0) return { x: 0, y: 0 };
     return { x: Math.sin(this.t * 71) * this.amp, y: Math.cos(this.t * 53) * this.amp };
   }

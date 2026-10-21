@@ -126,7 +126,7 @@ test("effets réduits : décor et parallaxe allégés ; mouvement réduit : para
     await open(page, `seed=${DATE}&debug&theme=nuit`);
     const normal = await info(page);
     expect(normal.theme.detail).toEqual({ decorLite: false, parallaxLite: false, parallaxMotion: 1 });
-    await page.evaluate(() => localStorage.setItem("jump:settings", JSON.stringify({ v: 1, volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "reduit", reducedMotion: true })));
+    await page.evaluate(() => localStorage.setItem("jump:settings", JSON.stringify({ v: 1, volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: "normal", effects: "reduit", reducedMotion: true })));
     await open(page, `seed=${DATE}&debug&theme=nuit`);
     const lite = await info(page);
     expect(lite.theme.detail).toEqual({ decorLite: true, parallaxLite: true, parallaxMotion: 0 });

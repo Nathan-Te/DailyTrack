@@ -19,8 +19,8 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 000 | 25 385 | 25 385 | 615 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 27 372 | 2 628 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 375 344 | 3 146 | `apps/jump/e2e/poids.spec.ts` |
-| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 467 | 2 533 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 376 242 | 2 248 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 483 | 2 517 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
 

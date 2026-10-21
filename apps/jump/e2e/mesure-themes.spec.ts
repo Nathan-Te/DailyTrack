@@ -23,7 +23,7 @@ test("temps de fil principal par image : niveau du jour et carnage à 150 vies, 
             const cdp = await context.newCDPSession(page);
             await cdp.send("Emulation.setCPUThrottlingRate", { rate });
             if (effects === "reduit") {
-              await page.addInitScript(() => localStorage.setItem("jump:settings", JSON.stringify({ v: 1, volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "reduit", reducedMotion: false })));
+              await page.addInitScript(() => localStorage.setItem("jump:settings", JSON.stringify({ v: 1, volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: "normal", effects: "reduit", reducedMotion: false })));
             }
             const t = theme ? `&theme=${theme}` : "";
             await page.goto(situation === "jour" ? `/?seed=2026-10-20&solution&debug&touch=1${t}` : `/?scenario=essai&debug&touch=1${t}`);
