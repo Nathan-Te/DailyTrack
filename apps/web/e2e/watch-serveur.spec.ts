@@ -21,14 +21,19 @@ async function awayFromBoundary(marginMs = 50_000) {
 test("le spectateur n'envoie aucun identifiant et n'est pas compté ; un joueur ordinaire l'est", async ({ browser }) => {
   await awayFromBoundary();
   const urls: string[] = [];
+  const headers: (string | undefined)[] = [];
   const spectator = await (await newClockedContext(browser)).newPage();
-  spectator.on("request", (r) => urls.push(r.url()));
+  spectator.on("request", (r) => {
+    urls.push(r.url());
+    if (r.url().startsWith(API)) headers.push(r.headers()["x-player-id"]); // lu tout de suite : `allHeaders()` ne se résout pas pour une requête annulée
+  });
   const before = await players();
   await spectator.goto(`/?mode=salon&api=${encodeURIComponent(API)}&watch=best&debug`);
   await spectator.waitForFunction(() => window.__cdj?.watch, undefined, { timeout: 60_000 });
   await spectator.waitForTimeout(7000); // plus d'un tour de sondage du classement (5 s) et un `now`
   expect(urls.filter((u) => u.startsWith(API) && /\/api\/salon\//.test(u)).length).toBeGreaterThan(1);
   expect(urls.filter((u) => u.includes("player="))).toEqual([]);
+  expect(headers.filter((h) => h !== undefined)).toEqual([]); // lot 32 : ni dans l'adresse, ni dans l'en-tête `X-Player-Id`
   expect(await players()).toBeLessThanOrEqual(before); // (personne d'autre n'utilise ce serveur : le compte ne peut que rester à zéro ou baisser)
 
   // Contrôle : le même chargement sans `watch` est un joueur, et le compte monte.

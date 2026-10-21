@@ -95,7 +95,9 @@ const errors: Record<string, number> = {};
 let bytesOut = 0;
 
 async function call(kind: Exclude<Kind, "tick">, p: Player, path: string, body?: unknown): Promise<any> {
-  const init: RequestInit = body === undefined ? { method: "GET" } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+  // Lot 32 : le joueur est dans l'en-tête `X-Player-Id`, comme le jeu (jamais dans l'adresse).
+  const player = { "X-Player-Id": p.id };
+  const init: RequestInit = body === undefined ? { method: "GET", headers: player } : { method: "POST", headers: { "Content-Type": "application/json", ...player }, body: JSON.stringify(body) };
   const t0 = performance.now();
   const res = await api.handle(new Request(`http://load.test${path}`, init), { clientKey: p.ip });
   const text = await res.text();
@@ -110,7 +112,7 @@ async function call(kind: Exclude<Kind, "tick">, p: Player, path: string, body?:
 }
 
 async function poll(p: Player): Promise<void> {
-  const board = await call("board", p, `/api/salon/${session}/board?player=${p.id}${p.version !== undefined ? `&since=${p.version}` : ""}`);
+  const board = await call("board", p, `/api/salon/${session}/board${p.version !== undefined ? `?since=${p.version}` : ""}`);
   if (!board || board.unchanged) return;
   p.version = board.version;
   // Comme le jeu : trois premiers, le voisin de devant et celui de derrière, plus soi-même ; seulement ceux qu'il n'a pas déjà.
@@ -135,7 +137,7 @@ players.forEach((p, i) => {
   // Arrivée étalée sur les 40 premières secondes ; premier envoi après une course (≈ 35 s), puis un envoi toutes les 40 s.
   const joinAt = Math.round((i * 40_000) / PLAYERS);
   for (let at = joinAt; at < SESSION_MS; at += POLL_EVERY) events.push({ at, kind: "board", run: () => poll(p) });
-  for (let at = joinAt; at < SESSION_MS; at += NOW_EVERY) events.push({ at, kind: "now", run: async () => void (await call("now", p, `/api/salon/now?player=${p.id}`)) });
+  for (let at = joinAt; at < SESSION_MS; at += NOW_EVERY) events.push({ at, kind: "now", run: async () => void (await call("now", p, "/api/salon/now")) });
   for (let at = joinAt + 35_000; at < SESSION_MS; at += SUBMIT_EVERY) {
     const replay = replays[(i * 7 + attempt++) % replays.length]!;
     events.push({ at, kind: "submit", run: async () => void (await call("submit", p, `/api/salon/${session}/submit`, { playerId: p.id, name: p.name, replay })) });

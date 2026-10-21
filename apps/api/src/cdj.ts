@@ -44,6 +44,8 @@ export const PLANNING_HORIZON = 60;
 export const ADMIN_MAX_FAILURES = 10;
 /** Lot I2 : durée de vie en mémoire du nombre de classés du jour montré par le portail (l'écart minimal entre deux relectures d'un jeu). */
 export const CLASSES_MEMO_MS = 30_000;
+/** Lot 32 : au plus une ligne de journal par cet intervalle pour l'usage de l'ancien `?player=` (le compte complet est dans `/api/admin/overview`). */
+export const LEGACY_LOG_MS = 5 * 60_000;
 
 /** Tables de DailyTrack. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
 export const CDJ_SCHEMA: string[] = [
@@ -245,6 +247,32 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     return day;
   }
 
+  // --- Lot 32 : l'identifiant du joueur est dans l'en-tête `X-Player-Id`, jamais dans l'adresse -----------------------------
+  // Une adresse finit dans les journaux de requêtes de l'hébergeur (Cloud Run les garde 30 jours) : l'identifiant secret du joueur n'y va plus.
+  // **Transition** : l'ancien paramètre `?player=` reste lu (onglets restés ouverts avec l'ancien jeu) quand l'en-tête manque, **jusqu'à la
+  // retouche 32b** (date de retrait : docs/lots/lot-32-en-tete-joueur.md). Son usage est compté sans rien retenir du joueur (ni identifiant, ni
+  // adresse) : `legacyPlayerParam` dans `/api/admin/overview`, et une ligne de journal par `LEGACY_LOG_MS` au plus (route et total, rien d'autre).
+  const legacyPlayerParam = { since: now(), total: 0, byRoute: {} as Record<string, number> };
+  let legacyLoggedAt = -Infinity;
+  /**
+   * Le joueur qui interroge une lecture de DailyTrack, ou `null` (spectateur, lecture anonyme) : l'en-tête d'abord, sinon l'ancien paramètre
+   * `?player=` (compté). Un identifiant mal formé est refusé (400 `invalid_player`), d'où qu'il vienne.
+   */
+  function playerOf(req: Request, url: URL, route: string): string | null {
+    const header = req.headers.get("x-player-id");
+    if (header !== null) return playerIdOf(header);
+    const legacy = url.searchParams.get("player");
+    if (legacy === null) return null;
+    legacyPlayerParam.total++;
+    legacyPlayerParam.byRoute[route] = (legacyPlayerParam.byRoute[route] ?? 0) + 1;
+    const t = now();
+    if (t - legacyLoggedAt >= LEGACY_LOG_MS) {
+      legacyLoggedAt = t;
+      log("INFO", "paramètre ?player= encore utilisé (transition du lot 32)", { route, total: legacyPlayerParam.total });
+    }
+    return playerIdOf(legacy);
+  }
+
   // --- Le Salon (lot 27) : voir salon.ts ------------------------------------------------------------------------------
   const salon = createSalon({
     db,
@@ -258,6 +286,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     spendReplays: platform.spendReplays,
     readJson,
     playerIdOf,
+    playerOf,
     limits: { ...DEFAULT_SALON_LIMITS, ...options.salonLimits },
     demoPlayers: options.demoPlayers === true,
     log,
@@ -311,7 +340,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
   async function submit(req: Request, info: RequestInfo): Promise<unknown> {
     const body = await readJson(req);
-    const playerId = playerIdOf(body.playerId);
+    const playerId = playerIdOf(req.headers.get("x-player-id") ?? body.playerId); // lot 32 : l'en-tête d'abord ; le corps n'est jamais dans une adresse
     const day = dayOf(body.date, true);
     if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
     await platform.hitAddress(info, "ip", limits.perClient);
@@ -518,6 +547,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       plan: plan.map((r) => ({ date: formatDay(r.day), variant: r.variant, theme: themeByName(r.theme)?.name ?? null, chosenAt: r.chosen_at })),
       days,
       times: times.map((r) => r.ms),
+      /** Lot 32 : usage de l'ancien `?player=` depuis le démarrage de cette instance (anonyme : un compte par route). À zéro, la retouche 32b peut le retirer. */
+      legacyPlayerParam: { ...legacyPlayerParam, byRoute: { ...legacyPlayerParam.byRoute } },
     };
   }
 
@@ -562,11 +593,10 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     return { date: formatDay(day), variant: 0, theme: null, chosenAt: null };
   }
 
-  async function leaderboard(date: string, url: URL): Promise<unknown> {
+  async function leaderboard(date: string, req: Request, url: URL): Promise<unknown> {
     const day = dayOf(date);
     const limit = Math.min(50, Math.max(1, Math.floor(Number(url.searchParams.get("limit") ?? 10)) || 10));
-    const playerParam = url.searchParams.get("player");
-    const me = playerParam === null ? null : playerIdOf(playerParam);
+    const me = playerOf(req, url, "leaderboard");
     const count = await participants(day);
     if (count === 0) return { date: formatDay(day), participants: 0, top: [], me: null };
 
@@ -584,13 +614,14 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     return { date: formatDay(day), participants: count, top, me: mine };
   }
 
-  async function ghost(date: string, url: URL): Promise<unknown> {
+  async function ghost(date: string, req: Request, url: URL): Promise<unknown> {
     const day = dayOf(date);
     const kind = url.searchParams.get("kind");
     if (kind !== "first" && kind !== "ahead") throw new HttpError(400, "invalid_kind", "kind doit valoir first ou ahead");
     let offset = 0;
     if (kind === "ahead") {
-      const me = playerIdOf(url.searchParams.get("player"));
+      const me = playerOf(req, url, "ghost");
+      if (me === null) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)"); // « ahead » : le joueur est obligatoire
       const own = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, me]);
       if (!own) throw new HttpError(404, "no_ghost", "Pas encore de temps pour ce joueur");
       const rank = await rankOf(day, own.ms, own.submitted_at);
@@ -653,7 +684,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       }
       if (!what && key === "now") {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-        return await salon.nowRoute(url, info);
+        return await salon.nowRoute(req, url, info);
       }
       if (what === "submit") {
         if (req.method !== "POST") throw new HttpError(405, "method_not_allowed", "POST attendu");
@@ -661,7 +692,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       }
       if (what === "board" || what === "ghosts") {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
-        return what === "board" ? await salon.boardRoute(key, url, info) : await salon.ghostsRoute(key, url, info);
+        return what === "board" ? await salon.boardRoute(key, req, url, info) : await salon.ghostsRoute(key, url, info);
       }
       throw new HttpError(404, "not_found", "Route inconnue");
     }
@@ -669,8 +700,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     if (m) {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       const date = decodeDate(m[1]!);
-      if (m[2] === "leaderboard") return await leaderboard(date, url);
-      if (m[2] === "ghost") return await ghost(date, url);
+      if (m[2] === "leaderboard") return await leaderboard(date, req, url);
+      if (m[2] === "ghost") return await ghost(date, req, url);
       return await dayInfo(date);
     }
     return undefined;

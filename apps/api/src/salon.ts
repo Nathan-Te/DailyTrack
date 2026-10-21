@@ -18,8 +18,8 @@ import type { Players } from "./players";
 
 // Le Salon côté serveur (lot 27) : il sert le contrat `SalonApi` du jeu (`apps/web/src/salonApi.ts`).
 //
-//   GET  /api/salon/now?player=<id>                        heure du serveur, session en cours, présents
-//   GET  /api/salon/<session>/board?player=<id>&since=<v>  classement de la session (`unchanged` si la version est la même)
+//   GET  /api/salon/now                                    heure du serveur, session en cours, présents
+//   GET  /api/salon/<session>/board?since=<v>              classement de la session (`unchanged` si la version est la même)
 //   GET  /api/salon/<session>/ghosts?refs=a,b              rediffusions demandées par référence publique
 //   POST /api/salon/<session>/submit { playerId, name, replay }
 //
@@ -105,6 +105,8 @@ export interface SalonKit {
   spendReplays: (units?: number) => void;
   readJson: (req: Request) => Promise<Record<string, unknown>>;
   playerIdOf: (value: unknown) => string;
+  /** Lot 32 : le joueur qui interroge une lecture (en-tête `X-Player-Id`, sinon l'ancien `?player=` pendant la transition), ou `null` (`cdj.ts`). */
+  playerOf: (req: Request, url: URL, route: string) => string | null;
   /** Joueurs (lot 30) : pseudos réservés et codes révoqués, mêmes règles que le classement du jour. */
   players: Players;
   limits: SalonLimits;
@@ -341,9 +343,8 @@ export function createSalon(kit: SalonKit) {
   }
 
   // --- Routes ----------------------------------------------------------------------------------------------------------
-  async function nowRoute(url: URL, info: SalonRequestInfo): Promise<unknown> {
-    const playerParam = url.searchParams.get("player");
-    const me = playerParam === null ? null : kit.playerIdOf(playerParam);
+  async function nowRoute(req: Request, url: URL, info: SalonRequestInfo): Promise<unknown> {
+    const me = kit.playerOf(req, url, "salon/now");
     await limitReads(info);
     await forget();
     if (me) await touch(me);
@@ -359,11 +360,10 @@ export function createSalon(kit: SalonKit) {
     };
   }
 
-  async function boardRoute(sessionRaw: string, url: URL, info: SalonRequestInfo): Promise<unknown> {
+  async function boardRoute(sessionRaw: string, req: Request, url: URL, info: SalonRequestInfo): Promise<unknown> {
     await forget();
     const session = sessionOf(sessionRaw);
-    const playerParam = url.searchParams.get("player");
-    const me = playerParam === null ? null : kit.playerIdOf(playerParam);
+    const me = kit.playerOf(req, url, "salon/board");
     const sinceParam = url.searchParams.get("since");
     let since: number | undefined;
     if (sinceParam !== null) {
@@ -404,7 +404,7 @@ export function createSalon(kit: SalonKit) {
 
   async function submitRoute(sessionRaw: string, req: Request, info: SalonRequestInfo): Promise<unknown> {
     const body = await kit.readJson(req);
-    const playerId = kit.playerIdOf(body.playerId);
+    const playerId = kit.playerIdOf(req.headers.get("x-player-id") ?? body.playerId); // lot 32 : l'en-tête d'abord ; le corps n'est jamais dans une adresse
     if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
 
     // Vérifications sans état d'abord (une session qui n'est pas ouverte ne coûte rien à refuser).

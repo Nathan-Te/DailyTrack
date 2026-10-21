@@ -4,6 +4,7 @@
     "accessibilite.spec.ts": 150,
     "accueil.spec.ts": 422,
     "admin.spec.ts": 28,
+    "adresses-joueur.spec.ts": 60,
     "air.spec.ts": 36,
     "bas-cotes.spec.ts": 26,
     "cameras.spec.ts": 25,

@@ -304,10 +304,10 @@ describe("passer du Salon au circuit du jour", () => {
 describe("client de l'API du Salon", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("appelle les quatre routes du contrat, avec l'identifiant en paramètre et les références publiques", async () => {
-    const calls: { url: string; method: string; body?: string }[] = [];
+  it("appelle les quatre routes du contrat, avec l'identifiant dans l'en-tête (lot 32) et les références publiques", async () => {
+    const calls: { url: string; method: string; body?: string; player?: string }[] = [];
     vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
-      calls.push({ url, method: init?.method ?? "GET", body: init?.body as string | undefined });
+      calls.push({ url, method: init?.method ?? "GET", body: init?.body as string | undefined, player: (init?.headers as Record<string, string> | undefined)?.["X-Player-Id"] });
       return new Response(JSON.stringify({ ok: 1 }), { status: 200 });
     });
     const api = new HttpSalonApi("http://api.test");
@@ -317,13 +317,14 @@ describe("client de l'API du Salon", () => {
     await api.ghosts(42, ["r1", "r2"]);
     await api.submit(42, "abc", "Moi", "CODE");
     expect(calls.map((c) => `${c.method} ${c.url}`)).toEqual([
-      "GET http://api.test/api/salon/now?player=abc",
-      "GET http://api.test/api/salon/42/board?player=abc&since=7",
-      "GET http://api.test/api/salon/42/board?player=abc",
+      "GET http://api.test/api/salon/now",
+      "GET http://api.test/api/salon/42/board?since=7",
+      "GET http://api.test/api/salon/42/board",
       "GET http://api.test/api/salon/42/ghosts?refs=r1,r2",
       "POST http://api.test/api/salon/42/submit",
     ]);
-    expect(JSON.parse(calls[4]!.body!)).toEqual({ playerId: "abc", name: "Moi", replay: "CODE" });
+    expect(JSON.parse(calls[4]!.body!)).toEqual({ name: "Moi", replay: "CODE" });
+    expect(calls.map((c) => c.player)).toEqual(["abc", "abc", "abc", undefined, "abc"]); // les fantômes se demandent par référence : aucun joueur
   });
 
   it("un serveur sans Salon répond 404 : l'erreur est lisible, rien ne plante", async () => {
