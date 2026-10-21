@@ -1,6 +1,6 @@
 import { formatDay, parseDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION } from "./constants";
-import { levelNumber, type DailyExigence, type DailyLevel, type DailyPiece, type JumpMedals } from "./daily";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
+import { SECTION_CLOCK_GENERATOR, levelNumber, type DailyExigence, type DailyLevel, type DailyPiece, type JumpMedals } from "./daily";
 import { parseLevel } from "./level";
 import { textHash, type Palier } from "./modules";
 import { decodeReplay, encodeReplay, replayAttempt } from "./replay";
@@ -16,8 +16,9 @@ import { jumpThemeForDay } from "./themes";
 // (`replayAttempt` : arrivée sans mort au temps de l'auteur). Un fichier refusé laisse le jeu générer le niveau comme d'habitude.
 // **Le jeu (`apps/jump/src/dailyLoader.ts`) et le serveur (`apps/api/src/jump.ts`) importent cette fonction** : avant le lot P1, chacun avait
 // sa copie (`thawLevel` et `thawFrozen`), gardées égales par un test. Fonction pure (aucune lecture de fichier : on lui passe le contenu JSON).
-// **Limite** : un niveau figé sous une autre physique (`JUMP_SIM_VERSION` différente) ne se rejoue plus : il est refusé (décision pour
-// Nathan : voir docs/jump/lots/lot-10-arrivee.md).
+// **Limite** : un niveau figé sous une physique que le code ne joue plus ne se rejoue plus : il est refusé (décision pour Nathan : voir
+// docs/jump/lots/lot-10-arrivee.md). Lot 15 : le code joue la version 3 **et** la version 4 (`Level.simVersion`) : les jours figés en v3
+// (jusqu'au 22/10/2026, générateurs g4 à g9) se rejouent tels quels ; un jour figé en v4 vient d'un générateur g10 ou plus.
 
 export const FROZEN_FORMAT = 1;
 
@@ -105,7 +106,7 @@ export function freezeLevel(d: DailyLevel): FrozenLevel {
     jeu: "dailyjump",
     date: d.date,
     id: d.id,
-    simVersion: JUMP_SIM_VERSION,
+    simVersion: d.level.simVersion,
     generatorVersion: generatorOf(d.id) ?? JUMP_GENERATOR_VERSION,
     grille,
     annexe,
@@ -148,8 +149,10 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
   const date = formatDay(day);
   if (f.date !== date || typeof f.date !== "string" || parseDay(f.date) !== day) return "autre date";
   if (!isInt(f.simVersion) || !isInt(f.generatorVersion)) return "versions illisibles";
-  if (f.simVersion !== JUMP_SIM_VERSION) return `autre physique (sim v${f.simVersion}, le jeu est en v${JUMP_SIM_VERSION})`;
+  if (f.simVersion < SECTION_CLOCK_VERSION || f.simVersion > JUMP_SIM_VERSION) return `autre physique (sim v${f.simVersion}, le jeu joue les v${SECTION_CLOCK_VERSION} à v${JUMP_SIM_VERSION})`;
   if (f.generatorVersion < 1 || f.generatorVersion > JUMP_GENERATOR_VERSION) return "générateur inconnu";
+  // Lot 15 : les générateurs jusqu'à g9 produisaient des niveaux en v3, ceux d'après en v4.
+  if ((f.simVersion >= SINGLE_CLOCK_VERSION) !== (f.generatorVersion > SECTION_CLOCK_GENERATOR)) return "versions incohérentes";
   const id = `jour-${date}-g${f.generatorVersion}`;
   if (f.id !== id) return "autre identifiant";
   if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || typeof f.preuve !== "string" || !isInt(f.auteur)) return "fichier incomplet";
@@ -165,6 +168,7 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
     if (textHash(ascii) !== f.hash) return "empreinte du niveau";
     level = parseLevel(ascii);
     replay = decodeReplay(f.preuve);
+    if (level.simVersion !== f.simVersion) return "versions incohérentes";
   } catch (e) {
     return `illisible : ${(e as Error).message}`;
   }

@@ -1,4 +1,4 @@
-import { UNITS_PER_TILE } from "./constants";
+import { JUMP_SIM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
 
 // Un niveau est une grille ASCII, une ligne de texte par rangée de tuiles, la rangée 0 en haut, suivie (après une ligne vide) d'un
@@ -24,9 +24,14 @@ import { idiv } from "./idiv";
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
-//   section <nom> <col0>-<col1>
-//       plage de colonnes (bornes comprises), sans chevauchement ; un élément mobile appartient à la section de son premier point et
-//       son cycle démarre la première fois que le personnage y entre.
+//   version <3|4>
+//       (lot 15) la version de la simulation du niveau (`Level.simVersion`) ; absente : 3. **En v3**, chaque section a son horloge, mise en
+//       marche la première fois que le personnage y entre (« phase » d'un élément = pas écoulés depuis, 0 avant) ; **en v4, une seule horloge** :
+//       la phase d'un élément vaut `t + phase de sa section` (`t` : le chrono de l'essai), dès avant le départ et sans jamais revenir à zéro.
+//   section <nom> <col0>-<col1> [phase <p>]
+//       plage de colonnes (bornes comprises), sans chevauchement ; un élément mobile appartient à la section de son premier point. En v3 son
+//       cycle démarre la première fois que le personnage y entre ; en v4 (lot 15) il tourne toujours, décalé de `p` pas (0 à `MAX_PHASE`,
+//       défaut 0 ; seulement en v4).
 //   scie <id> <rayon> <cycle> <aller-retour|boucle> <col,rangée> <col,rangée>…
 //       rayon : `o`, `O` ou un nombre de tuiles (`0.75`) ; cycle : durée d'un tour complet, en pas (120 = 1 s) ; points de passage : centres
 //       de tuiles. `boucle` revient du dernier point au premier ; `aller-retour` repart en sens inverse.
@@ -134,6 +139,17 @@ export interface Section {
   /** Colonnes couvertes, bornes comprises. */
   c0: number;
   c1: number;
+  /** Lot 15, niveau v4 : décalage de l'horloge de la section, en pas (phase d'un élément = `t + phase`) ; toujours 0 en v3. */
+  phase: number;
+}
+
+/** Lot 15 : plus grand décalage d'une section (en pas) : le chrono plus la phase restent des entiers exacts. */
+export const MAX_PHASE = 1_000_000_000;
+
+/** Lot 15 : `v mod n` toujours dans [0, n) (aussi pour `v` négatif : l'affichage avant le départ), entier, jamais −0. */
+export function cycleMod(v: number, n: number): number {
+  const r = v % n;
+  return r < 0 ? r + n : r + 0;
 }
 
 export type SawMode = "fixe" | "aller-retour" | "boucle";
@@ -206,6 +222,8 @@ export interface WindZone {
 }
 
 export interface Level {
+  /** Lot 15 : la version de la simulation du niveau (3 : une horloge par section ; 4 : une seule horloge de course). */
+  simVersion: number;
   width: number;
   height: number;
   /** Rangée par rangée, la rangée 0 en haut : `tiles[row * width + col]`, codes `TILE_*` (l'état initial des blocs friables). */
@@ -351,6 +369,8 @@ export function parseLevel(text: string): Level {
 
   // ——— Bloc annexe ———
   const sections: Section[] = [];
+  let simVersion = SECTION_CLOCK_VERSION;
+  let versionLine = 0;
   const pending: { line: number; words: string[] }[] = [];
   const blinkLines: { line: number; words: string[] }[] = [];
   const windLines: { line: number; words: string[] }[] = [];
@@ -359,21 +379,30 @@ export function parseLevel(text: string): Level {
     if (raw === "" || raw.startsWith("//")) continue;
     const words = raw.split(/\s+/);
     const where = `Annexe, ligne ${end + i + 1}`;
-    if (words[0] === "section") {
-      const m = words.length === 3 ? /^(\d+)-(\d+)$/.exec(words[2]!) : null;
-      if (!m) throw new LevelError(`${where} : « section <nom> <col0>-<col1> » attendu`);
+    if (words[0] === "version") {
+      const v = words.length === 2 && /^\d+$/.test(words[1]!) ? Number(words[1]) : -1;
+      if (v < SECTION_CLOCK_VERSION || v > JUMP_SIM_VERSION) throw new LevelError(`${where} : « version ${SECTION_CLOCK_VERSION} » à « version ${JUMP_SIM_VERSION} » attendu`);
+      if (versionLine) throw new LevelError(`${where} : version déjà déclarée`);
+      versionLine = end + i + 1;
+      simVersion = v;
+    } else if (words[0] === "section") {
+      const m = (words.length === 3 || (words.length === 5 && words[3] === "phase" && /^\d+$/.test(words[4]!))) ? /^(\d+)-(\d+)$/.exec(words[2]!) : null;
+      if (!m) throw new LevelError(`${where} : « section <nom> <col0>-<col1> [phase <p>] » attendu`);
+      const phase = words.length === 5 ? Number(words[4]) : 0;
+      if (phase > MAX_PHASE) throw new LevelError(`${where} : phase au plus ${MAX_PHASE}`);
       const c0 = Number(m[1]);
       const c1 = Number(m[2]);
       if (c0 > c1 || c1 >= width) throw new LevelError(`${where} : colonnes ${c0}-${c1} hors de la grille (0-${width - 1})`);
       if (sections.some((s) => s.name === words[1])) throw new LevelError(`${where} : section « ${words[1]} » déjà déclarée`);
       const clash = sections.find((s) => c0 <= s.c1 && s.c0 <= c1);
       if (clash) throw new LevelError(`${where} : chevauche la section « ${clash.name} »`);
-      sections.push({ name: words[1]!, c0, c1 });
+      sections.push({ name: words[1]!, c0, c1, phase });
     } else if (words[0] === "scie") pending.push({ line: end + i + 1, words });
     else if (words[0] === "clignote") blinkLines.push({ line: end + i + 1, words });
     else if (words[0] === "vent") windLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (section, scie, clignote, vent)`);
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent)`);
   }
+  if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
   const blinkCycles: (BlinkCycle | null)[] = sections.map(() => null);
   for (const { line, words } of blinkLines) {
@@ -394,8 +423,8 @@ export function parseLevel(text: string): Level {
     if (section < 0) throw new LevelError(`Bloc clignotant (colonne ${b.col}, rangée ${b.row}) dans aucune section`);
     const cycle = blinkCycles[section];
     if (!cycle) throw new LevelError(`Bloc clignotant (colonne ${b.col}, rangée ${b.row}) : la section « ${sections[section]!.name} » ne déclare pas de « clignote »`);
-    // L'état initial : celui du pas de phase 0.
-    tiles[b.row * width + b.col] = blinkIsSolid(cycle, b.group, 0) ? TILE_BLINK_ON : TILE_BLINK_OFF;
+    // L'état initial : celui du pas de phase 0 (v3) ; v4 (lot 15) : celui du chrono 0, donc de la phase de la section.
+    tiles[b.row * width + b.col] = blinkIsSolid(cycle, b.group, sections[section]!.phase) ? TILE_BLINK_ON : TILE_BLINK_OFF;
     return { ...b, section };
   });
   for (const { line, words } of pending) {
@@ -450,7 +479,7 @@ export function parseLevel(text: string): Level {
     if (clash) throw new LevelError(`${where} : chevauche la zone de vent ${clash.c0}-${clash.c1} × ${clash.r0}-${clash.r1}`);
     winds.push({ c0, c1, r0, r1, dir, force: Number(words[4]), gust, section });
   }
-  return { width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds };
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds };
 }
 
 /**
@@ -473,7 +502,7 @@ export function cellOrigin(cell: Cell): { x: number; y: number } {
  * la section, 0 avant) ? Pure, entière : `q = (phase + décalage) mod cycle` ; `b` est solide pour `q < solide`, `d` pour `q ≥ solide`.
  */
 export function blinkIsSolid(c: BlinkCycle, group: number, phase: number): boolean {
-  const q = (phase + c.shift) % c.cycle;
+  const q = cycleMod(phase + c.shift, c.cycle);
   return group === 0 ? q < c.solid : q >= c.solid;
 }
 
@@ -482,8 +511,9 @@ export function blinkIsSolid(c: BlinkCycle, group: number, phase: number): boole
  * interpolation linéaire par `idiv` entre deux nœuds du trajet ; revient exactement au départ à chaque cycle.
  */
 export function sawCenter(saw: Saw, phase: number): Point {
-  if (saw.cycle === 0 || phase <= 0) return saw.nodes[0]!;
-  const t = phase % saw.cycle;
+  if (saw.cycle === 0) return saw.nodes[0]!;
+  // Lot 15 : une phase négative (v4, l'affichage avant le départ) se lit dans le cycle ; en v3 elle n'est jamais négative (0 avant l'entrée).
+  const t = cycleMod(phase, saw.cycle);
   const n = saw.nodes.length;
   let k = 0;
   while (k < n - 1 && t >= saw.times[k + 1]!) k++;
@@ -502,7 +532,7 @@ export function sawCenter(saw: Saw, phase: number): Point {
 export function windBlows(zone: Pick<WindZone, "gust">, phase: number): boolean {
   const g = zone.gust;
   if (!g) return true;
-  return (phase + g.shift) % g.cycle < g.active;
+  return cycleMod(phase + g.shift, g.cycle) < g.active;
 }
 
 /** Lot 13 : l'indice de la zone de vent qui contient la tuile (col, row), −1 aucune (les zones ne se chevauchent pas). */
@@ -512,4 +542,53 @@ export function windZoneAt(level: Pick<Level, "winds">, col: number, row: number
     if (col >= w.c0 && col <= w.c1 && row >= w.r0 && row <= w.r1) return i;
   }
   return -1;
+}
+
+/** Lot 15 : plus grand commun diviseur (entiers positifs). */
+function gcd(a: number, b: number): number {
+  while (b !== 0) {
+    const r = a % b;
+    a = b;
+    b = r;
+  }
+  return a;
+}
+
+/**
+ * Lot 15 : la **période** de la section `i` : le plus petit commun multiple des cycles de ce qui y tourne (scies mobiles, clignotants, rafales),
+ * en pas ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
+ */
+export function sectionPeriod(level: Level, i: number): number {
+  const cycles: number[] = [];
+  for (const s of level.saws) if (s.section === i && s.cycle > 0) cycles.push(s.cycle);
+  const blink = level.blinkCycles[i];
+  if (blink) cycles.push(blink.cycle);
+  for (const w of level.winds) if (w.section === i && w.gust) cycles.push(w.gust.cycle);
+  let l = 0;
+  for (const c of cycles) {
+    l = l === 0 ? c : idiv(l * c, gcd(l, c));
+    if (l > MAX_PHASE) throw new LevelError(`Section « ${level.sections[i]!.name} » : période de plus de ${MAX_PHASE} pas`);
+  }
+  return l;
+}
+
+/**
+ * Lot 15 : le texte d'un niveau en version 3 passé en **version 4** (une seule horloge) : la ligne `version 4` en tête du bloc annexe et la
+ * phase `phases[i]` sur la ligne de la section `i` (dans l'ordre des déclarations). Le reste du texte ne change pas.
+ */
+export function withSingleClock(ascii: string, phases: readonly number[]): string {
+  const lines = ascii.split("\n");
+  const cut = lines.indexOf("");
+  if (cut < 0) throw new LevelError("Niveau sans bloc annexe : rien à mettre à l'heure");
+  let k = 0;
+  const annex = lines.slice(cut + 1).map((line) => {
+    const words = line.trim().split(/\s+/);
+    if (words[0] === "version") throw new LevelError("Niveau déjà versionné");
+    if (words[0] !== "section") return line;
+    const p = phases[k++];
+    if (p === undefined) throw new LevelError("Une phase par section attendue");
+    return p === 0 ? line : `${line} phase ${p}`;
+  });
+  if (k !== phases.length) throw new LevelError("Une phase par section attendue");
+  return [...lines.slice(0, cut), "", `version ${SINGLE_CLOCK_VERSION}`, ...annex].join("\n");
 }

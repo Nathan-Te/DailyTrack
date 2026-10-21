@@ -1,0 +1,233 @@
+{
+  "jumpSimVersion": 4,
+  "jumpGeneratorVersion": 10,
+  "days": {
+    "2026-10-16": {
+      "id": "jour-2026-10-16-g10",
+      "number": 1,
+      "hash": "8ea0a294",
+      "width": 286,
+      "height": 56,
+      "pieces": [
+        "vent-pont:0",
+        "cheminee-vide:1",
+        "quinconce:4",
+        "ressort-plafond:3",
+        "vent-derive:1",
+        "puits-descente:2",
+        "tunnel:3",
+        "escalier-scies:0",
+        "vent-piliers:1",
+        "vent-puits:1",
+        "lucarne:1"
+      ],
+      "authorTicks": 3595,
+      "medals": {
+        "author": 3595,
+        "gold": 3955,
+        "silver": 4674,
+        "bronze": 5752
+      },
+      "exigence": {
+        "sum": 25,
+        "rate": 500,
+        "thirds": [
+          13,
+          20,
+          32
+        ]
+      },
+      "chosen": 0,
+      "code": "AQQTam91ci0yMDI2LTEwLTE2LWcxMACSAYYDogUu4gIu8geWARpGIpQBKW4qTiUiRkSiBZYBygVu-gNe2ghuwgveAyLkASKEAmJEoAH6BC5wLYoBkAGVAaIITsoDfqoELqoELtoDNvIKftID3gUa5gQihgH6Ao4B2gKuAfIClgHCAt4EGo4BwgL2BBqmCDoI0gFG-gI04gI2wgaGASKmAiKmAaIChgMqPqoHTpICdvIDRuoG"
+    },
+    "2026-10-25": {
+      "id": "jour-2026-10-25-g10",
+      "number": 10,
+      "hash": "f990ad41",
+      "width": 280,
+      "height": 36,
+      "pieces": [
+        "descente-scies:4",
+        "mur-seul:0",
+        "nuit-portes:3",
+        "ressort-plafond:3",
+        "tunnel:1",
+        "marelle:5",
+        "piliers:2",
+        "ascenseur:5",
+        "nuit-opposition:4",
+        "demi-tour:3",
+        "scies-jumelles:4"
+      ],
+      "authorTicks": 3535,
+      "medals": {
+        "author": 3535,
+        "gold": 3889,
+        "silver": 4596,
+        "bronze": 5656
+      },
+      "exigence": {
+        "sum": 25,
+        "rate": 509,
+        "thirds": [
+          13,
+          20,
+          37
+        ]
+      },
+      "chosen": 4,
+      "code": "AQQTam91ci0yMDI2LTEwLTI1LWcxMACKEJ4EwgpG4gr2ATC2AzKmAjLmBtoHvggqvgR5sghuwgpu-gK2BhJGkgRe8gZuygV26gOmAdoEhgGCBoYBogRGkgZWugOQAqoCRtICgAOBAboCVuIC4AHSAUbaA1aaBTQ9LDHGBFKWCJoBzgHaA-YH"
+    },
+    "2026-11-03": {
+      "id": "jour-2026-11-03-g10",
+      "number": 19,
+      "hash": "cfdb63c1",
+      "width": 258,
+      "height": 50,
+      "pieces": [
+        "tunnel-scies:1",
+        "puits-descente:1",
+        "vent-colonne:3",
+        "plongeon:0",
+        "rebonds-doux:4",
+        "paroi-friable:1",
+        "cheminee-pics:2",
+        "escalier-friable:1",
+        "vent-rafale:4",
+        "vent-derive:3"
+      ],
+      "authorTicks": 3590,
+      "medals": {
+        "author": 3590,
+        "gold": 3949,
+        "silver": 4667,
+        "bronze": 5744
+      },
+      "exigence": {
+        "sum": 25,
+        "rate": 501,
+        "thirds": [
+          10,
+          22,
+          38
+        ]
+      },
+      "chosen": 1,
+      "code": "AQQTam91ci0yMDI2LTExLTAzLWcxMACSATaqA74DIsYDIrYDMp4BogLuA0LeAyqmASI2IoQBKVYqTi0qVkJWKUUmIoYBIoYFOi44LWqAAbUB-giOAcoEZqoILqIFNuIIVvICYboEtgYaLpAB2gHIAUJIigPWBQo2ogI2YsYBMjbCA9YB8gH2AjKGAzrOAjKGAzK2AypGWvYBMaYBmgU4lQIYXX4aZlUYTTaiCG7yAlbaAlb6AbYEIoYGEsACkQHaASCaAb4B8gOEAtoE5gMi5AEihAJC5AHqBA"
+    },
+    "2026-12-25": {
+      "id": "jour-2026-12-25-g10",
+      "number": 71,
+      "hash": "be54a9d7",
+      "width": 285,
+      "height": 48,
+      "pieces": [
+        "neon-pics:2",
+        "ressort-plafond:4",
+        "puits:3",
+        "cheminee-scie:2",
+        "ressorts-escalier:2",
+        "piliers-scie:0",
+        "neon-respiration:0",
+        "iles-scie:3",
+        "neon-relais:2",
+        "cheminee-vide:0"
+      ],
+      "authorTicks": 3384,
+      "medals": {
+        "author": 3384,
+        "gold": 3723,
+        "silver": 4400,
+        "bronze": 5415
+      },
+      "exigence": {
+        "sum": 24,
+        "rate": 510,
+        "thirds": [
+          18,
+          20,
+          40
+        ]
+      },
+      "chosen": 4,
+      "code": "AQQTam91ci0yMDI2LTEyLTI1LWcxMACKA84CIr4EGpYCGr4FWpYB4gPOBfIDoQEixgmSAz50JiE8ZShmXBkUrQEWedYD8gWGAzDmEroCpgUylgGCCTb6AjaKA5YBygSGAaoDNoIH7gQaLsICProFNqIELooDLooENvIG7gRitgIqrgIaPpICNooCLpICLpICLtICpggyNqICNsIEtgEaPhpMIUYiRiQhhgU"
+    },
+    "2027-03-28": {
+      "id": "jour-2027-03-28-g10",
+      "number": 164,
+      "hash": "a2d15ac0",
+      "width": 285,
+      "height": 53,
+      "pieces": [
+        "tapis-contraire:3",
+        "cheminee-pics:0",
+        "saut-plafond:0",
+        "demi-tour:5",
+        "piliers-scie:0",
+        "tapis-mur:3",
+        "rebonds-doux:3",
+        "lucarne:1",
+        "mur-seul:5",
+        "grande-scie:5",
+        "ressort-plafond:3",
+        "scie-ronde:2",
+        "plongeon:5"
+      ],
+      "authorTicks": 3570,
+      "medals": {
+        "author": 3570,
+        "gold": 3927,
+        "silver": 4641,
+        "bronze": 5712
+      },
+      "exigence": {
+        "sum": 27,
+        "rate": 544,
+        "thirds": [
+          12,
+          18,
+          30
+        ]
+      },
+      "chosen": 5,
+      "code": "AQQTam91ci0yMDI3LTAzLTI4LWcxMADaATa6Ai6qAm6CA16SB1gs1QEa3gE63gJCRG4tYaYIigPWBTq-ByJUPTQp_gM6jgQqxgfCAqYFMpYBggk2-gI2igOWAcoEhgGqAzaKBsYBsgH2AnCmAeoHRqIERsICRuIETpICdvIDRroHpgFYrgMyhgMwxgE16gUuogQ2wgdumg426gguYDVyEWKgATJgggM20gIxCg"
+    },
+    "2027-06-21": {
+      "id": "jour-2027-06-21-g10",
+      "number": 249,
+      "hash": "a39c58e5",
+      "width": 329,
+      "height": 53,
+      "pieces": [
+        "cheminee:1",
+        "mur-trous:0",
+        "piliers-scie:0",
+        "tapis-lance:2",
+        "tapis-respiration:1",
+        "lucarne:0",
+        "pendule:3",
+        "tapis-escalier:3",
+        "escalier-friable:1",
+        "tapis-alternes:2"
+      ],
+      "authorTicks": 3588,
+      "medals": {
+        "author": 3588,
+        "gold": 3947,
+        "silver": 4665,
+        "bronze": 5741
+      },
+      "exigence": {
+        "sum": 25,
+        "rate": 501,
+        "thirds": [
+          12,
+          24,
+          28
+        ]
+      },
+      "chosen": 3,
+      "code": "AQQTam91ci0yMDI3LTA2LTIxLWcxMADSA74BGi4MhQEqlgEaNGUsKoYBggI2-gX2AWDmAiKGAzKuAzLmAxiuAaoEVsoELsIENvIDXsoKpgUylgGCCTb6AjaKA5YBygSGAaoDNpIJXvICjgGyB5YBkgRm4gNmygQu0gIxGkaKAn76A26CB4YB-gU2wgdu-gJW4gLOAcIEbvICVtoCVvoBtgQihgbaAS7qA266BDaSBP4C0AIK"
+    }
+  }
+}

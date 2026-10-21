@@ -6,7 +6,7 @@ import {
   DEFAULT_JUMP_PARAMS,
   EXIGENCE_VERSION,
   INPUT_RIGHT,
-  JUMP_SIM_VERSION,
+  MODULE_SIM_VERSION,
   MODULES,
   MODULE_ENTRIES,
   MODULE_MAX_HEIGHT,
@@ -93,7 +93,7 @@ scie s o {cycle} aller-retour 1,0 1',4
 
 /** Pourquoi une solution stockée n'est plus valable pour ce morceau construit (null : elle l'est). */
 function staleReason(file: ModuleSolutionsFile, built: BuiltModule): string | null {
-  if (file.jumpSimVersion !== JUMP_SIM_VERSION) return `version de la simulation ${file.jumpSimVersion} ≠ ${JUMP_SIM_VERSION} : ${STALE}`;
+  if (file.jumpSimVersion !== MODULE_SIM_VERSION) return `version de la simulation ${file.jumpSimVersion} ≠ ${MODULE_SIM_VERSION} : ${STALE}`;
   if (file.exigenceVersion !== EXIGENCE_VERSION) return `mesure d'exigence ${file.exigenceVersion} ≠ ${EXIGENCE_VERSION} : ${STALE}`;
   const v = file.modules[built.id]?.variants[built.variant];
   if (!v) return `« ${built.id} » variante ${built.variant} sans solution : ${STALE}`;
@@ -143,7 +143,7 @@ describe("format d'un morceau", () => {
     expect(a.palierIn).toEqual({ col0: 1, col1: 2, row: 5 });
     expect(a.palierOut).toEqual({ col0: 7, col1: 8, row: 5 });
     expect(a.exitCol).toBe(9);
-    expect(a.level.sections).toEqual([{ name: "essai-format", c0: 3, c1: 6 }]);
+    expect(a.level.sections).toEqual([{ name: "essai-format", c0: 3, c1: 6, phase: 0 }]);
     const b = buildModuleDef(def, 1);
     expect(b.width).toBe(6); // trou de trois colonnes
     expect(b.height).toBe(6); // la rangée 1 retirée
@@ -197,7 +197,7 @@ describe("format d'un morceau", () => {
     expect(run.level.start).toEqual({ col: 0, row: plain.entryRow - 1 });
     expect(plain.level.start).toEqual({ col: PALIER_GUARD, row: plain.entryRow - 1 });
     expect(run.palierIn).toEqual({ col0: 5 + PALIER_GUARD, col1: 5 + PALIER_GUARD + PALIER_LENGTH - 1, row: plain.entryRow });
-    expect(run.level.sections[0]).toEqual({ name: "tunnel", c0: run.lead, c1: run.lead + plain.width - 1 });
+    expect(run.level.sections[0]).toEqual({ name: "tunnel", c0: run.lead, c1: run.lead + plain.width - 1, phase: 0 });
   });
 });
 
@@ -260,7 +260,7 @@ describe("le catalogue", () => {
         expect(L.start).toEqual({ col: PALIER_GUARD, row: m.entryRow - 1 });
         expect(L.finish).toEqual({ col: m.exitCol + 1, row: m.exitRow - 1 });
         expect(L.checkpoints).toEqual([]);
-        expect(L.sections).toEqual([{ name: def.id, c0: m.lead, c1: m.lead + m.width - 1 }]);
+        expect(L.sections).toEqual([{ name: def.id, c0: m.lead, c1: m.lead + m.width - 1, phase: 0 }]);
         expect(m.entryRow, where).toBeGreaterThanOrEqual(PALIER_HEADROOM);
       }
     }
@@ -284,7 +284,7 @@ describe("les solutions stockées", () => {
     expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
     const moved: ModuleSolutionsFile = { ...MODULE_SOLUTIONS, modules: { ...MODULE_SOLUTIONS.modules, tunnel: { ...MODULE_SOLUTIONS.modules.tunnel!, variants: [{ ...MODULE_SOLUTIONS.modules.tunnel!.variants[0]!, grid: "00000000" }] } } };
     expect(staleReason(moved, m)).toMatch(/relancer solve:modules/);
-    expect(staleReason({ ...MODULE_SOLUTIONS, jumpSimVersion: JUMP_SIM_VERSION - 1 }, m)).toMatch(/relancer solve:modules/);
+    expect(staleReason({ ...MODULE_SOLUTIONS, jumpSimVersion: MODULE_SIM_VERSION - 1 }, m)).toMatch(/relancer solve:modules/);
     expect(staleReason({ ...MODULE_SOLUTIONS, exigenceVersion: EXIGENCE_VERSION + 1 }, m)).toMatch(/relancer solve:modules/);
     // La lecture du catalogue n'en rend aucune pour une autre version.
     expect(moduleSolutions("tunnel", 0)).not.toBeNull();

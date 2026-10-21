@@ -1,8 +1,9 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
-import { ATTEMPT_DEAD, ATTEMPT_FINISHED, initialAttempt, stepAttempt, type AttemptState } from "./attempt";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, TICK_RATE } from "./constants";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
+import { JUMP_GENERATOR_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
-import { parseLevel, type Level } from "./level";
+import { TILE_EMPTY, TILE_SOLID, cycleMod, parseLevel, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
+import { PHASE_REFUSED } from "./phases";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, jumpThemeForDay, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
@@ -38,6 +39,14 @@ import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpR
 // centre de la cible). Sans tirage valide, on continue jusqu'à `DAILY_MAX_ATTEMPTS` ; s'il n'y en a toujours pas, niveau de **secours**
 // (`FALLBACK_PIECES`, assemblé et validé de la même façon).
 //
+// **Horloge unique (lot 15, générateur g10, niveaux en version 4)** : l'assemblage et la preuve se font comme ci-dessus, sur le niveau en
+// version 3 (chaque section démarre quand la preuve y entre) ; puis chaque section reçoit la **phase** qui fait tourner ses éléments, sur
+// l'horloge unique, exactement comme la preuve les rencontrait (`phase ≡ −entrée`, modulo la période de la section) et le niveau passe en
+// version 4 (`withSingleClock`) ; la preuve y est **rejouée** : mêmes commandes, même temps, sans mort (la référence passe sans attendre). Ne
+// sont posées que les variantes qui passent la **validation toutes phases** (`PHASE_REFUSED`, `npm run phases:modules`) : repartir de leur
+// point de passage, à n'importe quelle phase de leur horloge, a une solution jouable par un humain ; et chaque point de reprise est **sûr à
+// toute phase** (`respawnProblems`). `dailyLevel(jour, thème, 3)` rend encore le niveau g9 d'une date (référence v3, golden).
+//
 // **Toute modification qui change le niveau d'une date** (règles, seuils, catalogue, solutions, assemblage) : `JUMP_GENERATOR_VERSION` +1,
 // golden régénérés (`UPDATE_GOLDEN=1 npx vitest run packages/jump-sim/test/golden-daily.test.ts`), puis `npm run measure:jump -w @cdj/jump-sim`.
 
@@ -53,10 +62,14 @@ export function levelNumber(day: number): number {
  * Identifiant du niveau d'une date : `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (identifiant des rediffusions et de la mémoire). Un thème
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
-export function dailyLevelId(day: number, forced: JumpThemeName | null = null): string {
+export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): string {
   const natural = jumpThemeForDay(day);
-  return `jour-${formatDay(day)}-g${JUMP_GENERATOR_VERSION}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
+  const g = simVersion >= SINGLE_CLOCK_VERSION ? JUMP_GENERATOR_VERSION : SECTION_CLOCK_GENERATOR;
+  return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }
+
+/** Lot 15 : le dernier générateur des niveaux en version 3 (g9, lot 13) : `dailyLevel(jour, thème, 3)` le rend encore, à l'identique. */
+export const SECTION_CLOCK_GENERATOR = 9;
 
 // ——— Constantes de la cible (toutes en pas : 120 pas = 1 s) ———
 
@@ -291,9 +304,17 @@ interface Choice {
 }
 
 let catalog: Choice[][] | null = null;
+let catalogV4: Choice[][] | null = null;
 
-/** Par morceau (ordre du catalogue), ses variantes utilisables. Calculé une fois (déterministe). */
-function choices(): Choice[][] {
+/**
+ * Par morceau (ordre du catalogue), ses variantes utilisables. Calculé une fois (déterministe). Lot 15 : en version 4, sans les variantes
+ * refusées par la validation toutes phases (`PHASE_REFUSED`).
+ */
+function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
+  if (simVersion >= SINGLE_CLOCK_VERSION) {
+    catalogV4 ??= choices().map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant))).filter((list) => list.length > 0);
+    return catalogV4;
+  }
   if (catalog) return catalog;
   catalog = MODULES.map((def) =>
     def.variants.flatMap((_, variant) => {
@@ -429,11 +450,11 @@ function stack(picks: readonly Slot[]): { tops: number[]; height: number } {
 const per = (part: number, whole: number) => idiv(part * 1000, whole);
 
 /** Compose une suite de morceaux (sans l'assembler). Rend la raison de l'échec si elle n'aboutit pas. */
-function compose(day: number, rng: Rng, theme: JumpThemeName): Slot[] | string {
+function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number): Slot[] | string {
   // Lot 11 : les variantes réservées à un autre thème sortent du catalogue ; pour un thème sans mécanique, ce qui reste est exactement le
   // catalogue d'avant (même ordre, mêmes variantes), donc la même composition.
   const mechanic = mechanicOf(theme);
-  const pool = choices()
+  const pool = choices(simVersion)
     .map((list) => list.filter((c) => c.theme === null || c.theme === theme))
     .filter((list) => list.length > 0 && !isRestedModule(list[0]!.id, day));
   const picks: Slot[] = [];
@@ -780,7 +801,59 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   } else if (d.theme !== undefined && pieces.some((p) => p.mechanic !== null)) out.push("un morceau de mécanique hors de son thème");
   const idle = d.palierTicks.reduce((a, b) => a + b, 0);
   if (idle * 1000 >= EMPTY_RUN_MAX * total) out.push(`course à vide sur les paliers ${per(idle, total)} ‰ (moins de ${EMPTY_RUN_MAX} ‰)`);
+  // Lot 15 : une seule horloge, rien ne s'arrête à la mort : chaque point de reprise doit être sûr à toute phase.
+  if (d.level.simVersion >= SINGLE_CLOCK_VERSION) out.push(...respawnProblems(d.level));
   return out;
+}
+
+/** Lot 15 : rangées libres au-dessus du sol d'un point de reprise qui doivent rester sûres (la hauteur libre minimale d'un palier). */
+export const RESPAWN_ZONE_ROWS = 4;
+
+/**
+ * Lot 15 — **la zone d'un point de reprise est sûre à toute phase** (niveau en version 4 : les dangers ne s'arrêtent jamais) : pour le départ
+ * `S` et chaque point de passage `C`, la boîte du palier (`PALIER_LENGTH` colonnes depuis le point, `RESPAWN_ZONE_ROWS` rangées au-dessus du
+ * sol) n'est touchée par **aucune scie à aucun pas de son cycle**, ne contient ni pic, ni bloc, ni zone de vent, et le sol dessous est plein
+ * et immobile (ni friable, ni clignotant, ni alterné). Rend ce qui ne va pas (vide : sûr).
+ */
+export function respawnProblems(level: Level): string[] {
+  const out: string[] = [];
+  const T = UNITS_PER_TILE;
+  for (const [name, cell] of [["départ", level.start] as const, ...level.checkpoints.map((c, i) => [`point ${i + 1}`, c] as const)]) {
+    const r0 = cell.row - RESPAWN_ZONE_ROWS + 1;
+    const c1 = cell.col + PALIER_LENGTH - 1;
+    const box: Box = { x: cell.col * T, y: r0 * T, w: PALIER_LENGTH * T, h: RESPAWN_ZONE_ROWS * T };
+    for (let c = cell.col; c <= c1; c++) {
+      for (let r = r0; r <= cell.row; r++) {
+        if (level.tiles[r * level.width + c] !== TILE_EMPTY) out.push(`${name} : la case ${c},${r} n'est pas vide`);
+      }
+      const ground = level.tiles[(cell.row + 1) * level.width + c];
+      if (ground !== TILE_SOLID) out.push(`${name} : le sol en ${c},${cell.row + 1} n'est pas un bloc immobile`);
+    }
+    if (level.winds.some((w) => w.c0 <= c1 && cell.col <= w.c1 && w.r0 <= cell.row && r0 <= w.r1)) out.push(`${name} : une zone de vent couvre le point`);
+    for (const saw of level.saws) {
+      const steps = saw.cycle === 0 ? 1 : saw.cycle;
+      for (let t = 0; t < steps; t++) {
+        const at = sawCenter(saw, t);
+        if (circleHitsBox(at.x, at.y, saw.radius, box)) {
+          out.push(`${name} : la scie ${saw.id} y passe (pas ${t} de son cycle)`);
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Lot 15 : la phase de chaque section du niveau v4, d'après le pas où la preuve (en v3) y est entrée (`entries`, −1 : jamais) : `−entrée`
+ * modulo la période de la section, pour que ses éléments tournent sur l'horloge unique exactement comme la preuve les rencontrait.
+ */
+export function phasesFromEntries(level: Level, entries: readonly number[]): number[] {
+  return level.sections.map((_, i) => {
+    const period = sectionPeriod(level, i);
+    const e = entries[i]!;
+    return period === 0 || e < 0 ? 0 : cycleMod(-e, period);
+  });
 }
 
 /**
@@ -829,8 +902,11 @@ function scoreOf(ticks: number, rate: number): number {
 
 type Built = Omit<DailyLevel, "attempts" | "chosen" | "fallback" | "day" | "date" | "number" | "theme" | "forcedTheme">;
 
-/** Assemble, enchaîne les solutions, **rejoue** et vérifie les règles. */
-function prove(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName): { built: Built; problems: string[] } | string {
+/**
+ * Assemble, enchaîne les solutions, **rejoue** et vérifie les règles. Lot 15 : en version 4, le niveau passe à l'horloge unique (phases tirées
+ * des entrées de la preuve dans chaque section) et la même preuve y est rejouée : même temps, sans mort.
+ */
+function prove(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number): { built: Built; problems: string[] } | string {
   let asm: Assembled;
   try {
     asm = assemble(picks);
@@ -839,11 +915,25 @@ function prove(picks: readonly { id: string; variant: number }[], id: string, th
   }
   const chain = chainSolutions(asm);
   if (typeof chain === "string") return chain;
-  const replay: JumpReplay = { simVersion: JUMP_SIM_VERSION, levelId: id, start: { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 }, runs: toRuns(chain.inputs) };
+  const start = { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 };
+  let replay: JumpReplay = { simVersion: SECTION_CLOCK_VERSION, levelId: id, start, runs: toRuns(chain.inputs) };
   // La preuve : le rejeu, rien d'autre.
-  const result = replayAttempt(asm.level, replay, id);
+  let result = replayAttempt(asm.level, replay, id);
   if (!result.finished) return "le rejeu n'arrive pas";
   if (result.deaths.length > 0) return `le rejeu meurt ${result.deaths.length} fois`;
+  if (simVersion >= SINGLE_CLOCK_VERSION) {
+    const v3Time = result.time;
+    let ascii: string;
+    try {
+      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections));
+      asm = { ...asm, ascii, level: parseLevel(ascii) };
+    } catch (e) {
+      return `horloge unique : ${(e as Error).message}`;
+    }
+    replay = { ...replay, simVersion: SINGLE_CLOCK_VERSION };
+    result = replayAttempt(asm.level, replay, id);
+    if (!result.finished || result.deaths.length > 0 || result.time !== v3Time) return "horloge unique : la preuve ne passe plus sans attendre";
+  }
   const total = result.time;
   const pieces = asm.pieces.map((p, k) => ({ ...p, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total }));
   const built: Built = {
@@ -962,21 +1052,22 @@ const cache = new Map<string, DailyLevel>();
  * même niveau, partout. Le résultat est gardé en mémoire (même objet pour une même date).
  * Lot 11 : le thème du jour (`jumpThemeForDay`) décide des morceaux permis et du quota de signature ; `forced` impose un autre thème : c'est
  * un **essai** (`forcedTheme`, identifiant suffixé `-t<thème>`), jamais enregistré. Forcer le thème de la date donne le niveau de la date.
+ * Lot 15 : `simVersion` 4 (défaut) : le niveau g10 à une seule horloge ; 3 : le niveau g9 d'avant le lot, à l'identique (référence v3).
  */
-export function dailyLevel(day: number, forced: JumpThemeName | null = null): DailyLevel {
+export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
-  const key = `${day}:${theme}`;
+  const key = `${day}:${theme}:${simVersion}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const id = dailyLevelId(day, theme);
+  const id = dailyLevelId(day, theme, simVersion);
   const seed = mixSeed(day, DAILY_SALT);
   const attempts: DailyAttempt[] = [];
   let best: { built: Built; index: number; score: number } | null = null;
   for (let index = 0; index < DAILY_MAX_ATTEMPTS; index++) {
     if (index >= DAILY_DRAWS && best) break;
-    const picks = compose(day, new Rng(mixSeed(seed, index)), theme);
+    const picks = compose(day, new Rng(mixSeed(seed, index)), theme, simVersion);
     if (typeof picks === "string") {
       attempts.push({ index, status: "impasse", reason: picks, pieces: [], ticks: 0, rate: 0, score: 0 });
       continue;
@@ -986,6 +1077,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null): Da
       picks.map((p) => ({ id: p.choice.id, variant: p.choice.variant })),
       id,
       theme,
+      simVersion,
     );
     if (typeof proof === "string") {
       attempts.push({ index, status: "refusé", reason: proof, pieces: names, ticks: 0, rate: 0, score: 0 });
@@ -1001,7 +1093,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null): Da
   let out: DailyLevel;
   if (best) out = { ...best.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };
   else {
-    const proof = prove(fallbackFor(theme), id, theme);
+    const proof = prove(fallbackFor(theme), id, theme, simVersion);
     if (typeof proof === "string" || proof.problems.length > 0) throw new Error(`Niveau de secours invalide : ${typeof proof === "string" ? proof : proof.problems.join(" ; ")}`);
     out = { ...proof.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: -1, fallback: true };
   }
@@ -1010,10 +1102,10 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null): Da
 }
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
-export function fallbackLevel(day: number, forced: JumpThemeName | null = null): DailyLevel | string {
+export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
-  const proof = prove(fallbackFor(theme), dailyLevelId(day, theme), theme);
+  const proof = prove(fallbackFor(theme), dailyLevelId(day, theme, simVersion), theme, simVersion);
   if (typeof proof === "string") return proof;
   if (proof.problems.length > 0) return proof.problems.join(" ; ");
   return { ...proof.built, theme, forcedTheme: theme !== natural, day, date: formatDay(day), number: levelNumber(day), attempts: [], chosen: -1, fallback: true };

@@ -86,7 +86,7 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
   for (let n = 0; n < options.attempts; n++) {
     // Une faute sur deux tombe dans le premier tiers : beaucoup de vies courtes au départ, de moins en moins loin (comme un vrai joueur).
     const cuts: [number, number, number][] = [fault(0, rng.chance(50) ? idiv(plan.inputs.length, 3) : plan.inputs.length)];
-    const recorder = new AttemptRecorder(solution.levelId);
+    const recorder = new AttemptRecorder(solution.levelId, solution.simVersion);
     let s = start;
     let cursor = 0;
     let lives = 1;

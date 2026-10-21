@@ -4,7 +4,7 @@ import { idiv } from "./idiv";
 import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
 import { START_AT_SPAWN, replayStartState } from "./replay";
 import { MODULE_SOLUTIONS, MODULE_TEXTS } from "./catalog";
-import { JUMP_SIM_VERSION, UNITS_PER_TILE } from "./constants";
+import { SECTION_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
 import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, sawCenter, type Level } from "./level";
 
@@ -1005,9 +1005,15 @@ export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly 
   return "la rediffusion n'arrive pas";
 }
 
+/**
+ * Lot 15 : la version de la simulation des **morceaux joués seuls** (`buildModule`) : 3, une horloge par section qui démarre à l'entrée du
+ * personnage. Le solveur et les solutions stockées s'y rapportent ; le niveau du jour (v4) recale ses horloges sur elles (`daily.ts`).
+ */
+export const MODULE_SIM_VERSION = SECTION_CLOCK_VERSION;
+
 /** Les solutions stockées d'un morceau (variante) : null si le catalogue n'en a pas (ou plus : grille ou version changée). */
 export function moduleSolutions(id: string, variant: number): ModuleVariantSolutions | null {
-  if (MODULE_SOLUTIONS.jumpSimVersion !== JUMP_SIM_VERSION) return null;
+  if (MODULE_SOLUTIONS.jumpSimVersion !== MODULE_SIM_VERSION) return null;
   return MODULE_SOLUTIONS.modules[id]?.variants[variant] ?? null;
 }
 

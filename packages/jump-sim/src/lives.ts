@@ -1,4 +1,5 @@
 import { RESPAWN_TICKS } from "./attempt";
+import { SINGLE_CLOCK_VERSION } from "./constants";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import type { Level } from "./level";
@@ -16,6 +17,8 @@ import { JumpReplayError, replayAttempt, type JumpReplay, type LifeEnd, type Rep
 //   - point de passage : il existe ; une section par section du niveau ; les sections du point et d'après sont à l'arrêt (la reprise les remet
 //     à zéro) ; celles d'avant que le personnage a dû traverser pour atteindre le point (entre le départ et le point) sont en marche, mises en
 //     marche dans l'ordre du parcours (de gauche à droite) ; le chrono laisse au moins la mort et l'attente de la reprise après la dernière.
+// Lot 15, niveau en version 4 (une seule horloge) : aucune section dans l'en-tête ; départ `S` : chrono 0 (la première vie), ou une reprise au
+// départ après une mort sans point de passage (chrono d'au moins la mort et l'attente) ; point de passage : il existe, et le même chrono minimal.
 // Une vie s'arrête à sa fin : rien après sa mort (pas d'attente ni de vie suivante dans la même rediffusion).
 // Aucune version ne change : cette aide ne fait que lire `replayAttempt` et l'en-tête.
 
@@ -51,6 +54,12 @@ export function sectionAt(level: Level, x: number): number {
 /** Ce qui ne va pas dans l'en-tête d'une vie pour ce niveau, ou `null` s'il est atteignable. */
 export function lifeStartProblem(level: Level, start: ReplayStart): string | null {
   if (start.elan) return "Une vie ne part jamais lancée";
+  if (level.simVersion >= SINGLE_CLOCK_VERSION) {
+    if (start.sections.length !== 0) return "Un niveau à une seule horloge n'a pas de sections dans l'en-tête";
+    if (start.checkpoint >= 0 && !level.checkpoints[start.checkpoint]) return `Point de passage ${start.checkpoint} absent de ce niveau`;
+    if ((start.checkpoint >= 0 || start.time !== 0) && start.time < RESPAWN_TICKS + 1) return "Chrono trop court pour une reprise";
+    return null;
+  }
   if (start.checkpoint < 0) {
     if (start.time !== 0 || start.sections.length !== 0) return "Une vie partie du départ commence à zéro, sections à l'arrêt";
     return null;

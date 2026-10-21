@@ -1,4 +1,4 @@
-import { UNITS_PER_TILE } from "./constants";
+import { SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
@@ -50,6 +50,13 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // **Courants d'air (lot 13)** : une zone de vent (`Level.winds`) pousse le personnage tant que le centre de sa boîte y est, **au début du pas**
 // (`windPush`) ; une zone en rafale suit l'horloge de sa section (pas écoulés depuis l'entrée du personnage, comme les scies : la mort et la
 // reprise la remettent à zéro). Rien de plus dans l'état : la phase se lit dans `sections`, la vitesse acquise dans `player`.
+//
+// **Horloge unique (lot 15, niveaux en version 4 : `Level.simVersion`)** : tout ce qui tourne (scies, clignotants, rafales) vaut `f(t + phase)`,
+// `t` le chrono, `phase` celle de sa section (`Section.phase`, choisie par le générateur) ; plus rien ne s'active à l'approche ni ne revient à
+// zéro (`sections` reste vide). Le chrono part au premier pas, **que le joueur bouge ou non** (le jeu le lance à la fin du « Prêt… ») ; une
+// mort sans point de passage fait **reprendre au départ, chrono qui continue** (`respawnAttempt`), comme une reprise sur un point : l'essai ne
+// finit qu'à l'arrivée ou par « recommencer ». Friables reposés et blocs alternés remis à A à chaque reprise, comme en v3 (ce ne sont pas des
+// horloges). Les niveaux en version 3 gardent exactement les règles ci-dessus (une horloge par section, monde qui attend).
 //
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
@@ -142,7 +149,7 @@ export interface AttemptState {
   tiles: readonly number[];
   /** Un par bloc friable (`level.crumbles`) : `CRUMBLE_INTACT`, pas restants avant la chute, ou `CRUMBLE_GONE`. */
   crumbles: readonly number[];
-  /** Une par section (`level.sections`) : pas du chrono où le personnage y est entré la première fois, −1 avant. */
+  /** Une par section (`level.sections`) : pas du chrono où le personnage y est entré la première fois, −1 avant. Vide en v4 (lot 15). */
   sections: readonly number[];
   /** Cause de la mort (`DEATH_*`) et centre du personnage à cet instant (unités) ; 0 tant qu'il vit. */
   deathCause: number;
@@ -170,7 +177,7 @@ export function initialAttempt(level: Level): AttemptState {
     player: initialPlayer(level),
     tiles: level.tiles,
     crumbles: level.crumbles.map(() => CRUMBLE_INTACT),
-    sections: level.sections.map(() => -1),
+    sections: level.simVersion >= SINGLE_CLOCK_VERSION ? [] : level.sections.map(() => -1),
     deathCause: DEATH_NONE,
     deathX: 0,
     deathY: 0,
@@ -182,12 +189,37 @@ export function initialAttempt(level: Level): AttemptState {
   return level.alts.length > 0 ? { ...base, alt: 0 } : base;
 }
 
+/** Lot 15 : le niveau a-t-il une seule horloge de course (version 4) ? */
+export function singleClock(level: Pick<Level, "simVersion">): boolean {
+  return level.simVersion >= SINGLE_CLOCK_VERSION;
+}
+
+/**
+ * Lot 15 : la phase de la section `i` (pas de son horloge) au chrono `time`, `sections` étant les débuts de l'état (v3). **v4** : `time + phase`
+ * de la section, à toute heure (négatif avant le départ : l'affichage du « Prêt… ») ; **v3** : pas écoulés depuis l'entrée du personnage, 0 avant.
+ */
+export function sectionClock(level: Level, sections: readonly number[], time: number, i: number): number {
+  if (level.simVersion >= SINGLE_CLOCK_VERSION) return time + level.sections[i]!.phase;
+  const start = sections[i]!;
+  return start < 0 ? 0 : time - start;
+}
+
+/**
+ * Lot 15 (v4) : reprise **au départ** après une mort sans point de passage : le personnage posé sur `S`, à l'arrêt ; friables reposés,
+ * blocs alternés à A ; le chrono continue (`time` inchangé ici). Les horloges ne bougent pas : elles ne dépendent que du chrono.
+ */
+export function respawnAttempt(level: Level, state: Readonly<AttemptState>): AttemptState {
+  const back: AttemptState = { ...initialAttempt(level), status: ATTEMPT_RUNNING, time: state.time };
+  return { ...back, tiles: settleDynamic(level, back.tiles, back.sections, back.time, back.alt ?? 0, back.player) };
+}
+
 /**
  * Reprise au point de passage `state.checkpoint` (lot 2b) : le personnage posé sur ce point, à l'arrêt ; friables reposés ; sections du
  * point et d'après à l'arrêt (celles d'avant gardent leur cycle) ; le chrono continue (`time` inchangé ici).
  */
 export function checkpointAttempt(level: Level, state: Readonly<AttemptState>): AttemptState {
   const cell = level.checkpoints[state.checkpoint]!;
+  // v4 (lot 15) : `sections` est vide, rien n'est remis à l'arrêt.
   const sections = state.sections.map((start, i) => (level.sections[i]!.c1 >= cell.col ? -1 : start));
   const back: AttemptState = {
     ...initialAttempt(level),
@@ -222,9 +254,7 @@ export function settleDynamic(level: Level, tiles: readonly number[], sections: 
     (out as number[])[k] = want ? on : off;
   };
   for (const b of level.blinks) {
-    const start = sections[b.section]!;
-    const phase = start < 0 ? 0 : time - start;
-    apply(b.col, b.row, blinkIsSolid(level.blinkCycles[b.section]!, b.group, phase), TILE_BLINK_ON, TILE_BLINK_OFF);
+    apply(b.col, b.row, blinkIsSolid(level.blinkCycles[b.section]!, b.group, sectionClock(level, sections, time, b.section)), TILE_BLINK_ON, TILE_BLINK_OFF);
   }
   for (const a of level.alts) apply(a.col, a.row, a.set === alt, TILE_ALT_ON, TILE_ALT_OFF);
   return out;
@@ -235,15 +265,14 @@ export function settleDynamic(level: Level, tiles: readonly number[], sections: 
  * `level.sections` : la même lecture que `sawPhase`, pour le rendu, le métronome et le solveur.
  */
 export function sectionPhases(level: Level, state: Readonly<AttemptState>): number[] {
-  return level.sections.map((_, i) => (state.sections[i]! < 0 ? 0 : state.time - state.sections[i]!));
+  return level.sections.map((_, i) => sectionClock(level, state.sections, state.time, i));
 }
 
 /** Pas écoulés dans le cycle de la scie `index` (0 tant que sa section n'est pas en marche, et pour une scie fixe). */
 export function sawPhase(level: Level, state: Readonly<AttemptState>, index: number): number {
   const saw = level.saws[index]!;
   if (saw.section < 0) return 0;
-  const start = state.sections[saw.section]!;
-  return start < 0 ? 0 : state.time - start;
+  return sectionClock(level, state.sections, state.time, saw.section);
 }
 
 /** Centres de toutes les scies dans cet état (unités), dans l'ordre de `level.saws`. */
@@ -255,8 +284,7 @@ export function sawCenters(level: Level, state: Readonly<AttemptState>): Point[]
 export function windPhase(level: Level, state: Readonly<AttemptState>, index: number): number {
   const w = level.winds[index]!;
   if (w.section < 0) return 0;
-  const start = state.sections[w.section]!;
-  return start < 0 ? 0 : state.time - start;
+  return sectionClock(level, state.sections, state.time, w.section);
 }
 
 /** Lot 13 : la zone de vent `index` souffle-t-elle dans cet état ? */
@@ -333,13 +361,14 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
   const jump = input & INPUT_JUMP ? 1 : 0;
 
   if (state.status === ATTEMPT_FINISHED) return state as AttemptState;
+  const single = level.simVersion >= SINGLE_CLOCK_VERSION;
   if (state.status === ATTEMPT_DEAD) {
     const deathTicks = state.deathTicks + 1;
-    // Avec un point de passage, l'essai continue : le chrono tourne pendant l'attente.
-    const time = state.checkpoint >= 0 ? state.time + 1 : state.time;
+    // Avec un point de passage (et toujours en v4, lot 15), l'essai continue : le chrono tourne pendant l'attente.
+    const time = state.checkpoint >= 0 || single ? state.time + 1 : state.time;
     if (deathTicks < RESPAWN_TICKS) return { ...state, deathTicks, time };
-    if (state.checkpoint >= 0) {
-      const back = checkpointAttempt(level, { ...state, time });
+    if (state.checkpoint >= 0 || single) {
+      const back = state.checkpoint >= 0 ? checkpointAttempt(level, { ...state, time }) : respawnAttempt(level, { ...state, time });
       if (jump) back.player = { ...back.player, held: 1 };
       return back;
     }
@@ -348,7 +377,8 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     if (jump) fresh.player = { ...fresh.player, held: 1 };
     return fresh;
   }
-  if (state.status === ATTEMPT_READY) {
+  // v3 : le monde attend la première commande. v4 (lot 15) : le chrono part au premier pas, commandé ou non.
+  if (state.status === ATTEMPT_READY && !single) {
     const dir = input & (INPUT_LEFT | INPUT_RIGHT);
     const command = dir === INPUT_LEFT || dir === INPUT_RIGHT || (jump === 1 && state.player.held === 0);
     if (!command) return state.player.held === jump ? (state as AttemptState) : { ...state, player: { ...state.player, held: jump } };
