@@ -26,7 +26,8 @@ describe("LeaderboardApi", () => {
     const [url, init] = spy.mock.calls[0]!;
     expect(url).toBe("https://api.test/api/submit");
     expect(init!.method).toBe("POST");
-    expect(JSON.parse(init!.body as string)).toEqual({ playerId: "a".repeat(32), name: "Alice", date: "2026-10-06", replay: "REPLAY" });
+    expect(JSON.parse(init!.body as string)).toEqual({ name: "Alice", date: "2026-10-06", replay: "REPLAY" });
+    expect((init!.headers as Record<string, string>)["X-Player-Id"]).toBe("a".repeat(32)); // lot 32 : l'identité dans l'en-tête
   });
 
   it("n'envoie pas de pseudo vide", async () => {
@@ -54,14 +55,19 @@ describe("LeaderboardApi", () => {
     expect(await new LeaderboardApi("https://api.test").rename("a".repeat(32), "Bob")).toMatchObject({ ok: false, status: 502, code: "http_error" });
   });
 
-  it("interroge classement et fantômes avec les bons paramètres", async () => {
+  it("interroge classement et fantômes : l'identifiant dans l'en-tête X-Player-Id, jamais dans l'adresse (lot 32)", async () => {
     const spy = mockFetch(async () => new Response("{}", { status: 200 }));
     const api = new LeaderboardApi("https://api.test");
-    await api.leaderboard("2026-10-06", "b".repeat(32), 5);
-    await api.ghost("2026-10-06", "ahead", "b".repeat(32));
+    const id = "b".repeat(32);
+    await api.leaderboard("2026-10-06", id, 5);
+    await api.ghost("2026-10-06", "ahead", id);
+    await api.submit(id, "Alice", "2026-10-06", "CODE");
     expect(spy.mock.calls.map((c) => c[0])).toEqual([
-      `https://api.test/api/day/2026-10-06/leaderboard?limit=5&player=${"b".repeat(32)}`,
-      `https://api.test/api/day/2026-10-06/ghost?kind=ahead&player=${"b".repeat(32)}`,
+      "https://api.test/api/day/2026-10-06/leaderboard?limit=5",
+      "https://api.test/api/day/2026-10-06/ghost?kind=ahead",
+      "https://api.test/api/submit",
     ]);
+    for (const [, init] of spy.mock.calls) expect((init!.headers as Record<string, string>)["X-Player-Id"]).toBe(id);
+    expect(JSON.parse(spy.mock.calls[2]![1]!.body as string)).toEqual({ name: "Alice", date: "2026-10-06", replay: "CODE" }); // pas d'identifiant dans le corps non plus
   });
 });

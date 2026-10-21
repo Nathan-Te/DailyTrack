@@ -1,11 +1,13 @@
-import { apiCall, type ApiResult } from "./api";
+import { apiCall, asPlayer, type ApiResult } from "./api";
 
 // Contrat de l'API du Salon (lot 26) : ce que le jeu demande, ce que le serveur (lot 27) ou le mode démo (`salonDemo.ts`) répondent.
 //
-//   GET  /api/salon/now?player=<id>                      → SalonNow          (heure du serveur, session en cours, présents)
-//   GET  /api/salon/<session>/board?player=<id>&since=<v> → SalonBoard        (classement de la session ; `unchanged` si la version est la même)
-//   GET  /api/salon/<session>/ghosts?refs=a,b,c           → { ghosts: SalonGhost[] }
-//   POST /api/salon/<session>/submit  { playerId, name, replay } → SalonSubmitResult
+//   GET  /api/salon/now                       → SalonNow          (heure du serveur, session en cours, présents)
+//   GET  /api/salon/<session>/board?since=<v>  → SalonBoard        (classement de la session ; `unchanged` si la version est la même)
+//   GET  /api/salon/<session>/ghosts?refs=a,b,c → { ghosts: SalonGhost[] }
+//   POST /api/salon/<session>/submit  { name, replay } → SalonSubmitResult
+//
+// Lot 32 : le joueur est désigné par l'en-tête `X-Player-Id` (jamais dans l'adresse) ; un spectateur n'en envoie aucun.
 //
 // Un joueur n'est jamais désigné par son identifiant secret mais par une **référence publique** (`ref`) propre à la session : les
 // fantômes se demandent par référence. Comme pour le classement du jour, le serveur ne fait jamais confiance à un temps annoncé :
@@ -85,12 +87,11 @@ export class HttpSalonApi implements SalonApi {
   constructor(private readonly base: string) {}
 
   now(playerId: string | null) {
-    return apiCall<SalonNow>(this.base, "GET", `/api/salon/now${playerId ? `?player=${encodeURIComponent(playerId)}` : ""}`);
+    return apiCall<SalonNow>(this.base, "GET", "/api/salon/now", undefined, undefined, playerId ? asPlayer(playerId) : undefined);
   }
 
   board(session: number, playerId: string | null, since?: number) {
-    const query = [...(playerId ? [`player=${encodeURIComponent(playerId)}`] : []), ...(since !== undefined ? [`since=${since}`] : [])].join("&");
-    return apiCall<SalonBoard>(this.base, "GET", `/api/salon/${session}/board${query ? `?${query}` : ""}`);
+    return apiCall<SalonBoard>(this.base, "GET", `/api/salon/${session}/board${since !== undefined ? `?since=${since}` : ""}`, undefined, undefined, playerId ? asPlayer(playerId) : undefined);
   }
 
   ghosts(session: number, refs: string[]) {
@@ -98,6 +99,6 @@ export class HttpSalonApi implements SalonApi {
   }
 
   submit(session: number, playerId: string, name: string, replay: string) {
-    return apiCall<SalonSubmitResult>(this.base, "POST", `/api/salon/${session}/submit`, { playerId, name, replay });
+    return apiCall<SalonSubmitResult>(this.base, "POST", `/api/salon/${session}/submit`, { name, replay }, undefined, asPlayer(playerId));
   }
 }

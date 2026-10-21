@@ -158,9 +158,9 @@ console.log(`\n=== Circuit du jour : un joueur, ${DAY_PLAYERS} autres déjà cla
     await call("jour : envoi d'un temps (rejeu)", api, "POST", "/api/submit", { playerId: me, name: "Moi", date: formatDay(DAY), replay: dayReplays[1 + k * 2]!.code });
   }
   await call("jour : envoi d'un temps qui n'améliore pas", api, "POST", "/api/submit", { playerId: me, name: "Moi", date: formatDay(DAY), replay: dayReplays[0]!.code });
-  for (let k = 0; k < 4; k++) await call("jour : classement", api, "GET", `/api/day/${formatDay(DAY)}/leaderboard?player=${me}&limit=10`);
+  for (let k = 0; k < 4; k++) await call("jour : classement", api, "GET", `/api/day/${formatDay(DAY)}/leaderboard?limit=10`, undefined, undefined, { "X-Player-Id": me });
   await call("jour : fantôme du premier", api, "GET", `/api/day/${formatDay(DAY)}/ghost?kind=first`);
-  await call("jour : fantôme de devant", api, "GET", `/api/day/${formatDay(DAY)}/ghost?kind=ahead&player=${me}`);
+  await call("jour : fantôme de devant", api, "GET", `/api/day/${formatDay(DAY)}/ghost?kind=ahead`, undefined, undefined, { "X-Player-Id": me });
 }
 
 // --- 1b. Profil synchronisé (lot 30) : `GET /api/me` selon l'historique du joueur ----------------------------------------------------------------------
@@ -212,25 +212,25 @@ for (const players of SALON_PLAYERS) {
     const id = playerId(2000 + i);
     clock.now = start + 30_000 + i * 6_000; // un envoi toutes les 6 s (au plus un par 5 s et par joueur)
     await call(i === 0 ? L("premier envoi (génère le circuit)") : null, api, "POST", `/api/salon/${SESSION}/submit`, { playerId: id, name: `Autre${i}`, replay: r.code }, `198.51.100.${i % 250}`);
-    await call(null, api, "GET", `/api/salon/now?player=${id}`, undefined, `198.51.100.${i % 250}`);
+    await call(null, api, "GET", "/api/salon/now", undefined, `198.51.100.${i % 250}`, { "X-Player-Id": id });
   }
   clock.now = start + 5 * 60_000;
   const me = playerId(1);
-  await call(L("maintenant"), api, "GET", `/api/salon/now?player=${me}`);
-  let board = await call(L("classement (a changé)"), api, "GET", `/api/salon/${SESSION}/board?player=${me}`);
+  await call(L("maintenant"), api, "GET", "/api/salon/now", undefined, undefined, { "X-Player-Id": me });
+  let board = await call(L("classement (a changé)"), api, "GET", `/api/salon/${SESSION}/board`, undefined, undefined, { "X-Player-Id": me });
   for (let k = 0; k < 10; k++) {
     clock.now += 5_000;
-    await call(L("classement (rien de neuf)"), api, "GET", `/api/salon/${SESSION}/board?player=${me}&since=${board.body.version}`);
+    await call(L("classement (rien de neuf)"), api, "GET", `/api/salon/${SESSION}/board?since=${board.body.version}`, undefined, undefined, { "X-Player-Id": me });
   }
-  await call(L("maintenant"), api, "GET", `/api/salon/now?player=${me}`);
+  await call(L("maintenant"), api, "GET", "/api/salon/now", undefined, undefined, { "X-Player-Id": me });
   for (let k = 0; k < 2; k++) {
     clock.now += 6_000;
     await call(L(k === 0 ? "envoi (1er de la session, rejeu)" : "envoi suivant (rejeu)"), api, "POST", `/api/salon/${SESSION}/submit`, { playerId: me, name: "Moi", replay: salonReplays[1 + k * 3]!.code });
   }
-  board = await call(null, api, "GET", `/api/salon/${SESSION}/board?player=${me}`);
+  board = await call(null, api, "GET", `/api/salon/${SESSION}/board`, undefined, undefined, { "X-Player-Id": me });
   const refs: string[] = board.body.rows.slice(0, 5).map((r: { ref: string }) => r.ref);
   await call(L("fantômes (5)"), api, "GET", `/api/salon/${SESSION}/ghosts?refs=${refs.join(",")}`);
-  await call(L("classement (a changé)"), api, "GET", `/api/salon/${SESSION}/board?player=${me}&since=${board.body.version - 1}`);
+  await call(L("classement (a changé)"), api, "GET", `/api/salon/${SESSION}/board?since=${board.body.version - 1}`, undefined, undefined, { "X-Player-Id": me });
   salonBy.set(players, {
     now: mean(L("maintenant")),
     boardSame: mean(L("classement (rien de neuf)")),

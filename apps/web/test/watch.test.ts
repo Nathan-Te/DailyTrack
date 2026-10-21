@@ -159,8 +159,10 @@ describe("la lecture rejoue la rediffusion avec le même code (aucun changement 
 describe("spectateur du Salon : aucune présence, aucune session finie", () => {
   it("sans identifiant de joueur, la requête n'en porte pas (le serveur n'écrit donc aucune présence)", async () => {
     const calls: string[] = [];
-    vi.stubGlobal("fetch", async (url: string) => {
+    const headers: (string | undefined)[] = [];
+    vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
       calls.push(String(url));
+      headers.push((init?.headers as Record<string, string> | undefined)?.["X-Player-Id"]);
       return new Response(JSON.stringify({ ok: 1 }), { status: 200 });
     });
     const api = new HttpSalonApi("http://api.test");
@@ -172,8 +174,9 @@ describe("spectateur du Salon : aucune présence, aucune session finie", () => {
       "http://api.test/api/salon/now",
       "http://api.test/api/salon/42/board",
       "http://api.test/api/salon/42/board?since=7",
-      "http://api.test/api/salon/now?player=abc",
+      "http://api.test/api/salon/now",
     ]);
+    expect(headers).toEqual([undefined, undefined, undefined, "abc"]); // le spectateur n'envoie aucun identifiant, ni en-tête ni adresse
   });
 
   it("le Salon de démonstration oublie une session finie : plus de classement, de fantômes ni de course", async () => {

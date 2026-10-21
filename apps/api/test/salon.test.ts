@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { SIM_VERSION, decodeReplay, encodeReplay, replayRace, salonSessionEnd, salonSessionStart, salonTrackId } from "@cdj/sim";
+import { SIM_VERSION, decodeReplay, encodeReplay, formatDay, replayRace, salonSessionEnd, salonSessionStart, salonTrackId } from "@cdj/sim";
 import { createApi } from "../src/api";
 import { MAX_GHOST_REFS, PRESENCE_MS, PRESENCE_WRITE_MS, SALON_GRACE_MS, SALON_SERVE_MS } from "../src/salon";
-import { NOON, SALON_SESSION, SESSION_MS, makeApi, playerId, salonCircuitOf, salonReplay, seedSalonCircuit, type TestApi } from "./helpers";
+import { DAY, NOON, SALON_SESSION, SESSION_MS, makeApi, pilotReplay, playerId, salonCircuitOf, salonReplay, seedSalonCircuit, type TestApi } from "./helpers";
 
 // Le Salon côté serveur (lot 27) : mêmes exigences que le classement du jour — seul le temps rejoué compte.
 const S = SALON_SESSION;
@@ -573,5 +573,120 @@ describe("circuit de la session suivante, purge et podiums", () => {
     t.clock.now = END + 1; // session suivante : le nettoyage repasse
     await t.call("GET", "/api/salon/now");
     expect((await t.db.first<{ n: number }>("SELECT COUNT(*) AS n FROM salon_runs"))!.n).toBe(0);
+  });
+});
+
+// Lot 32 — l'identifiant secret du joueur voyage dans l'en-tête `X-Player-Id`, jamais dans l'adresse (qui finit dans les journaux de l'hébergeur).
+// Les routes de DailyTrack (classement du jour, fantôme, Salon, envois) lisent l'en-tête d'abord ; l'ancien `?player=` reste lu pendant la
+// transition (onglets restés ouverts), compté sans rien retenir du joueur, jusqu'à la retouche 32b (docs/lots/lot-32-en-tete-joueur.md).
+describe("l'identifiant du joueur dans l'en-tête X-Player-Id (lot 32)", () => {
+  const DATE = formatDay(DAY);
+  const dayFast = pilotReplay(DAY, 0.9);
+  const daySlow = pilotReplay(DAY, 0.65);
+  const TOKEN = "jeton-admin-du-lot-32";
+  const as = (n: number) => ({ headers: { "X-Player-Id": playerId(n) } });
+
+  async function trackApi(options: Parameters<typeof makeApi>[0] = {}): Promise<TestApi> {
+    const t = await makeApi({ adminToken: TOKEN, ...options });
+    await seedSalonCircuit(t.db, S);
+    return t;
+  }
+  const legacy = async (t: TestApi) => (await t.call("GET", "/api/admin/overview", undefined, { headers: { Authorization: `Bearer ${TOKEN}` } })).body.legacyPlayerParam;
+
+  it("l'envoi du jour et celui du Salon lisent l'en-tête, sans identifiant dans le corps", async () => {
+    const t = await trackApi();
+    const day = await t.call("POST", "/api/submit", { name: "Alice", date: DATE, replay: dayFast.code }, as(1));
+    expect(day.status).toBe(200);
+    expect(day.body).toMatchObject({ accepted: true, ms: dayFast.finishMs, rank: 1 });
+    const salon = await t.call("POST", `/api/salon/${S}/submit`, { name: "Alice", replay: fast.code }, as(1));
+    expect(salon.status).toBe(200);
+    expect(salon.body).toMatchObject({ accepted: true, ms: fast.finishMs, rank: 1 });
+    // Le corps d'un ancien jeu (identifiant dans le corps, jamais dans l'adresse) est encore accepté ; l'en-tête, s'il est là, l'emporte.
+    t.clock.now += 6000;
+    const old = await t.call("POST", "/api/submit", { playerId: playerId(2), name: "Bob", date: DATE, replay: daySlow.code }, { clientKey: "203.0.113.2" });
+    expect(old.body).toMatchObject({ accepted: true, rank: 2 });
+    const both = await t.call("POST", "/api/submit", { playerId: playerId(9), name: "Carl", date: DATE, replay: daySlow.code }, { ...as(3), clientKey: "203.0.113.3" });
+    expect(both.body).toMatchObject({ accepted: true });
+    expect(await t.db.all<{ player_id: string }>("SELECT player_id FROM results ORDER BY player_id")).toEqual([{ player_id: playerId(1) }, { player_id: playerId(2) }, { player_id: playerId(3) }]);
+  });
+
+  it("le classement et le fantôme du jour reconnaissent le joueur par l'en-tête", async () => {
+    const t = await trackApi();
+    await t.call("POST", "/api/submit", { name: "Alice", date: DATE, replay: dayFast.code }, as(1));
+    await t.call("POST", "/api/submit", { name: "Bob", date: DATE, replay: daySlow.code }, { ...as(2), clientKey: "203.0.113.2" });
+    const board = await t.call("GET", `/api/day/${DATE}/leaderboard?limit=5`, undefined, as(2));
+    expect(board.body.me).toMatchObject({ rank: 2, name: "Bob", ms: daySlow.finishMs });
+    expect((await t.call("GET", `/api/day/${DATE}/leaderboard?limit=5`)).body.me).toBeNull(); // lecture anonyme : pas de ligne « moi »
+    const ahead = await t.call("GET", `/api/day/${DATE}/ghost?kind=ahead`, undefined, as(2));
+    expect(ahead.body).toMatchObject({ name: "Alice", rank: 1, ms: dayFast.finishMs });
+    expect((await t.call("GET", `/api/day/${DATE}/ghost?kind=first`)).body).toMatchObject({ name: "Alice" }); // « premier » n'a pas besoin du joueur
+    expect((await t.call("GET", `/api/day/${DATE}/ghost?kind=ahead`)).status).toBe(400); // « devant moi » sans joueur : invalid_player
+    expect((await t.call("GET", `/api/day/${DATE}/ghost?kind=ahead`)).body.error).toBe("invalid_player");
+  });
+
+  it("le Salon compte la présence et rend « ma ligne » d'après l'en-tête", async () => {
+    const t = await trackApi();
+    expect((await t.call("GET", "/api/salon/now", undefined, as(1))).body.players).toBe(1);
+    await t.call("GET", `/api/salon/${S}/board`, undefined, as(2)); // le classement compte aussi comme une visite
+    expect((await t.call("GET", "/api/salon/now")).body.players).toBe(2); // sans en-tête : un spectateur, personne de plus
+    await t.call("POST", `/api/salon/${S}/submit`, { name: "Alice", replay: fast.code }, as(1));
+    const mine = (await t.call("GET", `/api/salon/${S}/board`, undefined, as(1))).body;
+    expect(mine.me).toMatchObject({ name: "Alice", ms: fast.finishMs });
+    expect(mine.rows[0].mine).toBe(true);
+    expect((await t.call("GET", `/api/salon/${S}/board`)).body.me).toBeNull();
+  });
+
+  it("un identifiant mal formé dans l'en-tête est refusé (400 invalid_player) sur chaque lecture", async () => {
+    const t = await trackApi();
+    const bad = { headers: { "X-Player-Id": "1' OR '1'='1" } };
+    for (const path of [`/api/day/${DATE}/leaderboard`, `/api/day/${DATE}/ghost?kind=ahead`, "/api/salon/now", `/api/salon/${S}/board`]) {
+      const r = await t.call("GET", path, undefined, bad);
+      expect([path, r.status, r.body.error]).toEqual([path, 400, "invalid_player"]);
+    }
+  });
+
+  it("transition : l'ancien ?player= est encore lu, compté route par route, et l'en-tête l'emporte", async () => {
+    const t = await trackApi();
+    await t.call("POST", "/api/submit", { name: "Alice", date: DATE, replay: dayFast.code }, as(1));
+    expect(await legacy(t)).toMatchObject({ total: 0, byRoute: {} });
+    // Ancien jeu : l'identifiant dans l'adresse.
+    expect((await t.call("GET", `/api/day/${DATE}/leaderboard?player=${playerId(1)}`)).body.me).toMatchObject({ rank: 1, name: "Alice" });
+    expect((await t.call("GET", `/api/day/${DATE}/ghost?kind=ahead&player=${playerId(2)}`)).body.error).toBe("no_ghost");
+    expect((await t.call("GET", `/api/salon/now?player=${playerId(1)}`)).body.players).toBe(1);
+    await t.call("GET", `/api/salon/${S}/board?player=${playerId(1)}`);
+    expect(await legacy(t)).toMatchObject({ total: 4, byRoute: { leaderboard: 1, ghost: 1, "salon/now": 1, "salon/board": 1 } });
+    // Nouveau jeu : l'en-tête ne passe jamais par le compteur ; s'il y est avec un ancien paramètre, c'est lui qui désigne le joueur.
+    await t.call("GET", `/api/day/${DATE}/leaderboard`, undefined, as(1));
+    const both = await t.call("GET", `/api/day/${DATE}/leaderboard?player=${playerId(7)}`, undefined, as(1));
+    expect(both.body.me).toMatchObject({ name: "Alice" });
+    expect((await legacy(t)).total).toBe(4); // ni l'appel à l'en-tête seul, ni celui qui porte les deux (l'en-tête est lu d'abord) ne comptent
+    // Un paramètre mal formé reste refusé comme avant.
+    expect((await t.call("GET", `/api/day/${DATE}/leaderboard?player=zz`)).body.error).toBe("invalid_player");
+  });
+
+  it("aucun identifiant dans les journaux, ni en-tête, ni ancien paramètre, ni refus", async () => {
+    const lines: string[] = [];
+    const t = await trackApi({ log: (severity, message, fields) => void lines.push(JSON.stringify({ severity, message, ...fields })) });
+    const ids = [1, 2, 3].map(playerId);
+    await t.call("POST", "/api/submit", { name: "Alice", date: DATE, replay: dayFast.code }, as(1));
+    await t.call("GET", `/api/day/${DATE}/leaderboard`, undefined, as(1));
+    await t.call("GET", `/api/day/${DATE}/ghost?kind=ahead`, undefined, as(1));
+    await t.call("GET", "/api/salon/now", undefined, as(2));
+    await t.call("GET", `/api/salon/${S}/board`, undefined, as(2));
+    await t.call("POST", `/api/salon/${S}/submit`, { name: "Alice", replay: fast.code }, as(1));
+    // L'ancien paramètre (une ligne de journal : la route et le total) et les refus (identifiant mal formé, trop de requêtes).
+    await t.call("GET", `/api/day/${DATE}/leaderboard?player=${playerId(3)}`);
+    await t.call("GET", `/api/salon/${S}/board?player=${playerId(3)}`);
+    await t.call("GET", "/api/salon/now", undefined, { headers: { "X-Player-Id": "pas-un-identifiant" } });
+    for (let i = 0; i < 400; i++) if ((await t.call("GET", "/api/salon/now", undefined, { ...as(2), clientKey: "198.51.100.9" })).status === 429) break;
+    const journal = lines.join("\n");
+    for (const id of ids) expect(journal).not.toContain(id);
+    expect(journal).not.toContain("pas-un-identifiant");
+    const transition = lines.filter((l) => l.includes("?player="));
+    expect(transition).toHaveLength(1); // une ligne par intervalle, pas une par requête
+    expect(JSON.parse(transition[0]!)).toMatchObject({ severity: "INFO", route: "leaderboard", total: 1 });
+    t.clock.now += 5 * 60_000; // l'intervalle passé, une nouvelle ligne rend le total à jour
+    await t.call("GET", `/api/day/${DATE}/leaderboard?player=${playerId(3)}`);
+    expect(lines.filter((l) => l.includes("?player=")).map((l) => JSON.parse(l).total)).toEqual([1, 3]);
   });
 });

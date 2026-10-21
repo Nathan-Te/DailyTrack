@@ -59,6 +59,9 @@ export function apiBase(search = location.search, env = import.meta.env.VITE_API
   return base ? base.replace(/\/+$/, "") : null;
 }
 
+/** Lot 32 : l'en-tête qui désigne le joueur (une seule définition pour le classement, les fantômes et le Salon). */
+export const asPlayer = (playerId: string): Record<string, string> => ({ "X-Player-Id": playerId });
+
 /** Appel brut à l'API (planning, admin) : même gestion des erreurs et du délai que les routes du classement. */
 export const apiCall = call;
 
@@ -81,15 +84,16 @@ export const DEMO_BASE = "demo";
 
 /** L'API réelle : classement et fantômes de DailyTrack ; profil, pseudo et code viennent du client de la plateforme (`ProfileClient`). */
 export class LeaderboardApi extends ProfileClient implements LeaderboardSource {
+  // Lot 32 : l'identifiant secret du joueur voyage dans l'en-tête `X-Player-Id`, jamais dans l'adresse (qui finit dans les journaux de l'hébergeur).
   submit(playerId: string, name: string | null, date: string, replay: string) {
-    return call<SubmitResult>(this.base, "POST", "/api/submit", { playerId, ...(name ? { name } : {}), date, replay });
+    return this.call<SubmitResult>("POST", "/api/submit", { ...(name ? { name } : {}), date, replay }, asPlayer(playerId));
   }
 
   leaderboard(date: string, playerId: string, limit = 10) {
-    return call<Leaderboard>(this.base, "GET", `/api/day/${date}/leaderboard?limit=${limit}&player=${playerId}`);
+    return this.call<Leaderboard>("GET", `/api/day/${date}/leaderboard?limit=${limit}`, undefined, asPlayer(playerId));
   }
 
   ghost(date: string, kind: "first" | "ahead", playerId: string) {
-    return call<GhostData>(this.base, "GET", `/api/day/${date}/ghost?kind=${kind}&player=${playerId}`);
+    return this.call<GhostData>("GET", `/api/day/${date}/ghost?kind=${kind}`, undefined, asPlayer(playerId));
   }
 }
