@@ -12,10 +12,10 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 22 812 | 7 908 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 284 100 | 283 365 | 283 440 | 660 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 274 000 | 272 142 | 272 185 | 1 815 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 141 000 | 139 376 | 139 419 | 1 581 | `apps/web/e2e/perf.spec.ts` |
-| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 245 | 755 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement | 284 100 | 283 365 | 283 832 | 268 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement | 274 000 | 272 142 | 272 577 | 1 423 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js | 141 000 | 139 376 | 139 811 | 1 189 | `apps/web/e2e/perf.spec.ts` |
+| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 224 | 776 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 000 | 25 385 | 25 385 | 615 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 27 372 | 2 628 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
@@ -35,8 +35,12 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 - **Track : −40 o** (283 480 → 283 440 o, marge 620 → 660 o ; JS 272 225 → 272 185 o, hors three.js 139 459 → 139 419 o ; catalogue anglais, fils de travail et polices inchangés). Les adresses n'ont plus `&player=…` ni `encodeURIComponent`, l'identifiant n'est plus dans le corps d'un envoi ; l'en-tête s'écrit par une seule fonction (`asPlayer`) et l'appel de `LeaderboardApi` passe par `ProfileClient.call`. Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `2bd5b93`) et après.
 
+## Lot 33 (Track) : partage qui se copie, classement final du Salon
+
+- **Track : +392 o** (283 440 → 283 832 o, marge 660 → 268 o ; JS 272 185 → 272 577 o, hors three.js 139 419 → 139 811 o ; catalogue anglais 7 245 → 7 224 o). Le lot ajoute le champ de repli de « Copier » et la séparation classement final / circuit suivant, et compense en partie en retirant l'ancienne copie par `execCommand`, 7 clés de catalogue (dont l'ancien « Partager mon temps ») et la reconstruction du podium à chaque seconde (le décompte seul est mis à jour). Fils de travail et polices inchangés. Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `eb6647d`) et après.
+
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, JS + CSS : 660 o** (lot 32). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
+1. **Track, JS + CSS : 268 o** (lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
 2. **Track, fil des miniatures : 615 o** (inchangé depuis le lot 21).
 3. **Track, catalogue anglais : 755 o** (il porte maintenant l'anglais commun).

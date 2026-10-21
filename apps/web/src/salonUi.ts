@@ -3,6 +3,7 @@ import { creerCadre, type Cadre } from "./cadre";
 import type { BoardLine } from "./boardView";
 import { boardErrorEl, linesEls, watchLinkEl } from "./boardView";
 import type { BoardPanel } from "./boardPanel";
+import { canNativeShare, copyShare, nativeShare } from "./clipboard";
 import { button, el, flashLabel } from "./dom";
 import { fRang, fTemps, langueCourante, onLangue, t } from "./i18n";
 import { disambiguateNames } from "./profile";
@@ -107,19 +108,19 @@ export interface PodiumView {
   mine: { ms: number; rank: number; participants: number } | null;
   shareLine: string | null;
   secondsLeft: number;
-  /** Copie la ligne à partager ; rend vrai si elle est copiée. */
-  onCopy?: () => Promise<boolean>;
+  /** Le lien du Salon, ajouté à la ligne à partager (« Copier », « Partager »). */
+  shareUrl: string;
 }
 
 const PASTILLES = ["or", "argent", "bronze"] as const;
-const podiums = new WeakMap<HTMLElement, { cadre: Cadre; view: PodiumView | null }>();
+const podiums = new WeakMap<HTMLElement, { cadre: Cadre; view: PodiumView | null; sig: string }>();
 
 /** Le cadre du podium (créé une fois) : la barre des jeux et l'étiquette Track. Le podium se ferme tout seul : le retour mène au portail. */
-function podiumCadre(box: HTMLElement): { cadre: Cadre; view: PodiumView | null } {
+function podiumCadre(box: HTMLElement) {
   let p = podiums.get(box);
   if (!p) {
     const cadre = creerCadre({ racine: box, titreAria: "podium.aria", retour: "portail", haut: true }); // par-dessus l'arrivée de la session (lot I4b : un seul voile)
-    p = { cadre, view: null };
+    p = { cadre, view: null, sig: "" };
     podiums.set(box, p);
     onLangue(() => {
       const cur = podiums.get(box);
@@ -134,6 +135,16 @@ export function renderPodium(box: HTMLElement, v: PodiumView): void {
   const p = podiumCadre(box);
   p.view = v;
   const corps = p.cadre.corps;
+  // Le décompte change chaque seconde, le reste rarement : on ne refait pas le DOM pour lui (le champ de repli de « Copier », sa sélection et
+  // le « Copié » d'un bouton survivent).
+  const sig = JSON.stringify([langueCourante(), v.label, v.board, v.mine, v.shareLine, v.shareUrl]);
+  const compte = countdownText(Math.max(0, Math.ceil(v.secondsLeft)) * 1000);
+  if (sig === p.sig) {
+    const valeur = corps.querySelector(".dj-afficheur__valeur");
+    if (valeur) valeur.textContent = compte;
+    return;
+  }
+  p.sig = sig;
   const tete = el("div", "etiquette__tete");
   tete.append(el("h1", "etiquette__titre", t("salon.titre")), el("p", "etiquette__sous-titre", t("podium.titre", { heure: v.label })));
   const top = v.board ? podiumRows(v.board) : [];
@@ -151,17 +162,14 @@ export function renderPodium(box: HTMLElement, v: PodiumView): void {
   children.push(el("p", "mine", v.mine ? t("podium.maPlace", { rang: fRang(v.mine.rank), total: v.mine.participants, temps: fTemps(v.mine.ms) }) : t("podium.sansTemps")));
   if (v.shareLine) {
     children.push(el("p", "share chiffres", v.shareLine));
-    if (v.onCopy) {
-      const copy = v.onCopy;
-      children.push(
-        button(t("podium.copier"), "", async (b) => {
-          flashLabel(b, t((await copy()) ? "podium.copie" : "podium.copieEchec"));
-        }),
-      );
-    }
+    const line = v.shareLine;
+    const actions = el("div", "actions--duo");
+    actions.append(button(t("partage.copier"), "", (b) => copyShare(b, line, v.shareUrl, actions)));
+    if (canNativeShare()) actions.append(button(t("partage.partager"), "", async () => void (await nativeShare({ text: line, url: v.shareUrl }))));
+    children.push(actions);
   }
   const next = el("div", "next");
-  next.append(afficheur({ legende: t("podium.suivant"), valeur: countdownText(Math.max(0, Math.ceil(v.secondsLeft)) * 1000) }));
+  next.append(afficheur({ legende: t("podium.suivant"), valeur: compte }));
   children.push(next);
   corps.replaceChildren(...children);
 }

@@ -55,7 +55,6 @@ export const fr = {
   "salon.arrivee.chargerCode": "Charger un code",
   "salon.arrivee.rejouer": "Rejouer",
   "salon.arrivee.revoir": "Revoir le meilleur tour",
-  "salon.arrivee.partager": "Partager",
   "salon.arrivee.accueil": "Accueil de Track",
   "salon.arrivee.aide": "Entrée : rejouer · Tab : classement",
   "salon.arrivee.terminee": "Session terminée",
@@ -66,9 +65,6 @@ export const fr = {
   "podium.indisponible": "Classement indisponible.",
   "podium.maPlace": "Ta place : {rang} sur {total} · {temps}",
   "podium.sansTemps": "Tu n'as pas de temps dans cette session.",
-  "podium.copier": "Copier le résultat",
-  "podium.copie": "Copié",
-  "podium.copieEchec": "Copie impossible",
   "podium.suivant": "Circuit suivant dans",
   "podium.aria": "Résultats du Salon",
   // Revoir le meilleur tour

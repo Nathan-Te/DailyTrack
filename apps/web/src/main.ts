@@ -32,7 +32,7 @@ import { howtoSeen, markHowtoSeen } from "./howto";
 import { mountBoardPanel } from "./boardPanel";
 import { boardErrorEl, boardTitle, dayLines, linesEls, watchLinkEl } from "./boardView";
 import { loadRanks, rememberRank } from "./profile";
-import { button, el as makeEl, flashLabel } from "./dom";
+import { button, el as makeEl } from "./dom";
 import { NeutralToneMapping, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three";
 import {
   AXLE_FRONT,
@@ -102,7 +102,7 @@ import { NO_PLAN, fetchDayPlan, fetchPlanning, loadDemoPlan, type PlanEntry } fr
 import { buildFlatArena } from "./arena";
 import { createThumbnailService, type ThumbJob } from "./thumbnails";
 import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
-import { canNativeShare, copyText, nativeShare } from "./clipboard";
+import { canNativeShare, copyShare, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
@@ -1371,15 +1371,6 @@ function renderSplits() {
   hudSplits.setAttribute("aria-label", ref === undefined ? t("course.pc.sansReference", { n, total }) : t("course.pc.aria", { n, total, ecart: fEcart(ms - ref) }));
 }
 
-/** Partager : la feuille de partage du téléphone si elle existe, sinon la ligne est copiée (« Copié ✓ »). */
-async function shareOut(b: HTMLButtonElement, line: string, url: string) {
-  if (canNativeShare()) {
-    if (await nativeShare({ text: line, url })) return;
-    return; // annulé par le joueur : rien d'autre à faire
-  }
-  flashLabel(b, (await copyText(`${line}\n${url}`)) ? t("lignePartage.copie") : t("lignePartage.copieImpossible"));
-}
-
 /** Salon (lot 26) : l'arrivée d'une course de session. Ni record local, ni classement du jour : seulement la session. */
 function finishSalonRun() {
   if (!race || !track || !session || !salon) return;
@@ -1409,7 +1400,8 @@ function finishSalonRun() {
     openLoadCode,
     onReplay: () => startAttempt(),
     onWatch: () => location.assign(watchHref(location.search)),
-    onShare: (b) => shareOut(b, sal.shareLine() ?? salonLine(sal.label, ms), `${location.origin}${location.pathname}?mode=salon`),
+    lineNow: () => sal.shareLine() ?? salonLine(sal.label, ms),
+    shareUrl: `${location.origin}${location.pathname}?mode=salon`,
     onHome: () => goHome(),
   });
   document.body.classList.add("finished");
@@ -1459,17 +1451,13 @@ function finishRun() {
   shareEl = daily ? zones.partage : null;
   updateShareLine();
   if (!(shareEl && best)) zones.partage.hidden = true;
-  // Les actions : Recourir (livrée), Revoir le tour, Partager mon temps, Accueil de Track (les archives sont à l'accueil et dans la pause).
+  // Les actions : Recourir (livrée), Revoir le tour, Partager / Copier, Accueil de Track (les archives sont à l'accueil et dans la pause).
   actionArrivee(zones, { texte: t("arrivee.recourir"), principal: true, classe: "restart", onClick: () => startAttempt() });
   actionArrivee(zones, { texte: t("arrivee.revoir"), ariaLabel: t("arrivee.revoir.aria"), id: "finish-watch", onClick: () => location.assign(watchHref(location.search)) });
   if (daily) {
-    actionArrivee(zones, {
-      texte: t("arrivee.partager"),
-      onClick: async (b) => {
-        const share = currentShare();
-        if (share) await shareOut(b, shareLine(share), shareLink());
-      },
-    });
+    // Lot 33 : « Copier » (le message et le lien) partout ; la feuille de partage du système seulement sur téléphone.
+    if (canNativeShare()) actionArrivee(zones, { texte: t("partage.partager"), onClick: async () => void (currentShare() && (await nativeShare({ text: shareLine(currentShare()!), url: shareLink() }))) });
+    actionArrivee(zones, { texte: t("partage.copier"), id: "finish-copy", onClick: async (b) => void (currentShare() && (await copyShare(b, shareLine(currentShare()!), shareLink()))) });
   }
   actionArrivee(zones, { texte: t("arrivee.accueil"), onClick: () => goHome() });
   zones.indice.textContent = t("arrivee.indice");

@@ -1,4 +1,4 @@
-import { expect, test, type Page, TODAY } from "./fixtures";
+import { expect, newClockedContext, test, type Page, TODAY } from "./fixtures";
 import { GENERATOR_VERSION, SIM_VERSION, dailyCircuit, encodeReplay, medalFor, runPilot } from "@cdj/sim";
 import { shareLine } from "../src/share";
 import { setLangue } from "../src/i18n";
@@ -23,17 +23,52 @@ async function finishRace(page: Page, url = "/?debug&timescale=6") {
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
 }
 
-test("l'écran d'arrivée donne la ligne à partager, et le bouton la copie avec l'adresse du jeu", async ({ page, context, baseURL }) => {
+test("l'écran d'arrivée donne la ligne à partager, et « Copier » met le message complet (ligne, puis le lien du jeu) dans le presse-papiers", async ({ page, context, baseURL }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await finishRace(page);
   const expected = shareLine({ number: circuit.number, date: circuit.date, ms: run.finishMs, medal });
   await expect(page.locator("#finish .share")).toHaveText(expected);
   expect(expected).toMatch(/^Du Jour · Track #\d+ — \d+,\d{3}\ss( — .+)?$/);
 
-  await page.getByRole("button", { name: "Partager mon temps" }).click();
+  await expect(page.getByRole("button", { name: "Partager", exact: true })).toHaveCount(0); // lot 33 : la feuille du système n'est proposée que sur téléphone
+  await page.getByRole("button", { name: "Copier", exact: true }).click();
   await expect(page.getByRole("button", { name: "Copié" })).toBeVisible();
   const pasted = await page.evaluate(() => navigator.clipboard.readText());
   expect(pasted).toBe(`${expected}\n${baseURL}/`);
+  await expect(page.locator(".partage__champ")).toHaveCount(0);
+});
+
+test("copie refusée : le message s'affiche dans un champ déjà sélectionné, prêt pour Ctrl+C", async ({ page, baseURL }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(Navigator.prototype, "clipboard", { get: () => ({ writeText: () => Promise.reject(new DOMException("refusé", "NotAllowedError")) }) });
+  });
+  await finishRace(page);
+  const expected = shareLine({ number: circuit.number, date: circuit.date, ms: run.finishMs, medal });
+  await page.getByRole("button", { name: "Copier", exact: true }).click();
+  const champ = page.locator("#finish .partage__champ");
+  await expect(champ).toBeVisible();
+  await expect(champ).toHaveValue(`${expected}\n${baseURL}/`);
+  const selection = await champ.evaluate((e: HTMLTextAreaElement) => ({ focus: document.activeElement === e, from: e.selectionStart, to: e.selectionEnd, length: e.value.length }));
+  expect(selection).toEqual({ focus: true, from: 0, to: selection.length, length: selection.length });
+  await expect(page.getByRole("button", { name: "Copié" })).toHaveCount(0);
+});
+
+test("sur téléphone la feuille de partage du système est proposée, avec « Copier » à côté", async ({ browser, baseURL }) => {
+  const context = await newClockedContext(browser, { hasTouch: true, isMobile: true, viewport: { width: 844, height: 390 }, deviceScaleFactor: 1, locale: "fr-FR" });
+  try {
+    await context.addInitScript(() => {
+      (window as unknown as { __partage: unknown[] }).__partage = [];
+      navigator.share = async (d) => void (window as unknown as { __partage: unknown[] }).__partage.push(d);
+    });
+    const page = await context.newPage();
+    await finishRace(page, "/?debug&timescale=4");
+    await page.getByRole("button", { name: "Partager", exact: true }).click();
+    const expected = shareLine({ number: circuit.number, date: circuit.date, ms: run.finishMs, medal });
+    expect(await page.evaluate(() => (window as unknown as { __partage: unknown[] }).__partage)).toEqual([{ text: expected, url: `${baseURL}/` }]);
+    await expect(page.getByRole("button", { name: "Copier", exact: true })).toBeVisible();
+  } finally {
+    await context.close();
+  }
 });
 
 test("le bouton « Rejouer » relance un décompte (utile sans clavier)", async ({ page }) => {
