@@ -13,8 +13,12 @@ export const PREPARE_MS = 120_000;
 export const SUBMIT_GRACE_MS = 3_000;
 /** Le serveur sert encore le classement d'une session finie 20 s (le podium) avant de l'oublier. */
 export const SERVE_GRACE_MS = 20_000;
-/** Durée du podium, affiché par-dessus le circuit suivant. */
-export const PODIUM_MS = 10_000;
+/**
+ * Durée du classement final (lot 33), constante unique : à l'heure de fin la course s'arrête, le classement (podium, ta place, ta ligne à
+ * partager) s'affiche seul **sur l'ancien circuit** pendant ce temps, puis le circuit suivant s'installe pour tous au même instant (horloge
+ * du serveur). Les sessions restent calées sur l'horloge : la suivante perd donc autant de course. Même durée en démo et avec `?salonMinutes`.
+ */
+export const PODIUM_MS = 8_000;
 export const BOARD_POLL_MS = 5000;
 /** Classement rafraîchi plus souvent pendant la finale, pour voir les derniers changements. */
 export const FINALE_POLL_MS = 2000;

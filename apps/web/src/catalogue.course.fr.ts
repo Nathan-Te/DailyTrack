@@ -110,7 +110,6 @@ export const fr = {
   "arrivee.recourir": "Recourir",
   "arrivee.revoir": "Revoir le tour",
   "arrivee.revoir.aria": "Revoir le tour : le meilleur du jour",
-  "arrivee.partager": "Partager mon temps",
   "arrivee.accueil": "Accueil de Track",
   "arrivee.indice": "Entrée : rejouer · P : pause",
   "arrivee.legendeSuite": "Il te reste aujourd'hui",
@@ -132,7 +131,9 @@ export const fr = {
   // --- Ligne à partager (les émojis y sont voulus : c'est un texte à coller) ---
   "lignePartage.titre": "Du Jour · Track #{numero}",
   "lignePartage.titreSansNumero": "Du Jour · Track {date}",
-  "lignePartage.copie": "Copié",
-  "lignePartage.copieImpossible": "Copie impossible",
+  "partage.copier": "Copier",
+  "partage.copie": "Copié",
+  "partage.partager": "Partager",
+  "partage.champ": "Copie impossible ici : copie ce message (Ctrl+C)",
   "miniature.alt": "Vue aérienne du circuit du {date}",
 } as const;

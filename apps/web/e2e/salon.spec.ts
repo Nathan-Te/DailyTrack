@@ -12,6 +12,8 @@ test.setTimeout(240_000);
 // Pas 2 minutes (retouche 31b) : le circuit suivant se prépare dans les 2 dernières minutes d'une session (`PREPARE_MS`) — dès la première
 // seconde d'une session de 2 minutes, donc. Sa scène se construisait alors sur le fil principal juste quand on repart après le podium (tâche
 // longue de 725 à 754 ms en CI, profil à l'appui), ce qui n'arrive jamais avec les vraies sessions de 10 minutes (préparation à la 8e minute).
+// Durée du classement final (lot 33) : `PODIUM_MS` de `src/salon.ts` (non importée : le projet TypeScript des e2e ne contient pas `src/`).
+const PODIUM_MS = 8_000;
 const LONG = 10 * 60_000;
 const SHORT = 3 * 60_000;
 const T0 = 1791549980000;
@@ -146,7 +148,7 @@ test("finale (lot 31) : à fin − 15 s plus aucun départ, grand compte à rebo
   await page.keyboard.up("ArrowUp");
 });
 
-test("fin de session : podium (trois premiers), puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", async ({ page }) => {
+test("fin de session : podium (trois premiers) sur l'ancien circuit, puis un autre circuit s'installe tout seul, sans gel ni calcul sur le fil principal", async ({ page }) => {
   await page.addInitScript(() => {
     // Plus longue tâche du fil principal (outil de mesure : `PerformanceObserver` « longtask »).
     (window as unknown as { __long: { at: number; ms: number }[] }).__long = [];
@@ -187,9 +189,10 @@ test("fin de session : podium (trois premiers), puis un autre circuit s'installe
   await expect(page.locator("#podium .place")).toHaveCount(3);
   await expect(page.locator("#podium .place .who").first()).toContainText("Démo ");
   await expect(page.locator("#podium")).toContainText("Circuit suivant dans");
-  // Le circuit suivant est déjà là, derrière le podium (lot 31) : un autre identifiant, un autre thème, la page n'a pas été rechargée.
-  const behind = await page.evaluate(() => ({ id: window.__cdj.salon!.trackId, state: window.__cdj.salon!.state }));
-  expect(behind.id).not.toBe(before.id);
+  // Lot 33 : pendant le classement final le circuit ne change pas (même identifiant, même session) ; le suivant s'installe ensuite.
+  const behind = await page.evaluate(() => ({ id: window.__cdj.salon!.trackId, state: window.__cdj.salon!.state, session: window.__cdj.salon!.session }));
+  expect(behind.id).toBe(before.id);
+  expect(behind.session).toBe(SESSION2);
   expect(behind.state).toBe("podium");
   await page.waitForFunction((id) => window.__cdj.salon!.trackId !== id && window.__cdj.salon!.state === "playing", before.id, { timeout: 30_000 });
   const after = await page.evaluate(() => ({ ...window.__cdj.salon!, board: null, long: (window as unknown as { __long: { at: number; ms: number }[] }).__long }));
@@ -246,9 +249,16 @@ test("une course commencée avant la fin et finie avant l'heure pile est accept�
   await page.evaluate((ms) => window.__cdj.salon!.setNow(ms), END - 300);
   await expect(page.locator("#podium")).toBeVisible({ timeout: 15_000 });
   await expect(page.locator("#podium .mine")).toContainText("Ta place");
+  // Lot 33 : « Copier » met la ligne du Salon et le lien du Salon dans le presse-papiers.
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.locator("#podium").getByRole("button", { name: "Copier" }).click();
+  await expect(page.locator("#podium").getByRole("button", { name: "Copié" })).toBeVisible();
+  const [ligne, lien] = (await page.evaluate(() => navigator.clipboard.readText())).split("\n");
+  expect(ligne).toMatch(/^Salon \d\d:\d\d — \d+,\d{3}\ss — \d+(er|e)\/\d+$/);
+  expect(lien).toBe(`${new URL(page.url()).origin}/?mode=salon`);
 });
 
-test("une course non finie à l'heure pile est coupée pour tous et ne compte pas ; le circuit suivant est déjà installé sous le podium", async ({ page }) => {
+test("une course non finie à l'heure pile est coupée pour tous et ne compte pas ; le circuit suivant s'installe après le classement final", async ({ page }) => {
   await named(page);
   await page.goto(salonUrl1(START1 + 20_000, "&timescale=4"));
   await loaded(page);
@@ -259,16 +269,20 @@ test("une course non finie à l'heure pile est coupée pour tous et ne compte pa
   await page.waitForFunction(() => window.__cdj.salon!.startLocked, undefined, { timeout: 15_000 }); // finale : plus de départ (tant que l'heure pile n'est pas passée)
   await expect(page.locator("#podium")).toBeVisible({ timeout: 15_000 });
   const s = await page.evaluate(() => ({ ...window.__cdj.salon!, board: null }));
-  expect(s.session).toBe(SESSION1 + 1);
-  expect(s.trackId).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
+  expect(s.session).toBe(SESSION1); // lot 33 : sous le classement final, toujours l'ancien circuit
+  expect(s.trackId).toBe(circuit1.id);
   expect(s.stats.submits).toBe(0); // rien n'a été envoyé : la course coupée ne compte pas
-  expect(s.best).toBeNull();
   await expect(page.locator("#podium .mine")).toContainText("pas de temps");
   expect(await page.evaluate(() => window.__cdj.salon!.startLocked)).toBe(false); // la finale est finie : on pourra repartir à la fermeture du podium
+  await page.waitForFunction((id) => window.__cdj.salon!.state === "playing" && window.__cdj.salon!.trackId !== id, circuit1.id, { timeout: 30_000 });
+  const apres = await page.evaluate(() => ({ session: window.__cdj.salon!.session, trackId: window.__cdj.salon!.trackId, best: window.__cdj.salon!.best }));
+  expect(apres.session).toBe(SESSION1 + 1);
+  expect(apres.trackId).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
+  expect(apres.best).toBeNull();
   expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("cdj:best:")))).toEqual([]);
 });
 
-test("le circuit change au même instant pour deux navigateurs (à l'heure pile du serveur, pas à la fin de leur course)", async ({ browser }) => {
+test("le classement final reste 8 s sur l'ancien circuit, puis le circuit change au même instant pour deux navigateurs (heure du serveur, pas la fin de leur course)", async ({ browser }) => {
   const contexts = await Promise.all([browser.newContext(), browser.newContext()]);
   try {
     const pages = await Promise.all(contexts.map((c) => c.newPage()));
@@ -286,11 +300,12 @@ test("le circuit change au même instant pour deux navigateurs (à l'heure pile 
     // à chaque image. 8 s et non 2 (retouche 31b) : en rendu logiciel sur 2 cœurs, une page du Salon seule dessine une image toutes les 0,5 à
     // 0,75 s, deux pages côte à côte toutes les 1,3 s environ (mesuré) — 2 s ne donnaient que 2 à 5 images, pas de quoi mesurer un écart.
     await Promise.all(pages.map((p) => p.evaluate((end) => {
-      const w = window as unknown as { __samples: [number, number][] };
+      const w = window as unknown as { __samples: [number, number, string, boolean][] };
       w.__samples = [];
-      window.__cdj.salon!.setNow(end - 8000);
+      window.__cdj.salon!.setNow(end - 3000);
       const sample = () => {
-        w.__samples.push([window.__cdj.salon!.now, window.__cdj.salon!.session]);
+        const s = window.__cdj.salon!;
+        w.__samples.push([s.now, s.session, s.trackId, s.podiumVisible]);
         if (w.__samples.length < 4000) requestAnimationFrame(sample);
       };
       requestAnimationFrame(sample);
@@ -298,19 +313,30 @@ test("le circuit change au même instant pour deux navigateurs (à l'heure pile 
     // Lot R3 : on attend dans la page la bascule ET plus de 5 images notées (avant : la bascule seule, puis « plus de 5 » compté à la lecture,
     // côté Node — 4 ou 5 images certains runs, 7 occurrences en CI : deux pages en rendu logiciel, ≈ 1,3 s par image). L'image de plus arrive
     // après la bascule ; elle ne relâche rien : les écarts entre images sont pris seulement jusqu'à la première image basculée.
-    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s && (window as unknown as { __samples: unknown[] }).__samples.length > 5, SESSION1, { timeout: 30_000 })));
+    await Promise.all(pages.map((p) => p.waitForFunction((s) => window.__cdj.salon!.session > s && (window as unknown as { __samples: unknown[] }).__samples.length > 5, SESSION1, { timeout: 45_000 })));
     for (const p of pages) {
-      const samples = await p.evaluate(() => (window as unknown as { __samples: [number, number][] }).__samples);
+      const samples = await p.evaluate(() => (window as unknown as { __samples: [number, number, string, boolean][] }).__samples);
       expect(samples.length).toBeGreaterThan(5);
-      // Jamais avant l'heure pile (sur l'horloge du Salon) ; et pas plus tard qu'une image (en rendu logiciel une image dure 0,3 s ou plus) :
+      const SWITCH = END1 + PODIUM_MS; // la fin de session, puis le classement final : le circuit change à cet instant (horloge du Salon)
+      // Jamais avant (sur l'horloge du Salon) ; et pas plus tard qu'une image (en rendu logiciel une image dure 0,3 s ou plus) :
       // la bascule ne dépend ni d'une course ni d'un podium, seulement de l'heure.
-      for (const [now, session] of samples) if (session > SESSION1) expect(now, "bascule avant l'heure pile").toBeGreaterThanOrEqual(END1 - 50);
+      for (const [now, session] of samples) if (session > SESSION1) expect(now, "bascule avant la fin du classement final").toBeGreaterThanOrEqual(SWITCH - 50);
       const switchedAt = samples.findIndex(([, session]) => session > SESSION1);
       expect(switchedAt, "au moins une image avant la bascule").toBeGreaterThan(0);
       const firstSwitched = samples[switchedAt]!;
       const upToSwitch = samples.slice(0, switchedAt + 1);
       const gaps = upToSwitch.slice(1).map(([t], i) => t - upToSwitch[i]![0]);
-      expect(firstSwitched[0] - END1, "retard de la bascule").toBeLessThan(Math.max(...gaps) + 600);
+      const margin = Math.max(...gaps) + 600;
+      expect(firstSwitched[0] - SWITCH, "retard de la bascule").toBeLessThan(margin);
+      // Entre la fin de session et la bascule : le classement final est affiché et l'identifiant du circuit n'a pas bougé ; il dure ≈ 8 s.
+      const entre = upToSwitch.slice(0, -1).filter(([now]) => now >= END1 + margin);
+      expect(entre.length, "images pendant le classement final").toBeGreaterThan(0);
+      for (const [, , id, podium] of entre) {
+        expect(id, "identifiant du circuit pendant le classement final").toBe(circuit1.id);
+        expect(podium, "classement final visible").toBe(true);
+      }
+      expect(upToSwitch.some(([now, , , podium]) => podium && now >= SWITCH - margin), "le classement final dure jusqu'à la bascule").toBe(true);
+      expect(firstSwitched[2]).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
       expect(await p.evaluate(() => window.__cdj.salon!.trackId)).toBe(`salon-${SESSION1 + 1}-g${circuit1.id.split("-g")[1]}`);
     }
   } finally {
