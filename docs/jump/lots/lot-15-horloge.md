@@ -87,8 +87,10 @@ Aucune n'a été corrigée par un mutateur dans ce lot (proposition : `cheminee-
 5. Durée du « Prêt… » : 1 s (`?debug&tune`, section Caméra).
 
 ## 8. Scénario en 2 clics
-L'aperçu Firebase de la PR n'est pas publié (« Firebase non configuré : voir docs/plateforme/domaine.md », commentaire « Recette » de la PR) ; révision de recette du serveur : `https://b-claude-youthful-nqyd4f---cdj-api-recette-5qi6aa4qqa-ew.a.run.app`. Un jour régénéré (v4, g10), le 25/10/2026 :
-- en local (`npm run dev:jump`) : `http://localhost:5173/?seed=2026-10-25` puis `http://localhost:5173/?seed=2026-10-25&debug` ;
-- sur la recette, une fois fusionnée : `https://recette.playdujour.com/jump/?seed=2026-10-25` et `https://recette.playdujour.com/jump/?seed=2026-10-25&debug`.
+Aperçu de la PR (branché sur la révision de recette `https://b-claude-youthful-nqyd4f---cdj-api-recette-5qi6aa4qqa-ew.a.run.app`), un jour régénéré (v4, g10), le 25/10/2026 :
+- https://playdujour-recette--pr-105-qbrpzjv6.web.app/jump/?seed=2026-10-25
+- https://playdujour-recette--pr-105-qbrpzjv6.web.app/jump/?seed=2026-10-25&debug
+
+En local (`npm run dev:jump`) : `http://localhost:5173/?seed=2026-10-25` et `…&debug`.
 
 À voir : à la fermeture de l'accueil, « Prêt… » pendant 1 s, les scies et les clignotants bougent déjà ; « Partez ! » et le chrono part même sans toucher à rien. Mourir avant le premier fanion : reprise au départ, le chrono continue, les dangers ne se remettent pas à zéro. La pause fige tout. Avec `?debug` : la surimpression « horloge v4 · phase · période · cycle » et `phase p / période` sur les limites des morceaux.
