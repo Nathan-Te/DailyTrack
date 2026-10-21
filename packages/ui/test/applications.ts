@@ -48,6 +48,7 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/web/src/adminLogic.ts": "page d'administration (`/admin/`) : outil interne, en français",
   "apps/web/src/adminPlan.ts": "planning de l'administration (lot 14) : outil interne, en français",
   "apps/web/src/adminPlanning.ts": "planning de l'administration (lot 14) : outil interne, en français",
+  "apps/web/src/adminMedailles.ts": "calibrage des médailles de l'administration (lot 35) : outil interne, en français",
   "apps/web/src/circuitStats.ts": "statistiques de circuit de l'administration (lot 14) : outil interne, en français",
   "apps/web/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
   // Lot I5 : les outils internes de Jump restent en français (lot I5 § 2 : `?debug&tune` tel quel ; seul son habillage suit les jetons, outils.css).

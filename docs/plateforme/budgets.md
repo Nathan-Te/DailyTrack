@@ -12,9 +12,9 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 286 400 | 285 067 | 286 281 | 119 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 275 000 | 273 655 | 274 869 | 131 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 142 300 | 140 889 | 142 103 | 197 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement | 287 400 | 286 281 | 287 214 | 186 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement | 276 000 | 274 869 | 275 802 | 198 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js | 143 300 | 142 103 | 143 036 | 264 | `apps/web/e2e/perf.spec.ts` |
 | `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 297 | 703 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 600 | 25 385 | 26 486 | 114 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 446 | 1 554 | `apps/web/e2e/perf.spec.ts` |
@@ -53,8 +53,13 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 - **Ce qui a été essayé pour tenir** : le code resserré (compteurs de mesure, plafond de lignes droites simplifié : −100 o) ; sortir les circuits de scénario d'essai (`?scenario=…`) du premier chargement : **+100 o au lieu d'un gain** (leurs textes se compressent presque pour rien dans le gros morceau, et le morceau à part a son coût), abandonné. Piste suivante si un lot Track en a besoin : calculer le circuit du jour dans un fil de travail (le générateur et les figures sortiraient du premier chargement : ≈ 11 ko compressés à eux deux, mesurés hors paquet), un chantier à part.
 - Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `96b55a5`) et après.
 
+## Lot 35 (Track) : la page d'admin « Médailles »
+
+- **Track : budgets relevés de 1 000 o, autorisés par Nathan** (21/10/2026) : JS + CSS 286 400 → **287 400 o**, JS 275 000 → **276 000 o**, hors three.js 142 300 → **143 300 o**. La mesure (`perf.spec.ts`, `scripts/budgets.mjs`) compte **tout** le JS de `dist/assets`, donc aussi la page d'admin (`admin-*.js`), que les joueurs ne chargent jamais : la section « Médailles » (outil de calibrage du lot 35) y ajoute **+933 o** (286 281 → 287 214 o ; le jeu lui-même ne change pas d'un octet). Pour tenir : en-têtes, légende et cibles dans le HTML de l'admin (non compté), code resserré (≈ 1,5 ko au premier jet). Piste pour un lot de plateforme : ne plus compter `admin-*.js` dans la mesure du premier chargement.
+- Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `7082e5c`) et après.
+
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, JS + CSS : 119 o** (lot 34, après un relèvement de 1 276 o ; 57 o au lot I7, après un relèvement de 1 024 o ; 256 o au lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
+1. **Track, JS + CSS : 186 o** (lot 35, après un relèvement de 1 000 o pour la page d'admin ; 119 o au lot 34, après un relèvement de 1 276 o ; 57 o au lot I7, après un relèvement de 1 024 o ; 256 o au lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
 2. **Track, fil des miniatures : 114 o** (lot 34, après un relèvement de 600 o ; 615 o du lot 21 au lot I7).
 3. **Track, catalogue anglais : 755 o** (il porte maintenant l'anglais commun).

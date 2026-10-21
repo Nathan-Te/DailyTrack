@@ -187,3 +187,24 @@ test("le jeu : API muette → circuit d'origine, jouable, marqué hors ligne et 
   expect(await page.evaluate(() => window.__cdj.plan)).toMatchObject({ variant: 0, known: false, ranked: false });
   await expect(page.locator("#meta")).toContainText("hors ligne, non classé");
 });
+
+test("admin, section Médailles (lot 35) : refusée en démo ; avec le vrai serveur, un tableau par thème et par jour, en lecture seule", async ({ page, request }) => {
+  await page.goto("/admin/?api=demo");
+  await page.getByRole("button", { name: "Charger les médailles" }).click();
+  await expect(page.locator("#med-state")).toContainText("pas de médailles en démonstration");
+
+  await page.goto(`/admin/?api=${encodeURIComponent(API)}`);
+  await page.evaluate((t) => localStorage.setItem("cdj:admin-token", t), TOKEN);
+  await page.reload();
+  await expect(page.locator("#conn-state")).toContainText("Connecté");
+  const before = await (await request.get(`${API}/api/admin/overview`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json();
+  await page.getByRole("button", { name: "Charger les médailles" }).click();
+  await expect(page.locator("#med-state")).toContainText("jours");
+  await expect(page.locator("#med-themes tr").last()).toContainText("Tous");
+  await expect(page.locator("#med-days tr").first()).toContainText(`${formatDay(REAL_TODAY)} (en cours)`);
+  await expect(page.locator("#med-days tr")).toHaveCount(REAL_TODAY - PREMIER_JOUR + 1);
+  await expect(page.getByRole("button", { name: "Copier l'export (JSON)" })).toBeVisible();
+  // Rien n'a bougé côté serveur (planning, joueurs du jour).
+  const after = await (await request.get(`${API}/api/admin/overview`, { headers: { Authorization: `Bearer ${TOKEN}` } })).json();
+  expect({ plan: after.plan, days: after.days }).toEqual({ plan: before.plan, days: before.days });
+});

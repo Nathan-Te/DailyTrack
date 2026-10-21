@@ -22,3 +22,4 @@ export * from "./fictional";
 export * from "./salon";
 export * from "./traps";
 export * from "./braking";
+export * from "./medalStats";
