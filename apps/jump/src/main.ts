@@ -1289,7 +1289,7 @@ function dispatch(events: readonly GameEvent[]): void {
   for (const e of events) {
     eventLog.push(e);
     const out = feelEvent(e, particles, colors, part < 1 && e.source !== "jeu" ? governedLevels(part) : levels);
-    if (out.shake > 0) shake.start(out.shake);
+    if (out.shake > 0) shake.start(out.shake, out.shakeDuration);
     if (out.vibrate !== null && !watching) vibrator.play(out.vibrate, performance.now());
     // Lot P4 : le carnage de tout le monde allégé (gouverneur) a moins de particules, ou aucune.
     const amount = e.source === "jeu" ? levels.particles : levels.particles * part;

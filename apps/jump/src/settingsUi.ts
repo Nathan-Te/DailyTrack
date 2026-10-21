@@ -78,7 +78,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     shows.push(() => boutons.forEach((b, i) => b.setAttribute("aria-pressed", s[key] === choix[i]!.valeur ? "true" : "false")));
     return groupe;
   };
-  const ouiNon = (key: "vibration" | "shake" | "reducedMotion", cle: string) =>
+  const ouiNon = (key: "vibration" | "reducedMotion", cle: string) =>
     el("div", { classe: "reglages__ligne" }, lier(el("span", { classe: "reglages__nom" }), cle), segment(key, cle, [{ valeur: true, cle: "commun.oui" }, { valeur: false, cle: "commun.non" }]));
 
   const lienFleche = (id: string, cle: string, href: string, classe: string) => el("a", { classe: ["reglages__lien", classe], attrs: { id, href } }, lier(el("span"), cle), icone("chevron", { taille: 16 }));
@@ -95,7 +95,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
       "reglages.sensations",
       ouiNon("vibration", "reglages.vibrations"),
       opts.canVibrate ? null : aide("reglages.vibrations.non"),
-      ouiNon("shake", "reglages.tremblement"),
+      el("div", { classe: "reglages__ligne" }, lier(el("span", { classe: "reglages__nom" }), "reglages.tremblement"), segment("shake", "reglages.tremblement", EFFECTS.map((e) => ({ valeur: e, cle: `reglages.tremblement.${e}` })))),
       ouiNon("reducedMotion", "reglages.mouvement"),
       aide("reglages.mouvement.aide"),
       el("div", { classe: "reglages__ligne" }, lier(el("span", { classe: "reglages__nom" }), "reglages.effets"), segment("effects", "reglages.effets", EFFECTS.map((e) => ({ valeur: e, cle: `reglages.effets.${e}` })))),

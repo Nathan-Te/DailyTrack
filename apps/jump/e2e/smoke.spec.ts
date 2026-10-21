@@ -170,7 +170,7 @@ test("?debug&tune : un curseur par réglage, un réglage modifié marque la part
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
   const sliders = page.locator("#tune input[type=range]");
-  await expect(sliders).toHaveCount(29); // 18 réglages du personnage + 2 du lot 2 (friable, ressort) + 3 de l'essai d'élan (lot 8b) + 3 des surfaces (lot 11 : tapis, glace) + 3 du vent (lot 13)
+  await expect(sliders).toHaveCount(36); // 7 de la caméra (lot 14) + 18 réglages du personnage + 2 du lot 2 (friable, ressort) + 3 de l'essai d'élan (lot 8b) + 3 des surfaces (lot 11 : tapis, glace) + 3 du vent (lot 13)
   await expect(page.locator("#tuned")).toBeEmpty();
   await expect(page.locator("#debug")).toContainText("vitesse");
   const gravity = page.locator('#tune input[data-key="gravity"]');

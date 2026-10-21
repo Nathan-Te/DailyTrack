@@ -1,5 +1,6 @@
 import { Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Vector3, type Object3D } from "three";
 import { BLOCK_STYLE } from "./blocks";
+import { SHAKES } from "./camera";
 import { WIND_STYLE } from "./wind";
 import type { GameEvent } from "./events";
 import type { Palette } from "./palette";
@@ -200,8 +201,9 @@ export const BIG_FALL = 0.85;
 
 /** Ce que les effets demandent à la caméra et au téléphone. */
 export interface FeelOutput {
-  /** Amplitude de secousse à lancer (tuiles), 0 : aucune. */
+  /** Amplitude de secousse à lancer (tuiles), 0 : aucune, et sa durée (s). */
   shake: number;
+  shakeDuration: number;
   /** Motif de vibration (ms), null : aucune. */
   vibrate: number | number[] | null;
 }
@@ -220,7 +222,7 @@ export function vibrationFor(e: GameEvent): number | number[] | null {
  * carnage n'ont pas de particules ici (leurs morts éclatent dans le pool du carnage).
  */
 export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, levels: FeelLevels): FeelOutput {
-  const out: FeelOutput = { shake: 0, vibrate: levels.vibration ? vibrationFor(e) : null };
+  const out: FeelOutput = { shake: 0, shakeDuration: 0, vibrate: levels.vibration ? vibrationFor(e) : null };
   if (e.source === "vie") return out;
   const x = e.x;
   const y = -e.y; // monde affiché : y vers le haut
@@ -238,7 +240,8 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
     case "atterrissage": {
       const n = Math.round(2 + 10 * e.intensity);
       pool.emit({ ...dust, x, y, count: n, angle: UP, spread: 1.45, vmin: 1 + 5 * e.intensity, vmax: 3 + 8 * e.intensity, jitter: 0.6 });
-      if (e.intensity >= BIG_FALL) out.shake = 0.12 + 0.2 * Math.min(1, (e.intensity - BIG_FALL) / (1 - BIG_FALL));
+      // Lot 14 : une secousse seulement si `SHAKES.chuteAmp` la demande (coupée par défaut).
+      if (e.intensity >= BIG_FALL) (out.shake = SHAKES.chuteAmp), (out.shakeDuration = SHAKES.chuteDur);
       break;
     }
     case "pas":
@@ -302,7 +305,7 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
       pool.emit({ x, y: y + 1, count: 46, angle: UP, spread: 1.1, vmin: 6, vmax: 14, life: 1.7, size: 0.2, gravity: -16, drag: 1.6, colors: colors.confetti, jitter: 0.6 });
       break;
     case "mort":
-      if (e.source === "jeu") out.shake = 0.35;
+      if (e.source === "jeu") (out.shake = SHAKES.mortAmp), (out.shakeDuration = SHAKES.mortDur);
       break;
     default:
       break;

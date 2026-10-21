@@ -24,7 +24,7 @@ interface J {
   stains: { count: number };
   events: Ev[];
   audio: { available: boolean; unlocked: boolean; state: string; requested: Record<string, number>; played: Record<string, number>; errors: number };
-  settings: { volume: number; sfx: number; ambience: number; vibration: boolean; shake: boolean; effects: string; reducedMotion: boolean };
+  settings: { volume: number; sfx: number; ambience: number; vibration: boolean; shake: string; effects: string; reducedMotion: boolean };
   menu: { open: boolean };
   tuned: boolean;
   clearEvents(): void;
@@ -267,10 +267,10 @@ for (const [name, viewport] of [
         expect(b.width, label).toBeGreaterThanOrEqual(44);
         expect(b.height, label).toBeGreaterThanOrEqual(44);
       }
-      const shake = page.locator('#settings [data-setting="shake"] button[data-value="false"]');
+      const shake = page.locator('#settings [data-setting="shake"] button[data-value="aucun"]');
       await shake.scrollIntoViewIfNeeded();
       await shake.tap();
-      expect((await get(page, (j) => j.settings)).shake).toBe(false);
+      expect((await get(page, (j) => j.settings)).shake).toBe("aucun");
       await page.locator("#settings .dj-barre-jeu__retour").tap();
       await expect(page.locator("#settings")).toBeHidden();
       const resume = page.locator("#menu-resume");

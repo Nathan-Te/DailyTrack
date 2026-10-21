@@ -11,6 +11,8 @@ export const SETTINGS_VERSION = 1;
 
 export type EffectsLevel = "normal" | "reduit" | "aucun";
 export const EFFECTS_LEVELS: readonly EffectsLevel[] = ["normal", "reduit", "aucun"];
+/** Lot 14 : « Secousses de l'écran » (la mort seulement) : Normales, Réduites (moitié) ou Aucune. Même vocabulaire que les effets. */
+export type ShakeLevel = EffectsLevel;
 
 export interface PlayerSettings {
   /** Volume général, effets sonores, ambiance (lot 9) : 0 … 1. */
@@ -18,8 +20,8 @@ export interface PlayerSettings {
   sfx: number;
   ambience: number;
   vibration: boolean;
-  /** Tremblement d'écran (mort, grosses chutes). */
-  shake: boolean;
+  /** Secousses de l'écran (lot 14 : la mort ; Réduites par défaut si le système demande un mouvement réduit). */
+  shake: ShakeLevel;
   effects: EffectsLevel;
   /** Mouvement réduit : ni secousse, ni particules, ni traînée, écrasement discret. Par défaut : ce que demande le système. */
   reducedMotion: boolean;
@@ -32,7 +34,7 @@ export interface PlayerSettings {
 }
 
 export function defaultSettings(systemReducedMotion = false): PlayerSettings {
-  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: true, effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true, othersStains: true, sound: true };
+  return { volume: 0.8, sfx: 1, ambience: 0.7, vibration: true, shake: systemReducedMotion ? "reduit" : "normal", effects: "normal", reducedMotion: systemReducedMotion, firstGhost: true, othersStains: true, sound: true };
 }
 
 const unit = (v: unknown, d: number): number => (typeof v === "number" && Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d);
@@ -56,7 +58,8 @@ export function parseSettings(raw: string | null, systemReducedMotion = false): 
     sfx: unit(o.sfx, d.sfx),
     ambience: unit(o.ambience, d.ambience),
     vibration: bool(o.vibration, d.vibration),
-    shake: bool(o.shake, d.shake),
+    // Avant le lot 14, « oui / non » : non devient Aucune, oui reprend le défaut.
+    shake: EFFECTS_LEVELS.includes(o.shake as ShakeLevel) ? (o.shake as ShakeLevel) : o.shake === false ? "aucun" : d.shake,
     effects: EFFECTS_LEVELS.includes(o.effects as EffectsLevel) ? (o.effects as EffectsLevel) : d.effects,
     reducedMotion: bool(o.reducedMotion, d.reducedMotion),
     firstGhost: bool(o.firstGhost, d.firstGhost),
@@ -119,7 +122,7 @@ export function feelLevels(s: PlayerSettings, fxParam = true): FeelLevels {
   const effects: EffectsLevel = fxParam ? s.effects : "aucun";
   const calm = s.reducedMotion;
   const particles = calm || effects === "aucun" ? 0 : effects === "reduit" ? 0.5 : 1;
-  const shakeAmp = calm || !s.shake || effects === "aucun" ? 0 : effects === "reduit" ? 0.5 : 1;
+  const shakeAmp = calm || s.shake === "aucun" || effects === "aucun" ? 0 : (s.shake === "reduit" ? 0.5 : 1) * (effects === "reduit" ? 0.5 : 1);
   return {
     particles,
     continuous: particles === 1,

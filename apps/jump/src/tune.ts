@@ -20,6 +20,7 @@ import {
   type SurfaceParamKey,
   type WindParamKey,
 } from "@cdj/jump-sim";
+import { CAMERA, CAMERA_DEFAULTS, SHAKES, SHAKE_DEFAULTS, type CameraKey, type ShakeKey } from "./camera";
 import { gameStorage, storageKey } from "./storage";
 
 // Panneau de réglages du personnage (`?debug&tune`) : un curseur par réglage, en unités humaines, la valeur entière à côté. Effet immédiat
@@ -177,6 +178,64 @@ export const WIND_SLIDERS: readonly WindSlider[] = [
 export const windsChanged = (p: Readonly<JumpParams>): number => WIND_PARAM_KEYS.filter((k) => windValue(p, k) !== WIND_DEFAULTS[k]).length;
 
 export const TUNE_STORAGE_KEY = storageKey("tune");
+
+// Lot 14 : la section « Caméra et secousses », en tête du panneau `?debug&tune`. Affichage seulement : ne rend jamais la partie `tuned`, mémorisée à part
+// (`jump:camera`, seulement relue avec `?debug&tune` : sans outil, le jeu a les valeurs par défaut).
+export const CAMERA_STORAGE_KEY = storageKey("camera");
+
+export interface CameraSlider {
+  key: CameraKey | ShakeKey;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+}
+
+export const CAMERA_SLIDERS: readonly CameraSlider[] = [
+  { key: "mortAmp", label: "Secousse à la mort : amplitude", min: 0, max: 0.5, step: 0.01, unit: "tuile" },
+  { key: "mortDur", label: "Secousse à la mort : durée", min: 0.02, max: 0.5, step: 0.01, unit: "s" },
+  { key: "chuteAmp", label: "Secousse d'une grosse chute : amplitude (0 : aucune)", min: 0, max: 0.5, step: 0.01, unit: "tuile" },
+  { key: "chuteDur", label: "Secousse d'une grosse chute : durée", min: 0.02, max: 0.5, step: 0.01, unit: "s" },
+  { key: "deadZone", label: "Zone morte verticale (demi-hauteur)", min: 0, max: 6, step: 0.1, unit: "tuiles" },
+  { key: "settleRate", label: "Recalage doux au sol (vitesse)", min: 0.2, max: 8, step: 0.1, unit: "/s" },
+  { key: "verticalRate", label: "Suivi hors de la zone (chutes, longues montées)", min: 1, max: 14, step: 0.5, unit: "/s" },
+];
+
+const isShakeKey = (k: CameraSlider["key"]): k is ShakeKey => k in SHAKE_DEFAULTS;
+const cameraValue = (k: CameraSlider["key"]): number => (isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
+const cameraDefault = (k: CameraSlider["key"]): number => (isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
+const setCamera = (k: CameraSlider["key"], v: number): void => {
+  if (isShakeKey(k)) SHAKES[k] = v;
+  else CAMERA[k] = v;
+};
+
+/** Relit les réglages de la caméra gardés (seules les clés connues et dans leurs bornes sont reprises). */
+export function loadCameraTune(storage: Pick<Storage, "getItem"> | null = safeStorage()): void {
+  try {
+    const saved = JSON.parse(storage?.getItem(CAMERA_STORAGE_KEY) ?? "{}") as Record<string, unknown>;
+    for (const s of CAMERA_SLIDERS) {
+      const v = saved[s.key];
+      if (typeof v === "number" && v >= s.min && v <= s.max) setCamera(s.key, v);
+    }
+  } catch {
+    /* texte illisible ou stockage indisponible : les défauts */
+  }
+}
+
+function saveCameraTune(): void {
+  try {
+    const out: Record<string, number> = {};
+    for (const s of CAMERA_SLIDERS) if (cameraValue(s.key) !== cameraDefault(s.key)) out[s.key] = cameraValue(s.key);
+    if (Object.keys(out).length === 0) safeStorage()?.removeItem(CAMERA_STORAGE_KEY);
+    else safeStorage()?.setItem(CAMERA_STORAGE_KEY, JSON.stringify(out));
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
+/** Les valeurs de la section Caméra, en JSON (à donner pour en faire les défauts). */
+export const cameraJson = (): string => JSON.stringify(Object.fromEntries(CAMERA_SLIDERS.map((s) => [s.key, cameraValue(s.key)])), null, 2);
 
 /**
  * Réglages en JSON, dans l'ordre des défauts : prêts à coller dans `DEFAULT_JUMP_PARAMS`. L'élan n'y est que s'il est allumé ; les réglages des
@@ -412,6 +471,52 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   for (const s of WIND_SLIDERS) addSlider(windBox, s, windRows);
   body.append(windBox);
 
+  // Lot 14 : la section « Caméra et secousses ».
+  const cameraBox = document.createElement("div");
+  cameraBox.className = "camera";
+  cameraBox.id = "camera";
+  const cameraTitle = document.createElement("strong");
+  cameraTitle.textContent = "Caméra et secousses";
+  const cameraNote = document.createElement("small");
+  cameraNote.className = "hint";
+  cameraNote.textContent = "Affichage seulement (la partie n'est pas modifiée). Les secousses ne sont lancées que par la mort ; les valeurs sont gardées dans ce navigateur.";
+  cameraBox.append(cameraTitle, cameraNote);
+  const cameraRows: { s: CameraSlider; input: HTMLInputElement; value: HTMLElement; row: HTMLElement }[] = [];
+  for (const s of CAMERA_SLIDERS) {
+    const row = document.createElement("label");
+    row.className = "row";
+    const name = document.createElement("span");
+    name.textContent = s.label;
+    const value = document.createElement("span");
+    value.className = "value";
+    const input = document.createElement("input");
+    input.type = "range";
+    input.min = String(s.min);
+    input.max = String(s.max);
+    input.step = String(s.step);
+    input.dataset.key = s.key;
+    input.addEventListener("input", () => {
+      setCamera(s.key, Number(input.value));
+      saveCameraTune();
+      refreshCamera();
+    });
+    input.addEventListener("change", () => input.blur());
+    row.append(name, value, input);
+    cameraBox.append(row);
+    cameraRows.push({ s, input, value, row });
+  }
+  function refreshCamera(): void {
+    for (const r of cameraRows) {
+      const v = cameraValue(r.s.key);
+      r.input.value = String(v);
+      r.value.textContent = `${num(v, 2)} ${r.s.unit}`;
+      r.row.classList.toggle("changed", v !== cameraDefault(r.s.key));
+    }
+  }
+  loadCameraTune();
+  refreshCamera();
+  body.prepend(cameraBox); // en tête du panneau : visible dès l'ouverture de `?debug&tune`
+
   const actions = document.createElement("div");
   actions.className = "actions";
   const button = (label: string, onClick: (b: HTMLButtonElement) => void | Promise<void>) => {
@@ -445,7 +550,15 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
     b.textContent = ok ? "Copié ✓" : "Copie impossible : texte ci-dessous";
     setTimeout(() => (b.textContent = "Copier les valeurs"), 2400);
   });
+  button("Copier la caméra", async (b) => {
+    const ok = await copyText(cameraJson());
+    b.textContent = ok ? "Copié ✓" : "Copie impossible";
+    setTimeout(() => (b.textContent = "Copier la caméra"), 2400);
+  });
   button("Réinitialiser", () => {
+    for (const s of CAMERA_SLIDERS) setCamera(s.key, cameraDefault(s.key));
+    saveCameraTune();
+    refreshCamera();
     resetParams(params);
     saveTuned(params);
     refresh();
