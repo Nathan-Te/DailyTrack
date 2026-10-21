@@ -30,7 +30,7 @@ import { emptyRun, secs, tiles } from "./vide";
 // validation des tirages, tirage retenu, secours, temps de l'auteur (et sa répartition par tranches de 2 s), morceaux par niveau, exigence
 // (somme, par minute, profil par tiers), étiquettes, emploi de chaque morceau, morceaux en commun d'un jour au suivant, hauteur, temps de
 // génération et coût d'un rejeu ; **course à vide** (lot 6) : temps au sol sans appui de saut sur les paliers (par raccord, au total) et plus
-// longue course au sol sans saut. **Toute règle du générateur se juge à ces mesures.** `-- --jours=N` pour un autre nombre de dates.
+// longue course au sol sans saut ; **voies lentes** (lot 16) : nombre, surcoût, médailles ajustées. **Toute règle du générateur se juge à ces mesures.** `-- --jours=N` pour un autre nombre de dates.
 
 const arg = process.argv.find((a) => a.startsWith("--jours="));
 const DAYS = arg ? Number(arg.slice(8)) : 120;
@@ -131,6 +131,28 @@ line(`| palier de départ (accélération comprise) | ${secs(stats(departs).mean
 line(`| palier d'arrivée (jusqu'à \`F\`) | ${secs(stats(arrivals).mean)} s | ${secs(stats(arrivals).max)} s |`);
 line(`| plus longue course au sol sans saut (cible : moyenne ≤ 1,2 s, max ≤ 2 s) | ${secs(stats(longT).mean)} s · ${tiles(stats(longU).mean)} tuiles | ${secs(stats(longT).max)} s · ${tiles(stats(longU).max)} tuiles |`);
 line();
+
+// ——— Lot 16 : voies lentes ———
+{
+  const routes = levels.flatMap((L) => L.slowRoutes.map((r) => ({ L, r })));
+  const perDay = levels.map((L) => L.slowRoutes.length);
+  const extra = routes.map(({ r }) => r.slowTicks - r.fastTicks);
+  const ratio = routes.map(({ r }) => (r.slowTicks - r.fastTicks) / r.fastTicks);
+  const raised = routes.filter(({ r }) => r.extra > 0).length;
+  const goldCut = levels.filter((L) => L.slowRoutes.length > 0 && L.medals.gold < Math.ceil((L.authorTicks * 110) / 100)).length;
+  const bronzeUp = levels.filter((L) => L.medals.bronze > Math.ceil((L.authorTicks * 160) / 100)).length;
+  const allSlow = levels.map((L) => L.slowTicks / L.authorTicks);
+  line("### Voies lentes (lot 16)");
+  line(`| mesure | min | moyenne | max |`);
+  line(`|---|---|---|---|`);
+  line(`| voies lentes par niveau | ${stats(perDay).min} | ${num(stats(perDay).mean)} | ${stats(perDay).max} |`);
+  line(`| surcoût d'une voie lente (s ; règle : ≥ max(50 %, 3 s)) | ${sec(stats(extra).min)} | ${sec(stats(extra).mean)} | ${sec(stats(extra).max)} |`);
+  line(`| surcoût ÷ temps de la portion | ${num(100 * stats(ratio).min)} % | ${num(100 * stats(ratio).mean)} % | ${num(100 * stats(ratio).max)} % |`);
+  line(`| « toutes voies lentes » ÷ temps de l'auteur | ${num(stats(allSlow).min, 3)} | ${num(stats(allSlow).mean, 3)} | ${num(stats(allSlow).max, 3)} |`);
+  line();
+  line(`Cages montées pour tenir le coût : ${raised} voies sur ${routes.length}. Or abaissé sous ×1,10 : ${goldCut} niveaux ; bronze relevé au-dessus de ×1,60 : ${bronzeUp} niveaux.`);
+  line();
+}
 
 // ——— Morceaux, hauteur ———
 const counts = levels.map((L) => L.pieces.length);

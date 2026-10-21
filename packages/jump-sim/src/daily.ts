@@ -1176,7 +1176,12 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
           const owner = mine.get(`${c},${row}`);
           if (owner === i) continue;
           if (owner !== undefined) {
-            out.push(`voies lentes ${i + 1} et ${owner + 1} se touchent en ${c},${row}`);
+            // La descente d'une voie longe l'ouverture de la cage de la suivante (portions dures voisines) : c'est l'entrée de celle-ci, qu'on
+            // prend de toute façon depuis ce palier ; aucune autre jonction n'est permise.
+            const opening = (q: (typeof asm.slow)[number], col: number, rr: number) => col === q.zone && rr >= q.entryRow - 5 && rr <= q.entryRow - 3;
+            const other = asm.slow[owner]!;
+            const joint = (other.piece === r.piece + 1 && opening(other, c, row)) || (other.piece === r.piece - 1 && opening(r, cell.col, cell.row));
+            if (!joint) out.push(`voies lentes ${i + 1} et ${owner + 1} se touchent en ${c},${row}`);
             continue;
           }
           const entrance = c >= pin.col0 && c <= pin.col1;
