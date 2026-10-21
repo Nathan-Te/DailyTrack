@@ -3,6 +3,7 @@ import { el, svg } from "./dom";
 import { formatDateCourte, formatNumeroJour, majuscule } from "./formats";
 import { LANGUES, type Langue, type Traducteur } from "./i18n";
 import { icone } from "./icones";
+import { astuceIphoneAPropos, basculerPleinEcran, pleinEcranActif, pleinEcranPossible, surChangementPleinEcran } from "./pleinEcran";
 
 // Les composants de base de la charte « Cartouches » (lot I1) : des fonctions qui construisent des éléments du DOM portant les classes de
 // `composants.css` (états : survol, appui qui s'enfonce, focus, désactivé). Aucune couleur, police ni chaîne d'interface en dur : les styles
@@ -194,6 +195,8 @@ export interface OptionsBarreJeu {
    * `onClick` : le retour est alors un bouton (il ne quitte pas la page) ; sans lui, un lien vers `href`.
    */
   retour?: { texte: string; ariaLabel: string; onClick?: () => void };
+  /** Lot I7 : le bouton plein écran, à droite à côté de la date (l'accueil de chaque jeu : on se met en plein écran avant de jouer). Caché si le plein écran n'est pas possible. */
+  pleinEcran?: boolean;
 }
 
 /** La barre des jeux : « ‹ DU JOUR » (lien vers le portail, 44 px) et, à droite en mono, la date et le numéro du jour. */
@@ -206,7 +209,111 @@ export function barreJeu(t: TraducteurCommun, o: OptionsBarreJeu): HTMLElement {
     ? el("button", { classe: "dj-barre-jeu__retour", attrs: { type: "button", "aria-label": ariaLabel } }, ...contenu)
     : el("a", { classe: "dj-barre-jeu__retour", attrs: { href: o.href, "aria-label": ariaLabel } }, ...contenu);
   if (o.retour?.onClick) retour.addEventListener("click", o.retour.onClick);
-  return el("header", { classe: "dj-barre-jeu" }, retour, el("span", { classe: "dj-barre-jeu__jour", texte }));
+  const jour = el("span", { classe: "dj-barre-jeu__jour", texte });
+  if (!o.pleinEcran) return el("header", { classe: "dj-barre-jeu" }, retour, jour);
+  const plein = boutonPleinEcran({ t: (cle) => t.t(cle), classe: "dj-plein-ecran--barre" });
+  return el("header", { classe: "dj-barre-jeu" }, retour, el("span", { classe: "dj-barre-jeu__droite" }, jour, plein));
+}
+
+// --- Plein écran (lot I7) ------------------------------------------------------------------------------------------------------------------------
+// Les boutons et astuces du plein écran se relisent (état, textes) sur l'événement `maj` : `majPleinEcran()` le leur envoie — à chaque `fullscreenchange` (un seul
+// abonnement au document) et quand un jeu change de langue (une barre redessinée à chaque langue ne laisse rien derrière elle : aucun registre).
+const SELECTEUR_MAJ = ".dj-plein-ecran, .dj-astuce";
+let abonne = false;
+
+/** Relit l'état (plein écran en cours, textes) de tous les boutons et astuces du plein écran. */
+export function majPleinEcran(): void {
+  document.querySelectorAll(SELECTEUR_MAJ).forEach((e) => e.dispatchEvent(new Event("maj")));
+}
+
+function suivre(e: Element, maj: () => void): void {
+  e.addEventListener("maj", maj);
+  if (!abonne) {
+    abonne = true;
+    surChangementPleinEcran(majPleinEcran);
+  }
+}
+
+export interface OptionsBoutonPleinEcran {
+  /** La traduction du nom lu (`pleinEcran.entrer` / `pleinEcran.quitter`, du catalogue commun) : « Plein écran » / « Quitter le plein écran ». */
+  t: (cle: "pleinEcran.entrer" | "pleinEcran.quitter") => string;
+  /** L'identifiant du bouton (les tests et les outils le visent). */
+  id?: string;
+  /** Classes en plus (la plaque d'un jeu, ou `dj-plein-ecran--barre` pour la barre des jeux). */
+  classe?: string | readonly (string | false | null | undefined)[];
+  /** Un bouton à texte (la pause) au lieu de l'icône seule : le nom lu est alors le texte écrit, l'habillage celui de `classe`. */
+  texte?: boolean;
+}
+
+/**
+ * Le bouton plein écran : 44 px, icône au trait (quatre coins ; « quitter » : coins rentrants), `aria-pressed` et nom lu selon l'état, qui suit
+ * `fullscreenchange`. **Caché** si le plein écran n'est pas possible (API absente, site ouvert comme application). Une seule logique : `pleinEcran.ts`.
+ */
+export function boutonPleinEcran(o: OptionsBoutonPleinEcran): HTMLButtonElement {
+  const b = el("button", { classe: ["dj-plein-ecran", !o.texte && "dj-plein-ecran--icone", ...(typeof o.classe === "string" ? [o.classe] : (o.classe ?? []))], attrs: { type: "button", id: o.id } });
+  b.hidden = !pleinEcranPossible();
+  const maj = () => {
+    const actif = pleinEcranActif();
+    const nom = o.t(actif ? "pleinEcran.quitter" : "pleinEcran.entrer");
+    b.setAttribute("aria-pressed", String(actif));
+    if (o.texte) b.textContent = nom;
+    else {
+      b.setAttribute("aria-label", nom);
+      b.replaceChildren(icone(actif ? "pleinEcranQuitter" : "pleinEcran", { taille: 20 }));
+    }
+  };
+  maj();
+  b.addEventListener("click", () => {
+    b.blur();
+    void basculerPleinEcran();
+  });
+  suivre(b, maj);
+  return b;
+}
+
+/** Où se souvient-on que l'astuce de l'iPhone a été fermée (le stockage est celui de l'appelant : ce paquet n'y touche pas). */
+export const CLE_ASTUCE_PLEIN_ECRAN = "cdj:astuce:plein-ecran";
+
+export interface OptionsAstuceIphone {
+  /** Les deux textes dans la langue courante. */
+  textes: () => { astuce: string; fermer: string };
+  /** Le stockage (lecture et écriture) ; indisponible : l'astuce revient à chaque visite, sans erreur. */
+  stockage: Pick<Storage, "getItem" | "setItem">;
+}
+
+/**
+ * Sur iPhone (pas de plein écran de page), une ligne courte : « Pour jouer en plein écran : Partager › Sur l'écran d'accueil ». Un bouton la ferme et
+ * elle ne revient pas (mémorisé). `null` si elle n'a pas lieu d'être (autre appareil, mode application, déjà fermée).
+ */
+export function astuceIphone(o: OptionsAstuceIphone): HTMLElement | null {
+  try {
+    if (!astuceIphoneAPropos() || o.stockage.getItem(CLE_ASTUCE_PLEIN_ECRAN) === "1") return null;
+  } catch {
+    /* stockage indisponible : on la montre */
+  }
+  const texte = el("span", { classe: "dj-astuce__texte" });
+  const fermer = el("button", { classe: "dj-astuce__fermer", attrs: { type: "button" } }, svgFermer());
+  const racine = el("p", { classe: "dj-astuce", attrs: { role: "note" } }, texte, fermer);
+  fermer.addEventListener("click", () => {
+    try {
+      o.stockage.setItem(CLE_ASTUCE_PLEIN_ECRAN, "1");
+    } catch {
+      /* tant pis : elle reviendra */
+    }
+    racine.remove();
+  });
+  const maj = () => {
+    const { astuce, fermer: nom } = o.textes();
+    texte.textContent = astuce;
+    fermer.setAttribute("aria-label", nom);
+  };
+  maj();
+  suivre(racine, maj);
+  return racine;
+}
+
+function svgFermer(): SVGSVGElement {
+  return svg("svg", { attrs: { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", "stroke-width": 2.5, "stroke-linecap": "square", focusable: "false", "aria-hidden": "true" } }, svg("path", { attrs: { d: "M5 5l14 14M19 5 5 19" } }));
 }
 
 const NOM_MEDAILLE = { auteur: "medaille.auteur", or: "medaille.or", argent: "medaille.argent", bronze: "medaille.bronze" } as const;

@@ -51,6 +51,12 @@ const fr = {
   "icone.drapeau": "Arrivée",
   "icone.horloge": "Temps",
   "icone.profil": "Profil",
+  "icone.camera": "Caméra",
+  // Lot I7 : le plein écran (nom lu du bouton, deux états) et l'astuce de l'iPhone, qui n'a pas de plein écran de page.
+  "pleinEcran.entrer": "Plein écran",
+  "pleinEcran.quitter": "Quitter le plein écran",
+  "pleinEcran.iphone": "Pour jouer en plein écran : Partager › Sur l'écran d'accueil",
+  "pleinEcran.iphone.fermer": "Fermer cette astuce",
   // Codes d'erreur du serveur (apps/api/src/codesErreur.ts)
   "erreur.not_found": "Cette adresse n'existe pas.",
   "erreur.method_not_allowed": "Cette action n'est pas permise ici.",

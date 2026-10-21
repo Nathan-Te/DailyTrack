@@ -389,6 +389,66 @@ button.dj-barre-jeu__retour {
   font-size: var(--dj-taille-12);
 }
 
+/* --- Plein écran et astuce de l'iPhone (lot I7) ----------------------------------------------------------------------------------------------- */
+.dj-barre-jeu__droite {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dj-espace-3);
+  margin: 3px 0 5px; /* la plaque du plein écran ne touche ni le haut ni le bas de la barre (son ombre, 2 px, tombe dessous) */
+}
+.dj-plein-ecran {
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.dj-plein-ecran--icone {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+}
+.dj-plein-ecran[hidden] {
+  display: none !important;
+}
+/* Dans la barre crème des écrans : une plaque de la charte (bordure 2 px, ombre nette 2 px) ; en partie, c'est la plaque du jeu qui l'habille. */
+.dj-plein-ecran--barre {
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 2px 2px 0 var(--dj-encre);
+}
+.dj-plein-ecran--barre:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
+}
+.dj-astuce {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0;
+  padding-left: var(--dj-espace-4);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.dj-astuce__fermer {
+  flex: none;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
 /* --- Choix de la langue, avatar ------------------------------------------------------------------------------------------------ */
 .dj-choix-langue {
   display: flex;

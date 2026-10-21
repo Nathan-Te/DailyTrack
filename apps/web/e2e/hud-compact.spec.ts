@@ -53,12 +53,12 @@ for (const viewport of [
     expectCentreLibre(racing, viewport);
     expect((await page.locator("#hud-centre").boundingBox())!.height).toBeLessThanOrEqual(31);
     await expect(page.locator("#board")).toBeHidden();
-    // Pause, dernier point de contrôle et recommencer : trois boutons de 44 px en haut à gauche, sur la même ligne.
-    const boutons = await page.locator("#menu button:visible").all();
-    expect(boutons).toHaveLength(3);
+    // Pause, dernier point de contrôle et recommencer : trois boutons de 44 px en haut à gauche, sur la même ligne (lot I7 : la caméra et le plein écran les suivent,
+    // `plein-ecran.spec.ts`).
+    const boutons = await Promise.all(["#btn-pause", "#btn-respawn", "#btn-restart"].map((s) => page.locator(s).elementHandle()));
     const ys = new Set<number>();
     for (const b of boutons) {
-      const r = (await b.boundingBox())!;
+      const r = (await b!.boundingBox())!;
       expect(r.height).toBeGreaterThanOrEqual(43.5);
       expect(r.width).toBeGreaterThanOrEqual(43.5);
       ys.add(Math.round(r.y));
@@ -78,14 +78,16 @@ for (const viewport of [
   });
 }
 
-test("ordinateur : le classement est ouvert par défaut, en haut à droite, hors du centre ; les boutons du haut ne sont que la pause", async ({ browser }) => {
+test("ordinateur : le classement est ouvert par défaut, en haut à droite, hors du centre ; ni point de contrôle ni recommencer à l'écran (le clavier a ses touches)", async ({ browser }) => {
   const viewport = { width: 1280, height: 720 };
   const context = await newClockedContext(browser, { viewport });
   const page = await context.newPage();
   await page.goto("/?debug&home=0&api=demo");
   await page.waitForFunction(() => window.__cdj?.phase);
   await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 20_000 });
-  expect(await page.locator("#menu button:visible").count()).toBe(1); // le clavier a ses touches : point de contrôle et recommencer sont tactiles
+  await expect(page.locator("#btn-respawn")).toBeHidden(); // le clavier a ses touches : point de contrôle et recommencer sont tactiles
+  await expect(page.locator("#btn-restart")).toBeHidden();
+  await expect(page.locator("#btn-pause")).toBeVisible();
   await page.evaluate(() => window.__cdj.manual(true));
   await page.evaluate(() => window.__cdj.advance(5 * 120));
   expectCentreLibre(await boxes(page, ["#hud-centre", "#menu", "#medals", "#speed", "#board"]), viewport);
