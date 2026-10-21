@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
 import { dailyLevel } from "@cdj/jump-sim";
-import { FROZEN_DATES, generatedDay } from "./jours";
+import { FROZEN_DATES, generatedDay, pageLevel } from "./jours";
 import { hasWebGL } from "./phone";
 
 // Lot 15 — l'horloge unique dans le jeu. Un niveau du jour en v4 (généré : un jour sans fichier figé) : le « Prêt… » (1 s) pendant lequel les
@@ -101,7 +101,8 @@ test("niveau v4 : la pause fige tout, « Prêt… » compris ; le « Prêt… »
 });
 
 test("jour figé en v3 : pas de « Prêt… », le monde attend la première commande (comportement d'avant le lot 15)", async ({ page }) => {
-  const date = FROZEN_DATES.at(-1)!;
+  // Lot 16 : le dernier jour figé peut être en v4 (le 23/10/2026, figé en g10) : on prend le dernier figé en v3.
+  const date = FROZEN_DATES.filter((d) => pageLevel(d).level.simVersion === 3).at(-1)!;
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   await page.evaluate(() => {
     const j = (window as unknown as { __jump: J }).__jump;
