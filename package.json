@@ -27,7 +27,8 @@
     "measure:budget": "npm run measure:budget -w @cdj/api",
     "smoke": "npm run smoke -w @cdj/api --",
     "pseudos:migrate": "npm run pseudos:migrate -w @cdj/api --",
-    "recette:seed": "esbuild apps/api/scripts/recette-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=apps/api/dist/recette-seed.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node apps/api/dist/recette-seed.mjs"
+    "recette:seed": "esbuild apps/api/scripts/recette-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=apps/api/dist/recette-seed.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node apps/api/dist/recette-seed.mjs",
+    "traductions": "esbuild scripts/traductions.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/traductions.mjs --log-level=warning && node node_modules/.cache/cdj/traductions.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",

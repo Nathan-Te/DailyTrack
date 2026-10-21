@@ -176,8 +176,8 @@ export function createApi(options: ApiOptions) {
       return reply(200, { ok: true, db: "ok", ...body });
     } catch (e) {
       log("ERROR", "santé : base injoignable", { error: e instanceof Error ? e.message.slice(0, 200) : "inconnue" });
-      // Lot I1 : le code et le message des autres erreurs, en plus de `ok` et `db` (que la sonde, `smoke` et la CI lisent).
-      return reply(CODES_ERREUR.db_unavailable.status, { ok: false, db: "error", ...corpsErreur("db_unavailable", "Base de données injoignable"), ...body });
+      // Lot I1 : le code des autres erreurs, en plus de `ok` et `db` (que la sonde, `smoke` et la CI lisent). Lot I6 : plus de `message`.
+      return reply(CODES_ERREUR.db_unavailable.status, { ok: false, db: "error", ...corpsErreur("db_unavailable"), ...body });
     }
   }
 
@@ -225,7 +225,8 @@ export function createApi(options: ApiOptions) {
     } catch (e) {
       if (e instanceof HttpError) {
         if (e.status === 429 || e.status >= 500) log(e.status >= 500 ? "ERROR" : "WARNING", "refus", { status: e.status, code: e.code });
-        return reply(e.status, { error: e.code, message: e.message, ...e.details }, e.headers);
+        // Lot I6 : le code et les détails seulement ; le texte de `HttpError` reste dans le code (pour qui le lit), jamais dans la réponse.
+        return reply(e.status, { error: e.code, ...e.details }, e.headers);
       }
       log("ERROR", "erreur interne", { error: e instanceof Error ? `${e.name}: ${e.message}`.slice(0, 300) : "inconnue" });
       return reply(CODES_ERREUR.internal.status, ERREUR_INTERNE);

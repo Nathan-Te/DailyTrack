@@ -119,7 +119,6 @@ export interface JumpLivesResult {
   dayCount: number;
   cap: number;
   results: LifeVerdict[];
-  message: string;
 }
 
 /** La carte des morts d'un jour (`GET /api/jump/day/<date>/deaths`). `tiles` : `[col, row, morts, cause dominante]`, les plus meurtrières d'abord. */
@@ -559,8 +558,7 @@ export function createJumpLives(deps: JumpLivesDeps) {
       overCap,
       dayCount,
       cap: JUMP_LIVES_PER_DAY,
-      results,
-      message: overCap > 0 ? `Plafond atteint : au plus ${JUMP_LIVES_PER_DAY} morts par joueur et par jour, les vies en trop ne sont pas gardées` : "",
+      results, // lot I6 : plus de `message` (texte que le jeu ne lisait pas) ; `overCap` et `cap` disent si le plafond est atteint
     };
     log("INFO", "DailyJump : vies du jour", { day: formatDay(day), received: out.received, accepted, duplicates: out.duplicates, invalid: out.invalid, notDeath: out.notDeath, overCap });
     return out;

@@ -112,7 +112,6 @@ describe("POST /api/submit", () => {
     const old = await submit(t, 1, "Alice", encodeReplay({ ...fast.replay, simVersion: SIM_VERSION - 1 }));
     expect(old.status).toBe(409);
     expect(old.body.error).toBe("sim_version");
-    expect(old.body.message).toMatch(/ancienne version du jeu.*recharge la page/);
     expect((await t.call("GET", `/api/day/${DATE}/leaderboard`)).body.participants).toBe(0);
     const otherTrack = encodeReplay({ ...fast.replay, trackId: dailyTrackId(DAY - 1) });
     const r = await submit(t, 1, "Alice", otherTrack);

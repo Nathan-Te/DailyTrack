@@ -8,7 +8,7 @@ import { salonSessionAt } from "@cdj/sim";
 import { DAY, TEST_DB, makeApi, parisDayStart, playerId, verifierErreur, type TestApi } from "./helpers";
 
 // Lot I1 (plateforme) : chaque réponse d'erreur du serveur porte un code de la liste unique (`src/codesErreur.ts`), avec le statut de la liste
-// et un message. (1) Parcours des routes : toutes les routes connues, chaque méthode, des corps vides, illisibles ou trop gros, avec et sans
+// et aucun message (lot I6). (1) Parcours des routes : toutes les routes connues, chaque méthode, des corps vides, illisibles ou trop gros, avec et sans
 // identifiant de joueur ou jeton d'admin. (2) Les sources : chaque `HttpError` construit a un code de la liste et son statut ; chaque code de la
 // liste est rendu quelque part. (3) La documentation (`docs/plateforme/codes-erreur.md`) décrit exactement la liste.
 // Les cas d'erreur déjà testés ailleurs sont vérifiés par `makeApi().call` (`verifierErreur`, helpers.ts). SQLite et libSQL.
@@ -139,7 +139,7 @@ async function walk(t: TestApi, routes: readonly string[]): Promise<{ errors: nu
 }
 
 describe(`codes d'erreur : parcours des routes (${TEST_DB})`, () => {
-  it("toute réponse d'erreur a un code de la liste, le statut de la liste et un message", async () => {
+  it("toute réponse d'erreur a un code de la liste, le statut de la liste et aucun message (lot I6)", async () => {
     const t = await makeApi({ adminToken: TOKEN });
     t.clock.now = NOON_TODAY;
     const { errors, seen, bad } = await walk(t, ROUTES);

@@ -1,5 +1,5 @@
 import { bouton, el, icone } from "@cdj/ui";
-import { lier, onLangue, t } from "./i18n";
+import { lier, lierMentions, onLangue, t } from "./i18n";
 
 // La pause (lot 8, **refaite au lot I5** : maquette `jump-pause.html`, charte rév. 7 § 9). Posée **sur la scène, sous le voile à rayures** (motif net, ni flou
 // ni transparence) : l'étiquette jaune avec « PAUSE », le niveau et l'état de la partie (morts, point de passage), la réplique du thème, **REPRENDRE**,
@@ -97,8 +97,8 @@ export function mountPauseMenu(opts: PauseMenuOptions): PauseMenu {
   // Lot I2 de la plateforme : le retour au portail « ‹ DU JOUR » (le logo des barres des jeux, un lien de 44 px).
   const portail = el("a", { classe: "pause__portail", attrs: { id: "menu-portail", href: "../" } }, icone("chevron", { taille: 18 }), lier(el("span", { classe: "dj-logo dj-logo--petit" }), "barre.retour"));
   lier(portail, "barre.retour.aria", undefined, "aria-label");
-  // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » du site (racine de playdujour.com).
-  const mentions = lier(el("a", { classe: "pause__lien", attrs: { id: "menu-mentions", href: "../mentions-legales/" } }), "pause.mentions");
+  // Lot R5 (plateforme) : la page « Mentions légales et confidentialité » du site (racine de playdujour.com) ; lot I6 : celle de la langue choisie.
+  const mentions = lierMentions(lier(el("a", { classe: "pause__lien", attrs: { id: "menu-mentions", href: "../mentions-legales/" } }), "pause.mentions"));
   const version = el("span", { classe: "pause__version", attrs: { id: "menu-version" } });
   const actions = el("div", { classe: "pause__actions" }, restart, ghost, sound, settings, help, full, home, portail);
   dialog.append(tete, replique, resume, actions, el("div", { classe: "pause__pied" }, mentions, version));

@@ -1,0 +1,60 @@
+/* La page 404 (lot I6 de la plateforme) : un écran Du Jour, cadre crème de la charte (docs/plateforme/identite.md § 9), le logo, les deux
+   langues, un lien vers le portail. Statique : une seule feuille et les polices du site, aucun script. Jetons seulement. */
+@import "@cdj/ui/src/styles.css";
+@import "@cdj/ui/src/polices/archivo-black-400.css";
+@import "@cdj/ui/src/polices/archivo-400.css";
+@import "@cdj/ui/src/polices/archivo-700.css";
+@import "@cdj/ui/src/polices/jetbrains-mono-700.css";
+
+body {
+  font-size: var(--dj-taille-16);
+  line-height: 1.5;
+}
+.introuvable-barre,
+.introuvable {
+  max-width: 560px;
+  margin: 0 auto;
+  padding-left: var(--dj-marge);
+  padding-right: var(--dj-marge);
+}
+.introuvable-barre {
+  padding-top: var(--dj-espace-5);
+}
+.introuvable-logo {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  text-decoration: none;
+}
+.introuvable {
+  padding-bottom: var(--dj-espace-9);
+}
+.introuvable-code {
+  margin: var(--dj-espace-8) 0 0;
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-38);
+  color: var(--dj-encre-douce);
+}
+.introuvable h1,
+.introuvable h2 {
+  font-family: var(--dj-police-marque);
+  font-weight: 400;
+  line-height: 1.15;
+}
+.introuvable h1 {
+  font-size: var(--dj-taille-32);
+  margin: var(--dj-espace-2) 0 var(--dj-espace-3);
+}
+.introuvable h2 {
+  font-size: var(--dj-taille-22);
+  margin: 0 0 var(--dj-espace-2);
+}
+.introuvable p {
+  margin: 0 0 var(--dj-espace-5);
+}
+.introuvable-en {
+  margin-top: var(--dj-espace-9);
+  padding-top: var(--dj-espace-5);
+  border-top: var(--dj-trait-fort) solid var(--dj-encre);
+}

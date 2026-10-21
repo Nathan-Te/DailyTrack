@@ -115,12 +115,11 @@ describe(`POST /api/jump/submit (${TEST_DB})`, () => {
     expect(await t.db.first("SELECT ticks, submitted_at, first_at FROM jump_results WHERE player_id = ?", [playerId(3)])).toEqual({ ticks: D.authorTicks, submitted_at: NOON + 3000, first_at: NOON });
   });
 
-  it("refuse une autre version (simulation, générateur, niveau d'une autre règle) : 409 version, message clair", async () => {
+  it("refuse une autre version (simulation, générateur, niveau d'une autre règle) : 409 version", async () => {
     const t = await jumpApi();
     const sim = await t.call("POST", "/api/jump/submit", body(D.code, { name: "V", simVersion: JUMP_SIM_VERSION + 1 }), as(4));
     expect(sim.status).toBe(409);
     expect(sim.body.error).toBe("version");
-    expect(sim.body.message).toMatch(/^Une nouvelle version du jeu est disponible/);
     expect((await t.call("POST", "/api/jump/submit", body(D.code, { name: "V", generatorVersion: JUMP_GENERATOR_VERSION - 1 }), as(4))).body.error).toBe("version");
     expect((await t.call("POST", "/api/jump/submit", body(D.code, { name: "V", simVersion: undefined }), as(4))).body.error).toBe("version");
     // Le jeu a joué le niveau d'une autre règle (même date, autre générateur) : le serveur ne joue pas ce niveau-là.

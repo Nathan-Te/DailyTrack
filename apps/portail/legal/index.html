@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" data-jeton-content="dj-creme" />
+    <meta name="description" content="Du Jour: legal notice and privacy. Who publishes the site, who hosts it, what the site keeps and how to have it erased." />
+    <link rel="icon" data-icone-du-jour />
+    <link rel="alternate" hreflang="fr" href="../mentions-legales/" vite-ignore />
+    <title>Legal notice and privacy — Du Jour</title>
+    <!--
+      Lot I6 (plateforme) : la traduction anglaise de la page « Mentions légales et confidentialité » (../mentions-legales/), qui fait foi.
+      Mêmes règles : page statique, sans script, sans ressource extérieure ; chaque durée ou nombre tiré du code porte `data-constante` et
+      `data-valeur` (les mêmes que la page française) ; mêmes rubriques (identifiants) et mêmes tables décrites (`data-tables`). Le test
+      apps/portail/test/mentions.test.ts vérifie les deux pages. Toute nouvelle donnée gardée met à jour les deux pages (CLAUDE.md racine).
+    -->
+    <link rel="stylesheet" href="../src/mentions.css" />
+  </head>
+  <body>
+    <header class="dj-barre-jeu mentions-barre">
+      <a class="dj-barre-jeu__retour retour" href="../" aria-label="Back to Du Jour"><svg class="dj-icone" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="square" aria-hidden="true" focusable="false"><path d="M15 4 7 12l8 8" /></svg><span class="dj-logo dj-logo--petit">DU JOUR</span></a>
+      <a class="mentions-langue" href="../mentions-legales/" hreflang="fr" lang="fr">Version française</a>
+    </header>
+    <main class="mentions">
+      <h1>Legal notice and privacy</h1>
+      <p class="reference"><strong>The French version is the reference</strong> (<span lang="fr">la version française fait foi</span>): <a href="../mentions-legales/" hreflang="fr" lang="fr">Mentions légales et confidentialité</a>. This page is a faithful translation of it.</p>
+      <p class="doux">Du Jour (playdujour.com): DailyTrack and DailyJump. Last updated <time datetime="2026-10-21">October 21, 2026</time>.</p>
+
+      <section class="bref" aria-label="In short">
+        <ul>
+          <li>No account, no email, no password: your profile is an identifier drawn at random by your browser, plus a nickname you choose.</li>
+          <li>No ads, no audience measurement, no tracker or third-party cookie: the site sets <strong>no cookies at all</strong>.</li>
+          <li>The server keeps your times (for the leaderboards); you can have everything erased by writing to <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> with your transfer code.</li>
+        </ul>
+      </section>
+
+      <h2 id="editeur">Publisher</h2>
+      <p>The site is published by <strong>MZC Studios</strong>, a <strong>private individual</strong> publisher (the site is published on a non-professional basis).</p>
+      <p>Contact: <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a>.</p>
+      <p>In accordance with French law no. 2004-575 of 21 June 2004 on confidence in the digital economy (LCEN, article 1-1, II, formerly article 6 until law no. 2024-449 of 21 May 2024), the publisher, who publishes on a non-professional basis, has given their identity to the host; only the host's contact details are published below.</p>
+
+      <h2 id="hebergeur">Hosting</h2>
+      <p><strong>The site and the server</strong>: Firebase Hosting and Google Cloud Run (region europe-west1, Belgium), provided by <strong>Google Cloud France</strong>, 8 rue de Londres, 75009 Paris, France, telephone (Google France switchboard): <a href="tel:+33142685300">01 42 68 53 00</a> (<a href="https://cloud.google.com/terms/google-entity">Google Cloud contracting entity for France</a>).</p>
+      <p><strong>The database</strong>: Turso, provided by <strong>ChiselStrike Inc.</strong> (“Turso”), 2093 Philadelphia Pike, #6336, Claymont, Delaware 19703, United States — <a href="mailto:support@turso.tech">support@turso.tech</a>.</p>
+
+      <h2 id="confidentialite">Privacy</h2>
+      <p>Data controller: MZC Studios (private individual publisher), <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a>.</p>
+
+      <h3 id="serveur">What the server keeps</h3>
+      <p>Your profile only exists on the server after your first ranked finish: before that, the server keeps nothing about you except the rate counters described below (hashed IP address, a few minutes).</p>
+      <ul class="donnees">
+        <li data-tables="players">
+          <h3>Your secret identifier</h3>
+          <p>128 bits drawn at random by your browser, with no account or email. It is what your transfer code contains (your Du Jour profile): keep it like a password.</p>
+          <p>Purpose: linking your times across your devices and across the games.</p>
+          <p class="duree">Kept: until you ask for erasure.</p>
+        </li>
+        <li data-tables="players">
+          <h3>Your nickname</h3>
+          <p>The one you choose; it is reserved for its first owner and shown in the leaderboards.</p>
+          <p class="duree">Kept: until you ask for erasure (it is then released).</p>
+        </li>
+        <li data-tables="revoked_codes">
+          <h3>Your old, replaced codes</h3>
+          <p>When you change your code, the old one is refused from then on: the server only keeps a fingerprint of it (SHA-256), never the code itself.</p>
+          <p class="duree">Kept: until you ask for erasure.</p>
+        </li>
+        <li data-tables="results jump_results">
+          <h3>Your results and your replays</h3>
+          <p>For each day: your best time and its replay (the sequence of your inputs, which the server replays to check the time), in DailyTrack and in DailyJump, and your rank once the day is over.</p>
+          <p>Purpose: the daily and archive leaderboards, the leader's ghost, your medals, your best rank, your streak and your perfect days (portal and shared profile).</p>
+          <p class="duree">Kept: until you ask for erasure (past leaderboards remain viewable).</p>
+        </li>
+        <li data-tables="salon_runs salon_sessions">
+          <h3>Your Room races</h3>
+          <p>Your best time of the session, its replay and your nickname.</p>
+          <p class="duree">Kept: forgotten <span data-constante="SALON_SERVE_MS" data-valeur="20000">20 seconds</span> after the end of the session (a session lasts <span data-constante="SALON_SESSION_MS" data-valeur="600000">10 minutes</span>).</p>
+        </li>
+        <li data-tables="jump_lives jump_deaths">
+          <h3>Your deaths in DailyJump</h3>
+          <p>At most <span data-constante="JUMP_LIVES_PER_DAY" data-valeur="30">30</span> per day: the replay of the life and the place where it ends.</p>
+          <p>Purpose: the map of everyone's deaths and the “carnage”.</p>
+          <p class="duree">Kept: forgotten at the end of the day (midnight, Paris time, plus <span data-constante="GRACE_MS" data-valeur="600000">10 minutes</span>). All that then remains is the map (the number of deaths per tile, with nobody attached) and a sample of about <span data-constante="JUMP_SAMPLE_SIZE" data-valeur="150">150</span> lives (at most <span data-constante="JUMP_SAMPLE_PER_PLAYER" data-valeur="3">3</span> per player), with no identifier or nickname, impossible to link to you.</p>
+        </li>
+        <li data-tables="rate salon_throttle salon_presence">
+          <h3>Your IP address, hashed only</h3>
+          <p>To limit the number of submissions (against abuse), the server counts requests per IP address and per identifier: it only keeps a salted fingerprint (SHA-256 with a secret salt), never the address in clear. Some reads are only counted in memory, never written.</p>
+          <p class="duree">Kept: about <span data-constante="RATE_KEEP_MS" data-valeur="2400000">40 minutes</span>, then erased along the way; Room presence: <span data-constante="PRESENCE_KEEP_MS" data-valeur="600000">10 minutes</span>; delay between two Room submissions: <span data-constante="THROTTLE_KEEP_MS" data-valeur="3600000">1 hour</span>.</p>
+        </li>
+        <li data-tables="journaux">
+          <h3>The server's technical logs</h3>
+          <p>Start-up, errors, accepted time (day, time), refusals: never a nickname, an identifier, an IP address or a replay.</p>
+          <p>Purpose: knowing whether the service works.</p>
+          <p class="duree">Kept: 30 days (Google Cloud's default log retention).</p>
+        </li>
+        <li data-tables="circuits planning salon_circuits jump_levels meta">
+          <h3>And nothing else</h3>
+          <p>The rest of the database is not about players: the daily tracks and levels, the schedule, the database version.</p>
+        </li>
+      </ul>
+
+      <h3 id="hebergeurs-voient">What the hosts see</h3>
+      <p>As with any site, Google (which serves the pages and the server) receives your IP address with every request:</p>
+      <ul>
+        <li>Cloud Run keeps a log of the requests received by the server (IP address, time, requested address — for some DailyTrack reads, it contains your identifier —, browser), kept 30 days; we only read it to diagnose an outage or an abuse;</li>
+        <li>Firebase Hosting uses IP addresses to detect abuse and keeps them “a few months” (according to Google: <a href="https://firebase.google.com/support/privacy">firebase.google.com/support/privacy</a>).</li>
+      </ul>
+      <p>The database is at Turso (a company established in the United States), in the region chosen when it was created.</p>
+
+      <h3 id="navigateur">What your browser keeps</h3>
+      <p>The game keeps in your browser (local storage, never a cookie): your profile (identifier, nickname), your language (French or English, if you chose it, on the portal or in a game: shared by the portal and the games), your settings (sound, camera, controls), your records and your history, the memory of the day's game, pending submissions when you are offline, and for DailyTrack the archive track thumbnails. Keys <code>cdj:…</code> (DailyTrack and the shared profile) and <code>jump:…</code> (DailyJump).</p>
+      <p>This storage is <strong>strictly necessary</strong> for the game you ask for (without it: no profile, no settings, no records): it is therefore allowed without asking for your consent, and the site shows no banner (article 82 of the French Data Protection Act: trackers “strictly necessary for the provision of an online communication service at the express request of the user”; <a href="https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf">CNIL guidelines</a>, deliberation no. 2020-091 of 17 September 2020, which also cover local storage). <strong>No tracker or third-party cookie, no ads, no audience measurement</strong> today. You can erase everything at any time by clearing the playdujour.com site data in your browser.</p>
+
+      <h3 id="base-legale">Legal basis</h3>
+      <p>The publisher's legitimate interest (article 6.1.f of the GDPR): running the game and its leaderboards, which you choose to use by sending your times, and protecting it against abuse. No data is sold, none is used for advertising or profiling.</p>
+
+      <h3 id="droits">Your rights</h3>
+      <ul>
+        <li><strong>Access</strong>: your nickname, your statistics and your medals are in your Du Jour profile (the portal's avatar, or Settings › “My Du Jour profile” in a game); for the rest, write to us.</li>
+        <li><strong>Rectification</strong>: change your nickname in your Du Jour profile.</li>
+        <li><strong>Erasure</strong> and <strong>objection</strong>: write to <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> with your <strong>transfer code</strong> (your Du Jour profile › “Copy my code”): it is the only proof that the profile is yours. We erase your profile, your times and replays, your deaths and your races, and your nickname is released; in past leaderboards your line disappears (the next ones move up one place). Answer within one month.</li>
+      </ul>
+      <p>If you believe your rights are not respected, you can lodge a complaint with the CNIL (the French data protection authority): <a href="https://www.cnil.fr/fr/plaintes">www.cnil.fr/fr/plaintes</a>, or by post: CNIL, Service des plaintes, 3 place de Fontenoy, 75007 Paris, France.</p>
+
+      <footer>
+        <p>MZC Studios — private individual publisher · <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> · <a href="../">Du Jour</a> · <a href="../mentions-legales/" hreflang="fr" lang="fr">Version française</a></p>
+      </footer>
+    </main>
+  </body>
+</html>

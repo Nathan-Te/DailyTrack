@@ -1,4 +1,4 @@
-import type { Catalogues } from "./i18n";
+import { en } from "./catalogue.en";
 
 // Le catalogue commun de `packages/ui` (lot I1) : les textes des composants et la traduction de **chaque code d'erreur du serveur**
 // (`erreur.<code>`, liste unique : `apps/api/src/codesErreur.ts`, décrite dans docs/plateforme/codes-erreur.md). Tutoiement en français ;
@@ -16,10 +16,9 @@ const fr = {
   "barre.retour": "DU JOUR",
   "barre.retour.aria": "Retour au portail Du Jour",
   "barre.jour": "{date} · {numero}",
-  "barre.portail.aria": "Du Jour, les jeux du jour",
   // Lot I3 : l'écran d'arrivée d'un jeu propose le jeu suivant du jour (ou fête la journée parfaite). Clés prêtes pour les lots I4 et I5.
   "arrivee.jeuSuivant": "Jeu suivant du jour : {jeu} ›",
-  "arrivee.jeuSuivant.aria": "Jouer au jeu suivant du jour : {jeu}",
+  "arrivee.jeuSuivant.aria": "Jeu suivant du jour : {jeu}, à jouer",
   "arrivee.parfaite": "Journée parfaite !",
   // Lot I5 : les répliques de Jump, une par thème (charte § 7 : drôle et un peu cruel, liée à la mécanique du jour ; adaptée en anglais, pas
   // traduite mot à mot). **Une seule source** : le portail (cartouche Jump) et le jeu (accueil, pause) les lisent ici (test catalogues.test.ts).
@@ -101,92 +100,11 @@ const fr = {
   "erreur.too_many_lives": "Trop d'essais envoyés d'un coup.",
 } as const;
 
-const en: Catalogues<typeof fr>["en"] = {
-  "marque.logo": "DU JOUR",
-  "marque.nom": "Du Jour",
-  "jeu.track.nom": "Track",
-  "jeu.track.titre": "TRACK",
-  "jeu.jump.nom": "Jump",
-  "jeu.jump.titre": "JUMP",
-  "barre.retour": "DU JOUR",
-  "barre.retour.aria": "Back to Du Jour",
-  "barre.jour": "{date} · {numero}",
-  "barre.portail.aria": "Du Jour, today's games",
-  "arrivee.jeuSuivant": "Next game of the day: {jeu} ›",
-  "arrivee.jeuSuivant.aria": "Play today's next game: {jeu}",
-  "arrivee.parfaite": "Perfect day!",
-  "jump.replique.foret": "The wind is blowing. Hardly ever your way.",
-  "jump.replique.usine": "The conveyor belts won't wait for you. Neither will the saw.",
-  "jump.replique.glace": "It's slippery. The spikes, sadly, aren't.",
-  "jump.replique.nuit": "The platforms blink. You won't see it coming.",
-  "jump.replique.neon": "Every other platform is there. Guess which.",
-  "langue.groupe": "Language",
-  "langue.fr.court": "FR",
-  "langue.en.court": "EN",
-  "langue.fr.nom": "Français",
-  "langue.en.nom": "English",
-  "profil.avatar": "Your profile: {nom}",
-  "profil.aucun": "No profile yet",
-  "profil.ouvrir": "Your profile",
-  "medaille.auteur": "Author",
-  "medaille.or": "Gold",
-  "medaille.argent": "Silver",
-  "medaille.bronze": "Bronze",
-  "medaille.obtenue": "{medaille}: earned",
-  "medaille.pasEncore": "{medaille}: not yet",
-  "icone.chevron": "Back",
-  "icone.flamme": "Streak",
-  "icone.crane": "Deaths",
-  "icone.drapeau": "Finish",
-  "icone.horloge": "Time",
-  "icone.profil": "Profile",
-  "erreur.not_found": "This address doesn't exist.",
-  "erreur.method_not_allowed": "That action isn't allowed here.",
-  "erreur.invalid_json": "The request couldn't be read.",
-  "erreur.too_large": "The request is too big.",
-  "erreur.rate_limited": "Too many requests at once: try again in a few minutes.",
-  "erreur.too_fast": "Easy: wait a few seconds before sending again.",
-  "erreur.busy": "The server is very busy: try again in a minute.",
-  "erreur.internal": "The server ran into a problem. Try again later.",
-  "erreur.db_unavailable": "The server can't reach its database. Try again later.",
-  "erreur.unauthorized": "Access denied.",
-  "erreur.invalid_player": "Invalid player ID.",
-  "erreur.unknown_player": "This profile has no results yet.",
-  "erreur.code_revoked": "This code is no longer valid: it was replaced. Load your new code.",
-  "erreur.invalid_code": "This transfer code is invalid.",
-  "erreur.id_taken": "This ID is already taken.",
-  "erreur.invalid_name": "That name isn't valid.",
-  "erreur.name_required": "Pick a name to get ranked.",
-  "erreur.name_forbidden": "That name isn't allowed.",
-  "erreur.name_taken": "That name is already taken. Is it yours? Load your code.",
-  "erreur.invalid_date": "Invalid date.",
-  "erreur.unknown_day": "This day has no leaderboard.",
-  "erreur.day_closed": "This day is over: its leaderboard is final.",
-  "erreur.day_started": "This day has already started: it can't change any more.",
-  "erreur.not_daily": "That's not today's level.",
-  "erreur.too_far": "That day is too far in the future.",
-  "erreur.invalid_since": "Invalid period.",
-  "erreur.invalid_kind": "Invalid request type.",
-  "erreur.invalid_variant": "Invalid variant.",
-  "erreur.invalid_theme": "Invalid theme.",
-  "erreur.invalid_level": "Invalid level.",
-  "erreur.circuit_unavailable": "The track isn't available right now. Try again in a moment.",
-  "erreur.level_unavailable": "The level isn't available right now. Try again in a moment.",
-  "erreur.invalid_replay": "This run couldn't be read: it wasn't counted.",
-  "erreur.not_finished": "This run doesn't reach the finish.",
-  "erreur.track_mismatch": "This run isn't on the right track.",
-  "erreur.sim_version": "A new version of the game is out: reload the page.",
-  "erreur.version": "A new version of the game is out: reload the page.",
-  "erreur.no_ghost": "No ghost to show.",
-  "erreur.invalid_session": "Invalid Room session.",
-  "erreur.unknown_session": "This Room session is over.",
-  "erreur.session_future": "This Room session hasn't started yet.",
-  "erreur.session_closed": "This Room session is closed.",
-  "erreur.invalid_ref": "Invalid reference.",
-  "erreur.too_many_refs": "Too many references requested.",
-  "erreur.invalid_lives": "These attempts couldn't be read.",
-  "erreur.too_many_lives": "Too many attempts sent at once.",
-};
 
 export const CATALOGUE_COMMUN = { fr, en } as const;
+/**
+ * Lot I6 : le français seul, pour les jeux. L'anglais est un module à part (`catalogue.en.ts`, `CATALOGUE_COMMUN_EN`) que chaque jeu charge avec son
+ * propre anglais (`import()`, à la demande) : ≈ 1 ko compressé de moins au premier chargement d'un joueur en français. Le portail garde les deux.
+ */
+export const CATALOGUE_COMMUN_FR = fr;
 export type CleCommune = keyof typeof fr;

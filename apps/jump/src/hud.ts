@@ -78,6 +78,7 @@ export function chiffresFixes(conteneur: HTMLElement, cases: number): (texte: st
     conteneur.prepend(c);
   };
   conteneur.replaceChildren();
+  conteneur.setAttribute("role", "timer"); // lot I6 (axe : aria-prohibited-attr) : un `aria-label` sur un `span` demande un rôle ; un chrono est un « timer »
   for (let i = 0; i < cases; i++) ajouter();
   const ponct = (ch: string) => ch !== "" && !/[0-9]/.test(ch);
   return (texte) => {

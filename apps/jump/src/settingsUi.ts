@@ -2,7 +2,7 @@ import type { Langue } from "@cdj/ui";
 import { choixLangue, el, icone } from "@cdj/ui";
 import { creerCadre } from "./cadre";
 import { COMMANDES, listeCommandes } from "./howtoUi";
-import { langueCourante, lier, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
+import { langueCourante, lier, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import type { EffectsLevel, PlayerSettings } from "./settings";
 
 // Les Réglages de Jump (lot 8 dans le menu ⏸ ; **lot I5 : un écran du cadre crème**, maquette `jump-reglages.html`) : « ‹ JUMP » ferme l'écran (retour à la
@@ -115,7 +115,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
     ),
     el("section", { classe: "reglages__section reglages__section--ligne" }, lier(el("h2", { classe: "reglages__titre" }), "reglages.langue"), langue),
     // Lot I5 : plus de profil dans le jeu — le profil commun du portail ; lot R5 : les mentions légales du site.
-    el("div", { classe: "reglages__liens" }, lienFleche("settings-profil", "reglages.profil", opts.profilHref, "reglages__lien--profil"), lienFleche("settings-mentions", "reglages.mentions", "../mentions-legales/", "reglages__lien--mentions")),
+    el("div", { classe: "reglages__liens" }, lienFleche("settings-profil", "reglages.profil", opts.profilHref, "reglages__lien--profil"), lierMentions(lienFleche("settings-mentions", "reglages.mentions", "../mentions-legales/", "reglages__lien--mentions"))),
   );
   shows.forEach((f) => f());
   onLangue(() => shows.forEach((f) => f()));

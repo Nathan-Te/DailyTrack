@@ -143,7 +143,13 @@ export function choixLangue(t: TraducteurCommun, o: { langue: Langue; onChange?:
     "div",
     { classe: "dj-choix-langue", attrs: { role: "group", "aria-label": t.t("langue.groupe") } },
     ...LANGUES.map((l) => {
-      const b = el("button", { classe: "dj-choix-langue__bouton", attrs: { type: "button", "aria-pressed": String(l === o.langue), lang: l, "aria-label": t.t(NOM[l]), "data-langue": l }, texte: t.t(COURT[l]) });
+      // Lot I6 : le code court (« FR ») se voit, le nom (« Français ») se lit ; pas d'`aria-label` qui ne contiendrait pas le texte visible (axe).
+      const b = el(
+        "button",
+        { classe: "dj-choix-langue__bouton", attrs: { type: "button", "aria-pressed": String(l === o.langue), lang: l, "data-langue": l } },
+        el("span", { attrs: { "aria-hidden": "true" }, texte: t.t(COURT[l]) }),
+        el("span", { classe: "dj-cache", texte: t.t(NOM[l]) }),
+      );
       b.addEventListener("click", () => {
         if (l !== o.langue) o.onChange?.(l);
       });

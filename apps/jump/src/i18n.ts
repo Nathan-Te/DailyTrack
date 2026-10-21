@@ -1,6 +1,6 @@
 import { TICK_RATE } from "@cdj/jump-sim";
 import { ecrireLangue, lireLangue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, formatDate, formatDateCourte, formatDecompte, formatNombre, formatNumeroJour, formatRang, formatTemps, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
+import { CATALOGUE_COMMUN_FR, cheminMentions, formatDate, formatDateCourte, formatDecompte, formatNombre, formatNumeroJour, formatRang, formatTemps, traducteur, type Catalogue, type Langue, type Parametres, type Traducteur } from "@cdj/ui";
 import { CATALOGUE_FR } from "./catalogue.fr";
 import { gameStorage } from "./storage";
 
@@ -21,9 +21,11 @@ function langueInitiale(): Langue {
 let langue: Langue = langueInitiale();
 /** Le catalogue anglais : un autre fichier, chargé à la demande (`chargerLangue`) pour ne pas peser sur le premier chargement des joueurs en français. */
 let anglais: Catalogue | null = null;
+/** Lot I6 : l'anglais du catalogue commun, chargé avec celui du jeu (le même `import()`). */
+let communAnglais: Catalogue | null = null;
 function creerTraducteur(l: Langue): Traducteur {
   // Le français est toujours là ; l'anglais seulement une fois chargé (sans lui, une clé s'écrit telle quelle : `chargerLangue` doit précéder le premier écran).
-  return traducteur(l, { fr: CATALOGUE_FR, en: anglais ?? {} } as never, CATALOGUE_COMMUN);
+  return traducteur(l, { fr: CATALOGUE_FR, en: anglais ?? {} } as never, { fr: CATALOGUE_COMMUN_FR, en: communAnglais ?? {} } as never);
 }
 let traducteurCourant: Traducteur = creerTraducteur(langue);
 
@@ -31,7 +33,9 @@ let traducteurCourant: Traducteur = creerTraducteur(langue);
 export async function chargerLangue(l: Langue = langue): Promise<boolean> {
   if (l === "fr" || anglais) return true;
   try {
-    anglais = (await import("./catalogue.en")).CATALOGUE_EN;
+    const m = await import("./catalogue.en");
+    anglais = m.CATALOGUE_EN;
+    communAnglais = m.CATALOGUE_COMMUN_EN;
     if (l === langue) traducteurCourant = creerTraducteur(langue);
     return true;
   } catch {
@@ -117,6 +121,8 @@ export function appliquerTextes(racine: ParentNode | null = typeof document === 
       e.setAttribute(nom.slice("data-t-".length), t(e.getAttribute(nom)!, parametresDe(e)));
     }
   }
+  // Lot I6 : les liens « Mentions légales » (`data-mentions`) ouvrent la page de la langue choisie (`/mentions-legales/` ou `/legal/`).
+  for (const e of racine.querySelectorAll<HTMLElement>("[data-mentions]")) e.setAttribute("href", cheminMentions(langue, "../"));
 }
 
 function parametresDe(e: HTMLElement): Parametres | undefined {
@@ -142,6 +148,13 @@ export function lier<E extends HTMLElement>(e: E, cle: string, params?: Parametr
   return e;
 }
 
+
+/** Lot I6 : un lien vers les mentions légales de la langue choisie (`../mentions-legales/` ou `../legal/`), qui suit les changements de langue. Rend l'élément. */
+export function lierMentions<E extends HTMLElement>(e: E): E {
+  e.dataset.mentions = "";
+  e.setAttribute("href", cheminMentions(langue, "../"));
+  return e;
+}
 // --- Formats du socle dans la langue courante : plus aucun formatage de nombre à la main ------------------------------------------------------
 /** Un temps en millisecondes : `31,402 s` / `31.402 s` ; `1:02,345` au-delà d'une minute. */
 export const fTemps = (ms: number): string => formatTemps(ms, langue);

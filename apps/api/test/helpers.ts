@@ -67,7 +67,7 @@ export function pilotReplay(day: number, grip: number): { code: string; replay: 
 export const playerId = (n: number) => n.toString(16).padStart(32, "0");
 
 /**
- * Lot I1 : une réponse d'erreur du serveur (statut ≥ 400) a la forme `{ error: <code de la liste>, message, …détails }` et le statut de la
+ * Lot I1 : une réponse d'erreur du serveur (statut ≥ 400) a la forme `{ error: <code de la liste>, …détails }` (lot I6 : **sans `message`**) et le statut de la
  * liste (`src/codesErreur.ts`) ; sinon une erreur explicite est levée. `makeApi().call` l'applique à chaque réponse (toute erreur déjà testée
  * est donc vérifiée) ; les tests qui appellent `createApi(...).handle` ou le serveur HTTP l'appellent là où ils lisent une réponse d'erreur.
  */
@@ -78,7 +78,7 @@ export function verifierErreur(status: number, body: unknown): void {
   const { error, message } = body as { error?: unknown; message?: unknown };
   if (!estCodeErreur(error)) throw new Error(`Réponse ${status} dont le code n'est pas dans CODES_ERREUR (apps/api/src/codesErreur.ts) : ${shown}`);
   if (CODES_ERREUR[error].status !== status) throw new Error(`Réponse ${status} avec le code « ${error} », dont le statut de la liste est ${CODES_ERREUR[error].status} : ${shown}`);
-  if (typeof message !== "string" || message.trim() === "") throw new Error(`Réponse ${status} (« ${error} ») sans message : ${shown}`);
+  if (message !== undefined) throw new Error(`Réponse ${status} (« ${error} ») avec un \`message\` : le serveur ne renvoie plus que le code (lot I6) : ${shown}`);
 }
 
 export interface TestApi {
@@ -124,7 +124,7 @@ export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } 
       const res = await api.handle(new Request(`http://api.test${path}`, init), { clientKey: opts.clientKey ?? "203.0.113.7", peerKey: opts.peerKey });
       const text = await res.text();
       const parsed = text ? JSON.parse(text) : null;
-      verifierErreur(res.status, parsed); // lot I1 : toute réponse d'erreur a un code de la liste, son statut et un message
+      verifierErreur(res.status, parsed); // lot I1 : toute réponse d'erreur a un code de la liste et son statut ; lot I6 : sans message
       return { status: res.status, body: parsed, headers: res.headers };
     },
   };

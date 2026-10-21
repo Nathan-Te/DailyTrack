@@ -1,4 +1,4 @@
-import { bouton, el, icone, medaille } from "@cdj/ui";
+import { bouton, el, icone, medaille, suivreDialogue } from "@cdj/ui";
 import { barreDuJour, onJour } from "./cadre";
 import { MEDAL_TYPE } from "./dailyInfo";
 import type { EtatDuJour } from "./homeLogic";
@@ -141,6 +141,12 @@ export function mountHome(opts: HomeOptions): Home {
   const coque = el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette);
   root.append(plaque, el("div", { classe: "accueil__defile" }, coque));
   document.body.append(root);
+  suivreDialogue(root); // lot I6 : focus mis dedans à l'ouverture, rendu à la fermeture
+  // Lot I6 : « JOUER » prend le focus, sauf si un dialogue posé au-dessus de l'accueil l'a (« Comment jouer » à la première visite).
+  const focusJouer = () => {
+    const dessus = document.activeElement?.closest('[role="dialog"]');
+    if (!dessus || dessus === root) play.focus({ preventScroll: true });
+  };
 
   let open = false;
   let ready = false;
@@ -196,7 +202,7 @@ export function mountHome(opts: HomeOptions): Home {
       open = true;
       root.hidden = false;
       document.body.classList.add("home-open");
-      if (ready) play.focus({ preventScroll: true });
+      if (ready) focusJouer();
       changed();
     },
     close() {
@@ -213,13 +219,13 @@ export function mountHome(opts: HomeOptions): Home {
       settings.disabled = !on;
       if (on && view) lier(play, BOUTON_JOUER[view.etat]);
       else lier(play, "page.preparation");
-      if (on && open) play.focus({ preventScroll: true });
+      if (on && open) focusJouer();
     },
     setCountdown(text) {
       if (countdown.textContent !== text) countdown.textContent = text;
     },
     focus() {
-      if (open && ready) play.focus({ preventScroll: true });
+      if (open && ready) focusJouer();
     },
   };
   return self;

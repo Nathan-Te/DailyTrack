@@ -15,7 +15,6 @@ export const en: Catalogues<typeof fr>["en"] = {
   "cadre.retourJump": "Back to Jump's home",
   "commun.morts": { one: "{n} death", other: "{n} deaths" },
   "commun.essais": { one: "{n} attempt", other: "{n} attempts" },
-  "commun.fermer": "Close",
   "commun.oui": "On",
   "commun.non": "Off",
   "commun.montrer": "Show",

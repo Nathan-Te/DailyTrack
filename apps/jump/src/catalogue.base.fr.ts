@@ -22,7 +22,6 @@ export const fr = {
   // Mots courants et pluriels
   "commun.morts": { one: "{n} mort", other: "{n} morts" },
   "commun.essais": { one: "{n} essai", other: "{n} essais" },
-  "commun.fermer": "Fermer",
   "commun.oui": "Oui",
   "commun.non": "Non",
   "commun.montrer": "Montrer",

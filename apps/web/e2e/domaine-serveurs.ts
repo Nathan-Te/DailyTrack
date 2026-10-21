@@ -2,7 +2,8 @@
 //   - `startSite` : le site de playdujour.com comme Firebase Hosting le sert — le site assemblé par `node scripts/site.mjs site` (portail à la
 //     racine, DailyTrack sous /track/, DailyJump sous /jump/), un dossier sans « / » final (`/track`, `/jump`, `/mentions-legales`) redirigé vers `<dossier>/` (ce que Hosting fait par défaut
 //     pour un dossier avec `index.html`, sans règle dans firebase.json), et `/api/**` renvoyé
-//     vers un serveur de la plateforme (même origine : aucune requête CORS).
+//     vers un serveur de la plateforme (même origine : aucune requête CORS). Lot I6 : une adresse inconnue reçoit `404.html` de la racine avec
+//     le statut 404 (ce que Hosting fait par défaut, sans règle dans firebase.json) ; le manifeste est servi en `application/manifest+json`.
 // (Lot R5 : plus de serveur de l'ancienne adresse GitHub Pages : les redirections sont retirées.)
 // Lecture seule, rien hors des dossiers donnés.
 import { createReadStream, existsSync, statSync } from "node:fs";
@@ -17,6 +18,7 @@ const TYPES: Record<string, string> = {
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
   ".png": "image/png",
+  ".webmanifest": "application/manifest+json",
   ".wasm": "application/wasm",
 };
 
@@ -61,7 +63,9 @@ export function startSite(dir: string, port: number, apiPort: number): Promise<S
       }
       const file = fileFor(dir, path);
       if (!file) {
-        res.writeHead(404).end();
+        const introuvable = join(dir, "404.html");
+        if (existsSync(introuvable)) send(res, introuvable, 404);
+        else res.writeHead(404).end();
         return;
       }
       send(res, file);

@@ -10,7 +10,7 @@ import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { formatDay, parseDay } from "@cdj/core";
 import { ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profile";
-import { CATALOGUE_COMMUN, barreJeu, bouton, choixLangue, el, formatDateCourte, formatNombre, medaille, nomMedaille, traducteur, type TypeMedaille } from "@cdj/ui";
+import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatNombre, medaille, nomMedaille, traducteur, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { lireClassement, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
 import { PREMIER_JOUR_TRACK, numeroDeJournee } from "./jours";
@@ -151,7 +151,7 @@ function rendre(): void {
     el(
       "footer",
       { classe: "portail-pied" },
-      el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: "../mentions-legales/", hreflang: langue === "fr" ? null : "fr" }, texte: t.t("portail.mentions") }),
+      el("a", { classe: "portail-pied__lien", attrs: { id: "mentions", href: cheminMentions(langue, "../"), hreflang: langue }, texte: t.t("portail.mentions") }),
     ),
   ];
   racine.replaceChildren(...enfants.filter((e): e is HTMLElement => e !== null));

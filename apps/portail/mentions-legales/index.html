@@ -6,6 +6,7 @@
     <meta name="theme-color" data-jeton-content="dj-creme" />
     <meta name="description" content="Du Jour : mentions légales et confidentialité. Qui publie le site, qui l'héberge, ce que le site garde et comment le faire effacer." />
     <link rel="icon" data-icone-du-jour />
+    <link rel="alternate" hreflang="en" href="../legal/" vite-ignore />
     <title>Mentions légales et confidentialité — Du Jour</title>
     <!--
       Lot R5 (plateforme) : page statique, sans script, sans ressource extérieure. Elle décrit exactement ce que le code fait :
@@ -19,10 +20,13 @@
   <body>
     <header class="dj-barre-jeu mentions-barre">
       <a class="dj-barre-jeu__retour retour" href="../" aria-label="Retour au portail Du Jour"><svg class="dj-icone" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-linecap="square" aria-hidden="true" focusable="false"><path d="M15 4 7 12l8 8" /></svg><span class="dj-logo dj-logo--petit">DU JOUR</span></a>
+      <!-- Lot I6 : la traduction anglaise (../legal/) ; cette page-ci fait foi. -->
+      <a class="mentions-langue" href="../legal/" hreflang="en" lang="en">English version</a>
     </header>
     <main class="mentions">
       <h1>Mentions légales et confidentialité</h1>
-      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-20">20 octobre 2026</time>.</p>
+      <p class="reference"><strong>La version française fait foi</strong> (<span lang="en">the French version is the reference</span>) ; une traduction fidèle en anglais : <a href="../legal/" hreflang="en" lang="en">Legal notice and privacy</a>.</p>
+      <p class="doux">Du Jour (playdujour.com) : DailyTrack et DailyJump. Mise à jour le <time datetime="2026-10-21">21 octobre 2026</time>.</p>
 
       <section class="bref" aria-label="En bref">
         <ul>
@@ -49,7 +53,7 @@
       <ul class="donnees">
         <li data-tables="players">
           <h3>Ton identifiant secret</h3>
-          <p>128 bits tirés au hasard par ton navigateur, sans compte ni e-mail. C'est lui que contient ton code de transfert (Réglages › Profil) : garde-le comme un mot de passe.</p>
+          <p>128 bits tirés au hasard par ton navigateur, sans compte ni e-mail. C'est lui que contient ton code de transfert (ton profil Du Jour) : garde-le comme un mot de passe.</p>
           <p>But : relier tes temps entre tes appareils et entre les jeux.</p>
           <p class="duree">Durée : tant que tu ne demandes pas l'effacement.</p>
         </li>
@@ -106,7 +110,7 @@
       <p>La base de données est chez Turso (société établie aux États-Unis), dans la région choisie à sa création.</p>
 
       <h3 id="navigateur">Ce que ton navigateur garde</h3>
-      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), ta langue (français ou anglais, si tu l'as choisie sur le portail : commune au portail et aux jeux), tes réglages (son, caméra, commandes), tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun) et <code>jump:…</code> (DailyJump).</p>
+      <p>Le jeu garde dans ton navigateur (stockage local, jamais un cookie) : ton profil (identifiant, pseudo), ta langue (français ou anglais, si tu l'as choisie, sur le portail ou dans un jeu : commune au portail et aux jeux), tes réglages (son, caméra, commandes), tes records et ton historique, la mémoire de la partie du jour, les envois en attente quand tu es hors ligne, et pour DailyTrack les miniatures des circuits des archives. Clés <code>cdj:…</code> (DailyTrack et le profil commun) et <code>jump:…</code> (DailyJump).</p>
       <p>Ce stockage est <strong>strictement nécessaire</strong> au jeu que tu demandes (sans lui, ni profil, ni réglages, ni records) : il est donc permis sans demander ton consentement, et le site n'affiche pas de bandeau (article 82 de la loi Informatique et Libertés : traceurs « strictement nécessaires à la fourniture d'un service de communication en ligne à la demande expresse de l'utilisateur » ; <a href="https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf">lignes directrices de la CNIL</a>, délibération n° 2020-091 du 17 septembre 2020, qui couvrent aussi le stockage local). <strong>Aucun traceur ni cookie tiers, aucune publicité, aucune mesure d'audience</strong> aujourd'hui. Tu peux tout effacer à tout moment en effaçant les données du site playdujour.com dans ton navigateur.</p>
 
       <h3 id="base-legale">Base légale</h3>
@@ -114,14 +118,14 @@
 
       <h3 id="droits">Tes droits</h3>
       <ul>
-        <li><strong>Accès</strong> : ton pseudo, tes temps et tes médailles sont dans Réglages › Profil ; pour le reste, écris-nous.</li>
-        <li><strong>Rectification</strong> : change ton pseudo dans Réglages › Profil.</li>
-        <li><strong>Effacement</strong> et <strong>opposition</strong> : écris à <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> en joignant ton <strong>code de transfert</strong> (Réglages › Profil › « Copier mon code ») : c'est la seule preuve que le profil est à toi. Nous effaçons ton profil, tes temps et rediffusions, tes morts et tes courses, et ton pseudo est libéré ; dans les classements passés ta ligne disparaît (les suivants montent d'une place). Réponse sous un mois.</li>
+        <li><strong>Accès</strong> : ton pseudo, tes statistiques et tes médailles sont dans ton profil Du Jour (l'avatar du portail, ou Réglages › « Mon profil Du Jour » dans un jeu) ; pour le reste, écris-nous.</li>
+        <li><strong>Rectification</strong> : change ton pseudo dans ton profil Du Jour.</li>
+        <li><strong>Effacement</strong> et <strong>opposition</strong> : écris à <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> en joignant ton <strong>code de transfert</strong> (ton profil Du Jour › « Copier mon code ») : c'est la seule preuve que le profil est à toi. Nous effaçons ton profil, tes temps et rediffusions, tes morts et tes courses, et ton pseudo est libéré ; dans les classements passés ta ligne disparaît (les suivants montent d'une place). Réponse sous un mois.</li>
       </ul>
       <p>Si tu estimes que tes droits ne sont pas respectés, tu peux adresser une réclamation à la CNIL (Commission nationale de l'informatique et des libertés) : <a href="https://www.cnil.fr/fr/plaintes">www.cnil.fr/fr/plaintes</a>, ou par courrier : CNIL, Service des plaintes, 3 place de Fontenoy, 75007 Paris.</p>
 
       <footer>
-        <p>MZC Studios — éditeur particulier · <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> · <a href="../">Du Jour</a></p>
+        <p>MZC Studios — éditeur particulier · <a href="mailto:mzc.studios.gamedev@gmail.com">mzc.studios.gamedev@gmail.com</a> · <a href="../">Du Jour</a> · <a href="../legal/" hreflang="en" lang="en">English version</a></p>
       </footer>
     </main>
   </body>

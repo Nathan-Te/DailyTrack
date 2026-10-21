@@ -6,13 +6,16 @@ import { join, resolve } from "node:path";
 import { encodeTransfer } from "@cdj/profile";
 import { expect as baseExpect, hasWebGL, newClockedContext, test, type Page } from "./fixtures";
 import { startSite } from "./domaine-serveurs";
+import { auditAxe } from "./axe";
 
 // Lot R4 (plateforme) : playdujour.com en local.
 //   1. le portail « Du Jour » (une cartouche par jeu, numéro du jour ; lot I1 : le reste du portail dans portail.spec.ts) ;
 //   2. les deux jeux servis sous /track/ et /jump/ du site assemblé (`node scripts/site.mjs site`, comme Firebase Hosting) : ressources, niveaux
 //      figés, démonstration, et le serveur sous la même adresse (`?api=/` = `VITE_API_URL=/` : `/api/…` sur l'origine de la page) ;
 //   3. lot R5 : plus aucun import par l'adresse — un lien `#dujour=…` (l'ancienne migration du lot R4) n'a aucun effet ;
-//   4. lot R5 : la page « Mentions légales et confidentialité », depuis le portail et depuis le menu ⏸ de chaque jeu, au doigt en portrait.
+//   4. lot R5 : la page « Mentions légales et confidentialité », depuis le portail et depuis le menu ⏸ de chaque jeu, au doigt en portrait ;
+//   5. lot I6 : les aperçus de partage (balises, images servies aux bonnes tailles et sous le poids, adresses absolues de CE site : il est
+//      assemblé avec `--origine http://localhost:4177`), le manifeste et les icônes, la page 404, les mentions en anglais depuis le portail en EN.
 // Les deux jeux doivent être construits (la part DailyTrack de la CI construit les deux). Serveurs lancés ici (ports 4177, 8793 : réservés).
 test.describe.configure({ mode: "serial" });
 test.setTimeout(120_000);
@@ -31,7 +34,7 @@ test.beforeAll(async () => {
   test.setTimeout(240_000);
   for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist", "index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
   tmp = mkdtempSync(join(tmpdir(), "playdujour-"));
-  execFileSync("node", ["scripts/site.mjs", "site", "--sortie", join(tmp, "site")], { cwd: ROOT, stdio: "inherit" });
+  execFileSync("node", ["scripts/site.mjs", "site", "--sortie", join(tmp, "site"), "--origine", SITE], { cwd: ROOT, stdio: "inherit" });
   api = spawn("node", ["../api/dist/server.mjs"], {
     env: { ...process.env, PORT: String(API_PORT), DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS: process.env.E2E_CLOCK_OFFSET_MS },
     stdio: "ignore",
@@ -214,6 +217,105 @@ test("mentions légales : depuis le menu ⏸ et les Réglages de Jump, au doigt 
   await bigEnough(page, "#menu-mentions");
   await page.locator("#menu-mentions").tap();
   await mentionsShown(page);
+});
+
+// ——— Lot I6 : ce qu'on voit quand on colle un lien, le manifeste, la page 404, les mentions en anglais ———
+/** Les balises `<meta property|name>` d'une page servie : nom → contenu. */
+async function balises(chemin: string): Promise<Map<string, string>> {
+  const html = await (await fetch(`${SITE}${chemin}`)).text();
+  return new Map([...html.matchAll(/<meta (?:property|name)="([^"]+)" content="([^"]*)"/g)].map((m) => [m[1]!, m[2]!]));
+}
+
+test("lot I6 : aperçus de partage de /, /track/ et /jump/ — balises, adresses absolues de ce site, images 1200 × 630 de moins de 150 ko", async () => {
+  const attendus = [
+    { chemin: "/", image: "portail", titre: "Du Jour — les jeux du jour" },
+    { chemin: "/track/", image: "track", titre: "Track — Du Jour" },
+    { chemin: "/jump/", image: "jump", titre: "Jump — Du Jour" },
+  ];
+  for (const a of attendus) {
+    const m = await balises(a.chemin);
+    expect(m.get("og:title"), a.chemin).toBe(a.titre);
+    expect(m.get("og:description")!.length, a.chemin).toBeGreaterThan(40);
+    expect(m.get("description")!.length, a.chemin).toBeGreaterThan(20);
+    expect(m.get("og:site_name")).toBe("Du Jour");
+    expect(m.get("og:type")).toBe("website");
+    expect(m.get("og:locale")).toBe("fr_FR");
+    expect(m.get("og:locale:alternate")).toBe("en_GB");
+    expect(m.get("twitter:card")).toBe("summary_large_image");
+    expect(m.get("og:url"), a.chemin).toBe(`${SITE}${a.chemin}`);
+    expect(m.get("og:image"), a.chemin).toBe(`${SITE}/partage/${a.image}.png`);
+    expect([m.get("og:image:width"), m.get("og:image:height")]).toEqual(["1200", "630"]);
+    expect(m.get("og:image:alt")!.length).toBeGreaterThan(20);
+    const image = await fetch(m.get("og:image")!);
+    expect(image.status, a.image).toBe(200);
+    expect(image.headers.get("content-type")).toBe("image/png");
+    const octets = Buffer.from(await image.arrayBuffer());
+    expect([octets.readUInt32BE(16), octets.readUInt32BE(20)], a.image).toEqual([1200, 630]);
+    expect(octets.length, a.image).toBeLessThanOrEqual(150 * 1024);
+  }
+  // Plus aucun jeton d'origine dans les pages du site.
+  for (const chemin of ["/", "/track/", "/jump/", "/profil/", "/classement/", "/mentions-legales/", "/legal/", "/404.html"]) {
+    expect(await (await fetch(`${SITE}${chemin}`)).text(), chemin).not.toContain("__ORIGINE_DU_SITE__");
+  }
+});
+
+test("lot I6 : « Ajouter à l'écran d'accueil » — icône 180 px, manifeste (nom, couleurs, icônes 192 et 512, départ au portail)", async () => {
+  for (const chemin of ["/", "/track/", "/jump/"]) {
+    const html = await (await fetch(`${SITE}${chemin}`)).text();
+    expect(html, chemin).toContain('<link rel="apple-touch-icon" href="/partage/icone-180.png" />');
+    expect(html, chemin).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+  }
+  const taille = async (chemin: string) => {
+    const r = await fetch(`${SITE}${chemin}`);
+    expect(r.status, chemin).toBe(200);
+    const o = Buffer.from(await r.arrayBuffer());
+    return [o.readUInt32BE(16), o.readUInt32BE(20)];
+  };
+  expect(await taille("/partage/icone-180.png")).toEqual([180, 180]);
+  const m = (await (await fetch(`${SITE}/manifest.webmanifest`)).json()) as { name: string; start_url: string; display: string; icons: { src: string; sizes: string }[] };
+  expect([m.name, m.start_url, m.display]).toEqual(["Du Jour", "/", "standalone"]);
+  for (const i of m.icons) expect(await taille(i.src), i.src).toEqual(i.sizes.split("x").map(Number));
+});
+
+test("lot I6 : une adresse inconnue → la page 404 de la charte (deux langues, lien vers le portail), même en profondeur", async ({ browser }) => {
+  const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
+  for (const chemin of ["/xyz", "/a/b/c/"]) {
+    const r = await page.goto(`${SITE}${chemin}`);
+    expect(r?.status(), chemin).toBe(404);
+    await expect(page.getByRole("heading", { level: 1, name: "Cette page n'existe pas" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "This page doesn't exist" })).toBeVisible();
+    // La feuille de la charte est chargée même en profondeur (chemins absolus) : fond crème, police de la marque.
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe("rgb(237, 227, 207)");
+    expect(await page.evaluate(() => getComputedStyle(document.querySelector("h1")!).fontFamily)).toContain("Archivo Black");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  }
+  await auditAxe(page, "404"); // lot I6 : la passe d'accessibilité (e2e/axe.ts)
+  await bigEnough(page, ".dj-bouton--marque");
+  await page.locator(".dj-bouton--marque").tap();
+  await expect(page).toHaveURL(`${SITE}/`);
+  // /api/** n'est jamais la page 404 du site : le serveur répond lui-même (code d'erreur JSON).
+  const api = await fetch(`${SITE}/api/inconnue`);
+  expect(api.status).toBe(404);
+  expect(await api.json()).toEqual({ error: "not_found" });
+});
+
+test("lot I6 : mentions en anglais — le portail en EN ouvre /legal/, qui renvoie à la française (elle fait foi)", async ({ browser }) => {
+  const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "en-US" })).newPage();
+  await page.goto(`${SITE}/`);
+  await expect(page.locator("#mentions")).toHaveText("Legal notice and privacy");
+  await bigEnough(page, "#mentions");
+  await page.locator("#mentions").tap();
+  await expect(page).toHaveURL(`${SITE}/legal/`);
+  await expect(page.getByRole("heading", { level: 1, name: "Legal notice and privacy" })).toBeVisible();
+  await expect(page.locator("main")).toContainText("The French version is the reference");
+  for (const text of ["MZC Studios", "Google Cloud France", "ChiselStrike Inc.", "transfer code"]) await expect(page.locator("main")).toContainText(text);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await auditAxe(page, "mentions-en"); // lot I6 : la passe d'accessibilité (e2e/axe.ts)
+  await bigEnough(page, ".mentions-langue");
+  await page.locator(".mentions-langue").tap();
+  await mentionsShown(page);
+  await expect(page.locator(".mentions-langue")).toHaveText("English version");
+  await auditAxe(page, "mentions-fr");
 });
 
 // ——— Lot I4 : les polices de Track sont celles du portail (un seul chemin sur le site : `/assets/…`) ———

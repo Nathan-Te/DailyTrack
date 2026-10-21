@@ -16,7 +16,7 @@ import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
 import { appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { icone, nomMedaille } from "@cdj/ui";
+import { icone, nomMedaille, suivreDialogue } from "@cdj/ui";
 import { iconeTrack } from "./icones";
 import { definirJour } from "./cadre";
 import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
@@ -685,6 +685,8 @@ function showPauseConfirm(show: boolean) {
   $("pause-confirm").hidden = !show;
 }
 $("pause-resume").addEventListener("click", () => setPaused(false));
+// Lot I6 : la pause est un dialogue : le focus va sur « Reprendre » à l'ouverture et revient à la partie à la fermeture (`suivreDialogue`).
+suivreDialogue($("pause"), { ouvert: () => paused, observer: [document.body], focusInitial: () => $("pause-resume") });
 $("pause-restart").addEventListener("click", () => controls.requestRestart());
 $("btn-pause").addEventListener("click", () => {
   ($("btn-pause") as HTMLButtonElement).blur();

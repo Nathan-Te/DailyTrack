@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CATALOGUE_COMMUN } from "@cdj/ui";
 import { CATALOGUE_JUMP } from "../src/catalogue";
+import { CATALOGUE_APERCU } from "../src/catalogue.apercu";
 import "./francais";
 
 // Lot I5 : les feuilles de Jump suivent la charte « Cartouches » (docs/plateforme/identite.md, § 5 et § 11) comme celles du socle et de Track : toute couleur et
@@ -38,7 +39,8 @@ describe("feuilles de style de Jump", () => {
 describe("catalogues de Jump", () => {
   // Chaque clé écrite en toutes lettres dans le code (`t("…")`, `lier(…, "…")`, `data-t="…"`) existe dans le catalogue du jeu ou le catalogue commun : une clé
   // absente s'afficherait telle quelle. (La parité fr / en est vérifiée par packages/ui/test/catalogues.test.ts.)
-  const cles = new Set([...Object.keys(CATALOGUE_JUMP.fr), ...Object.keys(CATALOGUE_COMMUN.fr)]);
+  // Lot I6 : les balises de partage de `index.html` lisent le catalogue de l'aperçu (construction seulement).
+  const cles = new Set([...Object.keys(CATALOGUE_JUMP.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr)]);
   const sources = [...readdirSync(SRC).filter((f) => f.endsWith(".ts") && !f.startsWith("catalogue")).map((f) => join(SRC, f)), join(__dirname, "../index.html")];
   it("chaque clé appelée par le code existe", () => {
     const absentes: string[] = [];

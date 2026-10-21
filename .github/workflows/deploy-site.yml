@@ -8,6 +8,9 @@ name: Deploy site
 # Le serveur est sous la même adresse : firebase.json renvoie /api/** vers le service Cloud Run de la cible (production → cdj-api, recette et
 # aperçus → cdj-api-recette, europe-west1) ; les jeux sont construits avec VITE_API_URL=/ (`/api/` sur leur propre origine, aucun pré-vol CORS).
 # Chaque site et chaque canal est une origine à part : leur stockage local est séparé de celui de la production par le navigateur.
+# Lot I6 : les images de partage sont produites à la construction par le Chromium de Playwright (installé ici) ; les aperçus de partage portent
+# l'adresse absolue du site déployé (`--origine`) : la production, la recette, ou le canal d'aperçu (retrouvé ou créé AVANT la construction,
+# pour que l'aperçu d'une PR montre sa propre image et pas celle de la production).
 # Tant que Firebase n'est pas configuré (variables ci-dessous), tout est sauté avec le message « Firebase non configuré : voir
 # docs/plateforme/domaine.md » et le job reste vert.
 #
@@ -146,6 +149,55 @@ jobs:
       - run: npm ci
         if: steps.cfg.outputs.enabled == 'true'
 
+      - name: Authentification Google Cloud (fédération d'identité)
+        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Authentification Google Cloud (clé JSON)
+        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Lot I6 : le navigateur qui dessine les images de partage et les icônes (scripts/images-partage.mjs, appelé par scripts/site.mjs).
+      - uses: actions/cache@v4
+        if: steps.cfg.outputs.enabled == 'true'
+        id: navigateur
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
+      - name: Chromium de Playwright (images de partage)
+        if: steps.cfg.outputs.enabled == 'true'
+        run: |
+          if [ "${{ steps.navigateur.outputs.cache-hit }}" = true ]; then npx playwright install-deps chromium; else npx playwright install --with-deps chromium; fi
+
+      # Lot I6 : l'origine du site déployé, écrite dans les aperçus de partage (og:url, og:image). Production et recette : leur adresse publique ;
+      # un canal d'aperçu : son adresse, retrouvée ou créée maintenant (le même canal est ensuite publié par `hosting:channel:deploy`).
+      - name: Origine du site
+        id: origine
+        if: steps.cfg.outputs.enabled == 'true'
+        env:
+          SITE: ${{ steps.cfg.outputs.site }}
+          EXPIRE: ${{ inputs.expire }}
+        run: |
+          if [ -n "$CANAL" ]; then
+            list() { npx --yes "$FIREBASE_TOOLS" hosting:channel:list --site "$SITE" --project "$GCP_PROJECT_ID" --json | jq -r --arg c "$CANAL" '.result.channels[]? | select(.name | endswith("/channels/" + $c)) | .url'; }
+            url="$(list)"
+            if [ -z "$url" ]; then
+              npx --yes "$FIREBASE_TOOLS" hosting:channel:create "$CANAL" --site "$SITE" --project "$GCP_PROJECT_ID" --expires "$EXPIRE" --json > created.json || { cat created.json; exit 1; }
+              url="$(jq -r '.result.url // empty' created.json)"
+              [ -n "$url" ] || url="$(list)"
+            fi
+            [ -n "$url" ] || { echo "::error::adresse du canal $CANAL introuvable"; exit 1; }
+            origine="$(node -e 'console.log(new URL(process.argv[1]).origin)' "$url")"
+          else
+            origine="$(node scripts/domaine.mjs adresse "$CIBLE")"
+          fi
+          echo "origine=$origine" >> "$GITHUB_OUTPUT"
+          echo "- Aperçus de partage : $origine (og:url, og:image)" >> "$GITHUB_STEP_SUMMARY"
+
       # Les deux jeux, puis le site assemblé (scripts/site.mjs : portail, /track/, /jump/, niveaux figés vérifiés).
       # Plus de VITE_STORAGE : chaque site et chaque canal est une origine à part, son stockage est séparé par le navigateur (lot R4).
       - name: Construire les jeux et le site
@@ -158,20 +210,8 @@ jobs:
         run: |
           npm run build
           # Lot I1 : la vitrine des composants (/ui/) n'est jamais publiée en production (recette et aperçus seulement).
-          node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }}
+          node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }} --origine "${{ steps.origine.outputs.origine }}"
           node scripts/site.mjs firebase --site "${{ steps.cfg.outputs.site }}" --service "${{ steps.cfg.outputs.service }}" --region "$REGION" --public site --sortie firebase.json
-
-      - name: Authentification Google Cloud (fédération d'identité)
-        if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
-        uses: google-github-actions/auth@v3
-        with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - name: Authentification Google Cloud (clé JSON)
-        if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
-        uses: google-github-actions/auth@v3
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Publier sur Firebase Hosting
         id: deploy

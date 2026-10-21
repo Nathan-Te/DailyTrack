@@ -1,17 +1,23 @@
 // Le site de playdujour.com (lot R4 de la plateforme) : assemblage et configuration Firebase. (Lot R5 : plus de pages de redirection de
 // l'ancienne adresse GitHub Pages.)
 // Fonctions pures testées (apps/portail/test/site.test.ts) ; ligne de commande utilisée par .github/workflows/*.yml et les e2e :
-//   node scripts/site.mjs site [--sortie site] [--production]
+//   node scripts/site.mjs site [--sortie site] [--production] [--origine https://…]
 //        → construit le portail (apps/portail) et assemble `site/` : portail à la racine, DailyTrack (apps/web/dist) sous /track/, DailyJump
 //          (apps/jump/dist) sous /jump/, la page des mentions légales (lot R5) sous /mentions-legales/ ; vérifie que chaque niveau figé (apps/jump/public/levels) est dans le site, identique. Les deux jeux
 //          doivent être construits avant (`npm run build`). Lot I1 : la vitrine des composants (`/ui/`) est dans le site de la recette et des
 //          aperçus, **jamais en production** : `--production` (deploy-site.yml, cible production) ne la construit pas, et vérifie qu'elle est absente.
+//          Lot I6 : les images de partage et les icônes (scripts/images-partage.mjs, rendues par le navigateur de Playwright) sous /partage/, le
+//          manifeste (/manifest.webmanifest) et les adresses absolues des aperçus de partage : `__ORIGINE_DU_SITE__` des pages devient l'origine
+//          du site déployé (`--origine` : production → toujours https://playdujour.com ; recette → https://recette.playdujour.com par défaut ;
+//          un aperçu passe l'adresse de son canal, sinon il montrerait l'image de la production).
 //   node scripts/site.mjs firebase --site <identifiant du site> --service <service Cloud Run> [--region europe-west1] [--public site] [--sortie firebase.deploy.json]
 //        → la configuration Firebase d'un déploiement : `firebase.json` (en-têtes, renvoi /api/**), avec le site et le service de la cible.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { ADRESSES } from "./domaine.mjs";
+import { DOSSIER_PARTAGE, produireImages } from "./images-partage.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -94,8 +100,66 @@ export function partagerPolices(out, jeux = ["track", "jump"]) {
   return { communes, ajoutees };
 }
 
-/** Assemble le site (portail, /track/, /jump/) ; rend le nombre de niveaux figés vérifiés. `production` : sans la vitrine `/ui/`. */
-export function assembleSite(out, { production = false } = {}) {
+/** Lot I6 : le jeton que les pages portent à la place de l'origine du site (`og:url`, `og:image`), remplacé à l'assemblage. */
+export const JETON_ORIGINE = "__ORIGINE_DU_SITE__";
+
+/** Lot I6 : le manifeste « Ajouter à l'écran d'accueil » (`/manifest.webmanifest`). */
+export const MANIFESTE = "manifest.webmanifest";
+
+/**
+ * L'origine du site à écrire dans les aperçus de partage : la production a toujours `https://playdujour.com` (une autre origine est refusée) ;
+ * ailleurs l'origine donnée (canal d'aperçu, recette, local), sinon la recette. Une origine, sans chemin ; `http://` seulement en local.
+ */
+export function origineDuSite({ production = false, origine } = {}) {
+  if (production) {
+    if (origine && origine.replace(/\/+$/, "") !== ADRESSES.production) throw new Error(`la production s'annonce sous ${ADRESSES.production}, pas « ${origine} »`);
+    return ADRESSES.production;
+  }
+  const o = (origine ?? ADRESSES.recette).replace(/\/+$/, "");
+  if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/.test(o) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) throw new Error(`origine du site invalide : « ${origine} » (https://hôte, sans chemin)`);
+  if (o === ADRESSES.production) throw new Error("un site de recette ou d'aperçu ne s'annonce jamais sous l'adresse de la production");
+  return o;
+}
+
+/** Remplace le jeton d'origine d'une page (pur, testé). */
+export function poserOrigine(texte, origine) {
+  return texte.split(JETON_ORIGINE).join(origine);
+}
+
+/**
+ * Le manifeste (pur, testé) : nom « Du Jour », couleurs de la charte (lues dans les jetons de @cdj/ui, jamais écrites ici), icônes 192 et 512
+ * produites à la construction, affichage autonome, départ au portail. Pas de service worker (lot I6).
+ */
+export function manifeste(jetonsCss) {
+  const jeton = (nom) => {
+    const m = new RegExp(`--${nom}:\\s*(#[0-9A-Fa-f]{6})`).exec(jetonsCss);
+    if (!m) throw new Error(`jeton absent : --${nom}`);
+    return m[1];
+  };
+  return {
+    name: "Du Jour",
+    short_name: "Du Jour",
+    lang: "fr",
+    start_url: "/",
+    scope: "/",
+    display: "standalone",
+    background_color: jeton("dj-creme"),
+    theme_color: jeton("dj-creme"),
+    icons: [192, 512].map((t) => ({ src: `/${DOSSIER_PARTAGE}/icone-${t}.png`, sizes: `${t}x${t}`, type: "image/png", purpose: "any" })),
+  };
+}
+
+/** Les pages HTML d'un dossier (récursif). */
+function pagesHtml(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? pagesHtml(join(dir, e.name)) : e.name.endsWith(".html") ? [join(dir, e.name)] : []));
+}
+
+/**
+ * Assemble le site (portail, /track/, /jump/) ; rend le nombre de niveaux figés vérifiés et les images de partage. `production` : sans la vitrine
+ * `/ui/`. `origine` (lot I6) : celle du site déployé, pour les adresses absolues des aperçus de partage.
+ */
+export async function assembleSite(out, { production = false, origine } = {}) {
+  const origineSite = origineDuSite({ production, origine });
   for (const part of LAYOUT.slice(1)) if (!existsSync(join(ROOT, part.from, "index.html"))) throw new Error(`${part.from} n'est pas construit : npm run build`);
   viteBuild({ production });
   rmSync(out, { recursive: true, force: true });
@@ -116,7 +180,15 @@ export function assembleSite(out, { production = false } = {}) {
   const vitrine = existsSync(join(out, VITRINE, "index.html"));
   if (production && vitrine) throw new Error(`la vitrine /${VITRINE}/ ne doit pas être dans le site de production`);
   if (!production && !vitrine) throw new Error(`vitrine /${VITRINE}/ absente du site`);
-  return files.length;
+  // Lot I6 : images de partage et icônes (produites ici), manifeste, adresses absolues ; la page 404 à la racine (servie par Hosting).
+  const images = await produireImages(join(out, DOSSIER_PARTAGE));
+  writeFileSync(join(out, MANIFESTE), JSON.stringify(manifeste(readFileSync(join(ROOT, "packages/ui/src/jetons.css"), "utf8")), null, 2) + "\n");
+  for (const f of pagesHtml(out)) {
+    const html = readFileSync(f, "utf8");
+    if (html.includes(JETON_ORIGINE)) writeFileSync(f, poserOrigine(html, origineSite));
+  }
+  if (!existsSync(join(out, "404.html"))) throw new Error("page 404 absente du site (apps/portail/404.html)");
+  return { niveaux: files.length, images, origine: origineSite };
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
@@ -126,8 +198,9 @@ if (isMain) {
     if (cmd === "site") {
       const out = resolve(option(argv, "--sortie", "site"));
       const production = argv.includes("--production");
-      const n = assembleSite(out, { production });
-      console.log(`site assemblé dans ${out} : portail, /track/, /jump/${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${n} niveau(x) figé(s) vérifié(s)`);
+      const { niveaux, images, origine } = await assembleSite(out, { production, origine: option(argv, "--origine") });
+      console.log(`site assemblé dans ${out} : portail, /track/, /jump/${production ? " (production : sans la vitrine /ui/)" : ", vitrine /ui/"} ; ${niveaux} niveau(x) figé(s) vérifié(s)`);
+      console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));
       const config = firebaseConfig(template, { site: option(argv, "--site"), service: option(argv, "--service"), region: option(argv, "--region", REGION), publicDir: option(argv, "--public") });

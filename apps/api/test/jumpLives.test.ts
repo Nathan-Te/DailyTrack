@@ -115,7 +115,7 @@ describe(`POST /api/jump/lives (${TEST_DB})`, () => {
     const sent = deaths.slice(0, 5);
     const r = await t.call("POST", "/api/jump/lives", lot([...sent.map((d) => d.code), others[0]!.code]), as(2));
     expect(r.status, JSON.stringify(r.body)).toBe(200);
-    expect(r.body).toMatchObject({ accepted: 5, received: 6, duplicates: 0, invalid: 0, notDeath: 1, overCap: 0, dayCount: 5, cap: JUMP_LIVES_PER_DAY, message: "" });
+    expect(r.body).toMatchObject({ accepted: 5, received: 6, duplicates: 0, invalid: 0, notDeath: 1, overCap: 0, dayCount: 5, cap: JUMP_LIVES_PER_DAY });
     expect(r.body.results).toEqual(["ok", "ok", "ok", "ok", "ok", "not_death"]);
     const row = await t.db.first<{ count: number; lives: string; level_id: string }>("SELECT count, lives, level_id FROM jump_lives WHERE day = ? AND player_id = ?", [DAY, playerId(2)]);
     expect(row?.count).toBe(5);
@@ -175,7 +175,8 @@ describe(`POST /api/jump/lives (${TEST_DB})`, () => {
     expect(first.body).toMatchObject({ accepted: 25, dayCount: 25, overCap: 0 });
     const second = await t.call("POST", "/api/jump/lives", lot(deaths.slice(25, 35).map((d) => d.code)), as(7));
     expect(second.body).toMatchObject({ accepted: 5, dayCount: 30, overCap: 5 });
-    expect(second.body.message).toMatch(/au plus 30 morts par joueur et par jour/);
+    expect(second.body.cap).toBe(30);
+    expect(second.body).not.toHaveProperty("message"); // lot I6 : plus de texte, le plafond se lit dans `overCap` et `cap`
     expect(second.body.results.slice(5)).toEqual(new Array(5).fill("over_cap"));
     expect(await t.db.first("SELECT count FROM jump_lives WHERE player_id = ?", [playerId(7)])).toEqual({ count: 30 });
     const tooMany = await t.call("POST", "/api/jump/lives", lot(new Array(31).fill(deaths[0]!.code)), as(7));

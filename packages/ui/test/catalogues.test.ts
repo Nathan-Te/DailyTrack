@@ -14,7 +14,7 @@ describe("catalogues de traduction", () => {
   for (const [nom, cat] of TOUS) {
     it(`${nom} : mêmes clés, aucune valeur vide, mêmes paramètres, mêmes formes plurielles`, () => {
       expect(Object.keys(cat.en).sort(), nom).toEqual(Object.keys(cat.fr).sort());
-      expect(Object.keys(cat.fr).length, nom).toBeGreaterThan(3);
+      expect(Object.keys(cat.fr).length, nom).toBeGreaterThanOrEqual(3); // lot I6 : les catalogues des aperçus de partage ont 3 clés
       for (const cle of Object.keys(cat.fr)) {
         expect(cle, nom).toMatch(/^[a-z][a-zA-Z0-9]*(\.[a-zA-Z0-9_]+)+$/);
         for (const l of ["fr", "en"] as const) {

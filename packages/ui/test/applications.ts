@@ -10,6 +10,10 @@ export const CATALOGUES: [nom: string, fichier: string, exporte: string][] = [
   ["apps/portail", "apps/portail/src/catalogue.ts", "CATALOGUE_PORTAIL"],
   ["apps/portail (vitrine)", "apps/portail/src/catalogueVitrine.ts", "CATALOGUE_VITRINE"],
   ["apps/portail (démonstration)", "apps/portail/src/catalogueDemo.ts", "CATALOGUE_DEMO"],
+  // Lot I6 : les textes des aperçus de partage (Open Graph), lus seulement à la construction (vite.config.ts de chaque application).
+  ["apps/portail (aperçu)", "apps/portail/src/catalogueApercu.ts", "CATALOGUE_APERCU"],
+  ["apps/web (aperçu)", "apps/web/src/catalogue.apercu.ts", "CATALOGUE_APERCU"],
+  ["apps/jump (aperçu)", "apps/jump/src/catalogue.apercu.ts", "CATALOGUE_APERCU"],
   // Lot I4 : DailyTrack, un catalogue par zone (réunis par apps/web/src/catalogue.ts, qui n'est pas listé : ses clés seraient en double).
   ["apps/web (base)", "apps/web/src/catalogue.base.ts", "CATALOGUE_BASE"],
   ["apps/web (accueil)", "apps/web/src/catalogue.accueil.ts", "CATALOGUE_ACCUEIL"],
@@ -33,7 +37,10 @@ export const DOSSIERS_SANS_CHAINES_EN_DUR: string[] = ["packages/ui/src", "packa
 
 /** Ce qui n'est pas vérifié, chacun avec sa raison. */
 export const EXCLUSIONS: Record<string, string> = {
-  "apps/portail/mentions-legales": "page statique en français, traduite au lot I6",
+  "apps/portail/mentions-legales": "page statique sans script, en français (elle fait foi) : son texte ne passe pas par un catalogue",
+  "apps/portail/legal": "lot I6 : la même page en anglais, statique sans script (mentions.test.ts vérifie qu'elle suit la française)",
+  "apps/portail/404.html": "lot I6 : la page 404, statique sans script, les deux langues sur la page (la langue du joueur n'y est pas lue)",
+  "apps/portail/partage": "lot I6 : la source des images de partage (outil de construction, jamais servie) : seulement les noms de la marque",
   // Lot I4 : les outils internes de Nathan restent en français (hors du périmètre de l'anglais, charte et lot I4 § 1).
   "apps/web/src/tune.ts": "outil de réglage de la conduite (`?debug&tune`) : outil interne, en français",
   "apps/web/src/admin.ts": "page d'administration (`/admin/`) : outil interne, en français",
@@ -49,4 +56,15 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/jump/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
   "apps/jump/src/themes.ts": "noms internes des thèmes et des décors (`label` : outils `?debug`, galerie, tests) ; l'interface lit `theme.<code>` du catalogue",
   "apps/jump/src/audioLogic.ts": "noms internes des ambiances sonores (`__jump.theme.ambience` de `?debug`) : jamais affichés au joueur",
+};
+
+/**
+ * Lot I6 : où chaque application lit ses clés (pour le refus d'une clé jamais lue, clesUtilisees.test.ts) : ses sources et ses pages HTML, hors
+ * catalogues et hors tests. Le catalogue commun est lu par toutes les applications et par le socle (`packages/ui/src`, `packages/profile/src`).
+ */
+export const SOURCES_DES_CLES: Record<string, string[]> = {
+  "apps/portail": ["apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/ui"],
+  "apps/web": ["apps/web/src", "apps/web/index.html"],
+  "apps/jump": ["apps/jump/src", "apps/jump/index.html"],
+  commun: ["packages/ui/src", "packages/ui/outils", "packages/profile/src", "apps/portail/src", "apps/portail/index.html", "apps/portail/profil", "apps/portail/classement", "apps/portail/ui", "apps/web/src", "apps/web/index.html", "apps/jump/src", "apps/jump/index.html"],
 };

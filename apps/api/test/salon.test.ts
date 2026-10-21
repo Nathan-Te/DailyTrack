@@ -258,7 +258,6 @@ describe("POST /api/salon/<session>/submit", () => {
     const late = await submit(t, 2, "Bob", fast.code);
     expect(late.status).toBe(409);
     expect(late.body).toMatchObject({ error: "session_closed" });
-    expect(late.body.message).toMatch(/terminée/);
     t.clock.now = END - 60_000;
     const future = await submit(t, 3, "Carole", fast.code, {}, S + 1);
     expect(future.status).toBe(409);

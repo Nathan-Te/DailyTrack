@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { CATALOGUE_COMMUN } from "../../../packages/ui/src/catalogue";
 import { CATALOGUE_TRACK } from "../src/catalogue";
+import { CATALOGUE_APERCU } from "../src/catalogue.apercu";
 import { chargerLangue, setLangue, t } from "../src/i18n";
 
 // L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
@@ -13,7 +14,8 @@ beforeAll(() => chargerLangue("en"));
 const SRC = join(__dirname, "../src");
 const sources = readdirSync(SRC).filter((f) => f.endsWith(".ts") && !f.startsWith("catalogue"));
 const code = sources.map((f) => readFileSync(join(SRC, f), "utf8")).join("\n") + readFileSync(join(__dirname, "../index.html"), "utf8");
-const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_COMMUN.fr)]);
+// Lot I6 : les balises de partage de `index.html` lisent le catalogue de l'aperçu (construction seulement).
+const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr)]);
 
 describe("catalogue de DailyTrack", () => {
   it("chaque clé appelée par t(\"…\"), lier(…), data-t existe, en français et en anglais", () => {
@@ -49,12 +51,12 @@ describe("catalogue de DailyTrack", () => {
   it("t() suit la langue, rend la clé quand elle manque et remplit les paramètres et les pluriels", () => {
     setLangue("fr", { ecrire: false });
     expect(t("course.depart")).toBe("PARTEZ !");
-    expect(t("commun.pilote", { n: 1 })).toBe("1 pilote");
-    expect(t("commun.pilote", { n: 12 })).toBe("12 pilotes");
+    expect(t("archives.pilotes", { n: 1 })).toBe("1 pilote"); // lot I6 : « commun.pilote » (jamais lue) retirée
+    expect(t("archives.pilotes", { n: 12 })).toBe("12 pilotes");
     expect(t("cle.inconnue")).toBe("cle.inconnue");
     setLangue("en", { ecrire: false });
     expect(t("course.depart")).toBe("GO!");
-    expect(t("commun.pilote", { n: 1 })).toBe("1 driver");
+    expect(t("archives.pilotes", { n: 1 })).toBe("1 driver");
     expect(t("erreur.name_taken")).toMatch(/already/i); // le catalogue commun du socle
     setLangue("fr", { ecrire: false });
   });

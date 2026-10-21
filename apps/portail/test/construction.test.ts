@@ -80,8 +80,8 @@ describe("construction du portail", () => {
     expect(html).not.toMatch(/(?:src|href)="https?:/);
   });
 
-  it("la page des mentions passe aux jetons du socle sans script ni ressource extérieure (une feuille et des polices du site)", () => {
-    const html = readFileSync(join(sorties.production, "mentions-legales/index.html"), "utf8");
+  it.each(["mentions-legales", "legal"])("la page des mentions (%s/ ; lot I6 : aussi en anglais) passe aux jetons du socle sans script ni ressource extérieure (une feuille et des polices du site)", (dossier) => {
+    const html = readFileSync(join(sorties.production, `${dossier}/index.html`), "utf8");
     expect(html).not.toMatch(/<script\b/i);
     expect(html).not.toMatch(/<(?:link|img|iframe)\b[^>]*\b(?:href|src)="https?:/i);
     expect(html).toContain('name="theme-color" content="#EDE3CF"');
@@ -131,7 +131,7 @@ describe("construction du portail", () => {
 
   it("deploy-site.yml : --production pour la cible production, jamais pour la recette ni un aperçu", () => {
     const yml = readFileSync(join(ROOT, ".github/workflows/deploy-site.yml"), "utf8");
-    expect(yml).toContain("node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }}");
+    expect(yml).toContain(`node scripts/site.mjs site --sortie site \${{ inputs.cible == 'production' && '--production' || '' }} --origine "\${{ steps.origine.outputs.origine }}"`);
     expect(yml.match(/node scripts\/site\.mjs site\b/g)).toHaveLength(1);
     expect(portailEnv({ production: true }, {}).PORTAIL_VITRINE).toBe("0");
     expect(portailEnv({ production: false }, {}).PORTAIL_VITRINE).toBe("1");

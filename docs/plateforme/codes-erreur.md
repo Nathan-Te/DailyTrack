@@ -1,29 +1,28 @@
-# Codes d'erreur du serveur (lot I1)
+# Codes d'erreur du serveur (lot I1 ; lot I6 : plus de `message`)
 
-Chaque réponse d'erreur du serveur (`apps/api`, tous les jeux) porte un **code stable**, lisible par le jeu, en plus du message en français. La liste, le statut HTTP de chaque code et son sens vivent dans **un seul fichier source** : `apps/api/src/codesErreur.ts` (`CODES_ERREUR`). Ce document la décrit ; le test `apps/api/test/codesErreur.test.ts` vérifie qu'il dit exactement la même chose que le code.
+Chaque réponse d'erreur du serveur (`apps/api`, tous les jeux) porte un **code stable**, lisible par le jeu — et, depuis le lot I6, **rien d'autre qu'un code et ses détails** : plus de message en français. La liste, le statut HTTP de chaque code et son sens vivent dans **un seul fichier source** : `apps/api/src/codesErreur.ts` (`CODES_ERREUR`). Ce document la décrit ; le test `apps/api/test/codesErreur.test.ts` vérifie qu'il dit exactement la même chose que le code.
 
 ## 1. À quoi servent les codes
 
 - **Le jeu traduit le code, pas le message.** Le catalogue commun de `packages/ui` porte une clé **`erreur.<code>`** par code (français et anglais) : le jeu affiche le texte de la langue du joueur, et peut réagir au code (proposer « Charger un code » sur `name_taken`, recharger la page sur `version` ou `sim_version`, attendre sur `rate_limited`…).
-- **Le `message` reste**, inchangé mot pour mot, tant que les jeux l'affichent (DailyTrack et DailyJump le montrent aujourd'hui). Il sera retiré par un lot postérieur à I4 et I5, quand les deux jeux liront le catalogue commun ; d'ici là, aucune réponse ne change de message.
+- **Plus de `message` (lot I6)** : depuis les lots I4 et I5, plus aucun client ne le lisait (le portail, Track, Jump et le profil commun affichent `erreur.<code>` du catalogue de la langue) ; le lot I6 l'a retiré de toutes les réponses. Seul le code compte. Le texte passé à `HttpError` reste dans le code du serveur, pour qui le lit, sans sortir.
 - Le code est un **contrat** : un code ne change ni de nom ni de statut. Un nouveau cas de refus qui a le même sens pour le joueur réutilise un code existant ; sinon il en ajoute un (règle du § 3).
 
 ## 2. La forme
 
 ```json
-{ "error": "<code>", "message": "<texte en français>", "…": "détails éventuels" }
+{ "error": "<code>", "…": "détails éventuels" }
 ```
 
-- `error` : un code de la liste ; le statut HTTP de la réponse est **celui de la liste** (un code = un statut). `HttpError` (`apps/api/src/errors.ts`) l'impose par le typage : `new HttpError(<statut>, "<code>", message)` ne compile que si le statut est celui du code.
-- `message` : le texte en français d'avant le lot I1, tel quel.
+- `error` : un code de la liste ; le statut HTTP de la réponse est **celui de la liste** (un code = un statut). `HttpError` (`apps/api/src/errors.ts`) l'impose par le typage : `new HttpError(<statut>, "<code>", message)` ne compile que si le statut est celui du code ; `message` (le troisième argument) explique le refus à qui lit le code et n'est jamais renvoyé.
 - Détails : certains codes ajoutent des champs (`name_taken` → `suggestions`) ; certains ajoutent un en-tête (`rate_limited`, `too_fast`, `busy` → `Retry-After`).
-- **`/api/health`** garde sa forme (`ok`, `db`, versions… : la sonde de Cloud Run, `smoke` et la CI les lisent) ; en 503 elle ajoute `error: "db_unavailable"` et `message: "Base de données injoignable"`.
-- **Erreur inattendue** (défaut du code) : `500 { "error": "internal", "message": "Erreur interne" }` (`ERREUR_INTERNE`, la même dans `api.ts` et `node-server.ts`) ; aucun détail ne sort, la cause est dans le journal.
+- **`/api/health`** garde sa forme (`ok`, `db`, versions… : la sonde de Cloud Run, `smoke` et la CI les lisent) ; en 503 elle ajoute `error: "db_unavailable"`.
+- **Erreur inattendue** (défaut du code) : `500 { "error": "internal" }` (`ERREUR_INTERNE`, la même dans `api.ts` et `node-server.ts`) ; aucun détail ne sort, la cause est dans le journal.
 
 ## 3. La règle
 
 - **Toute nouvelle erreur du serveur prend un code de la liste unique** `apps/api/src/codesErreur.ts` (ou y ajoute le sien, avec son statut et son sens), **est décrite ici** (une ligne du tableau) **et est traduite dans le catalogue commun** de `packages/ui` (`erreur.<code>`, français **et** anglais), dans le même lot.
-- Jamais de corps d'erreur écrit à la main : `throw new HttpError(…)` dans une route, `corpsErreur(code, message)` hors des routes (santé).
+- Jamais de corps d'erreur écrit à la main : `throw new HttpError(…)` dans une route, `corpsErreur(code)` hors des routes (santé, erreur inattendue).
 - Tests : `codesErreur.test.ts` parcourt les routes du registre (toutes les méthodes, corps vides, illisibles ou trop gros, avec et sans `X-Player-Id` ou jeton d'admin), lit les sources (chaque `HttpError` a un code de la liste et son statut ; chaque code de la liste est rendu quelque part) et ce document ; `makeApi().call` (`apps/api/test/helpers.ts`, `verifierErreur`) vérifie chaque réponse d'erreur de tous les tests de l'API.
 
 ## 4. Les codes
@@ -33,7 +32,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | code | statut | sens | routes principales |
 |---|---|---|---|
 | `not_found` | 404 | Route inconnue (y compris les routes d'admin quand l'admin est désactivé, et toute adresse inconnue sous `/api/jump/`). | toute adresse inconnue ; `/api/admin/*` sans `ADMIN_TOKEN` ; `/api/sonde/entetes` hors recette |
-| `method_not_allowed` | 405 | La route existe, mais pas pour cette méthode HTTP (le message dit laquelle est attendue). | toutes les routes |
+| `method_not_allowed` | 405 | La route existe, mais pas pour cette méthode HTTP . | toutes les routes |
 | `invalid_json` | 400 | Le corps de la requête n'est pas un objet JSON. | tous les envois (`POST`, `PUT`) |
 | `too_large` | 413 | Le corps dépasse la taille permise (`MAX_BODY_BYTES`), annoncée ou lue. | tous les envois |
 | `rate_limited` | 429 | Trop de requêtes pour cette adresse, ce joueur ou ce jeton d'admin dans la fenêtre de débit (`Retry-After`). | envois, `/api/name`, `/api/me`, lectures du Salon, de DailyJump et du portail, `/api/admin/*` |

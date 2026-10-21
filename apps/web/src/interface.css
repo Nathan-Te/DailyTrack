@@ -268,7 +268,8 @@ body:has(#howto:not([hidden])) :is(.cadre, #pause) {
   background: var(--track-coque);
 }
 .segment__bouton[aria-checked="true"],
-.segment__bouton[aria-pressed="true"] {
+.segment__bouton[aria-pressed="true"],
+.segment__bouton[aria-selected="true"] {
   background: var(--track-livree);
   color: var(--track-asphalte);
   font-weight: 800;

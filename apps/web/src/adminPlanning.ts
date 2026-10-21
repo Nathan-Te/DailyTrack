@@ -1,4 +1,5 @@
 import { parisDay } from "@cdj/clock";
+import { CATALOGUE_COMMUN_FR } from "@cdj/ui";
 import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
 import { DEMO_BASE, apiBase, type ApiResult } from "./api";
 import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
@@ -9,6 +10,12 @@ import { isReplaced, type PlanEntry } from "./planning";
 import { createCircuitMaker } from "./thumbGen";
 import { createThumbnailService } from "./thumbnails";
 import type { ThumbnailCircuit } from "./thumbnail";
+
+/** Lot I6 : le serveur ne renvoie plus que le code d'une erreur ; la page d'admin (outil en français) le lit dans le catalogue commun, en français. */
+function texteErreur(r: { code: string; message: string }): string {
+  const v = (CATALOGUE_COMMUN_FR as Record<string, unknown>)[`erreur.${r.code}`];
+  return typeof v === "string" ? v : r.message;
+}
 
 // Panneau d'admin (lot 14) : aujourd'hui, planning des 14 prochains jours, remplacement d'un circuit, historique.
 // Les circuits sont générés dans le navigateur (fil de travail) avec le même code que le serveur ; seul le choix du
@@ -139,7 +146,7 @@ export function mountPlanning(stateApi: () => string): void {
         status("Cette API n'a pas d'admin : le serveur n'a pas de ADMIN_TOKEN (≥ 16 caractères).", "error");
         showTokenForm(false);
       } else {
-        status(`${r.message}${r.status === 429 ? " (trop d'essais, attends un peu)" : ""}.`, "error");
+        status(`${texteErreur(r)}${r.status === 429 ? " (trop d'essais, attends un peu)" : ""}.`, "error");
         showTokenForm(r.status === 429);
       }
       overview = { today: formatDay(todayParis()), plan: [], days: [], times: [] };
@@ -358,7 +365,7 @@ export function mountPlanning(stateApi: () => string): void {
       message.textContent = "Enregistrement…";
       const r = await call();
       if (!r.ok) {
-        message.textContent = r.message;
+        message.textContent = texteErreur(r);
         message.dataset.kind = "error";
         return;
       }

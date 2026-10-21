@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
 import { expect as baseExpect, hasWebGL, newClockedContext, newContextAt, test, TODAY, type BrowserContext, type Page } from "./fixtures";
 import { startSite } from "./domaine-serveurs";
+import { auditAxe } from "./axe";
 
 // Lot I3 (plateforme, phase 3) : la journée partagée.
 //   - le portail à partir du 23/10/2026 : « Journée n° 2 » à droite de la date, les deux tuiles (Série, Classement du jour), « Partager ma journée » et la
@@ -14,7 +15,8 @@ import { startSite } from "./domaine-serveurs";
 //   - la page `/classement/` : le haut du classement, ta ligne surlignée (dans le haut, et hors du haut), la médaille de chaque jeu, le barème, un jour passé
 //     (« ‹ Veille », « Lendemain › » jamais au-delà d'aujourd'hui) ;
 //   - « Jeu suivant du jour » à l'arrivée de chaque jeu, de Track vers Jump et de Jump vers Track, puis « Journée parfaite ! » (les vrais jeux, le vrai
-//     serveur, le site assemblé comme Firebase Hosting le sert).
+//     serveur, le site assemblé comme Firebase Hosting le sert) ;
+//   - lot I6 : la passe d'accessibilité (axe, e2e/axe.ts) sur le portail plein, le profil commun et le classement du jour, en français et en anglais.
 // Captures (portrait 390 × 844, paysage 844 × 390) jointes au rapport ; avec `CAPTURES=1`, écrites dans docs/plateforme/lots/img/ (`lot-I3-*.png`).
 // Serveurs lancés ici (ports réservés à ce fichier) : sites 4182 (le 24/10, recette garnie) et 4183 (le 20/10, base vide), API 8797 et 8798.
 test.describe.configure({ mode: "serial" });
@@ -179,6 +181,24 @@ test("portail du 24/10 (journée n° 2) : la date et la journée, les deux tuile
   await expect(paysage.locator("#journee")).toHaveText("Day #2");
   await capture(paysage, "portail-plein-paysage-en");
 });
+
+for (const [langue, locale] of [["fr", "fr-FR"], ["en", "en-US"]] as const) {
+  test(`lot I6 : accessibilité (axe) du portail plein, du profil commun et du classement du jour (${langue})`, async ({ browser }) => {
+    const context = await newContextAt(browser, T24, { ...PORTRAIT, locale });
+    const page = await context.newPage();
+    await page.goto(`${SITE_24}/?demo=joueur`);
+    await expect(page.locator('[data-jeu="track"] .portail-statut')).toHaveAttribute("data-statut", "fini");
+    await expect(page.locator("html")).toHaveAttribute("lang", langue);
+    await auditAxe(page, `portail-${langue}`);
+    await page.goto(`${SITE_24}/profil/`);
+    await expect(page.locator("#pseudo-actuel")).not.toHaveText("—");
+    await expect(page.locator("#code")).toBeVisible();
+    await auditAxe(page, `profil-${langue}`);
+    await page.goto(`${SITE_24}/classement/`);
+    await expect(page.locator("#classement-liste li")).not.toHaveCount(0);
+    await auditAxe(page, `classement-${langue}`);
+  });
+}
 
 test("avant le 23/10 : aucun numéro de journée, et la ligne partagée dit « Du Jour » sans numéro", async ({ browser }) => {
   // Le même serveur (le 24/10) mais un téléphone resté au 22/10 ne change rien : le numéro vient du serveur. Ici, le site du 20/10 (base vide) : pas de journée.
