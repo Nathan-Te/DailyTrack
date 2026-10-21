@@ -703,8 +703,9 @@ test("plus de bouton Salon ni de ligne d'aide minuscule en course ; « Comment j
   await expect(page.locator("#info")).toHaveText("");
   await expect(page.locator("#helpchip")).toContainText("Comment jouer");
   const labels = await page.locator("#menu button:visible").evaluateAll((els) => els.map((e) => e.getAttribute("aria-label") || e.textContent));
-  // Lot I4 (HUD « plaques en haut ») : la barre du haut n'a plus que la pause ; Accueil, Réglages, Fantôme et Son sont dans son menu.
-  expect(labels).toEqual(["Pause"]);
+  // Lot I4 (HUD « plaques en haut ») : la barre du haut n'a que la pause (ni point de contrôle ni recommencer : le clavier a ses touches) ; Accueil, Réglages, Fantôme et Son sont dans son menu.
+  // Lot I7 : la caméra et le plein écran y sont aussi, toujours en vue (le plein écran seulement si le navigateur le permet : Chromium oui).
+  expect(labels).toEqual(["Pause", "Caméra : proche", "Plein écran"]);
   await page.locator("#btn-pause").click();
   await expect(page.locator("#pause-settings")).toHaveText("Réglages");
   await expect(page.locator("#pause-home")).toHaveText("Accueil de Track");
