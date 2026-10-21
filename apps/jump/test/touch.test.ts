@@ -101,6 +101,24 @@ describe("boutons dessinés", () => {
     }
     for (let i = 1; i < rects.length; i++) expect(rects[i]!.x).toBeGreaterThan(rects[i - 1]!.x + rects[i - 1]!.w);
   });
+
+  // Lot I5 (charte rév. 7, § 9 ; maquette jump-hud.html) : les boutons aux bords — ← et → collés de part et d'autre de la frontière ¼ (en bas à gauche),
+  // le gros « SAUT » contre le bord droit — et **jamais devant le personnage** : aucun bouton dans la zone où il se tient (30 à 70 % de la largeur, 20 à
+  // 64 % de la hauteur : au sol il est 1,5 tuile sous le centre de l'image, vers 61 % ; e2e : `expectCentreLibre`). Les zones, elles, ne changent pas (tests « zones » ci-dessus).
+  it.each(cases)("%i × %i : aux bords, hors de la zone du personnage", (w, h, insets) => {
+    const l = layoutFor(w, h, insets);
+    const [left, right, jump] = buttonRects(l);
+    const q = w / 4;
+    expect(left!.x + left!.w).toBe(Math.floor(q - BUTTON_GAP_PX));
+    expect(right!.x).toBe(Math.ceil(q + BUTTON_GAP_PX));
+    expect(jump!.x + jump!.w).toBeLessThanOrEqual(w - (insets?.right ?? 0) - BUTTON_GAP_PX);
+    expect(jump!.x + jump!.w).toBeGreaterThan(w - (insets?.right ?? 0) - BUTTON_GAP_PX - 1);
+    expect(jump!.w).toBeGreaterThanOrEqual(left!.w);
+    for (const r of [left!, right!, jump!]) {
+      const dehors = r.x + r.w <= w * 0.3 || r.x >= w * 0.7 || r.y + r.h <= h * 0.2 || r.y >= h * 0.64;
+      expect(dehors, `${r.zone} hors de la zone du personnage`).toBe(true);
+    }
+  });
 });
 
 describe("suivi des doigts", () => {

@@ -63,31 +63,33 @@ function viteBuild(options) {
 
 /**
  * Lot I4 : les polices de Track sont demandées à `/assets/<nom>-<empreinte>.woff2`, **le même chemin que celles du portail** (un joueur qui vient du portail les
- * a déjà en cache). Le nom porte l'empreinte du contenu : le même nom, ce sont les mêmes octets. Pour chaque police que la feuille de Track demande : si le portail
- * l'a, elle doit être identique (sinon l'assemblage s'arrête) ; sinon elle rejoint `assets/` du portail ; dans les deux cas la copie de `track/assets/` est retirée
- * (un seul fichier par police sur le site). Rend les polices partagées avec le portail et celles que Track y a ajoutées.
+ * a déjà en cache). Lot I5 : celles de Jump aussi. Le nom porte l'empreinte du contenu : le même nom, ce sont les mêmes octets. Pour chaque police que la feuille
+ * d'un jeu demande : si le portail l'a (ou un jeu précédent l'y a mise), elle doit être identique (sinon l'assemblage s'arrête) ; sinon elle rejoint `assets/` du
+ * portail ; dans les deux cas la copie de `<jeu>/assets/` est retirée (un seul fichier par police sur le site). Rend les polices déjà là et celles ajoutées.
  */
-export function partagerPolices(out) {
-  const assetsTrack = join(out, "track/assets");
-  const noms = new Set();
-  for (const f of existsSync(assetsTrack) ? readdirSync(assetsTrack).filter((x) => x.endsWith(".css")) : []) {
-    for (const m of readFileSync(join(assetsTrack, f), "utf8").matchAll(/url\(["']?\/assets\/([^)"']+\.woff2)["']?\)/g)) noms.add(m[1]);
-  }
+export function partagerPolices(out, jeux = ["track", "jump"]) {
   const communes = [];
   const ajoutees = [];
-  for (const nom of noms) {
-    const source = join(assetsTrack, nom);
-    const dest = join(out, "assets", nom);
-    if (!existsSync(source)) throw new Error(`police de Track absente de la construction : assets/${nom}`);
-    if (existsSync(dest)) {
-      if (!readFileSync(dest).equals(readFileSync(source))) throw new Error(`police différente de celle du portail sous le même nom : assets/${nom}`);
-      communes.push(nom);
-    } else {
-      mkdirSync(join(out, "assets"), { recursive: true });
-      cpSync(source, dest);
-      ajoutees.push(nom);
+  for (const jeu of jeux) {
+    const assetsJeu = join(out, jeu, "assets");
+    const noms = new Set();
+    for (const f of existsSync(assetsJeu) ? readdirSync(assetsJeu).filter((x) => x.endsWith(".css")) : []) {
+      for (const m of readFileSync(join(assetsJeu, f), "utf8").matchAll(/url\(["']?\/assets\/([^)"']+\.woff2)["']?\)/g)) noms.add(m[1]);
     }
-    rmSync(source);
+    for (const nom of noms) {
+      const source = join(assetsJeu, nom);
+      const dest = join(out, "assets", nom);
+      if (!existsSync(source)) throw new Error(`police de ${jeu} absente de la construction : ${jeu}/assets/${nom}`);
+      if (existsSync(dest)) {
+        if (!readFileSync(dest).equals(readFileSync(source))) throw new Error(`police différente de celle du portail sous le même nom : assets/${nom}`);
+        if (!communes.includes(nom) && !ajoutees.includes(nom)) communes.push(nom);
+      } else {
+        mkdirSync(join(out, "assets"), { recursive: true });
+        cpSync(source, dest);
+        ajoutees.push(nom);
+      }
+      rmSync(source);
+    }
   }
   return { communes, ajoutees };
 }
@@ -102,7 +104,7 @@ export function assembleSite(out, { production = false } = {}) {
     mkdirSync(dest, { recursive: true });
     cpSync(join(ROOT, part.from), dest, { recursive: true });
   }
-  partagerPolices(out); // lot I4 : les polices de Track sont celles du portail
+  partagerPolices(out); // lots I4 et I5 : les polices de Track et de Jump sont celles du portail
   // Les niveaux figés de DailyJump (lot 10) doivent être dans le site publié, identiques : sinon un jour déjà joué changerait de niveau.
   const levels = join(ROOT, "apps/jump/public/levels");
   const files = existsSync(levels) ? readdirSync(levels).filter((f) => f.endsWith(".json")) : [];

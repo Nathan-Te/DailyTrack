@@ -29,12 +29,30 @@ describe("catalogues de traduction", () => {
     });
   }
 
-  it("aucune clé n'est définie dans deux catalogues (le premier gagnerait en silence)", () => {
-    const vues = new Map<string, string>();
-    for (const [nom, cat] of TOUS) {
-      for (const cle of Object.keys(cat.fr)) {
-        expect(vues.get(cle), `${cle} : ${nom} et ${vues.get(cle)}`).toBeUndefined();
-        vues.set(cle, nom);
+  // Lot I5 : la règle vaut **dans une application** (ses catalogues de zone et le catalogue commun, réunis par un même traducteur : le premier
+  // gagnerait en silence) ; deux applications différentes (Track, Jump) peuvent avoir la même clé, elles ne partagent jamais un traducteur.
+  it("aucune clé n'est définie dans deux catalogues d'une même application, ni dans une application et le catalogue commun", () => {
+    const application = (nom: string) => nom.split(" (")[0]!;
+    const [commun, ...applis] = TOUS;
+    for (const app of new Set(applis.map(([nom]) => application(nom)))) {
+      const vues = new Map<string, string>();
+      for (const [nom, cat] of [commun!, ...applis.filter(([n]) => application(n) === app)]) {
+        for (const cle of Object.keys(cat.fr)) {
+          expect(vues.get(cle), `${cle} : ${nom} et ${vues.get(cle)}`).toBeUndefined();
+          vues.set(cle, nom);
+        }
+      }
+    }
+  });
+
+  it("lot I5 : les répliques de Jump n'ont qu'une source, le catalogue commun (aucune application n'en définit)", () => {
+    const communes = Object.keys(CATALOGUE_COMMUN.fr).filter((c) => c.startsWith("jump.replique."));
+    expect(communes.length).toBeGreaterThanOrEqual(5);
+    for (const [nom, cat] of TOUS.slice(1)) expect(Object.keys(cat.fr).filter((c) => /replique/i.test(c)), nom).toEqual([]);
+    // Et aucune réplique recopiée mot pour mot sous une autre clé.
+    for (const cle of communes) {
+      for (const [nom, cat] of TOUS.slice(1)) {
+        for (const l of ["fr", "en"] as const) expect(Object.values(cat[l]).includes(CATALOGUE_COMMUN[l][cle as keyof (typeof CATALOGUE_COMMUN)["fr"]]), `${nom} ${l} : ${cle} en double`).toBe(false);
       }
     }
   });

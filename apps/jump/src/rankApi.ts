@@ -1,5 +1,6 @@
 import { ProfileClient, TIMEOUT_MS, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { JumpMedal } from "@cdj/jump-sim";
+import { fNombre, fRang, t } from "./i18n";
 import type { DayBundle } from "./dayReads";
 import type { FirstGhostData } from "./firstGhost";
 import type { JumpMe } from "./jumpProfile";
@@ -189,12 +190,12 @@ export function rankApiBase(fromUrl: string | null, env: string | undefined, ori
 /** Lot R4 : la valeur de `VITE_API_URL` (ou de `?api=`) qui veut dire « le serveur de la même origine » (`/api/…` sur l'adresse de la page). */
 export const SAME_ORIGIN_API = "/";
 
-/** « 1ᵉʳ », « 3ᵉ » (rang en français, lettres en exposant). */
+/** « 1er », « 3e » / « 1st », « 3rd » (lot I5 : le format du socle, dans la langue du joueur). */
 export function ordinal(rank: number): string {
-  return rank === 1 ? "1ᵉʳ" : `${rank}ᵉ`;
+  return fRang(rank);
 }
 
-/** « 3ᵉ sur 128 » (écran d'arrivée, accueil). */
+/** « 3e sur 128 » / « 3rd of 128 » (écran d'arrivée, accueil). */
 export function rankText(rank: number, participants: number): string {
-  return `${ordinal(rank)} sur ${participants}`;
+  return t("rang.sur", { rang: fRang(rank), total: fNombre(participants) });
 }

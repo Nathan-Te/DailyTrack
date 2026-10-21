@@ -110,11 +110,12 @@ test("démo : les taches de tout le monde sont visibles, loin des dangers et des
     expect(o.discs).toBeGreaterThan(o.drawn);
     expect(o.closest).toBeGreaterThanOrEqual(1);
 
-    // Le réglage du menu les coupe, tout de suite ; mémorisé.
+    // Le réglage les coupe, tout de suite ; mémorisé. Lot I5 : il est dans Réglages (ouverts depuis la pause), un choix « Montrer / Cacher ».
     await page.evaluate(() => (window as unknown as { __jump: J }).__jump.setMenu(true));
-    await expect(page.locator("#menu-others-stains")).toHaveText("Taches de tout le monde : oui");
-    await page.locator("#menu-others-stains").click();
-    await expect(page.locator("#menu-others-stains")).toHaveText("Taches de tout le monde : non");
+    await page.locator("#menu-settings").click();
+    await expect(page.locator('#reglages-taches [data-value="true"]')).toHaveAttribute("aria-pressed", "true");
+    await page.locator('#reglages-taches [data-value="false"]').click();
+    await expect(page.locator('#reglages-taches [data-value="false"]')).toHaveAttribute("aria-pressed", "true");
     await page.waitForFunction(() => !(window as unknown as { __jump: J }).__jump.othersStains.visible);
     await page.reload();
     await ready(page);
@@ -239,11 +240,14 @@ test("démo, au doigt en paysage : le réglage des taches et « Le carnage de to
       if (await page.locator("#help").isVisible()) await page.locator("#help-close").tap();
       await page.locator("#home-play").tap();
       await loaded(page);
+      // Lot I5 : le réglage dans Réglages (depuis la pause) ; « ‹ JUMP » rend la pause, REPRENDRE la partie.
       await page.evaluate(() => (window as unknown as { __jump: J }).__jump.setMenu(true));
-      await bigEnough(page.locator("#menu-others-stains"), viewport, "Taches de tout le monde");
-      await page.locator("#menu-others-stains").tap();
-      await expect(page.locator("#menu-others-stains")).toHaveText("Taches de tout le monde : non");
-      await page.locator("#menu-others-stains").tap();
+      await page.locator("#menu-settings").tap();
+      for (const v of ["true", "false"]) await bigEnough(page.locator(`#reglages-taches [data-value="${v}"]`), viewport, `Taches de tout le monde : ${v}`);
+      await page.locator('#reglages-taches [data-value="false"]').tap();
+      await expect(page.locator('#reglages-taches [data-value="false"]')).toHaveAttribute("aria-pressed", "true");
+      await page.locator('#reglages-taches [data-value="true"]').tap();
+      await page.locator("#settings .dj-barre-jeu__retour").tap();
       await page.locator("#menu-resume").tap();
       const fingers = await Fingers.on(page);
       await play(page, code, async () => {

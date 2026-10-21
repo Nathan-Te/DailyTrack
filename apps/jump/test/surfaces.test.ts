@@ -62,6 +62,7 @@ import { mayRecord } from "../src/history";
 import { SURFACE_SLIDERS, loadTuned, parseTuned, paramsJson, resetParams, saveTuned, surfaceValue, surfacesChanged } from "../src/tune";
 import { galleryHref, moduleHref, readUrlOptions, URL_OPTIONS } from "../src/urlOptions";
 import { JumpSession } from "../src/session";
+import "./francais";
 
 // Lot 11 (partie jeu) : les deux surfaces — tapis roulants `[` `]` et glace `~` — côté affichage : plages, chevrons (un tampon, un matériau),
 // auto-tuilage, taches et décor, événements, sons, particules, réglages du panneau, adresse et galerie. Dates fixes, jamais l'heure réelle.
@@ -681,7 +682,7 @@ describe("thème et mécanique (adresse, galerie, essai)", () => {
     const choice = { ...chooseDay(day, day, false), mode: "essai" as const };
     expect(mayRecord({ mode: "essai", levelDay: day, today: day, watching: false, tuned: false })).toBe(false);
     expect(mayRecord({ mode: "jour", levelDay: day, today: day, watching: false, tuned: false })).toBe(true);
-    const line = dayLine(trial, choice, false, null);
+    const line = dayLine(trial, choice, false);
     expect(line).toContain("essai de thème");
     expect(line).toContain("rien n'est enregistré");
     expect(chooseDay(day, day, false).mode).toBe("jour");

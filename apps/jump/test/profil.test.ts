@@ -4,8 +4,8 @@ import { NAME_KEY, PLAYER_KEY, ProfileSync, type ApiResult } from "@cdj/profile"
 import { HISTORY_KEY, History, readHistory, streakOf, type DayRecord } from "../src/history";
 import { applyJumpIdentity, applyJumpProfile, jumpStats, mergeJumpHistory, type JumpMe, type JumpMeDay } from "../src/jumpProfile";
 import { RANKS_KEY, RankQueue } from "../src/rankQueue";
-import { SHARED_PROFILE_TEXT, medalsText, streakShort } from "../src/profileUi";
-import { profileCardText } from "../src/home";
+import { cheminDuJeu, profilHref } from "../src/profilLien";
+import "./francais";
 
 // Lot P2 (plateforme) : le profil DailyJump synchronisé — la fusion « le meilleur gagne » avec l'historique local, les morts locales gardées,
 // les jours d'un autre appareil ajoutés, la série recalculée, un envoi en file qui compte comme du local ; un code chargé ; un code révoqué.
@@ -160,13 +160,12 @@ describe("charger un code dans DailyJump", () => {
   });
 });
 
-describe("textes du profil commun", () => {
-  it("Réglages › Profil dit que le profil vaut pour tous les jeux ; la carte de l'accueil : pseudo, série, médailles", () => {
-    expect(SHARED_PROFILE_TEXT).toBe("Ton profil est le même dans tous les jeux de la plateforme : ton pseudo et ton code valent aussi pour DailyTrack.");
-    expect(medalsText({ author: 1, gold: 2, silver: 0, bronze: 3 })).toBe("🏆 1  🥇 2  🥈 0  🥉 3");
-    expect([streakShort(0), streakShort(1), streakShort(4)]).toEqual(["—", "1 jour de suite", "4 jours de suite"]);
-    expect(profileCardText({ name: "Nowy", streak: 3, medals: 5, revoked: false })).toBe("👤 Nowy · série 3 · 5 médailles");
-    expect(profileCardText({ name: null, streak: 0, medals: 1, revoked: false })).toBe("👤 Sans pseudo · série 0 · 1 médaille");
-    expect(profileCardText({ name: "Nowy", streak: 3, medals: 5, revoked: true })).toMatch(/n'est plus valide/);
+// Lot I5 : plus de profil dans le jeu (Réglages › Profil et la carte de l'accueil sont retirés) : « Mon profil Du Jour › » mène au profil commun du portail,
+// avec le chemin de retour au jeu (le portail n'accepte qu'un chemin du site : apps/portail/src/retour.ts, testé là-bas).
+describe("le lien vers le profil commun du portail", () => {
+  it("`../profil/?retour=<chemin du jeu>`, sans `index.html`", () => {
+    expect(profilHref("/jump/")).toBe("../profil/?retour=%2Fjump%2F");
+    expect(profilHref("/jump/index.html")).toBe("../profil/?retour=%2Fjump%2F");
+    expect(cheminDuJeu("/index.html")).toBe("/");
   });
 });

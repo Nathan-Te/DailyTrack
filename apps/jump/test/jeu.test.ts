@@ -50,15 +50,15 @@ describe("paramètres d'adresse", () => {
   });
 
   it("lit le scénario, debug et tune (tune seulement avec debug)", () => {
-    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, fx: true, ghostOff: false, firstGhostOff: false, ghost: null, carnageDemo: false, watchBest: false, watchFirst: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false, api: null };
+    const none = { debug: false, tune: false, sprint: false, touch: null, zones: false, hitbox: false, pieces: false, fx: true, ghostOff: false, firstGhostOff: false, ghost: null, carnageDemo: false, watchBest: false, watchFirst: false, gallery: false, module: null, daily: false, seed: null, solution: false, theme: null, metronome: true, home: null, archives: false, api: null };
     // Lot 5 : sans paramètre, le niveau du jour.
     expect(readUrlOptions("")).toEqual({ ...none, scenario: null, daily: true });
-    expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true });
-    expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ ...none, scenario: "essai", debug: true, tune: true });
+    expect(readUrlOptions("?scenario=bac-a-sable&debug")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, pieces: true });
+    expect(readUrlOptions("?scenario=inconnu&debug&tune")).toEqual({ ...none, scenario: "essai", debug: true, tune: true, pieces: true });
     expect(readUrlOptions("?scenario=dangers").scenario).toBe("dangers");
     expect(readUrlOptions("?tune").tune).toBe(false);
     // Lot 8b : l'essai d'élan, seulement avec debug et tune.
-    expect(readUrlOptions("?scenario=bac-a-sable&debug&tune&sprint=1")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, tune: true, sprint: true });
+    expect(readUrlOptions("?scenario=bac-a-sable&debug&tune&sprint=1")).toEqual({ ...none, scenario: "bac-a-sable", debug: true, tune: true, sprint: true, pieces: true });
     expect(readUrlOptions("?scenario=bac-a-sable&debug&sprint=1").sprint).toBe(false);
     expect(readUrlOptions("?sprint=1").sprint).toBe(false);
     expect(readUrlOptions("?debug&tune&sprint=2").sprint).toBe(false);
@@ -132,6 +132,10 @@ describe("paramètres d'adresse", () => {
   it("lit hitbox (seulement avec debug) et fx=off", () => {
     expect(readUrlOptions("?hitbox").hitbox).toBe(false);
     expect(readUrlOptions("?debug&hitbox").hitbox).toBe(true);
+    // Lot I5 : les limites des morceaux, avec `debug` seulement, sauf `?pieces=off` (captures).
+    expect(readUrlOptions("?debug").pieces).toBe(true);
+    expect(readUrlOptions("?debug&pieces=off").pieces).toBe(false);
+    expect(readUrlOptions("?pieces").pieces).toBe(false);
     expect(readUrlOptions("?fx=off").fx).toBe(false);
     expect(readUrlOptions("?fx=on").fx).toBe(true);
   });

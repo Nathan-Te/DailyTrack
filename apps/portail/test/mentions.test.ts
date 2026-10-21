@@ -108,7 +108,8 @@ describe("page des mentions légales et de la confidentialité", () => {
     expect(readFileSync(join(ROOT, "apps/web/index.html"), "utf8")).toMatch(/id="pause-mentions"[^>]*href="\.\.\/mentions-legales\/"/);
     expect(readFileSync(join(ROOT, "apps/web/src/settingsUi.ts"), "utf8")).toContain('"../mentions-legales/"');
     expect(readFileSync(join(ROOT, "apps/jump/src/pauseMenu.ts"), "utf8")).toContain('"../mentions-legales/"');
-    expect(readFileSync(join(ROOT, "apps/jump/src/profileUi.ts"), "utf8")).toContain('"../mentions-legales/"');
+    // Lot I5 : plus de profil dans Jump (le profil commun du portail) : le lien est dans ses Réglages, comme Track.
+    expect(readFileSync(join(ROOT, "apps/jump/src/settingsUi.ts"), "utf8")).toContain('"../mentions-legales/"');
     expect(readFileSync(join(ROOT, "apps/portail/vite.config.ts"), "utf8")).toContain("mentions-legales/index.html");
   });
 });

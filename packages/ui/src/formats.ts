@@ -81,3 +81,16 @@ export function formatDateCourte(jour: number, langue: Langue, { capitale = fals
 export function formatNumeroJour(n: number, langue: Langue): string {
   return langue === "fr" ? `n°${INSECABLE}${n}` : `#${n}`;
 }
+
+/**
+ * Lot I5 : une durée de décompte (« Prochain niveau dans 07:42:09 », le Salon de Track « 07:42 »), sur des chiffres à chasse fixe : heures,
+ * minutes et secondes sur deux chiffres (`heures: false` : minutes et secondes seulement, les minutes peuvent alors dépasser 59). Arrondi à la
+ * seconde **supérieure** (le décompte n'affiche jamais 00:00:00 tant qu'il reste du temps) ; les heures peuvent valoir 24 (le jour du retour à
+ * l'heure d'hiver dure 25 h). La même forme dans les deux langues.
+ */
+export function formatDecompte(ms: number, { heures = true }: { heures?: boolean } = {}): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const deux = (n: number) => String(n).padStart(2, "0");
+  if (!heures) return `${deux(Math.floor(total / 60))}:${deux(total % 60)}`;
+  return `${deux(Math.floor(total / 3600))}:${deux(Math.floor(total / 60) % 60)}:${deux(total % 60)}`;
+}

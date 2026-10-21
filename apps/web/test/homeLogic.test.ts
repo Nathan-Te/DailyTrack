@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { SALON_SESSION_MS, salonTheme } from "@cdj/sim";
-import { DIRECT_KEYS, dailyTitle, demoSalonStatus, homeHref, lookupSalon, medalWord, mmss, remainingMs, salonStatusFromNow, wantsHome, withoutHome } from "../src/homeLogic";
+import { DIRECT_KEYS, dailyTitle, demoSalonStatus, homeHref, lookupSalon, medalWord, remainingMs, salonStatusFromNow, wantsHome, withoutHome } from "../src/homeLogic";
 import { chargerLangue, setLangue } from "../src/i18n";
 import { modeHref } from "../src/salon";
 
@@ -64,11 +64,7 @@ describe("titres", () => {
     setLangue("fr", { ecrire: false });
     expect(["author", "gold", "silver", "bronze"].map((m) => medalWord(m as "author"))).toEqual(["Auteur", "Or", "Argent", "Bronze"]);
   });
-  it("temps restant", () => {
-    expect(mmss(462_000)).toBe("07:42");
-    expect(mmss(461_001)).toBe("07:42"); // arrondi à la seconde supérieure
-    expect(mmss(-5)).toBe("00:00");
-  });
+  // Lot I5 : « temps restant » (`mmss`) est devenu `formatDecompte(ms, { heures: false })` du socle : tests repris dans packages/ui/test/formats.test.ts.
 });
 
 describe("le Salon vu depuis l'accueil", () => {

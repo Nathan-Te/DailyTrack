@@ -37,8 +37,8 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(box!.width).toBeGreaterThan(100);
   expect(box!.height).toBeGreaterThan(100);
 
-  // Le coin affiche la version de la simulation et le jour du jeu.
-  await expect(page.locator("#stamp")).toHaveText(`DailyJump · sim v3 · ${info.day}`);
+  // Le coin affiche la version de la simulation et le jour du jeu (lot I5 : avec ?debug seulement ; sinon, petite, dans la pause).
+  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v3 · ${info.day}`);
 
   // Les pixels : le fond uni, les tuiles, le personnage et l'arrivée font au moins quatre couleurs, et le fond ne couvre pas tout.
   const pixels = await page.evaluate(() => (window as unknown as { __jump: JumpDebugView }).__jump.probe());
@@ -67,7 +67,7 @@ test("?debug : __jump.profile dit si une identité de la plateforme existe et so
 
 test("sans ?debug, aucun accès de débogage n'est exposé", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator("#stamp")).toContainText("DailyJump · sim v3");
+  await expect(page.locator("#stamp")).toBeHidden();
   expect(await page.evaluate(() => "__jump" in window)).toBe(false);
 });
 

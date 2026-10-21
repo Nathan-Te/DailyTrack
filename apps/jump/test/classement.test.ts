@@ -10,6 +10,7 @@ import { Ranking, mayRank } from "../src/ranking";
 import { arrivalRankView, homeRankText } from "../src/rankView";
 import { shareLine, shareText } from "../src/share";
 import type { KeyValue } from "../src/memory";
+import "./francais";
 
 // Lot P1 (plateforme) : le classement côté jeu. La file hors ligne (en attente, reprise, purge, un seul envoi par jour), ce qui part et ce qui
 // ne part jamais, le premier pseudo, la ligne à partager avec et sans rang, l'écran d'arrivée et l'accueil, la démonstration.
@@ -255,7 +256,8 @@ describe("Ranking : envoi, reprise, pseudo", () => {
     const { ranking, clock, timers } = setup(src, store);
     ranking.offer(entry(5000));
     await ranking.flush();
-    expect(ranking.state).toMatchObject({ status: "offline", message: "Classement indisponible, ton temps sera envoyé." });
+    // Lot I5 : l'état porte un code (le texte vient du catalogue à l'affichage, rankView.ts).
+    expect(ranking.state).toMatchObject({ status: "offline", code: "reseau" });
     expect(ranking.pendingFor(DATE)).toMatchObject({ tries: 1 });
     expect(timers.map((t) => t.at)).toEqual([RETRY_MS[0]]);
     // La minuterie : nouvel échec, délai plus long.
@@ -284,12 +286,13 @@ describe("Ranking : envoi, reprise, pseudo", () => {
     ranking.offer(entry(5000));
     await ranking.flush();
     expect(ranking.state.status).toBe("version");
-    expect(ranking.state.message).toMatch(/nouvelle version du jeu est disponible/);
+    expect(ranking.state.code).toBe("version");
     expect(ranking.pendingFor(DATE)).toBeNull();
     src.reply = () => ({ ok: false, status: 409, code: "day_closed", message: "Le classement de ce jour est figé" });
     ranking.offer(entry(4000));
     await ranking.flush();
-    expect(ranking.state).toMatchObject({ status: "refused", message: "Le classement de ce jour est figé" });
+    // Le `message` du serveur n'est plus lu : son code, traduit par le catalogue commun (`erreur.day_closed`).
+    expect(ranking.state).toMatchObject({ status: "refused", code: "day_closed" });
     expect(ranking.pendingFor(DATE)).toBeNull();
   });
 
@@ -305,22 +308,22 @@ describe("Ranking : envoi, reprise, pseudo", () => {
 describe("ligne à partager", () => {
   const r = { number: 12, date: "2026-10-27", ticks: Math.round(31.402 * 120), medal: "gold" as const, deaths: 47, kind: "jour" as const };
   it("avec le rang : il s'ajoute à la fin ; sans rang (hors ligne, pas encore envoyé) : la ligne d'avant", () => {
-    expect(shareLine({ ...r, ticks: 3768 })).toBe("DailyJump #12 — 31,400 s — 🥇 — 47 💀");
-    expect(shareLine({ ...r, ticks: 3768, rank: { rank: 3, participants: 128 } })).toBe("DailyJump #12 — 31,400 s — 🥇 — 47 💀 — 3ᵉ/128");
-    expect(shareLine({ ...r, ticks: 3768, rank: { rank: 1, participants: 5 } })).toBe("DailyJump #12 — 31,400 s — 🥇 — 47 💀 — 1ᵉʳ/5");
-    expect(shareLine({ ...r, ticks: 3768, rank: null })).toBe("DailyJump #12 — 31,400 s — 🥇 — 47 💀");
+    expect(shareLine({ ...r, ticks: 3768 })).toBe("Du Jour · Jump #12 — 31,400\u00a0s — 🥇 — 47 💀");
+    expect(shareLine({ ...r, ticks: 3768, rank: { rank: 3, participants: 128 } })).toBe("Du Jour · Jump #12 — 31,400\u00a0s — 🥇 — 47 💀 — 3e/128");
+    expect(shareLine({ ...r, ticks: 3768, rank: { rank: 1, participants: 5 } })).toBe("Du Jour · Jump #12 — 31,400\u00a0s — 🥇 — 47 💀 — 1er/5");
+    expect(shareLine({ ...r, ticks: 3768, rank: null })).toBe("Du Jour · Jump #12 — 31,400\u00a0s — 🥇 — 47 💀");
     // Une archive n'a jamais de rang dans sa ligne.
-    expect(shareLine({ ...r, ticks: 3768, kind: "archive", rank: { rank: 3, participants: 128 } })).toBe("DailyJump #12 (archive) — 31,400 s — 🥇 — 47 💀");
-    expect(shareText({ ...r, ticks: 3768, rank: { rank: 3, participants: 128 } }, { origin: "https://x.test", pathname: "/jump/" })).toBe("DailyJump #12 — 31,400 s — 🥇 — 47 💀 — 3ᵉ/128\nhttps://x.test/jump/");
+    expect(shareLine({ ...r, ticks: 3768, kind: "archive", rank: { rank: 3, participants: 128 } })).toBe("Du Jour · Jump #12 (archive) — 31,400\u00a0s — 🥇 — 47 💀");
+    expect(shareText({ ...r, ticks: 3768, rank: { rank: 3, participants: 128 } }, { origin: "https://x.test", pathname: "/jump/" })).toBe("Du Jour · Jump #12 — 31,400\u00a0s — 🥇 — 47 💀 — 3e/128\nhttps://x.test/jump/");
   });
-  it("rangs en français", () => {
-    expect([ordinal(1), ordinal(2), ordinal(128)]).toEqual(["1ᵉʳ", "2ᵉ", "128ᵉ"]);
-    expect(rankText(3, 128)).toBe("3ᵉ sur 128");
+  it("rangs en français (lot I5 : le format du socle, `1er`, `3e`)", () => {
+    expect([ordinal(1), ordinal(2), ordinal(128)]).toEqual(["1er", "2e", "128e"]);
+    expect(rankText(3, 128)).toBe("3e sur 128");
   });
 });
 
 describe("écran d'arrivée et accueil", () => {
-  const state = (status: string, message = "", suggestions: string[] = []) => ({ status, message, suggestions }) as never;
+  const state = (status: string, code = "", suggestions: string[] = []) => ({ status, code, suggestions }) as never;
   const board: JumpBoard = {
     date: DATE,
     open: true,
@@ -329,33 +332,37 @@ describe("écran d'arrivée et accueil", () => {
     top: Array.from({ length: 10 }, (_, i) => ({ rank: i + 1, name: `J${i + 1}`, ticks: 4000 + i, deaths: i, medal: i === 0 ? "author" : null })),
     me: { rank: 12, name: "Moi", ticks: 6000, deaths: 3, medal: null },
   };
-  const input = { enabled: true, mode: "jour" as const, date: DATE, state: state("ranked"), pending: false, known: null, board: { status: "ok" as const, board, message: "" } };
+  const input = { enabled: true, mode: "jour" as const, date: DATE, state: state("ranked"), pending: false, known: null, board: { status: "ok" as const, board, code: "" } };
   it("rang « 12ᵉ sur 12 », top 10 et ta ligne ajoutée en dessous, mise en valeur", () => {
     const v = arrivalRankView(input);
-    expect(v).toMatchObject({ shown: true, status: "12ᵉ sur 12", tone: "ok", gap: true, askName: false, reload: false });
+    expect(v).toMatchObject({ shown: true, status: "12e sur 12", tone: "ok", gap: true, askName: false, reload: false });
     expect(v.rows).toHaveLength(11);
-    expect(v.rows.at(-1)).toMatchObject({ rank: "12", name: "Moi", mine: true });
+    expect(v.rows.at(-1)).toMatchObject({ rank: "12", name: "Moi", mine: true, deaths: "3 morts", medal: null });
+    expect(v.rows[0]).toMatchObject({ medal: "author", deaths: "0 mort" });
     expect(v.rows.filter((r) => r.mine)).toHaveLength(1);
-    const inTop = arrivalRankView({ ...input, board: { status: "ok", board: { ...board, me: board.top[2]! }, message: "" } });
+    const inTop = arrivalRankView({ ...input, board: { status: "ok", board: { ...board, me: board.top[2]! }, code: "" } });
     expect(inTop.rows).toHaveLength(10);
     expect(inTop.rows[2]!.mine).toBe(true);
-    expect(inTop.status).toBe("3ᵉ sur 12");
+    expect(inTop.status).toBe("3e sur 12");
   });
   it("états clairs : envoi, injoignable, nouvelle version, pseudo à choisir ; sans serveur, rien", () => {
     expect(arrivalRankView({ ...input, pending: true, state: state("sending"), board: null }).status).toBe("Envoi au classement…");
-    expect(arrivalRankView({ ...input, pending: true, state: state("offline", "Classement indisponible, ton temps sera envoyé."), board: null })).toMatchObject({ status: "Classement indisponible, ton temps sera envoyé.", tone: "warn" });
+    expect(arrivalRankView({ ...input, pending: true, state: state("offline", "reseau"), board: null })).toMatchObject({ status: "Classement indisponible, ton temps sera envoyé.", tone: "warn" });
+    expect(arrivalRankView({ ...input, pending: true, state: state("offline", "trop_envois"), board: null }).status).toBe("Trop d'envois : nouvel essai dans un moment.");
     expect(arrivalRankView({ ...input, state: state("version") })).toMatchObject({ status: "Une nouvelle version du jeu est disponible", reload: true });
-    expect(arrivalRankView({ ...input, pending: true, state: state("name", "pris", ["A2"]) })).toMatchObject({ askName: true, nameMessage: "pris", suggestions: ["A2"] });
+    // Le pseudo refusé : le texte du code d'erreur (catalogue commun), pas le message du serveur.
+    expect(arrivalRankView({ ...input, pending: true, state: state("name", "name_taken", ["A2"]) })).toMatchObject({ askName: true, nameMessage: "Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.", suggestions: ["A2"] });
+    expect(arrivalRankView({ ...input, state: state("refused", "day_closed") }).status).toBe("Ce jour est terminé : son classement est figé.");
     expect(arrivalRankView({ ...input, enabled: false }).shown).toBe(false);
     expect(arrivalRankView({ ...input, mode: "essai" }).shown).toBe(false);
   });
   it("archive : le classement figé et ton rang si tu l'avais joué", () => {
-    expect(arrivalRankView({ ...input, mode: "archive", date: "2026-10-18" })).toMatchObject({ title: "Classement figé du 18 oct. 2026", status: "Ton rang ce jour-là : 12ᵉ sur 12" });
-    expect(arrivalRankView({ ...input, mode: "archive", board: { status: "ok", board: { ...board, me: null }, message: "" } }).status).toBe("12 classés · tu n'as pas été classé ce jour-là");
-    expect(arrivalRankView({ ...input, mode: "archive", board: { status: "offline", board: null, message: "" } }).status).toBe("Classement indisponible");
+    expect(arrivalRankView({ ...input, mode: "archive", date: "2026-10-18" })).toMatchObject({ title: "Classement figé du dim. 18 oct.", status: "Ton rang ce jour-là : 12e sur 12" });
+    expect(arrivalRankView({ ...input, mode: "archive", board: { status: "ok", board: { ...board, me: null }, code: "" } }).status).toBe("12 classés · tu n'as pas été classé ce jour-là");
+    expect(arrivalRankView({ ...input, mode: "archive", board: { status: "offline", board: null, code: "reseau" } }).status).toBe("Classement indisponible");
   });
   it("accueil : ton rang du jour si tu as un temps classé", () => {
-    expect(homeRankText(true, { date: DATE, levelId: ID, ticks: 1, rank: 3, participants: 128, medal: null })).toBe("Ton rang du jour : 3ᵉ sur 128");
+    expect(homeRankText(true, { date: DATE, levelId: ID, ticks: 1, rank: 3, participants: 128, medal: null })).toBe("Ton rang du jour : 3e sur 128");
     expect(homeRankText(true, null)).toBe("");
     expect(homeRankText(false, { date: DATE, levelId: ID, ticks: 1, rank: 3, participants: 128, medal: null })).toBe("");
   });

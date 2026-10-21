@@ -1,341 +1,66 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-precharge-polices>
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#101820" />
-    <meta name="description" content="DailyJump : un niveau de plateformes court et brutal par jour, le même pour tout le monde." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23ffd22e'/%3E%3C/svg%3E" />
-    <title>DailyJump</title>
-    <style>
-      :root { --band: 60px; }
-      html { margin: 0; height: 100%; height: 100dvh; background: #101820; overflow: hidden; overscroll-behavior: none; touch-action: none; -webkit-tap-highlight-color: transparent; }
-      /* Corps fixe : ni défilement, ni rebond, ni barre d'adresse qui bouge la page. */
-      body { position: fixed; inset: 0; margin: 0; overflow: hidden; overscroll-behavior: none; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; background: #101820; }
-      canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-      #stamp { position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: max(10px, env(safe-area-inset-bottom)); color: #fff; font: 600 13px system-ui, sans-serif; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); font-variant-numeric: tabular-nums; pointer-events: none; text-align: right; }
-      #hud { display: contents; }
-      #debug { position: fixed; left: 10px; top: 10px; margin: 0; padding: 6px 9px; color: #fff; background: rgba(11, 16, 32, 0.72); border-radius: 8px; font: 600 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; pointer-events: none; }
-      #debug[hidden] { display: none; }
-      /* HUD du lot 2 : chrono de l'essai, meilleur temps, morts. En haut au centre (ordinateur), sous la bande haute (téléphone). */
-      #chrono { position: fixed; left: 50%; top: 10px; transform: translateX(-50%); display: flex; align-items: baseline; gap: 12px; padding: 4px 12px; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; z-index: 4; }
-      #chrono .time { font-size: 22px; font-weight: 800; min-width: 5.6em; text-align: right; }
-      #chrono.done .time { color: #ffd22e; }
-      #chrono .best, #chrono .deaths { opacity: 0.85; }
-      /* Bandeau d'arrivée (lot 2) : au-dessus de la couche tactile, un bouton de 48 px. */
-      #finish { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 8; box-sizing: border-box; max-width: calc(100% - 32px); min-width: min(320px, calc(100% - 32px)); padding: 16px 20px; border-radius: 14px; background: rgba(11, 16, 32, 0.9); color: #fff; font: 600 15px system-ui, sans-serif; text-align: center; font-variant-numeric: tabular-nums; touch-action: manipulation; }
-      #finish[hidden] { display: none; }
-      #finish .title { font-size: 18px; opacity: 0.85; }
-      #finish .time { font-size: 34px; font-weight: 800; color: #ffd22e; margin: 2px 0 6px; }
-      #finish .stats { display: flex; flex-direction: column; gap: 2px; opacity: 0.9; }
-      #finish button { margin-top: 12px; min-height: 48px; min-width: 200px; padding: 0 18px; border: 0; border-radius: 10px; background: #ffd22e; color: #101820; font: 700 16px system-ui, sans-serif; cursor: pointer; }
-      #finish .hint { margin-top: 6px; font-size: 12px; opacity: 0.65; }
-      /* Point de passage atteint (lot 2b) : message bref, au-dessus du personnage, sans rien capter. */
-      #toast { position: fixed; left: 50%; top: 32%; transform: translate(-50%, -50%); z-index: 4; padding: 6px 14px; border-radius: 999px; background: rgba(11, 16, 32, 0.72); color: #fff; font: 700 15px system-ui, sans-serif; pointer-events: none; opacity: 0; white-space: nowrap; }
-      #toast.show { animation: toast 1.2s ease forwards; }
-      @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -30%); } 12% { opacity: 1; transform: translate(-50%, -50%); } 75% { opacity: 1; } 100% { opacity: 0; } }
-      #tuned { position: fixed; left: 50%; top: 54px; transform: translateX(-50%); font: 700 12px system-ui, sans-serif; color: #ffd22e; background: rgba(11, 16, 32, 0.72); padding: 2px 9px; border-radius: 6px; pointer-events: none; }
-      #tuned:empty { display: none; }
-      #tune { position: fixed; right: 10px; top: 10px; width: 300px; max-height: calc(100vh - 56px); overflow: auto; background: rgba(11, 16, 32, 0.88); color: #fff; font: 600 12px system-ui, sans-serif; border-radius: 10px; padding: 8px 10px; box-sizing: border-box; font-variant-numeric: tabular-nums; user-select: text; -webkit-user-select: text; }
-      #tune[hidden] { display: none; }
-      #tune .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-      #tune .head button { font: inherit; color: #fff; background: rgba(255, 255, 255, 0.14); border: 0; border-radius: 6px; width: 26px; height: 22px; cursor: pointer; }
-      #tune.folded .body { display: none; }
-      #tune .row { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; margin-top: 7px; }
-      #tune .row input { grid-column: 1 / 3; width: 100%; margin: 2px 0 0; }
-      #tune .row .hint { grid-column: 1 / 3; opacity: 0.7; font-weight: 500; }
-      #tune .row .hint:empty { display: none; }
-      #tune .row.changed { color: #ffd22e; }
-      #tune .sprint, #tune .surfaces, #tune .winds { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.18); display: flex; flex-direction: column; }
-      #tune .sprint > .hint, #tune .surfaces > .hint, #tune .winds > .hint { opacity: 0.7; font-weight: 500; margin-top: 2px; }
-      #tune .sprint .switch { font: inherit; align-self: flex-start; margin-top: 6px; padding: 5px 10px; border-radius: 6px; border: 0; cursor: pointer; background: rgba(255, 255, 255, 0.14); color: #fff; }
-      #tune .sprint.on .switch { background: #39ff88; color: #111; }
-      #tune .sprint .row input:disabled { opacity: 0.4; }
-      #tune .status { margin-top: 8px; opacity: 0.8; }
-      #tune .actions { display: flex; gap: 6px; margin-top: 6px; }
-      #tune .actions button { font: inherit; padding: 5px 8px; border-radius: 6px; border: 0; cursor: pointer; background: #ffd22e; color: #111; }
-      #tune .actions button + button { background: rgba(255, 255, 255, 0.14); color: #fff; }
-      /* Réglages sur téléphone (?debug&tune) : ouverts par ⚙, en feuille qui prend la page et défile ; curseurs et boutons d'au moins 44 px. */
-      body.touch #tune { background: rgba(11, 16, 32, 0.97); left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); bottom: max(8px, env(safe-area-inset-bottom)); width: auto; max-height: none; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; z-index: 30; font-size: 14px; padding: 8px 12px 16px; }
-      body.touch #tune .head { position: sticky; top: -8px; margin: -8px -12px 0; padding: 8px 12px; background: rgba(11, 16, 32, 0.96); z-index: 1; }
-      body.touch #tune .head button { width: 44px; height: 44px; font-size: 18px; }
-      body.touch #tune .row { margin-top: 12px; }
-      body.touch #tune .row input { height: 44px; touch-action: pan-y; }
-      body.touch #tune .actions { flex-wrap: wrap; }
-      body.touch #tune .actions button, body.touch #tune .sprint .switch { min-height: 44px; min-width: 44px; padding: 0 14px; }
-      #tune textarea.json { display: block; width: 100%; box-sizing: border-box; margin-top: 8px; font: 12px/1.35 ui-monospace, Menlo, Consolas, monospace; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 6px; padding: 6px; user-select: text; -webkit-user-select: text; }
-      #tune textarea.json[hidden] { display: none; }
-      /* Commandes tactiles (lot 1b) : la couche reçoit les doigts, les boutons dessinés ne reçoivent rien. */
-      #touch { position: fixed; inset: 0; z-index: 5; touch-action: none; -webkit-user-select: none; user-select: none; }
-      body.touch-suspended #touch { pointer-events: none; }
-      #tbuttons { position: fixed; inset: 0; z-index: 6; pointer-events: none; visibility: hidden; }
-      body.touch-seen #tbuttons { visibility: visible; }
-      body.touch-suspended #tbuttons { visibility: hidden; }
-      .tbtn { position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center; border-radius: 22%; border: 2px solid rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.14); color: rgba(255, 255, 255, 0.85); font: 700 26px system-ui, sans-serif; transition: background 60ms, transform 60ms; }
-      .tbtn.down { background: rgba(255, 210, 46, 0.62); border-color: #ffd22e; color: #101820; transform: scale(0.94); }
-      #tbar { position: fixed; z-index: 7; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); top: max(8px, env(safe-area-inset-top)); display: flex; justify-content: space-between; align-items: flex-start; pointer-events: none; }
-      .tbar-right { display: flex; gap: 8px; }
-      .tbar-btn { pointer-events: auto; box-sizing: border-box; width: 48px; height: 48px; padding: 0; border-radius: 12px; border: 2px solid rgba(255, 255, 255, 0.45); background: rgba(11, 16, 32, 0.55); color: #fff; font: 700 24px system-ui, sans-serif; line-height: 1; touch-action: manipulation; }
-      .tbar-btn:active { background: rgba(255, 210, 46, 0.6); color: #101820; }
-      body.touch-suspended #tbar { display: none; }
-      /* Sur téléphone, la surimpression de debug descend sous la bande haute et s'empile avec l'invitation à tourner l'écran. */
-      body.touch #hud { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; position: fixed; z-index: 4; left: max(10px, env(safe-area-inset-left)); right: max(10px, env(safe-area-inset-right)); top: calc(var(--band) + 4px); pointer-events: none; }
-      body.touch #chrono { position: static; transform: none; align-self: center; max-width: 100%; box-sizing: border-box; gap: 10px; font-size: 12px; padding: 3px 10px; }
-      body.touch #chrono .time { font-size: 19px; }
-      @media (max-width: 360px) { body.touch #chrono { gap: 6px; font-size: 11px; } body.touch #chrono .time { font-size: 17px; min-width: 5em; } }
-      body.touch #debug, body.touch #tuned { box-sizing: border-box; max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; position: static; transform: none; font-size: 11px; line-height: 1.35; background: rgba(11, 16, 32, 0.82); }
-      body.touch-suspended #hud { visibility: hidden; }
-      @media (max-height: 520px) { body.touch #debug { font-size: 10px; } }
-      #rotate { display: none; align-self: center; box-sizing: border-box; max-width: 100%; padding: 6px 12px; border-radius: 999px; background: rgba(11, 16, 32, 0.78); color: #fff; font: 600 13px system-ui, sans-serif; text-align: center; animation: rotate-out 0.6s ease 9s forwards; }
-      @media (orientation: portrait) { body.touch #rotate:not(.gone) { display: block; } }
-      @keyframes rotate-out { to { opacity: 0; visibility: hidden; } }
-      /* ?zones=1 */
-      #zones { position: fixed; inset: 0; z-index: 9; pointer-events: none; }
-      #zones .zone { position: absolute; box-sizing: border-box; border: 1px dashed rgba(255, 255, 255, 0.7); color: rgba(255, 255, 255, 0.8); font: 600 12px system-ui, sans-serif; padding: 2px 4px; }
-      #zones .zone.left { background: rgba(80, 160, 255, 0.12); }
-      #zones .zone.right { background: rgba(80, 255, 160, 0.12); }
-      #zones .zone.jump { background: rgba(255, 170, 60, 0.12); }
-      #zones .zone.band { background: rgba(255, 80, 80, 0.12); }
-      #zones .dot { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: #ff3b6b; border: 2px solid #fff; }
-      #zones .dot.jump { background: #ffaa3c; }
-      /* Lot 3 : compteur du carnage (au-dessus de la couche tactile, il ne capte rien : un doigt n'importe où passe le carnage). */
-      #carnage { position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 8; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 16px; border-radius: 12px; background: rgba(11, 16, 32, 0.78); color: #fff; font: 700 18px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; pointer-events: none; }
-      #carnage[hidden] { display: none; }
-      #carnage .hint { font-size: 12px; font-weight: 600; opacity: 0.7; }
-      /* Sur téléphone : empilé sous le chrono, dans la colonne du HUD (jamais sur les boutons ni sur la surimpression de debug). */
-      body.touch #carnage { position: static; transform: none; align-self: center; font-size: 16px; padding: 4px 12px; }
-      /* Fantôme : un bouton sur ordinateur (G au clavier) ; sur téléphone, il est dans la bande haute (👻). */
-      #ghostbtn { position: fixed; left: calc(max(10px, env(safe-area-inset-left)) + 112px); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 4; min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
-      #ghostbtn[aria-pressed="false"] { opacity: 0.65; }
-      body.touch #ghostbtn, body.touch #pausebtn { display: none; }
-      /* Lot 8 : bouton du menu ⏸ (ordinateur ; au téléphone il est dans la bande haute), et le menu : pause, réglages du joueur, commandes. */
-      #pausebtn { position: fixed; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); z-index: 4; min-height: 46px; min-width: 100px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; cursor: pointer; }
-      #menu { position: fixed; z-index: 40; left: 50%; top: 50%; transform: translate(-50%, -50%); box-sizing: border-box; width: min(560px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 14px 18px 18px; border-radius: 14px; background: #0b1020; box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5); color: #fff; font: 600 15px/1.35 system-ui, sans-serif; user-select: none; -webkit-user-select: none; }
-      #menu[hidden] { display: none; }
-      #menu h2 { margin: 0; font-size: 22px; }
-      #menu h3 { margin: 14px 0 4px; font-size: 15px; color: #ffd22e; text-transform: uppercase; letter-spacing: 0.06em; }
-      #menu h4 { margin: 0 0 2px; font-size: 14px; }
-      #menu .mhead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
-      #menu .mactions { display: flex; flex-wrap: wrap; gap: 8px; }
-      #menu .mbtn { box-sizing: border-box; min-height: 46px; min-width: 46px; padding: 0 16px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
-      #menu .mbtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
-      #menu .mbtn[aria-pressed="true"] { background: rgba(255, 210, 46, 0.22); border-color: #ffd22e; }
-      #menu .mbtn:focus-visible, #menu input:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
-      #menu .mtoggle { display: block; width: 100%; margin-top: 8px; text-align: left; }
-      #menu .mrow { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0 8px; margin-top: 6px; }
-      #menu .mrow input[type="range"] { grid-column: 1 / 3; width: 100%; height: 46px; margin: 0; accent-color: #ffd22e; touch-action: pan-y; cursor: pointer; }
-      #menu .mvalue { font-variant-numeric: tabular-nums; opacity: 0.85; }
-      #menu .mhint { grid-column: 1 / 3; margin: 0 0 2px; font-size: 12px; font-weight: 500; opacity: 0.7; }
-      /* Lot R5 : lien vers les mentions légales (menu ⏸ et Réglages › Profil) ; cible ≥ 44 px au doigt. */
-      #menu .mhint a { display: inline-flex; align-items: center; min-height: 44px; color: #8fd8ff; font-size: 14px; }
-      #menu .mlegal { margin: 8px 0 0; opacity: 0.85; }
-      #menu .mseg { margin-top: 10px; }
-      #menu .msegbtns { display: flex; gap: 6px; margin-top: 4px; }
-      #menu .msegbtns .mbtn { flex: 1 1 0; padding: 0 8px; }
-      /* Lot P2 : Réglages › Profil (le profil commun de la plateforme). Cibles ≥ 44 px. */
-      #menu .pshared { margin: 0 0 6px; font-size: 13px; opacity: 0.85; }
-      #menu .pname { display: flex; gap: 8px; margin-top: 6px; }
-      #menu .pinput { flex: 1 1 auto; min-width: 0; box-sizing: border-box; min-height: 46px; padding: 0 12px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; font: 600 16px system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
-      #menu .pcode { display: block; width: 100%; box-sizing: border-box; min-height: 64px; margin-top: 6px; padding: 8px 10px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; font: 500 14px ui-monospace, monospace; user-select: text; -webkit-user-select: text; resize: vertical; }
-      #menu .pactions, #menu .psugg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-      #menu .psugg[hidden], #menu .pnotice[hidden], #menu .pconfirm[hidden], #menu .pload[hidden], #menu .ppreview[hidden] { display: none; }
-      #menu .pstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 4px 12px; margin: 10px 0 0; }
-      #menu .pstats dt { font-size: 12px; opacity: 0.7; }
-      #menu .pstats dd { margin: 0; font-variant-numeric: tabular-nums; }
-      #menu .pmsg { min-height: 0; margin-top: 4px; font-size: 13px; }
-      #menu .pmsg[data-tone="ok"] { color: #8affc8; }
-      #menu .pmsg[data-tone="error"] { color: #ff8a65; }
-      #menu .pwarn { margin-top: 6px; padding: 8px 10px; border: 1px solid #ff8a65; border-radius: 10px; color: #ffccbc; }
-      #menu .pwarn p, #menu .pconfirm p, #menu .ppreview p { margin: 0 0 6px; }
-      #menu .pfound { font-weight: 800; }
-      #menu .mhelp { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 4px 14px; }
-      #menu .mhelp h3 { grid-column: 1 / -1; }
-      #menu .mhelp ul { margin: 0; padding-left: 18px; font-size: 13px; font-weight: 500; opacity: 0.9; }
-      body.paused #finish, body.paused #toast { visibility: hidden; }
-      .tbar-btn[aria-pressed="false"] { opacity: 0.5; }
-      /* Lot 4 : bandeau d'arrivée d'un morceau (temps de la solution, « Morceau suivant ») ; galerie des morceaux (?modules), qui défile. */
-      #finish .ref:empty { display: none; }
-      #finish .buttons { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-      #finish .buttons button { margin-top: 0; min-width: 160px; }
-      #finish .next { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 48px; min-width: 160px; padding: 0 18px; border-radius: 10px; background: rgba(255, 255, 255, 0.16); color: #fff; font: 700 16px system-ui, sans-serif; text-decoration: none; }
-      #finish .next[hidden] { display: none; }
-      #modname { position: fixed; left: 50%; bottom: max(10px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4; max-width: calc(100% - 140px); padding: 3px 10px; border-radius: 8px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 12px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-      #modname:empty { display: none; }
-      body.touch #modname { bottom: auto; top: calc(var(--band) + 34px); }
-      body.gallery > :not(#gallery) { display: none !important; }
-      #gallery { position: fixed; inset: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; box-sizing: border-box; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); color: #fff; font: 15px/1.4 system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
-      #gallery h1 { margin: 4px 0 6px; font-size: 24px; }
-      #gallery .lead { margin: 0 0 10px; opacity: 0.8; }
-      #gallery .entry { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
-      #gallery .entry button { min-height: 46px; /* 44 px au moins, avec une marge : Firefox mesure 43,99997 px à une position fractionnaire */ min-width: 44px; padding: 0 14px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; background: transparent; color: #fff; font: 600 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
-      #gallery .entry button[aria-pressed="true"] { background: #ffd22e; border-color: #ffd22e; color: #101820; }
-      #gallery .cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
-      #gallery .card { min-width: 0; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); }
-      #gallery .card h2 { margin: 0; font-size: 17px; }
-      #gallery .intent { margin: 4px 0; opacity: 0.9; }
-      #gallery .tags { display: flex; flex-wrap: wrap; gap: 4px; margin: 0 0 6px; }
-      #gallery .tag { padding: 1px 8px; border-radius: 999px; background: rgba(255, 210, 46, 0.18); color: #ffd22e; font-size: 12px; }
-      #gallery .variant { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-      #gallery .info { display: flex; flex-direction: column; min-width: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
-      #gallery .ex { color: #ffd22e; letter-spacing: 1px; }
-      #gallery .filters { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 6px; }
-      #gallery .filter { display: flex; align-items: center; gap: 8px; min-width: 0; }
-      #gallery .filter select { min-height: 46px; min-width: 44px; max-width: 60vw; padding: 0 10px; border: 2px solid rgba(255, 255, 255, 0.4); border-radius: 10px; background: #1b2633; color: #fff; font: 600 15px system-ui, sans-serif; touch-action: manipulation; }
-      #gallery .count { margin: 0 0 10px; opacity: 0.8; font-size: 13px; }
-      #gallery .card[hidden] { display: none; }
-      #gallery .tag.family { background: rgba(120, 200, 255, 0.18); color: #9fd8ff; }
-      #gallery .tag.long { background: rgba(140, 255, 160, 0.18); color: #a6ffb4; }
-      #gallery .mut { opacity: 0.75; }
-      #gallery .actions { display: flex; gap: 8px; }
-      #gallery .btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-height: 46px; min-width: 44px; padding: 0 14px; border-radius: 10px; background: #ffd22e; color: #101820; font-weight: 700; text-decoration: none; touch-action: manipulation; }
-      #gallery .btn.watch { background: rgba(255, 255, 255, 0.14); color: #fff; }
-      /* Lot 5 : ligne du niveau du jour (DailyJump #N, archive / aperçu, médaille visée) et message discret (date refusée, nouveau niveau). */
-      #dayline { position: fixed; left: 50%; top: 50px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); box-sizing: border-box; padding: 2px 10px; border-radius: 8px; background: rgba(11, 16, 32, 0.62); color: #fff; font: 600 13px system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
-      #dayline[hidden] { display: none; }
-      #daynote { position: fixed; left: 50%; top: 80px; transform: translateX(-50%); z-index: 4; max-width: calc(100% - 24px); box-sizing: border-box; padding: 3px 12px; border-radius: 8px; background: rgba(11, 16, 32, 0.78); color: #ffd22e; font: 600 13px system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; display: none; }
-      #daynote.show { display: block; animation: daynote-out 0.8s ease 8s forwards; }
-      #daynote.show.sticky { animation: none; }
-      @keyframes daynote-out { to { opacity: 0; visibility: hidden; } }
-      body.daily #tuned { top: 110px; }
-      body.touch #dayline, body.touch #daynote { position: static; transform: none; align-self: center; max-width: 100%; font-size: 12px; white-space: normal; text-align: center; }
-      /* Lot 10 : l'accueil (surimpression sur le niveau qui se charge derrière), « Comment jouer », les archives, l'écran d'arrivée. Au-dessus
-         de la couche tactile ; cibles d'au moins 44 px (46-52 px : Firefox mesure 43,99997 px à une position fractionnaire). */
-      #home { position: fixed; inset: 0; z-index: 35; display: flex; align-items: center; justify-content: center; box-sizing: border-box; padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); background: rgba(11, 16, 32, 0.86); color: #fff; font: 600 15px/1.35 system-ui, sans-serif; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
-      #home[hidden] { display: none; }
-      #home .hcard { display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(520px, 100%); margin: auto; text-align: center; }
-      #home .htitle { margin: 0; font-size: 34px; font-weight: 800; letter-spacing: 0.01em; }
-      #home .hsub { margin: 0; opacity: 0.85; }
-      #home .hstatus { margin: 6px 0 0; font-size: 17px; font-variant-numeric: tabular-nums; }
-      #home .hstatus.done { color: #ffd22e; font-weight: 800; }
-      #home .hstreak { margin: 0; opacity: 0.85; }
-      #home .hrank { margin: 0; color: #ffd22e; font-weight: 800; }
-      #home .hrank:empty { display: none; }
-      /* Lot P2 : la carte du profil commun (pseudo, série, médailles) : un bouton vers Réglages › Profil. */
-      #home .hprofile { margin-top: 6px; min-height: 44px; max-width: 100%; padding: 0 14px; border: 1px solid rgba(255, 255, 255, 0.25); border-radius: 22px; background: rgba(255, 255, 255, 0.06); color: #fff; font: 600 14px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #home .hprofile.warn { border-color: #ff8a65; color: #ffccbc; white-space: normal; }
-      #home .hprofile[hidden] { display: none; }
-      #home .hplay { margin-top: 10px; min-height: 64px; min-width: min(280px, 100%); padding: 0 28px; border: 0; border-radius: 16px; background: #ffd22e; color: #101820; font: 800 24px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
-      #home .hplay:disabled { background: rgba(255, 210, 46, 0.35); color: rgba(16, 24, 32, 0.8); font-size: 17px; cursor: progress; }
-      #home .hbtns { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
-      #home .hbtn, .sbtn { box-sizing: border-box; min-height: 48px; min-width: 48px; padding: 0 16px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
-      #home .hbtn:disabled { opacity: 0.5; cursor: progress; }
-      .sbtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
-      #home button:focus-visible, .sheet button:focus-visible, .sheet a:focus-visible, #arrival button:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
-      /* Lot I2 (plateforme) : le retour au portail, discret, en haut à gauche de l'accueil (cible de 44 px). */
-      #home .hportail { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 10px; margin-left: -10px; color: #fff; font: 700 14px system-ui, sans-serif; text-decoration: underline; touch-action: manipulation; }
-      #home .hportail:focus-visible, #menu .mportail:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
-      #menu .mportail { display: inline-flex; align-items: center; text-decoration: none; }
-      #home .hcount { margin: 8px 0 0; font-size: 13px; opacity: 0.75; font-variant-numeric: tabular-nums; }
-      @media (max-height: 520px) { #home .htitle { font-size: 26px; } #home .hplay { min-height: 56px; margin-top: 4px; } #home .hcard { gap: 3px; } }
-      #help, #archives { position: fixed; inset: 0; z-index: 38; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 16, 0.6); }
-      #help[hidden], #archives[hidden] { display: none; }
-      .sheet { box-sizing: border-box; width: min(600px, calc(100% - 24px)); max-height: calc(100% - 24px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 12px 18px 18px; border-radius: 14px; background: #0b1020; box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5); color: #fff; font: 500 15px/1.4 system-ui, sans-serif; }
-      .sheet .shead { position: sticky; top: -12px; margin: -12px -18px 0; padding: 10px 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #0b1020; z-index: 1; }
-      .sheet h2 { margin: 0; font-size: 21px; }
-      .sheet h3 { margin: 12px 0 4px; font-size: 14px; color: #ffd22e; text-transform: uppercase; letter-spacing: 0.06em; }
-      .sheet ul { margin: 0; padding-left: 18px; }
-      .sheet li { margin: 3px 0; }
-      .sheet .slead { margin: 4px 0 8px; opacity: 0.75; font-size: 13px; }
-      #archives .alist { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-      #archives .alist li { margin: 0; }
-      #archives .arow { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 12px; box-sizing: border-box; min-height: 52px; padding: 6px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.06); color: #fff; text-decoration: none; font-variant-numeric: tabular-nums; touch-action: pan-y; }
-      #archives .arow:active { background: rgba(255, 210, 46, 0.25); }
-      #archives .anum { font-weight: 800; font-size: 17px; min-width: 2.6em; }
-      #archives .adate { opacity: 0.85; }
-      #archives .ares { opacity: 0.6; font-size: 14px; }
-      #archives .ares.medal { opacity: 1; color: #ffd22e; font-weight: 700; }
-      #archives .aempty[hidden] { display: none; }
-      #arrival { position: fixed; inset: 0; z-index: 9; display: flex; align-items: center; justify-content: center; background: rgba(5, 8, 16, 0.45); touch-action: manipulation; }
-      #arrival[hidden] { display: none; }
-      #arrival .acard { box-sizing: border-box; width: min(560px, calc(100% - 24px)); max-height: calc(100% - 16px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; padding: 14px 18px; border-radius: 16px; background: rgba(11, 16, 32, 0.95); color: #fff; font: 600 14px/1.35 system-ui, sans-serif; text-align: center; font-variant-numeric: tabular-nums; display: flex; flex-direction: column; gap: 8px; }
-      #arrival .atitle { font-size: 17px; opacity: 0.85; }
-      #arrival .atime { font-size: 38px; font-weight: 800; color: #ffd22e; line-height: 1.1; }
-      #arrival .amedalrow { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; }
-      #arrival .amedal { font-size: 34px; line-height: 1; }
-      #arrival .amedal[hidden] { display: none; }
-      #arrival .amedalrow.pop .amedal { animation: medal-pop 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both; }
-      @keyframes medal-pop { 0% { transform: scale(0.2) rotate(-25deg); opacity: 0; } 60% { transform: scale(1.25) rotate(8deg); opacity: 1; } 100% { transform: scale(1) rotate(0); } }
-      @media (prefers-reduced-motion: reduce) { #arrival .amedalrow.pop .amedal { animation: none; } }
-      #arrival .abest { opacity: 0.9; }
-      #arrival .abest.record { color: #39ff88; }
-      #arrival .athresholds { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 12px; font-size: 13px; }
-      #arrival .athresholds li { display: flex; align-items: center; gap: 6px; opacity: 0.6; }
-      #arrival .athresholds li.reached { opacity: 1; }
-      #arrival .athresholds .tlabel { flex: 1; text-align: left; }
-      #arrival .astats, #arrival .arun, #arrival .astreak { opacity: 0.9; }
-      #arrival .astreak { color: #ffd22e; }
-      #arrival .abtns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
-      #arrival .abtn { box-sizing: border-box; min-height: 48px; min-width: 48px; padding: 0 12px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 700 15px system-ui, sans-serif; cursor: pointer; touch-action: manipulation; }
-      #arrival .abtn[hidden] { display: none; }
-      #arrival .abtn.primary { background: #ffd22e; border-color: #ffd22e; color: #101820; }
-      /* Lot I3 (plateforme) : « Jeu suivant du jour » (ou « Journée parfaite ! » et le retour au portail) : des liens de 48 px sous les boutons. */
-      #arrival .anext { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-      #arrival .anext[hidden] { display: none; }
-      #arrival .anext-link { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 0 14px; border: 2px solid #ffd22e; border-radius: 12px; color: #ffd22e; font: 700 15px system-ui, sans-serif; text-decoration: none; touch-action: manipulation; }
-      #arrival .anext-link:focus-visible { outline: 3px solid #39c6ff; outline-offset: 2px; }
-      #arrival .anext-perfect { font-size: 17px; font-weight: 800; color: #39ff88; }
-      #arrival .amessage { min-height: 1.2em; color: #39ff88; font-size: 13px; }
-      #arrival .afallback { width: 100%; box-sizing: border-box; font: 13px/1.35 ui-monospace, Menlo, Consolas, monospace; color: #fff; background: rgba(255, 255, 255, 0.1); border: 0; border-radius: 8px; padding: 6px; user-select: text; -webkit-user-select: text; resize: none; }
-      #arrival .afallback[hidden] { display: none; }
-      #arrival .acount, #arrival .ahint { font-size: 12px; opacity: 0.7; }
-      /* Lot P1 (plateforme) : le classement du jour dans l'écran d'arrivée. */
-      #arrival .arank { display: flex; flex-direction: column; gap: 4px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.15); }
-      #arrival .arank[hidden], #arrival .arank [hidden] { display: none; }
-      #arrival .arktitle { font-size: 12px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.06em; }
-      #arrival .arkstatus { font-size: 18px; font-weight: 800; color: #ffd22e; }
-      #arrival .arkstatus[data-tone="wait"] { color: #fff; opacity: 0.85; font-size: 15px; font-weight: 600; }
-      #arrival .arkstatus[data-tone="warn"] { color: #ffb36b; font-size: 15px; }
-      #arrival .arkname { display: grid; grid-template-columns: 1fr auto; gap: 6px; }
-      #arrival .arkinput { box-sizing: border-box; min-height: 48px; min-width: 0; padding: 0 12px; border: 2px solid rgba(255, 255, 255, 0.35); border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: #fff; font: 600 16px system-ui, sans-serif; user-select: text; -webkit-user-select: text; }
-      #arrival .arkerror { grid-column: 1 / 3; color: #ffb36b; font-size: 13px; min-height: 0; }
-      #arrival .arksugg { grid-column: 1 / 3; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
-      #arrival .arklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; font-size: 13px; text-align: left; }
-      #arrival .arklist li { display: grid; grid-template-columns: 2.2em 1fr 1.6em auto; gap: 6px; align-items: center; padding: 1px 6px; border-radius: 6px; }
-      #arrival .arklist li.mine { background: rgba(255, 210, 46, 0.22); color: #ffd22e; font-weight: 800; }
-      #arrival .arklist li.gap { margin-top: 6px; }
-      #arrival .arklist .krank { opacity: 0.75; text-align: right; }
-      #arrival .arklist .kname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      body.touch #arrival .ahint { display: none; }
-      /* Paysage bas (téléphone) : deux colonnes, le résultat à gauche, les actions à droite. */
-      @media (max-height: 520px) and (min-width: 560px) {
-        #arrival .acard { flex-direction: row; align-items: center; width: min(760px, calc(100% - 24px)); padding: 10px 14px; gap: 14px; }
-        #arrival .amain, #arrival .aside { flex: 1 1 0; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-        #arrival .atime { font-size: 30px; }
-        #arrival .amedal { font-size: 28px; }
-      }
-      #arrival .amain, #arrival .aside { display: flex; flex-direction: column; gap: 6px; }
-      body.home-open #tbar, body.home-open #hud, body.home-open #pausebtn, body.home-open #ghostbtn, body.home-open #stamp, body.home-open #modname { visibility: hidden; }
-      /* Lot 10 : le mode archive, dans le HUD. */
-      #modetag { position: fixed; left: 50%; top: 76px; transform: translateX(-50%); z-index: 4; padding: 1px 10px; border-radius: 999px; background: #9fd8ff; color: #101820; font: 800 11px system-ui, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; pointer-events: none; }
-      #modetag[hidden] { display: none; }
-      body.touch #modetag { position: static; transform: none; align-self: center; }
-      #nogl { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; color: #fff; font: 600 18px system-ui, sans-serif; text-align: center; }
-    </style>
+    <meta name="theme-color" data-jeton-content="dj-encre" />
+    <meta name="description" data-t-content="page.description" />
+    <link rel="icon" data-icone-du-jour />
+    <title data-t="page.titre"></title>
   </head>
   <body>
-    <div id="stamp"></div>
-    <div id="hud">
-      <div id="chrono" aria-live="off"><span class="time">0,000 s</span><span class="best">Meilleur —</span><span class="deaths">Morts 0</span></div>
-      <div id="dayline" hidden></div>
-      <div id="modetag" hidden>Archive</div>
-      <div id="daynote" role="status"></div>
-      <div id="carnage" role="status" hidden><span class="count"></span><span class="hint">Une commande pour passer</span></div>
+    <!-- Lot I5 : le HTML ne porte aucune chaîne d'interface — les textes viennent des catalogues (pré-remplis en français à la construction par
+         packages/ui/outils/vite.ts, puis dans la langue du joueur au démarrage : `appliquerTextes`, i18n.ts). Les feuilles (importées par boot.ts) :
+         interface.css (primitives, cadre, étiquette jaune, voile), hud.css (surimpressions en partie, tactile, carnage, bandeau), ecrans.css (accueil,
+         arrivée, réglages, archives, classement, « Comment jouer »), outils.css (?debug, ?debug&tune, ?zones=1, galerie des morceaux). -->
+    <div id="stamp" hidden></div>
+    <!-- Surimpressions en partie compactes (charte rév. 7, § 9 ; maquette jump-hud.html) : le jeu se lit d'abord. En haut à gauche la pause (44 px) ;
+         au centre en haut **une seule bande de 30 px** (chrono · point de passage · écart signé au record) ; en haut à droite l'objectif de médaille et
+         l'autocollant des morts. Le titre du niveau (`#dayline`) ne s'affiche qu'au départ ; les messages courts passent sous la bande. Le centre reste libre. -->
+    <div id="hud" data-t-aria-label="hud.aria" role="group">
+      <div id="hud-gauche">
+        <button type="button" id="pausebtn" class="plaque plaque--bouton" data-t-aria-label="hud.pause.aria" data-t-title="hud.pause.aria"><span class="pause-barres" aria-hidden="true"><span></span><span></span></span></button>
+        <div id="modetag" class="plaque plaque--petite" hidden></div>
+      </div>
+      <div id="chrono" class="bande" aria-live="off">
+        <span class="time plaque__chiffres"></span>
+        <span class="pc" hidden><svg class="pc__drapeau" aria-hidden="true" width="11" height="13" viewBox="0 0 14 16"><path class="pc__mat" d="M2 16V1" /><path class="pc__fanion" d="M3 2h9l-2 3 2 3H3z" /></svg><span class="pc__texte"></span></span>
+        <span class="ecart plaque__chiffres" hidden></span>
+      </div>
+      <div id="hud-droite">
+        <div id="objectif" class="plaque plaque--objectif" role="img" hidden></div>
+        <div id="morts" class="autocollant" role="img"><svg class="autocollant__crane" aria-hidden="true" width="16" height="16" viewBox="0 0 34 34"><path class="crane__os" d="M17 3c-7.5 0-12 5-12 11 0 4 2 6 4 7v5h16v-5c2-1 4-3 4-7 0-6-4.5-11-12-11z" /><rect class="crane__oeil" x="10" y="13" width="5" height="6" /><rect class="crane__oeil" x="19" y="13" width="5" height="6" /></svg><span class="count">0</span></div>
+      </div>
+      <div id="dayline" class="plaque plaque--petite" hidden></div>
+      <div id="daynote" class="plaque plaque--petite" role="status"></div>
+      <div id="carnage" hidden>
+        <div class="carnage__tete">
+          <div class="autocollant autocollant--titre"><h2 class="carnage__titre" data-t="carnage.titre"></h2><span class="count"></span></div>
+          <div class="carnage__vague plaque" role="img"><span class="legende" data-t="carnage.vague"></span><span class="carnage__vague-valeur"></span></div>
+        </div>
+        <div class="carnage__barre plaque">
+          <button type="button" id="carnage-prev" class="carnage__bouton" data-t-aria-label="carnage.precedente"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M11 3 5 9l6 6" /></svg></button>
+          <button type="button" id="carnage-pause" class="carnage__bouton carnage__bouton--encre" data-t-aria-label="carnage.pause" aria-pressed="false"><span class="pause-barres" aria-hidden="true"><span></span><span></span></span><svg class="carnage__lecture" aria-hidden="true" width="16" height="16" viewBox="0 0 16 16"><path d="M4 2l10 6-10 6z" /></svg></button>
+          <button type="button" id="carnage-next" class="carnage__bouton" data-t-aria-label="carnage.suivante"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M7 3l6 6-6 6" /></svg></button>
+          <div class="carnage__avancement" role="img"><span class="carnage__avancement-plein"></span></div>
+          <span class="carnage__aide" data-t="carnage.aide"></span>
+          <button type="button" id="carnage-close" class="dj-bouton dj-bouton--secondaire" data-t="carnage.fermer"></button>
+        </div>
+      </div>
       <pre id="debug" hidden></pre>
       <div id="tuned"></div>
     </div>
-    <div id="toast" role="status"></div>
+    <div id="toast" class="plaque plaque--petite" role="status"></div>
     <div id="tune" hidden></div>
-    <div id="finish" role="dialog" aria-label="Arrivée" hidden>
-      <div class="title">Arrivée !</div>
+    <div id="finish" class="bandeau" role="dialog" data-t-aria-label="bandeau.aria" hidden>
+      <div class="title" data-t="bandeau.arrivee"></div>
       <div class="time"></div>
       <div class="stats"><span class="ref"></span><span class="best"></span><span class="deaths"></span></div>
-      <div class="buttons"><button type="button" id="finish-restart">Recommencer</button><a id="finish-next" class="next" hidden>Morceau suivant</a></div>
-      <div class="hint">R, ou touche le bandeau</div>
+      <div class="buttons"><button type="button" id="finish-restart" class="dj-bouton dj-bouton--jump" data-t="bandeau.recommencer"></button><a id="finish-next" class="dj-bouton dj-bouton--secondaire next" data-t="bandeau.suivant" hidden></a></div>
+      <div class="hint" data-t="bandeau.aide"></div>
     </div>
-    <div id="modname"></div>
-    <button type="button" id="pausebtn" title="Menu (Échap ou P)" aria-label="Menu">⏸ Menu</button>
-    <button type="button" id="ghostbtn" aria-pressed="true" title="Fantôme (G)">👻 Fantôme : oui</button>
-    <div id="nogl">WebGL n'est pas disponible dans ce navigateur : DailyJump ne peut pas s'afficher.</div>
+    <div id="modname" class="plaque plaque--petite"></div>
+    <div id="nogl" data-t="page.sansWebgl"></div>
     <script type="module" src="/src/boot.ts"></script>
   </body>
 </html>

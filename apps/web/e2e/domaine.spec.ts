@@ -190,27 +190,28 @@ test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyTra
   await mentionsShown(page);
 });
 
-test("mentions légales : depuis le menu ⏸ et Réglages › Profil de DailyJump, au doigt en portrait", async ({ browser }) => {
+test("mentions légales : depuis le menu ⏸ et les Réglages de Jump, au doigt en portrait", async ({ browser }) => {
   const page = await (await newClockedContext(browser, PORTRAIT)).newPage();
   await page.goto(`${SITE}/jump/?debug&touch=1`);
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : le jeu ne démarre pas (portail testé à part)");
   const help = page.locator("#help-close");
   await help.waitFor({ state: "visible", timeout: 30_000 }).catch(() => undefined);
   if (await help.isVisible()) await help.tap();
-  // L'accueil : « Réglages » ouvre le menu ⏸ (Réglages › Profil en fait partie).
+  // Lot I5 : l'accueil ouvre les Réglages (cadre crème, `#settings-mentions`, comme Track) ; la pause garde son lien (`#menu-mentions`).
   await page.locator("#home-settings").tap();
-  await expect(page.locator("#menu")).toBeVisible();
-  for (const id of ["#profile-mentions", "#menu-mentions"]) {
-    await page.locator(id).scrollIntoViewIfNeeded();
-    await bigEnough(page, id);
-  }
-  await page.locator("#profile-mentions").tap();
+  await expect(page.locator("#settings")).toBeVisible();
+  await page.locator("#settings-mentions").scrollIntoViewIfNeeded();
+  await bigEnough(page, "#settings-mentions");
+  await page.locator("#settings-mentions").tap();
   await mentionsShown(page);
   await page.goBack();
   await expect(page).toHaveURL(`${SITE}/jump/?debug&touch=1`);
-  await page.locator("#home-settings").tap();
+  await page.locator("#home-play").waitFor({ state: "visible", timeout: 30_000 });
+  await page.locator("#home-play").tap();
+  await page.locator("#pausebtn").tap();
   await expect(page.locator("#menu")).toBeVisible();
   await page.locator("#menu-mentions").scrollIntoViewIfNeeded();
+  await bigEnough(page, "#menu-mentions");
   await page.locator("#menu-mentions").tap();
   await mentionsShown(page);
 });
@@ -263,7 +264,7 @@ test("lot I2 : portail → jeu → « ‹ Du Jour » → portail, au doigt en po
     }
     const retour = page.locator("#home-portail");
     await expect(retour, jeu).toBeVisible({ timeout: 30_000 });
-    await expect(retour, jeu).toHaveText(/^(‹ )?du jour$/i); // lot I4 : Track a la barre du socle (« DU JOUR »), Jump garde « ‹ Du Jour » jusqu'au lot I5
+    await expect(retour, jeu).toHaveText(/^(‹ )?du jour$/i); // lots I4 et I5 : la barre du socle (« DU JOUR ») dans les deux jeux
     await expect(retour, jeu).toHaveAccessibleName("Retour au portail Du Jour");
     await bigEnough(page, "#home-portail");
     // Le même lien dans le menu ⏸.

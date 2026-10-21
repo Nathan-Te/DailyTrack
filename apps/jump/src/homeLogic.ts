@@ -1,15 +1,16 @@
 import { msUntilNextParisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import { PREMIER_JOUR_JUMP, levelNumber, type JumpMedal, type JumpMedals } from "@cdj/jump-sim";
-import { MEDAL_ICON, MEDAL_WORD, levelTitle, shortDate } from "./dailyInfo";
+import { medalWord, nextMedal } from "./dailyInfo";
 import type { DayRecord } from "./history";
+import { fDateCourte, fDecompte, fNombre, fNumero, fTicks, nomTheme, t } from "./i18n";
 import type { KeyValue } from "./memory";
 import { storageKey } from "./storage";
-import { formatTicks } from "./session";
 import type { UrlChoices } from "./urlOptions";
 
 // L'accueil, l'écran d'arrivée et les archives (lot 10), **logique pure** (testée sans DOM) : quand l'accueil s'affiche, les textes, la liste
-// des archives, le compte à rebours jusqu'au prochain niveau (minuit, heure de Paris, par `@cdj/clock`), l'aide « Comment jouer ».
+// des archives, le compte à rebours jusqu'au prochain niveau (minuit, heure de Paris, par `@cdj/clock`). Lot I5 : tous les textes viennent des
+// catalogues (`t`, formats du socle), dans la langue du joueur ; l'aide « Comment jouer » est dans `howto.ts`.
 
 /**
  * L'accueil s'ouvre-t-il ? Sur la page du niveau du jour, oui, sauf `?accueil=0` ; jamais pour un lien direct (`seed`, `solution`, `watch`,
@@ -20,47 +21,49 @@ export function wantsHome(o: Pick<UrlChoices, "daily" | "seed" | "solution" | "w
   return o.archives || o.home !== false;
 }
 
-/** « 07:42:09 » (les heures peuvent valoir 24 le jour du retour à l'heure d'hiver, qui dure 25 h). */
-export function hhmmss(ms: number): string {
-  const total = Math.max(0, Math.ceil(ms / 1000));
-  const two = (n: number) => String(n).padStart(2, "0");
-  return `${two(Math.floor(total / 3600))}:${two(Math.floor(total / 60) % 60)}:${two(total % 60)}`;
-}
-
-/** « Prochain niveau dans 07:42:09 » à l'instant `nowMs` (minuit de Paris, heure d'été comprise). */
+/** « Prochain niveau dans 07:42:09 » à l'instant `nowMs` (minuit de Paris, heure d'été comprise ; format du socle `formatDecompte`). */
 export function countdownText(nowMs: number): string {
-  return `Prochain niveau dans ${hhmmss(msUntilNextParisDay(nowMs))}`;
+  return t("accueil.prochain", { temps: fDecompte(msUntilNextParisDay(nowMs)) });
 }
 
-/** « Forêt » (le nom du thème avec sa majuscule). */
-export function capitalize(label: string): string {
-  return label.charAt(0).toLocaleUpperCase("fr") + label.slice(1);
+/** Le titre de l'accueil et le niveau : « JUMP », « Niveau n° 5 · Forêt » (avant le premier jour : la date à la place du numéro). */
+export function homeHeading(day: number, themeCode: string): { title: string; subtitle: string } {
+  const n = levelNumber(day);
+  const theme = nomTheme(themeCode);
+  return { title: t("jeu.jump.titre"), subtitle: n >= 1 ? t("accueil.niveau", { numero: fNumero(n), theme }) : t("accueil.niveauDate", { date: fDateCourte(day, true), theme }) };
 }
 
-/** Le titre de l'accueil et sa date : « DailyJump #5 », « 20 oct. 2026 · Forêt ». */
-export function homeHeading(day: number, themeLabel: string): { title: string; subtitle: string } {
-  return { title: levelTitle(levelNumber(day)), subtitle: `${shortDate(formatDay(day))} · ${capitalize(themeLabel)}` };
+/** L'état du jour pour le bouton de l'accueil : pas encore joué (« JOUER »), commencé sans arrivée (« CONTINUER »), fini (« REJOUER »). */
+export type EtatDuJour = "pas_joue" | "en_cours" | "fini";
+export function etatDuJour(rec: DayRecord | null): EtatDuJour {
+  if (!rec || (rec.attempts === 0 && rec.deaths === 0 && rec.best === null)) return "pas_joue";
+  return rec.best === null ? "en_cours" : "fini";
 }
 
-/** « 0 mort », « 1 mort », « 47 morts » ; « 1 essai », « 3 essais » (en français, 0 et 1 prennent le singulier). */
-export const plural = (n: number, one: string, many: string): string => `${n} ${n <= 1 ? one : many}`;
-
-/** L'état du joueur sur l'accueil : « Pas encore joué », sinon son meilleur temps, sa médaille et ses morts du jour. */
+/** L'état du joueur sur l'accueil, en une ligne (lecteurs d'écran, `__jump.home`) : « Pas encore joué », sinon son meilleur temps et ses morts du jour. */
 export function homeStatus(rec: DayRecord | null): { played: boolean; finished: boolean; text: string } {
-  if (!rec || (rec.attempts === 0 && rec.deaths === 0 && rec.best === null)) return { played: false, finished: false, text: "Pas encore joué" };
-  const deaths = plural(rec.deaths, "mort", "morts");
-  if (rec.best === null) return { played: true, finished: false, text: `Pas encore d'arrivée · ${deaths} · ${plural(rec.attempts, "essai", "essais")}` };
-  const medal = rec.medal ? `${MEDAL_ICON[rec.medal]} ` : "";
-  return { played: true, finished: true, text: `${medal}Meilleur : ${formatTicks(rec.best)} · ${deaths}` };
+  const etat = etatDuJour(rec);
+  if (etat === "pas_joue") return { played: false, finished: false, text: t("accueil.etat.pasJoue") };
+  if (etat === "en_cours") return { played: true, finished: false, text: t("accueil.etat.enCours", { morts: t("commun.morts", { n: rec!.deaths }), essais: t("commun.essais", { n: rec!.attempts }) }) };
+  const medal = rec!.medal ? `${medalWord(rec!.medal)} · ` : "";
+  return { played: true, finished: true, text: t("accueil.etat.fini", { medaille: medal, temps: fTicks(rec!.best!), morts: t("commun.morts", { n: rec!.deaths }) }) };
 }
 
-/** « Série : 3 jours », « Série : 1 jour », « Pas de série en cours ». */
+/** La tuile « Ton record » : ton meilleur temps du jour (ou « Pas encore »), et la prochaine médaille à viser (« Bronze à 47,642 s »). */
+export function recordTile(best: number | null, medals: JumpMedals | null): { valeur: string; sous: string } {
+  const valeur = best === null ? t("accueil.record.pasEncore") : fTicks(best);
+  if (!medals) return { valeur, sous: "" };
+  const next = nextMedal(best, medals);
+  return { valeur, sous: next ? t("accueil.record.vise", { medaille: medalWord(next.medal), temps: fTicks(next.ticks) }) : t("accueil.record.auteurBattu") };
+}
+
+/** « 0 jour », « 1 jour », « 12 jours » (la tuile « Série Jump »). */
 export function streakText(n: number): string {
-  return n > 0 ? `Série : ${plural(n, "jour", "jours")}` : "Pas de série en cours";
+  return t("accueil.serie.jours", { n });
 }
 
 /** Une archive ne compte jamais dans la série (texte de l'écran d'arrivée). */
-export const ARCHIVE_STREAK_TEXT = "Archive : ne compte pas dans ta série";
+export const archiveStreakText = (): string => t("arrivee.serie.archive");
 
 /** Les jours des archives, du plus récent (hier) au niveau n° 1 ; rien avant le premier jour. */
 export function archiveDays(today: number, first: number = PREMIER_JOUR_JUMP): number[] {
@@ -79,62 +82,45 @@ export interface ArchiveRow {
   medal: JumpMedal | null;
 }
 
-export function archiveRow(day: number, themeLabel: string, rec: DayRecord | null): ArchiveRow {
+export function archiveRow(day: number, themeCode: string, rec: DayRecord | null): ArchiveRow {
   const date = formatDay(day);
-  const result = !rec ? "" : rec.best === null ? `pas d'arrivée · ${plural(rec.deaths, "mort", "morts")}` : `${rec.medal ? `${MEDAL_ICON[rec.medal]} ` : ""}${formatTicks(rec.best)}`;
-  return { date, number: levelNumber(day), title: `#${levelNumber(day)}`, subtitle: `${shortDate(date)} · ${capitalize(themeLabel)}`, result, medal: rec?.medal ?? null };
+  const n = levelNumber(day);
+  const result = !rec ? "" : rec.best === null ? t("archives.pasArrivee", { morts: t("commun.morts", { n: rec.deaths }) }) : fTicks(rec.best);
+  return { date, number: n, title: fNumero(n), subtitle: t("archives.sousTitre", { date: fDateCourte(day, true), theme: nomTheme(themeCode) }), result, medal: rec?.medal ?? null };
 }
 
 /** Les seuils des médailles, de l'auteur au bronze, avec leur temps ; `reached` : le temps donné les tient. */
-export function medalThresholds(medals: JumpMedals, time: number | null): { medal: JumpMedal; icon: string; label: string; time: string; reached: boolean }[] {
+export function medalThresholds(medals: JumpMedals, time: number | null): { medal: JumpMedal; label: string; time: string; reached: boolean }[] {
   return (["author", "gold", "silver", "bronze"] as const).map((m) => ({
     medal: m,
-    icon: MEDAL_ICON[m],
-    label: MEDAL_WORD[m],
-    time: formatTicks(medals[m]),
+    label: medalWord(m),
+    time: fTicks(medals[m]),
     reached: time !== null && time <= medals[m],
   }));
 }
 
-/** La médaille obtenue, en toutes lettres : « Médaille d'or », « Temps de l'auteur battu », « Pas de médaille ». */
+/** La médaille obtenue, en toutes lettres : « Médaille d'or », « Temps de l'auteur battu ! », « Pas de médaille ». */
 export function medalText(medal: JumpMedal | null): string {
-  if (medal === "author") return "Temps de l'auteur battu !";
-  if (medal === "gold") return "Médaille d'or";
-  if (medal === "silver") return "Médaille d'argent";
-  if (medal === "bronze") return "Médaille de bronze";
-  return "Pas de médaille";
+  return t(`arrivee.medaille.${medal ?? "aucune"}`);
 }
 
-/** Aide « Comment jouer » : courte, une section par sujet. */
-export const HELP: readonly { title: string; lines: readonly string[] }[] = [
-  {
-    title: "Commandes",
-    lines: [
-      "Clavier : ← → (ou Q D) pour courir, Espace, ↑ ou Z pour sauter, R pour recommencer, Échap pour le menu.",
-      "Manette : stick ou croix, A ou B pour sauter, Select pour recommencer, Start pour le menu.",
-      "Tactile : moitié gauche de l'écran pour ← →, moitié droite pour sauter, ↻ pour recommencer.",
-    ],
-  },
-  {
-    title: "Sauter",
-    lines: [
-      "Tiens le saut pour monter plus haut ; lâche tôt pour un petit saut.",
-      "Pousse contre un mur pour glisser plus lentement, puis saute : le saut mural te repousse du mur.",
-      "L'élan : pas de bouton de course, la vitesse vient de l'élan. Lancé, on saute plus loin qu'à l'arrêt.",
-    ],
-  },
-  {
-    title: "Mourir et recommencer",
-    lines: [
-      "La mort ne coûte rien : on repart aussitôt. Les fanions sont des points de passage : on y reprend, le chrono continue.",
-      "« Recommencer » repart du départ, chrono à zéro.",
-    ],
-  },
-  {
-    title: "Médailles",
-    lines: ["Bronze, argent, or, puis le temps de l'auteur à battre. Ton meilleur essai du jour compte ; un nouveau niveau sort chaque jour à minuit (heure de Paris)."],
-  },
+/**
+ * Lot I5 : la réplique de l'arrivée, **selon le nombre de morts du jour** (paliers : 0, 1 à 5, 6 à 20, 21 à 50, plus de 50 ; ton de la charte § 7,
+ * drôle et un peu cruel ; adaptée en anglais). Une seule réplique par écran.
+ */
+export const PALIERS_MORTS: readonly { max: number; cle: string }[] = [
+  { max: 0, cle: "arrivee.phrase.zero" },
+  { max: 5, cle: "arrivee.phrase.peu" },
+  { max: 20, cle: "arrivee.phrase.moyen" },
+  { max: 50, cle: "arrivee.phrase.beaucoup" },
+  { max: Number.POSITIVE_INFINITY, cle: "arrivee.phrase.carnage" },
 ];
+export function palierMorts(morts: number): string {
+  return PALIERS_MORTS.find((p) => morts <= p.max)!.cle;
+}
+export function arrivalLine(morts: number): string {
+  return t(palierMorts(morts), { n: morts, morts: fNombre(morts) });
+}
 
 /** Clé du « déjà vu » de l'aide : « Comment jouer » ne s'ouvre de lui-même qu'à la toute première visite. */
 export const HELP_SEEN_KEY = storageKey("aide");

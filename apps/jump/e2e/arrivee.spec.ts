@@ -7,11 +7,12 @@ import { Fingers, hasWebGL } from "./phone";
 // carnage passé → écran d'arrivée → Partager (presse-papiers ou feuille de partage simulés) → Accueil qui montre le résultat ; « Comment
 // jouer » à la première visite seulement ; archives (la liste, une archive jouée qui ne touche pas la série) ; compte à rebours ; au doigt,
 // en portrait et en paysage, cibles ≥ 44 px. Horloge maîtrisée par décalage de `Date` (`clock.ts`), jamais `page.clock.install`.
-// Captures du README : `CAPTURES=1 npx playwright test arrivee --project=chromium` (dans `apps/jump`) → `docs/jump/lots/img/lot-10-*.png`.
+// Lot I5 : mêmes parcours sur la nouvelle interface (cadre crème, accueil sur la scène) ; les sélecteurs ont suivi le DOM du socle (`#arrival-time`,
+// `#arrival-medal`, `.archive`…), les textes le catalogue français. Les captures du lot 10 restent celles de son README (les nouvelles :
+// `e2e/captures.spec.ts`, lot I5).
 
 const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
-const CAPTURES = new URL("../../../docs/jump/lots/img/", import.meta.url).pathname;
 
 interface DayRecord {
   id: string;
@@ -100,9 +101,10 @@ async function bigEnough(locator: Locator, viewport: { width: number; height: nu
   expect(box.y + box.height, `${name} : à l'écran`).toBeLessThanOrEqual(viewport.height + 0.5);
 }
 
+/** Le temps comme l'écrit le socle (`formatTemps`) : « 31,402 s », espace insécable avant l'unité. */
 const formatTicks = (ticks: number): string => {
   const ms = Math.round((ticks * 1000) / 120);
-  return `${Math.floor(ms / 1000)},${String(ms % 1000).padStart(3, "0")} s`;
+  return `${Math.floor(ms / 1000)},${String(ms % 1000).padStart(3, "0")}\u00a0s`;
 };
 
 test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-papiers) → Accueil qui montre le résultat", async ({ browser }) => {
@@ -113,9 +115,11 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     test.skip(!(await hasWebGL(page)), SKIP);
     // L'accueil est l'écran d'ouverture ; « Comment jouer » s'ouvre par-dessus à la première visite.
     await expect(page.locator("#home")).toBeVisible();
-    await expect(page.locator("#home .htitle")).toHaveText("DailyJump #5");
-    await expect(page.locator("#home .hsub")).toContainText("20 oct. 2026");
-    await expect(page.locator("#home .hstatus")).toHaveText("Pas encore joué");
+    await expect(page.locator("#home .accueil__titre")).toHaveText("JUMP");
+    await expect(page.locator("#home .accueil__niveau")).toHaveText(/^Niveau n°\s5 · /);
+    await expect(page.locator("#home .dj-barre-jeu")).toContainText("20 oct.");
+    await expect(page.locator("#home-status")).toHaveText("Pas encore joué");
+    await expect(page.locator("#home-play")).toHaveText("JOUER");
     await expect(page.locator("#help")).toBeVisible();
     await homeReady(page);
     await loaded(page);
@@ -124,7 +128,6 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     let j = await jump(page);
     expect(j.home).toMatchObject({ available: true, atStart: true, open: true, ready: true, help: false });
     expect(j.streak).toBe(0);
-    if (process.env.CAPTURES && browser.browserType().name() === "chromium") await page.screenshot({ path: `${CAPTURES}lot-10-accueil.png` });
     // Ouvert, l'accueil tient la partie en pause : les touches ne font rien.
     await page.keyboard.down("ArrowRight");
     await page.waitForTimeout(150);
@@ -143,29 +146,31 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     await expect(page.locator("#arrival")).toBeVisible();
     await expect(page.locator("#finish")).toBeHidden();
     const time = formatTicks(j.daily!.authorTicks);
-    await expect(page.locator("#arrival .atime")).toHaveText(time);
-    await expect(page.locator("#arrival .amedal")).toHaveText("🏆");
-    await expect(page.locator("#arrival .amedaltext")).toHaveText("Temps de l'auteur battu !");
-    await expect(page.locator("#arrival .abest")).toHaveText("Nouveau meilleur temps du jour !");
-    await expect(page.locator("#arrival .athresholds li")).toHaveCount(4);
-    await expect(page.locator("#arrival .athresholds li.reached")).toHaveCount(4);
-    await expect(page.locator("#arrival .athresholds li").first()).toContainText(`Auteur${time}`);
-    await expect(page.locator("#arrival .astats")).toHaveText("0 mort aujourd'hui · 1 essai");
-    await expect(page.locator("#arrival .arun")).toHaveText("Essai sans faute");
-    await expect(page.locator("#arrival .astreak")).toHaveText("Série : 1 jour");
-    await expect(page.locator("#arrival .acount")).toHaveText(/^Prochain niveau dans (09:5\d|10:00):\d\d$/);
+    // Lot I5 (maquette jump-arrivee.html) : le temps en grand, l'autocollant des morts, le bandeau de la médaille (l'auteur battu : plus de prochaine
+    // médaille ; la liste des quatre seuils du lot 10 est remplacée par ce bandeau), la phrase du palier « 0 mort ».
+    await expect(page.locator("#arrival .etiquette__titre")).toHaveText("ARRIVÉE !");
+    await expect(page.locator("#arrival-time")).toHaveText(time);
+    await expect(page.locator("#arrival-medal")).toHaveAttribute("data-medal", "author");
+    await expect(page.locator("#arrival-medal .dj-medaille")).toHaveCount(1);
+    await expect(page.locator("#arrival .arrivee__medaille-texte")).toHaveText("Temps de l'auteur battu !");
+    await expect(page.locator("#arrival .arrivee__prochaine")).toBeHidden();
+    await expect(page.locator("#arrival .arrivee__meilleur")).toHaveText("Nouveau record du jour !");
+    await expect(page.locator("#arrival-deaths .autocollant__nombre")).toHaveText("0");
+    await expect(page.locator("#arrival-deaths .autocollant__mot")).toHaveText("mort");
+    await expect(page.locator("#arrival-phrase")).toHaveText("«\u00a0Zéro mort. On va vérifier que tu n'as pas triché.\u00a0»");
+    await expect(page.locator("#arrival .arrivee__stats")).toHaveText("0 mort aujourd'hui · 1 essai · Essai sans faute · Série : 1 jour");
+    await expect(page.locator("#arrival .arrivee__decompte")).toHaveText(/^Prochain niveau dans (09:5\d|10:00):\d\d$/);
     for (const id of ["replay", "share", "carnage", "home"]) await expect(page.locator(`#arrival-${id}`)).toBeVisible();
     j = await jump(page);
     expect(j.arrival.shown).toBe(true);
     expect(j.streak).toBe(1);
     expect(j.history).toEqual([{ id: `jour-${TODAY}-g${GENERATOR}`, date: TODAY, best: j.daily!.authorTicks, medal: "author", deaths: 0, attempts: 1 }]);
-    if (process.env.CAPTURES && browser.browserType().name() === "chromium") await page.screenshot({ path: `${CAPTURES}lot-10-arrivee.png` });
 
     // Partager : sur ordinateur, le presse-papiers (simulé), avec confirmation ; le lien est celui de la page.
     await page.locator("#arrival-share").click();
-    await expect(page.locator("#arrival .amessage")).toHaveText("Copié dans le presse-papiers");
+    await expect(page.locator("#arrival .arrivee__message")).toHaveText("Copié dans le presse-papiers");
     const copied = await page.evaluate(() => (window as unknown as { __copied?: string }).__copied);
-    expect(copied).toBe(`DailyJump #5 — ${time} — 🏆 — 0 💀\nhttp://localhost:4174/`);
+    expect(copied).toBe(`Du Jour · Jump #5 — ${time} — 🏆 — 0 💀\nhttp://localhost:4174/`);
     expect((await jump(page)).arrival.share).toBe(copied);
 
     // Revoir le carnage : il repart, puis l'écran d'arrivée revient.
@@ -186,13 +191,15 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
     await page.locator("#arrival-home").click();
     await expect(page.locator("#home")).toBeVisible();
     await expect(page.locator("#arrival")).toBeHidden();
-    await expect(page.locator("#home .hstatus")).toHaveText(`🏆 Meilleur : ${time} · 0 mort`);
-    await expect(page.locator("#home .hstreak")).toHaveText("Série : 1 jour");
+    await expect(page.locator("#home-status")).toHaveText(`Auteur · Meilleur : ${time} · 0 mort`);
+    await expect(page.locator("#home-record .tuile__valeur")).toHaveText(time);
+    await expect(page.locator("#home-streak .tuile__valeur")).toHaveText("1 jour");
+    await expect(page.locator("#home-play")).toHaveText("REJOUER");
 
     // Rechargée, la page s'ouvre sur l'accueil (sans l'aide, déjà vue) avec le même résultat ; Jouer repart d'un nouvel essai.
     await page.reload();
     await homeReady(page);
-    await expect(page.locator("#home .hstatus")).toHaveText(`🏆 Meilleur : ${time} · 0 mort`);
+    await expect(page.locator("#home-status")).toHaveText(`Auteur · Meilleur : ${time} · 0 mort`);
     await expect(page.locator("#help")).toBeHidden();
     await page.locator("#home-play").click();
     await expect(page.locator("#home")).toBeHidden();
@@ -204,11 +211,11 @@ test("« Comment jouer » s'ouvre de lui-même à la première visite seulement,
   await atInstant(browser, FIXED_NOW, async (page) => {
     await page.goto("/");
     await expect(page.locator("#help")).toBeVisible();
-    await expect(page.locator("#help")).toContainText("saut mural");
-    await expect(page.locator("#help")).toContainText("élan");
-    await expect(page.locator("#help")).toContainText("Recommencer");
-    await expect(page.locator("#help")).toContainText("Bronze, argent, or");
-    if (process.env.CAPTURES && browser.browserType().name() === "chromium") await page.screenshot({ path: `${CAPTURES}lot-10-aide.png` });
+    // Lot I5 (charte § 9) : trois points courts et les commandes de l'appareil (ici le clavier).
+    await expect(page.locator("#help .dialogue__titre")).toHaveText("COMMENT JOUER");
+    await expect(page.locator("#help")).toContainText("Va jusqu'au drapeau");
+    await expect(page.locator("#help")).toContainText("Contre un mur, saute");
+    await expect(page.locator("#help")).toContainText("R : recommencer");
     await page.locator("#help-close").click();
     await expect(page.locator("#help")).toBeHidden();
     await page.reload();
@@ -221,11 +228,11 @@ test("« Comment jouer » s'ouvre de lui-même à la première visite seulement,
     await page.keyboard.press("Escape");
     await expect(page.locator("#help")).toBeHidden();
     await expect(page.locator("#home")).toBeVisible();
-    // Un lien direct n'ouvre ni l'accueil ni l'aide.
+    // Un lien direct n'ouvre ni l'accueil ni l'aide. (Lot I5 : « Comment jouer » s'ouvre aussi depuis la pause, partout : il est monté, caché.)
     await page.goto("/?seed=2026-10-18");
     await page.waitForTimeout(300);
     await expect(page.locator("#home")).toHaveCount(0);
-    await expect(page.locator("#help")).toHaveCount(0);
+    await expect(page.locator("#help")).toBeHidden();
   });
 });
 
@@ -243,29 +250,28 @@ test("archives : la liste (n° 1 à hier), une archive se joue (mode archive) et
 
     await page.goto("/?archives&debug");
     await expect(page.locator("#archives")).toBeVisible();
-    await expect(page.locator("#archives .arow")).toHaveCount(4);
-    await expect(page.locator("#archives .anum")).toHaveText(["#4", "#3", "#2", "#1"]);
-    await expect(page.locator("#archives .arow").nth(1)).toContainText("18 oct. 2026");
-    await expect(page.locator("#archives .ares").first()).toHaveText("pas joué");
+    await expect(page.locator("#archives .archive")).toHaveCount(4);
+    await expect(page.locator("#archives .archive__numero")).toHaveText([/^n°\s4$/, /^n°\s3$/, /^n°\s2$/, /^n°\s1$/]);
+    await expect(page.locator("#archives .archive").nth(1)).toContainText("18 oct.");
+    await expect(page.locator("#archives .archive__resultat").first()).toHaveText("pas joué");
     expect((await jump(page)).home.archiveDates).toEqual(["2026-10-19", "2026-10-18", "2026-10-17", "2026-10-16"]);
-    if (process.env.CAPTURES && browser.browserType().name() === "chromium") await page.screenshot({ path: `${CAPTURES}lot-10-archives.png` });
 
-    await Promise.all([page.waitForURL(/seed=2026-10-18/), page.locator('#archives .arow[data-date="2026-10-18"]').click()]);
+    await Promise.all([page.waitForURL(/seed=2026-10-18/), page.locator('#archives .archive[data-date="2026-10-18"]').click()]);
     await loaded(page);
     let j = await jump(page);
     expect(j.daily).toMatchObject({ date: "2026-10-18", number: 3, mode: "archive" });
     expect(j.home.available).toBe(false);
     await expect(page.locator("#modetag")).toBeVisible();
     await expect(page.locator("#modetag")).toHaveText("Archive");
-    await expect(page.locator("#dayline")).toContainText("archive du 18 oct. 2026");
+    await expect(page.locator("#dayline")).toContainText("archive du dim. 18 oct.");
     await playAuthor(page);
     await expect(page.locator("#arrival")).toBeVisible();
-    await expect(page.locator("#arrival .atitle")).toHaveText("Arrivée · archive du 18 oct. 2026");
-    await expect(page.locator("#arrival .astreak")).toHaveText("Archive : ne compte pas dans ta série");
-    await expect(page.locator("#arrival .amedal")).toHaveText("🏆");
+    await expect(page.locator("#arrival .arrivee__mode")).toHaveText("Archive du dim. 18 oct. : ne compte pas dans ta série");
+    await expect(page.locator("#arrival .arrivee__stats")).toContainText("Archive : ne compte pas dans ta série");
+    await expect(page.locator("#arrival-medal")).toHaveAttribute("data-medal", "author");
     await page.locator("#arrival-share").click();
     const copied = await page.evaluate(() => (window as unknown as { __copied?: string }).__copied);
-    expect(copied).toMatch(/^DailyJump #3 \(archive\) — \d+,\d{3} s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/\?seed=2026-10-18$/);
+    expect(copied).toMatch(/^Du Jour · Jump #3 \(archive\) — \d+,\d{3}\u00a0s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/\?seed=2026-10-18$/);
     j = await jump(page);
     expect(j.history).toEqual(before);
     expect(j.streak).toBe(1);
@@ -277,7 +283,7 @@ test("archives : la liste (n° 1 à hier), une archive se joue (mode archive) et
     expect(j.home.open).toBe(true);
     expect(j.streak).toBe(1);
     expect(j.history).toEqual(before);
-    await expect(page.locator("#home .hstreak")).toHaveText("Série : 1 jour");
+    await expect(page.locator("#home-streak .tuile__valeur")).toHaveText("1 jour");
   });
 });
 
@@ -285,13 +291,13 @@ test("compte à rebours jusqu'au prochain niveau (minuit, heure de Paris)", asyn
   // 23:59:50 à Paris le 20/10/2026 (UTC+2).
   await atInstant(browser, Date.parse("2026-10-20T21:59:50Z"), async (page) => {
     await page.goto("/?debug");
-    await expect(page.locator("#home .hcount")).toHaveText(/^Prochain niveau dans 00:00:(0\d|10)$/);
-    const first = await page.locator("#home .hcount").textContent();
-    await expect(page.locator("#home .hcount")).not.toHaveText(first!, { timeout: 5000 });
+    await expect(page.locator("#home-countdown")).toHaveText(/^Prochain niveau dans 00:00:(0\d|10)$/);
+    const first = await page.locator("#home-countdown").textContent();
+    await expect(page.locator("#home-countdown")).not.toHaveText(first!, { timeout: 5000 });
   });
   await atInstant(browser, FIXED_NOW, async (page) => {
     await page.goto("/");
-    await expect(page.locator("#home .hcount")).toHaveText(/^Prochain niveau dans (09:5\d|10:00):\d\d$/);
+    await expect(page.locator("#home-countdown")).toHaveText(/^Prochain niveau dans (09:5\d|10:00):\d\d$/);
   });
 });
 
@@ -314,24 +320,23 @@ for (const format of FORMATS) {
         test.skip(!(await hasWebGL(page)), SKIP);
         await homeReady(page);
         await loaded(page);
-        await bigEnough(page.locator("#help-close"), viewport, "J'ai compris");
+        await bigEnough(page.locator("#help-close"), viewport, "C'est parti");
         await page.locator("#help-close").tap();
         await expect(page.locator("#help")).toBeHidden();
         for (const id of ["#home-play", "#home-archives", "#home-help", "#home-settings"]) await bigEnough(page.locator(id), viewport, id);
         await page.locator("#home-archives").tap();
         await expect(page.locator("#archives")).toBeVisible();
-        await bigEnough(page.locator("#archives-close"), viewport, "Fermer");
-        await bigEnough(page.locator("#archives .arow").first(), viewport, "ligne des archives");
-        await page.locator("#archives-close").tap();
+        // Lot I5 : les archives et les Réglages sont des écrans du cadre crème ; « ‹ JUMP » (la barre des jeux) les ferme et rend l'accueil.
+        await bigEnough(page.locator("#archives .dj-barre-jeu__retour"), viewport, "‹ JUMP");
+        await bigEnough(page.locator("#archives .archive").first(), viewport, "ligne des archives");
+        await page.locator("#archives .dj-barre-jeu__retour").tap();
         await expect(page.locator("#archives")).toBeHidden();
-        // Réglages : le menu ⏸ du lot 8, par-dessus l'accueil.
         await page.locator("#home-settings").tap();
-        await expect(page.locator("#menu")).toBeVisible();
-        await bigEnough(page.locator("#menu-home"), viewport, "Accueil (menu)");
-        await page.locator("#menu-resume").tap();
-        await expect(page.locator("#menu")).toBeHidden();
+        await expect(page.locator("#settings")).toBeVisible();
+        await bigEnough(page.locator("#settings .dj-barre-jeu__retour"), viewport, "‹ JUMP (Réglages)");
+        await page.locator("#settings .dj-barre-jeu__retour").tap();
+        await expect(page.locator("#settings")).toBeHidden();
         await expect(page.locator("#home")).toBeVisible();
-        if (process.env.CAPTURES && chromium) await page.screenshot({ path: `${process.env.CAPTURES_DIR ?? CAPTURES}lot-10-accueil-${format.name}.png` });
 
         await page.locator("#home-play").tap();
         await expect(page.locator("#home")).toBeHidden();
@@ -345,19 +350,18 @@ for (const format of FORMATS) {
         // Le doigt levé sur l'écran qui vient de s'ouvrir n'a touché aucun bouton.
         await expect(page.locator("#arrival")).toBeVisible();
         for (const id of ["replay", "share", "carnage", "home"]) await bigEnough(page.locator(`#arrival-${id}`), viewport, `#arrival-${id}`);
-        if (process.env.CAPTURES && chromium) await page.screenshot({ path: `${CAPTURES}lot-10-arrivee-${format.name}.png` });
         // Au téléphone, la feuille de partage (simulée).
         await page.locator("#arrival-share").tap();
-        await expect(page.locator("#arrival .amessage")).toHaveText("Partagé");
+        await expect(page.locator("#arrival .arrivee__message")).toHaveText("Partagé");
         const shared = await page.evaluate(() => (window as unknown as { __shared?: string }).__shared);
-        expect(shared).toMatch(/^DailyJump #5 — \d+,\d{3} s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/$/);
+        expect(shared).toMatch(/^Du Jour · Jump #5 — \d+,\d{3}\u00a0s — 🏆 — 0 💀\nhttp:\/\/localhost:4174\/$/);
         await page.locator("#arrival-home").tap();
         await expect(page.locator("#home")).toBeVisible();
-        await expect(page.locator("#home .hstatus")).toContainText("🏆 Meilleur");
-        // Rejouer depuis l'accueil, puis le menu ⏸ (bande haute) ramène à l'accueil.
+        await expect(page.locator("#home-status")).toContainText("Auteur · Meilleur");
+        // Rejouer depuis l'accueil, puis la pause (en haut à gauche) ramène à l'accueil.
         await page.locator("#home-play").tap();
         await expect(page.locator("#home")).toBeHidden();
-        await page.locator("#pause").tap();
+        await page.locator("#pausebtn").tap();
         await expect(page.locator("#menu")).toBeVisible();
         await page.locator("#menu-home").tap();
         await expect(page.locator("#home")).toBeVisible();

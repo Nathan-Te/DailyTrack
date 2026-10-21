@@ -1,0 +1,733 @@
+/* Les écrans de Jump (lot I5) : l'accueil posé sur la scène (maquettes jump-accueil.html, jump.html), la pause (jump-pause.html), « Comment jouer » dans le
+   jeu, l'arrivée (jump-arrivee.html), les réglages (jump-reglages.html), les archives et le classement du jour (jump-classement.html). Jetons seulement
+   (test apps/jump/test/interface.test.ts). */
+
+/* --- L'accueil : sur la scène du niveau du jour, sous le voile à rayures ; barre des jeux en plaque crème ; étiquette jaune dans sa coque moutarde -------- */
+.accueil {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-accueil);
+  display: flex;
+  flex-direction: column;
+  background: var(--voile-rayures);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.3;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  touch-action: pan-y;
+  /* Lot I5 (retour de Nathan) : la barre et la coque centrées ensemble en hauteur ; la coque défile si elle dépasse. */
+  justify-content: center;
+}
+.accueil__barre {
+  flex: none;
+  align-self: stretch;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto 10px;
+}
+.accueil__barre .dj-barre-jeu {
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  padding: 0 12px;
+}
+.accueil__defile {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  padding: 0 6px 6px 0;
+}
+.accueil__defile::-webkit-scrollbar {
+  display: none;
+}
+.accueil .coque {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+.etiquette--accueil {
+  padding: 14px 16px;
+}
+.accueil__grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+}
+.accueil__gauche,
+.accueil__droite {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+.accueil__gauche > *,
+.accueil__droite > * {
+  flex-shrink: 0;
+}
+.accueil__titre {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-64);
+  line-height: 0.85;
+  text-shadow: var(--jump-ombre-titre);
+}
+.accueil__niveau {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-21);
+}
+.accueil__replique {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+  line-height: 1.2;
+}
+.accueil__tuiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.accueil__jouer {
+  min-height: 60px;
+}
+.accueil__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.accueil__actions > .dj-bouton {
+  padding: 0 6px;
+}
+.accueil__alerte {
+  display: flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  padding: 4px 10px;
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+/* Le carnage du jour : encre, crâne, total en jaune. */
+.carnage-jour {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.carnage-jour .dj-icone {
+  flex: none;
+  color: var(--dj-papier);
+}
+.carnage-jour__corps {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.carnage-jour__morts {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-24);
+  line-height: 1;
+  color: var(--jump-jaune);
+}
+.carnage-jour__texte {
+  font-size: var(--dj-taille-12);
+}
+.carnage-jour .carnage-jour__voir {
+  flex: none;
+  background: transparent;
+  color: var(--jump-jaune);
+  border: var(--dj-trait) solid var(--jump-jaune);
+}
+.carnage-jour .carnage-jour__voir:hover {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.carnage-jour :focus-visible {
+  outline-color: var(--dj-ambre);
+}
+.classement-jour {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  background: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.classement-jour__titre {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.classement-jour__vide,
+.classement-jour__rang {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.accueil__pied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+}
+.accueil__decompte {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+}
+/* Ordinateur et tablette en paysage : deux colonnes (maquette jump-accueil.html). */
+@media (min-width: 760px) {
+  .accueil__grille {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 20px;
+  }
+  .accueil__titre {
+    font-size: 84px;
+  }
+}
+/* Téléphone en paysage : deux colonnes resserrées, le titre plus petit. */
+@media (max-height: 520px) and (min-width: 560px) {
+  .accueil__grille {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 12px;
+  }
+  .accueil__titre {
+    font-size: 48px;
+  }
+  .accueil__barre {
+    margin-bottom: 6px;
+  }
+  .etiquette--accueil {
+    padding: 10px 12px;
+  }
+  .accueil__gauche,
+  .accueil__droite {
+    gap: 8px;
+  }
+  .accueil__jouer {
+    min-height: 52px;
+  }
+}
+
+/* --- La pause (maquette jump-pause.html) --------------------------------------------------------------------------------------------------------------- */
+.dialogue--pause {
+  width: min(500px, 100%);
+}
+.pause__tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pause__infos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  text-align: right;
+  line-height: 1.3;
+}
+.pause__etat {
+  font-family: var(--dj-police-chiffres);
+}
+.pause__replique {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+}
+.dialogue--pause #menu-resume {
+  min-height: 52px;
+  font-size: var(--dj-taille-24);
+}
+.pause__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+}
+.pause__actions > .dj-bouton {
+  padding: 0 6px;
+}
+.pause__portail {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  text-decoration: none;
+}
+.pause__pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pause__lien {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--dj-cible);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.pause__version {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+}
+@media (min-width: 560px) {
+  .pause__actions {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* --- « Comment jouer » dans le jeu ----------------------------------------------------------------------------------------------------------------- */
+.dialogue--aide {
+  width: min(620px, 100%);
+}
+.aide {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .aide {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.points {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.point {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.point__n {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+}
+.aide__schema {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.aide__legende {
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+}
+/* Le schéma : l'écran du téléphone en paysage, la pause et la bande en haut, les boutons aux bords, le centre au jeu. */
+.schema {
+  position: relative;
+  aspect-ratio: 844 / 390;
+  background: var(--dj-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  color: var(--dj-encre);
+}
+.schema__btn {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18%;
+  height: 22%;
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+}
+.schema__pause {
+  left: 2%;
+  top: 4%;
+  width: 9%;
+  height: 16%;
+}
+.schema__barres {
+  width: 40%;
+  height: 50%;
+  background: repeating-linear-gradient(90deg, var(--dj-encre) 0 3px, transparent 3px 6px);
+}
+.schema__bande {
+  position: absolute;
+  left: 38%;
+  top: 4%;
+  width: 24%;
+  height: 10%;
+  background: var(--dj-papier);
+}
+.schema__morts {
+  position: absolute;
+  right: 3%;
+  top: 4%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 9%;
+  height: 12%;
+  background: var(--jump-jaune);
+}
+.schema__centre {
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 30%;
+  bottom: 34%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--dj-trait) dashed var(--dj-papier);
+  color: var(--dj-papier);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.schema__gauche {
+  position: absolute;
+  left: 12%;
+  bottom: 8%;
+  display: flex;
+  gap: 4%;
+  width: 30%;
+  height: 22%;
+}
+.schema__gauche .schema__btn {
+  position: static;
+  width: 46%;
+  height: 100%;
+}
+.schema__saut {
+  right: 2%;
+  bottom: 8%;
+  width: 16%;
+  height: 26%;
+  background: var(--jump-jaune);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-12);
+}
+.commandes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+
+/* --- L'arrivée (maquette jump-arrivee.html) ------------------------------------------------------------------------------------------------------- */
+.arrivee__tete {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+.arrivee__drapeau {
+  color: var(--dj-encre);
+}
+.arrivee__drapeau .dj-icone {
+  stroke-width: 2.5;
+}
+.arrivee__mode {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.arrivee__resultat {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.arrivee__chrono {
+  display: flex;
+  flex-direction: column;
+}
+.arrivee__temps {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-64);
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+.arrivee__medaille {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  transform: rotate(-1deg);
+}
+.arrivee__pastille .dj-medaille__pastille,
+.arrivee__sans {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+.arrivee__pastille .dj-medaille__nom {
+  display: none;
+}
+.arrivee__sans {
+  border-radius: var(--dj-rayon-avatar);
+  border: var(--dj-trait-fort) dashed var(--dj-encre);
+}
+.arrivee__medaille-texte {
+  flex: 1;
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-22);
+}
+.arrivee__prochaine {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  text-align: right;
+}
+.arrivee__meilleur {
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.arrivee__meilleur--record {
+  align-self: flex-start;
+  padding: 2px 8px;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+}
+.arrivee__rang {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.arrivee__rang-titre {
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.arrivee__rang-valeur {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-22);
+  text-align: right;
+}
+.arrivee__rang-valeur[data-tone="wait"],
+.arrivee__rang-valeur[data-tone="warn"] {
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.arrivee__phrase {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+  line-height: 1.2;
+}
+#arrival-replay {
+  min-height: 58px;
+}
+.arrivee__message {
+  min-height: 1.2em;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.arrivee__message:empty {
+  display: none;
+}
+.arrivee__classement {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: var(--dj-trait) solid var(--dj-encre);
+}
+.arrivee__pseudo {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+.arrivee__pseudo #arrival-name-ok {
+  min-height: var(--dj-cible);
+  font-size: var(--dj-taille-16);
+}
+.arrivee__erreur {
+  grid-column: 1 / 3;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+}
+.arrivee__erreur:empty {
+  display: none;
+}
+.arrivee__suggestions {
+  grid-column: 1 / 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.arrivee__stats,
+.arrivee__decompte,
+.arrivee__clavier {
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+}
+.arrivee__decompte {
+  font-family: var(--dj-police-chiffres);
+}
+body.touch .arrivee__clavier {
+  display: none;
+}
+/* Sous l'étiquette : « Il te reste aujourd'hui » et le jeu suivant du jour (lot I3). */
+.arrivee__suite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.arrivee__legende-suite {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-encre-douce);
+}
+.arrivee__parfaite {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-24);
+}
+
+/* --- Les réglages (maquette jump-reglages.html) --------------------------------------------------------------------------------------------------- */
+.reglages__section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reglages__section--ligne {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+.reglages__titre {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.reglages__ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: center;
+  gap: 8px;
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.reglages__aide {
+  font-size: var(--dj-taille-12);
+  font-weight: 500;
+}
+.reglages__commandes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 8px 14px;
+}
+.reglages__appareil {
+  margin-bottom: 2px;
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-16);
+}
+.reglages__liens {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.reglages__lien {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--dj-cible);
+  color: var(--dj-encre);
+  text-decoration: none;
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.reglages__lien--profil {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-21);
+}
+.reglages__lien .dj-icone {
+  transform: scaleX(-1);
+}
+.reglages__lien:hover span {
+  text-decoration: underline;
+}
+
+/* --- Les archives -------------------------------------------------------------------------------------------------------------------------------- */
+.archives {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.archive {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 52px;
+  padding: 6px 12px;
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+  color: var(--dj-encre);
+  text-decoration: none;
+  touch-action: pan-y;
+}
+.archive:hover {
+  background: var(--dj-creme-2);
+}
+.archive__numero {
+  min-width: 3em;
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-21);
+}
+.archive__date {
+  font-size: var(--dj-taille-13);
+  font-weight: 600;
+}
+.archive__resultat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+  font-variant-numeric: tabular-nums;
+}
+.archive__resultat .dj-medaille__nom {
+  display: none;
+}
+.archive__resultat--vide {
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-12);
+  font-weight: 600;
+}

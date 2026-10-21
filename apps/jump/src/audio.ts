@@ -370,7 +370,8 @@ export class JumpAudio {
     if (!this.ctx || !this.master || !this.sfx || !this.ambience) return;
     const t = this.ctx.currentTime;
     const set = (p: AudioParam, v: number) => (fade > 0 ? p.setTargetAtTime(v, t, fade) : (p.value = v));
-    set(this.master.gain, sliderGain(this.settings.volume));
+    // Lot I5 : « Son : non » (pause) coupe le volume général, sans toucher aux réglages des volumes.
+    set(this.master.gain, this.settings.sound === false ? 0 : sliderGain(this.settings.volume));
     set(this.sfx.gain, sliderGain(this.settings.sfx));
     set(this.ambience.gain, ambienceTarget(this.settings.ambience, typeof document !== "undefined" && document.hidden));
   }

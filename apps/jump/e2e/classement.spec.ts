@@ -6,6 +6,7 @@ import { Fingers, hasWebGL } from "./phone";
 // vrai serveur, lues dans `demo/`). On finit le niveau (la preuve de l'auteur jouée comme les commandes du joueur, en pas à pas) → premier
 // pseudo → rang et top 10 → Partager (le texte contient le rang) → l'accueil montre le rang ; serveur injoignable → message, puis envoi au
 // retour du réseau ; au doigt en paysage (cibles ≥ 44 px). Horloge maîtrisée (`clock.ts`) ; la démonstration joue son propre « aujourd'hui ».
+// Lot I5 : les lignes du classement sont celles du socle (`.ligne`, ta ligne `.ligne--moi` en encre), les rangs s'écrivent « 2e » (`formatRang`).
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
 
@@ -102,43 +103,43 @@ test("démo : finir le niveau → premier pseudo → rang et top 10 → Partager
     // Premier envoi : pas de pseudo → le formulaire ; un pseudo de démonstration est pris (suggestions), un autre passe.
     await expect(page.locator("#arrival-rank")).toHaveText("Choisis ton pseudo pour entrer au classement");
     // Le top 10 des joueurs fictifs est déjà là, sans ta ligne.
-    await expect(page.locator("#arrival .arklist li").first()).toBeVisible();
-    await expect(page.locator("#arrival .arklist li.mine")).toHaveCount(0);
+    await expect(page.locator("#arrival .arrivee__classement li.ligne:not(.ligne--trou)").first()).toBeVisible();
+    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi")).toHaveCount(0);
     j = await jump(page);
     expect(j.rank.pending).toHaveLength(1);
     await page.locator("#arrival-name").fill("Démo Renard");
     await page.locator("#arrival-name-ok").click();
-    await expect(page.locator("#arrival .arkerror")).toHaveText("Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.");
-    await expect(page.locator("#arrival .arksuggestion").first()).toHaveText("Renard2");
+    await expect(page.locator("#arrival .arrivee__erreur")).toHaveText("Ce pseudo est déjà utilisé. C'est le tien ? Charge ton code.");
+    await expect(page.locator("#arrival .arrivee__suggestion").first()).toHaveText("Renard2");
     await page.locator("#arrival-name").fill("Testeuse");
     await page.locator("#arrival-name-ok").click();
 
-    // Rang et top 10 : le temps de l'auteur, à égalité avec le premier (qui a envoyé avant) → 2ᵉ.
+    // Rang et top 10 : le temps de l'auteur, à égalité avec le premier (qui a envoyé avant) → 2e.
     await rankStatus(page, "ranked");
-    await expect(page.locator("#arrival-rank")).toHaveText(/^2ᵉ sur \d+$/);
+    await expect(page.locator("#arrival-rank")).toHaveText(/^2e sur \d+$/);
     const participants = Number((await page.locator("#arrival-rank").textContent())!.split(" sur ")[1]);
     expect(participants).toBeGreaterThanOrEqual(4);
-    await expect(page.locator("#arrival .arklist li")).toHaveCount(Math.min(10, participants));
-    await expect(page.locator("#arrival .arklist li.mine")).toHaveCount(1);
-    await expect(page.locator("#arrival .arklist li.mine .kname")).toHaveText("Testeuse");
-    await expect(page.locator("#arrival .arklist li.mine .krank")).toHaveText("2");
+    await expect(page.locator("#arrival .arrivee__classement li.ligne:not(.ligne--trou)")).toHaveCount(Math.min(10, participants));
+    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi")).toHaveCount(1);
+    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi .ligne__nom")).toHaveText("Testeuse");
+    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi .ligne__rang")).toHaveText("2");
     await expect(page.locator("#arrival-name")).toBeHidden();
 
     // Partager : le rang est au bout de la ligne.
     await page.locator("#arrival-share").click();
-    await expect(page.locator("#arrival .amessage")).toHaveText("Copié dans le presse-papiers");
+    await expect(page.locator("#arrival .arrivee__message")).toHaveText("Copié dans le presse-papiers");
     const copied = await page.evaluate(() => (window as unknown as { __copied?: string }).__copied);
-    expect(copied).toMatch(new RegExp(`^DailyJump #15 — \\d+,\\d{3} s — 🏆 — 0 💀 — 2ᵉ/${participants}\\n`));
+    expect(copied).toMatch(new RegExp(`^Du Jour · Jump #15 — \\d+,\\d{3}\\u00a0s — 🏆 — 0 💀 — 2e/${participants}\\n`));
     // Le lien est celui de la page, sans paramètre (lot 10) : la démonstration ne se partage pas.
     expect(copied).toMatch(/\nhttp:\/\/localhost:4174\/$/);
     if (process.env.CAPTURES) await page.screenshot({ path: `${process.env.CAPTURES}/p1-arrivee.png` });
 
     // L'accueil montre le rang du jour ; rechargée, la page s'en souvient (stockage de la démonstration).
     await page.locator("#arrival-home").click();
-    await expect(page.locator("#home-rank")).toHaveText(`Ton rang du jour : 2ᵉ sur ${participants}`);
+    await expect(page.locator("#home-rank")).toHaveText(`Ton rang du jour : 2e sur ${participants}`);
     await page.reload();
     await homeReady(page);
-    await expect(page.locator("#home-rank")).toHaveText(`Ton rang du jour : 2ᵉ sur ${participants}`);
+    await expect(page.locator("#home-rank")).toHaveText(`Ton rang du jour : 2e sur ${participants}`);
     // Rien du vrai jeu n'a été écrit : tout est sous `demo:`.
     const keys = await page.evaluate(() => Object.keys(localStorage));
     expect(keys.filter((k) => !k.startsWith("demo:"))).toEqual([]);
@@ -161,12 +162,12 @@ test("démo : serveur injoignable → « Classement indisponible, ton temps sera
     // Le partage sans rang : la ligne d'avant le classement.
     await page.locator("#arrival-share").click();
     const offlineLine = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.arrival.share);
-    expect(offlineLine).toMatch(/^DailyJump #15 — \d+,\d{3} s — 🏆 — 0 💀\n/);
+    expect(offlineLine).toMatch(/^Du Jour · Jump #15 — \d+,\d{3}\u00a0s — 🏆 — 0 💀\n/);
     // Le réseau revient : l'envoi part, le rang s'affiche (le pseudo de la plateforme, repris tel quel).
     await context.setOffline(false);
     await rankStatus(page, "ranked");
-    await expect(page.locator("#arrival-rank")).toHaveText(/^2ᵉ sur \d+$/);
-    await expect(page.locator("#arrival .arklist li.mine .kname")).toHaveText("Pilote");
+    await expect(page.locator("#arrival-rank")).toHaveText(/^2e sur \d+$/);
+    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi .ligne__nom")).toHaveText("Pilote");
     j = await jump(page);
     expect(j.rank.pending).toEqual([]);
   });
@@ -198,21 +199,21 @@ test("démo, au doigt en paysage : pseudo, rang, top 10, Partager ; cibles ≥ 4
       await page.locator("#arrival-name").tap();
       await page.locator("#arrival-name").fill("Démo Lynx");
       await page.locator("#arrival-name-ok").tap();
-      const suggestion = page.locator("#arrival .arksuggestion").first();
+      const suggestion = page.locator("#arrival .arrivee__suggestion").first();
       await expect(suggestion).toHaveText("Lynx2");
       await bigEnough(suggestion, viewport, "pseudo proposé");
       await suggestion.tap();
       await rankStatus(page, "ranked");
-      await expect(page.locator("#arrival-rank")).toHaveText(/^2ᵉ sur \d+$/);
-      await expect(page.locator("#arrival .arklist li.mine .kname")).toHaveText("Lynx2");
+      await expect(page.locator("#arrival-rank")).toHaveText(/^2e sur \d+$/);
+      await expect(page.locator("#arrival .arrivee__classement li.ligne--moi .ligne__nom")).toHaveText("Lynx2");
       for (const id of ["replay", "share", "carnage", "home"]) await bigEnough(page.locator(`#arrival-${id}`), viewport, `#arrival-${id}`);
       if (process.env.CAPTURES) await page.screenshot({ path: `${process.env.CAPTURES}/p1-arrivee-paysage.png` });
       await page.locator("#arrival-share").tap();
-      await expect(page.locator("#arrival .amessage")).toHaveText("Partagé");
+      await expect(page.locator("#arrival .arrivee__message")).toHaveText("Partagé");
       const shared = await page.evaluate(() => (window as unknown as { __shared?: string }).__shared);
-      expect(shared).toMatch(/ — 2ᵉ\/\d+\n/);
+      expect(shared).toMatch(/ — 2e\/\d+\n/);
       await page.locator("#arrival-home").tap();
-      await expect(page.locator("#home-rank")).toHaveText(/^Ton rang du jour : 2ᵉ sur \d+$/);
+      await expect(page.locator("#home-rank")).toHaveText(/^Ton rang du jour : 2e sur \d+$/);
     },
     { viewport, hasTouch: true, ...(chromium ? { isMobile: true, deviceScaleFactor: 2 } : {}) },
   );
@@ -226,10 +227,10 @@ test("démo : une archive montre son classement figé, rien n'est envoyé", asyn
     await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
     expect((await jump(page)).daily).toMatchObject({ date: "2026-10-20", mode: "archive" });
     await playAuthor(page);
-    await expect(page.locator("#arrival .arktitle")).toHaveText("Classement figé du 20 oct. 2026");
+    await expect(page.locator("#arrival .arrivee__classement > .legende")).toHaveText("Classement figé du mar. 20 oct.");
     await expect(page.locator("#arrival-rank")).toHaveText(/^\d+ classés · tu n'as pas été classé ce jour-là$/);
-    await expect(page.locator("#arrival .arklist li").first()).toBeVisible();
-    await expect(page.locator("#arrival .arklist li.mine")).toHaveCount(0);
+    await expect(page.locator("#arrival .arrivee__classement li.ligne:not(.ligne--trou)").first()).toBeVisible();
+    await expect(page.locator("#arrival .arrivee__classement li.ligne--moi")).toHaveCount(0);
     await expect(page.locator("#arrival-name")).toBeHidden();
     const j = await jump(page);
     expect(j.rank.pending).toEqual([]);

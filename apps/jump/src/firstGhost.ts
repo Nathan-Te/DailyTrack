@@ -1,4 +1,5 @@
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, JumpReplayError, decodeReplay, encodeReplay, replayAttempt, type JumpReplay, type Level } from "@cdj/jump-sim";
+import { fRang, t } from "./i18n";
 
 // Le fantôme du premier (lot P2 de la plateforme), **logique seule** (testée sous Node) : ce que le serveur rend
 // (`GET /api/jump/day/<date>/ghost/first`), sa validation à la lecture, la règle « pas de doublon » et les couleurs des deux fantômes.
@@ -84,5 +85,5 @@ export function showFirstGhost(first: Pick<FirstGhost, "mine" | "ticks" | "code"
 
 /** L'étiquette au-dessus du fantôme du premier : son pseudo. */
 export function firstGhostLabel(name: string): string {
-  return `${name} · 1ᵉʳ`;
+  return t("fantome.premier", { nom: name, rang: fRang(1) });
 }

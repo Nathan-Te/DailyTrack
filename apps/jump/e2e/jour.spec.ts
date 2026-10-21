@@ -85,13 +85,16 @@ test("la page par défaut ouvre le niveau du jour (date de Paris, horloge décal
     expect(j.daily!.authorTicks).toBeLessThanOrEqual(4800);
     const line = page.locator("#dayline");
     await expect(line).toBeVisible();
-    await expect(line).toContainText("DailyJump #5");
+    // Lot I5 : le titre du niveau au départ (« Jump n° 5 · thème »), l'objectif de médaille dans sa plaque en haut à droite (pas encore de temps :
+    // le bronze), le titre de la page « Jump — Du Jour » (charte rév. 7).
+    await expect(line).toContainText(/Jump n°\s5/);
     await expect(line).toContainText("aperçu"); // le serveur de test est local : un aperçu
-    await expect(line).toContainText("visée 🥉"); // pas encore de temps : le bronze
-    await expect(page).toHaveTitle("DailyJump #5");
+    await expect(page.locator("#objectif")).toBeVisible();
+    await expect(page.locator("#objectif")).toHaveAttribute("aria-label", /^Médaille visée : Bronze/);
+    await expect(page).toHaveTitle("Jump — Du Jour");
     // Sans paramètre (et sans ?debug) : le même niveau, aucun accès de débogage.
     await page.goto("/");
-    await expect(page.locator("#dayline")).toContainText("DailyJump #5");
+    await expect(page.locator("#dayline")).toContainText(/Jump n°\s5/);
     expect(await page.evaluate(() => "__jump" in window)).toBe(false);
   });
 });
@@ -137,7 +140,7 @@ test("?seed=…&solution finit au temps de l'auteur, en pas à pas, avec la méd
     expect(end.daily!.lastMedal).toBe("author");
     await expect(page.locator("#finish")).toBeVisible();
     await expect(page.locator("#finish .title")).toHaveText("Rediffusion de l'auteur");
-    await expect(page.locator("#finish .ref")).toContainText("Médaille auteur");
+    await expect(page.locator("#finish .ref")).toContainText("Temps de l'auteur battu !"); // lot I5 : la phrase de la médaille du catalogue (arrivee.medaille.author)
     await expect(page.locator("#finish .ref")).toContainText("Temps de l'auteur");
     await expect(page.locator("#finish-next")).toBeHidden();
   });
@@ -160,7 +163,7 @@ test("site publié (chemin sans /b/) : une date future ouvre le niveau du jour, 
     expect(await open(page, `${PUBLISHED}?seed=2026-10-18&debug`)).toBe(true);
     j = await jump(page);
     expect(j.daily).toMatchObject({ date: "2026-10-18", mode: "archive", refused: false, preview: false, number: 3 });
-    await expect(page.locator("#dayline")).toContainText("archive du 18 oct. 2026");
+    await expect(page.locator("#dayline")).toContainText("archive du dim. 18 oct.");
   });
 });
 
@@ -194,7 +197,7 @@ test("passage de minuit : la partie continue, « Nouveau niveau disponible », p
     await ready(page);
     j = await jump(page);
     expect(j.daily).toMatchObject({ date: "2026-10-21", today: "2026-10-21", number: 6, newDay: false });
-    await expect(page.locator("#dayline")).toContainText("DailyJump #6");
+    await expect(page.locator("#dayline")).toContainText(/Jump n°\s6/);
   });
 });
 
@@ -212,6 +215,20 @@ test.describe("au doigt (téléphone en paysage)", () => {
       test.skip(!(await open(page, `/?seed=${TODAY}&touch=1&debug`)), SKIP);
       await page.evaluate(() => (window as unknown as { __jump: JumpDebug }).__jump.manual(true));
       const start = (await jump(page)).player;
+      // La ligne du jour (lot I5 : le titre du niveau, montré au départ seulement) : dans l'écran, sous la bande, sans toucher les boutons.
+      await expect(page.locator("#dayline")).toBeVisible();
+      const line = (await page.locator("#dayline").boundingBox())!;
+      expect(line.x).toBeGreaterThanOrEqual(0);
+      expect(line.x + line.width).toBeLessThanOrEqual(VIEW.width);
+      for (const button of await page.locator("#hud-gauche button, .tbtn").all()) {
+        if (!(await button.isVisible())) continue;
+        const sel = (await button.getAttribute("id")) ?? (await button.getAttribute("class"))!;
+        const b = (await button.boundingBox())!;
+        expect(b.width, sel).toBeGreaterThanOrEqual(44);
+        expect(b.height, sel).toBeGreaterThanOrEqual(44);
+        const apart = line.x + line.width <= b.x || b.x + b.width <= line.x || line.y + line.height <= b.y || b.y + b.height <= line.y;
+        expect(apart, `#dayline chevauche ${sel}`).toBe(true);
+      }
       const fingers = await Fingers.on(page);
       await fingers.down(1, ...at.right);
       await page.waitForFunction(() => (window as unknown as { __jump: JumpDebug }).__jump.touch.bits === 2);
@@ -232,20 +249,9 @@ test.describe("au doigt (téléphone en paysage)", () => {
       expect(airborne).toBe(true);
       await fingers.up(2);
       await fingers.up(1);
-      // La ligne du jour : dans l'écran, sous la bande haute, sans toucher les boutons.
-      const line = (await page.locator("#dayline").boundingBox())!;
-      expect(line.x).toBeGreaterThanOrEqual(0);
-      expect(line.x + line.width).toBeLessThanOrEqual(VIEW.width);
-      for (const button of await page.locator("#tbar button").all()) {
-        if (!(await button.isVisible())) continue;
-        const sel = `#${await button.getAttribute("id")}`;
-        const b = (await button.boundingBox())!;
-        expect(b.width, sel).toBeGreaterThanOrEqual(44);
-        expect(b.height, sel).toBeGreaterThanOrEqual(44);
-        const apart = line.x + line.width <= b.x || b.x + b.width <= line.x || line.y + line.height <= b.y || b.y + b.height <= line.y;
-        expect(apart, `#dayline chevauche ${sel}`).toBe(true);
-      }
-      await page.locator("#restart").tap();
+      // Lot I5 : recommencer est une action de la pause (en haut à gauche), plus un bouton de la bande.
+      await page.locator("#pausebtn").tap();
+      await page.locator("#menu-restart").tap();
       await page.waitForFunction(() => (window as unknown as { __jump: JumpDebug }).__jump.ticks === 0);
       const back = await jump(page);
       expect(back.player.x).toBe(start.x);

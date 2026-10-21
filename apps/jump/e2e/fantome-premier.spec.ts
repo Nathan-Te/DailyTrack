@@ -9,6 +9,7 @@ import { pageLevel } from "./jours";
 // serveur à la fabrication du jeu de données, puis par le rejeu du jeu à la lecture). Visible avec son pseudo à côté de ton fantôme ; le
 // réglage « Fantôme du premier » le coupe (mémorisé) ; `?ghost=best` aussi ; `?watch=first` rejoue l'essai du premier ; une archive montre le
 // premier de ce jour-là ; au doigt en paysage, les cibles du profil, du réglage et de l'arrivée font au moins 44 px. Horloge maîtrisée.
+// Lot I5 : le réglage est dans Réglages (cadre crème), le profil dans le portail (`/profil/`) ; l'étiquette du premier s'écrit « Nom · 1er ».
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
 const firstOf = (date: string) => (JSON.parse(readFileSync(new URL(`../public/demo/${date}.json`, import.meta.url), "utf8")) as { first: { name: string; ticks: number } }).first;
@@ -115,7 +116,7 @@ test("démo : le fantôme du premier est visible avec son pseudo, à côté du t
     await ready(page);
     await loaded(page);
     let f = await j(page);
-    expect(f).toMatchObject({ date: TODAY_DEMO, enabled: true, loaded: true, shown: true, labelled: true, name: first.name, label: `${first.name} · 1ᵉʳ`, ticks: first.ticks, mine: false, miss: "" });
+    expect(f).toMatchObject({ date: TODAY_DEMO, enabled: true, loaded: true, shown: true, labelled: true, name: first.name, label: `${first.name} · 1er`, ticks: first.ticks, mine: false, miss: "" });
     // Deux couleurs distinctes, ni le jaune du personnage.
     const colors = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.ghostColors);
     expect(colors.own).not.toBe(colors.first);
@@ -132,11 +133,12 @@ test("démo : le fantôme du premier est visible avec son pseudo, à côté du t
     f = await j(page);
     expect(f.tick).toBeGreaterThan(100);
 
-    // Le réglage du menu le coupe, tout de suite ; mémorisé.
+    // Le réglage le coupe, tout de suite ; mémorisé. Lot I5 : il est dans Réglages (ouverts depuis la pause), un choix « Montrer / Cacher ».
     await page.evaluate(() => (window as unknown as { __jump: J }).__jump.setMenu(true));
-    await expect(page.locator("#menu-first-ghost")).toHaveText("Fantôme du premier : oui");
-    await page.locator("#menu-first-ghost").click();
-    await expect(page.locator("#menu-first-ghost")).toHaveText("Fantôme du premier : non");
+    await page.locator("#menu-settings").click();
+    await expect(page.locator('#reglages-premier [data-value="true"]')).toHaveAttribute("aria-pressed", "true");
+    await page.locator('#reglages-premier [data-value="false"]').click();
+    await expect(page.locator('#reglages-premier [data-value="false"]')).toHaveAttribute("aria-pressed", "true");
     await page.waitForFunction(() => !(window as unknown as { __jump: J }).__jump.firstGhost.visible);
     expect((await j(page)).enabled).toBe(false);
     await page.reload();
@@ -145,7 +147,8 @@ test("démo : le fantôme du premier est visible avec son pseudo, à côté du t
     expect(await j(page)).toMatchObject({ enabled: false, visible: false, loaded: true });
     // Rallumé ; puis `?ghost=best` le cache sans toucher au réglage.
     await page.evaluate(() => (window as unknown as { __jump: J }).__jump.setMenu(true));
-    await page.locator("#menu-first-ghost").click();
+    await page.locator("#menu-settings").click();
+    await page.locator('#reglages-premier [data-value="true"]').click();
     await page.goto("/?debug&api=demo&accueil=0&ghost=best");
     await ready(page);
     await loaded(page);
@@ -212,14 +215,15 @@ test("démo, au doigt en paysage : « Regarder le premier » à l'arrivée, Rég
       test.skip(!(await hasWebGL(page)), SKIP);
       await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
       if (await page.locator("#help").isVisible()) await page.locator("#help-close").tap();
-      // La carte du profil de l'accueil : pseudo, série, médailles.
-      await expect(page.locator("#home-profile")).toHaveText("👤 Paysage · série 0 · 0 médaille");
-      await bigEnough(page.locator("#home-profile"), viewport, "carte du profil");
-      await page.locator("#home-profile").tap();
-      await expect(page.locator("#menu")).toBeVisible();
-      await expect(page.locator("#profile .pshared")).toHaveText("Ton profil est le même dans tous les jeux de la plateforme : ton pseudo et ton code valent aussi pour DailyTrack.");
-      for (const id of ["profile-name", "profile-rename", "profile-copy", "profile-load", "profile-change", "menu-first-ghost"]) await bigEnough(page.locator(`#${id}`), viewport, `#${id}`);
-      await page.locator("#menu-resume").tap();
+      // Lot I5 : plus de profil dans le jeu. L'accueil et les Réglages mènent au profil commun du portail (« Mon profil Du Jour › », avec le retour
+      // vers Jump) ; le réglage du fantôme du premier est dans les Réglages.
+      await expect(page.locator("#home-profil")).toHaveText("Mon profil Du Jour ›");
+      await expect(page.locator("#home-profil")).toHaveAttribute("href", "../profil/?retour=%2F");
+      await page.locator("#home-settings").tap();
+      await expect(page.locator("#settings")).toBeVisible();
+      for (const sel of ["#settings-profil", '#reglages-premier [data-value="true"]', '#reglages-premier [data-value="false"]']) await bigEnough(page.locator(sel), viewport, sel);
+      await page.locator("#settings .dj-barre-jeu__retour").tap();
+      await expect(page.locator("#settings")).toBeHidden();
       await page.locator("#home-play").tap();
       await loaded(page);
       const fingers = await Fingers.on(page);

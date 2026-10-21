@@ -1,0 +1,608 @@
+/* Interface de Jump (lot I5, charte « Cartouches » : docs/plateforme/identite.md, révision 7 ; maquettes docs/plateforme/maquettes/cartouches/jump-*.html).
+   Les primitives communes : la page et ses couches, le cadre crème de Du Jour, l'étiquette jaune (la couleur du personnage) et sa coque moutarde, le voile à
+   rayures et le dialogue posé sur la scène, les boutons et choix sur jaune, les lignes de classement (ta ligne en encre, § 9), les tuiles et l'autocollant.
+   Chaque zone a sa feuille (hud.css, ecrans.css, outils.css) ; elles n'écrivent ni couleur, ni police, ni ombre floue, ni transparence : tout vient des
+   jetons de @cdj/ui (test apps/jump/test/interface.test.ts). Le rendu du niveau (Three.js) n'est pas concerné. */
+
+/* --- Couches --------------------------------------------------------------------------------------------------------------------------------------- */
+:root {
+  --band: 60px;
+  --z-touch: 5;
+  --z-touch-boutons: 6;
+  --z-hud: 7;
+  --z-carnage: 8;
+  --z-bandeau: 9;
+  --z-arrivee: 20;
+  --z-accueil: 30;
+  --z-pause: 35;
+  --z-ecran: 36;
+  --z-aide: 38;
+  --z-reglages: 40;
+  --z-outil: 45; /* l'outil de réglage interne (?debug&tune) passe devant tout */
+  /* Le voile à rayures (charte § 9 : motif net, ni flou ni transparence) : des traits d'encre à 115° sur la scène. */
+  --voile-rayures: repeating-linear-gradient(115deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+}
+html {
+  margin: 0;
+  height: 100%;
+  height: 100dvh;
+  background: var(--dj-encre);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+/* Corps fixe : ni défilement, ni rebond, ni barre d'adresse qui bouge la page. */
+body {
+  position: fixed;
+  inset: 0;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  background: var(--dj-encre);
+  color: var(--dj-encre);
+}
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* --- Le cadre crème de Du Jour : barre des jeux + étiquette jaune (sortie de partie, écrans Du Jour) --------------------------------------------- */
+.cadre {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-ecran);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.35;
+  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  touch-action: pan-y;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.cadre--arrivee {
+  z-index: var(--z-arrivee);
+}
+.cadre--haut {
+  z-index: var(--z-reglages);
+}
+.cadre > .dj-barre-jeu {
+  flex: none;
+  width: 100%;
+  max-width: 760px;
+}
+/* Le contenu défile (l'étiquette, puis ce qui est posé dessous : « Il te reste aujourd'hui ») ; aucune barre de défilement ne se voit. */
+.cadre__defile {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 0 10px 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.cadre__defile::-webkit-scrollbar {
+  display: none;
+}
+.cadre__defile > * {
+  flex-shrink: 0;
+}
+.cadre__pied:empty {
+  display: none;
+}
+/* Lot I5 (retour de Nathan) : réglages, archives et classement du jour restent **dans le jeu** — sur la scène sous le voile à rayures, comme l'accueil : la
+   barre des jeux en plaque crème, l'étiquette dans sa coque moutarde, le tout centré en hauteur (et qui défile s'il dépasse). L'écran ouvert dessous (accueil,
+   pause) s'efface le temps qu'ils sont ouverts : un seul voile, une seule étiquette. */
+.cadre--scene {
+  background: var(--voile-rayures);
+  justify-content: center;
+  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+}
+.cadre--scene > .dj-barre-jeu {
+  margin-bottom: 10px;
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  padding: 0 12px;
+}
+.cadre--scene .cadre__defile {
+  flex: 0 1 auto;
+  padding: 0 6px 6px 0;
+}
+/* Ce qui est posé sous l'étiquette (« Il te reste aujourd'hui », « Jeu suivant du jour ») : sur une plaque crème, lisible sur les rayures. */
+.cadre--scene .cadre__pied:not(:empty) {
+  background: var(--dj-creme);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  box-shadow: 3px 3px 0 var(--dj-encre);
+  padding: 10px 12px 12px;
+}
+.cadre--scene .cadre__pied:has(> [hidden]:only-child) {
+  display: none;
+}
+body:has(.cadre--scene:not([hidden])) #home,
+body:has(.cadre--scene:not([hidden])) #menu {
+  visibility: hidden;
+}
+
+/* --- L'étiquette jaune ----------------------------------------------------------------------------------------------------------------------------- */
+.etiquette {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--jump-jaune);
+  color: var(--jump-encre);
+  border: var(--dj-trait-fort) solid var(--jump-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: var(--dj-ombre-cartouche);
+}
+.etiquette__corps {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+/* Les blocs de l'étiquette ne rétrécissent jamais (piège du lot I4 : un bloc à `overflow: hidden` s'écrase dans une colonne flex). */
+.etiquette__corps > * {
+  flex-shrink: 0;
+}
+.etiquette__titre {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-38);
+  line-height: 0.95;
+  letter-spacing: 1px;
+  text-shadow: var(--jump-ombre-titre);
+  overflow-wrap: anywhere;
+}
+.etiquette__sous-titre {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+}
+.etiquette__intro {
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.etiquette__tete {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.legende {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.chiffres {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* La coque moutarde de la cartouche Jump (l'accueil) : stries de préhension en haut, l'étiquette posée dedans (charte § 5). */
+.coque {
+  position: relative;
+  background: var(--dj-moutarde);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 6px 6px 0 var(--dj-encre);
+  padding: 0 10px 10px;
+}
+.coque__stries {
+  height: 12px;
+  margin: 0 var(--dj-stries-retrait);
+  background: repeating-linear-gradient(90deg, var(--dj-encre) 0 3px, transparent 3px 8px);
+}
+.coque > .etiquette {
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: none;
+}
+
+/* --- Boutons sur le jaune (maquettes : papier, bordure encre de 3 px) --------------------------------------------------------------------------------- */
+.etiquette .dj-bouton--secondaire,
+.dialogue .dj-bouton--secondaire,
+.bandeau .dj-bouton--secondaire {
+  background: var(--dj-papier);
+  border-width: var(--dj-trait-fort);
+  box-shadow: none;
+  font-size: var(--dj-taille-13);
+}
+.etiquette .dj-bouton--secondaire:hover,
+.dialogue .dj-bouton--secondaire:hover {
+  background: var(--dj-creme-2);
+}
+.etiquette .dj-bouton--secondaire:active,
+.dialogue .dj-bouton--secondaire:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+}
+.etiquette .dj-bouton--jump,
+.dialogue .dj-bouton--jump {
+  font-size: var(--dj-taille-32);
+}
+.etiquette .dj-bouton--jump:disabled {
+  background: var(--dj-creme-2);
+  color: var(--dj-encre-douce);
+  border: var(--dj-trait) dashed var(--dj-encre-douce);
+  box-shadow: none;
+  font-size: var(--dj-taille-16);
+  cursor: progress;
+}
+/* Un lien discret sur le jaune (« Tout le classement › », « Mon profil Du Jour › ») : encre souligné, 44 px de haut. */
+.lien {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: var(--dj-cible);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.actions > * {
+  flex: 1 1 auto;
+}
+.actions--colonne {
+  flex-direction: column;
+}
+.actions--duo {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.actions--duo.actions--seul {
+  grid-template-columns: minmax(0, 1fr);
+}
+.champ {
+  min-height: var(--dj-cible);
+  min-width: 0;
+  padding: 0 12px;
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-size: var(--dj-taille-16);
+  font-weight: 600;
+}
+textarea.champ {
+  padding: 8px 12px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  resize: none;
+}
+
+/* --- Choix exclusifs (segments) et curseurs (maquette jump-reglages : encre et jaune, Lilita One) -------------------------------------------------- */
+.segment {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  overflow: hidden;
+}
+.segment__bouton {
+  min-width: 0;
+  min-height: var(--dj-cible);
+  padding: 0 10px;
+  border: 0;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-16);
+  touch-action: manipulation;
+}
+.segment__bouton + .segment__bouton {
+  border-left: var(--dj-trait) solid var(--dj-encre);
+}
+.segment__bouton:hover {
+  background: var(--dj-creme-2);
+}
+.segment__bouton[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+}
+.curseur {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--dj-cible);
+  font-size: var(--dj-taille-14);
+  font-weight: 600;
+}
+.curseur input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  height: var(--dj-cible);
+  margin: 0;
+  accent-color: var(--dj-encre);
+  touch-action: pan-y;
+}
+.curseur__valeur {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+  text-align: right;
+}
+.dj-choix-langue__bouton {
+  min-width: 52px;
+}
+
+/* --- Lignes de classement : ta ligne en encre sur l'étiquette jaune (charte § 9) ------------------------------------------------------------------- */
+.lignes {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ligne {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 6px;
+  min-height: 46px;
+  padding: 0 6px;
+  background: var(--dj-papier);
+  border: var(--dj-trait) solid var(--dj-encre);
+}
+.ligne:has(.ligne__medaille) {
+  grid-template-columns: 34px minmax(0, 1fr) 76px auto;
+}
+.lignes--courtes .ligne {
+  min-height: 32px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--dj-creme-2);
+}
+.ligne--moi,
+.lignes--courtes .ligne--moi {
+  margin: 4px 0;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  box-shadow: 3px 3px 0 var(--dj-papier);
+  transform: rotate(-1deg);
+}
+.ligne--tete {
+  min-height: 20px;
+  background: transparent;
+  border: 0;
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.ligne--tete .ligne__temps {
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-legende);
+}
+.ligne--trou {
+  display: flex;
+  justify-content: center;
+  min-height: 20px;
+  background: transparent;
+  border: 0;
+  font-weight: 700;
+}
+.ligne__rang {
+  font-family: var(--dj-police-chiffres);
+  font-weight: 700;
+  font-size: var(--dj-taille-13);
+}
+.ligne__qui {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ligne__nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 700;
+  font-size: var(--dj-taille-14);
+}
+.ligne__morts {
+  font-size: var(--dj-taille-12);
+}
+.lignes--courtes .ligne__qui {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+.lignes--courtes .ligne__morts {
+  flex: none;
+}
+.ligne__medaille {
+  display: flex;
+  align-items: center;
+  font-size: var(--dj-taille-12);
+  font-weight: 700;
+}
+.ligne__sans {
+  font-size: var(--dj-taille-12);
+}
+.ligne__temps {
+  text-align: right;
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-21);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ligne--moi .dj-medaille__pastille {
+  border-color: var(--dj-papier);
+}
+
+/* --- Tuiles et autocollants (l'accueil, l'arrivée) ------------------------------------------------------------------------------------------------- */
+.tuile {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 8px 12px;
+  background: var(--dj-papier);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+}
+.tuile--encre {
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  transform: rotate(-1.5deg);
+}
+.tuile__legende {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.tuile--encre .tuile__legende,
+.tuile--encre .tuile__sous {
+  color: var(--dj-papier);
+}
+.tuile__valeur {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-24);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.tuile__sous {
+  font-size: var(--dj-taille-12);
+}
+/* L'autocollant (les morts) : jaune, penché, bordure encre (charte § 5 : petites inclinaisons de −2° à +6°). */
+.autocollant {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--jump-jaune);
+  color: var(--jump-encre);
+  border: var(--dj-trait) solid var(--jump-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  transform: rotate(3deg);
+}
+.autocollant--encre {
+  flex-direction: column;
+  gap: 0;
+  padding: 6px 10px;
+  background: var(--dj-encre);
+  color: var(--jump-jaune);
+  transform: rotate(5deg);
+}
+.autocollant__nombre {
+  font-family: var(--jump-police);
+  font-size: var(--dj-taille-32);
+  line-height: 1;
+}
+.autocollant__mot {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--dj-papier);
+}
+.crane__os {
+  fill: var(--dj-papier);
+  stroke: var(--dj-encre);
+  stroke-width: 2.5;
+}
+.crane__oeil {
+  fill: var(--dj-encre);
+}
+
+/* --- Le voile à rayures et le dialogue posé sur la scène (pause, « Comment jouer ») -------------------------------------------------------------------- */
+.voile {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-pause);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(8px, env(safe-area-inset-top, 0)) max(8px, env(safe-area-inset-right, 0)) max(8px, env(safe-area-inset-bottom, 0)) max(8px, env(safe-area-inset-left, 0));
+  background: var(--voile-rayures);
+  touch-action: none;
+  font-family: var(--dj-police-texte);
+}
+.voile--aide {
+  z-index: var(--z-aide);
+}
+.dialogue {
+  position: relative;
+  width: min(480px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--jump-jaune);
+  color: var(--jump-encre);
+  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-coque);
+  box-shadow: 5px 5px 0 var(--dj-encre);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: none;
+}
+.dialogue::-webkit-scrollbar {
+  display: none;
+}
+.dialogue > * {
+  flex-shrink: 0;
+}
+.dialogue__titre {
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: 52px;
+  line-height: 0.9;
+  text-shadow: var(--jump-ombre-titre);
+}
+@media (max-height: 520px) {
+  .dialogue {
+    padding: 10px 14px;
+  }
+  .dialogue__titre {
+    font-size: var(--dj-taille-38);
+  }
+  .etiquette__corps {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .etiquette__titre {
+    font-size: var(--dj-taille-32);
+  }
+}

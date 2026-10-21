@@ -157,7 +157,7 @@ test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargeme
   const done = await J(page);
   expect(done.phase).toBe("finished");
   expect(done.banner).toBe(true);
-  await expect(page.locator("#finish .best")).toHaveText(/Meilleur du jour : 21,625 s/);
+  await expect(page.locator("#finish .best")).toHaveText(/Meilleur du jour : 21,625\ss/);
   expect(done.stains.count).toBe(3); // les taches de la journée reviennent
 
   // Rechargement : meilleur essai, vies, morts relus ; le fantôme est prêt, les taches sont aux mêmes endroits.
@@ -189,7 +189,8 @@ test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargeme
   await step(page, 1, 2);
   expect((await J(page)).ghost.enabled).toBe(false);
   await page.waitForFunction(() => !(window as unknown as { __jump: Jump }).__jump.ghost.visible);
-  await expect(page.locator("#ghostbtn")).toHaveText("👻 Fantôme : non");
+  // Lot I5 : plus de bouton 👻 dans le HUD (le fantôme est dans la pause) ; la touche G le dit par un message court.
+  await expect(page.locator("#toast")).toHaveText("Fantôme : caché");
   await page.reload();
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   expect((await J(page)).ghost.enabled).toBe(false);
@@ -267,14 +268,21 @@ test.describe("au doigt (téléphone en paysage)", () => {
       test.skip(!(await open(page, "&touch=1&carnage=demo")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       expect((await J(page)).phase).toBe("carnage");
       await expect(page.locator("#carnage")).toBeVisible();
-      // Le compteur ne touche ni la bande haute ni les boutons.
-      const box = (await page.locator("#carnage").boundingBox())!;
-      expect(box.y).toBeGreaterThanOrEqual(60);
-      expect(box.x + box.width).toBeLessThanOrEqual(VIEW.width);
-      // Le bouton 👻 de la bande haute fait au moins 44 px.
-      const ghost = (await page.locator("#ghost").boundingBox())!;
-      expect(ghost.width).toBeGreaterThanOrEqual(44);
-      expect(ghost.height).toBeGreaterThanOrEqual(44);
+      // Lot I5 (maquette jump-carnage.html) : le titre et le total en haut, la barre de lecture en bas, dans l'écran ; ses boutons font au moins 44 px ;
+      // le HUD de la partie est caché.
+      for (const sel of [".carnage__tete", ".carnage__barre"]) {
+        const box = (await page.locator(sel).boundingBox())!;
+        expect(box.x, sel).toBeGreaterThanOrEqual(0);
+        expect(box.y, sel).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width, sel).toBeLessThanOrEqual(VIEW.width);
+        expect(box.y + box.height, sel).toBeLessThanOrEqual(VIEW.height);
+      }
+      for (const b of await page.locator(".carnage__barre button").all()) {
+        const box = (await b.boundingBox())!;
+        expect(box.width).toBeGreaterThanOrEqual(44);
+        expect(box.height).toBeGreaterThanOrEqual(44);
+      }
+      await expect(page.locator("#chrono")).toBeHidden();
       await step(page, 120, null);
       const fingers = await Fingers.on(page);
       await fingers.down(1, VIEW.width * 0.12, VIEW.height * 0.75);

@@ -275,7 +275,7 @@ describe("l'envoi rend le classement : rien à relire (Ranking)", () => {
     r.noteBoardLoading(DATE); // déjà un classement : il reste affiché
     expect(r.boards.get(DATE)?.status).toBe("ok");
     r.noteBoardFailed(DATE, true, "x");
-    expect(r.boards.get(DATE)).toMatchObject({ status: "offline", board: { participants: 2 }, message: "Classement indisponible" });
+    expect(r.boards.get(DATE)).toMatchObject({ status: "offline", board: { participants: 2 }, code: "reseau" }); // lot I5 : un code, le texte vient du catalogue
     expect(calls).toEqual([]);
   });
 });

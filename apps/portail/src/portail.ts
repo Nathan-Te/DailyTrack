@@ -100,8 +100,9 @@ function cartoucheDe(c: CarteJeu, t: T, jeu: JeuDuJour | undefined): HTMLElement
   const numeroTheme = numero && theme ? t.t("portail.numeroTheme", { numero, theme }) : numero;
   const etat = jeu?.etat;
   const suite = statut(t, c, etat);
-  // Jump : la réplique du thème du jour (une seule par écran) ; tant que le thème n'est pas connu (ou sans serveur), l'accroche du jeu.
-  const replique = c.code === "jump" && jeu?.theme ? cleConnue(`portail.jump.replique.${jeu.theme}`) : null;
+  // Jump : la réplique du thème du jour (une seule par écran ; lot I5 : catalogue commun de @cdj/ui, la même que dans le jeu) ; tant que le thème n'est pas connu
+  // (ou sans serveur), l'accroche du jeu.
+  const replique = c.code === "jump" && jeu?.theme ? cleConnue(`jump.replique.${jeu.theme}`) : null;
   const texte = c.code === "track" ? t.t("portail.track.accroche") : t.t(replique ?? "portail.jump.accroche");
   const etiquette = c.code === "track" ? etiquetteTrack({ titre: t.t("jeu.track.titre"), numero: numeroTheme, texte, suite }) : etiquetteJump({ titre: t.t("jeu.jump.titre"), numero: numeroTheme, texte, suite });
   const nom = t.t(NOM_JEU[c.code]);
