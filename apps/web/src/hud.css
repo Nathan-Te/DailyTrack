@@ -61,7 +61,7 @@
   color: var(--track-texte);
   border: var(--dj-trait) solid var(--dj-encre);
   border-radius: var(--dj-rayon-bouton);
-  box-shadow: 3px 3px 0 var(--dj-encre);
+  box-shadow: 2px 2px 0 var(--dj-encre);
   font-family: var(--dj-police-texte);
   font-variant-numeric: tabular-nums;
 }
@@ -72,11 +72,11 @@
   position: fixed;
   pointer-events: none;
 }
-#hud-centre > .hud {
+.hud-statique,
+#hud-centre > .hud,
+#hud-droite > .hud,
+#intro > .hud {
   position: static;
-}
-#hud-centre > .plaque--chrono {
-  position: relative; /* le liseré de livrée (::after) se cale sur la plaque du chrono, pas sur la colonne */
 }
 .plaque--petite {
   padding: 2px 8px;
@@ -87,12 +87,15 @@
   box-shadow: none;
 }
 
-/* La pause : à gauche, deux barres dessinées (maquette). */
+/* Surimpressions compactes (charte rév. 7, § 9 ; maquette track-hud-paysage.html) : le jeu se lit d'abord. En haut à gauche, trois boutons de 44 px : pause, dernier point de
+   contrôle et recommencer (les deux derniers sur un appareil tactile seulement : le clavier a ses touches). */
 #menu {
   position: fixed;
-  left: 12px;
-  top: 14px;
+  left: 10px;
+  top: 8px;
   z-index: var(--z-menu);
+  display: flex;
+  gap: 6px;
 }
 .plaque--bouton {
   display: flex;
@@ -101,10 +104,16 @@
   width: var(--dj-cible);
   height: var(--dj-cible);
   padding: 0;
-  gap: 5px;
-  box-shadow: none;
+  gap: 4px;
   cursor: pointer;
   touch-action: manipulation;
+  color: var(--track-texte);
+}
+#menu .plaque--action {
+  display: none;
+}
+body.touch #menu .plaque--action {
+  display: flex;
 }
 /* Focus visible sur asphalte (charte § 10) : contour ambre. */
 .plaque:focus-visible,
@@ -116,39 +125,52 @@
 }
 .plaque--bouton:active {
   transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+  box-shadow: none;
 }
 .pause-barres {
   display: flex;
-  gap: 5px;
+  gap: 4px;
 }
 .pause-barres > span {
-  width: 5px;
-  height: 16px;
+  width: 4px;
+  height: 14px;
   background: var(--track-texte);
 }
 
-/* Le centre : chronomètre, puis point de contrôle et écart, puis « vs ton record » et le titre du circuit. Une colonne : jamais de chevauchement. */
+/* La bande du centre : **une seule plaque de 30 px** — chronomètre · point de contrôle · écart signé, collés. Rien d'empilé dessous en permanence. */
 #hud-centre {
   position: fixed;
   left: 50%;
-  top: 12px;
+  top: 8px;
   z-index: var(--z-hud);
   transform: translateX(-50%);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  max-width: calc(100vw - 2 * (var(--dj-cible) + 20px));
+  align-items: stretch;
+  box-sizing: border-box;
+  height: 30px;
+  overflow: hidden;
+  background: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  box-shadow: 2px 2px 0 var(--dj-encre);
   pointer-events: none;
 }
+#hud-centre > .plaque {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+#hud-centre > .plaque--chrono {
+  position: relative; /* le liseré de livrée se cale sur la plaque du chrono, pas sur la bande */
+}
 .plaque--chrono {
-  position: relative;
-  overflow: hidden;
-  padding: 4px 22px 2px 14px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px 0 10px;
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-38);
+  font-size: var(--dj-taille-24);
   line-height: 1;
   letter-spacing: 0;
 }
@@ -170,13 +192,13 @@
 .chrono__livree {
   position: absolute;
   top: 0;
-  right: -6px;
+  right: -3px;
   bottom: 0;
-  width: 18px;
+  width: 9px;
   contain: layout paint style;
-  background: repeating-linear-gradient(115deg, var(--track-livree) 0 4px, transparent 4px 7px);
+  background: repeating-linear-gradient(115deg, var(--track-livree) 0 3px, transparent 3px 5px);
 }
-/* Pendant la course seulement, la colonne du centre a son propre calque (sa mise à jour ne touche pas le reste de la page) ; hors course, le calque est retiré. */
+/* Pendant la course seulement, la bande a son propre calque (sa mise à jour ne touche pas le reste de la page) ; hors course, le calque est retiré. */
 body.en-course #hud-centre {
   will-change: transform;
 }
@@ -187,34 +209,33 @@ body.en-course #lines {
 .plaque--pc {
   display: flex;
   align-items: stretch;
-  overflow: hidden;
   padding: 0;
 }
 .plaque--pc .pc {
   contain: layout paint style;
   display: flex;
   align-items: center;
-  padding: 2px 10px;
+  padding: 0 7px;
   background: var(--track-texte);
   color: var(--track-asphalte);
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 700;
-  font-size: var(--dj-taille-21);
+  font-size: var(--dj-taille-16);
 }
 .plaque--pc .ecart {
   contain: layout paint style;
   min-width: 3.9em;
   justify-content: flex-end;
-  font-variant-numeric: tabular-nums;
   display: flex;
   align-items: center;
-  padding: 2px 12px;
+  padding: 0 8px;
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-24);
-  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  font-size: 18px;
+  line-height: 1;
 }
 /* Derrière : livrée orange, texte asphalte. Devant : vert « auteur ». Le signe + / − est écrit : la couleur seule ne porte pas l'information. */
 .plaque--pc .ecart--derriere {
@@ -229,6 +250,32 @@ body.en-course #lines {
   background: var(--track-route);
   color: var(--track-texte);
 }
+
+/* Au départ seulement : le titre du circuit et le fantôme, une ligne sous la bande, puis ils disparaissent (main.ts, `#intro.on`). Une ligne d'aide prend la même place ensuite. */
+#intro,
+#aide {
+  position: fixed;
+  left: 50%;
+  top: 54px; /* sous les boutons de 44 px du haut (8 + 44 = 52) : aucune largeur de texte ne les touche */
+  z-index: var(--z-hud);
+  transform: translateX(-50%);
+  max-width: calc(100vw - 24px);
+  pointer-events: none;
+}
+#intro {
+  display: none;
+  gap: 6px;
+}
+#intro.on {
+  display: flex;
+}
+#aide {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--track-texte);
+  font-weight: 700;
+}
 #ghostinfo,
 #meta {
   max-width: 100%;
@@ -239,16 +286,31 @@ body.en-course #lines {
 #meta .long {
   display: inline;
 }
-
-/* L'objectif de médaille : en haut à droite, pastille + seuil. Le Salon y montre son compte à rebours (salon.css). */
-#medals {
-  right: 12px;
-  top: 14px;
+/* Spectateur : le tour regardé reste nommé sous la bande tant qu'on le regarde. */
+body.watch #intro {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  padding: 4px 8px;
+}
+body.watch #menu .plaque--action {
+  display: none; /* pas de conduite en rediffusion : ni point de contrôle ni recommencer */
+}
+
+/* En haut à droite : l'objectif de médaille (pastille et seuil, sans le mot « Objectif ») et le rang du jour en pastille qui ouvre le classement. Le Salon montre son compte à rebours à la place de l'objectif. */
+#hud-droite {
+  position: fixed;
+  right: 10px;
+  top: 8px;
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#medals {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0 7px;
 }
 .objectif__legende,
 .objectif__valeur {
@@ -258,28 +320,45 @@ body.en-course #lines {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: var(--dj-taille-legende-petite);
-  font-weight: 700;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--track-texte-doux);
   white-space: nowrap;
-}
-@media (max-width: 480px) {
-  .objectif__mot {
-    display: none;
-  }
 }
 .objectif__valeur {
   font-family: var(--dj-police-chiffres);
   font-weight: 700;
-  font-size: var(--dj-taille-14);
+  font-size: var(--dj-taille-legende);
+}
+#rang {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  height: var(--dj-cible);
+  padding: 0 8px;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-16);
+}
+#rang[hidden] {
+  display: none;
+}
+#rang:hover {
+  background: var(--track-coque);
+}
+.rang__chevron {
+  transform: rotate(-90deg); /* « ˅ » : le chevron du socle pointe à gauche */
+}
+#rang[aria-expanded="true"] .rang__chevron {
+  transform: rotate(90deg);
 }
 .pastille {
   flex: none;
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: 9px;
+  height: 9px;
   border-radius: var(--dj-rayon-avatar);
   border: var(--dj-trait) solid var(--track-texte);
 }
@@ -296,31 +375,38 @@ body.en-course #lines {
   background: var(--dj-bronze);
 }
 
-/* L'annonce (« 3 », « PARTEZ ! », messages courts) : une grande plaque au premier tiers de l'écran. */
+/* L'annonce : les grandes (« 3 », « PARTEZ ! », « ARRIVÉE ») au premier tiers de l'écran, un instant seulement ; les messages courts (caméra, fantôme, chute…) en une ligne sous la bande. */
 #banner {
   left: 50%;
-  top: 26%;
+  top: 24%;
   max-width: calc(100vw - 24px);
   transform: translateX(-50%);
-  padding: 6px 22px 4px;
+  padding: 4px 18px 2px;
   text-align: center;
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-64);
+  font-size: var(--dj-taille-38);
   line-height: 1;
   letter-spacing: 2px;
   text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 #banner.small {
-  font-size: var(--dj-taille-22);
-  padding: 4px 16px 3px;
-  letter-spacing: 1px;
+  top: 54px;
+  padding: 2px 8px;
+  font-family: var(--dj-police-texte);
+  font-style: normal;
+  font-size: var(--dj-taille-13);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-transform: none;
+  box-shadow: none;
 }
 #freeze {
   left: 50%;
-  top: 38%;
+  top: 54px;
   transform: translateX(-50%);
   font-weight: 800;
   letter-spacing: 2px;
@@ -331,16 +417,17 @@ body.en-course #lines {
   visibility: visible;
 }
 
-/* La vitesse (en bas à droite au clavier ; entre les commandes sur téléphone, tactile.css) et les effets en cours. */
+/* La vitesse : une petite plaque en bas au centre, entre les commandes (aux bords) ; les effets en cours (revêtement, turbo) sous la pause, à gauche. */
 #speed {
-  right: 16px;
-  bottom: 16px;
-  padding: 2px 12px 0;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  padding: 0 8px;
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-32);
-  line-height: 1.1;
+  font-size: var(--dj-taille-16);
+  line-height: 1.4;
 }
 #speed[data-level="1"] {
   color: var(--dj-ambre);
@@ -353,12 +440,13 @@ body.en-course #lines {
   color: var(--track-asphalte);
 }
 #fx {
-  left: 16px;
-  bottom: 52px;
+  left: 10px;
+  top: 58px;
+  padding: 0 8px;
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-21);
+  font-size: var(--dj-taille-16);
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--dj-ambre);
@@ -391,7 +479,7 @@ body.watch #helpchip {
 }
 #tuned {
   left: 50%;
-  top: 48px;
+  top: 80px;
   transform: translateX(-50%);
   font-size: var(--dj-taille-12);
   color: var(--dj-ambre);
@@ -425,6 +513,9 @@ body.watch #helpchip {
 /* Le chrono ne tourne pas à l'accueil ni derrière un écran : les plaques de course se retirent. */
 body.home #menu,
 body.home #hud-centre,
+body.home #hud-droite,
+body.home #intro,
+body.home #aide,
 body.home .hud,
 body.home #helpchip,
 body.home #board,
@@ -435,6 +526,9 @@ body.home #flash {
 /* En pause, le voile à rayures couvre la scène : les plaques de course s'effacent (maquette track-pause.html) plutôt que d'apparaître hachées. */
 body.paused #menu,
 body.paused #hud-centre,
+body.paused #hud-droite,
+body.paused #intro,
+body.paused #aide,
 body.paused .hud,
 body.paused #helpchip,
 body.paused #board {
@@ -444,73 +538,22 @@ body.no-splits #splits {
   display: none;
 }
 
-/* Téléphone en paysage : peu de hauteur, les plaques se resserrent (maquette track-hud-paysage.html). */
-@media (max-height: 520px) {
-  #menu {
-    left: 14px;
-    top: 12px;
-  }
+/* Portrait (le jeu se joue en paysage : le téléphone qu'on tourne, ou « Jouer quand même ») : les trois boutons du haut prennent la première ligne, la bande passe dessous. */
+@media (orientation: portrait) and (max-width: 700px) {
   #hud-centre {
-    top: 10px;
-    gap: 4px;
+    top: 58px;
   }
-  .plaque--chrono {
-    padding: 3px 20px 1px 14px;
-    font-size: var(--dj-taille-32);
+  #intro,
+  #aide,
+  #banner.small,
+  #freeze {
+    top: 96px;
   }
-  .plaque--pc .pc {
-    padding: 1px 9px;
-    font-size: var(--dj-taille-16);
-  }
-  .plaque--pc .ecart {
-    padding: 1px 10px;
-    font-size: var(--dj-taille-22);
-  }
-  #medals {
-    right: 14px;
-    top: 12px;
+  #fx {
+    top: 96px;
   }
   #banner {
-    top: 34%;
-    font-size: var(--dj-taille-38);
-  }
-  #banner.small {
-    font-size: var(--dj-taille-21);
-  }
-  #speed {
-    font-size: var(--dj-taille-24);
-  }
-}
-/* Téléphone en portrait : l'objectif (en haut à droite, ~ 90 px) partage la première ligne avec le chrono, qui se resserre ; dessous (point de contrôle, « vs », titre)
-   la colonne du centre a toute la largeur, l'objectif ayant fini sa hauteur (la police large de la CI élargit les plaques). */
-@media (max-width: 480px) and (orientation: portrait) {
-  #hud-centre {
-    gap: 8px;
-  }
-  #medals {
-    top: 12px;
-  }
-  .plaque--chrono {
-    min-height: 42px; /* la hauteur de l'objectif : la plaque du point de contrôle commence dessous, à toute taille de chrono */
-  }
-  /* Le Salon : son compte à rebours (« Suivant dans », temps, joueurs) est plus large et plus haut que l'objectif ; le titre passe dessous. */
-  body.salon #medals .salon-compte {
-    max-width: 68px;
-  }
-  body.salon #meta {
-    margin-top: 48px;
-  }
-}
-@media (max-width: 420px) and (orientation: portrait) {
-  .plaque--chrono {
-    padding-left: 10px;
-    font-size: var(--dj-taille-32);
-  }
-}
-@media (max-width: 380px) and (orientation: portrait) {
-  .plaque--chrono {
-    padding: 3px 14px 1px 8px;
-    font-size: var(--dj-taille-24);
+    top: 30%;
   }
 }
 

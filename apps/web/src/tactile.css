@@ -1,11 +1,10 @@
-/* DailyTrack (lot I4) — les commandes tactiles de la course (maquettes track-hud.html et track-hud-paysage.html) : même disposition et même comportement qu'au lot 10
-   (les zones actives et la place des boutons dessinés viennent de touch.ts, inchangés) ; seul l'habillage change — plaques asphalte (bordure encre de 3 px, ombre nette),
-   « FREIN » en Barlow Condensed italique, « GAZ » en livrée, état actif en livrée. Tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`).
-   Place prise en bas de l'écran : les boutons dessinés de touch.ts occupent de (H − 112 − h) à (H − 112), h = 72 à 130 px ; la barre d'actions #tbar (44 px)
-   de 8 à 52 px du bas ; la vitesse et les effets (#speed, #fx) de 60 à ≈ 96 px du bas. Valeurs : jetons de @cdj/ui seulement. */
+/* DailyTrack (lot I4, retouche 2 — charte rév. 7, maquette track-hud-paysage.html) — les commandes tactiles de la course : ← et → en bas à gauche, FREIN et GAZ en bas à
+   droite, **aux bords** de l'écran et jamais devant la voiture ; plaques asphalte (bordure encre de 2 px, ombre nette de 2 px), « FREIN » en Barlow Condensed italique,
+   « GAZ » en livrée, état actif en livrée. Plus de barre du bas ni d'aide sur la scène (le centre reste libre) : point de contrôle et recommencer sont des plaques du HUD,
+   caméra, graphismes et plein écran sont dans la pause. La place et la taille de chaque bouton viennent de `buttonRects` (touch.ts, une seule définition avec les zones de
+   toucher). Tout est caché hors `body.touch` (appareil tactile, ou `?touch=1`). Valeurs : jetons de @cdj/ui seulement. */
 
 #touch,
-#tbar,
 #rotate {
   display: none;
 }
@@ -18,59 +17,12 @@ body.touch #touch {
   -webkit-user-select: none;
   user-select: none;
 }
-/* Barre d'actions compacte et centrée (entre les pouces : de ≈ 36 % à 64 % de la largeur sur un écran de 844 px) : un bouton attire les appuis voisins (le navigateur
-   « corrige » le toucher vers lui), donc elle ne touche ni la frontière ← | → (25 %) ni frein | gaz (75 %). */
-body.touch #tbar {
-  display: flex;
-  position: fixed;
-  left: 50%;
-  bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  transform: translateX(-50%);
-  gap: 2px;
-  pointer-events: none;
-}
-body.touch #tbar button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--dj-cible);
-  height: var(--dj-cible);
-  padding: 0;
-  background: var(--track-asphalte);
-  color: var(--track-texte);
-  border: var(--dj-trait-fort) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  box-shadow: 2px 2px 0 var(--dj-encre);
-  cursor: pointer;
-  touch-action: manipulation;
-  pointer-events: auto;
-}
-body.touch #tbar button:active {
-  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
-  box-shadow: none;
-}
-body.touch #tbar button[hidden] {
-  display: none;
-}
 body.touch.finished #touch,
-body.touch.finished #tbar,
-body.touch.home #touch,
-body.touch.home #tbar {
+body.touch.home #touch {
   display: none;
 }
 body.touch #info {
   display: none;
-}
-/* La vitesse entre les commandes, centrée au-dessus de la barre ; les effets en cours à sa gauche. */
-body.touch #speed {
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
-  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
-}
-body.touch #fx {
-  left: 12px;
-  bottom: calc(60px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Aides à l'écran : le toucher passe au travers (tout est géré par #touch). */
@@ -98,8 +50,7 @@ body.touch #fx {
   background: var(--track-livree);
   border: var(--dj-trait-fort) solid var(--dj-encre);
 }
-/* Les boutons dessinés suivent EXACTEMENT les zones tactiles (voir `zoneAt`, touch.ts), en parts de la largeur : ◀ 0–25 %, ▶ 25–50 %, frein 50–100 % (ou 50–75 % avec le
-   bouton gaz), gaz 75–100 %. Placés et dimensionnés par `buttonRects` (touch.ts) ; la zone active, elle, couvre tout l'écran. */
+/* Les boutons dessinés sont placés et dimensionnés par `buttonRects` (touch.ts) ; leurs zones actives (`zoneSpans`) les épousent, de bord à bord et sur toute la hauteur. */
 #touch .tbtn {
   display: flex;
   align-items: center;
@@ -107,13 +58,13 @@ body.touch #fx {
   box-sizing: border-box;
   background: var(--track-asphalte);
   color: var(--track-texte);
-  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
   border-radius: var(--dj-rayon-bouton);
-  box-shadow: 3px 3px 0 var(--dj-encre);
+  box-shadow: 2px 2px 0 var(--dj-encre);
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-24);
+  font-size: var(--dj-taille-16);
   letter-spacing: 1px;
   text-transform: uppercase;
 }
@@ -123,7 +74,8 @@ body.touch #fx {
 #touch .pedal-gas {
   background: var(--track-livree);
   color: var(--track-asphalte);
-  box-shadow: 3px 3px 0 var(--track-livree-ombre);
+  box-shadow: 2px 2px 0 var(--track-livree-ombre);
+  font-size: var(--dj-taille-22);
 }
 /* Appuyé : fond de livrée (le gaz, déjà de livrée, s'éclaircit). */
 #touch .tbtn.on {
@@ -135,23 +87,6 @@ body.touch #fx {
 #touch .pedal-gas.on {
   background: var(--track-livree-texte);
   box-shadow: 1px 1px 0 var(--track-livree-ombre);
-}
-/* L'aide du premier toucher : une plaque nette. */
-#touch .hint {
-  left: 50%;
-  top: 64%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: calc(100vw - 32px);
-  padding: 4px 10px;
-  background: var(--track-asphalte);
-  color: var(--track-texte);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  box-shadow: 3px 3px 0 var(--dj-encre);
-  text-align: center;
-  font-size: var(--dj-taille-13);
-  font-weight: 700;
 }
 /* Diagnostic `?zones=1` : zones actives et un point par doigt (outil de test). */
 #touch .zones {

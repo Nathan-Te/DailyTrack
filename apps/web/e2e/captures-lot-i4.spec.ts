@@ -165,7 +165,7 @@ for (const [vue, langue] of [[VUES[0], LANGUES[0]], [VUES[1], LANGUES[1]], [VUES
   test(`HUD en course sur chaque thème — ${vue.slug} ${langue.slug}`, async ({ browser }) => {
     expect(JOURS_PAR_THEME.size).toBe(THEME_NAMES.length);
     for (const [theme, jour] of JOURS_PAR_THEME) {
-      if (process.env.CAPTURES_THEMES_COMPLETS !== "1" && !((vue.slug === "portrait" && langue.slug === "fr") || (vue.slug === "paysage" && langue.slug === "en"))) continue;
+      if (vue.slug !== "paysage") continue; // charte rév. 7 : le jeu se joue en paysage (le portrait n'a plus de capture de HUD)
       const context = await newClockedContext(browser, { viewport: { width: vue.width, height: vue.height }, locale: langue.locale, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
       await context.addInitScript(() => {
         localStorage.setItem("cdj:name", "Nathan");
@@ -182,6 +182,30 @@ for (const [vue, langue] of [[VUES[0], LANGUES[0]], [VUES[1], LANGUES[1]], [VUES
       await page.screenshot({ path: join(OUT, `lot-I4-hud-${theme}-${vue.slug}-${langue.slug}.png`) });
       await context.close();
     }
+  });
+}
+
+// Le HUD compact au départ (titre du circuit et aide d'une ligne sous la bande), puis en course, puis avec le classement ouvert par la pastille du rang (paysage, charte rév. 7).
+for (const langue of LANGUES) {
+  test(`HUD au départ, en course et classement ouvert — paysage ${langue.slug}`, async ({ browser }) => {
+    const vue = VUES[1];
+    const context = await nouveauContexte(browser, vue, langue);
+    const page = await context.newPage();
+    await ouvrir(page, "&home=0&debug");
+    await page.evaluate(() => window.__cdj.manual(true));
+    await page.evaluate(() => window.__cdj.advance(3 * 120 + 40));
+    await expect(page.locator("#aide")).toBeVisible();
+    await page.waitForTimeout(500);
+    await photo(page, "hud-depart", vue, langue);
+    await page.evaluate(() => window.__cdj.advance(7 * 120));
+    await expect(page.locator("#rang")).toBeVisible({ timeout: 20_000 });
+    await page.waitForTimeout(300);
+    await photo(page, "hud-course", vue, langue);
+    await page.locator("#rang").click();
+    await expect(page.locator("#board")).toBeVisible();
+    await page.waitForTimeout(300);
+    await photo(page, "hud-classement", vue, langue);
+    await context.close();
   });
 }
 
@@ -220,4 +244,19 @@ for (const vue of VUES) {
       await context.close();
     });
   }
+}
+
+// « Comment jouer » dans le jeu (retouche du lot I4, charte rév. 7) : paysage 844 × 390, l'étiquette asphalte posée sur la scène sous le voile à rayures, à la première
+// visite (aucun souvenir `cdj:howto`) ; fichier `lot-I4-comment-jouer-paysage-<fr|en>.png`.
+for (const langue of LANGUES) {
+  test(`Comment jouer — paysage ${langue.slug}`, async ({ browser }) => {
+    const context = await newClockedContext(browser, { viewport: { width: 844, height: 390 }, locale: langue.locale, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+    await simulerApi(context, pilote.finishMs);
+    const page = await context.newPage();
+    await ouvrir(page, "&home=0");
+    await expect(page.locator("#howto")).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(800);
+    await page.screenshot({ path: join(OUT, `lot-I4-comment-jouer-paysage-${langue.slug}.png`) });
+    await context.close();
+  });
 }

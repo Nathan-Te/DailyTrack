@@ -1,19 +1,18 @@
 /* DailyTrack (lot I4) — le Salon (salle d'attente, finale, résultats), le podium et la barre « Revoir le meilleur tour ». Primitives communes : interface.css ; plaques de course : hud.css. Valeurs : jetons de @cdj/ui seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
 
-/* --- La plaque du compte à rebours (#medals dans le Salon) : « Suivant dans », le temps restant en mono, les joueurs présents ------------------------------ */
-#medals .salon-compte {
-  max-width: 96px;
-  text-align: right;
-  white-space: normal;
-  line-height: 1.15;
+/* --- La plaque du compte à rebours (#medals dans le Salon) : le temps restant en mono, compact (charte rév. 7) ; « Suivant dans » et les joueurs présents restent lisibles par les lecteurs d'écran
+   (le nombre de joueurs est aussi dans le titre du classement). ------------------------------------------------------------------------------------------------------------------------------ */
+#medals .salon-compte,
+#medals .salon-joueurs {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 #medals .salon-temps {
-  font-size: var(--dj-taille-16);
-}
-#medals .salon-joueurs {
-  font-size: var(--dj-taille-12);
-  color: var(--track-texte-doux);
-  white-space: nowrap;
+  font-size: var(--dj-taille-13);
 }
 /* La finale : la plaque passe en livrée (le signe est écrit : « Dernière chance »). */
 #medals.last {
@@ -25,45 +24,38 @@
   color: var(--track-asphalte);
 }
 
-/* --- La finale : le grand compte à rebours 15 → 0, au centre (plaque asphalte nette, jamais d'ombre floue ni de transparence) ------------------------------ */
+/* --- La finale : le compte à rebours 15 → 0, compact, sous la bande (plaque asphalte nette) : le centre de l'écran reste libre (charte rév. 7) ------------------------------ */
 #finale {
   position: fixed;
   left: 50%;
-  top: 42%;
+  top: 54px;
   z-index: 4;
-  transform: translate(-50%, -50%);
+  transform: translateX(-50%);
   min-width: 2.2em;
-  padding: 0 24px;
+  padding: 0 14px;
   background: var(--track-asphalte);
   color: var(--dj-ambre);
-  border: var(--dj-trait-fort) solid var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
   border-radius: var(--dj-rayon-bouton);
-  box-shadow: 5px 5px 0 var(--dj-encre);
+  box-shadow: 2px 2px 0 var(--dj-encre);
   text-align: center;
   font-family: var(--track-police);
   font-style: italic;
   font-weight: 800;
-  font-size: var(--dj-taille-72);
-  line-height: 1.1;
+  font-size: var(--dj-taille-24);
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
 body.podium #finale {
   display: none;
 }
-@media (max-height: 520px) {
-  #finale {
-    top: 48%;
-    font-size: var(--dj-taille-64);
-  }
-}
 
 /* Dernière chance : plus aucun départ. Les boutons « Recommencer » et « Rejouer » prennent l'état désactivé du socle (aplat neutre lisible, bordure
    pointillée, sans ombre — jamais de transparence ni de gris filtré). */
 .dialogue .dj-bouton[aria-disabled="true"],
 #finish .dj-bouton[aria-disabled="true"],
-body.start-locked #touch .restart,
-body.start-locked #tbar .restart {
+body.start-locked #btn-restart {
   background: var(--dj-creme-2);
   color: var(--dj-encre-douce);
   border: var(--dj-trait) dashed var(--dj-encre-douce);
@@ -74,7 +66,7 @@ body.start-locked #tbar .restart {
 
 /* --- Le classement de la session (#board dans le Salon) -------------------------------------------------------------------------------------------------- */
 #board.salon {
-  width: min(300px, 62vw);
+  width: min(240px, 28vw); /* hors de la zone centrale de la course (30–70 % de la largeur) */
 }
 
 /* --- L'arrivée d'une course du Salon et de la rediffusion (#finish) ------------------------------------------------------------------------------------ */

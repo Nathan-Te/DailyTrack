@@ -16,19 +16,26 @@
     <noscript><p class="sans-js" data-t="page.sansJs"></p></noscript>
     <div id="touch"></div>
 
-    <!-- Surimpressions de course, variante A « Plaques en haut » (charte § 9, maquettes track-hud*.html) : pause à gauche, chronomètre au centre,
-         point de contrôle et écart juste dessous, objectif de médaille à droite ; le bas est laissé aux commandes tactiles. Chaque information sur sa
-         plaque asphalte nette. Un identifiant, un élément : les tests et les outils les visent. -->
+    <!-- Surimpressions de course compactes (charte rév. 7, § 9 ; maquette track-hud-paysage.html) : le jeu se lit d'abord. Une seule bande au centre en haut
+         (chrono · point de contrôle · écart, collés en une plaque de 30 px) ; en haut à gauche pause, dernier point de contrôle et recommencer ; en haut à droite
+         l'objectif de médaille (pastille et seuil) et le rang du jour en pastille qui ouvre le classement ; le titre du circuit et le fantôme seulement au départ
+         (`#intro`), une ligne d'aide sous la bande (`#aide`). Le centre de l'écran reste libre. Un identifiant, un élément : les tests et les outils les visent. -->
     <div id="menu" role="toolbar" data-t-aria-label="course.menu.aria">
       <button id="btn-pause" class="plaque plaque--bouton" type="button" data-t-aria-label="course.pause.aria"><span class="pause-barres" aria-hidden="true"><span></span><span></span></span></button>
     </div>
     <div id="hud-centre">
       <div id="timer" class="hud plaque plaque--chrono"><span id="timer-texte" class="plaque__chiffres"></span><span class="chrono__livree" aria-hidden="true"></span></div>
       <div id="splits" class="hud plaque plaque--pc"></div>
-      <div id="ghostinfo" class="hud plaque plaque--petite"></div>
-      <div id="meta" class="hud plaque plaque--petite"></div>
     </div>
-    <div id="medals" class="hud plaque plaque--objectif"></div>
+    <div id="intro">
+      <div id="meta" class="hud plaque plaque--petite"></div>
+      <div id="ghostinfo" class="hud plaque plaque--petite"></div>
+    </div>
+    <div id="aide" class="hud plaque plaque--petite" role="status"></div>
+    <div id="hud-droite">
+      <div id="medals" class="hud plaque plaque--objectif"></div>
+      <button id="rang" class="plaque plaque--rang" type="button" aria-expanded="false" hidden></button>
+    </div>
     <div id="board" hidden></div>
     <div id="info" class="hud plaque plaque--petite"></div>
     <div id="banner" class="hud plaque plaque--annonce"></div>
@@ -39,7 +46,6 @@
     <div id="flash"></div>
     <div id="fall"></div>
     <div id="watchbar" hidden></div>
-    <div id="tbar"></div>
     <div id="rotate"></div>
     <button id="helpchip" class="plaque plaque--petite" type="button" data-t="course.aide.puce" data-t-title="course.aide.titre"></button>
     <div id="finale" hidden aria-live="off"></div>
@@ -63,6 +69,8 @@
             <button id="pause-respawn" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.pointDeControle"></button>
             <button id="pause-ghost" class="dj-bouton dj-bouton--secondaire" type="button"></button>
             <button id="pause-sound" class="dj-bouton dj-bouton--secondaire" type="button"></button>
+            <button id="pause-camera" class="dj-bouton dj-bouton--secondaire" type="button"></button>
+            <button id="pause-fullscreen" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.pleinEcran" hidden></button>
             <button id="pause-settings" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.reglages"></button>
             <button id="pause-howto" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.aide"></button>
             <button id="pause-archive" class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.archives"></button>

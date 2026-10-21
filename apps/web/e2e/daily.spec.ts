@@ -52,7 +52,7 @@ test.describe("jeu (rendu 3D)", () => {
       else await expect(page.locator("#meta")).not.toContainText("n°");
       await expect(page.locator("#meta")).toContainText(dayShort(date));
       // Lot I4 : l'objectif de médaille (plaque en haut à droite) : sans record, la première médaille à décrocher — le bronze — et son seuil.
-      await expect(page.locator("#medals")).toContainText("Bronze");
+      await expect(page.locator("#medals")).toHaveAttribute("aria-label", /Bronze/); // charte rév. 7 : pastille et seuil seulement, le nom est dans le libellé
       await expect(page.locator("#medals")).toContainText(/\d,\d{3}\ss/);
 
       // Pas à pas (lot 29b) : « la voiture roule » se mesure en 300 pas (2,5 s de simulation), pas en 2,5 s de temps réel — en rendu logiciel

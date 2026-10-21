@@ -31,3 +31,22 @@ export function expectNoOverlap(list: Box[], viewport: { width: number; height: 
     }
   }
 }
+
+/**
+ * La zone centrale de la course (charte rév. 7 : « le centre de l'écran reste libre ») : un rectangle autour de la voiture et de la route devant elle —
+ * de 30 % à 70 % de la largeur, de 25 % à 88 % de la hauteur. La bande du haut (30 px) et les plaques sous elle, les boutons des bords et la vitesse
+ * (tout en bas) restent en dehors ; aucune plaque permanente, aucun panneau ne doit y entrer pendant la partie.
+ */
+export function zoneCentrale(viewport: { width: number; height: number }): Box {
+  return { name: "zone centrale", x: viewport.width * 0.3, y: viewport.height * 0.25, w: viewport.width * 0.4, h: viewport.height * 0.63 };
+}
+
+/** Aucun des éléments ne touche la zone centrale. */
+export function expectCentreLibre(list: Box[], viewport: { width: number; height: number }) {
+  const z = zoneCentrale(viewport);
+  for (const b of list) {
+    const overlapX = Math.min(b.x + b.w, z.x + z.w) - Math.max(b.x, z.x);
+    const overlapY = Math.min(b.y + b.h, z.y + z.h) - Math.max(b.y, z.y);
+    expect(overlapX > 1 && overlapY > 1, `${b.name} entre dans la zone centrale de la course (${JSON.stringify(b)} / ${JSON.stringify(z)})`).toBe(false);
+  }
+}

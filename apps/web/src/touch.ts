@@ -5,12 +5,12 @@ import { gameStorage } from "./storage";
 // que le clavier et la manette ; ils passent ensuite par `makeInput` (commandes entières) : rien ne change dans
 // `sim`, les rediffusions sont identiques.
 //
-// Disposition (paysage) :
-// - moitié gauche : direction. « Glisser » : glissement horizontal relatif au point de pose (analogique, zone
-//   morte, sensibilité réglable) ; « Boutons » : quart gauche = ←, deuxième quart = →.
-// - moitié droite : frein / marche arrière ; avec l'accélérateur manuel, elle se partage en frein (à gauche) et
-//   gaz (à droite). Depuis la retouche 18b, deux pédales par défaut (gaz et frein) ; l'accélérateur automatique, qui se coupe
-//   tant qu'on freine, reste un réglage.
+// Disposition (paysage, lot I4 retouche 2 — charte rév. 7 : « commandes aux bords, boutons par défaut, jamais devant le véhicule ») :
+// - mode « Boutons » (défaut) : ← et → en bas à gauche, FREIN et GAZ en bas à droite ; chaque bouton a sa zone de toucher, qui épouse le
+//   bouton dessiné (voir `touchLayout`) ; le milieu de l'écran n'a aucune zone : un toucher y est ignoré, le centre reste libre.
+// - mode « Glisser » : moitié gauche = direction au glissement relatif au point de pose (analogique, zone morte, sensibilité réglable),
+//   comme au lot 10 ; à droite, frein et gaz sont les mêmes boutons qu'en mode boutons.
+// - accélérateur automatique : un seul grand FREIN en bas à droite ; l'accélérateur se coupe tant qu'on freine.
 // - plusieurs doigts à la fois : on dirige et on freine en même temps.
 
 export type SteerMode = "drag" | "buttons";
@@ -30,8 +30,14 @@ export interface TouchSettings {
   buttonSize: ButtonSize;
 }
 
+/**
+ * Défaut : les **boutons** (charte rév. 7), plus le joystick. Un réglage déjà enregistré (`cdj:touch`) garde ce qu'il a enregistré : `parseTouchSettings`
+ * ne force rien. Limite assumée : l'enregistrement écrit tous les réglages d'un coup, il ne dit donc pas si `steerMode` a été choisi ou hérité de
+ * l'ancien défaut ; un joueur qui a réglé autre chose (la taille, la vibration) avec l'ancien défaut garde le glissement et peut repasser en boutons
+ * dans Réglages › Commandes.
+ */
 export const DEFAULT_TOUCH_SETTINGS: Readonly<TouchSettings> = Object.freeze({
-  steerMode: "drag",
+  steerMode: "buttons",
   sensitivity: 1,
   deadzone: 0.08,
   autoThrottle: false,
@@ -119,37 +125,38 @@ export interface ZoneSpan {
   x1: number;
 }
 
-/**
- * Découpage de l'écran en zones actives, **sans trou** : les tranches se touchent et couvrent [0, 1] de bord à bord
- * (le visuel est plus petit, jamais la zone). Moitié gauche : direction (glissement, ou ← | →) ; moitié droite :
- * frein (ou frein | gaz avec l'accélérateur manuel).
- */
-export function zoneSpans(s: Pick<TouchSettings, "steerMode" | "autoThrottle">): ZoneSpan[] {
-  const out: ZoneSpan[] = s.steerMode === "drag" ? [{ zone: "steer", x0: 0, x1: 0.5 }] : [{ zone: "left", x0: 0, x1: 0.25 }, { zone: "right", x0: 0.25, x1: 0.5 }];
-  if (s.autoThrottle) out.push({ zone: "brake", x0: 0.5, x1: 1 });
-  else out.push({ zone: "brake", x0: 0.5, x1: 0.75 }, { zone: "gas", x0: 0.75, x1: 1 });
-  return out;
-}
-
-/** Zone touchée par un doigt posé à l'abscisse `x` d'un écran de largeur `width` (hors de l'écran : la zone du bord). */
-export function zoneAt(x: number, width: number, s: Pick<TouchSettings, "steerMode" | "autoThrottle">): Zone {
-  const f = width > 0 ? x / width : 0;
-  const spans = zoneSpans(s);
-  for (const sp of spans) if (f < sp.x1) return sp.zone;
-  return spans[spans.length - 1]!.zone;
-}
-
-/** Marge minimale entre un bouton dessiné et le bord de l'écran : bandes de gestes système (retour Android, barre iOS). */
-export const GESTURE_MARGIN_PX = 24;
-
-const SIZE_FACTOR: Record<ButtonSize, number> = { small: 0.72, medium: 1, large: 1.3 };
-
 export interface Insets {
   left: number;
   right: number;
   top: number;
   bottom: number;
 }
+
+/** L'écran de jeu : sa taille (pixels CSS) et ses zones sûres (encoche, barre d'accueil). Les boutons et les zones en dépendent. */
+export interface Geometry {
+  width: number;
+  height: number;
+  insets: Insets;
+}
+
+const NO_INSETS: Insets = { left: 0, right: 0, top: 0, bottom: 0 };
+/** Un téléphone en paysage, faute de mieux (tests, avant la première mesure de l'écran). */
+export const DEFAULT_GEOMETRY: Readonly<Geometry> = Object.freeze({ width: 844, height: 390, insets: NO_INSETS });
+
+/** Marge entre un bouton dessiné et le bord de l'écran (ou la zone sûre) : maquette `track-hud-paysage.html` (10 px), 12 px pour les gestes du bord. */
+export const EDGE_MARGIN_PX = 12;
+/** Écart entre deux boutons voisins. */
+export const BUTTON_GAP_PX = 8;
+/** Un bouton fait au moins 44 px de côté, quelle que soit la taille choisie (charte § 10). */
+export const MIN_BUTTON_PX = 44;
+/** Un doigt déborde un peu de son bouton : la zone active dépasse le dessin de cette marge, du côté du centre (jamais dans le tiers central de l'écran). */
+export const ZONE_SLACK_PX = 16;
+/** Le centre de l'écran, libre de tout bouton : les groupes de boutons tiennent hors de [30 %, 70 %] de la largeur. */
+export const CENTER_FREE = { x0: 0.3, x1: 0.7 } as const;
+
+const SIZE_FACTOR: Record<ButtonSize, number> = { small: 0.72, medium: 1, large: 1.3 };
+/** Tailles de la maquette (taille « normale ») : flèches 72 × 72, FREIN 64 × 56, GAZ 84 × 84. */
+const BASE = { arrow: 72, brakeW: 64, brakeH: 56, gas: 84 } as const;
 
 export interface ButtonRect {
   zone: Zone;
@@ -159,36 +166,99 @@ export interface ButtonRect {
   h: number;
 }
 
+type Layout = Pick<TouchSettings, "steerMode" | "autoThrottle" | "buttonSize">;
+
 /**
- * Boutons dessinés (en pixels) : compacts, centrés dans leur zone, écartés des bords par les zones sûres (encoche,
- * barre d'accueil) et par les bandes de gestes système. Ne sert qu'à l'affichage : le toucher se décide par
- * `zoneSpans`, sur tout l'écran.
+ * Échelle des boutons : celle de la taille choisie, réduite si besoin pour que chaque groupe tienne entre son bord (marge et zone sûre
+ * comprises) et le centre libre de l'écran. Les trois tailles respectent donc les bords et le centre, sur tous les écrans.
  */
-export function buttonRects(width: number, height: number, s: Pick<TouchSettings, "steerMode" | "autoThrottle" | "buttonSize">, insets: Insets = { left: 0, right: 0, top: 0, bottom: 0 }): ButtonRect[] {
-  const k = SIZE_FACTOR[s.buttonSize];
-  const bh = Math.round(Math.min(130, Math.max(72, height * 0.24)) * k);
-  const left = Math.max(insets.left, 0) + GESTURE_MARGIN_PX;
-  const right = width - Math.max(insets.right, 0) - GESTURE_MARGIN_PX;
-  const bottom = height - Math.max(insets.bottom, 0) - Math.max(GESTURE_MARGIN_PX, 112);
+function scaleFor(g: Geometry, s: Layout): number {
+  const left = Math.max(g.insets.left, 0) + EDGE_MARGIN_PX;
+  const right = Math.max(g.insets.right, 0) + EDGE_MARGIN_PX;
+  // (2 px de réserve : les tailles sont arrondies au pixel, chacune vers le haut au plus d'un demi-pixel)
+  let k = SIZE_FACTOR[s.buttonSize];
+  if (s.steerMode === "buttons") k = Math.min(k, (CENTER_FREE.x0 * g.width - left - 2) / (2 * BASE.arrow + BUTTON_GAP_PX));
+  k = Math.min(k, (CENTER_FREE.x0 * g.width - right - 2) / (BASE.brakeW + BASE.gas + BUTTON_GAP_PX));
+  return Math.max(k, 0.1);
+}
+
+/**
+ * Boutons dessinés (pixels CSS), **une seule définition** pour le dessin et pour les zones (`zoneSpans`) : ← et → en bas à gauche, FREIN et GAZ en
+ * bas à droite (un seul grand FREIN avec l'accélérateur automatique), collés aux bords (marge `EDGE_MARGIN_PX`, zones sûres comprises), jamais au
+ * centre. Mode glisser : pas de flèches (le joystick apparaît sous le doigt), les pédales sont les mêmes.
+ */
+export function buttonRects(width: number, height: number, s: Layout, insets: Insets = NO_INSETS): ButtonRect[] {
+  const g: Geometry = { width, height, insets };
+  const k = scaleFor(g, s);
+  const px = (base: number) => Math.max(MIN_BUTTON_PX, Math.round(base * k));
+  const bottom = height - Math.max(insets.bottom, 0) - EDGE_MARGIN_PX;
+  const right = width - Math.max(insets.right, 0) - EDGE_MARGIN_PX;
   const out: ButtonRect[] = [];
-  for (const sp of zoneSpans(s)) {
-    if (sp.zone === "steer") continue; // le glissement n'a pas de bouton : la bague apparaît sous le doigt
-    const zx0 = Math.max(sp.x0 * width, left);
-    const zx1 = Math.min(sp.x1 * width, right);
-    const gap = Math.min(12, (zx1 - zx0) * 0.05);
-    const bw = Math.min((zx1 - zx0 - 2 * gap) * Math.min(1, 0.7 * k + 0.1), 260 * k);
-    const cx = (zx0 + zx1) / 2;
-    out.push({ zone: sp.zone, x: Math.round(cx - bw / 2), y: Math.round(bottom - bh), w: Math.round(bw), h: bh });
+  if (s.steerMode === "buttons") {
+    const a = px(BASE.arrow);
+    const x0 = Math.max(insets.left, 0) + EDGE_MARGIN_PX;
+    out.push({ zone: "left", x: x0, y: bottom - a, w: a, h: a }, { zone: "right", x: x0 + a + BUTTON_GAP_PX, y: bottom - a, w: a, h: a });
+  }
+  const gas = px(BASE.gas);
+  const bw = px(BASE.brakeW);
+  const bh = px(BASE.brakeH);
+  if (s.autoThrottle) {
+    const w = bw + BUTTON_GAP_PX + gas; // un seul grand frein : la place des deux pédales
+    out.push({ zone: "brake", x: right - w, y: bottom - gas, w, h: gas });
+  } else {
+    out.push({ zone: "gas", x: right - gas, y: bottom - gas, w: gas, h: gas }, { zone: "brake", x: right - gas - BUTTON_GAP_PX - bw, y: bottom - bh, w: bw, h: bh });
   }
   return out;
 }
 
-/** Un doigt qui reste dans sa famille de boutons (← → à gauche, frein / gaz à droite) peut glisser de l'un à l'autre, même hors de l'écran ou hors de la moitié. */
-function regroup(zone: Zone, x: number, width: number, s: Pick<TouchSettings, "autoThrottle">): Zone {
+/**
+ * Découpage de l'écran en zones actives. Chaque zone **épouse son bouton dessiné** (toucher un bouton = sa commande) et va **de bord à bord** sur toute la
+ * hauteur : ← de 0 à la frontière entre les deux flèches, → de cette frontière un peu au-delà du bord droit de la flèche ; frein et gaz de même, jusqu'au
+ * bord droit de l'écran. Sans trou à l'intérieur d'un groupe ; **le milieu de l'écran n'a aucune zone** (un toucher y est ignoré : le centre reste
+ * libre). Mode glisser : la zone de direction est la moitié gauche, comme au lot 10 ; les pédales suivent les boutons.
+ */
+export function zoneSpans(s: Layout, g: Readonly<Geometry> = DEFAULT_GEOMETRY): ZoneSpan[] {
+  const w = g.width;
+  const rects = buttonRects(w, g.height, s, g.insets);
+  const rect = (z: Zone) => rects.find((r) => r.zone === z);
+  const out: ZoneSpan[] = [];
+  const left = rect("left");
+  const rightArrow = rect("right");
+  if (left && rightArrow) {
+    const border = (rightArrow.x - BUTTON_GAP_PX / 2) / w;
+    out.push({ zone: "left", x0: 0, x1: border }, { zone: "right", x0: border, x1: Math.min(CENTER_FREE.x0 + 0.02, (rightArrow.x + rightArrow.w + ZONE_SLACK_PX) / w) });
+  } else out.push({ zone: "steer", x0: 0, x1: 0.5 });
+  const brake = rect("brake")!;
+  const gas = rect("gas");
+  const brakeX0 = (brake.x - ZONE_SLACK_PX) / w;
+  if (gas) {
+    const border = (gas.x - BUTTON_GAP_PX / 2) / w;
+    out.push({ zone: "brake", x0: brakeX0, x1: border }, { zone: "gas", x0: border, x1: 1 });
+  } else out.push({ zone: "brake", x0: brakeX0, x1: 1 });
+  return out;
+}
+
+/** Zone touchée par un doigt posé à l'abscisse `x` (hors de l'écran : la zone du bord) ; `null` au milieu de l'écran : aucune zone, le toucher est ignoré. */
+export function zoneAt(x: number, width: number, s: Layout, g?: Readonly<Geometry>): Zone | null {
   const f = width > 0 ? x / width : 0;
-  if (zone === "left" || zone === "right") return f < 0.25 ? "left" : "right";
-  if (zone === "brake" || zone === "gas") return s.autoThrottle ? "brake" : f < 0.75 ? "brake" : "gas";
-  return zone;
+  const spans = zoneSpans(s, g ?? { width, height: Math.round((width * DEFAULT_GEOMETRY.height) / DEFAULT_GEOMETRY.width), insets: NO_INSETS });
+  if (f < 0) return spans[0]!.zone;
+  if (f >= 1) return spans[spans.length - 1]!.zone;
+  for (const sp of spans) if (f >= sp.x0 && f < sp.x1) return sp.zone;
+  return null;
+}
+
+/**
+ * Un doigt qui reste dans sa famille de boutons (← → à gauche, frein / gaz à droite) peut glisser de l'un à l'autre, même hors de l'écran ou hors de
+ * la zone : la frontière entre les deux boutons de la famille décide (le doigt ne change jamais de famille).
+ */
+function regroup(zone: Zone, x: number, g: Readonly<Geometry>, s: Layout): Zone {
+  const family: Zone[] = zone === "left" || zone === "right" ? ["left", "right"] : zone === "brake" || zone === "gas" ? ["brake", "gas"] : [];
+  if (family.length === 0) return zone;
+  const spans = zoneSpans(s, g).filter((sp) => family.includes(sp.zone));
+  if (spans.length < 2) return spans[0]?.zone ?? zone; // accélérateur automatique : un seul frein
+  const f = g.width > 0 ? x / g.width : 0;
+  return f < spans[0]!.x1 ? spans[0]!.zone : spans[1]!.zone;
 }
 
 interface Finger {
@@ -215,10 +285,14 @@ export class TouchPad {
   private readonly fingers = new Map<number, Finger>();
   /** Le premier toucher a eu lieu (sert à masquer l'aide). */
   touched = false;
-  /** Écran ou zone de jeu : largeur en pixels CSS. */
-  width = 800;
+  /** L'écran de jeu (taille et zones sûres) : les zones actives en dépendent ; `touchUi.ts` le met à jour à chaque mesure de l'écran. */
+  geometry: Geometry = { ...DEFAULT_GEOMETRY };
 
   constructor(public settings: TouchSettings = { ...DEFAULT_TOUCH_SETTINGS }) {}
+
+  setGeometry(width: number, height: number, insets: Insets = NO_INSETS): void {
+    this.geometry = { width, height, insets };
+  }
 
   get active(): boolean {
     return this.fingers.size > 0;
@@ -226,7 +300,8 @@ export class TouchPad {
 
   down(id: number, x: number, y: number): void {
     this.touched = true;
-    const zone = zoneAt(x, this.width, this.settings);
+    const zone = zoneAt(x, this.geometry.width, this.settings, this.geometry);
+    if (zone === null) return; // le milieu de l'écran n'a aucune zone : le toucher est ignoré, le centre reste libre
     // Un seul doigt dirige : un second doigt à gauche est ignoré.
     if (this.isSteering(zone) && [...this.fingers.values()].some((f) => this.isSteering(f.zone))) return;
     this.fingers.set(id, { zone, originX: x, originY: y, x, y });
@@ -244,7 +319,7 @@ export class TouchPad {
       if (dx > range) f.originX = x - range;
       else if (dx < -range) f.originX = x + range;
     } else {
-      f.zone = regroup(f.zone, x, this.width, this.settings);
+      f.zone = regroup(f.zone, x, this.geometry, this.settings);
     }
   }
 

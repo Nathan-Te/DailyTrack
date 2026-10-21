@@ -102,7 +102,7 @@ test("en anglais : le HUD, l'arrivée (médaille, rang, « Next game of the day 
   });
   const page = await ctx.newPage();
   await ouvrir(page, `/?debug&home=0&timescale=6&api=${encodeURIComponent(API)}`);
-  await expect(page.locator("#medals")).toContainText("Author"); // objectif : la médaille au-dessus de celle du record (ici un record à +0,8 s de l'auteur : or, donc l'auteur)
+  await expect(page.locator("#medals")).toHaveAttribute("aria-label", /Author/); // objectif : la médaille au-dessus de celle du record (ici un record à +0,8 s de l'auteur : or, donc l'auteur)
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
   await expect(page.locator("#splits .pc")).toContainText(/CP \d\/\d/, { timeout: 90_000 }); // « CP 1/3 » : point de contrôle
   await expect(page.locator("#splits .ecart")).toContainText(/^[+−]\d[.]\d{3}$/); // écart signé, virgule anglaise

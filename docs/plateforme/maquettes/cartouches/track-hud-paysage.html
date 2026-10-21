@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>Track — HUD A paysage</title>
+<title>Track — HUD compact paysage</title>
 <script src="./support.js"></script>
 </head>
 <body>
@@ -14,53 +14,59 @@ body{margin:0}
 button{font:inherit;cursor:pointer}
 </style>
 </helmet>
-<div style="width:844px;height:390px;position:relative;overflow:hidden;background:#F1C894;font-family:Archivo, sans-serif;color:#F4EFE6">
+<div style="width:844px;height:390px;position:relative;overflow:hidden;background:#141A33;font-family:Archivo, sans-serif;color:#F4EFE6">
 
   <svg aria-hidden="true" width="844" height="390" viewBox="0 0 844 390" style="position:absolute;inset:0">
-    <rect x="0" y="0" width="844" height="150" fill="#F1C894"/>
-    <path d="M0 150 L0 80 L60 60 L120 100 L200 50 L280 110 L400 150 Z" fill="#C8693A"/>
-    <path d="M844 150 L844 70 L780 50 L700 95 L620 60 L520 120 L440 150 Z" fill="#A84F2A"/>
-    <rect x="0" y="150" width="844" height="240" fill="#D9874E"/>
-    <path d="M405 150 L440 150 L760 390 L84 390 Z" fill="#5A524C"/>
-    <path d="M405 150 L411 150 L130 390 L84 390 Z" fill="#F4EFE6"/>
-    <path d="M434 150 L440 150 L760 390 L714 390 Z" fill="#E8552D"/>
-    <path d="M420 165 L424 165 L426 200 L418 200 Z M416 240 L428 240 L432 300 L412 300 Z" fill="#F4EFE6"/>
+    <rect width="844" height="390" fill="#141A33"/>
+    <path d="M0 160 L60 110 L130 150 L210 90 L300 150 L380 120 L460 160 L560 100 L660 150 L760 105 L844 140 L844 190 L0 190Z" fill="#1E2A5C"/>
+    <rect x="0" y="180" width="844" height="210" fill="#1A2350"/>
+    <path d="M400 180 L444 180 L780 390 L64 390 Z" fill="#2A3370"/>
+    <path d="M400 180 L405 180 L110 390 L64 390 Z" fill="#F4EFE6" opacity=".9"/>
+    <path d="M439 180 L444 180 L780 390 L734 390 Z" fill="#B3312A"/>
+    <path d="M420 195 L424 195 L426 225 L418 225 Z M416 260 L428 260 L432 320 L412 320 Z" fill="#8F9BD6"/>
+    <circle cx="520" cy="40" r="10" fill="#C9D3FF"/>
     <g transform="translate(372 250)">
-      <rect x="0" y="30" width="100" height="70" fill="#1E1B19"/>
-      <rect x="12" y="4" width="76" height="38" fill="#2A1E16"/>
-      <rect x="0" y="62" width="100" height="10" fill="#E8552D"/>
-      <rect x="-8" y="80" width="22" height="26" fill="#2A1E16"/>
-      <rect x="86" y="80" width="22" height="26" fill="#2A1E16"/>
+      <rect x="0" y="30" width="100" height="70" fill="#7A5230"/>
+      <rect x="12" y="4" width="76" height="38" fill="#1F2B5C"/>
+      <rect x="30" y="0" width="8" height="100" fill="#B9C4F0" opacity=".6"/><rect x="62" y="0" width="8" height="100" fill="#B9C4F0" opacity=".6"/>
+      <rect x="-8" y="80" width="22" height="26" fill="#1E1B19"/>
+      <rect x="86" y="80" width="22" height="26" fill="#1E1B19"/>
     </g>
   </svg>
 
-  <button aria-label="Pause" style="position:absolute;left:14px;top:12px;width:44px;height:44px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;display:flex;align-items:center;justify-content:center;gap:5px">
-    <span style="width:5px;height:16px;background:#F4EFE6"></span><span style="width:5px;height:16px;background:#F4EFE6"></span>
-  </button>
-
-  <div style="position:absolute;left:50%;top:10px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px">
-    <div style="position:relative;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;padding:3px 20px 1px 14px;overflow:hidden">
-      <span aria-hidden="true" style="position:absolute;right:-6px;top:0;bottom:0;width:18px;background:repeating-linear-gradient(115deg,#E8552D 0 4px,transparent 4px 7px)"></span>
-      <span style="font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:40px;line-height:1;font-variant-numeric:tabular-nums">0:24,318</span>
-    </div>
-    <div style="display:flex;border:2px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;overflow:hidden">
-      <span style="background:#F4EFE6;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:700;font-size:18px;padding:1px 9px">PC 3/5</span>
-      <span style="background:#E8552D;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:22px;line-height:1.1;padding:1px 10px;font-variant-numeric:tabular-nums">+0,412</span>
-    </div>
+  <div style="position:absolute;left:10px;top:8px;display:flex;gap:6px">
+    <button aria-label="Pause" style="width:44px;height:44px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;display:flex;align-items:center;justify-content:center;gap:4px">
+      <span style="width:4px;height:14px;background:#F4EFE6"></span><span style="width:4px;height:14px;background:#F4EFE6"></span>
+    </button>
+    <button aria-label="Dernier point de contrôle" style="width:44px;height:44px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;display:flex;align-items:center;justify-content:center">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M4 17V2" stroke="#F4EFE6" stroke-width="2"/><path d="M5 3h9l-2 3 2 3H5z" fill="none" stroke="#F4EFE6" stroke-width="2"/></svg>
+    </button>
+    <button aria-label="Recommencer" style="width:44px;height:44px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;display:flex;align-items:center;justify-content:center">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18"><path d="M15 9a6 6 0 1 1-2-4.5" fill="none" stroke="#F4EFE6" stroke-width="2"/><path d="M13 1v4h-4" fill="none" stroke="#F4EFE6" stroke-width="2"/></svg>
+    </button>
   </div>
 
-  <div style="position:absolute;right:14px;top:12px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;padding:4px 8px;display:flex;flex-direction:column;align-items:flex-end">
-    <span style="display:flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:1px;color:#CFC6BA"><span aria-hidden="true" style="width:10px;height:10px;border-radius:50%;background:#D9A21B"></span>OBJECTIF OR</span>
-    <span style="font-family:'JetBrains Mono', monospace;font-weight:700;font-size:14px">31,500</span>
+  <div style="position:absolute;left:50%;top:8px;transform:translateX(-50%);display:flex;align-items:stretch;height:30px;border:2px solid #2A1E16;border-radius:2px;box-shadow:2px 2px 0 #000;overflow:hidden">
+    <span style="position:relative;display:flex;align-items:center;background:#1E1B19;padding:0 14px 0 10px;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:24px;font-variant-numeric:tabular-nums">0:09,192<span aria-hidden="true" style="position:absolute;right:-3px;top:0;bottom:0;width:9px;background:repeating-linear-gradient(115deg,#E8552D 0 3px,transparent 3px 5px)"></span></span>
+    <span style="display:flex;align-items:center;background:#F4EFE6;color:#1E1B19;padding:0 7px;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:700;font-size:16px">PC 3/5</span>
+    <span style="display:flex;align-items:center;background:#E8552D;color:#1E1B19;padding:0 8px;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:18px;font-variant-numeric:tabular-nums">+0,412</span>
   </div>
 
-  <div style="position:absolute;left:14px;bottom:16px;display:flex;gap:10px">
-    <button aria-label="Tourner à gauche" style="width:80px;height:80px;background:#1E1B19;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><path d="M19 5 9 15l10 10" fill="none" stroke="#F4EFE6" stroke-width="4" stroke-linecap="square"/></svg></button>
-    <button aria-label="Tourner à droite" style="width:80px;height:80px;background:#1E1B19;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="30" height="30" viewBox="0 0 30 30"><path d="M11 5l10 10-10 10" fill="none" stroke="#F4EFE6" stroke-width="4" stroke-linecap="square"/></svg></button>
+  <div style="position:absolute;right:10px;top:8px;display:flex;align-items:center;gap:6px">
+    <span style="height:30px;box-sizing:border-box;display:flex;align-items:center;gap:5px;padding:0 7px;background:#1E1B19;border:2px solid #2A1E16;border-radius:2px;font-size:11px;font-weight:700"><span aria-hidden="true" style="width:9px;height:9px;border-radius:50%;background:#C07A42"></span><span style="font-family:'JetBrains Mono', monospace">54,372</span></span>
+    <button aria-label="Classement du jour : 14e, ouvrir" style="height:44px;box-sizing:border-box;display:flex;align-items:center;gap:4px;padding:0 8px;background:#1E1B19;border:2px solid #2A1E16;border-radius:2px;color:#F4EFE6;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:18px">14e<svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="#F4EFE6" stroke-width="2"/></svg></button>
   </div>
-  <div style="position:absolute;right:14px;bottom:16px;display:flex;gap:10px;align-items:flex-end">
-    <button style="width:72px;height:60px;background:#1E1B19;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #2A1E16;color:#F4EFE6;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:18px">FREIN</button>
-    <button style="width:96px;height:96px;background:#E8552D;border:3px solid #2A1E16;border-radius:3px;box-shadow:3px 3px 0 #8E2E14;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:24px">GAZ</button>
+
+  <span style="position:absolute;left:50%;top:48px;transform:translateX(-50%);background:#1E1B19;border:2px solid #2A1E16;padding:2px 8px;font-size:12px;font-weight:600;color:#CFC6BA;white-space:nowrap">Touche la moitié droite pour accélérer</span>
+
+  <div style="position:absolute;left:10px;bottom:10px;display:flex;gap:8px">
+    <button aria-label="Tourner à gauche" style="width:72px;height:72px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #000;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 30 30"><path d="M19 5 9 15l10 10" fill="none" stroke="#F4EFE6" stroke-width="4" stroke-linecap="square"/></svg></button>
+    <button aria-label="Tourner à droite" style="width:72px;height:72px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #000;display:flex;align-items:center;justify-content:center"><svg aria-hidden="true" width="26" height="26" viewBox="0 0 30 30"><path d="M11 5l10 10-10 10" fill="none" stroke="#F4EFE6" stroke-width="4" stroke-linecap="square"/></svg></button>
+  </div>
+  <span style="position:absolute;left:50%;bottom:8px;transform:translateX(-50%);font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:18px;background:#1E1B19;border:2px solid #2A1E16;padding:0 8px">142 km/h</span>
+  <div style="position:absolute;right:10px;bottom:10px;display:flex;gap:8px;align-items:flex-end">
+    <button style="width:64px;height:56px;background:#1E1B19;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #000;color:#F4EFE6;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:16px">FREIN</button>
+    <button style="width:84px;height:84px;background:#E8552D;border:2px solid #2A1E16;border-radius:3px;box-shadow:2px 2px 0 #8E2E14;color:#1E1B19;font-family:'Barlow Condensed', sans-serif;font-style:italic;font-weight:800;font-size:22px">GAZ</button>
   </div>
 </div>
 </x-dc>

@@ -5,6 +5,8 @@ import type { fr } from "./catalogue.course.fr";
 
 export const en: Catalogues<typeof fr>["en"] = {
   "course.menu.aria": "Game menu",
+  "course.rang.aria": "Today's ranking: {rang}, open or close",
+  "course.rang.salon.aria": "Session ranking: {rang}, open or close",
   "course.pause.aria": "Pause",
   "course.fige": "FROZEN",
   "course.aide.puce": "How to play · P: pause",
@@ -51,7 +53,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.depart": "GO!",
   "course.arrivee": "FINISH",
   "course.chute": "Fall!",
-  "course.chronoTourne.tactile": "The clock is running: touch the right half",
+  "course.chronoTourne.tactile": "The clock is running: GAS, bottom right",
   "course.chronoTourne.clavier": "The clock is running: ↑ or Z to accelerate",
   "course.camera.proche": "Close camera",
   "course.camera.loin": "Far camera",
@@ -74,6 +76,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "pause.reprendre": "Resume",
   "pause.recommencer": "Restart",
   "pause.pointDeControle": "Last checkpoint",
+  "pause.pleinEcran": "Full screen",
   "pause.fantome": "Ghost · {nom}",
   "pause.son.actif": "Sound: on",
   "pause.son.coupe": "Sound: off",

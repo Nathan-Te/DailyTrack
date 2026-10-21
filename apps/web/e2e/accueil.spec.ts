@@ -1,6 +1,6 @@
 import { expect, test, type Browser, type BrowserContext, type Page, TODAY, newClockedContext, clockNow } from "./fixtures";
 import { dailyCircuit, formatDay } from "@cdj/sim";
-import { boxes, expectNoOverlap } from "./layout";
+import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 
 // Interface du lot 29 : accueil, classement en course, barre du haut, pause, réglages, « Comment jouer », profil, chrono.
 // Le jeu en démonstration (`?api=demo`) : aucune API réelle n'est touchée. Le rendu 3D demande WebGL : Chromium seulement.
@@ -201,41 +201,42 @@ test.describe("l'accueil", () => {
 });
 
 test.describe("« Comment jouer »", () => {
-  test("montré à la première visite, pas à la seconde ; accessible partout", async ({ browser }) => {
+  test("dans le jeu, une seule fois : le voile à rayures sur la scène, trois points, « C'est parti » ; ensuite depuis la pause et l'accueil", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?api=demo");
     await expect(page.locator("#howto")).toBeHidden(); // l'accueil d'abord
     await page.locator("#home-daily").click();
+    // Retouche du lot I4 (charte rév. 7) : l'aide s'ouvre dans le jeu (voile à rayures + étiquette asphalte), plus dans le cadre crème de l'accueil.
     await expect(page.locator("#howto")).toBeVisible();
+    await expect(page.locator("#howto")).toHaveClass(/voile/);
+    await expect(page.locator("#howto")).not.toHaveClass(/cadre/);
     await expect(page.locator("#howto")).toContainText("Comment jouer");
-    await expect(page.locator("#howto")).toContainText("Points de contrôle");
-    await expect(page.locator("#howto")).toContainText("Médailles");
-    await expect(page.locator("#howto kbd", { hasText: "Espace" })).toBeVisible();
-    await expect(page.locator("#home")).toBeVisible(); // la course n'est pas lancée tant qu'on n'a pas fermé l'aide
+    await expect(page.locator("#howto .point")).toHaveCount(3);
+    await expect(page.locator("#howto kbd", { hasText: "Entrée" })).toBeVisible(); // au clavier : les touches des actions de course
+    await expect(page.locator("#home")).toBeHidden(); // la scène est derrière, l'accueil est parti ; le jeu est gelé tant que l'aide est ouverte
     await page.locator("#howto-done").click();
     await expect(page.locator("#howto")).toBeHidden();
-    await expect(page.locator("#home")).toBeHidden();
     expect(await page.evaluate(() => localStorage.getItem("cdj:howto"))).toBe("1");
 
-    // Seconde visite : directement la course.
+    // Seconde visite : directement la course, l'aide ne revient pas.
     await page.reload();
     await page.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
     await page.locator("#home-daily").click();
     await expect(page.locator("#howto")).toBeHidden();
     await expect(page.locator("#home")).toBeHidden();
-    // Toujours accessible : bouton d'aide en course, pause, accueil, réglages.
-    await page.locator("#helpchip").click();
-    await expect(page.locator("#howto")).toBeVisible();
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#howto")).toBeHidden();
+    // Toujours accessible : depuis la pause (Échap la ferme et ramène à la pause), puis depuis l'accueil.
     await page.keyboard.press("p");
     await page.locator("#pause-howto").click();
     await expect(page.locator("#howto")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#howto")).toBeHidden();
+    await expect(page.locator("#pause")).toBeVisible();
+    await page.locator("#pause-resume").click();
     await ctx.close();
   });
 
-  test("un lien direct (course) à la première visite montre l'aide avant le départ", async ({ browser }) => {
+  test("un lien direct (course) à la première visite montre l'aide avant le départ, une seule fois", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
     await open(page, "/?scenario=essai");
@@ -248,15 +249,31 @@ test.describe("« Comment jouer »", () => {
     await ctx.close();
   });
 
-  test("sur téléphone, les doigts d'abord", async ({ browser }) => {
-    const ctx = await fresh(browser, { width: 390, height: 844 }, true);
-    const page = await ctx.newPage();
-    await open(page, "/?api=demo&touch=1&scenario=essai");
-    await expect(page.locator("#howto details.repli").first()).toHaveJSProperty("open", true);
-    await expect(page.locator("#howto details.repli").first().locator("summary")).toHaveText("Avec les doigts");
-    await expect(page.locator("#howto .schema")).toBeVisible();
-    await ctx.close();
-  });
+  for (const vp of [{ width: 844, height: 390 }, { width: 740, height: 360 }]) {
+    test(`téléphone en paysage (${vp.width}×${vp.height}) : les doigts d'abord, le schéma aux bords, tout tient dans l'écran, « C'est parti » de 44 px`, async ({ browser }) => {
+      const ctx = await fresh(browser, vp, true);
+      const page = await ctx.newPage();
+      await open(page, "/?api=demo&touch=1&scenario=essai", { wide: true });
+      await expect(page.locator("#howto")).toBeVisible();
+      await expect(page.locator("#howto .point")).toHaveCount(3);
+      await expect(page.locator("#howto .point").first()).toContainText("bas à gauche");
+      await expect(page.locator("#howto .schema")).toBeVisible();
+      await expect(page.locator("#howto kbd")).toHaveCount(0); // sur téléphone : le schéma, pas la liste des touches
+      const dialogue = (await page.locator("#howto .dialogue").boundingBox())!;
+      expect(dialogue.x).toBeGreaterThanOrEqual(-1);
+      expect(dialogue.y).toBeGreaterThanOrEqual(-1);
+      expect(dialogue.x + dialogue.width).toBeLessThanOrEqual(vp.width + 1);
+      expect(dialogue.y + dialogue.height).toBeLessThanOrEqual(vp.height + 1);
+      const done = page.locator("#howto-done");
+      await done.scrollIntoViewIfNeeded(); // si le contenu dépasse (police large de la CI), il défile dans le dialogue
+      const box = (await done.boundingBox())!;
+      expect(box.height).toBeGreaterThanOrEqual(43.5);
+      expect(box.y + box.height).toBeLessThanOrEqual(vp.height + 1);
+      await done.click();
+      await expect(page.locator("#howto")).toBeHidden();
+      await ctx.close();
+    });
+  }
 });
 
 test.describe("réglages", () => {
@@ -390,11 +407,11 @@ test.describe("réglages", () => {
     expect((await ui(page)).boardFolded).toBe(false);
     await page.keyboard.press("l");
     await expect(page.locator("#board")).toHaveClass(/folded/);
-    await expect(page.locator("#board .bbody")).toBeHidden();
+    await expect(page.locator("#board")).toBeHidden(); // replié : la pastille du rang suffit (lot I4, retouche 2)
     await page.reload();
     await page.waitForFunction(() => window.__cdj?.ui);
     expect((await ui(page)).boardFolded).toBe(true);
-    await page.locator("#board .bhead").click();
+    await page.keyboard.press("l"); // (la pastille du rang rouvre aussi le classement quand ta place est connue : mobile.spec.ts)
     await expect(page.locator("#board .bbody")).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!).board)).toBe(true);
     await ctx.close();
@@ -476,7 +493,7 @@ test.describe("pause et touches", () => {
     expect(running).toBeGreaterThan(100); // il tourne depuis le départ, la voiture n'a pas bougé : c'est voulu (comme Trackmania)
     expect(await page.evaluate(() => Math.hypot(window.__cdj.car.vx, window.__cdj.car.vz))).toBeLessThan(0.5);
     await page.evaluate(() => window.__cdj.advance(120)); // au-delà de 2,5 s immobile : l'aide apparaît
-    await expect(page.locator("#banner")).toContainText("Le chrono tourne", { timeout: 20_000 }); // et on le dit au joueur
+    await expect(page.locator("#aide")).toContainText("Le chrono tourne", { timeout: 20_000 }); // et on le dit au joueur
     // Pause : le chrono s'arrête net (même 2 s de pas demandés n'y changent rien), et repart là où il était.
     await page.keyboard.press("p");
     await page.waitForFunction(() => window.__cdj.paused === true);
@@ -626,7 +643,7 @@ for (const vp of PHONES) {
 
     // Aide.
     await page.locator("#home-howto").click();
-    expectNoOverlap(await boxes(page, ["#howto .etiquette"]), vp);
+    expectNoOverlap(await boxes(page, ["#howto .dialogue"]), vp);
     await page.locator("#howto-done").click();
 
     // Course, pause, HUD.
@@ -635,12 +652,19 @@ for (const vp of PHONES) {
     await page.addStyleTag({ content: "#banner { display: none !important; }" });
     if (vp.name !== "portrait" && vp.name !== "petit portrait") {
       // paysage : on conduit ; le HUD complet ne se chevauche pas (classement compris)
+      await expect(page.locator("#board")).toBeHidden(); // téléphone : le classement est replié par défaut en course
+      await page.keyboard.press("l");
       await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
-      expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]), vp);
+      await page.waitForTimeout(1600); // l'introduction (titre, fantôme) s'efface
+      const hud = await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed", "#board", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]);
+      expectNoOverlap(hud, vp);
+      expectCentreLibre(hud, vp);
     } else {
       await page.locator("#rotate button").click().catch(() => undefined); // portrait : « Jouer quand même »
+      await page.keyboard.press("l");
       await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
-      expectNoOverlap(await boxes(page, ["#meta", "#medals", "#timer", "#ghostinfo", "#menu", "#speed", "#board", "#tbar"]), vp);
+      await page.waitForTimeout(1600);
+      expectNoOverlap(await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed", "#board"]), vp);
     }
     for (const b of await page.locator("#menu button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
     await page.locator("#btn-pause").click(); // lot I4 : la pause est le bouton du HUD en haut à gauche
@@ -659,7 +683,7 @@ test("ordinateur : le HUD de course, la pause et l'arrivée tiennent dans l'écr
   await page.waitForFunction(() => window.__cdj.phase === "racing");
   await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
   await page.waitForTimeout(3500); // le bandeau du départ s'efface
-  expectNoOverlap(await boxes(page, ["#meta", "#medals", "#ghostinfo", "#timer", "#menu", "#speed", "#board", "#helpchip"]), { width: 1000, height: 560 });
+  expectNoOverlap(await boxes(page, ["#hud-centre", "#medals", "#rang", "#menu", "#speed", "#board", "#helpchip"]), { width: 1000, height: 560 });
   await ctx.close();
 });
 

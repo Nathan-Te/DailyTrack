@@ -14,8 +14,9 @@ import "./arrivee.css";
 import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
-import { chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { nomMedaille } from "@cdj/ui";
+import { appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
+import { icone, nomMedaille } from "@cdj/ui";
+import { iconeTrack } from "./icones";
 import { definirJour } from "./cadre";
 import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
 import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
@@ -114,7 +115,7 @@ import type { Leaderboard } from "./api";
 import { isValidName, normalizeName, setName, getName } from "./identity";
 import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
-import { mountTouchUi } from "./touchUi";
+import { canFullscreen, hintText, mountTouchUi, toggleFullscreen } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import { GhostField, createNameLabel, type GhostEntry, type NameLabel } from "./salonGhosts";
 import { GHOST_COLORS, MY_GHOST_COLOR } from "./salon";
@@ -368,6 +369,9 @@ const hudFinish = $("finish");
 /** L'écran d'arrivée du circuit du jour : le cadre crème de Du Jour et l'étiquette Track (arriveeUi.ts). */
 const arrivee: Arrivee = creerArrivee(hudFinish);
 const hudBoard = $("board");
+const hudIntro = $("intro");
+const hudAide = $("aide");
+const rangBtn = $("rang") as HTMLButtonElement;
 /** Classement en course : un panneau compact, replié ou déplié (réglage `board`). Le Salon y écrit aussi. */
 const boardPanel = mountBoardPanel(hudBoard, (folded) => applySettings({ board: !folded }));
 const hudArchive = $("archive");
@@ -416,11 +420,79 @@ function renderObjective() {
   const key = `${target}|${time}|${langueCourante()}`;
   if (box.dataset.key === key) return;
   box.dataset.key = key;
+  // Charte rév. 7 : pastille et seuil, sans le mot « Objectif » ; le nom de la médaille est dans le libellé pour les lecteurs d'écran.
   const legend = makeEl("span", "objectif__legende");
-  // « OBJECTIF » s'efface sur un petit portrait (`.objectif__mot`) : la pastille et le nom de la médaille suffisent, la plaque ne touche pas le chrono.
-  legend.append(Object.assign(makeEl("span", `pastille pastille--${type}`), { ariaHidden: "true" }), makeEl("span", "objectif__mot", `${t("course.objectif.mot")} `), makeEl("span", "objectif__medaille", name));
+  legend.append(Object.assign(makeEl("span", `pastille pastille--${type}`), { ariaHidden: "true" }));
   box.replaceChildren(legend, makeEl("span", "objectif__valeur", time));
   box.setAttribute("aria-label", t("course.objectif.aria", { medaille: name, temps: time }));
+}
+
+// --- Surimpressions compactes (charte rév. 7, § 9) ---------------------------------------------------------------------------------------------------------
+// Pause, dernier point de contrôle et recommencer en haut à gauche (les deux derniers sur appareil tactile seulement : le clavier a ses touches) ; la barre du bas n'existe plus.
+(function mountMenuActions() {
+  const menu = $("menu");
+  const bouton = (id: string, icon: SVGSVGElement, cle: string, onClick: () => void) => {
+    const b = makeEl("button", "plaque plaque--bouton plaque--action");
+    b.type = "button";
+    b.id = id;
+    b.setAttribute("data-t-aria-label", cle);
+    b.append(icon);
+    b.addEventListener("click", () => {
+      b.blur();
+      onClick();
+    });
+    menu.append(b);
+  };
+  bouton("btn-respawn", icone("drapeau", { taille: 20 }), "tactile.pointDeControle", () => {
+    if (!watch && !paused) controls.requestRespawn();
+  });
+  bouton("btn-restart", iconeTrack("recommencer", 20), "tactile.depart", () => {
+    if (!watch) controls.requestRestart();
+  });
+  appliquerTextes(menu);
+})();
+
+/** Ta place dans le classement du jour (la dernière lue) : la pastille « 14e ˅ » du haut à droite l'affiche ; le Salon donne celle de la session (`salon.myRank`). */
+let dayRank: number | null = null;
+let rangShown = "";
+function syncRang() {
+  const rank = salon ? (salon.myRank?.rank ?? null) : dayRank;
+  const key = `${rank}|${boardPanel.folded()}|${langueCourante()}|${hudBoard.hidden}`;
+  if (key === rangShown) return;
+  rangShown = key;
+  const text = rank === null ? "" : fRang(rank);
+  rangBtn.hidden = !text || hudBoard.hidden;
+  rangBtn.setAttribute("aria-expanded", String(!boardPanel.folded()));
+  rangBtn.setAttribute("aria-label", t(salon ? "course.rang.salon.aria" : "course.rang.aria", { rang: text }));
+  const chevron = icone("chevron", { taille: 12 });
+  chevron.classList.add("rang__chevron");
+  rangBtn.replaceChildren(makeEl("span", "rang__rang", text), chevron);
+}
+rangBtn.addEventListener("click", () => {
+  rangBtn.blur();
+  setBoardVisible(boardPanel.folded());
+});
+
+/** Une ligne d'aide sous la bande, puis elle disparaît (au premier appui sur le gaz, ou après quelques secondes). */
+let aideTimer = 0;
+/** Le temps de l'image où l'aide apparaît ne compte pas (en pas à pas, une image porte tout le décompte). */
+let aideFraiche = false;
+function showAide(text: string, seconds: number) {
+  hudAide.textContent = text;
+  aideTimer = seconds;
+  aideFraiche = true;
+}
+const clearAide = () => {
+  aideTimer = 0;
+  if (hudAide.textContent) hudAide.textContent = "";
+};
+/** Le titre du circuit et le fantôme ne s'affichent qu'au départ (décompte, puis une seconde et demie) : la plaque `#intro`. */
+let introShown = false;
+function syncIntro() {
+  const on = !watch && !!race && (phase === "countdown" || (phase === "racing" && raceElapsedMs(race) < 1500));
+  if (on === introShown) return;
+  introShown = on;
+  hudIntro.classList.toggle("on", on);
 }
 
 if (salon) {
@@ -472,13 +544,7 @@ let pendingSeek: number | null = null;
 let touchUi: ReturnType<typeof mountTouchUi> | null = null;
 function mountDrivingTouch() {
   if (touchUi || !touchPad) return;
-  touchUi = mountTouchUi(touchPad, {
-    showZones: params.get("zones") === "1",
-    onRespawn: () => controls.requestRespawn(),
-    onRestart: () => controls.requestRestart(),
-    onCamera: () => cycleCamera(),
-    onSettings: () => openSettings("controls"),
-  });
+  touchUi = mountTouchUi(touchPad, { showZones: params.get("zones") === "1" });
   touchUi.setPaused(paused);
 }
 if (!watchWanted) mountDrivingTouch();
@@ -518,6 +584,7 @@ function renderPause() {
   const ghostBtn = $("pause-ghost");
   ghostBtn.textContent = t("pause.fantome", { nom: ghostText(ghostTag) });
   ghostBtn.hidden = !track;
+  $("pause-camera").textContent = t(`course.camera.${CAMERAS[cameraIndex]!.name}`);
   syncSoundButton();
 }
 let best: BestRun | null = track && !salon ? loadBest(track.id) : null;
@@ -627,6 +694,12 @@ $("pause-ghost").addEventListener("click", () => {
   setTimeout(renderPause, 300); // le fantôme choisi s'écrit quand la réponse du serveur arrive
 });
 $("pause-sound").addEventListener("click", () => gameAudio.mute());
+$("pause-camera").addEventListener("click", () => {
+  cycleCamera();
+  renderPause();
+});
+($("pause-fullscreen") as HTMLButtonElement).hidden = !canFullscreen();
+$("pause-fullscreen").addEventListener("click", () => void toggleFullscreen());
 $("pause-respawn").addEventListener("click", () => {
   setPaused(false);
   controls.requestRespawn();
@@ -671,21 +744,18 @@ function leaveToHome() {
 }
 
 function playDaily() {
-  const go = () => {
-    homeOpen = false;
-    syncSceneQuality();
-    homeUi.close();
-    startAttempt();
-    snapCamera = true;
-  };
-  if (needsHowto()) howto.open(go);
-  else go();
+  homeOpen = false;
+  syncSceneQuality();
+  homeUi.close();
+  startAttempt();
+  snapCamera = true;
+  // Première fois : « Comment jouer » s'ouvre **dans le jeu**, sur la scène, le jeu gelé dessous ; « C'est parti » la ferme et le décompte démarre (charte rév. 7, § 9).
+  if (needsHowto()) howto.open();
 }
 
+/** Le Salon est une autre page : l'aide s'y ouvre d'elle-même au chargement (même règle que pour un lien direct), pas ici sur le cadre crème de l'accueil. */
 function playSalon() {
-  const go = () => location.assign(modeHref(location.search, true));
-  if (needsHowto()) howto.open(go);
-  else go();
+  location.assign(modeHref(location.search, true));
 }
 
 /** Classement du jour (accueil, coin de la course) : en démonstration, « aujourd'hui » est vide, on montre alors la veille (figée). */
@@ -922,6 +992,7 @@ function startAttempt(force = false) {
     previous = session.previous;
     phase = "countdown";
     countdown = COUNTDOWN_S;
+    clearAide();
   } else {
     car = createCar();
     previous = createCar();
@@ -1042,7 +1113,10 @@ let boardLoadedAt = -1e9;
 
 function renderBoard(lb: Leaderboard) {
   boardPanel.setTitle(boardTitle(lb, submitAllowed));
-  if (lb.me) rememberRank(lb.date, { rank: lb.me.rank, participants: lb.participants }); // le profil garde ta meilleure place
+  if (lb.me) {
+    dayRank = lb.me.rank;
+    rememberRank(lb.date, { rank: lb.me.rank, participants: lb.participants }); // le profil garde ta meilleure place
+  }
   boardPanel.body.replaceChildren(...linesEls(dayLines(lb), { compact: true }), ...(lb.participants > 0 && !watch ? [watchLinkEl(watchHref(location.search))] : []));
 }
 
@@ -1059,7 +1133,11 @@ function syncBoardFold() {
   hudBoard.hidden = !boardAvailable();
   boardPanel.setFolded(!settings.board);
   if (salon) salon.boardOpen = settings.board;
-  if (hudBoard.hidden || !settings.board) return;
+  if (hudBoard.hidden) return;
+  if (!settings.board) {
+    if (!salon && dayRank === null && performance.now() - boardLoadedAt > 1500) void refreshBoard(); // replié : on lit quand même le classement, pour la pastille du rang
+    return;
+  }
   if (salon) salon.renderBoard();
   else if (performance.now() - boardLoadedAt > 1500) void refreshBoard();
 }
@@ -1761,8 +1839,10 @@ function frame(now: number) {
     if (countdown <= 0) {
       phase = "racing";
       accumulator = 0;
-      showBanner(salonNoticePending || t("course.depart"), salonNoticePending ? 5 : 0.9, !!salonNoticePending);
+      const hadNotice = !!salonNoticePending;
+      showBanner(salonNoticePending || t("course.depart"), salonNoticePending ? 5 : 0.9, hadNotice);
       salonNoticePending = "";
+      if (touchPad && !watch && !hadNotice) showAide(hintText(touchPad.settings), 6); // l'aide de départ : une ligne sous la bande, jusqu'au premier appui sur le gaz
       gameAudio.play("go");
     } else {
       showBanner(String(Math.ceil(countdown)), 0.2);
@@ -1815,7 +1895,7 @@ function frame(now: number) {
     // Le chrono part au « PARTEZ ! », voiture immobile ou non (comme sur Trackmania) : si le joueur n'a pas bougé, on lui dit quoi faire.
     if (phase === "racing" && !frozen && !idleHintShown && !watch && race.splits.length === 0 && carSpeed(car) < 0.5 && raceElapsedMs(race) > 2500) {
       idleHintShown = true;
-      showBanner(t(touchMode ? "course.chronoTourne.tactile" : "course.chronoTourne.clavier"), 4, true);
+      showAide(t(touchMode ? "course.chronoTourne.tactile" : "course.chronoTourne.clavier"), 4);
     }
   } else {
     setTimerText("");
@@ -1826,6 +1906,13 @@ function frame(now: number) {
     bannerTimer -= elapsed;
     if (bannerTimer <= 0) hudBanner.textContent = "";
   }
+  if (aideTimer > 0) {
+    if (aideFraiche) aideFraiche = false;
+    else aideTimer -= elapsed;
+    if (aideTimer <= 0 || (!frozen && !watch && input.throttle > 0)) clearAide();
+  }
+  syncIntro();
+  syncRang();
 
   const x = lerp(previous.x, car.x, alpha);
   const y = lerp(previous.y, car.y, alpha);
@@ -2135,7 +2222,7 @@ const salonHost: SalonHost = {
   finale(on) {
     startLocked = on;
     document.body.classList.toggle("start-locked", on);
-    for (const b of document.querySelectorAll<HTMLElement>("#pause-restart, #finish .restart, #touch .restart")) b.setAttribute("aria-disabled", String(on));
+    for (const b of document.querySelectorAll<HTMLElement>("#pause-restart, #btn-restart, #finish .restart")) b.setAttribute("aria-disabled", String(on));
     if (on) {
       boardPanel.setFolded(false); // classement affiché d'office pendant la finale
       hudBoard.hidden = false;

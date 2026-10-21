@@ -1,6 +1,5 @@
-import { icone, svg } from "@cdj/ui";
+import { svg } from "@cdj/ui";
 import { el as makeEl, row, segmented, slider, type Control } from "./dom";
-import { iconeTrack } from "./icones";
 import { fNombre, onLangue, t } from "./i18n";
 import { isTyping } from "./input";
 import {
@@ -18,21 +17,15 @@ import {
   type TouchSettings,
 } from "./touch";
 
-// Interface tactile (lot 10, habillée au lot I4 : plaques asphalte, flèches SVG, « FREIN » en Barlow italique, « GAZ » en livrée — maquettes track-hud*.html) :
-// zones de jeu, aides à l'écran, boutons d'action, réglages, invitation à tourner le téléphone, plein écran. Même disposition et même comportement qu'au
-// lot 10 (zones et `buttonRects` de touch.ts inchangés) ; seul l'habillage change (tactile.css). Toute la logique des doigts est dans `touch.ts` ; ici, seulement du DOM.
-// Les conteneurs (`#touch`, `#tbar`, `#tsettings`, `#rotate`) sont dans `index.html`, cachés tant que la page n'est
-// pas en mode tactile (`body.touch`).
+// Interface tactile (lot 10, habillée au lot I4, refaite à la retouche 2 : charte rév. 7, maquette track-hud-paysage.html) : les boutons de direction et de
+// pédales **aux bords** de l'écran (jamais devant la voiture), leurs zones de toucher, l'invitation à tourner le téléphone. Plus de barre du bas ni d'aide
+// sur la scène : les actions de course (point de contrôle, recommencer) sont des plaques du HUD (en haut à gauche), la caméra, les graphismes et le plein
+// écran sont dans la pause. Toute la logique des doigts est dans `touch.ts` ; ici, seulement du DOM. Les conteneurs (`#touch`, `#rotate`) sont dans
+// `index.html`, cachés tant que la page n'est pas en mode tactile (`body.touch`).
 
 export interface TouchHooks {
   /** `?zones=1` : dessine les zones actives et un point par doigt (diagnostic). */
   showZones?: boolean;
-  onRespawn(): void;
-  onRestart(): void;
-  /** Caméra suivante (proche, loin, capot). */
-  onCamera(): void;
-  /** Ouvre les réglages (lot 29 : un seul panneau, onglet « Commandes »). */
-  onSettings(): void;
 }
 
 export interface TouchUi {
@@ -62,12 +55,13 @@ type FullscreenDoc = Document & {
 };
 type FullscreenEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
 
-const canFullscreen = () => {
+export const canFullscreen = () => {
   const d = document as FullscreenDoc;
   return !!(d.fullscreenEnabled || d.webkitFullscreenEnabled);
 };
 
-async function toggleFullscreen(): Promise<void> {
+/** Plein écran (et, sur Android, paysage verrouillé) : le bouton « Plein écran » de la pause. */
+export async function toggleFullscreen(): Promise<void> {
   const d = document as FullscreenDoc;
   const root = document.documentElement as FullscreenEl;
   try {
@@ -95,7 +89,7 @@ export function touchSettingsControls(pad: TouchPad, onChange: () => void): Cont
     sync();
     onChange();
   };
-  const steerMode = segmented<TouchSettings["steerMode"]>([["drag", t("tactile.direction.glisser")], ["buttons", t("tactile.direction.boutons")]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }), t("tactile.direction.nom"));
+  const steerMode = segmented<TouchSettings["steerMode"]>([["buttons", t("tactile.direction.boutons")], ["drag", t("tactile.direction.glisser")]], () => pad.settings.steerMode, (v) => apply({ steerMode: v }), t("tactile.direction.nom"));
   const sensitivity = slider(SENSITIVITY_RANGE, () => pad.settings.sensitivity, (v) => apply({ sensitivity: v }), (v) => `×${fNombre(v, 2)}`, t("tactile.sensibilite.nom"));
   const deadzone = slider(DEADZONE_RANGE, () => pad.settings.deadzone, (v) => apply({ deadzone: v }), (v) => `${fNombre(Math.round(v * 100))} %`, t("tactile.zoneMorte.nom"));
   const throttle = segmented<boolean>([[false, t("tactile.accelerateur.bouton")], [true, t("tactile.accelerateur.auto")]], () => pad.settings.autoThrottle, (v) => apply({ autoThrottle: v }), t("tactile.accelerateur.nom"));
@@ -139,7 +133,6 @@ function telephone(): SVGSVGElement {
 /** Construit l'interface tactile dans les conteneurs de la page et branche les doigts sur `pad`. */
 export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   const zone = document.getElementById("touch")!;
-  const bar = document.getElementById("tbar")!;
   const rotate = document.getElementById("rotate")!;
 
   // --- Aides à l'écran (aucune ne reçoit de toucher : tout passe par `zone`) ------------------------
@@ -151,13 +144,12 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   right.append(fleche("M11 5l10 10-10 10"));
   const brake = el("div", "tbtn pad pedal-brake", t("tactile.frein"));
   const gas = el("div", "tbtn pad pedal-gas", t("tactile.gaz"));
-  const hint = el("div", "hint");
   const buttonEls: Record<string, HTMLElement> = { left, right, brake, gas };
   // Zones actives (diagnostic `?zones=1`) : une tranche par zone, de bord à bord, avec son nom.
   const overlay = el("div", "zones");
   overlay.hidden = !hooks.showZones;
   const dots = new Map<number, HTMLElement>();
-  zone.replaceChildren(overlay, ring, knob, left, right, brake, gas, hint);
+  zone.replaceChildren(overlay, ring, knob, left, right, brake, gas);
 
   // Zones sûres (encoche, barre d'accueil) : lues par une sonde CSS `env(safe-area-inset-*)`.
   const probe = el("div", "safe-probe");
@@ -172,7 +164,9 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   function layout() {
     const w = zone.clientWidth;
     const h = zone.clientHeight;
-    const rects = buttonRects(w, h, pad.settings, insets());
+    const ins = insets();
+    pad.setGeometry(w, h, ins); // les zones de toucher épousent les boutons dessinés : même mesure, même définition (touch.ts)
+    const rects = buttonRects(w, h, pad.settings, ins);
     for (const b of Object.values(buttonEls)) b.hidden = true;
     for (const r of rects) {
       const b = buttonEls[r.zone];
@@ -184,7 +178,7 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
       b.style.height = `${r.h}px`;
     }
     overlay.replaceChildren(
-      ...zoneSpans(pad.settings).map((sp) => {
+      ...zoneSpans(pad.settings, pad.geometry).map((sp) => {
         const d = el("div", "zspan", sp.zone);
         d.style.left = `${sp.x0 * 100}%`;
         d.style.width = `${(sp.x1 - sp.x0) * 100}%`;
@@ -196,6 +190,9 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   }
   window.addEventListener("resize", layout);
   window.addEventListener("orientationchange", layout);
+  // La zone n'a aucune taille tant que l'accueil est ouvert (`body.home #touch { display: none }`) : on remesure dès qu'elle apparaît ou change de taille (sinon les boutons et les zones
+  // restent calés sur une largeur nulle).
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => layout()).observe(zone);
 
   const put = (e: HTMLElement, x: number, y: number) => e.style.setProperty("transform", `translate(${x}px, ${y}px) translate(-50%, -50%)`);
 
@@ -212,8 +209,6 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
       put(ring, s.drag.originX, s.drag.originY);
       put(knob, s.drag.x, s.drag.originY);
     }
-    hint.textContent = hintText(pad.settings);
-    hint.hidden = pad.touched;
   }
 
   // Un point par doigt (`?zones=1`), de la couleur de la zone touchée ; rouge si le doigt est tombé hors de la zone de jeu.
@@ -227,7 +222,8 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
       }
       const box = zone.getBoundingClientRect();
       const inside = e.target instanceof Node && zone.contains(e.target);
-      d.style.background = inside ? ZONE_COLORS[zoneAt(e.clientX - box.left, box.width, pad.settings)] : "#e5322d";
+      const hit = inside ? zoneAt(e.clientX - box.left, box.width, pad.settings, pad.geometry) : null;
+      d.style.background = hit ? ZONE_COLORS[hit] : inside ? "#9aa0a6" : "#e5322d"; // gris : le milieu de l'écran, sans zone ; rouge : hors de la zone de jeu
       d.style.transform = `translate(${e.clientX}px, ${e.clientY}px) translate(-50%, -50%)`;
     };
     const gone = (e: PointerEvent) => {
@@ -247,7 +243,6 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     } catch {
       /* pointeur déjà relâché */
     }
-    pad.width = zone.clientWidth;
     pad.down(e.pointerId, localX(e), e.clientY);
     render();
   });
@@ -275,32 +270,6 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
     render();
   });
 
-  // --- Boutons d'action : des plaques de 44 px, icônes au trait (aucun émoji) ----------------------------------------------------------------------
-  // Lot I4 : la pause est la plaque du HUD (`#btn-pause`, en haut à gauche) ; la barre n'a plus son propre bouton pause.
-  const button = (cls: string, icon: SVGSVGElement, cle: string, onClick: () => void) => {
-    const b = el("button", cls);
-    b.type = "button";
-    b.dataset.cle = cle;
-    b.append(icon);
-    b.addEventListener("click", () => {
-      b.blur();
-      onClick();
-    });
-    return b;
-  };
-  const full = button("full", iconeTrack("plein-ecran", 20), "tactile.pleinEcran", () => void toggleFullscreen());
-  full.hidden = !canFullscreen();
-  // Le bouton caméra est le premier de la barre : la barre va de ≈ 36 % à 64 % de la largeur et le bouton tombe à ≈ 36–41 %, loin des
-  // frontières entre zones (25 / 50 / 75 %) ; un test (`cameras.spec.ts`) mesure l'écart avec `?zones=1`.
-  const actions = [
-    button("camera", iconeTrack("camera", 20), "tactile.camera", () => hooks.onCamera()),
-    button("respawn", icone("drapeau", { taille: 20 }), "tactile.pointDeControle", () => hooks.onRespawn()),
-    button("restart", iconeTrack("recommencer", 20), "tactile.depart", () => hooks.onRestart()),
-    button("gear", iconeTrack("reglages", 20), "tactile.reglages", () => hooks.onSettings()),
-    full,
-  ];
-  bar.replaceChildren(...actions);
-
   // --- Invitation à tourner le téléphone (portrait) ----------------------------------------------
   const card = el("div", "card");
   const dismiss = el("button", "dj-bouton dj-bouton--secondaire");
@@ -316,14 +285,8 @@ export function mountTouchUi(pad: TouchPad, hooks: TouchHooks): TouchUi {
   function libelles() {
     brake.textContent = t("tactile.frein");
     gas.textContent = t("tactile.gaz");
-    for (const b of actions) {
-      const nom = t(b.dataset.cle!);
-      b.title = nom;
-      b.setAttribute("aria-label", nom);
-    }
     message.textContent = t("tactile.rotation");
     dismiss.textContent = t("tactile.rotation.ok");
-    hint.textContent = hintText(pad.settings);
   }
   libelles();
   onLangue(libelles);
