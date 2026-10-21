@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { dailyCircuit, dailyTrackId, encodeReplay, formatDay, PREMIER_JOUR, runPilot, themeForDay, THEME_NAMES } from "@cdj/sim";
+import { MEDAL_FACTORS, dailyCircuit, dailyTrackId, encodeReplay, formatDay, medalDayStats, medalPoolStats, medalsFor, PREMIER_JOUR, ratiosOf, runPilot, themeForDay, thresholdsOf, THEME_NAMES } from "@cdj/sim";
 import { ADMIN_MAX_FAILURES, PLANNING_HORIZON } from "../src/api";
-import { DAY, DAY_MS, NOON, makeApi, parisDayStart, playerId } from "./helpers";
+import { DAY, DAY_MS, NOON, circuitOf, makeApi, parisDayStart, playerId } from "./helpers";
 
 // Planning des circuits (lot 14) : remplacer à l'avance le circuit d'un jour à venir, sans casser « le même circuit pour
 // tous » ni la validation par rejeu.
@@ -179,5 +179,54 @@ describe("vue d'ensemble", () => {
     expect(o.times).toEqual([a.finishMs, b.finishMs]);
     expect(o.days[0]).toMatchObject({ date: formatDay(DAY), participants: 2, bestMs: a.finishMs, variant: 0 });
     expect(o.days[1]).toMatchObject({ participants: 0, bestMs: null });
+  });
+});
+
+describe("médailles (lot 35) : outil de calibrage en lecture seule", () => {
+  /** Tout le contenu de la base, table par table : la route ne doit rien y changer. */
+  async function dump(t: Awaited<ReturnType<typeof admin>>): Promise<string> {
+    const tables = await t.db.all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name");
+    const out: Record<string, unknown> = {};
+    for (const { name } of tables) out[name] = await t.db.all(`SELECT * FROM "${name}"`);
+    return JSON.stringify(out);
+  }
+
+  it("refusée sans jeton ; par jour : pilote, joueurs, percentiles, parts ; par thème et tous jours réunis ; aucune écriture", async () => {
+    const t = await admin();
+    expect((await t.call("GET", "/api/admin/medailles")).status).toBe(401);
+    const { pilotReplay } = await import("./helpers");
+    const runs = [pilotReplay(DAY, 0.95), pilotReplay(DAY, 0.8), pilotReplay(DAY, 0.6)];
+    for (const [i, r] of runs.entries()) expect((await t.call("POST", "/api/submit", { playerId: playerId(i + 1), name: `Pilote${i + 1}`, date: formatDay(DAY), replay: r.code })).status).toBe(200);
+    // Un pilote fictif (historique de démonstration) : exclu par défaut.
+    await t.db.run("UPDATE players SET demo = 1 WHERE id = ?", [playerId(3)]);
+    t.clock.now = NOON + DAY_MS; // le lendemain : le jour est fermé, il entre dans les regroupements
+
+    const before = await dump(t);
+    const r = await t.call("GET", "/api/admin/medailles", undefined, { headers: auth });
+    expect(r.status).toBe(200);
+    expect(await dump(t)).toBe(before); // lecture seule : la base n'a pas bougé d'un octet
+    expect((await t.call("POST", "/api/admin/medailles", {}, { headers: auth })).status).toBe(405);
+
+    const c = circuitOf(DAY);
+    const body = r.body;
+    expect(body.today).toBe(formatDay(DAY + 1));
+    expect(body.factors).toEqual(MEDAL_FACTORS);
+    expect(body.percentiles).toEqual([10, 25, 50, 75, 90]);
+    expect(body.days[0]).toMatchObject({ date: formatDay(DAY + 1), open: true, players: 0, pilotMs: null, stats: null }); // aujourd'hui : pas encore de circuit gardé
+    const d = body.days[1];
+    const times = [runs[0]!.finishMs, runs[1]!.finishMs];
+    expect(d).toMatchObject({ date: formatDay(DAY), open: false, theme: themeForDay(DAY).name, trackId: c.track.id, pilotMs: c.authorMs, medals: medalsFor(c.authorMs), players: 2 });
+    expect(d.stats).toEqual(medalDayStats(times, c.authorMs, medalsFor(c.authorMs)));
+    expect(d.ratios).toEqual(ratiosOf(times, c.authorMs));
+    expect(body.themes).toEqual([{ theme: themeForDay(DAY).name, ...medalPoolStats([{ ratios: d.ratios, thresholds: thresholdsOf(medalsFor(c.authorMs), c.authorMs) }]) }]);
+    expect(body.all.players).toBe(2);
+    expect(JSON.stringify(body)).not.toContain(playerId(1)); // aucune identité, aucun pseudo
+    expect(JSON.stringify(body)).not.toContain("Pilote1");
+
+    // `?demo=1` compte aussi les pilotes fictifs (la recette n'a qu'eux).
+    const withDemo = (await t.call("GET", "/api/admin/medailles?demo=1", undefined, { headers: auth })).body;
+    expect(withDemo.demo).toBe(true);
+    expect(withDemo.days[1].players).toBe(3);
+    expect(await dump(t)).toBe(before);
   });
 });

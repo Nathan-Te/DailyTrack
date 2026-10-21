@@ -1,5 +1,6 @@
 import { FIGURES, PREMIER_JOUR, THEMES, THEME_NAMES, formatDay } from "@cdj/sim";
 import { RANDOM_SPAN } from "./archive";
+import { mountMedals } from "./adminMedailles";
 import { mountPlanning } from "./adminPlanning";
 import { DEFAULT_ADMIN, PRESETS, buildQuery, gameHref, gameKeys, parseAdmin, type AdminState, type Scenario } from "./adminLogic";
 import { gameStorage, storageKeys } from "./storage";
@@ -174,3 +175,4 @@ function render() {
 render();
 renderKeys();
 mountPlanning(() => state.api);
+mountMedals(() => state.api);

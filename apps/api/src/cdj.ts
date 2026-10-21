@@ -1,6 +1,8 @@
 import {
   GENERATOR_VERSION,
   MAX_VARIANT,
+  MEDAL_FACTORS,
+  MEDAL_PERCENTILES,
   PREMIER_JOUR,
   ReplayError,
   SIM_VERSION,
@@ -11,13 +13,18 @@ import {
   formatDay,
   isVariant,
   medalFor,
+  medalDayStats,
+  medalPoolStats,
   medalsFor,
   parseDay,
   parseTrack,
+  ratiosOf,
   replayRace,
   themeByName,
+  thresholdsOf,
   themeForDay,
   type Medal,
+  type MedalRatios,
   type PaletteName,
   type ThemeName,
   type Track,
@@ -46,6 +53,8 @@ export const ADMIN_MAX_FAILURES = 10;
 export const CLASSES_MEMO_MS = 30_000;
 /** Lot 32 : au plus une ligne de journal par cet intervalle pour l'usage de l'ancien `?player=` (le compte complet est dans `/api/admin/overview`). */
 export const LEGACY_LOG_MS = 5 * 60_000;
+/** Lot 35 : jours lus au plus par l'outil de calibrage des médailles (`GET /api/admin/medailles`), aujourd'hui compris. */
+export const MEDAILLES_JOURS = 120;
 
 /** Tables de DailyTrack. Créées au premier appel (`CREATE … IF NOT EXISTS`) : pas de migration manuelle. */
 export const CDJ_SCHEMA: string[] = [
@@ -552,6 +561,64 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     };
   }
 
+  /**
+   * Lot 35 — outil de calibrage des médailles, **en lecture seule** (aucune écriture : ni circuit généré et gardé, ni place calculée) : par
+   * jour, depuis le premier jour (au plus `MEDAILLES_JOURS`), le temps du pilote (lu dans `circuits`), les seuils en vigueur, les
+   * percentiles des meilleurs temps et la part des joueurs ayant chaque médaille ; puis par thème et tous jours réunis (jours fermés
+   * seulement : aujourd'hui est encore ouvert). Les pilotes fictifs (`players.demo`) sont exclus sauf `?demo=1` (la recette n'a qu'eux).
+   * `ratios` (temps ÷ pilote, triés, sans identité) permet de simuler d'autres facteurs sur les jours passés.
+   */
+  async function adminMedals(url: URL): Promise<unknown> {
+    const t = today();
+    const first = Math.max(PREMIER_JOUR, t - MEDAILLES_JOURS + 1);
+    const withDemo = url.searchParams.get("demo") === "1";
+    const plan = await db.all<{ day: number; variant: number; theme: string | null }>("SELECT day, variant, theme FROM planning WHERE day >= ? AND day <= ?", [first, t]);
+    const known = await db.all<{ day: number; track_id: string; author_ms: number }>("SELECT day, track_id, author_ms FROM circuits WHERE day >= ? AND day <= ?", [first, t]);
+    const rows = await db.all<{ day: number; ms: number }>(
+      `SELECT r.day AS day, r.ms AS ms FROM results r JOIN players p ON p.id = r.player_id WHERE r.day >= ? AND r.day <= ?${withDemo ? "" : " AND p.demo = 0"} ORDER BY r.day, r.ms`,
+      [first, t],
+    );
+    const timesBy = new Map<number, number[]>();
+    for (const r of rows) {
+      const list = timesBy.get(r.day) ?? [];
+      list.push(r.ms);
+      timesBy.set(r.day, list);
+    }
+    const days = [];
+    const pools = new Map<string, { ratios: number[]; thresholds: MedalRatios }[]>();
+    for (let day = t; day >= first; day--) {
+      const p = plan.find((r) => r.day === day);
+      const variant = p && isVariant(p.variant) ? p.variant : 0;
+      const forced = themeByName(p?.theme)?.name ?? null;
+      const theme = forced ?? themeForDay(day).name;
+      const c = known.find((r) => r.day === day);
+      // Le circuit gardé n'est le bon que s'il porte l'identifiant attendu (même règle que `getCircuit`) ; sinon pas de pilote connu.
+      const pilotMs = c && c.track_id === dailyTrackId(day, forced, variant) ? c.author_ms : null;
+      const times = timesBy.get(day) ?? [];
+      const medals = pilotMs === null ? null : medalsFor(pilotMs);
+      const stats = medals && pilotMs !== null ? medalDayStats(times, pilotMs, medals) : null;
+      const ratios = pilotMs !== null ? ratiosOf(times, pilotMs) : [];
+      if (day < t && medals && pilotMs !== null && ratios.length) {
+        const thresholds = thresholdsOf(medals, pilotMs);
+        for (const key of [theme, "tous"]) pools.set(key, [...(pools.get(key) ?? []), { ratios, thresholds }]);
+      }
+      days.push({ date: formatDay(day), number: circuitNumber(day), theme, variant, trackId: c?.track_id ?? null, open: day === t, pilotMs, medals, players: times.length, stats, ratios });
+    }
+    const themes = [...pools.entries()].filter(([k]) => k !== "tous").map(([theme, list]) => ({ theme, ...medalPoolStats(list) }));
+    themes.sort((a, b) => a.theme.localeCompare(b.theme));
+    return {
+      today: formatDay(t),
+      simVersion: SIM_VERSION,
+      generatorVersion: GENERATOR_VERSION,
+      factors: MEDAL_FACTORS,
+      percentiles: MEDAL_PERCENTILES,
+      demo: withDemo,
+      days,
+      themes,
+      all: medalPoolStats(pools.get("tous") ?? []),
+    };
+  }
+
   /** Le jour doit être strictement dans le futur (date de Paris) : un jour commencé est figé, ses joueurs ont déjà couru dessus. */
   function plannableDay(date: string): number {
     const day = parseDay(date);
@@ -663,6 +730,10 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       if (path === "/api/admin/overview") {
         if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
         return await adminOverview();
+      }
+      if (path === "/api/admin/medailles") {
+        if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+        return await adminMedals(url);
       }
       const pm = /^\/api\/admin\/planning\/([^/]+)$/.exec(path);
       if (pm) {

@@ -75,6 +75,16 @@
       .confirmhost .ask { font-size: 13px; }
       button.go { background: #ffd22e; color: #131a33; }
       #replace-msg[data-kind="error"] { color: #ff9aa5; }
+      /* Médailles (lot 35) */
+      .medtable { overflow-x: auto; margin: 6px 0 14px; }
+      .medtable table { font-size: 12px; white-space: nowrap; }
+      .medtable th { text-align: left; opacity: .7; font-weight: 600; padding: 2px 10px 4px 0; }
+      .medtable td { font-variant-numeric: tabular-nums; }
+      .medtable td[data-cible="in"], .cible-in { color: #8be28b; }
+      .medtable td[data-cible="over"], .cible-over { color: #ffd22e; }
+      .medtable td[data-cible="under"], .cible-under { color: #ff9aa5; }
+      #med-state[data-kind="error"] { color: #ff9aa5; }
+      #med-out h3 { font-size: 13px; margin: 10px 0 2px; }
       kbd { background: rgba(255,255,255,.14); border-radius: 5px; padding: 1px 7px; font: 600 13px ui-monospace, monospace; }
     </style>
   </head>
@@ -83,7 +93,7 @@
       <h1>Circuit du Jour — admin</h1>
       <p class="lead">Outils de test : choisir un circuit, un thème, des réglages, puis lancer le jeu. Ces choix ne sont que des paramètres d'adresse : ils ne changent jamais la simulation, et une course lancée avec eux n'est classée que si c'est le circuit du jour, sans réglage modifié.</p>
 
-      <nav class="jump"><a href="#sec-today">Aujourd'hui</a><a href="#sec-planning">Planning</a><a href="#sec-history">Historique</a><a href="#sec-tools">Outils</a></nav>
+      <nav class="jump"><a href="#sec-today">Aujourd'hui</a><a href="#sec-planning">Planning</a><a href="#sec-history">Historique</a><a href="#sec-medailles">Médailles</a><a href="#sec-tools">Outils</a></nav>
       <div id="demo-banner" class="banner" hidden><strong>Mode démonstration</strong> : pas de serveur. Les remplacements sont gardés dans ce navigateur seulement ; le jeu en <code>?api=demo</code> les respecte, rien n'est envoyé nulle part.</div>
 
       <section style="margin-top: 14px">
@@ -105,6 +115,24 @@
 
       <h2 id="sec-history">Historique</h2>
       <section id="history"></section>
+
+      <h2 id="sec-medailles">Médailles · calibrage (lot 35)</h2>
+      <p class="lead">Lecture seule : temps du pilote, joueurs, percentiles des meilleurs temps et part des joueurs ayant chaque médaille, par jour et par thème. Même jeton que le planning ; « Copier l'export » donne la réponse entière (sans pseudo ni identifiant).</p>
+      <section>
+        <div class="actions">
+          <button type="button" id="med-load" class="go">Charger les médailles</button>
+          <label class="opt"><input type="checkbox" id="med-demo" /> Compter les pilotes fictifs (recette)</label>
+          <button type="button" id="med-copy" hidden>Copier l'export (JSON)</button>
+        </div>
+        <p id="med-state" class="hint" aria-live="polite"></p>
+        <div id="med-out" hidden>
+          <p class="hint">Seuils en vigueur : auteur = temps du pilote, or ×1,08, argent ×1,20, bronze ×1,40. P10…P90 : écart au pilote du meilleur temps des joueurs (P10 = les 10 % les plus rapides). Parts cumulées (« ≥ Or » compte aussi l'auteur) : tous joueurs réunis, puis moyenne des journées. Cibles : auteur 5–10 %, or 25–35 %, argent 50–60 %, bronze 85–90 % (<span class="cible-in">dans</span>, <span class="cible-over">au-dessus</span>, <span class="cible-under">en dessous</span>).</p>
+          <h3>Par thème (jours fermés)</h3>
+          <div class="medtable"><table><thead><tr><th>Thème</th><th>Jours</th><th>Joueurs</th><th>P10</th><th>P25</th><th>P50</th><th>P75</th><th>P90</th><th>≥ Auteur</th><th>≥ Or</th><th>≥ Argent</th><th>≥ Bronze</th><th>moy. jour Auteur</th><th>moy. jour Or</th><th>moy. jour Argent</th><th>moy. jour Bronze</th></tr></thead><tbody id="med-themes"></tbody></table></div>
+          <h3>Par jour</h3>
+          <div class="medtable"><table><thead><tr><th>Date</th><th>N°</th><th>Thème</th><th>Pilote</th><th>Joueurs</th><th>P10</th><th>P25</th><th>P50</th><th>P75</th><th>P90</th><th>≥ Auteur</th><th>≥ Or</th><th>≥ Argent</th><th>≥ Bronze</th></tr></thead><tbody id="med-days"></tbody></table></div>
+        </div>
+      </section>
 
       <h2 id="sec-tools">Outils de test</h2>
       <h2>Raccourcis</h2>
