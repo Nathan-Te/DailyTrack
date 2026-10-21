@@ -36,7 +36,7 @@ const EFFECTS: readonly EffectsLevel[] = ["normal", "reduit", "aucun"];
 export function mountSettings(opts: SettingsUiOptions): SettingsUi {
   let s = { ...opts.settings };
   let open = false;
-  const cadre = creerCadre({ id: "settings", titreAria: "reglages.aria", retour: "jeu", haut: true, scene: true, onRetour: () => self.close() });
+  const cadre = creerCadre({ id: "settings", titreAria: "reglages.aria", retour: "jeu", haut: true, onRetour: () => self.close() });
   const change = (key: keyof PlayerSettings) => opts.onChange({ ...s }, key);
   const shows: (() => void)[] = [];
 
@@ -138,7 +138,7 @@ export function mountSettings(opts: SettingsUiOptions): SettingsUi {
       if (open) return;
       open = true;
       cadre.racine.hidden = false;
-      cadre.corps.scrollTop = 0;
+      cadre.defile.scrollTop = 0;
       cadre.racine.querySelector<HTMLElement>(".dj-barre-jeu__retour")?.focus({ preventScroll: true });
       opts.onToggle?.(true);
     },

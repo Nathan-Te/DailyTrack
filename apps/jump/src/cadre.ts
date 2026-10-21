@@ -1,11 +1,12 @@
-import { barreJeu, el } from "@cdj/ui";
+import { barreJeu, creerCadre as cadreDuSocle, el, type Cadre } from "@cdj/ui";
 import { onLangue, t, traducteurDuSocle } from "./i18n";
 
-// Le cadre crème de Du Jour autour de l'étiquette jaune de Jump (lot I5, charte § 1 et § 9 ; patron de Track : apps/web/src/cadre.ts) : la barre des
-// jeux (`barreJeu` de @cdj/ui : « ‹ DU JOUR » vers le portail, ou « ‹ JUMP » qui ferme l'écran), puis l'étiquette jaune (`.etiquette`, interface.css),
-// dont le corps défile. Les écrans de **sortie de partie** et de **Du Jour** sont bâtis ainsi (arrivée, classement du jour, archives, réglages) ; ceux
-// **pendant la partie** (pause, « Comment jouer », carnage) sont posés sur la scène, et l'accueil aussi (sous le voile à rayures, `home.ts`). La barre
-// se redessine d'elle-même au changement de langue et quand le jour du jeu est connu (`definirJour`).
+export type { Cadre };
+
+// Les écrans de Jump posés sur la scène (lot I5 ; lot I4b : le cadre commun de @cdj/ui, `creerCadre` et cadre.css, partagé avec Track) : la barre des jeux
+// (`barreJeu` : « ‹ DU JOUR » vers le portail, ou « ‹ JUMP » qui ferme l'écran) en plaque crème, l'étiquette jaune (`.etiquette`, interface.css) dans sa coque
+// moutarde, et ce qui défile. L'arrivée, le classement du jour, les archives, les réglages ; l'accueil pose sa propre barre (`barreDuJour`, home.ts) ; la
+// pause, « Comment jouer » et le carnage sont des dialogues sur le voile. La barre se redessine d'elle-même au changement de langue et de jour (`definirJour`).
 
 /** Le jour du jeu pour la barre : le numéro de jour civil (Paris, `@cdj/clock`) et le numéro du niveau (absent avant le premier). */
 let jourDuJeu = { jour: 0, numero: undefined as number | undefined };
@@ -42,43 +43,23 @@ export interface OptionsCadre {
   onRetour?: () => void;
   /** Au-dessus des autres écrans (réglages ouverts depuis la pause ou l'accueil). */
   haut?: boolean;
-  /**
-   * Lot I5, retour de Nathan : l'écran reste **dans le jeu** — posé sur la scène sous le voile à rayures, la barre des jeux en plaque crème, l'étiquette dans
-   * sa coque moutarde (comme l'accueil), au lieu d'une page crème qui fait quitter le jeu. Les réglages, les archives et le classement du jour.
-   */
-  scene?: boolean;
 }
 
-export interface Cadre {
-  racine: HTMLElement;
-  /** L'étiquette jaune. */
-  etiquette: HTMLElement;
-  /** Le contenu défilant de l'étiquette : l'écran y pose ses éléments. */
-  corps: HTMLElement;
-  /** Sous l'étiquette, dans le cadre (« Il te reste aujourd'hui » de l'arrivée). */
-  pied: HTMLElement;
-}
-
-/** Un cadre crème plein écran (ou, avec `scene`, posé sur la scène), caché au départ ; `document.body` le reçoit. */
+/**
+ * Un écran **dans le jeu** (lot I5, retour de Nathan ; règle de la charte rév. 8 § 9) : posé sur la scène sous le voile à rayures, la barre des jeux en plaque
+ * crème, l'étiquette jaune dans sa coque moutarde, caché au départ. Lot I4b : le cadre est celui de @cdj/ui (`creerCadre`, cadre.css), commun avec Track.
+ */
 export function creerCadre(o: OptionsCadre): Cadre {
-  const racine = el("div", { classe: ["cadre", o.haut && "cadre--haut", o.scene && "cadre--scene"], attrs: { id: o.id, role: "dialog", "aria-modal": "true", hidden: true } });
-  const corps = el("div", { classe: "etiquette__corps" });
-  const etiquette = el("main", { classe: "etiquette" }, corps);
-  const pied = el("div", { classe: "cadre__pied" });
-  const dessus = o.scene ? el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), etiquette) : etiquette;
-  const defile = el("div", { classe: "cadre__defile" }, dessus, pied);
-  let barre: HTMLElement | null = null;
-  const majBarre = () => {
-    racine.setAttribute("aria-label", t(o.titreAria));
-    const nouvelle = barreDuJour(o.retour === "jeu" ? { retourJeu: () => o.onRetour?.() } : {});
-    if (barre) barre.replaceWith(nouvelle);
-    else racine.prepend(nouvelle);
-    barre = nouvelle;
-  };
-  majBarre();
-  racine.append(defile);
-  barres.add(majBarre);
-  onLangue(majBarre);
-  document.body.append(racine);
-  return { racine, etiquette, corps, pied };
+  const cadre = cadreDuSocle({
+    id: o.id,
+    haut: o.haut,
+    etiquette: "etiquette",
+    aria: () => t(o.titreAria),
+    barre: () => barreDuJour(o.retour === "jeu" ? { retourJeu: () => o.onRetour?.() } : {}),
+  });
+  // L'étiquette dans la coque moutarde (stries de préhension), comme à l'accueil.
+  cadre.defile.prepend(el("div", { classe: "coque" }, el("div", { classe: "coque__stries", attrs: { "aria-hidden": "true" } }), cadre.etiquette));
+  barres.add(cadre.majBarre);
+  onLangue(cadre.majBarre);
+  return cadre;
 }

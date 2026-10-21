@@ -1,4 +1,4 @@
-// Écran d'accueil (lot 29, refait au lot I4 selon la maquette track.html) : ce qu'on voit en ouvrant le jeu — le cadre crème de Du Jour (barre « ‹ DU JOUR »,
+// Écran d'accueil (lot 29, refait au lot I4 selon la maquette track.html) : ce qu'on voit en ouvrant le jeu — le cadre posé sur la scène du départ (barre « ‹ DU JOUR »,
 // date, numéro du circuit) et, dedans, l'étiquette Track agrandie : « TRACK », le circuit et son thème, le tracé, ton meilleur temps et ton rang, les
 // quatre médailles en cases, le fantôme à battre, « Courir » ; puis le classement du jour (cinq lignes et la tienne), le Salon et les liens (archives,
 // réglages, aide, profil). Le DOM seulement : les données viennent de `HomeHost` (main.ts), la logique de homeLogic.ts, profile.ts et boardView.ts.

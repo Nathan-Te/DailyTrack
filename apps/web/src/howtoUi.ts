@@ -1,4 +1,4 @@
-// Fenêtre « Comment jouer » (lot 29 ; retouche du lot I4, charte rév. 7 § 9) : **dans le jeu**, pas dans le cadre crème du portail — l'étiquette asphalte posée sur la
+// Fenêtre « Comment jouer » (lot 29 ; retouche du lot I4, charte rév. 7 § 9) : **dans le jeu**, pas dans une page crème — l'étiquette asphalte posée sur la
 // scène, sous un voile à rayures (comme la pause), trois points courts, le schéma des commandes (doigts : les boutons aux bords, le centre libre ; clavier : les touches) et
 // un bouton « C'est parti ». Montrée une seule fois (le jeu gelé dessous), puis accessible depuis la pause, l'accueil et les réglages. Les textes viennent du catalogue
 // (`aide.*`) : la fenêtre se redessine au changement de langue.

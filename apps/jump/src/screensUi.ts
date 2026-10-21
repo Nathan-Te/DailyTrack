@@ -20,7 +20,7 @@ interface Ecran {
 
 function ecran(id: string, aria: string, onToggle: (open: boolean) => void) {
   let open = false;
-  const cadre = creerCadre({ id, titreAria: aria, retour: "jeu", scene: true, onRetour: () => self.close() });
+  const cadre = creerCadre({ id, titreAria: aria, retour: "jeu", onRetour: () => self.close() });
   const self = {
     cadre,
     get isOpen() {
@@ -29,7 +29,7 @@ function ecran(id: string, aria: string, onToggle: (open: boolean) => void) {
     show() {
       open = true;
       cadre.racine.hidden = false;
-      cadre.corps.scrollTop = 0;
+      cadre.defile.scrollTop = 0;
       cadre.racine.querySelector<HTMLElement>(".dj-barre-jeu__retour")?.focus({ preventScroll: true });
       onToggle(true);
     },

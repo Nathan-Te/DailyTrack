@@ -101,12 +101,18 @@ for (const viewport of [
     await expect(next).toHaveAttribute("href", "../jump/");
     await page.locator("#finish").evaluate((e) => e.scrollTo(0, 0));
     expect((await next.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
-    // Lot I4 : l'arrivée est un cadre qui couvre tout l'écran (barre des jeux, étiquette Track, puis « Jeu suivant du jour » dessous) : plus de plaques de course à
-    // éviter ; ses blocs ne se chevauchent pas et restent dans l'écran (la page défile dans l'étiquette si besoin).
-    const blocs = ["#finish .dj-barre-jeu", "#finish .etiquette", "#finish .arrivee__pied"];
+    // Lot I4b (charte rév. 8 : on reste dans le jeu) : l'arrivée est posée sur la scène, sous le voile à rayures (plus de page crème) ; les plaques et les boutons
+    // de la course s'effacent dessous (un seul voile) ; barre des jeux, étiquette Track, puis « Jeu suivant du jour » sous l'étiquette, sur sa plaque crème : ses
+    // blocs ne se chevauchent pas et restent dans l'écran (le corps de l'étiquette défile si besoin).
+    expect(await page.locator("#finish").evaluate((e) => getComputedStyle(e).backgroundImage), "le voile à rayures sur la scène").toContain("repeating-linear-gradient");
+    await expect(page.locator("canvas").first()).toBeVisible();
+    for (const sel of ["#hud-centre", "#menu", "#hud-droite", "#speed", "#touch"]) await expect(page.locator(sel), `${sel} effacé sous l'arrivée`).toBeHidden();
+    const blocs = ["#finish .dj-barre-jeu", "#finish .etiquette", "#finish .cadre__pied"];
     const blocBoxes = await boxes(page, blocs);
     expect(blocBoxes.map((b) => b.name)).toEqual(expect.arrayContaining(blocs));
     expectNoOverlap(blocBoxes, viewport);
+    const etiquette = (await page.locator("#finish .etiquette").boundingBox())!;
+    expect((await next.boundingBox())!.y, "« Jeu suivant du jour » sous l'étiquette").toBeGreaterThanOrEqual(etiquette.y + etiquette.height);
     // Tout ce que l'arrivée montrait déjà reste visible et touchable (le panneau défile, rien n'est masqué par le nouveau bouton).
     for (const sel of ["#finish .big", "#finish .online .rank", "#finish .actions button:first-child"]) await expect(page.locator(sel).first()).toBeVisible();
     for (const b of await page.locator("#finish .actions button").all()) {

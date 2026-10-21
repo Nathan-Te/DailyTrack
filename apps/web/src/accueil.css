@@ -519,58 +519,19 @@ body.finished #board {
   }
 }
 
-/* --- L'accueil reste posé sur la vue 3D du départ (retour de Nathan) : plus de fond crème plein écran, mais le **voile à rayures** de la pause (un masque : motif, jamais de flou ni de
-   translucidité) sur la scène ; la barre des jeux devient une plaque crème nette et l'étiquette Track (opaque, ombre dure) est centrée dans la page. Les autres écrans restent
-   des cadres crème. La barre de défilement de l'étiquette est masquée (on défile à la molette ou au doigt). ----------------------------------------------------------------------- */
-#home {
-  background: repeating-linear-gradient(115deg, var(--track-asphalte) 0 5px, transparent 5px 8px);
-}
-#home .etiquette__corps {
-  scrollbar-width: none;
-}
-#home .etiquette__corps::-webkit-scrollbar {
-  display: none;
-}
-#home > .dj-barre-jeu {
-  box-sizing: border-box;
-  width: calc(100% - 20px);
-  max-width: 940px;
-  margin: 10px 0 8px;
-  padding: 0 var(--dj-marge);
-  background: var(--dj-creme);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  box-shadow: var(--dj-ombre-bouton);
-}
-#home > .etiquette {
-  flex: 0 1 auto;
-}
+/* --- L'accueil reste posé sur la vue 3D du départ (retour de Nathan ; lot I4b : comme tous les écrans de Track, cadre commun de @cdj/ui) : le voile à rayures
+   sur la scène, la barre des jeux en plaque crème, l'étiquette Track (opaque, ombre dure). -------------------------------------------------------------- */
 /* Téléphone en portrait : une fenêtre sur la scène entre la barre et l'étiquette (l'étiquette, collée en bas, défile). */
 @media (max-width: 699px) and (orientation: portrait) {
-  #home > .etiquette {
+  #home .cadre__defile {
     margin-top: auto;
     max-height: calc(100% - 64px - 40vh);
   }
 }
-/* Tablette et grand écran : la barre et l'étiquette, groupées au milieu de la page. */
-@media (min-width: 700px) and (min-height: 521px) {
-  #home {
-    justify-content: center;
-  }
-}
 /* Grand écran : trois colonnes (le circuit et tes temps · le classement · le Salon et les liens), centrées dans la page. */
 @media (min-width: 1000px) and (min-height: 521px) {
-  #home > .dj-barre-jeu,
-  #home > .etiquette {
-    width: min(1160px, calc(100% - 40px));
-    max-width: none;
-  }
-  #home > .dj-barre-jeu {
-    margin-top: 18px;
-  }
-  #home > .etiquette {
-    flex: 0 1 auto;
-    margin-bottom: 18px;
+  #home {
+    --cadre-largeur: 1160px;
   }
   .home-grille {
     display: grid;
@@ -584,13 +545,7 @@ body.finished #board {
 }
 /* Téléphone en paysage : une colonne, centrée. */
 @media (max-height: 520px) and (orientation: landscape) {
-  #home > .dj-barre-jeu {
-    margin: 6px 0;
-    width: min(640px, calc(100% - 20px));
-  }
-  #home > .etiquette {
-    flex: 1 1 auto;
-    width: min(640px, calc(100% - 20px));
-    margin-bottom: 6px;
+  #home {
+    --cadre-largeur: 640px;
   }
 }

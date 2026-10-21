@@ -1,5 +1,5 @@
 /* Interface de Jump (lot I5, charte « Cartouches » : docs/plateforme/identite.md, révision 7 ; maquettes docs/plateforme/maquettes/cartouches/jump-*.html).
-   Les primitives communes : la page et ses couches, le cadre crème de Du Jour, l'étiquette jaune (la couleur du personnage) et sa coque moutarde, le voile à
+   Les primitives communes : la page et ses couches, le réglage du cadre posé sur la scène (cadre.css de @cdj/ui), l'étiquette jaune (la couleur du personnage) et sa coque moutarde, le voile à
    rayures et le dialogue posé sur la scène, les boutons et choix sur jaune, les lignes de classement (ta ligne en encre, § 9), les tuiles et l'autocollant.
    Chaque zone a sa feuille (hud.css, ecrans.css, outils.css) ; elles n'écrivent ni couleur, ni police, ni ombre floue, ni transparence : tout vient des
    jetons de @cdj/ui (test apps/jump/test/interface.test.ts). Le rendu du niveau (Three.js) n'est pas concerné. */
@@ -61,93 +61,23 @@ canvas {
   display: none !important;
 }
 
-/* --- Le cadre crème de Du Jour : barre des jeux + étiquette jaune (sortie de partie, écrans Du Jour) --------------------------------------------- */
+/* --- Les écrans posés sur la scène (lot I5, retour de Nathan ; lot I4b : le cadre commun de @cdj/ui, cadre.css, réglé ici) : réglages, archives, classement
+   du jour, arrivée. L'écran ouvert dessous (accueil, pause) s'efface le temps qu'ils sont ouverts : un seul voile, une seule étiquette. ------------------- */
+:root {
+  --cadre-largeur: 760px;
+  --z-cadre: var(--z-ecran);
+  --z-cadre-haut: var(--z-reglages);
+}
 .cadre {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-ecran);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: var(--dj-creme);
-  color: var(--dj-encre);
-  font-family: var(--dj-police-texte);
-  font-size: var(--dj-taille-15);
   line-height: 1.35;
-  padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
-  touch-action: pan-y;
   user-select: text;
   -webkit-user-select: text;
 }
 .cadre--arrivee {
   z-index: var(--z-arrivee);
 }
-.cadre--haut {
-  z-index: var(--z-reglages);
-}
-.cadre > .dj-barre-jeu {
-  flex: none;
-  width: 100%;
-  max-width: 760px;
-}
-/* Le contenu défile (l'étiquette, puis ce qui est posé dessous : « Il te reste aujourd'hui ») ; aucune barre de défilement ne se voit. */
-.cadre__defile {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  max-width: 760px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 0 10px 10px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-y;
-  scrollbar-width: none;
-}
-.cadre__defile::-webkit-scrollbar {
-  display: none;
-}
-.cadre__defile > * {
-  flex-shrink: 0;
-}
-.cadre__pied:empty {
-  display: none;
-}
-/* Lot I5 (retour de Nathan) : réglages, archives et classement du jour restent **dans le jeu** — sur la scène sous le voile à rayures, comme l'accueil : la
-   barre des jeux en plaque crème, l'étiquette dans sa coque moutarde, le tout centré en hauteur (et qui défile s'il dépasse). L'écran ouvert dessous (accueil,
-   pause) s'efface le temps qu'ils sont ouverts : un seul voile, une seule étiquette. */
-.cadre--scene {
-  background: var(--voile-rayures);
-  justify-content: center;
-  padding: max(10px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-}
-.cadre--scene > .dj-barre-jeu {
-  margin-bottom: 10px;
-  background: var(--dj-creme);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  box-shadow: 3px 3px 0 var(--dj-encre);
-  padding: 0 12px;
-}
-.cadre--scene .cadre__defile {
-  flex: 0 1 auto;
-  padding: 0 6px 6px 0;
-}
-/* Ce qui est posé sous l'étiquette (« Il te reste aujourd'hui », « Jeu suivant du jour ») : sur une plaque crème, lisible sur les rayures. */
-.cadre--scene .cadre__pied:not(:empty) {
-  background: var(--dj-creme);
-  border: var(--dj-trait) solid var(--dj-encre);
-  border-radius: var(--dj-rayon-bouton);
-  box-shadow: 3px 3px 0 var(--dj-encre);
-  padding: 10px 12px 12px;
-}
-.cadre--scene .cadre__pied:has(> [hidden]:only-child) {
-  display: none;
-}
-body:has(.cadre--scene:not([hidden])) #home,
-body:has(.cadre--scene:not([hidden])) #menu {
+body:has(.cadre:not([hidden])) #home,
+body:has(.cadre:not([hidden])) #menu {
   visibility: hidden;
 }
 

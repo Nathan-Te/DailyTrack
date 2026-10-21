@@ -3,6 +3,7 @@
 // à l'entrée de la page, pour qu'ils arrivent avec le HTML (aucun écran sans ses styles). Les polices sont servies par `/assets/…`, les mêmes fichiers que
 // le portail et Track (vite.config.ts). L'outil `?debug&tune` et la galerie `?modules` ont leur habillage dans outils.css.
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/cadre.css";
 import "@cdj/ui/src/polices/lilita-one-400.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";

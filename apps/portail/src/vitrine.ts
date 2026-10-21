@@ -1,4 +1,5 @@
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/cadre.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-600.css";
@@ -26,6 +27,7 @@ import {
   bouton,
   cartouche,
   choixLangue,
+  creerCadre,
   el,
   etiquetteJump,
   etiquetteTrack,
@@ -99,6 +101,23 @@ function medailles(t: T, jeu: Jeu | undefined): HTMLElement {
   );
 }
 
+/**
+ * Lot I4b : le cadre d'un écran de jeu posé sur sa scène (`creerCadre`), dans une boîte qui figure la scène : la barre (« ‹ <JEU> » qui ferme l'écran),
+ * l'étiquette du jeu et le pied (« Jeu suivant du jour »). Dans le jeu, le cadre couvre tout l'écran (`position: fixed`) ; ici il remplit sa boîte.
+ */
+function cadreSurScene(t: T, jeu: Jeu, jour: number): HTMLElement {
+  const nom = t.t(jeu === "track" ? "jeu.track.titre" : "jeu.jump.titre");
+  const cadre = creerCadre({
+    etiquette: jeu === "track" ? "dj-etiquette track-etiquette dj-sombre" : "dj-etiquette jump-etiquette",
+    aria: () => t.t("vitrine.cadre.titre"),
+    barre: () => barreJeu(t, { href: "#", jour, numero: 12, retour: { texte: nom, ariaLabel: nom, onClick: () => undefined } }),
+  });
+  cadre.corps.append(el("h3", { classe: jeu === "track" ? "track-etiquette__titre" : "jump-etiquette__titre", texte: t.t("vitrine.cadre.titre") }), el("p", { texte: t.t(jeu === "track" ? "vitrine.etiquette.track" : "vitrine.etiquette.jump") }));
+  cadre.pied.append(bouton({ texte: t.t("arrivee.jeuSuivant", { jeu: t.t(jeu === "track" ? "jeu.jump.nom" : "jeu.track.nom") }), href: "#", pleineLargeur: true }));
+  cadre.racine.hidden = false;
+  return el("div", { classe: ["vitrine-scene", `vitrine-scene--${jeu}`] }, cadre.racine);
+}
+
 /** Tous les composants dans une langue. */
 function bloc(l: Langue): HTMLElement {
   const t = traduire(l);
@@ -155,6 +174,7 @@ function bloc(l: Langue): HTMLElement {
         cartouche({ etiquette: el("div", { classe: "dj-etiquette vitrine-etiquette-vide" }, logo(t)) }),
       ),
     ),
+    section(t.t("vitrine.section.cadre"), `cadre-${l}`, el("p", { classe: "vitrine-intro", texte: t.t("vitrine.cadre.intro") }), cadreSurScene(t, "track", jour), cadreSurScene(t, "jump", jour)),
     section(
       t.t("vitrine.section.tuiles"),
       `tuiles-${l}`,

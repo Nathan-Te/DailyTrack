@@ -166,3 +166,17 @@
 .vitrine-asphalte.vitrine-ligne {
   flex-direction: row;
 }
+/* Lot I4b : le cadre d'un écran de jeu posé sur sa scène (cadre.css), dans une boîte qui figure la scène (aplat, puis le voile du cadre). */
+.vitrine-scene {
+  position: relative;
+  height: 380px;
+  background: var(--dj-creme-2);
+  border: var(--dj-trait) solid var(--dj-encre);
+}
+.vitrine-scene .cadre {
+  position: absolute;
+  z-index: 0;
+}
+.vitrine-scene--track {
+  --cadre-voile: repeating-linear-gradient(115deg, var(--track-asphalte) 0 5px, transparent 5px 8px);
+}

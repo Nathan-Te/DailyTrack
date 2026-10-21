@@ -1,4 +1,4 @@
-/* DailyTrack (lot I4) — les réglages et l'aide « Comment jouer » (maquette track-reglages.html) : deux écrans dans le cadre de Du Jour, sur l'étiquette Track.
+/* DailyTrack (lot I4) — les réglages et l'aide « Comment jouer » (maquette track-reglages.html) : les réglages, un écran posé sur la scène (lot I4b), et l'aide, un dialogue sur le voile ; l'étiquette Track.
    Primitives communes : interface.css (cadre, étiquette, boutons, choix `.segment`, curseurs `.curseur`) ; plaques de course : hud.css. Valeurs : jetons de @cdj/ui
    seulement (aucune couleur, police, ombre floue ni transparence écrite ici : test apps/web/test/interface.test.ts). */
 

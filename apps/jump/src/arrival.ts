@@ -81,7 +81,7 @@ export interface Arrival {
 
 export function mountArrival(opts: ArrivalOptions): Arrival {
   // Règle de Nathan (lot I5) : on reste dans le jeu tant qu'on ne choisit pas d'en sortir — l'arrivée est posée sur la scène, comme les autres écrans.
-  const cadre = creerCadre({ id: "arrival", titreAria: "arrivee.aria", retour: "portail", scene: true });
+  const cadre = creerCadre({ id: "arrival", titreAria: "arrivee.aria", retour: "portail" });
   const root = cadre.racine;
   root.classList.add("cadre--arrivee");
 
@@ -295,7 +295,7 @@ export function mountArrival(opts: ArrivalOptions): Arrival {
       fallback.hidden = true;
       root.hidden = false;
       armed = false;
-      cadre.corps.scrollTop = 0;
+      cadre.defile.scrollTop = 0;
       shown = true;
     },
     hide() {

@@ -1,5 +1,6 @@
 // Lot I4 : le socle `@cdj/ui` (jetons, base, composants), les 7 faces de polices de Track (hébergées, mêmes fichiers que le portail), puis les feuilles du jeu.
 import "@cdj/ui/src/styles.css";
+import "@cdj/ui/src/cadre.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
 import "@cdj/ui/src/polices/archivo-700.css";
@@ -366,7 +367,7 @@ function syncCalqueHud(live: boolean) {
 const hudSplits = $("splits");
 const hudBanner = $("banner");
 const hudFinish = $("finish");
-/** L'écran d'arrivée du circuit du jour : le cadre crème de Du Jour et l'étiquette Track (arriveeUi.ts). */
+/** L'écran d'arrivée du circuit du jour : posé sur la scène (lot I4b), l'étiquette Track (arriveeUi.ts). */
 const arrivee: Arrivee = creerArrivee(hudFinish);
 const hudBoard = $("board");
 const hudIntro = $("intro");
@@ -753,7 +754,7 @@ function playDaily() {
   if (needsHowto()) howto.open();
 }
 
-/** Le Salon est une autre page : l'aide s'y ouvre d'elle-même au chargement (même règle que pour un lien direct), pas ici sur le cadre crème de l'accueil. */
+/** Le Salon est une autre page : l'aide s'y ouvre d'elle-même au chargement (même règle que pour un lien direct), pas ici sur l'accueil. */
 function playSalon() {
   location.assign(modeHref(location.search, true));
 }
@@ -969,7 +970,7 @@ function closeArchive() {
   disposeArchive(); // plus de miniature demandée ; ce qui n'a pas commencé est abandonné
   thumbService.clearQueue();
 }
-// Les archives (lot I4) : le cadre crème de Du Jour, « ‹ TRACK » les ferme.
+// Les archives (lot I4) : un sous-écran posé sur la scène (lot I4b), « ‹ TRACK » ou Échap les ferme.
 const archiveView = mountArchive(hudArchive, closeArchive);
 
 /** Finale du Salon (lot 31) : plus aucun départ dans les 15 dernières secondes (ni au clavier, ni à la manette, ni au doigt). */
