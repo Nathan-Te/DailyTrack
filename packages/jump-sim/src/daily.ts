@@ -607,7 +607,7 @@ function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number
 
 // ——— Assemblage ———
 
-interface Assembled {
+export interface Assembled {
   level: Level;
   ascii: string;
   pieces: DailyPiece[];
@@ -741,13 +741,14 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
     // puits est murée au-dessus de cette portée (on descend par la colonne de gauche).
     const walls: { col: number; row: number }[] = [];
     const high = out.row - SLOW_REACH_ROWS;
+    const shaftTop = Math.min(roofs[k + 1]!, galleryRow - 3);
     // À droite du puits : le morceau suivant, ou le mur gauche de la cage de la portion dure suivante (plein au-dessus de son entrée).
     const side = out.col1 + 1;
     if (k + 1 < full.length) {
       let open = false;
-      for (let r = galleryRow - 3; r < high; r++) if (rows[r]![side] !== "#") open = true;
+      for (let r = shaftTop; r < high; r++) if (rows[r]![side] !== "#") open = true;
       if (open) {
-        for (let r = galleryRow - 3; r < high; r++) {
+        for (let r = shaftTop; r < high; r++) {
           if (rows[r]![out.col1] !== "#") walls.push({ col: out.col1, row: r });
           rows[r]![out.col1] = "#";
         }
@@ -758,6 +759,18 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
   });
   const ascii = rows.map((r) => r.join("")).join("\n") + "\n\n" + annex.join("\n") + "\n";
   return { level: parseLevel(ascii), ascii, pieces, paliers, slow };
+}
+
+/**
+ * Lot 16 : le même assemblage que celui d'un niveau du jour (mêmes morceaux, voies lentes et montées ajoutées), en version 3 comme le fait le
+ * générateur avant la mise à l'heure unique : ses voies lentes et leurs cases creusées (tests, outils).
+ */
+export function reassemble(d: Pick<DailyLevel, "pieces" | "slowRoutes" | "level">): Assembled {
+  const extras = d.pieces.map((_, k) => d.slowRoutes.find((r) => r.piece === k)?.extra ?? 0);
+  return assemble(
+    d.pieces.map((p) => ({ id: p.id, variant: p.variant })),
+    { slow: d.level.simVersion >= SINGLE_CLOCK_VERSION, extras },
+  );
 }
 
 // ——— La preuve ———
@@ -1174,7 +1187,7 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
     }
     // La descente longe le morceau suivant : rien de libre au-dessus de la portée d'un saut.
     if (next) {
-      for (let row = r.galleryRow - 3; row < pout.row - SLOW_REACH_ROWS; row++) {
+      for (let row = 0; row < pout.row - SLOW_REACH_ROWS; row++) {
         let c = pout.col0;
         while (c <= pout.col1 + 1 && at(c, row) !== TILE_SOLID) c++;
         if (c > pout.col1 + 1) out.push(`voie lente ${i + 1} : la descente donne sur le morceau suivant en ${pout.col1 + 1},${row}`);

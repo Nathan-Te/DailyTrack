@@ -67,6 +67,7 @@ import { mountHud, type Objective } from "./hud";
 import { FixedStepper } from "./loop";
 import { THEMES, themeByName, themeForDay } from "./themes";
 import { createScene, type JumpScene, type SceneDetail, type SceneStats } from "./scene";
+import { slowDebugPaths } from "./slowRoute";
 import type { DynamicStats } from "./dynamicArt";
 import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
@@ -424,6 +425,9 @@ export interface DailyView {
   exigence: { sum: number; rate: number; thirds: readonly number[] };
   /** La rediffusion de l'auteur (base64url). */
   code: string;
+  /** Lot 16 : les voies lentes (morceau contourné, zone, temps rapide et lent en pas) et le temps « toutes voies lentes ». */
+  slowRoutes: { piece: number; zone: number; entryRow: number; galleryRow: number; fastTicks: number; slowTicks: number; code: string }[];
+  slowTicks: number;
   /** Médaille de la dernière arrivée (null : aucune, ou pas encore d'arrivée). */
   lastMedal: string | null;
   /** Passage de minuit : un nouveau niveau attend la prochaine commande « recommencer ». */
@@ -853,7 +857,10 @@ try {
   // Lot 15 : à une seule horloge, la phase de la section et sa période (pas), calculées sur la référence.
   const clockLabel = (k: number) => (singleClock(level) && sectionPeriod(level, k) > 0 ? ` · phase ${level.sections[k]!.phase} / ${sectionPeriod(level, k)}` : "");
   const pieces = options.pieces && daily ? daily.pieces.map((p, k) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5${clockLabel(k)}` })) : undefined; // i18n-ok: outil ?debug (limites des morceaux et horloge)
-  scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels) });
+  // Lot 16 : le repère d'entrée des voies lentes (toujours) ; avec `?debug`, leurs deux trajets et leurs temps.
+  const slowRoutes = daily ? daily.slowRoutes : undefined;
+  const slowDebug = options.pieces && daily ? slowDebugPaths(daily) : undefined;
+  scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels), slowRoutes, slowDebug });
   scene.animate = levels.animate;
   scene.windParticles = levels.particles;
 } catch {
@@ -1877,7 +1884,11 @@ function dailyOverlay(): string {
     : period === 0
       ? `v${level.simVersion} · rien ne tourne dans ce morceau`
       : `v${level.simVersion} · phase ${level.sections[k]!.phase} · période ${period} · cycle ${cycleMod(session.state.time + level.sections[k]!.phase, period)}`;
-  return `morceau   ${where}\nhorloge   ${clock}${session.ready ? ` · Prêt… ${session.countdown}` : ""}\nniveau    ${daily.id} · auteur ${formatTicks(daily.authorTicks)} · tirage ${daily.chosen}${daily.fallback ? " (secours)" : ""}`;
+  // Lot 16 : la seconde voie du morceau (temps rapide et lent, surcoût), et les temps de référence du niveau.
+  // Sur le palier d'entrée et dans la zone de bifurcation, c'est déjà la voie du morceau qui suit.
+  const slow = daily.slowRoutes.find((r) => col >= r.palierIn.col0 && col <= daily.pieces[r.piece]!.col1);
+  const voie = slow ? `${daily.pieces[slow.piece]!.id} · rapide ${formatTicks(slow.fastTicks)} · lente ${formatTicks(slow.slowTicks)} (+${formatTicks(slow.slowTicks - slow.fastTicks)})` : "aucune ici (portions notées 4 ou 5 seulement)";
+  return `morceau   ${where}\nhorloge   ${clock}${session.ready ? ` · Prêt… ${session.countdown}` : ""}\nvoie lente ${voie}\nniveau    ${daily.id} · auteur ${formatTicks(daily.authorTicks)} · toutes voies lentes ${formatTicks(daily.slowTicks)} · ${daily.slowRoutes.length} voie(s) lente(s) · tirage ${daily.chosen}${daily.fallback ? " (secours)" : ""}`;
 }
 
 const info: JumpDebug = {
@@ -1928,6 +1939,8 @@ const info: JumpDebug = {
       medals: { ...daily.medals },
       exigence: { ...daily.exigence },
       code: daily.code,
+      slowRoutes: daily.slowRoutes.map((r) => ({ piece: r.piece, zone: r.zone, entryRow: r.entryRow, galleryRow: r.galleryRow, fastTicks: r.fastTicks, slowTicks: r.slowTicks, code: r.code })),
+      slowTicks: daily.slowTicks,
       lastMedal,
       newDay,
       notice,

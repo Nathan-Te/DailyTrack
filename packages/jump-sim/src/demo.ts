@@ -3,7 +3,8 @@ import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, ste
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { cycleMod, sectionPeriod, type Level } from "./level";
-import { DEFAULT_JUMP_PARAMS, INPUT_MASK, PLAYER_WIDTH } from "./player";
+import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_MASK, PLAYER_WIDTH } from "./player";
+import { PALIER_LENGTH } from "./modules";
 import { SINGLE_CLOCK_VERSION } from "./constants";
 import { AttemptRecorder, fromRuns, replayStartState, type JumpReplay, type RecordedAttempt } from "./replay";
 
@@ -16,6 +17,7 @@ import { AttemptRecorder, fromRuns, replayStartState, type JumpReplay, type Reco
 // reprise sur un point de passage, il reprend la solution au pas qui le fait aller le plus loin depuis ce point (cherché une fois pour toutes
 // parmi les pas voisins de celui où la solution avait touché le point), avec une nouvelle faute possible. Un essai qui n'avance plus pendant
 // 4 s, ou qui a déjà perdu `maxLives` vies, est abandonné (« recommencer »).
+// Lot 16 (v4) : une faute ne fait jamais sauter sur le palier d'un point de passage (le joueur fictif ne prend pas la voie lente).
 // Lot 15 : dans un niveau à une seule horloge (v4), rien ne revient à zéro à la mort : après une reprise (au départ ou sur un point), le joueur
 // fictif **attend**, comme un vrai joueur qui regarde les scies, que l'horloge retrouve la phase où la solution passait (`alignWait`), puis la
 // reprend. Les niveaux v3 ne changent pas (mêmes essais, mêmes références).
@@ -55,6 +57,11 @@ function alignWait(level: Level, s: Readonly<AttemptState>, cursor: number): num
     l = next;
   }
   return cycleMod(cursor - s.time, l);
+}
+
+/** Lot 16 : le centre est-il sur le palier d'un point de passage (ses `PALIER_LENGTH` colonnes) ? */
+function isCalm(level: Level, col: number): boolean {
+  return level.checkpoints.some((c) => col >= c.col && col < c.col + PALIER_LENGTH);
 }
 
 interface Plan {
@@ -107,6 +114,7 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
   const plan = planOf(level, solution);
   const maxLives = options.maxLives ?? 6;
   const start = replayStartState(level, solution.start);
+  const calm = level.simVersion >= SINGLE_CLOCK_VERSION;
   const out: RecordedAttempt[] = [];
   const fault = (from: number, span: number): [number, number, number] => {
     const at = from + rng.int(span);
@@ -125,7 +133,14 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
     let done: RecordedAttempt | null = null;
     for (;;) {
       let bits = wait > 0 ? 0 : (plan.inputs[cursor] ?? 0);
-      if (wait === 0) for (const [a, b, c] of cuts) if (cursor >= a && cursor < b) bits = c;
+      if (wait === 0) {
+        for (const [a, b, c] of cuts) {
+          if (cursor < a || cursor >= b) continue;
+          // Lot 16 (v4) : une faute ne fait jamais sauter sur le palier d'un point de passage : de là part la voie lente d'une portion dure
+          // (un saut pose sur le toit de sa cage), et un joueur fictif ne la prend pas.
+          bits = calm && isCalm(level, centerCol(s)) ? c & ~INPUT_JUMP : c;
+        }
+      }
       const before = s;
       s = stepAttempt(before, bits, level, DEFAULT_JUMP_PARAMS);
       done = recorder.step(before, bits, s);

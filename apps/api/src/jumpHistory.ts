@@ -92,9 +92,11 @@ export function fictionalJumps(d: DailyLevel, count: number): { name: string; co
       const r = replayAttempt(d.level, a.replay, d.id);
       for (const life of r.lives) if (life.end === "mort" && lives.length < JUMP_LIVES_PER_DAY) lives.push(encodeReplay(lifeReplay(a.replay, life)));
       if (a.end !== "arrivée") continue;
-      // Un essai fictif sans mort suit la preuve au pas près : il arrive exactement au temps de l'auteur. On ne garde que ceux qui ont trébuché
-      // (sinon tout le monde serait à égalité avec l'auteur) ; le premier joueur, lui, a la preuve.
-      if (r.finished && r.deaths.length > 0 && (!best || r.time < best.ticks)) best = { code: encodeReplay(a.replay), ticks: r.time };
+      // Un essai fictif sans faute suit la preuve au pas près : il arrive exactement au temps de l'auteur. On ne garde que ceux qui ont trébuché
+      // (sinon tout le monde serait à égalité avec l'auteur) ; le premier joueur, lui, a la preuve. Lot 16 : trébucher, c'est mourir **ou**
+      // arriver plus lentement que l'auteur (une faute qui ne tue pas) : en v4, un joueur fictif reprend rarement bien après une mort (il rejoue
+      // la preuve à l'aveugle, sur une horloge qui ne s'arrête pas), et certains jours n'avaient plus qu'un ou deux classés.
+      if (r.finished && (r.deaths.length > 0 || r.time > d.authorTicks) && (!best || r.time < best.ticks)) best = { code: encodeReplay(a.replay), ticks: r.time };
     }
     cursor += share;
     if (best) out.push({ name: names[p]!, ...best, lives });
