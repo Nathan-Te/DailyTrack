@@ -36,6 +36,9 @@ export default defineConfig({
   reporter: CI ? [["blob", { fileName: process.env.E2E_BLOB_NAME || undefined }], ["list"]] : "list",
   use: {
     baseURL: "http://localhost:4174",
+    // Lot I5 : Jump suit la langue de la plateforme (`cdj:langue`, sinon celle du navigateur) ; les tests tournent en français (comme Track au lot I4) ; un
+    // test de l'anglais ouvre un contexte `locale: "en-US"` (ou choisit EN dans les Réglages).
+    locale: "fr-FR",
     // CI : trace de tout essai raté (même celui d'un test réussi à la relance), sans captures : de quoi trouver la cause d'une instabilité.
     trace: CI ? { mode: "retain-on-failure", screenshots: false, snapshots: false } : "off",
   },

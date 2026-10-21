@@ -129,13 +129,19 @@ test("menu ⏸ au clavier : Échap met en pause (chrono figé), P aussi ; les r�
   const t1 = await get(page, (j) => j.attempt.time);
   await page.waitForTimeout(600); // rien ne doit bouger pendant la pause
   expect(await get(page, (j) => j.attempt.time)).toBe(t1);
-  // Réglages : effets réduits, volume 30 %, vibrations coupées.
-  await page.locator('#menu [data-setting="effects"] button[data-value="reduit"]').click();
-  await page.locator('#menu [data-setting="volume"] input').fill("30");
-  await page.locator('#menu button[data-setting="vibration"]').click();
+  // Réglages (lot I5 : un écran du cadre crème, ouvert depuis la pause) : effets réduits, volume 30 %, vibrations coupées.
+  await page.locator("#menu-settings").click();
+  await expect(page.locator("#settings")).toBeVisible();
+  await page.locator('#settings [data-setting="effects"] button[data-value="reduit"]').click();
+  await page.locator('#settings [data-setting="volume"] input').fill("30");
+  await page.locator('#settings [data-setting="vibration"] button[data-value="false"]').click();
   expect(await get(page, (j) => j.settings)).toMatchObject({ effects: "reduit", volume: 0.3, vibration: false });
   expect(await get(page, (j) => j.tuned)).toBe(false);
-  // Échap referme : le chrono repart (il change : il avance, ou repart de 0 après une mort sans point de passage).
+  // Échap ferme les Réglages (la pause revient), puis la pause : le chrono repart (il change : il avance, ou repart de 0 après une mort sans
+  // point de passage).
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#settings")).toBeHidden();
+  await expect(page.locator("#menu")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(page.locator("#menu")).toBeHidden();
   await page.waitForFunction((t) => (window as unknown as { __jump: J }).__jump.attempt.time !== t, t1);
@@ -151,8 +157,10 @@ test("menu ⏸ au clavier : Échap met en pause (chrono figé), P aussi ; les r�
   expect(await get(page, (j) => j.settings)).toMatchObject({ effects: "reduit", volume: 0.3, vibration: false });
   expect(await get(page, (j) => j.effects.levels.particles)).toBe(0.5);
   await page.keyboard.press("Escape");
-  await expect(page.locator('#menu [data-setting="volume"] input')).toHaveValue("30");
-  await expect(page.locator('#menu [data-setting="effects"] button[data-value="reduit"]')).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#menu-settings").click();
+  await expect(page.locator('#settings [data-setting="volume"] input')).toHaveValue("30");
+  await expect(page.locator('#settings [data-setting="effects"] button[data-value="reduit"]')).toHaveAttribute("aria-pressed", "true");
+  await page.locator("#settings .dj-barre-jeu__retour").click();
   // « Recommencer » du menu : retour au départ, menu fermé.
   await get(page, (j) => j.input(0));
   await page.locator("#menu-restart").click();
@@ -217,7 +225,7 @@ for (const [name, viewport] of [
       test.skip(!(await open(page, "&touch=1", false)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       await get(page, (j) => j.input(2));
       await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.attempt.time > 20);
-      const pause = page.locator("#pause");
+      const pause = page.locator("#pausebtn");
       const pb = (await pause.boundingBox())!;
       expect(pb.width).toBeGreaterThanOrEqual(44);
       expect(pb.height).toBeGreaterThanOrEqual(44);
@@ -231,9 +239,11 @@ for (const [name, viewport] of [
       expect(box.y).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 0.5);
       expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 0.5);
-      const targets = page.locator("#menu button, #menu input");
+      // Lot I5 : la pause porte les actions (reprendre, recommencer, fantôme, son, réglages…) ; les réglages fins sont dans l'écran Réglages, mesuré
+      // plus bas.
+      const targets = page.locator("#menu button:visible, #menu a:visible");
       const n = await targets.count();
-      expect(n).toBeGreaterThanOrEqual(10);
+      expect(n).toBeGreaterThanOrEqual(8);
       for (let i = 0; i < n; i++) {
         const t = targets.nth(i);
         await t.scrollIntoViewIfNeeded();
@@ -242,11 +252,27 @@ for (const [name, viewport] of [
         expect(b.width, label).toBeGreaterThanOrEqual(44);
         expect(b.height, label).toBeGreaterThanOrEqual(44);
       }
-      // Un réglage au doigt, puis « Reprendre » : le chrono repart.
-      const shake = page.locator('#menu button[data-setting="shake"]');
+      // Un réglage au doigt (Réglages, depuis la pause : cibles de 44 px, curseurs compris), « ‹ JUMP », puis « Reprendre » : le chrono repart.
+      await page.locator("#menu-settings").tap();
+      await expect(page.locator("#settings")).toBeVisible();
+      const reglages = page.locator("#settings button, #settings input, #settings a");
+      const m = await reglages.count();
+      expect(m).toBeGreaterThanOrEqual(15);
+      for (let i = 0; i < m; i++) {
+        const t = reglages.nth(i);
+        if (!(await t.isVisible())) continue;
+        await t.scrollIntoViewIfNeeded();
+        const b = (await t.boundingBox())!;
+        const label = (await t.getAttribute("data-value")) ?? (await t.textContent()) ?? `n° ${i}`;
+        expect(b.width, label).toBeGreaterThanOrEqual(44);
+        expect(b.height, label).toBeGreaterThanOrEqual(44);
+      }
+      const shake = page.locator('#settings [data-setting="shake"] button[data-value="false"]');
       await shake.scrollIntoViewIfNeeded();
       await shake.tap();
       expect((await get(page, (j) => j.settings)).shake).toBe(false);
+      await page.locator("#settings .dj-barre-jeu__retour").tap();
+      await expect(page.locator("#settings")).toBeHidden();
       const resume = page.locator("#menu-resume");
       await resume.scrollIntoViewIfNeeded();
       await resume.tap();

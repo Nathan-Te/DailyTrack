@@ -186,7 +186,8 @@ export function buttonRects(layout: Layout): ButtonRect[] {
   const { width, height, insets } = layout;
   const left = Math.max(insets.left, 0);
   const right = width - Math.max(insets.right, 0);
-  const bottom = height - Math.max(insets.bottom, 0) - BUTTON_BOTTOM_PX;
+  // Au-dessus de la bande de geste : `BUTTON_BOTTOM_PX` depuis le bord, ou la zone sûre si elle est plus haute (elle contient déjà la barre d'accueil).
+  const bottom = height - Math.max(insets.bottom, BUTTON_BOTTOM_PX);
   const room = bottom - layout.band - BUTTON_GAP_PX;
   const quarter = width * ZONE_SPANS[0]!.x1;
   const half = width * ZONE_SPANS[1]!.x1;

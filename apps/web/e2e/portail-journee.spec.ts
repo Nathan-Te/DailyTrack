@@ -439,7 +439,7 @@ test("de Track vers Jump : « Jeu suivant du jour : Jump › » ; puis, Jump fin
     // Tous les jeux du jour sont finis : « Journée parfaite ! » et le lien « ‹ Du Jour » vers le portail.
     await expect(page.locator("#arrival-perfect")).toHaveText("Journée parfaite !");
     const retour = page.locator("#arrival-portail");
-    await expect(retour).toHaveText("‹ Du Jour");
+    await expect(retour).toHaveText("DU JOUR"); // lot I5 : le bouton de marque du socle, comme Track
     await expect(retour).toHaveAttribute("href", "../");
     await expect(page.locator("#arrival-next-game")).toHaveCount(0);
     expect((await retour.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
@@ -463,10 +463,10 @@ test("de Jump vers Track : « Jeu suivant du jour : Track › » à l'arrivée d
     const suivant = page.locator("#arrival-next-game");
     await expect(suivant).toHaveText("Jeu suivant du jour : Track ›");
     await expect(suivant).toHaveAttribute("href", "../track/");
-    expect((await suivant.boundingBox())!.height).toBeGreaterThanOrEqual(47.5);
+    expect((await suivant.boundingBox())!.height).toBeGreaterThanOrEqual(43.5); // lot I5 : le bouton de marque du socle (46 px), comme Track ; avant : 48 px
     expect(vues.filter((v) => v.url === "/api/portail/jour").length).toBeGreaterThanOrEqual(1);
     for (const id of ["replay", "share", "carnage", "home"]) expect((await page.locator(`#arrival-${id}`).boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    await page.locator("#arrival").evaluate((e) => e.querySelector(".acard")!.scrollTo(0, 0));
+    await page.locator("#arrival").evaluate((e) => e.querySelector(".cadre__defile")!.scrollTo(0, 0)); // lot I5 : le cadre crème défile
     await capture(page, `arrivee-jump-jeu-suivant-${nom}-fr`);
     await suivant.click();
     await expect(page).toHaveURL(new RegExp(`${SITE_20}/track/`));

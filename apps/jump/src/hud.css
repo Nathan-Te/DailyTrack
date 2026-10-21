@@ -206,6 +206,18 @@ body.carnage #tbuttons {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
+/* Écran étroit (téléphone en portrait) : la bande occupe le haut du milieu ; l'objectif passe sous l'autocollant des morts, le titre et les messages
+   sous l'objectif — toujours au-dessus de la zone du personnage (e2e/hud-compact.spec.ts). */
+@media (max-width: 599px) {
+  #hud-droite {
+    flex-direction: column-reverse;
+    align-items: flex-end;
+  }
+  #dayline,
+  #toast {
+    top: calc(max(8px, env(safe-area-inset-top)) + 70px);
+  }
+}
 #morts {
   height: 30px;
   padding: 0 8px;
@@ -225,8 +237,9 @@ body.carnage #tbuttons {
   position: fixed;
   z-index: var(--z-hud);
   left: 50%;
-  top: calc(max(8px, env(safe-area-inset-top)) + 38px);
+  top: calc(max(8px, env(safe-area-inset-top)) + 36px);
   transform: translateX(-50%);
+  line-height: 18px;
   max-width: calc(100% - 24px);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -248,7 +261,7 @@ body.carnage #tbuttons {
   z-index: var(--z-hud);
   left: max(12px, env(safe-area-inset-left));
   top: calc(max(8px, env(safe-area-inset-top)) + 54px);
-  max-width: min(30vw, 260px);
+  max-width: min(calc(30vw - 24px), 260px);
   white-space: normal;
   background: var(--jump-jaune);
   display: none;
@@ -355,8 +368,15 @@ body.touch-suspended #hud-gauche .plaque--bouton {
   pointer-events: none;
 }
 /* « Tourne ton téléphone » : en portrait seulement, en bas au centre (entre les commandes), il disparaît au premier toucher ou après 9 s. */
+.rotate-couche {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-hud);
+  pointer-events: none;
+}
 #rotate {
   position: fixed;
+  pointer-events: none;
   z-index: var(--z-hud);
   left: 50%;
   bottom: max(16px, env(safe-area-inset-bottom));

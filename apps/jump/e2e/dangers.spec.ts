@@ -12,6 +12,9 @@ const AUTHOR_TEXT = (() => {
   const ms = Math.round((SOLUTION.ticks * 1000) / 120);
   return `${Math.floor(ms / 1000)},${String(ms % 1000).padStart(3, "0")} s`;
 })();
+/** Lot I5 : le bandeau écrit le temps comme le socle (`formatTemps` : espace insécable avant l'unité) ; la bande du HUD, sans unité (maquette jump-hud.html). */
+const AUTHOR_SHOWN = AUTHOR_TEXT.replace(" ", "\u00a0");
+const AUTHOR_CHRONO = AUTHOR_TEXT.replace(" s", "");
 
 const LEFT = 1;
 const RIGHT = 2;
@@ -92,7 +95,7 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   const start = await attempt(page);
   expect(start.status).toBe("attend");
   expect(start.respawnTicks).toBeLessThanOrEqual(24);
-  await expect(page.locator("#chrono .time")).toHaveText("0,000 s");
+  await expect(page.locator("#chrono .time")).toHaveText("0,000");
 
   // Le monde attend : sans commande, ni chrono ni scie ne bougent.
   await jump(page, (j) => j.input(0));
@@ -122,7 +125,7 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   expect(fresh(again)).toEqual(fresh(start));
   expect(again.deaths).toBe(1);
   expect(again.attempts).toBe(2);
-  await expect(page.locator("#chrono .deaths")).toHaveText("Morts 1");
+  await expect(page.locator("#morts .count")).toHaveText("1");
 
   // Au clavier : → dans les pics, le jeu lit bien les touches (mort de nouveau).
   await jump(page, (j) => j.input(null));
@@ -164,9 +167,9 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   expect(done.bestText).toBe(AUTHOR_TEXT);
   expect(done.deaths).toBe(2);
   await expect(page.locator("#finish")).toBeVisible();
-  await expect(page.locator("#finish .time")).toHaveText(AUTHOR_TEXT);
+  await expect(page.locator("#finish .time")).toHaveText(AUTHOR_SHOWN);
   await expect(page.locator("#finish .deaths")).toHaveText("Morts : 2 · essai sans faute");
-  await expect(page.locator("#chrono .time")).toHaveText(AUTHOR_TEXT);
+  await expect(page.locator("#chrono .time")).toHaveText(AUTHOR_CHRONO);
   // Le temps est figé.
   await step(page, 60);
   expect((await attempt(page)).time).toBe(SOLUTION.ticks);
@@ -176,7 +179,8 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   await page.keyboard.press("KeyR");
   await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
   await expect(page.locator("#finish")).toBeHidden();
-  await expect(page.locator("#chrono .best")).toHaveText(`Meilleur ${AUTHOR_TEXT}`);
+  // Lot I5 : la bande ne montre plus le meilleur temps (l'écart au record le remplace, charte § 9) ; il reste celui de la session.
+  expect((await attempt(page)).bestText).toBe(AUTHOR_TEXT);
 });
 
 test("point de passage : l'atteindre, mourir après, reprendre dessus dans le même essai, chrono qui continue", async ({ page }) => {
@@ -253,12 +257,13 @@ test.describe("au doigt (téléphone en paysage)", () => {
       const start = await attempt(page);
       const fingers = await Fingers.on(page);
 
-      // HUD lisible : sous la bande haute, dans l'écran, sans toucher les boutons.
+      // HUD lisible : lot I5, la bande du chrono en haut au centre (plus de bande de boutons au-dessus), dans l'écran, sans toucher les boutons.
       const chrono = (await page.locator("#chrono").boundingBox())!;
-      expect(chrono.y).toBeGreaterThanOrEqual(60);
+      expect(chrono.y).toBeGreaterThanOrEqual(0);
+      expect(chrono.y).toBeLessThan(16);
       expect(chrono.x).toBeGreaterThanOrEqual(0);
       expect(chrono.x + chrono.width).toBeLessThanOrEqual(W);
-      for (const sel of ["#restart", ".tbtn"]) {
+      for (const sel of ["#pausebtn", ".tbtn"]) {
         for (const el of await page.locator(sel).all()) {
           if (!(await el.isVisible())) continue;
           const b = (await el.boundingBox())!;
@@ -309,7 +314,7 @@ test.describe("au doigt (téléphone en paysage)", () => {
       expect(done.status).toBe("arrivé");
       expect(done.time).toBe(SOLUTION.ticks);
       await expect(page.locator("#finish")).toBeVisible();
-      await expect(page.locator("#finish .time")).toHaveText(AUTHOR_TEXT);
+      await expect(page.locator("#finish .time")).toHaveText(AUTHOR_SHOWN);
       const button = (await page.locator("#finish button").boundingBox())!;
       expect(button.height).toBeGreaterThanOrEqual(44);
       expect(button.width).toBeGreaterThanOrEqual(44);

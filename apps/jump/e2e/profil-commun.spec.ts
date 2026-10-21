@@ -1,15 +1,16 @@
+import { randomBytes } from "node:crypto";
 import { expect as baseExpect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { noteIdentityChange, writeIdentity, type ListableStore } from "@cdj/profile";
 import { FIXED_NOW, TODAY, shiftDate } from "./clock";
 import { hasWebGL } from "./phone";
 
 // Lot P2 (plateforme) : le profil commun, sur **deux appareils** (deux contextes de navigateur, stockages séparés) contre le **vrai serveur** de la
 // plateforme (SQLite en mémoire, port 8791 réservé à ce fichier : `playwright.config.ts`), comme `apps/web/e2e/profil.spec.ts` de DailyTrack :
 //   1. l'appareil A finit le niveau du jour (la preuve de l'auteur, en pas à pas), choisit son pseudo : il est premier (pas de doublon de fantôme) ;
-//   2. il copie son code (Réglages › Profil) ;
-//   3. l'appareil B le charge : le profil du serveur est montré, puis adopté ;
+//   2. et 3. (lot I5 : plus de profil dans le jeu) son code est chargé sur l'appareil B **comme le fait le portail** (`/profil/`), puis B rouvre Jump ;
 //   4. B retrouve l'historique et la série (fusion « le meilleur gagne »), le même pseudo, et l'identité de la plateforme que DailyTrack lit
 //      (`cdj:player`, `cdj:name`, et `GET /api/me` de DailyTrack rend ce pseudo) ;
-//   5. B change son code : sur A, l'ancien est refusé (410), le profil le dit, rien n'est perdu sur A.
+//   5. le code est changé (`POST /api/me/code`) : sur A, l'ancien est refusé (410), l'accueil le dit, rien n'est perdu sur A.
 // Horloge maîtrisée (`clock.ts`, et la même pour le serveur : `TEST_CLOCK_OFFSET_MS`). Un essai relancé prend d'autres pseudos (même base en mémoire).
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
@@ -44,6 +45,29 @@ async function device(browser: Browser): Promise<{ context: BrowserContext; page
   return { context, page: await context.newPage() };
 }
 
+/** Ce que fait le portail dans le stockage du navigateur (même origine que les jeux) : `f` reçoit ce stockage, ses écritures y sont recopiées. */
+async function auPortail(page: Page, f: (store: ListableStore) => void): Promise<void> {
+  const avant = await page.evaluate(() => Object.fromEntries(Object.keys(localStorage).map((k) => [k, localStorage.getItem(k)!])));
+  const m = new Map(Object.entries(avant));
+  const store: ListableStore = {
+    get length() {
+      return m.size;
+    },
+    key: (i) => [...m.keys()][i] ?? null,
+    getItem: (k) => m.get(k) ?? null,
+    setItem: (k, v) => void m.set(k, v),
+    removeItem: (k) => void m.delete(k),
+  };
+  f(store);
+  await page.evaluate(
+    ([ecrites, retirees]) => {
+      for (const k of retirees) localStorage.removeItem(k);
+      for (const [k, v] of ecrites) localStorage.setItem(k, v);
+    },
+    [[...m], Object.keys(avant).filter((k) => !m.has(k))] as const,
+  );
+}
+
 /** Met une page en sommeil (le jeu ne tourne ni ne dessine plus) : en rendu logiciel, une page qui dessine affame celle qu'on regarde. */
 const sleep = (page: Page) => page.evaluate(() => (window as unknown as { __jump: J }).__jump.manual(true));
 
@@ -70,7 +94,7 @@ async function playAuthor(page: Page): Promise<void> {
   await expect(page.locator("#arrival")).toBeVisible();
 }
 
-test("deux appareils : finir → copier le code → le charger sur l'autre → historique, série et pseudo retrouvés (DailyTrack aussi) ; changer le code révoque l'ancien", async ({ browser }) => {
+test("deux appareils : finir → le code chargé sur l'autre (au portail) → historique, série et pseudo retrouvés (DailyTrack aussi) ; changer le code révoque l'ancien", async ({ browser }) => {
   test.setTimeout(240_000);
   const name = `Sauteur${test.info().retry}${test.info().project.name.length}`;
   const a = await device(browser);
@@ -92,7 +116,7 @@ test("deux appareils : finir → copier le code → le charger sur l'autre → h
     await expect(a.page.locator("#arrival-rank")).toHaveText("Choisis ton pseudo pour entrer au classement");
     await a.page.locator("#arrival-name").fill(name);
     await a.page.locator("#arrival-name-ok").click();
-    await expect(a.page.locator("#arrival-rank")).toHaveText(/^1ᵉʳ sur \d+$/);
+    await expect(a.page.locator("#arrival-rank")).toHaveText(/^1er sur \d+$/);
     // Après l'envoi accepté, le profil est relu ; le premier relu à l'arrivée, c'est A : pas de doublon.
     await a.page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.sync.status === "ok", undefined, { timeout: 30_000 });
     await a.page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.firstGhost.mine === true, undefined, { timeout: 30_000 });
@@ -117,58 +141,47 @@ test("deux appareils : finir → copier le code → le charger sur l'autre → h
     const idA = await a.page.evaluate(() => localStorage.getItem("cdj:player"));
     expect(idA).toMatch(/^[0-9a-f]{32}$/);
 
-    // ——— 2. A copie son code (Réglages › Profil) ———
-    await a.page.evaluate(() => (window as unknown as { __jump: J }).__jump.setMenu(true));
-    await expect(a.page.locator("#profile .pshared")).toHaveText("Ton profil est le même dans tous les jeux de la plateforme : ton pseudo et ton code valent aussi pour DailyTrack.");
-    await expect(a.page.locator("#profile-name")).toHaveValue(name);
-    await a.page.locator("#profile-copy").click();
-    await expect(a.page.locator("#profile-msg")).toHaveText(/^Code copié\./);
-    const code = (await a.page.evaluate(() => (window as unknown as { __copied?: string }).__copied))!;
-    expect(code).toMatch(/^CDJ2\.[0-9a-f]{32}\.[0-9a-f]{8}$/);
-    expect(code.split(".")[1]).toBe(idA);
+    // ——— 2 et 3. Lot I5 : plus de profil dans le jeu. Le code se copie et se charge **au portail** (`/profil/`) ; ce que fait le portail pour
+    // « Charger un code » (`writeIdentity` puis `noteIdentityChange(…, "code")` de @cdj/profile, apps/portail/src/profil.ts) est rejoué ici dans le
+    // stockage de B, puis B rouvre Jump : il suit le code chargé ailleurs (révision d'identité, lot P4) et se synchronise. ———
     await sleep(a.page);
-
-    // ——— 3. B (neuf) charge le code depuis l'accueil → Réglages › Profil ———
     await b.page.goto(`/?${GAME}`);
     await b.page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
     if (await b.page.locator("#help").isVisible()) await b.page.locator("#help-close").click();
-    await expect(b.page.locator("#home-profile")).toHaveText("👤 Sans pseudo · série 0 · 0 médaille");
-    await b.page.locator("#home-profile").click();
-    await b.page.locator("#profile-load").click();
-    await b.page.locator("#profile-code").fill(code);
-    await expect(b.page.locator("#profile .pfound")).toHaveText(new RegExp(`^Profil trouvé : « ${name} » · 1 jour · série 1 jour de suite · 🏆 1`));
-    await b.page.locator("#profile-apply").click();
-    // La page se recharge sur le profil chargé, puis se synchronise.
+    await expect(b.page.locator("#home-record .tuile__valeur")).toHaveText("Pas encore");
+    await expect(b.page.locator("#home-streak .tuile__valeur")).toHaveText("0 jour");
+    await auPortail(b.page, (store) => {
+      writeIdentity({ id: idA!, name }, store);
+      noteIdentityChange(store, "code");
+    });
+    await b.page.reload();
     await b.page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.sync.status === "ok", undefined, { timeout: 60_000 });
 
     // ——— 4. Historique, série, pseudo retrouvés ; l'identité de la plateforme est celle que DailyTrack lit ———
     const history = await read(b.page, "history");
     expect(history).toEqual([expect.objectContaining({ date: TODAY, best: authorTicks, medal: "author" })]);
     expect(await read(b.page, "streak")).toBe(1);
-    await expect(b.page.locator("#home-profile")).toHaveText(`👤 ${name} · série 1 · 1 médaille`);
+    await expect(b.page.locator("#home-streak .tuile__valeur")).toHaveText("1 jour");
+    await expect(b.page.locator("#home-record .tuile__valeur")).toHaveText(/^\d+,\d{3}\u00a0s$/);
     expect(await b.page.evaluate(() => [localStorage.getItem("cdj:player"), localStorage.getItem("cdj:name")])).toEqual([idA, name]);
     // Le profil de DailyTrack (`GET /api/me`, la route de DailyTrack) rend le même pseudo pour cette identité.
     const track = await fetch(`${API}/api/me`, { headers: { "X-Player-Id": idA! } });
     expect(track.status).toBe(200);
     expect(((await track.json()) as { name: string }).name).toBe(name);
-
-    // ——— 5. B change son code : l'ancien ne vaut plus rien, sur A non plus ———
-    await b.page.locator("#home-profile").click();
-    await b.page.locator("#profile-change").click();
-    await b.page.locator("#profile-change-yes").click();
-    await expect(b.page.locator("#profile-msg")).toHaveText(/^Code changé\./);
-    const idB = await b.page.evaluate(() => localStorage.getItem("cdj:player"));
-    expect(idB).toMatch(/^[0-9a-f]{32}$/);
-    expect(idB).not.toBe(idA);
-    expect((await fetch(`${API}/api/jump/me`, { headers: { "X-Player-Id": idA! } })).status).toBe(410);
     await sleep(b.page);
+
+    // ——— 5. Le code est changé (au portail ou dans un autre jeu : `POST /api/me/code`) : l'ancien ne vaut plus rien, A le dit à l'accueil ———
+    const idB = randomBytes(16).toString("hex");
+    const rotation = await fetch(`${API}/api/me/code`, { method: "POST", headers: { "X-Player-Id": idA!, "Content-Type": "application/json" }, body: JSON.stringify({ newId: idB }) });
+    expect(rotation.status).toBe(200);
+    expect((await fetch(`${API}/api/jump/me`, { headers: { "X-Player-Id": idA! } })).status).toBe(410);
 
     await a.page.goto(`/?${GAME}`);
     await a.page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.sync.status === "revoked", undefined, { timeout: 60_000 });
-    await expect(a.page.locator("#home-profile")).toHaveText("Ce code n'est plus valide : charge le nouveau (Réglages › Profil)");
     if (await a.page.locator("#help").isVisible()) await a.page.locator("#help-close").click();
-    await a.page.locator("#home-profile").click();
-    await expect(a.page.locator("#profile-notice")).toContainText("Ce code n'est plus valide");
+    // L'accueil le dit (le message du catalogue commun, `erreur.code_revoked`) et mène au profil commun pour charger le nouveau code.
+    await expect(a.page.locator("#home-revoked")).toHaveText("Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code.");
+    await expect(a.page.locator("#home-revoked")).toHaveAttribute("href", "../profil/?retour=%2F");
     // Rien de perdu sur A : son historique et son pseudo restent.
     expect(await read(a.page, "history")).toEqual([expect.objectContaining({ date: TODAY, best: authorTicks })]);
     expect(await a.page.evaluate(() => localStorage.getItem("cdj:name"))).toBe(name);

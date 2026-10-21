@@ -385,6 +385,8 @@ export interface JumpDebug {
   readonly sync: unknown;
   /** Lot P1 : le classement relit ce qui attend et repart (comme le retour du réseau). */
   rankWake(): void;
+  /** Lot I5 (captures) : pose la suite de la journée sur l'écran d'arrivée sans serveur (« Jeu suivant du jour », « Journée parfaite ! »). */
+  showSuite(suite: Suite | null): void;
   /** Lot 10 (tests) : joue une rediffusion (par défaut la preuve de l'auteur) comme les commandes du joueur ; rend son nombre de pas. */
   autoplay(code?: string): number;
 }
@@ -837,7 +839,7 @@ let scene: JumpScene | null = null;
 try {
   // `?debug` sur le niveau du jour : les limites des morceaux, avec leur identifiant, leur variante et leur exigence.
   // i18n-ok: étiquettes de débogage (`?debug`) dessinées sur le niveau : outil interne, pas un texte d'interface
-  const pieces = options.debug && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
+  const pieces = options.pieces && daily ? daily.pieces.map((p) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5` })) : undefined;
   scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels) });
   scene.animate = levels.animate;
   scene.windParticles = levels.particles;
@@ -2202,6 +2204,9 @@ const info: JumpDebug = {
   },
   rankWake() {
     ranking.wake();
+  },
+  showSuite(suite: Suite | null) {
+    arrival.setSuite(suite);
   },
   autoplay(code?: string) {
     const c = code ?? daily?.code ?? (level === ESSAI_LEVEL ? ESSAI_SOLUTION_CODE : null);

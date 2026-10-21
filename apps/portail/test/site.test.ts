@@ -63,7 +63,7 @@ describe("disposition du site", () => {
 });
 
 // Lot I4 : les polices de Track sont servies par `/assets/…`, le même chemin que celles du portail (un joueur qui vient du portail les a déjà en cache).
-describe("polices partagées entre le portail et Track", () => {
+describe("polices partagées entre le portail, Track et Jump", () => {
   function site(portail: Record<string, string>, track: Record<string, string>, css: string) {
     const out = mkdtempSync(join(tmpdir(), "site-"));
     mkdirSync(join(out, "assets"), { recursive: true });
@@ -93,5 +93,28 @@ describe("polices partagées entre le portail et Track", () => {
   it("une police demandée mais absente de la construction de Track arrête l'assemblage", () => {
     const out = site({}, { "archivo-400-aaa.woff2": "AAA" }, css);
     expect(() => partagerPolices(out)).toThrow(/absente/);
+  });
+  // Lot I5 : Jump aussi. Une police que Track a déjà apportée au portail n'est pas recopiée ; celle que seul Jump demande (Lilita One) rejoint `assets/`.
+  it("Jump : ses polices rejoignent les mêmes fichiers que le portail et Track, plus aucune copie sous /jump/", () => {
+    const out = site({ "archivo-400-aaa.woff2": "AAA" }, { "archivo-400-aaa.woff2": "AAA", "barlow-600-bbb.woff2": "BBB" }, css);
+    mkdirSync(join(out, "jump/assets"), { recursive: true });
+    writeFileSync(join(out, "jump/assets/archivo-400-aaa.woff2"), "AAA");
+    writeFileSync(join(out, "jump/assets/barlow-600-bbb.woff2"), "BBB");
+    writeFileSync(join(out, "jump/assets/lilita-400-ccc.woff2"), "CCC");
+    writeFileSync(join(out, "jump/assets/boot-abc.css"), "@font-face{src:url(/assets/archivo-400-aaa.woff2)}@font-face{src:url(/assets/barlow-600-bbb.woff2)}@font-face{src:url(/assets/lilita-400-ccc.woff2)}");
+    expect(partagerPolices(out)).toEqual({ communes: ["archivo-400-aaa.woff2"], ajoutees: ["barlow-600-bbb.woff2", "lilita-400-ccc.woff2"] });
+    for (const nom of ["archivo-400-aaa.woff2", "barlow-600-bbb.woff2", "lilita-400-ccc.woff2"]) {
+      expect(existsSync(join(out, "assets", nom)), nom).toBe(true);
+      expect(existsSync(join(out, "jump/assets", nom)), `${nom} : plus de copie sous /jump/`).toBe(false);
+    }
+  });
+
+  it("Jump : un même nom avec d'autres octets que la police de Track ou du portail arrête l'assemblage", () => {
+    const out = site({}, {}, "");
+    mkdirSync(join(out, "jump/assets"), { recursive: true });
+    writeFileSync(join(out, "assets/lilita-400-ccc.woff2"), "CCC");
+    writeFileSync(join(out, "jump/assets/lilita-400-ccc.woff2"), "AUTRE");
+    writeFileSync(join(out, "jump/assets/boot-abc.css"), "@font-face{src:url(/assets/lilita-400-ccc.woff2)}");
+    expect(() => partagerPolices(out)).toThrow(/différente/);
   });
 });

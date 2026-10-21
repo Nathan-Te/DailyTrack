@@ -83,7 +83,8 @@ export function mountTouchUi(opts: TouchUiOptions): TouchUi {
   const rotate = el("div", { classe: ["plaque", "plaque--petite"], attrs: { id: "rotate", role: "status" } });
   lier(rotate, "hud.tourner");
 
-  document.body.append(layer, buttons, rotate);
+  // L'invitation à tourner le téléphone ne bloque rien : sa couche laisse passer les doigts vers la couche de jeu (lot 1b, `e2e/mobile.spec.ts`).
+  document.body.append(layer, buttons, el("div", { classe: "rotate-couche" }, rotate));
 
   // ——— Dessin des zones et des doigts (?zones=1) ———
   const zonesBox = opts.zones ? el("div", { attrs: { id: "zones" } }) : null;

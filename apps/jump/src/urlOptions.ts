@@ -54,9 +54,14 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: [],
   },
   {
+    name: "pieces",
+    description: "Avec `debug` : `off` cache les limites des morceaux (identifiant, variante, exigence) dessinées sur le niveau du jour — lot I5, pour les captures de l'interface (`e2e/captures-lot-i5.spec.ts`).",
+    values: ["off"],
+  },
+  {
     name: "fx",
     description:
-      "`off` coupe les effets visuels : éclatement à la mort, poussière, débris, confettis, traînée, tremblement d'écran (comme « Effets visuels : aucun » du menu ⏸, sans toucher au réglage mémorisé). Les taches restent. Affichage seulement.",
+      "`off` coupe les effets visuels : éclatement à la mort, poussière, débris, confettis, traînée, tremblement d'écran (comme « Effets visuels : aucun » des Réglages, sans toucher au réglage mémorisé). Les taches restent. Affichage seulement.",
     values: ["off"],
   },
   {
@@ -67,7 +72,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "ghost",
     description:
-      "Les fantômes, sans changer les réglages mémorisés (bouton 👻 ou touche G pour le tien, « Fantôme du premier » du menu ⏸ pour l'autre). `off` : aucun fantôme ; lot P2 (plateforme) : `best` : seulement le tien (le fantôme du premier caché) ; `first` : seulement celui du premier (le tien caché).",
+      "Les fantômes, sans changer les réglages mémorisés (« Fantôme » de la pause ou touche G pour le tien, « Fantôme du premier » des Réglages pour l'autre). `off` : aucun fantôme ; lot P2 (plateforme) : `best` : seulement le tien (le fantôme du premier caché) ; `first` : seulement celui du premier (le tien caché).",
     values: ["off", "best", "first"],
   },
   {
@@ -166,6 +171,8 @@ export interface UrlChoices {
   zones: boolean;
   /** Boîtes de collision dessinées : seulement avec `debug`. */
   hitbox: boolean;
+  /** Lot I5 : les limites des morceaux dessinées sur le niveau du jour (avec `debug`, sauf `?pieces=off`). */
+  pieces: boolean;
   /** Effets visuels (particules, secousses, traînée) ; `?fx=off` les coupe (pas les taches). */
   fx: boolean;
   /** Fantôme forcé à « caché » (`?ghost=off`, ou `?ghost=first` : seulement celui du premier). */
@@ -217,6 +224,7 @@ export function readUrlOptions(search: string): UrlChoices {
     touch: params.get("touch") === "1" ? "1" : params.get("touch") === "0" ? "0" : null,
     zones: params.has("zones"),
     hitbox: debug && params.has("hitbox"),
+    pieces: debug && params.get("pieces") !== "off",
     fx: params.get("fx") !== "off",
     ghostOff: ghost === "off" || ghost === "first",
     firstGhostOff: ghost === "off" || ghost === "best",

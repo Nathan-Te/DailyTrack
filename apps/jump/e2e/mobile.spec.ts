@@ -137,7 +137,9 @@ for (const format of FORMATS) {
         await advance(page, 50);
         expect((await player(page)).x).toBeGreaterThan(start.x + 2);
         await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.input(null));
-        await page.locator("#restart").tap();
+        // Lot I5 : « Tout recommencer » est dans la pause (en haut à gauche) ; la bande haute ne porte plus que la pause.
+        await page.locator("#pausebtn").tap();
+        await page.locator("#menu-restart").tap();
         await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.ticks === 0);
         expect((await player(page)).x).toBe(start.x);
         expect(await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.phase)).toBe("ready");
@@ -157,7 +159,7 @@ for (const format of FORMATS) {
           return found;
         };
         const closed = await targets("button, .tbtn");
-        expect(closed.map((t) => t.name)).toEqual(expect.arrayContaining(["restart", "gear"]));
+        expect(closed.map((t) => t.name)).toEqual(expect.arrayContaining(["pausebtn", "gear"]));
         expect(closed.filter((t) => t.name.includes("tbtn"))).toHaveLength(3); // ←, →, saut
         for (const t of closed) {
           expect(t.w, `${t.name} largeur`).toBeGreaterThanOrEqual(44);
@@ -238,7 +240,7 @@ for (const format of FORMATS) {
         const notice = page.locator("#rotate");
         if (W < H) {
           await expect(notice).toBeVisible();
-          await expect(notice).toHaveText("Tourne ton téléphone pour plus de confort");
+          await expect(notice).toHaveText("Tourne ton téléphone : Jump se joue mieux en paysage"); // lot I5 : hud.tourner du catalogue
           expect(await notice.evaluate((e) => getComputedStyle(e.parentElement!).pointerEvents)).toBe("none");
           // Le jeu reste jouable : le premier toucher de jeu la retire.
           const fingers = await Fingers.on(page);
@@ -332,7 +334,7 @@ test.describe("réglages au doigt (?debug&tune)", () => {
         expect(debug.y + debug.height).toBeLessThanOrEqual(viewport.height);
         expect(await page.locator("#debug").evaluate((e) => Number.parseFloat(getComputedStyle(e).fontSize))).toBeGreaterThanOrEqual(10);
         expect(await page.locator("#debug").evaluate((e) => getComputedStyle(e).pointerEvents)).toBe("none");
-        for (const sel of ["#restart", "#gear"]) {
+        for (const sel of ["#pausebtn", "#gear"]) {
           const b = (await page.locator(sel).boundingBox())!;
           const overlap = Math.min(debug.x + debug.width, b.x + b.width) > Math.max(debug.x, b.x) && Math.min(debug.y + debug.height, b.y + b.height) > Math.max(debug.y, b.y);
           expect(overlap, `${sel} chevauche la surimpression`).toBe(false);
@@ -348,7 +350,7 @@ test.describe("détection de l'écran tactile", () => {
     await withPhone(browser, LANDSCAPE, async (page) => {
       test.skip(!(await open(page, "")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       expect((await touchView(page)).active).toBe(true);
-      await expect(page.locator("#restart")).toBeVisible();
+      await expect(page.locator("#pausebtn")).toBeVisible();
       await expect(page.locator(".tbtn").first()).toBeHidden();
       await page.touchscreen.tap(700, 300);
       await expect(page.locator(".tbtn")).toHaveCount(3);

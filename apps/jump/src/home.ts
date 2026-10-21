@@ -76,7 +76,11 @@ export function ligneClassement(r: RankRowView, avecMedaille: boolean): HTMLElem
 export function mountHome(opts: HomeOptions): Home {
   const root = el("div", { classe: "accueil", attrs: { id: "home", role: "dialog", hidden: true } });
   const plaque = el("div", { classe: "accueil__barre" });
-  const majBarre = () => plaque.replaceChildren(barreDuJour());
+  // Le retour au portail garde l'identifiant du lot I2 (`#home-portail`, e2e de apps/web), comme Track au lot I4.
+  const majBarre = () => {
+    plaque.replaceChildren(barreDuJour());
+    plaque.querySelector(".dj-barre-jeu__retour")?.setAttribute("id", "home-portail");
+  };
   majBarre();
   onJour(majBarre);
   onLangue(majBarre);
