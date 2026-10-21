@@ -8,6 +8,9 @@ import { hasWebGL } from "./phone";
 //   - en partie, en haut à gauche, juste après la pause (44 px, hors de la zone du personnage, rien ne se chevauche) ;
 //   - sur l'accueil : dans la barre des jeux, à côté de la date ; il bascule (`aria-pressed`, nom lu) et tente de verrouiller le paysage ;
 //   - caché quand l'API n'existe pas ou quand le site est déjà une application ; sur iPhone, une ligne « Partager › Sur l'écran d'accueil », une seule fois.
+// Chromium seulement, comme le spec de Track (décision de Nathan) : le WebKit de Playwright sous Linux, en téléphone émulé, n'a pas l'API plein
+// écran, donc le bouton y est caché (le comportement voulu, comme sur iPhone), et les tests qui le font basculer ne peuvent pas y passer.
+test.skip(({ browserName }) => browserName !== "chromium", "plein écran : Chromium seulement, comme Track");
 const IPHONE_UA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
 
 interface J {
