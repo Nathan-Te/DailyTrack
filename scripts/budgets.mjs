@@ -1,0 +1,75 @@
+// Lot I6 (plateforme) : les chiffres de docs/plateforme/budgets.md, mesurés comme les tests qui les gardent — Track : apps/web/e2e/perf.spec.ts ;
+// Jump : apps/jump/e2e/poids.spec.ts ; portail : apps/portail/test/construction.test.ts (premier chargement de la page d'accueil, construction de
+// production). Octets compressés (gzip, niveau par défaut de zlib pour les jeux, 9 pour le portail : la méthode de chaque test, inchangée).
+//   npm run build && node scripts/budgets.mjs        → les chiffres, à recopier dans docs/plateforme/budgets.md
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { gzipSync } from "node:zlib";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const gz = (f, level) => gzipSync(readFileSync(f), level === undefined ? {} : { level }).length;
+
+/** Track : JS du premier chargement (hors fils de travail, catalogue anglais, réglage de conduite) + CSS ; three.js ; le code hors three.js. */
+export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
+  const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
+  const aLaDemande = (f) => ["circuitWorker-", "salonWorker-", "catalogue.en-", "tune-"].some((p) => f.startsWith(p));
+  const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css")).reduce((n, f) => n + gz(join(dist, f)), 0);
+  const three = js.filter((f) => f.startsWith("three-")).reduce((n, f) => n + gz(join(dist, f)), 0);
+  const un = (p) => js.filter((f) => f.startsWith(p)).reduce((n, f) => n + gz(join(dist, f)), 0);
+  return { js: total, css, jsCss: total + css, horsThree: total - three, anglais: un("catalogue.en-"), miniatures: un("circuitWorker-"), salon: un("salonWorker-"), polices: polices(dist) };
+}
+
+/** Jump : JS du premier chargement (hors catalogue anglais, `tune`, `verify`) + CSS (feuilles et style écrit dans la page). */
+export function mesureJump(dist = join(ROOT, "apps/jump/dist/assets")) {
+  const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
+  const aLaDemande = (f) => ["catalogue.en-", "tune-", "verify-"].some((p) => f.startsWith(p));
+  const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
+  const html = readFileSync(join(dist, "../index.html"), "utf8");
+  const style = [...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].reduce((n, m) => n + gzipSync(m[1]).length, 0);
+  const css = readdirSync(dist).filter((f) => f.endsWith(".css")).reduce((n, f) => n + gz(join(dist, f)), 0) + style;
+  return { js: total, css, jsCss: total + css, anglais: js.filter((f) => f.startsWith("catalogue.en-")).reduce((n, f) => n + gz(join(dist, f)), 0), polices: polices(dist) };
+}
+
+/** Les polices qu'une construction déclare (octets des fichiers woff2, déjà compressés), lues dans ses feuilles. */
+function polices(dist) {
+  const faces = new Set();
+  for (const f of readdirSync(dist).filter((x) => x.endsWith(".css"))) for (const m of readFileSync(join(dist, f), "utf8").matchAll(/url\(["']?([^)"']+\.woff2)["']?\)/g)) faces.add(m[1].replace(/^\/?(assets\/)?/, "").replace(/^\.\//, ""));
+  return [...faces].reduce((n, f) => n + readFileSync(join(dist, f)).length, 0);
+}
+
+/** Portail : la page d'accueil, ses scripts (et leurs imports statiques) et ses feuilles, hors polices (construction de production). */
+export function mesurePortail() {
+  const tmp = mkdtempSync(join(tmpdir(), "budgets-"));
+  try {
+    execFileSync("npx", ["vite", "build", "-c", "apps/portail/vite.config.ts", "--logLevel", "error", "--outDir", tmp, "--emptyOutDir"], {
+      cwd: ROOT,
+      env: { ...process.env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", PORTAIL_VITRINE: "0" },
+      stdio: "pipe",
+    });
+    const html = readFileSync(join(tmp, "index.html"), "utf8");
+    const vus = new Set();
+    const file = [...html.matchAll(/<(?:script[^>]*\ssrc|link[^>]*\srel="(?:stylesheet|modulepreload)"[^>]*\shref)="\.\/([^"]+)"/g)].map((m) => m[1]);
+    while (file.length) {
+      const f = file.shift();
+      if (vus.has(f)) continue;
+      vus.add(f);
+      if (f.endsWith(".js")) for (const m of readFileSync(join(tmp, f), "utf8").matchAll(/(?:from|import)\s*["']\.\/([^"']+\.js)["']/g)) file.push(join(dirname(f), m[1]));
+    }
+    // Les polices que déclarent les feuilles de la page d'accueil (comme construction.test.ts).
+    const faces = new Set();
+    for (const f of vus) if (f.endsWith(".css")) for (const m of readFileSync(join(tmp, f), "utf8").matchAll(/url\(["']?\.?\/?([^)"']+\.woff2)["']?\)/g)) faces.add(join(dirname(f), m[1]));
+    return { premierChargement: ["index.html", ...vus].reduce((n, f) => n + gz(join(tmp, f), 9), 0), polices: [...faces].reduce((n, f) => n + readFileSync(join(tmp, f)).length, 0) };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (isMain) {
+  for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist/index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
+  console.log(JSON.stringify({ track: mesureTrack(), jump: mesureJump(), portail: mesurePortail() }, null, 2));
+}

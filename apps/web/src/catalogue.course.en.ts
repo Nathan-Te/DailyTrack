@@ -52,7 +52,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.arrivee": "FINISH",
   "course.chute": "Fall!",
   "course.chronoTourne.tactile": "The clock is running: GAS, bottom right",
-  "course.chronoTourne.clavier": "The clock is running: ↑ or Z to accelerate",
+  "course.chronoTourne.clavier": "The clock is running: ↑ or W to accelerate",
   "course.camera.proche": "Close camera",
   "course.camera.loin": "Far camera",
   "course.camera.capot": "Hood camera",

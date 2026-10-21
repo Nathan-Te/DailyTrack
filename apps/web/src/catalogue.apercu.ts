@@ -11,7 +11,7 @@ const fr = {
 
 const en: Catalogues<typeof fr>["en"] = {
   "apercu.titre": "Track — Du Jour",
-  "apercu.description": "One circuit a day, the same for everyone. One lap, one time, the leader's ghost to beat.",
+  "apercu.description": "One track a day, the same for everyone. One lap, one time, the leader's ghost to beat.",
   "apercu.image": "The Track label: asphalt, orange livery stripes, TRACK in capitals.",
 };
 
