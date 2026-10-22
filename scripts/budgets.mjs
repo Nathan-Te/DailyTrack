@@ -1,4 +1,4 @@
-// Lot I6 (plateforme) : les chiffres de docs/plateforme/budgets.md, mesurés comme les tests qui les gardent — Track : apps/web/e2e/perf.spec.ts ;
+// Lot I6 (plateforme) : les chiffres de docs/plateforme/budgets.md, mesurés comme les tests qui les gardent — Track : apps/web/e2e/perf.spec.ts (qui importe ce fichier : une seule mesure) ;
 // Jump : apps/jump/e2e/poids.spec.ts ; portail : apps/portail/test/construction.test.ts (premier chargement de la page d'accueil, construction de
 // production). Octets compressés (gzip, niveau par défaut de zlib pour les jeux, 9 pour le portail : la méthode de chaque test, inchangée).
 //   npm run build && node scripts/budgets.mjs        → les chiffres, à recopier dans docs/plateforme/budgets.md
@@ -12,15 +12,53 @@ import { gzipSync } from "node:zlib";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const gz = (f, level) => gzipSync(readFileSync(f), level === undefined ? {} : { level }).length;
 
-/** Track : JS du premier chargement (hors fils de travail, catalogue anglais, réglage de conduite) + CSS ; three.js ; le code hors three.js. */
+/**
+ * Les fichiers (JS et CSS) que `index.html` demande, comme un navigateur : le script d'entrée, les `modulepreload`, les feuilles de style et, de proche en proche, les imports
+ * **statiques** de chaque module (`from"./x.js"`, `import"./x.js"`). Un morceau chargé par `import()` (et les fils de travail) n'y est jamais, quel que soit son nom. Les noms sont
+ * relatifs à `assets/` (`dist` = le dossier des fichiers construits, `index.html` est à côté).
+ */
+export function graphePremierChargement(dist) {
+  const html = readFileSync(join(dist, "../index.html"), "utf8");
+  const vus = new Set();
+  const file = [...html.matchAll(/(?:src|href)="\.\/assets\/([^"]+\.(?:js|css))"/g)].map((m) => m[1]);
+  while (file.length) {
+    const f = file.shift();
+    if (vus.has(f)) continue;
+    vus.add(f);
+    if (f.endsWith(".js")) for (const m of readFileSync(join(dist, f), "utf8").matchAll(/\bfrom\s*"\.\/([^"]+\.js)"|\bimport\s*"\.\/([^"]+\.js)"/g)) file.push(m[1] ?? m[2]);
+  }
+  return [...vus];
+}
+
+/**
+ * Track — **la seule mesure du premier chargement** (lot de plateforme « suites de Track » ; `apps/web/e2e/perf.spec.ts` l'importe, aucune autre copie) : ce que charge un joueur
+ * (`graphePremierChargement`), pas « tout `dist/assets` moins quelques préfixes ». `js` : le JS du premier chargement ; `css` ; `jsCss` ; `three` (three.js, dans son propre fichier) ;
+ * `horsThree` : le code du jeu. À part (à la demande, chacun son plafond) : `anglais` (catalogue anglais), `miniatures` (fil de travail des circuits), `salon` (fil du Salon) et
+ * `admin` (la page d'administration, `admin-*.js` : jamais chargée par un joueur, **hors** du premier chargement). `fichiers` : la liste du premier chargement ; `gz` : tous les JS.
+ */
 export function mesureTrack(dist = join(ROOT, "apps/web/dist/assets")) {
-  const js = readdirSync(dist).filter((f) => f.endsWith(".js"));
-  const aLaDemande = (f) => ["circuitWorker-", "salonWorker-", "catalogue.en-", "tune-"].some((p) => f.startsWith(p));
-  const total = js.filter((f) => !aLaDemande(f)).reduce((n, f) => n + gz(join(dist, f)), 0);
-  const css = readdirSync(dist).filter((f) => f.endsWith(".css")).reduce((n, f) => n + gz(join(dist, f)), 0);
-  const three = js.filter((f) => f.startsWith("three-")).reduce((n, f) => n + gz(join(dist, f)), 0);
-  const un = (p) => js.filter((f) => f.startsWith(p)).reduce((n, f) => n + gz(join(dist, f)), 0);
-  return { js: total, css, jsCss: total + css, horsThree: total - three, anglais: un("catalogue.en-"), miniatures: un("circuitWorker-"), salon: un("salonWorker-"), polices: polices(dist) };
+  const tous = readdirSync(dist).filter((f) => f.endsWith(".js"));
+  const gz1 = (f) => gz(join(dist, f));
+  const somme = (fichiers) => fichiers.reduce((n, f) => n + gz1(f), 0);
+  const fichiers = graphePremierChargement(dist);
+  const js = somme(fichiers.filter((f) => f.endsWith(".js")));
+  const css = somme(fichiers.filter((f) => f.endsWith(".css")));
+  const three = somme(fichiers.filter((f) => f.startsWith("three-")));
+  const un = (p) => somme(tous.filter((f) => f.startsWith(p) && !fichiers.includes(f)));
+  return {
+    js,
+    css,
+    jsCss: js + css,
+    three,
+    horsThree: js - three,
+    anglais: un("catalogue.en-"),
+    miniatures: un("circuitWorker-"),
+    salon: un("salonWorker-"),
+    admin: un("admin-"),
+    polices: polices(dist),
+    fichiers,
+    gz: Object.fromEntries(tous.map((f) => [f, gz1(f)])),
+  };
 }
 
 /** Jump : JS du premier chargement (hors catalogue anglais, `tune`, `verify`) + CSS (feuilles et style écrit dans la page). */
@@ -71,5 +109,6 @@ export function mesurePortail() {
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 if (isMain) {
   for (const app of ["web", "jump"]) if (!existsSync(join(ROOT, "apps", app, "dist/index.html"))) throw new Error(`apps/${app} n'est pas construit : npm run build`);
-  console.log(JSON.stringify({ track: mesureTrack(), jump: mesureJump(), portail: mesurePortail() }, null, 2));
+  const { fichiers, gz: _tous, ...track } = mesureTrack();
+  console.log(JSON.stringify({ track, jump: mesureJump(), portail: mesurePortail() }, null, 2));
 }
