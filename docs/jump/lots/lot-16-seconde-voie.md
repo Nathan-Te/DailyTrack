@@ -94,6 +94,7 @@ Résultat sur le catalogue actuel (`modules/voies.json`) :
 
 ## 9. Vérifié / non vérifié
 - **Vérifié** : `npm run typecheck` ; Vitest de `packages/jump-sim`, `apps/jump` et des tests DailyJump de l'API (1 014 tests, projet sqlite), dont `test/voies.test.ts` (une voie par portion dure, coût, difficulté ≤ 2, appuis humains, aucun raccourci case par case et par le solveur, parasites, médailles, zone) et `apps/jump/test/voieLente.test.ts` ; e2e Jump dans Chromium en local (voir la PR) ; budget de poids (`poids.spec.ts`).
+- **Délai d'un test** : `apps/api/test/jumpHistory.test.ts` (« à jour avec les versions et le calendrier ») génère les 15 jours de la démo ; avec g11 (≈ 0,3 s par jour) il prend 5,5 s, au-dessus du délai par défaut de 5 s : délai de 60 s, comme les autres tests lourds du fichier, aucune assertion changée.
 - **Non vérifié en local** : Firefox et WebKit (la CI) ; le ressenti de la cage au téléphone (13 tuiles de haut : la cage la plus haute fait ≈ 25 rangées, on la monte en suivant la caméra).
 
 ## 10. Décisions laissées à Nathan

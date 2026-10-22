@@ -83,7 +83,8 @@ describe("jeu de données du mode ?api=demo (apps/jump/public/demo)", () => {
       expect(day.participants).toBeGreaterThanOrEqual(3);
       expect(day.top.length).toBe(Math.min(10, day.participants));
     }
-  });
+    // Lot 16 : il génère les 15 jours de la démo (g11, ≈ 0,3 s par jour) : 5,5 s mesurées, au-dessus du délai par défaut de 5 s.
+  }, 60_000);
 
   it("lot P2 : chaque jour a le fantôme du premier — le premier du classement, sa rediffusion se rejoue à son temps et ses morts", () => {
     for (const d of index.days) {
