@@ -1,7 +1,9 @@
 import {
   GENERATOR_VERSION,
   MAX_VARIANT,
+  BASCULE_LOT_35,
   MEDAL_FACTORS,
+  MEDAL_FACTORS_35,
   MEDAL_PERCENTILES,
   PREMIER_JOUR,
   ReplayError,
@@ -377,7 +379,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     log("INFO", "temps du jour", { day: formatDay(day), ms: result.finishMs, improved });
     const bestMs = improved ? result.finishMs : previous!.ms;
     const bestAt = improved ? t : previous!.submitted_at;
-    const medals = medalsFor(circuit.authorMs);
+    const medals = medalsFor(circuit.authorMs, day);
     return {
       accepted: true,
       improved,
@@ -428,7 +430,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     let todayRow: (typeof rows)[number] | null = null;
     for (const r of rows) {
       played.add(r.day);
-      const medal = r.author_ms === null ? null : (medalFor(r.ms, medalsFor(r.author_ms)) as Medal | null);
+      const medal = r.author_ms === null ? null : (medalFor(r.ms, medalsFor(r.author_ms, r.day)) as Medal | null);
       if (medal) counts[medal]++;
       // Jours fermés : place gardée. Aujourd'hui (et hier, pendant la grâce) : place du moment.
       const rank = r.final_rank ?? (await rankOf(r.day, r.ms, r.submitted_at));
@@ -453,7 +455,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
         date: formatDay(t),
         trackId: todayRow.track_id,
         ms: todayRow.ms,
-        medal: todayRow.author_ms === null ? null : medalFor(todayRow.ms, medalsFor(todayRow.author_ms)),
+        medal: todayRow.author_ms === null ? null : medalFor(todayRow.ms, medalsFor(todayRow.author_ms, t)),
         splits: full ? (JSON.parse(full.splits) as number[]) : [],
         ...(full && simVersion !== null ? { replay: full.replay, simVersion } : {}),
       };
@@ -595,7 +597,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       // Le circuit gardé n'est le bon que s'il porte l'identifiant attendu (même règle que `getCircuit`) ; sinon pas de pilote connu.
       const pilotMs = c && c.track_id === dailyTrackId(day, forced, variant) ? c.author_ms : null;
       const times = timesBy.get(day) ?? [];
-      const medals = pilotMs === null ? null : medalsFor(pilotMs);
+      const medals = pilotMs === null ? null : medalsFor(pilotMs, day);
       const stats = medals && pilotMs !== null ? medalDayStats(times, pilotMs, medals) : null;
       const ratios = pilotMs !== null ? ratiosOf(times, pilotMs) : [];
       if (day < t && medals && pilotMs !== null && ratios.length) {
@@ -611,6 +613,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       simVersion: SIM_VERSION,
       generatorVersion: GENERATOR_VERSION,
       factors: MEDAL_FACTORS,
+      /** Lot 35 : les facteurs à partir de la bascule (auteur en multiple du pilote, les autres de l'auteur). */
+      factors35: MEDAL_FACTORS_35,
+      bascule: formatDay(BASCULE_LOT_35),
       percentiles: MEDAL_PERCENTILES,
       demo: withDemo,
       days,
@@ -667,7 +672,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const count = await participants(day);
     if (count === 0) return { date: formatDay(day), participants: 0, top: [], me: null };
 
-    const medals = medalsFor((await getCircuit(day)).authorMs);
+    const medals = medalsFor((await getCircuit(day)).authorMs, day);
     const rows = await db.all<{ ms: number; name: string }>(
       "SELECT r.ms AS ms, p.name AS name FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ms ASC, r.submitted_at ASC LIMIT ?",
       [day, limit],
@@ -798,7 +803,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     premierJour: PREMIER_JOUR,
     async jour(day) {
       const c = await getCircuit(day);
-      const m = medalsFor(c.authorMs);
+      const m = medalsFor(c.authorMs, day);
       return { numero: circuitNumber(day), theme: c.theme ?? themeForDay(day).name, seuils: { author: m.author, gold: m.gold, silver: m.silver, bronze: m.bronze } };
     },
     async etat(id, day, connu) {
@@ -807,7 +812,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       // Lot I3 : la place et les classés du classement du jour gardé par le portail, quand il les a ; sinon on les compte (une ligne lue par classé).
       const [rang, classes, circuit] = await Promise.all([connu ? connu.rang : rankOf(day, own.ms, own.submitted_at), connu ? connu.classes : classesDuJour(day), getCircuit(day)]);
       // Les classés gardés en mémoire peuvent dater de quelques secondes : jamais moins que le rang.
-      return { statut: "fini", tempsMs: own.ms, medaille: medalFor(own.ms, medalsFor(circuit.authorMs)) as Medal | null, rang, classes: Math.max(classes, rang) };
+      return { statut: "fini", tempsMs: own.ms, medaille: medalFor(own.ms, medalsFor(circuit.authorMs, day)) as Medal | null, rang, classes: Math.max(classes, rang) };
     },
     joursFinis: async (id) => (await db.all<{ day: number }>("SELECT day FROM results WHERE player_id = ?", [id])).map((r) => r.day),
     // Lot I3 : tous les classés du jour, dans l'ordre du classement (même tri que `rankOf` : temps, puis premier envoyé), médaille lue sur les
@@ -815,7 +820,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     async classes(day) {
       const rows = await db.all<{ player_id: string; ms: number; submitted_at: number }>("SELECT player_id, ms, submitted_at FROM results WHERE day = ? ORDER BY ms ASC, submitted_at ASC", [day]);
       if (rows.length === 0) return [];
-      const m = medalsFor((await getCircuit(day)).authorMs);
+      const m = medalsFor((await getCircuit(day)).authorMs, day);
       return rows.map((r) => ({ playerId: r.player_id, medaille: medalFor(r.ms, m) as Medal | null, at: r.submitted_at }));
     },
     // Le même calcul que `GET /api/me` (places des jours fermés gardées une fois calculées) : le profil commun dit la même chose que le jeu.

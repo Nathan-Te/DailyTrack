@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { medalsFor } from "@cdj/sim";
+import { medalsFor, parseDay } from "@cdj/sim";
 import { seedHistory } from "../src/history";
 
 // `npm run history:seed` : fabrique le jeu de données du mode `?api=demo` (classements figés et fantômes des premiers).
@@ -26,7 +26,7 @@ for (const day of data.days) {
   writeFileSync(join(out, `${day.date}.json`), text);
 }
 const medals = data.days.map((d, i) => {
-  const m = medalsFor(data.index.days[i]!.authorMs);
+  const m = medalsFor(data.index.days[i]!.authorMs, parseDay(d.date) ?? 0);
   const ratios = d.top.map((r) => r.ms / m.author);
   return `${d.date}  ${d.top.map((r) => (r.ms <= m.author ? "A" : r.ms <= m.gold ? "G" : r.ms <= m.silver ? "S" : r.ms <= m.bronze ? "B" : "·")).join("").padEnd(15)}  temps / auteur : ${ratios[0]!.toFixed(2)} → ${ratios.at(-1)!.toFixed(2)}`;
 });

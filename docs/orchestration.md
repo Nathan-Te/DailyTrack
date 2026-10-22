@@ -180,7 +180,7 @@ Outils de test (avec ?debug) : window.__cdj, timescale=N, today=AAAA-MM-JJ, salo
 
 **Ouvert — à trancher par Nathan**
 1. ~~**Hébergement de l'API.**~~ **Tranché le 13/10/2026 (lot 28)** : GitHub Pages + Cloud Run + Turso ; la mise en ligne réelle se fait en suivant `docs/mise-en-ligne.md`. Workers gratuit reste exclu (10 ms de calcul par requête ; un rejeu coûte ≈ 18–38 ms) ; Workers payant + D1 reste un repli (adaptateur `worker.ts`, non essayé).
-2. **Seuils des médailles** : non calibrés sur de vrais joueurs (depuis le lot 7 le pilote suit une trajectoire de course, mais ne dérape pas : un bon joueur le bat de quelques %). `MEDAL_FACTORS` et la fenêtre de durée se règlent d'un coup (`generator.ts`), à faire après quelques circuits joués ; toute modification impose d'incrémenter `GENERATOR_VERSION`.
+2. **Seuils des médailles** : **calibrés au lot 35** sur les temps de production (auteur 0,84 × pilote, or ×1,045, argent ×1,07, bronze ×1,13 de l'auteur, à partir du 28/10/2026 ; `medalsFor(pilote, jour)`) ; outil de calibrage en lecture seule : section « Médailles » de `/admin/`. À recalibrer avec plus de données (nouvelle date de bascule).
 3. ~~**Commandes tactiles**~~ **résolue au lot 10** : on conduit au doigt (glissement + frein ; deux pédales par défaut depuis la 18b, accélérateur automatique en option). **Essayé par Nathan sur un vrai téléphone** : son retour a donné la retouche 10b (zones) ; **à reconfirmer avec `?zones=1`**.
 
 ## 8. Pièges rencontrés (à éviter)

@@ -1,4 +1,4 @@
-import { PREMIER_JOUR, THEME_NAMES, circuitNumber, formatDay, medalsFor, themeForDay } from "@cdj/sim";
+import { PREMIER_JOUR, THEME_NAMES, circuitNumber, formatDay, medalsFor, parseDay, themeForDay } from "@cdj/sim";
 import { medaille, nomMedaille } from "@cdj/ui";
 import { MEDAL_TYPE } from "./boardView";
 import { creerCadre } from "./cadre";
@@ -257,7 +257,7 @@ export function renderArchive(panel: HTMLElement, days: ArchiveDay[], search: st
     a.append(best);
     const meta = extras?.meta.get(d.date);
     if (meta) {
-      const m = medalsFor(meta.authorMs);
+      const m = medalsFor(meta.authorMs, parseDay(d.date) ?? 0);
       const nom = (type: "auteur" | "or" | "argent" | "bronze") => nomMedaille(traducteurDuSocle(), type);
       cell("sub", `${nom("auteur")} ${fTemps(m.author)}  ${nom("or")} ${fTemps(m.gold)}  ${nom("argent")} ${fTemps(m.silver)}  ${nom("bronze")} ${fTemps(m.bronze)}  · ${t("archives.pilotes", { n: meta.participants })}`, a);
     }

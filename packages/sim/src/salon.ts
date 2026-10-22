@@ -71,5 +71,5 @@ export function salonCircuit(session: number): SalonCircuit {
   const track = createTestTrack();
   const pilot = bestPilotRun(track);
   const authorMs = pilot ? pilot.finishMs : 40_000;
-  return { session, id: track.id, spec: "", figures: [], track, authorMs, medals: medalsFor(authorMs), palette: theme.palette, theme: theme.name, fallback: true };
+  return { session, id: track.id, spec: "", figures: [], track, authorMs, medals: medalsFor(authorMs, SALON_SEED_BASE + session), palette: theme.palette, theme: theme.name, fallback: true };
 }
