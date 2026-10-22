@@ -57,4 +57,4 @@ Justification des deux fils (écrite dans `docs/plateforme/budgets.md`) : ils ne
 
 ## 7. Aperçu de la PR
 
-*(lien ajouté à l'ouverture de la PR)* — ouvrir `/?demo=joueur` : le portail affiche le joueur de démonstration avec sa médaille d'or de Track tant qu'on est avant le 28/10/2026.
+https://playdujour-recette--pr-116-daizlis7.web.app/ (révision de recette étiquetée `b-claude-laughing-46p403`, car la PR touche le serveur) — ouvrir https://playdujour-recette--pr-116-daizlis7.web.app/?demo=joueur : le portail affiche le joueur de démonstration avec sa médaille d'or de Track tant qu'on est avant le 28/10/2026.
