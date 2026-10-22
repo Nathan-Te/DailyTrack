@@ -15,6 +15,23 @@ export interface HaloSpec {
   size: number;
 }
 
+/** Boîte alignée sur les axes, en mètres. */
+export interface Box {
+  x0: number;
+  y0: number;
+  z0: number;
+  x1: number;
+  y1: number;
+  z1: number;
+}
+
+/** Où en est un constructeur (lot 37) : tailles de ses tampons. */
+export interface BuilderMark {
+  pos: number;
+  col: number;
+  halos: number;
+}
+
 export class Builder {
   /** Halos à dessiner (lot 23) : lampadaires, néons, turbos, portes. */
   readonly halos: HaloSpec[] = [];
@@ -86,6 +103,41 @@ export class Builder {
         this.tri([cx, y0 + h, cz], e0, e1, top);
       }
     }
+  }
+
+  /** Repère de ce qui est construit à cet instant (lot 37) : de quoi mesurer, puis au besoin retirer, ce qu'une fonction vient de poser. */
+  mark(): BuilderMark {
+    return { pos: this.pos.length, col: this.col.length, halos: this.halos.length };
+  }
+
+  /** Boîte englobante (m) des formes construites depuis `m`, ou `null` s'il n'y en a pas (constructeur muet comprise). */
+  boxSince(m: BuilderMark): Box | null {
+    if (this.pos.length <= m.pos) return null;
+    const box: Box = { x0: Infinity, y0: Infinity, z0: Infinity, x1: -Infinity, y1: -Infinity, z1: -Infinity };
+    for (let i = m.pos; i < this.pos.length; i += 3) {
+      const x = this.pos[i]!;
+      const y = this.pos[i + 1]!;
+      const z = this.pos[i + 2]!;
+      if (x < box.x0) box.x0 = x;
+      if (y < box.y0) box.y0 = y;
+      if (z < box.z0) box.z0 = z;
+      if (x > box.x1) box.x1 = x;
+      if (y > box.y1) box.y1 = y;
+      if (z > box.z1) box.z1 = z;
+    }
+    return box;
+  }
+
+  /** Nombre de triangles construits depuis `m`. */
+  trianglesSince(m: BuilderMark): number {
+    return (this.pos.length - m.pos) / 9;
+  }
+
+  /** Retire tout ce qui a été construit depuis `m` (formes et halos) : un élément refusé après coup, sans changer les tirages au sort de l'appelant. */
+  rollback(m: BuilderMark) {
+    this.pos.length = m.pos;
+    this.col.length = m.col;
+    this.halos.length = m.halos;
   }
 
   geometry(): BufferGeometry {
