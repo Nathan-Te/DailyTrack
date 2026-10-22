@@ -109,7 +109,7 @@ Moyenne : 95 043 → 79 927 triangles (−16 %). Les ±1 ou 2 appels viennent de
 
 ## Vérifié / non vérifié
 
-**Vérifié** : le test de pose (0 faute sur la branche, 11 750 sur `main`) ; `npx tsc -b` ; `npx vitest run --project sqlite` (194 fichiers, 2 530 tests, golden compris) ; `perf.spec` ; les planches des huit thèmes (§ 4) ; les triangles, les appels et la construction avant / après (§ 5) ; le relevé de pose ne change pas l'image (Ville, trois plans identiques à l'octet).
+**Vérifié** : le test de pose (0 faute sur la branche, 11 750 sur `main`) ; `npx tsc -b` ; `npx vitest run --project sqlite` (194 fichiers, 2 530 tests, golden compris) ; `perf.spec` ; e2e Chromium ciblés (`thumbnails`, `graphismes`, `cameras`, `vitrine`, `scene` : 31 passés) ; les planches des huit thèmes (§ 4) ; les triangles, les appels et la construction avant / après (§ 5) ; le relevé de pose ne change pas l'image (Ville, trois plans identiques à l'octet).
 **Non vérifié** : le ressenti sur un vrai téléphone (lisibilité de la Ville au doigt, garde-corps à 1,4 m) ; Firefox et WebKit (la CI) ; le fil principal par image (mesure inexploitable en rendu logiciel) ; la CI de la PR (à lire sur la PR).
 
 ## Décisions pour Nathan
