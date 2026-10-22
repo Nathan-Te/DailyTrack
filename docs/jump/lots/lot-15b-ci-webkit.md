@@ -25,7 +25,15 @@ Depuis la fusion du lot I7 (plein écran, run 39659334235), la CI complète de `
 
 ## Vérifié
 - En local (Playwright 1.63) : `plein-ecran` et `horloge` sur WebKit, 6 tests sautés (motif affiché), les autres verts ; sur Chromium, les 12 verts,
-  aucun sauté. Suite WebKit complète de Jump : 146 verts, 1 échec
-  `sensations.spec.ts:184`, puis vert 8 fois sur 8 en isolé, avec et sans cette retouche (vert dans les runs de CI cités) : un aléa de charge locale,
-  qui n'est pas lié à cette retouche.
+  aucun sauté. La suite WebKit complète de Jump avait aussi échoué une fois sur `sensations.spec.ts:184`, que j'ai pris à tort pour un aléa de
+  charge locale : voir la suite ci-dessous.
 - `npm run typecheck` vert. La CI complète est lancée sur la PR par un commit `[ci complet]`.
+
+## Suite : `sensations.spec.ts:184` (secousse de la mort), rouge sur `main` après la fusion (run 39688507806)
+- **Cause** : la secousse de la mort (0,12 s depuis le lot 14) part au pas de la mort, mais elle s'use **à chaque image affichée**, même en pas à
+  pas (`shake.offset(dt)`, `dt` jusqu'à 0,25 s). Le test la lisait dans un second `evaluate`, après celui du pas de la mort : sur WebKit, plus lent, une
+  image passait entre les deux et la secousse était déjà finie (`shaking` faux, relance comprise). Le test dépendait du temps réel, pas d'un défaut du jeu.
+- **Correction** : courir jusqu'à la mort et lire `fx` dans **la même évaluation**, sans image entre le pas de la mort et la lecture. Les vérifications
+  sont les mêmes (des éclats, une secousse).
+- **Vérifié** : en local sur WebKit, sous charge (6 workers, `--repeat-each=30`), l'ancien test échoue 2 fois sur 30 et le nouveau passe 60 fois sur 60
+  (deux séries). `sensations.spec.ts` entier est vert sur Chromium et WebKit. `npm run typecheck` est vert.
