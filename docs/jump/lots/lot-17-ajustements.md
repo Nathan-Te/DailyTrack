@@ -77,7 +77,7 @@ Les 14 premiers jours g12 (portion = de l'entrée sur le palier à la sortie du 
 Seuls le 26/10 et le 06/11 ont changé par rapport au README du lot 16 (le 06/11 : `scie-sol` v6 à la place de v5 ; les médailles sont celles de `jumpMedalsFor` / `medalsWithSlow` du jour). Les jours de démonstration (`apps/jump/public/demo/`) sont régénérés (`npm run jump:seed -w @cdj/api`) : 7 à 24 classés par jour.
 
 ## 6. CI
-Le lot touche la simulation, le générateur et des tests e2e : **commit `[ci complet]`** avant de demander la fusion (consigne écrite dans `apps/jump/CLAUDE.md`, « Tests e2e et CI »). Lien de la PR et état de la CI complète : voir la fin de ce fichier.
+Le lot touche la simulation, le générateur et des tests e2e : **commit `[ci complet]`** avant de demander la fusion (consigne écrite dans `apps/jump/CLAUDE.md`, « Tests e2e et CI »). PR : https://github.com/Nathan-Te/DailyTrack/pull/114. **Premier run complet** (`a99e6b2`) : un seul échec, `e2e-parts (jump webkit 1/1)`, `smoke.spec.ts:169` — le panneau `?debug&tune` a 38 curseurs depuis le curseur d'opacité du carnage, le test en attendait 37 ; corrigé (`d6e797a`, 38). **Run suivant** (`d6e797a`) : tous les tests verts, sauf la part `e2e-parts (firefox 1/2)`, restée 35 min à l'étape `playwright install-deps firefox` (installation des dépendances système du runner, aucun test lancé) puis annulée : incident d'infrastructure, relancé par le commit qui ajoute ces liens (`[ci complet]`).
 
 ## 7. Vérifié / non vérifié
 - **Vérifié** : `npm run typecheck` ; Vitest de `packages/jump-sim`, `apps/jump`, `apps/api`, `packages/ui` et `apps/portail` (voir la fin) ; `golden-daily.test.ts` et `golden.test.ts` côté v3 **inchangés** ; e2e `carnage-lisible.spec.ts` dans Chromium, en local ; construction du jeu (`npm run build -w @cdj/jump`) ; captures du carnage (scies estompées, pics francs) vues à l'œil sur des journées de nuit, de forêt et d'usine ; `npm run traductions` (un message de la démonstration change : « seulement sur ?scenario=essai ou sur un niveau du jour »).
@@ -90,4 +90,10 @@ Le lot touche la simulation, le générateur et des tests e2e : **commit `[ci co
 4. Questions des lots 15 et 16 toujours ouvertes (hors périmètre ici) : forme de la voie lente, voies parasites (la « remontée par la gauche »), joueurs fictifs v4 qui reprennent mal après une mort, durée du « Prêt… », tirages validés à 33 %.
 
 ## 9. Scénario en 2 clics
-(Liens d'aperçu de la PR : ajoutés ci-dessous une fois l'aperçu déployé.)
+Aperçu de la PR (branché sur la révision de recette `https://b-claude-vigilant-tlwvam---cdj-api-recette-5qi6aa4qqa-ew.a.run.app`) :
+1. **Le carnage d'un jour avec plusieurs dangers à horloge** — le 25/10/2026 (nuit : 14 scies mobiles, 39 clignotants), le jeu de données `?api=demo` : https://playdujour-recette--pr-114-s1bkxq0i.web.app/jump/?seed=2026-10-25&api=demo&carnage=demo
+   À voir : les scies mobiles et les blocs clignotants sont estompés (35 %), les pics rouges restent francs, les petits carrés des vies de la foule et leurs éclats passent devant. « Une commande pour passer » ferme le carnage et la partie reprend à pleine opacité. Pour la forêt (rafales, plus des scies fixes et des zones de vent qui soufflent toujours, qui ne changent pas) : même adresse avec `seed=2026-10-24`. Réglage : `&debug&tune`, section « Caméra et secousses ».
+2. **Un jour g12 qui contient une variante réadmise** — le 26/10/2026 (glace, `cheminee-scie` v4, 3 voies lentes) : https://playdujour-recette--pr-114-s1bkxq0i.web.app/jump/?seed=2026-10-26&debug
+   À voir : la surimpression `?debug` nomme le morceau `cheminee-scie v4` (portion dure, 4/5) avec ses deux trajets (rapide et lent). Autre jour : le 06/11/2026 (usine) pose `scie-sol` v6.
+
+En local (`npm run dev:jump`) : `http://localhost:5173/?seed=2026-10-25&api=demo&carnage=demo` et `http://localhost:5173/?seed=2026-10-26&debug`.
