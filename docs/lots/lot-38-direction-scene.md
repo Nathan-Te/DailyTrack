@@ -25,7 +25,10 @@ le décor du jeu en parallèle) ; ses règles de pose sont reprises de l'énonc�
 
 ## À tester (sur l'aperçu de la PR)
 
-Ouvrir **`<aperçu>/track/vitrine/`** sur ordinateur, puis sur téléphone. Parcourir les éléments (le sélecteur en tête change le thème de ces
+Aperçu de la PR [#117](https://github.com/Nathan-Te/DailyTrack/pull/117) : **https://playdujour-recette--pr-117-fkbh5yg9.web.app/track/vitrine/**
+(7 jours après la dernière poussée ; le lien à jour est commenté sur la PR).
+
+Ouvrir **la vitrine** sur ordinateur, puis sur téléphone. Parcourir les éléments (le sélecteur en tête change le thème de ces
 sections) et les thèmes (trois points de vue : poursuite, départ, vue d'ensemble). Pour **chaque élément et chaque thème**, noter : **A, B, C, un
 mélange, ou « l'existant suffit »**. Sur le téléphone, « Agrandir et mesurer » donne le vrai temps d'image de l'appareil (la mesure du lot est en
 rendu logiciel) : le noter pour Stade, Nuit et Rallye (les plus chargés).
@@ -237,9 +240,11 @@ Chaque lot remesure avec la vitrine (qui reste le banc d'essai : elle montre l'e
 - **Vérifié (ici, Chromium 141 en rendu logiciel)** : `e2e/vitrine.spec.ts` (ordinateur : les 14 sections × 5 colonnes se construisent et se
   dessinent sans aucune erreur ; téléphone 390 × 844 : rien ne déborde, cibles de 44 px, vue agrandie qu'on tourne au doigt et qu'on mesure ; axe :
   aucune violation grave) ; `e2e/perf.spec.ts` vert (le jeu construit est identique à `main`) ; `apps/web/test/scene.test.ts` (règles de pose,
-  route paramétrable, occlusion, palettes) ; `npm test` ; `npm run typecheck` ; captures et mesures de ce README.
+  route paramétrable, occlusion, palettes) ; `npm test` ; `npm run typecheck` ; captures et mesures de ce README. **Sur l'aperçu de la PR**
+  (Chromium, 1440 × 900 et téléphone 390 × 844) : la page s'ouvre, la section du départ se construit et se dessine dans les 5 colonnes, rien ne
+  déborde, aucune erreur ; `/track/vitrine/poids.json` est servi.
 - **Non vérifié** : un vrai téléphone (le temps d'image réel : à faire par Nathan sur l'aperçu) ; Firefox et WebKit (la vitrine y est sautée :
-  rendu 3D de dizaines de scènes, Chromium seulement) ; l'aperçu de la PR et la CI (au moment d'écrire ces lignes : voir la PR) ; les règles exactes
+  rendu 3D de dizaines de scènes, Chromium seulement) ; la CI de la PR (au moment d'écrire ces lignes : voir la PR) ; les règles exactes
   du lot 37 (pas encore fusionné).
 - **Décisions laissées à Nathan** : § 8.
 
