@@ -72,7 +72,7 @@ function mesurer(builders: readonly Builder[], marks: readonly BuilderMark[]): {
   let tris = 0;
   builders.forEach((b, i) => {
     const bb = b.boxSince(marks[i]!);
-    tris += b.trianglesSince(marks[i]!);
+    tris += (b.pos.length - marks[i]!.pos) / 9;
     if (!bb) return;
     box = box ? { x0: Math.min(box.x0, bb.x0), y0: Math.min(box.y0, bb.y0), z0: Math.min(box.z0, bb.z0), x1: Math.max(box.x1, bb.x1), y1: Math.max(box.y1, bb.y1), z1: Math.max(box.z1, bb.z1) } : bb;
   });

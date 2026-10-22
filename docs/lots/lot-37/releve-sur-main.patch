@@ -1,0 +1,462 @@
+diff --git a/apps/web/src/decorPose.ts b/apps/web/src/decorPose.ts
+new file mode 100644
+index 0000000..6b2e78e
+--- /dev/null
++++ b/apps/web/src/decorPose.ts
+@@ -0,0 +1,119 @@
++// Pose du décor (lot 37) : le relevé de ce que le rendu plante au bord de la piste, pour pouvoir vérifier sans rendu qu'il y a bien un appui
++// sous chaque élément et rien dans le passage de la voiture. Pur (aucun DOM) ; présentation seule : jamais rien dans `sim`.
++//
++// Chaque fonction qui pose un élément (panneau, arche, porte, poteau, tribune, décor) est appelée telle quelle ; quand un `PoseLog` est donné,
++// on mesure la boîte englobante des formes qu'elle vient de construire (`Builder.mark` / `boxSince`) et on la note avec ce que l'élément est
++// (type, partie, appui voulu). Sans `PoseLog` (le jeu), rien n'est mesuré : le même code, le même résultat.
++import type { Box, Builder, BuilderMark } from "./meshKit";
++
++/** Ce qu'est un élément : chaque type a UN rôle (signaler, marquer, habiller), sinon il n'a rien à faire dans la scène. */
++export type PoseKind = "poteau" | "panneau" | "arche-depart" | "arche-arrivee" | "arche-vitesse" | "porte" | "tribune" | "decor" | "lampadaire";
++
++export type Role = "signaler" | "marquer" | "habiller";
++
++export const ROLES: Record<PoseKind, Role> = {
++  poteau: "signaler", // borne au bord d'une portion rapide : on lit la vitesse
++  panneau: "signaler", // virage, saut, cuve à venir
++  "arche-vitesse": "signaler", // portion rapide
++  "arche-depart": "marquer",
++  "arche-arrivee": "marquer",
++  porte: "marquer", // point de contrôle
++  tribune: "habiller", // départ
++  decor: "habiller", // hors de la piste, selon le thème
++  lampadaire: "habiller", // Ville : mobilier de rue sur le rebord
++};
++
++/**
++ * Partie d'un élément : un `pied` touche son appui ; un `surplomb` (poutre, plaque, voile, toit) est porté par les pieds de son groupe et peut
++ * passer au-dessus de la route, à `PASSAGE_HAUT` au moins.
++ */
++export type PosePart = "pied" | "surplomb";
++
++/** Appui d'un pied : le sol lointain (`track.voidY − FALL_DEPTH`), ou le chapeau du rebord d'un bloc fermé (route + hauteur du rebord). */
++export type Appui = "sol" | "rebord";
++
++export interface Pose {
++  kind: PoseKind;
++  part: PosePart;
++  /** Appui d'un pied (un surplomb n'en a pas). */
++  appui: Appui;
++  /** Les parties d'une même structure (deux pieds et une poutre) portent le même groupe. */
++  group: number;
++  /** Boîte englobante (m). Un pied pose sa base à `y0`. */
++  x0: number;
++  y0: number;
++  z0: number;
++  x1: number;
++  y1: number;
++  z1: number;
++  /** Triangles construits. */
++  tris: number;
++  /** Bloc qui porte l'élément (le rebord, la route) ; −1 pour un élément posé au sol. */
++  block: number;
++  /** Thème ou style (décor) : pour les comptes par thème. */
++  style: string;
++}
++
++/** Hauteur (m) au-dessus de la route sous laquelle rien ne passe : la caméra « loin » est à 4,2 m, plus une marge. C'est le passage et la cheminée de la caméra. */
++export const PASSAGE_HAUT = 4.6;
++/** Écart toléré (m) entre la base d'un pied et la hauteur de son appui. */
++export const TOLERANCE_APPUI = 0.05;
++/** Marge (m) entre un pied et la surface roulante (route, bas-côté) : il est tout entier dehors. */
++export const MARGE_PASSAGE = 0.1;
++/** Largeur (m) du chapeau d'un rebord, au-delà du bord de la route (voir `addRoad`). */
++export const CHAPEAU = 0.6;
++
++/** Marge (m) entre un élément posé au sol et la surface roulante : assez pour ne jamais frôler la route ni masquer le regard vers elle. */
++export const MARGE_DECOR = 1;
++
++/** Boîte englobante de ce que les constructeurs ont construit depuis leurs repères, avec le nombre de triangles ; `null` si rien (constructeur muet). */
++function mesurer(builders: readonly Builder[], marks: readonly BuilderMark[]): { box: Box | null; tris: number } {
++  let box: Box | null = null;
++  let tris = 0;
++  builders.forEach((b, i) => {
++    const bb = b.boxSince(marks[i]!);
++    tris += (b.pos.length - marks[i]!.pos) / 9;
++    if (!bb) return;
++    box = box ? { x0: Math.min(box.x0, bb.x0), y0: Math.min(box.y0, bb.y0), z0: Math.min(box.z0, bb.z0), x1: Math.max(box.x1, bb.x1), y1: Math.max(box.y1, bb.y1), z1: Math.max(box.z1, bb.z1) } : bb;
++  });
++  return { box, tris };
++}
++
++export type PoseMeta = Pick<Pose, "kind" | "part" | "appui" | "group" | "block" | "style">;
++
++export class PoseLog {
++  readonly poses: Pose[] = [];
++  private groups = 0;
++
++  /** Un nouveau numéro de groupe pour les parties d'une même structure. */
++  group(): number {
++    return ++this.groups;
++  }
++
++  /** Note une pose. */
++  push(meta: PoseMeta, box: Box, tris: number) {
++    this.poses.push({ ...meta, ...box, tris });
++  }
++}
++
++/**
++ * Construit un élément : `run` construit ses formes dans `builders`. Avec un relevé (tests), la boîte de ce qui a été construit est notée ; avec
++ * `accepter` (le jeu), l'élément est retiré s'il est refusé (`rollback` : ses tirages au sort ont été consommés, le reste du décor ne bouge pas).
++ * Sans relevé ni `accepter`, `run` est simplement appelé.
++ */
++export function placed(log: PoseLog | undefined, meta: PoseMeta, builders: readonly Builder[], run: () => void, accepter?: (box: Box) => boolean): boolean {
++  if (!log && !accepter) {
++    run();
++    return true;
++  }
++  const marks = builders.map((b) => b.mark());
++  run();
++  const { box, tris } = mesurer(builders, marks);
++  if (!box) return true;
++  if (accepter && !accepter(box)) {
++    builders.forEach((b, i) => b.rollback(marks[i]!));
++    return false;
++  }
++  log?.push(meta, box, tris);
++  return true;
++}
+diff --git a/apps/web/src/meshKit.ts b/apps/web/src/meshKit.ts
+index cd5b243..932a40c 100644
+--- a/apps/web/src/meshKit.ts
++++ b/apps/web/src/meshKit.ts
+@@ -15,6 +15,23 @@ export interface HaloSpec {
+   size: number;
+ }
+ 
++/** Boîte alignée sur les axes, en mètres. */
++export interface Box {
++  x0: number;
++  y0: number;
++  z0: number;
++  x1: number;
++  y1: number;
++  z1: number;
++}
++
++/** Où en est un constructeur (lot 37) : tailles de ses tampons. */
++export interface BuilderMark {
++  pos: number;
++  col: number;
++  halos: number;
++}
++
+ export class Builder {
+   /** Halos à dessiner (lot 23) : lampadaires, néons, turbos, portes. */
+   readonly halos: HaloSpec[] = [];
+@@ -88,6 +105,36 @@ export class Builder {
+     }
+   }
+ 
++  /** Repère de ce qui est construit à cet instant (lot 37) : de quoi mesurer, puis au besoin retirer, ce qu'une fonction vient de poser. */
++  mark(): BuilderMark {
++    return { pos: this.pos.length, col: this.col.length, halos: this.halos.length };
++  }
++
++  /** Boîte englobante (m) des formes construites depuis `m`, ou `null` s'il n'y en a pas (constructeur muet comprise). */
++  boxSince(m: BuilderMark): Box | null {
++    if (this.pos.length <= m.pos) return null;
++    const box: Box = { x0: Infinity, y0: Infinity, z0: Infinity, x1: -Infinity, y1: -Infinity, z1: -Infinity };
++    for (let i = m.pos; i < this.pos.length; i += 3) {
++      const x = this.pos[i]!;
++      const y = this.pos[i + 1]!;
++      const z = this.pos[i + 2]!;
++      if (x < box.x0) box.x0 = x;
++      if (y < box.y0) box.y0 = y;
++      if (z < box.z0) box.z0 = z;
++      if (x > box.x1) box.x1 = x;
++      if (y > box.y1) box.y1 = y;
++      if (z > box.z1) box.z1 = z;
++    }
++    return box;
++  }
++
++  /** Retire tout ce qui a été construit depuis `m` (formes et halos) : un élément refusé après coup, sans changer les tirages au sort de l'appelant. */
++  rollback(m: BuilderMark) {
++    this.pos.length = m.pos;
++    this.col.length = m.col;
++    this.halos.length = m.halos;
++  }
++
+   geometry(): BufferGeometry {
+     const g = new BufferGeometry();
+     g.setAttribute("position", new Float32BufferAttribute(this.pos, 3));
+diff --git a/apps/web/src/trackMesh.ts b/apps/web/src/trackMesh.ts
+index ec5c2ec..d6c1e20 100644
+--- a/apps/web/src/trackMesh.ts
++++ b/apps/web/src/trackMesh.ts
+@@ -65,6 +65,7 @@ import { Builder, mix, seeded, shade, world, type V3 } from "./meshKit";
+ import { buildHalos } from "./halo";
+ import { signsFor } from "./signage";
+ import { addCheckpointGate, addFinishArch, addSign, addStartArch, createProps } from "./trackProps";
++import { placed, type PoseLog } from "./decorPose";
+ import { fastZones, postFractions } from "./speedFeel";
+ 
+ /** Couleurs et éclairage d'un thème. Une palette différente par jour : `paletteForDay` (sim) choisit laquelle. */
+@@ -782,15 +783,16 @@ function beam(g: Builder, a: V3, b: V3, fwd: [number, number], depth: number, y0
+ const halfWidthAt = (b: Block, t: number) => (isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, t * CELL));
+ 
+ /** Poteaux des deux rives (sur le chapeau du rebord), et, dans une portion rapide, arches et chevrons. */
+-function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean) {
++function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean, log?: PoseLog) {
+   if (b.kind === "jump" || b.kind === "gap") return;
+   const top = fast ? 3.4 : 2.4;
+   const rail = b.open ? 0 : WALL_HEIGHT; // sans rebords : les poteaux se plantent au bord de la route
++  const meta = { part: "pied", appui: "rebord", block: b.index, style: "" } as const;
+   for (const t of postFractions(fast)) {
+     const hw = halfWidthAt(b, t) + 0.3;
+     for (const side of [-1, 1]) {
+       const p = onBlock(b, side * hw, t, rail);
+-      g.prism(p[0], p[1], p[2], 0.16, 0.12, top, 4, shade(pal.wallB, 0.95), fast ? pal.boostMark : pal.wallA, 0.78);
++      placed(log, { ...meta, kind: "poteau", group: log?.group() ?? 0 }, [g], () => g.prism(p[0], p[1], p[2], 0.16, 0.12, top, 4, shade(pal.wallB, 0.95), fast ? pal.boostMark : pal.wallA, 0.78));
+     }
+   }
+   if (!fast) return;
+@@ -804,9 +806,12 @@ function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean) {
+     const len = Math.hypot(ahead[0] - behind[0], ahead[2] - behind[2]) || 1;
+     const fwd: [number, number] = [(ahead[0] - behind[0]) / len, (ahead[2] - behind[2]) / len];
+     const h = 7.2;
+-    for (const e of [l, r]) g.prism(e[0], e[1], e[2], 0.34, 0.26, h, 4, shade(pal.wallB, 0.85), pal.wallA, 0.78);
+-    beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.4, l[1] + h - 0.5, l[1] + h + 0.3, pal.wallA);
+-    beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.42, l[1] + h - 0.12, l[1] + h + 0.06, pal.boostMark);
++    const group = log?.group() ?? 0;
++    for (const e of [l, r]) placed(log, { ...meta, kind: "arche-vitesse", group }, [g], () => g.prism(e[0], e[1], e[2], 0.34, 0.26, h, 4, shade(pal.wallB, 0.85), pal.wallA, 0.78));
++    placed(log, { ...meta, kind: "arche-vitesse", part: "surplomb", group }, [g], () => {
++      beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.4, l[1] + h - 0.5, l[1] + h + 0.3, pal.wallA);
++      beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.42, l[1] + h - 0.12, l[1] + h + 0.06, pal.boostMark);
++    });
+   }
+   // Chevrons peints au centre, tous les 8 m, entre les tirets (route droite ou pente, sans effet de piste).
+   if (b.surface === "road" && !isCurve(b.kind) && (b.kind === "straight" || b.kind === "down" || b.kind === "up")) {
+@@ -880,7 +885,11 @@ function blockBox(g: Builder, b: Block, p0: number, p1: number, q0: number, q1:
+ const CROWD = [0xff4b4b, 0xffd22e, 0x4bd0ff, 0xf4f4f4, 0x6bff8a, 0xff8a3d, 0xc084fc] as const;
+ 
+ /** Tribune au départ : trois gradins en escalier, de la foule en petites boîtes de couleur, un toit léger. */
+-function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number) {
++function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, log?: PoseLog) {
++  placed(log, { kind: "tribune", part: "pied", appui: "sol", group: log?.group() ?? 0, block: -1, style: "" }, [g], () => buildGrandstand(g, pal, b, rnd));
++}
++
++function buildGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number) {
+   const side = turnsLeft(b.kind) ? 1 : -1; // du côté opposé à un éventuel virage : à gauche par défaut (p grand)
+   const hw = blockHalfWidth(b, CELL / 2);
+   const base = side > 0 ? CELL / 2 + hw + 3.5 : CELL / 2 - hw - 3.5;
+@@ -1131,7 +1140,7 @@ function addTypedProp(g: Builder, style: Style, x: number, y: number, z: number,
+ }
+ 
+ /** Décor au bord de la piste : dans les cellules vides à moins de 2 cellules d'un bloc, selon le style de la palette. */
+-function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number, keep?: (cx: number, cz: number) => boolean, dense = false) {
++function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number, keep?: (cx: number, cz: number) => boolean, dense = false, log?: PoseLog) {
+   const wanted = new Set<number>();
+   const span = 2;
+   for (const b of track.blocks) {
+@@ -1163,8 +1172,11 @@ function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floor
+     for (let i = 0; i < n && count < (dense ? 520 : 650); i++, count++) {
+       const x = cx * CELL + 3 + rnd() * (CELL - 6);
+       const z = cz * CELL + 3 + rnd() * (CELL - 6);
+-      if (dense && addTypedProp(g, pal.scenery, x, floorY, z, rnd)) continue;
+-      addProp(g, glow, pal.scenery, pal, x, floorY, z, rnd);
++      const meta = { kind: "decor", part: "pied", appui: "sol", group: log?.group() ?? 0, block: -1, style: pal.scenery } as const;
++      let typed = false;
++      if (dense) placed(log, meta, [g, glow], () => (typed = addTypedProp(g, pal.scenery, x, floorY, z, rnd)));
++      if (typed) continue;
++      placed(log, meta, [g, glow], () => addProp(g, glow, pal.scenery, pal, x, floorY, z, rnd));
+     }
+   }
+   g.mute = glow.mute = false;
+@@ -1353,18 +1365,31 @@ export interface TrackSceneOptions {
+    * en entier, donc il est le même que dans le jeu) : une miniature coûte une fraction d'une scène complète.
+    */
+   near?: { from: number; to: number };
++  log?: PoseLog;
++  headless?: boolean;
+ }
+ 
+-/** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
+-export function buildTrackScene(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackScene {
++export interface TrackGeometry {
++  g: Builder;
++  speedG: Builder;
++  neonG: Builder;
++  props: ReturnType<typeof createProps>;
++  decorG: Builder;
++  glowG: Builder;
++  denseG: Builder;
++  denseGlow: Builder;
++  signCount: number;
++  rnd: () => number;
++}
++
++export function trackGeometry(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackGeometry {
+   const pal = PALETTE_DEFS[paletteName];
+   const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
+   const g = new Builder();
+   const speedG = new Builder();
+   const neonG = new Builder(); // bordures néon au bord du vide (lot 21, Nuit) : lisibles, jamais masquées par la qualité
+   const fast = fastZones(track);
+-  const look = LOOKS[paletteName];
+-  const props = createProps(!!options.aerial); // panneaux, arches, portes (lot 23)
++  const props = createProps(!!options.aerial || !!options.headless, options.log); // panneaux, arches, portes (lot 23)
+   let signCount = 0;
+   if (!options.aerial) {
+     for (const sign of signsFor(track)) addSign(props, track.blocks[sign.block]!, sign);
+@@ -1449,7 +1474,7 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
+       const c = world(b, CELL / 2, CELL / 2, b.y0 + 0.6);
+       props.glow.halo(c[0], c[1], c[2], b.kind === "boost" ? pal.boost : b.kind === "turbo" ? TURBO_COLOR.base : CUT_COLOR.mark, b.kind === "turbo" ? 9 : 7);
+     }
+-    if (!options.aerial) addSpeedMarks(speedG, pal, b, fast[b.index] ?? false);
++    if (!options.aerial) addSpeedMarks(speedG, pal, b, fast[b.index] ?? false, options.log);
+     if (b.mark === "checkpoint") addCheckpointGate(props, pal, b);
+     if (b.mark === "finish") addFinishArch(props, pal, b);
+     if (b.mark === "start") addStartArch(props, pal, b);
+@@ -1475,13 +1500,22 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
+   const windowBlocks = near ? track.blocks.slice(near.from, near.to + 1) : [];
+   const nearCell = (cx: number, cz: number) => windowBlocks.some((b) => Math.abs(b.cx - cx) <= NEAR_CELLS && Math.abs(b.cz - cz) <= NEAR_CELLS);
+   decorG.mute = !!near && !nearCell(first0.cx, first0.cz);
+-  addGrandstand(decorG, pal, first0, rnd);
++  addGrandstand(decorG, pal, first0, rnd, options.log);
+   decorG.mute = false;
+-  addScenery(decorG, glowG, pal, track, floorY, rnd, near ? nearCell : undefined);
++  addScenery(decorG, glowG, pal, track, floorY, rnd, near ? nearCell : undefined, false, options.log);
+   // Décor dense (lot 23) : une seconde passe, tirée d'une autre suite de nombres (le décor d'origine ne bouge pas), réservée à la qualité 2.
+   const denseG = new Builder();
+   const denseGlow = new Builder();
+-  if (!options.aerial) addScenery(denseG, denseGlow, pal, track, floorY, seeded(`${track.id}:${paletteName}:dense`), undefined, true);
++  if (!options.aerial) addScenery(denseG, denseGlow, pal, track, floorY, seeded(`${track.id}:${paletteName}:dense`), undefined, true, options.log);
++  return { g, speedG, neonG, props, decorG, glowG, denseG, denseGlow, signCount, rnd };
++}
++
++/** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
++export function buildTrackScene(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackScene {
++  const pal = PALETTE_DEFS[paletteName];
++  const floorY = track.voidY - FALL_DEPTH;
++  const look = LOOKS[paletteName];
++  const { g, speedG, neonG, props, decorG, glowG, denseG, denseGlow, signCount, rnd } = trackGeometry(track, paletteName, options);
+ 
+   const sky = new Color(pal.sky);
+   const scene = new Scene();
+diff --git a/apps/web/src/trackProps.ts b/apps/web/src/trackProps.ts
+index a48e059..433a96a 100644
+--- a/apps/web/src/trackProps.ts
++++ b/apps/web/src/trackProps.ts
+@@ -5,6 +5,7 @@ import { BufferGeometry, CanvasTexture, DoubleSide, Float32BufferAttribute, Mesh
+ import { CELL, CUVE_LEFT, CUVE_RIGHT, SHOULDER_EDGE, blockHalfWidth, blockHeight, type Block } from "@cdj/sim";
+ import { Builder, mix, shade, world, type V3 } from "./meshKit";
+ import type { SignKind, SignSpec } from "./signage";
++import { placed, type PoseLog } from "./decorPose";
+ 
+ export interface Props {
+   solid: Builder;
+@@ -14,10 +15,11 @@ export interface Props {
+   banners: Mesh[];
+   /** Vue aérienne (miniatures) : pas de bandeaux de texte (une texture de plus par arche pour rien). */
+   aerial: boolean;
++  log?: PoseLog;
+ }
+ 
+-export function createProps(aerial = false): Props {
+-  return { solid: new Builder(), glow: new Builder(), curtain: new Builder(), banners: [], aerial };
++export function createProps(aerial = false, log?: PoseLog): Props {
++  return { solid: new Builder(), glow: new Builder(), curtain: new Builder(), banners: [], aerial, log };
+ }
+ 
+ /** Couleurs de la palette dont les accessoires ont besoin. */
+@@ -121,15 +123,17 @@ export function addSign(p: Props, host: Block, s: SignSpec) {
+   const pole = 2.6;
+   const half = 1.25;
+   const style = SIGN_STYLES[signStyleOf(s.kind, s.severity)]!;
+-  // Poteau (deux petits montants, le panneau est large) : boîtes alignées sur les axes, assez fines pour qu'on n'y voie rien d'oblique.
+-  p.solid.box(base[0] - 0.07, y, base[2] - 0.07, base[0] + 0.07, y + pole + half * 2, base[2] + 0.07, 0x4a4f5c);
++  const group = p.log?.group() ?? 0;
++  const meta = { kind: "panneau", group, block: host.index, style: "" } as const;
++  placed(p.log, { ...meta, part: "pied", appui: "rebord" }, [p.solid], () => p.solid.box(base[0] - 0.07, y, base[2] - 0.07, base[0] + 0.07, y + pole + half * 2, base[2] + 0.07, 0x4a4f5c));
+   const center: V3 = [base[0], y + pole + half, base[2]];
+   const pl: Plane = { c: center, right: [-left[0], 0, -left[2]], up: [0, 1, 0], toward: [-fwd[0], 0, -fwd[2]] };
+-  poly(p.glow, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.03, style.border); // liseré, légèrement en retrait
+-  poly(p.glow, pl, rect(-half + 0.06, -half + 0.06, half - 0.06, half - 0.06), -0.015, style.plate);
+-  drawGlyph(p.glow, pl, s.kind, s.severity, s.cuve, 0.02, style.ink);
+-  // Dos de la plaque : gris, pour qu'elle ne soit pas vue « de l'autre côté » comme un fantôme jaune.
+-  poly(p.solid, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.06, 0x5a606e);
++  placed(p.log, { ...meta, part: "surplomb", appui: "rebord" }, [p.glow, p.solid], () => {
++    poly(p.glow, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.03, style.border);
++    poly(p.glow, pl, rect(-half + 0.06, -half + 0.06, half - 0.06, half - 0.06), -0.015, style.plate);
++    drawGlyph(p.glow, pl, s.kind, s.severity, s.cuve, 0.02, style.ink);
++    poly(p.solid, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.06, 0x5a606e);
++  });
+ }
+ 
+ // --- Bandeaux de texte --------------------------------------------------------------------------------------
+@@ -196,20 +200,24 @@ function buildArch(p: Props, pal: PropColors, b: Block, q: number, text: string,
+   const y = blockHeight(b, q);
+   const span = postSpan(b, q);
+   const beam = 2.4;
++  const meta = { kind: finish ? "arche-arrivee" : "arche-depart", group: p.log?.group() ?? 0, block: b.index, style: "" } as const;
+   for (const side of [-1, 1]) {
+     const c = world(b, CELL / 2 + side * span, q, y);
+-    // Poteaux rayés, plus épais en bas (empattement) : on les repère de loin.
+-    const seg = 1.5;
+-    for (let k = 0, yy = y; yy < y + h; k++, yy += seg) {
+-      const top = Math.min(y + h, yy + seg);
+-      p.solid.box(c[0] - 0.55, yy, c[2] - 0.55, c[0] + 0.55, top, c[2] + 0.55, k % 2 === 0 ? postA : postB);
+-    }
+-    p.solid.box(c[0] - 0.9, y, c[2] - 0.9, c[0] + 0.9, y + 0.5, c[2] + 0.9, shade(postA, 0.8));
++    placed(p.log, { ...meta, part: "pied", appui: "rebord" }, [p.solid], () => {
++      const seg = 1.5;
++      for (let k = 0, yy = y; yy < y + h; k++, yy += seg) {
++        const top = Math.min(y + h, yy + seg);
++        p.solid.box(c[0] - 0.55, yy, c[2] - 0.55, c[0] + 0.55, top, c[2] + 0.55, k % 2 === 0 ? postA : postB);
++      }
++      p.solid.box(c[0] - 0.9, y, c[2] - 0.9, c[0] + 0.9, y + 0.5, c[2] + 0.9, shade(postA, 0.8));
++    });
+     p.glow.halo(c[0], y + h + 0.3, c[2], finish ? 0xffffff : 0xff6a5a, 5);
+   }
+   const l = world(b, CELL / 2 + span, q, y + h);
+   const r = world(b, CELL / 2 - span, q, y + h);
+-  p.solid.box(Math.min(l[0], r[0]) - 0.6, y + h - 0.4, Math.min(l[2], r[2]) - 0.6, Math.max(l[0], r[0]) + 0.6, y + h + beam, Math.max(l[2], r[2]) + 0.6, shade(postA, 0.7));
++  placed(p.log, { ...meta, part: "surplomb", appui: "rebord" }, [p.solid], () =>
++    p.solid.box(Math.min(l[0], r[0]) - 0.6, y + h - 0.4, Math.min(l[2], r[2]) - 0.6, Math.max(l[0], r[0]) + 0.6, y + h + beam, Math.max(l[2], r[2]) + 0.6, shade(postA, 0.7)),
++  );
+   // Bandeau de texte sur les deux faces de la poutre (l'avant lit « DÉPART », l'arrière aussi).
+   const t = p.aerial ? null : bannerTexture(text, tex);
+   const fwd = unit(sub(world(b, CELL / 2, q + 1, y), world(b, CELL / 2, q, y)));
+@@ -248,10 +256,13 @@ export function addCheckpointGate(p: Props, pal: PropColors, b: Block) {
+   const span = postSpan(b, q);
+   const h = 7.5;
+   const color = pal.checkpoint;
++  const meta = { kind: "porte", group: p.log?.group() ?? 0, block: b.index, style: "" } as const;
+   for (const side of [-1, 1]) {
+     const c = world(b, CELL / 2 + side * span, q, y);
+-    const seg = 1.25;
+-    for (let k = 0, yy = y; yy < y + h; k++, yy += seg) p.solid.box(c[0] - 0.5, yy, c[2] - 0.5, c[0] + 0.5, Math.min(y + h, yy + seg), c[2] + 0.5, k % 2 === 0 ? color : 0xf4f4f4);
++    placed(p.log, { ...meta, part: "pied", appui: "rebord" }, [p.solid], () => {
++      const seg = 1.25;
++      for (let k = 0, yy = y; yy < y + h; k++, yy += seg) p.solid.box(c[0] - 0.5, yy, c[2] - 0.5, c[0] + 0.5, Math.min(y + h, yy + seg), c[2] + 0.5, k % 2 === 0 ? color : 0xf4f4f4);
++    });
+     p.glow.halo(c[0], y + h, c[2], color, 7);
+   }
+   const l = world(b, CELL / 2 + span, q, y + h);
+@@ -260,12 +271,13 @@ export function addCheckpointGate(p: Props, pal: PropColors, b: Block) {
+   const x1 = Math.max(l[0], r[0]);
+   const z0 = Math.min(l[2], r[2]);
+   const z1 = Math.max(l[2], r[2]);
+-  p.solid.box(x0 - 0.5, y + h - 0.9, z0 - 0.5, x1 + 0.5, y + h + 0.3, z1 + 0.5, shade(color, 0.55));
+-  // Bande lumineuse sur la poutre (sans éclairage : elle s'allume la nuit) et voile translucide qui pend dessous.
+-  p.glow.box(x0 - 0.52, y + h - 0.55, z0 - 0.52, x1 + 0.52, y + h - 0.2, z1 + 0.52, mix(color, 0xffffff, 0.35));
+   const top = y + h - 0.9;
+   const drop = 2.6;
+-  p.curtain.quad(world(b, CELL / 2 + span, q, top), world(b, CELL / 2 - span, q, top), world(b, CELL / 2 - span, q, top - drop), world(b, CELL / 2 + span, q, top - drop), color);
++  placed(p.log, { ...meta, part: "surplomb", appui: "rebord" }, [p.solid, p.glow, p.curtain], () => {
++    p.solid.box(x0 - 0.5, y + h - 0.9, z0 - 0.5, x1 + 0.5, y + h + 0.3, z1 + 0.5, shade(color, 0.55));
++    p.glow.box(x0 - 0.52, y + h - 0.55, z0 - 0.52, x1 + 0.52, y + h - 0.2, z1 + 0.52, mix(color, 0xffffff, 0.35));
++    p.curtain.quad(world(b, CELL / 2 + span, q, top), world(b, CELL / 2 - span, q, top), world(b, CELL / 2 - span, q, top - drop), world(b, CELL / 2 + span, q, top - drop), color);
++  });
+   // Bande au sol, plus large et plus claire qu'avant.
+   const hw = blockHalfWidth(b, q);
+   p.glow.quad(world(b, CELL / 2 - hw, q - 0.5, y + 0.05), world(b, CELL / 2 + hw, q - 0.5, y + 0.05), world(b, CELL / 2 + hw, q + 0.5, y + 0.05), world(b, CELL / 2 - hw, q + 0.5, y + 0.05), mix(color, 0xffffff, 0.25));

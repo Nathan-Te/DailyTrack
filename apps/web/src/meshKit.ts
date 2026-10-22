@@ -128,11 +128,6 @@ export class Builder {
     return box;
   }
 
-  /** Nombre de triangles construits depuis `m`. */
-  trianglesSince(m: BuilderMark): number {
-    return (this.pos.length - m.pos) / 9;
-  }
-
   /** Retire tout ce qui a été construit depuis `m` (formes et halos) : un élément refusé après coup, sans changer les tirages au sort de l'appelant. */
   rollback(m: BuilderMark) {
     this.pos.length = m.pos;
