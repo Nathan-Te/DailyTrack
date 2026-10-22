@@ -17,7 +17,7 @@ export interface Theme3 {
   particules: { sorte: SorteParticules; nombre: number; couleurs: readonly number[]; taille: number };
   /** Étalonnage (après la tonalité) : contraste, saturation, teinte des ombres et des lumières (± par canal), force. */
   etalonnage: { contraste: number; saturation: number; ombres: readonly [number, number, number]; lumieres: readonly [number, number, number] };
-  /** Halo des lumières : force, seuil (luminance), rayon. */
+  /** Halo des lumières : force, seuil (luminance **linéaire**, avant la tonalité : la peinture blanche au soleil y dépasse 1), rayon. */
   halo: { force: number; seuil: number; rayon: number };
   /** Lumière du ciel renvoyée par la carte d'environnement (palier 2, reflets). */
   environnement: number;
@@ -29,7 +29,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.35, clair: 0xffffff, sombre: 0xb9cde6, vitesse: 0.004 },
     particules: { sorte: "confettis", nombre: 500, couleurs: [0xe8552d, 0x2e7dff, 0xffd23f, 0xf4f4f4], taille: 0.16 },
     etalonnage: { contraste: 1.08, saturation: 1.12, ombres: [-0.01, 0, 0.02], lumieres: [0.015, 0.01, 0] },
-    halo: { force: 0.12, seuil: 0.92, rayon: 0.4 },
+    halo: { force: 0.14, seuil: 2.4, rayon: 0.4 },
     environnement: 0.55,
   },
   desert: {
@@ -37,7 +37,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.12, clair: 0xfff2e0, sombre: 0xe4c39a, vitesse: 0.003 },
     particules: { sorte: "poussiere", nombre: 900, couleurs: [0xd9a35f, 0xe8c08a], taille: 0.09 },
     etalonnage: { contraste: 1.06, saturation: 1.05, ombres: [0.015, 0, -0.02], lumieres: [0.03, 0.015, -0.01] },
-    halo: { force: 0.1, seuil: 0.93, rayon: 0.4 },
+    halo: { force: 0.12, seuil: 2.4, rayon: 0.4 },
     environnement: 0.5,
   },
   neige: {
@@ -45,7 +45,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.85, clair: 0xf4f7fa, sombre: 0xc8d4e0, vitesse: 0.002 },
     particules: { sorte: "neige", nombre: 1400, couleurs: [0xffffff], taille: 0.11 },
     etalonnage: { contraste: 1.04, saturation: 0.95, ombres: [-0.015, 0, 0.025], lumieres: [0, 0.005, 0.015] },
-    halo: { force: 0.08, seuil: 0.96, rayon: 0.4 },
+    halo: { force: 0.1, seuil: 2.8, rayon: 0.4 },
     environnement: 0.6,
   },
   nuit: {
@@ -53,7 +53,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.4, clair: 0x2a3466, sombre: 0x070a18, vitesse: 0.003 },
     particules: { sorte: "lucioles", nombre: 420, couleurs: [0xffc46a, 0xfff0b0], taille: 0.12 },
     etalonnage: { contraste: 1.1, saturation: 1.1, ombres: [-0.01, 0, 0.03], lumieres: [0.03, 0.015, -0.01] },
-    halo: { force: 0.85, seuil: 0.62, rayon: 0.55 },
+    halo: { force: 0.55, seuil: 0.95, rayon: 0.55 },
     environnement: 0.3,
   },
   campagne: {
@@ -61,7 +61,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.45, clair: 0xffe4c0, sombre: 0xc89aa0, vitesse: 0.003 },
     particules: { sorte: "pollen", nombre: 600, couleurs: [0xfff2b0, 0xffffff], taille: 0.07 },
     etalonnage: { contraste: 1.05, saturation: 1.08, ombres: [0.01, -0.005, 0.015], lumieres: [0.035, 0.02, -0.015] },
-    halo: { force: 0.14, seuil: 0.9, rayon: 0.45 },
+    halo: { force: 0.14, seuil: 2.2, rayon: 0.45 },
     environnement: 0.5,
   },
   canyon: {
@@ -69,7 +69,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.25, clair: 0xffb27a, sombre: 0x8a5a8c, vitesse: 0.003 },
     particules: { sorte: "poussiere", nombre: 1000, couleurs: [0xd49a55, 0xe8b07a], taille: 0.1 },
     etalonnage: { contraste: 1.08, saturation: 1.06, ombres: [0.01, -0.01, 0.03], lumieres: [0.04, 0.015, -0.02] },
-    halo: { force: 0.14, seuil: 0.9, rayon: 0.45 },
+    halo: { force: 0.14, seuil: 2.2, rayon: 0.45 },
     environnement: 0.5,
   },
   alpin: {
@@ -77,7 +77,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.3, clair: 0xffffff, sombre: 0xa9c0dc, vitesse: 0.004 },
     particules: { sorte: "neige", nombre: 800, couleurs: [0xffffff], taille: 0.09 },
     etalonnage: { contraste: 1.07, saturation: 1.1, ombres: [-0.015, 0, 0.03], lumieres: [0.01, 0.01, 0] },
-    halo: { force: 0.1, seuil: 0.94, rayon: 0.4 },
+    halo: { force: 0.12, seuil: 2.6, rayon: 0.4 },
     environnement: 0.6,
   },
   ville: {
@@ -85,7 +85,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.7, clair: 0xe6eaf0, sombre: 0x9aa6b4, vitesse: 0.002 },
     particules: { sorte: "ville", nombre: 500, couleurs: [0xc9ced6, 0xa9adb4], taille: 0.06 },
     etalonnage: { contraste: 1.06, saturation: 0.94, ombres: [-0.01, 0.005, 0.02], lumieres: [0.015, 0.01, -0.005] },
-    halo: { force: 0.16, seuil: 0.86, rayon: 0.45 },
+    halo: { force: 0.16, seuil: 2.0, rayon: 0.45 },
     environnement: 0.5,
   },
   neon: {
@@ -93,7 +93,7 @@ export const THEMES_3: Record<PaletteName, Theme3> = {
     nuages: { couverture: 0.4, clair: 0x3a1a66, sombre: 0x0a0518, vitesse: 0.003 },
     particules: { sorte: "lucioles", nombre: 420, couleurs: [0xff4fd8, 0x00f0ff], taille: 0.12 },
     etalonnage: { contraste: 1.1, saturation: 1.15, ombres: [0.01, -0.01, 0.03], lumieres: [0.02, 0, 0.02] },
-    halo: { force: 0.95, seuil: 0.6, rayon: 0.6 },
+    halo: { force: 0.65, seuil: 0.9, rayon: 0.6 },
     environnement: 0.3,
   },
 };

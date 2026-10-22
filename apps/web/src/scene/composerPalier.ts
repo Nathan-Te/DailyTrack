@@ -24,8 +24,11 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  type Object3D,
   PointLight,
+  Points,
   Scene,
+  type ShaderMaterial,
   SpotLight,
   Texture,
   Vector3,
@@ -102,6 +105,17 @@ function materiaux(r: Reglages) {
     return { route: un, rebords: un, solide: un, decor: un };
   }
   return { route: make("route"), rebords: make("rebords"), solide: make("solide"), decor: make("decor") };
+}
+
+/** Passe en lumière linéaire un nuanceur qui écrit des couleurs d'écran (`gl_FragColor = vec4(c, 1.0)`) : pour la chaîne de post-traitement. */
+export function lineariser(m: ShaderMaterial) {
+  m.fragmentShader = m.fragmentShader.replace(/gl_FragColor\s*=\s*vec4\(([^;]*),\s*1\.0\);/, "gl_FragColor = vec4(pow(max($1, vec3(0.0)), vec3(2.2)), 1.0);");
+  m.needsUpdate = true;
+}
+
+/** Linéarise les halos (`Points` de `halo.ts`) d'une liste d'objets : ceux de l'éclairage de piste de la Nuit, construits à part. */
+export function lineariserHalos(objets: readonly Object3D[]) {
+  for (const o of objets) if (o instanceof Points) lineariser(o.material as ShaderMaterial);
 }
 
 export interface OptionsPalier {
@@ -253,7 +267,12 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   }
   const all = [calques.route, calques.rebords!, calques.solide, calques.lumineux, calques.decor, calques.decorLumineux, calques.dense, rythme];
   const halos = aerien ? null : buildHalos(all.flatMap((b) => b.halos), look.halo);
-  if (halos) scene.add(halos.points);
+  if (halos) {
+    // Le nuanceur des halos (halo.ts, celui du jeu) écrit ses couleurs telles quelles, pour l'écran. Dessinés dans la cible linéaire du
+    // post-traitement puis convertis par la passe de sortie, ils sortiraient beaucoup plus clairs (de gros disques) : on les linéarise ici.
+    if (avecPost(r)) lineariser(halos.points.material as ShaderMaterial);
+    scene.add(halos.points);
+  }
 
   const backdrop = new Group();
   if (!aerien) backdrop.add(ciel(amb, seeded(`${track.id}:${paletteName}`), nuit, sunDir), silhouettes(amb, seeded(`${track.id}:${paletteName}:loin`)));
@@ -275,6 +294,8 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   const sources: [number, number, number][] = [];
   if (tc.lampes) {
     const piste = eclairagePiste(track, tc.lampes.couleur);
+    // Ses halos (un `Points` de halo.ts à elle) passent eux aussi en lumière linéaire pour le post-traitement.
+    if (avecPost(r)) lineariserHalos(piste.objets);
     for (const o of piste.objets) scene.add(o);
     sources.push(...piste.sources);
     if (sources.length > 0) {

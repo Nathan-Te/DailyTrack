@@ -130,3 +130,25 @@ laissés dehors) :
 
 Chaque lot de mise en œuvre remesure ces lignes (vitrine, `mesure-lot38`, `poids-parties.mjs`) et les reporte dans son README et dans
 `docs/plateforme/budgets.md` (ligne de Track).
+
+## 8. Paliers de qualité (retouche 38b — **projet**, à choisir par Nathan)
+
+Au-dessus du mélange recommandé, trois paliers, **rendu seul** (un palier ne change jamais la simulation : même route sous la voiture, mêmes
+rebords physiques, même chrono, mêmes rediffusions). Chaque pas se coupe seul ; la vitrine (`/track/vitrine/`) les montre côte à côte, chiffrés,
+et en mouvement. Détail, coûts et mesures : `docs/lots/lot-38b-paliers-scene.md`.
+
+| Palier | Contenu | Chemin de rendu | Pour quel appareil (proposition) |
+|---|---|---|---|
+| **1 — base** | le mélange, nettoyé : lumière de C construite directement, ombres de contact des seuls rebords, mur de pneus allégé, rien en l'air (socles et pieds jusqu'au sol), route grise sous les lumières chaudes, soleil du côté d'où vient la lumière | celui du jeu | tout appareil (le plancher) |
+| **2 — finition** | *géométrie* (chanfreins, courbes plus lisses, pièces d'échelle : boulons, câbles, haubans, pneus empilés, banderoles), *variété* (rotation, taille, teinte, usure du décor ; pièces inégales), *matière* (textures calculées au chargement avec cartes de normales et de rugosité ; traces de pneus et marquages au sol), *reflets* (carte d'environnement tirée du ciel du thème) | le même : **aucun appel de rendu de plus** | téléphone récent |
+| **3 — vitrine** | *lumière* (ombres nettes et loin, occlusion, brume de profondeur, ciel et nuages), *vie* (drapeaux, foule, écrans, particules), *post-traitement* (étalonnage, anticrénelage, halo), chacun commutable | + un appel par famille de vie ; les passes plein écran (occlusion, étalonnage, anticrénelage, halo) font dessiner la scène dans une cible | ordinateur ; la vie et le ciel sans les passes, peut-être sur téléphone récent |
+
+Règles proposées (non appliquées) :
+- **Le palier se choisit par la mesure des premières images**, jamais en course (§ 5 du README de la retouche) ; un réglage « Qualité graphique »
+  (Auto · Économie · Équilibrée · Maximale) aux catalogues fr et en ; la qualité 0–2 du lot 9 reste en place dans un palier.
+- **Les modules des pas se chargent à la demande** (un par famille : `finition`, `matiere`, `reflets`, `lumiere3`, `vie`, `post`), jamais au
+  premier chargement ; le palier 1 seul tient dans la ligne « décor 3D à la demande » du § 7.
+- **La charte et la 3D** : le halo (un flou lumineux), la brume de profondeur (un dégradé) et les particules (des points translucides) touchent
+  aux règles de la charte « Cartouches » écrites pour l'interface ; **à Nathan de dire s'ils entrent dans la scène** (chacun se coupe seul).
+- **La voiture** suit le palier (lot du véhicule, à placer avant les paliers : la ramener à 6 maillages est le pas le plus rentable) : README de la
+  retouche, § 6.

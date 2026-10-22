@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MeshStandardMaterial, ShaderLib, Vector3 } from "three";
+import { BoxGeometry, Mesh, MeshStandardMaterial, ShaderLib, Vector3, type ShaderMaterial } from "three";
 import { CELL, bestPilotRun, isCurve, parseTrack, type PaletteName } from "@cdj/sim";
 import { Builder, seeded } from "../src/meshKit";
 import { PALETTE_DEFS } from "../src/trackMesh";
@@ -12,6 +12,8 @@ import { THEMES_3, brumeDeProfondeur, uniformesBrume } from "../src/scene/lumier
 import { DIRECTION_P, ROUTE_SOUS_LUMIERE_CHAUDE, decorP, portiqueDepartP } from "../src/scene/palier1";
 import { THEMES_C } from "../src/scene/directionC";
 import { C, CHAMPS, enregistrer, fenetre, lire } from "../src/vitrine/parcours";
+import { lineariser, lineariserHalos } from "../src/scene/composerPalier";
+import { buildHalos } from "../src/halo";
 import type { Calques, Contexte } from "../src/scene/types";
 import type { TronconRebord } from "../src/scene/route";
 
@@ -183,6 +185,24 @@ describe("palier 3 : les retouches des nuanceurs de three.js (elles cassent si t
     expect(s.fragmentShader).not.toContain("#include <fog_fragment>");
     expect(s.uniforms).toHaveProperty("uBrumeDensite");
     expect(m.customProgramCacheKey()).toContain("brume38b");
+  });
+
+  it("les halos du jeu sont linéarisés pour la chaîne de post-traitement (sinon ils sortent en gros disques)", () => {
+    const halos = buildHalos([{ x: 0, y: 0, z: 0, color: 0xffb347, size: 6 }], 1)!;
+    const m = halos.points.material as ShaderMaterial;
+    const avant = m.fragmentShader;
+    lineariser(m);
+    expect(m.fragmentShader).not.toBe(avant);
+    expect(m.fragmentShader).toContain("vec3(2.2)");
+  });
+
+  it("les halos construits à part (éclairage de piste de la Nuit) le sont aussi, et rien d'autre n'est touché", () => {
+    const halos = buildHalos([{ x: 0, y: 0, z: 0, color: 0xffa94d, size: 6 }], 1)!;
+    const autre = new MeshStandardMaterial();
+    const avant = autre.version;
+    lineariserHalos([new Mesh(new BoxGeometry(), autre), halos.points]);
+    expect((halos.points.material as ShaderMaterial).fragmentShader).toContain("vec3(2.2)");
+    expect(autre.version).toBe(avant);
   });
 
   it("les morceaux que la foule et les drapeaux remplacent existent", () => {

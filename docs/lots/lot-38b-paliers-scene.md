@@ -9,6 +9,21 @@ aligner, comme au lot 38).
 
 <!-- RESUME -->
 
+## À tester (sur l'aperçu de la PR)
+
+Aperçu de la PR [#118](https://github.com/Nathan-Te/DailyTrack/pull/118) : **<https://playdujour-recette--pr-118-9f838yi4.web.app/track/vitrine/>** (7 jours après la dernière poussée ; le lien
+à jour est commenté sur la PR). La vitrine est à **`/track/vitrine/`** (le prompt proposait `/track/?vitrine=scene` : voir § 1).
+
+1. Sur **ordinateur**, puis sur **ton téléphone** (en paysage, comme en course) : ouvre la vitrine, puis **« Vue en mouvement »** dans chaque
+   section de thème (ou « Ouvrir la vue en mouvement » en tête, puis le sélecteur de thème).
+2. Pour chaque thème : passe du **palier 1 au palier 3**, puis coupe les pas **un par un** (cases sous l'image) ; compare avec **« Existant (le
+   jeu) »**. Le bout « En course » montre le premier virage, « Départ » le portique et la tribune.
+3. Note **le palier qui te plaît** (et les pas que tu gardes ou refuses : halo, brume, particules touchent à la charte) et **les images par
+   seconde affichées sur ton téléphone** (en haut à gauche de l'image) au palier 1, 2 et 3 — au moins pour le Stade, la Nuit et le Rallye.
+4. Les planches fixes (sections) se comparent d'un coup d'œil ; « Agrandir et mesurer » donne le temps d'image d'une vue sur ton appareil.
+
+
+
 ## 1. La vitrine des paliers
 
 - **Accès** : toujours **`/track/vitrine/`** (recette et aperçus seulement ; jamais construite en production), qui s'ouvre maintenant sur **la
