@@ -5,19 +5,45 @@ import { expect, test } from "@playwright/test";
 // Chargement rapide sur mobile : budgets de poids (déterministes) et de temps (larges, la CI est variable).
 const dist = new URL("../dist/assets/", import.meta.url);
 
+/**
+ * Le JS du premier chargement (lot 36) : ce que `index.html` demande — le script d'entrée, les `modulepreload` et, de proche en proche, leurs imports statiques —
+ * comme un navigateur. Tout ce que le jeu charge par `import()` (le générateur de circuits, les scénarios d'essai, la démo, le Salon et le spectateur, l'anglais, le réglage de
+ * conduite `?debug&tune`) et les fils de travail n'en font pas partie, quel que soit le nom que le constructeur leur donne. La page d'admin (`admin-*.js`, jamais chargée par les
+ * joueurs) y est comptée à part depuis le lot 35 : voir `docs/plateforme/budgets.md`.
+ */
+function premierChargement(gz: Record<string, number>, code: (f: string) => string): { premier: string[]; admin: number } {
+  const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
+  const vus = new Set<string>();
+  const file = [...html.matchAll(/(?:src|href)="\.\/assets\/([^"]+\.js)"/g)].map((m) => m[1]!);
+  while (file.length) {
+    const f = file.shift()!;
+    if (vus.has(f)) continue;
+    vus.add(f);
+    for (const m of code(f).matchAll(/\bfrom\s*"\.\/([^"]+\.js)"|\bimport\s*"\.\/([^"]+\.js)"/g)) file.push((m[1] ?? m[2])!);
+  }
+  return { premier: [...vus], admin: Object.entries(gz).filter(([f]) => f.startsWith("admin-")).reduce((n, [, s]) => n + s, 0) };
+}
+
 test("le jeu pèse peu : budget de poids compressé", () => {
   const files = readdirSync(dist).filter((f) => f.endsWith(".js"));
   const gz = Object.fromEntries(files.map((f) => [f, gzipSync(readFileSync(new URL(f, dist))).length]));
-  // Le fil de travail des miniatures (lot 13) ne se charge qu'à l'ouverture des archives : budget à part, hors du chargement initial.
+  // Le fil de travail des circuits (lots 13 et 36) ne se charge qu'à la demande du premier circuit : budget à part (une copie de sim : générateur et pilote).
   const worker = Object.entries(gz).find(([f]) => f.startsWith("circuitWorker-"))?.[1] ?? 0;
   // Le fil de travail du Salon (lot 26) non plus : il ne se charge que dans le Salon (circuit de la session, pilotes fictifs de la démo).
   const salonWorker = Object.entries(gz).find(([f]) => f.startsWith("salonWorker-"))?.[1] ?? 0;
   // Lot I4 : le catalogue anglais est un fichier à part, chargé par `import()` seulement pour un joueur en anglais (i18n.ts) ; l'outil de réglage `?debug&tune`
   // (tune.ts) ne se charge qu'à la demande : ni l'un ni l'autre ne pèse sur le premier chargement d'un joueur en français.
   const anglais = Object.entries(gz).find(([f]) => f.startsWith("catalogue.en-"))?.[1] ?? 0;
-  const tune = Object.entries(gz).find(([f]) => f.startsWith("tune-"))?.[1] ?? 0;
-  const total = Object.values(gz).reduce((a, b) => a + b, 0) - worker - salonWorker - anglais - tune;
+  const { premier, admin } = premierChargement(gz, (f) => readFileSync(new URL(f, dist), "utf8"));
+  const total = premier.reduce((n, f) => n + gz[f]!, 0) + admin;
   const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
+  // Lot 36 : le générateur et sa bibliothèque de figures ne reviennent pas dans le premier chargement (ils se calculent dans le fil de travail, ou dans un morceau chargé à
+  // la demande) : aucun fichier du premier chargement ne contient les noms de la bibliothèque.
+  for (const f of premier) expect(readFileSync(new URL(f, dist), "utf8"), `${f} : la bibliothèque de figures est dans le premier chargement`).not.toContain("Rétrécissement et virage");
+  expect(
+    files.filter((f) => !premier.includes(f) && readFileSync(new URL(f, dist), "utf8").includes("Rétrécissement et virage")),
+    "la bibliothèque de figures est chargée à la demande (fils de travail, morceau de génération)",
+  ).not.toHaveLength(0);
   const css = readdirSync(dist)
     .filter((f) => f.endsWith(".css"))
     .reduce((n, f) => n + gzipSync(readFileSync(new URL(f, dist))).length, 0);

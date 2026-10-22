@@ -12,12 +12,12 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 287 400 | 287 214 | 287 275 | 125 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 276 000 | 275 802 | 275 863 | 137 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 143 300 | 143 036 | 143 097 | 203 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement | 287 400 | 287 214 | 265 680 | 21 720 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement | 276 000 | 275 802 | 254 268 | 21 732 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js | 143 300 | 143 036 | 121 502 | 21 798 | `apps/web/e2e/perf.spec.ts` |
 | `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 297 | 703 | `apps/web/e2e/perf.spec.ts` |
-| `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 600 | 25 385 | 26 486 | 114 | `apps/web/e2e/perf.spec.ts` |
-| `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 446 | 1 554 | `apps/web/e2e/perf.spec.ts` |
+| `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 26 600 | 25 385 | 26 524 | 76 | `apps/web/e2e/perf.spec.ts` |
+| `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 502 | 1 498 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
 | `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
@@ -71,8 +71,16 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 - Mesure : `npm run build && node scripts/budgets.mjs`, avant (`main` à `7082e5c`) et après.
 - **Étape 2 (calibrage)** : les seuils datés (`medalsFor(pilote, jour)`, `MEDAL_FACTORS_35`, `BASCULE_LOT_35`) entrent dans le générateur du premier chargement : **+61 o** (287 214 → 287 275 o, marge 186 → 125 o ; JS 275 802 → 275 863 o). Mesure : avant (`main` à `af12115`) et après.
 
+## Lot 36 (Track) : alléger le premier chargement
+
+- **Track : −21 221 o sur le premier chargement, plafonds inchangés** (JS + CSS 286 901 → **265 680 o**, marge 125 → **21 720 o** ; JS 275 489 → 254 268 o ; hors three.js 142 723 → 121 502 o ; CSS inchangé à 11 412 o). Le générateur de circuits (figures, règles de freinage, pilote de validation), les circuits des scénarios d'essai, le pilote de la démo, le Salon et le spectateur ne sont plus dans le premier chargement : le circuit du jour se calcule dans le fil de travail (celui des miniatures, partagé), le reste se charge à la demande. Détail, temps avant / après et essais abandonnés : `docs/lots/lot-36-allegement.md`.
+- **La méthode de mesure a changé** (`apps/web/e2e/perf.spec.ts`, `premierChargement()`) : le premier chargement est ce que `index.html` demande (entrée, `modulepreload`, imports statiques de proche en proche), non plus « tout le JS de `dist/assets` moins quatre préfixes » : un morceau chargé par `import()` n'y compte jamais, quel que soit son nom. `admin-*.js` (jamais chargé par un joueur) reste compté, comme depuis le lot 35. Avec l'ancienne méthode `main` donnait 275 863 o de JS ; avec la nouvelle, 275 489 o (la page `verify`, 374 o, n'est plus comptée) : c'est le « avant » ci-dessus. **Le tableau ci-dessus donne les chiffres de la méthode du test.**
+- **Pour un lot de plateforme** : `scripts/budgets.mjs` suit encore l'ancienne méthode et compte donc les morceaux à la demande (il affiche 294 850 o de JS + CSS pour Track au lieu de 265 680). À remplacer par le graphe statique de `index.html` (dix lignes, `premierChargement()` du test) ; exclure aussi `admin-*.js` (10 882 o) rendrait 10,9 ko de marge de plus : à décider avec Nathan (les relèvements des lots 34 et 35 ont été accordés en comptant l'admin).
+- **Fil de travail des circuits** (miniatures et circuit du jour) : 26 542 → 26 524 o sur cette machine (plafond 26 600 o inchangé, **marge 76 o**) ; le fil du Salon 28 513 → 28 502 o. Les chiffres « avant » de cette machine sont ≈ 60 o au-dessus de ceux du tableau du lot 35 (26 486, 28 446) : les marges ci-dessus sont celles qu'elle mesure.
+- Mesure : `npm run build`, puis `premierChargement()` de `perf.spec.ts` (le test), avant (`main` à `826ba25`) et après.
+
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, JS + CSS : 125 o** (lot 35, calibrage : −61 o ; 186 o après un relèvement de 1 000 o pour la page d'admin ; 119 o au lot 34, après un relèvement de 1 276 o ; 57 o au lot I7, après un relèvement de 1 024 o ; 256 o au lot 33). Toute fonction ajoutée au jeu se paie ici ; pistes si un lot en a besoin : sortir d'autres textes rares du premier chargement (aide au clavier, textes du Salon), ou relever le budget avec Nathan (il date du lot I4 : lot R4 + 20 ko).
-2. **Track, fil des miniatures : 114 o** (lot 34, après un relèvement de 600 o ; 615 o du lot 21 au lot I7).
-3. **Track, catalogue anglais : 755 o** (il porte maintenant l'anglais commun).
+1. **Track, fil des circuits (miniatures et circuit du jour) : 76 o** (lot 36 : −18 o ; 114 o au lot 34, après un relèvement de 600 o ; 615 o du lot 21 au lot I7). Il embarque le générateur et le pilote : tout ajout à la génération le dépasse. C'est désormais la contrainte la plus serrée.
+2. **Track, catalogue anglais : 703 o** (il porte l'anglais commun).
+3. **Track, JS + CSS : 21 720 o** (lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).

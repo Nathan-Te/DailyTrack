@@ -1,8 +1,9 @@
-import { dailyCircuit, type ThemeName } from "@cdj/sim";
+import type { ThemeName } from "@cdj/sim";
+import { computeDaily, type CircuitData } from "./circuitCalc";
 
-// Fil de travail des miniatures (lot 13) : générer un circuit du jour coûte ≈ 200 ms (le pilote automatique le rejoue pour le
-// valider), 800 ms sur un téléphone lent. Les archives en demandent des dizaines : on les fait ici pour ne jamais geler l'écran.
-// Le même `dailyCircuit` que le jeu et le serveur : aucun écart possible.
+// Fil de travail des circuits du jour (lots 13 et 36) : générer un circuit coûte ≈ 200 ms (le pilote automatique le rejoue pour le valider), 800 ms sur un
+// téléphone lent. Le jeu le demande pour le circuit du jour (le générateur n'est plus dans son paquet) et les archives en demandent des dizaines : on les
+// fait ici pour ne jamais geler l'écran.
 
 export interface GenRequest {
   seq: number;
@@ -13,13 +14,7 @@ export interface GenRequest {
 }
 export interface GenReply {
   seq: number;
-  spec: string;
-  palette: string;
-  theme: ThemeName;
-  fallback: boolean;
-  authorMs: number;
-  /** Noms des figures du circuit, dans l'ordre (lot 20). */
-  figures: string[];
+  data: CircuitData | null;
   error?: string;
 }
 
@@ -27,9 +22,8 @@ const ctx = self as unknown as { onmessage: ((e: MessageEvent<GenRequest>) => vo
 ctx.onmessage = (e) => {
   const { seq, day, theme, variant } = e.data;
   try {
-    const c = dailyCircuit(day, variant ?? 0, theme);
-    ctx.postMessage({ seq, spec: c.spec, palette: c.palette, theme: c.theme, fallback: c.fallback, authorMs: c.authorMs, figures: c.figures.map((f) => f.name) });
+    ctx.postMessage({ seq, data: computeDaily(day, theme, variant ?? 0) });
   } catch (err) {
-    ctx.postMessage({ seq, spec: "", palette: "", theme: "stade", fallback: true, authorMs: 0, figures: [], error: String(err) });
+    ctx.postMessage({ seq, data: null, error: String(err) });
   }
 };

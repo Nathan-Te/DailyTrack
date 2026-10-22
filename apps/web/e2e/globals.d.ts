@@ -35,6 +35,8 @@ interface CdjDebug {
   /** Identifiant du circuit joué et planning en vigueur (lot 14) : variante, thème imposé, planning connu, essai, classement permis. */
   trackId: string | null;
   plan: { variant: number; theme: string | null; known: boolean; trial: boolean; ranked: boolean };
+  /** Le circuit du jour tel que le fil de travail l'a rendu (lot 36) ; `null` hors du circuit du jour. */
+  circuit: { number: number; attempt: number; spec: string; authorMs: number; palette: string; theme: string; trackId: string; medals: { author: number; gold: number; silver: number; bronze: number }; fallback: boolean } | null;
   /** Interface tactile active. */
   touch: boolean;
   /** Salon (lot 26) : déroulé, classement, fantômes, horloge pilotable ; `null` hors du Salon. */
@@ -103,7 +105,7 @@ interface CdjDebug {
     pending: number;
   };
   /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
-  thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): { url: string; timing: { build: number; draw: number } };
+  thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): Promise<{ url: string; timing: { build: number; draw: number } }>;
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
   render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */

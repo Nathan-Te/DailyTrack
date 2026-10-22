@@ -196,7 +196,7 @@ test("le jour d'aujourd'hui (sans archive ouverte) n'affiche pas de carte", asyn
 test("vues : inclinée et d'aplomb donnent deux images différentes du même circuit", async ({ page }) => {
   await page.goto("/?debug&thumbs=off");
   await ready(page);
-  const [a, b] = await page.evaluate(() => [window.__cdj.thumbnail("2026-10-01", { view: "tilted" }).url, window.__cdj.thumbnail("2026-10-01", { view: "top" }).url]);
+  const [a, b] = await page.evaluate(async () => [(await window.__cdj.thumbnail("2026-10-01", { view: "tilted" })).url, (await window.__cdj.thumbnail("2026-10-01", { view: "top" })).url]);
   expect(a.startsWith("data:image/png")).toBe(true);
   expect(a).not.toBe(b);
 });

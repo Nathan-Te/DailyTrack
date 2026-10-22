@@ -1,9 +1,10 @@
-import { GENERATOR_VERSION } from "./constants";
 import { circuitNumber } from "./calendar";
 import { bestPilotRun, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
-import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
+import { Rng, formatDay, mixSeed } from "@cdj/core";
+import { dailyTrackId, generatorVersionOf } from "./dailyId";
+import { medalsFor, type Medals } from "./medals";
 import { MAX_BRAKING_ADD, secureBraking } from "./braking";
 import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
@@ -23,6 +24,9 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 // Lot 34 (générateur v16, à partir du 28/10/2026) : après une plaque, un super turbo ou une portion rapide, le virage suivant se freine
 // (`secureBraking`, braking.ts) ; au plus un virage-piège par circuit (passage signature, Ville). Les jours d'avant gardent la v15.
 
+export * from "./medals";
+export * from "./dailyId";
+
 /** Durée visée du pilote : 30 à 40 s, pour qu'une course correcte (or ≈ ×1,08) tienne en 30 à 45 s. */
 export const AUTHOR_MIN_MS = 30_000;
 export const AUTHOR_MAX_MS = 40_000;
@@ -39,88 +43,6 @@ export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
  */
 const ESTIMATE_MIN = 30;
 const ESTIMATE_MAX = 44;
-
-/** Seuils des médailles des jours d'avant la bascule du lot 35, en multiples du temps de l'auteur (= le temps du pilote, lot 4). */
-export const MEDAL_FACTORS = { gold: 1.08, silver: 1.2, bronze: 1.4 } as const;
-
-/**
- * Lot 35 — **médailles calibrées sur de vrais joueurs** (export de production du 22/10/2026 : 38 meilleurs temps sur 9 jours, médiane à 0,90
- * du pilote, le plus rapide de chaque jour entre 0,84 et 0,96) : le temps de l'auteur devient `author` × le temps du pilote, puis or, argent
- * et bronze en multiples de ce temps d'auteur. Sur les jours passés : auteur 5 %, or 32 %, argent 61 %, bronze 87 % des joueurs (cibles :
- * 5–10, 25–35, 50–60, 85–90 %). Pas de correction par thème (1 à 3 jours par thème : l'écart d'un jour à l'autre domine). Détail :
- * docs/lots/lot-35-medailles.md.
- */
-export const MEDAL_FACTORS_35 = { author: 0.84, gold: 1.045, silver: 1.07, bronze: 1.13 } as const;
-
-/**
- * Lot 35 — **date de bascule des médailles** : les seuils calibrés valent à partir du **28/10/2026** (premier jour ni joué ni en cours à la
- * mise en production du lot, le même que la bascule du lot 34) ; les jours d'avant gardent leurs médailles (classements, points du portail,
- * journées parfaites, profils inchangés). Le Salon (graines au-delà de tous les jours) suit les nouveaux seuils. Déplacer la bascule (mise en
- * production après le 27/10) : cette constante seulement (rien n'est figé : les seuils se recalculent depuis le temps du pilote).
- */
-export const BASCULE_LOT_35 = daysFromCivil(2026, 10, 28);
-
-export type Medal = "author" | "gold" | "silver" | "bronze";
-
-export interface Medals {
-  author: number;
-  gold: number;
-  silver: number;
-  bronze: number;
-}
-
-/**
- * Seuils des médailles d'un jour (ou d'une graine du Salon) à partir du temps du pilote (`authorMs` des circuits, inchangé). **Toujours
- * passer le jour** : sans lui (`day` = 0), ce sont les seuils d'avant le lot 35.
- */
-export function medalsFor(pilotMs: number, day = 0): Medals {
-  const f = day < BASCULE_LOT_35 ? { author: 1, ...MEDAL_FACTORS } : MEDAL_FACTORS_35;
-  const author = Math.round(pilotMs * f.author);
-  return {
-    author,
-    gold: Math.round(author * f.gold),
-    silver: Math.round(author * f.silver),
-    bronze: Math.round(author * f.bronze),
-  };
-}
-
-/** Meilleure médaille obtenue avec ce temps, ou `null`. */
-export function medalFor(ms: number, medals: Medals): Medal | null {
-  if (ms <= medals.author) return "author";
-  if (ms <= medals.gold) return "gold";
-  if (ms <= medals.silver) return "silver";
-  if (ms <= medals.bronze) return "bronze";
-  return null;
-}
-
-/** Plus grand numéro de variante accepté (lot 14) : au-delà, la graine déborderait sur celle des tentatives. */
-export const MAX_VARIANT = 99;
-
-/** Vrai pour un numéro de variante valide : entier de 0 à `MAX_VARIANT`. */
-export const isVariant = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= MAX_VARIANT;
-
-/**
- * Lot 34 — **date de bascule** : les règles « freinage possible après un boost » (générateur v16) valent à partir du **28/10/2026**, le
- * premier jour qui n'est ni passé, ni en cours, ni déjà joué à la mise en production du lot ; les jours d'avant gardent le générateur v15,
- * bit pour bit (texte, temps de l'auteur, identifiant `jour-…-g15` : classements, rediffusions et records intacts). **Versionnement par
- * date** : la version d'un jour est `generatorVersionOf(jour)`, dans son identifiant ; le Salon (graines au-delà de tous les jours) suit
- * toujours la dernière. Déplacer la bascule (mise en production plus tardive) : cette constante, puis `UPDATE_GOLDEN=1` sur `golden-daily.test.ts`.
- */
-export const BASCULE_LOT_34 = daysFromCivil(2026, 10, 28);
-/** Générateur des jours d'avant la bascule du lot 34. */
-export const GENERATOR_BEFORE_34 = 15;
-
-/** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : 15 avant la bascule du lot 34, la dernière ensuite. */
-export const generatorVersionOf = (day: number): number => (day < BASCULE_LOT_34 ? GENERATOR_BEFORE_34 : GENERATOR_VERSION);
-
-/**
- * Identifiant du circuit d'un jour. La variante 0 (le circuit d'origine) n'a pas de suffixe : les circuits d'avant le lot 14
- * gardent leur identifiant (rediffusions et références inchangées) ; une variante n ≥ 1 ajoute `-v<n>`. Un thème imposé
- * (essais, ou remplacement du planning) ajoute son nom : un autre circuit.
- */
-export function dailyTrackId(day: number, theme?: ThemeName | null, variant = 0, generator = generatorVersionOf(day)): string {
-  return `jour-${formatDay(day)}-g${generator}${variant > 0 ? `-v${variant}` : ""}${theme ? `-${theme}` : ""}`;
-}
 
 // --- Construction -----------------------------------------------------------------------------
 

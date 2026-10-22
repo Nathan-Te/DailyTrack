@@ -67,6 +67,18 @@ test.describe("jeu (rendu 3D)", () => {
     });
   }
 
+  // Lot 36 : le circuit du jour se calcule dans un fil de travail (le générateur n'est plus dans le paquet du jeu) ; il doit être celui de Node, au bit près :
+  // texte, tentative, temps de l'auteur, palette, thème, identifiant — les circuits de référence.
+  test("le circuit calculé dans le fil de travail du jeu est celui de Node, au bit près", async ({ page }) => {
+    test.setTimeout(240_000);
+    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-10-28", "2026-12-25"].includes(c.date))) {
+      await page.goto(`/?debug&seed=${expected.date}`);
+      await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 60_000 });
+      const got = await page.evaluate(() => window.__cdj.circuit);
+      expect(got, expected.date).toMatchObject({ number: expected.number, attempt: expected.attempt, spec: expected.spec, authorMs: expected.authorMs, palette: expected.palette, theme: expected.theme, trackId: expected.trackId, fallback: false });
+    }
+  });
+
   test("trois dates donnent trois circuits différents", async ({ page }) => {
     // Trois chargements de suite : en rendu logiciel un chargement (génération du circuit + construction de la scène) prend 20 à 40 s en CI.
     test.setTimeout(240_000);

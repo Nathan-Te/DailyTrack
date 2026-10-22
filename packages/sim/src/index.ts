@@ -20,6 +20,7 @@ export * from "./generator";
 export * from "./figures";
 export * from "./fictional";
 export * from "./salon";
+export * from "./salonCircuit";
 export * from "./traps";
 export * from "./braking";
 export * from "./medalStats";
