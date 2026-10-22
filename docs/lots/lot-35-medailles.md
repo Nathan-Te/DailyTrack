@@ -67,6 +67,8 @@ Export de `GET /api/admin/medailles` en production, 22/10/2026 (pilotes fictifs 
 
 ## 6. Décisions laissées à Nathan
 
+**Validé par Nathan le 22/10/2026** : cibles, facteurs (auteur 0,84 × pilote, or ×1,045, argent ×1,07, bronze ×1,13) et bascule au 28/10/2026, tels quels. Les points 2 et 3 restent des pistes pour plus tard.
+
 1. **Confirmer les cibles et les facteurs.** Ils sont choisis sur 38 temps, sans doute de joueurs assidus (les amis). Avec plus de joueurs occasionnels, le bronze (0,949 du pilote) sera plus dur à tenir : **rouler aussi vite que le pilote ne rapporte plus aucune médaille**. Si c'est trop dur, relever le bronze (×1,19 ≈ le temps du pilote) ne change que la dernière colonne.
 2. **L'inégalité d'un jour à l'autre** (§ 4) : l'accepter, ou ouvrir un lot « pilote plus régulier » (mesure : `npm run measure:generator`), ou des seuils tirés des joueurs de la veille (ce qui change la nature des médailles).
 3. **Recalibrer dans 3 à 4 semaines** avec l'outil (export de la section « Médailles »), quand chaque thème aura au moins 5 jours.
