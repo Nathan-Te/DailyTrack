@@ -107,9 +107,10 @@ export function arcPoint(b: Block, r: number, a: number, y: number): V3 {
   return world(b, p, q, y);
 }
 
-export function curveRows(b: Block, half = b.w0 / 2, lift = 0): Row[] {
+/** Tranches d'un virage ; `lissage` multiplie leur nombre (retouche 38b, palier 2 : rebords et route plus ronds là où l'œil les voit). */
+export function curveRows(b: Block, half = b.w0 / 2, lift = 0, lissage = 1): Row[] {
   const { r: R } = curveCenter(b.kind);
-  const steps = (curveSize(b.kind) === 1 ? 10 : curveSize(b.kind) === 2 ? 24 : 40) + (b.banked ? 8 : 0);
+  const steps = Math.round(((curveSize(b.kind) === 1 ? 10 : curveSize(b.kind) === 2 ? 24 : 40) + (b.banked ? 8 : 0)) * lissage);
   const rows: Row[] = [];
   const left = turnsLeft(b.kind);
   for (let i = 0; i <= steps; i++) {
@@ -177,6 +178,8 @@ function addRoad(c: CalquesRoute, pal: Palette, style: StyleRoute, rows: Row[], 
       if (o.pillars) g.quad([a.left[0], a.left[1] - SLAB, a.left[2]], [a.right[0], a.right[1] - SLAB, a.right[2]], [b.right[0], b.right[1] - SLAB, b.right[2]], [b.left[0], b.left[1] - SLAB, b.left[2]], shade(skirtColor, 0.7));
     }
     if (o.bare) continue;
+    // Retouche 38b : les rebords dans leur propre calque si le compositeur en donne un (ils projettent l'ombre de contact, la route non).
+    const r = c.rebords ?? g;
     for (const side of ["left", "right"] as const) {
       const p = a[side];
       const q = b[side];
@@ -187,8 +190,8 @@ function addRoad(c: CalquesRoute, pal: Palette, style: StyleRoute, rows: Row[], 
       const len = Math.hypot(dx, dz) || 1;
       const longueur = Math.hypot(q[0] - p[0], q[2] - p[2]);
       const t: TronconRebord = { a: p, b: q, dehors: [dx / len, dz / len], cote: side, s: run[side], longueur, couleurs: o.fence ?? [pal.wallA, pal.wallB], bande: !!o.band, hauteur: pal.wallHeight ?? WALL_HEIGHT };
-      if (o.open) style.bordureVide(g, c.lumineux, t, pal, [mx, a.left[1], mz]);
-      else style.rebord(g, t, pal, c.lumineux);
+      if (o.open) style.bordureVide(r, c.lumineux, t, pal, [mx, a.left[1], mz]);
+      else style.rebord(r, t, pal, c.lumineux);
       run[side] += longueur;
     }
   }
@@ -412,6 +415,17 @@ function addSurfaceMarks(g: Builder, b: Block) {
 export interface CalquesRoute {
   route: Builder;
   lumineux: Builder;
+  /**
+   * Retouche 38b : les rebords et bordures du vide dans un calque à eux (il projette les ombres de contact sur la piste ; la surface de la route,
+   * plate, n'a pas besoin d'être redessinée dans la carte d'ombres). Absent : dans `route`, comme au lot 38.
+   */
+  rebords?: Builder;
+}
+
+/** Options de la route (retouche 38b). */
+export interface OptionsRoute {
+  /** Multiplie le nombre de tranches des virages (1 = celui du jeu). */
+  lissage?: number;
 }
 
 /** Ce que la route dit au compositeur, bloc par bloc : où sont les bords (pour l'ombre de contact, le décor). */
@@ -422,8 +436,9 @@ export interface RouteConstruite {
 }
 
 /** La route d'un circuit, avec les rebords, vibreurs et marquages du style. */
-export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c: CalquesRoute, floorY: number): RouteConstruite {
+export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c: CalquesRoute, floorY: number, opts: OptionsRoute = {}): RouteConstruite {
   const g = c.route;
+  const lissage = opts.lissage ?? 1;
   const run: Parcours = { left: 0, right: 0 };
   const rebords: boolean[] = [];
   for (const b of track.blocks) {
@@ -441,13 +456,13 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       // le vide d'un saut
     } else if (isCurve(b.kind)) {
       if (b.shoulder) {
-        const band = curveRows(b, SHOULDER_EDGE);
+        const band = curveRows(b, SHOULDER_EDGE, 0, lissage);
         addRoad(c, pal, style, band, shoulderColor(pal, b.shoulder, b.index), floorY, true, false, skirt, { pillars, fence: pal.fence, band: true }, run);
         addShoulderMarks(g, b, band, b.w0 / 2);
-        rows = curveRows(b, b.w0 / 2, 0.03);
+        rows = curveRows(b, b.w0 / 2, 0.03, lissage);
         addRoad(c, pal, style, rows, color, floorY, false, b.surface === "road", skirt, { bare: true }, run);
       } else {
-        rows = curveRows(b);
+        rows = curveRows(b, b.w0 / 2, 0, lissage);
         addRoad(c, pal, style, rows, color, floorY, true, b.surface === "road", skirt, base, run);
       }
       if (b.surface === "road") style.vibreurs(c.lumineux, rows, pal);

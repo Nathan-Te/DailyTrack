@@ -176,11 +176,6 @@ export function eclairagePiste(track: Track, couleur: number): { objets: Object3
   return { objets, sources };
 }
 
-export interface OptionsC {
-  /** Mélange : la scène vient du compositeur (A ou B) ; ses matériaux « toon » gardent leur lumière en trois tons. */
-  melange?: boolean;
-}
-
 /**
  * La lumière de C (ciel, brume, lumières, ombres, exposition) : quelques nombres par thème, rien à construire. **Peut entrer dans le premier
  * chargement** (voir le document de direction). Rend la même scène avec son exposition.
@@ -222,8 +217,8 @@ export function appliquerLumiereC(ts: TrackScene, palette: PaletteName): TrackSc
 }
 
 /** Applique la lumière et la matière de C à une scène construite. Rend la même scène (modifiée) avec son exposition et son suivi de voiture. */
-export function appliquerC(ts: TrackScene, palette: PaletteName, track: Track, o: OptionsC = {}): TrackScene {
-  return appliquerMatiereC(appliquerLumiereC(ts, palette), palette, track, o);
+export function appliquerC(ts: TrackScene, palette: PaletteName, track: Track): TrackScene {
+  return appliquerMatiereC(appliquerLumiereC(ts, palette), palette, track);
 }
 
 /**
@@ -231,7 +226,7 @@ export function appliquerC(ts: TrackScene, palette: PaletteName, track: Track, o
  * lampes de la nuit. Des textures et un passage sur les sommets : **peut arriver juste après le premier écran** (chargé à la demande), la scène
  * s'enrichit sans changer de forme.
  */
-export function appliquerMatiereC(ts: TrackScene, palette: PaletteName, track: Track, o: OptionsC = {}): TrackScene {
+export function appliquerMatiereC(ts: TrackScene, palette: PaletteName, track: Track): TrackScene {
   const t = THEMES_C[palette];
   const scene = ts.scene;
   const textures: Texture[] = [];
@@ -297,7 +292,6 @@ export function appliquerMatiereC(ts: TrackScene, palette: PaletteName, track: T
       choix[k] = i;
     }
   };
-  void o;
   return {
     ...ts,
     followCar(x, y, z, yaw, hood) {

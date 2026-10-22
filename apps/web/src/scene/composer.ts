@@ -28,6 +28,7 @@ import {
   SpotLight,
   SRGBColorSpace,
   type Texture,
+  type Vector3,
 } from "three";
 import { CELL, FALL_DEPTH, cellKey, type PaletteName, type Track } from "@cdj/sim";
 import { buildHalos } from "../halo";
@@ -87,8 +88,11 @@ export function texturedCiel(a: Ambiance): CanvasTexture {
   return tex;
 }
 
-/** Disque du soleil ou de la lune, et étoiles (comme `buildSky` de trackMesh.ts ; `net` : un disque plein, sans halo). */
-function ciel(a: Ambiance, rnd: () => number, nuit: boolean): Group {
+/**
+ * Disque du soleil ou de la lune, et étoiles (comme `buildSky` de trackMesh.ts ; `net` : un disque plein, sans halo). `direction` (retouche 38b) :
+ * le disque est posé **d'où vient la lumière** (dans le jeu et au lot 38, il était à l'opposé de la lumière du soleil).
+ */
+export function ciel(a: Ambiance, rnd: () => number, nuit: boolean, direction?: Vector3): Group {
   const group = new Group();
   if (a.disque) {
     const size = 128;
@@ -115,7 +119,8 @@ function ciel(a: Ambiance, rnd: () => number, nuit: boolean): Group {
     tex.colorSpace = SRGBColorSpace;
     const sprite = new Mesh(new PlaneGeometry(1, 1), new MeshBasicMaterial({ map: tex, transparent: true, fog: false, depthWrite: false, blending: AdditiveBlending }));
     sprite.scale.set(a.disque.taille, a.disque.taille, 1);
-    sprite.position.set(-90, nuit ? 170 : 40 + 280 * a.hauteurSoleil, 380);
+    if (direction) sprite.position.copy(direction).normalize().multiplyScalar(400);
+    else sprite.position.set(-90, nuit ? 170 : 40 + 280 * a.hauteurSoleil, 380);
     sprite.renderOrder = -2;
     sprite.userData.heavy = true;
     sprite.lookAt(0, 0, 0);
@@ -142,7 +147,7 @@ function ciel(a: Ambiance, rnd: () => number, nuit: boolean): Group {
  * Silhouettes lointaines en trois couches (comme `buildMountains`, lot 23) : une lointaine pâle, un anneau, des reliefs proches (qualité 2), fondus
  * vers l'horizon ; `plates` (A) : un aplat par pièce. La forme de chaque pièce suit l'horizon du thème (`FormeHorizon`).
  */
-function silhouettes(a: Ambiance, rnd: () => number): Group {
+export function silhouettes(a: Ambiance, rnd: () => number): Group {
   const group = new Group();
   const horizon = a.ciel.horizon;
   const forme = a.silhouettes.forme;

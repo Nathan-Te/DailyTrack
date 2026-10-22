@@ -21,7 +21,7 @@ const VARIANTES = [
 test("une planche par section", async ({ page }) => {
   mkdirSync(OUT, { recursive: true });
   await page.setViewportSize({ width: 1400, height: 900 });
-  await page.goto("/vitrine/");
+  await page.goto("/vitrine/?planche=directions");
   await page.waitForFunction(() => window.__vitrine);
   const sujets = await page.evaluate(() => [...new Set(window.__vitrine!.vues().map((v) => v.sujet))]);
   const W = 560;

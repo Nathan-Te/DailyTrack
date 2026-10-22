@@ -5,55 +5,94 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <link rel="icon" href="data:," />
-    <title>Vitrine de la scène — Track (lot 38)</title>
+    <title>Vitrine de la scène — Track (lots 38 et 38b)</title>
   </head>
   <body>
     <main id="vitrine">
       <header class="tete">
         <p class="tete__sur">Track · outil interne · recette et aperçus seulement</p>
         <h1>Vitrine de la scène</h1>
-        <p>
-          Les mêmes éléments vus par <strong>l'existant</strong>, les trois directions et le <strong>mélange recommandé</strong>, dans la même scène et le même
-          cadrage. On tourne autour en glissant sur une vue (au doigt : de gauche à droite ; à la souris : dans tous les sens) ; « Agrandir et mesurer » ouvre la
-          vue en grand (pincer ou molette pour zoomer) et mesure son temps d'image sur cet appareil. Rien de ce qui est ici n'est dans le jeu : c'est une
-          planche pour choisir (lot 38, <code>docs/lots/lot-38-direction-scene.md</code>).
-        </p>
-        <dl class="directions">
-          <div><dt>A — Net et graphique</dt><dd>Silhouettes franches et peu de pièces, aplats, bandes et marquages forts, lumière en trois tons nets : la charte « Cartouches » traduite en 3D.</dd></div>
-          <div><dt>B — Détaillé</dt><dd>Formes chanfreinées, petites pièces qui racontent (pneus, drapeaux, câbles, rivets, sponsors fictifs), matériaux variés ; tout est fusionné.</dd></div>
-          <div><dt>C — Lumière et matière</dt><dd>On touche peu aux formes : ciel, brume, lumière et ombrage par thème, occlusion par sommets, textures dessinées au chargement.</dd></div>
-          <div><dt>Mélange recommandé</dt><dd>La proposition du lot : éléments et rebords de A, décor de B allégé, lumière de C.</dd></div>
-        </dl>
+        <nav class="planches" aria-label="Planches">
+          <a href="./" class="planche planche--paliers">Paliers de qualité (retouche 38b)</a>
+          <a href="./?planche=directions" class="planche planche--directions">Directions (lot 38)</a>
+        </nav>
+        <div class="pour-paliers">
+          <p>
+            Au-dessus du <strong>mélange recommandé</strong> du lot 38, trois <strong>paliers de qualité</strong>, côte à côte avec l'existant, dans la même scène et le
+            même cadrage, et leur coût. <strong>Palier 1</strong> : le mélange, nettoyé. <strong>Palier 2</strong> : même chemin de rendu, plus de soin (géométrie,
+            variété, matière, reflets). <strong>Palier 3</strong> : le plafond (lumière, vie, post-traitement). La colonne <strong>« à la carte »</strong> et la
+            <strong>vue en mouvement</strong> suivent les réglages ci-dessous : chaque pas se coupe seul. On tourne autour d'une vue en glissant ; « Agrandir et
+            mesurer » mesure son temps d'image sur cet appareil. Rien de ce qui est ici n'est dans le jeu (<code>docs/lots/lot-38b-paliers-scene.md</code>).
+          </p>
+          <button type="button" id="ouvrir-mouvement" class="action">Ouvrir la vue en mouvement</button>
+        </div>
+        <div class="pour-directions">
+          <p>
+            Les mêmes éléments vus par <strong>l'existant</strong>, les trois directions et le <strong>mélange recommandé</strong>, dans la même scène et le même
+            cadrage. On tourne autour en glissant sur une vue (au doigt : de gauche à droite ; à la souris : dans tous les sens) ; « Agrandir et mesurer » ouvre la
+            vue en grand (pincer ou molette pour zoomer) et mesure son temps d'image sur cet appareil. Rien de ce qui est ici n'est dans le jeu : c'est une
+            planche pour choisir (lot 38, <code>docs/lots/lot-38-direction-scene.md</code>).
+          </p>
+          <dl class="directions">
+            <div><dt>A — Net et graphique</dt><dd>Silhouettes franches et peu de pièces, aplats, bandes et marquages forts, lumière en trois tons nets : la charte « Cartouches » traduite en 3D.</dd></div>
+            <div><dt>B — Détaillé</dt><dd>Formes chanfreinées, petites pièces qui racontent (pneus, drapeaux, câbles, rivets, sponsors fictifs), matériaux variés ; tout est fusionné.</dd></div>
+            <div><dt>C — Lumière et matière</dt><dd>On touche peu aux formes : ciel, brume, lumière et ombrage par thème, occlusion par sommets, textures dessinées au chargement.</dd></div>
+            <div><dt>Mélange recommandé</dt><dd>La proposition du lot : éléments et rebords de A, décor de B allégé, lumière de C.</dd></div>
+          </dl>
+        </div>
         <label class="choix">Thème des sections d'éléments <select id="theme-elements"></select></label>
         <nav aria-label="Sections"><ol id="sommaire"></ol></nav>
       </header>
 
+      <section class="reglages pour-paliers" aria-labelledby="reglages-titre">
+        <h2 id="reglages-titre">Réglages de la colonne « à la carte » et de la vue en mouvement</h2>
+        <div id="reglages-page"></div>
+      </section>
+
       <section class="couts" aria-labelledby="couts-titre">
-        <h2 id="couts-titre">Coût de chaque direction</h2>
+        <h2 id="couts-titre">Coût de chaque colonne</h2>
         <div class="tableau">
           <table>
-            <thead>
-              <tr>
-                <th scope="col">Direction</th>
-                <th scope="col">Poids du morceau (JS compressé)</th>
-                <th scope="col">Appels de rendu par image</th>
-                <th scope="col">Triangles par image</th>
-                <th scope="col">Construction de la scène</th>
-                <th scope="col">Image, téléphone (processeur ×4)</th>
-                <th scope="col">Construction, téléphone (×4)</th>
-              </tr>
-            </thead>
+            <thead><tr id="resume-tete"></tr></thead>
             <tbody id="resume-corps"></tbody>
           </table>
         </div>
         <p id="resume-etat" class="note"></p>
-        <p class="note">
+        <p class="note pour-directions">
           Poids : le morceau propre à la direction, mesuré à la construction (gzip), sans le socle commun à A, B et au mélange (route paramétrable,
           compositeur, outils<span id="poids-socle"></span>), qui remplacerait la route et le squelette de la scène du jeu ; le poids ajouté au jeu, partie
           par partie, est dans le README du lot. Appels et triangles : ceux d'une image en caméra de poursuite, ombres comprises
           (moyenne des huit thèmes). Les deux dernières colonnes sont mesurées par <code>MESURE=1 npx playwright test mesure-lot38</code> (Chromium, processeur ×4,
           rendu logiciel) : voir le README du lot.
         </p>
+        <p class="note pour-paliers">
+          Poids : ce que chaque palier ajoute au jeu (esbuild, minifié, gzip ; <code>poids-parties.mjs</code>) — le palier 1 à la place de <code>trackMesh.ts</code> et
+          <code>trackProps.ts</code> (net), les modules des pas chargés à la demande. Appels et triangles : une image en caméra de poursuite, ombres et passes
+          comprises. Mémoire : textures dessinées par la scène (ciel, sol, bandeaux, atlas, matières, nuages, écrans) et cibles de rendu (ombres,
+          environnement, post-traitement), estimées. Les deux dernières colonnes : <code>MESURE=1 npx playwright test mesure-lot38b</code> (Chromium, processeur
+          ×4, <strong>rendu logiciel</strong> : la carte graphique d'un vrai téléphone n'y est pas — voir le README). Sur ton téléphone, le compteur de la vue en
+          mouvement donne le vrai chiffre.
+        </p>
+      </section>
+
+      <section class="couts pour-paliers" aria-labelledby="pas-titre">
+        <h2 id="pas-titre">Ce que coûte chaque pas, seul, au-dessus du palier 1</h2>
+        <div class="tableau">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Pas</th>
+                <th scope="col">Poids de son module (à la demande)</th>
+                <th scope="col">Image, téléphone (×4)</th>
+                <th scope="col">Construction (×4)</th>
+                <th scope="col">Triangles</th>
+                <th scope="col">Appels</th>
+                <th scope="col">Mémoire</th>
+              </tr>
+            </thead>
+            <tbody id="pas-corps"></tbody>
+          </table>
+        </div>
       </section>
 
       <div id="sections"></div>
@@ -67,6 +106,34 @@
       </div>
       <div class="agrandi__cadre"><canvas role="img" aria-label="Vue agrandie"></canvas></div>
       <p class="agrandi__chiffres"></p>
+    </dialog>
+
+    <dialog id="mouvement" aria-labelledby="mouvement-titre">
+      <div class="mouvement__tete">
+        <h2 id="mouvement-titre">Vue en mouvement</h2>
+        <label class="choix">Thème <select id="mouvement-theme"></select></label>
+        <label class="choix"
+          >Bout du tour
+          <select id="mouvement-bout">
+            <option value="course">En course (premier virage)</option>
+            <option value="depart">Départ</option>
+          </select></label
+        >
+        <div class="segments" role="group" aria-label="Scène">
+          <button type="button" class="segment" data-scene="existant" aria-pressed="false">Existant (le jeu)</button>
+          <button type="button" class="segment" data-scene="paliers" aria-pressed="true">Paliers</button>
+        </div>
+        <button type="button" class="mouvement__fermer">Fermer</button>
+      </div>
+      <div class="mouvement__cadre">
+        <canvas role="img" aria-label="La voiture en course, vue de la caméra de poursuite"></canvas>
+        <p class="mouvement__ips"></p>
+      </div>
+      <p class="mouvement__compteur"></p>
+      <details class="mouvement__reglages" open>
+        <summary>Palier et pas</summary>
+        <div id="mouvement-reglages"></div>
+      </details>
     </dialog>
 
     <script type="module" src="../src/vitrine/vitrine.ts"></script>

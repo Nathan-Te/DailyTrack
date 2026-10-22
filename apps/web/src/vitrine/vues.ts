@@ -9,6 +9,13 @@ export interface Dessin {
   exposition: number;
   /** Avant chaque image : taille de la vue (pixels) et champ de vision (halos), position de la caméra (fenêtre des ombres). */
   avant?(hauteurPx: number, fov: number, camera: PerspectiveCamera): void;
+  /**
+   * Retouche 38b : dessine l'image elle-même (paliers : carte d'environnement, animation, chaîne de post-traitement) au lieu de `render` ; rend la
+   * mémoire des cibles de la chaîne (octets).
+   */
+  rendre?(r: WebGLRenderer, camera: PerspectiveCamera, largeurPx: number, hauteurPx: number): number;
+  /** Retouche 38b : ce qui demande le moteur, une fois (carte d'environnement) — hors du compte des appels de l'image. */
+  preparer?(r: WebGLRenderer): void;
 }
 
 /** Orbite : point visé, angle autour (rad), hauteur (rad au-dessus de l'horizon), distance (m). */
@@ -51,11 +58,30 @@ export function moteurPartage(): WebGLRenderer | null {
   return moteur;
 }
 
-/** Chiffres de la dernière image d'une vue : appels de rendu et triangles (ombres comprises), temps passé à l'envoyer (ms). */
+/** Chiffres de la dernière image d'une vue : appels de rendu et triangles (ombres et passes comprises), temps passé à l'envoyer (ms). */
 export interface Chiffres {
   appels: number;
   triangles: number;
   envoiMs: number;
+  /** Retouche 38b : mémoire des cibles de la chaîne de post-traitement (octets ; 0 sans chaîne). */
+  postOctets: number;
+}
+
+/** Une image : par `d.rendre` (paliers) ou `render`, en comptant appels et triangles de toutes les passes (ombres, post-traitement). */
+export function image(r: WebGLRenderer, d: Dessin, camera: PerspectiveCamera, w: number, h: number): { appels: number; triangles: number; postOctets: number } {
+  d.preparer?.(r);
+  r.info.autoReset = false;
+  r.info.reset();
+  let postOctets = 0;
+  if (d.rendre) postOctets = d.rendre(r, camera, w, h);
+  else {
+    r.toneMappingExposure = d.exposition;
+    r.render(d.scene, camera);
+  }
+  const info = r.info.render;
+  const out = { appels: info.calls, triangles: info.triangles, postOctets };
+  r.info.autoReset = true;
+  return out;
 }
 
 /** Dessine `d` vu par `o` dans `cible` (canvas 2D) à `largeur` × `hauteur` pixels CSS ; rend les chiffres de l'image. */
@@ -69,12 +95,10 @@ export function dessiner(d: Dessin, o: Orbite, cible: HTMLCanvasElement, largeur
   placerCamera(camera, o);
   camera.updateProjectionMatrix();
   d.avant?.(h, o.fov, camera);
-  r.toneMappingExposure = d.exposition;
   const t0 = performance.now();
-  r.render(d.scene, camera);
+  const im = image(r, d, camera, w, h);
   const envoiMs = performance.now() - t0;
-  const info = r.info.render;
-  const chiffres = { appels: info.calls, triangles: info.triangles, envoiMs };
+  const chiffres = { ...im, envoiMs };
   if (cible.width !== w || cible.height !== h) {
     cible.width = w;
     cible.height = h;
@@ -98,11 +122,10 @@ export function mesurerImage(d: Dessin, o: Orbite, largeur: number, hauteur: num
   placerCamera(camera, o);
   camera.updateProjectionMatrix();
   d.avant?.(h, o.fov, camera);
-  r.toneMappingExposure = d.exposition;
   const gl = r.getContext();
   const px = new Uint8Array(4);
-  // Une image pour rien (programmes compilés, cartes d'ombres créées).
-  r.render(d.scene, camera);
+  // Une image pour rien (programmes compilés, cartes d'ombres et d'environnement créées, cibles du post-traitement).
+  image(r, d, camera, w, h);
   gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
   let total = 0;
   let pire = 0;
@@ -113,7 +136,7 @@ export function mesurerImage(d: Dessin, o: Orbite, largeur: number, hauteur: num
     placerCamera(camera, o);
     d.avant?.(h, o.fov, camera);
     const t0 = performance.now();
-    r.render(d.scene, camera);
+    image(r, d, camera, w, h);
     const t1 = performance.now();
     gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
     const t2 = performance.now();
