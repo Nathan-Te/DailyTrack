@@ -19,7 +19,8 @@ import {
   RESPAWN_TICKS,
   SECTION_CLOCK_VERSION,
   SINGLE_CLOCK_VERSION,
-  assemble,
+  reassemble,
+  PALIER_LENGTH,
   buildModule,
   centerCol,
   checkpointAttempt,
@@ -177,7 +178,8 @@ describe("lot 15 — les jours régénérés (g10, une seule horloge)", () => {
 
   it("la référence passe sans attente : les mêmes commandes qu'en v3 (solutions des morceaux bout à bout), au même temps, sans mort", () => {
     for (const L of REGENERATED) {
-      const v3 = assemble(L.pieces.map((p) => ({ id: p.id, variant: p.variant })));
+      // Lot 16 : le même assemblage (avec les voies lentes), en version 3.
+      const v3 = reassemble(L);
       const asV3 = replayAttempt(v3.level, { ...L.replay, simVersion: SECTION_CLOCK_VERSION }, L.id);
       const asV4 = replayAttempt(L.level, L.replay, L.id);
       expect([asV4.finished, asV4.deaths.length], L.date).toEqual([true, 0]);
@@ -244,6 +246,8 @@ describe("lot 15 — validation toutes phases (modules/phases.json, src/phases.t
           // Une reprise après une mort, au chrono où l'horloge du morceau est à cette phase (`chrono + phase de la section ≡ φ`).
           const time = 1000 + cycleMod(ph.phase - lv.sections[k]!.phase - 1000, period);
           let s = k === 0 ? respawnAttempt(lv, { ...initialAttempt(lv), time }) : checkpointAttempt(lv, { ...initialAttempt(lv), checkpoint: k - 1, time });
+          // Lot 16 : devant une portion dure, on attend sur le palier « bis » de sa zone (l'entrée du morceau seul, à l'identique).
+          if (L.slowRoutes.some((r) => r.piece === k)) s = { ...s, player: { ...s.player, x: s.player.x + (p.col0 - PALIER_LENGTH - L.paliers[k]!.col0) * T } };
           expect(cycleMod(sectionPhases(lv, s)[k]!, period), where).toBe(ph.phase);
           const inputs = fromRuns(decodeReplay(ph.code!).runs);
           const last = k === L.pieces.length - 1;
@@ -252,7 +256,7 @@ describe("lot 15 — validation toutes phases (modules/phases.json, src/phases.t
             s = stepAttempt(s, inputs[t]!, lv, P);
             expect(s.status, where).not.toBe(ATTEMPT_DEAD);
             if (s.status === ATTEMPT_FINISHED) out = true;
-            else if (!last && centerCol(s.player) >= L.pieces[k + 1]!.col0) {
+            else if (!last && centerCol(s.player) > L.paliers[k + 1]!.col1) {
               expect(isCleanRun(s.player), where).toBe(true);
               out = true;
             }

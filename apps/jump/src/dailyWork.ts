@@ -7,7 +7,7 @@ import {
   dailyLevelId,
   decodeReplay,
   encodeReplay,
-  jumpMedalsFor,
+  medalsWithSlow,
   jumpThemeForDay,
   levelNumber,
   parseLevel,
@@ -19,6 +19,7 @@ import {
   type DailyPiece,
   type JumpThemeName,
   type Palier,
+  type SlowRoute,
 } from "@cdj/jump-sim";
 
 // Le niveau du jour sous une forme qui se transporte (lot 7b) : du JSON, sans le `Level` (tableaux typés, rangs) ni ce qu'un calcul rend
@@ -28,9 +29,10 @@ import {
 
 /**
  * Version du format de la charge (à monter si ses champs changent : l'ancien cache est alors ignoré). Lot 11 : 2 (la charge porte le thème du
- * niveau — celui de la date ou un thème **forcé** : un essai, dont l'identifiant est suffixé `-t<thème>`).
+ * niveau — celui de la date ou un thème **forcé** : un essai, dont l'identifiant est suffixé `-t<thème>`). Lot 16 : 3 (les voies lentes et le
+ * temps « toutes voies lentes » ; les médailles en dépendent).
  */
-export const PAYLOAD_FORMAT = 2;
+export const PAYLOAD_FORMAT = 3;
 
 export interface DailyPayload {
   format: number;
@@ -55,6 +57,9 @@ export interface DailyPayload {
   attempts: DailyAttempt[];
   chosen: number;
   fallback: boolean;
+  /** Lot 16 : les voies lentes et le temps « toutes voies lentes ». */
+  slowRoutes: SlowRoute[];
+  slowTicks: number;
 }
 
 /** Ce qu'il y a de transportable dans un `DailyLevel`. */
@@ -79,6 +84,8 @@ export function toPayload(d: DailyLevel): DailyPayload {
     attempts: d.attempts.map((a) => ({ ...a, pieces: [...a.pieces] })),
     chosen: d.chosen,
     fallback: d.fallback,
+    slowRoutes: d.slowRoutes.map((r) => ({ ...r, ledges: r.ledges.map((l) => ({ ...l })) })),
+    slowTicks: d.slowTicks,
   };
 }
 
@@ -114,6 +121,8 @@ export function isPayload(v: unknown): v is DailyPayload {
     isInt(p.authorTicks) &&
     isInt(p.chosen) &&
     typeof p.fallback === "boolean" &&
+    Array.isArray(p.slowRoutes) &&
+    isInt(p.slowTicks) &&
     Array.isArray(t) &&
     t.length === 3
   );
@@ -167,10 +176,12 @@ export function fromPayload(p: unknown, day: number, options: { proof: boolean; 
     replay,
     code: p.code,
     authorTicks: p.authorTicks,
-    medals: jumpMedalsFor(p.authorTicks),
+    medals: medalsWithSlow(p.authorTicks, p.slowRoutes),
     exigence: p.exigence,
     attempts: p.attempts,
     chosen: p.chosen,
     fallback: p.fallback,
+    slowRoutes: p.slowRoutes,
+    slowTicks: p.slowTicks,
   };
 }

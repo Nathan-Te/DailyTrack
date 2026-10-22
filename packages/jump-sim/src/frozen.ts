@@ -5,6 +5,7 @@ import { parseLevel } from "./level";
 import { textHash, type Palier } from "./modules";
 import { decodeReplay, encodeReplay, replayAttempt } from "./replay";
 import { jumpThemeForDay } from "./themes";
+import type { SlowRoute } from "./voies";
 
 // Niveaux figés (lot 10 ; **une seule règle** depuis le lot P1 de la plateforme) : un fichier compact par date,
 // `apps/jump/public/levels/AAAA-MM-JJ.json`, écrit par `npm run freeze:days -w @cdj/jump` (apps/jump/tools/freeze-days.ts). Il garde **le niveau
@@ -49,6 +50,9 @@ export interface FrozenLevel {
   exigence: DailyExigence;
   tirage: number;
   secours: boolean;
+  /** Lot 16 (g11) : les voies lentes et le temps « toutes voies lentes » (absents avant). */
+  voies?: SlowRoute[];
+  lent?: number;
 }
 
 /** Une rangée de la grille en plages : `#####...^` → `#5.3^`. Les chiffres n'existent pas dans la légende de la grille : refusés. */
@@ -121,6 +125,7 @@ export function freezeLevel(d: DailyLevel): FrozenLevel {
     exigence: { sum: d.exigence.sum, rate: d.exigence.rate, thirds: [...d.exigence.thirds] as [number, number, number] },
     tirage: d.chosen,
     secours: d.fallback,
+    ...(d.slowRoutes.length > 0 ? { voies: d.slowRoutes.map((r) => ({ ...r, ledges: r.ledges.map((l) => ({ ...l })) })), lent: d.slowTicks } : {}),
   };
 }
 
@@ -202,5 +207,8 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
     attempts: [],
     chosen: isInt(f.tirage) ? f.tirage : 0,
     fallback: f.secours === true,
+    // Lot 16 : les voies lentes du niveau (absentes avant g11). Données d'affichage et de mesure : la preuve seule fait foi.
+    slowRoutes: Array.isArray(f.voies) ? (f.voies as SlowRoute[]) : [],
+    slowTicks: isInt(f.lent) ? f.lent : f.auteur,
   };
 }

@@ -30,9 +30,11 @@ export const SINGLE_CLOCK_VERSION = 4;
  * 8 depuis le lot 12 (nuit et néon ont leur mécanique : morceaux et mutateurs clignotants et alternés, quota de signature, repos, secours) ;
  * 9 depuis le lot 13 (la forêt a ses courants d'air : morceaux et mutateur de vent, quota de signature, repos, secours) ;
  * 10 depuis le lot 15 (horloge unique : niveaux en sim v4, phases des sections calculées sur la référence, validation toutes phases, point de
- * passage sûr à toute phase).
+ * passage sûr à toute phase) ;
+ * 11 depuis le lot 16 (seconde voie : zone de bifurcation, cage et galerie de la voie lente sur chaque portion notée 4 ou 5, voies parasites
+ * fermées, médailles or / bronze ajustées aux temps rapide et lent).
  */
-export const JUMP_GENERATOR_VERSION = 10;
+export const JUMP_GENERATOR_VERSION = 11;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;
