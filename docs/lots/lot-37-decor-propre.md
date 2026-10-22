@@ -2,7 +2,7 @@
 
 Branche `claude/zen-pascal-dmempr` (nom imposé par la session ; le lot prévoyait `lot-37-decor-propre`). Zones : `apps/web/**`, `packages/sim/CLAUDE.md` (une ligne), `docs/lots/**`, la ligne de Track de `docs/plateforme/budgets.md`. **Rien dans `sim`** : `SIM_VERSION`, `GENERATOR_VERSION`, golden, rediffusions, classements inchangés (aucun fichier de code de `packages/sim` n'a bougé ; la hauteur dessinée d'un mur de la Ville n'intervient nulle part dans la simulation, qui n'a jamais lu que `WALL_HEIGHT` = 1,4 m).
 
-PR : à compléter à la création (lien et aperçu en tête de la PR). Vision et règles : `apps/web/CLAUDE.md`, rubrique « Décor : règles de pose (lot 37) ».
+PR : [Nathan-Te/DailyTrack#119](https://github.com/Nathan-Te/DailyTrack/pull/119) (brouillon ; l'aperçu est commenté par la CI). Vision et règles : `apps/web/CLAUDE.md`, rubrique « Décor : règles de pose (lot 37) ».
 
 ## En deux phrases
 
