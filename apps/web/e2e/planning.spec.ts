@@ -23,7 +23,7 @@ test("admin en démo : bandeau, planning de 14 cartes, aujourd'hui et historique
   await expect(cards.first()).toContainText(formatDay(DEMO_TODAY + 1));
   await expect(cards.nth(1)).toContainText("J+2");
   // les chiffres d'un circuit arrivent quand il est généré (fil de travail)
-  await expect(cards.first().locator("dl.stats")).toContainText("Temps de l'auteur", { timeout: 60_000 });
+  await expect(cards.first().locator("dl.stats")).toContainText("Temps du pilote", { timeout: 60_000 });
   await expect(cards.first().locator("dl.stats")).toContainText("Largeurs");
   await expect(cards.first().locator("dl.stats")).toContainText("Virages serrés");
   await expect(cards.first().getByRole("link", { name: "Jouer" })).toHaveAttribute("href", new RegExp(`seed=${formatDay(DEMO_TODAY + 1)}&variant=0`));
@@ -46,7 +46,7 @@ test("remplacer J+2 dans le panneau : la variante choisie est gardée", async ({
   const candidates = page.locator("#candidates .candidate");
   await expect(candidates).toHaveCount(5);
   // chaque variante a ses chiffres, ses liens Jouer / Regarder ; le thème est modifiable
-  await expect(candidates.nth(2).locator("dl.stats")).toContainText("Temps de l'auteur", { timeout: 60_000 });
+  await expect(candidates.nth(2).locator("dl.stats")).toContainText("Temps du pilote", { timeout: 60_000 });
   await expect(candidates.nth(2).getByRole("link", { name: "Jouer" })).toHaveAttribute("href", new RegExp(`seed=${J2_DATE}&variant=3`));
   // choisir demande une confirmation
   await candidates.nth(2).getByRole("button", { name: "Choisir" }).click();
@@ -150,7 +150,7 @@ test("admin avec le vrai serveur : mauvais jeton refusé, bon jeton accepté, re
   const card = page.locator(`#planning .card[data-date="${date}"]`);
   await card.getByRole("button", { name: "Remplacer" }).click();
   const first = page.locator("#candidates .candidate").first();
-  await expect(first.locator("dl.stats")).toContainText("Temps de l'auteur", { timeout: 60_000 });
+  await expect(first.locator("dl.stats")).toContainText("Temps du pilote", { timeout: 60_000 });
   await first.getByRole("button", { name: "Choisir" }).click();
   await first.getByRole("button", { name: "Confirmer" }).click();
   await expect(card).toHaveAttribute("data-variant", "1", { timeout: 30_000 });

@@ -198,7 +198,7 @@ export function mountPlanning(stateApi: () => string): void {
       return dl;
     }
     const s = circuitStats(c.track);
-    row("Temps de l'auteur", authorMs !== undefined ? formatTime(authorMs) : c.authorMs ? formatTime(c.authorMs) : "—");
+    row("Temps du pilote", authorMs !== undefined ? formatTime(authorMs) : c.authorMs ? formatTime(c.authorMs) : "—");
     row("Largeurs", widthsText(s.widths));
     row("Revêtements", s.surfaces.map((k) => SURFACE_LABEL[k]).join(" · "));
     row("Blocs à effet", effectsText(s));
@@ -252,14 +252,14 @@ export function mountPlanning(stateApi: () => string): void {
     };
     const known = row?.authorMs ?? null;
     if (known !== null) {
-      const m = medalsFor(known);
+      const m = medalsFor(known, day);
       medalsNote.textContent = `🏅 auteur ${formatTime(m.author)} · or ${formatTime(m.gold)} · argent ${formatTime(m.silver)} · bronze ${formatTime(m.bronze)}`;
     }
     drawHistogram(known);
     void fillCircuit(t, day, entry, wanted, (c) => {
       const a = c.authorMs ?? known ?? undefined;
       if (a !== undefined) {
-        const m = medalsFor(a);
+        const m = medalsFor(a, day);
         medalsNote.textContent = `🏅 auteur ${formatTime(m.author)} · or ${formatTime(m.gold)} · argent ${formatTime(m.silver)} · bronze ${formatTime(m.bronze)}`;
       }
       stats.insertBefore(statLines(c, a), hist);
