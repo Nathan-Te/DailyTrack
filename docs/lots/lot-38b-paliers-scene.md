@@ -7,6 +7,10 @@ Zones : `apps/web/**` (la vitrine, le code des paliers, leurs tests), `docs/lots
 (exception tolérée). Aucune zone partagée. Lot 38 fusionné au départ (PR #117) ; **lot 37 pas encore fusionné** (ses règles de pose exactes restent à
 aligner, comme au lot 38).
 
+> **38c (22/10/2026)** — Nathan retient **le palier 3** comme cible visuelle ; le pas « matière » devient **une matière sobre** (un cran au-dessus
+> du grain du palier 1, rien qui imite une photo), les **traces** ont leur propre case, l'ancienne matière reste à comparer sous « matière
+> détaillée (ancienne) », coupée par défaut et **retirée au lot de mise en œuvre**. Détail : § 38c ci-dessous ; décision : `direction.md` § 9.
+
 **En bref**
 - **La vitrine** `/track/vitrine/` montre, à côté de l'existant, les **paliers 1, 2 et 3** de chaque élément et de chaque thème, **chaque pas
   commutable seul**, une **vue en mouvement** par thème (la voiture actuelle sur le vrai circuit, caméra de poursuite, **images par seconde**) et
@@ -21,6 +25,35 @@ aligner, comme au lot 38).
   palier 2 avec reflets ciblés, plus la vie et le ciel, sans passe plein écran ; ordinateur → palier 3 sans l'occlusion, FXAA au lieu de SMAA.
 - **Le pas le plus rentable est hors des paliers** : la voiture en 6 maillages au lieu de 53 (lot du véhicule, à placer en deuxième : § 6, § 7).
 - **Rien ne change dans le jeu** : fichiers construits identiques à `main` octet pour octet, `sim` et golden inchangés.
+
+## 38c — une matière sobre, et le palier 3 retenu
+
+**Pourquoi** : la matière du 38b (asphalte 512 px avec granulats, rapiéçages, fissures et taches d'huile, cartes de normales et de rugosité, béton
+écaillé, métal rayé) faisait « texture générée » et jurait avec une scène taillée nette. Nathan veut le grain de base du palier 1, un peu amélioré,
+sans exagérer les détails.
+
+**Ce qui change** (vitrine seulement ; le jeu est identique à `main` octet pour octet, `sim` et golden inchangés) :
+- **Matière** (palier 2) = la **matière sobre** (`matiere.ts`, § 2) : grain fin et moins contrasté, variation de teinte douce à ≈ 48 m, pas de
+  carte de normales ni de rugosité, textures de 256 px.
+- **Traces** (palier 2) : une case à part, plus discrètes (§ 2).
+- **Matière détaillée (ancienne)** : une case de comparaison, **dans aucun palier, coupée par défaut** ; elle l'emporte sur « Matière » si les
+  deux sont cochées. **Elle sera retirée au lot de mise en œuvre** (et `matiereDetaillee.ts` avec elle).
+- Un point de vue **« L'asphalte de près »** dans chaque section de thème (la matière à hauteur d'homme, derrière la voiture).
+- `direction.md` § 9 : la décision de Nathan (palier 3 visé, matière sobre, téléphones par la règle automatique) ; le reste du § 8 reste ouvert.
+
+<!-- 38C-COUTS -->
+
+**Captures avant / après** (`matiere-<thème>.jpg`, trois colonnes : le grain du palier 1, puis le palier 3 avec l'ancienne matière, puis le
+palier 3 avec la matière sobre ; en poursuite, puis l'asphalte de près) :
+
+![Stade : la matière avant / après](lot-38b-paliers-scene/matiere-stade.jpg)
+![Rallye : la matière avant / après](lot-38b-paliers-scene/matiere-rallye.jpg)
+![Nuit : la matière avant / après](lot-38b-paliers-scene/matiere-nuit.jpg)
+![Ville : la matière avant / après](lot-38b-paliers-scene/matiere-ville.jpg)
+
+**À tester (38c)** : ouvre `/track/vitrine/`, puis la **vue en mouvement** du Stade et de la Nuit au **palier 3** ; allume puis coupe
+« Matière » (la sobre), « Traces » et « Matière détaillée (ancienne) » pour comparer (le bouton « L'asphalte de près » de chaque section montre
+la matière à l'arrêt).
 
 ## À tester (sur l'aperçu de la PR)
 
@@ -83,7 +116,7 @@ palier** (elles lisent `x.reglages`, `Contexte`) et **un module par famille de p
   carte d'environnement), `animer(t, caméra, hauteur)` (la vie, les nuages, les particules), `post()` (la chaîne de passes voulue) et `memoire()`.
 - `palier1.ts` — la direction des paliers (`DIRECTION_P`) et ses fonctions par élément : `portiqueDepartP`, `arriveeP`, `panneauP`, `rythmeP`,
   `tribuneP`, `decorP`, `routeP`.
-- `finition.ts` (géométrie, variété), `matiere.ts` + `bruit.ts` (matière), `reflets.ts` (reflets), `lumiere3.ts` (brume, nuages, réglages par thème
+- `finition.ts` (géométrie, variété), `matiere.ts` + `bruit.ts` (matière sobre, traces), `matiereDetaillee.ts` (l'ancienne matière, pour comparer), `reflets.ts` (reflets), `lumiere3.ts` (brume, nuages, réglages par thème
   du palier 3 : `THEMES_3`), `vie.ts` (drapeaux, foule, écrans, particules), `post.ts` (`ChainePost` : occlusion, halo, sortie, étalonnage,
   anticrénelage), `memoire.ts` (mémoire d'une scène). Les directions du lot 38 (`directionA.ts`, `directionB.ts`, `directionC.ts`) ont gagné
   quelques paramètres de palier (piliers chanfreinés, arche plus ronde, mur de pneus léger), sans changer ce qu'elles dessinent par défaut.
@@ -119,10 +152,20 @@ textures et un peu de lecture de texture par pixel.
 - **Variété** : chaque instance de décor tourne d'un quart de tour au plus, change de taille (0,88 à 1,12, depuis son pied), de teinte (± 8 %), une
   sur quatre s'use (`varierInstance`, **une autre suite que celle du décor** : il reste à sa place, testé) ; bandes de rebord et pièces des éléments
   inégales (`varierParPosition` : une teinte par morceau de 3 à 4 m, une sur sept salie).
-- **Matière** : textures **calculées au chargement** (bruit périodique, sans couture ; aucun fichier) : asphalte 512 px (granulats, rapiéçages,
-  fissures, taches d'huile), béton peint des rebords, métal brossé des portiques, grain du décor (256 px) ; chacune avec **sa carte de normales**
-  (tirée d'un champ de hauteurs) et **sa carte de rugosité** ; **traces de pneus** dans chaque virage sur route (la trajectoire extérieur – corde –
-  extérieur, usée) et **traces de freinage et barres de repère** avant les virages serrés (en géométrie dans le calque de la route).
+- **Matière** (refaite à la retouche 38c, **décision de Nathan** : « sobre ») : **le grain du palier 1, un cran au-dessus, rien qui imite une
+  photo**. Une texture de 256 px pour 4 m par matière (asphalte, béton des rebords, métal des portiques, décor), calculée au chargement (bruit
+  périodique, sans couture ; aucun fichier) : un grain plus fin et moins contrasté que celui du palier 1 (écart type 0,018 au lieu de 0,026, même
+  teinte moyenne : testé), sur un bruit moyen très doux ; et une **variation de teinte à grande échelle** (≈ 48 m, ±5 % sur l'asphalte, un peu plus
+  chaude où c'est plus clair), rangée dans le canal alpha de la même texture et lue une seconde fois à l'échelle large (`teinteLarge` : un
+  remplacement du morceau `map_fragment` de three.js, testé) — une ligne droite n'est plus uniforme. **Ni carte de normales ni carte de
+  rugosité** : un léger relief ne se voyait pas depuis la caméra de poursuite, il coûtait de la mémoire et une lecture par pixel. Captures avant /
+  après : `matiere-<thème>.jpg` (§ 38c).
+- **Traces** (pas à part depuis la 38c, pour être jugées seules) : **traces de pneus** dans chaque virage sur route (la trajectoire extérieur –
+  corde – extérieur, usée) et **traces de freinage et barres de repère** avant les virages serrés, en géométrie dans le calque de la route (aucun
+  appel de plus) ; plus discrètes qu'au 38b (la route assombrie de 15 % au lieu de 30 %).
+- **Matière détaillée (ancienne)** — comparaison seulement, **dans aucun palier, coupée par défaut, à retirer au lot de mise en œuvre** : la
+  matière du 38b (`matiereDetaillee.ts`) : asphalte 512 px avec granulats, rapiéçages, fissures et taches d'huile, béton écaillé, métal brossé et
+  rayé, cartes de normales et de rugosité. Cochée, elle l'emporte sur « Matière ».
 - **Reflets** : une **carte d'environnement calculée à partir du ciel du thème** (dégradé, soleil, sol, bande d'horizon), préfiltrée une fois
   (PMREM 64 px : ≈ 0,7 Mo), posée sur `scene.environment` : les portiques en métal, les panneaux et **la voiture** (sans toucher à son modèle) la
   reflètent ; la lumière d'hémisphère baisse d'autant.

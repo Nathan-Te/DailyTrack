@@ -17,7 +17,7 @@ const SCENE = fileURLToPath(new URL("../src/scene/", import.meta.url));
 // Déjà dans le premier chargement du jeu : laissés dehors.
 const DEJA = ["three", "@cdj/sim", "*/trackMesh", "*/trackProps", "*/meshKit", "*/signage", "*/speedFeel", "*/halo"];
 /** Les modules des pas (retouche 38b) : hors du palier 1. */
-const PAS = ["finition", "matiere", "bruit", "reflets", "lumiere3", "vie", "post"];
+const PAS = ["finition", "matiere", "matiereDetaillee", "bruit", "reflets", "lumiere3", "vie", "post"];
 /** Le palier 1 et ce qu'il tire (lot 38 compris) : déjà là quand on mesure un pas. */
 const PALIER1 = ["composerPalier", "palier1", "paliers", "memoire", "composer", "route", "outils", "pieces", "types", "origine", "directionA", "directionB", "directionC", "directionM", "textures"];
 
@@ -50,7 +50,8 @@ const PARTIES = [
   ["Palier 1 : tout (compositeur des paliers, direction P, route, lumière et matière de C, décor, ce qu'il garde de trackMesh.ts et trackProps.ts), sans les modules des pas", "composerPalier", ["composerPalier"], { garder: true, vides: PAS }],
   ["Palier 1 : décor (tribune, recettes de B allégées, atlas des sponsors) — à la demande dans le jeu", "palier1", ["decorP", "atlasB"], { entree: `import { decorP } from "./palier1"; import { atlasB } from "./directionB";`, vides: PAS, dehors: ["composer", "route", "outils", "pieces", "types", "origine", "directionA", "composerPalier", "paliers", "memoire"] }],
   ["Palier 2 — géométrie et variété (finition.ts)", "finition", ["boulons", "coins", "hauban", "cablePendant", "pneusEmpiles", "banderole", "Drapeaux", "colonneChanfreinee", "marque", "varierInstance", "varierParPosition", "teinteVoisine"], { dehors: PALIER1 }],
-  ["Palier 2 — matière (matiere.ts, bruit.ts : textures, normales, rugosité, traces et marquages)", "matiere", ["matiereAsphalte", "matiereBeton", "matiereMetal", "matiereDecor", "carteDeNormales", "tracesEtMarquages", "matieresDessinees"], { dehors: PALIER1 }],
+  ["Palier 2 — matière (matiere.ts, bruit.ts : matière sobre, variation de teinte large, traces et marquages)", "matiere", ["matiereAsphalte", "matiereBeton", "matiereMetal", "matiereDecor", "teinteLarge", "tracesEtMarquages", "matieresDessinees"], { dehors: PALIER1 }],
+  ["Palier 2 — matière détaillée (matiereDetaillee.ts : l'ancienne matière du 38b, comparaison seulement, matiere.ts et bruit.ts laissés dehors)", "matiereDetaillee", ["detailleeAsphalte", "detailleeBeton", "detailleeMetal", "detailleeDecor", "carteDeNormales"], { dehors: [...PALIER1, "matiere", "bruit"] }],
   ["Palier 2 — reflets (reflets.ts : carte d'environnement du ciel)", "reflets", ["carteEnvironnement"], { dehors: PALIER1 }],
   ["Palier 3 — lumière (lumiere3.ts : brume de profondeur, ciel et nuages, réglages par thème)", "lumiere3", ["THEMES_3", "brumeDeProfondeur", "uniformesBrume", "domeDuCiel"], { dehors: PALIER1 }],
   ["Palier 3 — vie (vie.ts : drapeaux, foule, écrans, chronomètre, particules)", "vie", ["drapeauxAnimes", "fouleInstanciee", "rubanDesEcrans", "Chronometre", "maillageEcrans", "particules"], { dehors: [...PALIER1, "lumiere3"] }],

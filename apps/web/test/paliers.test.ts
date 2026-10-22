@@ -7,7 +7,8 @@ import { PAS, PAS_IDS, avecPas, avecPost, lireReglages, palierDe, reglagesDuPali
 import { rebordB } from "../src/scene/directionB";
 import { Affiches } from "../src/scene/outils";
 import { Drapeaux, marque, varierInstance, varierParPosition } from "../src/scene/finition";
-import { carteDeNormales, matiereAsphalte, tracesEtMarquages } from "../src/scene/matiere";
+import { PERIODE_TEINTE, TRACES_SOMBRE, matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, teinteLarge, tracesEtMarquages } from "../src/scene/matiere";
+import { carteDeNormales, detailleeAsphalte } from "../src/scene/matiereDetaillee";
 import { THEMES_3, brumeDeProfondeur, uniformesBrume } from "../src/scene/lumiere3";
 import { DIRECTION_P, ROUTE_SOUS_LUMIERE_CHAUDE, decorP, portiqueDepartP } from "../src/scene/palier1";
 import { THEMES_C } from "../src/scene/directionC";
@@ -37,8 +38,9 @@ function contexte(palette: PaletteName, reglages = reglagesDuPalier(1)): Context
 describe("réglages des paliers", () => {
   it("palier 1 : aucun pas ; palier 2 : la finition ; palier 3 : tout", () => {
     expect(PAS_IDS.filter((id) => reglagesDuPalier(1)[id])).toEqual([]);
-    expect(PAS_IDS.filter((id) => reglagesDuPalier(2)[id])).toEqual(["geometrie", "variete", "matiere", "reflets"]);
-    expect(PAS_IDS.every((id) => reglagesDuPalier(3)[id])).toBe(true);
+    expect(PAS_IDS.filter((id) => reglagesDuPalier(2)[id])).toEqual(["geometrie", "variete", "matiere", "traces", "reflets"]);
+    // 38c : l'ancienne matière (« détaillée ») n'est dans aucun palier, elle sert à comparer.
+    expect(PAS_IDS.filter((id) => !reglagesDuPalier(3)[id])).toEqual(["detaillee"]);
     for (const p of [1, 2, 3] as const) expect(palierDe(reglagesDuPalier(p))).toBe(p);
     expect(palierDe(avecPas(reglagesDuPalier(2), "halo", true))).toBeNull();
   });
@@ -153,14 +155,53 @@ describe("palier 2 : géométrie, variété, matière", () => {
     expect(Math.abs(g.pos[libre * 3 + 2]! - d.pos[libre * 3 + 2]!)).toBeGreaterThan(0.01);
   });
 
-  it("une carte de normales d'un champ plat pointe droit vers le haut ; l'asphalte est calculé une fois, sans couture", () => {
+  it("matière sobre (38c) : 256 px, ni normales ni rugosité, un grain moins contrasté que celui du palier 1 et rien qui imite une photo", () => {
+    for (const m of [matiereAsphalte(), matiereBeton(), matiereMetal(), matiereDecor()]) {
+      const img = m.map.image as { width: number; data: Uint8Array };
+      expect(img.width).toBe(256);
+      expect(m.normalMap).toBeNull();
+      expect(m.roughnessMap).toBeNull();
+      const n = img.width;
+      const v = Array.from({ length: n * n }, (_, i) => img.data[i * 4]! / 255);
+      const moy = v.reduce((a, x) => a + x, 0) / v.length;
+      const et = Math.sqrt(v.reduce((a, x) => a + (x - moy) ** 2, 0) / v.length);
+      // Le grain du palier 1 (textures.ts) : 232 à 255, tiré au hasard par pixel, soit un écart type ≈ 0,026 autour de 0,955.
+      expect(Math.abs(moy - 0.955), "même teinte moyenne que le grain du palier 1").toBeLessThan(0.01);
+      expect(et, "moins contrasté que le grain du palier 1").toBeLessThan(0.026);
+      // Ni rapiéçage, ni tache, ni fissure : aucun pixel ne s'écarte franchement de la moyenne.
+      expect(Math.max(...v.map((x) => Math.abs(x - moy))), "aucun détail qui se remarque").toBeLessThan(0.07);
+    }
+    expect(matiereAsphalte()).toBe(matiereAsphalte());
+  });
+
+  it("matière sobre : la variation large (canal alpha) est douce et se répète sans couture ; la lecture de three.js est remplacée", () => {
+    const img = matiereAsphalte().map.image as { width: number; data: Uint8Array };
+    const n = img.width;
+    const a = (x: number, y: number) => img.data[(((y + n) % n) * n + ((x + n) % n)) * 4 + 3]!;
+    let saut = 0;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) saut = Math.max(saut, Math.abs(a(x, y) - a(x + 1, y)), Math.abs(a(x, y) - a(x, y + 1)));
+    expect(saut, "aucun saut entre pixels voisins, bords compris").toBeLessThan(12);
+    expect(PERIODE_TEINTE * 4, "une période d'une cinquantaine de mètres").toBeGreaterThanOrEqual(40);
+    const m = new MeshStandardMaterial({ map: matiereAsphalte().map });
+    teinteLarge(m, matiereAsphalte().teinte);
+    const sh = { vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader, uniforms: {} as Record<string, unknown> };
+    expect(sh.fragmentShader).toContain("#include <map_fragment>");
+    m.onBeforeCompile(sh as never, null as never);
+    expect(sh.fragmentShader).not.toContain("#include <map_fragment>");
+    expect(sh.fragmentShader).toContain("uTeinteEchelle");
+    expect(sh.uniforms).toHaveProperty("uTeinteForce");
+    expect(m.customProgramCacheKey()).toContain("teinte38c");
+  });
+
+  it("matière détaillée (l'ancienne, pour comparer) : normales d'un champ plat vers le haut, asphalte 512 px calculé une fois", () => {
     const plat = carteDeNormales(new Float32Array(16 * 16).fill(0.5), 16, 3);
     const px = (plat.image as { data: Uint8Array }).data;
     expect([px[0], px[1], px[2]]).toEqual([128, 128, 255]);
-    const a = matiereAsphalte();
-    expect(matiereAsphalte()).toBe(a);
+    const a = detailleeAsphalte();
+    expect(detailleeAsphalte()).toBe(a);
+    expect(a).not.toBe(matiereAsphalte());
     expect((a.map.image as { width: number }).width).toBe(512);
-    expect(a.map.generateMipmaps && a.normalMap.generateMipmaps && a.roughnessMap.generateMipmaps).toBe(true);
+    expect(a.map.generateMipmaps && a.normalMap!.generateMipmaps && a.roughnessMap!.generateMipmaps).toBe(true);
   });
 
   it("traces de pneus dans les virages sur route, pas sur les droites ordinaires ; à quelques centimètres au-dessus de la route", () => {
@@ -171,6 +212,8 @@ describe("palier 2 : géométrie, variété, matière", () => {
     const virages = track.blocks.filter((b) => isCurve(b.kind));
     expect(virages.length).toBeGreaterThan(0);
     for (let i = 1; i < g.pos.length; i += 3) expect(g.pos[i]! - track.blocks[0]!.y0).toBeLessThan(0.05);
+    // 38c : discrètes (la route assombrie de 15 %, 30 % au 38b).
+    expect(TRACES_SOMBRE).toBeGreaterThanOrEqual(0.85);
   });
 });
 

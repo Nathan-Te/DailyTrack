@@ -105,6 +105,13 @@ test("paliers : la colonne « à la carte » suit les cases, et l'adresse garde 
   const carte = vues.find((v) => v.variante === "carte")!;
   expect(carte.etat).toBe("prete");
   expect(carte.appels).toBeGreaterThan(vues.find((v) => v.variante === "P1")!.appels);
+  // 38c : « matière détaillée (ancienne) » est coupée au palier 3 (comparaison seulement) ; cochée, la colonne se reconstruit sans erreur.
+  await expect(panneau.getByLabel(/Matière détaillée \(ancienne\)/)).not.toBeChecked();
+  await expect(panneau.getByLabel(/^Traces/)).toBeChecked();
+  await panneau.getByLabel(/Matière détaillée \(ancienne\)/).check();
+  await expect.poll(() => new URL(page.url()).searchParams.get("reglages")).toBe("3+detaillee-halo");
+  await page.evaluate(() => window.__vitrine!.construireTout("depart"));
+  expect((await page.evaluate(() => window.__vitrine!.vues().find((v) => v.sujet === "depart" && v.variante === "carte")))!.etat).toBe("prete");
   expect(erreurs).toEqual([]);
 });
 

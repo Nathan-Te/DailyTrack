@@ -14,6 +14,7 @@ import {
   BufferGeometry,
   type CanvasTexture,
   Color,
+  type DataTexture,
   DirectionalLight,
   DoubleSide,
   Float32BufferAttribute,
@@ -49,7 +50,8 @@ import { THEMES_C, eclairagePiste, occlusionSommets, uvMonde } from "./direction
 import { SOLS_C, grain, texturedCielC, texturedSol } from "./textures";
 import { DIRECTION_P, routeP } from "./palier1";
 import { Drapeaux, varierParPosition } from "./finition";
-import { matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, matieresDessinees, tracesEtMarquages, type Matiere } from "./matiere";
+import { matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, matieresDessinees, teinteLarge, tracesEtMarquages, type Matiere } from "./matiere";
+import { detailleeAsphalte, detailleeBeton, detailleeDecor, detailleeMetal } from "./matiereDetaillee";
 import { memoireScene, type MemoireScene } from "./memoire";
 import { carteEnvironnement } from "./reflets";
 import { THEMES_3, brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
@@ -83,7 +85,12 @@ const HEADLIGHT_POWER = 900;
 
 /** Les matériaux d'une scène selon ses pas : un par calque quand la matière ou les reflets l'exigent, sinon un seul (comme le lot 38). */
 function materiaux(r: Reglages) {
-  const textures = !r.matiere ? null : { route: matiereAsphalte(), rebords: matiereBeton(), solide: matiereMetal(), decor: matiereDecor() };
+  // La matière sobre (38c) ; l'ancienne matière « détaillée » (comparaison seulement) l'emporte si elle est cochée.
+  const textures = r.detaillee
+    ? { route: detailleeAsphalte(), rebords: detailleeBeton(), solide: detailleeMetal(), decor: detailleeDecor() }
+    : r.matiere
+      ? { route: matiereAsphalte(), rebords: matiereBeton(), solide: matiereMetal(), decor: matiereDecor() }
+      : null;
   // Rugosité et métal par calque (pas « reflets ») : l'asphalte reste mat, la peinture des rebords satinée, le métal des portiques brille.
   const fini = { route: [0.92, 0], rebords: [0.62, 0], solide: [0.42, 0.35], decor: [0.85, 0] } as const;
   const make = (cle: keyof typeof fini) => {
@@ -92,11 +99,16 @@ function materiaux(r: Reglages) {
     const m = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide, roughness: rugosite, metalness: metal, map: t ? t.map : grain() });
     if (t) {
       // `uvMonde(…, 4)` : une unité de texture = 4 m ; la matière se répète tous les `echelle` m.
-      for (const tx of [t.map, t.normalMap, t.roughnessMap]) tx.repeat.set(4 / t.echelle, 4 / t.echelle);
-      m.normalMap = t.normalMap;
-      m.normalScale.set(t.relief, t.relief);
-      m.roughnessMap = t.roughnessMap;
-      if (!r.reflets) m.roughness = 1;
+      for (const tx of [t.map, t.normalMap, t.roughnessMap]) tx?.repeat.set(4 / t.echelle, 4 / t.echelle);
+      if (t.normalMap) {
+        m.normalMap = t.normalMap;
+        m.normalScale.set(t.relief, t.relief);
+      }
+      if (t.roughnessMap) {
+        m.roughnessMap = t.roughnessMap;
+        if (!r.reflets) m.roughness = 1;
+      }
+      teinteLarge(m, t.teinte);
     }
     return m;
   };
@@ -174,7 +186,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     }
   }
   d.decor(calques, ctx, seeded(`${track.id}:${paletteName}`));
-  if (r.matiere) tracesEtMarquages(calques.route, track, (b) => style.couleurRoute(b, pal), pal.dash);
+  if (r.traces) tracesEtMarquages(calques.route, track, (b) => style.couleurRoute(b, pal), pal.dash);
   if (r.variete) {
     varierParPosition(calques.rebords!, 4, 0.07, 38);
     varierParPosition(calques.solide, 3, 0.04, 39);
@@ -410,7 +422,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     dispose: () => {
       scene.traverse((o) => (o as { shadow?: { map?: { dispose(): void } | null } }).shadow?.map?.dispose());
       // Les textures de matière, du grain et des nuages sont partagées entre les scènes (dessinées une fois) : on ne les libère pas ici.
-      const partagees = new Set<Texture>([grain(), ...matieresDessinees().flatMap((m) => [m.map, m.normalMap, m.roughnessMap])]);
+      const partagees = new Set<Texture>([grain(), ...matieresDessinees().flatMap((m) => [m.map, m.normalMap, m.roughnessMap].filter((x): x is DataTexture => x !== null))]);
       if (dome) partagees.add(dome.material.uniforms.uNuages!.value as Texture);
       scene.traverse((o) => {
         const m = (o as Mesh).material as Material | Material[] | undefined;

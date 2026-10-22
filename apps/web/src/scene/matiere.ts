@@ -1,29 +1,40 @@
-// Retouche 38b — palier 2, pas « matière » : des textures **calculées au chargement** (aucun fichier), plus fines que le grain du lot 38, avec
-// leur relief simulé (cartes de normales tirées d'un champ de hauteurs), leur rugosité variable et leur usure ; et, dessinés en géométrie dans le
-// calque de la route (aucun appel de plus), des traces de pneus dans les virages et des marquages au sol avant les virages serrés.
+// Retouche 38b, refaite à la 38c — palier 2, pas « matière » : la **matière sobre**. Décision de Nathan (38c) : un cran au-dessus du grain du
+// palier 1, **rien qui imite une photo** (ni rapiéçages, ni fissures, ni taches d'huile, ni granulats visibles un à un). Depuis la caméra de
+// poursuite en mouvement, la matière doit se sentir, pas se remarquer. Ce qu'elle ajoute au grain du palier 1 :
+//   - un grain plus fin (256 px pour 4 m au lieu de 128) et moins contrasté, sur un bruit moyen très doux ;
+//   - une **variation de teinte à grande échelle** (≈ 50 m : une ligne droite n'est plus uniforme), rangée dans le canal alpha de la même texture
+//     et lue une seconde fois à l'échelle large (`teinteLarge` : un remplacement du morceau `map_fragment` de three.js) ;
+//   - aucune carte de normales ni de rugosité (le relief ne se voyait pas depuis la poursuite ; la rugosité vient du pas « reflets »).
+// Dans le même module, en géométrie dans le calque de la route (aucun appel de plus), les **traces** de pneus et de freinage (pas « traces »).
 //
 // Chaque texture se répète sans couture (bruit périodique) et se multiplie aux couleurs des sommets (elle est presque blanche) : la palette du
-// thème reste celle du document de direction. Elles sont dessinées une fois et partagées par toutes les scènes (`memo`).
-import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NoColorSpace, RepeatWrapping, RGBAFormat, SRGBColorSpace, UnsignedByteType } from "three";
+// thème reste celle du document de direction. Elles sont dessinées une fois et partagées par toutes les scènes (`memoiser`). L'ancienne matière
+// (« détaillée ») est dans `matiereDetaillee.ts`, pour la comparaison seulement.
+import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NoColorSpace, RepeatWrapping, RGBAFormat, SRGBColorSpace, UnsignedByteType, type MeshStandardMaterial, type WebGLProgramParametersWithUniforms } from "three";
 import { CELL, blockHalfWidth, curveSize, isCurve, turnsLeft, type Block, type Track } from "@cdj/sim";
 import { shade, type Builder, type V3 } from "../meshKit";
 import { onBlock } from "./route";
 import { bruit, fractal, graine } from "./bruit";
 
-/** Une matière : couleur (multipliée aux sommets), normales, rugosité ; `echelle` = mètres par répétition, `relief` = force des normales. */
+/**
+ * Une matière : couleur (multipliée aux sommets) ; normales et rugosité (matière détaillée seulement) ; `echelle` = mètres par répétition,
+ * `relief` = force des normales, `teinte` = force de la variation à grande échelle (canal alpha de `map`, 0 : aucune).
+ */
 export interface Matiere {
   map: DataTexture;
-  normalMap: DataTexture;
-  roughnessMap: DataTexture;
+  normalMap: DataTexture | null;
+  roughnessMap: DataTexture | null;
   rugosite: number;
   metal: number;
   echelle: number;
   relief: number;
+  teinte: number;
   /** Temps de calcul (ms), la première fois. */
   ms: number;
 }
 
-function texture(data: Uint8Array, n: number, couleur: boolean): DataTexture {
+/** Une texture de matière : répétée, filtrée, mipmaps. */
+export function texture(data: Uint8Array, n: number, couleur: boolean): DataTexture {
   const t = new DataTexture(data, n, n, RGBAFormat, UnsignedByteType);
   t.wrapS = t.wrapT = RepeatWrapping;
   t.magFilter = LinearFilter;
@@ -35,68 +46,8 @@ function texture(data: Uint8Array, n: number, couleur: boolean): DataTexture {
   return t;
 }
 
-/** Carte de normales (espace tangent) d'un champ de hauteurs périodique : pentes par différences centrées, `force` = relief. */
-export function carteDeNormales(h: Float32Array, n: number, force: number): DataTexture {
-  const data = new Uint8Array(n * n * 4);
-  for (let y = 0; y < n; y++) {
-    for (let x = 0; x < n; x++) {
-      const dx = (h[y * n + ((x + 1) % n)]! - h[y * n + ((x - 1 + n) % n)]!) * force;
-      const dy = (h[((y + 1) % n) * n + x]! - h[((y - 1 + n) % n) * n + x]!) * force;
-      const l = Math.hypot(dx, dy, 1);
-      const i = (y * n + x) * 4;
-      data[i] = Math.round((-dx / l) * 127.5 + 127.5);
-      data[i + 1] = Math.round((-dy / l) * 127.5 + 127.5);
-      data[i + 2] = Math.round((1 / l) * 127.5 + 127.5);
-      data[i + 3] = 255;
-    }
-  }
-  return texture(data, n, false);
-}
-
-/** Couleur (gris presque blanc, multiplié aux sommets) et rugosité (canal vert, lu par three.js) d'un champ. */
-function cartes(n: number, clair: Float32Array, rugueux: Float32Array): { map: DataTexture; roughnessMap: DataTexture } {
-  const c = new Uint8Array(n * n * 4);
-  const r = new Uint8Array(n * n * 4);
-  for (let i = 0; i < n * n; i++) {
-    const v = Math.max(0, Math.min(255, Math.round(clair[i]! * 255)));
-    c[i * 4] = c[i * 4 + 1] = c[i * 4 + 2] = v;
-    c[i * 4 + 3] = 255;
-    const g = Math.max(0, Math.min(255, Math.round(rugueux[i]! * 255)));
-    r[i * 4] = r[i * 4 + 1] = r[i * 4 + 2] = g;
-    r[i * 4 + 3] = 255;
-  }
-  return { map: texture(c, n, true), roughnessMap: texture(r, n, false) };
-}
-
-/** Trace un trait fin (fissure, rayure) dans un champ, en marche aléatoire ; `valeur` y est écrite (mélangée de `force`). */
-function trait(champ: Float32Array, n: number, rnd: () => number, longueur: number, valeur: number, force: number, dir: number | null = null) {
-  let x = rnd() * n;
-  let y = rnd() * n;
-  let a = dir ?? rnd() * Math.PI * 2;
-  for (let k = 0; k < longueur; k++) {
-    const i = (((Math.floor(y) % n) + n) % n) * n + (((Math.floor(x) % n) + n) % n);
-    champ[i] = champ[i]! * (1 - force) + valeur * force;
-    a += (rnd() - 0.5) * (dir === null ? 0.9 : 0.15);
-    x += Math.cos(a);
-    y += Math.sin(a);
-  }
-}
-
-/** Une tache ronde (rapiéçage, huile, écaillure) : `valeur` mêlée de `force` au centre, s'effaçant au bord. */
-function tache(champ: Float32Array, n: number, cx: number, cy: number, r: number, valeur: number, force: number) {
-  for (let y = Math.floor(cy - r); y <= cy + r; y++) {
-    for (let x = Math.floor(cx - r); x <= cx + r; x++) {
-      const d = Math.hypot(x - cx, y - cy) / r;
-      if (d > 1) continue;
-      const i = (((y % n) + n) % n) * n + (((x % n) + n) % n);
-      const f = force * (1 - d * d);
-      champ[i] = champ[i]! * (1 - f) + valeur * f;
-    }
-  }
-}
-
 const memo = new Map<string, Matiere>();
-function memoiser(cle: string, f: () => Omit<Matiere, "ms">): Matiere {
+export function memoiser(cle: string, f: () => Omit<Matiere, "ms">): Matiere {
   let m = memo.get(cle);
   if (!m) {
     const t0 = performance.now();
@@ -107,114 +58,102 @@ function memoiser(cle: string, f: () => Omit<Matiere, "ms">): Matiere {
   return m;
 }
 
+/** Champ dans [0, 1] étiré sur toute la plage (la variation large se dose ensuite par `teinte`). */
+function etirer(c: Float32Array): Float32Array {
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const v of c) {
+    lo = Math.min(lo, v);
+    hi = Math.max(hi, v);
+  }
+  const out = new Float32Array(c.length);
+  for (let i = 0; i < c.length; i++) out[i] = (c[i]! - lo) / Math.max(1e-6, hi - lo);
+  return out;
+}
+
+/** Réglages d'une matière sobre : amplitudes du grain (par pixel) et du bruit moyen, sa maille, un brossé éventuel (métal). */
+interface Sobre {
+  graine: number;
+  fin: number;
+  moyen: number;
+  cellules: number;
+  brosse?: number;
+}
+
 /**
- * Asphalte (512 px pour 6 m) : granulats clairs et sombres, rapiéçages, fissures fines, taches d'huile ; relief des granulats, fissures en creux ;
- * rugosité forte, plus lisse sur les taches.
+ * La texture d'une matière sobre (256 px) : en couleur, un gris presque blanc centré sur celui du grain du palier 1 (0,955 : les couleurs du
+ * thème ne bougent pas) ; dans l'alpha, un bruit très large et doux (deux mailles par côté), étiré sur toute la plage.
  */
-export function matiereAsphalte(): Matiere {
-  return memoiser("asphalte", () => {
-    const n = 512;
-    const rnd = graine(381);
-    const base = fractal(n, 16, 5, rnd);
-    const fin = bruit(n, 256, rnd);
-    const haut = new Float32Array(n * n);
-    const clair = new Float32Array(n * n);
-    const rug = new Float32Array(n * n);
+export function champsSobres(o: Sobre): { couleur: Float32Array; large: Float32Array; n: number } {
+  const n = 256;
+  const rnd = graine(o.graine);
+  const moyen = fractal(n, o.cellules, 2, rnd);
+  const large = etirer(fractal(n, 2, 3, rnd));
+  const lignes = o.brosse ? bruit(n, 64, rnd) : null;
+  const couleur = new Float32Array(n * n);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      const i = y * n + x;
+      const brosse = lignes ? (lignes[y * n + (x >> 4)]! - 0.5) * o.brosse! : 0;
+      couleur[i] = 0.955 + (rnd() - 0.5) * o.fin + (moyen[i]! - 0.5) * o.moyen + brosse;
+    }
+  }
+  return { couleur, large, n };
+}
+
+function sobre(cle: string, o: Sobre, reste: { metal: number; teinte: number }): Matiere {
+  return memoiser(cle, () => {
+    const { couleur, large, n } = champsSobres(o);
+    const data = new Uint8Array(n * n * 4);
     for (let i = 0; i < n * n; i++) {
-      const g = fin[i]!;
-      haut[i] = base[i]! * 0.35 + g * 0.65;
-      clair[i] = 0.86 + (base[i]! - 0.5) * 0.12 + (g > 0.82 ? 0.1 : g < 0.12 ? -0.1 : 0);
-      rug[i] = 0.9 + (g - 0.5) * 0.08;
+      const v = Math.max(0, Math.min(255, Math.round(couleur[i]! * 255)));
+      data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v;
+      data[i * 4 + 3] = Math.round(large[i]! * 255);
     }
-    for (let k = 0; k < 7; k++) tache(clair, n, rnd() * n, rnd() * n, 18 + rnd() * 40, 0.8, 0.6); // rapiéçages
-    for (let k = 0; k < 5; k++) {
-      const x = rnd() * n;
-      const y = rnd() * n;
-      const r = 8 + rnd() * 18;
-      tache(clair, n, x, y, r, 0.66, 0.5); // huile
-      // Un peu plus lisse, pas un miroir : sous les phares de la Nuit, une tache trop lisse brillait comme une flaque.
-      tache(rug, n, x, y, r, 0.74, 0.8);
-    }
-    for (let k = 0; k < 6; k++) {
-      const l = 60 + rnd() * 160;
-      const g = graine(Math.floor(rnd() * 1e9));
-      trait(clair, n, g, l, 0.62, 0.8);
-      trait(haut, n, graine(Math.floor(rnd() * 1e9)), l, 0, 0.9);
-    }
-    return { ...cartes(n, clair, rug), normalMap: carteDeNormales(haut, n, 2.2), rugosite: 1, metal: 0, echelle: 6, relief: 0.55 };
+    return { map: texture(data, n, true), normalMap: null, roughnessMap: null, rugosite: 1, metal: reste.metal, echelle: 4, relief: 0, teinte: reste.teinte };
   });
 }
 
-/** Béton peint des rebords (256 px pour 3 m) : écaillures, coulures verticales, éraflures sombres (les touchettes). */
-export function matiereBeton(): Matiere {
-  return memoiser("beton", () => {
-    const n = 256;
-    const rnd = graine(512);
-    const base = fractal(n, 8, 5, rnd);
-    const haut = new Float32Array(base);
-    const clair = new Float32Array(n * n);
-    const rug = new Float32Array(n * n);
-    for (let i = 0; i < n * n; i++) {
-      clair[i] = 0.9 + (base[i]! - 0.5) * 0.14;
-      rug[i] = 0.62 + (base[i]! - 0.5) * 0.2;
-    }
-    for (let k = 0; k < 26; k++) {
-      const x = rnd() * n;
-      const y = rnd() * n;
-      const r = 2 + rnd() * 6;
-      tache(clair, n, x, y, r, 1, 0.5); // écaillure : le béton clair sous la peinture
-      tache(haut, n, x, y, r, 0.2, 0.7);
-      tache(rug, n, x, y, r, 0.9, 0.7);
-    }
-    for (let k = 0; k < 10; k++) trait(clair, n, graine(Math.floor(rnd() * 1e9)), 40 + rnd() * 80, 0.72, 0.35, Math.PI / 2); // coulures
-    for (let k = 0; k < 8; k++) trait(clair, n, graine(Math.floor(rnd() * 1e9)), 30 + rnd() * 60, 0.35, 0.55, (rnd() - 0.5) * 0.3); // éraflures de pneus
-    return { ...cartes(n, clair, rug), normalMap: carteDeNormales(haut, n, 1.6), rugosite: 1, metal: 0, echelle: 3, relief: 0.45 };
-  });
+/** Asphalte : grain fin, un bruit moyen à peine visible ; la variation large la plus nette (une ligne droite n'est pas uniforme). */
+export const matiereAsphalte = () => sobre("asphalte", { graine: 381, fin: 0.06, moyen: 0.035, cellules: 16 }, { metal: 0, teinte: 0.1 });
+/** Béton peint des rebords : grain plus doux encore. */
+export const matiereBeton = () => sobre("beton", { graine: 512, fin: 0.045, moyen: 0.04, cellules: 12 }, { metal: 0, teinte: 0.07 });
+/** Métal des portiques et panneaux : un brossé à peine marqué, pas de variation large (des pièces courtes). */
+export const matiereMetal = () => sobre("metal", { graine: 77, fin: 0.025, moyen: 0.015, cellules: 8, brosse: 0.03 }, { metal: 0.35, teinte: 0 });
+/** Le décor : grain et bruit moyen un peu plus présents (bois, roche, crépi selon les couleurs), variation large. */
+export const matiereDecor = () => sobre("decor", { graine: 903, fin: 0.05, moyen: 0.06, cellules: 8 }, { metal: 0, teinte: 0.12 });
+
+/** Période de la variation large, en répétitions de la texture (4 m chacune) : ≈ 48 m. */
+export const PERIODE_TEINTE = 12;
+
+/** Remplace la lecture de `map` : la couleur du grain (sans son alpha), multipliée par la variation large lue dans l'alpha à l'échelle large. */
+const TEINTE_FRAG = `
+#ifdef USE_MAP
+  vec4 sampledDiffuseColor = texture2D( map, vMapUv );
+  float teinteLarge = ( texture2D( map, vMapUv * uTeinteEchelle ).a - 0.5 ) * uTeinteForce;
+  diffuseColor.rgb *= sampledDiffuseColor.rgb * ( 1.0 + teinteLarge * vec3( 1.15, 1.0, 0.8 ) );
+#endif`;
+
+/**
+ * La variation de teinte à grande échelle d'une matière sobre (plus claire et un peu plus chaude par endroits, plus sombre et plus froide
+ * ailleurs) : un remplacement du morceau `map_fragment` (une lecture de texture de plus par pixel, aucune texture de plus). Se combine avec la
+ * brume de profondeur (qui enchaîne le `onBeforeCompile` d'avant).
+ */
+export function teinteLarge(m: MeshStandardMaterial, force: number): void {
+  if (force <= 0) return;
+  const u = { uTeinteForce: { value: force }, uTeinteEchelle: { value: 1 / PERIODE_TEINTE } };
+  const avant = m.onBeforeCompile;
+  m.onBeforeCompile = (s: WebGLProgramParametersWithUniforms, r) => {
+    avant.call(m, s, r);
+    Object.assign(s.uniforms, u);
+    s.fragmentShader = s.fragmentShader.replace("#include <map_pars_fragment>", "#include <map_pars_fragment>\nuniform float uTeinteForce;\nuniform float uTeinteEchelle;").replace("#include <map_fragment>", TEINTE_FRAG);
+  };
+  const cle = m.customProgramCacheKey.bind(m);
+  m.customProgramCacheKey = () => `${cle()}|teinte38c`;
+  m.needsUpdate = true;
 }
 
-/** Métal peint des portiques et panneaux (256 px pour 2 m) : brossé, rayures fines, quelques coups. Plus lisse : il brille. */
-export function matiereMetal(): Matiere {
-  return memoiser("metal", () => {
-    const n = 256;
-    const rnd = graine(77);
-    const brosse = new Float32Array(n * n);
-    // Brossé : un bruit étiré dans un seul sens (lignes horizontales).
-    const lignes = bruit(n, 64, rnd);
-    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) brosse[y * n + x] = lignes[y * n + Math.floor(x / 16)]!;
-    const haut = new Float32Array(brosse);
-    const clair = new Float32Array(n * n);
-    const rug = new Float32Array(n * n);
-    for (let i = 0; i < n * n; i++) {
-      clair[i] = 0.93 + (brosse[i]! - 0.5) * 0.06;
-      rug[i] = 0.42 + (brosse[i]! - 0.5) * 0.12;
-    }
-    for (let k = 0; k < 14; k++) {
-      const g = graine(Math.floor(rnd() * 1e9));
-      trait(clair, n, g, 20 + rnd() * 50, 1, 0.4, rnd() * Math.PI);
-      trait(rug, n, graine(Math.floor(rnd() * 1e9)), 20 + rnd() * 50, 0.25, 0.6, rnd() * Math.PI);
-    }
-    for (let k = 0; k < 6; k++) tache(haut, n, rnd() * n, rnd() * n, 3 + rnd() * 5, 0, 0.6);
-    return { ...cartes(n, clair, rug), normalMap: carteDeNormales(haut, n, 1.2), rugosite: 1, metal: 0.35, echelle: 2, relief: 0.3 };
-  });
-}
-
-/** Le décor (256 px pour 4 m) : un grain fin à deux échelles et du relief doux (bois, roche, crépi selon la couleur des sommets). */
-export function matiereDecor(): Matiere {
-  return memoiser("decor", () => {
-    const n = 256;
-    const rnd = graine(903);
-    const haut = fractal(n, 8, 6, rnd);
-    const clair = new Float32Array(n * n);
-    const rug = new Float32Array(n * n);
-    for (let i = 0; i < n * n; i++) {
-      clair[i] = 0.84 + haut[i]! * 0.16;
-      rug[i] = 0.85 + (haut[i]! - 0.5) * 0.2;
-    }
-    return { ...cartes(n, clair, rug), normalMap: carteDeNormales(haut, n, 3), rugosite: 1, metal: 0, echelle: 4, relief: 0.6 };
-  });
-}
-
-/** Toutes les textures de matière déjà dessinées (la vitrine compte leur mémoire et leur temps de calcul). */
+/** Toutes les textures de matière déjà dessinées, sobres et détaillées (la vitrine compte leur mémoire et leur temps de calcul). */
 export function matieresDessinees(): readonly Matiere[] {
   return [...memo.values()];
 }
@@ -241,14 +180,17 @@ function bande(g: Builder, b: Block, lat: (t: number) => number, t0: number, t1:
   }
 }
 
+/** Les traces : la couleur de la route assombrie de 15 % (38c : discrètes ; 30 % au 38b). */
+export const TRACES_SOMBRE = 0.85;
+
 /**
  * Traces de pneus et marquages : dans chaque virage sur route, la trajectoire (extérieur, corde, extérieur) usée en deux traces sombres ; avant un
  * virage serré, des traces de freinage droites et deux barres de repère peintes sur la moitié extérieure. Ni cuve, ni bas-côté, ni saut.
  */
-export function tracesEtMarquages(g: Builder, track: Track, couleurRoute: (b: Block) => number, peinture: number) {
+export function tracesEtMarquages(g: Builder, track: Track, couleurRoute: (b: Block) => number, peinture: number, sombreur = TRACES_SOMBRE) {
   for (const b of track.blocks) {
     if (b.cuve || b.surface !== "road" || b.kind === "gap" || b.kind === "jump" || b.kind === "kick") continue;
-    const sombre = shade(couleurRoute(b), 0.7);
+    const sombre = shade(couleurRoute(b), sombreur);
     if (isCurve(b.kind)) {
       // Dans `onBlock`, `lat` > 0 est à gauche de l'axe : l'intérieur d'un virage à gauche.
       const dedans = turnsLeft(b.kind) ? 1 : -1;

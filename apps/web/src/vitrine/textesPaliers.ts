@@ -12,7 +12,9 @@ export interface TextePas {
 export const TEXTES_PAS: Record<PasId, TextePas> = {
   geometrie: { titre: "Géométrie", detail: "Chanfreins fins sur les portiques, virages et arche plus ronds, pièces qui donnent l'échelle : boulons, haubans, câbles, banderoles, pneus empilés, drapeaux." },
   variete: { titre: "Variété", detail: "Chaque instance d'un même élément varie un peu : teinte, usure, orientation, taille ; bandes de rebord inégales." },
-  matiere: { titre: "Matière", detail: "Textures dessinées plus fines avec relief simulé (cartes de normales calculées au chargement), rugosité variable, traces de pneus et marquages au sol." },
+  matiere: { titre: "Matière", detail: "Matière sobre (38c) : le grain du palier 1, plus fin et moins contrasté, et une variation de teinte douce à grande échelle (une ligne droite n'est plus uniforme). Rien qui imite une photo." },
+  traces: { titre: "Traces", detail: "Traces de pneus discrètes dans les virages, traces de freinage et barres de repère avant les virages serrés (en géométrie, aucun appel de plus)." },
+  detaillee: { titre: "Matière détaillée (ancienne)", detail: "La matière du 38b, pour comparer : asphalte 512 px avec granulats, rapiéçages, fissures et taches d'huile, relief et rugosité. Écartée par Nathan (38c) ; l'emporte sur « Matière » si les deux sont cochées ; retirée au lot de mise en œuvre." },
   reflets: { titre: "Reflets", detail: "Carte d'environnement calculée à partir du ciel du thème : les matériaux brillants et la voiture reflètent la scène." },
   ombres: { titre: "Ombres nettes et loin", detail: "Carte d'ombres 2048 posée devant la voiture (120 m au lieu de 84 m, plus fine), le décor projette aussi." },
   occlusion: { titre: "Occlusion ambiante", detail: "Occlusion calculée à l'écran (GTAO) : les creux, les pieds de mur et les recoins s'assombrissent." },

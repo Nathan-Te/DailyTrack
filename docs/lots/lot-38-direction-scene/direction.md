@@ -152,3 +152,25 @@ Règles proposées (non appliquées) :
   aux règles de la charte « Cartouches » écrites pour l'interface ; **à Nathan de dire s'ils entrent dans la scène** (chacun se coupe seul).
 - **La voiture** suit le palier (lot du véhicule, à placer avant les paliers : la ramener à 6 maillages est le pas le plus rentable) : README de la
   retouche, § 6.
+
+## 9. Décision de Nathan (22/10/2026)
+
+Après avoir parcouru la vitrine des paliers (retouche 38b) ; appliquée à la vitrine par la retouche 38c (`docs/lots/lot-38b-paliers-scene.md`,
+§ 38c). Le document reste un **projet** pour tout ce qui n'est pas tranché ici.
+
+- **Le palier 3 est la cible visuelle** de la scène de Track (§ 8 : finition, lumière, vie, post-traitement).
+- **La matière est sobre** : un cran au-dessus du grain du palier 1, **rien qui imite une photo** — ni rapiéçages, ni fissures, ni taches d'huile,
+  ni granulats visibles un à un. Un grain plus fin et moins contrasté, une variation de teinte douce à grande échelle (une ligne droite n'est pas
+  uniforme), au plus un léger relief s'il se voit (il ne se voyait pas : aucune carte de normales). Même règle pour le béton des rebords, le métal
+  des portiques et le grain du décor. Depuis la caméra de poursuite en mouvement, la matière se sent, elle ne se remarque pas. Les traces de pneus
+  et de freinage restent, discrètes, dans un pas à part. Captures avant / après : `docs/lots/lot-38b-paliers-scene/matiere-<thème>.jpg` (Stade,
+  Rallye, Nuit, Ville ; en poursuite et l'asphalte de près). L'ancienne matière (« détaillée ») est retirée au lot de mise en œuvre.
+- **Les téléphones suivent la règle de qualité automatique** (README de la 38b, § 5 : mesure des premières images, jamais en course, réglage
+  « Qualité graphique ») : **le palier 3 complet n'y est pas tenable**, avec ≈ 200 Mo de cibles de rendu à la taille d'un écran de téléphone (§ 3
+  du même README) ; ils prennent le palier 1 ou 2 et ce que la mesure permet du palier 3 sans passe plein écran.
+
+**Encore ouvert** (questions du § 8 du README de la 38b, rien n'est tranché ici) : le palier exact par appareil et ses pas gardés ; le halo, la
+brume de profondeur et les particules dans la scène 3D (la charte) ; le post-traitement réservé à l'ordinateur ou abandonné ; l'anticrénelage
+(SMAA, FXAA ou le MSAA seul) ; le réglage « Qualité graphique » ; la route du Canyon sous son soleil orangé ; le soleil du bon côté dans le jeu ; le
+lot du véhicule en deuxième ; la vie (confettis, foule du décor) ; et les questions du lot 38 encore ouvertes (sponsors fictifs, panneaux de
+distance, feux au décompte, sol relevé près de la piste, budget du premier chargement, palette `neon`).
