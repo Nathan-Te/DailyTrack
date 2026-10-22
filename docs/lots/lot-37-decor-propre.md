@@ -110,7 +110,11 @@ Moyenne : 95 043 → 79 927 triangles (−16 %). Les ±1 ou 2 appels viennent de
 ## Vérifié / non vérifié
 
 **Vérifié** : le test de pose (0 faute sur la branche, 11 750 sur `main`) ; `npx tsc -b` ; `npx vitest run --project sqlite` (194 fichiers, 2 530 tests, golden compris) ; `perf.spec` ; e2e Chromium ciblés (`thumbnails`, `graphismes`, `cameras`, `vitrine`, `scene` : 31 passés) ; les planches des huit thèmes (§ 4) ; les triangles, les appels et la construction avant / après (§ 5) ; le relevé de pose ne change pas l'image (Ville, trois plans identiques à l'octet).
-**Non vérifié** : le ressenti sur un vrai téléphone (lisibilité de la Ville au doigt, garde-corps à 1,4 m) ; Firefox et WebKit (la CI) ; le fil principal par image (mesure inexploitable en rendu logiciel) ; la CI de la PR (à lire sur la PR).
+**Non vérifié** : le ressenti sur un vrai téléphone (lisibilité de la Ville au doigt, garde-corps à 1,4 m) ; Firefox et WebKit (la CI) ; le fil principal par image (mesure inexploitable en rendu logiciel) ; la CI complète de la PR (voir « CI » ci-dessous).
+
+## CI
+
+- **Premier run** (`39867409902`, commit `a3c36ec`) : tout vert (unit 3 parts, `zones`, `scope`, `api-image`, aperçu, Chromium 8 parts, Firefox 2 parts, WebKit 2/2, les trois navigateurs de Jump) **sauf `e2e-parts (webkit 1/2)`, annulé après 30 min** : le journal montre qu'il est resté à l'étape `npx playwright install-deps webkit` (téléchargements `apt` de `azure.archive.ubuntu.com` très lents), **sans qu'aucun test n'ait tourné**. Le verdict `e2e` est donc rouge pour une raison d'infrastructure, hors des zones du lot. Règle d'arrêt (`CLAUDE.md` racine) : relancer une fois ; un agent ne relance pas un workflow, la relance est ce commit (README seul) ; si `webkit 1/2` échoue encore, le noter ici et s'arrêter.
 
 ## Décisions pour Nathan
 
