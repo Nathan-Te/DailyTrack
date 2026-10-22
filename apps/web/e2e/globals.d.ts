@@ -117,13 +117,40 @@ interface CdjDebug {
   audio: { log: string[]; running: boolean; settings: { volume: number; last: number }; ambience: string | null };
 }
 
-/** Outils de la vitrine de la scène (lot 38, `/track/vitrine/`, voir src/vitrine/vitrine.ts). */
+/** Outils de la vitrine de la scène (lot 38 et retouche 38b, `/track/vitrine/`, voir src/vitrine/vitrine.ts). */
 interface VitrineDebug {
+  /** La planche : les paliers (retouche 38b, par défaut) ou les directions (lot 38, `?planche=directions`). */
+  planche: "paliers" | "directions";
   erreurs: string[];
-  vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number }[];
+  vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number; textures: number; cibles: number }[];
   construireTout(sujet?: string): Promise<void>;
   capture(sujet: string, variante: string, largeur: number, hauteur: number): Promise<string | null>;
-  mesurer(sujet: string, variante: string, largeur: number, hauteur: number, images: number): Promise<{ constructionMs: number; moyenneMs: number; pireMs: number; envoiMs: number; appels: number; triangles: number } | null>;
+  mesurer(sujet: string, variante: string, largeur: number, hauteur: number, images: number): Promise<{ constructionMs: number; moyenneMs: number; pireMs: number; envoiMs: number; appels: number; triangles: number; textures: number; cibles: number } | null>;
+  /** Les réglages de la colonne « à la carte » et de la vue en mouvement (« 2 », « 1+halo », « 3-occlusion ») : les change si on en donne, les rend. */
+  reglages(texte?: string): string;
+  /** La vue en mouvement (retouche 38b). */
+  mouvement: {
+    ouvrir(sujet: string, scene?: "existant" | "paliers"): Promise<void>;
+    etat(): Promise<{
+      ouverte: boolean;
+      theme: string;
+      scene: "existant" | "paliers";
+      reglages: string;
+      roule: boolean;
+      images: number;
+      ips: number;
+      imageMs: number;
+      pireMs: number;
+      appels: number;
+      triangles: number;
+      constructionMs: number;
+      memoire: { generees: number; cibles: number; post: number };
+      distanceCamera: number;
+      pas: number;
+      erreur: string | null;
+    } | null>;
+    fermer(): void;
+  };
 }
 
 interface Window {

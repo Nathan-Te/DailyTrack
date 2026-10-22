@@ -5,11 +5,12 @@ import { CELL, CUT_HALF_LENGTH, SHOULDER_EDGE, blockHalfWidth, blockPadHalfWidth
 import { Builder, mix, shade, type V3 } from "../meshKit";
 import { drawGlyph, signStyleOf } from "../trackProps";
 import { placesDeDecor } from "./composer";
-import { boite, face, livree, pt, repereBloc, repereSol, sol, type Repere } from "./outils";
+import { boite, boiteChanfreinee, face, livree, pt, repereBloc, repereSol, sol, type Repere } from "./outils";
 import { MARQUE, bandeau, chevronSol, damierSol, textureBandeau } from "./pieces";
 import { STYLE_ORIGINE, across, onBlock, rowWidth, tiretsCentre, type StyleRoute } from "./route";
 import { ORIGINE } from "./origine";
 import { HORIZONS, type Ambiance, type Calques, type Contexte, type Direction, type PlaceDecor } from "./types";
+import { colonneChanfreinee } from "./finition";
 
 /** Ce que A change à chaque thème : couleurs (route, rebords, vibreurs, sol, ciel), lumière, brume. Les palettes du document de direction. */
 export interface ThemeA {
@@ -140,7 +141,7 @@ export function routeA(nom: PaletteName): StyleRoute {
 // --- Éléments ---------------------------------------------------------------------------------------------------------------------
 
 /** Demi-écartement des piliers d'un portique (comme `postSpan`) : le bord de la route, ou de la bande. */
-function ecart(b: Block, q: number): number {
+export function ecart(b: Block, q: number): number {
   return b.shoulder ? SHOULDER_EDGE - 0.6 : blockHalfWidth(b, q) + 1.4;
 }
 
@@ -148,17 +149,23 @@ function ecart(b: Block, q: number): number {
  * Un portique « cartouche » : deux piliers plats, une poutre-panneau bordée d'encre avec son ombre nette décalée (comme l'ombre `4px 4px 0` de la
  * charte), un bandeau de texte sur les deux faces, la livrée en haut. Rend le repère et la hauteur de la poutre.
  */
-function portiqueCartouche(c: Calques, b: Block, q: number, texte: string, opts: { pilier: number; bande: [number, number]; fond: number; encre: number; damier?: boolean; livree?: boolean }) {
+function portiqueCartouche(c: Calques, b: Block, q: number, texte: string, opts: { pilier: number; bande: [number, number]; fond: number; encre: number; damier?: boolean; livree?: boolean; fin?: boolean }) {
   const r = repereBloc(b, q);
   const w = ecart(b, q);
   const h = 8.6;
   const haut = 3.0;
-  // Socles et piliers (plats : 1,4 m en travers, 0,9 m le long), bande verticale de couleur sur la face intérieure.
+  // Socles et piliers (plats : 1,4 m en travers, 0,9 m le long), bande verticale de couleur sur la face intérieure. Retouche 38b, palier 2
+  // (`fin`) : socles chanfreinés, piliers aux arêtes verticales chanfreinées (6 cm) — l'arête accroche la lumière, la pièce paraît fabriquée.
   for (const s of [-1, 1]) {
     const g0 = s * w - 0.7;
     const g1 = s * w + 0.7;
-    boite(c.solide, r, s * w - 1.1, s * w + 1.1, -0.1, 0.7, -0.9, 0.9, MARQUE.encre);
-    boite(c.solide, r, g0, g1, 0.7, h + haut, -0.45, 0.45, opts.pilier);
+    if (opts.fin) {
+      boiteChanfreinee(c.solide, r, s * w - 1.1, s * w + 1.1, -0.1, 0.7, -0.9, 0.9, 0.08, MARQUE.encre, shade(MARQUE.encre, 1.3));
+      colonneChanfreinee(c.solide, r, g0, g1, 0.7, h + haut, -0.45, 0.45, 0.06, opts.pilier);
+    } else {
+      boite(c.solide, r, s * w - 1.1, s * w + 1.1, -0.1, 0.7, -0.9, 0.9, MARQUE.encre);
+      boite(c.solide, r, g0, g1, 0.7, h + haut, -0.45, 0.45, opts.pilier);
+    }
     const inner = s > 0 ? g0 - 0.01 : g1 + 0.01;
     c.solide.quad(pt(r, inner, 0.7, -0.46), pt(r, inner, 0.7, 0.46), pt(r, inner, h, 0.46), pt(r, inner, h, -0.46), opts.bande[0]);
     livree(c.solide, r, g0, g1, h - 3.2, h - 0.6, -0.46, 0.35, opts.bande[0], opts.bande[1]);
@@ -180,7 +187,7 @@ function portiqueCartouche(c: Calques, b: Block, q: number, texte: string, opts:
 }
 
 export function portiqueDepart(c: Calques, x: Contexte, b: Block, q: number) {
-  const { r } = portiqueCartouche(c, b, q, "DÉPART", { pilier: MARQUE.asphalte, bande: [MARQUE.livree, MARQUE.asphalte], fond: MARQUE.creme, encre: MARQUE.asphalte, livree: true });
+  const { r } = portiqueCartouche(c, b, q, "DÉPART", { pilier: MARQUE.asphalte, bande: [MARQUE.livree, MARQUE.asphalte], fond: MARQUE.creme, encre: MARQUE.asphalte, livree: true, fin: !!x.reglages?.geometrie });
   // Ligne de départ : livrée et crème, puis les deux cases de la grille (crochets) autour de la place de départ (q = 8).
   const hw = blockHalfWidth(b, q);
   sol(c.route, r, -hw, hw, -0.5, 0.5, 0.05, MARQUE.creme);
@@ -190,14 +197,12 @@ export function portiqueDepart(c: Calques, x: Contexte, b: Block, q: number) {
     sol(c.route, r8, s * 1.4 - 0.2, s * 1.4 + 0.2, -2.4, 3.2, 0.05, MARQUE.creme);
   }
   sol(c.route, r8, -1.6, 1.6, 3.0, 3.4, 0.05, MARQUE.creme);
-  void x;
 }
 
 export function arrivee(c: Calques, x: Contexte, b: Block, q: number) {
-  const { r } = portiqueCartouche(c, b, q, "ARRIVÉE", { pilier: MARQUE.encre, bande: [MARQUE.creme, MARQUE.encre], fond: MARQUE.creme, encre: MARQUE.encre, damier: true });
+  const { r } = portiqueCartouche(c, b, q, "ARRIVÉE", { pilier: MARQUE.encre, bande: [MARQUE.creme, MARQUE.encre], fond: MARQUE.creme, encre: MARQUE.encre, damier: true, fin: !!x.reglages?.geometrie });
   const hw = blockHalfWidth(b, q);
   damierSol(c.route, r, hw, 2, 2, 0.05, MARQUE.encre, MARQUE.creme);
-  void x;
 }
 
 export function porte(c: Calques, x: Contexte, b: Block) {

@@ -17,21 +17,21 @@ import { ambianceDOrigine } from "./composer";
 
 // --- Matières (couleurs de base : B varie les matériaux par la couleur et la forme, sur un seul matériau) ----------------------------------
 
-const METAL = 0x8a9099;
-const METAL_SOMBRE = 0x4a4f58;
-const CAOUTCHOUC = 0x1d1d20;
+export const METAL = 0x8a9099;
+export const METAL_SOMBRE = 0x4a4f58;
+export const CAOUTCHOUC = 0x1d1d20;
 const BETON = 0xb9bbbe;
 const BOIS = 0x8a5a36;
 const BOIS_CLAIR = 0xb88454;
-const PEAU = [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69] as const;
+export const PEAU = [0xf1c27d, 0xc68642, 0x8d5524, 0xe0ac69] as const;
 
 // --- L'atlas des affiches : sponsors fictifs et panneaux, dessinés une fois dans un canvas (aucun fichier) --------------------------------
 
 /** Les cases de l'atlas (4 colonnes × 4 rangées de 256 × 128). */
 export const LOGOS = ["dujour", "volta", "mistral", "pneusroc", "gazole", "eclair", "boulon", "cafe", "chrono", "distance2", "distance1", "col", "glacier", "taxi", "motel", "rodeo"] as const;
-type Logo = (typeof LOGOS)[number];
+export type Logo = (typeof LOGOS)[number];
 
-function rect(logo: Logo): [number, number, number, number] {
+export function rect(logo: Logo): [number, number, number, number] {
   const i = LOGOS.indexOf(logo);
   const cx = i % 4;
   const cy = Math.floor(i / 4);
@@ -184,7 +184,7 @@ export function atlasB(): CanvasTexture {
 }
 
 /** Les sponsors d'un thème : ceux qu'on voit sur ses panneaux. */
-const SPONSORS: Record<PaletteName, Logo[]> = {
+export const SPONSORS: Record<PaletteName, Logo[]> = {
   stade: ["dujour", "volta", "mistral", "pneusroc", "eclair", "boulon"],
   desert: ["pneusroc", "gazole", "rodeo", "volta", "dujour"],
   neige: ["glacier", "mistral", "dujour", "volta"],
@@ -262,7 +262,7 @@ function panneauPub(c: Calques, r: Repere, w: number, h: number, logo: Logo, hau
 }
 
 /** Une rangée de spectateurs (deux boîtes chacun : corps de couleur, tête), sur une estrade basse. */
-function foule(g: Builder, r: Repere, n: number, largeur: number, rnd: () => number, estrade = true) {
+export function foule(g: Builder, r: Repere, n: number, largeur: number, rnd: () => number, estrade = true) {
   if (estrade) boite(g, r, -largeur / 2 - 0.3, largeur / 2 + 0.3, 0, 0.4, -0.8, 0.8, BOIS_CLAIR);
   const couleurs = [MARQUE.livree, 0x2e7dff, MARQUE.moutarde, 0xf4f4f4, 0x21a35a, 0xc084fc, 0xe8283a];
   for (let i = 0; i < n; i++) {
@@ -405,8 +405,16 @@ const JERSEY: Profil = [[0, 0], [0, 0.14], [0.2, 0.42], [0.3, 1.4], [0.55, 1.4],
 export type RebordB = "beton" | "pneus" | "bois" | "roche" | "glissiere" | "neige";
 export const REBORDS_B: Record<PaletteName, RebordB> = { stade: "beton", nuit: "beton", ville: "beton", neon: "beton", desert: "pneus", campagne: "bois", canyon: "roche", alpin: "glissiere", neige: "neige" };
 
+/**
+ * Options d'un rebord (retouche 38b). `leger` (palier 1) : le mur de pneus en deux pans par pile et un dessus commun (≈ 8 triangles par pile
+ * au lieu de 15 : le Rallye était le thème le plus chargé du mélange, ×2,3 l'existant).
+ */
+export interface OptionsRebordB {
+  leger?: boolean;
+}
+
 /** Le rebord de B pour un thème. Le mur de la simulation reste là où il est (au bord de la route) : seul l'habillage change. */
-export function rebordB(nom: PaletteName, sorte: RebordB = REBORDS_B[nom]) {
+export function rebordB(nom: PaletteName, sorte: RebordB = REBORDS_B[nom], opts: OptionsRebordB = {}) {
   return (g: Builder, t: TronconRebord, lum?: Builder) => {
     const h = t.hauteur;
     const ox = t.dehors[0];
@@ -423,6 +431,30 @@ export function rebordB(nom: PaletteName, sorte: RebordB = REBORDS_B[nom]) {
           lum.quad([q[0] - r.f[0] * 0.15, q[1] - 0.08, q[2] - r.f[2] * 0.15], [q[0] + r.f[0] * 0.15, q[1] - 0.08, q[2] + r.f[2] * 0.15], [q[0] + r.f[0] * 0.15, q[1] + 0.08, q[2] + r.f[2] * 0.15], [q[0] - r.f[0] * 0.15, q[1] + 0.08, q[2] - r.f[2] * 0.15], 0xffb000);
         }
       }
+    } else if (sorte === "pneus" && opts.leger) {
+      // Mur de pneus léger (retouche 38b, palier 1) : deux pans par pile (un « V » tourné vers la route, qui se lit rond en ombrage plat), le bas
+      // et le haut d'un seul tenant quand le haut est noir, un dessus en un quadrilatère. 6 triangles par pile noire, 10 par pile au haut blanc.
+      for (const { p, n } of jalons(t, 1.1)) {
+        const c: V3 = [p[0] + ox * 0.5, p[1], p[2] + oz * 0.5];
+        const pan = (k: number): V3 => {
+          const a = Math.atan2(-oz, -ox) + ((k - 1) * Math.PI) / 2.4;
+          return [c[0] + Math.cos(a) * 0.5, c[1], c[2] + Math.sin(a) * 0.5];
+        };
+        const blanc = n % 2 === 0;
+        const haut = blanc ? t.couleurs[1] : CAOUTCHOUC;
+        const pans = [pan(0), pan(1), pan(2)];
+        for (let k = 0; k < 2; k++) {
+          const a0 = pans[k]!;
+          const a1 = pans[k + 1]!;
+          if (blanc) {
+            g.quad(a0, a1, [a1[0], a1[1] + 0.85, a1[2]], [a0[0], a0[1] + 0.85, a0[2]], CAOUTCHOUC);
+            g.quad([a0[0], a0[1] + 0.85, a0[2]], [a1[0], a1[1] + 0.85, a1[2]], [a1[0], a1[1] + h, a1[2]], [a0[0], a0[1] + h, a0[2]], haut);
+          } else g.quad(a0, a1, [a1[0], a1[1] + h, a1[2]], [a0[0], a0[1] + h, a0[2]], CAOUTCHOUC);
+        }
+        const d = (q: V3): V3 => [q[0], q[1] + h, q[2]];
+        g.quad(d(pans[0]!), d(pans[1]!), d(pans[2]!), [c[0] + ox * 0.5, c[1] + h, c[2] + oz * 0.5], shade(haut, 0.85));
+      }
+      extruder(g, t, [[0.0, 0.3], [0.0, 1.0]], 4, (n) => (n % 2 === 0 ? 0x2a2a30 : 0x222226));
     } else if (sorte === "pneus") {
       // Mur de pneus : une pile tous les 1,1 m (seule la moitié tournée vers la route est dessinée : trois pans, deux tons), une sur deux au haut
       // peint en blanc, et la courroie de caoutchouc devant. ≈ 15 triangles par pile.
@@ -478,8 +510,8 @@ export function rebordB(nom: PaletteName, sorte: RebordB = REBORDS_B[nom]) {
   };
 }
 
-export function routeB(nom: PaletteName, sorte: RebordB = REBORDS_B[nom]): StyleRoute {
-  const rebord = rebordB(nom, sorte);
+export function routeB(nom: PaletteName, sorte: RebordB = REBORDS_B[nom], opts: OptionsRebordB = {}): StyleRoute {
+  const rebord = rebordB(nom, sorte, opts);
   return {
     ...STYLE_ORIGINE,
     rebord(g, t, _pal, lum) {
@@ -583,13 +615,26 @@ export function porteB(c: Calques, x: Contexte, b: Block) {
   const w = ecart(b, q) - 0.2;
   const H = 7.5;
   const col = x.pal.checkpoint;
-  const n = 16;
+  // Retouche 38b, palier 2 (géométrie) : l'arche plus ronde (28 boudins à 12 pans au lieu de 16 à 8), tenue par quatre cordes d'ancrage.
+  const fin = !!x.reglages?.geometrie;
+  const n = fin ? 28 : 16;
   let prev = pt(r, w, 0, 0);
   for (let i = 1; i <= n; i++) {
     const a = (i / n) * Math.PI;
     const p = pt(r, Math.cos(a) * w, Math.sin(a) * H, 0);
-    tube(c.solide, prev, p, 0.85, 8, i % 3 === 0 ? 0xffffff : col);
+    // Bandes blanches aux mêmes endroits quel que soit le nombre de boudins (une sur trois des 16 d'origine).
+    tube(c.solide, prev, p, 0.85, fin ? 12 : 8, Math.floor(((i - 0.5) / n) * 16) % 3 === 2 ? 0xffffff : col);
     prev = p;
+  }
+  if (fin) {
+    for (const s of [-1, 1]) {
+      for (const a of [-1, 1]) {
+        const haut = pt(r, s * Math.cos(Math.PI / 3) * w, Math.sin(Math.PI / 3) * H, a * 0.6);
+        const bas = pt(r, s * (w + 1.2), 0, a * 4.5);
+        tube(c.solide, haut, bas, 0.02, 3, 0xf2f2f2);
+        c.solide.box(bas[0] - 0.08, bas[1], bas[2] - 0.08, bas[0] + 0.08, bas[1] + 0.25, bas[2] + 0.08, MARQUE.livree);
+      }
+    }
   }
   for (const s of [-1, 1]) {
     boiteChanfreinee(c.solide, r, s * w - 1, s * w + 1, 0, 0.6, -1, 1, 0.12, CAOUTCHOUC);

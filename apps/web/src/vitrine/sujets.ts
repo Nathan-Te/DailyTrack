@@ -166,7 +166,7 @@ export const THEMES_VITRINE: SujetTheme[] = THEME_NAMES.map((theme) => {
 });
 
 /** Points de vue d'une section de thème : la poursuite avant le premier virage (comme les captures du lot 23), le départ, une vue d'ensemble. */
-export type PointDeVue = "virage" | "depart" | "ensemble";
+export type PointDeVue = "virage" | "depart" | "ensemble" | "asphalte";
 
 export function poseTheme(t: Track, vue: PointDeVue): Pose {
   if (vue === "depart") return poursuite(voitureSurBloc(t.blocks[0]!, 8));
@@ -176,6 +176,8 @@ export function poseTheme(t: Track, vue: PointDeVue): Pose {
   if (vue === "virage") return poursuite(v);
   const s = Math.sin(v.yaw);
   const c = Math.cos(v.yaw);
+  // 38c : l'asphalte de près (la matière), à hauteur d'homme, derrière la voiture et sur le côté, le regard sur la route devant elle.
+  if (vue === "asphalte") return { voiture: v, camera: new Vector3(v.x - s * 4 + c * 2.2, v.y + 1.5, v.z - c * 4 - s * 2.2), cible: new Vector3(v.x + s * 6, v.y, v.z + c * 6), fov: 50 };
   const cible = new Vector3(v.x + s * 30, v.y, v.z + c * 30);
   return { voiture: v, camera: new Vector3(v.x - s * 40 + c * 25, v.y + 38, v.z - c * 40 - s * 25), cible, fov: 60 };
 }

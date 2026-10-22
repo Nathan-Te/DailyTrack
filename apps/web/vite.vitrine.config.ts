@@ -20,7 +20,7 @@ function poidsDesDirections(): Plugin {
       const gz = (code: string) => gzipSync(code).length;
       const poids: Record<string, { fichier: string; octets: number }> = {};
       for (const m of morceaux) {
-        const nom = /^assets\/(direction[A-Z]|socle)-/.exec(m.fileName)?.[1];
+        const nom = /^assets\/(direction[A-Z]|socle|palier1|finition|matiereDetaillee|matiere|reflets|lumiere3|vie|post)-/.exec(m.fileName)?.[1];
         // Un groupe peut donner plusieurs morceaux (C : directionC.ts et textures.ts) : leurs poids s'additionnent.
         const avant = nom ? poids[nom] : undefined;
         if (nom) poids[nom] = { fichier: avant ? `${avant.fichier} + ${m.fileName}` : m.fileName, octets: (avant?.octets ?? 0) + gz(m.code) };
@@ -50,9 +50,15 @@ export default defineConfig({
         codeSplitting: {
           includeDependenciesRecursively: false,
           groups: [
+            // Retouche 38b : les passes de post-traitement de three.js vont avec `post.ts` (elles ne sont pas dans le jeu : elles comptent).
+            { name: "post", test: /node_modules[\\/]three[\\/]examples[\\/]|src[\\/]scene[\\/]post\.ts$/, priority: 5 },
             { name: "three", test: /node_modules[\\/]three[\\/]/, priority: 4 },
             { name: (id: string) => /src[\\/]scene[\\/](direction[A-Z])\.ts$/.exec(id)?.[1] ?? null, debugName: "directions", priority: 3 },
             { name: "directionC", test: /src[\\/]scene[\\/]textures\.ts$/, priority: 3 },
+            // Retouche 38b : le palier 1 (compositeur des paliers, direction P) et chaque famille de pas dans leur morceau.
+            { name: "palier1", test: /src[\\/]scene[\\/](composerPalier|palier1|memoire)\.ts$/, priority: 3 },
+            { name: (id: string) => /src[\\/]scene[\\/](finition|matiereDetaillee|matiere|reflets|lumiere3|vie)\.ts$/.exec(id)?.[1] ?? null, debugName: "pas", priority: 3 },
+            { name: "matiere", test: /src[\\/]scene[\\/]bruit\.ts$/, priority: 3 },
             { name: "socle", test: /src[\\/]scene[\\/]/, priority: 2 },
           ],
         },

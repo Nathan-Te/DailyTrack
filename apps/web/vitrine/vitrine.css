@@ -256,3 +256,186 @@ thead th {
   font-family: var(--dj-police-chiffres);
   font-size: var(--dj-taille-12);
 }
+
+/* Retouche 38b — deux planches (paliers, directions), le panneau des réglages, le tableau des pas, la vue en mouvement. */
+body[data-planche="paliers"] .pour-directions,
+body[data-planche="directions"] .pour-paliers {
+  display: none;
+}
+.planches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+.planche {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--dj-rayon-bouton);
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--track-coque);
+  color: var(--track-texte);
+  text-decoration: none;
+  font-weight: 700;
+}
+body[data-planche="paliers"] .planche--paliers,
+body[data-planche="directions"] .planche--directions {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+.action {
+  margin: 4px 0 8px;
+}
+.segment--action {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+
+.reglages {
+  margin: 16px 0;
+  background: var(--track-coque);
+  border: var(--dj-trait) solid var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  border-radius: var(--dj-rayon-etiquette);
+  padding: 10px 12px;
+}
+.reglages__resume {
+  margin: 4px 0 8px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+  color: var(--dj-ambre);
+}
+.reglages__famille {
+  border: 0;
+  border-top: 1px solid var(--track-asphalte);
+  margin: 6px 0 0;
+  padding: 6px 0 0;
+  display: grid;
+  gap: 2px 14px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 900px) {
+  .reglages__famille {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.reglages__famille legend {
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 2px;
+}
+.reglages__pas {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: var(--dj-taille-14);
+}
+.reglages__pas input {
+  width: 24px;
+  height: 24px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--track-livree);
+}
+.reglages__texte {
+  color: var(--track-texte-doux);
+}
+.reglages__texte strong {
+  color: var(--track-texte);
+}
+.reglages__charte {
+  color: var(--dj-ambre);
+}
+
+#mouvement {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 8px;
+  border: 0;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  box-sizing: border-box;
+}
+#mouvement[open] {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+#mouvement::backdrop {
+  background: var(--track-asphalte);
+}
+.mouvement__tete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+.mouvement__tete h2 {
+  flex: 1 1 100%;
+  margin: 0;
+}
+@media (min-width: 900px) {
+  .mouvement__tete h2 {
+    flex: 0 1 auto;
+  }
+}
+.mouvement__cadre {
+  position: relative;
+  flex: none;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 72dvh;
+  margin: 8px 0;
+  background: var(--track-piste);
+}
+.mouvement__cadre canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+/* Le compteur d'images, en surimpression (court) ; le détail des chiffres sous l'image. */
+.mouvement__ips {
+  position: absolute;
+  left: 6px;
+  top: 6px;
+  margin: 0;
+  padding: 2px 8px;
+  background: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-etiquette);
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-14);
+}
+.mouvement__ips:empty {
+  display: none;
+}
+.mouvement__compteur {
+  margin: 0 0 6px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+}
+.mouvement__reglages summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+/* Téléphone en paysage : l'image prend la hauteur, les réglages se replient en dessous. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .mouvement__tete h2 {
+    display: none;
+  }
+  .mouvement__cadre {
+    max-height: calc(100dvh - 70px);
+  }
+}

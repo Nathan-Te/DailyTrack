@@ -13,7 +13,7 @@ const VARIANTES = ["existant", "A", "B", "C", "M"] as const;
 
 test("vitrine : coût de chaque direction au profil téléphone", async ({ page }) => {
   await page.setViewportSize({ width: 844, height: 390 });
-  await page.goto("/vitrine/");
+  await page.goto("/vitrine/?planche=directions");
   await page.waitForFunction(() => window.__vitrine);
   const sujets = (await page.evaluate(() => [...new Set(window.__vitrine!.vues().map((v) => v.sujet))])).filter((s) => s.startsWith("theme-"));
   // Les circuits des thèmes et les morceaux des directions d'abord, sans ralentissement (ce n'est pas ce qu'on mesure).

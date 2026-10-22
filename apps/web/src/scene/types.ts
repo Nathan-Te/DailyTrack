@@ -8,6 +8,8 @@ import type { SignSpec } from "../signage";
 import type { Look, Palette } from "../trackMesh";
 import type { StyleRoute } from "./route";
 import type { Affiches } from "./outils";
+import type { Drapeaux } from "./finition";
+import type { Reglages } from "./paliers";
 
 /** O : l'existant réécrit en direction (base et contrôle) ; A, B : les directions ; M : le mélange recommandé. C est un traitement de la lumière et des
  * matières (`directionC.ts`), appliqué à une scène déjà construite. */
@@ -34,6 +36,16 @@ export interface Calques {
   bandeaux: Mesh[];
   /** Vue aérienne (miniatures) : pas de bandeaux de texte. */
   aerien: boolean;
+  /** Retouche 38b : les rebords à part (ils projettent l'ombre de contact sur la piste ; la route, non). Absent : dans `route` (lot 38). */
+  rebords?: Builder;
+  /** Retouche 38b : drapeaux et banderoles souples (palier 2 : figés dans `solide` ; palier 3 : animés, un maillage). */
+  drapeaux?: Drapeaux;
+  /** Retouche 38b : écrans à diodes (palier 3, pas « écrans ») — quadrilatères dans le ruban des écrans (`vie.ts`). */
+  ecrans?: Affiches;
+  /** Retouche 38b : le chronomètre à diodes du portique de départ (palier 3, pas « écrans ») — sa propre texture, mise à jour en course. */
+  chrono?: Affiches;
+  /** Retouche 38b : spectateurs des tribunes (palier 3, pas « foule ») — position (pied), cap, couleur du maillot. */
+  foule?: { x: number; y: number; z: number; cap: number; couleur: number }[];
 }
 
 /** Le thème vu par une direction : sa palette (celle du jeu, retouchée par la direction), son nom, la graine du décor. */
@@ -43,6 +55,10 @@ export interface Contexte {
   look: Look;
   track: Track;
   floorY: number;
+  /** Retouche 38b : les pas du palier allumés (absent : lot 38, aucun). Une fonction de construction lit ce dont elle a besoin. */
+  reglages?: Reglages;
+  /** Retouche 38b : la suite de la variété, **distincte de celle du décor** (le décor reste à sa place quand on la coupe). */
+  varie?: () => number;
 }
 
 /** Ciel et lumière d'un thème pour une direction. */
