@@ -557,6 +557,40 @@
       "exigence": 4,
       "press": 9
      }
+    },
+    {
+     "grid": "9908f749",
+     "arret": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NACKAlYZWlnFATmWASpEPS4xZmT6Bg",
+      "ticks": 283,
+      "entryTick": 0,
+      "exitTick": 276,
+      "fastest": 276,
+      "rapide": 269,
+      "gigue": [
+       1000,
+       975,
+       835
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 10
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NAT6AvYBIghUHkmNAYQBWha1AZgBRIII",
+      "ticks": 327,
+      "entryTick": 17,
+      "exitTick": 320,
+      "fastest": 309,
+      "gigue": [
+       870,
+       705,
+       610
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 8
+     }
     }
    ]
   },
@@ -5767,6 +5801,41 @@
       "exigence": 3,
       "press": 8
      }
+    },
+    {
+     "grid": "0d9dc56b",
+     "arret": {
+      "code": "AQMYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AC7yAi6qAvAEGdICRvoCsAGpAdICNqoDuAKZAZoChgGyA6YF6gE",
+      "ticks": 691,
+      "entryTick": 0,
+      "exitTick": 684,
+      "fastest": 684,
+      "rapide": 656,
+      "gigue": [
+       980,
+       895,
+       640
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1BKIBbrIDyAGyAi76AvgEiQHKAl7iAvAFkQGaAm76A2bKBQ",
+      "ticks": 718,
+      "entryTick": 17,
+      "exitTick": 712,
+      "fastest": 695,
+      "rapide": 635,
+      "gigue": [
+       1000,
+       985,
+       850
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
     }
    ]
   },
@@ -10108,6 +10177,39 @@
       "raccord": 1000,
       "exigence": 1,
       "press": 64
+     }
+    },
+    {
+     "grid": "69c1ed68",
+     "arret": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjYAqgTGAiq2AzqOB0I",
+      "ticks": 296,
+      "entryTick": 0,
+      "exitTick": 290,
+      "fastest": 290,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 40
+     },
+     "elan": {
+      "code": "AQMRbW9kdWxlOnNjaWUtc29sOjYE2gPWAjK2AzLmBlo",
+      "ticks": 286,
+      "entryTick": 17,
+      "exitTick": 279,
+      "fastest": 262,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 42
      }
     }
    ]

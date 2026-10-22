@@ -65,6 +65,17 @@ export const SHAKE_DEFAULTS = {
 export type ShakeKey = keyof typeof SHAKE_DEFAULTS;
 export const SHAKES: Record<ShakeKey, number> = { ...SHAKE_DEFAULTS };
 
+/**
+ * Lot 17, le carnage lisible : pendant le carnage, les éléments qui suivent l'horloge (scies mobiles, clignotants de la nuit, rafales de la
+ * forêt) sont dessinés à cette opacité (35 % : on les voit toujours, mais on lit les morts d'abord). Les dangers fixes et le décor ne changent
+ * pas ; hors carnage, tout est à 100 %. Réglable dans `?debug&tune` (section Caméra et secousses).
+ */
+export const CARNAGE_DEFAULTS = {
+  clockOpacity: 0.35,
+};
+export type CarnageKey = keyof typeof CARNAGE_DEFAULTS;
+export const CARNAGE: Record<CarnageKey, number> = { ...CARNAGE_DEFAULTS };
+
 /** Centre de l'image pour que le niveau reste dans le cadre (centré s'il est plus petit que l'image), sur un axe. */
 export function clampAxis(min: number, max: number, half: number, center: number): number {
   if (half * 2 >= max - min) return (min + max) / 2;

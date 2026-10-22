@@ -28,7 +28,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   paliers: 17 6                                 rangées (de la grille) du **sol** à l'entrée, puis à la sortie
 //   repeter: haut rangees 6-7                     un paramètre nommé et une plage de rangées (ou de `colonnes`) de la grille
 //   variante: haut=2 cycle=180 +plafond:pics      une valeur pour chaque paramètre, et jusqu'à deux mutateurs (`+nom` ou `+nom:argument`) ;
-//                                                 de 1 à `MAX_VARIANTS` (6) variantes
+//                                                 de 1 à `MAX_VARIANTS` (7) variantes
 //   grille:                                       puis la grille (caractères de `level.ts`, sans `S`, `F` ni `C`), une ligne vide,
 //   scie <id> <rayon> <cycle> <mode> <c,r>…       puis le bloc annexe : des scies (la section est implicite)
 //   clignote <cycle> <solide> <décalage>          (lot 12) le cycle des blocs clignotants `b` `d` du morceau (la section est implicite ; `{param}` permis)
@@ -90,7 +90,7 @@ export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde
 export type MutatorName = (typeof MUTATORS)[number];
 /** Au plus ce nombre de mutateurs par variante, et de variantes par morceau (lot 7). */
 export const MAX_MUTATIONS = 2;
-export const MAX_VARIANTS = 6;
+export const MAX_VARIANTS = 7;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
 export const MODULE_ENTRIES = ["arret", "elan"] as const;
 export type ModuleEntry = (typeof MODULE_ENTRIES)[number];

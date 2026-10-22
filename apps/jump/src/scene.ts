@@ -14,8 +14,6 @@ import {
   OrthographicCamera,
   PlaneGeometry,
   Scene,
-  Shape,
-  ShapeGeometry,
   ShaderMaterial,
   Vector3,
   WebGLRenderer,
@@ -53,6 +51,7 @@ import { BELT_FRAGMENT, BELT_VERTEX, beltRuns, beltTime, buildBeltArt, iceRuns }
 import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
 import { createDynamicBlocks, type DynamicStats } from "./dynamicArt";
 import { createWindArt, type WindStats } from "./windArt";
+import { createSawArt } from "./sawArt";
 import { SLOW_DEBUG, SLOW_MARK, slowMarkQuads, type SlowDebugPath } from "./slowRoute";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
@@ -112,6 +111,9 @@ export interface SceneStats {
   layersShown: number;
   parallaxTriangles: number;
   buildMs: number;
+  /** Lot 17 : l'estompage des dangers qui suivent l'horloge à la dernière image (1 : aucun) et l'opacité dessinée de chaque scie (1 : fixe ou normale). */
+  clockFade: number;
+  sawOpacity: readonly number[];
 }
 
 /** Une `BufferGeometry` d'un tampon pur (positions, couleurs par sommet, indices). */
@@ -173,6 +175,11 @@ export interface JumpScene {
   flashBlocks(amount: number): void;
   /** Lot 12 : état des blocs clignotants et alternés à la dernière image (null : le niveau n'en a pas). */
   readonly blocks: DynamicStats | null;
+  /**
+   * Lot 17 : l'opacité des éléments qui suivent l'horloge (scies mobiles, blocs clignotants, rafales), 1 = normal. Le carnage la baisse : on lit
+   * les morts avant les dangers, dont la phase est celle du héros seul. Les dangers fixes (pics, scies fixes) et le décor ne changent jamais.
+   */
+  clockFade: number;
   /** Lot 13 : part des particules du vent (réglages : 0 = flèches fixes à la place), et l'état du vent à la dernière image (null : aucune zone). */
   windParticles: number;
   readonly wind: WindStats | null;
@@ -191,21 +198,6 @@ export interface JumpScene {
 const T = UNITS_PER_TILE;
 const PW = PLAYER_WIDTH / T;
 const PH = PLAYER_HEIGHT / T;
-
-/** Disque denté : `teeth` dents, corps de rayon `body`, pointes à `tip` (tuiles). */
-function sawShape(body: number, tip: number, teeth: number): ShapeGeometry {
-  const s = new Shape();
-  const n = teeth * 2;
-  for (let i = 0; i <= n; i++) {
-    const a = (i / n) * Math.PI * 2;
-    const r = i % 2 === 0 ? body : tip;
-    const x = Math.cos(a) * r;
-    const y = Math.sin(a) * r;
-    if (i === 0) s.moveTo(x, y);
-    else s.lineTo(x, y);
-  }
-  return new ShapeGeometry(s);
-}
 
 /** Pics : un triangle franc par tuile, pointe selon l'orientation (coordonnées du monde, y vers le haut). */
 function spikeTriangles(level: Level, grow = 0): BufferGeometry {
@@ -419,37 +411,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     }
   }
 
-  // ——— Scies : disques dentés qui tournent (affichage), trajets des scies mobiles en pointillés discrets ———
-  const sawMat = new MeshBasicMaterial({ color: palette.hazard });
-  const hubMat = new MeshBasicMaterial({ color: HAZARD_OUTLINE });
-  const sawRimMat = new MeshBasicMaterial({ color: HAZARD_OUTLINE });
-  const saws = level.saws.map((saw) => {
-    const body = saw.radius / T;
-    const tip = body + Math.min(0.14, body * 0.25);
-    const g = new Group();
-    const teeth = Math.max(8, Math.round(body * 18));
-    const disc = new Mesh(sawShape(body, tip, teeth), sawMat);
-    const hub = new Mesh(new PlaneGeometry(body * 0.45, body * 0.45), hubMat);
-    hub.position.z = 0.01;
-    disc.add(hub);
-    // Lot 9 : cerne sombre derrière la scie (dents comprises), comme les pics.
-    const rim = new Mesh(sawShape(body + 0.07, tip + 0.07, teeth), sawRimMat);
-    rim.position.z = -0.01;
-    disc.add(rim);
-    g.add(disc);
-    g.position.z = 0.15;
-    world.add(g);
-    return { g, disc };
-  });
-  const pathMat = new LineDashedMaterial({ color: palette.hazard, dashSize: 0.25, gapSize: 0.3, transparent: true, opacity: 0.45 });
-  for (const saw of level.saws) {
-    if (saw.cycle === 0) continue;
-    const pts = saw.points.map((p) => new Vector3(p.x / T, -p.y / T, 0.01));
-    if (saw.mode === "boucle") pts.push(pts[0]!.clone());
-    const line = new Line(new BufferGeometry().setFromPoints(pts), pathMat);
-    line.computeLineDistances();
-    world.add(line);
-  }
+  // ——— Scies : disques dentés qui tournent (affichage), trajets des scies mobiles en pointillés discrets (`sawArt.ts`) ———
+  const sawArt = createSawArt(world, level, { body: palette.hazard, outline: HAZARD_OUTLINE });
+  const saws = sawArt.saws;
 
   // ——— Arrivée : une tuile cerclée qui pulse, un mât et un grand drapeau en damier ———
   const finishCell = cellOrigin(level.finish);
@@ -714,12 +678,15 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     layersShown: visibleLayers(layers.length, detail.parallaxLite),
     parallaxTriangles,
     buildMs: performance.now() - t0,
+    clockFade: 1,
+    sawOpacity: sawArt.opacity,
   };
 
   return {
     renderer,
     world,
     zoom: 1,
+    clockFade: 1,
     animate: true,
     frame,
     theme,
@@ -799,6 +766,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       beltMat.uniforms.uTime!.value = phase;
       stats.beltPhase = phase;
       // Scies : positions de la simulation, interpolées ; rotation au rythme du chrono de l'essai (immobiles tant que le monde attend).
+      const fade = this.clockFade;
+      sawArt.setFade(fade);
+      stats.clockFade = fade;
       const a = sawCenters(level, prev);
       const b = sawCenters(level, state);
       const time = prev.time + (state.time - prev.time) * alpha;
@@ -815,9 +785,9 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
         if (hitSaws[k]) hitSaws[k]!.position.set(x, y, 0.5);
       }
       // Lot 12 : blocs clignotants et alternés.
-      dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH });
+      dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH }, fade);
       // Lot 13 : le vent (particules si les réglages en gardent et que le mouvement n'est pas réduit, sinon flèches fixes).
-      windArt?.update(state, clock, this.windParticles, animate, renderer.domElement.height / Math.max(1, 2 * frame.halfH));
+      windArt?.update(state, clock, this.windParticles, animate, renderer.domElement.height / Math.max(1, 2 * frame.halfH), fade);
       // Blocs friables : tremblement pendant la minuterie, disparus une fois tombés.
       for (let k = 0; k < crumbles.length; k++) {
         const g = crumbles[k]!;

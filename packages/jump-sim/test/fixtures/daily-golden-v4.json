@@ -1,9 +1,9 @@
 {
   "jumpSimVersion": 4,
-  "jumpGeneratorVersion": 11,
+  "jumpGeneratorVersion": 12,
   "days": {
     "2026-10-16": {
-      "id": "jour-2026-10-16-g11",
+      "id": "jour-2026-10-16-g12",
       "number": 1,
       "hash": "7d5aafdd",
       "width": 277,
@@ -38,10 +38,10 @@
         ]
       },
       "chosen": 1,
-      "code": "AQQTam91ci0yMDI2LTEwLTE2LWcxMQDaAeYEWv4CIo4B2gemAyLkAULkAUKEAWCqB6YFMpYBkgjmBCrGAdICLooEhgGiAzaaBW6CCXaaCMYEMtYOKjZoLWLNAYABkgE4QjCKAkaiBUDiAS7qAi6KA0aSDTCVAiA1ngEaZk0gPU6KDFQ9LBnmBFq2CNoBNpoGbpoDLrIOIMECgALCAiRFigM"
+      "code": "AQQTam91ci0yMDI2LTEwLTE2LWcxMgDaAeYEWv4CIo4B2gemAyLkAULkAUKEAWCqB6YFMpYBkgjmBCrGAdICLooEhgGiAzaaBW6CCXaaCMYEMtYOKjZoLWLNAYABkgE4QjCKAkaiBUDiAS7qAi6KA0aSDTCVAiA1ngEaZk0gPU6KDFQ9LBnmBFq2CNoBNpoGbpoDLrIOIMECgALCAiRFigM"
     },
     "2026-10-25": {
-      "id": "jour-2026-10-25-g11",
+      "id": "jour-2026-10-25-g12",
       "number": 10,
       "hash": "3738466a",
       "width": 305,
@@ -75,10 +75,10 @@
         ]
       },
       "chosen": 2,
-      "code": "AQQTam91ci0yMDI2LTEwLTI1LWcxMQDiAXayBIYBwgSGAfoFduoELtIDdvoFVFUMKe4EKpYHugHOAdoD9gcKhgGiBEaKFC6yDj76CjaiA9ABggF4wgFGWIIBIEFiRpIF5gQihgH6Ao4B2gKuAfIClgHCAt4EGo4BwgL2BBqmCIIGOJUCGF1-GmZVGE02og3UBbYDGk5dyALqA05EgQG0AboH"
+      "code": "AQQTam91ci0yMDI2LTEwLTI1LWcxMgDiAXayBIYBwgSGAfoFduoELtIDdvoFVFUMKe4EKpYHugHOAdoD9gcKhgGiBEaKFC6yDj76CjaiA9ABggF4wgFGWIIBIEFiRpIF5gQihgH6Ao4B2gKuAfIClgHCAt4EGo4BwgL2BBqmCIIGOJUCGF1-GmZVGE02og3UBbYDGk5dyALqA05EgQG0AboH"
     },
     "2026-11-03": {
-      "id": "jour-2026-11-03-g11",
+      "id": "jour-2026-11-03-g12",
       "number": 19,
       "hash": "5443d6be",
       "width": 283,
@@ -113,10 +113,10 @@
         ]
       },
       "chosen": 2,
-      "code": "AQQTam91ci0yMDI2LTExLTAzLWcxMQDqBI4BqgPOA0LGA2KGAaIDTpIDNjLGAhhNPj0aLiJuLDFOMoQBQaYBGl4tKIYBIkYhJYYFmgJYLNUBGt4BOt4CQkRuLWGmCJIBVvICYboEtgbaAnbaA94FIrACkQHKAggihgL6A_QBkgU2mgZumgMuogcuUC16KXqoASJQggTuBCKGAfIGPtoKjgQidvoBvgGCA9YImgIuugMu-gIuggM-4gWuAfIDVtoCLuoDLqoCLqoF"
+      "code": "AQQTam91ci0yMDI2LTExLTAzLWcxMgDqBI4BqgPOA0LGA2KGAaIDTpIDNjLGAhhNPj0aLiJuLDFOMoQBQaYBGl4tKIYBIkYhJYYFmgJYLNUBGt4BOt4CQkRuLWGmCJIBVvICYboEtgbaAnbaA94FIrACkQHKAggihgL6A_QBkgU2mgZumgMuogcuUC16KXqoASJQggTuBCKGAfIGPtoKjgQidvoBvgGCA9YImgIuugMu-gIuggM-4gWuAfIDVtoCLuoDLqoCLqoF"
     },
     "2026-12-25": {
-      "id": "jour-2026-12-25-g11",
+      "id": "jour-2026-12-25-g12",
       "number": 71,
       "hash": "094a8db5",
       "width": 286,
@@ -149,10 +149,10 @@
         ]
       },
       "chosen": 1,
-      "code": "AQQTam91ci0yMDI2LTEyLTI1LWcxMQBStgFihgMirgGSAq4DKY4DQjaKCKYFMpYBkgjmBCrGAdICLooEhgGiAzbCBoYDMOYSGi5wLYoBkAGVAaIITsoDfqoELqoELtoDNrIK7gQaLsICPtIGvgcytga6BEaKAn76A27iDNYBGg4kTUQibjpEtQFkGkxu8gr-AyouqgUu4gKeBQ"
+      "code": "AQQTam91ci0yMDI2LTEyLTI1LWcxMgBStgFihgMirgGSAq4DKY4DQjaKCKYFMpYBkgjmBCrGAdICLooEhgGiAzbCBoYDMOYSGi5wLYoBkAGVAaIITsoDfqoELqoELtoDNrIK7gQaLsICPtIGvgcytga6BEaKAn76A27iDNYBGg4kTUQibjpEtQFkGkxu8gr-AyouqgUu4gKeBQ"
     },
     "2027-03-28": {
-      "id": "jour-2027-03-28-g11",
+      "id": "jour-2027-03-28-g12",
       "number": 164,
       "hash": "fb49b454",
       "width": 290,
@@ -186,46 +186,43 @@
         ]
       },
       "chosen": 4,
-      "code": "AQQTam91ci0yMDI3LTAzLTI4LWcxMQCCA0biA0baBtYCMoYDMrYDYIYJmgRWygMu6gIuigHeARpuigMuggMuwgNGigV-6gU-ggOmBYoBLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBaICZtoD5gfKBKYBWK4DMoYDMMYBNYIFRuoEbsIHfpoGdroKLlAteil6qAEiUIIE1gQ"
+      "code": "AQQTam91ci0yMDI3LTAzLTI4LWcxMgCCA0biA0baBtYCMoYDMrYDYIYJmgRWygMu6gIuigHeARpuigMuggMuwgNGigV-6gU-ggOmBYoBLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBaICZtoD5gfKBKYBWK4DMoYDMMYBNYIFRuoEbsIHfpoGdroKLlAteil6qAEiUIIE1gQ"
     },
     "2027-06-21": {
-      "id": "jour-2027-06-21-g11",
+      "id": "jour-2027-06-21-g12",
       "number": 249,
-      "hash": "c93b1c7a",
-      "width": 311,
-      "height": 56,
+      "hash": "073a3efc",
+      "width": 333,
+      "height": 41,
       "pieces": [
-        "cheminee-vide:1",
+        "piliers-scie:1",
         "tapis-lance:1",
-        "ressort-scie:0",
-        "tapis-alternes:2",
-        "iles-friables:2",
-        "escalier-scies:0",
-        "petits-trous:0",
-        "puits:2",
-        "cheminee-scie:0",
-        "ascenseur:5",
+        "demi-tour:0",
+        "ressorts-trous:1",
+        "petits-trous:1",
         "tapis-escalier:3",
-        "pont-friable:4"
+        "escalier-friable:0",
+        "tapis-relais:1",
+        "lucarne:0"
       ],
-      "authorTicks": 3592,
+      "authorTicks": 3561,
       "medals": {
-        "author": 3592,
-        "gold": 3952,
-        "silver": 4670,
-        "bronze": 5748
+        "author": 3561,
+        "gold": 3918,
+        "silver": 4630,
+        "bronze": 5724
       },
       "exigence": {
-        "sum": 25,
-        "rate": 501,
+        "sum": 24,
+        "rate": 485,
         "thirds": [
-          16,
-          23,
-          27
+          18,
+          22,
+          50
         ]
       },
-      "chosen": 2,
-      "code": "AQQTam91ci0yMDI3LTA2LTIxLWcxMQBStgFihgMirgGSAq4DKY4DQjaaCsYBwgYuigwu6gNuugQ2kgT-AtACKq4B-gJ2mgMuugLWBgrmBCKGAfoCjgHaAq4B8gKWAcIC3gQajgHCAvYEGqYICja6BC76AjaiAzayBjZoLWLNAYABkgE4QjCKAkbyC9YBGg4kTUQibjpEtQFkGkxu2gaGAaIERvIFbvoCVuICzgHiBy7KAi6qAi7KBw"
+      "chosen": 4,
+      "code": "AQQTam91ci0yMDI3LTA2LTIxLWcxMgCyBM4EMo4JOr4BMoYGIpYB4gOeAaIDLvIJxgG6BVRVDCnuBCqWB8oBdhp-6hsu4gI-qgN2ugQuugZu-gJW4gLOAcoIdvoCbuoCZooC1gQ63gW6BFbKAy7qAi6KAd4BGm6KAy6CAy7CA0aKBX7qBT6CA6YFkgVGigJ--gNuwgY"
     }
   }
 }

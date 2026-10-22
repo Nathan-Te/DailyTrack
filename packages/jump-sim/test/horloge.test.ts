@@ -51,7 +51,7 @@ import {
   type DailyLevel,
   type Level,
 } from "../src/index";
-import { modulePeriod, phasesOf, phasesSource, type PhasesFile } from "../tools/phasesFile";
+import { modulePeriod, phasesOf, phasesSource, variantOk, type PhasesFile } from "../tools/phasesFile";
 
 // Lot 15 — **horloge unique des dangers**. Dans un niveau en version 4, tout ce qui tourne vaut `f(t + phase)` : rien n'attend le joueur, rien
 // ne revient à zéro à la mort, le chrono part à heure fixe. Le générateur (g10) cale la phase de chaque section sur la référence (elle passe
@@ -222,7 +222,7 @@ describe("lot 15 — validation toutes phases (modules/phases.json, src/phases.t
         expect(entry!.grid, `${def.id} v${v} : relancer phases:modules`).toBe(m.hash);
         expect(entry!.period).toBe(period);
         expect(entry!.phases.map((p) => p.phase)).toEqual(phasesOf(period));
-        expect(entry!.ok).toBe(entry!.phases.every((p) => p.exigence >= 1));
+        expect(entry!.ok).toBe(variantOk(entry!)); // lot 17 : note ≥ 1 et attente ≤ 12 s à chaque phase
         expect(PHASE_REFUSED[def.id]?.includes(v) ?? false).toBe(!entry!.ok);
       });
     }

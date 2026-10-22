@@ -90,14 +90,17 @@ export interface WindStats {
   blowing: boolean[];
   announce: number[];
   arrowOpacity: number[];
+  /** Lot 17 : par zone, l'estompage appliqué à la dernière image (1 : une zone qui souffle toujours, ou aucun estompage ; la part demandée pour une zone en rafale). */
+  fade: number[];
 }
 
 export interface WindArt {
   /**
    * Pose le vent d'après l'état. `particles` : part des particules gardées par les réglages (0 : flèches) ; `motion` : faux avec le mouvement
-   * réduit (flèches) ; `pixelsPerTile` : taille d'une tuile à l'écran (pixels du tampon de dessin).
+   * réduit (flèches) ; `pixelsPerTile` : taille d'une tuile à l'écran (pixels du tampon de dessin). `fade` (lot 17, 1 par défaut) : l'estompage
+   * des zones **en rafale**, qui suivent l'horloge, pendant le carnage (contour, feuilles, flèches) ; une zone qui souffle toujours ne change pas.
    */
-  update(state: Readonly<AttemptState>, clock: number, particles: number, motion: boolean, pixelsPerTile: number): void;
+  update(state: Readonly<AttemptState>, clock: number, particles: number, motion: boolean, pixelsPerTile: number, fade?: number): void;
   readonly stats: WindStats;
 }
 
@@ -126,20 +129,26 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
   group.position.z = 0.012; // devant le décor, derrière les dangers et le personnage
   world.add(group);
 
-  // ——— Contour discret ———
-  const edgePos: number[] = [];
-  for (const z of zones) {
-    const a = z.c0;
-    const b = z.c1 + 1;
-    const c = -z.r0;
-    const d = -(z.r1 + 1);
-    edgePos.push(a, c, 0, b, c, 0, b, c, 0, b, d, 0, b, d, 0, a, d, 0, a, d, 0, a, c, 0);
-  }
-  const edgeGeo = new BufferGeometry();
-  edgeGeo.setAttribute("position", new Float32BufferAttribute(edgePos, 3));
-  const edges = new LineSegments(edgeGeo, new LineDashedMaterial({ color: WIND_STYLE.edge, dashSize: 0.35, gapSize: 0.35, transparent: true, opacity: WIND_EDGE_OPACITY, depthWrite: false }));
-  edges.computeLineDistances();
-  group.add(edges);
+  // ——— Contour discret : un tracé pour les zones qui soufflent toujours, un pour les rafales (lot 17 : seules celles-ci s'estompent) ———
+  const edgeLines = (list: readonly typeof zones[number][]): LineSegments | null => {
+    if (list.length === 0) return null;
+    const edgePos: number[] = [];
+    for (const z of list) {
+      const a = z.c0;
+      const b = z.c1 + 1;
+      const c = -z.r0;
+      const d = -(z.r1 + 1);
+      edgePos.push(a, c, 0, b, c, 0, b, c, 0, b, d, 0, b, d, 0, a, d, 0, a, d, 0, a, c, 0);
+    }
+    const edgeGeo = new BufferGeometry();
+    edgeGeo.setAttribute("position", new Float32BufferAttribute(edgePos, 3));
+    const lines = new LineSegments(edgeGeo, new LineDashedMaterial({ color: WIND_STYLE.edge, dashSize: 0.35, gapSize: 0.35, transparent: true, opacity: WIND_EDGE_OPACITY, depthWrite: false }));
+    lines.computeLineDistances();
+    group.add(lines);
+    return lines;
+  };
+  edgeLines(zones.filter((z) => z.gust === null));
+  const gustEdges = edgeLines(zones.filter((z) => z.gust !== null));
 
   // ——— Feuilles et pollen : un `Points`, tampons préalloués (la plus grande quantité possible), réécrits à chaque image ———
   const budget = particleBudget(level, 1);
@@ -215,7 +224,7 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
   const travel = zones.map(() => 0);
   const p: WindParticle = { x: 0, y: 0, angle: 0, alpha: 0, size: 0, kind: 0 };
   let lastClock = 0;
-  const stats: WindStats = { zones: zones.length, mode: "particules", particles: 0, capacity, arrows: 0, lit: 0, blowing: [], announce: [], arrowOpacity: [] };
+  const stats: WindStats = { zones: zones.length, mode: "particules", particles: 0, capacity, arrows: 0, lit: 0, blowing: [], announce: [], arrowOpacity: [], fade: zones.map(() => 1) };
   // Couleurs des particules : fixées une fois (la sorte de chaque particule ne change pas).
   {
     let k = 0;
@@ -231,7 +240,7 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
 
   return {
     stats,
-    update(state, clock, amount, motion, pixelsPerTile) {
+    update(state, clock, amount, motion, pixelsPerTile, fade = 1) {
       const dt = Math.max(0, Math.min(0.1, clock - lastClock));
       lastClock = clock;
       windLooks(level, state, looks);
@@ -241,6 +250,8 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
       stats.announce = looks.map((l) => l.announce);
       leaves.visible = useParticles;
       leafMat.uniforms.uPixels!.value = pixelsPerTile;
+      if (gustEdges) (gustEdges.material as LineDashedMaterial).opacity = WIND_EDGE_OPACITY * fade;
+      stats.fade = zones.map((z) => (z.gust === null ? 1 : fade));
       let drawn = 0;
       let k = 0;
       for (let i = 0; i < zones.length; i++) {
@@ -257,16 +268,16 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
           pPos[k * 3] = p.x;
           pPos[k * 3 + 1] = p.y;
           pPos[k * 3 + 2] = 0;
-          pAlpha[k] = p.alpha;
+          pAlpha[k] = z.gust === null ? p.alpha : p.alpha * fade;
           pSize[k] = p.size;
           pAngle[k] = p.angle;
           pKind[k] = p.kind;
-          if (p.alpha > 0.01) drawn++;
+          if (pAlpha[k]! > 0.01) drawn++;
         }
         // Flèches : seulement sans particules.
         const a = arrows[i]!;
         a.mesh.visible = !useParticles;
-        a.mat.opacity = useParticles ? 0 : arrowOpacity(look);
+        a.mat.opacity = useParticles ? 0 : arrowOpacity(look) * (z.gust === null ? 1 : fade);
         if (debug) debug[i]!.color.setHex(look.blowing ? 0x7dffd4 : 0x4a6680);
       }
       if (useParticles) {

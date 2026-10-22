@@ -1106,7 +1106,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `toast.pret` | Prêt… | Ready… |
 | `toast.partez` | Partez ! | Go! |
 | `toast.finDemo` | Fin de la démonstration | End of the demo |
-| `toast.demoEssai` | Démonstration : seulement sur ?scenario=essai | Demo: only on ?scenario=essai |
+| `toast.demoEssai` | Démonstration : seulement sur ?scenario=essai ou sur un niveau du jour | Demo: only on ?scenario=essai or on a daily level |
 | `toast.rediffAuteur` | Rediffusion de l'auteur | Author's replay |
 | `toast.pasDeSolution` | Pas de solution stockée pour ce morceau | No stored solution for this piece |
 | `toast.solution` | Solution du morceau | Piece solution |

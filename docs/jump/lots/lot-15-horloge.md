@@ -44,7 +44,7 @@ Trois mécanismes, tous dans `packages/jump-sim/src/attempt.ts` :
 | `cheminee-scie` v3 | 0 et 75 (sur 600) | la gigue ±3 tombe sous 50 % : la scie de la cheminée passe juste quand le saut mural doit partir |
 | `nuit-opposition` v4 | 187 et 225 (sur 300) | deux groupes de clignotants en opposition : à ces phases, aucune attente ne laisse une fenêtre assez large |
 
-Aucune n'a été corrigée par un mutateur dans ce lot (proposition : `cheminee-scie` v3 avec un cycle plus lent, `nuit-opposition` v4 avec le profil `lent` ; à résoudre et revalider avec `solve:modules -- --only=…` puis `phases:modules -- --only=…`).
+**(Reprises au lot 17 : voir `lot-17-ajustements.md`, § 3 ; `scie-sol` v3, 55 s d'attente, est refusée par la règle des 12 s.)** Aucune n'a été corrigée par un mutateur dans ce lot (proposition : `cheminee-scie` v3 avec un cycle plus lent, `nuit-opposition` v4 avec le profil `lent` ; à résoudre et revalider avec `solve:modules -- --only=…` puis `phases:modules -- --only=…`).
 - **À regarder (décision pour Nathan)** : `scie-sol` v3 a deux scies aux cycles peu compatibles (période commune 6 600 pas = 55 s) ; à la phase 1 650, la seule solution jouable attend ≈ 55 s sur le palier. Elle passe la règle, mais un joueur ne le fera pas : la corriger (cycles commensurables) ou l'écarter. Les autres reprises sortent en moins de 12 s (médiane 3,3 s).
 - **Points de reprise** : la règle « sûr à toute phase » (`respawnProblems`) n'a refusé aucun tirage sur 120 dates (le palier standard du lot 6 l'assurait déjà pour les scies ; elle est maintenant écrite et vérifiée).
 

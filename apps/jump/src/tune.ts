@@ -20,7 +20,7 @@ import {
   type SurfaceParamKey,
   type WindParamKey,
 } from "@cdj/jump-sim";
-import { CAMERA, CAMERA_DEFAULTS, SHAKES, SHAKE_DEFAULTS, type CameraKey, type ShakeKey } from "./camera";
+import { CAMERA, CAMERA_DEFAULTS, CARNAGE, CARNAGE_DEFAULTS, SHAKES, SHAKE_DEFAULTS, type CameraKey, type CarnageKey, type ShakeKey } from "./camera";
 import { START, START_DEFAULTS } from "./session";
 import { gameStorage, storageKey } from "./storage";
 
@@ -186,7 +186,7 @@ export const CAMERA_STORAGE_KEY = storageKey("camera");
 
 export interface CameraSlider {
   /** Lot 15 : `pret`, la durée du « Prêt… » avant le départ d'un niveau à une seule horloge (`START`, session.ts). */
-  key: CameraKey | ShakeKey | "pret";
+  key: CameraKey | ShakeKey | CarnageKey | "pret";
   label: string;
   min: number;
   max: number;
@@ -202,14 +202,17 @@ export const CAMERA_SLIDERS: readonly CameraSlider[] = [
   { key: "deadZone", label: "Zone morte verticale (demi-hauteur)", min: 0, max: 6, step: 0.1, unit: "tuiles" },
   { key: "settleRate", label: "Recalage doux au sol (vitesse)", min: 0.2, max: 8, step: 0.1, unit: "/s" },
   { key: "verticalRate", label: "Suivi hors de la zone (chutes, longues montées)", min: 1, max: 14, step: 0.5, unit: "/s" },
+  { key: "clockOpacity", label: "Carnage : opacité des dangers à horloge (scies mobiles, clignotants, rafales)", min: 0.1, max: 1, step: 0.05, unit: "(1 = normal)" },
   { key: "pret", label: "« Prêt… » avant le départ (horloge unique, lot 15)", min: 0.1, max: 3, step: 0.05, unit: "s" },
 ];
 
 const isShakeKey = (k: CameraSlider["key"]): k is ShakeKey => k in SHAKE_DEFAULTS;
-const cameraValue = (k: CameraSlider["key"]): number => (k === "pret" ? START.pret : isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
-const cameraDefault = (k: CameraSlider["key"]): number => (k === "pret" ? START_DEFAULTS.pret : isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
+const isCarnageKey = (k: CameraSlider["key"]): k is CarnageKey => k in CARNAGE_DEFAULTS;
+const cameraValue = (k: CameraSlider["key"]): number => (k === "pret" ? START.pret : isCarnageKey(k) ? CARNAGE[k] : isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
+const cameraDefault = (k: CameraSlider["key"]): number => (k === "pret" ? START_DEFAULTS.pret : isCarnageKey(k) ? CARNAGE_DEFAULTS[k] : isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
 const setCamera = (k: CameraSlider["key"], v: number): void => {
   if (k === "pret") START.pret = v;
+  else if (isCarnageKey(k)) CARNAGE[k] = v;
   else if (isShakeKey(k)) SHAKES[k] = v;
   else CAMERA[k] = v;
 };

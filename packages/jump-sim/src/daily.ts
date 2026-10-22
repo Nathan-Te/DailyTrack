@@ -312,6 +312,14 @@ interface Choice {
   hard: boolean;
 }
 
+/**
+ * Lot 17 (g12) : les variantes ajoutées pour **remplacer** une variante refusée par la validation toutes phases (`PHASE_REFUSED`) : la refusée
+ * garde son texte, ses solutions et sa place (la référence v3, g9, la connaît telle quelle : golden v3 au bit près) et la nouvelle, au bout de la
+ * liste, n'existe que pour les niveaux à une seule horloge.
+ */
+export const V4_ONLY_VARIANTS: Readonly<Record<string, readonly number[]>> = Object.freeze({ "scie-sol": [6], "cheminee-scie": [4], "nuit-opposition": [5] });
+
+let catalogAll: Choice[][] | null = null;
 let catalog: Choice[][] | null = null;
 let catalogV4: Choice[][] | null = null;
 
@@ -321,13 +329,22 @@ let catalogV4: Choice[][] | null = null;
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   if (simVersion >= SINGLE_CLOCK_VERSION) {
-    catalogV4 ??= choices()
+    catalogV4 ??= allChoices()
       .map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE })))
       .filter((list) => list.length > 0);
     return catalogV4;
   }
-  if (catalog) return catalog;
-  catalog = MODULES.map((def) =>
+  // Lot 17 : la référence v3 ne connaît pas les variantes ajoutées au g12.
+  catalog ??= allChoices()
+    .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant)))
+    .filter((list) => list.length > 0);
+  return catalog;
+}
+
+/** Toutes les variantes utilisables (solutions jouables aux deux entrées), sans filtre de version. */
+function allChoices(): Choice[][] {
+  if (catalogAll) return catalogAll;
+  catalogAll = MODULES.map((def) =>
     def.variants.flatMap((_, variant) => {
       const s = moduleSolutions(def.id, variant);
       const exigence = variantExigence(s);
@@ -338,7 +355,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
       return [{ id: def.id, variant, tags: def.tags, theme, mechanic: theme === null ? null : mechanicOf(theme), family: def.family, long: def.long, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow, hard: false }];
     }),
   ).filter((list) => list.length > 0);
-  return catalog;
+  return catalogAll;
 }
 
 const has = (c: { tags: readonly ModuleTag[] }, tag: ModuleTag) => c.tags.includes(tag);
@@ -624,7 +641,7 @@ export interface AssembleOptions {
 
 /** Assemble une suite de morceaux en un niveau (grille + bloc annexe). */
 export function assemble(picks: readonly { id: string; variant: number }[], options: AssembleOptions = {}): Assembled {
-  const all = choices().flat();
+  const all = allChoices().flat();
   const full: Slot[] = picks.map((p, k) => {
     const choice = all.find((c) => c.id === p.id && c.variant === p.variant);
     if (!choice) throw new RangeError(`Morceau « ${p.id} », variante ${p.variant} : pas de solution utilisable`);
