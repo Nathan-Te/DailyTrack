@@ -117,6 +117,16 @@ interface CdjDebug {
   audio: { log: string[]; running: boolean; settings: { volume: number; last: number }; ambience: string | null };
 }
 
+/** Outils de la vitrine de la scène (lot 38, `/track/vitrine/`, voir src/vitrine/vitrine.ts). */
+interface VitrineDebug {
+  erreurs: string[];
+  vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number }[];
+  construireTout(sujet?: string): Promise<void>;
+  capture(sujet: string, variante: string, largeur: number, hauteur: number): Promise<string | null>;
+  mesurer(sujet: string, variante: string, largeur: number, hauteur: number, images: number): Promise<{ constructionMs: number; moyenneMs: number; pireMs: number; envoiMs: number; appels: number; triangles: number } | null>;
+}
+
 interface Window {
   __cdj: CdjDebug;
+  __vitrine?: VitrineDebug;
 }
