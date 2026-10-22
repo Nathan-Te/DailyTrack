@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MEDAL_FACTORS, dailyCircuit, dailyTrackId, encodeReplay, formatDay, medalDayStats, medalPoolStats, medalsFor, PREMIER_JOUR, ratiosOf, runPilot, themeForDay, thresholdsOf, THEME_NAMES } from "@cdj/sim";
+import { BASCULE_LOT_35, MEDAL_FACTORS, dailyCircuit, medalFor, dailyTrackId, encodeReplay, formatDay, medalDayStats, medalPoolStats, medalsFor, PREMIER_JOUR, ratiosOf, runPilot, themeForDay, thresholdsOf, THEME_NAMES } from "@cdj/sim";
 import { ADMIN_MAX_FAILURES, PLANNING_HORIZON } from "../src/api";
 import { DAY, DAY_MS, NOON, circuitOf, makeApi, parisDayStart, playerId } from "./helpers";
 
@@ -215,10 +215,10 @@ describe("médailles (lot 35) : outil de calibrage en lecture seule", () => {
     expect(body.days[0]).toMatchObject({ date: formatDay(DAY + 1), open: true, players: 0, pilotMs: null, stats: null }); // aujourd'hui : pas encore de circuit gardé
     const d = body.days[1];
     const times = [runs[0]!.finishMs, runs[1]!.finishMs];
-    expect(d).toMatchObject({ date: formatDay(DAY), open: false, theme: themeForDay(DAY).name, trackId: c.track.id, pilotMs: c.authorMs, medals: medalsFor(c.authorMs), players: 2 });
-    expect(d.stats).toEqual(medalDayStats(times, c.authorMs, medalsFor(c.authorMs)));
+    expect(d).toMatchObject({ date: formatDay(DAY), open: false, theme: themeForDay(DAY).name, trackId: c.track.id, pilotMs: c.authorMs, medals: medalsFor(c.authorMs, DAY), players: 2 });
+    expect(d.stats).toEqual(medalDayStats(times, c.authorMs, medalsFor(c.authorMs, DAY)));
     expect(d.ratios).toEqual(ratiosOf(times, c.authorMs));
-    expect(body.themes).toEqual([{ theme: themeForDay(DAY).name, ...medalPoolStats([{ ratios: d.ratios, thresholds: thresholdsOf(medalsFor(c.authorMs), c.authorMs) }]) }]);
+    expect(body.themes).toEqual([{ theme: themeForDay(DAY).name, ...medalPoolStats([{ ratios: d.ratios, thresholds: thresholdsOf(medalsFor(c.authorMs, DAY), c.authorMs) }]) }]);
     expect(body.all.players).toBe(2);
     expect(JSON.stringify(body)).not.toContain(playerId(1)); // aucune identité, aucun pseudo
     expect(JSON.stringify(body)).not.toContain("Pilote1");
@@ -228,5 +228,33 @@ describe("médailles (lot 35) : outil de calibrage en lecture seule", () => {
     expect(withDemo.demo).toBe(true);
     expect(withDemo.days[1].players).toBe(3);
     expect(await dump(t)).toBe(before);
+  });
+});
+
+describe("médailles du lot 35 : nouveaux seuils à partir de la bascule seulement", () => {
+  it("le même temps : auteur avant la bascule, rien après (classement, envoi, profil, portail)", async () => {
+    const t = await admin();
+    const { pilotReplay } = await import("./helpers");
+    for (const day of [BASCULE_LOT_35 - 1, BASCULE_LOT_35]) {
+      t.clock.now = parisDayStart(day) + 12 * 3_600_000;
+      const run = pilotReplay(day, 1); // le pilote lui-même : son temps = le temps du pilote du jour
+      const author = circuitOf(day).authorMs;
+      const sub = await t.call("POST", "/api/submit", { name: `Pilote${day % 1000}`, date: formatDay(day), replay: run.code }, { headers: { "X-Player-Id": playerId(day) } });
+      expect(sub.status).toBe(200);
+      const expected = medalFor(sub.body.ms, medalsFor(author, day));
+      expect(sub.body.medal).toBe(expected);
+      if (day < BASCULE_LOT_35) expect(expected).not.toBeNull();
+      else expect(expected).toBeNull(); // bronze à 0,95 du pilote : rouler comme lui ne suffit plus
+      const board = await t.call("GET", `/api/day/${formatDay(day)}/leaderboard`);
+      expect(board.body.top[0].medal).toBe(expected);
+      const me = await t.call("GET", "/api/me", undefined, { headers: { "X-Player-Id": playerId(day) } });
+      expect(me.body.best.medal).toBe(expected);
+      const portail = (await t.call("GET", "/api/portail/jour", undefined, { headers: { "X-Player-Id": playerId(day) } })).body;
+      const track = portail.jeux.find((j: { jeu: string }) => j.jeu === "cdj");
+      expect(track.seuils).toEqual(medalsFor(author, day));
+      expect(track.etat.medaille).toBe(expected);
+      const admin = (await t.call("GET", "/api/admin/medailles", undefined, { headers: auth })).body;
+      expect(admin.days[0].medals).toEqual(medalsFor(author, day));
+    }
   });
 });
