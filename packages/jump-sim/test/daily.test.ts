@@ -54,6 +54,10 @@ import {
   isRestedModule,
   jumpMedalFor,
   jumpMedalsFor,
+  medalsWithSlow,
+  reassemble,
+  SLOW_REACH_ROWS,
+  SLOW_ZONE_WIDTH,
   levelNumber,
   replayAttempt,
   restGroup,
@@ -95,7 +99,8 @@ describe("niveau du jour : identité et pureté", () => {
   it("déterministe : la même date donne le même niveau (même texte, même preuve), sans dépendre de l'ordre des appels", () => {
     // Le cache rend le même objet ; on recompose aussi à travers un autre ordre de dates (aucun état caché entre deux dates).
     expect(dailyLevel(DATES[3]!)).toBe(levels[3]);
-    const fresh = assemble(levels[7]!.pieces.map((p) => ({ id: p.id, variant: p.variant })));
+    // Lot 16 : avec ses voies lentes (et leurs montées ajoutées).
+    const fresh = reassemble(levels[7]!);
     // Lot 15 : l'assemblage est en version 3 ; le niveau du jour, le même mis à l'heure unique (phases des sections).
     expect(withSingleClock(fresh.ascii, levels[7]!.level.sections.map((x) => x.phase))).toBe(levels[7]!.ascii);
     expect(levels[7]!.level.simVersion).toBe(SINGLE_CLOCK_VERSION);
@@ -252,19 +257,27 @@ describe("niveau du jour : assemblage", () => {
       const lv = L.level;
       const at = (c: number, r: number) => lv.tiles[r * lv.width + c];
       expect(L.paliers).toHaveLength(L.pieces.length + 1);
+      const asm = reassemble(L);
       expect(L.paliers[0]).toEqual({ col0: PALIER_GUARD, col1: PALIER_GUARD + PALIER_LENGTH - 1, row: L.pieces[0]!.entryRow });
       for (let k = 1; k < L.pieces.length; k++) {
         const a = L.pieces[k - 1]!;
         const b = L.pieces[k]!;
         expect(b.entryRow).toBe(a.exitRow);
-        // Entre deux morceaux : exactement un palier standard, ni plus ni moins.
-        expect(b.col0).toBe(a.col1 + 1 + PALIER_LENGTH);
+        // Entre deux morceaux : exactement un palier standard, ni plus ni moins (lot 16 : plus la zone de bifurcation d'une portion dure).
+        const zoned = L.slowRoutes.some((r) => r.piece === k);
+        expect(b.col0).toBe(a.col1 + 1 + PALIER_LENGTH + (zoned ? SLOW_ZONE_WIDTH : 0));
         const p = L.paliers[k]!;
         expect(p).toEqual({ col0: a.col1 + 1, col1: a.col1 + PALIER_LENGTH, row: a.exitRow });
-        // Sol plein, plein dessous, vide au-dessus jusqu'en haut du plus haut des deux morceaux (un rebord, pas un couloir).
+        // Sol plein, plein dessous, vide au-dessus jusqu'en haut du plus haut des deux morceaux (un rebord, pas un couloir). Lot 16 : au-dessus
+        // du palier où une voie lente redescend, la descente (colonne de gauche ; celle de droite aussi, sauf si elle est murée).
         const roof = Math.min(a.top, b.top);
+        const down = L.slowRoutes.find((r) => r.piece === k - 1);
+        const walled = down !== undefined && (asm.slow.find((r) => r.piece === k - 1)?.walls.length ?? 0) > 0;
         for (let c = p.col0; c <= p.col1; c++) {
-          for (let r = 0; r < lv.height; r++) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r})`).toBe(r < roof || r >= p.row);
+          // Lot 16 : au-dessus du palier où une voie lente redescend, la descente s'ouvre depuis la galerie ; sa colonne de droite est murée
+          // au-dessus de la portée d'un saut quand le haut du morceau suivant y donnerait.
+          const from = down === undefined ? roof : c === p.col1 && walled ? p.row - SLOW_REACH_ROWS : Math.min(roof, down.galleryRow - 3);
+          for (let r = 0; r < lv.height; r++) expect(at(c, r) === TILE_SOLID, `${L.date} palier ${k} (${c}, ${r})`).toBe(r < from || r >= p.row);
         }
       }
       const last = L.pieces[L.pieces.length - 1]!;
@@ -279,7 +292,8 @@ describe("niveau du jour : assemblage", () => {
       expect(lv.checkpoints).toHaveLength(L.pieces.length - 1);
       L.pieces.slice(1).forEach((p, k) => {
         const cp = lv.checkpoints[k]!;
-        expect(cp.col).toBe(p.col0 - PALIER_LENGTH);
+        // Lot 16 : avant une portion dure, le palier (et son point) est avant la zone de bifurcation.
+        expect(cp.col).toBe(p.col0 - PALIER_LENGTH - (L.slowRoutes.some((r) => r.piece === k + 1) ? SLOW_ZONE_WIDTH : 0));
         expect(cp.col).toBe(L.paliers[k + 1]!.col0);
         expect(cp.row).toBe(p.entryRow - 1);
         expect(lv.tiles[(cp.row + 1) * lv.width + cp.col]).toBe(TILE_SOLID);
@@ -318,15 +332,27 @@ describe("niveau du jour : assemblage", () => {
         const p = starts.get(tick);
         if (p) {
           // Le pas qui vient d'être joué est la sortie du morceau précédent : le centre vient de passer le bord droit du palier partagé.
-          expect(centerCol(s.player), `${L.date} ${p.id}`).toBe(p.col0);
-          expect(prevCol, `${L.date} ${p.id}`).toBeLessThan(p.col0);
+          // Lot 16 : devant une portion dure, ce bord est le début de sa zone de bifurcation (la piste sous la cage, droite tenue).
+          const zone = L.slowRoutes.find((r) => L.pieces[r.piece] === p)?.zone ?? p.col0;
+          expect(centerCol(s.player), `${L.date} ${p.id}`).toBe(zone);
+          expect(prevCol, `${L.date} ${p.id}`).toBeLessThan(zone);
           expect(isCleanRun(s.player), `${L.date} ${p.id}`).toBe(true);
           expect(s.player.y + PLAYER_HEIGHT).toBe(p.entryRow * T);
+          let run = 0;
+          if (zone !== p.col0) {
+            let z = s;
+            while (centerCol(z.player) < p.col0) {
+              expect(inputs[p.start + run], `${L.date} ${p.id} zone`).toBe(INPUT_RIGHT);
+              z = stepAttempt(z, inputs[p.start + run]!, L.level, DEFAULT_JUMP_PARAMS);
+              expect(isCleanRun(z.player), `${L.date} ${p.id} zone`).toBe(true);
+              run++;
+            }
+          }
           // Puis la solution en élan du morceau, depuis son entrée, sans course entre les deux.
           const sol = moduleSolutions(p.id, p.variant)!.elan!;
           // (Selon la position d'entrée, la sortie peut venir quelques pas après la fin des commandes stockées : droite tenue, `RACCORD_TAIL`.)
           const own = [...fromRuns(decodeReplay(sol.code).runs), ...new Array<number>(RACCORD_TAIL).fill(INPUT_RIGHT)];
-          expect(inputs.slice(p.start, p.end), `${L.date} ${p.id}`).toEqual(own.slice(sol.entryTick, sol.entryTick + p.end - p.start));
+          expect(inputs.slice(p.start + run, p.end), `${L.date} ${p.id}`).toEqual(own.slice(sol.entryTick, sol.entryTick + p.end - p.start - run));
         }
         if (tick === inputs.length) break;
         prevCol = centerCol(s.player);
@@ -351,9 +377,13 @@ describe("niveau du jour : assemblage", () => {
         const period = sectionPeriod(lv, k);
         const time = 5000 + (period === 0 ? 0 : cycleMod(-e - lv.sections[k]!.phase - 5000, period));
         let s = checkpointAttempt(lv, { ...initialAttempt(lv), checkpoint: i, time });
-        const alone = moduleStart(m, "arret");
-        const dx = (L.paliers[k]!.col0 - m.palierIn.col0) * T;
         expect(lv.checkpoints[i]!.col, where).toBe(L.paliers[k]!.col0);
+        // Lot 16 : devant une portion dure, le palier « bis » de la zone (ses deux dernières colonnes) est l'entrée du morceau seul, à
+        // l'identique : on y reprend la même solution (le joueur y va et y attend ; la course sous la cage est vérifiée plus haut).
+        const zone = L.slowRoutes.find((r) => r.piece === k)?.zone;
+        if (zone !== undefined) s = { ...s, player: { ...s.player, x: s.player.x + (p.col0 - PALIER_LENGTH - L.paliers[k]!.col0) * T } };
+        const alone = moduleStart(m, "arret");
+        const dx = (p.col0 - PALIER_LENGTH - m.palierIn.col0) * T;
         const dy = (p.entryRow - m.entryRow) * T;
         expect({ ...s.player, x: s.player.x - dx, y: s.player.y - dy }, where).toEqual(alone.player);
         // Rien n'est remis à l'arrêt : une seule horloge (lot 15).
@@ -365,7 +395,7 @@ describe("niveau du jour : assemblage", () => {
         for (let t = 0; t < sol.exitTick && s.status !== ATTEMPT_FINISHED; t++) s = stepAttempt(s, own[t]!, lv, DEFAULT_JUMP_PARAMS);
         if (last) expect(s.status, where).toBe(ATTEMPT_FINISHED);
         else {
-          expect(centerCol(s.player), where).toBe(L.pieces[k + 1]!.col0);
+          expect(centerCol(s.player), where).toBe(L.paliers[k + 1]!.col1 + 1);
           expect(isCleanRun(s.player), where).toBe(true);
         }
       });
@@ -437,15 +467,17 @@ describe("médailles", () => {
   it("en pas entiers, arrondies au pas supérieur, ordonnées : auteur < or < argent < bronze", () => {
     for (const L of levels) {
       const m = L.medals;
-      expect(m).toEqual(jumpMedalsFor(L.authorTicks));
+      // Lot 16 : celles du temps de l'auteur, ajustées au minimum aux voies lentes (`medalsWithSlow`, vérifié dans voies.test.ts).
+      expect(m).toEqual(medalsWithSlow(L.authorTicks, L.slowRoutes));
+      if (L.slowRoutes.length === 0) expect(m).toEqual(jumpMedalsFor(L.authorTicks));
       for (const v of Object.values(m)) expect(Number.isInteger(v)).toBe(true);
       expect(m.author).toBe(L.authorTicks);
       expect(m.author).toBeLessThan(m.gold);
       expect(m.gold).toBeLessThan(m.silver);
       expect(m.silver).toBeLessThan(m.bronze);
-      expect(m.gold).toBe(Math.ceil((L.authorTicks * MEDAL_PERCENT.gold) / 100));
-      expect(m.silver).toBe(Math.ceil((L.authorTicks * MEDAL_PERCENT.silver) / 100));
-      expect(m.bronze).toBe(Math.ceil((L.authorTicks * MEDAL_PERCENT.bronze) / 100));
+      expect(m.gold).toBeLessThanOrEqual(Math.ceil((L.authorTicks * MEDAL_PERCENT.gold) / 100));
+      expect(m.silver).toBeGreaterThanOrEqual(Math.min(Math.ceil((L.authorTicks * MEDAL_PERCENT.silver) / 100), m.bronze));
+      expect(m.bronze).toBeGreaterThanOrEqual(Math.ceil((L.authorTicks * MEDAL_PERCENT.bronze) / 100));
     }
   });
 

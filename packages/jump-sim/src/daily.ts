@@ -1,13 +1,15 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
-import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
 import { JUMP_GENERATOR_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
 import { TILE_EMPTY, TILE_SOLID, cycleMod, parseLevel, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { PHASE_REFUSED } from "./phases";
+import { PARASITE_CLOSED } from "./parasites";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, jumpThemeForDay, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
 import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpReplay } from "./replay";
+import { SLOW_MAX_EXTRA, SLOW_MIN_EXIGENCE, SLOW_REACH_ROWS, SLOW_ZONE_WIDTH, carveSlowRoute, slowCostMin, slowGalleryRow, slowHeadroom, slowLedges, slowScript, type SlowRoute } from "./voies";
 
 // Le niveau du jour (lot 5) : `dailyLevel(jour)` assemble des morceaux du catalogue (lot 4) qui **portent leur solution**, puis **rejoue** la
 // suite de ces solutions sur le niveau assemblé. Si elle arrive au bout sans mourir, le niveau est valide et ce rejeu donne le temps de
@@ -101,6 +103,11 @@ export const FORCE_LONG_AT = 300;
  * 1,2 s, est mesurée par `measure:jump` et vérifiée par les tests).
  */
 export const LONGEST_RUN_MAX = 2 * TICK_RATE;
+/**
+ * Lot 16 : la cible de la moyenne (1,2 s), mesurée et vérifiée par les tests ; en v4, le score d'un tirage compte ce qui la dépasse (pour mille
+ * de la cible) : la zone de bifurcation d'une portion dure ajoute 6 colonnes de course (moyenne 1,23 s sur 60 dates sans ce terme, mesuré).
+ */
+export const LONGEST_RUN_TARGET = idiv(6 * TICK_RATE, 5);
 /** Hauteur totale du niveau, rangée de blocs du haut comprise (48 au lot 5 : un morceau de plus, c'est plus de dénivelé). */
 export const MAX_DAILY_HEIGHT = 56;
 
@@ -301,6 +308,8 @@ interface Choice {
   width: number;
   entryRow: number;
   exitRow: number;
+  /** Lot 16 (niveaux v4, g11) : portion dure (note ≥ `SLOW_MIN_EXIGENCE`) : elle reçoit une voie lente et sa zone de bifurcation. */
+  hard: boolean;
 }
 
 let catalog: Choice[][] | null = null;
@@ -312,7 +321,9 @@ let catalogV4: Choice[][] | null = null;
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   if (simVersion >= SINGLE_CLOCK_VERSION) {
-    catalogV4 ??= choices().map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant))).filter((list) => list.length > 0);
+    catalogV4 ??= choices()
+      .map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE })))
+      .filter((list) => list.length > 0);
     return catalogV4;
   }
   if (catalog) return catalog;
@@ -324,7 +335,7 @@ function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
       const b = buildModule(def.id, variant);
       const span = (x: { entryTick: number; exitTick: number }) => x.exitTick - x.entryTick;
       const theme = variantTheme(def, variant);
-      return [{ id: def.id, variant, tags: def.tags, theme, mechanic: theme === null ? null : mechanicOf(theme), family: def.family, long: def.long, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow }];
+      return [{ id: def.id, variant, tags: def.tags, theme, mechanic: theme === null ? null : mechanicOf(theme), family: def.family, long: def.long, exigence, arret: span(s.arret), elan: span(s.elan), height: b.height, width: b.width, entryRow: b.entryRow, exitRow: b.exitRow, hard: false }];
     }),
   ).filter((list) => list.length > 0);
   return catalog;
@@ -417,6 +428,12 @@ export interface DailyLevel {
   attempts: readonly DailyAttempt[];
   chosen: number;
   fallback: boolean;
+  /**
+   * Lot 16 : les voies lentes des portions dures (une par morceau noté 4 ou 5, sauf le premier), avec leurs temps, et le temps de référence
+   * « toutes voies lentes » (temps de l'auteur + la somme des surcoûts). Vides (et `slowTicks` = `authorTicks`) pour un niveau v3.
+   */
+  slowRoutes: readonly SlowRoute[];
+  slowTicks: number;
 }
 
 /** Une pièce avant assemblage. */
@@ -425,10 +442,15 @@ interface Slot {
   entry: ModuleEntry;
 }
 
-const ticksOf = (p: Slot) => (p.entry === "arret" ? p.choice.arret : p.choice.elan);
+/** Lot 16 : la course sous la cage d'une zone de bifurcation (7 colonnes à pleine vitesse), comptée dans l'estimation d'une portion dure. */
+export const SLOW_ZONE_TICKS = idiv(SLOW_ZONE_WIDTH * UNITS_PER_TILE, DEFAULT_JUMP_PARAMS.runSpeed);
+const ticksOf = (p: Slot) => (p.entry === "arret" ? p.choice.arret : p.choice.elan) + (p.choice.hard ? SLOW_ZONE_TICKS : 0);
 
-/** Rangées de chaque morceau (haut de sa grille), et hauteur totale (rangée du haut comprise), d'une suite de morceaux. */
-function stack(picks: readonly Slot[]): { tops: number[]; height: number } {
+/**
+ * Rangées de chaque morceau (haut de sa grille), et hauteur totale (rangée du haut comprise), d'une suite de morceaux. Lot 16 : une portion
+ * dure réserve au-dessus d'elle la hauteur de sa voie lente (`slowHeadroom`, avec `extras[k]` montées de plus).
+ */
+function stack(picks: readonly Slot[], extras: readonly number[] = []): { tops: number[]; height: number } {
   const offs: number[] = [];
   let o = 0;
   picks.forEach((p, k) => {
@@ -438,7 +460,8 @@ function stack(picks: readonly Slot[]): { tops: number[]; height: number } {
   let lo = 0;
   let hi = 0;
   picks.forEach((p, k) => {
-    if (k === 0 || offs[k]! < lo) lo = offs[k]!;
+    const head = p.choice.hard ? slowHeadroom(p.choice.entryRow, extras[k] ?? 0) : 0;
+    if (k === 0 || offs[k]! - head < lo) lo = offs[k]! - head;
     if (k === 0 || offs[k]! + p.choice.height > hi) hi = offs[k]! + p.choice.height;
   });
   return { tops: offs.map((v) => v - lo + 1), height: hi - lo + 1 };
@@ -504,7 +527,10 @@ function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number
       weight: number;
     }
     const cands: Cand[] = [];
-    for (const list of pool) {
+    for (const list0 of pool) {
+      // Lot 16 : le premier morceau part à l'arrêt du départ, sans zone de bifurcation : jamais une portion dure.
+      const list = first ? list0.filter((c) => !c.hard) : list0;
+      if (list.length === 0) continue;
       const id = list[0]!.id;
       if (used.has(id) || families.has(list[0]!.family)) continue;
       const tags = list[0]!.tags;
@@ -581,33 +607,47 @@ function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number
 
 // ——— Assemblage ———
 
-interface Assembled {
+export interface Assembled {
   level: Level;
   ascii: string;
   pieces: DailyPiece[];
   paliers: Palier[];
+  /** Lot 16 : les voies lentes posées (sans leurs temps : `prove` les mesure), et les cases creusées pour chacune. */
+  slow: { piece: number; zone: number; entryRow: number; galleryRow: number; extra: number; carved: { col: number; row: number }[]; walls: { col: number; row: number }[] }[];
+}
+
+/** Options d'assemblage (lot 16) : poser les voies lentes des portions dures (niveaux v4), avec `extras[k]` montées de plus pour le morceau k. */
+export interface AssembleOptions {
+  slow?: boolean;
+  extras?: readonly number[];
 }
 
 /** Assemble une suite de morceaux en un niveau (grille + bloc annexe). */
-export function assemble(picks: readonly { id: string; variant: number }[]): Assembled {
+export function assemble(picks: readonly { id: string; variant: number }[], options: AssembleOptions = {}): Assembled {
   const all = choices().flat();
   const full: Slot[] = picks.map((p, k) => {
     const choice = all.find((c) => c.id === p.id && c.variant === p.variant);
     if (!choice) throw new RangeError(`Morceau « ${p.id} », variante ${p.variant} : pas de solution utilisable`);
-    return { choice, entry: k === 0 ? "arret" : "elan" };
+    return { choice: { ...choice, hard: options.slow === true && k > 0 && choice.exigence >= SLOW_MIN_EXIGENCE }, entry: k === 0 ? "arret" : "elan" };
   });
   if (full.length === 0) throw new RangeError("Assemblage vide");
+  const extras = options.extras ?? [];
   const L = PALIER_LENGTH;
-  const { tops, height } = stack(full);
+  const Z = SLOW_ZONE_WIDTH;
+  const { tops, height } = stack(full, extras);
   const G = PALIER_GUARD;
-  const width = G + full.reduce((s, p) => s + p.choice.width, 0) + (full.length + 1) * L + 1;
+  const width = G + full.reduce((s, p) => s + p.choice.width + (p.choice.hard ? Z : 0), 0) + (full.length + 1) * L + 1;
   const rows: string[][] = [];
   for (let r = 0; r < height; r++) rows.push(new Array<string>(width).fill("#"));
   const annex: string[] = [];
   const pieces: DailyPiece[] = [];
   const paliers: Palier[] = [];
+  const zones: number[] = [];
   let col = G + L;
   full.forEach((p, k) => {
+    // Lot 16 : une portion dure a sa zone de bifurcation entre son palier d'entrée et elle.
+    zones.push(p.choice.hard ? col : -1);
+    if (p.choice.hard) col += Z;
     const built = buildModule(p.choice.id, p.choice.variant);
     const [gridText, annexText = ""] = built.ascii.split("\n\n");
     const g = gridText!.split("\n").map((line) => line.slice(built.lead, built.lead + built.width));
@@ -665,22 +705,72 @@ export function assemble(picks: readonly { id: string; variant: number }[]): Ass
   });
   // Les paliers : avant le premier morceau, entre deux morceaux (partagé), après le dernier ; sol à la rangée du raccord, plein dessous,
   // vide au-dessus jusqu'en haut du plus haut des morceaux voisins. Puis la colonne d'arrivée, comme le dernier palier.
+  const roofs: number[] = [];
   for (let k = 0; k <= full.length; k++) {
     const before = pieces[k - 1];
     const after = pieces[k];
     const row = after ? after.entryRow : before!.exitRow;
     const roof = Math.min(before ? before.top : height, after ? after.top : height);
-    const col0 = after ? after.col0 - L : before!.col1 + 1;
+    const zone = k < full.length ? zones[k]! : -1;
+    const col0 = zone >= 0 ? zone - L : after ? after.col0 - L : before!.col1 + 1;
     // Le premier palier a sa colonne de garde devant lui, le dernier la colonne d'arrivée derrière lui.
     const from = k === 0 ? col0 - G : col0;
     const to = k === full.length ? col0 + L + 1 : col0 + L;
     for (let c = from; c < to; c++) for (let r = roof; r < row; r++) rows[r]![c] = ".";
     paliers.push({ col0, col1: col0 + L - 1, row });
+    roofs.push(roof);
     rows[row - 1]![col0] = k === 0 ? "S" : k === full.length ? "." : "C";
     if (k === full.length) rows[row - 1]![col0 + L] = "F";
+    if (zone >= 0) {
+      // La zone : la piste (une rangée libre sous la cage) et le palier bis, vide jusqu'en haut du morceau.
+      for (let c = zone; c < zone + Z; c++) rows[row - 1]![c] = ".";
+      for (let c = zone + Z - L; c < zone + Z; c++) for (let r = after!.top; r < row; r++) rows[r]![c] = ".";
+    }
   }
+  // Lot 16 : les voies lentes, creusées dans le plein (la cage au-dessus de la piste, la galerie au-dessus du morceau, la descente).
+  const slow: Assembled["slow"] = [];
+  full.forEach((p, k) => {
+    const zone = zones[k]!;
+    if (zone < 0) return;
+    const piece = pieces[k]!;
+    const extra = extras[k] ?? 0;
+    const galleryRow = piece.top + slowGalleryRow(piece.entryRow - piece.top, extra);
+    const out = paliers[k + 1]!;
+    const carved = carveSlowRoute(rows, zone, piece.entryRow, galleryRow, out, roofs[k + 1]!);
+    // La descente ne doit pas donner sur le haut du morceau suivant (hors de portée d'un saut depuis le palier) : sinon, la colonne droite du
+    // puits est murée au-dessus de cette portée (on descend par la colonne de gauche).
+    const walls: { col: number; row: number }[] = [];
+    const high = out.row - SLOW_REACH_ROWS;
+    const shaftTop = Math.min(roofs[k + 1]!, galleryRow - 3);
+    // À droite du puits : le morceau suivant, ou le mur gauche de la cage de la portion dure suivante (plein au-dessus de son entrée).
+    const side = out.col1 + 1;
+    if (k + 1 < full.length) {
+      let open = false;
+      for (let r = shaftTop; r < high; r++) if (rows[r]![side] !== "#") open = true;
+      if (open) {
+        for (let r = shaftTop; r < high; r++) {
+          if (rows[r]![out.col1] !== "#") walls.push({ col: out.col1, row: r });
+          rows[r]![out.col1] = "#";
+        }
+      }
+    }
+    const kept = carved.filter((c) => !walls.some((w) => w.col === c.col && w.row === c.row));
+    slow.push({ piece: k, zone, entryRow: piece.entryRow, galleryRow, extra, carved: kept, walls });
+  });
   const ascii = rows.map((r) => r.join("")).join("\n") + "\n\n" + annex.join("\n") + "\n";
-  return { level: parseLevel(ascii), ascii, pieces, paliers };
+  return { level: parseLevel(ascii), ascii, pieces, paliers, slow };
+}
+
+/**
+ * Lot 16 : le même assemblage que celui d'un niveau du jour (mêmes morceaux, voies lentes et montées ajoutées), en version 3 comme le fait le
+ * générateur avant la mise à l'heure unique : ses voies lentes et leurs cases creusées (tests, outils).
+ */
+export function reassemble(d: Pick<DailyLevel, "pieces" | "slowRoutes" | "level">): Assembled {
+  const extras = d.pieces.map((_, k) => d.slowRoutes.find((r) => r.piece === k)?.extra ?? 0);
+  return assemble(
+    d.pieces.map((p) => ({ id: p.id, variant: p.variant })),
+    { slow: d.level.simVersion >= SINGLE_CLOCK_VERSION, extras },
+  );
 }
 
 // ——— La preuve ———
@@ -694,6 +784,7 @@ type Step = (s: AttemptState, bits: number) => AttemptState;
  * le pas où commence chaque morceau, ou la raison de l'échec.
  */
 function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[] } | string {
+  const zoned = new Set(asm.slow.map((r) => r.piece));
   const level = asm.level;
   const step: Step = (s, bits) => stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
   const inputs: number[] = [];
@@ -705,8 +796,18 @@ function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[] } 
     if (!sol) return `${piece.id}:${piece.variant} sans solution`;
     const commands = fromRuns(decodeReplay(sol.code).runs);
     const last = k === asm.pieces.length - 1;
-    const exitCol = last ? -1 : asm.pieces[k + 1]!.col0;
+    // Lot 16 : la sortie est le bord droit du palier qui suit (avant la zone de bifurcation d'une portion dure).
+    const exitCol = last ? -1 : asm.paliers[k + 1]!.col1 + 1;
     starts.push(inputs.length);
+    // Lot 16 : une portion dure commence par la course sous la cage, droite tenue, jusqu'au bord de son palier bis.
+    if (zoned.has(k)) {
+      for (let n = 0; centerCol(s.player) < piece.col0; n++) {
+        if (n > 2 * SLOW_ZONE_WIDTH * 12) return `${piece.id}:${piece.variant} : la zone n'est pas traversée`;
+        s = step(s, INPUT_RIGHT);
+        inputs.push(INPUT_RIGHT);
+        if (s.status !== ATTEMPT_RUNNING || !isCleanRun(s.player)) return `${piece.id}:${piece.variant} : course sous la cage interrompue`;
+      }
+    }
     let done = false;
     // Selon la position d'entrée (dans un pas de course), la sortie peut venir quelques pas après la fin des commandes stockées : on
     // continue alors droite tenue, comme le test de raccord (`RACCORD_TAIL`).
@@ -904,12 +1005,25 @@ type Built = Omit<DailyLevel, "attempts" | "chosen" | "fallback" | "day" | "date
 
 /**
  * Assemble, enchaîne les solutions, **rejoue** et vérifie les règles. Lot 15 : en version 4, le niveau passe à l'horloge unique (phases tirées
- * des entrées de la preuve dans chaque section) et la même preuve y est rejouée : même temps, sans mort.
+ * des entrées de la preuve dans chaque section) et la même preuve y est rejouée : même temps, sans mort. Lot 16 : en version 4, chaque
+ * portion dure reçoit sa voie lente ; si l'une ne coûte pas assez, sa cage monte de `SLOW_STEP_ROWS` rangées et tout est refait.
  */
 function prove(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number): { built: Built; problems: string[] } | string {
+  const extras = picks.map(() => 0);
+  for (;;) {
+    const r = proveOnce(picks, id, theme, simVersion, extras);
+    if (typeof r === "string" || r.cheap.length === 0) return typeof r === "string" ? r : { built: r.built, problems: r.problems };
+    for (const k of r.cheap) {
+      if (extras[k]! >= SLOW_MAX_EXTRA) return `voie lente du morceau ${k + 1} : coût minimal impossible à tenir`;
+      extras[k]!++;
+    }
+  }
+}
+
+function proveOnce(picks: readonly { id: string; variant: number }[], id: string, theme: JumpThemeName, simVersion: number, extras: readonly number[]): { built: Built; problems: string[]; cheap: number[] } | string {
   let asm: Assembled;
   try {
-    asm = assemble(picks);
+    asm = assemble(picks, { slow: simVersion >= SINGLE_CLOCK_VERSION, extras });
   } catch (e) {
     return `assemblage : ${(e as Error).message}`;
   }
@@ -936,7 +1050,7 @@ function prove(picks: readonly { id: string; variant: number }[], id: string, th
   }
   const total = result.time;
   const pieces = asm.pieces.map((p, k) => ({ ...p, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total }));
-  const built: Built = {
+  const base: Built = {
     id,
     level: asm.level,
     ascii: asm.ascii,
@@ -950,8 +1064,176 @@ function prove(picks: readonly { id: string; variant: number }[], id: string, th
     authorTicks: total,
     medals: jumpMedalsFor(total),
     exigence: exigenceOfPieces(pieces, total),
+    slowRoutes: [],
+    slowTicks: total,
   };
-  return { built, problems: dailyProblems({ ...built, theme }) };
+  // Un tirage que les règles refusent déjà n'a pas besoin de ses voies lentes (elles ne changent aucune de ces règles) : on s'arrête là.
+  const early = dailyProblems({ ...base, theme });
+  if (early.length > 0) return { built: base, problems: early, cheap: [] };
+  // Lot 16 : les voies lentes, mesurées contre la preuve.
+  const slow = slowRoutesOf(asm, chain.inputs, id, total);
+  if (typeof slow === "string") return slow;
+  const cheap = slow.filter((r) => r.slowTicks < r.fastTicks + slowCostMin(r.fastTicks)).map((r) => r.piece);
+  const slowTicks = total + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);
+  const built: Built = { ...base, medals: medalsWithSlow(total, slow), slowRoutes: slow, slowTicks };
+  const problems = [...early];
+  problems.push(...slowShortcutProblems(asm));
+  return { built, problems, cheap };
+}
+
+/**
+ * Lot 16 : la voie lente de chaque portion dure, jouée par son script (`slowScript`) dans le niveau final à partir de l'état de la preuve au
+ * pas où son centre entre sur le palier d'entrée ; la portion rapide va de ce pas à la sortie canonique du palier suivant (ou à l'arrivée).
+ */
+function slowRoutesOf(asm: Assembled, inputs: readonly number[], id: string, total: number): SlowRoute[] | string {
+  if (asm.slow.length === 0) return [];
+  const level = asm.level;
+  // Les pas où la preuve entre sur chaque palier (centre dans ses colonnes) et où elle passe son bord droit.
+  const enter = asm.paliers.map(() => -1);
+  const leave = asm.paliers.map(() => -1);
+  const states: AttemptState[] = [];
+  let s = initialAttempt(level);
+  for (let t = 0; t < inputs.length; t++) {
+    s = stepAttempt(s, inputs[t]!, level, DEFAULT_JUMP_PARAMS);
+    states.push(s);
+    const col = centerCol(s.player);
+    asm.paliers.forEach((p, k) => {
+      if (enter[k]! < 0 && col >= p.col0) enter[k] = t + 1;
+      if (leave[k]! < 0 && col > p.col1) leave[k] = t + 1;
+    });
+  }
+  const out: SlowRoute[] = [];
+  for (const r of asm.slow) {
+    const k = r.piece;
+    const last = k === asm.pieces.length - 1;
+    const fork = enter[k]!;
+    const end = last ? total : leave[k + 1]!;
+    if (fork < 1 || end < 0) return `voie lente du morceau ${k + 1} : la preuve ne passe pas ses paliers`;
+    const palierOut = asm.paliers[k + 1]!;
+    const script = slowScript(level, states[fork - 1]!, { zone: r.zone, entryRow: r.entryRow, galleryRow: r.galleryRow, palierOut }, last);
+    if (typeof script === "string") return `morceau ${k + 1} : ${script}`;
+    const all = [...inputs.slice(0, fork), ...script];
+    const code = encodeReplay({ simVersion: level.simVersion, levelId: id, start: { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 }, runs: toRuns(all) });
+    out.push({
+      piece: k,
+      zone: r.zone,
+      entryRow: r.entryRow,
+      galleryRow: r.galleryRow,
+      extra: r.extra,
+      palierIn: asm.paliers[k]!,
+      palierOut,
+      ledges: slowLedges(r.zone, r.entryRow, r.galleryRow),
+      fork,
+      fastTicks: end - fork,
+      slowTicks: script.length,
+      code,
+    });
+  }
+  return out;
+}
+
+/** Lot 16 : marge du bronze au-dessus du temps « toutes voies lentes » (pour cent). */
+export const SLOW_BRONZE_MARGIN = 110;
+
+/**
+ * Lot 16 — les médailles d'un niveau à voies lentes : celles du temps de l'auteur (`jumpMedalsFor`), puis, au minimum, **l'or sous le temps
+ * de n'importe quelle voie lente** (auteur + le plus petit surcoût − 1 pas) et **le bronze au-dessus du temps « toutes voies lentes »** avec
+ * `SLOW_BRONZE_MARGIN` ; l'argent reste entre les deux. La calibration complète est pour le lot 17.
+ */
+export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "fastTicks" | "slowTicks">[]): JumpMedals {
+  const m = jumpMedalsFor(author);
+  if (slow.length === 0) return m;
+  const minExtra = slow.reduce((n, r) => (r.slowTicks - r.fastTicks < n ? r.slowTicks - r.fastTicks : n), slow[0]!.slowTicks - slow[0]!.fastTicks);
+  const all = author + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);
+  const goldMax = author + minExtra - 1;
+  const gold = m.gold > goldMax ? goldMax : m.gold;
+  const bronzeMin = ceilPercent(all, SLOW_BRONZE_MARGIN);
+  const bronze = m.bronze < bronzeMin ? bronzeMin : m.bronze;
+  const silver = m.silver < gold ? gold : m.silver > bronze ? bronze : m.silver;
+  return { author, gold, silver, bronze };
+}
+
+/**
+ * Lot 16 — **aucun raccourci** : chaque voie lente n'est reliée au reste du niveau que par son entrée (le puits du palier d'entrée, par
+ * l'ouverture du mur gauche de la cage) et par sa descente (le puits du palier suivant) ; dans ce puits, au-dessus de la portée d'un saut depuis le sol
+ * (`SLOW_REACH_ROWS`), le morceau suivant n'a aucune case libre contre la descente (on ne tombe pas dans le haut du morceau suivant). Aucune
+ * scie ne touche une case de la voie, à aucun pas de son cycle. Rend ce qui ne va pas.
+ */
+export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "paliers" | "pieces">): string[] {
+  const out: string[] = [];
+  const level = asm.level;
+  const T = UNITS_PER_TILE;
+  const at = (c: number, r: number) => (c < 0 || r < 0 || c >= level.width || r >= level.height ? TILE_SOLID : level.tiles[r * level.width + c]!);
+  const mine = new Map<string, number>();
+  asm.slow.forEach((r, i) => r.carved.forEach((cell) => mine.set(`${cell.col},${cell.row}`, i)));
+  // Le trajet de chaque scie (tous les pas de son cycle) et sa boîte, rayon compris : calculés une fois pour toutes les voies.
+  const sawPaths = asm.slow.length === 0 ? [] : level.saws.map((saw) => {
+    const steps = saw.cycle === 0 ? 1 : saw.cycle;
+    const centers: { x: number; y: number }[] = [];
+    for (let t = 0; t < steps; t++) centers.push(sawCenter(saw, t));
+    let x0 = centers[0]!.x;
+    let x1 = x0;
+    let y0 = centers[0]!.y;
+    let y1 = y0;
+    for (const p of centers) {
+      if (p.x < x0) x0 = p.x;
+      if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y;
+      if (p.y > y1) y1 = p.y;
+    }
+    return { saw, centers, x0: x0 - saw.radius, x1: x1 + saw.radius, y0: y0 - saw.radius, y1: y1 + saw.radius };
+  });
+  asm.slow.forEach((r, i) => {
+    const pin = asm.paliers[r.piece]!;
+    const pout = asm.paliers[r.piece + 1]!;
+    const next = asm.pieces[r.piece + 1];
+    for (const cell of r.carved) {
+      // Voisines par un côté (une boîte de ¾ de tuile ne passe pas entre deux coins pleins).
+      for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        {
+          const c = cell.col + dc;
+          const row = cell.row + dr;
+          if (at(c, row) === TILE_SOLID) continue;
+          const owner = mine.get(`${c},${row}`);
+          if (owner === i) continue;
+          if (owner !== undefined) {
+            // La descente d'une voie longe l'ouverture de la cage de la suivante (portions dures voisines) : c'est l'entrée de celle-ci, qu'on
+            // prend de toute façon depuis ce palier ; aucune autre jonction n'est permise.
+            const opening = (q: (typeof asm.slow)[number], col: number, rr: number) => col === q.zone && rr >= q.entryRow - 5 && rr <= q.entryRow - 3;
+            const other = asm.slow[owner]!;
+            const joint = (other.piece === r.piece + 1 && opening(other, c, row)) || (other.piece === r.piece - 1 && opening(r, cell.col, cell.row));
+            if (!joint) out.push(`voies lentes ${i + 1} et ${owner + 1} se touchent en ${c},${row}`);
+            continue;
+          }
+          const entrance = c >= pin.col0 && c <= pin.col1;
+          const descent = c >= pout.col0 && c <= pout.col1;
+          if (!entrance && !descent) out.push(`voie lente ${i + 1} : ouverte sur la case ${c},${row}`);
+        }
+      }
+    }
+    // La descente longe le morceau suivant : rien de libre au-dessus de la portée d'un saut.
+    if (next) {
+      for (let row = 0; row < pout.row - SLOW_REACH_ROWS; row++) {
+        let c = pout.col0;
+        while (c <= pout.col1 + 1 && at(c, row) !== TILE_SOLID) c++;
+        if (c > pout.col1 + 1) out.push(`voie lente ${i + 1} : la descente donne sur le morceau suivant en ${pout.col1 + 1},${row}`);
+      }
+    }
+    sawPaths.forEach(({ saw, centers, x0, x1, y0, y1 }) => {
+      // Seules les cases dans la boîte du trajet de la scie (rayon compris) peuvent être touchées : les autres ne sont pas testées.
+      const near = r.carved.filter((cell) => (cell.col + 1) * T > x0 && cell.col * T < x1 && (cell.row + 1) * T > y0 && cell.row * T < y1);
+      if (near.length === 0) return;
+      for (const p of centers) {
+        for (const cell of near) {
+          if (circleHitsBox(p.x, p.y, saw.radius, { x: cell.col * T, y: cell.row * T, w: T, h: T })) {
+            out.push(`voie lente ${i + 1} : la scie ${saw.id} touche ${cell.col},${cell.row}`);
+            return;
+          }
+        }
+      }
+    });
+  });
+  return out;
 }
 
 /**
@@ -1012,16 +1294,17 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
     { id: "plongeon", variant: 1 },
     { id: "nuit-portes", variant: 0 },
   ],
+  // Lot 16 : l'ancienne suite dépassait 56 rangées avec la galerie de ses voies lentes ; rechoisie (`secours:modules -- --theme=neon`).
   neon: [
-    { id: "neon-cheminee", variant: 1 },
-    { id: "ressort-scie", variant: 1 },
-    { id: "paroi-friable", variant: 2 },
-    { id: "escalier-scies", variant: 0 },
-    { id: "puits", variant: 2 },
-    { id: "petits-trous", variant: 5 },
-    { id: "piliers-scie", variant: 5 },
-    { id: "demi-tour", variant: 3 },
-    { id: "pont-friable", variant: 4 },
+    { id: "neon-pics", variant: 2 },
+    { id: "mur-trous", variant: 4 },
+    { id: "cheminee-scie", variant: 2 },
+    { id: "petits-trous", variant: 1 },
+    { id: "neon-cheminee", variant: 0 },
+    { id: "saut-long", variant: 3 },
+    { id: "descente-scies", variant: 0 },
+    { id: "cheminee-vide", variant: 3 },
+    { id: "grande-scie", variant: 4 },
     { id: "neon-couloir", variant: 2 },
   ],
   // Lot 13 : la forêt (courants d'air), choisie de même (`secours:modules -- --theme=foret`, 80 dates valides sur 80).
@@ -1040,8 +1323,23 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
   ],
 };
 
-/** La suite de secours d'un thème. */
-export function fallbackFor(theme: JumpThemeName): readonly { id: string; variant: number }[] {
+/** Lot 16 : la suite de secours du néon d'avant (lot 12), gardée pour la référence v3 (`dailyLevel(jour, thème, 3)` ne change pas). */
+const FALLBACK_NEON_V3: readonly { id: string; variant: number }[] = [
+  { id: "neon-cheminee", variant: 1 },
+  { id: "ressort-scie", variant: 1 },
+  { id: "paroi-friable", variant: 2 },
+  { id: "escalier-scies", variant: 0 },
+  { id: "puits", variant: 2 },
+  { id: "petits-trous", variant: 5 },
+  { id: "piliers-scie", variant: 5 },
+  { id: "demi-tour", variant: 3 },
+  { id: "pont-friable", variant: 4 },
+  { id: "neon-couloir", variant: 2 },
+];
+
+/** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4). */
+export function fallbackFor(theme: JumpThemeName, simVersion = SINGLE_CLOCK_VERSION): readonly { id: string; variant: number }[] {
+  if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
 }
 
@@ -1084,7 +1382,9 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
       continue;
     }
     const { built, problems } = proof;
-    const score = scoreOf(built.authorTicks, built.exigence.rate);
+    // Lot 16 (v4) : la piste sous la cage allonge la course au sol ; à score égal, le tirage dont la plus longue course passe 1,2 s perd.
+    const runOver = simVersion >= SINGLE_CLOCK_VERSION && built.longestRun > LONGEST_RUN_TARGET ? per(built.longestRun - LONGEST_RUN_TARGET, LONGEST_RUN_TARGET) : 0;
+    const score = scoreOf(built.authorTicks, built.exigence.rate) + runOver;
     const status = problems.length > 0 ? "refusé" : "valide";
     attempts.push({ index, status, reason: problems.join(" ; "), pieces: names, ticks: built.authorTicks, rate: built.exigence.rate, score });
     if (problems.length > 0) continue;
@@ -1093,7 +1393,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
   let out: DailyLevel;
   if (best) out = { ...best.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };
   else {
-    const proof = prove(fallbackFor(theme), id, theme, simVersion);
+    const proof = prove(fallbackFor(theme, simVersion), id, theme, simVersion);
     if (typeof proof === "string" || proof.problems.length > 0) throw new Error(`Niveau de secours invalide : ${typeof proof === "string" ? proof : proof.problems.join(" ; ")}`);
     out = { ...proof.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: -1, fallback: true };
   }
@@ -1105,7 +1405,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
-  const proof = prove(fallbackFor(theme), dailyLevelId(day, theme, simVersion), theme, simVersion);
+  const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);
   if (typeof proof === "string") return proof;
   if (proof.problems.length > 0) return proof.problems.join(" ; ");
   return { ...proof.built, theme, forcedTheme: theme !== natural, day, date: formatDay(day), number: levelNumber(day), attempts: [], chosen: -1, fallback: true };

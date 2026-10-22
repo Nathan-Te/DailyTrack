@@ -53,6 +53,7 @@ import { BELT_FRAGMENT, BELT_VERTEX, beltRuns, beltTime, buildBeltArt, iceRuns }
 import { HAZARD_OUTLINE, backdropColors, type Theme } from "./themes";
 import { createDynamicBlocks, type DynamicStats } from "./dynamicArt";
 import { createWindArt, type WindStats } from "./windArt";
+import { SLOW_DEBUG, SLOW_MARK, slowMarkQuads, type SlowDebugPath } from "./slowRoute";
 
 // Rendu 2D vue de côté : caméra orthographique, formes géométriques, zéro asset. Monde en tuiles : x vers la droite, y vers le haut,
 // la rangée 0 de la grille tout en haut. Aucun calcul de simulation ici : on affiche ce que `jump-sim` a calculé (positions des scies,
@@ -81,6 +82,10 @@ export interface SceneOptions {
   levelId?: string;
   /** Lot 9 : allègements du décor et de la parallaxe (réglages du joueur). */
   detail?: SceneDetail;
+  /** Lot 16 : les voies lentes du niveau du jour : leur repère d'entrée est toujours dessiné. */
+  slowRoutes?: readonly { zone: number; entryRow: number }[];
+  /** Lot 16, `?debug` : les deux trajets de chaque portion dure et leurs temps. */
+  slowDebug?: readonly SlowDebugPath[];
 }
 
 /** Lot 9 : ce que les réglages demandent au décor et au fond (affichage seulement). */
@@ -640,6 +645,41 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     for (const p of options.pieces) {
       const label = textSprite(p.label, 0.8);
       label.position.set(p.col0 + 0.2 + label.scale.x / 2, -(p.row - 4.6), 0.6);
+      world.add(label);
+    }
+  }
+
+  // ——— Lot 16 : le repère d'entrée de chaque voie lente (cadre et chevrons crème cernés d'encre, jamais rouge, sans texte) ———
+  if (options.slowRoutes && options.slowRoutes.length > 0) {
+    const face = new MeshBasicMaterial({ color: SLOW_MARK.face });
+    const edge = new MeshBasicMaterial({ color: SLOW_MARK.edge });
+    for (const r of options.slowRoutes) {
+      const g = new Group();
+      for (const q of slowMarkQuads(r)) {
+        const back = new Mesh(new PlaneGeometry(q.w + 0.08, q.h + 0.08), edge);
+        back.position.set(q.x, -q.y, 0.07);
+        back.rotation.z = q.angle;
+        const front = new Mesh(new PlaneGeometry(q.w, q.h), face);
+        front.position.set(q.x, -q.y, 0.08);
+        front.rotation.z = q.angle;
+        g.add(back, front);
+      }
+      world.add(g);
+    }
+  }
+  // ——— Lot 16, ?debug : les deux trajets de chaque portion dure (rapide en cyan, lent en crème) et leurs temps ———
+  if (options.slowDebug) {
+    for (const d of options.slowDebug) {
+      for (const [points, color] of [
+        [d.fast, SLOW_DEBUG.fast],
+        [d.slow, SLOW_DEBUG.slow],
+      ] as const) {
+        if (points.length < 2) continue;
+        const line = new Line(new BufferGeometry().setFromPoints(points.map((p) => new Vector3(p.x, -p.y, 0.58))), new LineBasicMaterial({ color, transparent: true, opacity: 0.9 }));
+        world.add(line);
+      }
+      const label = textSprite(d.label, 0.7);
+      label.position.set(d.at.x + label.scale.x / 2, -d.at.y, 0.6);
       world.add(label);
     }
   }

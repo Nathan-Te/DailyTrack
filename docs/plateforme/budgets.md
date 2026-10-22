@@ -19,7 +19,7 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 26 600 | 25 385 | 26 524 | 76 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 502 | 1 498 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 369 402 | 9 088 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 375 313 | 3 177 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 531 | 2 469 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
@@ -27,6 +27,10 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 ## Lot 15 de DailyJump (horloge unique)
 
 - **Jump : −7 923 o** (377 325 → 369 402 o, marge 1 165 → 9 088 o). Le lot ajoute ≈ 3 630 o (la simulation joue deux versions — lecture de `version` et des phases, horloge de section, reprise au départ, « Prêt… » au chrono négatif —, le générateur g10 — phases calculées sur la référence, point de reprise sûr, variantes refusées —, deux fois : paquet principal et fil de travail du générateur ; et le « Prêt… » du jeu). Pour tenir, **le catalogue embarqué est allégé** (`catalogOf`, `packages/jump-sim/tools/files.ts`) : le jeu ne garde de chaque solution que la rediffusion, ses pas et la note ; la gigue, le raccord, la plus rapide et l'appui le plus court restent dans `modules/solutions.json` pour les outils et les tests (≈ 5,5 ko par paquet). Mesuré avec la méthode du test, `main` (`96b55a5`) reconstruit à part sur la même machine : 377 325 o, comme le tableau.
+
+## Lot 16 de DailyJump (seconde voie)
+
+- **Jump : +5 907 o** (369 406 → 375 313 o, marge 9 084 → 3 177 o), dans son budget (pas de relèvement). Le lot ajoute le module des voies lentes (géométrie, pilote de la solution lente, coût, médailles ajustées, vérification « aucun raccourci ») au générateur, deux fois (paquet principal et fil de travail du générateur), et le repère d'entrée et la surimpression `?debug` du jeu. Mesuré avec la méthode du test, `main` (`b256979`) reconstruit à part sur la même machine : 369 406 o.
 
 ## Ce que le lot I6 a changé (avant / après)
 
