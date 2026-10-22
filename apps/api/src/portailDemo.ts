@@ -13,7 +13,8 @@ import { jumpDailyOf } from "./jump";
 // horloge injectée sur chaque jour) avec `demoPlayers: true` (joueur marqué `demo`), une option que le serveur de production ne règle jamais.
 //
 // Son historique, chaque fois le même quel que soit le jour : **série de 5 jours** (Track fini les 5 derniers jours), **2 journées parfaites**
-// (Jump fini avant-hier et hier), et **aujourd'hui Track fini avec la médaille d'or, Jump en cours** (des morts envoyées, aucun essai classé).
+// (Jump fini avant-hier et hier), et **aujourd'hui Track fini avec la médaille d'or, Jump en cours** (des morts envoyées, aucun essai classé). **Depuis la bascule des médailles
+// (28/10/2026, lot 35) le pilote ne peut plus atteindre une médaille** (seuils sous son temps) : Track est fini sans médaille, avec la course la plus rapide du pilote.
 // Pour que la série reste de 5 jours quand le script repasse chaque jour (`recette-seed.yml`), le joueur est d'abord **effacé** par la route
 // d'admin de la plateforme (`POST /api/admin/effacer`, lot R5), puis recréé.
 
@@ -66,7 +67,7 @@ export async function seedPortailDemo(o: { db: SqlDb; frozen: Readonly<Record<st
   // de plus en plus prudent, jusqu'à passer sous le seuil de l'auteur sans dépasser celui de l'or).
   for (let day = o.today - DEMO_JOURS_TRACK + 1; day <= o.today; day++) {
     const circuit = dailyCircuit(day);
-    const medals = medalsFor(circuit.authorMs);
+    const medals = medalsFor(circuit.authorMs, day); // les seuils du jour (bascule du lot 35 le 28/10/2026), comme le serveur
     let chosen: { code: string; ms: number } | null = null;
     for (let grip = 0.98; grip >= 0.5 && !chosen; grip -= 0.02) {
       const run = runPilot(circuit.track, { grip });
@@ -75,10 +76,16 @@ export async function seedPortailDemo(o: { db: SqlDb; frozen: Readonly<Record<st
       if (day < o.today ? medal !== null : medal === "gold") chosen = { code: encodeReplay(run.replay), ms: run.finishMs };
     }
     if (!chosen) {
-      // Aucun réglage du pilote ne tombe dans l'or ce jour-là : la course la plus proche (le portail montre alors une autre médaille).
-      const run = runPilot(circuit.track, { grip: 0.9 });
-      if (!run.valid) throw new Error(`joueur de démonstration : le pilote ne finit pas le circuit du ${formatDay(day)}`);
-      chosen = { code: encodeReplay(run.replay), ms: run.finishMs };
+      // Aucun réglage du pilote ne tombe dans la médaille visée ce jour-là : sa course la plus rapide (le portail montre alors la médaille qu'elle vaut, ou aucune). Depuis la bascule
+      // du lot 35 (28/10/2026) c'est le cas de tous les jours : les seuils sont calibrés sur de vrais joueurs (or à 0,88 fois le temps du pilote) et aucun réglage du pilote n'est plus
+      // rapide que 0,97 fois son propre temps (mesuré sur trois jours, grip jusqu'à 1,5) — le joueur de démonstration n'a plus de médaille de Track tant qu'il n'a pas mieux qu'un pilote.
+      let best: { run: ReturnType<typeof runPilot> } | null = null;
+      for (const opts of [{ grip: 0.98 }, { grip: 1.1 }, { grip: 1.5, look: 0.45 }]) {
+        const run = runPilot(circuit.track, opts);
+        if (run.valid && (!best || run.finishMs < best.run.finishMs)) best = { run };
+      }
+      if (!best) throw new Error(`joueur de démonstration : le pilote ne finit pas le circuit du ${formatDay(day)}`);
+      chosen = { code: encodeReplay(best.run.replay), ms: best.run.finishMs };
     }
     clock = parisDayStart(day) + 12 * 3_600_000;
     const r = must(`Track ${formatDay(day)}`, await call("POST", "/api/submit", { playerId: DEMO_JOUEUR_ID, name: DEMO_JOUEUR_NOM, date: formatDay(day), replay: chosen.code }));

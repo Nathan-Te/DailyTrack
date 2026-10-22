@@ -1,60 +1,49 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { gzipSync } from "node:zlib";
 import { expect, test } from "@playwright/test";
+// @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
+import { mesureTrack } from "../../../scripts/budgets.mjs";
 
 // Chargement rapide sur mobile : budgets de poids (déterministes) et de temps (larges, la CI est variable).
 const dist = new URL("../dist/assets/", import.meta.url);
 
 /**
- * Le JS du premier chargement (lot 36) : ce que `index.html` demande — le script d'entrée, les `modulepreload` et, de proche en proche, leurs imports statiques —
- * comme un navigateur. Tout ce que le jeu charge par `import()` (le générateur de circuits, les scénarios d'essai, la démo, le Salon et le spectateur, l'anglais, le réglage de
- * conduite `?debug&tune`) et les fils de travail n'en font pas partie, quel que soit le nom que le constructeur leur donne. La page d'admin (`admin-*.js`, jamais chargée par les
- * joueurs) y est comptée à part depuis le lot 35 : voir `docs/plateforme/budgets.md`.
+ * Le poids du premier chargement : **une seule mesure** (lot de plateforme « suites de Track »), `mesureTrack` de `scripts/budgets.mjs` — la même que `node scripts/budgets.mjs` et que
+ * le tableau de `docs/plateforme/budgets.md`. Le premier chargement est ce que `index.html` demande (le script d'entrée, les `modulepreload`, les feuilles et, de proche en proche, les
+ * imports statiques) ; tout ce que le jeu charge par `import()` (le générateur de circuits, les scénarios d'essai, la démo, le Salon et le spectateur, l'anglais, le réglage de conduite
+ * `?debug&tune`) et les fils de travail n'en font pas partie, quel que soit le nom que le constructeur leur donne. La page d'admin (`admin-*.js`, jamais chargée par un joueur) non plus :
+ * elle a sa ligne et son plafond (test plus bas).
  */
-function premierChargement(gz: Record<string, number>, code: (f: string) => string): { premier: string[]; admin: number } {
-  const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
-  const vus = new Set<string>();
-  const file = [...html.matchAll(/(?:src|href)="\.\/assets\/([^"]+\.js)"/g)].map((m) => m[1]!);
-  while (file.length) {
-    const f = file.shift()!;
-    if (vus.has(f)) continue;
-    vus.add(f);
-    for (const m of code(f).matchAll(/\bfrom\s*"\.\/([^"]+\.js)"|\bimport\s*"\.\/([^"]+\.js)"/g)) file.push((m[1] ?? m[2])!);
-  }
-  return { premier: [...vus], admin: Object.entries(gz).filter(([f]) => f.startsWith("admin-")).reduce((n, [, s]) => n + s, 0) };
-}
-
 test("le jeu pèse peu : budget de poids compressé", () => {
-  const files = readdirSync(dist).filter((f) => f.endsWith(".js"));
-  const gz = Object.fromEntries(files.map((f) => [f, gzipSync(readFileSync(new URL(f, dist))).length]));
-  // Le fil de travail des circuits (lots 13 et 36) ne se charge qu'à la demande du premier circuit : budget à part (une copie de sim : générateur et pilote).
-  const worker = Object.entries(gz).find(([f]) => f.startsWith("circuitWorker-"))?.[1] ?? 0;
-  // Le fil de travail du Salon (lot 26) non plus : il ne se charge que dans le Salon (circuit de la session, pilotes fictifs de la démo).
-  const salonWorker = Object.entries(gz).find(([f]) => f.startsWith("salonWorker-"))?.[1] ?? 0;
-  // Lot I4 : le catalogue anglais est un fichier à part, chargé par `import()` seulement pour un joueur en anglais (i18n.ts) ; l'outil de réglage `?debug&tune`
-  // (tune.ts) ne se charge qu'à la demande : ni l'un ni l'autre ne pèse sur le premier chargement d'un joueur en français.
-  const anglais = Object.entries(gz).find(([f]) => f.startsWith("catalogue.en-"))?.[1] ?? 0;
-  const { premier, admin } = premierChargement(gz, (f) => readFileSync(new URL(f, dist), "utf8"));
-  const total = premier.reduce((n, f) => n + gz[f]!, 0) + admin;
-  const three = Object.entries(gz).find(([f]) => f.startsWith("three-"))?.[1] ?? 0;
+  const m: { js: number; css: number; three: number; horsThree: number; anglais: number; miniatures: number; fichiers: string[]; gz: Record<string, number> } = mesureTrack();
+  const { js: total, css, three, horsThree, anglais, miniatures: worker, fichiers: premier, gz } = m;
+  test.info().annotations.push({ type: "mesure", description: `premier chargement : JS ${total} + CSS ${css} = ${total + css} o (hors page d'admin, mesureTrack de scripts/budgets.mjs)` });
   // Lot 36 : le générateur et sa bibliothèque de figures ne reviennent pas dans le premier chargement (ils se calculent dans le fil de travail, ou dans un morceau chargé à
   // la demande) : aucun fichier du premier chargement ne contient les noms de la bibliothèque.
   for (const f of premier) expect(readFileSync(new URL(f, dist), "utf8"), `${f} : la bibliothèque de figures est dans le premier chargement`).not.toContain("Rétrécissement et virage");
   expect(
-    files.filter((f) => !premier.includes(f) && readFileSync(new URL(f, dist), "utf8").includes("Rétrécissement et virage")),
+    readdirSync(dist).filter((f) => f.endsWith(".js") && !premier.includes(f) && readFileSync(new URL(f, dist), "utf8").includes("Rétrécissement et virage")),
     "la bibliothèque de figures est chargée à la demande (fils de travail, morceau de génération)",
   ).not.toHaveLength(0);
-  const css = readdirSync(dist)
-    .filter((f) => f.endsWith(".css"))
-    .reduce((n, f) => n + gzipSync(readFileSync(new URL(f, dist))).length, 0);
   expect(three, "three.js doit rester dans son propre fichier (cache entre déploiements)").toBeGreaterThan(100_000);
   // Lot I4 (budget de la phase 3) : premier chargement ≤ aujourd'hui + 20 ko de JS et de CSS compressés. « Aujourd'hui » = le lot R4 : 260,2 ko de JS (le « 259 ko » du lot)
   // et 3,8 ko de CSS, soit 264,1 ko ; le lot I4 ajoute le socle (@cdj/ui : composants, jetons), le catalogue français, la langue, les nouveaux écrans et leurs feuilles.
-  expect(total + css, `JS ${total} + CSS ${css} compressés : ${JSON.stringify(gz)}`).toBeLessThan(264_100 + 23_300); // lot 35 : +1 000 o autorisés par Nathan (la page d'admin « Médailles », comptée dans la mesure, jamais chargée par les joueurs) ; lot I7 : +1 024 o autorisés par Nathan (le plein écran et la caméra en vue) ; lot 34 : +1 276 o autorisés par Nathan (freinage après les boosts, dans le générateur : docs/plateforme/budgets.md)
-  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(276_000); // lot 35 : +1 000 o autorisés par Nathan (page d'admin « Médailles ») ; lot 34 : +1 000 o autorisés par Nathan (freinage après les boosts) ; ≈ 271,5 ko au lot I4 (lot I4 : +11,3 ko, hors catalogue anglais et réglage de conduite) ; ≈ 260,2 ko au lot R4 (lot 30 : +5,4 ko, synchronisation du profil, pseudos réservés, code de transfert CDJ2, changer son code ; lot 29 : +8,7 ko, accueil, réglages à onglets, aide, profil, classement compact, trois bus sonores ; lot 28 : +3,1 ko ; lot 26 : +10 ko, le Salon ; lot 23 : +5,6 ko ; lot 20 : +7 ko, la bibliothèque de figures ; lot 18 : +5 ko, cuves ; lot 17 : +4 ko ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
-  expect(total - three, "le code du jeu et de la simulation, hors three.js").toBeLessThan(143_300); // lot 35 : +1 000 o autorisés par Nathan (page d'admin « Médailles ») ; lot 34 : +1 300 o autorisés par Nathan (freinage après les boosts) ; ≈ 138,7 ko au lot I4 (lot I4 : +15 ko) ; ≈ 123,7 ko au lot R4 (lot 30 : +4,1 ko ; lot 29 : +10 ko ; lot 28 : +3,1 ko ; lot 26 : +10 ko ; lot 23 : +5,6 ko ; lot 22 : +6 ko ; lot 20 : +7 ko ; lots 17 et 18 : +10 ko ; le panneau d'admin du lot 14 pèse ≈ 8 ko, chargé seulement sur /admin/)
+  // Les plafonds ne comptent plus la page d'admin (lot de plateforme « suites de Track », décision de Nathan du 22/10/2026) : −10 800 o chacun (admin-*.js, 10 882 o), la marge de Track reste la même.
+  expect(total + css, `JS ${total} + CSS ${css} compressés : ${JSON.stringify(gz)}`).toBeLessThan(264_100 + 12_500); // lot 35 : +1 000 o autorisés par Nathan (la page d'admin « Médailles », alors comptée) ; lot I7 : +1 024 o autorisés par Nathan (le plein écran et la caméra en vue) ; lot 34 : +1 276 o autorisés par Nathan (freinage après les boosts, dans le générateur : docs/plateforme/budgets.md)
+  expect(total, `JS compressé : ${JSON.stringify(gz)}`).toBeLessThan(265_200); // −10 800 o (page d'admin sortie du décompte) ; lot 35 : +1 000 o autorisés par Nathan ; lot 34 : +1 000 o autorisés par Nathan (freinage après les boosts) ; ≈ 271,5 ko au lot I4 (lot I4 : +11,3 ko, hors catalogue anglais et réglage de conduite) ; ≈ 260,2 ko au lot R4 (lot 30 : +5,4 ko, synchronisation du profil, pseudos réservés, code de transfert CDJ2, changer son code ; lot 29 : +8,7 ko, accueil, réglages à onglets, aide, profil, classement compact, trois bus sonores ; lot 28 : +3,1 ko ; lot 26 : +10 ko, le Salon ; lot 23 : +5,6 ko ; lot 20 : +7 ko, la bibliothèque de figures ; lot 18 : +5 ko, cuves ; lot 17 : +4 ko ; lot 14 : +10 ko, planning et panneau d'admin ; lot 9 : +8 ko ; lot 13 : +5 ko de miniatures ; budget du lot 9 : ≤ 300 ko ajoutés)
+  expect(horsThree, "le code du jeu et de la simulation, hors three.js").toBeLessThan(132_500); // −10 800 o (page d'admin sortie du décompte) ; lot 35 : +1 000 o autorisés par Nathan ; lot 34 : +1 300 o autorisés par Nathan (freinage après les boosts) ; ≈ 138,7 ko au lot I4 (lot I4 : +15 ko) ; ≈ 123,7 ko au lot R4 (lot 30 : +4,1 ko ; lot 29 : +10 ko ; lot 28 : +3,1 ko ; lot 26 : +10 ko ; lot 23 : +5,6 ko ; lot 22 : +6 ko ; lot 20 : +7 ko ; lots 17 et 18 : +10 ko)
   expect(anglais, "le catalogue anglais, chargé à la demande").toBeLessThan(8_000); // ≈ 6,6 ko aujourd'hui
-  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(26_600); // ≈ 26,5 ko aujourd'hui (lot 21 : +2 ko, bas-côtés, route bosselée, règles d'identité des thèmes, moments de choix) ; ≈ 22,4 ko au lot 20 (+5,6 ko, les figures) ; ≈ 16,7 ko avant ( (lot 18 : +3 ko, les cuves du générateur et du pilote ; lot 17 : +3,6 ko, le générateur et le pilote ont grandi) ; lot 34 : +600 o autorisés par Nathan (la règle de freinage du générateur)
+  // Le fil de travail des circuits (lots 13 et 36) ne se charge qu'à la demande du premier circuit : budget à part (une copie de sim : générateur et pilote). Il ne retarde pas le premier
+  // écran (téléchargé en parallèle, calcul hors du fil principal) : plafond relevé à 30 000 o par Nathan le 22/10/2026 (docs/plateforme/budgets.md).
+  expect(worker, "fil de travail des miniatures (une copie de sim : générateur et pilote), chargé à la demande").toBeLessThan(30_000); // ≈ 26,5 ko aujourd'hui (lot 21 : +2 ko, bas-côtés, route bosselée, règles d'identité des thèmes, moments de choix) ; ≈ 22,4 ko au lot 20 (+5,6 ko, les figures) ; ≈ 16,7 ko avant ( (lot 18 : +3 ko, les cuves du générateur et du pilote ; lot 17 : +3,6 ko, le générateur et le pilote ont grandi) ; lot 34 : +600 o autorisés par Nathan (la règle de freinage du générateur)
+});
+
+// La page d'administration (`admin-*.js`, lot 14) n'est jamais chargée par un joueur : elle n'est pas dans le premier chargement, mais elle a son plafond pour ne pas grossir sans qu'on le voie
+// (lot de plateforme « suites de Track » : mesure + 15 %, arrondi à 500 o).
+test("la page d'admin est à part, avec son plafond, et hors du premier chargement", () => {
+  const { admin, fichiers } = mesureTrack() as { admin: number; fichiers: string[] };
+  expect(fichiers.filter((f) => f.startsWith("admin-")), "la page d'admin n'est pas chargée par le premier écran").toEqual([]);
+  expect(admin, "page d'admin (admin-*.js), compressée").toBeGreaterThan(0);
+  expect(admin, "page d'admin (admin-*.js), compressée").toBeLessThan(12_500); // ≈ 10,9 ko aujourd'hui
 });
 
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
@@ -79,7 +68,8 @@ test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deu
 test("le fil de travail du Salon pèse peu (une copie de sim : générateur et pilote, chargée seulement dans le Salon)", () => {
   const files = readdirSync(dist).filter((f) => f.startsWith("salonWorker-") && f.endsWith(".js"));
   expect(files).toHaveLength(1);
-  expect(gzipSync(readFileSync(new URL(files[0]!, dist))).length).toBeLessThan(30_000); // ≈ 27,2 ko aujourd'hui
+  // Il ne retarde pas le premier écran (téléchargé en parallèle, calcul hors du fil principal) : plafond relevé à 32 000 o par Nathan le 22/10/2026 (docs/plateforme/budgets.md).
+  expect((mesureTrack() as { salon: number }).salon).toBeLessThan(32_000); // ≈ 28,5 ko aujourd'hui
 });
 
 test.describe("chargement sur un téléphone simulé", () => {
