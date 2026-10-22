@@ -181,6 +181,25 @@ export class VueMouvement {
     }
   }
 
+  /**
+   * Lot 40 : change la voiture (un des modèles proposés, à un palier) ; la caméra et le tour restent où ils sont. L'ancienne est libérée si elle
+   * le permet.
+   */
+  async changerVoiture(v: CarModel & { dispose?(): void }) {
+    const ancienne = this.voiture as CarModel & { dispose?(): void };
+    if (ancienne === v) return;
+    this.ts?.scene.remove(ancienne.group);
+    this.voiture = v;
+    v.group.traverse((o) => (o.castShadow = true));
+    this.ts?.scene.add(v.group);
+    ancienne.dispose?.();
+  }
+
+  /** Lot 40 : repeint la voiture (si son modèle le permet : les modèles proposés, pas l'existant). */
+  repeindre(couleur: number, numero: string) {
+    (this.voiture as CarModel & { peindre?(c: number, n?: string): void }).peindre?.(couleur, numero);
+  }
+
   /** La scène montrée : l'existant (le jeu) ou les paliers (réglages du panneau). */
   async changerScene(s: "existant" | "paliers") {
     this.choixScene = s;

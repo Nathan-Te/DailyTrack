@@ -343,10 +343,10 @@ describe("voitures des fantômes du Salon", () => {
     return n;
   };
 
-  it("le fantôme allégé tient en un seul objet dessiné (la voiture du joueur en compte plus de quarante)", () => {
+  it("le fantôme allégé tient en un seul objet dessiné (la voiture du joueur en compte six depuis le lot 40 : caisse, feux, quatre roues)", () => {
     const full = createCarMesh();
     const light = createCarMesh(true, GHOST_COLORS[0], true);
-    expect(meshes(full.group)).toBeGreaterThan(40);
+    expect(meshes(full.group)).toBe(6);
     expect(meshes(light.group)).toBe(1);
     light.update({ forward: 20, steerAngle: 0.2, braking: true, droop: [0, 0, 0, 0], dt: 1 / 60 }); // sans roues séparées : rien à animer, rien ne plante
   });

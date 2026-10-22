@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex" />
     <link rel="icon" href="data:," />
-    <title>Vitrine de la scène — Track (lots 38 et 38b)</title>
+    <title>Vitrine de la scène — Track (lots 38, 38b et 40)</title>
   </head>
   <body>
     <main id="vitrine">
@@ -15,6 +15,7 @@
         <nav class="planches" aria-label="Planches">
           <a href="./" class="planche planche--paliers">Paliers de qualité (retouche 38b)</a>
           <a href="./?planche=directions" class="planche planche--directions">Directions (lot 38)</a>
+          <a href="./?planche=voiture" class="planche planche--voiture">Voiture (lot 40)</a>
         </nav>
         <div class="pour-paliers">
           <p>
@@ -40,8 +41,18 @@
             <div><dt>Mélange recommandé</dt><dd>La proposition du lot : éléments et rebords de A, décor de B allégé, lumière de C.</dd></div>
           </dl>
         </div>
-        <label class="choix">Thème des sections d'éléments <select id="theme-elements"></select></label>
-        <nav aria-label="Sections"><ol id="sommaire"></ol></nav>
+        <div class="pour-voiture">
+          <p>
+            La voiture d'aujourd'hui (<strong>en six maillages</strong> depuis le lot 40, à l'image identique) et <strong>trois modèles</strong> à comparer :
+            <strong>A</strong>, l'évolution de l'actuelle ; <strong>B</strong>, une GT basse ; <strong>C</strong>, un proto à bulle. Chacun aux
+            <strong>paliers 1, 2 et 3</strong> de la scène, à l'arrêt (on tourne autour en glissant), en <strong>fantôme du Salon</strong> à 50 m, puis
+            <strong>en mouvement</strong> (Stade, Nuit, Canyon : bouton sous chaque colonne). Le <strong>sélecteur de couleur</strong> (la palette de 8)
+            s'applique partout. Le coût de chaque modèle est sous les vues ; la planche des couleurs, en bas. Rien de ce qui est ici n'est dans le jeu
+            (<code>docs/lots/lot-40-vehicule.md</code>).
+          </p>
+        </div>
+        <label class="choix hors-voiture">Thème des sections d'éléments <select id="theme-elements"></select></label>
+        <nav class="hors-voiture" aria-label="Sections"><ol id="sommaire"></ol></nav>
       </header>
 
       <section class="reglages pour-paliers" aria-labelledby="reglages-titre">
@@ -49,7 +60,9 @@
         <div id="reglages-page"></div>
       </section>
 
-      <section class="couts" aria-labelledby="couts-titre">
+      <div id="voiture" class="pour-voiture"></div>
+
+      <section class="couts hors-voiture" aria-labelledby="couts-titre">
         <h2 id="couts-titre">Coût de chaque colonne</h2>
         <div class="tableau">
           <table>
@@ -95,7 +108,7 @@
         </div>
       </section>
 
-      <div id="sections"></div>
+      <div id="sections" class="hors-voiture"></div>
     </main>
 
     <dialog id="agrandi" aria-labelledby="agrandi-titre">
@@ -119,7 +132,18 @@
             <option value="depart">Départ</option>
           </select></label
         >
-        <div class="segments" role="group" aria-label="Scène">
+        <div class="segments pour-voiture" role="group" aria-label="Modèle">
+          <button type="button" class="segment" data-modele="existant" aria-pressed="false">Existant</button>
+          <button type="button" class="segment" data-modele="A" aria-pressed="true">A</button>
+          <button type="button" class="segment" data-modele="B" aria-pressed="false">B</button>
+          <button type="button" class="segment" data-modele="C" aria-pressed="false">C</button>
+        </div>
+        <div class="segments pour-voiture" role="group" aria-label="Palier">
+          <button type="button" class="segment" data-palier="1" aria-pressed="false">Palier 1</button>
+          <button type="button" class="segment" data-palier="2" aria-pressed="true">Palier 2</button>
+          <button type="button" class="segment" data-palier="3" aria-pressed="false">Palier 3</button>
+        </div>
+        <div class="segments pour-paliers" role="group" aria-label="Scène">
           <button type="button" class="segment" data-scene="existant" aria-pressed="false">Existant (le jeu)</button>
           <button type="button" class="segment" data-scene="paliers" aria-pressed="true">Paliers</button>
         </div>
@@ -130,7 +154,7 @@
         <p class="mouvement__ips"></p>
       </div>
       <p class="mouvement__compteur"></p>
-      <details class="mouvement__reglages" open>
+      <details class="mouvement__reglages pour-paliers" open>
         <summary>Palier et pas</summary>
         <div id="mouvement-reglages"></div>
       </details>
