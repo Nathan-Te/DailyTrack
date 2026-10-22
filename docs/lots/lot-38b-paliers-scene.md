@@ -17,7 +17,7 @@ aligner, comme au lot 38).
   le coût de chaque palier et de chaque pas.
 - **Palier 1** (le mélange du lot 38, nettoyé) : il coûte l'existant — mêmes appels de rendu, moins de triangles au pire thème, construction
   plus courte ; ≈ +9 ko net au premier chargement (§ 3).
-- **Palier 2** (finition) : **aucun appel de plus**, +5,2 ko chargés à la demande, mais plus de travail par pixel (×2,3 en rendu logiciel),
+- **Palier 2** (finition) : **aucun appel de plus**, +5,0 ko chargés à la demande (5,2 au 38b), mais plus de travail par pixel (×2,3 en rendu logiciel),
   surtout à cause des **reflets** : à **cibler** sur la voiture et le métal.
 - **Palier 3** : **la vie et le ciel pour presque rien** (6,8 ko, un appel chacun) ; **l'occlusion et le post-traitement coûtent cher**
   (l'occlusion redessine la scène : +128 appels ; la chaîne de passes : ≈ 200 Mo de cibles à la taille d'un écran de téléphone).
@@ -41,7 +41,21 @@ sans exagérer les détails.
 - Un point de vue **« L'asphalte de près »** dans chaque section de thème (la matière à hauteur d'homme, derrière la voiture).
 - `direction.md` § 9 : la décision de Nathan (palier 3 visé, matière sobre, téléphones par la règle automatique) ; le reste du § 8 reste ouvert.
 
-<!-- 38C-COUTS -->
+**Coût** (remesuré le 22/10/2026 au profil téléphone, rendu logiciel, processeur ×4, `mesure-lot38b` ; le pas seul au-dessus du palier 1 sur le
+Stade, le Rallye, la Nuit et le Col, comme au § 3) :
+
+| Pas | Image | Triangles | Appels | Mémoire des textures | Poids (à la demande) |
+|---|---|---|---|---|---|
+| **matière sobre** (38c) | +42 ms | 0 | 0 | **+1,3 Mo** (4 textures de 256 px, sans normales ni rugosité) | `matiere.ts` + `bruit.ts`, avec les traces : **2,2 ko** |
+| **traces** (38c, à part) | ≈ 0 | +260 | 0 | 0 | (dans `matiere.ts`) |
+| matière détaillée (l'ancienne, 38b) | +53 ms | 0 | 0 | +6,9 Mo (4 textures dont une de 512 px, normales et rugosité) | `matiereDetaillee.ts` : 1,3 ko de plus |
+
+Les colonnes, remesurées avec la matière sobre (moyenne des huit thèmes) : **palier 2** 123 appels, image 445 ms (pire : 561, Campagne),
+construction 457 ms, **textures 5,1 Mo au lieu de 10,8** ; **palier 3** 275 appels, image 910 ms, construction 396 ms, textures 6,9 Mo au lieu de
+12,6, cibles 49,2 Mo (inchangées). Le palier 1 et l'existant n'ont pas changé (194 et 167 ms d'image cette fois : l'écart avec le § 3, ≈ 5 %, est le
+bruit d'une séance à l'autre). En rendu logiciel, la matière sobre coûte encore une quarantaine de millisecondes par image : c'est la seconde
+lecture de texture par pixel (la variation large) que SwiftShader paie cher ; sur une carte graphique, c'est une lecture d'une texture déjà en
+cache. **La mémoire baisse de 5,6 Mo** et le module pèse un peu moins (2,2 ko au lieu de 2,4).
 
 **Captures avant / après** (`matiere-<thème>.jpg`, trois colonnes : le grain du palier 1, puis le palier 3 avec l'ancienne matière, puis le
 palier 3 avec la matière sobre ; en poursuite, puis l'asphalte de près) :
@@ -216,7 +230,7 @@ mesure), à côté de ceux de l'appareil qui regarde.
 
 | | Existant (le jeu) | Palier 1 | Palier 2 | Palier 3 |
 |---|---|---|---|---|
-| **Poids ajouté au jeu** (JS compressé) | aujourd'hui 14,4 ko (`trackMesh.ts`, `trackProps.ts`) | 33,4 ko en tout, dont décor 6,2 ko et matière de C ≈ 4,3 ko à la demande (plan du lot 38) : **≈ +9 ko net** au premier chargement | **+5,2 ko** à la demande (finition 2,0, matière 2,4, reflets 0,8) | **+56,6 ko** à la demande (lumière 3,2, vie 3,6, post 49,8) ; **≈ 21 ko** avec FXAA au lieu de SMAA ; **6,8 ko** sans post-traitement |
+| **Poids ajouté au jeu** (JS compressé) | aujourd'hui 14,4 ko (`trackMesh.ts`, `trackProps.ts`) | 33,4 ko en tout, dont décor 6,2 ko et matière de C ≈ 4,3 ko à la demande (plan du lot 38) : **≈ +9 ko net** au premier chargement | **+5,0 ko** à la demande (finition 2,0, matière sobre et traces 2,2, reflets 0,8 ; 5,2 au 38b) | **+56,6 ko** à la demande (lumière 3,2, vie 3,6, post 49,8) ; **≈ 21 ko** avec FXAA au lieu de SMAA ; **6,8 ko** sans post-traitement |
 | Temps d'image (ms, moyenne ; pire thème) | 174 (265, Ville) | 202 (267, Rallye) | 462 (569, Rallye) | 925 (1 021, Rallye) |
 | dont envoi (fil principal, ms) | 4,5 | 4,1 | 4,3 | 8,2 |
 | Construction de la scène (ms ; pire) | 343 (658, Ville) | **276** (372) | 394 (597) | 416 (517) |
@@ -224,6 +238,9 @@ mesure), à côté de ceux de l'appareil qui regarde.
 | Triangles par image (moyenne ; pire) | 90 600 (168 300) | 87 200 (122 100) | 109 300 (150 000) | 252 800 (339 500) |
 | Textures dessinées | 0,8 Mo | 3,9 Mo | 10,8 Mo | 12,6 Mo |
 | Cibles de rendu (à 844 × 390) | 4,0 Mo | 4,0 Mo | 4,7 Mo | **49,2 Mo** |
+
+*Ce tableau est la mesure du 38b (matière détaillée au palier 2) ; avec la matière sobre (38c), les textures du palier 2 tombent à 5,1 Mo et
+celles du palier 3 à 6,9 Mo, le reste ne bouge pas (§ 38c).*
 
 Ce qu'il faut en lire :
 - **Le palier 1 coûte à peu près l'existant** : moins de triangles en moyenne et surtout au pire thème (122 000 au lieu de 168 000 : la Ville, avec ses murs
@@ -244,7 +261,9 @@ Ce qu'il faut en lire :
 |---|---|---|---|---|---|---|
 | géométrie (2) | ≈ 0 | +56 ms | **+28 000** | 0 | 0 | finition.ts : 2,0 ko (avec la variété) |
 | variété (2) | ≈ 0 | ≈ 0 | 0 | 0 | 0 | (dans finition.ts) |
-| matière (2) | +35 ms | ≈ 0 (textures dessinées une fois) | +260 | 0 | +6,9 Mo | matiere.ts + bruit.ts : 2,4 ko |
+| matière (2) — **sobre, 38c** | +42 ms | ≈ 0 (textures dessinées une fois) | 0 | 0 | +1,3 Mo | matiere.ts + bruit.ts (avec les traces) : 2,2 ko |
+| traces (2, à part depuis la 38c) | ≈ 0 | ≈ 0 | +260 | 0 | 0 | (dans matiere.ts) |
+| matière détaillée (comparaison : l'ancienne matière du 38b) | +53 ms (38c) ; +35 ms au 38b, traces comprises | ≈ 0 | 0 | 0 | +6,9 Mo | matiereDetaillee.ts : 1,3 ko de plus |
 | reflets (2) | **+140 ms** | ≈ 0 | 0 | 0 | +0,7 Mo | reflets.ts : 0,8 ko |
 | ombres (3) | ≈ 0 | ≈ 0 | +17 200 | +1 | +12 Mo (carte 2048) | aucun (réglage du compositeur) |
 | occlusion (3, passe) | **+274 ms** | ≈ 0 | **+89 900** | **+128** | +27,6 Mo | GTAOPass : 8,1 ko |
@@ -367,7 +386,7 @@ La voiture n'est pas touchée par ce lot ; elle est dans chaque vue (fixe et en 
 | 2 | **Véhicule** (placé ici : c'est le pas le plus rentable) | la voiture en 6 maillages, puis le modèle des paliers 1 et 2 (§ 6) | +3 à +5 ko | — | −40 appels par image au moins ; vue capot vérifiée ; Salon inchangé |
 | 3 | **Palier 1 — éléments et lumière** | éléments de course, rebords par thème, lumière de C, horizons, ombres devant la voiture (gratuit), corrections du § 2 | ≈ +7 ko | — | Stade et Nuit séparés ; temps d'image ≤ existant + 10 % |
 | 4 | **Palier 1 — décor**, thème par thème (deux lots : Stade, Rallye, Campagne, Canyon ; puis Banquise, Col, Ville, Nuit) | décor allégé, matière de C | ≈ +0,3 ko de chargeur | ≤ 16 ko (ligne « décor 3D à la demande ») | jamais pendant une course ; aucune image qui saute |
-| 5 | **Palier 2 — finition** | géométrie, variété, matière, reflets ciblés ; règle de qualité automatique et réglage « Qualité graphique » (fr + en) | ≈ +1 ko (règle, réglage) | ≈ 5,2 ko (modules des pas) | mêmes appels que le palier 1 ; téléphone récent ≥ 55 images/s mesurées |
+| 5 | **Palier 2 — finition** | géométrie, variété, matière, reflets ciblés ; règle de qualité automatique et réglage « Qualité graphique » (fr + en) | ≈ +1 ko (règle, réglage) | ≈ 5,0 ko (modules des pas) | mêmes appels que le palier 1 ; téléphone récent ≥ 55 images/s mesurées |
 | 6 | **Palier 3 — vie et ciel** (sans passe plein écran) | drapeaux, foule, écrans, particules, nuages, brume, ombres devant la voiture en 2048 | 0 | ≈ 6,8 ko | ordinateur à 60 images/s ; un appel par famille |
 | 7 | **Palier 3 — post-traitement** (si Nathan le veut, ordinateur seulement) | étalonnage, halo (fort la Nuit), FXAA plutôt que SMAA ; l'occlusion seulement si elle se justifie (§ 3 : +128 appels) | 0 | ≈ 6,5 ko (sortie, étalonnage, halo, FXAA) ; +8,1 ko avec l'occlusion | ordinateur seulement ; jamais sans demi-flottants |
 
@@ -396,6 +415,13 @@ Chaque lot remesure avec la vitrine (qui reste le banc d'essai : elle montre l'e
     près de la piste (4), budget du premier chargement ≈ +9 ko et ligne « décor 3D à la demande » à 16 ko (9), palette `neon` (10).
 
 ## 9. Vérifié, non vérifié
+
+**Vérifié (38c)** : le jeu construit est toujours identique à `main` octet pour octet ; `test/paliers.test.ts` (la matière sobre fait 256 px,
+sans normales ni rugosité, garde la teinte moyenne du grain du palier 1, est moins contrastée que lui et n'a aucun détail qui se remarque ; sa
+variation large est douce et sans couture ; la lecture de three.js est remplacée ; « matière détaillée » n'est dans aucun palier ; les traces sont
+plus discrètes) ; `e2e/vitrine.spec.ts` (la case « matière détaillée » est coupée au palier 3, « traces » cochée ; cochée, la colonne se reconstruit
+sans erreur) ; captures avant / après regardées ; mesure du pas seul. **Non vérifié (38c)** : la matière sobre sur un vrai téléphone (même réserve
+que le § 3) ; la variation large se juge en roulant, sur une longue ligne droite : à regarder dans la vue en mouvement.
 
 **Vérifié**
 - **Le jeu n'a pas changé** : `npm run build` puis empreinte de chaque fichier de `apps/web/dist` (hors `vitrine/`) comparée à celle de `main` :
