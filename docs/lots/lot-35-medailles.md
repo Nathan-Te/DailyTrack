@@ -75,11 +75,12 @@ Export de `GET /api/admin/medailles` en production, 22/10/2026 (pilotes fictifs 
 
 - Vérifié en local : `npm run typecheck`, `npm test` en entier ; tests ajoutés : `packages/sim/test/medaillesLot35.test.ts` (seuils d'avant inchangés jusqu'au 27/10 compris, nouveaux à partir du 28/10, circuit du jour et Salon), `apps/api/test/planning.test.ts` (le temps du pilote : auteur le 27/10, aucune médaille le 28/10 ; envoi, classement, `/api/me`, portail, outil — SQLite et libSQL) ; e2e `planning.spec.ts` et `perf.spec.ts` (Chromium) ; golden inchangé (`golden-daily.test.ts` vert sans régénération) ; budgets remesurés.
 - e2e Chromium passés en local : `planning`, `perf`, `share`, `leaderboard`, `demo`, `daily` (39/39).
-- **Échec hors zone, signalé (règle d'arrêt)** : `apps/api/test/jumpHistory.test.ts` (3 tests, « relancer npm run jump:seed » : `expected 'jour-2026-10-23-g10' to be 'jour-2026-10-23-g9'`) échoue **aussi sur `main` sans ce lot** (run 39735541285 du 22/10) : le jeu de données de démonstration de DailyJump n'a pas été régénéré après son générateur g10. Zone Jump : non corrigé ici.
-- Non vérifié : un circuit d'après la bascule sur l'aperçu (lien ci-dessous ; ouvrir `?seed=2026-10-28` : l'objectif de médaille du HUD donne l'auteur à 0,84 du pilote) ; la répartition réelle après le 28/10 (à relire avec l'outil).
+- **Échec hors zone, signalé (règle d'arrêt)** : `apps/api/test/jumpHistory.test.ts` (3 tests, « relancer npm run jump:seed » : `expected 'jour-2026-10-23-g10' to be 'jour-2026-10-23-g9'`) échouait **aussi sur `main` sans ce lot** (run 39735541285 du 22/10) : le 23/10 figé en g9 par la mise en production, la démo de DailyJump le portait en g10. Corrigé à part par la PR Jump https://github.com/Nathan-Te/DailyTrack/pull/113 (`jump:seed` seul), fusionnée puis reprise ici par une fusion de `main`.
+- Non vérifié : un circuit d'après la bascule sur l'aperçu (lien ci-dessous) ; la répartition réelle après le 28/10 (à relire avec l'outil).
 
 ## Liens
 
-- PR : https://github.com/Nathan-Te/DailyTrack/pull/106 (CI verte au commit `593a227`).
+- Étape 1 (outil) : PR https://github.com/Nathan-Te/DailyTrack/pull/106 (CI verte au commit `593a227`, en production le 22/10/2026).
 - Aperçu (canal Firebase de la recette, 7 jours) : page d'admin https://playdujour-recette--pr-106-fkp6afxm.web.app/track/admin/ (section « Médailles », jeton d'admin de la recette, cocher « Compter les pilotes fictifs » : la recette n'a qu'eux) ; il parle à la révision étiquetée `b-claude-epic-cer-0q76up` du serveur de recette, qui porte la route.
-- Un circuit d'après la bascule avec ses nouveaux seuils : à la reprise (étape 3).
+- Étape 2 (calibrage) : PR https://github.com/Nathan-Te/DailyTrack/pull/112 ; révision de recette `b-claude-epic-cer-0q76up`.
+- Aperçu de l'étape 2 : un circuit d'après la bascule avec ses nouveaux seuils, https://playdujour-recette--pr-112-fl0c9k8k.web.app/track/?seed=2026-10-28 (objectif de médaille du HUD : l'auteur à 0,84 du temps du pilote) ; le jour d'avant, anciens seuils : `?seed=2026-10-27` ; page d'admin : https://playdujour-recette--pr-112-fl0c9k8k.web.app/track/admin/ (section « Médailles »).
