@@ -1050,12 +1050,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   }
   const total = result.time;
   const pieces = asm.pieces.map((p, k) => ({ ...p, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total }));
-  // Lot 16 : les voies lentes, mesurées contre la preuve.
-  const slow = slowRoutesOf(asm, chain.inputs, id, total);
-  if (typeof slow === "string") return slow;
-  const cheap = slow.filter((r) => r.slowTicks < r.fastTicks + slowCostMin(r.fastTicks)).map((r) => r.piece);
-  const slowTicks = total + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);
-  const built: Built = {
+  const base: Built = {
     id,
     level: asm.level,
     ascii: asm.ascii,
@@ -1067,12 +1062,21 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     replay,
     code: encodeReplay(replay),
     authorTicks: total,
-    medals: medalsWithSlow(total, slow),
+    medals: jumpMedalsFor(total),
     exigence: exigenceOfPieces(pieces, total),
-    slowRoutes: slow,
-    slowTicks,
+    slowRoutes: [],
+    slowTicks: total,
   };
-  const problems = dailyProblems({ ...built, theme });
+  // Un tirage que les règles refusent déjà n'a pas besoin de ses voies lentes (elles ne changent aucune de ces règles) : on s'arrête là.
+  const early = dailyProblems({ ...base, theme });
+  if (early.length > 0) return { built: base, problems: early, cheap: [] };
+  // Lot 16 : les voies lentes, mesurées contre la preuve.
+  const slow = slowRoutesOf(asm, chain.inputs, id, total);
+  if (typeof slow === "string") return slow;
+  const cheap = slow.filter((r) => r.slowTicks < r.fastTicks + slowCostMin(r.fastTicks)).map((r) => r.piece);
+  const slowTicks = total + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);
+  const built: Built = { ...base, medals: medalsWithSlow(total, slow), slowRoutes: slow, slowTicks };
+  const problems = [...early];
   problems.push(...slowShortcutProblems(asm));
   return { built, problems, cheap };
 }
@@ -1162,6 +1166,23 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
   const at = (c: number, r: number) => (c < 0 || r < 0 || c >= level.width || r >= level.height ? TILE_SOLID : level.tiles[r * level.width + c]!);
   const mine = new Map<string, number>();
   asm.slow.forEach((r, i) => r.carved.forEach((cell) => mine.set(`${cell.col},${cell.row}`, i)));
+  // Le trajet de chaque scie (tous les pas de son cycle) et sa boîte, rayon compris : calculés une fois pour toutes les voies.
+  const sawPaths = asm.slow.length === 0 ? [] : level.saws.map((saw) => {
+    const steps = saw.cycle === 0 ? 1 : saw.cycle;
+    const centers: { x: number; y: number }[] = [];
+    for (let t = 0; t < steps; t++) centers.push(sawCenter(saw, t));
+    let x0 = centers[0]!.x;
+    let x1 = x0;
+    let y0 = centers[0]!.y;
+    let y1 = y0;
+    for (const p of centers) {
+      if (p.x < x0) x0 = p.x;
+      if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y;
+      if (p.y > y1) y1 = p.y;
+    }
+    return { saw, centers, x0: x0 - saw.radius, x1: x1 + saw.radius, y0: y0 - saw.radius, y1: y1 + saw.radius };
+  });
   asm.slow.forEach((r, i) => {
     const pin = asm.paliers[r.piece]!;
     const pout = asm.paliers[r.piece + 1]!;
@@ -1198,20 +1219,19 @@ export function slowShortcutProblems(asm: Pick<Assembled, "level" | "slow" | "pa
         if (c > pout.col1 + 1) out.push(`voie lente ${i + 1} : la descente donne sur le morceau suivant en ${pout.col1 + 1},${row}`);
       }
     }
-    for (const saw of level.saws) {
-      const steps = saw.cycle === 0 ? 1 : saw.cycle;
-      let hit = false;
-      for (let t = 0; t < steps && !hit; t++) {
-        const p = sawCenter(saw, t);
-        for (const cell of r.carved) {
+    sawPaths.forEach(({ saw, centers, x0, x1, y0, y1 }) => {
+      // Seules les cases dans la boîte du trajet de la scie (rayon compris) peuvent être touchées : les autres ne sont pas testées.
+      const near = r.carved.filter((cell) => (cell.col + 1) * T > x0 && cell.col * T < x1 && (cell.row + 1) * T > y0 && cell.row * T < y1);
+      if (near.length === 0) return;
+      for (const p of centers) {
+        for (const cell of near) {
           if (circleHitsBox(p.x, p.y, saw.radius, { x: cell.col * T, y: cell.row * T, w: T, h: T })) {
             out.push(`voie lente ${i + 1} : la scie ${saw.id} touche ${cell.col},${cell.row}`);
-            hit = true;
-            break;
+            return;
           }
         }
       }
-    }
+    });
   });
   return out;
 }
