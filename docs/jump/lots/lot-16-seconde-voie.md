@@ -61,7 +61,7 @@ Résultat sur le catalogue actuel (`modules/voies.json`) :
 - Sur 120 dates (`measure:jump`) : **or jamais abaissé** (le plus petit surcoût, 3,19 s, dépasse toujours les ≈ 3 s du ×1,10) ; **bronze relevé sur 10 niveaux** (2 ou 3 voies lentes longues). Sur les 14 jours régénérés ci-dessous : **aucun ajustement**. La calibration complète est pour le lot 17.
 
 ## 6. Jours régénérés (g11) et jours figés
-**Aucun jour public touché.** Avant de finir, le 23/10/2026 (« demain » à Paris le 22/10) a été **figé avec le code de `main` (g10)** dans un worktree séparé ; les jours figés du 16 au 23/10 se rejouent tels quels (v3 jusqu'au 22, v4 g10 le 23). **Les jours régénérés commencent le 24/10/2026.** Portion = de l'entrée sur le palier à la sortie du palier suivant (course sous la cage comprise) ; note = celle de la voie lente.
+**Aucun jour public touché.** Le 23/10/2026 (« demain » à Paris le 22/10) a d'abord été figé avec le code de `main` (g10) dans un worktree séparé ; puis la mise en production du 22/10 l'a figé avec **le code en production (g9, v3)** (PR #111 de `main`) : **c'est ce fichier qui fait foi**, il a remplacé celui du lot à la fusion de `main`. Les jours figés du 16 au 23/10 sont en v3 et se rejouent tels quels. **Les jours régénérés commencent le 24/10/2026.** Portion = de l'entrée sur le palier à la sortie du palier suivant (course sous la cage comprise) ; note = celle de la voie lente.
 
 | date | thème | voies | portions dures (rapide → lente, surcoût, note de la voie) | auteur | toutes voies lentes | or | bronze | ajusté |
 |---|---|---|---|---|---|---|---|---|

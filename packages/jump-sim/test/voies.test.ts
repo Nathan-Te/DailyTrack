@@ -39,7 +39,7 @@ import { slowGigue, slowStart } from "../tools/voies";
 
 // Lot 16 — la seconde voie sur les portions dures (générateur g11) : règles vérifiées sur chaque jour régénéré.
 
-/** Les jours régénérés par le lot (le 23/10/2026 et avant sont figés, en g10 au plus) : deux semaines à partir du 24/10/2026. */
+/** Les jours régénérés par le lot (le 23/10/2026 et avant sont figés) : deux semaines à partir du 24/10/2026. */
 const FIRST = parseDay("2026-10-24")!;
 const DAYS: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST + k));
 const T = UNITS_PER_TILE;
