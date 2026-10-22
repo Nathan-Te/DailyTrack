@@ -6,6 +6,7 @@ import {
   PRESS_MIN,
   RELEASE_MIN,
   SINGLE_CLOCK_VERSION,
+  TICK_RATE,
   attemptReplay,
   buildModuleDef,
   cycleMod,
@@ -22,7 +23,7 @@ import {
 import { beamSolve } from "./beam";
 import { canonicalExit, entryState, fromCore, harden, hardenScore, lostExit, measureMargins } from "./exigence";
 import { readModules } from "./files";
-import { PHASES_PER_PERIOD, PHASES_RULE_VERSION, modulePeriod, phasesOf, readPhases, singleClockModule, writePhases, type PhaseResult, type PhasesFile, type VariantPhases } from "./phasesFile";
+import { PHASES_PER_PERIOD, PHASES_RULE_VERSION, modulePeriod, phaseOk, phaseWait, phasesOf, readPhases, variantOk, singleClockModule, writePhases, type PhaseResult, type PhasesFile, type VariantPhases } from "./phasesFile";
 
 // `npm run phases:modules -w @cdj/jump-sim` (lot 15) — la **validation toutes phases** (règle et fichiers : `phasesFile.ts`). Pour chaque
 // variante utilisable du catalogue dont l'horloge tourne (scies mobiles, clignotants, rafales), et pour chaque phase essayée de sa période :
@@ -31,7 +32,7 @@ import { PHASES_PER_PERIOD, PHASES_RULE_VERSION, modulePeriod, phasesOf, readPha
 // robuste du solveur (lot 8c : jusqu'à 25 % plus lent, en attendant avant un geste). **Premier candidat** : attendre sur le palier le temps qu'il
 // faut pour retrouver la phase où la solution « arrêt » stockée (v3) rencontrait l'horloge, puis la jouer telle quelle ; s'il tient la règle, il
 // est gardé, sinon la recherche prend le relais. Une phase passe si sa note est d'au moins 1 (gigue ±3 ≥
-// 50 %, appuis ≥ `PRESS_MIN`). Écrit `modules/phases.json` (le détail, avec les solutions) et `src/phases.ts` (les variantes refusées, que le
+// 50 %, appuis ≥ `PRESS_MIN`) **et** n'attend pas plus de `PHASE_WAIT_MAX` (12 s, lot 17). Écrit `modules/phases.json` (le détail, avec les solutions) et `src/phases.ts` (les variantes refusées, que le
 // générateur écarte). Incrémental : une variante gardée tant que l'empreinte de sa grille et la règle n'ont pas changé.
 //   --force   tout refaire        --only=a,b   seulement ces morceaux        --workers=N   fils de calcul        --beam=N   faisceau (600)
 // Ne tourne jamais en production ni dans `npm test`.
@@ -215,8 +216,13 @@ async function main(): Promise<void> {
   for (const [id, m] of Object.entries(out.modules)) {
     m.variants.forEach((v, k) => {
       if (!v) return;
-      v.ok = v.phases.length > 0 && v.phases.every((p) => p.exigence >= 1);
-      if (!v.ok) refused.push(`${id} v${k} (phases ${v.phases.filter((p) => p.exigence < 1).map((p) => p.phase).join(", ")} sur ${v.period})`);
+      // Lot 17 : le verdict se relit sur les solutions gardées (note ≥ 1 **et** attente ≤ 12 s), y compris pour les variantes gardées telles quelles.
+      v.ok = variantOk(v);
+      if (!v.ok) {
+        const ko = v.phases.filter((p) => !phaseOk(p));
+        const long = ko.filter((p) => p.exigence >= 1);
+        refused.push(`${id} v${k} (phases ${ko.map((p) => p.phase).join(", ")} sur ${v.period}${long.length ? ` ; attente de ${(Math.max(...long.map(phaseWait)) / TICK_RATE).toFixed(1)} s au plus` : ""})`);
+      }
     });
   }
   writePhases(out);

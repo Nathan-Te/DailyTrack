@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  MAX_VARIANTS,
   JUMP_THEME_NAMES,
   LEVEL_ID_PATTERN,
   MODULES,
@@ -118,8 +119,8 @@ describe("morceaux d'un thème", () => {
     expect(alt).toBeGreaterThanOrEqual(2);
   });
 
-  it("une variante mutée reste dans la limite de six variantes par morceau", () => {
-    for (const def of MODULES) expect(def.variants.length, def.id).toBeLessThanOrEqual(6);
+  it("une variante mutée reste dans la limite de variantes par morceau (7 depuis le lot 17 : une variante ajoutée à `scie-sol` remplace la refusée sans toucher la référence v3)", () => {
+    for (const def of MODULES) expect(def.variants.length, def.id).toBeLessThanOrEqual(MAX_VARIANTS);
   });
 });
 

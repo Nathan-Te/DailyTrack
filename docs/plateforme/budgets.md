@@ -19,8 +19,8 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `track.miniatures` | Track | fil de travail des miniatures (à la demande) | 26 600 | 25 385 | 26 486 | 114 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 30 000 | 27 372 | 28 446 | 1 554 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 375 313 | 3 177 | `apps/jump/e2e/poids.spec.ts` |
-| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 531 | 2 469 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
 
@@ -31,6 +31,10 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 ## Lot 16 de DailyJump (seconde voie)
 
 - **Jump : +5 907 o** (369 406 → 375 313 o, marge 9 084 → 3 177 o), dans son budget (pas de relèvement). Le lot ajoute le module des voies lentes (géométrie, pilote de la solution lente, coût, médailles ajustées, vérification « aucun raccourci ») au générateur, deux fois (paquet principal et fil de travail du générateur), et le repère d'entrée et la surimpression `?debug` du jeu. Mesuré avec la méthode du test, `main` (`b256979`) reconstruit à part sur la même machine : 369 406 o.
+
+## Lot 17 de DailyJump (ajustements)
+
+- **Jump : +1 322 o** (375 681 → 377 003 o, marge 2 809 → 1 487 o), dans son budget (pas de relèvement). Mesuré avec la méthode du test (`node scripts/budgets.mjs`), `main` (`ec376b5`, fin du lot 16 et lot 35) reconstruit à part sur la même machine : 375 681 o (le tableau disait 375 313 o à la fin du lot 16 : les lots intercalés avaient déjà ajouté 368 o). Le lot ajoute l'estompage des dangers à horloge pendant le carnage (`sawArt.ts` sorti de `scene.ts` avec ses pièces sans recouvrement, le facteur passé aux blocs et au vent, le réglage), le carnage de démonstration d'un niveau du jour (`?carnage=demo`) et trois variantes de morceaux (solutions embarquées). Catalogue anglais : 5 550 → 5 560 o (un message de la démonstration). **La marge est maintenant de 1,5 ko** : un prochain lot de Jump qui ajoute du code en retire ailleurs ou demande à Nathan de relever le budget.
 
 ## Ce que le lot I6 a changé (avant / après)
 

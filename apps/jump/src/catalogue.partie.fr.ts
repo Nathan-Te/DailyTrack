@@ -28,7 +28,7 @@ export const fr = {
   "toast.pret": "Prêt…",
   "toast.partez": "Partez !",
   "toast.finDemo": "Fin de la démonstration",
-  "toast.demoEssai": "Démonstration : seulement sur ?scenario=essai",
+  "toast.demoEssai": "Démonstration : seulement sur ?scenario=essai ou sur un niveau du jour",
   "toast.rediffAuteur": "Rediffusion de l'auteur",
   "toast.pasDeSolution": "Pas de solution stockée pour ce morceau",
   "toast.solution": "Solution du morceau",

@@ -10,6 +10,7 @@ variante: haut=2 cycle=540
 variante: haut=2 cycle=600
 variante: haut=2 cycle=660
 variante: haut=2 cycle=600 +denivele:3
+variante: haut=2 cycle=780 +denivele:3
 grille:
 ###..........
 ###..........

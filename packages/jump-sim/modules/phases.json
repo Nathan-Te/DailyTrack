@@ -971,6 +971,101 @@
       }
      ],
      "ok": false
+    },
+    {
+     "grid": "9908f749",
+     "period": 780,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NACIL4oCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 1029,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 97,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NACAKYoCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 932,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 195,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NADwIooCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 834,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 292,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NADoHIoCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 737,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 390,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NADYFooCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 639,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 487,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NADQEIoCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 542,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 585,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NADACooCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 444,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      },
+      {
+       "phase": 682,
+       "code": "AQQWbW9kdWxlOmNoZW1pbmVlLXNjaWU6NAC4BIoCVhlaWcUBOZYBKkQ9LjFmZPoG",
+       "exitTick": 347,
+       "gigue": [
+        1000,
+        955,
+        720
+       ],
+       "exigence": 3
+      }
+     ],
+     "ok": true
     }
    ]
   },
@@ -4648,6 +4743,101 @@
       }
      ],
      "ok": false
+    },
+    {
+     "grid": "0d9dc56b",
+     "period": 360,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AMgULvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 1013,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 45,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AOARLvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 968,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 90,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1APgOLvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 923,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 135,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AJAMLvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 878,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 180,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AKgJLvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 833,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 225,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AMAGLvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 788,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 270,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1ANgDLvICLqoC8AQZ0gJG-gKwAakB0gI2qgO4ApkBmgKGAbIDpgXqAQ",
+       "exitTick": 743,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      },
+      {
+       "phase": 315,
+       "code": "AQQYbW9kdWxlOm51aXQtb3Bwb3NpdGlvbjo1AHAu8gIuqgLwBBnSAkb6ArABqQHSAjaqA7gCmQGaAoYBsgOmBeoB",
+       "exitTick": 698,
+       "gigue": [
+        980,
+        790,
+        605
+       ],
+       "exigence": 4
+      }
+     ],
+     "ok": true
     }
    ]
   },
@@ -9197,7 +9387,7 @@
        "exigence": 3
       }
      ],
-     "ok": true
+     "ok": false
     },
     {
      "grid": "aec748a4",
@@ -9385,6 +9575,101 @@
         965
        ],
        "exigence": 1
+      }
+     ],
+     "ok": true
+    },
+    {
+     "grid": "69c1ed68",
+     "period": 660,
+     "phases": [
+      {
+       "phase": 0,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYAyCeqBMYCKrYDOo4HQg",
+       "exitTick": 923,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 82,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYAuCKqBMYCKrYDOo4HQg",
+       "exitTick": 841,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 165,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYAoB2qBMYCKrYDOo4HQg",
+       "exitTick": 758,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 247,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYAkBiqBMYCKrYDOo4HQg",
+       "exitTick": 676,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 330,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYA-BKqBMYCKrYDOo4HQg",
+       "exitTick": 593,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 412,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYA6A2qBMYCKrYDOo4HQg",
+       "exitTick": 511,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 495,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYA0AiqBMYCKrYDOo4HQg",
+       "exitTick": 428,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
+      },
+      {
+       "phase": 577,
+       "code": "AQQRbW9kdWxlOnNjaWUtc29sOjYAwAOqBMYCKrYDOo4HQg",
+       "exitTick": 346,
+       "gigue": [
+        1000,
+        1000,
+        900
+       ],
+       "exigence": 2
       }
      ],
      "ok": true

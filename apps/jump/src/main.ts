@@ -59,7 +59,7 @@ import { Carnage, HERO, carnageLabel, waveAt, waveStarts } from "./carnage";
 import { Ghost, checkpointTimes } from "./ghost";
 import { DayMemory, browserStorage, clearAll, loadGhostSetting, saveGhostSetting, type RecordedEssai } from "./memory";
 import { stainFor } from "./stains";
-import { followCamera, snapCamera, type CameraView, type Follow } from "./camera";
+import { CARNAGE, followCamera, snapCamera, type CameraView, type Follow } from "./camera";
 import { Controls } from "./input";
 import { animateLook, motionOf, onSkid, onStep, restLook, stridePhase, type FeetPose, type Look } from "./look";
 import { BurstMesh, BurstPool, Shake } from "./fx";
@@ -1347,7 +1347,18 @@ function demoLives(max = 0): JumpReplay[] {
   return out;
 }
 
+/**
+ * Lot 17 : le carnage de démonstration du niveau du jour (`?carnage=demo` sur un jour, par exemple `?seed=…&carnage=demo`) : la preuve de l'auteur en
+ * héros, les vies des essais fictifs (les joueurs de la démonstration) ; rien n'est gardé ni envoyé. De quoi voir un carnage sans finir le niveau.
+ */
+function dayDemoLives(d: DailyLevel): JumpReplay[] {
+  const lives: JumpReplay[] = [];
+  for (const a of demoAttempts(d.level, d.replay, 0xa11, { attempts: 14 })) for (const life of replayAttempt(d.level, a.replay, d.id).lives) lives.push(lifeReplay(a.replay, life));
+  return lives;
+}
+
 function startDemo(max = 0, crowd = false): boolean {
+  if (daily && level === daily.level) return startCarnage(daily.replay, dayDemoLives(daily), true, lastBits);
   if (level !== ESSAI_LEVEL) {
     hud.toast(t("toast.demoEssai"));
     return false;
@@ -2504,6 +2515,8 @@ function draw(alpha: number, dt: number): void {
   stains?.update(dt);
   particles.update(dt);
   particleMesh?.sync();
+  // Lot 17 : pendant le carnage, ce qui suit l'horloge (scies mobiles, clignotants, rafales) est estompé ; partout ailleurs, rien ne change.
+  scene.clockFade = carnage ? CARNAGE.clockOpacity : 1;
   if (carnage) {
     drawCarnage(scene, carnage, alpha, dt);
     return;

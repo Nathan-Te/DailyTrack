@@ -68,14 +68,21 @@ export interface DynamicStats {
   /** Blocs au contour épais (vacillants sans mouvement, en attente de la sortie) et opacité de la face du premier bloc qui vacille (−1 : aucun) : de quoi vérifier ce qui se voit. */
   thick: number;
   wobbleOpacity: number;
+  /** Lot 17 : l'estompage des clignotants appliqué à la dernière image (1 : aucun) et l'opacité de la face du premier clignotant plein qui ne vacille pas / du premier bloc alterné plein (−1 : aucun). Les alternés ne suivent pas l'horloge : jamais estompés. */
+  clockFade: number;
+  blinkFace: number;
+  altFace: number;
   /** Le jeu solide à la dernière image (0 : A, 1 : B ; −1 sans blocs alternés) et l'éclat en cours (0 à 1). */
   alt: number;
   flash: number;
 }
 
 export interface DynamicBlocks {
-  /** Pose l'aspect de chaque bloc d'après l'état (`clock` : secondes ; `animate` faux : mouvement réduit ou effets aucun). */
-  update(state: Readonly<AttemptState>, clock: number, animate: boolean, view: { x: number; y: number; halfW: number; halfH: number }): void;
+  /**
+   * Pose l'aspect de chaque bloc d'après l'état (`clock` : secondes ; `animate` faux : mouvement réduit ou effets aucun). `fade` (lot 17, 1 par
+   * défaut) : l'estompage des blocs **clignotants**, qui suivent l'horloge, pendant le carnage ; les blocs alternés ne changent pas.
+   */
+  update(state: Readonly<AttemptState>, clock: number, animate: boolean, view: { x: number; y: number; halfW: number; halfH: number }, fade?: number): void;
   /** Lance un éclat bref (bascule, remise à A) : 1 = plein, décroît tout seul. */
   flash(amount: number): void;
   readonly stats: DynamicStats;
@@ -145,14 +152,14 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
   const tmp = new Color();
   let flashAmount = 0;
   let lastClock = 0;
-  const stats: DynamicStats = { blinks: level.blinks.length, alts: level.alts.length, solid: 0, absent: 0, wobbling: 0, waiting: 0, thick: 0, wobbleOpacity: -1, alt: level.alts.length > 0 ? 0 : -1, flash: 0 };
+  const stats: DynamicStats = { blinks: level.blinks.length, alts: level.alts.length, solid: 0, absent: 0, wobbling: 0, waiting: 0, thick: 0, wobbleOpacity: -1, clockFade: 1, blinkFace: -1, altFace: -1, alt: level.alts.length > 0 ? 0 : -1, flash: 0 };
 
   return {
     stats,
     flash(amount) {
       flashAmount = Math.max(flashAmount, Math.min(1, amount));
     },
-    update(state, clock, animate, view) {
+    update(state, clock, animate, view, fade = 1) {
       const dt = Math.max(0, Math.min(0.1, clock - lastClock));
       lastClock = clock;
       // L'éclat s'éteint en ≈ 0,25 s ; sans mouvement, il n'y en a pas (une information, pas un effet : la bascule se voit à l'état des blocs).
@@ -160,6 +167,8 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
       blockLooks(level, state, looks);
       stats.solid = stats.absent = stats.wobbling = stats.waiting = stats.thick = 0;
       stats.wobbleOpacity = -1;
+      stats.blinkFace = stats.altFace = -1;
+      stats.clockFade = fade;
       stats.alt = level.alts.length > 0 ? (state.alt ?? 0) : -1;
       stats.flash = flashAmount;
       let nb = 0;
@@ -197,6 +206,15 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
         } else if (look.waiting) {
           thickOn = true;
           edgeOpacity = pulse;
+        }
+        // Lot 17 : pendant le carnage, les clignotants (qui suivent l'horloge) sont estompés ; l'opacité de la face et du contour suit.
+        if (b.kind === "blink") {
+          faceOpacity *= fade;
+          edgeOpacity *= fade;
+        }
+        if (look.solid && look.wobble <= 0) {
+          if (b.kind === "blink" && stats.blinkFace < 0) stats.blinkFace = faceOpacity;
+          if (b.kind !== "blink" && stats.altFace < 0) stats.altFace = faceOpacity;
         }
         if (thickOn) stats.thick++;
         if (look.wobble > 0 && stats.wobbleOpacity < 0) stats.wobbleOpacity = faceOpacity;

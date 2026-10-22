@@ -11,6 +11,7 @@ variante: cycle=360
 variante: cycle=330 +patrouille
 variante: cycle=240 +sol-friable
 variante: cycle=240 +denivele:2
+variante: cycle=330 +patrouille:220
 grille:
 ..##################..
 ..##################..

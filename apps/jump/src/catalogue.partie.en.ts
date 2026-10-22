@@ -25,7 +25,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "toast.pret": "Ready…",
   "toast.partez": "Go!",
   "toast.finDemo": "End of the demo",
-  "toast.demoEssai": "Demo: only on ?scenario=essai",
+  "toast.demoEssai": "Demo: only on ?scenario=essai or on a daily level",
   "toast.rediffAuteur": "Author's replay",
   "toast.pasDeSolution": "No stored solution for this piece",
   "toast.solution": "Piece solution",

@@ -206,7 +206,7 @@ describe("format d'un morceau", () => {
 });
 
 describe("le catalogue", () => {
-  it("compte au moins 50 morceaux (lot 7), d'id distincts, chacun dans son fichier, avec 2 à 6 variantes", () => {
+  it("compte au moins 50 morceaux (lot 7), d'id distincts, chacun dans son fichier, avec 2 à 7 variantes", () => {
     expect(MODULES.length).toBeGreaterThanOrEqual(50);
     const files = readdirSync(DIR).filter((f) => f.endsWith(".txt")).sort();
     expect(MODULES.map((m) => `${m.id}.txt`)).toEqual(files);
@@ -443,7 +443,7 @@ describe("mutateurs (lot 7)", () => {
   const def = parseModule(MUT);
   const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
 
-  it("lit les zones et les mutateurs des variantes ; au plus deux par variante, six variantes, seulement ceux déclarés", () => {
+  it("lit les zones et les mutateurs des variantes ; au plus deux par variante, sept variantes (lot 17), seulement ceux déclarés", () => {
     expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent"]);
     expect(MUTATORS).toEqual(def.mutators);
     expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
@@ -461,7 +461,7 @@ describe("mutateurs (lot 7)", () => {
     expect(bad("zone ressort 8 6\n", "")).toThrow(/sans zone/);
     expect(bad("mutateurs: plafond fosse", "mutateurs: fosse")).toThrow(/absent de « mutateurs: »/);
     expect(bad("variante: large=1 +denivele:2", "variante: large=1")).toThrow(/identiques/);
-    expect(() => parseModule(MUT.replace("variante: large=1\n", "variante: large=1\nvariante: large=3\n"))).toThrow(/au plus 6/);
+    expect(() => parseModule(MUT.replace("variante: large=1\n", "variante: large=1\nvariante: large=3\nvariante: large=4\n"))).toThrow(new RegExp(`au plus ${MAX_VARIANTS}`)); // 6 variantes dans la fixture, 7 permises depuis le lot 17
   });
 
   it("chaque mutateur transforme exactement sa zone du gabarit, puis le déroulé recopie la plage répétée", () => {

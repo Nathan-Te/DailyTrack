@@ -1,8 +1,8 @@
-# DailyJump — synthèse de l'état actuel (après le lot 16, le lot 3c et les lots P1, P2 et P3 de la plateforme)
+# DailyJump — synthèse de l'état actuel (après le lot 17, le lot 3c et les lots P1, P2 et P3 de la plateforme)
 
 Point de départ de toute session DailyJump : cet état d'ensemble tient en quelques pages ; **chaque point renvoie au README du lot qui l'a introduit** (`lots/lot-….md`, dans ce dossier) pour le détail. Les règles à respecter sont dans `packages/jump-sim/CLAUDE.md` et `apps/jump/CLAUDE.md` ; la vision est dans `seed-dailyjump.md` (ne pas modifier). **À mettre à jour par chaque lot de DailyJump** (une ligne par point qui change, avec le renvoi).
 
-Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaque niveau porte sa version) · `JUMP_GENERATOR_VERSION` **11** · `EXIGENCE_VERSION` **4** · `MODULE_FORMAT` **3** · premier niveau (`PREMIER_JOUR_JUMP`) : **16/10/2026**.
+Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaque niveau porte sa version) · `JUMP_GENERATOR_VERSION` **12** · `EXIGENCE_VERSION` **4** · `MODULE_FORMAT` **3** · premier niveau (`PREMIER_JOUR_JUMP`) : **16/10/2026**.
 
 ## 1. Architecture et paquets
 | Paquet | Rôle | Lot |
@@ -52,11 +52,14 @@ Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaqu
 
 - **Seconde voie (lot 16, g11)** : chaque portion notée 4 ou 5 (l'exigence du lot 8c) a une **voie lente** par le haut — zone de bifurcation (piste rapide sous une cage, palier bis), cage à corniches, galerie au-dessus du morceau, descente sur le palier suivant —, sans rien qui tourne, notée 2 au plus, d'un coût ≥ max(+50 %, +3 s) mesuré entre les deux solutions enregistrées, sans raccourci (vérifié case par case et par le solveur) ; or sous le temps de toute voie lente, bronze au-dessus de « toutes voies lentes » + 10 % ; voies parasites détectées par `voies:modules` (aucune fermée sur le catalogue actuel) ; repère d'entrée crème cerné d'encre, jamais rouge ; tirages validés 33 % (50 % avant), secours 0 — [lot 16](lots/lot-16-seconde-voie.md).
 
+- **Ajustements (lot 17, g12)** : **carnage lisible** — pendant le carnage, ce qui suit l'horloge (scies mobiles, clignotants, rafales) est à 35 % d'opacité (réglable dans `?debug&tune`), les morts au premier plan, le reste inchangé ; **attente maximale** — une reprise ne demande jamais plus de 12 s d'attente sur le palier, à aucune phase (`PHASE_WAIT_MAX`, validation toutes phases : seule `scie-sol` v3, 55 s, était refusée) ; **trois variantes refusées remplacées** par des variantes ajoutées au bout de leur morceau (`V4_ONLY_VARIANTS` : la référence v3 reste au bit près) qui passent toutes les phases — `scie-sol` v6, `cheminee-scie` v4, `nuit-opposition` v5 ; `MAX_VARIANTS` 7 ; `?carnage=demo` marche aussi sur un niveau du jour ; consignes « Tests e2e et CI » — [lot 17](lots/lot-17-ajustements.md).
+
 ## 6. Jours figés et procédure
 - `apps/jump/public/levels/AAAA-MM-JJ.json` : niveau + preuve + versions, lu en premier par `loadDaily` et **rejoué** ; jamais réécrit — [lot 10](lots/lot-10-arrivee.md).
 - **Règle : figer avant de changer de version.** Dans un worktree sur `main` à jour : `npm run freeze:days -w @cdj/jump -- demain`, copier `public/levels/` dans la branche, commiter — [lot 10](lots/lot-10-arrivee.md), [11](lots/lot-11-themes-jouables.md). Test `apps/jump/test/figes.test.ts` : chaque jour figé se rejoue.
 - **Une seule règle des niveaux figés** (lot P1 de la plateforme) : `thawLevel` vit dans `jump-sim` (`src/frozen.ts`), le jeu et le serveur l'importent — [P1](../plateforme/lots/lot-P1-classement.md).
 - Lot 16 : le 23/10/2026 figé par la mise en production du 22/10 (g9, v3, le code en production) ; les jours régénérés en g11 commencent le 24/10 — [lot 16](lots/lot-16-seconde-voie.md).
+- Lot 17 : aucun jour public ni figé touché ; le 23/10 était déjà figé (g9), les jours g12 commencent le 24/10 (9 niveaux sur 120 diffèrent de g11) — [lot 17](lots/lot-17-ajustements.md).
 - Jours figés en g4 (16 et 17/10) contenant des passages que la règle actuelle refuserait — [lot 8c](lots/lot-8c-elan.md). Sort d'une archive sous une ancienne physique : question ouverte pour Nathan — [lot 10](lots/lot-10-arrivee.md).
 
 ## 7. Interface
@@ -90,7 +93,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **4** (le code joue aussi la v3 : chaqu
 - Seed `seed-dailyjump.md` : jamais modifié par un agent ; DailyTrack et DailyJump ne s'importent pas — [lot 0](lots/lot-0-socle.md).
 
 ## 10. Dettes et questions ouvertes
-- Lot 16 : tirages validés à 33 % (à recalibrer au lot 17) ; joueurs fictifs v4 qui reprennent mal après une mort (démo) ; voies parasites : cas de la « remontée par la gauche » à retrouver — [lot 16](lots/lot-16-seconde-voie.md).
+- Lot 16 : tirages validés à 33 % (toujours 33 % en g12 ; la calibration reste pour le lot 18) ; joueurs fictifs v4 qui reprennent mal après une mort (démo) ; voies parasites : cas de la « remontée par la gauche » à retrouver — [lot 16](lots/lot-16-seconde-voie.md).
 - Archives sous ancienne physique (recommandation : listées, non rejouables) — [lot 10](lots/lot-10-arrivee.md).
 - Difficulté ressentie des morceaux de glace, de nuit et de vent : l'exigence (gigue des commandes) la mesure mal — [lot 11](lots/lot-11-themes-jouables.md), [12](lots/lot-12-nuit-neon.md), [13](lots/lot-13-foret.md).
 - Tests instables de DailyTrack qui ont bloqué des lots DailyJump (`salon.spec.ts:149`, `tactile.spec.ts`) : **réparés au lot R3** de la plateforme (`docs/orchestration.md` § 8, `docs/plateforme/lots/lot-R3-ci.md`). Depuis, une PR DailyJump ne lance plus les e2e de DailyTrack, même quand elle touche `apps/api/src/jump*.ts`. Une dette de test DailyJump se note ici (avec le nom du fichier du test) : c'est le lien qu'exige la quarantaine (`e2e/quarantaine.json`).

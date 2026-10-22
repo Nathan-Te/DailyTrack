@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseLevel, sectionPeriod, withSingleClock, type BuiltModule } from "../src/index";
+import { TICK_RATE, decodeReplay, fromRuns, parseLevel, sectionPeriod, withSingleClock, type BuiltModule } from "../src/index";
 import { modulesDir, packageDir } from "./files";
 
 // Lot 15 — la **validation toutes phases** des morceaux (fichiers et règles communes à `phases:modules` et aux tests). Dans un niveau à une
@@ -10,10 +10,17 @@ import { modulesDir, packageDir } from "./files";
 // attendre étant permis) à chacune des phases essayées : `PHASES_PER_PERIOD` phases réparties sur la période de son horloge (toutes si la
 // période est plus courte).
 
-/** Version de la règle (phases essayées, recherche, mesure) : la changer fait tout refaire. */
+/** Version de la règle (phases essayées, recherche, mesure) : la changer fait tout refaire. (Lot 17 : l'attente maximale se lit sur les solutions gardées, elle ne change pas la recherche.) */
 export const PHASES_RULE_VERSION = 1;
 /** Phases essayées par variante : au moins 8 (toutes si la période est plus courte). */
 export const PHASES_PER_PERIOD = 8;
+
+/**
+ * Lot 17 — **attente maximale** : une reprise ne demande jamais plus de 12 s d'attente sur le palier, à aucune phase (sinon la variante est
+ * refusée, même si une solution existe : un joueur n'attend pas 55 s devant un couloir). Mesurée sur la solution gardée : les pas sans
+ * commande avant la première commande (`waitOf`).
+ */
+export const PHASE_WAIT_MAX = 12 * TICK_RATE;
 
 export interface PhaseResult {
   /** Phase de l'horloge au départ (pas, dans [0, période)). */
@@ -45,6 +52,24 @@ export interface PhasesFile {
 
 export const phasesPath = () => join(modulesDir(), "phases.json");
 export const phasesSourcePath = () => join(packageDir(), "src", "phases.ts");
+
+/** L'attente d'une solution sur le palier : les pas sans commande avant la première (le chrono court, rien n'est touché). */
+export function waitOf(inputs: readonly number[]): number {
+  let n = 0;
+  while (n < inputs.length && inputs[n] === 0) n++;
+  return n;
+}
+
+/** L'attente de la solution gardée d'une phase (0 sans solution). */
+export function phaseWait(p: Pick<PhaseResult, "code">): number {
+  return p.code ? waitOf(fromRuns(decodeReplay(p.code).runs)) : 0;
+}
+
+/** Une phase passe : une solution jouable par un humain (note ≥ 1) qui n'attend pas plus de `PHASE_WAIT_MAX` pas. */
+export const phaseOk = (p: PhaseResult): boolean => p.exigence >= 1 && phaseWait(p) <= PHASE_WAIT_MAX;
+
+/** Une variante passe quand toutes ses phases passent. */
+export const variantOk = (v: Pick<VariantPhases, "phases">): boolean => v.phases.length > 0 && v.phases.every(phaseOk);
 
 /** Les phases essayées pour une période. */
 export function phasesOf(period: number): number[] {

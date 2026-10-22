@@ -439,6 +439,24 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "9908f749",
+    "fast": 303,
+    "costMin": 360,
+    "precise": [
+     95
+    ],
+    "boxes": [
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 9,
+      "r1": 13
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "cheminee-vide": {
@@ -1258,6 +1276,15 @@
       "r1": 9
      }
     ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "0d9dc56b",
+    "fast": 695,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
     "detour": null,
     "verdict": "sans-detour"
    }
