@@ -1,0 +1,258 @@
+/* Lot 38 — la vitrine de la scène : outil interne, habillé avec les jetons du socle (aucune couleur en dur). Téléphone d'abord : une vue par ligne,
+   puis deux, puis cinq côte à côte sur un grand écran. */
+body {
+  margin: 0;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  font: 400 var(--dj-taille-15) / 1.45 var(--dj-police-texte);
+}
+
+#vitrine {
+  max-width: 1800px;
+  margin: 0 auto;
+  padding: 16px 16px 64px;
+}
+
+h1,
+h2 {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  margin: 0 0 6px;
+}
+h1 {
+  font-size: var(--dj-taille-38);
+}
+h2 {
+  font-size: var(--dj-taille-24);
+}
+
+code {
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-13);
+}
+
+.tete__sur {
+  color: var(--dj-ambre);
+  font-size: var(--dj-taille-13);
+  margin: 0;
+}
+
+.directions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  margin: 12px 0;
+}
+.directions div {
+  background: var(--track-coque);
+  border: var(--dj-trait) solid var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  border-radius: var(--dj-rayon-etiquette);
+  padding: 8px 10px;
+}
+.directions dt {
+  font-weight: 700;
+}
+.directions dd {
+  margin: 2px 0 0;
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-14);
+}
+
+.choix {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+select,
+button {
+  font: 700 var(--dj-taille-14) var(--dj-police-texte);
+  min-height: 44px;
+  border-radius: var(--dj-rayon-bouton);
+  border: var(--dj-trait) solid var(--dj-encre);
+  background: var(--dj-creme);
+  color: var(--dj-encre);
+  padding: 0 12px;
+  cursor: pointer;
+}
+button:active {
+  transform: translate(var(--dj-enfonce), var(--dj-enfonce));
+}
+:focus-visible {
+  outline: var(--dj-focus) solid var(--dj-ambre);
+  outline-offset: var(--dj-focus-ecart);
+}
+
+#sommaire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+}
+#sommaire a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--track-texte);
+  background: var(--track-coque);
+  border-radius: var(--dj-rayon-bouton);
+  text-decoration: none;
+}
+a {
+  color: var(--dj-ambre);
+}
+
+.couts {
+  margin: 20px 0;
+}
+.tableau {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+  font-size: var(--dj-taille-14);
+  min-width: 720px;
+}
+th,
+td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--track-coque);
+  vertical-align: top;
+}
+thead th {
+  color: var(--track-texte-doux);
+  font-weight: 700;
+}
+.note {
+  color: var(--track-texte-doux);
+  font-size: var(--dj-taille-13);
+}
+.alerte {
+  background: var(--dj-terre);
+  color: var(--dj-terre-texte);
+  padding: 10px;
+}
+
+.sujet {
+  margin: 28px 0;
+  scroll-margin-top: 8px;
+}
+.sujet__texte,
+.sujet__date {
+  margin: 0 0 6px;
+  color: var(--track-texte-doux);
+}
+.segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0;
+}
+.segment[aria-pressed="true"] {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+
+.grille {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 700px) {
+  .grille {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 1500px) {
+  .grille {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+.vue {
+  margin: 0;
+  background: var(--track-coque);
+  border: var(--dj-trait) solid var(--dj-encre);
+  box-shadow: var(--dj-ombre-bouton);
+  border-radius: var(--dj-rayon-etiquette);
+  padding: 6px;
+}
+.vue--M {
+  border-color: var(--track-livree);
+}
+.vue__cadre {
+  aspect-ratio: 16 / 10;
+  background: var(--track-piste);
+  touch-action: pan-y;
+  cursor: grab;
+}
+.vue__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.vue__titre {
+  font-weight: 700;
+  margin: 6px 0 0;
+}
+.vue__chiffres {
+  margin: 2px 0 6px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+  min-height: 2.6em;
+}
+
+#agrandi {
+  width: min(100vw, 1600px);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto;
+  padding: 8px;
+  border: 0;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  box-sizing: border-box;
+}
+#agrandi[open] {
+  display: flex;
+  flex-direction: column;
+}
+#agrandi::backdrop {
+  background: var(--track-asphalte);
+}
+.agrandi__tete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.agrandi__tete h2 {
+  flex: 1 1 200px;
+  margin: 0;
+}
+.agrandi__cadre {
+  flex: 1;
+  min-height: 0;
+  margin: 8px 0;
+  touch-action: none;
+  cursor: grab;
+}
+.agrandi__cadre canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.agrandi__chiffres {
+  margin: 0;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+}

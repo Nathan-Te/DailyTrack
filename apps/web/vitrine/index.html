@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:," />
+    <title>Vitrine de la scène — Track (lot 38)</title>
+  </head>
+  <body>
+    <main id="vitrine">
+      <header class="tete">
+        <p class="tete__sur">Track · outil interne · recette et aperçus seulement</p>
+        <h1>Vitrine de la scène</h1>
+        <p>
+          Les mêmes éléments vus par <strong>l'existant</strong>, les trois directions et le <strong>mélange recommandé</strong>, dans la même scène et le même
+          cadrage. On tourne autour en glissant sur une vue (au doigt : de gauche à droite ; à la souris : dans tous les sens) ; « Agrandir et mesurer » ouvre la
+          vue en grand (pincer ou molette pour zoomer) et mesure son temps d'image sur cet appareil. Rien de ce qui est ici n'est dans le jeu : c'est une
+          planche pour choisir (lot 38, <code>docs/lots/lot-38-direction-scene.md</code>).
+        </p>
+        <dl class="directions">
+          <div><dt>A — Net et graphique</dt><dd>Silhouettes franches et peu de pièces, aplats, bandes et marquages forts, lumière en trois tons nets : la charte « Cartouches » traduite en 3D.</dd></div>
+          <div><dt>B — Détaillé</dt><dd>Formes chanfreinées, petites pièces qui racontent (pneus, drapeaux, câbles, rivets, sponsors fictifs), matériaux variés ; tout est fusionné.</dd></div>
+          <div><dt>C — Lumière et matière</dt><dd>On touche peu aux formes : ciel, brume, lumière et ombrage par thème, occlusion par sommets, textures dessinées au chargement.</dd></div>
+          <div><dt>Mélange recommandé</dt><dd>La proposition du lot : éléments et rebords de A, décor de B allégé, lumière de C.</dd></div>
+        </dl>
+        <label class="choix">Thème des sections d'éléments <select id="theme-elements"></select></label>
+        <nav aria-label="Sections"><ol id="sommaire"></ol></nav>
+      </header>
+
+      <section class="couts" aria-labelledby="couts-titre">
+        <h2 id="couts-titre">Coût de chaque direction</h2>
+        <div class="tableau">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Direction</th>
+                <th scope="col">Poids du morceau (JS compressé)</th>
+                <th scope="col">Appels de rendu par image</th>
+                <th scope="col">Triangles par image</th>
+                <th scope="col">Construction de la scène</th>
+                <th scope="col">Image, téléphone (processeur ×4)</th>
+                <th scope="col">Construction, téléphone (×4)</th>
+              </tr>
+            </thead>
+            <tbody id="resume-corps"></tbody>
+          </table>
+        </div>
+        <p id="resume-etat" class="note"></p>
+        <p class="note">
+          Poids : le morceau propre à la direction, mesuré à la construction (gzip), sans le socle commun à A, B et au mélange (route paramétrable,
+          compositeur, outils<span id="poids-socle"></span>), qui remplacerait la route et le squelette de la scène du jeu ; le poids ajouté au jeu, partie
+          par partie, est dans le README du lot. Appels et triangles : ceux d'une image en caméra de poursuite, ombres comprises
+          (moyenne des huit thèmes). Les deux dernières colonnes sont mesurées par <code>MESURE=1 npx playwright test mesure-lot38</code> (Chromium, processeur ×4,
+          rendu logiciel) : voir le README du lot.
+        </p>
+      </section>
+
+      <div id="sections"></div>
+    </main>
+
+    <dialog id="agrandi" aria-labelledby="agrandi-titre">
+      <div class="agrandi__tete">
+        <h2 id="agrandi-titre"></h2>
+        <button type="button" class="agrandi__mesurer">Mesurer (60 images)</button>
+        <button type="button" class="agrandi__fermer">Fermer</button>
+      </div>
+      <div class="agrandi__cadre"><canvas role="img" aria-label="Vue agrandie"></canvas></div>
+      <p class="agrandi__chiffres"></p>
+    </dialog>
+
+    <script type="module" src="../src/vitrine/vitrine.ts"></script>
+  </body>
+</html>

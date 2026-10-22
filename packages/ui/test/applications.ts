@@ -51,6 +51,8 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/web/src/adminMedailles.ts": "calibrage des médailles de l'administration (lot 35) : outil interne, en français",
   "apps/web/src/circuitStats.ts": "statistiques de circuit de l'administration (lot 14) : outil interne, en français",
   "apps/web/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
+  // Lot 38 : la vitrine de la scène (`/track/vitrine/`, recette et aperçus seulement, jamais construite en production) est un outil interne de Nathan.
+  "apps/web/src/vitrine": "vitrine de la scène (`/track/vitrine/`, lot 38) : outil interne de Nathan pour choisir une direction, en français, jamais en production",
   // Lot I5 : les outils internes de Jump restent en français (lot I5 § 2 : `?debug&tune` tel quel ; seul son habillage suit les jetons, outils.css).
   "apps/jump/src/tune.ts": "outil de réglage du personnage (`?debug&tune`) : outil interne de Nathan, en français",
   "apps/jump/src/gallery.ts": "galerie des morceaux (`?modules`, lot 4) : outil interne de conception des niveaux, en français",
