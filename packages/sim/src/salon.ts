@@ -1,9 +1,8 @@
 import { GENERATOR_VERSION } from "./constants";
-import { bestPilotRun } from "./autopilot";
-import { createTestTrack } from "./circuits";
-import { generateCircuit, medalsFor, type Medals, type PlacedFigure } from "./generator";
+import type { PlacedFigure } from "./generator";
+import type { Medals } from "./medals";
 import { Rng, mixSeed } from "@cdj/core";
-import { THEME_NAMES, themeByName, type PaletteName, type ThemeName } from "./themes";
+import { THEME_NAMES, type PaletteName, type ThemeName } from "./themes";
 import type { Track } from "./track";
 
 // Le Salon (lot 26) : un circuit qui change toutes les 10 minutes, à heure fixe pour tout le monde. Une **session** est un entier,
@@ -60,16 +59,4 @@ export interface SalonCircuit {
   theme: ThemeName;
   /** Vrai si aucune tentative n'a abouti et que le circuit d'essai a servi de secours (ne doit jamais arriver). */
   fallback: boolean;
-}
-
-/** Le circuit d'une session : même générateur, mêmes thèmes et mêmes durées que le circuit du jour, graine propre au Salon. */
-export function salonCircuit(session: number): SalonCircuit {
-  const theme = themeByName(salonTheme(session))!;
-  const id = salonTrackId(session);
-  const found = generateCircuit(SALON_SEED_BASE + session, theme, 0, id);
-  if (found) return { session, id, ...found, palette: theme.palette, theme: theme.name, fallback: false };
-  const track = createTestTrack();
-  const pilot = bestPilotRun(track);
-  const authorMs = pilot ? pilot.finishMs : 40_000;
-  return { session, id: track.id, spec: "", figures: [], track, authorMs, medals: medalsFor(authorMs, SALON_SEED_BASE + session), palette: theme.palette, theme: theme.name, fallback: true };
 }

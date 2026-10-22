@@ -1,4 +1,4 @@
-import { medalFor, type Medal, type Medals } from "./generator";
+import { medalFor, type Medal, type Medals } from "./medals";
 
 // Lot 35 — calibrage des médailles sur de vrais joueurs : statistiques d'une journée (ou d'un groupe de journées) à partir des meilleurs
 // temps des joueurs, en lecture seule. Pur : sert la route d'admin `GET /api/admin/medailles` (cdj.ts), la page d'admin et la simulation

@@ -6,6 +6,8 @@ import { Rng } from "@cdj/core";
 import { createAutopilot } from "./autopilot";
 import { trackJumps } from "./jump";
 
+export { FICTIONAL_NAMES } from "./fictionalNames";
+
 // Pilotes fictifs (lots 11 et 26) : le pilote automatique, bridé et brouillé selon un niveau, pour fabriquer des courses crédibles
 // de joueurs imaginaires (historique du lot 11, Salon de démonstration du lot 26). Ce ne sont que des commandes : toute course passe
 // ensuite par le même rejeu que celle d'un vrai joueur.
@@ -22,14 +24,6 @@ export interface PilotStyle {
   /** Amplitude des hésitations de volant (0 = aucune). */
   wobble: number;
 }
-
-/** Pseudos fictifs (acceptés par `cleanName`) : un préfixe qui ne laisse aucun doute. */
-export const FICTIONAL_NAMES = [
-  "Démo Renard", "Démo Mistral", "Démo Zéphyr", "Démo Orage", "Démo Cactus", "Démo Brume", "Démo Étincelle", "Démo Galet",
-  "Démo Tonnerre", "Démo Plume", "Démo Cyclone", "Démo Marmotte", "Démo Comète", "Démo Bouchon", "Démo Fusée", "Démo Tortue",
-  "Démo Rafale", "Démo Pirate", "Démo Lynx", "Démo Biscotte", "Démo Aurore", "Démo Crabe", "Démo Chicane", "Démo Nitro",
-  "Démo Pétale", "Démo Vortex", "Démo Gaufre", "Démo Sirocco", "Démo Mulot", "Démo Turbine",
-] as const;
 
 /** Style d'un pilote de niveau `skill` ∈ [0, 1] (1 = presque l'auteur, 0 = prudent et brouillon). */
 export function styleFor(skill: number): PilotStyle {

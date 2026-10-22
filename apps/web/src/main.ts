@@ -44,30 +44,15 @@ import {
   FLAT_WORLD,
   SIM_VERSION,
   NO_GROUND,
-  bestPilotRun,
   carSpeed,
   copyCar,
   forwardSpeed,
   steerLimit,
   createCar,
   THEMES,
-  createPilotageTrack,
   createSurface,
-  createLargeursTrack,
-  createVitesseTrack,
   FALL_TICKS,
-  createAirTrack,
-  createFigureTrack,
-  createFiguresTrack,
-  figureByName,
-  createCuvesTrack,
-  createBasCotesTrack,
-  createGlaceTrack,
-  createReliefTrack,
-  createSurfacesTrack,
   themeByName,
-  createTestTrack,
-  dailyCircuit,
   dailyTrackId,
   formatDay,
   isDefaultParams,
@@ -84,14 +69,15 @@ import {
   wrapAngle,
   type CarInput,
   type CarParams,
-  type DailyCircuit,
   type Medal,
+  type PilotRun,
   type CarState,
   type RaceState,
   type Track,
 } from "@cdj/sim";
 import { isRestricted, judgeAddress, trialKeysAllowed, withoutRefused } from "./access";
 import { msUntilNextParisDay, parisDay } from "@cdj/clock";
+import { sharedCircuitEngine, type DailyCircuit } from "./circuitEngine";
 import { archiveDays, disposeArchive, mountArchive, nextTheme, randomSeedHref, themeHref, type ArchiveArgs, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
@@ -118,13 +104,11 @@ import { Controls, isTyping } from "./input";
 import { IMPACT_COOLDOWN_MS, TouchPad, impactFelt, loadTouchSettings, vibrate, wantsTouch } from "./touch";
 import { hintText, mountTouchUi } from "./touchUi";
 import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
-import { GhostField, createNameLabel, type GhostEntry, type NameLabel } from "./salonGhosts";
-import { GHOST_COLORS, MY_GHOST_COLOR } from "./salon";
+import type { GhostEntry, NameLabel } from "./salonGhosts";
 import { ORBIT_MIN_DIST, clampOrbit, nextWatchCamera, orbitOffset, progressOf, seekTick, tickAt, unwatchHref, wantsWatch, watchHref, watchTitle, REWIND_TICKS, WATCH_SPEEDS, type WatchEntry, type WatchSpeed } from "./watch";
-import { mountWatchUi, type WatchUi } from "./watchUi";
-import { SalonController, bootSalon, isBootError, type SalonHost, type SalonRunResult } from "./salonMode";
-import { showSalonArrival, showSessionOver, showWatchArrival } from "./salonArrivee";
-import { modeHref, salonShareLine as salonLine, sessionMsFromParams } from "./salon";
+import type { WatchUi } from "./watchUi";
+import type { SalonController, SalonHost, SalonRunResult } from "./salonMode";
+import { modeHref, sessionMsFromParams } from "./salonLien";
 import type { LoadedSalonCircuit } from "./salonEngine";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
@@ -161,18 +145,23 @@ if (params.has("debug") && params.has("spec")) {
 // `?api=demo`). Sans lui, un message clair et le circuit du jour. Un scénario demandé explicitement l'emporte (outils de test).
 let salon: SalonController | null = null;
 let salonNotice = "";
-if (params.get("mode") === "salon" && !customTrack && requested === null) {
+const wantsSalon = params.get("mode") === "salon" && !customTrack && requested === null;
+// Le Salon et le spectateur ne sont pas dans le premier chargement (lot 36) : chargés ici seulement si l'adresse les demande.
+const salonMod = wantsSalon || watchWanted ? await import("./salonBundle") : null;
+if (wantsSalon) {
   const base = apiBase();
   if (!base) salonNotice = t("salon.boot.repli", { raison: t("salon.boot.sansServeur") });
   else {
-    const booted = await bootSalon({ search: location.search, base, startAt: params.has("debug") ? Number(params.get("salonAt")) || null : null, spectator: watchWanted });
-    if (isBootError(booted)) salonNotice = t("salon.boot.repli", { raison: booted.error });
+    const booted = await salonMod!.bootSalon({ search: location.search, base, startAt: params.has("debug") ? Number(params.get("salonAt")) || null : null, spectator: watchWanted });
+    if (salonMod!.isBootError(booted)) salonNotice = t("salon.boot.repli", { raison: booted.error });
     else salon = booted;
   }
 }
+// Les circuits des scénarios d'essai (lot 36) : chargés seulement quand l'adresse en demande un (`?scenario=…`), pas dans le premier chargement.
+const scenarios = !customTrack && !salon && requested !== null ? await import("./scenarios") : null;
 // `?scenario=figure&f=<nom>` : une seule figure (lot 20). Un nom inconnu, ou une variante impossible, ramène au circuit d'essai.
-const figureTrack = !customTrack && requested === "figure" ? createFigureTrack(params.get("f") ?? "", Number(params.get("v") ?? 0) || 0, params.get("m") === "1") : null;
-const scenario = salon ? "salon" : customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : requested === "figures" || requested === "plat" || requested === "essai" || requested === "pilotage" || requested === "surfaces" || requested === "largeurs" || requested === "vitesse" || requested === "glace" || requested === "relief" || requested === "cuves" || requested === "air" || requested === "bas-cotes" ? requested : "jour";
+const figureTrack = scenarios && requested === "figure" ? scenarios.scenarioTrack("figure", params) : null;
+const scenario: string = salon ? "salon" : customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : scenarios && (scenarios.SCENARIOS as readonly string[]).includes(requested!) ? requested! : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 // Production (lot 31) : outils d'essai coupés, aucun circuit à venir (voir `access.ts`).
 const restricted = isRestricted(location.search);
@@ -211,6 +200,11 @@ const trial = !!forcedTheme || trialVariant !== null; // circuit d'essai : chois
 const planDay = seedDay ?? todayParis;
 let plan: PlanEntry = NO_PLAN;
 let planKnown = false;
+// Le circuit du jour se calcule dans un fil de travail (lot 36) : pendant qu'on interroge le planning, il fait déjà le circuit d'origine (le cas de presque tous les
+// jours) ; si le planning en choisit un autre, c'est celui-là qu'on lui demande. Le résultat ne dépend que de la date, de la variante et du thème : rien n'est perdu.
+const engine = sharedCircuitEngine();
+const originDaily = scenario === "jour" && !trial ? engine.daily(planDay, null, 0) : null;
+originDaily?.catch(() => undefined); // si le planning en choisit un autre, ce résultat-ci ne sera jamais lu : pas d'erreur non rattrapée
 if (scenario === "jour" && !trial) {
   const base = apiBase();
   if (base === DEMO_BASE) {
@@ -225,7 +219,7 @@ if (scenario === "jour" && !trial) {
   }
 }
 if (scenario === "jour") {
-  daily = trial ? dailyCircuit(planDay, trialVariant ?? 0, forcedTheme?.name) : dailyCircuit(planDay, plan.variant, plan.theme);
+  daily = trial ? await engine.daily(planDay, forcedTheme?.name ?? null, trialVariant ?? 0) : plan.variant === 0 && !plan.theme ? await originDaily! : await engine.daily(planDay, plan.theme, plan.variant);
 }
 definirJour(daily?.day ?? todayParis, daily?.number); // la date et le numéro de la barre des jeux (cadre.ts)
 // Accueil (lot 29) : au chargement, sauf lien direct (`?seed=`, `?day=`, `?scenario=`, `?mode=`, `?watch=`, `?demo`, `?debug`…) ; `?home=1` le force.
@@ -239,7 +233,7 @@ if (params.has("home")) {
     /* tant pis : l'adresse garde home= */
   }
 }
-let track: Track | null = salon ? salon.circuit.track : scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "pilotage" ? createPilotageTrack() : scenario === "surfaces" ? createSurfacesTrack() : scenario === "largeurs" ? createLargeursTrack() : scenario === "vitesse" ? createVitesseTrack() : scenario === "glace" ? createGlaceTrack() : scenario === "relief" ? createReliefTrack() : scenario === "cuves" ? createCuvesTrack() : scenario === "air" ? createAirTrack() : scenario === "bas-cotes" ? createBasCotesTrack() : scenario === "figures" ? createFiguresTrack() : scenario === "figure" ? figureTrack! : createTestTrack());
+let track: Track | null = salon ? salon.circuit.track : scenario === "plat" ? null : daily ? daily.track : customTrack ?? (scenario === "figure" ? figureTrack! : scenarios!.scenarioTrack(scenario, params)!);
 // Réglages de la voiture : ceux du classement, sauf avec le panneau `?debug&tune` (courses alors jamais classées).
 const tuning = params.has("debug") && params.has("tune");
 // L'outil de réglage (`?debug&tune`, interne) n'est chargé que s'il est demandé : il ne pèse pas sur le premier chargement (lot I4, budget).
@@ -271,7 +265,7 @@ const ghostMesh = ghostModel.group;
 ghostMesh.visible = false;
 view.scene.add(ghostMesh);
 // Fantômes du Salon (lot 26) : plusieurs voitures translucides colorées, avec leur pseudo.
-const ghostField = salon ? new GhostField() : null;
+const ghostField = salonMod && salon ? new salonMod.GhostField() : null;
 if (ghostField) view.scene.add(ghostField.group);
 
 // --- Rendu, effets et sons (lot 9) : présentation seule, lecture seule de la simulation --------------------
@@ -316,7 +310,7 @@ let fallVeil = 0;
 let lastCountdown = 0;
 /** Aide « le chrono tourne » déjà montrée pour cette tentative. */
 let idleHintShown = false;
-let demoReplay: ReturnType<typeof bestPilotRun> = null;
+let demoReplay: PilotRun | null = null;
 let demoTimer = 0;
 
 // Classement : seulement pour le circuit du jour, et si une adresse d'API est configurée (`?api=` ou VITE_API_URL).
@@ -400,7 +394,7 @@ function renderHudTitle() {
     const base = daily.number >= 1 ? t("course.meta.jour", { numero: fNumero(daily.number), date: fDateCourte(daily.day), theme: nomTheme(daily.theme) }) : t("course.meta.sansNumero", { date: fDateCourte(daily.day), theme: nomTheme(daily.theme) });
     text = notices.length ? `${base} (${notices.join(", ")})` : base;
   } else if (track) {
-    text = scenario === "figure" ? t("course.scenario.figure", { nom: figureByName(params.get("f"))?.label ?? "" }) : t(`course.scenario.${scenario === "bas-cotes" ? "basCotes" : scenario}`);
+    text = scenario === "figure" ? t("course.scenario.figure", { nom: scenarios!.figureLabel(params.get("f")) }) : t(`course.scenario.${scenario === "bas-cotes" ? "basCotes" : scenario}`);
   }
   const notice = salonNotice || (addressNotice ? t(addressNotice) : "");
   if (notice) text += ` · ${notice}`;
@@ -1406,7 +1400,7 @@ function finishSalonRun() {
   const improved = counted && sal.recordRun(result);
   const prior = sal.best && !improved ? sal.best.ms : null;
   // Le cadre de l'arrivée (barre « ‹ DU JOUR », étiquette Track) et son contenu : salonArrivee.ts ; ici les décisions (record, envoi, pseudo, partage).
-  showSalonArrival({
+  salonMod!.showSalonArrival({
     racine: hudFinish,
     sousTitre: `${sal.label} · ${nomTheme(sal.circuit.theme)}`,
     ms,
@@ -1423,7 +1417,7 @@ function finishSalonRun() {
     openLoadCode,
     onReplay: () => startAttempt(),
     onWatch: () => location.assign(watchHref(location.search)),
-    lineNow: () => sal.shareLine() ?? salonLine(sal.label, ms),
+    lineNow: () => sal.shareLine() ?? salonMod!.salonShareLine(sal.label, ms),
     shareUrl: `${location.origin}${location.pathname}?mode=salon`,
     onHome: () => goHome(),
   });
@@ -1600,10 +1594,10 @@ function beginWatch(entry: WatchEntry): boolean {
   carMesh = carModel.group;
   view.scene.add(carMesh);
   castShadows(carMesh);
-  nameLabel = createNameLabel();
+  nameLabel = salonMod!.createNameLabel();
   nameLabel.set(entry.name, entry.color);
   carMesh.add(nameLabel.sprite);
-  watchUi = mountWatchUi($("watchbar"), {
+  watchUi = salonMod!.mountWatchUi($("watchbar"), {
     onTogglePause: () => setPaused(!watch!.paused),
     onRewind: () => watchSkip(-REWIND_TICKS),
     onSpeed: watchSpeedTo,
@@ -1663,7 +1657,7 @@ function finishWatch() {
   phase = "finished";
   const w = watch;
   w.paused = false; // « Rejouer » repart en lecture, même si l'on avait mis en pause avant de sauter à la fin
-  showWatchArrival({ racine: hudFinish, titre: watchTitle(w.entry.name, w.entry.ms), ms: race.finishMs, onReplay: () => restartWatch(0), onRace: () => raceAgainstWatched() });
+  salonMod!.showWatchArrival({ racine: hudFinish, titre: watchTitle(w.entry.name, w.entry.ms), ms: race.finishMs, onReplay: () => restartWatch(0), onRace: () => raceAgainstWatched() });
   document.body.classList.add("finished");
   showBanner(t("revoir.arrivee.titre"), 2.5);
   gameAudio.play("finish");
@@ -1673,13 +1667,13 @@ function finishWatch() {
 async function loadWatchEntry(): Promise<WatchEntry | null> {
   if (salon) {
     const g = await salon.bestGhost();
-    return g ? { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: GHOST_COLORS[0]! } : null;
+    return g ? { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: salonMod!.GHOST_COLORS[0]! } : null;
   }
   if (online.enabled) {
     const c = await online.remoteGhost("first");
-    if (c?.source?.replay) return { name: c.name ?? t("revoir.premierNom"), ms: c.source.ms, splits: c.source.splits, replay: c.source.replay, simVersion: c.source.simVersion ?? 0, mode: "first", label: t("course.fantome.premier", { nom: c.name ?? "" }), color: MY_GHOST_COLOR };
+    if (c?.source?.replay) return { name: c.name ?? t("revoir.premierNom"), ms: c.source.ms, splits: c.source.splits, replay: c.source.replay, simVersion: c.source.simVersion ?? 0, mode: "first", label: t("course.fantome.premier", { nom: c.name ?? "" }), color: salonMod!.MY_GHOST_COLOR };
   }
-  if (best?.replay) return { name: getName() ?? t("commun.toi"), ms: best.ms, splits: best.splits, replay: best.replay, simVersion: best.simVersion ?? 0, mode: "mine", label: t("course.fantome.tonRecord"), color: MY_GHOST_COLOR };
+  if (best?.replay) return { name: getName() ?? t("commun.toi"), ms: best.ms, splits: best.splits, replay: best.replay, simVersion: best.simVersion ?? 0, mode: "mine", label: t("course.fantome.tonRecord"), color: salonMod!.MY_GHOST_COLOR };
   return null;
 }
 
@@ -2164,8 +2158,11 @@ if (online.enabled && daily && !submitAllowed && params.get("ghost") !== "off") 
   });
 }
 if (demo && track) {
-  demoReplay = bestPilotRun(track);
-  if (demoReplay) startAttempt();
+  // La démo (`?demo`, le pilote boucle sur le circuit) : le pilote automatique est chargé à la demande (lot 36), pas dans le premier chargement.
+  void import("./demoPilot").then(({ bestPilotRun }) => {
+    demoReplay = bestPilotRun(track!);
+    if (demoReplay) startAttempt();
+  });
 }
 
 // --- Le Salon : changement de circuit sans recharger la page (lot 26) ---------------------------------------------------------
@@ -2233,7 +2230,7 @@ const salonHost: SalonHost = {
   abortRun() {
     if (phase === "racing") {
       phase = "finished";
-      showSessionOver(hudFinish);
+      salonMod!.showSessionOver(hudFinish);
     }
   },
   finale(on) {
@@ -2284,7 +2281,7 @@ if (watchWanted && track) {
         watchWait = false;
         hudBanner.textContent = "";
         bannerTimer = 0;
-        const e: WatchEntry = { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: GHOST_COLORS[0]! };
+        const e: WatchEntry = { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: salonMod!.GHOST_COLORS[0]! };
         if (!beginWatch(e)) location.replace(unwatchHref(location.search));
       });
     }, 2500);
@@ -2358,8 +2355,8 @@ if (params.has("debug")) {
         return { log: gameAudio.log, running: gameAudio.running, settings: gameAudio.settings, ambience: gameAudio.ambienceKind };
       },
       /** Dessine tout de suite la miniature d'un jour (outil de test : cadrage, vues, repli 2D) ; adresse de l'image. */
-      thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {
-        const c = dailyCircuit(parseDay(date)!, 0, themeByName(options.theme ?? null)?.name);
+      async thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {
+        const c = await engine.daily(parseDay(date)!, themeByName(options.theme ?? null)?.name ?? null, 0);
         const timing = { build: 0, draw: 0 };
         const url = renderThumbnail({ track: c.track, palette: c.palette, theme: c.theme }, { ...options, timing }).toDataURL("image/png");
         return { url, timing };
@@ -2381,6 +2378,10 @@ if (params.has("debug")) {
       },
       get plan() {
         return { variant: daily?.variant ?? 0, theme: plan.theme, known: planKnown, trial, ranked: submitAllowed };
+      },
+      /** Le circuit du jour tel que le fil de travail l'a rendu (lot 36) : texte, temps d'auteur, thème… ; `null` hors du circuit du jour. */
+      get circuit() {
+        return daily ? { number: daily.number, attempt: daily.attempt, spec: daily.spec, authorMs: daily.authorMs, palette: daily.palette, theme: daily.theme, trackId: daily.track.id, medals: daily.medals, fallback: daily.fallback } : null;
       },
       get ghost() {
         return session?.ghost?.race.car ?? null;

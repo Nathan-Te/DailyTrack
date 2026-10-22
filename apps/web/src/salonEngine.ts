@@ -1,5 +1,5 @@
 import { parseTrack, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
-import { computeCircuit, computePilotRun, type CircuitData, type PilotRunData } from "./salonJobs";
+import type { CircuitData, PilotRunData } from "./salonJobs";
 import type { SalonReply, SalonRequest } from "./salonWorker";
 
 /** Un circuit de session prêt à jouer. */
@@ -81,7 +81,7 @@ export function createSalonEngine(onMainThread?: () => void): SalonEngine {
       }
       onMainThread?.();
       await later();
-      return loadCircuit(computeCircuit(session));
+      return loadCircuit((await import("./salonJobs")).computeCircuit(session)); // le calcul (générateur, pilotes) n'est chargé que sans fil de travail
     },
     async pilotRun(session, sessionMs, pilot, attempt) {
       try {
@@ -92,7 +92,7 @@ export function createSalonEngine(onMainThread?: () => void): SalonEngine {
       }
       onMainThread?.();
       await later();
-      return computePilotRun(session, sessionMs, pilot, attempt);
+      return (await import("./salonJobs")).computePilotRun(session, sessionMs, pilot, attempt);
     },
   };
 }

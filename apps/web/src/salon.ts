@@ -2,6 +2,8 @@ import { SALON_SESSION_MS, salonSessionEnd, salonSessionStart } from "@cdj/sim";
 import { fRang, fTemps, t } from "./i18n";
 import type { SalonBoard, SalonRow } from "./salonApi";
 
+export { modeHref, sessionMsFromParams } from "./salonLien";
+
 // Le Salon (lot 26) : logique pure (horloge, déroulé d'une session, choix des fantômes, ligne à partager). Aucun DOM, aucun
 // rendu : testée par Vitest. `main.ts` et `salonMode.ts` l'utilisent.
 
@@ -25,13 +27,6 @@ export const FINALE_POLL_MS = 2000;
 export const NOW_POLL_MS = 10_000;
 /** Fantômes des autres joueurs affichés en même temps (plus le tien). */
 export const MAX_GHOSTS = 5;
-
-/** Durée d'une session d'après `?salonMinutes=N` (essais et démo seulement) ; la durée normale sinon. */
-export function sessionMsFromParams(search: string): number {
-  const raw = new URLSearchParams(search).get("salonMinutes");
-  const minutes = raw === null ? NaN : Number(raw);
-  return Number.isFinite(minutes) && minutes >= 0.5 && minutes <= 60 ? Math.round(minutes * 60_000) : SALON_SESSION_MS;
-}
 
 /**
  * Horloge du Salon : l'heure du serveur, déduite de l'heure locale et d'un décalage mesuré. Le décalage vient d'une réponse `now` :
@@ -163,16 +158,4 @@ export function ghostShown(mode: SalonGhostMode, rank: number | null): boolean {
 /** Trois premiers du classement figé, pour le podium. */
 export function podiumRows(board: Pick<SalonBoard, "rows">): SalonRow[] {
   return board.rows.slice(0, 3);
-}
-
-/**
- * Adresse pour passer au Salon (`salon = true`) ou revenir au circuit du jour : on garde les réglages d'affichage et de test (`api`,
- * `debug`, `touch`, `quality`, `salonMinutes`…), jamais le choix d'un circuit (date, thème, scénario).
- */
-export function modeHref(search: string, salon: boolean): string {
-  const p = new URLSearchParams(search);
-  for (const k of ["mode", "scenario", "seed", "day", "theme", "variant", "spec", "f", "v", "m", "today", "salonAt", "home"]) p.delete(k);
-  if (salon) p.set("mode", "salon");
-  const q = p.toString().replace(/=(?=&|$)/g, "");
-  return q ? `?${q}` : "?";
 }
