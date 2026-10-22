@@ -256,7 +256,7 @@ Chaque lot remesure avec la vitrine (qui reste le banc d'essai : elle montre l'e
 - Directions : `apps/web/src/scene/` (`route.ts`, `composer.ts`, `outils.ts`, `pieces.ts`, `types.ts`, `origine.ts`, `directionA.ts`,
   `directionB.ts`, `directionC.ts`, `textures.ts`, `directionM.ts`).
 - Tests et outils : `apps/web/e2e/vitrine.spec.ts`, `mesure-lot38.spec.ts` (`MESURE=1`), `captures-lot38.spec.ts` (`CAPTURES=1`),
-  `apps/web/test/scene.test.ts` ; `durees.json` (+ `vitrine.spec.ts`, 150 s).
+  `apps/web/test/scene.test.ts` ; `durees.json` (+ `vitrine.spec.ts`, 39 s mesurées par la CI de la PR).
 - Documents : ce README, `lot-38-direction-scene/direction.md` (projet), les captures `lot-38-direction-scene/*.jpg` ; `apps/web/CLAUDE.md`
   (« Vitrine de la scène (lot 38) ») ; `docs/orchestration.md` (ligne du lot 38).
 - Exemption : `packages/ui/test/applications.ts` (`apps/web/src/vitrine` : outil interne, en français).
