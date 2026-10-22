@@ -7,7 +7,20 @@ Zones : `apps/web/**` (la vitrine, le code des paliers, leurs tests), `docs/lots
 (exception tolérée). Aucune zone partagée. Lot 38 fusionné au départ (PR #117) ; **lot 37 pas encore fusionné** (ses règles de pose exactes restent à
 aligner, comme au lot 38).
 
-<!-- RESUME -->
+**En bref**
+- **La vitrine** `/track/vitrine/` montre, à côté de l'existant, les **paliers 1, 2 et 3** de chaque élément et de chaque thème, **chaque pas
+  commutable seul**, une **vue en mouvement** par thème (la voiture actuelle sur le vrai circuit, caméra de poursuite, **images par seconde**) et
+  le coût de chaque palier et de chaque pas.
+- **Palier 1** (le mélange du lot 38, nettoyé) : il coûte l'existant — mêmes appels de rendu, moins de triangles au pire thème, construction
+  plus courte ; ≈ +9 ko net au premier chargement (§ 3).
+- **Palier 2** (finition) : **aucun appel de plus**, +5,2 ko chargés à la demande, mais plus de travail par pixel (×2,3 en rendu logiciel),
+  surtout à cause des **reflets** : à **cibler** sur la voiture et le métal.
+- **Palier 3** : **la vie et le ciel pour presque rien** (6,8 ko, un appel chacun) ; **l'occlusion et le post-traitement coûtent cher**
+  (l'occlusion redessine la scène : +128 appels ; la chaîne de passes : ≈ 200 Mo de cibles à la taille d'un écran de téléphone).
+- **Recommandation** (§ 4, à confirmer par les images par seconde lues sur ton téléphone) : entrée de gamme → palier 1 ; téléphone récent →
+  palier 2 avec reflets ciblés, plus la vie et le ciel, sans passe plein écran ; ordinateur → palier 3 sans l'occlusion, FXAA au lieu de SMAA.
+- **Le pas le plus rentable est hors des paliers** : la voiture en 6 maillages au lieu de 53 (lot du véhicule, à placer en deuxième : § 6, § 7).
+- **Rien ne change dans le jeu** : fichiers construits identiques à `main` octet pour octet, `sim` et golden inchangés.
 
 ## À tester (sur l'aperçu de la PR)
 
@@ -48,6 +61,16 @@ Aperçu de la PR [#118](https://github.com/Nathan-Te/DailyTrack/pull/118) : **<h
 - **Les coûts** en tête de page : pour chaque colonne, le poids ajouté au jeu (`poids-parties.json`, écrit à la construction), les appels et les
   triangles par image, la construction de la scène (sur l'appareil qui regarde), la mémoire des textures dessinées et des cibles de rendu, et les
   mesures de référence au profil téléphone (§ 3) ; puis **le coût de chaque pas seul** au-dessus du palier 1.
+
+**Captures** (`CAPTURES=1 npx playwright test captures-lot38b`, dans `lot-38b-paliers-scene/`) : une planche par élément
+(`depart`, `arrivee`, `controle`, `plaques`, `panneaux`, `rebords`) et par thème (`theme-<thème>.jpg` en poursuite, `theme-<thème>-ensemble.jpg`
+vue d'ensemble), **existant | palier 1 | palier 2 | palier 3** ; **chaque pas seul** au-dessus du palier 1 (`pas-stade`, `pas-nuit`,
+`pas-canyon`) ; la **vue en mouvement** aux trois paliers (`mouvement-stade`, `mouvement-nuit`, `mouvement-col` : prises en roulant, chacune à
+son instant du tour, compteur d'images du rendu logiciel en haut à gauche).
+
+![Le portique de départ, existant et trois paliers](lot-38b-paliers-scene/depart.jpg)
+![Le Stade en poursuite](lot-38b-paliers-scene/theme-stade.jpg)
+![La Nuit : chaque pas seul](lot-38b-paliers-scene/pas-nuit.jpg)
 
 ## 2. Les paliers et leurs pas (le code, prêt à reprendre)
 
@@ -132,11 +155,111 @@ Mesurés ou constatés en faisant ce lot :
    trois.
 4. **La vie sans post-traitement** (drapeaux, foule, écrans, particules, nuages) : peu de poids, un appel chacun, aucune cible plein écran ; c'est ce
    qui fait le plus « vivant » pour le moins cher (§ 3).
-5. Hors périmètre, à décider (question 4 du lot 38) : **relever le sol près de la piste** (talus) pour que le décor se voie depuis la voiture.
+5. **Les reflets ciblés** : la carte d'environnement posée sur la voiture et le métal des portiques seulement (`envMap` par matériau), pas sur
+   `scene.environment` (la route et le décor la lisent aujourd'hui à chaque pixel) : le pas « reflets » coûte le plus par pixel du palier 2
+   (§ 3), et c'est sur la voiture qu'il se voit.
+6. **Pas d'occlusion GTAO** : elle redessine toute la scène (+128 appels, § 3) ; l'occlusion par sommets de C (déjà au palier 1) en donne
+   l'essentiel. À garder, au plus, pour l'ordinateur.
+7. Hors périmètre, à décider (question 4 du lot 38) : **relever le sol près de la piste** (talus) pour que le décor se voie depuis la voiture.
 
-<!-- COUTS -->
+## 3. Ce que coûte chaque palier (mesuré)
 
-<!-- RECO -->
+**Profil** (`MESURE=1 npx playwright test mesure-lot38b`, 22/10/2026) : Chromium en **rendu logiciel** (SwiftShader), paysage 844 × 390,
+densité 1, **processeur ×4** (CDP), caméra de poursuite ; colonnes : moyenne des huit thèmes, 30 images par vue ; pas : écart au palier 1 sur le
+Stade, le Rallye, la Nuit et le Col, 20 images. Les mêmes chiffres sont en tête de la vitrine (`src/vitrine/mesuresPaliers.ts`, écrit par la
+mesure), à côté de ceux de l'appareil qui regarde.
+
+### Les paliers
+
+| | Existant (le jeu) | Palier 1 | Palier 2 | Palier 3 |
+|---|---|---|---|---|
+| **Poids ajouté au jeu** (JS compressé) | aujourd'hui 14,4 ko (`trackMesh.ts`, `trackProps.ts`) | 33,4 ko en tout, dont décor 6,2 ko et matière de C ≈ 4,3 ko à la demande (plan du lot 38) : **≈ +9 ko net** au premier chargement | **+5,2 ko** à la demande (finition 2,0, matière 2,4, reflets 0,8) | **+56,6 ko** à la demande (lumière 3,2, vie 3,6, post 49,8) ; **≈ 21 ko** avec FXAA au lieu de SMAA ; **6,8 ko** sans post-traitement |
+| Temps d'image (ms, moyenne ; pire thème) | 174 (265, Ville) | 202 (267, Rallye) | 462 (569, Rallye) | 925 (1 021, Rallye) |
+| dont envoi (fil principal, ms) | 4,5 | 4,1 | 4,3 | 8,2 |
+| Construction de la scène (ms ; pire) | 343 (658, Ville) | **276** (372) | 394 (597) | 416 (517) |
+| Appels de rendu par image | 123 | 123 | **123** | 275 |
+| Triangles par image (moyenne ; pire) | 90 600 (168 300) | 87 200 (122 100) | 109 300 (150 000) | 252 800 (339 500) |
+| Textures dessinées | 0,8 Mo | 3,9 Mo | 10,8 Mo | 12,6 Mo |
+| Cibles de rendu (à 844 × 390) | 4,0 Mo | 4,0 Mo | 4,7 Mo | **49,2 Mo** |
+
+Ce qu'il faut en lire :
+- **Le palier 1 coûte à peu près l'existant** : moins de triangles en moyenne et surtout au pire thème (122 000 au lieu de 168 000 : la Ville, avec ses murs
+  hauts et son décor dense, est le thème le plus lourd du jeu ; au palier 1 c'est le Col), une construction plus courte (la lumière de C n'est plus repassée), le même nombre d'appels ; l'image est 16 %
+  plus longue en rendu logiciel (le grain de C est une texture lue à chaque pixel). Le plan du lot 38 demandait « existant + 10 % » : **à
+  remesurer sur un vrai téléphone** (§ « ce que le rendu logiciel ne mesure pas »).
+- **Le palier 2 n'ajoute aucun appel** (vérifié aussi par `vitrine.spec.ts` sur chaque section) ni aucune passe ; il coûte en triangles (+25 %),
+  en textures (+7 Mo) et **en travail par pixel** : ×2,3 le temps d'image en rendu logiciel, dont la plus grande part vient des **reflets**
+  (tableau suivant) — la carte d'environnement (`scene.environment`) est lue par chaque pixel de matériau physique, la route et le décor compris.
+- **Le palier 3 double les appels** (l'occlusion redessine la scène pour ses normales) et **multiplie par douze la mémoire des cibles** (la scène
+  dans une cible demi-flottante multi-échantillonnée, plus deux cibles de passes, plus celles du halo et de l'occlusion) : 49 Mo à 844 × 390,
+  donc **≈ 200 Mo à la taille réelle d'un écran de téléphone** (densité 2, ≈ 4 fois plus de pixels). C'est le chiffre qui exclut le
+  post-traitement sur téléphone, avant même le temps d'image.
+
+### Chaque pas seul, au-dessus du palier 1
+
+| Pas (palier) | Image | Construction | Triangles | Appels | Mémoire | Poids (module à la demande) |
+|---|---|---|---|---|---|---|
+| géométrie (2) | ≈ 0 | +56 ms | **+28 000** | 0 | 0 | finition.ts : 2,0 ko (avec la variété) |
+| variété (2) | ≈ 0 | ≈ 0 | 0 | 0 | 0 | (dans finition.ts) |
+| matière (2) | +35 ms | ≈ 0 (textures dessinées une fois) | +260 | 0 | +6,9 Mo | matiere.ts + bruit.ts : 2,4 ko |
+| reflets (2) | **+140 ms** | ≈ 0 | 0 | 0 | +0,7 Mo | reflets.ts : 0,8 ko |
+| ombres (3) | ≈ 0 | ≈ 0 | +17 200 | +1 | +12 Mo (carte 2048) | aucun (réglage du compositeur) |
+| occlusion (3, passe) | **+274 ms** | ≈ 0 | **+89 900** | **+128** | +27,6 Mo | GTAOPass : 8,1 ko |
+| brume (3) | ≈ 0 | ≈ 0 | 0 | 0 | 0 | lumiere3.ts : 3,2 ko (avec les nuages) |
+| nuages (3) | ≈ 0 | ≈ 0 | +2 200 | +1 | +1,3 Mo | (dans lumiere3.ts) |
+| drapeaux (3) | ≈ 0 | ≈ 0 | +370 | +1 à 2 | 0 | vie.ts : 3,6 ko (avec la foule, les écrans, les particules) |
+| foule (3) | ≈ 0 | ≈ 0 | −1 400 (instances) | 0 à 1 | 0 | (dans vie.ts) |
+| écrans (3) | ≈ 0 | ≈ 0 | +50 | 0 | +0,5 Mo | (dans vie.ts) |
+| particules (3) | ≈ 0 | ≈ 0 | 0 | +1 | 0 | (dans vie.ts) |
+| étalonnage (3, passe) | +38 ms | ≈ 0 | — | +2 | **+22,6 Mo** | sortie et étalonnage : 1,4 ko |
+| anticrénelage (3, passe) | +97 ms | ≈ 0 | — | +4 | +25,1 Mo | SMAA : **37,7 ko** (FXAA : 2,3 ko) |
+| halo (3, passe) | **+140 ms** | ≈ 0 | — | +14 | +25,0 Mo | UnrealBloomPass : 2,8 ko |
+
+« ≈ 0 » : dans le bruit de la mesure. Les écarts d'image de moins de ±25 ms (20 images en rendu logiciel) et de construction de moins de ±60 ms
+n'ont pas de sens : les pas sont mesurés après les colonnes, programmes compilés et textures déjà dessinées, si bien que plusieurs écarts de
+construction sortent négatifs. La mémoire d'un pas de post-traitement compte toute la chaîne (la cible de la scène et ses deux cibles de passes),
+qu'on paie une fois quel que soit le nombre de passes.
+
+En clair :
+- **Pour presque rien** : la variété, la brume, les nuages, les drapeaux, la foule, les écrans, les particules (un appel au plus chacun, rien de
+  mesurable au processeur, quelques ko). Leur coût réel est sur la carte graphique (sommets animés, points translucides) : à lire sur ton téléphone.
+- **Cher en triangles** : la géométrie (+28 000 : pneus empilés, mur de pneus complet, virages deux fois plus fins) et les ombres (le décor
+  projette).
+- **Cher par pixel** : les reflets et la matière. Les reflets peuvent devenir presque gratuits en les **ciblant** (la voiture et le métal des
+  portiques seulement, pas la route ni le décor : § 2, « d'autres pas »).
+- **Cher en tout** : l'occlusion (elle redessine la scène : +128 appels, +90 000 triangles) et chaque passe plein écran (mémoire des cibles).
+
+### Ce que le rendu logiciel ne mesure pas
+
+Toutes ces mesures sont faites **sans carte graphique** (SwiftShader exécute les nuanceurs sur le processeur). Elles comparent bien les paliers
+entre eux pour **le travail du fil principal** (envoi, construction, appels, triangles, mémoire), pas pour la carte graphique d'un téléphone :
+- **Le remplissage à la densité réelle** : un téléphone dessine 2 à 3 fois plus de pixels par côté (densité 2 à 3), soit 4 à 9 fois plus de
+  pixels qu'ici ; c'est le coût principal des paliers 2 et 3 (textures, reflets, passes plein écran). Le rendu logiciel, lui, **exagère** le coût
+  par pixel des textures et des reflets par rapport à une carte graphique : les deux erreurs ne se compensent pas, il faut **le vrai chiffre**.
+- **La bande passante des cibles demi-flottantes** du post-traitement et la résolution du multi-échantillonnage sur les cartes graphiques « à
+  tuiles » des téléphones (chaque passe relit et réécrit tout l'écran).
+- **La compilation des programmes par le pilote** (matériaux physiques avec cartes de normales, brume, foule, drapeaux) : une première image qui
+  saute si on ne précompile pas (`compileAsync`, comme le prévoit le document de direction).
+- **La chauffe** : un téléphone tient 60 images par seconde une minute, puis baisse sa fréquence ; il faudrait jouer plusieurs courses d'affilée.
+- **Les demi-flottants rendables** (`EXT_color_buffer_half_float`) et la mémoire de la carte graphique : un téléphone ancien peut refuser la
+  chaîne de post-traitement ou perdre le contexte WebGL.
+- **Les écrans à 90 ou 120 Hz** et la régularité des images (le compteur de la vue en mouvement donne la moyenne et la pire image de la dernière
+  seconde).
+
+**C'est pour cela que la vue en mouvement a un compteur** : les images par seconde lues sur ton téléphone, aux paliers 1, 2 et 3, sont la mesure
+qui manque à ce tableau (« À tester »).
+
+## 4. Recommandation par appareil (proposition, à confirmer par les images par seconde de ton téléphone)
+
+| Appareil | Palier visé | Pas gardés | Pourquoi |
+|---|---|---|---|
+| **Téléphone d'entrée de gamme** (ou mesure ≥ 22 ms au palier 1) | **1** | — (et la qualité 0–2 du lot 9 en dessous) | le palier 1 coûte l'existant ; rien de plus par pixel |
+| **Téléphone récent** | **2**, reflets **ciblés** (voiture et métal seulement) | + **la vie** (drapeaux, foule, écrans), les **nuages** et la **brume** ; pas les particules sans essai | même chemin de rendu, mêmes appels ; la vie et le ciel ne coûtent qu'un appel chacun ; **aucune passe plein écran** (≈ 200 Mo de cibles à la taille de l'écran) |
+| **Ordinateur** | **3 sans l'occlusion** | ombres, brume, nuages, vie ; post-traitement : **étalonnage**, **halo** (fort la Nuit, discret le jour) et **FXAA** au lieu de SMAA | l'occlusion redessine toute la scène (+128 appels) pour un gain que l'occlusion par sommets de C donne déjà en grande partie ; FXAA pèse 2,3 ko contre 37,7 |
+
+Le palier se choisit **en mesurant les premières images** (§ 5), jamais en devinant l'appareil ; les trois lignes ci-dessus sont les points de
+départ de cette mesure. Si le compteur de ton téléphone tient 60 images par seconde au palier 2 dans la vue en mouvement (Stade, Nuit, Rallye),
+le palier 2 devient le défaut des téléphones ; s'il tombe sous 45, le défaut est le palier 1 et le palier 2 reste un choix (« Équilibrée »).
 
 ## 5. Qualité selon l'appareil : une règle automatique (proposition, **non appliquée au jeu**)
 
@@ -149,7 +272,7 @@ place **dans** un palier (elle coupe ombres, halos et décor si une course ralen
    programmes) puis on prend **la médiane de 90 intervalles d'image**, au palier visé, à la densité d'écran du jeu (plafonnée à 2).
 2. **Le seuil** (à 60 Hz) : médiane ≤ 13 ms → on peut monter d'un palier (et on remesure) ; médiane ≥ 22 ms → on descend d'un palier ; entre les
    deux, on reste. On part du **palier 2** sur un téléphone, du **palier 3 sans les passes plein écran** sur un ordinateur (pointeur fin, écran large).
-3. **Jamais en course.** Un changement de palier reconstruit la scène (§ 3 : 0,1 à 0,5 s au profil téléphone) : il n'a lieu qu'à l'accueil, à la
+3. **Jamais en course.** Un changement de palier reconstruit la scène (§ 3 : ≈ 0,3 à 0,6 s au profil téléphone) : il n'a lieu qu'à l'accueil, à la
    pause, à l'arrivée ou pendant le podium du Salon (comme la préparation du circuit suivant). Pendant une course, seule la qualité 0–2 du lot 9
    bouge.
 4. **Garde-fous** : sans demi-flottants rendables (`EXT_color_buffer_half_float`) ou avec peu de mémoire annoncée (`navigator.deviceMemory` < 4),
@@ -201,9 +324,9 @@ La voiture n'est pas touchée par ce lot ; elle est dans chaque vue (fixe et en 
 | 2 | **Véhicule** (placé ici : c'est le pas le plus rentable) | la voiture en 6 maillages, puis le modèle des paliers 1 et 2 (§ 6) | +3 à +5 ko | — | −40 appels par image au moins ; vue capot vérifiée ; Salon inchangé |
 | 3 | **Palier 1 — éléments et lumière** | éléments de course, rebords par thème, lumière de C, horizons, ombres devant la voiture (gratuit), corrections du § 2 | ≈ +7 ko | — | Stade et Nuit séparés ; temps d'image ≤ existant + 10 % |
 | 4 | **Palier 1 — décor**, thème par thème (deux lots : Stade, Rallye, Campagne, Canyon ; puis Banquise, Col, Ville, Nuit) | décor allégé, matière de C | ≈ +0,3 ko de chargeur | ≤ 16 ko (ligne « décor 3D à la demande ») | jamais pendant une course ; aucune image qui saute |
-| 5 | **Palier 2 — finition** | géométrie, variété, matière, reflets ; règle de qualité automatique et réglage « Qualité graphique » (fr + en) | ≈ +1 ko (règle, réglage) | ≈ 5 à 6 ko (modules des pas) | mêmes appels que le palier 1 ; téléphone récent ≥ 55 images/s mesurées |
-| 6 | **Palier 3 — vie et ciel** (sans passe plein écran) | drapeaux, foule, écrans, particules, nuages, brume | 0 | ≈ 7 ko | ordinateur à 60 images/s ; un appel par famille |
-| 7 | **Palier 3 — post-traitement** (si Nathan le veut, ordinateur seulement) | étalonnage, halo (Nuit), occlusion ; FXAA plutôt que SMAA | 0 | ≈ 12 ko (sans SMAA) | ordinateur seulement ; jamais sans demi-flottants |
+| 5 | **Palier 2 — finition** | géométrie, variété, matière, reflets ciblés ; règle de qualité automatique et réglage « Qualité graphique » (fr + en) | ≈ +1 ko (règle, réglage) | ≈ 5,2 ko (modules des pas) | mêmes appels que le palier 1 ; téléphone récent ≥ 55 images/s mesurées |
+| 6 | **Palier 3 — vie et ciel** (sans passe plein écran) | drapeaux, foule, écrans, particules, nuages, brume, ombres devant la voiture en 2048 | 0 | ≈ 6,8 ko | ordinateur à 60 images/s ; un appel par famille |
+| 7 | **Palier 3 — post-traitement** (si Nathan le veut, ordinateur seulement) | étalonnage, halo (fort la Nuit), FXAA plutôt que SMAA ; l'occlusion seulement si elle se justifie (§ 3 : +128 appels) | 0 | ≈ 6,5 ko (sortie, étalonnage, halo, FXAA) ; +8,1 ko avec l'occlusion | ordinateur seulement ; jamais sans demi-flottants |
 
 Chaque lot remesure avec la vitrine (qui reste le banc d'essai : elle montre l'existant tel qu'il devient), met à jour la ligne de Track dans
 `docs/plateforme/budgets.md`, et **ne touche ni à `sim` ni aux golden**.
@@ -229,6 +352,46 @@ Chaque lot remesure avec la vitrine (qui reste le banc d'essai : elle montre l'e
 10. Les questions du lot 38 encore ouvertes : sponsors fictifs dans le jeu (8), panneaux de distance (5), feux allumés au décompte (6), sol relevé
     près de la piste (4), budget du premier chargement ≈ +9 ko et ligne « décor 3D à la demande » à 16 ko (9), palette `neon` (10).
 
-<!-- VERIFIE -->
+## 9. Vérifié, non vérifié
 
+**Vérifié**
+- **Le jeu n'a pas changé** : `npm run build` puis empreinte de chaque fichier de `apps/web/dist` (hors `vitrine/`) comparée à celle de `main` :
+  identiques octet pour octet. `packages/sim` n'est pas touché ; golden inchangés (`npm test`).
+- `npm test` (Vitest, sqlite et libsql), `npm run typecheck`, `npm run build` : verts en local. **CI de la PR verte** au premier commit
+  (unitaires, zones, e2e : 293 réussis, 0 échec, 0 instable ; `vitrine.spec.ts` : 293 s, reporté dans `durees.json`) ; le dernier commit :
+  voir la PR.
+- `e2e/vitrine.spec.ts` (Chromium, en local) : la planche des directions et celle des paliers s'ouvrent sans erreur sur ordinateur et téléphone ;
+  **chaque palier** (1, 2, 3) et l'existant dans la vue en mouvement (la voiture avance, caméra de poursuite à bonne distance, compteur d'images
+  affiché) ; le palier 2 n'ajoute **aucun appel** au palier 1 sur aucune section, le palier 3 en ajoute ; la colonne « à la carte » suit les
+  cases et l'adresse (`reglages=3-halo`) ; axe sans violation grave sur les deux planches et la vue en mouvement.
+- `test/paliers.test.ts` : réglages et textes d'adresse, route grise sous lumière chaude, rien en l'air, mur de pneus allégé, variété sans
+  déplacer le décor, drapeaux figés, normales et rugosité de l'asphalte, traces et marquages, brume (le remplacement du morceau de three.js
+  existe et s'applique), halos linéarisés dans le post-traitement, trajet du pilote.
+- Captures de chaque élément et de chaque thème aux paliers 1, 2, 3 (et l'existant), chaque pas seul sur trois thèmes, la vue en mouvement sur
+  trois thèmes : `docs/lots/lot-38b-paliers-scene/` ; regardées une à une : elles ont fait corriger le texte des écrans à l'envers, le halo de
+  jour qui faisait briller la peinture blanche, les halos de nuit démesurés dans le post-traitement (ceux des lampadaires de la Nuit, construits à part, l'étaient encore : corrigé et testé),
+  une tache d'huile trop brillante. Les trois images d'une vue en mouvement sont prises en roulant, chacune à son instant du tour.
+- Mesures au profil téléphone (§ 3) et poids par partie (`poids-parties.mjs`).
 
+**Non vérifié**
+- **Aucun vrai téléphone ni vraie carte graphique** : tout est mesuré en rendu logiciel (§ 3, « Ce que le rendu logiciel ne mesure pas »). Les
+  images par seconde de la vue en mouvement sur ton téléphone sont **la** mesure qui manque.
+- WebKit et Firefox n'ouvrent pas la vitrine dans la CI (outil interne : Chromium seulement, comme au lot 38) ; le post-traitement demande des
+  cibles en demi-flottants, que Safari sur iPhone ancien peut refuser.
+- Les règles de pose exactes du lot 37 (non fusionné) : reprises du lot 38, à réaligner.
+- La règle de qualité automatique (§ 5) et le plan (§ 7) sont des propositions : rien n'est appliqué au jeu.
+
+**Décisions laissées à Nathan** : § 8.
+
+## 10. Fichiers
+
+- Code des paliers (prêt à reprendre) : `apps/web/src/scene/paliers.ts`, `composerPalier.ts`, `palier1.ts`, `finition.ts`, `bruit.ts`,
+  `matiere.ts`, `reflets.ts`, `lumiere3.ts`, `vie.ts`, `post.ts`, `memoire.ts` ; retouchés (paramètres de palier, rien de changé par défaut) :
+  `route.ts`, `types.ts`, `composer.ts`, `directionA.ts`, `directionB.ts`, `directionC.ts`.
+- Vitrine : `apps/web/src/vitrine/vitrine.ts`, `variantes.ts`, `vues.ts`, `scenesPaliers.ts`, `reglagesUi.ts`, `textesPaliers.ts`,
+  `mouvement.ts`, `parcours.ts`, `piloteWorker.ts`, `mesuresPaliers.ts` (écrit par la mesure) ; `apps/web/vitrine/index.html`, `vitrine.css`,
+  `construire.mjs` (écrit `poids-parties.json`), `poids-parties.mjs` ; `apps/web/vite.vitrine.config.ts` (un morceau par famille de pas).
+- Tests et outils : `apps/web/test/paliers.test.ts`, `apps/web/e2e/vitrine.spec.ts`, `captures-lot38b.spec.ts`, `mesure-lot38b.spec.ts`,
+  `globals.d.ts`, `durees.json` ; `captures-lot38.spec.ts` et `mesure-lot38.spec.ts` ouvrent la planche des directions.
+- Documents : ce README et ses captures (`docs/lots/lot-38b-paliers-scene/`), `docs/lots/lot-38-direction-scene/direction.md` (§ 8, toujours un
+  projet), `apps/web/CLAUDE.md` (« Vitrine de la scène »), `docs/orchestration.md` (ligne 38b).
