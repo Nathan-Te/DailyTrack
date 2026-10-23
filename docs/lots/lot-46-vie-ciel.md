@@ -3,7 +3,7 @@
 Branche `claude/elegant-bohr-s8nb0v` (nom imposé par la session ; le lot prévoyait `lot-46-vie-ciel`, d'où l'étiquette `jeu:track` sur la PR pour le job
 `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), `main` fusionné ensuite à `42154b6` (retouche 40b : la voiture civile et les modèles en jeu). Zones : `apps/web/**`, `docs/lots/**`, les lignes de Track de `docs/plateforme/budgets.md`, son entrée
 de `durees.json`. **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés. Aucune clé de
-catalogue (les pas n'ont pas de texte ; la page d'admin est un outil interne, en français). PR : voir la synthèse.
+catalogue (les pas n'ont pas de texte ; la page d'admin est un outil interne, en français). PR : [Nathan-Te/DailyTrack#125](https://github.com/Nathan-Te/DailyTrack/pull/125) (brouillon ; l'aperçu est commenté par la CI).
 
 ## En deux phrases
 
