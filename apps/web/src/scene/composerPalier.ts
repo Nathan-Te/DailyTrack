@@ -52,13 +52,12 @@ import { texturedCielC } from "./textures";
 import { SOLS_C, grain, texturedSol, uvMonde } from "./decor/matiereC";
 import { arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP } from "./palier1";
 import { atlasSponsors } from "./sponsors";
-import { bordureVideB, rebordB } from "./piste";
+import { bordureVideB, rebordB } from "./rebordsComplets";
 import { Drapeaux, FINITION_ELEMENTS, marque, varierInstance, varierParPosition, type Marque } from "./finition";
 import { verserDrapeaux } from "./drapeaux";
 import { matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, matieresDessinees, teinteLarge, tracesEtMarquages, type Matiere } from "./matiere";
-import { detailleeAsphalte, detailleeBeton, detailleeDecor, detailleeMetal } from "./matiereDetaillee";
 import { memoireScene, type MemoireScene } from "./memoire";
-import { carteEnvironnement } from "./reflets";
+import { carteEnvironnement, refletsCibles } from "./reflets";
 import { brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
 import { THEMES_3 } from "./themes3";
 import { Chronometre, drapeauxAnimes, ecransDuDepart, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
@@ -91,29 +90,18 @@ const HEADLIGHT_POWER = 900;
 
 /** Les matériaux d'une scène selon ses pas : un par calque quand la matière ou les reflets l'exigent, sinon un seul (comme le lot 38). */
 function materiaux(r: Reglages) {
-  // La matière sobre (38c) ; l'ancienne matière « détaillée » (comparaison seulement) l'emporte si elle est cochée.
-  const textures = r.detaillee
-    ? { route: detailleeAsphalte(), rebords: detailleeBeton(), solide: detailleeMetal(), decor: detailleeDecor() }
-    : r.matiere
-      ? { route: matiereAsphalte(), rebords: matiereBeton(), solide: matiereMetal(), decor: matiereDecor() }
-      : null;
-  // Rugosité et métal par calque (pas « reflets ») : l'asphalte reste mat, la peinture des rebords satinée, le métal des portiques brille.
-  const fini = { route: [0.92, 0], rebords: [0.62, 0], solide: [0.42, 0.35], decor: [0.85, 0] } as const;
+  // La matière sobre (38c ; lot 45 : l'ancienne matière « détaillée » est retirée).
+  const textures = r.matiere ? { route: matiereAsphalte(), rebords: matiereBeton(), solide: matiereMetal(), decor: matiereDecor() } : null;
+  // Rugosité et métal par calque (pas « reflets ») — lot 45 : les reflets sont ciblés, seul le métal des portiques est satiné et reflète le ciel ; la
+  // route, les rebords et le décor gardent leur fini (ils ne lisent pas la carte d'environnement).
+  const fini = { route: [1, 0], rebords: [1, 0], solide: [0.42, 0.35], decor: [1, 0] } as const;
   const make = (cle: keyof typeof fini) => {
     const t: Matiere | null = textures ? textures[cle] : null;
     const [rugosite, metal] = r.reflets ? fini[cle] : [1, 0];
     const m = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide, roughness: rugosite, metalness: metal, map: t ? t.map : grain() });
     if (t) {
       // `uvMonde(…, 4)` : une unité de texture = 4 m ; la matière se répète tous les `echelle` m.
-      for (const tx of [t.map, t.normalMap, t.roughnessMap]) tx?.repeat.set(4 / t.echelle, 4 / t.echelle);
-      if (t.normalMap) {
-        m.normalMap = t.normalMap;
-        m.normalScale.set(t.relief, t.relief);
-      }
-      if (t.roughnessMap) {
-        m.roughnessMap = t.roughnessMap;
-        if (!r.reflets) m.roughness = 1;
-      }
+      t.map.repeat.set(4 / t.echelle, 4 / t.echelle);
       teinteLarge(m, t.teinte);
     }
     return m;
@@ -177,7 +165,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   // Lot 44 : la variété du décor (pas « variété ») lui arrive par le contexte, comme la géométrie aux éléments : le décor du jeu n'importe pas `finition.ts`.
   const varierDecor = r.variete ? { marque: (c: Calques) => marque(c), varier: (c: Calques, m: unknown, x: number, sol: number, z: number) => varierInstance(c, m as Marque, x, sol, z, varie) } : undefined;
   const ctx: Contexte = { palette: paletteName, pal, look, track, floorY, reglages: r, varie, textes: { depart: "DÉPART", arrivee: "ARRIVÉE" }, ...(r.geometrie ? { finition: FINITION_ELEMENTS } : {}), ...(varierDecor ? { varierDecor: varierDecor as Contexte["varierDecor"] } : {}) };
-  const style = routeP(paletteName, r, { rebord: (nom, sorte) => rebordB(nom, sorte), bordureVide: bordureVideB });
+  const style = routeP(paletteName, r.geometrie ? { rebord: (nom, sorte) => rebordB(nom, sorte), bordureVide: bordureVideB } : undefined);
   construireRoute(track, pal, style, { route: calques.route, lumineux: calques.lumineux, rebords: calques.rebords }, floorY, { lissage: r.geometrie ? 2 : 1 });
   const fast = fastZones(track);
   const rythme = new Builder();
@@ -228,7 +216,8 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     scene.background = texturedCielC(tc.ciel);
     scene.fog = new Fog(tc.brume[0], tc.brume[1], tc.brume[2]);
   }
-  const hemi = new HemisphereLight(tc.hemi[0], tc.hemi[1], tc.hemi[2] * (r.reflets ? 0.6 : 1));
+  // Lot 45 : les reflets ciblés n'éclairent plus toute la scène (la lumière d'hémisphère ne baisse plus d'autant).
+  const hemi = new HemisphereLight(tc.hemi[0], tc.hemi[1], tc.hemi[2]);
   scene.add(hemi, new AmbientLight(tc.hemi[0], tc.ambiante));
   const sun = new DirectionalLight(tc.soleil[0], tc.soleil[1]);
   sun.position.copy(sunPos);
@@ -410,13 +399,13 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     });
   }
 
-  // --- Reflets : la carte d'environnement, au moment de la première image (elle demande le moteur de rendu) ---
+  // --- Reflets : la carte d'environnement, au moment de la première image (elle demande le moteur de rendu) ; lot 45 : ciblés (le métal et la voiture,
+  // `refletsCibles`), jamais `scene.environment` — à chaque image, pour la voiture que la vitrine change ---
   let env: ReturnType<typeof carteEnvironnement> | null = null;
   const preparer = (renderer: WebGLRenderer) => {
-    if (!r.reflets || env) return;
-    env = carteEnvironnement(renderer, { ciel: tc.ciel, sol: new Color(tc.sol[0]).getHex(), soleil: { direction: sunDir, couleur: tc.soleil[0], force: Math.min(1.5, tc.soleil[1] / 2) }, horizon: amb.silhouettes.corps });
-    scene.environment = env.texture;
-    scene.environmentIntensity = t3.environnement;
+    if (!r.reflets) return;
+    env ??= carteEnvironnement(renderer, { ciel: tc.ciel, sol: new Color(tc.sol[0]).getHex(), soleil: { direction: sunDir, couleur: tc.soleil[0], force: Math.min(1.5, tc.soleil[1] / 2) }, horizon: amb.silhouettes.corps });
+    refletsCibles(scene, env.texture, t3.environnement);
   };
 
   let shadowSize = 0;
@@ -455,7 +444,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     dispose: () => {
       scene.traverse((o) => (o as { shadow?: { map?: { dispose(): void } | null } }).shadow?.map?.dispose());
       // Les textures de matière, du grain et des nuages sont partagées entre les scènes (dessinées une fois) : on ne les libère pas ici.
-      const partagees = new Set<Texture>([grain(), ...matieresDessinees().flatMap((m) => [m.map, m.normalMap, m.roughnessMap].filter((x): x is DataTexture => x !== null))]);
+      const partagees = new Set<Texture>([grain(), ...matieresDessinees().map((m) => m.map)]);
       if (dome) partagees.add(dome.material.uniforms.uNuages!.value as Texture);
       scene.traverse((o) => {
         const m = (o as Mesh).material as Material | Material[] | undefined;

@@ -1,8 +1,9 @@
 // Retouche 38b — palier 2, pas « reflets » : une carte d'environnement **calculée à partir du ciel du thème** (dégradé, soleil, sol, bande
-// d'horizon), préfiltrée une fois (PMREM, 64 px par face : ≈ 0,7 Mo) au moment de construire la scène. Posée sur `scene.environment`, elle
-// éclaire et se reflète dans tous les matériaux physiques de la scène — les portiques en métal, les panneaux, et **la voiture** (sans toucher à
-// son modèle). Aucun fichier, aucune image par image : elle coûte une lecture de texture par pixel éclairé.
-import { BackSide, Color, Mesh, PMREMGenerator, Scene, ShaderMaterial, SphereGeometry, Vector3, type Texture, type WebGLRenderer, type WebGLRenderTarget } from "three";
+// d'horizon), préfiltrée une fois (PMREM, 64 px par face : ≈ 0,7 Mo) au moment de construire la scène. Aucun fichier, aucune image par image : elle
+// coûte une lecture de texture par pixel qui la lit. **Lot 45 : des reflets ciblés** (38b, « d'autres pas », n° 5) — posée par matériau (`envMap`) sur le
+// métal des portiques et sur la voiture seulement, **jamais sur `scene.environment`** (la route et le décor la liraient à chaque pixel : c'était le pas le plus
+// cher par pixel du palier 2). Le jeu (`finitionJeu.ts`) et la vitrine (`composerPalier.ts`, `refletsCibles`) font de même.
+import { BackSide, BoxGeometry, Color, Mesh, PMREMGenerator, Scene, ShaderMaterial, Vector3, type MeshStandardMaterial, type Object3D, type Texture, type WebGLRenderer, type WebGLRenderTarget } from "three";
 
 /** Ce qu'il faut du thème pour peindre son environnement : ciel (zénith, haut, horizon), sol, soleil (direction, couleur, force), horizon. */
 export interface CielEnv {
@@ -59,7 +60,9 @@ export function carteEnvironnement(renderer: WebGLRenderer, e: CielEnv): { textu
       uSoleilForce: { value: e.soleil.force },
     },
   });
-  scene.add(new Mesh(new SphereGeometry(10, 32, 16), mat));
+  // Un cube vu de l'intérieur (le nuanceur ne lit que la direction) : lot 45, `SphereGeometry` serait entrée dans le morceau partagé de three.js, donc dans
+  // le premier chargement du jeu (comme le dôme du ciel, lot 46).
+  scene.add(new Mesh(new BoxGeometry(10, 10, 10), mat));
   const pmrem = new PMREMGenerator(renderer);
   const rt: WebGLRenderTarget = pmrem.fromScene(scene, 0.02, 0.1, 100, { size: 64 });
   pmrem.dispose();
@@ -68,4 +71,21 @@ export function carteEnvironnement(renderer: WebGLRenderer, e: CielEnv): { textu
   // Cible « cube UV » de PMREM : 3 × max(64, 112) par 4 × 64 pixels, demi-flottants (8 octets par pixel).
   const octets = rt.width * rt.height * 8;
   return { texture: rt.texture, octets, dispose: () => rt.dispose() };
+}
+
+/**
+ * Lot 45 : les reflets ciblés de la vitrine — la carte posée sur les matériaux physiques des calques `solide` et `rythme` (le métal) et sur ce qui n'est pas un
+ * calque de la scène (la voiture) ; ni la route, ni les rebords, ni le décor. Idempotent (la vitrine l'appelle avant chaque image : la voiture change).
+ */
+export function refletsCibles(scene: Object3D, env: Texture, intensite: number) {
+  scene.traverse((o) => {
+    const calque = o.userData.calque as string | undefined;
+    if (calque !== undefined && calque !== "solide" && calque !== "rythme") return;
+    for (const m of [(o as Mesh).material].flat() as MeshStandardMaterial[]) {
+      if (!m?.isMeshStandardMaterial || m.envMap === env) continue;
+      m.envMap = env;
+      m.envMapIntensity = intensite;
+      m.needsUpdate = true;
+    }
+  });
 }

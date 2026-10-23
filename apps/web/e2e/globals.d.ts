@@ -123,6 +123,17 @@ interface CdjDebug {
     /** Le fantôme du record est-il dessiné (dernière image) ? */
     fantome: boolean;
   };
+  /** Lot 45 : la qualité graphique (règle automatique et réglage). */
+  qualite: {
+    choix: "auto" | "economie" | "equilibree" | "maximale";
+    appareil: { ordinateur: boolean; logiciel: boolean; demiFlottants: boolean; memoire?: number };
+    passes: boolean;
+    memoire: { palier: 1 | 2 | 3; date: number; mediane: number | null; pixels: number; echecs: number; plafond: 1 | 2 | 3 | null; durable: boolean } | null;
+    aMesurer: boolean;
+    mesure: number | null;
+    derniere: { mediane: number; hz: number; palier: 1 | 2 | 3 } | null;
+    enAttente: boolean;
+  };
   socle: {
     composer(track: unknown, palette: string, palier: string, options?: unknown): unknown;
     brancherComposeur(palier: string, composeur: (track: unknown, palette: string, options: unknown) => unknown): void;

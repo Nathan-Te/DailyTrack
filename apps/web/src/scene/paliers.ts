@@ -4,13 +4,13 @@
 //
 // - Palier 1, « base » : le mélange recommandé du lot 38, nettoyé (lumière de C intégrée, ombres de contact des seuls rebords, mur de pneus allégé).
 // - Palier 2, « finition » : même chemin de rendu (aucune passe de plus), plus de soin — géométrie, variété, matière (sobre : décision de Nathan,
-//   38c), traces de pneus, reflets. « Matière détaillée » (l'ancienne matière du 38b) n'est dans aucun palier : une case pour comparer.
+//   38c), traces de pneus, reflets (lot 45 : ciblés, sur le métal et la voiture). La « matière détaillée » (l'ancienne matière du 38b) est retirée au lot 45.
 // - Palier 3, « vitrine » : le plafond — lumière (ombres, occlusion, brume, nuages), vie (drapeaux, foule, écrans, particules), post-traitement
 //   (étalonnage, anticrénelage, halo), chacun commutable séparément.
 
 export type Palier = 1 | 2 | 3;
 
-export const PAS_IDS = ["geometrie", "variete", "matiere", "traces", "detaillee", "reflets", "ombres", "occlusion", "brume", "nuages", "drapeaux", "foule", "ecrans", "particules", "etalonnage", "anticrenelage", "halo"] as const;
+export const PAS_IDS = ["geometrie", "variete", "matiere", "traces", "reflets", "ombres", "occlusion", "brume", "nuages", "drapeaux", "foule", "ecrans", "particules", "etalonnage", "anticrenelage", "halo"] as const;
 export type PasId = (typeof PAS_IDS)[number];
 
 /** Les réglages d'une scène : chaque pas allumé ou non. */
@@ -25,8 +25,6 @@ export interface Pas {
   famille: Famille;
   /** Ajoute une passe de rendu plein écran (post-traitement) : coût surtout sur la carte graphique, à juger sur un vrai téléphone. */
   passe?: boolean;
-  /** Pour comparer seulement (38c : l'ancienne matière) : dans aucun palier, coupé par défaut ; à retirer au lot de mise en œuvre. */
-  comparaison?: boolean;
 }
 
 /** Les pas, dans l'ordre de la vitrine. */
@@ -35,7 +33,6 @@ export const PAS: readonly Pas[] = [
   { id: "variete", palier: 2, famille: "finition" },
   { id: "matiere", palier: 2, famille: "finition" },
   { id: "traces", palier: 2, famille: "finition" },
-  { id: "detaillee", palier: 2, famille: "finition", comparaison: true },
   { id: "reflets", palier: 2, famille: "finition" },
   { id: "ombres", palier: 3, famille: "lumiere" },
   { id: "occlusion", palier: 3, famille: "lumiere", passe: true },
@@ -50,9 +47,9 @@ export const PAS: readonly Pas[] = [
   { id: "halo", palier: 3, famille: "post", passe: true },
 ];
 
-/** Les réglages d'un palier : tous ses pas et ceux des paliers en dessous (jamais un pas de comparaison). */
+/** Les réglages d'un palier : tous ses pas et ceux des paliers en dessous. */
 export function reglagesDuPalier(p: Palier): Reglages {
-  return Object.fromEntries(PAS.map((s) => [s.id, !s.comparaison && s.palier <= p])) as Record<PasId, boolean>;
+  return Object.fromEntries(PAS.map((s) => [s.id, s.palier <= p])) as Record<PasId, boolean>;
 }
 
 /** Le palier dont les réglages sont exactement ceux-ci, ou `null` (réglages à la carte). */

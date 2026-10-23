@@ -1,12 +1,12 @@
 // Lot 38 — ce qu'est une direction de la scène : des fonctions de construction par élément (portique de départ, arrivée, porte de contrôle,
 // plaques, panneaux, rebords, décor), paramétrées par thème, et une ambiance (ciel, lumière, brume) par thème. La vitrine (`/track/vitrine/`) les
 // compare à l'existant ; les lots de mise en œuvre les reprendront telles quelles dans `trackMesh.ts` (voir le README du lot 38).
-import type { BufferGeometry, Mesh, PerspectiveCamera, Scene, Texture, Vector3 } from "three";
+import type { BufferGeometry, Mesh, PerspectiveCamera, Scene, Texture, Vector3, WebGLRenderer } from "three";
 import type { Block, PaletteName, Track } from "@cdj/sim";
 import type { Builder, V3 } from "../meshKit";
 import type { SignSpec } from "../signage";
 import type { Look, Palette } from "../trackMesh";
-import type { StyleRoute } from "./route";
+import type { OptionsRoute, StyleRoute } from "./route";
 import type { Affiches } from "./outils";
 import type { Drapeaux } from "./drapeaux";
 import type { Reglages } from "./paliers";
@@ -253,6 +253,16 @@ export interface AnimationPas {
    * (mâts, drapeaux, ruban, foule). Une famille reste un seul maillage : le pas refait le sien.
    */
   decor?(d: DecorVie): void;
+  /**
+   * Lot 45 : un maillage éclairé de la scène — la route, le solide, puis le décor quand il se pose (`userData.calque` : `route`, `solide`, `decor`, `dense`) —
+   * à habiller (la matière sobre, les reflets ciblés). Il garde son matériau et son appel de rendu.
+   */
+  habiller?(m: Mesh): void;
+  /**
+   * Lot 45 : les reflets ciblés — la carte d'environnement du thème (calculée une fois, elle demande le moteur de rendu), posée sur le métal des portiques ; rendue
+   * pour que le jeu la pose aussi sur la voiture. **Jamais `scene.environment`** (la route et le décor la liraient à chaque pixel).
+   */
+  environnement?(renderer: WebGLRenderer): { texture: Texture; intensite: number } | null;
 }
 
 /**
@@ -261,6 +271,13 @@ export interface AnimationPas {
  */
 export interface PasScene {
   id: string;
+  /**
+   * Lot 45 : avant la piste — ce que le pas apporte aux éléments par le contexte (`finition`, `varie`, `varierDecor`) et aux calques (`drapeaux`, `rebords`) ;
+   * rend le style de la route s'il le change (rebords complets, virages deux fois plus fins).
+   */
+  avant?(c: Calques, x: Contexte, coupes: ReadonlySet<string>): { style: StyleRoute; options: OptionsRoute } | void;
+  /** Lot 45 : après les éléments et les pièces des autres pas (traces, variété par morceau). */
+  apres?(c: Calques, x: Contexte, coupes: ReadonlySet<string>): void;
   /** Avant les maillages et les éléments posés : ses pièces dans les calques (drapeaux, écrans, caissons) ; ce qui tient au décor vient par `decor`. */
   elements?(c: Calques, x: Contexte, coupes: ReadonlySet<string>): void;
   /** La scène construite : ses maillages, son animation. */

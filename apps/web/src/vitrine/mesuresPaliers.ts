@@ -110,13 +110,6 @@ export const MESURES_PALIERS: { date: string | null; profil: string | null; colo
       "appels": 0,
       "memoire": 0
     },
-    "detaillee": {
-      "imageMs": 52.8,
-      "constructionMs": -56.5,
-      "triangles": 0,
-      "appels": 0,
-      "memoire": 7252647
-    },
     "reflets": {
       "imageMs": 142.9,
       "constructionMs": -50.6,
