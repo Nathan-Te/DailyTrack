@@ -245,16 +245,23 @@ export function monterGarage(host: GarageHost): GarageUi {
     redessiner();
   }
 
+  /**
+   * Les vignettes de l'état montré (en couleur si débloquée, en silhouette sinon), une par tâche : le Garage s'affiche d'abord, les images
+   * viennent ensuite (d'un seul tenant, la première ouverture bloquait le fil principal ≈ 4 s en rendu logiciel, la CI le voyait).
+   */
   async function chargerVignettes() {
     const g = generation;
+    let neuves = false;
     for (const f of VOITURES) {
-      for (const sil of [false, true]) {
-        const cle = `${f.id}|${sil}`;
-        if (images.has(cle)) continue;
-        images.set(cle, await vignette(f, sil, host.outils.moteur));
-        if (g !== generation || !ouvert) return;
-      }
+      const sil = !debloquees().has(f.id);
+      const cle = `${f.id}|${sil}`;
+      if (images.has(cle)) continue;
+      await new Promise((r) => setTimeout(r));
+      if (g !== generation || !ouvert) return;
+      images.set(cle, await vignette(f, sil, host.outils.moteur));
+      neuves = true;
     }
+    if (!neuves) return;
     host.outils.liberer();
     if (ouvert) redessiner();
   }
@@ -355,6 +362,7 @@ export function monterGarage(host: GarageHost): GarageUi {
         noterDeblocages(s.voitures.filter((v) => v.debloquee).map((v) => v.id));
       }
       if (ouvert) redessiner();
+      if (ouvert) void chargerVignettes(); // une voiture débloquée par la réponse : sa vignette en couleur
       marquerVues([...debloquees()]); // vues : la pastille « Nouveau » de l'accueil s'éteint (ici, elles restent marquées jusqu'à la fermeture)
     });
   }

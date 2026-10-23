@@ -10,6 +10,12 @@ test.setTimeout(150_000);
 
 const CLE = "cdj:track:garage";
 const voiture = (page: Page) => page.evaluate(() => window.__cdj.voiture);
+/**
+ * Ouvert depuis la course (pause, arrivée), le Garage tourne la caméra vers l'avant de la voiture : la première image compile les nuanceurs des
+ * objets du décor jamais vus jusque-là. En rendu logiciel (le Chromium « headless shell » de la CI), cette image a pris 4,4 à 5,3 s mesurées
+ * (tâches longues de la page, trois essais) ; le Garage est monté en moins de 60 ms après le clic. Sur un téléphone, une fraction de seconde.
+ */
+const PREMIERE_IMAGE = 15_000;
 
 async function accueil(page: Page, query = "?api=demo&debug&home=1") {
   await page.goto(`/${query}`);
@@ -30,6 +36,8 @@ test("ouvrir le Garage depuis l'accueil : voitures débloquées et verrouillées
   await expect(garage.locator(".etiquette__sous-titre")).toHaveText(/2 voitures sur 4/i);
   // Rien d'autre que le Garage ne charge le Garage : il n'était pas là avant le clic (chargé à la demande).
   expect((await voiture(page)).garage).toMatchObject({ debloquees: ["civile", "evolution"], horsLigne: false });
+  // Les vignettes viennent après l'ouverture, une par tâche (le Garage s'affiche d'abord) : une par voiture, dans l'état montré.
+  await expect(garage.locator(".garage-voiture__image[src^='data:image/png']")).toHaveCount(4, { timeout: 30_000 });
 
   // Une voiture verrouillée : sa silhouette et sa condition, jamais choisie.
   await garage.locator('[data-voiture="gt"]').click();
@@ -79,7 +87,7 @@ test("dans la pause : « Garage » ouvre le Garage sur la scène, Échap le ferm
   await page.keyboard.press("Escape");
   await expect(page.locator("#pause-garage")).toBeVisible();
   await page.locator("#pause-garage").click();
-  await expect(page.locator("#garage")).toBeVisible();
+  await expect(page.locator("#garage")).toBeVisible({ timeout: PREMIERE_IMAGE });
   await expect(page.locator("#pause")).toBeHidden(); // un seul voile : la pause s'efface sous le Garage
   await page.keyboard.press("Escape");
   await expect(page.locator("#garage")).toBeHidden();
@@ -165,7 +173,7 @@ test("à l'arrivée : la course qui débloque une voiture l'annonce en une ligne
   await expect(ligne).toContainText("Nouvelle voiture :");
   await expect(ligne).toContainText("Weasel");
   await page.locator("#finish-garage").click();
-  await expect(page.locator("#garage")).toBeVisible();
+  await expect(page.locator("#garage")).toBeVisible({ timeout: PREMIERE_IMAGE });
   await expect(page.locator('#garage [data-voiture="evolution"]')).toHaveAttribute("aria-current", "true");
   await expect(page.locator(".garage-fiche")).toContainText("WEASEL", { ignoreCase: true });
   expect((await voiture(page)).choix.id).toBe("civile"); // montrée, pas choisie : c'est au joueur de la toucher
