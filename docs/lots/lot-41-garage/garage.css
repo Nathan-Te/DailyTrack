@@ -1,0 +1,360 @@
+/* Lot 41 — le Garage (maquette) : la feuille proposée pour apps/web/src/garage.css. Valeurs : jetons de @cdj/ui seulement ; la seule couleur qui
+   n'en vient pas est celle des pastilles de couleur, lue dans la palette des voitures (`PALETTE`, livree.ts) et posée en `--teinte` par le code. */
+
+/* --- L'écran : posé sur la scène, sans voile (la voiture se voit) --------------------------------------------------------------------------- */
+.garage {
+  --garage-colonne: 420px;
+  display: grid;
+  grid-template-columns: minmax(0, var(--garage-colonne)) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  align-items: stretch;
+  justify-content: stretch;
+  column-gap: 12px;
+  background: none; /* écart proposé : pas de voile sur la scène, l'étiquette et la fiche sont des plaques opaques */
+}
+.garage > .dj-barre-jeu {
+  grid-column: 1 / -1;
+  max-width: none;
+}
+.garage > .cadre__defile {
+  grid-column: 1;
+  grid-row: 2;
+  max-width: none;
+  min-height: 0;
+}
+.garage__scene {
+  grid-column: 2;
+  grid-row: 2;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-end;
+  padding: 0 0 6px;
+  pointer-events: none; /* le doigt passe à la scène : on tourne autour de la voiture */
+}
+@media (min-width: 1000px) {
+  .garage {
+    --garage-colonne: 460px;
+    padding: 16px 24px 24px;
+  }
+}
+
+/* --- Les voitures ------------------------------------------------------------------------------------------------------------------------------ */
+.garage-voitures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.garage-voiture {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  width: 100%;
+  min-height: var(--dj-cible);
+  padding: 4px 8px 8px;
+  background: var(--track-piste);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--track-route);
+  border-radius: var(--dj-rayon-bouton);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.garage-voiture:hover {
+  background: var(--track-coque);
+}
+.garage-voiture[aria-current="true"] {
+  border-color: var(--track-livree);
+  box-shadow: inset 0 0 0 1px var(--track-livree);
+}
+.garage-voiture__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 24 / 11;
+  object-fit: cover;
+}
+.garage-voiture__nom {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-21);
+  line-height: 1;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.garage-voiture__etat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+}
+.garage-voiture--verrouillee .garage-voiture__nom {
+  color: var(--track-texte-doux);
+}
+.garage-pastille {
+  padding: 1px 6px;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.garage-pastille--nouveau {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+
+/* La progression : une case par pas (au plus 10), pleine en livrée. */
+.garage-progres {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte);
+}
+.garage-progres__cases {
+  flex: 1;
+  display: flex;
+  gap: 2px;
+  min-width: 48px;
+}
+.garage-voiture__etat .garage-progres {
+  flex: 1;
+}
+.garage-progres__case {
+  flex: 1;
+  height: 6px;
+  background: var(--track-route);
+}
+.garage-progres__case--pleine {
+  background: var(--track-livree);
+}
+
+/* --- La personnalisation ---------------------------------------------------------------------------------------------------------------------- */
+.garage-perso {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.garage-perso__titre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.garage-couleurs {
+  display: grid;
+  grid-template-columns: repeat(8, var(--dj-cible));
+  justify-content: space-between;
+  gap: 3px;
+}
+.garage-couleur {
+  display: grid;
+  place-items: center;
+  width: var(--dj-cible);
+  height: var(--dj-cible);
+  padding: 0;
+  background: var(--teinte);
+  color: var(--track-asphalte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.garage-couleur[aria-checked="true"] {
+  outline: var(--dj-focus) solid var(--dj-ambre);
+  outline-offset: 2px;
+}
+.garage-couleur .dj-icone {
+  visibility: hidden;
+}
+.garage-couleur[aria-checked="true"] .dj-icone {
+  visibility: visible;
+}
+.garage-couleur--sombre {
+  color: var(--track-texte);
+}
+.garage-motifs .segment__bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.garage-motif {
+  width: 34px;
+  height: 18px;
+  flex: none;
+}
+.garage-note {
+  font-size: var(--dj-taille-13);
+  color: var(--track-texte-doux);
+}
+
+/* --- La fiche, sur la scène ---------------------------------------------------------------------------------------------------------------------- */
+.garage-fiche {
+  width: min(100%, 380px);
+  pointer-events: auto;
+}
+.garage-fiche::before {
+  width: 80px;
+  height: 46px;
+}
+.garage-fiche .etiquette__corps {
+  gap: 4px;
+  --corps-y: 10px;
+  --corps-x: 14px;
+}
+.garage-fiche__nom {
+  margin: 0;
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-32);
+  line-height: 0.95;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.garage-fiche__etat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--track-livree-texte);
+}
+.garage-fiche__description,
+.garage-fiche__condition {
+  margin: 0;
+  font-size: var(--dj-taille-13);
+  line-height: 1.35;
+}
+.garage-fiche__description {
+  color: var(--track-texte-doux);
+}
+.garage-fiche__condition {
+  font-weight: 600;
+}
+.garage-fiche__tourner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0 0;
+  font-size: var(--dj-taille-12);
+  color: var(--track-texte-doux);
+}
+@media (max-height: 520px) {
+  /* Téléphone en paysage : des cartes basses (l'image à gauche), la tête sur une ligne, des titres de section plus petits : la couleur se voit sans défiler. */
+  .garage .etiquette__tete {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .garage .etiquette__titre {
+    font-size: var(--dj-taille-32);
+  }
+  .garage .etiquette__corps {
+    gap: 10px;
+  }
+  .garage-voiture {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 8px;
+    align-items: center;
+    padding: 4px 6px;
+  }
+  .garage-voiture__image {
+    grid-row: 1 / 3;
+    aspect-ratio: 2 / 1;
+  }
+  .garage-voiture__nom {
+    font-size: var(--dj-taille-16);
+  }
+  .garage .etiquette::before {
+    width: 90px;
+    height: 44px;
+  }
+  .garage .etiquette__corps {
+    --corps-y: 10px;
+  }
+  .garage-perso {
+    gap: 6px;
+  }
+  .garage-perso .home-section {
+    font-size: var(--dj-taille-16);
+  }
+  .garage-perso__motif {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+  }
+  .garage-fiche {
+    width: min(100%, 340px);
+  }
+  .garage-fiche__nom {
+    font-size: var(--dj-taille-24);
+  }
+  .garage-fiche__description {
+    display: none; /* téléphone en paysage : la description se lit dans le Garage sur ordinateur et en portrait ; ici, le nom et l'état */
+  }
+}
+
+/* --- L'entrée : à l'accueil (dans la tête de l'étiquette) ------------------------------------------------------------------------------------------ */
+.home-garage {
+  position: absolute;
+  right: 90px; /* à gauche de la livrée */
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .home-garage {
+    position: static;
+    align-self: flex-start;
+    margin-top: 6px;
+  }
+}
+
+/* --- La voiture débloquée, à l'arrivée ------------------------------------------------------------------------------------------------------------- */
+.arrivee__garage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: var(--dj-trait) solid var(--track-route);
+  border-left: 6px solid var(--track-livree);
+  border-radius: var(--dj-rayon-bouton);
+  font-size: var(--dj-taille-14);
+  color: var(--track-texte);
+}
+.arrivee__garage b {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--track-livree-texte);
+}
+.arrivee__garage .lien {
+  margin-left: auto;
+}
