@@ -57,7 +57,13 @@ export function creerStudio(scene: Scene): Studio {
       contour.target = cible;
       g.add(principale, contour, cible);
       // Le plateau : un reflet plan et, par-dessus, un voile sombre (le sol « reflète un peu »), un liseré crème au bord.
-      miroir = new Reflector(disque(RAYON, 56), { textureWidth: 512, textureHeight: 512, clipBias: 0.003, color: new Color(0x9a9aa2) });
+      miroir = new Reflector(disque(RAYON, 56), { textureWidth: 384, textureHeight: 384, clipBias: 0.003, color: new Color(0x9a9aa2) });
+      // Le reflet n'est redessiné qu'une image sur trois (la caméra tourne lentement) : la scène n'est pas dessinée deux fois à chaque image, ce qui pèserait sur un téléphone.
+      const redessiner = miroir.onBeforeRender;
+      let image = 0;
+      miroir.onBeforeRender = function (this: Reflector, ...a: Parameters<typeof redessiner>) {
+        if (image++ % 3 === 0) redessiner.apply(this, a);
+      };
       miroir.rotation.x = -Math.PI / 2;
       miroir.position.y = 0.032;
       const voileGeo = disque(RAYON, 56);
