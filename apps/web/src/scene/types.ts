@@ -1,14 +1,14 @@
 // Lot 38 — ce qu'est une direction de la scène : des fonctions de construction par élément (portique de départ, arrivée, porte de contrôle,
 // plaques, panneaux, rebords, décor), paramétrées par thème, et une ambiance (ciel, lumière, brume) par thème. La vitrine (`/track/vitrine/`) les
 // compare à l'existant ; les lots de mise en œuvre les reprendront telles quelles dans `trackMesh.ts` (voir le README du lot 38).
-import type { Mesh, Texture } from "three";
+import type { Mesh, PerspectiveCamera, Scene, Texture, Vector3 } from "three";
 import type { Block, PaletteName, Track } from "@cdj/sim";
 import type { Builder, V3 } from "../meshKit";
 import type { SignSpec } from "../signage";
-import type { Look, Palette } from "../trackMesh";
+import type { DecorGeometry, Look, Palette } from "../trackMesh";
 import type { StyleRoute } from "./route";
 import type { Affiches } from "./outils";
-import type { Drapeaux } from "./finition";
+import type { Drapeaux } from "./drapeaux";
 import type { Reglages } from "./paliers";
 import type { PoseLog } from "../decorPose";
 import type { Repere } from "./outils";
@@ -163,3 +163,46 @@ export interface PlaceDecor {
 }
 
 export type { V3 };
+
+// --- Lot 46 : les pas chargés à la demande, vus par la scène du jeu (`composerP1.ts`) ----------------------------------------------------
+
+/** La scène construite, telle qu'un pas à la demande la voit pour y poser ses maillages. */
+export interface ScenePas {
+  scene: Scene;
+  calques: Calques;
+  x: Contexte;
+  decor: DecorGeometry;
+  /** D'où vient la lumière du soleil ou de la lune (unitaire, lot 43 : le disque est posé de ce côté). */
+  soleil: Vector3;
+  /** Les parties coupées (`?reglages=3-particules`). */
+  coupes: ReadonlySet<string>;
+  /** Sans DOM (tests) : les formes seules, sans texture dessinée. */
+  sansDom: boolean;
+}
+
+/** Ce qu'un pas anime une fois posé. **Un temps d'affichage, jamais l'état de la course.** */
+export interface AnimationPas {
+  animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
+  /** La voiture passe la ligne (temps d'affichage). */
+  arrivee?(t: number): void;
+  /** Ce qu'il tient qui n'est pas libéré avec la scène (ou ce qu'elle ne doit pas libérer : une texture partagée). */
+  dispose?(): void;
+  /** Ce qu'il dit de lui (`?debug` : `__cdj.render.pas`). */
+  stats?(): Record<string, unknown>;
+}
+
+/**
+ * Un pas de la scène du jeu, chargé à la demande (`PAS_DU_JEU`, socle.ts) : son module l'enregistre en se chargeant (`brancherPas`). Le palier 1
+ * (`composerP1.ts`, premier chargement) n'en importe aucun : il appelle ses crochets.
+ */
+export interface PasScene {
+  id: string;
+  /** Avant les maillages, les éléments et le décor posés : ses pièces dans les calques (drapeaux, écrans, caissons). */
+  elements?(c: Calques, x: Contexte, decor: DecorGeometry, coupes: ReadonlySet<string>): void;
+  /** La scène construite : ses maillages, son animation. */
+  poser?(s: ScenePas): AnimationPas | void;
+  /** Ombres fines (palier 3) : carte (px) à la qualité 2, demi-côté (m), avance devant la voiture (m), décalage normal ; le décor projette aussi. */
+  ombres?: { carte: number; demi: number; avant: number; normalBias: number };
+  /** Il anime les spectateurs de la tribune : ils ne sont plus dessinés dans le décor (`TrackSceneOptions.foule`). */
+  foule?: boolean;
+}

@@ -112,8 +112,10 @@ interface CdjDebug {
     brancherComposeur(palier: string, composeur: (track: unknown, palette: string, options: unknown) => unknown): void;
     PAS_DU_JEU: Record<string, () => Promise<unknown>>;
     PAS_DU_PALIER: Record<string, string[]>;
-    demander(palier: string): void;
+    demander(palier: string, plus?: string[]): void;
     palier(): string;
+    /** Lot 46 : les pas que la scène prend en plus de ceux de son palier (`?reglages=2+vie+ciel`). */
+    plus(): string[];
     scene(): string;
     /** Lot 43 : durée de construction de la scène du premier circuit (ms). */
     constructionMs: number;
@@ -123,7 +125,7 @@ interface CdjDebug {
   /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
   feux: { rouges: number; vert: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;

@@ -2,8 +2,10 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseTrack } from "@cdj/sim";
+import { composerP1 } from "../src/scene/composerP1";
 import type { TrackScene } from "../src/trackMesh";
-import { PALIER_DEFAUT, PALIER_EXISTANT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, chargerPas, composer, creerReconstructeur, palierBranche, type Registre } from "../src/scene/socle";
+import type { TrackSceneOptions } from "../src/trackMesh";
+import { GROUPE_VIE_CIEL, PALIER_DEFAUT, PALIER_EXISTANT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, brancherPas, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Registre } from "../src/scene/socle";
 
 // Lot 39 : le socle par paliers (lot 43 : le palier 1 est la scène du jeu, l'existant se charge à la demande). Ce qui se prouve sans carte graphique : le registre des pas (un `import()` chacun, une fois), le composeur par palier, et le
 // reconstructeur (« jamais pendant une course »), avec un pas factice. La scène « existant » elle-même (ciel, textures) se vérifie dans le navigateur :
@@ -31,21 +33,27 @@ describe("le registre des pas", () => {
     expect(imports).toBe(0);
   });
 
-  it("lot 43 : le palier 1 est la scène par défaut, sans aucun module à charger ; l'existant est le seul module à la demande du jeu", () => {
+  it("lot 43 : le palier 1 est la scène par défaut, sans aucun module à charger ; lot 46 : le palier 3 prend la vie, le ciel et les ombres fines, chacun un import()", () => {
     expect(PALIER_DEFAUT).toBe("P1");
     expect(palierBranche("P1")).toBe(true);
     expect(PAS_DU_PALIER.P1).toEqual([]);
+    expect(PAS_DU_PALIER.P2).toEqual([]); // la finition du palier 2 : lot 45
+    expect(PAS_DU_PALIER.P3).toEqual(["vie", "ciel", "ombres"]);
+    expect(GROUPE_VIE_CIEL).toEqual(["vie", "ciel"]); // ce que la règle automatique (lot 45) ajoutera au palier 2 des téléphones récents
     expect(PAS_DU_PALIER[PALIER_EXISTANT]).toEqual(["existant"]);
-    for (const id of Object.keys(PAS_DU_JEU)) expect(["existant"]).toContain(id);
-    // `main.ts` l'enregistre (un `import()` : le module n'est chargé que pour `?palier=existant`).
-    expect(readFileSync(join(import.meta.dirname, "../src/main.ts"), "utf8")).toContain('PAS_DU_JEU.existant = () => import("./scene/existant")');
+    for (const id of Object.keys(PAS_DU_JEU)) expect(["existant", "vie", "ciel", "ombres"]).toContain(id);
+    // `main.ts` les enregistre, **un `import()` chacun** : aucun pas sans `import()` (le module n'est chargé que si un palier ou l'adresse le demande).
+    const main = readFileSync(join(import.meta.dirname, "../src/main.ts"), "utf8");
+    expect(main).toContain('PAS_DU_JEU.existant = () => import("./scene/existant")');
+    const modules = { vie: "vieJeu", ciel: "cielJeu", ombres: "ombres3" } as const;
+    for (const id of new Set([...PAS_DU_PALIER.P3, ...GROUPE_VIE_CIEL])) expect(main).toContain(`PAS_DU_JEU.${id} = () => import("./scene/${modules[id as keyof typeof modules]}")`);
   });
 
   it("le premier chargement (main.ts, de proche en proche) ne tire ni l'ancienne scène, ni la vitrine, ni un module des pas", () => {
     // Lot 39 puis 43 : le graphe des imports statiques du jeu, à la source (la mesure du premier chargement, `mesureTrack`, le verrait à la fin). Les `import()`
     // (à la demande) ne sont pas suivis ; les imports de types non plus.
     const SRC = join(import.meta.dirname, "../src");
-    const interdits = /\/scene\/(finition|matiere|matiereDetaillee|bruit|reflets|lumiere3|vie|post|composerPalier|decorP1|existant|origine|directionA|directionB|directionM|memoire|paliers)\.ts$|\/vitrine\//;
+    const interdits = /\/scene\/(finition|drapeaux|matiere|matiereDetaillee|bruit|reflets|lumiere3|themes3|vie|vieJeu|cielJeu|ombres3|post|composerPalier|decorP1|existant|origine|directionA|directionB|directionM|memoire|paliers)\.ts$|\/vitrine\//;
     const vus = new Set<string>();
     const file = [join(SRC, "main.ts")];
     while (file.length) {
@@ -65,14 +73,35 @@ describe("le registre des pas", () => {
 
 describe("le composeur par palier", () => {
   it("un palier pas encore branché est une erreur ; une fois branché par son module, il compose", () => {
-    expect(palierBranche("P2")).toBe(false);
-    expect(() => composer(piste, "stade", "P2")).toThrow("pas branché");
-    brancherComposeur("P2", () => fausseScene("P2"));
+    // Lot 46 : les paliers 1, 2 et 3 sont branchés (le palier 1 et leurs pas) ; l'existant se branche en chargeant son module.
+    expect(palierBranche(PALIER_EXISTANT)).toBe(false);
+    expect(() => composer(piste, "stade", PALIER_EXISTANT)).toThrow("pas branché");
+    brancherComposeur(PALIER_EXISTANT, () => fausseScene("existant"));
     try {
-      expect(palierBranche("P2")).toBe(true);
-      expect(composer(piste, "stade", "P2")).toEqual({ nom: "P2" });
+      expect(palierBranche(PALIER_EXISTANT)).toBe(true);
+      expect(composer(piste, "stade", PALIER_EXISTANT)).toEqual({ nom: "existant" });
     } finally {
-      brancherComposeur("P2", undefined);
+      brancherComposeur(PALIER_EXISTANT, undefined);
+    }
+  });
+
+  it("lot 46 : un palier reçoit ses pas et ceux demandés en plus, moins ceux coupés ; un pas pas branché est une erreur", () => {
+    const vus: (readonly string[] | undefined)[] = [];
+    brancherComposeur("P3", (_t, _p, o: TrackSceneOptions) => (vus.push(o.pas?.map((x) => x.id)), fausseScene("P3")));
+    brancherComposeur("P2", (_t, _p, o: TrackSceneOptions) => (vus.push(o.pas?.map((x) => x.id)), fausseScene("P2")));
+    try {
+      expect(() => composer(piste, "stade", "P3")).toThrow("pas branché"); // ses modules ne sont pas chargés
+      for (const id of ["vie", "ciel", "ombres"]) brancherPas(id, { id });
+      composer(piste, "stade", "P3");
+      composer(piste, "stade", "P3", { coupes: ["ombres"] });
+      composer(piste, "stade", "P2", {}, GROUPE_VIE_CIEL);
+      composer(piste, "stade", "P2");
+      expect(vus).toEqual([["vie", "ciel", "ombres"], ["vie", "ciel"], ["vie", "ciel"], undefined]);
+      expect(pasVoulus("P2", ["vie", "ciel"], ["ciel"])).toEqual(["vie"]);
+    } finally {
+      for (const id of ["vie", "ciel", "ombres"]) brancherPas(id, undefined);
+      brancherComposeur("P3", composerP1);
+      brancherComposeur("P2", composerP1);
     }
   });
 });
@@ -138,6 +167,30 @@ describe("le reconstructeur : jamais pendant une course", () => {
     hors = true; // pause : cette fois la scène est reconstruite
     expect(await r.essayer()).toBe(true);
     expect(construit).toEqual(["P1"]);
+  });
+
+  it("lot 46 : un palier et des pas en plus (le groupe « vie et ciel ») : chargés ensemble, reconstruits ensemble hors course", async () => {
+    const charges: string[] = [];
+    const construits: [string, readonly string[]][] = [];
+    const r = creerReconstructeur({
+      palier: "P1",
+      peutReconstruire: () => true,
+      construire: (p, plus) => (construits.push([p, plus]), fausseScene(p)),
+      adopter: () => {},
+      pas: { existant: [], P1: [], P2: [], P3: ["vie", "ciel", "ombres"] },
+      registre: { vie: async () => charges.push("vie"), ciel: async () => charges.push("ciel"), ombres: async () => charges.push("ombres") },
+    });
+    r.demander("P2", GROUPE_VIE_CIEL);
+    expect(await r.essayer()).toBe(true);
+    expect(charges).toEqual(["vie", "ciel"]);
+    expect(construits).toEqual([["P2", GROUPE_VIE_CIEL]]);
+    expect([r.palier(), r.plus()]).toEqual(["P2", GROUPE_VIE_CIEL]);
+    r.demander("P2", ["vie", "ciel"]); // le même : rien à faire
+    expect(r.enAttente()).toBe(false);
+    r.demander("P3");
+    expect(await r.essayer()).toBe(true);
+    expect(charges).toEqual(["vie", "ciel", "ombres"]);
+    expect([r.palier(), r.plus()]).toEqual(["P3", []]);
   });
 
   it("des pas qui ne se chargent pas : on garde la scène courante", async () => {

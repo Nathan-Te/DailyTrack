@@ -54,12 +54,14 @@ import { DIRECTION_P } from "./decorP1";
 import { atlasB } from "./directionB";
 import { bordureVideB, rebordB } from "./piste";
 import { Drapeaux, FINITION_ELEMENTS, varierParPosition } from "./finition";
+import { verserDrapeaux } from "./drapeaux";
 import { matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, matieresDessinees, teinteLarge, tracesEtMarquages, type Matiere } from "./matiere";
 import { detailleeAsphalte, detailleeBeton, detailleeDecor, detailleeMetal } from "./matiereDetaillee";
 import { memoireScene, type MemoireScene } from "./memoire";
 import { carteEnvironnement } from "./reflets";
-import { THEMES_3, brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
-import { Chronometre, drapeauxAnimes, fouleInstanciee, maillageEcrans, particules, rubanDesEcrans, type Temps } from "./vie";
+import { brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
+import { THEMES_3 } from "./themes3";
+import { Chronometre, drapeauxAnimes, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
 import { avecPost, type Reglages } from "./paliers";
 import type { ReglagesPost } from "./post";
 import { HORIZONS, type Ambiance, type Calques, type Contexte } from "./types";
@@ -204,7 +206,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   }
   const piste = tc.lampes && !aerien ? eclairagePisteP(calques, ctx, tc.lampes.couleur) : null;
   const drapeauxAnimesOn = r.drapeaux && vivant && calques.drapeaux && !calques.drapeaux.vide;
-  if (calques.drapeaux && !drapeauxAnimesOn) calques.drapeaux.verser(calques.solide);
+  if (calques.drapeaux && !drapeauxAnimesOn) verserDrapeaux(calques.drapeaux, calques.solide);
 
   // --- Lumière (celle de C, construite directement) ---
   const scene = new Scene();
@@ -368,7 +370,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   const temps: Temps = { uTemps: { value: 0 } };
   const animes: Mesh[] = [];
   if (drapeauxAnimesOn) animes.push(drapeauxAnimes(calques.drapeaux!, temps));
-  const foule = calques.foule ? fouleInstanciee(calques.foule, temps) : null;
+  const foule = calques.foule ? fouleAnimee(calques.foule, temps) : null;
   if (foule) scene.add(foule);
   let ruban: CanvasTexture | null = null;
   let chrono: Chronometre | null = null;
@@ -507,10 +509,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
         dome.position.copy(camera.position);
         dome.material.uniforms.uTemps!.value = t;
       }
-      if (poussiere) {
-        poussiere.material.uniforms.uCamera!.value.copy(camera.position);
-        poussiere.material.uniforms.uEchelle!.value = hauteurPx / (2 * Math.tan((camera.fov * Math.PI) / 360));
-      }
+      if (poussiere) suivreCamera(poussiere, camera, hauteurPx); // lot 46 : comme le jeu (le couloir de la piste devant la caméra)
       if (ruban) ruban.offset.x = (t * 0.06) % 1;
       chrono?.afficher(t);
     },

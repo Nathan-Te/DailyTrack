@@ -12,6 +12,7 @@ import { MARQUE } from "./pieces";
 import { onBlock } from "./route";
 import { VENT, arriveeP, coupureP, panneauP, paletteP1, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, turboP } from "./palier1";
 import { atlasSponsors } from "./sponsors";
+import { RUBAN_RAPPORT, ecransDuDepart } from "./vie";
 
 /** Béton des socles. */
 const BETON = 0xb9bbbe;
@@ -63,28 +64,6 @@ export function tribuneP(c: Calques, x: Contexte, b: Block, rnd: () => number) {
   }
   // Le ruban d'écrans sur le devant de la tribune (palier 3, `vie.ts` le fait défiler).
   if (x.reglages?.ecrans && c.ecrans) c.ecrans.quad(pt(r, -0.03, 0.2, -10.5), pt(r, -0.03, 0.2, 10.5), pt(r, -0.03, 0.95, 10.5), pt(r, -0.03, 0.95, -10.5), [0, 0, 21 / 0.75 / RUBAN_RAPPORT, 1]);
-}
-
-/** Rapport largeur / hauteur du ruban des écrans (`vie.ts`) : pour qu'un écran de L × H m garde ses lettres droites, u va de 0 à (L / H) / RAPPORT. */
-export const RUBAN_RAPPORT = 16;
-
-/** Les panneaux à diodes le long de la ligne droite du départ, posés sur les rebords (palier 3, pas « écrans »). */
-function ecransDuDepart(c: Calques, x: Contexte) {
-  const b = x.track.blocks[0]!;
-  if (!c.ecrans || b.open) return;
-  const rail = x.pal.wallHeight ?? WALL_HEIGHT;
-  for (const side of [-1, 1]) {
-    const hw = blockHalfWidth(b, CELL / 2);
-    const p0 = onBlock(b, side * (hw + 0.2), 0.12, rail + 0.05);
-    const p1 = onBlock(b, side * (hw + 0.2), 0.62, rail + 0.05);
-    const L = Math.hypot(p1[0] - p0[0], p1[2] - p0[2]);
-    const H = 0.8;
-    // Le texte se lit dans le sens de la course : à gauche il avance vers l'avant, à droite vers l'arrière (on le regarde en tournant la tête).
-    const [a, d] = side > 0 ? [p0, p1] : [p1, p0];
-    c.ecrans.quad(a, d, [d[0], d[1] + H, d[2]], [a[0], a[1] + H, a[2]], [0, 0, L / H / RUBAN_RAPPORT, 1]);
-    // Le dos des écrans (un caisson sombre) : ils ne sont pas des feuilles.
-    c.solide.box(Math.min(p0[0], p1[0]) - 0.05, p0[1] - 0.05, Math.min(p0[2], p1[2]) - 0.05, Math.max(p0[0], p1[0]) + 0.05, p0[1], Math.max(p0[2], p1[2]) + 0.05, METAL_SOMBRE);
-  }
 }
 
 /**
