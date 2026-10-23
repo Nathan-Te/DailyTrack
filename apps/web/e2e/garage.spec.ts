@@ -1,5 +1,5 @@
 import { expect, newClockedContext, test, type Page, TODAY } from "./fixtures";
-import { dailyCircuit, dailyTrackId, encodeReplay, etatGarage, formatDay, runPilot } from "@cdj/sim";
+import { dailyCircuit, dailyTrackId, encodeReplay, etatGarage, formatDay, runPilot, SIM_VERSION } from "@cdj/sim";
 import { auditAxe, focusSur } from "./axe";
 
 // Lot 41 : le Garage de Track — dans le jeu, sur la scène, chargé à la demande ; les déblocages viennent du serveur (ou du joueur de
@@ -84,6 +84,27 @@ test("dans la pause : « Garage » ouvre le Garage sur la scène, Échap le ferm
   await page.keyboard.press("Escape");
   await expect(page.locator("#garage")).toBeHidden();
   await expect(page.locator("#pause-resume")).toBeVisible();
+});
+
+test("le fantôme de ton record attend au départ, dans ta voiture : il n'est pas dessiné tant que le Garage est ouvert", async ({ page }) => {
+  const circuit = dailyCircuit(TODAY);
+  const run = runPilot(circuit.track, { grip: 0.9 });
+  await page.addInitScript(
+    ([id, replay, ms, simVersion]) => localStorage.setItem(`cdj:best:${id}`, JSON.stringify({ ms, splits: [], replay, simVersion })),
+    [circuit.track.id, encodeReplay(run.replay), run.finishMs, SIM_VERSION] as const,
+  );
+  // Le jour courant (le joueur de démonstration montre un autre jour) ; le serveur ne répond pas : le circuit du jour est calculé dans la page.
+  const API = "https://api.garage-fantome.test";
+  await page.route(`${API}/**`, (route) => route.abort("internetdisconnected"));
+  await accueil(page, `?api=${encodeURIComponent(API)}&debug&home=1`);
+  await page.waitForFunction(() => window.__cdj.ghost !== null && window.__cdj.voiture.fantome); // à l'accueil : le fantôme est là, sur la voiture
+  await page.locator("#home-garage").click();
+  await expect(page.locator("#garage")).toBeVisible();
+  await page.waitForFunction(() => !window.__cdj.voiture.fantome);
+  await page.waitForTimeout(500); // rien ne doit changer : caché à chaque image, pas une fois
+  expect((await voiture(page)).fantome).toBe(false);
+  await page.keyboard.press("Escape");
+  await page.waitForFunction(() => window.__cdj.voiture.fantome); // le Garage fermé, il revient
 });
 
 test("en anglais : les noms des voitures sont les mêmes, les textes du Garage sont traduits", async ({ browser }) => {

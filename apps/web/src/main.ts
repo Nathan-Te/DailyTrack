@@ -2170,7 +2170,11 @@ function frame(now: number) {
     camera.up.set(0, 1, 0);
     camera.lookAt(x, y + 1.3, z);
   }
-  if (garageOuvert()) garageUi!.cadrer(x, y, z, elapsed * 1000); // lot 41 : le Garage tourne autour de la voiture
+  if (garageOuvert()) {
+    garageUi!.cadrer(x, y, z, elapsed * 1000); // lot 41 : le Garage tourne autour de la voiture
+    ghostMesh.visible = false; // le fantôme du record attend au départ, dans la voiture : jamais au Garage (recalculé à chaque image)
+  }
+  if (ghostField) ghostField.group.visible = !garageOuvert(); // Salon : les fantômes des autres non plus
   // Étiquette au pseudo du tour regardé : masquée tout près de la caméra (vue capot).
   if (nameLabel) nameLabel.place(camera.position.distanceTo(carMesh.position), Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight, 3.5);
   if (watch) watchUi?.update({ paused: watch.paused, speed: watch.speed, progress: progressOf(Math.min(car.tick, watch.total), watch.total), camera: freeCam ? "libre" : CAMERAS[cameraIndex]!.name });
@@ -2454,7 +2458,7 @@ if (params.has("debug")) {
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
       /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */
       get voiture() {
-        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null };
+        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null, fantome: ghostMesh.visible };
       },
       socle: {
         composer,
