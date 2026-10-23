@@ -11,13 +11,15 @@ import { construireFantome, construireVoiture, type PlanVoiture } from "../src/v
 import { PLAN_A } from "../src/voiture/modeleA";
 import { PLAN_B } from "../src/voiture/modeleB";
 import { PLAN_C } from "../src/voiture/modeleC";
+import { PLAN_COMPACTE } from "../src/voiture/modeleCompacte";
+import { PLAN_COUPE } from "../src/voiture/modeleCoupe";
 
 // Lot 40, partie 2 : les trois modèles proposés (vitrine) tiennent le cahier des charges du README 38b § 6 — six maillages au plus, ≈ 2 000
 // triangles au palier 1 et 4 000 à 6 000 aux paliers 2 et 3, un fantôme simple d'un maillage (≈ 400 triangles), les roues aux points de
 // contact de la simulation, rien hors de la silhouette (le centre de l'écran reste à la voiture), la vue capot dégagée ; la palette se détache
 // de chaque élément de piste.
 
-const PLANS: PlanVoiture[] = [PLAN_A, PLAN_B, PLAN_C];
+const PLANS: PlanVoiture[] = [PLAN_COMPACTE, PLAN_COUPE, PLAN_A, PLAN_B, PLAN_C];
 const maillages = (o: Object3D): Mesh[] => {
   const out: Mesh[] = [];
   o.traverse((x) => {

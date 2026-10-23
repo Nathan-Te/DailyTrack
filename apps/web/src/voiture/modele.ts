@@ -14,7 +14,7 @@ import { LIVREE, projectionLivree, textureLivree, type CadreLivree, type Texture
 import { Pieces, finiParSommet, normalesLissees, ombreDeRoue, ombreDesFeux, projeter, srgb, type AngleRoues, type Fini } from "./pieces";
 
 export type PalierVoiture = 1 | 2 | 3;
-export type ModeleId = "A" | "B" | "C";
+export type ModeleId = "A" | "B" | "C" | "compacte" | "coupe";
 
 /** Les matières d'une voiture, à un palier donné. */
 export interface Matieres {

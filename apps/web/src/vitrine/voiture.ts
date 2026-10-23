@@ -20,7 +20,9 @@ import type { Fabrique } from "./variantes";
 import type { VueMouvement } from "./mouvement";
 
 type Colonne = "existant" | ModeleId;
-const COLONNES: readonly Colonne[] = ["existant", "A", "B", "C"];
+const COLONNES: readonly Colonne[] = ["existant", "compacte", "coupe", "A", "B", "C"];
+/** Les modèles (toutes les colonnes sauf l'existant). */
+const MODELES_VUS = COLONNES.filter((c): c is ModeleId => c !== "existant");
 const PALIERS: readonly Palier[] = [1, 2, 3];
 /** Les thèmes de la vue en mouvement (consigne du lot) ; la planche à l'arrêt les offre tous. */
 const THEMES_MOUVEMENT = ["theme-stade", "theme-nuit", "theme-canyon"];
@@ -275,13 +277,15 @@ const TEXTES: Record<Colonne, { titre: string; resume: string }> = {
   A: { titre: "A — Évolution", resume: "" },
   B: { titre: "B — GT basse", resume: "" },
   C: { titre: "C — Proto à bulle", resume: "" },
+  compacte: { titre: "Civile 1 — Compacte sportive", resume: "" },
+  coupe: { titre: "Civile 2 — Coupé de série", resume: "" },
 };
 
 /** Monte la planche dans `racine`. */
 export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   hote = h;
-  for (const id of ["A", "B", "C"] as const) void plan(id).then((p) => (TEXTES[id] = { titre: p.nom, resume: p.resume }));
-  await Promise.all((["A", "B", "C"] as const).map(plan));
+  for (const id of MODELES_VUS) void plan(id).then((p) => (TEXTES[id] = { titre: p.nom, resume: p.resume }));
+  await Promise.all(MODELES_VUS.map(plan));
 
   // Les réglages : la couleur (palette de 8), le numéro, le thème des vues à l'arrêt.
   const reglages = el("section", "voiture-reglages");
@@ -415,7 +419,7 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   const h2b = el("h2", undefined, "Planche des couleurs : chaque couleur sur chaque thème");
   h2b.id = "voiture-planche-titre";
   const choixModele = el("select");
-  for (const col of ["A", "B", "C"] as const) choixModele.append(Object.assign(el("option", undefined, TEXTES[col].titre), { value: col }));
+  for (const col of MODELES_VUS) choixModele.append(Object.assign(el("option", undefined, TEXTES[col].titre), { value: col }));
   const lancer = el("button", "action", "Dessiner la planche (8 couleurs × 8 thèmes, palier 2, poursuite)");
   lancer.type = "button";
   const toile = el("canvas", "voiture-planche__toile");
@@ -485,7 +489,7 @@ function majCouts() {
   ligne("Ce que la voiture ajoute à une image, téléphone (×4, rendu logiciel, vue de près) : palier 1 / palier 2", (col) => {
     const m = MESURES_VOITURE.colonnes[col];
     const d = (x: { avecMs: number; sansMs: number }) => `+${fmt(x.avecMs - x.sansMs, 0)} ms`;
-    return `${d(m.p1)} / ${d(m.p2)}`;
+    return m ? `${d(m.p1)} / ${d(m.p2)}` : "à mesurer";
   });
   ligne("Image sur cet appareil (palier 2, vue à l'arrêt)", (col) => {
     const ms = vue(col, 2)?.imageMs;
