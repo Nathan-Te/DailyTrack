@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-937 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+970 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -515,6 +515,19 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `aide.manette.pause` | Pause et menu | Pause and menu |
 | `aide.manette.camera` | Changer de caméra | Change camera |
 
+### couleur (`couleur.*`, `apps/web/src/catalogue.base.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `couleur.orange` | Orange Track | Track orange |
+| `couleur.grenat` | Grenat | Garnet |
+| `couleur.fuchsia` | Fuchsia | Fuchsia |
+| `couleur.glycine` | Glycine | Wisteria |
+| `couleur.petrole` | Pétrole | Petrol |
+| `couleur.lagon` | Lagon | Lagoon |
+| `couleur.olive` | Olive | Olive |
+| `couleur.poudre` | Rose poudré | Powder pink |
+
 ### Course (surimpressions) (`course.*`, `apps/web/src/catalogue.course.*.ts`)
 
 | Clé | Français | Anglais |
@@ -594,6 +607,33 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.local.http_error` | Le serveur a répondu par une erreur. | The server answered with an error. |
 | `erreur.local.inconnue` | Quelque chose n'a pas marché. | Something went wrong. |
 
+### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `garage.ouvrir` | Garage | Garage |
+| `garage.nouveau` | Nouveau | New |
+| `garage.arrivee.nouvelle` | one : Nouvelle voiture : · other : Nouvelles voitures : | one : New car: · other : New cars: |
+| `garage.arrivee.voir` | Voir au Garage | See it in the Garage |
+| `garage.aria` | Garage de Track | Track Garage |
+| `garage.titre` | Garage | Garage |
+| `garage.sousTitre` | one : {n} voiture sur {total} · other : {n} voitures sur {total} | one : {n} of {total} cars · other : {n} of {total} cars |
+| `garage.voitures` | Les voitures | The cars |
+| `garage.tienne` | Ta voiture | Your car |
+| `garage.debloquee` | Débloquée | Unlocked |
+| `garage.verrouillee` | Verrouillée | Locked |
+| `garage.couleur` | Couleur | Colour |
+| `garage.motif` | Motif | Livery |
+| `garage.tourner` | Glisse pour tourner autour | Drag to turn it around |
+| `garage.equitable` | Toutes les voitures roulent pareil : seul le style change. | Every car drives the same: only the look changes. |
+| `garage.horsLigne` | Hors connexion : tes voitures débloquées restent là ; la progression reviendra avec le réseau. | Offline: your unlocked cars stay here; progress comes back with the network. |
+| `garage.condition.or` | one : Décroche l'or (ou l'auteur) sur un circuit du jour. · other : Décroche l'or (ou l'auteur) sur {n} circuits du jour. | one : Get gold (or Author) on a daily track. · other : Get gold (or Author) on {n} daily tracks. |
+| `garage.condition.jours` | one : Termine un circuit du jour. · other : Termine {n} circuits du jour. | one : Finish a daily track. · other : Finish {n} daily tracks. |
+| `garage.condition.auteur` | one : Bats le temps de l'auteur sur un circuit du jour. · other : Bats le temps de l'auteur sur {n} circuits du jour. | one : Beat the Author time on a daily track. · other : Beat the Author time on {n} daily tracks. |
+| `garage.progres.or` | one : {fait}/{n} médaille d'or · other : {fait}/{n} médailles d'or | one : {fait}/{n} gold medal · other : {fait}/{n} gold medals |
+| `garage.progres.jours` | one : {fait}/{n} jour · other : {fait}/{n} jours | one : {fait}/{n} day · other : {fait}/{n} days |
+| `garage.progres.auteur` | one : {fait}/{n} médaille d'auteur · other : {fait}/{n} médailles d'auteur | one : {fait}/{n} Author medal · other : {fait}/{n} Author medals |
+
 ### Ligne à partager (`lignePartage.*`, `apps/web/src/catalogue.course.*.ts`)
 
 | Clé | Français | Anglais |
@@ -606,6 +646,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | Clé | Français | Anglais |
 |---|---|---|
 | `miniature.alt` | Vue aérienne du circuit du {date} | Aerial view of the track of {date} |
+
+### motif (`motif.*`, `apps/web/src/catalogue.base.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `motif.bande` | Bande | Stripe |
+| `motif.flancs` | Flancs | Sides |
+| `motif.unie` | Unie | Plain |
 
 ### Mots communs (`commun.*`, `apps/web/src/catalogue.base.*.ts`)
 
@@ -857,14 +905,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 
 | Clé | Français | Anglais |
 |---|---|---|
-| `voiture.civile.nom` | Compacte | Hatch |
-| `voiture.civile.description` | La voiture de série du jeu : cinq portes, hayon, petit becquet. Elle est à toi dès le premier jour. | The game's road car: five doors, a hatchback, a small spoiler. Yours from day one. |
-| `voiture.evolution.nom` | Évolution | Evolution |
-| `voiture.evolution.description` | Un coupé trapu de course : passages de roue larges, aileron sur deux jambes, quatre phares ronds. | A stocky race coupé: wide wheel arches, a wing on two legs, four round headlights. |
-| `voiture.gt.nom` | GT | GT |
-| `voiture.gt.description` | Une GT basse et large : capot long, grand aileron sur cols de cygne, lame de feux d'un bord à l'autre. | A low, wide GT: long bonnet, big swan-neck wing, a light bar from edge to edge. |
-| `voiture.proto.nom` | Proto | Proto |
-| `voiture.proto.description` | Un prototype d'endurance : ailes détachées, bulle étroite, dérive, prise d'air sur le toit. | An endurance prototype: separate wings, a narrow bubble, a fin, a roof scoop. |
+| `voiture.civile.nom` | Sparrow | Sparrow |
+| `voiture.evolution.nom` | Weasel | Weasel |
+| `voiture.gt.nom` | Moray | Moray |
+| `voiture.proto.nom` | Dragonfly | Dragonfly |
+| `voiture.civile.description` | Compacte cinq portes, hayon, petit becquet. À toi dès le premier jour. | Five-door hatchback with a small spoiler. Yours from day one. |
+| `voiture.evolution.description` | Coupé trapu : passages de roue larges, aileron sur deux jambes, quatre phares ronds. | Stocky coupé: wide arches, a wing on two legs, four round headlights. |
+| `voiture.gt.description` | GT basse et large : capot long, grand aileron sur cols de cygne. | Low, wide GT: long bonnet, big swan-neck wing. |
+| `voiture.proto.description` | Prototype d'endurance : bulle étroite, ailes détachées, dérive. | Endurance prototype: narrow bubble, separate wings, a fin. |
 
 ## Jump
 

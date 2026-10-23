@@ -22,9 +22,18 @@ let langue: Langue = langueInitiale();
 let anglais: Catalogue | null = null;
 /** Lot I6 : l'anglais du catalogue commun, chargé avec celui du jeu (le même `import()`). */
 let communAnglais: Catalogue | null = null;
+/** Lot 41 : les textes d'un écran chargé à la demande (le Garage), dans les deux langues (`ajouterTextes`). */
+const enPlus: { fr: Catalogue; en: Catalogue } = { fr: {}, en: {} };
 function creerTraducteur(l: Langue): Traducteur {
   // Le français est toujours là ; l'anglais seulement une fois chargé (sans lui, une clé s'écrit telle quelle : `chargerLangue` doit précéder le premier écran).
-  return traducteur(l, { fr: CATALOGUE_FR, en: anglais ?? {} } as never, { fr: CATALOGUE_COMMUN_FR, en: communAnglais ?? {} } as never);
+  return traducteur(l, { fr: { ...CATALOGUE_FR, ...enPlus.fr }, en: { ...anglais, ...enPlus.en } } as never, { fr: CATALOGUE_COMMUN_FR, en: communAnglais ?? {} } as never);
+}
+
+/** Lot 41 : ajoute les textes d'un écran chargé à la demande (son module les apporte, dans les deux langues). */
+export function ajouterTextes(textes: { fr: Catalogue; en: Catalogue }): void {
+  Object.assign(enPlus.fr, textes.fr);
+  Object.assign(enPlus.en, textes.en);
+  traducteurCourant = creerTraducteur(langue);
 }
 let traducteurCourant: Traducteur = creerTraducteur(langue);
 

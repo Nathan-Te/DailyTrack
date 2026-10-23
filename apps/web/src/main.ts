@@ -15,11 +15,11 @@ import "./arrivee.css";
 import "./reglages.css";
 import "./tactile.css";
 import "./salon.css";
-import { appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
-import { boutonPleinEcran, icone, majPleinEcran, nomMedaille, pleinEcranPossible, suivreDialogue } from "@cdj/ui";
-import { iconeTrack } from "./icones";
-import { definirJour } from "./cadre";
-import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
+import { appliquerTextes, chargerLangue, demarrerLangue, fDateCourte, fEcart, fNombre, fNumero, fRang, fTemps, ajouterTextes, langueCourante, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
+import { boutonPleinEcran, el as elDuSocle, icone, majPleinEcran, nomMedaille, pleinEcranPossible, suivreDialogue } from "@cdj/ui";
+import { iconeDeTraces, iconeTrack } from "./icones";
+import { creerCadre, definirJour } from "./cadre";
+import { actionArrivee, autocollantMedaille, badgeEtEcart, creerArrivee, ligneNouvelleVoiture, ligneRang, tempsEnGrand, typeDeMedaille, type Arrivee } from "./arriveeUi";
 import { buzzAllowed, buzzAmplitude, flatRatio, speedCamera, speedLevel, speedLinesOpacity } from "./speedFeel";
 import { SPEED_FEEL_FACTOR, formatSpeed, loadSettings, qualityPlan, saveSettings, type GameSettings } from "./settings";
 import { dailyTitle, homeHref, lookupSalon, medalWord, wantsHome, withoutHome } from "./homeLogic";
@@ -88,14 +88,15 @@ import { DEMO_TODAY } from "./demo";
 import { NO_PLAN, fetchDayPlan, fetchPlanning, loadDemoPlan, type PlanEntry } from "./planning";
 import { buildFlatArena } from "./arena";
 import { createThumbnailService, type ThumbJob } from "./thumbnails";
-import { renderThumbnail, type ThumbnailOptions } from "./thumbnail";
+import { releaseThumbnailRenderer, renderThumbnail, sharedRenderer, type ThumbnailOptions } from "./thumbnail";
 import { canNativeShare, copyShare, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
 import { createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
 import { VoitureEnJeu } from "./voiture/enJeu";
-import { choixDeLAdresse, voitureChoisie } from "./voiture/choix";
+import { choixDeLAdresse, voitureChoisie, voituresNouvelles } from "./voiture/choix";
+import type { GarageUi } from "./garage";
 import { chargerMateriaux2 } from "./voiture/modeles";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
@@ -769,6 +770,22 @@ settingsPanel = mountSettings(document.body, {
   qualityFromUrl: qualityParam === "0" || qualityParam === "1" || qualityParam === "2",
   openHowto: () => howto.open(),
 });
+// Lot 41 : le Garage, chargé à la demande (`import()` : son code, sa feuille, ses textes) ; ouvert depuis l'accueil, la pause ou l'arrivée.
+let garageUi: GarageUi | null = null;
+const garageOuvert = () => !!garageUi?.estOuvert();
+async function ouvrirGarage(voir?: string) {
+  try {
+    garageUi ??= (await import("./garage")).monterGarage({
+      outils: { el: elDuSocle, creerCadre, t, onLangue, ajouterTextes, icone: iconeDeTraces, moteur: sharedRenderer, liberer: releaseThumbnailRenderer },
+      demo: online.demo,
+      voiture: garage, statut: () => online.profileApi?.garage?.(online.playerId) ?? null, camera, toile: renderer.domElement,
+      ferme: () => homeUi.refresh(),
+    });
+    garageUi.ouvrir(voir);
+  } catch {
+    /* hors ligne, morceau introuvable : le jeu continue sans Garage */
+  }
+}
 function openSettings(tab?: SettingsTab) {
   showPauseConfirm(false);
   settingsPanel!.open(tab);
@@ -803,6 +820,7 @@ $("pause-respawn").addEventListener("click", () => {
   controls.requestRespawn();
 });
 $("pause-settings").addEventListener("click", () => openSettings());
+$("pause-garage").addEventListener("click", () => void ouvrirGarage());
 $("pause-howto").addEventListener("click", () => howto.open());
 $("pause-archive").addEventListener("click", () => openArchive());
 $("pause-archive").hidden = !!salon; // le Salon n'a pas d'archives
@@ -907,6 +925,8 @@ const homeUi: HomeUi = mountHome($("home"), {
   openSettings: () => openSettings(),
   openHowto: () => howto.open(),
   openBoard: () => boardScreen.open(),
+  openGarage: () => void ouvrirGarage(),
+  garageNouveau: () => voituresNouvelles().length > 0,
 });
 // Le classement du jour en pleine page (lot I4) : ouvert depuis l'accueil, fermé par « ‹ TRACK » ou Échap.
 const boardScreen = mountBoardScreen({
@@ -1273,6 +1293,7 @@ function applyGhostSetting() {
 /** Échap : ferme la fenêtre du dessus ; sinon, pause (ou reprise). */
 function onEscape() {
   if (howto.isOpen()) return howto.close();
+  if (garageOuvert()) return garageUi!.fermer();
   if (settingsPanel?.isOpen()) return settingsPanel.close();
   if (!hudArchive.hidden) return closeArchive();
   if (boardScreen.isOpen()) return boardScreen.close();
@@ -1291,7 +1312,7 @@ window.addEventListener("keydown", (e) => {
     e.preventDefault();
     return onEscape();
   }
-  if (homeOpen || howto.isOpen() || settingsPanel?.isOpen()) return; // une fenêtre est ouverte : les touches du jeu attendent
+  if (homeOpen || howto.isOpen() || settingsPanel?.isOpen() || garageOuvert()) return; // une fenêtre est ouverte : les touches du jeu attendent
   if (watch) {
     if (e.code === "Space") {
       e.preventDefault();
@@ -1359,6 +1380,8 @@ function startOnlineFlow(box: HTMLElement) {
       online.sync.noteNameProblem(null);
       const gap = r.data.bestMs !== best.ms ? t("arrivee.tempsServeur", { temps: fTemps(r.data.bestMs) }) : "";
       showRank(r.data.rank, r.data.participants, gap);
+      const nouvelles = r.data.garage?.nouvelles ?? []; // lot 41 : une voiture débloquée par cette course
+      if (nouvelles.length) box.before(ligneNouvelleVoiture(nouvelles, (id) => void ouvrirGarage(id)));
     } else if (r.code === "name_taken") {
       nameForm({ code: r.code, suggestions: r.suggestions }); // pseudo pris entre-temps : on en choisit un autre, ou on retrouve son code dans le profil
     } else if (r.code === "code_revoked") {
@@ -1878,7 +1901,7 @@ function stepOnce(input: CarInput) {
  * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
  */
 function isFrozen(): boolean {
-  return paused || homeOpen || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
+  return paused || homeOpen || garageOuvert() || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
 
 function frame(now: number) {
@@ -2162,6 +2185,11 @@ function frame(now: number) {
     camera.up.set(0, 1, 0);
     camera.lookAt(x, y + 1.3, z);
   }
+  if (garageOuvert()) {
+    garageUi!.cadrer(x, y, z, elapsed * 1000); // lot 41 : le Garage tourne autour de la voiture
+    ghostMesh.visible = false; // le fantôme du record attend au départ, dans la voiture : jamais au Garage (recalculé à chaque image)
+  }
+  if (ghostField) ghostField.group.visible = !garageOuvert(); // Salon : les fantômes des autres non plus
   // Étiquette au pseudo du tour regardé : masquée tout près de la caméra (vue capot).
   if (nameLabel) nameLabel.place(camera.position.distanceTo(carMesh.position), Math.tan((camera.fov * Math.PI) / 360) / window.innerHeight, 3.5);
   if (watch) watchUi?.update({ paused: watch.paused, speed: watch.speed, progress: progressOf(Math.min(car.tick, watch.total), watch.total), camera: freeCam ? "libre" : CAMERAS[cameraIndex]!.name });
@@ -2448,7 +2476,7 @@ if (params.has("debug")) {
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
       /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */
       get voiture() {
-        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai };
+        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null, fantome: ghostMesh.visible };
       },
       socle: {
         composer,

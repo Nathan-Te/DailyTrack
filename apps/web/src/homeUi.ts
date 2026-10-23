@@ -11,6 +11,7 @@ import { button, el } from "./dom";
 import { fEcart, fNombre, fRang, fTemps, messageErreur, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
 import { remainingMs, type SalonLookup, type SalonProblem } from "./homeLogic";
 import { rememberRank } from "./profile";
+import { iconeTrack } from "./icones";
 import { gameStorage } from "./storage";
 
 export interface HomeDaily {
@@ -48,6 +49,10 @@ export interface HomeHost {
   openHowto(): void;
   /** Ouvre le classement du jour en pleine page (`boardScreen.ts`). */
   openBoard(): void;
+  /** Lot 41 : ouvre le Garage (chargé à la demande). */
+  openGarage(): void;
+  /** Lot 41 : une voiture débloquée attend d'être vue au Garage (la pastille « Nouveau »). */
+  garageNouveau(): boolean;
 }
 
 export interface HomeUi {
@@ -87,8 +92,16 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   // --- Titre ---
   const titre = el("h1", "etiquette__titre home-nom", t("jeu.track.titre"));
   const sousTitre = el("p", "etiquette__sous-titre home-circuit");
+  // Lot 41 : le Garage, dans la tête de l'étiquette (visible sans défiler, sur téléphone comme sur ordinateur), avec la pastille « Nouveau ».
+  const garageTexte = el("span", "");
+  const garageNouveau = el("span", "garage-pastille garage-pastille--nouveau");
+  const garage = el("button", "dj-bouton dj-bouton--secondaire home-garage");
+  garage.type = "button";
+  garage.id = "home-garage";
+  garage.addEventListener("click", () => host.openGarage()); // sans `blur` : le focus revient ici à la fermeture du Garage
+  garage.append(iconeTrack("voiture"), garageTexte, garageNouveau);
   const tete = el("div", "etiquette__tete");
-  tete.append(titre, sousTitre);
+  tete.append(titre, sousTitre, garage);
 
   // --- Tracé ---
   const apercu = el("div", "home-apercu");
@@ -179,6 +192,9 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
     archive.textContent = t("accueil.archives");
     settings.textContent = t("accueil.reglages");
     howto.textContent = t("accueil.aide");
+    garageTexte.textContent = t("garage.ouvrir");
+    garageNouveau.textContent = t("garage.nouveau");
+    garageNouveau.hidden = !host.garageNouveau();
     profileLink.textContent = t("accueil.profil");
     links.setAttribute("aria-label", t("accueil.liens"));
     touchNote.textContent = t("accueil.tactile");

@@ -74,6 +74,7 @@
     "vitrine-voiture.spec.ts": 90,
     "vitrine.spec.ts": 293,
     "voiture.spec.ts": 16,
+    "garage.spec.ts": 120,
     "watch-serveur.spec.ts": 39,
     "watch.spec.ts": 305
   }

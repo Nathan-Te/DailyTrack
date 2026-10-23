@@ -1,0 +1,40 @@
+import type { Catalogues } from "@cdj/ui";
+import type { fr } from "./catalogue.base.garage.fr";
+
+// Lot 41 — le Garage, en anglais : chargé avec le Garage (les deux langues voyagent ensemble, quelques centaines d'octets) ; mêmes clés que le français.
+
+export const en: Catalogues<typeof fr>["en"] = {
+  "garage.aria": "Track Garage",
+  "garage.titre": "Garage",
+  "garage.sousTitre": { one: "{n} of {total} cars", other: "{n} of {total} cars" },
+  "garage.voitures": "The cars",
+  "garage.tienne": "Your car",
+  "garage.debloquee": "Unlocked",
+  "garage.verrouillee": "Locked",
+  "garage.couleur": "Colour",
+  "garage.motif": "Livery",
+  "garage.tourner": "Drag to turn it around",
+  "garage.equitable": "Every car drives the same: only the look changes.",
+  "garage.horsLigne": "Offline: your unlocked cars stay here; progress comes back with the network.",
+  "garage.condition.or": { one: "Get gold (or Author) on a daily track.", other: "Get gold (or Author) on {n} daily tracks." },
+  "garage.condition.jours": { one: "Finish a daily track.", other: "Finish {n} daily tracks." },
+  "garage.condition.auteur": { one: "Beat the Author time on a daily track.", other: "Beat the Author time on {n} daily tracks." },
+  "garage.progres.or": { one: "{fait}/{n} gold medal", other: "{fait}/{n} gold medals" },
+  "garage.progres.jours": { one: "{fait}/{n} day", other: "{fait}/{n} days" },
+  "garage.progres.auteur": { one: "{fait}/{n} Author medal", other: "{fait}/{n} Author medals" },
+  "voiture.civile.description": "Five-door hatchback with a small spoiler. Yours from day one.",
+  "voiture.evolution.description": "Stocky coupé: wide arches, a wing on two legs, four round headlights.",
+  "voiture.gt.description": "Low, wide GT: long bonnet, big swan-neck wing.",
+  "voiture.proto.description": "Endurance prototype: narrow bubble, separate wings, a fin.",
+  "couleur.orange": "Track orange",
+  "couleur.grenat": "Garnet",
+  "couleur.fuchsia": "Fuchsia",
+  "couleur.glycine": "Wisteria",
+  "couleur.petrole": "Petrol",
+  "couleur.lagon": "Lagoon",
+  "couleur.olive": "Olive",
+  "couleur.poudre": "Powder pink",
+  "motif.bande": "Stripe",
+  "motif.flancs": "Sides",
+  "motif.unie": "Plain",
+};

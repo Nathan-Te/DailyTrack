@@ -2,6 +2,7 @@ import type { Medal } from "@cdj/sim";
 import { bouton, el, nomMedaille, type TypeMedaille } from "@cdj/ui";
 import { creerCadre, type Cadre } from "./cadre";
 import { fEcart, fTemps, t, traducteurDuSocle } from "./i18n";
+import { iconeTrack } from "./icones";
 
 // L'écran d'arrivée (lot I4, maquette track-arrivee.html ; lot I4b : posé sur la scène, sous le voile à rayures) : l'étiquette Track — « ARRIVÉE », le temps en grand,
 // le badge de record et l'écart, l'autocollant de médaille, le rang au classement du jour, les actions — puis, sous l'étiquette, « Jeu suivant du jour ».
@@ -85,6 +86,20 @@ export function ligneRang(o: { rang: string; total: string; gain?: number }): HT
     ),
   );
   return ligne;
+}
+
+/** Lot 41 : « Nouvelle voiture : Weasel — Voir au Garage » : une ligne discrète, quand l'envoi du temps débloque une voiture (`ids`). */
+export function ligneNouvelleVoiture(ids: readonly string[], voir: (id: string) => void): HTMLElement {
+  const lien = el("button", { classe: "lien", attrs: { type: "button", id: "finish-garage" }, texte: t("garage.arrivee.voir") });
+  lien.addEventListener("click", () => voir(ids[0]!));
+  return el(
+    "p",
+    { classe: "arrivee__garage", attrs: { role: "status" } },
+    iconeTrack("voiture", 18),
+    el("span", { texte: t("garage.arrivee.nouvelle", { n: ids.length }) }),
+    el("b", { texte: ids.map((id) => t(`voiture.${id}.nom`)).join(", ") }),
+    lien,
+  );
 }
 
 export function creerArrivee(racine: HTMLElement): Arrivee {

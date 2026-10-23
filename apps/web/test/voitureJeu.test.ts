@@ -4,7 +4,7 @@ import { AXLE_FRONT, AXLE_REAR, HALF_TRACK } from "@cdj/sim";
 import { VOITURES_ESSAI, buildQuery, DEFAULT_ADMIN } from "../src/adminLogic";
 import { WHEEL_RADIUS } from "../src/carMesh";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture } from "../src/voiture/catalogue";
-import { CHOIX_DEFAUT, CLE_GARAGE, choisirVoiture, choixDeLAdresse, estDebloquee, lireChoix, voitureChoisie, type ChoixVoiture, type Progres } from "../src/voiture/choix";
+import { CHOIX_DEFAUT, CLE_GARAGE, choisirVoiture, choixDeLAdresse, lireChoix, voitureChoisie, type ChoixVoiture } from "../src/voiture/choix";
 import { VoitureEnJeu, type OptionsVoitureEnJeu } from "../src/voiture/enJeu";
 import { LIVREE, PALETTE } from "../src/voiture/livree";
 import { MATERIAUX_2 } from "../src/voiture/materiaux2";
@@ -83,45 +83,38 @@ function memoire(init: Record<string, string> = {}) {
   const m = new Map(Object.entries(init));
   return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v), m };
 }
-const RIEN: Progres = { jours: 0, or: 0, auteur: 0 };
-const TOUT: Progres = { jours: 100, or: 100, auteur: 100 };
+/** Un stockage où le serveur a débloqué ces voitures (lot 41 : `debloquees`, gardé avec le choix sous la même clé). */
+const avec = (debloquees: string[], choix?: unknown) => memoire({ [CLE_GARAGE]: JSON.stringify({ ...(choix as object), debloquees }) });
+const TOUTES = ["evolution", "gt", "proto"];
 
 describe("le choix (cdj:track:garage)", () => {
   it("rien d'enregistré, illisible, inconnu : la civile en orange de Track", () => {
-    expect(voitureChoisie(() => TOUT, () => memoire())).toEqual(CHOIX_DEFAUT);
+    expect(voitureChoisie(() => memoire())).toEqual(CHOIX_DEFAUT);
     expect(CHOIX_DEFAUT).toEqual({ id: "civile", couleur: 0, motif: "bande" });
     expect(PALETTE[CHOIX_DEFAUT.couleur]!.hex).toBe(LIVREE.orange);
-    for (const brut of ["{", "null", "42", JSON.stringify({ id: "fusee", couleur: 0, motif: "bande" }), JSON.stringify({ id: "proto", couleur: 9, motif: "bande" }), JSON.stringify({ id: "proto", couleur: 1, motif: "pois" })]) {
-      expect(voitureChoisie(() => TOUT, () => memoire({ [CLE_GARAGE]: brut })), brut).toEqual(CHOIX_DEFAUT);
+    for (const brut of ["{", "null", "42", JSON.stringify({ id: "fusee", couleur: 0, motif: "bande", debloquees: TOUTES }), JSON.stringify({ id: "proto", couleur: 9, motif: "bande", debloquees: TOUTES }), JSON.stringify({ id: "proto", couleur: 1, motif: "pois", debloquees: TOUTES })]) {
+      expect(voitureChoisie(() => memoire({ [CLE_GARAGE]: brut })), brut).toEqual(CHOIX_DEFAUT);
     }
   });
 
-  it("une voiture non débloquée retombe sur la civile en orange de Track ; débloquée, elle est rendue telle quelle", () => {
+  it("une voiture non débloquée (selon le serveur) retombe sur la civile en orange de Track ; débloquée, elle est rendue telle quelle", () => {
     const choix: ChoixVoiture = { id: "proto", couleur: 5, motif: "flancs" };
-    const s = memoire({ [CLE_GARAGE]: JSON.stringify(choix) });
-    expect(voitureChoisie(() => RIEN, () => s)).toEqual(CHOIX_DEFAUT);
-    expect(voitureChoisie(() => ({ jours: 50, or: 50, auteur: 2 }), () => s)).toEqual(CHOIX_DEFAUT); // 3 médailles d'auteur
-    expect(voitureChoisie(() => ({ jours: 0, or: 0, auteur: 3 }), () => s)).toEqual(choix);
+    expect(voitureChoisie(() => avec([], choix))).toEqual(CHOIX_DEFAUT);
+    expect(voitureChoisie(() => avec(["evolution", "gt"], choix))).toEqual(CHOIX_DEFAUT);
+    expect(voitureChoisie(() => avec(["proto"], choix))).toEqual(choix);
     // La civile en une autre couleur : toujours permise.
     const civile: ChoixVoiture = { id: "civile", couleur: 3, motif: "unie" };
-    expect(voitureChoisie(() => RIEN, () => memoire({ [CLE_GARAGE]: JSON.stringify(civile) }))).toEqual(civile);
+    expect(voitureChoisie(() => memoire({ [CLE_GARAGE]: JSON.stringify(civile) }))).toEqual(civile);
   });
 
-  it("déblocages : jours joués, médailles d'or (ou mieux), médailles d'auteur ; jamais par abonnement pour l'instant", () => {
-    const f = (id: string) => ficheVoiture(id)!;
-    expect(estDebloquee(f("civile"), RIEN)).toBe(true);
-    expect(estDebloquee(f("evolution"), { ...RIEN, jours: 6 })).toBe(false);
-    expect(estDebloquee(f("evolution"), { ...RIEN, jours: 7 })).toBe(true);
-    expect(estDebloquee(f("gt"), { ...RIEN, or: 5 })).toBe(true);
-    expect(estDebloquee(f("proto"), { ...RIEN, or: 50, auteur: 2 })).toBe(false);
-    expect(estDebloquee({ ...f("proto"), deblocage: { type: "abonnement" } }, TOUT)).toBe(false);
-  });
-
-  it("choisirVoiture enregistre un choix lisible sous cdj:track:garage, et refuse un choix illisible", () => {
-    const s = memoire();
+  it("choisirVoiture enregistre un choix lisible d'une voiture débloquée, refuse un choix illisible ou une voiture verrouillée", () => {
+    const s = avec(["gt"]);
     expect(choisirVoiture({ id: "gt", couleur: 2, motif: "unie" }, () => s)).toBe(true);
-    expect(JSON.parse(s.m.get(CLE_GARAGE)!)).toEqual({ id: "gt", couleur: 2, motif: "unie" });
+    expect(JSON.parse(s.m.get(CLE_GARAGE)!)).toMatchObject({ id: "gt", couleur: 2, motif: "unie", debloquees: ["gt"] });
+    expect(voitureChoisie(() => s)).toEqual({ id: "gt", couleur: 2, motif: "unie" }); // relu
     expect(choisirVoiture({ id: "gt", couleur: 8, motif: "unie" }, () => s)).toBe(false);
+    expect(choisirVoiture({ id: "proto", couleur: 1, motif: "unie" }, () => s)).toBe(false); // verrouillée : rien n'est écrit
+    expect(voitureChoisie(() => s).id).toBe("gt");
     expect(lireChoix({ id: "gt", couleur: 2.5, motif: "unie" })).toBeNull();
   });
 

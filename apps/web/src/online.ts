@@ -6,6 +6,7 @@ import { getName, getPlayerId, getSubmittedBest, identity, setPlayerId, setSubmi
 import { ProfileSync } from "./profileSync";
 import { listDayBests, type BestRun } from "./records";
 import { gameStorage } from "./storage";
+import { noterDeblocages } from "./voiture/choix";
 
 export type GhostMode = "mine" | "first" | "ahead" | "off";
 
@@ -75,6 +76,7 @@ export class Online {
     if (r.ok) {
       setSubmittedBest(this.trackId, r.data.bestMs);
       this.sync.noteServerKnows();
+      if (r.data.garage) noterDeblocages(r.data.garage.voitures.filter((v) => v.debloquee).map((v) => v.id)); // lot 41 : le Garage arrive avec la réponse de l'envoi
     }
     return r;
   }

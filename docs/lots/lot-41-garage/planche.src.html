@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Garage de Track — maquettes</title>
+<!-- Lot 41 : la planche de maquettes du Garage. Source : planche.src.html ; `node docs/lots/lot-41-garage/planche.mjs` écrit maquettes.html (un seul
+     fichier, polices, feuilles et images comprises). Chaque écran est un cadre à la taille de l'appareil (844 × 390 : téléphone en paysage ;
+     1280 × 800 : ordinateur) qui charge les VRAIES feuilles du jeu (@cdj/ui : jetons, socle, composants, cadre ; Track : interface, accueil, arrivée)
+     plus la feuille proposée du Garage (garage.css) ; le fond est la vraie scène du palier 1, rendue par le jeu (circuit du 24/10, Stade). -->
+<style>
+/*@JETONS*/
+/*@POLICES*/
+html { background: var(--dj-creme); color: var(--dj-encre); font-family: var(--dj-police-texte); font-size: 15px; line-height: 1.45; }
+body { margin: 0; padding: 0 16px 48px; }
+.planche { max-width: 1312px; margin: 0 auto; }
+.planche-barre { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin: 0 -16px; padding: 10px 16px; background: var(--dj-creme); border-bottom: var(--dj-trait) solid var(--dj-encre); }
+.planche-barre h1 { margin: 0; font-family: var(--dj-police-marque); font-weight: 400; font-size: var(--dj-taille-21); letter-spacing: 0.5px; }
+.planche-barre h1 span { font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: var(--dj-taille-24); }
+.langues { display: flex; gap: 6px; }
+.langues button { min-width: var(--dj-cible); min-height: var(--dj-cible); padding: 0 12px; background: var(--dj-papier); color: var(--dj-encre); border: var(--dj-trait) solid var(--dj-encre); border-radius: var(--dj-rayon-bouton); font-family: var(--dj-police-marque); font-size: var(--dj-taille-14); cursor: pointer; box-shadow: var(--dj-ombre-bouton); }
+.langues button[aria-pressed="true"] { background: var(--dj-encre); color: var(--dj-creme); }
+.planche h2 { margin: 36px 0 6px; font-family: var(--dj-police-marque); font-weight: 400; font-size: var(--dj-taille-21); }
+.planche h3 { margin: 18px 0 6px; font-size: var(--dj-taille-16); }
+.planche p, .planche li { max-width: 860px; }
+.planche code { font-family: var(--dj-police-chiffres); font-size: 13px; background: var(--dj-creme-2); padding: 0 3px; border-radius: 2px; }
+.sommaire { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 14px 0 0; padding: 0; list-style: none; font-size: var(--dj-taille-14); }
+.sommaire a { color: var(--dj-encre); }
+.ecrans { display: flex; flex-wrap: wrap; gap: 18px 24px; align-items: flex-start; margin-top: 10px; }
+.ecran { margin: 0; }
+.ecran figcaption { margin-top: 6px; font-size: var(--dj-taille-13); color: var(--dj-encre-douce); }
+.ecran figcaption b { color: var(--dj-encre); }
+.ecran__boite { position: relative; overflow: hidden; border: var(--dj-trait-fort) solid var(--dj-encre); border-radius: var(--dj-rayon-tuile); box-shadow: var(--dj-ombre-cartouche); background: var(--track-asphalte); }
+.ecran__boite iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; }
+table { border-collapse: collapse; margin-top: 8px; font-size: var(--dj-taille-14); background: var(--dj-papier); border: var(--dj-trait) solid var(--dj-encre); }
+th, td { padding: 6px 10px; border-bottom: 1px solid var(--dj-creme-2); text-align: left; vertical-align: top; }
+th { background: var(--dj-creme-2); font-size: var(--dj-taille-12); letter-spacing: 1px; text-transform: uppercase; }
+td.nom { font-family: var(--track-police); font-style: italic; font-weight: 800; font-size: var(--dj-taille-21); text-transform: uppercase; white-space: nowrap; }
+td img { display: block; width: 168px; background: var(--track-piste); border-radius: 2px; }
+.decisions li { margin-bottom: 6px; }
+.decisions b { font-family: var(--dj-police-marque); font-weight: 400; }
+</style>
+</head>
+<body>
+<div class="planche">
+  <header class="planche-barre">
+    <h1>DU JOUR · <span>TRACK</span> · Garage</h1>
+    <div class="langues" role="group" aria-label="Langue des écrans">
+      <button type="button" data-langue="fr" aria-pressed="true">FR</button>
+      <button type="button" data-langue="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <p>Lot 41, planche de maquettes à valider avant tout code d'interface. Chaque écran charge <b>les vraies feuilles du jeu</b> (les jetons et composants
+    de <code>@cdj/ui</code>, le cadre, l'étiquette Track) et la feuille proposée du Garage ; le fond est <b>la vraie scène du palier 1</b> et <b>les vraies
+    voitures</b> du lot 40 / 40b, rendues par le jeu. Les boutons FR / EN changent la langue de tous les écrans. Le joueur de l'exemple a joué 4 jours,
+    dont 3 avec l'or : la Belette vient de se débloquer, la Murène et la Libellule restent à gagner.</p>
+  <ul class="sommaire">
+    <li><a href="#entree">1. L'entrée</a></li>
+    <li><a href="#garage">2. Le Garage : liste et fiche</a></li>
+    <li><a href="#verrou">3. Une voiture verrouillée</a></li>
+    <li><a href="#perso">4. La personnalisation</a></li>
+    <li><a href="#arrivee">5. La voiture débloquée, à l'arrivée</a></li>
+    <li><a href="#hors-ligne">6. Hors connexion</a></li>
+    <li><a href="#noms">7. Les noms</a></li>
+    <li><a href="#regles">8. Les règles de déblocage</a></li>
+    <li><a href="#decisions">9. Ce que tu dois trancher</a></li>
+  </ul>
+
+  <h2 id="entree">1. L'entrée : un bouton « Garage » à l'accueil, et dans la pause</h2>
+  <p>À l'accueil, le bouton est <b>dans la tête de l'étiquette</b>, à gauche de la livrée : il se voit sans défiler, sur téléphone comme sur ordinateur
+    (la colonne des liens est sous le pli sur téléphone). Une pastille « NOUVEAU » s'y pose quand une voiture s'est débloquée depuis ta dernière visite
+    au Garage. Dans la pause, « Garage » rejoint la grille, à côté des réglages ; on y change de voiture pendant la pause (la voiture est remplacée
+    à la reprise : jamais pendant que la course roule).</p>
+  <div class="ecrans">
+    <figure class="ecran" data-ecran="t-accueil-tel"><figcaption><b>Accueil</b> · téléphone en paysage</figcaption></figure>
+    <figure class="ecran" data-ecran="t-pause-tel"><figcaption><b>Pause</b> · téléphone en paysage</figcaption></figure>
+    <figure class="ecran" data-ecran="t-accueil-pc"><figcaption><b>Accueil</b> · ordinateur</figcaption></figure>
+  </div>
+
+  <h2 id="garage">2. Le Garage : la liste des voitures et la fiche, sur la scène</h2>
+  <p>On reste dans le jeu : le Garage est posé sur la scène du départ, la caméra s'approche de ta voiture qui tourne lentement ; <b>on tourne
+    autour au doigt ou à la souris</b> (et aux flèches du clavier). À gauche, l'étiquette Track : les quatre voitures (la tienne, celles débloquées,
+    celles à gagner en silhouette, avec leur condition et ta progression), puis la couleur et le motif. À droite, sur la scène, la fiche de la voiture
+    regardée : son nom, une ligne de description, son état. <b>Toucher une voiture débloquée la choisit</b> (c'est enregistré tout de suite, la course
+    suivante l'utilise) ; toucher une voiture verrouillée montre sa silhouette et ce qu'il faut pour l'avoir. « ‹ TRACK » ferme le Garage
+    (retour à l'accueil, ou à la pause).</p>
+  <div class="ecrans">
+    <figure class="ecran" data-ecran="t-garage-tel"><figcaption><b>Garage</b> · ta voiture (le Moineau) · téléphone en paysage</figcaption></figure>
+    <figure class="ecran" data-ecran="t-garage-belette-tel"><figcaption><b>Garage</b> · tu viens de toucher la Belette (débloquée) : c'est ta voiture</figcaption></figure>
+    <figure class="ecran" data-ecran="t-garage-pc"><figcaption><b>Garage</b> · ordinateur</figcaption></figure>
+  </div>
+
+  <h2 id="verrou">3. Une voiture verrouillée : la silhouette, la condition, ta progression</h2>
+  <p>La voiture est sur la scène, toute noire (même modèle, matière plate) : on voit sa forme, pas sa livrée. La fiche dit ce qu'il faut faire et où
+    tu en es (« 4/10 jours »). Pas de bouton pour la prendre ; les couleurs restent celles de ta voiture (les toucher ramène ta voiture sur la scène).</p>
+  <div class="ecrans">
+    <figure class="ecran" data-ecran="t-verrou-tel"><figcaption><b>Murène</b> verrouillée · téléphone en paysage</figcaption></figure>
+    <figure class="ecran" data-ecran="t-verrou-pc"><figcaption><b>Murène</b> verrouillée · ordinateur</figcaption></figure>
+  </div>
+
+  <h2 id="perso">4. La personnalisation : 8 couleurs, 3 motifs, l'aperçu tout de suite</h2>
+  <p>Les 8 couleurs de la palette du lot 40 (orange de Track par défaut) en pastilles de 44 px, le nom lu par les lecteurs d'écran ; les 3 motifs de la
+    retouche 40b (bande, flancs, unie) en choix segmenté avec leur petit dessin. Un toucher repeint la voiture sur la scène dans l'image qui suit
+    (la peinture change, la voiture n'est pas reconstruite) et l'enregistre. Ici : Pétrole, motif « flancs ».</p>
+  <div class="ecrans">
+    <figure class="ecran" data-ecran="t-perso-tel"><figcaption><b>Pétrole + flancs</b> · téléphone en paysage</figcaption></figure>
+    <figure class="ecran" data-ecran="t-perso-pc"><figcaption><b>Pétrole + flancs</b> · ordinateur</figcaption></figure>
+  </div>
+
+  <h2 id="arrivee">5. La voiture débloquée, à l'arrivée</h2>
+  <p>Discret et dans le jeu : si l'envoi de ton temps débloque une voiture, <b>une ligne</b> s'ajoute sous ta médaille, dans l'étiquette d'arrivée
+    (« Nouvelle voiture : la Belette »), avec le lien « Voir au Garage ». Pas de fenêtre, pas d'animation, pas de son de plus : la médaille
+    reste le moment fort. Le lien ouvre le Garage sur cette voiture. Le statut des déblocages arrive avec la réponse de l'envoi (aucune requête de plus).</p>
+  <div class="ecrans">
+    <figure class="ecran" data-ecran="t-arrivee-tel"><figcaption><b>Arrivée</b> · une voiture débloquée · téléphone en paysage (l'étiquette défilée : en paysage, la ligne est sous la médaille, comme ton rang)</figcaption></figure>
+    <figure class="ecran" data-ecran="t-arrivee-pc"><figcaption><b>Arrivée</b> · ordinateur</figcaption></figure>
+  </div>
+
+  <h2 id="hors-ligne">6. Hors connexion, ou si le serveur ne répond pas</h2>
+  <p>Le jeu n'est jamais bloqué : le Moineau, plus ce que le dernier appel réussi avait débloqué (gardé dans le navigateur). Une ligne le dit ; les voitures
+    verrouillées montrent leur condition sans la progression (on ne l'invente pas).</p>
+  <div class="ecrans">
+    <figure class="ecran" data-ecran="t-horsligne-tel"><figcaption><b>Hors connexion</b> · téléphone en paysage</figcaption></figure>
+  </div>
+
+  <h2 id="noms">7. Les noms des voitures (proposition)</h2>
+  <p>Des noms originaux, sans marque : un petit bestiaire, un animal par silhouette. Le nom est en capitales dans le jeu (voix de Track).</p>
+  <table>
+    <thead><tr><th></th><th>Voiture (lot 40)</th><th>Français</th><th>Anglais</th><th>Description (fr / en)</th></tr></thead>
+    <tbody>
+      <tr><td><img src="@img(vignette-civile-0-bande)" alt=""></td><td>la civile</td><td class="nom">Moineau</td><td class="nom">Sparrow</td><td>Compacte cinq portes, hayon, petit becquet. À toi dès le premier jour.<br><i>Five-door hatchback with a small spoiler. Yours from day one.</i></td></tr>
+      <tr><td><img src="@img(vignette-evolution-0-bande)" alt=""></td><td>A, évolution</td><td class="nom">Belette</td><td class="nom">Weasel</td><td>Coupé trapu : passages de roue larges, aileron sur deux jambes, quatre phares ronds.<br><i>Stocky coupé: wide arches, a wing on two legs, four round headlights.</i></td></tr>
+      <tr><td><img src="@img(vignette-gt-0-bande)" alt=""></td><td>B, GT basse</td><td class="nom">Murène</td><td class="nom">Moray</td><td>GT basse et large : capot long, grand aileron sur cols de cygne.<br><i>Low, wide GT: long bonnet, big swan-neck wing.</i></td></tr>
+      <tr><td><img src="@img(vignette-proto-0-bande)" alt=""></td><td>C, proto à bulle</td><td class="nom">Libellule</td><td class="nom">Dragonfly</td><td>Prototype d'endurance : bulle étroite, ailes détachées, dérive.<br><i>Endurance prototype: narrow bubble, separate wings, a fin.</i></td></tr>
+    </tbody>
+  </table>
+  <p>Autre jeu de noms, si tu préfères des choses aux bêtes : Galet / <i>Pebble</i>, Rafale / <i>Gust</i>, Lame / <i>Blade</i>, Comète / <i>Comet</i>.
+    Les couleurs ont aussi un nom, lu par les lecteurs d'écran : Orange Track / <i>Track orange</i>, Grenat / <i>Garnet</i>, Fuchsia / <i>Fuchsia</i>,
+    Glycine / <i>Wisteria</i>, Pétrole / <i>Petrol</i>, Lagon / <i>Lagoon</i>, Olive / <i>Olive</i>, Rose poudré / <i>Powder pink</i> ; les motifs :
+    Bande / <i>Stripe</i>, Flancs / <i>Sides</i>, Unie / <i>Plain</i>.</p>
+
+  <h2 id="regles">8. Les règles de déblocage (proposition du prompt, une ligne chacune)</h2>
+  <table>
+    <thead><tr><th>Voiture</th><th>Condition</th><th>Texte dans le jeu (fr / en)</th><th>Progression</th></tr></thead>
+    <tbody>
+      <tr><td>Moineau</td><td>dès le départ</td><td>À toi dès le premier jour. / <i>Yours from day one.</i></td><td>—</td></tr>
+      <tr><td>Belette</td><td>3 circuits du jour avec l'or (ou l'auteur)</td><td>Décroche l'or (ou l'auteur) sur 3 circuits du jour. / <i>Get gold (or Author) on 3 daily tracks.</i></td><td>« 1/3 médailles d'or » / <i>“1/3 gold medals”</i></td></tr>
+      <tr><td>Murène</td><td>10 jours joués</td><td>Termine 10 circuits du jour. / <i>Finish 10 daily tracks.</i></td><td>« 4/10 jours » / <i>“4/10 days”</i></td></tr>
+      <tr><td>Libellule</td><td>1 médaille d'auteur</td><td>Bats le temps de l'auteur sur un circuit du jour. / <i>Beat the Author time on a daily track.</i></td><td>« 0/1 médaille d'auteur » / <i>“0/1 Author medal”</i></td></tr>
+    </tbody>
+  </table>
+  <p>Comptent : les temps du circuit du jour <b>rejoués par le serveur</b> (le meilleur de chaque jour, avec les seuils de médaille <b>de son jour</b>,
+    bascule du 28/10 comprise). Ne comptent pas : le Salon, les archives (un jour passé n'accepte plus de temps), une course avec <code>?voiture=</code>
+    ou <code>?tune</code> (jamais envoyée). Les jours passés ne changent jamais : les joueurs actuels retrouvent dès la mise en production ce qu'ils ont
+    déjà gagné.</p>
+
+  <h2 id="decisions">9. Ce que tu dois trancher</h2>
+  <ol class="decisions">
+    <li><b>Les maquettes</b> : validées telles quelles, ou tes retouches.</li>
+    <li><b>Les noms</b> : le bestiaire (Moineau, Belette, Murène, Libellule), l'autre jeu, ou les tiens.</li>
+    <li><b>Les règles</b> : 3 or / 10 jours / 1 auteur, le Salon exclu : d'accord ?</li>
+    <li><b>Un écart à la charte (§ 9)</b> : le Garage n'a <b>pas de voile à rayures</b> sur la scène (sinon on ne voit pas la voiture) ; l'étiquette, la
+      barre et la fiche sont des plaques opaques posées sur la scène, comme les plaques de course. À inscrire dans la charte si tu es d'accord.</li>
+    <li><b>Un fichier hors de ma zone</b> : le prompt demande la table des règles dans <code>apps/api/src/garage.ts</code>, mais la zone de Track dans
+      <code>apps/api</code> est une liste fermée (<code>scripts/zones-jeu.mjs</code> : <code>cdj.ts</code>, <code>salon.ts</code>, leurs tests) : un nouveau
+      fichier y ferait échouer le job <code>zones</code>, et l'ajouter à la liste touche une zone partagée. Deux voies :
+      <b>(a)</b> tu m'autorises à ajouter <code>apps/api/src/garage.ts</code> et <code>apps/api/test/garage.test.ts</code> à la zone de Track (deux lignes
+      dans <code>scripts/zones-jeu.mjs</code> et <code>scripts/ci-scope.mjs</code>, plus leur test) ; <b>(b)</b> sans toucher aux zones : la table des règles
+      dans <code>packages/sim/src/garage.ts</code> (pure, une ligne par voiture, lue par le serveur <b>et</b> par le jeu : une seule source), le calcul dans
+      <code>cdj.ts</code> et ses tests dans un fichier de test existant de ma zone. Je propose <b>(b)</b>, sauf avis contraire.</li>
+  </ol>
+</div>
+
+<!-- ============================================================ Les écrans ============================================================ -->
+
+<template id="t-accueil-tel" data-w="844" data-h="390" data-corps="home" data-scene="t-accueil">@ACCUEIL</template>
+<template id="t-accueil-pc" data-w="1280" data-h="800" data-corps="home" data-scene="d-accueil">@ACCUEIL</template>
+
+<template id="t-pause-tel" data-w="844" data-h="390" data-corps="paused" data-scene="t-accueil">
+  <div id="pause" class="voile">
+    <section class="dialogue dj-sombre" role="dialog" aria-modal="true" data-t-aria-label="pause.titre">
+      <div class="dialogue__corps">
+        <h2 class="dialogue__titre" data-t="pause.titre"></h2>
+        <div class="pause__ligne"><span data-t="pause.circuit"></span><span><span data-t="pause.record"></span> <b>39,513&nbsp;s</b></span></div>
+        <div class="pause__menu">
+          <button class="dj-bouton dj-bouton--track" type="button" data-t="pause.reprendre"></button>
+          <button class="dj-bouton dj-bouton--secondaire bouton--tete" type="button" data-t="pause.recommencer"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.pointDeControle"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.fantome"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.son"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.camera"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.pleinEcran"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.reglages"></button>
+          <button class="dj-bouton dj-bouton--secondaire garage-entree" type="button"><span data-t="garage.titre"></span></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.aide"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.archives"></button>
+          <button class="dj-bouton dj-bouton--secondaire" type="button" data-t="pause.accueil"></button>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<template id="t-garage-tel" data-w="844" data-h="390" data-scene="t-civile-0-bande">@GARAGE(civile,0,bande,civile)</template>
+<template id="t-garage-belette-tel" data-w="844" data-h="390" data-scene="t-evolution-0-bande">@GARAGE(evolution,0,bande,evolution)</template>
+<template id="t-garage-pc" data-w="1280" data-h="800" data-scene="d-civile-0-bande">@GARAGE(civile,0,bande,civile)</template>
+<template id="t-verrou-tel" data-w="844" data-h="390" data-scene="t-gt-sil">@GARAGE(civile,0,bande,gt)</template>
+<template id="t-verrou-pc" data-w="1280" data-h="800" data-scene="d-gt-sil">@GARAGE(civile,0,bande,gt)</template>
+<template id="t-perso-tel" data-w="844" data-h="390" data-scene="t-civile-4-flancs">@GARAGE(civile,4,flancs,civile)</template>
+<template id="t-perso-pc" data-w="1280" data-h="800" data-scene="d-civile-4-flancs">@GARAGE(civile,4,flancs,civile)</template>
+<template id="t-horsligne-tel" data-w="844" data-h="390" data-scene="t-proto-sil">@GARAGE(civile,0,bande,proto,horsligne)</template>
+
+<template id="t-arrivee-tel" data-w="844" data-h="390" data-scene="t-accueil" data-defile=".etiquette__corps">@ARRIVEE</template>
+<template id="t-arrivee-pc" data-w="1280" data-h="800" data-scene="d-accueil">@ARRIVEE</template>
+
+<!-- Les feuilles du jeu, une seule fois : chaque écran les reçoit (voir le script). -->
+<script type="text/plain" id="css-jeu">/*@CSS*/</script>
+<script type="application/json" id="scenes">/*@SCENES*/</script>
+<script type="application/json" id="textes">/*@TEXTES*/</script>
+<script>
+(() => {
+  const css = document.getElementById("css-jeu").textContent;
+  const scenes = JSON.parse(document.getElementById("scenes").textContent);
+  const textes = JSON.parse(document.getElementById("textes").textContent);
+  let langue = "fr";
+  const cadres = [];
+
+  function traduire(racine) {
+    const T = textes[langue];
+    racine.querySelectorAll("[data-t]").forEach((e) => {
+      const v = T[e.dataset.t];
+      if (v === undefined) console.warn("clé manquante", e.dataset.t);
+      e.textContent = v ?? e.dataset.t;
+    });
+    racine.querySelectorAll("[data-t-aria-label]").forEach((e) => e.setAttribute("aria-label", T[e.dataset.tAriaLabel] ?? ""));
+  }
+
+  function documentDe(tpl) {
+    const corps = tpl.content.cloneNode(true);
+    const boite = document.createElement("div");
+    boite.append(corps);
+    traduire(boite);
+    const scene = scenes[tpl.dataset.scene];
+    return `<!doctype html><html lang="${langue}"><head><meta charset="utf-8"><style>${css}</style></head><body class="${tpl.dataset.corps ?? ""}">` +
+      `<img class="scene-maquette" alt="" src="${scene}">${boite.innerHTML}</body></html>`;
+  }
+
+  function poser() {
+    for (const c of cadres) {
+      const l = Math.min(c.w, c.figure.parentElement.clientWidth);
+      const k = l / c.w;
+      c.boite.style.width = `${Math.round(c.w * k)}px`;
+      c.boite.style.height = `${Math.round(c.h * k)}px`;
+      c.iframe.style.transform = `scale(${k})`;
+    }
+  }
+
+  function remplir() {
+    document.documentElement.lang = langue;
+    for (const c of cadres) {
+      c.iframe.srcdoc = documentDe(c.tpl);
+      const sel = c.tpl.dataset.defile;
+      if (sel) c.iframe.onload = () => { const e = c.iframe.contentDocument.querySelector(sel); if (e) e.scrollTop = e.scrollHeight; };
+    }
+  }
+
+  document.querySelectorAll("[data-ecran]").forEach((figure) => {
+    const tpl = document.getElementById(figure.dataset.ecran);
+    const w = Number(tpl.dataset.w), h = Number(tpl.dataset.h);
+    const boite = document.createElement("div");
+    boite.className = "ecran__boite";
+    const iframe = document.createElement("iframe");
+    iframe.width = w;
+    iframe.height = h;
+    iframe.title = figure.querySelector("figcaption").textContent;
+    iframe.loading = "lazy";
+    boite.append(iframe);
+    figure.prepend(boite);
+    cadres.push({ figure, tpl, w, h, boite, iframe });
+  });
+  document.querySelectorAll("[data-langue]").forEach((b) => b.addEventListener("click", () => {
+    langue = b.dataset.langue;
+    document.querySelectorAll("[data-langue]").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    remplir();
+  }));
+  addEventListener("resize", poser);
+  remplir();
+  poser();
+})();
+</script>
+</body>
+</html>
