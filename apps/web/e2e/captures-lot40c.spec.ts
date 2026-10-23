@@ -78,9 +78,10 @@ test("sparrow : quatre angles et gros plans, paliers 1 et 2", async ({ page }) =
 test("detail : la Sparrow de près", async ({ page }) => {
   await vitrine(page);
   const palier = Number(process.env.PALIER ?? 2) as 1 | 2;
+  const col = process.env.COL ?? "civile";
   ecrire(
-    `detail-p${palier}.jpg`,
-    await page.evaluate(async ([p]) => {
+    col === "civile" ? `detail-p${palier}.jpg` : `detail-${col}-p${palier}.jpg`,
+    await page.evaluate(async ([p, col]) => {
       const m = (await window.__vitrine!.voiture())!;
       m.reglerTheme("theme-stade");
       const vues: [number, number, number, [number, number, number]][] = [
@@ -97,12 +98,12 @@ test("detail : la Sparrow de près", async ({ page }) => {
       const x = toile.getContext("2d")!;
       for (const [i, [az, el, d, cible]] of vues.entries()) {
         const img = new Image();
-        img.src = await m.apercu("civile", p, az, el, d, w, h, cible);
+        img.src = await m.apercu(col, p, az, el, d, w, h, cible);
         await img.decode();
         x.drawImage(img, (i % 2) * w, Math.floor(i / 2) * h);
       }
       return toile.toDataURL("image/jpeg", 0.9);
-    }, [palier] as const),
+    }, [palier, col] as const),
   );
 });
 
