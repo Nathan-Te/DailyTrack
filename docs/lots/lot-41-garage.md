@@ -67,7 +67,7 @@ Un **Garage dans Track** : on y voit ses voitures, celles qui restent à débloq
 
 ## 8. Captures
 
-Dans le jeu (préversion construite, `?api=demo`, rendu logiciel) : `docs/lots/lot-41-garage/img/jeu-*.png` — accueil (téléphone), Garage (téléphone FR, ordinateur EN), voiture verrouillée, couleur et motif, la Weasel choisie, l'arrivée avec la ligne « Nouvelle voiture ». La planche : `docs/lots/lot-41-garage/maquettes.html`.
+Dans le jeu (construction locale, `?api=demo`, rendu logiciel), `docs/lots/lot-41-garage/img/` : `jeu-accueil-tel-fr.png` (le bouton dans la tête de l'étiquette), `jeu-garage-tel-fr.png` (téléphone en paysage), `jeu-verrouillee-tel-fr.png` (la Moray en silhouette, 4/10 jours), `jeu-couleur-motif-tel-fr.png` (Pétrole, flancs), `jeu-garage-pc-en.png` et `jeu-weasel-pc-en.png` (ordinateur, en anglais). La ligne de l'arrivée n'a pas de capture : elle est vérifiée par l'e2e (`garage.spec.ts`, dernier test). La planche : `docs/lots/lot-41-garage/maquettes.html`.
 
 ## 9. Tests
 
