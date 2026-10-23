@@ -124,23 +124,128 @@ Le compteur de `?debug` affiche maintenant, après les images par seconde, **le 
 
 ## 4. Mesures
 
-⟨MESURES⟩
+Profil téléphone (`MESURE=1 PERF_OUT=docs/lots/lot-45/mesure.json npx playwright test mesure-lot45 --project=chromium` : 844 × 390 @2, processeur
+×4, rendu logiciel, au départ d'une course, qualité 2 ; chiffres bruts : `docs/lots/lot-45/mesure.json`). Le temps d'image du rendu logiciel ne dit rien d'un
+téléphone : **les appels, les triangles, les textures et la construction**, oui ; les images par seconde sont à lire sur le Pixel 7 (« À tester »).
+
+| Thème | Palier 1 : appels / triangles / textures / construction | Palier 2 | Palier 2 + vie et ciel (« Équilibrée ») | Palier 3 (« Maximale ») |
+|---|---|---|---|---|
+| Stade 8/10 | 30 / 47 278 / 10 / 523 ms | **30** / 69 742 / 13 / 909 ms | 34 / 70 414 / 16 / 1 303 ms | 35 / 83 602 / 16 / 1 074 ms |
+| Rallye 21/10 | 30 / 53 961 / 10 / 666 ms | **30** / 105 689 / 13 / 1 256 ms | 35 / 106 377 / 16 / 1 348 ms | 36 / 125 375 / 16 / 1 492 ms |
+| Nuit 14/10 | 35 / 71 096 / 11 / 645 ms | **35** / 95 548 / 14 / 1 095 ms | 40 / 96 228 / 17 / 1 312 ms | 41 / 112 828 / 17 / 1 267 ms |
+| Col 12/10 | 30 / 62 362 / 11 / 648 ms | **30** / 117 650 / 14 / 1 417 ms | 35 / 118 302 / 17 / 1 464 ms | 36 / 141 430 / 17 / 1 475 ms |
+
+**Chaque partie retirée du palier 2** (triangles ; les appels ne bougent jamais) : sans la **géométrie**, 51 626 (Stade), 58 265 (Rallye), 75 452 (Nuit),
+66 914 (Col) — **c'est elle qui fait presque tous les triangles en plus** (rebords complets — le mur de pneus du Rallye pile par pile, la glissière en « W »
+du Col —, virages deux fois plus fins, pièces des portiques) ; sans les **traces**, −150 à −400 ; la **variété** n'en ajoute aucun ; la **matière** ajoute
+2 textures et 1 programme ; les **reflets**, 1 texture (la carte PMREM).
+
+En clair :
+- **Le palier 2 n'ajoute aucun appel de rendu** (critère du lot) ; la vie et le ciel en ajoutent 4 à 5 (un par famille, lot 46), les ombres fines 1.
+- **Triangles : +48 % (Stade) à +96 % (Rallye, Col)**, plus qu'au 38b (+28 000 en moyenne : la vitrine mesurait des vues fixes, ici toute la scène au
+  départ). Sur une carte graphique de téléphone récent, c'est du travail de sommets (≈ 120 000 triangles au pire) ; le Pixel 7 tenait le palier 2 de la vitrine
+  à 90 images/s avec la même géométrie. **À lire au compteur** (À tester) ; si le Rallye ou le Col ralentissent, la géométrie est la partie à alléger (rebords
+  complets) — décision n° 3.
+- **Construction de la scène : +390 à +770 ms** au processeur ×4 (hors course : à l'accueil, à la pause, au podium du Salon) ; elle double. Le reconstructeur ne
+  la fait jamais en course ; au Salon, la scène suivante est construite d'avance pendant le podium (lot 31).
+- **Envoi d'une image** (fil principal) : 5 à 13 ms au processeur ×4 selon les thèmes et les essais, sans écart net entre les paliers (le bruit d'une
+  mesure en rendu logiciel est du même ordre).
 
 ## 5. Planches palier 1 / palier 2
 
-⟨PLANCHES⟩
+`CAPTURES=1 LABEL=p1|p2 npx playwright test captures-lot45 --project=chromium`, puis `PLANCHES=1 … -g planches` (l'outil des lots 39, 43 et 46, rejoué) :
+pour un circuit de chaque thème, le départ, le premier tremplin ou la première bosse, un virage serré, l'arrivée et la miniature (inchangée : vue aérienne,
+palier 1) ; palier 1 à gauche, palier 2 (`?palier=2`, la finition seule) à droite. Images une à une : `docs/lots/lot-45/p1/`, `p2/`.
+
+![Stade](lot-45/planches/stade.jpg)
+![Rallye](lot-45/planches/rallye.jpg)
+![Banquise](lot-45/planches/banquise.jpg)
+![Nuit](lot-45/planches/nuit.jpg)
+![Campagne](lot-45/planches/campagne.jpg)
+![Canyon](lot-45/planches/canyon.jpg)
+![Col alpin](lot-45/planches/col.jpg)
+![Ville](lot-45/planches/ville.jpg)
+![Accueil et Salon](lot-45/planches/accueil-salon.jpg)
+
+Ce qu'on y voit : les rebords complets (béton en « J » à joints, mur de pneus, glissière), le grain fin de l'asphalte et sa variation large, les traces dans
+les virages, la voiture qui reflète le ciel (le toit s'éclaircit sous le ciel du Stade : décision n° 4) ; la Nuit change peu (le métal reflète un ciel noir).
 
 ## 6. Budget
 
-⟨BUDGET⟩
+Mesures : `npm run build && node scripts/budgets.mjs` et `aLaDemande` de `e2e/perf.spec.ts`, `main` à `aa478d4` construit à part ; détail dans
+`docs/plateforme/budgets.md` (section du lot 45).
+
+| Ligne | Avant | Après | Plafond |
+|---|---|---|---|
+| Premier chargement, JS + CSS | 276 952 o | **278 980 o (+2 028)** | 291 600 (marge 12 620) |
+| dont hors three.js | 131 854 o | 133 861 o (+2 007) | 147 500 |
+| Catalogue anglais (à la demande) | 7 441 o | 7 557 o (+116) | 8 000 (marge 443) |
+| Page d'admin | 11 181 o | 11 333 o (+152) | 12 500 |
+| **Palier 2 à la demande** (nouvelle) | — | **6 535 o** (`finitionJeu` 6 188, `uvMonde` 347) | **7 000** (énoncé 6 000, relevé par Nathan) |
+| Mesure de la règle (à la demande, nouvelle) | — | 800 o | 1 500 |
+| Vie et ciel à la demande | 7 885 o | 7 966 o | 8 000 |
+| Décor 3D à la demande | 12 431 o | 12 575 o | 16 000 |
+
+**Pourquoi +2 ko au premier chargement** (la règle commune demande de justifier au-delà de 1 ko ; le plan du 38b disait ≈ +1 ko) :
+- ce qui doit être là avant le premier écran : le palier au chargement (`qualite.ts` : l'appareil, la mémoire `cdj:qualite`, sa validité, les points de
+  départ, ≈ 0,5 ko), sa conduite dans `main.ts` (lire la carte graphique, choisir et charger le palier avant la première scène, l'accueil mesuré sans son
+  plafond ni son image sur deux, le réglage qui attend la fin de la course, la voiture qui suit le palier, les reflets posés sur la voiture, `?appareil=`,
+  `?intervalles=`, `__cdj.qualite`, l'étiquette du compteur), le réglage (une ligne et sa note dans les Réglages, ≈ 0,1 ko) et ses textes français, les
+  crochets du palier 2 dans le palier 1 (`composerP1.ts` : `avant`, `apres`, `habiller`, `reflets`, `refleter`, ≈ 0,3 ko) ;
+- **ce qui a été sorti pour tenir** : la mesure elle-même (médiane, fréquence, seuils, décision, série) est à la demande (`qualiteMesure.ts`, 800 o, chargé
+  seulement à la première visite, chaque semaine ou quand l'écran change) — −0,4 ko ; `lireMemoire` resserré (−50 o) ; `qualite2Ms` retiré ; le premier jet
+  ajoutait 2,6 ko.
+- **Pièges mesurés** : un module partagé entre deux pas à la demande devient un troisième morceau, compté dans les deux lignes et téléchargé à part —
+  `bruit.ts` (matière et nuages) faisait passer « vie et ciel » à 8 082 o (> 8 000) : `matiere.ts` a sa copie des trois fonctions ; `qualite.ts` importé par
+  `qualiteMesure.ts` devenait un morceau à part (528 o) : le point de départ est passé par l'hôte (`HoteMesure.depart`) ; `rebordB` laissé dans `piste.ts`
+  (premier chargement) y serait resté : `rebordsComplets.ts`. Les drapeaux figés de la vitrine (palier 2 sans la vie) tiraient `drapeaux.ts` en morceau
+  partagé (+0,65 ko) : retirés du jeu (la vie les pose).
 
 ## 7. Vérifié / non vérifié
 
-⟨VERIFIE⟩
+**Vérifié**
+- `sim` et golden inchangés (aucun fichier de `packages/sim` touché) ; `npx tsc -b`, `npm run build`.
+- **CI de la PR verte** sur `75d0d17` (unitaires en trois parts, `zones`, e2e Chromium en huit parts, Firefox et WebKit) ; le run précédent (`3c79190`) :
+  303 e2e réussis, 0 échec, 0 instable (`qualite.spec.ts` : 132 s). Les deux runs rouges plus tôt étaient **annulés** par la poussée suivante, pas en échec.
+- En local : `npx vitest run --project sqlite apps/web packages/ui apps/portail` (830 tests) ; e2e Chromium `qualite`, `perf`, `vie-ciel`, `socle`,
+  `decor`, `voiture`.
+- `test/qualite.test.ts` (14) : départs, garde-fou des passes, réglage mémorisé, mesure (30 écartées, 90 gardées), seuils à 60, 90, 120 Hz, fréquence de
+  l'écran, montée, descente, plafond de série, plafond durable, interruption, mémoire (lecture, semaine, écran ×1,5, horloge revenue en arrière), série du
+  jeu avec intervalles imposés. `test/finitionJeu.test.ts` (13) : les mêmes calques que le palier 1 sur les huit thèmes, rien de posé, avec la vie et le ciel
+  aussi, chaque partie coupée, la variété ne déplace pas le décor, les reflets ciblés. `test/admin.test.ts`, `test/socle.test.ts`, `test/vieCiel.test.ts`,
+  `test/paliers.test.ts` mis à jour (le palier 2 a maintenant un pas ; la matière détaillée n'existe plus).
+- `e2e/qualite.spec.ts` (11) : un navigateur piloté reste au palier 1 sans rien charger ni mesurer ; `?palier=2` charge la finition et rien n'est enregistré ;
+  **appels du palier 2 = palier 1 sur les huit thèmes** (et avec la vie et le ciel au Stade et à la Nuit) ; un ordinateur imposé part du palier 3, descend à
+  30 ms, tient à 16 ms, mémorisé, puis rechargé sans mesure ; « Économie » choisi en course attend la fin de la course puis donne le palier 1 au retour à
+  l'accueil, « Auto » revient au palier mémorisé. `e2e/perf.spec.ts` : la ligne du palier 2 et la mesure à la demande.
+- Captures regardées (planches, réglage fr et en) ; mesures au profil téléphone (§ 4).
+
+**Non vérifié**
+- **Aucun vrai téléphone** : le palier choisi par la règle sur le Pixel 7, les images par seconde du palier 2 en course (≈ 120 000 triangles au Col), la
+  fréquence de 90 Hz estimée — « À tester ».
+- La détection du rendu logiciel sous Firefox et Safari réels (les e2e Firefox et WebKit passent par `navigator.webdriver`) ; un iPad (pointeur fin et écran
+  large avec un clavier : compté comme ordinateur, palier 3).
+- Les passes plein écran (lot 47) : `passesPermises` est calculé et exposé, rien ne l'utilise encore.
+- L'e2e local des écrans (accueil, accessibilité, mobile, scène, vitrine…) a été arrêté après 15 tests sans échec (trop lent ici) : c'est la CI qui les a
+  passés.
 
 ## 8. Décisions pour Nathan
 
-⟨DECISIONS⟩
+1. **Le plafond « palier 2 à la demande »** : relevé à 7 000 o par toi pendant le lot (mesuré 6 535 o) — à reporter dans le tableau de `budgets.md` par un lot
+   de plateforme (clé `track.palier2`, avec `track.vieCiel` et `track.decor`).
+2. **« Deux mesures ratées de suite »** : lu comme deux mesures qui disent « descendre » (on s'en souvient : plafond durable), une mesure interrompue ne comptant
+   pas — pour ne pas pousser vers le bas un joueur qui clique vite sur « Courir ». Si tu voulais compter les mesures interrompues, c'est une ligne de
+   `qualiteMesure.ts`.
+3. **Les triangles du palier 2** (+48 à +96 %, la géométrie : rebords complets surtout) : à juger au compteur du Pixel 7 sur le Rallye et le Col ; s'ils
+   coûtent, on peut garder les rebords légers au palier 2 et réserver les complets au palier 3.
+4. **Les reflets sur la voiture** : sous le ciel clair du Stade, le toit de la voiture s'éclaircit nettement (vernis à deux couches + carte du ciel, intensité
+   0,55 comme la vitrine) ; baisser l'intensité sur la voiture est un nombre (`ENVIRONNEMENT`, `finitionJeu.ts`).
+5. **Deux réglages de qualité** : « Qualité graphique » (le palier) au-dessus de « Qualité » (lot 9 : la fluidité dans un palier). Les fondre en un seul est
+   possible plus tard (le lot 9 deviendrait automatique seulement).
+6. **Mentions légales** (zone partagée, non touchées) : `cdj:qualite` (palier, date, médiane mesurée, taille d'écran) est couvert par « tes réglages » sous
+   `cdj:…` ; à nommer explicitement par un lot de plateforme si tu le souhaites (règle de fidélité du lot R5).
+7. **Le choix fait en pause** attend la fin de la course (même si la pause permettrait techniquement de reconstruire) : c'est ce que dit « appliqué à la fin
+   de la course ».
 
 ## 9. Fichiers
 
