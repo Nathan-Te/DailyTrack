@@ -11,17 +11,16 @@ import { STYLE_ORIGINE, across, onBlock, rowWidth, tiretsCentre, type StyleRoute
 import { ORIGINE } from "./origine";
 import { HORIZONS, type Ambiance, type Calques, type Contexte, type Direction, type PlaceDecor } from "./types";
 import { colonneChanfreinee } from "./finition";
+import { PISTE_A, ecart, plaqueA, routeA, type PisteA } from "./piste";
 
-/** Ce que A change à chaque thème : couleurs (route, rebords, vibreurs, sol, ciel), lumière, brume. Les palettes du document de direction. */
-export interface ThemeA {
-  route: [number, number];
-  rebord: [number, number];
-  vibreur: [number, number];
+// Lot 43 : les couleurs des thèmes, la route, l'écart des portiques et les plaques sont dans `piste.ts` (premier chargement du jeu) ; réexportés ici.
+export { ecart, plaqueA, routeA } from "./piste";
+
+/** Ce que A change à chaque thème : couleurs (route, rebords, vibreurs, sol, ciel : `PISTE_A`, piste.ts), lumière, brume. Les palettes du document de direction. */
+export interface ThemeA extends PisteA {
   /** Couleur des structures du thème (tribunes, mâts) et son accent. */
   structure: number;
   accent: number;
-  ciel: [zenith: number, horizon: number];
-  sol: [string, string];
   soleil: [couleur: number, intensite: number];
   hemi: [ciel: number, sol: number, intensite: number];
   hauteur: number;
@@ -31,119 +30,21 @@ export interface ThemeA {
   nuit?: boolean;
 }
 
-export const THEMES_A: Record<PaletteName, ThemeA> = {
-  stade: { route: [0x47464c, 0x434248], rebord: [0x2e7dff, 0xf4f4f4], vibreur: [0xe8283a, 0xf4f4f4], structure: 0xe9edf2, accent: 0xe8283a, ciel: [0x1f6fd6, 0x9fd3ff], sol: ["#4fae3c", "#47a335"], soleil: [0xfff4dc, 2.7], hemi: [0xcfe6ff, 0x4f9a3a, 0.75], hauteur: 0.9, brume: [170, 500], exposition: 1.0, silhouettes: [0x5e8fc4, 0xe6f2fb] },
-  desert: { route: [0x67655f, 0x615f59], rebord: [0x1e1b19, 0xf4f1e6], vibreur: [0xe8552d, 0xf4f1e6], structure: 0xf4f1e6, accent: 0xffc21a, ciel: [0x2f9ad0, 0xf6c98e], sol: ["#dba65f", "#cf9a52"], soleil: [0xffe9c2, 2.6], hemi: [0xffe4bd, 0xc8904c, 0.6], hauteur: 0.55, brume: [120, 380], exposition: 1.0, silhouettes: [0xc7794a, 0xeaa36c] },
-  neige: { route: [0x5b6676, 0x566171], rebord: [0x2f6fd0, 0xffffff], vibreur: [0xe8283a, 0xffffff], structure: 0xffffff, accent: 0xe8283a, ciel: [0xb7cde3, 0xeef3f7], sol: ["#f6f9fc", "#e6eef5"], soleil: [0xffffff, 1.7], hemi: [0xf0f6ff, 0xdfe8f2, 1.05], hauteur: 0.6, brume: [70, 290], exposition: 1.0, silhouettes: [0xa9bdd3, 0xffffff] },
-  nuit: { route: [0x1d2030, 0x1a1d2c], rebord: [0x1e1b19, 0xf2b544], vibreur: [0xf2b544, 0x1e1b19], structure: 0x2a2f45, accent: 0xf2b544, ciel: [0x02030c, 0x101a48], sol: ["#0b0f22", "#090c1c"], soleil: [0x9fb4ff, 0.7], hemi: [0x2a3570, 0x07091a, 0.4], hauteur: 0.5, brume: [60, 250], exposition: 1.05, silhouettes: [0x0f1636, 0x1e2a5a], nuit: true },
-  campagne: { route: [0x6d6e72, 0x67686c], rebord: [0x7a5230, 0xd9b27a], vibreur: [0xd9402a, 0xf6f6f0], structure: 0xc2401f, accent: 0xd9402a, ciel: [0x4f7fcf, 0xf7c27a], sol: ["#7fb84a", "#76ad42"], soleil: [0xffc27a, 2.5], hemi: [0xffe0b0, 0x5f8a34, 0.6], hauteur: 0.2, brume: [110, 360], exposition: 1.0, silhouettes: [0x5f9a63, 0x8cc08a] },
-  canyon: { route: [0x6a605c, 0x645a56], rebord: [0xa8472a, 0xe0a466], vibreur: [0x1e1b19, 0xf6e6c8], structure: 0xe0a466, accent: 0x2aa8a0, ciel: [0x5a4a9a, 0xf6a35f], sol: ["#d79a52", "#cc8f48"], soleil: [0xff9d52, 2.7], hemi: [0xffcf9e, 0xa8552e, 0.65], hauteur: 0.2, brume: [90, 320], exposition: 1.0, silhouettes: [0xa8452a, 0xe8925a] },
-  alpin: { route: [0x55595f, 0x51555b], rebord: [0xe8283a, 0xf6f6f6], vibreur: [0xe8283a, 0xf6f6f6], structure: 0x8a5a36, accent: 0xe8283a, ciel: [0x1f62c4, 0xc9e4f7], sol: ["#86b56f", "#7dab66"], soleil: [0xfff8ea, 2.7], hemi: [0xdcecff, 0x6f9a5a, 0.65], hauteur: 0.55, brume: [150, 460], exposition: 1.0, silhouettes: [0x6c7d93, 0xffffff] },
-  ville: { route: [0x3c3e44, 0x393b41], rebord: [0xc8cbd1, 0xa9adb4], vibreur: [0xf2b544, 0x1e1b19], structure: 0xb9bdc4, accent: 0xf2b544, ciel: [0x6f9fd2, 0xd2dde8], sol: ["#9a9da4", "#91949b"], soleil: [0xfff3dc, 2.3], hemi: [0xe8eef8, 0x8c9096, 0.65], hauteur: 0.7, brume: [120, 380], exposition: 1.0, silhouettes: [0x8a95a6, 0xb6c1cf] },
-  neon: { route: [0x2d2250, 0x261c45], rebord: [0xff2bd6, 0x00f0ff], vibreur: [0xff2bd6, 0x00f0ff], structure: 0x1a0b36, accent: 0x00f0ff, ciel: [0x06000f, 0x2a0b55], sol: ["#2a0a4a", "#210840"], soleil: [0xff9af0, 0.9], hemi: [0x6a3aa0, 0x14092b, 0.45], hauteur: 0.5, brume: [70, 280], exposition: 1.05, silhouettes: [0x2a0b55, 0x7a2bff], nuit: true },
+const LUMIERE_A: Record<PaletteName, Omit<ThemeA, keyof PisteA>> = {
+  stade: { structure: 0xe9edf2, accent: 0xe8283a, soleil: [0xfff4dc, 2.7], hemi: [0xcfe6ff, 0x4f9a3a, 0.75], hauteur: 0.9, brume: [170, 500], exposition: 1.0, silhouettes: [0x5e8fc4, 0xe6f2fb] },
+  desert: { structure: 0xf4f1e6, accent: 0xffc21a, soleil: [0xffe9c2, 2.6], hemi: [0xffe4bd, 0xc8904c, 0.6], hauteur: 0.55, brume: [120, 380], exposition: 1.0, silhouettes: [0xc7794a, 0xeaa36c] },
+  neige: { structure: 0xffffff, accent: 0xe8283a, soleil: [0xffffff, 1.7], hemi: [0xf0f6ff, 0xdfe8f2, 1.05], hauteur: 0.6, brume: [70, 290], exposition: 1.0, silhouettes: [0xa9bdd3, 0xffffff] },
+  nuit: { structure: 0x2a2f45, accent: 0xf2b544, soleil: [0x9fb4ff, 0.7], hemi: [0x2a3570, 0x07091a, 0.4], hauteur: 0.5, brume: [60, 250], exposition: 1.05, silhouettes: [0x0f1636, 0x1e2a5a], nuit: true },
+  campagne: { structure: 0xc2401f, accent: 0xd9402a, soleil: [0xffc27a, 2.5], hemi: [0xffe0b0, 0x5f8a34, 0.6], hauteur: 0.2, brume: [110, 360], exposition: 1.0, silhouettes: [0x5f9a63, 0x8cc08a] },
+  canyon: { structure: 0xe0a466, accent: 0x2aa8a0, soleil: [0xff9d52, 2.7], hemi: [0xffcf9e, 0xa8552e, 0.65], hauteur: 0.2, brume: [90, 320], exposition: 1.0, silhouettes: [0xa8452a, 0xe8925a] },
+  alpin: { structure: 0x8a5a36, accent: 0xe8283a, soleil: [0xfff8ea, 2.7], hemi: [0xdcecff, 0x6f9a5a, 0.65], hauteur: 0.55, brume: [150, 460], exposition: 1.0, silhouettes: [0x6c7d93, 0xffffff] },
+  ville: { structure: 0xb9bdc4, accent: 0xf2b544, soleil: [0xfff3dc, 2.3], hemi: [0xe8eef8, 0x8c9096, 0.65], hauteur: 0.7, brume: [120, 380], exposition: 1.0, silhouettes: [0x8a95a6, 0xb6c1cf] },
+  neon: { structure: 0x1a0b36, accent: 0x00f0ff, soleil: [0xff9af0, 0.9], hemi: [0x6a3aa0, 0x14092b, 0.45], hauteur: 0.5, brume: [70, 280], exposition: 1.05, silhouettes: [0x2a0b55, 0x7a2bff], nuit: true },
 };
 
-const th = (x: Contexte) => THEMES_A[x.palette];
-
-// --- Route : rebords en blocs à bandes longues, ombre nette au pied, vibreurs en dents, lignes épaisses ---------------------------------
-
-/** Longueur d'une bande de rebord (m) : deux fois celle de l'existant, plus lisible à 200 km/h. */
-const BANDE = 8;
-
-function morceaux(t: { a: V3; b: V3; s: number; longueur: number }, pas: number, f: (u0: number, u1: number, n: number) => void) {
-  // Découpe le tronçon aux frontières des bandes (alignées sur la distance parcourue).
-  let u = 0;
-  while (u < 1 - 1e-6) {
-    const s = t.s + u * t.longueur;
-    const n = Math.floor(s / pas + 1e-6);
-    const fin = Math.min(1, ((n + 1) * pas - t.s) / t.longueur);
-    f(u, fin, n);
-    u = fin;
-  }
-}
-
-export function routeA(nom: PaletteName): StyleRoute {
-  const theme = THEMES_A[nom];
-  return {
-  ...STYLE_ORIGINE,
-  rebord(g, t, pal) {
-    const e = 0.5; // épaisseur du bloc
-    const ox = t.dehors[0];
-    const oz = t.dehors[1];
-    const at = (u: number, up: number, out: number): V3 => [t.a[0] + (t.b[0] - t.a[0]) * u + ox * out, t.a[1] + (t.b[1] - t.a[1]) * u + up, t.a[2] + (t.b[2] - t.a[2]) * u + oz * out];
-    const h = t.hauteur;
-    morceaux(t, BANDE, (u0, u1, n) => {
-      const c = t.couleurs[n % 2]!;
-      g.quad(at(u0, 0, 0), at(u1, 0, 0), at(u1, h, 0), at(u0, h, 0), c); // face intérieure
-      g.quad(at(u0, h, 0), at(u1, h, 0), at(u1, h, e), at(u0, h, e), shade(c, 1.08)); // dessus
-      g.quad(at(u0, h, e), at(u1, h, e), at(u1, -0.6, e), at(u0, -0.6, e), shade(c, 0.8)); // face extérieure
-    });
-    // Liseré d'encre sur l'arête (le trait de la charte) et ombre nette au pied, sur la route.
-    g.quad(at(0, h - 0.14, -0.01), at(1, h - 0.14, -0.01), at(1, h, -0.01), at(0, h, -0.01), MARQUE.encre);
-    if (!t.bande) g.quad(at(0, 0.025, 0), at(1, 0.025, 0), at(1, 0.025, -0.45), at(0, 0.025, -0.45), shade(pal.road[0], 0.62));
-  },
-  bordureVide(g, lum, t, pal, milieu) {
-    // Bord du vide : un liseré crème épais, puis des blocs bas encre et accent (une bordure qu'on lit, pas un mur) ; néon à la nuit.
-    const len = Math.hypot(milieu[0] - t.a[0], milieu[2] - t.a[2]) || 1;
-    const ix = (milieu[0] - t.a[0]) / len;
-    const iz = (milieu[2] - t.a[2]) / len;
-    const at = (u: number, inward: number, up: number): V3 => [t.a[0] + (t.b[0] - t.a[0]) * u + ix * inward, t.a[1] + (t.b[1] - t.a[1]) * u + up, t.a[2] + (t.b[2] - t.a[2]) * u + iz * inward];
-    const nuit = pal.neon !== undefined;
-    g.quad(at(0, 0.6, 0.05), at(1, 0.6, 0.05), at(1, 1.0, 0.05), at(0, 1.0, 0.05), nuit ? MARQUE.asphalte : MARQUE.creme);
-    morceaux(t, 4, (u0, u1, n) => {
-      const c = n % 2 === 0 ? MARQUE.encre : pal.neon ? pal.neon[t.cote === "left" ? 0 : 1] : MARQUE.livree;
-      const cible = pal.neon && n % 2 === 1 ? lum : g;
-      cible.quad(at(u0, 0, 0.18), at(u1, 0, 0.18), at(u1, 0.55, 0.18), at(u0, 0.55, 0.18), c);
-      cible.quad(at(u0, 0.55, 0.18), at(u1, 0.55, 0.18), at(u1, 0.55, 0), at(u0, 0.55, 0), c);
-      if (pal.neon && n % 2 === 1) {
-        const m = at((u0 + u1) / 2, 0.3, 0.3);
-        lum.halo(m[0], m[1], m[2], c, 3);
-      }
-    });
-  },
-  vibreurs(g, rows) {
-    // Dents de scie relevées : 3 m par couleur, une lèvre d'encre côté route (on les voit de loin et de face).
-    let s = 0;
-    for (let i = 0; i + 1 < rows.length; i++) {
-      const a = rows[i]!;
-      const b = rows[i + 1]!;
-      const ma = across(a, 0.5, 0);
-      const mb = across(b, 0.5, 0);
-      const c = theme.vibreur[Math.floor(s / 3) % 2]!;
-      s += Math.hypot(ma[0] - mb[0], ma[2] - mb[2]);
-      const fa = 1.8 / rowWidth(a);
-      const fb = 1.8 / rowWidth(b);
-      g.quad(across(a, 0, 0.12), across(a, fa, 0.12), across(b, fb, 0.12), across(b, 0, 0.12), c);
-      g.quad(across(a, 1 - fa, 0.12), across(a, 1, 0.12), across(b, 1, 0.12), across(b, 1 - fb, 0.12), c);
-      g.quad(across(a, fa, 0), across(b, fb, 0), across(b, fb, 0.12), across(a, fa, 0.12), MARQUE.encre);
-      g.quad(across(a, 1 - fa, 0), across(b, 1 - fb, 0), across(b, 1 - fb, 0.12), across(a, 1 - fa, 0.12), MARQUE.encre);
-    }
-  },
-  rives(g, a, b, _color, pal) {
-    // Lignes de rive épaisses (0,35 m), pas de sillons : la route est un aplat.
-    const wa = rowWidth(a);
-    const wb = rowWidth(b);
-    for (const [d0, d1] of [[0.5, 0.85], [-0.85, -0.5]] as const) {
-      const fa = (d: number) => (d >= 0 ? d / wa : 1 + d / wa);
-      const fb = (d: number) => (d >= 0 ? d / wb : 1 + d / wb);
-      g.quad(across(a, fa(d0), 0.03), across(a, fa(d1), 0.03), across(b, fb(d1), 0.03), across(b, fb(d0), 0.03), pal.dash);
-    }
-  },
-  tirets(g, b, pal) {
-    tiretsCentre(g, b, pal.dash, 0.4, 5);
-  },
-  cuve(pal) {
-    return [pal.wallA, pal.wallB];
-  },
-  };
-}
+export const THEMES_A: Record<PaletteName, ThemeA> = /* @__PURE__ */ (() => Object.fromEntries(Object.entries(PISTE_A).map(([k, p]) => [k, { ...p, ...LUMIERE_A[k as PaletteName] }])) as Record<PaletteName, ThemeA>)();
 
 // --- Éléments ---------------------------------------------------------------------------------------------------------------------
-
-/** Demi-écartement des piliers d'un portique (comme `postSpan`) : le bord de la route, ou de la bande. */
-export function ecart(b: Block, q: number): number {
-  return b.shoulder ? SHOULDER_EDGE - 0.6 : blockHalfWidth(b, q) + 1.4;
-}
 
 /**
  * Un portique « cartouche » : deux piliers plats, une poutre-panneau bordée d'encre avec son ombre nette décalée (comme l'ombre `4px 4px 0` de la
@@ -225,16 +126,6 @@ export function porte(c: Calques, x: Contexte, b: Block) {
   for (const a of [-5, -2.5]) chevronSol(c.route, r, a, 3.2, 0.9, 0.05, MARQUE.creme);
 }
 
-/** Une plaque au sol bordée d'encre, et ses chevrons. */
-export function plaqueA(c: Calques, b: Block, fond: number, chevron: number, bord: number, n: number) {
-  const r = repereBloc(b, CELL / 2);
-  const ph = blockPadHalfWidth(b);
-  const hl = 4;
-  sol(c.route, r, -ph - 0.35, ph + 0.35, -hl - 0.35, hl + 0.35, 0.035, bord);
-  sol(c.route, r, -ph, ph, -hl, hl, 0.045, fond);
-  for (let i = 0; i < n; i++) chevronSol(c.route, r, -hl + 2.4 + (i * (2 * hl - 2.8)) / Math.max(1, n - 1), ph - 0.6, 0.9, 0.06, chevron);
-}
-
 export function panneau(c: Calques, x: Contexte, hote: Block, s: import("../signage").SignSpec) {
   const r0 = repereBloc(hote, s.q, s.side * s.offset);
   // Un panneau large (4,2 × 1,6 m) sur deux pieds, tourné vers qui arrive ; son ombre nette (encre) derrière, décalée.
@@ -265,7 +156,7 @@ export function panneau(c: Calques, x: Contexte, hote: Block, s: import("../sign
 
 export function rythme(c: Calques, x: Contexte, b: Block, rapide: boolean) {
   if (b.kind === "jump" || b.kind === "gap" || b.kind === "kick") return;
-  const t = th(x);
+  const t = THEMES_A[x.palette];
   const rail = b.open ? 0 : (x.pal.wallHeight ?? 1.4);
   const hw = (u: number) => (isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, u * CELL));
   // Repères plats tous les 16 m (8 m dans une portion rapide), encre et crème, sur le dessus du rebord.
@@ -348,7 +239,7 @@ function lampadaire(c: Calques, x: number, y: number, z: number, a: number, h: n
 
 /** La tribune du départ (tous les thèmes) : un socle plein jusqu'au sol (rien en l'air), trois gradins, la foule en bandes de couleur, un toit plat. */
 export function tribune(c: Calques, x: Contexte, b: Block) {
-  const t = th(x);
+  const t = THEMES_A[x.palette];
   const side = 1;
   const hw = blockHalfWidth(b, CELL / 2);
   const r = repereBloc(b, 16, side * (hw + 4));

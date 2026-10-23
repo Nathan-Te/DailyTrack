@@ -10,6 +10,8 @@ import type { StyleRoute } from "./route";
 import type { Affiches } from "./outils";
 import type { Drapeaux } from "./finition";
 import type { Reglages } from "./paliers";
+import type { PoseLog } from "../decorPose";
+import type { Repere } from "./outils";
 
 /** O : l'existant réécrit en direction (base et contrôle) ; A, B : les directions ; M : le mélange recommandé. C est un traitement de la lumière et des
  * matières (`directionC.ts`), appliqué à une scène déjà construite. */
@@ -46,6 +48,32 @@ export interface Calques {
   chrono?: Affiches;
   /** Retouche 38b : spectateurs des tribunes (palier 3, pas « foule ») — position (pied), cap, couleur du maillot. */
   foule?: { x: number; y: number; z: number; cap: number; couleur: number }[];
+  /**
+   * Lot 43 : les feux de départ du portique, dans le calque `lumineux` ; le compositeur du jeu les allume pendant le décompte (`FeuxDepart`, palier1.ts).
+   * Absent : feux rouges fixes (vitrine).
+   */
+  feux?: { poser(lumineux: Builder, run: () => void, colonne: number): void };
+}
+
+/** Lot 43 : les textes peints sur la scène (bandeaux des portiques), tirés du catalogue de la langue du joueur par le jeu. */
+export interface TextesScene {
+  depart: string;
+  arrivee: string;
+}
+
+/**
+ * Lot 43 : ce que le pas « géométrie » du palier 2 ajoute aux éléments du palier 1 (`finition.ts`, chargé à la demande) : le palier 1, dans le premier
+ * chargement, n'importe pas `finition.ts` ; le compositeur de la vitrine (et le lot du palier 2) passe ces fonctions dans le contexte.
+ */
+export interface FinitionElements {
+  /** Socles prolongés, pneus, boulons, câble, banderole et drapeaux d'un portique. */
+  portique(c: Calques, x: Contexte, b: Block, q: number, w: number, drapeau: readonly number[]): void;
+  /** Semelles boulonnées et jambe de force d'un panneau de virage (`r0` : son repère, `large` : sa demi-largeur). */
+  panneau(c: Calques, x: Contexte, hote: Block, r0: Repere, large: number): void;
+  /** Catadioptres sur les repères de vitesse. */
+  rythme(c: Calques, x: Contexte, b: Block, rapide: boolean): void;
+  /** Les piliers chanfreinés (`colonneChanfreinee`). */
+  colonne(g: Builder, r: Repere, g0: number, g1: number, h0: number, h1: number, a0: number, a1: number, c: number, couleur: number): void;
 }
 
 /** Le thème vu par une direction : sa palette (celle du jeu, retouchée par la direction), son nom, la graine du décor. */
@@ -59,6 +87,12 @@ export interface Contexte {
   reglages?: Reglages;
   /** Retouche 38b : la suite de la variété, **distincte de celle du décor** (le décor reste à sa place quand on la coupe). */
   varie?: () => number;
+  /** Lot 43 : le relevé de la pose (tests, `decorPose.ts`) ; absent dans le jeu. */
+  log?: PoseLog;
+  /** Lot 43 : les textes des bandeaux (catalogue du jeu ; la vitrine donne les siens, en français). Absents : pas de bandeau. */
+  textes?: TextesScene;
+  /** Lot 43 : les pièces du pas « géométrie » (palier 2), données par le compositeur qui a chargé `finition.ts`. */
+  finition?: FinitionElements;
 }
 
 /** Ciel et lumière d'un thème pour une direction. */

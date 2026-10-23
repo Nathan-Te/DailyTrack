@@ -98,12 +98,15 @@ export function textureBandeau(texte: string, s: StyleBandeau): CanvasTexture {
   return tex;
 }
 
-/** Un quadrilatère texturé, coins bas-gauche, bas-droite, haut-droite, haut-gauche du point de vue du lecteur. */
-export function bandeau(tex: CanvasTexture, bl: V3, br: V3, tr: V3, tl: V3): Mesh {
+/**
+ * Un quadrilatère texturé, coins bas-gauche, bas-droite, haut-droite, haut-gauche du point de vue du lecteur. `autre` (lot 43) : une seconde face (mêmes
+ * coins, mêmes coordonnées de texture) dans le même maillage — l'avant et l'arrière d'un portique en un seul appel de rendu.
+ */
+export function bandeau(tex: CanvasTexture, bl: V3, br: V3, tr: V3, tl: V3, autre?: readonly [V3, V3, V3, V3]): Mesh {
   const geo = new BufferGeometry();
-  geo.setAttribute("position", new Float32BufferAttribute([...bl, ...br, ...tr, ...tl], 3));
-  geo.setAttribute("uv", new Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-  geo.setIndex([0, 1, 2, 0, 2, 3]);
+  geo.setAttribute("position", new Float32BufferAttribute([...bl, ...br, ...tr, ...tl, ...(autre ? autre.flat() : [])], 3));
+  geo.setAttribute("uv", new Float32BufferAttribute(autre ? [0, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 1, 0, 1] : [0, 0, 1, 0, 1, 1, 0, 1], 2));
+  geo.setIndex(autre ? [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7] : [0, 1, 2, 0, 2, 3]);
   const mesh = new Mesh(geo, new MeshBasicMaterial({ map: tex, side: DoubleSide }));
   mesh.userData.banner = true;
   return mesh;

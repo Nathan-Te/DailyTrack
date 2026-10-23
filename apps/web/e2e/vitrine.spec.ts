@@ -137,8 +137,8 @@ test("vue en mouvement : à chaque palier et dans l'existant, la voiture roule s
     await expect(page.locator(".mouvement__ips")).toContainText("images/s");
     await expect(page.locator(".mouvement__compteur")).toContainText("appels");
   }
-  // L'existant (le jeu), sur le même tour.
-  await page.locator("#mouvement").getByRole("button", { name: "Existant (le jeu)" }).click();
+  // L'existant (la scène du jeu avant le lot 43, chargée à la demande), sur le même tour.
+  await page.locator("#mouvement").getByRole("button", { name: "Existant (avant le lot 43)" }).click();
   await expect.poll(async () => (await etat())?.scene).toBe("existant");
   const avant = (await etat())!.images;
   await expect.poll(async () => (await etat())!.images - avant, { timeout: 120_000 }).toBeGreaterThanOrEqual(3);

@@ -2,8 +2,8 @@
 // revêtements), dont les **rebords, vibreurs, bordures du vide et marquages** sont confiés à un style (`StyleRoute`) : chaque direction de la vitrine
 // y met les siens. La géométrie qui porte la voiture ne change jamais (mêmes points que la simulation : `blockPoint`, `bankAt`, cuves…).
 //
-// **Copie de travail** des fonctions de `trackMesh.ts` (lot 38 : la scène du jeu ne change pas, et le lot 37 nettoie `trackMesh.ts` en même
-// temps) ; le premier lot de mise en œuvre fera de ce module la route du jeu et retirera la copie de `trackMesh.ts` (voir le README du lot 38).
+// **Lot 43 : la route du jeu** (palier 1, premier chargement). L'ancienne route de `trackMesh.ts` est partie avec l'ancienne scène dans `existant.ts`
+// (chargé à la demande) ; le garde-corps de la Ville (lot 37) est porté ici (`gardeCorps`), pour tous les styles.
 import {
   CELL,
   CUVE_LEFT,
@@ -191,9 +191,38 @@ function addRoad(c: CalquesRoute, pal: Palette, style: StyleRoute, rows: Row[], 
       const longueur = Math.hypot(q[0] - p[0], q[2] - p[2]);
       const t: TronconRebord = { a: p, b: q, dehors: [dx / len, dz / len], cote: side, s: run[side], longueur, couleurs: o.fence ?? [pal.wallA, pal.wallB], bande: !!o.band, hauteur: pal.wallHeight ?? WALL_HEIGHT };
       if (o.open) style.bordureVide(r, c.lumineux, t, pal, [mx, a.left[1], mz]);
-      else style.rebord(r, t, pal, c.lumineux);
+      else {
+        style.rebord(r, t, pal, c.lumineux);
+        // Lot 43 : le garde-corps du lot 37 (Ville), quel que soit le style : la Ville reste dégagée (muret bas, on voit à travers).
+        if (pal.barrier === "garde-corps") gardeCorps(r, t);
+      }
       run[side] += longueur;
     }
+  }
+}
+
+/** Hauteurs (m) des deux lisses d'un garde-corps, au-dessus du pied du rebord ; la plus haute est la hauteur de la simulation (`WALL_HEIGHT`). */
+const GARDE_CORPS_LISSES = [1.02, WALL_HEIGHT - 0.07] as const;
+const GARDE_CORPS_ACIER = 0x4b525c;
+
+/**
+ * Garde-corps (lot 37, porté ici au lot 43) sur le chapeau d'un muret bas (`Palette.wallHeight`, la Ville) : deux lisses et un montant tous les ≈ 4 m,
+ * des surfaces minces sur l'axe du chapeau (0,3 m au-delà du bord) ; le regard passe à travers, jusqu'à `WALL_HEIGHT` (la hauteur de la simulation).
+ */
+export function gardeCorps(g: Builder, t: TronconRebord) {
+  const pieces = Math.max(1, Math.round(t.longueur / 4));
+  const ox = t.dehors[0] * 0.3;
+  const oz = t.dehors[1] * 0.3;
+  const at = (u: number, up: number): V3 => [t.a[0] + (t.b[0] - t.a[0]) * u + ox, t.a[1] + (t.b[1] - t.a[1]) * u + up, t.a[2] + (t.b[2] - t.a[2]) * u + oz];
+  for (let k = 0; k < pieces; k++) {
+    const u0 = k / pieces;
+    const u1 = (k + 1) / pieces;
+    for (const top of GARDE_CORPS_LISSES) g.quad(at(u0, top - 0.08), at(u1, top - 0.08), at(u1, top), at(u0, top), GARDE_CORPS_ACIER);
+    const foot = at(u1, t.hauteur);
+    const head = at(u1, WALL_HEIGHT);
+    const w = 0.05;
+    g.quad([foot[0] - w, foot[1], foot[2]], [foot[0] + w, foot[1], foot[2]], [head[0] + w, head[1], head[2]], [head[0] - w, head[1], head[2]], GARDE_CORPS_ACIER);
+    g.quad([foot[0], foot[1], foot[2] - w], [foot[0], foot[1], foot[2] + w], [head[0], head[1], head[2] + w], [head[0], head[1], head[2] - w], GARDE_CORPS_ACIER);
   }
 }
 
@@ -538,30 +567,38 @@ function bandesDe4m(g: Builder, t: TronconRebord, couleurs: [number, number], ha
   }
 }
 
+/** Le bord du vide de l'existant : bandes alternées de ≈ 4 m larges de 0,5 m, juste au-dessus de la route ; néon de la Nuit (lot 21). */
+export function bordureVideOrigine(g: Builder, lum: Builder, t: TronconRebord, pal: Palette, milieu: V3) {
+  const neon = pal.neon;
+  const target = neon ? lum : g;
+  const p = t.a;
+  const q = t.b;
+  const len = Math.hypot(milieu[0] - p[0], milieu[2] - p[2]) || 1;
+  const ix = ((milieu[0] - p[0]) / len) * 0.5;
+  const iz = ((milieu[2] - p[2]) / len) * 0.5;
+  const pieces = Math.max(1, Math.round(t.longueur / 4));
+  for (let k = 0; k < pieces; k++) {
+    const at = (u: number, inward: number): V3 => [p[0] + (q[0] - p[0]) * u + ix * inward, p[1] + (q[1] - p[1]) * u + 0.06, p[2] + (q[2] - p[2]) * u + iz * inward];
+    const n = Math.floor((t.s + (k * t.longueur) / pieces) / 4);
+    const color = neon ? neon[t.cote === "left" ? 0 : 1] : n % 2 === 0 ? pal.wallA : pal.wallB;
+    target.quad(at(k / pieces, 0), at(k / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, 0), color);
+    if (neon && k % 2 === 0) {
+      const m = at((k + 0.5) / pieces, 0.25);
+      target.halo(m[0], m[1] + 0.25, m[2], color, 3.4);
+    }
+  }
+}
+
+/** La couleur de la route d'un bloc (deux tons en alternance), ou celle de son revêtement. */
+export const couleurRouteOrigine = (b: Block, pal: Palette): number => (b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!);
+/** La jupe (le remblai sous la route) : celle de la palette. */
+export const jupeOrigine = (pal: Palette): number => pal.skirt;
+
 export const STYLE_ORIGINE: StyleRoute = {
   rebord(g, t) {
     bandesDe4m(g, t, t.couleurs, t.hauteur, 0.6);
   },
-  bordureVide(g, lum, t, pal, milieu) {
-    const neon = pal.neon;
-    const target = neon ? lum : g;
-    const p = t.a;
-    const q = t.b;
-    const len = Math.hypot(milieu[0] - p[0], milieu[2] - p[2]) || 1;
-    const ix = ((milieu[0] - p[0]) / len) * 0.5;
-    const iz = ((milieu[2] - p[2]) / len) * 0.5;
-    const pieces = Math.max(1, Math.round(t.longueur / 4));
-    for (let k = 0; k < pieces; k++) {
-      const at = (u: number, inward: number): V3 => [p[0] + (q[0] - p[0]) * u + ix * inward, p[1] + (q[1] - p[1]) * u + 0.06, p[2] + (q[2] - p[2]) * u + iz * inward];
-      const n = Math.floor((t.s + (k * t.longueur) / pieces) / 4);
-      const color = neon ? neon[t.cote === "left" ? 0 : 1] : n % 2 === 0 ? pal.wallA : pal.wallB;
-      target.quad(at(k / pieces, 0), at(k / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, neon ? 0.5 : 1), at((k + 1) / pieces, 0), color);
-      if (neon && k % 2 === 0) {
-        const m = at((k + 0.5) / pieces, 0.25);
-        target.halo(m[0], m[1] + 0.25, m[2], color, 3.4);
-      }
-    }
-  },
+  bordureVide: bordureVideOrigine,
   vibreurs(g, rows) {
     for (let i = 0; i + 1 < rows.length; i++) {
       const a = rows[i]!;
@@ -590,12 +627,8 @@ export const STYLE_ORIGINE: StyleRoute = {
   tirets(g, b, pal) {
     tiretsCentre(g, b, pal.dash, 0.25, 4);
   },
-  couleurRoute(b, pal) {
-    return b.surface === "road" ? pal.road[b.index % 2]! : SURFACE_COLORS[b.surface][b.index % 2]!;
-  },
-  jupe(pal) {
-    return pal.skirt;
-  },
+  couleurRoute: couleurRouteOrigine,
+  jupe: jupeOrigine,
   cuve(pal) {
     return [pal.wallA, pal.wallB];
   },

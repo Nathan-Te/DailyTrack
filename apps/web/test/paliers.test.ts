@@ -10,7 +10,8 @@ import { Drapeaux, marque, varierInstance, varierParPosition } from "../src/scen
 import { PERIODE_TEINTE, TRACES_SOMBRE, matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, teinteLarge, tracesEtMarquages } from "../src/scene/matiere";
 import { carteDeNormales, detailleeAsphalte } from "../src/scene/matiereDetaillee";
 import { THEMES_3, brumeDeProfondeur, uniformesBrume } from "../src/scene/lumiere3";
-import { DIRECTION_P, ROUTE_SOUS_LUMIERE_CHAUDE, decorP, portiqueDepartP } from "../src/scene/palier1";
+import { ROUTE_SOUS_LUMIERE_CHAUDE, portiqueDepartP } from "../src/scene/palier1";
+import { DIRECTION_P, decorP } from "../src/scene/decorP1";
 import { THEMES_C } from "../src/scene/directionC";
 import { C, CHAMPS, enregistrer, fenetre, lire } from "../src/vitrine/parcours";
 import { lineariser, lineariserHalos } from "../src/scene/composerPalier";
@@ -93,15 +94,16 @@ describe("palier 1 : le mélange du lot 38, nettoyé", () => {
     expect(bas).toBeCloseTo(x.floorY, 3);
   });
 
-  it("le mur de pneus léger coûte moitié moins de triangles que celui du lot 38", () => {
+  it("le mur de pneus léger coûte au plus le quart des triangles de celui du lot 38 (lot 43 : les rebords du palier 1, `rebordLeger`)", () => {
     const t: TronconRebord = { a: [0, 0, 0], b: [0, 0, 32], dehors: [1, 0], cote: "left", s: 0, longueur: 32, couleurs: [0x1e1b19, 0xf4f1e6], bande: false, hauteur: 1.4 };
     const lourd = new Builder();
     const leger = new Builder();
     rebordB("desert", "pneus")(lourd, t);
     rebordB("desert", "pneus", { leger: true })(leger, t);
     const tris = (g: Builder) => g.pos.length / 9;
-    expect(tris(leger)).toBeLessThan(tris(lourd) * 0.6);
-    expect(tris(leger)).toBeGreaterThan(tris(lourd) * 0.3);
+    // Lot 43 : le palier 1 est la scène de tout le monde, ses rebords ne coûtent pas plus que les murs de l'existant (voir aussi `palier1.test.ts`).
+    expect(tris(leger)).toBeLessThan(tris(lourd) * 0.25);
+    expect(tris(leger)).toBeGreaterThan(0);
   });
 });
 

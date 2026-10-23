@@ -1,6 +1,7 @@
 # Direction de la scène de Track — **la règle de la scène**
 
-> **Statut (lot 39, 23/10/2026) : ce document n'est plus un projet, il est la règle de la scène de Track.** Il a été écrit au lot 38 (vitrine
+> **Statut (lot 39, 23/10/2026) : ce document n'est plus un projet, il est la règle de la scène de Track.** Lot 43 : **le palier 1 est la scène du jeu** ;
+> décisions du 23/10/2026 au § 9. Il a été écrit au lot 38 (vitrine
 > `/track/vitrine/`), complété par la retouche 38b (les paliers) et tranché par Nathan le 22/10/2026 : voir **§ 9, « Décisions »**, qui l'emporte sur
 > tout ce qui précède quand ils diffèrent ; ce qui reste ouvert y est listé comme tel. Les lots de mise en œuvre s'y conforment ; la scène du jeu passe
 > par le socle par paliers (`apps/web/src/scene/socle.ts`, lot 39). La charte de l'interface (`docs/plateforme/identite.md`) reste celle de l'interface ;
@@ -185,11 +186,21 @@ Prises après la vitrine des paliers (retouche 38b) et appliquées à la vitrine
 **Un palier ne change jamais la simulation.** **On ne reconstruit jamais la scène pendant une course** (accueil, pause, arrivée, podium du Salon seulement). **Les modules des
 pas se chargent à la demande**, jamais dans le premier chargement (lot 39 : `socle.ts`).
 
-**Restent ouvertes** (à lister comme telles, rien n'est tranché) :
-- la **vie au Stade** : confettis ou non ; la foule de la tribune seule, ou aussi celle du décor ;
-- des **sponsors fictifs** dans le jeu ;
-- des **panneaux de distance** ;
-- des **feux au décompte** ;
-- un **sol relevé près de la piste** (talus) pour que le décor se voie depuis la voiture ;
-- la **palette `neon`** (dans le code, aucun thème ne l'utilise) ;
-- le **budget du premier chargement des paliers** (≈ +9 ko) et la ligne « décor 3D à la demande » (16 ko).
+### Décisions du 23/10/2026 (Nathan, écrites au lot 43)
+
+9. **Budget** : **+7 à 9 ko au premier chargement** pour le palier 1, et une ligne « **décor 3D à la demande** » de **16 ko** (lot suivant). Le plafond du
+   premier chargement de Track est **relevé de +15 ko quand le palier 1 entre en jeu** (lot 43) : les lignes JS, hors three.js et JS + CSS de
+   `docs/plateforme/budgets.md` montent d'autant. *Mesuré au lot 43 : +9,5 ko net (9 466 o ; README du lot 43, § 4).*
+10. **Panneaux de distance avant les virages serrés : oui** (lot 43 : « 3, 2, 1 » barres tous les 28 m, calculés depuis la géométrie du circuit).
+11. **Feux de départ allumés pendant le décompte : oui** (lot 43 : un à un, puis verts au départ ; l'affichage lit l'état du décompte, rien de plus ; au
+    Salon aussi).
+12. **Sponsors fictifs, sur les portiques et les rebords : oui, discrets** (lot 43 : huit noms inventés, `src/scene/sponsors.ts`, jamais plus lisibles que
+    les panneaux de course).
+13. **Sol relevé près de la piste**, pour voir le décor : **oui** — au lot du décor (palier 1, thème par thème), pas au lot 43.
+14. **Vie au Stade** : **confettis à l'arrivée seulement ; foule seulement dans la tribune du départ** — au lot de la vie (palier 3).
+
+Et, du lot 40 (§ 6 de son README) : **l'orange est à la voiture seule**. Les vibreurs orange du Rallye et rouge-orangé de la Campagne changent de teinte ;
+chaque élément de piste de chaque thème garde un écart ΔE 2000 > 12 avec l'orange de Track (`0xe8552d`) — lot 43 : le rouge de la piste devient
+`0xc01818` (`ROUGE_PISTE`, `palier1.ts`), la roche du Canyon `0x7a3a2a` ; la livrée orange de la marque ne reste qu'en hauteur, sur le portique de départ.
+
+**Reste ouverte** : la **palette `neon`** (dans le code, aucun thème ne l'utilise).

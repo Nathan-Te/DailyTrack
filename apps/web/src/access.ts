@@ -65,3 +65,12 @@ export function withoutRefused(search: string, verdict: AddressVerdict, seedWasF
   const q = params.toString();
   return q ? `?${q}` : "";
 }
+
+/**
+ * Lot 43 : `?palier=existant` montre l'ancienne scène (celle d'avant le palier 1, chargée à la demande) dans le vrai jeu, pour comparer — **en recette et
+ * dans les aperçus seulement** : jamais en production (`restricted`), où la scène est toujours le palier 1. Tout autre palier demandé est ignoré.
+ */
+export function palierDemande(search: string, restricted: boolean): "existant" | null {
+  if (restricted) return null;
+  return new URLSearchParams(search).get("palier") === "existant" ? "existant" : null;
+}

@@ -1,11 +1,13 @@
-// Les colonnes de la vitrine. **Planche des directions (lot 38)** : l'existant (la vraie scène du jeu, `buildTrackScene`), les trois directions et le
+// Les colonnes de la vitrine. **Planche des directions (lot 38)** : l'existant (la scène du jeu jusqu'au lot 43, chargée à la demande), les trois directions et le
 // mélange recommandé. **Planche des paliers (retouche 38b)** : l'existant, les paliers 1, 2 et 3 au-dessus du mélange, et « à la carte » (les pas
 // cochés en tête de page). Chaque colonne est chargée à la demande (`import()`) : un morceau à elle, dont la construction mesure le poids
 // (vite.vitrine.config.ts).
 import type { PaletteName, Track } from "@cdj/sim";
 import type { PerspectiveCamera, WebGLRenderer } from "three";
 import type { TrackScene } from "../trackMesh";
-import { buildTrackScene } from "../scene/socle";
+import { composer } from "../scene/socle";
+/** Lot 43 : l'ancienne scène (palier « existant ») a quitté le premier chargement du jeu ; la vitrine la charge pour la comparer. */
+const existant = () => import("../scene/existant");
 import { composerScene } from "../scene/composer";
 import { reglagesDuPalier, type Reglages } from "../scene/paliers";
 
@@ -35,9 +37,9 @@ export interface Variante {
 const EXISTANT: Variante = {
   id: "existant",
   titre: "Existant",
-  resume: "La scène du jeu aujourd'hui (lot 23).",
+  resume: "La scène du jeu jusqu'au lot 43 (lots 23 et 37), avant le palier 1.",
   morceaux: [],
-  charger: async () => ({ construire: (track, palette) => buildTrackScene(track, palette) }),
+  charger: async () => (await existant(), { construire: (track, palette) => composer(track, palette, "existant") }),
 };
 
 export const VARIANTES: Variante[] = [
@@ -69,7 +71,8 @@ export const VARIANTES: Variante[] = [
     morceaux: ["directionC"],
     charger: async () => {
       const { appliquerC } = await import("../scene/directionC");
-      return { construire: (track, palette) => appliquerC(buildTrackScene(track, palette), palette, track) };
+      await existant();
+      return { construire: (track, palette) => appliquerC(composer(track, palette, "existant"), palette, track) };
     },
   },
   {

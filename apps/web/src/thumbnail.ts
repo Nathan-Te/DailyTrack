@@ -2,6 +2,7 @@ import { NeutralToneMapping, PerspectiveCamera, Vector3, WebGLRenderer } from "t
 import { WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
 import { PALETTE_DEFS, SURFACE_COLORS } from "./trackMesh";
 import { buildTrackScene } from "./scene/socle";
+import { paletteP1 } from "./scene/palier1";
 import { SHOULDER_EDGE } from "@cdj/sim";
 import { pickFocus, type Focus } from "./thumbFocus";
 
@@ -191,7 +192,7 @@ function outContext(out: HTMLCanvasElement): CanvasRenderingContext2D {
 
 function render2d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElement) {
   const ctx = outContext(out);
-  const pal = PALETTE_DEFS[circuit.palette];
+  const pal = paletteP1(circuit.palette, PALETTE_DEFS[circuit.palette]); // les couleurs de la scène du jeu (palier 1, lot 43)
   const W = out.width;
   const H = out.height;
   ctx.fillStyle = pal.floorA;

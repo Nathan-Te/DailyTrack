@@ -112,7 +112,7 @@ function sourcesChaudes(scene: Object3D): [number, number, number][] {
 }
 
 /** Flaque de lumière : un disque doux (la lumière, en 3D, peut avoir un dégradé : voir le document de direction). */
-function textureFlaque(couleur: number): CanvasTexture {
+export function textureFlaque(couleur: number): CanvasTexture {
   const n = 64;
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = n;

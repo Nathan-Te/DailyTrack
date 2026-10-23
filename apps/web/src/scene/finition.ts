@@ -3,8 +3,15 @@
 // appel de rendu par calque) ; seuls les drapeaux animés du palier 3 ont leur maillage (`Drapeaux`). Présentation seule : rien ne touche à `sim`.
 import { BufferGeometry, Color, Float32BufferAttribute } from "three";
 import { Builder, mix, shade, type V3 } from "../meshKit";
-import { boite, pt, tube, type Affiches, type Repere } from "./outils";
-import type { Calques } from "./types";
+import { WALL_HEIGHT } from "@cdj/sim";
+import { CHAPEAU } from "../decorPose";
+import { hasCap, onRim } from "../trackMesh";
+import { boite, boiteChanfreinee, pt, repereBloc, tube, type Affiches, type Repere } from "./outils";
+import { MARQUE } from "./pieces";
+import { CAOUTCHOUC, METAL, METAL_SOMBRE } from "./piste";
+import { POSES_RYTHME, VENT } from "./palier1";
+import { rectSponsor, sponsorsDuTheme } from "./sponsors";
+import type { Calques, FinitionElements } from "./types";
 
 // --- Formes plus fines ---------------------------------------------------------------------------------------------------------------
 
@@ -279,3 +286,59 @@ export function teinteVoisine(c: number, rnd: () => number, force = 0.08): numbe
   const k = 1 + (rnd() - 0.5) * 2 * force;
   return rnd() < 0.2 ? mix(shade(c, k), USURE, 0.15) : shade(c, k);
 }
+
+// --- Lot 43 : le pas « géométrie » sur les éléments de course du palier 1 -------------------------------------------------------------
+
+/**
+ * Ce que la géométrie (palier 2) ajoute aux éléments du palier 1 (`palier1.ts`), qui sont dans le premier chargement du jeu et n'importent pas ce
+ * module : le compositeur qui a chargé `finition.ts` les passe dans le contexte (`Contexte.finition`). Déplacé tel quel de `palier1.ts` (retouche 38b).
+ */
+export const FINITION_ELEMENTS: FinitionElements = {
+  portique(c, x, b, q, w, drapeau) {
+    const r = repereBloc(b, q);
+    for (const s of [-1, 1]) {
+      // Un socle prolongé vers qui arrive, protégé par deux piles de pneus (une sur deux au haut blanc) ; ses boulons.
+      boiteChanfreinee(c.solide, r, s * w - 1.1, s * w + 1.1, -0.1, 0.7, -2.6, -0.9, 0.08, MARQUE.encre, shade(MARQUE.encre, 1.3));
+      const bas = x.floorY - b.y0;
+      if (bas < -0.5) boite(c.solide, r, s * w - 1.0, s * w + 1.0, bas, 0, -2.5, -0.8, shade(0xb9bbbe, 0.85), shade(0xb9bbbe, 0.8));
+      for (const [k, dg] of [-0.45, 0.45].entries()) pneusEmpiles(c.solide, ...pt(r, s * w + dg, 0.7, -1.75), 3, k === 0 ? 0xf4f4f4 : CAOUTCHOUC);
+      boulons(c.solide, r, coins(s * w - 1.1, s * w + 1.1, -0.9, 0.9, 0.14), 0.7, METAL);
+      // Le câble d'alimentation qui descend de la poutre le long du pilier.
+      cablePendant(c.solide, pt(r, s * (w - 0.75), 8.4, 0.3), pt(r, s * (w - 0.75), 0.72, 0.6), 0.25, CAOUTCHOUC, 6);
+      // Banderole de sponsor sur le devant du socle prolongé.
+      const logos = sponsorsDuTheme(x.palette);
+      banderole(c.affiches, r, s * w - 1.05, s * w + 1.05, 0.08, 0.66, -2.62, rectSponsor(logos[(s + 1) / 2]!));
+    }
+    // Un drapeau en haut de chaque pilier (hampe : un tube), qui flotte dans le vent de la scène : dès qu'il y a des drapeaux (palier 2 :
+    // figés ; palier 3 : animés).
+    if (!c.drapeaux) return;
+    for (const s of [-1, 1]) {
+      const haut = pt(r, s * (w + 0.4), 11.6, 0);
+      c.solide.box(haut[0] - 0.05, haut[1], haut[2] - 0.05, haut[0] + 0.05, haut[1] + 2.6, haut[2] + 0.05, METAL);
+      c.drapeaux.drapeau([haut[0], haut[1] + 2.55, haut[2]], VENT, 1.7, 1.05, drapeau, s * 1.3 + b.index);
+    }
+  },
+  panneau(c, _x, _hote, r0, large) {
+    for (const g of [-large * 0.6, large * 0.6]) {
+      boite(c.solide, r0, g - 0.22, g + 0.22, 0, 0.04, 0.03, 0.47, METAL_SOMBRE);
+      boulons(c.solide, r0, coins(g - 0.22, g + 0.22, 0.03, 0.47, 0.06), 0.04, METAL);
+    }
+    // Jambe de force entre les deux pieds, en diagonale (la structure qui tient le panneau au vent).
+    const a = pt(r0, -large * 0.6, 0.3, 0.25);
+    const d = pt(r0, large * 0.6, 1.5, 0.25);
+    c.solide.box(Math.min(a[0], d[0]) - 0.03, a[1], Math.min(a[2], d[2]) - 0.03, Math.max(a[0], d[0]) + 0.03, a[1] + 0.06, Math.max(a[2], d[2]) + 0.03, METAL_SOMBRE);
+    boite(c.solide, r0, -large * 0.6, large * 0.6, 0.9, 0.96, 0.22, 0.28, METAL_SOMBRE);
+  },
+  rythme(c, x, b, rapide) {
+    // Un catadioptre ambre sur chaque repère de vitesse (ils ne sont posés que dans les portions rapides, sur le chapeau des rebords).
+    if (!rapide || !hasCap(b)) return;
+    const cap = x.pal.wallHeight ?? WALL_HEIGHT;
+    for (const u of POSES_RYTHME) {
+      for (const side of [-1, 1] as const) {
+        const p = onRim(b, u, side, CHAPEAU / 2, cap);
+        c.lumineux.box(p[0] - 0.13, p[1] + 1.4, p[2] - 0.13, p[0] + 0.13, p[1] + 1.52, p[2] + 0.13, 0xffb000);
+      }
+    }
+  },
+  colonne: colonneChanfreinee,
+};

@@ -68,6 +68,8 @@ describe("adresse du jeu construite par /admin", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, demo: true, fxOff: true, quality: "1", camera: "capot", shakeOff: true, ghostOff: true, touch: "1", api: " http://x " })).toBe(
       "demo&fx=off&quality=1&camera=capot&shake=0&ghost=off&touch=1&api=http%3A%2F%2Fx",
     );
+    // Lot 43 : l'ancienne scène, pour comparer au palier 1 (recette et aperçus seulement).
+    expect(buildQuery({ ...DEFAULT_ADMIN, palierExistant: true })).toBe("palier=existant");
   });
   it("l'accueil (lot 29) : ?home=1 le force malgré debug, ?howto=1 montre l'aide ; le lien de l'accueil de démonstration est simple", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, api: "demo", home: true, debug: true })).toBe("debug&home=1&api=demo");
