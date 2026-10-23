@@ -1,7 +1,6 @@
 // Retouche 38b — palier 2, pas « géométrie » et « variété » : les pièces qui donnent l'échelle (boulons, haubans, câbles, banderoles, pneus
 // empilés, drapeaux) et la variation de chaque instance (teinte, usure, orientation, taille). Tout reste fusionné dans les calques du lot 38 (un
 // appel de rendu par calque) ; seuls les drapeaux animés du palier 3 ont leur maillage (`Drapeaux`). Présentation seule : rien ne touche à `sim`.
-import { BufferGeometry, Color, Float32BufferAttribute } from "three";
 import { Builder, mix, shade, type V3 } from "../meshKit";
 import { WALL_HEIGHT } from "@cdj/sim";
 import { CHAPEAU } from "../decorPose";
@@ -83,108 +82,8 @@ export function banderole(aff: Affiches, r: Repere, g0: number, g1: number, h0: 
   aff.quad(pt(r, g0, h0, a + 0.01), pt(r, g1, h0, a + 0.01), pt(r, g1, h1, a + 0.01), pt(r, g0, h1, a + 0.01), rect);
 }
 
-// --- Drapeaux (palier 2 : figés dans le calque ; palier 3 : animés) -----------------------------------------------------------------
-
-/**
- * Les drapeaux et banderoles souples d'une scène. Chaque sommet porte `flot` (0 à la hampe, 1 au bout libre) et une phase : au palier 3 la carte
- * graphique les fait onduler (`drapeauxAnimes`, `vie.ts` : un seul maillage, un appel de rendu) ; au palier 2 ils sont figés dans leur pose de
- * repos et versés dans le calque `solide` (`verser`) : aucun appel de plus.
- */
-export class Drapeaux {
-  readonly pos: number[] = [];
-  readonly col: number[] = [];
-  /** Par sommet : flot (0–1), phase (rad), amplitude (m). */
-  readonly flot: number[] = [];
-  /** Par sommet : la direction de l'ondulation (perpendiculaire au tissu). */
-  readonly ondule: number[] = [];
-  private readonly c = new Color();
-
-  private sommet(p: V3, couleur: number, flot: number, phase: number, amp: number, n: V3) {
-    this.c.set(couleur);
-    this.pos.push(p[0], p[1], p[2]);
-    this.col.push(this.c.r, this.c.g, this.c.b);
-    this.flot.push(flot, phase, amp);
-    this.ondule.push(n[0], n[1], n[2]);
-  }
-
-  /**
-   * Un drapeau accroché en haut d'une hampe : `mat` = le haut de la hampe, `dir` (x, z) = où flotte le tissu, `l` × `h` m, `n` tranches.
-   * `couleurs` : deux bandes (en haut, en bas) ou une couleur.
-   */
-  drapeau(mat: V3, dir: readonly [number, number], l: number, h: number, couleurs: readonly number[], phase: number, n = 5) {
-    const d = Math.hypot(dir[0], dir[1]) || 1;
-    const fx = dir[0] / d;
-    const fz = dir[1] / d;
-    const no: V3 = [-fz, 0, fx];
-    const bandes = couleurs.length;
-    for (let i = 0; i < n; i++) {
-      const u0 = i / n;
-      const u1 = (i + 1) / n;
-      for (let k = 0; k < bandes; k++) {
-        const y1 = mat[1] - (h * k) / bandes;
-        const y0 = mat[1] - (h * (k + 1)) / bandes;
-        const P = (u: number, y: number): V3 => [mat[0] + fx * l * u, y - u * 0.12 * h, mat[2] + fz * l * u];
-        const couleur = couleurs[k]!;
-        const q = [P(u0, y0), P(u1, y0), P(u1, y1), P(u0, y1)] as const;
-        const f = [u0, u1, u1, u0];
-        for (const j of [0, 1, 2, 0, 2, 3]) this.sommet(q[j]!, couleur, f[j]!, phase + f[j]! * 2.4, 0.22 * l, no);
-      }
-    }
-  }
-
-  /** Une banderole souple tendue de `a` à `b` sur `h` m de haut : elle ondule au milieu, pas aux attaches. */
-  banderole(a: V3, b: V3, h: number, couleurs: readonly number[], phase: number, n = 8) {
-    const dx = b[0] - a[0];
-    const dz = b[2] - a[2];
-    const d = Math.hypot(dx, dz) || 1;
-    const no: V3 = [-dz / d, 0, dx / d];
-    for (let i = 0; i < n; i++) {
-      const u0 = i / n;
-      const u1 = (i + 1) / n;
-      const P = (u: number, dy: number): V3 => [a[0] + dx * u, a[1] + (b[1] - a[1]) * u - 0.25 * 4 * u * (1 - u) + dy, a[2] + dz * u];
-      const f = (u: number) => Math.sin(Math.PI * u);
-      const couleur = couleurs[i % couleurs.length]!;
-      const q = [P(u0, -h), P(u1, -h), P(u1, 0), P(u0, 0)] as const;
-      const fl = [f(u0), f(u1), f(u1), f(u0)];
-      const us = [u0, u1, u1, u0];
-      for (const j of [0, 1, 2, 0, 2, 3]) this.sommet(q[j]!, couleur, fl[j]!, phase + us[j]! * 6, 0.12, no);
-    }
-  }
-
-  get vide(): boolean {
-    return this.pos.length === 0;
-  }
-
-  /** La géométrie animable (palier 3) : `aFlot` (flot, phase, amplitude) et `aOndule`. */
-  geometry(): BufferGeometry {
-    const g = new BufferGeometry();
-    g.setAttribute("position", new Float32BufferAttribute(this.pos, 3));
-    g.setAttribute("color", new Float32BufferAttribute(this.col, 3));
-    g.setAttribute("aFlot", new Float32BufferAttribute(this.flot, 3));
-    g.setAttribute("aOndule", new Float32BufferAttribute(this.ondule, 3));
-    g.computeVertexNormals();
-    return g;
-  }
-
-  /** Verse les drapeaux, figés dans leur pose de repos (la même formule que l'animation à t = 0), dans un calque ordinaire. */
-  verser(g: Builder) {
-    for (let i = 0; i + 2 < this.pos.length / 3; i += 3) {
-      const p = [0, 1, 2].map((k) => poseRepos(this, i + k));
-      const c = this.col;
-      const hex = new Color(c[i * 3]!, c[i * 3 + 1]!, c[i * 3 + 2]!).getHex();
-      g.tri(p[0]!, p[1]!, p[2]!, hex);
-    }
-  }
-}
-
-/** La pose de repos d'un sommet (t = 0) : `déplacement = ondule × sin(phase) × amplitude × flot`, comme le nuanceur de `vie.ts`. */
-function poseRepos(d: Drapeaux, i: number): V3 {
-  const f = d.flot[i * 3]!;
-  const ph = d.flot[i * 3 + 1]!;
-  const amp = d.flot[i * 3 + 2]!;
-  const k = Math.sin(ph) * amp * f;
-  return [d.pos[i * 3]! + d.ondule[i * 3]! * k, d.pos[i * 3 + 1]!, d.pos[i * 3 + 2]! + d.ondule[i * 3 + 2]! * k];
-}
+// --- Drapeaux (palier 2 : figés dans le calque ; palier 3 : animés) : `drapeaux.ts` (lot 46) ---------------------------------------
+export { Drapeaux } from "./drapeaux";
 
 // --- Variété ------------------------------------------------------------------------------------------------------------------------
 

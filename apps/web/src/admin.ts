@@ -90,6 +90,7 @@ const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palie
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));
 $<HTMLSelectElement>("camera").addEventListener("change", (e) => set({ camera: (e.target as HTMLSelectElement).value as AdminState["camera"] }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));
+$<HTMLSelectElement>("scene").addEventListener("change", (e) => set({ scene: (e.target as HTMLSelectElement).value as AdminState["scene"] }));
 $<HTMLSelectElement>("voiture").addEventListener("change", (e) => set({ voiture: (e.target as HTMLSelectElement).value as AdminState["voiture"] }));
 $<HTMLSelectElement>("couleur").addEventListener("change", (e) => set({ couleur: (e.target as HTMLSelectElement).value }));
 $<HTMLSelectElement>("motif").addEventListener("change", (e) => set({ motif: (e.target as HTMLSelectElement).value as AdminState["motif"] }));
@@ -162,6 +163,7 @@ function render() {
   theme.value = state.theme;
   for (const id of checks) $<HTMLInputElement>(id).checked = state[id];
   $<HTMLSelectElement>("quality").value = state.quality;
+  $<HTMLSelectElement>("scene").value = state.scene;
   $<HTMLSelectElement>("voiture").value = state.voiture;
   $<HTMLSelectElement>("couleur").value = state.couleur;
   $<HTMLSelectElement>("motif").value = state.motif;

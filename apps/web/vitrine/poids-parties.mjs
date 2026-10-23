@@ -17,7 +17,7 @@ const SCENE = fileURLToPath(new URL("../src/scene/", import.meta.url));
 // Déjà dans le premier chargement du jeu : laissés dehors.
 const DEJA = ["three", "@cdj/sim", "*/trackMesh", "*/trackProps", "*/meshKit", "*/signage", "*/speedFeel", "*/halo"];
 /** Les modules des pas (retouche 38b) : hors du palier 1. */
-const PAS = ["finition", "matiere", "matiereDetaillee", "bruit", "reflets", "lumiere3", "vie", "post"];
+const PAS = ["finition", "drapeaux", "matiere", "matiereDetaillee", "bruit", "reflets", "lumiere3", "vie", "post", "vieJeu", "cielJeu", "ombres3"];
 /** Le palier 1 et ce qu'il tire (lot 38 compris) : déjà là quand on mesure un pas. */
 const PALIER1 = ["composerPalier", "palier1", "decorP1", "piste", "sponsors", "composerP1", "paliers", "memoire", "composer", "route", "outils", "pieces", "types", "origine", "directionA", "directionB", "directionC", "directionM", "textures"];
 
@@ -55,8 +55,13 @@ const PARTIES = [
   ["Palier 2 — matière (matiere.ts, bruit.ts : matière sobre, variation de teinte large, traces et marquages)", "matiere", ["matiereAsphalte", "matiereBeton", "matiereMetal", "matiereDecor", "teinteLarge", "tracesEtMarquages", "matieresDessinees"], { dehors: PALIER1 }],
   ["Palier 2 — matière détaillée (matiereDetaillee.ts : l'ancienne matière du 38b, comparaison seulement, matiere.ts et bruit.ts laissés dehors)", "matiereDetaillee", ["detailleeAsphalte", "detailleeBeton", "detailleeMetal", "detailleeDecor", "carteDeNormales"], { dehors: [...PALIER1, "matiere", "bruit"] }],
   ["Palier 2 — reflets (reflets.ts : carte d'environnement du ciel)", "reflets", ["carteEnvironnement"], { dehors: PALIER1 }],
-  ["Palier 3 — lumière (lumiere3.ts : brume de profondeur, ciel et nuages, réglages par thème)", "lumiere3", ["THEMES_3", "brumeDeProfondeur", "uniformesBrume", "domeDuCiel"], { dehors: PALIER1 }],
-  ["Palier 3 — vie (vie.ts : drapeaux, foule, écrans, chronomètre, particules)", "vie", ["drapeauxAnimes", "fouleInstanciee", "rubanDesEcrans", "Chronometre", "maillageEcrans", "particules"], { dehors: [...PALIER1, "lumiere3"] }],
+  ["Palier 3 — lumière (lumiere3.ts : brume de profondeur, ciel et nuages, réglages par thème)", "lumiere3", ["CIEL_3", "brumeDeProfondeur", "uniformesBrume", "domeDuCiel"], { dehors: PALIER1 }],
+  ["Palier 3 — vie (vie.ts : drapeaux, foule, écrans, chronomètre, particules)", "vie", ["drapeauxAnimes", "fouleAnimee", "rubanDesEcrans", "Chronometre", "maillageEcrans", "particules", "PARTICULES_3"], { dehors: [...PALIER1, "lumiere3"] }],
+  // Lot 46 : les pas « vie », « ciel » et « ombres » du jeu (à la demande, ligne « vie et ciel à la demande » de budgets.md : 8 ko au plus ; la mesure qui fait foi
+  // est celle des morceaux du jeu construit, `e2e/perf.spec.ts`). Le palier 1 du jeu est déjà là (premier chargement).
+  ["Palier 3 du jeu (lot 46) — vie (vieJeu.ts, vie.ts, drapeaux.ts, réglages des thèmes)", "vieJeu", ["VIE"], { dehors: [...PALIER1, "socle"] }],
+  ["Palier 3 du jeu (lot 46) — ciel (cielJeu.ts, lumiere3.ts, bruit.ts)", "cielJeu", ["CIEL"], { dehors: [...PALIER1, "socle"] }],
+  ["Palier 3 du jeu (lot 46) — vie et ciel ensemble", null, ["VIE", "CIEL", "OMBRES"], { entree: `import { VIE } from "./vieJeu"; import { CIEL } from "./cielJeu"; import { OMBRES } from "./ombres3";`, dehors: [...PALIER1, "socle"] }],
   ["Palier 3 — post-traitement (post.ts et les passes de three.js : occlusion GTAO, halo, sortie, étalonnage, SMAA)", "post", ["ChainePost"], { dehors: [...PALIER1, "lumiere3"] }],
   ["Palier 3 — post : occlusion seule (GTAOPass)", null, ["GTAOPass"], { entree: `import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";` }],
   ["Palier 3 — post : halo seul (UnrealBloomPass)", null, ["UnrealBloomPass"], { entree: `import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";` }],
@@ -79,7 +84,8 @@ const PARTIES = [
 /** Un module vide qui exporte les mêmes noms (le palier 1 mesuré sans les modules des pas). */
 function moduleVide(chemin) {
   const src = readFileSync(chemin, "utf8");
-  const noms = [...src.matchAll(/^export (?:async )?(?:function|const|class|let) (\w+)/gm)].map((m) => m[1]);
+  // Lot 46 : les réexportations aussi (`export { Drapeaux } from "./drapeaux"`, finition.ts).
+  const noms = [...src.matchAll(/^export (?:async )?(?:function|const|class|let) (\w+)/gm), ...[...src.matchAll(/^export \{ ([\w, ]+) \} from/gm)].flatMap((m) => m[1].split(/,\s*/).map((n) => [, n]))].map((m) => m[1]);
   return noms.map((n) => `export const ${n} = undefined;`).join("\n");
 }
 
