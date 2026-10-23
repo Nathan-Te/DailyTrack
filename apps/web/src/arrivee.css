@@ -377,3 +377,30 @@ body.touch .arrivee__indice {
     align-items: start;
   }
 }
+
+/* --- Lot 41 : une voiture débloquée, une ligne discrète sous la médaille, avec « Voir au Garage » ------------------------------------------------ */
+.arrivee__garage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: var(--dj-trait) solid var(--track-route);
+  border-left: 6px solid var(--track-livree);
+  border-radius: var(--dj-rayon-bouton);
+  font-size: var(--dj-taille-14);
+  color: var(--track-texte);
+}
+.arrivee__garage b {
+  font-family: var(--track-police);
+  font-style: italic;
+  font-weight: 800;
+  font-size: var(--dj-taille-16);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--track-livree-texte);
+}
+.arrivee__garage .lien {
+  margin-left: auto;
+}

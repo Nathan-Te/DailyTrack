@@ -4,7 +4,7 @@ import { svg } from "@cdj/ui";
 // (`dj-icone` : épaisseur de trait des jetons). Aucun émoji dans l'interface. Une icône seule porte un `aria-label` (posé par l'appelant sur
 // son bouton) ; l'icône elle-même est décorative.
 
-export const ICONES_TRACK = ["reglages", "recommencer", "son", "muet", "fantome", "aide", "calendrier", "classement", "lecture", "pause", "fermer", "accueil"] as const;
+export const ICONES_TRACK = ["reglages", "recommencer", "son", "muet", "fantome", "aide", "calendrier", "classement", "lecture", "pause", "fermer", "accueil", "voiture"] as const;
 export type IconeTrack = (typeof ICONES_TRACK)[number];
 
 const TRACES: Record<IconeTrack, readonly string[]> = {
@@ -20,13 +20,19 @@ const TRACES: Record<IconeTrack, readonly string[]> = {
   pause: ["M8 5v14M16 5v14"],
   fermer: ["M5 5l14 14M19 5 5 19"],
   accueil: ["M3 11 12 3l9 8", "M5 10v10h14V10", "M10 20v-6h4v6"],
+  voiture: ["M2 16v-4l4-1 3-4h7l4 4 2 1v4h-2", "M9 16h6", "M7 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z", "M17 14a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"], // lot 41 : le Garage
 };
 
 /** Une icône décorative de Track (grille de 24). */
 export function iconeTrack(nom: IconeTrack, taille = 20): SVGSVGElement {
+  return iconeDeTraces(nom, TRACES[nom], taille);
+}
+
+/** Une icône au trait à partir de ses tracés (grille de 24) : le Garage (lot 41) y passe les siennes, chargées avec lui. */
+export function iconeDeTraces(nom: string, traces: readonly string[], taille = 20): SVGSVGElement {
   return svg(
     "svg",
     { classe: ["dj-icone", `dj-icone--${nom}`], attrs: { viewBox: "0 0 24 24", width: taille, height: taille, fill: "none", stroke: "currentColor", "stroke-linecap": "square", "stroke-linejoin": "miter", focusable: "false", "aria-hidden": "true" } },
-    ...TRACES[nom].map((d) => svg("path", { attrs: { d } })),
+    ...traces.map((d) => svg("path", { attrs: { d } })),
   );
 }

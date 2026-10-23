@@ -116,6 +116,8 @@ interface CdjDebug {
     maillages: number;
     triangles: number;
     counted: boolean;
+    /** Lot 41 : le Garage, une fois chargé (sinon `null`) : la voiture regardée, les voitures débloquées, hors connexion, la réponse du serveur. */
+    garage: { regardee: string; debloquees: string[]; horsLigne: boolean; statut: unknown } | null;
   };
   socle: {
     composer(track: unknown, palette: string, palier: string, options?: unknown): unknown;

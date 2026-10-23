@@ -1,4 +1,5 @@
 import { ProfileClient, call, type ApiResult, type MeProfile, type NameCheck } from "@cdj/profile";
+import type { EtatVoiture, ProgresGarage } from "@cdj/sim";
 
 // Client de l'API du classement. Le jeu fonctionne sans elle : si elle n'est pas configurée ou injoignable,
 // on le dit poliment et on continue (le classement est un plus, pas un prérequis).
@@ -30,6 +31,14 @@ export interface SubmitResult {
   rank: number;
   participants: number;
   medal: BoardRow["medal"];
+  /** Lot 41 : le Garage après cet envoi (absent d'un serveur plus ancien) ; `nouvelles` = les voitures que cette course débloque. */
+  garage?: GarageStatut & { nouvelles: string[] };
+}
+
+/** Lot 41 : `GET /api/garage` — la progression du joueur et l'état de chaque voiture, calculés par le serveur. */
+export interface GarageStatut {
+  progres: ProgresGarage;
+  voitures: EtatVoiture[];
 }
 
 export interface GhostData {
@@ -77,6 +86,8 @@ export interface LeaderboardSource {
   checkName(name: string, playerId: string): Promise<ApiResult<NameCheck>>;
   /** « Changer mon code » : le profil passe à `newId`, `oldId` est révoqué. */
   rotateCode(oldId: string, newId: string): Promise<ApiResult<{ rotated: true }>>;
+  /** Lot 41 : les déblocages du Garage (calculés par le serveur ; l'identifiant dans l'en-tête). La démonstration n'en a pas : son joueur est dans le Garage. */
+  garage?(playerId: string): Promise<ApiResult<GarageStatut>>;
 }
 
 /** `?api=demo` : le jeu lit le jeu de données statique de `public/demo/` au lieu d'une API (voir `demo.ts`). */
@@ -95,5 +106,9 @@ export class LeaderboardApi extends ProfileClient implements LeaderboardSource {
 
   ghost(date: string, kind: "first" | "ahead", playerId: string) {
     return this.call<GhostData>("GET", `/api/day/${date}/ghost?kind=${kind}`, undefined, asPlayer(playerId));
+  }
+
+  garage(playerId: string) {
+    return this.call<GarageStatut>("GET", "/api/garage", undefined, asPlayer(playerId));
   }
 }
