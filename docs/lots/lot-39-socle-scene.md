@@ -1,6 +1,6 @@
 # Lot 39 — Track : socle de la scène par paliers (rien ne change à l'écran)
 
-Branche `claude/zen-pascal-dmempr` (nom imposé par la session ; le lot prévoyait `lot-39-socle-scene`), partie de `main` avec la PR #118 (38b et 38c) **et le lot 37 (PR #119) fusionnés**. Zones : `apps/web/**`, `docs/lots/**`, la ligne de Track de `docs/plateforme/budgets.md`. **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements inchangés. PR : voir en tête de la PR.
+Branche `claude/zen-pascal-dmempr` (nom imposé par la session ; le lot prévoyait `lot-39-socle-scene`), partie de `main` avec la PR #118 (38b et 38c) **et le lot 37 (PR #119) fusionnés**. Zones : `apps/web/**`, `docs/lots/**`, la ligne de Track de `docs/plateforme/budgets.md`. **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements inchangés. PR : [Nathan-Te/DailyTrack#121](https://github.com/Nathan-Te/DailyTrack/pull/121) (brouillon ; l'aperçu est commenté par la CI).
 
 ## En deux phrases
 
