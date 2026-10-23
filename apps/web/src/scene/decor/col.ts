@@ -22,6 +22,7 @@ function chalet(g: Builder, r: Repere, w: number) {
 }
 
 export const DECOR = moduleDecor({
+  densite: [1.8, 2, 1.5, 0.6],
   recette(c, x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));

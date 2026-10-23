@@ -5,7 +5,7 @@ import { test } from "@playwright/test";
 //   (avant) npx vite preview --port 4174 --outDir <dist de main>
 //   MESURE=1 PERF_AVANT=http://localhost:4174 PERF_OUT=docs/lots/lot-44/mesure.json npx playwright test mesure-lot44 --project=chromium
 // 1. Au profil téléphone (844 × 390 @2, processeur ×4), un circuit de chaque thème, au départ d'une course, la scène **avec son décor** : appels de rendu et
-//    triangles par image (ombres comprises), construction de la scène (`__cdj.socle.constructionMs`, plus la pose du décor s'il est arrivé après : `poseDureeMs`).
+//    triangles par image (ombres comprises), construction de la scène (`__cdj.socle.constructionMs`, plus la pose du décor s'il est arrivé après : `poseDureeMs`) ; médiane de trois pages neuves.
 // 2. L'arrivée du décor **en 4G lente** (150 ms, 1,6 Mbit/s), cache vide, processeur ×4 : le premier affichage, le décor prêt et posé, à l'accueil (le cas
 //    habituel) et sans accueil (`?home=0`), cinq essais chacun.
 // Rendu logiciel : les images par seconde ne disent rien d'un téléphone (« À tester ») ; les appels, les triangles et les durées de construction, oui.
@@ -40,26 +40,33 @@ test("décor du palier 1 : appels, triangles, construction (contre le lot 43) ; 
     await page.addInitScript(() => localStorage.setItem("cdj:howto", "1"));
     return { context, page };
   };
+  // Trois essais par côté (une page neuve chacun) : la médiane, la construction à froid variant de ±30 % d'un essai à l'autre en rendu logiciel.
+  const mediane = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)]!;
   for (const [nom, query] of Object.entries(SCENES)) {
     for (const [cote, base] of [["avant", AVANT], ["apres", APRES]] as const) {
       if (!base) continue;
-      const { context, page } = await nouveau();
-      await page.goto(`${base}/?debug&fps=0&${query}&quality=2&ghost=off&fx=off&shake=0&home=0`);
-      await page.waitForFunction(() => window.__cdj?.phase);
-      // Le décor (lot 44) : s'il n'était pas là à la construction, il est posé à la pause.
-      if (cote === "apres" && !(await page.evaluate(() => window.__cdj.decor.dansScene))) {
-        await page.keyboard.press("KeyP");
-        await page.waitForFunction(() => window.__cdj.decor.dansScene);
-        await page.keyboard.press("KeyP");
+      const essais: { calls: number; triangles: number; construction: number; phase: string }[] = [];
+      for (let essai = 0; essai < 3; essai++) {
+        const { context, page } = await nouveau();
+        await page.goto(`${base}/?debug&fps=0&${query}&quality=2&ghost=off&fx=off&shake=0&home=0`);
+        await page.waitForFunction(() => window.__cdj?.phase);
+        // Le décor (lot 44) : s'il n'était pas là à la construction, il est posé à la pause.
+        if (cote === "apres" && !(await page.evaluate(() => window.__cdj.decor.dansScene))) {
+          await page.keyboard.press("KeyP");
+          await page.waitForFunction(() => window.__cdj.decor.dansScene);
+          await page.keyboard.press("KeyP");
+        }
+        await page.waitForTimeout(6000);
+        const r = await page.evaluate(() => ({ calls: window.__cdj.render.calls, triangles: window.__cdj.render.triangles, construction: window.__cdj.socle.constructionMs, pose: (window.__cdj as { decor?: { poseDureeMs: number; posePhase: string | null } }).decor ?? null }));
+        essais.push({ calls: r.calls, triangles: r.triangles, construction: r.construction + (r.pose && r.pose.posePhase !== "construction" ? r.pose.poseDureeMs : 0), phase: r.pose?.posePhase ?? "" });
+        await context.close();
       }
-      await page.waitForTimeout(6000);
-      const r = await page.evaluate(() => ({ calls: window.__cdj.render.calls, triangles: window.__cdj.render.triangles, construction: window.__cdj.socle.constructionMs, pose: (window.__cdj as { decor?: { poseDureeMs: number; posePhase: string | null } }).decor ?? null }));
-      out[`${nom} ${cote} appels`] = r.calls;
-      out[`${nom} ${cote} triangles`] = r.triangles;
-      out[`${nom} ${cote} construction ms`] = Math.round(r.construction + (r.pose && r.pose.posePhase !== "construction" ? r.pose.poseDureeMs : 0));
-      if (r.pose) out[`${nom} ${cote} décor posé`] = r.pose.posePhase ?? "";
-      console.info(`${nom} ${cote} : ${r.calls} appels, ${r.triangles} triangles, construction ${out[`${nom} ${cote} construction ms`]} ms ${r.pose ? `(décor : ${r.pose.posePhase})` : ""}`);
-      await context.close();
+      out[`${nom} ${cote} appels`] = mediane(essais.map((e) => e.calls));
+      out[`${nom} ${cote} triangles`] = mediane(essais.map((e) => e.triangles));
+      out[`${nom} ${cote} construction ms`] = Math.round(mediane(essais.map((e) => e.construction)));
+      out[`${nom} ${cote} construction ms (essais)`] = essais.map((e) => Math.round(e.construction)).join(" / ");
+      if (cote === "apres") out[`${nom} ${cote} décor posé`] = essais.map((e) => e.phase).join(" / ");
+      console.info(`${nom} ${cote} : ${out[`${nom} ${cote} appels`]} appels, ${out[`${nom} ${cote} triangles`]} triangles, construction ${out[`${nom} ${cote} construction ms`]} ms (${out[`${nom} ${cote} construction ms (essais)`]})`);
     }
   }
   // L'arrivée du décor en 4G lente, cache vide : à l'accueil (le circuit du jour), puis sans accueil.

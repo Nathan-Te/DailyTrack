@@ -4,6 +4,7 @@ import { boiteChanfreinee, repereSol, sol, boite } from "../outils";
 import { BOIS, moduleDecor, panneauPub, sapin, versRoute } from "./commun";
 
 export const DECOR = moduleDecor({
+  densite: [2, 2, 2, 1],
   recette(c, x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));

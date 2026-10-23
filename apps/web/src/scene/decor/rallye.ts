@@ -7,6 +7,7 @@ import { ROUGE_PISTE } from "../palier1";
 import { cactus, camionnette, foule, moduleDecor, pneus, rocher, versRoute } from "./commun";
 
 export const DECOR = moduleDecor({
+  densite: [1.2, 1.4, 1, 0.3],
   recette(c, _x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));

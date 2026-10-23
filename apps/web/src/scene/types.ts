@@ -172,11 +172,12 @@ export type CalquesDecor = Pick<Calques, "decor" | "decorLumineux" | "dense" | "
 
 /**
  * Lot 44 : le décor d'un thème (`decor/<thème>.ts`, chargé à la demande) : ses recettes, que `decor/commun.ts` pose sur le sol relevé selon les règles du lot 37.
- * `recette` : un élément à une place (anneaux 1 et 2) ; `remplissage` : un élément simple de la qualité 2 (anneau 3) ; `plus` : ce que le thème pose à sa façon
- * (le front de rue et les lampadaires de la Ville) ; `proche` : la chance d'un deuxième élément dans une cellule voisine de la piste (0,5 par défaut).
+ * `recette` : un élément à une place (anneaux 1 et 2) ; `remplissage` : un élément simple de la qualité 2 (anneaux 2 et 3) ; `plus` : ce que le thème pose à sa
+ * façon (le front de rue et les lampadaires de la Ville) ; `densite` : le nombre moyen d'éléments par cellule — recettes de l'anneau 1, de l'anneau 2, remplissage
+ * de l'anneau 3 et de l'anneau 2 (`DENSITE` de `commun.ts` par défaut).
  */
 export interface DecorTheme {
-  proche?: number;
+  densite?: readonly [anneau1: number, anneau2: number, remplissage3: number, remplissage2: number];
   recette(c: CalquesDecor, x: Contexte, p: PlaceDecor, rnd: () => number): void;
   remplissage(g: Builder, x: Contexte, p: PlaceDecor, rnd: () => number): void;
   plus?(s: Sol, c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): void;

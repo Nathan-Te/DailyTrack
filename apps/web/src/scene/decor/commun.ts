@@ -38,8 +38,9 @@ export const PAS_TERRAIN = CELL / 2;
 export const PORTEE_TERRAIN = 3;
 /** Un sommet du sol qui est au sol lointain est enfoncé d'autant (pas de scintillement avec le plan du sol). */
 const SOUS_LE_SOL = 0.3;
-/** Un élément de décor plus enfoui que cela d'un côté (pente forte sous lui) n'est pas posé. */
+/** Un élément de décor plus enfoui que cela d'un côté (pente forte sous lui) n'est pas posé : 1,6 m, ou le quart de sa hauteur pour un grand (une mesa, un sapin). */
 export const ENFOUI_MAX = 1.6;
+export const ENFOUI_PART = 0.25;
 
 /** Un bloc près duquel le sol se relève : ni sans rebords (la voiture peut tomber à côté), ni vide de saut. */
 export const releve = (b: Block): boolean => !b.open && b.kind !== "gap";
@@ -50,8 +51,8 @@ export interface Terrain {
   readonly sol: number;
   /** Hauteur du sol visible en (x, z) : le talus, ou le sol lointain. Interpolée sur les mêmes triangles que le maillage. */
   hauteur(x: number, z: number): number;
-  /** Les triangles du sol relevé, construits dans `g` (couleurs du thème) ; `garder(cx, cz)` : seulement ces cellules (miniatures). */
-  construire(g: Builder, couleurs: readonly [number, number], garder?: (cx: number, cz: number) => boolean): void;
+  /** Les triangles du sol relevé, construits dans `g` (couleur du thème) ; `garder(cx, cz)` : seulement ces cellules (miniatures). */
+  construire(g: Builder, couleur: number, garder?: (cx: number, cz: number) => boolean): void;
   /** Hauteur d'un sommet de la grille (i, k) : x = i · pas, z = k · pas. */
   sommet(i: number, k: number): number;
   /** Les carrés de la grille construits (indices du coin bas), pour les tests. */
@@ -150,13 +151,13 @@ export function terrainDe(track: Track, sol: number): Terrain {
       const y = u >= v ? a + (sommet(i + 1, k) - a) * u + (c - sommet(i + 1, k)) * v : a + (sommet(i, k + 1) - a) * v + (c - sommet(i, k + 1)) * u;
       return Math.max(sol, y);
     },
-    construire(g, couleurs, garder) {
+    construire(g, couleur, garder) {
       for (const [i, k] of carres) {
         if (garder && !garder(Math.floor((i * P) / CELL), Math.floor((k * P) / CELL))) continue;
         const p = (di: number, dk: number): V3 => [(i + di) * P, sommet(i + di, k + dk), (k + dk) * P];
-        const teinte = couleurs[(i + k) & 1]!;
-        g.tri(p(0, 0), p(1, 1), p(1, 0), teinte);
-        g.tri(p(0, 0), p(0, 1), p(1, 1), shade(teinte, 0.97));
+        // Une seule teinte (le relief se lit par l'ombrage) : un damier de 16 m se voyait d'en haut, dans les miniatures.
+        g.tri(p(0, 0), p(1, 1), p(1, 0), couleur);
+        g.tri(p(0, 0), p(0, 1), p(1, 1), couleur);
       }
     },
   };
@@ -268,7 +269,7 @@ export interface Sol {
 /**
  * Pose un élément de décor sur le sol relevé : `run` le construit (à la hauteur du sol à sa place), puis il est **descendu sur le point le plus bas du sol sous
  * lui** (rien en l'air : de l'autre côté d'une pente, il est un peu enfoui), refusé s'il touche la surface roulante (`MARGE_DECOR`) ou s'il serait enfoui de
- * plus de `ENFOUI_MAX` (pente trop forte). Refusé, il est retiré (`rollback`) mais a consommé ses tirages au sort : le reste du décor ne bouge pas. Rend vrai
+ * plus de `ENFOUI_MAX` (le quart de sa hauteur pour un grand : pente trop forte). Refusé, il est retiré (`rollback`) mais a consommé ses tirages au sort : le reste du décor ne bouge pas. Rend vrai
  * s'il est posé.
  */
 export function poserSurTerrain(s: Sol, c: CalquesDecor, kind: PoseKind, style: string, run: () => void, marge = MARGE_DECOR): boolean {
@@ -299,7 +300,8 @@ export function poserSurTerrain(s: Sol, c: CalquesDecor, kind: PoseKind, style: 
     c.affiches.pos.length = aff;
     c.affiches.uv.length = affUv;
   };
-  if (hi - lo > ENFOUI_MAX || !planLibre(s.world, b0, marge)) {
+  const enfouiMax = Math.max(ENFOUI_MAX, ENFOUI_PART * (b0.y1 - b0.y0));
+  if (hi - lo > enfouiMax || !planLibre(s.world, b0, marge)) {
     retirer();
     return false;
   }
@@ -507,9 +509,15 @@ function ecransDuDepart(c: CalquesDecor, x: Contexte) {
 
 // --- L'assemblage ----------------------------------------------------------------------------------------------------------------------
 
+/** Le nombre moyen d'éléments par cellule, par défaut : recettes de l'anneau 1 et de l'anneau 2, remplissage de l'anneau 3 et de l'anneau 2. */
+export const DENSITE = [1.35, 1.6, 1, 0] as const;
+
+/** Combien d'éléments dans une cellule pour `moyenne` : sa partie entière, plus un avec la chance de sa partie décimale (un tirage). */
+const combien = (moyenne: number, rnd: () => number) => Math.floor(moyenne) + (rnd() < moyenne - Math.floor(moyenne) ? 1 : 0);
+
 /**
- * Le décor d'un circuit, dans les calques donnés : le sol relevé (dans `decor`), la tribune du départ, les recettes du thème (un ou deux éléments par cellule
- * voisine de la piste, un ou deux plus loin), et à la qualité 2 le remplissage du thème (`dense`, une autre suite de nombres). Graine : `${id}:${palette}` (comme le
+ * Le décor d'un circuit, dans les calques donnés : le sol relevé (dans `decor`), la tribune du départ, les recettes du thème (`densite` : un ou deux éléments
+ * par cellule, selon le thème), et à la qualité 2 le remplissage du thème (`dense`, une autre suite de nombres). Graine : `${id}:${palette}` (comme le
  * décor d'avant), `…:dense`. `near` (miniatures) : seules les cellules du cadre sont construites, tous les tirages sont faits (le même décor que dans le jeu).
  */
 export function construireDecor(t: DecorTheme, c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): Terrain {
@@ -518,26 +526,26 @@ export function construireDecor(t: DecorTheme, c: CalquesDecor, x: Contexte, nea
   const muet = (cx: number, cz: number) => {
     c.decor.mute = c.decorLumineux.mute = c.dense.mute = !!near && !near(cx, cz);
   };
-  // Le sol relevé : les couleurs du sol lointain du thème, un ton plus sombres (on le voit en pente).
+  // Le sol relevé : la teinte du sol lointain du thème (le mélange de ses deux couleurs), un ton plus sombre (on le voit en pente).
   const [a, b] = THEMES_C[x.palette].sol;
-  terrain.construire(c.decor, [shade(parseInt(a.slice(1), 16), 0.94), shade(parseInt(b.slice(1), 16), 0.94)], near);
+  terrain.construire(c.decor, shade(mix(parseInt(a.slice(1), 16), parseInt(b.slice(1), 16), 0.5), 0.94), near);
   const rnd = seeded(`${x.track.id}:${x.palette}`);
   const b0 = x.track.blocks[0]!;
   muet(b0.cx, b0.cz);
   tribune(s, c, x, rnd);
   if (x.reglages?.ecrans) ecransDuDepart(c, x);
-  const proche = t.proche ?? 0.5;
-  for (const p of placesDeDecor(x.track, rnd, (anneau) => (anneau === 1 ? (rnd() < 0.85 ? 1 : 0) + (rnd() < proche ? 1 : 0) : 1 + (rnd() < 0.6 ? 1 : 0)), 2, terrain)) {
+  const [d1, d2, d3, d2r] = t.densite ?? DENSITE;
+  for (const p of placesDeDecor(x.track, rnd, (anneau) => combien(anneau === 1 ? d1 : d2, rnd), 2, terrain)) {
     muet(p.cx, p.cz);
     const v = x.varierDecor?.marque(c);
     if (poserSurTerrain(s, c, "decor", x.palette, () => t.recette(c, x, p, rnd)) && v !== undefined) x.varierDecor!.varier(c, v, p.x, p.y, p.z);
   }
   c.decor.mute = c.decorLumineux.mute = c.dense.mute = false;
   t.plus?.(s, c, x, near);
-  // Le remplissage (qualité 2) : un élément simple par cellule de l'anneau 3, sur la pente du talus ; une autre suite.
+  // Le remplissage (qualité 2) : des éléments simples sur la pente du talus (anneau 3) et entre les recettes (anneau 2) ; une autre suite.
   const dense = seeded(`${x.track.id}:${x.palette}:dense`);
   const calquesDenses: CalquesDecor = { ...c, decor: c.dense };
-  for (const p of placesDeDecor(x.track, dense, (anneau) => (anneau === 3 ? 1 : 0), 3, terrain)) {
+  for (const p of placesDeDecor(x.track, dense, (anneau) => combien(anneau === 3 ? d3 : anneau === 2 ? d2r : 0, dense), 3, terrain)) {
     muet(p.cx, p.cz);
     poserSurTerrain(s, calquesDenses, "decor", x.palette, () => t.remplissage(c.dense, x, p, dense));
   }

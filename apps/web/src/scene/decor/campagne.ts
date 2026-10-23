@@ -10,11 +10,12 @@ function arbre(g: Parameters<typeof tube>[0], x: number, y: number, z: number, h
   tube(g, [x, y, z], [x, y + h * 0.6, z], 0.28, 5, 0x6a4528, 0.2);
   for (let i = 0; i < n; i++) {
     const v = mix(0x2f8f3a, 0x5cbb4a, rnd());
-    g.prism(x + (rnd() - 0.5) * 2, y + h * 0.45 + i * 0.6, z + (rnd() - 0.5) * 2, 1.6 + rnd() * 0.5, 0.6, 2.2, 6, v, shade(v, 1.18), rnd());
+    g.prism(x + (rnd() - 0.5) * 2, y + h * 0.45 + i * 0.6, z + (rnd() - 0.5) * 2, (1.6 + rnd() * 0.5) * (h / 6), 0.6, 2.2 * (h / 6), 6, v, shade(v, 1.18), rnd());
   }
 }
 
 export const DECOR = moduleDecor({
+  densite: [1.8, 1.8, 1.5, 0.6],
   recette(c, _x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));
@@ -30,7 +31,7 @@ export const DECOR = moduleDecor({
       face(c.decor, r, -1.4, 1.4, 0, 3.2, -3.02, 0xf4f4f4);
       c.decor.prism(...pt(r, 6, 0, 0), 1.6, 1.6, 8, 8, 0xc9ced6, 0xc9ced6);
       c.decor.prism(...pt(r, 6, 8, 0), 1.6, 0.2, 1.2, 8, 0x8a9099);
-    } else if (k < 0.55) arbre(c.decor, p.x, y, p.z, 4 + rnd() * 2.5, 3, rnd);
+    } else if (k < 0.55) arbre(c.decor, p.x, y, p.z, 6 + rnd() * 3, 3, rnd);
     else if (k < 0.8) {
       for (let i = 0; i < 3; i++) {
         const R = 0.8 + rnd() * 0.3;
@@ -49,7 +50,7 @@ export const DECOR = moduleDecor({
   },
   remplissage(g, _x, p, rnd) {
     const k = rnd();
-    if (k < 0.45) arbre(g, p.x, p.y, p.z, 4 + rnd() * 2, 2, rnd);
+    if (k < 0.45) arbre(g, p.x, p.y, p.z, 5.5 + rnd() * 3, 2, rnd);
     else if (k < 0.75) {
       const len = 7 + rnd() * 8;
       const v = mix(0x2f7a32, 0x3f9a3e, rnd());

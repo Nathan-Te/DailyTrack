@@ -84,7 +84,7 @@ function lampadairesDeRue(c: CalquesDecor, b: Block, cap: number, log: Parameter
 }
 
 export const DECOR = moduleDecor({
-  proche: 0.85,
+  densite: [1.6, 1.5, 0.8, 0],
   recette(c, x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));
