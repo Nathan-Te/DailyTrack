@@ -4,7 +4,7 @@ Branche `claude/lot-45-palier2-qualite-azmkbs` (nom imposé par la session ; le 
 PR pour le job `zones`), partie de `main` à `aa478d4` (**lots 44, 46 et 41 fusionnés** ; le lot 47 ne l'est pas). Zones : `apps/web/**`, `docs/lots/**`, les
 lignes de Track de `docs/plateforme/budgets.md`, ses entrées de `durees.json`, ses clés de catalogue (`reglages.graphismes.*`, fr + en) et
 `docs/plateforme/traductions.md` régénéré. **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de
-circuit inchangés. PR : ⟨PR⟩ (brouillon ; l'aperçu est commenté par la CI). C'est le n° 5 du plan du 38b (§ 7).
+circuit inchangés. PR : [Nathan-Te/DailyTrack#128](https://github.com/Nathan-Te/DailyTrack/pull/128) (brouillon ; l'aperçu est commenté par la CI). C'est le n° 5 du plan du 38b (§ 7).
 
 ## En deux phrases
 
