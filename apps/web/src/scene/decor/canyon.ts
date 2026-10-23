@@ -6,7 +6,7 @@ import { METAL_SOMBRE } from "../piste";
 import { BOIS, BOIS_CLAIR, cactus, moduleDecor, panneauPub, rocher, versRoute } from "./commun";
 
 export const DECOR = moduleDecor({
-  densite: [1.6, 1.8, 1.5, 0.5],
+  densite: [1.5, 1.6, 1.2, 0.3],
   recette(c, x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));

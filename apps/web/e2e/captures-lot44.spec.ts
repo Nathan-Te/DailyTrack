@@ -15,6 +15,9 @@ import { CELL, THEMES, bestPilotRun, cellKey, createAutopilot, createRace, daily
 test.skip(!process.env.CAPTURES, "outil de capture : CAPTURES=1");
 test.skip(({ browserName }) => browserName !== "chromium", "rendu 3D : Chromium seulement");
 test.setTimeout(3_600_000);
+// Lot 44 : la page s'ouvre directement à la taille des images (changer la taille d'une page déjà ouverte laissait, à l'accueil, une bande noire en haut de
+// l'image — sur `main` comme sur la branche — : la scène se dessinait dans l'ancienne fenêtre pendant la première seconde).
+test.use({ viewport: { width: 640, height: 360 } });
 
 const OUT = process.env.OUT ?? join(import.meta.dirname, "../../../docs/lots/lot-44");
 /** L'adresse du jeu à capturer : celui de la branche (par défaut), ou `main` servi à côté pour l'« avant ». */
@@ -180,7 +183,7 @@ test("comparer l'après à l'avant", async ({ page }) => {
     lignes.push(`${f} : ${(part * 100).toFixed(1)} % des pixels changent (> ${SEUIL_CANAL}/255), écart max ${max}/255`);
   }
   console.info(lignes.join("\n"));
-  writeFileSync(join(OUT, "comparaison.txt"), `Lot 43 : le palier 1 contre l'existant (main). Les différences sont voulues (la scène change) ; elles sont montrées dans planches/.\n${lignes.join("\n")}\n`);
+  writeFileSync(join(OUT, "comparaison.txt"), `Lot 44 : le décor du palier 1 contre le décor d'avant (main : lot 43 et retouche 40b). Les différences sont voulues ; elles sont montrées dans planches/.\n${lignes.join("\n")}\n`);
   expect(lignes.filter((l) => l.includes("manquante"))).toEqual([]);
 });
 

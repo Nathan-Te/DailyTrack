@@ -15,7 +15,7 @@ function arbre(g: Parameters<typeof tube>[0], x: number, y: number, z: number, h
 }
 
 export const DECOR = moduleDecor({
-  densite: [1.8, 1.8, 1.5, 0.6],
+  densite: [1.6, 1.6, 1.2, 0.4],
   recette(c, _x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));

@@ -80,10 +80,10 @@ test("décor du palier 1 : appels, triangles, construction (contre le lot 43) ; 
       await page.waitForTimeout(500);
       const d = await page.evaluate(() => ({ ...window.__cdj.decor, fcp: performance.getEntriesByName("first-contentful-paint")[0]?.startTime ?? -1 }));
       out[`4G ${cas} ${essai} jeu prêt ms`] = Math.round(pret);
-      out[`4G ${cas} ${essai} décor demandé ms`] = Math.round(d.demandeMs);
+      out[`4G ${cas} ${essai} décor demandé ms`] = Math.round(d.demandeMs ?? -1);
       out[`4G ${cas} ${essai} décor prêt ms`] = Math.round(d.pretMs!);
       out[`4G ${cas} ${essai} décor posé`] = d.posePhase ?? "pas encore (course en cours)";
-      console.info(`4G ${cas} ${essai} : premier affichage ${d.fcp.toFixed(0)} ms, jeu prêt ${pret.toFixed(0)} ms, décor demandé ${d.demandeMs.toFixed(0)} ms, prêt ${d.pretMs!.toFixed(0)} ms, posé : ${d.posePhase}`);
+      console.info(`4G ${cas} ${essai} : premier affichage ${d.fcp.toFixed(0)} ms, jeu prêt ${pret.toFixed(0)} ms, décor demandé ${(d.demandeMs ?? -1).toFixed(0)} ms, prêt ${d.pretMs!.toFixed(0)} ms, posé : ${d.posePhase}`);
       await context.close();
     }
   }

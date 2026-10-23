@@ -471,7 +471,7 @@ function construireTribune(c: CalquesDecor, x: Contexte, b: Block, rnd: () => nu
     }
   }
   for (const a of [-10.6, 0, 10.6]) boite(c.decor, r, 8.05, 8.35, 0, 7.6, a - 0.15, a + 0.15, METAL_SOMBRE);
-  boiteChanfreinee(c.decor, r, -0.8, 8.6, 7.6, 8.0, -11.4, 11.4, 0.1, MARQUE.encre, MARQUE.creme);
+  boiteChanfreinee(c.decor, r, -0.8, 8.6, 7.6, 8.0, -11.4, 11.4, 0.1, MARQUE.creme, MARQUE.encre);
   const logos = sponsorsDuTheme(x.palette);
   for (let i = 0; i < 4; i++) c.affiches.quad(pt(r, -0.85, 7.6, -11 + i * 5.5), pt(r, -0.85, 7.6, -11 + (i + 1) * 5.5 - 0.3), pt(r, -0.85, 8.0, -11 + (i + 1) * 5.5 - 0.3), pt(r, -0.85, 8.0, -11 + i * 5.5), rectSponsor(logos[i % logos.length]!));
   return r;

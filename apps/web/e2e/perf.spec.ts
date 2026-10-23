@@ -82,7 +82,7 @@ test("le décor 3D à la demande : chaque thème à part, 16 ko au plus pour les
   expect(m.dansPremier, "le décor n'est pas dans le premier chargement").toEqual([]);
   expect(Object.keys(m.parTheme).sort()).toEqual([...THEMES_DECOR].sort());
   for (const [t, v] of Object.entries(m.parTheme)) expect(v.fichiers.length, `${t} : son morceau et le morceau commun`).toBeGreaterThanOrEqual(2);
-  expect(m.total, "décor 3D à la demande, les huit thèmes (gzip)").toBeLessThan(16_000); // ≈ 12,2 ko aujourd'hui (lot 44)
+  expect(m.total, "décor 3D à la demande, les huit thèmes (gzip)").toBeLessThan(16_000); // ≈ 12,6 ko aujourd'hui (lot 44)
 });
 
 test.describe("chargement sur un téléphone simulé", () => {
