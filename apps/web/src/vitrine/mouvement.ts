@@ -208,8 +208,8 @@ export class VueMouvement {
   }
 
   /** Lot 40 : repeint la voiture (si son modèle le permet : les modèles proposés, pas l'existant) ; retouche 40b : le motif aussi. */
-  repeindre(couleur: number, numero: string, motif?: MotifLivree) {
-    (this.voiture as CarModel & { peindre?(c: number, n?: string, m?: MotifLivree): void }).peindre?.(couleur, numero, motif);
+  repeindre(couleur: number, numero: string, motif?: MotifLivree, teinte?: number) {
+    (this.voiture as CarModel & { peindre?(c: number, n?: string, m?: MotifLivree, t?: number): void }).peindre?.(couleur, numero, motif, teinte);
   }
 
   /** La scène montrée : l'existant (la scène du jeu jusqu'au lot 43) ou les paliers (réglages du panneau). */

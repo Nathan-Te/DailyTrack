@@ -34,7 +34,12 @@ export const en: Catalogues<typeof fr>["en"] = {
   "couleur.lagon": "Lagoon",
   "couleur.olive": "Olive",
   "couleur.poudre": "Powder pink",
-  "motif.bande": "Stripe",
+  "motif.course": "Racing stripes",
   "motif.flancs": "Sides",
+  "motif.filet": "Pinstripe",
+  "motif.bicolore": "Two-tone",
+  "motif.chevrons": "Chevrons",
+  "motif.damier": "Checkers",
+  "motif.rond": "Roundel",
   "motif.unie": "Plain",
 };

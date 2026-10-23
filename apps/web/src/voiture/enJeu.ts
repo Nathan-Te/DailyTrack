@@ -30,7 +30,7 @@ export interface OptionsVoitureEnJeu {
   materiaux2(): Promise<FabriqueMateriaux>;
 }
 
-const cleDe = (c: ChoixVoiture, palier: number, silhouette = false) => `${c.id}|${c.couleur}|${c.motif}|${palier}${silhouette ? "|s" : ""}`;
+const cleDe = (c: ChoixVoiture, palier: number, silhouette = false) => `${c.id}|${c.couleur}|${c.motif}|${c.teinteMotif}|${palier}${silhouette ? "|s" : ""}`;
 
 export class VoitureEnJeu {
   voiture: Voiture;
@@ -136,12 +136,12 @@ export class VoitureEnJeu {
   }
 
   private peindre(v: Voiture) {
-    v.peindre(this.couleurDe(this.vise), this.numeroPeint, this.vise.motif);
+    v.peindre(this.couleurDe(this.vise), this.numeroPeint, this.vise.motif, this.vise.teinteMotif);
   }
 
   private construire(plan: PlanVoiture, c: ChoixVoiture, palier: PalierVoiture, materiaux?: FabriqueMateriaux, retouche?: (v: Voiture) => void): Voiture {
     this.stats.construites++;
-    const v = construireVoiture(plan, { palier, couleur: this.couleurDe(c), numero: this.numeroPeint, motif: c.motif, materiaux });
+    const v = construireVoiture(plan, { palier, couleur: this.couleurDe(c), numero: this.numeroPeint, motif: c.motif, teinteMotif: c.teinteMotif, materiaux });
     v.nuit(this.nuitPeinte);
     retouche?.(v);
     return v;

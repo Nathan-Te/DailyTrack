@@ -73,7 +73,7 @@ test("les trois motifs de livrée, et la planche des couleurs de la civile", asy
       toile.width = 3 * w;
       toile.height = cols.length * h;
       const x = toile.getContext("2d")!;
-      for (const [i, motif] of (["bande", "flancs", "unie"] as const).entries()) {
+      for (const [i, motif] of (["course", "flancs", "unie"] as const).entries()) {
         await m.choisirMotif(motif);
         for (const [j, col] of cols.entries()) {
           const img = new Image();
@@ -82,7 +82,7 @@ test("les trois motifs de livrée, et la planche des couleurs de la civile", asy
           x.drawImage(img, i * w, j * h);
         }
       }
-      await m.choisirMotif("bande");
+      await m.choisirMotif("course");
       return toile.toDataURL("image/jpeg", 0.88);
     }, MODELES),
   );

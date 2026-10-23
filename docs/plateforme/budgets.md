@@ -12,13 +12,13 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 276 952 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 41 : +1 257 ; lot 44 : −1 847) | 14 648 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 265 404 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 41 : +1 121 ; lot 44 : −1 847) | 14 796 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 131 854 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375 ; 40b : +6 834 ; lot 46 : +1 234 ; lot 41 : +1 121 ; lot 44 : −1 847) | 15 646 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 283 351 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 41 : +1 257 ; lot 44 : −1 847 ; lot 40c, Sparrow : +6 399) | 8 249 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 271 803 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 41 : +1 121 ; lot 44 : −1 847 ; lot 40c, Sparrow : +6 399) | 8 397 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 138 211 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375 ; 40b : +6 834 ; lot 46 : +1 234 ; lot 41 : +1 121 ; lot 44 : −1 847 ; lot 40c, Sparrow : +6 357) | 9 289 | `apps/web/e2e/perf.spec.ts` |
 | `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 441 (lot 43 : +18 ; 40b : +270, noms et descriptions des voitures ; lot 41 : −144, les descriptions partent avec le Garage) | 559 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 30 000 | 26 524 | 26 524 | 3 476 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 32 000 | 28 502 | 28 502 | 3 498 | `apps/web/e2e/perf.spec.ts` |
-| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 11 181 (lot 43 : +22 ; 40b : +177, la voiture d'essai ; lot 46 : +72, la scène d'essai ; lot 41 : +26 ; lot 44 : −1) | 1 319 | `apps/web/e2e/perf.spec.ts` |
+| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 11 271 (lot 43 : +22 ; 40b : +177, la voiture d'essai ; lot 46 : +72, la scène d'essai ; lot 41 : +26 ; lot 44 : −1 ; lot 40c : +90, les motifs et la teinte de la voiture d'essai) | 1 229 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
 | `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
@@ -139,6 +139,10 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | Col alpin (`decor/col.ts`) | 679 | 6 298 |
 | Ville (`decor/ville.ts` : front de rue et lampadaires compris) | 2 170 | 7 789 |
 | **les huit thèmes** | | **12 431** (plafond 16 000) |
+
+## Lot 40c (Track) : la Sparrow au cran de qualité
+
+- **Track : +6 399 o au premier chargement** (point d'arrêt de la Sparrow ; `main` à `aa478d4`, lot 44 compris, reconstruit à part sur la même machine : JS + CSS 276 952 → 283 351 o ; JS +6 399 o, CSS inchangé ; hors three.js +6 357 o ; three.js +43 o ; catalogue anglais, fils de travail et polices inchangés ; page d'admin +90 o ; marge 14 648 → **8 249 o** (avant la fusion du lot 44 : +6 320 o, mesuré sur `4986d14`)). **Au-dessus de la cible de 4 ko du prompt : à valider par Nathan** (détail dans `docs/lots/lot-40c-voitures-qualite.md`, § « Budget »). Par module (esbuild, minifié, gzip, `poids-parties.mjs`) : nuanceur de la livrée 5,3 ko (motifs, numéro en champ de distance, joints, doublures, vitres : ce qui remplace la texture de livrée) ; caisse tôle `surfaces.ts` 2,4 ko ; `pieces.ts` +1,6 ko (groupes de lissage, reflets du palier 1) ; roue, plan de la Sparrow, palette et motifs le reste. Le Garage (studio de lumière, reflet plan, vignettes de motifs) est **à la demande** : garage-*.js 6,5 → 8,1 ko compressés, `Reflector` rangé dans son morceau (`vite.config.ts`), aucune géométrie de three ajoutée au premier chargement. Les trois autres voitures restent à la demande.
 
 ## Les marges les plus serrées (à surveiller)
 

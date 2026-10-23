@@ -11,7 +11,7 @@ import { GHOST_COLORS } from "../salon";
 import { reglagesDuPalier, type Palier } from "../scene/paliers";
 import type { ScenePalier } from "../scene/composerPalier";
 import { LOOKS } from "../trackMesh";
-import { LIVREE, MOTIFS, PALETTE, type MotifLivree } from "../voiture/livree";
+import { LIVREE, MOTIFS, MOTIF_DEFAUT, PALETTE, TEINTES_MOTIF, type MotifLivree } from "../voiture/livree";
 import { construireFantome, construireVoiture, type FabriqueMateriaux, type ModeleId, type PlanVoiture, type Voiture } from "../voiture/modele";
 import { chargerMateriaux2, chargerPlan } from "../voiture/modeles";
 import { MESURES_VOITURE } from "./mesuresVoiture";
@@ -54,10 +54,10 @@ export interface Hote {
 }
 
 /** L'état de la planche (couleur, numéro, thème des vues à l'arrêt). */
-const etat = { couleur: LIVREE.orange as number, numero: "8", theme: "theme-stade", motif: "bande" as MotifLivree };
+const etat = { couleur: LIVREE.orange as number, numero: "8", theme: "theme-stade", motif: MOTIF_DEFAUT as MotifLivree, teinte: 0 };
 /** La Nuit d'un thème (retouche 40b : rayures, numéro et feux légèrement lumineux). */
 const nuitDe = (theme: string) => LOOKS[paletteDe(theme)].headlights > 0;
-const NOMS_MOTIFS: Record<MotifLivree, string> = { bande: "Bande centrale", flancs: "Flancs", unie: "Unie" };
+const NOMS_MOTIFS: Record<MotifLivree, string> = { course: "Double bande", flancs: "Flancs à 115°", filet: "Filet", bicolore: "Bicolore", chevrons: "Chevrons", damier: "Damier", rond: "Numéro en rond", unie: "Unie" };
 
 // --- Chargements -------------------------------------------------------------------------------------------------------------------------
 
@@ -74,7 +74,7 @@ const materiaux = (palier: Palier) => (palier === 1 ? Promise.resolve(undefined)
 async function voiture(col: Colonne, palier: Palier): Promise<CarModel & { triangles?: number; peindre?: Voiture["peindre"]; nuit?: Voiture["nuit"] }> {
   if (col === "existant") return createCarMesh();
   const [pl, mat] = await Promise.all([plan(col), materiaux(palier)]);
-  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, materiaux: mat });
+  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, teinteMotif: etat.teinte, materiaux: mat });
 }
 const voitures = new Map<string, Promise<CarModel & { triangles?: number; peindre?: Voiture["peindre"]; nuit?: Voiture["nuit"] }>>();
 const voitureDe = (col: Colonne, palier: Palier) => {
@@ -331,6 +331,18 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
     b.addEventListener("click", () => void choisirMotif(m));
     motifs.append(b);
   }
+  // Lot 40c : la teinte du motif (automatique, crème, asphalte, lagon) ; une teinte trop proche de la caisse retombe sur l'automatique.
+  const teintes = el("div", "segments");
+  teintes.setAttribute("role", "group");
+  teintes.setAttribute("aria-label", "Teinte du motif");
+  for (const [i, t] of TEINTES_MOTIF.entries()) {
+    const b = el("button", "segment", { auto: "Auto", creme: "Crème", asphalte: "Asphalte", lagon: "Lagon" }[t.id] ?? t.id);
+    b.type = "button";
+    b.dataset.teinte = String(i);
+    b.setAttribute("aria-pressed", String(i === etat.teinte));
+    b.addEventListener("click", () => void choisirTeinte(i));
+    teintes.append(b);
+  }
   const labelNumero = el("label", "choix", "Numéro ");
   labelNumero.append(numero);
   const theme = el("select");
@@ -351,7 +363,7 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   const labelTheme = el("label", "choix", "Thème des vues ");
   labelTheme.append(theme);
   reglages.append(nuancier, el("div", "voiture-reglages__ligne"));
-  reglages.lastElementChild!.append(motifs, labelNumero, labelTheme);
+  reglages.lastElementChild!.append(motifs, teintes, labelNumero, labelTheme);
   racine.append(reglages);
 
   // Les colonnes : titre, résumé, coût ; puis une rangée par palier (à l'arrêt), puis les fantômes.
@@ -457,10 +469,20 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
         if (v && !v.chiffres) void dessinerVue(v);
       }
     },
-    { rootMargin: "400px 0px" },
+    { rootMargin: "1000px 0px" }, // lot 40c : huit motifs et la teinte allongent les réglages (sur un téléphone, la première vue serait sinon trop loin pour être dessinée)
   );
   for (const v of vues) proches.observe(v.canvas);
 }
+
+/** Change la teinte du motif (rang dans `TEINTES_MOTIF` ; outil des captures). */
+export async function choisirTeinte(rang: number) {
+  etat.teinte = rang;
+  for (const x of document.querySelectorAll<HTMLButtonElement>("[data-teinte]")) x.setAttribute("aria-pressed", String(x.dataset.teinte === String(rang)));
+  await choisirCouleur(etat.couleur);
+}
+
+/** Les motifs de la livrée proposés (outil des captures). */
+export const motifsDisponibles = (): readonly MotifLivree[] => MOTIFS;
 
 /** Retouche 40b : change le motif de la livrée (les pastilles de motif ; outil des captures). */
 export async function choisirMotif(m: MotifLivree) {
@@ -469,12 +491,13 @@ export async function choisirMotif(m: MotifLivree) {
   await choisirCouleur(etat.couleur);
 }
 
-async function choisirCouleur(hex: number) {
+/** Change la couleur de la caisse (les pastilles ; outil des captures). */
+export async function choisirCouleur(hex: number) {
   etat.couleur = hex;
   for (const b of document.querySelectorAll<HTMLButtonElement>(".nuancier .pastille")) b.setAttribute("aria-pressed", String(PALETTE.find((c) => c.id === b.dataset.couleur)?.hex === hex));
-  for (const v of voitures.values()) (await v).peindre?.(hex, etat.numero, etat.motif);
+  for (const v of voitures.values()) (await v).peindre?.(hex, etat.numero, etat.motif, etat.teinte);
   for (const v of vues) void dessinerVue(v);
-  void hote?.mouvement().then((vm) => vm.repeindre(hex, etat.numero, etat.motif));
+  void hote?.mouvement().then((vm) => vm.repeindre(hex, etat.numero, etat.motif, etat.teinte));
 }
 
 function majCouts() {
@@ -547,7 +570,7 @@ async function ouvrirMouvement(col: Colonne, palier: Palier) {
 async function voitureMouvement(col: Colonne, palier: Palier): Promise<CarModel> {
   if (col === "existant") return createCarMesh();
   const [pl, mat] = await Promise.all([plan(col), materiaux(palier)]);
-  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, materiaux: mat });
+  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, teinteMotif: etat.teinte, materiaux: mat });
 }
 
 async function ouvrirTheme(theme: string) {
@@ -572,7 +595,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
   const pl = await plan(col);
   const mat = await materiaux(2);
   const m = await scenesMod();
-  const car = construireVoiture(pl, { palier: 2, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, materiaux: mat });
+  const car = construireVoiture(pl, { palier: 2, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, teinteMotif: etat.teinte, materiaux: mat });
   car.group.traverse((o) => (o.castShadow = true));
   const marge = 96;
   const tete = 28;
@@ -611,7 +634,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
       preparer: (rr) => ts.preparer(rr),
     };
     for (const [i, c] of PALETTE.entries()) {
-      car.peindre(c.hex, etat.numero);
+      car.peindre(c.hex, etat.numero, etat.motif, etat.teinte);
       dessiner(d, orbite, tmp, largeur, hauteur, 1, camera);
       x.drawImage(tmp, marge + i * largeur, tete + j * hauteur, largeur, hauteur);
       await new Promise((r) => setTimeout(r, 0));
@@ -624,6 +647,14 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
 }
 
 // --- Outils des tests et des captures ----------------------------------------------------------------------------------------------------
+
+/** Règle le thème des vues à l'arrêt sans rien dessiner (outil des captures : `apercu` dessine une seule vue, `toutDessiner` les vingt). */
+export function reglerTheme(theme: string) {
+  if (theme === etat.theme) return;
+  etat.theme = theme;
+  libererScenes((k) => k.includes(theme));
+  for (const v of vues) if (v.sorte === "arret") v.orbite = null;
+}
 
 /** Dessine toutes les vues (le thème donné), une à une ; rend leurs chiffres. */
 export async function toutDessiner(theme?: string) {
@@ -672,10 +703,12 @@ export async function planche(theme: string, largeur = 400, hauteur = 260): Prom
  * Une vue à l'arrêt d'une colonne, vue d'où l'on veut (angle autour de la voiture depuis l'arrière, en degrés ; hauteur en degrés ; distance en
  * mètres) : captures du README (trois quarts arrière, profil, avant) et réglage des formes.
  */
-export async function apercu(col: Colonne, palier: Palier, azimut: number, elevation: number, distance: number, largeur: number, hauteur: number): Promise<string> {
+export async function apercu(col: Colonne, palier: Palier, azimut: number, elevation: number, distance: number, largeur: number, hauteur: number, cible?: readonly [number, number, number]): Promise<string> {
   const v = vues.find((x) => x.col === col && x.palier === palier && x.sorte === "arret")!;
   const garde = v.orbite;
   const { pose, orbite } = poseArret(await circuitDe(etat.theme));
+  // `cible` : le point regardé, dans le repère de la voiture (+z devant, +x à gauche) : un gros plan (portière, museau, roue).
+  if (cible) orbite.cible.set(pose.voiture.x, pose.voiture.y, pose.voiture.z).add(new Vector3(...cible).applyAxisAngle(new Vector3(0, 1, 0), pose.voiture.yaw));
   orbite.azimut = pose.voiture.yaw + Math.PI + (azimut * Math.PI) / 180;
   orbite.elevation = (elevation * Math.PI) / 180;
   orbite.distance = distance;

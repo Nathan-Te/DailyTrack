@@ -60,8 +60,13 @@ export interface AdminState {
   voiture: "" | (typeof VOITURES_ESSAI)[number];
   /** Rang de la couleur dans la palette ("" : l'orange de Track). */
   couleur: string;
-  motif: "" | "flancs" | "unie";
+  /** Lot 40c : le motif de la livrée ("" : la double bande de course) et sa teinte ("" : automatique). */
+  motif: "" | "flancs" | "filet" | "bicolore" | "chevrons" | "damier" | "rond" | "unie";
+  teinte: string;
 }
+
+/** Les motifs de la livrée (lot 40c ; "" : la double bande de course) : la page d'admin n'importe pas `voiture/livree.ts` (un test vérifie qu'ils sont les mêmes). */
+export const MOTIFS_ESSAI = ["", "flancs", "filet", "bicolore", "chevrons", "damier", "rond", "unie"] as const;
 
 /** Les voitures du catalogue (`voiture/catalogue.ts` : la page d'admin ne l'importe pas, il tire les modèles ; un test vérifie qu'elles sont les mêmes). */
 export const VOITURES_ESSAI = ["civile", "evolution", "gt", "proto"] as const;
@@ -98,6 +103,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   voiture: "",
   couleur: "",
   motif: "",
+  teinte: "",
 });
 
 /** Paramètres d'adresse (sans « ? ») : uniquement ce qui s'écarte de la valeur par défaut. */
@@ -142,6 +148,7 @@ export function buildQuery(s: Readonly<AdminState>): string {
     p.set("voiture", s.voiture);
     if (s.couleur !== "") p.set("couleur", s.couleur);
     if (s.motif !== "") p.set("motif", s.motif);
+    if (s.teinte !== "") p.set("teinte", s.teinte);
   }
   if (s.api.trim() !== "") p.set("api", s.api.trim());
   return p.toString().replace(/=(?=&|$)/g, "");
@@ -178,7 +185,8 @@ export function parseAdmin(raw: string | null): AdminState {
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
     if (typeof o.voiture === "string" && (["", ...VOITURES_ESSAI] as readonly string[]).includes(o.voiture)) s.voiture = o.voiture as AdminState["voiture"];
     if (typeof o.couleur === "string" && /^[0-7]?$/.test(o.couleur)) s.couleur = o.couleur;
-    if (o.motif === "" || o.motif === "flancs" || o.motif === "unie") s.motif = o.motif;
+    if (typeof o.motif === "string" && (MOTIFS_ESSAI as readonly string[]).includes(o.motif)) s.motif = o.motif as AdminState["motif"];
+    if (typeof o.teinte === "string" && /^[0-3]?$/.test(o.teinte)) s.teinte = o.teinte;
   } catch {
     /* état illisible : valeurs par défaut */
   }

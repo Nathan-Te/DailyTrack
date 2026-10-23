@@ -3,7 +3,7 @@
 // plate). Chargé avec le Garage (jamais au premier écran) ; gardées en mémoire (une image par voiture et par état). Sans WebGL : pas d'image.
 import { DirectionalLight, HemisphereLight, MeshBasicMaterial, NeutralToneMapping, PerspectiveCamera, Scene, Color, type Mesh, type WebGLRenderer } from "three";
 import type { FicheVoiture } from "./voiture/catalogue";
-import { PALETTE } from "./voiture/livree";
+import { MOTIF_DEFAUT, PALETTE } from "./voiture/livree";
 import { construireVoiture, type Voiture } from "./voiture/modele";
 
 export const VIGNETTE_L = 240;
@@ -48,7 +48,7 @@ async function dessiner(fiche: FicheVoiture, silhouette: boolean, moteur: () => 
   const soleil = new DirectionalLight(0xffffff, 2.2);
   soleil.position.set(-4, 8, 6);
   scene.add(soleil);
-  const v = construireVoiture(plan, { palier: 1, couleur: PALETTE[0]!.hex, numero: "", motif: "bande" });
+  const v = construireVoiture(plan, { palier: 1, couleur: PALETTE[0]!.hex, numero: "", motif: MOTIF_DEFAUT });
   if (silhouette) enSilhouette(v);
   v.group.rotation.y = 0.6;
   v.update({ forward: 0, steerAngle: 0.25, braking: false, droop: [0, 0, 0, 0], dt: 0 });

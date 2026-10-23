@@ -154,11 +154,13 @@ export function fondDePassage(p: Pieces, cote: number, x: number, zc: number, yc
 }
 
 /** La lèvre d'un passage de roue : un arc épais (rayons `r0` à `r1`) qui déborde du flanc de `x0` à `x1`, de l'angle `a0` à `a1` (rad, 0 = avant). */
-export function levre(p: Pieces, cote: number, x0: number, x1: number, zc: number, yc: number, r0: number, r1: number, a0: number, a1: number, n: number, f: Fini, dessous?: Fini): void {
+export function levre(p: Pieces, cote: number, x0: number, x1: number, zc: number, yc: number, r0: number, r1: number, a0: number, a1: number, n: number, f: Fini, dessous?: Fini, ymax = Infinity): void {
   const P = (x: number, r: number, a: number): V3 => [x * cote, yc + Math.sin(a) * r, zc + Math.cos(a) * r];
   for (let k = 0; k < n; k++) {
     const a = a0 + ((a1 - a0) * k) / n;
     const b = a0 + ((a1 - a0) * (k + 1)) / n;
+    // `ymax` : la lèvre s'arrête là où la tôle de l'aile s'arrête (le capot de la voiture passe sous le haut de la roue).
+    if (yc + Math.sin(a) * r1 > ymax && yc + Math.sin(b) * r1 > ymax) continue;
     const q = (A: V3, B: V3, C: V3, D: V3, g: Fini) => (cote > 0 ? p.quad(A, B, C, D, g) : p.quad(A, D, C, B, g));
     q(P(x1, r1, a), P(x1, r1, b), P(x0, r1, b), P(x0, r1, a), f); // dessus
     q(P(x1, r0, a), P(x1, r1, a), P(x1, r1, b), P(x1, r0, b), f); // face
@@ -172,10 +174,12 @@ export interface PlanRoue {
   largeur: number;
   segments: number;
   branches: number;
-  /** Jante : rayon relatif (0 à 1), creux de la face (m). */
+  /** Jante : rayon relatif (0 à 1). */
   jante: number;
   pneu: Fini;
   flanc: Fini;
+  /** Le liseré du flanc (marquage clair, lot 40c) ; le flanc par défaut. */
+  marque?: Fini;
   metal: Fini;
   fond: Fini;
   moyeu: Fini;
@@ -189,99 +193,154 @@ export interface PlanRoue {
 }
 
 /**
- * Une roue complète, centrée sur son axe (x) : pneu (bande et flancs arrondis), jante (cerclage, fond sombre, branches), moyeu (tout cela tourne),
- * disque et étrier (fixes). `cote` = +1 à gauche (la face extérieure vers +x), −1 à droite.
+ * Une roue complète (lot 40c), centrée sur son axe (x) : un pneu à flancs arrondis (bande de roulement, épaules, flancs, liseré), une jante claire (lèvre, fût
+ * sombre, branches en relief et biseautées, cache-moyeu), derrière elles un disque de frein bien visible et son étrier. Tout cela tourne (shader) sauf le
+ * disque et l'étrier. `cote` = +1 à gauche (la face extérieure vers +x), −1 à droite. À moins de 20 segments (palier 1), le pneu a moins de pas de profil.
  */
 export function roue(p: Pieces, cote: number, r: PlanRoue): void {
   const n = r.segments;
   const R = r.rayon;
   const w = r.largeur / 2;
+  const fin = n >= 20;
+  const rj = R * r.jante;
   const tourne = (f: Fini): Fini => ({ ...f, tourne: true });
-  // Pneu : un profil (x, rayon) révolu autour de l'axe x ; de l'intérieur (x = −w) à l'extérieur (x = +w), côté `cote`.
-  const profil: [number, number][] = [
-    [-w * 0.9, R * r.jante * 1.04],
-    [-w, R * 0.86],
-    [-w * 0.86, R * 0.98],
-    [w * 0.86, R * 0.98],
-    [w, R * 0.86],
-    [w * 0.9, R * r.jante * 1.04],
-  ];
-  const fins = [r.flanc, r.pneu, r.pneu, r.pneu, r.flanc];
+  const lisse = (f: Fini, g: number): Fini => ({ ...tourne(f), groupe: g });
   const P = (x: number, rr: number, a: number): V3 => [x * cote, Math.sin(a) * rr, Math.cos(a) * rr];
+  // Le pneu (révolution de l'intérieur à l'extérieur) et le reste (face vers +x, rayon décroissant) n'ont pas le même sens d'écriture : `qT` pour le pneu.
+  const qT = (A: V3, B: V3, C: V3, D: V3, f: Fini) => (cote > 0 ? p.quad(A, B, C, D, f) : p.quad(A, D, C, B, f));
+  const q = (A: V3, B: V3, C: V3, D: V3, f: Fini) => (cote > 0 ? p.quad(A, D, C, B, f) : p.quad(A, B, C, D, f));
+  const t3 = (A: V3, B: V3, C: V3, f: Fini) => (cote > 0 ? p.tri(A, C, B, f) : p.tri(A, B, C, f));
+  const marque = r.marque ?? r.flanc;
+  const gPneu = p.nouveauGroupe();
+  const gFlanc = p.nouveauGroupe();
+  const gJante = p.nouveauGroupe();
+
+  // --- Le pneu : un profil (x, rayon) révolu autour de l'axe x, de l'intérieur (x < 0) à l'extérieur (x > 0). --------------------------------------
+  const hf = R - rj;
+  const profil: [number, number, Fini][] = fin
+    ? [
+        [-0.86 * w, rj * 1.03, lisse(r.flanc, gFlanc)],
+        [-0.99 * w, rj + hf * 0.42, lisse(r.flanc, gFlanc)],
+        [-0.95 * w, rj + hf * 0.8, lisse(r.flanc, gFlanc)],
+        [-0.76 * w, R * 0.995, lisse(r.pneu, gPneu)],
+        [-0.32 * w, R, lisse(r.pneu, gPneu)],
+        [0.32 * w, R, lisse(r.pneu, gPneu)],
+        [0.76 * w, R * 0.995, lisse(r.pneu, gPneu)],
+        [0.95 * w, rj + hf * 0.8, lisse(r.flanc, gFlanc)],
+        [0.99 * w, rj + hf * 0.42, lisse(r.flanc, gFlanc)],
+        [0.86 * w, rj * 1.03, lisse(r.flanc, gFlanc)],
+      ]
+    : [
+        [-0.86 * w, rj * 1.03, lisse(r.flanc, gFlanc)],
+        [-0.99 * w, rj + hf * 0.5, lisse(r.flanc, gFlanc)],
+        [-0.72 * w, R * 0.995, lisse(r.pneu, gPneu)],
+        [-0.3 * w, R, lisse(r.pneu, gPneu)],
+        [0.3 * w, R, lisse(r.pneu, gPneu)],
+        [0.72 * w, R * 0.995, lisse(r.pneu, gPneu)],
+        [0.99 * w, rj + hf * 0.5, lisse(r.flanc, gFlanc)],
+        [0.86 * w, rj * 1.03, lisse(r.flanc, gFlanc)],
+      ];
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2;
     const b = ((k + 1) / n) * Math.PI * 2;
     for (let i = 0; i + 1 < profil.length; i++) {
       const [xa, ra] = profil[i]!;
-      const [xb, rb] = profil[i + 1]!;
-      const A = P(xa, ra, a), B = P(xb, rb, a), C = P(xb, rb, b), D = P(xa, ra, b);
-      if (cote > 0) p.quad(A, D, C, B, tourne(fins[i]!));
-      else p.quad(A, B, C, D, tourne(fins[i]!));
+      const [xb, rb, f] = profil[i + 1]!;
+      qT(P(xa, ra, a), P(xb, rb, a), P(xb, rb, b), P(xa, ra, b), f);
     }
+    // Le liseré du flanc extérieur : un anneau clair, à mi-hauteur du flanc (il fait tourner la roue aux yeux).
+    const xm = 0.995 * w;
+    if (fin) q(P(xm, rj + hf * 0.5, a), P(xm, rj + hf * 0.62, a), P(xm, rj + hf * 0.62, b), P(xm, rj + hf * 0.5, b), tourne(marque));
   }
-  // Jante : le cerclage (un anneau plat en façade), le fond sombre en retrait, les branches, le moyeu.
-  const rj = R * r.jante;
-  const xf = w * 0.9;
-  const xfond = w * 0.15;
+
+  // --- La jante : la lèvre, le fût sombre, les branches, le cache-moyeu. -----------------------------------------------------------------------
+  const xf = w * 0.9; // la face de la jante
+  const xfond = -w * 0.35; // le fond du fût
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2;
     const b = ((k + 1) / n) * Math.PI * 2;
-    const q = (A: V3, B: V3, C: V3, D: V3, f: Fini) => (cote > 0 ? p.quad(A, B, C, D, f) : p.quad(A, D, C, B, f));
-    q(P(xf, rj * 1.04, a), P(xf, rj * 1.04, b), P(xf, rj * 0.88, b), P(xf, rj * 0.88, a), tourne(r.metal)); // lèvre de jante
-    q(P(xf, rj * 0.88, a), P(xf, rj * 0.88, b), P(xfond, rj * 0.85, b), P(xfond, rj * 0.85, a), tourne(r.fond)); // cuvette
-    const c: V3 = [xfond * cote, 0, 0];
-    if (cote > 0) p.tri(c, P(xfond, rj * 0.85, b), P(xfond, rj * 0.85, a), tourne(r.fond));
-    else p.tri(c, P(xfond, rj * 0.85, a), P(xfond, rj * 0.85, b), tourne(r.fond));
+    q(P(xf, rj * 1.03, a), P(xf, rj * 1.03, b), P(xf, rj * 0.9, b), P(xf, rj * 0.9, a), lisse(r.metal, gJante)); // la lèvre
+    q(P(xf, rj * 0.9, a), P(xf, rj * 0.9, b), P(xfond, rj * 0.84, b), P(xfond, rj * 0.84, a), tourne(r.fond)); // le fût
   }
-  // Branches : des lames de l'axe au cerclage, un peu en avant du fond (la face extérieure se lit en tournant).
   const dessin = r.dessin ?? "lames";
-  const x0 = xfond + 0.01, x1 = xf - 0.005;
-  /** Une lame de `l0` à `l1` (le long du rayon d'angle `a`), de demi-largeur `t0` puis `t1`, décalée de `d` en travers. */
+  const x1 = xf - 0.004; // la face des branches
+  const x0 = xf - 0.04; // leur pied
+  /** Une branche de `l0` à `l1` le long du rayon d'angle `a` : une face claire, deux flancs biseautés (le pied est plus large que la face). */
   const lame = (a: number, l0: number, l1: number, t0: number, t1: number, d0 = 0, d1 = 0) => {
     const s = Math.sin(a), co = Math.cos(a);
     const pt = (x: number, l: number, t: number): V3 => [x * cote, s * l + co * t, co * l - s * t];
     const A = pt(x1, l0, d0 - t0), B = pt(x1, l1, d1 - t1), C = pt(x1, l1, d1 + t1), D = pt(x1, l0, d0 + t0);
-    const A2 = pt(x0, l0, d0 - t0), B2 = pt(x0, l1, d1 - t1), C2 = pt(x0, l1, d1 + t1), D2 = pt(x0, l0, d0 + t0);
-    const q = (E: V3, F: V3, G: V3, H: V3) => (cote > 0 ? p.quad(E, F, G, H, tourne(r.metal)) : p.quad(E, H, G, F, tourne(r.metal)));
-    // La face et les deux côtés ; les bouts sont cachés (sous le moyeu, sous la lèvre de jante, ou dans la lame voisine).
-    q(A, B, C, D);
-    q(A2, B2, B, A);
-    q(D, C, C2, D2);
+    const A2 = pt(x0, l0, d0 - t0 * 1.35), B2 = pt(x0, l1, d1 - t1 * 1.35), C2 = pt(x0, l1, d1 + t1 * 1.35), D2 = pt(x0, l0, d0 + t0 * 1.35);
+    const m = (E: V3, F: V3, G: V3, H: V3, f: Fini) => (cote > 0 ? p.quad(E, H, G, F, f) : p.quad(E, F, G, H, f));
+    m(A, B, C, D, tourne(r.metal));
+    m(A2, B2, B, A, tourne(r.metal));
+    m(D, C, C2, D2, tourne(r.metal));
   };
   const k = R / 0.38;
   for (let i = 0; i < r.branches; i++) {
     const a = (i / r.branches) * Math.PI * 2;
-    if (dessin === "doubles") for (const d of [-0.11, 0.11]) lame(a + d, rj * 0.18, rj * 0.86, 0.045 * k, 0.036 * k);
+    if (dessin === "doubles") for (const d of [-0.11, 0.11]) lame(a + d, rj * 0.2, rj * 0.88, 0.05 * k, 0.04 * k);
     else if (dessin === "y") {
-      // Le pied de la lame, puis deux bras qui s'écartent jusqu'au cerclage.
-      lame(a, rj * 0.18, rj * 0.5, 0.06 * k, 0.05 * k);
-      for (const d of [-1, 1]) lame(a, rj * 0.48, rj * 0.86, 0.03 * k, 0.03 * k, d * 0.03 * k, d * 0.085 * k);
-    } else if (dessin === "larges") lame(a, rj * 0.18, rj * 0.86, 0.045 * k, 0.08 * k);
-    else lame(a, rj * 0.18, rj * 0.86, 0.075 * k, 0.06 * k);
+      lame(a, rj * 0.2, rj * 0.52, 0.066 * k, 0.054 * k);
+      for (const d of [-1, 1]) lame(a, rj * 0.5, rj * 0.88, 0.036 * k, 0.034 * k, d * 0.03 * k, d * 0.09 * k);
+    } else if (dessin === "larges") lame(a, rj * 0.2, rj * 0.88, 0.046 * k, 0.07 * k);
+    else lame(a, rj * 0.2, rj * 0.88, 0.082 * k, 0.066 * k);
   }
-  // Moyeu : un petit prisme au centre.
-  const m = 6;
-  const rm = rj * 0.2;
-  for (let k = 0; k < m; k++) {
-    const a = (k / m) * Math.PI * 2;
-    const b = ((k + 1) / m) * Math.PI * 2;
-    const q = (A: V3, B: V3, C: V3, D: V3) => (cote > 0 ? p.quad(A, B, C, D, tourne(r.moyeu)) : p.quad(A, D, C, B, tourne(r.moyeu)));
-    q(P(xf + 0.005, rm, a), P(xf + 0.005, rm, b), P(xfond, rm, b), P(xfond, rm, a));
-    const c: V3 = [(xf + 0.005) * cote, 0, 0];
-    if (cote > 0) p.tri(c, P(xf + 0.005, rm, a), P(xf + 0.005, rm, b), tourne(r.moyeu));
-    else p.tri(c, P(xf + 0.005, rm, b), P(xf + 0.005, rm, a), tourne(r.moyeu));
+  // Le cache-moyeu : un disque bombé (clair) et, en détail, cinq écrous.
+  const rm = rj * 0.22;
+  const xm = xf + 0.012;
+  const m = fin ? 12 : 8;
+  for (let i = 0; i < m; i++) {
+    const a = (i / m) * Math.PI * 2;
+    const b = ((i + 1) / m) * Math.PI * 2;
+    q(P(x0, rm * 1.1, a), P(x0, rm * 1.1, b), P(xm - 0.006, rm, b), P(xm - 0.006, rm, a), tourne(r.moyeu));
+    t3([xm * cote, 0, 0], P(xm - 0.006, rm, a), P(xm - 0.006, rm, b), tourne(r.moyeu));
   }
-  // Disque (fixe, on le voit à travers les branches) et étrier (fixe, en haut à l'arrière du disque).
-  const nd = Math.max(8, Math.round(n / 2));
-  const xd = -w * 0.2;
-  for (let k = 0; k < nd; k++) {
-    const a = (k / nd) * Math.PI * 2;
-    const b = ((k + 1) / nd) * Math.PI * 2;
-    const c: V3 = [xd * cote, 0, 0];
-    if (cote > 0) p.tri(c, P(xd, rj * 0.78, b), P(xd, rj * 0.78, a), r.disque);
-    else p.tri(c, P(xd, rj * 0.78, a), P(xd, rj * 0.78, b), r.disque);
+  if (fin) {
+    for (let i = 0; i < r.branches; i++) {
+      const a = ((i + 0.5) / r.branches) * Math.PI * 2;
+      const ca = Math.cos(a) * rm * 0.55;
+      const sa = Math.sin(a) * rm * 0.55;
+      const bolt: Fini = { ...tourne(r.fond), groupe: p.nouveauGroupe() };
+      for (let j = 0; j < 5; j++) {
+        const u = (j / 5) * Math.PI * 2;
+        const v = ((j + 1) / 5) * Math.PI * 2;
+        const rr = rm * 0.17;
+        const B1: V3 = [(xm + 0.006) * cote, sa + Math.sin(u) * rr, ca + Math.cos(u) * rr];
+        const B2: V3 = [(xm + 0.006) * cote, sa + Math.sin(v) * rr, ca + Math.cos(v) * rr];
+        t3([(xm + 0.006) * cote, sa, ca], B1, B2, bolt);
+      }
+    }
   }
-  boite(p, rj * 0.45, 0.04, -rj * 0.42, -rj * 0.05, rj * 0.82, 0.04, -rj * 0.36, -rj * 0.1, r.etrier, xd * cote + 0.02 * cote);
+
+  // --- Le disque (fixe, derrière les branches : on le voit) et l'étrier (fixe, en haut à l'arrière). ----------------------------------------------
+  const nd = Math.max(10, Math.round(n * 0.75));
+  const xd = -w * 0.18;
+  const e = 0.008;
+  for (let i = 0; i < nd; i++) {
+    const a = (i / nd) * Math.PI * 2;
+    const b = ((i + 1) / nd) * Math.PI * 2;
+    q(P(xd + e, rj * 0.86, a), P(xd + e, rj * 0.86, b), P(xd + e, rj * 0.34, b), P(xd + e, rj * 0.34, a), r.disque); // la face
+    q(P(xd - e, rj * 0.86, b), P(xd - e, rj * 0.86, a), P(xd - e, rj * 0.34, a), P(xd - e, rj * 0.34, b), r.disque); // l'envers
+    q(P(xd + e, rj * 0.86, a), P(xd - e, rj * 0.86, a), P(xd - e, rj * 0.86, b), P(xd + e, rj * 0.86, b), r.disque); // la tranche
+    // Le bol du disque, plus sombre, vers le moyeu.
+    q(P(xd + e, rj * 0.34, a), P(xd + e, rj * 0.34, b), P(x0, rj * 0.24, b), P(x0, rj * 0.24, a), r.fond);
+  }
+  const na = fin ? 4 : 0;
+  const a0 = 0.35 * Math.PI;
+  const a1 = 0.75 * Math.PI;
+  for (let i = 0; i < na; i++) {
+    const a = a0 + ((a1 - a0) * i) / na;
+    const b = a0 + ((a1 - a0) * (i + 1)) / na;
+    const rr0 = rj * 0.5;
+    const rr1 = rj * 0.9;
+    const xe0 = xd - 0.045;
+    const xe1 = xd + 0.05;
+    q(P(xe1, rr1, a), P(xe1, rr1, b), P(xe0, rr1, b), P(xe0, rr1, a), r.etrier); // le dessus
+    q(P(xe1, rr0, a), P(xe1, rr1, a), P(xe1, rr1, b), P(xe1, rr0, b), r.etrier); // la face
+    q(P(xe0, rr1, a), P(xe0, rr0, a), P(xe0, rr0, b), P(xe0, rr1, b), r.etrier); // le côté intérieur
+    q(P(xe0, rr0, a), P(xe1, rr0, a), P(xe1, rr0, b), P(xe0, rr0, b), r.etrier); // le dessous
+  }
 }
 
 /** Un prisme à `n` côtés autour de l'axe x (roue simple d'un fantôme, échappement…). */

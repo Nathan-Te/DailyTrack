@@ -33,7 +33,12 @@ export const fr = {
   "couleur.lagon": "Lagon",
   "couleur.olive": "Olive",
   "couleur.poudre": "Rose poudré",
-  "motif.bande": "Bande",
+  "motif.course": "Double bande",
   "motif.flancs": "Flancs",
+  "motif.filet": "Filet",
+  "motif.bicolore": "Bicolore",
+  "motif.chevrons": "Chevrons",
+  "motif.damier": "Damier",
+  "motif.rond": "Rond",
   "motif.unie": "Unie",
 };
