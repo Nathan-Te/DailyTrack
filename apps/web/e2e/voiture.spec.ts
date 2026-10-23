@@ -48,8 +48,10 @@ test("?voiture=proto&couleur=5&motif=flancs : le Proto, chargé à la demande ; 
     const m = /assets\/(modele[ABC]|materiaux2)-/.exec(r.url());
     if (m) charges.push(m[1]!);
   });
-  await ouvrir(page, `/?home=0&debug&timescale=6&quality=1&voiture=proto&couleur=5&motif=flancs&api=${encodeURIComponent(API)}`);
-  await expect.poll(() => page.evaluate(() => window.__cdj.voiture.aJour), { timeout: 30_000 }).toBe(true);
+  // L'accueil ouvert (jeu gelé) : le Proto, chargé à la demande, remplace la civile. Sans accueil, avec `timescale=6`, le décompte ne dure
+  // qu'une demi-seconde : sur un runner lent le morceau arrivait après le départ, et la voiture n'est jamais remplacée en course (voulu).
+  await ouvrir(page, `/?home=1&debug&timescale=6&quality=1&voiture=proto&couleur=5&motif=flancs&api=${encodeURIComponent(API)}`);
+  await expect.poll(() => page.evaluate(() => window.__cdj.voiture.aJour), { timeout: 60_000 }).toBe(true);
   const v = await page.evaluate(() => window.__cdj.voiture);
   expect(v.essai).toEqual({ id: "proto", couleur: 5, motif: "flancs" });
   expect(v.choix).toEqual(v.essai);
@@ -59,6 +61,8 @@ test("?voiture=proto&couleur=5&motif=flancs : le Proto, chargé à la demande ; 
   // Seul le modèle affiché est téléchargé (qualité figée à 1 : pas de matériaux des paliers 2 et 3).
   expect(charges).toEqual(["modeleC"]);
   await expect(page.locator("#tuned")).toContainText("Voiture d'essai (Proto)");
+  await page.locator("#home-daily").click();
+  await expect(page.locator("#home")).toBeHidden();
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
   await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 90_000 });
   await expect(page.locator("#finish")).toContainText("Voiture d'essai : course non classée ni enregistrée");
