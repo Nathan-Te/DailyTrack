@@ -5,8 +5,13 @@ import { FIGURE_NAMES, THEME_NAMES } from "@cdj/sim";
 
 export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "bas-cotes" | "figures" | "figure" | "plat";
 
-/** Lot 46 : les scènes que la page d'admin propose (`?reglages=`) : le palier 3 (ordinateur), le palier 2 et le groupe « vie et ciel » (téléphone récent). */
-export const SCENES_ADMIN = ["3", "2+vie+ciel", "3-ombres"] as const;
+/** Lot 46 : les scènes que la page d'admin propose (`?reglages=`) : le palier 3 (ordinateur), le palier 2 et le groupe « vie et ciel » (téléphone récent) ; lot 45 : les paliers 1 et 2 seuls. */
+export const SCENES_ADMIN = ["3", "2+vie+ciel", "3-ombres", "1", "2"] as const;
+/**
+ * Lot 45 : essayer la règle de qualité automatique (recette et aperçus) — l'appareil imposé (`?appareil=`) et, au besoin, les médianes des mesures de l'accueil
+ * (`?intervalles=`, à 60 Hz) : un téléphone qui tient le palier 2, un ordinateur trop lent qui descend jusqu'au palier 1.
+ */
+export const ESSAIS_QUALITE: Record<string, [appareil: string, intervalles?: string]> = { telephone: ["telephone"], ordinateur: ["ordinateur"], "telephone-tient": ["telephone", "16"], "ordinateur-lent": ["ordinateur", "30,25,40"] };
 
 export interface AdminState {
   scenario: Scenario;
@@ -29,6 +34,8 @@ export interface AdminState {
   quality: "" | "0" | "1" | "2";
   /** Lot 46 : la scène à un palier (`?reglages=` : `3`, `2+vie+ciel`…), recette et aperçus seulement ; vide : le palier 1. */
   scene: "" | (typeof SCENES_ADMIN)[number];
+  /** Lot 45 : un essai de la règle de qualité (`ESSAIS_QUALITE`) ; vide : l'appareil tel qu'il est. */
+  essaiQualite: string;
   /** Caméra forcée au chargement (`?camera=`, lot 23) : "" celle mémorisée. */
   camera: "" | "proche" | "loin" | "capot";
   shakeOff: boolean;
@@ -80,6 +87,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   fxOff: false,
   quality: "",
   scene: "",
+  essaiQualite: "",
   camera: "",
   shakeOff: false,
   ghostOff: false,
@@ -128,6 +136,9 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.fxOff) p.set("fx", "off");
   if (s.quality !== "") p.set("quality", s.quality);
   if (s.scene !== "") p.set("reglages", s.scene);
+  const essai = ESSAIS_QUALITE[s.essaiQualite];
+  if (essai) p.set("appareil", essai[0]);
+  if (essai?.[1]) p.set("intervalles", essai[1]);
   if (s.camera !== "") p.set("camera", s.camera);
   if (s.shakeOff) p.set("shake", "0");
   if (s.ghostOff) p.set("ghost", "off");
@@ -165,6 +176,7 @@ export function parseAdmin(raw: string | null): AdminState {
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.scene === "" || (SCENES_ADMIN as readonly unknown[]).includes(o.scene)) s.scene = o.scene as AdminState["scene"];
+    if (typeof o.essaiQualite === "string" && (o.essaiQualite === "" || o.essaiQualite in ESSAIS_QUALITE)) s.essaiQualite = o.essaiQualite;
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;
     if (o.steer === "" || o.steer === "boutons" || o.steer === "glisser") s.steer = o.steer;

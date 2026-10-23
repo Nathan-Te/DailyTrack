@@ -43,7 +43,7 @@ test("?reglages=2+vie+ciel : le palier 2 et le groupe « vie et ciel » des tél
   const e = await lire(page);
   expect([e.palier, e.plus]).toEqual(["P2", ["vie", "ciel"]]);
   expect((await morceaux(page)).sort()).toEqual(["cielJeu", "vieJeu"]);
-  expect(Object.keys(e.pas!).sort()).toEqual(["ciel", "vie"]);
+  expect(Object.keys(e.pas!).sort()).toEqual(["ciel", "finition", "vie"]); // lot 45 : le palier 2 prend la finition
   expect(e.ombres).toBe(1024);
 });
 
@@ -64,7 +64,7 @@ test("demandés en pleine course, la vie et le ciel se chargent mais la scène n
   await page.waitForFunction(() => window.__cdj.socle.palier() === "P2");
   const e = await lire(page);
   expect(e.plus).toEqual(["vie", "ciel"]);
-  expect(Object.keys(e.pas!).sort()).toEqual(["ciel", "vie"]);
+  expect(Object.keys(e.pas!).sort()).toEqual(["ciel", "finition", "vie"]); // lot 45 : le palier 2 prend la finition
 });
 
 test.describe("au Stade, les confettis partent à l'arrivée", () => {

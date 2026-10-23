@@ -152,7 +152,7 @@ interface CdjDebug {
   /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
   feux: { rouges: number; vert: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; textures: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;

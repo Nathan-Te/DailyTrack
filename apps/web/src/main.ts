@@ -2689,7 +2689,7 @@ if (params.has("debug")) {
         },
       },
       get render() {
-        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, textures: renderer.info.memory.textures, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {
