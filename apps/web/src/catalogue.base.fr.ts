@@ -1,5 +1,6 @@
 // Catalogue de base de DailyTrack (lot I4) : ce que tous les écrans partagent — titre de la page, noms des thèmes, médailles en mots, erreurs
-// d'ordre local (réseau, délai), mots courants. Clés `page.*`, `theme.*`, `medaille.*` hors catalogue commun, `commun.*`, `erreur.local.*`.
+// d'ordre local (réseau, délai), mots courants. Clés `page.*`, `theme.*`, `medaille.*` hors catalogue commun, `commun.*`, `erreur.local.*` ;
+// retouche 40b : `voiture.*` (le nom et la description de chaque voiture).
 // Les autres catalogues du jeu (un fichier par zone : accueil, course, réglages, Salon) sont réunis dans `catalogue.ts`. Ton (charte § 7) :
 // Track est sec et précis, les chiffres d'abord ; tutoiement en français, « you » direct en anglais. Parité : packages/ui/test/catalogues.test.ts.
 
@@ -30,4 +31,13 @@ export const fr = {
   "erreur.local.timeout": "Le serveur ne répond pas.",
   "erreur.local.http_error": "Le serveur a répondu par une erreur.",
   "erreur.local.inconnue": "Quelque chose n'a pas marché.",
+  // Retouche 40b : les voitures (catalogue `voiture/catalogue.ts` ; le Garage du lot 41 les montre). Toutes roulent pareil : seul l'aspect change.
+  "voiture.civile.nom": "Compacte",
+  "voiture.civile.description": "La voiture de série du jeu : cinq portes, hayon, petit becquet. Elle est à toi dès le premier jour.",
+  "voiture.evolution.nom": "Évolution",
+  "voiture.evolution.description": "Un coupé trapu de course : passages de roue larges, aileron sur deux jambes, quatre phares ronds.",
+  "voiture.gt.nom": "GT",
+  "voiture.gt.description": "Une GT basse et large : capot long, grand aileron sur cols de cygne, lame de feux d'un bord à l'autre.",
+  "voiture.proto.nom": "Proto",
+  "voiture.proto.description": "Un prototype d'endurance : ailes détachées, bulle étroite, dérive, prise d'air sur le toit.",
 } as const;

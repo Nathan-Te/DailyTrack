@@ -500,10 +500,10 @@ body[data-planche="voiture"] .planche--voiture {
 }
 .voiture-ligne {
   display: grid;
-  grid-template-columns: minmax(140px, 0.7fr) repeat(4, minmax(220px, 1fr));
+  grid-template-columns: minmax(140px, 0.7fr) repeat(5, minmax(200px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
-  min-width: 1000px;
+  min-width: 1200px;
 }
 .voiture-ligne__nom h3,
 .voiture-colonne h3 {

@@ -51,7 +51,15 @@ export interface AdminState {
   timescale: string;
   /** Adresse de l'API de classement ("" : aucune). */
   api: string;
+  /** Retouche 40b : une voiture d'essai (`?voiture=<id>&couleur=<n>&motif=<m>`, recette et aperçus : rien d'enregistré, course non classée) ; "" : celle choisie. */
+  voiture: "" | (typeof VOITURES_ESSAI)[number];
+  /** Rang de la couleur dans la palette ("" : l'orange de Track). */
+  couleur: string;
+  motif: "" | "flancs" | "unie";
 }
+
+/** Les voitures du catalogue (`voiture/catalogue.ts` : la page d'admin ne l'importe pas, il tire les modèles ; un test vérifie qu'elles sont les mêmes). */
+export const VOITURES_ESSAI = ["civile", "evolution", "gt", "proto"] as const;
 
 export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   scenario: "jour",
@@ -81,6 +89,9 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   salonMinutes: "",
   timescale: "",
   api: "",
+  voiture: "",
+  couleur: "",
+  motif: "",
 });
 
 /** Paramètres d'adresse (sans « ? ») : uniquement ce qui s'écarte de la valeur par défaut. */
@@ -120,6 +131,11 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.zones) p.set("zones", "1");
   if (s.home) p.set("home", "1");
   if (s.howto) p.set("howto", "1");
+  if (s.voiture !== "") {
+    p.set("voiture", s.voiture);
+    if (s.couleur !== "") p.set("couleur", s.couleur);
+    if (s.motif !== "") p.set("motif", s.motif);
+  }
   if (s.api.trim() !== "") p.set("api", s.api.trim());
   return p.toString().replace(/=(?=&|$)/g, "");
 }
@@ -152,6 +168,9 @@ export function parseAdmin(raw: string | null): AdminState {
     if (typeof o.timescale === "string" && /^\d{0,2}$/.test(o.timescale)) s.timescale = o.timescale;
     if (typeof o.salonMinutes === "string" && /^\d{0,2}$/.test(o.salonMinutes)) s.salonMinutes = o.salonMinutes;
     if (typeof o.api === "string") s.api = o.api.slice(0, 300);
+    if (typeof o.voiture === "string" && (["", ...VOITURES_ESSAI] as readonly string[]).includes(o.voiture)) s.voiture = o.voiture as AdminState["voiture"];
+    if (typeof o.couleur === "string" && /^[0-7]?$/.test(o.couleur)) s.couleur = o.couleur;
+    if (o.motif === "" || o.motif === "flancs" || o.motif === "unie") s.motif = o.motif;
   } catch {
     /* état illisible : valeurs par défaut */
   }

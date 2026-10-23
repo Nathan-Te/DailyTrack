@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-927 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+937 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -414,6 +414,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `arrivee.reprises` | one : {n} reprise au point de contrôle · other : {n} reprises au point de contrôle | one : {n} respawn at a checkpoint · other : {n} respawns at a checkpoint |
 | `arrivee.sansReprise` | Sans reprise | No respawn |
 | `arrivee.reglagesModifies` | Réglages modifiés : course non classée ni enregistrée | Modified settings: run neither ranked nor saved |
+| `arrivee.voitureEssai` | Voiture d'essai : course non classée ni enregistrée | Trial car: run neither ranked nor saved |
 | `arrivee.recourir` | Recourir | Race again |
 | `arrivee.revoir` | Revoir le tour | Watch the lap |
 | `arrivee.revoir.aria` | Revoir le tour : le meilleur du jour | Watch the lap: today's best |
@@ -534,6 +535,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `course.notice.demo` | mode démo | demo mode |
 | `course.notice.dateInvalide` | date invalide : circuit d'aujourd'hui | invalid date: today's track |
 | `course.notice.reglages` | Réglages modifiés : course non classée | Modified settings: run not ranked |
+| `course.notice.voitureEssai` | Voiture d'essai ({nom}) : course non classée | Trial car ({nom}): run not ranked |
 | `course.notice.pasDisponible` | Ce circuit n'est pas encore disponible : voici celui du jour | This track isn't available yet: here is today's |
 | `course.notice.essaisReserves` | Thème et variante forcés : réservés aux essais | Forced theme and variant: trials only |
 | `course.scenario.pilotage` | Circuit de pilotage | Handling track |
@@ -850,6 +852,19 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `theme.canyon` | Canyon | Canyon |
 | `theme.col` | Col alpin | Mountain pass |
 | `theme.ville` | Ville | City |
+
+### voiture (`voiture.*`, `apps/web/src/catalogue.base.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `voiture.civile.nom` | Compacte | Hatch |
+| `voiture.civile.description` | La voiture de série du jeu : cinq portes, hayon, petit becquet. Elle est à toi dès le premier jour. | The game's road car: five doors, a hatchback, a small spoiler. Yours from day one. |
+| `voiture.evolution.nom` | Évolution | Evolution |
+| `voiture.evolution.description` | Un coupé trapu de course : passages de roue larges, aileron sur deux jambes, quatre phares ronds. | A stocky race coupé: wide wheel arches, a wing on two legs, four round headlights. |
+| `voiture.gt.nom` | GT | GT |
+| `voiture.gt.description` | Une GT basse et large : capot long, grand aileron sur cols de cygne, lame de feux d'un bord à l'autre. | A low, wide GT: long bonnet, big swan-neck wing, a light bar from edge to edge. |
+| `voiture.proto.nom` | Proto | Proto |
+| `voiture.proto.description` | Un prototype d'endurance : ailes détachées, bulle étroite, dérive, prise d'air sur le toit. | An endurance prototype: separate wings, a narrow bubble, a fin, a roof scoop. |
 
 ## Jump
 

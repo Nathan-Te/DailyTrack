@@ -257,6 +257,8 @@ export interface OptionsFini {
   recto?: boolean | "ombre";
   /** La texture de la livrée (bandes, numéro) : posée sur les faces marquées `aLivree`, aux coordonnées `aUvL`. */
   livree?: { value: Texture | null };
+  /** Retouche 40b : la Nuit (0 à 1) allume légèrement ce que le masque de la livrée marque (alpha < 1 : rayures, plaque, numéro). */
+  nuit?: { value: number };
 }
 
 /**
@@ -270,7 +272,7 @@ export function finiParSommet<M extends Material>(
   cle = "voiture",
 ): M {
   const pbr = "metalness" in mat;
-  const { angle, recto, livree } = o;
+  const { angle, recto, livree, nuit } = o;
   mat.defines = {
     ...(mat.defines ?? {}),
     ...(angle ? { USE_SPIN: "" } : {}),
@@ -286,6 +288,7 @@ export function finiParSommet<M extends Material>(
   mat.onBeforeCompile = (s) => {
     if (angle) s.uniforms.uSpin = angle;
     if (livree) s.uniforms.uLivree = livree;
+    if (livree) s.uniforms.uNuit = nuit ?? { value: 0 };
     const livreeV =
       "#ifdef USE_LIVREE\nattribute float aLivree;\nattribute vec2 aUvL;\nvarying float vLivree;\nvarying vec2 vUvL;\n#endif\n";
     const rectoV =
@@ -305,7 +308,7 @@ export function finiParSommet<M extends Material>(
     s.vertexShader = v;
     let f = s.fragmentShader.replace(
       "#include <common>",
-      `#include <common>\n${pbr ? "varying vec3 vPbr;\n" : ""}#ifdef USE_RECTO\nvarying float vRecto;\n#endif\n#ifdef USE_LIVREE\nuniform sampler2D uLivree;\nvarying float vLivree;\nvarying vec2 vUvL;\n#endif`,
+      `#include <common>\n${pbr ? "varying vec3 vPbr;\n" : ""}#ifdef USE_RECTO\nvarying float vRecto;\n#endif\n#ifdef USE_LIVREE\nuniform sampler2D uLivree;\nuniform float uNuit;\nvarying float vLivree;\nvarying vec2 vUvL;\n#endif`,
     );
     f = f.replace(
       "#include <clipping_planes_fragment>",
@@ -313,7 +316,12 @@ export function finiParSommet<M extends Material>(
     );
     f = f.replace(
       "#include <color_fragment>",
-      "#include <color_fragment>\n#ifdef USE_LIVREE\ndiffuseColor.rgb *= mix(vec3(1.0), texture2D(uLivree, vUvL).rgb, vLivree);\n#endif",
+      "#include <color_fragment>\n#ifdef USE_LIVREE\nvec4 livreeTex = texture2D(uLivree, vUvL);\ndiffuseColor.rgb *= mix(vec3(1.0), livreeTex.rgb, vLivree);\n#endif",
+    );
+    // La Nuit : ce que le masque de la livrée marque (alpha 0,5) brille un peu, de sa propre couleur (la voiture se lit dans le noir).
+    f = f.replace(
+      "#include <emissivemap_fragment>",
+      "#include <emissivemap_fragment>\n#ifdef USE_LIVREE\ntotalEmissiveRadiance += diffuseColor.rgb * clamp((1.0 - livreeTex.a) * 2.0, 0.0, 1.0) * vLivree * uNuit * 0.55;\n#endif",
     );
     if (pbr) {
       f = f.replace(

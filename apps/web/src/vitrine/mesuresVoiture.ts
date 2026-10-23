@@ -6,7 +6,7 @@
 import type { ModeleId } from "../voiture/modele";
 
 type Mesure = { avecMs: number; sansMs: number };
-export const MESURES_VOITURE: { appels: { avec: number; sans: number }; colonnes: Record<"existant" | ModeleId, { p1: Mesure; p2: Mesure }> } = {
+export const MESURES_VOITURE: { appels: { avec: number; sans: number }; colonnes: Partial<Record<"existant" | ModeleId, { p1: Mesure; p2: Mesure }>> } = {
   appels: { avec: 28, sans: 15 },
   colonnes: {
     existant: { p1: { avecMs: 209.7, sansMs: 201.7 }, p2: { avecMs: 539.7, sansMs: 521.7 } },

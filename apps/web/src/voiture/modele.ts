@@ -10,11 +10,11 @@ import { BufferAttribute, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshStanda
 import type { CarModel, WheelPose } from "../carMesh";
 import { WHEEL_RADIUS, clampTravel } from "../carMesh";
 import { caisse, interpoler, prismeX, roue, type Cle, type PlanRoue } from "./forme";
-import { LIVREE, projectionLivree, textureLivree, type CadreLivree, type TextureLivree } from "./livree";
+import { LIVREE, projectionLivree, textureLivree, type CadreLivree, type MotifLivree, type TextureLivree } from "./livree";
 import { Pieces, finiParSommet, normalesLissees, ombreDeRoue, ombreDesFeux, projeter, srgb, type AngleRoues, type Fini } from "./pieces";
 
 export type PalierVoiture = 1 | 2 | 3;
-export type ModeleId = "A" | "B" | "C";
+export type ModeleId = "civile" | "A" | "B" | "C";
 
 /** Les matières d'une voiture, à un palier donné. */
 export interface Matieres {
@@ -56,7 +56,7 @@ export interface PlanVoiture {
   /** Zones en long (z) : pare-brise et lunette (le dessus y est vitré), vitres latérales. */
   zones: { pareBrise: readonly [number, number]; lunette: readonly [number, number]; vitres: readonly [number, number] };
   cadre: CadreLivree;
-  roue: Pick<PlanRoue, "branches" | "jante" | "doubles">;
+  roue: Pick<PlanRoue, "branches" | "jante" | "dessin">;
   /** Pièces propres : aileron, diffuseur, passages de roue, rétroviseurs, échappements… (dans la caisse). */
   pieces(p: Pieces, c: Contexte): void;
   feux(c: Contexte): Feux;
@@ -68,24 +68,26 @@ export interface OptionsVoiture {
   palier: PalierVoiture;
   couleur: number;
   numero: string;
+  /** Le motif de la livrée (retouche 40b) : `bande` par défaut. */
+  motif?: MotifLivree;
   /** Matériaux des paliers 2 et 3 (`materiaux2.ts`, chargé à la demande) ; sans eux, le palier 1. */
   materiaux?: FabriqueMateriaux;
 }
 
 /** Les matériaux d'un palier : la caisse (livrée comprise) et les roues. */
 export interface FabriqueMateriaux {
-  caisse(livree: { value: Texture | null }): Material;
+  caisse(livree: { value: Texture | null }, nuit: { value: number }): Material;
   roue(angle: AngleRoues): Material;
   /** Angle (degrés) sous lequel la caisse est lissée ; 0 : facettes. */
   lisse: number;
   /** Matières (couleurs, rugosité, métal, vernis) des pièces. */
   matieres(): Matieres;
-  roueFinis(): Omit<PlanRoue, "branches" | "jante" | "doubles" | "rayon" | "largeur" | "segments">;
+  roueFinis(): Omit<PlanRoue, "branches" | "jante" | "dessin" | "rayon" | "largeur" | "segments">;
 }
 
 /** Le palier 1 : une peinture standard, des couleurs par sommet, des facettes (comme le décor). */
 export const MATERIAUX_1: FabriqueMateriaux = {
-  caisse: (livree) => finiParSommet(new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide }), { livree }, "voiture-1"),
+  caisse: (livree, nuit) => finiParSommet(new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide }), { livree, nuit }, "voiture-1"),
   roue: (angle) => finiParSommet(new MeshStandardMaterial({ vertexColors: true, flatShading: true }), { angle }, "voiture-1"),
   lisse: 0,
   matieres: () => ({
@@ -112,7 +114,9 @@ export const MATERIAUX_1: FabriqueMateriaux = {
 export interface Voiture extends CarModel {
   triangles: number;
   maillages: number;
-  peindre(couleur: number, numero?: string): void;
+  peindre(couleur: number, numero?: string, motif?: MotifLivree): void;
+  /** La Nuit (retouche 40b) : les rayures, la plaque, le numéro et les feux s'allument un peu, pour que la voiture se lise dans le noir. */
+  nuit(on: boolean): void;
   dispose(): void;
 }
 
@@ -143,9 +147,10 @@ export function construireVoiture(plan: PlanVoiture, o: OptionsVoiture): Voiture
   caisse(p, sections, fini, palier === 1 ? {} : plan.bombe, { arriere: peinture, avant: peinture });
   plan.pieces(p, c);
   projeter(p, projectionLivree(plan.cadre));
-  const livree: TextureLivree = textureLivree(plan.cadre, palier === 1 ? 512 : 1024, o.couleur, o.numero);
+  const livree: TextureLivree = textureLivree(plan.cadre, palier === 1 ? 512 : 1024, o.couleur, o.numero, o.motif);
   const tex = { value: livree.texture as Texture | null };
-  const caisseMat = mat.caisse(tex);
+  const nuit = { value: 0 };
+  const caisseMat = mat.caisse(tex, nuit);
   const group = new Group();
   const corps = new Mesh(p.construire(false, mat.lisse > 0 ? normalesLissees(p, mat.lisse) : undefined), caisseMat);
   group.add(corps);
@@ -158,7 +163,8 @@ export function construireVoiture(plan: PlanVoiture, o: OptionsVoiture): Voiture
   feux.stop(f);
   const stopFin = f.sommets;
   const feuxGeo = f.construire(false);
-  const feuxMesh = new Mesh(feuxGeo, finiParSommet(new MeshBasicMaterial({ vertexColors: true, side: DoubleSide }), { recto: true }, "feux"));
+  const feuxMat = finiParSommet(new MeshBasicMaterial({ vertexColors: true, side: DoubleSide }), { recto: true }, "feux");
+  const feuxMesh = new Mesh(feuxGeo, feuxMat);
   feuxMesh.customDepthMaterial = ombreDesFeux();
   group.add(feuxMesh);
   const couleurs = feuxGeo.getAttribute("color") as BufferAttribute;
@@ -207,13 +213,18 @@ export function construireVoiture(plan: PlanVoiture, o: OptionsVoiture): Voiture
       });
       if (s.braking !== freine) allumer((freine = s.braking));
     },
-    peindre(couleur, numero) {
-      livree.peindre(couleur, numero ?? o.numero);
+    peindre(couleur, numero, motif) {
+      livree.peindre(couleur, numero ?? o.numero, motif);
+    },
+    nuit(on) {
+      nuit.value = on ? 1 : 0;
+      // Les feux, sans éclairage, passent un peu au-dessus du blanc : la tonalité les fait briller sans brûler.
+      feuxMat.color.setScalar(on ? 1.6 : 1);
     },
     dispose() {
       livree.dispose();
       for (const g of [corps.geometry, feuxGeo, roues2[0]!.geo, roues2[1]!.geo]) g.dispose();
-      for (const x of [caisseMat, feuxMesh.material as Material, roueMat, roueOmbre, feuxMesh.customDepthMaterial!]) x.dispose();
+      for (const x of [caisseMat, feuxMat, roueMat, roueOmbre, feuxMesh.customDepthMaterial!]) x.dispose();
     },
   };
 }

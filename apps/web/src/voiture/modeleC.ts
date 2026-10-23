@@ -4,7 +4,7 @@
 // silhouette se lit « voiture de course » à 50 m, en fantôme, rien qu'à ses deux bosses et à sa dérive ; (4) elle reste dans le gabarit des
 // deux autres (la simulation ne change pas). Le centre plonge entre les ailes (un capot creux), une dérive court sur le dos jusqu'à l'aileron.
 // Pas d'intérieur : la bulle est vitrée, sombre et opaque. Création originale.
-import { cle, extruder, fondDePassage, levre, pave, prismeZ } from "./forme";
+import { boite, cle, extruder, fondDePassage, levre, pave, prismeZ } from "./forme";
 import type { Contexte, Feux, PlanVoiture } from "./modele";
 import { srgb, type Fini, type Pieces } from "./pieces";
 
@@ -55,8 +55,9 @@ export const PLAN_C: PlanVoiture = {
     largeurBande: 0.6,
     portiere: { z: -0.2, y: 0.58, h: 0.28 },
     arriere: { y: 0.5, h: 0.22 },
+    flancs: { z: [0.02, 0.78], y: [0.28, 0.6] },
   },
-  roue: { branches: 6, jante: 0.7 },
+  roue: { branches: 5, jante: 0.7, dessin: "y" },
   pieces(p, c) {
     piecesC(p, c);
   },
@@ -110,7 +111,13 @@ function piecesC(p: Pieces, c: Contexte) {
   for (const s of [-1, 1]) {
     pave(p, s > 0 ? 0.86 : -0.93, s > 0 ? 0.93 : -0.86, 0.36, 0.6, -0.95, -0.7, m.noir);
     pave(p, s > 0 ? 0.74 : -0.92, s > 0 ? 0.92 : -0.74, 0.92, 0.99, 0.62, 0.74, m.peinture);
+    // Retouche 40b, le petit niveau de détail : la glace du rétroviseur, une poignée sur le flanc de la bulle.
+    pave(p, s > 0 ? 0.76 : -0.9, s > 0 ? 0.9 : -0.76, 0.93, 0.98, 0.614, 0.62, m.vitre);
+    pave(p, s > 0 ? 0.89 : -0.93, s > 0 ? 0.93 : -0.89, 0.5, 0.53, -0.12, 0.04, m.garniture);
   }
+  // La prise d'air de toit (une écope sur la bulle, ouverture sombre vers l'avant) : la silhouette d'un proto, lisible en fantôme.
+  boite(p, 1.07, 0.12, -0.5, -0.12, 1.2, 0.09, -0.46, -0.2, m.peinture);
+  pave(p, -0.07, 0.07, 1.1, 1.17, -0.215, -0.19, m.noir);
   pave(p, -0.9, 0.9, 0.18, 0.24, ZF - 0.6, ZF + 0.16, m.garniture);
   pave(p, -0.36, 0.36, 0.3, 0.38, ZF - 0.03, ZF + 0.01, m.noir);
 }
@@ -120,16 +127,19 @@ function feuxC(c: Contexte): Feux {
   const rouge: Fini = { couleur: srgb(0x7a1418), recto: true };
   return {
     phares(f) {
-      // Phares sur le dessus des ailes avant, et un trait sous le nez.
+      // Phares sur le dessus des ailes avant.
       for (const s of [-1, 1]) {
+        // Signature (retouche 40b) : trois traits superposés sur le nez de chaque aile.
+        for (const y of [0.355, 0.39, 0.425]) pave(f, s > 0 ? 0.58 : -0.76, s > 0 ? 0.76 : -0.58, y, y + 0.02, ZF - 0.04, ZF + 0.012, blanc);
         pave(f, s > 0 ? 0.6 : -0.88, s > 0 ? 0.88 : -0.6, 0.72, 0.8, ZF - 0.44, ZF - 0.22, blanc);
-        pave(f, s > 0 ? 0.5 : -0.74, s > 0 ? 0.74 : -0.5, 0.42, 0.45, ZF - 0.05, ZF + 0.008, blanc);
       }
     },
     stop(f) {
       // Lame de feux d'une aile à l'autre, et le feu de pluie au centre du diffuseur.
       pave(f, -0.86, 0.86, 0.63, 0.7, ZR - 0.03, ZR + 0.005, rouge);
       pave(f, -0.1, 0.1, 0.27, 0.36, ZR - 0.125, ZR - 0.09, rouge);
+      // Les bouts de la lame se retournent vers le bas, au bord des ailes (signature de dos).
+      for (const s of [-1, 1]) pave(f, s > 0 ? 0.8 : -0.86, s > 0 ? 0.86 : -0.8, 0.5, 0.63, ZR - 0.03, ZR + 0.005, rouge);
       void c;
     },
   };
