@@ -140,9 +140,9 @@ Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTr
 
 | Ligne | `main` | Lot 44 | Écart | Plafond | Marge |
 |---|---|---|---|---|---|
-| JS + CSS du premier chargement | 278 799 | **276 861** | **−1 938** | 291 600 | 14 739 |
-| JS | 267 251 | 265 313 | −1 938 | 280 200 | 14 887 |
-| hors three.js | 133 701 | 131 763 | −1 938 | 147 500 | 15 737 |
+| JS + CSS du premier chargement | 278 799 | **276 952** | **−1 847** | 291 600 | 14 648 |
+| JS | 267 251 | 265 404 | −1 847 | 280 200 | 14 796 |
+| hors three.js | 133 701 | 131 854 | −1 847 | 147 500 | 15 646 |
 | page d'admin | 11 182 | 11 181 | −1 | 12 500 | 1 319 |
 | CSS, catalogue anglais, fils de travail, polices | — | inchangés | 0 | — | — |
 | **décor 3D à la demande** (nouvelle ligne : les huit thèmes, le commun une fois) | — | **12 431** | — | **16 000** | 3 569 |
@@ -262,3 +262,17 @@ unitaires (`npx vitest run --project sqlite` : 201 fichiers, 2 705 tests), `type
    `test/vieCiel.test.ts` est adapté (le décor du thème donné, puis posé ; un spectateur du nouveau décor fait deux boîtes sans fond : 2 × 30 sommets) ; ses
    règles sont inchangées et vertes. La scène par défaut d'un joueur (palier 1, sans pas) n'a pas changé avec le lot 46 : les captures (§ 3) et les mesures
    (§ 5), faites avant la fusion, restent les siennes ; seuls les poids (§ 4) ont été remesurés.
+9. **Deux échecs de la CI de la PR (run 39984762535), corrigés dans ses zones** :
+   - `salon.spec.ts:285` (« le classement final reste 8 s… », deux essais : aucune image notée pendant le classement final). **Cause, du lot** : au Salon le
+     décompte part dès le chargement, avant l'arrivée du décor de la session (vérifié : `__cdj.decor.dansScene` à `false` après le chargement) ; il était donc
+     posé à la première période d'arrêt, le plus souvent le classement final — sur une scène remplacée 8 s plus tard —, et la scène suivante, construite
+     d'avance, le recevait au même moment : une construction et une compilation de matière (plusieurs secondes en rendu logiciel) au milieu de ce que le test
+     mesure. **Correction** (`main.ts`) : la première scène du Salon attend son décor un instant (1,5 s au plus ; c'est un petit morceau, souvent en cache) ;
+     la scène suivante n'est construite d'avance qu'une fois son décor chargé (jamais en pleine course : sinon à l'heure pile, comme avant) ; au classement
+     final, rien n'est posé sur la scène qui va être remplacée. +91 o au premier chargement (§ 4 à jour).
+   - `profil.spec.ts:85` (délai de 240 s dépassé). **Pas du lot** : ce test prenait déjà 3,7 min sur `main` (run 39980056225) et 3,3 min en local (3,4 sur la
+     branche) ; ses trois appareils restaient ouverts **et dessinaient** pendant les courses des suivants (course de C : 40 s ; une lecture du stockage d'A :
+     33 s). **Correction du test, sans rien relâcher** : A et B sont mis en sommeil (`sleep`, que le fichier avait déjà) dès qu'ils ont fini leur part —
+     45,7 s au lieu de 3,4 min, les sept tests du fichier verts ; `durees.json` mis à jour (263 → 130 s).
+   - Vu une fois en local, dans une longue série (`salon`, `decor`, `profil`, `perf`, `watch` d'affilée) : `watch.spec.ts:52` (la rediffusion finissait avant le
+     second « −5 s »). Rejoué seul : 2/2 sur la branche, 2/2 sur `main` (17 s) ; vert dans la CI de la PR. Non touché (pas de ce lot), à surveiller.

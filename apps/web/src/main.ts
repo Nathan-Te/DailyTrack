@@ -276,6 +276,9 @@ const coupesScene = sceneVoulue?.coupes ?? [];
 const modulesDepart = palierDepart === "existant" ? PAS_DU_PALIER.existant : pasVoulus(palierDepart, plusDepart, coupesScene);
 let pasDepartCharges = true;
 if (modulesDepart.length > 0) await chargerPas(modulesDepart).catch(() => (pasDepartCharges = false));
+// Lot 44 : au Salon, le décompte part dès le chargement (il n'y a pas d'accueil où le décor arriverait) : le décor de la session est attendu un instant (un
+// petit morceau, souvent déjà en cache), pour que la première scène l'ait ; trop lent, elle se construit sans lui et il s'ajoutera à la prochaine arrivée.
+if (salon) await Promise.race([chargerDecor(salon.circuit.palette).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
 /** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur ; les parties coupées par l'adresse. */
 const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee") });
 const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 ? { coupes: coupesScene } : {}) });
@@ -2320,7 +2323,9 @@ if (decorDansVue && poseurDe(view)) Object.assign(etatDecor, { poseMs: performan
 /** À chaque image (une lecture de booléen la plupart du temps) : pose le décor arrivé, si le jeu est à l'arrêt. */
 function poserDecorArrive() {
   const arret = isFrozen() || phase === "finished";
-  if (!decorDansVue) {
+  // Au classement final du Salon, la scène affichée sera remplacée dans quelques secondes par la suivante : on ne lui ajoute rien (une saccade pour rien).
+  const remplacee = salon?.state === "podium" || salon?.state === "switching";
+  if (!decorDansVue && !remplacee) {
     const m = decorPret(scenePalette);
     if (m && arret) {
       if (phase === "racing" || phase === "countdown") etatDecor.poseEnCourse += isFrozen() ? 0 : 1;
@@ -2403,11 +2408,21 @@ const salonHost: SalonHost = {
   swapCircuit: swapSalonCircuit,
   prebuild(c) {
     if (prebuilt?.id === c.id) return;
-    prebuilt?.scene.dispose();
-    const scene = buildSalonScene(c);
-    prebuilt = { id: c.id, palette: c.palette, decor: !scene.poserDecor || !!scene.stats().decor, scene };
-    renderer.compile(prebuilt.scene.scene, camera); // shaders compilés derrière le classement final : pas de saccade quand le décompte repart (lot 33)
-    salonStats.prebuilds++;
+    // Lot 44 : la scène suivante se construit avec son décor ; s'il n'est pas encore chargé, on l'attend (la construction se fait de toute façon d'avance).
+    const construire = () => {
+      if (prebuilt?.id === c.id || salon?.circuit.id === c.id) return; // déjà faite, ou le circuit a déjà changé
+      prebuilt?.scene.dispose();
+      const scene = buildSalonScene(c);
+      prebuilt = { id: c.id, palette: c.palette, decor: !scene.poserDecor || !!scene.stats().decor, scene };
+      renderer.compile(prebuilt.scene.scene, camera); // shaders compilés derrière le classement final : pas de saccade quand le décompte repart (lot 33)
+      salonStats.prebuilds++;
+    };
+    // Attendue, elle ne se fait pas en pleine course (elle prend le fil principal) : sinon elle se fera à l'heure pile, derrière le classement final.
+    const plusTard = () => {
+      if (!salonHost.isRacing()) construire();
+    };
+    if (decorPret(c.palette)) construire();
+    else void chargerDecor(c.palette).then(plusTard, plusTard);
   },
   // « Une course est en cours » : elle roule vraiment (une voiture immobile sur la ligne n'a rien commencé : le podium n'attend pas).
   isRacing: () => !watch && !watchWait && phase === "racing" && !!race && (carSpeed(car) > 2 || race.splits.length > 0),
