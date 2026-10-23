@@ -1,3 +1,4 @@
+import type { EtatFeux } from "./feux";
 import type { Look, SceneStats } from "./trackMesh";
 import {
   AmbientLight,
@@ -50,6 +51,8 @@ export interface Arena {
   setView(heightPx: number, fovDeg: number): void;
   followCar(x: number, y: number, z: number, yaw: number, hood?: boolean): void;
   stats(): SceneStats;
+  /** Lot 43 : pas de portique sur le sol plat (`TrackScene.feux`). */
+  feux?(etat: EtatFeux): void;
 }
 
 /** Scénario `plat` : un grand sol à damier, quelques cônes de repère, aucune collision. */

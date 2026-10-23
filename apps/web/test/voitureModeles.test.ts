@@ -3,7 +3,7 @@ import { Box3, Euler, Mesh, Quaternion, Raycaster, Vector3, type Object3D } from
 import { AXLE_FRONT, AXLE_REAR, HALF_TRACK, THEME_NAMES, THEMES } from "@cdj/sim";
 import { HOOD_CLEARANCE, HOOD_MAX_TILT, HOOD_MOUNT } from "../src/cameras";
 import { WHEEL_RADIUS } from "../src/carMesh";
-import { THEMES_A } from "../src/scene/directionA";
+import { ROUGE_PISTE, paletteP1, vibreursP1 } from "../src/scene/palier1";
 import { PALETTE_DEFS } from "../src/trackMesh";
 import { LIVREE, PALETTE, ecartCouleurs, livreeDe, luminance } from "../src/voiture/livree";
 import { MATERIAUX_2 } from "../src/voiture/materiaux2";
@@ -120,16 +120,13 @@ describe("la palette de 8 couleurs (lot 40)", () => {
   });
 
   it("chaque couleur se détache des éléments de piste de chaque thème (route, rebords, vibreurs, plaques, portes, sol : ΔE 2000 > 12)", () => {
-    // L'orange de Track est la couleur de la marque, imposée : il est proche des vibreurs (Campagne ΔE 6,5, Stade 11,4) et il est la couleur même
-    // des vibreurs du Rallye dans la scène des paliers — c'est la scène qui doit changer (README du lot 40, questions pour Nathan). Il n'est
-    // comparé qu'aux autres éléments.
+    // Lot 43 : la scène est le palier 1, dont l'orange est retiré (`palier1.ts`) : l'orange de Track n'a plus d'exception — les vibreurs orange du Rallye
+    // et rouge-orangé de la Campagne, le rouge vif des vibreurs et du super turbo (ΔE 11) sont passés au cramoisi de la piste.
     for (const theme of THEME_NAMES) {
       const pal = THEMES[theme].palette;
-      const a = THEMES_A[pal];
-      const d = PALETTE_DEFS[pal];
-      const vibreurs = new Set<number>(a.vibreur);
-      const elements = [...a.route, ...a.rebord, ...a.vibreur, d.boost, 0xe8283a, d.checkpoint, Number.parseInt(a.sol[0].slice(1), 16)];
-      for (const c of PALETTE) for (const e of elements) if (!(c.hex === LIVREE.orange && (vibreurs.has(e) || e === 0xe8283a))) expect(ecartCouleurs(c.hex, e), `${c.nom} / ${theme} ${e.toString(16)}`).toBeGreaterThan(12);
+      const p = paletteP1(pal, PALETTE_DEFS[pal]);
+      const elements = [...p.road, p.wallA, p.wallB, ...p.fence, ...vibreursP1(pal), p.boost, ROUGE_PISTE, p.checkpoint, Number.parseInt(p.floorA.slice(1), 16)];
+      for (const c of PALETTE) for (const e of elements) expect(ecartCouleurs(c.hex, e), `${c.nom} / ${theme} ${e.toString(16)}`).toBeGreaterThan(12);
     }
   });
 

@@ -10,7 +10,9 @@ import { createCarMesh, createShadow, placeShadow, type CarModel, type WheelPose
 import { flatRatio, speedCamera } from "../speedFeel";
 import { LOOKS, type TrackScene } from "../trackMesh";
 import type { MotifLivree } from "../voiture/livree";
-import { buildTrackScene } from "../scene/socle";
+import { composer } from "../scene/socle";
+/** Lot 43 : l'ancienne scène (palier « existant ») a quitté le premier chargement du jeu ; la vitrine la charge pour la comparer. */
+const existant = () => import("../scene/existant");
 import { memoireScene } from "../scene/memoire";
 import { texteReglages, type Reglages } from "../scene/paliers";
 import { C, CHAMPS, fenetre, lire, type Bout } from "./parcours";
@@ -210,7 +212,7 @@ export class VueMouvement {
     (this.voiture as CarModel & { peindre?(c: number, n?: string, m?: MotifLivree): void }).peindre?.(couleur, numero, motif);
   }
 
-  /** La scène montrée : l'existant (le jeu) ou les paliers (réglages du panneau). */
+  /** La scène montrée : l'existant (la scène du jeu jusqu'au lot 43) ou les paliers (réglages du panneau). */
   async changerScene(s: "existant" | "paliers") {
     this.choixScene = s;
     await this.reconstruire();
@@ -221,7 +223,8 @@ export class VueMouvement {
     const c = this.circuit;
     if (!c) return;
     const gen = ++this.generation;
-    const fab: Fabrique = this.choixScene === "existant" ? { construire: (t, p) => buildTrackScene(t, p) } : await this.paliers();
+    if (this.choixScene === "existant") await existant();
+    const fab: Fabrique = this.choixScene === "existant" ? { construire: (t, p) => composer(t, p, "existant") } : await this.paliers();
     if (gen !== this.generation || !this.etat.ouverte) return;
     try {
       const t0 = performance.now();
@@ -383,6 +386,6 @@ export class VueMouvement {
       return;
     }
     this.ips.textContent = `${fmt(e.ips, e.ips < 10 ? 1 : 0)} images/s · ${fmt(e.imageMs, 0)} ms`;
-    this.sortie.textContent = `Image : ${fmt(e.imageMs, 1)} ms en moyenne, pire ${fmt(e.pireMs, 0)} ms (sur 1 s, cet appareil) · ${fmt(e.appels)} appels · ${fmt(e.triangles / 1000, 1)} k triangles · construction ${fmt(e.constructionMs)} ms · textures ${mo(e.memoire.generees)}, cibles ${mo(e.memoire.cibles + e.memoire.post)} · ${e.scene === "existant" ? "existant (le jeu)" : `réglages ${e.reglages}`}`;
+    this.sortie.textContent = `Image : ${fmt(e.imageMs, 1)} ms en moyenne, pire ${fmt(e.pireMs, 0)} ms (sur 1 s, cet appareil) · ${fmt(e.appels)} appels · ${fmt(e.triangles / 1000, 1)} k triangles · construction ${fmt(e.constructionMs)} ms · textures ${mo(e.memoire.generees)}, cibles ${mo(e.memoire.cibles + e.memoire.post)} · ${e.scene === "existant" ? "existant (avant le lot 43)" : `réglages ${e.reglages}`}`;
   }
 }

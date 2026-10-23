@@ -138,7 +138,11 @@ chargement à la demande, remplacement hors course, palier, Nuit), **le contrat*
 descriptions des voitures, voiture d'essai : 0,8 ko) et `main.ts` (+0,7 ko). Deux surprises : (1) **`MeshPhysicalMaterial` reste dans le fichier
 de three.js (+0,7 ko)** : three.js est un seul module, l'empaqueteur ne peut pas en sortir une classe vers le morceau à la demande ; (2)
 l'empaqueteur coupait la voiture en trois petits fichiers (la compression par fichier se perd) : `vite.config.ts` la regroupe (`voiture`), −1,2 ko.
-Reste sous tous les plafonds ; c'est au-dessus des +5,5 ko acceptés pour 40 + 40b (+1,7 + 7,5 = +9,2 ko) — **décision de Nathan** (voir § 6).
+Reste sous tous les plafonds ; c'est au-dessus des +5,5 ko acceptés pour 40 + 40b (+1,7 + 7,5 = +9,2 ko) — **accepté par Nathan** (§ 6).
+
+**Après la fusion de `main` avec le lot 43** (le palier 1 de la scène en jeu, plafonds relevés de 15 ko par Nathan) : `main` à `9f9a80a`
+268 789 o, la branche **276 301 o (+7 512 o)** — JS 264 889 o (plafond 280 200), hors three.js 131 346 o (+6 834 ; plafond 147 500), three.js
++678 o, catalogue anglais 7 585 o (+270 ; plafond 8 000, marge 415), admin 11 084 o (+177). Marge du premier chargement : **15 299 o**.
 
 **Le départ n'attend pas la voiture** — `MESURE=1 npx playwright test mesure-lot40b` (844 × 390 @2, processeur ×4, rendu logiciel, cinq
 chargements, médiane ; `mesures.json`) :
@@ -176,15 +180,16 @@ Le décompte part au même moment qu'avant (écart dans le bruit) ; la voiture c
 - Les images par seconde sur un vrai téléphone (palier 2 de la voiture) : le conteneur rend en logiciel ; c'est l'« À tester » de l'aperçu.
 - Firefox et WebKit pour la vitrine (Chromium seulement, comme le reste de la vitrine).
 
-## 6. Décisions pour Nathan
+## 6. Décisions de Nathan (23/10/2026 : « oui pour tes remarques sur le budget etc. »)
 
-1. **Budget** : +7,5 ko au premier chargement (au lieu de ≈ +3,8 ko estimés), marge restante 9,75 ko. Accepter, ou demander de rogner (pistes :
-   sortir `enJeu` et `choix` du premier chargement en ne lisant le choix qu'après le premier écran ; moins de détail à la civile au palier 1).
-2. **Les seuils de déblocage** proposés (Évolution 7 jours, GT 5 or, Proto 3 auteur) : à confirmer avec le lot 41.
-3. **Mentions légales** : `cdj:track:garage` est une nouvelle donnée gardée dans le navigateur, **écrite seulement par le Garage (lot 41)** — en
+1. **Budget : accepté** — +7,5 ko au premier chargement (au lieu de ≈ +3,8 ko estimés). Après la fusion du lot 43 (plafonds relevés de 15 ko) :
+   266 848 → **276 301 o** avec le palier 1, marge **15 299 o** (§ 4). Pistes si un jour il faut rogner : sortir `enJeu` et `choix` du premier
+   chargement en ne lisant le choix qu'après le premier écran ; moins de détail à la civile au palier 1.
+2. **Les seuils de déblocage** proposés (Évolution 7 jours, GT 5 or, Proto 3 auteur) : retenus ; le lot 41 les montre et les fait vérifier.
+3. **Mentions légales** (retenu) : `cdj:track:garage` est une nouvelle donnée gardée dans le navigateur, **écrite seulement par le Garage (lot 41)** — en
    40b rien ne l'écrit (`?voiture=` n'enregistre rien). Les pages des mentions (zone partagée) disent déjà « tes réglages » sous `cdj:…` ; le lot
    41 (ou un lot de plateforme) devra le préciser (« ta voiture : modèle, couleur, motif ») dans les deux pages.
-4. **Le spectateur** montre ta voiture repeinte à la couleur du joueur regardé (les autres joueurs ne montrent pas encore la leur) ; les
+4. **Le spectateur** (retenu) montre ta voiture repeinte à la couleur du joueur regardé (les autres joueurs ne montrent pas encore la leur) ; les
    **fantômes du Salon** sont la civile en version simple. À revoir quand on montrera sa voiture aux autres.
 5. La planche « paliers » de la vitrine et sa vue en mouvement gardent l'ancienne voiture (`createCarMesh`, pour comparer les scènes au
    pixel avec les lots 38 et 39) ; la planche « Voiture » garde aussi une colonne « Existant ».

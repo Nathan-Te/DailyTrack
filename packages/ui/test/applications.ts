@@ -53,6 +53,9 @@ export const EXCLUSIONS: Record<string, string> = {
   "apps/web/src/verify.ts": "page de vérification des rediffusions (`verify.html`, tests de navigateur) : aucun texte d'interface",
   // Lot 38 : la vitrine de la scène (`/track/vitrine/`, recette et aperçus seulement, jamais construite en production) est un outil interne de Nathan.
   "apps/web/src/vitrine": "vitrine de la scène (`/track/vitrine/`, lot 38) : outil interne de Nathan pour choisir une direction, en français, jamais en production",
+  // Lot 43 (Track) : le compteur d'images de `?debug` et les sponsors fictifs peints dans la scène.
+  "apps/web/src/compteurImages.ts": "compteur d'images par seconde de `?debug` (lot 43) : outil interne de Nathan, des nombres et leurs unités, jamais montré à un joueur",
+  "apps/web/src/scene/sponsors.ts": "sponsors fictifs de la scène (lot 43) : des noms propres inventés peints dans le décor 3D (une texture), pas du texte d'interface ; ils ne se traduisent pas",
   // Lot I5 : les outils internes de Jump restent en français (lot I5 § 2 : `?debug&tune` tel quel ; seul son habillage suit les jetons, outils.css).
   "apps/jump/src/tune.ts": "outil de réglage du personnage (`?debug&tune`) : outil interne de Nathan, en français",
   "apps/jump/src/gallery.ts": "galerie des morceaux (`?modules`, lot 4) : outil interne de conception des niveaux, en français",

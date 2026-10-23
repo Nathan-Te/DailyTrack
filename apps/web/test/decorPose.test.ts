@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { FALL_DEPTH, THEMES, parseTrack, type ThemeName } from "@cdj/sim";
 import { PoseLog, ROLES, type Pose } from "../src/decorPose";
-import { trackGeometry } from "../src/trackMesh";
-import { circuitsDuTest, compter, inventaire, relever, verifier, type Circuit, type Faute } from "./decorChecks";
+import { trackGeometry } from "../src/scene/existant";
+import { circuitsDuTest, compter, inventaire, relever, releverP1, verifier, type Circuit, type Faute, } from "./decorChecks";
 
 // Lot 37 : règles de pose du décor (apps/web/CLAUDE.md, « Décor : règles de pose »), vérifiées sans rendu sur 64 circuits : les jours du 13/10 au
 // 15/12/2026, chaque thème imposé 8 fois. `DECOR_RAPPORT=1 npx vitest run apps/web/test/decorPose.test.ts` imprime les fautes par type et par thème
@@ -47,7 +47,10 @@ describe("l'outil de vérification lui-même", () => {
   });
 });
 
-describe("pose du décor sur 64 circuits (13/10 → 15/12/2026, chaque thème imposé 8 fois)", () => {
+// Lot 43 : la scène du jeu est le palier 1 (éléments de course, éclairage de piste de la Nuit, sponsors, panneaux de distance, et le décor d'aujourd'hui) ;
+// l'ancienne scène, chargée à la demande (vitrine, `?palier=existant`), reste vérifiée.
+for (const [scene, releve] of [["palier 1, la scène du jeu", releverP1], ["existant (à la demande)", relever]] as const) {
+describe(`pose du décor sur 64 circuits (13/10 → 15/12/2026, chaque thème imposé 8 fois) — ${scene}`, () => {
   const circuits = circuitsDuTest(THEMES_NOMS);
   const toutes: Faute[] = [];
   const parKind: Record<string, { elements: number; tris: number }> = {};
@@ -60,7 +63,7 @@ describe("pose du décor sur 64 circuits (13/10 → 15/12/2026, chaque thème im
 
   it("aucune faute : un appui sous chaque pied, rien dans le passage, rien au-dessus du vide", () => {
     for (const c of circuits) {
-      const poses = relever(c.track, c.palette);
+      const poses = releve(c.track, c.palette);
       for (const [k, v] of Object.entries(inventaire(poses))) {
         parKind[k] ??= { elements: 0, tris: 0 };
         parKind[k]!.elements += v.elements;
@@ -77,6 +80,7 @@ describe("pose du décor sur 64 circuits (13/10 → 15/12/2026, chaque thème im
     expect(enFaute, `${enFaute} éléments en faute (${toutes.length} fautes)\n${resume.join("\n")}\n${exemples.join("\n")}`).toBe(0);
   }, 240_000);
 });
+}
 
 /** Rapport chiffré (README du lot 37) : fautes par type × thème, par règle, et les jours les plus chargés. */
 function rapport(fautes: Faute[], parKind: Record<string, { elements: number; tris: number }>, parJour: Record<string, number>) {

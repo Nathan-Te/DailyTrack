@@ -28,6 +28,8 @@ export interface AdminState {
   camera: "" | "proche" | "loin" | "capot";
   shakeOff: boolean;
   ghostOff: boolean;
+  /** Lot 43 : l'ancienne scène (`?palier=existant`, chargée à la demande, recette et aperçus seulement) pour la comparer au palier 1. */
+  palierExistant: boolean;
   touch: "" | "1" | "0";
   /** Miniatures des archives : "" normales (3D inclinée), "top" d'aplomb, "2d" repli sans WebGL, "off" aucune. */
   thumbs: "" | "top" | "2d" | "off";
@@ -75,6 +77,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   camera: "",
   shakeOff: false,
   ghostOff: false,
+  palierExistant: false,
   touch: "",
   thumbs: "",
   steer: "",
@@ -121,6 +124,7 @@ export function buildQuery(s: Readonly<AdminState>): string {
   if (s.camera !== "") p.set("camera", s.camera);
   if (s.shakeOff) p.set("shake", "0");
   if (s.ghostOff) p.set("ghost", "off");
+  if (s.palierExistant) p.set("palier", "existant");
   if (s.touch !== "") p.set("touch", s.touch);
   if (s.thumbs !== "") p.set("thumbs", s.thumbs);
   if (s.steer !== "") p.set("steer", s.steer);
@@ -151,7 +155,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.camera === "" || o.camera === "proche" || o.camera === "loin" || o.camera === "capot") s.camera = o.camera;
     if (o.thumbs === "" || o.thumbs === "top" || o.thumbs === "2d" || o.thumbs === "off") s.thumbs = o.thumbs;

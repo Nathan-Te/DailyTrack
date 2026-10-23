@@ -72,10 +72,11 @@ import {
   type Medal,
   type PilotRun,
   type CarState,
+  type PaletteName,
   type RaceState,
   type Track,
 } from "@cdj/sim";
-import { isRestricted, judgeAddress, trialKeysAllowed, withoutRefused } from "./access";
+import { isRestricted, judgeAddress, palierDemande, trialKeysAllowed, withoutRefused } from "./access";
 import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { sharedCircuitEngine, type DailyCircuit } from "./circuitEngine";
 import { archiveDays, disposeArchive, mountArchive, nextTheme, randomSeedHref, themeHref, type ArchiveArgs, type ThumbSource } from "./archive";
@@ -110,6 +111,7 @@ import { Online, ghostModes, nextGhostMode, type GhostMode } from "./online";
 import type { GhostEntry, NameLabel } from "./salonGhosts";
 import { ORBIT_MIN_DIST, clampOrbit, nextWatchCamera, orbitOffset, progressOf, seekTick, tickAt, unwatchHref, wantsWatch, watchHref, watchTitle, REWIND_TICKS, WATCH_SPEEDS, type WatchEntry, type WatchSpeed } from "./watch";
 import type { WatchUi } from "./watchUi";
+import type { CompteurImages } from "./compteurImages";
 import type { SalonController, SalonHost, SalonRunResult } from "./salonMode";
 import { modeHref, sessionMsFromParams } from "./salonLien";
 import type { LoadedSalonCircuit } from "./salonEngine";
@@ -117,7 +119,8 @@ import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
-import { PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, composer, creerReconstructeur, type Palier } from "./scene/socle";
+import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, type Palier } from "./scene/socle";
+import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
 
@@ -242,6 +245,10 @@ let track: Track | null = salon ? salon.circuit.track : scenario === "plat" ? nu
 const tuning = params.has("debug") && params.has("tune");
 // L'outil de réglage (`?debug&tune`, interne) n'est chargé que s'il est demandé : il ne pèse pas sur le premier chargement (lot I4, budget).
 const tune = tuning ? await import("./tune") : null;
+// Lot 43 : le compteur d'images par seconde de `?debug` (outil interne, chargé à la demande : rien dans le premier chargement d'un joueur). Sans attente :
+// `__cdj` doit être prêt aussi tôt qu'avant (les essais le lisent dès le chargement) ; le compteur arrive une image plus tard.
+let compteurImages: CompteurImages | null = null;
+if (params.has("debug") && params.get("fps") !== "0") void import("./compteurImages").then((m) => (compteurImages = new m.CompteurImages(document.body)));
 const carParams: CarParams = tune ? tune.loadTunedParams() : { ...DEFAULT_CAR_PARAMS };
 const COUNTDOWN_S = 3;
 
@@ -249,7 +256,26 @@ const renderer = new WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-let view = track ? buildTrackScene(track, salon?.circuit.palette ?? daily?.palette ?? "desert") : buildFlatArena();
+// La scène (lot 43) : le palier 1. `?palier=existant` (recette et aperçus seulement : `palierDemande`) montre l'ancienne scène, chargée à la demande, pour comparer.
+PAS_DU_JEU.existant = () => import("./scene/existant");
+const palierDepart: Palier = palierDemande(location.search, restricted) ?? PALIER_DEFAUT;
+if (palierDepart !== PALIER_DEFAUT) await chargerPas(PAS_DU_PALIER[palierDepart]).catch(() => undefined);
+/** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur. */
+const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee") });
+const premierPalier: Palier = palierBranche(palierDepart) ? palierDepart : PALIER_DEFAUT;
+let constructionMs = 0;
+let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.palette ?? "desert", premierPalier) : buildFlatArena();
+/** Compose la scène au palier voulu ; si ce palier n'a pas pu se brancher (module pas chargé), au palier par défaut. */
+function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier) {
+  const debut = performance.now();
+  try {
+    return composer(t0, palette, palier, { textes: textesScene() });
+  } catch {
+    return buildTrackScene(t0, palette, { textes: textesScene() });
+  } finally {
+    constructionMs = performance.now() - debut; // `?debug` : `__cdj.socle.constructionMs` (mesures du lot 43)
+  }
+}
 // Rendu (lot 23) : tonalité douce (les hautes lumières ne brûlent pas, les couleurs de la palette restent), exposition propre au thème, ombres portées.
 renderer.toneMapping = NeutralToneMapping;
 renderer.toneMappingExposure = view.look.exposure;
@@ -1911,6 +1937,9 @@ function frame(now: number) {
     }
   }
   const alpha = phase === "countdown" ? 0 : accumulator / DT;
+  // Feux de départ (lot 43) : l'affichage lit l'état du décompte, rien de plus (le départ ne dépend que de `countdown`).
+  view.feux?.(etatFeux(phase, countdown, COUNTDOWN_S));
+  compteurImages?.image(now);
 
   if (race) {
     if (race.splits.length > shownSplits) {
@@ -2220,9 +2249,14 @@ function adopterScene(next: TrackScene) {
 }
 
 const reconstructeur = creerReconstructeur({
+  palier: premierPalier,
   peutReconstruire: () => isFrozen() || phase === "finished",
-  construire: (palier) => (track ? composer(track, scenePalette, palier) : null),
+  construire: (palier) => (track ? composer(track, scenePalette, palier, { textes: textesScene() }) : null),
   adopter: adopterScene,
+});
+// Lot 43 : les bandeaux des portiques sont peints dans la langue du joueur ; une autre langue choisie (Réglages : le jeu est à l'arrêt) repeint la scène.
+onLangue(() => {
+  if (track && (isFrozen() || phase === "finished")) adopterScene(composerOuDefaut(track, scenePalette, reconstructeur.palier()));
 });
 
 // --- Le Salon : changement de circuit sans recharger la page (lot 26) ---------------------------------------------------------
@@ -2234,7 +2268,7 @@ let prebuilt: { id: string; scene: ReturnType<typeof buildTrackScene> } | null =
 
 function buildSalonScene(c: LoadedSalonCircuit) {
   const t0 = performance.now();
-  const next = composer(c.track, c.palette, reconstructeur.palier());
+  const next = composerOuDefaut(c.track, c.palette, reconstructeur.palier());
   salonStats.buildMs = performance.now() - t0;
   return next;
 }
@@ -2389,12 +2423,32 @@ if (params.has("debug")) {
         return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, fov: camera.fov, wheelDroop: [...wheelDroop], tel };
       },
       /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
+      /** Les feux de départ du portique (lot 43) : ce que la scène montre, lu dans l'état du décompte. */
+      get feux() {
+        return etatFeux(phase, countdown, COUNTDOWN_S);
+      },
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
       /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */
       get voiture() {
         return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai };
       },
-      socle: { composer, brancherComposeur, PAS_DU_JEU, PAS_DU_PALIER, demander: (p: Palier) => reconstructeur.demander(p), palier: () => reconstructeur.palier(), scene: () => view.scene.uuid },
+      socle: {
+        composer,
+        brancherComposeur,
+        PAS_DU_JEU,
+        PAS_DU_PALIER,
+        demander: (p: Palier) => reconstructeur.demander(p),
+        palier: () => reconstructeur.palier(),
+        scene: () => view.scene.uuid,
+        /** Lot 43 : durée de construction de la scène du premier circuit (ms), au palier de départ. */
+        get constructionMs() {
+          return constructionMs;
+        },
+        /** Lot 43 : le compteur d'images de `?debug` (moyenne et pire image de la dernière seconde). */
+        get images() {
+          return compteurImages?.mesure ?? null;
+        },
+      },
       get render() {
         return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
       },

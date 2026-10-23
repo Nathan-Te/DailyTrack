@@ -1,4 +1,4 @@
-// Retouche 38b — les colonnes de la planche des paliers : l'existant (la vraie scène du jeu), les paliers 1, 2 et 3, et « à la carte » (les pas
+// Retouche 38b — les colonnes de la planche des paliers : l'existant (la scène du jeu jusqu'au lot 43, chargée à la demande), les paliers 1, 2 et 3, et « à la carte » (les pas
 // cochés en tête de page). Chargé à la demande (`import()`) : le compositeur des paliers, ses pas et les passes de post-traitement.
 import type { PaletteName, Track } from "@cdj/sim";
 import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";

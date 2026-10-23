@@ -7,7 +7,7 @@
 import type { Box, Builder, BuilderMark } from "./meshKit";
 
 /** Ce qu'est un élément : chaque type a UN rôle (signaler, marquer, habiller), sinon il n'a rien à faire dans la scène. */
-export type PoseKind = "poteau" | "panneau" | "arche-depart" | "arche-arrivee" | "arche-vitesse" | "porte" | "tribune" | "decor" | "lampadaire";
+export type PoseKind = "poteau" | "panneau" | "arche-depart" | "arche-arrivee" | "arche-vitesse" | "porte" | "tribune" | "decor" | "lampadaire" | "sponsor";
 
 export type Role = "signaler" | "marquer" | "habiller";
 
@@ -20,7 +20,8 @@ export const ROLES: Record<PoseKind, Role> = {
   porte: "marquer", // point de contrôle
   tribune: "habiller", // départ
   decor: "habiller", // hors de la piste, selon le thème
-  lampadaire: "habiller", // Ville : mobilier de rue sur le rebord
+  lampadaire: "habiller", // Ville : mobilier de rue sur le rebord ; Nuit (lot 43) : l'éclairage de piste
+  sponsor: "habiller", // lot 43 : panneaux de sponsors fictifs sur les rebords du départ et de l'arrivée
 };
 
 /**

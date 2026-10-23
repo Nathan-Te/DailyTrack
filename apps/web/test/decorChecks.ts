@@ -26,7 +26,9 @@ import {
   type World,
 } from "@cdj/sim";
 import { CHAPEAU, MARGE_PASSAGE, PASSAGE_HAUT, PoseLog, ROLES, TOLERANCE_APPUI, type Pose } from "../src/decorPose";
-import { PALETTE_DEFS, trackGeometry } from "../src/trackMesh";
+import { PALETTE_DEFS } from "../src/trackMesh";
+import { trackGeometry } from "../src/scene/existant";
+import { geometrieP1 } from "../src/scene/composerP1";
 
 export type Regle = "appui" | "vide" | "passage" | "structure" | "role";
 
@@ -121,7 +123,14 @@ function auBord(world: World, b: Block, x: number, z: number): { dehors: number;
   return { dehors: Math.abs(lat) - e, bord: roulant(world, pt.x, pt.z) };
 }
 
-/** Rejoue la construction d'un circuit avec un relevé de pose. */
+/** Rejoue la construction d'un circuit au palier 1 (la scène du jeu, lot 43 : éléments, éclairage de piste, décor d'aujourd'hui) avec un relevé de pose. */
+export function releverP1(track: Track, palette: PaletteName): Pose[] {
+  const log = new PoseLog();
+  geometrieP1(track, palette, { log, headless: true });
+  return log.poses;
+}
+
+/** Rejoue la construction d'un circuit de l'ancienne scène (palier « existant », à la demande depuis le lot 43) avec un relevé de pose. */
 export function relever(track: Track, palette: PaletteName): Pose[] {
   const log = new PoseLog();
   trackGeometry(track, palette, { log, headless: true });

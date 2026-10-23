@@ -79,3 +79,51 @@ export function signsFor(track: Track): SignSpec[] {
   }
   return out;
 }
+
+/** Lot 43 : un panneau de distance avant un virage serré (planté du même côté que le panneau du virage). */
+export interface DistanceSpec {
+  block: number;
+  q: number;
+  side: 1 | -1;
+  /** Distance (m) de l'axe de la route au panneau (son bord intérieur reste au-delà du bord de la route ou de la bande, comme les panneaux de virage). */
+  offset: number;
+  /** Barres peintes : 3, 2 puis 1 en approchant du virage. */
+  barres: 1 | 2 | 3;
+  /** Bloc annoncé. */
+  hazard: number;
+}
+
+/** Écart (m) entre deux panneaux de distance, et entre le dernier et le panneau du virage. */
+export const PAS_DISTANCE = 28;
+/** Écart minimal (m) avec un autre panneau sur le même bloc : on ne les plante pas l'un sur l'autre. */
+const ECART_PANNEAUX = 8;
+
+/**
+ * Lot 43 — les panneaux de distance (« 3 », « 2 », « 1 » barres) avant chaque **virage serré** : tous les `PAS_DISTANCE` m en remontant la piste depuis
+ * le panneau du virage, du même côté. Calculés depuis la géométrie du circuit (`signsFor`, les blocs), **jamais avec le générateur** : rien de lourd
+ * dans le premier chargement (lot 36). Comme les panneaux de virage, seulement sur une route droite fermée (`canHost`) : la série s'arrête au premier
+ * bloc qui ne peut pas en porter (un autre virage, un vide, une cuve, le départ), et un panneau trop près d'un autre n'est pas planté.
+ */
+export function distanceSigns(track: Track, signs: readonly SignSpec[] = signsFor(track)): DistanceSpec[] {
+  const out: DistanceSpec[] = [];
+  const occupe = (block: number, q: number) => signs.some((s) => s.block === block && Math.abs(s.q - q) < ECART_PANNEAUX) || out.some((d) => d.block === block && Math.abs(d.q - q) < ECART_PANNEAUX);
+  for (const s of signs) {
+    if ((s.kind !== "left" && s.kind !== "right") || s.severity !== 3) continue;
+    let block = s.block;
+    let q = s.q;
+    for (const barres of [1, 2, 3] as const) {
+      q -= PAS_DISTANCE;
+      while (q < 0 && block > 0) {
+        block--;
+        q += CELL;
+        if (!canHost(track.blocks[block])) break;
+      }
+      const host = track.blocks[block];
+      if (q < 0 || !canHost(host)) break;
+      if (occupe(block, q)) continue;
+      const edge = host.shoulder ? SHOULDER_EDGE : blockHalfWidth(host, q);
+      out.push({ block, q, side: s.side, offset: edge + SIGN_SETBACK, barres, hazard: s.hazard });
+    }
+  }
+  return out;
+}
