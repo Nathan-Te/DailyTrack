@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { Color } from "three";
 import { CELL, THEMES, WALL_HEIGHT, dailyCircuit, daysFromCivil, parseTrack, themeForDay, type PaletteName, type ThemeName } from "@cdj/sim";
 import { COLONNES_FEUX, FEUX_ETEINTS, etatFeux, type EtatFeux } from "../src/feux";
-import { palierDemande } from "../src/access";
+import { sceneDemandee } from "../src/access";
 import { Builder } from "../src/meshKit";
 import { PAS_DISTANCE, distanceSigns, signsFor } from "../src/signage";
 import { PALETTE_DEFS } from "../src/trackMesh";
@@ -244,10 +244,11 @@ describe("rebords du palier 1 : le profil du thème, léger", () => {
 });
 
 describe("?palier=existant : recette et aperçus seulement", () => {
-  it("l'ancienne scène se demande par l'adresse hors production ; jamais en production ; tout autre palier est ignoré", () => {
-    expect(palierDemande("?palier=existant", false)).toBe("existant");
-    expect(palierDemande("?palier=existant", true)).toBeNull();
-    expect(palierDemande("?palier=P2", false)).toBeNull();
-    expect(palierDemande("", false)).toBeNull();
+  // Lot 46 : `sceneDemandee` lit aussi `?palier=1|2|3` et `?reglages=` (test/vieCiel.test.ts) ; un palier mal écrit est toujours ignoré.
+  it("l'ancienne scène se demande par l'adresse hors production ; jamais en production ; un palier mal écrit est ignoré", () => {
+    expect(sceneDemandee("?palier=existant", false)?.palier).toBe("existant");
+    expect(sceneDemandee("?palier=existant", true)).toBeNull();
+    expect(sceneDemandee("?palier=P2", false)).toBeNull();
+    expect(sceneDemandee("", false)).toBeNull();
   });
 });

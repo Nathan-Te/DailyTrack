@@ -1,7 +1,7 @@
 // Les palettes et les ambiances de chaque thème, les types de la scène et **le décor d'aujourd'hui** (lots 9b, 22, 23, 37) : tribune du départ, décor du
 // thème, front de rue et lampadaires de la Ville, passe dense. Lot 43 : la route, les accessoires et l'assemblage de l'ancienne scène sont partis dans
 // `scene/existant.ts` (chargé à la demande) ; le palier 1 (`scene/composerP1.ts`, premier chargement) garde ce décor tel quel (`decorGeometry`).
-import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type Scene } from "three";
+import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type PerspectiveCamera, type Scene } from "three";
 import {
   CELL,
   FALL_DEPTH,
@@ -29,7 +29,7 @@ import { PALETTE_LABELS } from "./labels";
 import { Builder, mix, seeded, shade, world, type Box, type V3 } from "./meshKit";
 import { CHAPEAU, MARGE_DECOR, placed, type PoseLog } from "./decorPose";
 import type { EtatFeux } from "./feux";
-import type { TextesScene } from "./scene/types";
+import type { PasScene, TextesScene } from "./scene/types";
 
 /** Couleurs et éclairage d'un thème. Une palette différente par jour : `paletteForDay` (sim) choisit laquelle. */
 export interface Palette {
@@ -394,16 +394,45 @@ const CROWD = [0xff4b4b, 0xffd22e, 0x4bd0ff, 0xf4f4f4, 0x6bff8a, 0xff8a3d, 0xc08
  * sol lointain (elle flottait à la hauteur de la route), et ne se pose que là où rien de la piste n'est à moins de `MARGE_DECOR` : du côté opposé à un
  * éventuel virage, sinon de l'autre, sinon pas du tout.
  */
-export function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, floorY: number, world: World, id: string, log?: PoseLog) {
+export function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, floorY: number, world: World, id: string, log?: PoseLog, vie?: TribuneVie) {
   const meta = { kind: "tribune", part: "pied", appui: "sol", group: log?.group() ?? 0, block: -1, style: "" } as const;
   const first = turnsLeft(b.kind) ? 1 : -1;
   const accepter = (box: Box) => planLibre(world, box, MARGE_DECOR);
-  if (placed(log, meta, [g], () => buildGrandstand(g, pal, b, rnd, first, floorY), accepter)) return;
+  // Lot 46 : une tribune refusée retire aussi les spectateurs qu'elle confiait au pas « vie ».
+  const n = vie?.foule?.length ?? 0;
+  const refus = () => {
+    if (vie?.foule) vie.foule.length = n;
+    if (vie) vie.tribune = null;
+  };
+  if (placed(log, meta, [g], () => buildGrandstand(g, pal, b, rnd, first, floorY, vie), accepter)) return;
+  refus();
   // L'autre côté : une suite de nombres à part, pour que le reste du décor, tiré de `rnd`, ne bouge pas.
-  placed(log, { ...meta, group: log?.group() ?? 0 }, [g], () => buildGrandstand(g, pal, b, seeded(`${id}:tribune`), -first as 1 | -1, floorY), accepter);
+  if (!placed(log, { ...meta, group: log?.group() ?? 0 }, [g], () => buildGrandstand(g, pal, b, seeded(`${id}:tribune`), -first as 1 | -1, floorY, vie), accepter)) refus();
 }
 
-function buildGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, side: 1 | -1, floorY: number) {
+/** Un spectateur de la tribune (pas « foule », lot 46) : où il se tient (pied), son cap, la couleur de son maillot. */
+export interface Spectateur {
+  x: number;
+  y: number;
+  z: number;
+  cap: number;
+  couleur: number;
+}
+
+/** Lot 46 : la tribune posée, pour le pas « vie » (`scene/vieJeu.ts`) : le bas de sa façade côté piste (lue de gauche à droite depuis la piste), ses mâts. */
+export interface Tribune {
+  facade: [V3, V3];
+  /** Le pied des mâts, sur le toit (au fond). */
+  mats: V3[];
+}
+
+/** Ce que la tribune confie au pas « vie » : ses spectateurs (`foule` : ils ne sont pas dessinés dans le décor) et sa place. */
+export interface TribuneVie {
+  foule: Spectateur[] | null;
+  tribune: Tribune | null;
+}
+
+function buildGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, side: 1 | -1, floorY: number, vie?: TribuneVie) {
   const hw = blockHalfWidth(b, CELL / 2);
   const base = side > 0 ? CELL / 2 + hw + 3.5 : CELL / 2 - hw - 3.5;
   const dir = side > 0 ? 1 : -1;
@@ -421,7 +450,13 @@ function buildGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, 
         if (rnd() < 0.12) continue; // places vides
         const c = CROWD[Math.floor(rnd() * CROWD.length)]!;
         const pp = mid + o * 0.6;
-        blockBox(g, b, pp - 0.22, pp + 0.22, q, q + 0.4, top, top + 0.55 + rnd() * 0.15, c);
+        const haut = top + 0.55 + rnd() * 0.15; // tiré dans tous les cas : le reste du décor ne bouge pas
+        if (vie?.foule) {
+          // Lot 46 : le spectateur est confié à la foule animée (un maillage, un appel de rendu), tourné vers la piste.
+          const [x, y, z] = world(b, pp, q + 0.2, top);
+          const f = world(b, pp - dir, q + 0.2, top);
+          vie.foule.push({ x, y, z, cap: Math.atan2(f[0] - x, f[2] - z), couleur: c });
+        } else blockBox(g, b, pp - 0.22, pp + 0.22, q, q + 0.4, top, haut, c);
       }
     }
   }
@@ -430,6 +465,10 @@ function buildGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, 
   const roof = y0 + 6.2;
   for (const q of [q0 + 0.4, q1 - 0.8]) blockBox(g, b, Math.min(pBack, pBack - dir * 0.4), Math.max(pBack, pBack - dir * 0.4), q, q + 0.4, floorY, roof, 0x3a3f4d);
   blockBox(g, b, Math.min(base, pBack + dir * 0.6), Math.max(base, pBack + dir * 0.6), q0, q1, roof, roof + 0.4, pal.wallA);
+  if (vie) {
+    const bas = (q: number) => world(b, base - dir * 0.03, q, y0 + 0.1);
+    vie.tribune = { facade: dir > 0 ? [bas(q0 + 0.5), bas(q1 - 0.5)] : [bas(q1 - 0.5), bas(q0 + 0.5)], mats: [q0 + 1, (q0 + q1) / 2, q1 - 1].map((q) => world(b, pBack - dir * 0.2, q, roof + 0.4)) };
+  }
 }
 
 /** Vrai si le plan de `box`, élargi de `marge` m, ne touche ni route, ni bas-côté, ni paroi de cuve : rien de ce que la voiture roule (lot 37). */
@@ -773,6 +812,13 @@ export interface TrackScene {
   stats(): SceneStats;
   /** Lot 43 : les feux de départ du portique (palier 1), allumés selon le décompte ; absents de l'existant. Lecture seule de l'état de la course. */
   feux?(etat: EtatFeux): void;
+  /**
+   * Lot 46 : avant chaque image dessinée, la vie et le ciel (drapeaux, foule, écrans, particules, nuages) — `t` est **un temps d'affichage** (s), jamais
+   * l'état de la course ; la caméra et la hauteur de l'image (pixels). Absent : rien ne bouge.
+   */
+  animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
+  /** Lot 46 : la voiture passe la ligne d'arrivée (au temps d'affichage `t`) : les confettis du Stade. */
+  arrivee?(t: number): void;
 }
 
 export interface SceneStats {
@@ -787,6 +833,8 @@ export interface SceneStats {
   fog: { near: number; far: number } | null;
   /** Lot 43 : ce que montrent les feux de départ (palier 1) ; absent de l'existant. */
   feux?: EtatFeux;
+  /** Lot 46 : les pas chargés à la demande que la scène porte (`vie`, `ciel`, `ombres`), et ce que chacun dit de lui (`?debug`). */
+  pas?: Record<string, Record<string, unknown>>;
 }
 
 /** Libère tout ce que la scène tient côté carte graphique (géométries, matériaux, textures, fond). */
@@ -820,6 +868,12 @@ export interface TrackSceneOptions {
   headless?: boolean;
   /** Lot 43 : les textes des bandeaux des portiques (« DÉPART », « ARRIVÉE »), du catalogue de la langue du joueur. Absents : pas de bandeau. */
   textes?: TextesScene;
+  /** Lot 46 : les pas chargés à la demande que la scène prend en plus de ceux de son palier (`composer`, socle.ts : la vie, le ciel, les ombres fines). */
+  pas?: readonly PasScene[];
+  /** Lot 46 : les parties d'un pas coupées (`?reglages=3-particules` : `drapeaux`, `foule`, `ecrans`, `particules`, `nuages`, `brume`). */
+  coupes?: readonly string[];
+  /** Lot 46 : les spectateurs de la tribune sont confiés à la foule animée (pas « vie ») au lieu d'être dessinés dans le décor. */
+  foule?: boolean;
 }
 
 /** Le décor de l'existant, séparé de sa route (lot 43) : ce que le palier 1 garde tel quel (« le décor de fond reste celui d'aujourd'hui »). */
@@ -828,6 +882,8 @@ export interface DecorGeometry {
   glowG: Builder;
   denseG: Builder;
   denseGlow: Builder;
+  /** Lot 46 : la tribune du départ, sa place et ses spectateurs confiés au pas « vie » (`options.foule`) ; `null` sans tribune. */
+  vie: TribuneVie;
 }
 
 /**
@@ -848,14 +904,15 @@ export function decorGeometry(track: Track, paletteName: PaletteName, options: T
   const windowBlocks = near ? track.blocks.slice(near.from, near.to + 1) : [];
   const nearCell = (cx: number, cz: number) => windowBlocks.some((b) => Math.abs(b.cx - cx) <= NEAR_CELLS && Math.abs(b.cz - cz) <= NEAR_CELLS);
   decorG.mute = !!near && !nearCell(first0.cx, first0.cz);
-  addGrandstand(decorG, pal, first0, rnd, floorY, roulant, track.id, options.log);
+  const vie: TribuneVie = { foule: options.foule && !options.aerial ? [] : null, tribune: null };
+  addGrandstand(decorG, pal, first0, rnd, floorY, roulant, track.id, options.log, vie);
   decorG.mute = false;
   addScenery(decorG, glowG, pal, track, floorY, roulant, rnd, near ? nearCell : undefined, false, options.log, !!options.aerial);
   if (pal.scenery === "city" && !options.aerial) addCityFront(decorG, pal, track, floorY, roulant, near ? (b) => nearCell(b.cx, b.cz) : undefined, options.log);
   const denseG = new Builder();
   const denseGlow = new Builder();
   if (!options.aerial) addScenery(denseG, denseGlow, pal, track, floorY, roulant, seeded(`${track.id}:${paletteName}:dense`), undefined, true, options.log);
-  return { decorG, glowG, denseG, denseGlow };
+  return { decorG, glowG, denseG, denseGlow, vie };
 }
 
 /** Vue aérienne d'une portion (miniatures) : le décor n'est construit qu'à `NEAR_CELLS` cellules de ses blocs. */

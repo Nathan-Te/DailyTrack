@@ -76,7 +76,7 @@ import {
   type RaceState,
   type Track,
 } from "@cdj/sim";
-import { isRestricted, judgeAddress, palierDemande, trialKeysAllowed, withoutRefused } from "./access";
+import { isRestricted, judgeAddress, sceneDemandee, trialKeysAllowed, withoutRefused } from "./access";
 import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { sharedCircuitEngine, type DailyCircuit } from "./circuitEngine";
 import { archiveDays, disposeArchive, mountArchive, nextTheme, randomSeedHref, themeHref, type ArchiveArgs, type ThumbSource } from "./archive";
@@ -120,7 +120,7 @@ import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
-import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, type Palier } from "./scene/socle";
+import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
 import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
@@ -257,20 +257,33 @@ const renderer = new WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-// La scène (lot 43) : le palier 1. `?palier=existant` (recette et aperçus seulement : `palierDemande`) montre l'ancienne scène, chargée à la demande, pour comparer.
+// La scène (lot 43) : le palier 1. `?palier=existant` (recette et aperçus seulement : `sceneDemandee`) montre l'ancienne scène, chargée à la demande, pour comparer.
+// Lot 46 : les pas du palier 3 (la vie, le ciel, les ombres fines), chacun un module à la demande ; `?palier=3`, ou `?reglages=2+vie+ciel` (le palier 2 et le
+// groupe « vie et ciel » des téléphones récents, que la règle automatique du lot 45 choisira), `?reglages=3-particules` (un pas ou une partie coupés).
 PAS_DU_JEU.existant = () => import("./scene/existant");
-const palierDepart: Palier = palierDemande(location.search, restricted) ?? PALIER_DEFAUT;
-if (palierDepart !== PALIER_DEFAUT) await chargerPas(PAS_DU_PALIER[palierDepart]).catch(() => undefined);
-/** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur. */
+PAS_DU_JEU.vie = () => import("./scene/vieJeu");
+PAS_DU_JEU.ciel = () => import("./scene/cielJeu");
+PAS_DU_JEU.ombres = () => import("./scene/ombres3");
+const sceneVoulue = sceneDemandee(location.search, restricted);
+const palierDepart: Palier = sceneVoulue?.palier ?? PALIER_DEFAUT;
+const plusDepart = (sceneVoulue?.plus ?? []).filter((id) => id in PAS_DU_JEU);
+/** Les pas ou parties coupés par l'adresse (`?reglages=3-particules`) : pour toute la page. */
+const coupesScene = sceneVoulue?.coupes ?? [];
+const modulesDepart = palierDepart === "existant" ? PAS_DU_PALIER.existant : pasVoulus(palierDepart, plusDepart, coupesScene);
+let pasDepartCharges = true;
+if (modulesDepart.length > 0) await chargerPas(modulesDepart).catch(() => (pasDepartCharges = false));
+/** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur ; les parties coupées par l'adresse. */
 const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee") });
-const premierPalier: Palier = palierBranche(palierDepart) ? palierDepart : PALIER_DEFAUT;
+const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 ? { coupes: coupesScene } : {}) });
+const premierPalier: Palier = palierBranche(palierDepart) && pasDepartCharges ? palierDepart : PALIER_DEFAUT;
+const premierPlus = premierPalier === palierDepart ? plusDepart : [];
 let constructionMs = 0;
-let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.palette ?? "desert", premierPalier) : buildFlatArena();
-/** Compose la scène au palier voulu ; si ce palier n'a pas pu se brancher (module pas chargé), au palier par défaut. */
-function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier) {
+let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.palette ?? "desert", premierPalier, premierPlus) : buildFlatArena();
+/** Compose la scène au palier voulu (et ses pas en plus) ; si ce palier ou un pas n'a pas pu se brancher (module pas chargé), au palier par défaut. */
+function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier, plus: readonly string[] = []) {
   const debut = performance.now();
   try {
-    return composer(t0, palette, palier, { textes: textesScene() });
+    return composer(t0, palette, palier, optionsScene(), plus);
   } catch {
     return buildTrackScene(t0, palette, { textes: textesScene() });
   } finally {
@@ -1513,6 +1526,7 @@ function finishSalonRun() {
   document.body.classList.add("finished");
   showBanner(t("salon.arrivee.titre"), 2.5);
   effects.confetti(car.x, car.y, car.z);
+  view.arrivee?.(performance.now() / 1000); // lot 46 : les confettis du Stade (palier 3, pas « vie »), sur le temps d'affichage
   gameAudio.play("finish");
 }
 
@@ -1572,6 +1586,7 @@ function finishRun() {
   if (showOnline) startOnlineFlow(onlineBox);
   showBanner(t("course.arrivee"), 2.5);
   effects.confetti(car.x, car.y, car.z);
+  view.arrivee?.(performance.now() / 1000); // lot 46 : les confettis du Stade (palier 3, pas « vie »), sur le temps d'affichage
   gameAudio.play("finish");
   const medal = daily && counted ? medalFor(ms, daily.medals) : null;
   if (medal) gameAudio.play("medal", { bronze: 0, silver: 1, gold: 2, author: 3 }[medal]);
@@ -2224,6 +2239,8 @@ function frame(now: number) {
   if (!manual && !homeSkip) {
     // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
     const t0 = performance.now();
+    // Lot 46 : la vie et le ciel (drapeaux, foule, écrans, particules, nuages) bougent sur le temps d'affichage de l'image, jamais sur l'état de la course.
+    view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio());
     renderer.render(view.scene, camera);
     renderCost.ms += performance.now() - t0;
     renderCost.frames++;
@@ -2278,13 +2295,14 @@ function adopterScene(next: TrackScene) {
 
 const reconstructeur = creerReconstructeur({
   palier: premierPalier,
+  plus: premierPlus,
   peutReconstruire: () => isFrozen() || phase === "finished",
-  construire: (palier) => (track ? composer(track, scenePalette, palier, { textes: textesScene() }) : null),
+  construire: (palier, plus) => (track ? composer(track, scenePalette, palier, optionsScene(), plus) : null),
   adopter: adopterScene,
 });
 // Lot 43 : les bandeaux des portiques sont peints dans la langue du joueur ; une autre langue choisie (Réglages : le jeu est à l'arrêt) repeint la scène.
 onLangue(() => {
-  if (track && (isFrozen() || phase === "finished")) adopterScene(composerOuDefaut(track, scenePalette, reconstructeur.palier()));
+  if (track && (isFrozen() || phase === "finished")) adopterScene(composerOuDefaut(track, scenePalette, reconstructeur.palier(), reconstructeur.plus()));
 });
 
 // --- Le Salon : changement de circuit sans recharger la page (lot 26) ---------------------------------------------------------
@@ -2296,7 +2314,7 @@ let prebuilt: { id: string; scene: ReturnType<typeof buildTrackScene> } | null =
 
 function buildSalonScene(c: LoadedSalonCircuit) {
   const t0 = performance.now();
-  const next = composerOuDefaut(c.track, c.palette, reconstructeur.palier());
+  const next = composerOuDefaut(c.track, c.palette, reconstructeur.palier(), reconstructeur.plus());
   salonStats.buildMs = performance.now() - t0;
   return next;
 }
@@ -2465,8 +2483,10 @@ if (params.has("debug")) {
         brancherComposeur,
         PAS_DU_JEU,
         PAS_DU_PALIER,
-        demander: (p: Palier) => reconstructeur.demander(p),
+        demander: (p: Palier, plus?: string[]) => reconstructeur.demander(p, plus),
         palier: () => reconstructeur.palier(),
+        /** Lot 46 : les pas que la scène prend en plus de ceux de son palier (`?reglages=2+vie+ciel`). */
+        plus: () => [...reconstructeur.plus()],
         scene: () => view.scene.uuid,
         /** Lot 43 : durée de construction de la scène du premier circuit (ms), au palier de départ. */
         get constructionMs() {

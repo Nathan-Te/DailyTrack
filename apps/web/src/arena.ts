@@ -1,3 +1,4 @@
+import type { PerspectiveCamera } from "three";
 import type { EtatFeux } from "./feux";
 import type { Look, SceneStats } from "./trackMesh";
 import {
@@ -53,6 +54,9 @@ export interface Arena {
   stats(): SceneStats;
   /** Lot 43 : pas de portique sur le sol plat (`TrackScene.feux`). */
   feux?(etat: EtatFeux): void;
+  /** Lot 46 : rien ne vit sur le sol plat (`TrackScene.animer`, `arrivee`). */
+  animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
+  arrivee?(t: number): void;
 }
 
 /** Scénario `plat` : un grand sol à damier, quelques cônes de repère, aucune collision. */
