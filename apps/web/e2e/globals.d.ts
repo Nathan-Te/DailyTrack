@@ -106,6 +106,16 @@ interface CdjDebug {
   };
   /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
   thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): Promise<{ url: string; timing: { build: number; draw: number } }>;
+  /** Socle par paliers (lot 39) : enregistrer un pas factice et un composeur, demander un palier, lire le palier et l'identité de la scène courante. */
+  socle: {
+    composer(track: unknown, palette: string, palier: string, options?: unknown): unknown;
+    brancherComposeur(palier: string, composeur: (track: unknown, palette: string, options: unknown) => unknown): void;
+    PAS_DU_JEU: Record<string, () => Promise<unknown>>;
+    PAS_DU_PALIER: Record<string, string[]>;
+    demander(palier: string): void;
+    palier(): string;
+    scene(): string;
+  };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
   render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */

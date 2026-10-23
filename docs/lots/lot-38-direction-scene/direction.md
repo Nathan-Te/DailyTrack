@@ -1,12 +1,13 @@
-# Direction de la scène de Track — **projet**, à choisir par Nathan
+# Direction de la scène de Track — **la règle de la scène**
 
-> **Statut : projet (lot 38).** Ce document n'est pas encore une règle : il décrit la direction que le lot 38 **recommande** pour la scène 3D de Track
-> (le « mélange » de la vitrine `/track/vitrine/`). Quand Nathan aura choisi (élément par élément, thème par thème : voir « À tester » du README du
-> lot), il deviendra — corrigé de ses choix — la règle des lots de mise en œuvre. Rien ici ne touche la charte de l'interface
-> (`docs/plateforme/identite.md`) ni `docs/plateforme/` : la charte reste celle de l'interface, ce document est celui de la scène.
+> **Statut (lot 39, 23/10/2026) : ce document n'est plus un projet, il est la règle de la scène de Track.** Il a été écrit au lot 38 (vitrine
+> `/track/vitrine/`), complété par la retouche 38b (les paliers) et tranché par Nathan le 22/10/2026 : voir **§ 9, « Décisions »**, qui l'emporte sur
+> tout ce qui précède quand ils diffèrent ; ce qui reste ouvert y est listé comme tel. Les lots de mise en œuvre s'y conforment ; la scène du jeu passe
+> par le socle par paliers (`apps/web/src/scene/socle.ts`, lot 39). La charte de l'interface (`docs/plateforme/identite.md`) reste celle de l'interface ;
+> ce document est celui de la scène.
 >
-> README du lot : `docs/lots/lot-38-direction-scene.md` (recommandations justifiées, captures, coûts, plan des lots, questions).
-> Code des directions : `apps/web/src/scene/` (fonctions de construction par élément, paramétrées par thème, prêtes à reprendre).
+> README des lots : `docs/lots/lot-38-direction-scene.md`, `docs/lots/lot-38b-paliers-scene.md` (paliers, coûts, plan), `docs/lots/lot-39-socle-scene.md` (le socle).
+> Code : `apps/web/src/scene/` (fonctions de construction par élément, paramétrées par thème et par palier).
 
 ## 1. Principes
 
@@ -82,8 +83,11 @@ La palette `neon` existe dans le code mais aucun thème ne l'utilise : à retire
 
 ## 5. Règles de pose (celles du lot 37, reprises ici)
 
-Le lot 37 nettoie le décor actuel en parallèle ; ses règles sont celles-ci, et le lot 38 les applique au décor des directions
-(`placesDeDecor`, `composer.ts`) — **à aligner sur le README du lot 37 à sa fusion** :
+Ces règles sont celles du lot 37 (`docs/lots/lot-37-decor-propre.md`, `apps/web/CLAUDE.md` « Décor : règles de pose »), **vérifiées sans rendu par le test de pose**
+(`apps/web/test/decorPose.test.ts`) ; elles valent pour tout palier et pour tout élément (`placesDeDecor`, `composer.ts`, `trackGeometry`). Précisions du lot 37 : l'appui
+d'un pied est le sol lointain, **le chapeau d'un rebord plein** (hauteur du bord, pas de la ligne centrale) ou une structure qui descend jusqu'au sol, à 5 cm près ;
+« rien dans le passage » = rien sur la surface roulante (route, bas-côté, paroi de cuve) ni à moins de 4,6 m au-dessus (la caméra « loin » est à 4,2 m), un élément au sol
+reste à 1 m de la route ; les trois rôles du lot 37 (*signaler*, *marquer*, *habiller*) regroupent les cinq ci-dessous.
 
 1. **Aucun élément en l'air.** Tout est posé au sol lointain (`floorY`, au moins 8 m sous la route la plus basse) ou sur un socle plein jusqu'à lui
    (la tribune du départ, la tour de chronométrage, les piles de pneus sur la bande) ; rien ne flotte (plus de cubes lumineux suspendus).
@@ -131,7 +135,7 @@ laissés dehors) :
 Chaque lot de mise en œuvre remesure ces lignes (vitrine, `mesure-lot38`, `poids-parties.mjs`) et les reporte dans son README et dans
 `docs/plateforme/budgets.md` (ligne de Track).
 
-## 8. Paliers de qualité (retouche 38b — **projet**, à choisir par Nathan)
+## 8. Paliers de qualité (retouche 38b ; tranchés au § 9)
 
 Au-dessus du mélange recommandé, trois paliers, **rendu seul** (un palier ne change jamais la simulation : même route sous la voiture, mêmes
 rebords physiques, même chrono, mêmes rediffusions). Chaque pas se coupe seul ; la vitrine (`/track/vitrine/`) les montre côte à côte, chiffrés,
@@ -153,24 +157,39 @@ Règles proposées (non appliquées) :
 - **La voiture** suit le palier (lot du véhicule, à placer avant les paliers : la ramener à 6 maillages est le pas le plus rentable) : README de la
   retouche, § 6.
 
-## 9. Décision de Nathan (22/10/2026)
+## 9. Décisions (Nathan, 22/10/2026)
 
-Après avoir parcouru la vitrine des paliers (retouche 38b) ; appliquée à la vitrine par la retouche 38c (`docs/lots/lot-38b-paliers-scene.md`,
-§ 38c). Le document reste un **projet** pour tout ce qui n'est pas tranché ici.
+Prises après la vitrine des paliers (retouche 38b) et appliquées à la vitrine par la retouche 38c (`docs/lots/lot-38b-paliers-scene.md`, § 38c) ; écrites ici au lot 39.
 
-- **Le palier 3 est la cible visuelle** de la scène de Track (§ 8 : finition, lumière, vie, post-traitement).
-- **La matière est sobre** : un cran au-dessus du grain du palier 1, **rien qui imite une photo** — ni rapiéçages, ni fissures, ni taches d'huile,
-  ni granulats visibles un à un. Un grain plus fin et moins contrasté, une variation de teinte douce à grande échelle (une ligne droite n'est pas
-  uniforme), au plus un léger relief s'il se voit (il ne se voyait pas : aucune carte de normales). Même règle pour le béton des rebords, le métal
-  des portiques et le grain du décor. Depuis la caméra de poursuite en mouvement, la matière se sent, elle ne se remarque pas. Les traces de pneus
-  et de freinage restent, discrètes, dans un pas à part. Captures avant / après : `docs/lots/lot-38b-paliers-scene/matiere-<thème>.jpg` (Stade,
-  Rallye, Nuit, Ville ; en poursuite et l'asphalte de près). L'ancienne matière (« détaillée ») est retirée au lot de mise en œuvre.
-- **Les téléphones suivent la règle de qualité automatique** (README de la 38b, § 5 : mesure des premières images, jamais en course, réglage
-  « Qualité graphique ») : **le palier 3 complet n'y est pas tenable**, avec ≈ 200 Mo de cibles de rendu à la taille d'un écran de téléphone (§ 3
-  du même README) ; ils prennent le palier 1 ou 2 et ce que la mesure permet du palier 3 sans passe plein écran.
+1. **Cible visuelle : le palier 3**, avec une **matière sobre** (38c) : un cran au-dessus du grain du palier 1, **rien qui imite une photo** — ni rapiéçages, ni
+   fissures, ni taches d'huile, ni granulats visibles un à un. Un grain plus fin et moins contrasté, une variation de teinte douce à grande échelle (une ligne
+   droite n'est pas uniforme), pas de carte de normales (le relief ne se voyait pas). Même règle pour le béton des rebords, le métal des portiques et le grain du
+   décor ; depuis la caméra de poursuite la matière se sent, elle ne se remarque pas. Les traces de pneus et de freinage restent, discrètes, dans un pas à part.
+   L'ancienne matière (« détaillée ») est retirée au lot de mise en œuvre. Captures : `docs/lots/lot-38b-paliers-scene/matiere-<thème>.jpg`.
+2. **Palier par appareil** :
+   - **ordinateur : palier 3, sans l'occlusion GTAO** ;
+   - **téléphone récent : palier 2, plus la vie** (drapeaux, foule, écrans, particules) **et le ciel** (nuages, brume), **sans aucune passe plein écran** ;
+   - **entrée de gamme : palier 1**.
+   Le choix est fait par **la règle automatique du 38b** (`docs/lots/lot-38b-paliers-scene.md`, § 5 : mesure des premières images, **jamais en course**). Mesure de
+   Nathan sur un Pixel 7, dans la vue en mouvement de la vitrine, sur un bandeau d'environ un tiers de l'écran : **palier 2 à 90 images/s** (11 ms, pire image 11 ms) ;
+   **palier 3 à 64 images/s** (16 ms, pire image 67 ms, 95 Mo de cibles, 269 appels).
+3. **Halo, brume de profondeur et particules : oui dans la scène 3D.** La charte « Cartouches » (ni flou, ni transparence, ni dégradé) vaut pour **l'interface**,
+   pas pour la scène.
+4. **Anticrénelage d'après-coup : FXAA, pas SMAA** (2,3 ko contre 37,7 ko, une passe).
+5. **Un réglage « Qualité graphique » dans les Réglages** : **Auto** (par défaut) · **Économie** (palier 1) · **Équilibrée** (palier 2) · **Maximale** (palier 3, et ce que
+   l'appareil supporte), fr et en. Il est posé **au lot du palier 2** (pas avant).
+6. **Le lot du véhicule passe en deuxième** (lot 40) ; il peut tourner en parallèle du socle.
+7. **Le soleil (ou la lune) est posé du côté d'où vient la lumière, dans le jeu aussi**, au lot de la lumière.
+8. **Le Canyon garde sa route rouge-brun** sous son soleil rasant orangé.
 
-**Encore ouvert** (questions du § 8 du README de la 38b, rien n'est tranché ici) : le palier exact par appareil et ses pas gardés ; le halo, la
-brume de profondeur et les particules dans la scène 3D (la charte) ; le post-traitement réservé à l'ordinateur ou abandonné ; l'anticrénelage
-(SMAA, FXAA ou le MSAA seul) ; le réglage « Qualité graphique » ; la route du Canyon sous son soleil orangé ; le soleil du bon côté dans le jeu ; le
-lot du véhicule en deuxième ; la vie (confettis, foule du décor) ; et les questions du lot 38 encore ouvertes (sponsors fictifs, panneaux de
-distance, feux au décompte, sol relevé près de la piste, budget du premier chargement, palette `neon`).
+**Un palier ne change jamais la simulation.** **On ne reconstruit jamais la scène pendant une course** (accueil, pause, arrivée, podium du Salon seulement). **Les modules des
+pas se chargent à la demande**, jamais dans le premier chargement (lot 39 : `socle.ts`).
+
+**Restent ouvertes** (à lister comme telles, rien n'est tranché) :
+- la **vie au Stade** : confettis ou non ; la foule de la tribune seule, ou aussi celle du décor ;
+- des **sponsors fictifs** dans le jeu ;
+- des **panneaux de distance** ;
+- des **feux au décompte** ;
+- un **sol relevé près de la piste** (talus) pour que le décor se voie depuis la voiture ;
+- la **palette `neon`** (dans le code, aucun thème ne l'utilise) ;
+- le **budget du premier chargement des paliers** (≈ +9 ko) et la ligne « décor 3D à la demande » (16 ko).
