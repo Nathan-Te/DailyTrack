@@ -260,7 +260,12 @@ export function poserSurTerrain(s: Sol, c: CalquesDecor, kind: PoseKind, style: 
     tris += (b.pos.length - marks[i]!.pos) / 9;
     if (bb) box = box ? { x0: Math.min(box.x0, bb.x0), y0: Math.min(box.y0, bb.y0), z0: Math.min(box.z0, bb.z0), x1: Math.max(box.x1, bb.x1), y1: Math.max(box.y1, bb.y1), z1: Math.max(box.z1, bb.z1) } : bb;
   });
-  if (!box) return true; // constructeurs muets (miniatures, hors du cadre) : les tirages sont faits, rien à poser
+  if (!box) {
+    // Constructeurs muets (miniatures, hors du cadre) : les tirages sont faits, rien à poser (les affiches non plus).
+    c.affiches.pos.length = aff;
+    c.affiches.uv.length = affUv;
+    return true;
+  }
   const b0: Box = box;
   // Une structure qui descend jusqu'au sol lointain (les immeubles de la Ville) y a son appui : elle traverse le talus, on ne la déplace pas.
   const auSol = b0.y0 <= s.terrain.sol + 0.01;
