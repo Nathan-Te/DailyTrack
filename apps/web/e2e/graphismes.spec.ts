@@ -25,6 +25,12 @@ async function open(page: Page, query: string) {
   await page.waitForFunction(() => window.__cdj?.phase);
   await page.evaluate(() => window.__cdj.manual(true));
   await page.evaluate(() => window.__cdj.advance(4));
+  // Lot 44 : le décor du thème se charge à la demande ; s'il n'était pas prêt quand la scène s'est construite, il s'ajoute à la pause (jamais en course).
+  if (!(await page.evaluate(() => window.__cdj.decor.dansScene))) {
+    await page.keyboard.press("KeyP");
+    await page.waitForFunction(() => window.__cdj.decor.dansScene);
+    await page.keyboard.press("KeyP");
+  }
   return errors;
 }
 

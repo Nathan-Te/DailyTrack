@@ -46,13 +46,18 @@ export class Builder {
   /** Muet : les formes ne sont pas construites (mais l'appelant a tiré ses nombres au hasard comme d'habitude). */
   mute = false;
 
+  /** La dernière couleur convertie (lot 44) : des triangles qui se suivent ont presque toujours la même ; la conversion en couleur linéaire coûte trois puissances. */
+  private dernier = -1;
+
   tri(a: V3, b: V3, c: V3, color: number) {
     if (this.mute) return;
-    this.c.set(color);
-    for (const p of [a, b, c]) {
-      this.pos.push(p[0], p[1], p[2]);
-      this.col.push(this.c.r, this.c.g, this.c.b);
+    if (color !== this.dernier) {
+      this.c.set(color);
+      this.dernier = color;
     }
+    const { r, g, b: bl } = this.c;
+    this.pos.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+    this.col.push(r, g, bl, r, g, bl, r, g, bl);
   }
 
   quad(a: V3, b: V3, c: V3, d: V3, color: number) {

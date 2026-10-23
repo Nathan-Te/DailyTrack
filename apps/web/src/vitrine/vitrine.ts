@@ -1,7 +1,7 @@
 // La vitrine de la scène (`/track/vitrine/`, recette et aperçus seulement : jamais construite en production). Deux planches :
 //   - **les paliers** (retouche 38b, par défaut) : au-dessus du mélange recommandé du lot 38, les paliers de qualité 1, 2 et 3 et une colonne « à la
 //     carte » (un palier et des pas cochés), avec la vue en mouvement par thème et le coût de chaque palier et de chaque pas ;
-//   - **les directions** (lot 38, `?planche=directions`) : l'existant, les directions A, B, C et le mélange recommandé.
+//   - **la voiture** (lot 40, `?planche=voiture`). Lot 44 : la planche des directions du lot 38 est partie avec les directions (capture dans le README du lot 44).
 // Une section par élément et par thème ; dans chaque section, les mêmes éléments vus par chaque colonne, côte à côte, dans la même scène et le même
 // cadrage, avec leur coût. Outil interne de Nathan : en français, exempté des catalogues (comme l'admin).
 import "@cdj/ui/src/styles.css";
@@ -19,23 +19,22 @@ import type { TrackScene } from "../trackMesh";
 import { memoireScene, type MemoireScene } from "../scene/memoire";
 import { PAS, lireReglages, reglagesDuPalier, texteReglages, type PasId } from "../scene/paliers";
 import { ELEMENTS, THEMES_VITRINE, poseTheme, type PointDeVue, type Pose, type Sujet, type SujetTheme } from "./sujets";
-import { VARIANTES, variantesPaliers, type Fabrique, type Variante, type VarianteId } from "./variantes";
+import { variantesPaliers, type Fabrique, type Variante, type VarianteId } from "./variantes";
 import { dessiner, mesurerImage, moteurPartage, orbiteDepuis, suivreOrbite, type Chiffres, type Dessin, type Orbite } from "./vues";
 import { EtatReglages, panneauReglages } from "./reglagesUi";
 import { TEXTES_PAS } from "./textesPaliers";
-import { MESURES } from "./mesures";
 import { MESURES_PALIERS } from "./mesuresPaliers";
 import type { Bout } from "./parcours";
 import type { VueMouvement } from "./mouvement";
 
-type Planche = "paliers" | "directions" | "voiture";
+type Planche = "paliers" | "voiture";
 const params = new URLSearchParams(location.search);
-const planche: Planche = params.get("planche") === "directions" ? "directions" : params.get("planche") === "voiture" ? "voiture" : "paliers";
+const planche: Planche = params.get("planche") === "voiture" ? "voiture" : "paliers";
 document.body.dataset.planche = planche;
 
 /** Les réglages de la colonne « à la carte » et de la vue en mouvement (`?reglages=2+halo`, par défaut le palier 2). */
 const reglagesCarte = new EtatReglages(lireReglages(params.get("reglages") ?? "2"));
-const COLONNES: Variante[] = planche === "directions" ? VARIANTES : variantesPaliers(() => reglagesCarte.get());
+const COLONNES: Variante[] = variantesPaliers(() => reglagesCarte.get());
 
 /** Le temps (s) auquel sont dessinées les vues fixes des paliers (drapeaux, nuages, particules à cet instant). */
 const T_FIXE = 2;
@@ -349,7 +348,7 @@ async function ouvrirMouvement(sujet: string) {
   const [vm, c] = await Promise.all([mouvement(), circuitDe(s), policesPretes]);
   await vm.ouvrir({ id: s.id, titre: s.titre, track: c.track, palette: c.palette, spec: c.spec });
 }
-if (planche !== "directions") {
+{
   for (const s of THEMES_VITRINE) {
     const o = el("option", undefined, s.titre);
     o.value = s.id;
@@ -396,9 +395,7 @@ let poids: Poids | null = null;
 let parties: Record<string, number> | null = null;
 const resume = document.getElementById("resume-corps")!;
 // Les têtes du tableau des coûts, selon la planche.
-for (const t of planche === "directions"
-  ? ["Direction", "Poids du morceau (JS compressé)", "Appels de rendu par image", "Triangles par image", "Construction de la scène", "Image, téléphone (processeur ×4)", "Construction, téléphone (×4)"]
-  : ["Colonne", "Poids ajouté au jeu (JS compressé)", "Appels de rendu par image", "Triangles par image", "Construction de la scène", "Mémoire : textures dessinées + cibles de rendu", "Image, téléphone (processeur ×4)", "Construction, téléphone (×4)"]) {
+for (const t of ["Colonne", "Poids ajouté au jeu (JS compressé)", "Appels de rendu par image", "Triangles par image", "Construction de la scène", "Mémoire : textures dessinées + cibles de rendu", "Image, téléphone (processeur ×4)", "Construction, téléphone (×4)"]) {
   const th = el("th", undefined, t);
   th.scope = "col";
   document.getElementById("resume-tete")!.append(th);
@@ -433,17 +430,7 @@ function majResume() {
     const octets = variante.morceaux.reduce((n, m) => n + (poids?.poids[m]?.octets ?? 0), 0);
     const cell = (t: string) => el("td", undefined, t);
     tr.append(el("th", undefined, variante.titre));
-    if (planche === "directions") {
-      const ref = MESURES.variantes[variante.id];
-      tr.append(cell(variante.id === "existant" ? "—" : poids ? `+${ko(octets)}` : "…"));
-      tr.append(
-        cell(mes.length ? `${fmt(moy((v) => v.chiffres!.appels))} (max ${fmt(max((v) => v.chiffres!.appels))})` : "…"),
-        cell(mes.length ? `${fmt(moy((v) => v.chiffres!.triangles) / 1000, 1)} k (max ${fmt(max((v) => v.chiffres!.triangles) / 1000, 1)} k)` : "…"),
-        cell(mes.length ? `${fmt(moy((v) => v.constructionMs))} ms (max ${fmt(max((v) => v.constructionMs))})` : "…"),
-        cell(ref?.imageMs !== undefined ? `${fmt(ref.imageMs, 1)} ms` : "à mesurer"),
-        cell(ref?.constructionMs !== undefined ? `${fmt(ref.constructionMs)} ms` : "à mesurer"),
-      );
-    } else {
+    {
       const ref = variante.id === "carte" ? undefined : MESURES_PALIERS.colonnes[variante.id];
       const mem = mes.filter((v) => v.memoire);
       tr.append(cell(variante.id === "existant" ? (parties ? `${ko(partie("Existant : trackMesh"))} (à la demande depuis le lot 43)` : "…") : poidsPalier(variante.id)));
@@ -532,8 +519,6 @@ fetch("./poids.json")
   .then((r) => (r.ok ? (r.json() as Promise<Poids>) : null))
   .then((p) => {
     poids = p;
-    const socle = p?.poids.socle?.octets;
-    if (socle) document.getElementById("poids-socle")!.textContent = ` : ${ko(socle)}`;
     majResume();
   })
   .catch(() => majResume());
@@ -567,7 +552,7 @@ const planVoiture =
     : null;
 planVoiture?.catch((e) => erreurs.push(`planche voiture : ${String(e)}`));
 
-// Outils des tests (e2e/vitrine.spec.ts, e2e/voiture.spec.ts) et des mesures (e2e/mesure-lot38.spec.ts, e2e/mesure-lot38b.spec.ts, mesure-lot40-vitrine).
+// Outils des tests (e2e/vitrine.spec.ts, e2e/voiture.spec.ts) et des mesures (e2e/mesure-lot38b.spec.ts, mesure-lot40-vitrine).
 declare global {
   interface Window {
     __vitrine?: {
@@ -576,7 +561,7 @@ declare global {
       vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number; textures: number; cibles: number }[];
       /** Construit et dessine toutes les vues d'une section (ou de toutes), une à une, en libérant au fur et à mesure. */
       construireTout(sujet?: string): Promise<void>;
-      /** Image d'une vue (PNG en data URL) à la taille donnée, densité 1 : captures des README (e2e/captures-lot38*.spec.ts). */
+      /** Image d'une vue (PNG en data URL) à la taille donnée, densité 1 : captures des README (e2e/captures-lot38b.spec.ts). */
       capture(sujet: string, variante: string, largeur: number, hauteur: number): Promise<string | null>;
       /** Temps d'image d'une vue (à la taille donnée, densité 1). */
       mesurer(sujet: string, variante: string, largeur: number, hauteur: number, images: number): Promise<{ constructionMs: number; moyenneMs: number; pireMs: number; envoiMs: number; appels: number; triangles: number; textures: number; cibles: number } | null>;

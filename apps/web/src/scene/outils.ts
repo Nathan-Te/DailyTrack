@@ -40,13 +40,17 @@ export function pt(r: Repere, g: number, h: number, a: number): V3 {
 
 /** Boîte du repère : de `g0` à `g1` (gauche), `h0` à `h1` (haut), `a0` à `a1` (avant). `dessous` : la face du dessous (souvent invisible : omise). */
 export function boite(b: Builder, r: Repere, g0: number, g1: number, h0: number, h1: number, a0: number, a1: number, couleur: number, cotes = couleur, dessous = false) {
+  if (b.mute) return;
+  // Les huit coins, calculés une fois (lot 44 : la construction du décor en pose des milliers) ; mêmes points, même ordre qu'avant.
   const P = (g: number, h: number, a: number) => pt(r, g, h, a);
-  b.quad(P(g0, h1, a0), P(g1, h1, a0), P(g1, h1, a1), P(g0, h1, a1), couleur); // dessus
-  b.quad(P(g0, h0, a0), P(g1, h0, a0), P(g1, h1, a0), P(g0, h1, a0), cotes); // arrière (vers a0)
-  b.quad(P(g1, h0, a1), P(g0, h0, a1), P(g0, h1, a1), P(g1, h1, a1), cotes); // avant
-  b.quad(P(g0, h0, a1), P(g0, h0, a0), P(g0, h1, a0), P(g0, h1, a1), cotes); // droite (g0)
-  b.quad(P(g1, h0, a0), P(g1, h0, a1), P(g1, h1, a1), P(g1, h1, a0), cotes); // gauche (g1)
-  if (dessous) b.quad(P(g0, h0, a1), P(g1, h0, a1), P(g1, h0, a0), P(g0, h0, a0), cotes);
+  const b00 = P(g0, h0, a0), b10 = P(g1, h0, a0), b01 = P(g0, h0, a1), b11 = P(g1, h0, a1);
+  const t00 = P(g0, h1, a0), t10 = P(g1, h1, a0), t01 = P(g0, h1, a1), t11 = P(g1, h1, a1);
+  b.quad(t00, t10, t11, t01, couleur); // dessus
+  b.quad(b00, b10, t10, t00, cotes); // arrière (vers a0)
+  b.quad(b11, b01, t01, t11, cotes); // avant
+  b.quad(b01, b00, t00, t01, cotes); // droite (g0)
+  b.quad(b10, b11, t11, t10, cotes); // gauche (g1)
+  if (dessous) b.quad(b01, b11, b10, b00, cotes);
 }
 
 /** Boîte chanfreinée : arêtes du haut coupées à 45° de `c` m (B : pièces « fabriquées », moins de faces vives). */

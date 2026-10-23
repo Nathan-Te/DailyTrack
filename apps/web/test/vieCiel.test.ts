@@ -10,6 +10,7 @@ import { CIEL } from "../src/scene/cielJeu";
 import { OMBRES } from "../src/scene/ombres3";
 import type { AnimationPas, PasScene } from "../src/scene/types";
 import { resserrerGlsl, resserrerModule } from "../outils/glsl";
+import { DECORS_TEST } from "./decorChecks";
 
 // Lot 46 : la vie et le ciel du palier 3 en jeu (et le groupe « vie et ciel » des téléphones récents). Sans carte graphique : la pose des pièces
 // (`geometrieP1` avec les pas, sans DOM), les maillages posés (un par famille), l'animation (un temps d'affichage), les adresses. Dans le vrai jeu :
@@ -22,12 +23,17 @@ function circuit(jour: [number, number, number], theme: string | null = null): {
 }
 const CIRCUITS = [circuit([2026, 10, 8]), circuit([2026, 10, 14]), circuit([2026, 10, 10], "banquise"), circuit([2026, 10, 16])];
 
-/** La scène d'un circuit avec les pas, sans DOM : les formes posées, puis les maillages de chaque pas dans une scène vide. */
+/**
+ * La scène d'un circuit avec les pas, sans DOM : les formes posées, puis les maillages de chaque pas dans une scène vide, puis le décor du thème qui se pose
+ * (lot 44 : il arrive à la demande ; ce qui tient à sa tribune — mâts, drapeaux, ruban, foule — vient avec lui, comme `composerP1`).
+ */
 function scenePas(c: { track: Track; palette: PaletteName }, pas: readonly PasScene[], coupes: readonly string[] = []) {
-  const geo = geometrieP1(c.track, c.palette, { headless: true, pas, coupes });
+  const geo = geometrieP1(c.track, c.palette, { headless: true, pas, coupes, decor: DECORS_TEST[c.palette] });
   const scene = new Scene();
-  const animations = pas.map((p) => p.poser?.({ scene, calques: geo.calques, x: geo.x, decor: geo.decor, soleil: new Vector3(0.3, 0.9, -0.2).normalize(), coupes: new Set(coupes), sansDom: true }) as AnimationPas);
-  return { geo, scene, animations };
+  const animations = pas.map((p) => p.poser?.({ scene, calques: geo.calques, x: geo.x, soleil: new Vector3(0.3, 0.9, -0.2).normalize(), coupes: new Set(coupes), sansDom: true }) as AnimationPas);
+  const d = geo.decor!;
+  for (const a of animations) a?.decor?.({ tribune: d.tribune, foule: d.foule, decor: d.decor });
+  return { geo, scene, animations, decor: d };
 }
 
 describe("lot 46 : où la vie et le ciel s'activent", () => {
@@ -71,24 +77,25 @@ describe("lot 46 : la vie et le ciel posés", () => {
     const avec = scenePas(c, [VIE, CIEL]);
     const sans = scenePas(c, [VIE, CIEL], ["foule", "particules", "nuages"]);
     expect(Object.keys(appelsParFamille(sans.scene)).sort()).toEqual(["drapeaux", "ecrans"]);
-    expect(sans.geo.decor.vie.foule).toBeNull();
+    expect(sans.decor.foule).toBeNull();
     // Les spectateurs confiés à la foule animée ne sont plus dans le décor ; coupée, la foule y revient (les mêmes tirages : le reste du décor ne bouge pas).
-    expect(avec.geo.decor.vie.foule!.length).toBeGreaterThan(50);
-    expect(sans.geo.decor.decorG.pos.length - avec.geo.decor.decorG.pos.length).toBeGreaterThan(50 * 36 * 3 - 1);
-    const p1 = geometrieP1(c.track, c.palette, { headless: true });
-    expect(p1.decor.decorG.pos.length).toBe(sans.geo.decor.decorG.pos.length - 3 * 36 * 3); // + les trois mâts du toit (des boîtes) : le reste est le même décor
+    // Un spectateur du décor : deux boîtes sans fond (corps, tête : `boite`, 30 sommets chacune).
+    expect(avec.decor.foule!.length).toBeGreaterThan(50);
+    expect(sans.decor.decor.pos.length - avec.decor.decor.pos.length).toBe(avec.decor.foule!.length * 2 * 30 * 3);
+    const p1 = geometrieP1(c.track, c.palette, { headless: true, decor: DECORS_TEST[c.palette] });
+    expect(p1.decor!.decor.pos.length).toBe(sans.decor.decor.pos.length - 3 * 36 * 3); // + les trois mâts du toit (des boîtes) : le reste est le même décor
   });
 
   it("rien ne bouge dans le champ de la piste : drapeaux, écrans, chronomètre et foule sont à côté de ce que roule la voiture, ou bien au-dessus (≥ 8 m)", () => {
     const sol = createSurface();
     for (const c of CIRCUITS) {
-      const { geo } = scenePas(c, [VIE]);
+      const { geo, decor } = scenePas(c, [VIE]);
       const monde = trackWorld(c.track);
       const pieces: [string, number[]][] = [
         ["drapeaux", geo.calques.drapeaux!.pos],
         ["écrans", geo.calques.ecrans!.pos],
         ["chronomètre", geo.calques.chrono!.pos],
-        ["foule", geo.decor.vie.foule!.flatMap((p) => [p.x, p.y, p.z])],
+        ["foule", decor.foule!.flatMap((p) => [p.x, p.y, p.z])],
       ];
       for (const [nom, pos] of pieces) {
         expect(pos.length, `${c.palette} : ${nom}`).toBeGreaterThan(0);

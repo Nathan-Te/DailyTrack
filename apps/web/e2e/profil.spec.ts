@@ -91,6 +91,7 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
   await expect(a.locator("#finish .online .rank")).toHaveText("1er sur 1");
   nowyCode = encodeTransfer(await idOf(a));
   expect(nowyCode).toMatch(/^CDJ2\.[0-9a-f]{32}\.[0-9a-f]{8}$/);
+  await sleep(a); // A a fini sa part : il ne dessine plus pendant les courses de B et C (son stockage se lit toujours)
 
   // --- B est plus rapide, mais « nówy » est pris : message du serveur, suggestions libres, « Charger un code » ---
   b = await newDevice(browser);
@@ -108,6 +109,7 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
   await suggestions.first().click();
   await expect(b.locator("#finish .online .rank")).toHaveText("1er sur 2");
   expect((await board()).top.map((r) => r.name)).toEqual(["nówy2", "Nowy"]);
+  await sleep(b);
 
   // --- C veut « Nowy » aussi : « Charger un code » avec le code d'A le fait devenir Nowy ---
   c = await newDevice(browser);
@@ -133,7 +135,6 @@ test("un pseudo appartient à son premier propriétaire : refusé (casse et acce
   expect(await c.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Nowy");
   expect((await board()).participants).toBe(2); // C est devenu Nowy : personne de plus au classement
   await b.context().close();
-  await sleep(a);
   await sleep(c);
 });
 

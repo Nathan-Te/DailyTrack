@@ -30,8 +30,11 @@ export const ROLES: Record<PoseKind, Role> = {
  */
 export type PosePart = "pied" | "surplomb";
 
-/** Appui d'un pied : le sol lointain (`track.voidY − FALL_DEPTH`), ou le chapeau du rebord d'un bloc fermé (route + hauteur du rebord). */
-export type Appui = "sol" | "rebord";
+/**
+ * Appui d'un pied : le sol lointain (`track.voidY − FALL_DEPTH`), le chapeau du rebord d'un bloc fermé (route + hauteur du rebord), ou (lot 44) le sol relevé
+ * du décor (`terrain` : le point le plus bas du talus sous l'élément, `decor/commun.ts`).
+ */
+export type Appui = "sol" | "rebord" | "terrain";
 
 export interface Pose {
   kind: PoseKind;

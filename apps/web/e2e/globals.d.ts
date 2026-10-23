@@ -106,6 +106,8 @@ interface CdjDebug {
   };
   /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
   thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): Promise<{ url: string; timing: { build: number; draw: number } }>;
+  /** Lot 44 : le décor du thème, chargé à la demande (ms depuis l'ouverture de la page) ; posé à l'arrêt seulement. */
+  decor: { palette: string; demandeMs: number | null; pretMs: number | null; poseMs: number | null; posePhase: string | null; poseDureeMs: number; poseEnCourse: number; dansScene: boolean; pret: boolean };
   /** Socle par paliers (lot 39) : enregistrer un pas factice et un composeur, demander un palier, lire le palier et l'identité de la scène courante. */
   /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai (`?voiture=`), la voiture vue est-elle celle voulue, compteurs, course classée ou non. */
   voiture: {
@@ -139,7 +141,7 @@ interface CdjDebug {
   /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
   feux: { rouges: number; vert: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;

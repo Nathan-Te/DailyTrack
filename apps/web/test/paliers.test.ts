@@ -4,7 +4,6 @@ import { CELL, bestPilotRun, isCurve, parseTrack, type PaletteName } from "@cdj/
 import { Builder, seeded } from "../src/meshKit";
 import { PALETTE_DEFS } from "../src/trackMesh";
 import { PAS, PAS_IDS, avecPas, avecPost, lireReglages, palierDe, reglagesDuPalier, texteReglages } from "../src/scene/paliers";
-import { rebordB } from "../src/scene/directionB";
 import { Affiches } from "../src/scene/outils";
 import { Drapeaux, marque, varierInstance, varierParPosition } from "../src/scene/finition";
 import { PERIODE_TEINTE, TRACES_SOMBRE, matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, teinteLarge, tracesEtMarquages } from "../src/scene/matiere";
@@ -12,9 +11,10 @@ import { carteDeNormales, detailleeAsphalte } from "../src/scene/matiereDetaille
 import { brumeDeProfondeur, uniformesBrume } from "../src/scene/lumiere3";
 import { THEMES_3 } from "../src/scene/themes3";
 import { verserDrapeaux } from "../src/scene/drapeaux";
-import { ROUTE_SOUS_LUMIERE_CHAUDE, portiqueDepartP } from "../src/scene/palier1";
-import { DIRECTION_P, decorP } from "../src/scene/decorP1";
-import { THEMES_C } from "../src/scene/directionC";
+import { ROUTE_SOUS_LUMIERE_CHAUDE, paletteP1, portiqueDepartP } from "../src/scene/palier1";
+import { DECOR as DECOR_CAMPAGNE } from "../src/scene/decor/campagne";
+import { THEMES_C } from "../src/scene/lumiere";
+import { rebordB } from "../src/scene/piste";
 import { C, CHAMPS, enregistrer, fenetre, lire } from "../src/vitrine/parcours";
 import { lineariser, lineariserHalos } from "../src/scene/composerPalier";
 import { buildHalos } from "../src/halo";
@@ -35,7 +35,7 @@ function calques(): Calques {
 
 function contexte(palette: PaletteName, reglages = reglagesDuPalier(1)): Contexte {
   const track = parseTrack("paliers-test", PISTE);
-  return { palette, pal: DIRECTION_P.palette(palette, PALETTE_DEFS[palette]), look: { exposure: 1, haze: 1, halo: 0, headlights: 0, shadow: 1 }, track, floorY: track.voidY - 4, reglages, varie: seeded("paliers-test:variete") };
+  return { palette, pal: paletteP1(palette, PALETTE_DEFS[palette]), look: { exposure: 1, haze: 1, halo: 0, headlights: 0, shadow: 1 }, track, floorY: track.voidY - 4, reglages, varie: seeded("paliers-test:variete") };
 }
 
 describe("réglages des paliers", () => {
@@ -81,7 +81,7 @@ describe("palier 1 : le mélange du lot 38, nettoyé", () => {
         expect(g - (r + b) / 2, `${nom} ${c.toString(16)} : vert`).toBeLessThan(15);
       }
       // Et c'est bien la route du palier pour ce thème, sous la lumière chaude de C.
-      expect(DIRECTION_P.palette(nom as PaletteName, PALETTE_DEFS[nom as PaletteName]).road).toEqual(route);
+      expect(paletteP1(nom as PaletteName, PALETTE_DEFS[nom as PaletteName]).road).toEqual(route);
       const soleil = THEMES_C[nom as PaletteName].soleil[0];
       expect(((soleil >> 16) & 255) - (soleil & 255), `${nom} : un soleil chaud`).toBeGreaterThan(40);
     }
@@ -115,8 +115,10 @@ describe("palier 2 : géométrie, variété, matière", () => {
     const avec = calques();
     const xs = contexte("campagne", reglagesDuPalier(1));
     const xa = contexte("campagne", avecPas(reglagesDuPalier(1), "variete", true));
-    decorP(sans, xs, seeded("paliers-test:campagne"));
-    decorP(avec, xa, seeded("paliers-test:campagne"));
+    // Lot 44 : le décor du jeu ; la variété lui arrive par le contexte (comme le fait le compositeur de la vitrine).
+    xa.varierDecor = { marque: (c) => marque(c as Calques), varier: (c, m, x, sol, z) => varierInstance(c as Calques, m as ReturnType<typeof marque>, x, sol, z, xa.varie!) };
+    DECOR_CAMPAGNE.construire(sans, xs);
+    DECOR_CAMPAGNE.construire(avec, xa);
     expect(avec.decor.pos.length).toBe(sans.decor.pos.length);
     expect(avec.affiches.pos.length).toBe(sans.affiches.pos.length);
     let differe = 0;

@@ -1,17 +1,15 @@
-// Les colonnes de la vitrine. **Planche des directions (lot 38)** : l'existant (la scène du jeu jusqu'au lot 43, chargée à la demande), les trois directions et le
-// mélange recommandé. **Planche des paliers (retouche 38b)** : l'existant, les paliers 1, 2 et 3 au-dessus du mélange, et « à la carte » (les pas
-// cochés en tête de page). Chaque colonne est chargée à la demande (`import()`) : un morceau à elle, dont la construction mesure le poids
-// (vite.vitrine.config.ts).
+// Les colonnes de la vitrine, **planche des paliers (retouche 38b)** : l'existant (la scène du jeu jusqu'au lot 43, chargée à la demande), les paliers 1, 2 et 3
+// au-dessus du mélange, et « à la carte » (les pas cochés en tête de page). Chaque colonne est chargée à la demande (`import()`) : un morceau à elle, dont la
+// construction mesure le poids (vite.vitrine.config.ts). Lot 44 : la planche des directions du lot 38 (A, B, C, mélange) est partie avec elles.
 import type { PaletteName, Track } from "@cdj/sim";
 import type { PerspectiveCamera, WebGLRenderer } from "three";
 import type { TrackScene } from "../trackMesh";
 import { composer } from "../scene/socle";
 /** Lot 43 : l'ancienne scène (palier « existant ») a quitté le premier chargement du jeu ; la vitrine la charge pour la comparer. */
 const existant = () => import("../scene/existant");
-import { composerScene } from "../scene/composer";
 import { reglagesDuPalier, type Reglages } from "../scene/paliers";
 
-export type VarianteId = "existant" | "A" | "B" | "C" | "M" | "P1" | "P2" | "P3" | "carte";
+export type VarianteId = "existant" | "P1" | "P2" | "P3" | "carte";
 
 /** Ce que rend le chargement d'une colonne : de quoi construire une scène, et (paliers) de quoi la dessiner. */
 export interface Fabrique {
@@ -42,51 +40,6 @@ const EXISTANT: Variante = {
   charger: async () => (await existant(), { construire: (track, palette) => composer(track, palette, "existant") }),
 };
 
-export const VARIANTES: Variante[] = [
-  EXISTANT,
-  {
-    id: "A",
-    titre: "A — Net et graphique",
-    resume: "Silhouettes franches, peu de pièces, aplats, bandes et marquages forts, lumière en trois tons (la charte « Cartouches » en 3D).",
-    morceaux: ["directionA"],
-    charger: async () => {
-      const { DIRECTION_A } = await import("../scene/directionA");
-      return { construire: (track, palette) => composerScene(track, palette, DIRECTION_A) };
-    },
-  },
-  {
-    id: "B",
-    titre: "B — Détaillé",
-    resume: "Formes chanfreinées et petites pièces qui racontent (pneus, drapeaux, câbles, rivets, sponsors fictifs), matériaux variés ; tout fusionné.",
-    morceaux: ["directionB"],
-    charger: async () => {
-      const { DIRECTION_B } = await import("../scene/directionB");
-      return { construire: (track, palette) => composerScene(track, palette, DIRECTION_B) };
-    },
-  },
-  {
-    id: "C",
-    titre: "C — Lumière et matière",
-    resume: "Les formes de l'existant ; le ciel, la brume, la lumière et l'ombrage par thème, l'occlusion par sommets, des textures dessinées au chargement.",
-    morceaux: ["directionC"],
-    charger: async () => {
-      const { appliquerC } = await import("../scene/directionC");
-      await existant();
-      return { construire: (track, palette) => appliquerC(composer(track, palette, "existant"), palette, track) };
-    },
-  },
-  {
-    id: "M",
-    titre: "Mélange recommandé",
-    resume: "La proposition du lot : les éléments et rebords de A, un décor de B allégé, la lumière de C.",
-    morceaux: ["directionM", "directionA", "directionB", "directionC"],
-    charger: async () => {
-      const [{ DIRECTION_M }, { appliquerC }] = await Promise.all([import("../scene/directionM"), import("../scene/directionC")]);
-      return { construire: (track, palette) => appliquerC(composerScene(track, palette, DIRECTION_M), palette, track) };
-    },
-  },
-];
-
 /** Les morceaux de la planche des paliers (le compositeur et chaque famille de pas : leur poids est lu dans poids.json). */
 export const MORCEAUX_PALIERS = { base: ["palier1"], finition: ["finition", "matiere", "reflets"], vitrine: ["lumiere3", "vie", "post"] } as const;
 
@@ -99,7 +52,7 @@ function palier(id: VarianteId, titre: string, resume: string, morceaux: string[
     morceaux,
     charger: async () => {
       const m = await import("./scenesPaliers");
-      const fab = m.fabriquePalier(reglages);
+      const fab = await m.fabriquePalier(reglages);
       return {
         construire: fab,
         rendre: (ts, r, camera, w, h, t) => m.rendrePalier(ts as ReturnType<typeof fab>, r, camera, w, h, t),

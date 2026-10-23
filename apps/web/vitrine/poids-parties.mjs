@@ -1,4 +1,5 @@
-// Lot 38 — le poids de chaque partie d'une direction **si elle entrait dans le jeu** : `node apps/web/vitrine/poids-parties.mjs`.
+// Lot 38 — le poids de chaque partie de la scène **si elle entrait dans le jeu** : `node apps/web/vitrine/poids-parties.mjs` (lot 44 : les directions
+// du lot 38 sont parties ; le décor du palier 1 est mesuré thème par thème — la mesure qui fait foi est celle du jeu construit, `e2e/mesureDecor.mjs`).
 // Chaque partie est empaquetée seule (esbuild, minifiée, puis gzip), en laissant dehors ce que le premier chargement du jeu contient déjà (three.js,
 // la simulation, `trackMesh.ts`, `trackProps.ts`, `meshKit.ts`, `signage.ts`, `speedFeel.ts`, `halo.ts`) : le chiffre est le code **ajouté**. Les parties
 // partagent du code (outils, pièces) : la somme des parties dépasse un peu le poids de leur réunion, qui est donné aussi. Méthode du README du lot 38.
@@ -19,38 +20,27 @@ const DEJA = ["three", "@cdj/sim", "*/trackMesh", "*/trackProps", "*/meshKit", "
 /** Les modules des pas (retouche 38b) : hors du palier 1. */
 const PAS = ["finition", "drapeaux", "matiere", "matiereDetaillee", "bruit", "reflets", "lumiere3", "vie", "post", "vieJeu", "cielJeu", "ombres3"];
 /** Le palier 1 et ce qu'il tire (lot 38 compris) : déjà là quand on mesure un pas. */
-const PALIER1 = ["composerPalier", "palier1", "decorP1", "piste", "sponsors", "composerP1", "paliers", "memoire", "composer", "route", "outils", "pieces", "types", "origine", "directionA", "directionB", "directionC", "directionM", "textures"];
+const PALIER1 = ["composerPalier", "palier1", "piste", "sponsors", "composerP1", "paliers", "memoire", "ciel", "lumiere", "route", "outils", "pieces", "types", "textures", "decor", "decor/commun", "decor/matiereC"];
 
 /** Les parties : un nom, le module de src/scene, les noms qu'on en importe ; options : entrée écrite, garder trackMesh, modules vides, dehors. */
 const PARTIES = [
-  ["socle : route paramétrable (remplacerait la route de trackMesh.ts)", "route", ["construireRoute", "STYLE_ORIGINE"]],
-  ["socle : compositeur (remplacerait le squelette de buildTrackScene)", "composer", ["composerScene"]],
+  ["socle : route paramétrable", "route", ["construireRoute", "STYLE_ORIGINE"]],
   ["socle : outils, pièces, types, horizons", "pieces", ["MARQUE", "textureBandeau", "bandeau", "damierSol", "chevronSol"]],
-  ["A : route (rebords, vibreurs, lignes)", "directionA", ["routeA"]],
-  ["A : éléments (portiques, porte, plaques, panneaux, rythme)", "directionA", ["portiqueDepart", "arrivee", "porte", "plaqueA", "panneau", "rythme"]],
-  ["A : palettes et ambiance", "directionA", ["THEMES_A", "ambianceA"]],
-  ["A : décor (tribune, recettes)", "directionA", ["decor"]],
-  ["A : tout", "directionA", ["DIRECTION_A"]],
-  ["B : rebords par thème", "directionB", ["routeB"]],
-  ["B : éléments (treillis, feux, arche, plaques, panneaux, rythme)", "directionB", ["portiqueDepartB", "arriveeB", "porteB", "plaqueB", "panneauB", "rythmeB"]],
-  ["B : atlas des sponsors", "directionB", ["atlasB"]],
-  ["B : décor (tribune, recettes)", "directionB", ["RECETTES_B", "tribuneB"]],
-  ["B : tout", "directionB", ["DIRECTION_B"]],
-  ["C : lumière (ciel, brume, lumières, ombres, exposition)", "directionC", ["appliquerLumiereC"]],
-  ["C : matière (occlusion, grain, sol, ombres de contact, lampes de nuit)", "directionC", ["appliquerMatiereC"]],
-  ["C : tout", "directionC", ["appliquerC"]],
-  ["Mélange : piste (premier chargement : route, rebords, éléments, feux, horizons)", "directionM", ["PISTE_M"]],
-  ["Mélange : décor (à la demande : tribune, recettes de B allégées, atlas)", "directionM", ["DECOR_M"]],
-  ["Mélange : tout (sans la lumière de C)", "directionM", ["DIRECTION_M"]],
-  // Le premier chargement du mélange, tout compris (socle, piste, lumière de C, et ce qu'il garde de trackMesh.ts et trackProps.ts : palettes,
-  // ambiances, glyphes des panneaux), et ce qu'il remplacerait dans le jeu : les deux lignes se comparent telles quelles.
-  ["Mélange : premier chargement complet (socle + piste + lumière de C + ce qu'il garde de trackMesh.ts et trackProps.ts)", null, ["PISTE_M", "appliquerLumiereC", "composerScene", "construireRoute"], { entree: `import { PISTE_M } from "./directionM"; import { appliquerLumiereC } from "./directionC"; import { composerScene } from "./composer"; import { construireRoute } from "./route";`, garder: true }],
   ["Existant : trackMesh.ts, trackProps.ts et l'assemblage (scene/existant.ts : à la demande depuis le lot 43)", null, ["composerExistant"], { entree: `import { composerExistant } from "./existant";`, garder: true }],
   // Lot 43 : la scène du jeu, au palier 1, dans le premier chargement (compositeur, piste, éléments, lumière de C, le décor d'aujourd'hui).
-  ["Palier 1 du jeu (lot 43) : composerP1, palier1, piste, route, lumière de C, décor d'aujourd'hui", null, ["composerP1"], { entree: `import { composerP1 } from "./composerP1";`, garder: true }],
+  ["Palier 1 du jeu (lots 43 et 44) : composerP1, palier1, piste, route, lumière de C, registre du décor", null, ["composerP1", "chargerDecor"], { entree: `import { composerP1 } from "./composerP1"; import { chargerDecor } from "./decor";`, garder: true, dehors: ["decor/stade", "decor/rallye", "decor/banquise", "decor/nuit", "decor/campagne", "decor/canyon", "decor/col", "decor/ville"] }],
   // --- Retouche 38b : les paliers ---
   ["Palier 1 : tout (compositeur des paliers, direction P, route, lumière et matière de C, décor, ce qu'il garde de trackMesh.ts et trackProps.ts), sans les modules des pas", "composerPalier", ["composerPalier"], { garder: true, vides: PAS }],
-  ["Palier 1 : décor (tribune, recettes de B allégées, atlas des sponsors) — à la demande dans le jeu", "decorP1", ["decorP", "atlasB"], { entree: `import { decorP } from "./decorP1"; import { atlasB } from "./directionB";`, vides: PAS, dehors: ["composer", "route", "outils", "pieces", "types", "origine", "directionA", "composerPalier", "paliers", "memoire"] }],
+  // Lot 44 : le décor du palier 1 dans le jeu, à la demande : le morceau commun (sol relevé, pose, tribune, pièces, matière de C), puis chaque thème.
+  ["Palier 1 : décor du jeu, morceau commun (decor/commun.ts, decor/matiereC.ts) — à la demande", null, ["moduleDecor"], { entree: `import { moduleDecor } from "./decor/commun";`, dehors: PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC" && m !== "decor") }],
+  ["Palier 1 : décor du jeu, Stade (decor/stade.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/stade";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Rallye (decor/rallye.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/rallye";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Banquise (decor/banquise.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/banquise";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Nuit (decor/nuit.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/nuit";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Campagne (decor/campagne.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/campagne";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Canyon (decor/canyon.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/canyon";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Col (decor/col.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/col";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
+  ["Palier 1 : décor du jeu, Ville (decor/ville.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/ville";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
   ["Palier 2 — géométrie et variété (finition.ts)", "finition", ["boulons", "coins", "hauban", "cablePendant", "pneusEmpiles", "banderole", "Drapeaux", "colonneChanfreinee", "marque", "varierInstance", "varierParPosition", "teinteVoisine"], { dehors: PALIER1 }],
   ["Palier 2 — matière (matiere.ts, bruit.ts : matière sobre, variation de teinte large, traces et marquages)", "matiere", ["matiereAsphalte", "matiereBeton", "matiereMetal", "matiereDecor", "teinteLarge", "tracesEtMarquages", "matieresDessinees"], { dehors: PALIER1 }],
   ["Palier 2 — matière détaillée (matiereDetaillee.ts : l'ancienne matière du 38b, comparaison seulement, matiere.ts et bruit.ts laissés dehors)", "matiereDetaillee", ["detailleeAsphalte", "detailleeBeton", "detailleeMetal", "detailleeDecor", "carteDeNormales"], { dehors: [...PALIER1, "matiere", "bruit"] }],

@@ -5,6 +5,7 @@ import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { composerPalier, type ScenePalier } from "../scene/composerPalier";
 import { ChainePost } from "../scene/post";
 import type { Reglages } from "../scene/paliers";
+import { DECORS, chargerDecor, decorPret } from "../scene/decor";
 
 export { composerPalier };
 
@@ -40,7 +41,8 @@ export function rendrePalier(ts: ScenePalier, r: WebGLRenderer, camera: Perspect
   return chaine.octets(post);
 }
 
-/** Construit une scène de palier (fabrique d'une colonne). */
-export function fabriquePalier(reglages: () => Reglages) {
-  return (track: Track, palette: PaletteName): ScenePalier => composerPalier(track, palette, reglages());
+/** Construit une scène de palier (fabrique d'une colonne). Lot 44 : le décor de chaque thème (celui du jeu, à la demande) est chargé d'abord. */
+export async function fabriquePalier(reglages: () => Reglages) {
+  await Promise.all((Object.keys(DECORS) as PaletteName[]).map(chargerDecor));
+  return (track: Track, palette: PaletteName): ScenePalier => composerPalier(track, palette, reglages(), { decor: decorPret(palette) });
 }

@@ -2,6 +2,7 @@ import { NeutralToneMapping, PerspectiveCamera, Vector3, WebGLRenderer } from "t
 import { WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
 import { PALETTE_DEFS, SURFACE_COLORS } from "./trackMesh";
 import { buildTrackScene } from "./scene/socle";
+import type { ModuleDecor } from "./scene/types";
 import { paletteP1 } from "./scene/palier1";
 import { SHOULDER_EDGE } from "@cdj/sim";
 import { pickFocus, type Focus } from "./thumbFocus";
@@ -37,6 +38,8 @@ export interface ThumbnailOptions {
   focus?: Focus;
   /** Rempli par le rendu 3D : durée de construction de la scène et du dessin (ms), pour les mesures. */
   timing?: { build: number; draw: number };
+  /** Lot 44 : le décor du thème (chargé à la demande par l'appelant : `chargerDecor`) ; absent, la miniature est sans décor. */
+  decor?: ModuleDecor | null;
 }
 
 /** Inclinaison de la caméra au-dessus de l'horizontale (degrés) : 90 = d'aplomb. */
@@ -150,11 +153,11 @@ export function frameCamera(focus: Focus, aspect: number, view: "tilted" | "top"
 
 // --- Rendu 3D ----------------------------------------------------------------------------------------
 
-function render3d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElement, view: "tilted" | "top", timing?: { build: number; draw: number }): boolean {
+function render3d(circuit: ThumbnailCircuit, focus: Focus, out: HTMLCanvasElement, view: "tilted" | "top", timing?: { build: number; draw: number }, decor?: ModuleDecor | null): boolean {
   const renderer = sharedRenderer();
   if (!renderer) return false;
   const t0 = performance.now();
-  const { scene, dispose, followGround, look } = buildTrackScene(circuit.track, circuit.palette, { aerial: true, near: { from: focus.from, to: focus.to } });
+  const { scene, dispose, followGround, look } = buildTrackScene(circuit.track, circuit.palette, { aerial: true, near: { from: focus.from, to: focus.to }, decor: decor ?? null });
   followGround(focus.center[0], focus.center[1]); // le sol suit la portion montrée (les circuits s'éloignent de l'origine)
   const t1 = performance.now();
   try {
@@ -308,7 +311,7 @@ export function renderThumbnail(circuit: ThumbnailCircuit, options: ThumbnailOpt
   out.width = Math.round((options.width ?? THUMB_W) * scale);
   out.height = Math.round((options.height ?? THUMB_H) * scale);
   const focus = options.focus ?? pickFocus(circuit.track, circuit.theme);
-  const drawn = options.webgl !== false && render3d(circuit, focus, out, options.view ?? "tilted", options.timing);
+  const drawn = options.webgl !== false && render3d(circuit, focus, out, options.view ?? "tilted", options.timing, options.decor);
   if (!drawn) render2d(circuit, focus, out);
   return out;
 }
