@@ -13,7 +13,7 @@
 // sa feuille. Les outils du jeu (cadre, textes, icônes, moteur des miniatures) lui sont **prêtés par main.ts** (`GarageHost.outils`) : importés ici,
 // ils changeaient le découpage des morceaux du premier chargement (mesuré : +500 o, la compression par fichier se perd ; voir le README du lot).
 import { avancement, etatGarage, type EtatVoiture, type ProgresGarage } from "@cdj/sim";
-import type { el as El, Parametres } from "@cdj/ui";
+import type { Catalogue, Langue, Parametres, el as El } from "@cdj/ui";
 import type { PerspectiveCamera, WebGLRenderer } from "three";
 import type { ApiResult } from "@cdj/profile";
 import type { GarageStatut } from "./api";
@@ -22,7 +22,6 @@ import { en as textesEn } from "./catalogue.base.garage.en";
 import { fr as textesFr } from "./catalogue.base.garage.fr";
 import "./garage.css";
 import { enSilhouette, vignette } from "./garageVignettes";
-import type { Langue, Catalogue } from "@cdj/ui";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture, type FicheVoiture } from "./voiture/catalogue";
 import { choisirVoiture, marquerVues, noterDeblocages, voitureChoisie, voituresDebloquees, voituresNouvelles } from "./voiture/choix";
 import type { VoitureEnJeu } from "./voiture/enJeu";

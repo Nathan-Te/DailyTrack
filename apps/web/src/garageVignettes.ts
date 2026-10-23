@@ -53,7 +53,7 @@ async function dessiner(fiche: FicheVoiture, silhouette: boolean, moteur: () => 
   v.group.rotation.y = 0.6;
   v.update({ forward: 0, steerAngle: 0.25, braking: false, droop: [0, 0, 0, 0], dt: 0 });
   scene.add(v.group);
-  const camera = new PerspectiveCamera(19, VIGNETTE_L / VIGNETTE_H, 0.1, 100);
+  const camera = new PerspectiveCamera(15, VIGNETTE_L / VIGNETTE_H, 0.1, 100);
   camera.position.set(0, 2.6, 11);
   camera.lookAt(0, 0.55, 0);
   try {
