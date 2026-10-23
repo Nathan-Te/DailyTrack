@@ -33,12 +33,12 @@ describe("les trois modèles (lot 40)", () => {
       const p1 = construireVoiture(plan, { palier: 1, couleur: LIVREE.orange, numero: "8" });
       const p2 = construireVoiture(plan, { palier: 2, couleur: LIVREE.orange, numero: "8", materiaux: MATERIAUX_2 });
 
-      it("six maillages au plus ; ≈ 2 000 triangles au palier 1 (≤ 2 600 depuis la retouche 40b), 4 000 à 6 000 aux paliers 2 et 3", () => {
+      it("six maillages au plus ; ≤ 4 000 triangles au palier 1, ≤ 12 000 aux paliers 2 et 3 (plafonds relevés du lot 40c)", () => {
         for (const v of [p1, p2]) expect(maillages(v.group).length).toBeLessThanOrEqual(6);
         expect(p1.triangles).toBeGreaterThan(1500);
-        expect(p1.triangles).toBeLessThanOrEqual(2600);
-        expect(p2.triangles).toBeGreaterThanOrEqual(4000);
-        expect(p2.triangles).toBeLessThanOrEqual(6000);
+        expect(p1.triangles).toBeLessThanOrEqual(4000);
+        expect(p2.triangles).toBeGreaterThan(p1.triangles);
+        expect(p2.triangles).toBeLessThanOrEqual(12000);
       });
 
       it("le fantôme : un maillage, ≈ 400 triangles, translucide", () => {

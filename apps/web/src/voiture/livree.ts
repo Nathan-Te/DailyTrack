@@ -1,19 +1,11 @@
-// Lot 40 — la livrée de Track et sa palette. La couleur de la caisse est un paramètre du modèle ; les bandes, la plaque du numéro et le pourtour
-// des feux s'y adaptent pour rester lisibles (bandes crème sur une caisse sombre, asphalte sur une caisse claire, les deux sur une caisse de
-// clarté moyenne comme l'orange). La livrée est **une texture dessinée au chargement** (aucun fichier) : le dessus (bandes obliques à 115° de la
-// charte sur le capot et le toit), les deux flancs (le numéro du jour sur les portières, en Barlow Condensed 800 italique, la police du chrono)
-// et l'arrière (le numéro, en grand). Changer de couleur redessine la texture : la géométrie ne bouge pas.
-// Retouche 40b : trois motifs (`bande` : la bande centrale ; `flancs` : un pavé de rayures sur chaque flanc, comme le bord de l'étiquette Track ;
-// `unie` : sans rayures ; le numéro reste toujours), et un **masque de nuit** dans l'alpha de la texture : les rayures, la plaque et le numéro y
-// valent 0,5 (le reste 1) ; la Nuit, le matériau les rend légèrement lumineux (`uNuit`, pieces.ts) pour que la voiture se lise.
-import { CanvasTexture, SRGBColorSpace } from "three";
-
+// Lot 40 — la livrée de Track et sa palette. La couleur de la caisse est un paramètre du modèle ; les motifs, la plaque du numéro et le pourtour
+// des feux s'y adaptent pour rester lisibles (crème sur une caisse sombre, asphalte sur une caisse claire, les deux sur une caisse de clarté moyenne
+// comme l'orange).
+// Lot 40c : **la livrée n'est plus une texture** : les motifs sont dessinés dans le nuanceur (`nuanceurLivree.ts`), en coordonnées de la voiture, avec des
+// bords nets à toute distance ; ce module garde la palette, les contrastes, la bibliothèque de motifs et le cadre de chaque modèle (où sont les bandes,
+// les plaques, les joints). Huit motifs ; la couleur du motif est automatique ou l'une de trois teintes, toujours lisible (contraste vérifié par le calcul).
 /** Couleurs de la marque (jetons `--track-*` et `--dj-*` de packages/ui/src/jetons.ts, recopiés en nombres : le rendu 3D ne lit pas le CSS). */
 export const LIVREE = { orange: 0xe8552d, creme: 0xede3cf, asphalte: 0x1e1b19 } as const;
-
-/** Le motif de la livrée (personnalisation du Garage, lot 41). */
-export type MotifLivree = "bande" | "flancs" | "unie";
-export const MOTIFS: readonly MotifLivree[] = ["bande", "flancs", "unie"];
 
 /** Une couleur de la palette : identifiant, nom (vitrine, outil interne en français), valeur. */
 export interface CouleurVoiture {
@@ -122,169 +114,95 @@ export function ecartCouleurs(a: number, b: number): number {
   return Math.sqrt((dL / SL) ** 2 + (dC / SC) ** 2 + (dH / SH) ** 2 + RT * (dC / SC) * (dH / SH));
 }
 
-// --- La texture de la livrée ---------------------------------------------------------------------------------------------------------
+// --- Les motifs ------------------------------------------------------------------------------------------------------------------------------
 
-/** Où la livrée est posée sur un modèle (mètres, repère de la voiture : +z vers l'avant, +x à gauche). */
+/** Le motif de la livrée (personnalisation du Garage, lots 41 et 40c). */
+export type MotifLivree = "course" | "flancs" | "filet" | "bicolore" | "chevrons" | "damier" | "rond" | "unie";
+/** Les huit motifs, dans l'ordre de la bibliothèque (le rang est celui du nuanceur : `unie` = 0). */
+export const MOTIFS: readonly MotifLivree[] = ["course", "flancs", "filet", "bicolore", "chevrons", "damier", "rond", "unie"];
+export const MOTIF_DEFAUT: MotifLivree = "course";
+const RANG_NUANCEUR: Record<MotifLivree, number> = { unie: 0, course: 1, flancs: 2, filet: 3, bicolore: 4, chevrons: 5, damier: 6, rond: 7 };
+export const motifVersIndice = (m: MotifLivree): number => RANG_NUANCEUR[m];
+/** Les motifs du lot 41 et leur équivalent le plus proche : la bande centrale devient la double bande de course. */
+const ANCIENS_MOTIFS: Readonly<Record<string, MotifLivree>> = { bande: "course", flancs: "flancs", unie: "unie" };
+/** Un motif lu dans le stockage ou l'adresse (un ancien nom devient son équivalent) ; `null` s'il est inconnu. */
+export function motifLu(brut: unknown): MotifLivree | null {
+  if (typeof brut !== "string") return null;
+  if ((MOTIFS as readonly string[]).includes(brut)) return brut as MotifLivree;
+  return ANCIENS_MOTIFS[brut] ?? null;
+}
+
+/** La couleur du motif : automatique (crème ou asphalte selon la caisse) ou une teinte choisie. Rang 0 = automatique. */
+export interface TeinteMotif {
+  id: string;
+  /** `null` : automatique. */
+  hex: number | null;
+}
+/** L'automatique et trois teintes (crème, asphalte, lagon) : elles couvrent les huit couleurs de la caisse, chacune lisible sur au moins cinq d'entre elles. */
+export const TEINTES_MOTIF: readonly TeinteMotif[] = [
+  { id: "auto", hex: null },
+  { id: "creme", hex: LIVREE.creme },
+  { id: "asphalte", hex: LIVREE.asphalte },
+  { id: "lagon", hex: 0x7fd6e0 },
+];
+
+/** Rapport de contraste (WCAG) de deux couleurs : de 1 à 21. */
+export function contraste(a: number, b: number): number {
+  const la = luminance(a);
+  const lb = luminance(b);
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+}
+/** Le contraste minimal d'un motif sur sa caisse (de grandes formes, cernées d'un liseré : 2,1 suffit ; le crème sur l'orange de Track en a 2,9, le lagon 2,2). */
+export const CONTRASTE_MOTIF = 2.1;
+
+/** La teinte choisie est-elle lisible sur cette caisse ? (l'automatique l'est toujours) */
+export function teinteLisible(caisse: number, rang: number): boolean {
+  const t = TEINTES_MOTIF[rang];
+  return !!t && (t.hex === null || contraste(caisse, t.hex) >= CONTRASTE_MOTIF);
+}
+
+/** Les couleurs que dessine la livrée : motif (`c1`), son liseré (`c2`), plaque et chiffres. Une teinte trop proche de la caisse retombe sur l'automatique. */
+export function couleursMotif(caisse: number, rang = 0): { c1: number; c2: number; plaque: number; chiffres: number } {
+  const L = livreeDe(caisse);
+  const t = teinteLisible(caisse, rang) ? TEINTES_MOTIF[rang]!.hex : null;
+  const c1 = t ?? L.bandes[0]!;
+  // Le liseré se détache du motif : le crème, ou l'asphalte si le motif est clair.
+  const c2 = t === null ? (L.bandes[1] ?? (c1 === LIVREE.creme ? LIVREE.asphalte : LIVREE.creme)) : contraste(t, LIVREE.asphalte) > contraste(t, LIVREE.creme) ? LIVREE.asphalte : LIVREE.creme;
+  return { c1, c2, plaque: L.plaque, chiffres: L.chiffres };
+}
+
+// --- Le cadre d'un modèle ---------------------------------------------------------------------------------------------------------------------
+
+type Seg4 = readonly [number, number, number, number];
+
+/**
+ * Où sont les motifs, les plaques et les joints d'un modèle (mètres, repère de la voiture : +z vers l'avant, +x à gauche). Tout est lu par le
+ * nuanceur de la livrée : aucune texture, aucune projection à régler.
+ */
 export interface CadreLivree {
-  /** Étendue en long (arrière, avant) et demi-largeur couverte par la projection du dessus. */
+  /** Étendue en long de la voiture (arrière, avant). */
   z: [number, number];
   demiLargeur: number;
-  /** Hauteur couverte par les flancs et l'arrière. */
+  /** Hauteur de la caisse (m). */
   hauteur: number;
-  /** Zones des bandes (capot, toit…), en long : la bande centrale de rayures obliques. */
+  /** Zones des bandes en long (capot, puis toit et hayon : la seconde zone passe au-delà de l'arrière pour descendre sur le hayon). */
   bandes: [number, number][];
-  /** Largeur de la bande centrale (m). */
+  /** Largeur de la double bande (m). */
   largeurBande: number;
   /** Le numéro sur les portières : centre (z, y), hauteur des chiffres (m). */
   portiere: { z: number; y: number; h: number };
   /** Le numéro à l'arrière : centre (x = 0, y), hauteur des chiffres (m). */
   arriere: { y: number; h: number };
-  /** Le pavé de rayures du motif `flancs` : étendue en long (arrière, avant) et en hauteur (m). */
+  /** Le pavé de rayures du motif `flancs` et le damier : étendue en long (arrière, avant) et en hauteur (m). */
   flancs: { z: [number, number]; y: [number, number] };
-}
-
-/** Régions de la texture (u0, v0, u1, v1) : le dessus, le flanc gauche (+x), le flanc droit, l'arrière. */
-const REGIONS = { dessus: [0, 0, 0.5, 1], gauche: [0.5, 0.625, 1, 1], droit: [0.5, 0.25, 1, 0.625], arriere: [0.5, 0, 1, 0.25] } as const;
-
-type UV6 = [number, number, number, number, number, number];
-type P3 = readonly [number, number, number];
-
-/** Coordonnées de livrée d'un triangle peint, selon sa normale : dessus, flancs, arrière (l'avant prend le fond du dessus, sans dessin). */
-export function projectionLivree(c: CadreLivree): (s: [P3, P3, P3], n: P3) => UV6 {
-  const [z0, z1] = c.z;
-  const map = (r: readonly [number, number, number, number], u: number, v: number): [number, number] => [r[0] + (r[2] - r[0]) * Math.min(1, Math.max(0, u)), r[1] + (r[3] - r[1]) * Math.min(1, Math.max(0, v))];
-  return (s, n) => {
-    const out: number[] = [];
-    for (const p of s) {
-      let uv: [number, number];
-      if (n[1] > 0.5) uv = map(REGIONS.dessus, (p[0] + c.demiLargeur) / (2 * c.demiLargeur), (p[2] - z0) / (z1 - z0));
-      else if (n[0] > 0.45) uv = map(REGIONS.gauche, (z1 - p[2]) / (z1 - z0), p[1] / c.hauteur);
-      else if (n[0] < -0.45) uv = map(REGIONS.droit, (p[2] - z0) / (z1 - z0), p[1] / c.hauteur);
-      else if (n[2] < -0.5) uv = map(REGIONS.arriere, (c.demiLargeur - p[0]) / (2 * c.demiLargeur), p[1] / c.hauteur);
-      else uv = map(REGIONS.dessus, 0.02, 0.02);
-      out.push(uv[0], uv[1]);
-    }
-    return out as UV6;
-  };
-}
-
-const css = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
-/** La police des chiffres (celle du chrono). */
-export const POLICE_NUMERO = "'Barlow Condensed', 'Arial Narrow', sans-serif";
-
-/** La livrée dessinée : la texture et de quoi la redessiner (autre couleur, autre numéro, autre motif). */
-export interface TextureLivree {
-  texture: CanvasTexture;
-  peindre(caisse: number, numero: string, motif?: MotifLivree): void;
-  dispose(): void;
-}
-
-/** Dessine la livrée d'un modèle (`largeur` px : 512 au palier 1, 1024 aux paliers 2 et 3). */
-export function textureLivree(c: CadreLivree, largeur: number, caisse: number, numero: string, motif: MotifLivree = "bande"): TextureLivree {
-  // Sans document (tests en Node), une toile vide : la géométrie se construit, rien n'est dessiné.
-  const canvas: HTMLCanvasElement = typeof document === "undefined" ? ({ width: largeur, height: largeur, getContext: () => null } as unknown as HTMLCanvasElement) : document.createElement("canvas");
-  canvas.width = largeur;
-  canvas.height = largeur;
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.anisotropy = 4;
-  let motifCourant = motif;
-  const peindre = (couleur: number, num: string, motifVoulu: MotifLivree = motifCourant) => {
-    motifCourant = motifVoulu;
-    const x = canvas.getContext("2d");
-    if (!x) return;
-    const L = livreeDe(couleur);
-    const W = canvas.width;
-    const H = canvas.height;
-    x.globalCompositeOperation = "source-over";
-    x.fillStyle = css(L.caisse);
-    x.fillRect(0, 0, W, H);
-    // Repère d'une région : (u, v) de la texture → pixels du canvas (le haut du canvas est v = 1).
-    const px = (r: readonly number[], u: number, v: number): [number, number] => [(r[0]! + (r[2]! - r[0]!) * u) * W, (1 - (r[1]! + (r[3]! - r[1]!) * v)) * H];
-    const [z0, z1] = c.z;
-    const longueur = z1 - z0;
-    const d = REGIONS.dessus;
-    const mx = (m: number) => px(d, (m + c.demiLargeur) / (2 * c.demiLargeur), 0)[0];
-    const mz = (m: number) => px(d, 0, (m - z0) / (z1 - z0))[1];
-    const pxParM = (mx(1) - mx(0)) || 1;
-    const pas = 0.24 * pxParM; // une rayure de 0,13 m et 0,11 m de vide, mesurés en travers
-    const epaisseur = 0.13 * pxParM;
-    /** Le filet qui borde un pavé de rayures : asphalte (crème sur une caisse sombre). */
-    const filet = css(L.clarte === "sombre" ? LIVREE.creme : LIVREE.asphalte);
-    // Deux passes : la peinture, puis le masque de nuit (les mêmes formes, qui ôtent la moitié de l'alpha : la Nuit les allume).
-    for (const masque of [false, true]) {
-      if (masque) {
-        x.globalCompositeOperation = "destination-out";
-        x.fillStyle = "rgba(0, 0, 0, 0.5)";
-      }
-      const remplir = (style: string) => {
-        if (!masque) x.fillStyle = style;
-      };
-      /** Un pavé de rayures obliques à 115° (charte) dans le rectangle (x, y, l, h) du canvas, bordé d'un filet sur ses côtés `bords`. */
-      const rayures = (rx: number, ry: number, rl: number, rh: number, bords: "cotes" | "hautBas", finesse = 1) => {
-        x.save();
-        x.beginPath();
-        x.rect(rx, ry, rl, rh);
-        x.clip();
-        x.translate(rx + rl / 2, ry + rh / 2);
-        x.rotate(((115 - 90) * Math.PI) / 180);
-        const etendue = Math.hypot(rl, rh) + pas * 2;
-        let k = 0;
-        for (let t = -etendue; t < etendue; t += pas * finesse, k++) {
-          remplir(css(L.bandes[k % L.bandes.length]!));
-          x.fillRect(t, -etendue, epaisseur * finesse, etendue * 2);
-        }
-        x.restore();
-        // Un filet borde le pavé : il se lit même vu de loin.
-        remplir(filet);
-        const f = Math.max(2, 0.025 * pxParM);
-        if (bords === "cotes") {
-          x.fillRect(rx - f, ry, f, rh);
-          x.fillRect(rx + rl, ry, f, rh);
-        } else {
-          x.fillRect(rx, ry - f, rl, f);
-          x.fillRect(rx, ry + rh, rl, f);
-        }
-      };
-      // `bande` : la bande centrale de rayures sur le capot et le toit.
-      if (motifCourant === "bande") for (const [a, b] of c.bandes) rayures(mx(-c.largeurBande / 2), mz(b), mx(c.largeurBande / 2) - mx(-c.largeurBande / 2), mz(a) - mz(b), "cotes");
-      // `flancs` : un pavé de rayures à l'arrière de chaque flanc, comme le bord de l'étiquette Track.
-      if (motifCourant === "flancs") {
-        for (const cote of ["gauche", "droit"] as const) {
-          const r = REGIONS[cote];
-          const u = (zz: number) => (cote === "gauche" ? (z1 - zz) / longueur : (zz - z0) / longueur);
-          const [xa, ya] = px(r, u(c.flancs.z[0]), c.flancs.y[1] / c.hauteur);
-          const [xb, yb] = px(r, u(c.flancs.z[1]), c.flancs.y[0] / c.hauteur);
-          rayures(Math.min(xa, xb), ya, Math.abs(xb - xa), yb - ya, "hautBas", 0.62); // plus serrées : le bord de l'étiquette
-        }
-      }
-      // Le numéro : une plaque arrondie sur chaque portière, et en grand à l'arrière (dans les trois motifs).
-      const plaque = (r: readonly number[], u: number, v: number, hu: number, hv: number) => {
-        const [cx, cy] = px(r, u, v);
-        const w = hu * (r[2]! - r[0]!) * W;
-        const h = hv * (r[3]! - r[1]!) * H;
-        remplir(css(L.plaque));
-        x.beginPath();
-        x.roundRect(cx - w / 2, cy - h / 2, w, h, h * 0.22);
-        x.fill();
-        if (masque) return; // la plaque entière est déjà dans le masque
-        remplir(css(L.chiffres));
-        x.textAlign = "center";
-        x.textBaseline = "middle";
-        x.font = `italic 800 ${Math.round(h * 0.86)}px ${POLICE_NUMERO}`;
-        x.fillText(num, cx, cy + h * 0.04, w * 0.9);
-      };
-      const largeurPlaque = (h: number) => Math.max(h * 0.9, h * (0.35 + 0.42 * num.length));
-      for (const cote of ["gauche", "droit"] as const) {
-        const r = REGIONS[cote];
-        const u = cote === "gauche" ? (z1 - c.portiere.z) / longueur : (c.portiere.z - z0) / longueur;
-        plaque(r, u, c.portiere.y / c.hauteur, largeurPlaque(c.portiere.h) / longueur, (c.portiere.h * 1.25) / c.hauteur);
-      }
-      plaque(REGIONS.arriere, 0.5, c.arriere.y / c.hauteur, largeurPlaque(c.arriere.h) / (2 * c.demiLargeur), (c.arriere.h * 1.2) / c.hauteur);
-    }
-    x.globalCompositeOperation = "source-over";
-    texture.needsUpdate = true;
-  };
-  peindre(caisse, numero, motif);
-  return { texture, peindre, dispose: () => texture.dispose() };
+  /** Hauteur (y) au-dessus de laquelle la peinture est « toit » pour le bicolore ; 0,95 par défaut. */
+  toit?: number;
+  /** Hauteur du filet de flanc (m) ; le milieu du pavé de flancs par défaut. */
+  filet?: number;
+  /** Les joints dessinés dans le nuanceur : segments (z0, y0, z1, y1) sur les flancs, (|x|0, z0, |x|1, z1) sur le dessus, (|x|0, y0, |x|1, y1) à l'arrière. */
+  joints?: { flanc?: readonly Seg4[]; dessus?: readonly Seg4[]; arriere?: readonly Seg4[] };
+  /** Les doublures de passages de roue : (z, y, rayon) de l'avant puis de l'arrière. */
+  arches?: readonly (readonly [number, number, number])[];
+  /** Les sièges entrevus par les vitres : (z du siège avant, z du siège arrière, hauteur des têtes). */
+  interieur?: readonly [number, number, number];
 }

@@ -155,9 +155,14 @@ interface VoitureDebug {
   toutDessiner(theme?: string): Promise<{ col: string; palier: number; sorte: "arret" | "fantome"; triangles: number; maillages: number; appels: number }[]>;
   planche(theme: string, largeur?: number, hauteur?: number): Promise<string>;
   planchesCouleurs(col: "civile" | "A" | "B" | "C", toile: HTMLCanvasElement, largeur?: number, hauteur?: number): Promise<string>;
-  /** Retouche 40b : le motif de la livrée de toutes les voitures de la planche. */
-  choisirMotif(m: "bande" | "flancs" | "unie"): Promise<void>;
-  apercu(col: string, palier: 1 | 2 | 3, azimut: number, elevation: number, distance: number, largeur: number, hauteur: number): Promise<string>;
+  /** Retouche 40b, lot 40c : le motif de la livrée de toutes les voitures de la planche (huit motifs), sa teinte (rang), la couleur de la caisse, le thème des vues à l'arrêt. */
+  choisirMotif(m: "course" | "flancs" | "filet" | "bicolore" | "chevrons" | "damier" | "rond" | "unie"): Promise<void>;
+  choisirTeinte(rang: number): Promise<void>;
+  choisirCouleur(hex: number): Promise<void>;
+  motifsDisponibles(): readonly ("course" | "flancs" | "filet" | "bicolore" | "chevrons" | "damier" | "rond" | "unie")[];
+  reglerTheme(theme: string): void;
+  /** Une vue à l'arrêt ; `cible` : le point regardé dans le repère de la voiture (un gros plan). */
+  apercu(col: string, palier: 1 | 2 | 3, azimut: number, elevation: number, distance: number, largeur: number, hauteur: number, cible?: readonly [number, number, number]): Promise<string>;
   mesurerColonne(col: string, palier: 1 | 2 | 3, largeur: number, hauteur: number, images: number): Promise<{ imageMs: number; sceneSeuleMs: number; appels: number; appelsScene: number }>;
 }
 

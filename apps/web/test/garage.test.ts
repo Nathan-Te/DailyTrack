@@ -60,13 +60,13 @@ describe("les déblocages viennent du serveur, gardés dans le navigateur", () =
     expect((init!.headers as Record<string, string>)["X-Player-Id"]).toBe("0123456789abcdef0123456789abcdef");
     if (r.ok) noterDeblocages(r.data.voitures.filter((v) => v.debloquee).map((v) => v.id)); // ce que fait le Garage (garage.ts)
     expect([...voituresDebloquees()]).toEqual(["civile", "evolution"]);
-    expect(choisirVoiture({ id: "evolution", couleur: 4, motif: "flancs" })).toBe(true);
-    expect(voitureChoisie()).toEqual({ id: "evolution", couleur: 4, motif: "flancs" }); // relu à la construction suivante
+    expect(choisirVoiture({ id: "evolution", couleur: 4, motif: "flancs", teinteMotif: 0 })).toBe(true);
+    expect(voitureChoisie()).toEqual({ id: "evolution", couleur: 4, motif: "flancs", teinteMotif: 0 }); // relu à la construction suivante
   });
 
   it("hors connexion ou serveur en panne : rien n'est perdu (la civile et ce que le dernier appel réussi avait débloqué)", async () => {
     noterDeblocages(["gt"]);
-    choisirVoiture({ id: "gt", couleur: 1, motif: "unie" });
+    choisirVoiture({ id: "gt", couleur: 1, motif: "unie", teinteMotif: 0 });
     vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
       throw new TypeError("fetch failed");
     });
@@ -82,18 +82,18 @@ describe("les déblocages viennent du serveur, gardés dans le navigateur", () =
   it("sans serveur du tout (pas d'API) : rien à demander, la civile", async () => {
     const online = new Online("jour-2026-10-23-g16", "2026-10-23", null);
     expect(online.profileApi).toBeNull();
-    expect(voitureChoisie()).toEqual({ id: "civile", couleur: 0, motif: "bande" });
+    expect(voitureChoisie()).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
   });
 
   it("le serveur fait foi : une voiture qu'il ne compte plus (un autre code chargé) n'est plus choisie", () => {
     noterDeblocages(["proto"]);
-    choisirVoiture({ id: "proto", couleur: 2, motif: "bande" });
+    choisirVoiture({ id: "proto", couleur: 2, motif: "course", teinteMotif: 0 });
     noterDeblocages([]);
-    expect(voitureChoisie()).toEqual({ id: "civile", couleur: 0, motif: "bande" });
+    expect(voitureChoisie()).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
   });
 
   it("une voiture verrouillée ne peut pas être choisie ; une liste illisible ou inconnue est ignorée", () => {
-    expect(choisirVoiture({ id: "proto", couleur: 0, motif: "bande" })).toBe(false);
+    expect(choisirVoiture({ id: "proto", couleur: 0, motif: "course", teinteMotif: 0 })).toBe(false);
     expect(stockage.getItem(CLE_GARAGE)).toBeNull();
     stockage.setItem(CLE_GARAGE, JSON.stringify({ debloquees: ["fusee", 42, "gt"] }));
     expect([...voituresDebloquees()]).toEqual(["civile", "gt"]);
@@ -121,8 +121,8 @@ describe("la pastille « Nouveau »", () => {
     marquerVues(["civile", "evolution"]);
     expect(voituresNouvelles()).toEqual(["proto"]);
     // Le choix, les déblocages et les voitures vues partagent la clé : écrire l'un ne perd pas les autres.
-    choisirVoiture({ id: "evolution", couleur: 3, motif: "unie" });
-    expect(JSON.parse(stockage.getItem(CLE_GARAGE)!)).toEqual({ id: "evolution", couleur: 3, motif: "unie", debloquees: ["evolution", "proto"], vues: ["civile", "evolution"] });
+    choisirVoiture({ id: "evolution", couleur: 3, motif: "unie", teinteMotif: 0 });
+    expect(JSON.parse(stockage.getItem(CLE_GARAGE)!)).toEqual({ id: "evolution", couleur: 3, motif: "unie", teinteMotif: 0, debloquees: ["evolution", "proto"], vues: ["civile", "evolution"] });
   });
 });
 

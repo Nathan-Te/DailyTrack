@@ -43,13 +43,13 @@ test("ordinateur : cinq colonnes (l'existant, la civile, A, B, C), trois paliers
     // Six maillages au plus pour une voiture ; un seul pour un fantôme.
     expect(v.maillages).toBeLessThanOrEqual(v.sorte === "fantome" ? 1 : 6);
   }
-  // Palier 1 ≈ 2 000 triangles, paliers 2 et 3 entre 4 000 et 6 000 (les modèles proposés).
+  // Plafonds du lot 40c : palier 1 ≤ 4 000 triangles, paliers 2 et 3 ≤ 12 000.
   for (const col of ["civile", "A", "B", "C"]) {
     const p1 = vues.find((v) => v.col === col && v.palier === 1 && v.sorte === "arret")!;
     const p2 = vues.find((v) => v.col === col && v.palier === 2 && v.sorte === "arret")!;
-    expect(p1.triangles).toBeLessThan(2700);
+    expect(p1.triangles).toBeLessThanOrEqual(4000);
     expect(p2.triangles).toBeGreaterThanOrEqual(4000);
-    expect(p2.triangles).toBeLessThanOrEqual(6000);
+    expect(p2.triangles).toBeLessThanOrEqual(12000);
   }
   // Le coût sous chaque colonne : poids lu dans poids-parties.json, triangles, maillages.
   await expect(page.locator("#voiture-couts tr")).toHaveCount(6);

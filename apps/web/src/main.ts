@@ -778,7 +778,7 @@ async function ouvrirGarage(voir?: string) {
     garageUi ??= (await import("./garage")).monterGarage({
       outils: { el: elDuSocle, creerCadre, t, onLangue, ajouterTextes, icone: iconeDeTraces, moteur: sharedRenderer, liberer: releaseThumbnailRenderer },
       demo: online.demo,
-      voiture: garage, statut: () => online.profileApi?.garage?.(online.playerId) ?? null, camera, toile: renderer.domElement,
+      voiture: garage, statut: () => online.profileApi?.garage?.(online.playerId) ?? null, camera, toile: renderer.domElement, scene: view.scene,
       ferme: () => homeUi.refresh(),
     });
     garageUi.ouvrir(voir);

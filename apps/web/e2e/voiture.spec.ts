@@ -22,17 +22,17 @@ test("sans choix : la civile ; une voiture non débloquée retombe sur la civile
   const page = await context.newPage();
   await ouvrir(page, "/?home=0&debug&api=demo");
   const v = await page.evaluate(() => window.__cdj.voiture);
-  expect(v.choix).toEqual({ id: "civile", couleur: 0, motif: "bande" });
+  expect(v.choix).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
   expect(v.essai).toBeNull();
   expect(v.maillages).toBe(6);
   // Le Proto (Dragonfly : 1 médaille d'auteur, lot 41) choisi sans que le serveur l'ait débloqué : la civile en orange.
   await page.evaluate(() => localStorage.setItem("cdj:track:garage", JSON.stringify({ id: "proto", couleur: 5, motif: "flancs" })));
   await ouvrir(page, "/?home=0&debug&api=demo");
-  await expect.poll(() => page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 0, motif: "bande" });
+  await expect.poll(() => page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
   // La civile dans une autre couleur, toujours permise.
   await page.evaluate(() => localStorage.setItem("cdj:track:garage", JSON.stringify({ id: "civile", couleur: 3, motif: "unie" })));
   await ouvrir(page, "/?home=0&debug&api=demo");
-  expect(await page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 3, motif: "unie" });
+  expect(await page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 3, motif: "unie", teinteMotif: 0 });
   expect(await page.evaluate(() => window.__cdj.voiture.counted)).toBe(true);
 });
 
@@ -53,7 +53,7 @@ test("?voiture=proto&couleur=5&motif=flancs : le Proto, chargé à la demande ; 
   await ouvrir(page, `/?home=1&debug&timescale=6&quality=1&voiture=proto&couleur=5&motif=flancs&api=${encodeURIComponent(API)}`);
   await expect.poll(() => page.evaluate(() => window.__cdj.voiture.aJour), { timeout: 60_000 }).toBe(true);
   const v = await page.evaluate(() => window.__cdj.voiture);
-  expect(v.essai).toEqual({ id: "proto", couleur: 5, motif: "flancs" });
+  expect(v.essai).toEqual({ id: "proto", couleur: 5, motif: "flancs", teinteMotif: 0 });
   expect(v.choix).toEqual(v.essai);
   expect(v.counted).toBe(false);
   expect(v.maillages).toBe(6);

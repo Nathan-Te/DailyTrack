@@ -53,7 +53,7 @@ test("ouvrir le Garage depuis l'accueil : voitures débloquées et verrouillées
   await expect(garage.locator('[data-couleur="4"]')).toHaveAttribute("aria-checked", "true");
   await garage.locator('[data-motif="flancs"]').click();
   await expect(garage.locator('[data-motif="flancs"]')).toHaveAttribute("aria-checked", "true");
-  const choix = { id: "evolution", couleur: 4, motif: "flancs" };
+  const choix = { id: "evolution", couleur: 4, motif: "flancs", teinteMotif: 0 };
   expect((await voiture(page)).choix).toEqual(choix);
   expect(JSON.parse((await page.evaluate((k) => localStorage.getItem(k), CLE))!)).toMatchObject(choix);
   await expect.poll(async () => (await voiture(page)).aJour, { timeout: 20_000 }).toBe(true);

@@ -32,6 +32,8 @@ export default defineConfig({
         // Three.js (l'essentiel du poids) dans son propre fichier : il ne change presque jamais, donc le navigateur
         // le garde en cache d'un déploiement à l'autre ; seul le petit code du jeu est retéléchargé.
         manualChunks(id: string) {
+          // Lot 40c : le reflet plan du plateau du Garage (`Reflector`) reste dans le morceau du Garage, à la demande (rien au premier chargement).
+          if (id.includes("node_modules/three/examples/jsm/objects/Reflector")) return undefined;
           if (id.includes("node_modules/three/")) return "three";
           // Retouche 40b : la voiture du jeu (socle commun, la civile, le choix) en un seul fichier ; sans cela l'empaqueteur la coupe en trois petits
           // morceaux (pièces, formes, livrée : partagés avec le Salon et les modèles à la demande), et la compression par fichier se perd. Les modèles
