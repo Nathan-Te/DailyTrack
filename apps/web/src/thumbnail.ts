@@ -1,6 +1,7 @@
 import { NeutralToneMapping, PerspectiveCamera, Vector3, WebGLRenderer } from "three";
 import { WALL_HEIGHT, trackCenterline, type PaletteName, type ThemeName, type Track } from "@cdj/sim";
-import { PALETTE_DEFS, SURFACE_COLORS, buildTrackScene } from "./trackMesh";
+import { PALETTE_DEFS, SURFACE_COLORS } from "./trackMesh";
+import { buildTrackScene } from "./scene/socle";
 import { SHOULDER_EDGE } from "@cdj/sim";
 import { pickFocus, type Focus } from "./thumbFocus";
 

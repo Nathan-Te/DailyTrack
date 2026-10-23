@@ -45,7 +45,7 @@ const PARTIES = [
   // Le premier chargement du mélange, tout compris (socle, piste, lumière de C, et ce qu'il garde de trackMesh.ts et trackProps.ts : palettes,
   // ambiances, glyphes des panneaux), et ce qu'il remplacerait dans le jeu : les deux lignes se comparent telles quelles.
   ["Mélange : premier chargement complet (socle + piste + lumière de C + ce qu'il garde de trackMesh.ts et trackProps.ts)", null, ["PISTE_M", "appliquerLumiereC", "composerScene", "construireRoute"], { entree: `import { PISTE_M } from "./directionM"; import { appliquerLumiereC } from "./directionC"; import { composerScene } from "./composer"; import { construireRoute } from "./route";`, garder: true }],
-  ["Existant : trackMesh.ts et trackProps.ts (dans le premier chargement aujourd'hui)", null, ["buildTrackScene"], { entree: `import { buildTrackScene } from "../trackMesh";`, garder: true }],
+  ["Existant : le socle, trackMesh.ts et trackProps.ts (dans le premier chargement aujourd'hui)", null, ["buildTrackScene"], { entree: `import { buildTrackScene } from "./socle";`, garder: true }],
   // --- Retouche 38b : les paliers ---
   ["Palier 1 : tout (compositeur des paliers, direction P, route, lumière et matière de C, décor, ce qu'il garde de trackMesh.ts et trackProps.ts), sans les modules des pas", "composerPalier", ["composerPalier"], { garder: true, vides: PAS }],
   ["Palier 1 : décor (tribune, recettes de B allégées, atlas des sponsors) — à la demande dans le jeu", "palier1", ["decorP", "atlasB"], { entree: `import { decorP } from "./palier1"; import { atlasB } from "./directionB";`, vides: PAS, dehors: ["composer", "route", "outils", "pieces", "types", "origine", "directionA", "composerPalier", "paliers", "memoire"] }],

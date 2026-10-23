@@ -1,0 +1,20 @@
+{
+ "stade accueil appels": 128,
+ "stade accueil triangles": 45128,
+ "stade depart appels": 128,
+ "stade depart triangles": 45128,
+ "nuit accueil appels": 131,
+ "nuit accueil triangles": 96654,
+ "nuit depart appels": 131,
+ "nuit depart triangles": 96654,
+ "ville accueil appels": 129,
+ "ville accueil triangles": 83726,
+ "ville depart appels": 129,
+ "ville depart triangles": 83726,
+ "salon bascule 0 swapMs": 25.8,
+ "salon bascule 0 buildMs": 248.4,
+ "salon bascule 1 swapMs": 11.8,
+ "salon bascule 1 buildMs": 229.9,
+ "salon bascule 2 swapMs": 13.9,
+ "salon bascule 2 buildMs": 365.8
+}

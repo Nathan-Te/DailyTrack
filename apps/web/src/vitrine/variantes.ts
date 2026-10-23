@@ -4,7 +4,8 @@
 // (vite.vitrine.config.ts).
 import type { PaletteName, Track } from "@cdj/sim";
 import type { PerspectiveCamera, WebGLRenderer } from "three";
-import { buildTrackScene, type TrackScene } from "../trackMesh";
+import type { TrackScene } from "../trackMesh";
+import { buildTrackScene } from "../scene/socle";
 import { composerScene } from "../scene/composer";
 import { reglagesDuPalier, type Reglages } from "../scene/paliers";
 
