@@ -113,7 +113,8 @@ import type { LoadedSalonCircuit } from "./salonEngine";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
-import { buildTrackScene, type TrackScene } from "./trackMesh";
+import type { TrackScene } from "./trackMesh";
+import { PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, composer, creerReconstructeur, type Palier } from "./scene/socle";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
 
@@ -1809,6 +1810,7 @@ function isFrozen(): boolean {
 
 function frame(now: number) {
   salon?.tick(); // Salon : compte à rebours, fin de session, podium, bascule
+  if (reconstructeur.enAttente()) void reconstructeur.essayer(); // un autre palier demandé : reconstruit à l'accueil, à la pause, à l'arrivée, au podium (jamais en course)
   const frozen = isFrozen();
   if (dayCardShown) hudDayCard.hidden = phase !== "countdown";
   const manualTicksNow = manual ? manualTicks : 0;
@@ -2165,6 +2167,30 @@ if (demo && track) {
   });
 }
 
+// --- Le socle par paliers (lot 39) ---------------------------------------------------------------------------------------------
+// La scène se construit par `composer` (scene/socle.ts), au palier courant (aujourd'hui « existant », le seul branché). Un autre palier se demande
+// (`reconstructeur.demander`) : ses modules se chargent à la demande, puis la scène est reconstruite **hors course seulement** (accueil, pause, arrivée,
+// podium du Salon : `peutReconstruire`) ; la voiture, les fantômes et les effets passent dans la nouvelle (`adopterScene`), l'ancienne est libérée.
+let scenePalette = salon?.circuit.palette ?? daily?.palette ?? "desert";
+
+function adopterScene(next: TrackScene) {
+  const old = view;
+  next.scene.add(carMesh, carShadow, ghostMesh);
+  if (ghostField) next.scene.add(ghostField.group);
+  effects.attach(next.scene);
+  next.setQuality(governor.level, settings.shadows);
+  view = next;
+  renderer.toneMappingExposure = view.look.exposure;
+  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
+  (old as Partial<TrackScene>).dispose?.();
+}
+
+const reconstructeur = creerReconstructeur({
+  peutReconstruire: () => isFrozen() || phase === "finished",
+  construire: (palier) => (track ? composer(track, scenePalette, palier) : null),
+  adopter: adopterScene,
+});
+
 // --- Le Salon : changement de circuit sans recharger la page (lot 26) ---------------------------------------------------------
 // Une nouvelle scène par session : la voiture, son ombre, les fantômes et les effets passent de l'ancienne à la nouvelle, puis l'ancienne
 // est libérée (rien ne s'accumule côté carte graphique en une soirée de sessions). Le circuit vient du fil de travail, déjà préparé.
@@ -2174,7 +2200,7 @@ let prebuilt: { id: string; scene: ReturnType<typeof buildTrackScene> } | null =
 
 function buildSalonScene(c: LoadedSalonCircuit) {
   const t0 = performance.now();
-  const next = buildTrackScene(c.track, c.palette);
+  const next = composer(c.track, c.palette, reconstructeur.palier());
   salonStats.buildMs = performance.now() - t0;
   return next;
 }
@@ -2197,15 +2223,8 @@ function swapSalonCircuit(c: LoadedSalonCircuit) {
     salonStats.builtInSwap++;
   }
   prebuilt = null;
-  const old = view;
-  next.scene.add(carMesh, carShadow, ghostMesh);
-  if (ghostField) next.scene.add(ghostField.group);
-  effects.attach(next.scene);
-  next.setQuality(governor.level, settings.shadows);
-  view = next;
-  renderer.toneMappingExposure = view.look.exposure;
-  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
-  (old as Partial<TrackScene>).dispose?.();
+  adopterScene(next);
+  scenePalette = c.palette;
   track = c.track;
   gameAudio.setAmbience(ambienceFor(c.palette));
   $("meta").textContent = salon!.title();
@@ -2336,6 +2355,8 @@ if (params.has("debug")) {
         return { emitted: effects.emitted, marks: effects.marks, quality: effects.quality, particles: effects.particles, enabled: effects.enabled, shake, fovKick, fov: camera.fov, wheelDroop: [...wheelDroop], tel };
       },
       /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
+      /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
+      socle: { composer, brancherComposeur, PAS_DU_JEU, PAS_DU_PALIER, demander: (p: Palier) => reconstructeur.demander(p), palier: () => reconstructeur.palier(), scene: () => view.scene.uuid },
       get render() {
         return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
       },
