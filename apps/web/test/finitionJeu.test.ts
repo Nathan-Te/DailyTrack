@@ -49,17 +49,15 @@ describe("lot 45 : le palier 2 du jeu", () => {
   });
 
   it.each(THEMES)("aucun appel de rendu de plus que le palier 1 : %s (les mêmes calques ; aucun maillage posé)", (p) => {
-    {
-      const c = circuit(p);
-      const p1 = scene(c, []);
-      const p2 = scene(c, [FINITION]);
-      expect(calquesDessines(p2.geo.calques), p).toEqual(calquesDessines(p1.geo.calques));
-      expect(p2.scene.children, `${p} : la finition ne pose aucun maillage`).toHaveLength(0);
-      // Le décor : les mêmes maillages (décor, lumières, remplissage), varié.
-      expect(Object.keys(p2.geo.decor!).sort()).toEqual(Object.keys(p1.geo.decor!).sort());
-      // La géométrie ajoute des triangles (rebords complets, virages deux fois plus fins, pièces des portiques), dans les calques existants.
-      expect(triangles(p2.geo.calques), p).toBeGreaterThan(triangles(p1.geo.calques));
-    }
+    const c = circuit(p);
+    const p1 = scene(c, []);
+    const p2 = scene(c, [FINITION]);
+    expect(calquesDessines(p2.geo.calques), p).toEqual(calquesDessines(p1.geo.calques));
+    expect(p2.scene.children, `${p} : la finition ne pose aucun maillage`).toHaveLength(0);
+    // Le décor : les mêmes maillages (décor, lumières, remplissage), varié.
+    expect(Object.keys(p2.geo.decor!).sort()).toEqual(Object.keys(p1.geo.decor!).sort());
+    // La géométrie ajoute des triangles (rebords complets, virages deux fois plus fins, pièces des portiques), dans les calques existants.
+    expect(triangles(p2.geo.calques), p).toBeGreaterThan(triangles(p1.geo.calques));
   }, 30_000);
 
   it("avec la vie et le ciel (le palier 2 du téléphone) : les mêmes familles que sans la finition, un appel chacune", () => {
