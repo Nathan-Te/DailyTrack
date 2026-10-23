@@ -1,7 +1,9 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { Mesh, MeshStandardMaterial } from "three";
+import { Mesh, MeshStandardMaterial, type Object3D } from "three";
 import { ReplayPlayer, TICK_RATE, bestPilotRun, createTestTrack, encodeReplay, replayRace, salonSessionStart } from "@cdj/sim";
-import { createCarMesh } from "../src/carMesh";
+import { LIVREE } from "../src/voiture/livree";
+import { construireFantome, construireVoiture } from "../src/voiture/modele";
+import { PLAN_CIVILE } from "../src/voiture/modeleCivile";
 import { HttpSalonApi } from "../src/salonApi";
 import { DemoSalonApi } from "../src/salonDemo";
 import { SalonClock } from "../src/salon";
@@ -212,17 +214,20 @@ describe("spectateur du Salon : aucune présence, aucune session finie", () => {
 
 describe("voiture regardée en rediffusion", () => {
   it("pleine (pas translucide) et à la couleur du fantôme ; le fantôme reste translucide", () => {
-    const solid = (g: ReturnType<typeof createCarMesh>["group"]) => {
+    // Retouche 40b : ta voiture (ici la civile), repeinte à la couleur du joueur regardé ; le fantôme est sa version simple.
+    const solid = (g: Object3D) => {
       const mats: MeshStandardMaterial[] = [];
       g.traverse((o) => {
         if (o instanceof Mesh && o.material instanceof MeshStandardMaterial) mats.push(o.material);
       });
       return mats;
     };
-    const watched = solid(createCarMesh(true, 0xff4fa3, false, true).group);
+    const voiture = construireVoiture(PLAN_CIVILE, { palier: 1, couleur: LIVREE.orange, numero: "8" });
+    voiture.peindre(0xff4fa3);
+    const watched = solid(voiture.group);
     expect(watched.length).toBe(5); // lot 40 : la caisse et les quatre roues (les feux sont sans éclairage)
     expect(watched.every((m) => !m.transparent && m.opacity === 1)).toBe(true);
-    const ghost = solid(createCarMesh(true, 0xff4fa3).group);
+    const ghost = solid(construireFantome(PLAN_CIVILE, 0xff4fa3).group);
     expect(ghost.every((m) => m.transparent)).toBe(true);
   });
 });

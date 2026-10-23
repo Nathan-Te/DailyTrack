@@ -93,7 +93,10 @@ import { canNativeShare, copyShare, nativeShare } from "./clipboard";
 import { GameAudio } from "./audio";
 import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
-import { createCarMesh, createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
+import { createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
+import { VoitureEnJeu } from "./voiture/enJeu";
+import { choixDeLAdresse, voitureChoisie } from "./voiture/choix";
+import { chargerMateriaux2 } from "./voiture/modeles";
 import { CarPose } from "./carPose";
 import { predictLanding } from "./landing";
 import { Effects, QualityGovernor, type Quality } from "./fx";
@@ -115,7 +118,7 @@ import type { LoadedSalonCircuit } from "./salonEngine";
 import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
-import type { TrackScene } from "./trackMesh";
+import { LOOKS, type TrackScene } from "./trackMesh";
 import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
 import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
@@ -290,7 +293,41 @@ function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier, plus:
 renderer.toneMapping = NeutralToneMapping;
 renderer.toneMappingExposure = view.look.exposure;
 renderer.shadowMap.enabled = true;
-let carModel: CarModel = createCarMesh();
+// Retouche 40b : la voiture choisie (`voitureChoisie()`, le Garage du lot 41), la civile à défaut ; `?voiture=<id>&couleur=<n>&motif=<m>` (recette et
+// aperçus, ignoré en production) montre une voiture sans rien enregistrer ni vérifier, et la course n'est alors ni classée ni enregistrée (comme `?tune`).
+// La civile est là tout de suite ; un autre modèle se charge à la demande et ne remplace la voiture qu'hors course (`peutChanger`).
+const voitureEssai = restricted ? null : choixDeLAdresse(params);
+/** Temps de course passé à la qualité 2, mesuré par le régulateur (remis à zéro dès qu'elle baisse). */
+let qualite2Ms = 0;
+const garage = new VoitureEnJeu({
+  choix: () => voitureEssai ?? voitureChoisie(),
+  // Le numéro : celui du circuit du jour ; au Salon, celui de la session dans la journée (1 à 144 pour des sessions de 10 minutes).
+  numero: () => (salon ? String((salon.session % Math.max(1, Math.round(86_400_000 / salon.sessionMs))) + 1) : daily && daily.number >= 1 ? String(daily.number) : ""),
+  // La règle de qualité automatique (lot 9) : la peinture à deux couches quand l'appareil suit — la qualité 2 figée (réglage, `?quality=2`), ou
+  // tenue 5 s en course (le réglage automatique part de 2 sans avoir rien mesuré : un téléphone lent ne doit pas charger le palier 2 pour rien).
+  palier: () => (governor.level === 2 && (governor.locked || qualite2Ms >= 5000) ? 2 : 1),
+  nuit: () => LOOKS[scenePalette].headlights > 0,
+  peutChanger: () => !watch && (isFrozen() || phase !== "racing"),
+  adopter: (voiture, fantome) => {
+    for (const [ancien, nouveau] of [
+      [carMesh, voiture.group],
+      [ghostMesh, fantome.group],
+    ] as const) {
+      nouveau.position.copy(ancien.position);
+      nouveau.rotation.copy(ancien.rotation);
+      nouveau.visible = ancien.visible;
+      view.scene.remove(ancien);
+      view.scene.add(nouveau);
+    }
+    carModel = voiture;
+    carMesh = voiture.group;
+    castShadows(carMesh);
+    ghostModel = fantome;
+    ghostMesh = fantome.group;
+  },
+  materiaux2: chargerMateriaux2,
+});
+let carModel: CarModel = garage.voiture;
 let carMesh = carModel.group;
 view.scene.add(carMesh);
 const castShadows = (group: typeof carMesh) =>
@@ -300,8 +337,9 @@ const castShadows = (group: typeof carMesh) =>
 castShadows(carMesh);
 const carShadow = createShadow();
 view.scene.add(carShadow);
-const ghostModel = createCarMesh(true);
-const ghostMesh = ghostModel.group;
+// Le fantôme de ton meilleur temps : la version simple de ta voiture (translucide, sans livrée, teinte unie, liseré lumineux).
+let ghostModel: CarModel = garage.fantome;
+let ghostMesh = ghostModel.group;
 ghostMesh.visible = false;
 view.scene.add(ghostMesh);
 // Fantômes du Salon (lot 26) : plusieurs voitures translucides colorées, avec leur pseudo.
@@ -798,6 +836,7 @@ function leaveToHome() {
   showPauseConfirm(false);
   startAttempt(); // la voiture revient au départ, le décompte attendra le bouton « Circuit du jour »
   homeOpen = true;
+  garage.relire(); // le choix de voiture (Garage) est relu à l'accueil
   syncSceneQuality();
   homeUi.open();
   void syncProfile(); // un temps battu sur un autre appareil apparaît ici
@@ -1087,7 +1126,7 @@ function startAttempt(force = false) {
 
 /** Bandeau « réglages modifiés » : rappelle qu'une course réglée n'est ni classée ni enregistrée. */
 function updateTunedLabel() {
-  $("tuned").textContent = tunedRun ? t("course.notice.reglages") : "";
+  $("tuned").textContent = tunedRun ? t("course.notice.reglages") : voitureEssai ? t("course.notice.voitureEssai", { nom: t(`voiture.${voitureEssai.id}.nom`) }) : "";
 }
 
 if (tuning) {
@@ -1434,7 +1473,7 @@ function finishSalonRun() {
   const sal = salon;
   phase = "finished";
   const ms = race.finishMs;
-  const counted = !tunedRun && !demo; // réglages modifiés ou démo du pilote : jamais classé
+  const counted = !tunedRun && !demo && !voitureEssai; // réglages modifiés, démo du pilote ou voiture d'essai (`?voiture=`) : jamais classé
   const sessionNo = sal.session;
   const result: SalonRunResult = { session: sessionNo, ms, splits: [...race.splits], respawns: race.respawns, replay: encodeReplay(session.toReplay()) };
   const improved = counted && sal.recordRun(result);
@@ -1481,7 +1520,7 @@ function finishRun() {
   phase = "finished";
   const ms = race.finishMs;
   // Réglages modifiés : le temps s'affiche, mais n'est ni enregistré ni envoyé (ce n'est pas la voiture de tout le monde).
-  const counted = !tunedRun && !demo; // la démo n'est jamais enregistrée
+  const counted = !tunedRun && !demo && !voitureEssai; // la démo et la voiture d'essai (`?voiture=`) ne sont jamais enregistrées
   const isRecord = counted && (!best || ms < best.ms);
   const previousBest = best;
   if (isRecord) {
@@ -1494,7 +1533,7 @@ function finishRun() {
   document.body.classList.add("finished");
   // Le résultat : le temps en grand, puis le badge de record et l'écart (réglages modifiés : rien n'est enregistré).
   zones.resultat.append(tempsEnGrand(ms));
-  if (!counted) zones.resultat.append(badgeEtEcart({ texte: t("arrivee.reglagesModifies") }));
+  if (!counted) zones.resultat.append(badgeEtEcart({ texte: t(voitureEssai && !tunedRun ? "arrivee.voitureEssai" : "arrivee.reglagesModifies") }));
   else if (isRecord) zones.resultat.append(badgeEtEcart(previousBest ? { badge: t("arrivee.recordNouveau"), ton: "ok", ecartMs: ms - previousBest.ms } : { badge: t("arrivee.premierTemps"), ton: "ok" }));
   else zones.resultat.append(badgeEtEcart({ texte: t("arrivee.recordActuel", { temps: fTemps(best!.ms) }), ecartMs: ms - best!.ms }));
   zones.resultat.append(makeEl("div", "note", race.respawns > 0 ? t("arrivee.reprises", { n: race.respawns }) : t("arrivee.sansReprise")));
@@ -1630,12 +1669,8 @@ function beginWatch(entry: WatchEntry): boolean {
   if (replay.trackId !== track.id || replay.simVersion !== SIM_VERSION) return false;
   watch = { entry, replay, total: replayTicks(replay), speed: 1, paused: false };
   document.body.classList.add("watch");
-  // La voiture du tour regardé : pleine (pas translucide), à la couleur du fantôme, son pseudo au-dessus.
-  view.scene.remove(carMesh);
-  carModel = createCarMesh(true, entry.color, false, true);
-  carMesh = carModel.group;
-  view.scene.add(carMesh);
-  castShadows(carMesh);
+  // La voiture du tour regardé : ta voiture (retouche 40b), pleine, à la couleur du joueur regardé, son pseudo au-dessus.
+  garage.imposerTeinte(entry.color);
   nameLabel = salonMod!.createNameLabel();
   nameLabel.set(entry.name, entry.color);
   carMesh.add(nameLabel.sprite);
@@ -1662,13 +1697,10 @@ function endWatch() {
   hudFinish.hidden = true;
   watchUi?.show(false);
   watchUi = null;
+  if (nameLabel) carMesh.remove(nameLabel.sprite);
   nameLabel = null;
   setFreeCamera(false);
-  view.scene.remove(carMesh);
-  carModel = createCarMesh();
-  carMesh = carModel.group;
-  view.scene.add(carMesh);
-  castShadows(carMesh);
+  garage.imposerTeinte(null); // ta voiture reprend sa couleur
   watch = null;
   autoplay = null;
   pendingSeek = null;
@@ -1852,6 +1884,7 @@ function isFrozen(): boolean {
 function frame(now: number) {
   salon?.tick(); // Salon : compte à rebours, fin de session, podium, bascule
   if (reconstructeur.enAttente()) void reconstructeur.essayer(); // un autre palier demandé : reconstruit à l'accueil, à la pause, à l'arrivée, au podium (jamais en course)
+  garage.tick(); // la voiture choisie, chargée à la demande, remplace la civile hors course ; son palier suit la qualité ; la Nuit
   const frozen = isFrozen();
   if (dayCardShown) hudDayCard.hidden = phase !== "countdown";
   const manualTicksNow = manual ? manualTicks : 0;
@@ -1860,6 +1893,7 @@ function frame(now: number) {
   const frameMs = now - last;
   last = now;
   if (homeOpen) homeSpin += Math.min(frameMs, 100) / 1000;
+  if (!frozen && !manual) qualite2Ms = governor.level === 2 ? qualite2Ms + Math.min(frameMs, 100) : 0;
   if (!frozen && !manual && governor.observe(frameMs)) {
     effects.quality = governor.level;
     syncSceneQuality(); // qualité basse : décor, ombres et halos allégés (téléphone lent)
@@ -2412,6 +2446,10 @@ if (params.has("debug")) {
         return etatFeux(phase, countdown, COUNTDOWN_S);
       },
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
+      /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */
+      get voiture() {
+        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai };
+      },
       socle: {
         composer,
         brancherComposeur,

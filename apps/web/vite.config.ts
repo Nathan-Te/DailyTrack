@@ -33,6 +33,11 @@ export default defineConfig({
         // le garde en cache d'un déploiement à l'autre ; seul le petit code du jeu est retéléchargé.
         manualChunks(id: string) {
           if (id.includes("node_modules/three/")) return "three";
+          // Retouche 40b : la voiture du jeu (socle commun, la civile, le choix) en un seul fichier ; sans cela l'empaqueteur la coupe en trois petits
+          // morceaux (pièces, formes, livrée : partagés avec le Salon et les modèles à la demande), et la compression par fichier se perd. Les modèles
+          // à débloquer et les matériaux des paliers 2 et 3 restent des morceaux à la demande. L'empaqueteur range avec elle les modules partagés
+          // qu'elle tire (stockage, records, piste et voiture de la simulation) : mesuré, le premier chargement y gagne 1,2 ko (budgets.md, 40b).
+          if (/\/src\/(carMesh|voiture\/(?!modele[ABC]\b|materiaux2\b))/.test(id)) return "voiture";
           return undefined;
         },
       },

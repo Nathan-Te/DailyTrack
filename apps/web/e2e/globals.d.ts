@@ -107,6 +107,16 @@ interface CdjDebug {
   /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
   thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): Promise<{ url: string; timing: { build: number; draw: number } }>;
   /** Socle par paliers (lot 39) : enregistrer un pas factice et un composeur, demander un palier, lire le palier et l'identité de la scène courante. */
+  /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai (`?voiture=`), la voiture vue est-elle celle voulue, compteurs, course classée ou non. */
+  voiture: {
+    choix: { id: string; couleur: number; motif: string };
+    essai: { id: string; couleur: number; motif: string } | null;
+    aJour: boolean;
+    stats: { construites: number; remplacees: number; chargements: number; civileMs: number; remplaceeA: number };
+    maillages: number;
+    triangles: number;
+    counted: boolean;
+  };
   socle: {
     composer(track: unknown, palette: string, palier: string, options?: unknown): unknown;
     brancherComposeur(palier: string, composeur: (track: unknown, palette: string, options: unknown) => unknown): void;
@@ -140,7 +150,9 @@ interface CdjDebug {
 interface VoitureDebug {
   toutDessiner(theme?: string): Promise<{ col: string; palier: number; sorte: "arret" | "fantome"; triangles: number; maillages: number; appels: number }[]>;
   planche(theme: string, largeur?: number, hauteur?: number): Promise<string>;
-  planchesCouleurs(col: "A" | "B" | "C", toile: HTMLCanvasElement, largeur?: number, hauteur?: number): Promise<string>;
+  planchesCouleurs(col: "civile" | "A" | "B" | "C", toile: HTMLCanvasElement, largeur?: number, hauteur?: number): Promise<string>;
+  /** Retouche 40b : le motif de la livrée de toutes les voitures de la planche. */
+  choisirMotif(m: "bande" | "flancs" | "unie"): Promise<void>;
   apercu(col: string, palier: 1 | 2 | 3, azimut: number, elevation: number, distance: number, largeur: number, hauteur: number): Promise<string>;
   mesurerColonne(col: string, palier: 1 | 2 | 3, largeur: number, hauteur: number, images: number): Promise<{ imageMs: number; sceneSeuleMs: number; appels: number; appelsScene: number }>;
 }

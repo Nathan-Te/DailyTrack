@@ -20,7 +20,10 @@ import {
   modeHref,
 } from "../src/salon";
 import { HttpSalonApi } from "../src/salonApi";
-import { createCarMesh, tintedGhostLook } from "../src/carMesh";
+import { tintedGhostLook } from "../src/carMesh";
+import { LIVREE } from "../src/voiture/livree";
+import { construireFantome, construireVoiture } from "../src/voiture/modele";
+import { PLAN_CIVILE } from "../src/voiture/modeleCivile";
 import { GHOST_COLORS, MY_GHOST_COLOR } from "../src/salon";
 import { Mesh } from "three";
 import { demoPlan, plannedRuns } from "../src/salonPlan";
@@ -344,8 +347,9 @@ describe("voitures des fantômes du Salon", () => {
   };
 
   it("le fantôme allégé tient en un seul objet dessiné (la voiture du joueur en compte six depuis le lot 40 : caisse, feux, quatre roues)", () => {
-    const full = createCarMesh();
-    const light = createCarMesh(true, GHOST_COLORS[0], true);
+    // Retouche 40b : la civile, et sa version simple (celle des fantômes du Salon, `salonGhosts.ts`).
+    const full = construireVoiture(PLAN_CIVILE, { palier: 1, couleur: LIVREE.orange, numero: "8" });
+    const light = construireFantome(PLAN_CIVILE, GHOST_COLORS[0]);
     expect(meshes(full.group)).toBe(6);
     expect(meshes(light.group)).toBe(1);
     light.update({ forward: 20, steerAngle: 0.2, braking: true, droop: [0, 0, 0, 0], dt: 1 / 60 }); // sans roues séparées : rien à animer, rien ne plante

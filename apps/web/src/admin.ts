@@ -91,6 +91,9 @@ for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) 
 $<HTMLSelectElement>("camera").addEventListener("change", (e) => set({ camera: (e.target as HTMLSelectElement).value as AdminState["camera"] }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));
 $<HTMLSelectElement>("scene").addEventListener("change", (e) => set({ scene: (e.target as HTMLSelectElement).value as AdminState["scene"] }));
+$<HTMLSelectElement>("voiture").addEventListener("change", (e) => set({ voiture: (e.target as HTMLSelectElement).value as AdminState["voiture"] }));
+$<HTMLSelectElement>("couleur").addEventListener("change", (e) => set({ couleur: (e.target as HTMLSelectElement).value }));
+$<HTMLSelectElement>("motif").addEventListener("change", (e) => set({ motif: (e.target as HTMLSelectElement).value as AdminState["motif"] }));
 $<HTMLSelectElement>("steer").addEventListener("change", (e) => set({ steer: (e.target as HTMLSelectElement).value as AdminState["steer"] }));
 $<HTMLSelectElement>("touch").addEventListener("change", (e) => set({ touch: (e.target as HTMLSelectElement).value as AdminState["touch"] }));
 $<HTMLSelectElement>("thumbs").addEventListener("change", (e) => set({ thumbs: (e.target as HTMLSelectElement).value as AdminState["thumbs"] }));
@@ -161,6 +164,9 @@ function render() {
   for (const id of checks) $<HTMLInputElement>(id).checked = state[id];
   $<HTMLSelectElement>("quality").value = state.quality;
   $<HTMLSelectElement>("scene").value = state.scene;
+  $<HTMLSelectElement>("voiture").value = state.voiture;
+  $<HTMLSelectElement>("couleur").value = state.couleur;
+  $<HTMLSelectElement>("motif").value = state.motif;
   $<HTMLSelectElement>("camera").value = state.camera;
   $<HTMLSelectElement>("touch").value = state.touch;
   $<HTMLSelectElement>("thumbs").value = state.thumbs;

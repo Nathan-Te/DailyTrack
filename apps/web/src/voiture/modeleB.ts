@@ -1,7 +1,7 @@
 // Lot 40 — modèle B, « GT basse » : large et posée, le capot long, l'habitacle reculé et bas (1,18 m), un pavillon fuyant jusqu'à un coffre
 // court, des hanches arrière larges au-dessus des roues, un grand aileron sur cols de cygne aux dérives peintes, un diffuseur profond et une
 // lame de feux d'un bord à l'autre. De dos, c'est la plus large et la plus basse des trois. Création originale.
-import { cle, extruder, fondDePassage, levre, pave, pont, prismeZ } from "./forme";
+import { boite, cle, extruder, fondDePassage, levre, pave, pont, prismeZ } from "./forme";
 import type { Contexte, Feux, PlanVoiture } from "./modele";
 import { srgb, type Fini, type Pieces } from "./pieces";
 
@@ -49,8 +49,9 @@ export const PLAN_B: PlanVoiture = {
     largeurBande: 0.66,
     portiere: { z: -0.35, y: 0.58, h: 0.28 },
     arriere: { y: 0.47, h: 0.21 },
+    flancs: { z: [-0.08, 0.72], y: [0.32, 0.72] },
   },
-  roue: { branches: 5, jante: 0.72, doubles: true },
+  roue: { branches: 5, jante: 0.72, dessin: "doubles" },
   pieces(p, c) {
     piecesB(p, c);
   },
@@ -99,7 +100,13 @@ function piecesB(p: Pieces, c: Contexte) {
   for (const s of [-1, 1]) {
     pave(p, s > 0 ? 0.8 : -0.97, s > 0 ? 0.97 : -0.8, 0.86, 0.94, 0.3, 0.42, m.peinture);
     for (const k of [0, 1, 2]) pave(p, s * (0.32 + k * 0.1) - 0.03, s * (0.32 + k * 0.1) + 0.03, 0.66, 0.69, 1.1, 1.45, m.noir);
+    // Retouche 40b, le petit niveau de détail : la glace du rétroviseur, une poignée affleurante, une ouïe derrière la roue avant, le coude
+    // peint de la glace latérale (la ligne de vitrage d'une GT : une glace longue qui remonte vers la lunette).
+    pave(p, s > 0 ? 0.83 : -0.95, s > 0 ? 0.95 : -0.83, 0.875, 0.925, 0.294, 0.3, m.vitre);
+    pave(p, s > 0 ? 0.93 : -0.975, s > 0 ? 0.975 : -0.93, 0.74, 0.77, -0.28, -0.1, m.garniture);
+    for (const k of [0, 1]) pave(p, s > 0 ? 0.95 : -0.99, s > 0 ? 0.99 : -0.95, 0.42 + k * 0.08, 0.46 + k * 0.08, 0.62, 0.84, m.noir);
   }
+  boite(p, 0.84, 0.75, -1.02, -0.94, 0.98, 0.69, -1.02, -0.94, m.peinture);
   pave(p, -0.66, 0.66, 0.27, 0.4, ZF - 0.04, ZF + 0.012, m.noir);
   pave(p, -0.86, 0.86, 0.2, 0.26, ZF - 0.55, ZF + 0.14, m.garniture);
 }
@@ -110,15 +117,20 @@ function feuxB(c: Contexte): Feux {
   return {
     phares(f) {
       for (const s of [-1, 1]) {
-        // Phares étirés vers l'arrière, en amande, et un trait de jour en dessous.
-        pave(f, s > 0 ? 0.48 : -0.8, s > 0 ? 0.8 : -0.48, 0.42, 0.47, ZF - 0.4, ZF - 0.04, blanc);
-        pave(f, s > 0 ? 0.58 : -0.82, s > 0 ? 0.82 : -0.58, 0.34, 0.36, ZF - 0.12, ZF + 0.006, blanc);
+        // Signature (retouche 40b) : un phare en amande sur le nez, fermé d'un crochet de jour au bout de l'aile ; un trait sous la bouche.
+        pave(f, s > 0 ? 0.46 : -0.76, s > 0 ? 0.76 : -0.46, 0.405, 0.445, ZF - 0.05, ZF + 0.012, blanc);
+        pave(f, s > 0 ? 0.74 : -0.8, s > 0 ? 0.8 : -0.74, 0.37, 0.46, ZF - 0.08, ZF + 0.008, blanc);
+        pave(f, s > 0 ? 0.58 : -0.82, s > 0 ? 0.82 : -0.58, 0.3, 0.32, ZF - 0.04, ZF + 0.014, blanc);
       }
     },
     stop(f) {
       // Une lame d'un bord à l'autre, plus épaisse aux deux bouts.
       pave(f, -0.84, 0.84, 0.75, 0.78, ZR - 0.03, ZR + 0.005, rouge);
-      for (const s of [-1, 1]) pave(f, s > 0 ? 0.5 : -0.86, s > 0 ? 0.86 : -0.5, 0.7, 0.79, ZR - 0.035, ZR + 0.005, rouge);
+      for (const s of [-1, 1]) {
+        pave(f, s > 0 ? 0.5 : -0.86, s > 0 ? 0.86 : -0.5, 0.7, 0.79, ZR - 0.035, ZR + 0.005, rouge);
+        // Les bouts de la lame descendent en équerre sur la hanche (signature de dos).
+        pave(f, s > 0 ? 0.8 : -0.87, s > 0 ? 0.87 : -0.8, 0.6, 0.7, ZR - 0.035, ZR + 0.005, rouge);
+      }
       void c;
     },
   };

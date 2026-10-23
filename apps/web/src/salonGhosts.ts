@@ -1,6 +1,8 @@
 import { CanvasTexture, Group, Sprite, SpriteMaterial, SRGBColorSpace } from "three";
 import { DEFAULT_CAR_PARAMS, ReplayPlayer, SIM_VERSION, copyCar, createCar, createRace, decodeReplay, forwardSpeed, stepRace, steerLimit, wrapAngle, type CarState, type RaceState, type Track } from "@cdj/sim";
-import { createCarMesh, type CarModel, type WheelPose } from "./carMesh";
+import type { CarModel, WheelPose } from "./carMesh";
+import { construireFantome } from "./voiture/modele";
+import { PLAN_CIVILE } from "./voiture/modeleCivile";
 import { CarPose } from "./carPose";
 import { t } from "./i18n";
 import { GHOST_COLORS, MAX_GHOSTS, MY_GHOST_COLOR, ghostShown, type SalonGhostMode } from "./salon";
@@ -50,7 +52,9 @@ const HIDE_AFTER_FINISH_TICKS = 240; // 2 s sur la ligne, puis il s'efface
 const css = (hex: number) => `#${hex.toString(16).padStart(6, "0")}`;
 
 function makeSlot(color: number): Slot {
-  const model = createCarMesh(true, color, true); // allégé : cinq voitures de plus ne doivent pas coûter cinq fois la voiture du joueur
+  // La version simple de la civile (retouche 40b : un maillage, ≈ 400 triangles, translucide, sans livrée, teinte unie, liseré lumineux) : cinq
+  // voitures de plus ne doivent pas coûter cinq fois la voiture du joueur. Les autres joueurs ne montrent pas encore leur voiture (plus tard).
+  const model = construireFantome(PLAN_CIVILE, color);
   model.group.visible = false;
   const canvas = document.createElement("canvas");
   canvas.width = 256;

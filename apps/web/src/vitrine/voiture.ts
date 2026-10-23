@@ -10,7 +10,8 @@ import { createCircuitEngine } from "../circuitEngine";
 import { GHOST_COLORS } from "../salon";
 import { reglagesDuPalier, type Palier } from "../scene/paliers";
 import type { ScenePalier } from "../scene/composerPalier";
-import { LIVREE, PALETTE } from "../voiture/livree";
+import { LOOKS } from "../trackMesh";
+import { LIVREE, MOTIFS, PALETTE, type MotifLivree } from "../voiture/livree";
 import { construireFantome, construireVoiture, type FabriqueMateriaux, type ModeleId, type PlanVoiture, type Voiture } from "../voiture/modele";
 import { chargerMateriaux2, chargerPlan } from "../voiture/modeles";
 import { MESURES_VOITURE } from "./mesuresVoiture";
@@ -20,7 +21,9 @@ import type { Fabrique } from "./variantes";
 import type { VueMouvement } from "./mouvement";
 
 type Colonne = "existant" | ModeleId;
-const COLONNES: readonly Colonne[] = ["existant", "A", "B", "C"];
+const COLONNES: readonly Colonne[] = ["existant", "civile", "A", "B", "C"];
+/** Les modèles (toutes les colonnes sauf l'existant). */
+const MODELES_VUS = COLONNES.filter((c): c is ModeleId => c !== "existant");
 const PALIERS: readonly Palier[] = [1, 2, 3];
 /** Les thèmes de la vue en mouvement (consigne du lot) ; la planche à l'arrêt les offre tous. */
 const THEMES_MOUVEMENT = ["theme-stade", "theme-nuit", "theme-canyon"];
@@ -51,7 +54,10 @@ export interface Hote {
 }
 
 /** L'état de la planche (couleur, numéro, thème des vues à l'arrêt). */
-const etat = { couleur: LIVREE.orange as number, numero: "8", theme: "theme-stade" };
+const etat = { couleur: LIVREE.orange as number, numero: "8", theme: "theme-stade", motif: "bande" as MotifLivree };
+/** La Nuit d'un thème (retouche 40b : rayures, numéro et feux légèrement lumineux). */
+const nuitDe = (theme: string) => LOOKS[paletteDe(theme)].headlights > 0;
+const NOMS_MOTIFS: Record<MotifLivree, string> = { bande: "Bande centrale", flancs: "Flancs", unie: "Unie" };
 
 // --- Chargements -------------------------------------------------------------------------------------------------------------------------
 
@@ -65,12 +71,12 @@ let materiaux2: Promise<FabriqueMateriaux> | null = null;
 const materiaux = (palier: Palier) => (palier === 1 ? Promise.resolve(undefined) : (materiaux2 ??= chargerMateriaux2()));
 
 /** Une voiture d'une colonne à un palier (le palier 3 reprend celle du palier 2 : même modèle, autre scène). */
-async function voiture(col: Colonne, palier: Palier): Promise<CarModel & { triangles?: number; peindre?: Voiture["peindre"] }> {
+async function voiture(col: Colonne, palier: Palier): Promise<CarModel & { triangles?: number; peindre?: Voiture["peindre"]; nuit?: Voiture["nuit"] }> {
   if (col === "existant") return createCarMesh();
   const [pl, mat] = await Promise.all([plan(col), materiaux(palier)]);
-  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, materiaux: mat });
+  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, materiaux: mat });
 }
-const voitures = new Map<string, Promise<CarModel & { triangles?: number; peindre?: Voiture["peindre"] }>>();
+const voitures = new Map<string, Promise<CarModel & { triangles?: number; peindre?: Voiture["peindre"]; nuit?: Voiture["nuit"] }>>();
 const voitureDe = (col: Colonne, palier: Palier) => {
   const k = `${col}:${Math.min(palier, 2)}`;
   let v = voitures.get(k);
@@ -214,6 +220,7 @@ async function dessinerMaintenant(v: Vue, s: Sortie) {
     voitureDe(v.col, fantome ? 2 : v.palier),
   ]);
   const ajoutes: Group[] = [car.group];
+  car.nuit?.(nuitDe(etat.theme));
   let cible: Pose["voiture"];
   if (fantome) {
     const [loin, pres] = await Promise.all([fantomeDe(v.col, 0), fantomeDe(v.col, 1)]);
@@ -271,17 +278,18 @@ function legende(v: Vue) {
 let hote: Hote | null = null;
 
 const TEXTES: Record<Colonne, { titre: string; resume: string }> = {
-  existant: { titre: "Existant (lot 9b, six maillages)", resume: "La voiture du jeu aujourd'hui, en six maillages depuis la partie 1 du lot 40 (image identique). Sa couleur ne change pas." },
+  existant: { titre: "Existant (lots 9b et 40, six maillages)", resume: "La voiture du jeu jusqu'à la retouche 40b (la civile l'a remplacée), pour comparer. Sa couleur ne change pas." },
   A: { titre: "A — Évolution", resume: "" },
   B: { titre: "B — GT basse", resume: "" },
   C: { titre: "C — Proto à bulle", resume: "" },
+  civile: { titre: "Civile — Compacte sportive", resume: "" },
 };
 
 /** Monte la planche dans `racine`. */
 export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   hote = h;
-  for (const id of ["A", "B", "C"] as const) void plan(id).then((p) => (TEXTES[id] = { titre: p.nom, resume: p.resume }));
-  await Promise.all((["A", "B", "C"] as const).map(plan));
+  for (const id of MODELES_VUS) void plan(id).then((p) => (TEXTES[id] = { titre: p.nom, resume: p.resume }));
+  await Promise.all(MODELES_VUS.map(plan));
 
   // Les réglages : la couleur (palette de 8), le numéro, le thème des vues à l'arrêt.
   const reglages = el("section", "voiture-reglages");
@@ -311,6 +319,18 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
     numero.value = etat.numero;
     void choisirCouleur(etat.couleur);
   });
+  // Retouche 40b : le motif de la livrée (bande centrale, flancs, unie ; le numéro reste).
+  const motifs = el("div", "segments");
+  motifs.setAttribute("role", "group");
+  motifs.setAttribute("aria-label", "Motif de la livrée");
+  for (const m of MOTIFS) {
+    const b = el("button", "segment", NOMS_MOTIFS[m]);
+    b.type = "button";
+    b.dataset.motif = m;
+    b.setAttribute("aria-pressed", String(m === etat.motif));
+    b.addEventListener("click", () => void choisirMotif(m));
+    motifs.append(b);
+  }
   const labelNumero = el("label", "choix", "Numéro ");
   labelNumero.append(numero);
   const theme = el("select");
@@ -331,7 +351,7 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   const labelTheme = el("label", "choix", "Thème des vues ");
   labelTheme.append(theme);
   reglages.append(nuancier, el("div", "voiture-reglages__ligne"));
-  reglages.lastElementChild!.append(labelNumero, labelTheme);
+  reglages.lastElementChild!.append(motifs, labelNumero, labelTheme);
   racine.append(reglages);
 
   // Les colonnes : titre, résumé, coût ; puis une rangée par palier (à l'arrêt), puis les fantômes.
@@ -415,7 +435,7 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   const h2b = el("h2", undefined, "Planche des couleurs : chaque couleur sur chaque thème");
   h2b.id = "voiture-planche-titre";
   const choixModele = el("select");
-  for (const col of ["A", "B", "C"] as const) choixModele.append(Object.assign(el("option", undefined, TEXTES[col].titre), { value: col }));
+  for (const col of MODELES_VUS) choixModele.append(Object.assign(el("option", undefined, TEXTES[col].titre), { value: col }));
   const lancer = el("button", "action", "Dessiner la planche (8 couleurs × 8 thèmes, palier 2, poursuite)");
   lancer.type = "button";
   const toile = el("canvas", "voiture-planche__toile");
@@ -442,12 +462,19 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   for (const v of vues) proches.observe(v.canvas);
 }
 
+/** Retouche 40b : change le motif de la livrée (les pastilles de motif ; outil des captures). */
+export async function choisirMotif(m: MotifLivree) {
+  etat.motif = m;
+  for (const x of document.querySelectorAll<HTMLButtonElement>("[data-motif]")) x.setAttribute("aria-pressed", String(x.dataset.motif === m));
+  await choisirCouleur(etat.couleur);
+}
+
 async function choisirCouleur(hex: number) {
   etat.couleur = hex;
   for (const b of document.querySelectorAll<HTMLButtonElement>(".nuancier .pastille")) b.setAttribute("aria-pressed", String(PALETTE.find((c) => c.id === b.dataset.couleur)?.hex === hex));
-  for (const v of voitures.values()) (await v).peindre?.(hex, etat.numero);
+  for (const v of voitures.values()) (await v).peindre?.(hex, etat.numero, etat.motif);
   for (const v of vues) void dessinerVue(v);
-  void hote?.mouvement().then((vm) => vm.repeindre(hex, etat.numero));
+  void hote?.mouvement().then((vm) => vm.repeindre(hex, etat.numero, etat.motif));
 }
 
 function majCouts() {
@@ -485,7 +512,7 @@ function majCouts() {
   ligne("Ce que la voiture ajoute à une image, téléphone (×4, rendu logiciel, vue de près) : palier 1 / palier 2", (col) => {
     const m = MESURES_VOITURE.colonnes[col];
     const d = (x: { avecMs: number; sansMs: number }) => `+${fmt(x.avecMs - x.sansMs, 0)} ms`;
-    return `${d(m.p1)} / ${d(m.p2)}`;
+    return m ? `${d(m.p1)} / ${d(m.p2)}` : "à mesurer";
   });
   ligne("Image sur cet appareil (palier 2, vue à l'arrêt)", (col) => {
     const ms = vue(col, 2)?.imageMs;
@@ -520,7 +547,7 @@ async function ouvrirMouvement(col: Colonne, palier: Palier) {
 async function voitureMouvement(col: Colonne, palier: Palier): Promise<CarModel> {
   if (col === "existant") return createCarMesh();
   const [pl, mat] = await Promise.all([plan(col), materiaux(palier)]);
-  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, materiaux: mat });
+  return construireVoiture(pl, { palier, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, materiaux: mat });
 }
 
 async function ouvrirTheme(theme: string) {
@@ -545,7 +572,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
   const pl = await plan(col);
   const mat = await materiaux(2);
   const m = await scenesMod();
-  const car = construireVoiture(pl, { palier: 2, couleur: etat.couleur, numero: etat.numero, materiaux: mat });
+  const car = construireVoiture(pl, { palier: 2, couleur: etat.couleur, numero: etat.numero, motif: etat.motif, materiaux: mat });
   car.group.traverse((o) => (o.castShadow = true));
   const marge = 96;
   const tete = 28;
@@ -567,6 +594,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
     const ts = m.fabriquePalier(() => reglagesDuPalier(2))(t, s.palette);
     const pose = poseTheme(t, "virage");
     poser(car.group, pose.voiture);
+    car.nuit(nuitDe(s.id));
     placeShadow(ombrePlanche, pose.voiture.x, pose.voiture.z, pose.voiture.yaw, pose.voiture.y, 0);
     ts.scene.add(car.group, ombrePlanche);
     const orbite = orbiteDepuis(pose.camera, pose.cible, pose.fov);

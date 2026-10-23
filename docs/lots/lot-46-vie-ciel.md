@@ -1,7 +1,7 @@
 # Lot 46 — Track : la vie et le ciel (sans passe plein écran)
 
 Branche `claude/elegant-bohr-s8nb0v` (nom imposé par la session ; le lot prévoyait `lot-46-vie-ciel`, d'où l'étiquette `jeu:track` sur la PR pour le job
-`zones`), partie de `main` à `9f9a80a` (lot 43 fusionné). Zones : `apps/web/**`, `docs/lots/**`, les lignes de Track de `docs/plateforme/budgets.md`, son entrée
+`zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), `main` fusionné ensuite à `42154b6` (retouche 40b : la voiture civile et les modèles en jeu). Zones : `apps/web/**`, `docs/lots/**`, les lignes de Track de `docs/plateforme/budgets.md`, son entrée
 de `durees.json`. **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés. Aucune clé de
 catalogue (les pas n'ont pas de texte ; la page d'admin est un outil interne, en français). PR : voir la synthèse.
 
@@ -134,10 +134,10 @@ pour toutes les colonnes (`?reglages=`). Chiffres bruts : `docs/lots/lot-46/mesu
 | · foule | 1 | ≈ 0 net (les spectateurs quittent le décor : 24 triangles chacun au lieu d'une boîte et de son ombre) | 1 | — | — | ≈ 125 spectateurs, 48 sommets chacun, qui sautillent |
 | · écrans (rubans et chronomètre) | 1 | +76 | 1 | ruban et chronomètre | — | deux textures lues ; le chronomètre redessiné dix fois par seconde au plus (128 Ko envoyés) |
 | · particules | 1 (0 au Stade avant l'arrivée) | 0 (des points) | 1 | — | — | 420 à 1 400 points translucides (neige : 1 400 sur la Banquise, 800 au Col) |
-| **ciel** (au-dessus du palier 1) | +1 | +12 | +2 | ≈ 0,35 Mo (nuages 256 × 256 et leurs réductions) | cielJeu 2 846 o | le dôme : un calcul de ciel par pixel du fond |
+| **ciel** (au-dessus du palier 1) | +1 | +12 | +2 | ≈ 0,35 Mo (nuages 256 × 256 et leurs réductions) | cielJeu 2 850 o | le dôme : un calcul de ciel par pixel du fond |
 | · nuages | 1 | +12 (un cube) | 1 | nuages | — | — |
 | · brume | 0 | 0 | 0 à 1 (une variante de chaque matériau) | — | — | quelques opérations de plus par pixel |
-| **ombres** (palier 3 seulement) | +1 (le décor projette) | **+10 800 (Stade) à +36 000 (Col)** | 0 | **+12 Mo** (carte 2048² au lieu de 1024²) | ombres3 149 o | la passe d'ombre redessine le décor |
+| **ombres** (palier 3 seulement) | +1 (le décor projette) | **+10 800 (Stade) à +36 000 (Col)** | 0 | **+12 Mo** (carte 2048² au lieu de 1024²) | ombres3 150 o | la passe d'ombre redessine le décor |
 
 - **Construction** : dans le bruit de la mesure (±200 ms d'un chargement à l'autre au profil téléphone), sauf **le ciel**, qui dessinait au premier jet sa
   texture de nuages en 512 × 512 (bruit fractal, ≈ +300 ms à processeur ×4) : **corrigé en 256 × 256** (mêmes sept octaves, quatre fois moins de calcul ;
@@ -150,27 +150,28 @@ pour toutes les colonnes (`?reglages=`). Chiffres bruts : `docs/lots/lot-46/mesu
 
 ## 5. Budget
 
-Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTrack`), `main` à `9f9a80a` construit à part, puis la branche.
+Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTrack`), `main` construit à part, puis la branche — avant la fusion (`main` à
+`9f9a80a`) et après (`main` à `42154b6`, retouche 40b comprise) : le même écart à 20 o près.
 
-| Ligne | `main` | Lot 46 | Écart |
+| Ligne | `main` (`42154b6`) | Lot 46 | Écart (avant la fusion de la 40b : 268 789 → 270 010) |
 |---|---|---|---|
-| JS + CSS du premier chargement | 268 789 | 270 010 | **+1 221** |
-| JS | 257 377 | 258 598 | +1 221 |
-| hors three.js | 124 512 | 125 724 | +1 212 |
-| three.js | 132 865 | 132 874 | +9 |
+| JS + CSS du premier chargement | 276 301 | 277 542 | **+1 241** (+1 221) |
+| JS | 264 889 | 266 130 | +1 241 |
+| hors three.js | 131 346 | 132 580 | +1 234 |
+| three.js | 133 543 | 133 550 | +7 |
 | CSS, catalogue anglais, fils de travail, polices | — | inchangés | 0 |
-| page d'admin (hors premier chargement) | 10 905 | 10 974 | +69 (la case « Scène (palier) ») |
-| **vie et ciel à la demande** (nouvelle ligne, plafond **8 000**) | — | **7 881** (vieJeu 5 035, cielJeu 2 846) | marge 119 |
-| ombres fines à la demande (plafond 500) | — | 149 | — |
+| page d'admin (hors premier chargement) | 11 084 | 11 156 | +72 (la case « Scène (palier) ») |
+| **vie et ciel à la demande** (nouvelle ligne, plafond **8 000**) | — | **7 885** (vieJeu 5 035, cielJeu 2 850) | marge 115 |
+| ombres fines à la demande (plafond 500) | — | 150 | — |
 
-- **Premier chargement : +1 221 o** (le lot 38b prévoyait 0 ; c'est au-dessus du ko de la règle commune : justifié ici). Ce qu'il paie : les crochets des pas dans
+- **Premier chargement : +1 241 o** (le lot 38b prévoyait 0 ; c'est au-dessus du ko de la règle commune : justifié ici). Ce qu'il paie : les crochets des pas dans
   le palier 1 (`composerP1.ts` : pièces dans les calques, maillages, animation, arrivée, ombres fines, ce que chaque pas dit à `?debug`) ≈ 0,5 ko ; la lecture de
   `?palier=` et `?reglages=` (`access.ts`), les pas en plus du reconstructeur et le registre des pas branchés (`socle.ts`) ≈ 0,3 ko ; les trois `import()` et leurs
   listes de préchargement, la foule confiée par la tribune (`trackMesh.ts`) ≈ 0,4 ko. **Essayé et abandonné** : laisser la tribune ne confier que des nombres et
   calculer les positions dans le pas « vie » : −64 o au premier chargement, +214 o à la demande (la ligne de 8 ko ne le permettait pas). **Évité** : `InstancedMesh`
   et `SphereGeometry` entraient dans le morceau partagé de three.js (+1 046 o au premier chargement) ; le resserrage des nuanceurs rend ≈ 120 o au premier
-  chargement (ceux des effets et de la voiture). Marge de Track : 22 811 → **21 590 o**, plafonds inchangés ; `docs/plateforme/budgets.md` à jour.
-- **À la demande : 7 881 o sur 8 000** (premier jet : 10,1 ko ; ce qui a été fait pour tenir : § 2, « Poids »). Gardé par `e2e/perf.spec.ts` (les morceaux et
+  chargement (ceux des effets et de la voiture). Marge de Track : 15 299 → **14 058 o** (après la 40b), plafonds inchangés ; `docs/plateforme/budgets.md` à jour.
+- **À la demande : 7 885 o sur 8 000** (premier jet : 10,1 ko ; ce qui a été fait pour tenir : § 2, « Poids »). Gardé par `e2e/perf.spec.ts` (les morceaux et
   ce qu'ils tirent hors du premier chargement). **La ligne n'est pas encore dans le tableau de `budgets.md`** : chaque ligne du tableau doit avoir sa limite lue
   par `apps/portail/test/budgets.test.ts` (zone partagée) — décrite dans la section « Lot 46 » de `budgets.md`, à ajouter par un lot de plateforme.
 - Rien du lot 36 ne revient (générateur, Salon) ; aucun module des pas au premier chargement (`test/socle.test.ts`, `e2e/perf.spec.ts`).
@@ -208,9 +209,9 @@ palier 2, « À tester ») ; Firefox et WebKit (la CI de la PR lance le sous-ens
 1. **Le groupe « vie et ciel » au palier 2 des téléphones récents** : prêt (`GROUPE_VIE_CIEL`), à confirmer par ton Pixel 7 — `?reglages=2+vie+ciel&debug`
    contre `?home=0&debug` sur Stade, Nuit, Ville. Si une partie coûte trop, elle se coupe seule (`…-particules`, `…-foule`) : dis laquelle, le lot 45 peut
    garder le groupe sans elle.
-2. **Premier chargement +1 221 o** pour les crochets (prévu : 0) : accepter, ou demander un lot qui les allège (piste : sortir la lecture de `?reglages=` dans un
+2. **Premier chargement +1 241 o** pour les crochets (prévu : 0) : accepter, ou demander un lot qui les allège (piste : sortir la lecture de `?reglages=` dans un
    module chargé seulement quand l'adresse en a un).
-3. **Ligne « vie et ciel à la demande »** : 7 881 o pour un plafond de 8 000 (119 o de marge) — le lot 47 (post-traitement) aura sa propre ligne ; tout ajout à
+3. **Ligne « vie et ciel à la demande »** : 7 885 o pour un plafond de 8 000 (115 o de marge) — le lot 47 (post-traitement) aura sa propre ligne ; tout ajout à
    la vie ou au ciel devra en retirer ailleurs. À inscrire dans le tableau de `budgets.md` par un lot de plateforme (le test du tableau est en zone partagée).
 4. **La foule** : de vrais petits spectateurs (1,3 m) qui sautillent, à la place des boîtes du décor d'aujourd'hui, seulement dans la tribune du départ. Le
    lot 44 (décor) pose une autre tribune : le pas « vie » lit la place et les spectateurs que lui confie le décor (`TribuneVie`) ; la tribune de la vitrine

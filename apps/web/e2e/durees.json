@@ -21,6 +21,7 @@
     "captures-lot39.spec.ts": 0,
     "captures-lot38b.spec.ts": 0,
     "captures-lot40.spec.ts": 0,
+    "captures-lot40b.spec.ts": 0,
     "captures-lot43.spec.ts": 0,
     "captures-lot46.spec.ts": 0,
     "captures.spec.ts": 0,
@@ -47,6 +48,7 @@
     "mesure-lot39.spec.ts": 0,
     "mesure-lot38b.spec.ts": 0,
     "mesure-lot40.spec.ts": 0,
+    "mesure-lot40b.spec.ts": 0,
     "mesure-lot43.spec.ts": 0,
     "mesure-lot46.spec.ts": 0,
     "mobile.spec.ts": 94,
@@ -71,6 +73,7 @@
     "vitesse.spec.ts": 24,
     "vitrine-voiture.spec.ts": 90,
     "vitrine.spec.ts": 293,
+    "voiture.spec.ts": 16,
     "watch-serveur.spec.ts": 39,
     "watch.spec.ts": 305
   }

@@ -31,11 +31,11 @@ const dessine = (page: Page, i: number) =>
     return px.size > 4;
   }, i);
 
-test("ordinateur : quatre colonnes, trois paliers et les fantômes se dessinent ; la couleur change ; la vue en mouvement roule avec le modèle choisi", async ({ page }) => {
+test("ordinateur : cinq colonnes (l'existant, la civile, A, B, C), trois paliers et les fantômes se dessinent ; la couleur change ; la vue en mouvement roule avec le modèle choisi", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   const erreurs = await ouvrir(page);
   const vues = await page.evaluate(async () => (await window.__vitrine!.voiture())!.toutDessiner("theme-stade"));
-  expect(vues).toHaveLength(16);
+  expect(vues).toHaveLength(20);
   for (const [i, v] of vues.entries()) {
     expect(v.triangles, `${v.col} ${v.sorte} P${v.palier}`).toBeGreaterThan(200);
     expect(v.appels, `${v.col} ${v.sorte} P${v.palier} : une image`).toBeGreaterThan(5);
@@ -44,7 +44,7 @@ test("ordinateur : quatre colonnes, trois paliers et les fantômes se dessinent 
     expect(v.maillages).toBeLessThanOrEqual(v.sorte === "fantome" ? 1 : 6);
   }
   // Palier 1 ≈ 2 000 triangles, paliers 2 et 3 entre 4 000 et 6 000 (les modèles proposés).
-  for (const col of ["A", "B", "C"]) {
+  for (const col of ["civile", "A", "B", "C"]) {
     const p1 = vues.find((v) => v.col === col && v.palier === 1 && v.sorte === "arret")!;
     const p2 = vues.find((v) => v.col === col && v.palier === 2 && v.sorte === "arret")!;
     expect(p1.triangles).toBeLessThan(2700);
