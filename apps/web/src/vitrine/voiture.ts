@@ -469,7 +469,7 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
         if (v && !v.chiffres) void dessinerVue(v);
       }
     },
-    { rootMargin: "400px 0px" },
+    { rootMargin: "1000px 0px" }, // lot 40c : huit motifs et la teinte allongent les réglages (sur un téléphone, la première vue serait sinon trop loin pour être dessinée)
   );
   for (const v of vues) proches.observe(v.canvas);
 }
