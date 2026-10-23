@@ -33,6 +33,9 @@ import {
   FALL_DEPTH,
   KICK_START,
   cellKey,
+  NO_GROUND,
+  createSurface,
+  trackWorld,
   JUMP_LIP,
   JUMP_RISE,
   KERB_WIDTH,
@@ -59,12 +62,14 @@ import {
   type PaletteName,
   type SurfaceKind,
   type Track,
+  type World,
 } from "@cdj/sim";
 import { PALETTE_LABELS } from "./labels";
-import { Builder, mix, seeded, shade, world, type V3 } from "./meshKit";
+import { Builder, mix, seeded, shade, world, type Box, type V3 } from "./meshKit";
 import { buildHalos } from "./halo";
 import { signsFor } from "./signage";
 import { addCheckpointGate, addFinishArch, addSign, addStartArch, createProps } from "./trackProps";
+import { CHAPEAU, MARGE_DECOR, placed, type PoseLog } from "./decorPose";
 import { fastZones, postFractions } from "./speedFeel";
 
 /** Couleurs et éclairage d'un thème. Une palette différente par jour : `paletteForDay` (sim) choisit laquelle. */
@@ -101,8 +106,13 @@ export interface Palette {
   sunHeight: number;
   fence: [number, number];
   neon?: [number, number];
-  /** Hauteur dessinée des rebords (m) : `WALL_HEIGHT` par défaut ; Ville (lot 22) les dessine hauts (présentation seule : la voiture n'y change rien). */
+  /**
+   * Hauteur dessinée du chapeau des rebords (m) : `WALL_HEIGHT` (1,4, la hauteur de la simulation) par défaut. Présentation seule : la voiture n'y change rien.
+   * Lot 37 : la Ville, qui les dessinait hauts (3,4 m, des murs qui cachaient la ville), a un muret bas de béton surmonté d'un garde-corps.
+   */
   wallHeight?: number;
+  /** `garde-corps` (lot 37) : au-dessus du muret de béton (`wallHeight`), des lisses et des montants jusqu'à `WALL_HEIGHT` : on voit à travers. */
+  barrier?: "garde-corps";
 }
 
 export const PALETTE_DEFS: Record<PaletteName, Palette> = {
@@ -201,7 +211,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
   },
   ville: {
     label: PALETTE_LABELS.ville,
-    // Jour de ville (lot 22) : béton clair, ciel voilé bleu-gris, route d'asphalte sombre entre des murs hauts de béton.
+    // Jour de ville (lot 22) : béton clair, ciel voilé bleu-gris, route d'asphalte sombre entre des rebords de béton (bas depuis le lot 37 : on voit la ville).
     sky: 0xc3d6e6, fogNear: 110, fogFar: 350,
     ambient: [0xf2f5ff, 1.0], sun: [0xfff3dc, 2.1],
     floorA: "#9a9da4", floorB: "#8f9298",
@@ -209,7 +219,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     wallA: 0xbfc2c8, wallB: 0xa4a8af,
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
     zenith: 0x6f9fd2, disc: 0xfff6dc, mountain: 0x8a95a6, mountainTop: 0xb6c1cf, scenery: "city",
-    sunHeight: 0.7, fence: [0xc4c7cd, 0xa4a8af], wallHeight: 3.4, // murs de béton
+    sunHeight: 0.7, fence: [0xc4c7cd, 0xa4a8af], wallHeight: 0.8, barrier: "garde-corps", // muret de béton bas et garde-corps (lot 37 ; 3,4 m de mur avant)
   },
 };
 
@@ -337,6 +347,27 @@ interface RoadStyle {
   pillars?: boolean;
 }
 
+/** Hauteurs (m) des deux lisses d'un garde-corps, au-dessus du pied du rebord ; la plus haute est la hauteur de la simulation (`WALL_HEIGHT`). */
+const GARDE_CORPS_LISSES = [1.02, WALL_HEIGHT - 0.07] as const;
+const GARDE_CORPS_ACIER = 0x4b525c;
+
+/**
+ * Garde-corps (lot 37) sur le chapeau d'un muret : deux lisses et un montant, des surfaces minces (la route est dessinée des deux côtés) : le regard passe à
+ * travers. `at(t, up)` donne le point du pied du rebord à la fraction `t` du tronçon, relevé de `up` ; `ox`, `oz` : le décalage du chapeau (vers l'extérieur, 0,6 m).
+ */
+function addGuardRail(g: Builder, at: (t: number, up: number) => V3, t0: number, t1: number, ox: number, oz: number, base: number) {
+  const cx = ox / 2; // axe du chapeau
+  const cz = oz / 2;
+  const lift = (p: V3, dy: number): V3 => [p[0] + cx, p[1] + dy, p[2] + cz];
+  for (const top of GARDE_CORPS_LISSES) g.quad(lift(at(t0, 0), top - 0.08), lift(at(t1, 0), top - 0.08), lift(at(t1, 0), top), lift(at(t0, 0), top), GARDE_CORPS_ACIER);
+  // Un montant à la fin du tronçon : deux plans croisés, du chapeau à la lisse haute.
+  const foot = lift(at(t1, 0), base);
+  const head = lift(at(t1, 0), WALL_HEIGHT);
+  const w = 0.05;
+  g.quad([foot[0] - w, foot[1], foot[2]], [foot[0] + w, foot[1], foot[2]], [head[0] + w, head[1], head[2]], [head[0] - w, head[1], head[2]], GARDE_CORPS_ACIER);
+  g.quad([foot[0], foot[1], foot[2] - w], [foot[0], foot[1], foot[2] + w], [head[0], head[1], head[2] + w], [head[0], head[1], head[2] - w], GARDE_CORPS_ACIER);
+}
+
 function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: number, skirt: boolean, paved = false, skirtColor = pal.skirt, style: RoadStyle = {}) {
   for (let i = 0; i + 1 < rows.length; i++) {
     const a = rows[i]!;
@@ -422,6 +453,7 @@ function addRoad(g: Builder, pal: Palette, rows: Row[], color: number, floorY: n
         const c0 = at(t0, wallTop);
         const c1 = at(t1, wallTop);
         g.quad(c0, c1, [c1[0] + ox, c1[1], c1[2] + oz], [c0[0] + ox, c0[1], c0[2] + oz], wallColor);
+        if (pal.barrier === "garde-corps") addGuardRail(g, at, t0, t1, ox, oz, wallTop);
       }
     }
   }
@@ -781,32 +813,129 @@ function beam(g: Builder, a: V3, b: V3, fwd: [number, number], depth: number, y0
 /** Demi-largeur de la route au point `t` du bloc. */
 const halfWidthAt = (b: Block, t: number) => (isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, t * CELL));
 
-/** Poteaux des deux rives (sur le chapeau du rebord), et, dans une portion rapide, arches et chevrons. */
-function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean) {
-  if (b.kind === "jump" || b.kind === "gap") return;
-  const top = fast ? 3.4 : 2.4;
-  const rail = b.open ? 0 : WALL_HEIGHT; // sans rebords : les poteaux se plantent au bord de la route
-  for (const t of postFractions(fast)) {
-    const hw = halfWidthAt(b, t) + 0.3;
-    for (const side of [-1, 1]) {
-      const p = onBlock(b, side * hw, t, rail);
-      g.prism(p[0], p[1], p[2], 0.16, 0.12, top, 4, shade(pal.wallB, 0.95), fast ? pal.boostMark : pal.wallA, 0.78);
+/**
+ * Mobilier de rue de la Ville (lot 37) : un lampadaire sur le chapeau du rebord, un bloc sur deux, un côté puis l'autre. Le pied est sur le chapeau (appui :
+ * le rebord), la potence passe au-dessus de la route à 5,9 m, au-dessus du passage et de la caméra ; la lampe est un halo. C'est lui qui habille la rue, à
+ * hauteur de voiture ; les lampadaires qui étaient posés au sol, huit mètres plus bas, ne se voyaient pas.
+ */
+function addStreetLamps(g: Builder, glow: Builder, pal: Palette, b: Block, log?: PoseLog) {
+  if (pal.scenery !== "city" || !hasCap(b) || b.index % 2 === 0) return;
+  const cap = pal.wallHeight ?? WALL_HEIGHT;
+  const side = b.index % 4 === 1 ? 1 : -1;
+  const p = onRim(b, 0.5, side, CHAPEAU / 2, cap);
+  const c = onBlock(b, 0, 0.5, 0);
+  const len = Math.hypot(c[0] - p[0], c[2] - p[2]) || 1;
+  const inward: [number, number] = [(c[0] - p[0]) / len, (c[2] - p[2]) / len];
+  const meta = { kind: "lampadaire", block: b.index, style: "", group: log?.group() ?? 0 } as const;
+  const top = p[1] + 5.2;
+  const reach: V3 = [p[0] + inward[0] * 1.8, top, p[2] + inward[1] * 1.8];
+  placed(log, { ...meta, part: "pied", appui: "rebord" }, [g], () => g.box(p[0] - 0.1, p[1], p[2] - 0.1, p[0] + 0.1, top, p[2] + 0.1, 0x3a3f4d));
+  placed(log, { ...meta, part: "surplomb", appui: "rebord" }, [g, glow], () => {
+    beam(g, [p[0], 0, p[2]], [reach[0], 0, reach[2]], [-inward[1], inward[0]], 0.05, top - 0.1, top + 0.04, 0x3a3f4d);
+    glow.box(reach[0] - 0.25, top - 0.2, reach[2] - 0.25, reach[0] + 0.25, top - 0.1, reach[2] + 0.25, 0xf6efd0);
+    glow.halo(reach[0], top - 0.15, reach[2], 0xfff0c8, 4.5);
+  });
+}
+
+/**
+ * Front de rue de la Ville (lot 37) : de chaque côté de la piste, des immeubles à des distances (2 à 12 m du rebord) et des hauteurs (8 à 38 m au-dessus de
+ * la route) différentes, la plupart dans le champ de vision d'une voiture qui roule. Une suite de nombres à part (le reste du décor ne bouge pas) ;
+ * jamais sur la route ni à moins de 1,5 m, jamais l'un dans l'autre. Tirés pour toute la piste ; `near` ne choisit que ceux qu'on construit (miniatures).
+ */
+function addCityFront(g: Builder, pal: Palette, track: Track, floorY: number, world: World, near?: (b: Block) => boolean, log?: PoseLog) {
+  const rnd = seeded(`${track.id}:${pal.scenery}:rue`);
+  const taken: Box[] = [];
+  for (const b of track.blocks) {
+    if (b.kind === "gap" || b.cuve) continue;
+    const curve = isCurve(b.kind);
+    const slots = curve ? 2 * curveSize(b.kind) : 2;
+    for (const side of [-1, 1] as const) {
+      for (let k = 0; k < slots; k++) {
+        const t = (k + 0.2 + rnd() * 0.6) / slots;
+        const gap = 2 + rnd() * 10;
+        const depth = 7 + rnd() * 5;
+        const along = 8 + rnd() * 8;
+        const above = 8 + rnd() * 30;
+        const tint = rnd();
+        const hw = curve ? b.w0 / 2 : blockHalfWidth(b, t * CELL);
+        const c = onBlock(b, side * (hw + gap + depth / 2), t, 0);
+        // Boîte alignée sur les axes : la profondeur suit la perpendiculaire à la piste (carrée dans un virage).
+        const alongX = !curve && (b.dir === 1 || b.dir === 3);
+        const w = curve ? (along + depth) / 2 : alongX ? along : depth;
+        const d = curve ? (along + depth) / 2 : alongX ? depth : along;
+        const box: Box = { x0: c[0] - w / 2, x1: c[0] + w / 2, z0: c[2] - d / 2, z1: c[2] + d / 2, y0: floorY, y1: 0 };
+        if (!planLibre(world, box, 1.5) || taken.some((o) => box.x0 < o.x1 + 0.5 && box.x1 > o.x0 - 0.5 && box.z0 < o.z1 + 0.5 && box.z1 > o.z0 - 0.5)) continue;
+        taken.push(box);
+        const roadY = curve ? b.y0 + b.rise / 2 : blockHeight(b, t * CELL);
+        const h = roadY - floorY + above;
+        g.mute = !!near && !near(b);
+        placed(log, { kind: "decor", part: "pied", appui: "sol", group: log?.group() ?? 0, block: -1, style: "city-front" }, [g], () => addBuilding(g, c[0], floorY, c[2], w, d, h, cityWall(tint), roadY - floorY - 2));
+        g.mute = false;
+      }
     }
   }
-  if (!fast) return;
-  // Arche au milieu d'un bloc sur deux : deux piliers et une poutre en travers, haute de 7 m.
-  if (b.index % 2 === 0) {
-    const hw = halfWidthAt(b, 0.5) + 0.4;
-    const l = onBlock(b, hw, 0.5, rail);
-    const r = onBlock(b, -hw, 0.5, rail);
+}
+
+/** Un rebord plein et fermé : le chapeau où l'on pose un poteau (ni bas-côté ni cuve ni vide ; un tremplin ou un vide de saut n'en ont pas). */
+const hasCap = (b: Block) => !b.open && !b.shoulder && !b.cuve && b.kind !== "gap" && b.kind !== "jump";
+
+/**
+ * Chapeau du rebord (lot 37) : le point à `off` m au-delà du bord de la route (la demi-largeur du bloc, côté `side`) à la fraction `t` du bloc, à la hauteur
+ * du bord plus celle du chapeau `cap`. C'est là, et nulle part ailleurs, qu'un poteau de bordure a son appui : ni à la hauteur de la ligne centrale, ni au
+ * bout du bloc, ni plus loin dans le vide (un virage relevé monte au-delà du bord : on lit la hauteur du bord, pas celle du poteau).
+ */
+function onRim(b: Block, t: number, side: 1 | -1, off: number, cap: number): V3 {
+  if (isCurve(b.kind)) {
+    const { r: R } = curveCenter(b.kind);
+    const hw = b.w0 / 2;
+    const r = (e: number) => (turnsLeft(b.kind) ? R - side * e : R + side * e);
+    const a = t * (Math.PI / 2);
+    const edge = arcPoint(b, r(hw), a, b.y0);
+    const at = arcPoint(b, r(hw + off), a, b.y0);
+    return [at[0], edge[1] + cap, at[2]];
+  }
+  const q = t * CELL;
+  return world(b, CELL / 2 + side * (blockHalfWidth(b, q) + off), q, roadHeight(b, q) + cap);
+}
+
+/**
+ * Bornes de la rive et arches de vitesse (lot 15, repris au lot 37) : rien que dans une **portion rapide** (`fastZones`), où elles font lire la vitesse ;
+ * ailleurs elles n'avaient aucun rôle. Les bornes se posent sur le chapeau d'un rebord plein (`onRim`), tous les 16 m ; une arche tous les quatre blocs,
+ * ses deux pieds descendent jusqu'au sol lointain, de l'autre côté du rebord. Rien sur un bas-côté, une cuve ou une section sans rebords.
+ */
+function addSpeedMarks(g: Builder, pal: Palette, b: Block, fast: boolean, floorY: number, log?: PoseLog) {
+  if (!fast || b.kind === "jump" || b.kind === "gap" || b.cuve) return;
+  const cap = pal.wallHeight ?? WALL_HEIGHT;
+  const meta = { part: "pied", appui: "rebord", block: b.index, style: "" } as const;
+  if (hasCap(b)) {
+    for (const t of postFractions(false)) {
+      for (const side of [-1, 1] as const) {
+        const p = onRim(b, t, side, CHAPEAU / 2, cap);
+        placed(log, { ...meta, kind: "poteau", group: log?.group() ?? 0 }, [g], () => g.prism(p[0], p[1], p[2], 0.16, 0.12, 3.4, 4, shade(pal.wallB, 0.95), pal.boostMark, 0.78));
+      }
+    }
+  }
+  // Arche : deux piliers et une poutre en travers, haute de 7 m, un bloc sur quatre.
+  if (b.index % 4 === 0 && !b.banked) {
+    const hw = (b.shoulder ? SHOULDER_EDGE : isCurve(b.kind) ? b.w0 / 2 : blockHalfWidth(b, CELL / 2)) + CHAPEAU + 0.1 + 0.34; // au-delà du bord de la route, ou de la bande
+    const l = onBlock(b, hw, 0.5, 0);
+    const r = onBlock(b, -hw, 0.5, 0);
     const ahead = onBlock(b, 0, 0.52, 0);
     const behind = onBlock(b, 0, 0.48, 0);
     const len = Math.hypot(ahead[0] - behind[0], ahead[2] - behind[2]) || 1;
     const fwd: [number, number] = [(ahead[0] - behind[0]) / len, (ahead[2] - behind[2]) / len];
     const h = 7.2;
-    for (const e of [l, r]) g.prism(e[0], e[1], e[2], 0.34, 0.26, h, 4, shade(pal.wallB, 0.85), pal.wallA, 0.78);
-    beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.4, l[1] + h - 0.5, l[1] + h + 0.3, pal.wallA);
-    beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.42, l[1] + h - 0.12, l[1] + h + 0.06, pal.boostMark);
+    const group = log?.group() ?? 0;
+    for (const e of [l, r]) {
+      placed(log, { ...meta, kind: "arche-vitesse", appui: "sol", group }, [g], () => {
+        g.prism(e[0], floorY, e[2], 0.34, 0.34, e[1] - floorY, 4, shade(pal.wallB, 0.7), shade(pal.wallB, 0.7), 0.78); // le fût, jusqu'au sol
+        g.prism(e[0], e[1], e[2], 0.34, 0.26, h, 4, shade(pal.wallB, 0.85), pal.wallA, 0.78);
+      });
+    }
+    placed(log, { ...meta, kind: "arche-vitesse", part: "surplomb", appui: "sol", group }, [g], () => {
+      beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.4, l[1] + h - 0.5, l[1] + h + 0.3, pal.wallA);
+      beam(g, [l[0], 0, l[2]], [r[0], 0, r[2]], fwd, 0.42, l[1] + h - 0.12, l[1] + h + 0.06, pal.boostMark);
+    });
   }
   // Chevrons peints au centre, tous les 8 m, entre les tirets (route droite ou pente, sans effet de piste).
   if (b.surface === "road" && !isCurve(b.kind) && (b.kind === "straight" || b.kind === "down" || b.kind === "up")) {
@@ -879,9 +1008,21 @@ function blockBox(g: Builder, b: Block, p0: number, p1: number, q0: number, q1: 
 
 const CROWD = [0xff4b4b, 0xffd22e, 0x4bd0ff, 0xf4f4f4, 0x6bff8a, 0xff8a3d, 0xc084fc] as const;
 
-/** Tribune au départ : trois gradins en escalier, de la foule en petites boîtes de couleur, un toit léger. */
-function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number) {
-  const side = turnsLeft(b.kind) ? 1 : -1; // du côté opposé à un éventuel virage : à gauche par défaut (p grand)
+/**
+ * Tribune au départ : trois gradins en escalier, de la foule en petites boîtes de couleur, un toit léger. Lot 37 : elle repose sur un socle plein jusqu'au
+ * sol lointain (elle flottait à la hauteur de la route), et ne se pose que là où rien de la piste n'est à moins de `MARGE_DECOR` : du côté opposé à un
+ * éventuel virage, sinon de l'autre, sinon pas du tout.
+ */
+function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, floorY: number, world: World, id: string, log?: PoseLog) {
+  const meta = { kind: "tribune", part: "pied", appui: "sol", group: log?.group() ?? 0, block: -1, style: "" } as const;
+  const first = turnsLeft(b.kind) ? 1 : -1;
+  const accepter = (box: Box) => planLibre(world, box, MARGE_DECOR);
+  if (placed(log, meta, [g], () => buildGrandstand(g, pal, b, rnd, first, floorY), accepter)) return;
+  // L'autre côté : une suite de nombres à part, pour que le reste du décor, tiré de `rnd`, ne bouge pas.
+  placed(log, { ...meta, group: log?.group() ?? 0 }, [g], () => buildGrandstand(g, pal, b, seeded(`${id}:tribune`), -first as 1 | -1, floorY), accepter);
+}
+
+function buildGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number, side: 1 | -1, floorY: number) {
   const hw = blockHalfWidth(b, CELL / 2);
   const base = side > 0 ? CELL / 2 + hw + 3.5 : CELL / 2 - hw - 3.5;
   const dir = side > 0 ? 1 : -1;
@@ -891,7 +1032,7 @@ function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number) {
   for (let tier = 0; tier < 3; tier++) {
     const p0 = base + dir * tier * 2.2;
     const p1 = p0 + dir * 2.2;
-    blockBox(g, b, Math.min(p0, p1), Math.max(p0, p1), q0, q1, y0 - 0.5, y0 + 0.9 + tier * 1.0, shade(pal.skirt, 1.1 + tier * 0.08));
+    blockBox(g, b, Math.min(p0, p1), Math.max(p0, p1), q0, q1, floorY, y0 + 0.9 + tier * 1.0, shade(pal.skirt, 1.1 + tier * 0.08));
     const top = y0 + 0.9 + tier * 1.0;
     const mid = (p0 + p1) / 2;
     for (let q = q0 + 0.6; q < q1 - 0.4; q += 0.9) {
@@ -903,17 +1044,69 @@ function addGrandstand(g: Builder, pal: Palette, b: Block, rnd: () => number) {
       }
     }
   }
-  // Toit : une dalle sur quatre poteaux.
+  // Toit : une dalle sur quatre poteaux, qui descendent eux aussi jusqu'au sol.
   const pBack = base + dir * 6.6;
   const roof = y0 + 6.2;
-  for (const q of [q0 + 0.4, q1 - 0.8]) blockBox(g, b, Math.min(pBack, pBack - dir * 0.4), Math.max(pBack, pBack - dir * 0.4), q, q + 0.4, y0, roof, 0x3a3f4d);
+  for (const q of [q0 + 0.4, q1 - 0.8]) blockBox(g, b, Math.min(pBack, pBack - dir * 0.4), Math.max(pBack, pBack - dir * 0.4), q, q + 0.4, floorY, roof, 0x3a3f4d);
   blockBox(g, b, Math.min(base, pBack + dir * 0.6), Math.max(base, pBack + dir * 0.6), q0, q1, roof, roof + 0.4, pal.wallA);
 }
 
+/** Vrai si le plan de `box`, élargi de `marge` m, ne touche ni route, ni bas-côté, ni paroi de cuve : rien de ce que la voiture roule (lot 37). */
+function planLibre(world: World, box: Box, marge: number): boolean {
+  const x0 = box.x0 - marge;
+  const x1 = box.x1 + marge;
+  const z0 = box.z0 - marge;
+  const z1 = box.z1 + marge;
+  const hit = (x: number, z: number) => {
+    world.sample(x, z, probe);
+    return probe.height !== NO_GROUND;
+  };
+  if (hit((x0 + x1) / 2, (z0 + z1) / 2)) return false;
+  const nx = Math.max(1, Math.ceil(x1 - x0));
+  const nz = Math.max(1, Math.ceil(z1 - z0));
+  for (let i = 0; i <= nx; i++) {
+    const x = x0 + ((x1 - x0) * i) / nx;
+    if (hit(x, z0) || hit(x, z1)) return false;
+  }
+  for (let j = 1; j < nz; j++) {
+    const z = z0 + ((z1 - z0) * j) / nz;
+    if (hit(x0, z) || hit(x1, z)) return false;
+  }
+  return true;
+}
+const probe = createSurface();
+
 type Style = Palette["scenery"];
 
+/** Teinte d'un immeuble de la Ville (lot 37) : le béton gris domine, le beige et le bleu-gris le varient. `r` ∈ [0, 1[. */
+function cityWall(r: number): number {
+  if (r < 0.2) return mix(0xcdbfa8, 0xe0d3bd, r / 0.2);
+  if (r < 0.4) return mix(0x9fb0c2, 0xc2cfdc, (r - 0.2) / 0.2);
+  return mix(0xa9adb5, 0xcfd2d8, (r - 0.4) / 0.6);
+}
+
+/**
+ * Un immeuble : une boîte de béton, un acrotère, et des bandes de fenêtres sombres sur les quatre faces. Les fenêtres sont des surfaces à plat (2 triangles
+ * chacune) et non des boîtes (12) : pour la même ville, six fois moins de triangles (lot 37).
+ */
+function addBuilding(g: Builder, x: number, y: number, z: number, w: number, d: number, h: number, wall: number, windowsFrom = 3) {
+  g.box(x - w / 2, y, z - d / 2, x + w / 2, y + h, z + d / 2, wall);
+  g.box(x - w / 2 - 0.15, y + h, z - d / 2 - 0.15, x + w / 2 + 0.15, y + h + 0.4, z + d / 2 + 0.15, shade(wall, 0.78)); // acrotère
+  const glass = shade(0x35506b, 0.95 + ((Math.round(x * 3 + z) % 3) - 1) * 0.08);
+  const e = 0.04;
+  // Les bandes montent depuis 3 m au-dessus du pied (le rez-de-chaussée est plein), alignées sur le sol lointain ; sous le niveau de la route on ne les voit pas : `windowsFrom`.
+  for (let f = 3 + Math.floor(Math.max(0, windowsFrom - 3) / 3.2) * 3.2; f < h - 1.5; f += 3.2) {
+    const y0 = y + f;
+    const y1 = y + f + 1.4;
+    g.quad([x - w / 2 + 0.6, y0, z + d / 2 + e], [x + w / 2 - 0.6, y0, z + d / 2 + e], [x + w / 2 - 0.6, y1, z + d / 2 + e], [x - w / 2 + 0.6, y1, z + d / 2 + e], glass);
+    g.quad([x + w / 2 - 0.6, y0, z - d / 2 - e], [x - w / 2 + 0.6, y0, z - d / 2 - e], [x - w / 2 + 0.6, y1, z - d / 2 - e], [x + w / 2 - 0.6, y1, z - d / 2 - e], glass);
+    g.quad([x + w / 2 + e, y0, z - d / 2 + 0.6], [x + w / 2 + e, y0, z + d / 2 - 0.6], [x + w / 2 + e, y1, z + d / 2 - 0.6], [x + w / 2 + e, y1, z - d / 2 + 0.6], glass);
+    g.quad([x - w / 2 - e, y0, z + d / 2 - 0.6], [x - w / 2 - e, y0, z - d / 2 + 0.6], [x - w / 2 - e, y1, z - d / 2 + 0.6], [x - w / 2 - e, y1, z + d / 2 - 0.6], glass);
+  }
+}
+
 /** Un élément de décor posé au sol en (x, y, z). `glow` : parties lumineuses (matériau sans éclairage). */
-function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: number, y: number, z: number, rnd: () => number) {
+function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: number, y: number, z: number, rnd: () => number, roadY = y) {
   const k = rnd();
   const jitter = 0.9 + rnd() * 0.2;
   if (style === "desert") {
@@ -1034,30 +1227,18 @@ function addProp(g: Builder, glow: Builder, style: Style, pal: Palette, x: numbe
       g.prism(x, y + 2.6, z, w * 0.82, 0.1, 1.6, 4, 0xe8eef4, 0xffffff, Math.PI / 4);
     }
   } else if (style === "city") {
-    // Ville (lot 22) : immeubles de béton aux fenêtres sombres, lampadaires, petits cubes de mobilier urbain.
+    // Ville (lot 22, repris au lot 37) : des immeubles de béton, dont le sommet dépasse la route de 6 à 34 m (le sol est à 8 m au moins sous elle : sans cela
+    // on ne voyait que des toits derrière le rebord). Le mobilier de rue est sur le rebord (`addStreetLamps`), plus au sol où personne ne le voyait.
     if (k < 0.55) {
       const w = (6 + rnd() * 6) * jitter;
       const d = (6 + rnd() * 6) * jitter;
-      const h = (10 + rnd() * 24) * jitter;
-      const wall = mix(0xa9adb5, 0xcfd2d8, rnd());
-      g.box(x - w / 2, y, z - d / 2, x + w / 2, y + h, z + d / 2, wall);
-      g.box(x - w / 2 - 0.15, y + h, z - d / 2 - 0.15, x + w / 2 + 0.15, y + h + 0.4, z + d / 2 + 0.15, shade(wall, 0.78)); // acrotère
-      // Bandes de fenêtres sombres sur les quatre faces.
-      for (let f = 3; f < h - 1.5; f += 3.2) {
-        g.box(x - w / 2 + 0.6, y + f, z + d / 2, x + w / 2 - 0.6, y + f + 1.4, z + d / 2 + 0.06, 0x35506b);
-        g.box(x - w / 2 + 0.6, y + f, z - d / 2 - 0.06, x + w / 2 - 0.6, y + f + 1.4, z - d / 2, 0x35506b);
-        g.box(x + w / 2, y + f, z - d / 2 + 0.6, x + w / 2 + 0.06, y + f + 1.4, z + d / 2 - 0.6, 0x35506b);
-        g.box(x - w / 2 - 0.06, y + f, z - d / 2 + 0.6, x - w / 2, y + f + 1.4, z + d / 2 - 0.6, 0x35506b);
-      }
+      const h = roadY - y + (6 + rnd() * 28) * jitter;
+      addBuilding(g, x, y, z, w, d, h, cityWall(rnd()), roadY - y - 2);
     } else if (k < 0.85) {
-      const h = (5 + rnd() * 1.5) * jitter;
-      g.box(x - 0.1, y, z - 0.1, x + 0.1, y + h, z + 0.1, 0x3a3f4d);
-      g.box(x - 0.1, y + h - 0.12, z - 0.1, x + 1.1, y + h + 0.05, z + 0.1, 0x3a3f4d);
-      g.box(x + 0.7, y + h - 0.3, z - 0.22, x + 1.15, y + h - 0.12, z + 0.22, 0xf6efd0);
-      glow.halo(x + 0.92, y + h - 0.2, z, 0xfff0c8, 4.5);
+      rnd(); // (l'ancien lampadaire au sol : ses tirages sont gardés, le reste du décor ne bouge pas)
     } else {
-      const s = (0.9 + rnd() * 1.2) * jitter;
-      g.box(x - s, y, z - s, x + s, y + s * 1.1, z + s, mix(0x8f949c, 0xb4b8bf, rnd()));
+      rnd();
+      rnd();
     }
   } else {
     // pylônes lumineux : un mât sombre, un tube lumineux, des cubes qui flottent
@@ -1130,8 +1311,21 @@ function addTypedProp(g: Builder, style: Style, x: number, y: number, z: number,
   return false;
 }
 
+/** Hauteur moyenne de la route autour de la cellule (cx, cz), à `span` cellules près ; `floorY` s'il n'y en a pas. */
+function roadAround(track: Track, cx: number, cz: number, span: number, floorY: number): number {
+  let sum = 0;
+  let n = 0;
+  for (const b of track.blocks) {
+    if (Math.abs(b.cx - cx) <= span && Math.abs(b.cz - cz) <= span) {
+      sum += b.y0 + b.rise / 2;
+      n++;
+    }
+  }
+  return n > 0 ? sum / n : floorY;
+}
+
 /** Décor au bord de la piste : dans les cellules vides à moins de 2 cellules d'un bloc, selon le style de la palette. */
-function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, rnd: () => number, keep?: (cx: number, cz: number) => boolean, dense = false) {
+function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floorY: number, world: World, rnd: () => number, keep?: (cx: number, cz: number) => boolean, dense = false, log?: PoseLog, aerial = false) {
   const wanted = new Set<number>();
   const span = 2;
   for (const b of track.blocks) {
@@ -1157,14 +1351,20 @@ function addScenery(g: Builder, glow: Builder, pal: Palette, track: Track, floor
     }
   }
   let count = 0;
+  // Lot 37 : un élément posé au sol ne touche jamais la route ni un bas-côté (`MARGE_DECOR` m de marge) ; refusé, il disparaît mais a consommé ses tirages au sort.
+  const accepter = (box: Box) => planLibre(world, box, MARGE_DECOR);
   for (const [cx, cz] of cells) {
     g.mute = glow.mute = keep ? !keep(cx, cz) : false; // hors du cadre : mêmes tirages au sort, aucune forme
     const n = dense ? 1 + Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 3);
+    const roadY = aerial ? floorY : roadAround(track, cx, cz, span, floorY); // vue aérienne : la ville reste basse, elle ne cache pas la piste
     for (let i = 0; i < n && count < (dense ? 520 : 650); i++, count++) {
       const x = cx * CELL + 3 + rnd() * (CELL - 6);
       const z = cz * CELL + 3 + rnd() * (CELL - 6);
-      if (dense && addTypedProp(g, pal.scenery, x, floorY, z, rnd)) continue;
-      addProp(g, glow, pal.scenery, pal, x, floorY, z, rnd);
+      const meta = { kind: "decor", part: "pied", appui: "sol", group: log?.group() ?? 0, block: -1, style: pal.scenery } as const;
+      let typed = false;
+      if (dense) placed(log, meta, [g, glow], () => (typed = addTypedProp(g, pal.scenery, x, floorY, z, rnd)), accepter);
+      if (typed) continue;
+      placed(log, meta, [g, glow], () => addProp(g, glow, pal.scenery, pal, x, floorY, z, rnd, roadY), accepter);
     }
   }
   g.mute = glow.mute = false;
@@ -1353,18 +1553,42 @@ export interface TrackSceneOptions {
    * en entier, donc il est le même que dans le jeu) : une miniature coûte une fraction d'une scène complète.
    */
   near?: { from: number; to: number };
+  /** Relevé de la pose du décor (lot 37) : ce qui est planté, où, sur quoi (voir `decorPose.ts`). Les tests le lisent ; le jeu n'en donne pas. */
+  log?: PoseLog;
+  /** Sans DOM (tests) : ni texture ni bandeau de texte ; les formes et leur pose sont les mêmes. */
+  headless?: boolean;
 }
 
-/** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
-export function buildTrackScene(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackScene {
+/** Ce que `trackGeometry` construit : les maillages de la scène, avant d'être posés dans une `Scene`. */
+export interface TrackGeometry {
+  g: Builder;
+  speedG: Builder;
+  neonG: Builder;
+  props: ReturnType<typeof createProps>;
+  decorG: Builder;
+  glowG: Builder;
+  denseG: Builder;
+  denseGlow: Builder;
+  signCount: number;
+  /** Suite de nombres du circuit : le ciel et les montagnes la poursuivent là où le décor l'a laissée. */
+  rnd: () => number;
+}
+
+/**
+ * Les formes d'un circuit, sans rien de la scène (ni lumière, ni ciel, ni texture : de quoi les mesurer dans un test). `buildTrackScene` les pose
+ * ensuite dans une `Scene`. Rien ne dépend de l'ordre des fonctions que celui des tirages au sort de `rnd`, gardé tel qu'il était.
+ */
+export function trackGeometry(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackGeometry {
   const pal = PALETTE_DEFS[paletteName];
   const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
   const g = new Builder();
   const speedG = new Builder();
   const neonG = new Builder(); // bordures néon au bord du vide (lot 21, Nuit) : lisibles, jamais masquées par la qualité
   const fast = fastZones(track);
-  const look = LOOKS[paletteName];
-  const props = createProps(!!options.aerial); // panneaux, arches, portes (lot 23)
+  const decorG = new Builder(); // décor « lourd » : masqué à la qualité basse, avec ses parties lumineuses (`glowG`)
+  const glowG = new Builder();
+  const roulant = trackWorld(track); // ce que la voiture roule : le décor n'y touche jamais (lot 37)
+  const props = createProps(floorY, !!options.aerial || !!options.headless, options.log); // panneaux, arches, portes (lot 23)
   let signCount = 0;
   if (!options.aerial) {
     for (const sign of signsFor(track)) addSign(props, track.blocks[sign.block]!, sign);
@@ -1449,7 +1673,10 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
       const c = world(b, CELL / 2, CELL / 2, b.y0 + 0.6);
       props.glow.halo(c[0], c[1], c[2], b.kind === "boost" ? pal.boost : b.kind === "turbo" ? TURBO_COLOR.base : CUT_COLOR.mark, b.kind === "turbo" ? 9 : 7);
     }
-    if (!options.aerial) addSpeedMarks(speedG, pal, b, fast[b.index] ?? false);
+    if (!options.aerial) {
+      addSpeedMarks(speedG, pal, b, fast[b.index] ?? false, floorY, options.log);
+      addStreetLamps(speedG, glowG, pal, b, options.log);
+    }
     if (b.mark === "checkpoint") addCheckpointGate(props, pal, b);
     if (b.mark === "finish") addFinishArch(props, pal, b);
     if (b.mark === "start") addStartArch(props, pal, b);
@@ -1468,20 +1695,28 @@ export function buildTrackScene(track: Track, paletteName: PaletteName = "desert
 
   const rnd = seeded(`${track.id}:${paletteName}`);
   const first0 = track.blocks[0]!;
-  const decorG = new Builder();
-  const glowG = new Builder();
   const near = options.aerial ? options.near : undefined;
   const NEAR_CELLS = 4;
   const windowBlocks = near ? track.blocks.slice(near.from, near.to + 1) : [];
   const nearCell = (cx: number, cz: number) => windowBlocks.some((b) => Math.abs(b.cx - cx) <= NEAR_CELLS && Math.abs(b.cz - cz) <= NEAR_CELLS);
   decorG.mute = !!near && !nearCell(first0.cx, first0.cz);
-  addGrandstand(decorG, pal, first0, rnd);
+  addGrandstand(decorG, pal, first0, rnd, floorY, roulant, track.id, options.log);
   decorG.mute = false;
-  addScenery(decorG, glowG, pal, track, floorY, rnd, near ? nearCell : undefined);
+  addScenery(decorG, glowG, pal, track, floorY, roulant, rnd, near ? nearCell : undefined, false, options.log, !!options.aerial);
+  if (pal.scenery === "city" && !options.aerial) addCityFront(decorG, pal, track, floorY, roulant, near ? (b) => nearCell(b.cx, b.cz) : undefined, options.log);
   // Décor dense (lot 23) : une seconde passe, tirée d'une autre suite de nombres (le décor d'origine ne bouge pas), réservée à la qualité 2.
   const denseG = new Builder();
   const denseGlow = new Builder();
-  if (!options.aerial) addScenery(denseG, denseGlow, pal, track, floorY, seeded(`${track.id}:${paletteName}:dense`), undefined, true);
+  if (!options.aerial) addScenery(denseG, denseGlow, pal, track, floorY, roulant, seeded(`${track.id}:${paletteName}:dense`), undefined, true, options.log);
+  return { g, speedG, neonG, props, decorG, glowG, denseG, denseGlow, signCount, rnd };
+}
+
+/** Construit la scène d'un circuit : route, rebords, plaques, portes, et un sol à damier tout en bas. */
+export function buildTrackScene(track: Track, paletteName: PaletteName = "desert", options: TrackSceneOptions = {}): TrackScene {
+  const pal = PALETTE_DEFS[paletteName];
+  const floorY = track.voidY - FALL_DEPTH; // le sol lointain : sous la route la plus basse (8 m) ; la voiture qui tombe n'y arrive jamais
+  const look = LOOKS[paletteName];
+  const { g, speedG, neonG, props, decorG, glowG, denseG, denseGlow, signCount, rnd } = trackGeometry(track, paletteName, options);
 
   const sky = new Color(pal.sky);
   const scene = new Scene();

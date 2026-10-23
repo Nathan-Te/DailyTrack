@@ -78,8 +78,9 @@ Relevés de 15 s à la qualité 1 (et de 6 s à la qualité 2 pour les appels et
 
 ### Poids (premier chargement)
 
-`npm run build && node scripts/budgets.mjs`, `main` (`2363986`) puis la branche : JS + CSS **254 798 → 256 516 o (+1 718 o)** ; JS 243 386 → 245 104 o ;
-hors three.js 110 620 → 112 330 o (+1 710 o) ; three.js +8 o ; CSS, catalogue anglais, fils de travail, polices inchangés. Marge 21 802 → **20 084 o**
+`npm run build && node scripts/budgets.mjs`, `main` puis la branche. Sur `main` à `2363986` : JS + CSS 254 798 → 256 516 o (+1 718 o). **Après la
+fusion du lot 37** (`main` à `0d84dec`, 256 990 o) : JS + CSS **256 990 → 258 683 o (+1 693 o)** ; JS 245 578 → 247 271 o ; hors three.js 112 812 →
+114 497 o (+1 685 o) ; three.js +8 o ; CSS, catalogue anglais, fils de travail, polices inchangés. Marge 19 610 → **17 917 o**
 (`docs/plateforme/budgets.md`). **Justification** (> 1 ko) : `voiture/pieces.ts` (2,1 ko seul) fusionne des pièces en une géométrie, porte la
 rugosité et le métal par sommet, tourne les roues dans le shader et prépare ce que les modèles de la partie 2 réutilisent (livrée, lissage) ;
 c'est le socle de la retouche 40b, compté une seule fois dans le budget du lot (voir § 5).

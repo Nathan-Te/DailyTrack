@@ -13,8 +13,8 @@ const TURBO = { base: 0xff3b30, mark: 0xffe14d };
 const CUT = { base: 0x2b1b45, mark: 0xffd22e };
 
 /** Les calques d'une direction vus comme les `Props` de trackProps.ts (mêmes constructeurs). */
-export function commeProps(c: Calques): Props {
-  return { solid: c.solide, glow: c.lumineux, curtain: c.rideau, banners: c.bandeaux, aerial: c.aerien };
+export function commeProps(c: Calques, floorY: number): Props {
+  return { solid: c.solide, glow: c.lumineux, curtain: c.rideau, banners: c.bandeaux, aerial: c.aerien, floorY };
 }
 
 /** Une plaque au sol, de demi-largeur `ph` et demi-longueur `hl`, et des chevrons ; `n` chevrons aux avances `dqs`. */
@@ -49,13 +49,13 @@ export const ORIGINE: Direction = /* @__PURE__ */ (() => ({
   ambiance: (_n, pal, look) => ambianceDOrigine(pal, look),
   route: () => STYLE_ORIGINE,
   portiqueDepart(c, x, b, q) {
-    addStartArch(commeProps(c), x.pal, b, q);
+    addStartArch(commeProps(c, x.floorY), x.pal, b, q);
   },
   arrivee(c, x, b, q) {
-    addFinishArch(commeProps(c), x.pal, b, q);
+    addFinishArch(commeProps(c, x.floorY), x.pal, b, q);
   },
   porte(c, x, b) {
-    addCheckpointGate(commeProps(c), x.pal, b);
+    addCheckpointGate(commeProps(c, x.floorY), x.pal, b);
   },
   plaque(c, x, b) {
     plaqueOrigine(c.route, b, x.pal.boost, x.pal.boostMark, [-1.6, 1.4], 0.6);
@@ -78,8 +78,8 @@ export const ORIGINE: Direction = /* @__PURE__ */ (() => ({
     }
     haloPlaque(c.lumineux, b, CUT.mark, 7);
   },
-  panneau(c, _x, hote, s) {
-    addSign(commeProps(c), hote, s);
+  panneau(c, x, hote, s) {
+    addSign(commeProps(c, x.floorY), hote, s);
   },
   rythme(c, x, b, fast) {
     if (b.kind === "jump" || b.kind === "gap") return;
