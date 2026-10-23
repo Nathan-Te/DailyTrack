@@ -1,0 +1,143 @@
+{
+ "stade": {
+  "tris": 38175,
+  "meshes": 7,
+  "halos": 13,
+  "parts": {
+   "route": 14040,
+   "vitesse": 5827,
+   "neon": 0,
+   "solide": 1010,
+   "lumineux": 582,
+   "rideau": 6,
+   "decor": 10257,
+   "decorLum": 0,
+   "dense": 6453,
+   "denseLum": 0
+  }
+ },
+ "rallye": {
+  "tris": 52405,
+  "meshes": 7,
+  "halos": 12,
+  "parts": {
+   "route": 11835,
+   "vitesse": 5573,
+   "neon": 0,
+   "solide": 933,
+   "lumineux": 507,
+   "rideau": 6,
+   "decor": 19646,
+   "decorLum": 0,
+   "dense": 13907,
+   "denseLum": 0
+  }
+ },
+ "banquise": {
+  "tris": 128723,
+  "meshes": 7,
+  "halos": 12,
+  "parts": {
+   "route": 8675,
+   "vitesse": 4948,
+   "neon": 0,
+   "solide": 955,
+   "lumineux": 394,
+   "rideau": 6,
+   "decor": 53689,
+   "decorLum": 0,
+   "dense": 60057,
+   "denseLum": 0
+  }
+ },
+ "nuit": {
+  "tris": 80370,
+  "meshes": 10,
+  "halos": 545,
+  "parts": {
+   "route": 12043,
+   "vitesse": 5416,
+   "neon": 376,
+   "solide": 866,
+   "lumineux": 406,
+   "rideau": 5,
+   "decor": 30404,
+   "decorLum": 4909,
+   "dense": 22376,
+   "denseLum": 3570
+  }
+ },
+ "campagne": {
+  "tris": 65833,
+  "meshes": 7,
+  "halos": 13,
+  "parts": {
+   "route": 7611,
+   "vitesse": 5771,
+   "neon": 0,
+   "solide": 959,
+   "lumineux": 479,
+   "rideau": 6,
+   "decor": 30320,
+   "decorLum": 0,
+   "dense": 20687,
+   "denseLum": 0
+  }
+ },
+ "canyon": {
+  "tris": 59164,
+  "meshes": 7,
+  "halos": 14,
+  "parts": {
+   "route": 11559,
+   "vitesse": 6318,
+   "neon": 0,
+   "solide": 1023,
+   "lumineux": 452,
+   "rideau": 7,
+   "decor": 23164,
+   "decorLum": 0,
+   "dense": 16642,
+   "denseLum": 0
+  }
+ },
+ "col": {
+  "tris": 70767,
+  "meshes": 7,
+  "halos": 14,
+  "parts": {
+   "route": 9038,
+   "vitesse": 5061,
+   "neon": 0,
+   "solide": 1051,
+   "lumineux": 821,
+   "rideau": 7,
+   "decor": 35539,
+   "decorLum": 0,
+   "dense": 19251,
+   "denseLum": 0
+  }
+ },
+ "ville": {
+  "tris": 155004,
+  "meshes": 7,
+  "halos": 244,
+  "parts": {
+   "route": 7516,
+   "vitesse": 6073,
+   "neon": 0,
+   "solide": 951,
+   "lumineux": 639,
+   "rideau": 6,
+   "decor": 81516,
+   "decorLum": 0,
+   "dense": 58304,
+   "denseLum": 0
+  }
+ },
+ "_moyenne": {
+  "tris": 81305,
+  "meshes": 7.38,
+  "halos": 108
+ }
+}

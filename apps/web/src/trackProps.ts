@@ -5,6 +5,7 @@ import { BufferGeometry, CanvasTexture, DoubleSide, Float32BufferAttribute, Mesh
 import { CELL, CUVE_LEFT, CUVE_RIGHT, SHOULDER_EDGE, blockHalfWidth, blockHeight, type Block } from "@cdj/sim";
 import { Builder, mix, shade, world, type V3 } from "./meshKit";
 import type { SignKind, SignSpec } from "./signage";
+import { CHAPEAU, placed, type PoseLog } from "./decorPose";
 
 export interface Props {
   solid: Builder;
@@ -14,10 +15,14 @@ export interface Props {
   banners: Mesh[];
   /** Vue aérienne (miniatures) : pas de bandeaux de texte (une texture de plus par arche pour rien). */
   aerial: boolean;
+  /** Relevé de la pose (lot 37) : les tests y lisent ce qui est planté et où ; absent dans le jeu. */
+  log?: PoseLog;
+  /** Le sol lointain (lot 37) : les pieds des panneaux, des arches et des portes y descendent, jamais dans le vide. */
+  floorY: number;
 }
 
-export function createProps(aerial = false): Props {
-  return { solid: new Builder(), glow: new Builder(), curtain: new Builder(), banners: [], aerial };
+export function createProps(floorY: number, aerial = false, log?: PoseLog): Props {
+  return { solid: new Builder(), glow: new Builder(), curtain: new Builder(), banners: [], aerial, log, floorY };
 }
 
 /** Couleurs de la palette dont les accessoires ont besoin. */
@@ -111,7 +116,10 @@ export function drawGlyph(g: Builder, pl: Plane, kind: SignKind, severity: 1 | 2
   }
 }
 
-/** Plante un panneau : poteau au bord de la route, plaque tournée vers la voiture qui arrive. */
+/**
+ * Plante un panneau : poteau au bord de la route, plaque tournée vers la voiture qui arrive. Le poteau descend jusqu'au sol lointain (lot 37 : il ne
+ * flotte plus au-delà du rebord) ; il est planté assez loin du bord pour que la plaque, haute de 2,5 m, ne surplombe jamais la route ni un bas-côté.
+ */
 export function addSign(p: Props, host: Block, s: SignSpec) {
   const y = blockHeight(host, s.q);
   const pBase = CELL / 2 + s.side * s.offset;
@@ -122,14 +130,18 @@ export function addSign(p: Props, host: Block, s: SignSpec) {
   const half = 1.25;
   const style = SIGN_STYLES[signStyleOf(s.kind, s.severity)]!;
   // Poteau (deux petits montants, le panneau est large) : boîtes alignées sur les axes, assez fines pour qu'on n'y voie rien d'oblique.
-  p.solid.box(base[0] - 0.07, y, base[2] - 0.07, base[0] + 0.07, y + pole + half * 2, base[2] + 0.07, 0x4a4f5c);
+  const group = p.log?.group() ?? 0;
+  const meta = { kind: "panneau", group, block: host.index, style: "" } as const;
+  placed(p.log, { ...meta, part: "pied", appui: "sol" }, [p.solid], () => p.solid.box(base[0] - 0.07, p.floorY, base[2] - 0.07, base[0] + 0.07, y + pole + half * 2, base[2] + 0.07, 0x4a4f5c));
   const center: V3 = [base[0], y + pole + half, base[2]];
   const pl: Plane = { c: center, right: [-left[0], 0, -left[2]], up: [0, 1, 0], toward: [-fwd[0], 0, -fwd[2]] };
-  poly(p.glow, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.03, style.border); // liseré, légèrement en retrait
-  poly(p.glow, pl, rect(-half + 0.06, -half + 0.06, half - 0.06, half - 0.06), -0.015, style.plate);
-  drawGlyph(p.glow, pl, s.kind, s.severity, s.cuve, 0.02, style.ink);
-  // Dos de la plaque : gris, pour qu'elle ne soit pas vue « de l'autre côté » comme un fantôme jaune.
-  poly(p.solid, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.06, 0x5a606e);
+  placed(p.log, { ...meta, part: "surplomb", appui: "sol" }, [p.glow, p.solid], () => {
+    poly(p.glow, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.03, style.border); // liseré, légèrement en retrait
+    poly(p.glow, pl, rect(-half + 0.06, -half + 0.06, half - 0.06, half - 0.06), -0.015, style.plate);
+    drawGlyph(p.glow, pl, s.kind, s.severity, s.cuve, 0.02, style.ink);
+    // Dos de la plaque : gris, pour qu'elle ne soit pas vue « de l'autre côté » comme un fantôme jaune.
+    poly(p.solid, pl, rect(-half - 0.1, -half - 0.1, half + 0.1, half + 0.1), -0.06, 0x5a606e);
+  });
 }
 
 // --- Bandeaux de texte --------------------------------------------------------------------------------------
@@ -177,9 +189,12 @@ function bannerMesh(tex: CanvasTexture, bl: V3, br: V3, tr: V3, tl: V3): Mesh {
 
 // --- Arches et portes ---------------------------------------------------------------------------------------
 
-/** Demi-écartement des poteaux d'une arche ou d'une porte : le bord de la route, ou de la bande avec des bas-côtés. */
-function postSpan(b: Block, q: number): number {
-  return b.shoulder ? SHOULDER_EDGE - 0.6 : blockHalfWidth(b, q) + 1.2;
+/**
+ * Demi-écartement (m) des pieds d'une arche ou d'une porte : au-delà du bord de la route, ou de la bande avec des bas-côtés, et du chapeau du
+ * rebord (lot 37 : les pieds descendent jusqu'au sol, ils ne se posent ni sur la route ni sur la bande, ni dans le vide).
+ */
+function postSpan(b: Block, q: number, half: number): number {
+  return (b.shoulder ? SHOULDER_EDGE : blockHalfWidth(b, q)) + CHAPEAU + 0.1 + half;
 }
 
 /** Arche du départ : deux poteaux, une poutre rouge et blanche portant « DÉPART ». */
@@ -194,22 +209,27 @@ export function addFinishArch(p: Props, pal: PropColors, b: Block, q = CELL / 2)
 
 function buildArch(p: Props, pal: PropColors, b: Block, q: number, text: string, tex: { bg: string; fg: string; checker?: [string, string] }, postA: number, postB: number, h: number, finish: boolean) {
   const y = blockHeight(b, q);
-  const span = postSpan(b, q);
+  const span = postSpan(b, q, 0.55);
   const beam = 2.4;
+  const meta = { kind: finish ? "arche-arrivee" : "arche-depart", group: p.log?.group() ?? 0, block: b.index, style: "" } as const;
   for (const side of [-1, 1]) {
     const c = world(b, CELL / 2 + side * span, q, y);
-    // Poteaux rayés, plus épais en bas (empattement) : on les repère de loin.
-    const seg = 1.5;
-    for (let k = 0, yy = y; yy < y + h; k++, yy += seg) {
-      const top = Math.min(y + h, yy + seg);
-      p.solid.box(c[0] - 0.55, yy, c[2] - 0.55, c[0] + 0.55, top, c[2] + 0.55, k % 2 === 0 ? postA : postB);
-    }
-    p.solid.box(c[0] - 0.9, y, c[2] - 0.9, c[0] + 0.9, y + 0.5, c[2] + 0.9, shade(postA, 0.8));
+    placed(p.log, { ...meta, part: "pied", appui: "sol" }, [p.solid], () => {
+      // Le pied descend jusqu'au sol lointain (un fût plein, à la couleur du poteau) ; au-dessus de la route, poteaux rayés : on les repère de loin.
+      p.solid.box(c[0] - 0.55, p.floorY, c[2] - 0.55, c[0] + 0.55, y, c[2] + 0.55, shade(postA, 0.8));
+      const seg = 1.5;
+      for (let k = 0, yy = y; yy < y + h; k++, yy += seg) {
+        const top = Math.min(y + h, yy + seg);
+        p.solid.box(c[0] - 0.55, yy, c[2] - 0.55, c[0] + 0.55, top, c[2] + 0.55, k % 2 === 0 ? postA : postB);
+      }
+    });
     p.glow.halo(c[0], y + h + 0.3, c[2], finish ? 0xffffff : 0xff6a5a, 5);
   }
   const l = world(b, CELL / 2 + span, q, y + h);
   const r = world(b, CELL / 2 - span, q, y + h);
-  p.solid.box(Math.min(l[0], r[0]) - 0.6, y + h - 0.4, Math.min(l[2], r[2]) - 0.6, Math.max(l[0], r[0]) + 0.6, y + h + beam, Math.max(l[2], r[2]) + 0.6, shade(postA, 0.7));
+  placed(p.log, { ...meta, part: "surplomb", appui: "sol" }, [p.solid], () =>
+    p.solid.box(Math.min(l[0], r[0]) - 0.6, y + h - 0.4, Math.min(l[2], r[2]) - 0.6, Math.max(l[0], r[0]) + 0.6, y + h + beam, Math.max(l[2], r[2]) + 0.6, shade(postA, 0.7)),
+  );
   // Bandeau de texte sur les deux faces de la poutre (l'avant lit « DÉPART », l'arrière aussi).
   const t = p.aerial ? null : bannerTexture(text, tex);
   const fwd = unit(sub(world(b, CELL / 2, q + 1, y), world(b, CELL / 2, q, y)));
@@ -245,13 +265,17 @@ function buildArch(p: Props, pal: PropColors, b: Block, q: number, text: string,
 export function addCheckpointGate(p: Props, pal: PropColors, b: Block) {
   const q = CELL / 2;
   const y = blockHeight(b, q);
-  const span = postSpan(b, q);
+  const span = postSpan(b, q, 0.5);
   const h = 7.5;
   const color = pal.checkpoint;
+  const meta = { kind: "porte", group: p.log?.group() ?? 0, block: b.index, style: "" } as const;
   for (const side of [-1, 1]) {
     const c = world(b, CELL / 2 + side * span, q, y);
-    const seg = 1.25;
-    for (let k = 0, yy = y; yy < y + h; k++, yy += seg) p.solid.box(c[0] - 0.5, yy, c[2] - 0.5, c[0] + 0.5, Math.min(y + h, yy + seg), c[2] + 0.5, k % 2 === 0 ? color : 0xf4f4f4);
+    placed(p.log, { ...meta, part: "pied", appui: "sol" }, [p.solid], () => {
+      p.solid.box(c[0] - 0.5, p.floorY, c[2] - 0.5, c[0] + 0.5, y, c[2] + 0.5, shade(color, 0.55));
+      const seg = 1.25;
+      for (let k = 0, yy = y; yy < y + h; k++, yy += seg) p.solid.box(c[0] - 0.5, yy, c[2] - 0.5, c[0] + 0.5, Math.min(y + h, yy + seg), c[2] + 0.5, k % 2 === 0 ? color : 0xf4f4f4);
+    });
     p.glow.halo(c[0], y + h, c[2], color, 7);
   }
   const l = world(b, CELL / 2 + span, q, y + h);
@@ -260,12 +284,14 @@ export function addCheckpointGate(p: Props, pal: PropColors, b: Block) {
   const x1 = Math.max(l[0], r[0]);
   const z0 = Math.min(l[2], r[2]);
   const z1 = Math.max(l[2], r[2]);
-  p.solid.box(x0 - 0.5, y + h - 0.9, z0 - 0.5, x1 + 0.5, y + h + 0.3, z1 + 0.5, shade(color, 0.55));
-  // Bande lumineuse sur la poutre (sans éclairage : elle s'allume la nuit) et voile translucide qui pend dessous.
-  p.glow.box(x0 - 0.52, y + h - 0.55, z0 - 0.52, x1 + 0.52, y + h - 0.2, z1 + 0.52, mix(color, 0xffffff, 0.35));
   const top = y + h - 0.9;
-  const drop = 2.6;
-  p.curtain.quad(world(b, CELL / 2 + span, q, top), world(b, CELL / 2 - span, q, top), world(b, CELL / 2 - span, q, top - drop), world(b, CELL / 2 + span, q, top - drop), color);
+  const drop = 1.8; // lot 37 : le voile s'arrête à 4,8 m au-dessus de la route, au-dessus du passage et de la caméra
+  placed(p.log, { ...meta, part: "surplomb", appui: "sol" }, [p.solid, p.glow, p.curtain], () => {
+    p.solid.box(x0 - 0.5, y + h - 0.9, z0 - 0.5, x1 + 0.5, y + h + 0.3, z1 + 0.5, shade(color, 0.55));
+    // Bande lumineuse sur la poutre (sans éclairage : elle s'allume la nuit) et voile translucide qui pend dessous.
+    p.glow.box(x0 - 0.52, y + h - 0.55, z0 - 0.52, x1 + 0.52, y + h - 0.2, z1 + 0.52, mix(color, 0xffffff, 0.35));
+    p.curtain.quad(world(b, CELL / 2 + span, q, top), world(b, CELL / 2 - span, q, top), world(b, CELL / 2 - span, q, top - drop), world(b, CELL / 2 + span, q, top - drop), color);
+  });
   // Bande au sol, plus large et plus claire qu'avant.
   const hw = blockHalfWidth(b, q);
   p.glow.quad(world(b, CELL / 2 - hw, q - 0.5, y + 0.05), world(b, CELL / 2 + hw, q - 0.5, y + 0.05), world(b, CELL / 2 + hw, q + 0.5, y + 0.05), world(b, CELL / 2 - hw, q + 0.5, y + 0.05), mix(color, 0xffffff, 0.25));

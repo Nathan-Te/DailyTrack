@@ -42,6 +42,8 @@ export function hazardOf(b: Block): { kind: SignKind; severity: 1 | 2 | 3 } | nu
 /** Nombre de blocs en arrière où l'on cherche un hôte (au plus), et abscisse du panneau dans l'hôte. */
 const LOOKBACK = 3;
 const SIGN_Q = CELL * 0.72;
+/** Recul (m) du poteau au-delà du bord de la route ou de la bande (lot 37) : la plaque, large de 2,7 m, ne surplombe ni la route ni un bas-côté ; le poteau descend jusqu'au sol. */
+export const SIGN_SETBACK = 1.6;
 
 /**
  * Les panneaux d'un circuit : un avant chaque virage, saut ou cuve, planté du côté extérieur du virage sur le dernier bloc droit
@@ -73,7 +75,7 @@ export function signsFor(track: Track): SignSpec[] {
     // Extérieur d'un virage : à droite d'un virage à gauche. Saut et cuve : à gauche (côté hors trajectoire habituelle).
     const side: 1 | -1 = hazard.kind === "left" ? -1 : hazard.kind === "right" ? 1 : 1;
     const edge = host.shoulder ? SHOULDER_EDGE : blockHalfWidth(host, SIGN_Q);
-    out.push({ block: host.index, q: SIGN_Q, side, offset: Math.min(CELL / 2 - 0.6, edge + 1.4), kind: hazard.kind, severity: hazard.severity, hazard: b.index, cuve: b.cuve });
+    out.push({ block: host.index, q: SIGN_Q, side, offset: edge + SIGN_SETBACK, kind: hazard.kind, severity: hazard.severity, hazard: b.index, cuve: b.cuve });
   }
   return out;
 }
