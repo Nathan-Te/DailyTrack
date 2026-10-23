@@ -1,7 +1,7 @@
 # Lot 43 — Track : le palier 1 en jeu, éléments de course et lumière
 
 Branche `claude/quirky-cerf-e8ynxy` (nom imposé par la session ; le lot prévoyait `lot-43-palier1-elements`, d'où l'étiquette `jeu:track` sur la PR
-pour le job `zones`), partie de `main` à `f15d31d` (lots 39 et 40 fusionnés). Zones : `apps/web/**`, `docs/lots/**`, les lignes de Track de
+pour le job `zones` ; PR [#123](https://github.com/Nathan-Te/DailyTrack/pull/123)), partie de `main` à `f15d31d` (lots 39 et 40 fusionnés). Zones : `apps/web/**`, `docs/lots/**`, les lignes de Track de
 `docs/plateforme/budgets.md`, ses clés de catalogue (et `docs/plateforme/traductions.md` régénéré), ses deux lignes de `packages/ui/test/applications.ts`.
 **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés. La voiture et le Garage
 ne sont pas touchés.
