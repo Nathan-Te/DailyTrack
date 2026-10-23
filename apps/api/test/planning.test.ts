@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { BASCULE_LOT_35, MEDAL_FACTORS, dailyCircuit, medalFor, dailyTrackId, encodeReplay, formatDay, medalDayStats, medalPoolStats, medalsFor, PREMIER_JOUR, ratiosOf, runPilot, themeForDay, thresholdsOf, THEME_NAMES } from "@cdj/sim";
+import { BASCULE_LOT_35, MEDAL_FACTORS, dailyCircuit, etatGarage, nouvellesVoitures, progresGarage, medalFor, dailyTrackId, encodeReplay, formatDay, medalDayStats, medalPoolStats, medalsFor, PREMIER_JOUR, ratiosOf, runPilot, themeForDay, thresholdsOf, THEME_NAMES } from "@cdj/sim";
 import { ADMIN_MAX_FAILURES, PLANNING_HORIZON } from "../src/api";
-import { DAY, DAY_MS, NOON, circuitOf, makeApi, parisDayStart, playerId } from "./helpers";
+import { DAY, DAY_MS, NOON, circuitOf, makeApi, parisDayStart, pilotReplay, playerId, type TestApi } from "./helpers";
 
 // Planning des circuits (lot 14) : remplacer à l'avance le circuit d'un jour à venir, sans casser « le même circuit pour
 // tous » ni la validation par rejeu.
@@ -256,5 +256,123 @@ describe("médailles du lot 35 : nouveaux seuils à partir de la bascule seuleme
       const admin = (await t.call("GET", "/api/admin/medailles", undefined, { headers: auth })).body;
       expect(admin.days[0].medals).toEqual(medalsFor(author, day));
     }
+  });
+});
+
+// --- Lot 41 : le Garage (les déblocages viennent du serveur) -------------------------------------------------------------------------------
+// Ces tests vivent ici parce que la zone de Track dans apps/api est une liste fermée (scripts/zones-jeu.mjs) : décision de Nathan (option b du lot 41).
+describe("Garage (lot 41) : GET /api/garage et le statut rendu par l'envoi", () => {
+  const ID = playerId(4100);
+  const moi = { headers: { "X-Player-Id": ID } };
+  const PILOTE = 40_000;
+  /** Un jour passé avec un temps rejoué (écrit comme le serveur l'aurait gardé) : la médaille voulue selon les seuils de CE jour. */
+  async function jourPasse(t: TestApi, day: number, medaille: "author" | "gold" | "silver" | null, id = ID) {
+    const m = medalsFor(PILOTE, day);
+    const ms = medaille === "author" ? m.author : medaille === "gold" ? m.gold : medaille === "silver" ? m.silver : m.bronze + 500;
+    await t.db.run("INSERT OR IGNORE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [day, `jour-${formatDay(day)}`, "S", PILOTE, 0, "stade", NOON]);
+    await t.db.run("INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [day, id, ms, "[]", "x", 0, NOON]);
+  }
+  const garage = (t: TestApi, opts = moi) => t.call("GET", "/api/garage", undefined, opts);
+
+  it("l'en-tête X-Player-Id est obligatoire (jamais l'identifiant dans l'adresse) ; une autre méthode est refusée", async () => {
+    const t = await makeApi();
+    expect((await t.call("GET", "/api/garage", undefined, {})).status).toBe(400);
+    expect((await t.call("GET", `/api/garage?player=${ID}`, undefined, {})).body.error).toBe("invalid_player");
+    expect((await garage(t, { headers: { "X-Player-Id": "pas-un-identifiant" } })).status).toBe(400);
+    expect((await t.call("POST", "/api/garage", {}, moi)).status).toBe(405);
+  });
+
+  it("un joueur jamais classé : la civile seulement, tout à zéro (aucune écriture)", async () => {
+    const t = await makeApi();
+    const r = await garage(t);
+    expect(r.status).toBe(200);
+    expect(r.body.progres).toEqual({ jours: 0, or: 0, auteur: 0 });
+    expect(r.body.voitures.filter((v: { debloquee: boolean }) => v.debloquee).map((v: { id: string }) => v.id)).toEqual(["civile"]);
+    expect(r.headers.get("Cache-Control")).toContain("no-store");
+    expect(await t.db.first("SELECT 1 AS x FROM players WHERE id = ?", [ID])).toBeNull();
+  });
+
+  it("les jours passés comptent : les joueurs actuels retrouvent ce qu'ils ont déjà gagné ; règles et progression", async () => {
+    const t = await makeApi();
+    for (let i = 1; i <= 9; i++) await jourPasse(t, DAY - i, i <= 3 ? "gold" : i === 4 ? "silver" : null);
+    let r = await garage(t);
+    expect(r.body.progres).toEqual({ jours: 9, or: 3, auteur: 0 });
+    expect(r.body.voitures).toEqual([
+      { id: "civile", debloquee: true, progres: null },
+      { id: "evolution", debloquee: true, progres: { fait: 3, nombre: 3 } },
+      { id: "gt", debloquee: false, progres: { fait: 9, nombre: 10 } },
+      { id: "proto", debloquee: false, progres: { fait: 0, nombre: 1 } },
+    ]);
+    await jourPasse(t, DAY - 10, "author");
+    r = await garage(t);
+    expect(r.body.progres).toEqual({ jours: 10, or: 4, auteur: 1 });
+    expect(r.body.voitures.every((v: { debloquee: boolean }) => v.debloquee)).toBe(true);
+    // Les temps d'un autre joueur ne comptent pas pour moi.
+    await jourPasse(t, DAY - 11, "author", playerId(4101));
+    expect((await garage(t)).body.progres).toEqual({ jours: 10, or: 4, auteur: 1 });
+  });
+
+  it("une médaille compte avec les seuils de son jour (bascule du 28/10)", async () => {
+    const t = await makeApi();
+    const ms = Math.round(PILOTE * 1.05); // or avant la bascule, rien après
+    for (const day of [BASCULE_LOT_35 - 1, BASCULE_LOT_35]) {
+      await t.db.run("INSERT INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [day, `jour-${formatDay(day)}`, "S", PILOTE, 0, "stade", NOON]);
+      await t.db.run("INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [day, ID, ms, "[]", "x", 0, NOON]);
+    }
+    expect((await garage(t)).body.progres).toEqual({ jours: 2, or: 1, auteur: 0 });
+  });
+
+  it("seuls les temps rejoués du circuit du jour comptent : ni le Salon, ni un temps annoncé, ni une rediffusion refusée", async () => {
+    const t = await makeApi();
+    // Une course du Salon (même excellente) n'est pas un circuit du jour.
+    await t.db.run("INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [1, ID, "ref", "Garage", 1, "[]", "x", NOON]);
+    // Un envoi refusé (rediffusion illisible, temps annoncé) n'écrit rien.
+    const refuse = await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: "pas-une-rediffusion", ms: 1, medal: "author" }, moi);
+    expect(refuse.status).toBeGreaterThanOrEqual(400);
+    expect((await garage(t)).body.progres).toEqual({ jours: 0, or: 0, auteur: 0 });
+  });
+
+  it("l'envoi d'un temps rend le statut du Garage et les voitures qu'il débloque ; rien de neuf au second envoi", async () => {
+    const t = await makeApi();
+    for (let i = 1; i <= 9; i++) await jourPasse(t, DAY - i, null); // 9 jours joués, aucune médaille
+    const run = pilotReplay(DAY, 0.78);
+    const r = await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: run.code }, moi);
+    expect(r.status).toBe(200);
+    // Ce que l'envoi a rejoué compte (10 jours) ; la médaille est celle du serveur, avec les seuils du jour.
+    const medaille = medalFor(r.body.ms, medalsFor(circuitOf(DAY).authorMs, DAY));
+    const attendu = progresGarage([...Array.from({ length: 9 }, (_, i) => ({ day: DAY - i - 1, ms: 1e9, authorMs: PILOTE })), { day: DAY, ms: r.body.ms, authorMs: circuitOf(DAY).authorMs }]);
+    expect(attendu.jours).toBe(10);
+    expect(r.body.garage.progres).toEqual(attendu);
+    expect(r.body.garage.voitures).toEqual(etatGarage(attendu));
+    expect(r.body.garage.nouvelles).toEqual(nouvellesVoitures({ jours: 9, or: 0, auteur: 0 }, attendu));
+    expect(r.body.garage.nouvelles).toContain("gt");
+    expect(r.body.garage.nouvelles.includes("proto")).toBe(medaille === "author");
+    // Le même temps renvoyé : pas meilleur, rien de neuf ; le Garage le confirme.
+    const encore = await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: run.code }, moi);
+    expect(encore.body.improved).toBe(false);
+    expect(encore.body.garage.nouvelles).toEqual([]);
+    expect((await garage(t)).body.progres).toEqual(attendu);
+  });
+
+  it("un meilleur temps du même jour ne redébloque pas ce qui l'était déjà par ce jour", async () => {
+    const t = await makeApi();
+    for (let i = 1; i <= 9; i++) await jourPasse(t, DAY - i, null);
+    const lent = pilotReplay(DAY, 0.55);
+    const vite = pilotReplay(DAY, 0.9);
+    const a = await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: lent.code }, moi);
+    expect(a.body.garage.nouvelles).toContain("gt");
+    const b = await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: vite.code }, moi);
+    expect(b.body.improved).toBe(true);
+    expect(b.body.garage.nouvelles).not.toContain("gt"); // le 10e jour était déjà joué
+  });
+
+  it("un code remplacé est refusé (410)", async () => {
+    const t = await makeApi();
+    const run = pilotReplay(DAY, 0.78);
+    expect((await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: run.code }, moi)).status).toBe(200);
+    expect((await t.call("POST", "/api/me/code", { newId: playerId(4199) }, moi)).status).toBe(200);
+    expect((await garage(t)).status).toBe(410);
+    // Les temps suivent le nouveau code.
+    expect((await garage(t, { headers: { "X-Player-Id": playerId(4199) } })).body.progres.jours).toBe(1);
   });
 });

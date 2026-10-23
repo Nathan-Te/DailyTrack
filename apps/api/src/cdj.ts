@@ -12,14 +12,17 @@ import {
   dailyCircuit,
   dailyTrackId,
   decodeReplay,
+  etatGarage,
   formatDay,
   isVariant,
   medalFor,
   medalDayStats,
   medalPoolStats,
   medalsFor,
+  nouvellesVoitures,
   parseDay,
   parseTrack,
+  progresGarage,
   ratiosOf,
   replayRace,
   themeByName,
@@ -28,6 +31,8 @@ import {
   type Medal,
   type MedalRatios,
   type PaletteName,
+  type ProgresGarage,
+  type ResultatDuJour,
   type ThemeName,
   type Track,
 } from "@cdj/sim";
@@ -55,6 +60,9 @@ export const ADMIN_MAX_FAILURES = 10;
 export const CLASSES_MEMO_MS = 30_000;
 /** Lot 32 : au plus une ligne de journal par cet intervalle pour l'usage de l'ancien `?player=` (le compte complet est dans `/api/admin/overview`). */
 export const LEGACY_LOG_MS = 5 * 60_000;
+/** Lot 41 : lectures du Garage (`GET /api/garage`) par adresse et par joueur et par fenêtre, comptées en mémoire (une lecture n'écrit rien). */
+export const GARAGE_READS_PER_CLIENT = 120;
+export const GARAGE_READS_PER_PLAYER = 60;
 /** Lot 35 : jours lus au plus par l'outil de calibrage des médailles (`GET /api/admin/medailles`), aujourd'hui compris. */
 export const MEDAILLES_JOURS = 120;
 
@@ -380,6 +388,11 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const bestMs = improved ? result.finishMs : previous!.ms;
     const bestAt = improved ? t : previous!.submitted_at;
     const medals = medalsFor(circuit.authorMs, day);
+    // Lot 41 : le statut du Garage arrive avec la réponse (aucune requête de plus au jeu) ; `nouvelles` = les voitures que cette course débloque
+    // (la progression d'avant se déduit de celle d'après, le meilleur temps de ce jour remplacé par l'ancien, ou retiré s'il n'y en avait pas).
+    const apres = await resultatsGarage(playerId);
+    const avant = improved ? apres.filter((r) => r.day !== day).concat(previous ? [{ day, ms: previous.ms, authorMs: circuit.authorMs }] : []) : apres;
+    const pApres = progresGarage(apres);
     return {
       accepted: true,
       improved,
@@ -390,7 +403,38 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       rank: await rankOf(day, bestMs, bestAt),
       participants: await participants(day),
       medal: medalFor(result.finishMs, medals) as Medal | null,
+      garage: { progres: pApres, voitures: etatGarage(pApres), nouvelles: nouvellesVoitures(progresGarage(avant), pApres) },
     };
+  }
+
+  // --- Le Garage (lot 41) ---------------------------------------------------------------------------------------------------------------------
+  /**
+   * Les meilleurs temps du jour de ce joueur (un par jour, **rejoués par le serveur** : la table `results` ; le Salon n'y est pas) et le temps du
+   * pilote de chaque jour : **une requête indexée** (`results_by_player`, puis la clé de `circuits`), une ligne lue par jour joué. Les règles :
+   * `progresGarage` / `etatGarage` (`packages/sim/src/garage.ts`, la même table que le jeu).
+   */
+  async function resultatsGarage(id: string): Promise<ResultatDuJour[]> {
+    const rows = await db.all<{ day: number; ms: number; author_ms: number | null }>(
+      "SELECT r.day AS day, r.ms AS ms, c.author_ms AS author_ms FROM results r LEFT JOIN circuits c ON c.day = r.day WHERE r.player_id = ?",
+      [id],
+    );
+    return rows.map((r) => ({ day: r.day, ms: r.ms, authorMs: r.author_ms }));
+  }
+
+  /**
+   * `GET /api/garage` (identifiant **obligatoire** dans l'en-tête `X-Player-Id`) : `{ progres { jours, or, auteur }, voitures [{ id, debloquee,
+   * progres { fait, nombre } | null }] }`. Un joueur jamais classé a tout à zéro (la civile seulement) ; code remplacé : 410. Lectures limitées en
+   * mémoire, aucune écriture.
+   */
+  async function garage(req: Request, info: RequestInfo): Promise<{ progres: ProgresGarage; voitures: ReturnType<typeof etatGarage> }> {
+    const header = req.headers.get("x-player-id");
+    if (header === null) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
+    const id = playerIdOf(header);
+    await platform.readHitAddress(info, "gar", GARAGE_READS_PER_CLIENT);
+    platform.readHit(await hashKey("garp", id), GARAGE_READS_PER_PLAYER);
+    await players.assertActive(id);
+    const progres = progresGarage(await resultatsGarage(id));
+    return { progres, voitures: etatGarage(progres) };
   }
 
   /**
@@ -729,6 +773,10 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     if (path === "/api/planning") {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       return await publicPlanning();
+    }
+    if (path === "/api/garage") {
+      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+      return await garage(req, info);
     }
     if (path.startsWith("/api/admin/")) {
       await requireAdmin(req, info);
