@@ -7,7 +7,7 @@
 // Les nuages dérivent sur un temps d'affichage, jamais sur l'état de la course.
 import type { Material, Mesh } from "three";
 import { brancherPas } from "./socle";
-import { THEMES_C } from "./directionC";
+import { THEMES_C } from "./lumiere";
 import { CIEL_3, brumeDeProfondeur, domeDuCiel, uniformesBrume } from "./lumiere3";
 import type { PasScene } from "./types";
 

@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import { BufferAttribute, BufferGeometry } from "three";
 import { CELL, cellKey, parseTrack } from "@cdj/sim";
 import { Builder, seeded } from "../src/meshKit";
-import { placesDeDecor } from "../src/scene/composer";
-import { THEMES_C, occlusionSommets, uvMonde } from "../src/scene/directionC";
-import { THEMES_A } from "../src/scene/directionA";
-import { REBORDS_B } from "../src/scene/directionB";
+import { placesDeDecor } from "../src/scene/decor/commun";
+import { uvMonde } from "../src/scene/decor/matiereC";
+import { THEMES_C, occlusionSommets } from "../src/scene/lumiere";
+import { PISTE_A, REBORDS_B } from "../src/scene/piste";
 import { HORIZONS } from "../src/scene/types";
 import { STYLE_ORIGINE, construireRoute, type TronconRebord } from "../src/scene/route";
 import { PALETTE_DEFS } from "../src/trackMesh";
@@ -64,7 +64,7 @@ describe("route paramétrable (lot 38)", () => {
   });
 });
 
-describe("occlusion par sommets et coordonnées « monde » (direction C)", () => {
+describe("occlusion par sommets et coordonnées « monde » (lumière et matière de C)", () => {
   /** Un mur vertical de 1,4 m (deux triangles) et un sol (deux triangles), en blanc. */
   function murEtSol(): BufferGeometry {
     const b = new Builder();
@@ -101,7 +101,7 @@ describe("occlusion par sommets et coordonnées « monde » (direction C)", () =
 describe("palettes et lumière par thème (lot 38)", () => {
   it("chaque palette a sa ligne dans A et C, un rebord de B et un horizon", () => {
     for (const nom of Object.keys(PALETTE_DEFS)) {
-      expect(THEMES_A, nom).toHaveProperty(nom);
+      expect(PISTE_A, nom).toHaveProperty(nom);
       expect(THEMES_C, nom).toHaveProperty(nom);
       expect(REBORDS_B, nom).toHaveProperty(nom);
       expect(HORIZONS, nom).toHaveProperty(nom);
@@ -116,11 +116,11 @@ describe("palettes et lumière par thème (lot 38)", () => {
     expect(s.hemi[2] / n.hemi[2], "lumière du ciel").toBeGreaterThan(3);
     expect(n.lampes, "la nuit, des lampes éclairent la piste").toBeDefined();
     expect(HORIZONS.stade).not.toBe(HORIZONS.nuit);
-    expect(THEMES_A.stade.rebord).not.toEqual(THEMES_A.nuit.rebord);
+    expect(PISTE_A.stade.rebord).not.toEqual(PISTE_A.nuit.rebord);
   });
 
   it("la route reste un gris, jamais brun ni vert : on ne la confond pas avec la terre, le sable ou l'herbe d'un bloc", () => {
-    for (const [nom, t] of Object.entries(THEMES_A)) {
+    for (const [nom, t] of Object.entries(PISTE_A)) {
       for (const c of t.route) {
         const r = (c >> 16) & 255;
         const g = (c >> 8) & 255;

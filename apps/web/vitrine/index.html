@@ -14,7 +14,6 @@
         <h1>Vitrine de la scène</h1>
         <nav class="planches" aria-label="Planches">
           <a href="./" class="planche planche--paliers">Paliers de qualité (retouche 38b)</a>
-          <a href="./?planche=directions" class="planche planche--directions">Directions (lot 38)</a>
           <a href="./?planche=voiture" class="planche planche--voiture">Voiture (lot 40)</a>
         </nav>
         <div class="pour-paliers">
@@ -26,20 +25,6 @@
             mesurer » mesure son temps d'image sur cet appareil. Rien de ce qui est ici n'est dans le jeu (<code>docs/lots/lot-38b-paliers-scene.md</code>).
           </p>
           <button type="button" id="ouvrir-mouvement" class="action">Ouvrir la vue en mouvement</button>
-        </div>
-        <div class="pour-directions">
-          <p>
-            Les mêmes éléments vus par <strong>l'existant</strong>, les trois directions et le <strong>mélange recommandé</strong>, dans la même scène et le même
-            cadrage. On tourne autour en glissant sur une vue (au doigt : de gauche à droite ; à la souris : dans tous les sens) ; « Agrandir et mesurer » ouvre la
-            vue en grand (pincer ou molette pour zoomer) et mesure son temps d'image sur cet appareil. Rien de ce qui est ici n'est dans le jeu : c'est une
-            planche pour choisir (lot 38, <code>docs/lots/lot-38-direction-scene.md</code>).
-          </p>
-          <dl class="directions">
-            <div><dt>A — Net et graphique</dt><dd>Silhouettes franches et peu de pièces, aplats, bandes et marquages forts, lumière en trois tons nets : la charte « Cartouches » traduite en 3D.</dd></div>
-            <div><dt>B — Détaillé</dt><dd>Formes chanfreinées, petites pièces qui racontent (pneus, drapeaux, câbles, rivets, sponsors fictifs), matériaux variés ; tout est fusionné.</dd></div>
-            <div><dt>C — Lumière et matière</dt><dd>On touche peu aux formes : ciel, brume, lumière et ombrage par thème, occlusion par sommets, textures dessinées au chargement.</dd></div>
-            <div><dt>Mélange recommandé</dt><dd>La proposition du lot : éléments et rebords de A, décor de B allégé, lumière de C.</dd></div>
-          </dl>
         </div>
         <div class="pour-voiture">
           <p>
@@ -73,13 +58,6 @@
           </table>
         </div>
         <p id="resume-etat" class="note"></p>
-        <p class="note pour-directions">
-          Poids : le morceau propre à la direction, mesuré à la construction (gzip), sans le socle commun à A, B et au mélange (route paramétrable,
-          compositeur, outils<span id="poids-socle"></span>), qui remplacerait la route et le squelette de la scène du jeu ; le poids ajouté au jeu, partie
-          par partie, est dans le README du lot. Appels et triangles : ceux d'une image en caméra de poursuite, ombres comprises
-          (moyenne des huit thèmes). Les deux dernières colonnes sont mesurées par <code>MESURE=1 npx playwright test mesure-lot38</code> (Chromium, processeur ×4,
-          rendu logiciel) : voir le README du lot.
-        </p>
         <p class="note pour-paliers">
           Poids : ce que chaque palier ajoute au jeu (esbuild, minifié, gzip ; <code>poids-parties.mjs</code>) — le palier 1 à la place de <code>trackMesh.ts</code> et
           <code>trackProps.ts</code> (net), les modules des pas chargés à la demande. Appels et triangles : une image en caméra de poursuite, ombres et passes

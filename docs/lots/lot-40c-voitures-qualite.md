@@ -56,7 +56,7 @@ Les plafonds du lot 40b (≤ 2 600 et ≤ 6 000) sont relevés à ≤ 4 000 et �
 
 ### Budget (à valider par Nathan)
 
-**Premier chargement : +6 320 o** (JS + CSS 278 798 → 285 118 o ; marge sous le plafond 12 801 → 6 482 o) — **au-dessus de la cible de +4 ko du prompt**. Par module, compressé (`vitrine/poids-parties.mjs`) :
+**Premier chargement : +6 399 o** (JS + CSS 276 952 → 283 351 o, `main` lot 44 compris ; marge sous le plafond 14 648 → 8 249 o) — **au-dessus de la cible de +4 ko du prompt**. Par module, compressé (`vitrine/poids-parties.mjs`) :
 
 | module | poids | à quoi il sert |
 |---|---|---|
@@ -90,7 +90,7 @@ Outil : `CAPTURES=1 LABEL=avant|apres npx playwright test captures-lot40c` (`-g 
 
 1. **La Sparrow et les motifs te conviennent-ils** (vitrine `/track/vitrine/?planche=voiture`, Garage) ? Retouches avant les trois autres voitures.
 2. **Couleur du motif** : oui / non, et quelles teintes (proposition : crème, asphalte, lagon).
-3. **Budget** : +6,3 ko au premier chargement (cible 4 ko) — l'accepter, ou lequel des trois leviers tirer.
+3. **Budget** : +6,4 ko au premier chargement (cible 4 ko) — l'accepter, ou lequel des trois leviers tirer.
 4. Le nom de branche : `claude/lot-40c-voitures-qualite-gmy88b` (imposé par la session).
 
 ## À tester (aperçu de la PR, au téléphone)

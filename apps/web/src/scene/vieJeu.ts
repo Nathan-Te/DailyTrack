@@ -4,13 +4,13 @@
 // (décision du 23/10/2026). Le code est celui de la vitrine (`vie.ts`, retouche 38b), branché sur la scène du palier 1 (`composerP1.ts`) par ses crochets.
 //
 // Règles (direction.md § 9, lot 46) :
-//   - **un appel de rendu au plus par famille** : un maillage de drapeaux, des instances pour la foule, un maillage pour tous les écrans, un nuage de points ;
+//   - **un appel de rendu au plus par famille** : un maillage de drapeaux, un pour la foule, un maillage pour tous les écrans, un nuage de points ;
 //   - **tout s'anime sur un temps d'affichage** (`animer(t)`), jamais sur l'état de la course ; seuls les feux de départ du lot 43 lisent le décompte ;
 //   - **rien ne bouge dans le champ de la piste devant la voiture** : drapeaux, foule et écrans sont à côté de la piste ou au-dessus du passage (≥ 11 m),
 //     les drapeaux ne projettent pas d'ombre (elle onduleraient sur la route), les particules s'effacent dans le couloir de la piste devant la caméra et
 //     près de l'objectif (jamais une particule plein écran).
 // Présentation seule : rien ne lit ni n'écrit la simulation.
-import type { BufferGeometry, Points, ShaderMaterial } from "three";
+import type { BufferGeometry, Material, Mesh, Points, ShaderMaterial } from "three";
 import type { Block } from "@cdj/sim";
 import { brancherPas } from "./socle";
 import { Drapeaux } from "./drapeaux";
@@ -46,7 +46,7 @@ function drapeauxDuPortique(d: Drapeaux, c: Calques, b: Block, q: number, couleu
 export const VIE: PasScene = {
   id: "vie",
   foule: true,
-  elements(c, x, decor, coupes) {
+  elements(c, x, coupes) {
     const depart = x.track.blocks.find((b) => b.mark === "start");
     const arrivee = x.track.blocks.find((b) => b.mark === "finish");
     if (!coupes.has("drapeaux")) {
@@ -56,24 +56,12 @@ export const VIE: PasScene = {
         if (depart) drapeauxDuPortique(d, c, depart, Q_DEPART, [MARQUE.livree, MARQUE.asphalte]); // la livrée en hauteur, sur le portique de départ
         if (arrivee) drapeauxDuPortique(d, c, arrivee, Q_ARRIVEE, [MARQUE.encre, MARQUE.creme, MARQUE.encre]);
       }
-      // Trois mâts sur le toit de la tribune du départ (jamais l'orange : il est à la voiture et au portique de départ).
-      for (const [i, m] of (decor.vie.tribune?.mats ?? []).entries()) {
-        decor.decorG.box(m[0] - 0.04, m[1], m[2] - 0.04, m[0] + 0.04, m[1] + MAT, m[2] + 0.04, METAL);
-        d.drapeau([m[0], m[1] + MAT - 0.05, m[2]], VENT, 1.4, 0.9, i === 1 ? [MARQUE.moutarde, MARQUE.encre] : [0x2e7dff, 0xf4f4f4], i * 0.7);
-      }
     }
     if (!coupes.has("ecrans")) {
       c.ecrans = new Affiches();
       c.chrono = new Affiches();
-      // Les panneaux du départ, sur les rebords de la ligne droite ; le ruban sur la façade de la tribune.
+      // Les panneaux du départ, sur les rebords de la ligne droite (le ruban de la tribune vient avec le décor : `decor`).
       ecransDuDepart(c, x);
-      const t = decor.vie.tribune;
-      if (t) {
-        const [a, f] = t.facade;
-        const H = 0.75;
-        const L = Math.hypot(f[0] - a[0], f[2] - a[2]);
-        c.ecrans.quad(a, f, [f[0], f[1] + H, f[2]], [a[0], a[1] + H, a[2]], [0, 0, L / H / RUBAN_RAPPORT, 1]);
-      }
       // Le chronomètre à diodes au-dessus de la poutre du portique de départ (2,8 × 1,4 m, face à qui arrive), dans son caisson.
       if (depart) {
         const r = repereBloc(depart, Q_DEPART);
@@ -82,27 +70,36 @@ export const VIE: PasScene = {
       }
     }
   },
-  poser({ scene, calques: c, x, decor, coupes, sansDom }) {
+  poser({ scene, calques: c, x, coupes, sansDom }) {
     const temps: Temps = { uTemps: { value: 0 } };
+    // Une famille, un maillage : drapeaux et écrans sont refaits quand le décor apporte ceux de sa tribune (lot 44 : il arrive à la demande).
+    const remplacer = <M extends Mesh>(ancien: M | null, neuf: M | null): M | null => {
+      if (ancien) {
+        scene.remove(ancien);
+        ancien.geometry.dispose();
+        (ancien.material as Material).dispose();
+      }
+      if (neuf) scene.add(neuf);
+      return neuf;
+    };
     // Drapeaux : un maillage, déformé par la carte graphique. Pas d'ombre : elle onduleraient sur la route devant la voiture.
-    if (c.drapeaux && !c.drapeaux.vide) {
-      const m = drapeauxAnimes(c.drapeaux, temps);
-      m.castShadow = false;
-      scene.add(m);
-    }
-    // Foule : les spectateurs de la tribune du départ, en instances (décision du 23/10 : seulement là).
-    const foule = !coupes.has("foule") && decor.vie.foule ? fouleAnimee(decor.vie.foule, temps, ECHELLE_FOULE) : null;
-    if (foule) {
-      foule.userData.heavy = true; // comme le décor : masquée à la qualité 0 (QualityGovernor, lot 9)
-      scene.add(foule);
-    }
+    let drapeaux: Mesh | null = null;
+    const faireDrapeaux = () => {
+      const m = c.drapeaux && !c.drapeaux.vide ? drapeauxAnimes(c.drapeaux, temps) : null;
+      if (m) m.castShadow = false;
+      drapeaux = remplacer(drapeaux, m);
+    };
+    faireDrapeaux();
     // Écrans : rubans et chronomètre dans un seul maillage.
     const ruban = sansDom || !c.ecrans ? null : rubanDesEcrans(x.palette);
     const chrono = sansDom || !c.ecrans ? null : new Chronometre();
-    const ecrans = c.ecrans && c.chrono ? ecransEtChrono(c.ecrans, c.chrono, ruban, chrono?.texture ?? null) : null;
-    if (ecrans) {
-      scene.add(ecrans);
-    }
+    let ecrans: ReturnType<typeof ecransEtChrono> = null;
+    const faireEcrans = () => {
+      ecrans = remplacer(ecrans, c.ecrans && c.chrono ? ecransEtChrono(c.ecrans, c.chrono, ruban, chrono?.texture ?? null) : null);
+    };
+    faireEcrans();
+    // Foule : les spectateurs de la tribune du départ (décision du 23/10 : seulement là), quand le décor est posé.
+    let foule: Mesh | null = null;
     // Particules du thème ; au Stade, une salve de confettis à l'arrivée et rien d'autre.
     const salve = x.palette === "stade";
     let pts: Points<BufferGeometry, ShaderMaterial> | null = null;
@@ -115,6 +112,27 @@ export const VIE: PasScene = {
     let debutSalve = -Infinity;
     let salves = 0;
     return {
+      decor({ tribune, foule: gens, decor }) {
+        if (tribune && c.drapeaux) {
+          // Trois mâts sur le toit de la tribune du départ (jamais l'orange : il est à la voiture et au portique de départ).
+          for (const [i, m] of tribune.mats.entries()) {
+            decor.box(m[0] - 0.04, m[1], m[2] - 0.04, m[0] + 0.04, m[1] + MAT, m[2] + 0.04, METAL);
+            c.drapeaux.drapeau([m[0], m[1] + MAT - 0.05, m[2]], VENT, 1.4, 0.9, i === 1 ? [MARQUE.moutarde, MARQUE.encre] : [0x2e7dff, 0xf4f4f4], i * 0.7);
+          }
+          faireDrapeaux();
+        }
+        if (tribune && c.ecrans) {
+          // Le ruban sur la façade de la tribune.
+          const [a, f] = tribune.facade;
+          const H = 0.75;
+          const L = Math.hypot(f[0] - a[0], f[2] - a[2]);
+          c.ecrans.quad(a, f, [f[0], f[1] + H, f[2]], [a[0], a[1] + H, a[2]], [0, 0, L / H / RUBAN_RAPPORT, 1]);
+          faireEcrans();
+        }
+        const m = gens && !coupes.has("foule") ? fouleAnimee(gens, temps, ECHELLE_FOULE) : null;
+        if (m) m.userData.heavy = true; // comme le décor : masquée à la qualité 0 (QualityGovernor, lot 9)
+        foule = remplacer(foule, m);
+      },
       animer(t, camera, hauteurPx) {
         temps.uTemps.value = t;
         if (pts) {

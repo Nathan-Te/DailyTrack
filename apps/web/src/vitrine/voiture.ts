@@ -129,7 +129,7 @@ const paletteDe = (theme: string): PaletteName => THEMES_VITRINE.find((t) => t.i
 function sceneDe(cle: string, track: () => Promise<Track>, palette: PaletteName, palier: Palier): Promise<ScenePalier> {
   let s = scenes.get(cle);
   if (!s) {
-    s = Promise.all([scenesMod(), track()]).then(([m, t]) => m.fabriquePalier(() => reglagesDuPalier(palier))(t, palette));
+    s = Promise.all([scenesMod(), track()]).then(async ([m, t]) => (await m.fabriquePalier(() => reglagesDuPalier(palier)))(t, palette));
     scenes.set(cle, s);
   }
   return s;
@@ -614,7 +614,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
     x.fillStyle = "#f4efe6";
     x.fillText(s.titre, 8, tete + j * hauteur + hauteur / 2);
     const t = await circuitDe(s.id);
-    const ts = m.fabriquePalier(() => reglagesDuPalier(2))(t, s.palette);
+    const ts = (await m.fabriquePalier(() => reglagesDuPalier(2)))(t, s.palette);
     const pose = poseTheme(t, "virage");
     poser(car.group, pose.voiture);
     car.nuit(nuitDe(s.id));

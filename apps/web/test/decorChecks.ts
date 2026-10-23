@@ -29,6 +29,19 @@ import { CHAPEAU, MARGE_PASSAGE, PASSAGE_HAUT, PoseLog, ROLES, TOLERANCE_APPUI, 
 import { PALETTE_DEFS } from "../src/trackMesh";
 import { trackGeometry } from "../src/scene/existant";
 import { geometrieP1 } from "../src/scene/composerP1";
+import { solSous, terrainDe } from "../src/scene/decor/commun";
+import { DECOR as stade } from "../src/scene/decor/stade";
+import { DECOR as rallye } from "../src/scene/decor/rallye";
+import { DECOR as banquise } from "../src/scene/decor/banquise";
+import { DECOR as nuit } from "../src/scene/decor/nuit";
+import { DECOR as campagne } from "../src/scene/decor/campagne";
+import { DECOR as canyon } from "../src/scene/decor/canyon";
+import { DECOR as col } from "../src/scene/decor/col";
+import { DECOR as ville } from "../src/scene/decor/ville";
+import type { ModuleDecor } from "../src/scene/types";
+
+/** Lot 44 : le décor de chaque palette (dans le jeu, chargé à la demande : `scene/decor.ts`). */
+export const DECORS_TEST: Record<PaletteName, ModuleDecor> = { stade, desert: rallye, neige: banquise, nuit, neon: nuit, campagne, canyon, alpin: col, ville };
 
 export type Regle = "appui" | "vide" | "passage" | "structure" | "role";
 
@@ -123,10 +136,10 @@ function auBord(world: World, b: Block, x: number, z: number): { dehors: number;
   return { dehors: Math.abs(lat) - e, bord: roulant(world, pt.x, pt.z) };
 }
 
-/** Rejoue la construction d'un circuit au palier 1 (la scène du jeu, lot 43 : éléments, éclairage de piste, décor d'aujourd'hui) avec un relevé de pose. */
+/** Rejoue la construction d'un circuit au palier 1 (la scène du jeu : éléments, éclairage de piste ; lot 44 : le décor du thème et son sol relevé) avec un relevé de pose. */
 export function releverP1(track: Track, palette: PaletteName): Pose[] {
   const log = new PoseLog();
-  geometrieP1(track, palette, { log, headless: true });
+  geometrieP1(track, palette, { log, headless: true, decor: DECORS_TEST[palette] });
   return log.poses;
 }
 
@@ -144,6 +157,8 @@ export function verifier(c: Circuit, poses: Pose[]): Faute[] {
   const floorY = track.voidY - FALL_DEPTH;
   const hauteurRebord = PALETTE_DEFS[palette].wallHeight ?? WALL_HEIGHT;
   const fautes: Faute[] = [];
+  // Lot 44 : le sol relevé du décor (un maillage : la simulation ne le voit pas), l'appui des éléments posés dessus.
+  let terrain: ReturnType<typeof terrainDe> | null = null;
   const faute = (p: Pose, regle: Regle, detail: string) => fautes.push({ regle, kind: p.kind, theme, style: p.style, jour, block: p.block, group: p.group, detail });
 
   for (const p of poses) {
@@ -153,6 +168,13 @@ export function verifier(c: Circuit, poses: Pose[]): Faute[] {
         const ecart = p.y0 - floorY;
         if (ecart > TOLERANCE_APPUI) faute(p, "vide", `base à ${ecart.toFixed(2)} m au-dessus du sol`);
         else if (ecart < -TOLERANCE_APPUI) faute(p, "appui", `base à ${(-ecart).toFixed(2)} m sous le sol`);
+      } else if (p.appui === "terrain") {
+        // Posé sur le point le plus bas du sol relevé sous son plan : rien en l'air (de l'autre côté d'une pente, il est un peu enfoui).
+        terrain ??= terrainDe(track, floorY);
+        const [bas] = solSous(terrain, p);
+        const ecart = p.y0 - bas;
+        if (ecart > TOLERANCE_APPUI) faute(p, "vide", `base à ${ecart.toFixed(2)} m au-dessus du sol relevé`);
+        else if (ecart < -TOLERANCE_APPUI) faute(p, "appui", `base à ${(-ecart).toFixed(2)} m sous le sol relevé`);
       } else {
         const b = track.blocks[p.block];
         const cx = (p.x0 + p.x1) / 2;
@@ -176,7 +198,7 @@ export function verifier(c: Circuit, poses: Pose[]): Faute[] {
         }
       }
       // Un pied ne se pose jamais sur la route ni sur un bas-côté (la voiture y roule).
-      if (p.appui === "sol") {
+      if (p.appui === "sol" || p.appui === "terrain") {
         const dedans = pointsDuPlan(p, MARGE_PASSAGE).filter(([x, z]) => roulant(world, x, z) !== NO_GROUND).length;
         if (dedans > 0) faute(p, "passage", `${dedans} points de son plan sur la surface roulante`);
       }

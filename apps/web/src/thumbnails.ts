@@ -1,12 +1,13 @@
 import { SIM_VERSION, dailyTrackId, type ThemeName } from "@cdj/sim";
 import { createCircuitMaker, type CircuitMaker } from "./thumbGen";
 import { THUMB_H, THUMB_W, releaseThumbnailRenderer, renderThumbnail, type ThumbnailCircuit, type ThumbnailOptions } from "./thumbnail";
+import { chargerDecor } from "./scene/decor";
 
 // Service de miniatures (lot 13) : les fabrique à la demande, une par une, jamais pendant une course, et les garde
 // (mémoire + IndexedDB). Tout ce qui touche au navigateur est injectable : la logique se teste sans DOM.
 
 /** À incrémenter quand l'aspect des miniatures change (cadrage, caméra, couleurs) : les anciennes images sont ignorées. */
-export const THUMB_VERSION = 4; // lot 43 : la scène du palier 1 (lot 37 : tribune sur son socle, décor qui ne touche plus la route)
+export const THUMB_VERSION = 5; // lot 44 : le décor du palier 1 et son sol relevé (lot 43 : la scène du palier 1 ; lot 37 : tribune sur son socle, décor qui ne touche plus la route)
 
 /** Clé de cache : l'id du circuit (version du générateur, thème forcé, et plus tard variante) + la taille + les versions. */
 export function thumbKey(day: number, theme: ThemeName | null, scale: number, variant = 0): string {
@@ -308,8 +309,11 @@ export function createThumbnailService(canRun: () => boolean, dpr = typeof devic
     make: createCircuitMaker(() => service.stats.mainThreadGenerations++),
     store: typeof indexedDB === "undefined" ? null : createIdbStore(),
     draw: async (circuit, scale) => {
+      // Lot 44 : le décor du thème (à la demande, le même que dans la scène) ; s'il ne se charge pas, la miniature est sans décor.
+      const decor = options.webgl === false ? null : await chargerDecor(circuit.palette).catch(() => null);
+      if (!canRun()) return null; // une course a pu commencer pendant le chargement : jamais de miniature en course
       const t0 = performance.now();
-      const canvas = renderThumbnail(circuit, { width: THUMB_W, height: THUMB_H, scale, ...options });
+      const canvas = renderThumbnail(circuit, { width: THUMB_W, height: THUMB_H, scale, ...options, decor });
       const t1 = performance.now();
       const blob = await canvasBlob(canvas);
       return blob ? { blob, renderMs: t1 - t0, encodeMs: performance.now() - t1 } : null;

@@ -64,6 +64,7 @@ import {
   medalFor,
   parseDay,
   isVariant,
+  themeForDay,
   raceElapsedMs,
   stepCar,
   wrapAngle,
@@ -121,6 +122,7 @@ import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
 import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
+import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
 import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
@@ -212,6 +214,8 @@ let planKnown = false;
 // jours) ; si le planning en choisit un autre, c'est celui-là qu'on lui demande. Le résultat ne dépend que de la date, de la variante et du thème : rien n'est perdu.
 const engine = sharedCircuitEngine();
 const originDaily = scenario === "jour" && !trial ? engine.daily(planDay, null, 0) : null;
+// Lot 44 : le décor du thème du jour (à la demande) se charge dès maintenant, en même temps que le circuit : le plus souvent il est là avant la scène.
+if (scenario === "jour") void chargerDecor((forcedTheme ?? themeForDay(planDay)).palette).catch(() => undefined);
 originDaily?.catch(() => undefined); // si le planning en choisit un autre, ce résultat-ci ne sera jamais lu : pas d'erreur non rattrapée
 if (scenario === "jour" && !trial) {
   const base = apiBase();
@@ -272,6 +276,9 @@ const coupesScene = sceneVoulue?.coupes ?? [];
 const modulesDepart = palierDepart === "existant" ? PAS_DU_PALIER.existant : pasVoulus(palierDepart, plusDepart, coupesScene);
 let pasDepartCharges = true;
 if (modulesDepart.length > 0) await chargerPas(modulesDepart).catch(() => (pasDepartCharges = false));
+// Lot 44 : au Salon, le décompte part dès le chargement (il n'y a pas d'accueil où le décor arriverait) : le décor de la session est attendu un instant (un
+// petit morceau, souvent déjà en cache), pour que la première scène l'ait ; trop lent, elle se construit sans lui et il s'ajoutera à la prochaine arrivée.
+if (salon) await Promise.race([chargerDecor(salon.circuit.palette).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
 /** Les textes peints sur la scène (bandeaux des portiques), dans la langue du joueur ; les parties coupées par l'adresse. */
 const textesScene = () => ({ depart: t("course.portique.depart"), arrivee: t("course.portique.arrivee") });
 const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 ? { coupes: coupesScene } : {}) });
@@ -282,10 +289,13 @@ let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.pale
 /** Compose la scène au palier voulu (et ses pas en plus) ; si ce palier ou un pas n'a pas pu se brancher (module pas chargé), au palier par défaut. */
 function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier, plus: readonly string[] = []) {
   const debut = performance.now();
+  // Lot 44 : le décor du thème, s'il est déjà chargé ; sinon la scène s'affiche sans lui (piste, rebords, éléments de course) et il s'ajoute hors course.
+  void chargerDecor(palette).catch(() => undefined);
+  const options = { ...optionsScene(), decor: decorPret(palette) };
   try {
-    return composer(t0, palette, palier, optionsScene(), plus);
+    return composer(t0, palette, palier, options, plus);
   } catch {
-    return buildTrackScene(t0, palette, { textes: textesScene() });
+    return buildTrackScene(t0, palette, options);
   } finally {
     constructionMs = performance.now() - debut; // `?debug` : `__cdj.socle.constructionMs` (mesures du lot 43)
   }
@@ -1907,6 +1917,7 @@ function isFrozen(): boolean {
 function frame(now: number) {
   salon?.tick(); // Salon : compte à rebours, fin de session, podium, bascule
   if (reconstructeur.enAttente()) void reconstructeur.essayer(); // un autre palier demandé : reconstruit à l'accueil, à la pause, à l'arrivée, au podium (jamais en course)
+  poserDecorArrive(); // lot 44 : le décor du thème arrivé, posé à l'arrêt seulement
   garage.tick(); // la voiture choisie, chargée à la demande, remplace la civile hors course ; son palier suit la qualité ; la Nuit
   const frozen = isFrozen();
   if (dayCardShown) hudDayCard.hidden = phase !== "countdown";
@@ -2293,13 +2304,56 @@ function adopterScene(next: TrackScene) {
   renderer.toneMappingExposure = view.look.exposure;
   view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
   (old as Partial<TrackScene>).dispose?.();
+  decorDansVue = !poseurDe(view) || !!view.stats().decor;
+}
+
+// --- Le décor du palier 1, à la demande (lot 44) ------------------------------------------------------------------------------
+// Le décor du thème est demandé dès que le thème est connu (`chargerDecor`) ; la scène se construit avec lui s'il est déjà là, sinon sans lui. Il s'ajoute
+// ensuite à la scène (`poserDecor`) **seulement à l'arrêt** — accueil, pause, arrivée, podium du Salon (`peutReconstruire`, comme les paliers) : **jamais
+// pendant une course ni pendant le décompte**. La scène suivante du Salon, construite d'avance pendant le podium, le reçoit de même.
+/** Ce qui pose le décor dans une scène (l'arène plate et l'existant n'en ont pas). */
+function poseurDe(v: typeof view) {
+  return (v as Partial<TrackScene>).poserDecor?.bind(v);
+}
+let decorDansVue = !poseurDe(view) || !!view.stats().decor;
+const etatDecor = { palette: scenePalette as PaletteName, poseMs: null as number | null, posePhase: null as string | null, poseDureeMs: 0, poseEnCourse: 0 };
+const suivreDecor = (palette: PaletteName) => {
+  if (etatDecor.palette === palette) return;
+  Object.assign(etatDecor, { palette, poseMs: null, posePhase: null, poseDureeMs: 0 });
+};
+if (decorDansVue && poseurDe(view)) Object.assign(etatDecor, { poseMs: performance.now(), posePhase: "construction" });
+/** À chaque image (une lecture de booléen la plupart du temps) : pose le décor arrivé, si le jeu est à l'arrêt. */
+function poserDecorArrive() {
+  const arret = isFrozen() || phase === "finished";
+  // Au classement final du Salon, la scène affichée sera remplacée dans quelques secondes par la suivante : on ne lui ajoute rien (une saccade pour rien).
+  const remplacee = salon?.state === "podium" || salon?.state === "switching";
+  if (!decorDansVue && !remplacee) {
+    const m = decorPret(scenePalette);
+    if (m && arret) {
+      if (phase === "racing" || phase === "countdown") etatDecor.poseEnCourse += isFrozen() ? 0 : 1;
+      const debut = performance.now();
+      poseurDe(view)!(m);
+      decorDansVue = true;
+      view.setQuality(governor.level, settings.shadows);
+      etatDecor.poseMs = performance.now();
+      etatDecor.poseDureeMs = etatDecor.poseMs - debut;
+      etatDecor.posePhase = homeOpen ? "accueil" : paused ? "pause" : phase === "finished" ? "arrivee" : "arret";
+    }
+  }
+  if (prebuilt && arret && !prebuilt.decor) {
+    const m = decorPret(prebuilt.palette);
+    if (m) {
+      prebuilt.scene.poserDecor?.(m);
+      prebuilt.decor = true;
+    }
+  }
 }
 
 const reconstructeur = creerReconstructeur({
   palier: premierPalier,
   plus: premierPlus,
   peutReconstruire: () => isFrozen() || phase === "finished",
-  construire: (palier, plus) => (track ? composer(track, scenePalette, palier, optionsScene(), plus) : null),
+  construire: (palier, plus) => (track ? composer(track, scenePalette, palier, { ...optionsScene(), decor: decorPret(scenePalette) }, plus) : null),
   adopter: adopterScene,
 });
 // Lot 43 : les bandeaux des portiques sont peints dans la langue du joueur ; une autre langue choisie (Réglages : le jeu est à l'arrêt) repeint la scène.
@@ -2312,7 +2366,7 @@ onLangue(() => {
 // est libérée (rien ne s'accumule côté carte graphique en une soirée de sessions). Le circuit vient du fil de travail, déjà préparé.
 // `prebuilds` : scènes construites d'avance (outil de test : une scène se construit sur le fil principal, les mesures d'images l'attendent).
 const salonStats = { buildMs: 0, swapMs: 0, swapAt: 0, prebuilt: 0, builtInSwap: 0, prebuilds: 0 };
-let prebuilt: { id: string; scene: ReturnType<typeof buildTrackScene> } | null = null;
+let prebuilt: { id: string; palette: PaletteName; decor: boolean; scene: ReturnType<typeof buildTrackScene> } | null = null;
 
 function buildSalonScene(c: LoadedSalonCircuit) {
   const t0 = performance.now();
@@ -2339,8 +2393,9 @@ function swapSalonCircuit(c: LoadedSalonCircuit) {
     salonStats.builtInSwap++;
   }
   prebuilt = null;
-  adopterScene(next);
   scenePalette = c.palette;
+  adopterScene(next);
+  suivreDecor(c.palette);
   track = c.track;
   gameAudio.setAmbience(ambienceFor(c.palette));
   $("meta").textContent = salon!.title();
@@ -2355,10 +2410,21 @@ const salonHost: SalonHost = {
   swapCircuit: swapSalonCircuit,
   prebuild(c) {
     if (prebuilt?.id === c.id) return;
-    prebuilt?.scene.dispose();
-    prebuilt = { id: c.id, scene: buildSalonScene(c) };
-    renderer.compile(prebuilt.scene.scene, camera); // shaders compilés derrière le classement final : pas de saccade quand le décompte repart (lot 33)
-    salonStats.prebuilds++;
+    // Lot 44 : la scène suivante se construit avec son décor ; s'il n'est pas encore chargé, on l'attend (la construction se fait de toute façon d'avance).
+    const construire = () => {
+      if (prebuilt?.id === c.id || salon?.circuit.id === c.id) return; // déjà faite, ou le circuit a déjà changé
+      prebuilt?.scene.dispose();
+      const scene = buildSalonScene(c);
+      prebuilt = { id: c.id, palette: c.palette, decor: !scene.poserDecor || !!scene.stats().decor, scene };
+      renderer.compile(prebuilt.scene.scene, camera); // shaders compilés derrière le classement final : pas de saccade quand le décompte repart (lot 33)
+      salonStats.prebuilds++;
+    };
+    // Attendue, elle ne se fait pas en pleine course (elle prend le fil principal) : sinon elle se fera à l'heure pile, derrière le classement final.
+    const plusTard = () => {
+      if (!salonHost.isRacing()) construire();
+    };
+    if (decorPret(c.palette)) construire();
+    else void chargerDecor(c.palette).then(plusTard, plusTard);
   },
   // « Une course est en cours » : elle roule vraiment (une voiture immobile sur la ligne n'a rien commencé : le podium n'attend pas).
   isRacing: () => !watch && !watchWait && phase === "racing" && !!race && (carSpeed(car) > 2 || race.splits.length > 0),
@@ -2475,6 +2541,14 @@ if (params.has("debug")) {
       get feux() {
         return etatFeux(phase, countdown, COUNTDOWN_S);
       },
+      /**
+       * Lot 44 : le décor du thème (à la demande) — demandé, arrivé, posé (ms depuis l'ouverture de la page), à quel moment (accueil, pause, arrivée, arrêt ou
+       * « construction » : il était là quand la scène s'est construite), s'il est dans la scène ; `poseEnCourse` doit rester 0 (`e2e/decor.spec.ts`).
+       */
+      get decor() {
+        const instants = instantsDecor.get(scenePalette);
+        return { ...etatDecor, demandeMs: instants?.demande ?? null, pretMs: instants?.pret ?? null, dansScene: !!view.stats().decor, pret: !!decorPret(scenePalette) };
+      },
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
       /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */
       get voiture() {
@@ -2521,7 +2595,8 @@ if (params.has("debug")) {
       async thumbnail(date: string, options: ThumbnailOptions & { theme?: string } = {}) {
         const c = await engine.daily(parseDay(date)!, themeByName(options.theme ?? null)?.name ?? null, 0);
         const timing = { build: 0, draw: 0 };
-        const url = renderThumbnail({ track: c.track, palette: c.palette, theme: c.theme }, { ...options, timing }).toDataURL("image/png");
+        const decor = options.webgl === false ? null : await chargerDecor(c.palette).catch(() => null);
+        const url = renderThumbnail({ track: c.track, palette: c.palette, theme: c.theme }, { ...options, timing, decor }).toDataURL("image/png");
         return { url, timing };
       },
       /** Miniatures (lot 13) : compteurs, durées de fabrication, file d'attente. */

@@ -7,7 +7,7 @@ import { Builder } from "../src/meshKit";
 import { PAS_DISTANCE, distanceSigns, signsFor } from "../src/signage";
 import { PALETTE_DEFS } from "../src/trackMesh";
 import { geometrieP1 } from "../src/scene/composerP1";
-import { THEMES_C } from "../src/scene/directionC";
+import { THEMES_C } from "../src/scene/lumiere";
 import { FeuxDepart, ROUGE_PISTE, paletteP1, routeP } from "../src/scene/palier1";
 import { MARQUE } from "../src/scene/pieces";
 import { REBORDS_B, rebordB, type RebordB } from "../src/scene/piste";

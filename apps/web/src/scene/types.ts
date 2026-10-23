@@ -1,17 +1,18 @@
 // Lot 38 — ce qu'est une direction de la scène : des fonctions de construction par élément (portique de départ, arrivée, porte de contrôle,
 // plaques, panneaux, rebords, décor), paramétrées par thème, et une ambiance (ciel, lumière, brume) par thème. La vitrine (`/track/vitrine/`) les
 // compare à l'existant ; les lots de mise en œuvre les reprendront telles quelles dans `trackMesh.ts` (voir le README du lot 38).
-import type { Mesh, PerspectiveCamera, Scene, Texture, Vector3 } from "three";
+import type { BufferGeometry, Mesh, PerspectiveCamera, Scene, Texture, Vector3 } from "three";
 import type { Block, PaletteName, Track } from "@cdj/sim";
 import type { Builder, V3 } from "../meshKit";
 import type { SignSpec } from "../signage";
-import type { DecorGeometry, Look, Palette } from "../trackMesh";
+import type { Look, Palette } from "../trackMesh";
 import type { StyleRoute } from "./route";
 import type { Affiches } from "./outils";
 import type { Drapeaux } from "./drapeaux";
 import type { Reglages } from "./paliers";
 import type { PoseLog } from "../decorPose";
 import type { Repere } from "./outils";
+import type { Sol, Terrain } from "./decor/commun";
 
 /** O : l'existant réécrit en direction (base et contrôle) ; A, B : les directions ; M : le mélange recommandé. C est un traitement de la lumière et des
  * matières (`directionC.ts`), appliqué à une scène déjà construite. */
@@ -93,6 +94,8 @@ export interface Contexte {
   textes?: TextesScene;
   /** Lot 43 : les pièces du pas « géométrie » (palier 2), données par le compositeur qui a chargé `finition.ts`. */
   finition?: FinitionElements;
+  /** Lot 44 : la variété du décor (palier 2, `finition.ts`), donnée par le compositeur de la vitrine : chaque instance posée varie un peu. */
+  varierDecor?: { marque(c: CalquesDecor): unknown; varier(c: CalquesDecor, m: unknown, x: number, sol: number, z: number): void };
 }
 
 /** Ciel et lumière d'un thème pour une direction. */
@@ -152,14 +155,71 @@ export interface Direction {
 export interface PlaceDecor {
   x: number;
   z: number;
-  /** Anneau : 1 = cellule voisine d'un bloc, 2 = une cellule plus loin. */
-  anneau: 1 | 2;
+  /** Lot 44 : la hauteur du sol (relevé) à cette place. */
+  y: number;
+  /** Anneau : 1 = cellule voisine d'un bloc, 2 = une cellule plus loin, 3… */
+  anneau: number;
   /** Vecteur unitaire (x, z) vers le centre du bloc le plus proche (un panneau publicitaire, une tribune y font face). */
   versRoute: [number, number];
   /** Hauteur de la route du bloc le plus proche. */
   yRoute: number;
   cx: number;
   cz: number;
+}
+
+/** Lot 44 : les calques où se construit le décor (un sous-ensemble des calques d'une scène). */
+export type CalquesDecor = Pick<Calques, "decor" | "decorLumineux" | "dense" | "affiches"> &
+  Partial<Pick<Calques, "solide" | "drapeaux" | "ecrans" | "foule">> & {
+    /** Lot 46 : la tribune du départ, si elle a été posée (`decor/commun.ts`) ; le pas « vie » y accroche ses mâts, ses drapeaux et son ruban d'écrans. */
+    tribune?: TribunePosee | null;
+  };
+
+/** Un spectateur de la tribune (pas « foule », lot 46) : où il se tient (pied), son cap, la couleur de son maillot. */
+export interface Spectateur {
+  x: number;
+  y: number;
+  z: number;
+  cap: number;
+  couleur: number;
+}
+
+/** Lot 46 : la tribune posée : le bas de sa façade côté piste (lue de gauche à droite depuis la piste), le pied des mâts (sur le toit, au fond). */
+export interface TribunePosee {
+  facade: [V3, V3];
+  mats: V3[];
+}
+
+/**
+ * Lot 46 (lot 44 : le décor arrive à la demande) : ce que le décor posé confie au pas « vie » — sa tribune, et ses spectateurs quand la foule est animée
+ * (ils ne sont alors pas dessinés dans le décor) ; `decor` : le calque du décor, où se posent les mâts (avant que son maillage soit construit).
+ */
+export interface DecorVie {
+  tribune: TribunePosee | null;
+  foule: Spectateur[] | null;
+  decor: Builder;
+}
+
+/**
+ * Lot 44 : le décor d'un thème (`decor/<thème>.ts`, chargé à la demande) : ses recettes, que `decor/commun.ts` pose sur le sol relevé selon les règles du lot 37.
+ * `recette` : un élément à une place (anneaux 1 et 2) ; `remplissage` : un élément simple de la qualité 2 (anneaux 2 et 3) ; `plus` : ce que le thème pose à sa
+ * façon (le front de rue et les lampadaires de la Ville) ; `densite` : le nombre moyen d'éléments par cellule — recettes de l'anneau 1, de l'anneau 2, remplissage
+ * de l'anneau 3 et de l'anneau 2 (`DENSITE` de `commun.ts` par défaut).
+ */
+export interface DecorTheme {
+  densite?: readonly [anneau1: number, anneau2: number, remplissage3: number, remplissage2: number];
+  recette(c: CalquesDecor, x: Contexte, p: PlaceDecor, rnd: () => number): void;
+  remplissage(g: Builder, x: Contexte, p: PlaceDecor, rnd: () => number): void;
+  plus?(s: Sol, c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): void;
+}
+
+/** Lot 44 : ce que rend le chargement du décor d'un thème : de quoi le construire dans des calques (le sol relevé est rendu, pour les tests). */
+export interface ModuleDecor {
+  theme: DecorTheme;
+  construire(c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): Terrain;
+  /** La matière de C, venue avec le décor : le grain (partagé, dessiné une fois), le sol lointain d'un thème, les coordonnées « monde » d'une géométrie. */
+  grain(): Texture;
+  sol(palette: PaletteName): Texture;
+  uvMonde(g: BufferGeometry, pas: number): void;
 }
 
 export type { V3 };
@@ -171,7 +231,6 @@ export interface ScenePas {
   scene: Scene;
   calques: Calques;
   x: Contexte;
-  decor: DecorGeometry;
   /** D'où vient la lumière du soleil ou de la lune (unitaire, lot 43 : le disque est posé de ce côté). */
   soleil: Vector3;
   /** Les parties coupées (`?reglages=3-particules`). */
@@ -189,6 +248,11 @@ export interface AnimationPas {
   dispose?(): void;
   /** Ce qu'il dit de lui (`?debug` : `__cdj.render.pas`). */
   stats?(): Record<string, unknown>;
+  /**
+   * Lot 44 : le décor du thème se pose (à la construction s'il est déjà chargé, sinon plus tard, hors course : `poserDecor`) — ce qui s'accroche à sa tribune
+   * (mâts, drapeaux, ruban, foule). Une famille reste un seul maillage : le pas refait le sien.
+   */
+  decor?(d: DecorVie): void;
 }
 
 /**
@@ -197,12 +261,12 @@ export interface AnimationPas {
  */
 export interface PasScene {
   id: string;
-  /** Avant les maillages, les éléments et le décor posés : ses pièces dans les calques (drapeaux, écrans, caissons). */
-  elements?(c: Calques, x: Contexte, decor: DecorGeometry, coupes: ReadonlySet<string>): void;
+  /** Avant les maillages et les éléments posés : ses pièces dans les calques (drapeaux, écrans, caissons) ; ce qui tient au décor vient par `decor`. */
+  elements?(c: Calques, x: Contexte, coupes: ReadonlySet<string>): void;
   /** La scène construite : ses maillages, son animation. */
   poser?(s: ScenePas): AnimationPas | void;
   /** Ombres fines (palier 3) : carte (px) à la qualité 2, demi-côté (m), avance devant la voiture (m), décalage normal ; le décor projette aussi. */
   ombres?: { carte: number; demi: number; avant: number; normalBias: number };
-  /** Il anime les spectateurs de la tribune : ils ne sont plus dessinés dans le décor (`TrackSceneOptions.foule`). */
+  /** Il anime les spectateurs de la tribune : ils ne sont plus dessinés dans le décor (`DecorVie.foule`). */
   foule?: boolean;
 }

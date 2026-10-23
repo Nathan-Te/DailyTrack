@@ -46,14 +46,14 @@ import { fastZones } from "../speedFeel";
 import { LOOKS, PALETTE_DEFS, disposeScene, type SceneStats, type TrackScene } from "../trackMesh";
 import { construireRoute } from "./route";
 import { Affiches } from "./outils";
-import { ambianceDOrigine, ciel, silhouettes } from "./composer";
-import { THEMES_C, occlusionSommets, textureFlaque, uvMonde } from "./directionC";
-import { SOLS_C, grain, texturedCielC, texturedSol } from "./textures";
-import { eclairagePisteP, panneauxDistanceP, routeP, sponsorsRebordsP } from "./palier1";
-import { DIRECTION_P } from "./decorP1";
-import { atlasB } from "./directionB";
+import { ambianceDOrigine, ciel, silhouettes } from "./ciel";
+import { THEMES_C, occlusionSommets, textureFlaque } from "./lumiere";
+import { texturedCielC } from "./textures";
+import { SOLS_C, grain, texturedSol, uvMonde } from "./decor/matiereC";
+import { arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP } from "./palier1";
+import { atlasSponsors } from "./sponsors";
 import { bordureVideB, rebordB } from "./piste";
-import { Drapeaux, FINITION_ELEMENTS, varierParPosition } from "./finition";
+import { Drapeaux, FINITION_ELEMENTS, marque, varierInstance, varierParPosition, type Marque } from "./finition";
 import { verserDrapeaux } from "./drapeaux";
 import { matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, matieresDessinees, teinteLarge, tracesEtMarquages, type Matiere } from "./matiere";
 import { detailleeAsphalte, detailleeBeton, detailleeDecor, detailleeMetal } from "./matiereDetaillee";
@@ -61,10 +61,10 @@ import { memoireScene, type MemoireScene } from "./memoire";
 import { carteEnvironnement } from "./reflets";
 import { brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
 import { THEMES_3 } from "./themes3";
-import { Chronometre, drapeauxAnimes, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
+import { Chronometre, drapeauxAnimes, ecransDuDepart, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
 import { avecPost, type Reglages } from "./paliers";
 import type { ReglagesPost } from "./post";
-import { HORIZONS, type Ambiance, type Calques, type Contexte } from "./types";
+import { HORIZONS, type Ambiance, type Calques, type Contexte, type ModuleDecor } from "./types";
 
 export interface ScenePalier extends TrackScene {
   readonly reglages: Reglages;
@@ -139,6 +139,8 @@ export function lineariserHalos(objets: readonly Object3D[]) {
 export interface OptionsPalier {
   /** Vue aérienne (miniatures) : ni ciel, ni brume, ni bandeaux, ni vie. */
   aerial?: boolean;
+  /** Lot 44 : le décor du thème (celui du jeu, `decor/<thème>.ts`), chargé par la vitrine avant de construire. Absent : pas de décor. */
+  decor?: ModuleDecor | null;
 }
 
 /** Construit la scène d'un circuit au palier donné (réglages). */
@@ -146,7 +148,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   const avantTextures = matieresDessinees().reduce((n, m) => n + m.ms, 0);
   const aerien = !!options.aerial;
   const base = PALETTE_DEFS[paletteName];
-  const pal = DIRECTION_P.palette(paletteName, base);
+  const pal = paletteP1(paletteName, base);
   const look = { ...LOOKS[paletteName], exposure: THEMES_C[paletteName].exposition };
   const tc = THEMES_C[paletteName];
   const t3 = THEMES_3[paletteName];
@@ -171,34 +173,37 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   };
   // Lot 43 : les éléments de course sont ceux du jeu (`palier1.ts`) ; le pas « géométrie » leur arrive par le contexte (`finition.ts`). La vitrine est un
   // outil interne, en français : ses bandeaux disent « DÉPART » et « ARRIVÉE » (le jeu lit son catalogue).
-  const ctx: Contexte = { palette: paletteName, pal, look, track, floorY, reglages: r, varie: seeded(`${track.id}:${paletteName}:variete`), textes: { depart: "DÉPART", arrivee: "ARRIVÉE" }, ...(r.geometrie ? { finition: FINITION_ELEMENTS } : {}) };
+  const varie = seeded(`${track.id}:${paletteName}:variete`);
+  // Lot 44 : la variété du décor (pas « variété ») lui arrive par le contexte, comme la géométrie aux éléments : le décor du jeu n'importe pas `finition.ts`.
+  const varierDecor = r.variete ? { marque: (c: Calques) => marque(c), varier: (c: Calques, m: unknown, x: number, sol: number, z: number) => varierInstance(c, m as Marque, x, sol, z, varie) } : undefined;
+  const ctx: Contexte = { palette: paletteName, pal, look, track, floorY, reglages: r, varie, textes: { depart: "DÉPART", arrivee: "ARRIVÉE" }, ...(r.geometrie ? { finition: FINITION_ELEMENTS } : {}), ...(varierDecor ? { varierDecor: varierDecor as Contexte["varierDecor"] } : {}) };
   const style = routeP(paletteName, r, { rebord: (nom, sorte) => rebordB(nom, sorte), bordureVide: bordureVideB });
   construireRoute(track, pal, style, { route: calques.route, lumineux: calques.lumineux, rebords: calques.rebords }, floorY, { lissage: r.geometrie ? 2 : 1 });
   const fast = fastZones(track);
   const rythme = new Builder();
-  const d = DIRECTION_P;
   for (const b of track.blocks) {
-    if (b.kind === "boost") d.plaque(calques, ctx, b);
-    if (b.kind === "turbo") d.turbo(calques, ctx, b);
-    if (b.kind === "cut") d.coupure(calques, ctx, b);
-    if (!aerien) d.rythme({ ...calques, solide: rythme, lumineux: calques.lumineux }, ctx, b, fast[b.index] ?? false);
-    if (b.mark === "checkpoint") d.porte(calques, ctx, b);
-    if (b.mark === "finish") d.arrivee(calques, ctx, b, CELL / 2);
-    if (b.mark === "start") d.portiqueDepart(calques, ctx, b, 26);
+    if (b.kind === "boost") plaqueP(calques, ctx, b);
+    if (b.kind === "turbo") turboP(calques, ctx, b);
+    if (b.kind === "cut") coupureP(calques, ctx, b);
+    if (!aerien) rythmeP({ ...calques, solide: rythme, lumineux: calques.lumineux }, ctx, b, fast[b.index] ?? false);
+    if (b.mark === "checkpoint") porteP(calques, ctx, b);
+    if (b.mark === "finish") arriveeP(calques, ctx, b, CELL / 2);
+    if (b.mark === "start") portiqueDepartP(calques, ctx, b, 26);
   }
   let signs = 0;
   if (!aerien) {
     const liste = signsFor(track);
     for (const s of liste) {
-      d.panneau(calques, ctx, track.blocks[s.block]!, s);
+      panneauP(calques, ctx, track.blocks[s.block]!, s);
       signs++;
     }
     panneauxDistanceP(calques, ctx, liste);
     sponsorsRebordsP(calques, ctx);
   }
-  // Le décor de la vitrine (lot suivant dans le jeu) garde l'atlas de B pour ses affiches : un maillage à part.
-  const affichesDecor = new Affiches();
-  d.decor({ ...calques, affiches: affichesDecor }, ctx, seeded(`${track.id}:${paletteName}`));
+  // Lot 44 : le décor du jeu (le sol relevé, la tribune, les recettes du thème), avec les crochets des pas (drapeaux, foule, écrans, variété).
+  options.decor?.construire(calques, ctx);
+  // Palier 3, pas « écrans » : les panneaux à diodes du départ, sur les rebords (`vie.ts`, comme le jeu).
+  if (r.ecrans) ecransDuDepart(calques, ctx);
   if (r.traces) tracesEtMarquages(calques.route, track, (b) => style.couleurRoute(b, pal), pal.dash);
   if (r.variete) {
     varierParPosition(calques.rebords!, 4, 0.07, 38);
@@ -279,8 +284,8 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   }
   for (const m of [...eclaires, glowMesh, decorGlow]) if (m.geometry.getAttribute("position").count > 0) scene.add(m);
   for (const banner of calques.bandeaux) scene.add(banner);
-  for (const [liste, atlas, calque] of [[calques.affiches, d.atlas?.() ?? null, "affiches"], [affichesDecor, atlasB(), "affichesDecor"]] as const) {
-    if (!atlas || liste.pos.length === 0) continue;
+  for (const [liste, atlas, calque] of [[calques.affiches, atlasSponsors(), "affiches"]] as const) {
+    if (liste.pos.length === 0) continue;
     // Les affiches sont éclairées (ce ne sont pas des écrans) : un matériau physique, l'atlas en couleur.
     const geo = new BufferGeometry();
     geo.setAttribute("position", new Float32BufferAttribute(liste.pos, 3));

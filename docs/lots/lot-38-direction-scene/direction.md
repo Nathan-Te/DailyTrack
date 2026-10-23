@@ -66,8 +66,8 @@ La voiture ne change pas (elle ne détonne avec aucune direction ; en A seule, s
 
 ## 4. Palettes par thème
 
-Couleurs de la route, des rebords et des vibreurs : celles de la direction A (`THEMES_A`, `apps/web/src/scene/directionA.ts`) ; lumière : celle de
-la direction C (`THEMES_C`, `directionC.ts`) ; horizon : `HORIZONS` (`types.ts`). Valeurs en hexadécimal.
+Couleurs de la route, des rebords et des vibreurs : celles de la direction A (`PISTE_A`, `apps/web/src/scene/piste.ts` depuis le lot 43) ; lumière : celle de
+la direction C (`THEMES_C`, `lumiere.ts` depuis le lot 44, qui a retiré les directions) ; horizon : `HORIZONS` (`types.ts`). Valeurs en hexadécimal.
 
 | Thème (palette) | Heure | Dominante | Horizon | Ciel (zénith → horizon) | Route | Rebord (profil, bandes) | Vibreurs | Lumière (soleil, hémisphère, exposition) | Ombres | Brume (couleur, début–fin) |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -85,7 +85,7 @@ La palette `neon` existe dans le code mais aucun thème ne l'utilise : à retire
 ## 5. Règles de pose (celles du lot 37, reprises ici)
 
 Ces règles sont celles du lot 37 (`docs/lots/lot-37-decor-propre.md`, `apps/web/CLAUDE.md` « Décor : règles de pose »), **vérifiées sans rendu par le test de pose**
-(`apps/web/test/decorPose.test.ts`) ; elles valent pour tout palier et pour tout élément (`placesDeDecor`, `composer.ts`, `trackGeometry`). Précisions du lot 37 : l'appui
+(`apps/web/test/decorPose.test.ts`) ; elles valent pour tout palier et pour tout élément (`placesDeDecor`, `decor/commun.ts` depuis le lot 44 ; `trackGeometry` pour l'existant). Précisions du lot 37 : l'appui
 d'un pied est le sol lointain, **le chapeau d'un rebord plein** (hauteur du bord, pas de la ligne centrale) ou une structure qui descend jusqu'au sol, à 5 cm près ;
 « rien dans le passage » = rien sur la surface roulante (route, bas-côté, paroi de cuve) ni à moins de 4,6 m au-dessus (la caméra « loin » est à 4,2 m), un élément au sol
 reste à 1 m de la route ; les trois rôles du lot 37 (*signaler*, *marquer*, *habiller*) regroupent les cinq ci-dessous.
@@ -196,7 +196,7 @@ pas se chargent à la demande**, jamais dans le premier chargement (lot 39 : `so
     Salon aussi).
 12. **Sponsors fictifs, sur les portiques et les rebords : oui, discrets** (lot 43 : huit noms inventés, `src/scene/sponsors.ts`, jamais plus lisibles que
     les panneaux de course).
-13. **Sol relevé près de la piste**, pour voir le décor : **oui** — au lot du décor (palier 1, thème par thème), pas au lot 43.
+13. **Sol relevé près de la piste**, pour voir le décor : **oui** — au lot du décor (palier 1, thème par thème), pas au lot 43. *Fait au lot 44 : un talus à 1,5 m sous la route, puis une pente douce ; la simulation ne le voit pas (`decor/commun.ts`, `terrainDe`).*
 14. **Vie au Stade** : **confettis à l'arrivée seulement ; foule seulement dans la tribune du départ** — au lot de la vie (palier 3).
 
 Et, du lot 40 (§ 6 de son README) : **l'orange est à la voiture seule**. Les vibreurs orange du Rallye et rouge-orangé de la Campagne changent de teinte ;
