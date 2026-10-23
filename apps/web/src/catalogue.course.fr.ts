@@ -53,6 +53,8 @@ export const fr = {
   "course.fantome.personneDevant": "Personne devant toi",
   "course.depart": "PARTEZ !",
   "course.arrivee": "ARRIVÉE",
+  "course.portique.depart": "DÉPART",
+  "course.portique.arrivee": "ARRIVÉE",
   "course.chute": "Chute !",
   "course.chronoTourne.tactile": "Le chrono tourne : GAZ, en bas à droite",
   "course.chronoTourne.clavier": "Le chrono tourne : ↑ ou Z pour accélérer",

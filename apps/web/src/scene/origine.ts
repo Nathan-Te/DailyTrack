@@ -4,7 +4,7 @@
 import { BOOST_HALF_LENGTH, CELL, CUT_HALF_LENGTH, WALL_HEIGHT, blockHalfWidth, blockPadHalfWidth, blockWidth, isCurve, type Block } from "@cdj/sim";
 import { shade, world, type Builder } from "../meshKit";
 import { postFractions } from "../speedFeel";
-import { addCheckpointGate, addFinishArch, addSign, addStartArch, type Props } from "../trackProps";
+import { addCheckpointGate, addFinishArch, addSign, addStartArch, type Props } from "./existant";
 import { onBlock, STYLE_ORIGINE } from "./route";
 import { ambianceDOrigine } from "./composer";
 import type { Calques, Direction } from "./types";

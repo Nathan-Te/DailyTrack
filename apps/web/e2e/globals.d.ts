@@ -115,9 +115,15 @@ interface CdjDebug {
     demander(palier: string): void;
     palier(): string;
     scene(): string;
+    /** Lot 43 : durée de construction de la scène du premier circuit (ms). */
+    constructionMs: number;
+    /** Lot 43 : le compteur d'images de `?debug`. */
+    images: { ips: number; pireMs: number } | null;
   };
+  /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
+  feux: { rouges: number; vert: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;

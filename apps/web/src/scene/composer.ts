@@ -151,7 +151,7 @@ export function silhouettes(a: Ambiance, rnd: () => number): Group {
   const group = new Group();
   const horizon = a.ciel.horizon;
   const forme = a.silhouettes.forme;
-  const layer = (n: number, rMin: number, rSpan: number, hMin: number, hSpan: number, wMin: number, wSpan: number, fadeTo: number, darker: number, twoPeaks: boolean, lum?: Builder) => {
+  const layer = (n: number, rMin: number, rSpan: number, hMin: number, hSpan: number, wMin: number, wSpan: number, fadeTo: number, darker: number, twoPeaks: boolean, lum?: Builder, proches = false) => {
     const g = new Builder();
     const body = mix(a.silhouettes.corps, horizon, fadeTo);
     const tip = mix(a.silhouettes.sommet, horizon, fadeTo - 0.08);
@@ -176,23 +176,24 @@ export function silhouettes(a: Ambiance, rnd: () => number): Group {
         }
         continue;
       }
-      if (forme === "tribunes") {
-        // L'anneau d'un stade : des tribunes tournées vers le circuit (gradins à bandes de foule, toit), et des mâts d'éclairage.
+      if (forme === "tribunes" && !proches) {
+        // L'anneau d'un stade : des tribunes tournées vers le circuit (gradins à bandes de foule, toit), et des mâts d'éclairage. Lot 43 : deux gradins (au
+        // lieu de quatre) et pas de tribunes dans les reliefs proches : l'horizon du Stade ne coûte pas plus de triangles que les pics de l'existant.
         const r0 = repereSol(x, 0, z, Math.atan2(-x, -z));
         const ww = w * 0.55;
         const hh = 14 + h * 0.18;
         boite(g, r0, -ww, ww, -10, hh * 0.35, -12, 12, corps);
         // Gradins : de plus en plus hauts en s'éloignant du circuit (le repère regarde vers lui).
-        for (let k = 0; k < 4; k++) boite(g, r0, -ww, ww, hh * (0.35 + k * 0.15), hh * (0.5 + k * 0.15), -12, 12 - k * 5, k % 2 === 0 ? shade(corps, 1.1) : mix(corps, 0xe8552d, 0.35));
+        for (let k = 0; k < 2; k++) boite(g, r0, -ww, ww, hh * (0.35 + k * 0.3), hh * (0.65 + k * 0.3), -12, 12 - k * 10, k % 2 === 0 ? shade(corps, 1.1) : mix(corps, 0x2e7dff, 0.35));
         boite(g, r0, -ww - 2, ww + 2, hh * 1.05, hh * 1.12, -14, 14, tip);
-        if (i % 2 === 0) {
+        if (i % 4 === 0) {
           boite(g, r0, ww + 4, ww + 6, -10, hh * 2.1, -12, -10, corps);
           boite(g, r0, ww + 1, ww + 9, hh * 2.1, hh * 2.4, -13, -9, tip);
         }
         continue;
       }
       if (forme === "collines") {
-        g.prism(x, -10, z, w * 1.1, w * 0.45, h * 0.4, 9, corps, tip, rnd() * 3);
+        g.prism(x, -10, z, w * 1.1, w * 0.45, h * 0.4, 7, corps, tip, rnd() * 3); // lot 43 : sept pans (neuf avant)
         continue;
       }
       if (forme === "buttes") {
@@ -201,10 +202,10 @@ export function silhouettes(a: Ambiance, rnd: () => number): Group {
         continue;
       }
       if (forme === "mesas") {
+        // Une mesa : un corps et un chapeau de strates plus clair (lot 43 : deux étages de six pans au lieu de trois de sept).
         const tw = rnd() * 3;
-        g.prism(x, -10, z, w * 0.62, w * 0.52, h * 0.5, 7, corps, corps, tw);
-        g.prism(x, -10 + h * 0.5, z, w * 0.52, w * 0.5, h * 0.12, 7, tip, tip, tw);
-        g.prism(x, -10 + h * 0.62, z, w * 0.5, w * 0.46, h * 0.18, 7, shade(corps, 1.08), shade(corps, 1.08), tw);
+        g.prism(x, -10, z, w * 0.62, w * 0.52, h * 0.5, 6, corps, corps, tw);
+        g.prism(x, -10 + h * 0.5, z, w * 0.52, w * 0.46, h * 0.3, 6, tip, shade(corps, 1.08), tw);
         continue;
       }
       g.prism(x, -10, z, w, 0.5, forme === "nuit" ? h * 0.45 : h, 5 + Math.floor(rnd() * 2), corps, tip, rnd() * 3);
@@ -218,7 +219,7 @@ export function silhouettes(a: Ambiance, rnd: () => number): Group {
   const fenetres = forme === "nuit" ? new Builder() : undefined;
   group.add(layer(34, 300, 70, 38, 70, 55, 60, 0.38, 1, true, fenetres));
   group.add(layer(26, 440, 40, 60, 80, 90, 80, 0.66, 1.05, false));
-  const hills = layer(22, 205, 40, 9, 16, 38, 40, 0.14, 0.78, false);
+  const hills = layer(22, 205, 40, 9, 16, 38, 40, 0.14, 0.78, false, undefined, true);
   hills.userData.level = 2;
   group.add(hills);
   if (fenetres && fenetres.pos.length) {

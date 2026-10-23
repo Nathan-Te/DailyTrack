@@ -446,7 +446,7 @@ function majResume() {
     } else {
       const ref = variante.id === "carte" ? undefined : MESURES_PALIERS.colonnes[variante.id];
       const mem = mes.filter((v) => v.memoire);
-      tr.append(cell(variante.id === "existant" ? (parties ? `${ko(partie("Existant : trackMesh"))} (aujourd'hui)` : "…") : poidsPalier(variante.id)));
+      tr.append(cell(variante.id === "existant" ? (parties ? `${ko(partie("Existant : trackMesh"))} (à la demande depuis le lot 43)` : "…") : poidsPalier(variante.id)));
       tr.append(
         cell(mes.length ? `${fmt(moy((v) => v.chiffres!.appels))} (max ${fmt(max((v) => v.chiffres!.appels))})` : "…"),
         cell(mes.length ? `${fmt(moy((v) => v.chiffres!.triangles) / 1000, 1)} k (max ${fmt(max((v) => v.chiffres!.triangles) / 1000, 1)} k)` : "…"),

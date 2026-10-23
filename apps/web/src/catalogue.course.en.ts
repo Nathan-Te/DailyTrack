@@ -50,6 +50,8 @@ export const en: Catalogues<typeof fr>["en"] = {
   "course.fantome.personneDevant": "Nobody ahead of you",
   "course.depart": "GO!",
   "course.arrivee": "FINISH",
+  "course.portique.depart": "START",
+  "course.portique.arrivee": "FINISH",
   "course.chute": "Fall!",
   "course.chronoTourne.tactile": "The clock is running: GAS, bottom right",
   "course.chronoTourne.clavier": "The clock is running: ↑ or W to accelerate",

@@ -12,13 +12,13 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 276 600 | 256 990 | 259 323 (lot 39 : +644 ; lot 40 : +1 689) | 17 277 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 265 200 | 245 578 | 247 911 (lot 39 : +644 ; lot 40 : +1 689) | 17 289 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 132 500 | 112 812 | 115 137 (lot 39 : +644 ; lot 40 : +1 681) | 17 363 | `apps/web/e2e/perf.spec.ts` |
-| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 297 | 703 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 268 789 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466) | 22 811 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 257 377 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466) | 22 823 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 124 512 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375) | 22 988 | `apps/web/e2e/perf.spec.ts` |
+| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 315 (lot 43 : +18) | 685 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 30 000 | 26 524 | 26 524 | 3 476 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 32 000 | 28 502 | 28 502 | 3 498 | `apps/web/e2e/perf.spec.ts` |
-| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 10 885 | 1 615 | `apps/web/e2e/perf.spec.ts` |
+| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 10 907 (lot 43 : +22) | 1 593 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
 | `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
@@ -98,9 +98,14 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 - **Track : +644 o** (256 990 → 257 634 o, `main` après le lot 37 mesuré à côté ; JS 245 578 → 246 222 o, hors three.js 112 812 → 113 456 o ; CSS, catalogue anglais, fils de travail et polices inchangés ; la marge passe de 19 610 à 18 966 o, plafonds inchangés). C'est **sous les ≈ +2 ko du plan du 38b** : le lot ajoute le registre des pas (`chargerPas`), le reconstructeur hors course (`creerReconstructeur`), la mise en commun de `adopterScene` et un crochet `?debug` ; l'assemblage de la scène n'a fait que changer de fichier (`trackMesh.ts` → `scene/socle.ts`). **Le code des paliers 1 à 3 reste hors du premier chargement** (aucun import statique : `test/socle.test.ts`). Mesure : `npm run build && node scripts/budgets.mjs`, `main` à `0d84dec` (construit à part) et après.
 
+## Lot 43 (Track) : le palier 1 de la scène en jeu
+
+- **Décision de Nathan du 23/10/2026** : +7 à 9 ko au premier chargement pour le palier 1 ; **plafonds relevés de 15 000 o** dans ce lot (JS + CSS 276 600 → **291 600 o**, JS 265 200 → **280 200 o**, hors three.js 132 500 → **147 500 o**) ; une ligne « décor 3D à la demande » de 16 ko viendra avec le lot suivant (le décor du palier 1), hors du premier chargement.
+- **Track : +9 466 o** (259 323 → 268 789 o, `main` à `f15d31d` construit à part ; JS 247 911 → 257 377 o, hors three.js 115 137 → 124 512 o ; CSS inchangé ; catalogue anglais +18 o, les deux textes des portiques ; page d'admin +22 o, la case « Scène existante » ; fils de travail et polices inchangés ; marge 17 277 → **22 811 o**). Un peu au-dessus de la cible de 7 à 9 ko, sous le plafond. Le palier 1 (`scene/composerP1.ts`, `palier1.ts`, `piste.ts`, `sponsors.ts`, `feux.ts`) entre dans le premier chargement ; **l'ancienne scène en sort** (`scene/existant.ts`, chargée à la demande sous `?palier=existant` et dans la vitrine : ≈ 6 ko compressés). Ce qui a été retiré pour tenir (premier jet : +11,3 ko) : les variantes de route mortes, l'enregistrement de l'existant déplacé dans `main.ts` (sans lui, un morceau d'aide au préchargement entrait au premier chargement), les données des directions séparées des thèmes, les rebords complets du lot 38b injectés par la vitrine seulement. Détail : `docs/lots/lot-43-palier1-elements.md`.
+
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, catalogue anglais : 703 o** (il porte l'anglais commun). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
+1. **Track, catalogue anglais : 685 o** (il porte l'anglais commun). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
 2. **Jump, JS + CSS : 1 487 o** (voir plus haut).
-3. **Track, page d'admin : 1 618 o** (plafond mesure + 15 %), puis **JS + CSS : 17 277 o** (lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
+3. **Track, page d'admin : 1 593 o** (plafond mesure + 15 %), puis **JS + CSS : 22 811 o** (lot 43 : +9 466 o, plafonds relevés de 15 000 o ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
 4. **Track, fils de travail : 3 476 o (circuits) et 3 498 o (Salon)** après leur relèvement (avant : 76 et 1 498 o). Ils embarquent le générateur et le pilote : tout ajout à la génération les entame.
