@@ -144,8 +144,7 @@ En clair :
 - **Le palier 2 n'ajoute aucun appel de rendu** (critère du lot) ; la vie et le ciel en ajoutent 4 à 5 (un par famille, lot 46), les ombres fines 1.
 - **Triangles : +48 % (Stade) à +96 % (Rallye, Col)**, plus qu'au 38b (+28 000 en moyenne : la vitrine mesurait des vues fixes, ici toute la scène au
   départ). Sur une carte graphique de téléphone récent, c'est du travail de sommets (≈ 120 000 triangles au pire) ; le Pixel 7 tenait le palier 2 de la vitrine
-  à 90 images/s avec la même géométrie. **À lire au compteur** (À tester) ; si le Rallye ou le Col ralentissent, la géométrie est la partie à alléger (rebords
-  complets) — décision n° 3.
+  à 90 images/s avec la même géométrie ; **en jeu, Nathan l'a vérifié sur son Pixel 7 (23/10) : la cadence tient.**
 - **Construction de la scène : +390 à +770 ms** au processeur ×4 (hors course : à l'accueil, à la pause, au podium du Salon) ; elle double. Le reconstructeur ne
   la fait jamais en course ; au Salon, la scène suivante est construite d'avance pendant le podium (lot 31).
 - **Envoi d'une image** (fil principal) : 5 à 13 ms au processeur ×4 selon les thèmes et les essais, sans écart net entre les paliers (le bruit d'une
@@ -219,10 +218,11 @@ Mesures : `npm run build && node scripts/budgets.mjs` et `aLaDemande` de `e2e/pe
   30 ms, tient à 16 ms, mémorisé, puis rechargé sans mesure ; « Économie » choisi en course attend la fin de la course puis donne le palier 1 au retour à
   l'accueil, « Auto » revient au palier mémorisé. `e2e/perf.spec.ts` : la ligne du palier 2 et la mesure à la demande.
 - Captures regardées (planches, réglage fr et en) ; mesures au profil téléphone (§ 4).
+- **Sur le Pixel 7 de Nathan (23/10/2026, aperçu de la PR) : « tout va bien sur le framerate »** — le palier choisi par la règle et la course en plein écran.
 
 **Non vérifié**
-- **Aucun vrai téléphone** : le palier choisi par la règle sur le Pixel 7, les images par seconde du palier 2 en course (≈ 120 000 triangles au Col), la
-  fréquence de 90 Hz estimée — « À tester ».
+- Un téléphone d'entrée de gamme (la descente vers le palier 1 n'est vérifiée qu'avec des intervalles imposés) ; les chiffres exacts du compteur sur le Pixel 7
+  (Nathan les a jugés bons, sans les noter thème par thème).
 - La détection du rendu logiciel sous Firefox et Safari réels (les e2e Firefox et WebKit passent par `navigator.webdriver`) ; un iPad (pointeur fin et écran
   large avec un clavier : compté comme ordinateur, palier 3).
 - Les passes plein écran (lot 47) : `passesPermises` est calculé et exposé, rien ne l'utilise encore.
@@ -236,8 +236,8 @@ Mesures : `npm run build && node scripts/budgets.mjs` et `aLaDemande` de `e2e/pe
 2. **« Deux mesures ratées de suite »** : lu comme deux mesures qui disent « descendre » (on s'en souvient : plafond durable), une mesure interrompue ne comptant
    pas — pour ne pas pousser vers le bas un joueur qui clique vite sur « Courir ». Si tu voulais compter les mesures interrompues, c'est une ligne de
    `qualiteMesure.ts`.
-3. **Les triangles du palier 2** (+48 à +96 %, la géométrie : rebords complets surtout) : à juger au compteur du Pixel 7 sur le Rallye et le Col ; s'ils
-   coûtent, on peut garder les rebords légers au palier 2 et réserver les complets au palier 3.
+3. **Les triangles du palier 2** (+48 à +96 %, la géométrie : rebords complets surtout) : **tranché** — le Pixel 7 tient la cadence (Nathan, 23/10) ; les
+   rebords complets restent au palier 2.
 4. **Les reflets sur la voiture** : sous le ciel clair du Stade, le toit de la voiture s'éclaircit nettement (vernis à deux couches + carte du ciel, intensité
    0,55 comme la vitrine) ; baisser l'intensité sur la voiture est un nombre (`ENVIRONNEMENT`, `finitionJeu.ts`).
 5. **Deux réglages de qualité** : « Qualité graphique » (le palier) au-dessus de « Qualité » (lot 9 : la fluidité dans un palier). Les fondre en un seul est
