@@ -220,7 +220,7 @@ describe("voiture regardée en rediffusion", () => {
       return mats;
     };
     const watched = solid(createCarMesh(true, 0xff4fa3, false, true).group);
-    expect(watched.length).toBeGreaterThan(10);
+    expect(watched.length).toBe(5); // lot 40 : la caisse et les quatre roues (les feux sont sans éclairage)
     expect(watched.every((m) => !m.transparent && m.opacity === 1)).toBe(true);
     const ghost = solid(createCarMesh(true, 0xff4fa3).group);
     expect(ghost.every((m) => m.transparent)).toBe(true);

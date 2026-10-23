@@ -28,9 +28,9 @@ import { MESURES_PALIERS } from "./mesuresPaliers";
 import type { Bout } from "./parcours";
 import type { VueMouvement } from "./mouvement";
 
-type Planche = "paliers" | "directions";
+type Planche = "paliers" | "directions" | "voiture";
 const params = new URLSearchParams(location.search);
-const planche: Planche = params.get("planche") === "directions" ? "directions" : "paliers";
+const planche: Planche = params.get("planche") === "directions" ? "directions" : params.get("planche") === "voiture" ? "voiture" : "paliers";
 document.body.dataset.planche = planche;
 
 /** Les réglages de la colonne « à la carte » et de la vue en mouvement (`?reglages=2+halo`, par défaut le palier 2). */
@@ -349,13 +349,14 @@ async function ouvrirMouvement(sujet: string) {
   const [vm, c] = await Promise.all([mouvement(), circuitDe(s), policesPretes]);
   await vm.ouvrir({ id: s.id, titre: s.titre, track: c.track, palette: c.palette, spec: c.spec });
 }
-if (planche === "paliers") {
+if (planche !== "directions") {
   for (const s of THEMES_VITRINE) {
     const o = el("option", undefined, s.titre);
     o.value = s.id;
     choixThemeMouvement.append(o);
   }
-  choixThemeMouvement.addEventListener("change", () => void ouvrirMouvement(choixThemeMouvement.value));
+  // Planche « Voiture » (lot 40) : elle branche ses propres choix (modèle, palier, thème) sur ce dialogue.
+  if (planche === "paliers") choixThemeMouvement.addEventListener("change", () => void ouvrirMouvement(choixThemeMouvement.value));
   choixBout.addEventListener("change", () => void mouvement().then((vm) => vm.changerBout(choixBout.value as Bout)));
   const scenes = dialogueMouvement.querySelectorAll<HTMLButtonElement>("[data-scene]");
   for (const b of scenes) {
@@ -375,10 +376,11 @@ if (planche === "paliers") {
     const u = new URL(location.href);
     u.searchParams.set("reglages", texteReglages(r));
     history.replaceState(null, "", u);
-    for (const v of vues.filter((x) => x.variante.id === "carte")) {
-      liberer(v);
-      demander(v);
-    }
+    if (planche === "paliers")
+      for (const v of vues.filter((x) => x.variante.id === "carte")) {
+        liberer(v);
+        demander(v);
+      }
     if (dialogueMouvement.open) void mouvement().then((vm) => vm.reconstruire());
   });
 }
@@ -546,7 +548,26 @@ fetch("./poids-parties.json")
 majResume();
 tableauDesPas();
 
-// Outils des tests (e2e/vitrine.spec.ts) et des mesures (e2e/mesure-lot38.spec.ts, e2e/mesure-lot38b.spec.ts).
+// --- La planche « Voiture » (lot 40, chargée à la demande) ------------------------------------------------------------------------------
+
+const planVoiture =
+  planche === "voiture"
+    ? import("./voiture").then(async (m) => {
+        m.brancherMouvement(dialogueMouvement);
+        await m.monter(document.getElementById("voiture")!, {
+          erreurs,
+          polices: policesPretes,
+          mouvement,
+          dialogueMouvement,
+          parties: () => parties,
+          reglerPalier: (p) => reglagesCarte.set(reglagesDuPalier(p)),
+        });
+        return m;
+      })
+    : null;
+planVoiture?.catch((e) => erreurs.push(`planche voiture : ${String(e)}`));
+
+// Outils des tests (e2e/vitrine.spec.ts, e2e/voiture.spec.ts) et des mesures (e2e/mesure-lot38.spec.ts, e2e/mesure-lot38b.spec.ts, mesure-lot40-vitrine).
 declare global {
   interface Window {
     __vitrine?: {
@@ -567,6 +588,8 @@ declare global {
         etat(): Promise<import("./mouvement").EtatMouvement | null>;
         fermer(): void;
       };
+      /** Lot 40 : la planche « Voiture » (`?planche=voiture`), une fois montée. */
+      voiture(): Promise<typeof import("./voiture") | null>;
     };
   }
 }
@@ -625,4 +648,5 @@ window.__vitrine = {
       dialogueMouvement.close();
     },
   },
+  voiture: () => planVoiture ?? Promise.resolve(null),
 };

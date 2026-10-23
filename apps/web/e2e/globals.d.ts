@@ -128,9 +128,18 @@ interface CdjDebug {
 }
 
 /** Outils de la vitrine de la scène (lot 38 et retouche 38b, `/track/vitrine/`, voir src/vitrine/vitrine.ts). */
+/** Lot 40 : les outils de la planche « Voiture » (src/vitrine/voiture.ts). */
+interface VoitureDebug {
+  toutDessiner(theme?: string): Promise<{ col: string; palier: number; sorte: "arret" | "fantome"; triangles: number; maillages: number; appels: number }[]>;
+  planche(theme: string, largeur?: number, hauteur?: number): Promise<string>;
+  planchesCouleurs(col: "A" | "B" | "C", toile: HTMLCanvasElement, largeur?: number, hauteur?: number): Promise<string>;
+  apercu(col: string, palier: 1 | 2 | 3, azimut: number, elevation: number, distance: number, largeur: number, hauteur: number): Promise<string>;
+  mesurerColonne(col: string, palier: 1 | 2 | 3, largeur: number, hauteur: number, images: number): Promise<{ imageMs: number; sceneSeuleMs: number; appels: number; appelsScene: number }>;
+}
+
 interface VitrineDebug {
-  /** La planche : les paliers (retouche 38b, par défaut) ou les directions (lot 38, `?planche=directions`). */
-  planche: "paliers" | "directions";
+  /** La planche : les paliers (retouche 38b, par défaut), les directions (lot 38, `?planche=directions`) ou la voiture (lot 40, `?planche=voiture`). */
+  planche: "paliers" | "directions" | "voiture";
   erreurs: string[];
   vues(): { sujet: string; variante: string; etat: string; constructionMs: number; appels: number; triangles: number; textures: number; cibles: number }[];
   construireTout(sujet?: string): Promise<void>;
@@ -161,6 +170,8 @@ interface VitrineDebug {
     } | null>;
     fermer(): void;
   };
+  /** Lot 40 : la planche « Voiture » (`?planche=voiture`), une fois montée (sinon `null`). */
+  voiture(): Promise<VoitureDebug | null>;
 }
 
 interface Window {

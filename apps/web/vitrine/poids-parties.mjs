@@ -61,6 +61,16 @@ const PARTIES = [
   ["Palier 3 — post : anticrénelage seul (SMAAPass, ses deux textures comprises)", null, ["SMAAPass"], { entree: `import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";` }],
   ["Palier 3 — post : sortie et étalonnage (OutputPass, ShaderPass)", null, ["OutputPass", "ShaderPass"], { entree: `import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"; import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";` }],
   ["Pour comparer : FXAA (FXAAPass), un anticrénelage plus léger que SMAA", null, ["FXAAPass"], { entree: `import { FXAAPass } from "three/examples/jsm/postprocessing/FXAAPass.js";` }],
+  // --- Lot 40 : la voiture. `carMesh.ts` et `voiture/pieces.ts` sont dans le premier chargement depuis la partie 1 : laissés dehors pour les modèles.
+  ["Existant : carMesh.ts (la voiture du jeu, six maillages depuis le lot 40, avec voiture/pieces.ts)", null, ["createCarMesh"], { entree: `import { createCarMesh } from "../carMesh";` }],
+  ["Voiture : pieces.ts seul (fusion des pièces, matériaux par sommet ; dans le premier chargement depuis la partie 1)", null, ["Pieces", "finiParSommet", "ombreDeRoue", "ombreDesFeux", "normalesLissees", "projeter"], { entree: `import { Pieces, finiParSommet, ombreDeRoue, ombreDesFeux, normalesLissees, projeter } from "../voiture/pieces";` }],
+  ["Voiture : ce que la 40b garderait de carMesh.ts (ombre portée, constantes des roues)", null, ["createShadow", "placeShadow", "clampTravel", "WHEEL_RADIUS"], { entree: `import { createShadow, placeShadow, clampTravel, WHEEL_RADIUS } from "../carMesh";` }],
+  ["Voiture : socle commun (forme, livrée et palette, constructeur, matériaux du palier 1)", null, ["construireVoiture", "MATERIAUX_1", "PALETTE"], { entree: `import { construireVoiture, MATERIAUX_1 } from "../voiture/modele"; import { PALETTE } from "../voiture/livree";`, dehors: ["carMesh", "pieces"] }],
+  ["Voiture : le fantôme simple (dans le morceau du Salon, chargé à la demande)", null, ["construireFantome"], { entree: `import { construireFantome } from "../voiture/modele";`, dehors: ["carMesh", "pieces", "forme", "livree"] }],
+  ["Voiture : modèle A (son plan)", null, ["PLAN_A"], { entree: `import { PLAN_A } from "../voiture/modeleA";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
+  ["Voiture : modèle B (son plan)", null, ["PLAN_B"], { entree: `import { PLAN_B } from "../voiture/modeleB";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
+  ["Voiture : modèle C (son plan)", null, ["PLAN_C"], { entree: `import { PLAN_C } from "../voiture/modeleC";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
+  ["Voiture : matériaux des paliers 2 et 3 (materiaux2.ts, à la demande ; MeshPhysicalMaterial compté à part, dans three.js)", null, ["MATERIAUX_2"], { entree: `import { MATERIAUX_2 } from "../voiture/materiaux2";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
 ];
 
 /** Un module vide qui exporte les mêmes noms (le palier 1 mesuré sans les modules des pas). */
@@ -89,6 +99,7 @@ async function poids(module, noms, o = {}) {
         setup(b) {
           b.onResolve({ filter: /.*/ }, (a) => {
             if (a.path === "three" || a.path.startsWith("@cdj/")) return { path: a.path, external: true };
+            if (o.dehors?.includes("carMesh") && /\/carMesh$/.test(a.path)) return { path: a.path, external: true };
             if (/\/(meshKit|signage|speedFeel|halo|labels)$/.test(a.path)) return { path: a.path, external: true };
             if (!o.garder && /\/(trackMesh|trackProps)$/.test(a.path)) return { path: a.path, external: true };
             if (vides.test(a.path)) return { path: join(a.resolveDir, `${a.path}.ts`), namespace: "vide" };

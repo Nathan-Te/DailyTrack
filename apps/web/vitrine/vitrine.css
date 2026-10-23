@@ -439,3 +439,78 @@ body[data-planche="directions"] .planche--directions {
     max-height: calc(100dvh - 70px);
   }
 }
+
+/* Lot 40 — la planche « Voiture » : les modèles côte à côte (une rangée par palier, puis les fantômes), la palette, les coûts, la planche des couleurs. */
+body[data-planche="voiture"] .pour-paliers,
+body[data-planche="voiture"] .pour-directions,
+body[data-planche="voiture"] .hors-voiture,
+body:not([data-planche="voiture"]) .pour-voiture {
+  display: none !important;
+}
+body[data-planche="voiture"] .planche--voiture {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.voiture-reglages__ligne {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 12px;
+}
+.nuancier {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pastille {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 4px 12px 4px 6px;
+  border: 2px solid var(--dj-encre);
+  border-radius: 999px;
+  background: var(--dj-papier);
+  color: var(--dj-encre);
+  font: inherit;
+  cursor: pointer;
+}
+.pastille[aria-pressed="true"] {
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+}
+.pastille__rond {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--dj-encre);
+  background: var(--pastille);
+}
+.numero {
+  width: 4em;
+  min-height: 44px;
+  font: inherit;
+  color: var(--dj-encre);
+  background: var(--dj-papier);
+  border: 2px solid var(--dj-encre);
+}
+.voiture-grille {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+.voiture-ligne {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) repeat(4, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+  min-width: 1000px;
+}
+.voiture-ligne__nom h3,
+.voiture-colonne h3 {
+  margin: 0 0 4px;
+}
+.voiture-planche__toile {
+  display: block;
+  max-width: 100%;
+  margin-top: 12px;
+}

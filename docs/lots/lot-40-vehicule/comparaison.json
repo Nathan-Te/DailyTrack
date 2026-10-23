@@ -1,0 +1,27 @@
+{
+ "poursuite": {
+  "pixels": 518400,
+  "differents": 0,
+  "ecartMax": 0
+ },
+ "poursuite-nuit": {
+  "pixels": 518400,
+  "differents": 2,
+  "ecartMax": 10
+ },
+ "capot": {
+  "pixels": 518400,
+  "differents": 59,
+  "ecartMax": 53
+ },
+ "fantome": {
+  "pixels": 518400,
+  "differents": 28,
+  "ecartMax": 36
+ },
+ "fantomes-salon": {
+  "pixels": 518400,
+  "differents": 2591,
+  "ecartMax": 213
+ }
+}

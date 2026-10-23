@@ -1,11 +1,13 @@
 import {
   BoxGeometry,
+  BufferAttribute,
   BufferGeometry,
   CanvasTexture,
   CylinderGeometry,
   DoubleSide,
   Float32BufferAttribute,
   Group,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -13,11 +15,13 @@ import {
   SRGBColorSpace,
 } from "three";
 import { AXLE_FRONT, AXLE_REAR, HALF_TRACK } from "@cdj/sim";
+import { Pieces, brute, finiParSommet, ombreDeRoue, ombreDesFeux, srgb, type AngleRoues, type Fini } from "./voiture/pieces";
 
 // Voiture low-poly (lots 9 et 9b), construite en code, **originale** : un coupé de rallye-raid trapu, carrosserie orange
 // à bandes crème, profil galbé (sections successives lissées), bulle de toit vitrée, prise d'air, rétroviseurs,
 // échappements, aileron sur deux jambes, quatre roues séparées (pneu, jante à cinq branches, disque et étrier de frein).
-// Aucun modèle ni aucune forme de véhicule existant n'a été repris.
+// Aucun modèle ni aucune forme de véhicule existant n'a été repris. Lot 40 : six maillages (caisse, feux, une roue complète par roue), à l'image
+// identique ; le fantôme simple du Salon en reste un seul. La voiture dessinée suit la simulation, elle ne la change jamais.
 // Repère : orientée vers +z (cap 0), origine au sol, y vers le haut, x vers la gauche (comme `HALF_TRACK`).
 
 type V3 = [number, number, number];
@@ -98,6 +102,9 @@ export interface CarLook {
   stripe: number;
   accent: number;
 }
+/** Feux stop éteints et allumés. */
+const STOP_OFF = 0x5a0f12;
+const STOP_ON = 0xff2a2a;
 const LOOK: CarLook = { body: 0xff6a1f, trim: 0x1d2029, glass: 0x16283a, stripe: 0xf6ecd2, accent: 0xd8321a };
 const GHOST_LOOK: CarLook = { body: 0x57b4ff, trim: 0x2a4f7a, glass: 0x2a4f7a, stripe: 0xcfe9ff, accent: 0x9fd4ff };
 
@@ -233,14 +240,8 @@ export function createCarMesh(ghost = false, tint?: number, simple = false, opaq
   m.hexa(frustum(0.3, W - 0.2, zf - 0.55, zf + 0.12, 0.38, W - 0.16, zf - 0.55, zf + 0.12), { top: look.trim, side: look.trim }); // becquet avant
   m.hexa(frustum(0.28, W - 0.3, zr - 0.04, zr + 0.35, 0.36, W - 0.34, zr - 0.04, zr + 0.35), { top: look.trim, side: look.trim }); // diffuseur
 
-  // Calandre et phares : bandeau sombre, deux blocs optiques clairs qui brillent (matériau sans éclairage, à double face : le bloc de droite
-  // est le miroir de celui de gauche, donc à l'envers ; on les voit du dessus en vue capot).
-  const lights = new Mesh3();
+  // Calandre : un bandeau sombre (les phares, plus bas, sont dans le maillage des feux).
   m.quad([-0.6, 0.44, zf + 0.001], [0.6, 0.44, zf + 0.001], [0.6, 0.5, zf - 0.04], [-0.6, 0.5, zf - 0.04], 0x0a0a0c);
-  for (const s of [-1, 1]) {
-    lights.quad([s * 0.78, 0.5, zf - 0.28], [s * 0.4, 0.5, zf - 0.08], [s * 0.4, 0.58, zf - 0.08], [s * 0.78, 0.6, zf - 0.3], 0xfff6c8);
-    lights.quad([s * 0.62, 0.43, zf - 0.02], [s * 0.4, 0.43, zf - 0.02], [s * 0.4, 0.46, zf - 0.02], [s * 0.62, 0.46, zf - 0.02], 0xffffff);
-  }
 
   const bodyMat = new MeshStandardMaterial({
     vertexColors: true,
@@ -256,86 +257,87 @@ export function createCarMesh(ghost = false, tint?: number, simple = false, opaq
     const tireColor = tinted?.tire ?? 0x2a4f7a;
     for (const cx of [HALF_TRACK, -HALF_TRACK]) for (const cz of [AXLE_FRONT, -AXLE_REAR]) m.hexa(frustum(WHEEL_RADIUS * 0.1, 0.16, cz - 0.34, cz + 0.34, WHEEL_RADIUS * 1.9, 0.16, cz - 0.3, cz + 0.3).map(([x, y, z]) => [x + cx, y, z] as V3), { top: tireColor, side: tireColor });
     bodyMat.forceSinglePass = true; // transparent et à double face : sinon dessinée deux fois
+    group.add(new Mesh(m.geometry(), bodyMat));
+    return { group, update() {} };
   }
   group.add(new Mesh(m.geometry(), bodyMat));
-  if (!simple) group.add(new Mesh(lights.geometry(), new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) })));
 
-  // Feux stop : une barrette de chaque côté du coffre, ternes puis rouge vif au freinage, plus un troisième feu central.
-  const stopMat = new MeshBasicMaterial({ color: 0x5a0f12, ...(translucent ? { transparent: true, opacity: 0.4 } : {}) });
-  if (!simple) {
-    for (const s of [-1, 1]) {
-      const bar = new Mesh(new BoxGeometry(0.46, 0.11, 0.05), stopMat);
-      bar.position.set(s * 0.58, 0.7, zr - 0.02);
-      group.add(bar);
-    }
-    const third = new Mesh(new BoxGeometry(0.5, 0.04, 0.04), stopMat);
-    third.position.set(0, 0.99, zr + 0.14);
-    group.add(third);
+  // Lot 40 : six maillages en tout (caisse, feux, quatre roues), à l'image identique à celle des cinquante-trois du lot 9b.
+  // Feux, un seul maillage : les phares (sans éclairage, à double face : le bloc de droite est le miroir de celui de gauche, donc à l'envers ; on
+  // les voit du dessus en vue capot) et les feux stop (deux barrettes et un troisième feu central, ternes puis rouge vif au freinage : leur
+  // couleur est réécrite quand le frein change).
+  const feux = new Pieces();
+  const phare = (hex: number): Fini => ({ couleur: brute(hex), alpha: 0.5 });
+  for (const s of [-1, 1]) {
+    feux.quad([s * 0.78, 0.5, zf - 0.28], [s * 0.4, 0.5, zf - 0.08], [s * 0.4, 0.58, zf - 0.08], [s * 0.78, 0.6, zf - 0.3], phare(0xfff6c8));
+    feux.quad([s * 0.62, 0.43, zf - 0.02], [s * 0.4, 0.43, zf - 0.02], [s * 0.4, 0.46, zf - 0.02], [s * 0.62, 0.46, zf - 0.02], phare(0xffffff));
   }
+  const stopDebut = feux.sommets;
+  const stopFini: Fini = { couleur: srgb(STOP_OFF), alpha: 0.4, recto: true };
+  for (const s of [-1, 1]) feux.geometrie(new BoxGeometry(0.46, 0.11, 0.05), new Matrix4().makeTranslation(s * 0.58, 0.7, zr - 0.02), stopFini);
+  feux.geometrie(new BoxGeometry(0.5, 0.04, 0.04), new Matrix4().makeTranslation(0, 0.99, zr + 0.14), stopFini);
+  const stopFin = feux.sommets;
+  const feuxGeo = feux.construire(translucent);
+  // À double face (les phares) ; les feux stop, eux, ne montrent que leur face (l'envers est écarté dans le shader). Translucide : une seule passe.
+  const feuxMat = finiParSommet(new MeshBasicMaterial({ vertexColors: true, side: DoubleSide, ...(translucent ? { transparent: true } : {}) }), { recto: true });
+  feuxMat.forceSinglePass = true;
+  const feuxMesh = new Mesh(feuxGeo, feuxMat);
+  feuxMesh.customDepthMaterial = ombreDesFeux();
+  group.add(feuxMesh);
+  const feuxCouleurs = feuxGeo.getAttribute("color") as BufferAttribute;
+  const allumer = (on: boolean) => {
+    const c = srgb(on ? STOP_ON : STOP_OFF);
+    for (let i = stopDebut; i < stopFin; i++) feuxCouleurs.setXYZ(i, c.r, c.g, c.b);
+    feuxCouleurs.needsUpdate = true;
+  };
 
-  // Quatre roues : pneu à sculptures, jante à cinq branches, moyeu, disque de frein (fixe) et étrier rouge (fixe).
-  const tireMat = new MeshStandardMaterial({ color: ghost ? (tinted?.tire ?? 0x2a4f7a) : 0x16171b, flatShading: true, roughness: 0.9, ...(translucent ? { transparent: true, opacity: 0.45 } : {}) });
-  const rimMat = new MeshStandardMaterial({ color: ghost ? (tinted?.rim ?? 0xcfe9ff) : 0xdfe3ec, flatShading: true, metalness: 0.5, roughness: 0.35, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) });
-  const hubMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : look.accent, flatShading: true, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) });
-  const discMat = new MeshStandardMaterial({ color: 0x3a3d46, flatShading: true, metalness: 0.6, ...(translucent ? { transparent: true, opacity: 0.4 } : {}) });
-  const tireGeo = new CylinderGeometry(WHEEL_RADIUS, WHEEL_RADIUS, 0.3, 18);
-  tireGeo.rotateZ(Math.PI / 2);
-  const shoulderGeo = new CylinderGeometry(WHEEL_RADIUS * 0.94, WHEEL_RADIUS * 0.94, 0.34, 9); // sculptures : un polygone plus grossier qui dépasse
-  shoulderGeo.rotateZ(Math.PI / 2);
-  const rimGeo = new CylinderGeometry(WHEEL_RADIUS * 0.66, WHEEL_RADIUS * 0.66, 0.31, 14);
-  rimGeo.rotateZ(Math.PI / 2);
-  const faceGeo = new CylinderGeometry(WHEEL_RADIUS * 0.5, WHEEL_RADIUS * 0.5, 0.33, 14);
-  faceGeo.rotateZ(Math.PI / 2);
-  const spokeGeo = new BoxGeometry(0.34, WHEEL_RADIUS * 0.62, 0.07);
-  const hubGeo = new CylinderGeometry(0.075, 0.075, 0.38, 8);
-  hubGeo.rotateZ(Math.PI / 2);
-  const discGeo = new CylinderGeometry(WHEEL_RADIUS * 0.58, WHEEL_RADIUS * 0.58, 0.04, 14);
-  discGeo.rotateZ(Math.PI / 2);
-  const caliperGeo = new BoxGeometry(0.08, 0.14, 0.2);
-  const caliperMat = new MeshStandardMaterial({ color: ghost ? (tinted?.accent ?? 0x9fd4ff) : 0xe02a1a, flatShading: true, ...(translucent ? { transparent: true, opacity: 0.5 } : {}) });
-  const wheels = (simple ? [] : [0, 1, 2, 3]).map((i) => {
-    const holder = new Group(); // braquage (avant) et position
-    const spin = new Group(); // rotation autour de l'axe
-    const side = i % 2 === 0 ? 1 : -1; // + : roue de gauche, la face extérieure est vers +x
-    {
-      spin.add(new Mesh(tireGeo, tireMat), new Mesh(shoulderGeo, tireMat), new Mesh(rimGeo, rimMat));
-      const face = new Mesh(faceGeo, discMat); // fond sombre : les branches se détachent
-      face.position.x = side * 0.004;
-      spin.add(face);
-      for (let k = 0; k < 5; k++) {
-        const spoke = new Mesh(spokeGeo, rimMat);
-        spoke.rotation.x = (k / 5) * Math.PI;
-        spoke.position.x = side * 0.012;
-        spin.add(spoke);
-      }
-      const hub = new Mesh(hubGeo, hubMat);
-      hub.position.x = side * 0.012;
-      spin.add(hub);
-      holder.add(spin);
-      const disc = new Mesh(discGeo, discMat);
-      disc.position.x = -side * 0.07;
-      const caliper = new Mesh(caliperGeo, caliperMat);
-      caliper.position.set(-side * 0.07, 0.2, -0.12);
-      holder.add(disc, caliper);
-    }
+  // Quatre roues : pneu à sculptures, jante à cinq branches, moyeu (ils tournent : dans le shader), disque de frein et étrier rouge (fixes). Une
+  // géométrie par côté (la face extérieure est vers +x à gauche), un seul matériau et un seul angle pour les quatre.
+  const roue = (side: number): BufferGeometry => {
+    const p = new Pieces();
+    const fini = (hex: number, alpha: number, rugosite: number, metal: number, tourne: boolean): Fini => ({ couleur: srgb(hex), alpha, rugosite, metal, tourne });
+    const tire = fini(ghost ? (tinted?.tire ?? 0x2a4f7a) : 0x16171b, 0.45, 0.9, 0, true);
+    const rim = fini(ghost ? (tinted?.rim ?? 0xcfe9ff) : 0xdfe3ec, 0.5, 0.35, 0.5, true);
+    const hub = fini(ghost ? (tinted?.accent ?? 0x9fd4ff) : look.accent, 0.5, 1, 0, true);
+    const disc = (tourne: boolean) => fini(0x3a3d46, 0.4, 1, 0.6, tourne);
+    const caliper = fini(ghost ? (tinted?.accent ?? 0x9fd4ff) : 0xe02a1a, 0.5, 1, 0, false);
+    const axe = (r: number, l: number, n: number) => new CylinderGeometry(r, r, l, n).rotateZ(Math.PI / 2);
+    const en = (x: number, y = 0, z = 0) => new Matrix4().makeTranslation(x, y, z);
+    p.geometrie(axe(WHEEL_RADIUS, 0.3, 18), null, tire);
+    p.geometrie(axe(WHEEL_RADIUS * 0.94, 0.34, 9), null, tire); // sculptures : un polygone plus grossier qui dépasse
+    p.geometrie(axe(WHEEL_RADIUS * 0.66, 0.31, 14), null, rim);
+    p.geometrie(axe(WHEEL_RADIUS * 0.5, 0.33, 14), en(side * 0.004), disc(true)); // fond sombre : les branches se détachent
+    const spoke = new BoxGeometry(0.34, WHEEL_RADIUS * 0.62, 0.07);
+    for (let k = 0; k < 5; k++) p.geometrie(spoke, en(side * 0.012).multiply(new Matrix4().makeRotationX((k / 5) * Math.PI)), rim);
+    p.geometrie(axe(0.075, 0.38, 8), en(side * 0.012), hub);
+    p.geometrie(axe(WHEEL_RADIUS * 0.58, 0.04, 14), en(-side * 0.07), disc(false));
+    p.geometrie(new BoxGeometry(0.08, 0.14, 0.2), en(-side * 0.07, 0.2, -0.12), caliper);
+    return p.construire(translucent);
+  };
+  const angle: AngleRoues = { value: 0 };
+  const roueMat = finiParSommet(new MeshStandardMaterial({ vertexColors: true, flatShading: true, ...(translucent ? { transparent: true } : {}) }), { angle });
+  const roueOmbre = ombreDeRoue(angle);
+  const geos = [roue(1), roue(-1)];
+  const wheels = [0, 1, 2, 3].map((i) => {
+    const holder = new Mesh(geos[i % 2]!, roueMat);
+    holder.customDepthMaterial = roueOmbre;
     const front = i < 2;
     holder.position.set(i % 2 === 0 ? HALF_TRACK : -HALF_TRACK, WHEEL_RADIUS, front ? AXLE_FRONT : -AXLE_REAR);
     group.add(holder);
-    return { holder, spin };
+    return holder;
   });
 
-  let angle = 0;
+  let freine = false;
   return {
     group,
     update(s) {
-      angle += (s.forward / WHEEL_RADIUS) * s.dt;
-      if (angle > 1e4) angle -= 1e4;
+      angle.value += (s.forward / WHEEL_RADIUS) * s.dt;
+      if (angle.value > 1e4) angle.value -= 1e4;
       wheels.forEach((w, i) => {
-        w.holder.position.y = WHEEL_RADIUS - clampTravel(s.droop[i]!);
-        w.holder.rotation.y = i < 2 ? s.steerAngle : 0;
-        w.spin.rotation.x = angle;
+        w.position.y = WHEEL_RADIUS - clampTravel(s.droop[i]!);
+        w.rotation.y = i < 2 ? s.steerAngle : 0;
       });
-      stopMat.color.setHex(s.braking ? 0xff2a2a : 0x5a0f12);
+      if (s.braking !== freine) allumer((freine = s.braking));
     },
   };
 }
