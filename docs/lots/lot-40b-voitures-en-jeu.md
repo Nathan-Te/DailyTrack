@@ -167,7 +167,8 @@ Le décompte part au même moment qu'avant (écart dans le bruit) ; la voiture c
   `watch.test.ts` (la civile et sa version simple au lieu de l'ancienne voiture), `voitureModeles.test.ts` (la civile, plafond 2 600),
   `vitrine-voiture.spec.ts` (cinq colonnes).
 - e2e relancés en local, un test à la fois comme en CI : `voiture`, `vitrine-voiture`, `perf`, `admin`, `ghost`, `cameras`, `socle`, `watch`,
-  `watch-serveur`, `salon` — **49 réussis**. Un premier passage avait fait échouer deux tests de `watch.spec.ts` : la voiture passait au palier 2
+  `watch-serveur`, `salon` — **49 réussis**. En CI (run [39936294123](https://github.com/Nathan-Te/DailyTrack/actions/runs/39936294123)) : 294 réussis, 0 échec,
+  0 instable ; une part WebKit annulée pendant l'installation de ses dépendances système, avant tout test (relancée par le commit suivant). Un premier passage avait fait échouer deux tests de `watch.spec.ts` : la voiture passait au palier 2
   dès le démarrage (voir § 3, la règle des 5 s) ; corrigé, ils passent (et passent sur `main` dans le même conteneur).
 - Captures (`CAPTURES=1 npx playwright test captures-lot40b`) et mesure ci-dessus.
 
