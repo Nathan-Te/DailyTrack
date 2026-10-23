@@ -52,7 +52,8 @@ const FILL = 0.92;
 
 let shared: WebGLRenderer | null | undefined; // undefined : pas encore créé ; null : impossible (pas de WebGL)
 
-function sharedRenderer(): WebGLRenderer | null {
+/** Le moteur hors écran des miniatures (créé à la demande) ; lot 41 : les vignettes du Garage s'en servent aussi (`garageVignettes.ts`). */
+export function sharedRenderer(): WebGLRenderer | null {
   if (shared !== undefined) return shared;
   try {
     const canvas = document.createElement("canvas");

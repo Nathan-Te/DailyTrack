@@ -2,9 +2,12 @@
 // construction de la voiture ; `choisirVoiture(…)` l'enregistre (le Garage du lot 41). Le choix est gardé dans le navigateur sous `cdj:track:garage`.
 // Un choix illisible, ou une voiture non débloquée, retombe sur la civile en orange de Track. `?voiture=<id>&couleur=<n>&motif=<m>` (recette et
 // aperçus : `choixDeLAdresse`) montre une voiture sans rien enregistrer ni vérifier ; les courses jouées ainsi ne sont pas classées.
-import { listDayBests } from "../records";
+//
+// Lot 41 : **les déblocages viennent du serveur** (`GET /api/garage`, réponse de l'envoi d'un temps), jamais d'un calcul du jeu sur ses records.
+// La même clé garde ce que le dernier appel réussi a débloqué (`debloquees`) et les voitures déjà vues au Garage (`vues`, la pastille « Nouveau ») :
+// hors connexion, la civile plus ces voitures-là ; le jeu n'est jamais bloqué.
 import { gameStorage } from "../storage";
-import { VOITURES, VOITURE_DEFAUT, ficheVoiture, type FicheVoiture } from "./catalogue";
+import { VOITURES, VOITURE_DEFAUT, ficheVoiture } from "./catalogue";
 import { MOTIFS, PALETTE, type MotifLivree } from "./livree";
 
 /** Le choix : la voiture (id du catalogue), la couleur (rang dans `PALETTE`, 0 = orange de Track), le motif de la livrée. */
@@ -17,31 +20,63 @@ export interface ChoixVoiture {
 export const CLE_GARAGE = "cdj:track:garage";
 export const CHOIX_DEFAUT: Readonly<ChoixVoiture> = Object.freeze({ id: VOITURE_DEFAUT, couleur: 0, motif: "bande" });
 
-/** Ce qui débloque les voitures : jours joués, circuits du jour avec l'or (ou mieux) et avec la médaille d'auteur. */
-export interface Progres {
-  jours: number;
-  or: number;
-  auteur: number;
+type Lecture = () => Pick<Storage, "getItem">;
+type Ecriture = () => Pick<Storage, "getItem" | "setItem">;
+
+/** Ce que la clé garde (tout est facultatif : une clé de la retouche 40b n'a que le choix). */
+interface Garde {
+  id?: unknown;
+  couleur?: unknown;
+  motif?: unknown;
+  /** Lot 41 : les voitures débloquées selon le dernier appel réussi au serveur. */
+  debloquees?: unknown;
+  /** Lot 41 : les voitures déjà vues au Garage. */
+  vues?: unknown;
 }
 
-/** Les progrès gardés dans ce navigateur (les records des circuits du jour). Le lot 41 les fera vérifier par le serveur. */
-export function progresLocal(): Progres {
-  const p: Progres = { jours: 0, or: 0, auteur: 0 };
-  for (const b of listDayBests().values()) {
-    p.jours++;
-    if (b.medal === "gold" || b.medal === "author") p.or++;
-    if (b.medal === "author") p.auteur++;
+function lire(stockage: Lecture): Garde {
+  try {
+    const brut = JSON.parse(stockage().getItem(CLE_GARAGE) ?? "null") as unknown;
+    return brut && typeof brut === "object" && !Array.isArray(brut) ? (brut as Garde) : {};
+  } catch {
+    return {}; // stockage indisponible ou illisible
   }
-  return p;
 }
 
-/** La voiture est-elle débloquée ? (`abonnement` : jamais, pour l'instant.) */
-export function estDebloquee(f: FicheVoiture, p: Progres): boolean {
-  const d = f.deblocage;
-  if (d.type === "defaut") return true;
-  if (d.type === "jours") return p.jours >= d.nombre;
-  if (d.type === "medailles") return (d.medaille === "auteur" ? p.auteur : p.or) >= d.nombre;
-  return false;
+function ecrire(stockage: Ecriture, maj: Partial<Garde>): boolean {
+  try {
+    stockage().setItem(CLE_GARAGE, JSON.stringify({ ...lire(stockage), ...maj }));
+    return true;
+  } catch {
+    return false; // navigation privée, stockage bloqué : tant pis
+  }
+}
+
+/** Les identifiants connus du catalogue dans une liste lue (le reste est ignoré). */
+const ids = (brut: unknown): string[] => (Array.isArray(brut) ? VOITURES.map((v) => v.id).filter((id) => brut.includes(id)) : []);
+
+/** Les voitures débloquées : la civile, plus ce que le dernier appel réussi au serveur a débloqué (gardé dans le navigateur). */
+export function voituresDebloquees(stockage: Lecture = gameStorage): Set<string> {
+  return new Set([VOITURE_DEFAUT, ...ids(lire(stockage).debloquees)]);
+}
+
+/** Note la réponse du serveur (les voitures débloquées) : elle remplace la précédente (le serveur fait foi, un code chargé compris). */
+export function noterDeblocages(debloquees: readonly string[], stockage: Ecriture = gameStorage): void {
+  const liste = ids(debloquees).filter((id) => id !== VOITURE_DEFAUT);
+  if (JSON.stringify(liste) !== JSON.stringify(ids(lire(stockage).debloquees))) ecrire(stockage, { debloquees: liste });
+}
+
+/** Les voitures débloquées pas encore vues au Garage (la pastille « Nouveau »). La civile n'est jamais nouvelle. */
+export function voituresNouvelles(stockage: Lecture = gameStorage): string[] {
+  const vues = new Set(ids(lire(stockage).vues));
+  return [...voituresDebloquees(stockage)].filter((id) => id !== VOITURE_DEFAUT && !vues.has(id));
+}
+
+/** Le Garage a montré ces voitures : elles ne sont plus nouvelles. */
+export function marquerVues(vues: readonly string[], stockage: Ecriture = gameStorage): void {
+  const deja = ids(lire(stockage).vues);
+  const tout = ids([...deja, ...vues]);
+  if (tout.length !== deja.length) ecrire(stockage, { vues: tout });
 }
 
 /** Un choix lu (stockage, adresse) : `null` s'il est illisible (voiture inconnue, couleur hors de la palette, motif inconnu). */
@@ -55,27 +90,17 @@ export function lireChoix(brut: unknown): ChoixVoiture | null {
 }
 
 /** La voiture choisie (stockage du navigateur) ; illisible ou non débloquée : la civile en orange de Track. */
-export function voitureChoisie(progres: () => Progres = progresLocal, stockage: () => Pick<Storage, "getItem"> = gameStorage): ChoixVoiture {
-  let choix: ChoixVoiture | null = null;
-  try {
-    choix = lireChoix(JSON.parse(stockage().getItem(CLE_GARAGE) ?? "null"));
-  } catch {
-    /* stockage indisponible ou illisible */
-  }
-  if (!choix || !estDebloquee(ficheVoiture(choix.id)!, progres())) return { ...CHOIX_DEFAUT };
+export function voitureChoisie(stockage: Lecture = gameStorage): ChoixVoiture {
+  const choix = lireChoix(lire(stockage));
+  if (!choix || !voituresDebloquees(stockage).has(choix.id)) return { ...CHOIX_DEFAUT };
   return choix;
 }
 
-/** Enregistre le choix (le Garage) ; un choix illisible n'est pas écrit. */
-export function choisirVoiture(choix: ChoixVoiture, stockage: () => Pick<Storage, "setItem"> = gameStorage): boolean {
+/** Enregistre le choix (le Garage) ; un choix illisible ou une voiture verrouillée ne sont pas écrits (`false`). */
+export function choisirVoiture(choix: ChoixVoiture, stockage: Ecriture = gameStorage): boolean {
   const c = lireChoix(choix);
-  if (!c) return false;
-  try {
-    stockage().setItem(CLE_GARAGE, JSON.stringify(c));
-    return true;
-  } catch {
-    return false; // navigation privée, stockage bloqué : tant pis
-  }
+  if (!c || !voituresDebloquees(stockage).has(c.id)) return false;
+  return ecrire(stockage, { id: c.id, couleur: c.couleur, motif: c.motif });
 }
 
 /**

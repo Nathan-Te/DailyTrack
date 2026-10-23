@@ -4,6 +4,8 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { CATALOGUE_COMMUN } from "../../../packages/ui/src/catalogue";
 import { CATALOGUE_TRACK } from "../src/catalogue";
 import { CATALOGUE_APERCU } from "../src/catalogue.apercu";
+import { CATALOGUE_BASE } from "../src/catalogue.base";
+import { fr as GARAGE_FR } from "../src/catalogue.base.garage.fr";
 import { chargerLangue, setLangue, t } from "../src/i18n";
 
 // L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
@@ -15,7 +17,8 @@ const SRC = join(__dirname, "../src");
 const sources = readdirSync(SRC).filter((f) => f.endsWith(".ts") && !f.startsWith("catalogue"));
 const code = sources.map((f) => readFileSync(join(SRC, f), "utf8")).join("\n") + readFileSync(join(__dirname, "../index.html"), "utf8");
 // Lot I6 : les balises de partage de `index.html` lisent le catalogue de l'aperçu (construction seulement).
-const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr)]);
+// Lot 41 : les textes du Garage sont chargés avec lui (`catalogue.base.garage.*.ts`, réunis à la zone « base » pour les tests).
+const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_BASE.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr)]);
 
 describe("catalogue de DailyTrack", () => {
   it("chaque clé appelée par t(\"…\"), lier(…), data-t existe, en français et en anglais", () => {
@@ -32,6 +35,11 @@ describe("catalogue de DailyTrack", () => {
     const dynamiques = [...code.matchAll(/\bt\(\s*`([a-zA-Z0-9_.]+)\.\$\{/g)].map((m) => m[1]!);
     expect(new Set(dynamiques).size).toBeGreaterThan(2);
     for (const prefixe of new Set(dynamiques)) expect([...connues].some((k) => k.startsWith(`${prefixe}.`)), `aucune clé « ${prefixe}.… »`).toBe(true);
+  });
+
+  it("lot 41 : les textes du Garage ne sont pas dans le premier chargement (ils viennent avec le Garage), et pas en double", () => {
+    for (const cle of Object.keys(GARAGE_FR)) expect(CATALOGUE_TRACK.fr[cle], cle).toBeUndefined();
+    expect(CATALOGUE_TRACK.fr["garage.ouvrir"]).toBe("Garage"); // le bouton, lui, est au premier écran
   });
 
   it("les huit thèmes du jeu sont traduits (mêmes noms que le portail)", () => {

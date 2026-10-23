@@ -1,7 +1,7 @@
 # Lot 44 — Track : palier 1, le décor de chaque thème
 
 Branche `claude/adoring-clarke-mdlzin` (nom imposé par la session ; le lot prévoyait `lot-44-palier1-decor`, d'où l'étiquette `jeu:track` sur la PR pour le
-job `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), puis `main` fusionné à `42154b6` (retouche 40b, les voitures en jeu) et à `19864f0` (lot 46, la vie et le ciel : § 8). PR : [#126](https://github.com/Nathan-Te/DailyTrack/pull/126).
+job `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), puis `main` fusionné à `42154b6` (retouche 40b, les voitures en jeu) à `19864f0` (lot 46, la vie et le ciel : § 8) et à `4986d14` (lot 41, le Garage : rien à raccorder). PR : [#126](https://github.com/Nathan-Te/DailyTrack/pull/126).
 Zones : `apps/web/**`, `docs/lots/**`, la section de Track de `docs/plateforme/budgets.md` (zones de la PR vérifiées : `scripts/zones-jeu.mjs`). **Rien dans
 `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés (aucun fichier de `packages/` touché).
 
@@ -136,21 +136,21 @@ Ce que montrent les planches (à juger au téléphone : une image de 640 × 360 
 
 ## 4. Budget
 
-Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTrack`), `main` à `19864f0` (lot 46 compris) construit à part ; décor : `node apps/web/e2e/mesureDecor.mjs`.
+Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTrack`), `main` à `4986d14` (lots 46 et 41 compris) construit à part ; décor : `node apps/web/e2e/mesureDecor.mjs`.
 
 | Ligne | `main` | Lot 44 | Écart | Plafond | Marge |
 |---|---|---|---|---|---|
-| JS + CSS du premier chargement | 277 542 | **275 581** | **−1 961** | 291 600 | 16 019 |
-| JS | 266 130 | 264 169 | −1 961 | 280 200 | 16 031 |
-| hors three.js | 132 580 | 130 619 | −1 961 | 147 500 | 16 881 |
-| page d'admin | 11 156 | 11 162 | +6 | 12 500 | 1 338 |
+| JS + CSS du premier chargement | 278 799 | **276 861** | **−1 938** | 291 600 | 14 739 |
+| JS | 267 251 | 265 313 | −1 938 | 280 200 | 14 887 |
+| hors three.js | 133 701 | 131 763 | −1 938 | 147 500 | 15 737 |
+| page d'admin | 11 182 | 11 181 | −1 | 12 500 | 1 319 |
 | CSS, catalogue anglais, fils de travail, polices | — | inchangés | 0 | — | — |
 | **décor 3D à la demande** (nouvelle ligne : les huit thèmes, le commun une fois) | — | **12 431** | — | **16 000** | 3 569 |
 
-**Chaque thème** (JS compressé, ce que charge un joueur : son morceau et le morceau commun, 5 622 o) : Stade 6 222 · Rallye 6 224 · Banquise 6 135 · Nuit
-6 251 · Campagne 6 494 · Canyon 6 368 · Col 6 302 · Ville 7 789 (son morceau seul : 513 à 872 o, la Ville 2 167 o avec son front de rue). Avant la fusion du lot 46 :
+**Chaque thème** (JS compressé, ce que charge un joueur : son morceau et le morceau commun, 5 619 o) : Stade 6 219 · Rallye 6 221 · Banquise 6 132 · Nuit
+6 249 · Campagne 6 491 · Canyon 6 365 · Col 6 298 · Ville 7 789 (son morceau seul : 513 à 872 o, la Ville 2 170 o avec son front de rue). Avant la fusion du lot 46 :
 12 554 o (les panneaux à diodes du départ, que le morceau commun portait pour la vitrine, sont maintenant ceux de `vie.ts`) ; premier chargement −1 614 o contre
-`42154b6`.
+`42154b6`, −1 961 o contre `19864f0`.
 
 - **Le premier chargement baisse** : l'ancien décor (≈ 2 ko compressés dans `trackMesh.ts`) en sort ; il y entre le registre (huit `import()`), la pose du décor
   dans la scène et dans le jeu (≈ 0,4 ko). **Rien du décor n'est dans le premier chargement** (testé : `e2e/perf.spec.ts` par les fichiers construits,
@@ -230,7 +230,8 @@ retouche 40b comprise) servi à côté, la branche ; au départ d'une course, **
 **Non vérifié** : le temps par image sur un vrai téléphone (rendu logiciel seulement) ; Firefox et WebKit (la CI de la PR lance le sous-ensemble
 multi-navigateurs, la CI complète de `main` tout) ; sur la construction finale (après la fusion de `main` à `19864f0`, lot 46), relancés en local : tous les tests
 unitaires (`npx vitest run --project sqlite` : 201 fichiers, 2 705 tests), `typecheck`, et les e2e `decor`, `perf`, `socle`, `graphismes`, `thumbnails`, `vitrine*`,
-`vie-ciel` (38 passés) ; le reste des e2e par la CI de la PR.
+`vie-ciel` (38 passés) ; après la fusion du lot 41 (`4986d14`) : tous les tests unitaires (2 735), `typecheck`, et les e2e `decor`, `perf`, `socle`,
+`vie-ciel`, `garage`, `graphismes` (25 passés) ; le reste des e2e par la CI de la PR.
 
 ## 8. Pour Nathan (décisions et questions)
 

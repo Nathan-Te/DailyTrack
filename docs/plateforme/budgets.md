@@ -12,13 +12,13 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 275 581 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 44 : −1 961) | 16 019 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 264 169 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 44 : −1 961) | 16 031 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 130 619 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375 ; 40b : +6 834 ; lot 46 : +1 234 ; lot 44 : −1 961) | 16 881 | `apps/web/e2e/perf.spec.ts` |
-| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 585 (lot 43 : +18 ; 40b : +270, noms et descriptions des voitures) | 415 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 276 861 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 41 : +1 257 ; lot 44 : −1 938) | 14 739 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 265 313 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; 40b : +7 512 ; lot 46 : +1 241 ; lot 41 : +1 121 ; lot 44 : −1 938) | 14 887 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 131 763 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375 ; 40b : +6 834 ; lot 46 : +1 234 ; lot 41 : +1 121 ; lot 44 : −1 938) | 15 737 | `apps/web/e2e/perf.spec.ts` |
+| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 441 (lot 43 : +18 ; 40b : +270, noms et descriptions des voitures ; lot 41 : −144, les descriptions partent avec le Garage) | 559 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 30 000 | 26 524 | 26 524 | 3 476 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 32 000 | 28 502 | 28 502 | 3 498 | `apps/web/e2e/perf.spec.ts` |
-| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 11 162 (lot 43 : +22 ; 40b : +177, la voiture d'essai ; lot 46 : +72, la scène d'essai ; lot 44 : +6) | 1 338 | `apps/web/e2e/perf.spec.ts` |
+| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 11 181 (lot 43 : +22 ; 40b : +177, la voiture d'essai ; lot 46 : +72, la scène d'essai ; lot 41 : +26 ; lot 44 : −1) | 1 319 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
 | `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
@@ -118,27 +118,31 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
   test. **Pas encore une ligne du tableau** : le tableau exige que chaque ligne ait sa limite lue par `apps/portail/test/budgets.test.ts` (zone partagée, que le
   lot ne touche pas) — à ajouter par un lot de plateforme (clé `track.vieCiel`, motif `"la vie et le ciel, à la demande, compressés"\)\.toBeLessThan\(([\d_]+)\)`).
 
+## Lot 41 (Track) : le Garage
+
+- **Track : +1 257 o au premier chargement** (mesuré après la fusion du lot 46 : `main` à `19864f0` 277 542 → 278 799 o ; JS +1 121 o, CSS +136 o ; hors three.js +1 121 o ; catalogue anglais −144 o ; page d'admin +26 o ; fils de travail et polices inchangés, « vie et ciel à la demande » toujours sous ses 8 000 o (`perf.spec.ts` vert) ; marge 14 058 → **12 801 o** ; avant la fusion, sur `42154b6` : +1 302 o). Au-dessus de la cible de 1 ko du prompt, **justifié dans `docs/lots/lot-41-garage.md`** (§ « Budget ») : ce qui reste au premier chargement est l'entrée (le bouton de l'accueil et sa pastille « Nouveau », le bouton de la pause), le chargeur (`import()` et les outils prêtés au Garage), la ligne « Nouvelle voiture » de l'arrivée, le cache des déblocages rendus par le serveur (`choix.ts`) et l'aperçu de la voiture regardée (`VoitureEnJeu.apercu`) ; les descriptions des voitures en sortent (−172 o). **Le Garage lui-même est à la demande** : `garage-*.js` 5 240 o et `garage-*.css` 1 484 o (code, feuille, textes fr + en, vignettes), plus les modèles A, B, C déjà à la demande (40b) ; pas de ligne au tableau (la liste des lignes suit `perf.spec.ts`, zone partagée : un plafond « Garage à la demande » se propose au lot de plateforme suivant, par exemple 8 000 o). **Piège mesuré** : importer depuis le Garage des modules du jeu partagés avec le Salon et l'admin changeait le découpage des morceaux du premier chargement (+≈ 500 o : la compression par fichier se perd) ; le jeu prête donc ses outils au Garage (`GarageHost.outils`), qui n'importe que three.js et le morceau `voiture` (réglés à la main).
+
 ## Lot 44 (Track) : le décor du palier 1, à la demande
 
-- **Premier chargement : −1 961 o** (JS + CSS 277 542 → **275 581 o**, `main` à `19864f0` — lot 46 compris — construit à part ; JS 266 130 → 264 169 o, hors three.js 132 580 → 130 619 o ; CSS, catalogue anglais, fils de travail et polices inchangés ; page d'admin +6 o ; marge 14 058 → **16 019 o**, plafonds inchangés ; avant la fusion du lot 46 : −1 614 o contre `42154b6`). Le décor d'avant (tribune, décor du thème, front de rue, passe dense : `addScenery`… de `trackMesh.ts`) quitte le premier chargement pour `scene/existant.ts` (à la demande, `?palier=existant` et la vitrine) ; il entre le registre du décor (`scene/decor.ts`, quelques lignes : huit `import()`) et la pose du décor dans la scène (`poserDecor`, `composerP1.ts`) et dans le jeu (`main.ts`) ; la foule confiée par la tribune (lot 46) suit le décor dans son morceau.
+- **Premier chargement : −1 938 o** (JS + CSS 278 799 → **276 861 o**, `main` à `4986d14` — lots 46 et 41 compris — construit à part ; JS 267 251 → 265 313 o, hors three.js 133 701 → 131 763 o ; CSS, catalogue anglais, fils de travail et polices inchangés ; page d'admin −1 o ; marge 12 801 → **14 739 o**, plafonds inchangés ; contre `19864f0` (lot 46) : −1 961 o ; contre `42154b6` : −1 614 o). Le décor d'avant (tribune, décor du thème, front de rue, passe dense : `addScenery`… de `trackMesh.ts`) quitte le premier chargement pour `scene/existant.ts` (à la demande, `?palier=existant` et la vitrine) ; il entre le registre du décor (`scene/decor.ts`, quelques lignes : huit `import()`) et la pose du décor dans la scène (`poserDecor`, `composerP1.ts`) et dans le jeu (`main.ts`) ; la foule confiée par la tribune (lot 46) suit le décor dans son morceau.
 - **Ligne « décor 3D à la demande »** (décision de Nathan du 23/10/2026 : **16 000 o** pour les huit thèmes) : **12 431 o** (marge 3 569 o), le morceau commun compté une fois. Mesure : `node apps/web/e2e/mesureDecor.mjs` après `npm run build` (le morceau du thème et, de proche en proche, ce qu'il importe hors du premier chargement), imposée par `apps/web/e2e/perf.spec.ts` (avec « rien du décor dans le premier chargement »). **Elle n'est pas encore une ligne du tableau ci-dessus** : `apps/portail/test/budgets.test.ts` (zone partagée, lot de plateforme) n'y attend que les clés qu'il connaît ; y ajouter `track.decor` est une ligne de plus dans `ATTENDUS` (proposition du lot 44 pour un lot de plateforme).
 
 | Morceau (gzip) | Seul | Avec le morceau commun (ce que charge un joueur) |
 |---|---|---|
-| commun (`decor/commun.ts`, `decor/matiereC.ts` : sol relevé, pose, tribune, pièces, matière de C) | 5 622 | — |
-| Stade (`decor/stade.ts`) | 600 | 6 222 |
-| Rallye (`decor/rallye.ts`) | 602 | 6 224 |
-| Banquise (`decor/banquise.ts`) | 513 | 6 135 |
-| Nuit (`decor/nuit.ts`, la palette `neon` aussi) | 629 | 6 251 |
-| Campagne (`decor/campagne.ts`) | 872 | 6 494 |
-| Canyon (`decor/canyon.ts`) | 746 | 6 368 |
-| Col alpin (`decor/col.ts`) | 680 | 6 302 |
-| Ville (`decor/ville.ts` : front de rue et lampadaires compris) | 2 167 | 7 789 |
+| commun (`decor/commun.ts`, `decor/matiereC.ts` : sol relevé, pose, tribune, pièces, matière de C) | 5 619 | — |
+| Stade (`decor/stade.ts`) | 600 | 6 219 |
+| Rallye (`decor/rallye.ts`) | 602 | 6 221 |
+| Banquise (`decor/banquise.ts`) | 513 | 6 132 |
+| Nuit (`decor/nuit.ts`, la palette `neon` aussi) | 630 | 6 249 |
+| Campagne (`decor/campagne.ts`) | 872 | 6 491 |
+| Canyon (`decor/canyon.ts`) | 746 | 6 365 |
+| Col alpin (`decor/col.ts`) | 679 | 6 298 |
+| Ville (`decor/ville.ts` : front de rue et lampadaires compris) | 2 170 | 7 789 |
 | **les huit thèmes** | | **12 431** (plafond 16 000) |
 
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, catalogue anglais : 415 o** (il porte l'anglais commun ; retouche 40b : +270 o, les voitures). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
+1. **Track, catalogue anglais : 559 o** (il porte l'anglais commun ; retouche 40b : +270 o, les voitures ; lot 41 : −144 o, les descriptions des voitures partent avec le Garage). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
 2. **Jump, JS + CSS : 1 487 o** (voir plus haut).
-3. **Track, page d'admin : 1 338 o** (plafond mesure + 15 %), puis **JS + CSS : 16 019 o** (lot 44 : −1 961 o, le décor d'avant sorti du premier chargement ; lot 46 : +1 241 o, la vie et le ciel à la demande ; retouche 40b : +7 512 o, la voiture civile, les modèles à la demande, le catalogue et le choix — accepté par Nathan le 23/10/2026, détail dans `docs/lots/lot-40b-voitures-en-jeu.md` ; lot 43 : +9 466 o, plafonds relevés de 15 000 o ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
+3. **Track, page d'admin : 1 319 o** (plafond mesure + 15 %), puis **JS + CSS : 14 739 o** (lot 44 : −1 938 o, le décor d'avant sorti du premier chargement ; lot 41 : +1 257 o, l'entrée et le chargeur du Garage, la ligne de l'arrivée, le cache des déblocages — détail dans `docs/lots/lot-41-garage.md` ; lot 46 : +1 241 o, la vie et le ciel à la demande ; retouche 40b : +7 512 o, la voiture civile, les modèles à la demande, le catalogue et le choix — accepté par Nathan le 23/10/2026, détail dans `docs/lots/lot-40b-voitures-en-jeu.md` ; lot 43 : +9 466 o, plafonds relevés de 15 000 o ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
 4. **Track, fils de travail : 3 476 o (circuits) et 3 498 o (Salon)** après leur relèvement (avant : 76 et 1 498 o). Ils embarquent le générateur et le pilote : tout ajout à la génération les entame.

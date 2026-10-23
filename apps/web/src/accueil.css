@@ -549,3 +549,36 @@ body.finished #board {
     --cadre-largeur: 640px;
   }
 }
+
+/* --- Lot 41 : l'entrée du Garage, dans la tête de l'étiquette (à gauche de la livrée), et sa pastille « Nouveau » (aussi sur les cartes du Garage) ---- */
+.home-garage {
+  position: absolute;
+  right: 90px;
+  top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 560px) {
+  .home-garage {
+    position: static;
+    align-self: flex-start;
+    margin-top: 6px;
+  }
+}
+.garage-pastille {
+  padding: 1px 6px;
+  background: var(--dj-moutarde);
+  color: var(--dj-encre);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.garage-pastille--nouveau {
+  background: var(--track-livree);
+  color: var(--track-asphalte);
+}
+

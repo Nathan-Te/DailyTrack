@@ -24,3 +24,4 @@ export * from "./salonCircuit";
 export * from "./traps";
 export * from "./braking";
 export * from "./medalStats";
+export * from "./garage";

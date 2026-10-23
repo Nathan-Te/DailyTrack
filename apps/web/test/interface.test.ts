@@ -10,8 +10,8 @@ const SRC = join(__dirname, "../src");
 const feuilles = readdirSync(SRC).filter((f) => f.endsWith(".css"));
 
 describe("feuilles de style de DailyTrack", () => {
-  it("les sept feuilles du jeu existent", () => {
-    expect(feuilles.sort()).toEqual(["accueil.css", "arrivee.css", "hud.css", "interface.css", "reglages.css", "salon.css", "tactile.css"]);
+  it("les huit feuilles du jeu existent (lot 41 : `garage.css`, chargée avec le Garage)", () => {
+    expect(feuilles.sort()).toEqual(["accueil.css", "arrivee.css", "garage.css", "hud.css", "interface.css", "reglages.css", "salon.css", "tactile.css"]);
   });
 
   for (const f of feuilles) {

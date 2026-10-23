@@ -30,7 +30,7 @@ export interface OptionsVoitureEnJeu {
   materiaux2(): Promise<FabriqueMateriaux>;
 }
 
-const cleDe = (c: ChoixVoiture, palier: number) => `${c.id}|${c.couleur}|${c.motif}|${palier}`;
+const cleDe = (c: ChoixVoiture, palier: number, silhouette = false) => `${c.id}|${c.couleur}|${c.motif}|${palier}${silhouette ? "|s" : ""}`;
 
 export class VoitureEnJeu {
   voiture: Voiture;
@@ -38,6 +38,8 @@ export class VoitureEnJeu {
   /** Le modèle construit (sa clé : voiture, couleur, motif, palier). */
   private cle: string;
   private choixCourant: ChoixVoiture;
+  /** Lot 41 : la voiture regardée au Garage, si ce n'est pas la tienne, et sa retouche (une voiture verrouillée : sa silhouette) ; `null` : ta voiture. */
+  private regardee: { choix: ChoixVoiture; retouche?: (v: Voiture) => void } | null = null;
   /** Une voiture prête, en attente du moment où le jeu permet de changer. */
   private prete: { cle: string; voiture: Voiture; fantome: CarModel } | null = null;
   private enCours: string | null = null;
@@ -73,9 +75,27 @@ export class VoitureEnJeu {
     return this.choixCourant;
   }
 
+  /**
+   * Lot 41 (le Garage) : montre une autre voiture que la tienne ; `retouche` la change une fois construite (une voiture verrouillée : sa silhouette,
+   * que le Garage apporte) ; `null` : la tienne. Rien n'est enregistré.
+   */
+  apercu(choix: ChoixVoiture | null, retouche?: (v: Voiture) => void): void {
+    this.regardee = choix ? { choix, retouche } : null;
+    this.echec = null;
+  }
+
+  /** La voiture qu'on veut voir : celle regardée au Garage, sinon la tienne. */
+  private get vise(): ChoixVoiture {
+    return this.regardee?.choix ?? this.choixCourant;
+  }
+
+  private get silhouette(): boolean {
+    return !!this.regardee?.retouche;
+  }
+
   /** La voiture prête ou voulue est-elle celle qu'on voit ? (outil des tests) */
   get aJour(): boolean {
-    return this.cle === cleDe(this.choixCourant, this.o.palier()) && !this.prete;
+    return this.cle === cleDe(this.vise, this.o.palier(), this.silhouette) && !this.prete;
   }
 
   /** Le spectateur repeint la voiture à la couleur du joueur regardé ; `null` : sa couleur. */
@@ -86,12 +106,13 @@ export class VoitureEnJeu {
 
   /** À chaque image : charge ce qu'il faut, remplace la voiture quand le jeu le permet, suit le numéro et la Nuit. */
   tick(): void {
-    const voulue = cleDe(this.choixCourant, this.o.palier());
+    const vise = this.vise;
+    const voulue = cleDe(vise, this.o.palier(), this.silhouette);
     if (voulue !== this.cle && voulue !== this.echec) {
       if (this.prete && this.prete.cle !== voulue) this.liberer(this.prete);
       if (this.prete?.cle !== voulue) {
         this.prete = null;
-        this.preparer(this.choixCourant, this.o.palier(), voulue);
+        this.preparer(vise, this.o.palier(), voulue, this.regardee?.retouche);
       }
       if (this.prete && this.o.peutChanger()) this.adopter(this.prete);
     } else if (this.prete) {
@@ -115,18 +136,19 @@ export class VoitureEnJeu {
   }
 
   private peindre(v: Voiture) {
-    v.peindre(this.couleurDe(this.choixCourant), this.numeroPeint, this.choixCourant.motif);
+    v.peindre(this.couleurDe(this.vise), this.numeroPeint, this.vise.motif);
   }
 
-  private construire(plan: PlanVoiture, c: ChoixVoiture, palier: PalierVoiture, materiaux?: FabriqueMateriaux): Voiture {
+  private construire(plan: PlanVoiture, c: ChoixVoiture, palier: PalierVoiture, materiaux?: FabriqueMateriaux, retouche?: (v: Voiture) => void): Voiture {
     this.stats.construites++;
     const v = construireVoiture(plan, { palier, couleur: this.couleurDe(c), numero: this.numeroPeint, motif: c.motif, materiaux });
     v.nuit(this.nuitPeinte);
+    retouche?.(v);
     return v;
   }
 
   /** Charge le modèle (et les matériaux du palier 2) à la demande ; une seule préparation à la fois, la dernière voulue gagne. */
-  private preparer(c: ChoixVoiture, palier: 1 | 2, cle: string) {
+  private preparer(c: ChoixVoiture, palier: 1 | 2, cle: string, retouche?: (v: Voiture) => void) {
     if (this.enCours === cle) return;
     this.enCours = cle;
     this.stats.chargements++;
@@ -135,7 +157,7 @@ export class VoitureEnJeu {
       .then(([plan, mat]) => {
         if (this.enCours !== cle) return; // un autre choix est passé entre-temps
         this.enCours = null;
-        this.prete = { cle, voiture: this.construire(plan, c, palier, mat), fantome: construireFantome(plan, TEINTE_FANTOME) };
+        this.prete = { cle, voiture: this.construire(plan, c, palier, mat, retouche), fantome: construireFantome(plan, TEINTE_FANTOME) };
         if (this.o.peutChanger()) this.adopter(this.prete);
       })
       .catch((e: unknown) => {

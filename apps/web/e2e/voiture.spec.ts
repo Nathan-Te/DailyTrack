@@ -25,7 +25,7 @@ test("sans choix : la civile ; une voiture non débloquée retombe sur la civile
   expect(v.choix).toEqual({ id: "civile", couleur: 0, motif: "bande" });
   expect(v.essai).toBeNull();
   expect(v.maillages).toBe(6);
-  // Le Proto (3 médailles d'auteur) choisi sans l'avoir débloqué : la civile en orange.
+  // Le Proto (Dragonfly : 1 médaille d'auteur, lot 41) choisi sans que le serveur l'ait débloqué : la civile en orange.
   await page.evaluate(() => localStorage.setItem("cdj:track:garage", JSON.stringify({ id: "proto", couleur: 5, motif: "flancs" })));
   await ouvrir(page, "/?home=0&debug&api=demo");
   await expect.poll(() => page.evaluate(() => window.__cdj.voiture.choix)).toEqual({ id: "civile", couleur: 0, motif: "bande" });
@@ -60,7 +60,7 @@ test("?voiture=proto&couleur=5&motif=flancs : le Proto, chargé à la demande ; 
   expect(v.stats.remplacees).toBe(1);
   // Seul le modèle affiché est téléchargé (qualité figée à 1 : pas de matériaux des paliers 2 et 3).
   expect(charges).toEqual(["modeleC"]);
-  await expect(page.locator("#tuned")).toContainText("Voiture d'essai (Proto)");
+  await expect(page.locator("#tuned")).toContainText("Voiture d'essai (Dragonfly)"); // lot 41 : noms en anglais dans les deux langues (décision de Nathan)
   await page.locator("#home-daily").click();
   await expect(page.locator("#home")).toBeHidden();
   await page.evaluate((c) => window.__cdj.autoplay(c), code);
