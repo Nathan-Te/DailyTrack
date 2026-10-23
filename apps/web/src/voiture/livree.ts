@@ -3,10 +3,17 @@
 // clarté moyenne comme l'orange). La livrée est **une texture dessinée au chargement** (aucun fichier) : le dessus (bandes obliques à 115° de la
 // charte sur le capot et le toit), les deux flancs (le numéro du jour sur les portières, en Barlow Condensed 800 italique, la police du chrono)
 // et l'arrière (le numéro, en grand). Changer de couleur redessine la texture : la géométrie ne bouge pas.
+// Retouche 40b : trois motifs (`bande` : la bande centrale ; `flancs` : un pavé de rayures sur chaque flanc, comme le bord de l'étiquette Track ;
+// `unie` : sans rayures ; le numéro reste toujours), et un **masque de nuit** dans l'alpha de la texture : les rayures, la plaque et le numéro y
+// valent 0,5 (le reste 1) ; la Nuit, le matériau les rend légèrement lumineux (`uNuit`, pieces.ts) pour que la voiture se lise.
 import { CanvasTexture, SRGBColorSpace } from "three";
 
 /** Couleurs de la marque (jetons `--track-*` et `--dj-*` de packages/ui/src/jetons.ts, recopiés en nombres : le rendu 3D ne lit pas le CSS). */
 export const LIVREE = { orange: 0xe8552d, creme: 0xede3cf, asphalte: 0x1e1b19 } as const;
+
+/** Le motif de la livrée (personnalisation du Garage, lot 41). */
+export type MotifLivree = "bande" | "flancs" | "unie";
+export const MOTIFS: readonly MotifLivree[] = ["bande", "flancs", "unie"];
 
 /** Une couleur de la palette : identifiant, nom (vitrine, outil interne en français), valeur. */
 export interface CouleurVoiture {
@@ -132,6 +139,8 @@ export interface CadreLivree {
   portiere: { z: number; y: number; h: number };
   /** Le numéro à l'arrière : centre (x = 0, y), hauteur des chiffres (m). */
   arriere: { y: number; h: number };
+  /** Le pavé de rayures du motif `flancs` : étendue en long (arrière, avant) et en hauteur (m). */
+  flancs: { z: [number, number]; y: [number, number] };
 }
 
 /** Régions de la texture (u0, v0, u1, v1) : le dessus, le flanc gauche (+x), le flanc droit, l'arrière. */
@@ -163,15 +172,15 @@ const css = (c: number) => `#${c.toString(16).padStart(6, "0")}`;
 /** La police des chiffres (celle du chrono). */
 export const POLICE_NUMERO = "'Barlow Condensed', 'Arial Narrow', sans-serif";
 
-/** La livrée dessinée : la texture et de quoi la redessiner (autre couleur, autre numéro). */
+/** La livrée dessinée : la texture et de quoi la redessiner (autre couleur, autre numéro, autre motif). */
 export interface TextureLivree {
   texture: CanvasTexture;
-  peindre(caisse: number, numero: string): void;
+  peindre(caisse: number, numero: string, motif?: MotifLivree): void;
   dispose(): void;
 }
 
 /** Dessine la livrée d'un modèle (`largeur` px : 512 au palier 1, 1024 aux paliers 2 et 3). */
-export function textureLivree(c: CadreLivree, largeur: number, caisse: number, numero: string): TextureLivree {
+export function textureLivree(c: CadreLivree, largeur: number, caisse: number, numero: string, motif: MotifLivree = "bande"): TextureLivree {
   // Sans document (tests en Node), une toile vide : la géométrie se construit, rien n'est dessiné.
   const canvas: HTMLCanvasElement = typeof document === "undefined" ? ({ width: largeur, height: largeur, getContext: () => null } as unknown as HTMLCanvasElement) : document.createElement("canvas");
   canvas.width = largeur;
@@ -179,71 +188,103 @@ export function textureLivree(c: CadreLivree, largeur: number, caisse: number, n
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
   texture.anisotropy = 4;
-  const peindre = (couleur: number, num: string) => {
+  let motifCourant = motif;
+  const peindre = (couleur: number, num: string, motifVoulu: MotifLivree = motifCourant) => {
+    motifCourant = motifVoulu;
     const x = canvas.getContext("2d");
     if (!x) return;
     const L = livreeDe(couleur);
     const W = canvas.width;
     const H = canvas.height;
+    x.globalCompositeOperation = "source-over";
     x.fillStyle = css(L.caisse);
     x.fillRect(0, 0, W, H);
     // Repère d'une région : (u, v) de la texture → pixels du canvas (le haut du canvas est v = 1).
     const px = (r: readonly number[], u: number, v: number): [number, number] => [(r[0]! + (r[2]! - r[0]!) * u) * W, (1 - (r[1]! + (r[3]! - r[1]!) * v)) * H];
     const [z0, z1] = c.z;
-    // Le dessus : la bande centrale de rayures obliques à 115° (charte), sur le capot et le toit.
+    const longueur = z1 - z0;
     const d = REGIONS.dessus;
     const mx = (m: number) => px(d, (m + c.demiLargeur) / (2 * c.demiLargeur), 0)[0];
     const mz = (m: number) => px(d, 0, (m - z0) / (z1 - z0))[1];
     const pxParM = (mx(1) - mx(0)) || 1;
     const pas = 0.24 * pxParM; // une rayure de 0,13 m et 0,11 m de vide, mesurés en travers
     const epaisseur = 0.13 * pxParM;
-    for (const [a, b] of c.bandes) {
-      x.save();
-      x.beginPath();
-      x.rect(mx(-c.largeurBande / 2), mz(b), mx(c.largeurBande / 2) - mx(-c.largeurBande / 2), mz(a) - mz(b));
-      x.clip();
-      const cx = mx(0);
-      const cy = (mz(a) + mz(b)) / 2;
-      x.translate(cx, cy);
-      x.rotate(((115 - 90) * Math.PI) / 180);
-      const etendue = Math.hypot(mx(c.largeurBande) - mx(0), mz(a) - mz(b)) + pas * 2;
-      let k = 0;
-      for (let t = -etendue; t < etendue; t += pas, k++) {
-        x.fillStyle = css(L.bandes[k % L.bandes.length]!);
-        x.fillRect(t, -etendue, epaisseur, etendue * 2);
+    /** Le filet qui borde un pavé de rayures : asphalte (crème sur une caisse sombre). */
+    const filet = css(L.clarte === "sombre" ? LIVREE.creme : LIVREE.asphalte);
+    // Deux passes : la peinture, puis le masque de nuit (les mêmes formes, qui ôtent la moitié de l'alpha : la Nuit les allume).
+    for (const masque of [false, true]) {
+      if (masque) {
+        x.globalCompositeOperation = "destination-out";
+        x.fillStyle = "rgba(0, 0, 0, 0.5)";
       }
-      x.restore();
-      // Un filet d'asphalte (crème sur caisse claire) borde la bande : elle se lit même vue de loin.
-      x.fillStyle = css(L.clarte === "claire" ? LIVREE.asphalte : L.clarte === "sombre" ? LIVREE.creme : LIVREE.asphalte);
-      const f = Math.max(2, 0.025 * pxParM);
-      x.fillRect(mx(-c.largeurBande / 2) - f, mz(b), f, mz(a) - mz(b));
-      x.fillRect(mx(c.largeurBande / 2), mz(b), f, mz(a) - mz(b));
+      const remplir = (style: string) => {
+        if (!masque) x.fillStyle = style;
+      };
+      /** Un pavé de rayures obliques à 115° (charte) dans le rectangle (x, y, l, h) du canvas, bordé d'un filet sur ses côtés `bords`. */
+      const rayures = (rx: number, ry: number, rl: number, rh: number, bords: "cotes" | "hautBas", finesse = 1) => {
+        x.save();
+        x.beginPath();
+        x.rect(rx, ry, rl, rh);
+        x.clip();
+        x.translate(rx + rl / 2, ry + rh / 2);
+        x.rotate(((115 - 90) * Math.PI) / 180);
+        const etendue = Math.hypot(rl, rh) + pas * 2;
+        let k = 0;
+        for (let t = -etendue; t < etendue; t += pas * finesse, k++) {
+          remplir(css(L.bandes[k % L.bandes.length]!));
+          x.fillRect(t, -etendue, epaisseur * finesse, etendue * 2);
+        }
+        x.restore();
+        // Un filet borde le pavé : il se lit même vu de loin.
+        remplir(filet);
+        const f = Math.max(2, 0.025 * pxParM);
+        if (bords === "cotes") {
+          x.fillRect(rx - f, ry, f, rh);
+          x.fillRect(rx + rl, ry, f, rh);
+        } else {
+          x.fillRect(rx, ry - f, rl, f);
+          x.fillRect(rx, ry + rh, rl, f);
+        }
+      };
+      // `bande` : la bande centrale de rayures sur le capot et le toit.
+      if (motifCourant === "bande") for (const [a, b] of c.bandes) rayures(mx(-c.largeurBande / 2), mz(b), mx(c.largeurBande / 2) - mx(-c.largeurBande / 2), mz(a) - mz(b), "cotes");
+      // `flancs` : un pavé de rayures à l'arrière de chaque flanc, comme le bord de l'étiquette Track.
+      if (motifCourant === "flancs") {
+        for (const cote of ["gauche", "droit"] as const) {
+          const r = REGIONS[cote];
+          const u = (zz: number) => (cote === "gauche" ? (z1 - zz) / longueur : (zz - z0) / longueur);
+          const [xa, ya] = px(r, u(c.flancs.z[0]), c.flancs.y[1] / c.hauteur);
+          const [xb, yb] = px(r, u(c.flancs.z[1]), c.flancs.y[0] / c.hauteur);
+          rayures(Math.min(xa, xb), ya, Math.abs(xb - xa), yb - ya, "hautBas", 0.62); // plus serrées : le bord de l'étiquette
+        }
+      }
+      // Le numéro : une plaque arrondie sur chaque portière, et en grand à l'arrière (dans les trois motifs).
+      const plaque = (r: readonly number[], u: number, v: number, hu: number, hv: number) => {
+        const [cx, cy] = px(r, u, v);
+        const w = hu * (r[2]! - r[0]!) * W;
+        const h = hv * (r[3]! - r[1]!) * H;
+        remplir(css(L.plaque));
+        x.beginPath();
+        x.roundRect(cx - w / 2, cy - h / 2, w, h, h * 0.22);
+        x.fill();
+        if (masque) return; // la plaque entière est déjà dans le masque
+        remplir(css(L.chiffres));
+        x.textAlign = "center";
+        x.textBaseline = "middle";
+        x.font = `italic 800 ${Math.round(h * 0.86)}px ${POLICE_NUMERO}`;
+        x.fillText(num, cx, cy + h * 0.04, w * 0.9);
+      };
+      const largeurPlaque = (h: number) => Math.max(h * 0.9, h * (0.35 + 0.42 * num.length));
+      for (const cote of ["gauche", "droit"] as const) {
+        const r = REGIONS[cote];
+        const u = cote === "gauche" ? (z1 - c.portiere.z) / longueur : (c.portiere.z - z0) / longueur;
+        plaque(r, u, c.portiere.y / c.hauteur, largeurPlaque(c.portiere.h) / longueur, (c.portiere.h * 1.25) / c.hauteur);
+      }
+      plaque(REGIONS.arriere, 0.5, c.arriere.y / c.hauteur, largeurPlaque(c.arriere.h) / (2 * c.demiLargeur), (c.arriere.h * 1.2) / c.hauteur);
     }
-    // Le numéro : une plaque arrondie sur chaque portière, et en grand à l'arrière.
-    const plaque = (r: readonly number[], u: number, v: number, hu: number, hv: number) => {
-      const [cx, cy] = px(r, u, v);
-      const w = hu * (r[2]! - r[0]!) * W;
-      const h = hv * (r[3]! - r[1]!) * H;
-      x.fillStyle = css(L.plaque);
-      x.beginPath();
-      x.roundRect(cx - w / 2, cy - h / 2, w, h, h * 0.22);
-      x.fill();
-      x.fillStyle = css(L.chiffres);
-      x.textAlign = "center";
-      x.textBaseline = "middle";
-      x.font = `italic 800 ${Math.round(h * 0.86)}px ${POLICE_NUMERO}`;
-      x.fillText(num, cx, cy + h * 0.04, w * 0.9);
-    };
-    const longueur = z1 - z0;
-    const largeurPlaque = (h: number) => Math.max(h * 0.9, h * (0.35 + 0.42 * num.length));
-    for (const cote of ["gauche", "droit"] as const) {
-      const r = REGIONS[cote];
-      const u = cote === "gauche" ? (z1 - c.portiere.z) / longueur : (c.portiere.z - z0) / longueur;
-      plaque(r, u, c.portiere.y / c.hauteur, largeurPlaque(c.portiere.h) / longueur, (c.portiere.h * 1.25) / c.hauteur);
-    }
-    plaque(REGIONS.arriere, 0.5, c.arriere.y / c.hauteur, largeurPlaque(c.arriere.h) / (2 * c.demiLargeur), (c.arriere.h * 1.2) / c.hauteur);
+    x.globalCompositeOperation = "source-over";
     texture.needsUpdate = true;
   };
-  peindre(caisse, numero);
+  peindre(caisse, numero, motif);
   return { texture, peindre, dispose: () => texture.dispose() };
 }

@@ -181,8 +181,11 @@ export interface PlanRoue {
   moyeu: Fini;
   disque: Fini;
   etrier: Fini;
-  /** Branches doubles (deux fines au lieu d'une large). */
-  doubles?: boolean;
+  /**
+   * Le dessin des branches, propre à chaque modèle (retouche 40b) : `lames` (une lame par branche), `doubles` (deux fines au lieu d'une large),
+   * `y` (une lame du moyeu qui se fend en deux vers le cerclage), `larges` (des branches pleines et larges, de petites fenêtres : une jante de série).
+   */
+  dessin?: "lames" | "doubles" | "y" | "larges";
 }
 
 /**
@@ -231,22 +234,30 @@ export function roue(p: Pieces, cote: number, r: PlanRoue): void {
     else p.tri(c, P(xfond, rj * 0.85, a), P(xfond, rj * 0.85, b), tourne(r.fond));
   }
   // Branches : des lames de l'axe au cerclage, un peu en avant du fond (la face extérieure se lit en tournant).
-  const nb = r.branches * (r.doubles ? 2 : 1);
-  const larg = (r.doubles ? 0.045 : 0.075) * (R / 0.38);
-  for (let k = 0; k < nb; k++) {
-    const a = (Math.floor(k / (r.doubles ? 2 : 1)) / r.branches) * Math.PI * 2 + (r.doubles ? ((k % 2) - 0.5) * 0.22 : 0);
+  const dessin = r.dessin ?? "lames";
+  const x0 = xfond + 0.01, x1 = xf - 0.005;
+  /** Une lame de `l0` à `l1` (le long du rayon d'angle `a`), de demi-largeur `t0` puis `t1`, décalée de `d` en travers. */
+  const lame = (a: number, l0: number, l1: number, t0: number, t1: number, d0 = 0, d1 = 0) => {
     const s = Math.sin(a), co = Math.cos(a);
     const pt = (x: number, l: number, t: number): V3 => [x * cote, s * l + co * t, co * l - s * t];
-    const x0 = xfond + 0.01, x1 = xf - 0.005;
-    const l0 = rj * 0.18, l1 = rj * 0.86;
-    const A = pt(x1, l0, -larg), B = pt(x1, l1, -larg * 0.8), C = pt(x1, l1, larg * 0.8), D = pt(x1, l0, larg);
-    const A2 = pt(x0, l0, -larg), B2 = pt(x0, l1, -larg * 0.8), C2 = pt(x0, l1, larg * 0.8), D2 = pt(x0, l0, larg);
+    const A = pt(x1, l0, d0 - t0), B = pt(x1, l1, d1 - t1), C = pt(x1, l1, d1 + t1), D = pt(x1, l0, d0 + t0);
+    const A2 = pt(x0, l0, d0 - t0), B2 = pt(x0, l1, d1 - t1), C2 = pt(x0, l1, d1 + t1), D2 = pt(x0, l0, d0 + t0);
     const q = (E: V3, F: V3, G: V3, H: V3) => (cote > 0 ? p.quad(E, F, G, H, tourne(r.metal)) : p.quad(E, H, G, F, tourne(r.metal)));
+    // La face et les deux côtés ; les bouts sont cachés (sous le moyeu, sous la lèvre de jante, ou dans la lame voisine).
     q(A, B, C, D);
-    q(A2, A, D, D2);
-    q(B, B2, C2, C);
     q(A2, B2, B, A);
     q(D, C, C2, D2);
+  };
+  const k = R / 0.38;
+  for (let i = 0; i < r.branches; i++) {
+    const a = (i / r.branches) * Math.PI * 2;
+    if (dessin === "doubles") for (const d of [-0.11, 0.11]) lame(a + d, rj * 0.18, rj * 0.86, 0.045 * k, 0.036 * k);
+    else if (dessin === "y") {
+      // Le pied de la lame, puis deux bras qui s'écartent jusqu'au cerclage.
+      lame(a, rj * 0.18, rj * 0.5, 0.06 * k, 0.05 * k);
+      for (const d of [-1, 1]) lame(a, rj * 0.48, rj * 0.86, 0.03 * k, 0.03 * k, d * 0.03 * k, d * 0.085 * k);
+    } else if (dessin === "larges") lame(a, rj * 0.18, rj * 0.86, 0.045 * k, 0.08 * k);
+    else lame(a, rj * 0.18, rj * 0.86, 0.075 * k, 0.06 * k);
   }
   // Moyeu : un petit prisme au centre.
   const m = 6;

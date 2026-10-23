@@ -59,6 +59,7 @@ const PARTIES = [
   ["Voiture : ce que la 40b garderait de carMesh.ts (ombre portée, constantes des roues)", null, ["createShadow", "placeShadow", "clampTravel", "WHEEL_RADIUS"], { entree: `import { createShadow, placeShadow, clampTravel, WHEEL_RADIUS } from "../carMesh";` }],
   ["Voiture : socle commun (forme, livrée et palette, constructeur, matériaux du palier 1)", null, ["construireVoiture", "MATERIAUX_1", "PALETTE"], { entree: `import { construireVoiture, MATERIAUX_1 } from "../voiture/modele"; import { PALETTE } from "../voiture/livree";`, dehors: ["carMesh", "pieces"] }],
   ["Voiture : le fantôme simple (dans le morceau du Salon, chargé à la demande)", null, ["construireFantome"], { entree: `import { construireFantome } from "../voiture/modele";`, dehors: ["carMesh", "pieces", "forme", "livree"] }],
+  ["Voiture : modèle civile (son plan, retouche 40b)", null, ["PLAN_CIVILE"], { entree: `import { PLAN_CIVILE } from "../voiture/modeleCivile";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
   ["Voiture : modèle A (son plan)", null, ["PLAN_A"], { entree: `import { PLAN_A } from "../voiture/modeleA";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
   ["Voiture : modèle B (son plan)", null, ["PLAN_B"], { entree: `import { PLAN_B } from "../voiture/modeleB";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],
   ["Voiture : modèle C (son plan)", null, ["PLAN_C"], { entree: `import { PLAN_C } from "../voiture/modeleC";`, dehors: ["carMesh", "pieces", "modele", "forme", "livree"] }],

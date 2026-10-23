@@ -11,13 +11,14 @@ import { construireFantome, construireVoiture, type PlanVoiture } from "../src/v
 import { PLAN_A } from "../src/voiture/modeleA";
 import { PLAN_B } from "../src/voiture/modeleB";
 import { PLAN_C } from "../src/voiture/modeleC";
+import { PLAN_CIVILE } from "../src/voiture/modeleCivile";
 
 // Lot 40, partie 2 : les trois modèles proposés (vitrine) tiennent le cahier des charges du README 38b § 6 — six maillages au plus, ≈ 2 000
 // triangles au palier 1 et 4 000 à 6 000 aux paliers 2 et 3, un fantôme simple d'un maillage (≈ 400 triangles), les roues aux points de
 // contact de la simulation, rien hors de la silhouette (le centre de l'écran reste à la voiture), la vue capot dégagée ; la palette se détache
 // de chaque élément de piste.
 
-const PLANS: PlanVoiture[] = [PLAN_A, PLAN_B, PLAN_C];
+const PLANS: PlanVoiture[] = [PLAN_CIVILE, PLAN_A, PLAN_B, PLAN_C];
 const maillages = (o: Object3D): Mesh[] => {
   const out: Mesh[] = [];
   o.traverse((x) => {
@@ -32,10 +33,10 @@ describe("les trois modèles (lot 40)", () => {
       const p1 = construireVoiture(plan, { palier: 1, couleur: LIVREE.orange, numero: "8" });
       const p2 = construireVoiture(plan, { palier: 2, couleur: LIVREE.orange, numero: "8", materiaux: MATERIAUX_2 });
 
-      it("six maillages au plus ; ≈ 2 000 triangles au palier 1, 4 000 à 6 000 aux paliers 2 et 3", () => {
+      it("six maillages au plus ; ≈ 2 000 triangles au palier 1 (≤ 2 600 depuis la retouche 40b), 4 000 à 6 000 aux paliers 2 et 3", () => {
         for (const v of [p1, p2]) expect(maillages(v.group).length).toBeLessThanOrEqual(6);
         expect(p1.triangles).toBeGreaterThan(1500);
-        expect(p1.triangles).toBeLessThan(2700);
+        expect(p1.triangles).toBeLessThanOrEqual(2600);
         expect(p2.triangles).toBeGreaterThanOrEqual(4000);
         expect(p2.triangles).toBeLessThanOrEqual(6000);
       });

@@ -28,12 +28,14 @@
         </div>
         <div class="pour-voiture">
           <p>
-            La voiture d'aujourd'hui (<strong>en six maillages</strong> depuis le lot 40, à l'image identique) et <strong>trois modèles</strong> à comparer :
-            <strong>A</strong>, l'évolution de l'actuelle ; <strong>B</strong>, une GT basse ; <strong>C</strong>, un proto à bulle. Chacun aux
+            Les voitures du jeu (retouche 40b) : <strong>la civile</strong>, une compacte sportive de série, la voiture par défaut ; et les trois
+            voitures à débloquer, <strong>A</strong> (Évolution), <strong>B</strong> (GT basse), <strong>C</strong> (Proto à bulle). À gauche, pour
+            comparer, la voiture des lots 9b et 40 (<strong>existant</strong>, six maillages). Chacune aux
             <strong>paliers 1, 2 et 3</strong> de la scène, à l'arrêt (on tourne autour en glissant), en <strong>fantôme du Salon</strong> à 50 m, puis
             <strong>en mouvement</strong> (Stade, Nuit, Canyon : bouton sous chaque colonne). Le <strong>sélecteur de couleur</strong> (la palette de 8)
-            s'applique partout. Le coût de chaque modèle est sous les vues ; la planche des couleurs, en bas. Rien de ce qui est ici n'est dans le jeu
-            (<code>docs/lots/lot-40-vehicule.md</code>).
+            s'applique partout, avec le <strong>motif</strong> de la livrée (bande centrale, flancs, unie) ; sur la Nuit, les rayures, le numéro et les
+            feux s'allument un peu. Le coût de chaque modèle est sous les vues ; la planche des couleurs, en bas
+            (<code>docs/lots/lot-40-vehicule.md</code>, <code>docs/lots/lot-40b-voitures-en-jeu.md</code>).
           </p>
         </div>
         <label class="choix hors-voiture">Thème des sections d'éléments <select id="theme-elements"></select></label>
@@ -112,6 +114,7 @@
         >
         <div class="segments pour-voiture" role="group" aria-label="Modèle">
           <button type="button" class="segment" data-modele="existant" aria-pressed="false">Existant</button>
+          <button type="button" class="segment" data-modele="civile" aria-pressed="false">Civile</button>
           <button type="button" class="segment" data-modele="A" aria-pressed="true">A</button>
           <button type="button" class="segment" data-modele="B" aria-pressed="false">B</button>
           <button type="button" class="segment" data-modele="C" aria-pressed="false">C</button>

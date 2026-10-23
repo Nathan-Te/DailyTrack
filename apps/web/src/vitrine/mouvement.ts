@@ -8,7 +8,8 @@ import { CAMERAS } from "../cameras";
 import { CarPose } from "../carPose";
 import { createCarMesh, createShadow, placeShadow, type CarModel, type WheelPose } from "../carMesh";
 import { flatRatio, speedCamera } from "../speedFeel";
-import type { TrackScene } from "../trackMesh";
+import { LOOKS, type TrackScene } from "../trackMesh";
+import type { MotifLivree } from "../voiture/livree";
 import { composer } from "../scene/socle";
 /** Lot 43 : l'ancienne scène (palier « existant ») a quitté le premier chargement du jeu ; la vitrine la charge pour la comparer. */
 const existant = () => import("../scene/existant");
@@ -161,6 +162,7 @@ export class VueMouvement {
       }
       await this.reconstruire();
     } else if (!this.ts) await this.reconstruire();
+    this.allumerNuit();
     this.demarrer();
   }
 
@@ -196,11 +198,18 @@ export class VueMouvement {
     v.group.traverse((o) => (o.castShadow = true));
     this.ts?.scene.add(v.group);
     ancienne.dispose?.();
+    this.allumerNuit();
   }
 
-  /** Lot 40 : repeint la voiture (si son modèle le permet : les modèles proposés, pas l'existant). */
-  repeindre(couleur: number, numero: string) {
-    (this.voiture as CarModel & { peindre?(c: number, n?: string): void }).peindre?.(couleur, numero);
+  /** Retouche 40b : la Nuit allume un peu les rayures, le numéro et les feux de la voiture (si son modèle le permet). */
+  private allumerNuit() {
+    const nuit = !!this.circuit && LOOKS[this.circuit.palette].headlights > 0;
+    (this.voiture as CarModel & { nuit?(on: boolean): void }).nuit?.(nuit);
+  }
+
+  /** Lot 40 : repeint la voiture (si son modèle le permet : les modèles proposés, pas l'existant) ; retouche 40b : le motif aussi. */
+  repeindre(couleur: number, numero: string, motif?: MotifLivree) {
+    (this.voiture as CarModel & { peindre?(c: number, n?: string, m?: MotifLivree): void }).peindre?.(couleur, numero, motif);
   }
 
   /** La scène montrée : l'existant (la scène du jeu jusqu'au lot 43) ou les paliers (réglages du panneau). */
