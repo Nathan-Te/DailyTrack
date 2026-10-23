@@ -1,8 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import { auditAxe } from "./axe";
 
-// Lot 38 et retouche 38b : la vitrine de la scène (`/track/vitrine/`, construction à part : vitrine/construire.mjs). Deux planches : **les paliers**
-// (par défaut : existant, paliers 1, 2, 3, « à la carte », vue en mouvement) et **les directions** du lot 38 (`?planche=directions`). Elle s'ouvre,
+// Lot 38 et retouche 38b : la vitrine de la scène (`/track/vitrine/`, construction à part : vitrine/construire.mjs). La planche **des paliers**
+// (par défaut : existant, paliers 1, 2, 3, « à la carte », vue en mouvement ; lot 44 : la planche des directions du lot 38 est partie avec elles). Elle s'ouvre,
 // construit et dessine chaque vue de chaque section sans aucune erreur, sur ordinateur et sur téléphone. Rendu 3D de dizaines de scènes :
 // Chromium seulement (les autres navigateurs de la CI n'ont pas de WebGL utilisable pour cela).
 test.skip(({ browserName }) => browserName !== "chromium", "rendu 3D de toute la vitrine : Chromium seulement");
@@ -33,29 +33,6 @@ async function dessinee(page: Page, sujet: string, variante: string): Promise<bo
     [sujet, variante],
   );
 }
-
-test("directions (lot 38), ordinateur : chaque section, chaque direction se construit et se dessine, sans erreur", async ({ page }) => {
-  await page.setViewportSize({ width: 1600, height: 1000 });
-  const erreurs = await ouvrir(page, "/vitrine/?planche=directions");
-  expect(await page.evaluate(() => window.__vitrine!.planche)).toBe("directions");
-  const sujets = await page.evaluate(() => [...new Set(window.__vitrine!.vues().map((v) => v.sujet))]);
-  expect(sujets.length, "six éléments et huit thèmes").toBe(14);
-  for (const s of sujets) {
-    await page.evaluate((x) => window.__vitrine!.construireTout(x), s);
-    const vues = await page.evaluate((x) => window.__vitrine!.vues().filter((v) => v.sujet === x), s);
-    expect(vues.map((v) => v.variante)).toEqual(["existant", "A", "B", "C", "M"]);
-    for (const v of vues) {
-      expect(v.etat, `${s} / ${v.variante}`).toBe("prete");
-      expect(v.triangles, `${s} / ${v.variante} : une image dessinée`).toBeGreaterThan(1000);
-      expect(await dessinee(page, s, v.variante), `${s} / ${v.variante} : des pixels`).toBe(true);
-    }
-  }
-  expect(await page.evaluate(() => window.__vitrine!.erreurs)).toEqual([]);
-  expect(erreurs).toEqual([]);
-  // Le résumé des coûts : une ligne par colonne, le poids de chaque direction lu dans poids.json (mesuré à la construction).
-  await expect(page.locator("#resume-corps tr")).toHaveCount(5);
-  await expect(page.locator("#resume-corps tr").nth(1).locator("td").first()).toHaveText(/^\+\d+,\d ko$/);
-});
 
 test("paliers, ordinateur : chaque section se construit et se dessine à chaque palier, sans erreur ; le palier 2 garde les appels du palier 1", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
@@ -148,17 +125,17 @@ test("vue en mouvement : à chaque palier et dans l'existant, la voiture roule s
   expect(erreurs).toEqual([]);
 });
 
-test("directions (lot 38), téléphone : la page tient dans la largeur, une vue s'agrandit, se tourne et se mesure, sans erreur", async ({ browser }) => {
+test("paliers, téléphone : une vue s'agrandit, se tourne au doigt et se mesure, sans erreur (lot 44 : repris de la planche des directions)", async ({ browser }) => {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2, locale: "fr-FR" });
   try {
     const page = await context.newPage();
-    const erreurs = await ouvrir(page, "/vitrine/?planche=directions");
+    const erreurs = await ouvrir(page);
     await page.evaluate(() => window.__vitrine!.construireTout("depart"));
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    const vue = page.locator("#depart .vue--A");
+    const vue = page.locator("#depart .vue--P1");
     const boite = (await vue.boundingBox())!;
     expect(boite.width).toBeLessThanOrEqual(390);
-    expect(await dessinee(page, "depart", "A")).toBe(true);
+    expect(await dessinee(page, "depart", "P1")).toBe(true);
     // Les boutons ont la taille d'un doigt.
     expect((await vue.getByRole("button").boundingBox())!.height).toBeGreaterThanOrEqual(44);
     await vue.getByRole("button", { name: "Agrandir et mesurer" }).click();
@@ -212,10 +189,7 @@ test("paliers, téléphone : la page et la vue en mouvement tiennent dans l'écr
   }
 });
 
-test("accessibilité : les deux planches et la vue en mouvement passent axe (aucune violation grave)", async ({ page }) => {
-  await ouvrir(page, "/vitrine/?planche=directions");
-  await page.evaluate(() => window.__vitrine!.construireTout("depart"));
-  await auditAxe(page, "vitrine-scene");
+test("accessibilité : la planche des paliers et la vue en mouvement passent axe (aucune violation grave)", async ({ page }) => {
   await ouvrir(page);
   await page.evaluate(() => window.__vitrine!.construireTout("depart"));
   await auditAxe(page, "vitrine-paliers");

@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
 import { mesureTrack } from "../../../scripts/budgets.mjs";
+// @ts-expect-error — module JavaScript (mesure du décor, lot 44), sans déclarations
+import { THEMES_DECOR, mesureDecor } from "./mesureDecor.mjs";
 
 // Chargement rapide sur mobile : budgets de poids (déterministes) et de temps (larges, la CI est variable).
 const dist = new URL("../dist/assets/", import.meta.url);
@@ -70,6 +72,17 @@ test("le fil de travail du Salon pèse peu (une copie de sim : générateur et p
   expect(files).toHaveLength(1);
   // Il ne retarde pas le premier écran (téléchargé en parallèle, calcul hors du fil principal) : plafond relevé à 32 000 o par Nathan le 22/10/2026 (docs/plateforme/budgets.md).
   expect((mesureTrack() as { salon: number }).salon).toBeLessThan(32_000); // ≈ 28,5 ko aujourd'hui
+});
+
+// Lot 44 : la ligne « décor 3D à la demande » (docs/plateforme/budgets.md, décision de Nathan du 23/10/2026 : 16 ko) — le décor du palier 1, un morceau par thème
+// et un morceau commun, chargés à la demande (`src/scene/decor.ts`) : rien n'en est dans le premier chargement ; les huit ensemble (le commun une fois), et chaque thème.
+test("le décor 3D à la demande : chaque thème à part, 16 ko au plus pour les huit, rien dans le premier chargement", () => {
+  const m: { total: number; commun: number; parTheme: Record<string, { seul: number; avecCommun: number; fichiers: string[] }>; dansPremier: string[] } = mesureDecor();
+  test.info().annotations.push({ type: "mesure", description: `décor : ${m.total} o pour les huit thèmes (commun ${m.commun} o) ; ${Object.entries(m.parTheme).map(([t, v]) => `${t} ${v.avecCommun}`).join(", ")}` });
+  expect(m.dansPremier, "le décor n'est pas dans le premier chargement").toEqual([]);
+  expect(Object.keys(m.parTheme).sort()).toEqual([...THEMES_DECOR].sort());
+  for (const [t, v] of Object.entries(m.parTheme)) expect(v.fichiers.length, `${t} : son morceau et le morceau commun`).toBeGreaterThanOrEqual(2);
+  expect(m.total, "décor 3D à la demande, les huit thèmes (gzip)").toBeLessThan(16_000); // ≈ 12,2 ko aujourd'hui (lot 44)
 });
 
 test.describe("chargement sur un téléphone simulé", () => {

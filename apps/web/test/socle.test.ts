@@ -41,11 +41,11 @@ describe("le registre des pas", () => {
     expect(readFileSync(join(import.meta.dirname, "../src/main.ts"), "utf8")).toContain('PAS_DU_JEU.existant = () => import("./scene/existant")');
   });
 
-  it("le premier chargement (main.ts, de proche en proche) ne tire ni l'ancienne scène, ni la vitrine, ni un module des pas", () => {
+  it("le premier chargement (main.ts, de proche en proche) ne tire ni l'ancienne scène, ni la vitrine, ni un module des pas, ni le décor (lot 44)", () => {
     // Lot 39 puis 43 : le graphe des imports statiques du jeu, à la source (la mesure du premier chargement, `mesureTrack`, le verrait à la fin). Les `import()`
     // (à la demande) ne sont pas suivis ; les imports de types non plus.
     const SRC = join(import.meta.dirname, "../src");
-    const interdits = /\/scene\/(finition|matiere|matiereDetaillee|bruit|reflets|lumiere3|vie|post|composerPalier|decorP1|existant|origine|directionA|directionB|directionM|memoire|paliers)\.ts$|\/vitrine\//;
+    const interdits = /\/scene\/(finition|matiere|matiereDetaillee|bruit|reflets|lumiere3|vie|post|composerPalier|existant|memoire|paliers)\.ts$|\/scene\/decor\/|\/vitrine\//;
     const vus = new Set<string>();
     const file = [join(SRC, "main.ts")];
     while (file.length) {
@@ -60,6 +60,8 @@ describe("le registre des pas", () => {
     const tires = [...vus].filter((f) => interdits.test(f)).map((f) => relative(SRC, f));
     expect(tires).toEqual([]);
     expect([...vus].map((f) => relative(SRC, f))).toContain("scene/composerP1.ts");
+    // Le registre du décor, lui, est là (quelques lignes) : chaque thème est un `import()` (`scene/decor.ts`).
+    expect([...vus].map((f) => relative(SRC, f))).toContain("scene/decor.ts");
   });
 });
 

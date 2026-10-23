@@ -39,28 +39,6 @@ code {
   margin: 0;
 }
 
-.directions {
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  margin: 12px 0;
-}
-.directions div {
-  background: var(--track-coque);
-  border: var(--dj-trait) solid var(--dj-encre);
-  box-shadow: var(--dj-ombre-bouton);
-  border-radius: var(--dj-rayon-etiquette);
-  padding: 8px 10px;
-}
-.directions dt {
-  font-weight: 700;
-}
-.directions dd {
-  margin: 2px 0 0;
-  color: var(--track-texte-doux);
-  font-size: var(--dj-taille-14);
-}
-
 .choix {
   display: inline-flex;
   align-items: center;
@@ -257,11 +235,7 @@ thead th {
   font-size: var(--dj-taille-12);
 }
 
-/* Retouche 38b — deux planches (paliers, directions), le panneau des réglages, le tableau des pas, la vue en mouvement. */
-body[data-planche="paliers"] .pour-directions,
-body[data-planche="directions"] .pour-paliers {
-  display: none;
-}
+/* Retouche 38b — les planches (lot 44 : paliers et voiture), le panneau des réglages, le tableau des pas, la vue en mouvement. */
 .planches {
   display: flex;
   flex-wrap: wrap;
@@ -280,8 +254,7 @@ body[data-planche="directions"] .pour-paliers {
   text-decoration: none;
   font-weight: 700;
 }
-body[data-planche="paliers"] .planche--paliers,
-body[data-planche="directions"] .planche--directions {
+body[data-planche="paliers"] .planche--paliers {
   background: var(--track-livree);
   color: var(--track-asphalte);
 }
@@ -442,7 +415,6 @@ body[data-planche="directions"] .planche--directions {
 
 /* Lot 40 — la planche « Voiture » : les modèles côte à côte (une rangée par palier, puis les fantômes), la palette, les coûts, la planche des couleurs. */
 body[data-planche="voiture"] .pour-paliers,
-body[data-planche="voiture"] .pour-directions,
 body[data-planche="voiture"] .hors-voiture,
 body:not([data-planche="voiture"]) .pour-voiture {
   display: none !important;

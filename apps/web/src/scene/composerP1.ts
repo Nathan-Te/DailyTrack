@@ -5,8 +5,10 @@
 //   - la lumière de C **construite directement** (ciel à quatre arrêts, brume, hémisphère, soleil, ombres, exposition par thème), les horizons du thème
 //     (`HORIZONS`), le soleil — ou la lune — posé **d'où vient la lumière** ; la Nuit : lampadaires de piste, quatre lampes réelles qui les suivent,
 //     flaques de lumière, phares ;
-//   - l'occlusion par sommets de C (calculée une fois à la construction) ; pas de texture de grain (la matière vient avec le décor, au lot suivant) ;
-//   - **le décor d'aujourd'hui**, tel quel (`decorGeometry`, trackMesh.ts : mêmes tirages au sort) ;
+//   - l'occlusion par sommets de C (calculée une fois à la construction) ;
+//   - lot 44 : **le décor du thème, chargé à la demande** (`decor.ts`, `decor/<thème>.ts`) : le sol relevé près de la piste, la tribune, les recettes du
+//     thème, la matière de C (grain du décor, sol dessiné). La scène se construit avec lui s'il est déjà là (`options.decor`), sinon sans lui ; il s'ajoute
+//     ensuite (`poserDecor` : trois maillages, les affiches et les halos refaits), **jamais pendant une course** (c'est `main.ts` qui choisit le moment) ;
 //   - les ombres posées **devant** la voiture (là où regarde la caméra), même taille de carte qu'avant.
 // Les éléments et l'éclairage de piste sont fusionnés dans un seul calque `solide` (éclairé, projette et reçoit les ombres) : un appel de rendu, et un seul
 // dans la carte d'ombres ; les rebords sont dans le calque de la route (ils reçoivent les ombres, n'en projettent pas). **Rendu seul** : la route qui porte la voiture suit les mêmes points que la simulation ; rien ne touche à `sim`.
@@ -38,15 +40,16 @@ import { Builder, mix, seeded } from "../meshKit";
 import { signsFor } from "../signage";
 import { fastZones } from "../speedFeel";
 import { FEUX_ETEINTS, memesFeux, type EtatFeux } from "../feux";
-import { LOOKS, PALETTE_DEFS, checkerTexture, decorGeometry, disposeScene, type DecorGeometry, type Look, type Palette, type SceneStats, type TrackScene, type TrackSceneOptions } from "../trackMesh";
+import { LOOKS, NEAR_CELLS, PALETTE_DEFS, checkerTexture, disposeScene, type Look, type Palette, type SceneStats, type TrackScene, type TrackSceneOptions } from "../trackMesh";
 import { construireRoute } from "./route";
 import { Affiches } from "./outils";
-import { ambianceDOrigine, ciel, silhouettes } from "./composer";
-import { THEMES_C, occlusionSommets, textureFlaque } from "./directionC";
+import { ambianceDOrigine, ciel, silhouettes } from "./ciel";
+import { THEMES_C, occlusionSommets, textureFlaque } from "./lumiere";
 import { texturedCielC } from "./textures";
 import { FeuxDepart, arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
 import { atlasSponsors } from "./sponsors";
-import { HORIZONS, type Ambiance, type Calques, type Contexte } from "./types";
+import { HORIZONS, type Ambiance, type Calques, type Contexte, type ModuleDecor } from "./types";
+import type { Terrain } from "./decor/commun";
 
 /** Demi-largeur (m) de la carte d'ombres : celle d'avant (lot 23). */
 const SHADOW_HALF = 42;
@@ -58,13 +61,25 @@ const HOOD_HEADLIGHT = 0.1;
 const TAILLE_SOL = 1200;
 const CASE_SOL = 8;
 
-/** Ce que construit le palier 1 avant la scène : la piste et ses éléments par calque, le décor d'aujourd'hui, l'éclairage de piste de la nuit. */
+/** Lot 44 : le décor d'un circuit, construit par le module de son thème (le sol relevé dans `decor`). */
+export interface DecorP1 {
+  decor: Builder;
+  lumineux: Builder;
+  dense: Builder;
+  affiches: Affiches;
+  terrain: Terrain;
+  module: ModuleDecor;
+}
+
+/** Ce que construit le palier 1 avant la scène : la piste et ses éléments par calque, le décor du thème s'il est chargé, l'éclairage de piste de la nuit. */
 export interface GeometrieP1 {
   pal: Palette;
   look: Look;
   floorY: number;
   calques: Calques;
-  decor: DecorGeometry;
+  /** Le contexte des éléments (de quoi construire le décor plus tard). */
+  contexte: Contexte;
+  decor: DecorP1 | null;
   feux: FeuxDepart | null;
   /** Panneaux de virage et de distance posés. */
   signs: number;
@@ -74,7 +89,7 @@ export interface GeometrieP1 {
 
 /**
  * Les formes du palier 1 d'un circuit, sans rien de la scène (ni lumière, ni ciel, ni texture : de quoi les mesurer dans un test, `log` et `headless`).
- * Le décor est celui d'aujourd'hui (`decorGeometry`), avec ses tirages au sort.
+ * Le décor, si son module est donné (`options.decor`).
  */
 export function geometrieP1(track: Track, palette: PaletteName, options: TrackSceneOptions = {}): GeometrieP1 {
   const base = PALETTE_DEFS[palette];
@@ -124,7 +139,17 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
   }
   // Les lampadaires de la Nuit : dans le calque de la route eux aussi (la lune ne fait pas d'ombre qui compte ; leurs lampes éclairent).
   const eclairage = tc.lampes ? eclairagePisteP({ ...calques, solide: calques.route }, x, tc.lampes.couleur) : null;
-  return { pal, look, floorY, calques, decor: decorGeometry(track, palette, options), feux, signs, distances, eclairage };
+  return { pal, look, floorY, calques, contexte: x, decor: options.decor ? decorP1(options.decor, x, options) : null, feux, signs, distances, eclairage };
+}
+
+/** Le décor d'un circuit par le module de son thème ; vue aérienne d'une portion (miniatures) : seulement près d'elle, tous les tirages faits. */
+export function decorP1(module: ModuleDecor, x: Contexte, options: TrackSceneOptions = {}): DecorP1 {
+  const c = { decor: new Builder(), decorLumineux: new Builder(), dense: new Builder(), affiches: new Affiches() };
+  const near = options.aerial ? options.near : undefined;
+  const fenetre = near ? x.track.blocks.slice(near.from, near.to + 1) : [];
+  const proche = near ? (cx: number, cz: number) => fenetre.some((b) => Math.abs(b.cx - cx) <= NEAR_CELLS && Math.abs(b.cz - cz) <= NEAR_CELLS) : undefined;
+  const terrain = module.construire(c, x, proche);
+  return { decor: c.decor, lumineux: c.decorLumineux, dense: c.dense, affiches: c.affiches, terrain, module };
 }
 
 /** La lumière d'un thème vue par le palier 1 : soleil, hémisphère, brume et ciel de C ; silhouettes de l'horizon du thème, fondues vers la brume. */
@@ -145,7 +170,7 @@ export function directionSoleil(sunHeight: number): Vector3 {
 export function composerP1(track: Track, palette: PaletteName, options: TrackSceneOptions = {}): TrackScene {
   const aerien = !!options.aerial;
   const geo = geometrieP1(track, palette, options);
-  const { pal, look, floorY, calques, decor } = geo;
+  const { pal, look, floorY, calques } = geo;
   const base = PALETTE_DEFS[palette];
   const tc = THEMES_C[palette];
   const nuit = pal.scenery === "lamps" || pal.scenery === "pylons";
@@ -192,30 +217,24 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   const solidMesh = maillage(calques.solide, mat, "solide");
   solidMesh.castShadow = solidMesh.receiveShadow = true;
   const glowMesh = maillage(calques.lumineux, plain, "lumineux");
-  const decorMesh = maillage(decor.decorG, mat, "decor");
-  decorMesh.receiveShadow = true;
-  decorMesh.userData.heavy = true;
-  const decorGlow = maillage(decor.glowG, new MeshBasicMaterial({ vertexColors: true }), "decorLumineux");
-  decorGlow.userData.heavy = true;
-  const denseMesh = maillage(decor.denseG, mat, "dense");
-  denseMesh.receiveShadow = true;
-  const denseGlow = maillage(decor.denseGlow, new MeshBasicMaterial({ vertexColors: true }), "denseLumineux");
-  denseMesh.userData.level = denseGlow.userData.level = 2;
   // Occlusion par sommets de C : le pied des murs, des piliers et des objets s'assombrit (une fois, à la construction ; rien par image).
-  for (const m of [roadMesh, solidMesh, decorMesh, denseMesh]) occlusionSommets(m.geometry as BufferGeometry, tc.ao);
-  for (const m of [roadMesh, solidMesh, glowMesh, decorMesh, decorGlow, denseMesh, denseGlow]) if (m.geometry.getAttribute("position").count > 0) scene.add(m);
+  for (const m of [roadMesh, solidMesh]) occlusionSommets(m.geometry as BufferGeometry, tc.ao);
+  for (const m of [roadMesh, solidMesh, glowMesh]) if (m.geometry.getAttribute("position").count > 0) scene.add(m);
   for (const banner of calques.bandeaux) scene.add(banner);
-  if (calques.affiches.pos.length > 0) {
-    // Les sponsors (un atlas, un maillage) : éclairés comme le décor, ce ne sont pas des écrans.
+  // Les sponsors (un atlas, un maillage) : éclairés comme le décor, ce ne sont pas des écrans. Le décor y ajoute les siens (le maillage est refait).
+  const affiches = new Mesh(new BufferGeometry(), new MeshStandardMaterial({ map: options.headless ? null : atlasSponsors(), side: DoubleSide, roughness: 0.85 }));
+  affiches.receiveShadow = true;
+  affiches.userData.calque = "affiches";
+  const remplirAffiches = (listes: readonly Affiches[]) => {
     const g = new BufferGeometry();
-    g.setAttribute("position", new Float32BufferAttribute(calques.affiches.pos, 3));
-    g.setAttribute("uv", new Float32BufferAttribute(calques.affiches.uv, 2));
+    g.setAttribute("position", new Float32BufferAttribute(listes.flatMap((l) => l.pos), 3));
+    g.setAttribute("uv", new Float32BufferAttribute(listes.flatMap((l) => l.uv), 2));
     g.computeVertexNormals();
-    const aff = new Mesh(g, new MeshStandardMaterial({ map: options.headless ? null : atlasSponsors(), side: DoubleSide, roughness: 0.85 }));
-    aff.receiveShadow = true;
-    aff.userData.calque = "affiches";
-    scene.add(aff);
-  }
+    affiches.geometry.dispose();
+    affiches.geometry = g;
+    if (g.getAttribute("position").count > 0 && !affiches.parent) scene.add(affiches);
+  };
+  remplirAffiches([calques.affiches]);
 
   // --- La nuit : flaques de lumière sous les lampadaires de piste, quatre lampes réelles posées sur les plus proches de la voiture ---
   const lampes: PointLight[] = [];
@@ -264,8 +283,23 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   };
 
   // Halos (lot 23) : néons, plaques, portes, lampadaires ; un seul `Points` additif, qualité ≥ 1.
-  const halos = aerien ? null : buildHalos([calques.route, calques.solide, calques.lumineux, decor.decorG, decor.glowG, decor.denseGlow].flatMap((b) => b.halos), look.halo);
-  if (halos) scene.add(halos.points);
+  // Le décor y ajoute les siens (lot 44 : les halos sont refaits).
+  let halos: ReturnType<typeof buildHalos> = null;
+  let vue: [number, number] | null = null;
+  const faireHalos = (plus: readonly Builder[]) => {
+    if (aerien) return;
+    if (halos) {
+      scene.remove(halos.points);
+      halos.points.geometry.dispose();
+      (halos.points.material as Material).dispose();
+    }
+    halos = buildHalos([calques.route, calques.solide, calques.lumineux, ...plus].flatMap((b) => b.halos), look.halo);
+    if (halos) {
+      scene.add(halos.points);
+      if (vue) halos.setView(vue[0], vue[1]);
+    }
+  };
+  faireHalos([]);
 
   // Ciel et horizon suivent la caméra (donc la voiture) : toujours à l'horizon. Le disque est posé d'où vient la lumière.
   const backdrop = new Group();
@@ -277,7 +311,8 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
 
   // Le sol lointain, aux couleurs de C ; en miniature d'un thème sombre, celles de l'existant (plus claires : la miniature se lit en petit).
   const [solA, solB] = leve ? [base.floorA, base.floorB] : tc.sol;
-  const floor = new Mesh(new PlaneGeometry(TAILLE_SOL, TAILLE_SOL), new MeshStandardMaterial({ map: options.headless ? null : checkerTexture(solA, solB, TAILLE_SOL / (2 * CASE_SOL)), flatShading: true }));
+  const solMat = new MeshStandardMaterial({ map: options.headless ? null : checkerTexture(solA, solB, TAILLE_SOL / (2 * CASE_SOL)), flatShading: true });
+  const floor = new Mesh(new PlaneGeometry(TAILLE_SOL, TAILLE_SOL), solMat);
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = floorY;
   floor.receiveShadow = true;
@@ -292,8 +327,10 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
 
   let shadowSize = 0;
   let currentLevel: 0 | 1 | 2 = 2;
+  let ombres = true;
   const setQuality = (level: 0 | 1 | 2, shadows = true) => {
     currentLevel = level;
+    ombres = shadows;
     scene.traverse((o) => {
       // Seuls les objets marqués (`level`, ou `heavy` = niveau 1) sont touchés : les effets, la voiture et le fantôme gèrent leur visibilité eux-mêmes.
       const min = (o.userData.level as number | undefined) ?? (o.userData.heavy ? 1 : undefined);
@@ -315,6 +352,38 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   };
   setQuality(2);
 
+  // --- Le décor du thème (lot 44) : trois maillages (décor et sol relevé, ses lumières, le remplissage de la qualité 2), ses affiches et ses halos ---
+  let poseDecor: { decor: Mesh; dense: Mesh } | null = null;
+  const poser = (d: DecorP1) => {
+    if (poseDecor) return;
+    const matiere = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide, map: options.headless ? null : d.module.grain() });
+    const decorMesh = maillage(d.decor, matiere, "decor");
+    decorMesh.receiveShadow = true;
+    decorMesh.userData.heavy = true;
+    const decorGlow = maillage(d.lumineux, new MeshBasicMaterial({ vertexColors: true }), "decorLumineux");
+    decorGlow.userData.heavy = true;
+    const denseMesh = maillage(d.dense, matiere, "dense");
+    denseMesh.receiveShadow = true;
+    denseMesh.userData.level = 2;
+    for (const m of [decorMesh, denseMesh]) {
+      occlusionSommets(m.geometry as BufferGeometry, tc.ao);
+      d.module.uvMonde(m.geometry as BufferGeometry, 4);
+    }
+    for (const m of [decorMesh, decorGlow, denseMesh]) if (m.geometry.getAttribute("position").count > 0) scene.add(m);
+    if (d.affiches.pos.length > 0) remplirAffiches([calques.affiches, d.affiches]);
+    if (d.decor.halos.length + d.lumineux.halos.length > 0) faireHalos([d.decor, d.lumineux]);
+    // Le sol lointain dessiné du thème remplace le damier (même répétition, même programme : une texture remplace l'autre). Les miniatures sombres gardent le leur.
+    if (!options.headless && !leve && solMat.map) {
+      const sol = d.module.sol(palette);
+      sol.repeat.copy(solMat.map.repeat);
+      solMat.map.dispose();
+      solMat.map = sol;
+    }
+    poseDecor = { decor: decorMesh, dense: denseMesh };
+    setQuality(currentLevel, ombres);
+  };
+  if (geo.decor) poser(geo.decor);
+
   return {
     scene,
     look,
@@ -322,9 +391,11 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       // Cartes d'ombres des lumières (le Salon change de scène toutes les dix minutes : rien ne doit s'accumuler côté carte graphique). L'atlas des sponsors
       // est partagé entre les scènes (dessiné une fois) : on ne le libère pas.
       scene.traverse((o) => (o as { shadow?: { map?: { dispose(): void } | null } }).shadow?.map?.dispose());
+      // Lot 44 : le grain du décor aussi (dessiné une fois, partagé).
+      const partagees = options.headless ? [] : [atlasSponsors(), ...(geo.decor ? [geo.decor.module.grain()] : []), ...(poseDecor ? [(poseDecor.decor.material as MeshStandardMaterial).map] : [])];
       scene.traverse((o) => {
         const m = (o as Mesh).material as MeshStandardMaterial | undefined;
-        if (m && !Array.isArray(m) && m.map && m.map === (options.headless ? null : atlasSponsors())) m.map = null;
+        if (m && !Array.isArray(m) && m.map && partagees.includes(m.map)) m.map = null;
       });
       disposeScene(scene);
     },
@@ -333,7 +404,11 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       setQuality(on ? 0 : 2);
     },
     setView(heightPx, fovDeg) {
+      vue = [heightPx, fovDeg];
       halos?.setView(heightPx, fovDeg);
+    },
+    poserDecor(module) {
+      if (!poseDecor) poser(decorP1(module, geo.contexte, options));
     },
     stats(): SceneStats {
       let hills = false;
@@ -341,7 +416,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
         if (o.userData.level === 2 && o.visible) hills = true;
       });
       const fog = scene.fog as Fog | null;
-      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: denseMesh.visible, hills, signs: geo.signs, fog: fog ? { near: fog.near, far: fog.far } : null, ...(geo.feux ? { feux: etatFeux } : {}) };
+      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: !!poseDecor?.dense.visible && !!poseDecor.dense.parent, decor: !!poseDecor, hills, signs: geo.signs, fog: fog ? { near: fog.near, far: fog.far } : null, ...(geo.feux ? { feux: etatFeux } : {}) };
     },
     followGround(px, pz) {
       backdrop.position.set(px, floorY, pz);

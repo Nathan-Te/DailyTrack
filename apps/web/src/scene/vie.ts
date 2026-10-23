@@ -25,7 +25,7 @@ import {
 } from "three";
 import type { Drapeaux } from "./finition";
 import type { Affiches } from "./outils";
-import { SPONSORS, type Logo } from "./directionB";
+import { SPONSORS, type Logo } from "./logos";
 import type { SorteParticules, Theme3 } from "./lumiere3";
 import type { PaletteName } from "@cdj/sim";
 

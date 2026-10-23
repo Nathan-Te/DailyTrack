@@ -1,7 +1,7 @@
 // Lot 38 — ce qu'est une direction de la scène : des fonctions de construction par élément (portique de départ, arrivée, porte de contrôle,
 // plaques, panneaux, rebords, décor), paramétrées par thème, et une ambiance (ciel, lumière, brume) par thème. La vitrine (`/track/vitrine/`) les
 // compare à l'existant ; les lots de mise en œuvre les reprendront telles quelles dans `trackMesh.ts` (voir le README du lot 38).
-import type { Mesh, Texture } from "three";
+import type { BufferGeometry, Mesh, Texture } from "three";
 import type { Block, PaletteName, Track } from "@cdj/sim";
 import type { Builder, V3 } from "../meshKit";
 import type { SignSpec } from "../signage";
@@ -12,6 +12,7 @@ import type { Drapeaux } from "./finition";
 import type { Reglages } from "./paliers";
 import type { PoseLog } from "../decorPose";
 import type { Repere } from "./outils";
+import type { Sol, Terrain } from "./decor/commun";
 
 /** O : l'existant réécrit en direction (base et contrôle) ; A, B : les directions ; M : le mélange recommandé. C est un traitement de la lumière et des
  * matières (`directionC.ts`), appliqué à une scène déjà construite. */
@@ -93,6 +94,8 @@ export interface Contexte {
   textes?: TextesScene;
   /** Lot 43 : les pièces du pas « géométrie » (palier 2), données par le compositeur qui a chargé `finition.ts`. */
   finition?: FinitionElements;
+  /** Lot 44 : la variété du décor (palier 2, `finition.ts`), donnée par le compositeur de la vitrine : chaque instance posée varie un peu. */
+  varierDecor?: { marque(c: CalquesDecor): unknown; varier(c: CalquesDecor, m: unknown, x: number, sol: number, z: number): void };
 }
 
 /** Ciel et lumière d'un thème pour une direction. */
@@ -152,14 +155,41 @@ export interface Direction {
 export interface PlaceDecor {
   x: number;
   z: number;
-  /** Anneau : 1 = cellule voisine d'un bloc, 2 = une cellule plus loin. */
-  anneau: 1 | 2;
+  /** Lot 44 : la hauteur du sol (relevé) à cette place. */
+  y: number;
+  /** Anneau : 1 = cellule voisine d'un bloc, 2 = une cellule plus loin, 3… */
+  anneau: number;
   /** Vecteur unitaire (x, z) vers le centre du bloc le plus proche (un panneau publicitaire, une tribune y font face). */
   versRoute: [number, number];
   /** Hauteur de la route du bloc le plus proche. */
   yRoute: number;
   cx: number;
   cz: number;
+}
+
+/** Lot 44 : les calques où se construit le décor (un sous-ensemble des calques d'une scène). */
+export type CalquesDecor = Pick<Calques, "decor" | "decorLumineux" | "dense" | "affiches"> & Partial<Pick<Calques, "solide" | "drapeaux" | "ecrans" | "foule">>;
+
+/**
+ * Lot 44 : le décor d'un thème (`decor/<thème>.ts`, chargé à la demande) : ses recettes, que `decor/commun.ts` pose sur le sol relevé selon les règles du lot 37.
+ * `recette` : un élément à une place (anneaux 1 et 2) ; `remplissage` : un élément simple de la qualité 2 (anneau 3) ; `plus` : ce que le thème pose à sa façon
+ * (le front de rue et les lampadaires de la Ville) ; `proche` : la chance d'un deuxième élément dans une cellule voisine de la piste (0,5 par défaut).
+ */
+export interface DecorTheme {
+  proche?: number;
+  recette(c: CalquesDecor, x: Contexte, p: PlaceDecor, rnd: () => number): void;
+  remplissage(g: Builder, x: Contexte, p: PlaceDecor, rnd: () => number): void;
+  plus?(s: Sol, c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): void;
+}
+
+/** Lot 44 : ce que rend le chargement du décor d'un thème : de quoi le construire dans des calques (le sol relevé est rendu, pour les tests). */
+export interface ModuleDecor {
+  theme: DecorTheme;
+  construire(c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): Terrain;
+  /** La matière de C, venue avec le décor : le grain (partagé, dessiné une fois), le sol lointain d'un thème, les coordonnées « monde » d'une géométrie. */
+  grain(): Texture;
+  sol(palette: PaletteName): Texture;
+  uvMonde(g: BufferGeometry, pas: number): void;
 }
 
 export type { V3 };
