@@ -187,13 +187,15 @@ export function directionSoleil(sunHeight: number): Vector3 {
   return new Vector3(40 * (1.2 - h) * 1.4, 30 + 110 * h, -30 * (1.2 - h) * 1.4);
 }
 
-/** Lot 45 : pose (ou retire) une carte d'environnement sur les matériaux physiques d'un objet (la voiture) — par matériau, jamais `scene.environment`. */
+/** Lot 45 : pose (ou retire) une carte d'environnement sur les matériaux physiques d'un objet (la voiture) — par matériau, jamais `scene.environment`.
+ * L'intensité du thème multiplie celle que chaque matériau a reçue à sa construction (lot 40c : caisse 1, roues 0,5), gardée dans `userData.envBase`. */
 export function refleter(objet: Object3D, env: Texture | null, intensite: number) {
   objet.traverse((o) => {
     for (const m of [(o as Mesh).material].flat() as MeshStandardMaterial[]) {
       if (!m?.isMeshStandardMaterial || m.envMap === env) continue;
+      m.userData.envBase ??= m.envMapIntensity;
       m.envMap = env;
-      m.envMapIntensity = intensite;
+      m.envMapIntensity = m.userData.envBase * intensite;
       m.needsUpdate = true;
     }
   });

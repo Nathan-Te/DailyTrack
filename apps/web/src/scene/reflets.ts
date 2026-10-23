@@ -83,8 +83,9 @@ export function refletsCibles(scene: Object3D, env: Texture, intensite: number) 
     if (calque !== undefined && calque !== "solide" && calque !== "rythme") return;
     for (const m of [(o as Mesh).material].flat() as MeshStandardMaterial[]) {
       if (!m?.isMeshStandardMaterial || m.envMap === env) continue;
+      m.userData.envBase ??= m.envMapIntensity;
       m.envMap = env;
-      m.envMapIntensity = intensite;
+      m.envMapIntensity = m.userData.envBase * intensite;
       m.needsUpdate = true;
     }
   });

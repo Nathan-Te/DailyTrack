@@ -6,7 +6,7 @@ import { WHEEL_RADIUS } from "../src/carMesh";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture } from "../src/voiture/catalogue";
 import { CHOIX_DEFAUT, CLE_GARAGE, choisirVoiture, choixDeLAdresse, lireChoix, voitureChoisie, type ChoixVoiture } from "../src/voiture/choix";
 import { VoitureEnJeu, type OptionsVoitureEnJeu } from "../src/voiture/enJeu";
-import { LIVREE, PALETTE } from "../src/voiture/livree";
+import { LIVREE, MOTIFS, PALETTE } from "../src/voiture/livree";
 import { MATERIAUX_2 } from "../src/voiture/materiaux2";
 import { construireFantome, construireVoiture } from "../src/voiture/modele";
 import { PLAN_CIVILE } from "../src/voiture/modeleCivile";
@@ -42,10 +42,10 @@ describe("le catalogue (contrat commun)", () => {
       const p1 = construireVoiture(plan, { palier: 1, couleur: LIVREE.orange, numero: "8" });
       const p2 = construireVoiture(plan, { palier: 2, couleur: LIVREE.orange, numero: "8", materiaux: MATERIAUX_2 });
 
-      it("se construit : six maillages au plus, ≤ 2 600 triangles au palier 1, ≤ 6 000 aux paliers 2 et 3", () => {
+      it("se construit : six maillages au plus, ≤ 4 000 triangles au palier 1, ≤ 12 000 aux paliers 2 et 3 (plafonds du lot 40c)", () => {
         for (const v of [p1, p2]) expect(maillages(v.group).length).toBeLessThanOrEqual(6);
-        expect(p1.triangles).toBeLessThanOrEqual(2600);
-        expect(p2.triangles).toBeLessThanOrEqual(6000);
+        expect(p1.triangles).toBeLessThanOrEqual(4000);
+        expect(p2.triangles).toBeLessThanOrEqual(12000);
       });
 
       it("son fantôme simple : un maillage, ≈ 400 triangles", () => {
@@ -69,7 +69,7 @@ describe("le catalogue (contrat commun)", () => {
 
       it("trois motifs de livrée, la Nuit : la géométrie ne bouge pas", () => {
         const n = p1.triangles;
-        for (const m of ["bande", "flancs", "unie"] as const) p1.peindre(PALETTE[5]!.hex, "12", m);
+        for (const m of MOTIFS) p1.peindre(PALETTE[5]!.hex, "12", m);
         p1.nuit(true);
         p1.nuit(false);
         expect(p1.triangles).toBe(n);
@@ -90,7 +90,7 @@ const TOUTES = ["evolution", "gt", "proto"];
 describe("le choix (cdj:track:garage)", () => {
   it("rien d'enregistré, illisible, inconnu : la civile en orange de Track", () => {
     expect(voitureChoisie(() => memoire())).toEqual(CHOIX_DEFAUT);
-    expect(CHOIX_DEFAUT).toEqual({ id: "civile", couleur: 0, motif: "bande" });
+    expect(CHOIX_DEFAUT).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
     expect(PALETTE[CHOIX_DEFAUT.couleur]!.hex).toBe(LIVREE.orange);
     for (const brut of ["{", "null", "42", JSON.stringify({ id: "fusee", couleur: 0, motif: "bande", debloquees: TOUTES }), JSON.stringify({ id: "proto", couleur: 9, motif: "bande", debloquees: TOUTES }), JSON.stringify({ id: "proto", couleur: 1, motif: "pois", debloquees: TOUTES })]) {
       expect(voitureChoisie(() => memoire({ [CLE_GARAGE]: brut })), brut).toEqual(CHOIX_DEFAUT);
@@ -98,29 +98,29 @@ describe("le choix (cdj:track:garage)", () => {
   });
 
   it("une voiture non débloquée (selon le serveur) retombe sur la civile en orange de Track ; débloquée, elle est rendue telle quelle", () => {
-    const choix: ChoixVoiture = { id: "proto", couleur: 5, motif: "flancs" };
+    const choix: ChoixVoiture = { id: "proto", couleur: 5, motif: "flancs", teinteMotif: 0 };
     expect(voitureChoisie(() => avec([], choix))).toEqual(CHOIX_DEFAUT);
     expect(voitureChoisie(() => avec(["evolution", "gt"], choix))).toEqual(CHOIX_DEFAUT);
     expect(voitureChoisie(() => avec(["proto"], choix))).toEqual(choix);
     // La civile en une autre couleur : toujours permise.
-    const civile: ChoixVoiture = { id: "civile", couleur: 3, motif: "unie" };
+    const civile: ChoixVoiture = { id: "civile", couleur: 3, motif: "unie", teinteMotif: 0 };
     expect(voitureChoisie(() => memoire({ [CLE_GARAGE]: JSON.stringify(civile) }))).toEqual(civile);
   });
 
   it("choisirVoiture enregistre un choix lisible d'une voiture débloquée, refuse un choix illisible ou une voiture verrouillée", () => {
     const s = avec(["gt"]);
-    expect(choisirVoiture({ id: "gt", couleur: 2, motif: "unie" }, () => s)).toBe(true);
-    expect(JSON.parse(s.m.get(CLE_GARAGE)!)).toMatchObject({ id: "gt", couleur: 2, motif: "unie", debloquees: ["gt"] });
-    expect(voitureChoisie(() => s)).toEqual({ id: "gt", couleur: 2, motif: "unie" }); // relu
-    expect(choisirVoiture({ id: "gt", couleur: 8, motif: "unie" }, () => s)).toBe(false);
-    expect(choisirVoiture({ id: "proto", couleur: 1, motif: "unie" }, () => s)).toBe(false); // verrouillée : rien n'est écrit
+    expect(choisirVoiture({ id: "gt", couleur: 2, motif: "unie", teinteMotif: 0 }, () => s)).toBe(true);
+    expect(JSON.parse(s.m.get(CLE_GARAGE)!)).toMatchObject({ id: "gt", couleur: 2, motif: "unie", teinteMotif: 0, debloquees: ["gt"] });
+    expect(voitureChoisie(() => s)).toEqual({ id: "gt", couleur: 2, motif: "unie", teinteMotif: 0 }); // relu
+    expect(choisirVoiture({ id: "gt", couleur: 8, motif: "unie", teinteMotif: 0 }, () => s)).toBe(false);
+    expect(choisirVoiture({ id: "proto", couleur: 1, motif: "unie", teinteMotif: 0 }, () => s)).toBe(false); // verrouillée : rien n'est écrit
     expect(voitureChoisie(() => s).id).toBe("gt");
-    expect(lireChoix({ id: "gt", couleur: 2.5, motif: "unie" })).toBeNull();
+    expect(lireChoix({ id: "gt", couleur: 2.5, motif: "unie", teinteMotif: 0 })).toBeNull();
   });
 
   it("?voiture=<id>&couleur=<n>&motif=<m> : la voiture telle quelle (sans déblocage) ; inconnue ou absente : rien", () => {
-    expect(choixDeLAdresse(new URLSearchParams("voiture=proto&couleur=5&motif=flancs"))).toEqual({ id: "proto", couleur: 5, motif: "flancs" });
-    expect(choixDeLAdresse(new URLSearchParams("voiture=gt"))).toEqual({ id: "gt", couleur: 0, motif: "bande" });
+    expect(choixDeLAdresse(new URLSearchParams("voiture=proto&couleur=5&motif=flancs"))).toEqual({ id: "proto", couleur: 5, motif: "flancs", teinteMotif: 0 });
+    expect(choixDeLAdresse(new URLSearchParams("voiture=gt"))).toEqual({ id: "gt", couleur: 0, motif: "course", teinteMotif: 0 });
     expect(choixDeLAdresse(new URLSearchParams("voiture=fusee"))).toBeNull();
     expect(choixDeLAdresse(new URLSearchParams("voiture=gt&couleur=12"))).toBeNull();
     expect(choixDeLAdresse(new URLSearchParams("home=0"))).toBeNull();
@@ -142,7 +142,7 @@ describe("la voiture du jeu (chargée à la demande, jamais remplacée en course
   const attendre = () => new Promise((r) => setTimeout(r, 0));
 
   it("la civile est là tout de suite ; la voiture choisie la remplace quand elle est chargée et que le jeu le permet", async () => {
-    const etat = { choix: { id: "proto", couleur: 5, motif: "flancs" } as ChoixVoiture, palier: 1 as 1 | 2, libre: false, adoptees: 0 };
+    const etat = { choix: { id: "proto", couleur: 5, motif: "flancs", teinteMotif: 0 } as ChoixVoiture, palier: 1 as 1 | 2, libre: false, adoptees: 0 };
     const g = new VoitureEnJeu(options({ etat }));
     expect(maillages(g.voiture.group)).toHaveLength(6);
     const civile = g.voiture;

@@ -178,15 +178,43 @@
 .garage-couleur--sombre {
   color: var(--track-texte);
 }
-.garage-motifs .segment__bouton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.garage-motifs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
+/* Une tuile de motif : la petite voiture de dessus avec son motif, et son nom dessous ; coche d'état = le contour ambre de la charte (comme les couleurs). */
 .garage-motif {
-  display: inline-flex;
-  flex: none;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: var(--dj-cible);
+  padding: 6px 2px 4px;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.garage-motif[aria-checked="true"] {
+  outline: var(--dj-focus) solid var(--dj-ambre);
+  outline-offset: 2px;
+  background: var(--track-piste);
+}
+.garage-motif-dessin {
+  width: 100%;
+  max-width: 72px;
+  height: auto;
+}
+.garage-motif__nom {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 1.1;
+  text-align: center;
 }
 .garage-note {
   font-size: var(--dj-taille-13);

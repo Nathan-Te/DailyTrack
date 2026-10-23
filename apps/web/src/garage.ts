@@ -14,13 +14,15 @@
 // ils changeaient le découpage des morceaux du premier chargement (mesuré : +500 o, la compression par fichier se perd ; voir le README du lot).
 import { avancement, etatGarage, type EtatVoiture, type ProgresGarage } from "@cdj/sim";
 import type { Catalogue, Langue, Parametres, el as El } from "@cdj/ui";
-import type { PerspectiveCamera, WebGLRenderer } from "three";
+import type { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import type { ApiResult } from "@cdj/profile";
 import type { GarageStatut } from "./api";
 import type { Cadre, OptionsCadre } from "./cadre";
 import { en as textesEn } from "./catalogue.base.garage.en";
 import { fr as textesFr } from "./catalogue.base.garage.fr";
 import "./garage.css";
+import { creerStudio, type Studio } from "./garageStudio";
+import { vignetteMotif } from "./garageMotifs";
 import { enSilhouette, vignette } from "./garageVignettes";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture, type FicheVoiture } from "./voiture/catalogue";
 import { choisirVoiture, marquerVues, noterDeblocages, voitureChoisie, voituresDebloquees, voituresNouvelles } from "./voiture/choix";
@@ -45,9 +47,6 @@ const ICONES = {
   coche: ["M5 12.5 10 17l9-10"],
   tourner: ["M21 12c0 2.2-4 4-9 4s-9-1.8-9-4 4-4 9-4", "M16 5l3 3-3 3"],
 };
-/** Petit dessin de chaque motif : une caisse de profil, ses roues, et les rayures de la livrée (au toit, aux flancs, ou aucune). */
-const RAIES: Record<MotifLivree, string> = { bande: "M12 7.5l-1.5 3.5M15 7.5l-1.5 3.5", flancs: "M13 12l-1 3M16 12l-1 3M19 12l-1 3", unie: "" };
-
 /** Le joueur de démonstration (`?api=demo`) : 4 jours joués, 3 avec l'or — la Weasel est à lui, la Moray et la Dragonfly restent à gagner. */
 export const DEMO_GARAGE: Readonly<ProgresGarage> = Object.freeze({ jours: 4, or: 3, auteur: 0 });
 export const statutDemo = (): GarageStatut => ({ progres: { ...DEMO_GARAGE }, voitures: etatGarage(DEMO_GARAGE) });
@@ -63,6 +62,8 @@ export interface GarageHost {
   /** La caméra de la scène (le Garage la pose autour de la voiture) et la toile où l'on glisse le doigt. */
   camera: PerspectiveCamera;
   toile: HTMLElement;
+  /** La scène du jeu : le Garage y pose sa lumière de présentation et son plateau (lot 40c), retirés à sa fermeture. Sans elle, rien. */
+  scene?: Scene;
   /** Le Garage s'est fermé (le jeu reprend l'écran du dessous : accueil, pause, arrivée). */
   ferme(): void;
 }
@@ -91,6 +92,7 @@ export function monterGarage(host: GarageHost): GarageUi {
   let regardee = VOITURE_DEFAUT;
   let generation = 0;
   const images = new Map<string, string | null>();
+  const studio: Studio | null = host.scene ? creerStudio(host.scene) : null;
 
   const cadre = creerCadre({ id: "garage", titreAria: "garage.aria", retour: "jeu", onRetour: () => fermer(), haut: true });
   cadre.racine.classList.add("garage");
@@ -150,9 +152,7 @@ export function monterGarage(host: GarageHost): GarageUi {
       return b;
     });
     const motifs = MOTIFS.map((m) => {
-      const dessin = el("span", { classe: "garage-motif", attrs: { "aria-hidden": "true" } });
-      dessin.append(iconeDeTraces(`motif-${m}`, ["M2 15v-3l4-1 3-4h7l4 4 2 1v3z", ...(RAIES[m] ? [RAIES[m]] : [])], 26));
-      const b = el("button", { classe: "segment__bouton", attrs: { type: "button", role: "radio", "aria-checked": String(m === c.motif), "data-motif": m } }, dessin, el("span", { texte: t(`motif.${m}`) }));
+      const b = el("button", { classe: "garage-motif", attrs: { type: "button", role: "radio", "aria-checked": String(m === c.motif), "data-motif": m } }, vignetteMotif(m), el("span", { classe: "garage-motif__nom", texte: t(`motif.${m}`) }));
       b.addEventListener("click", () => personnaliser({ motif: m }));
       return b;
     });
@@ -166,7 +166,7 @@ export function monterGarage(host: GarageHost): GarageUi {
         "div",
         { classe: "garage-perso__motif" },
         el("h2", { classe: "home-section", attrs: { id: "garage-motif" }, texte: t("garage.motif") }),
-        el("div", { classe: "segment garage-motifs", attrs: { role: "radiogroup", "aria-labelledby": "garage-motif" } }, ...motifs),
+        el("div", { classe: "garage-motifs", attrs: { role: "radiogroup", "aria-labelledby": "garage-motif" } }, ...motifs),
       ),
     );
   }
@@ -316,6 +316,7 @@ export function monterGarage(host: GarageHost): GarageUi {
 
   function cadrer(x: number, y: number, z: number, ms: number) {
     const cam = host.camera;
+    studio?.placer(x, y, z);
     if (!glisse && !reduit() && performance.now() - toucheA > 4000) orbite.lacet += (Math.min(ms, 100) / 1000) * 0.25;
     const W = window.innerWidth;
     const H = window.innerHeight;
@@ -352,6 +353,7 @@ export function monterGarage(host: GarageHost): GarageUi {
     toucheA = 0;
     render();
     cadre.racine.hidden = false;
+    studio?.monter();
     void chargerVignettes();
     const g = generation;
     void lireStatut().then((s) => {
@@ -375,6 +377,7 @@ export function monterGarage(host: GarageHost): GarageUi {
     host.voiture.apercu(null);
     host.voiture.relire();
     host.camera.clearViewOffset();
+    studio?.demonter();
     cadre.racine.hidden = true;
     host.ferme();
     // Le cadre est créé au premier clic : `suivreDialogue` n'a pas vu ce qui l'ouvrait ; on rend le focus nous-mêmes (il ne touche pas un focus déjà posé).

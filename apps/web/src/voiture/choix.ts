@@ -8,17 +8,21 @@
 // hors connexion, la civile plus ces voitures-là ; le jeu n'est jamais bloqué.
 import { gameStorage } from "../storage";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture } from "./catalogue";
-import { MOTIFS, PALETTE, type MotifLivree } from "./livree";
+import { MOTIF_DEFAUT, PALETTE, TEINTES_MOTIF, motifLu, type MotifLivree } from "./livree";
 
-/** Le choix : la voiture (id du catalogue), la couleur (rang dans `PALETTE`, 0 = orange de Track), le motif de la livrée. */
+/**
+ * Le choix : la voiture (id du catalogue), la couleur (rang dans `PALETTE`, 0 = orange de Track), le motif de la livrée (lot 40c : huit motifs ; un ancien nom
+ * du lot 41 — `bande`, `flancs`, `unie` — devient son équivalent le plus proche), et la teinte du motif (rang dans `TEINTES_MOTIF`, 0 = automatique).
+ */
 export interface ChoixVoiture {
   id: string;
   couleur: number;
   motif: MotifLivree;
+  teinteMotif: number;
 }
 
 export const CLE_GARAGE = "cdj:track:garage";
-export const CHOIX_DEFAUT: Readonly<ChoixVoiture> = Object.freeze({ id: VOITURE_DEFAUT, couleur: 0, motif: "bande" });
+export const CHOIX_DEFAUT: Readonly<ChoixVoiture> = Object.freeze({ id: VOITURE_DEFAUT, couleur: 0, motif: MOTIF_DEFAUT, teinteMotif: 0 });
 
 type Lecture = () => Pick<Storage, "getItem">;
 type Ecriture = () => Pick<Storage, "getItem" | "setItem">;
@@ -28,6 +32,8 @@ interface Garde {
   id?: unknown;
   couleur?: unknown;
   motif?: unknown;
+  /** Lot 40c : la teinte du motif (absente dans les choix du lot 41 : automatique). */
+  teinteMotif?: unknown;
   /** Lot 41 : les voitures débloquées selon le dernier appel réussi au serveur. */
   debloquees?: unknown;
   /** Lot 41 : les voitures déjà vues au Garage. */
@@ -79,14 +85,17 @@ export function marquerVues(vues: readonly string[], stockage: Ecriture = gameSt
   if (tout.length !== deja.length) ecrire(stockage, { vues: tout });
 }
 
-/** Un choix lu (stockage, adresse) : `null` s'il est illisible (voiture inconnue, couleur hors de la palette, motif inconnu). */
+/** Un choix lu (stockage, adresse) : `null` s'il est illisible (voiture inconnue, couleur hors de la palette, motif inconnu). La teinte du motif, facultative, retombe sur l'automatique. */
 export function lireChoix(brut: unknown): ChoixVoiture | null {
   if (!brut || typeof brut !== "object") return null;
   const o = brut as Partial<Record<keyof ChoixVoiture, unknown>>;
   if (typeof o.id !== "string" || !ficheVoiture(o.id)) return null;
   if (typeof o.couleur !== "number" || !Number.isInteger(o.couleur) || o.couleur < 0 || o.couleur >= PALETTE.length) return null;
-  if (typeof o.motif !== "string" || !(MOTIFS as readonly string[]).includes(o.motif)) return null;
-  return { id: o.id, couleur: o.couleur, motif: o.motif as MotifLivree };
+  const motif = motifLu(o.motif);
+  if (!motif) return null;
+  const t = (o as { teinteMotif?: unknown }).teinteMotif;
+  const teinteMotif = typeof t === "number" && Number.isInteger(t) && t >= 0 && t < TEINTES_MOTIF.length ? t : 0;
+  return { id: o.id, couleur: o.couleur, motif, teinteMotif };
 }
 
 /** La voiture choisie (stockage du navigateur) ; illisible ou non débloquée : la civile en orange de Track. */
@@ -100,18 +109,19 @@ export function voitureChoisie(stockage: Lecture = gameStorage): ChoixVoiture {
 export function choisirVoiture(choix: ChoixVoiture, stockage: Ecriture = gameStorage): boolean {
   const c = lireChoix(choix);
   if (!c || !voituresDebloquees(stockage).has(c.id)) return false;
-  return ecrire(stockage, { id: c.id, couleur: c.couleur, motif: c.motif });
+  return ecrire(stockage, { id: c.id, couleur: c.couleur, motif: c.motif, teinteMotif: c.teinteMotif });
 }
 
 /**
- * `?voiture=<id>&couleur=<n>&motif=<m>` (recette et aperçus ; le jeu l'ignore en production) : une voiture montrée telle quelle, sans
+ * `?voiture=<id>&couleur=<n>&motif=<m>&teinte=<n>` (recette et aperçus ; le jeu l'ignore en production) : une voiture montrée telle quelle, sans
  * vérifier les déblocages ni rien enregistrer. `couleur` et `motif` absents : ceux par défaut. `null` sans `?voiture=` ou si elle est inconnue.
  */
 export function choixDeLAdresse(params: URLSearchParams): ChoixVoiture | null {
   const id = params.get("voiture");
   if (id === null) return null;
   const n = params.get("couleur");
-  return lireChoix({ id, couleur: n === null || n === "" ? CHOIX_DEFAUT.couleur : Number(n), motif: params.get("motif") || CHOIX_DEFAUT.motif });
+  const t = params.get("teinte");
+  return lireChoix({ id, couleur: n === null || n === "" ? CHOIX_DEFAUT.couleur : Number(n), motif: params.get("motif") || CHOIX_DEFAUT.motif, teinteMotif: t === null || t === "" ? 0 : Number(t) });
 }
 
 /** Les identifiants des voitures (la page d'admin les propose). */
