@@ -16,7 +16,8 @@ import { Pieces, finiParSommet, normalesLissees, ombreDeRoue, ombreDesFeux, srgb
 import { RAYONS_TOLE, caisseTole, sectionsTole, type Coque } from "./surfaces";
 
 export type PalierVoiture = 1 | 2 | 3;
-export type ModeleId = "civile" | "A" | "B" | "C";
+/** Les modèles : la civile, A, B, C (lots 40 à 40c), D à I (lot 42 : rallye, muscle, pick-up, roadster, monoplace, fourgon). */
+export type ModeleId = "civile" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
 
 /** Les matières d'une voiture, à un palier donné. */
 export interface Matieres {

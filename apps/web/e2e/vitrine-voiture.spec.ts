@@ -4,6 +4,7 @@ import { auditAxe } from "./axe";
 // Lot 40 — la planche « Voiture » de la vitrine (`/track/vitrine/?planche=voiture`) : l'existant et les trois modèles proposés (A, B, C) aux
 // paliers 1, 2 et 3, à l'arrêt, puis en fantôme du Salon ; le sélecteur de couleur repeint les modèles ; la vue en mouvement roule avec le
 // modèle et le palier choisis ; le coût de chaque modèle est sous sa colonne. Rendu 3D de plusieurs scènes : Chromium seulement.
+// Lot 42 : onze colonnes (l'existant, la civile, A à C, les six du lot D à I), paliers 1 et 2 à l'arrêt (le palier 3 est dans la vue en mouvement).
 test.skip(({ browserName }) => browserName !== "chromium", "rendu 3D de la vitrine : Chromium seulement");
 test.setTimeout(600_000);
 
@@ -31,11 +32,11 @@ const dessine = (page: Page, i: number) =>
     return px.size > 4;
   }, i);
 
-test("ordinateur : cinq colonnes (l'existant, la civile, A, B, C), trois paliers et les fantômes se dessinent ; la couleur change ; la vue en mouvement roule avec le modèle choisi", async ({ page }) => {
+test("ordinateur : onze colonnes (l'existant, la civile, A à I), deux paliers et les fantômes se dessinent ; la couleur change ; la vue en mouvement roule avec le modèle choisi", async ({ page }) => {
   await page.setViewportSize({ width: 1600, height: 1000 });
   const erreurs = await ouvrir(page);
   const vues = await page.evaluate(async () => (await window.__vitrine!.voiture())!.toutDessiner("theme-stade"));
-  expect(vues).toHaveLength(20);
+  expect(vues).toHaveLength(33);
   for (const [i, v] of vues.entries()) {
     expect(v.triangles, `${v.col} ${v.sorte} P${v.palier}`).toBeGreaterThan(200);
     expect(v.appels, `${v.col} ${v.sorte} P${v.palier} : une image`).toBeGreaterThan(5);
@@ -44,7 +45,7 @@ test("ordinateur : cinq colonnes (l'existant, la civile, A, B, C), trois paliers
     expect(v.maillages).toBeLessThanOrEqual(v.sorte === "fantome" ? 1 : 6);
   }
   // Plafonds du lot 40c : palier 1 ≤ 4 000 triangles, paliers 2 et 3 ≤ 12 000.
-  for (const col of ["civile", "A", "B", "C"]) {
+  for (const col of ["civile", "A", "B", "C", "D", "E", "F", "G", "H", "I"]) {
     const p1 = vues.find((v) => v.col === col && v.palier === 1 && v.sorte === "arret")!;
     const p2 = vues.find((v) => v.col === col && v.palier === 2 && v.sorte === "arret")!;
     expect(p1.triangles).toBeLessThanOrEqual(4000);
