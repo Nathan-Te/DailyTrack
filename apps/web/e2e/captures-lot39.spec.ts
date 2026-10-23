@@ -65,10 +65,9 @@ async function enCourse(page: Page, url: string, code: string, tick: number, fil
     if (at >= tick) break;
     await page.evaluate((n) => window.__cdj.advance(n), at < 0 ? 60 : Math.min(30, tick - at));
   }
-  await page.keyboard.press("KeyP");
-  await page.evaluate(() => window.__cdj.manual(false));
+  // Pas de pause : la caméra n'avance qu'à l'image, et suspendue elle garde le décalage du dernier pas (un demi-pixel qui change d'un lancement à l'autre). En pas à
+  // pas sans plus aucun pas, la voiture est immobile au pas voulu et la caméra converge en 700 ms : l'image est la même à chaque lancement.
   await page.waitForTimeout(700);
-  await page.evaluate(() => (document.getElementById("pause")!.style.visibility = "hidden"));
   writeFileSync(file, await jpeg(page));
 }
 
