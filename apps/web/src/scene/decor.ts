@@ -22,13 +22,18 @@ export const DECORS: Record<PaletteName, Chargeur> = {
 
 const promesses = new Map<PaletteName, Promise<ModuleDecor>>();
 const prets = new Map<PaletteName, ModuleDecor>();
+/** Quand le décor d'une palette a été demandé et quand il est arrivé (ms depuis l'ouverture de la page) : `?debug` et les mesures du lot 44. */
+export const instantsDecor = new Map<PaletteName, { demande: number; pret: number | null }>();
 
 /** Charge le décor d'une palette (une fois ; une erreur de chargement permet de réessayer plus tard). */
 export function chargerDecor(palette: PaletteName): Promise<ModuleDecor> {
   let p = promesses.get(palette);
   if (!p) {
+    const instants = { demande: performance.now(), pret: null as number | null };
+    instantsDecor.set(palette, instants);
     p = DECORS[palette]().then((m) => {
       prets.set(palette, m.DECOR);
+      instants.pret = performance.now();
       return m.DECOR;
     });
     p.catch(() => promesses.delete(palette));

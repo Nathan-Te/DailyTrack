@@ -121,7 +121,7 @@ import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
 import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, type Palier } from "./scene/socle";
-import { chargerDecor, decorPret } from "./scene/decor";
+import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
 import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
 import { followIdentityRevision } from "./transfer";
@@ -2266,19 +2266,12 @@ function poseurDe(v: typeof view) {
   return (v as Partial<TrackScene>).poserDecor?.bind(v);
 }
 let decorDansVue = !poseurDe(view) || !!view.stats().decor;
-const etatDecor = { palette: scenePalette as PaletteName, demandeMs: performance.now(), pretMs: null as number | null, poseMs: null as number | null, posePhase: null as string | null, poseDureeMs: 0, poseEnCourse: 0 };
+const etatDecor = { palette: scenePalette as PaletteName, poseMs: null as number | null, posePhase: null as string | null, poseDureeMs: 0, poseEnCourse: 0 };
 const suivreDecor = (palette: PaletteName) => {
-  if (etatDecor.palette === palette && etatDecor.pretMs !== null) return;
-  Object.assign(etatDecor, { palette, demandeMs: performance.now(), pretMs: null, poseMs: null, posePhase: null });
-  void chargerDecor(palette).then(
-    () => {
-      if (etatDecor.palette === palette) etatDecor.pretMs ??= performance.now();
-    },
-    () => undefined,
-  );
+  if (etatDecor.palette === palette) return;
+  Object.assign(etatDecor, { palette, poseMs: null, posePhase: null, poseDureeMs: 0 });
 };
-suivreDecor(scenePalette);
-if (decorDansVue && poseurDe(view)) Object.assign(etatDecor, { pretMs: etatDecor.demandeMs, poseMs: etatDecor.demandeMs, posePhase: "construction" });
+if (decorDansVue && poseurDe(view)) Object.assign(etatDecor, { poseMs: performance.now(), posePhase: "construction" });
 /** À chaque image (une lecture de booléen la plupart du temps) : pose le décor arrivé, si le jeu est à l'arrêt. */
 function poserDecorArrive() {
   const arret = isFrozen() || phase === "finished";
@@ -2490,7 +2483,8 @@ if (params.has("debug")) {
        * « construction » : il était là quand la scène s'est construite), s'il est dans la scène ; `poseEnCourse` doit rester 0 (`e2e/decor.spec.ts`).
        */
       get decor() {
-        return { ...etatDecor, dansScene: !!view.stats().decor, pret: !!decorPret(scenePalette) };
+        const instants = instantsDecor.get(scenePalette);
+        return { ...etatDecor, demandeMs: instants?.demande ?? null, pretMs: instants?.pret ?? null, dansScene: !!view.stats().decor, pret: !!decorPret(scenePalette) };
       },
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
       /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */

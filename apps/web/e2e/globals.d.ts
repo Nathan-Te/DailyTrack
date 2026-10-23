@@ -107,7 +107,7 @@ interface CdjDebug {
   /** Dessine tout de suite la miniature d'un jour (cadrage, vues) : adresse de l'image et durées (ms). */
   thumbnail(date: string, options?: { view?: "tilted" | "top"; webgl?: boolean; scale?: number; theme?: string }): Promise<{ url: string; timing: { build: number; draw: number } }>;
   /** Lot 44 : le décor du thème, chargé à la demande (ms depuis l'ouverture de la page) ; posé à l'arrêt seulement. */
-  decor: { palette: string; demandeMs: number; pretMs: number | null; poseMs: number | null; posePhase: string | null; poseDureeMs: number; poseEnCourse: number; dansScene: boolean; pret: boolean };
+  decor: { palette: string; demandeMs: number | null; pretMs: number | null; poseMs: number | null; posePhase: string | null; poseDureeMs: number; poseEnCourse: number; dansScene: boolean; pret: boolean };
   /** Socle par paliers (lot 39) : enregistrer un pas factice et un composeur, demander un palier, lire le palier et l'identité de la scène courante. */
   /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai (`?voiture=`), la voiture vue est-elle celle voulue, compteurs, course classée ou non. */
   voiture: {

@@ -58,13 +58,6 @@ export interface Terrain {
   readonly carres: readonly [number, number][];
 }
 
-/** Distance (m) de (x, z) au carré de la cellule (cx, cz). */
-function distanceCellule(x: number, z: number, cx: number, cz: number): number {
-  const dx = Math.max(cx * CELL - x, 0, x - (cx + 1) * CELL);
-  const dz = Math.max(cz * CELL - z, 0, z - (cz + 1) * CELL);
-  return Math.hypot(dx, dz);
-}
-
 /** Le sol relevé d'un circuit (pur : aucun DOM ; la même chose pour tout le monde). */
 export function terrainDe(track: Track, sol: number): Terrain {
   const P = PAS_TERRAIN;
@@ -84,6 +77,19 @@ export function terrainDe(track: Track, sol: number): Terrain {
   const ni = i1 - i0 + 1;
   const h = new Float32Array(ni * (k1 - k0 + 1));
   const portee = PORTEE_TERRAIN;
+  // Les cellules alentour, dans une grille (bien plus rapide qu'une table à chaque sommet) : 0 rien, 1 un bloc qui relève le sol (et sa hauteur), 2 un bloc qui le
+  // garde au sol lointain (sans rebords, vide de saut).
+  const c0x = i0 / parCellule - portee;
+  const c0z = k0 / parCellule - portee;
+  const nc = i1 / parCellule - c0x + portee + 1;
+  const mc = k1 / parCellule - c0z + portee + 1;
+  const sorte = new Uint8Array(nc * mc);
+  const dessus = new Float32Array(nc * mc);
+  for (const [key, b] of track.cells) {
+    const idx = (Math.floor(key / 4096) - 1024 - c0x) + ((key % 4096) - 1024 - c0z) * nc;
+    sorte[idx] = releve(b) ? 1 : 2;
+    dessus[idx] = bas(b) - TALUS_SOUS_ROUTE;
+  }
   for (let k = k0; k <= k1; k++) {
     for (let i = i0; i <= i1; i++) {
       const x = i * P;
@@ -92,13 +98,22 @@ export function terrainDe(track: Track, sol: number): Terrain {
       const ccz = Math.floor(z / CELL);
       let haut = -Infinity;
       let plafond = Infinity;
-      for (let dx = -portee; dx <= portee; dx++) {
-        for (let dz = -portee; dz <= portee; dz++) {
-          const b = track.cells.get(cellKey(ccx + dx, ccz + dz));
-          if (!b) continue;
-          const d = distanceCellule(x, z, ccx + dx, ccz + dz);
-          if (releve(b)) {
-            const top = bas(b) - TALUS_SOUS_ROUTE;
+      for (let dz = -portee; dz <= portee; dz++) {
+        const gz = ccz + dz - c0z;
+        if (gz < 0 || gz >= mc) continue;
+        const cz = ccz + dz;
+        const ez = Math.max(cz * CELL - z, 0, z - (cz + 1) * CELL);
+        for (let dx = -portee; dx <= portee; dx++) {
+          const gx = ccx + dx - c0x;
+          if (gx < 0 || gx >= nc) continue;
+          const idx = gx + gz * nc;
+          const t = sorte[idx]!;
+          if (t === 0) continue;
+          const cx = ccx + dx;
+          const ex = Math.max(cx * CELL - x, 0, x - (cx + 1) * CELL);
+          const d = ex === 0 ? ez : ez === 0 ? ex : Math.sqrt(ex * ex + ez * ez);
+          if (t === 1) {
+            const top = dessus[idx]!;
             haut = Math.max(haut, top - PENTE * Math.max(0, d - REPLAT));
             plafond = Math.min(plafond, top + 0.5 * d);
           } else plafond = Math.min(plafond, sol + PENTE_VIDE * Math.max(0, d - REPLAT_VIDE));
@@ -200,20 +215,29 @@ export function placesDeDecor(track: Track, rnd: () => number, parCellule: (anne
 
 const probe = createSurface();
 
-/** Vrai si le plan de `box`, élargi de `marge` m, ne touche rien de ce que la voiture roule (route, bas-côté, paroi de cuve). */
+/**
+ * Vrai si le plan de `box`, élargi de `marge` m, ne touche rien de ce que la voiture roule (route, bas-côté, paroi de cuve) : son pourtour (un point par mètre) et
+ * son centre, comme le lot 37 — une route (14 m au moins) ne peut pas passer entre deux points du pourtour sans en toucher un.
+ */
 export function planLibre(world: World, box: Box, marge: number): boolean {
   const x0 = box.x0 - marge;
   const x1 = box.x1 + marge;
   const z0 = box.z0 - marge;
   const z1 = box.z1 + marge;
+  const hit = (x: number, z: number) => {
+    world.sample(x, z, probe);
+    return probe.height !== NO_GROUND;
+  };
+  if (hit((x0 + x1) / 2, (z0 + z1) / 2)) return false;
   const nx = Math.max(1, Math.ceil(x1 - x0));
   const nz = Math.max(1, Math.ceil(z1 - z0));
   for (let i = 0; i <= nx; i++) {
-    for (let j = 0; j <= nz; j++) {
-      if (i > 0 && i < nx && j > 0 && j < nz && (i + j) % 3 !== 0) continue; // le pourtour, et l'intérieur un point sur trois
-      world.sample(x0 + ((x1 - x0) * i) / nx, z0 + ((z1 - z0) * j) / nz, probe);
-      if (probe.height !== NO_GROUND) return false;
-    }
+    const x = x0 + ((x1 - x0) * i) / nx;
+    if (hit(x, z0) || hit(x, z1)) return false;
+  }
+  for (let j = 1; j < nz; j++) {
+    const z = z0 + ((z1 - z0) * j) / nz;
+    if (hit(x0, z) || hit(x1, z)) return false;
   }
   return true;
 }
@@ -484,8 +508,8 @@ function ecransDuDepart(c: CalquesDecor, x: Contexte) {
 // --- L'assemblage ----------------------------------------------------------------------------------------------------------------------
 
 /**
- * Le décor d'un circuit, dans les calques donnés : le sol relevé (dans `decor`), la tribune du départ, les recettes du thème (un à trois éléments par cellule
- * voisine de la piste, deux ou trois plus loin), et à la qualité 2 le remplissage du thème (`dense`, une autre suite de nombres). Graine : `${id}:${palette}` (comme le
+ * Le décor d'un circuit, dans les calques donnés : le sol relevé (dans `decor`), la tribune du départ, les recettes du thème (un ou deux éléments par cellule
+ * voisine de la piste, un ou deux plus loin), et à la qualité 2 le remplissage du thème (`dense`, une autre suite de nombres). Graine : `${id}:${palette}` (comme le
  * décor d'avant), `…:dense`. `near` (miniatures) : seules les cellules du cadre sont construites, tous les tirages sont faits (le même décor que dans le jeu).
  */
 export function construireDecor(t: DecorTheme, c: CalquesDecor, x: Contexte, near?: (cx: number, cz: number) => boolean): Terrain {
@@ -503,17 +527,17 @@ export function construireDecor(t: DecorTheme, c: CalquesDecor, x: Contexte, nea
   tribune(s, c, x, rnd);
   if (x.reglages?.ecrans) ecransDuDepart(c, x);
   const proche = t.proche ?? 0.5;
-  for (const p of placesDeDecor(x.track, rnd, (anneau) => (anneau === 1 ? 1 + (rnd() < proche ? 1 : 0) + (rnd() < 0.3 ? 1 : 0) : 2 + (rnd() < 0.5 ? 1 : 0)), 2, terrain)) {
+  for (const p of placesDeDecor(x.track, rnd, (anneau) => (anneau === 1 ? (rnd() < 0.85 ? 1 : 0) + (rnd() < proche ? 1 : 0) : 1 + (rnd() < 0.6 ? 1 : 0)), 2, terrain)) {
     muet(p.cx, p.cz);
     const v = x.varierDecor?.marque(c);
     if (poserSurTerrain(s, c, "decor", x.palette, () => t.recette(c, x, p, rnd)) && v !== undefined) x.varierDecor!.varier(c, v, p.x, p.y, p.z);
   }
   c.decor.mute = c.decorLumineux.mute = c.dense.mute = false;
   t.plus?.(s, c, x, near);
-  // Le remplissage (qualité 2) : un ou deux éléments simples par cellule de l'anneau 3, sur la pente du talus ; une autre suite.
+  // Le remplissage (qualité 2) : un élément simple par cellule de l'anneau 3, sur la pente du talus ; une autre suite.
   const dense = seeded(`${x.track.id}:${x.palette}:dense`);
   const calquesDenses: CalquesDecor = { ...c, decor: c.dense };
-  for (const p of placesDeDecor(x.track, dense, (anneau) => (anneau === 3 ? 1 + (dense() < 0.5 ? 1 : 0) : 0), 3, terrain)) {
+  for (const p of placesDeDecor(x.track, dense, (anneau) => (anneau === 3 ? 1 : 0), 3, terrain)) {
     muet(p.cx, p.cz);
     poserSurTerrain(s, calquesDenses, "decor", x.palette, () => t.remplissage(c.dense, x, p, dense));
   }
