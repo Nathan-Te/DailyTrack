@@ -1,7 +1,7 @@
 # Lot 44 — Track : palier 1, le décor de chaque thème
 
 Branche `claude/adoring-clarke-mdlzin` (nom imposé par la session ; le lot prévoyait `lot-44-palier1-decor`, d'où l'étiquette `jeu:track` sur la PR pour le
-job `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), puis `main` fusionné à `42154b6` (retouche 40b, les voitures en jeu). PR : @@PR@@.
+job `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), puis `main` fusionné à `42154b6` (retouche 40b, les voitures en jeu). PR : [#126](https://github.com/Nathan-Te/DailyTrack/pull/126).
 Zones : `apps/web/**`, `docs/lots/**`, la section de Track de `docs/plateforme/budgets.md` (zones de la PR vérifiées : `scripts/zones-jeu.mjs`). **Rien dans
 `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés (aucun fichier de `packages/` touché).
 
