@@ -23,4 +23,12 @@ export const en: Catalogues<typeof fr>["en"] = {
   "erreur.local.timeout": "The server isn't answering.",
   "erreur.local.http_error": "The server answered with an error.",
   "erreur.local.inconnue": "Something went wrong.",
+  "voiture.civile.nom": "Hatch",
+  "voiture.civile.description": "The game's road car: five doors, a hatchback, a small spoiler. Yours from day one.",
+  "voiture.evolution.nom": "Evolution",
+  "voiture.evolution.description": "A stocky race coupé: wide wheel arches, a wing on two legs, four round headlights.",
+  "voiture.gt.nom": "GT",
+  "voiture.gt.description": "A low, wide GT: long bonnet, big swan-neck wing, a light bar from edge to edge.",
+  "voiture.proto.nom": "Proto",
+  "voiture.proto.description": "An endurance prototype: separate wings, a narrow bubble, a fin, a roof scoop.",
 };

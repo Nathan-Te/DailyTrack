@@ -1,0 +1,32 @@
+{
+ "avant (main), qualité 1": {
+  "decompteMs": 3410,
+  "civileMs": 0,
+  "voitureMs": null
+ },
+ "avant (main), qualité 2": {
+  "decompteMs": 3319,
+  "civileMs": 0,
+  "voitureMs": null
+ },
+ "civile, qualité 1": {
+  "decompteMs": 3284,
+  "civileMs": 87.6,
+  "voitureMs": null
+ },
+ "civile, qualité 2": {
+  "decompteMs": 3494,
+  "civileMs": 76.9,
+  "voitureMs": 3623
+ },
+ "Proto, qualité 1": {
+  "decompteMs": 3411,
+  "civileMs": 72.4,
+  "voitureMs": 3511
+ },
+ "Proto, qualité 2": {
+  "decompteMs": 3442,
+  "civileMs": 75.9,
+  "voitureMs": 3609
+ }
+}

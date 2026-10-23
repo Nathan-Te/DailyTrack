@@ -1,4 +1,4 @@
-// Retouche 40b — proposition de voiture civile n° 1, la « compacte sportive » : une voiture de série, cinq portes, haute et ramassée, le capot
+// Retouche 40b — la voiture civile, la voiture par défaut (choisie par Nathan dans la vitrine le 23/10/2026) : une compacte sportive de série, cinq portes, haute et ramassée, le capot
 // court, le pavillon long jusqu'au hayon presque droit, un petit becquet de toit au-dessus de la lunette. Ce qui la dit « de série » d'un coup
 // d'œil : des pare-chocs peints avec leur grille et leur entrée d'air sombres, les plaques avant et arrière, les rétroviseurs sur les portières,
 // deux poignées par côté (cinq portes), des passages de roue affleurants, pas d'aileron. Elle garde la livrée de Track (bandes, numéro) comme
@@ -23,9 +23,9 @@ const ROUES: [number, number][] = [
   [-1, -1.3],
 ];
 
-export const PLAN_COMPACTE: PlanVoiture = {
-  id: "compacte",
-  nom: "Civile 1 — Compacte sportive",
+export const PLAN_CIVILE: PlanVoiture = {
+  id: "civile",
+  nom: "Civile — Compacte sportive",
   resume: "Une voiture de série : cinq portes, haute et ramassée, hayon presque droit, petit becquet de toit ; pare-chocs, plaques, rétroviseurs, poignées.",
   cles: [
     // Le hayon : le bas presque droit (le numéro, la plaque), la lunette inclinée jusqu'au becquet.
@@ -35,8 +35,8 @@ export const PLAN_COMPACTE: PlanVoiture = {
     habitacle(-0.4, 0.27, [0.87, 0.3], [0.95, 0.55], [0.92, 0.87], [0.85, 0.93], [0.73, 1.31], 1.35),
     habitacle(0.3, 0.27, [0.87, 0.3], [0.95, 0.55], [0.92, 0.86], [0.85, 0.91], [0.71, 1.3], 1.34),
     // Le pied du pare-brise, juste derrière l'œil de la vue capot (z 0,98).
-    habitacle(0.9, 0.27, [0.87, 0.3], [0.95, 0.54], [0.91, 0.8], [0.84, 0.8], [0.62, 0.83], 0.85),
-    capot(1.3, 0.27, [0.87, 0.31], [0.95, 0.53], [0.9, 0.73], 0.78),
+    habitacle(0.9, 0.27, [0.87, 0.3], [0.95, 0.54], [0.91, 0.8], [0.84, 0.79], [0.62, 0.81], 0.83),
+    capot(1.3, 0.27, [0.87, 0.31], [0.95, 0.53], [0.9, 0.72], 0.765),
     capot(1.8, 0.28, [0.84, 0.32], [0.92, 0.5], [0.87, 0.68], 0.73),
     capot(ZF, 0.3, [0.74, 0.33], [0.82, 0.46], [0.76, 0.58], 0.61),
   ],
@@ -54,12 +54,13 @@ export const PLAN_COMPACTE: PlanVoiture = {
     largeurBande: 0.6,
     portiere: { z: 0.3, y: 0.66, h: 0.26 },
     arriere: { y: 0.74, h: 0.18 },
+    flancs: { z: [-0.8, 0.06], y: [0.4, 0.78] },
   },
-  roue: { branches: 5, jante: 0.66 },
+  roue: { branches: 6, jante: 0.66, dessin: "larges" },
   pieces(p, c) {
-    piecesCompacte(p, c);
+    piecesCivile(p, c);
   },
-  feux: feuxCompacte,
+  feux: feuxCivile,
   fantome: {
     profil: [0, 2, 3, 4, 5, 6, 8],
     pieces(p, f) {
@@ -70,7 +71,7 @@ export const PLAN_COMPACTE: PlanVoiture = {
   },
 };
 
-function piecesCompacte(p: Pieces, c: Contexte) {
+function piecesCivile(p: Pieces, c: Contexte) {
   const { m, arc } = c;
   // Passages de roue affleurants : le fond sombre et une lèvre peinte fine (une voiture de série ne déborde pas de ses ailes).
   for (const [s, z] of ROUES) {
@@ -108,6 +109,7 @@ function piecesCompacte(p: Pieces, c: Contexte) {
     const x = (a: number, b: number): [number, number] => (s > 0 ? [a, b] : [-b, -a]);
     boite(p, 0.92, 0.07, 0.64, 0.74, 1.03, 0.08, 0.62, 0.76, m.peinture, s * 0.94);
     pave(p, ...x(0.84, 0.9), 0.88, 0.94, 0.66, 0.74, m.garniture);
+    pave(p, ...x(0.88, 1.0), 0.935, 1.015, 0.614, 0.62, m.vitre);
     // Le montant central (cinq portes) : peint, sur la vitre latérale.
     boite(p, 0.9, 0.875, -0.36, -0.27, 1.3, 0.75, -0.36, -0.27, m.peinture);
     for (const z of [0.12, -0.72]) pave(p, ...x(0.93, 0.975), 0.79, 0.82, z - 0.08, z + 0.08, m.garniture);
@@ -121,7 +123,7 @@ function plaque(p: Pieces, c: Contexte, y: number, z: number, sens: number) {
   pave(p, -0.24, 0.24, y - 0.05, y + 0.05, sens > 0 ? z0 + 0.012 : z0 - 0.004, sens > 0 ? z0 + 0.018 : z0 + 0.004, c.m.creme);
 }
 
-function feuxCompacte(c: Contexte): Feux {
+function feuxCivile(c: Contexte): Feux {
   const blanc: Fini = { couleur: srgb(0xfff3d6) };
   const ambre: Fini = { couleur: srgb(0xf2a03a) };
   const recul: Fini = { couleur: srgb(0xe8e4dc) };

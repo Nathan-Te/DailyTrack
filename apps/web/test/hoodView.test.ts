@@ -1,18 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { Euler, Matrix4, Mesh, Object3D, Quaternion, Raycaster, Vector3 } from "three";
-import { createCarMesh } from "../src/carMesh";
+import type { CarModel } from "../src/carMesh";
 import { CAMERAS, HOOD_CLEARANCE, HOOD_MAX_TILT, HOOD_MOUNT } from "../src/cameras";
+import { VOITURES } from "../src/voiture/catalogue";
+import { LIVREE } from "../src/voiture/livree";
+import { MATERIAUX_2 } from "../src/voiture/materiaux2";
+import { construireVoiture } from "../src/voiture/modele";
 
 // Vue capot : la caméra est un point de la carrosserie. On le prouve sur le vrai maillage de la voiture : des rayons partent de l'œil dans tout
 // le champ de vision (le plus large que le jeu ouvre, écran très large), le regard incliné au maximum permis dans chaque sens ; aucune
 // surface ne doit se trouver à moins de `HOOD_CLEARANCE` de profondeur (le plan proche est à 0,1 m), et le capot doit bien être visible.
+// Retouche 40b : pour **chaque voiture du catalogue** (la civile, Évolution, GT, Proto), aux paliers 1 et 2 (sections et arrondis différents).
 
 const NEAR = 0.1;
 const FOV_V_MAX = 108; // 78 + 14 (vitesse) + 7 (turbo) + une marge
 const ASPECT_MAX = 2.4;
 
-function carMeshes(): Mesh[] {
-  const model = createCarMesh();
+function carMeshes(model: CarModel): Mesh[] {
   // roues dans leurs positions extrêmes : braquées à fond, comprimées au maximum, puis détendues
   for (const droop of [-0.15, 0, 0.22]) {
     model.update({ forward: 30, steerAngle: 0.5, braking: true, droop: [droop, droop, droop, droop], dt: 0.016 });
@@ -44,8 +48,10 @@ function nearestDepth(meshes: Mesh[], eye: Vector3, view: Quaternion): number {
   return nearest;
 }
 
-describe("vue capot (clipping)", () => {
-  const meshes = carMeshes();
+const MODELES = await Promise.all(VOITURES.map(async (f) => ({ id: f.id, plan: await f.charger() })));
+
+describe.each(MODELES.flatMap(({ id, plan }) => ([1, 2] as const).map((palier) => ({ nom: `${id}, palier ${palier}`, plan, palier }))))("vue capot (clipping) : $nom", ({ plan, palier }) => {
+  const meshes = carMeshes(construireVoiture(plan, { palier, couleur: LIVREE.orange, numero: "8", materiaux: palier > 1 ? MATERIAUX_2 : undefined }));
   const eye = new Vector3(HOOD_MOUNT.x, HOOD_MOUNT.y, HOOD_MOUNT.z);
   const forward = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI); // la caméra regarde −z, la voiture avance vers +z
 

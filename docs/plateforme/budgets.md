@@ -12,13 +12,13 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement | 276 600 | 256 990 | 259 323 (lot 39 : +644 ; lot 40 : +1 689) | 17 277 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement | 265 200 | 245 578 | 247 911 (lot 39 : +644 ; lot 40 : +1 689) | 17 289 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js | 132 500 | 112 812 | 115 137 (lot 39 : +644 ; lot 40 : +1 681) | 17 363 | `apps/web/e2e/perf.spec.ts` |
-| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 297 | 703 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement | 276 600 | 256 990 | 266 848 (lot 39 : +644 ; lot 40 : +1 689 ; 40b : +7 525) | 9 752 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement | 265 200 | 245 578 | 255 436 (lot 39 : +644 ; lot 40 : +1 689 ; 40b : +7 525) | 9 764 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js | 132 500 | 112 812 | 121 968 (lot 39 : +644 ; lot 40 : +1 681 ; 40b : +6 831) | 10 532 | `apps/web/e2e/perf.spec.ts` |
+| `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 567 (40b : +270, noms et descriptions des voitures) | 433 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 30 000 | 26 524 | 26 524 | 3 476 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 32 000 | 28 502 | 28 502 | 3 498 | `apps/web/e2e/perf.spec.ts` |
-| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 10 885 | 1 615 | `apps/web/e2e/perf.spec.ts` |
+| `track.admin` | Track | page d'admin `admin-*.js` (à la demande, jamais chargée par un joueur ; **hors** du premier chargement) | 12 500 | 10 883 | 11 055 (40b : +170, la voiture d'essai) | 1 445 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
 | `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
@@ -100,7 +100,7 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 ## Les marges les plus serrées (à surveiller)
 
-1. **Track, catalogue anglais : 703 o** (il porte l'anglais commun). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
+1. **Track, catalogue anglais : 433 o** (il porte l'anglais commun ; retouche 40b : +270 o, les voitures). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
 2. **Jump, JS + CSS : 1 487 o** (voir plus haut).
-3. **Track, page d'admin : 1 618 o** (plafond mesure + 15 %), puis **JS + CSS : 17 277 o** (lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
+3. **Track, page d'admin : 1 445 o** (plafond mesure + 15 %), puis **JS + CSS : 9 752 o** (retouche 40b : +7 525 o, la voiture civile, les modèles chargés à la demande, le catalogue et le choix — détail et justification dans `docs/lots/lot-40b-voitures-en-jeu.md` ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
 4. **Track, fils de travail : 3 476 o (circuits) et 3 498 o (Salon)** après leur relèvement (avant : 76 et 1 498 o). Ils embarquent le générateur et le pilote : tout ajout à la génération les entame.

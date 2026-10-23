@@ -7,7 +7,7 @@ import type { FabriqueMateriaux } from "./modele";
 import { finiParSommet, srgb } from "./pieces";
 
 export const MATERIAUX_2: FabriqueMateriaux = {
-  caisse: (livree) => finiParSommet(new MeshPhysicalMaterial({ vertexColors: true, side: DoubleSide, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1 }), { livree }, "voiture-2"),
+  caisse: (livree, nuit) => finiParSommet(new MeshPhysicalMaterial({ vertexColors: true, side: DoubleSide, clearcoat: 1, clearcoatRoughness: 0.08, envMapIntensity: 1 }), { livree, nuit }, "voiture-2"),
   roue: (angle) => finiParSommet(new MeshStandardMaterial({ vertexColors: true }), { angle }, "voiture-2"),
   lisse: 40,
   matieres: () => ({
