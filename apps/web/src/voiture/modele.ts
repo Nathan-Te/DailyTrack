@@ -73,6 +73,11 @@ export interface PlanVoiture {
    */
   tole?: { rayons?: readonly number[]; boutArriere: number; boutAvant: number };
   roue: Pick<PlanRoue, "branches" | "jante" | "dessin">;
+  /**
+   * Lot 40c : l'œil de la vue capot propre à ce modèle (décalage, en m, par rapport à `HOOD_MOUNT`) : un capot haut et plat (la Sparrow) demande un œil plus haut, sinon
+   * la caisse se rapproche de l'œil au-delà de `HOOD_CLEARANCE`. Vérifié pour chaque modèle par `test/hoodView.test.ts`.
+   */
+  vueCapot?: { dy?: number; dz?: number };
   /** Pièces propres : aileron, diffuseur, passages de roue, rétroviseurs, échappements… (dans la caisse). */
   pieces(p: Pieces, c: Contexte): void;
   feux(c: Contexte): Feux;
@@ -140,6 +145,8 @@ export const MATERIAUX_1: FabriqueMateriaux = {
 export interface Voiture extends CarModel {
   triangles: number;
   maillages: number;
+  /** L'œil de la vue capot de ce modèle, relatif à `HOOD_MOUNT` (lot 40c). */
+  oeil: { dy: number; dz: number };
   peindre(couleur: number, numero?: string, motif?: MotifLivree, teinteMotif?: number): void;
   /** La Nuit (retouche 40b) : les rayures, la plaque, le numéro et les feux s'allument un peu, pour que la voiture se lise dans le noir. */
   nuit(on: boolean): void;
@@ -249,6 +256,7 @@ export function construireVoiture(plan: PlanVoiture, o: OptionsVoiture): Voiture
   let teinteCourante = o.teinteMotif ?? 0;
   return {
     group,
+    oeil: { dy: plan.vueCapot?.dy ?? 0, dz: plan.vueCapot?.dz ?? 0 },
     triangles: p.triangles + f.triangles + 2 * (roues2[0]!.triangles + roues2[1]!.triangles),
     maillages: 6,
     update(s: WheelPose) {

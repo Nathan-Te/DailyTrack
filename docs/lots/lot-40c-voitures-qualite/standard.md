@@ -10,6 +10,12 @@ La règle du lot 42 (nouvelles voitures) et de toute voiture future. La référe
 - **Lissage** : les normales se moyennent **dans un même groupe** (la peinture, la vitre, la garniture ont chacune le leur) pour les faces qui font moins de **42°** entre elles, pondérées par l'aire. Une arête plus vive reste vive : une boîte garde ses angles. Au palier 1, c'est l'ombrage propre ; aux paliers 2 et 3, les reflets continus de la peinture à deux couches glissent sur la caisse.
 - **Plus aucune facette parasite sur les grandes surfaces** : on lit de la tôle. Un plan qui montre des facettes sur le capot ou le toit a trop peu de sections ou un coin sans rayon.
 
+## 1 bis. Le capot et les ailes (retour de Nathan sur la Sparrow, 23/10/2026)
+
+- **Un capot presque plat**, bombé d'un centimètre, qui finit sur un museau haut et franc (`capotPlat` dans `modeleCivile.ts`) : pas de capot qui plonge vers un nez bas. Référence : le capot d'une compacte carrée type « Fennec » de Rocket League, cohérent de l'aile au museau.
+- **La roue ne traverse jamais le capot** : l'aile (la ceinture vive du capot au-dessus de la roue) est **au moins 7 cm au-dessus du haut de la roue** (haut de la roue : 0,76 m ; aile de la Sparrow : 0,835 m), et la lèvre d'arche s'arrête là où la tôle de l'aile s'arrête (`levre(…, ymax)`).
+- **L'œil de la vue capot est propre à chaque voiture** (`PlanVoiture.vueCapot: { dy, dz }`, relatif à `HOOD_MOUNT`, lu par `main.ts` et par `test/hoodView.test.ts`) : un capot haut demande un œil plus haut (la Sparrow : +0,08 m) pour garder `HOOD_CLEARANCE` quand la caméra roule ou pique. Un modèle à capot bas garde l'œil par défaut.
+
 ## 2. Les détails obligatoires
 
 - **Lignes de portes, de capot, de hayon** : des joints de 7 mm **dessinés dans le nuanceur** (`cadre.joints` : segments en z/y sur les flancs, |x|/z sur le dessus, |x|/y à l'arrière) ; ils suivent la caisse, sans relief ni texture.

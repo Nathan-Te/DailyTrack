@@ -51,8 +51,10 @@ function nearestDepth(meshes: Mesh[], eye: Vector3, view: Quaternion): number {
 const MODELES = await Promise.all(VOITURES.map(async (f) => ({ id: f.id, plan: await f.charger() })));
 
 describe.each(MODELES.flatMap(({ id, plan }) => ([1, 2] as const).map((palier) => ({ nom: `${id}, palier ${palier}`, plan, palier }))))("vue capot (clipping) : $nom", ({ plan, palier }) => {
-  const meshes = carMeshes(construireVoiture(plan, { palier, couleur: LIVREE.orange, numero: "8", materiaux: palier > 1 ? MATERIAUX_2 : undefined }));
-  const eye = new Vector3(HOOD_MOUNT.x, HOOD_MOUNT.y, HOOD_MOUNT.z);
+  const voiture = construireVoiture(plan, { palier, couleur: LIVREE.orange, numero: "8", materiaux: palier > 1 ? MATERIAUX_2 : undefined });
+  const meshes = carMeshes(voiture);
+  // Lot 40c : l'œil de la vue capot est propre à chaque modèle (`vueCapot` du plan).
+  const eye = new Vector3(HOOD_MOUNT.x, HOOD_MOUNT.y + voiture.oeil.dy, HOOD_MOUNT.z + voiture.oeil.dz);
   const forward = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI); // la caméra regarde −z, la voiture avance vers +z
 
   const tilts: [string, Euler][] = [

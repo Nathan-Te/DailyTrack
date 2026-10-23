@@ -16,6 +16,13 @@ const ZF = 2.08;
 type P2 = [number, number];
 /** Une section de capot ou de bas de hayon. */
 const capot = (z: number, b: number, seuil: P2, flanc: P2, epaule: P2, dessus: number) => cle(z, { bas: b, seuil, flanc, epaule, ...pont(epaule, dessus) });
+/**
+ * Lot 40c, retour de Nathan (la Sparrow a un air de Fennec de Rocket League) : un capot **presque plat** à hauteur d'aile, bombé d'un centimètre, qui se termine sur un museau haut et franc ;
+ * l'aile (la ceinture vive du capot) reste au-dessus de la roue (le haut de la roue est à 0,76 m, l'aile à 0,85 m et plus) : la roue ne traverse plus le capot.
+ * `haut` : la hauteur du capot au bord de la bombe.
+ */
+const capotPlat = (z: number, b: number, seuil: P2, flanc: P2, epaule: P2, haut: number) =>
+  cle(z, { bas: b, seuil, flanc, epaule, vitre: [epaule[0] - 0.06, epaule[1] + (haut - epaule[1]) * 0.4], toit: [epaule[0] * 0.66, haut], dessus: haut + 0.012 });
 /** Une section d'habitacle (pied de vitre, bord du toit, dessus). */
 const habitacle = (z: number, b: number, seuil: P2, flanc: P2, epaule: P2, vitre: P2, toit: P2, dessus: number) => cle(z, { bas: b, seuil, flanc, epaule, vitre, toit, dessus } satisfies Sec);
 
@@ -38,15 +45,17 @@ export const PLAN_CIVILE: PlanVoiture = {
     habitacle(-0.4, 0.27, [0.87, 0.3], [0.95, 0.55], [0.92, 0.87], [0.85, 0.93], [0.73, 1.31], 1.35),
     habitacle(0.3, 0.27, [0.87, 0.3], [0.95, 0.55], [0.92, 0.86], [0.85, 0.91], [0.71, 1.3], 1.34),
     // Le pied du pare-brise, juste derrière l'œil de la vue capot (z 0,98).
-    habitacle(0.9, 0.27, [0.87, 0.3], [0.95, 0.54], [0.91, 0.8], [0.84, 0.79], [0.62, 0.81], 0.83),
-    capot(1.3, 0.27, [0.87, 0.31], [0.95, 0.53], [0.9, 0.72], 0.765),
-    capot(1.8, 0.28, [0.84, 0.32], [0.92, 0.5], [0.87, 0.68], 0.73),
-    capot(ZF, 0.3, [0.74, 0.33], [0.82, 0.46], [0.76, 0.58], 0.61),
+    habitacle(0.9, 0.27, [0.87, 0.3], [0.95, 0.54], [0.92, 0.840], [0.85, 0.845], [0.64, 0.855], 0.867),
+    capotPlat(1.3, 0.27, [0.87, 0.31], [0.95, 0.53], [0.92, 0.835], 0.842),
+    capotPlat(1.8, 0.28, [0.84, 0.32], [0.93, 0.5], [0.9, 0.828], 0.835),
+    capotPlat(ZF, 0.3, [0.74, 0.33], [0.86, 0.5], [0.82, 0.770], 0.780),
   ],
   bombe: { 2: 0.05, 3: 0.07, 4: 0.1, 5: 0.05, 6: 0.12, 7: 0.03 },
   tronçons: { dessous: [0], bas: [1], vitre: [5], dessus: [7] },
   zones: { pareBrise: [0.3, 0.9], lunette: [ZR, -1.72], vitres: [-1.45, 0.8] },
   tole: { boutArriere: 0.34, boutAvant: 0.4 },
+  // Le capot haut et plat demande un œil plus haut que celui des autres voitures (retour de Nathan, lot 40c).
+  vueCapot: { dy: 0.08 },
   cadre: {
     z: [ZR, ZF],
     demiLargeur: 1.05,
@@ -111,21 +120,21 @@ function piecesCivile(p: Pieces, c: Contexte) {
   const { m, arc } = c;
   const coque = c.coque!;
   // Les passages de roue : une lèvre peinte (un arc épais, sa face intérieure en plastique) ; la doublure est dessinée dans le nuanceur de la livrée.
-  for (const [s, z] of ROUES) if (z < 0) levre(p, s, 0.915, 0.985, z, 0.38, 0.47, 0.515, 0.12, Math.PI - 0.12, arc + 3, m.peinture, m.plastique, 0.9);
+  for (const [s, z] of ROUES) levre(p, s, 0.915, 0.985, z, 0.38, 0.47, 0.515, 0.12, Math.PI - 0.12, arc + 3, m.peinture, m.plastique, z > 0 ? 0.84 : 0.9);
   // Les bas de caisse : une jupe en plastique gris sous la ceinture, un filet net au-dessus.
   for (const s of [-1, 1]) {
     pave(p, s > 0 ? 0.9 : -0.955, s > 0 ? 0.955 : -0.9, 0.245, 0.31, -0.84, 0.84, m.plastique);
     pave(p, s > 0 ? 0.93 : -0.96, s > 0 ? 0.96 : -0.93, 0.31, 0.325, -0.84, 0.84, m.cadre);
   }
 
-  // --- L'avant : calandre à ailettes entre les phares, grande entrée d'air basse à grille, antibrouillards, lame, plaque. ---
-  const nez = coque.bout(1, 0.5).z;
-  pave(p, -0.36, 0.36, 0.46, 0.57, nez - 0.03, nez + 0.006, m.cadre);
-  for (const y of [0.485, 0.515, 0.545]) pave(p, -0.34, 0.34, y, y + 0.012, nez - 0.01, nez + 0.014, m.grille);
-  pave(p, -0.56, 0.56, 0.3, 0.41, nez - 0.03, nez + 0.008, m.cadre);
-  for (let k = -5; k <= 5; k++) pave(p, k * 0.1 - 0.008, k * 0.1 + 0.008, 0.31, 0.4, nez - 0.01, nez + 0.016, m.grille);
+  // --- L'avant : un museau haut et franc : calandre à ailettes entre les phares, grande entrée d'air basse à grille, lame, plaque. ---
+  const nez = coque.bout(1, 0.6).z;
+  pave(p, -0.34, 0.34, 0.55, 0.71, nez - 0.03, nez + 0.006, m.cadre);
+  for (const y of [0.575, 0.615, 0.655, 0.695]) pave(p, -0.32, 0.32, y, y + 0.012, nez - 0.01, nez + 0.014, m.grille);
+  pave(p, -0.56, 0.56, 0.3, 0.45, nez - 0.03, nez + 0.008, m.cadre);
+  for (let k = -5; k <= 5; k++) pave(p, k * 0.1 - 0.008, k * 0.1 + 0.008, 0.31, 0.44, nez - 0.01, nez + 0.016, m.grille);
   pave(p, -0.6, 0.6, 0.27, 0.3, nez - 0.2, nez + 0.012, m.plastique);
-  plaque(p, c, 0.365, nez + 0.016, 1);
+  plaque(p, c, 0.375, nez + 0.016, 1);
 
   // --- L'arrière : le bouclier, l'insert sombre, deux échappements creux, la plaque. ---
   const queue = coque.bout(-1, 0.5).z;
@@ -184,10 +193,10 @@ function feuxCivile(c: Contexte): Feux {
   return {
     phares(f) {
       // Signature : un phare en amande dont le trait de jour remonte vers l'aile, le clignotant ambre au coin (la glace, le boîtier sombre, le trait).
-      coque.ruban(f, 1, 0.445, 0.575, 0.3, 3, 0.004, boitier);
-      coque.ruban(f, 1, 0.46, 0.55, 0.34, 2, 0.008, verre, 0.74);
-      coque.ruban(f, 1, 0.5, 0.516, 0.34, 3, 0.012, jour);
-      coque.ruban(f, 1, 0.46, 0.5, 0.6, 3, 0.011, ambre);
+      coque.ruban(f, 1, 0.535, 0.715, 0.3, 3, 0.004, boitier);
+      coque.ruban(f, 1, 0.55, 0.69, 0.34, 2, 0.008, verre, 0.74);
+      coque.ruban(f, 1, 0.625, 0.645, 0.34, 3, 0.012, jour);
+      coque.ruban(f, 1, 0.55, 0.6, 0.6, 3, 0.011, ambre);
       // Feu de recul, dans le feu arrière gauche seulement (comme une voiture de série).
       coque.ruban(f, -1, 0.62, 0.655, 0.46, 0, 0.01, recul, 0.7);
     },

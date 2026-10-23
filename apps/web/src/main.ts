@@ -2153,7 +2153,9 @@ function frame(now: number) {
   if (mount) {
     // L'œil est un point de la carrosserie : même position que la caisse (pas de retard, tangage et roulis compris), donc jamais à travers.
     carMesh.updateMatrixWorld();
-    hoodEye.set(mount.x, mount.y, mount.z).applyMatrix4(carMesh.matrixWorld);
+    // Lot 40c : l'œil de la vue capot est propre à chaque voiture (un capot haut et plat demande un œil plus haut).
+    const oeil = (carModel as { oeil?: { dy: number; dz: number } }).oeil;
+    hoodEye.set(mount.x, mount.y + (oeil?.dy ?? 0), mount.z + (oeil?.dz ?? 0)).applyMatrix4(carMesh.matrixWorld);
     camPos.x = hoodEye.x;
     camPos.y = hoodEye.y;
     camPos.z = hoodEye.z;

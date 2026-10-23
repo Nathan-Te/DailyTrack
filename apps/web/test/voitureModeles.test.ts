@@ -77,7 +77,7 @@ describe("les trois modèles (lot 40)", () => {
       it("vue capot : rien à moins de HOOD_CLEARANCE dans le champ de vision, le regard incliné au maximum", () => {
         p2.group.updateMatrixWorld(true);
         const m = maillages(p2.group);
-        const eye = new Vector3(HOOD_MOUNT.x, HOOD_MOUNT.y, HOOD_MOUNT.z);
+        const eye = new Vector3(HOOD_MOUNT.x, HOOD_MOUNT.y + p2.oeil.dy, HOOD_MOUNT.z + p2.oeil.dz);
         const avant = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI);
         const tanV = Math.tan((108 * Math.PI) / 360);
         for (const tilt of [new Euler(0, 0, 0), new Euler(-HOOD_MAX_TILT, 0, 0, "YXZ"), new Euler(HOOD_MAX_TILT, 0, 0, "YXZ"), new Euler(0, 0, HOOD_MAX_TILT, "YXZ"), new Euler(0, HOOD_MAX_TILT, 0, "YXZ")]) {
