@@ -52,7 +52,7 @@ Les plafonds du lot 40b (≤ 2 600 et ≤ 6 000) sont relevés à ≤ 4 000 et �
 
 ### Budget (à valider par Nathan)
 
-**Premier chargement : +6 795 o** (JS + CSS 278 798 → 285 593 o ; marge sous le plafond 12 801 → 6 007 o) — **au-dessus de la cible de +4 ko du prompt**. Par module, compressé (`vitrine/poids-parties.mjs`) :
+**Premier chargement : +6 320 o** (JS + CSS 278 798 → 285 118 o ; marge sous le plafond 12 801 → 6 482 o) — **au-dessus de la cible de +4 ko du prompt**. Par module, compressé (`vitrine/poids-parties.mjs`) :
 
 | module | poids | à quoi il sert |
 |---|---|---|
@@ -62,6 +62,10 @@ Les plafonds du lot 40b (≤ 2 600 et ≤ 6 000) sont relevés à ≤ 4 000 et �
 | roue, plan de la Sparrow, palette et motifs | le reste | la roue refaite (disque, étrier, liseré, branches biseautées), les joints et les feux du plan, `couleursMotif` |
 
 Le Garage (studio, reflet plan, vignettes de motifs) est à la demande : garage-*.js 6,5 → 8,1 ko ; `Reflector` rangé dans son morceau (`vite.config.ts`), aucune géométrie de three de plus au premier chargement (three.js +43 o). **Pistes si Nathan veut revenir vers 4 ko** : charger à la demande le GLSL des motifs autres que la double bande (≈ 1 ko, mais le motif choisi doit être prêt avant la première voiture : un rendu différé), générer l'atlas des chiffres sans champ de distance (≈ 0,5 ko, des bords moins nets de près), retirer les détails de palier 2 (écrous, étrier) du code commun vers `materiaux2` (≈ 0,6 ko). Les trois autres voitures restent à la demande (≤ 4 ko compressés chacune : à vérifier à la refonte).
+
+### Coût de compilation du nuanceur (trouvé par la CI)
+
+La première version du nuanceur de la livrée compilait les huit motifs et 24 joints à chaque chargement de page : en rendu logiciel, le test `profil.spec.ts › un pseudo appartient…` (une vingtaine de chargements de page) passait de 2,8 min (`main`) à 3,1 min en local et dépassait ses 4 min en CI. Remède : **seul le code du motif choisi est compilé** (`#define MOTIF`, programme recompilé une fois par motif changé, mis en cache), les boucles de joints ont la taille du plan (`NJC`, `NJT`, `NJR`), la taille d'un pixel est mesurée une fois hors de toute branche (`gPx`). Résultat : 2,8 min, comme `main` ; poids −475 o. À retenir pour les voitures suivantes : un nuanceur de voiture se juge aussi à son temps de compilation, pas seulement à son poids.
 
 ## Captures (`docs/lots/lot-40c-voitures-qualite/`)
 
@@ -82,7 +86,7 @@ Outil : `CAPTURES=1 LABEL=avant|apres npx playwright test captures-lot40c` (`-g 
 
 1. **La Sparrow et les motifs te conviennent-ils** (vitrine `/track/vitrine/?planche=voiture`, Garage) ? Retouches avant les trois autres voitures.
 2. **Couleur du motif** : oui / non, et quelles teintes (proposition : crème, asphalte, lagon).
-3. **Budget** : +6,8 ko au premier chargement (cible 4 ko) — l'accepter, ou lequel des trois leviers tirer.
+3. **Budget** : +6,3 ko au premier chargement (cible 4 ko) — l'accepter, ou lequel des trois leviers tirer.
 4. Le nom de branche : `claude/lot-40c-voitures-qualite-gmy88b` (imposé par la session).
 
 ## À tester (aperçu de la PR, au téléphone)

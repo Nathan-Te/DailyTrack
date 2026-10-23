@@ -10,6 +10,11 @@ import { motifVersIndice, couleursMotif, type CadreLivree, type MotifLivree } fr
 export interface LivreeNuanceur {
   uniforms: Record<string, { value: unknown }>;
   peindre(caisse: number, numero: string, motif: MotifLivree, rangCouleurMotif?: number): void;
+  /**
+   * Les `#define` du nuanceur : `MOTIF` (le rang du motif : seul son code est compilé) et le nombre de joints de chaque projection (des boucles de la bonne taille).
+   * Compiler seulement ce qu'on dessine garde le premier chargement rapide (un nuanceur long coûte cher à compiler, surtout en rendu logiciel).
+   */
+  defines(): Record<string, string>;
 }
 
 const NB_COUPES = 10; // segments de joints : flancs (z, y)
@@ -145,7 +150,6 @@ export function creerLivree(cadre: CadreLivree): LivreeNuanceur {
     uC2: { value: new Color() },
     uPlaque: { value: new Color() },
     uChiffres: { value: new Color() },
-    uMotif: { value: 0 },
     uNum: { value: new Vector4(-1, -1, -1, 0) },
     uBandes: { value: new Vector4(a0, b0, a1, b1) },
     uGeo: { value: new Vector4(cadre.largeurBande / 2, cadre.toit ?? 0.95, cadre.filet ?? (fy0 + fy1) / 2, 0) },
@@ -161,8 +165,11 @@ export function creerLivree(cadre: CadreLivree): LivreeNuanceur {
     uNuit: { value: 0 },
   };
   const val = <T>(k: string) => u[k]!.value as T;
+  const compte = (l: readonly unknown[] | undefined) => String(l?.length ?? 0);
+  let motifCourant = 0;
   return {
     uniforms: u,
+    defines: () => ({ MOTIF: String(motifCourant), NJC: compte(j?.flanc), NJT: compte(j?.dessus), NJR: compte(j?.arriere) }),
     peindre(caisse, numero, motif, rang = 0) {
       const c = couleursMotif(caisse, rang);
       val<Color>("uCaisse").set(lin(caisse));
@@ -170,7 +177,7 @@ export function creerLivree(cadre: CadreLivree): LivreeNuanceur {
       val<Color>("uC2").set(lin(c.c2));
       val<Color>("uPlaque").set(lin(c.plaque));
       val<Color>("uChiffres").set(lin(c.chiffres));
-      u.uMotif!.value = motifVersIndice(motif);
+      motifCourant = motifVersIndice(motif);
       const chiffres = numero.replace(/\D/g, "").slice(0, 3);
       val<Vector4>("uNum").set(Number(chiffres[0] ?? -1), Number(chiffres[1] ?? -1), Number(chiffres[2] ?? -1), chiffres.length);
     },
@@ -181,12 +188,19 @@ export function creerLivree(cadre: CadreLivree): LivreeNuanceur {
 
 export const GLSL_LIVREE_PARS = /* glsl */ `
 uniform vec3 uCaisse; uniform vec3 uC1; uniform vec3 uC2; uniform vec3 uPlaque; uniform vec3 uChiffres;
-uniform float uMotif; uniform vec4 uNum; uniform vec4 uBandes; uniform vec4 uGeo; uniform vec3 uPortiere; uniform vec2 uArriere; uniform vec4 uFlancs;
+uniform vec4 uNum; uniform vec4 uBandes; uniform vec4 uGeo; uniform vec3 uPortiere; uniform vec2 uArriere; uniform vec4 uFlancs;
 uniform vec3 uArches[2]; uniform vec4 uJC[${NB_COUPES}]; uniform vec4 uJT[${NB_COUPES_T}]; uniform vec4 uJR[${NB_COUPES_R}]; uniform vec4 uInt;
 uniform sampler2D uAtlas; uniform float uNuit;
 varying vec3 vOP; varying vec3 vON; varying float vLivree;
+#if MOTIF == 7
+#define ROND 1
+#else
+#define ROND 0
+#endif
 float gLiv = 0.0;
-float aaL(float d) { return clamp(0.5 - d / max(fwidth(d), 1e-5), 0.0, 1.0); }
+// Taille d'un pixel (m), mesurée une fois hors de toute branche (les dérivées ne se prennent pas dans un if propre à chaque pixel) ; tous les bords s'en servent.
+float gPx = 1e-3;
+float aaL(float d) { return clamp(0.5 - d / gPx, 0.0, 1.0); }
 float segL(vec2 p, vec4 s) { vec2 pa = p - s.xy; vec2 ba = s.zw - s.xy; float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0.0, 1.0); return length(pa - ba * h); }
 float boiteL(vec2 p, vec2 c, vec2 h, float r) { vec2 q = abs(p - c) - h + r; return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r; }
 // Le numéro : p en mètres, centré sur le numéro (x à droite du lecteur, y en haut), h la hauteur des chiffres ; la couverture (0 à 1).
@@ -205,13 +219,13 @@ float chiffresL(vec2 p, float h) {
     // La case est plus large que le chiffre (marge du champ de distance) : on la lit tout entière.
     vec2 uv = vec2((dig + (u * 0.96 + 0.02)) / 10.0, v * 0.84 + 0.08);
     float s = texture2D(uAtlas, uv).r;
-    float fw = max(fwidth(s), 0.004);
+    float fw = max(gPx * 3.8 / h, 0.004);
     cov = max(cov, clamp((s - 0.5) / fw + 0.5, 0.0, 1.0));
   }
   return cov;
 }
 float damierL(vec2 p, float cell) {
-  vec2 c = p / cell; vec2 w = max(fwidth(c), vec2(1e-4));
+  vec2 c = p / cell; vec2 w = vec2(max(gPx / cell, 1e-4));
   vec2 i = 2.0 * (abs(fract((c - 0.5 * w) * 0.5) - 0.5) - abs(fract((c + 0.5 * w) * 0.5) - 0.5)) / w;
   return 0.5 - 0.5 * i.x * i.y;
 }
@@ -219,6 +233,7 @@ float damierL(vec2 p, float cell) {
 
 export const GLSL_LIVREE_COULEUR = /* glsl */ `
 #ifdef USE_LIVREE
+gPx = max(0.0004, max(fwidth(vOP.x), max(fwidth(vOP.y), fwidth(vOP.z))));
 if (vLivree > 0.5) {
   vec3 P = vOP;
   vec3 Nn = normalize(vON);
@@ -234,10 +249,10 @@ if (vLivree > 0.5) {
   if (vLivree < 1.5) {
     // ---- La peinture : le motif, les plaques et le numéro ----
     float m1 = 0.0; float m2 = 0.0; float mp = 0.0; float md = 0.0; float mo = 0.0;
-    float mot = uMotif;
     // Où sont les bandes en long (distance signée, négative dedans).
     float dz = min(max(uBandes.x - z, z - uBandes.y), max(uBandes.z - z, z - uBandes.w));
-    if (mot < 1.5 && mot > 0.5) {
+#if MOTIF == 1
+    {
       // 1 : double bande de course, capot - toit - hayon (une large, un filet).
       if (dessus || avant || arriere) {
         float hl = uGeo.x; float g = 0.04; float pin = 0.03; float gap = 0.022; float w = min(0.14, max(0.05, hl - g - pin - gap));
@@ -245,7 +260,9 @@ if (vLivree > 0.5) {
         float d2 = abs(ax - (g + w + gap + pin * 0.5)) - pin * 0.5;
         m1 = aaL(max(d1, dz)); m2 = aaL(max(d2, dz));
       }
-    } else if (mot < 2.5 && mot > 1.5) {
+    }
+#elif MOTIF == 2
+    {
       // 2 : flancs, un pavé de rayures obliques à 115° (la charte) bordé d'un filet.
       if (cote) {
         vec2 q = vec2(z, y);
@@ -256,18 +273,24 @@ if (vLivree > 0.5) {
         m1 = aaL(max(dr, ds));
         m2 = aaL(abs(dr + 0.009) - 0.009);
       }
-    } else if (mot < 3.5 && mot > 2.5) {
+    }
+#elif MOTIF == 3
+    {
       // 3 : un filet de flanc, une ligne et sa jumelle fine.
       if (cote) {
         m1 = aaL(abs(y - uGeo.z) - 0.026);
         m2 = aaL(abs(y - uGeo.z - 0.062) - 0.009);
       }
-    } else if (mot < 4.5 && mot > 3.5) {
+    }
+#elif MOTIF == 4
+    {
       // 4 : bicolore, le toit et les montants (tout ce qui est peint au-dessus de la ligne de vitrage).
       float d = uGeo.y - y;
       m1 = aaL(d);
       m2 = aaL(abs(d) - 0.007) * (1.0 - m1);
-    } else if (mot < 5.5 && mot > 4.5) {
+    }
+#elif MOTIF == 5
+    {
       // 5 : chevrons sur le capot, pointe vers l'avant.
       if (dessus || avant) {
         float s = (z + 1.1 * ax) / 0.17; float f = fract(s);
@@ -275,7 +298,9 @@ if (vLivree > 0.5) {
         float dzh = max(uBandes.x + 0.16 - z, z - (uBandes.y - 0.1));
         m1 = aaL(max(max(ds, ax - 0.6), dzh));
       }
-    } else if (mot < 6.5 && mot > 5.5) {
+    }
+#elif MOTIF == 6
+    {
       // 6 : damier en bout d'aile (deux rangées).
       if (cote) {
         vec2 q = vec2(z, y);
@@ -287,10 +312,12 @@ if (vLivree > 0.5) {
         m1 = r * (1.0 - k); m2 = r * k;
       }
     }
+#endif
     // 7 : « numéro en rond », à l'ancienne : un disque sur chaque portière et sur le capot (le numéro est dedans).
     float rond = 0.0;
     float hp = uPortiere.z;
-    if (mot > 6.5 && mot < 7.5) {
+#if MOTIF == 7
+    {
       float R = hp * 0.8;
       if (cote) {
         float hc = P.x > 0.0 ? uPortiere.x - z : z - uPortiere.x;
@@ -308,10 +335,11 @@ if (vLivree > 0.5) {
         md = chiffresL(p, hp * 1.05) * rond;
       }
     }
+#endif
     // Les plaques de numéro : une sur chaque portière, une sur le hayon (sauf là où un disque porte déjà le numéro).
     float lp = max(hp * 0.9, hp * (0.35 + 0.42 * uNum.w));
     float hh = hp * 1.25;
-    if (cote && !(mot > 6.5 && mot < 7.5)) {
+    if (cote && ROND == 0) {
       float hc = P.x > 0.0 ? uPortiere.x - z : z - uPortiere.x;
       vec2 p = vec2(hc, y - uPortiere.y);
       float dp = boiteL(p, vec2(0.0), vec2(lp, hh) * 0.5, hh * 0.22);
@@ -336,9 +364,9 @@ if (vLivree > 0.5) {
     col = mix(col, uChiffres, md);
     // Les joints : lignes de portes, de capot, de hayon (un trait sombre de 7 mm).
     float joint = 0.0;
-    if (cote) { for (int i = 0; i < ${NB_COUPES}; i++) joint = max(joint, aaL(segL(vec2(z, y), uJC[i]) - 0.0035) * step(0.0001, dot(uJC[i], uJC[i]))); }
-    else if (dessus || avant) { for (int i = 0; i < ${NB_COUPES_T}; i++) joint = max(joint, aaL(segL(vec2(ax, z), uJT[i]) - 0.0035) * step(0.0001, dot(uJT[i], uJT[i]))); }
-    else if (arriere) { for (int i = 0; i < ${NB_COUPES_R}; i++) joint = max(joint, aaL(segL(vec2(ax, y), uJR[i]) - 0.0035) * step(0.0001, dot(uJR[i], uJR[i]))); }
+    if (cote) { for (int i = 0; i < NJC; i++) { if (dot(uJC[i], uJC[i]) < 0.0001) break; joint = max(joint, aaL(segL(vec2(z, y), uJC[i]) - 0.0035)); } }
+    else if (dessus || avant) { for (int i = 0; i < NJT; i++) { if (dot(uJT[i], uJT[i]) < 0.0001) break; joint = max(joint, aaL(segL(vec2(ax, z), uJT[i]) - 0.0035)); } }
+    else if (arriere) { for (int i = 0; i < NJR; i++) { if (dot(uJR[i], uJR[i]) < 0.0001) break; joint = max(joint, aaL(segL(vec2(ax, y), uJR[i]) - 0.0035)); } }
     col *= 1.0 - 0.72 * joint;
     // La doublure des passages de roue : sombre, mais lisible (jamais un trou noir).
     if (cote) {

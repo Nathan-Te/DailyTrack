@@ -264,7 +264,7 @@ export function finiParSommet<M extends Material>(
             recto === "ombre" ? "gl_FrontFacing" : "!gl_FrontFacing",
         }
       : {}),
-    ...(livree ? { USE_LIVREE: "" } : {}),
+    ...(livree ? { USE_LIVREE: "", ...livree.defines() } : {}),
   };
   mat.onBeforeCompile = (s) => {
     if (angle) s.uniforms.uSpin = angle;
@@ -333,7 +333,7 @@ export function finiParSommet<M extends Material>(
     s.fragmentShader = f;
   };
   mat.customProgramCacheKey = () =>
-    `${cle}:${angle ? "roue" : "fixe"}:${recto ? `recto-${recto}` : ""}:${livree ? "livree" : ""}:${pbr ? "pbr" : "base"}:${reflets ? "refl" : ""}`;
+    `${cle}:${angle ? "roue" : "fixe"}:${recto ? `recto-${recto}` : ""}:${livree ? `livree${livree.defines().MOTIF}-${livree.defines().NJC}${livree.defines().NJT}${livree.defines().NJR}` : ""}:${pbr ? "pbr" : "base"}:${reflets ? "refl" : ""}`;
   return mat;
 }
 

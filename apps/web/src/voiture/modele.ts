@@ -264,6 +264,12 @@ export function construireVoiture(plan: PlanVoiture, o: OptionsVoiture): Voiture
       motifCourant = motif ?? motifCourant;
       teinteCourante = teinteMotif ?? teinteCourante;
       livree.peindre(couleur, numero ?? o.numero, motifCourant, teinteCourante);
+      // Un autre motif : seul son code est compilé ; le programme se recompile (une fois par motif, le nuanceur est mis en cache).
+      const d = livree.defines();
+      if (caisseMat.defines && caisseMat.defines.MOTIF !== d.MOTIF) {
+        Object.assign(caisseMat.defines, d);
+        caisseMat.needsUpdate = true;
+      }
     },
     nuit(on) {
       nuit.value = on ? 1 : 0;
