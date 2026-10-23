@@ -1,7 +1,7 @@
 # Lot 44 — Track : palier 1, le décor de chaque thème
 
 Branche `claude/adoring-clarke-mdlzin` (nom imposé par la session ; le lot prévoyait `lot-44-palier1-decor`, d'où l'étiquette `jeu:track` sur la PR pour le
-job `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), puis `main` fusionné à `42154b6` (retouche 40b, les voitures en jeu). PR : [#126](https://github.com/Nathan-Te/DailyTrack/pull/126).
+job `zones`), partie de `main` à `9f9a80a` (lot 43 fusionné), puis `main` fusionné à `42154b6` (retouche 40b, les voitures en jeu) et à `19864f0` (lot 46, la vie et le ciel : § 8). PR : [#126](https://github.com/Nathan-Te/DailyTrack/pull/126).
 Zones : `apps/web/**`, `docs/lots/**`, la section de Track de `docs/plateforme/budgets.md` (zones de la PR vérifiées : `scripts/zones-jeu.mjs`). **Rien dans
 `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés (aucun fichier de `packages/` touché).
 
@@ -10,7 +10,7 @@ Zones : `apps/web/**`, `docs/lots/**`, la section de Track de `docs/plateforme/b
 **Le décor de fond du palier 1 remplace celui d'avant, thème par thème** — Stade, Rallye, Banquise, Nuit, Campagne, Canyon, Col, Ville : le décor de B
 allégé de la vitrine (`decorP` : tribune du départ, recettes du thème) et la matière de C (grain, sol dessiné du thème), **posés sur un sol relevé** près de la
 piste (un talus à 1,5 m sous la route, puis une pente douce) pour qu'on voie enfin le décor depuis la voiture ; **la simulation ne voit pas ce sol**. Le décor
-de chaque thème est **un morceau chargé à la demande** (12,6 ko pour les huit, plafond 16 ko) : la scène s'affiche d'abord avec la piste, les rebords et les
+de chaque thème est **un morceau chargé à la demande** (12,4 ko pour les huit, plafond 16 ko) : la scène s'affiche d'abord avec la piste, les rebords et les
 éléments de course, le décor arrive pendant l'accueil et ne s'ajoute **jamais en course** — s'il n'est pas prêt au décompte, la course part sans lui et il
 s'ajoute à la prochaine pause ou à l'arrivée.
 
@@ -79,7 +79,7 @@ Regarde surtout **la Ville, le Canyon et le Col depuis la voiture** : on doit vo
   vitrine), qui le garde tel quel pour comparer ; **la « direction O »** (`scene/origine.ts`), **les directions A, B, C et le mélange** (`directionA.ts`,
   `directionB.ts`, `directionC.ts`, `directionM.ts`), **le décor de la vitrine** (`decorP1.ts`) et **le compositeur des directions** (`composer.ts` :
   `composerScene`) — ce qui en servait encore a changé de place : la lumière de C (`THEMES_C`, l'occlusion, la flaque) dans `scene/lumiere.ts`, le ciel et les
-  horizons dans `scene/ciel.ts`, les noms des sponsors des écrans à diodes (palier 3) dans `scene/logos.ts` (`vie.ts` : une ligne d'import). **La planche des
+  horizons dans `scene/ciel.ts` (les écrans à diodes du palier 3 lisent les sponsors du lot 43 depuis le lot 46 : plus rien de B). **La planche des
   directions de la vitrine est partie** (`?planche=directions`, son tableau `src/vitrine/mesures.ts`, ses outils `captures-lot38` et `mesure-lot38`) ; capture
   gardée : [planche des directions](lot-44/planche-directions.jpg). La vitrine des paliers construit **le décor du jeu** (les huit thèmes chargés d'abord,
   `fabriquePalier`) ; la variété du palier 2 lui arrive par le contexte (`Contexte.varierDecor`).
@@ -136,18 +136,21 @@ Ce que montrent les planches (à juger au téléphone : une image de 640 × 360 
 
 ## 4. Budget
 
-Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTrack`), `main` à `42154b6` construit à part ; décor : `node apps/web/e2e/mesureDecor.mjs`.
+Mesure : `npm run build && node scripts/budgets.mjs` (la mesure unique `mesureTrack`), `main` à `19864f0` (lot 46 compris) construit à part ; décor : `node apps/web/e2e/mesureDecor.mjs`.
 
 | Ligne | `main` | Lot 44 | Écart | Plafond | Marge |
 |---|---|---|---|---|---|
-| JS + CSS du premier chargement | 276 301 | **274 687** | **−1 614** | 291 600 | 16 913 |
-| JS | 264 889 | 263 275 | −1 614 | 280 200 | 16 925 |
-| hors three.js | 131 346 | 129 732 | −1 614 | 147 500 | 17 768 |
-| CSS, catalogue anglais, page d'admin, fils de travail, polices | — | inchangés | 0 | — | — |
-| **décor 3D à la demande** (nouvelle ligne : les huit thèmes, le commun une fois) | — | **12 554** | — | **16 000** | 3 446 |
+| JS + CSS du premier chargement | 277 542 | **275 581** | **−1 961** | 291 600 | 16 019 |
+| JS | 266 130 | 264 169 | −1 961 | 280 200 | 16 031 |
+| hors three.js | 132 580 | 130 619 | −1 961 | 147 500 | 16 881 |
+| page d'admin | 11 156 | 11 162 | +6 | 12 500 | 1 338 |
+| CSS, catalogue anglais, fils de travail, polices | — | inchangés | 0 | — | — |
+| **décor 3D à la demande** (nouvelle ligne : les huit thèmes, le commun une fois) | — | **12 431** | — | **16 000** | 3 569 |
 
-**Chaque thème** (JS compressé, ce que charge un joueur : son morceau et le morceau commun, 5 742 o) : Stade 6 342 · Rallye 6 344 · Banquise 6 256 · Nuit
-6 369 · Campagne 6 613 · Canyon 6 488 · Col 6 425 · Ville 7 911 (son morceau seul : 514 à 871 o, la Ville 2 169 o avec son front de rue).
+**Chaque thème** (JS compressé, ce que charge un joueur : son morceau et le morceau commun, 5 622 o) : Stade 6 222 · Rallye 6 224 · Banquise 6 135 · Nuit
+6 251 · Campagne 6 494 · Canyon 6 368 · Col 6 302 · Ville 7 789 (son morceau seul : 513 à 872 o, la Ville 2 167 o avec son front de rue). Avant la fusion du lot 46 :
+12 554 o (les panneaux à diodes du départ, que le morceau commun portait pour la vitrine, sont maintenant ceux de `vie.ts`) ; premier chargement −1 614 o contre
+`42154b6`.
 
 - **Le premier chargement baisse** : l'ancien décor (≈ 2 ko compressés dans `trackMesh.ts`) en sort ; il y entre le registre (huit `import()`), la pose du décor
   dans la scène et dans le jeu (≈ 0,4 ko). **Rien du décor n'est dans le premier chargement** (testé : `e2e/perf.spec.ts` par les fichiers construits,
@@ -225,9 +228,9 @@ retouche 40b comprise) servi à côté, la branche ; au départ d'une course, **
 - golden et identifiants de circuit : aucun fichier de `packages/` touché.
 
 **Non vérifié** : le temps par image sur un vrai téléphone (rendu logiciel seulement) ; Firefox et WebKit (la CI de la PR lance le sous-ensemble
-multi-navigateurs, la CI complète de `main` tout) ; sur la construction finale (après la fusion de `main`, retouche 40b), relancés en local : tous les tests unitaires
-(`npx vitest run --project sqlite` : 200 fichiers, 2 692 tests), `typecheck`, et les e2e `decor`, `perf`, `socle`, `graphismes`, `thumbnails`, `vitrine*` (33 passés) ; le
-reste des e2e par la CI de la PR.
+multi-navigateurs, la CI complète de `main` tout) ; sur la construction finale (après la fusion de `main` à `19864f0`, lot 46), relancés en local : tous les tests
+unitaires (`npx vitest run --project sqlite` : 201 fichiers, 2 705 tests), `typecheck`, et les e2e `decor`, `perf`, `socle`, `graphismes`, `thumbnails`, `vitrine*`,
+`vie-ciel` (38 passés) ; le reste des e2e par la CI de la PR.
 
 ## 8. Pour Nathan (décisions et questions)
 
@@ -249,5 +252,12 @@ reste des e2e par la CI de la PR.
    dans la vitrine : l'orange est à la voiture).
 7. **Le code mort retiré** : les directions A, B, C, le mélange, la « direction O », leur planche et leurs outils (`captures-lot38`, `mesure-lot38`) ; les
    README des lots 38 et 38b citent encore ces fichiers (historique, non réécrit) ; `direction.md` (la règle) est mis à jour aux trois endroits qui les citaient.
-8. **Pour le lot 46 (vie et ciel, en parallèle)** : la foule, les drapeaux et les écrans de la tribune sont dans `decor/commun.ts` (`tribune`, crochets
-   `Calques.foule`, `drapeaux`, `ecrans`), plus dans `decorP1.ts` ; `vie.ts` lit les noms des écrans dans `scene/logos.ts` (une ligne d'import changée).
+8. **La fusion du lot 46 (la vie et le ciel, fusionné pendant la PR)** : ses pas s'accrochaient à la tribune **du décor d'avant** (`TribuneVie`, `decorGeometry`), construite
+   avec la scène ; le décor arrivant maintenant à la demande, **ce qui tient à la tribune vient quand il se pose** : un crochet de plus, `AnimationPas.decor`
+   (`scene/types.ts`), appelé par `composerP1.ts` avant de faire le maillage du décor, à la construction s'il est déjà chargé, sinon hors course (`poserDecor`).
+   Il reçoit `DecorVie` : la façade et le pied des mâts de la nouvelle tribune (`decor/commun.ts`) et, si la foule est animée, ses spectateurs (alors pas
+   dessinés dans le décor : les mêmes tirages). Le pas « vie » (`vieJeu.ts`) y pose ses mâts, ses drapeaux de toit et son ruban, et **refait son maillage
+   unique** de drapeaux et d'écrans (toujours un appel par famille) ; ses portiques, panneaux de départ et chronomètre restent posés avec la scène.
+   `test/vieCiel.test.ts` est adapté (le décor du thème donné, puis posé ; un spectateur du nouveau décor fait deux boîtes sans fond : 2 × 30 sommets) ; ses
+   règles sont inchangées et vertes. La scène par défaut d'un joueur (palier 1, sans pas) n'a pas changé avec le lot 46 : les captures (§ 3) et les mesures
+   (§ 5), faites avant la fusion, restent les siennes ; seuls les poids (§ 4) ont été remesurés.

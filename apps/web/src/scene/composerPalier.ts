@@ -54,12 +54,14 @@ import { arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDista
 import { atlasSponsors } from "./sponsors";
 import { bordureVideB, rebordB } from "./piste";
 import { Drapeaux, FINITION_ELEMENTS, marque, varierInstance, varierParPosition, type Marque } from "./finition";
+import { verserDrapeaux } from "./drapeaux";
 import { matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, matieresDessinees, teinteLarge, tracesEtMarquages, type Matiere } from "./matiere";
 import { detailleeAsphalte, detailleeBeton, detailleeDecor, detailleeMetal } from "./matiereDetaillee";
 import { memoireScene, type MemoireScene } from "./memoire";
 import { carteEnvironnement } from "./reflets";
-import { THEMES_3, brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
-import { Chronometre, drapeauxAnimes, fouleInstanciee, maillageEcrans, particules, rubanDesEcrans, type Temps } from "./vie";
+import { brumeDeProfondeur, domeDuCiel, uniformesBrume, type Theme3 } from "./lumiere3";
+import { THEMES_3 } from "./themes3";
+import { Chronometre, drapeauxAnimes, ecransDuDepart, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
 import { avecPost, type Reglages } from "./paliers";
 import type { ReglagesPost } from "./post";
 import { HORIZONS, type Ambiance, type Calques, type Contexte, type ModuleDecor } from "./types";
@@ -200,6 +202,8 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   }
   // Lot 44 : le décor du jeu (le sol relevé, la tribune, les recettes du thème), avec les crochets des pas (drapeaux, foule, écrans, variété).
   options.decor?.construire(calques, ctx);
+  // Palier 3, pas « écrans » : les panneaux à diodes du départ, sur les rebords (`vie.ts`, comme le jeu).
+  if (r.ecrans) ecransDuDepart(calques, ctx);
   if (r.traces) tracesEtMarquages(calques.route, track, (b) => style.couleurRoute(b, pal), pal.dash);
   if (r.variete) {
     varierParPosition(calques.rebords!, 4, 0.07, 38);
@@ -207,7 +211,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   }
   const piste = tc.lampes && !aerien ? eclairagePisteP(calques, ctx, tc.lampes.couleur) : null;
   const drapeauxAnimesOn = r.drapeaux && vivant && calques.drapeaux && !calques.drapeaux.vide;
-  if (calques.drapeaux && !drapeauxAnimesOn) calques.drapeaux.verser(calques.solide);
+  if (calques.drapeaux && !drapeauxAnimesOn) verserDrapeaux(calques.drapeaux, calques.solide);
 
   // --- Lumière (celle de C, construite directement) ---
   const scene = new Scene();
@@ -371,7 +375,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   const temps: Temps = { uTemps: { value: 0 } };
   const animes: Mesh[] = [];
   if (drapeauxAnimesOn) animes.push(drapeauxAnimes(calques.drapeaux!, temps));
-  const foule = calques.foule ? fouleInstanciee(calques.foule, temps) : null;
+  const foule = calques.foule ? fouleAnimee(calques.foule, temps) : null;
   if (foule) scene.add(foule);
   let ruban: CanvasTexture | null = null;
   let chrono: Chronometre | null = null;
@@ -510,10 +514,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
         dome.position.copy(camera.position);
         dome.material.uniforms.uTemps!.value = t;
       }
-      if (poussiere) {
-        poussiere.material.uniforms.uCamera!.value.copy(camera.position);
-        poussiere.material.uniforms.uEchelle!.value = hauteurPx / (2 * Math.tan((camera.fov * Math.PI) / 360));
-      }
+      if (poussiere) suivreCamera(poussiere, camera, hauteurPx); // lot 46 : comme le jeu (le couloir de la piste devant la caméra)
       if (ruban) ruban.offset.x = (t * 0.06) % 1;
       chrono?.afficher(t);
     },

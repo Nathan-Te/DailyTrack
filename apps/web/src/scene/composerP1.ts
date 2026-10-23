@@ -33,6 +33,7 @@ import {
   Vector3,
   type BufferAttribute,
   type Material,
+  type PerspectiveCamera,
 } from "three";
 import { FALL_DEPTH, type PaletteName, type Track } from "@cdj/sim";
 import { buildHalos } from "../halo";
@@ -48,7 +49,7 @@ import { THEMES_C, occlusionSommets, textureFlaque } from "./lumiere";
 import { texturedCielC } from "./textures";
 import { FeuxDepart, arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
 import { atlasSponsors } from "./sponsors";
-import { HORIZONS, type Ambiance, type Calques, type Contexte, type ModuleDecor } from "./types";
+import { HORIZONS, type Ambiance, type Calques, type CalquesDecor, type Contexte, type ModuleDecor, type Spectateur, type TribunePosee } from "./types";
 import type { Terrain } from "./decor/commun";
 
 /** Demi-largeur (m) de la carte d'ombres : celle d'avant (lot 23). */
@@ -59,6 +60,9 @@ const HEADLIGHT_POWER = 900;
 /** Part de la puissance des phares gardée en vue capot. */
 const HOOD_HEADLIGHT = 0.1;
 const TAILLE_SOL = 1200;
+/** Où sont posés les portiques sur leur bloc (m depuis l'entrée du bloc) : départ et arrivée (lot 46 : le pas « vie » y accroche ses drapeaux). */
+export const Q_DEPART = 26;
+export const Q_ARRIVEE = 16;
 const CASE_SOL = 8;
 
 /** Lot 44 : le décor d'un circuit, construit par le module de son thème (le sol relevé dans `decor`). */
@@ -69,6 +73,9 @@ export interface DecorP1 {
   affiches: Affiches;
   terrain: Terrain;
   module: ModuleDecor;
+  /** Lot 46 : la tribune posée et, si la foule est animée, ses spectateurs (pour le pas « vie »). */
+  tribune: TribunePosee | null;
+  foule: Spectateur[] | null;
 }
 
 /** Ce que construit le palier 1 avant la scène : la piste et ses éléments par calque, le décor du thème s'il est chargé, l'éclairage de piste de la nuit. */
@@ -77,14 +84,14 @@ export interface GeometrieP1 {
   look: Look;
   floorY: number;
   calques: Calques;
-  /** Le contexte des éléments (de quoi construire le décor plus tard). */
-  contexte: Contexte;
   decor: DecorP1 | null;
   feux: FeuxDepart | null;
   /** Panneaux de virage et de distance posés. */
   signs: number;
   distances: number;
   eclairage: EclairagePiste | null;
+  /** Le contexte des éléments (de quoi construire le décor plus tard ; lot 46 : les pas à la demande le reçoivent). */
+  x: Contexte;
 }
 
 /**
@@ -125,8 +132,8 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
     // Les repères et les arches de vitesse : dans le calque de la route (ils ne projettent pas d'ombre, comme les bornes de l'existant).
     if (!aerien) rythmeP({ ...calques, solide: calques.route }, x, b, fast[b.index] ?? false);
     if (b.mark === "checkpoint") porteP(calques, x, b);
-    if (b.mark === "finish") arriveeP(calques, x, b, 16);
-    if (b.mark === "start") portiqueDepartP(calques, x, b, 26);
+    if (b.mark === "finish") arriveeP(calques, x, b, Q_ARRIVEE);
+    if (b.mark === "start") portiqueDepartP(calques, x, b, Q_DEPART);
   }
   let signs = 0;
   let distances = 0;
@@ -139,17 +146,23 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
   }
   // Les lampadaires de la Nuit : dans le calque de la route eux aussi (la lune ne fait pas d'ombre qui compte ; leurs lampes éclairent).
   const eclairage = tc.lampes ? eclairagePisteP({ ...calques, solide: calques.route }, x, tc.lampes.couleur) : null;
-  return { pal, look, floorY, calques, contexte: x, decor: options.decor ? decorP1(options.decor, x, options) : null, feux, signs, distances, eclairage };
+  // Lot 46 : les pas à la demande (la vie : drapeaux, écrans) posent leurs pièces dans les calques ; jamais en vue aérienne. Ce qui tient au décor (sa
+  // tribune) vient quand il se pose (`AnimationPas.decor`).
+  const coupes = new Set(options.coupes);
+  if (!aerien) for (const p of options.pas ?? []) p.elements?.(calques, x, coupes);
+  return { pal, look, floorY, calques, x, decor: options.decor ? decorP1(options.decor, x, options) : null, feux, signs, distances, eclairage };
 }
 
 /** Le décor d'un circuit par le module de son thème ; vue aérienne d'une portion (miniatures) : seulement près d'elle, tous les tirages faits. */
 export function decorP1(module: ModuleDecor, x: Contexte, options: TrackSceneOptions = {}): DecorP1 {
-  const c = { decor: new Builder(), decorLumineux: new Builder(), dense: new Builder(), affiches: new Affiches() };
+  // Lot 46 : quand un pas anime la foule (et qu'elle n'est pas coupée), les spectateurs de la tribune lui sont confiés au lieu d'être dessinés.
+  const foule = !options.aerial && !options.coupes?.includes("foule") && !!options.pas?.some((p) => p.foule);
+  const c: CalquesDecor = { decor: new Builder(), decorLumineux: new Builder(), dense: new Builder(), affiches: new Affiches(), ...(foule ? { foule: [] } : {}) };
   const near = options.aerial ? options.near : undefined;
   const fenetre = near ? x.track.blocks.slice(near.from, near.to + 1) : [];
   const proche = near ? (cx: number, cz: number) => fenetre.some((b) => Math.abs(b.cx - cx) <= NEAR_CELLS && Math.abs(b.cz - cz) <= NEAR_CELLS) : undefined;
   const terrain = module.construire(c, x, proche);
-  return { decor: c.decor, lumineux: c.decorLumineux, dense: c.dense, affiches: c.affiches, terrain, module };
+  return { decor: c.decor, lumineux: c.decorLumineux, dense: c.dense, affiches: c.affiches, terrain, module, tribune: c.tribune ?? null, foule: c.foule ?? null };
 }
 
 /** La lumière d'un thème vue par le palier 1 : soleil, hémisphère, brume et ciel de C ; silhouettes de l'horizon du thème, fondues vers la brume. */
@@ -186,18 +199,22 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   // Miniatures des thèmes sombres : lues en petit, elles doivent rester lisibles (le jeu, lui, garde sa nuit) — comme l'existant (lot 13).
   const leve = aerien && new Color(pal.floorA).getHSL({ h: 0, s: 0, l: 0 }).l < 0.25;
   scene.add(new HemisphereLight(tc.hemi[0], tc.hemi[1], leve ? 1.6 : tc.hemi[2]), new AmbientLight(leve ? 0xffffff : tc.hemi[0], leve ? 0.9 : tc.ambiante));
+  // Lot 46 : les ombres fines du palier 3 (pas « ombres », à la demande) : carte plus grande, plus loin devant la voiture ; le décor projette aussi.
+  const fines = aerien ? undefined : options.pas?.find((p) => p.ombres)?.ombres;
+  const demi = fines?.demi ?? SHADOW_HALF;
+  const avance = fines?.avant ?? OMBRES_AVANT;
   const sun = new DirectionalLight(tc.soleil[0], leve ? 2.2 : tc.soleil[1]);
   sun.position.copy(sunPos);
   const sunOffset = sunDir.clone().multiplyScalar(150);
   scene.add(sun, sun.target);
-  sun.shadow.camera.left = -SHADOW_HALF;
-  sun.shadow.camera.right = SHADOW_HALF;
-  sun.shadow.camera.top = SHADOW_HALF;
-  sun.shadow.camera.bottom = -SHADOW_HALF;
+  sun.shadow.camera.left = -demi;
+  sun.shadow.camera.right = demi;
+  sun.shadow.camera.top = demi;
+  sun.shadow.camera.bottom = -demi;
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 340;
   sun.shadow.bias = -0.0008;
-  sun.shadow.normalBias = 0.06;
+  sun.shadow.normalBias = fines?.normalBias ?? 0.06;
   sun.shadow.intensity = tc.ombre[0];
   sun.shadow.radius = tc.ombre[1];
   // Phares : un projecteur devant la voiture sur les thèmes sombres ; intensité 0 le jour (la lampe existe toujours : pas de recompilation).
@@ -319,6 +336,13 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   floor.userData.calque = "sol";
   scene.add(floor);
 
+  // --- Lot 46 : les pas à la demande posent leurs maillages (la vie, le ciel) ; ils s'animent sur un temps d'affichage ---
+  const coupes = new Set(options.coupes);
+  const animations = aerien ? [] : (options.pas ?? []).flatMap((p) => {
+    const a = p.poser?.({ scene, calques, x: geo.x, soleil: sunDir, coupes, sansDom: !!options.headless });
+    return a ? [[p.id, a] as const] : [];
+  });
+
   // --- Feux de départ : les couleurs des lampes dans le calque `lumineux`, repeintes quand l'état du décompte change ---
   const couleurs = glowMesh.geometry.getAttribute("color") as BufferAttribute;
   const lin = new Color();
@@ -337,7 +361,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       if (min !== undefined) o.visible = level >= min;
     });
     // Ombres : carte de 512 (qualité 1) ou 1024 (qualité 2) ; coupées à la qualité 0. `shadows` : le réglage « ombres » du joueur (lot 29).
-    const want = aerien || !shadows ? 0 : level === 2 ? 1024 : level === 1 ? 512 : 0;
+    const want = aerien || !shadows ? 0 : level === 2 ? (fines?.carte ?? 1024) : level === 1 ? 512 : 0;
     if (want !== shadowSize) {
       shadowSize = want;
       sun.castShadow = want > 0;
@@ -356,9 +380,12 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   let poseDecor: { decor: Mesh; dense: Mesh } | null = null;
   const poser = (d: DecorP1) => {
     if (poseDecor) return;
+    // Lot 46 : ce qui s'accroche à la tribune (mâts dans le décor, drapeaux, ruban, foule), avant que le maillage du décor soit fait.
+    for (const [, a] of animations) a.decor?.({ tribune: d.tribune, foule: d.foule, decor: d.decor });
     const matiere = new MeshStandardMaterial({ vertexColors: true, flatShading: true, side: DoubleSide, map: options.headless ? null : d.module.grain() });
     const decorMesh = maillage(d.decor, matiere, "decor");
     decorMesh.receiveShadow = true;
+    decorMesh.castShadow = !!fines; // lot 46 : avec les ombres fines, le décor projette aussi
     decorMesh.userData.heavy = true;
     const decorGlow = maillage(d.lumineux, new MeshBasicMaterial({ vertexColors: true }), "decorLumineux");
     decorGlow.userData.heavy = true;
@@ -388,6 +415,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
     scene,
     look,
     dispose: () => {
+      for (const [, a] of animations) a.dispose?.();
       // Cartes d'ombres des lumières (le Salon change de scène toutes les dix minutes : rien ne doit s'accumuler côté carte graphique). L'atlas des sponsors
       // est partagé entre les scènes (dessiné une fois) : on ne le libère pas.
       scene.traverse((o) => (o as { shadow?: { map?: { dispose(): void } | null } }).shadow?.map?.dispose());
@@ -408,7 +436,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       halos?.setView(heightPx, fovDeg);
     },
     poserDecor(module) {
-      if (!poseDecor) poser(decorP1(module, geo.contexte, options));
+      if (!poseDecor) poser(decorP1(module, geo.x, options));
     },
     stats(): SceneStats {
       let hills = false;
@@ -416,7 +444,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
         if (o.userData.level === 2 && o.visible) hills = true;
       });
       const fog = scene.fog as Fog | null;
-      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: !!poseDecor?.dense.visible && !!poseDecor.dense.parent, decor: !!poseDecor, hills, signs: geo.signs, fog: fog ? { near: fog.near, far: fog.far } : null, ...(geo.feux ? { feux: etatFeux } : {}) };
+      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: !!poseDecor?.dense.visible && !!poseDecor.dense.parent, decor: !!poseDecor, hills, signs: geo.signs, fog: fog ? { near: fog.near, far: fog.far } : null, ...(geo.feux ? { feux: etatFeux } : {}), ...(options.pas?.length && !aerien ? { pas: Object.fromEntries(options.pas.map((p) => [p.id, animations.find(([id]) => id === p.id)?.[1].stats?.() ?? {}])) } : {}) };
     },
     followGround(px, pz) {
       backdrop.position.set(px, floorY, pz);
@@ -425,9 +453,9 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
     },
     followCar(px, py, pz, yaw, hood = false) {
       // Ombres : la fenêtre de la carte est posée devant la voiture (là où regarde la caméra), par pas d'un mètre (les bords ne scintillent pas).
-      const tx = Math.round(px + Math.sin(yaw) * OMBRES_AVANT);
+      const tx = Math.round(px + Math.sin(yaw) * avance);
       const ty = Math.round(py);
-      const tz = Math.round(pz + Math.cos(yaw) * OMBRES_AVANT);
+      const tz = Math.round(pz + Math.cos(yaw) * avance);
       sun.target.position.set(tx, ty, tz);
       sun.position.set(tx + sunOffset.x, ty + sunOffset.y, tz + sunOffset.z);
       if (head.visible) {
@@ -445,6 +473,16 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
         });
       }
     },
+    ...(animations.length > 0
+      ? {
+          animer(t: number, camera: PerspectiveCamera, hauteurPx: number) {
+            for (const [, a] of animations) a.animer?.(t, camera, hauteurPx);
+          },
+          arrivee(t: number) {
+            for (const [, a] of animations) a.arrivee?.(t);
+          },
+        }
+      : {}),
     feux(etat) {
       if (!geo.feux || memesFeux(etat, etatFeux)) return;
       etatFeux = etat;

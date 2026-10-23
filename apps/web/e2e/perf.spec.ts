@@ -48,6 +48,35 @@ test("la page d'admin est à part, avec son plafond, et hors du premier chargeme
   expect(admin, "page d'admin (admin-*.js), compressée").toBeLessThan(12_500); // ≈ 10,9 ko aujourd'hui
 });
 
+/**
+ * Lot 46 : ce que chargent les pas d'un module à la demande — ses morceaux et, de proche en proche, ceux qu'ils importent hors du premier chargement (le
+ * code déjà chargé par le premier écran ne compte pas : il est déjà là).
+ */
+function aLaDemande(entrees: RegExp): { octets: number; fichiers: string[] } {
+  const { fichiers: premier, gz } = mesureTrack() as { fichiers: string[]; gz: Record<string, number> };
+  const vus = new Set<string>();
+  const file = readdirSync(dist).filter((f) => entrees.test(f));
+  while (file.length) {
+    const f = file.pop()!;
+    if (vus.has(f) || premier.includes(f)) continue;
+    vus.add(f);
+    for (const m of readFileSync(new URL(f, dist), "utf8").matchAll(/(?:from|import)\s*["']\.\/([^"']+\.js)["']/g)) file.push(m[1]!);
+  }
+  return { octets: [...vus].reduce((n, f) => n + gz[f]!, 0), fichiers: [...vus] };
+}
+
+// Lot 46 : la vie et le ciel du palier 3 (et du groupe « vie et ciel » des téléphones récents), à la demande, hors du premier chargement : 8 ko au plus (énoncé du
+// lot, docs/plateforme/budgets.md). Les ombres fines (pas « ombres », un réglage du compositeur) ont leur module à part, minuscule.
+test("la vie et le ciel, à la demande : 8 ko au plus, rien dans le premier chargement", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^(vieJeu|cielJeu|ombres3|lumiere3|vie|drapeaux)-/.test(f)), "aucun module des pas dans le premier chargement").toEqual([]);
+  const vieCiel = aLaDemande(/^(vieJeu|cielJeu)-.*\.js$/);
+  test.info().annotations.push({ type: "mesure", description: `vie et ciel à la demande : ${vieCiel.octets} o (${vieCiel.fichiers.join(", ")})` });
+  expect(vieCiel.fichiers.length, "les deux modules sont construits à part").toBeGreaterThanOrEqual(2);
+  expect(vieCiel.octets, "la vie et le ciel, à la demande, compressés").toBeLessThan(8_000); // ≈ 7,9 ko au lot 46
+  expect(aLaDemande(/^ombres3-.*\.js$/).octets, "les ombres fines, à la demande").toBeLessThan(500); // ≈ 150 o au lot 46
+});
+
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
 // déjà en cache), et seules les deux faces du premier écran sont préchargées.
 test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deux faces préchargées", () => {
@@ -82,7 +111,7 @@ test("le décor 3D à la demande : chaque thème à part, 16 ko au plus pour les
   expect(m.dansPremier, "le décor n'est pas dans le premier chargement").toEqual([]);
   expect(Object.keys(m.parTheme).sort()).toEqual([...THEMES_DECOR].sort());
   for (const [t, v] of Object.entries(m.parTheme)) expect(v.fichiers.length, `${t} : son morceau et le morceau commun`).toBeGreaterThanOrEqual(2);
-  expect(m.total, "décor 3D à la demande, les huit thèmes (gzip)").toBeLessThan(16_000); // ≈ 12,6 ko aujourd'hui (lot 44)
+  expect(m.total, "décor 3D à la demande, les huit thèmes (gzip)").toBeLessThan(16_000); // ≈ 12,4 ko aujourd'hui (lot 44)
 });
 
 test.describe("chargement sur un téléphone simulé", () => {

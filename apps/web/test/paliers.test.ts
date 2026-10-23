@@ -8,7 +8,9 @@ import { Affiches } from "../src/scene/outils";
 import { Drapeaux, marque, varierInstance, varierParPosition } from "../src/scene/finition";
 import { PERIODE_TEINTE, TRACES_SOMBRE, matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, teinteLarge, tracesEtMarquages } from "../src/scene/matiere";
 import { carteDeNormales, detailleeAsphalte } from "../src/scene/matiereDetaillee";
-import { THEMES_3, brumeDeProfondeur, uniformesBrume } from "../src/scene/lumiere3";
+import { brumeDeProfondeur, uniformesBrume } from "../src/scene/lumiere3";
+import { THEMES_3 } from "../src/scene/themes3";
+import { verserDrapeaux } from "../src/scene/drapeaux";
 import { ROUTE_SOUS_LUMIERE_CHAUDE, paletteP1, portiqueDepartP } from "../src/scene/palier1";
 import { DECOR as DECOR_CAMPAGNE } from "../src/scene/decor/campagne";
 import { THEMES_C } from "../src/scene/lumiere";
@@ -151,7 +153,7 @@ describe("palier 2 : géométrie, variété, matière", () => {
     const d = new Drapeaux();
     d.drapeau([0, 10, 0], [1, 0], 1.6, 1, [0xff0000, 0xffffff], 0.7);
     const g = new Builder();
-    d.verser(g);
+    verserDrapeaux(d, g);
     expect(g.pos.length).toBe(d.pos.length);
     // Le bout libre a bougé perpendiculairement au tissu (z), la hampe non.
     expect(g.pos[1]).toBeCloseTo(d.pos[1]!, 6);

@@ -1,7 +1,7 @@
 // Les palettes et les ambiances de chaque thème, les types de la scène et quelques points de la piste (lots 9b, 22, 23, 37). Lot 43 : la route, les accessoires
 // et l'assemblage de l'ancienne scène sont partis dans `scene/existant.ts` (chargé à la demande) ; lot 44 : **le décor d'avant** (tribune, décor du thème, front
 // de rue et lampadaires de la Ville, passe dense) l'a suivi — le palier 1 a le sien, chargé à la demande par thème (`scene/decor.ts`).
-import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type Scene } from "three";
+import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type PerspectiveCamera, type Scene } from "three";
 import {
   CELL,
   WALL_HEIGHT,
@@ -21,7 +21,7 @@ import { PALETTE_LABELS } from "./labels";
 import { world, type V3 } from "./meshKit";
 import type { EtatFeux } from "./feux";
 import type { PoseLog } from "./decorPose";
-import type { ModuleDecor, TextesScene } from "./scene/types";
+import type { ModuleDecor, PasScene, TextesScene } from "./scene/types";
 
 /** Couleurs et éclairage d'un thème. Une palette différente par jour : `paletteForDay` (sim) choisit laquelle. */
 export interface Palette {
@@ -312,6 +312,13 @@ export interface TrackScene {
    * l'appelant (`main.ts`) qui choisit le moment (accueil, pause, arrivée, podium). Absent de l'existant (son décor est le sien).
    */
   poserDecor?(module: ModuleDecor): void;
+  /**
+   * Lot 46 : avant chaque image dessinée, la vie et le ciel (drapeaux, foule, écrans, particules, nuages) — `t` est **un temps d'affichage** (s), jamais
+   * l'état de la course ; la caméra et la hauteur de l'image (pixels). Absent : rien ne bouge.
+   */
+  animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
+  /** Lot 46 : la voiture passe la ligne d'arrivée (au temps d'affichage `t`) : les confettis du Stade. */
+  arrivee?(t: number): void;
 }
 
 export interface SceneStats {
@@ -328,6 +335,8 @@ export interface SceneStats {
   feux?: EtatFeux;
   /** Lot 44 : le décor du thème est dans la scène (palier 1). */
   decor?: boolean;
+  /** Lot 46 : les pas chargés à la demande que la scène porte (`vie`, `ciel`, `ombres`), et ce que chacun dit de lui (`?debug`). */
+  pas?: Record<string, Record<string, unknown>>;
 }
 
 /** Libère tout ce que la scène tient côté carte graphique (géométries, matériaux, textures, fond). */
@@ -363,6 +372,10 @@ export interface TrackSceneOptions {
   textes?: TextesScene;
   /** Lot 44 : le décor du thème, s'il est déjà chargé (`decorPret`) : la scène se construit avec lui ; sinon sans lui (`poserDecor` l'ajoutera). */
   decor?: ModuleDecor | null;
+  /** Lot 46 : les pas chargés à la demande que la scène prend en plus de ceux de son palier (`composer`, socle.ts : la vie, le ciel, les ombres fines). */
+  pas?: readonly PasScene[];
+  /** Lot 46 : les parties d'un pas coupées (`?reglages=3-particules` : `drapeaux`, `foule`, `ecrans`, `particules`, `nuages`, `brume`). */
+  coupes?: readonly string[];
 }
 
 /** Vue aérienne d'une portion (miniatures) : le décor n'est construit qu'à `NEAR_CELLS` cellules de ses blocs. */

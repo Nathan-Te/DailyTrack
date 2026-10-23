@@ -1,14 +1,14 @@
 // Lot 38 — ce qu'est une direction de la scène : des fonctions de construction par élément (portique de départ, arrivée, porte de contrôle,
 // plaques, panneaux, rebords, décor), paramétrées par thème, et une ambiance (ciel, lumière, brume) par thème. La vitrine (`/track/vitrine/`) les
 // compare à l'existant ; les lots de mise en œuvre les reprendront telles quelles dans `trackMesh.ts` (voir le README du lot 38).
-import type { BufferGeometry, Mesh, Texture } from "three";
+import type { BufferGeometry, Mesh, PerspectiveCamera, Scene, Texture, Vector3 } from "three";
 import type { Block, PaletteName, Track } from "@cdj/sim";
 import type { Builder, V3 } from "../meshKit";
 import type { SignSpec } from "../signage";
 import type { Look, Palette } from "../trackMesh";
 import type { StyleRoute } from "./route";
 import type { Affiches } from "./outils";
-import type { Drapeaux } from "./finition";
+import type { Drapeaux } from "./drapeaux";
 import type { Reglages } from "./paliers";
 import type { PoseLog } from "../decorPose";
 import type { Repere } from "./outils";
@@ -168,7 +168,36 @@ export interface PlaceDecor {
 }
 
 /** Lot 44 : les calques où se construit le décor (un sous-ensemble des calques d'une scène). */
-export type CalquesDecor = Pick<Calques, "decor" | "decorLumineux" | "dense" | "affiches"> & Partial<Pick<Calques, "solide" | "drapeaux" | "ecrans" | "foule">>;
+export type CalquesDecor = Pick<Calques, "decor" | "decorLumineux" | "dense" | "affiches"> &
+  Partial<Pick<Calques, "solide" | "drapeaux" | "ecrans" | "foule">> & {
+    /** Lot 46 : la tribune du départ, si elle a été posée (`decor/commun.ts`) ; le pas « vie » y accroche ses mâts, ses drapeaux et son ruban d'écrans. */
+    tribune?: TribunePosee | null;
+  };
+
+/** Un spectateur de la tribune (pas « foule », lot 46) : où il se tient (pied), son cap, la couleur de son maillot. */
+export interface Spectateur {
+  x: number;
+  y: number;
+  z: number;
+  cap: number;
+  couleur: number;
+}
+
+/** Lot 46 : la tribune posée : le bas de sa façade côté piste (lue de gauche à droite depuis la piste), le pied des mâts (sur le toit, au fond). */
+export interface TribunePosee {
+  facade: [V3, V3];
+  mats: V3[];
+}
+
+/**
+ * Lot 46 (lot 44 : le décor arrive à la demande) : ce que le décor posé confie au pas « vie » — sa tribune, et ses spectateurs quand la foule est animée
+ * (ils ne sont alors pas dessinés dans le décor) ; `decor` : le calque du décor, où se posent les mâts (avant que son maillage soit construit).
+ */
+export interface DecorVie {
+  tribune: TribunePosee | null;
+  foule: Spectateur[] | null;
+  decor: Builder;
+}
 
 /**
  * Lot 44 : le décor d'un thème (`decor/<thème>.ts`, chargé à la demande) : ses recettes, que `decor/commun.ts` pose sur le sol relevé selon les règles du lot 37.
@@ -194,3 +223,50 @@ export interface ModuleDecor {
 }
 
 export type { V3 };
+
+// --- Lot 46 : les pas chargés à la demande, vus par la scène du jeu (`composerP1.ts`) ----------------------------------------------------
+
+/** La scène construite, telle qu'un pas à la demande la voit pour y poser ses maillages. */
+export interface ScenePas {
+  scene: Scene;
+  calques: Calques;
+  x: Contexte;
+  /** D'où vient la lumière du soleil ou de la lune (unitaire, lot 43 : le disque est posé de ce côté). */
+  soleil: Vector3;
+  /** Les parties coupées (`?reglages=3-particules`). */
+  coupes: ReadonlySet<string>;
+  /** Sans DOM (tests) : les formes seules, sans texture dessinée. */
+  sansDom: boolean;
+}
+
+/** Ce qu'un pas anime une fois posé. **Un temps d'affichage, jamais l'état de la course.** */
+export interface AnimationPas {
+  animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
+  /** La voiture passe la ligne (temps d'affichage). */
+  arrivee?(t: number): void;
+  /** Ce qu'il tient qui n'est pas libéré avec la scène (ou ce qu'elle ne doit pas libérer : une texture partagée). */
+  dispose?(): void;
+  /** Ce qu'il dit de lui (`?debug` : `__cdj.render.pas`). */
+  stats?(): Record<string, unknown>;
+  /**
+   * Lot 44 : le décor du thème se pose (à la construction s'il est déjà chargé, sinon plus tard, hors course : `poserDecor`) — ce qui s'accroche à sa tribune
+   * (mâts, drapeaux, ruban, foule). Une famille reste un seul maillage : le pas refait le sien.
+   */
+  decor?(d: DecorVie): void;
+}
+
+/**
+ * Un pas de la scène du jeu, chargé à la demande (`PAS_DU_JEU`, socle.ts) : son module l'enregistre en se chargeant (`brancherPas`). Le palier 1
+ * (`composerP1.ts`, premier chargement) n'en importe aucun : il appelle ses crochets.
+ */
+export interface PasScene {
+  id: string;
+  /** Avant les maillages et les éléments posés : ses pièces dans les calques (drapeaux, écrans, caissons) ; ce qui tient au décor vient par `decor`. */
+  elements?(c: Calques, x: Contexte, coupes: ReadonlySet<string>): void;
+  /** La scène construite : ses maillages, son animation. */
+  poser?(s: ScenePas): AnimationPas | void;
+  /** Ombres fines (palier 3) : carte (px) à la qualité 2, demi-côté (m), avance devant la voiture (m), décalage normal ; le décor projette aussi. */
+  ombres?: { carte: number; demi: number; avant: number; normalBias: number };
+  /** Il anime les spectateurs de la tribune : ils ne sont plus dessinés dans le décor (`DecorVie.foule`). */
+  foule?: boolean;
+}

@@ -66,11 +66,26 @@ export function withoutRefused(search: string, verdict: AddressVerdict, seedWasF
   return q ? `?${q}` : "";
 }
 
+/** Lot 46 : la scène demandée par l'adresse — un palier, des pas en plus (`+vie`, `+ciel`, `+ombres`), des pas ou des parties coupés (`-ombres`, `-particules`…). */
+export interface SceneDemandee {
+  palier: "existant" | "P1" | "P2" | "P3";
+  plus: string[];
+  coupes: string[];
+}
+
 /**
- * Lot 43 : `?palier=existant` montre l'ancienne scène (celle d'avant le palier 1, chargée à la demande) dans le vrai jeu, pour comparer — **en recette et
- * dans les aperçus seulement** : jamais en production (`restricted`), où la scène est toujours le palier 1. Tout autre palier demandé est ignoré.
+ * Lot 46 : `?palier=1|2|3|existant` impose le palier de la scène, `?reglages=` le palier et ses pas un à un (`2+vie+ciel` : le palier 2 et le groupe « vie
+ * et ciel » des téléphones récents ; `3-particules`) — **en recette et dans les aperçus seulement**, sans rien enregistrer ; jamais en production. Illisible : `null`.
  */
-export function palierDemande(search: string, restricted: boolean): "existant" | null {
+export function sceneDemandee(search: string, restricted: boolean): SceneDemandee | null {
   if (restricted) return null;
-  return new URLSearchParams(search).get("palier") === "existant" ? "existant" : null;
+  const q = new URLSearchParams(search);
+  // Un `+` écrit tel quel dans une adresse se lit comme une espace (`?reglages=2+vie+ciel`) : on le rétablit.
+  const r = (q.get("reglages") ?? q.get("palier"))?.replace(/ /g, "+");
+  if (r === "existant") return { palier: "existant", plus: [], coupes: [] };
+  const m = /^([123])((?:[+-][a-z]+)*)$/.exec(r ?? "");
+  if (!m) return null;
+  const d: SceneDemandee = { palier: `P${m[1]}` as SceneDemandee["palier"], plus: [], coupes: [] };
+  for (const [, signe, id] of m[2]!.matchAll(/([+-])([a-z]+)/g)) (signe === "+" ? d.plus : d.coupes).push(id!);
+  return d;
 }

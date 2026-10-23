@@ -9,18 +9,17 @@
 //     l'assemblage (`construireDecor`) : un thème ne donne que ses recettes (`decor/<thème>.ts`).
 // Règles de pose du lot 37 (apps/web/CLAUDE.md, « Décor : règles de pose ») : un appui, rien au-dessus du vide, rien dans le passage ni devant la caméra, un
 // rôle par élément ; tout passe par le relevé (`PoseLog`), le test de pose (`test/decorPose.test.ts`) le vérifie contre la simulation. **Rendu seul.**
-import { CELL, NO_GROUND, WALL_HEIGHT, blockHalfWidth, cellKey, createSurface, trackWorld, turnsLeft, type Block, type Track, type World } from "@cdj/sim";
+import { CELL, NO_GROUND, blockHalfWidth, cellKey, createSurface, trackWorld, turnsLeft, type Block, type Track, type World } from "@cdj/sim";
 import { mix, seeded, shade, world as auMonde, type Box, type Builder, type V3 } from "../../meshKit";
 import { MARGE_DECOR, type PoseKind, type PoseLog } from "../../decorPose";
 import { boite, boiteChanfreinee, pt, repereBloc, tube, type Repere } from "../outils";
 import { MARQUE } from "../pieces";
 import { CAOUTCHOUC, METAL, METAL_SOMBRE } from "../piste";
-import { onBlock } from "../route";
 import { VENT, ROUGE_PISTE } from "../palier1";
 import { rectSponsor, sponsorsDuTheme } from "../sponsors";
 import { THEMES_C } from "../lumiere";
 import { SOLS_C, grain, texturedSol, uvMonde } from "./matiereC";
-import type { CalquesDecor, Contexte, DecorTheme, ModuleDecor, PlaceDecor } from "../types";
+import type { CalquesDecor, Contexte, DecorTheme, ModuleDecor, PlaceDecor, TribunePosee } from "../types";
 
 // --- Le sol relevé ---------------------------------------------------------------------------------------------------------------------
 
@@ -412,8 +411,8 @@ export function lampadaire(c: CalquesDecor, r: Repere, h: number, lumiere: numbe
 
 // --- La tribune du départ ------------------------------------------------------------------------------------------------------------
 
-/** Rapport largeur / hauteur du ruban des écrans (`vie.ts`) : pour qu'un écran de L × H m garde ses lettres droites, u va de 0 à (L / H) / RAPPORT. */
-export const RUBAN_RAPPORT = 16;
+/** Rapport largeur / hauteur du ruban des écrans : le même que `vie.ts` (qui n'entre pas dans le morceau du décor). */
+const RUBAN_RAPPORT = 16;
 
 /**
  * La tribune du départ (celle de B) : gradins, toit sur poteaux, sponsors, **socle plein jusqu'au sol lointain**. Du côté opposé au premier virage, sinon de
@@ -422,6 +421,7 @@ export const RUBAN_RAPPORT = 16;
  */
 export function tribune(s: Sol, c: CalquesDecor, x: Contexte, rnd: () => number) {
   const b = x.track.blocks[0]!;
+  c.tribune = null;
   const premier = turnsLeft(x.track.blocks.find((o) => o.kind !== "straight")?.kind ?? "straight") ? -1 : 1;
   for (const [cote, suite] of [[premier, rnd], [-premier as 1 | -1, seeded(`${x.track.id}:tribune`)]] as const) {
     const m = c.decor.mark();
@@ -433,7 +433,9 @@ export function tribune(s: Sol, c: CalquesDecor, x: Contexte, rnd: () => number)
     if (!box) return; // muet (miniature hors du cadre)
     if (planLibre(s.world, box, MARGE_DECOR)) {
       s.log?.push({ kind: "tribune", part: "pied", appui: "sol", group: s.log.group(), block: -1, style: "" }, box, (c.decor.pos.length - m.pos) / 9);
-      ornerTribune(c, x, r);
+      // Lot 46 : sa façade (le ruban d'écrans) et le pied de ses mâts (sur le toit), pour le pas « vie ».
+      c.tribune = { facade: [pt(r, -0.03, 0.2, -10.5), pt(r, -0.03, 0.2, 10.5)], mats: [-10.6, 0, 10.6].map((a) => pt(r, 8.2, 8.0, a)) };
+      ornerTribune(c, x, c.tribune);
       return;
     }
     c.decor.rollback(m);
@@ -477,33 +479,17 @@ function construireTribune(c: CalquesDecor, x: Contexte, b: Block, rnd: () => nu
   return r;
 }
 
-/** Les drapeaux du toit (palier 2) et le ruban d'écrans du devant (palier 3) d'une tribune posée : la vitrine seulement. */
-function ornerTribune(c: CalquesDecor, x: Contexte, r: Repere) {
+/** Les drapeaux du toit (palier 2) et le ruban d'écrans du devant (palier 3) d'une tribune posée : la vitrine seulement (le jeu : le pas « vie »). */
+function ornerTribune(c: CalquesDecor, x: Contexte, t: TribunePosee) {
   if (c.drapeaux) {
-    for (const a of [-10.6, 0, 10.6]) {
-      const haut = pt(r, 8.2, 8.0, a);
+    t.mats.forEach((haut, i) => {
       c.decor.box(haut[0] - 0.04, haut[1], haut[2] - 0.04, haut[0] + 0.04, haut[1] + 2.4, haut[2] + 0.04, METAL);
-      c.drapeaux.drapeau([haut[0], haut[1] + 2.35, haut[2]], VENT, 1.4, 0.9, [a === 0 ? ROUGE_PISTE : 0x2e7dff, 0xf4f4f4], a * 0.7);
-    }
+      c.drapeaux!.drapeau([haut[0], haut[1] + 2.35, haut[2]], VENT, 1.4, 0.9, [i === 1 ? ROUGE_PISTE : 0x2e7dff, 0xf4f4f4], (i - 1) * 10.6 * 0.7);
+    });
   }
-  if (x.reglages?.ecrans && c.ecrans) c.ecrans.quad(pt(r, -0.03, 0.2, -10.5), pt(r, -0.03, 0.2, 10.5), pt(r, -0.03, 0.95, 10.5), pt(r, -0.03, 0.95, -10.5), [0, 0, 21 / 0.75 / RUBAN_RAPPORT, 1]);
-}
-
-/** Les panneaux à diodes le long de la ligne droite du départ, posés sur les rebords (palier 3, pas « écrans ») : la vitrine seulement. */
-function ecransDuDepart(c: CalquesDecor, x: Contexte) {
-  const b = x.track.blocks[0]!;
-  if (!c.ecrans || !c.solide || b.open) return;
-  const rail = x.pal.wallHeight ?? WALL_HEIGHT;
-  for (const side of [-1, 1]) {
-    const hw = blockHalfWidth(b, CELL / 2);
-    const p0 = onBlock(b, side * (hw + 0.2), 0.12, rail + 0.05);
-    const p1 = onBlock(b, side * (hw + 0.2), 0.62, rail + 0.05);
-    const L = Math.hypot(p1[0] - p0[0], p1[2] - p0[2]);
-    const H = 0.8;
-    // Le texte se lit dans le sens de la course : à gauche il avance vers l'avant, à droite vers l'arrière (on le regarde en tournant la tête).
-    const [a, d] = side > 0 ? [p0, p1] : [p1, p0];
-    c.ecrans.quad(a, d, [d[0], d[1] + H, d[2]], [a[0], a[1] + H, a[2]], [0, 0, L / H / RUBAN_RAPPORT, 1]);
-    c.solide.box(Math.min(p0[0], p1[0]) - 0.05, p0[1] - 0.05, Math.min(p0[2], p1[2]) - 0.05, Math.max(p0[0], p1[0]) + 0.05, p0[1], Math.max(p0[2], p1[2]) + 0.05, METAL_SOMBRE);
+  if (x.reglages?.ecrans && c.ecrans) {
+    const [a, f] = t.facade;
+    c.ecrans.quad(a, f, [f[0], f[1] + 0.75, f[2]], [a[0], a[1] + 0.75, a[2]], [0, 0, 21 / 0.75 / RUBAN_RAPPORT, 1]);
   }
 }
 
@@ -533,7 +519,6 @@ export function construireDecor(t: DecorTheme, c: CalquesDecor, x: Contexte, nea
   const b0 = x.track.blocks[0]!;
   muet(b0.cx, b0.cz);
   tribune(s, c, x, rnd);
-  if (x.reglages?.ecrans) ecransDuDepart(c, x);
   const [d1, d2, d3, d2r] = t.densite ?? DENSITE;
   for (const p of placesDeDecor(x.track, rnd, (anneau) => combien(anneau === 1 ? d1 : d2, rnd), 2, terrain)) {
     muet(p.cx, p.cz);
