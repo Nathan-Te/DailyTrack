@@ -134,12 +134,15 @@ export function brumeDeProfondeur(m: Material, u: UniformesBrume): void {
 
 const memoNuages = new Map<string, CanvasTexture>();
 
-/** La densité des nuages (512 px, périodique) : bruit fractal, coupé sous la couverture du thème. Canal alpha = densité, rouge = relief. */
+/**
+ * La densité des nuages (256 px, périodique) : bruit fractal, coupé sous la couverture du thème. Canal alpha = densité, rouge = relief. Lot 46 : 256 px au lieu
+ * de 512 (les mêmes sept octaves) — la texture se calcule à la construction de la scène, 4 fois plus vite (≈ +300 ms à processeur ×4 en 512, mesuré en jeu).
+ */
 function textureNuages(couverture: number): CanvasTexture {
   const cle = couverture.toFixed(2);
   let t = memoNuages.get(cle);
   if (t) return t;
-  const n = 512;
+  const n = 256;
   const f = fractal(n, 4, 7, graine(4242));
   const canvas = document.createElement("canvas");
   canvas.width = canvas.height = n;

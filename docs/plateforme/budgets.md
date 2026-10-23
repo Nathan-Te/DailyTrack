@@ -12,9 +12,9 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 |---|---|---|---|---|---|---|---|
 | `portail.premier` | Portail | premier chargement de l'accueil (HTML, JS, CSS) | 30 720 | 22 360 | 23 694 | 7 026 | `apps/portail/test/construction.test.ts` |
 | `portail.polices` | Portail | polices de l'accueil | 153 600 | 117 992 | 117 992 | 35 608 | `apps/portail/test/construction.test.ts` |
-| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 269 991 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; lot 46 : +1 202) | 21 609 | `apps/web/e2e/perf.spec.ts` |
-| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 258 579 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; lot 46 : +1 202) | 21 621 | `apps/web/e2e/perf.spec.ts` |
-| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 125 705 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375 ; lot 46 : +1 193) | 21 795 | `apps/web/e2e/perf.spec.ts` |
+| `track.jsCss` | Track | JS + CSS du premier chargement (plafond : lot 43, +15 000, décision de Nathan du 23/10/2026) | 291 600 | 256 990 | 270 010 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; lot 46 : +1 221) | 21 590 | `apps/web/e2e/perf.spec.ts` |
+| `track.js` | Track | JS du premier chargement (plafond : lot 43, +15 000, décision du 23/10/2026) | 280 200 | 245 578 | 258 598 (lot 39 : +644 ; lot 40 : +1 689 ; lot 43 : +9 466 ; lot 46 : +1 221) | 21 602 | `apps/web/e2e/perf.spec.ts` |
+| `track.horsThree` | Track | le code du jeu, hors three.js (plafond : lot 43, +15 000, décision du 23/10/2026) | 147 500 | 112 812 | 125 724 (lot 39 : +644 ; lot 40 : +1 681 ; lot 43 : +9 375 ; lot 46 : +1 212) | 21 776 | `apps/web/e2e/perf.spec.ts` |
 | `track.anglais` | Track | catalogue anglais (à la demande) | 8 000 | 6 104 | 7 315 (lot 43 : +18) | 685 | `apps/web/e2e/perf.spec.ts` |
 | `track.miniatures` | Track | fil de travail des circuits : miniatures et circuit du jour (à la demande) | 30 000 | 26 524 | 26 524 | 3 476 | `apps/web/e2e/perf.spec.ts` |
 | `track.salon` | Track | fil de travail du Salon (à la demande) | 32 000 | 28 502 | 28 502 | 3 498 | `apps/web/e2e/perf.spec.ts` |
@@ -106,14 +106,14 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 ## Lot 46 (Track) : la vie et le ciel
 
-- **Track : +1 202 o au premier chargement** (268 789 → 269 991 o, `main` à `9f9a80a` construit à part ; JS 257 377 → 258 579 o, hors three.js 124 512 → 125 705 o,
-  three.js +9 o ; CSS, catalogue anglais, fils de travail et polices inchangés ; page d'admin +67 o, la case « Scène (palier) » ; marge 22 811 → **21 609 o**, plafonds
+- **Track : +1 221 o au premier chargement** (268 789 → 270 010 o, `main` à `9f9a80a` construit à part ; JS 257 377 → 258 598 o, hors three.js 124 512 → 125 724 o,
+  three.js +9 o ; CSS, catalogue anglais, fils de travail et polices inchangés ; page d'admin +67 o, la case « Scène (palier) » ; marge 22 811 → **21 590 o**, plafonds
   inchangés). Ce que ça paie : les crochets des pas dans le palier 1 (`composerP1.ts` : pièces, maillages, animation, arrivée, ombres fines), la lecture de
   `?palier=` / `?reglages=`, le registre des pas branchés et les pas en plus du reconstructeur (`socle.ts`), les trois `import()` et leurs listes de préchargement,
   la foule confiée par la tribune (`trackMesh.ts`) ; le resserrage des nuanceurs (`outils/glsl.ts`) en rend une centaine d'octets. Détail et essais :
   `docs/lots/lot-46-vie-ciel.md`, § 5.
-- **Ligne « vie et ciel à la demande » (nouvelle) : plafond 8 000 o, mesuré 7 880 o** (`vieJeu` 5 035 o, `cielJeu` 2 845 o, ce qu'ils tirent hors du premier
-  chargement compris ; marge 120 o), gardée par `apps/web/e2e/perf.spec.ts` ; les ombres fines (`ombres3`, 149 o) ont leur propre plafond de 500 o dans le même
+- **Ligne « vie et ciel à la demande » (nouvelle) : plafond 8 000 o, mesuré 7 881 o** (`vieJeu` 5 035 o, `cielJeu` 2 846 o, ce qu'ils tirent hors du premier
+  chargement compris ; marge 119 o), gardée par `apps/web/e2e/perf.spec.ts` ; les ombres fines (`ombres3`, 149 o) ont leur propre plafond de 500 o dans le même
   test. **Pas encore une ligne du tableau** : le tableau exige que chaque ligne ait sa limite lue par `apps/portail/test/budgets.test.ts` (zone partagée, que le
   lot ne touche pas) — à ajouter par un lot de plateforme (clé `track.vieCiel`, motif `"la vie et le ciel, à la demande, compressés"\)\.toBeLessThan\(([\d_]+)\)`).
 
@@ -121,5 +121,5 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 
 1. **Track, catalogue anglais : 685 o** (il porte l'anglais commun). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).
 2. **Jump, JS + CSS : 1 487 o** (voir plus haut).
-3. **Track, page d'admin : 1 526 o** (plafond mesure + 15 %), puis **JS + CSS : 21 609 o** (lot 46 : +1 202 o, la vie et le ciel à la demande ; lot 43 : +9 466 o, plafonds relevés de 15 000 o ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
+3. **Track, page d'admin : 1 526 o** (plafond mesure + 15 %), puis **JS + CSS : 21 590 o** (lot 46 : +1 221 o, la vie et le ciel à la demande ; lot 43 : +9 466 o, plafonds relevés de 15 000 o ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
 4. **Track, fils de travail : 3 476 o (circuits) et 3 498 o (Salon)** après leur relèvement (avant : 76 et 1 498 o). Ils embarquent le générateur et le pilote : tout ajout à la génération les entame.
