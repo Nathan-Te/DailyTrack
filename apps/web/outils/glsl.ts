@@ -21,14 +21,18 @@ export function resserrerModule(code: string): string {
   return code.replace(/\/\* glsl \*\/\s*`([^`$]*)`/g, (_, corps: string) => `\`${resserrerGlsl(corps)}\``);
 }
 
-/** Le greffon de Vite : les modules TypeScript du jeu, à la construction seulement (le serveur de développement garde les nuanceurs tels quels). */
+/**
+ * Le greffon de Vite : les modules TypeScript du jeu, à la construction seulement (le serveur de développement garde les nuanceurs tels quels). Lot 47 : aussi les
+ * passes et nuanceurs de three.js que le jeu charge avec son post-traitement (`examples/jsm/postprocessing` et `shaders`, qui marquent leurs nuanceurs `/* glsl *\/` :
+ * FXAA, halo, sortie), pour tenir la ligne de 7 ko.
+ */
 export function glslResserre(): Plugin {
   return {
     name: "glsl-resserre",
     enforce: "pre", // avant esbuild, qui retire les commentaires (le marqueur)
     apply: "build",
     transform(code, id) {
-      if (!/\/src\/.*\.ts$/.test(id) || !code.includes("/* glsl */")) return null;
+      if (!(/\/src\/.*\.ts$/.test(id) || /\/node_modules\/three\/examples\/jsm\/(postprocessing|shaders)\/.*\.js$/.test(id)) || !code.includes("/* glsl */")) return null;
       return { code: resserrerModule(code), map: null };
     },
   };

@@ -1,6 +1,6 @@
 // Retouche 38b — palier 3, famille « lumière » : la brume de profondeur (elle s'épaissit en contrebas et se teinte du soleil quand on le regarde),
 // le ciel dessiné avec ses nuages, et les réglages par thème de tout le palier 3 (brume, nuages, particules, étalonnage, halo). Les ombres nettes
-// et lointaines sont un réglage du compositeur (`composerPalier.ts`) ; l'occlusion, une passe de `post.ts`. Lot 46 : la brume et les nuages de chaque
+// et lointaines sont un réglage du compositeur (`composerPalier.ts`) ; le post-traitement, `post.ts`. Lot 46 : la brume et les nuages de chaque
 // thème ici (`CIEL_3`, ce que charge le pas « ciel » du jeu), ses particules dans `vie.ts`, la table entière (`THEMES_3`) dans `themes3.ts`.
 import { BufferGeometry, CanvasTexture, Color, DoubleSide, Float32BufferAttribute, LinearFilter, Mesh, RepeatWrapping, ShaderMaterial, Vector3, type Material, type WebGLProgramParametersWithUniforms } from "three";
 import type { PaletteName } from "@cdj/sim";

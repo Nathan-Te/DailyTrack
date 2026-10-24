@@ -90,6 +90,22 @@ test("le palier 2, à la demande : 7 ko au plus, rien dans le premier chargement
   expect(aLaDemande(/^qualiteMesure-.*\.js$/).octets, "la mesure de la règle de qualité, à la demande").toBeLessThan(1_500); // ≈ 0,8 ko au lot 45
 });
 
+// Lot 47 : le post-traitement du palier 3 (halo, étalonnage, FXAA ; ordinateur seulement), à la demande, hors du premier chargement : 7 000 o au plus (énoncé du lot :
+// « 7 ko compressés au plus »). Les passes de three.js et leurs nuanceurs restent dans son morceau (`vite.config.ts` : sans cela, rangées avec three.js, elles
+// entraient dans le premier chargement). **Ni occlusion GTAO ni SMAA** : aucun morceau ne les contient, FXAA y est.
+test("le post-traitement, à la demande : 7 ko au plus, rien dans le premier chargement, FXAA seul (ni GTAO ni SMAA)", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^(postJeu|post|lineaire|themesPost)-/.test(f)), "rien du post-traitement dans le premier chargement").toEqual([]);
+  for (const f of premier.filter((x) => x.endsWith(".js"))) expect(readFileSync(new URL(f, dist), "utf8"), `${f} : une passe de post-traitement dans le premier chargement`).not.toMatch(/FXAAShader|UnrealBloomPass|Etalonnage|LuminosityHighPassShader/);
+  const post = aLaDemande(/^postJeu-.*\.js$/);
+  test.info().annotations.push({ type: "mesure", description: `post-traitement à la demande : ${post.octets} o (${post.fichiers.join(", ")})` });
+  expect(post.fichiers.length, "le module du post-traitement est construit à part").toBeGreaterThanOrEqual(1);
+  expect(post.octets, "le post-traitement, à la demande, compressé").toBeLessThan(7_000); // ≈ 6,8 ko au lot 47
+  const code = post.fichiers.map((f) => readFileSync(new URL(f, dist), "utf8")).join("\n");
+  expect(code, "FXAA").toContain("FXAAShader");
+  for (const f of readdirSync(dist).filter((x) => x.endsWith(".js"))) expect(readFileSync(new URL(f, dist), "utf8"), `${f} : ni GTAO ni SMAA`).not.toMatch(/GTAO|SMAA/);
+});
+
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
 // déjà en cache), et seules les deux faces du premier écran sont préchargées.
 test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deux faces préchargées", () => {

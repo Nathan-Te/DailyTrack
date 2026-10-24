@@ -124,13 +124,6 @@ export const MESURES_PALIERS: { date: string | null; profil: string | null; colo
       "appels": 1,
       "memoire": 12582912
     },
-    "occlusion": {
-      "imageMs": 275.9,
-      "constructionMs": -21.9,
-      "triangles": 89941,
-      "appels": 128.3,
-      "memoire": 28966080
-    },
     "brume": {
       "imageMs": 6.8,
       "constructionMs": -32.3,

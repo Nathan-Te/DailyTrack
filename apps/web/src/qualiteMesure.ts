@@ -67,6 +67,14 @@ export function apresMesure(m: MemoireQualite, med: number | null, hz: number, m
   return { memoire: { ...base, mediane: med, echecs: 0 }, encore: false };
 }
 
+/**
+ * Lot 47 : la chaîne de post-traitement vient d'être coupée par une panne (perte du contexte WebGL, deux images où elle n'a pas pu dessiner) : le jeu redescend au
+ * palier 2 (avec la vie et le ciel) et s'en souvient — le plafond devient durable, la remesure ne remonte pas au palier 3 sur cet appareil.
+ */
+export function apresCoupure(m: MemoireQualite | null, maintenant: number, pixels: number): MemoireQualite {
+  return { palier: 2, date: maintenant, mediane: null, pixels, echecs: m?.echecs ?? 0, plafond: 2, durable: true };
+}
+
 /** La mémoire d'une série de mesures qui commence (le plafond durable est gardé ; une série pas finie reprend avec son plafond et ses échecs). */
 export function memoireNeuve(palier: NiveauQualite, maintenant: number, pixels: number, avant: MemoireQualite | null): MemoireQualite {
   const suite = avant?.mediane === null;

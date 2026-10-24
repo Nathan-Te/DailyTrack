@@ -404,7 +404,7 @@ for (const t of ["Colonne", "Poids ajouté au jeu (JS compressé)", "Appels de r
 /** Une partie de `poids-parties.json` par le début de son nom. */
 const partie = (debut: string) => (parties ? (Object.entries(parties).find(([n]) => n.startsWith(debut))?.[1] ?? 0) : 0);
 /** Les modules d'un pas (pour le poids « à la demande » de la colonne « à la carte »). */
-const MODULE_DU_PAS: Record<PasId, string> = { geometrie: "Palier 2 — géométrie", variete: "Palier 2 — géométrie", matiere: "Palier 2 — matière", traces: "Palier 2 — matière", reflets: "Palier 2 — reflets", ombres: "", occlusion: "Palier 3 — post-traitement", brume: "Palier 3 — lumière", nuages: "Palier 3 — lumière", drapeaux: "Palier 3 — vie", foule: "Palier 3 — vie", ecrans: "Palier 3 — vie", particules: "Palier 3 — vie", etalonnage: "Palier 3 — post-traitement", anticrenelage: "Palier 3 — post-traitement", halo: "Palier 3 — post-traitement" };
+const MODULE_DU_PAS: Record<PasId, string> = { geometrie: "Palier 2 — géométrie", variete: "Palier 2 — géométrie", matiere: "Palier 2 — matière", traces: "Palier 2 — matière", reflets: "Palier 2 — reflets", ombres: "", brume: "Palier 3 — lumière", nuages: "Palier 3 — lumière", drapeaux: "Palier 3 — vie", foule: "Palier 3 — vie", ecrans: "Palier 3 — vie", particules: "Palier 3 — vie", etalonnage: "Palier 3 — post-traitement", anticrenelage: "Palier 3 — post-traitement", halo: "Palier 3 — post-traitement" };
 
 /** Le poids d'une colonne de palier : le palier 1 (net, à la place de trackMesh.ts et trackProps.ts) et les modules des pas, à la demande. */
 function poidsPalier(id: VarianteId): string {
