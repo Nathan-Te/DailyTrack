@@ -7,14 +7,13 @@ import { PAS, PAS_IDS, avecPas, avecPost, lireReglages, palierDe, reglagesDuPali
 import { Affiches } from "../src/scene/outils";
 import { Drapeaux, marque, varierInstance, varierParPosition } from "../src/scene/finition";
 import { PERIODE_TEINTE, TRACES_SOMBRE, matiereAsphalte, matiereBeton, matiereDecor, matiereMetal, teinteLarge, tracesEtMarquages } from "../src/scene/matiere";
-import { carteDeNormales, detailleeAsphalte } from "../src/scene/matiereDetaillee";
 import { brumeDeProfondeur, uniformesBrume } from "../src/scene/lumiere3";
 import { THEMES_3 } from "../src/scene/themes3";
 import { verserDrapeaux } from "../src/scene/drapeaux";
 import { ROUTE_SOUS_LUMIERE_CHAUDE, paletteP1, portiqueDepartP } from "../src/scene/palier1";
 import { DECOR as DECOR_CAMPAGNE } from "../src/scene/decor/campagne";
 import { THEMES_C } from "../src/scene/lumiere";
-import { rebordB } from "../src/scene/piste";
+import { rebordB } from "../src/scene/rebordsComplets";
 import { C, CHAMPS, enregistrer, fenetre, lire } from "../src/vitrine/parcours";
 import { lineariser, lineariserHalos } from "../src/scene/composerPalier";
 import { buildHalos } from "../src/halo";
@@ -42,8 +41,9 @@ describe("réglages des paliers", () => {
   it("palier 1 : aucun pas ; palier 2 : la finition ; palier 3 : tout", () => {
     expect(PAS_IDS.filter((id) => reglagesDuPalier(1)[id])).toEqual([]);
     expect(PAS_IDS.filter((id) => reglagesDuPalier(2)[id])).toEqual(["geometrie", "variete", "matiere", "traces", "reflets"]);
-    // 38c : l'ancienne matière (« détaillée ») n'est dans aucun palier, elle sert à comparer.
-    expect(PAS_IDS.filter((id) => !reglagesDuPalier(3)[id])).toEqual(["detaillee"]);
+    // Lot 45 : l'ancienne matière (« détaillée », comparaison du 38c) est retirée : le palier 3 a tous les pas.
+    expect(PAS_IDS.filter((id) => !reglagesDuPalier(3)[id])).toEqual([]);
+    expect(PAS_IDS).not.toContain("detaillee");
     for (const p of [1, 2, 3] as const) expect(palierDe(reglagesDuPalier(p))).toBe(p);
     expect(palierDe(avecPas(reglagesDuPalier(2), "halo", true))).toBeNull();
   });
@@ -165,8 +165,7 @@ describe("palier 2 : géométrie, variété, matière", () => {
     for (const m of [matiereAsphalte(), matiereBeton(), matiereMetal(), matiereDecor()]) {
       const img = m.map.image as { width: number; data: Uint8Array };
       expect(img.width).toBe(256);
-      expect(m.normalMap).toBeNull();
-      expect(m.roughnessMap).toBeNull();
+      expect(Object.keys(m).sort(), "une texture de couleur seule (lot 45 : plus de champs de normales ni de rugosité)").toEqual(["echelle", "map", "ms", "teinte"]);
       const n = img.width;
       const v = Array.from({ length: n * n }, (_, i) => img.data[i * 4]! / 255);
       const moy = v.reduce((a, x) => a + x, 0) / v.length;
@@ -197,17 +196,6 @@ describe("palier 2 : géométrie, variété, matière", () => {
     expect(sh.fragmentShader).toContain("uTeinteEchelle");
     expect(sh.uniforms).toHaveProperty("uTeinteForce");
     expect(m.customProgramCacheKey()).toContain("teinte38c");
-  });
-
-  it("matière détaillée (l'ancienne, pour comparer) : normales d'un champ plat vers le haut, asphalte 512 px calculé une fois", () => {
-    const plat = carteDeNormales(new Float32Array(16 * 16).fill(0.5), 16, 3);
-    const px = (plat.image as { data: Uint8Array }).data;
-    expect([px[0], px[1], px[2]]).toEqual([128, 128, 255]);
-    const a = detailleeAsphalte();
-    expect(detailleeAsphalte()).toBe(a);
-    expect(a).not.toBe(matiereAsphalte());
-    expect((a.map.image as { width: number }).width).toBe(512);
-    expect(a.map.generateMipmaps && a.normalMap!.generateMipmaps && a.roughnessMap!.generateMipmaps).toBe(true);
   });
 
   it("traces de pneus dans les virages sur route, pas sur les droites ordinaires ; à quelques centimètres au-dessus de la route", () => {

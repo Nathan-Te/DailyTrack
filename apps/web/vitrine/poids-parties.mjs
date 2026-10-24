@@ -18,7 +18,7 @@ const SCENE = fileURLToPath(new URL("../src/scene/", import.meta.url));
 // Déjà dans le premier chargement du jeu : laissés dehors.
 const DEJA = ["three", "@cdj/sim", "*/trackMesh", "*/trackProps", "*/meshKit", "*/signage", "*/speedFeel", "*/halo"];
 /** Les modules des pas (retouche 38b) : hors du palier 1. */
-const PAS = ["finition", "drapeaux", "matiere", "matiereDetaillee", "bruit", "reflets", "lumiere3", "vie", "post", "vieJeu", "cielJeu", "ombres3"];
+const PAS = ["finition", "drapeaux", "matiere", "bruit", "reflets", "lumiere3", "vie", "post", "vieJeu", "cielJeu", "ombres3"];
 /** Le palier 1 et ce qu'il tire (lot 38 compris) : déjà là quand on mesure un pas. */
 const PALIER1 = ["composerPalier", "palier1", "piste", "sponsors", "composerP1", "paliers", "memoire", "ciel", "lumiere", "route", "outils", "pieces", "types", "textures", "decor", "decor/commun", "decor/matiereC"];
 
@@ -43,7 +43,6 @@ const PARTIES = [
   ["Palier 1 : décor du jeu, Ville (decor/ville.ts ; decor/commun.ts laissé dehors) — à la demande", null, ["DECOR"], { entree: `import { DECOR } from "./decor/ville";`, dehors: [...PALIER1.filter((m) => m !== "decor/commun" && m !== "decor/matiereC"), "commun"].filter((m) => m !== "decor"), garder: false }],
   ["Palier 2 — géométrie et variété (finition.ts)", "finition", ["boulons", "coins", "hauban", "cablePendant", "pneusEmpiles", "banderole", "Drapeaux", "colonneChanfreinee", "marque", "varierInstance", "varierParPosition", "teinteVoisine"], { dehors: PALIER1 }],
   ["Palier 2 — matière (matiere.ts, bruit.ts : matière sobre, variation de teinte large, traces et marquages)", "matiere", ["matiereAsphalte", "matiereBeton", "matiereMetal", "matiereDecor", "teinteLarge", "tracesEtMarquages", "matieresDessinees"], { dehors: PALIER1 }],
-  ["Palier 2 — matière détaillée (matiereDetaillee.ts : l'ancienne matière du 38b, comparaison seulement, matiere.ts et bruit.ts laissés dehors)", "matiereDetaillee", ["detailleeAsphalte", "detailleeBeton", "detailleeMetal", "detailleeDecor", "carteDeNormales"], { dehors: [...PALIER1, "matiere", "bruit"] }],
   ["Palier 2 — reflets (reflets.ts : carte d'environnement du ciel)", "reflets", ["carteEnvironnement"], { dehors: PALIER1 }],
   ["Palier 3 — lumière (lumiere3.ts : brume de profondeur, ciel et nuages, réglages par thème)", "lumiere3", ["CIEL_3", "brumeDeProfondeur", "uniformesBrume", "domeDuCiel"], { dehors: PALIER1 }],
   ["Palier 3 — vie (vie.ts : drapeaux, foule, écrans, chronomètre, particules)", "vie", ["drapeauxAnimes", "fouleAnimee", "rubanDesEcrans", "Chronometre", "maillageEcrans", "particules", "PARTICULES_3"], { dehors: [...PALIER1, "lumiere3"] }],

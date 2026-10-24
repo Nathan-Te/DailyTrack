@@ -2,7 +2,7 @@
 // blanche multipliée par les couleurs des sommets du décor et du sol relevé (coordonnées « monde » : `uvMonde`), et le sol lointain de chaque thème (pelouse
 // tondue, sable ridé, neige, champ, alpage, dalles, nuit) qui remplace le damier quand le décor arrive. Dessinées dans un canvas (aucun fichier), une fois.
 // La route et les éléments de course gardent leurs aplats (la piste d'abord) : la matière est celle du décor.
-import { BufferAttribute, CanvasTexture, RepeatWrapping, SRGBColorSpace, type BufferGeometry } from "three";
+import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from "three";
 import type { PaletteName } from "@cdj/sim";
 
 /** Petit générateur à graine (les textures sont les mêmes pour tout le monde). */
@@ -124,25 +124,6 @@ export function texturedSol(sorte: SolC, a: string, b: string): CanvasTexture {
   return texture(canvas);
 }
 
-/** Coordonnées de texture « monde » par face (projection sur le plan le plus proche, 1 répétition tous les `pas` m) : le grain suit la géométrie. */
-export function uvMonde(g: BufferGeometry, pas: number): void {
-  const pos = g.getAttribute("position");
-  if (!pos || g.index) return;
-  const p = pos.array as ArrayLike<number>;
-  const uv = new Float32Array(pos.count * 2);
-  for (let i = 0; i + 2 < pos.count; i += 3) {
-    const bx = p[i * 3 + 3]! - p[i * 3]!, by = p[i * 3 + 4]! - p[i * 3 + 1]!, bz = p[i * 3 + 5]! - p[i * 3 + 2]!;
-    const cx = p[i * 3 + 6]! - p[i * 3]!, cy = p[i * 3 + 7]! - p[i * 3 + 1]!, cz = p[i * 3 + 8]! - p[i * 3 + 2]!;
-    const nx = Math.abs(by * cz - bz * cy);
-    const ny = Math.abs(bz * cx - bx * cz);
-    const nz = Math.abs(bx * cy - by * cx);
-    for (let k = 0; k < 3; k++) {
-      const x = p[(i + k) * 3]!, y = p[(i + k) * 3 + 1]!, z = p[(i + k) * 3 + 2]!;
-      const [u, v] = ny >= nx && ny >= nz ? [x, z] : nx >= nz ? [z, y] : [x, y];
-      uv[(i + k) * 2] = u / pas;
-      uv[(i + k) * 2 + 1] = v / pas;
-    }
-  }
-  g.setAttribute("uv", new BufferAttribute(uv, 2));
-}
+// Lot 45 : `uvMonde` est dans `../uvMonde.ts` (la matière du palier 2 en a besoin pour la route, sans tirer le décor) ; réexportée ici.
+export { uvMonde } from "../uvMonde";
 

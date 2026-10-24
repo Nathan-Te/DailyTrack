@@ -37,15 +37,15 @@ describe("le registre des pas", () => {
     expect(PALIER_DEFAUT).toBe("P1");
     expect(palierBranche("P1")).toBe(true);
     expect(PAS_DU_PALIER.P1).toEqual([]);
-    expect(PAS_DU_PALIER.P2).toEqual([]); // la finition du palier 2 : lot 45
-    expect(PAS_DU_PALIER.P3).toEqual(["vie", "ciel", "ombres"]);
+    expect(PAS_DU_PALIER.P2).toEqual(["finition"]); // lot 45 : la finition du palier 2
+    expect(PAS_DU_PALIER.P3).toEqual(["finition", "vie", "ciel", "ombres"]);
     expect(GROUPE_VIE_CIEL).toEqual(["vie", "ciel"]); // ce que la règle automatique (lot 45) ajoutera au palier 2 des téléphones récents
     expect(PAS_DU_PALIER[PALIER_EXISTANT]).toEqual(["existant"]);
-    for (const id of Object.keys(PAS_DU_JEU)) expect(["existant", "vie", "ciel", "ombres"]).toContain(id);
+    for (const id of Object.keys(PAS_DU_JEU)) expect(["existant", "finition", "vie", "ciel", "ombres"]).toContain(id);
     // `main.ts` les enregistre, **un `import()` chacun** : aucun pas sans `import()` (le module n'est chargé que si un palier ou l'adresse le demande).
     const main = readFileSync(join(import.meta.dirname, "../src/main.ts"), "utf8");
     expect(main).toContain('PAS_DU_JEU.existant = () => import("./scene/existant")');
-    const modules = { vie: "vieJeu", ciel: "cielJeu", ombres: "ombres3" } as const;
+    const modules = { finition: "finitionJeu", vie: "vieJeu", ciel: "cielJeu", ombres: "ombres3" } as const;
     for (const id of new Set([...PAS_DU_PALIER.P3, ...GROUPE_VIE_CIEL])) expect(main).toContain(`PAS_DU_JEU.${id} = () => import("./scene/${modules[id as keyof typeof modules]}")`);
   });
 
@@ -53,7 +53,7 @@ describe("le registre des pas", () => {
     // Lot 39 puis 43 : le graphe des imports statiques du jeu, à la source (la mesure du premier chargement, `mesureTrack`, le verrait à la fin). Les `import()`
     // (à la demande) ne sont pas suivis ; les imports de types non plus.
     const SRC = join(import.meta.dirname, "../src");
-    const interdits = /\/scene\/(finition|drapeaux|matiere|matiereDetaillee|bruit|reflets|lumiere3|themes3|vie|vieJeu|cielJeu|ombres3|post|composerPalier|existant|memoire|paliers)\.ts$|\/scene\/decor\/|\/vitrine\//;
+    const interdits = /\/scene\/(finition|finitionJeu|rebordsComplets|uvMonde|drapeaux|matiere|bruit|reflets|lumiere3|themes3|vie|vieJeu|cielJeu|ombres3|post|composerPalier|existant|memoire|paliers)\.ts$|\/qualiteMesure\.ts$|\/scene\/decor\/|\/vitrine\//;
     const vus = new Set<string>();
     const file = [join(SRC, "main.ts")];
     while (file.length) {
@@ -93,15 +93,16 @@ describe("le composeur par palier", () => {
     brancherComposeur("P2", (_t, _p, o: TrackSceneOptions) => (vus.push(o.pas?.map((x) => x.id)), fausseScene("P2")));
     try {
       expect(() => composer(piste, "stade", "P3")).toThrow("pas branché"); // ses modules ne sont pas chargés
-      for (const id of ["vie", "ciel", "ombres"]) brancherPas(id, { id });
+      for (const id of ["finition", "vie", "ciel", "ombres"]) brancherPas(id, { id });
       composer(piste, "stade", "P3");
       composer(piste, "stade", "P3", { coupes: ["ombres"] });
       composer(piste, "stade", "P2", {}, GROUPE_VIE_CIEL);
       composer(piste, "stade", "P2");
-      expect(vus).toEqual([["vie", "ciel", "ombres"], ["vie", "ciel"], ["vie", "ciel"], undefined]);
-      expect(pasVoulus("P2", ["vie", "ciel"], ["ciel"])).toEqual(["vie"]);
+      composer(piste, "stade", "P2", { coupes: ["finition"] });
+      expect(vus).toEqual([["finition", "vie", "ciel", "ombres"], ["finition", "vie", "ciel"], ["finition", "vie", "ciel"], ["finition"], undefined]);
+      expect(pasVoulus("P2", ["vie", "ciel"], ["ciel"])).toEqual(["finition", "vie"]);
     } finally {
-      for (const id of ["vie", "ciel", "ombres"]) brancherPas(id, undefined);
+      for (const id of ["finition", "vie", "ciel", "ombres"]) brancherPas(id, undefined);
       brancherComposeur("P3", composerP1);
       brancherComposeur("P2", composerP1);
     }

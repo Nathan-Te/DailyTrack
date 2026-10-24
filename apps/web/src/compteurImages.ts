@@ -10,6 +10,8 @@ export class CompteurImages {
   private pire = 0;
   /** Dernière mesure : images par seconde (moyenne sur une seconde) et pire intervalle (ms). */
   mesure = { ips: 0, pireMs: 0 };
+  /** Lot 45 : le palier de la scène et le réglage « Qualité graphique » (« P2+vie+ciel · auto »), écrits par le jeu. */
+  etiquette = "";
 
   constructor(parent: HTMLElement) {
     this.el = document.createElement("div");
@@ -39,7 +41,7 @@ export class CompteurImages {
     const duree = now - this.debut;
     if (duree < 1000) return;
     this.mesure = { ips: Math.round(((this.images - 1) * 1000) / duree), pireMs: Math.round(this.pire) };
-    this.el.textContent = `${this.mesure.ips} i/s · pire ${this.mesure.pireMs} ms`;
+    this.el.textContent = `${this.mesure.ips} i/s · pire ${this.mesure.pireMs} ms${this.etiquette && ` · ${this.etiquette}`}`;
     this.debut = now;
     this.images = 1;
     this.pire = 0;

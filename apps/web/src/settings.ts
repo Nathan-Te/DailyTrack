@@ -1,5 +1,6 @@
 import { fNombre } from "./i18n";
 import { gameStorage } from "./storage";
+import { CHOIX_GRAPHISMES, type ChoixGraphismes } from "./qualite";
 
 // Réglages du jeu (lot 29) : graphismes et jeu, mémorisés dans le navigateur (`cdj:settings`) et versionnés comme les réglages tactiles
 // (`cdj:touch`, voir touch.ts). Logique pure, sans DOM : le panneau (settingsUi.ts) lit et écrit ces valeurs, main.ts les applique.
@@ -16,6 +17,8 @@ export type GhostChoice = "mine" | "first" | "ahead" | "none";
 export type SpeedUnit = "kmh" | "mph";
 
 export interface GameSettings {
+  /** Lot 45 : « Qualité graphique » — le palier de la scène (Auto : la règle de `qualite.ts`). */
+  graphismes: ChoixGraphismes;
   quality: QualityChoice;
   /** Particules (fumée, étincelles, flammes, confettis). */
   particles: boolean;
@@ -35,6 +38,7 @@ export interface GameSettings {
 }
 
 export const DEFAULT_SETTINGS: Readonly<GameSettings> = Object.freeze({
+  graphismes: "auto",
   quality: "auto",
   particles: true,
   skids: true,
@@ -81,6 +85,7 @@ export function parseSettings(raw: string | null): GameSettings {
   if (!raw) return s;
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof GameSettings | "version", unknown>>;
+    s.graphismes = oneOf(CHOIX_GRAPHISMES, o.graphismes) ?? s.graphismes;
     s.quality = oneOf(QUALITY_CHOICES, o.quality) ?? s.quality;
     s.speedFeel = oneOf(SPEED_FEEL_CHOICES, o.speedFeel) ?? s.speedFeel;
     s.ghost = oneOf(GHOST_CHOICES, o.ghost) ?? s.ghost;

@@ -121,7 +121,9 @@ import { listDayBests, loadBest, saveBest, type BestRun } from "./records";
 import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
-import { PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
+import { GROUPE_VIE_CIEL, PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
+import { NIVEAU_DU_CHOIX, QUALITE_KEY, lireMemoire, palierAuChargement, passesPermises, type Appareil, type MemoireQualite, type NiveauQualite } from "./qualite";
+import type { SerieMesures } from "./qualiteMesure";
 import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
 import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
@@ -261,21 +263,72 @@ const renderer = new WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
-// La scène (lot 43) : le palier 1. `?palier=existant` (recette et aperçus seulement : `sceneDemandee`) montre l'ancienne scène, chargée à la demande, pour comparer.
-// Lot 46 : les pas du palier 3 (la vie, le ciel, les ombres fines), chacun un module à la demande ; `?palier=3`, ou `?reglages=2+vie+ciel` (le palier 2 et le
-// groupe « vie et ciel » des téléphones récents, que la règle automatique du lot 45 choisira), `?reglages=3-particules` (un pas ou une partie coupés).
+// La scène (lot 43) : le palier 1 par défaut. `?palier=existant` (recette et aperçus seulement : `sceneDemandee`) montre l'ancienne scène, chargée à la demande,
+// pour comparer. Lot 46 : les pas du palier 3 (la vie, le ciel, les ombres fines), chacun un module à la demande ; lot 45 : le pas « finition » du palier 2.
+// `?palier=1|2|3`, `?reglages=2+vie+ciel`, `?reglages=3-particules` (un pas ou une partie coupés) imposent la scène sans rien enregistrer.
 PAS_DU_JEU.existant = () => import("./scene/existant");
+PAS_DU_JEU.finition = () => import("./scene/finitionJeu");
 PAS_DU_JEU.vie = () => import("./scene/vieJeu");
 PAS_DU_JEU.ciel = () => import("./scene/cielJeu");
 PAS_DU_JEU.ombres = () => import("./scene/ombres3");
 const sceneVoulue = sceneDemandee(location.search, restricted);
-const palierDepart: Palier = sceneVoulue?.palier ?? PALIER_DEFAUT;
-const plusDepart = (sceneVoulue?.plus ?? []).filter((id) => id in PAS_DU_JEU);
+
+// --- Lot 45 : la qualité graphique (la règle automatique de `qualite.ts`, le réglage du joueur) -------------------------------------------------------
+// Le palier de la scène : `?palier=` l'impose (recette, aperçus) ; sinon le réglage « Qualité graphique » (Économie : 1, Équilibrée : 2 et la vie et le ciel,
+// Maximale : 3) ; sinon (Auto) la mémoire `cdj:qualite` si elle vaut, ou le point de départ de l'appareil, que la mesure de l'accueil corrige. Essais (jamais en
+// production) : `?appareil=telephone|ordinateur` (le point de départ, même en rendu logiciel) et `?intervalles=30,16` (les médianes des mesures successives).
+const appareil = lireAppareil();
+const intervallesImposes = restricted ? null : params.get("intervalles")?.split(",").map(Number).filter((n) => n > 0) || null;
+const pixelsEcran = () => Math.round(innerWidth * innerHeight * renderer.getPixelRatio() ** 2);
+let memoireQualite = lireMemoireQualite();
+const choixDepart = loadSettings().graphismes;
+const autoDepart = palierAuChargement(appareil, memoireQualite, Date.now(), pixelsEcran());
+/** La scène d'un palier de qualité : le palier 2 prend la vie et le ciel (décision du 22/10/2026 : sans passe plein écran). */
+const sceneDuNiveau = (n: NiveauQualite): { palier: Palier; plus: readonly string[] } => (n === 1 ? { palier: "P1", plus: [] } : n === 2 ? { palier: "P2", plus: GROUPE_VIE_CIEL } : { palier: "P3", plus: [] });
+const sceneQualite = sceneDuNiveau(NIVEAU_DU_CHOIX[choixDepart] ?? autoDepart.palier);
+/** La mesure de l'accueil est à faire (Auto, rien d'imposé par l'adresse) ; la série de mesures (`qualiteMesure.ts`, chargé à ce moment-là). */
+let aMesurer = !sceneVoulue && choixDepart === "auto" && autoDepart.mesurer;
+let serieQualite: SerieMesures | null | undefined = null;
+/** Le réglage changé qui attend la fin de la course. */
+let graphismesEnAttente = false;
+/** Une mesure est en cours (l'accueil dessine alors la scène de la course, à chaque image). */
+const mesureEnCours = () => !!serieQualite?.mesure;
+
+const palierDepart: Palier = sceneVoulue?.palier ?? sceneQualite.palier;
+const plusDepart = sceneVoulue ? sceneVoulue.plus.filter((id) => id in PAS_DU_JEU) : sceneQualite.plus;
 /** Les pas ou parties coupés par l'adresse (`?reglages=3-particules`) : pour toute la page. */
 const coupesScene = sceneVoulue?.coupes ?? [];
 const modulesDepart = palierDepart === "existant" ? PAS_DU_PALIER.existant : pasVoulus(palierDepart, plusDepart, coupesScene);
 let pasDepartCharges = true;
-if (modulesDepart.length > 0) await chargerPas(modulesDepart).catch(() => (pasDepartCharges = false));
+if (modulesDepart.length > 0) {
+  const charges = chargerPas(modulesDepart).then(() => true, () => false);
+  // L'adresse attend ses modules ; la qualité graphique, 1,5 s au plus (sinon le palier 1, puis le palier voulu à la prochaine occasion hors course).
+  pasDepartCharges = await (sceneVoulue ? charges : Promise.race([charges, new Promise<boolean>((r) => setTimeout(() => r(false), 1500))]));
+}
+
+/** Lot 45 : ce que la règle de qualité sait de l'appareil (lu une fois). */
+function lireAppareil(): Appareil {
+  const gl = renderer.getContext();
+  let nom = String(gl.getParameter(gl.RENDERER));
+  // Chrome et Safari masquent le nom de la carte graphique (« WebKit WebGL ») ; Firefox le donne (et signale l'extension comme dépréciée).
+  const info = nom === "WebKit WebGL" ? gl.getExtension("WEBGL_debug_renderer_info") : null;
+  if (info) nom = String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL));
+  const force = restricted ? null : params.get("appareil");
+  return {
+    ordinateur: force ? force === "ordinateur" : matchMedia("(pointer: fine)").matches && Math.max(screen.width, screen.height) >= 1024,
+    // Pas de carte graphique (rendu logiciel), ou un navigateur piloté par un test : le palier 1, sans mesure (les essais de la règle passent `?appareil=`).
+    logiciel: !force && (navigator.webdriver || /swiftshader|llvmpipe|softpipe|lavapipe|software/i.test(nom)),
+    demiFlottants: !!(gl.getExtension("EXT_color_buffer_half_float") || gl.getExtension("EXT_color_buffer_float")),
+    memoire: (navigator as { deviceMemory?: number }).deviceMemory,
+  };
+}
+function lireMemoireQualite(): MemoireQualite | null {
+  try {
+    return lireMemoire(gameStorage().getItem(QUALITE_KEY));
+  } catch {
+    return null;
+  }
+}
 // Lot 44 : au Salon, le décompte part dès le chargement (il n'y a pas d'accueil où le décor arriverait) : le décor de la session est attendu un instant (un
 // petit morceau, souvent déjà en cache), pour que la première scène l'ait ; trop lent, elle se construit sans lui et il s'ajoutera à la prochaine arrivée.
 if (salon) await Promise.race([chargerDecor(salon.circuit.palette).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
@@ -308,15 +361,12 @@ renderer.shadowMap.enabled = true;
 // aperçus, ignoré en production) montre une voiture sans rien enregistrer ni vérifier, et la course n'est alors ni classée ni enregistrée (comme `?tune`).
 // La civile est là tout de suite ; un autre modèle se charge à la demande et ne remplace la voiture qu'hors course (`peutChanger`).
 const voitureEssai = restricted ? null : choixDeLAdresse(params);
-/** Temps de course passé à la qualité 2, mesuré par le régulateur (remis à zéro dès qu'elle baisse). */
-let qualite2Ms = 0;
 const garage = new VoitureEnJeu({
   choix: () => voitureEssai ?? voitureChoisie(),
   // Le numéro : celui du circuit du jour ; au Salon, celui de la session dans la journée (1 à 144 pour des sessions de 10 minutes).
   numero: () => (salon ? String((salon.session % Math.max(1, Math.round(86_400_000 / salon.sessionMs))) + 1) : daily && daily.number >= 1 ? String(daily.number) : ""),
-  // La règle de qualité automatique (lot 9) : la peinture à deux couches quand l'appareil suit — la qualité 2 figée (réglage, `?quality=2`), ou
-  // tenue 5 s en course (le réglage automatique part de 2 sans avoir rien mesuré : un téléphone lent ne doit pas charger le palier 2 pour rien).
-  palier: () => (governor.level === 2 && (governor.locked || qualite2Ms >= 5000) ? 2 : 1),
+  // Lot 45 : la peinture à deux couches suit le palier de la scène (2 et 3), que choisissent la règle de qualité et le réglage « Qualité graphique ».
+  palier: () => (/^P[23]$/.test(reconstructeur.palier()) ? 2 : 1),
   nuit: () => LOOKS[scenePalette].headlights > 0,
   peutChanger: () => !watch && (isFrozen() || phase !== "racing"),
   adopter: (voiture, fantome) => {
@@ -333,6 +383,7 @@ const garage = new VoitureEnJeu({
     carModel = voiture;
     carMesh = voiture.group;
     castShadows(carMesh);
+    (view as Partial<TrackScene>).reflets?.(renderer, carMesh); // lot 45 : les reflets ciblés du palier 2 (la voiture et le métal des portiques)
     ghostModel = fantome;
     ghostMesh = fantome.group;
   },
@@ -341,6 +392,7 @@ const garage = new VoitureEnJeu({
 let carModel: CarModel = garage.voiture;
 let carMesh = carModel.group;
 view.scene.add(carMesh);
+(view as Partial<TrackScene>).reflets?.(renderer, carMesh);
 const castShadows = (group: typeof carMesh) =>
   group.traverse((o) => {
     o.castShadow = true; // la voiture projette son ombre sur la route (qualité ≥ 1)
@@ -735,6 +787,8 @@ const needsHowto = () => autoHowto && !howtoSeen();
 /** Applique un changement de réglage tout de suite (qualité, effets, secousses, sensation de vitesse, ombres, classement…), puis le mémorise. */
 function applySettings(patch: Partial<GameSettings> = {}) {
   const wasQuality = settings.quality;
+  // Lot 45 : un autre choix de « Qualité graphique » s'applique à la prochaine occasion hors course (`suivreQualite`) ; l'adresse (`?palier=`) l'emporte.
+  if (patch.graphismes && patch.graphismes !== settings.graphismes && !sceneVoulue) graphismesEnAttente = true;
   Object.assign(settings, patch);
   saveSettings(settings);
   const plan = qualityPlan(settings.quality, qualityParam);
@@ -754,7 +808,8 @@ function applySettings(patch: Partial<GameSettings> = {}) {
 
 /** Qualité de la scène : celle du jeu, sauf derrière l'accueil, où elle ne dépasse pas « moyenne » (« basse » sur appareil tactile : la batterie d'abord). */
 function syncSceneQuality() {
-  const level = (homeOpen ? Math.min(governor.level, touchMode ? 0 : 1) : governor.level) as Quality;
+  // Lot 45 : pendant la mesure de la règle de qualité, la scène de l'accueil est celle de la course (on mesure ce que l'appareil aura à dessiner).
+  const level = (homeOpen && !mesureEnCours() ? Math.min(governor.level, touchMode ? 0 : 1) : governor.level) as Quality;
   view.setQuality(level, settings.shadows);
 }
 
@@ -778,6 +833,7 @@ settingsPanel = mountSettings(document.body, {
   qualityLevel: () => governor.level,
   touch: touchPad ? { pad: touchPad, changed: () => touchUi?.refresh() } : null,
   qualityFromUrl: qualityParam === "0" || qualityParam === "1" || qualityParam === "2",
+  graphismes: () => ({ enAttente: graphismesEnAttente, niveau: ({ P1: 1, P2: 2, P3: 3 } as Record<string, NiveauQualite>)[reconstructeur.palier()] ?? null }),
   openHowto: () => howto.open(),
 });
 // Lot 41 : le Garage, chargé à la demande (`import()` : son code, sa feuille, ses textes) ; ouvert depuis l'accueil, la pause ou l'arrivée.
@@ -1927,7 +1983,7 @@ function frame(now: number) {
   const frameMs = now - last;
   last = now;
   if (homeOpen) homeSpin += Math.min(frameMs, 100) / 1000;
-  if (!frozen && !manual) qualite2Ms = governor.level === 2 ? qualite2Ms + Math.min(frameMs, 100) : 0;
+  suivreQualite(frameMs); // lot 45 : la mesure de l'accueil (règle automatique) et le réglage « Qualité graphique », hors course
   if (!frozen && !manual && governor.observe(frameMs)) {
     effects.quality = governor.level;
     syncSceneQuality(); // qualité basse : décor, ombres et halos allégés (téléphone lent)
@@ -1988,7 +2044,11 @@ function frame(now: number) {
   const alpha = phase === "countdown" ? 0 : accumulator / DT;
   // Feux de départ (lot 43) : l'affichage lit l'état du décompte, rien de plus (le départ ne dépend que de `countdown`).
   view.feux?.(etatFeux(phase, countdown, COUNTDOWN_S));
-  compteurImages?.image(now);
+  if (compteurImages) {
+    // Lot 45 : le palier choisi (et s'il est en train d'être mesuré), pour Nathan sur son téléphone.
+    compteurImages.etiquette = `${[reconstructeur.palier(), ...reconstructeur.plus()].join("+")} · ${settings.graphismes}${mesureEnCours() ? " · mesure" : ""}`;
+    compteurImages.image(now);
+  }
 
   if (race) {
     if (race.splits.length > shownSplits) {
@@ -2248,7 +2308,7 @@ function frame(now: number) {
   if (hudSpeed.dataset.level !== speedLevelNow) hudSpeed.dataset.level = speedLevelNow; // jaune, orange puis rouge au-delà de la pointe
   updateEffects();
   // Accueil ouvert : la scène tourne derrière, mais à 30 images par seconde (20 sur téléphone) : c'est un décor, pas une course.
-  const homeSkip = homeOpen && lastHomeRender > 0 && now - lastHomeRender < (touchMode ? 48 : 31);
+  const homeSkip = homeOpen && !mesureEnCours() && lastHomeRender > 0 && now - lastHomeRender < (touchMode ? 48 : 31); // lot 45 : pas pendant la mesure
   if (!manual && !homeSkip) {
     // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
     const t0 = performance.now();
@@ -2300,6 +2360,7 @@ function adopterScene(next: TrackScene) {
   if (ghostField) next.scene.add(ghostField.group);
   effects.attach(next.scene);
   next.setQuality(governor.level, settings.shadows);
+  next.reflets?.(renderer, carMesh); // lot 45 : la carte d'environnement de la nouvelle scène sur la voiture (ou retirée, au palier 1), avant que l'ancienne soit libérée
   view = next;
   renderer.toneMappingExposure = view.look.exposure;
   view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
@@ -2356,6 +2417,58 @@ const reconstructeur = creerReconstructeur({
   construire: (palier, plus) => (track ? composer(track, scenePalette, palier, { ...optionsScene(), decor: decorPret(scenePalette) }, plus) : null),
   adopter: adopterScene,
 });
+// Lot 45 : la qualité graphique voulue au chargement, si ses modules n'étaient pas là à temps (1,5 s) : à la prochaine occasion hors course.
+if (!sceneVoulue && premierPalier !== palierDepart) reconstructeur.demander(palierDepart, plusDepart);
+
+// --- Lot 45 : la mesure de l'accueil et le réglage « Qualité graphique » ---------------------------------------------------------------------------------
+/** Hors course : l'accueil, l'arrivée, le podium du Salon (jamais la pause d'une course en cours : le choix du joueur attend la fin de la course). */
+const horsCourse = () => !track || homeOpen || phase === "finished" || salon?.state === "podium" || salon?.state === "switching";
+function demanderNiveau(n: NiveauQualite) {
+  const v = sceneDuNiveau(n);
+  reconstructeur.demander(v.palier, v.plus);
+}
+function garderQualite(m: MemoireQualite) {
+  try {
+    gameStorage().setItem(QUALITE_KEY, JSON.stringify(m));
+  } catch {
+    /* stockage indisponible : on remesurera */
+  }
+}
+/** À chaque image : le réglage changé, appliqué hors course ; la mesure de l'accueil (Auto), qui monte ou descend d'un palier puis remesure. */
+function suivreQualite(frameMs: number) {
+  if (graphismesEnAttente && horsCourse()) {
+    graphismesEnAttente = false;
+    const fixe = NIVEAU_DU_CHOIX[settings.graphismes];
+    const auto = palierAuChargement(appareil, memoireQualite, Date.now(), pixelsEcran());
+    aMesurer = !fixe && auto.mesurer;
+    if (serieQualite) serieQualite = null; // une nouvelle série
+    demanderNiveau(fixe ?? auto.palier);
+    settingsPanel?.sync();
+  }
+  const avant = mesureEnCours();
+  if (aMesurer && settings.graphismes === "auto" && homeOpen && !garageOuvert() && !settingsPanel?.isOpen() && !reconstructeur.enAttente() && !document.hidden) {
+    if (serieQualite) aMesurer = serieQualite.image(frameMs);
+    else if (serieQualite === null) {
+      serieQualite = undefined; // en chargement
+      void import("./qualiteMesure").then(
+        (m) =>
+          (serieQualite = new m.SerieMesures({
+            depart: () => palierAuChargement(appareil, memoireQualite, Date.now(), pixelsEcran()).palier,
+            memoire: () => memoireQualite,
+            pixels: pixelsEcran,
+            imposes: intervallesImposes,
+            decider(mem) {
+              memoireQualite = mem;
+              garderQualite(mem);
+              demanderNiveau(mem.palier);
+            },
+          })),
+        () => (serieQualite = null),
+      );
+    }
+  } else serieQualite?.interrompre(); // l'accueil fermé, l'onglet caché : la mesure en cours ne compte pas, on la refera
+  if (avant !== mesureEnCours()) syncSceneQuality();
+}
 // Lot 43 : les bandeaux des portiques sont peints dans la langue du joueur ; une autre langue choisie (Réglages : le jeu est à l'arrêt) repeint la scène.
 onLangue(() => {
   if (track && (isFrozen() || phase === "finished")) adopterScene(composerOuDefaut(track, scenePalette, reconstructeur.palier(), reconstructeur.plus()));
@@ -2554,6 +2667,10 @@ if (params.has("debug")) {
       get voiture() {
         return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null, fantome: ghostMesh.visible };
       },
+      /** Lot 45 : la qualité graphique — le réglage, l'appareil, la mémoire `cdj:qualite`, la mesure en cours (intervalles gardés), la dernière, l'attente. */
+      get qualite() {
+        return { choix: settings.graphismes, appareil, passes: passesPermises(appareil), memoire: memoireQualite, aMesurer, mesure: serieQualite?.mesure?.intervalles.length ?? null, derniere: serieQualite?.derniere ?? null, enAttente: graphismesEnAttente };
+      },
       socle: {
         composer,
         brancherComposeur,
@@ -2574,7 +2691,7 @@ if (params.has("debug")) {
         },
       },
       get render() {
-        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, textures: renderer.info.memory.textures, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {

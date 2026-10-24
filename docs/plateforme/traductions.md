@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-975 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+983 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -755,6 +755,14 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.onglet.controls` | Commandes | Controls |
 | `reglages.oui` | Oui | Yes |
 | `reglages.non` | Non | No |
+| `reglages.graphismes.nom` | Qualité graphique | Graphics quality |
+| `reglages.graphismes.aide` | Ne change rien à la course : seulement l'image. | Never changes the race: only the picture. |
+| `reglages.graphismes.auto` | Auto | Auto |
+| `reglages.graphismes.economie` | Économie | Battery saver |
+| `reglages.graphismes.equilibree` | Équilibrée | Balanced |
+| `reglages.graphismes.maximale` | Maximale | Maximum |
+| `reglages.graphismes.actuel` | Choisie pour cet appareil : {niveau}. | Picked for this device: {niveau}. |
+| `reglages.graphismes.attente` | Appliqué à la fin de la course. | Applied when the race ends. |
 | `reglages.qualite.nom` | Qualité | Quality |
 | `reglages.qualite.aide` | Automatique : le jeu baisse seul les détails s'il ramerait, et les remonte ensuite. | Automatic: the game lowers details by itself if it would lag, then raises them again. |
 | `reglages.qualite.auto` | Automatique | Automatic |

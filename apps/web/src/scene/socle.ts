@@ -3,8 +3,8 @@
 //
 // - **Les paliers** (`Palier`) : depuis le lot 43, **le palier 1 (« P1 ») est la scène de tout le monde** (`composerP1.ts`, dans le premier chargement) ;
 //   « existant » est la scène d'avant (lot 37), **chargée à la demande** (`existant.ts`) pour la vitrine et `?palier=existant` (recette et aperçus) ;
-//   « P2 » et « P3 » sont, dans le jeu, le palier 1 **plus les pas de leur palier** (lot 46 : le palier 3 prend la vie, le ciel et les ombres fines ; le
-//   palier 2 n'a pas encore de pas : sa finition arrive au lot 45). Un palier chargé à la demande se branche en enregistrant son composeur
+//   « P2 » et « P3 » sont, dans le jeu, le palier 1 **plus les pas de leur palier** (lot 45 : le palier 2 prend la finition ; lot 46 : le palier 3 y ajoute
+//   la vie, le ciel et les ombres fines). Un palier chargé à la demande se branche en enregistrant son composeur
 //   (`brancherComposeur`) quand son module est chargé ; un pas, en s'enregistrant (`brancherPas`).
 // - **Les modules des pas se chargent à la demande** (`chargerPas`, `import()`), jamais dans le premier chargement, et **la scène ne se reconstruit jamais
 //   pendant une course** (`creerReconstructeur` : à l'accueil, à la pause, à l'arrivée, au podium du Salon).
@@ -14,7 +14,7 @@ import type { TrackScene, TrackSceneOptions } from "../trackMesh";
 import type { PasScene } from "./types";
 import { composerP1 } from "./composerP1";
 
-/** Les paliers de qualité de la scène. « P1 » est la scène du jeu (lot 43) ; « existant » se charge à la demande ; « P2 » et « P3 » sont ceux de la vitrine. */
+/** Les paliers de qualité de la scène. « P1 » est la scène par défaut (lot 43) ; « existant » se charge à la demande ; « P2 » et « P3 » : le palier 1 et leurs pas. */
 export type Palier = "existant" | "P1" | "P2" | "P3";
 export const PALIER_EXISTANT: Palier = "existant";
 /** Le palier de la scène du jeu, par défaut (lot 43). */
@@ -75,21 +75,22 @@ export type Registre = Record<string, Chargeur>;
 /**
  * Les modules à la demande du jeu, un chargeur chacun. Lot 43 : l'ancienne scène (`existant`, pour `?palier=existant` : recette et aperçus seulement),
  * enregistrée par `main.ts` (`PAS_DU_JEU.existant = () => import(…)` : l'`import()` vit dans le module principal, le socle n'y ajoute pas d'aide au
- * préchargement) ; lot 46 : `vie`, `ciel`, `ombres` (enregistrés de même par `main.ts`) ; les lots suivants y ajoutent les leurs (`finition`, `matiere`,
- * `reflets`, `post`, le décor du palier 1…).
+ * préchargement) ; lot 46 : `vie`, `ciel`, `ombres` ; lot 45 : `finition` (géométrie, variété, matière, traces, reflets ciblés), enregistrés de même par
+ * `main.ts` ; le lot 47 y ajoutera `post`.
  */
 export const PAS_DU_JEU: Registre = {};
 
 /**
- * Les modules que demande chaque palier. Le palier 1 est dans le premier chargement : il n'en demande aucun. Lot 46 : le palier 3 (ordinateur) prend la vie
+ * Les modules que demande chaque palier. Le palier 1 est dans le premier chargement : il n'en demande aucun. Lot 45 : le palier 2 prend la finition
+ * (`finition` : géométrie, variété, matière sobre, traces, reflets ciblés — aucun appel de rendu de plus) ; lot 46 : le palier 3 (ordinateur) y ajoute la vie
  * (`vie` : drapeaux, foule, écrans, particules, confettis du Stade), le ciel (`ciel` : nuages, brume de profondeur) et les ombres fines (`ombres` : carte
- * 2048 posée devant la voiture) ; le palier 2 n'en a pas encore (lot 45 : la finition).
+ * 2048 posée devant la voiture).
  */
-export const PAS_DU_PALIER: Record<Palier, readonly string[]> = { existant: ["existant"], P1: [], P2: [], P3: ["vie", "ciel", "ombres"] };
+export const PAS_DU_PALIER: Record<Palier, readonly string[]> = { existant: ["existant"], P1: [], P2: ["finition"], P3: ["finition", "vie", "ciel", "ombres"] };
 
 /**
- * Lot 46 : **le groupe « vie et ciel »** (décision du 22/10/2026) — la vie et le ciel sans aucune passe plein écran, que la règle automatique (lot 45)
- * ajoute au palier 2 des téléphones récents (`reconstructeur.demander("P2", GROUPE_VIE_CIEL)`). En attendant : `?reglages=2+vie+ciel`.
+ * Lot 46 : **le groupe « vie et ciel »** (décision du 22/10/2026) — la vie et le ciel sans aucune passe plein écran, que la règle de qualité (lot 45,
+ * `qualite.ts`) ajoute au palier 2 (`reconstructeur.demander("P2", GROUPE_VIE_CIEL)`) ; `?reglages=2+vie+ciel` aussi.
  */
 export const GROUPE_VIE_CIEL: readonly string[] = ["vie", "ciel"];
 

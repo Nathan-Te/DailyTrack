@@ -77,6 +77,19 @@ test("la vie et le ciel, à la demande : 8 ko au plus, rien dans le premier char
   expect(aLaDemande(/^ombres3-.*\.js$/).octets, "les ombres fines, à la demande").toBeLessThan(500); // ≈ 150 o au lot 46
 });
 
+// Lot 45 : le palier 2 (le pas « finition » : géométrie, variété, matière sobre, traces, reflets ciblés), à la demande, hors du premier chargement : 7 000 o au
+// plus (énoncé du lot : 6 000 o ; relevé à 7 000 o par Nathan le 23/10/2026 — les rebords complets, ≈ 1,2 ko, n'étaient pas comptés dans les 5,0 ko de la 38b).
+// La mesure de la règle de qualité (`qualiteMesure`) : à la demande aussi (première visite, chaque semaine), petite.
+test("le palier 2, à la demande : 7 ko au plus, rien dans le premier chargement ; la mesure de la règle de qualité aussi", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^(finitionJeu|finition|matiere|reflets|rebordsComplets|uvMonde|qualiteMesure)-/.test(f)), "rien du palier 2 ni de la mesure dans le premier chargement").toEqual([]);
+  const palier2 = aLaDemande(/^finitionJeu-.*\.js$/);
+  test.info().annotations.push({ type: "mesure", description: `palier 2 à la demande : ${palier2.octets} o (${palier2.fichiers.join(", ")})` });
+  expect(palier2.fichiers.length, "le module de la finition est construit à part").toBeGreaterThanOrEqual(1);
+  expect(palier2.octets, "le palier 2, à la demande, compressé").toBeLessThan(7_000); // ≈ 6,5 ko au lot 45
+  expect(aLaDemande(/^qualiteMesure-.*\.js$/).octets, "la mesure de la règle de qualité, à la demande").toBeLessThan(1_500); // ≈ 0,8 ko au lot 45
+});
+
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
 // déjà en cache), et seules les deux faces du premier écran sont préchargées.
 test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deux faces préchargées", () => {
