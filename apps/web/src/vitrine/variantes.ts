@@ -72,7 +72,7 @@ export function variantesPaliers(carte: () => Reglages): Variante[] {
     EXISTANT,
     palier("P1", "Palier 1 — base", "Le mélange recommandé du lot 38, nettoyé : lumière de C intégrée, ombres de contact des seuls rebords, mur de pneus allégé, rien en l'air, soleil du bon côté.", [...MORCEAUX_PALIERS.base], () => p1),
     palier("P2", "Palier 2 — finition", "Même chemin de rendu, plus de soin : géométrie, variété, matière (textures fines, relief, traces), reflets du ciel.", [...MORCEAUX_PALIERS.base, ...MORCEAUX_PALIERS.finition], () => p2),
-    palier("P3", "Palier 3 — vitrine", "Le plafond : ombres nettes et loin, occlusion, brume, nuages, vie (drapeaux, foule, écrans, particules), post-traitement.", [...MORCEAUX_PALIERS.base, ...MORCEAUX_PALIERS.finition, ...MORCEAUX_PALIERS.vitrine], () => p3),
+    palier("P3", "Palier 3 — vitrine", "Le plafond : ombres nettes et loin, brume, nuages, vie (drapeaux, foule, écrans, particules), post-traitement.", [...MORCEAUX_PALIERS.base, ...MORCEAUX_PALIERS.finition, ...MORCEAUX_PALIERS.vitrine], () => p3),
     palier("carte", "À la carte", "Les pas cochés en tête de page (réglages communs avec la vue en mouvement).", [...MORCEAUX_PALIERS.base, ...MORCEAUX_PALIERS.finition, ...MORCEAUX_PALIERS.vitrine], carte),
   ];
 }

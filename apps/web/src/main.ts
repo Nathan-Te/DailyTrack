@@ -124,6 +124,7 @@ import { LOOKS, type TrackScene } from "./trackMesh";
 import { GROUPE_VIE_CIEL, PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
 import { NIVEAU_DU_CHOIX, QUALITE_KEY, lireMemoire, palierAuChargement, passesPermises, type Appareil, type MemoireQualite, type NiveauQualite } from "./qualite";
 import type { SerieMesures } from "./qualiteMesure";
+import type { PostJeu, RaisonCoupure } from "./scene/postJeu";
 import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
 import { etatFeux } from "./feux";
 import { gameStorage } from "./storage";
@@ -271,6 +272,10 @@ PAS_DU_JEU.finition = () => import("./scene/finitionJeu");
 PAS_DU_JEU.vie = () => import("./scene/vieJeu");
 PAS_DU_JEU.ciel = () => import("./scene/cielJeu");
 PAS_DU_JEU.ombres = () => import("./scene/ombres3");
+// Lot 47 : le post-traitement du palier 3 (halo, étalonnage, FXAA ; ordinateur seulement, jamais sans demi-flottants) : un module à la demande, demandé avec le palier 3
+// là où les passes plein écran sont permises (`passesPermises`) et nulle part ailleurs ; `?reglages=3-post` (recette et aperçus) le coupe.
+let moduleCible: typeof import("./scene/postJeu") | null = null;
+PAS_DU_JEU.post = () => import("./scene/postJeu").then((m) => (moduleCible = m));
 const sceneVoulue = sceneDemandee(location.search, restricted);
 
 // --- Lot 45 : la qualité graphique (la règle automatique de `qualite.ts`, le réglage du joueur) -------------------------------------------------------
@@ -278,13 +283,17 @@ const sceneVoulue = sceneDemandee(location.search, restricted);
 // Maximale : 3) ; sinon (Auto) la mémoire `cdj:qualite` si elle vaut, ou le point de départ de l'appareil, que la mesure de l'accueil corrige. Essais (jamais en
 // production) : `?appareil=telephone|ordinateur` (le point de départ, même en rendu logiciel) et `?intervalles=30,16` (les médianes des mesures successives).
 const appareil = lireAppareil();
+/** Lot 47 : la chaîne de post-traitement est permise ici (un ordinateur, des demi-flottants, 4 Go : jamais un téléphone) et pas coupée par l'adresse ; elle ne se donne qu'au palier 3. */
+const postPermis = () => passesPermises(appareil) && !(sceneVoulue?.coupes ?? []).includes("post") && !postCoupe;
+/** Lot 47 : une panne de la chaîne (perte du contexte, deux images ratées) la coupe pour toute la page ; le jeu redescend alors au palier 2 avec la vie et le ciel. */
+let postCoupe: RaisonCoupure | null = null;
 const intervallesImposes = restricted ? null : params.get("intervalles")?.split(",").map(Number).filter((n) => n > 0) || null;
 const pixelsEcran = () => Math.round(innerWidth * innerHeight * renderer.getPixelRatio() ** 2);
 let memoireQualite = lireMemoireQualite();
 const choixDepart = loadSettings().graphismes;
 const autoDepart = palierAuChargement(appareil, memoireQualite, Date.now(), pixelsEcran());
 /** La scène d'un palier de qualité : le palier 2 prend la vie et le ciel (décision du 22/10/2026 : sans passe plein écran). */
-const sceneDuNiveau = (n: NiveauQualite): { palier: Palier; plus: readonly string[] } => (n === 1 ? { palier: "P1", plus: [] } : n === 2 ? { palier: "P2", plus: GROUPE_VIE_CIEL } : { palier: "P3", plus: [] });
+const sceneDuNiveau = (n: NiveauQualite): { palier: Palier; plus: readonly string[] } => (n === 1 ? { palier: "P1", plus: [] } : n === 2 ? { palier: "P2", plus: GROUPE_VIE_CIEL } : { palier: "P3", plus: postPermis() ? ["post"] : [] });
 const sceneQualite = sceneDuNiveau(NIVEAU_DU_CHOIX[choixDepart] ?? autoDepart.palier);
 /** La mesure de l'accueil est à faire (Auto, rien d'imposé par l'adresse) ; la série de mesures (`qualiteMesure.ts`, chargé à ce moment-là). */
 let aMesurer = !sceneVoulue && choixDepart === "auto" && autoDepart.mesurer;
@@ -295,7 +304,8 @@ let graphismesEnAttente = false;
 const mesureEnCours = () => !!serieQualite?.mesure;
 
 const palierDepart: Palier = sceneVoulue?.palier ?? sceneQualite.palier;
-const plusDepart = sceneVoulue ? sceneVoulue.plus.filter((id) => id in PAS_DU_JEU) : sceneQualite.plus;
+// Lot 47 : `post` ne se donne qu'au palier 3, là où les passes sont permises (`?reglages=2+post` n'y fait rien) ; l'adresse `?palier=3` le prend d'elle-même.
+const plusDepart = sceneVoulue ? [...sceneVoulue.plus.filter((id) => id in PAS_DU_JEU && id !== "post"), ...(sceneVoulue.palier === "P3" && postPermis() ? ["post"] : [])] : sceneQualite.plus;
 /** Les pas ou parties coupés par l'adresse (`?reglages=3-particules`) : pour toute la page. */
 const coupesScene = sceneVoulue?.coupes ?? [];
 const modulesDepart = palierDepart === "existant" ? PAS_DU_PALIER.existant : pasVoulus(palierDepart, plusDepart, coupesScene);
@@ -1973,6 +1983,7 @@ function isFrozen(): boolean {
 function frame(now: number) {
   salon?.tick(); // Salon : compte à rebours, fin de session, podium, bascule
   if (reconstructeur.enAttente()) void reconstructeur.essayer(); // un autre palier demandé : reconstruit à l'accueil, à la pause, à l'arrivée, au podium (jamais en course)
+  suivrePost(); // lot 47 : la chaîne de post-traitement suit la scène (allumée ou éteinte à l'arrêt seulement)
   poserDecorArrive(); // lot 44 : le décor du thème arrivé, posé à l'arrêt seulement
   garage.tick(); // la voiture choisie, chargée à la demande, remplace la civile hors course ; son palier suit la qualité ; la Nuit
   const frozen = isFrozen();
@@ -2314,7 +2325,8 @@ function frame(now: number) {
     const t0 = performance.now();
     // Lot 46 : la vie et le ciel (drapeaux, foule, écrans, particules, nuages) bougent sur le temps d'affichage de l'image, jamais sur l'état de la course.
     view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio());
-    renderer.render(view.scene, camera);
+    // Lot 47 : la chaîne dessine l'image (halo, étalonnage, FXAA) ; elle rend faux si elle n'a pas pu, ou n'existe plus : on dessine alors directement.
+    if (!post?.dessiner(view.scene, camera, scenePalette, view.look.exposure)) renderer.render(view.scene, camera);
     renderCost.ms += performance.now() - t0;
     renderCost.frames++;
     if (homeOpen) {
@@ -2413,10 +2425,52 @@ function poserDecorArrive() {
 const reconstructeur = creerReconstructeur({
   palier: premierPalier,
   plus: premierPlus,
-  peutReconstruire: () => isFrozen() || phase === "finished",
+  // Lot 47 : pas pendant qu'un contexte WebGL perdu n'est pas revenu (la scène du palier 2 demande le moteur : carte d'environnement de la voiture).
+  peutReconstruire: () => (isFrozen() || phase === "finished") && !contexteHS,
   construire: (palier, plus) => (track ? composer(track, scenePalette, palier, { ...optionsScene(), decor: decorPret(scenePalette) }, plus) : null),
-  adopter: adopterScene,
+  adopter: (scene, palier, plus) => {
+    adopterScene(scene);
+    postDemande = palier === "P3" && plus.includes("post"); // lot 47 : la chaîne suit la scène, allumée ou éteinte à l'arrêt par `suivrePost`
+  },
 });
+// --- Lot 47 : le post-traitement du palier 3 (ordinateur) : halo, étalonnage, FXAA ---------------------------------------------------------------------------
+// Il suit la scène : le palier 3 là où les passes sont permises (`postDemande`). **Il ne s'allume ni ne s'éteint en course** (`arretPost` : le moment où la scène peut
+// se reconstruire) ; seule une panne ne peut pas attendre — la perte du contexte WebGL ou deux images où la chaîne n'a pas pu dessiner la coupent à l'instant (le jeu
+// dessine alors directement, la course ne dépend pas de l'image) et le jeu redescend au palier 2 avec la vie et le ciel à la prochaine pause, en s'en souvenant.
+let post: PostJeu | null = null;
+let postDemande = premierPlus.includes("post");
+/** Un contexte WebGL perdu n'est pas encore revenu. */
+let contexteHS = false;
+const arretPost = () => isFrozen() || phase === "finished";
+const partiesPost = () => ({ halo: !coupesScene.includes("halo"), etalonnage: !coupesScene.includes("etalonnage"), anticrenelage: !coupesScene.includes("fxaa") });
+function creerPost() {
+  if (!post && moduleCible) post = new moduleCible.PostJeu(renderer, partiesPost(), couperPost);
+}
+function couperPost(raison: RaisonCoupure) {
+  postCoupe = raison;
+  post = null;
+  if (raison === "contexte") {
+    contexteHS = true;
+    renderer.domElement.addEventListener("webglcontextrestored", () => (contexteHS = false), { once: true });
+  }
+  reconstructeur.demander("P2", GROUPE_VIE_CIEL);
+  void import("./qualiteMesure").then((m) => {
+    memoireQualite = m.apresCoupure(memoireQualite, Date.now(), pixelsEcran());
+    garderQualite(memoireQualite);
+  });
+}
+/** À chaque image : la chaîne s'allume ou s'éteint avec la scène, à l'arrêt seulement. */
+function suivrePost() {
+  const voulu = postDemande && postPermis();
+  if (voulu === !!post || !arretPost()) return;
+  if (voulu) creerPost();
+  else {
+    post?.lacher();
+    post = null;
+  }
+}
+if (postDemande && postPermis()) creerPost(); // la page vient de se charger : pas de course, la scène du départ est déjà au palier 3
+
 // Lot 45 : la qualité graphique voulue au chargement, si ses modules n'étaient pas là à temps (1,5 s) : à la prochaine occasion hors course.
 if (!sceneVoulue && premierPalier !== palierDepart) reconstructeur.demander(palierDepart, plusDepart);
 
@@ -2667,6 +2721,28 @@ if (params.has("debug")) {
       get voiture() {
         return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null, fantome: ghostMesh.visible };
       },
+      /**
+       * Lot 47 : le post-traitement — voulu par la scène, permis par l'appareil, allumé, ce qui l'a coupé ; ses parties, les échantillons de la cible, sa mémoire (octets,
+       * calculée), les appels et triangles de la scène seule ; `echouer(n)` fait échouer les n prochaines images (essai des garde-fous), `chaine` : la chaîne (lecture).
+       */
+      get post() {
+        const c = post?.chaine;
+        return {
+          demande: postDemande,
+          permis: passesPermises(appareil),
+          actif: !!post,
+          coupe: postCoupe,
+          contexteHS,
+          parties: post?.parties ?? null,
+          echantillons: c?.scene?.samples ?? null,
+          octets: post?.octets() ?? 0,
+          appels: c?.appels ?? 0,
+          triangles: c?.triangles ?? 0,
+          echecs: post?.garde.echecs ?? 0,
+          echouer: (n: number) => void (post && (post.forcerEchec = n)),
+          chaine: c ?? null,
+        };
+      },
       /** Lot 45 : la qualité graphique — le réglage, l'appareil, la mémoire `cdj:qualite`, la mesure en cours (intervalles gardés), la dernière, l'attente. */
       get qualite() {
         return { choix: settings.graphismes, appareil, passes: passesPermises(appareil), memoire: memoireQualite, aMesurer, mesure: serieQualite?.mesure?.intervalles.length ?? null, derniere: serieQualite?.derniere ?? null, enAttente: graphismesEnAttente };
@@ -2691,7 +2767,7 @@ if (params.has("debug")) {
         },
       },
       get render() {
-        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, textures: renderer.info.memory.textures, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, home: { ...homeCost } };
+        return { ...view.stats(), programs: renderer.info.programs?.length ?? 0, textures: renderer.info.memory.textures, calls: renderer.info.render.calls, triangles: renderer.info.render.triangles, renderMs: renderCost.ms, renderFrames: renderCost.frames, moteurImages: renderer.info.render.frame, home: { ...homeCost } };
       },
       /** Caméra active (lot 23) : nom, carrosserie visible ; `camera` change de caméra comme la touche C. */
       get camera() {

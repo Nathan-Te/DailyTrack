@@ -18,7 +18,7 @@ const SCENE = fileURLToPath(new URL("../src/scene/", import.meta.url));
 // Déjà dans le premier chargement du jeu : laissés dehors.
 const DEJA = ["three", "@cdj/sim", "*/trackMesh", "*/trackProps", "*/meshKit", "*/signage", "*/speedFeel", "*/halo"];
 /** Les modules des pas (retouche 38b) : hors du palier 1. */
-const PAS = ["finition", "drapeaux", "matiere", "bruit", "reflets", "lumiere3", "vie", "post", "vieJeu", "cielJeu", "ombres3"];
+const PAS = ["finition", "drapeaux", "matiere", "bruit", "reflets", "lumiere3", "vie", "post", "vieJeu", "cielJeu", "ombres3", "postJeu", "lineaire", "themesPost"];
 /** Le palier 1 et ce qu'il tire (lot 38 compris) : déjà là quand on mesure un pas. */
 const PALIER1 = ["composerPalier", "palier1", "piste", "sponsors", "composerP1", "paliers", "memoire", "ciel", "lumiere", "route", "outils", "pieces", "types", "textures", "decor", "decor/commun", "decor/matiereC"];
 
@@ -51,12 +51,12 @@ const PARTIES = [
   ["Palier 3 du jeu (lot 46) — vie (vieJeu.ts, vie.ts, drapeaux.ts, réglages des thèmes)", "vieJeu", ["VIE"], { dehors: [...PALIER1, "socle"] }],
   ["Palier 3 du jeu (lot 46) — ciel (cielJeu.ts, lumiere3.ts, bruit.ts)", "cielJeu", ["CIEL"], { dehors: [...PALIER1, "socle"] }],
   ["Palier 3 du jeu (lot 46) — vie et ciel ensemble", null, ["VIE", "CIEL", "OMBRES"], { entree: `import { VIE } from "./vieJeu"; import { CIEL } from "./cielJeu"; import { OMBRES } from "./ombres3";`, dehors: [...PALIER1, "socle"] }],
-  ["Palier 3 — post-traitement (post.ts et les passes de three.js : occlusion GTAO, halo, sortie, étalonnage, SMAA)", "post", ["ChainePost"], { dehors: [...PALIER1, "lumiere3"] }],
-  ["Palier 3 — post : occlusion seule (GTAOPass)", null, ["GTAOPass"], { entree: `import { GTAOPass } from "three/examples/jsm/postprocessing/GTAOPass.js";` }],
+  // Lot 47 : le post-traitement du jeu (à la demande, ligne « post-traitement à la demande » de budgets.md : 7 ko au plus ; la mesure qui fait foi est celle des morceaux
+  // du jeu construit, `e2e/perf.spec.ts`). Sans l'occlusion GTAO ni SMAA (décisions du 22/10/2026).
+  ["Palier 3 du jeu (lot 47) — post-traitement (postJeu.ts, post.ts, lineaire.ts, themesPost.ts et les passes de three.js : halo, sortie, étalonnage, FXAA)", "postJeu", ["PostJeu"], { dehors: [...PALIER1, "socle"] }],
   ["Palier 3 — post : halo seul (UnrealBloomPass)", null, ["UnrealBloomPass"], { entree: `import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";` }],
-  ["Palier 3 — post : anticrénelage seul (SMAAPass, ses deux textures comprises)", null, ["SMAAPass"], { entree: `import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";` }],
   ["Palier 3 — post : sortie et étalonnage (OutputPass, ShaderPass)", null, ["OutputPass", "ShaderPass"], { entree: `import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js"; import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";` }],
-  ["Pour comparer : FXAA (FXAAPass), un anticrénelage plus léger que SMAA", null, ["FXAAPass"], { entree: `import { FXAAPass } from "three/examples/jsm/postprocessing/FXAAPass.js";` }],
+  ["Palier 3 — post : anticrénelage seul (FXAAPass)", null, ["FXAAPass"], { entree: `import { FXAAPass } from "three/examples/jsm/postprocessing/FXAAPass.js";` }],
   // --- Lot 40 : la voiture. `carMesh.ts` et `voiture/pieces.ts` sont dans le premier chargement depuis la partie 1 : laissés dehors pour les modèles.
   ["Existant : carMesh.ts (la voiture du jeu, six maillages depuis le lot 40, avec voiture/pieces.ts)", null, ["createCarMesh"], { entree: `import { createCarMesh } from "../carMesh";` }],
   ["Voiture : pieces.ts seul (fusion des pièces, matériaux par sommet ; dans le premier chargement depuis la partie 1)", null, ["Pieces", "finiParSommet", "ombreDeRoue", "ombreDesFeux", "normalesLissees"], { entree: `import { Pieces, finiParSommet, ombreDeRoue, ombreDesFeux, normalesLissees } from "../voiture/pieces";` }],

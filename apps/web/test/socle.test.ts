@@ -41,19 +41,22 @@ describe("le registre des pas", () => {
     expect(PAS_DU_PALIER.P3).toEqual(["finition", "vie", "ciel", "ombres"]);
     expect(GROUPE_VIE_CIEL).toEqual(["vie", "ciel"]); // ce que la règle automatique (lot 45) ajoutera au palier 2 des téléphones récents
     expect(PAS_DU_PALIER[PALIER_EXISTANT]).toEqual(["existant"]);
-    for (const id of Object.keys(PAS_DU_JEU)) expect(["existant", "finition", "vie", "ciel", "ombres"]).toContain(id);
+    for (const id of Object.keys(PAS_DU_JEU)) expect(["existant", "finition", "vie", "ciel", "ombres", "post"]).toContain(id); // lot 47 : `post`, demandé en plus du palier 3 là où les passes sont permises
     // `main.ts` les enregistre, **un `import()` chacun** : aucun pas sans `import()` (le module n'est chargé que si un palier ou l'adresse le demande).
     const main = readFileSync(join(import.meta.dirname, "../src/main.ts"), "utf8");
     expect(main).toContain('PAS_DU_JEU.existant = () => import("./scene/existant")');
     const modules = { finition: "finitionJeu", vie: "vieJeu", ciel: "cielJeu", ombres: "ombres3" } as const;
     for (const id of new Set([...PAS_DU_PALIER.P3, ...GROUPE_VIE_CIEL])) expect(main).toContain(`PAS_DU_JEU.${id} = () => import("./scene/${modules[id as keyof typeof modules]}")`);
+    // Lot 47 : le post-traitement n'est dans aucun palier (il se demande en plus du palier 3, sur ordinateur) : son `import()` est à lui.
+    expect([...PAS_DU_PALIER.P3, ...PAS_DU_PALIER.P2, ...GROUPE_VIE_CIEL]).not.toContain("post");
+    expect(main).toContain('PAS_DU_JEU.post = () => import("./scene/postJeu")');
   });
 
   it("le premier chargement (main.ts, de proche en proche) ne tire ni l'ancienne scène, ni la vitrine, ni un module des pas, ni le décor (lot 44)", () => {
     // Lot 39 puis 43 : le graphe des imports statiques du jeu, à la source (la mesure du premier chargement, `mesureTrack`, le verrait à la fin). Les `import()`
     // (à la demande) ne sont pas suivis ; les imports de types non plus.
     const SRC = join(import.meta.dirname, "../src");
-    const interdits = /\/scene\/(finition|finitionJeu|rebordsComplets|uvMonde|drapeaux|matiere|bruit|reflets|lumiere3|themes3|vie|vieJeu|cielJeu|ombres3|post|composerPalier|existant|memoire|paliers)\.ts$|\/qualiteMesure\.ts$|\/scene\/decor\/|\/vitrine\//;
+    const interdits = /\/scene\/(finition|finitionJeu|rebordsComplets|uvMonde|drapeaux|matiere|bruit|reflets|lumiere3|themes3|vie|vieJeu|cielJeu|ombres3|post|postJeu|lineaire|themesPost|composerPalier|existant|memoire|paliers)\.ts$|\/qualiteMesure\.ts$|\/scene\/decor\/|\/vitrine\//;
     const vus = new Set<string>();
     const file = [join(SRC, "main.ts")];
     while (file.length) {

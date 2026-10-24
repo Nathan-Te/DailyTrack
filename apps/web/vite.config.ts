@@ -34,6 +34,9 @@ export default defineConfig({
         manualChunks(id: string) {
           // Lot 40c : le reflet plan du plateau du Garage (`Reflector`) reste dans le morceau du Garage, à la demande (rien au premier chargement).
           if (id.includes("node_modules/three/examples/jsm/objects/Reflector")) return undefined;
+          // Lot 47 : les passes du post-traitement (halo, sortie, étalonnage, FXAA) et leurs nuanceurs restent dans le morceau du post-traitement, à la demande : rangées
+          // avec three.js, elles entraient dans le premier chargement (+4,7 ko compressés mesurés) sur un téléphone qui ne les affichera jamais.
+          if (/node_modules\/three\/examples\/jsm\/(postprocessing|shaders)\//.test(id)) return undefined;
           if (id.includes("node_modules/three/")) return "three";
           // Retouche 40b : la voiture du jeu (socle commun, la civile, le choix) en un seul fichier ; sans cela l'empaqueteur la coupe en trois petits
           // morceaux (pièces, formes, livrée : partagés avec le Salon et les modèles à la demande), et la compression par fichier se perd. Les modèles

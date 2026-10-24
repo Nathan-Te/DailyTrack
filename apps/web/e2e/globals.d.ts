@@ -123,6 +123,22 @@ interface CdjDebug {
     /** Le fantôme du record est-il dessiné (dernière image) ? */
     fantome: boolean;
   };
+  /** Lot 47 : le post-traitement du palier 3 (ordinateur) — voulu par la scène, permis par l'appareil, allumé, ce qui l'a coupé ; essais : `echouer(n)`, `chaine` (lecture). */
+  post: {
+    demande: boolean;
+    permis: boolean;
+    actif: boolean;
+    coupe: "contexte" | "echecs" | null;
+    contexteHS: boolean;
+    parties: { halo: boolean; etalonnage: boolean; anticrenelage: boolean } | null;
+    echantillons: number | null;
+    octets: number;
+    appels: number;
+    triangles: number;
+    echecs: number;
+    echouer(n: number): void;
+    chaine: { scene: { width: number; height: number; samples: number } | null } | null;
+  };
   /** Lot 45 : la qualité graphique (règle automatique et réglage). */
   qualite: {
     choix: "auto" | "economie" | "equilibree" | "maximale";
@@ -152,7 +168,7 @@ interface CdjDebug {
   /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
   feux: { rouges: number; vert: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; textures: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; textures: number; calls: number; triangles: number; renderMs: number; renderFrames: number; moteurImages: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;
@@ -187,7 +203,7 @@ interface VitrineDebug {
   construireTout(sujet?: string): Promise<void>;
   capture(sujet: string, variante: string, largeur: number, hauteur: number): Promise<string | null>;
   mesurer(sujet: string, variante: string, largeur: number, hauteur: number, images: number): Promise<{ constructionMs: number; moyenneMs: number; pireMs: number; envoiMs: number; appels: number; triangles: number; textures: number; cibles: number } | null>;
-  /** Les réglages de la colonne « à la carte » et de la vue en mouvement (« 2 », « 1+halo », « 3-occlusion ») : les change si on en donne, les rend. */
+  /** Les réglages de la colonne « à la carte » et de la vue en mouvement (« 2 », « 1+halo », « 3-halo ») : les change si on en donne, les rend. */
   reglages(texte?: string): string;
   /** La vue en mouvement (retouche 38b). */
   mouvement: {

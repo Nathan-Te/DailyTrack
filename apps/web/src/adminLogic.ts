@@ -6,7 +6,7 @@ import { FIGURE_NAMES, THEME_NAMES } from "@cdj/sim";
 export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "bas-cotes" | "figures" | "figure" | "plat";
 
 /** Lot 46 : les scènes que la page d'admin propose (`?reglages=`) : le palier 3 (ordinateur), le palier 2 et le groupe « vie et ciel » (téléphone récent) ; lot 45 : les paliers 1 et 2 seuls. */
-export const SCENES_ADMIN = ["3", "2+vie+ciel", "3-ombres", "1", "2"] as const;
+export const SCENES_ADMIN = ["3", "2+vie+ciel", "3-ombres", "3-post", "1", "2"] as const;
 /**
  * Lot 45 : essayer la règle de qualité automatique (recette et aperçus) — l'appareil imposé (`?appareil=`) et, au besoin, les médianes des mesures de l'accueil
  * (`?intervalles=`, à 60 Hz) : un téléphone qui tient le palier 2, un ordinateur trop lent qui descend jusqu'au palier 1.
