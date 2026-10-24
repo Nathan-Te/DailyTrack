@@ -299,17 +299,29 @@ describe("Garage (lot 41) : GET /api/garage et le statut rendu par l'envoi", () 
     expect(r.body.progres).toEqual({ jours: 9, or: 3, auteur: 0 });
     expect(r.body.voitures).toEqual([
       { id: "civile", debloquee: true, progres: null },
+      { id: "fourgon", debloquee: true, progres: { fait: 3, nombre: 3 } },
       { id: "evolution", debloquee: true, progres: { fait: 3, nombre: 3 } },
+      { id: "rallye", debloquee: true, progres: { fait: 7, nombre: 7 } },
       { id: "gt", debloquee: false, progres: { fait: 9, nombre: 10 } },
+      { id: "roadster", debloquee: false, progres: { fait: 9, nombre: 14 } },
+      { id: "pickup", debloquee: false, progres: { fait: 3, nombre: 6 } },
       { id: "proto", debloquee: false, progres: { fait: 0, nombre: 1 } },
+      { id: "muscle", debloquee: false, progres: { fait: 9, nombre: 30 } },
+      { id: "monoplace", debloquee: false, progres: { fait: 0, nombre: 3 } },
     ]);
     await jourPasse(t, DAY - 10, "author");
     r = await garage(t);
     expect(r.body.progres).toEqual({ jours: 10, or: 4, auteur: 1 });
-    expect(r.body.voitures.every((v: { debloquee: boolean }) => v.debloquee)).toBe(true);
+    const debloquees = () => r.body.voitures.filter((v: { debloquee: boolean }) => v.debloquee).map((v: { id: string }) => v.id);
+    expect(debloquees()).toEqual(["civile", "fourgon", "evolution", "rallye", "gt", "proto"]);
     // Les temps d'un autre joueur ne comptent pas pour moi.
     await jourPasse(t, DAY - 11, "author", playerId(4101));
     expect((await garage(t)).body.progres).toEqual({ jours: 10, or: 4, auteur: 1 });
+    // Lot 42 : les voitures de prestige — 30 jours joués (muscle car), 3 médailles d'auteur (monoplace) ; 6 ors pour le pick-up, 14 jours pour le roadster.
+    for (let i = 11; i <= 30; i++) await jourPasse(t, DAY - i, i <= 12 ? "author" : i <= 13 ? "gold" : null);
+    r = await garage(t);
+    expect(r.body.progres).toEqual({ jours: 30, or: 7, auteur: 3 });
+    expect(r.body.voitures.every((v: { debloquee: boolean }) => v.debloquee)).toBe(true);
   });
 
   it("une médaille compte avec les seuils de son jour (bascule du 28/10)", async () => {

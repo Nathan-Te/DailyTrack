@@ -474,7 +474,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
       floor.position.x = Math.round(x / (2 * tile)) * 2 * tile;
       floor.position.z = Math.round(z / (2 * tile)) * 2 * tile;
     },
-    followCar(x, y, z, yaw, hood = false) {
+    followCar(x, y, z, yaw, hood = false, phare) {
       // Pas « ombres » : la fenêtre des ombres est posée devant la voiture (là où regarde la caméra de poursuite).
       const av = r.ombres ? OMBRES_AVANT : 0;
       const tx = Math.round(x + Math.sin(yaw) * av);
@@ -485,7 +485,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
       if (head.visible) {
         const s = Math.sin(yaw);
         const c = Math.cos(yaw);
-        head.position.set(x + s * 1.2, y + 0.75, z + c * 1.2);
+        head.position.set(x + s * (phare?.z ?? 1.2), y + (phare?.y ?? 0.75), z + c * (phare?.z ?? 1.2));
         head.target.position.set(x + s * 24, y - 0.4, z + c * 24);
         head.intensity = HEADLIGHT_POWER * look.headlights * (hood ? 0.1 : 1);
       }

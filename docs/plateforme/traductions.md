@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-983 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1001 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -624,6 +624,8 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `garage.verrouillee` | Verrouillée | Locked |
 | `garage.couleur` | Couleur | Colour |
 | `garage.motif` | Motif | Livery |
+| `garage.teinte` | Couleur du motif | Livery colour |
+| `garage.teinte.grisee` | Hachurée : trop proche de la couleur de ta voiture, le motif resterait illisible. | Hatched: too close to your car's colour, the livery would not stand out. |
 | `garage.tourner` | Glisse pour tourner autour | Drag to turn it around |
 | `garage.equitable` | Toutes les voitures roulent pareil : seul le style change. | Every car drives the same: only the look changes. |
 | `garage.horsLigne` | Hors connexion : tes voitures débloquées restent là ; la progression reviendra avec le réseau. | Offline: your unlocked cars stay here; progress comes back with the network. |
@@ -901,6 +903,15 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `salon.arrivee.terminee` | Session terminée | Session over |
 | `salon.arrivee.nonCompte` | Session terminée : tour non compté | Session over: lap not counted |
 
+### teinte (`teinte.*`, `apps/web/src/catalogue.base.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `teinte.auto` | Auto | Auto |
+| `teinte.creme` | Crème | Cream |
+| `teinte.asphalte` | Asphalte | Asphalt |
+| `teinte.lagon` | Lagon | Lagoon |
+
 ### Thèmes (`theme.*`, `apps/web/src/catalogue.base.*.ts`)
 
 | Clé | Français | Anglais |
@@ -922,10 +933,22 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `voiture.evolution.nom` | Weasel | Weasel |
 | `voiture.gt.nom` | Moray | Moray |
 | `voiture.proto.nom` | Dragonfly | Dragonfly |
+| `voiture.fourgon.nom` | Pelican | Pelican |
+| `voiture.rallye.nom` | Badger | Badger |
+| `voiture.roadster.nom` | Gecko | Gecko |
+| `voiture.pickup.nom` | Armadillo | Armadillo |
+| `voiture.muscle.nom` | Boar | Boar |
+| `voiture.monoplace.nom` | Sailfish | Sailfish |
 | `voiture.civile.description` | Compacte cinq portes, hayon, petit becquet. À toi dès le premier jour. | Five-door hatchback with a small spoiler. Yours from day one. |
 | `voiture.evolution.description` | Coupé trapu : passages de roue larges, aileron sur deux jambes, quatre phares ronds. | Stocky coupé: wide arches, a wing on two legs, four round headlights. |
 | `voiture.gt.description` | GT basse et large : capot long, grand aileron sur cols de cygne. | Low, wide GT: long bonnet, big swan-neck wing. |
 | `voiture.proto.description` | Prototype d'endurance : bulle étroite, ailes détachées, dérive. | Endurance prototype: narrow bubble, separate wings, a fin. |
+| `voiture.fourgon.description` | Fourgonnette de livraison d'autrefois : ailes séparées, gros phares ronds, flanc plein pour la livrée. | Old-style delivery van: separate wings, big round headlights, a whole side for the livery. |
+| `voiture.rallye.description` | Compacte de rallye : haute, élargie, bavettes, rampe de quatre phares, grand becquet. | Rally hatchback: tall, widened, mud flaps, four-light pod, big spoiler. |
+| `voiture.roadster.description` | Roadster deux places, découvert : sièges crème, pare-brise bas, arceau. | Open two-seater roadster: cream seats, low windscreen, roll hoop. |
+| `voiture.pickup.description` | Pick-up tout-terrain : benne ouverte, caisse haute, pare-buffle, arceau. | Off-road pickup: open bed, high body, bull bar, roll bar. |
+| `voiture.muscle.description` | Muscle car : capot très long à écope, arrière court en queue de canard. | Muscle car: very long bonnet with a scoop, short ducktail rear. |
+| `voiture.monoplace.description` | Monoplace carénée : nez pointu, roues à demi apparentes, grande dérive dorsale. | Streamlined single-seater: pointed nose, half-exposed wheels, tall dorsal fin. |
 
 ## Jump
 

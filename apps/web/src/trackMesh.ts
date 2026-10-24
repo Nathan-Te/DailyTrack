@@ -300,9 +300,10 @@ export interface TrackScene {
   setView(heightPx: number, fovDeg: number): void;
   /**
    * Position de la voiture (m) et cap (rad) : fenêtre des ombres, phares. `hood` : vue capot, l'œil est au ras du faisceau (la route juste
-   * devant le museau remplirait l'écran d'une tache blanche : les phares sont atténués).
+   * devant le museau remplirait l'écran d'une tache blanche : les phares sont atténués). `phare` (lot 42) : d'où part le faisceau, propre à la voiture
+   * (`PlanVoiture.phare` : hauteur et avance, m) ; 0,75 m et 1,2 m par défaut.
    */
-  followCar(x: number, y: number, z: number, yaw: number, hood?: boolean): void;
+  followCar(x: number, y: number, z: number, yaw: number, hood?: boolean, phare?: { y: number; z: number }): void;
   /** État du rendu (outil de test `?debug`) : ce que la qualité active, ce que le thème allume. */
   stats(): SceneStats;
   /** Lot 43 : les feux de départ du portique (palier 1), allumés selon le décompte ; absents de l'existant. Lecture seule de l'état de la course. */

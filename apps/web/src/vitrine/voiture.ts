@@ -253,7 +253,7 @@ async function dessinerMaintenant(v: Vue, s: Sortie) {
       exposition: ts.look.exposure,
       avant: (h, fov) => {
         ts.setView(h, fov);
-        ts.followCar(cible.x, cible.y, cible.z, cible.yaw);
+        ts.followCar(cible.x, cible.y, cible.z, cible.yaw, false, (car as { phare?: { y: number; z: number } }).phare);
         ts.followGround(cible.x, cible.z);
       },
       rendre: (rr, cam, w, h) => m.rendrePalier(ts, rr, cam, w, h, 2),
@@ -636,7 +636,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
       exposition: ts.look.exposure,
       avant: (h, fov) => {
         ts.setView(h, fov);
-        ts.followCar(v.x, v.y, v.z, v.yaw);
+        ts.followCar(v.x, v.y, v.z, v.yaw, false, car.phare);
         ts.followGround(v.x, v.z);
       },
       rendre: (rr, cam, w, h) => m.rendrePalier(ts, rr, cam, w, h, 2),

@@ -5,7 +5,9 @@
 // vifs, bouts de plan arrondi, encadrements de vitres), des joints de portes, de capot et de hayon dessinés dans le nuanceur, la doublure des passages de roue,
 // des phares et des feux construits (boîtier, glace, signature) qui épousent les coins, une calandre à ailettes, des échappements creux, des rétroviseurs
 // attachés par leur pied à la portière, des poignées, des plaques vierges. Les motifs et le numéro sont dans le nuanceur (aucune texture).
-import { boite, cle, extruder, levre, pave, pont, type Sec } from "./forme";
+import { boite, cle, extruder, levre, pave, type Sec } from "./forme";
+// Lot 42 : le capot plat et la plaque viennent de `details.ts` (les mêmes formules : ils étaient recopiés ici, deux fois au premier chargement).
+import { capotPlat, plaque } from "./details";
 import type { Contexte, Feux, PlanVoiture } from "./modele";
 import { echappement, ellipsoide } from "./surfaces";
 import { srgb, type Fini, type Pieces } from "./pieces";
@@ -14,15 +16,6 @@ const ZR = -1.95;
 const ZF = 2.08;
 
 type P2 = [number, number];
-/** Une section de capot ou de bas de hayon. */
-const capot = (z: number, b: number, seuil: P2, flanc: P2, epaule: P2, dessus: number) => cle(z, { bas: b, seuil, flanc, epaule, ...pont(epaule, dessus) });
-/**
- * Lot 40c, retour de Nathan (la Sparrow a un air de Fennec de Rocket League) : un capot **presque plat** à hauteur d'aile, bombé d'un centimètre, qui se termine sur un museau haut et franc ;
- * l'aile (la ceinture vive du capot) reste au-dessus de la roue (le haut de la roue est à 0,76 m, l'aile à 0,85 m et plus) : la roue ne traverse plus le capot.
- * `haut` : la hauteur du capot au bord de la bombe.
- */
-const capotPlat = (z: number, b: number, seuil: P2, flanc: P2, epaule: P2, haut: number) =>
-  cle(z, { bas: b, seuil, flanc, epaule, vitre: [epaule[0] - 0.06, epaule[1] + (haut - epaule[1]) * 0.4], toit: [epaule[0] * 0.66, haut], dessus: haut + 0.012 });
 /** Une section d'habitacle (pied de vitre, bord du toit, dessus). */
 const habitacle = (z: number, b: number, seuil: P2, flanc: P2, epaule: P2, vitre: P2, toit: P2, dessus: number) => cle(z, { bas: b, seuil, flanc, epaule, vitre, toit, dessus } satisfies Sec);
 
@@ -173,13 +166,6 @@ function piecesCivile(p: Pieces, c: Contexte) {
       pave(p, ...x(0.93, 0.985), 0.8, 0.825, z - 0.08, z + 0.08, m.peinture);
     }
   }
-}
-
-/** Une plaque minéralogique (sans inscription) : un cadre sombre, un fond crème ; `sens` = +1 à l'avant, −1 à l'arrière. */
-function plaque(p: Pieces, c: Contexte, y: number, z: number, sens: number) {
-  const z0 = sens > 0 ? z : z - 0.015;
-  pave(p, -0.26, 0.26, y - 0.065, y + 0.065, z0, z0 + 0.015, c.m.noir);
-  pave(p, -0.24, 0.24, y - 0.05, y + 0.05, sens > 0 ? z0 + 0.012 : z0 - 0.004, sens > 0 ? z0 + 0.018 : z0 + 0.004, c.m.creme);
 }
 
 function feuxCivile(c: Contexte): Feux {

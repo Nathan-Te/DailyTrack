@@ -13,14 +13,21 @@ function resultat(day: number, medaille: "author" | "gold" | "silver" | null): R
 }
 
 describe("les règles (décision du 23/10/2026)", () => {
-  it("une ligne par voiture : civile dès le départ, A 3 ors, B 10 jours, C 1 auteur ; une seule voiture par défaut, aucune par abonnement", () => {
-    expect(VOITURES_GARAGE).toEqual(["civile", "evolution", "gt", "proto"]);
+  it("une ligne par voiture : civile dès le départ, A 3 ors, B 10 jours, C 1 auteur ; lot 42 (24/10) : fourgon 3 jours, rallye 7, roadster 14, pick-up 6 ors, muscle car 30 jours, monoplace 3 auteurs ; une seule voiture par défaut, aucune par abonnement", () => {
+    expect(VOITURES_GARAGE).toEqual(["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"]);
     expect(DEBLOCAGES).toEqual({
       civile: { type: "defaut" },
+      fourgon: { type: "jours", nombre: 3 },
       evolution: { type: "medailles", medaille: "or", nombre: 3 },
+      rallye: { type: "jours", nombre: 7 },
       gt: { type: "jours", nombre: 10 },
+      roadster: { type: "jours", nombre: 14 },
+      pickup: { type: "medailles", medaille: "or", nombre: 6 },
       proto: { type: "medailles", medaille: "auteur", nombre: 1 },
+      muscle: { type: "jours", nombre: 30 },
+      monoplace: { type: "medailles", medaille: "auteur", nombre: 3 },
     });
+    expect(Object.keys(DEBLOCAGES)).toEqual([...VOITURES_GARAGE]);
     expect(Object.values(DEBLOCAGES).filter((d) => d.type === "defaut")).toHaveLength(1);
     expect(Object.values(DEBLOCAGES).some((d) => d.type === "abonnement")).toBe(false);
   });
@@ -56,17 +63,25 @@ describe("progresGarage", () => {
 
 describe("etatGarage et nouvellesVoitures", () => {
   it("rien gagné : la civile seulement, la progression de chaque voiture verrouillée", () => {
-    expect(etatGarage({ jours: 4, or: 2, auteur: 0 })).toEqual([
+    expect(etatGarage({ jours: 2, or: 2, auteur: 0 })).toEqual([
       { id: "civile", debloquee: true, progres: null },
+      { id: "fourgon", debloquee: false, progres: { fait: 2, nombre: 3 } },
       { id: "evolution", debloquee: false, progres: { fait: 2, nombre: 3 } },
-      { id: "gt", debloquee: false, progres: { fait: 4, nombre: 10 } },
+      { id: "rallye", debloquee: false, progres: { fait: 2, nombre: 7 } },
+      { id: "gt", debloquee: false, progres: { fait: 2, nombre: 10 } },
+      { id: "roadster", debloquee: false, progres: { fait: 2, nombre: 14 } },
+      { id: "pickup", debloquee: false, progres: { fait: 2, nombre: 6 } },
       { id: "proto", debloquee: false, progres: { fait: 0, nombre: 1 } },
+      { id: "muscle", debloquee: false, progres: { fait: 2, nombre: 30 } },
+      { id: "monoplace", debloquee: false, progres: { fait: 0, nombre: 3 } },
     ]);
   });
 
   it("au seuil, la voiture se débloque ; la progression ne dépasse jamais le nombre demandé", () => {
-    const e = etatGarage({ jours: 25, or: 3, auteur: 4 });
+    const e = etatGarage({ jours: 31, or: 6, auteur: 4 });
     expect(e.every((v) => v.debloquee)).toBe(true);
+    expect(e.find((v) => v.id === "muscle")!.progres).toEqual({ fait: 30, nombre: 30 });
+    expect(e.find((v) => v.id === "monoplace")!.progres).toEqual({ fait: 3, nombre: 3 });
     expect(e.find((v) => v.id === "gt")!.progres).toEqual({ fait: 10, nombre: 10 });
     expect(e.find((v) => v.id === "proto")!.progres).toEqual({ fait: 1, nombre: 1 });
   });
@@ -74,6 +89,13 @@ describe("etatGarage et nouvellesVoitures", () => {
   it("les nouvelles voitures : débloquées après, pas avant", () => {
     expect(nouvellesVoitures({ jours: 9, or: 2, auteur: 0 }, { jours: 10, or: 3, auteur: 1 })).toEqual(["evolution", "gt", "proto"]);
     expect(nouvellesVoitures({ jours: 10, or: 3, auteur: 1 }, { jours: 11, or: 4, auteur: 2 })).toEqual([]);
+    // Lot 42 : chaque seuil des nouvelles voitures.
+    expect(nouvellesVoitures({ jours: 2, or: 0, auteur: 0 }, { jours: 3, or: 0, auteur: 0 })).toEqual(["fourgon"]);
+    expect(nouvellesVoitures({ jours: 6, or: 0, auteur: 0 }, { jours: 7, or: 0, auteur: 0 })).toEqual(["rallye"]);
+    expect(nouvellesVoitures({ jours: 13, or: 0, auteur: 0 }, { jours: 14, or: 0, auteur: 0 })).toEqual(["roadster"]);
+    expect(nouvellesVoitures({ jours: 20, or: 5, auteur: 1 }, { jours: 20, or: 6, auteur: 1 })).toEqual(["pickup"]);
+    expect(nouvellesVoitures({ jours: 29, or: 0, auteur: 0 }, { jours: 30, or: 0, auteur: 0 })).toEqual(["muscle"]);
+    expect(nouvellesVoitures({ jours: 30, or: 6, auteur: 2 }, { jours: 30, or: 6, auteur: 3 })).toEqual(["monoplace"]);
     expect(nouvellesVoitures({ jours: 0, or: 0, auteur: 0 }, { jours: 0, or: 0, auteur: 0 })).toEqual([]);
   });
 });

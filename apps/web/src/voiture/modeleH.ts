@@ -48,6 +48,8 @@ export const PLAN_H: PlanVoiture = {
   tronçons: { dessous: [0], bas: [1], vitre: [5], dessus: [7] },
   zones: { pareBrise: [ZR - 1, ZR - 0.95], lunette: [ZR - 0.9, ZR - 0.85], vitres: [ZR - 0.8, ZR - 0.75] },
   tole: { rayons: [0, 0.04, 0.03, 0.1, 0.04, 0, 0, 0, 0.03, 0.06, 0], boutArriere: 0.22, boutAvant: 0.3 },
+  // Le nez est sous le faisceau habituel (0,75 m, 1,2 m devant le centre) : la Nuit, il brillait de ses propres phares. Le faisceau part devant la pointe.
+  phare: { y: 0.5, z: 2.45 },
   cadre: {
     z: [ZR, ZF],
     demiLargeur: 1.04,

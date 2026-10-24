@@ -31,4 +31,10 @@ export const en: Catalogues<typeof fr>["en"] = {
   "voiture.evolution.nom": "Weasel",
   "voiture.gt.nom": "Moray",
   "voiture.proto.nom": "Dragonfly",
+  "voiture.fourgon.nom": "Pelican",
+  "voiture.rallye.nom": "Badger",
+  "voiture.roadster.nom": "Gecko",
+  "voiture.pickup.nom": "Armadillo",
+  "voiture.muscle.nom": "Boar",
+  "voiture.monoplace.nom": "Sailfish",
 };
