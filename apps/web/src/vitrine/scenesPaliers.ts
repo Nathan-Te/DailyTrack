@@ -37,7 +37,12 @@ export function rendrePalier(ts: ScenePalier, r: WebGLRenderer, camera: Perspect
     return 0;
   }
   const chaine = chaineDe(r);
-  chaine.rendre(ts.scene, camera, w, h, post);
+  // Lot 47 : une cible refusée par la carte graphique (faux) : on dessine directement, comme le jeu.
+  if (!chaine.rendre(ts.scene, camera, w, h, post)) {
+    r.toneMappingExposure = ts.look.exposure;
+    r.render(ts.scene as Scene, camera);
+    return 0;
+  }
   return chaine.octets(post);
 }
 

@@ -72,7 +72,7 @@ test("règle automatique, intervalles imposés : un ordinateur part du palier 3,
   await page.goto(`${ACCUEIL}&appareil=ordinateur&intervalles=30,16`);
   await page.waitForFunction(() => window.__cdj?.qualite);
   expect((await qualite(page)).appareil).toMatchObject({ ordinateur: true, logiciel: false });
-  expect(await palier(page), "point de départ d'un ordinateur").toBe("P3");
+  expect(await palier(page), "point de départ d'un ordinateur : le palier 3 et son post-traitement (lot 47 : la chaîne est du palier 3 des ordinateurs)").toBe("P3+post");
   // Première mesure (30 ms ≥ 22) : on descend au palier 2 (avec la vie et le ciel), puis on remesure (16 ms : on reste).
   await page.waitForFunction(() => window.__cdj.qualite.derniere?.mediane === 30, undefined, { timeout: 90_000 });
   await page.waitForFunction(() => !window.__cdj.qualite.aMesurer, undefined, { timeout: 90_000 });

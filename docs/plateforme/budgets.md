@@ -151,6 +151,14 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 - **Lignes voisines** : « vie et ciel à la demande » 7 885 → **7 966 o** / 8 000 (les bruits de `bruit.ts`, devenus un morceau partagé avec la matière, ont été recopiés dans `matiere.ts` pour que chaque ligne garde son morceau ; sans cela 8 082 o) ; « décor 3D à la demande » 12 431 → **12 575 o** / 16 000 (`uvMonde` sort du morceau commun : un petit morceau de plus).
 - Mesure : `npm run build && node scripts/budgets.mjs`, et `aLaDemande` de `perf.spec.ts` (avant : `main` à `aa478d4`, construit à part).
 
+## Lot 47 (Track) : le post-traitement, sur ordinateur seulement
+
+- **Premier chargement : +546 o** (JS + CSS 285 599 → **286 145 o**, `main` à `76e0725` — lots 40c, 45 et 46 compris — construit à part ; JS 274 051 → 274 597 o, hors three.js 140 442 → 140 973 o, three.js +15 o ; CSS, catalogue anglais, fils de travail et polices inchangés ; page d'admin +7 o ; marge 6 001 → **5 455 o**, plafonds inchangés). Sous la cible de 1 ko de la règle commune : les crochets de `main.ts` (le `import()` du module, la règle d'activation, la coupure sur panne, `__cdj.post`).
+- **Ligne « post-traitement à la demande » (nouvelle)** : plafond **7 000 o** (énoncé du lot : « 7 ko compressés au plus »), mesuré **6 798 o** (`postJeu` : l'étalonnage, le halo, FXAA et leurs nuanceurs, les garde-fous, la linéarisation des nuanceurs d'écran, la table des thèmes ; marge 202 o), gardée par `apps/web/e2e/perf.spec.ts` (aucune passe dans le premier chargement, FXAA présent, ni `GTAO` ni `SMAA` dans la construction). **Pas encore une ligne du tableau** (clé proposée `track.post`, motif `"le post-traitement, à la demande, compressé"\)\.toBeLessThan\(([\d_]+)\)` : à ajouter par un lot de plateforme, comme `track.palier2`, `track.vieCiel` et `track.decor`).
+- **Le piège** : les passes de three.js sont des modules de `node_modules/three/`, que `manualChunks` rangeait **dans le fichier de three.js, donc au premier chargement** (premier jet : +5 161 o, three.js +4 659 o). `vite.config.ts` les laisse dans le morceau du post-traitement (comme `Reflector` pour le Garage) ; leurs nuanceurs passent par le resserrage de `outils/glsl.ts` (−214 o). **Ni GTAO ni SMAA** (décisions de Nathan du 22/10/2026) : le premier jet de la vitrine pesait 49,8 ko avec eux.
+- **Lignes voisines** : `qualiteMesure` 800 → 838 o / 1 500 (`apresCoupure`) ; palier 2, vie et ciel, décor inchangés.
+- Mesure : `npm run build && node scripts/budgets.mjs`, et `aLaDemande` de `perf.spec.ts` (avant : `main` à `76e0725`, construit à part).
+
 ## Les marges les plus serrées (à surveiller)
 
 1. **Track, catalogue anglais : 443 o** (lot 45 : +116 o, « Qualité graphique ») (il porte l'anglais commun ; retouche 40b : +270 o, les voitures ; lot 41 : −144 o, les descriptions des voitures partent avec le Garage). La contrainte la plus serrée depuis le relèvement des deux fils de travail (suites de Track).

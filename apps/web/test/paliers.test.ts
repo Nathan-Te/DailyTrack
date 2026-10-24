@@ -55,7 +55,7 @@ describe("réglages des paliers", () => {
       for (const id of PAS_IDS) if (r() < 0.25) x = avecPas(x, id, !x[id]);
       expect(lireReglages(texteReglages(x))).toEqual(x);
     }
-    expect(texteReglages(avecPas(reglagesDuPalier(3), "occlusion", false))).toBe("3-occlusion");
+    expect(texteReglages(avecPas(reglagesDuPalier(3), "halo", false))).toBe("3-halo");
     expect(lireReglages("n'importe quoi")).toEqual(reglagesDuPalier(1));
   });
 

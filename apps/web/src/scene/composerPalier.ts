@@ -63,14 +63,13 @@ import { THEMES_3 } from "./themes3";
 import { Chronometre, drapeauxAnimes, ecransDuDepart, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
 import { avecPost, type Reglages } from "./paliers";
 import type { ReglagesPost } from "./post";
+import { lineariser, lineariserHalos } from "./lineaire";
 import { HORIZONS, type Ambiance, type Calques, type Contexte, type ModuleDecor } from "./types";
 
 export interface ScenePalier extends TrackScene {
   readonly reglages: Reglages;
   readonly palette: PaletteName;
   readonly theme3: Theme3;
-  /** Le dôme du ciel (pas « nuages ») : la chaîne de post-traitement le masque pendant l'occlusion. */
-  readonly dome: Mesh | null;
   /** Temps passé à dessiner les textures de matière pour cette scène (ms) ; 0 si elles l'étaient déjà (une fois au chargement dans le jeu). */
   readonly texturesMs: number;
   /** Ce qui demande le moteur de rendu (carte d'environnement) : à appeler avant la première image. Idempotent. */
@@ -113,16 +112,7 @@ function materiaux(r: Reglages) {
   return { route: make("route"), rebords: make("rebords"), solide: make("solide"), decor: make("decor") };
 }
 
-/** Passe en lumière linéaire un nuanceur qui écrit des couleurs d'écran (`gl_FragColor = vec4(c, 1.0)`) : pour la chaîne de post-traitement. */
-export function lineariser(m: ShaderMaterial) {
-  m.fragmentShader = m.fragmentShader.replace(/gl_FragColor\s*=\s*vec4\(([^;]*),\s*1\.0\);/, "gl_FragColor = vec4(pow(max($1, vec3(0.0)), vec3(2.2)), 1.0);");
-  m.needsUpdate = true;
-}
-
-/** Linéarise les halos (`Points` de `halo.ts`) d'une liste d'objets : ceux de l'éclairage de piste de la Nuit, construits à part. */
-export function lineariserHalos(objets: readonly Object3D[]) {
-  for (const o of objets) if (o instanceof Points) lineariser(o.material as ShaderMaterial);
-}
+export { lineariser, lineariserHalos };
 
 export interface OptionsPalier {
   /** Vue aérienne (miniatures) : ni ciel, ni brume, ni bandeaux, ni vie. */
@@ -381,7 +371,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   if (dome) scene.add(dome);
   const poussiere = r.particules && vivant ? particules(t3, temps) : null;
   if (poussiere) scene.add(poussiere);
-  // Toute surface a ses normales (les bandeaux et les écrans n'en avaient pas : sans éclairage, ils s'en passaient) — l'occlusion à l'écran les lit.
+  // Toute surface a ses normales (les bandeaux et les écrans n'en avaient pas : sans éclairage, ils s'en passaient).
   scene.traverse((o) => {
     const g = (o as Mesh).geometry as { getAttribute?(n: string): unknown; computeVertexNormals?(): void } | undefined;
     if ((o as Mesh).isMesh && g?.getAttribute && !g.getAttribute("normal")) g.computeVertexNormals?.();
@@ -438,7 +428,6 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     reglages: r,
     palette: paletteName,
     theme3: t3,
-    dome,
     texturesMs,
     preparer,
     dispose: () => {
@@ -512,7 +501,7 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
     },
     post(): ReglagesPost | null {
       if (!avecPost(r)) return null;
-      return { occlusion: r.occlusion, halo: r.halo, etalonnage: r.etalonnage, anticrenelage: r.anticrenelage, theme: t3, exposition: look.exposure, dome };
+      return { halo: r.halo, etalonnage: r.etalonnage, anticrenelage: r.anticrenelage, theme: t3, exposition: look.exposure };
     },
   };
 }
