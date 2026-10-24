@@ -29,6 +29,11 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: "gold", rang: 1 });
     expect(r.body.jeux[1].etat).toEqual({ statut: "en_cours", morts: DEMO_MORTS });
     expect(await t.db.first("SELECT demo FROM players WHERE id = ?", [DEMO_JOUEUR_ID])).toEqual({ demo: 1 });
+    // Son Garage sur la recette : les dix voitures (`garageOuvert`, cdj.ts) ; hors de la recette, seulement ce qu'il a gagné.
+    const recette = await makeApi({ db: t.db, seed: false, environment: "recette" });
+    recette.clock.now = t.clock.now;
+    expect((await recette.call("GET", "/api/garage", undefined, as)).body.voitures.every((v: { debloquee: boolean }) => v.debloquee)).toBe(true);
+    expect((await t.call("GET", "/api/garage", undefined, as)).body.voitures.some((v: { debloquee: boolean }) => !v.debloquee)).toBe(true);
     // Le lendemain, le script repasse (recette-seed.yml, chaque jour) : effacé puis recréé, la série reste de 5 jours.
     await seedPortailDemo({ db: t.db, frozen, today: TODAY + 1 });
     t.clock.now = parisDayStart(TODAY + 1) + 15 * 3_600_000;

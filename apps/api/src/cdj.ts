@@ -28,6 +28,7 @@ import {
   themeByName,
   thresholdsOf,
   themeForDay,
+  type EtatVoiture,
   type Medal,
   type MedalRatios,
   type PaletteName,
@@ -393,6 +394,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const apres = await resultatsGarage(playerId);
     const avant = improved ? apres.filter((r) => r.day !== day).concat(previous ? [{ day, ms: previous.ms, authorMs: circuit.authorMs }] : []) : apres;
     const pApres = progresGarage(apres);
+    const ouvert = await garageOuvert(playerId);
     return {
       accepted: true,
       improved,
@@ -403,7 +405,9 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       rank: await rankOf(day, bestMs, bestAt),
       participants: await participants(day),
       medal: medalFor(result.finishMs, medals) as Medal | null,
-      garage: { progres: pApres, voitures: etatGarage(pApres), nouvelles: nouvellesVoitures(progresGarage(avant), pApres) },
+      garage: ouvert
+        ? { progres: pApres, voitures: toutDebloque(etatGarage(pApres)), nouvelles: [] }
+        : { progres: pApres, voitures: etatGarage(pApres), nouvelles: nouvellesVoitures(progresGarage(avant), pApres) },
     };
   }
 
@@ -422,6 +426,17 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
   }
 
   /**
+   * **Recette seulement** : un joueur de démonstration (`players.demo = 1`, créé par `recette:seed` — « Démo », `/?demo=joueur` du portail) a
+   * toutes les voitures du Garage, pour les voir et les choisir sans les gagner. Jamais ailleurs : l'environnement d'abord (aucune lecture de
+   * plus hors de la recette), et un serveur de production ne crée jamais de joueur de démonstration. La progression rendue reste la vraie.
+   */
+  async function garageOuvert(id: string): Promise<boolean> {
+    if (platform.environment !== "recette") return false;
+    return (await db.first<{ demo: number }>("SELECT demo FROM players WHERE id = ?", [id]))?.demo === 1;
+  }
+  const toutDebloque = (voitures: EtatVoiture[]): EtatVoiture[] => voitures.map((v) => ({ ...v, debloquee: true }));
+
+  /**
    * `GET /api/garage` (identifiant **obligatoire** dans l'en-tête `X-Player-Id`) : `{ progres { jours, or, auteur }, voitures [{ id, debloquee,
    * progres { fait, nombre } | null }] }`. Un joueur jamais classé a tout à zéro (la civile seulement) ; code remplacé : 410. Lectures limitées en
    * mémoire, aucune écriture.
@@ -434,7 +449,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     platform.readHit(await hashKey("garp", id), GARAGE_READS_PER_PLAYER);
     await players.assertActive(id);
     const progres = progresGarage(await resultatsGarage(id));
-    return { progres, voitures: etatGarage(progres) };
+    const voitures = etatGarage(progres);
+    return { progres, voitures: (await garageOuvert(id)) ? toutDebloque(voitures) : voitures };
   }
 
   /**

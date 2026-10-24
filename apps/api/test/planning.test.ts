@@ -387,4 +387,32 @@ describe("Garage (lot 41) : GET /api/garage et le statut rendu par l'envoi", () 
     // Les temps suivent le nouveau code.
     expect((await garage(t, { headers: { "X-Player-Id": playerId(4199) } })).body.progres.jours).toBe(1);
   });
+
+  it("recette seulement : un joueur de démonstration (« Démo » de recette:seed) a toutes les voitures ; jamais un vrai joueur, jamais hors de la recette", async () => {
+    const debloquees = (voitures: { debloquee: boolean }[]) => voitures.filter((v) => v.debloquee).length;
+    const run = pilotReplay(DAY, 0.78);
+    // La recette, un joueur créé comme recette:seed le crée (`demoPlayers` : players.demo = 1).
+    const recette = await makeApi({ environment: "recette", demoPlayers: true });
+    const envoi = await recette.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: run.code }, moi);
+    expect(envoi.status).toBe(200);
+    expect(debloquees(envoi.body.garage.voitures)).toBe(10);
+    expect(envoi.body.garage.nouvelles).toEqual([]);
+    const g = await garage(recette);
+    expect(debloquees(g.body.voitures)).toBe(10);
+    expect(g.body.progres).toEqual(envoi.body.garage.progres); // la progression rendue reste la vraie
+    expect(g.body.progres.jours).toBe(1);
+    // Un vrai joueur de la recette (players.demo = 0) : ses vrais déblocages.
+    const vrai = playerId(4102);
+    await recette.db.run("INSERT INTO players (id, name, created_at, updated_at, demo, name_key) VALUES (?, ?, ?, ?, 0, ?)", [vrai, "Vrai", NOON, NOON, "vrai"]);
+    await jourPasse(recette, DAY - 1, "gold", vrai);
+    expect(debloquees((await garage(recette, { headers: { "X-Player-Id": vrai } })).body.voitures)).toBe(1);
+    // Le même joueur de démonstration hors de la recette (production, local) : rien de plus que ce qu'il a gagné.
+    for (const environment of ["production", "local"]) {
+      const t = await makeApi({ environment, demoPlayers: true });
+      const r = await t.call("POST", "/api/submit", { name: "Garage", date: formatDay(DAY), replay: run.code }, moi);
+      expect(r.status).toBe(200);
+      expect(r.body.garage.voitures).toEqual(etatGarage(r.body.garage.progres));
+      expect(debloquees((await garage(t)).body.voitures)).toBe(1);
+    }
+  });
 });
