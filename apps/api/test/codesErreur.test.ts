@@ -40,6 +40,7 @@ const ROUTES = [
   // DailyTrack (cdj.ts)
   "/api/submit",
   "/api/planning",
+  "/api/garage", // lot 41 : identifiant obligatoire dans `X-Player-Id` (400 `invalid_player`, 410 `code_revoked`) ; ajoutée au lot de plateforme « suites de Track 2 »
   `/api/day/${D}`,
   `/api/day/${D}/leaderboard`,
   `/api/day/${D}/leaderboard?player=zz`,

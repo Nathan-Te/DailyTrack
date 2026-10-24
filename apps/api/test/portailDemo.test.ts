@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { daysFromCivil } from "@cdj/core";
 import { decodeTransfer } from "@cdj/profile";
 import { BASCULE_LOT_35, dailyCircuit, medalFor, medalsFor, runPilot } from "@cdj/sim";
-import { DEMO_JOUEUR_CODE, DEMO_JOUEUR_ID, DEMO_MORTS, seedPortailDemo } from "../src/portailDemo";
+import { DEMO_GARAGE, DEMO_JOUEUR_CODE, DEMO_JOUEUR_ID, DEMO_MORTS, planGarage, seedPortailDemo } from "../src/portailDemo";
 import { makeApi, parisDayStart, TEST_DB } from "./helpers";
 
 // Lot I2 (plateforme) : le joueur de démonstration du portail (« Démo »), créé par `recette:seed` seulement, par le vrai `createApi`. Son
@@ -66,6 +66,63 @@ describe(`joueur de démonstration du portail (${TEST_DB})`, () => {
     expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: null });
     expect(r.body.joueur).toMatchObject({ pseudo: "Démo", serie: 5 });
   }, 180_000);
+
+  // Lot de plateforme « suites de Track 2 » : le Garage de « Démo » ne dépend plus de la date. Sparrow (civile), Pelican (fourgon), Weasel (evolution) et Badger (rallye)
+  // débloquées, le reste en progression, avant comme après la bascule des médailles (28/10/2026) ; de vraies rediffusions, rejouées par le serveur (rien n'est posé à la main).
+  // Sur un serveur ordinaire (ni recette ni production) : le raccourci de la recette (`garageOuvert`, les dix voitures) n'y est pas, c'est la vraie progression qui parle.
+  describe("Garage : les quatre voitures débloquées, le reste en progression, à toute date", () => {
+    const dates: [string, number][] = [
+      ["24/10/2026 (avant la bascule)", daysFromCivil(2026, 10, 24)],
+      ["27/10/2026 (la veille)", BASCULE_LOT_35 - 1],
+      ["28/10/2026 (la bascule)", BASCULE_LOT_35],
+      ["30/10/2026 (la série a perdu trois ors)", BASCULE_LOT_35 + 2],
+      ["1/11/2026 (la série n'a plus d'or)", BASCULE_LOT_35 + 4],
+      ["15/11/2026 (loin après)", BASCULE_LOT_35 + 18],
+    ];
+    for (const [libelle, today] of dates)
+      it(libelle, async () => {
+        const t = await makeApi({ seed: false });
+        const report = await seedPortailDemo({ db: t.db, frozen, today, sansJump: true });
+        t.clock.now = parisDayStart(today) + 15 * 3_600_000;
+        const as = { headers: { "X-Player-Id": DEMO_JOUEUR_ID } };
+        const g = await t.call("GET", "/api/garage", undefined, as);
+        expect(g.status, JSON.stringify(g.body)).toBe(200);
+        const debloquees = g.body.voitures.filter((v: { debloquee: boolean }) => v.debloquee).map((v: { id: string }) => v.id);
+        expect(debloquees, JSON.stringify(g.body.progres)).toEqual(["civile", "fourgon", "evolution", "rallye"]);
+        // Le reste est en progression : ni le pick-up (ors), ni la Moray, ni le proto (auteur : jamais une médaille d'auteur), ni la muscle car, ni la monoplace.
+        expect(g.body.progres.auteur).toBe(0);
+        expect(g.body.progres.or).toBeGreaterThanOrEqual(DEMO_GARAGE.ors);
+        expect(g.body.progres.jours).toBeGreaterThanOrEqual(DEMO_GARAGE.jours);
+        const restantes = g.body.voitures.filter((v: { debloquee: boolean }) => !v.debloquee);
+        expect(restantes).toHaveLength(6);
+        for (const v of restantes) expect(v.progres.fait, v.id).toBeLessThan(v.progres.nombre);
+        expect(restantes.filter((v: { progres: { fait: number } }) => v.progres.fait > 0).length, "de quoi voir une progression").toBeGreaterThanOrEqual(3);
+        // Ce sont de vraies rediffusions : chaque jour du rapport a le temps rejoué par le serveur, et les jours en plus sont d'avant la bascule, loin de la série.
+        expect(report.track).toHaveLength(5);
+        for (const j of report.garage) expect(j.medal === "gold" || j.medal === "silver" || j.medal === "bronze" || j.medal === null, j.date).toBe(true);
+        const plan = planGarage(today);
+        expect(report.garage.length, "les jours en plus du plan").toBe(plan.ors + plan.sansOr);
+        expect(report.garage.filter((j) => j.medal === "gold")).toHaveLength(plan.ors);
+        // Les ors ne manquent jamais : ceux de la série d'avant la bascule et ceux des jours en plus.
+        expect(plan.orsDeLaSerie + plan.ors).toBeGreaterThanOrEqual(DEMO_GARAGE.ors);
+        // La série reste de cinq jours (les jours en plus ne la touchent pas), la médaille d'aujourd'hui est celle des seuils du jour.
+        const r = await t.call("GET", "/api/portail/jour", undefined, as);
+        expect(r.status, JSON.stringify(r.body)).toBe(200);
+        expect(r.body.joueur).toMatchObject({ pseudo: "Démo", serie: 5 });
+        if (today < BASCULE_LOT_35) expect(r.body.jeux[0].etat).toMatchObject({ statut: "fini", medaille: "gold" });
+      }, 120_000);
+
+    it("le plan : jamais collé à la série, jamais après la bascule", () => {
+      for (let today = daysFromCivil(2026, 10, 24); today < BASCULE_LOT_35 + 30; today++) {
+        const p = planGarage(today);
+        expect(p.serie).toHaveLength(5);
+        expect(p.depart, `${today}`).toBeLessThan(p.serie[0]! - 1);
+        expect(p.depart, `${today}`).toBeLessThan(BASCULE_LOT_35);
+        expect(p.orsDeLaSerie + p.ors, `${today}`).toBeGreaterThanOrEqual(DEMO_GARAGE.ors);
+        expect(5 + p.ors + p.sansOr, `${today}`).toBeGreaterThanOrEqual(DEMO_GARAGE.jours);
+      }
+    });
+  });
 
   it("son code de transfert est un vrai code CDJ2 ; il n'existe qu'en recette (aucun module du serveur de production ne l'importe)", () => {
     expect(decodeTransfer(DEMO_JOUEUR_CODE)).toMatchObject({ ok: true, data: { id: DEMO_JOUEUR_ID } });

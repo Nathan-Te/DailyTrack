@@ -56,9 +56,12 @@ export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlay
  * **DailyTrack**, un joueur du circuit du jour avec la synchronisation du profil (lot 30 : 4 lectures, 14 jours d'historique ; `npm run
  * measure:budget`, sqld local, 19/10/2026) : 13 requêtes, 1 650 lignes lues, 42 écrites, 0,5 s de calcul, 3 vCPU-s facturées au plus (mesurées
  * sans pré-vols ; lot P4 : 4 pré-vols estimés en plus, retirés au lot R5). **Lot I3** : « Jeu suivant du jour » à l'arrivée (une requête de plus,
- * ≈ 172 lignes lues) : 14 requêtes, 1 822 lignes lues.
+ * ≈ 172 lignes lues) : 14 requêtes, 1 822 lignes lues. **Lot 41 (Garage ; lot de plateforme « suites de Track 2 »)** : + 1 requête par ouverture du Garage
+ * (`GET /api/garage`, une ouverture par joueur et par jour comptée) : 15 requêtes ; la requête indexée du Garage lit ≈ 2 lignes par jour joué (14 jours
+ * d'historique comptés : 28), et **l'envoi garde son nombre de requêtes** avec la même requête indexée de plus (28 lignes) : + 56 lignes, 1 878 lues.
+ * Aucune écriture de plus, calcul négligeable (README du lot 41, § 5).
  */
-export const TRACK_PLAYER: UnitCost = { requests: 14, read: 1822, written: 42, cpuS: 0.52, billedS: 3.1 };
+export const TRACK_PLAYER: UnitCost = { requests: 15, read: 1878, written: 42, cpuS: 0.52, billedS: 3.1 };
 /**
  * **Salon de DailyTrack**, 30 minutes d'un joueur (3 sessions ; `measure:budget` : 558 requêtes, 12 763 lignes lues à 10 présents — 63 025 à 50 —,
  * 265 écrites, 5,8 s de calcul, 97 vCPU-s au plus ; `measure:salon` : 0,64 ms de calcul par joueur et par seconde, une instance tient ≈ 770

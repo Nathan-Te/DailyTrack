@@ -21,6 +21,10 @@ export const ZONES = {
     "packages/sim/**",
     "apps/api/src/cdj.ts",
     "apps/api/src/salon.ts",
+    // Suites des lots 40 à 47 : le Garage du serveur (lot 41 : ses règles sont dans packages/sim/src/garage.ts, ses routes dans cdj.ts) pourra
+    // vivre dans `garage.ts` avec son test à part ; aucun de ces fichiers n'existe encore (un motif, comme `jump*.ts` pour Jump).
+    "apps/api/src/garage*.ts",
+    "apps/api/test/garage*.test.ts",
     "apps/api/test/salon.test.ts",
     "apps/api/test/planning.test.ts",
     "apps/api/scripts/measure-salon.ts",

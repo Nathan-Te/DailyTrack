@@ -106,6 +106,18 @@ test("le post-traitement, à la demande : 7 ko au plus, rien dans le premier cha
   for (const f of readdirSync(dist).filter((x) => x.endsWith(".js"))) expect(readFileSync(new URL(f, dist), "utf8"), `${f} : ni GTAO ni SMAA`).not.toMatch(/GTAO|SMAA/);
 });
 
+// Lot 41 (ligne ajoutée par le lot de plateforme « suites de Track 2 ») : le Garage, à la demande, hors du premier chargement : `garage-*.js` et ce qu'il tire hors du
+// premier chargement (les modèles des voitures et le morceau `voiture`, déjà à la demande, ne sont pas dans cette ligne : ils sont chargés par `import()`). 10 000 o au plus
+// (≈ 8,3 ko après le lot 42 : studio de lumière, reflet plan, vignettes et textes fr + en, couleur du motif).
+test("le Garage, à la demande : 10 ko au plus, rien dans le premier chargement", () => {
+  const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
+  expect(premier.filter((f) => /^garage-/.test(f)), "rien du Garage dans le premier chargement").toEqual([]);
+  const garage = aLaDemande(/^garage-.*\.js$/);
+  test.info().annotations.push({ type: "mesure", description: `Garage à la demande (JS) : ${garage.octets} o (${garage.fichiers.join(", ")})` });
+  expect(garage.fichiers.length, "le morceau du Garage est construit à part").toBeGreaterThanOrEqual(1);
+  expect(garage.octets, "le Garage, à la demande (JS), compressé").toBeLessThan(10_000); // ≈ 8,3 ko après le lot 42
+});
+
 // Lot I4 : les polices. Au plus 150 ko (charte § 4), servies par un chemin unique et absolu (`/assets/…`, les mêmes fichiers que le portail : un joueur qui vient du portail les a
 // déjà en cache), et seules les deux faces du premier écran sont préchargées.
 test("les polices : au plus 150 ko, chemin du site partagé avec le portail, deux faces préchargées", () => {

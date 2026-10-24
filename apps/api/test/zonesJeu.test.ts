@@ -35,7 +35,7 @@ describe("le jeu d'une PR", () => {
 
 describe("les zones", () => {
   it("une PR Track dans ses zones passe", () => {
-    const fichiers = ["apps/web/src/main.ts", "apps/web/e2e/durees.json", "packages/sim/src/car.ts", "apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "docs/lots/lot-32-x.md", "docs/orchestration.md"];
+    const fichiers = ["apps/web/src/main.ts", "apps/web/e2e/durees.json", "packages/sim/src/car.ts", "apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "apps/api/src/garage.ts", "apps/api/test/garage.test.ts", "docs/lots/lot-32-x.md", "docs/orchestration.md"];
     expect(verifierZones({ etiquettes: ["jeu:track"], fichiers }).ok).toBe(true);
   });
 

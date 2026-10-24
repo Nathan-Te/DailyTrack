@@ -12,7 +12,7 @@ const nombre = (s: string) => Number(s.replace(/[\s ]/g, ""));
 
 const doc = lire("docs/plateforme/budgets.md");
 const lignes = new Map(
-  [...doc.matchAll(/^\| `([a-z.A-Z]+)` \| [^|]+\| [^|]+\| ([\d\s]+) \| [^|]+\| ([\d\s]+)[^|]*\| ([\d\s]+) \|/gm)].map((m) => [m[1]!, { budget: nombre(m[2]!), apres: nombre(m[3]!), marge: nombre(m[4]!) }]),
+  [...doc.matchAll(/^\| `([a-z.A-Z0-9]+)` \| [^|]+\| [^|]+\| ([\d\s]+) \| [^|]+\| ([\d\s]+)[^|]*\| ([\d\s]+) \|/gm)].map((m) => [m[1]!, { budget: nombre(m[2]!), apres: nombre(m[3]!), marge: nombre(m[4]!) }]),
 );
 
 /** La limite qu'un test impose, lue dans son source. */
@@ -36,6 +36,13 @@ const ATTENDUS: Record<string, number> = {
   "track.miniatures": limite(PERF, /chargé à la demande"\)\.toBeLessThan\(([\d_]+)\); \/\/ ≈ [\d,]+ ko aujourd'hui \(lot 21/),
   "track.salon": limite(PERF, /\.salon\)\.toBeLessThan\(([\d_]+)\)/),
   "track.admin": limite(PERF, /"page d'admin \(admin-\*\.js\), compressée"\)\.toBeLessThan\(([\d_]+)\)/),
+  // Lignes « à la demande » de Track (lots 41, 44 à 47) : hors du premier chargement, chacune gardée par un test de perf.spec.ts.
+  "track.decor": limite(PERF, /"décor 3D à la demande, les huit thèmes \(gzip\)"\)\.toBeLessThan\(([\d_]+)\)/),
+  "track.palier2": limite(PERF, /"le palier 2, à la demande, compressé"\)\.toBeLessThan\(([\d_]+)\)/),
+  "track.vieCiel": limite(PERF, /"la vie et le ciel, à la demande, compressés"\)\.toBeLessThan\(([\d_]+)\)/),
+  "track.post": limite(PERF, /"le post-traitement, à la demande, compressé"\)\.toBeLessThan\(([\d_]+)\)/),
+  "track.qualiteMesure": limite(PERF, /"la mesure de la règle de qualité, à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
+  "track.garage": limite(PERF, /"le Garage, à la demande \(JS\), compressé"\)\.toBeLessThan\(([\d_]+)\)/),
   "track.polices": limite(PERF, /toBeLessThanOrEqual\((\d+) \* 1024\)/) * 1024,
   "jump.jsCss": limite(POIDS, /const AVANT = ([\d_]+) \+ ([\d_]+);/) + 20_000,
   "jump.anglais": limite(POIDS, /"le catalogue anglais, chargé à la demande"\)\.toBeLessThan\(([\d_]+)\)/),
