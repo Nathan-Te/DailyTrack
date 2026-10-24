@@ -488,7 +488,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       floor.position.x = Math.round(px / (2 * CASE_SOL)) * 2 * CASE_SOL;
       floor.position.z = Math.round(pz / (2 * CASE_SOL)) * 2 * CASE_SOL;
     },
-    followCar(px, py, pz, yaw, hood = false) {
+    followCar(px, py, pz, yaw, hood = false, phare) {
       // Ombres : la fenêtre de la carte est posée devant la voiture (là où regarde la caméra), par pas d'un mètre (les bords ne scintillent pas).
       const tx = Math.round(px + Math.sin(yaw) * avance);
       const ty = Math.round(py);
@@ -498,7 +498,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       if (head.visible) {
         const s = Math.sin(yaw);
         const c = Math.cos(yaw);
-        head.position.set(px + s * 1.2, py + 0.75, pz + c * 1.2);
+        head.position.set(px + s * (phare?.z ?? 1.2), py + (phare?.y ?? 0.75), pz + c * (phare?.z ?? 1.2));
         head.target.position.set(px + s * 24, py - 0.4, pz + c * 24);
         head.intensity = HEADLIGHT_POWER * look.headlights * (hood ? HOOD_HEADLIGHT : 1);
       }

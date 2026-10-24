@@ -16,7 +16,8 @@ import { Pieces, finiParSommet, normalesLissees, ombreDeRoue, ombreDesFeux, srgb
 import { RAYONS_TOLE, caisseTole, sectionsTole, type Coque } from "./surfaces";
 
 export type PalierVoiture = 1 | 2 | 3;
-export type ModeleId = "civile" | "A" | "B" | "C";
+/** Les modèles : la civile, A, B, C (lots 40 à 40c), D à I (lot 42 : rallye, muscle, pick-up, roadster, monoplace, fourgon). */
+export type ModeleId = "civile" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I";
 
 /** Les matières d'une voiture, à un palier donné. */
 export interface Matieres {
@@ -78,6 +79,11 @@ export interface PlanVoiture {
    * la caisse se rapproche de l'œil au-delà de `HOOD_CLEARANCE`. Vérifié pour chaque modèle par `test/hoodView.test.ts`.
    */
   vueCapot?: { dy?: number; dz?: number };
+  /**
+   * Lot 42 : d'où part le faisceau des phares de la scène la Nuit (hauteur `y` et avance `z`, m) ; 0,75 m et 1,2 m par défaut. Un nez plus bas que
+   * 0,75 m entre la voiture et ce point (la monoplace) y serait éclairé par ses propres phares : le faisceau part alors devant le nez.
+   */
+  phare?: { y: number; z: number };
   /** Pièces propres : aileron, diffuseur, passages de roue, rétroviseurs, échappements… (dans la caisse). */
   pieces(p: Pieces, c: Contexte): void;
   feux(c: Contexte): Feux;
@@ -147,6 +153,8 @@ export interface Voiture extends CarModel {
   maillages: number;
   /** L'œil de la vue capot de ce modèle, relatif à `HOOD_MOUNT` (lot 40c). */
   oeil: { dy: number; dz: number };
+  /** Lot 42 : d'où part le faisceau des phares (`PlanVoiture.phare`) ; absent : le défaut de la scène. */
+  phare?: { y: number; z: number };
   peindre(couleur: number, numero?: string, motif?: MotifLivree, teinteMotif?: number): void;
   /** La Nuit (retouche 40b) : les rayures, la plaque, le numéro et les feux s'allument un peu, pour que la voiture se lise dans le noir. */
   nuit(on: boolean): void;
@@ -257,6 +265,7 @@ export function construireVoiture(plan: PlanVoiture, o: OptionsVoiture): Voiture
   return {
     group,
     oeil: { dy: plan.vueCapot?.dy ?? 0, dz: plan.vueCapot?.dz ?? 0 },
+    phare: plan.phare,
     triangles: p.triangles + f.triangles + 2 * (roues2[0]!.triangles + roues2[1]!.triangles),
     maillages: 6,
     update(s: WheelPose) {

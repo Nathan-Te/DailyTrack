@@ -42,7 +42,8 @@ export default defineConfig({
           // morceaux (pièces, formes, livrée : partagés avec le Salon et les modèles à la demande), et la compression par fichier se perd. Les modèles
           // à débloquer et les matériaux des paliers 2 et 3 restent des morceaux à la demande. L'empaqueteur range avec elle les modules partagés
           // qu'elle tire (stockage, records, piste et voiture de la simulation) : mesuré, le premier chargement y gagne 1,2 ko (budgets.md, 40b).
-          if (/\/src\/(carMesh|voiture\/(?!modele[ABC]\b|materiaux2\b))/.test(id)) return "voiture";
+          // Lot 42 : les six voitures du lot (modèles D à I), leur chargeur (`modelesLot42.ts`) et leur atelier commun (`atelier.ts`) restent aussi à la demande.
+          if (/\/src\/(carMesh|voiture\/(?!modele[A-I]\b|modelesLot42\b|materiaux2\b|atelier\b))/.test(id)) return "voiture";
           return undefined;
         },
       },

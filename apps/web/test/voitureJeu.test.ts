@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Box3, Mesh, type Object3D } from "three";
-import { AXLE_FRONT, AXLE_REAR, HALF_TRACK } from "@cdj/sim";
+import { AXLE_FRONT, AXLE_REAR, DEBLOCAGES, HALF_TRACK, VOITURES_GARAGE, type IdVoiture } from "@cdj/sim";
 import { VOITURES_ESSAI, buildQuery, DEFAULT_ADMIN } from "../src/adminLogic";
 import { WHEEL_RADIUS } from "../src/carMesh";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture } from "../src/voiture/catalogue";
@@ -23,8 +23,10 @@ const maillages = (o: Object3D): Mesh[] => {
 };
 
 describe("le catalogue (contrat commun)", () => {
-  it("quatre voitures ; une seule par défaut, la civile ; `abonnement` réservé (aucune voiture ne l'utilise)", () => {
-    expect(VOITURES.map((v) => v.id)).toEqual(["civile", "evolution", "gt", "proto"]);
+  it("dix voitures (lot 42 : six de plus), dans l'ordre du Garage ; une seule par défaut, la civile ; `abonnement` réservé (aucune voiture ne l'utilise)", () => {
+    expect(VOITURES.map((v) => v.id)).toEqual(["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"]);
+    expect(VOITURES.map((v) => v.id)).toEqual([...VOITURES_GARAGE]);
+    for (const v of VOITURES) expect(v.deblocage).toBe(DEBLOCAGES[v.id as IdVoiture]);
     expect(VOITURES.filter((v) => v.deblocage.type === "defaut").map((v) => v.id)).toEqual([VOITURE_DEFAUT]);
     expect(VOITURE_DEFAUT).toBe("civile");
     expect(VOITURES.some((v) => v.deblocage.type === "abonnement")).toBe(false);

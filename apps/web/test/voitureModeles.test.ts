@@ -11,6 +11,12 @@ import { construireFantome, construireVoiture, type PlanVoiture } from "../src/v
 import { PLAN_A } from "../src/voiture/modeleA";
 import { PLAN_B } from "../src/voiture/modeleB";
 import { PLAN_C } from "../src/voiture/modeleC";
+import { PLAN_D } from "../src/voiture/modeleD";
+import { PLAN_E } from "../src/voiture/modeleE";
+import { PLAN_F } from "../src/voiture/modeleF";
+import { PLAN_G } from "../src/voiture/modeleG";
+import { PLAN_H } from "../src/voiture/modeleH";
+import { PLAN_I } from "../src/voiture/modeleI";
 import { PLAN_CIVILE } from "../src/voiture/modeleCivile";
 
 // Lot 40, partie 2 : les trois modèles proposés (vitrine) tiennent le cahier des charges du README 38b § 6 — six maillages au plus, ≈ 2 000
@@ -18,7 +24,8 @@ import { PLAN_CIVILE } from "../src/voiture/modeleCivile";
 // contact de la simulation, rien hors de la silhouette (le centre de l'écran reste à la voiture), la vue capot dégagée ; la palette se détache
 // de chaque élément de piste.
 
-const PLANS: PlanVoiture[] = [PLAN_CIVILE, PLAN_A, PLAN_B, PLAN_C];
+// Lot 42 : les six voitures du lot (D à I) tiennent le même cahier des charges.
+const PLANS: PlanVoiture[] = [PLAN_CIVILE, PLAN_A, PLAN_B, PLAN_C, PLAN_D, PLAN_E, PLAN_F, PLAN_G, PLAN_H, PLAN_I];
 const maillages = (o: Object3D): Mesh[] => {
   const out: Mesh[] = [];
   o.traverse((x) => {

@@ -2288,7 +2288,7 @@ function frame(now: number) {
   }
 
   view.followGround(x, z);
-  view.followCar(x, y, z, yaw, hood);
+  view.followCar(x, y, z, yaw, hood, (carModel as { phare?: { y: number; z: number } }).phare);
   view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
   effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio());
   effects.update({ dt: elapsed, x, y, z, yaw, tel, braking: wheelPose.braking, boost: car.boost > 0, turbo: car.turbo > 0, racing: phase !== "countdown" });

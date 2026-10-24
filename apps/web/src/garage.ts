@@ -27,7 +27,7 @@ import { enSilhouette, vignette } from "./garageVignettes";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture, type FicheVoiture } from "./voiture/catalogue";
 import { choisirVoiture, marquerVues, noterDeblocages, voitureChoisie, voituresDebloquees, voituresNouvelles } from "./voiture/choix";
 import type { VoitureEnJeu } from "./voiture/enJeu";
-import { MOTIFS, PALETTE, luminance, type MotifLivree } from "./voiture/livree";
+import { LIVREE, MOTIFS, PALETTE, TEINTES_MOTIF, luminance, teinteLisible, type MotifLivree } from "./voiture/livree";
 
 /** Les outils du jeu prêtés au Garage (main.ts). */
 export interface OutilsGarage {
@@ -47,7 +47,7 @@ const ICONES = {
   coche: ["M5 12.5 10 17l9-10"],
   tourner: ["M21 12c0 2.2-4 4-9 4s-9-1.8-9-4 4-4 9-4", "M16 5l3 3-3 3"],
 };
-/** Le joueur de démonstration (`?api=demo`) : 4 jours joués, 3 avec l'or — la Weasel est à lui, la Moray et la Dragonfly restent à gagner. */
+/** Le joueur de démonstration (`?api=demo`) : 4 jours joués, 3 avec l'or — la Pelican et la Weasel sont à lui (lot 42), les huit autres restent à gagner. */
 export const DEMO_GARAGE: Readonly<ProgresGarage> = Object.freeze({ jours: 4, or: 3, auteur: 0 });
 export const statutDemo = (): GarageStatut => ({ progres: { ...DEMO_GARAGE }, voitures: etatGarage(DEMO_GARAGE) });
 
@@ -156,6 +156,31 @@ export function monterGarage(host: GarageHost): GarageUi {
       b.addEventListener("click", () => personnaliser({ motif: m }));
       return b;
     });
+    // Lot 42 : la couleur du motif (décision de Nathan, 23/10/2026 : l'automatique, crème, asphalte, lagon). Une teinte trop proche de la caisse choisie
+    // (contraste < 2,1 : le motif retomberait sur l'automatique) est grisée, avec son explication ; on ne peut pas la choisir.
+    const caisse = PALETTE[c.couleur]!.hex;
+    const hexCss = (h: number) => `#${h.toString(16).padStart(6, "0")}`;
+    const teinteVue = teinteLisible(caisse, c.teinteMotif) ? c.teinteMotif : 0;
+    let grisees = 0;
+    const teintes = TEINTES_MOTIF.map((tm, i) => {
+      const lisible = teinteLisible(caisse, i);
+      if (!lisible) grisees++;
+      const echantillon =
+        tm.hex === null
+          ? el("span", { classe: "garage-teinte__auto" }, el("span", { style: { background: hexCss(LIVREE.creme) } }), el("span", { style: { background: hexCss(LIVREE.asphalte) } }))
+          : el("span", { classe: "garage-teinte__plein", style: { background: hexCss(tm.hex) } });
+      const b = el(
+        "button",
+        {
+          classe: "garage-teinte",
+          attrs: { type: "button", role: "radio", "aria-checked": String(i === teinteVue), "aria-label": t(`teinte.${tm.id}`), "aria-disabled": lisible ? null : "true", "aria-describedby": lisible ? null : "garage-teinte-grisee", "data-teinte": i },
+        },
+        echantillon,
+        el("span", { classe: "garage-teinte__nom", texte: t(`teinte.${tm.id}`) }),
+      );
+      if (lisible) b.addEventListener("click", () => personnaliser({ teinteMotif: i }));
+      return b;
+    });
     const nomCouleur = el("span", { classe: "note", texte: t(`couleur.${PALETTE[c.couleur]!.id}`) });
     return el(
       "section",
@@ -168,6 +193,13 @@ export function monterGarage(host: GarageHost): GarageUi {
         el("h2", { classe: "home-section", attrs: { id: "garage-motif" }, texte: t("garage.motif") }),
         el("div", { classe: "garage-motifs", attrs: { role: "radiogroup", "aria-labelledby": "garage-motif" } }, ...motifs),
       ),
+      el(
+        "div",
+        { classe: "garage-perso__teinte" },
+        el("h2", { classe: "home-section", attrs: { id: "garage-teinte" }, texte: t("garage.teinte") }),
+        el("div", { classe: "garage-teintes", attrs: { role: "radiogroup", "aria-labelledby": "garage-teinte" } }, ...teintes),
+      ),
+      ...(grisees ? [el("p", { classe: "note garage-teinte-grisee", attrs: { id: "garage-teinte-grisee" }, texte: t("garage.teinte.grisee") })] : []),
     );
   }
 
@@ -214,7 +246,7 @@ export function monterGarage(host: GarageHost): GarageUi {
   /** Garde le focus sur l'élément équivalent après un redessin (le bouton touché). */
   function redessiner() {
     const actif = document.activeElement as HTMLElement | null;
-    const marque = actif && cadre.corps.contains(actif) ? (["data-voiture", "data-couleur", "data-motif"].map((a) => (actif.hasAttribute(a) ? `[${a}="${actif.getAttribute(a)}"]` : "")).find(Boolean) ?? "") : "";
+    const marque = actif && cadre.corps.contains(actif) ? (["data-voiture", "data-couleur", "data-motif", "data-teinte"].map((a) => (actif.hasAttribute(a) ? `[${a}="${actif.getAttribute(a)}"]` : "")).find(Boolean) ?? "") : "";
     render();
     if (marque) cadre.corps.querySelector<HTMLElement>(marque)?.focus();
   }
@@ -235,8 +267,8 @@ export function monterGarage(host: GarageHost): GarageUi {
     redessiner();
   }
 
-  /** Couleur ou motif de ta voiture : enregistré, et la voiture repeinte sur la scène (on la regarde de nouveau). */
-  function personnaliser(maj: { couleur?: number; motif?: MotifLivree }) {
+  /** Couleur, motif ou couleur du motif de ta voiture : enregistré, et la voiture repeinte sur la scène (on la regarde de nouveau). */
+  function personnaliser(maj: { couleur?: number; motif?: MotifLivree; teinteMotif?: number }) {
     const c = voitureChoisie();
     choisirVoiture({ ...c, ...maj });
     regardee = c.id;

@@ -50,7 +50,7 @@ export interface Arena {
   setQuality(level: 0 | 1 | 2, shadows?: boolean): void;
   look: Look;
   setView(heightPx: number, fovDeg: number): void;
-  followCar(x: number, y: number, z: number, yaw: number, hood?: boolean): void;
+  followCar(x: number, y: number, z: number, yaw: number, hood?: boolean, phare?: { y: number; z: number }): void;
   stats(): SceneStats;
   /** Lot 43 : pas de portique sur le sol plat (`TrackScene.feux`). */
   feux?(etat: EtatFeux): void;
