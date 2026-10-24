@@ -22,6 +22,7 @@
     "captures-lot40.spec.ts": 0,
     "captures-lot40b.spec.ts": 0,
     "captures-lot40c.spec.ts": 0,
+    "captures-lot42.spec.ts": 0,
     "captures-lot43.spec.ts": 0,
     "captures-lot44.spec.ts": 0,
     "captures-lot45.spec.ts": 0,
@@ -81,7 +82,7 @@
     "vitrine-voiture.spec.ts": 90,
     "vitrine.spec.ts": 293,
     "voiture.spec.ts": 16,
-    "garage.spec.ts": 120,
+    "garage.spec.ts": 150,
     "watch-serveur.spec.ts": 39,
     "watch.spec.ts": 305
   }

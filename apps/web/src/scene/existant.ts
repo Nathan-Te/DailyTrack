@@ -1796,7 +1796,7 @@ export function composerExistant(track: Track, paletteName: PaletteName, options
       floor.position.x = Math.round(x / (2 * tile)) * 2 * tile;
       floor.position.z = Math.round(z / (2 * tile)) * 2 * tile;
     },
-    followCar(x, y, z, yaw, hood = false) {
+    followCar(x, y, z, yaw, hood = false, phare) {
       // Ombres : la fenêtre de la carte suit la voiture (pas d'un mètre : les bords ne scintillent pas).
       const tx = Math.round(x);
       const ty = Math.round(y);
@@ -1806,7 +1806,7 @@ export function composerExistant(track: Track, paletteName: PaletteName, options
       if (head.visible) {
         const s = Math.sin(yaw);
         const c = Math.cos(yaw);
-        head.position.set(x + s * 1.2, y + 0.75, z + c * 1.2);
+        head.position.set(x + s * (phare?.z ?? 1.2), y + (phare?.y ?? 0.75), z + c * (phare?.z ?? 1.2));
         head.target.position.set(x + s * 24, y - 0.4, z + c * 24);
         head.intensity = HEADLIGHT_POWER * look.headlights * (hood ? HOOD_HEADLIGHT : 1);
       }

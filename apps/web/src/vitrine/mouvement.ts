@@ -337,7 +337,7 @@ export class VueMouvement {
     this.etat.distanceCamera = Math.hypot(cam.position.x - x, cam.position.y - y, cam.position.z - z);
     this.etat.pas = i;
     ts.followGround(x, z);
-    ts.followCar(x, y, z, yaw);
+    ts.followCar(x, y, z, yaw, false, (this.voiture as { phare?: { y: number; z: number } }).phare);
     ts.setView(size.y, cam.fov);
     // L'image : directement (MSAA du moteur, comme le jeu) ou par la chaîne de post-traitement des paliers ; appels et triangles de toutes les passes.
     this.fabrique?.preparer?.(ts, r);

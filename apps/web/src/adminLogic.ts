@@ -76,7 +76,7 @@ export interface AdminState {
 export const MOTIFS_ESSAI = ["", "flancs", "filet", "bicolore", "chevrons", "damier", "rond", "unie"] as const;
 
 /** Les voitures du catalogue (`voiture/catalogue.ts` : la page d'admin ne l'importe pas, il tire les modèles ; un test vérifie qu'elles sont les mêmes). */
-export const VOITURES_ESSAI = ["civile", "evolution", "gt", "proto"] as const;
+export const VOITURES_ESSAI = ["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"] as const;
 
 export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   scenario: "jour",

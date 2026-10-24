@@ -28,16 +28,22 @@ test("ouvrir le Garage depuis l'accueil : voitures débloquées et verrouillées
   await page.locator("#home-garage").click();
   const garage = page.locator("#garage");
   await expect(garage).toBeVisible();
-  // Le joueur de démonstration : la Sparrow et la Weasel (3 ors), la Moray (4/10 jours) et la Dragonfly (0/1 auteur) à gagner.
+  // Le joueur de démonstration (4 jours, 3 ors) : la Sparrow, la Pelican (3 jours, lot 42) et la Weasel (3 ors) ; les sept autres à gagner.
   await expect(garage.locator('[data-voiture="civile"]')).toContainText("Ta voiture");
   await expect(garage.locator('[data-voiture="evolution"]')).toContainText("WEASEL", { ignoreCase: true });
+  await expect(garage.locator('[data-voiture="fourgon"]')).toContainText("PELICAN", { ignoreCase: true });
   await expect(garage.locator('[data-voiture="gt"]')).toContainText("4/10");
+  await expect(garage.locator('[data-voiture="rallye"]')).toContainText("4/7");
+  await expect(garage.locator('[data-voiture="pickup"]')).toContainText("3/6");
   await expect(garage.locator('[data-voiture="proto"]')).toContainText("0/1");
-  await expect(garage.locator(".etiquette__sous-titre")).toHaveText(/2 voitures sur 4/i);
+  await expect(garage.locator('[data-voiture="monoplace"]')).toContainText("0/3");
+  await expect(garage.locator(".garage-voiture")).toHaveCount(10);
+  await expect(garage.locator(".etiquette__sous-titre")).toHaveText(/3 voitures sur 10/i);
   // Rien d'autre que le Garage ne charge le Garage : il n'était pas là avant le clic (chargé à la demande).
-  expect((await voiture(page)).garage).toMatchObject({ debloquees: ["civile", "evolution"], horsLigne: false });
+  expect((await voiture(page)).garage).toMatchObject({ horsLigne: false });
+  expect([...(await voiture(page)).garage!.debloquees].sort()).toEqual(["civile", "evolution", "fourgon"]);
   // Les vignettes viennent après l'ouverture, une par tâche (le Garage s'affiche d'abord) : une par voiture, dans l'état montré.
-  await expect(garage.locator(".garage-voiture__image[src^='data:image/png']")).toHaveCount(4, { timeout: 30_000 });
+  await expect(garage.locator(".garage-voiture__image[src^='data:image/png']")).toHaveCount(10, { timeout: 60_000 });
 
   // Une voiture verrouillée : sa silhouette et sa condition, jamais choisie.
   await garage.locator('[data-voiture="gt"]').click();
@@ -53,7 +59,22 @@ test("ouvrir le Garage depuis l'accueil : voitures débloquées et verrouillées
   await expect(garage.locator('[data-couleur="4"]')).toHaveAttribute("aria-checked", "true");
   await garage.locator('[data-motif="flancs"]').click();
   await expect(garage.locator('[data-motif="flancs"]')).toHaveAttribute("aria-checked", "true");
-  const choix = { id: "evolution", couleur: 4, motif: "flancs", teinteMotif: 0 };
+  // Lot 42 : la couleur du motif. Sur une caisse lagon, la teinte lagon est hachurée et expliquée (le motif ne se lirait pas) ; on ne peut pas la choisir.
+  await garage.locator('[data-couleur="5"]').click();
+  const lagon = garage.locator('[data-teinte="3"]');
+  await expect(lagon).toHaveAttribute("aria-disabled", "true");
+  await expect(garage.locator(".garage-teinte-grisee")).toBeVisible();
+  await lagon.click({ force: true }); // hachurée (`aria-disabled`) : le clic ne change rien
+  await expect(lagon).toHaveAttribute("aria-checked", "false");
+  expect((await voiture(page)).choix).toMatchObject({ teinteMotif: 0 });
+  // Sur le pétrole, les quatre se choisissent : la crème est retenue.
+  await garage.locator('[data-couleur="4"]').click();
+  await expect(garage.locator(".garage-teinte[aria-disabled]")).toHaveCount(0);
+  await expect(garage.locator(".garage-teinte-grisee")).toHaveCount(0);
+  await garage.locator('[data-teinte="1"]').click();
+  await expect(garage.locator('[data-teinte="1"]')).toHaveAttribute("aria-checked", "true");
+  for (const b of await garage.locator(".garage-teinte").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  const choix = { id: "evolution", couleur: 4, motif: "flancs", teinteMotif: 1 };
   expect((await voiture(page)).choix).toEqual(choix);
   expect(JSON.parse((await page.evaluate((k) => localStorage.getItem(k), CLE))!)).toMatchObject(choix);
   await expect.poll(async () => (await voiture(page)).aJour, { timeout: 20_000 }).toBe(true);
@@ -120,7 +141,7 @@ test("en anglais : les noms des voitures sont les mêmes, les textes du Garage s
   const page = await context.newPage();
   await accueil(page);
   await page.locator("#home-garage").click();
-  await expect(page.locator("#garage .etiquette__sous-titre")).toHaveText(/2 of 4 cars/i);
+  await expect(page.locator("#garage .etiquette__sous-titre")).toHaveText(/3 of 10 cars/i);
   await expect(page.locator('#garage [data-voiture="civile"]')).toContainText("Your car");
   await expect(page.locator('#garage [data-voiture="evolution"]')).toContainText("WEASEL", { ignoreCase: true });
   await page.locator('#garage [data-voiture="proto"]').click();

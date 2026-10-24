@@ -9,19 +9,27 @@ import { medalFor, medalsFor } from "./medals";
  */
 export type Deblocage = { type: "defaut" } | { type: "medailles"; medaille: "or" | "auteur"; nombre: number } | { type: "jours"; nombre: number } | { type: "abonnement" };
 
-/** Les voitures du Garage, dans l'ordre où le jeu les montre. */
-export const VOITURES_GARAGE = ["civile", "evolution", "gt", "proto"] as const;
+/** Les voitures du Garage, dans l'ordre où le jeu les montre (lot 42 : de la plus facile à gagner à la plus difficile). */
+export const VOITURES_GARAGE = ["civile", "fourgon", "evolution", "rallye", "gt", "roadster", "pickup", "proto", "muscle", "monoplace"] as const;
 export type IdVoiture = (typeof VOITURES_GARAGE)[number];
 
 /**
  * **Les règles (décision de Nathan, 23/10/2026)** : la civile dès le départ ; A (évolution) 3 circuits du jour avec l'or ou l'auteur ;
- * B (GT) 10 jours joués ; C (proto) 1 médaille d'auteur. Une ligne à changer pour ajuster une règle.
+ * B (GT) 10 jours joués ; C (proto) 1 médaille d'auteur. **Lot 42 (décision de Nathan, 24/10/2026)** : la fourgonnette 3 jours joués, la rallye
+ * 7, le roadster 14, le pick-up 6 ors, la muscle car 30 jours joués (prestige : les plus assidus), la monoplace 3 médailles d'auteur (prestige :
+ * les meilleurs). Une ligne à changer pour ajuster une règle.
  */
 export const DEBLOCAGES: Readonly<Record<IdVoiture, Deblocage>> = {
   civile: { type: "defaut" },
+  fourgon: { type: "jours", nombre: 3 },
   evolution: { type: "medailles", medaille: "or", nombre: 3 },
+  rallye: { type: "jours", nombre: 7 },
   gt: { type: "jours", nombre: 10 },
+  roadster: { type: "jours", nombre: 14 },
+  pickup: { type: "medailles", medaille: "or", nombre: 6 },
   proto: { type: "medailles", medaille: "auteur", nombre: 1 },
+  muscle: { type: "jours", nombre: 30 },
+  monoplace: { type: "medailles", medaille: "auteur", nombre: 3 },
 };
 
 /** Ce qui débloque les voitures : jours joués, circuits du jour avec l'or (ou mieux), avec la médaille d'auteur. */

@@ -1,5 +1,6 @@
 // Lot 40 — la planche « Voiture » de la vitrine (`/track/vitrine/?planche=voiture`, chargée à la demande) : la voiture d'aujourd'hui (en six
 // maillages depuis la partie 1 du lot) et les trois modèles proposés, A, B et C, aux paliers 1, 2 et 3 de la scène, à l'arrêt (on tourne autour),
+// (lot 42 : les dix voitures — la civile, A à C, et les six du lot, D à I — aux paliers 1 et 2, le palier 3 restant dans la vue en mouvement)
 // en fantôme du Salon à 50 m, puis en mouvement (Stade, Nuit, Canyon) ; un sélecteur de couleur (la palette de 8) appliqué partout ; le coût de
 // chaque modèle sous sa colonne ; la planche des couleurs (chaque couleur sur chaque thème). Nathan choisit ici ; la retouche 40b met en jeu.
 // Outil interne, en français, exempté des catalogues (comme l'admin et le reste de la vitrine).
@@ -21,10 +22,11 @@ import type { Fabrique } from "./variantes";
 import type { VueMouvement } from "./mouvement";
 
 type Colonne = "existant" | ModeleId;
-const COLONNES: readonly Colonne[] = ["existant", "civile", "A", "B", "C"];
+const COLONNES: readonly Colonne[] = ["existant", "civile", "A", "B", "C", "D", "E", "F", "G", "H", "I"];
 /** Les modèles (toutes les colonnes sauf l'existant). */
 const MODELES_VUS = COLONNES.filter((c): c is ModeleId => c !== "existant");
-const PALIERS: readonly Palier[] = [1, 2, 3];
+/** Lot 42 : les paliers 1 et 2 à l'arrêt (onze colonnes : le palier 3, la même voiture que le palier 2 dans une autre scène, est dans la vue en mouvement). */
+const PALIERS: readonly Palier[] = [1, 2];
 /** Les thèmes de la vue en mouvement (consigne du lot) ; la planche à l'arrêt les offre tous. */
 const THEMES_MOUVEMENT = ["theme-stade", "theme-nuit", "theme-canyon"];
 /** La couleur des fantômes montrés (la première du Salon). */
@@ -251,7 +253,7 @@ async function dessinerMaintenant(v: Vue, s: Sortie) {
       exposition: ts.look.exposure,
       avant: (h, fov) => {
         ts.setView(h, fov);
-        ts.followCar(cible.x, cible.y, cible.z, cible.yaw);
+        ts.followCar(cible.x, cible.y, cible.z, cible.yaw, false, (car as { phare?: { y: number; z: number } }).phare);
         ts.followGround(cible.x, cible.z);
       },
       rendre: (rr, cam, w, h) => m.rendrePalier(ts, rr, cam, w, h, 2),
@@ -283,6 +285,12 @@ const TEXTES: Record<Colonne, { titre: string; resume: string }> = {
   B: { titre: "B — GT basse", resume: "" },
   C: { titre: "C — Proto à bulle", resume: "" },
   civile: { titre: "Civile — Compacte sportive", resume: "" },
+  D: { titre: "D", resume: "" },
+  E: { titre: "E", resume: "" },
+  F: { titre: "F", resume: "" },
+  G: { titre: "G", resume: "" },
+  H: { titre: "H", resume: "" },
+  I: { titre: "I", resume: "" },
 };
 
 /** Monte la planche dans `racine`. */
@@ -368,6 +376,7 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
 
   // Les colonnes : titre, résumé, coût ; puis une rangée par palier (à l'arrêt), puis les fantômes.
   const grille = el("section", "voiture-grille");
+  grille.style.setProperty("--colonnes", String(COLONNES.length));
   grille.setAttribute("aria-label", "Les modèles côte à côte");
   const tete = el("div", "voiture-ligne voiture-ligne--tete");
   tete.append(el("div", "voiture-ligne__nom"));
@@ -404,8 +413,8 @@ export async function monter(racine: HTMLElement, h: Hote): Promise<void> {
   };
   for (const p of PALIERS) {
     const textes: Record<Palier, string> = {
-      1: "Peinture standard et couleurs par sommet, facettes ; ≈ 2 000 triangles. La scène du palier 1.",
-      2: "Peinture à deux couches qui reflète le ciel du thème, vitres sombres réfléchissantes, jantes en métal clair ; 4 000 à 5 000 triangles. La scène du palier 2.",
+      1: "Peinture standard, couleurs par sommet, ombrage lissé ; ≤ 4 000 triangles (lot 40c). La scène du palier 1.",
+      2: "Peinture à deux couches qui reflète le ciel du thème, vitres sombres réfléchissantes, jantes en métal clair ; ≤ 12 000 triangles. La scène du palier 2.",
       3: "La même voiture qu'au palier 2, dans la scène du palier 3 (ombres nettes, brume, post-traitement).",
     };
     rangee(`Palier ${p}, à l'arrêt`, `${textes[p]} On tourne autour en glissant.`, "arret", p);
@@ -627,7 +636,7 @@ export async function planchesCouleurs(col: ModeleId, toile: HTMLCanvasElement, 
       exposition: ts.look.exposure,
       avant: (h, fov) => {
         ts.setView(h, fov);
-        ts.followCar(v.x, v.y, v.z, v.yaw);
+        ts.followCar(v.x, v.y, v.z, v.yaw, false, car.phare);
         ts.followGround(v.x, v.z);
       },
       rendre: (rr, cam, w, h) => m.rendrePalier(ts, rr, cam, w, h, 2),
@@ -687,7 +696,7 @@ export async function planche(theme: string, largeur = 400, hauteur = 260): Prom
   x.font = "700 15px Archivo, sans-serif";
   x.textBaseline = "middle";
   COLONNES.forEach((c, i) => x.fillText(TEXTES[c].titre, marge + i * largeur + 8, tete / 2));
-  const noms = ["Palier 1", "Palier 2", "Palier 3", "Fantômes"];
+  const noms = [...PALIERS.map((p) => `Palier ${p}`), "Fantômes"];
   const tmp = el("canvas");
   for (const [j, l] of lignes.entries()) {
     x.fillText(noms[j]!, 8, tete + j * hauteur + hauteur / 2);

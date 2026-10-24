@@ -203,6 +203,66 @@
   outline-offset: 2px;
   background: var(--track-piste);
 }
+/* Lot 42 : la couleur du motif (automatique, crème, asphalte, lagon) : des pastilles de 44 px comme les couleurs, le nom écrit dessous ; une teinte trop
+   proche de la caisse est grisée (son échantillon hachuré d'asphalte, contour en tirets, nom adouci) et expliquée sous la rangée. */
+.garage-teintes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(var(--dj-cible), 1fr));
+  gap: 6px;
+}
+.garage-teinte {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-height: var(--dj-cible);
+  padding: 4px 2px;
+  background: var(--track-asphalte);
+  color: var(--track-texte);
+  border: var(--dj-trait) solid var(--dj-encre);
+  border-radius: var(--dj-rayon-bouton);
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.garage-teinte[aria-checked="true"] {
+  outline: var(--dj-focus) solid var(--dj-ambre);
+  outline-offset: 2px;
+  background: var(--track-piste);
+}
+.garage-teinte__plein,
+.garage-teinte__auto {
+  display: flex;
+  width: 28px;
+  height: 18px;
+  border: 2px solid var(--dj-encre);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.garage-teinte__auto > span {
+  flex: 1;
+}
+.garage-teinte__nom {
+  font-size: var(--dj-taille-legende);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.garage-teinte[aria-disabled="true"] {
+  border-style: dashed;
+  color: var(--track-texte-doux);
+  cursor: not-allowed;
+}
+.garage-teinte[aria-disabled="true"] .garage-teinte__plein,
+.garage-teinte[aria-disabled="true"] .garage-teinte__auto {
+  position: relative;
+  border-style: dashed;
+}
+.garage-teinte[aria-disabled="true"] .garage-teinte__plein::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(115deg, var(--track-asphalte) 0 3px, transparent 3px 6px);
+}
 .garage-motif-dessin {
   width: 100%;
   max-width: 72px;
