@@ -66,9 +66,13 @@ Branche `claude/plateforme-suites-track-2-2eskpq`, partie de `main` à `3dddd6e`
 
 `docs/plateforme/identite.md` : révision 10 en tête et, au § 9, le bloc **« Écart accepté : le Garage de Track n'a pas de voile à rayures »** (décision de Nathan du 23/10/2026, README du lot 41, § 2, point 4) : on voit la voiture ; l'étiquette, la barre et la fiche sont des plaques opaques posées sur la scène ; l'écart ne vaut que pour le Garage.
 
+## Le job `zones` de la CI (rouge au premier push, corrigé)
+
+Le nom de branche imposé à ce lot (`claude/plateforme-suites-track-2-…`) contient `track` : `scripts/zones-jeu.mjs` l'a pris pour une **PR de jeu Track** et a refusé les 18 fichiers de la plateforme (verdict `test` rouge, tout le reste vert). Correction, dans `scripts/zones-jeu.mjs` (zone de la plateforme) : **un morceau `plateforme` dans le nom de branche fait une PR de la plateforme**, même avec un nom de jeu ; l'étiquette `jeu:…` l'emporte toujours sur les deux. Testé (`zonesJeu.test.ts`) ; ce n'est pas un test affaibli : une branche de jeu sans le mot est gardée comme avant. À toi de dire si tu préfères une autre règle (renommer la branche, ou une étiquette `plateforme`).
+
 ## Vérifié / non vérifié
 
-- **Vérifié en local** : `npm run typecheck` ; `npx vitest run --project sqlite` (tout) ; `apps/web/e2e/perf.spec.ts` sur Chromium (tests de poids, dont le nouveau test du Garage) après `npm run build` et `npm run build:node -w @cdj/api` ; `node scripts/budgets.mjs` ; le test du Garage de « Démo » rouge sur l'ancien code (voir § 4).
+- **Vérifié en local** : `npm run typecheck` ; `npx vitest run --project sqlite` (tout : 207 fichiers, 3 012 tests verts avant la correction de `zones`) ; `apps/web/e2e/perf.spec.ts` sur Chromium (tests de poids, dont le nouveau test du Garage) après `npm run build` et `npm run build:node -w @cdj/api` ; `node scripts/budgets.mjs` ; le test du Garage de « Démo » rouge sur l'ancien code (voir § 4).
 - **Non vérifié** : la CI complète de la PR (elle fait foi) ; libSQL (pas de `sqld` local) ; `npm run measure:budget` (le coût du Garage est une hypothèse chiffrée, § 3) ; l'aperçu à la main (ci-dessous) ; les 10 voitures de la recette, que `garageOuvert` ouvre de toute façon.
 - **Décisions pour Nathan** : (1) `track.vieCiel` n'a plus que 8 o de marge ; (2) quand retirer le raccourci `garageOuvert` (les dix voitures pour « Démo »), puisque le vrai état est maintenant bon ; (3) rien d'autre : aucune donnée gardée de plus côté serveur.
 
