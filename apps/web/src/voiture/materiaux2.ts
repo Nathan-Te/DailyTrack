@@ -2,8 +2,8 @@
 // couches** (`clearcoat`) qui reflète la carte d'environnement du thème (pas « reflets » de la scène), des vitres sombres réfléchissantes et
 // opaques, des garnitures satinées ; ombrage lissé (les reflets glissent sur la caisse). Les roues : jantes en métal clair, pneus mats.
 // Lot 40c : les mêmes couleurs que le palier 1 (la voiture ne change pas de teinte d'un palier à l'autre), la livrée dans le nuanceur, l'ombrage lissé
-// avec des arêtes vives. La carte d'environnement vient de la scène (`scene.environment`) ; `envMapIntensity` règle ce que la voiture en reçoit (le lot 45
-// peut s'y brancher sans toucher au reste).
+// avec des arêtes vives. Lot 45 : la carte d'environnement du thème est posée par matériau (`refleter`, composerP1.ts ; jamais `scene.environment`) ;
+// `envMapIntensity` règle la part de chaque matériau, que l'intensité du thème multiplie.
 import { DoubleSide, MeshPhysicalMaterial, MeshStandardMaterial } from "three";
 import { LIVREE } from "./livree";
 import type { FabriqueMateriaux } from "./modele";

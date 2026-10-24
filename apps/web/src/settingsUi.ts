@@ -12,6 +12,7 @@ import { controlsTable } from "./howtoUi";
 import { langueCourante, lierMentions, onLangue, setLangue, t, traducteurDuSocle } from "./i18n";
 import { profilHref } from "./profilLien";
 import { DEFAULT_SETTINGS, GHOST_CHOICES, GHOST_KEY, QUALITY_CHOICES, QUALITY_KEY, SPEED_FEEL_CHOICES, SPEED_FEEL_KEY, type GameSettings, type QualityChoice } from "./settings";
+import { CHOIX_GRAPHISMES, type ChoixGraphismes, type NiveauQualite } from "./qualite";
 import { touchSettingsControls } from "./touchUi";
 import type { TouchPad } from "./touch";
 
@@ -40,6 +41,8 @@ export interface SettingsHost {
   touch: { pad: TouchPad; changed(): void } | null;
   /** Une qualité figée par l'adresse (`?quality=`) l'emporte : on le dit. */
   qualityFromUrl: boolean;
+  /** Lot 45 : la « Qualité graphique » — un choix qui attend la fin de la course, le palier de la scène en ce moment (1 à 3). */
+  graphismes(): { enAttente: boolean; niveau: NiveauQualite | null };
   openHowto(): void;
 }
 
@@ -69,6 +72,7 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
 
   let controls: Control[] = [];
   let qualityNote: HTMLElement;
+  let graphismesNote: HTMLElement;
   let tabButtons = new Map<SettingsTab, HTMLButtonElement>();
   let pages: Record<SettingsTab, HTMLElement>;
 
@@ -84,11 +88,16 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
   function build(): void {
     controls = [];
     // --- Graphismes ---
+    // Lot 45 : la « Qualité graphique » (le palier de la scène) ; « Qualité » (lot 9) reste la fluidité dans un palier.
+    const graphismes = reg(segmented<ChoixGraphismes>(CHOIX_GRAPHISMES.map((c) => [c, t(`reglages.graphismes.${c}`)] as const), () => s.graphismes, (v) => host.apply({ graphismes: v }), t("reglages.graphismes.nom")));
+    graphismesNote = el("p", "note");
     const quality = reg(segmented<QualityChoice>(QUALITY_CHOICES.map((q) => [q, t(QUALITY_KEY[q])] as const), () => s.quality, (v) => host.apply({ quality: v }), t("reglages.qualite.nom")));
     qualityNote = el("p", "note");
     const speedFeel = reg(segmented(SPEED_FEEL_CHOICES.map((v) => [v, t(SPEED_FEEL_KEY[v])] as const), () => s.speedFeel, (v) => host.apply({ speedFeel: v }), t("reglages.sensation.nom")));
     const graphics = el("div", "reglages__page");
     graphics.append(
+      row(t("reglages.graphismes.nom"), graphismes.box, t("reglages.graphismes.aide")),
+      graphismesNote,
       row(t("reglages.qualite.nom"), quality.box, t("reglages.qualite.aide")),
       qualityNote,
       row(t("reglages.particules.nom"), bool("particles", t("reglages.particules.nom")).box, t("reglages.particules.aide")),
@@ -231,6 +240,10 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     const level = t(`reglages.qualite.niveau.${host.qualityLevel()}`);
     qualityNote.textContent = host.qualityFromUrl ? t("reglages.qualite.adresse") : s.quality === "auto" ? t("reglages.qualite.actuelle", { niveau: level }) : "";
     qualityNote.hidden = !qualityNote.textContent;
+    const g = host.graphismes();
+    const niveau = g.niveau && CHOIX_GRAPHISMES[g.niveau];
+    graphismesNote.textContent = g.enAttente ? t("reglages.graphismes.attente") : s.graphismes === "auto" && niveau ? t("reglages.graphismes.actuel", { niveau: t(`reglages.graphismes.${niveau}`) }) : "";
+    graphismesNote.hidden = !graphismesNote.textContent;
   }
 
   build();

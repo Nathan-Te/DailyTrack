@@ -13,7 +13,7 @@ test.skip(({ browserName }) => browserName !== "chromium", "CDP : Chromium seule
 test.setTimeout(7_200_000);
 
 const COLONNES = ["existant", "P1", "P2", "P3"] as const;
-const PAS = ["geometrie", "variete", "matiere", "traces", "detaillee", "reflets", "ombres", "occlusion", "brume", "nuages", "drapeaux", "foule", "ecrans", "particules", "etalonnage", "anticrenelage", "halo"] as const;
+const PAS = ["geometrie", "variete", "matiere", "traces", "reflets", "ombres", "occlusion", "brume", "nuages", "drapeaux", "foule", "ecrans", "particules", "etalonnage", "anticrenelage", "halo"] as const;
 type Mesure = { constructionMs: number; moyenneMs: number; pireMs: number; envoiMs: number; appels: number; triangles: number; textures: number; cibles: number };
 
 test("vitrine : coût de chaque palier et de chaque pas au profil téléphone", async ({ page }) => {

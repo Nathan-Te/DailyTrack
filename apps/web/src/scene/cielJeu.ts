@@ -5,7 +5,7 @@
 // le dôme y est sombre, la lune et les étoiles du palier 1 (transparentes, dessinées après lui) restent devant ses nuages.
 // Aucune passe plein écran : un appel de rendu (le dôme), la brume n'en ajoute aucun (un morceau de nuanceur des matériaux).
 // Les nuages dérivent sur un temps d'affichage, jamais sur l'état de la course.
-import type { Material, Mesh } from "three";
+import type { Material, Mesh, Object3D } from "three";
 import { brancherPas } from "./socle";
 import { THEMES_C } from "./lumiere";
 import { CIEL_3, brumeDeProfondeur, domeDuCiel, uniformesBrume } from "./lumiere3";
@@ -22,21 +22,22 @@ export const CIEL: PasScene = {
       scene.add(dome);
     }
     let brume = 0;
-    if (!coupes.has("brume")) {
-      // Les uniformes sont partagés par tous les matériaux de la scène ; la voiture et les fantômes, ajoutés ensuite, gardent la brume du thème (ils sont près).
-      const u = uniformesBrume(t3, x.floorY, soleil);
-      const vus = new Set<Material>();
-      scene.traverse((o) => {
-        const m = (o as Mesh).material as Material | Material[] | undefined;
-        for (const mat of Array.isArray(m) ? m : m ? [m] : []) {
-          if (vus.has(mat) || !(mat as { fog?: boolean }).fog) continue;
-          vus.add(mat);
-          brumeDeProfondeur(mat, u);
-          brume++;
-        }
-      });
-    }
+    // Les uniformes sont partagés par tous les matériaux de la scène ; la voiture et les fantômes, ajoutés ensuite, gardent la brume du thème (ils sont près).
+    const u = coupes.has("brume") ? null : uniformesBrume(t3, x.floorY, soleil);
+    const vus = new Set<Material>();
+    const embrumer = (o: Object3D) => {
+      const m = (o as Mesh).material as Material | Material[] | undefined;
+      for (const mat of Array.isArray(m) ? m : m ? [m] : []) {
+        if (!u || vus.has(mat) || !(mat as { fog?: boolean }).fog) continue;
+        vus.add(mat);
+        brumeDeProfondeur(mat, u);
+        brume++;
+      }
+    };
+    scene.traverse(embrumer);
     return {
+      // Lot 45 : le décor qui se pose après la construction (il arrive à la demande, lot 44) prend la brume lui aussi ; avant, il en restait privé.
+      habiller: embrumer,
       animer(t, camera) {
         if (!dome) return;
         dome.position.copy(camera.position);

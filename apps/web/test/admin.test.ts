@@ -70,6 +70,12 @@ describe("adresse du jeu construite par /admin", () => {
     );
     // Lot 43 : l'ancienne scène, pour comparer au palier 1 (recette et aperçus seulement).
     expect(buildQuery({ ...DEFAULT_ADMIN, palierExistant: true })).toBe("palier=existant");
+    // Lot 45 : les essais de la règle de qualité (l'appareil, les médianes imposées), que le jeu sait lire ; relus d'un état enregistré.
+    expect(buildQuery({ ...DEFAULT_ADMIN, essaiQualite: "ordinateur-lent", home: true })).toBe("appareil=ordinateur&intervalles=30%2C25%2C40&home=1");
+    expect(buildQuery({ ...DEFAULT_ADMIN, essaiQualite: "telephone" })).toBe("appareil=telephone");
+    expect(parseAdmin(JSON.stringify({ essaiQualite: "telephone-tient" })).essaiQualite).toBe("telephone-tient");
+    expect(parseAdmin(JSON.stringify({ essaiQualite: "fusee" })).essaiQualite).toBe("");
+    expect(buildQuery({ ...DEFAULT_ADMIN, scene: "2" })).toBe("reglages=2");
   });
   it("l'accueil (lot 29) : ?home=1 le force malgré debug, ?howto=1 montre l'aide ; le lien de l'accueil de démonstration est simple", () => {
     expect(buildQuery({ ...DEFAULT_ADMIN, api: "demo", home: true, debug: true })).toBe("debug&home=1&api=demo");

@@ -33,7 +33,9 @@ import {
   Vector3,
   type BufferAttribute,
   type Material,
+  type Object3D,
   type PerspectiveCamera,
+  type Texture,
 } from "three";
 import { FALL_DEPTH, type PaletteName, type Track } from "@cdj/sim";
 import { buildHalos } from "../halo";
@@ -49,7 +51,7 @@ import { THEMES_C, occlusionSommets, textureFlaque } from "./lumiere";
 import { texturedCielC } from "./textures";
 import { FeuxDepart, arriveeP, coupureP, eclairagePisteP, paletteP1, panneauP, panneauxDistanceP, plaqueP, porteP, portiqueDepartP, routeP, rythmeP, sponsorsRebordsP, turboP, type EclairagePiste } from "./palier1";
 import { atlasSponsors } from "./sponsors";
-import { HORIZONS, type Ambiance, type Calques, type CalquesDecor, type Contexte, type ModuleDecor, type Spectateur, type TribunePosee } from "./types";
+import { HORIZONS, type Ambiance, type Calques, type CalquesDecor, type Contexte, type AnimationPas, type ModuleDecor, type PasScene, type Spectateur, type TribunePosee } from "./types";
 import type { Terrain } from "./decor/commun";
 
 /** Demi-largeur (m) de la carte d'ombres : celle d'avant (lot 23). */
@@ -121,9 +123,15 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
     ...(feux ? { feux } : {}),
   };
   const x: Contexte = { palette, pal, look, track, floorY, ...(options.log ? { log: options.log } : {}), ...(options.textes ? { textes: options.textes } : {}) };
+  // Lot 46 : les pas à la demande (jamais en vue aérienne) ; lot 45 : le pas « finition » du palier 2 passe avant la piste (le contexte des éléments, la route).
+  const coupes = new Set(options.coupes);
+  const pas = aerien ? [] : (options.pas ?? []);
+  let route: ReturnType<NonNullable<PasScene["avant"]>> = undefined;
+  for (const p of pas) route = p.avant?.(calques, x, coupes) ?? route;
   // Les rebords dans le calque de la route : ils reçoivent les ombres et n'en projettent pas (comme l'existant). Les projeter (« ombres de contact », 38b)
   // redessinait tous les rebords dans la carte d'ombres : deux fois leurs triangles, pour une ombre de quelques centimètres ; c'est un pas de plus haut palier.
-  construireRoute(track, pal, routeP(palette), { route: calques.route, lumineux: calques.lumineux, rebords: calques.route }, floorY);
+  // Lot 45 : le pas « finition » les veut à part le temps de les varier (`calques.rebords`), puis les verse dans la route (même appel de rendu).
+  construireRoute(track, pal, route?.style ?? routeP(palette), { route: calques.route, lumineux: calques.lumineux, rebords: calques.rebords ?? calques.route }, floorY, route?.options);
   const fast = fastZones(track);
   for (const b of track.blocks) {
     if (b.kind === "boost") plaqueP(calques, x, b);
@@ -147,9 +155,9 @@ export function geometrieP1(track: Track, palette: PaletteName, options: TrackSc
   // Les lampadaires de la Nuit : dans le calque de la route eux aussi (la lune ne fait pas d'ombre qui compte ; leurs lampes éclairent).
   const eclairage = tc.lampes ? eclairagePisteP({ ...calques, solide: calques.route }, x, tc.lampes.couleur) : null;
   // Lot 46 : les pas à la demande (la vie : drapeaux, écrans) posent leurs pièces dans les calques ; jamais en vue aérienne. Ce qui tient au décor (sa
-  // tribune) vient quand il se pose (`AnimationPas.decor`).
-  const coupes = new Set(options.coupes);
-  if (!aerien) for (const p of options.pas ?? []) p.elements?.(calques, x, coupes);
+  // tribune) vient quand il se pose (`AnimationPas.decor`). Lot 45 : puis la finition (traces, variété par morceau).
+  for (const p of pas) p.elements?.(calques, x, coupes);
+  for (const p of pas) p.apres?.(calques, x, coupes);
   return { pal, look, floorY, calques, x, decor: options.decor ? decorP1(options.decor, x, options) : null, feux, signs, distances, eclairage };
 }
 
@@ -177,6 +185,20 @@ function ambianceP1(palette: PaletteName, base: Palette, pal: Palette, look: Loo
 export function directionSoleil(sunHeight: number): Vector3 {
   const h = sunHeight;
   return new Vector3(40 * (1.2 - h) * 1.4, 30 + 110 * h, -30 * (1.2 - h) * 1.4);
+}
+
+/** Lot 45 : pose (ou retire) une carte d'environnement sur les matériaux physiques d'un objet (la voiture) — par matériau, jamais `scene.environment`.
+ * L'intensité du thème multiplie celle que chaque matériau a reçue à sa construction (lot 40c : caisse 1, roues 0,5), gardée dans `userData.envBase`. */
+export function refleter(objet: Object3D, env: Texture | null, intensite: number) {
+  objet.traverse((o) => {
+    for (const m of [(o as Mesh).material].flat() as MeshStandardMaterial[]) {
+      if (!m?.isMeshStandardMaterial || m.envMap === env) continue;
+      m.userData.envBase ??= m.envMapIntensity;
+      m.envMap = env;
+      m.envMapIntensity = m.userData.envBase * intensite;
+      m.needsUpdate = true;
+    }
+  });
 }
 
 /** Construit la scène d'un circuit au palier 1 (même interface que l'existant : `TrackScene`). */
@@ -231,7 +253,8 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   };
   const roadMesh = maillage(calques.route, mat, "route");
   roadMesh.receiveShadow = true;
-  const solidMesh = maillage(calques.solide, mat, "solide");
+  // Lot 45 : un matériau chacun (même programme, même appel) — la matière et les reflets du palier 2 habillent la route et le métal différemment.
+  const solidMesh = maillage(calques.solide, mat.clone(), "solide");
   solidMesh.castShadow = solidMesh.receiveShadow = true;
   const glowMesh = maillage(calques.lumineux, plain, "lumineux");
   // Occlusion par sommets de C : le pied des murs, des piliers et des objets s'assombrit (une fois, à la construction ; rien par image).
@@ -342,6 +365,12 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
     const a = p.poser?.({ scene, calques, x: geo.x, soleil: sunDir, coupes, sansDom: !!options.headless });
     return a ? [[p.id, a] as const] : [];
   });
+  /** Lot 45 : la matière sobre et les reflets ciblés habillent un maillage éclairé (la route et le solide ici, le décor quand il se pose). */
+  const habiller = (m: Mesh) => {
+    for (const [, a] of animations) a.habiller?.(m);
+  };
+  habiller(roadMesh);
+  habiller(solidMesh);
 
   // --- Feux de départ : les couleurs des lampes dans le calque `lumineux`, repeintes quand l'état du décompte change ---
   const couleurs = glowMesh.geometry.getAttribute("color") as BufferAttribute;
@@ -396,7 +425,10 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
       occlusionSommets(m.geometry as BufferGeometry, tc.ao);
       d.module.uvMonde(m.geometry as BufferGeometry, 4);
     }
-    for (const m of [decorMesh, decorGlow, denseMesh]) if (m.geometry.getAttribute("position").count > 0) scene.add(m);
+    for (const m of [decorMesh, decorGlow, denseMesh]) {
+      habiller(m);
+      if (m.geometry.getAttribute("position").count > 0) scene.add(m);
+    }
     if (d.affiches.pos.length > 0) remplirAffiches([calques.affiches, d.affiches]);
     if (d.decor.halos.length + d.lumineux.halos.length > 0) faireHalos([d.decor, d.lumineux]);
     // Le sol lointain dessiné du thème remplace le damier (même répétition, même programme : une texture remplace l'autre). Les miniatures sombres gardent le leur.
@@ -434,6 +466,11 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
     setView(heightPx, fovDeg) {
       vue = [heightPx, fovDeg];
       halos?.setView(heightPx, fovDeg);
+    },
+    reflets(renderer, objet) {
+      let e: ReturnType<NonNullable<AnimationPas["environnement"]>> = null;
+      for (const [, a] of animations) e = a.environnement?.(renderer) ?? e;
+      refleter(objet, e?.texture ?? null, e?.intensite ?? 1);
     },
     poserDecor(module) {
       if (!poseDecor) poser(decorP1(module, geo.x, options));

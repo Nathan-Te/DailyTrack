@@ -123,6 +123,17 @@ interface CdjDebug {
     /** Le fantôme du record est-il dessiné (dernière image) ? */
     fantome: boolean;
   };
+  /** Lot 45 : la qualité graphique (règle automatique et réglage). */
+  qualite: {
+    choix: "auto" | "economie" | "equilibree" | "maximale";
+    appareil: { ordinateur: boolean; logiciel: boolean; demiFlottants: boolean; memoire?: number };
+    passes: boolean;
+    memoire: { palier: 1 | 2 | 3; date: number; mediane: number | null; pixels: number; echecs: number; plafond: 1 | 2 | 3 | null; durable: boolean } | null;
+    aMesurer: boolean;
+    mesure: number | null;
+    derniere: { mediane: number; hz: number; palier: 1 | 2 | 3 } | null;
+    enAttente: boolean;
+  };
   socle: {
     composer(track: unknown, palette: string, palier: string, options?: unknown): unknown;
     brancherComposeur(palier: string, composeur: (track: unknown, palette: string, options: unknown) => unknown): void;
@@ -141,7 +152,7 @@ interface CdjDebug {
   /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
   feux: { rouges: number; vert: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; textures: number; calls: number; triangles: number; renderMs: number; renderFrames: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;

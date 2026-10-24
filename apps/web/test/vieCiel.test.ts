@@ -44,7 +44,7 @@ describe("lot 46 : où la vie et le ciel s'activent", () => {
     expect(sceneDemandee("?palier=1&reglages=3", false)?.palier).toBe("P3"); // `reglages` l'emporte
     expect(sceneDemandee("?palier=3", true)).toBeNull(); // la production : jamais
     for (const q of ["?palier=4", "?reglages=3+", "?reglages=deux", ""]) expect(sceneDemandee(q, false), q).toBeNull();
-    expect(pasVoulus("P3", [], ["ombres"])).toEqual(["vie", "ciel"]);
+    expect(pasVoulus("P3", [], ["ombres"])).toEqual(["finition", "vie", "ciel"]); // lot 45 : le palier 3 contient la finition du palier 2
   });
 
   it("la page d'admin propose le palier 3 et le palier 2 + vie et ciel (`?reglages=`), que le jeu sait lire", () => {

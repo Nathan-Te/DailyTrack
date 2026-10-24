@@ -21,7 +21,6 @@ import { CAOUTCHOUC, METAL_SOMBRE, PISTE_A, bordureVideP1, cuveA, plaqueA, REBOR
 import { couleurRouteOrigine, jupeOrigine, type StyleRoute, type TronconRebord } from "./route";
 import { rectSponsor, sponsorsDuTheme } from "./sponsors";
 import type { Calques, Contexte } from "./types";
-import type { Reglages } from "./paliers";
 
 /** Béton des socles et des pieds qui descendent jusqu'au sol. */
 const BETON = 0xb9bbbe;
@@ -73,22 +72,22 @@ export function paletteP1(nom: PaletteName, base: Palette): Palette {
 }
 
 /**
- * La route des paliers : rebords de B (profil du thème) aux couleurs de A, vibreurs, lignes et tirets de A ; la Banquise garde le béton. Le mur de
- * pneus est léger au palier 1, complet dès que le pas « géométrie » est allumé.
- */
-/**
- * Les rebords et le bord du vide complets du pas « géométrie » (palier 2 : `rebordB` et `bordureVideB` de `piste.ts`), donnés par le compositeur qui les
- * veut : le palier 1 du jeu n'en embarque pas le code.
+ * Les rebords et le bord du vide complets du pas « géométrie » (palier 2 : `rebordB` et `bordureVideB` de `rebordsComplets.ts`), donnés par le compositeur
+ * qui les veut : le palier 1 du jeu n'en embarque pas le code.
  */
 export interface RebordsComplets {
   rebord(nom: PaletteName, sorte: RebordB): (g: Builder, t: TronconRebord, lum?: Builder) => void;
   bordureVide: StyleRoute["bordureVide"];
 }
 
-export function routeP(nom: PaletteName, r?: Reglages, complets?: RebordsComplets): StyleRoute {
+/**
+ * La route des paliers : rebords de B (profil du thème) aux couleurs de A, vibreurs, lignes et tirets de A ; la Banquise garde le béton. Le mur de
+ * pneus est léger au palier 1, complet avec le pas « géométrie » (lot 45 : `complets` donnés, c'est que la géométrie est allumée).
+ */
+export function routeP(nom: PaletteName, complets?: RebordsComplets): StyleRoute {
   const sorte: RebordB = nom === "neige" ? "beton" : REBORDS_B[nom];
-  const fin = !!r?.geometrie && !!complets;
-  const rebord = fin ? complets!.rebord(nom, sorte) : rebordLegerDe(sorte);
+  const fin = !!complets;
+  const rebord = complets ? complets.rebord(nom, sorte) : rebordLegerDe(sorte);
   // Assemblé pièce à pièce (et non en recouvrant les styles de A et de B) : le premier chargement ne garde que ce que le palier 1 dessine.
   return {
     rebord: (g, t, _pal, lum) => rebord(g, t, lum),
@@ -287,7 +286,7 @@ export function porteP(c: Calques, x: Contexte, b: Block) {
   const bord = bordRoulant(b, q);
   const w = 1.08 * bord + 1.4;
   const col = x.pal.checkpoint;
-  const fin = !!x.reglages?.geometrie;
+  const fin = !!x.finition; // lot 45 : la géométrie du palier 2 est là
   const n = fin ? 28 : 16;
   const pose = poser(x, "porte", b.index);
   // Les points de l'arche : |g/w|⁴ + |h/H|⁴ = 1, de la gauche (angle 0) à la droite (angle π).

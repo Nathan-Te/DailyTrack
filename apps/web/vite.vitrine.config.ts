@@ -20,7 +20,7 @@ function poidsDesDirections(): Plugin {
       const gz = (code: string) => gzipSync(code).length;
       const poids: Record<string, { fichier: string; octets: number }> = {};
       for (const m of morceaux) {
-        const nom = /^assets\/(socle|palier1|finition|matiereDetaillee|matiere|reflets|lumiere3|vie|post)-/.exec(m.fileName)?.[1];
+        const nom = /^assets\/(socle|palier1|finition|matiere|reflets|lumiere3|vie|post)-/.exec(m.fileName)?.[1];
         // Un groupe peut donner plusieurs morceaux : leurs poids s'additionnent.
         const avant = nom ? poids[nom] : undefined;
         if (nom) poids[nom] = { fichier: avant ? `${avant.fichier} + ${m.fileName}` : m.fileName, octets: (avant?.octets ?? 0) + gz(m.code) };
@@ -55,7 +55,7 @@ export default defineConfig({
             { name: "three", test: /node_modules[\\/]three[\\/]/, priority: 4 },
             // Retouche 38b : le palier 1 (compositeur des paliers, direction P) et chaque famille de pas dans leur morceau.
             { name: "palier1", test: /src[\\/]scene[\\/](composerPalier|palier1|memoire)\.ts$/, priority: 3 },
-            { name: (id: string) => /src[\\/]scene[\\/](finition|matiereDetaillee|matiere|reflets|lumiere3|vie)\.ts$/.exec(id)?.[1] ?? null, debugName: "pas", priority: 3 },
+            { name: (id: string) => /src[\\/]scene[\\/](finition|matiere|reflets|lumiere3|vie)\.ts$/.exec(id)?.[1] ?? null, debugName: "pas", priority: 3 },
             { name: "matiere", test: /src[\\/]scene[\\/]bruit\.ts$/, priority: 3 },
             { name: "socle", test: /src[\\/]scene[\\/]/, priority: 2 },
           ],

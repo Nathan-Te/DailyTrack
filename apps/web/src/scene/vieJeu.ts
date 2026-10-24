@@ -32,7 +32,7 @@ const MAT = 2.4;
 /** Le haut d'un pilier de portique (lot 43 : poutre à 8,6 m, panneau de 3 m). */
 const HAUT_PORTIQUE = 11.6;
 
-/** Les drapeaux d'un portique, en haut de ses piliers (comme le pas « géométrie » du palier 2, qui les pose lui-même quand il est là). */
+/** Les drapeaux d'un portique, en haut de ses piliers (lot 45 : avec la géométrie du palier 2 aussi, qui ne les pose plus dans le jeu). */
 function drapeauxDuPortique(d: Drapeaux, c: Calques, b: Block, q: number, couleurs: readonly number[]) {
   const r = repereBloc(b, q);
   const w = ecartP(b, q);
@@ -50,12 +50,10 @@ export const VIE: PasScene = {
     const depart = x.track.blocks.find((b) => b.mark === "start");
     const arrivee = x.track.blocks.find((b) => b.mark === "finish");
     if (!coupes.has("drapeaux")) {
+      // Lot 45 : avec la géométrie du palier 2 aussi (elle ne pose plus les siens : les mêmes, au même endroit, en haut des piliers).
       const d = (c.drapeaux = new Drapeaux());
-      // Le pas « géométrie » (palier 2, lot 45) pose déjà ceux des portiques quand il est là (`x.finition`).
-      if (!x.finition) {
-        if (depart) drapeauxDuPortique(d, c, depart, Q_DEPART, [MARQUE.livree, MARQUE.asphalte]); // la livrée en hauteur, sur le portique de départ
-        if (arrivee) drapeauxDuPortique(d, c, arrivee, Q_ARRIVEE, [MARQUE.encre, MARQUE.creme, MARQUE.encre]);
-      }
+      if (depart) drapeauxDuPortique(d, c, depart, Q_DEPART, [MARQUE.livree, MARQUE.asphalte]); // la livrée en hauteur, sur le portique de départ
+      if (arrivee) drapeauxDuPortique(d, c, arrivee, Q_ARRIVEE, [MARQUE.encre, MARQUE.creme, MARQUE.encre]);
     }
     if (!coupes.has("ecrans")) {
       c.ecrans = new Affiches();

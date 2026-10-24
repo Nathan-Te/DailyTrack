@@ -61,8 +61,8 @@ test("paliers, ordinateur : chaque section se construit et se dessine à chaque 
   // Le résumé des coûts (une ligne par colonne, le poids ajouté au jeu lu dans poids-parties.json) et le coût de chaque pas.
   await expect(page.locator("#resume-corps tr")).toHaveCount(5);
   await expect(page.locator("#resume-corps tr").nth(1).locator("td").first()).toHaveText(/ko \(net \+/);
-  // Seize pas des paliers (38c : « traces » a sa case), plus « matière détaillée » (la comparaison avec l'ancienne matière).
-  await expect(page.locator("#pas-corps tr")).toHaveCount(17);
+  // Seize pas des paliers (38c : « traces » a sa case ; lot 45 : « matière détaillée », la comparaison avec l'ancienne matière, est retirée).
+  await expect(page.locator("#pas-corps tr")).toHaveCount(16);
 });
 
 test("paliers : la colonne « à la carte » suit les cases, et l'adresse garde les réglages", async ({ page }) => {
@@ -83,11 +83,11 @@ test("paliers : la colonne « à la carte » suit les cases, et l'adresse garde 
   const carte = vues.find((v) => v.variante === "carte")!;
   expect(carte.etat).toBe("prete");
   expect(carte.appels).toBeGreaterThan(vues.find((v) => v.variante === "P1")!.appels);
-  // 38c : « matière détaillée (ancienne) » est coupée au palier 3 (comparaison seulement) ; cochée, la colonne se reconstruit sans erreur.
-  await expect(panneau.getByLabel(/Matière détaillée \(ancienne\)/)).not.toBeChecked();
+  // Lot 45 : la « matière détaillée (ancienne) » n'existe plus ; les reflets (ciblés) se coupent seuls, la colonne se reconstruit sans erreur.
+  await expect(panneau.getByLabel(/Matière détaillée/)).toHaveCount(0);
   await expect(panneau.getByLabel(/^Traces/)).toBeChecked();
-  await panneau.getByLabel(/Matière détaillée \(ancienne\)/).check();
-  await expect.poll(() => new URL(page.url()).searchParams.get("reglages")).toBe("3+detaillee-halo");
+  await panneau.getByLabel(/^Reflets/).uncheck();
+  await expect.poll(() => new URL(page.url()).searchParams.get("reglages")).toBe("3-reflets-halo");
   await page.evaluate(() => window.__vitrine!.construireTout("depart"));
   expect((await page.evaluate(() => window.__vitrine!.vues().find((v) => v.sujet === "depart" && v.variante === "carte")))!.etat).toBe("prete");
   expect(erreurs).toEqual([]);

@@ -1,7 +1,7 @@
 // Les palettes et les ambiances de chaque thème, les types de la scène et quelques points de la piste (lots 9b, 22, 23, 37). Lot 43 : la route, les accessoires
 // et l'assemblage de l'ancienne scène sont partis dans `scene/existant.ts` (chargé à la demande) ; lot 44 : **le décor d'avant** (tribune, décor du thème, front
 // de rue et lampadaires de la Ville, passe dense) l'a suivi — le palier 1 a le sien, chargé à la demande par thème (`scene/decor.ts`).
-import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type PerspectiveCamera, type Scene } from "three";
+import { CanvasTexture, NearestFilter, RepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type Object3D, type PerspectiveCamera, type Scene, type WebGLRenderer } from "three";
 import {
   CELL,
   WALL_HEIGHT,
@@ -319,6 +319,11 @@ export interface TrackScene {
   animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
   /** Lot 46 : la voiture passe la ligne d'arrivée (au temps d'affichage `t`) : les confettis du Stade. */
   arrivee?(t: number): void;
+  /**
+   * Lot 45 : les reflets ciblés du palier 2 — la carte d'environnement du thème (calculée au premier appel : elle demande le moteur de rendu, hors course), posée
+   * sur le métal des portiques et sur `objet` (la voiture) ; sans reflets (palier 1), retirée de `objet`. Jamais `scene.environment`.
+   */
+  reflets?(renderer: WebGLRenderer, objet: Object3D): void;
 }
 
 export interface SceneStats {

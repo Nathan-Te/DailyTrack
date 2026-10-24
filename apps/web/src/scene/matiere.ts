@@ -4,30 +4,24 @@
 //   - un grain plus fin (256 px pour 4 m au lieu de 128) et moins contrasté, sur un bruit moyen très doux ;
 //   - une **variation de teinte à grande échelle** (≈ 50 m : une ligne droite n'est plus uniforme), rangée dans le canal alpha de la même texture
 //     et lue une seconde fois à l'échelle large (`teinteLarge` : un remplacement du morceau `map_fragment` de three.js) ;
-//   - aucune carte de normales ni de rugosité (le relief ne se voyait pas depuis la poursuite ; la rugosité vient du pas « reflets »).
+//   - aucune carte de normales ni de rugosité (le relief ne se voyait pas depuis la poursuite ; le métal satiné vient du pas « reflets »).
 // Dans le même module, en géométrie dans le calque de la route (aucun appel de plus), les **traces** de pneus et de freinage (pas « traces »).
 //
 // Chaque texture se répète sans couture (bruit périodique) et se multiplie aux couleurs des sommets (elle est presque blanche) : la palette du
-// thème reste celle du document de direction. Elles sont dessinées une fois et partagées par toutes les scènes (`memoiser`). L'ancienne matière
-// (« détaillée ») est dans `matiereDetaillee.ts`, pour la comparaison seulement.
+// thème reste celle du document de direction. Elles sont dessinées une fois et partagées par toutes les scènes (`memoiser`). Lot 45 : l'ancienne matière
+// (« détaillée », 38b) est retirée, de la vitrine comme du code ; la matière sobre est celle du palier 2 du jeu (`finitionJeu.ts`).
 import { DataTexture, LinearFilter, LinearMipmapLinearFilter, NoColorSpace, RepeatWrapping, RGBAFormat, SRGBColorSpace, UnsignedByteType, type MeshStandardMaterial, type WebGLProgramParametersWithUniforms } from "three";
 import { CELL, blockHalfWidth, curveSize, isCurve, turnsLeft, type Block, type Track } from "@cdj/sim";
 import { shade, type Builder, type V3 } from "../meshKit";
 import { onBlock } from "./route";
-import { bruit, fractal, graine } from "./bruit";
 
 /**
- * Une matière : couleur (multipliée aux sommets) ; normales et rugosité (matière détaillée seulement) ; `echelle` = mètres par répétition,
- * `relief` = force des normales, `teinte` = force de la variation à grande échelle (canal alpha de `map`, 0 : aucune).
+ * Une matière sobre : couleur (multipliée aux sommets ; ni normales ni rugosité, 38c) ; `echelle` = mètres par répétition, `teinte` = force de la variation à
+ * grande échelle (canal alpha de `map`, 0 : aucune).
  */
 export interface Matiere {
   map: DataTexture;
-  normalMap: DataTexture | null;
-  roughnessMap: DataTexture | null;
-  rugosite: number;
-  metal: number;
   echelle: number;
-  relief: number;
   teinte: number;
   /** Temps de calcul (ms), la première fois. */
   ms: number;
@@ -101,7 +95,7 @@ export function champsSobres(o: Sobre): { couleur: Float32Array; large: Float32A
   return { couleur, large, n };
 }
 
-function sobre(cle: string, o: Sobre, reste: { metal: number; teinte: number }): Matiere {
+function sobre(cle: string, o: Sobre, teinte: number): Matiere {
   return memoiser(cle, () => {
     const { couleur, large, n } = champsSobres(o);
     const data = new Uint8Array(n * n * 4);
@@ -110,18 +104,18 @@ function sobre(cle: string, o: Sobre, reste: { metal: number; teinte: number }):
       data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = v;
       data[i * 4 + 3] = Math.round(large[i]! * 255);
     }
-    return { map: texture(data, n, true), normalMap: null, roughnessMap: null, rugosite: 1, metal: reste.metal, echelle: 4, relief: 0, teinte: reste.teinte };
+    return { map: texture(data, n, true), echelle: 4, teinte };
   });
 }
 
 /** Asphalte : grain fin, un bruit moyen à peine visible ; la variation large la plus nette (une ligne droite n'est pas uniforme). */
-export const matiereAsphalte = () => sobre("asphalte", { graine: 381, fin: 0.06, moyen: 0.035, cellules: 16 }, { metal: 0, teinte: 0.1 });
+export const matiereAsphalte = () => sobre("asphalte", { graine: 381, fin: 0.06, moyen: 0.035, cellules: 16 }, 0.1);
 /** Béton peint des rebords : grain plus doux encore. */
-export const matiereBeton = () => sobre("beton", { graine: 512, fin: 0.045, moyen: 0.04, cellules: 12 }, { metal: 0, teinte: 0.07 });
+export const matiereBeton = () => sobre("beton", { graine: 512, fin: 0.045, moyen: 0.04, cellules: 12 }, 0.07);
 /** Métal des portiques et panneaux : un brossé à peine marqué, pas de variation large (des pièces courtes). */
-export const matiereMetal = () => sobre("metal", { graine: 77, fin: 0.025, moyen: 0.015, cellules: 8, brosse: 0.03 }, { metal: 0.35, teinte: 0 });
+export const matiereMetal = () => sobre("metal", { graine: 77, fin: 0.025, moyen: 0.015, cellules: 8, brosse: 0.03 }, 0);
 /** Le décor : grain et bruit moyen un peu plus présents (bois, roche, crépi selon les couleurs), variation large. */
-export const matiereDecor = () => sobre("decor", { graine: 903, fin: 0.05, moyen: 0.06, cellules: 8 }, { metal: 0, teinte: 0.12 });
+export const matiereDecor = () => sobre("decor", { graine: 903, fin: 0.05, moyen: 0.06, cellules: 8 }, 0.12);
 
 /** Période de la variation large, en répétitions de la texture (4 m chacune) : ≈ 48 m. */
 export const PERIODE_TEINTE = 12;
@@ -153,7 +147,7 @@ export function teinteLarge(m: MeshStandardMaterial, force: number): void {
   m.needsUpdate = true;
 }
 
-/** Toutes les textures de matière déjà dessinées, sobres et détaillées (la vitrine compte leur mémoire et leur temps de calcul). */
+/** Toutes les textures de matière déjà dessinées (la vitrine compte leur mémoire et leur temps de calcul). */
 export function matieresDessinees(): readonly Matiere[] {
   return [...memo.values()];
 }
@@ -213,3 +207,62 @@ export function tracesEtMarquages(g: Builder, track: Track, couleurRoute: (b: Bl
     }
   }
 }
+
+// --- Bruits périodiques (une copie de `bruit.ts`, lot 45) ---------------------------------------------------------------------------------------------------
+// La matière (pas « finition », palier 2) et les nuages (pas « ciel ») sont deux morceaux à la demande : un module partagé deviendrait un troisième morceau,
+// compté dans les deux lignes de budget (« palier 2 », 6 ko ; « vie et ciel », 8 ko) et téléchargé à part. Les mêmes fonctions, les mêmes textures (testé :
+// `test/paliers.test.ts`).
+
+/** Petit générateur à graine (les textures sont les mêmes pour tout le monde). */
+function graine(n: number): () => number {
+  let a = n >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Bruit de valeur périodique (il se répète sans couture) : `cellules` mailles par côté, interpolation douce. Valeurs dans [0, 1]. */
+function bruit(n: number, cellules: number, rnd: () => number): Float32Array {
+  const grille = new Float32Array(cellules * cellules);
+  for (let i = 0; i < grille.length; i++) grille[i] = rnd();
+  const out = new Float32Array(n * n);
+  const lisse = (t: number) => t * t * (3 - 2 * t);
+  for (let y = 0; y < n; y++) {
+    const fy = (y / n) * cellules;
+    const y0 = Math.floor(fy);
+    const ty = lisse(fy - y0);
+    const ya = (y0 % cellules) * cellules;
+    const yb = ((y0 + 1) % cellules) * cellules;
+    for (let x = 0; x < n; x++) {
+      const fx = (x / n) * cellules;
+      const x0 = Math.floor(fx);
+      const tx = lisse(fx - x0);
+      const xa = x0 % cellules;
+      const xb = (x0 + 1) % cellules;
+      const a = grille[ya + xa]! + (grille[ya + xb]! - grille[ya + xa]!) * tx;
+      const b = grille[yb + xa]! + (grille[yb + xb]! - grille[yb + xa]!) * tx;
+      out[y * n + x] = a + (b - a) * ty;
+    }
+  }
+  return out;
+}
+
+/** Bruit fractal : `octaves` bruits de plus en plus fins, normalisé dans [0, 1]. */
+function fractal(n: number, base: number, octaves: number, rnd: () => number): Float32Array {
+  const out = new Float32Array(n * n);
+  let amp = 1;
+  let total = 0;
+  for (let o = 0, c = base; o < octaves && c <= n; o++, c *= 2) {
+    const b = bruit(n, c, rnd);
+    for (let i = 0; i < out.length; i++) out[i] = out[i]! + b[i]! * amp;
+    total += amp;
+    amp *= 0.5;
+  }
+  for (let i = 0; i < out.length; i++) out[i] = out[i]! / total;
+  return out;
+}
+

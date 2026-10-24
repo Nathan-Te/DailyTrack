@@ -80,7 +80,7 @@ test("chaque pas seul, au-dessus du palier 1 (trois thèmes)", async ({ page }) 
   await page.setViewportSize({ width: 1400, height: 900 });
   await page.goto("/vitrine/");
   await page.waitForFunction(() => window.__vitrine);
-  const pas = ["", "+geometrie", "+variete", "+matiere", "+traces", "+detaillee", "+reflets", "+ombres", "+occlusion", "+brume", "+nuages", "+drapeaux", "+foule", "+ecrans", "+particules", "+etalonnage", "+anticrenelage", "+halo"];
+  const pas = ["", "+geometrie", "+variete", "+matiere", "+traces", "+reflets", "+ombres", "+occlusion", "+brume", "+nuages", "+drapeaux", "+foule", "+ecrans", "+particules", "+etalonnage", "+anticrenelage", "+halo"];
   const W = 400;
   const H = 225;
   for (const [s, vue] of [["theme-stade", "depart"], ["theme-nuit", "virage"], ["theme-canyon", "virage"]] as const) {
@@ -125,7 +125,6 @@ test("38c : la matière avant / après (Stade, Rallye, Nuit, Ville), en poursuit
   await page.waitForFunction(() => window.__vitrine);
   const colonnes = [
     ["1", "Palier 1 (le grain)"],
-    ["3-matiere+detaillee", "Palier 3, matière détaillée (avant, 38b)"],
     ["3", "Palier 3, matière sobre (après, 38c)"],
   ] as const;
   const W = 560;
