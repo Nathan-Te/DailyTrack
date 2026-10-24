@@ -9,8 +9,9 @@
 // version est refusée (409). **Garde-fou** : un serveur `production` (`/api/jump/info`) n'est accepté qu'en local (l'image de la CI) ; une
 // adresse distante de production est refusée avant toute écriture (les workflows ne lancent déjà `smoke` que contre la recette ou la CI).
 // Lot P3 : les morts de tout le monde. Le joueur d'essai envoie un lot de vies (des morts d'essais fictifs du niveau du jour) et une vie forgée
-// (en-tête incohérent) : le lot est accepté, la vie forgée écartée seule ; la carte des morts et l'échantillon du carnage répondent ; un
-// inconnu est refusé (404). Relancé sur la même base, un autre joueur « Fumée » : rien ne s'accumule de façon gênante (30 morts au plus chacun).
+// (en-tête incohérent : un point de passage absent) : le lot est accepté, la vie forgée écartée seule ; la carte des morts et l'échantillon du
+// carnage répondent ; un inconnu est refusé (404). Relancé sur la même base, un autre joueur « Fumée » : rien ne s'accumule de façon gênante
+// (30 morts au plus chacun).
 // Lot P4 : **`--lecture-seule`**, la vérification de la production après chaque déploiement (`production.yml`) : des GET seulement, sans
 // identifiant de joueur, **rien n'est jamais écrit** (`smokeRead.ts`) ; c'est **le seul mode permis contre la production**. Options :
 // `--environnement production` (ce que `/api/jump/info` doit dire), `--resume <fichier>` (le résumé du run, Markdown), `--retour <commande>`
@@ -216,7 +217,9 @@ for (const a of demoAttempts(level.level, level.replay, 0x5e0e, { attempts: 6, m
   for (const life of replayAttempt(level.level, a.replay, level.id).lives) if (life.end === "mort" && deathLives.length < 6) deathLives.push(encodeJump(lifeReplay(a.replay, life)));
 }
 const fromCheckpoint = deathLives.map((c) => decodeReplay(c)).find((r) => r.start.checkpoint >= 0);
-const forged = fromCheckpoint ? encodeJump({ ...fromCheckpoint, start: { ...fromCheckpoint.start, sections: fromCheckpoint.start.sections.map(() => -1) } }) : "forgée";
+// La vie forgée reprend sur un point de passage que le niveau n'a pas : refusée par l'en-tête en v3 comme en v4. (Avant : ses sections remises à
+// l'arrêt ; un niveau v4 n'en a aucune, la vie forgée était alors la vraie, comptée « duplicate ».)
+const forged = fromCheckpoint ? encodeJump({ ...fromCheckpoint, start: { ...fromCheckpoint.start, checkpoint: level.level.checkpoints.length } }) : "forgée";
 const livesBody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, lives: [...deathLives, forged] };
 const unknown = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
 const jstranger = await fetch(`${base}/api/jump/lives`, {
