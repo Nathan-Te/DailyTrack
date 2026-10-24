@@ -186,8 +186,10 @@ check(
 );
 const jold = await jcall("POST", "/api/jump/submit", { ...jbody, generatorVersion: JUMP_GENERATOR_VERSION - 1 });
 check("DailyJump : une autre version est refusée (409, « nouvelle version »)", jold.status === 409 && jold.body.error === "version");
-const jyesterday = await jcall("POST", "/api/jump/submit", { ...jbody, levelId: `jour-${formatDay(day - 1)}-g${JUMP_GENERATOR_VERSION}` });
-check("DailyJump : un autre jour est refusé", jyesterday.status === 409);
+// Avant-hier, pas hier : pendant les 10 minutes de grâce après minuit de Paris (`JUMP_GRACE_MS`), hier est encore ouvert — le smoke prenait hier et échouait
+// chaque nuit à 00 h 00-00 h 10 (CI de la PR 133, `api-image` et `deploy`). Avant-hier est fermé à toute heure : `day_closed`.
+const jtwoDaysAgo = await jcall("POST", "/api/jump/submit", { ...jbody, levelId: `jour-${formatDay(day - 2)}-g${JUMP_GENERATOR_VERSION}` });
+check("DailyJump : un jour passé est refusé (409, classement figé)", jtwoDaysAgo.status === 409 && jtwoDaysAgo.body.error === "day_closed", JSON.stringify(jtwoDaysAgo.body));
 
 // --- DailyJump (lot P2) : le fantôme du premier et le profil DailyJump ----------------------------------------------------------
 const jghost = await jcall("GET", `/api/jump/day/${date}/ghost/first`);

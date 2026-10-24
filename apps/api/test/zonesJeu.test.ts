@@ -27,6 +27,14 @@ describe("le jeu d'une PR", () => {
     for (const branche of ["claude/jolly-dirac-n7c6cs", "claude/jumper-x", "claude/racetrack", "claude/dailytrack-lot", ""]) expect(jeuDeLaPr({ branche }).jeu, branche).toBeNull();
   });
 
+  it("un lot de la plateforme qui nomme un jeu dans sa branche reste une PR de la plateforme ; l'étiquette de jeu l'emporte encore", () => {
+    const fichiers = ["scripts/zones-jeu.mjs", "docs/plateforme/budgets.md"];
+    expect(verifierZones({ branche: "claude/plateforme-suites-track-2-2eskpq", fichiers })).toMatchObject({ ok: true, jeu: null });
+    expect(jeuDeLaPr({ branche: "claude/plateforme-suites-jump" }).jeu).toBeNull();
+    expect(verifierZones({ etiquettes: ["jeu:track"], branche: "claude/plateforme-suites-track-2", fichiers }).ok).toBe(false);
+    expect(jeuDeLaPr({ branche: "claude/lot-14-jump-vent" }).jeu).toBe("jump"); // sans le mot, rien ne change
+  });
+
   it("les deux jeux dans le nom de branche : plateforme, sans garde", () => {
     const v = verifierZones({ branche: "claude/lot-I9-track-jump", fichiers: ["packages/ui/src/socle.css"] });
     expect(v).toMatchObject({ ok: true, jeu: null });
@@ -35,7 +43,7 @@ describe("le jeu d'une PR", () => {
 
 describe("les zones", () => {
   it("une PR Track dans ses zones passe", () => {
-    const fichiers = ["apps/web/src/main.ts", "apps/web/e2e/durees.json", "packages/sim/src/car.ts", "apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "docs/lots/lot-32-x.md", "docs/orchestration.md"];
+    const fichiers = ["apps/web/src/main.ts", "apps/web/e2e/durees.json", "packages/sim/src/car.ts", "apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "apps/api/src/garage.ts", "apps/api/test/garage.test.ts", "docs/lots/lot-32-x.md", "docs/orchestration.md"];
     expect(verifierZones({ etiquettes: ["jeu:track"], fichiers }).ok).toBe(true);
   });
 

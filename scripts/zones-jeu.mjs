@@ -5,7 +5,7 @@
 //
 // Règles :
 //   - le jeu d'une PR : l'étiquette `jeu:track` / `jeu:jump` (elle l'emporte), sinon un morceau du nom de branche (`track` / `jump`, coupé sur
-//     `/`, `-`, `_`) ; deux étiquettes = refus (une PR de jeu ne sert qu'un jeu) ; deux jeux ou aucun dans le nom de branche = une PR de la
+//     `/`, `-`, `_`) ; un morceau `plateforme` dans le nom de branche = une PR de la plateforme, même avec un nom de jeu ; deux étiquettes = refus (une PR de jeu ne sert qu'un jeu) ; deux jeux ou aucun dans le nom de branche = une PR de la
 //     plateforme, sans garde ;
 //   - une PR de jeu ne change que les fichiers de ses ZONES ou de ses EXCEPTIONS tolérées ; tout autre fichier fait échouer le job ;
 //   - le diff est pris depuis la base commune (`origin/main...HEAD`) : fusionner `main` dans la branche n'ajoute aucun fichier.
@@ -21,6 +21,10 @@ export const ZONES = {
     "packages/sim/**",
     "apps/api/src/cdj.ts",
     "apps/api/src/salon.ts",
+    // Suites des lots 40 à 47 : le Garage du serveur (lot 41 : ses règles sont dans packages/sim/src/garage.ts, ses routes dans cdj.ts) pourra
+    // vivre dans `garage.ts` avec son test à part ; aucun de ces fichiers n'existe encore (un motif, comme `jump*.ts` pour Jump).
+    "apps/api/src/garage*.ts",
+    "apps/api/test/garage*.test.ts",
     "apps/api/test/salon.test.ts",
     "apps/api/test/planning.test.ts",
     "apps/api/scripts/measure-salon.ts",
@@ -67,6 +71,9 @@ export function jeuDeLaPr({ etiquettes = [], branche = "" } = {}) {
   if (parEtiquette.length > 1) return { jeu: null, source: "étiquettes", erreur: "les deux étiquettes jeu:track et jeu:jump : une PR de jeu ne sert qu'un jeu" };
   if (parEtiquette.length === 1) return { jeu: parEtiquette[0], source: `étiquette jeu:${parEtiquette[0]}` };
   const morceaux = String(branche).toLowerCase().split(/[/_-]+/);
+  // Un lot de la plateforme qui parle d'un jeu dans son nom (`plateforme-suites-track-2`) reste une PR de la plateforme : le morceau `plateforme` l'emporte sur le nom de jeu
+  // (l'étiquette `jeu:…`, plus haut, l'emporte sur les deux). Une PR de jeu n'a pas de raison de porter ce mot dans sa branche.
+  if (morceaux.includes("plateforme")) return { jeu: null, source: `branche « ${branche} » (plateforme)` };
   const parBranche = JEUX.filter((j) => morceaux.includes(j));
   if (parBranche.length === 1) return { jeu: parBranche[0], source: `branche « ${branche} »` };
   return { jeu: null, source: parBranche.length > 1 ? `branche « ${branche} » (deux jeux : plateforme)` : "aucune étiquette de jeu ni jeu dans le nom de branche" };

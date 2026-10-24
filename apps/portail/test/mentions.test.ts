@@ -107,6 +107,23 @@ describe("page des mentions légales et de la confidentialité", () => {
     expect(PAGE).toContain("<code>jump:…</code>");
   });
 
+  // Suites de Track 2 : les deux clés que le Garage (lot 41) et la règle de qualité (lot 45) écrivent sont nommées, dans les deux langues. Les clés sont lues dans le source du jeu :
+  // une clé renommée sans la page échoue ici.
+  it("le Garage et la qualité graphique sont nommés (cdj:track:garage, cdj:qualite), avec ce qu'ils gardent", () => {
+    const cle = (fichier: string, nom: string) => new RegExp(`export const ${nom} = "([^"]+)"`).exec(readFileSync(join(ROOT, fichier), "utf8"))?.[1];
+    const garage = cle("apps/web/src/voiture/choix.ts", "CLE_GARAGE");
+    const qualite = cle("apps/web/src/qualite.ts", "QUALITE_KEY");
+    expect([garage, qualite]).toEqual(["cdj:track:garage", "cdj:qualite"]);
+    for (const [page, textes] of [
+      [PAGE, ["ta voiture de DailyTrack", "la couleur du motif", "les voitures débloquées", "le palier graphique", "la date de la dernière mesure"]],
+      [PAGE_EN, ["your DailyTrack car", "the pattern colour", "the cars you have unlocked", "the graphics tier", "the date of the last"]],
+    ] as const) {
+      expect(page).toContain(`<code>${garage}</code>`);
+      expect(page).toContain(`<code>${qualite}</code>`);
+      for (const t of textes) expect(page, t).toContain(t);
+    }
+  });
+
   it("la procédure d'effacement donne les délais du code (mémoire, cache)", () => {
     expect(CLOSED_GHOST_TTL_MS).toBe(10 * 60_000);
     expect(EFFACEMENT).toContain("jusqu'à 10 minutes");

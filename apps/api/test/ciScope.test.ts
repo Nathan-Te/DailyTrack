@@ -41,7 +41,7 @@ describe("catégorie d'un fichier", () => {
   });
 
   it("lot R3 — serveur de DailyTrack (cdj.ts, Salon, leurs tests, ses outils) : DailyTrack et plateforme", () => {
-    for (const p of ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "apps/api/test/planning.test.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/measure-generator.ts", "apps/api/scripts/measure-budget.ts", "apps/api/scripts/history-seed.ts"])
+    for (const p of ["apps/api/src/cdj.ts", "apps/api/src/salon.ts", "apps/api/test/salon.test.ts", "apps/api/test/planning.test.ts", "apps/api/scripts/measure-salon.ts", "apps/api/scripts/measure-generator.ts", "apps/api/scripts/measure-budget.ts", "apps/api/scripts/history-seed.ts", "apps/api/src/garage.ts", "apps/api/test/garage.test.ts"])
       expect(cats(p), p).toEqual(["plateforme", "track"]);
   });
 

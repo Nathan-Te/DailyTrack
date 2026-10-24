@@ -29,6 +29,9 @@ export const RULES = [
   // `history.ts` n'y est pas : jumpHistory.ts l'importe (doute → les trois).
   { glob: "apps/api/src/cdj.ts", cats: ["track", "plateforme"] },
   { glob: "apps/api/src/salon.ts", cats: ["track", "plateforme"] },
+  // Suites des lots 40 à 47 : le Garage du serveur (`garage.ts`) et son test à part, alignés sur scripts/zones-jeu.mjs.
+  { glob: "apps/api/src/garage*.ts", cats: ["track", "plateforme"] },
+  { glob: "apps/api/test/garage*.test.ts", cats: ["track", "plateforme"] },
   { glob: "apps/api/test/salon.test.ts", cats: ["track", "plateforme"] },
   { glob: "apps/api/test/planning.test.ts", cats: ["track", "plateforme"] },
   { glob: "apps/api/scripts/measure-salon.ts", cats: ["track", "plateforme"] },

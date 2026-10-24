@@ -140,5 +140,5 @@ if (!demoSeulement || process.argv.includes("--classement")) {
 const demoStarted = Date.now();
 const demo = await seedPortailDemo({ db, frozen, today });
 console.log(
-  `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
+  `Joueur de démonstration « Démo » (portail, /?demo=joueur) : Garage ${demo.garage.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ") || "—"} ; Track ${demo.track.map((t) => `${t.date} ${t.medal ?? "sans médaille"}`).join(", ")} ; Jump ${demo.jump.map((j) => j.date).join(", ") || "—"} ; ${demo.morts} mort(s) aujourd'hui — ${((Date.now() - demoStarted) / 1000).toFixed(0)} s.`,
 );
