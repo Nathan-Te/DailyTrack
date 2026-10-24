@@ -4,7 +4,7 @@ Branche `claude/lot-47-post-traitement-jefqws` (nom imposé par la session ; le 
 `zones`), partie de `main` à `76e0725` (**lots 40c, 45 et 46 fusionnés**). Zones : `apps/web/**`, `docs/lots/**`, la ligne de Track de `docs/plateforme/budgets.md`, son entrée de
 `durees.json`. **Rien dans `sim`** : golden, `SIM_VERSION`, `GENERATOR_VERSION`, rediffusions, classements, identifiants de circuit inchangés. Aucune clé de catalogue (la chaîne n'a
 aucun texte ; la page d'admin est un outil interne, en français) : `npm run traductions -- --verifier` reste vert. Aucune donnée gardée de plus (`cdj:qualite` existe déjà) : les mentions
-légales ne changent pas. PR : À REMPLIR
+légales ne changent pas. PR : [Nathan-Te/DailyTrack#130](https://github.com/Nathan-Te/DailyTrack/pull/130) (brouillon ; l'aperçu est commenté par la CI).
 
 ## En deux phrases
 
