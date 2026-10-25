@@ -1,3 +1,4 @@
+import "./generationInit";
 // Lot I4 : le socle `@cdj/ui` (jetons, base, composants), les 7 faces de polices de Track (hébergées, mêmes fichiers que le portail), puis les feuilles du jeu.
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/cadre.css";
@@ -83,7 +84,7 @@ import { sharedCircuitEngine, type DailyCircuit } from "./circuitEngine";
 import { archiveDays, disposeArchive, mountArchive, nextTheme, randomSeedHref, themeHref, type ArchiveArgs, type ThumbSource } from "./archive";
 import { loadArchiveExtras } from "./archiveExtras";
 import { DEMO_BASE, apiBase } from "./api";
-import { lireSuite } from "@cdj/profile";
+import { appliquerGeneration, lireSuite } from "@cdj/profile";
 import { elementsDeSuite } from "./jeuSuivant";
 import { DEMO_TODAY } from "./demo";
 import { NO_PLAN, fetchDayPlan, fetchPlanning, loadDemoPlan, type PlanEntry } from "./planning";
@@ -229,6 +230,12 @@ if (scenario === "jour" && !trial) {
     planKnown = true;
   } else if (base) {
     const r = await fetchDayPlan(base, formatDay(planDay));
+    // Lot R8 : une génération de données plus récente que celle de ce navigateur (remise à zéro du lancement) : ses données de jeu sont effacées
+    // (ses réglages gardés) et la page recharge ; il est un joueur neuf. Rien n'est lu ni envoyé avec les anciennes données.
+    if (r.ok && appliquerGeneration(gameStorage(), r.data.generation) === "efface") {
+      location.reload();
+      await new Promise<never>(() => undefined);
+    }
     if (r.ok && r.data.trackId === dailyTrackId(planDay, r.data.theme, r.data.variant)) {
       plan = { variant: r.data.variant, theme: r.data.theme };
       planKnown = true;

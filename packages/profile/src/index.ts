@@ -8,3 +8,4 @@ export * from "./sync";
 export * from "./profile";
 export * from "./langue";
 export * from "./jeuSuivant";
+export * from "./generation";

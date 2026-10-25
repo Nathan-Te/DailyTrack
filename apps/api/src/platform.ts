@@ -38,6 +38,16 @@ export const PEER_FACTOR = 10;
  */
 export const REPLAYS_PER_MINUTE = 600;
 
+/**
+ * Lot R8 : la **génération de données** — un nombre qui ne change que lorsque la remise à zéro du lancement vide la base (`meta.generation`,
+ * l'instant de la remise à zéro en millisecondes : croissant, donc un navigateur ne « revient » jamais à une génération plus ancienne). Absent
+ * (base jamais remise à zéro) : 0. Lue au plus toutes les `GENERATION_TTL_MS` par instance (une ligne), et rendue par `GET /api/portail/jour`,
+ * la lecture regroupée de DailyJump et `GET /api/day/<date>` de DailyTrack : un navigateur qui en garde une plus ancienne efface ses données
+ * de jeu (`packages/profile/src/generation.ts`).
+ */
+export const GENERATION_KEY = "generation";
+export const GENERATION_TTL_MS = 30_000;
+
 export interface PlatformOptions {
   db: SqlDb;
   now: () => number;
@@ -70,6 +80,37 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
       schemaReady = null;
       throw e;
     }));
+
+  /**
+   * Lot R8 : la génération de données (voir `GENERATION_KEY`), gardée `GENERATION_TTL_MS` par instance ; un seul appel en vol à la fois. **Quand elle
+   * change** (la remise à zéro du lancement a vidé la base), l'instance **oublie tout ce qu'elle garde en mémoire** (`onGenerationChange` : classements
+   * gardés, premier d'un jour fermé, cartes des morts…) : aucun redémarrage de révision n'est nécessaire. `api.ts` appelle `generation()` au début de
+   * chaque requête (une lecture d'une ligne par instance et par délai).
+   */
+  let generationMemo: { at: number; value: Promise<number> } | null = null;
+  let generationVue: number | null = null;
+  const generationListeners = new Set<() => void>();
+  const generation = (): Promise<number> => {
+    if (generationMemo && now() - generationMemo.at < GENERATION_TTL_MS) return generationMemo.value;
+    const value = db
+      .first<{ value: string }>("SELECT value FROM meta WHERE key = ?", [GENERATION_KEY])
+      .then((row) => {
+        const n = row ? Number(row.value) : 0;
+        const g = Number.isSafeInteger(n) && n > 0 ? n : 0;
+        if (generationVue !== null && g !== generationVue) {
+          log("INFO", "génération de données changée : mémoire de l'instance oubliée", { generation: g });
+          for (const fn of generationListeners) fn();
+        }
+        generationVue = g;
+        return g;
+      });
+    const entry = { at: now(), value };
+    generationMemo = entry;
+    value.catch(() => {
+      if (generationMemo === entry) generationMemo = null; // un échec n'est pas gardé
+    });
+    return value;
+  };
 
   const today = () => parisDay(now()); // la date à Paris (lot 31), jamais le jour UTC
   /** Temps écoulé depuis minuit de Paris (le jour dure 23 h, 24 h ou 25 h selon l'heure d'été). */
@@ -200,6 +241,10 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
     limits,
     today,
     sinceMidnight,
+    generation,
+    onGenerationChange: (fn) => {
+      generationListeners.add(fn);
+    },
     players,
     hashKey,
     hit,

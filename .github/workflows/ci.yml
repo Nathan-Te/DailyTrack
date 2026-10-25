@@ -47,6 +47,9 @@ jobs:
       - run: npx vitest run --project sqlite --shard=${{ matrix.part }} && npx vitest run --project libsql --shard=${{ matrix.part }}
       - run: npm run build
         if: matrix.part == '1/3'
+        env:
+          # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
 
   # Verdict des tests unitaires : le statut requis `test` (protection de main) ; il tourne toujours et échoue si une part a échoué.
   # Retouche du lot I6 : il porte aussi le verdict de `zones` (une PR de jeu restée dans ses zones).
@@ -222,8 +225,14 @@ jobs:
         if: steps.gate.outputs.run == 'true' && steps.browsers.outputs.cache-hit == 'true'
       - run: npm run build && npm run build:node -w @cdj/api
         if: steps.gate.outputs.run == 'true' && matrix.suite != 'jump'
+        env:
+          # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
       - run: npm run build -w @cdj/jump
         if: steps.gate.outputs.run == 'true' && matrix.suite == 'jump'
+        env:
+          # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
       - name: Nom de la part
         if: steps.gate.outputs.run == 'true'
         run: |

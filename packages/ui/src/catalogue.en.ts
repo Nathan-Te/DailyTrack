@@ -47,6 +47,8 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "pleinEcran.quitter": "Exit full screen",
   "pleinEcran.iphone": "To play full screen: Share › Add to Home Screen",
   "pleinEcran.iphone.fermer": "Dismiss this tip",
+  "nouveauDepart.message": "Fresh start: everyone begins from zero. Good luck!",
+  "nouveauDepart.fermer": "Dismiss this message",
   "erreur.not_found": "This address doesn't exist.",
   "erreur.method_not_allowed": "That action isn't allowed here.",
   "erreur.invalid_json": "The request couldn't be read.",

@@ -1,5 +1,7 @@
 import { msUntilNextParisDay, parisDay } from "@cdj/clock";
 import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
+import { premierJourDuJour } from "@cdj/core/lancement";
+import { PREMIER_JOUR_ARCHIVES } from "../src/lancement";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, dailyLevel, jumpMedalsFor, textHash, type DailyLevel } from "@cdj/jump-sim";
 import { beforeAll, describe, expect, it } from "vitest";
 import { loadDaily, type LoaderOptions } from "../src/dailyLoader";
@@ -330,10 +332,16 @@ describe("l'accueil", () => {
   });
 
   it("archives : du niveau n° 1 jusqu'à hier, le plus récent d'abord ; jamais aujourd'hui ni le futur", () => {
-    expect(archiveDays(day("2026-10-20")).map(formatDay)).toEqual(["2026-10-19", "2026-10-18", "2026-10-17", "2026-10-16"]);
-    expect(archiveDays(PREMIER_JOUR_JUMP)).toEqual([]);
-    expect(archiveDays(PREMIER_JOUR_JUMP - 3)).toEqual([]);
-    expect(archiveDays(PREMIER_JOUR_JUMP + 400)).toHaveLength(400);
+    expect(archiveDays(day("2026-10-20"), PREMIER_JOUR_JUMP).map(formatDay)).toEqual(["2026-10-19", "2026-10-18", "2026-10-17", "2026-10-16"]);
+    expect(archiveDays(PREMIER_JOUR_JUMP, PREMIER_JOUR_JUMP)).toEqual([]);
+    expect(archiveDays(PREMIER_JOUR_JUMP - 3, PREMIER_JOUR_JUMP)).toEqual([]);
+    expect(archiveDays(PREMIER_JOUR_JUMP + 400, PREMIER_JOUR_JUMP)).toHaveLength(400);
+    // Lot R8 : par défaut, les archives commencent à la journée n° 1 de Du Jour (le lancement public), pas au niveau n° 1 de Jump.
+    const lancement = premierJourDuJour();
+    expect(PREMIER_JOUR_ARCHIVES).toBe(Math.max(PREMIER_JOUR_JUMP, lancement));
+    expect(archiveDays(lancement + 3).map(formatDay)).toEqual([formatDay(lancement + 2), formatDay(lancement + 1), formatDay(lancement)]);
+    expect(archiveDays(lancement)).toEqual([]); // le jour du lancement : rien à rejouer, c'est le niveau du jour
+    expect(archiveDays(lancement - 5)).toEqual([]);
     expect(archiveRow(day("2026-10-18"), "nuit", null)).toEqual({ date: "2026-10-18", number: 3, title: `n°${NB}3`, subtitle: "Dim. 18 oct. · Nuit", result: "", medal: null });
     expect(archiveRow(day("2026-10-18"), "nuit", rec("2026-10-18", 3600, { medal: "silver" }))).toMatchObject({ result: `30,000${NB}s`, medal: "silver" });
     expect(archiveRow(day("2026-10-18"), "nuit", rec("2026-10-18", null, { deaths: 9 })).result).toBe("pas d'arrivée · 9 morts");

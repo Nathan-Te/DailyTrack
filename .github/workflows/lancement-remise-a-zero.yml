@@ -1,0 +1,175 @@
+name: "Lancement : remise à zéro"
+# Lot R8 (plateforme) — « tout le monde repart de zéro » : vide la base (identités, pseudos, codes, classements, temps, rediffusions et fantômes, séries,
+# morts, Salon…) le jour du lancement public. **Lancé par Nathan seulement** (bouton « Run workflow »), jamais par un agent ni par un test ; la liste
+# de contrôle pas à pas est `docs/plateforme/lancement.md`.
+#
+# Gardes (toutes avant d'écrire, et refaites par `apps/api/scripts/remise-a-zero.ts`) :
+#   - deux confirmations saisies : le **nom de la base visée** et la phrase « tout le monde repart de zéro » ;
+#   - la production n'est vidée que depuis `main`, après la validation de Nathan (environnement GitHub `production`), avec la **confirmation que la
+#     sauvegarde est faite** (étape de Nathan sur son ordinateur : la commande exacte est dans `docs/plateforme/lancement.md`), et seulement si la
+#     production **sert** une date de lancement d'aujourd'hui ou de demain (on ne vide pas la base trois jours trop tôt) ;
+#   - la règle des noms de base : « recette » dans le nom d'une base de recette, jamais dans celui d'une base de production.
+# Ce qui est vidé (la liste est calculée du schéma, `apps/api/src/remiseAZero.ts`) : toutes les tables liées à un joueur ou à une partie ; gardés : le
+# planning de DailyTrack, les caches de niveaux, la table de service, les jours figés (fichiers) et la configuration. **Aucune donnée personnelle ne
+# sort** : le résumé ne porte que des noms de tables et des nombres de lignes ; ni journal, ni artefact (le dépôt est public).
+# Après : une **génération de données** neuve est écrite dans la base (`meta`) ; les instances du serveur la lisent dans les 30 s et oublient alors
+# leur mémoire (pas de redémarrage de révision : il reviendrait à redéployer le code d'une révision au hasard) ; les navigateurs qui en gardent une plus
+# ancienne effacent leurs données de jeu à leur prochain chargement. Puis `smoke --lecture-seule --vide` contre le **service** (pas Hosting, dont le
+# cache public garderait 30 à 60 s l'ancien classement) : classements vides, génération annoncée, portail sans joueur.
+# Le jeton de la base est lu dans Secret Manager (production : `cdj-turso-token`, recette : `cdj-recette-turso-token`), masqué, jamais écrit ;
+# le compte de déploiement doit pouvoir lire ce secret (une commande, une fois : `docs/plateforme/lancement.md`).
+on:
+  workflow_dispatch:
+    inputs:
+      cible:
+        description: "Quelle base vider : recette ou production"
+        type: choice
+        options: [recette, production]
+        default: recette
+      base:
+        description: "Confirmation 1/2 : le nom de la base visée, tel que Turso le montre (ex. dailytrack-recette)"
+        type: string
+        required: true
+      phrase:
+        description: "Confirmation 2/2 : tape exactement « tout le monde repart de zéro »"
+        type: string
+        required: true
+      sauvegarde_faite:
+        description: "Production : la sauvegarde de la base est faite (étape 2 de docs/plateforme/lancement.md)"
+        type: boolean
+        default: false
+      essai_a_blanc:
+        description: "Compte seulement les lignes de chaque table, n'écrit rien"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write # fédération d'identité (aucune clé longue durée)
+
+jobs:
+  remise:
+    runs-on: ubuntu-latest
+    # Production : le job attend la validation d'un relecteur de l'environnement `production` (Nathan). Recette : environnement sans règle.
+    environment: ${{ inputs.cible == 'production' && 'production' || 'recette' }}
+    concurrency:
+      group: lancement-remise-a-zero
+      cancel-in-progress: false
+    env:
+      CIBLE: ${{ inputs.cible }}
+      BASE_SAISIE: ${{ inputs.base }}
+      PHRASE: ${{ inputs.phrase }}
+      SAUVEGARDE: ${{ inputs.sauvegarde_faite }}
+      A_BLANC: ${{ inputs.essai_a_blanc }}
+      REF: ${{ github.ref }}
+      GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+      GCP_REGION: ${{ vars.GCP_REGION }}
+      PROD_DB: ${{ vars.TURSO_DATABASE_URL }}
+      PROD_SERVICE: ${{ vars.GCP_SERVICE }}
+      RECETTE_DB: ${{ vars.RECETTE_TURSO_DATABASE_URL }}
+      RECETTE_SERVICE: ${{ vars.RECETTE_GCP_SERVICE }}
+      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
+    steps:
+      - name: Gardes (avant tout)
+        id: cfg
+        run: |
+          fail() { echo "::error title=Remise à zéro refusée::$1"; echo "### Remise à zéro REFUSÉE — rien n'a été vidé" >> "$GITHUB_STEP_SUMMARY"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; exit 1; }
+          [ "$CIBLE" = production ] || [ "$CIBLE" = recette ] || fail "cible inconnue : « $CIBLE »"
+          if [ "$CIBLE" = production ] && [ "$REF" != "refs/heads/main" ]; then fail "la production ne se vide que depuis main (ce run est sur $REF)"; fi
+          if [ "$CIBLE" = production ] && [ "$SAUVEGARDE" != true ]; then fail "la sauvegarde de la base de production n'est pas confirmée (docs/plateforme/lancement.md, étape 2)"; fi
+          [ "$PHRASE" = "tout le monde repart de zéro" ] || fail "la phrase de confirmation n'est pas « tout le monde repart de zéro »"
+          if [ "$CIBLE" = recette ]; then db="$RECETTE_DB"; service="${RECETTE_SERVICE:-cdj-api-recette}"; secret=cdj-recette-turso-token; dbvar=RECETTE_TURSO_DATABASE_URL
+          else db="$PROD_DB"; service="${PROD_SERVICE:-cdj-api}"; secret=cdj-turso-token; dbvar=TURSO_DATABASE_URL; fi
+          [ -n "$GCP_PROJECT_ID" ] && [ -n "$db" ] || fail "configuration manquante (GCP_PROJECT_ID et $dbvar) : voir docs/plateforme/recette.md ou docs/mise-en-ligne.md"
+          if { [ -z "$WIF_PROVIDER" ] || [ -z "$WIF_SERVICE_ACCOUNT" ]; } && [ "$HAS_SA_KEY" != true ]; then fail "accès Google Cloud non configuré (GCP_WORKLOAD_IDENTITY_PROVIDER + GCP_SERVICE_ACCOUNT, ou GCP_SA_KEY)"; fi
+          # La règle des noms de base (la même que apps/api/src/config.ts et deploy-api.yml).
+          dbname="$(printf '%s' "$db" | sed -E 's#^[a-z]+://##; s#[/:?].*$##; s#\..*$##' | tr '[:upper:]' '[:lower:]')"
+          if [ "$CIBLE" = recette ]; then case "$dbname" in *recette*) ;; *) fail "la base de recette « $dbname » n'a pas « recette » dans son nom" ;; esac
+          else case "$dbname" in *recette*) fail "la base de production « $dbname » est une base de recette" ;; esac; fi
+          if [ -n "$PROD_DB" ] && [ -n "$RECETTE_DB" ] && [ "$PROD_DB" = "$RECETTE_DB" ]; then fail "les bases de recette et de production sont la même"; fi
+          saisie="$(printf '%s' "$BASE_SAISIE" | tr '[:upper:]' '[:lower:]' | sed 's/^ *//; s/ *$//')"
+          # Le nom connu dans Turso (ex. dailytrack-misterzcool) ou le premier mot complet de l'adresse (…-<organisation>) ; un préfixe s'arrête à un tiret et fait six caractères au moins.
+          ok=false
+          [ -n "$saisie" ] && [ "$saisie" = "$dbname" ] && ok=true
+          if [ "$ok" = false ] && [ "${#saisie}" -ge 6 ]; then case "$dbname" in "$saisie"-*) ok=true ;; esac; fi
+          [ "$ok" = true ] || fail "le nom de la base saisi (« $BASE_SAISIE ») n'est pas celui de la base visée (« $dbname »)"
+          {
+            echo "db=$db"
+            echo "dbname=$dbname"
+            echo "service=$service"
+            echo "secret=$secret"
+            echo "region=${GCP_REGION:-europe-west1}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Cible : $CIBLE · base « $dbname » · service $service" >> "$GITHUB_STEP_SUMMARY"
+
+      # Le dépôt d'abord : `actions/checkout` vide le dossier de travail, où l'authentification écrit son fichier d'identifiants.
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v3
+        if: env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/auth@v3
+        if: env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == ''
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Remise à zéro
+        id: remise
+        env:
+          DB: ${{ steps.cfg.outputs.db }}
+          DBNAME: ${{ steps.cfg.outputs.dbname }}
+          SECRET: ${{ steps.cfg.outputs.secret }}
+        run: |
+          if ! token="$(gcloud secrets versions access latest --secret="$SECRET" --project="$GCP_PROJECT_ID" 2>/tmp/secret-err)"; then
+            # Seul un refus de permission est « une commande à lancer une fois » ; toute autre erreur est un vrai problème.
+            if grep -qiE "PERMISSION_DENIED|permission .*denied" /tmp/secret-err; then
+              {
+                echo "### Remise à zéro non lancée : le compte de déploiement ne lit pas le secret \`$SECRET\`"
+                echo "Une commande, une fois (Cloud Shell), puis relance ce workflow :"
+                echo ""
+                echo "\`gcloud secrets add-iam-policy-binding $SECRET --member=serviceAccount:cdj-deploy@${GCP_PROJECT_ID}.iam.gserviceaccount.com --role=roles/secretmanager.secretAccessor\`"
+              } >> "$GITHUB_STEP_SUMMARY"
+              echo "::error title=Secret illisible::le compte de déploiement ne lit pas $SECRET (la commande est dans le résumé du run). Rien n'a été vidé."
+            else
+              echo "::error title=Jeton de la base illisible::$(head -c 300 /tmp/secret-err | tr '\n' ' ')"
+            fi
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          [ -n "$token" ] || { echo "::error::secret $SECRET vide"; exit 1; }
+          npm ci -w @cdj/api --ignore-scripts
+          args=(--cible "$CIBLE" --base "$BASE_SAISIE" --phrase "$PHRASE")
+          [ "$SAUVEGARDE" != true ] || args+=(--sauvegarde-faite)
+          [ "$CIBLE" != production ] || args+=(--lancement-url https://playdujour.com)
+          [ "$A_BLANC" = true ] || args+=(--appliquer)
+          # Le résumé de la remise à zéro : des noms de tables et des nombres de lignes, rien de personnel.
+          TURSO_DATABASE_URL="$DB" TURSO_AUTH_TOKEN="$token" npm run --silent lancement:remise-a-zero -- "${args[@]}" | tee -a "$GITHUB_STEP_SUMMARY"
+          unset token
+
+      # Les instances lisent la génération au plus toutes les 30 s (`GENERATION_TTL_MS`) : on attend un peu plus avant de vérifier.
+      - name: Attendre que le serveur voie la nouvelle génération
+        if: env.A_BLANC != 'true'
+        run: sleep 40
+
+      - name: Vérifier la base vide (smoke --lecture-seule --vide)
+        if: env.A_BLANC != 'true'
+        env:
+          SERVICE: ${{ steps.cfg.outputs.service }}
+          REGION: ${{ steps.cfg.outputs.region }}
+        run: |
+          url="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
+          [ -n "$url" ] || { echo "::error::adresse du service $SERVICE introuvable"; exit 1; }
+          npm ci -w @cdj/api --ignore-scripts
+          if ! npm run smoke -w @cdj/api -- "${url%/}" --lecture-seule --vide --environnement "$CIBLE" --resume "$GITHUB_STEP_SUMMARY" --retour "Aucun retour arrière : la base a été vidée (la sauvegarde est celle de l'étape 2)."; then
+            echo "::error title=Après la remise à zéro : vérification en échec::une route ne répond pas comme prévu (détail dans le résumé du run)."
+            exit 1
+          fi
+          echo "- Vérification faite sur le service lui-même (pas sur Hosting, dont le cache public garde 30 à 60 s l'ancien classement)." >> "$GITHUB_STEP_SUMMARY"

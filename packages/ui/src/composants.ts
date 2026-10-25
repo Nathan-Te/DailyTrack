@@ -312,6 +312,28 @@ export function astuceIphone(o: OptionsAstuceIphone): HTMLElement | null {
   return racine;
 }
 
+/**
+ * Lot R8 : « Nouveau départ : tout le monde repart de zéro. Bonne chance ! » — la ligne courte montrée **une fois** à un navigateur dont les données
+ * de jeu ont été effacées par la remise à zéro du lancement (`lireNouveauDepart` de `@cdj/profile` dit s'il faut la montrer). Un bouton la ferme. Même
+ * habillage que l'astuce de l'iPhone ; `role="status"` (annoncée sans prendre le focus).
+ */
+export function avisNouveauDepart(t: TraducteurCommun, o: { onFermer?: () => void } = {}): HTMLElement {
+  const texte = el("span", { classe: "dj-astuce__texte" });
+  const fermer = el("button", { classe: "dj-astuce__fermer", attrs: { type: "button" } }, svgFermer());
+  const racine = el("p", { classe: "dj-astuce dj-astuce--depart", attrs: { role: "status" } }, texte, fermer);
+  fermer.addEventListener("click", () => {
+    racine.remove();
+    o.onFermer?.();
+  });
+  const maj = () => {
+    texte.textContent = t.t("nouveauDepart.message");
+    fermer.setAttribute("aria-label", t.t("nouveauDepart.fermer"));
+  };
+  maj();
+  suivre(racine, maj);
+  return racine;
+}
+
 function svgFermer(): SVGSVGElement {
   return svg("svg", { attrs: { viewBox: "0 0 24 24", width: 16, height: 16, fill: "none", stroke: "currentColor", "stroke-width": 2.5, "stroke-linecap": "square", focusable: "false", "aria-hidden": "true" } }, svg("path", { attrs: { d: "M5 5l14 14M19 5 5 19" } }));
 }

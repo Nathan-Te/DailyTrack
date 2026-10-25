@@ -18,6 +18,7 @@ export const SERVER_PATHS = [
   "packages/jump-sim/**",
   "packages/profile/**",
   "apps/jump/public/levels/**",
+  "config/**", // lot R8 : la date du lancement (config/lancement.json) est lue par le serveur
   "package.json",
   "package-lock.json",
   "tsconfig.base.json",

@@ -543,6 +543,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       palette: c.palette,
       simVersion: SIM_VERSION,
       generatorVersion: GENERATOR_VERSION,
+      // Lot R8 : la génération de données (remise à zéro du lancement) : un navigateur qui en garde une plus ancienne efface ses données de jeu.
+      generation: await platform.generation(),
     };
   }
 

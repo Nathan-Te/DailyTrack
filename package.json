@@ -16,8 +16,8 @@
     "build": "npm run build -w @cdj/web && npm run build -w @cdj/jump",
     "test": "vitest run --project sqlite && vitest run --project libsql",
     "typecheck": "tsc -b",
-    "test:e2e": "npm run build && npm run build:node -w @cdj/api && npm run e2e -w @cdj/web",
-    "e2e:jump": "npm run build -w @cdj/jump && npm run e2e -w @cdj/jump --",
+    "test:e2e": "VITE_LANCEMENT_PREMIER_JOUR=2026-10-13 npm run build && npm run build:node -w @cdj/api && npm run e2e -w @cdj/web",
+    "e2e:jump": "VITE_LANCEMENT_PREMIER_JOUR=2026-10-13 npm run build -w @cdj/jump && npm run e2e -w @cdj/jump --",
     "solve:modules": "npm run solve:modules -w @cdj/jump-sim --",
     "measure:jump": "npm run measure:jump -w @cdj/jump-sim --",
     "freeze:days": "npm run freeze:days -w @cdj/jump --",
@@ -27,6 +27,7 @@
     "measure:budget": "npm run measure:budget -w @cdj/api",
     "smoke": "npm run smoke -w @cdj/api --",
     "pseudos:migrate": "npm run pseudos:migrate -w @cdj/api --",
+    "lancement:remise-a-zero": "npm run lancement:remise-a-zero -w @cdj/api --",
     "recette:seed": "esbuild apps/api/scripts/recette-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=apps/api/dist/recette-seed.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node apps/api/dist/recette-seed.mjs",
     "traductions": "esbuild scripts/traductions.ts --bundle --platform=node --format=esm --target=node22 --outfile=node_modules/.cache/cdj/traductions.mjs --log-level=warning && node node_modules/.cache/cdj/traductions.mjs"
   },

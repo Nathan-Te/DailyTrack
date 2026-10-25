@@ -1,3 +1,4 @@
+import "./generationInit";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import {
@@ -101,7 +102,7 @@ import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
 import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
-import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
+import { NAME_KEY, ProfileSync, appliquerGeneration, createIdentity, generationDeReponse, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
 import { applyJumpProfile, followJumpIdentity, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
 import { lireSuite, type Suite } from "@cdj/profile";
 import { HttpRankSource, rankApiBase, type JumpBoard, type RankSource } from "./rankApi";
@@ -527,6 +528,11 @@ const rankSource: RankSource | null = apiBase === null ? null : demoRank ? new D
 // Lot P4 (plateforme) : les lectures du jour regroupées (classement, fantôme du premier, carte des morts ; le profil au chargement) en une
 // requête, jamais deux fois en moins de 30 s (`dayReads.ts`).
 const reads = new DayReads({ source: rankSource, now: () => Date.now() });
+// Lot R8 : la lecture regroupée dit la génération de données du serveur ; une plus récente que celle de ce navigateur (remise à zéro du lancement) :
+// ses données de jeu sont effacées (ses réglages gardés) et la page recharge, en joueur neuf (le message le dit une fois, sur l'accueil).
+reads.onLoad((b) => {
+  if (store && appliquerGeneration(store, generationDeReponse(b)) === "efface") location.reload();
+});
 const identity = createIdentity(() => {
   if (!store) throw new Error("stockage indisponible");
   return store;

@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { daysFromCivil, formatDay } from "@cdj/core";
+import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
+import { PREMIER_JOUR_TEXTE } from "@cdj/core/lancement";
 import { PREMIER_JOUR, medalFor, medalsFor } from "@cdj/sim";
 import { PREMIER_JOUR_JUMP, dailyLevel, jumpMedalFor, type DailyLevel } from "@cdj/jump-sim";
 import type { GameDefinition, PortailDuJeu } from "../src/games";
@@ -83,14 +84,15 @@ function espion(t: TestApi) {
 }
 
 describe("le numéro de journée commun", () => {
-  it("la journée n° 1 est le 23 octobre 2026 ; avant, aucun numéro", () => {
-    expect(PREMIER_JOUR_DU_JOUR).toBe(daysFromCivil(2026, 10, 23));
+  it("la journée n° 1 est celle de config/lancement.json (la source unique, lot R8) ; avant, aucun numéro", () => {
+    expect(PREMIER_JOUR_DU_JOUR).toBe(parseDay(PREMIER_JOUR_TEXTE));
+    expect(PREMIER_JOUR_DU_JOUR).toBe(daysFromCivil(2026, 10, 26)); // la valeur posée par le lot R8 ; Nathan la déplace dans le fichier JSON, puis ici
     expect(numeroDeJournee(PREMIER_JOUR_DU_JOUR - 1)).toBeNull();
     expect(numeroDeJournee(PREMIER_JOUR_DU_JOUR)).toBe(1);
     expect(numeroDeJournee(PREMIER_JOUR_DU_JOUR + 41)).toBe(42);
   });
 
-  it(`GET /api/portail/jour rend \`journee\` (null avant le 23/10, puis 1, 2…) (${TEST_DB})`, async () => {
+  it(`GET /api/portail/jour rend \`journee\` (null avant la journée n° 1, puis 1, 2…) (${TEST_DB})`, async () => {
     const t = await portailApi();
     expect((await t.call("GET", "/api/portail/jour")).body.journee).toBeNull();
     t.clock.now = parisDayStart(PREMIER_JOUR_DU_JOUR) + 3_600_000;
