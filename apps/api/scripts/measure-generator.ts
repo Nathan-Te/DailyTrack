@@ -37,6 +37,11 @@ import {
   composeFigures,
   generatorVersionOf,
   BASCULE_LOT_34,
+  BASCULE_LOT_48,
+  themeForDay,
+  medalsFor,
+  type BlockSurface,
+  type Track,
   formatDay,
   TRAP_SLACK,
   type ChoiceMoments,
@@ -54,6 +59,7 @@ import {
 // Variables : `RHYTHM=1` (ajoute le rythme par figure), `DAYS` (60), `FROM` (« 2026-10-06 »), `VALIDATION_DAYS` (12), `VALIDATION_ATTEMPTS` (6), `FAST=1` (n'exécute que les 20 premières dates).
 // Lot 34 : `GENERATOR` (version imposée aux sections 1 et 2, la dernière par défaut, quelle que soit la date), `COMPARE` (« 15,16 » : versions
 // comparées par la section 3 et la section 2), `TRAP_DAYS` (60) et `TRAP_THEME_DAYS` (12) : dates de la section 3 (à partir de `FROM`).
+// Lot 48 : section 4 (herbe de course), à la fin ; `HERBE=1` ne lance qu'elle (≈ 20 s).
 
 const DAYS = Number(process.env.DAYS ?? (process.env.FAST ? 20 : 60));
 const VALIDATION_DAYS = Number(process.env.VALIDATION_DAYS ?? (process.env.FAST ? 6 : 12));
@@ -93,6 +99,55 @@ function tightTurns(blocks: Block[]): { total: number; run: number } {
     } else run = 0;
   }
   return { total, run: best };
+}
+
+// --- 4. Lot 48 : l'herbe de course --------------------------------------------------------------
+// 20 circuits de Campagne avant la bascule (l'herbe d'avant, `grass`, la dernière version d'avant) et 20 après (l'herbe de course, `turf`) :
+// part des blocs, temps passé dessus par le pilote d'auteur (le bloc sous la voiture), temps perdu (le même circuit, ce revêtement remplacé par la
+// route, refait par le pilote), durée de l'auteur et médaille d'or (la course correcte, 30–45 s visés).
+function sectionHerbe() {
+  const letter: Record<"grass" | "turf", string> = { grass: "h", turf: "z" };
+  const surfaceOff = (spec: string, l: string) =>
+    spec
+      .split(" ")
+      .map((t) => {
+        const [b, m] = t.split("@");
+        const [k, mods = ""] = b!.split("/");
+        const mm = mods.replace(new RegExp(`(^|[^~])${l}`), "$1");
+        return (mm ? `${k}/${mm}` : k) + (m !== undefined ? `@${m}` : "");
+      })
+      .join(" ");
+  const onSurface = (track: Track, surface: BlockSurface, grip: number, wall: boolean): number => {
+    const race = createRace(track);
+    const drive = createAutopilot(track, { grip, wall });
+    let on = 0;
+    for (let i = 0; i < 120 * 90 && race.finishMs < 0; i++) {
+      stepRace(race, drive(race));
+      const b = track.cells.get(cellKey(Math.floor(race.car.x / CELL), Math.floor(race.car.z / CELL)));
+      if (b?.surface === surface) on++;
+    }
+    return on / 120;
+  };
+  for (const [label, surface, from, step] of [["avant la bascule (herbe d'avant)", "grass", BASCULE_LOT_48 - 1, -1], ["après la bascule (herbe de course)", "turf", BASCULE_LOT_48, 1]] as const) {
+    const rows: { date: string; g: number; share: number; on: number; lost: number; author: number; gold: number }[] = [];
+    for (let d = from; rows.length < 20; d += step) {
+      if (themeForDay(d).name !== "campagne") continue;
+      const c = dailyCircuit(d);
+      const n = c.track.blocks.filter((b) => b.surface === surface).length;
+      const best = bestPilotRun(c.track, { cut: false })!;
+      const road = n > 0 ? bestPilotRun(parseTrack("sans", surfaceOff(c.spec, letter[surface])), { cut: false }) : best;
+      rows.push({ date: formatDay(d), g: generatorVersionOf(d), share: n / c.track.blocks.length, on: n > 0 ? onSurface(c.track, surface, best.grip, best.wall) : 0, lost: road ? (best.finishMs - road.finishMs) / 1000 : NaN, author: c.authorMs, gold: medalsFor(c.authorMs, d).gold });
+    }
+    console.log(`\n4. Lot 48 — Campagne ${label}, 20 circuits`);
+    console.log("  date        v   part des blocs  temps dessus  perdu   auteur (pilote)  or");
+    for (const r of rows) console.log(`  ${r.date}  ${r.g}  ${(100 * r.share).toFixed(1).padStart(5)} %        ${r.on.toFixed(1).padStart(4)} s      ${r.lost.toFixed(2).padStart(5)} s  ${sec(r.author)} s           ${sec(r.gold)} s`);
+    const m = (f: (r: (typeof rows)[number]) => number) => mean(rows.map(f));
+    console.log(`  moyenne : ${(100 * m((r) => r.share)).toFixed(1)} % des blocs · ${m((r) => r.on).toFixed(1)} s dessus · ${m((r) => r.lost).toFixed(2)} s perdues · auteur ${sec(m((r) => r.author))} s · or ${sec(m((r) => r.gold))} s · circuits qui en ont : ${rows.filter((r) => r.share > 0).length}/20 · or dans 30–45 s : ${rows.filter((r) => r.gold >= 30_000 && r.gold <= 45_000).length}/20`);
+  }
+}
+if (process.env.HERBE) {
+  sectionHerbe();
+  process.exit(0);
 }
 
 console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} (sections 1 et 2 : v${GENERATOR} imposée ; bascule du lot 34 : ${formatDay(BASCULE_LOT_34)}, v${generatorVersionOf(BASCULE_LOT_34 - 1)} avant) · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
@@ -367,3 +422,5 @@ for (const G of COMPARE) {
   console.log(`  virages : ${turns.length} (${(turns.length / all.length).toFixed(1)} par circuit), abordés vite (poussée ou > 52,8 m/s) ${fast.length} ; parmi eux : arrivée possible ${mean(fast.map((t) => t.arrive)).toFixed(0)} m/s (max ${Math.max(...fast.map((t) => t.arrive)).toFixed(0)}), passage ${mean(fast.map((t) => t.turn)).toFixed(0)} m/s, freinage nécessaire ${mean(fast.map((t) => t.needed)).toFixed(0)} m pour ${mean(fast.map((t) => t.available)).toFixed(0)} m disponibles, marge < 0,3 s : ${short.length} (dont mur à l'extérieur : ${short.filter((t) => t.wall).length}) ; marge médiane ${fast.length ? [...fast.map((t) => t.slack)].sort((x, y) => x - y)[Math.floor(fast.length / 2)]!.toFixed(2) : "—"} s`);
   console.log(`  (${((performance.now() - t0) / 1000).toFixed(0)} s)`);
 }
+
+sectionHerbe();

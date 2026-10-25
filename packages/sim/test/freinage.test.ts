@@ -4,6 +4,7 @@ import {
   FAST_APPROACH,
   GENERATOR_BEFORE_34,
   GENERATOR_VERSION,
+  BASCULE_LOT_48,
   MAX_BRAKING_ADD,
   SIGNATURE_FIGURE,
   TRAP_SLACK,
@@ -36,14 +37,18 @@ const circuit = (day: number) => {
 };
 
 describe("versionnement par date (lot 34)", () => {
-  it("les jours d'avant la bascule gardent le générateur v15, les suivants et le Salon prennent la dernière version", () => {
+  it("les jours d'avant la bascule gardent le générateur v15, les suivants v16 jusqu'à la bascule du lot 48, puis le Salon et les jours d'après la dernière version", () => {
     expect(GENERATOR_BEFORE_34).toBe(15);
-    expect(GENERATOR_VERSION).toBe(16);
+    expect(GENERATOR_VERSION).toBe(17); // lot 48 : l'herbe de course, à partir du 04/11/2026
     expect(generatorVersionOf(BASCULE_LOT_34 - 1)).toBe(15);
     expect(generatorVersionOf(BASCULE_LOT_34)).toBe(16);
     expect(dailyTrackId(BASCULE_LOT_34 - 1)).toBe("jour-2026-10-27-g15");
     expect(dailyTrackId(BASCULE_LOT_34, "ville", 2)).toBe("jour-2026-10-28-g16-v2-ville");
-    expect(salonCircuit(2_946_000).id).toBe("salon-2946000-g16");
+    expect(generatorVersionOf(BASCULE_LOT_48 - 1)).toBe(16);
+    expect(generatorVersionOf(BASCULE_LOT_48)).toBe(17);
+    expect(dailyTrackId(BASCULE_LOT_48 - 1)).toBe("jour-2026-11-03-g16");
+    expect(dailyTrackId(BASCULE_LOT_48)).toBe("jour-2026-11-04-g17");
+    expect(salonCircuit(2_946_000).id).toBe("salon-2946000-g17");
   });
 
   it("une date d'avant la bascule rejoue son circuit v15 même si l'on impose la dernière version (sinon ce ne serait pas le même jour)", () => {

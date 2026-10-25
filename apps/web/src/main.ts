@@ -348,7 +348,9 @@ const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 
 const premierPalier: Palier = palierBranche(palierDepart) && pasDepartCharges ? palierDepart : PALIER_DEFAUT;
 const premierPlus = premierPalier === palierDepart ? plusDepart : [];
 let constructionMs = 0;
-let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.palette ?? "desert", premierPalier, premierPlus) : buildFlatArena();
+/** La palette d'un scénario d'essai : celle de la Campagne pour l'herbe de course (lot 48 : on la voit contre son décor), le désert sinon. */
+const paletteEssai: PaletteName = scenario === "herbe" ? "campagne" : "desert";
+let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.palette ?? paletteEssai, premierPalier, premierPlus) : buildFlatArena();
 /** Compose la scène au palier voulu (et ses pas en plus) ; si ce palier ou un pas n'a pas pu se brancher (module pas chargé), au palier par défaut. */
 function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier, plus: readonly string[] = []) {
   const debut = performance.now();
@@ -440,7 +442,7 @@ let feel = SPEED_FEEL_FACTOR[settings.speedFeel];
 const demo = params.has("demo");
 const tel = createTelemetry();
 const gameAudio = new GameAudio(() => syncSoundButton());
-gameAudio.setAmbience(track ? ambienceFor(salon?.circuit.palette ?? daily?.palette ?? "desert") : null); // ambiance du thème (lot 23)
+gameAudio.setAmbience(track ? ambienceFor(salon?.circuit.palette ?? daily?.palette ?? paletteEssai) : null); // ambiance du thème (lot 23)
 const wheelDroop: [number, number, number, number] = [0, 0, 0, 0];
 const WHEEL_F = [AXLE_FRONT, AXLE_FRONT, -AXLE_REAR, -AXLE_REAR];
 const WHEEL_L = [HALF_TRACK, -HALF_TRACK, HALF_TRACK, -HALF_TRACK];
@@ -1910,7 +1912,7 @@ function cycleCamera() {
 // Indicateur d'effets (HUD) : super turbo, turbo, moteur coupé, et revêtement quand ce n'est pas la route.
 const hudFx = $("fx");
 const fxSample = createSurface();
-const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow"]);
+const SURFACES_HUD = new Set(["dirt", "ice", "grass", "sand", "gravel", "snow", "turf"]);
 let fxShown = "";
 function updateEffects() {
   const parts: string[] = [];
@@ -2364,7 +2366,7 @@ if (demo && track) {
 // La scène se construit par `composer` (scene/socle.ts), au palier courant (aujourd'hui « existant », le seul branché). Un autre palier se demande
 // (`reconstructeur.demander`) : ses modules se chargent à la demande, puis la scène est reconstruite **hors course seulement** (accueil, pause, arrivée,
 // podium du Salon : `peutReconstruire`) ; la voiture, les fantômes et les effets passent dans la nouvelle (`adopterScene`), l'ancienne est libérée.
-let scenePalette = salon?.circuit.palette ?? daily?.palette ?? "desert";
+let scenePalette = salon?.circuit.palette ?? daily?.palette ?? paletteEssai;
 
 function adopterScene(next: TrackScene) {
   const old = view;

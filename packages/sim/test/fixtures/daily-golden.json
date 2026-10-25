@@ -1,6 +1,6 @@
 {
   "simVersion": 14,
-  "generatorVersion": 16,
+  "generatorVersion": 17,
   "circuits": [
     {
       "date": "2026-10-06",
@@ -63,6 +63,36 @@
       "trackId": "jour-2026-10-28-g16"
     },
     {
+      "date": "2026-11-03",
+      "number": 22,
+      "attempt": 0,
+      "spec": "S/n@start S/n>e S L S R S L S@cp D D D R2 S U U U S T S S@cp T S S S S S L2 S P S@cp K G D S S L2/b S S P S@cp S S S S S L S S S@finish",
+      "authorMs": 36908,
+      "palette": "ville",
+      "theme": "ville",
+      "trackId": "jour-2026-11-03-g16"
+    },
+    {
+      "date": "2026-11-04",
+      "number": 23,
+      "attempt": 1,
+      "spec": "S/l@start T/~h S S T S S S/~r S S@cp S S/~h S R2/b~r S/~h S/t S/l>nt S/n>et S/t S/t L/t S@cp L2/~r R2/z S/z S S/e>n S/z~h@cp U/z~r U/z U/z R2 D D D S S S/n>e~h S@cp P S S S S R S S S/~r@finish",
+      "authorMs": 37761,
+      "palette": "campagne",
+      "theme": "campagne",
+      "trackId": "jour-2026-11-04-g17"
+    },
+    {
+      "date": "2026-11-15",
+      "number": 34,
+      "attempt": 1,
+      "spec": "S/n@start U3 D3 S/z~h S/z S/z R2 S/t S/t@cp S/t R2/t S/z S/z~r S/z L2 S S/t S/t@cp K GD S/t S S R2 S T S@cp S S S S S/~h S S R S@cp S/n>e S/t S/t L/t S/~r S S@finish",
+      "authorMs": 37134,
+      "palette": "campagne",
+      "theme": "campagne",
+      "trackId": "jour-2026-11-15-g17"
+    },
+    {
       "date": "2026-12-25",
       "number": 74,
       "attempt": 5,
@@ -70,7 +100,7 @@
       "authorMs": 38045,
       "palette": "alpin",
       "theme": "col",
-      "trackId": "jour-2026-12-25-g16"
+      "trackId": "jour-2026-12-25-g17"
     },
     {
       "date": "2027-02-28",
@@ -80,7 +110,7 @@
       "authorMs": 37588,
       "palette": "desert",
       "theme": "rallye",
-      "trackId": "jour-2027-02-28-g16"
+      "trackId": "jour-2027-02-28-g17"
     },
     {
       "date": "2028-02-29",
@@ -90,17 +120,17 @@
       "authorMs": 34505,
       "palette": "neige",
       "theme": "banquise",
-      "trackId": "jour-2028-02-29-g16"
+      "trackId": "jour-2028-02-29-g17"
     },
     {
       "date": "2030-01-01",
       "number": 1177,
       "attempt": 2,
-      "spec": "S/n@start T/~h S S T S S S S/~r S S S@cp S L2/~h S S/~r S U U U S D D D S/~h@cp S/t S/n>et S/t~r L/t~h S/h U3/~r D3 S S S/h@cp L2/h S/h S/e>n S/h S/h S S/~h L S S S/~r@finish",
-      "authorMs": 38958,
+      "spec": "S/l@start S/l>n~h S P S S S S R S S/t S/n>et S/t R/t S@cp L2 R2/z S/z S U3/~r D3 S/~h S S L2 S S/e>n S@cp P D D D D D D S S R2 S S S/~r@finish",
+      "authorMs": 34720,
       "palette": "campagne",
       "theme": "campagne",
-      "trackId": "jour-2030-01-01-g16"
+      "trackId": "jour-2030-01-01-g17"
     }
   ]
 }

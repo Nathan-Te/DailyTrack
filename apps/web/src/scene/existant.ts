@@ -584,7 +584,7 @@ export function decorGeometry(track: Track, paletteName: PaletteName, options: T
 }
 
 /** Motifs légers par revêtement (traces, éclats, brins) : une teinte plus sombre ou plus claire. */
-const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
+const SURFACE_MARKS: Record<Exclude<SurfaceKind, "road">, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff, turf: 0x7fcf3e };
 /** Bas-côtés de l'herbe haute de Campagne : une herbe plus sombre et plus jaune que celle du Stade (lot 21). */
 const TALL_GRASS: [number, number] = [0x6f9a3a, 0x668f34];
 /** Blocs à effet : couleurs propres, indépendantes de la palette (la lisibilité d'abord). */

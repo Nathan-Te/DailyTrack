@@ -6,7 +6,7 @@ import { Rng, formatDay, mixSeed } from "@cdj/core";
 import { dailyTrackId, generatorVersionOf } from "./dailyId";
 import { medalsFor, type Medals } from "./medals";
 import { MAX_BRAKING_ADD, secureBraking } from "./braking";
-import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, themeOfVersion, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
@@ -23,6 +23,7 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 // 3. Le temps du pilote est le temps de l'auteur ; les médailles en découlent.
 // Lot 34 (générateur v16, à partir du 28/10/2026) : après une plaque, un super turbo ou une portion rapide, le virage suivant se freine
 // (`secureBraking`, braking.ts) ; au plus un virage-piège par circuit (passage signature, Ville). Les jours d'avant gardent la v15.
+// Lot 48 (générateur v17, à partir du 04/11/2026) : la Campagne roule sur l'herbe de course (`themeOfVersion`, themes.ts ; figures `since`).
 
 export * from "./medals";
 export * from "./dailyId";
@@ -216,18 +217,21 @@ function figureWeight(f: Figure, theme: Theme): number {
 
 /** Une figure propre à des thèmes (`only`, lot 22) ne sort que chez eux. */
 const ownedBy = (f: Figure, theme: Theme): boolean => !f.only || f.only.includes(theme.name);
+/** Une figure plus récente que le générateur (`since`, lot 48) n'existe pas pour lui : ses circuits ne changent pas. */
+const knownBy = (f: Figure, generator: number): boolean => f.since === undefined || generator >= f.since;
 
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
-function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget = FIGURE_BUDGET): Figure[] | null {
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number): Figure[] | null {
   const banned = new Set(theme.figures.ban);
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
   const names = new Set([signature.name]);
   const required = new Set(theme.figures.require ?? []);
+  const requiredAlso = new Set(theme.figures.requireAlso ?? []);
   // Les figures obligatoires du thème (lot 21) ne sont jamais au repos, comme la signature.
-  const pool = FIGURES.filter((f) => !banned.has(f.name) && ownedBy(f, theme) && (required.has(f.name) || !isRested(f.name, day)));
+  const pool = FIGURES.filter((f) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && (required.has(f.name) || requiredAlso.has(f.name) || !isRested(f.name, day)));
   const count_ = (pred: (f: Figure) => boolean) => chosen.filter(pred).length;
   const allowed = (f: Figure) =>
     !names.has(f.name) &&
@@ -255,6 +259,8 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   };
   // La règle propre du thème (lot 21) : l'une de ses figures obligatoires, si la signature n'en est pas une.
   if (required.size > 0 && !required.has(signature.name) && !add(pick((f) => required.has(f.name)))) return null;
+  // Lot 48 (v17) : une seconde règle propre (Campagne : une figure d'herbe de course).
+  if (requiredAlso.size > 0 && !chosen.some((f) => requiredAlso.has(f.name)) && !add(pick((f) => requiredAlso.has(f.name)))) return null;
   // Un vrai saut et une cuve (selon le thème) : quand le thème veut les deux, une figure qui fait les deux à la fois (saut dans une cuve,
   // saut en sortie de paroi…) tient en moins de blocs que deux figures, et elle est préférée un peu plus d'une fois sur deux.
   const wantsJump = !signature.jump && wants.jump;
@@ -335,9 +341,11 @@ const CONNECTORS: readonly (readonly string[])[] = [[], [], [], [], [], ["S"], [
  * figure deux fois. Chacune est posée dans un sens (miroir) et avec une variante tirés au sort, la première qui tient sur la grille
  * (sans croisement, sans dépasser les hauteurs permises, dans le budget de virages serrés) l'emporte.
  */
-export function composeFigures(day: number, attempt: number, theme: Theme = themeForDay(day), variant = 0, generator = generatorVersionOf(day)): Composition | null {
+export function composeFigures(day: number, attempt: number, themeAsked: Theme = themeForDay(day), variant = 0, generator = generatorVersionOf(day)): Composition | null {
   // Lot 34 (v16) : freinage possible après un boost (`secureBraking`, braking.ts) ; v15 : les règles d'avant, au tirage près.
   const rules34 = generator >= 16;
+  // Lot 48 (v17) : le thème tel que cette version le connaît (la Campagne roule sur l'herbe de course) ; avant, le thème tel quel.
+  const theme = themeOfVersion(themeAsked, generator);
   // Variante 0 : la graine d'origine. Variante n : une autre graine, décalée de n × 1000 tentatives (au plus `MAX_ATTEMPTS` = 40 sont
   // tirées : jamais de recoupement entre variantes).
   const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
@@ -349,7 +357,7 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
   let picked: Figure[] | null = null;
   let best = -Infinity;
   for (let tries = 0; tries < SELECTION_TRIES; tries++) {
-    const candidate = selectFigures(rng, theme, day, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET);
+    const candidate = selectFigures(rng, theme, day, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator);
     if (!candidate) continue;
     const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
@@ -392,7 +400,7 @@ export function composeFigures(day: number, attempt: number, theme: Theme = them
     if (order[i]!.name !== signatureName) {
       const f0 = order[i]!;
       const banned = new Set(theme.figures.ban);
-      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && !isRested(f.name, day));
+      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, day));
       alternatives.push(...rng.shuffle(subs).slice(0, 3));
     }
     let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number; fix: ReturnType<typeof secureBraking> } | null = null;
@@ -655,11 +663,38 @@ function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: 
       roll -= wgt;
     }
     const length = 3 + rng.int(4);
+    if (surface === "turf") {
+      turfZone(tokens, length, rng, protect);
+      continue;
+    }
     const last = Math.max(1, n - 2 - length);
     const start = 1 + rng.int(last);
     for (let i = start; i < Math.min(n - 1, start + length); i++) {
       if (!protect?.has(i) && surfaceable(tokens[i]!, i, n)) tokens[i] = withMod(tokens[i]!, surfaceMod(surface));
     }
+  }
+}
+
+/**
+ * Zone d'herbe de course (lot 48, v17) : `length` blocs à la suite qui peuvent tous la porter (ni protégés, ni déjà revêtus, ni virages), à une place
+ * tirée parmi toutes celles qui conviennent — une série plus courte (jusqu'à 3) s'il n'y en a pas. Une zone tirée au hasard sans regarder
+ * tombait trop souvent sur des plaques ou des approches protégées : l'herbe de course est l'identité de la Campagne, elle doit se voir.
+ */
+function turfZone(tokens: string[], length: number, rng: Rng, protect?: ReadonlySet<number>): void {
+  const n = tokens.length;
+  // Lignes droites et pentes seulement : sur l'herbe de course on entre avec sa trajectoire et on la tient (braquer y coûte de la vitesse).
+  const ok = (i: number) => !protect?.has(i) && surfaceable(tokens[i]!, i, n) && !isCurve(parseToken(tokens[i]!).kind);
+  for (let len = length; len >= 3; len--) {
+    const starts: number[] = [];
+    for (let i = 1; i + len <= n - 1; i++) {
+      let all = true;
+      for (let j = i; j < i + len && all; j++) all = ok(j);
+      if (all) starts.push(i);
+    }
+    if (starts.length === 0) continue;
+    const start = starts[rng.int(starts.length)]!;
+    for (let i = start; i < start + len; i++) tokens[i] = withMod(tokens[i]!, surfaceMod("turf"));
+    return;
   }
 }
 

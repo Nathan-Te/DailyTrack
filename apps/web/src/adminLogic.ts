@@ -3,7 +3,7 @@ import { FIGURE_NAMES, THEME_NAMES } from "@cdj/sim";
 // Page /admin : construit l'adresse du jeu à partir de choix de test. Logique pure (testée par Vitest) ; le DOM est dans
 // `admin.ts`. Rien de tout cela ne touche à la simulation : ce ne sont que les paramètres d'adresse que le jeu connaît déjà.
 
-export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "bas-cotes" | "figures" | "figure" | "plat";
+export type Scenario = "jour" | "essai" | "pilotage" | "surfaces" | "largeurs" | "vitesse" | "glace" | "relief" | "cuves" | "air" | "bas-cotes" | "herbe" | "figures" | "figure" | "plat";
 
 /** Lot 46 : les scènes que la page d'admin propose (`?reglages=`) : le palier 3 (ordinateur), le palier 2 et le groupe « vie et ciel » (téléphone récent) ; lot 45 : les paliers 1 et 2 seuls. */
 export const SCENES_ADMIN = ["3", "2+vie+ciel", "3-ombres", "3-post", "1", "2"] as const;
@@ -177,7 +177,7 @@ export function parseAdmin(raw: string | null): AdminState {
   if (!raw) return s;
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof AdminState, unknown>>;
-    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
+    if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "herbe" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
     for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
@@ -221,6 +221,7 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Les figures", hint: "onze figures marquantes de la bibliothèque (lot 20) : S serré-large, turbo et courbe, saut vers un virage relevé, slalom de glace, double saut…", state: { scenario: "figures" } },
   { label: "Une figure en boucle", hint: "la figure choisie, cinq droites de lancement, point de contrôle juste avant (touche R pour recommencer)", state: { scenario: "figure" } },
   { label: "Bas-côtés et vibreurs", hint: "un virage par bas-côté (herbe, terre et gravier, neige poudreuse, vide), des vibreurs, une portion bosselée, un serré à couper", state: { scenario: "bas-cotes" } },
+  { label: "Herbe de course", hint: "lot 48 : ligne droite d'herbe, virages amples et serrés en herbe, transitions herbe-route (décor de la Campagne)", state: { scenario: "herbe" } },
   { label: "Cuves et murs", hint: "cuve droite, mur latéral, virage en cuve à pleine vitesse, puis le même virage abordé trop lentement", state: { scenario: "cuves" } },
   { label: "Démo automatique", hint: "le pilote roule seul, tous les effets", state: { scenario: "surfaces", demo: true } },
   { label: "Tremplin et sauts", hint: "circuit d'essai", state: { scenario: "essai" } },

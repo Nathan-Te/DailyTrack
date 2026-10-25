@@ -226,14 +226,21 @@ export function gardeCorps(g: Builder, t: TronconRebord) {
   }
 }
 
+/** L'herbe haute des bas-côtés de la Campagne (lot 48 : plus sombre, l'herbe de course s'en détache ; ΔE testé par `test/herbe.test.ts`). */
+export const HERBE_HAUTE: readonly [number, number] = [0x557a2f, 0x4e722b];
+
 function shoulderColor(pal: Palette, kind: NonNullable<Block["shoulder"]>, i: number): number {
-  if (kind === "grass" && pal.scenery === "trees") return [0x6f9a3a, 0x668f34][i % 2]!;
+  if (kind === "grass" && pal.scenery === "trees") return HERBE_HAUTE[i % 2]!;
   return SURFACE_COLORS[kind][i % 2]!;
 }
 
 const SURFACE_MARKS: Record<string, number> = { dirt: 0x5e4328, ice: 0xffffff, grass: 0x2f7a26, gravel: 0x6b5d4a, sand: 0xb8985a, snow: 0xc9d8e8, kerb: 0xffffff };
 
-function addShoulderMarks(g: Builder, b: Block, rows: Row[], hw: number) {
+/** Herbe de course (lot 48) : une bande de tonte sur deux, assombrie d'autant, dans le sens de la course ; le bord net, une ligne blanche. */
+export const TONTE_SOMBRE = 0.9;
+export const BORD_HERBE = 0xf2f2ea;
+
+function addShoulderMarks(g: Builder, b: Block, rows: Row[], hw: number, hautes = false) {
   const color = SURFACE_MARKS[b.shoulder!]!;
   for (let k = 0; k < 14; k++) {
     const row = rows[Math.min(rows.length - 1, Math.floor((((k * 7 + b.index * 3) % 14) / 14) * rows.length))]!;
@@ -243,7 +250,8 @@ function addShoulderMarks(g: Builder, b: Block, rows: Row[], hw: number) {
     const t = side === 0 ? 0.5 - off / width : 0.5 + off / width;
     const p = across(row, t, 0.04);
     const s = b.shoulder === "snow" ? 0.9 : 0.35;
-    g.tri([p[0] - s, p[1], p[2]], [p[0] + s, p[1], p[2]], [p[0], p[1] + (b.shoulder === "grass" ? 0.5 : 0.12), p[2] + s * 0.4], color);
+    // Lot 48 : l'herbe haute de la Campagne monte plus haut (herbes folles : la piste tondue s'en détache).
+    g.tri([p[0] - s, p[1], p[2]], [p[0] + s, p[1], p[2]], [p[0], p[1] + (b.shoulder === "grass" ? (hautes ? 1 : 0.5) : 0.12), p[2] + s * 0.4], color);
   }
 }
 
@@ -431,12 +439,40 @@ function addSurfaceMarks(g: Builder, b: Block) {
       const lat = (k % 2 === 0 ? -1 : 1) * (2.5 + (k % 3));
       g.quad(onBlock(b, lat, t0, lift), onBlock(b, lat + 0.4, t0, lift), onBlock(b, lat + 1.8, t1, lift), onBlock(b, lat + 1.4, t1, lift), color);
     }
+  } else if (b.surface === "turf") {
+    addTurfMarks(g, b);
   } else {
     for (let k = 0; k < 9; k++) {
       const lat = (((k * 5 + b.index * 3) % 11) - 5) * 1.1;
       const t = (k + 0.5) / 9;
       g.tri(onBlock(b, lat - 0.35, t, lift), onBlock(b, lat + 0.35, t, lift), onBlock(b, lat, t + 0.01, 0.65), color);
     }
+  }
+}
+
+/**
+ * L'herbe de course (lot 48) : bandes de tonte d'≈ 3,5 m dans le sens de la course (une sur deux assombrie de `TONTE_SOMBRE`) et une ligne blanche
+ * de 0,35 m à 0,25 m de chaque bord (le bord net). Elles suivent la largeur de la route (transitions) et l'arc d'un virage ; ni relevé, ni bosses.
+ */
+function addTurfMarks(g: Builder, b: Block) {
+  if (b.banked || b.bumpy || b.cuve) return;
+  const size = isCurve(b.kind) ? curveSize(b.kind) : 0;
+  const n = size === 1 ? 8 : size === 2 ? 14 : size === 3 ? 20 : b.w0 !== b.w1 || b.kind !== "straight" ? 8 : 1;
+  const half = (t: number) => (size > 0 ? b.w0 / 2 : blockHalfWidth(b, t * CELL));
+  const lanes = 2 * Math.max(1, Math.round(Math.max(b.w0, b.w1) / 7));
+  const dark = shade(SURFACE_COLORS.turf[b.index % 2]!, TONTE_SOMBRE);
+  const lift = 0.05;
+  const strip = (t0: number, t1: number, a: (h: number) => number, c: (h: number) => number, color: number) => {
+    const h0 = half(t0);
+    const h1 = half(t1);
+    g.quad(onBlock(b, a(h0), t0, lift), onBlock(b, c(h0), t0, lift), onBlock(b, c(h1), t1, lift), onBlock(b, a(h1), t1, lift), color);
+  };
+  for (let k = 0; k < n; k++) {
+    const t0 = k / n;
+    const t1 = (k + 1) / n;
+    // Les bandes entre les deux lignes blanches (jamais l'une sur l'autre : même hauteur, elles scintilleraient).
+    for (let j = 1; j < lanes; j += 2) strip(t0, t1, (h) => 0.6 - h + ((2 * h - 1.2) / lanes) * j, (h) => 0.6 - h + ((2 * h - 1.2) / lanes) * (j + 1), dark);
+    for (const s of [-1, 1]) strip(t0, t1, (h) => s * (h - 0.6), (h) => s * (h - 0.25), BORD_HERBE);
   }
 }
 
@@ -487,7 +523,7 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       if (b.shoulder) {
         const band = curveRows(b, SHOULDER_EDGE, 0, lissage);
         addRoad(c, pal, style, band, shoulderColor(pal, b.shoulder, b.index), floorY, true, false, skirt, { pillars, fence: pal.fence, band: true }, run);
-        addShoulderMarks(g, b, band, b.w0 / 2);
+        addShoulderMarks(g, b, band, b.w0 / 2, pal.scenery === "trees");
         rows = curveRows(b, b.w0 / 2, 0.03, lissage);
         addRoad(c, pal, style, rows, color, floorY, false, b.surface === "road", skirt, { bare: true }, run);
       } else {
@@ -510,7 +546,7 @@ export function construireRoute(track: Track, pal: Palette, style: StyleRoute, c
       const steps = b.bumpy ? 48 : b.kind === "bump" || b.w0 !== b.w1 ? 16 : 1;
       const band = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q), SHOULDER_EDGE);
       addRoad(c, pal, style, band, shoulderColor(pal, b.shoulder, b.index), floorY, true, false, skirt, { pillars, fence: pal.fence, band: true }, run);
-      addShoulderMarks(g, b, band, b.w0 / 2);
+      addShoulderMarks(g, b, band, b.w0 / 2, pal.scenery === "trees");
       rows = straightRows(b, 0, CELL, steps, (q) => roadHeight(b, q) + 0.03);
       addRoad(c, pal, style, rows, color, floorY, false, b.surface === "road", skirt, { bare: true }, run);
     } else {

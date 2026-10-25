@@ -66,9 +66,12 @@ export type BlockKind = "straight" | "curveL" | "curveR" | "wideL" | "wideR" | "
  * Revêtement d'un bloc (attribut du bloc, pas un bloc) : `road` est la référence. Le comportement de chaque revêtement
  * est dans `SURFACES` (world.ts). Ajouter un revêtement = `SIM_VERSION` +1.
  */
-export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb";
-/** Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. Le sable (lot 22) est les deux. */
-export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand";
+export type SurfaceKind = "road" | "dirt" | "ice" | "grass" | "sand" | "gravel" | "snow" | "kerb" | "turf";
+/**
+ * Revêtements d'un bloc (attribut `S/t`…) ; `gravel` et `snow` ne sont que des bas-côtés, `kerb` le vibreur d'un virage. Le sable (lot 22) est les deux.
+ * `turf` (lot 48, `S/z`) : l'herbe de course, une piste en herbe rapide où l'on glisse (jamais un bas-côté : l'herbe hors piste reste `grass`).
+ */
+export type BlockSurface = "road" | "dirt" | "ice" | "grass" | "sand" | "turf";
 /** Revêtement d'un bas-côté (lot 21) : herbe, terre et gravier, neige poudreuse ; sable (lot 22). */
 export type ShoulderKind = "grass" | "gravel" | "snow" | "sand";
 /**
@@ -79,7 +82,7 @@ export type EdgeKind = ShoulderKind | "void" | "wall";
 /** Lettre de chaque bord dans la notation (`S/~h` : bas-côtés d'herbe à partir de ce bloc). */
 export const EDGE_LETTERS: Record<string, EdgeKind> = { h: "grass", t: "gravel", p: "snow", s: "sand", v: "void", r: "wall" };
 /** Lettre de chaque revêtement dans la notation texte (`S/t` : droite sur terre). */
-export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand" };
+export const SURFACE_LETTERS: Record<string, BlockSurface> = { t: "dirt", g: "ice", h: "grass", s: "sand", z: "turf" };
 export type Mark = "start" | "checkpoint" | "finish";
 export type Dir = 0 | 1 | 2 | 3;
 
@@ -428,8 +431,8 @@ export interface ParsedToken {
 }
 
 /**
- * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe, `s` sable
- * (un seul revêtement), `b` virage relevé (virages seulement), et la largeur de la route : `e` étroite (14 m),
+ * Un bloc de la notation texte : `LETTRE[/modificateurs][@repère]`. Modificateurs : `t` terre, `g` glace, `h` herbe, `s` sable,
+ * `z` herbe de course (lot 48 ; un seul revêtement), `b` virage relevé (virages seulement), et la largeur de la route : `e` étroite (14 m),
  * `n` normale (20 m), `l` large (26 m), ou `a>b` pour un bloc de transition (`n>l` : de la normale à la large, en un bloc
  * droit). Exemples : `S/g`, `L2/b`, `R/tb`, `S/h@cp`, `S/n`, `S/e>l`, `L3/lb`.
  */

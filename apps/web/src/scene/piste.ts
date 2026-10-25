@@ -29,7 +29,7 @@ export const PISTE_A: Record<PaletteName, PisteA> = {
   desert: { route: [0x67655f, 0x615f59], rebord: [0x1e1b19, 0xf4f1e6], vibreur: [0xe8552d, 0xf4f1e6], ciel: [0x2f9ad0, 0xf6c98e], sol: ["#dba65f", "#cf9a52"] },
   neige: { route: [0x5b6676, 0x566171], rebord: [0x2f6fd0, 0xffffff], vibreur: [0xe8283a, 0xffffff], ciel: [0xb7cde3, 0xeef3f7], sol: ["#f6f9fc", "#e6eef5"] },
   nuit: { route: [0x1d2030, 0x1a1d2c], rebord: [0x1e1b19, 0xf2b544], vibreur: [0xf2b544, 0x1e1b19], ciel: [0x02030c, 0x101a48], sol: ["#0b0f22", "#090c1c"] },
-  campagne: { route: [0x6d6e72, 0x67686c], rebord: [0x7a5230, 0xd9b27a], vibreur: [0xd9402a, 0xf6f6f0], ciel: [0x4f7fcf, 0xf7c27a], sol: ["#7fb84a", "#76ad42"] },
+  campagne: { route: [0x6d6e72, 0x67686c], rebord: [0x7a5230, 0xd9b27a], vibreur: [0xd9402a, 0xf6f6f0], ciel: [0x4f7fcf, 0xf7c27a], sol: ["#3f7d3a", "#38733a"] }, // lot 48 : sol plus sombre (ΔE > 12 de l'herbe de course et des huit livrées)
   canyon: { route: [0x6a605c, 0x645a56], rebord: [0xa8472a, 0xe0a466], vibreur: [0x1e1b19, 0xf6e6c8], ciel: [0x5a4a9a, 0xf6a35f], sol: ["#d79a52", "#cc8f48"] },
   alpin: { route: [0x55595f, 0x51555b], rebord: [0xe8283a, 0xf6f6f6], vibreur: [0xe8283a, 0xf6f6f6], ciel: [0x1f62c4, 0xc9e4f7], sol: ["#86b56f", "#7dab66"] },
   ville: { route: [0x3c3e44, 0x393b41], rebord: [0xc8cbd1, 0xa9adb4], vibreur: [0xf2b544, 0x1e1b19], ciel: [0x6f9fd2, 0xd2dde8], sol: ["#9a9da4", "#91949b"] },

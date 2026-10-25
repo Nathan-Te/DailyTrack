@@ -52,6 +52,8 @@ export interface Figure {
   weight?: number;
   /** Figure propre à des thèmes (lot 22) : elle ne sort que chez eux. */
   only?: readonly string[];
+  /** Première version du générateur qui la tire (lot 48) : un générateur plus ancien ne la connaît pas (ses circuits ne changent pas). */
+  since?: number;
   build(c: FigureContext): string[] | null;
 }
 
@@ -93,7 +95,7 @@ export function widthAfter(tokens: readonly string[], width: WidthLetter): Width
   return w;
 }
 
-const SURFACE_MOD: Record<BlockSurface, string> = { road: "", dirt: "t", ice: "g", grass: "h", sand: "s" };
+const SURFACE_MOD: Record<BlockSurface, string> = { road: "", dirt: "t", ice: "g", grass: "h", sand: "s", turf: "z" };
 export const surfaceMod = (s: BlockSurface) => SURFACE_MOD[s];
 const on = (tokens: string[], mod: string) => tokens.map((t) => withMod(t, mod));
 const rep = (token: string, n: number) => Array<string>(n).fill(token);
@@ -443,6 +445,40 @@ export const FIGURES: readonly Figure[] = [
     only: ["ville"],
     build: (c) => [...toTight(c.width), "S", ...(c.variant === 0 ? ["S", c.L, "S", c.L] : [c.L, "S", "S", c.L]), "S"],
   },
+  // Lot 48 : l'herbe de course (`/z`), propres à la Campagne et au générateur v17 (`since`).
+  {
+    name: "ample-herbe",
+    label: "Virage ample en herbe",
+    category: "technique",
+    intent: "Un virage ample sur l'herbe de course, entre deux lignes droites d'herbe : y entrer bien placé et le tenir d'un seul geste du volant (chaque correction coûte).",
+    off: 0.3,
+    variants: 2,
+    only: ["campagne"],
+    since: 17,
+    build: (c) => (c.variant === 0 ? ["S/z", `${c.L}3/z`, "S/z", "S"] : ["S/z", "S/z", `${c.L}3/z`, `${c.R}2/z`, "S/z", "S"]),
+  },
+  {
+    name: "chicane-herbe",
+    label: "Chicane herbe-route",
+    category: "technique",
+    intent: "Un S large qui passe de la route à l'herbe de course (ou l'inverse) entre ses deux virages : l'adhérence change en pleine corde.",
+    off: 0.6,
+    variants: 2,
+    only: ["campagne"],
+    since: 17,
+    build: (c) => (c.variant === 0 ? ["S", `${c.L}2`, `${c.R}2/z`, "S/z", "S"] : ["S/z", `${c.L}2/z`, `${c.R}2`, "S", "S"]),
+  },
+  {
+    name: "droite-herbe",
+    label: "Ligne droite d'herbe",
+    category: "technique",
+    intent: "Une ligne droite d'herbe de course entre deux virages larges : garder l'élan sur l'herbe, se placer pour le second virage.",
+    off: 0.5,
+    variants: 2,
+    only: ["campagne"],
+    since: 17,
+    build: (c) => ["S", `${c.L}2`, ...rep("S/z", 3 + c.variant), c.variant === 0 ? `${c.R}2` : `${c.L}2`, "S"],
+  },
 
   // --- Sauts ---
   {
@@ -746,7 +782,7 @@ const KIND_SECONDS: Record<string, number> = {
   straight: 0.7, curveL: 0.9, curveR: 0.9, wideL: 1.75, wideR: 1.75, grandL: 2.7, grandR: 2.7,
   up: 0.7, down: 0.6, bump: 0.7, jump: 0.7, kick: 0.7, gap: 0.65, boost: 0.6, turbo: 0.45, cut: 0.7,
 };
-const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 1.6, grass: 1.4, sand: 1.3 };
+const SURFACE_FACTOR: Record<BlockSurface, number> = { road: 1, dirt: 1.1, ice: 1.6, grass: 1.4, sand: 1.3, turf: 1.05 };
 
 /** Durée estimée (s) d'une suite de blocs. */
 export function estimateSeconds(tokens: readonly string[]): number {

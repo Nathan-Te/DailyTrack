@@ -5,6 +5,7 @@ import {
   createFigureTrack,
   createFiguresTrack,
   createGlaceTrack,
+  createHerbeTrack,
   createLargeursTrack,
   createPilotageTrack,
   createReliefTrack,
@@ -20,7 +21,7 @@ import {
 // secours du générateur est nécessaire (`circuitEngine.ts`).
 
 /** Les scénarios connus de l'adresse (`?scenario=`), sauf `figure` (une figure à part, voir `scenarioTrack`). */
-export const SCENARIOS = ["figures", "plat", "essai", "pilotage", "surfaces", "largeurs", "vitesse", "glace", "relief", "cuves", "air", "bas-cotes"] as const;
+export const SCENARIOS = ["figures", "plat", "essai", "pilotage", "surfaces", "largeurs", "vitesse", "glace", "relief", "cuves", "air", "bas-cotes", "herbe"] as const;
 export type Scenario = (typeof SCENARIOS)[number] | "figure";
 
 /**
@@ -49,6 +50,8 @@ export function scenarioTrack(scenario: string, params: URLSearchParams): Track 
       return createAirTrack();
     case "bas-cotes":
       return createBasCotesTrack();
+    case "herbe":
+      return createHerbeTrack();
     case "figures":
       return createFiguresTrack();
     case "figure":

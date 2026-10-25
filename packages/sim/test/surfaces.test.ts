@@ -77,7 +77,7 @@ describe("notation des blocs", () => {
 
 describe("revêtements : grip, freinage, vitesse en virage", () => {
   it("la table est ordonnée : route > terre > herbe > glace en adhérence, et seule l'herbe freine vraiment", () => {
-    expect(SURFACES.road).toEqual({ grip: 1, traction: 1, rolling: 0, slick: 0 });
+    expect(SURFACES.road).toEqual({ grip: 1, traction: 1, rolling: 0, slick: 0, turf: 0 });
     expect(SURFACES.dirt.grip).toBeLessThan(SURFACES.road.grip);
     expect(SURFACES.grass.grip).toBeLessThan(SURFACES.dirt.grip);
     expect(SURFACES.ice.grip).toBeLessThan(SURFACES.grass.grip);
