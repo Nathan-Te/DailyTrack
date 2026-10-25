@@ -52,9 +52,11 @@ export interface Theme {
   signature: Signature;
   /**
    * Figures (lot 20) : noms des figures favorites (poids ×4) et interdites du thème ; `require` (lot 21) : le circuit contient toujours
-   * l'une d'elles (jamais au repos, comme la signature) — la règle propre du thème ; `requireAlso` (lot 48) : une seconde règle de même forme.
+   * l'une d'elles (jamais au repos, comme la signature) — la règle propre du thème ; `requireAlso` (lot 48) : une seconde règle de même forme ;
+   * `vedettes` (lot 49, v18) : les figures signatures de la fiche du thème, **une par circuit, à tour de rôle** (la `k`-ième apparition du thème
+   * prend `vedettes[k mod n]` et s'interdit les autres) : deux circuits consécutifs d'un même thème n'ont jamais la même (voir `themeOccurrence`, generator.ts).
    */
-  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[]; requireAlso?: readonly string[] };
+  figures: { favor: readonly string[]; ban: readonly string[]; require?: readonly string[]; requireAlso?: readonly string[]; vedettes?: readonly string[] };
   /**
    * Bas-côtés (lot 21) : revêtement de la bande au bord de la route (ou le vide) et part (%) des blocs qui peuvent en porter, posés par
    * séries de 3 à 6 blocs (voir `assignShoulders`, generator.ts).
@@ -85,25 +87,6 @@ export const THEMES: Readonly<Record<ThemeName, Readonly<Theme>>> = {
   col: { name: "col", label: "Col alpin", palette: "alpin", shoulder: { kind: "snow", share: 60 }, bumpy: [0, 0], zones: { count: [0, 2], surfaces: [["ice", 1]] }, widths: { weights: { e: 2, n: 5, l: 3 }, changes: [1, 2] }, bankChance: 30, turboChance: 15, cut: false, relief: { hills: [3, 4], steep: 85 }, jumpChance: 25, openChance: 80, cuveChance: 0, signature: "switchbacks", figures: { favor: ["lacets", "demi-tour-large", "virage-descente", "descente-plaque", "colline-raide", "releve-contre", "esse-relevee", "plaque-epingle", "freinage-epingle"], ban: [...ICE, ...DIRT, ...CUVES] } },
   ville: { name: "ville", label: "Ville", palette: "ville", shoulder: { kind: "gravel", share: 0 }, bumpy: [0, 0], zones: null, widths: { weights: { e: 5, n: 5, l: 0 }, changes: [1, 2] }, bankChance: 0, turboChance: 20, cut: false, relief: { hills: [1, 2], steep: 30 }, jumpChance: 30, openChance: 0, cuveChance: 0, maxTight: 4, signature: "rightAngles", figures: { require: ["u-urbain", "freinage-epingle", "plaque-epingle", "turbo-epingle", "s-serre-large"], favor: ["chicane-angles", "u-urbain", "freinage-epingle", "plaque-epingle", "turbo-epingle", "s-serre-large", "pincement", "slalom-route", "virage-descente"], ban: [...ICE, ...DIRT, ...CUVES, "saut-etroit"] } },
 };
-/** Figures d'herbe de course (lot 48, propres à la Campagne, générateur v17). */
-export const TURF_FIGURES = ["ample-herbe", "chicane-herbe", "droite-herbe"] as const;
-
-/**
- * Lot 48 (générateur v17, à partir de `BASCULE_LOT_48`, dailyId.ts) : ce qui change dans un thème à partir de cette version. **Campagne** :
- * l'herbe de course remplace l'herbe de ses zones de revêtement et en devient le revêtement principal (poids 3 contre 1 à la terre), et
- * l'une de ses trois figures d'herbe de course est toujours là (`requireAlso`). Les zones d'herbe de course se posent là où trois blocs de suite
- * peuvent la porter (`turfZone`, generator.ts) : les approches protégées par le lot 34 gardent la route. Les autres thèmes ne changent pas ; un jour d'avant la bascule garde son thème tel quel.
- */
-const THEMES_48: Partial<Record<ThemeName, Partial<Theme>>> = {
-  campagne: { zones: { count: [2, 3], surfaces: [["turf", 3], ["dirt", 1]] }, figures: { ...THEMES.campagne.figures, favor: [...THEMES.campagne.figures.favor, ...TURF_FIGURES], requireAlso: TURF_FIGURES } },
-};
-
-/** Le thème tel que le générateur `generator` le connaît (lot 48 : la Campagne roule sur l'herbe de course à partir de la v17). */
-export function themeOfVersion(theme: Theme, generator: number): Theme {
-  const changes = generator >= 17 ? THEMES_48[theme.name] : undefined;
-  return changes ? { ...theme, ...changes } : theme;
-}
-
 /** Thème de la journée : tiré de la date (graine = jour UTC), identique pour tout le monde. */
 export function themeForDay(day: number): Theme {
   return THEMES[THEME_NAMES[new Rng(mixSeed(day, 0x70a1)).int(THEME_NAMES.length)]!];

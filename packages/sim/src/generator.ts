@@ -1,12 +1,14 @@
 import { circuitNumber } from "./calendar";
-import { bestPilotRun, withCut } from "./autopilot";
+import { PILOT_GRIPS, bestPilotRun, runPilot, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, formatDay, mixSeed } from "@cdj/core";
-import { dailyTrackId, generatorVersionOf } from "./dailyId";
+import { BASCULE_LOT_49, dailyTrackId, generatorVersionOf } from "./dailyId";
+import { SALON_SEED_BASE } from "./salon";
 import { medalsFor, type Medals } from "./medals";
 import { MAX_BRAKING_ADD, secureBraking } from "./braking";
-import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, themeOfVersion, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { MAX_TIGHT, maxTightOf, themeByName, themeForDay, type PaletteName, type Signature, type Theme, type ThemeName } from "./themes";
+import { themeOfVersion } from "./themesVersion";
 import { FIGURES, buildFigure, estimateSeconds, minTightTurns, figureByName, figureSeconds, hillRise, surfaceMod, transition, widthAfter, withMod, type Figure, type FigureCategory } from "./figures";
 import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack, type BlockSurface, type Dir, type Track, type WidthLetter } from "./track";
 
@@ -24,6 +26,8 @@ import { blockCells, cellKey, exitDelta, isCurve, isWide, parseToken, parseTrack
 // Lot 34 (générateur v16, à partir du 28/10/2026) : après une plaque, un super turbo ou une portion rapide, le virage suivant se freine
 // (`secureBraking`, braking.ts) ; au plus un virage-piège par circuit (passage signature, Ville). Les jours d'avant gardent la v15.
 // Lot 48 (générateur v17, à partir du 04/11/2026) : la Campagne roule sur l'herbe de course (`themeOfVersion`, themes.ts ; figures `since`).
+// Lot 49 (générateur v18, à partir de `BASCULE_LOT_49`) : les fiches d'identité des thèmes (favorites, vedettes à tour de rôle, interdits), les douze
+// nouvelles figures, et la variété garantie entre deux circuits consécutifs d'un même thème (`themeOccurrence`, `orderFigures`).
 
 export * from "./medals";
 export * from "./dailyId";
@@ -44,6 +48,13 @@ export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
  */
 const ESTIMATE_MIN = 30;
 const ESTIMATE_MAX = 44;
+/**
+ * Lot 49 (v18) : la première des courses du pilote (adhérence la plus haute, sur le fond) roule seule d'abord ; si elle finit plus de `QUICK_SLACK_MS`
+ * au-delà de la fenêtre, la tentative est refusée sans les autres (une adhérence plus basse ou la paroi d'une cuve ne gagnent presque jamais autant :
+ * mesuré, voir le README du lot). La v18 refuse plus de tentatives (thèmes sans super turbo, glace sous-estimée) : sans ce tri, le pire jour de
+ * génération dépassait la limite du test de durée en CI (3,6 s contre 3,5).
+ */
+const QUICK_SLACK_MS = 500;
 
 // --- Construction -----------------------------------------------------------------------------
 
@@ -209,7 +220,8 @@ export const isRested = (name: string, day: number): boolean => nameHash(name) %
 function figureWeight(f: Figure, theme: Theme): number {
   let w = f.weight ?? 10;
   if (theme.figures.favor.includes(f.name)) w *= FAVOR;
-  if (f.braking) w *= 2;
+  // Lot 49 (v18, thèmes à vedettes) : un freinage franc est déjà exigé ; doublé en plus, il faisait revenir les mêmes plaques dans tous les thèmes.
+  if (f.braking && !theme.figures.vedettes) w *= 2;
   if (f.turbo) w += Math.round(theme.turboChance / 3);
   if (f.banked) w += Math.round(theme.bankChance / 4);
   return w;
@@ -223,7 +235,7 @@ const knownBy = (f: Figure, generator: number): boolean => f.since === undefined
 const isFast = (f: Figure) => f.category === "rapide" || !!f.turbo;
 
 /** Figures d'un circuit, dans le désordre : signature, relief, saut, cuve, portion rapide, techniques, puis le reste au poids. */
-function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number): Figure[] | null {
+function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants: { jump: boolean; cuve: boolean }, budget: number, generator: number, vedette: string | null): Figure[] | null {
   const banned = new Set(theme.figures.ban);
   const signature = figureByName(SIGNATURE_FIGURE[theme.signature])!;
   const chosen: Figure[] = [signature];
@@ -231,7 +243,12 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   const required = new Set(theme.figures.require ?? []);
   const requiredAlso = new Set(theme.figures.requireAlso ?? []);
   // Les figures obligatoires du thème (lot 21) ne sont jamais au repos, comme la signature.
-  const pool = FIGURES.filter((f) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && (required.has(f.name) || requiredAlso.has(f.name) || !isRested(f.name, day)));
+  // Lot 49 (v18) : la vedette du jour n'est jamais au repos ; les autres vedettes du thème attendent leur tour (`vedetteOf`).
+  const usable = (f: Figure) => !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !otherVedette(f, theme, vedette);
+  const pool = FIGURES.filter((f) => usable(f) && (required.has(f.name) || requiredAlso.has(f.name) || f.name === vedette || !isRested(f.name, day)));
+  // Lot 49 (v18) : sans super turbo, un thème n'a que trois ou quatre figures de freinage franc ou de portion rapide ; si toutes sont au repos ce jour-là,
+  // on en prend une qui l'est (sinon aucune tentative du jour n'aboutit : mesuré au Rallye et à la Campagne).
+  const rested = generator >= 18 ? FIGURES.filter((f) => usable(f) && !pool.includes(f)) : [];
   const count_ = (pred: (f: Figure) => boolean) => chosen.filter(pred).length;
   const allowed = (f: Figure) =>
     !names.has(f.name) &&
@@ -240,8 +257,8 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     (!f.cut || count_((g) => !!g.cut) < CAP_CUTS) &&
     chosen.reduce((sum, g) => sum + minTightTurns(g), 0) + minTightTurns(f) <= maxTightOf(theme) &&
     count_((g) => g.category === f.category) < CAP_CATEGORY[f.category];
-  const pick = (pred: (f: Figure) => boolean): Figure | null => {
-    const list = pool.filter((f) => allowed(f) && pred(f));
+  const pick = (pred: (f: Figure) => boolean, from = pool): Figure | null => {
+    const list = from.filter((f) => allowed(f) && pred(f));
     if (list.length === 0) return null;
     let roll = rng.int(list.reduce((sum, f) => sum + figureWeight(f, theme), 0));
     for (const f of list) {
@@ -257,8 +274,10 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     names.add(f.name);
     return true;
   };
+  // Lot 49 (v18) : la vedette du jour, juste après la signature.
+  if (vedette && !add(pick((f) => f.name === vedette))) return null;
   // La règle propre du thème (lot 21) : l'une de ses figures obligatoires, si la signature n'en est pas une.
-  if (required.size > 0 && !required.has(signature.name) && !add(pick((f) => required.has(f.name)))) return null;
+  if (required.size > 0 && !chosen.some((f) => required.has(f.name)) && !add(pick((f) => required.has(f.name)))) return null;
   // Lot 48 (v17) : une seconde règle propre (Campagne : une figure d'herbe de course).
   if (requiredAlso.size > 0 && !chosen.some((f) => requiredAlso.has(f.name)) && !add(pick((f) => requiredAlso.has(f.name)))) return null;
   // Un vrai saut et une cuve (selon le thème) : quand le thème veut les deux, une figure qui fait les deux à la fois (saut dans une cuve,
@@ -275,12 +294,16 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
     if (!add(pick((f) => !!f.relief && f.category !== "relief")) && !add(pick((f) => f.name === hill)) && !add(pick((f) => !!f.relief))) return null;
   }
   // Un freinage franc (élan de plus de 60 m/s, puis un virage) : c'est ce qui fait lâcher l'accélérateur ; il fait aussi la portion rapide.
-  while (chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking))) return null;
-  if (!chosen.some(isFast) && !add(pick(isFast))) return null;
+  // Lot 49 (v18) : de préférence une figure qui fait les deux (freinage franc et portion rapide) : une figure générique de moins par circuit.
+  if (generator >= 18 && !chosen.some((f) => f.braking) && !chosen.some(isFast)) add(pick((f) => !!f.braking && isFast(f))) || add(pick((f) => !!f.braking && isFast(f), rested));
+  while (chosen.filter((f) => f.braking).length < MIN_BRAKING) if (!add(pick((f) => !!f.braking)) && !add(pick((f) => !!f.braking, rested))) return null;
+  if (!chosen.some(isFast) && !add(pick(isFast)) && !add(pick(isFast, rested))) return null;
   // Une figure favorite du thème (en plus de la signature), si elle tient dans le budget : c'est ce qui donne au thème sa couleur.
   const seconds = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
   if (!chosen.some((f) => f !== signature && theme.figures.favor.includes(f.name))) add(pick((f) => theme.figures.favor.includes(f.name) && seconds() + figureSeconds(f) <= budget + FAVORITE_SLACK));
-  while (count_((f) => f.category === "technique") < MIN_TECHNIQUES) if (!add(pick((f) => f.category === "technique"))) return null;
+  // Lot 49 (v18) : la vedette tient lieu d'une des deux techniques (elle est le moment fort du thème ; sans cela le circuit sort trop long).
+  const minTechniques = vedette ? MIN_TECHNIQUES - 1 : MIN_TECHNIQUES;
+  while (count_((f) => f.category === "technique") < minTechniques) if (!add(pick((f) => f.category === "technique"))) return null;
   // Le reste, au poids : jusqu'à cinq figures quoi qu'il arrive (les plus courtes si le budget est dépassé), puis tant que le budget le permet.
   const total = () => chosen.reduce((sum, f) => sum + figureSeconds(f), 0);
   while (chosen.length < count) {
@@ -295,8 +318,69 @@ function selectFigures(rng: Rng, theme: Theme, day: number, count: number, wants
   return chosen;
 }
 
-/** Ordre des figures : le tirage au hasard, avec un saut ni en tête (la voiture part de zéro) ni en queue (pas de saut juste avant l'arrivée). */
-function orderFigures(rng: Rng, figures: Figure[]): Figure[] | null {
+/**
+ * Lot 49 (v18) — **variété garantie**. `themeOccurrence(jour, thème)` = le numéro d'apparition du thème depuis la bascule du lot 49 (le nombre de jours
+ * d'avant, depuis la bascule, qui ont ce thème : `themeForDay` jour après jour, quelques microsecondes ; rien n'est généré). Deux circuits consécutifs
+ * d'un même thème ont deux numéros qui se suivent, d'où deux règles :
+ * - **la vedette** (`vedetteOf`) : la `k`-ième apparition prend `vedettes[k mod n]` et s'interdit les autres vedettes du thème (n = 3 ou 4 : chaque
+ *   vedette revient toutes les n apparitions, jamais deux de suite) ;
+ * - **l'ordre des figures** (`orderFigures`) : chaque paire de figures du thème a un **sens fixe** (`follows`, un tournoi : une empreinte de la paire
+ *   et du thème) ; un numéro pair n'enchaîne deux figures que dans ce sens, un impair que dans l'autre. Deux figures qui se suivent dans l'un ne
+ *   se suivent donc jamais ainsi dans le suivant : **deux circuits consécutifs d'un même thème ne partagent aucun enchaînement de deux figures**
+ *   (une figure remplacée à la pose suit la même règle : `keepsOrder`). Ce n'est pas un tri : beaucoup d'ordres conviennent, l'un est tiré au hasard
+ *   (il en existe toujours un : tout tournoi a un chemin qui passe par tous ses sommets, théorème de Rédei, construit par insertion).
+ * Le Salon (graines au-delà de tous les jours) prend le numéro de sa session : ses thèmes changent de toute façon d'une session à l'autre.
+ */
+const occurrences = new Map<string, number>();
+export function themeOccurrence(day: number, theme: ThemeName): number {
+  if (day >= SALON_SEED_BASE) return day - SALON_SEED_BASE;
+  const key = `${theme}:${day}`;
+  let k = occurrences.get(key);
+  if (k === undefined) {
+    k = 0;
+    for (let d = BASCULE_LOT_49; d < day; d++) if (themeForDay(d).name === theme) k++;
+    if (occurrences.size > 512) occurrences.clear();
+    occurrences.set(key, k);
+  }
+  return k;
+}
+/** La vedette d'une apparition du thème (lot 49), ou `null` pour un thème sans vedettes. */
+export function vedetteOf(theme: Theme, occurrence: number): string | null {
+  const v = theme.figures.vedettes;
+  return v && v.length > 0 ? v[occurrence % v.length]! : null;
+}
+const otherVedette = (f: Figure, theme: Theme, vedette: string | null) => !!vedette && f.name !== vedette && !!theme.figures.vedettes?.includes(f.name);
+/** Le sens fixe d'une paire de figures dans un thème (lot 49) : vrai si `a` peut précéder `b` dans un circuit d'apparition paire (et `b` précéder `a` dans un impair). */
+export function follows(theme: ThemeName, a: string, b: string): boolean {
+  const [p, q] = a < b ? [a, b] : [b, a];
+  return ((nameHash(`${theme}:${p}|${q}`) & 1) === 0) === (a === p);
+}
+interface Order49 {
+  theme: ThemeName;
+  /** Vrai pour une apparition paire du thème (le sens du tournoi), faux pour une impaire (le sens contraire). */
+  even: boolean;
+}
+/** Vrai si `a` peut précéder `b` dans ce circuit (lot 49). */
+const may = (o: Order49, a: string, b: string) => follows(o.theme, a, b) === o.even;
+
+/** Ordre des figures : le tirage au hasard, avec un saut ni en tête (la voiture part de zéro) ni en queue (pas de saut juste avant l'arrivée) ; lot 49 (v18) : voir `may`. */
+function orderFigures(rng: Rng, figures: Figure[], order49: Order49 | null): Figure[] | null {
+  // Lot 49 (v18) : un ordre où deux figures qui se suivent vont dans le sens permis (`may`), construit par insertion dans un ordre tiré au hasard ; on
+  // préfère un saut ni en tête ni en queue (douze essais), sinon un saut peut ouvrir le circuit (deux droites d'élan de plus : `composeFigures`) ou le finir
+  // (sa réception mène à l'arrivée). Exiger « ni en tête ni en queue » faisait échouer un jour de Nuit sur cinq : le tournoi pousse certains sauts en bout.
+  if (order49) {
+    let path: Figure[] = [];
+    for (let tries = 0; tries < 12; tries++) {
+      path = [];
+      for (const f of rng.shuffle(figures)) {
+        const spots: number[] = [];
+        for (let i = 0; i <= path.length; i++) if ((i === 0 || may(order49, path[i - 1]!.name, f.name)) && (i === path.length || may(order49, f.name, path[i]!.name))) spots.push(i);
+        path.splice(spots[rng.int(spots.length)]!, 0, f);
+      }
+      if (!path[0]!.jump && !path[path.length - 1]!.jump) break;
+    }
+    return path;
+  }
   for (let tries = 0; tries < 12; tries++) {
     const order = rng.shuffle(figures);
     if (!order[0]!.jump && !order[order.length - 1]!.jump) return order;
@@ -346,6 +430,15 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
   const rules34 = generator >= 16;
   // Lot 48 (v17) : le thème tel que cette version le connaît (la Campagne roule sur l'herbe de course) ; avant, le thème tel quel.
   const theme = themeOfVersion(themeAsked, generator);
+  // Lot 49 (v18) : le numéro d'apparition du thème, sa vedette et le sens de l'ordre des figures ; un thème sans super turbo n'en pose aucun.
+  const rules49 = generator >= 18;
+  const occurrence = rules49 ? themeOccurrence(day, theme.name) : 0;
+  const vedette = rules49 ? vedetteOf(theme, occurrence) : null;
+  const order49: Order49 | null = rules49 ? { theme: theme.name, even: occurrence % 2 === 0 } : null;
+  const noTurbo = rules49 && theme.turboChance === 0;
+  // Le tiers de figures au repos (`isRested`) : par la date avant la v18 ; à partir d'elle, par le numéro d'apparition, k + ⌊k / n⌋ (mod 3), n le nombre
+  // de vedettes (3 ou 4) : il change d'une apparition à la suivante, et deux apparitions qui ont la même vedette (k et k + n) n'ont jamais le même repos.
+  const restDay = rules49 ? occurrence + Math.floor(occurrence / (theme.figures.vedettes?.length ?? 3)) : day;
   // Variante 0 : la graine d'origine. Variante n : une autre graine, décalée de n × 1000 tentatives (au plus `MAX_ATTEMPTS` = 40 sont
   // tirées : jamais de recoupement entre variantes).
   const rng = new Rng(mixSeed(day, attempt + 1 + variant * 1000));
@@ -357,7 +450,7 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
   let picked: Figure[] | null = null;
   let best = -Infinity;
   for (let tries = 0; tries < SELECTION_TRIES; tries++) {
-    const candidate = selectFigures(rng, theme, day, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator);
+    const candidate = selectFigures(rng, theme, restDay, count, wants, rules34 ? FIGURE_BUDGET - BRAKING_BUDGET : FIGURE_BUDGET, generator, vedette);
     if (!candidate) continue;
     const seconds = candidate.reduce((sum, f) => sum + figureSeconds(f), 0);
     // Hors budget : on garde le plus court seulement faute de mieux ; dans le budget : celui où l'on lâche le plus le gaz (somme des `off` des figures).
@@ -368,7 +461,7 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
     }
   }
   if (!picked) return null;
-  const order = orderFigures(rng, picked);
+  const order = orderFigures(rng, picked, order49);
   if (!order) return null;
 
   // Largeurs : la route démarre à une largeur tirée selon le thème, et change avant certaines figures tirées d'avance.
@@ -397,10 +490,14 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
     // Une figure qui ne tient pas est remplacée par une autre de la même catégorie (même nature : saut, cuve, moteur coupé) ;
     // la signature, elle, ne se remplace pas : la tentative échoue et la graine voisine prend le relais.
     const alternatives = [order[i]!];
-    if (order[i]!.name !== signatureName) {
+    if (order[i]!.name !== signatureName && order[i]!.name !== vedette) {
       const f0 = order[i]!;
       const banned = new Set(theme.figures.ban);
-      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, day));
+      // Lot 49 (v18) : une remplaçante suit le sens permis avec la figure posée avant et celle qui suit (aucun enchaînement en commun avec la veille du thème).
+      const prev = placed.length > 0 ? placed[placed.length - 1]!.name : null;
+      const next = i + 1 < order.length ? order[i + 1]!.name : null;
+      const keepsOrder = (f: Figure) => !order49 || ((prev === null || may(order49, prev, f.name)) && (next === null || may(order49, f.name, next)));
+      const subs = FIGURES.filter((f) => f.category === f0.category && !!f.jump === !!f0.jump && !!f.cuve === !!f0.cuve && !!f.cut === !!f0.cut && !names.has(f.name) && !banned.has(f.name) && ownedBy(f, theme) && knownBy(f, generator) && !isRested(f.name, restDay) && !otherVedette(f, theme, vedette) && keepsOrder(f));
       alternatives.push(...rng.shuffle(subs).slice(0, 3));
     }
     let done: { figure: Figure; tokens: string[]; variant: number; left: boolean; before: number; fix: ReturnType<typeof secureBraking> } | null = null;
@@ -417,11 +514,13 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
         for (const v of variants) {
           for (const left of mirrors) {
             const plain = buildFigure(figure, left, entry, v);
-            if (!plain) continue;
+            if (!plain || (noTurbo && plain.some((t) => /^T(\/|@|$)/.test(t)))) continue;
             const body = banked && !figure.cuve ? bankTurns(plain) : plain;
             // La droite d'amorce d'une figure est celle qui termine la précédente (ou le départ) : on ne la pose pas deux fois.
             const lead = connector.length === 0 && prefix.length === 0 && body[0] === "S" && /^S(\/[a-z]*)?(@start)?$/.test(w.tokens[w.tokens.length - 1] ?? "") ? 1 : 0;
-            let tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...body.slice(lead)];
+            // Lot 49 (v18) : un saut en tête du circuit part de deux droites de plus (la voiture part de zéro).
+            const runUp = rules49 && i === 0 && figure.jump ? ["S", "S"] : [];
+            let tokens = [...(figure.jump || figure.cuve ? [] : connector), ...prefix, ...runUp, ...body.slice(lead)];
             const fix = rules34 ? secureBraking(w.tokens, tokens, { escape: escapeKind, allowTrap: braking.kept === 0 && (theme.name === "ville" || figure.name === signatureName) }) : null;
             if (rules34 && !fix) continue;
             if (fix) tokens = fix.tokens;
@@ -501,6 +600,8 @@ export function composeFigures(day: number, attempt: number, themeAsked: Theme =
   // Identité du thème (lot 21) : route bosselée, puis bas-côtés.
   if (theme.bumpy[1] > 0) bumpySections(w.tokens, theme.bumpy, rng, rules34 ? shielded : undefined);
   assignShoulders(w.tokens, theme.shoulder, rng, escapes);
+  // Lot 49 (v18) : la Nuit (bas-côté de vide) a toujours de la route sans rebords — c'est sa fiche ; sinon, la graine voisine.
+  if (rules49 && theme.shoulder.kind === "void" && !w.tokens.some((t) => parseToken(t).open || t.includes("~v"))) return null;
   return { spec: w.tokens.join(" "), figures: placed, braking };
 }
 
@@ -748,8 +849,10 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
     const estimate = estimateSeconds(spec.split(" "));
     if (estimate < ESTIMATE_MIN || estimate > ESTIMATE_MAX) continue;
     const track = parseTrack(id, spec);
+    const first = generator >= 18 ? runPilot(track, { grip: PILOT_GRIPS[0], wall: false }) : undefined;
+    if (first && first.valid && first.jumpsOk && first.finishMs > AUTHOR_MAX_MS + QUICK_SLACK_MS) continue;
     // La coupe par le bas-côté (lot 21) n'est essayée que sur la tentative retenue : une course de plus, pas une par tentative.
-    const uncut = bestPilotRun(track, { cut: false });
+    const uncut = bestPilotRun(track, { cut: false, first });
     if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
     const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
     return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, medals: medalsFor(pilot.finishMs, seed) };

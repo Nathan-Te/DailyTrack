@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { FIGURES, createFigureTrack, createFiguresTrack, encodeReplay, runPilot } from "@cdj/sim";
+import { FIGURES, FIGURES_LOT49, createFigureTrack, createFiguresTrack, encodeReplay, runPilot } from "@cdj/sim";
 import { openAdmin } from "./adminPage";
 
 // Lot 20 : scénarios `figures` (le tour des figures marquantes) et `figure` (une seule figure, en boucle), et l'admin qui les propose.
@@ -16,6 +16,10 @@ test.describe("jeu (WebGL : Chromium seulement)", () => {
     expect(run.valid).toBe(true);
     await page.goto("/?debug&scenario=figures&timescale=8&quality=0");
     await page.waitForFunction(() => window.__cdj?.phase);
+    // Lot 49 : la page des nouvelles figures s'ouvre sur le tour ; « Rouler le tour des figures » la ferme.
+    await expect(page.locator("#figures-index")).toBeVisible();
+    await page.locator("#figures-tour").click();
+    await expect(page.locator("#figures-index")).toBeHidden();
     await expect(page.locator("#meta")).toHaveText("Les figures");
     expect(await page.evaluate(() => window.__cdj.trackId)).toBe("figures");
     await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
@@ -26,6 +30,43 @@ test.describe("jeu (WebGL : Chromium seulement)", () => {
     });
     expect(end.finishMs).toBe(run.finishMs);
     expect(end.respawns).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test("lot 49 : ?scenario=figures liste les nouveautés ; deux touchers mènent à une figure, que le pilote finit au temps de Node", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    await page.goto("/?debug&scenario=figures&quality=0");
+    await expect(page.locator("#figures-index")).toBeVisible();
+    await expect(page.locator("#figures-index section[data-figure]")).toHaveCount(FIGURES_LOT49.length);
+    // Le jeu est gelé tant que la page est ouverte : le décompte ne part pas.
+    expect(await page.evaluate(() => window.__cdj.phase)).not.toBe("racing");
+    await page.locator('#figures-index section[data-figure="reception-virage"] a').first().click();
+    await page.waitForFunction(() => window.__cdj?.phase);
+    expect(await page.evaluate(() => window.__cdj.trackId)).toBe("figure-reception-virage");
+    await expect(page.locator("#meta")).toHaveText("Figure : Réception dans un virage");
+    const run = runPilot(createFigureTrack("reception-virage", 0, false)!, { grip: 1 });
+    expect(run.valid).toBe(true);
+    expect(run.jumpsOk).toBe(true);
+    await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
+    await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
+    await page.evaluate(() => window.__cdj.manual(true));
+    for (let i = 0; i < 40; i++) {
+      await page.evaluate(() => window.__cdj.advance(240));
+      if ((await page.evaluate(() => window.__cdj.phase)) === "finished") break;
+    }
+    const end = await page.evaluate(() => {
+      const r = window.__cdj.race as unknown as { finishMs: number; respawns: number };
+      return { finishMs: r.finishMs, respawns: r.respawns };
+    });
+    expect(end.finishMs).toBe(run.finishMs);
+    expect(end.respawns).toBe(0);
+    // Chaque nouveauté a son scénario `?scenario=figure-<nom>` (et sa variante 2).
+    for (const nom of FIGURES_LOT49) {
+      await page.goto(`/?debug&scenario=figure-${nom}&v=1&quality=0`);
+      await page.waitForFunction(() => window.__cdj?.phase);
+      expect(await page.evaluate(() => window.__cdj.trackId), nom).toBe(`figure-${nom}`);
+    }
     expect(errors).toEqual([]);
   });
 

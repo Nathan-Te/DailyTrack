@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FALL_DEPTH, THEMES, parseTrack, type ThemeName } from "@cdj/sim";
+import { FALL_DEPTH, FIGURES_LOT49, THEMES, createFigureTrack, figureByName, parseTrack, type ThemeName } from "@cdj/sim";
 import { PoseLog, ROLES, type Pose } from "../src/decorPose";
 import { trackGeometry } from "../src/scene/existant";
 import { circuitsDuTest, compter, inventaire, relever, releverP1, verifier, type Circuit, type Faute, } from "./decorChecks";
@@ -83,6 +83,27 @@ describe(`pose du décor sur 64 circuits (13/10 → 15/12/2026, chaque thème im
 }
 
 /** Rapport chiffré (README du lot 37) : fautes par type × thème, par règle, et les jours les plus chargés. */
+// Lot 49 : les douze nouvelles figures, chaque variante et son miroir, sur la palette de chacun de leurs thèmes (Stade, Nuit et Canyon pour une figure de
+// tous les thèmes) : mêmes règles de pose, sur le palier 1 et l'existant. Les circuits du jour d'après la bascule (v18) sont aussi dans les 64 ci-dessus.
+describe("lot 49 : les nouvelles figures se posent (règles du lot 37)", () => {
+  const circuits: Circuit[] = [];
+  for (const nom of FIGURES_LOT49) {
+    const f = figureByName(nom)!;
+    for (const theme of (f.only ?? ["stade", "nuit", "canyon"]) as ThemeName[])
+      for (let v = 0; v < f.variants; v++)
+        for (const miroir of [false, true]) circuits.push({ jour: `${nom} v${v}${miroir ? " miroir" : ""}`, theme, palette: THEMES[theme].palette, track: createFigureTrack(nom, v, miroir)! });
+  }
+  it("au moins une variante par figure et par thème", () => {
+    expect(circuits.length).toBeGreaterThanOrEqual(FIGURES_LOT49.length * 4);
+  });
+  for (const [scene, releve] of [["palier 1", releverP1], ["existant", relever]] as const) {
+    it(`aucune faute (${scene})`, () => {
+      const toutes = circuits.flatMap((c) => verifier(c, releve(c.track, c.palette)));
+      expect(toutes.slice(0, 6).map((f) => `${f.jour} ${f.theme} ${f.kind} (bloc ${f.block}) : ${f.regle} — ${f.detail}`)).toEqual([]);
+    }, 120_000);
+  }
+});
+
 function rapport(fautes: Faute[], parKind: Record<string, { elements: number; tris: number }>, parJour: Record<string, number>) {
   const lignes: string[] = [];
   const enFaute = Object.values(compter(fautes)).reduce((a, t) => a + Object.values(t).reduce((x, y) => x + y, 0), 0);

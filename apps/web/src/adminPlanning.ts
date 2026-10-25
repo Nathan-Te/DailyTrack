@@ -209,8 +209,8 @@ export function mountPlanning(stateApi: () => string): void {
     if (c.figures && c.figures.length > 0) row("Figures", figuresText(c.figures));
     // Lot 34 : la version du générateur du jour (dans l'identifiant du circuit) : les jours d'avant la bascule gardent la v15.
     const g = Number(/-g(\d+)/.exec(c.track.id)?.[1] ?? 0);
-    // Lot 48 : la v17 (l'herbe de course de la Campagne) à partir de sa bascule.
-    row("Générateur", g >= 17 ? `v${g} · herbe de course (lot 48)` : g >= 16 ? `v${g} · freinage après les boosts (lot 34), avant la bascule du lot 48 (${formatDay(BASCULE_LOT_48)})` : `v${g} · avant la bascule du lot 34 (${formatDay(BASCULE_LOT_34)})`);
+    // Lot 48 : la v17 (l'herbe de course de la Campagne) à partir de sa bascule ; lot 49 : la v18 (identité des thèmes, même bascule tant que le lot 48 n'est pas en production).
+    row("Générateur", g >= 18 ? `v${g} · identité des thèmes (lot 49) et herbe de course (lot 48)` : g >= 17 ? `v${g} · herbe de course (lot 48)` : g >= 16 ? `v${g} · freinage après les boosts (lot 34), avant la bascule du lot 48 (${formatDay(BASCULE_LOT_48)})` : `v${g} · avant la bascule du lot 34 (${formatDay(BASCULE_LOT_34)})`);
     return dl;
   }
 

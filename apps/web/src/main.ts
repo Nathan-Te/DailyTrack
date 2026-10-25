@@ -172,9 +172,11 @@ if (wantsSalon) {
 }
 // Les circuits des scénarios d'essai (lot 36) : chargés seulement quand l'adresse en demande un (`?scenario=…`), pas dans le premier chargement.
 const scenarios = !customTrack && !salon && requested !== null ? await import("./scenarios") : null;
-// `?scenario=figure&f=<nom>` : une seule figure (lot 20). Un nom inconnu, ou une variante impossible, ramène au circuit d'essai.
-const figureTrack = scenarios && requested === "figure" ? scenarios.scenarioTrack("figure", params) : null;
-const scenario: string = salon ? "salon" : customTrack ? "essai" : requested === "figure" ? (figureTrack ? "figure" : "essai") : scenarios && (scenarios.SCENARIOS as readonly string[]).includes(requested!) ? requested! : "jour";
+// `?scenario=figure&f=<nom>` : une seule figure (lot 20) ; lot 49 : `?scenario=figure-<nom>`. Un nom inconnu, ou une variante impossible, ramène au circuit d'essai.
+const figureName = scenarios ? scenarios.figureDemandee(requested, params) : null;
+const figureTrack = scenarios && figureName !== null ? scenarios.scenarioTrack(requested!, params) : null;
+if (scenarios) ajouterTextes(scenarios.TEXTES_FIGURES); // lot 49 : la page des nouvelles figures et leurs titres (fr + en)
+const scenario: string = salon ? "salon" : customTrack ? "essai" : figureName !== null ? (figureTrack ? "figure" : "essai") : scenarios && (scenarios.SCENARIOS as readonly string[]).includes(requested!) ? requested! : "jour";
 // `?today=AAAA-MM-JJ` (avec `?debug`) simule une autre date du jour : pour tester les archives.
 // Production (lot 31) : outils d'essai coupés, aucun circuit à venir (voir `access.ts`).
 const restricted = isRestricted(location.search);
@@ -348,8 +350,8 @@ const optionsScene = () => ({ textes: textesScene(), ...(coupesScene.length > 0 
 const premierPalier: Palier = palierBranche(palierDepart) && pasDepartCharges ? palierDepart : PALIER_DEFAUT;
 const premierPlus = premierPalier === palierDepart ? plusDepart : [];
 let constructionMs = 0;
-/** La palette d'un scénario d'essai : celle de la Campagne pour l'herbe de course (lot 48 : on la voit contre son décor), le désert sinon. */
-const paletteEssai: PaletteName = scenario === "herbe" ? "campagne" : "desert";
+/** La palette d'un scénario d'essai : celle de la Campagne pour l'herbe de course (lot 48 : on la voit contre son décor), celle du thème d'une figure qui lui est propre (lot 49), le désert sinon. */
+const paletteEssai: PaletteName = scenario === "herbe" ? "campagne" : (scenarios?.figurePalette(figureName) ?? "desert"); // lot 49 : une figure propre à un thème, sur sa palette
 let view = track ? composerOuDefaut(track, salon?.circuit.palette ?? daily?.palette ?? paletteEssai, premierPalier, premierPlus) : buildFlatArena();
 /** Compose la scène au palier voulu (et ses pas en plus) ; si ce palier ou un pas n'a pas pu se brancher (module pas chargé), au palier par défaut. */
 function composerOuDefaut(t0: Track, palette: PaletteName, palier: Palier, plus: readonly string[] = []) {
@@ -547,7 +549,7 @@ function renderHudTitle() {
     const base = daily.number >= 1 ? t("course.meta.jour", { numero: fNumero(daily.number), date: fDateCourte(daily.day), theme: nomTheme(daily.theme) }) : t("course.meta.sansNumero", { date: fDateCourte(daily.day), theme: nomTheme(daily.theme) });
     text = notices.length ? `${base} (${notices.join(", ")})` : base;
   } else if (track) {
-    text = scenario === "figure" ? t("course.scenario.figure", { nom: scenarios!.figureLabel(params.get("f")) }) : t(`course.scenario.${scenario === "bas-cotes" ? "basCotes" : scenario}`);
+    text = scenario === "figure" ? t("course.scenario.figure", { nom: scenarios!.figureLabel(figureName, t) }) : t(`course.scenario.${scenario === "bas-cotes" ? "basCotes" : scenario}`);
   }
   const notice = salonNotice || (addressNotice ? t(addressNotice) : "");
   if (notice) text += ` · ${notice}`;
@@ -848,6 +850,8 @@ settingsPanel = mountSettings(document.body, {
   graphismes: () => ({ enAttente: graphismesEnAttente, niveau: ({ P1: 1, P2: 2, P3: 3 } as Record<string, NiveauQualite>)[reconstructeur.palier()] ?? null }),
   openHowto: () => howto.open(),
 });
+// Lot 49 : la page des nouvelles figures (`?scenario=figures`), posée sur le tour des figures ; ouverte au chargement, le jeu est gelé tant qu'elle l'est.
+const pageFigures = scenario === "figures" && scenarios ? scenarios.pageFigures({ el: elDuSocle, creerCadre, t, onLangue }, location.search) : null;
 // Lot 41 : le Garage, chargé à la demande (`import()` : son code, sa feuille, ses textes) ; ouvert depuis l'accueil, la pause ou l'arrivée.
 let garageUi: GarageUi | null = null;
 const garageOuvert = () => !!garageUi?.estOuvert();
@@ -1371,6 +1375,7 @@ function applyGhostSetting() {
 /** Échap : ferme la fenêtre du dessus ; sinon, pause (ou reprise). */
 function onEscape() {
   if (howto.isOpen()) return howto.close();
+  if (pageFigures?.ouvert()) return pageFigures.fermer();
   if (garageOuvert()) return garageUi!.fermer();
   if (settingsPanel?.isOpen()) return settingsPanel.close();
   if (!hudArchive.hidden) return closeArchive();
@@ -1979,7 +1984,7 @@ function stepOnce(input: CarInput) {
  * le chrono compte des pas de simulation, donc geler ne coûte rien au temps de course (exact).
  */
 function isFrozen(): boolean {
-  return paused || homeOpen || garageOuvert() || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
+  return paused || homeOpen || garageOuvert() || !!pageFigures?.ouvert() || !hudArchive.hidden || !!settingsPanel?.isOpen() || howto.isOpen() || salon?.state === "podium" || salon?.state === "switching" || watchWait || !!watch?.paused;
 }
 
 function frame(now: number) {

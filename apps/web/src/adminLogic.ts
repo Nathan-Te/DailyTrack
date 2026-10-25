@@ -218,7 +218,7 @@ export const PRESETS: { label: string; hint: string; state: Partial<AdminState> 
   { label: "Vitesse", hint: "plaque et longue descente, turbos enchaînés, grande courbe relevée à fond, freinage avant un virage serré", state: { scenario: "vitesse" } },
   { label: "Relief et sauts", hint: "montées de deux niveaux, longue descente, saut court et long saut au-dessus du vide, section surélevée sans rebords", state: { scenario: "relief" } },
   { label: "Air et atterrissages", hint: "dos d'âne à haute vitesse, tremplin pris en braquant, long saut, saut vers un virage relevé, chute de trois niveaux, mur quitté en l'air ; le frein fige la caisse en l'air", state: { scenario: "air" } },
-  { label: "Les figures", hint: "onze figures marquantes de la bibliothèque (lot 20) : S serré-large, turbo et courbe, saut vers un virage relevé, slalom de glace, double saut…", state: { scenario: "figures" } },
+  { label: "Les figures", hint: "lot 49 : la page des nouvelles figures (chacune en boucle, ?scenario=figure-<nom>) ; fermée, le tour de onze figures du lot 20", state: { scenario: "figures" } },
   { label: "Une figure en boucle", hint: "la figure choisie, cinq droites de lancement, point de contrôle juste avant (touche R pour recommencer)", state: { scenario: "figure" } },
   { label: "Bas-côtés et vibreurs", hint: "un virage par bas-côté (herbe, terre et gravier, neige poudreuse, vide), des vibreurs, une portion bosselée, un serré à couper", state: { scenario: "bas-cotes" } },
   { label: "Herbe de course", hint: "lot 48 : ligne droite d'herbe, virages amples et serrés en herbe, transitions herbe-route (décor de la Campagne)", state: { scenario: "herbe" } },
