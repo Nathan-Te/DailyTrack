@@ -36,9 +36,11 @@ export const SINGLE_CLOCK_VERSION = 4;
  * 12 depuis le lot 17 (attente maximale de 12 s sur le palier dans la validation toutes phases ; `scie-sol` v3, `cheminee-scie` v3 et
  * `nuit-opposition` v4 corrigées et réadmises) ;
  * 13 depuis le lot 18 (chaque phase d'un bloc clignotant, présente ou absente, dure au moins 1,5 s : les variantes de nuit plus rapides sont
- * refusées et remplacées par des variantes plus lentes ; suite de secours de la nuit).
+ * refusées et remplacées par des variantes plus lentes ; suite de secours de la nuit) ;
+ * 14 depuis le lot 19 (variété : un morceau de base ne revient pas avant `VARIETY_DAYS` jours, par époques bornées, à la place du repos par
+ * groupes ; tirages prouvés dans l'ordre de leur score estimé ; mutateurs de silhouette et 37 variantes ajoutées au bout de leurs morceaux).
  */
-export const JUMP_GENERATOR_VERSION = 13;
+export const JUMP_GENERATOR_VERSION = 14;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

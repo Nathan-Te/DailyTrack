@@ -2,7 +2,7 @@ id: quinconce
 intention: Passer entre des scies en quinconce : sauter celles du sol, rester sous celles du haut.
 etiquettes: scie precision
 famille: quinconce
-mutateurs: plafond sol-friable denivele
+mutateurs: plafond sol-friable denivele decale
 format: 3
 paliers: 11 11
 repeter: ecart colonnes 6-6
@@ -16,6 +16,7 @@ variante: ecart=3
 variante: ecart=2 +plafond:pics
 variante: ecart=2 +sol-friable
 variante: ecart=1 +denivele:2
+variante: ecart=1 +decale:1
 grille:
 ...##################..
 ...##################..
@@ -34,3 +35,4 @@ grille:
 zone plafond 3-20 6
 zone sol-friable 5-9 11
 zone denivele 21-22
+zone decale 0-22 8-8

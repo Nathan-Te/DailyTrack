@@ -3,7 +3,7 @@ intention: Prendre tout son élan et franchir un grand trou d'un seul saut.
 etiquettes: precision
 famille: saut-long
 elan: oui
-mutateurs: plafond fosse denivele
+mutateurs: plafond fosse denivele hausse
 format: 3
 paliers: 9 9
 repeter: trou colonnes 8-8
@@ -13,6 +13,8 @@ variante: trou=7
 variante: trou=5 +plafond
 variante: trou=6 +fosse
 variante: trou=5 +denivele:3
+variante: trou=5 +hausse:1
+variante: trou=6 +hausse:-1
 grille:
 .............
 .............
@@ -30,3 +32,4 @@ grille:
 zone plafond 4-12 4
 zone fosse 8 11
 zone denivele 9-12
+zone hausse 9-12 9

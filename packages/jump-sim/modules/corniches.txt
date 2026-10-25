@@ -2,7 +2,7 @@ id: corniches
 intention: Suivre une vague de corniches, un petit bond pour chacune, en montant puis en redescendant plus bas qu'au départ.
 etiquettes: respiration
 famille: corniches
-mutateurs: sol-friable denivele vent
+mutateurs: sol-friable denivele vent hausse surface
 format: 3
 paliers: 10 12
 repeter: large colonnes 5-5
@@ -15,6 +15,8 @@ variante: large=2
 variante: large=1 +sol-friable
 variante: large=2 +denivele:2
 variante: large=1 +vent:gauche
+variante: large=1 +hausse:2
+variante: large=1 +surface:glace
 grille:
 ......................
 ......................
@@ -36,3 +38,5 @@ grille:
 zone sol-friable 8-10 6
 zone denivele 20-21
 zone vent 0-21 0-9
+zone hausse 12-14 8
+zone surface 8-10 6

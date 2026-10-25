@@ -2,7 +2,7 @@ id: pendule
 intention: Traverser une salle où trois scies descendent du plafond tour à tour, en passant sous chacune quand elle remonte.
 etiquettes: scie
 famille: pendule
-mutateurs: sol-friable plafond denivele
+mutateurs: sol-friable plafond denivele hausse decale surface
 format: 3
 paliers: 12 12
 variante: cycle=180
@@ -11,6 +11,9 @@ variante: cycle=150
 variante: cycle=240 +sol-friable
 variante: cycle=180 +plafond:pics
 variante: cycle=240 +denivele:2
+variante: cycle=180 +hausse:2
+variante: cycle=240 +decale:2
+variante: cycle=180 +surface:glace
 grille:
 .##################.
 .##################.
@@ -33,3 +36,7 @@ scie troisieme o {cycle} aller-retour 16,4 16,11
 zone sol-friable 7-12 12
 zone plafond 1-18 3
 zone denivele 17-19
+zone hausse 6-6 11
+zone hausse 13-13 11
+zone decale 9-9 4-11
+zone surface 0-19 12

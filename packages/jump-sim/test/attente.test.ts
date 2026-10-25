@@ -19,6 +19,7 @@ import {
   fromRuns,
   moduleSolutions,
   moduleSpan,
+  sectionPeriod,
   variantExigence,
 } from "../src/index";
 import { PHASE_WAIT_MAX, phaseOk, phaseWait, phasesOf, singleClockModule, variantOk, waitOf, type PhaseResult, type PhasesFile } from "../tools/phasesFile";
@@ -84,7 +85,7 @@ describe("lot 17 — la règle des 12 s", () => {
   });
 });
 
-describe("lots 17 et 18 — les variantes ajoutées (V4_ONLY_VARIANTS)", () => {
+describe("lots 17 à 19 — les variantes ajoutées (V4_ONLY_VARIANTS)", () => {
   const added = Object.entries(V4_ONLY_VARIANTS).flatMap(([id, list]) => list.map((variant) => ({ id, variant })));
 
   it("les trois du lot 17 sont là (les autres sont les remplaçantes de nuit du lot 18, `rythme.test.ts`), ajoutées au bout de la liste du morceau, et leurs jumelles refusées restent refusées", () => {
@@ -100,9 +101,14 @@ describe("lots 17 et 18 — les variantes ajoutées (V4_ONLY_VARIANTS)", () => {
       expect(PHASE_REFUSED[id]?.includes(variant) ?? false).toBe(false);
       const s = moduleSolutions(id, variant);
       expect(s?.arret && s.elan && variantExigence(s) >= 1, "solutions jouables aux deux entrées").toBeTruthy();
-      const entry = PHASES.modules[id]!.variants[variant]!;
-      expect(entry.ok).toBe(true);
       const base = buildModuleDef(MODULES.find((d) => d.id === id)!, variant);
+      // Lot 19 : une variante de silhouette sans rien qui tourne n'a pas de phases à valider (aucune horloge dans sa section).
+      const entry = PHASES.modules[id]?.variants[variant];
+      if (!entry) {
+        expect(sectionPeriod(base.level, 0), "une variante sans phases n'a pas d'horloge").toBe(0);
+        return;
+      }
+      expect(entry.ok).toBe(true);
       expect(entry.phases.map((p) => p.phase)).toEqual(phasesOf(entry.period));
       for (const p of entry.phases) {
         expect(p.exigence, `phase ${p.phase}`).toBeGreaterThanOrEqual(1);

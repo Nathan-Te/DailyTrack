@@ -2,7 +2,7 @@ id: ascenseur
 intention: Franchir deux fossés où des scies montent et descendent à contretemps : sauter chaque fois qu'elle est en bas.
 etiquettes: scie
 famille: trou-scie
-mutateurs: sol-friable fosse denivele
+mutateurs: sol-friable fosse denivele hausse surface
 format: 3
 paliers: 10 10
 repeter: trou colonnes 3-3
@@ -13,6 +13,8 @@ variante: trou=2 cycle=240
 variante: trou=1 cycle=240 +sol-friable
 variante: trou=2 cycle=200 +fosse
 variante: trou=1 cycle=180 +denivele:2
+variante: trou=1 cycle=240 +hausse:1
+variante: trou=1 cycle=240 +surface:glace
 grille:
 ...............
 ...............
@@ -36,3 +38,5 @@ zone sol-friable 5-8 10
 zone fosse 2-4 13
 zone fosse 9-11 13
 zone denivele 12-14
+zone hausse 5-8 10
+zone surface 5-8 10

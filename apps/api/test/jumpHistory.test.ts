@@ -50,7 +50,7 @@ describe(`joueurs fictifs de DailyJump (${TEST_DB})`, () => {
     // Base qui contient de vrais joueurs : refus du jeu de données de démonstration.
     await db.run("INSERT INTO players (id, name, created_at, updated_at, demo, name_key) VALUES (?, 'Vrai', 1, 1, 0, 'vrai')", [playerId(1)]);
     await expect(seedJumpDays({ db, frozen: FROZEN, days: [day], demoOnly: true })).rejects.toThrow(/vrai/);
-  }, 60_000);
+  }, 180_000); // lot 19 : 65 s seul en g14 (les essais fictifs du 30/10 coûtent 10,5 s contre 5,5 s en g13, mesuré : un autre niveau, plus de vies)
 
   it("déterministes : mêmes joueurs, mêmes rediffusions pour une date", () => {
     const d = jumpDailyOf(PREMIER_JOUR_JUMP, FROZEN);

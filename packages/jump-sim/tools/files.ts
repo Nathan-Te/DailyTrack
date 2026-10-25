@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parseModule, type CatalogFile, type CatalogSolution, type ModuleDef, type ModuleSolution, type ModuleSolutionsFile } from "../src/index";
+import { decodeReplay, fromRuns, packRuns, parseModule, type CatalogFile, type CatalogSolution, type ModuleDef, type ModuleSolution, type ModuleSolutionsFile, type PackedCatalog, type PackedSolution } from "../src/index";
 
 // Fichiers du catalogue (lot 4) : les morceaux (`modules/<id>.txt`), leurs solutions (`modules/solutions.json`) et le fichier généré que
 // lit la simulation (`src/catalog.ts`). Outils seulement (Node).
@@ -52,19 +52,26 @@ export function catalogOf(file: ModuleSolutionsFile): CatalogFile {
   return { jumpSimVersion: file.jumpSimVersion, exigenceVersion: file.exigenceVersion, modules };
 }
 
+/** Lot 19 : `catalogOf` sous sa forme embarquée (`PackedCatalog`) : les séries de chaque solution, ses pas d'entrée et de sortie et sa note. */
+export function packCatalog(file: ModuleSolutionsFile): PackedCatalog {
+  const one = (s: ModuleSolution | null): PackedSolution => (s ? [packRuns(fromRuns(decodeReplay(s.code).runs)), s.entryTick, s.exitTick, s.exigence] : 0);
+  const m = Object.fromEntries(Object.entries(file.modules).map(([id, mod]) => [id, mod.variants.map((v) => [one(v.arret), one(v.elan)] as const)]));
+  return { v: file.jumpSimVersion, x: file.exigenceVersion, m };
+}
+
 /** Le texte de `src/catalog.ts` pour ces morceaux et ces solutions (lot 15 : allégées, `catalogOf`). */
 export function catalogSource(texts: readonly string[], solutions: ModuleSolutionsFile): string {
   return [
     "// Généré par `npm run solve:modules -w @cdj/jump-sim` à partir de `modules/*.txt` et `modules/solutions.json` : ne pas modifier à la main.",
     "// Un test vérifie que ce fichier est exactement celui que le script écrirait (sinon : « relancer solve:modules »).",
-    'import type { CatalogFile } from "./modules";',
+    'import type { PackedCatalog } from "./modules";',
     "",
     "export const MODULE_TEXTS: readonly string[] = [",
     // `*` (ressort) écrit `\u002a` : le test de pureté refuse `**` (puissance) dans les sources de la simulation, même dans une chaîne.
     ...texts.map((t) => `  ${JSON.stringify(t).replace(/\*/g, "\\u002a")},`),
     "];",
     "",
-    `export const MODULE_SOLUTIONS: CatalogFile = ${JSON.stringify(catalogOf(solutions))};`,
+    `export const MODULE_PACKED: PackedCatalog = ${JSON.stringify(packCatalog(solutions))};`,
     "",
   ].join("\n");
 }

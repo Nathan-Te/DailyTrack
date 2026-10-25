@@ -30,7 +30,7 @@ import {
   type Level,
   type PlayerState,
 } from "../src/index";
-import { MODULE_SOLUTIONS } from "../src/catalog";
+import { MODULE_SOLUTIONS } from "../src/modules";
 import { J, L, R, T, floatAt, hold, room, standAt } from "./helpers";
 
 // Lot 8b : l'essai d'élan progressif (`sprintMode` = 1, panneau `?debug&tune` seulement). Éteint, rien ne change : mêmes états, au champ

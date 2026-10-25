@@ -282,8 +282,9 @@ describe("lot 15 — les suites de secours v4 n'ont aucune variante refusée", (
 
 const GOLDEN_FILE = join(import.meta.dirname, "fixtures/replay-golden-v4.json");
 // Lot 18 (g13) : le 25/10 n'a plus de mort avant le premier point de passage parmi les 24 essais fictifs (la couverture « reprise au départ » du test
-// manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas.
-const GOLDEN_DAY = parseDay("2026-10-31")!;
+// manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas. Lot 19 (g14) : le 31/10 n'en a plus aucune ; le 09/11,
+// une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11).
+const GOLDEN_DAY = parseDay("2026-11-09")!;
 
 interface GoldenV4 {
   jumpSimVersion: number;

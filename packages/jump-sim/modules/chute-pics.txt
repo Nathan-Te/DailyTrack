@@ -2,7 +2,7 @@ id: chute-pics
 intention: Tomber au fond d'un puits étroit en esquivant les pics des parois, à gauche puis à droite.
 etiquettes: precision vertical
 famille: chute
-mutateurs: patrouille garde denivele
+mutateurs: patrouille garde denivele decale echange
 format: 3
 paliers: 4 25
 repeter: prof rangees 12-12
@@ -11,6 +11,9 @@ variante: prof=3
 variante: prof=1 +patrouille
 variante: prof=2 +garde
 variante: prof=1 +denivele:2
+variante: prof=1 +decale:0:2
+variante: prof=2 +decale:0:-2
+variante: prof=3 +echange:scies
 grille:
 ...........
 ...........
@@ -42,3 +45,5 @@ grille:
 zone patrouille o 150 aller-retour 3,11 6,11
 zone garde 6 5-6 <
 zone denivele 7-10
+zone decale 3-6 7-18
+zone echange 3-6 5-18

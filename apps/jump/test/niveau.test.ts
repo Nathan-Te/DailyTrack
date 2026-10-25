@@ -109,7 +109,7 @@ describe("charge transportable (worker et cache)", () => {
       expect(l.number).toBe(direct.number);
       expect(l.date).toBe(direct.date);
     }
-  });
+  }, 30_000); // lot 19 : le premier niveau se calcule à froid avec ses voisins de variété (jusqu'à 8 niveaux) ; 5,7 s mesuré sous charge
 
   it("la charge survit au JSON (c'est ce que le stockage garde) et la preuve se rejoue", () => {
     const p = JSON.parse(JSON.stringify(generatePayload(DAY)));

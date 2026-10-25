@@ -7,8 +7,8 @@ import { DAY as CDJ_DAY, NOON as CDJ_NOON, makeApi, parisDayStart, pilotReplay, 
 // Lot P2 (plateforme) : le fantôme du premier (`GET /api/jump/day/<date>/ghost/first`) et le profil DailyJump (`GET /api/jump/me`) ; le
 // `GET /api/me` de DailyTrack ne change pas. Tourne sur SQLite et sur libSQL.
 
-/** Jour de test fixe : le 20/10/2026 (niveau généré), et son lendemain (pour la série et un jour passé). Midi à Paris. */
-const DAY = daysFromCivil(2026, 10, 20);
+/** Jour de test fixe : le 29/10/2026 (niveau généré ; lot 19 : le 20/10 en g14 n'a presque plus d'essais fictifs qui arrivent), et son lendemain (pour la série et un jour passé). Midi à Paris. */
+const DAY = daysFromCivil(2026, 10, 29);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 
