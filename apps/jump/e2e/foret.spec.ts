@@ -32,10 +32,8 @@ interface Blocks {
   alts: number;
   solid: number;
   absent: number;
-  wobbling: number;
   waiting: number;
   thick: number;
-  wobbleOpacity: number;
   alt: number;
   flash: number;
   phases: number[];
@@ -44,12 +42,15 @@ interface Blocks {
 }
 interface Wind {
   zones: number;
+  list: { gust: { cycle: number; active: number; shift: number } | null }[];
   mode?: "particules" | "fleches";
   particles?: number;
   arrows?: number;
   lit?: number;
   blowing?: boolean[];
   announce?: number[];
+  flow?: number[];
+  intensity?: number[];
   arrowOpacity?: number[];
   inside: number;
   pushed: boolean;
@@ -285,6 +286,72 @@ test("mouvement réduit : des flèches fixes remplacent les feuilles et le polle
         expect(opacities.size, "mouvement réduit : des flèches fixes, rien ne clignote").toBe(1);
         expect([...opacities][0]!).toBeGreaterThan(0);
       } else expect([...opacities]).toEqual([-100]); // pas de flèches avec les particules
+      expect(errors).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  }
+});
+
+test("annonce d'une rafale (lot 18) : les feuilles ralentissent pendant les 0,4 s qui précèdent la fin et sont à l'arrêt pile quand elle cesse ; les flèches s'éteignent de même", async ({ browser }) => {
+  for (const reduced of [false, true]) {
+    const context = await browser.newContext({ reducedMotion: reduced ? "reduce" : "no-preference", viewport: { width: 900, height: 600 } });
+    const page = await context.newPage();
+    const errors = watchErrors(page);
+    try {
+      if (!(await open(page, "/?module=vent-rafale&variante=0&debug"))) {
+        test.skip(true, SKIP);
+        return;
+      }
+      // On court jusqu'au bord (la section se met en marche), puis on attend sur place. À chaque étape on avance pas à pas jusqu'à ce qu'il reste `left` pas à la
+      // rafale (lus sur l'état de la simulation : `phases` et le cycle), puis on laisse le dessin passer deux images.
+      await page.evaluate(() => {
+        const j = (window as unknown as { __jump: Jump }).__jump;
+        j.input(2);
+        j.advance(30);
+        j.input(0);
+      });
+      const leftOf = `(() => { const w = window.__jump.wind; const g = w.list[0].gust; const q = (((w.phases[0] + g.shift) % g.cycle) + g.cycle) % g.cycle; return q < g.active ? { blowing: true, left: g.active - q } : { blowing: false, left: g.cycle - q }; })()`;
+      const reach = (blowing: boolean, left: number) =>
+        page.evaluate(
+          ([b, l, expr]) => {
+            const j = (window as unknown as { __jump: Jump }).__jump;
+            for (let t = 0; t < 2000; t++) {
+              const s = eval(expr as string) as { blowing: boolean; left: number };
+              if (s.blowing === b && s.left === l) return true;
+              j.advance(1);
+            }
+            return false;
+          },
+          [blowing, left, leftOf] as const,
+        );
+      let w: Wind;
+      // Hors du ralenti (49 pas avant la fin de la rafale) : pleine vitesse.
+      expect(await reach(true, 49)).toBe(true);
+      await frames(page, 2);
+      w = (await J(page)).wind!;
+      expect(w.flow![0]).toBe(1);
+      // Dix pas avant la fin : 10 / (48 + 1) de la pleine vitesse ; les flèches, entre éteintes et allumées.
+      expect(await reach(true, 10)).toBe(true);
+      await frames(page, 2);
+      w = (await J(page)).wind!;
+      expect(w.active[0]).toBe(true);
+      expect(w.flow![0]!).toBeCloseTo(10 / 49, 5);
+      if (reduced) {
+        expect(w.arrowOpacity![0]!).toBeGreaterThan(0.22);
+        expect(w.arrowOpacity![0]!).toBeLessThan(0.8);
+      }
+      // Le dernier pas de la rafale : presque à l'arrêt ; le pas suivant, elle a cessé et les feuilles sont à l'arrêt pile.
+      expect(await reach(true, 1)).toBe(true);
+      await frames(page, 2);
+      w = (await J(page)).wind!;
+      expect(w.flow![0]!).toBeCloseTo(1 / 49, 5);
+      await page.evaluate(() => (window as unknown as { __jump: Jump }).__jump.advance(1));
+      await frames(page, 2);
+      w = (await J(page)).wind!;
+      expect(w.active[0], "la rafale a cessé").toBe(false);
+      expect(w.flow![0], "à l'arrêt pile au pas où la rafale cesse").toBe(0);
+      if (reduced) expect(w.arrowOpacity![0]!).toBeCloseTo(0.22, 5); // flèches éteintes (WIND_ARROW_IDLE)
       expect(errors).toEqual([]);
     } finally {
       await context.close();

@@ -1,9 +1,9 @@
 {
   "jumpSimVersion": 4,
-  "jumpGeneratorVersion": 12,
+  "jumpGeneratorVersion": 13,
   "days": {
     "2026-10-16": {
-      "id": "jour-2026-10-16-g12",
+      "id": "jour-2026-10-16-g13",
       "number": 1,
       "hash": "7d5aafdd",
       "width": 277,
@@ -38,47 +38,47 @@
         ]
       },
       "chosen": 1,
-      "code": "AQQTam91ci0yMDI2LTEwLTE2LWcxMgDaAeYEWv4CIo4B2gemAyLkAULkAUKEAWCqB6YFMpYBkgjmBCrGAdICLooEhgGiAzaaBW6CCXaaCMYEMtYOKjZoLWLNAYABkgE4QjCKAkaiBUDiAS7qAi6KA0aSDTCVAiA1ngEaZk0gPU6KDFQ9LBnmBFq2CNoBNpoGbpoDLrIOIMECgALCAiRFigM"
+      "code": "AQQTam91ci0yMDI2LTEwLTE2LWcxMwDaAeYEWv4CIo4B2gemAyLkAULkAUKEAWCqB6YFMpYBkgjmBCrGAdICLooEhgGiAzaaBW6CCXaaCMYEMtYOKjZoLWLNAYABkgE4QjCKAkaiBUDiAS7qAi6KA0aSDTCVAiA1ngEaZk0gPU6KDFQ9LBnmBFq2CNoBNpoGbpoDLrIOIMECgALCAiRFigM"
     },
     "2026-10-25": {
-      "id": "jour-2026-10-25-g12",
+      "id": "jour-2026-10-25-g13",
       "number": 10,
-      "hash": "3738466a",
-      "width": 305,
-      "height": 51,
+      "hash": "66f40365",
+      "width": 277,
+      "height": 43,
       "pieces": [
-        "piliers:5",
-        "nuit-opposition:1",
-        "demi-tour:0",
-        "scies-jumelles:4",
+        "plafond-pics:1",
+        "scie-sol:5",
+        "puits-descente:1",
         "ascenseur:5",
-        "descente-scies:1",
-        "nuit-marelle:1",
-        "escalier-scies:0",
-        "cheminee-pics:2",
-        "nuit-portes:0"
+        "nuit-marelle:4",
+        "nuit-escalier:7",
+        "tremplin:1",
+        "nuit-portes:5",
+        "mur-seul:5",
+        "scie-ronde:1"
       ],
-      "authorTicks": 3688,
+      "authorTicks": 3517,
       "medals": {
-        "author": 3688,
-        "gold": 4057,
-        "silver": 4795,
-        "bronze": 5901
+        "author": 3517,
+        "gold": 3869,
+        "silver": 4573,
+        "bronze": 5628
       },
       "exigence": {
-        "sum": 25,
-        "rate": 488,
+        "sum": 21,
+        "rate": 429,
         "thirds": [
-          15,
-          20,
-          41
+          10,
+          17,
+          42
         ]
       },
-      "chosen": 2,
-      "code": "AQQTam91ci0yMDI2LTEwLTI1LWcxMgDiAXayBIYBwgSGAfoFduoELtIDdvoFVFUMKe4EKpYHugHOAdoD9gcKhgGiBEaKFC6yDj76CjaiA9ABggF4wgFGWIIBIEFiRpIF5gQihgH6Ao4B2gKuAfIClgHCAt4EGo4BwgL2BBqmCIIGOJUCGF1-GmZVGE02og3UBbYDGk5dyALqA05EgQG0AboH"
+      "chosen": 1,
+      "code": "AQQTam91ci0yMDI2LTEwLTI1LWcxMwCCBC7iAy6yAzayAy7KCoYEIsYIKi44LWqAAbUB-giOAcoEZqoILqIFNooIhgGiBEb6BS6SA5ACUkjCAV4kSXoYQSpoFb4E-gEu-gL2AzJ2ggqeAbIGRuIN1AW2AzKmAqAFMbIDNjDyAWE0YmAxNDH6DKYBWK4DMoYDMMYBNbIMLpIE"
     },
     "2026-11-03": {
-      "id": "jour-2026-11-03-g12",
+      "id": "jour-2026-11-03-g13",
       "number": 19,
       "hash": "5443d6be",
       "width": 283,
@@ -113,10 +113,10 @@
         ]
       },
       "chosen": 2,
-      "code": "AQQTam91ci0yMDI2LTExLTAzLWcxMgDqBI4BqgPOA0LGA2KGAaIDTpIDNjLGAhhNPj0aLiJuLDFOMoQBQaYBGl4tKIYBIkYhJYYFmgJYLNUBGt4BOt4CQkRuLWGmCJIBVvICYboEtgbaAnbaA94FIrACkQHKAggihgL6A_QBkgU2mgZumgMuogcuUC16KXqoASJQggTuBCKGAfIGPtoKjgQidvoBvgGCA9YImgIuugMu-gIuggM-4gWuAfIDVtoCLuoDLqoCLqoF"
+      "code": "AQQTam91ci0yMDI2LTExLTAzLWcxMwDqBI4BqgPOA0LGA2KGAaIDTpIDNjLGAhhNPj0aLiJuLDFOMoQBQaYBGl4tKIYBIkYhJYYFmgJYLNUBGt4BOt4CQkRuLWGmCJIBVvICYboEtgbaAnbaA94FIrACkQHKAggihgL6A_QBkgU2mgZumgMuogcuUC16KXqoASJQggTuBCKGAfIGPtoKjgQidvoBvgGCA9YImgIuugMu-gIuggM-4gWuAfIDVtoCLuoDLqoCLqoF"
     },
     "2026-12-25": {
-      "id": "jour-2026-12-25-g12",
+      "id": "jour-2026-12-25-g13",
       "number": 71,
       "hash": "094a8db5",
       "width": 286,
@@ -149,10 +149,10 @@
         ]
       },
       "chosen": 1,
-      "code": "AQQTam91ci0yMDI2LTEyLTI1LWcxMgBStgFihgMirgGSAq4DKY4DQjaKCKYFMpYBkgjmBCrGAdICLooEhgGiAzbCBoYDMOYSGi5wLYoBkAGVAaIITsoDfqoELqoELtoDNrIK7gQaLsICPtIGvgcytga6BEaKAn76A27iDNYBGg4kTUQibjpEtQFkGkxu8gr-AyouqgUu4gKeBQ"
+      "code": "AQQTam91ci0yMDI2LTEyLTI1LWcxMwBStgFihgMirgGSAq4DKY4DQjaKCKYFMpYBkgjmBCrGAdICLooEhgGiAzbCBoYDMOYSGi5wLYoBkAGVAaIITsoDfqoELqoELtoDNrIK7gQaLsICPtIGvgcytga6BEaKAn76A27iDNYBGg4kTUQibjpEtQFkGkxu8gr-AyouqgUu4gKeBQ"
     },
     "2027-03-28": {
-      "id": "jour-2027-03-28-g12",
+      "id": "jour-2027-03-28-g13",
       "number": 164,
       "hash": "fb49b454",
       "width": 290,
@@ -186,10 +186,10 @@
         ]
       },
       "chosen": 4,
-      "code": "AQQTam91ci0yMDI3LTAzLTI4LWcxMgCCA0biA0baBtYCMoYDMrYDYIYJmgRWygMu6gIuigHeARpuigMuggMuwgNGigV-6gU-ggOmBYoBLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBaICZtoD5gfKBKYBWK4DMoYDMMYBNYIFRuoEbsIHfpoGdroKLlAteil6qAEiUIIE1gQ"
+      "code": "AQQTam91ci0yMDI3LTAzLTI4LWcxMwCCA0biA0baBtYCMoYDMrYDYIYJmgRWygMu6gIuigHeARpuigMuggMuwgNGigV-6gU-ggOmBYoBLnAtigGQAZUBoghOygN-qgQuqgQu2gM28gp-0gPeBaICZtoD5gfKBKYBWK4DMoYDMMYBNYIFRuoEbsIHfpoGdroKLlAteil6qAEiUIIE1gQ"
     },
     "2027-06-21": {
-      "id": "jour-2027-06-21-g12",
+      "id": "jour-2027-06-21-g13",
       "number": 249,
       "hash": "073a3efc",
       "width": 333,
@@ -222,7 +222,7 @@
         ]
       },
       "chosen": 4,
-      "code": "AQQTam91ci0yMDI3LTA2LTIxLWcxMgCyBM4EMo4JOr4BMoYGIpYB4gOeAaIDLvIJxgG6BVRVDCnuBCqWB8oBdhp-6hsu4gI-qgN2ugQuugZu-gJW4gLOAcoIdvoCbuoCZooC1gQ63gW6BFbKAy7qAi6KAd4BGm6KAy6CAy7CA0aKBX7qBT6CA6YFkgVGigJ--gNuwgY"
+      "code": "AQQTam91ci0yMDI3LTA2LTIxLWcxMwCyBM4EMo4JOr4BMoYGIpYB4gOeAaIDLvIJxgG6BVRVDCnuBCqWB8oBdhp-6hsu4gI-qgN2ugQuugZu-gJW4gLOAcoIdvoCbuoCZooC1gQ63gW6BFbKAy7qAi6KAd4BGm6KAy6CAy7CA0aKBX7qBT6CA6YFkgVGigJ--gNuwgY"
     }
   }
 }

@@ -1240,6 +1240,47 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "6": {
+    "grid": "6859e3b6",
+    "fast": 247,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "7": {
+    "grid": "8c4cf6f0",
+    "fast": 241,
+    "costMin": 360,
+    "precise": [
+     45,
+     60,
+     63
+    ],
+    "boxes": [
+     {
+      "c0": 4,
+      "c1": 6,
+      "r0": 14,
+      "r1": 18
+     },
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 12,
+      "r1": 16
+     },
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 11,
+      "r1": 15
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "nuit-opposition": {
@@ -1282,6 +1323,33 @@
    "5": {
     "grid": "0d9dc56b",
     "fast": 695,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "6": {
+    "grid": "a8d88653",
+    "fast": 264,
+    "costMin": 360,
+    "precise": [
+     138
+    ],
+    "boxes": [
+     {
+      "c0": 13,
+      "c1": 15,
+      "r0": 3,
+      "r1": 7
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "8": {
+    "grid": "509ca88e",
+    "fast": 686,
     "costMin": 360,
     "precise": [],
     "boxes": [],
@@ -1353,6 +1421,65 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "234139b9",
+    "fast": 653,
+    "costMin": 360,
+    "precise": [],
+    "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "34627345",
+    "fast": 585,
+    "costMin": 360,
+    "precise": [
+     407,
+     419
+    ],
+    "boxes": [
+     {
+      "c0": 20,
+      "c1": 22,
+      "r0": 5,
+      "r1": 9
+     },
+     {
+      "c0": 20,
+      "c1": 22,
+      "r0": 6,
+      "r1": 10
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "7": {
+    "grid": "b8384344",
+    "fast": 544,
+    "costMin": 360,
+    "precise": [
+     413,
+     431
+    ],
+    "boxes": [
+     {
+      "c0": 20,
+      "c1": 22,
+      "r0": 5,
+      "r1": 9
+     },
+     {
+      "c0": 20,
+      "c1": 22,
+      "r0": 6,
+      "r1": 10
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "nuit-relais": {
@@ -1409,6 +1536,49 @@
      {
       "c0": 45,
       "c1": 47,
+      "r0": 3,
+      "r1": 7
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "3": {
+    "grid": "9aace406",
+    "fast": 729,
+    "costMin": 365,
+    "precise": [
+     371
+    ],
+    "boxes": [
+     {
+      "c0": 28,
+      "c1": 30,
+      "r0": 5,
+      "r1": 9
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "1a340599",
+    "fast": 886,
+    "costMin": 443,
+    "precise": [
+     828,
+     831
+    ],
+    "boxes": [
+     {
+      "c0": 54,
+      "c1": 56,
+      "r0": 3,
+      "r1": 7
+     },
+     {
+      "c0": 54,
+      "c1": 56,
       "r0": 3,
       "r1": 7
      }

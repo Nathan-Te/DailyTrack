@@ -16,6 +16,7 @@ variante: ecart=1 +patrouille
 variante: ecart=2 +sol-friable
 variante: ecart=1 +denivele:2
 variante: ecart=1 +clignotant:lent
+variante: ecart=1 +clignotant:calme
 grille:
 ........................
 ........................

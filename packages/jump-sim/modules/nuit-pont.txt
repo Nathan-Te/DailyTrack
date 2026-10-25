@@ -11,6 +11,11 @@ variante: long=9 cycle=300 solide=210 decalage=240
 variante: long=10 cycle=270 solide=140 decalage=0
 variante: long=11 cycle=330 solide=170 decalage=250
 variante: long=12 cycle=300 solide=150 decalage=180
+variante: long=9 cycle=390 solide=210 decalage=0
+variante: long=9 cycle=390 solide=210 decalage=240
+variante: long=10 cycle=360 solide=180 decalage=0
+variante: long=11 cycle=360 solide=180 decalage=250
+variante: long=12 cycle=360 solide=180 decalage=180
 grille:
 .....
 .....

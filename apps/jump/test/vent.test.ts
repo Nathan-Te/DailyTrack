@@ -21,12 +21,12 @@ import { describe, expect, it } from "vitest";
 import { soundFor } from "../src/audioLogic";
 import { contrastRatio, hueDistance, hueOf } from "../src/contrast";
 import { EVENT_KINDS, eventsBetween, type GameEvent } from "../src/events";
+import { announceTicks, announceWindow } from "../src/announce";
 import { Particles, feelColors, feelEvent } from "../src/feel";
 import { defaultSettings, feelLevels } from "../src/settings";
 import { HAZARD, PLAYER, THEMES, THEME_NAMES, backdropColors } from "../src/themes";
 import { SCENARIOS, URL_OPTIONS, readUrlOptions } from "../src/urlOptions";
 import {
-  WIND_ANNOUNCE_TICKS,
   WIND_ARROW_IDLE,
   WIND_ARROW_ON,
   WIND_PARTICLES_MAX,
@@ -90,21 +90,22 @@ describe("aspect d'une zone", () => {
     }
   });
 
-  it("une zone sans rafale souffle toujours ; une rafale s'annonce pendant les 30 pas qui précèdent son départ (de 0 à 1, sans à-coup)", () => {
+  it("une zone sans rafale souffle toujours ; une rafale frémit pendant les pas qui précèdent son départ (de 0 à presque 1, sans à-coup)", () => {
     let s: AttemptState = { ...initialAttempt(level), status: 1, sections: [0], time: 0 };
     const seen: number[] = [];
     for (let t = 0; t < 240; t++) {
       const looks = windLooks(level, s);
-      expect(looks[0]).toEqual({ blowing: true, announce: 0 });
+      expect(looks[0]).toEqual({ blowing: true, announce: 0, flow: 1, intensity: 1 });
       const g = gustTiming(level.winds[1]!.gust!, s.time);
-      if (!g.blowing && g.left <= WIND_ANNOUNCE_TICKS) expect(looks[1]!.announce).toBeGreaterThan(0);
+      // Lot 18 : 0,4 s (48 pas) avant le début, au plus la moitié de la phase calme (80 pas ici : 40).
+      if (!g.blowing && g.left <= announceWindow(announceTicks("gustLead"), 80)) expect(looks[1]!.announce).toBeGreaterThan(0);
       else expect(looks[1]!.announce).toBe(0);
       seen.push(looks[1]!.announce);
       s = { ...s, time: s.time + 1 };
     }
     // L'annonce monte d'un pas à l'autre (jamais de retour en arrière avant la rafale).
     for (let k = 1; k < seen.length; k++) if (seen[k]! > 0 && seen[k - 1]! > 0) expect(seen[k]!).toBeGreaterThan(seen[k - 1]!);
-    expect(Math.max(...seen)).toBe(1);
+    expect(Math.max(...seen)).toBeCloseTo(40 / 41, 10); // au dernier pas calme ; la rafale souffle au pas suivant
   });
 });
 
@@ -156,8 +157,8 @@ describe("souffle spatialisé (trois voix, plus fort au centre d'une zone)", () 
     const l0 = windLooks(level, quiet);
     expect(l0[1]!.blowing).toBe(false);
     const a = windMix(level, l0, { x: 20, y: 2.5 }).find((v) => v.index === 1)!;
-    const on = windMix(level, [l0[0]!, { blowing: true, announce: 0 }], { x: 20, y: 2.5 }).find((v) => v.index === 1)!;
-    const near = windMix(level, [l0[0]!, { blowing: false, announce: 0.8 }], { x: 20, y: 2.5 }).find((v) => v.index === 1)!;
+    const on = windMix(level, [l0[0]!, { blowing: true, announce: 0, flow: 1, intensity: 1 }], { x: 20, y: 2.5 }).find((v) => v.index === 1)!;
+    const near = windMix(level, [l0[0]!, { blowing: false, announce: 0.8, flow: 0, intensity: 0.8 }], { x: 20, y: 2.5 }).find((v) => v.index === 1)!;
     expect(a.gain).toBeLessThan(near.gain);
     expect(near.gain).toBeLessThan(on.gain);
   });
@@ -186,13 +187,13 @@ describe("feuilles, pollen et flèches", () => {
     const p: WindParticle = { x: 0, y: 0, angle: 0, alpha: 0, size: 0, kind: 0 };
     const q: WindParticle = { ...p };
     for (let k = 0; k < 10; k++) {
-      windParticle(z, 0, k, 1.3, 2, true, 0, p);
-      windParticle(z, 0, k, 1.3, 2, true, 0, q);
+      windParticle(z, 0, k, 1.3, 2, 3, 1, 0, p);
+      windParticle(z, 0, k, 1.3, 2, 3, 1, 0, q);
       expect(p).toEqual(q);
       expect(p.x).toBeGreaterThanOrEqual(z.c0);
       expect(p.x).toBeLessThanOrEqual(z.c1 + 1);
       const before = p.x;
-      windParticle(z, 0, k, 1.4, 2, true, 0, p);
+      windParticle(z, 0, k, 1.4, 2, 3, 1, 0, p);
       if (Math.abs(p.x - before) < 1) expect(p.x).toBeGreaterThan(before);
     }
   });
@@ -203,10 +204,10 @@ describe("feuilles, pollen et flèches", () => {
       expect(a.length).toBeGreaterThan(0);
       for (const f of a) expect([f.dx, f.dy]).toEqual(z.dir === 1 ? [0, 1] : z.dir === 2 ? [-1, 0] : [1, 0]);
     }
-    expect(arrowOpacity({ blowing: true, announce: 0 })).toBe(WIND_ARROW_ON);
-    expect(arrowOpacity({ blowing: false, announce: 0 })).toBe(WIND_ARROW_IDLE);
-    expect(arrowOpacity({ blowing: false, announce: 1 })).toBeGreaterThan(WIND_ARROW_IDLE);
-    expect(arrowOpacity({ blowing: false, announce: 1 })).toBeLessThan(WIND_ARROW_ON);
+    expect(arrowOpacity({ intensity: 1 })).toBe(WIND_ARROW_ON);
+    expect(arrowOpacity({ intensity: 0 })).toBe(WIND_ARROW_IDLE);
+    expect(arrowOpacity({ intensity: 0.5 })).toBeGreaterThan(WIND_ARROW_IDLE);
+    expect(arrowOpacity({ intensity: 0.5 })).toBeLessThan(WIND_ARROW_ON);
   });
 
   it("le dessin : particules avec les effets, flèches sans (mouvement réduit, effets « aucun ») ; rien pour un niveau sans vent", () => {

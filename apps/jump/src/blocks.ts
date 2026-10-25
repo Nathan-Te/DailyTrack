@@ -12,14 +12,13 @@ import {
   type BlinkCycle,
   type Level,
 } from "@cdj/jump-sim";
+import { announceTicks, announceWindow, blinkGauge, blinkPhase } from "./announce";
 import type { EventSource, GameEvent } from "./events";
 
 // Les blocs clignotants (nuit) et alternés (néon) vus par le jeu (lot 12), **logique pure** et testée : ce qui s'affiche (plein, absent,
-// vacillant, en attente de la sortie du personnage), les couleurs réservées, les événements qu'on en déduit (`blocVacille`, `blocApparait`,
-// `blocDisparait`, `bascule`, `metronome`) et le tempo de la section courante. Rien ici ne modifie la simulation : on lit des états.
-
-/** Un bloc qui va s'éteindre vacille pendant ce nombre de pas avant de disparaître : 30 pas = 0,25 s (affichage seul). */
-export const VACILLE_TICKS = 30;
+// jauge qui se vide ou se remplit — lot 18 —, en attente de la sortie du personnage), les couleurs réservées, les événements qu'on en déduit
+// (`blocVacille`, `blocApparait`, `blocDisparait`, `bascule`, `metronome`) et le tempo de la section courante. Rien ici ne modifie la simulation :
+// on lit des états. Lot 18 : l'annonce d'un changement d'état est une jauge continue (`announce.ts`), plus un vacillement.
 
 // ——— Couleurs ———
 // Les mêmes dans tous les thèmes (comme le tapis et la glace). **Jamais le rouge des dangers (`HAZARD`, teinte 0°) ni le jaune du personnage
@@ -42,10 +41,13 @@ export const BLOCK_STYLE = {
 
 // ——— État affiché ———
 
-/** Ce qu'on dessine pour un bloc : plein ou absent, part du vacillement (0 : aucun, 1 : sur le point de s'éteindre), et s'il attend la sortie du personnage. */
+/**
+ * Ce qu'on dessine pour un bloc : plein ou absent, le niveau de sa jauge (lot 18 ; 0 vide, 1 pleine : 1 hors annonce pour un bloc plein, 0 pour un
+ * absent, `blinkGauge` pendant l'annonce ; un bloc alterné vaut 1 plein et 0 absent), et s'il attend la sortie du personnage.
+ */
 export interface BlockLook {
   solid: boolean;
-  wobble: number;
+  fill: number;
   waiting: boolean;
 }
 
@@ -61,30 +63,39 @@ export function blinkTiming(c: BlinkCycle, group: number, phase: number): { soli
   return { solid, left: inFirst ? c.solid - q : c.cycle - q };
 }
 
+/** Le groupe est-il, à cette phase, dans l'annonce de sa disparition (plein, et il lui reste au plus la fenêtre d'annonce) ? */
+export function vanishing(c: BlinkCycle, group: number, phase: number): boolean {
+  const p = blinkPhase(c, group, phase);
+  const w = announceWindow(announceTicks("vanish"), p.length);
+  return p.solid && w > 0 && p.left <= w;
+}
+
 /** Le bloc de cet indice (clignotants puis alternés, dans l'ordre de `Level.blinks` puis `Level.alts`) : son aspect dans cet état. */
 export function blockLooks(level: Level, state: Readonly<AttemptState>, out: BlockLook[] = []): BlockLook[] {
   const phases = sectionPhases(level, state);
   let k = 0;
-  const set = (solid: boolean, wobble: number, waiting: boolean) => {
-    const slot = (out[k] ??= { solid: false, wobble: 0, waiting: false });
+  const set = (solid: boolean, fill: number, waiting: boolean) => {
+    const slot = (out[k] ??= { solid: false, fill: 0, waiting: false });
     slot.solid = solid;
-    slot.wobble = wobble;
+    slot.fill = fill;
     slot.waiting = waiting;
     k++;
   };
+  const vanishTicks = announceTicks("vanish");
+  const appearTicks = announceTicks("appear");
   for (const b of level.blinks) {
     const cycle = level.blinkCycles[b.section]!;
-    const t = blinkTiming(cycle, b.group, phases[b.section]!);
+    const t = blinkPhase(cycle, b.group, phases[b.section]!);
     const solid = state.tiles[b.row * level.width + b.col] === TILE_BLINK_ON;
-    // Il devrait être plein et ne l'est pas : le personnage le chevauche, il redeviendra plein dès qu'il en sera sorti.
+    // Il devrait être plein et ne l'est pas : le personnage le chevauche, il redeviendra plein dès qu'il en sera sorti (contour épais, pas de face).
     const waiting = t.solid && !solid;
-    const wobble = solid && t.solid && t.left <= VACILLE_TICKS ? 1 - (t.left - 1) / VACILLE_TICKS : 0;
-    set(solid, wobble, waiting);
+    // Lot 18 : la jauge de l'annonce (plein : elle descend ; absent : elle monte) ; un bloc qui attend la sortie du personnage n'a pas de face.
+    set(solid, waiting || solid !== t.solid ? 0 : blinkGauge(t, vanishTicks, appearTicks), waiting);
   }
   const alt = state.alt ?? 0;
   for (const a of level.alts) {
     const solid = state.tiles[a.row * level.width + a.col] === TILE_ALT_ON;
-    set(solid, 0, a.set === alt && !solid);
+    set(solid, solid ? 1 : 0, a.set === alt && !solid);
   }
   out.length = k;
   return out;
@@ -169,16 +180,14 @@ export function blockEvents(prev: Readonly<AttemptState>, cur: Readonly<AttemptS
       for (const [section, cells] of appear) out.push({ kind: "blocApparait", section, count: cells.length, tick, source, ...centerOf(cells) });
       for (const [section, cells] of vanish) out.push({ kind: "blocDisparait", section, count: cells.length, tick, source, ...centerOf(cells) });
     }
-    // Vacillement : le groupe plein d'une section passe sous `VACILLE_TICKS` pas avant de s'éteindre.
+    // Annonce de la disparition (lot 18) : le groupe plein d'une section entre dans la fenêtre où sa jauge se vide.
     const before = sectionPhases(level, prev);
     const after = sectionPhases(level, cur);
     for (let s = 0; s < level.sections.length; s++) {
       const cycle = level.blinkCycles[s];
       if (!cycle || before[s] === after[s]) continue;
       for (const group of [0, 1]) {
-        const a = blinkTiming(cycle, group, before[s]!);
-        const b = blinkTiming(cycle, group, after[s]!);
-        if (!b.solid || b.left > VACILLE_TICKS || (a.solid && a.left <= VACILLE_TICKS)) continue;
+        if (!vanishing(cycle, group, after[s]!) || vanishing(cycle, group, before[s]!)) continue;
         const cells = level.blinks.filter((x) => x.section === s && x.group === group && cur.tiles[x.row * level.width + x.col] === TILE_BLINK_ON);
         if (cells.length > 0) out.push({ kind: "blocVacille", section: s, count: cells.length, tick, source, ...centerOf(cells) });
       }

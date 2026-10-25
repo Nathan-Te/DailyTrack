@@ -20,6 +20,7 @@ import {
   type SurfaceParamKey,
   type WindParamKey,
 } from "@cdj/jump-sim";
+import { ANNOUNCE, ANNOUNCE_DEFAULTS, type AnnounceKey } from "./announce";
 import { CAMERA, CAMERA_DEFAULTS, CARNAGE, CARNAGE_DEFAULTS, SHAKES, SHAKE_DEFAULTS, type CameraKey, type CarnageKey, type ShakeKey } from "./camera";
 import { START, START_DEFAULTS } from "./session";
 import { gameStorage, storageKey } from "./storage";
@@ -186,7 +187,7 @@ export const CAMERA_STORAGE_KEY = storageKey("camera");
 
 export interface CameraSlider {
   /** Lot 15 : `pret`, la durée du « Prêt… » avant le départ d'un niveau à une seule horloge (`START`, session.ts). */
-  key: CameraKey | ShakeKey | CarnageKey | "pret";
+  key: CameraKey | ShakeKey | CarnageKey | AnnounceKey | "pret";
   label: string;
   min: number;
   max: number;
@@ -203,15 +204,22 @@ export const CAMERA_SLIDERS: readonly CameraSlider[] = [
   { key: "settleRate", label: "Recalage doux au sol (vitesse)", min: 0.2, max: 8, step: 0.1, unit: "/s" },
   { key: "verticalRate", label: "Suivi hors de la zone (chutes, longues montées)", min: 1, max: 14, step: 0.5, unit: "/s" },
   { key: "clockOpacity", label: "Carnage : opacité des dangers à horloge (scies mobiles, clignotants, rafales)", min: 0.1, max: 1, step: 0.05, unit: "(1 = normal)" },
+  // Lot 18 : l'annonce des éléments à horloge (`announce.ts`) ; une phase plus courte que l'annonce ne l'affiche que sur sa moitié.
+  { key: "vanish", label: "Annonce : disparition d'un bloc clignotant (la face se vide)", min: 0.1, max: 1.5, step: 0.05, unit: "s" },
+  { key: "appear", label: "Annonce : réapparition d'un bloc clignotant (le contour se remplit)", min: 0.1, max: 1.5, step: 0.05, unit: "s" },
+  { key: "gustLead", label: "Annonce : début d'une rafale (les feuilles frémissent)", min: 0, max: 1.5, step: 0.05, unit: "s" },
+  { key: "gustTail", label: "Annonce : fin d'une rafale (les feuilles ralentissent)", min: 0, max: 1.5, step: 0.05, unit: "s" },
   { key: "pret", label: "« Prêt… » avant le départ (horloge unique, lot 15)", min: 0.1, max: 3, step: 0.05, unit: "s" },
 ];
 
 const isShakeKey = (k: CameraSlider["key"]): k is ShakeKey => k in SHAKE_DEFAULTS;
 const isCarnageKey = (k: CameraSlider["key"]): k is CarnageKey => k in CARNAGE_DEFAULTS;
-const cameraValue = (k: CameraSlider["key"]): number => (k === "pret" ? START.pret : isCarnageKey(k) ? CARNAGE[k] : isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
-const cameraDefault = (k: CameraSlider["key"]): number => (k === "pret" ? START_DEFAULTS.pret : isCarnageKey(k) ? CARNAGE_DEFAULTS[k] : isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
+const isAnnounceKey = (k: CameraSlider["key"]): k is AnnounceKey => k in ANNOUNCE_DEFAULTS;
+const cameraValue = (k: CameraSlider["key"]): number => (k === "pret" ? START.pret : isAnnounceKey(k) ? ANNOUNCE[k] : isCarnageKey(k) ? CARNAGE[k] : isShakeKey(k) ? SHAKES[k] : CAMERA[k]);
+const cameraDefault = (k: CameraSlider["key"]): number => (k === "pret" ? START_DEFAULTS.pret : isAnnounceKey(k) ? ANNOUNCE_DEFAULTS[k] : isCarnageKey(k) ? CARNAGE_DEFAULTS[k] : isShakeKey(k) ? SHAKE_DEFAULTS[k] : CAMERA_DEFAULTS[k]);
 const setCamera = (k: CameraSlider["key"], v: number): void => {
   if (k === "pret") START.pret = v;
+  else if (isAnnounceKey(k)) ANNOUNCE[k] = v;
   else if (isCarnageKey(k)) CARNAGE[k] = v;
   else if (isShakeKey(k)) SHAKES[k] = v;
   else CAMERA[k] = v;
@@ -486,7 +494,7 @@ export function mountTunePanel(root: HTMLElement, params: JumpParams, onChange: 
   cameraTitle.textContent = "Caméra et secousses";
   const cameraNote = document.createElement("small");
   cameraNote.className = "hint";
-  cameraNote.textContent = "Affichage seulement (la partie n'est pas modifiée). Les secousses ne sont lancées que par la mort ; les valeurs sont gardées dans ce navigateur.";
+  cameraNote.textContent = "Affichage seulement (la partie n'est pas modifiée). Les secousses ne sont lancées que par la mort ; lot 18 : les durées d'annonce des éléments à horloge (disparition et réapparition des clignotants, début et fin des rafales) se règlent ici aussi ; les valeurs sont gardées dans ce navigateur.";
   cameraBox.append(cameraTitle, cameraNote);
   const cameraRows: { s: CameraSlider; input: HTMLInputElement; value: HTMLElement; row: HTMLElement }[] = [];
   for (const s of CAMERA_SLIDERS) {

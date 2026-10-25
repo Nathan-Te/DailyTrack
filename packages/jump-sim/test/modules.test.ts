@@ -96,7 +96,7 @@ scie s o {cycle} aller-retour 1,0 1',4
 `;
 
 /** Pourquoi une solution stockée n'est plus valable pour ce morceau construit (null : elle l'est). */
-function staleReason(file: ModuleSolutionsFile | CatalogFile, built: BuiltModule): string | null {
+function staleReason(file: ModuleSolutionsFile, built: BuiltModule): string | null {
   if (file.jumpSimVersion !== MODULE_SIM_VERSION) return `version de la simulation ${file.jumpSimVersion} ≠ ${MODULE_SIM_VERSION} : ${STALE}`;
   if (file.exigenceVersion !== EXIGENCE_VERSION) return `mesure d'exigence ${file.exigenceVersion} ≠ ${EXIGENCE_VERSION} : ${STALE}`;
   const v = file.modules[built.id]?.variants[built.variant];
@@ -285,11 +285,12 @@ describe("le catalogue", () => {
 describe("les solutions stockées", () => {
   it("une empreinte de grille ou de version périmée est signalée avec « relancer solve:modules »", () => {
     const m = buildModule("tunnel", 0);
-    expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
-    const moved: CatalogFile = { ...MODULE_SOLUTIONS, modules: { ...MODULE_SOLUTIONS.modules, tunnel: { ...MODULE_SOLUTIONS.modules.tunnel!, variants: [{ ...MODULE_SOLUTIONS.modules.tunnel!.variants[0]!, grid: "00000000" }] } } };
+    // Lot 18 : la péremption se lit sur `solutions.json` (le catalogue embarqué n'a plus l'empreinte de la grille : il en est la projection, vérifiée plus haut).
+    expect(staleReason(FULL, m)).toBeNull();
+    const moved: ModuleSolutionsFile = { ...FULL, modules: { ...FULL.modules, tunnel: { ...FULL.modules.tunnel!, variants: [{ ...FULL.modules.tunnel!.variants[0]!, grid: "00000000" }] } } };
     expect(staleReason(moved, m)).toMatch(/relancer solve:modules/);
-    expect(staleReason({ ...MODULE_SOLUTIONS, jumpSimVersion: MODULE_SIM_VERSION - 1 }, m)).toMatch(/relancer solve:modules/);
-    expect(staleReason({ ...MODULE_SOLUTIONS, exigenceVersion: EXIGENCE_VERSION + 1 }, m)).toMatch(/relancer solve:modules/);
+    expect(staleReason({ ...FULL, jumpSimVersion: MODULE_SIM_VERSION - 1 }, m)).toMatch(/relancer solve:modules/);
+    expect(staleReason({ ...FULL, exigenceVersion: EXIGENCE_VERSION + 1 }, m)).toMatch(/relancer solve:modules/);
     // La lecture du catalogue n'en rend aucune pour une autre version.
     expect(moduleSolutions("tunnel", 0)).not.toBeNull();
   });
@@ -298,7 +299,7 @@ describe("les solutions stockées", () => {
     it(`« ${def.id} » : chaque solution sort au bord droit de son palier, au sol, à pleine vitesse, en course propre, puis finit sans mourir`, () => {
       for (let v = 0; v < def.variants.length; v++) {
         const m = buildModule(def.id, v);
-        expect(staleReason(MODULE_SOLUTIONS, m)).toBeNull();
+        expect(staleReason(FULL, m)).toBeNull();
         for (const entry of MODULE_ENTRIES) {
           // Lot 15 : le jeu n'embarque que la rediffusion et ses pas ; la mesure complète est dans `solutions.json`.
           const sol = FULL.modules[def.id]!.variants[v]![entry]!;
@@ -443,7 +444,7 @@ describe("mutateurs (lot 7)", () => {
   const def = parseModule(MUT);
   const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
 
-  it("lit les zones et les mutateurs des variantes ; au plus deux par variante, sept variantes (lot 17), seulement ceux déclarés", () => {
+  it("lit les zones et les mutateurs des variantes ; au plus deux par variante, dix variantes (lot 18), seulement ceux déclarés", () => {
     expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent"]);
     expect(MUTATORS).toEqual(def.mutators);
     expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
@@ -461,7 +462,9 @@ describe("mutateurs (lot 7)", () => {
     expect(bad("zone ressort 8 6\n", "")).toThrow(/sans zone/);
     expect(bad("mutateurs: plafond fosse", "mutateurs: fosse")).toThrow(/absent de « mutateurs: »/);
     expect(bad("variante: large=1 +denivele:2", "variante: large=1")).toThrow(/identiques/);
-    expect(() => parseModule(MUT.replace("variante: large=1\n", "variante: large=1\nvariante: large=3\nvariante: large=4\n"))).toThrow(new RegExp(`au plus ${MAX_VARIANTS}`)); // 6 variantes dans la fixture, 7 permises depuis le lot 17
+    // 6 variantes dans la fixture, 10 permises depuis le lot 18 (7 au lot 17) : cinq de plus en font onze.
+    const extra = [3, 4, 5, 6, 7].map((n) => `variante: large=${n}\n`).join("");
+    expect(() => parseModule(MUT.replace("variante: large=1\n", `variante: large=1\n${extra}`))).toThrow(new RegExp(`au plus ${MAX_VARIANTS}`));
   });
 
   it("chaque mutateur transforme exactement sa zone du gabarit, puis le déroulé recopie la plage répétée", () => {

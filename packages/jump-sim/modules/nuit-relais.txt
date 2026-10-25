@@ -10,6 +10,9 @@ repeter: paires colonnes 14-27
 variante: paires=2 cycle=300 solide=180 decalage=270
 variante: paires=2 cycle=330 solide=200 decalage=300
 variante: paires=2 cycle=300 solide=160 decalage=270
+variante: paires=2 cycle=360 solide=180 decalage=270
+variante: paires=2 cycle=360 solide=180 decalage=330
+variante: paires=2 cycle=420 solide=210 decalage=270
 grille:
 ...........................................
 ...........................................

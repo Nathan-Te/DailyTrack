@@ -40,10 +40,15 @@ export function readSolutions(): ModuleSolutionsFile | null {
   }
 }
 
-/** Lot 15 : ce que le jeu embarque des solutions (`CatalogFile`) : la rediffusion, ses pas et la note ; le détail reste dans `solutions.json`. */
+/**
+ * Lot 15 : ce que le jeu embarque des solutions (`CatalogFile`) : la rediffusion, ses pas et la note ; le détail reste dans `solutions.json`.
+ * Lot 18 : sans l'empreinte de la grille (`grid`, 8 caractères hexadécimaux par variante, incompressibles : ≈ 1,7 ko compressés par copie, deux copies dans
+ * le jeu) — personne ne la lit à l'exécution ; la péremption d'une solution se vérifie sur `solutions.json` (test `modules.test.ts`), dont le catalogue embarqué est
+ * exactement la projection (test).
+ */
 export function catalogOf(file: ModuleSolutionsFile): CatalogFile {
   const slim = (s: ModuleSolution | null): CatalogSolution | null => (s ? { code: s.code, ticks: s.ticks, entryTick: s.entryTick, exitTick: s.exitTick, exigence: s.exigence } : null);
-  const modules = Object.fromEntries(Object.entries(file.modules).map(([id, m]) => [id, { variants: m.variants.map((v) => ({ grid: v.grid, arret: slim(v.arret), elan: slim(v.elan) })) }]));
+  const modules = Object.fromEntries(Object.entries(file.modules).map(([id, m]) => [id, { variants: m.variants.map((v) => ({ arret: slim(v.arret), elan: slim(v.elan) })) }]));
   return { jumpSimVersion: file.jumpSimVersion, exigenceVersion: file.exigenceVersion, modules };
 }
 

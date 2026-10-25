@@ -34,9 +34,11 @@ export const SINGLE_CLOCK_VERSION = 4;
  * 11 depuis le lot 16 (seconde voie : zone de bifurcation, cage et galerie de la voie lente sur chaque portion notée 4 ou 5, voies parasites
  * fermées, médailles or / bronze ajustées aux temps rapide et lent) ;
  * 12 depuis le lot 17 (attente maximale de 12 s sur le palier dans la validation toutes phases ; `scie-sol` v3, `cheminee-scie` v3 et
- * `nuit-opposition` v4 corrigées et réadmises).
+ * `nuit-opposition` v4 corrigées et réadmises) ;
+ * 13 depuis le lot 18 (chaque phase d'un bloc clignotant, présente ou absente, dure au moins 1,5 s : les variantes de nuit plus rapides sont
+ * refusées et remplacées par des variantes plus lentes ; suite de secours de la nuit).
  */
-export const JUMP_GENERATOR_VERSION = 12;
+export const JUMP_GENERATOR_VERSION = 13;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

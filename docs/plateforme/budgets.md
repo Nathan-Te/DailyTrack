@@ -26,7 +26,7 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `track.qualiteMesure` | Track | mesure de la règle de qualité (`qualiteMesure`, à la demande ; lot 45) | 1 500 | — | 838 | 662 | `apps/web/e2e/perf.spec.ts` |
 | `track.garage` | Track | Garage à la demande (JS : `garage-*.js`, ce qu'il tire hors du premier chargement compris ; lot 41, ligne ajoutée au lot de plateforme « suites de Track 2 ») | 10 000 | — | 8 962 | 1 038 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 377 003 | 1 487 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 375 908(lot 18 : −1 095 ; lot 17 : 377 003) | 2 582 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
@@ -177,6 +177,11 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 2. **Jump, JS + CSS : 1 487 o** (voir plus haut).
 3. **Track, page d'admin : 1 319 o** (plafond mesure + 15 %), puis **JS + CSS : 14 648 o** (lot 44 : −1 847 o, le décor d'avant sorti du premier chargement ; lot 41 : +1 257 o, l'entrée et le chargeur du Garage, la ligne de l'arrivée, le cache des déblocages — détail dans `docs/lots/lot-41-garage.md` ; lot 46 : +1 241 o, la vie et le ciel à la demande ; retouche 40b : +7 512 o, la voiture civile, les modèles à la demande, le catalogue et le choix — accepté par Nathan le 23/10/2026, détail dans `docs/lots/lot-40b-voitures-en-jeu.md` ; lot 43 : +9 466 o, plafonds relevés de 15 000 o ; lot 40 : +1 689 o, la voiture en six maillages — détail dans `docs/lots/lot-40-vehicule.md` ; lot 39 : +644 o ; lot 37 : +2 192 o ; lot 36 : −21 221 o ; 125 o au lot 35). Règle : le générateur ne revient pas dans le premier chargement, tout nouveau module lourd se charge à la demande sauf s'il sert au premier écran (`apps/web/CLAUDE.md`).
 4. **Track, fils de travail : 3 476 o (circuits) et 3 498 o (Salon)** après leur relèvement (avant : 76 et 1 498 o). Ils embarquent le générateur et le pilote : tout ajout à la génération les entame.
+
+## Lot 18 de DailyJump (lisibilité des éléments à horloge, rythme de la nuit)
+
+- **Jump : −1 095 o** (377 003 → 375 908 o, marge 1 487 → 2 582 o), dans son budget (pas de relèvement). Le lot ajoute **+1 472 o de code** (l'annonce : jauge de la nuit, ralenti des feuilles, flèches) et **+4 479 o de catalogue** (30 variantes de nuit de remplacement : solutions embarquées, en deux copies — fichier principal et fil de travail du générateur) ; pour tenir, **le catalogue embarqué perd l'empreinte de la grille de chaque variante** (`grid`, 8 caractères hexadécimaux incompressibles par variante, jamais lus à l'exécution : −7 044 o). La péremption d'une solution se vérifie toujours, sur `solutions.json` (`packages/jump-sim/test/modules.test.ts` : le catalogue embarqué est exactement la projection de ce fichier, et chaque solution y est comparée à la grille construite).
+- Mesuré avec `node scripts/budgets.mjs` après `npm run build` (ou `mesureJump` sur une construction à part), comme les autres lignes.
 
 ## Lot de plateforme « suites de Track 2 » (24/10/2026)
 
