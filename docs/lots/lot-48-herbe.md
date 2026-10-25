@@ -100,7 +100,7 @@ Outil : `apps/web/e2e/captures-lot48.spec.ts` (`CAPTURES=1 LABEL=avant|apres …
 
 ## 8. À tester (aperçu de la PR, au téléphone)
 
-Les liens sont ceux du canal d'aperçu de la PR (commentaire « Aperçu » de la PR) ; les jours d'après la bascule ne sont jouables qu'en aperçu ou avec `?debug`.
-- `/track/?scenario=herbe` : on voit la piste (tonte, bords blancs, herbe haute autour), on y glisse au lieu de freiner.
-- `/track/?scenario=herbe&debug&tune` : régler la sensation (les huit lignes « Herbe de course »), puis « Copier les réglages ».
-- `/track/?seed=2026-11-04` (premier jour de Campagne de la v17) et `/track/?seed=2026-11-15`.
+Aperçu de la PR #136 : https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/ (serveur : la révision de recette `b-claude-lot-48-h-vy16mq`, santé : https://b-claude-lot-48-h-vy16mq---cdj-api-recette-5qi6aa4qqa-ew.a.run.app/api/health). Les jours d'après la bascule ne sont jouables qu'en aperçu ou avec `?debug` (recette et aperçus seulement).
+- [`/track/?scenario=herbe`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?scenario=herbe) : on voit la piste (tonte, bords blancs, herbe haute autour), on y glisse au lieu de freiner.
+- [`/track/?scenario=herbe&debug&tune`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?scenario=herbe&debug&tune) : régler la sensation (les huit lignes « Herbe de course »), puis « Copier les réglages » et les coller à l'agent.
+- Un jour de Campagne d'après la bascule : [`/track/?seed=2026-11-04`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?seed=2026-11-04) (le premier jour de la v17) et [`/track/?seed=2026-11-15`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?seed=2026-11-15).
