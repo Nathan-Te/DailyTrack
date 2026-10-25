@@ -185,6 +185,6 @@ Démonstration `?api=demo` régénérée (`npm run jump:seed -w @cdj/api`, 15 jo
 6. Dettes toujours ouvertes : joueurs fictifs v4 qui reprennent mal après une mort (ils ont imposé le changement de jour de trois tests serveur), calibration des taux de tirages.
 
 ## 11. Scénario en 2 clics
-*(Liens de l'aperçu de la PR : voir le commentaire « Aperçu » de la PR ; en local : `npm run dev:jump`.)*
-- **La première semaine g14** : `…/jump/?semaine=2026-10-27` — à voir : aucun morceau surligné dans deux jours à moins de 3 jours d'écart ; des silhouettes nouvelles (`hausse`, `decale`…) dans les listes (`plongeon v6`, `mur-seul v7`, `chute-pics v5`).
-- **La même semaine en g13** : `…/jump/?semaine=2026-10-27&generateur=13` — à voir : `plongeon` les 27 et 29/10, `ressorts-escalier` le 27 et le 30, `plafond-pics` et `puits-descente` les 27, 28 et 30/10, `mur-seul` les 31/10 et 01/11 : les retours à 1 ou 2 jours que Nathan reconnaissait.
+PR : https://github.com/Nathan-Te/DailyTrack/pull/139 ; aperçu branché sur la révision de recette `https://b-claude-jump-lot-eohtqs---cdj-api-recette-5qi6aa4qqa-ew.a.run.app` (en local : `npm run dev:jump`, mêmes adresses sur `http://localhost:5173/`).
+- **La première semaine g14** : https://playdujour-recette--pr-139-6e6idk5u.web.app/jump/?semaine=2026-10-27 — à voir : aucun morceau surligné dans deux jours à moins de 3 jours d'écart ; des silhouettes nouvelles (`hausse`, `decale`…) dans les listes (`plongeon v6`, `mur-seul v7`, `chute-pics v5`).
+- **La même semaine en g13** : https://playdujour-recette--pr-139-6e6idk5u.web.app/jump/?semaine=2026-10-27&generateur=13 — à voir : `plongeon` les 27 et 29/10, `ressorts-escalier` le 27 et le 30, `plafond-pics` et `puits-descente` les 27, 28 et 30/10, `mur-seul` les 31/10 et 01/11 : les retours à 1 ou 2 jours que Nathan reconnaissait.
