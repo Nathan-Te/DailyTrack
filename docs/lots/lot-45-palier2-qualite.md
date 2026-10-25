@@ -242,6 +242,8 @@ Mesures : `npm run build && node scripts/budgets.mjs` et `aLaDemande` de `e2e/pe
    0,55 comme la vitrine) ; baisser l'intensité sur la voiture est un nombre (`ENVIRONNEMENT`, `finitionJeu.ts`).
 5. **Deux réglages de qualité** : « Qualité graphique » (le palier) au-dessus de « Qualité » (lot 9 : la fluidité dans un palier). Les fondre en un seul est
    possible plus tard (le lot 9 deviendrait automatique seulement).
+   **Fait ensuite (demande de Nathan, 25/10/2026)** : « Qualité » (lot 9) est retiré de l'interface ; « Qualité graphique » est le seul réglage, la fluidité dans un
+   palier reste automatique (`QualityGovernor`) et `?quality=0|1|2` fige encore pour les essais. Un `quality` enregistré dans `cdj:settings` est ignoré.
 6. **Mentions légales** (zone partagée, non touchées) : `cdj:qualite` (palier, date, médiane mesurée, taille d'écran) est couvert par « tes réglages » sous
    `cdj:…` ; à nommer explicitement par un lot de plateforme si tu le souhaites (règle de fidélité du lot R5).
 7. **Le choix fait en pause** attend la fin de la course (même si la pause permettrait techniquement de reconstruire) : c'est ce que dit « appliqué à la fin

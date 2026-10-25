@@ -431,7 +431,7 @@ effects.enabled = params.get("fx") !== "off";
 // Réglages du joueur (lot 29) : qualité, effets, secousses, sensation de vitesse, ombres… `?quality=`, `?fx=off` et `?shake=0` les surpassent (essais).
 const settings: GameSettings = loadSettings();
 const qualityParam = params.get("quality");
-const qualityStart = qualityPlan(settings.quality, qualityParam);
+const qualityStart = qualityPlan(qualityParam);
 const governor = new QualityGovernor(26, 19, qualityStart.fixed);
 governor.level = qualityStart.level;
 effects.quality = governor.level;
@@ -800,14 +800,13 @@ const needsHowto = () => autoHowto && !howtoSeen();
 
 /** Applique un changement de réglage tout de suite (qualité, effets, secousses, sensation de vitesse, ombres, classement…), puis le mémorise. */
 function applySettings(patch: Partial<GameSettings> = {}) {
-  const wasQuality = settings.quality;
   // Lot 45 : un autre choix de « Qualité graphique » s'applique à la prochaine occasion hors course (`suivreQualite`) ; l'adresse (`?palier=`) l'emporte.
   if (patch.graphismes && patch.graphismes !== settings.graphismes && !sceneVoulue) graphismesEnAttente = true;
   Object.assign(settings, patch);
   saveSettings(settings);
-  const plan = qualityPlan(settings.quality, qualityParam);
+  const plan = qualityPlan(qualityParam);
   governor.locked = plan.fixed;
-  if (plan.fixed || wasQuality !== settings.quality) governor.level = plan.level; // retour à l'automatique : on repart de haut, la fluidité redescendra si besoin
+  if (plan.fixed) governor.level = plan.level; // `?quality=` (essais) ; sinon la fluidité décide seule
   effects.quality = governor.level;
   syncSceneQuality();
   effects.particlesOn = settings.particles;
@@ -844,9 +843,7 @@ settingsPanel = mountSettings(document.body, {
   setAudio: (a) => gameAudio.setSettings(a),
   camera: () => CAMERAS[cameraIndex]!.name,
   setCamera: setCameraByName,
-  qualityLevel: () => governor.level,
   touch: touchPad ? { pad: touchPad, changed: () => touchUi?.refresh() } : null,
-  qualityFromUrl: qualityParam === "0" || qualityParam === "1" || qualityParam === "2",
   graphismes: () => ({ enAttente: graphismesEnAttente, niveau: ({ P1: 1, P2: 2, P3: 3 } as Record<string, NiveauQualite>)[reconstructeur.palier()] ?? null }),
   openHowto: () => howto.open(),
 });

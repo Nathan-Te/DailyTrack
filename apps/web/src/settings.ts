@@ -9,7 +9,6 @@ import { CHOIX_GRAPHISMES, type ChoixGraphismes } from "./qualite";
 // Hors de ce fichier, restent à leur place : le son (`cdj:audio`, audioLogic.ts), les commandes tactiles (`cdj:touch`, touch.ts) et la
 // caméra (`cdj:camera`, la touche C la change aussi : une seule vérité pour « caméra par défaut »).
 
-export type QualityChoice = "auto" | "low" | "medium" | "high";
 /** Sensation de vitesse : champ de vision, lignes de vitesse, vibration de la caméra. */
 export type SpeedFeel = "off" | "soft" | "normal" | "strong";
 /** Fantôme suivi au départ. */
@@ -17,9 +16,8 @@ export type GhostChoice = "mine" | "first" | "ahead" | "none";
 export type SpeedUnit = "kmh" | "mph";
 
 export interface GameSettings {
-  /** Lot 45 : « Qualité graphique » — le palier de la scène (Auto : la règle de `qualite.ts`). */
+  /** Lot 45 : « Qualité graphique » — le palier de la scène (Auto : la règle de `qualite.ts`). Seul réglage de qualité du joueur : la fluidité dans un palier est toujours automatique (`QualityGovernor`). */
   graphismes: ChoixGraphismes;
-  quality: QualityChoice;
   /** Particules (fumée, étincelles, flammes, confettis). */
   particles: boolean;
   /** Traces de pneus. */
@@ -27,7 +25,7 @@ export interface GameSettings {
   /** Secousses de caméra (chocs, réceptions, vibreurs). */
   shake: boolean;
   speedFeel: SpeedFeel;
-  /** Ombres portées (qualité moyenne et haute). */
+  /** Ombres portées (retirées seules par le régulateur de fluidité si le jeu ramerait). */
   shadows: boolean;
   ghost: GhostChoice;
   /** Classement affiché en course (la touche L, ou le bouton du classement, change aussi ce choix : il est mémorisé). */
@@ -39,7 +37,6 @@ export interface GameSettings {
 
 export const DEFAULT_SETTINGS: Readonly<GameSettings> = Object.freeze({
   graphismes: "auto",
-  quality: "auto",
   particles: true,
   skids: true,
   shake: true,
@@ -54,17 +51,12 @@ export const DEFAULT_SETTINGS: Readonly<GameSettings> = Object.freeze({
 /**
  * Version des réglages enregistrés. Elle monte quand un défaut change de sens : un réglage enregistré avant (autre numéro) retrouve
  * une fois la valeur par défaut des champs concernés, puis le choix du joueur est respecté (même idée que `TOUCH_SETTINGS_VERSION`).
- * Version 1 : première version (lot 29) ; rien à migrer.
+ * Version 1 : première version (lot 29) ; rien à migrer. (Le réglage « Qualité » du lot 9 a été retiré : un `quality` enregistré est ignoré et disparaît à la prochaine
+ * écriture, sans changer de version.)
  */
 export const SETTINGS_VERSION = 1;
 
 export const SETTINGS_KEY = "cdj:settings";
-
-export const QUALITY_CHOICES: readonly QualityChoice[] = ["auto", "low", "medium", "high"];
-/** Lot I4 : les libellés viennent du catalogue (`reglages.*`) ; ici, la clé de chaque choix. */
-export const QUALITY_KEY: Record<QualityChoice, string> = { auto: "reglages.qualite.auto", low: "reglages.qualite.low", medium: "reglages.qualite.medium", high: "reglages.qualite.high" };
-/** Niveau de qualité du rendu (0 basse, 1 moyenne, 2 haute) d'un choix fixe ; `null` pour l'automatique. */
-export const QUALITY_LEVEL: Record<QualityChoice, 0 | 1 | 2 | null> = { auto: null, low: 0, medium: 1, high: 2 };
 
 export const SPEED_FEEL_CHOICES: readonly SpeedFeel[] = ["off", "soft", "normal", "strong"];
 export const SPEED_FEEL_KEY: Record<SpeedFeel, string> = { off: "reglages.sensation.off", soft: "reglages.sensation.soft", normal: "reglages.sensation.normal", strong: "reglages.sensation.strong" };
@@ -86,7 +78,6 @@ export function parseSettings(raw: string | null): GameSettings {
   try {
     const o = JSON.parse(raw) as Partial<Record<keyof GameSettings | "version", unknown>>;
     s.graphismes = oneOf(CHOIX_GRAPHISMES, o.graphismes) ?? s.graphismes;
-    s.quality = oneOf(QUALITY_CHOICES, o.quality) ?? s.quality;
     s.speedFeel = oneOf(SPEED_FEEL_CHOICES, o.speedFeel) ?? s.speedFeel;
     s.ghost = oneOf(GHOST_CHOICES, o.ghost) ?? s.ghost;
     s.unit = oneOf(["kmh", "mph"] as const, o.unit) ?? s.unit;
@@ -131,11 +122,10 @@ export function formatSpeed(ms: number, unit: SpeedUnit): string {
 }
 
 /**
- * Qualité à appliquer : `?quality=0|1|2` (essais) l'emporte, sinon le choix du joueur. `fixed` : le niveau est figé ; sinon c'est le
- * réglage automatique (selon la fluidité) qui décide.
+ * Qualité de fluidité à appliquer : `?quality=0|1|2` (essais) la fige ; sinon elle est automatique (`fixed: false`) : le régulateur part de haut (niveau 2) et
+ * baisse seul les détails si le jeu ramerait, puis les remonte. Plus de choix du joueur (« Qualité graphique » décide de la scène, le reste suit la fluidité).
  */
-export function qualityPlan(choice: QualityChoice, urlLevel: string | null): { fixed: boolean; level: 0 | 1 | 2 } {
+export function qualityPlan(urlLevel: string | null): { fixed: boolean; level: 0 | 1 | 2 } {
   if (urlLevel === "0" || urlLevel === "1" || urlLevel === "2") return { fixed: true, level: Number(urlLevel) as 0 | 1 | 2 };
-  const level = QUALITY_LEVEL[choice];
-  return level === null ? { fixed: false, level: 2 } : { fixed: true, level };
+  return { fixed: false, level: 2 };
 }
