@@ -38,7 +38,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(box!.height).toBeGreaterThan(100);
 
   // Le coin affiche la version de la simulation et le jour du jeu (lot I5 : avec ?debug seulement ; sinon, petite, dans la pause).
-  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v4 · ${info.day}`);
+  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v${info.simVersion} · ${info.day}`);
 
   // Les pixels : le fond uni, les tuiles, le personnage et l'arrivée font au moins quatre couleurs, et le fond ne couvre pas tout.
   const pixels = await page.evaluate(() => (window as unknown as { __jump: JumpDebugView }).__jump.probe());

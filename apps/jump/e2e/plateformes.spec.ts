@@ -64,6 +64,11 @@ test("un morceau à plateforme (`?module=chaland`) : la dalle est dessinée où 
   await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(20));
   const early = await state(page);
   await page.evaluate(() => (window as unknown as { __jump: J }).__jump.advance(40));
+  // `advance` joue sans rendu : le dessin rattrape la simulation à l'image suivante. On attend cet état (jamais une durée), puis on le lit d'un bloc.
+  await page.waitForFunction((unit) => {
+    const p = (window as unknown as { __jump: J }).__jump.platforms;
+    return !!p && p.sim.every((q, i) => Math.abs(p.x![i]! - q.x / unit) < 1e-6 && Math.abs(p.y![i]! - q.y / unit) < 1e-6);
+  }, T);
   const later = await state(page);
   expect(later.platforms!.sim).not.toEqual(early.platforms!.sim);
   later.platforms!.sim.forEach((p, i) => {
