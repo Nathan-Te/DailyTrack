@@ -676,13 +676,14 @@ function assignZones(tokens: string[], zones: NonNullable<Theme["zones"]>, rng: 
 }
 
 /**
- * Zone d'herbe de course (lot 48, v17) : `length` blocs à la suite qui peuvent tous la porter (ni protégés, ni déjà revêtus), à une place
+ * Zone d'herbe de course (lot 48, v17) : `length` blocs à la suite qui peuvent tous la porter (ni protégés, ni déjà revêtus, ni virages), à une place
  * tirée parmi toutes celles qui conviennent — une série plus courte (jusqu'à 3) s'il n'y en a pas. Une zone tirée au hasard sans regarder
  * tombait trop souvent sur des plaques ou des approches protégées : l'herbe de course est l'identité de la Campagne, elle doit se voir.
  */
 function turfZone(tokens: string[], length: number, rng: Rng, protect?: ReadonlySet<number>): void {
   const n = tokens.length;
-  const ok = (i: number) => !protect?.has(i) && surfaceable(tokens[i]!, i, n);
+  // Lignes droites et pentes seulement : sur l'herbe de course on entre avec sa trajectoire et on la tient (braquer y coûte de la vitesse).
+  const ok = (i: number) => !protect?.has(i) && surfaceable(tokens[i]!, i, n) && !isCurve(parseToken(tokens[i]!).kind);
   for (let len = length; len >= 3; len--) {
     const starts: number[] = [];
     for (let i = 1; i + len <= n - 1; i++) {

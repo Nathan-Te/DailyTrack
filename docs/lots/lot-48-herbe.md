@@ -12,21 +12,20 @@ Zones : `packages/sim/**`, `apps/web/**`, `apps/api/scripts/measure-generator.ts
 
 ## 2. Le comportement : « herbe de course » (`turf`, notation `S/z`)
 
-**Une surface nouvelle, avec un identifiant nouveau.** L'herbe d'avant ne change pas (ni ses valeurs, ni les bas-côtés `~h`, qui punissent toujours la sortie de piste). **`SIM_VERSION` reste 14** (décision du lot, à confirmer) : aucun circuit enregistré n'a de `z`, donc aucun résultat ne change ; l'incrémenter aurait rendu **injouables toutes les rediffusions gardées** (`replay.ts` refuse une autre version : classements, « revoir le meilleur tour », fantômes). Règle écrite dans `packages/sim/CLAUDE.md` et `constants.ts` : *une surface nouvelle qu'aucun ancien circuit n'utilise ne change pas `SIM_VERSION` ; un ancien paramètre changé, toujours.* Dans `car.ts`, tout le nouveau passe par des branches `turf > 0` : les autres revêtements font exactement les calculs d'avant.
+**Une surface nouvelle, avec un identifiant nouveau.** L'herbe d'avant ne change pas (ni ses valeurs, ni les bas-côtés `~h`, qui punissent toujours la sortie de piste). **`SIM_VERSION` reste 14** (décision du lot, à confirmer) : aucun circuit enregistré n'a de `z`, donc aucun résultat ne change ; l'incrémenter aurait rendu **injouables toutes les rediffusions gardées** (`replay.ts` refuse une autre version : classements, « revoir le meilleur tour », fantômes). Règle écrite dans `packages/sim/CLAUDE.md` et `constants.ts` : *une surface nouvelle qu'aucun ancien circuit n'utilise ne change pas `SIM_VERSION` ; un ancien paramètre changé, toujours.* Dans `car.ts`, tout le nouveau passe par des branches « herbe de course » : les autres revêtements font exactement les calculs d'avant.
 
-**Le « grass slide » de Trackmania** (description donnée par Nathan pendant le lot, qui a remplacé la première version : celle-ci déclenchait le dérapage tout seul, le plafonnait à ≈ 18° et punissait les grands angles) : sur l'herbe, **la glisse se lance au frein** (frein + direction, comme le dérapage du lot 7), **va bien plus large** (jusqu'à ≈ 45° volant à fond), **se prolonge et s'ajuste à la direction** (elle ne s'éteint pas tant qu'on la tient ; moins de volant, moins de dérive) et **garde son élan** ; ce qui coûte, ce sont **les coups de volant brusques hors glisse** ; **la ligne large et douce** reste la plus rapide quand il y a la place. (Le passage de vitesse de Trackmania n'a pas d'équivalent : la voiture n'a pas de boîte.)
+**L'esprit (décision de Nathan après deux essais au volant, 25/10/2026)** : *la voiture lancée sur l'herbe de course garde sa vitesse si elle tient sa trajectoire ; braquer y est puni par la perte de vitesse ; on entre avec sa trajectoire et on la tient pendant le bloc ; la voiture glisse légèrement pour suivre sa trajectoire d'entrée, selon sa vitesse d'entrée.* Deux versions ont été écartées : (1) un dérapage qui se déclenchait tout seul (premier jet) ; (2) le « grass slide » de Trackmania, une glisse lancée au frein jusqu'à 45° qui gardait l'élan — au volant, **le frein faisait rebondir et pivoter la voiture d'un coup** (retour de Nathan). Il n'en reste rien : **sur l'herbe de course, le frein ne lance plus jamais de dérapage** (le sol sous la voiture est lu au moment où il se déclencherait) et un dérapage venu de la route s'y éteint aussitôt.
 
 | Clé (`CarParams`, toutes dans `?debug&tune`) | Valeur | Effet |
 |---|---|---|
 | `turfGrip` | 0,8 | adhérence latérale (× route) — aussi `SURFACES.turf.grip`, lu par le pilote et le générateur |
 | `turfTraction` | 0,85 | motricité et freinage : accélération un peu plus molle |
-| `turfRolling` | 0,6 m/s² | roulement : **pointe ≈ 47 m/s** (98 % de la route, contre 27 m/s sur l'herbe d'avant) |
-| `turfRear` | 0,95 | l'essieu arrière tient un peu moins que l'avant : **l'arrière décroche le premier** (sans partir en tête-à-queue au coup de volant) |
-| `turfSlideDrag` | 0,4 | perte en glisse = 40 % de celle de la route |
-| `turfDriftAngle` | 1 (45°) | angle de glisse tenu volant à fond, au lieu de `driftAngle` (0,32 ≈ 18° sur la route) ; une glisse tenue sur l'herbe **ne s'éteint pas** |
-| `turfDriftPull` | 33 | en glisse, la vitesse ramenée vers le nez : la glisse serre le virage (même valeur que la route) |
-| `turfDriftKeep` | 0,8 | en glisse, 80 % de ce que les pneus freinent (la composante de leurs forces contre la vitesse) est rendue le long de la vitesse : **la glisse garde son élan** (arcade assumé) |
-| `turfSlideFree`, `turfScrub` | 0,2 ; 60 | **hors glisse**, au-delà d'une dérive de 0,2 (≈ 11,5°), un coût en carré : **le coup de volant brusque laboure** |
+| `turfRolling` | 0,6 m/s² | roulement : **pointe ≈ 47 m/s** (98 % de la route, contre 27 m/s sur l'herbe d'avant) ; lancée plus vite, elle ralentit comme sur la route |
+| `turfRear` | 1 | l'arrière tient autant que l'avant : la voiture ne pivote pas |
+| `turfKeel` | 1 | **la voiture suit sa ligne** : un rappel amorti ramène le nez dans l'axe de la vitesse (le rappel du dérapage du lot 7, visé à 0) — elle tourne moins que sur la route et glisse un peu vers l'extérieur, d'autant plus qu'elle va vite, sans jamais partir en tête-à-queue (même au frein, volant à fond) |
+| `turfSteerDrag` | 8 m/s² | **braquer coûte** : un freinage proportionnel au volant (8 m/s² à fond) |
+| `turfSlideDrag` | 1,5 | la glisse vers l'extérieur coûte 1,5 fois ce qu'elle coûte sur la route |
+| `turfSlideFree`, `turfScrub` | 0,08 ; 60 | au-delà d'une dérive de 0,08 (≈ 4,6°), un coût en carré : on laboure |
 
 ### Tests de comportement chiffrés (`packages/sim/test/herbe.test.ts`)
 
@@ -35,19 +34,14 @@ Zones : `packages/sim/**`, `apps/web/**`, `apps/api/scripts/measure-generator.ts
 | pointe sur l'herbe de course / route | 0,97 – 0,99 | 47,03 / 48,00 m/s (l'herbe d'avant : 27,1, < 0,6) |
 | 0 → 100 km/h / route | 1,1 – 1,3 | 1,95 / 1,59 s |
 | 128 m d'herbe à fond (pilote) | < 0,1 s perdue | +0,05 s (l'herbe d'avant : +0,91 s, > 0,5) |
-| **seuil de glisse** : accélération latérale à 3° de dérive | < 0,85 × route | 21,4 contre 26,5 m/s² (0,81) |
-| l'arrière décroche le premier | glissement arrière ÷ avant > celui de la route | vérifié |
-| **grass slide tenu** : 0,1 s de frein volant à fond, puis 5 s volant à fond à plein gaz | dérive 30–50°, glisse encore là après 4,9 s, < 2° 1 s après avoir lâché ; sur la route : < 21°, éteinte avant 3,5 s | 45,2° (route : 19,6°, éteinte à 3,0 s), jamais de tête-à-queue |
-| **sans frein, pas de glisse** : volant à fond 3 s | aucun dérapage, dérive < 15° | 13° |
-| volant doux (30 %) 3 s | pas de dérapage, dérive < 5° | vérifié |
-| **virage ample bien négocié** (pilote d'auteur, `L3`) | < 0,25 s perdue (l'herbe d'avant : > 1 s) | +0,14 s (herbe d'avant +1,54) ; `L3 S R3` +0,28 s (< 0,5 ; herbe d'avant +3,82) |
-| virage large, serré | < 0,5 s chacun | +0,29 s, +0,32 s |
-| **quart de tour à 44 m/s** : ligne douce (1/3 de volant) | < 1 m/s perdu | 44 → 45,4 m/s, 4,4 s |
-| **coup de volant brusque** (à fond, sans glisse) | > 3 × la ligne douce et > 1,5 × la route à fond | → 40,2 m/s (route : 43,0) |
-| **grass slide** (frein, volant à fond) | en moins de 0,8 fois le temps du coup de volant ; > 5 m/s plus rapide que la même glisse sur la route en fin de virage, > 2 m/s en sortie ; moins de volant (0,6) : moins de dérive, plus large | 1,57 s contre 2,26 s ; 38,4 m/s en fin de virage contre 30,9 sur la route ; 0,6 de volant : 30° au lieu de 45°, 1,79 s |
-| dérapage au frein tenu (90°, volant 0,6) | < 1,3 × le même sur la route | 4,4 contre 7,6 m/s perdus |
-| passages route ↔ herbe | ligne droite à 46 m/s : < 3 m/s², aucun lacet ; en virage (volant 0,6) : variation du lacet plus faible que route ↔ terre et que la moitié de l'entrée sur l'herbe d'avant | route → herbe 1,96 rad/s² (route → terre 2,95 ; route → herbe d'avant 4,92) ; herbe → route 2,72 (terre → route 3,99) |
-| **aucun blocage** | repart à l'arrêt volant à fond, recule ; pilote au scénario `herbe` à 4 adhérences ; 60 s de commandes au hasard : jamais 1 s à l'arrêt en accélérant | vérifié |
+| **garder sa ligne garde l'élan** : 2 s droit à 44 m/s ; lancée à 62 m/s, 3 s droit | > 45,5 m/s ; ralentit comme la route à 1,5 m/s près | 46,1 m/s ; 54,4 contre 55,7 m/s |
+| **elle suit sa trajectoire d'entrée** : volant à fond 2 s à 44 m/s | la vitesse tourne < 85 % de la route, dérive < 6° | 73° contre 93° ; 3° |
+| **braquer coûte** : 2 s à 44 m/s, volant 0,2 / 0,5 / 1 | au moins 1,5 / 3 / 7 m/s de plus perdus que sur la route, et plus on braque plus on perd | 43,9 / 40,3 / 32,3 m/s (route : 46,6 / 45,2 / 41,2) |
+| **le frein freine, c'est tout** : 0,25 s de frein volant à fond | aucun dérapage, dérive < 15° (sur la route : le dérapage du lot 7) ; en ligne droite, aucun lacet | aucun dérapage, 12° au plus |
+| un dérapage venu de la route | éteint 0,25 s après l'entrée sur l'herbe | vérifié |
+| virages pris par le pilote d'auteur (`L3`, `L3 S R3`, `L2`, `L`) | plus coûteux que sur la route (> 0,2 s), moins de 0,8 fois l'herbe d'avant | +0,69 / +1,30 / +0,70 / +0,35 s (herbe d'avant : +1,54 / +3,82 / +1,40 / +0,85) |
+| passages route ↔ herbe | ligne droite à 46 m/s : < 3 m/s², aucun lacet ; en virage (volant 0,6) : lacet pas plus brusque que route ↔ terre, freinage moins brusque que l'entrée sur l'herbe d'avant | vérifié |
+| **aucun blocage** | repart à l'arrêt volant à fond, recule ; pilote au scénario `herbe` à 4 adhérences ; 60 s de commandes au hasard : jamais 1 s à l'arrêt en accélérant, jamais de dérapage | vérifié |
 | bas-côté d'herbe | il punit toujours (< 30 m/s après 10 s) | 28,2 m/s |
 
 ## 3. Le rendu : on voit la piste
@@ -60,23 +54,23 @@ Zones : `packages/sim/**`, `apps/web/**`, `apps/api/scripts/measure-generator.ts
 ## 4. Les circuits : générateur v17 à partir du mercredi 04/11/2026
 
 - **`BASCULE_LOT_48` = 04/11/2026** (`dailyId.ts`, constante unique, **à confirmer par Nathan selon la date de mise en production** : le premier jour ni passé, ni en cours, ni joué à ce moment-là) ; `GENERATOR_VERSION` = **17** ; `generatorVersionOf` : 15 avant le 28/10, **16 du 28/10 au 03/11**, 17 ensuite ; l'identifiant porte la version (`jour-2026-11-04-g17`). Le Salon suit la dernière version dès la mise en production (`salon-…-g17`).
-- **Campagne v17** (`themeOfVersion`, `themes.ts`) : zones de revêtement **herbe de course 3 / terre 1** (au lieu de terre 2 / herbe 1), posées là où trois blocs de suite peuvent la porter (`turfZone` : tirées au hasard, elles tombaient sur les approches protégées du lot 34) ; **l'une des trois figures d'herbe toujours là** (`requireAlso`), et favorites : **`ample-herbe`** (virage ample entre deux droites d'herbe ; variante : ample puis large), **`chicane-herbe`** (S large herbe-route ou route-herbe), **`droite-herbe`** (ligne droite d'herbe de 3 ou 4 blocs entre deux virages larges). `Figure.since = 17` : un générateur plus ancien ne les tire pas ; `only: ["campagne"]`. Chaque variante finie par le pilote dans les deux sens et sur les trois largeurs (`figures.test.ts`).
+- **Campagne v17** (`themeOfVersion`, `themes.ts`) : zones de revêtement **herbe de course 3 / terre 1** (au lieu de terre 2 / herbe 1), posées **sur des lignes droites et des pentes seulement** (on y entre avec sa trajectoire et on la tient), là où trois blocs de suite peuvent la porter (`turfZone` : tirées au hasard, elles tombaient sur les approches protégées du lot 34) ; **l'une des trois figures d'herbe toujours là** (`requireAlso`), et favorites : **`ample-herbe`** (virage ample entre deux droites d'herbe ; variante : ample puis large), **`chicane-herbe`** (S large herbe-route ou route-herbe), **`droite-herbe`** (ligne droite d'herbe de 3 ou 4 blocs entre deux virages larges). `Figure.since = 17` : un générateur plus ancien ne les tire pas ; `only: ["campagne"]`. Chaque variante finie par le pilote dans les deux sens et sur les trois largeurs (`figures.test.ts`).
 - **Les autres thèmes sont identiques en v17** (texte au bit près, à l'identifiant près ; testé sur 16 dates × 4 thèmes).
 - **Proposés à Nathan, non faits** (hors du strict objet, et leur sol devrait d'abord être assombri pour l'écart ΔE) : **Stade** — une zone d'herbe de course (3–4 blocs) par circuit, sa pelouse (`#4fae3c` / `#47a335`) étant à ΔE 8 à 11 de l'herbe de course il faudrait la foncer ; **Col alpin** — 0 à 1 zone « alpage » sur une descente ; ni Rallye, ni Banquise, ni Canyon, ni Nuit, ni Ville.
-- **`?scenario=herbe`** (`HERBE_TRACK_SPEC`) : longue ligne droite d'herbe bordée d'herbe haute, virage ample en herbe, transition vers la route, S large herbe-route, serré en herbe sur la route étroite puis grande courbe d'herbe, ligne droite d'herbe entre deux larges ; palette de la Campagne ; raccourci « Herbe de course » de `/admin/` ; 38,0 s pour le pilote.
+- **`?scenario=herbe`** (`HERBE_TRACK_SPEC`) : longue ligne droite d'herbe bordée d'herbe haute, virage ample en herbe, transition vers la route, S large herbe-route, serré en herbe sur la route étroite puis grande courbe d'herbe, ligne droite d'herbe entre deux larges ; palette de la Campagne ; raccourci « Herbe de course » de `/admin/` ; 40,1 s pour le pilote.
 
 ### Mesure : 20 circuits de Campagne d'après la bascule (`HERBE=1 npm run measure:generator`, section 4)
 
 | | avant (20 Campagne du 03/11 en remontant, herbe d'avant) | après (20 Campagne à partir du 04/11, herbe de course) |
 |---|---|---|
 | circuits qui en ont | 8 / 20 | **20 / 20** |
-| part des blocs | 2,5 % | **14,0 %** (3,7 à 21,7 %) |
-| temps passé dessus (pilote d'auteur) | 1,3 s | **6,9 s** (2,5 à 11,2 s) |
-| temps perdu par le pilote (contre la route) | 0,31 s (jusqu'à 2,75 s) | 0,56 s (jusqu'à 1,41 s) **pour 5 fois plus d'herbe** |
-| durée du pilote (fenêtre 30–40 s) | 37,4 s, 20/20 | 37,8 s (33,0 à 39,9 s), **20/20 validés** |
-| or (lot 35) dans 30–45 s | 20/20 | 19/20 (le 20/05/2027 : 28,9 s — pilote à 33,0 s ; la fenêtre du pilote et les facteurs du lot 35 ne changent pas) |
+| part des blocs | 2,5 % | **11,7 %** (4,2 à 19,5 %) |
+| temps passé dessus (pilote d'auteur) | 1,3 s | **5,6 s** (2,3 à 9,7 s) |
+| temps perdu par le pilote (contre la route) | 0,31 s (jusqu'à 2,75 s) | 0,72 s (jusqu'à 1,23 s) **pour 4,7 fois plus d'herbe** (braquer sur l'herbe coûte : c'est voulu) |
+| durée du pilote (fenêtre 30–40 s) | 37,4 s, 20/20 | 37,5 s (33,1 à 39,6 s), **20/20 validés** |
+| or (lot 35) dans 30–45 s | 20/20 | 19/20 (le 20/05/2027 : 29,1 s — pilote à 33,1 s ; la fenêtre du pilote et les facteurs du lot 35 ne changent pas) |
 
-**Médailles** : non recalibrées. Le pilote d'auteur prend l'herbe de course en adhérence (il ne dérape pas) ; un humain qui tient bien ses glisses peut y être plus proche du pilote que sur la route, un humain qui surbraque plus loin. **Non mesuré** (aucune course humaine sur l'herbe de course) : à regarder dans « Médailles » de `/admin/` après les premiers jours de Campagne.
+**Médailles** : non recalibrées. Le pilote d'auteur suit une trajectoire lissée (il braque peu et progressivement) : sur l'herbe de course, un humain qui corrige souvent sa trajectoire perdra plus que lui, un humain qui entre bien placé et tient sa ligne autant. **Non mesuré** (aucune course humaine sur l'herbe de course) : à regarder dans « Médailles » de `/admin/` après les premiers jours de Campagne.
 
 ### Golden et rediffusions
 
@@ -90,8 +84,8 @@ Zones : `packages/sim/**`, `apps/web/**`, `apps/api/scripts/measure-generator.ts
 
 ## 5. Budget (`npm run build && node scripts/budgets.mjs`, `main` à `33d4bd8` construit à part)
 
-- **Premier chargement : +838 o** (JS + CSS 286 356 → **287 194 o**, marge 5 244 → **4 406 o**, sous la cible de 1,5 ko) : la surface (table, dix clés, branches de `car.ts`), son rendu (tonte, bords, couleurs), traces, brins, voix, bandeau, panneau `?debug&tune`.
-- Fils de travail (générateur v17) : miniatures 26 524 → **27 346 o** (marge 2 654 sous 30 000) ; Salon 28 502 → **29 326 o** (marge 2 674 sous 32 000). Catalogue anglais +22 o ; page d'admin +114 o ; décor (huit thèmes) 12 583 → 12 723 o (+140, les herbes folles).
+- **Premier chargement : +797 o** (JS + CSS 286 356 → **287 153 o**, marge 5 244 → **4 447 o**, sous la cible de 1,5 ko) : la surface (table, neuf clés, branches de `car.ts`), son rendu (tonte, bords, couleurs), traces, brins, voix, bandeau, panneau `?debug&tune`.
+- Fils de travail (générateur v17) : miniatures 26 524 → **27 307 o** (marge 2 693 sous 30 000) ; Salon 28 502 → **29 280 o** (marge 2 720 sous 32 000). Catalogue anglais +22 o ; page d'admin +113 o ; décor (huit thèmes) 12 583 → 12 723 o (+140, les herbes folles).
 
 ## 6. Captures avant / après
 
@@ -100,12 +94,12 @@ Outil : `apps/web/e2e/captures-lot48.spec.ts` (`CAPTURES=1 LABEL=avant|apres …
 ## 7. Vérifié / non vérifié / décisions pour Nathan
 
 - **Vérifié** : `npm run typecheck`, `npm test` (SQLite et libSQL), `npm run build` ; tests de comportement et de ΔE ; golden, rediffusions de référence et 88 circuits d'avant identiques ; mesure complète de la section 4 ; `history:seed` ; `npm run traductions`.
-- **Non vérifié** : la sensation au volant et au téléphone (le dérapage sans frein, la tonte vue de la voiture) — c'est l'objet de l'aperçu ; les e2e Firefox et WebKit en local (la CI les lance).
-- **Décisions pour Nathan** : (1) **la date de bascule** (04/11/2026) selon la mise en production ; (2) **`SIM_VERSION` inchangée** pour une surface nouvelle (règle proposée et appliquée, § 2) ; (3) la **proportion** d'herbe de course en Campagne (14 % des blocs ; plus = plus de figures ou des zones plus longues) ; (4) **Stade et Col** (§ 4) ; (5) le **sol de la Campagne assombri pour tous les jours** (rendu seulement) ; (6) l'**index du `CLAUDE.md` racine** (zone partagée, non modifié) : ajouter « Herbe de course (lot 48) » aux rubriques de `packages/sim/CLAUDE.md` et `apps/web/CLAUDE.md`, et la marge de Track (≈ 4,4 ko au lieu de 5,2) ; (7) les remplacements du planning ≥ 04/11 (§ 4).
+- **Non vérifié** : la sensation au volant et au téléphone de cette troisième version (garder sa ligne, braquer qui coûte, le frein qui ne fait plus pivoter) — c'est l'objet de l'aperçu ; les e2e Firefox et WebKit en local (la CI les lance).
+- **Décisions pour Nathan** : (1) **la date de bascule** (04/11/2026) selon la mise en production ; (2) **`SIM_VERSION` inchangée** pour une surface nouvelle (règle proposée et appliquée, § 2) ; (2 bis) **le réglage de la sensation** (`?scenario=herbe&debug&tune`, les neuf lignes « Herbe de course ») ; (3) la **proportion** d'herbe de course en Campagne (14 % des blocs ; plus = plus de figures ou des zones plus longues) ; (4) **Stade et Col** (§ 4) ; (5) le **sol de la Campagne assombri pour tous les jours** (rendu seulement) ; (6) l'**index du `CLAUDE.md` racine** (zone partagée, non modifié) : ajouter « Herbe de course (lot 48) » aux rubriques de `packages/sim/CLAUDE.md` et `apps/web/CLAUDE.md`, et la marge de Track (≈ 4,4 ko au lieu de 5,2) ; (7) les remplacements du planning ≥ 04/11 (§ 4).
 
 ## 8. À tester (aperçu de la PR, au téléphone)
 
 Aperçu de la PR #136 : https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/ (serveur : la révision de recette `b-claude-lot-48-h-vy16mq`, santé : https://b-claude-lot-48-h-vy16mq---cdj-api-recette-5qi6aa4qqa-ew.a.run.app/api/health). Les jours d'après la bascule ne sont jouables qu'en aperçu ou avec `?debug` (recette et aperçus seulement).
-- [`/track/?scenario=herbe`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?scenario=herbe) : on voit la piste (tonte, bords blancs, herbe haute autour), on y glisse au lieu de freiner.
-- [`/track/?scenario=herbe&debug&tune`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?scenario=herbe&debug&tune) : régler la sensation (les dix lignes « Herbe de course »), puis « Copier les réglages » et les coller à l'agent.
+- [`/track/?scenario=herbe`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?scenario=herbe) : on voit la piste (tonte, bords blancs, herbe haute autour) ; entré bien placé et volant tenu, on garde son élan ; chaque correction coûte ; le frein ne fait plus pivoter.
+- [`/track/?scenario=herbe&debug&tune`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?scenario=herbe&debug&tune) : régler la sensation (les neuf lignes « Herbe de course »), puis « Copier les réglages » et les coller à l'agent.
 - Un jour de Campagne d'après la bascule : [`/track/?seed=2026-11-04`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?seed=2026-11-04) (le premier jour de la v17) et [`/track/?seed=2026-11-15`](https://playdujour-recette--pr-136-cqnp2ecu.web.app/track/?seed=2026-11-15).

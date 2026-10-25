@@ -450,7 +450,7 @@ export const FIGURES: readonly Figure[] = [
     name: "ample-herbe",
     label: "Virage ample en herbe",
     category: "technique",
-    intent: "Un virage ample sur l'herbe de course, entre deux lignes droites d'herbe : le prendre à fond en glisse, sans surbraquer.",
+    intent: "Un virage ample sur l'herbe de course, entre deux lignes droites d'herbe : y entrer bien placé et le tenir d'un seul geste du volant (chaque correction coûte).",
     off: 0.3,
     variants: 2,
     only: ["campagne"],
