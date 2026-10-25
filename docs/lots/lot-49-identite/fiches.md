@@ -1,6 +1,6 @@
-# Lot 49 — Fiches d'identité des thèmes (à valider par Nathan)
+# Lot 49 — Fiches d'identité des thèmes
 
-**Statut : proposition, à discuter.** Rien de ce qui suit n'est encore dans le générateur : les nouveautés existent dans la bibliothèque (`packages/sim/src/figures.ts`, `since: 18`) et se jouent par leur scénario, mais aucun circuit du jour ne les tire tant que les fiches ne sont pas validées (troisième temps du lot).
+**Statut : validées par Nathan le 25/10/2026** (« je garde tout, fiches validées ») et **appliquées par le générateur v18** à partir de la bascule du lot 49 (`packages/sim/src/themesVersion.ts`). Ce qui a été appliqué, et ce qui diffère de la proposition, est dit dans « Ce qui a été appliqué » en bas ; les mesures avant / après sont dans le README du lot.
 
 Comment lire une fiche :
 - **Au volant** : ce que le thème doit faire ressentir.
@@ -86,7 +86,9 @@ Ce que la mesure montre d'abord : **les mêmes figures « génériques » partou
 - **Interdits proposés** (v18 seulement) : les figures à super turbo là où le thème n'en a pas (Rallye, Banquise, Campagne) ; la portion rapide et le freinage franc pris dans les figures du thème.
 - **Cible de la mesure de ressemblance** (section 5 du script) : même thème **0,187 → ≤ 0,14** (−25 %), jours consécutifs d'un même thème **0,179 → ≤ 0,12**, aucune paire de jours consécutifs au-dessus de 0,5 ; entre thèmes **0,091 → ≤ 0,07**.
 
-## À décider (Nathan)
-1. **Garder, écarter ou retoucher chaque nouveauté** (liste et liens dans le README du lot, § 2).
-2. **Valider ou corriger chaque fiche** (surtout les « jamais » : interdire les super turbos au Rallye, à la Banquise et à la Campagne change beaucoup ces trois thèmes).
-3. La règle de variété et sa cible.
+## Ce qui a été appliqué (générateur v18)
+- **Vedettes** (une par circuit, à tour de rôle ; jamais deux fois de suite pour un thème) — Stade : `tremplin-releve`, `reception-virage`, `chicane-tremplin`, **`turbo-saut-releve`** ; Rallye : `bosses-terre`, `demi-tour-mixte`, `saut-sortie-virage` ; Banquise : `saut-glace`, `demi-tour-glace`, `slalom-glace`, **`glace-coupe-virage`** ; Campagne : `demi-tour-mixte`, `saut-sortie-virage`, `droite-herbe`, **`ample-herbe`** ; Canyon : `saut-falaise`, `reception-virage`, `saut-sortie-virage` ; Col : `devers-descente`, `demi-tour-glace`, `saut-glace` ; Ville : `rues-en-escalier`, `chicane-tremplin`, `slalom-route`, **`u-urbain`** ; Nuit : `fil-du-rasoir`, `tremplin-releve`, `reception-virage`. En gras : une quatrième vedette, prise dans les figures signatures de la fiche, pour les thèmes qui en nomment quatre (mesuré : une apparition sur quatre au lieu d'une sur trois, un peu moins de ressemblance).
+- **Poids** : la vedette du jour est toujours là ; les autres figures de la fiche sont favorites (×4, comme avant). Les poids fins de la proposition (×5, ×3, ×2) ne sont pas appliqués : la rotation des vedettes fait déjà leur place (et le budget d'un circuit ne laisse qu'une ou deux figures libres).
+- **Jamais** : plus aucun super turbo au Rallye, à la Banquise et à la Campagne (ni figure, ni variante à `T`) ; la Nuit a toujours de la route sans rebords (une tentative sans est refusée). Rallye : 3 à 4 zones de terre (2 à 3 avant) ; Banquise : 2 à 3 zones de glace (2 avant).
+- **Variété** : vedettes à tour de rôle, tiers au repos qui suit le numéro d'apparition, et un ordre des figures qui interdit tout enchaînement commun entre deux apparitions consécutives d'un thème (un « tournoi » : chaque paire de figures a un sens permis une fois sur deux). Détail : `packages/sim/CLAUDE.md`, « Générateur : identité des thèmes ».
+- **Cibles et résultats** (200 circuits, mêmes jours) : entre thèmes **0,091 → 0,059** (cible ≤ 0,07 : **tenue**) ; jours consécutifs d'un même thème **0,179 → 0,136** (cible ≤ 0,12 : **pas tout à fait**) ; aucune paire de jours consécutifs au-dessus de 0,5 (**tenue** : pire 0,750 → 0,308) ; aucun enchaînement commun (**tenue** : 26 paires → 0) ; même thème toutes paires **0,187 → 0,179** (cible ≤ 0,14 : **pas tenue**, voir le README : chaque thème a moins de figures permises qu'avant, c'est le prix de son identité).

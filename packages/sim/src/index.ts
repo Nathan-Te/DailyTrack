@@ -16,6 +16,7 @@ export * from "./calendar";
 export * from "./autopilot";
 export * from "./choices";
 export * from "./themes";
+export * from "./themesVersion";
 export * from "./generator";
 export * from "./figures";
 export * from "./fictional";

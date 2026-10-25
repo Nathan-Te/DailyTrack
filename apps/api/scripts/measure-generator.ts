@@ -240,11 +240,13 @@ function sectionIdentite() {
     const rs = rows.filter((r) => r.theme === theme).sort((a, b) => a.day - b.day);
     for (let k = 1; k < rs.length; k++) consecutive.push({ a: rs[k - 1]!, b: rs[k]!, r: ressemblance(rs[k - 1]!.print, rs[k]!.print) });
   }
+  const calendar = pairs.filter((p) => Math.abs(p.a.day - p.b.day) === 1);
   const m3 = (ps: typeof pairs) => `${mean(ps.map((p) => p.r.total)).toFixed(3)} (figures ${mean(ps.map((p) => p.r.figures)).toFixed(3)}, blocs ${mean(ps.map((p) => p.r.blocs)).toFixed(3)})`;
   console.log(`\n  ressemblance moyenne : même thème ${m3(same)} · thèmes différents ${m3(cross)} · jours consécutifs d'un même thème ${m3(consecutive)}`);
+  console.log(`  toutes les paires ${m3(pairs)} · jours qui se suivent au calendrier (${calendar.length} paires) ${m3(calendar)}`);
   const sharedChains = consecutive.map((p) => enchainementsCommuns(p.a.c.figures.map((f) => f.name), p.b.c.figures.map((f) => f.name)).length);
   const sharedFigs = consecutive.map((p) => { const b = new Set(p.b.c.figures.map((f) => f.name)); return p.a.c.figures.filter((f) => b.has(f.name)).length; });
-  console.log(`  jours consécutifs d'un même thème (${consecutive.length} paires) : figures communes ${mean(sharedFigs).toFixed(2)} en moyenne (max ${Math.max(...sharedFigs)}), enchaînements communs ${mean(sharedChains).toFixed(2)} (paires qui en partagent : ${sharedChains.filter((n) => n > 0).length})`);
+  console.log(`  jours consécutifs d'un même thème (${consecutive.length} paires) : figures communes ${mean(sharedFigs).toFixed(2)} en moyenne (max ${Math.max(...sharedFigs)}), enchaînements communs ${mean(sharedChains).toFixed(2)} (paires qui en partagent : ${sharedChains.filter((n) => n > 0).length}), ressemblance la plus haute ${Math.max(...consecutive.map((p) => p.r.total)).toFixed(3)}`);
   for (const theme of THEME_NAMES) {
     const ps = same.filter((p) => p.a.theme === theme);
     console.log(`    ${theme.padEnd(9)} même thème ${mean(ps.map((p) => p.r.total)).toFixed(3)} · max ${Math.max(...ps.map((p) => p.r.total)).toFixed(3)}`);

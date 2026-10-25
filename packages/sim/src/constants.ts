@@ -25,6 +25,7 @@ export const SIM_VERSION = 14;
  * donc les records et rediffusions d'un autre générateur ne se mélangent pas.
  * Lot 34 : **la dernière version**, celle des jours à partir de la bascule (`BASCULE_LOT_34`) et du Salon ; un jour garde la version
  * de son générateur (`generatorVersionOf`, dailyId.ts) : 15 avant le 28/10/2026, 16 ensuite (freinage possible après un boost), 17 à partir
- * du 04/11/2026 (lot 48 : l'herbe de course de la Campagne, `BASCULE_LOT_48`).
+ * du 04/11/2026 (lot 48 : l'herbe de course de la Campagne, `BASCULE_LOT_48`), 18 à partir du 04/11/2026 aussi (lot 49 : l'identité des
+ * thèmes, `BASCULE_LOT_49` — la même date tant que le lot 48 n'est pas en production : la v17 ne sert alors à aucun jour).
  */
-export const GENERATOR_VERSION = 17;
+export const GENERATOR_VERSION = 18;

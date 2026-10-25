@@ -28,7 +28,7 @@ export function blockShape(token: string, previousTurnLeft: boolean | null): { s
 export function shapesOf(spec: string): string[] {
   const out: string[] = [];
   let left: boolean | null = null;
-  for (const t of spec.split(" ")) {
+  for (const t of spec.split(" ").filter(Boolean)) {
     const s = blockShape(t, left);
     out.push(s.shape);
     left = s.left;
