@@ -641,9 +641,9 @@ describe("règle des plats (lot 7)", () => {
   it("les respirations ne sont plus des courses à plat : chacune a au moins trois sauts à faire (trous, bosses, corniches, ressorts)", () => {
     for (const def of MODULES.filter((d) => d.tags.includes("respiration"))) {
       for (let v = 0; v < def.variants.length; v++) {
-        // Lot 12 : les sols de nuit et de néon (et d'une variante mutée) sont des blocs clignotants ou alternés, pas des `#` : on compte alors les **sauts** de chaque solution
+        // Lot 12 : les sols de nuit et de néon (et d'une variante mutée) sont des blocs clignotants ou alternés, pas des `#` (lot 20 : une plateforme mobile n'est pas un plat non plus) : on compte alors les **sauts** de chaque solution
         // stockée (fronts montants du bouton de saut), aux deux entrées. Les autres : les plats, comme avant.
-        if (def.theme === "nuit" || def.theme === "neon" || def.mutations[v]!.some((m) => m.name === "clignotant" || m.name === "alterne")) {
+        if (def.theme === "nuit" || def.theme === "neon" || def.tags.includes("plateforme") || def.mutations[v]!.some((m) => m.name === "clignotant" || m.name === "alterne")) {
           for (const entry of ["arret", "elan"] as const) {
             const sol = moduleSolutions(def.id, v)![entry]!;
             const bits = fromRuns(decodeReplay(sol.code).runs);

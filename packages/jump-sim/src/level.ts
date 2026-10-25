@@ -40,6 +40,13 @@ import { idiv } from "./idiv";
 //       `décalage` : position dans le cycle au pas 0 (0 à cycle − 1). Au pas de phase `p` (pas écoulés depuis que le personnage est entré dans
 //       la section ; 0 avant), `q = (p + décalage) mod cycle` : `b` est solide si `q < solide`, `d` si `q ≥ solide`. Un bloc `b` ou `d` doit
 //       être dans une section qui déclare son cycle.
+//   plateforme <id> <largeur> <h|v> <cycle> <col,rangée> <col,rangée>
+//       (lot 20, version 5) une **plateforme mobile** : une rangée de `largeur` (2 à 4) tuiles qui fait un aller-retour entre deux positions (le coin
+//       haut-gauche de sa première tuile : `col,rangée` du départ, puis de l'autre extrémité), horizontal (`h`, même rangée) ou vertical (`v`, même
+//       colonne), en `cycle` pas (pair, 120 à 1 200) : position = `f(phase)` entière, la phase de sa section (comme une scie), **ralentie aux deux
+//       extrémités** par une table entière (`PLATFORM_EASE`). **À sens unique** : on se pose dessus par le haut ; on la traverse par-dessous et
+//       par les côtés, sans saut mural, sans jamais être écrasé. Posé dessus, le personnage est porté (il reçoit son déplacement à chaque pas) ;
+//       au saut il garde sa vitesse horizontale (pas la verticale). Elle n'est pas dans la grille : toutes les tuiles de son trajet sont vides.
 //   vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>]
 //       (lot 13, thème forêt) une **zone de vent** : un rectangle de tuiles (bornes comprises), **traversable** (ce n'est pas un bloc), qui
 //       pousse le personnage tant que **le centre** de sa boîte y est, au sol comme en l'air. `haut` : une accélération verticale qui compense
@@ -221,6 +228,46 @@ export interface WindZone {
   section: number;
 }
 
+/** Lot 20 : largeur d'une plateforme mobile, en tuiles ; cycle d'un aller-retour (pas, pair) ; trajet (tuiles) ; déplacement maximal par pas (unités). */
+export const PLATFORM_MIN_WIDTH = 2;
+export const PLATFORM_MAX_WIDTH = 4;
+export const MIN_PLATFORM_CYCLE = 120;
+export const MAX_PLATFORM_CYCLE = 1200;
+export const MAX_PLATFORM_TRAVEL = 12;
+export const MAX_PLATFORM_STEP = 256;
+
+/** Lot 20 : le nombre d'intervalles de la table de ralenti, et la valeur d'arrivée (le trajet entier). */
+export const PLATFORM_EASE_STEPS = 64;
+export const PLATFORM_EASE_ONE = 4096;
+
+/**
+ * Lot 20 : la **table de ralenti** d'une plateforme (entiers, 65 valeurs de 0 à 4 096) : `3k² − k³/32` tronqué, soit la courbe 3u² − 2u³ (u = k/64) :
+ * elle démarre et finit presque à l'arrêt (2, 11, 26, 46… sur 4 096 pour les premiers intervalles) et va vite au milieu (environ 96 par intervalle).
+ * Écrite en dur, aucun calcul à virgule ; `test/plateformes.test.ts` vérifie la formule.
+ */
+export const PLATFORM_EASE: readonly number[] = Object.freeze([
+  0, 2, 11, 26, 46, 71, 101, 136, 176, 220, 268, 321, 378, 438, 502, 569,
+  640, 713, 789, 868, 950, 1033, 1119, 1206, 1296, 1386, 1478, 1571, 1666, 1760, 1856, 1952,
+  2048, 2143, 2239, 2335, 2430, 2524, 2617, 2709, 2800, 2889, 2976, 3062, 3146, 3227, 3306, 3382,
+  3456, 3526, 3593, 3657, 3718, 3774, 3827, 3875, 3920, 3959, 3994, 4024, 4050, 4069, 4084, 4093,
+  4096,
+]);
+
+/** Lot 20 : une plateforme mobile (voir l'en-tête). `a` et `b` : les deux positions extrêmes (coin haut-gauche de sa première tuile, en tuiles). */
+export interface Platform {
+  id: string;
+  /** Largeur en tuiles (2 à 4). */
+  width: number;
+  /** `h` : va et vient sur sa rangée ; `v` : sur sa colonne. */
+  axis: "h" | "v";
+  /** Un aller-retour, en pas (pair). */
+  cycle: number;
+  a: Cell;
+  b: Cell;
+  /** Section dont elle suit l'horloge (indice dans `Level.sections`). */
+  section: number;
+}
+
 export interface Level {
   /** Lot 15 : la version de la simulation du niveau (3 : une horloge par section ; 4 : une seule horloge de course). */
   simVersion: number;
@@ -245,6 +292,8 @@ export interface Level {
   alts: readonly AltBlock[];
   /** Lot 13 : zones de vent (ordre du bloc annexe) ; vide sans vent. */
   winds: readonly WindZone[];
+  /** Lot 20 : plateformes mobiles (ordre du bloc annexe) ; vide sans plateforme. */
+  platforms: readonly Platform[];
 }
 
 export class LevelError extends Error {
@@ -374,6 +423,7 @@ export function parseLevel(text: string): Level {
   const pending: { line: number; words: string[] }[] = [];
   const blinkLines: { line: number; words: string[] }[] = [];
   const windLines: { line: number; words: string[] }[] = [];
+  const platformLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -400,7 +450,8 @@ export function parseLevel(text: string): Level {
     } else if (words[0] === "scie") pending.push({ line: end + i + 1, words });
     else if (words[0] === "clignote") blinkLines.push({ line: end + i + 1, words });
     else if (words[0] === "vent") windLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent)`);
+    else if (words[0] === "plateforme") platformLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme)`);
   }
   if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
@@ -479,7 +530,43 @@ export function parseLevel(text: string): Level {
     if (clash) throw new LevelError(`${where} : chevauche la zone de vent ${clash.c0}-${clash.c1} × ${clash.r0}-${clash.r1}`);
     winds.push({ c0, c1, r0, r1, dir, force: Number(words[4]), gust, section });
   }
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds };
+  // ——— Lot 20 : les plateformes mobiles ———
+  const platforms: Platform[] = [];
+  for (const { line, words } of platformLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« plateforme <id> <largeur> <h|v> <cycle> <col,rangée> <col,rangée> » attendu";
+    if (words.length !== 7) throw new LevelError(`${where} : ${usage}`);
+    const [, id, w, axis, cycleText] = words as [string, string, string, string, string];
+    if (platforms.some((q) => q.id === id)) throw new LevelError(`${where} : plateforme « ${id} » déjà déclarée`);
+    if (!/^\d+$/.test(w) || Number(w) < PLATFORM_MIN_WIDTH || Number(w) > PLATFORM_MAX_WIDTH) throw new LevelError(`${where} : largeur de ${PLATFORM_MIN_WIDTH} à ${PLATFORM_MAX_WIDTH} tuiles`);
+    if (axis !== "h" && axis !== "v") throw new LevelError(`${where} : axe « ${axis} » inconnu (h, v)`);
+    const cycle = /^\d+$/.test(cycleText) ? Number(cycleText) : -1;
+    if (cycle < MIN_PLATFORM_CYCLE || cycle > MAX_PLATFORM_CYCLE || cycle % 2 !== 0) throw new LevelError(`${where} : cycle pair de ${MIN_PLATFORM_CYCLE} à ${MAX_PLATFORM_CYCLE} pas`);
+    const cells: Cell[] = words.slice(5).map((word) => {
+      const m = /^(\d+),(\d+)$/.exec(word);
+      if (!m) throw new LevelError(`${where} : point « ${word} » (col,rangée) attendu`);
+      return { col: Number(m[1]), row: Number(m[2]) };
+    });
+    const [a, b] = cells as [Cell, Cell];
+    const pw = Number(w);
+    if (axis === "h" ? a.row !== b.row || a.col === b.col : a.col !== b.col || a.row === b.row) throw new LevelError(`${where} : deux points distincts sur ${axis === "h" ? "la même rangée" : "la même colonne"} attendus`);
+    const travel = axis === "h" ? Math.abs(b.col - a.col) : Math.abs(b.row - a.row);
+    if (travel > MAX_PLATFORM_TRAVEL) throw new LevelError(`${where} : trajet de ${travel} tuiles (au plus ${MAX_PLATFORM_TRAVEL})`);
+    const c0 = Math.min(a.col, b.col);
+    const c1 = Math.max(a.col, b.col) + pw - 1;
+    const r0 = Math.min(a.row, b.row);
+    const r1 = Math.max(a.row, b.row);
+    if (c1 >= width || r1 >= height) throw new LevelError(`${where} : trajet hors de la grille`);
+    const section = sections.findIndex((q) => c0 >= q.c0 && c1 <= q.c1);
+    if (section < 0) throw new LevelError(`${where} : le trajet (colonnes ${c0}-${c1}) n'est pas dans une seule section`);
+    // La vitesse de pointe (table de ralenti : 96 / 4 096 de trajet par intervalle de `cycle / 128` pas) reste sous un pas de `MAX_PLATFORM_STEP`.
+    if (idiv(travel * UNITS_PER_TILE * 3, cycle) + 1 > MAX_PLATFORM_STEP) throw new LevelError(`${where} : trop rapide (${travel} tuiles en ${cycle} pas)`);
+    for (let r = r0; r <= r1; r++) {
+      for (let c = c0; c <= c1; c++) if (tiles[r * width + c] !== TILE_EMPTY) throw new LevelError(`${where} : la tuile (${c}, ${r}) de son trajet n'est pas vide`);
+    }
+    platforms.push({ id, width: pw, axis, cycle, a, b, section });
+  }
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms };
 }
 
 /**
@@ -544,6 +631,34 @@ export function windZoneAt(level: Pick<Level, "winds">, col: number, row: number
   return -1;
 }
 
+/**
+ * Lot 20 : la part du trajet déjà faite (0 à `PLATFORM_EASE_ONE`) après `tri` pas de l'aller (0 à `half`, le demi-cycle) : la table de ralenti
+ * `PLATFORM_EASE`, interpolée linéairement entre deux valeurs par `idiv`. Entière, croissante, 0 au départ, 4 096 à `half`.
+ */
+export function platformEase(tri: number, half: number): number {
+  const s = tri * PLATFORM_EASE_STEPS;
+  const k = idiv(s, half);
+  if (k >= PLATFORM_EASE_STEPS) return PLATFORM_EASE_ONE;
+  const lo = PLATFORM_EASE[k]!;
+  return lo + idiv((PLATFORM_EASE[k + 1]! - lo) * (s - k * half), half);
+}
+
+/**
+ * Lot 20 : le coin haut-gauche d'une plateforme à la phase `phase` de sa section (comme `sawCenter` : la phase d'un élément à horloge). Position
+ * `f(phase)` **entière et pure** : `a` à la phase 0, `b` au demi-cycle, retour exact à `a` à chaque cycle ; le ralenti de `PLATFORM_EASE` aux deux
+ * extrémités. Une phase négative (v4, l'affichage avant le départ) se lit dans le cycle.
+ */
+export function platformPos(p: Platform, phase: number): Point {
+  const half = idiv(p.cycle, 2);
+  const q = cycleMod(phase, p.cycle);
+  const e = platformEase(q <= half ? q : p.cycle - q, half);
+  const T = UNITS_PER_TILE;
+  const x = p.a.col * T;
+  const y = p.a.row * T;
+  if (p.axis === "h") return { x: x + idiv((p.b.col - p.a.col) * T * e, PLATFORM_EASE_ONE), y };
+  return { x, y: y + idiv((p.b.row - p.a.row) * T * e, PLATFORM_EASE_ONE) };
+}
+
 /** Lot 15 : plus grand commun diviseur (entiers positifs). */
 function gcd(a: number, b: number): number {
   while (b !== 0) {
@@ -556,7 +671,7 @@ function gcd(a: number, b: number): number {
 
 /**
  * Lot 15 : la **période** de la section `i` : le plus petit commun multiple des cycles de ce qui y tourne (scies mobiles, clignotants, rafales),
- * en pas ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
+ * en pas (lot 20 : plateformes comprises) ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
  */
 export function sectionPeriod(level: Level, i: number): number {
   const cycles: number[] = [];
@@ -564,6 +679,7 @@ export function sectionPeriod(level: Level, i: number): number {
   const blink = level.blinkCycles[i];
   if (blink) cycles.push(blink.cycle);
   for (const w of level.winds) if (w.section === i && w.gust) cycles.push(w.gust.cycle);
+  for (const q of level.platforms) if (q.section === i) cycles.push(q.cycle);
   let l = 0;
   for (const c of cycles) {
     l = l === 0 ? c : idiv(l * c, gcd(l, c));
@@ -576,7 +692,7 @@ export function sectionPeriod(level: Level, i: number): number {
  * Lot 15 : le texte d'un niveau en version 3 passé en **version 4** (une seule horloge) : la ligne `version 4` en tête du bloc annexe et la
  * phase `phases[i]` sur la ligne de la section `i` (dans l'ordre des déclarations). Le reste du texte ne change pas.
  */
-export function withSingleClock(ascii: string, phases: readonly number[]): string {
+export function withSingleClock(ascii: string, phases: readonly number[], version = SINGLE_CLOCK_VERSION): string {
   const lines = ascii.split("\n");
   const cut = lines.indexOf("");
   if (cut < 0) throw new LevelError("Niveau sans bloc annexe : rien à mettre à l'heure");
@@ -590,5 +706,5 @@ export function withSingleClock(ascii: string, phases: readonly number[]): strin
     return p === 0 ? line : `${line} phase ${p}`;
   });
   if (k !== phases.length) throw new LevelError("Une phase par section attendue");
-  return [...lines.slice(0, cut), "", `version ${SINGLE_CLOCK_VERSION}`, ...annex].join("\n");
+  return [...lines.slice(0, cut), "", `version ${version}`, ...annex].join("\n");
 }

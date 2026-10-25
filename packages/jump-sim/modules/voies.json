@@ -1,7 +1,31 @@
 {
  "rule": 1,
- "catalog": "6e70f164",
+ "catalog": "8951b0ec",
  "modules": {
+  "chaland": {
+   "2": {
+    "grid": "60e9c788",
+    "fast": 321,
+    "costMin": 360,
+    "precise": [
+     113
+    ],
+    "boxes": [
+     {
+      "c0": 11,
+      "c1": 13,
+      "r0": 8,
+      "r1": 12
+     }
+    ],
+    "detour": {
+     "ticks": 422,
+     "note": 0,
+     "code": "AQMQbW9kdWxlOmNoYWxhbmQ6MgSKAQkdJKYD4QFFRsoCPqIEpgMihglK"
+    },
+    "verdict": "injouable"
+   }
+  },
   "cheminee": {
    "0": {
     "grid": "2c07a73f",
@@ -2143,6 +2167,52 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   }
+  },
+  "tour-mobile": {
+   "0": {
+    "grid": "e07d3f91",
+    "fast": 247,
+    "costMin": 360,
+    "precise": [
+     75
+    ],
+    "boxes": [
+     {
+      "c0": 7,
+      "c1": 9,
+      "r0": 9,
+      "r1": 13
+     }
+    ],
+    "detour": {
+     "ticks": 338,
+     "note": 0,
+     "code": "AQMUbW9kdWxlOnRvdXItbW9iaWxlOjAE6gEIHIUC4gEhImYgogKGBCKGAeoH"
+    },
+    "verdict": "injouable"
+   },
+   "1": {
+    "grid": "f6c33cbf",
+    "fast": 241,
+    "costMin": 360,
+    "precise": [
+     82
+    ],
+    "boxes": [
+     {
+      "c0": 7,
+      "c1": 9,
+      "r0": 9,
+      "r1": 13
+     }
+    ],
+    "detour": {
+     "ticks": 342,
+     "note": 0,
+     "code": "AQMUbW9kdWxlOnRvdXItbW9iaWxlOjEEigFAZkQmZSBhYiFChgGiA6YDImaKCA"
+    },
+    "verdict": "injouable"
    }
   },
   "vent-piliers": {

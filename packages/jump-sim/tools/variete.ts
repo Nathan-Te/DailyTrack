@@ -1,6 +1,6 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
 import * as sim from "../src/index";
-import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MODULES, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
+import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MODULES, PLATFORM_VERSION, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
 
 // `npm run variete:jump -w @cdj/jump-sim` (lot 19) — **répétition des morceaux de base** d'un jour à l'autre (toutes variantes confondues) :
 // morceaux de base disponibles par thème, fréquence de chacun (les dix plus fréquents), écart moyen et minimal entre deux apparitions du même
@@ -12,19 +12,23 @@ const opt = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`
 const [y, m, d] = (opt("depuis") ?? "2026-10-27").split("-").map(Number);
 const FROM = daysFromCivil(y!, m!, d!);
 const DAYS = Number(opt("jours") ?? 365);
+// Lot 20 : `--generateur=14` mesure la référence v4 (g14, sans plateformes) au lieu du générateur en vigueur : le comparatif du README.
+const G14 = opt("generateur") === "14";
+const SIM_VERSION = G14 ? SINGLE_CLOCK_VERSION : PLATFORM_VERSION;
+const GEN = G14 ? SINGLE_CLOCK_GENERATOR : JUMP_GENERATOR_VERSION;
 const num = (v: number, k = 1) => v.toFixed(k).replace(".", ",");
 
 const t0 = performance.now();
 const days: { day: number; theme: JumpThemeName; ids: string[]; fallback: boolean }[] = [];
 for (let k = 0; k < DAYS; k++) {
-  const L = dailyLevel(FROM + k);
+  const L = dailyLevel(FROM + k, null, SIM_VERSION);
   days.push({ day: FROM + k, theme: L.theme, ids: L.pieces.map((p) => p.id), fallback: L.fallback });
 }
 const ms = performance.now() - t0;
 
 const out: string[] = [];
 const line = (s = "") => out.push(s);
-line(`## Variété des morceaux de base — g${JUMP_GENERATOR_VERSION}, ${DAYS} dates (du ${formatDay(FROM)} au ${formatDay(FROM + DAYS - 1)})`);
+line(`## Variété des morceaux de base — g${GEN}, ${DAYS} dates (du ${formatDay(FROM)} au ${formatDay(FROM + DAYS - 1)})`);
 line();
 line(`Génération : ${num(ms / DAYS / 1000, 2)} s par niveau en moyenne (avec ses dépendances) ; secours : ${days.filter((x) => x.fallback).length}.`);
 line();
@@ -125,7 +129,7 @@ if (COLD > 0 && forget) {
     const day = FROM + Math.floor((k * DAYS) / COLD);
     forget();
     const t = performance.now();
-    dailyLevel(day);
+    dailyLevel(day, null, SIM_VERSION);
     ms.push({ day, ms: performance.now() - t });
   }
   const sorted = [...ms].sort((a, b) => b.ms - a.ms);
@@ -135,7 +139,7 @@ if (COLD > 0 && forget) {
 } else if (COLD > 0) {
   line();
   line("### Génération à froid");
-  line(`Pas de dépendance entre les jours (g${JUMP_GENERATOR_VERSION}) : ${num(ms / DAYS / 1000, 2)} s par niveau en moyenne (ci-dessus).`);
+  line(`Pas de dépendance entre les jours (g${GEN}) : ${num(ms / DAYS / 1000, 2)} s par niveau en moyenne (ci-dessus).`);
 }
 
 console.log(out.join("\n"));

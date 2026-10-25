@@ -39,6 +39,7 @@ export const TAG_LABELS: Record<ModuleTag, string> = {
   clignotant: "clignotant",
   alterne: "alterné",
   vent: "vent",
+  plateforme: "plateforme mobile",
 };
 
 /**
