@@ -1,5 +1,5 @@
 import { circuitNumber } from "./calendar";
-import { bestPilotRun, withCut } from "./autopilot";
+import { PILOT_GRIPS, bestPilotRun, runPilot, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
 import { createTestTrack } from "./circuits";
 import { Rng, formatDay, mixSeed } from "@cdj/core";
@@ -48,6 +48,13 @@ export const FAST_PEAK = DEFAULT_CAR_PARAMS.maxSpeed * 1.3;
  */
 const ESTIMATE_MIN = 30;
 const ESTIMATE_MAX = 44;
+/**
+ * Lot 49 (v18) : la première des courses du pilote (adhérence la plus haute, sur le fond) roule seule d'abord ; si elle finit plus de `QUICK_SLACK_MS`
+ * au-delà de la fenêtre, la tentative est refusée sans les autres (une adhérence plus basse ou la paroi d'une cuve ne gagnent presque jamais autant :
+ * mesuré, voir le README du lot). La v18 refuse plus de tentatives (thèmes sans super turbo, glace sous-estimée) : sans ce tri, le pire jour de
+ * génération dépassait la limite du test de durée en CI (3,6 s contre 3,5).
+ */
+const QUICK_SLACK_MS = 500;
 
 // --- Construction -----------------------------------------------------------------------------
 
@@ -842,8 +849,10 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
     const estimate = estimateSeconds(spec.split(" "));
     if (estimate < ESTIMATE_MIN || estimate > ESTIMATE_MAX) continue;
     const track = parseTrack(id, spec);
+    const first = generator >= 18 ? runPilot(track, { grip: PILOT_GRIPS[0], wall: false }) : undefined;
+    if (first && first.valid && first.jumpsOk && first.finishMs > AUTHOR_MAX_MS + QUICK_SLACK_MS) continue;
     // La coupe par le bas-côté (lot 21) n'est essayée que sur la tentative retenue : une course de plus, pas une par tentative.
-    const uncut = bestPilotRun(track, { cut: false });
+    const uncut = bestPilotRun(track, { cut: false, first });
     if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
     const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
     return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, medals: medalsFor(pilot.finishMs, seed) };

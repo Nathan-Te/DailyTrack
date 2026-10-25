@@ -654,13 +654,14 @@ export const PILOT_CUT = 0.5;
  * La meilleure course valide parmi plusieurs réglages du pilote, ou `null` si aucun ne finit le circuit. Sur un circuit dont un virage est
  * bordé d'un bas-côté, le meilleur réglage est refait en coupant (`PILOT_CUT`) : la coupe n'est gardée que si elle est plus rapide.
  */
-export function bestPilotRun(track: Track, opts: { cut?: boolean } = {}): PilotRun | null {
+export function bestPilotRun(track: Track, opts: { cut?: boolean; first?: PilotRun } = {}): PilotRun | null {
   let best: PilotRun | null = null;
   // Avec un virage en cuve, on essaie aussi de le prendre sur le fond : la paroi n'est utile que si elle fait gagner du temps.
   const walls = track.blocks.some((b) => b.cuve) ? [false, true] : [false];
   for (const wall of walls) {
     for (const grip of PILOT_GRIPS) {
-      const run = runPilot(track, { grip, wall });
+      // `first` : la course de la première adhérence sur le fond, déjà faite par l'appelant (lot 49) ; la même, sans la refaire.
+      const run = opts.first && !wall && grip === PILOT_GRIPS[0] ? opts.first : runPilot(track, { grip, wall });
       if (run.valid && run.jumpsOk && (!best || run.finishMs < best.finishMs)) best = run;
     }
   }
