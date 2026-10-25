@@ -161,6 +161,26 @@ export interface CarParams {
   shellTop: number;
   /** Poussée supplémentaire sur la paroi (m/s²) tant que la vitesse est sous la pointe de paroi : la paroi est une voie rapide. */
   shellPush: number;
+  /**
+   * Herbe de course (lot 48), pour un revêtement dont `turf` vaut 1 (`S/z`) : adhérence latérale, motricité (et freinage), roulement (m/s²),
+   * comme les trois valeurs d'un revêtement (`SURFACES.turf` en garde les défauts, lus par le pilote et le générateur).
+   */
+  turfGrip: number;
+  turfTraction: number;
+  turfRolling: number;
+  /** Adhérence de l'essieu arrière sur l'herbe de course, en fraction de celle de l'avant : < 1, l'arrière décroche le premier. */
+  turfRear: number;
+  /** Perte de vitesse en glisse sur l'herbe de course, en fraction de `slideDrag` : un dérapage tenu se paie peu. */
+  turfSlideDrag: number;
+  /**
+   * Sur l'herbe de course, l'arrière qui glisse au-delà de cet angle (glissement de l'essieu, rad) déclenche le dérapage sans le frein
+   * (direction tenue, au-delà de `driftMinSpeed`) : la glisse se tient alors à la direction (`driftAngle`).
+   */
+  turfDriftSlip: number;
+  /** Dérive (pente : vitesse latérale ÷ vitesse) que l'herbe de course laisse glisser presque sans perte. */
+  turfSlideFree: number;
+  /** Coût de la dérive au-delà de `turfSlideFree` sur l'herbe de course (m/s² par unité de dérive en trop, au carré) : surbraquer, c'est labourer. */
+  turfScrub: number;
 }
 
 export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
@@ -217,6 +237,14 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   shellGainTop: 56,
   shellTop: 1.15,
   shellPush: 14,
+  turfGrip: SURFACES.turf.grip,
+  turfTraction: SURFACES.turf.traction,
+  turfRolling: SURFACES.turf.rolling,
+  turfRear: 0.9,
+  turfSlideDrag: 0.4,
+  turfDriftSlip: 0.12,
+  turfSlideFree: 0.2,
+  turfScrub: 60,
 });
 
 /** Vrai si `p` diffère des réglages par défaut (course alors jamais classée). */
@@ -352,6 +380,7 @@ const gGrip = [1, 1, 1, 1];
 const gTraction = [1, 1, 1, 1];
 const gRolling = [0, 0, 0, 0];
 const gSlick = [0, 0, 0, 0];
+const gTurf = [0, 0, 0, 0];
 const load = [0, 0, 0, 0];
 
 function sampleWheels(car: CarState, world: World, fx: number, fz: number): void {
@@ -370,6 +399,7 @@ function sampleWheels(car: CarState, world: World, fx: number, fz: number): void
     gTraction[i] = m.traction;
     gRolling[i] = m.rolling;
     gSlick[i] = m.slick;
+    gTurf[i] = m.turf;
   }
 }
 
@@ -426,6 +456,16 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   // --- Suspension : charge de chaque roue ------------------------------------------------------
   if (!samplesValid) sampleWheels(car, world, fx, fz);
   samplesValid = false;
+  // Herbe de course (lot 48) : ses valeurs sont des réglages de la voiture (clés `turf*`, panneau `?debug&tune`), pas celles de la table.
+  let turfWheels = 0;
+  for (let i = 0; i < 4; i++) {
+    if (gTurf[i]! > 0) {
+      gGrip[i] = p.turfGrip;
+      gTraction[i] = p.turfTraction;
+      gRolling[i] = p.turfRolling;
+      turfWheels++;
+    }
+  }
   const k = p.suspStiffness;
   const rest = g / (4 * k); // affaissement statique : au repos, la caisse est à y = sol
   let contacts = 0;
@@ -437,6 +477,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
   let traction = 0;
   let rolling = 0;
   let slick = 0;
+  let turf = 0;
   for (let i = 0; i < 4; i++) {
     const f = WHEEL_F[i]!;
     const l = WHEEL_L[i]!;
@@ -453,6 +494,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     traction += gTraction[i]!;
     rolling += gRolling[i]!;
     slick += gSlick[i]!;
+    turf += gTurf[i]!;
     if (gBoost[i]) onBoost = true;
     if (gTurbo[i]) onTurbo = true;
     if (gCut[i]) onCut = true;
@@ -464,6 +506,7 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     traction /= contacts;
     rolling /= contacts;
     slick /= contacts;
+    turf /= contacts;
   }
 
   // Réception : premier contact après un vol. À plat (caisse alignée sur le sol) on garde la vitesse.
@@ -491,6 +534,9 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     const delta = -car.steer * steerLimit(u, p); // angle des roues avant, positif = à gauche
     const slipF = (v + AXLE_FRONT * r - delta * u) / U;
     const slipR = (v - AXLE_REAR * r) / U;
+    // Herbe de course (lot 48) : l'arrière qui glisse sous les roues arrière déclenche le dérapage sans le frein, direction tenue.
+    const turfR = turfWheels > 0 ? (gTurf[2]! + gTurf[3]!) / 2 : 0;
+    if (turfR > 0.5 && u > p.driftMinSpeed && (steerTarget > 0.5 || steerTarget < -0.5) && (slipR > p.turfDriftSlip || slipR < -p.turfDriftSlip)) car.drift = 1;
     // Dérapage : l'arrière perd de l'adhérence tant qu'il dure ; il s'éteint vite si on relâche la direction
     // ou si la voiture a retrouvé son axe, lentement si on le tient.
     if (car.drift > 0) {
@@ -515,6 +561,8 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
         surfR -= slickR * (1 - p.iceBrakeGrip) * surfR;
       }
     }
+    // Herbe de course : l'arrière tient moins que l'avant (il décroche le premier).
+    if (turfR > 0) surfR -= turfR * (1 - p.turfRear) * surfR;
     const rearGrip = p.gripRear * (1 - (1 - p.driftGrip) * car.drift);
     const peakF = ((p.gripFront * AXLE_REAR) / WHEELBASE) * surfF * kf;
     const peakR = ((rearGrip * AXLE_FRONT) / WHEELBASE) * surfR * kr;
@@ -570,7 +618,13 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     if (coasting && slick > 0) ay -= p.iceRealign * slick * v;
     // Une glisse coûte de la vitesse, en proportion de son angle (dérive = vitesse latérale ÷ vitesse).
     const drift = v / U;
-    ax -= p.slideDrag * (drift < 0 ? -drift : drift) * (u > 0 ? 1 : u < 0 ? -1 : 0);
+    const slide = drift < 0 ? -drift : drift;
+    const sign = u > 0 ? 1 : u < 0 ? -1 : 0;
+    if (turf > 0) {
+      // Herbe de course : la glisse tenue coûte peu ; au-delà de l'angle de dérapage tenu, chaque degré de plus coûte cher (surbraquer).
+      const over = slide - p.turfSlideFree;
+      ax -= (p.slideDrag * (1 - turf * (1 - p.turfSlideDrag)) * slide + (over > 0 ? turf * p.turfScrub * over * over : 0)) * sign;
+    } else ax -= p.slideDrag * slide * sign;
   }
 
   // --- Intégration horizontale (Euler semi-implicite) --------------------------------------------
@@ -751,8 +805,9 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
 
   if (grounded) {
     const m = SURFACES[h.kind];
-    const traction = m.traction;
-    const rolling = m.rolling;
+    // Herbe de course (lot 48) sur une paroi : ses trois valeurs seulement (le générateur n'en met jamais dans une cuve).
+    const traction = m.turf > 0 ? p.turfTraction : m.traction;
+    const rolling = m.turf > 0 ? p.turfRolling : m.rolling;
     const slick = m.slick;
     // Adhérence : la charge des pneus vient de la pesanteur contre la paroi (ny) et de l'appui de la vitesse.
     const speed = Math.sqrt(u * u + v * v);
@@ -774,8 +829,8 @@ function substepShell(car: CarState, throttle: number, brake: number, steerTarge
       if (car.drift < 0) car.drift = 0;
     }
     const coasting = throttle === 0 && brake === 0;
-    let surfF = m.grip;
-    let surfR = m.grip;
+    let surfF = m.turf > 0 ? p.turfGrip : m.grip;
+    let surfR = surfF;
     if (slick > 0) {
       if (coasting) {
         surfF += slick * (p.iceCoastGrip - surfF);

@@ -151,3 +151,15 @@ export const BAS_COTES_TRACK_SPEC =
 export function createBasCotesTrack() {
   return parseTrack("bas-cotes", BAS_COTES_TRACK_SPEC);
 }
+
+/**
+ * Scénario `herbe` (lot 48) : l'herbe de course (`S/z`). Longue ligne droite d'herbe bordée d'herbe haute (bas-côtés `~h` : celle-là
+ * punit la sortie), virage ample en herbe, transition vers la route ; S large herbe-route ; virage serré en herbe sur la route étroite puis
+ * grande courbe d'herbe ; ligne droite d'herbe entre deux virages larges. Un point de contrôle entre chaque épreuve.
+ */
+export const HERBE_TRACK_SPEC =
+  "S/n@start S S S/z~h S/z S/z S/z S/z@cp L3/z S/z~r S R3 S S/z S/z L2/z R2/z S/z S/~r S@cp S S/z L/z S/z S/z R3/z S S S@cp L2 S/z S/z S/z L2/z S S@finish";
+
+export function createHerbeTrack() {
+  return parseTrack("herbe", HERBE_TRACK_SPEC);
+}

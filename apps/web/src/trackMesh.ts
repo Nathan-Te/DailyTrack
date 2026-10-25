@@ -106,7 +106,7 @@ export const PALETTE_DEFS: Record<PaletteName, Palette> = {
     // Fin d'après-midi (lot 21) : horizon doré, soleil bas et chaud.
     sky: 0xf6cf96, fogNear: 100, fogFar: 340,
     ambient: [0xffe8cc, 0.9], sun: [0xffcf8a, 2.1],
-    floorA: "#6fbf4f", floorB: "#63b044",
+    floorA: "#5f9a42", floorB: "#56903b", // lot 48 : plus sombre que l'herbe de course
     road: [0x80838c, 0x777a83], dash: 0xf4f1e6, skirt: 0x5a6b3c,
     wallA: 0xd9402a, wallB: 0xf6f6f0,
     boost: 0xffd22e, boostMark: 0xe39b00, checkpoint: 0x2e7dff, finish: 0xf4f4f4, finishDark: 0x16181f,
@@ -210,6 +210,8 @@ export const SURFACE_COLORS: Record<Exclude<SurfaceKind, "road">, [number, numbe
   // Sable (lot 22) : beige chaud, un ton plus clair que le sol du Canyon pour que la bande se lise.
   sand: [0xf2d690, 0xe8ca82],
   kerb: [0xe8283a, 0xf4f4f4],
+  // Herbe de course (lot 48) : vert tendre, plus clair et plus saturé que tout sol de la Campagne (ΔE 2000 > 12, test/herbe.test.ts) ; tondue en bandes.
+  turf: [0x8fe04a, 0x8adb45],
 };
 const bank: BankSample = { h: 0, gp: 0, gq: 0 };
 

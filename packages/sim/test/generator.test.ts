@@ -5,6 +5,8 @@ import {
   FAST_PEAK,
   GENERATOR_VERSION,
   GENERATOR_BEFORE_34,
+  GENERATOR_BEFORE_48,
+  BASCULE_LOT_48,
   BASCULE_LOT_34,
   daysFromCivil,
   figureByName,
@@ -286,7 +288,9 @@ describe("palette et identifiant", () => {
     // Lot 34 : la version est celle du jour (15 avant la bascule du 28/10/2026, la dernière ensuite).
     expect(id).toBe(`jour-2026-10-06-g${GENERATOR_BEFORE_34}`);
     expect(dailyTrackId(parseDay("2026-10-27")!)).toBe(`jour-2026-10-27-g${GENERATOR_BEFORE_34}`);
-    expect(dailyTrackId(BASCULE_LOT_34)).toBe(`jour-2026-10-28-g${GENERATOR_VERSION}`);
+    expect(dailyTrackId(BASCULE_LOT_34)).toBe(`jour-2026-10-28-g${GENERATOR_BEFORE_48}`);
+    // Lot 48 : 16 jusqu'au 03/11/2026, la dernière version à partir du 04/11.
+    expect(dailyTrackId(BASCULE_LOT_48)).toBe(`jour-2026-11-04-g${GENERATOR_VERSION}`);
     expect(id).toMatch(/^[a-z0-9_-]{1,32}$/);
     expect(formatDay(JOUR_TEST)).toBe("2026-10-06");
   });

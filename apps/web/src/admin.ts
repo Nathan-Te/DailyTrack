@@ -34,6 +34,7 @@ const SCENARIOS: [Scenario, string][] = [
   ["cuves", "Cuves"],
   ["air", "Air"],
   ["bas-cotes", "Bas-côtés"],
+  ["herbe", "Herbe de course"],
   ["figures", "Figures (tour)"],
   ["figure", "Une figure"],
   ["plat", "Terrain plat"],

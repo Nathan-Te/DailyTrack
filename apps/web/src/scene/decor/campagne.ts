@@ -14,13 +14,31 @@ function arbre(g: Parameters<typeof tube>[0], x: number, y: number, z: number, h
   }
 }
 
+/**
+ * Lot 48 : une touffe d'herbes folles (brins hauts, vert sombre et paille) : le décor autour de la piste est plus sombre, plus rugueux et plus haut que
+ * l'herbe de course, tondue rase.
+ */
+function herbesFolles(g: Parameters<typeof tube>[0], x: number, y: number, z: number, rnd: () => number) {
+  for (let i = 0; i < 9; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = rnd() * 1.6;
+    const bx = x + Math.cos(a) * r;
+    const bz = z + Math.sin(a) * r;
+    const h = 1.1 + rnd() * 0.9;
+    const v = mix(0x3f5f22, 0x8a8440, rnd());
+    g.tri([bx - 0.22, y, bz], [bx + 0.22, y, bz], [bx + (rnd() - 0.5) * 0.6, y + h, bz + (rnd() - 0.5) * 0.6], v);
+    g.tri([bx, y, bz - 0.22], [bx, y, bz + 0.22], [bx + (rnd() - 0.5) * 0.6, y + h, bz + (rnd() - 0.5) * 0.6], shade(v, 0.85));
+  }
+}
+
 export const DECOR = moduleDecor({
   densite: [1.6, 1.6, 1.2, 0.4],
   recette(c, _x, p, rnd) {
     const y = p.y;
     const r = repereSol(p.x, y, p.z, versRoute(p));
     const k = rnd();
-    if (p.anneau === 2 && k < 0.3) {
+    if (p.anneau === 1 && k < 0.3) herbesFolles(c.decor, p.x, y, p.z, rnd);
+    else if (p.anneau === 2 && k < 0.3) {
       // Ferme : la grange rouge, le silo.
       boite(c.decor, r, -4, 4, 0, 4.5, -3, 3, 0xb03a22);
       for (let g = -3.8; g < 4; g += 1.2) face(c.decor, r, g, g + 0.05, 0, 4.5, -3.01, shade(0xb03a22, 0.8));
@@ -50,7 +68,8 @@ export const DECOR = moduleDecor({
   },
   remplissage(g, _x, p, rnd) {
     const k = rnd();
-    if (k < 0.45) arbre(g, p.x, p.y, p.z, 5.5 + rnd() * 3, 2, rnd);
+    if (k < 0.2) herbesFolles(g, p.x, p.y, p.z, rnd);
+    else if (k < 0.45) arbre(g, p.x, p.y, p.z, 5.5 + rnd() * 3, 2, rnd);
     else if (k < 0.75) {
       const len = 7 + rnd() * 8;
       const v = mix(0x2f7a32, 0x3f9a3e, rnd());

@@ -50,6 +50,12 @@ export interface SurfaceParams {
    * `ice*` de `CarParams` (réglables dans le panneau `?debug&tune`).
    */
   slick: number;
+  /**
+   * Part du comportement « herbe de course » (lot 48 ; 0 = aucun, 1 = plein) : arrière qui décroche plus tôt, glisse qui coûte peu, dérapage
+   * qui se déclenche sans le frein. Ses valeurs (adhérence, motricité et roulement compris) sont les clés `turf*` de `CarParams` (réglables
+   * dans le panneau `?debug&tune`) ; `grip`, `traction` et `rolling` ci-dessous en sont les défauts, que lisent le pilote et le générateur.
+   */
+  turf: number;
 }
 
 /**
@@ -62,18 +68,22 @@ export interface SurfaceParams {
  * - sable (lot 22, revêtement de bloc et bas-côté) : lent mais stable (roulement 6 m/s², motricité 0,7, adhérence 0,8 : il ralentit sans faire glisser) ;
  * - terre et gravier (lot 21, bas-côté seulement) : ralentit moins que l'herbe, glisse un peu ;
  * - neige poudreuse (lot 21, bas-côté seulement) : la plus lente (roulement 8 m/s², pointe ≈ 20 m/s à plat), peu d'adhérence ;
- * - vibreur (lot 21, bords d'un virage sur route) : exactement la route (seuls le son et la vibration changent).
+ * - vibreur (lot 21, bords d'un virage sur route) : exactement la route (seuls le son et la vibration changent) ;
+ * - herbe de course (lot 48, revêtement de bloc `S/z`) : presque la pointe de la route, accélération plus molle, moins d'adhérence latérale
+ *   (l'arrière part le premier) : on y glisse au lieu d'y freiner (`turf`). **Une surface nouvelle plutôt qu'un ancien paramètre changé** :
+ *   l'herbe (`grass`) des anciens circuits et des bas-côtés ne bouge pas.
  * Ordre des bas-côtés, du moins au plus lent : terre et gravier, sable, herbe, neige poudreuse (`basCotes.test.ts`).
  */
 export const SURFACES: Readonly<Record<SurfaceKind, Readonly<SurfaceParams>>> = Object.freeze({
-  road: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),
-  dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5, slick: 0 }),
-  ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0, slick: 1 }),
-  grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7, slick: 0 }),
-  sand: Object.freeze({ grip: 0.8, traction: 0.7, rolling: 6, slick: 0 }),
-  gravel: Object.freeze({ grip: 0.6, traction: 0.65, rolling: 4.5, slick: 0 }),
-  snow: Object.freeze({ grip: 0.42, traction: 0.5, rolling: 8, slick: 0 }),
-  kerb: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0 }),
+  road: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0, turf: 0 }),
+  dirt: Object.freeze({ grip: 0.7, traction: 0.85, rolling: 1.5, slick: 0, turf: 0 }),
+  ice: Object.freeze({ grip: 0.3, traction: 0.4, rolling: 0, slick: 1, turf: 0 }),
+  grass: Object.freeze({ grip: 0.5, traction: 0.55, rolling: 7, slick: 0, turf: 0 }),
+  sand: Object.freeze({ grip: 0.8, traction: 0.7, rolling: 6, slick: 0, turf: 0 }),
+  gravel: Object.freeze({ grip: 0.6, traction: 0.65, rolling: 4.5, slick: 0, turf: 0 }),
+  snow: Object.freeze({ grip: 0.42, traction: 0.5, rolling: 8, slick: 0, turf: 0 }),
+  kerb: Object.freeze({ grip: 1, traction: 1, rolling: 0, slick: 0, turf: 0 }),
+  turf: Object.freeze({ grip: 0.8, traction: 0.85, rolling: 0.6, slick: 0, turf: 1 }),
 });
 
 /** Comportement du revêtement d'un échantillon de sol. */

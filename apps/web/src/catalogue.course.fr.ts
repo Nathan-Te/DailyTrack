@@ -35,6 +35,7 @@ export const fr = {
   "course.scenario.cuves": "Circuit des cuves",
   "course.scenario.air": "Circuit de l'air",
   "course.scenario.basCotes": "Bas-côtés et vibreurs",
+  "course.scenario.herbe": "Circuit de l'herbe de course",
   "course.scenario.figures": "Les figures",
   "course.scenario.figure": "Figure : {nom}",
   "course.scenario.essai": "Circuit d'essai",
@@ -72,6 +73,7 @@ export const fr = {
   "course.sol.sand": "Sable",
   "course.sol.gravel": "Gravier",
   "course.sol.snow": "Neige poudreuse",
+  "course.sol.turf": "Herbe de course",
   // --- Pause ---
   "pause.titre": "Pause",
   "pause.info.circuit": "Circuit {numero} · {theme}",
