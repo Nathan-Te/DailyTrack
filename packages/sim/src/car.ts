@@ -173,13 +173,18 @@ export interface CarParams {
   /** Perte de vitesse en glisse sur l'herbe de course, en fraction de `slideDrag` : un dérapage tenu se paie peu. */
   turfSlideDrag: number;
   /**
-   * Sur l'herbe de course, l'arrière qui glisse au-delà de cet angle (glissement de l'essieu, rad) déclenche le dérapage sans le frein
-   * (direction tenue, au-delà de `driftMinSpeed`) : la glisse se tient alors à la direction (`driftAngle`).
+   * Angle de glisse tenu sur l'herbe de course, volant à fond (pente : vitesse latérale ÷ vitesse d'avance ; 1 = 45°), au lieu de `driftAngle` : la
+   * glisse se lance au frein comme sur la route, mais elle va bien plus large, ne s'éteint pas tant qu'on tient la direction et garde la vitesse
+   * (le « grass slide » de Trackmania).
    */
-  turfDriftSlip: number;
+  turfDriftAngle: number;
+  /** En glisse sur l'herbe de course, la vitesse ramenée vers le nez (au lieu de `driftPull`) : plus faible, la glisse serre moins et garde son élan. */
+  turfDriftPull: number;
+  /** En glisse sur l'herbe de course, part (0–1) du freinage des pneus rendue le long de la vitesse : la glisse garde son élan (arcade). */
+  turfDriftKeep: number;
   /** Dérive (pente : vitesse latérale ÷ vitesse) que l'herbe de course laisse glisser presque sans perte. */
   turfSlideFree: number;
-  /** Coût de la dérive au-delà de `turfSlideFree` sur l'herbe de course (m/s² par unité de dérive en trop, au carré) : surbraquer, c'est labourer. */
+  /** Coût de la dérive au-delà de `turfSlideFree` sur l'herbe de course, **hors dérapage** (m/s² par unité de dérive en trop, au carré) : un coup de volant brusque laboure. */
   turfScrub: number;
 }
 
@@ -240,9 +245,11 @@ export const DEFAULT_CAR_PARAMS: Readonly<CarParams> = Object.freeze({
   turfGrip: SURFACES.turf.grip,
   turfTraction: SURFACES.turf.traction,
   turfRolling: SURFACES.turf.rolling,
-  turfRear: 0.9,
+  turfRear: 0.95,
   turfSlideDrag: 0.4,
-  turfDriftSlip: 0.12,
+  turfDriftAngle: 1,
+  turfDriftPull: 33,
+  turfDriftKeep: 0.8,
   turfSlideFree: 0.2,
   turfScrub: 60,
 });
@@ -534,14 +541,14 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     const delta = -car.steer * steerLimit(u, p); // angle des roues avant, positif = à gauche
     const slipF = (v + AXLE_FRONT * r - delta * u) / U;
     const slipR = (v - AXLE_REAR * r) / U;
-    // Herbe de course (lot 48) : l'arrière qui glisse sous les roues arrière déclenche le dérapage sans le frein, direction tenue.
+    // Herbe de course (lot 48) : part des roues arrière sur l'herbe de course (la glisse s'y tient plus large et plus longtemps).
     const turfR = turfWheels > 0 ? (gTurf[2]! + gTurf[3]!) / 2 : 0;
-    if (turfR > 0.5 && u > p.driftMinSpeed && (steerTarget > 0.5 || steerTarget < -0.5) && (slipR > p.turfDriftSlip || slipR < -p.turfDriftSlip)) car.drift = 1;
     // Dérapage : l'arrière perd de l'adhérence tant qu'il dure ; il s'éteint vite si on relâche la direction
     // ou si la voiture a retrouvé son axe, lentement si on le tient.
     if (car.drift > 0) {
       const held = (steerTarget > 0.2 || steerTarget < -0.2) && (slipR > 0.06 || slipR < -0.06);
-      car.drift -= (held ? 1 / p.driftHold : 6) * H;
+      // Sur l'herbe de course, une glisse tenue ne s'éteint pas : on l'étend à la direction (le « grass slide » de Trackmania).
+      car.drift -= (held ? (turfR > 0 ? (1 - turfR) / p.driftHold : 1 / p.driftHold) : 6) * H;
       if (car.drift < 0) car.drift = 0;
     }
     // Adhérence de chaque essieu : réglage × revêtement sous ses deux roues × charge.
@@ -576,8 +583,21 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
       // un rappel amorti tient la glisse sans tête-à-queue.
       const beta = v / U;
       const dBeta = (ay - u * r) / U;
-      yawAcc += car.drift * (-DRIFT_SPRING * (steerTarget * p.driftAngle - beta) + DRIFT_DAMPING * dBeta);
-      ay -= car.drift * p.driftPull * beta;
+      // Herbe de course : l'angle tenu, volant à fond, est `turfDriftAngle` (bien plus large que sur la route).
+      const angle = turfR > 0 ? p.driftAngle + turfR * (p.turfDriftAngle - p.driftAngle) : p.driftAngle;
+      yawAcc += car.drift * (-DRIFT_SPRING * (steerTarget * angle - beta) + DRIFT_DAMPING * dBeta);
+      ay -= car.drift * (turfR > 0 ? p.driftPull + turfR * (p.turfDriftPull - p.driftPull) : p.driftPull) * beta;
+    }
+    // Herbe de course : en glisse, une part de ce que les pneus freinent (la composante de leurs forces contre la vitesse) est rendue le long
+    // de la vitesse — la glisse tourne la voiture sans la freiner autant (arcade : le « grass slide » garde l'élan).
+    if (turfR > 0 && car.drift > 0) {
+      const V = Math.sqrt(u * u + v * v);
+      const along = V > 1 ? (ax * u + ay * v) / V : 0;
+      if (along < 0) {
+        const back = -along * p.turfDriftKeep * turfR * car.drift;
+        ax += (back * u) / V;
+        ay += (back * v) / V;
+      }
     }
 
     // --- Moteur, freins, pente ------------------------------------------------------------------
@@ -621,9 +641,10 @@ function substep(car: CarState, throttle: number, brake: number, steerTarget: nu
     const slide = drift < 0 ? -drift : drift;
     const sign = u > 0 ? 1 : u < 0 ? -1 : 0;
     if (turf > 0) {
-      // Herbe de course : la glisse tenue coûte peu ; au-delà de l'angle de dérapage tenu, chaque degré de plus coûte cher (surbraquer).
+      // Herbe de course : la glisse coûte peu ; hors dérapage (un coup de volant brusque, pas une glisse lancée au frein), la dérive au-delà de
+      // `turfSlideFree` coûte cher : on laboure.
       const over = slide - p.turfSlideFree;
-      ax -= (p.slideDrag * (1 - turf * (1 - p.turfSlideDrag)) * slide + (over > 0 ? turf * p.turfScrub * over * over : 0)) * sign;
+      ax -= (p.slideDrag * (1 - turf * (1 - p.turfSlideDrag)) * slide + (over > 0 ? turf * (1 - car.drift) * p.turfScrub * over * over : 0)) * sign;
     } else ax -= p.slideDrag * slide * sign;
   }
 

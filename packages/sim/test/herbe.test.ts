@@ -84,6 +84,28 @@ function quarterTurn(kind: SurfaceKind, steer: number) {
   return { seconds: ticks / TICK_RATE, exit: carSpeed(car), maxSlide };
 }
 
+/**
+ * Le « grass slide » de Trackmania : un coup de frein de 0,1 s volant à fond (le dérapage du lot 7), puis plein gaz volant tenu (`steer`), jusqu'à 90° de
+ * cap de la vitesse, puis 0,5 s volant droit : durée, vitesse à la fin du virage et en sortie, dérive maximale.
+ */
+function slideTurn(kind: SurfaceKind, steer: number) {
+  const world = flatOf(kind);
+  const car = launched(world, 44);
+  const course = () => Math.atan2(car.vx, car.vz);
+  const c0 = course();
+  let ticks = 0;
+  let maxSlide = 0;
+  for (; ticks < 12; ticks++) stepCar(car, makeInput(-1, 1, 1), world);
+  while (Math.abs(course() - c0) < Math.PI / 2 && ticks < 8 * TICK_RATE) {
+    stepCar(car, makeInput(-steer, 1, 0), world);
+    maxSlide = Math.max(maxSlide, Math.abs(slideOf(car)));
+    ticks++;
+  }
+  const end = carSpeed(car);
+  for (let i = 0; i < 60; i++) stepCar(car, makeInput(0, 1, 0), world);
+  return { seconds: ticks / TICK_RATE, end, exit: carSpeed(car), maxSlide };
+}
+
 /** Le pilote d'auteur (meilleure de ses adhérences) sur ce circuit : temps en secondes. */
 function pilotSeconds(spec: string): number {
   const run = bestPilotRun(parseTrack("essai", spec), { cut: false });
@@ -172,9 +194,11 @@ describe("lot 48 : on glisse", () => {
     expect(turf.rear / turf.front).toBeGreaterThan(road.rear / road.front);
   });
 
-  it("la glisse se tient à la direction : volant à fond 5 s, la dérive reste sous 21° (pas de tête-à-queue) et retombe sous 2° en 0,5 s volant lâché", () => {
-    const world = flatOf("turf");
+  /** Coup de frein de 0,1 s volant à fond, puis plein gaz volant à fond 5 s : dérive maximale (pente) et durée de la glisse, puis volant lâché 1 s. */
+  const heldSlide = (kind: SurfaceKind) => {
+    const world = flatOf(kind);
     const car = launched(world, 44);
+    for (let i = 0; i < 12; i++) stepCar(car, makeInput(-1, 1, 1), world);
     let maxSlide = 0;
     let drifting = 0;
     for (let i = 0; i < 5 * TICK_RATE; i++) {
@@ -182,11 +206,32 @@ describe("lot 48 : on glisse", () => {
       maxSlide = Math.max(maxSlide, Math.abs(slideOf(car)));
       if (car.drift > 0) drifting++;
     }
-    expect(deg(maxSlide)).toBeLessThan(21);
-    expect(deg(maxSlide)).toBeGreaterThan(12); // elle glisse vraiment
-    expect(drifting / TICK_RATE).toBeGreaterThan(4); // le dérapage s'est déclenché sans frein, et il tient
-    for (let i = 0; i < 60; i++) stepCar(car, makeInput(0, 1, 0), world);
-    expect(deg(slideOf(car))).toBeLessThan(2);
+    for (let i = 0; i < TICK_RATE; i++) stepCar(car, makeInput(0, 1, 0), world);
+    return { maxSlide, drifting: drifting / TICK_RATE, after: deg(slideOf(car)) };
+  };
+
+  it("la glisse se lance au frein, se tient à la direction et ne s'éteint pas : 5 s volant à fond, de 30 à 50° de dérive, jamais de tête-à-queue", () => {
+    const turf = heldSlide("turf");
+    expect(deg(turf.maxSlide)).toBeGreaterThan(30);
+    expect(deg(turf.maxSlide)).toBeLessThan(50);
+    expect(turf.drifting).toBeGreaterThan(4.9);
+    expect(turf.after).toBeLessThan(2); // volant lâché : la voiture se redresse
+    // Sur la route, la même glisse reste étroite et s'éteint (lot 7 : `driftHold` 3 s).
+    const road = heldSlide("road");
+    expect(deg(road.maxSlide)).toBeLessThan(21);
+    expect(road.drifting).toBeLessThan(3.5);
+  });
+
+  it("sans frein, pas de glisse lancée : volant à fond 3 s, aucun dérapage et moins de 15° de dérive", () => {
+    const world = flatOf("turf");
+    const car = launched(world, 44);
+    let maxSlide = 0;
+    for (let i = 0; i < 3 * TICK_RATE; i++) {
+      stepCar(car, makeInput(-1, 1, 0), world);
+      maxSlide = Math.max(maxSlide, Math.abs(slideOf(car)));
+      expect(car.drift).toBe(0);
+    }
+    expect(deg(maxSlide)).toBeLessThan(15);
   });
 
   it("à volant doux, la voiture tient sa ligne sans dérapage", () => {
@@ -211,16 +256,29 @@ describe("lot 48 : rapide si on est propre, punitif si on surbraque", () => {
     for (const turn of ["L2", "L"]) expect(pilotSeconds(onTurns(turn, "z")) - pilotSeconds(onTurns(turn, ""))).toBeLessThan(0.5);
   });
 
-  it("quart de tour à 44 m/s : volant dosé (1/3) presque gratuit, volant à fond 2 fois plus coûteux que sur la route", () => {
+  it("quart de tour à 44 m/s : la ligne large et douce (volant à 1/3) presque gratuite, le coup de volant brusque (à fond, sans glisse) 1,5 fois plus coûteux que sur la route", () => {
     const clean = quarterTurn("turf", 1 / 3);
     const over = quarterTurn("turf", 1);
     const roadOver = quarterTurn("road", 1);
     const lost = (r: { exit: number }) => 44 - r.exit;
     expect(lost(clean)).toBeLessThan(1);
     expect(lost(over)).toBeGreaterThan(3 * Math.max(1, lost(clean)));
-    expect(lost(over)).toBeGreaterThan(2 * lost(roadOver));
-    // Sur l'herbe, on tourne plus serré à fond (l'arrière décroche) : on peut s'en servir… et le payer.
-    expect(over.seconds).toBeLessThan(roadOver.seconds);
+    expect(lost(over)).toBeGreaterThan(1.5 * lost(roadOver));
+  });
+
+  it("le grass slide garde l'élan : plus serré que le coup de volant, et bien plus rapide que la même glisse sur la route", () => {
+    const slide = slideTurn("turf", 1);
+    const yank = quarterTurn("turf", 1);
+    const roadSlide = slideTurn("road", 1);
+    // Il tourne en moins de temps que le coup de volant (donc plus serré, à vitesse voisine)…
+    expect(slide.seconds).toBeLessThan(0.8 * yank.seconds);
+    // … et sort bien plus vite que la glisse sur la route (qui serre autant).
+    expect(slide.end).toBeGreaterThan(roadSlide.end + 5);
+    expect(slide.exit).toBeGreaterThan(roadSlide.exit + 2);
+    // De légères pressions sur la direction ajustent la glisse : moins de volant, moins de dérive, plus large.
+    const soft = slideTurn("turf", 0.6);
+    expect(soft.maxSlide).toBeLessThan(slide.maxSlide);
+    expect(soft.seconds).toBeGreaterThan(slide.seconds);
   });
 
   it("un dérapage au frein bien tenu se paie peu : il coûte moins de 1,3 fois le même sur la route", () => {
@@ -268,9 +326,10 @@ describe("lot 48 : les passages route ↔ herbe se sentent, sans à-coup", () =>
     }
   });
 
-  it("en virage, le lacet varie au passage moins de 1,5 fois ce qu'il varie dans le même virage sur l'herbe seule", () => {
-    const uniform = crossing("turf", "turf", 0.6).maxYawAcc;
-    for (const [a, b] of [["road", "turf"], ["turf", "road"]] as const) expect(crossing(a, b, 0.6).maxYawAcc).toBeLessThan(1.5 * uniform);
+  it("en virage, le passage route ↔ herbe de course est plus doux que route ↔ terre (lot 8) et que l'entrée sur l'herbe d'avant", () => {
+    expect(crossing("road", "turf", 0.6).maxYawAcc).toBeLessThan(crossing("road", "dirt", 0.6).maxYawAcc);
+    expect(crossing("turf", "road", 0.6).maxYawAcc).toBeLessThan(crossing("dirt", "road", 0.6).maxYawAcc);
+    expect(crossing("road", "turf", 0.6).maxYawAcc).toBeLessThan(0.5 * crossing("road", "grass", 0.6).maxYawAcc);
   });
 });
 
