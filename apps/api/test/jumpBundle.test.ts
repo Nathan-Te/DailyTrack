@@ -39,7 +39,7 @@ beforeAll(() => {
   }
   runs.sort((a, b) => b.ticks - a.ticks);
   if (runs.length < 3 || lives.length < 3) throw new Error("trop peu d'essais fictifs");
-});
+}, 60_000); // génération du niveau du jour et des essais fictifs : ≈ 9 s mesurées en local pour le plus long, plus sur le runner de la CI (limite par défaut : 10 s)
 
 const as = (n: number) => ({ headers: { "X-Player-Id": playerId(n) } });
 const submitBody = (code: string, extra: Record<string, unknown> = {}) => ({ levelId: D.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: code, ...extra });

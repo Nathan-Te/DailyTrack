@@ -31,7 +31,7 @@ beforeAll(() => {
   runs.sort((a, b) => b.ticks - a.ticks);
   runs.push({ code: D.code, ticks: D.authorTicks, deaths: 0 });
   if (runs.length < 3) throw new Error("trop peu d'essais fictifs arrivent");
-});
+}, 60_000); // génération du niveau du jour et des essais fictifs : ≈ 9 s mesurées en local pour le plus long, plus sur le runner de la CI (limite par défaut : 10 s)
 
 async function jumpApi() {
   const t = await makeApi({ seed: false, environment: "recette" });
