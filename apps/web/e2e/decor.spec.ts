@@ -4,6 +4,7 @@ import { expect, test, type Page } from "./fixtures";
 // Lot 44 : le décor du palier 1, **chargé à la demande, thème par thème** (`src/scene/decor.ts`). La scène s'affiche d'abord avec la piste, les rebords et les
 // éléments de course ; le décor arrive pendant l'accueil, avant le départ. S'il n'est pas prêt au décompte, la course part sans lui, et il s'ajoute à la
 // prochaine pause ou à l'arrivée, **jamais en course** (ni pendant le décompte).
+test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 
 /** Les morceaux du décor chargés par la page. */
 const morceauxDecor = (page: Page) => page.evaluate(() => performance.getEntriesByType("resource").map((e) => e.name.split("/").pop()!).filter((n) => /^(commun|stade|rallye|banquise|nuit|campagne|canyon|col|ville)-[^/]*\.js$/.test(n)));
