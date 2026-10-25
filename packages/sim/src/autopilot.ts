@@ -178,11 +178,16 @@ function denseCenterline(track: Track, wall: boolean, cut = 0): Centerline {
       const room = b.banked ? BANKED_ROOM : b.w0 / 2 - margin - open;
       // Coupe (mesure) : côté intérieur, la trajectoire peut mordre de `cut` m sur le bas-côté (sans approcher son rebord).
       const inner = b.shoulder && cut > 0 && !b.banked ? Math.min(room + cut, SHOULDER_EDGE - WALL_MARGIN) : room;
+      // Lot 49 : réception dans le virage (un vide juste avant) — la voiture touche près de l'axe, la trajectoire s'en écarte peu à peu
+      // sur la première moitié de l'arc (sans cela elle ferait un coude au bord du vide). Aucun circuit d'avant n'a de virage derrière un vide.
+      const landing = prev?.kind === "gap";
       for (let i = first; i <= n; i++) {
         const a = (HALF_PI * i) / n;
+        const t = landing ? Math.min(1, (2 * i) / n) : 1;
+        const k = t * t * (3 - 2 * t);
         // Virage relevé : le bord intérieur est en contrebas et la rampe d'entrée y est raide ; on reste près de l'axe.
         // L'intérieur d'un virage à gauche est à gauche (normale positive).
-        push(cp + side * r * cos(a), r * sin(a), b, side < 0 ? inner : room, side < 0 ? room : inner, b.w0 / 2);
+        push(cp + side * r * cos(a), r * sin(a), b, (side < 0 ? inner : room) * k, (side < 0 ? room : inner) * k, b.w0 / 2);
       }
     } else {
       const n = Math.round(CELL / SPACING);

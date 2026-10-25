@@ -25,3 +25,4 @@ export * from "./traps";
 export * from "./braking";
 export * from "./medalStats";
 export * from "./garage";
+export * from "./ressemblance";

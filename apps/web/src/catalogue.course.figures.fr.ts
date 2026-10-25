@@ -1,0 +1,38 @@
+// Lot 49 — la page des nouveautés (`?scenario=figures`) et le titre de leurs scénarios (`?scenario=figure-<nom>`), en français : chargé **avec les
+// scénarios** (`scenarios.ts`, un `import()`), jamais au premier écran ; réuni à la zone « course » pour les tests et le relevé des traductions
+// (`catalogue.course.ts`). Ton de Track : sec, précis.
+
+export const fr = {
+  "figures.index.aria": "Les nouvelles figures",
+  "figures.index.titre": "Nouvelles figures",
+  "figures.index.intro": "Chaque figure se joue seule, en boucle. Garde, écarte ou retouche : dis-le à l'agent.",
+  "figures.index.essayer": "Essayer",
+  "figures.index.variante": "Variante 2",
+  "figures.index.tour": "Rouler le tour des figures",
+  "figures.index.themes": "Thèmes : {liste}",
+  "figures.index.tous": "Tous les thèmes",
+  "figures.sautSortieVirage.titre": "Saut à l'élan",
+  "figures.sautSortieVirage.quoi": "Pas de plaque : la vitesse gardée dans le virage d'avant fait passer le vide.",
+  "figures.tremplinReleve.titre": "Tremplin en sortie de relevé",
+  "figures.tremplinReleve.quoi": "On décolle en train de tourner : se redresser avant la rampe, ou figer la caisse au frein.",
+  "figures.chicaneTremplin.titre": "Chicane avant le tremplin",
+  "figures.chicaneTremplin.quoi": "Assez vite pour le vide, assez propre pour arriver droit sur la rampe.",
+  "figures.receptionVirage.titre": "Réception dans un virage",
+  "figures.receptionVirage.quoi": "On retombe au début d'un grand virage : pas trop vite, et tourner dès que les roues touchent.",
+  "figures.sautGlace.titre": "Saut vers la glace",
+  "figures.sautGlace.quoi": "On retombe sur la glace : la réception glisse, le virage se prépare en roue libre.",
+  "figures.sautFalaise.titre": "Saut de la falaise",
+  "figures.sautFalaise.quoi": "Deux cellules de vide, réception deux niveaux plus bas.",
+  "figures.bossesTerre.titre": "Bosses en série",
+  "figures.bossesTerre.quoi": "Trois bosses de terre : garder la voiture droite pour tourner à la sortie.",
+  "figures.demiTourMixte.titre": "Demi-tour route et terre",
+  "figures.demiTourMixte.quoi": "L'adhérence change au milieu du demi-tour.",
+  "figures.demiTourGlace.titre": "Demi-tour route et glace",
+  "figures.demiTourGlace.quoi": "Lâcher les gaz sur la glace, les reprendre quand les pneus mordent.",
+  "figures.ruesEnEscalier.titre": "Rues en escalier",
+  "figures.ruesEnEscalier.quoi": "Un angle, une pente, un angle : freiner dans la pente, relancer à plat.",
+  "figures.filDuRasoir.titre": "Fil du rasoir",
+  "figures.filDuRasoir.quoi": "Route de 14 m sans rebords, un virage au milieu : la précision d'abord.",
+  "figures.deversDescente.titre": "Relevés en descente",
+  "figures.deversDescente.quoi": "La pente pousse, le dévers retient : on passe vite si l'on vise bien.",
+};

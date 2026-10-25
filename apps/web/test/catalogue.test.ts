@@ -6,6 +6,7 @@ import { CATALOGUE_TRACK } from "../src/catalogue";
 import { CATALOGUE_APERCU } from "../src/catalogue.apercu";
 import { CATALOGUE_BASE } from "../src/catalogue.base";
 import { fr as GARAGE_FR } from "../src/catalogue.base.garage.fr";
+import { fr as FIGURES_FR } from "../src/catalogue.course.figures.fr";
 import { chargerLangue, setLangue, t } from "../src/i18n";
 
 // L'anglais est un fichier à part, chargé à la demande (i18n.ts) : on le charge avant les tests qui passent en anglais.
@@ -18,7 +19,8 @@ const sources = readdirSync(SRC).filter((f) => f.endsWith(".ts") && !f.startsWit
 const code = sources.map((f) => readFileSync(join(SRC, f), "utf8")).join("\n") + readFileSync(join(__dirname, "../index.html"), "utf8");
 // Lot I6 : les balises de partage de `index.html` lisent le catalogue de l'aperçu (construction seulement).
 // Lot 41 : les textes du Garage sont chargés avec lui (`catalogue.base.garage.*.ts`, réunis à la zone « base » pour les tests).
-const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_BASE.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr)]);
+const connues = new Set([...Object.keys(CATALOGUE_TRACK.fr), ...Object.keys(CATALOGUE_BASE.fr), ...Object.keys(CATALOGUE_COMMUN.fr), ...Object.keys(CATALOGUE_APERCU.fr), ...Object.keys(FIGURES_FR)]);
+// Lot 49 : la page des nouvelles figures, chargée avec les scénarios (`catalogue.course.figures.*.ts`).
 
 describe("catalogue de DailyTrack", () => {
   it("chaque clé appelée par t(\"…\"), lier(…), data-t existe, en français et en anglais", () => {

@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1003 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1035 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -608,6 +608,43 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `erreur.local.timeout` | Le serveur ne répond pas. | The server isn't answering. |
 | `erreur.local.http_error` | Le serveur a répondu par une erreur. | The server answered with an error. |
 | `erreur.local.inconnue` | Quelque chose n'a pas marché. | Something went wrong. |
+
+### figures (`figures.*`, `apps/web/src/catalogue.course.*.ts`)
+
+| Clé | Français | Anglais |
+|---|---|---|
+| `figures.index.aria` | Les nouvelles figures | The new figures |
+| `figures.index.titre` | Nouvelles figures | New figures |
+| `figures.index.intro` | Chaque figure se joue seule, en boucle. Garde, écarte ou retouche : dis-le à l'agent. | Each figure plays on its own, in a loop. Keep, drop or tweak: tell the agent. |
+| `figures.index.essayer` | Essayer | Try |
+| `figures.index.variante` | Variante 2 | Variant 2 |
+| `figures.index.tour` | Rouler le tour des figures | Drive the figures tour |
+| `figures.index.themes` | Thèmes : {liste} | Themes: {liste} |
+| `figures.index.tous` | Tous les thèmes | All themes |
+| `figures.sautSortieVirage.titre` | Saut à l'élan | Momentum jump |
+| `figures.sautSortieVirage.quoi` | Pas de plaque : la vitesse gardée dans le virage d'avant fait passer le vide. | No boost pad: the speed you kept through the corner clears the gap. |
+| `figures.tremplinReleve.titre` | Tremplin en sortie de relevé | Ramp out of a banked turn |
+| `figures.tremplinReleve.quoi` | On décolle en train de tourner : se redresser avant la rampe, ou figer la caisse au frein. | You take off still turning: straighten up before the ramp, or freeze the car with the brake. |
+| `figures.chicaneTremplin.titre` | Chicane avant le tremplin | Chicane before the ramp |
+| `figures.chicaneTremplin.quoi` | Assez vite pour le vide, assez propre pour arriver droit sur la rampe. | Fast enough for the gap, clean enough to hit the ramp straight. |
+| `figures.receptionVirage.titre` | Réception dans un virage | Landing in a corner |
+| `figures.receptionVirage.quoi` | On retombe au début d'un grand virage : pas trop vite, et tourner dès que les roues touchent. | You land at the start of a big corner: not too fast, and turn as soon as the wheels touch. |
+| `figures.sautGlace.titre` | Saut vers la glace | Jump onto ice |
+| `figures.sautGlace.quoi` | On retombe sur la glace : la réception glisse, le virage se prépare en roue libre. | You land on ice: the landing slides, the corner is set up off the throttle. |
+| `figures.sautFalaise.titre` | Saut de la falaise | Cliff jump |
+| `figures.sautFalaise.quoi` | Deux cellules de vide, réception deux niveaux plus bas. | Two cells of void, landing two levels lower. |
+| `figures.bossesTerre.titre` | Bosses en série | Dirt bumps |
+| `figures.bossesTerre.quoi` | Trois bosses de terre : garder la voiture droite pour tourner à la sortie. | Three dirt bumps in a row: keep the car straight to turn at the end. |
+| `figures.demiTourMixte.titre` | Demi-tour route et terre | Road and dirt hairpin |
+| `figures.demiTourMixte.quoi` | L'adhérence change au milieu du demi-tour. | Grip changes halfway through the hairpin. |
+| `figures.demiTourGlace.titre` | Demi-tour route et glace | Road and ice hairpin |
+| `figures.demiTourGlace.quoi` | Lâcher les gaz sur la glace, les reprendre quand les pneus mordent. | Lift on the ice, get back on the throttle when the tyres bite. |
+| `figures.ruesEnEscalier.titre` | Rues en escalier | Stepped streets |
+| `figures.ruesEnEscalier.quoi` | Un angle, une pente, un angle : freiner dans la pente, relancer à plat. | A corner, a slope, a corner: brake on the slope, accelerate on the flat. |
+| `figures.filDuRasoir.titre` | Fil du rasoir | Razor's edge |
+| `figures.filDuRasoir.quoi` | Route de 14 m sans rebords, un virage au milieu : la précision d'abord. | A 14 m road with no barriers and a corner halfway: precision first. |
+| `figures.deversDescente.titre` | Relevés en descente | Banked turns downhill |
+| `figures.deversDescente.quoi` | La pente pousse, le dévers retient : on passe vite si l'on vise bien. | The slope pushes, the banking holds: aim well and you stay fast. |
 
 ### garage (`garage.*`, `apps/web/src/catalogue.base.*.ts`)
 

@@ -48,6 +48,9 @@ import {
   type ThemeName,
   type Block,
   type DailyCircuit,
+  empreinte,
+  ressemblance,
+  enchainementsCommuns,
 } from "@cdj/sim";
 
 // `npm run measure:generator` : mesure le générateur de circuits (lot 12). À relancer après toute règle de
@@ -147,6 +150,117 @@ function sectionHerbe() {
 }
 if (process.env.HERBE) {
   sectionHerbe();
+  process.exit(0);
+}
+
+// --- 5. Lot 49 : identité des thèmes et ressemblance -------------------------------------------
+// Les 25 premiers circuits du jour de chaque thème à partir de `IDENTITE_FROM` (la bascule du lot 48 par défaut), en marchant de jour en jour :
+// de vrais jours, donc aussi les jours consécutifs d'un même thème. `IDENTITE_GEN` impose une version du générateur (mesure avant / après).
+// Par thème : fréquence de chaque figure, sauts (dont « plaque ou turbo puis rampe en ligne droite »), vitesse moyenne et virages du pilote
+// d'auteur, part de chaque revêtement et bas-côté ; puis la ressemblance (`ressemblance.ts`) : moyennes et paires les plus semblables.
+type JumpKindLot49 = "boost" | "droite" | "virage" | "descente" | "paroi" | "autre";
+/** Ce qui précède une rampe : plaque ou turbo par-dessus des droites seules (« boost puis rampe en ligne droite »), sinon le premier bloc qui n'est pas une droite. */
+function jumpApproach(blocks: Block[], kick: number): JumpKindLot49 {
+  let straights = 0;
+  for (let i = kick - 1; i >= 0; i--) {
+    const b = blocks[i]!;
+    if (b.kind === "boost" || b.kind === "turbo") return "boost";
+    if (b.kind === "straight" && !b.cuve) {
+      straights++;
+      continue;
+    }
+    if (b.cuve) return "paroi";
+    if (isCurve(b.kind)) return straights <= 2 ? "virage" : "droite";
+    if (b.kind === "down") return straights <= 2 ? "descente" : "droite";
+    return straights <= 2 ? "autre" : "droite";
+  }
+  return "droite";
+}
+const blockLength = (b: Block) => (isCurve(b.kind) ? (CELL * ((isWide(b.kind) ? (b.kind.startsWith("grand") ? 3 : 2) : 1) - 0.5) * Math.PI) / 2 : CELL);
+function sectionIdentite() {
+  const [iy = 2026, im = 11, id = 4] = (process.env.IDENTITE_FROM ?? formatDay(BASCULE_LOT_48)).split("-").map(Number);
+  const from = daysFromCivil(iy, im, id);
+  const per = Number(process.env.IDENTITE_N ?? 25);
+  const forced = process.env.IDENTITE_GEN ? Number(process.env.IDENTITE_GEN) : null;
+  type Row = { day: number; theme: ThemeName; c: DailyCircuit; genMs: number; speed: number; jumps: JumpKindLot49[]; turns: [number, number, number]; surf: Record<string, number>; edge: Record<string, number>; print: ReturnType<typeof empreinte> };
+  const rows: Row[] = [];
+  const count: Record<string, number> = {};
+  for (let d = from; rows.length < per * THEME_NAMES.length; d++) {
+    const theme = themeForDay(d).name;
+    if ((count[theme] ?? 0) >= per) continue;
+    count[theme] = (count[theme] ?? 0) + 1;
+    const t0 = performance.now();
+    const c = forced === null ? dailyCircuit(d) : dailyCircuit(d, 0, null, forced);
+    const genMs = performance.now() - t0;
+    const blocks = c.track.blocks;
+    const length = blocks.reduce((s, b) => s + blockLength(b), 0);
+    const surf: Record<string, number> = {};
+    const edge: Record<string, number> = {};
+    for (const b of blocks) {
+      surf[b.surface] = (surf[b.surface] ?? 0) + 1;
+      const e = b.shoulder ?? (b.open ? "vide" : "rebords");
+      edge[e] = (edge[e] ?? 0) + 1;
+    }
+    const turns: [number, number, number] = [0, 0, 0];
+    for (const b of blocks) if (isCurve(b.kind)) { const k = (isWide(b.kind) ? (b.kind.startsWith("grand") ? 3 : 2) : 1) - 1; turns[k] = turns[k]! + 1; }
+    rows.push({ day: d, theme, c, genMs, speed: length / (c.authorMs / 1000), jumps: blocks.filter((b) => b.kind === "kick").map((b) => jumpApproach(blocks, b.index)), turns, surf, edge, print: empreinte({ spec: c.spec, figures: c.figures.map((f) => f.name) }) });
+  }
+  console.log(`\n5. Lot 49 — identité des thèmes, ${rows.length} circuits du jour (${per} par thème) à partir du ${formatDay(from)}${forced === null ? "" : `, générateur v${forced} imposé`}`);
+  console.log(`  génération (Node, un circuit) : moyenne ${mean(rows.map((r) => r.genMs)).toFixed(0)} ms, pire ${Math.max(...rows.map((r) => r.genMs)).toFixed(0)} ms ; auteur ${sec(mean(rows.map((r) => r.c.authorMs)))} s (${sec(Math.min(...rows.map((r) => r.c.authorMs)))}–${sec(Math.max(...rows.map((r) => r.c.authorMs)))} s) ; secours : ${rows.filter((r) => r.c.fallback).length}`);
+  const jumpKinds: JumpKindLot49[] = ["boost", "droite", "virage", "descente", "paroi", "autre"];
+  const allJumps = rows.flatMap((r) => r.jumps);
+  console.log(`  sauts : ${allJumps.length} (${(allJumps.length / rows.length).toFixed(2)} par circuit) ; ${jumpKinds.map((k) => `${k} ${pct(allJumps.filter((j) => j === k).length, allJumps.length)}`).join(" · ")}`);
+  console.log("\n  thème      vitesse  auteur  virages s/l/a   sauts  boost+droite  revêtements (part des blocs)                bords");
+  for (const theme of THEME_NAMES) {
+    const rs = rows.filter((r) => r.theme === theme);
+    const js = rs.flatMap((r) => r.jumps);
+    const blocksN = rs.reduce((s, r) => s + r.c.track.blocks.length, 0);
+    const shares = (key: "surf" | "edge") => {
+      const tot: Record<string, number> = {};
+      for (const r of rs) for (const [k, v] of Object.entries(r[key])) tot[k] = (tot[k] ?? 0) + v;
+      return Object.entries(tot).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${((100 * v) / blocksN).toFixed(0)} %`).join(", ");
+    };
+    console.log(`  ${theme.padEnd(9)}  ${mean(rs.map((r) => r.speed)).toFixed(1)} m/s  ${sec(mean(rs.map((r) => r.c.authorMs)))} s  ${[0, 1, 2].map((k) => mean(rs.map((r) => r.turns[k]!)).toFixed(1)).join("/")}   ${(js.length / rs.length).toFixed(2)}   ${pct(js.filter((j) => j === "boost").length, js.length).padStart(5)}        ${shares("surf").padEnd(44)}  ${shares("edge")}`);
+  }
+  console.log("\n  figures par thème (part des circuits qui l'ont) :");
+  for (const theme of THEME_NAMES) {
+    const rs = rows.filter((r) => r.theme === theme);
+    const freq: Record<string, number> = {};
+    for (const r of rs) for (const n of new Set(r.c.figures.map((f) => f.name))) freq[n] = (freq[n] ?? 0) + 1;
+    const list = Object.entries(freq).sort((a, b) => b[1] - a[1]);
+    console.log(`  ${theme.padEnd(9)} (${list.length} figures) ${list.map(([n, v]) => `${n} ${((100 * v) / rs.length).toFixed(0)}`).join(" · ")}`);
+  }
+  // Ressemblance : toutes les paires, dans un même thème et entre thèmes ; les jours consécutifs d'un même thème à part.
+  const pairs: { a: Row; b: Row; r: ReturnType<typeof ressemblance> }[] = [];
+  for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) pairs.push({ a: rows[i]!, b: rows[j]!, r: ressemblance(rows[i]!.print, rows[j]!.print) });
+  const same = pairs.filter((p) => p.a.theme === p.b.theme);
+  const cross = pairs.filter((p) => p.a.theme !== p.b.theme);
+  const consecutive: typeof pairs = [];
+  for (const theme of THEME_NAMES) {
+    const rs = rows.filter((r) => r.theme === theme).sort((a, b) => a.day - b.day);
+    for (let k = 1; k < rs.length; k++) consecutive.push({ a: rs[k - 1]!, b: rs[k]!, r: ressemblance(rs[k - 1]!.print, rs[k]!.print) });
+  }
+  const m3 = (ps: typeof pairs) => `${mean(ps.map((p) => p.r.total)).toFixed(3)} (figures ${mean(ps.map((p) => p.r.figures)).toFixed(3)}, blocs ${mean(ps.map((p) => p.r.blocs)).toFixed(3)})`;
+  console.log(`\n  ressemblance moyenne : même thème ${m3(same)} · thèmes différents ${m3(cross)} · jours consécutifs d'un même thème ${m3(consecutive)}`);
+  const sharedChains = consecutive.map((p) => enchainementsCommuns(p.a.c.figures.map((f) => f.name), p.b.c.figures.map((f) => f.name)).length);
+  const sharedFigs = consecutive.map((p) => { const b = new Set(p.b.c.figures.map((f) => f.name)); return p.a.c.figures.filter((f) => b.has(f.name)).length; });
+  console.log(`  jours consécutifs d'un même thème (${consecutive.length} paires) : figures communes ${mean(sharedFigs).toFixed(2)} en moyenne (max ${Math.max(...sharedFigs)}), enchaînements communs ${mean(sharedChains).toFixed(2)} (paires qui en partagent : ${sharedChains.filter((n) => n > 0).length})`);
+  for (const theme of THEME_NAMES) {
+    const ps = same.filter((p) => p.a.theme === theme);
+    console.log(`    ${theme.padEnd(9)} même thème ${mean(ps.map((p) => p.r.total)).toFixed(3)} · max ${Math.max(...ps.map((p) => p.r.total)).toFixed(3)}`);
+  }
+  const show = (label: string, ps: typeof pairs) => {
+    console.log(`  ${label} :`);
+    for (const p of [...ps].sort((x, y) => y.r.total - x.r.total).slice(0, 6)) {
+      const common = enchainementsCommuns(p.a.c.figures.map((f) => f.name), p.b.c.figures.map((f) => f.name));
+      console.log(`    ${p.r.total.toFixed(3)} (fig. ${p.r.figures.toFixed(2)}, blocs ${p.r.blocs.toFixed(2)})  ${formatDay(p.a.day)} ${p.a.theme} ↔ ${formatDay(p.b.day)} ${p.b.theme}${common.length ? ` — en commun : ${common.join(", ")}` : ""}`);
+    }
+  };
+  show("paires les plus semblables, même thème", same);
+  show("paires les plus semblables, thèmes différents", cross);
+}
+if (process.env.IDENTITE) {
+  sectionIdentite();
   process.exit(0);
 }
 
