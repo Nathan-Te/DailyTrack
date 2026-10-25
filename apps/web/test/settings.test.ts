@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, QUALITY_CHOICES, SETTINGS_VERSION, formatSpeed, parseSettings, qualityPlan, saveSettings, SETTINGS_KEY } from "../src/settings";
+import { DEFAULT_SETTINGS, SETTINGS_VERSION, formatSpeed, parseSettings, qualityPlan, saveSettings, SETTINGS_KEY } from "../src/settings";
 import { DEFAULT_AUDIO, nextVolume, parseAudioSettings, toggleMute, withVolume } from "../src/audioLogic";
 import { chargerLangue, setLangue } from "../src/i18n";
 import { HOWTO_KEY, HOWTO_VERSION, howtoSeen, markHowtoSeen } from "../src/howto";
@@ -15,34 +15,38 @@ describe("réglages du jeu (lot 29)", () => {
   });
 
   it("garde ce qui est valide, remplace le reste par le défaut", () => {
-    const s = parseSettings(JSON.stringify({ version: SETTINGS_VERSION, quality: "low", particles: false, shake: "oui", speedFeel: "strong", ghost: "ahead", unit: "mph", board: false, splits: false, shadows: false, skids: false }));
-    expect(s).toEqual({ ...DEFAULT_SETTINGS, quality: "low", particles: false, speedFeel: "strong", ghost: "ahead", unit: "mph", board: false, splits: false, shadows: false, skids: false });
+    const s = parseSettings(JSON.stringify({ version: SETTINGS_VERSION, particles: false, shake: "oui", speedFeel: "strong", ghost: "ahead", unit: "mph", board: false, splits: false, shadows: false, skids: false }));
+    expect(s).toEqual({ ...DEFAULT_SETTINGS, particles: false, speedFeel: "strong", ghost: "ahead", unit: "mph", board: false, splits: false, shadows: false, skids: false });
     expect(s.shake).toBe(DEFAULT_SETTINGS.shake); // « oui » n'est pas un booléen
-    expect(parseSettings(JSON.stringify({ quality: "ultra", unit: "m/s", ghost: 3 }))).toEqual(DEFAULT_SETTINGS);
+    expect(parseSettings(JSON.stringify({ graphismes: "ultra", unit: "m/s", ghost: 3 }))).toEqual(DEFAULT_SETTINGS);
   });
 
   it("l'enregistrement porte le numéro de version", () => {
     const store = new Map<string, string>();
     (globalThis as { localStorage?: unknown }).localStorage = { setItem: (k: string, v: string) => store.set(k, v), getItem: (k: string) => store.get(k) ?? null };
     try {
-      saveSettings({ ...DEFAULT_SETTINGS, quality: "medium" });
+      saveSettings({ ...DEFAULT_SETTINGS, graphismes: "economie" });
       const raw = JSON.parse(store.get(SETTINGS_KEY)!);
       expect(raw.version).toBe(SETTINGS_VERSION);
-      expect(parseSettings(store.get(SETTINGS_KEY)!).quality).toBe("medium");
+      expect(parseSettings(store.get(SETTINGS_KEY)!).graphismes).toBe("economie");
     } finally {
       delete (globalThis as { localStorage?: unknown }).localStorage;
     }
   });
 
-  it("la qualité : automatique ou fixée, et `?quality=` l'emporte", () => {
-    expect(qualityPlan("auto", null)).toEqual({ fixed: false, level: 2 });
-    expect(qualityPlan("low", null)).toEqual({ fixed: true, level: 0 });
-    expect(qualityPlan("medium", null)).toEqual({ fixed: true, level: 1 });
-    expect(qualityPlan("high", null)).toEqual({ fixed: true, level: 2 });
-    expect(qualityPlan("high", "0")).toEqual({ fixed: true, level: 0 });
-    expect(qualityPlan("auto", "1")).toEqual({ fixed: true, level: 1 });
-    expect(qualityPlan("low", "9")).toEqual({ fixed: true, level: 0 }); // valeur d'adresse invalide : le choix du joueur
-    expect(QUALITY_CHOICES).toEqual(["auto", "low", "medium", "high"]);
+  it("le réglage « Qualité » du lot 9 est retiré : un `quality` enregistré est ignoré et ne revient pas à l'écriture", () => {
+    const vieux = JSON.stringify({ version: SETTINGS_VERSION, quality: "low", graphismes: "equilibree" });
+    const s = parseSettings(vieux);
+    expect(s).toEqual({ ...DEFAULT_SETTINGS, graphismes: "equilibree" });
+    expect("quality" in s).toBe(false);
+  });
+
+  it("la fluidité est automatique ; seul `?quality=` (essais) la fige", () => {
+    expect(qualityPlan(null)).toEqual({ fixed: false, level: 2 });
+    expect(qualityPlan("0")).toEqual({ fixed: true, level: 0 });
+    expect(qualityPlan("1")).toEqual({ fixed: true, level: 1 });
+    expect(qualityPlan("2")).toEqual({ fixed: true, level: 2 });
+    expect(qualityPlan("9")).toEqual({ fixed: false, level: 2 }); // valeur d'adresse invalide : automatique
   });
 
   it("l'unité de vitesse (nombre au format de la langue, espace insécable avant l'unité)", () => {
