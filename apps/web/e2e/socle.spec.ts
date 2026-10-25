@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 // Lots 39 et 43 : le socle par paliers, dans le vrai jeu. Lot 43 : **le palier 1 est la scène de tout le monde** ; l'ancienne scène (« existant ») n'est
 // chargée qu'à la demande — par `?palier=existant` (recette et aperçus seulement) ou par une demande du reconstructeur — et, demandée en pleine course,
 // **ne change pas la scène** : elle est appliquée à la pause (une fois), la course reprend dans la nouvelle. Les feux de départ suivent le décompte.
+test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 
 /** Le morceau de l'ancienne scène a-t-il été chargé par la page ? */
 const existantCharge = (page: Page) => page.evaluate(() => performance.getEntriesByType("resource").some((e) => /\/existant-[^/]*\.js$/.test(e.name)));
