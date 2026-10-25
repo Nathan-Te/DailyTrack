@@ -399,7 +399,9 @@ test("?modules (téléphone) : le filtre « Thème » (cible ≥ 44 px) isole le
     }
     await select.selectOption("glace");
     expect(await page.locator("#gallery .card:not([hidden])").count()).toBeGreaterThanOrEqual(5);
-    await expect(page.locator("#gallery .card:not([hidden]) a.play").first()).toHaveAttribute("href", /theme=glace/);
+    // Lot 19 : un morceau générique peut avoir une variante glace (`corniches` v6) : la première carte n'est plus forcément un morceau de glace,
+    // et sa première variante n'a pas de thème. Le lien d'une variante de glace, lui, porte le thème.
+    await expect(page.locator("#gallery .card:not([hidden]) .variant:has(.tag.theme[data-theme=glace]) a.play").first()).toHaveAttribute("href", /theme=glace/);
     // « sans mécanique » : les morceaux de tous les thèmes ; aucun lien ne force de thème pour une variante sans mécanique.
     await select.selectOption("sans");
     const plain = page.locator("#gallery .card:not([hidden])").first();
