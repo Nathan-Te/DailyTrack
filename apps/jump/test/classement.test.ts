@@ -374,6 +374,13 @@ describe("écran d'arrivée et accueil", () => {
     expect(rankApiBase("/", "https://ailleurs.test", "https://recette.playdujour.com/")).toBe("https://recette.playdujour.com");
     expect(rankApiBase(null, "/")).toBeNull();
     expect(rankApiBase("demo", "https://recette.test")).toBe("demo");
+    // Lot R7 : en production (restricted), ?api= ne peut pas mener l'identifiant secret vers un autre serveur ; le serveur de la construction prime
+    expect(rankApiBase("https://pirate.example", "/", "https://playdujour.com", true)).toBe("https://playdujour.com");
+    expect(rankApiBase("https://pirate.example", undefined, "https://playdujour.com", true)).toBeNull();
+    expect(rankApiBase("/", undefined, "https://playdujour.com", true)).toBe("https://playdujour.com");
+    expect(rankApiBase("demo", undefined, "https://playdujour.com", true)).toBe("demo");
+    expect(rankApiBase("http://localhost:8787", undefined, "https://playdujour.com", true)).toBe("http://localhost:8787");
+    expect(rankApiBase("https://pirate.example", "/", "https://recette.playdujour.com", false)).toBe("https://pirate.example");
   });
 });
 

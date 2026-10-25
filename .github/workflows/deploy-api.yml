@@ -128,7 +128,7 @@ jobs:
       WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.ref || github.sha }}
 
@@ -216,7 +216,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Origines permises ($TARGET) : $origins · TRUST_PROXY=$trust" >> "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
         with:
           name: ${{ inputs.jours_figes }}
@@ -229,21 +229,20 @@ jobs:
 
       - name: Authentification Google Cloud (fédération d'identité)
         if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
 
       - name: Authentification Google Cloud (clé JSON)
         if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Outils Google Cloud
         if: steps.cfg.outputs.enabled == 'true'
-        uses: google-github-actions/setup-gcloud@v3
-
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
       - name: Construire et pousser l'image
         if: steps.cfg.outputs.enabled == 'true'
         run: |
@@ -255,7 +254,7 @@ jobs:
       - name: Déployer sur Cloud Run (production)
         id: deploy
         if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'production'
-        uses: google-github-actions/deploy-cloudrun@v3
+        uses: google-github-actions/deploy-cloudrun@2028e2d7d30a78c6910e0632e48dd561b064884d # v3.0.1
         with:
           service: ${{ steps.cfg.outputs.service }}
           region: ${{ steps.cfg.outputs.region }}
@@ -361,7 +360,7 @@ jobs:
 
       # Recette : l'essai de bout en bout existant (crée un joueur « Fumée… », jamais contre la vraie base : ici la base de recette).
       # Il exige un Salon de durée normale : avec SALON_MINUTES, il est sauté (et le résumé le dit).
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: steps.cfg.outputs.enabled == 'true' && inputs.target == 'recette'
         with:
           node-version: 22

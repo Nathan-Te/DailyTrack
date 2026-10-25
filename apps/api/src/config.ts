@@ -43,6 +43,14 @@ export interface ServerConfig {
 
 export class ConfigError extends Error {}
 
+/** Lot R7 : ce que le journal de démarrage dit d'un `ADMIN_TOKEN` faible (jamais sa valeur) ; `null` : rien à dire (absent, ou d'au moins 32 caractères). */
+export function adminTokenWarning(token: string | undefined): string | null {
+  if (token === undefined || token === "") return null;
+  if (token.length < 16) return "ADMIN_TOKEN trop court (16 caractères au moins) : l'administration est désactivée";
+  if (token.length < 32) return "ADMIN_TOKEN de moins de 32 caractères : en générer un plus long (openssl rand -hex 24)";
+  return null;
+}
+
 type Env = Record<string, string | undefined>;
 
 /**

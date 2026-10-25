@@ -1,4 +1,4 @@
-import { ProfileClient, TIMEOUT_MS, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
+import { ProfileClient, TIMEOUT_MS, apiFromAddress, call, type ApiResult, type FetchLike, type ProfileApi } from "@cdj/profile";
 import type { JumpMedal } from "@cdj/jump-sim";
 import { fNombre, fRang, t } from "./i18n";
 import type { DayBundle } from "./dayReads";
@@ -180,8 +180,9 @@ export class HttpRankSource extends ProfileClient implements RankSource {
  * origine, sur la production, la recette et les aperçus depuis le lot R4 ; l'adresse directe d'une révision de recette pour l'aperçu d'une PR
  * qui touche le serveur), sinon rien : pas de classement, le jeu marche comme avant.
  */
-export function rankApiBase(fromUrl: string | null, env: string | undefined, origin?: string): string | null {
-  const base = fromUrl || env || "";
+export function rankApiBase(fromUrl: string | null, env: string | undefined, origin?: string, restricted = false): string | null {
+  // Lot R7 : sur la production (`VITE_PRODUCTION=1`), `?api=` ne peut viser qu'elle-même : un lien piégé n'obtient jamais l'identifiant secret.
+  const base = apiFromAddress(fromUrl, restricted, origin) || env || "";
   // Lot R4 (plateforme) : `/` = le serveur de la même origine (Firebase Hosting renvoie `/api/**` vers Cloud Run) : aucune requête CORS.
   if (base === SAME_ORIGIN_API) return origin ? origin.replace(/\/+$/, "") : null;
   return base ? base.replace(/\/+$/, "") : null;

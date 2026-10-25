@@ -20,6 +20,7 @@ import {
   type Level,
 } from "@cdj/jump-sim";
 import { WithHeaders, cacheHeaders } from "./cache";
+import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, MedaillePortail, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { JUMP_LIVES_SCHEMA, createJumpLives } from "./jumpLives";
@@ -465,7 +466,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       throw new HttpError(400, "invalid_replay", "Un essai part du départ du niveau");
     }
     await beforeReplay?.();
-    platform.spendReplays(); // lot R5 : plafond global de rejeux de l'instance (503 au-delà)
+    platform.spendReplays(replayUnits(replay.runs)); // lots R5 et R7 : plafond global de rejeux de l'instance, proportionnel à la durée (503 au-delà)
     // 5. Le rejeu : la seule source du temps et des morts.
     let r;
     try {

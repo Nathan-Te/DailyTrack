@@ -10,6 +10,10 @@ on:
       - .github/workflows/stabilite.yml
   workflow_dispatch:
 
+# Lot R7 (audit de sécurité) : lecture seule.
+permissions:
+  contents: read
+
 concurrency:
   group: stabilite-${{ github.ref }}
   cancel-in-progress: true
@@ -21,7 +25,7 @@ jobs:
       matrix: ${{ steps.liste.outputs.matrix }}
       repetitions: ${{ steps.liste.outputs.repetitions }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - id: liste
         run: |
           node -e '
@@ -42,13 +46,13 @@ jobs:
     env:
       E2E_ALL_BROWSERS: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: browsers
         with:
           path: ~/.cache/ms-playwright
@@ -82,7 +86,7 @@ jobs:
           passed=$(count passed); failed=$(count failed); flaky=$(count flaky)
           echo "### $FICHIER${TITRE:+ › $TITRE} ($PROJET) : ${passed:-0} réussis, ${failed:-0} échecs, ${flaky:-0} instables, $N passages demandés par test, sans relance" >> "$GITHUB_STEP_SUMMARY"
           exit $code
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: failure()
         with:
           name: stabilite-${{ strategy.job-index }}
