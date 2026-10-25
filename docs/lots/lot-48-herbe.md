@@ -90,7 +90,7 @@ Passage route ↔ herbe : chaque roue lit son revêtement (comme toujours), le d
 
 ## 6. Captures avant / après
 
-Outil : `apps/web/e2e/captures-lot48.spec.ts` (`CAPTURES=1 LABEL=avant|apres …`, en tête du fichier). Images dans `docs/lots/lot-48/avant/` et `docs/lots/lot-48/apres/` : la Campagne du 25/10 (herbe d'avant) avant et après (le décor plus sombre autour), la Campagne du 04/11 (herbe de course) et le scénario `herbe` ; chacune **depuis la voiture** (`-voiture`), **caméra loin** (`-loin`) et **de haut** (la miniature, `-de-haut`).
+Outil : `apps/web/e2e/captures-lot48.spec.ts` (`CAPTURES=1 LABEL=avant|apres …`, en tête du fichier). Images dans `docs/lots/lot-48/avant/` et `docs/lots/lot-48/apres/` : la Campagne du 25/10 (herbe d'avant) avant et après (le décor plus sombre autour), la Campagne du 04/11 (herbe de course) et le scénario `herbe` ; chacune **depuis la voiture** (`-voiture`), **caméra loin** (`-loin`) et **de haut** (la miniature, `-de-haut`). **Ce qu'on y voit** : avant, l'herbe d'avant de la piste et l'herbe autour sont la même nappe verte (seuls les rebords et les touffes la bordent) ; après, l'herbe de course est un vert tendre tondu en bandes, bordé de deux lignes blanches, sur un fond de champs plus sombre — vue de haut, la portion d'herbe de course se lit d'un coup d'œil.
 
 ## 7. Vérifié / non vérifié / décisions pour Nathan
 
