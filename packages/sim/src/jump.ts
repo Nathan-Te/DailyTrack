@@ -71,7 +71,10 @@ function jumpMaxSpeed(gap: number, rise: number, runout: number, params: Readonl
   return lo;
 }
 
-const isLanding = (b: Block) => !isCurve(b.kind) && b.kind !== "gap" && b.kind !== "kick" && b.kind !== "jump";
+/** Réception dans un virage (lot 49) : longueur comptée comme réception (m), dont 8 m de garde (`jumpMaxSpeed` reçoit `runout − 8`). */
+export const CURVE_LANDING = 32;
+
+const isLanding =(b: Block) => !isCurve(b.kind) && b.kind !== "gap" && b.kind !== "kick" && b.kind !== "jump";
 
 /** Les sauts d'un circuit (une rampe `K` suivie d'au moins un vide `G`), avec leur fenêtre de vitesse au bord de la rampe. */
 export function trackJumps(track: Track, params: Readonly<CarParams> = DEFAULT_CAR_PARAMS): JumpInfo[] {
@@ -91,6 +94,10 @@ export function trackJumps(track: Track, params: Readonly<CarParams> = DEFAULT_C
     // Réception : les blocs droits, montées et descentes qui suivent, jusqu'au premier virage, vide, rampe ou la fin.
     let runout = 0;
     for (let j = i; j < blocks.length && isLanding(blocks[j]!); j++) runout += CELL;
+    // Lot 49 : réception dans un virage (figure `reception-virage`) — la voiture vole droit, la route tourne sous elle : elle doit toucher
+    // au début de l'arc (les `CURVE_LANDING` premiers mètres, où la route s'écarte encore peu de la ligne droite). Aucun circuit d'avant
+    // n'a de virage juste derrière un vide : leurs fenêtres ne changent pas.
+    if (runout === 0 && blocks[i] && isCurve(blocks[i]!.kind)) runout = CURVE_LANDING;
     const gap = gapCells * CELL;
     out.push({
       kick: k.index,

@@ -24,6 +24,9 @@ import {
   longestPlainStraight,
   generatorVersionOf,
   MAX_BRAKING_ADD,
+  themeOccurrence,
+  themeOfVersion,
+  vedetteOf,
   parseTrack,
   reach,
   reliefOf,
@@ -207,22 +210,34 @@ describe("composition d'un circuit par figures", () => {
     }
   });
 
-  it("contient au moins deux techniques, une portion rapide, le passage signature du thème et un dénivelé d'au moins 12 m", () => {
+  it("contient au moins deux techniques (lot 49, v18 : la vedette du thème tient lieu de l'une), une portion rapide, le passage signature du thème et un dénivelé d'au moins 12 m", () => {
     for (const day of DAYS) {
       const c = circuit(day);
       const figs = c.figures.map((f) => figureByName(f.name)!);
-      expect(figs.filter((f) => f.category === "technique").length, `${c.date} : ${figs.map((f) => f.name).join(" ")}`).toBeGreaterThanOrEqual(2);
+      const theme = themeOfVersion(THEMES[c.theme], generatorVersionOf(day));
+      const vedette = generatorVersionOf(day) >= 18 ? vedetteOf(theme, themeOccurrence(day, c.theme)) : null;
+      if (vedette) expect(figs.map((f) => f.name), c.date).toContain(vedette);
+      expect(figs.filter((f) => f.category === "technique").length + (vedette && figureByName(vedette)!.category !== "technique" ? 1 : 0), `${c.date} : ${figs.map((f) => f.name).join(" ")}`).toBeGreaterThanOrEqual(2);
       expect(figs.some(isFast), c.date).toBe(true);
       expect(c.figures.map((f) => f.name), c.date).toContain(SIGNATURE_FIGURE[THEMES[c.theme].signature]);
       expect(reliefOf(c.spec.split(" ")), c.date).toBeGreaterThanOrEqual(MIN_RELIEF);
     }
   });
 
-  it("ne met un saut ni en première ni en dernière figure", () => {
+  it("ne met un saut ni en première ni en dernière figure (lot 49, v18 : un saut en tête part de deux droites de plus, un saut en dernière figure garde sa réception)", () => {
     for (const day of DAYS) {
-      const figs = circuit(day).figures.map((f) => figureByName(f.name)!);
-      expect(figs[0]!.jump, circuit(day).date).toBeFalsy();
-      expect(figs[figs.length - 1]!.jump, circuit(day).date).toBeFalsy();
+      const c = circuit(day);
+      const figs = c.figures.map((f) => figureByName(f.name)!);
+      if (generatorVersionOf(day) < 18) {
+        expect(figs[0]!.jump, c.date).toBeFalsy();
+        expect(figs[figs.length - 1]!.jump, c.date).toBeFalsy();
+        continue;
+      }
+      const kinds = c.track.blocks.map((b) => b.kind);
+      // En tête : le départ puis les deux droites d'élan ajoutées, avant la figure (et sa propre approche).
+      if (figs[0]!.jump) expect(kinds.slice(0, 3), c.date).toEqual(["straight", "straight", "straight"]);
+      // En queue : au moins trois blocs de réception (droites, pentes) entre le dernier vide et l'arrivée.
+      if (figs[figs.length - 1]!.jump) expect(kinds.length - 1 - kinds.lastIndexOf("gap"), c.date).toBeGreaterThanOrEqual(4);
     }
   });
 
@@ -302,9 +317,17 @@ describe("rotation par jour (sans générer les jours précédents)", () => {
     for (const day of DAYS) {
       const c = composeFigures(day, 0);
       if (!c) continue;
-      const theme = themeForDay(day);
-      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? [])];
-      for (const f of c.figures) if (isRested(f.name, day)) expect(exempt, `jour ${day} : ${f.name}`).toContain(f.name);
+      const v18 = generatorVersionOf(day) >= 18;
+      const theme = themeOfVersion(themeForDay(day), generatorVersionOf(day));
+      // Lot 49 (v18) : le repos suit le numéro d'apparition du thème (k + ⌊k / n⌋), la vedette n'est jamais au repos, et une figure de freinage franc ou de
+      // portion rapide peut l'être si aucune autre ne convient (sans super turbo, un thème n'en a que trois ou quatre).
+      const k = themeOccurrence(day, theme.name);
+      const restDay = v18 ? k + Math.floor(k / (theme.figures.vedettes?.length ?? 3)) : day;
+      const exempt = [SIGNATURE_FIGURE[theme.signature], ...(theme.figures.require ?? []), ...(v18 ? [...(theme.figures.requireAlso ?? []), vedetteOf(theme, k)] : [])];
+      for (const f of c.figures) {
+        const fig = figureByName(f.name)!;
+        if (isRested(f.name, restDay) && !(v18 && (fig.braking || fig.category === "rapide" || fig.turbo))) expect(exempt, `jour ${day} : ${f.name}`).toContain(f.name);
+      }
     }
   });
 });

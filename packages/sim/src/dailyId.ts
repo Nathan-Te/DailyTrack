@@ -32,8 +32,19 @@ export const BASCULE_LOT_48 = daysFromCivil(2026, 11, 4);
 /** Générateur des jours d'avant la bascule du lot 48 (à partir de celle du lot 34). */
 export const GENERATOR_BEFORE_48 = 16;
 
-/** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : 15 avant la bascule du lot 34, 16 avant celle du lot 48, la dernière ensuite. */
-export const generatorVersionOf = (day: number): number => (day < BASCULE_LOT_34 ? GENERATOR_BEFORE_34 : day < BASCULE_LOT_48 ? GENERATOR_BEFORE_48 : GENERATOR_VERSION);
+/**
+ * Lot 49 — **date de bascule** de l'identité des thèmes (générateur v18 : les fiches d'identité, les douze nouvelles figures, la variété garantie).
+ * Le lot 48 n'étant pas encore en production au moment du lot, **la même date que lui** (mercredi 04/11/2026) : la v17 ne sert alors à aucun jour.
+ * **À confirmer par Nathan selon la date de mise en production** : si le lot 48 part seul avant, cette constante passe au premier jour ni passé, ni en
+ * cours, ni joué à la mise en production du lot 49 (et `UPDATE_GOLDEN=1` sur `golden-daily.test.ts`, qui refuse de réécrire un jour d'avant).
+ */
+export const BASCULE_LOT_49 = BASCULE_LOT_48;
+/** Générateur des jours d'avant la bascule du lot 49 (à partir de celle du lot 48). */
+export const GENERATOR_BEFORE_49 = 17;
+
+/** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : 15 avant la bascule du lot 34, 16 avant celle du lot 48, 17 avant celle du lot 49, la dernière ensuite. */
+export const generatorVersionOf = (day: number): number =>
+  day < BASCULE_LOT_34 ? GENERATOR_BEFORE_34 : day < BASCULE_LOT_48 ? GENERATOR_BEFORE_48 : day < BASCULE_LOT_49 ? GENERATOR_BEFORE_49 : GENERATOR_VERSION;
 
 /**
  * Identifiant du circuit d'un jour. La variante 0 (le circuit d'origine) n'a pas de suffixe : les circuits d'avant le lot 14

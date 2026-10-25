@@ -28,6 +28,7 @@ import {
   type CarState,
   type SurfaceKind,
   type World,
+  generatorVersionOf,
 } from "../src/index";
 
 // Tests chiffrés du lot 48 : l'herbe de course (`turf`, notation `S/z`). Les seuils sont recopiés dans docs/lots/lot-48-herbe.md :
@@ -322,7 +323,7 @@ describe("lot 48 : générateur v17, la Campagne sur l'herbe de course à partir
       if (themeForDay(d).name !== "campagne") continue;
       const c = dailyCircuit(d);
       expect(c.fallback, formatDay(d)).toBe(false);
-      expect(c.track.id).toBe(`jour-${formatDay(d)}-g17`);
+      expect(c.track.id).toBe(`jour-${formatDay(d)}-g${generatorVersionOf(d)}`); // lot 49 : v18 depuis la même bascule ; l'herbe de course reste
       expect(hasTurf(c.spec), formatDay(d)).toBe(true);
       expect(c.authorMs).toBeGreaterThanOrEqual(AUTHOR_MIN_MS);
       expect(c.authorMs).toBeLessThanOrEqual(AUTHOR_MAX_MS);
