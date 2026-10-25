@@ -2,7 +2,7 @@ id: mur-seul
 intention: Remonter deux grands murs tout seul, saut mural après saut mural, en revenant vers chacun.
 etiquettes: mural vertical
 famille: mur
-mutateurs: garde sol-friable denivele
+mutateurs: garde sol-friable denivele hausse surface
 format: 3
 paliers: 16 4
 repeter: haut rangees 12-12
@@ -12,6 +12,9 @@ variante: haut=2
 variante: haut=3 +garde
 variante: haut=1 +sol-friable
 variante: haut=3 +denivele:2
+variante: haut=1 +hausse:2
+variante: haut=2 +hausse:-2
+variante: haut=2 +surface:glace
 grille:
 ..........
 ..........
@@ -35,3 +38,5 @@ grille:
 zone garde 3 13-14 <
 zone sol-friable 4-6 10
 zone denivele 7-9
+zone hausse 4-6 10
+zone surface 4-6 10

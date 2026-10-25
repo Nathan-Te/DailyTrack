@@ -211,7 +211,9 @@ describe("niveau du jour : quotas et budget", () => {
     }
   });
 
-  it("repos : chaque morceau d'un groupe au repos est absent ce jour-là ; groupes non vides, de tailles égales à un près ; REST_OPEN groupes ouverts par jour", () => {
+  // Lot 19 : le repos par groupes ne vaut plus que pour la référence v3 (g9) ; les niveaux v4 suivent la règle de variété (`variete.test.ts`).
+  const levelsV3 = DATES.slice(0, 12).map((d) => dailyLevel(d, null, 3));
+  it("repos (référence v3) : chaque morceau d'un groupe au repos est absent ce jour-là ; groupes non vides, de tailles égales à un près ; REST_OPEN groupes ouverts par jour", () => {
     const sizes = new Array<number>(REST_GROUPS).fill(0);
     for (const m of MODULES) sizes[restGroup(m.id)]!++;
     for (const n of sizes) expect(n).toBeGreaterThan(0);
@@ -223,14 +225,14 @@ describe("niveau du jour : quotas et budget", () => {
       expect(open.every((g) => isOpenGroup((g + REST_GROUPS - 1) % REST_GROUPS, L.day) || isOpenGroup((g + 1) % REST_GROUPS, L.day))).toBe(true);
       expect(isOpenGroup((((REST_OPEN * L.day) % REST_GROUPS) + REST_GROUPS) % REST_GROUPS, L.day)).toBe(true);
     }
-    for (const L of levels) for (const p of L.pieces) expect(isRestedModule(p.id, L.day), `${L.date} ${p.id}`).toBe(false);
+    for (const L of levelsV3) for (const p of L.pieces) expect(isRestedModule(p.id, L.day), `${L.date} ${p.id}`).toBe(false);
   });
 
-  it("deux jours consécutifs n'ont en commun que des morceaux des 2 × REST_OPEN − REST_GROUPS groupes ouverts les deux jours", () => {
-    for (let k = 1; k < levels.length; k++) {
-      const a = new Set(levels[k - 1]!.pieces.map((p) => p.id));
-      const common = levels[k]!.pieces.filter((p) => a.has(p.id));
-      const both = Array.from({ length: REST_GROUPS }, (_, g) => g).filter((g) => isOpenGroup(g, levels[k]!.day) && isOpenGroup(g, levels[k - 1]!.day));
+  it("deux jours consécutifs (référence v3) n'ont en commun que des morceaux des 2 × REST_OPEN − REST_GROUPS groupes ouverts les deux jours", () => {
+    for (let k = 1; k < levelsV3.length; k++) {
+      const a = new Set(levelsV3[k - 1]!.pieces.map((p) => p.id));
+      const common = levelsV3[k]!.pieces.filter((p) => a.has(p.id));
+      const both = Array.from({ length: REST_GROUPS }, (_, g) => g).filter((g) => isOpenGroup(g, levelsV3[k]!.day) && isOpenGroup(g, levelsV3[k - 1]!.day));
       expect(both).toHaveLength(2 * REST_OPEN - REST_GROUPS);
       for (const p of common) expect(both).toContain(restGroup(p.id));
     }

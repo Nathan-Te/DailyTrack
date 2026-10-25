@@ -145,6 +145,18 @@ export const URL_OPTIONS: readonly UrlOption[] = [
     values: ["demo"],
   },
   {
+    name: "semaine",
+    description:
+      "Lot 19 : outil de la variété (en français, chargé à la demande, sans Three.js) : les 7 niveaux du jour à partir de cette date (AAAA-MM-JJ), côte à côte — pour chacun une miniature du niveau et la liste de ses morceaux de base ; un morceau présent dans plusieurs des 7 jours est surligné (en jaune, la miniature le marque aussi). Calculé par le générateur en vigueur (aucun fichier figé n'est lu). Exemple : `?semaine=2026-10-27`.",
+    values: [],
+  },
+  {
+    name: "generateur",
+    description:
+      "Avec `semaine` : `13` montre la même semaine telle que l'aurait faite le générateur g13 (d'avant le lot 19), lue dans `outils/semaine-g13.json` (du 27/10 au 23/11/2026, de quoi comparer à l'œil) au lieu de la calculer.",
+    values: ["13"],
+  },
+  {
     name: "zones",
     description: "Dessine les zones tactiles (←, →, saut, bande haute) et un point par doigt posé : de quoi vérifier les frontières sur un vrai téléphone.",
     values: [],
@@ -189,6 +201,9 @@ export interface UrlChoices {
   watchFirst: boolean;
   /** La galerie des morceaux (`?modules`, ou un `?module=` inconnu). */
   gallery: boolean;
+  /** Lot 19 : l'outil de la variété (`?semaine=AAAA-MM-JJ`, numéro de jour), null sans lui ; `&generateur=13` : la semaine en g13 (fichier). */
+  semaine: number | null;
+  semaineG13: boolean;
   /** Le morceau à jouer (`?module=<id>`), sa variante, son entrée, et la lecture de sa solution (`&solution`) ; null : un scénario. */
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
   /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Lot 11 : sur le niveau du jour, un thème différent de celui de la date est un **essai** ; sur un morceau ou un scénario, il reste cosmétique. */
@@ -208,9 +223,10 @@ export function readUrlOptions(search: string): UrlChoices {
   const scenario = params.get("scenario");
   const debug = params.has("debug");
   const mod = moduleOf(params);
-  const gallery = params.has("modules") || (params.has("module") && mod === null);
+  const semaine = parseDay(params.get("semaine") ?? "");
+  const gallery = semaine === null && (params.has("modules") || (params.has("module") && mod === null));
   const chosen = scenario === null ? null : (SCENARIOS as readonly string[]).includes(scenario) ? (scenario as Scenario) : "essai";
-  const daily = chosen === null && mod === null && !gallery;
+  const daily = chosen === null && mod === null && !gallery && semaine === null;
   const g = params.get("ghost");
   const ghost = g === "off" || g === "best" || g === "first" ? g : null;
   return {
@@ -233,6 +249,8 @@ export function readUrlOptions(search: string): UrlChoices {
     watchBest: params.get("watch") === "best",
     watchFirst: daily && params.get("watch") === "first",
     gallery,
+    semaine,
+    semaineG13: semaine !== null && params.get("generateur") === "13",
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
     metronome: params.get("metronome") !== "off",
@@ -280,6 +298,11 @@ export function moduleHref(target: { id: string; variant: number; entry: ModuleE
 }
 
 /** Lien vers la galerie des morceaux. */
+/** Lot 19 : l'outil de la variété sur la semaine qui commence à `date` (AAAA-MM-JJ), en g13 (fichier) ou avec le générateur en vigueur. */
+export function semaineHref(date: string, g13: boolean, from: UrlChoices): string {
+  return `?semaine=${date}${g13 ? "&generateur=13" : ""}${from.debug ? "&debug" : ""}`;
+}
+
 export function galleryHref(from: UrlChoices): string {
   return `?${["modules", ...carried(from)].join("&")}`;
 }

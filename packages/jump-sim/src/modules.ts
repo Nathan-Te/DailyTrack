@@ -2,8 +2,9 @@ import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, stepAttempt, type Attemp
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
-import { START_AT_SPAWN, replayStartState } from "./replay";
-import { MODULE_SOLUTIONS, MODULE_TEXTS } from "./catalog";
+import { START_AT_SPAWN, encodeReplay, replayStartState, toRuns } from "./replay";
+import { MODULE_PACKED, MODULE_TEXTS } from "./catalog";
+import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
 import { SECTION_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
 import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, sawCenter, type Level } from "./level";
@@ -59,6 +60,18 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //                                                 `+vent:<sens>:rafale` : en rafales (`WIND_GUST_PROFILE`) ; la variante n'est permise qu'en forêt
 //   zone denivele <colonnes>                      `+denivele:<k>` : les colonnes de la zone (jusqu'au bout de la grille) descendent de k
 //                                                 rangées (k < 0 : montent) ; la sortie aussi (« finit plus bas » ou plus haut)
+// Lot 19, **mutateurs de silhouette** (ce que l'œil reconnaît d'un passage) :
+//   zone hausse <colonnes> <rangée>               `+hausse:<k>` (k de −3 à 3) : le haut de ces colonnes pleines, à la rangée, monte de k rangées
+//                                                 (les k cases vides au-dessus deviennent pleines) ou descend de −k (les −k premières cases
+//                                                 pleines se vident) : une marche, un mur plus haut ou plus bas
+//   zone ecart <colonnes>                         `+ecart:<k>` (k : −1, 1, 2 ou 3) : ces colonnes (un trou, un fossé, un écart entre deux
+//                                                 murs) sont recopiées 1 + k fois, comme une plage `repeter` (elle ne doit en chevaucher aucune)
+//   zone decale <colonnes> <rangées>              `+decale:<dc>` ou `+decale:<dc>:<dr>` : les dangers du rectangle (pics, scies fixes `o` `O`,
+//                                                 points des scies mobiles) se déplacent de dc colonnes et dr rangées ; un pic arrive sur un
+//                                                 support du même côté (sol sous `^`, plafond sur `v`, mur derrière `<` `>`)
+//   zone echange <colonnes> <rangées>             `+echange:scies` : les pics du rectangle deviennent de petites scies fixes `o` ;
+//                                                 `+echange:pics` : ses petites scies fixes deviennent des pics tournés vers leur support. Une
+//                                                 variante échangée n'est gardée que si sa note est celle de la variante d'origine (même exigence)
 // Le résultat est un morceau ordinaire, vérifié comme les autres (paliers, hauteur, plats), résolu par le solveur ; une variante mutée au
 // pas près, au raccord sous 90 % ou sans solution est retirée du fichier.
 //
@@ -85,8 +98,8 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
 export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent"] as const;
-/** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13). */
-export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent"] as const;
+/** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
+export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
 /** Au plus ce nombre de mutateurs par variante, et de variantes par morceau (lot 7). */
 export const MAX_MUTATIONS = 2;
@@ -228,6 +241,16 @@ function parseZone(words: readonly string[], width: number, height: number, fail
       if (words.length !== 5 || words[4]!.length !== 1 || !groups.includes(words[4]!)) fail(`« zone ${name} <colonnes> <rangées> <${groups.split("").join("|")}> » attendu`);
       return zone(cols(words[2]), rows(words[3]), words[4]);
     }
+    case "hausse":
+      if (words.length !== 4) fail("« zone hausse <colonnes> <rangée> » attendu");
+      return zone(cols(words[2]), rows(words[3]));
+    case "ecart":
+      if (words.length !== 3) fail("« zone ecart <colonnes> » attendu");
+      return zone(cols(words[2]), [0, height - 1]);
+    case "decale":
+    case "echange":
+      if (words.length !== 4) fail(`« zone ${name} <colonnes> <rangées> » attendu`);
+      return zone(cols(words[2]), rows(words[3]));
     case "denivele": {
       if (words.length !== 3) fail("« zone denivele <colonnes> » attendu");
       const c = cols(words[2]);
@@ -382,12 +405,12 @@ export function parseModule(text: string): ModuleDef {
     mutations.push(muts);
     for (const w of spec.split(/\s+/).filter(Boolean)) {
       if (w.startsWith("+")) {
-        const mm = /^\+([a-z-]+)(?::(-?[a-z0-9:]+))?$/.exec(w);
+        const mm = /^\+([a-z-]+)(?::(-?[a-z0-9:-]+))?$/.exec(w);
         if (!mm || !mutators.includes(mm[1] as MutatorName)) fail(`variante ${k} : mutateur « ${w} » non accepté (${mutators.join(", ") || "aucun"})`);
         const name = mm![1] as MutatorName;
         const arg = mm![2] ?? "";
         const okArg =
-          name === "clignotant" ? arg in BLINK_PROFILES : name === "vent" ? /^(haut|gauche|droite)(:rafale)?$/.test(arg) : name === "alterne" ? arg === "" : name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : name === "surface" ? (SURFACE_ARGS as readonly string[]).includes(arg) : arg === "";
+          name === "clignotant" ? arg in BLINK_PROFILES : name === "vent" ? /^(haut|gauche|droite)(:rafale)?$/.test(arg) : name === "alterne" ? arg === "" : name === "plafond" ? arg === "" || arg === "nu" || arg === "pics" : name === "denivele" ? /^-?[1-9]\d?$/.test(arg) : name === "patrouille" ? arg === "" || /^[1-9]\d{0,4}$/.test(arg) : name === "surface" ? (SURFACE_ARGS as readonly string[]).includes(arg) : name === "hausse" ? /^-?[1-3]$/.test(arg) : name === "ecart" ? /^(-1|[1-3])$/.test(arg) : name === "decale" ? /^-?\d(:-?\d)?$/.test(arg) && arg !== "0" && arg !== "0:0" : name === "echange" ? arg === "scies" || arg === "pics" : arg === "";
         if (!okArg) fail(`variante ${k} : argument « ${arg} » de ${name} invalide`);
         if (muts.some((x) => x.name === name)) fail(`variante ${k} : ${name} deux fois`);
         muts.push({ name, arg });
@@ -442,7 +465,12 @@ export interface MutatedTemplate {
   grid: string[];
   annex: string[];
   denivele: { from: number; k: number } | null;
+  /** Lot 19 : les écarts élargis (`+ecart`), des plages de colonnes du gabarit recopiées `copies` fois au déroulé. */
+  ecarts: { from: number; to: number; copies: number }[];
 }
+
+/** Lot 19 : les tuiles sur lesquelles un pic peut être posé (pleines, quelle que soit leur surface). */
+const SUPPORTS = "#x*[]~bdAB";
 
 /**
  * Applique les mutateurs d'une variante au **gabarit** d'un morceau (avant le déroulé des plages répétées), dans l'ordre. Fonction pure : le
@@ -452,10 +480,17 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
   const grid = def.grid.map((r) => r.split(""));
   const annex = [...def.annex];
   let denivele: MutatedTemplate["denivele"] = null;
+  const ecarts: MutatedTemplate["ecarts"] = [];
   const fail = (s: string): never => {
     throw new ModuleError(`Morceau « ${def.id} » : ${s}`);
   };
   const cell = (c: number, r: number) => grid[r]![c]!;
+  const H = grid.length;
+  const W = grid[0]!.length;
+  const supported = (c: number, r: number) => c >= 0 && r >= 0 && c < W && r < H && SUPPORTS.includes(grid[r]![c]!);
+  /** Le pic qui tient sur la case (c, r) : sol dessous, plafond dessus, mur à droite, mur à gauche ; vide s'il n'y a aucun support. */
+  const spikeFor = (c: number, r: number) => (supported(c, r + 1) ? "^" : supported(c, r - 1) ? "v" : supported(c + 1, r) ? "<" : supported(c - 1, r) ? ">" : "");
+  const holds = (t: string, c: number, r: number) => (t === "^" ? supported(c, r + 1) : t === "v" ? supported(c, r - 1) : t === "<" ? supported(c + 1, r) : t === ">" ? supported(c - 1, r) : true);
   const set = (c: number, r: number, v: string) => {
     grid[r]![c] = v;
   };
@@ -468,6 +503,8 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
       const prof = BLINK_PROFILES[m.arg]!;
       annex.push(`clignote ${prof.cycle} ${prof.solid} ${prof.shift}`);
     }
+    // Lot 19 : `decale` et `echange` doivent toucher au moins un danger, toutes zones du mutateur réunies.
+    let touched = 0;
     for (const z of zones) {
       const where = `${m.name} (colonnes ${z.c0}-${z.c1})`;
       switch (m.name) {
@@ -531,6 +568,84 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
           annex.push(`scie mutee${patrol++ || ""} ${words.join(" ")}`);
           break;
         }
+        case "hausse": {
+          // Lot 19 : le haut de ces colonnes (plein à la rangée) monte ou descend de k rangées.
+          const k = Number(m.arg);
+          for (let c = z.c0; c <= z.c1; c++) {
+            if (!SUPPORTS.includes(cell(c, z.r0)) || (z.r0 > 0 && cell(c, z.r0 - 1) !== ".")) fail(`${where} : (${c}, ${z.r0}) n'est pas le haut d'une colonne pleine`);
+            if (k > 0) {
+              for (let r = z.r0 - k; r < z.r0; r++) {
+                if (r < 0 || cell(c, r) !== ".") fail(`${where} : pas de place pour monter de ${k} en colonne ${c}`);
+                set(c, r, cell(c, z.r0));
+              }
+            } else {
+              for (let r = z.r0; r < z.r0 - k; r++) {
+                if (r >= H - 1 || !SUPPORTS.includes(cell(c, r)) || !SUPPORTS.includes(cell(c, r + 1))) fail(`${where} : la colonne ${c} n'est pas assez pleine pour descendre de ${-k}`);
+              }
+              const top = cell(c, z.r0);
+              for (let r = z.r0; r < z.r0 - k; r++) set(c, r, ".");
+              set(c, z.r0 - k, top);
+            }
+          }
+          break;
+        }
+        case "ecart":
+          // Lot 19 : recopié au déroulé, comme une plage `repeter` (`buildModuleDef`).
+          ecarts.push({ from: z.c0, to: z.c1, copies: 1 + Number(m.arg) });
+          break;
+        case "decale": {
+          // Lot 19 : les dangers du rectangle se déplacent d'un bloc (tous retirés, puis posés à leur nouvelle place).
+          const [dc, dr = 0] = m.arg.split(":").map(Number) as [number, number?];
+          const moved: { c: number; r: number; t: string }[] = [];
+          for (let c = z.c0; c <= z.c1; c++) {
+            for (let r = z.r0; r <= z.r1; r++) {
+              if (!"^v<>oO".includes(cell(c, r))) continue;
+              moved.push({ c: c + dc, r: r + dr!, t: cell(c, r) });
+              set(c, r, ".");
+            }
+          }
+          for (const h of moved) {
+            if (h.c < 0 || h.r < 0 || h.c >= W || h.r >= H || cell(h.c, h.r) !== ".") fail(`${where} : (${h.c}, ${h.r}) n'est pas libre pour « ${h.t} »`);
+            if (!holds(h.t, h.c, h.r)) fail(`${where} : « ${h.t} » sans support en (${h.c}, ${h.r})`);
+            set(h.c, h.r, h.t);
+          }
+          touched += moved.length;
+          for (let i = 0; i < annex.length; i++) {
+            const words = annex[i]!.split(/\s+/);
+            if (words[0] !== "scie") continue;
+            annex[i] = words
+              .map((w, k) => {
+                const pm = k >= 5 ? /^(\d+)('?),(\d+)('?)$/.exec(w) : null;
+                if (!pm) return w;
+                const c = Number(pm[1]);
+                const r = Number(pm[3]);
+                if (c < z.c0 || c > z.c1 || r < z.r0 || r > z.r1) return w;
+                if (c + dc < 0 || c + dc >= W || r + dr! < 0 || r + dr! >= H) fail(`${where} : le point ${w} sort du gabarit`);
+                touched++;
+                return `${c + dc}${pm[2]},${r + dr!}${pm[4]}`;
+              })
+              .join(" ");
+          }
+          break;
+        }
+        case "echange": {
+          // Lot 19 : pics ↔ petites scies fixes, à la même place.
+          for (let c = z.c0; c <= z.c1; c++) {
+            for (let r = z.r0; r <= z.r1; r++) {
+              const t = cell(c, r);
+              if (m.arg === "scies" && "^v<>".includes(t)) {
+                set(c, r, "o");
+                touched++;
+              } else if (m.arg === "pics" && t === "o") {
+                const spike = spikeFor(c, r);
+                if (!spike) fail(`${where} : la scie (${c}, ${r}) n'a aucun support pour un pic`);
+                set(c, r, spike);
+                touched++;
+              }
+            }
+          }
+          break;
+        }
         case "denivele":
           denivele = { from: z.c0, k: Number(m.arg) };
           // Appliqué après le déroulé des plages (`buildModuleDef`) : seulement vérifié ici (aucune scie dans la zone).
@@ -546,8 +661,10 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
           break;
       }
     }
+    if (m.name === "decale" && touched === 0) fail(`decale : aucun danger à déplacer`);
+    if (m.name === "echange" && touched === 0) fail(`echange : rien à échanger`);
   }
-  return { grid: grid.map((r) => r.join("")), annex, denivele };
+  return { grid: grid.map((r) => r.join("")), annex, denivele, ecarts };
 }
 
 /** Les mutateurs d'une variante, écrits comme dans le fichier (`+plafond:pics +denivele:2`), vide sans mutateur. */
@@ -641,7 +758,15 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
     if (e instanceof ModuleError) throw new ModuleError(where(e.message));
     throw e;
   }
-  const cols = unroll(tpl.grid[0]!.length, def.repeats.filter((r) => r.axis === "colonnes"), values);
+  // Lot 19 : un écart élargi (`+ecart`) se déroule comme une plage `repeter` de plus (paramètre interne `~ecart<n>`).
+  const colRepeats: ModuleRepeat[] = def.repeats.filter((r) => r.axis === "colonnes");
+  const unrollValues: Record<string, number> = { ...values };
+  tpl.ecarts.forEach((e, n) => {
+    if (colRepeats.some((r) => r.from <= e.to && e.from <= r.to)) throw new ModuleError(where(`ecart ${e.from}-${e.to} : chevauche une plage répétée`));
+    colRepeats.push({ param: `~ecart${n}`, axis: "colonnes", from: e.from, to: e.to });
+    unrollValues[`~ecart${n}`] = e.copies;
+  });
+  const cols = unroll(tpl.grid[0]!.length, colRepeats, unrollValues);
   const rows = unroll(tpl.grid.length, def.repeats.filter((r) => r.axis === "rangees"), values);
   const width = cols.src.length;
   if (width < 1) throw new ModuleError(where("grille vide"));
@@ -801,8 +926,15 @@ export function moduleDef(id: string): ModuleDef {
 }
 
 /** **La** fonction qui construit un morceau du catalogue (solveur, tests, galerie, assemblage). Pure et déterministe. */
+const built = new Map<string, BuiltModule>();
+
+/** Lot 19 : sans couloir de lancement, une variante construite est gardée (fonction pure : le générateur en construit des milliers par jour). */
 export function buildModule(id: string, variant: number, options: BuildOptions = {}): BuiltModule {
-  return buildModuleDef(moduleDef(id), variant, options);
+  if (options.lancement) return buildModuleDef(moduleDef(id), variant, options);
+  const key = `${id}:${variant}`;
+  let m = built.get(key);
+  if (!m) built.set(key, (m = buildModuleDef(moduleDef(id), variant)));
+  return m;
 }
 
 // ——— Solutions et exigence ———
@@ -1048,6 +1180,61 @@ export interface CatalogFile {
   exigenceVersion: number;
   modules: Readonly<Record<string, { variants: readonly CatalogVariant[] }>>;
 }
+
+/**
+ * Lot 19 : le catalogue **tel qu'il est embarqué** (`src/catalog.ts`, `MODULE_PACKED`) : pour chaque variante, ses deux solutions en
+ * `[séries, entryTick, exitTick, note]` (0 : pas de solution). L'en-tête de la rediffusion (format, version, `module:<id>:<n>`, départ à
+ * l'arrêt ou lancé) et le nombre de pas (la somme des séries) se déduisent : `unpackCatalog` rend exactement `CatalogFile` (test : la
+ * projection de `modules/solutions.json`). Les séries sont `varint(count × 8 + bits)` en base64url, comme dans la rediffusion.
+ */
+export type PackedSolution = readonly [runs: string, entryTick: number, exitTick: number, exigence: number] | 0;
+export interface PackedCatalog {
+  v: number;
+  x: number;
+  m: Readonly<Record<string, readonly (readonly [PackedSolution, PackedSolution])[]>>;
+}
+
+/** Les séries d'une rediffusion (commandes pas à pas), en base64url : ce que `packCatalog` garde d'une solution. */
+export function packRuns(inputs: readonly number[]): string {
+  const bytes: number[] = [];
+  for (const r of toRuns(inputs)) pushVarint(bytes, r.count * 8 + r.bits);
+  return toBase64Url(bytes);
+}
+
+/** `PackedCatalog` → `CatalogFile` (lot 19). */
+export function unpackCatalog(p: PackedCatalog): CatalogFile {
+  const modules: Record<string, { variants: CatalogVariant[] }> = {};
+  for (const [id, list] of Object.entries(p.m)) {
+    modules[id] = {
+      variants: list.map((pair, variant) => {
+        const one = (s: PackedSolution, elan: number): CatalogSolution | null => {
+          if (s === 0) return null;
+          const bytes = fromBase64Url(s[0]);
+          const runs: { count: number; bits: number }[] = [];
+          for (let i = 0; i < bytes.length; ) {
+            let v = 0;
+            let mul = 1;
+            for (;;) {
+              const b = bytes[i++]!;
+              v += (b & 127) * mul;
+              if (b < 128) break;
+              mul *= 128;
+            }
+            runs.push({ count: idiv(v, 8), bits: v % 8 });
+          }
+          const ticks = runs.reduce((n, r) => n + r.count, 0);
+          const code = encodeReplay({ simVersion: p.v, levelId: `module:${id}:${variant}`, start: { checkpoint: -1, held: 0, time: 0, sections: [], elan }, runs });
+          return { code, ticks, entryTick: s[1], exitTick: s[2], exigence: s[3] };
+        };
+        return { arret: one(pair[0], 0), elan: one(pair[1], 1) };
+      }),
+    };
+  }
+  return { jumpSimVersion: p.v, exigenceVersion: p.x, modules };
+}
+
+/** Les solutions embarquées, dépliées une fois au chargement (lot 19 : `MODULE_PACKED`). */
+export const MODULE_SOLUTIONS: CatalogFile = unpackCatalog(MODULE_PACKED);
 
 /**
  * Lot 15 : la version de la simulation des **morceaux joués seuls** (`buildModule`) : 3, une horloge par section qui démarre à l'entrée du

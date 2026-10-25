@@ -2,7 +2,7 @@ id: rebonds-doux
 intention: Courir sur une piste semée de ressorts : chaque rebond porte loin, il suffit de garder le rythme.
 etiquettes: respiration ressort
 famille: rebonds-doux
-mutateurs: plafond denivele vent
+mutateurs: plafond denivele vent surface clignotant
 format: 3
 paliers: 12 12
 repeter: long colonnes 6-6
@@ -12,6 +12,8 @@ variante: long=3
 variante: long=2 +plafond
 variante: long=1 +denivele:2
 variante: long=1 +vent:droite
+variante: long=1 +surface:glace
+variante: long=2 +clignotant:calme
 grille:
 .................
 .................
@@ -32,3 +34,5 @@ grille:
 zone plafond 0-16 5
 zone denivele 14-16
 zone vent 0-16 2-11
+zone surface 0-2 12
+zone clignotant 4-7 12-12 b

@@ -22,8 +22,8 @@ import { DAY_MS, makeApi, parisDayStart, playerId, TEST_DB } from "./helpers";
 // Lot P1 (plateforme) : le classement du jour de DailyJump, prouvé par rejeu. `POST /api/jump/submit` (débit → taille → jour → versions → rejeu),
 // la table `jump_results`, `GET /api/jump/day/<date>/board`, les égalités, le jour passé figé. Tourne sur SQLite et sur libSQL.
 
-/** Jour de test fixe : le 20/10/2026 (niveau généré, pas figé). Midi à Paris. */
-const DAY = daysFromCivil(2026, 10, 20);
+/** Jour de test fixe : le 29/10/2026 (niveau généré, pas figé ; lot 19 : le 20/10 en g14 n'a presque plus d'essais fictifs qui arrivent). Midi à Paris. */
+const DAY = daysFromCivil(2026, 10, 29);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 

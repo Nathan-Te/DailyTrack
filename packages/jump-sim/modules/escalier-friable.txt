@@ -2,7 +2,7 @@ id: escalier-friable
 intention: Gravir un escalier de blocs friables suspendu au-dessus du vide, d'une seule traite.
 etiquettes: friable vertical
 famille: escalier
-mutateurs: patrouille denivele
+mutateurs: patrouille denivele hausse
 format: 3
 paliers: 17 7
 repeter: large colonnes 5-5
@@ -12,6 +12,7 @@ repeter: large colonnes 17-17
 variante: large=2
 variante: large=2 +patrouille
 variante: large=2 +denivele:2
+variante: large=2 +hausse:1
 grille:
 ........................
 ........................
@@ -36,3 +37,4 @@ grille:
 
 zone patrouille o 240 aller-retour 10,3 18,3
 zone denivele 20-23
+zone hausse 12-14 11

@@ -2,7 +2,7 @@ id: mur-friable
 intention: Monter une cheminée au-dessus d'un puits de pics : son mur gauche s'effrite, pas question de traîner, puis le seuil cède aussi.
 etiquettes: mural friable vertical
 famille: cheminee
-mutateurs: plafond denivele
+mutateurs: plafond denivele ecart
 format: 3
 paliers: 17 7
 repeter: haut rangees 10-10
@@ -10,6 +10,7 @@ variante: haut=3
 variante: haut=4
 variante: haut=4 +denivele:2
 variante: haut=4 +plafond
+variante: haut=3 +ecart:1
 grille:
 ####..........
 ####..........
@@ -35,3 +36,4 @@ grille:
 
 zone plafond 6-13 3
 zone denivele 11-13
+zone ecart 4-5

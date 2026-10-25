@@ -4,6 +4,7 @@ import {
   AUTHOR_MIN_TICKS,
   DAILY_DRAWS,
   DAILY_MAX_ATTEMPTS,
+  DAILY_MAX_ATTEMPTS_V4,
   EXIGENCE_RATE_MAX,
   EXIGENCE_RATE_MIN,
   JOINT_TICKS,
@@ -18,6 +19,8 @@ import {
   fromRuns,
   initialAttempt,
   isRestedModule,
+  varietyExcluded,
+  SINGLE_CLOCK_VERSION,
   replayAttempt,
   JUMP_THEME_NAMES,
   mechanicOf,
@@ -70,8 +73,15 @@ const fallbacks = levels.filter((L) => L.fallback).length;
 line("### Tirages");
 line(`| mesure | valeur |`);
 line(`|---|---|`);
-line(`| tirages essayés (${DAILY_DRAWS} par jour, jusqu'à ${DAILY_MAX_ATTEMPTS} sans tirage valide) | ${all.length} |`);
+line(`| tirages essayés (${DAILY_DRAWS} par jour, jusqu'à ${levels[0]?.level.simVersion === SINGLE_CLOCK_VERSION ? DAILY_MAX_ATTEMPTS_V4 : DAILY_MAX_ATTEMPTS} sans tirage valide) | ${all.length} |`);
 line(`| composés (sans impasse) | ${composed} (${num((100 * composed) / all.length)} %) |`);
+// Lot 19 (v4) : les tirages sont prouvés dans l'ordre de leur score estimé ; un tirage composé peut être écarté sans rejeu (un mieux estimé est
+// valide) ou refusé sur l'estimation (exigence, tension, respiration) : le taux qui compte est celui des tirages **rejoués**.
+const spared = all.filter((a) => a.status === "écarté").length;
+const estimated = all.filter((a) => a.status === "refusé" && /estimée/.test(a.reason)).length;
+const replayed = composed - spared - estimated;
+line(`| lot 19 : écartés sans rejeu (un mieux estimé est valide) · refusés sur l'estimation | ${spared} · ${estimated} |`);
+line(`| lot 19 : **rejoués** (prouvés) · validés parmi les rejoués | ${replayed} · ${num((100 * valid) / (replayed || 1))} % |`);
 line(`| **validés** (rejeu sans mort, toutes les règles) | **${valid}** (${num((100 * valid) / all.length)} % des tirages, ${num((100 * valid) / composed)} % des composés) |`);
 line(`| tirage retenu (indice) : moyenne · maximum | ${num(stats(chosen).mean, 2)} · ${stats(chosen).max} |`);
 line(`| jours sans tirage valide parmi les ${DAILY_DRAWS} premiers | ${levels.filter((L) => L.attempts.length > DAILY_DRAWS).length} |`);
@@ -207,7 +217,8 @@ line("### Emploi des morceaux (niveaux qui le contiennent ; jours où il est dis
 line(`| morceau | niveaux | disponible | variantes (emplois) |`);
 line(`|---|---|---|---|`);
 for (const m of [...MODULES].sort((a, b) => (used.get(b.id) ?? 0) - (used.get(a.id) ?? 0))) {
-  const avail = levels.filter((L) => !isRestedModule(m.id, L.day)).length;
+  // Lot 19 : en v4, un morceau est disponible quand la règle de variété ne l'écarte pas ; la référence v3 garde le repos par groupes.
+  const avail = levels.filter((L) => (L.level.simVersion === SINGLE_CLOCK_VERSION ? !varietyExcluded(L.day).has(m.id) : !isRestedModule(m.id, L.day))).length;
   const vs = m.variants.map((_, v) => `${v}:${variants.get(`${m.id}:${v}`) ?? 0}`).join(" ");
   line(`| ${m.id} | ${used.get(m.id) ?? 0} | ${avail} | ${vs} |`);
 }

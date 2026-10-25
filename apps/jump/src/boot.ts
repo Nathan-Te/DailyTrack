@@ -16,8 +16,9 @@ import "./ecrans.css";
 import "./outils.css";
 import { readUrlOptions } from "./urlOptions";
 
-// Point d'entrée de la page : la galerie des morceaux (`?modules`, lot 4) ou le jeu. Chacun dans son propre fichier chargé à la demande :
+// Point d'entrée de la page : la galerie des morceaux (`?modules`, lot 4), l'outil de la variété (`?semaine=`, lot 19) ou le jeu. Chacun dans son propre fichier chargé à la demande :
 // la galerie n'embarque ni Three.js ni la boucle de jeu.
 const options = readUrlOptions(location.search);
-if (options.gallery) void import("./gallery").then((g) => g.mountGallery(options));
+if (options.semaine !== null) void import("./semaine").then((s) => s.mountSemaine(options));
+else if (options.gallery) void import("./gallery").then((g) => g.mountGallery(options));
 else void import("./main");

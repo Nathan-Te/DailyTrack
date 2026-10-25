@@ -149,9 +149,9 @@ describe("lot 18 — les remplaçantes passent toutes les validations", () => {
   }
 });
 
-describe("lot 18 — le générateur g13 ne pose que des phases de 1,5 s au moins", () => {
-  it("version du générateur : 13", () => {
-    expect(JUMP_GENERATOR_VERSION).toBe(13);
+describe("lot 18 — le générateur (g13, puis g14 au lot 19) ne pose que des phases de 1,5 s au moins", () => {
+  it("version du générateur : 14 (lot 19 ; la règle du lot 18 est inchangée)", () => {
+    expect(JUMP_GENERATOR_VERSION).toBe(14);
   });
 
   it("120 dates, tous thèmes : chaque clignotant posé (nuit, mais aussi `marelle` / `piliers` mutés) a des phases d'au moins 180 pas", () => {

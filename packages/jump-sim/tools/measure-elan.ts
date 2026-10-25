@@ -27,7 +27,7 @@ import {
   type Level,
   type PlayerState,
 } from "../src/index";
-import { MODULE_SOLUTIONS } from "../src/catalog";
+import { MODULE_SOLUTIONS } from "../src/modules";
 import { parseDay } from "@cdj/core";
 
 // `npm run measure:elan -w @cdj/jump-sim` — lot 8b : ce que changerait l'essai d'élan progressif (valeurs de départ `SPRINT_TRIAL_PARAMS`),

@@ -56,7 +56,8 @@ import {
   type CatalogFile,
   variantTheme,
 } from "../src/index";
-import { MODULE_SOLUTIONS, MODULE_TEXTS } from "../src/catalog";
+import { MODULE_TEXTS } from "../src/catalog";
+import { MODULE_SOLUTIONS } from "../src/modules";
 import { catalogOf, catalogSource, readSolutions } from "../tools/files";
 import { ELAN_FLAT_MAX, FLAT_MAX, flatLimit, flatsOf, longestFlat } from "../tools/plats";
 
@@ -406,7 +407,7 @@ id: essai-mutateurs
 intention: Tester les mutateurs.
 etiquettes: precision
 famille: essai
-mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface clignotant alterne vent
+mutateurs: plafond fosse sol-friable patrouille garde ressort denivele surface clignotant alterne vent hausse ecart decale echange
 format: 3
 paliers: 6 6
 repeter: large colonnes 4-4
@@ -438,6 +439,48 @@ zone surface 0-1 6
 zone clignotant 0-1 6-8 b
 zone alterne 8 6-8 A
 zone vent 3-5 0-5
+zone hausse 6-10 6
+zone ecart 3
+zone decale 3-5 0-5
+zone echange 5 5
+`;
+
+// Lot 19 : les mutateurs de silhouette sur un gabarit simple — un trou de pics (colonnes 3-7 au fond), un mur (8-9), une scie mobile, une
+// petite scie fixe posée sur le sol (12,5).
+const SIL = `
+id: essai-silhouette
+intention: Tester les mutateurs de silhouette.
+etiquettes: precision
+famille: essai
+mutateurs: hausse ecart decale echange
+format: 3
+paliers: 6 6
+repeter: large colonnes 10-10
+variante: large=1
+variante: large=1 +hausse:2
+variante: large=1 +hausse:-1
+variante: large=1 +ecart:3
+variante: large=1 +decale:1
+variante: large=1 +echange:scies
+variante: large=1 +echange:pics
+grille:
+..................
+..................
+..................
+..................
+..................
+........##..o.....
+###.....##########
+###.....##########
+###..^^.##########
+##################
+
+scie s o 120 aller-retour 6,2 6,4
+zone hausse 8-9 5
+zone ecart 3
+zone decale 3-7 2-8
+zone echange 3-7 8
+zone echange 12 5
 `;
 
 describe("mutateurs (lot 7)", () => {
@@ -445,7 +488,7 @@ describe("mutateurs (lot 7)", () => {
   const grid = (v: number) => buildModuleDef(def, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
 
   it("lit les zones et les mutateurs des variantes ; au plus deux par variante, dix variantes (lot 18), seulement ceux déclarés", () => {
-    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent"]);
+    expect(def.mutators).toEqual(["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"]);
     expect(MUTATORS).toEqual(def.mutators);
     expect([...def.zones.map((z) => z.name)].sort()).toEqual([...def.mutators].sort());
     expect(def.mutations[0]).toEqual([]);
@@ -517,6 +560,40 @@ describe("mutateurs (lot 7)", () => {
     expect(() => buildModuleDef(wrong, 2)).toThrow(/sol-friable.*au lieu d'un bloc/);
     const blocked = parseModule(MUT.replace("zone garde 5 5 <", "zone garde 6 6 <"));
     expect(() => buildModuleDef(blocked, 3)).toThrow(/garde.*occupée/);
+  });
+
+  it("lot 19 : `+hausse` monte ou descend le haut d'une colonne pleine, `+ecart` recopie ses colonnes comme une plage répétée", () => {
+    const sil = parseModule(SIL);
+    const mobile = (v: number) => buildModuleDef(sil, v).level.saws.find((x) => x.cycle > 0)!;
+    const g = (v: number) => buildModuleDef(sil, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
+    // v1 : le mur (colonnes 8-9, haut à la rangée 5) monte de 2 ; v2 : il descend de 1.
+    expect(g(1).map((r) => r.slice(8, 10))).toEqual(["..", "..", "..", "##", "##", "##", "##", "##", "##", "##"]);
+    expect(g(2).map((r) => r.slice(8, 10))).toEqual(["..", "..", "..", "..", "..", "..", "##", "##", "##", "##"]);
+    // v3 : le trou (colonne 3) recopié trois fois de plus ; tout ce qui est à droite se décale, scies comprises.
+    expect(g(3)[8]).toBe("###.....^^.##########");
+    expect(buildModuleDef(sil, 3).width).toBe(buildModuleDef(sil, 0).width + 3);
+    expect(mobile(3).points[0]!.x - mobile(0).points[0]!.x).toBe(3 * 4096);
+    const bad = (from: string, to: string, v: number) => () => buildModuleDef(parseModule(SIL.replace(from, to)), v);
+    expect(bad("zone hausse 8-9 5", "zone hausse 8-9 6", 1)).toThrow(/haut d'une colonne pleine/);
+    expect(bad("zone ecart 3", "zone ecart 10", 3)).toThrow(/chevauche une plage/);
+    expect(() => parseModule(SIL.replace("+hausse:2", "+hausse:4"))).toThrow(/argument/);
+  });
+
+  it("lot 19 : `+decale` déplace pics et scies d'un bloc (un pic garde son support) ; `+echange` change pics et petites scies fixes, à la même place", () => {
+    const sil = parseModule(SIL);
+    const mobile = (v: number) => buildModuleDef(sil, v).level.saws.find((x) => x.cycle > 0)!;
+    const g = (v: number) => buildModuleDef(sil, v).ascii.split("\n\n")[0]!.split("\n").map((r) => r.slice(PALIER_GUARD + PALIER_LENGTH, -PALIER_LENGTH - 2));
+    // v4 : les pics du fond (colonnes 5-6) et la scie (point 6,2) avancent d'une colonne.
+    expect(g(4)[8]).toBe("###...^^##########");
+    expect(mobile(4).points[0]!.x - mobile(0).points[0]!.x).toBe(4096);
+    // v5 : pics → petites scies fixes ; v6 : la scie fixe `o` (posée sur le sol) → un pic vers le haut.
+    expect(g(5)[8]!.slice(5, 7)).toBe("oo");
+    expect(g(6)[5]!.slice(12, 13)).toBe("^");
+    const bad = (from: string, to: string, v: number) => () => buildModuleDef(parseModule(SIL.replace(from, to)), v);
+    // Un pic ne se pose pas dans le vide ; une scie sans support ne devient pas un pic ; rien à échanger : refusé.
+    expect(bad("+decale:1", "+decale:0:-2", 4)).toThrow(/sans support|n'est pas libre/);
+    expect(bad("zone echange 12 5", "zone echange 12 3", 6)).toThrow(/rien à échanger/);
+    expect(() => parseModule(SIL.replace("+echange:pics", "+echange:lave"))).toThrow(/argument/);
   });
 
   it("toutes les variantes mutées du catalogue sont des morceaux conformes : paliers, hauteur, plats", () => {

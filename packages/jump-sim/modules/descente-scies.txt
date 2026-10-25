@@ -3,7 +3,7 @@ intention: Dévaler des corniches de plus en plus basses pendant que des scies m
 etiquettes: scie vertical precision
 famille: descente
 enchainement: long
-mutateurs: fosse sol-friable denivele
+mutateurs: fosse sol-friable denivele hausse decale
 format: 3
 paliers: 4 22
 variante: cycle=240
@@ -12,6 +12,9 @@ variante: cycle=300
 variante: cycle=200 +fosse
 variante: cycle=180 +sol-friable
 variante: cycle=240 +denivele:2
+variante: cycle=240 +hausse:1
+variante: cycle=240 +decale:0:2
+variante: cycle=180 +hausse:-1
 grille:
 .........................................................
 .........................................................
@@ -48,3 +51,5 @@ zone fosse 15-17 24
 zone sol-friable 12-14 8
 zone sol-friable 30-32 14
 zone denivele 54-56
+zone hausse 24-26 12
+zone decale 9-47 0-24

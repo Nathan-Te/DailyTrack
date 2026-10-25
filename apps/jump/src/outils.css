@@ -420,3 +420,102 @@ body.gallery > :not(#gallery) {
   background: var(--dj-encre-douce);
   color: var(--dj-papier);
 }
+
+/* --- ?semaine : l'outil de la variété (lot 19), 7 niveaux du jour côte à côte, qui défile --------------------------------------------------------- */
+body.semaine > :not(#semaine) {
+  display: none !important;
+}
+#semaine {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: var(--dj-encre);
+  color: var(--dj-papier);
+  font-family: var(--dj-police-texte);
+  font-size: var(--dj-taille-15);
+  line-height: 1.4;
+  user-select: text;
+  -webkit-user-select: text;
+}
+#semaine h1 {
+  margin: 4px 0 6px;
+  font-family: var(--jump-police);
+  font-weight: 400;
+  font-size: var(--dj-taille-24);
+}
+#semaine .lead,
+#semaine .count {
+  margin: 0 0 10px;
+  color: var(--dj-creme-2);
+}
+#semaine .jours {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+#semaine .jour {
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--dj-ecran);
+  border-radius: var(--dj-rayon-tuile);
+}
+#semaine .jour h2 {
+  margin: 0;
+  font-family: var(--dj-police-chiffres);
+  font-size: var(--dj-taille-15);
+}
+#semaine .meta {
+  margin: 2px 0 8px;
+  color: var(--dj-creme-2);
+  font-size: var(--dj-taille-13);
+  overflow-wrap: anywhere;
+}
+#semaine .mini {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  border: var(--dj-trait) solid var(--dj-encre-douce);
+  border-radius: var(--dj-rayon-tuile);
+}
+#semaine .morceaux {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--dj-taille-13);
+}
+#semaine .morceaux li {
+  padding: 2px 6px;
+  border: var(--dj-trait) solid var(--dj-encre-douce);
+  border-radius: var(--dj-rayon-bouton);
+}
+#semaine .morceaux li.repete {
+  background: var(--jump-jaune);
+  border-color: var(--jump-jaune);
+  color: var(--dj-encre);
+  font-weight: 700;
+}
+#semaine .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  min-width: var(--dj-cible);
+  margin: 4px 0;
+  padding: 0 14px;
+  border-radius: var(--dj-rayon-bouton);
+  background: var(--jump-jaune);
+  color: var(--dj-encre);
+  font-weight: 700;
+  text-decoration: none;
+  touch-action: manipulation;
+}

@@ -1,5 +1,5 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
-import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
 import { JUMP_GENERATOR_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
 import { TILE_EMPTY, TILE_SOLID, cycleMod, parseLevel, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
@@ -169,6 +169,11 @@ export const REST_WEIGHT = 4;
 /** Tirages par jour (on garde le meilleur valide) et tentatives au plus (au-delà : le secours). */
 export const DAILY_DRAWS = 6;
 export const DAILY_MAX_ATTEMPTS = 40;
+/**
+ * Lot 19 (v4) : tentatives au plus avant le secours. La règle de variété écarte une dizaine à une vingtaine de morceaux de base par jour :
+ * plus d'impasses (une composition qui n'aboutit pas ne coûte presque rien : aucun rejeu). Réglé par la mesure : secours 0 sur 365 dates.
+ */
+export const DAILY_MAX_ATTEMPTS_V4 = 120;
 /** Sels des graines : `mixSeed(jour, DAILY_SALT)`, et des groupes de repos. */
 const DAILY_SALT = 0x6a6f7572;
 
@@ -256,6 +261,72 @@ export function isRestedModule(id: string, day: number): boolean {
   return !isOpenGroup(restGroup(id), day);
 }
 
+// ——— Variété (lot 19, générateur g14, niveaux v4) ———
+
+/**
+ * **Un morceau de base ne revient pas avant `VARIETY_DAYS` jours** (toutes variantes confondues) : deux niveaux du jour à moins de 3 jours
+ * l'un de l'autre n'ont aucun morceau en commun. Remplace le repos par groupes pour les niveaux v4 (la référence v3 le garde, au bit près).
+ * **Choisi par la mesure** (README du lot 19) : sous la règle bornée ci-dessous, W = 3 garde 0 secours sur 365 dates ; W = 4 en donne 6 à 12
+ * sur 120 dates (même avec 150 tirages par jour), W = 5 davantage : le catalogue est trop mince.
+ */
+export const VARIETY_DAYS = 3;
+/**
+ * **Règle bornée : des époques de `VARIETY_EPOCH` jours**, alignées sur `VARIETY_ORIGIN`. Dans une époque, chaque jour écarte les morceaux
+ * des jours qui le précèdent dans l'époque (à moins de `VARIETY_DAYS`) ; les `VARIETY_DAYS − 1` derniers jours d'une époque écartent **aussi**
+ * ceux des premiers jours de l'époque suivante (qui, eux, ne regardent jamais en arrière au-delà de leur époque). Aucune chaîne : un niveau
+ * dépend au plus des jours de son époque et des premiers jours de la suivante (`VARIETY_EPOCH + VARIETY_DAYS − 1` niveaux en tout, mis en
+ * cache). Mesuré : 6 jours, 0 secours (4 jours : 3 secours sur 120 dates, le dernier jour d'une époque écarte 4 jours de morceaux).
+ */
+export const VARIETY_EPOCH = 6;
+/** Le premier jour g14 (J + 2 de la PR du lot 19) : début de la première époque. */
+export const VARIETY_ORIGIN = daysFromCivil(2026, 10, 27);
+/**
+ * **Les jours déjà figés comptent avec leur contenu réel** : les morceaux de base des jours qui précèdent `VARIETY_ORIGIN` (figés par la mise
+ * en production du 25/10/2026, générateur g10 : `apps/jump/public/levels/`, test `apps/jump/test/figes.test.ts`). Les premiers jours de la
+ * première époque les écartent comme s'ils étaient de leur époque.
+ */
+export const VARIETY_FROZEN: Readonly<Record<string, readonly string[]>> = {
+  "2026-10-25": ["descente-scies", "mur-seul", "nuit-portes", "ressort-plafond", "tunnel", "marelle", "piliers", "ascenseur", "demi-tour", "cheminee-pics", "saut-plafond", "nuit-escalier"],
+  "2026-10-26": ["iles-scie", "pont-friable", "puits", "chute-pics", "saut-long", "mur-trous", "glace-promenade", "glace-cheminee", "demi-tour", "mur-friable", "glace-corniches", "glace-mur"],
+};
+
+/** Position d'un jour dans son époque (0 à `VARIETY_EPOCH − 1`). */
+export function varietyPosition(day: number): number {
+  return (((day - VARIETY_ORIGIN) % VARIETY_EPOCH) + VARIETY_EPOCH) % VARIETY_EPOCH;
+}
+
+/**
+ * Les jours dont le niveau v4 du jour `day` écarte les morceaux de base (règle bornée, voir `VARIETY_EPOCH`) : ceux qui le précèdent dans son
+ * époque à moins de `VARIETY_DAYS` jours (avant `VARIETY_ORIGIN` : les jours figés de `VARIETY_FROZEN`), et, pour les derniers jours d'une
+ * époque, les premiers jours de la suivante à moins de `VARIETY_DAYS` jours. Toute paire de jours à moins de `VARIETY_DAYS` jours y est
+ * couverte exactement une fois (par le plus tardif dans une époque, par celui de la première époque à travers une coupure).
+ */
+export function varietyNeighbours(day: number): number[] {
+  const pos = varietyPosition(day);
+  const out: number[] = [];
+  for (let k = 1; k < VARIETY_DAYS; k++) {
+    if (k <= pos || (day - k < VARIETY_ORIGIN && day >= VARIETY_ORIGIN)) out.push(day - k);
+  }
+  for (let k = 1; k < VARIETY_DAYS; k++) {
+    const q = pos + k;
+    if (q >= VARIETY_EPOCH && q - VARIETY_EPOCH < VARIETY_DAYS - 1) out.push(day + k);
+  }
+  return out;
+}
+
+/** Les morceaux de base du niveau du jour `day` (son thème, v4) : le contenu figé avant `VARIETY_ORIGIN`, sinon celui que donne `dailyLevel`. */
+export function dailyBaseIds(day: number): readonly string[] {
+  const frozen = day < VARIETY_ORIGIN ? VARIETY_FROZEN[formatDay(day)] : undefined;
+  return frozen ?? dailyLevel(day).pieces.map((p) => p.id);
+}
+
+/** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
+export function varietyExcluded(day: number): Set<string> {
+  const out = new Set<string>();
+  for (const d of varietyNeighbours(day)) for (const id of dailyBaseIds(d)) out.add(id);
+  return out;
+}
+
 /** Les médailles d'un niveau, en pas (le temps de l'auteur est le palier au-dessus de l'or). */
 export interface JumpMedals {
   author: number;
@@ -330,6 +401,28 @@ export const V4_ONLY_VARIANTS: Readonly<Record<string, readonly number[]>> = Obj
   "nuit-relais": [3, 4, 5],
   marelle: [6],
   piliers: [6],
+  // Lot 19 (g14) : les variantes des mutateurs de silhouette (`hausse`, `ecart`, `decale`, `echange`) et de la mécanique du thème posée sur des
+  // morceaux génériques ; ajoutées au bout de leurs morceaux, inconnues de la référence v3.
+  ascenseur: [6, 7],
+  "cheminee-vide": [4, 5],
+  "chute-pics": [5, 6, 7],
+  corniches: [5, 6],
+  "demi-tour": [6],
+  "descente-scies": [6, 7, 8],
+  "escalier-friable": [3],
+  "iles-scie": [6],
+  lucarne: [4],
+  "mur-friable": [4],
+  "mur-seul": [6, 7, 8],
+  pendule: [6, 7, 8],
+  "petits-trous": [6, 7, 8],
+  plongeon: [6],
+  puits: [4, 5],
+  quinconce: [6],
+  "rebonds-doux": [5, 6],
+  "saut-long": [6, 7],
+  "scie-ronde": [6],
+  tunnel: [5, 6],
 });
 
 let tooFast: Record<string, number[]> | null = null;
@@ -433,8 +526,11 @@ export interface DailyExigence {
 /** Ce qu'a donné un tirage. */
 export interface DailyAttempt {
   index: number;
-  /** `impasse` : la composition n'a pas abouti ; `refusé` : composé mais le rejeu échoue ou une règle n'est pas tenue ; `valide`. */
-  status: "impasse" | "refusé" | "valide";
+  /**
+   * `impasse` : la composition n'a pas abouti ; `refusé` : composé mais le rejeu échoue ou une règle n'est pas tenue ; `valide` ; lot 19 (v4) :
+   * `écarté` : composé, pas prouvé (un tirage de son lot, mieux estimé, est valide ; `score` est alors le score estimé).
+   */
+  status: "impasse" | "refusé" | "valide" | "écarté";
   /** Pourquoi (impasse ou refus), sinon vide. */
   reason: string;
   /** Morceaux (`id:variante`) quand le tirage a été composé. */
@@ -523,13 +619,14 @@ function stack(picks: readonly Slot[], extras: readonly number[] = []): { tops: 
 const per = (part: number, whole: number) => idiv(part * 1000, whole);
 
 /** Compose une suite de morceaux (sans l'assembler). Rend la raison de l'échec si elle n'aboutit pas. */
-function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number): Slot[] | string {
+function compose(day: number, rng: Rng, theme: JumpThemeName, simVersion: number, excluded: ReadonlySet<string> | null): Slot[] | string {
   // Lot 11 : les variantes réservées à un autre thème sortent du catalogue ; pour un thème sans mécanique, ce qui reste est exactement le
   // catalogue d'avant (même ordre, mêmes variantes), donc la même composition.
   const mechanic = mechanicOf(theme);
   const pool = choices(simVersion)
     .map((list) => list.filter((c) => c.theme === null || c.theme === theme))
-    .filter((list) => list.length > 0 && !isRestedModule(list[0]!.id, day));
+    // Lot 19 (v4) : les morceaux de base des jours voisins sont écartés (`varietyExcluded`) ; la référence v3 garde le repos par groupes.
+    .filter((list) => list.length > 0 && (excluded ? !excluded.has(list[0]!.id) : !isRestedModule(list[0]!.id, day)));
   const picks: Slot[] = [];
   const used = new Set<string>();
   const families = new Set<string>();
@@ -833,7 +930,7 @@ type Step = (s: AttemptState, bits: number) => AttemptState;
  * le suit (la première colonne du morceau suivant), vivant, en course propre —, ou jusqu'à l'arrivée pour le dernier. Rend les commandes et
  * le pas où commence chaque morceau, ou la raison de l'échec.
  */
-function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[] } | string {
+function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[]; final: AttemptState } | string {
   const zoned = new Set(asm.slow.map((r) => r.piece));
   const level = asm.level;
   const step: Step = (s, bits) => stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
@@ -877,7 +974,7 @@ function chainSolutions(asm: Assembled): { inputs: number[]; starts: number[] } 
     }
     if (!done) return `${piece.id}:${piece.variant} n'aboutit pas (morceau ${k + 1})`;
   }
-  return { inputs, starts };
+  return { inputs, starts, final: s };
 }
 
 /** Ce qui suffit d'un morceau placé pour juger l'exigence : son exigence, son début et sa fin (pas). */
@@ -1046,6 +1143,64 @@ export function longestRunOf(level: Level, inputs: readonly number[]): number {
   return best;
 }
 
+/**
+ * Lot 19 : `palierTicksOf` et `longestRunOf` en un seul rejeu (mêmes résultats, au pas près : le générateur passe deux fois moins de temps à
+ * les mesurer).
+ */
+export function runStatsOf(level: Level, paliers: readonly Palier[], inputs: readonly number[], states?: AttemptState[]): { palierTicks: number[]; longestRun: number } {
+  const joints = paliers.slice(1, -1);
+  const palierTicks = joints.map(() => 0);
+  let s = initialAttempt(level);
+  let run = 0;
+  let longestRun = 0;
+  for (const bits of inputs) {
+    s = stepAttempt(s, bits, level, DEFAULT_JUMP_PARAMS);
+    states?.push(s);
+    if (s.status === ATTEMPT_DEAD) break;
+    const quiet = s.player.ground === 1 && (bits & INPUT_JUMP) === 0;
+    if (quiet) {
+      const col = centerCol(s.player);
+      for (let k = 0; k < joints.length; k++) if (col >= joints[k]!.col0 && col <= joints[k]!.col1) palierTicks[k]!++;
+    }
+    run = quiet ? run + 1 : 0;
+    if (run > longestRun) longestRun = run;
+    if (s.status === ATTEMPT_FINISHED) break;
+  }
+  return { palierTicks, longestRun };
+}
+
+/**
+ * Lot 19 (v4) : les règles d'exigence de `dailyProblems` (fenêtre de l'exigence par minute, dernier tiers au moins aussi exigeant que les deux
+ * autres, respiration au milieu) **sur la composition estimée** (durées des solutions mises bout à bout, `ticksOf`) : un tirage qui ne les tient
+ * pas est refusé sans rejeu. C'était le premier motif de refus après rejeu (mesuré) ; le rejeu les vérifie de nouveau sur le temps réel.
+ */
+function estimateProblem(picks: readonly Slot[]): string | null {
+  let t = 0;
+  const placed = picks.map((p) => {
+    const start = t;
+    t += ticksOf(p);
+    return { exigence: p.choice.exigence, start, end: t, rest: has(p.choice, "respiration") };
+  });
+  const e = exigenceOfPieces(placed, t);
+  if (e.rate < EXIGENCE_RATE_MIN || e.rate > EXIGENCE_RATE_MAX) return `exigence estimée ${e.rate} hors de [${EXIGENCE_RATE_MIN}, ${EXIGENCE_RATE_MAX}]`;
+  if (e.thirds[2] < e.thirds[0] || (TENSION_RISES && e.thirds[2] < e.thirds[1])) return `tension estimée : dernier tiers ${e.thirds[2]} (${e.thirds[0]}, ${e.thirds[1]})`;
+  for (const p of placed) {
+    const mid = per(p.start + p.end, 2 * t);
+    if (p.rest && (mid < RESPIRATION_FROM || mid > RESPIRATION_TO)) return `respiration estimée à ${mid} ‰`;
+  }
+  return null;
+}
+
+/**
+ * Lot 19 : le score **estimé** d'une composition (sans rejeu) : celui de `scoreOf` sur la somme des durées de ses solutions (`ticksOf`) et
+ * l'exigence ramenée à cette durée.
+ */
+function estimateScore(picks: readonly Slot[]): number {
+  const ticks = picks.reduce((n, p) => n + ticksOf(p), 0);
+  const sum = picks.reduce((n, p) => n + p.choice.exigence, 0);
+  return scoreOf(ticks, ticks > 0 ? idiv(sum * 10 * 60 * TICK_RATE, ticks) : 0);
+}
+
 /** Score d'un tirage valide : écart au centre de la durée et de l'exigence, en pour mille de chacun (plus petit = meilleur). */
 function scoreOf(ticks: number, rate: number): number {
   return per(Math.abs(ticks - AUTHOR_TARGET_TICKS), AUTHOR_TARGET_TICKS) + per(Math.abs(rate - EXIGENCE_RATE_CENTER), EXIGENCE_RATE_CENTER);
@@ -1077,15 +1232,19 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   } catch (e) {
     return `assemblage : ${(e as Error).message}`;
   }
+  const single = simVersion >= SINGLE_CLOCK_VERSION;
+  // Lot 19 (v4) : un niveau trop haut est refusé avant tout rejeu (la règle de `dailyProblems`, vérifiée plus tôt).
+  if (single && asm.level.height > MAX_DAILY_HEIGHT) return `hauteur ${asm.level.height} (au plus ${MAX_DAILY_HEIGHT})`;
   const chain = chainSolutions(asm);
   if (typeof chain === "string") return chain;
   const start = { checkpoint: -1, held: 0, time: 0, sections: [], elan: 0 };
   let replay: JumpReplay = { simVersion: SECTION_CLOCK_VERSION, levelId: id, start, runs: toRuns(chain.inputs) };
-  // La preuve : le rejeu, rien d'autre.
-  let result = replayAttempt(asm.level, replay, id);
+  // La preuve : le rejeu, rien d'autre. Lot 19 (v4) : la preuve est le rejeu v4 ci-dessous ; l'état v3 d'où l'on tire les phases est celui de la
+  // chaîne, qui vient de jouer exactement ces commandes depuis le départ (le rejeu v3 le referait au pas près ; la référence v3 le garde).
+  let result = single ? { finished: chain.final.status === ATTEMPT_FINISHED, deaths: [] as unknown[], time: chain.final.time, final: chain.final } : replayAttempt(asm.level, replay, id);
   if (!result.finished) return "le rejeu n'arrive pas";
   if (result.deaths.length > 0) return `le rejeu meurt ${result.deaths.length} fois`;
-  if (simVersion >= SINGLE_CLOCK_VERSION) {
+  if (single) {
     const v3Time = result.time;
     let ascii: string;
     try {
@@ -1099,6 +1258,8 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     if (!result.finished || result.deaths.length > 0 || result.time !== v3Time) return "horloge unique : la preuve ne passe plus sans attendre";
   }
   const total = result.time;
+  // Lot 19 : les états du rejeu de la preuve, gardés pour la voie lente (un seul rejeu de plus pour la course au sol et les voies lentes).
+  const states: AttemptState[] = [];
   const pieces = asm.pieces.map((p, k) => ({ ...p, start: chain.starts[k]!, end: k + 1 < asm.pieces.length ? chain.starts[k + 1]! : total }));
   const base: Built = {
     id,
@@ -1107,8 +1268,7 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     hash: textHash(asm.ascii),
     pieces,
     paliers: asm.paliers,
-    palierTicks: palierTicksOf(asm.level, asm.paliers, chain.inputs),
-    longestRun: longestRunOf(asm.level, chain.inputs),
+    ...runStatsOf(asm.level, asm.paliers, chain.inputs, states),
     replay,
     code: encodeReplay(replay),
     authorTicks: total,
@@ -1121,13 +1281,14 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
   const early = dailyProblems({ ...base, theme });
   if (early.length > 0) return { built: base, problems: early, cheap: [] };
   // Lot 16 : les voies lentes, mesurées contre la preuve.
-  const slow = slowRoutesOf(asm, chain.inputs, id, total);
+  const slow = slowRoutesOf(asm, chain.inputs, id, total, states);
   if (typeof slow === "string") return slow;
   const cheap = slow.filter((r) => r.slowTicks < r.fastTicks + slowCostMin(r.fastTicks)).map((r) => r.piece);
   const slowTicks = total + slow.reduce((n, r) => n + r.slowTicks - r.fastTicks, 0);
   const built: Built = { ...base, medals: medalsWithSlow(total, slow), slowRoutes: slow, slowTicks };
   const problems = [...early];
   problems.push(...slowShortcutProblems(asm));
+  problems.push(...slowRespawnProblems(asm, pieces));
   return { built, problems, cheap };
 }
 
@@ -1135,17 +1296,21 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
  * Lot 16 : la voie lente de chaque portion dure, jouée par son script (`slowScript`) dans le niveau final à partir de l'état de la preuve au
  * pas où son centre entre sur le palier d'entrée ; la portion rapide va de ce pas à la sortie canonique du palier suivant (ou à l'arrivée).
  */
-function slowRoutesOf(asm: Assembled, inputs: readonly number[], id: string, total: number): SlowRoute[] | string {
+function slowRoutesOf(asm: Assembled, inputs: readonly number[], id: string, total: number, known: readonly AttemptState[] = []): SlowRoute[] | string {
   if (asm.slow.length === 0) return [];
   const level = asm.level;
   // Les pas où la preuve entre sur chaque palier (centre dans ses colonnes) et où elle passe son bord droit.
   const enter = asm.paliers.map(() => -1);
   const leave = asm.paliers.map(() => -1);
-  const states: AttemptState[] = [];
+  // Lot 19 : les états déjà joués par `runStatsOf` (la même preuve sur le même niveau), sinon on les rejoue.
+  const states: AttemptState[] = known.length === inputs.length ? [...known] : [];
   let s = initialAttempt(level);
   for (let t = 0; t < inputs.length; t++) {
-    s = stepAttempt(s, inputs[t]!, level, DEFAULT_JUMP_PARAMS);
-    states.push(s);
+    if (states.length === inputs.length) s = states[t]!;
+    else {
+      s = stepAttempt(s, inputs[t]!, level, DEFAULT_JUMP_PARAMS);
+      states.push(s);
+    }
     const col = centerCol(s.player);
     asm.paliers.forEach((p, k) => {
       if (enter[k]! < 0 && col >= p.col0) enter[k] = t + 1;
@@ -1201,6 +1366,38 @@ export function medalsWithSlow(author: number, slow: readonly Pick<SlowRoute, "f
   const bronze = m.bronze < bronzeMin ? bronzeMin : m.bronze;
   const silver = m.silver < gold ? gold : m.silver > bronze ? bronze : m.silver;
   return { author, gold, silver, bronze };
+}
+
+/**
+ * Lot 19 — **une voie lente ne gêne pas la reprise d'un morceau voisin** : la géométrie d'une voie lente sort de son morceau — le mur gauche de
+ * sa cage se dresse juste après le palier de sortie du morceau d'avant, et une descente murée (`walls`) au-dessus du palier de sortie de la
+ * portion dure —, là où le morceau seul n'a que du vide. La preuve (solutions en élan) passe par construction ; une **reprise sur le point de
+ * passage** joue la solution « arrêt » du morceau : elle doit en sortir au bord du palier, en course propre, à la phase où elle attend l'horloge
+ * (la vérification que `daily.test.ts` fait sur 20 dates, posée en règle pour les morceaux voisins d'une voie lente : en g14, le 19/10/2026 —
+ * `chute-pics` v0 suivi de `mur-seul` v2 — et le 02/11/2026 l'avaient cassée). Rend ce qui ne va pas.
+ */
+export function slowRespawnProblems(asm: Pick<Assembled, "level" | "slow" | "paliers">, pieces: readonly Pick<DailyPiece, "id" | "variant" | "col0" | "entryRow">[]): string[] {
+  const out: string[] = [];
+  const lv = asm.level;
+  const hard = new Set(asm.slow.map((r) => r.piece));
+  const zoneOf = new Map(asm.slow.map((r) => [r.piece, r]));
+  for (let k = 1; k < pieces.length - 1; k++) {
+    if (!hard.has(k + 1) && !(zoneOf.get(k)?.walls.length ?? 0)) continue;
+    const p = pieces[k]!;
+    const sol = moduleSolutions(p.id, p.variant)?.arret;
+    if (!sol) continue;
+    const m = buildModule(p.id, p.variant);
+    const own = fromRuns(decodeReplay(sol.code).runs);
+    const e = replayAttempt(m.level, decodeReplay(sol.code)).final.sections[0] ?? 0;
+    const period = sectionPeriod(lv, k);
+    const time = 5000 + (period === 0 ? 0 : cycleMod(-e - (lv.sections[k]?.phase ?? 0) - 5000, period));
+    let s = checkpointAttempt(lv, { ...initialAttempt(lv), checkpoint: k - 1, time });
+    // Devant une portion dure, la reprise se joue depuis le palier « bis » de la zone (l'entrée du morceau seul).
+    if (hard.has(k)) s = { ...s, player: { ...s.player, x: s.player.x + (p.col0 - PALIER_LENGTH - asm.paliers[k]!.col0) * UNITS_PER_TILE } };
+    for (let t = 0; t < sol.exitTick && s.status === ATTEMPT_RUNNING; t++) s = stepAttempt(s, own[t]!, lv, DEFAULT_JUMP_PARAMS);
+    if (s.status !== ATTEMPT_RUNNING || centerCol(s.player) !== asm.paliers[k + 1]!.col1 + 1 || !isCleanRun(s.player)) out.push(`morceau ${k + 1} : une voie lente voisine gêne la reprise`);
+  }
+  return out;
 }
 
 /**
@@ -1360,18 +1557,19 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
     { id: "neon-couloir", variant: 2 },
   ],
   // Lot 13 : la forêt (courants d'air), choisie de même (`secours:modules -- --theme=foret`, 80 dates valides sur 80).
+  // Lot 19 (g14) : rechoisie (`secours:modules -- --theme=foret`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_FORET_V3`) casse la règle
+  // de la reprise près d'une voie lente (`slowRespawnProblems`).
   foret: [
-    { id: "scie-sol", variant: 1 },
-    { id: "tremplin", variant: 1 },
-    { id: "demi-tour", variant: 0 },
-    { id: "mur-friable", variant: 3 },
-    { id: "ressort-mur-iles", variant: 3 },
-    { id: "corniches", variant: 4 },
-    { id: "vent-piliers", variant: 1 },
-    { id: "chute-pics", variant: 0 },
-    { id: "ressort-scie", variant: 2 },
-    { id: "lucarne", variant: 3 },
-    { id: "quinconce", variant: 3 },
+    { id: "tunnel-scies", variant: 1 },
+    { id: "vent-puits", variant: 0 },
+    { id: "vent-rafale", variant: 0 },
+    { id: "saut-plafond", variant: 4 },
+    { id: "tunnel", variant: 0 },
+    { id: "vent-relais", variant: 1 },
+    { id: "puits", variant: 0 },
+    { id: "scies-jumelles", variant: 4 },
+    { id: "ressort-mur", variant: 3 },
+    { id: "cheminee-pics", variant: 1 },
   ],
 };
 
@@ -1403,14 +1601,35 @@ const FALLBACK_NUIT_V3: readonly { id: string; variant: number }[] = [
   { id: "nuit-portes", variant: 0 },
 ];
 
-/** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi). */
+/** Lot 19 : la suite de secours de la forêt d'avant (g9 à g13), gardée pour la référence v3. */
+const FALLBACK_FORET_V3: readonly { id: string; variant: number }[] = [
+  { id: "scie-sol", variant: 1 },
+  { id: "tremplin", variant: 1 },
+  { id: "demi-tour", variant: 0 },
+  { id: "mur-friable", variant: 3 },
+  { id: "ressort-mur-iles", variant: 3 },
+  { id: "corniches", variant: 4 },
+  { id: "vent-piliers", variant: 1 },
+  { id: "chute-pics", variant: 0 },
+  { id: "ressort-scie", variant: 2 },
+  { id: "lucarne", variant: 3 },
+  { id: "quinconce", variant: 3 },
+];
+
+/** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
 export function fallbackFor(theme: JumpThemeName, simVersion = SINGLE_CLOCK_VERSION): readonly { id: string; variant: number }[] {
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
+  if (simVersion < SINGLE_CLOCK_VERSION && theme === "foret") return FALLBACK_FORET_V3;
   return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
 }
 
 const cache = new Map<string, DailyLevel>();
+
+/** Lot 19 : oublie les niveaux gardés en mémoire (tests et mesures : une génération « à froid », dépendances de variété comprises). */
+export function forgetDailyLevels(): void {
+  cache.clear();
+}
 
 /**
  * **Le niveau du jour** `day` (numéro de jour de `@cdj/core`, la date de Paris lue hors de la simulation). Pur et déterministe : même date,
@@ -1430,13 +1649,8 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
   const seed = mixSeed(day, DAILY_SALT);
   const attempts: DailyAttempt[] = [];
   let best: { built: Built; index: number; score: number } | null = null;
-  for (let index = 0; index < DAILY_MAX_ATTEMPTS; index++) {
-    if (index >= DAILY_DRAWS && best) break;
-    const picks = compose(day, new Rng(mixSeed(seed, index)), theme, simVersion);
-    if (typeof picks === "string") {
-      attempts.push({ index, status: "impasse", reason: picks, pieces: [], ticks: 0, rate: 0, score: 0 });
-      continue;
-    }
+  /** Prouve un tirage composé, l'inscrit dans `attempts` et rend son résultat s'il est valide. */
+  const tryDraw = (index: number, picks: Slot[]): { built: Built; score: number; runOver: number } | null => {
     const names = picks.map((p) => `${p.choice.id}:${p.choice.variant}`);
     const proof = prove(
       picks.map((p) => ({ id: p.choice.id, variant: p.choice.variant })),
@@ -1446,7 +1660,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
     );
     if (typeof proof === "string") {
       attempts.push({ index, status: "refusé", reason: proof, pieces: names, ticks: 0, rate: 0, score: 0 });
-      continue;
+      return null;
     }
     const { built, problems } = proof;
     // Lot 16 (v4) : la piste sous la cage allonge la course au sol ; à score égal, le tirage dont la plus longue course passe 1,2 s perd.
@@ -1454,8 +1668,53 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
     const score = scoreOf(built.authorTicks, built.exigence.rate) + runOver;
     const status = problems.length > 0 ? "refusé" : "valide";
     attempts.push({ index, status, reason: problems.join(" ; "), pieces: names, ticks: built.authorTicks, rate: built.exigence.rate, score });
-    if (problems.length > 0) continue;
-    if (!best || score < best.score) best = { built, index, score };
+    return problems.length > 0 ? null : { built, score, runOver };
+  };
+  if (simVersion < SINGLE_CLOCK_VERSION) {
+    // La référence v3 (g9) : le meilleur des `DAILY_DRAWS` premiers tirages valides, au bit près comme avant.
+    for (let index = 0; index < DAILY_MAX_ATTEMPTS; index++) {
+      if (index >= DAILY_DRAWS && best) break;
+      const picks = compose(day, new Rng(mixSeed(seed, index)), theme, simVersion, null);
+      if (typeof picks === "string") {
+        attempts.push({ index, status: "impasse", reason: picks, pieces: [], ticks: 0, rate: 0, score: 0 });
+        continue;
+      }
+      const r = tryDraw(index, picks);
+      if (r && (!best || r.score < best.score)) best = { ...r, index };
+    }
+  } else {
+    // Lot 19 (g14) : les morceaux de base des jours voisins sont écartés, et les tirages sont **prouvés dans l'ordre de leur score estimé**
+    // (durée et exigence de la composition, sans rejeu) par lots de `DAILY_DRAWS` : le premier valide est retenu. Le score estimé suit le score
+    // rejoué à quelques pas près (les solutions sont mises bout à bout sans course entre deux) ; on prouve 2 à 3 tirages au lieu de 6 à 8, ce
+    // qui paie les niveaux voisins que la règle de variété fait calculer (« une génération d'un niveau sous 2 s »).
+    const excluded = varietyExcluded(day);
+    for (let from = 0; from < DAILY_MAX_ATTEMPTS_V4 && !best; from += DAILY_DRAWS) {
+      const batch: { index: number; picks: Slot[]; estimate: number }[] = [];
+      for (let index = from; index < from + DAILY_DRAWS && index < DAILY_MAX_ATTEMPTS_V4; index++) {
+        const picks = compose(day, new Rng(mixSeed(seed, index)), theme, simVersion, excluded);
+        if (typeof picks === "string") attempts.push({ index, status: "impasse", reason: picks, pieces: [], ticks: 0, rate: 0, score: 0 });
+        else batch.push({ index, picks, estimate: estimateScore(picks) });
+      }
+      batch.sort((a, b) => a.estimate - b.estimate || a.index - b.index);
+      // Le premier valide dont la plus longue course au sol tient sous 1,2 s (`LONGEST_RUN_TARGET`) arrête le lot ; sinon on prouve la suite du
+      // lot et le meilleur score rejoué l'emporte (le score estimé ne voit pas la course au sol).
+      let done = false;
+      for (const b of batch) {
+        if (done) {
+          attempts.push({ index: b.index, status: "écarté", reason: "un tirage mieux estimé est valide", pieces: b.picks.map((p) => `${p.choice.id}:${p.choice.variant}`), ticks: 0, rate: 0, score: b.estimate });
+          continue;
+        }
+        const early = estimateProblem(b.picks);
+        if (early) {
+          attempts.push({ index: b.index, status: "refusé", reason: early, pieces: b.picks.map((p) => `${p.choice.id}:${p.choice.variant}`), ticks: 0, rate: 0, score: 0 });
+          continue;
+        }
+        const r = tryDraw(b.index, b.picks);
+        if (r && (!best || r.score < best.score)) best = { ...r, index: b.index };
+        if (r && r.runOver === 0) done = true;
+      }
+    }
+    attempts.sort((a, b) => a.index - b.index);
   }
   let out: DailyLevel;
   if (best) out = { ...best.built, theme, forcedTheme: isForced, day, date: formatDay(day), number: levelNumber(day), attempts, chosen: best.index, fallback: false };

@@ -495,6 +495,52 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "7a9a0edc",
+    "fast": 173,
+    "costMin": 360,
+    "precise": [
+     29,
+     54,
+     57,
+     79,
+     82
+    ],
+    "boxes": [
+     {
+      "c0": 3,
+      "c1": 5,
+      "r0": 12,
+      "r1": 16
+     },
+     {
+      "c0": 5,
+      "c1": 7,
+      "r0": 9,
+      "r1": 13
+     },
+     {
+      "c0": 5,
+      "c1": 7,
+      "r0": 8,
+      "r1": 12
+     },
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 6,
+      "r1": 10
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "chute-pics": {
@@ -538,6 +584,63 @@
       "c1": 7,
       "r0": 0,
       "r1": 4
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "d86cc04c",
+    "fast": 212,
+    "costMin": 360,
+    "precise": [
+     22,
+     95,
+     107
+    ],
+    "boxes": [
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 0,
+      "r1": 4
+     },
+     {
+      "c0": 8,
+      "c1": 10,
+      "r0": 6,
+      "r1": 10
+     },
+     {
+      "c0": 8,
+      "c1": 10,
+      "r0": 8,
+      "r1": 12
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "7": {
+    "grid": "4c000922",
+    "fast": 223,
+    "costMin": 360,
+    "precise": [
+     41,
+     119
+    ],
+    "boxes": [
+     {
+      "c0": 3,
+      "c1": 5,
+      "r0": -1,
+      "r1": 3
+     },
+     {
+      "c0": 7,
+      "c1": 9,
+      "r0": 10,
+      "r1": 14
      }
     ],
     "detour": null,
@@ -677,6 +780,31 @@
       "c1": 11,
       "r0": 11,
       "r1": 15
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "3": {
+    "grid": "a1aaba76",
+    "fast": 328,
+    "costMin": 360,
+    "precise": [
+     18,
+     28
+    ],
+    "boxes": [
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 14,
+      "r1": 18
+     },
+     {
+      "c0": 3,
+      "c1": 5,
+      "r0": 12,
+      "r1": 16
      }
     ],
     "detour": null,
@@ -910,6 +1038,31 @@
     ],
     "detour": null,
     "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "1332babe",
+    "fast": 240,
+    "costMin": 360,
+    "precise": [
+     17,
+     25
+    ],
+    "boxes": [
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 8,
+      "r1": 12
+     },
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 7,
+      "r1": 11
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
    }
   },
   "mur-friable": {
@@ -947,6 +1100,31 @@
       "c1": 9,
       "r0": 8,
       "r1": 12
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "4": {
+    "grid": "f8070fa8",
+    "fast": 301,
+    "costMin": 360,
+    "precise": [
+     59,
+     130
+    ],
+    "boxes": [
+     {
+      "c0": 5,
+      "c1": 7,
+      "r0": 16,
+      "r1": 20
+     },
+     {
+      "c0": 9,
+      "c1": 11,
+      "r0": 10,
+      "r1": 14
      }
     ],
     "detour": null,
@@ -1038,6 +1216,77 @@
       "c1": 7,
       "r0": 7,
       "r1": 11
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "6": {
+    "grid": "20ba551c",
+    "fast": 245,
+    "costMin": 360,
+    "precise": [
+     23,
+     43,
+     113,
+     161
+    ],
+    "boxes": [
+     {
+      "c0": 2,
+      "c1": 4,
+      "r0": 13,
+      "r1": 17
+     },
+     {
+      "c0": 4,
+      "c1": 6,
+      "r0": 10,
+      "r1": 14
+     },
+     {
+      "c0": 5,
+      "c1": 7,
+      "r0": 7,
+      "r1": 11
+     },
+     {
+      "c0": 5,
+      "c1": 7,
+      "r0": 5,
+      "r1": 9
+     }
+    ],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "8": {
+    "grid": "21eb72a1",
+    "fast": 294,
+    "costMin": 360,
+    "precise": [
+     67,
+     195,
+     198
+    ],
+    "boxes": [
+     {
+      "c0": 4,
+      "c1": 6,
+      "r0": 8,
+      "r1": 12
+     },
+     {
+      "c0": 8,
+      "c1": 10,
+      "r0": 4,
+      "r1": 8
+     },
+     {
+      "c0": 8,
+      "c1": 10,
+      "r0": 3,
+      "r1": 7
      }
     ],
     "detour": null,
@@ -1680,6 +1929,31 @@
     "costMin": 360,
     "precise": [],
     "boxes": [],
+    "detour": null,
+    "verdict": "sans-detour"
+   },
+   "5": {
+    "grid": "7e49b8da",
+    "fast": 256,
+    "costMin": 360,
+    "precise": [
+     55,
+     102
+    ],
+    "boxes": [
+     {
+      "c0": 5,
+      "c1": 7,
+      "r0": 0,
+      "r1": 4
+     },
+     {
+      "c0": 6,
+      "c1": 8,
+      "r0": 7,
+      "r1": 11
+     }
+    ],
     "detour": null,
     "verdict": "sans-detour"
    }
