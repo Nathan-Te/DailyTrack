@@ -8,7 +8,7 @@ interface CdjDebug {
     howto: boolean;
     boardFolded: boolean;
     boardHidden: boolean;
-    settingsValues: { quality: string; particles: boolean; skids: boolean; shake: boolean; speedFeel: string; shadows: boolean; ghost: string; board: boolean; splits: boolean; unit: string };
+    settingsValues: { graphismes: string; particles: boolean; skids: boolean; shake: boolean; speedFeel: string; shadows: boolean; ghost: string; board: boolean; splits: boolean; unit: string };
     paused: boolean;
     quality: number;
     qualityLocked: boolean;
