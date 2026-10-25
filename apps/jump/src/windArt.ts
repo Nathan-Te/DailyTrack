@@ -32,10 +32,10 @@ import {
 // Le dessin des courants d'air (forêt, lot 13) — **affichage seul** : il ne lit que l'état de l'essai (`windLooks`).
 //   - un **contour** très discret (pointillés pâles) dessine chaque zone ;
 //   - avec les effets : des **feuilles et du pollen** circulent dans le sens du vent (un seul `Points`, tampons préalloués, au plus
-//     `WIND_PARTICLES_MAX` ; leur position est une fonction pure du temps : rien n'est créé en jeu) ; ils s'agitent pendant les 0,25 s qui
-//     précèdent une rafale ;
-//   - **sans particules** (mouvement réduit, effets « aucun », `?fx=off`) : des **flèches fixes** dans le sens du vent, allumées quand la zone
-//     souffle, qui s'éclaircissent pendant l'annonce (sans clignoter) : une information, jamais coupée ;
+//     `WIND_PARTICLES_MAX` ; leur position est une fonction pure du temps : rien n'est créé en jeu) ; lot 18 : ils frémissent avant une rafale, vont
+//     à pleine vitesse pendant la rafale, ralentissent pendant ses derniers instants et sont **à l'arrêt** quand elle cesse (`announce.ts`) ;
+//   - **sans particules** (mouvement réduit, effets « aucun », `?fx=off`) : des **flèches fixes** dans le sens du vent, éteintes hors de la rafale,
+//     qui s'éclaircissent avant le début, sont allumées pendant la rafale et s'éteignent avant la fin (sans clignoter) : une information, jamais coupée ;
 //   - `?debug&hitbox` : le rectangle de chaque zone (plein quand elle souffle, sombre sinon) et une flèche dans son sens.
 
 const LEAF_VERTEX = /* glsl */ `
@@ -89,6 +89,9 @@ export interface WindStats {
   /** Par zone : souffle-t-elle, part de l'annonce, opacité de ses flèches (−1 : pas de flèches dessinées). */
   blowing: boolean[];
   announce: number[];
+  /** Lot 18 : par zone, la vitesse des feuilles à la dernière image (0 : à l'arrêt, 1 : pleine vitesse) et l'intensité (opacité des feuilles et des flèches). */
+  flow: number[];
+  intensity: number[];
   arrowOpacity: number[];
   /** Lot 17 : par zone, l'estompage appliqué à la dernière image (1 : une zone qui souffle toujours, ou aucun estompage ; la part demandée pour une zone en rafale). */
   fade: number[];
@@ -222,15 +225,17 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
 
   const looks: WindLook[] = [];
   const travel = zones.map(() => 0);
+  // Lot 18 : le « mouvement » cumulé de chaque zone (s, au rythme de sa vitesse) : l'ondulation et la rotation des feuilles s'arrêtent avec elles.
+  const swing = zones.map(() => 0);
   const p: WindParticle = { x: 0, y: 0, angle: 0, alpha: 0, size: 0, kind: 0 };
   let lastClock = 0;
-  const stats: WindStats = { zones: zones.length, mode: "particules", particles: 0, capacity, arrows: 0, lit: 0, blowing: [], announce: [], arrowOpacity: [], fade: zones.map(() => 1) };
+  const stats: WindStats = { zones: zones.length, mode: "particules", particles: 0, capacity, arrows: 0, lit: 0, blowing: [], announce: [], flow: [], intensity: [], arrowOpacity: [], fade: zones.map(() => 1) };
   // Couleurs des particules : fixées une fois (la sorte de chaque particule ne change pas).
   {
     let k = 0;
     for (let i = 0; i < zones.length; i++) {
       for (let j = 0; j < budget[i]!; j++, k++) {
-        windParticle(zones[i]!, i, j, 0, 0, true, 0, p);
+        windParticle(zones[i]!, i, j, 0, 0, 0, 1, 0, p);
         const col = leafColors[p.kind]!;
         pCol.set([col.r, col.g, col.b], k * 3);
       }
@@ -248,6 +253,8 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
       stats.mode = useParticles ? "particules" : "fleches";
       stats.blowing = looks.map((l) => l.blowing);
       stats.announce = looks.map((l) => l.announce);
+      stats.flow = looks.map((l) => l.flow);
+      stats.intensity = looks.map((l) => l.intensity);
       leaves.visible = useParticles;
       leafMat.uniforms.uPixels!.value = pixelsPerTile;
       if (gustEdges) (gustEdges.material as LineDashedMaterial).opacity = WIND_EDGE_OPACITY * fade;
@@ -257,14 +264,15 @@ export function createWindArt(world: Group, level: Level, hitbox: boolean): Wind
       for (let i = 0; i < zones.length; i++) {
         const z = zones[i]!;
         const look = looks[i]!;
-        travel[i] = travel[i]! + (motion ? flowStep(z, look.blowing, dt) : 0);
+        travel[i] = travel[i]! + (motion ? flowStep(z, look.flow, dt) : 0);
+        swing[i] = swing[i]! + (motion ? look.flow * dt : 0);
         const keep = Math.round(budget[i]! * Math.min(1, amount));
         for (let j = 0; j < budget[i]!; j++, k++) {
           if (!useParticles || j >= keep) {
             pAlpha[k] = 0;
             continue;
           }
-          windParticle(z, i, j, travel[i]!, clock, look.blowing, look.announce, p);
+          windParticle(z, i, j, travel[i]!, swing[i]!, clock, look.intensity, look.announce, p);
           pPos[k * 3] = p.x;
           pPos[k * 3 + 1] = p.y;
           pPos[k * 3 + 2] = 0;

@@ -14,6 +14,7 @@ import {
   type Level,
   type WindZone,
 } from "@cdj/jump-sim";
+import { announceTicks, gustFeel, gustIntensity, gustPhase } from "./announce";
 import type { EventSource, GameEvent } from "./events";
 
 // Les courants d'air (forêt, lot 13) vus par le jeu, **logique pure** et testée : couleurs réservées, état affiché de chaque zone (souffle,
@@ -21,12 +22,11 @@ import type { EventSource, GameEvent } from "./events";
 // particules, fonction du temps : rien n'est créé en jeu), flèches fixes du mouvement réduit. Rien ici ne modifie la simulation.
 //
 // **Une zone de vent se voit toujours** : avec les effets, des feuilles et du pollen circulent dans le sens du vent (densité plafonnée,
-// `WIND_PARTICLES_MAX`), un contour très discret dessine la zone, et une rafale s'annonce `WIND_ANNOUNCE_TICKS` pas avant de partir (les
-// particules s'agitent). **Sans particules** (mouvement réduit, effets « aucun », `?fx=off`), des **flèches fixes** dans le sens du vent les
-// remplacent ; elles s'allument quand la zone souffle (et s'éclaircissent à l'annonce) : c'est une information de jeu, jamais coupée.
-
-/** Une rafale s'annonce ce nombre de pas avant de partir : 30 pas = 0,25 s. */
-export const WIND_ANNOUNCE_TICKS = 30;
+// `WIND_PARTICLES_MAX`) et un contour très discret dessine la zone. Lot 18 : une rafale **s'annonce et se termine en douceur** (`announce.ts`) —
+// les feuilles frémissent `ANNOUNCE.gustLead` secondes avant le début, vont à pleine vitesse pendant la rafale, ralentissent pendant les
+// `ANNOUNCE.gustTail` dernières secondes et sont à l'arrêt exactement quand elle cesse. **Sans particules** (mouvement réduit, effets « aucun »,
+// `?fx=off`), des **flèches fixes** dans le sens du vent les remplacent, avec la même logique : elles s'éclaircissent avant le début, sont
+// allumées pendant la rafale et s'éteignent progressivement avant la fin, sans jamais clignoter : une information de jeu, jamais coupée.
 
 // ——— Couleurs ———
 // Les mêmes dans tous les thèmes (comme les tapis et les blocs). **Jamais le rouge des dangers (teinte 0°) ni le jaune du personnage (44°)** :
@@ -55,25 +55,36 @@ export function gustTiming(g: Gust, phase: number): { blowing: boolean; left: nu
   return { blowing, left: blowing ? g.active - q : g.cycle - q };
 }
 
-/** Ce qu'on dessine d'une zone : souffle-t-elle, et part de l'annonce (0 : rien ; 1 : la rafale part au pas suivant). */
+/**
+ * Ce qu'on dessine d'une zone : souffle-t-elle ; `announce`, la part du frémissement qui précède une rafale (0 : rien ; presque 1 : elle part au
+ * pas suivant) ; `flow`, la vitesse des feuilles (0 : à l'arrêt, 1 : pleine vitesse, entre les deux pendant la fin d'une rafale) ; `intensity`,
+ * ce qui se montre sans bouger (opacité des feuilles et des flèches : monte avant le début, 1 pendant la rafale, descend avant la fin).
+ */
 export interface WindLook {
   blowing: boolean;
   announce: number;
+  flow: number;
+  intensity: number;
 }
 
 /** L'aspect de chaque zone de vent dans cet état (ordre de `Level.winds`). */
 export function windLooks(level: Level, state: Readonly<AttemptState>, out: WindLook[] = []): WindLook[] {
   for (let i = 0; i < level.winds.length; i++) {
     const w = level.winds[i]!;
-    const slot = (out[i] ??= { blowing: true, announce: 0 });
+    const slot = (out[i] ??= { blowing: true, announce: 0, flow: 1, intensity: 1 });
     if (!w.gust) {
       slot.blowing = true;
       slot.announce = 0;
+      slot.flow = 1;
+      slot.intensity = 1;
       continue;
     }
-    const t = gustTiming(w.gust, windPhase(level, state, i));
+    const t = gustPhase(w.gust, windPhase(level, state, i));
+    const feel = gustFeel(t, announceTicks("gustLead"), announceTicks("gustTail"));
     slot.blowing = t.blowing;
-    slot.announce = !t.blowing && t.left <= WIND_ANNOUNCE_TICKS ? 1 - (t.left - 1) / WIND_ANNOUNCE_TICKS : 0;
+    slot.announce = feel.lead;
+    slot.flow = feel.flow;
+    slot.intensity = gustIntensity(feel, t.blowing);
   }
   out.length = level.winds.length;
   return out;
@@ -160,7 +171,7 @@ export function windMix(level: Pick<Level, "winds">, looks: readonly WindLook[],
   const near: WindVoice[] = [];
   for (let i = 0; i < level.winds.length; i++) {
     const z = level.winds[i]!;
-    const look = looks[i] ?? { blowing: true, announce: 0 };
+    const look = looks[i] ?? { blowing: true, announce: 0, flow: 1, intensity: 1 };
     const nx = Math.min(Math.max(listener.x, z.c0), z.c1 + 1);
     const ny = Math.min(Math.max(listener.y, z.r0), z.r1 + 1);
     const dx = nx - listener.x;
@@ -195,9 +206,13 @@ export function windMix(level: Pick<Level, "winds">, looks: readonly WindLook[],
 export const WIND_PARTICLES_MAX = 160;
 export const WIND_PARTICLES_ZONE = 40;
 export const WIND_DENSITY = 0.45;
-/** Vitesse d'affichage des particules (tuiles/s) quand la zone souffle, et sans souffle (elles flottent). */
+/**
+ * Vitesse d'affichage des particules (tuiles/s) quand la zone souffle à pleine vitesse. Lot 18 : sans souffle, elles sont **à l'arrêt** (plus de
+ * dérive lente) : un arrêt net était la gêne ; elles ralentissent jusqu'à l'arrêt pendant la fin de la rafale.
+ */
 export const WIND_FLOW = 5;
-export const WIND_FLOAT = 0.4;
+/** Le frémissement d'avant une rafale (pulsation, rad/s) : 18 rad/s = 2,9 Hz, sous `FLICKER_MAX_HZ`. */
+export const WIND_TREMBLE_RAD = 18;
 
 /** Combien de particules pour chaque zone (`amount` : part gardée par les réglages, 0 à 1), le total sous `WIND_PARTICLES_MAX`. */
 export function particleBudget(level: Pick<Level, "winds">, amount = 1): number[] {
@@ -229,10 +244,11 @@ export interface WindParticle {
 
 /**
  * La particule `k` d'une zone : sa position est une fonction pure de `travel` (tuiles parcourues dans le sens du vent par le flux de la zone,
- * cumulées par le rendu), `clock` (s, pour l'ondulation) et `agitate` (0 … 1 : l'annonce d'une rafale fait trembler et briller). Elle boucle
- * dans la zone et s'efface aux deux bouts : rien n'est créé ni détruit.
+ * cumulées par le rendu), `swing` (s de « mouvement » cumulées au rythme du flux : l'ondulation et la rotation s'arrêtent avec lui, lot 18),
+ * `clock` (s réelles, pour le seul frémissement), `intensity` (0 … 1 : l'opacité) et `lead` (0 … 1 : la part du frémissement qui précède une
+ * rafale). Elle boucle dans la zone et s'efface aux deux bouts : rien n'est créé ni détruit.
  */
-export function windParticle(zone: WindZone, index: number, k: number, travel: number, clock: number, blowing: boolean, agitate: number, out: WindParticle): WindParticle {
+export function windParticle(zone: WindZone, index: number, k: number, travel: number, swing: number, clock: number, intensity: number, lead: number, out: WindParticle): WindParticle {
   const up = zone.dir === WIND_UP;
   const sign = zone.dir === WIND_LEFT ? -1 : 1;
   const len = up ? zone.r1 - zone.r0 + 1 : zone.c1 - zone.c0 + 1;
@@ -242,7 +258,7 @@ export function windParticle(zone: WindZone, index: number, k: number, travel: n
   const r2 = hash01(index * 977 + k, 3);
   const speed = 0.7 + 0.6 * r2;
   const u = (((r0 * len + travel * speed) % len) + len) % len; // le long du vent
-  const wave = Math.sin(clock * (1.6 + r2 * 1.2) + r1 * 6.28) * (0.18 + 0.3 * agitate) + Math.sin(clock * 23 + k) * 0.12 * agitate;
+  const wave = Math.sin(swing * (1.6 + r2 * 1.2) + r1 * 6.28) * 0.18 + Math.sin(clock * WIND_TREMBLE_RAD + k) * 0.12 * lead;
   const v = 0.15 + r1 * (across - 0.3) + wave; // en travers
   const edge = Math.min(u, len - u);
   const fade = Math.min(1, edge / 0.8);
@@ -254,16 +270,16 @@ export function windParticle(zone: WindZone, index: number, k: number, travel: n
     out.x = sign > 0 ? zone.c0 + u : zone.c1 + 1 - u;
     out.y = -zone.r0 - v;
   }
-  out.angle = clock * (kind === 2 ? 0 : 1.5 + r1 * 2) * (r0 < 0.5 ? -1 : 1) + r0 * 6.28;
-  out.alpha = fade * (blowing ? 0.85 : 0.35 + 0.5 * agitate);
+  out.angle = swing * (kind === 2 ? 0 : 1.5 + r1 * 2) * (r0 < 0.5 ? -1 : 1) + r0 * 6.28;
+  out.alpha = fade * (0.35 + 0.5 * intensity);
   out.size = kind === 2 ? 0.13 + 0.05 * r1 : 0.32 + 0.1 * r1;
   out.kind = kind;
   return out;
 }
 
-/** Tuiles parcourues par le flux d'une zone pendant `dt` (s) : vite quand elle souffle, une dérive lente sinon. */
-export function flowStep(zone: Pick<WindZone, "force">, blowing: boolean, dt: number): number {
-  return (blowing ? WIND_FLOW * Math.min(2, zone.force / 100) : WIND_FLOAT) * dt;
+/** Tuiles parcourues par le flux d'une zone pendant `dt` (s) à la vitesse `flow` (0 à 1, `WindLook.flow`) : pleine vitesse, ralentie, ou à l'arrêt. */
+export function flowStep(zone: Pick<WindZone, "force">, flow: number, dt: number): number {
+  return WIND_FLOW * Math.min(2, zone.force / 100) * flow * dt;
 }
 
 // ——— Flèches fixes (mouvement réduit, effets « aucun ») ———
@@ -285,10 +301,12 @@ export function arrowLayout(zone: WindZone): { x: number; y: number; dx: number;
   return out;
 }
 
-/** Opacité des flèches d'une zone : allumées quand elle souffle, éteintes sinon, et qui s'éclaircissent pendant l'annonce (sans clignoter). */
-export function arrowOpacity(look: WindLook): number {
-  if (look.blowing) return WIND_ARROW_ON;
-  return WIND_ARROW_IDLE + (WIND_ARROW_ON - WIND_ARROW_IDLE) * 0.5 * look.announce;
+/**
+ * Opacité des flèches d'une zone (lot 18, la même logique que les feuilles) : éteintes hors de la rafale, elles s'éclaircissent pendant l'annonce du
+ * début, sont allumées pendant la rafale et s'éteignent progressivement pendant les derniers instants, sans jamais clignoter.
+ */
+export function arrowOpacity(look: Pick<WindLook, "intensity">): number {
+  return WIND_ARROW_IDLE + (WIND_ARROW_ON - WIND_ARROW_IDLE) * look.intensity;
 }
 
 export { WIND_LEFT, WIND_RIGHT, WIND_UP };

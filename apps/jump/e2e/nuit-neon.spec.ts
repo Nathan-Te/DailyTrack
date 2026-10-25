@@ -32,10 +32,14 @@ interface Blocks {
   alts: number;
   solid: number;
   absent: number;
-  wobbling: number;
   waiting: number;
   thick: number;
-  wobbleOpacity: number;
+  /** Lot 18 : jauges en cours (dessinées), contours pointillés, hauteur de face dessinée et niveau de la simulation de chaque clignotant. */
+  draining: number;
+  refilling: number;
+  dotted: number;
+  fills: number[];
+  simFills: number[];
   alt: number;
   flash: number;
   phases: number[];
@@ -95,23 +99,23 @@ async function open(page: Page, url: string): Promise<boolean> {
 }
 
 /** Avance pas à pas jusqu'à `finished` ; rend les noms d'événements vus, le nombre de pas, et les valeurs vues de la parité (`alt`). */
-async function playToEnd(page: Page, max = 6000): Promise<{ ticks: number; kinds: string[]; alts: number[]; maxWobbling: number }> {
+async function playToEnd(page: Page, max = 6000): Promise<{ ticks: number; kinds: string[]; alts: number[]; maxDraining: number }> {
   return page.evaluate((limit) => {
     const j = (window as unknown as { __jump: Jump }).__jump;
     const kinds = new Set<string>();
     const alts = new Set<number>();
-    let maxWobbling = 0;
+    let maxDraining = 0;
     for (let t = 1; t <= limit; t++) {
       j.advance(1);
       for (const e of j.events.slice(-8)) kinds.add(e.kind);
       const b = j.blocks;
       if (b) {
         if (b.alt >= 0) alts.add(b.alt);
-        if ((b.wobbling ?? 0) > maxWobbling) maxWobbling = b.wobbling ?? 0;
+        if ((b.draining ?? 0) > maxDraining) maxDraining = b.draining ?? 0;
       }
-      if (j.phase === "finished" || j.phase === "carnage") return { ticks: t, kinds: [...kinds], alts: [...alts], maxWobbling };
+      if (j.phase === "finished" || j.phase === "carnage") return { ticks: t, kinds: [...kinds], alts: [...alts], maxDraining };
     }
-    return { ticks: -1, kinds: [...kinds], alts: [...alts], maxWobbling };
+    return { ticks: -1, kinds: [...kinds], alts: [...alts], maxDraining };
   }, max);
 }
 
@@ -131,14 +135,14 @@ for (const [theme, mechanic, expected] of [
       expect(start.daily!.pieces.filter((p) => p.mechanic === mechanic).length).toBeGreaterThanOrEqual(2);
       expect(start.blocks).not.toBeNull();
       expect(mechanic === "clignotant" ? start.blocks!.blinks : start.blocks!.alts).toBeGreaterThan(0);
-      const { ticks, kinds, alts, maxWobbling } = await playToEnd(page);
+      const { ticks, kinds, alts, maxDraining } = await playToEnd(page);
       expect(ticks).toBe(start.daily!.authorTicks);
       const end = await J(page);
       expect(end.attempt).toMatchObject({ status: "arrivé", time: start.daily!.authorTicks, deaths: 0 });
       expect(end.daily!.lastMedal).toBe("author");
       for (const k of expected) expect(kinds, k).toContain(k);
       if (mechanic === "alterne") expect(alts.sort()).toEqual([0, 1]); // la parité a bien changé pendant la partie
-      else expect(maxWobbling).toBeGreaterThan(0);
+      else expect(maxDraining, "une jauge s'est vidée pendant la partie (lot 18)").toBeGreaterThan(0);
       await frames(page);
       expect(errors).toEqual([]);
     });
@@ -232,7 +236,7 @@ test.describe("au doigt (téléphone en paysage)", () => {
   }
 });
 
-test("mouvement réduit : le vacillement reste lisible, sans clignoter (la face s'éclaircit sans à-coup, le contour s'épaissit) ; avec les effets normaux la face clignote", async ({ browser }) => {
+test("la jauge de la nuit (lot 18) : la face se vide sans clignoter, avec ou sans mouvement réduit ; le contour d'un bloc absent est pointillé", async ({ browser }) => {
   for (const reduced of [true, false]) {
     const context = await browser.newContext({ reducedMotion: reduced ? "reduce" : "no-preference", viewport: { width: 900, height: 600 } });
     const page = await context.newPage();
@@ -243,41 +247,36 @@ test("mouvement réduit : le vacillement reste lisible, sans clignoter (la face 
         return;
       }
       expect((await J(page)).blocks!.blinks).toBeGreaterThan(0);
-      // On avance jusqu'à ce qu'un bloc plein vacille (il lui reste moins de 0,25 s), puis on regarde plusieurs images.
+      // On avance jusqu'à ce qu'une jauge se vide (les derniers instants d'un bloc plein), puis on regarde plusieurs images.
       const found = await page.evaluate(() => {
         const j = (window as unknown as { __jump: Jump }).__jump;
         // On court jusqu'à la section (le monde se met en marche), puis on attend sur place : le cycle de la section tourne.
         j.input(2);
         j.advance(36); // le centre passe dans la section (le palier fait deux tuiles) ; la corniche d'entrée est plus loin
         j.input(0);
-        for (let t = 0; t < 400; t++) {
+        for (let t = 0; t < 600; t++) {
           j.advance(1);
-          if ((j.blocks?.wobbling ?? 0) > 0) {
-            j.advance(20); // le vacillement avance : on le regarde aux deux tiers (le contour ne s'épaissit qu'à partir de 30 %)
+          if (j.blocks!.simFills.some((f) => f > 0 && f < 1)) {
+            j.advance(10);
             return true;
           }
         }
         return false;
       });
       expect(found).toBe(true);
-      // Le monde ne bouge plus (on n'avance pas) : seules les images (l'horloge) changent. `wobbleOpacity` = l'opacité de la face qui vacille.
-      const seen = new Set<number>();
-      let thick = 0;
+      // Le monde ne bouge plus (on n'avance pas) : seules les images (l'horloge) changent. La face dessinée est celle de la jauge, à chaque image.
+      const seen = new Set<string>();
       for (let i = 0; i < 30; i++) {
         await frames(page, 1);
         const b = (await J(page)).blocks!;
-        seen.add(Math.round(b.wobbleOpacity * 100));
-        thick = Math.max(thick, b.thick);
-        // Le temps ne passe pas (manuel) : l'état vacillant reste, c'est son dessin qui est jugé.
-        expect(b.wobbling).toBeGreaterThan(0);
+        const drained = b.simFills.findIndex((f) => f > 0 && f < 1);
+        expect(drained).toBeGreaterThanOrEqual(0);
+        expect(b.fills[drained]).toBeCloseTo(b.simFills[drained]!, 5); // le dessin montre la jauge de la simulation, ni plus ni moins
+        seen.add(b.simFills.map((f) => f.toFixed(4)).join(",") + "/" + b.fills.map((f) => f.toFixed(4)).join(","));
+        expect(b.draining).toBeGreaterThan(0);
+        expect(b.dotted, "chaque clignotant absent a un contour pointillé (sauf celui qui attend la sortie du personnage)").toBe(b.absent - b.waiting);
       }
-      if (reduced) {
-        expect(seen.size, "mouvement réduit : une seule opacité, rien ne clignote").toBe(1);
-        expect([...seen][0]!).toBeLessThan(100); // la face s'éclaircit : le vacillement se lit
-        expect(thick, "le contour s'épaissit").toBeGreaterThan(0);
-      } else {
-        expect(seen.size, "effets normaux : la face clignote").toBeGreaterThan(1);
-      }
+      expect(seen.size, reduced ? "mouvement réduit" : "effets normaux : rien ne clignote d'une image à l'autre").toBe(1);
       expect(errors).toEqual([]);
     } finally {
       await context.close();

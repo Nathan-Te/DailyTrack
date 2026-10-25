@@ -18,7 +18,7 @@ import {
 import { Group, Mesh, MeshBasicMaterial } from "three";
 import { describe, expect, it } from "vitest";
 import { METRONOME_GAIN, soundFor } from "../src/audioLogic";
-import { BLOCK_STYLE, VACILLE_TICKS, blinkTiming, blockEvents, blockLooks, currentBlinkSection, metronomeBeats, metronomeTick } from "../src/blocks";
+import { BLOCK_STYLE, blinkTiming, blockEvents, blockLooks, currentBlinkSection, metronomeBeats, metronomeTick } from "../src/blocks";
 import { contrastRatio, hueDistance } from "../src/contrast";
 import { createDynamicBlocks } from "../src/dynamicArt";
 import { EVENT_KINDS, eventsBetween, type GameEvent } from "../src/events";
@@ -98,26 +98,27 @@ describe("blinkTiming et aspect (blockLooks)", () => {
     }
   });
 
-  it("le vacillement : 0 avant les 30 derniers pas d'un bloc plein, puis croissant jusqu'à l'extinction ; un bloc absent ne vacille pas", () => {
-    // Cycle de 120 pas, `b` plein pendant 60 : au pas k (phase k − 1) il reste 60 − (k − 1) pas ; il vacille quand il en reste 30 ou moins.
+  it("la jauge (lot 18) : pleine avant l'annonce, puis décroissante jusqu'à la disparition ; un bloc absent n'a pas de jauge hors annonce", () => {
+    // Cycle de 120 pas, `b` plein pendant 60 : au pas k (phase k − 1) il reste 60 − (k − 1) pas. L'annonce (0,6 s = 72 pas) couvre au plus la moitié
+    // de la phase : 30 pas. La jauge vaut `left / 31` pendant les 30 derniers pas, 1 avant.
     let s = initialAttempt(level);
-    const wobbles: number[] = [];
+    const fills: number[] = [];
     for (let k = 1; k <= 60; k++) {
       s = step(s, k === 1 ? INPUT_RIGHT : 0);
       const looks = blockLooks(level, s);
-      // `d` (indices 2 et 3) est absent : il ne vacille jamais.
+      // `d` (indices 2 et 3) est absent : sa phase absente dure 60 pas, l'annonce de son retour couvre ses 30 derniers pas.
       expect(looks[2]!.solid).toBe(false);
-      expect(looks[2]!.wobble).toBe(0);
-      wobbles.push(looks[0]!.wobble);
+      const leftD = 60 - (k - 1);
+      expect(looks[2]!.fill).toBeCloseTo(leftD > 30 ? 0 : 1 - leftD / 31, 10);
+      fills.push(looks[0]!.fill);
     }
-    wobbles.forEach((w, i) => {
+    fills.forEach((w, i) => {
       const left = 60 - i; // phase i
-      if (left > VACILLE_TICKS) expect(w).toBe(0);
-      else expect(w).toBeCloseTo(1 - (left - 1) / VACILLE_TICKS, 10);
+      expect(w).toBeCloseTo(left > 30 ? 1 : left / 31, 10);
     });
-    expect(wobbles.findIndex((w) => w > 0)).toBe(30); // le premier pas qui vacille : il en reste exactement 30
-    for (let i = 1; i < wobbles.length; i++) expect(wobbles[i]!).toBeGreaterThanOrEqual(wobbles[i - 1]!);
-    expect(wobbles[wobbles.length - 1]!).toBe(1); // au dernier pas plein : 1
+    expect(fills.findIndex((w) => w < 1)).toBe(30); // le premier pas annoncé : il en reste exactement 30
+    for (let i = 1; i < fills.length; i++) expect(fills[i]!).toBeLessThanOrEqual(fills[i - 1]!); // elle ne remonte jamais
+    expect(fills[fills.length - 1]!).toBeCloseTo(1 / 31, 10); // au dernier pas plein : presque vide ; au pas suivant le bloc est absent (jauge 0)
   });
 
   it("blocs alternés : le jeu actif est plein, l'autre absent ; l'aspect suit la parité", () => {
@@ -183,7 +184,7 @@ describe("événements des blocs", () => {
     for (const e of ev) expect(e).toMatchObject({ section: 0, count: 2 });
     // Au moment de l'événement, un bloc plein vacille.
     const looks = blockLooks(level, states[ev[0]!.tick + 1]!);
-    expect(looks.some((l) => l.solid && l.wobble > 0)).toBe(true);
+    expect(looks.some((l) => l.solid && l.fill < 1)).toBe(true);
   });
 
   it("bascule : un saut qui part inverse (un événement), l'appui seul ou le saut du tampon à l'atterrissage aussi (au pas où il part vraiment) ; un ressort ne bascule rien", () => {
@@ -349,53 +350,31 @@ describe("dessin (dynamicArt)", () => {
     expect(d.stats).toMatchObject({ blinks: 4, alts: 4, solid: 4, absent: 4, alt: 0 });
   });
 
-  it("vacillement : effets normaux → la face clignote (opacité qui change d'une image à l'autre) ; mouvement réduit → rien ne clignote, le contour s'épaissit", () => {
+  it("la jauge dessinée (lot 18) : la face descend comme une jauge, la même avec ou sans mouvement réduit, et ne clignote pas", () => {
     const { world, d } = build(level);
     let s = initialAttempt(level);
-    for (let k = 0; k < 55; k++) s = step(s, k === 0 ? INPUT_RIGHT : 0); // `b` est dans ses derniers pas (phase 54 : il en reste 6)
-    expect(blockLooks(level, s)[0]!.wobble).toBeGreaterThan(0.8);
+    for (let k = 0; k < 55; k++) s = step(s, k === 0 ? INPUT_RIGHT : 0); // `b` est dans ses derniers pas (phase 54 : il en reste 6 sur 30 d'annonce)
+    expect(blockLooks(level, s)[0]!.fill).toBeCloseTo(6 / 31, 10);
     const group = world.children[0]!;
-    const faceMat = (group.children[0] as Mesh).material as MeshBasicMaterial;
+    const face = group.children[0] as Mesh;
+    const faceMat = face.material as MeshBasicMaterial;
     const thin = group.children[1]!;
     const thick = group.children[2]!;
     const view = { x: 0, y: 0, halfW: 5, halfH: 5 };
-    // Effets normaux : l'opacité de la face varie avec l'horloge.
-    const seen = new Set<number>();
-    for (let i = 0; i < 40; i++) {
-      d.update(s, 1 + i * 0.011, true, view);
-      seen.add(Math.round(faceMat.opacity * 100));
-    }
-    expect(seen.size).toBeGreaterThan(1);
-    // Mouvement réduit : opacité stable (même valeur à toute horloge), contour épais.
-    const reduced = new Set<number>();
-    for (let i = 0; i < 40; i++) {
-      d.update(s, 1 + i * 0.011, false, view);
-      reduced.add(Math.round(faceMat.opacity * 100));
-    }
-    expect(reduced.size).toBe(1);
-    expect(faceMat.opacity).toBeLessThan(0.7); // la face s'éclaircit
-    expect(thick.visible).toBe(true);
-    expect(thin.visible).toBe(false);
-    // Et le contour épais est bien plus gros que le fin (l'épaississement se lit).
-    const width = (m: Mesh) => {
-      const pos = m.geometry.getAttribute("position");
-      let xs = 0;
-      for (let i = 0; i < pos.count; i++) xs = Math.max(xs, Math.abs(pos.getX(i)));
-      return xs;
-    };
-    expect(width(thick as Mesh)).toBeCloseTo(width(thin as Mesh), 5); // même cadre extérieur…
-    const bars = (m: Mesh) => {
-      const pos = m.geometry.getAttribute("position");
-      // épaisseur de la barre du haut : de y = h − t à y = h
-      let top = 0;
-      let low = 1;
-      for (let i = 0; i < 6; i++) {
-        top = Math.max(top, pos.getY(i));
-        low = Math.min(low, pos.getY(i));
+    for (const animate of [true, false]) {
+      const seen = new Set<string>();
+      for (let i = 0; i < 40; i++) {
+        d.update(s, 1 + i * 0.011, animate, view);
+        seen.add(`${faceMat.opacity.toFixed(3)}/${face.scale.y.toFixed(3)}/${thin.visible}`);
       }
-      return top - low;
-    };
-    expect(bars(thick as Mesh)).toBeGreaterThan(2 * bars(thin as Mesh));
+      expect(seen.size, animate ? "effets normaux" : "mouvement réduit").toBe(1); // rien ne change avec l'horloge : aucun clignotement
+    }
+    expect(face.scale.y).toBeCloseTo(6 / 31, 5); // la face est à 6/31 de sa hauteur…
+    expect(faceMat.opacity).toBe(1); // …toujours opaque
+    expect(thin.visible).toBe(true); // le contour reste plein et franc : le bloc est solide jusqu'au pas où il disparaît
+    expect(thick.visible).toBe(false);
+    expect(d.stats.draining).toBeGreaterThan(0);
+    expect(d.stats.levelLine).toBe(1); // le trait qui marque le niveau
   });
 
   it("l'éclat des blocs alternés : décroît tout seul, et n'existe pas sans mouvement", () => {

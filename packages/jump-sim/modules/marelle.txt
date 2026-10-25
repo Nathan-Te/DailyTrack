@@ -14,6 +14,7 @@ variante: ecart=1 +sol-friable
 variante: ecart=2 +plafond:pics
 variante: ecart=1 +denivele:2
 variante: ecart=1 +clignotant:lent
+variante: ecart=1 +clignotant:calme
 grille:
 .........................
 .........................

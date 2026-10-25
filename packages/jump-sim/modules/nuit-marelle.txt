@@ -10,6 +10,10 @@ variante: paires=1 cycle=300 solide=150 decalage=0
 variante: paires=1 cycle=360 solide=190 decalage=0
 variante: paires=1 cycle=330 solide=170 decalage=40
 variante: paires=1 cycle=270 solide=140 decalage=0
+variante: paires=1 cycle=400 solide=200 decalage=0
+variante: paires=1 cycle=400 solide=210 decalage=0
+variante: paires=1 cycle=360 solide=180 decalage=40
+variante: paires=1 cycle=420 solide=210 decalage=0
 grille:
 ...................
 ...................

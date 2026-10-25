@@ -5,7 +5,7 @@ import { idiv } from "./idiv";
 import { TILE_EMPTY, TILE_SOLID, cycleMod, parseLevel, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
 import { PHASE_REFUSED } from "./phases";
 import { PARASITE_CLOSED } from "./parasites";
-import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
+import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
 import { SIGNATURE_MIN_PIECES, SIGNATURE_MIN_TICKS, SIGNATURE_SHARE_MAX, SIGNATURE_SHARE_MIN, SIGNATURE_SHARE_TARGET, jumpThemeForDay, mechanicOf, type JumpThemeName, type Mechanic } from "./themes";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT } from "./player";
 import { decodeReplay, encodeReplay, fromRuns, replayAttempt, toRuns, type JumpReplay } from "./replay";
@@ -317,7 +317,40 @@ interface Choice {
  * garde son texte, ses solutions et sa place (la référence v3, g9, la connaît telle quelle : golden v3 au bit près) et la nouvelle, au bout de la
  * liste, n'existe que pour les niveaux à une seule horloge.
  */
-export const V4_ONLY_VARIANTS: Readonly<Record<string, readonly number[]>> = Object.freeze({ "scie-sol": [6], "cheminee-scie": [4], "nuit-opposition": [5] });
+export const V4_ONLY_VARIANTS: Readonly<Record<string, readonly number[]>> = Object.freeze({
+  "scie-sol": [6],
+  "cheminee-scie": [4],
+  // Lot 18 (g13) : les remplaçantes des variantes de nuit refusées par la règle des 1,5 s par phase (`BLINK_PHASE_MIN`), chacune plus lente que la sienne.
+  "nuit-opposition": [5, 6, 7, 8, 9],
+  "nuit-cheminee": [4, 5, 6, 7],
+  "nuit-escalier": [4, 5, 6, 7],
+  "nuit-marelle": [4, 5, 6, 7],
+  "nuit-pont": [5, 6, 7, 8, 9],
+  "nuit-portes": [4, 5, 6, 7],
+  "nuit-relais": [3, 4, 5],
+  marelle: [6],
+  piliers: [6],
+});
+
+let tooFast: Record<string, number[]> | null = null;
+
+/**
+ * Lot 18 (g13) : les variantes dont un cycle de clignotement a une phase, présente ou absente, de moins de 1,5 s (`BLINK_PHASE_MIN`) — le joueur
+ * n'a pas le temps de lire l'annonce ni de réagir. Calculée sur les textes des morceaux (aucun fichier à tenir à jour). Le générateur à une seule
+ * horloge ne les pose jamais ; la référence v3 (g9) les connaît telles quelles (golden v3 inchangés), comme elle connaît `PHASE_REFUSED`.
+ */
+export function blinkTooFast(): Readonly<Record<string, readonly number[]>> {
+  if (tooFast) return tooFast;
+  const out: Record<string, number[]> = {};
+  for (const def of MODULES) {
+    for (let v = 0; v < def.variants.length; v++) {
+      const blinks = def.tags.includes("clignotant") || (def.mutations[v] ?? []).some((m) => m.name === "clignotant");
+      if (blinks && blinkRhythmProblems(buildModule(def.id, v).level).length > 0) (out[def.id] ??= []).push(v);
+    }
+  }
+  tooFast = out;
+  return out;
+}
 
 let catalogAll: Choice[][] | null = null;
 let catalog: Choice[][] | null = null;
@@ -325,16 +358,16 @@ let catalogV4: Choice[][] | null = null;
 
 /**
  * Par morceau (ordre du catalogue), ses variantes utilisables. Calculé une fois (déterministe). Lot 15 : en version 4, sans les variantes
- * refusées par la validation toutes phases (`PHASE_REFUSED`).
+ * refusées par la validation toutes phases (`PHASE_REFUSED`) ; lot 18 : ni celles dont une phase de clignotement dure moins de 1,5 s (`blinkTooFast`).
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   if (simVersion >= SINGLE_CLOCK_VERSION) {
     catalogV4 ??= allChoices()
-      .map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE })))
+      .map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE })))
       .filter((list) => list.length > 0);
     return catalogV4;
   }
-  // Lot 17 : la référence v3 ne connaît pas les variantes ajoutées au g12.
+  // Lots 17 et 18 : la référence v3 ne connaît pas les variantes ajoutées aux g12 et g13.
   catalog ??= allChoices()
     .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant)))
     .filter((list) => list.length > 0);
@@ -1299,17 +1332,19 @@ export const FALLBACK_BY_THEME: Readonly<Partial<Record<JumpThemeName, readonly 
     { id: "cheminee", variant: 0 },
   ],
   // Lot 12 : choisies par `npm run secours:modules -w @cdj/jump-sim` parmi les tirages valides de 80 dates (thème forcé), les plus proches du centre.
+  // Lot 18 (g13) : rechoisie (`secours:modules -- --theme=nuit`, 80 niveaux valides sur 80 dates) — l'ancienne (`FALLBACK_NUIT_V3`) pose des phases de moins de 1,5 s.
   nuit: [
-    { id: "mur-seul", variant: 0 },
-    { id: "grande-scie", variant: 3 },
-    { id: "puits-descente", variant: 1 },
-    { id: "marelle", variant: 5 },
-    { id: "nuit-marelle", variant: 0 },
-    { id: "nuit-escalier", variant: 1 },
-    { id: "piliers", variant: 1 },
-    { id: "cheminee-quinconce", variant: 1 },
-    { id: "plongeon", variant: 1 },
-    { id: "nuit-portes", variant: 0 },
+    { id: "nuit-cheminee", variant: 5 },
+    { id: "cheminee-pics", variant: 0 },
+    { id: "ressort-mur", variant: 1 },
+    { id: "scie-ronde", variant: 0 },
+    { id: "nuit-opposition", variant: 7 },
+    { id: "puits-descente", variant: 2 },
+    { id: "nuit-marelle", variant: 4 },
+    { id: "piliers", variant: 3 },
+    { id: "escalier-friable", variant: 2 },
+    { id: "mur-seul", variant: 5 },
+    { id: "pendule", variant: 5 },
   ],
   // Lot 16 : l'ancienne suite dépassait 56 rangées avec la galerie de ses voies lentes ; rechoisie (`secours:modules -- --theme=neon`).
   neon: [
@@ -1354,9 +1389,24 @@ const FALLBACK_NEON_V3: readonly { id: string; variant: number }[] = [
   { id: "neon-couloir", variant: 2 },
 ];
 
-/** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4). */
+/** Lot 18 : la suite de secours de la nuit d'avant (g9 à g12), gardée pour la référence v3 : certaines de ses variantes ont des phases de moins de 1,5 s. */
+const FALLBACK_NUIT_V3: readonly { id: string; variant: number }[] = [
+  { id: "mur-seul", variant: 0 },
+  { id: "grande-scie", variant: 3 },
+  { id: "puits-descente", variant: 1 },
+  { id: "marelle", variant: 5 },
+  { id: "nuit-marelle", variant: 0 },
+  { id: "nuit-escalier", variant: 1 },
+  { id: "piliers", variant: 1 },
+  { id: "cheminee-quinconce", variant: 1 },
+  { id: "plongeon", variant: 1 },
+  { id: "nuit-portes", variant: 0 },
+];
+
+/** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi). */
 export function fallbackFor(theme: JumpThemeName, simVersion = SINGLE_CLOCK_VERSION): readonly { id: string; variant: number }[] {
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
+  if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
   return FALLBACK_BY_THEME[theme] ?? FALLBACK_PIECES;
 }
 

@@ -84,16 +84,12 @@ describe("lot 17 — la règle des 12 s", () => {
   });
 });
 
-describe("lot 17 — les variantes réadmises (V4_ONLY_VARIANTS)", () => {
+describe("lots 17 et 18 — les variantes ajoutées (V4_ONLY_VARIANTS)", () => {
   const added = Object.entries(V4_ONLY_VARIANTS).flatMap(([id, list]) => list.map((variant) => ({ id, variant })));
 
-  it("sont trois, chacune à la suite des variantes du morceau, et leurs jumelles refusées restent refusées", () => {
-    expect(added).toEqual([
-      { id: "scie-sol", variant: 6 },
-      { id: "cheminee-scie", variant: 4 },
-      { id: "nuit-opposition", variant: 5 },
-    ]);
-    for (const { id, variant } of added) expect(MODULES.find((d) => d.id === id)!.variants.length, id).toBe(variant + 1);
+  it("les trois du lot 17 sont là (les autres sont les remplaçantes de nuit du lot 18, `rythme.test.ts`), ajoutées au bout de la liste du morceau, et leurs jumelles refusées restent refusées", () => {
+    for (const lot17 of [{ id: "scie-sol", variant: 6 }, { id: "cheminee-scie", variant: 4 }, { id: "nuit-opposition", variant: 5 }]) expect(added).toContainEqual(lot17);
+    for (const [id, list] of Object.entries(V4_ONLY_VARIANTS)) expect(MODULES.find((d) => d.id === id)!.variants.length, id).toBe(Math.max(...list) + 1);
     expect(PHASE_REFUSED["scie-sol"]).toEqual([3]);
     expect(PHASE_REFUSED["cheminee-scie"]).toEqual([3]);
     expect(PHASE_REFUSED["nuit-opposition"]).toEqual([4]);
@@ -120,12 +116,14 @@ describe("lot 17 — les variantes réadmises (V4_ONLY_VARIANTS)", () => {
     });
   }
 
-  it("la référence v3 ne les connaît pas (aucun niveau v3 n'en pose) ; le générateur g12 en pose (mesuré sur 365 dates)", () => {
-    const posed = (day: string, sim: number) => dailyLevel(parseDay(day)!, null, sim).pieces.filter((p) => V4_ONLY_VARIANTS[p.id]?.includes(p.variant)).map((p) => `${p.id}:${p.variant}`);
-    expect(posed("2026-10-26", SINGLE_CLOCK_VERSION)).toEqual(["cheminee-scie:4"]);
-    expect(posed("2026-11-06", SINGLE_CLOCK_VERSION)).toEqual(["scie-sol:6"]);
-    // Les mêmes jours en v3 (g9) : le morceau y est tiré parmi les variantes d'avant seulement.
-    for (const day of ["2026-10-26", "2026-11-06"]) expect(posed(day, SECTION_CLOCK_VERSION)).toEqual([]);
+  it("la référence v3 ne les connaît pas (aucun niveau v3 n'en pose) ; le générateur g13 en pose (mesuré sur 120 dates)", () => {
+    const posed = (day: number, sim: number) => dailyLevel(day, null, sim).pieces.filter((p) => V4_ONLY_VARIANTS[p.id]?.includes(p.variant)).map((p) => `${p.id}:${p.variant}`);
+    // Lot 18 : la nuit ne pose plus que des variantes ajoutées (les anciennes sont trop rapides), donc le générateur v4 en pose souvent.
+    const days = Array.from({ length: 30 }, (_, d) => PREMIER_JOUR_JUMP + 8 + d);
+    const withAdded = days.filter((d) => posed(d, SINGLE_CLOCK_VERSION).length > 0);
+    expect(withAdded.length).toBeGreaterThan(5);
+    // Les mêmes jours en v3 (g9) : les morceaux y sont tirés parmi les variantes d'avant seulement.
+    for (const day of withAdded) expect(posed(day, SECTION_CLOCK_VERSION), `jour ${day}`).toEqual([]);
     for (let d = 0; d < 30; d++) {
       const pieces = dailyLevel(PREMIER_JOUR_JUMP + d, null, SECTION_CLOCK_VERSION).pieces;
       for (const p of pieces) expect(V4_ONLY_VARIANTS[p.id]?.includes(p.variant) ?? false, `${p.id}:${p.variant}`).toBe(false);

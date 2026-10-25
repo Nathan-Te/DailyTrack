@@ -28,7 +28,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   paliers: 17 6                                 rangées (de la grille) du **sol** à l'entrée, puis à la sortie
 //   repeter: haut rangees 6-7                     un paramètre nommé et une plage de rangées (ou de `colonnes`) de la grille
 //   variante: haut=2 cycle=180 +plafond:pics      une valeur pour chaque paramètre, et jusqu'à deux mutateurs (`+nom` ou `+nom:argument`) ;
-//                                                 de 1 à `MAX_VARIANTS` (7) variantes
+//                                                 de 1 à `MAX_VARIANTS` (10) variantes
 //   grille:                                       puis la grille (caractères de `level.ts`, sans `S`, `F` ni `C`), une ligne vide,
 //   scie <id> <rayon> <cycle> <mode> <c,r>…       puis le bloc annexe : des scies (la section est implicite)
 //   clignote <cycle> <solide> <décalage>          (lot 12) le cycle des blocs clignotants `b` `d` du morceau (la section est implicite ; `{param}` permis)
@@ -90,7 +90,7 @@ export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde
 export type MutatorName = (typeof MUTATORS)[number];
 /** Au plus ce nombre de mutateurs par variante, et de variantes par morceau (lot 7). */
 export const MAX_MUTATIONS = 2;
-export const MAX_VARIANTS = 7;
+export const MAX_VARIANTS = 10;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
 export const MODULE_ENTRIES = ["arret", "elan"] as const;
 export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
@@ -253,7 +253,34 @@ export const BLINK_PROFILES: Readonly<Record<string, { cycle: number; solid: num
   moyen: { cycle: 270, solid: 150, shift: 0 },
   vif: { cycle: 210, solid: 108, shift: 0 },
   decale: { cycle: 300, solid: 170, shift: 200 },
+  // Lot 18 : `lent` a une phase absente de 1,2 s (< 1,5 s, `BLINK_PHASE_MIN`) ; `calme` la remplace dans le générateur à une seule horloge
+  // (phase présente 1,8 s, absente 1,5 s). `lent` reste pour la référence v3.
+  calme: { cycle: 396, solid: 216, shift: 0 },
 });
+
+/**
+ * Lot 18 (g13) : **chaque phase d'un bloc clignotant, présente ou absente, dure au moins 1,5 s** (180 pas) — sinon le joueur n'a pas le temps de
+ * lire l'annonce (jauge de 0,6 s à la disparition, contour de 0,4 s avant la réapparition) ni de réagir. Une variante dont un cycle a une phase plus
+ * courte est refusée par le générateur à une seule horloge (`BLINK_TOO_FAST`, `daily.ts`) ; la référence v3 la connaît telle quelle.
+ */
+export const BLINK_PHASE_MIN = 180;
+
+/** Les phases de chaque cycle de clignotement d'un niveau (`présent` = `solid`, `absent` = le reste du cycle), en pas. */
+export function blinkPhases(level: Pick<Level, "blinkCycles">): { present: number; absent: number }[] {
+  const out: { present: number; absent: number }[] = [];
+  for (const c of level.blinkCycles) if (c) out.push({ present: c.solid, absent: c.cycle - c.solid });
+  return out;
+}
+
+/** Les phases trop courtes de ce niveau (lot 18) : vide si toutes durent au moins `BLINK_PHASE_MIN` pas. */
+export function blinkRhythmProblems(level: Pick<Level, "blinkCycles">): string[] {
+  const out: string[] = [];
+  for (const p of blinkPhases(level)) {
+    if (p.present < BLINK_PHASE_MIN) out.push(`phase présente de ${p.present} pas (au moins ${BLINK_PHASE_MIN})`);
+    if (p.absent < BLINK_PHASE_MIN) out.push(`phase absente de ${p.absent} pas (au moins ${BLINK_PHASE_MIN})`);
+  }
+  return out;
+}
 
 /** Lit le texte d'un morceau. Refuse tout ce qui est mal formé (clé inconnue, étiquette inconnue, variante incomplète…). */
 export function parseModule(text: string): ModuleDef {
@@ -1012,7 +1039,6 @@ export function moduleSpan(m: BuiltModule, entry: ModuleEntry, inputs: readonly 
 export type CatalogSolution = Pick<ModuleSolution, "code" | "ticks" | "entryTick" | "exitTick" | "exigence">;
 
 export interface CatalogVariant {
-  grid: string;
   arret: CatalogSolution | null;
   elan: CatalogSolution | null;
 }

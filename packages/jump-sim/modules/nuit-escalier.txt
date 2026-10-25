@@ -9,6 +9,10 @@ variante: cycle=280 solide=140 decalage=0
 variante: cycle=240 solide=120 decalage=120
 variante: cycle=200 solide=100 decalage=0
 variante: cycle=300 solide=150 decalage=40
+variante: cycle=360 solide=180 decalage=0
+variante: cycle=360 solide=180 decalage=120
+variante: cycle=420 solide=210 decalage=0
+variante: cycle=360 solide=180 decalage=40
 grille:
 ......................
 ......................

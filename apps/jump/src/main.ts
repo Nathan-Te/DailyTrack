@@ -2213,13 +2213,14 @@ const info: JumpDebug = {
     const state = session.state;
     const looks = blockLooks(level, state);
     return {
-      // Ce que le dessin a posé à la dernière image (opacité de la face qui vacille, contours épais, éclat) ; le reste se lit de l'état de l'essai.
+      // Ce que le dessin a posé à la dernière image (jauges, contours épais et pointillés, éclat) ; le reste se lit de l'état de l'essai.
       ...(stats ?? {}),
       blinks: level.blinks.length,
       alts: level.alts.length,
       solid: looks.filter((l) => l.solid).length,
       absent: looks.filter((l) => !l.solid).length,
-      wobbling: looks.filter((l) => l.wobble > 0).length,
+      // Lot 18 : le niveau de jauge de chaque clignotant tel que le calcule la simulation (`fills` de `stats` : celui qui est dessiné).
+      simFills: looks.slice(0, level.blinks.length).map((l) => l.fill),
       waiting: looks.filter((l) => l.waiting).length,
       alt: level.alts.length > 0 ? (state.alt ?? 0) : -1,
       phases: sectionPhases(level, state),

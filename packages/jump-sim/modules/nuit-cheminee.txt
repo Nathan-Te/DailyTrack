@@ -10,6 +10,10 @@ variante: large=2 cycle=360 solide=240 decalage=0
 variante: large=2 cycle=300 solide=180 decalage=0
 variante: large=2 cycle=330 solide=200 decalage=150
 variante: large=1 cycle=300 solide=200 decalage=0
+variante: large=2 cycle=420 solide=240 decalage=0
+variante: large=2 cycle=360 solide=180 decalage=0
+variante: large=2 cycle=380 solide=200 decalage=150
+variante: large=1 cycle=380 solide=200 decalage=0
 grille:
 ###...........
 ###...........

@@ -4,15 +4,25 @@ import { BLOCK_STYLE, blockLooks, type BlockLook } from "./blocks";
 
 // Le dessin des blocs clignotants (nuit) et alternés (néon), lot 12 — **affichage seul** : il ne lit que l'état de l'essai (`blockLooks`).
 //   - un bloc **plein** : une face colorée, un liseré clair, un repère (aucun pour un clignotant, une barre pour A, un losange pour B) ;
-//   - un bloc **absent** : seulement son contour, discret, pour qu'on sache où il reviendra ;
-//   - un bloc qui va **s'éteindre** vacille pendant 0,25 s : la face clignote (effets normaux) ; **avec le mouvement réduit**, rien ne clignote :
-//     la face s'éclaircit et le contour s'épaissit à mesure que l'instant approche (c'est une information de jeu, elle reste lisible) ;
+//   - un bloc **absent** : seulement son contour, discret, pour qu'on sache où il reviendra (un clignotant : contour **pointillé**, lot 18) ;
+//   - lot 18, l'annonce (`announce.ts`) : un clignotant plein qui va **s'éteindre** voit sa face **se vider comme une jauge qui descend** pendant ses
+//     0,6 dernières secondes (vide pile au pas de la disparition) ; absent, son contour pointillé **se remplit** pendant les 0,4 s avant son retour
+//     (plein pile au pas de la réapparition). Aucun clignotement, avec ou sans mouvement réduit : c'est une information de jeu ;
 //   - un bloc qui devrait être plein mais attend la sortie du personnage : contour épais, face absente.
 // Un matériau par bloc (l'opacité varie bloc par bloc), construits une fois ; rien n'est créé en jeu. ~100 blocs au plus par niveau du jour.
 
 /** Épaisseur du contour fin et du contour épais (tuiles). */
 const THIN = 0.05;
 const THICK = 0.14;
+/** Côté de la face et du contour (tuiles) ; tirets par côté du contour pointillé (cinq tirets, quatre vides) ; épaisseur du trait du niveau de la jauge. */
+const FACE = 0.92;
+const FRAME = 0.96;
+const DASHES = 5;
+const LEVEL_LINE = 0.05;
+/** Opacité du remplissage d'un bloc absent dont le contour se remplit (translucide : il n'est pas encore là) et du contour pointillé, au repos et plein. */
+const REFILL_FACE = 0.4;
+const DOTTED_MIN = 0.4;
+const DOTTED_MAX = 0.9;
 
 /** Un cadre carré de côté `size` (tuiles) d'épaisseur `t`, en 8 triangles. */
 function frameGeometry(size: number, t: number): BufferGeometry {
@@ -26,6 +36,25 @@ function frameGeometry(size: number, t: number): BufferGeometry {
   ];
   const pos: number[] = [];
   for (const [x0, y0, x1, y1] of rects) pos.push(x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y0, 0, x1, y1, 0, x0, y1, 0);
+  const g = new BufferGeometry();
+  g.setAttribute("position", new Float32BufferAttribute(pos, 3));
+  return g;
+}
+
+/** Un cadre pointillé (lot 18) : `DASHES` tirets par côté, autant de vides que de tirets moins un, d'épaisseur `t`. */
+function dashedFrameGeometry(size: number, t: number): BufferGeometry {
+  const h = size / 2;
+  const part = size / (2 * DASHES - 1);
+  const pos: number[] = [];
+  const rect = (x0: number, y0: number, x1: number, y1: number) => pos.push(x0, y0, 0, x1, y0, 0, x1, y1, 0, x0, y0, 0, x1, y1, 0, x0, y1, 0);
+  for (let i = 0; i < DASHES; i++) {
+    const a = -h + 2 * i * part;
+    const b = a + part;
+    rect(a, h - t, b, h); // haut
+    rect(a, -h, b, -h + t); // bas
+    rect(-h, a, -h + t, b); // gauche
+    rect(h - t, a, h, b); // droite
+  }
   const g = new BufferGeometry();
   g.setAttribute("position", new Float32BufferAttribute(pos, 3));
   return g;
@@ -60,14 +89,19 @@ export interface DynamicStats {
   /** Blocs clignotants et alternés dessinés. */
   blinks: number;
   alts: number;
-  /** Pleins, absents, vacillants, en attente de la sortie du personnage, à la dernière image. */
+  /** Pleins, absents, en attente de la sortie du personnage, à la dernière image. */
   solid: number;
   absent: number;
-  wobbling: number;
   waiting: number;
-  /** Blocs au contour épais (vacillants sans mouvement, en attente de la sortie) et opacité de la face du premier bloc qui vacille (−1 : aucun) : de quoi vérifier ce qui se voit. */
+  /** Lot 18 : clignotants dont la jauge se vide (pleins, jauge sous 1), dont le contour se remplit (absents, jauge au-dessus de 0), au contour pointillé. */
+  draining: number;
+  refilling: number;
+  dotted: number;
+  /** Lot 18 : la hauteur de face dessinée de chaque clignotant (0 vide … 1 pleine ; ordre de `Level.blinks`) et l'opacité du premier trait de niveau visible (−1 : aucun). */
+  fills: number[];
+  levelLine: number;
+  /** Blocs au contour épais (en attente de la sortie) : de quoi vérifier ce qui se voit. */
   thick: number;
-  wobbleOpacity: number;
   /** Lot 17 : l'estompage des clignotants appliqué à la dernière image (1 : aucun) et l'opacité de la face du premier clignotant plein qui ne vacille pas / du premier bloc alterné plein (−1 : aucun). Les alternés ne suivent pas l'horloge : jamais estompés. */
   clockFade: number;
   blinkFace: number;
@@ -92,9 +126,12 @@ export interface DynamicBlocks {
 export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean): DynamicBlocks | null {
   const total = level.blinks.length + level.alts.length;
   if (total === 0) return null;
-  const thin = frameGeometry(0.96, THIN);
-  const thick = frameGeometry(0.96, THICK);
-  const faceGeo = new PlaneGeometry(0.92, 0.92);
+  const thin = frameGeometry(FRAME, THIN);
+  const thick = frameGeometry(FRAME, THICK);
+  const dashed = dashedFrameGeometry(FRAME, THIN);
+  // La face part du bas du bloc (lot 18) : sa hauteur dessinée est le niveau de la jauge.
+  const faceGeo = new PlaneGeometry(FACE, FACE).translate(0, FACE / 2, 0);
+  const lineGeo = new PlaneGeometry(FACE, LEVEL_LINE);
   const barGeo = new PlaneGeometry(0.46, 0.11);
   const diamond = diamondGeometry(0.17);
   const cells: { col: number; row: number; kind: "blink" | "A" | "B" }[] = [
@@ -108,12 +145,25 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
     g.position.set(c.col + 0.5, -c.row - 0.5, 0.03);
     const faceMat = new MeshBasicMaterial({ color: style.fill, transparent: true, side: DoubleSide });
     const face = new Mesh(faceGeo, faceMat);
+    face.position.y = -FACE / 2;
     const edgeMat = new MeshBasicMaterial({ color: style.edge, transparent: true, side: DoubleSide });
     const frameThin = new Mesh(thin, edgeMat);
     const frameThick = new Mesh(thick, edgeMat);
     frameThin.position.z = 0.002;
     frameThick.position.z = 0.002;
     g.add(face, frameThin, frameThick);
+    // Lot 18 : le contour pointillé d'un clignotant absent et le trait qui marque le niveau de la jauge (seulement pour les clignotants).
+    let frameDash: Mesh | null = null;
+    let line: Mesh | null = null;
+    if (c.kind === "blink") {
+      frameDash = new Mesh(dashed, edgeMat);
+      frameDash.position.z = 0.002;
+      line = new Mesh(lineGeo, edgeMat);
+      line.position.z = 0.003;
+      line.visible = false;
+      frameDash.visible = false;
+      g.add(frameDash, line);
+    }
     let mark: Mesh | null = null;
     if (c.kind === "A") mark = new Mesh(barGeo, edgeMat);
     else if (c.kind === "B") mark = new Mesh(diamond, edgeMat);
@@ -122,7 +172,7 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
       g.add(mark);
     }
     world.add(g);
-    return { g, face, faceMat, edgeMat, frameThin, frameThick, mark, base: new Color(style.fill), edge: new Color(style.edge), kind: c.kind };
+    return { g, face, faceMat, edgeMat, frameThin, frameThick, frameDash, line, mark, base: new Color(style.fill), edge: new Color(style.edge), kind: c.kind };
   });
 
   // ——— ?debug&hitbox : l'état solide (cadre vert) ou absent (croix rouge) de chaque bloc, et le jeu A ou B actif ———
@@ -152,7 +202,7 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
   const tmp = new Color();
   let flashAmount = 0;
   let lastClock = 0;
-  const stats: DynamicStats = { blinks: level.blinks.length, alts: level.alts.length, solid: 0, absent: 0, wobbling: 0, waiting: 0, thick: 0, wobbleOpacity: -1, clockFade: 1, blinkFace: -1, altFace: -1, alt: level.alts.length > 0 ? 0 : -1, flash: 0 };
+  const stats: DynamicStats = { blinks: level.blinks.length, alts: level.alts.length, solid: 0, absent: 0, waiting: 0, draining: 0, refilling: 0, dotted: 0, fills: level.blinks.map(() => 0), levelLine: -1, thick: 0, clockFade: 1, blinkFace: -1, altFace: -1, alt: level.alts.length > 0 ? 0 : -1, flash: 0 };
 
   return {
     stats,
@@ -165,8 +215,8 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
       // L'éclat s'éteint en ≈ 0,25 s ; sans mouvement, il n'y en a pas (une information, pas un effet : la bascule se voit à l'état des blocs).
       flashAmount = animate ? Math.max(0, flashAmount - dt * 4) : 0;
       blockLooks(level, state, looks);
-      stats.solid = stats.absent = stats.wobbling = stats.waiting = stats.thick = 0;
-      stats.wobbleOpacity = -1;
+      stats.solid = stats.absent = stats.waiting = stats.draining = stats.refilling = stats.dotted = stats.thick = 0;
+      stats.levelLine = -1;
       stats.blinkFace = stats.altFace = -1;
       stats.clockFade = fade;
       stats.alt = level.alts.length > 0 ? (state.alt ?? 0) : -1;
@@ -178,53 +228,71 @@ export function createDynamicBlocks(world: Group, level: Level, hitbox: boolean)
         const look = looks[i]!;
         const x = b.g.position.x - 0.5;
         const y = -b.g.position.y - 0.5;
+        const isBlink = b.kind === "blink";
         if (look.solid) stats.solid++;
         else stats.absent++;
-        if (look.wobble > 0) stats.wobbling++;
         if (look.waiting) stats.waiting++;
-        // Le bloc plein : face, liseré fin ; le bloc absent : contour discret ; en attente de la sortie : contour épais.
+        // Le bloc plein : face, liseré fin ; le bloc absent : contour discret (pointillé pour un clignotant) ; en attente de la sortie : contour épais.
         const pulse = animate ? 0.65 + 0.35 * Math.sin(clock * 7 + i) : 0.85;
         let faceOpacity = 0;
-        let edgeOpacity = 0.4;
+        let edgeOpacity = isBlink ? DOTTED_MIN : 0.4;
         let thickOn = false;
-        let scale = 1;
+        let dottedOn = false;
+        let lineOpacity = 0;
+        let height = 0;
         if (look.solid) {
+          // Plein : la face est une jauge (lot 18), pleine hors annonce, qui descend pendant les derniers instants ; le contour reste plein et franc
+          // (le bloc est solide jusqu'au pas où il disparaît).
           faceOpacity = 1;
           edgeOpacity = 1;
-          if (look.wobble > 0) {
-            if (animate) {
-              // Vacille : la face clignote, de plus en plus vite et de plus en plus creux à l'approche de l'extinction.
-              const on = Math.floor(clock * (14 + 18 * look.wobble) + i) % 2 === 0;
-              faceOpacity = on ? 1 : 0.25 + 0.3 * (1 - look.wobble);
-            } else {
-              // Mouvement réduit : rien ne clignote. La face s'éclaircit sans à-coup et le contour s'épaissit, la face se resserre.
-              faceOpacity = 1 - 0.55 * look.wobble;
-              thickOn = look.wobble >= 0.3;
-              scale = 1 - 0.1 * look.wobble;
-            }
+          height = isBlink ? look.fill : 1;
+          if (isBlink && look.fill < 1) {
+            stats.draining++;
+            lineOpacity = 1;
           }
         } else if (look.waiting) {
           thickOn = true;
           edgeOpacity = pulse;
+        } else if (isBlink) {
+          // Absent : contour pointillé discret ; pendant l'annonce du retour, il se remplit (translucide : il n'est pas encore là) et se renforce.
+          dottedOn = true;
+          if (look.fill > 0) {
+            stats.refilling++;
+            height = look.fill;
+            faceOpacity = REFILL_FACE;
+            edgeOpacity = DOTTED_MIN + (DOTTED_MAX - DOTTED_MIN) * look.fill;
+            lineOpacity = 0.7;
+          }
         }
         // Lot 17 : pendant le carnage, les clignotants (qui suivent l'horloge) sont estompés ; l'opacité de la face et du contour suit.
-        if (b.kind === "blink") {
+        if (isBlink) {
           faceOpacity *= fade;
           edgeOpacity *= fade;
+          lineOpacity *= fade;
         }
-        if (look.solid && look.wobble <= 0) {
-          if (b.kind === "blink" && stats.blinkFace < 0) stats.blinkFace = faceOpacity;
-          if (b.kind !== "blink" && stats.altFace < 0) stats.altFace = faceOpacity;
+        if (look.solid && (!isBlink || look.fill >= 1)) {
+          if (isBlink && stats.blinkFace < 0) stats.blinkFace = faceOpacity;
+          if (!isBlink && stats.altFace < 0) stats.altFace = faceOpacity;
         }
         if (thickOn) stats.thick++;
-        if (look.wobble > 0 && stats.wobbleOpacity < 0) stats.wobbleOpacity = faceOpacity;
-        b.face.visible = faceOpacity > 0.01;
+        if (dottedOn) stats.dotted++;
+        if (isBlink) stats.fills[i] = height;
+        b.face.visible = faceOpacity > 0.01 && height > 0.001;
         b.faceMat.opacity = faceOpacity;
-        b.face.scale.set(scale, scale, 1);
-        b.frameThin.visible = !thickOn;
+        b.face.scale.set(1, Math.max(0.0001, height), 1);
+        b.frameThin.visible = !thickOn && !dottedOn;
         b.frameThick.visible = thickOn;
+        if (b.frameDash) b.frameDash.visible = dottedOn;
         b.edgeMat.opacity = edgeOpacity;
-        if (b.mark) b.mark.visible = look.solid && look.wobble < 0.7;
+        if (b.line) {
+          const shown = lineOpacity > 0.01 && height > 0.001 && height < 1;
+          b.line.visible = shown;
+          if (shown) {
+            b.line.position.y = -FACE / 2 + FACE * height;
+            if (stats.levelLine < 0) stats.levelLine = lineOpacity;
+          }
+        }
+        if (b.mark) b.mark.visible = look.solid;
         // Éclat : les blocs alternés pleins tirent vers le blanc.
         tmp.copy(b.base);
         b.faceMat.color.copy(b.kind !== "blink" && look.solid && flashAmount > 0 ? tmp.lerp(white, 0.75 * flashAmount) : b.base);
