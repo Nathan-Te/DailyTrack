@@ -15,7 +15,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //
 // Format d'un fichier, **version 3** (lot 7 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
-//   intention: Monter une cheminée …              une phrase en français
+//   intention: Monter une cheminée …              une phrase en français (lot 20 : absente du catalogue embarqué, `apps/jump/public/outils/intentions.json`)
 //   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile)
 //   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
 //                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne` ; lot 13 :
@@ -331,7 +331,8 @@ export function parseModule(text: string): ModuleDef {
   const id = one("id");
   if (!/^[a-z0-9-]{1,24}$/.test(id)) throw new ModuleError(`id « ${id} » invalide (minuscules, chiffres, tirets, 24 au plus)`);
   const where = (s: string) => `Morceau « ${id} » : ${s}`;
-  const intention = one("intention");
+  // Lot 20 : le catalogue embarqué n'a plus la ligne `intention:` (poids du jeu) ; un fichier de morceau, lui, l'a toujours (`tools/files.ts`, `intentions.json`).
+  const intention = meta.intention === undefined ? "" : one("intention");
   const tags = one("etiquettes").split(/\s+/);
   for (const t of tags) if (!(MODULE_TAGS as readonly string[]).includes(t)) throw new ModuleError(where(`étiquette « ${t} » inconnue (${MODULE_TAGS.join(", ")})`));
   if (new Set(tags).size !== tags.length) throw new ModuleError(where("étiquette en double"));

@@ -32,6 +32,28 @@ export function readModules(): { file: string; text: string; def: ModuleDef }[] 
     });
 }
 
+/**
+ * Lot 20 (budget de poids) : ce que le jeu **embarque** d'un morceau est son texte **sans la ligne `intention:`** (une phrase de 100 à 150 octets par morceau,
+ * 11 ko pour le catalogue, ≈ 4 ko compressés **dans chacune des deux copies** du jeu : la page et le fil du générateur). Les intentions ne servent qu'à la
+ * galerie (`?modules`) : elles sont écrites à part, dans `apps/jump/public/outils/intentions.json`, que la galerie lit à la demande.
+ */
+export function embeddedText(text: string): string {
+  return text.replace(/^intention:.*\n/m, "");
+}
+
+export const intentionsPath = () => join(packageDir(), "..", "..", "apps", "jump", "public", "outils", "intentions.json");
+
+/** Le texte de `intentions.json` : l'intention de chaque morceau, par identifiant (ordre des fichiers). */
+export function intentionsSource(texts: readonly string[]): string {
+  const out: Record<string, string> = {};
+  for (const t of texts) {
+    const def = parseModule(t);
+    if (def.intention === "") throw new Error(`Morceau « ${def.id} » : « intention: » manquante`);
+    out[def.id] = def.intention;
+  }
+  return JSON.stringify(out, null, 1) + "\n";
+}
+
 export function readSolutions(): ModuleSolutionsFile | null {
   try {
     return JSON.parse(readFileSync(solutionsPath(), "utf8")) as ModuleSolutionsFile;
@@ -68,7 +90,7 @@ export function catalogSource(texts: readonly string[], solutions: ModuleSolutio
     "",
     "export const MODULE_TEXTS: readonly string[] = [",
     // `*` (ressort) écrit `\u002a` : le test de pureté refuse `**` (puissance) dans les sources de la simulation, même dans une chaîne.
-    ...texts.map((t) => `  ${JSON.stringify(t).replace(/\*/g, "\\u002a")},`),
+    ...texts.map((t) => `  ${JSON.stringify(embeddedText(t)).replace(/\*/g, "\\u002a")},`),
     "];",
     "",
     `export const MODULE_PACKED: PackedCatalog = ${JSON.stringify(packCatalog(solutions))};`,
@@ -79,4 +101,5 @@ export function catalogSource(texts: readonly string[], solutions: ModuleSolutio
 export function writeCatalog(texts: readonly string[], solutions: ModuleSolutionsFile): void {
   writeFileSync(solutionsPath(), JSON.stringify(solutions, null, 1) + "\n");
   writeFileSync(catalogPath(), catalogSource(texts, solutions));
+  writeFileSync(intentionsPath(), intentionsSource(texts));
 }

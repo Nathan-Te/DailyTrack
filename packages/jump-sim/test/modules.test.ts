@@ -58,7 +58,7 @@ import {
 } from "../src/index";
 import { MODULE_TEXTS } from "../src/catalog";
 import { MODULE_SOLUTIONS } from "../src/modules";
-import { catalogOf, catalogSource, readSolutions } from "../tools/files";
+import { catalogOf, catalogSource, embeddedText, intentionsPath, intentionsSource, readModules, readSolutions } from "../tools/files";
 import { ELAN_FLAT_MAX, FLAT_MAX, flatLimit, flatsOf, longestFlat } from "../tools/plats";
 
 /** Lot 15 : les solutions complètes (gigue, raccord, plus rapide…), que le jeu n'embarque plus. */
@@ -236,8 +236,10 @@ describe("le catalogue", () => {
     const easy = MODULES.filter((m) => m.tags.includes("respiration") && m.variants.every((_, v) => variantExigence(moduleSolutions(m.id, v)) <= 2));
     expect(easy.length).toBeGreaterThanOrEqual(4);
     expect(MODULES.filter((m) => m.tags.includes("mural")).length).toBeGreaterThanOrEqual(6);
-    expect(new Set(MODULES.map((m) => m.intention)).size).toBe(MODULES.length);
-    for (const m of MODULES) expect(m.intention, m.id).toMatch(/^[A-ZÀ-Ý].{20,}\.$/);
+    // Lot 20 : les intentions sont lues dans les fichiers de morceaux (le catalogue embarqué ne les a plus).
+    const intentions = readModules().map((m) => m.def);
+    expect(new Set(intentions.map((m) => m.intention)).size).toBe(MODULES.length);
+    for (const m of intentions) expect(m.intention, m.id).toMatch(/^[A-ZÀ-Ý].{20,}\.$/);
   });
 
   it("format v3 : chaque fichier est au format 3, aucune grille ne contient de palier — buildModule pose le palier standard à côté d'elle", () => {
@@ -276,7 +278,10 @@ describe("le catalogue", () => {
       .filter((f) => f.endsWith(".txt"))
       .sort()
       .map((f) => readFileSync(join(DIR, f), "utf8"));
-    expect(MODULE_TEXTS, `un fichier de morceau a changé : ${STALE}`).toEqual(texts);
+    // Lot 20 : le catalogue embarqué n'a pas la ligne `intention:` (poids du jeu) ; elle est dans `apps/jump/public/outils/intentions.json`.
+    expect(MODULE_TEXTS, `un fichier de morceau a changé : ${STALE}`).toEqual(texts.map(embeddedText));
+    for (const t of MODULE_TEXTS) expect(t).not.toMatch(/^intention:/m);
+    expect(readFileSync(intentionsPath(), "utf8"), `intentions.json périmé : ${STALE}`).toBe(intentionsSource(texts));
     const stored = JSON.parse(readFileSync(join(DIR, "solutions.json"), "utf8")) as ModuleSolutionsFile;
     expect(MODULE_SOLUTIONS, STALE).toEqual(catalogOf(stored));
     expect(readFileSync(join(import.meta.dirname, "../src/catalog.ts"), "utf8"), STALE).toBe(catalogSource(texts, stored));

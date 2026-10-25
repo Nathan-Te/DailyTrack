@@ -16,6 +16,9 @@ import {
   dailyLevel,
   dailyProblems,
   decodeReplay,
+  freezeLevel,
+  frozenJson,
+  thawLevel,
   fromRuns,
   moduleSolutions,
   palierProblems,
@@ -640,4 +643,23 @@ describe("lot 20 — les niveaux du jour", () => {
     }
     expect(withPlatforms).toBeGreaterThanOrEqual(10);
   }, 120_000);
+});
+
+describe("lot 20 — un jour à plateformes se fige et se relit", () => {
+  it("figer puis relire (`thawLevel`, la règle commune du jeu et du serveur) rend le même niveau, les mêmes plateformes, et la preuve se rejoue ; une version incohérente est refusée", () => {
+    const start = parseDay("2026-10-27")!;
+    const day = Array.from({ length: 20 }, (_, k) => dailyLevel(start + k)).find((d) => d.level.platforms.length > 0)!;
+    const raw = JSON.parse(frozenJson(freezeLevel(day)));
+    expect(raw.simVersion).toBe(PLATFORM_VERSION);
+    expect(raw.generatorVersion).toBe(JUMP_GENERATOR_VERSION);
+    const back = thawLevel(raw, day.day);
+    expect(typeof back).not.toBe("string");
+    if (typeof back === "string") return;
+    expect(back.ascii).toBe(day.ascii);
+    expect(back.level.platforms).toEqual(day.level.platforms);
+    expect(back.code).toBe(day.code);
+    // Un fichier v5 sous un générateur d'avant (ou l'inverse) est incohérent.
+    expect(thawLevel({ ...raw, generatorVersion: 14 }, day.day)).toBe("versions incohérentes");
+    expect(thawLevel({ ...raw, simVersion: SINGLE_CLOCK_VERSION }, day.day)).toBe("versions incohérentes");
+  });
 });
