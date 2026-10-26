@@ -4,6 +4,7 @@
 // réglages, aide, profil). Le DOM seulement : les données viennent de `HomeHost` (main.ts), la logique de homeLogic.ts, profile.ts et boardView.ts.
 import type { Medal } from "@cdj/sim";
 import { astuceIphone, bouton, formatDecompte, medaille } from "@cdj/ui";
+import { avisDeNouveauDepart } from "./nouveauDepart";
 import type { ApiResult, Leaderboard } from "./api";
 import { boardTitle, dayLines, linesEls, MEDAL_TYPE } from "./boardView";
 import { creerCadre } from "./cadre";
@@ -176,7 +177,9 @@ export function mountHome(root: HTMLElement, host: HomeHost): HomeUi {
   grille.append(colA, colB, colC);
   // Lot I7 : sur iPhone (pas de plein écran de page), une ligne sous le titre qui dit comment jouer en plein écran ; fermée, elle ne revient pas.
   const astuce = astuceIphone({ textes: () => ({ astuce: t("pleinEcran.iphone"), fermer: t("pleinEcran.iphone.fermer") }), stockage: { getItem: (k) => gameStorage().getItem(k), setItem: (k, v) => gameStorage().setItem(k, v) } });
-  cadre.corps.append(tete, ...(astuce ? [astuce] : []), grille, touchNote, nextDay, actions);
+  // Lot R8 : « Nouveau départ… », une fois, après la remise à zéro du lancement.
+  const depart = avisDeNouveauDepart();
+  cadre.corps.append(tete, ...(depart ? [depart] : []), ...(astuce ? [astuce] : []), grille, touchNote, nextDay, actions);
 
   // --- Rendu ---
   function renderTexts() {

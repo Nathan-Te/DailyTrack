@@ -54,7 +54,7 @@ describe("la table spec → zones (e2e/zones.json)", () => {
     const utilisees = new Set(Object.values(table.specs).flat());
     expect(connues.filter((z) => !utilisees.has(z)), "zones qu'aucun spec ne cite").toEqual([]);
     const fichiers = ["apps", "packages", "scripts"].flatMap((d) => lister(ROOT, d));
-    fichiers.push("firebase.json");
+    fichiers.push("firebase.json", "config/lancement.json"); // lot R8 : la date du lancement (zone core-clock)
     for (const z of connues) {
       for (const [i, re] of table.compilees[z]!.globs.entries()) {
         expect(fichiers.some((f) => re.test(f)), `zone ${z} : le motif « ${table.zones[z]!.globs[i]} » ne désigne aucun fichier`).toBe(true);

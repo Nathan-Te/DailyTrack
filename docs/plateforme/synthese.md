@@ -38,7 +38,7 @@ Un seul serveur (`createApi`, Cloud Run + Turso), une seule identité, un seul p
 | `players` | identifiant secret, pseudo réservé, dates | permanente | 5, 30, P0 |
 | `revoked_codes` | empreintes des codes remplacés | permanente | 30 |
 | `rate` | compteurs de débit des envois | ≈ 40 min (ménage au passage) | 5, P0 |
-| `meta` | empreinte du schéma, rapports de migration | permanente | 28 |
+| `meta` | empreinte du schéma, rapports de migration ; **lot R8 : la génération de données** (l'instant de la remise à zéro du lancement) | permanente | 28, R8 |
 | `results` | meilleur temps par joueur et par jour (DailyTrack) | permanente | 5 |
 | `circuits`, `planning` | circuit du jour en cache, variantes choisies | permanente (cache recalculable) | 5, 14 |
 | `salon_runs`, `salon_sessions`, `salon_circuits` | une session du Salon | **oubliée à fin + 20 s** | 27, 27b |
@@ -48,7 +48,7 @@ Un seul serveur (`createApi`, Cloud Run + Turso), une seule identité, un seul p
 | `jump_lives` | les vies du jour (une ligne par joueur) | **oubliée à la fin du jour** | P3 |
 | `jump_deaths` | carte et échantillon du jour (une ligne par jour), figés à la fin du jour | permanente | P3 |
 
-**Rien de tout cela n'est nettoyé par une tâche de fond** : l'oubli se fait à la première requête qui voit la session ou le jour terminé (Cloud Run éteint le conteneur). **Lot R5** : chaque table est décrite sur la page publique « Mentions légales et confidentialité » (`apps/portail/mentions-legales/`, test de fidélité `apps/portail/test/mentions.test.ts`) ; un joueur est effacé à sa demande par `POST /api/admin/effacer` (crochet `erase` de chaque jeu, ligne retirée des classements passés).
+**Lot R8 — le lancement public** : toutes les tables ci-dessus liées à un joueur ou à une partie sont **vidées une fois**, le jour du partage, par le workflow « Lancement : remise à zéro » (`remiseAZero.ts`, liste calculée du schéma ; gardés : `planning`, `circuits`, `jump_levels`, `meta`) ; `docs/plateforme/lancement.md`. **Rien de tout cela n'est nettoyé par une tâche de fond** : l'oubli se fait à la première requête qui voit la session ou le jour terminé (Cloud Run éteint le conteneur). **Lot R5** : chaque table est décrite sur la page publique « Mentions légales et confidentialité » (`apps/portail/mentions-legales/`, test de fidélité `apps/portail/test/mentions.test.ts`) ; un joueur est effacé à sa demande par `POST /api/admin/effacer` (crochet `erase` de chaque jeu, ligne retirée des classements passés).
 
 ## 5. L'ordre de validation d'un envoi → P1, P3
 Du moins cher au plus cher : (1) **débit compté en base**, avant de lire le corps — par adresse du joueur **et** (R5) par adresse de connexion (dernière entrée de `X-Forwarded-For`, × 10, en mémoire), qu'un appel direct à `run.app` ne peut pas inventer ; (2) **taille** du corps ; (3) **le niveau du jour seulement** (jour de Paris, grâce de 10 min ; archive, thème forcé, futur refusés) ; (4) **versions** (simulation, générateur, niveau du serveur → 409 « nouvelle version ») ; puis code révoqué (410), pseudo / joueur existant, plafonds ; (5) **rejeu** : seul le temps et les morts du serveur comptent. Jamais un temps annoncé. **R5** : juste avant le rejeu, le plafond global de l'instance (600 rejeux par minute, 503 `busy` au-delà).
@@ -82,6 +82,7 @@ Du moins cher au plus cher : (1) **débit compté en base**, avant de lire le co
 - **P2** : fantômes cyan clair (le tien) et mauve (le premier) ; le compte `cdj-deploy` lit `cdj-recette-turso-token` ; `?watch=first` attend le serveur 8 s au plus.
 - **P3** : **au plus 30 morts par joueur et par jour** ; seules les vies qui finissent par une mort partent ; § 3 (profil des morts) retiré : `/api/jump/me` ne change pas.
 - **P4** : à valider (README du lot) — profil dans la lecture regroupée, révision d'identité nuancée (seul un code chargé vide le cache), décisions de `couts.md` § 4.
+- **R8** : la journée n° 1 est le lundi 26/10/2026 (`config/lancement.json`, une seule ligne à changer si le partage glisse) ; tous les profils sont supprimés le jour du partage (sauvegarde sur l'ordinateur de Nathan, supprimée un mois après) ; les navigateurs repartent de zéro (génération de données), langue, son et réglages gardés ; après le partage, plus de « Mettre en production » avant le lot R6.
 - **R5** : plus aucune redirection depuis GitHub Pages (le code de transfert suffit) ; éditeur « MZC Studios », particulier, contact `mzc.studios.gamedev@gmail.com` ; à valider (README du lot R5) : les points ouverts des mentions (téléphone de l'hébergeur, région de la base Turso), la ligne retirée (et non anonymisée) des classements passés.
 
 ## 10. Ajouter le jeu n° 3, de bout en bout

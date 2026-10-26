@@ -5,6 +5,7 @@ import { creerCadre } from "./cadre";
 import { el } from "./dom";
 import { fDate, fDateCourte, fNumero, fRang, fTemps, nomTheme, onLangue, t, traducteurDuSocle } from "./i18n";
 import { iconeTrack } from "./icones";
+import { PREMIER_JOUR_ARCHIVES } from "./lancement";
 import type { DayBest } from "./records";
 import { watchHrefFor } from "./watch";
 
@@ -18,10 +19,13 @@ export interface ArchiveDay {
   best: DayBest | null;
 }
 
-/** Jours jouables : d'aujourd'hui au lancement, du plus récent au plus ancien (`max` au plus). */
-export function archiveDays(today: number, bests: Map<string, DayBest>, max = 120): ArchiveDay[] {
+/**
+ * Jours listés : d'aujourd'hui à la journée n° 1 de Du Jour (le lancement public, lot R8 : `first`), du plus récent au plus ancien (`max` au plus).
+ * Les circuits d'avant le lancement ne sont plus proposés ; avant le lancement, la liste est vide.
+ */
+export function archiveDays(today: number, bests: Map<string, DayBest>, max = 120, first: number = PREMIER_JOUR_ARCHIVES): ArchiveDay[] {
   const days: ArchiveDay[] = [];
-  for (let day = today; day >= PREMIER_JOUR && days.length < max; day--) {
+  for (let day = today; day >= first && days.length < max; day--) {
     const date = formatDay(day);
     days.push({ day, date, number: circuitNumber(day), theme: themeForDay(day).name, isToday: day === today, best: bests.get(date) ?? null });
   }

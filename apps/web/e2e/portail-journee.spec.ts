@@ -344,7 +344,7 @@ function medailleTrackNom(demo: Awaited<ReturnType<typeof jourDeDemo>>): string 
   return m ? ({ author: "Auteur", gold: "Or", silver: "Argent", bronze: "Bronze" } as Record<string, string>)[m]! : "Fini";
 }
 
-test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › », jamais au-delà d'aujourd'hui ni avant le premier jour des jeux", async ({ browser }) => {
+test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › », jamais au-delà d'aujourd'hui ni avant la journée n° 1 (lot R8)", async ({ browser }) => {
   const context = await newContextAt(browser, T24, { ...PORTRAIT, locale: "fr-FR" });
   const page = await context.newPage();
   await page.goto(`${SITE_24}/?demo=joueur`);
@@ -373,12 +373,13 @@ test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › »
   await page.locator("#lendemain").click();
   await expect(page).toHaveURL(`${SITE_24}/classement/`);
   await expect(page.locator("#classement-compte")).toHaveText(aujourdhui);
-  // Avant le premier jour des jeux (13/10/2026) : « ‹ Veille » est éteint.
-  await page.goto(`${SITE_24}/classement/?date=2026-10-14`);
-  await expect(page.locator("#classement-date")).toHaveText("Mer. 14 oct.");
-  await page.locator("#veille").click();
-  await expect(page.locator("#classement-date")).toHaveText("Mar. 13 oct.");
+  // Lot R8 : les archives commencent à la journée n° 1 (ici le 23/10, épinglé par playwright.config.ts) : « ‹ Veille » est éteint ce jour-là…
+  await page.goto(`${SITE_24}/classement/?date=2026-10-23`);
+  await expect(page.locator("#classement-date")).toHaveText("Ven. 23 oct.");
   await expect(page.locator("#veille")).toBeDisabled();
+  // …et un jour d'avant le lancement, demandé par l'adresse, est refusé par le serveur (code `unknown_day`), dit clairement.
+  await page.goto(`${SITE_24}/classement/?date=2026-10-14`);
+  await expect(page.locator("#classement-etat")).toHaveText("Ce jour n'a pas de classement.");
   // Un jour futur dans l'adresse : refusé par le serveur, dit clairement, rien de cassé.
   await page.goto(`${SITE_24}/classement/?date=2026-12-31`);
   await expect(page.locator("#classement-etat")).toHaveText("Ce jour n'a pas de classement.");

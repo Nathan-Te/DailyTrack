@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { GENERATOR_BEFORE_34 as G15, GENERATOR_BEFORE_48 as G16, GENERATOR_VERSION as G, PREMIER_JOUR, SIM_VERSION, formatDay } from "@cdj/sim";
+import { premierJourDuJour } from "@cdj/core/lancement";
+import { PREMIER_JOUR_ARCHIVES } from "../src/lancement";
 import { RANDOM_SPAN, archiveDays, archiveHref, nextTheme, randomSeedHref, themeHref } from "../src/archive";
 import { listDayBests, type DayBest } from "../src/records";
 
 describe("archiveDays", () => {
   it("liste les jours d'aujourd'hui au lancement, du plus récent au plus ancien", () => {
-    const days = archiveDays(PREMIER_JOUR + 3, new Map());
+    const days = archiveDays(PREMIER_JOUR + 3, new Map(), 120, PREMIER_JOUR);
     expect(days.map((d) => d.date)).toEqual([formatDay(PREMIER_JOUR + 3), formatDay(PREMIER_JOUR + 2), formatDay(PREMIER_JOUR + 1), formatDay(PREMIER_JOUR)]);
     expect(days.map((d) => d.number)).toEqual([4, 3, 2, 1]);
     expect(days.map((d) => d.isToday)).toEqual([true, false, false, false]);
@@ -13,17 +15,28 @@ describe("archiveDays", () => {
   });
 
   it("le jour du lancement n'a qu'une ligne ; avant le lancement, aucune", () => {
-    expect(archiveDays(PREMIER_JOUR, new Map())).toHaveLength(1);
-    expect(archiveDays(PREMIER_JOUR - 1, new Map())).toHaveLength(0);
+    expect(archiveDays(PREMIER_JOUR, new Map(), 120, PREMIER_JOUR)).toHaveLength(1);
+    expect(archiveDays(PREMIER_JOUR - 1, new Map(), 120, PREMIER_JOUR)).toHaveLength(0);
+  });
+
+  // Lot R8 : les archives commencent à la journée n° 1 de Du Jour (le lancement public), pas au circuit n° 1 de Track.
+  it("lot R8 : les archives s'arrêtent à la journée n° 1 du lancement ; avant elle, la liste est vide", () => {
+    const lancement = premierJourDuJour();
+    expect(PREMIER_JOUR_ARCHIVES).toBe(Math.max(PREMIER_JOUR, lancement));
+    expect(lancement).toBeGreaterThan(PREMIER_JOUR); // le lancement est après le circuit n° 1 de Track
+    const jours = archiveDays(lancement + 2, new Map());
+    expect(jours.map((d) => d.date)).toEqual([formatDay(lancement + 2), formatDay(lancement + 1), formatDay(lancement)]);
+    expect(archiveDays(lancement - 1, new Map())).toEqual([]); // avant le lancement : rien (les circuits d'avant ne sont plus proposés)
+    expect(archiveDays(lancement + 400, new Map())).toHaveLength(120);
   });
 
   it("plafonne la liste", () => {
-    expect(archiveDays(PREMIER_JOUR + 500, new Map(), 30)).toHaveLength(30);
+    expect(archiveDays(PREMIER_JOUR + 500, new Map(), 30, PREMIER_JOUR)).toHaveLength(30);
   });
 
   it("rattache à chaque jour son meilleur temps local", () => {
     const best: DayBest = { date: formatDay(PREMIER_JOUR + 1), ms: 41000, medal: "gold" };
-    const days = archiveDays(PREMIER_JOUR + 2, new Map([[best.date, best]]));
+    const days = archiveDays(PREMIER_JOUR + 2, new Map([[best.date, best]]), 120, PREMIER_JOUR);
     expect(days.find((d) => d.date === best.date)!.best).toEqual(best);
     expect(days.find((d) => d.isToday)!.best).toBeNull();
   });

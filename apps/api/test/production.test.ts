@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { daysFromCivil } from "@cdj/core";
 import { GENERATOR_VERSION, SIM_VERSION, formatDay } from "@cdj/sim";
 import { createApi } from "../src/api";
 import { ConfigError, readConfig } from "../src/config";
@@ -209,6 +210,16 @@ describe("configuration du serveur", () => {
     expect(() => readConfig({ K_SERVICE: "cdj-api", TURSO_DATABASE_URL: "libsql://x", TEST_CLOCK_OFFSET_MS: "1000" })).toThrow(/TEST_CLOCK_OFFSET_MS/);
     expect(() => readConfig({ TEST_CLOCK_OFFSET_MS: "demain" })).toThrow(ConfigError);
     expect(() => readConfig({ TEST_CLOCK_OFFSET_MS: "1.5" })).toThrow(ConfigError);
+  });
+
+  it("lot R8 — LANCEMENT_PREMIER_JOUR : permise en local et en recette, refusée en production, une date exigée", () => {
+    expect(readConfig({ LANCEMENT_PREMIER_JOUR: "2026-11-02" }).premierJourDuJour).toBe(daysFromCivil(2026, 11, 2));
+    expect(readConfig({}).premierJourDuJour).toBeUndefined(); // la date de config/lancement.json
+    expect(readConfig({ ...prod, ENVIRONMENT: "recette", TURSO_DATABASE_URL: "libsql://cdj-recette-nathan.turso.io", LANCEMENT_PREMIER_JOUR: "2026-11-02" }).premierJourDuJour).toBe(daysFromCivil(2026, 11, 2));
+    expect(() => readConfig({ ...prod, LANCEMENT_PREMIER_JOUR: "2026-11-02" })).toThrow(/LANCEMENT_PREMIER_JOUR/);
+    expect(() => readConfig({ ...prod, ENVIRONMENT: "production", LANCEMENT_PREMIER_JOUR: "2026-11-02" })).toThrow(/LANCEMENT_PREMIER_JOUR/);
+    expect(() => readConfig({ LANCEMENT_PREMIER_JOUR: "demain" })).toThrow(ConfigError);
+    expect(() => readConfig({ LANCEMENT_PREMIER_JOUR: "2026-02-30" })).toThrow(ConfigError);
   });
 
   it("signale l'horloge de test dans /api/health quand l'horloge de test est active", async () => {

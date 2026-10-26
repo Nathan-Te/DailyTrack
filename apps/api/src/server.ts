@@ -1,5 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { formatDay } from "@cdj/core";
 import { createApi } from "./api";
 import { ConfigError, readConfig } from "./config";
 import { openLibsql } from "./libsql-open";
@@ -37,6 +38,10 @@ if (config.testClockOffsetMs !== undefined) {
   consoleLog("WARNING", "TEST_CLOCK_OFFSET_MS : horloge du serveur décalée (tests seulement, jamais en production)", { offsetMs: offset, now: new Date(now()).toISOString() });
 }
 
+if (config.premierJourDuJour !== undefined) {
+  consoleLog("WARNING", "LANCEMENT_PREMIER_JOUR : journée n° 1 déplacée (recette et essais locaux seulement, jamais en production)", { premierJour: formatDay(config.premierJourDuJour) });
+}
+
 let db;
 if (config.db.kind === "turso") {
   db = await openLibsql({ url: config.db.url, authToken: config.db.authToken });
@@ -60,6 +65,7 @@ const api = createApi({
   peerFactor: config.peerFactor, // lot R5 : l'adresse de connexion dans chaque limite par adresse (PEER_FACTOR, 0 = coupé)
   adminToken: config.adminToken,
   salonMinutes: config.salonMinutes,
+  premierJourDuJour: config.premierJourDuJour, // lot R8 : la journée n° 1 déplacée (recette et local seulement)
   now,
   testClock: now !== undefined,
   revision: config.revision,

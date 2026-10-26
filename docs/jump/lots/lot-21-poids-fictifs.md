@@ -10,7 +10,7 @@ PR : https://github.com/Nathan-Te/DailyTrack/pull/150 ; aperçu : https://playdu
 ## 1. Poids : le catalogue et le générateur hors du premier chargement
 | | avant | après |
 |---|---|---|
-| Budget `jump.jsCss` (`mesureJump`, inchangée) | 376 557 o (marge 1 933) | **326 546 o (marge 51 944)** |
+| Budget `jump.jsCss` (`mesureJump`, inchangée ; 377 317 = `main` avec le lot R8) | 377 317 o (marge 1 173) | **327 274 o (marge 51 216)** |
 | JS réellement reçu au premier chargement (graphe statique page + jeu, compressé) | 304 960 o | **264 554 o (−40 406)** |
 
 - **Ce qui sortait de trop** : le catalogue (91 morceaux, 25 ko compressés), l'analyse des morceaux (20 ko) et le générateur (12 ko) étaient dans le fichier de la page **et** recopiés dans le fil de travail (56 ko). Le générateur, le solveur de la preuve et le catalogue n'existent plus qu'une fois et ne sont chargés qu'à la demande (fichier figé absent, `?module=`, `?modules`, `?semaine`, `?carnage=demo`).

@@ -17,13 +17,14 @@
 // `--environnement production` (ce que `/api/jump/info` doit dire), `--resume <fichier>` (le résumé du run, Markdown), `--retour <commande>`
 // (la commande de retour arrière à copier, écrite dans le résumé en cas d'échec). Le mode complet vérifie aussi la lecture regroupée.
 //   npm run smoke -w @cdj/api -- https://<API> --lecture-seule --environnement production
+//   lot R8 : `--vide` ajoute la vérification d'après la remise à zéro du lancement (aucun classé, génération annoncée), sur l'adresse du service
 //   npm run smoke -w @cdj/api -- https://recette.playdujour.com --lecture-seule --environnement recette --par-hosting --joueur-demo   (lot I3 : le cache de Hosting)
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, lifeReplay, replayAttempt } from "@cdj/jump-sim";
 import { jumpDailyOf } from "../src/jump";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
-import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting } from "./smokeRead";
+import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
 
 const base = (process.argv[2] ?? "http://localhost:8080").replace(/\/+$/, "");
 const option = (name: string): string | undefined => {
@@ -46,6 +47,8 @@ if (readOnly) {
     process.exit(1);
   }
   const checks = await readOnlySmoke(base, (u, i) => fetch(u, i), { expectEnvironment: option("--environnement"), origin });
+  // Lot R8 : après la remise à zéro du lancement, la base est vide (à lancer sur l'adresse du service, pas sur celle de Hosting).
+  if (process.argv.includes("--vide")) checks.push(...(await verifierVide(base, (u, i) => fetch(u, i))));
   if (parHosting) checks.push(...(await varyParHosting(base, (u, i) => fetch(u, i), { joueur: demo ? DEMO_JOUEUR_ID : undefined })));
   for (const c of checks) console.log(`${c.ok ? "✓" : "✗"} ${c.label} — ${c.route} ${c.status}${c.detail ? ` — ${c.detail}` : ""}`);
   const failedChecks = checks.filter((c) => !c.ok).length;

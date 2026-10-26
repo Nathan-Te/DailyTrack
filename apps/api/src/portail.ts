@@ -1,4 +1,5 @@
-import { daysFromCivil, formatDay, parseDay } from "@cdj/core";
+import { formatDay, parseDay } from "@cdj/core";
+import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "@cdj/core/lancement";
 import { parisDayStart } from "@cdj/clock";
 import { WithHeaders } from "./cache";
 import { BAREME_POINTS, classerLaJournee, placer, pointsDe, sommeDesRangs, type ClassementDuJour, type LigneDuJour, type ResultatJeu } from "./classementDuJour";
@@ -15,7 +16,7 @@ import type { EtatPortail, JourPortail, Platform, PortailDuJeu, RequestInfo } fr
 //   GET /api/portail/classement?date=   (lot I3) le classement du jour tous jeux confondus : les 50 premiers (pseudo, points, médaille par jeu) et,
 //                             avec `X-Player-Id`, ta ligne. Jours passés lisibles ; jours futurs refusés (`unknown_day`).
 //
-// **Lot I3 — la journée partagée** : le numéro de journée commun (`journee` : la journée n° 1 est le 23/10/2026, l'ouverture publique) ; les **points du
+// **Lot I3 — la journée partagée** : le numéro de journée commun (`journee` : la journée n° 1 est le lancement public, `config/lancement.json`, lot R8) ; les **points du
 // jour** (barème : `classementDuJour.ts`) et le classement du jour tous jeux confondus. La route agrège sans connaître les jeux : chacun rend ses classés
 // du jour (`portail.classes`). Le classement du jour est **calculé au plus une fois par fenêtre** (`CLASSEMENT_FENETRE_MS`) **et par instance**, jamais à
 // chaque requête (une ligne lue par classé et par jeu) ; un jour fermé est figé, gardé plus longtemps. Ta propre ligne est exacte (tes états, lus à
@@ -38,10 +39,11 @@ export const PORTAIL_READS_PER_CLIENT = 120;
 /** Lectures du portail par joueur et par fenêtre. */
 export const PORTAIL_READS_PER_PLAYER = 60;
 
-/** Lot I3 : le premier jour de la journée commune (« Du Jour #1 ») : le 23/10/2026, l'ouverture publique. Une constante de la plateforme, pas d'un jeu. */
-export const PREMIER_JOUR_DU_JOUR = daysFromCivil(2026, 10, 23);
-/** Le numéro de la journée commune d'un jour de Paris, ou `null` avant le 23/10/2026 (aucun numéro n'est affiché). */
-export const numeroDeJournee = (day: number): number | null => (day >= PREMIER_JOUR_DU_JOUR ? day - PREMIER_JOUR_DU_JOUR + 1 : null);
+// Lot R8 : le premier jour de la journée commune (« Du Jour #1 », le lancement public) n'est plus une constante d'ici : il vient de
+// `config/lancement.json` par `@cdj/core` (`PREMIER_JOUR_DU_JOUR`, `numeroDeJournee`). `createPortailRoutes(…, premierJour)` le reçoit (la
+// recette peut le déplacer : `LANCEMENT_PREMIER_JOUR`, jamais en production). Avant ce jour : aucun numéro, et le classement du jour refuse
+// les jours d'avant (`unknown_day`) : les archives commencent à la journée n° 1.
+export { PREMIER_JOUR_DU_JOUR, numeroDeJournee };
 
 /** Lot I3 : le classement du jour en cours est recalculé au plus une fois toutes les 45 s par instance (30 à 60 s : le compromis entre fraîcheur et lignes lues). */
 export const CLASSEMENT_FENETRE_MS = 45_000;
@@ -101,7 +103,7 @@ export function serieEtParfaites(today: number, jeux: readonly { premierJour: nu
   return { serie, aProlonger: !finiAujourdhui && serie > 0, journeesParfaites, aujourdhuiParfaite: parfaite(today) };
 }
 
-export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[]) {
+export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortail[], premierJour: number = PREMIER_JOUR_DU_JOUR) {
   const { now, log, today, players, hashKey, readHit, playerIdOf } = platform;
 
   /** L'identifiant de l'en-tête `X-Player-Id` (jamais dans l'adresse), ou `null` sans en-tête. */
@@ -137,7 +139,11 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const t = now();
     return {
       date: formatDay(day),
-      journee: numeroDeJournee(day),
+      journee: numeroDeJournee(day, premierJour),
+      /** Lot R8 : le jour de la journée n° 1 (AAAA-MM-JJ) : la source unique, vérifiée par le workflow de remise à zéro de la production. */
+      lancement: formatDay(premierJour),
+      /** Lot R8 : la génération de données (remise à zéro du lancement) : un navigateur qui en garde une plus ancienne efface ses données de jeu. */
+      generation: await platform.generation(),
       maintenant: new Date(t).toISOString(),
       prochainJour: new Date(parisDayStart(day + 1)).toISOString(),
       jeux: await jeuxDuJour(day),
@@ -269,7 +275,9 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const day = brut === null ? aujourdhui : parseDay(brut);
     if (day === null) throw new HttpError(400, "invalid_date", "Date attendue au format AAAA-MM-JJ");
     const ouverts = jeux.filter((j) => j.portail.premierJour <= day);
-    if (day > aujourdhui || ouverts.length === 0) throw new HttpError(404, "unknown_day", "Ce classement n'existe pas (encore)");
+    // Lot R8 : depuis le lancement, les jours d'avant la journée n° 1 ne sont plus lisibles ; avant lui, rien n'est refusé (période d'essai).
+    const avantLancement = premierJour <= aujourdhui && day < premierJour;
+    if (day > aujourdhui || avantLancement || ouverts.length === 0) throw new HttpError(404, "unknown_day", "Ce classement n'existe pas (encore)");
     const gardee = gardeeDe(day);
     const c = await gardee.pending;
     const gardes = c.lignes.slice(0, CLASSEMENT_TOP);
@@ -282,7 +290,7 @@ export function createPortailRoutes(platform: Platform, jeux: readonly JeuPortai
     const ouvert = jourOuvert(day);
     const publique = {
       date: formatDay(day),
-      journee: numeroDeJournee(day),
+      journee: numeroDeJournee(day, premierJour),
       ouvert,
       bareme: BAREME_POINTS,
       jeux: ouverts.map((j) => ({ jeu: j.code, site: j.portail.site, nom: j.portail.nom })),

@@ -59,6 +59,8 @@ export const VITRINE = "ui";
 
 /** L'environnement de la construction du portail : la production ne construit pas la vitrine (`PORTAIL_VITRINE=0`, apps/portail/vite.config.ts). */
 export function portailEnv({ production = false } = {}, env = process.env) {
+  // Lot R8 : la date du lancement est celle de config/lancement.json ; la recette et les aperçus peuvent la déplacer (VITE_LANCEMENT_PREMIER_JOUR), la production jamais.
+  if (production && env.VITE_LANCEMENT_PREMIER_JOUR) throw new Error("VITE_LANCEMENT_PREMIER_JOUR est réglée pour une construction de production : la date du lancement est celle de config/lancement.json, jamais une variable.");
   return { ...env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true", PORTAIL_VITRINE: production ? "0" : "1" };
 }
 

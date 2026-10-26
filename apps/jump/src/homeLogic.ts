@@ -1,9 +1,10 @@
 import { msUntilNextParisDay } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
-import { PREMIER_JOUR_JUMP, levelNumber, type JumpMedal, type JumpMedals } from "@cdj/jump-sim";
+import { levelNumber, type JumpMedal, type JumpMedals } from "@cdj/jump-sim";
 import { medalWord, nextMedal } from "./dailyInfo";
 import type { DayRecord } from "./history";
 import { fDateCourte, fDecompte, fNombre, fNumero, fTicks, nomTheme, t } from "./i18n";
+import { PREMIER_JOUR_ARCHIVES } from "./lancement";
 import type { KeyValue } from "./memory";
 import { storageKey } from "./storage";
 import type { UrlChoices } from "./urlOptions";
@@ -65,8 +66,8 @@ export function streakText(n: number): string {
 /** Une archive ne compte jamais dans la série (texte de l'écran d'arrivée). */
 export const archiveStreakText = (): string => t("arrivee.serie.archive");
 
-/** Les jours des archives, du plus récent (hier) au niveau n° 1 ; rien avant le premier jour. */
-export function archiveDays(today: number, first: number = PREMIER_JOUR_JUMP): number[] {
+/** Les jours des archives, du plus récent (hier) à la journée n° 1 de Du Jour (le lancement public, lot R8 : `first`) ; rien avant ce jour. */
+export function archiveDays(today: number, first: number = PREMIER_JOUR_ARCHIVES): number[] {
   const out: number[] = [];
   for (let d = today - 1; d >= first; d--) out.push(d);
   return out;

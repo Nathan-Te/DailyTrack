@@ -107,6 +107,20 @@ describe("page des mentions légales et de la confidentialité", () => {
     expect(PAGE).toContain("<code>jump:…</code>");
   });
 
+  // Lot R8 : les deux clés du « Nouveau départ » (génération de données vue, message à montrer une fois) sont nommées dans les deux langues, lues dans le source du module.
+  it("lot R8 : la génération de données et le message « Nouveau départ » sont nommés (cdj:generation, cdj:nouveau-depart), dans les deux langues", () => {
+    const cle = (nom: string) => new RegExp(`export const ${nom} = "([^"]+)"`).exec(readFileSync(join(ROOT, "packages/profile/src/generation.ts"), "utf8"))?.[1];
+    expect([cle("GENERATION_KEY"), cle("NOUVEAU_DEPART_KEY")]).toEqual(["cdj:generation", "cdj:nouveau-depart"]);
+    for (const [page, textes] of [
+      [PAGE, ["la génération de données", "Nouveau départ"]],
+      [PAGE_EN, ["data generation", "Fresh start"]],
+    ] as const) {
+      expect(page).toContain("<code>cdj:generation</code>");
+      expect(page).toContain("<code>cdj:nouveau-depart</code>");
+      for (const t of textes) expect(page, t).toContain(t);
+    }
+  });
+
   // Suites de Track 2 : les deux clés que le Garage (lot 41) et la règle de qualité (lot 45) écrivent sont nommées, dans les deux langues. Les clés sont lues dans le source du jeu :
   // une clé renommée sans la page échoue ici.
   it("le Garage et la qualité graphique sont nommés (cdj:track:garage, cdj:qualite), avec ce qu'ils gardent", () => {

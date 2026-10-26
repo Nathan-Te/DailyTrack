@@ -17,6 +17,7 @@
     "pseudos:migrate": "esbuild scripts/pseudos-migrate.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/pseudos-migrate.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/pseudos-migrate.mjs",
     "jump:seed": "esbuild scripts/jump-seed.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/jump-seed.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/jump-seed.mjs",
     "measure:platform": "esbuild scripts/measure-platform.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-platform.mjs --log-level=warning && node dist/measure-platform.mjs",
+    "lancement:remise-a-zero": "esbuild scripts/remise-a-zero.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/remise-a-zero.mjs --log-level=warning \"--banner:js=import { createRequire as __cdjRequire } from 'node:module'; const require = __cdjRequire(import.meta.url);\" && NODE_NO_WARNINGS=1 node dist/remise-a-zero.mjs",
     "measure:portail": "esbuild scripts/measure-portail.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/measure-portail.mjs --log-level=warning && NODE_NO_WARNINGS=1 node dist/measure-portail.mjs"
   },
   "dependencies": {
