@@ -3,9 +3,9 @@
 `JUMP_SIM_VERSION` **5**, `JUMP_GENERATOR_VERSION` **15** : **inchangées**. Aucun niveau ne change, tous les golden sont identiques (`golden*.json`, `daily-golden*.json`, `replay-golden*.json`). Consignes : `apps/jump/CLAUDE.md` (« Catalogue et générateur à la demande », « Économie des lots »), `packages/jump-sim/CLAUDE.md` (« Joueurs fictifs qui reprennent bien »).
 
 ## Scénario en 2 clics
-`<aperçu>` = l'adresse de l'aperçu de la PR (commentaire `apercu.yml`) + `/jump/` ; en local `npm run dev:jump`, `http://localhost:5173/`.
-1. **Un jour figé, `?debug`** : `<aperçu>?seed=2026-10-26&debug` — la surimpression doit dire **« origine   fichier figé, catalogue non chargé »** (onglet Réseau : aucun fichier `modules-…` ni `daily-…`). Un jour non figé, pour comparer : `<aperçu>?seed=2026-10-29&debug` → « généré (worker), catalogue chargé (worker) ».
-2. **Le carnage de démonstration d'un jour v5** : `<aperçu>?seed=2026-10-29&api=demo&carnage=demo` — des joueurs fictifs meurent, attendent sur le palier, puis repartent et passent les morceaux (plateformes `navette`, portions dures `demi-tour`, `mur-seul`).
+PR : https://github.com/Nathan-Te/DailyTrack/pull/150 ; aperçu : https://playdujour-recette--pr-150-ci740epj.web.app/jump/ (`<aperçu>` ci-dessous) ; en local `npm run dev:jump`, `http://localhost:5173/`.
+1. **Un jour figé, `?debug`** : https://playdujour-recette--pr-150-ci740epj.web.app/jump/?seed=2026-10-26&debug — la surimpression doit dire **« origine   fichier figé, catalogue non chargé »** (onglet Réseau : aucun fichier `modules-…` ni `daily-…`). Un jour non figé, pour comparer : `<aperçu>?seed=2026-10-29&debug` → « généré (worker), catalogue chargé (worker) ».
+2. **Le carnage de démonstration d'un jour v5** : https://playdujour-recette--pr-150-ci740epj.web.app/jump/?seed=2026-10-29&api=demo&carnage=demo — des joueurs fictifs meurent, attendent sur le palier, puis repartent et passent les morceaux (plateformes `navette`, portions dures `demi-tour`, `mur-seul`).
 
 ## 1. Poids : le catalogue et le générateur hors du premier chargement
 | | avant | après |
