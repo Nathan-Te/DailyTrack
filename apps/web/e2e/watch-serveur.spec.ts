@@ -30,8 +30,10 @@ test("le spectateur n'envoie aucun identifiant et n'est pas compté ; un joueur 
   const before = await players();
   await spectator.goto(`/?mode=salon&api=${encodeURIComponent(API)}&watch=best&debug`);
   await spectator.waitForFunction(() => window.__cdj?.watch, undefined, { timeout: 60_000 });
-  await spectator.waitForTimeout(7000); // plus d'un tour de sondage du classement (5 s) et un `now`
-  expect(urls.filter((u) => u.startsWith(API) && /\/api\/salon\//.test(u)).length).toBeGreaterThan(1);
+  // Plus d'un tour de sondage du classement (5 s) et un `now` : on attend l'ÉTAT (deux lectures du classement et au moins une autre requête du Salon), plus 7 s (lot R10).
+  const salonUrls = () => urls.filter((u) => u.startsWith(API) && /\/api\/salon\//.test(u));
+  await expect.poll(() => salonUrls().filter((u) => /\/board/.test(u)).length, { timeout: 30_000 }).toBeGreaterThan(1);
+  expect(salonUrls().length).toBeGreaterThan(1);
   expect(urls.filter((u) => u.includes("player="))).toEqual([]);
   expect(headers.filter((h) => h !== undefined)).toEqual([]); // lot 32 : ni dans l'adresse, ni dans l'en-tête `X-Player-Id`
   expect(await players()).toBeLessThanOrEqual(before); // (personne d'autre n'utilise ce serveur : le compte ne peut que rester à zéro ou baisser)
@@ -41,6 +43,5 @@ test("le spectateur n'envoie aucun identifiant et n'est pas compté ; un joueur 
   const player = await (await newClockedContext(browser)).newPage();
   await player.goto(`/?mode=salon&api=${encodeURIComponent(API)}&debug`);
   await player.waitForFunction(() => window.__cdj?.salon?.trackId, undefined, { timeout: 60_000 });
-  await player.waitForTimeout(1500);
-  expect(await players()).toBeGreaterThanOrEqual(base + 1);
+  await expect.poll(players, { timeout: 30_000 }).toBeGreaterThanOrEqual(base + 1); // le joueur ordinaire est compté (un état, plus 1,5 s d'attente)
 });
