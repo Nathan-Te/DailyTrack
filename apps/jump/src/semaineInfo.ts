@@ -12,6 +12,13 @@ export interface SemainePiece {
   col1: number;
 }
 
+/** Lot 20 : une plateforme mobile de la miniature : sa largeur et ses deux extrémités (tuiles). */
+export interface SemainePlatform {
+  width: number;
+  from: [number, number];
+  to: [number, number];
+}
+
 /** Un jour de la semaine, tel que l'outil le montre. */
 export interface SemaineDay {
   date: string;
@@ -21,6 +28,8 @@ export interface SemaineDay {
   rows: string[];
   /** Le premier point de chaque scie mobile (colonne, rangée), pour la miniature. */
   saws: [number, number][];
+  /** Lot 20 : les plateformes mobiles (largeur, extrémités : coin haut-gauche), pour la miniature ; absent des fichiers d'avant le lot. */
+  platforms?: SemainePlatform[];
   pieces: SemainePiece[];
   fallback: boolean;
 }
@@ -35,8 +44,15 @@ export interface SemaineFile {
 export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "ascii" | "pieces" | "fallback">): SemaineDay {
   const [grid = "", annex = ""] = d.ascii.split("\n\n");
   const saws: [number, number][] = [];
+  const platforms: SemainePlatform[] = [];
   for (const line of annex.split("\n")) {
     const words = line.trim().split(/\s+/);
+    if (words[0] === "plateforme") {
+      const a = /^(\d+),(\d+)$/.exec(words[5] ?? "");
+      const b = /^(\d+),(\d+)$/.exec(words[6] ?? "");
+      if (a && b) platforms.push({ width: Number(words[2]), from: [Number(a[1]), Number(a[2])], to: [Number(b[1]), Number(b[2])] });
+      continue;
+    }
     if (words[0] !== "scie") continue;
     const m = /^(\d+),(\d+)$/.exec(words[5] ?? "");
     if (m) saws.push([Number(m[1]), Number(m[2])]);
@@ -47,6 +63,7 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
     id: d.id,
     rows: grid.split("\n"),
     saws,
+    platforms,
     pieces: d.pieces.map((p) => ({ id: p.id, variant: p.variant, col0: p.col0, col1: p.col1 })),
     fallback: d.fallback,
   };

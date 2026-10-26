@@ -1,5 +1,5 @@
 import { SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
-import { tileOf, type Grid } from "./collide";
+import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
   TILE_ALT_OFF,
@@ -15,6 +15,7 @@ import {
   blinkIsSolid,
   isSolidTile,
   isSpikeTile,
+  platformPos,
   sawCenter,
   windBlows,
   windZoneAt,
@@ -57,6 +58,13 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // mort sans point de passage fait **reprendre au départ, chrono qui continue** (`respawnAttempt`), comme une reprise sur un point : l'essai ne
 // finit qu'à l'arrivée ou par « recommencer ». Friables reposés et blocs alternés remis à A à chaque reprise, comme en v3 (ce ne sont pas des
 // horloges). Les niveaux en version 3 gardent exactement les règles ci-dessus (une horloge par section, monde qui attend).
+//
+// **Plateformes mobiles (lot 20, niveaux de version 5 et morceaux seuls)** : une plateforme (`Level.platforms`) est à sens unique et suit l'horloge de sa
+// section (`sectionClock`, comme une scie). `AttemptState.ride` (présent seulement dans un niveau qui en a) dit laquelle porte le personnage (−1 : aucune).
+// Au début d'un pas, un personnage porté reçoit le déplacement de sa plateforme (balayé contre la grille : un mur l'arrête, jamais d'écrasement) ; le saut
+// qui part (sol ou coyote) lui laisse la vitesse horizontale de la plateforme (`stepPlayerJump`, `platformVx`). Après le déplacement, il se **pose** sur la
+// plus haute plateforme dont il était au-dessus au pas précédent (pied sous le dessus, recouvrement horizontal) : on la traverse donc par-dessous et par les
+// côtés. Sans plateforme, ces lignes ne calculent rien.
 //
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
@@ -167,6 +175,11 @@ export interface AttemptState {
    * solide, 0 pour `A`, 1 pour `B`. Part à 0, s'inverse à chaque saut qui part, revient à 0 en franchissant un point de passage.
    */
   alt?: number;
+  /**
+   * Lot 20, **seulement dans un niveau qui a des plateformes** (absent sinon : les empreintes des autres niveaux ne changent pas) : l'indice de la
+   * plateforme qui porte le personnage (−1 : aucune). Gardé pendant la tolérance de coyote après avoir quitté son bord (le saut y garde son élan).
+   */
+  ride?: number;
 }
 
 /** État au départ (et après chaque mort, et après « recommencer ») : rien n'a bougé. */
@@ -186,7 +199,7 @@ export function initialAttempt(level: Level): AttemptState {
     springTime: 0,
     checkpoint: -1,
   };
-  return level.alts.length > 0 ? { ...base, alt: 0 } : base;
+  return { ...base, ...(level.alts.length > 0 ? { alt: 0 } : {}), ...(level.platforms.length > 0 ? { ride: -1 } : {}) };
 }
 
 /**
@@ -288,6 +301,17 @@ export function sawPhase(level: Level, state: Readonly<AttemptState>, index: num
 /** Centres de toutes les scies dans cet état (unités), dans l'ordre de `level.saws`. */
 export function sawCenters(level: Level, state: Readonly<AttemptState>): Point[] {
   return level.saws.map((saw, i) => sawCenter(saw, sawPhase(level, state, i)));
+}
+
+/** Lot 20 : le coin haut-gauche de la plateforme `index` (unités) au chrono `time` d'un état de sections `sections` (la même lecture d'horloge que les scies). */
+export function platformAt(level: Level, sections: readonly number[], time: number, index: number): Point {
+  const p = level.platforms[index]!;
+  return platformPos(p, sectionClock(level, sections, time, p.section));
+}
+
+/** Lot 20 : les coins haut-gauche de toutes les plateformes dans cet état (unités), dans l'ordre de `level.platforms` (rendu, tests, solveur). */
+export function platformPositions(level: Level, state: Readonly<AttemptState>): Point[] {
+  return level.platforms.map((_, i) => platformAt(level, state.sections, state.time, i));
 }
 
 /** Lot 13 : phase de la section de la zone de vent `index` dans cet état (0 avant l'entrée, et pour une zone hors section). */
@@ -410,9 +434,53 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
     }
   }
 
+  // ——— Lot 20 : plateformes mobiles — où elles étaient, où elles seront ; le personnage porté reçoit leur déplacement ———
+  const hasPlatforms = level.platforms.length > 0;
+  const platBefore = hasPlatforms ? level.platforms.map((_, i) => platformAt(level, state.sections, state.time, i)) : null;
+  const platAfter = hasPlatforms ? level.platforms.map((_, i) => platformAt(level, state.sections, state.time + 1, i)) : null;
+  const ride = hasPlatforms ? (state.ride ?? -1) : -1;
+  let from = state.player;
+  let platformVx = 0;
+  if (ride >= 0) {
+    const dx = platAfter![ride]!.x - platBefore![ride]!.x;
+    const dy = platAfter![ride]!.y - platBefore![ride]!.y;
+    platformVx = dx;
+    if (state.player.ground === 1) {
+      const grid = gridOf(level, tiles);
+      const mx = sweep(grid, from.x, PLAYER_WIDTH, dx, from.y, PLAYER_HEIGHT, true);
+      const my = sweep(grid, from.y, PLAYER_HEIGHT, dy, mx.pos, PLAYER_WIDTH, false);
+      from = { ...from, x: mx.pos, y: my.pos };
+    }
+  }
+
   // ——— Personnage ———
   const flags: JumpFlags | null = level.alts.length > 0 ? { jumped: 0, wall: 0 } : null;
-  let player = stepPlayerJump(state.player, input, gridOf(level, tiles), params, flags, level.winds.length > 0 ? windPush(level, state) : null);
+  let player = stepPlayerJump(from, input, gridOf(level, tiles), params, flags, level.winds.length > 0 ? windPush(level, state) : null, platformVx);
+  // Se poser sur une plateforme : la plus haute dont le personnage était au-dessus (son pied au plus au niveau de son dessus au pas précédent) et que
+  // son pied atteint ou dépasse maintenant, en recouvrement horizontal ; sans y entrer dans un plein (alors on la traverse).
+  let landedOn = -1;
+  if (hasPlatforms) {
+    const wasBottom = state.player.y + PLAYER_HEIGHT;
+    const nowBottom = player.y + PLAYER_HEIGHT;
+    let top = 0;
+    for (let i = 0; i < level.platforms.length; i++) {
+      const at = platAfter![i]!;
+      const reach = level.platforms[i]!.width * UNITS_PER_TILE;
+      if (player.x >= at.x + reach || at.x >= player.x + PLAYER_WIDTH) continue;
+      if (wasBottom > platBefore![i]!.y || nowBottom < at.y) continue;
+      if (landedOn >= 0 && at.y >= top) continue;
+      landedOn = i;
+      top = at.y;
+    }
+    if (landedOn >= 0) {
+      const y = top - PLAYER_HEIGHT;
+      if (boxHits(gridOf(level, tiles), player.x, y, PLAYER_WIDTH, PLAYER_HEIGHT)) landedOn = -1;
+      else {
+        const { carry: _belt, ...rest } = player;
+        player = { ...rest, y, vy: 0, ground: 1, air: 0, wallSide: 0, wallAir: COUNTER_CAP, slide: 0, jumping: 0 };
+      }
+    }
+  }
   const landed = player.ground === 1;
   const c0 = tileOf(player.x);
   const c1 = tileOf(player.x + PLAYER_WIDTH - 1);
@@ -482,6 +550,8 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
 
   const next: AttemptState = { ...state, status: ATTEMPT_RUNNING, time, player, tiles, crumbles, sections, springCell, springTime };
   if (level.alts.length > 0) next.alt = alt;
+  // Lot 20 : la plateforme qui porte le personnage (gardée pendant le coyote après avoir quitté son bord).
+  if (hasPlatforms) next.ride = landedOn >= 0 ? landedOn : player.ground !== 1 && ride >= 0 && player.air <= params.coyote ? ride : -1;
   // ——— L'arrivée d'abord : elle l'emporte sur une mort au même pas ———
   if (reachesFinish(level, player)) return { ...next, status: ATTEMPT_FINISHED };
   const cause = deathAt(level, next);

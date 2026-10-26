@@ -116,6 +116,7 @@
     "jump/chargement.spec.ts": ["jump-jour"],
     "jump/classement.spec.ts": ["jump-classement", "api-jump", "api-coeur"],
     "jump/dangers.spec.ts": ["jump-sim", "jump-rendu", "jump-jour"],
+    "jump/plateformes.spec.ts": ["jump-sim", "jump-rendu", "jump-jour", "jump-modules"],
     "jump/fantome-premier.spec.ts": ["jump-classement", "api-jump"],
     "jump/foret.spec.ts": ["jump-sim", "jump-rendu"],
     "jump/horloge.spec.ts": ["jump-jour", "jump-sim", "core-clock"],

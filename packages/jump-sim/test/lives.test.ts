@@ -33,15 +33,16 @@ function livesOf(level: Level, solution: JumpReplay, seed: number, attempts: num
   return out;
 }
 
-const DAILY = dailyLevel(daysFromCivil(2026, 10, 20));
+// Lot 20 : le 30/10/2026 (g15, un néon à 4 plateformes) : parmi les essais fictifs, des vies reprennent au départ comme sur un point de passage (le 20/10 n en avait plus).
+const DAILY = dailyLevel(daysFromCivil(2026, 10, 30));
 /** Lot 15 : le même jour en version 3 (g9, une horloge par section) : les règles d'en-tête d'avant valent toujours pour lui. */
-const DAILY_V3 = dailyLevel(daysFromCivil(2026, 10, 20), null, 3);
+const DAILY_V3 = dailyLevel(daysFromCivil(2026, 10, 30), null, 3);
 
 describe("checkLife : les vies vécues sont acceptées, rejouées à l'identique", () => {
   for (const [name, level, solution, id] of [
     ["essai", ESSAI_LEVEL, ESSAI, "essai"],
-    ["niveau du 20/10/2026", DAILY.level, DAILY.replay, DAILY.id],
-    ["niveau du 20/10/2026 en v3 (g9)", DAILY_V3.level, DAILY_V3.replay, DAILY_V3.id],
+    ["niveau du 30/10/2026", DAILY.level, DAILY.replay, DAILY.id],
+    ["niveau du 30/10/2026 en v3 (g9)", DAILY_V3.level, DAILY_V3.replay, DAILY_V3.id],
   ] as const) {
     it(name, () => {
       const lives = livesOf(level, solution, 2026, 24);

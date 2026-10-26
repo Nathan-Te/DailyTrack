@@ -26,6 +26,8 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
 }
 
 export interface GalleryView {
+  /** Lot 20 : les intentions (une phrase par morceau) sont lues à la demande dans `outils/intentions.json` (elles ne sont plus dans le catalogue embarqué : poids du jeu) ; vrai une fois posées. */
+  intentionsLoaded: boolean;
   modules: number;
   variants: number;
   entry: ModuleEntry;
@@ -87,6 +89,7 @@ export function mountGallery(options: UrlChoices): GalleryView {
 
   const links: { play: HTMLAnchorElement; watch: HTMLAnchorElement; id: string; variant: number; theme: ThemeFilter | null }[] = [];
   const cards: { li: HTMLLIElement; m: ModuleInfo }[] = [];
+  const intents = new Map<string, HTMLElement>();
   const list = el("ul", "cards");
   let variants = 0;
   for (const m of order) list.append(card(m));
@@ -99,7 +102,9 @@ export function mountGallery(options: UrlChoices): GalleryView {
     li.dataset.family = m.family;
     cards.push({ li, m });
     const title = el("h2", "", m.id);
-    li.append(title, el("p", "intent", m.intention));
+    const intent = el("p", "intent", m.intention);
+    intents.set(m.id, intent);
+    li.append(title, intent);
     const tags = el("p", "tags");
     tags.append(el("span", "tag family", `famille ${m.family}`));
     if (m.long) tags.append(el("span", "tag long", "enchaînement long"));
@@ -134,6 +139,7 @@ export function mountGallery(options: UrlChoices): GalleryView {
   }
 
   const view: GalleryView = {
+    intentionsLoaded: false,
     modules: order.length,
     variants,
     entry: "arret",
@@ -165,6 +171,14 @@ export function mountGallery(options: UrlChoices): GalleryView {
   };
   view.setEntry("arret");
   view.setFilter({});
+  // Lot 20 : les intentions, lues à la demande (un fichier de données, pas du code : le jeu ne les embarque plus).
+  void fetch("outils/intentions.json")
+    .then((r) => (r.ok ? (r.json() as Promise<Record<string, string>>) : Promise.reject(new Error(String(r.status)))))
+    .then((map) => {
+      for (const [id, p] of intents) p.textContent = map[id] ?? "";
+      view.intentionsLoaded = true;
+    })
+    .catch(() => {});
   if (options.debug) {
     window.__jump = { phase: "gallery", gallery: view } as unknown as Window["__jump"];
   }

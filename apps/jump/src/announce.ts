@@ -1,4 +1,4 @@
-import { TICK_RATE, type BlinkCycle, type Gust } from "@cdj/jump-sim";
+import { TICK_RATE, platformPos, type BlinkCycle, type Gust, type Platform } from "@cdj/jump-sim";
 
 // L'annonce des éléments à horloge (lot 18) — **affichage seul**, logique pure et testée. Principe : un élément à horloge **annonce chacun de ses
 // changements d'état**, assez tôt, par un signe **continu et simple** (une jauge qui descend ou qui monte, une vitesse qui décroît) ; jamais de
@@ -118,4 +118,37 @@ export function gustFeel(p: GustPhase, leadTicks: number, tailTicks: number): Gu
  */
 export function gustIntensity(f: GustFeel, blowing: boolean): number {
   return blowing ? f.flow : f.lead;
+}
+
+// ——— Plateformes mobiles (lot 20) : le ralenti d'une extrémité annonce le demi-tour ———
+
+/** Ce que la plateforme annonce : le sens de son déplacement (−1 gauche ou haut, 1 droite ou bas, 0 à l'arrêt) et sa vitesse en part de sa pointe (0 à 1). */
+export interface PlatformLook {
+  dir: -1 | 0 | 1;
+  speed: number;
+}
+
+const peaks = new WeakMap<Platform, number>();
+
+/** La plus grande avance d'un pas de la plateforme sur son axe (unités), au milieu de son aller : sa vitesse de pointe. */
+export function platformPeak(p: Platform): number {
+  let peak = peaks.get(p);
+  if (peak === undefined) {
+    peak = 1;
+    for (let t = 0; t < p.cycle / 2; t++) peak = Math.max(peak, Math.abs(axisOf(p, platformPos(p, t + 1)) - axisOf(p, platformPos(p, t))));
+    peaks.set(p, peak);
+  }
+  return peak;
+}
+
+const axisOf = (p: Platform, at: { x: number; y: number }): number => (p.axis === "h" ? at.x : at.y);
+
+/**
+ * Le signe continu d'une plateforme à la phase `phase` de sa section : sa vitesse du pas **en part de sa pointe** (elle décroît vers chaque extrémité :
+ * le ralenti, de la table de la simulation, qui annonce le demi-tour) et son sens. Calculé sur la fonction de la simulation (`platformPos`), jamais sur
+ * l'affichage : c'est la vitesse réelle. La vitesse est lisse (aucune variation brusque : pas de clignotement).
+ */
+export function platformLook(p: Platform, phase: number): PlatformLook {
+  const step = axisOf(p, platformPos(p, phase + 1)) - axisOf(p, platformPos(p, phase));
+  return { dir: step > 0 ? 1 : step < 0 ? -1 : 0, speed: Math.min(1, Math.abs(step) / platformPeak(p)) };
 }

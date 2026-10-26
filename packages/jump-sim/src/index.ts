@@ -20,3 +20,4 @@ export * from "./lives";
 export * from "./phases";
 export * from "./parasites";
 export * from "./voies";
+export * from "./plateformes";

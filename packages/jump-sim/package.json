@@ -19,6 +19,8 @@
     "secours:modules": "esbuild tools/secours.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/secours.mjs --log-level=warning && node dist/secours.mjs",
     "phases:modules": "esbuild tools/phases.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/phases.mjs --log-level=warning && node dist/phases.mjs",
     "voies:modules": "esbuild tools/voies-modules.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/voies-modules.mjs --log-level=warning && node dist/voies-modules.mjs",
+    "trace:module": "esbuild tools/trace.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/trace.mjs --log-level=warning && node dist/trace.mjs",
+    "figes:jump": "esbuild tools/figes.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/figes.mjs --log-level=warning && node dist/figes.mjs",
     "variete:jump": "esbuild tools/variete.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/variete.mjs --log-level=warning && node dist/variete.mjs"
   }
 }

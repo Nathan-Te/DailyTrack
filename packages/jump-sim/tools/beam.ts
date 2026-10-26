@@ -143,13 +143,15 @@ export function sectionClocks(level: Level): number[][] {
   return level.sections.map((_, i) => [
     ...(level.blinkCycles[i] ? [level.blinkCycles[i]!.cycle] : []),
     ...level.winds.filter((w) => w.section === i && w.gust !== null).map((w) => w.gust!.cycle),
+    // Lot 20 : une plateforme mobile a son cycle (la phase d'une plateforme décide où elle sera au prochain saut).
+    ...level.platforms.filter((q) => q.section === i).map((q) => q.cycle),
   ]);
 }
 
 /** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales ; lot 15 : scies mobiles en v4). */
 export function isDynamicLevel(level: Level): boolean {
   // Lot 15 : à une seule horloge (v4), une scie mobile n'attend plus le joueur : il faut parfois attendre qu'elle passe.
-  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
+  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
 }
 
 /** Les phases de chaque section modulo chacune de ses horloges (`shift` : grain, en puissance de 2). */
@@ -172,7 +174,8 @@ function key(level: Level, clocks: readonly (readonly number[])[], s: AttemptSta
     for (const a of level.alts) codes += s.tiles[a.row * level.width + a.col]! === 13 ? "1" : "0";
     dyn = `|${s.alt ?? 0}|${phases}|${codes}`;
   }
-  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}${dyn}`;
+  // Lot 20 : la plateforme qui porte le personnage compte (deux états au même endroit, l'un porté et l'autre non, n'ont pas le même avenir).
+  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}|${s.ride ?? ""}${dyn}`;
 }
 
 /**
