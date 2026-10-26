@@ -176,7 +176,8 @@ test("un morceau à presse (`?module=presse-promenade`) : la presse est dessiné
   // `advance` joue sans rendu : le dessin rattrape la simulation à l'image suivante. On attend cet état (jamais une durée), puis on le lit d'un bloc.
   await page.waitForFunction((hold) => {
     const p = (window as unknown as { __jump: JP }).__jump.presses;
-    return !!p && p.phases[0] === hold - 30 && Math.abs((p.warn?.[0] ?? -1) - 0.5) < 1e-9;
+    // `warn` vient de la simulation (lue à l'instant), `footprint` de la dernière image dessinée : on attend aussi que le dessin ait rattrapé.
+    return !!p && p.phases[0] === hold - 30 && Math.abs((p.warn?.[0] ?? -1) - 0.5) < 1e-9 && (p.footprint?.[0] ?? 0) > 0.08;
   }, HOLD);
   const mid = await page.evaluate(() => (window as unknown as { __jump: JP }).__jump.presses!);
   // L'annonce dessinée est celle de la simulation (30 pas sur 60), l'empreinte est plus sombre qu'au repos, la presse n'a pas bougé.
