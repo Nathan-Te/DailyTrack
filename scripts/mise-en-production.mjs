@@ -225,7 +225,8 @@ const plage = (l) => (l.length ? `${l[0]} → ${l.at(-1)}` : "aucun");
 export function resumeBascule({ plan, comparaison, simulee = false }) {
   const l = [`### Jours : ce qui est conservé, ce qui est rechargé${simulee ? " — **répétition** (heure simulée)" : ""}`, ""];
   l.push(`- Déploiement : \`${plan.jourDeParis}\` (heure de Paris${simulee ? ", simulée" : ""}) → **jour de bascule : ${nomDuJour(plan.bascule)}** (le premier jour de Paris qui commence après le déploiement).`);
-  l.push(`- Avant la bascule (${plan.premier} → ${plan.veille}) : **la carte de chaque jour protégé (d'avant le lancement, déjà figé ou avec un résultat) est exactement celle que la production sert** ; un jour sans aucun résultat et, à partir du ${plan.bascule}, tous les jours, ont le nouveau code.`, "");
+  const avant = plan.veille >= plan.premier ? `${plan.premier} → ${plan.veille}` : `aucune journée du lancement ne précède la bascule (le lancement est le ${plan.premier})`;
+  l.push(`- Avant la bascule (${avant}) : **la carte de chaque jour protégé (d'avant le lancement, déjà figé ou avec un résultat) est exactement celle que la production sert** ; un jour sans aucun résultat et, à partir du ${plan.bascule}, tous les jours, ont le nouveau code.`, "");
   l.push("| jeu | jours conservés (identiques) | jours en différence | jours régénérés | validés | qui changent |", "|---|---|---|---|---|---|");
   for (const [jeu, r] of Object.entries(comparaison.jeux)) {
     l.push(`| ${NOMS_JEUX[jeu] ?? jeu} | ${r.conserves.length} (${plage(r.conserves)}) | ${r.differences.length} | ${r.regeneres.length} (${plage(r.regeneres)}) | ${r.valides} | ${r.changes.length} |`);
