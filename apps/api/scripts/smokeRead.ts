@@ -226,6 +226,53 @@ export async function readOnlySmoke(base: string, fetchImpl: FetchFn, o: { expec
   return checks;
 }
 
+/**
+ * Lot R8 — **après la remise à zéro du lancement** (`smoke --lecture-seule --vide`) : la base est vide. Des `GET` seulement, aucun identifiant :
+ * la génération de données est annoncée (> 0), aucun classé aujourd'hui dans DailyTrack, DailyJump ni au classement du jour du portail, aucune mort
+ * enregistrée, et la réponse publique du portail ne porte aucun joueur. À lancer sur l'adresse du **service** (Cloud Run), pas sur celle de Firebase
+ * Hosting : son cache public (30 à 60 s) pourrait encore montrer l'ancien classement.
+ */
+export async function verifierVide(base: string, fetchImpl: FetchFn): Promise<SmokeCheck[]> {
+  const root = base.replace(/\/+$/, "");
+  const f = readOnlyFetch(fetchImpl);
+  const checks: SmokeCheck[] = [];
+  const get = async (route: string): Promise<{ status: number; body: any }> => {
+    try {
+      const res = await f(root + route, { method: "GET" });
+      const text = await res.text();
+      return { status: res.status, body: text ? JSON.parse(text) : null };
+    } catch (e) {
+      return { status: 0, body: { erreur: e instanceof Error ? e.message : String(e) } };
+    }
+  };
+  const check = (label: string, ok: boolean, route: string, r: { status: number; body: unknown }, detail = "") =>
+    checks.push({ label, ok, route, status: r.status, detail: ok ? detail : `${detail}${detail ? " — " : ""}réponse ${r.status} ${JSON.stringify(r.body).slice(0, 200)}` });
+  const portail = await get("/api/portail/jour");
+  const date: string = typeof portail.body?.date === "string" ? portail.body.date : "";
+  check(
+    "remise à zéro : le serveur annonce une génération de données, et le portail ne montre aucun joueur",
+    portail.status === 200 && Number.isSafeInteger(portail.body?.generation) && portail.body.generation > 0 && !("joueur" in portail.body),
+    "/api/portail/jour",
+    portail,
+    `génération ${String(portail.body?.generation)}`,
+  );
+  const track = await get(`/api/day/${date}/leaderboard?limit=10`);
+  check("remise à zéro : DailyTrack, aucun classé aujourd'hui", track.status === 200 && track.body?.participants === 0 && track.body?.top?.length === 0, `/api/day/${date}/leaderboard`, track, "0 classé");
+  const jump = await get(`/api/jump/day/${date}/board`);
+  check("remise à zéro : DailyJump, aucun classé aujourd'hui", jump.status === 200 && jump.body?.participants === 0 && jump.body?.top?.length === 0, `/api/jump/day/${date}/board`, jump, "0 classé");
+  const morts = await get(`/api/jump/day/${date}/deaths`);
+  check("remise à zéro : DailyJump, aucune mort enregistrée aujourd'hui", morts.status === 200 && morts.body?.players === 0 && morts.body?.deaths === 0, `/api/jump/day/${date}/deaths`, morts, "0 joueur, 0 mort");
+  const classement = await get("/api/portail/classement");
+  check(
+    "remise à zéro : le classement du jour du portail est vide",
+    (classement.status === 200 && classement.body?.classes === 0 && classement.body?.top?.length === 0) || (classement.status === 404 && classement.body?.error === "unknown_day"),
+    "/api/portail/classement",
+    classement,
+    classement.status === 200 ? "0 classé" : "pas encore de journée (avant le lancement)",
+  );
+  return checks;
+}
+
 /** La forme du classement du jour (`GET /api/portail/classement`). */
 function estClassement(b: unknown, date: string): boolean {
   const o = b as Record<string, any> | null;

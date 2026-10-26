@@ -13,7 +13,7 @@ import { ecrireLangue, lireLangue, readPlayerId, type Langue } from "@cdj/profil
 import { CATALOGUE_COMMUN, barreJeu, cheminMentions, bouton, choixLangue, el, formatDateCourte, formatNombre, medaille, nomMedaille, traducteur, type TypeMedaille } from "@cdj/ui";
 import { CATALOGUE_PORTAIL } from "./catalogue";
 import { lireClassement, type Classement, type LectureClassement, type LigneClassement, type ResultatClassement } from "./classementDonnees";
-import { PREMIER_JOUR_TRACK, numeroDeJournee } from "./jours";
+import { PREMIER_JOUR_DU_JOUR, numeroDeJournee } from "./jours";
 import { stockageDuPortail } from "./stockage";
 
 // Lot I3 : le classement du jour tous jeux confondus (`/classement/`), ouvert par la tuile « Classement du jour » du portail. Le haut du classement (50), **ta ligne
@@ -79,13 +79,13 @@ function bareme(t: T, c: Classement): string {
   });
 }
 
-/** Le jour d'avant / d'après ; `null` hors des bornes (avant le premier jour des jeux, après aujourd'hui). */
+/** Le jour d'avant / d'après ; `null` hors des bornes (avant la journée n° 1 — lot R8 : les archives commencent au lancement —, après aujourd'hui). */
 export function voisin(date: string, sens: -1 | 1, today: string): string | null {
   const d = parseDay(date);
   const max = parseDay(today);
   if (d === null || max === null) return null;
   const v = d + sens;
-  return v < PREMIER_JOUR_TRACK || v > max ? null : formatDay(v);
+  return v < PREMIER_JOUR_DU_JOUR || v > max ? null : formatDay(v);
 }
 
 function rendre(): void {

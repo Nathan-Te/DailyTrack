@@ -4,3 +4,5 @@
 export * from "./rng";
 export * from "./calendar";
 export * from "./codec";
+// Lot R8 : la date du lancement public est à part (`@cdj/core/lancement`) : elle lit `config/lancement.json`, et ni les simulations ni leurs
+// scripts n'ont à la tirer.

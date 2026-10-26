@@ -1,3 +1,4 @@
+import { generationDeReponse } from "@cdj/profile";
 import { isVariant, themeByName, type ThemeName } from "@cdj/sim";
 import { apiCall, type ApiResult } from "./api";
 import { gameStorage } from "./storage";
@@ -83,6 +84,8 @@ export const PLAN_TIMEOUT_MS = 2500;
 export interface DayPlan extends PlanEntry {
   /** Identifiant du circuit en vigueur ce jour-là, tel que le serveur le rejouera. */
   trackId: string;
+  /** Lot R8 : la génération de données du serveur (remise à zéro du lancement), `null` d'un serveur qui ne la dit pas. */
+  generation: number | null;
 }
 
 /** Variante en vigueur un jour, demandée à l'API (`GET /api/day/AAAA-MM-JJ`). */
@@ -91,7 +94,7 @@ export async function fetchDayPlan(base: string, date: string, timeoutMs = PLAN_
   if (!r.ok) return r;
   const e = parsePlanEntry(r.data);
   if (!e || typeof r.data.trackId !== "string") return { ok: false, status: 0, code: "invalid", message: "Réponse du serveur illisible" };
-  return { ok: true, data: { ...e, trackId: r.data.trackId } };
+  return { ok: true, data: { ...e, trackId: r.data.trackId, generation: generationDeReponse(r.data) } };
 }
 
 /** Jours remplacés connus du public (jusqu'à aujourd'hui), pour les miniatures des archives. */

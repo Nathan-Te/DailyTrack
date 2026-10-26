@@ -1,4 +1,5 @@
 import { daysFromCivil } from "@cdj/core";
+import { numeroDeJournee as numero, premierJourDuJour } from "@cdj/core/lancement";
 
 // Le numéro du jour de chaque jeu, pour les cartouches du portail (lot R4 ; lot I1 : les textes sont dans les catalogues). Le portail n'importe
 // aucun jeu (il resterait léger, et les jeux ne s'importent jamais l'un l'autre) : les deux premiers jours sont recopiés ici, et un test
@@ -10,13 +11,14 @@ export const PREMIER_JOUR_TRACK = daysFromCivil(2026, 10, 13);
 export const PREMIER_JOUR_JUMP = daysFromCivil(2026, 10, 16);
 
 /**
- * Lot I3 : la journée n° 1 de Du Jour est le 23/10/2026 (l'ouverture publique) — la constante de la plateforme, recopiée du serveur
- * (`PREMIER_JOUR_DU_JOUR`, `apps/api/src/portail.ts` ; testée dans `test/jours.test.ts`). Le serveur fait foi quand il répond ; cette copie
- * affiche le numéro tout de suite, sans qu'il saute quand les données arrivent.
+ * Lot R8 : la journée n° 1 de Du Jour (le lancement public) vient de `config/lancement.json` (`@cdj/core/lancement`), la même source que le
+ * serveur (`journee` de `GET /api/portail/jour`, qui fait foi quand il répond ; cette lecture affiche le numéro tout de suite, sans qu'il
+ * saute quand les données arrivent). `VITE_LANCEMENT_PREMIER_JOUR` (construction de la recette, des aperçus et des essais) la déplace ; la
+ * production n'en pose jamais.
  */
-export const PREMIER_JOUR_DU_JOUR = daysFromCivil(2026, 10, 23);
-/** Le numéro de la journée commune d'un jour de Paris, ou `null` avant le 23/10/2026 (rien n'est affiché). */
-export const numeroDeJournee = (day: number): number | null => (day >= PREMIER_JOUR_DU_JOUR ? day - PREMIER_JOUR_DU_JOUR + 1 : null);
+export const PREMIER_JOUR_DU_JOUR = premierJourDuJour(import.meta.env.VITE_LANCEMENT_PREMIER_JOUR as string | undefined);
+/** Le numéro de la journée commune d'un jour de Paris, ou `null` avant le premier jour (rien n'est affiché). */
+export const numeroDeJournee = (day: number): number | null => numero(day, PREMIER_JOUR_DU_JOUR);
 
 export interface CarteJeu {
   /** Le code du jeu (son dossier sur le site : `/track/`, `/jump/`). */

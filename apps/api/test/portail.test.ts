@@ -4,7 +4,7 @@ import { PREMIER_JOUR, circuitNumber, medalFor, medalsFor, themeForDay } from "@
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, TICK_RATE, dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, lifeReplay, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
 import type { GameDefinition, PortailDuJeu } from "../src/games";
 import { GRACE_MS } from "../src/cdj";
-import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, serieEtParfaites } from "../src/portail";
+import { PORTAIL_PUBLIC_MAX_S, PORTAIL_READS_PER_CLIENT, PREMIER_JOUR_DU_JOUR, serieEtParfaites } from "../src/portail";
 import { GAMES } from "../src/registry";
 import { circuitOf, makeApi, parisDay, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
 
@@ -115,7 +115,9 @@ describe(`portail : GET /api/portail/jour sans joueur (${TEST_DB})`, () => {
     const m = medalsFor(circuitOf(TODAY).authorMs);
     expect(r.body).toEqual({
       date: DATE,
-      journee: null, // lot I3 : la journée n° 1 est le 23/10/2026
+      journee: null, // lot I3 : avant la journée n° 1 (lot R8 : `config/lancement.json`), aucun numéro
+      lancement: formatDay(PREMIER_JOUR_DU_JOUR), // lot R8 : la source unique de la date du lancement
+      generation: 0, // lot R8 : la génération de données (0 : base jamais remise à zéro)
       maintenant: new Date(NOON).toISOString(),
       prochainJour: "2026-10-20T22:00:00.000Z", // minuit de Paris (heure d'été : UTC+2)
       jeux: [

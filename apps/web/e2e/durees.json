@@ -60,6 +60,7 @@
     "mesure-lot45.spec.ts": 0,
     "mesure-lot46.spec.ts": 0,
     "mobile.spec.ts": 94,
+    "nouveau-depart.spec.ts": 40,
     "perf.spec.ts": 10,
     "planning.spec.ts": 49,
     "portail-jour.spec.ts": 90,

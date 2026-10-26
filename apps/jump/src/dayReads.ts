@@ -30,6 +30,8 @@ export interface DayBundle {
   board: JumpBoard;
   ghost: FirstGhostData | null;
   deaths: DeathMapData;
+  /** Lot R8 : la génération de données du serveur (remise à zéro du lancement) ; absente d'un serveur plus ancien. */
+  generation?: number;
   /** Le profil DailyJump (jour en cours, avec un identifiant), ou `null` avec sa raison (`unknown_player`, `code_revoked`). */
   profile?: JumpMe | null;
   profileError?: string;

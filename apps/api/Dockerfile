@@ -29,6 +29,8 @@ COPY packages/clock packages/clock
 COPY packages/jump-sim packages/jump-sim
 COPY packages/profile packages/profile
 COPY apps/jump/public/levels apps/jump/public/levels
+# Lot R8 : la date du lancement public (config/lancement.json), lue par le serveur (journée n° 1) et entrée dans le paquet.
+COPY config config
 COPY apps/api apps/api
 RUN npm run build:node -w @cdj/api
 

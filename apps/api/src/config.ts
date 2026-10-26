@@ -1,3 +1,5 @@
+import { parseDay } from "@cdj/core";
+
 /**
  * Configuration du serveur Node d'après les variables d'environnement : pure et testée (`server.ts` ne fait que l'appliquer).
  *
@@ -8,6 +10,7 @@
  *   ENVIRONMENT : `production` | `recette` | `local` (lot R1 de la plateforme) ; absente : `production` si NODE_ENV=production, sinon `local`
  *   SALON_MINUTES : tests, essais locaux et recette seulement, refusée en production
  *   TEST_CLOCK_OFFSET_MS : décalage (ms, entier) ajouté à l'heure réelle : l'horloge du serveur avance en temps réel mais à une date choisie ; tests et recette seulement, refusée en production
+ *   LANCEMENT_PREMIER_JOUR : lot R8 — AAAA-MM-JJ, déplace la journée n° 1 de la recette (essayer « Journée n° 1 » un autre jour) ; recette et local seulement, refusée en production
  *   PEER_FACTOR : lot R5 — l'adresse de connexion compte dans chaque limite par adresse à `limite × PEER_FACTOR` (0 à 100, défaut 10 ; 0 = coupé)
  *   GIT_SHA, K_REVISION, K_SERVICE : posées par le déploiement / Cloud Run
  *
@@ -39,6 +42,8 @@ export interface ServerConfig {
   /** Décalage (ms) de l'horloge de test du serveur (`TEST_CLOCK_OFFSET_MS`) ; absent : heure réelle. */
   testClockOffsetMs?: number;
   revision?: string;
+  /** Lot R8 : la journée n° 1 réglée par `LANCEMENT_PREMIER_JOUR` (jours depuis 1970) ; absent : la date de `config/lancement.json`. */
+  premierJourDuJour?: number;
 }
 
 export class ConfigError extends Error {}
@@ -131,6 +136,16 @@ export function readConfig(env: Env): ServerConfig {
     if (!Number.isSafeInteger(testClockOffsetMs)) throw new ConfigError(`TEST_CLOCK_OFFSET_MS : un nombre entier de millisecondes attendu, reçu : ${env.TEST_CLOCK_OFFSET_MS}`);
   }
 
+  let premierJourDuJour: number | undefined;
+  if (env.LANCEMENT_PREMIER_JOUR?.trim()) {
+    if (environment === "production" || (production && !recette)) {
+      throw new ConfigError("LANCEMENT_PREMIER_JOUR est réglée alors que le serveur tourne en production : la date du lancement est celle de config/lancement.json, jamais une variable. Supprime la variable.");
+    }
+    const jour = parseDay(env.LANCEMENT_PREMIER_JOUR.trim());
+    if (jour === null) throw new ConfigError(`LANCEMENT_PREMIER_JOUR : une date AAAA-MM-JJ attendue, reçu : ${env.LANCEMENT_PREMIER_JOUR}`);
+    premierJourDuJour = jour;
+  }
+
   if (!turso && onCloudRun) {
     throw new ConfigError("TURSO_DATABASE_URL manque : sur Cloud Run le disque est effacé à chaque redémarrage, une base locale perdrait tous les temps.");
   }
@@ -174,5 +189,6 @@ export function readConfig(env: Env): ServerConfig {
     salonMinutes,
     testClockOffsetMs,
     revision: env.K_REVISION ?? env.GIT_SHA,
+    premierJourDuJour,
   };
 }

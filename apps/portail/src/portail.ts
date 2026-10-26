@@ -1,3 +1,4 @@
+import "./generationInit";
 import "@cdj/ui/src/styles.css";
 import "@cdj/ui/src/polices/archivo-black-400.css";
 import "@cdj/ui/src/polices/archivo-400.css";
@@ -9,10 +10,11 @@ import "@cdj/ui/src/polices/lilita-one-400.css";
 import "./portail.css";
 import { parisDay } from "@cdj/clock";
 import { parseDay } from "@cdj/core";
-import { NAME_KEY, ecrireLangue, lireLangue, readIdentity, readPlayerId, type Langue } from "@cdj/profile";
+import { NAME_KEY, appliquerGeneration, ecrireLangue, generationDeReponse, lireLangue, lireNouveauDepart, readIdentity, readPlayerId, type Langue } from "@cdj/profile";
 import {
   CATALOGUE_COMMUN,
   afficheur,
+  avisNouveauDepart,
   barrePortail,
   bouton,
   cartouche,
@@ -51,6 +53,8 @@ import { stockageDuPortail } from "./stockage";
 // Langue : celle de la plateforme (`cdj:langue`, `@cdj/profile`) ; la changer met à jour l'écran sans recharger, `<html lang>` et le titre.
 
 const stockage = stockageDuPortail();
+// Lot R8 : le message « Nouveau départ » (posé par l'effacement de la page d'avant le rechargement) n'est montré qu'une fois.
+let nouveauDepart = stockage ? lireNouveauDepart(stockage) : false;
 let langue: Langue = lireLangue(stockage, navigator.languages).langue;
 /** Ce que le serveur a rendu (`null` : pas encore de réponse). */
 let lecture: Lecture | null = null;
@@ -210,6 +214,7 @@ function rendre(): void {
   racine.replaceChildren(
     el("h1", { classe: "dj-cache", texte: t.t("portail.titre") }),
     barrePortail(t, { langue, onLangue: changerLangue, pseudo: identite.exists ? identite.name : null, profil: "profil/" }),
+    ...(nouveauDepart ? [avisNouveauDepart(t, { onFermer: () => (nouveauDepart = false) })] : []),
     el(
       "div",
       { classe: "portail-date" },
@@ -291,6 +296,12 @@ async function charger(ancien: string | null, essai = 0): Promise<void> {
     return;
   }
   lecture = l;
+  // Lot R8 : une génération de données plus récente que celle de ce navigateur (remise à zéro du lancement) : ses données de jeu sont effacées,
+  // la page recharge et il est un joueur neuf (le message le dit une fois).
+  if (stockage && appliquerGeneration(stockage, generationDeReponse(l.jour)) === "efface") {
+    location.reload();
+    return;
+  }
   // Le pseudo du serveur fait foi (même règle que les jeux) : l'avatar suit.
   const pseudo = l.jour?.joueur?.pseudo;
   try {

@@ -57,6 +57,9 @@ const fr = {
   "pleinEcran.quitter": "Quitter le plein écran",
   "pleinEcran.iphone": "Pour jouer en plein écran : Partager › Sur l'écran d'accueil",
   "pleinEcran.iphone.fermer": "Fermer cette astuce",
+  // Lot R8 : le message montré une fois quand la remise à zéro du lancement a effacé les données de jeu de ce navigateur.
+  "nouveauDepart.message": "Nouveau départ : tout le monde repart de zéro. Bonne chance !",
+  "nouveauDepart.fermer": "Fermer ce message",
   // Codes d'erreur du serveur (apps/api/src/codesErreur.ts)
   "erreur.not_found": "Cette adresse n'existe pas.",
   "erreur.method_not_allowed": "Cette action n'est pas permise ici.",

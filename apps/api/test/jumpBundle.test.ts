@@ -71,7 +71,7 @@ describe(`lecture regroupée : GET /api/jump/day/<date>/bundle (${TEST_DB})`, ()
       t.call("GET", `/api/jump/day/${DATE}/deaths`),
     ]);
     expect(bundle.status, JSON.stringify(bundle.body)).toBe(200);
-    expect(bundle.body).toEqual({ date: DATE, open: true, board: board.body, ghost: ghost.body, deaths: deaths.body });
+    expect(bundle.body).toEqual({ date: DATE, open: true, board: board.body, ghost: ghost.body, deaths: deaths.body, generation: 0 }); // lot R8 : la génération de données (0 : jamais remise à zéro)
     expect(bundle.body.board.participants).toBe(2);
     expect(bundle.body.ghost.name).toBe("Bruno"); // le plus rapide
     expect(bundle.body.deaths.deaths).toBe(3);
@@ -97,6 +97,7 @@ describe(`lecture regroupée : GET /api/jump/day/<date>/bundle (${TEST_DB})`, ()
       board: { date: DATE, open: true, participants: 0, levelId: null, top: [], me: null },
       ghost: null,
       deaths: { date: DATE, levelId: null, open: true, players: 0, deaths: 0, tiles: [] },
+      generation: 0,
       // Un identifiant que le serveur ne connaît pas encore (jamais classé) : pas de profil, et la raison.
       profile: null,
       profileError: "unknown_player",
