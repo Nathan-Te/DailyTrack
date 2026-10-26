@@ -166,7 +166,7 @@ Firebase garde **toutes** les versions publiées de chaque site (une par mise en
 
 Actions → **Retour arrière** → **Run workflow** (sur `main`) ; « étiquette » vide = la mise en production d'avant la dernière. Validation demandée (environnement `production`).
 - Le serveur reprend **l'image** notée dans l'étiquette (`gcloud run deploy --image`, réglages du service inchangés) ; le site reprend **la version** notée (historique de Firebase : `hosting:clone <site>@<version> <site>:live`) ; puis `smoke --lecture-seule`, puis une nouvelle étiquette `prod-…` sur le commit remis (la prochaine mise en production figera les jours avec **ce** code).
-- **Limite** : les jours figés **après** l'étiquette remise ne sont pas dans son image ; si le générateur de DailyJump a changé entre les deux, un de ces jours peut changer de niveau sur le serveur. Une mise en production de correctif le règle.
+- **Limite** : les jours figés **après** l'étiquette remise ne sont pas dans son image ; si le générateur a changé entre les deux, un de ces jours peut changer de carte. **Lot R6** : le retour arrière est donc **refusé une fois commencé le jour de bascule** de la dernière mise en production (case `apres_le_jour_j` pour passer outre, en connaissance de cause) ; avant, aucun joueur n'a vu la carte du nouveau code et rien ne change. Ce qu'il restaure et ce qu'il ne restaure pas (la base, les jours figés) : `docs/plateforme/mise-en-production.md`, § 5.
 - **À la main**, si GitHub ne répond pas : `gcloud run services update-traffic cdj-api --region europe-west1 --to-revisions=<révision d'avant>=100` ; console Firebase → Hosting → site → **Historique des versions** → ⋮ → **Restaurer**.
 
 ## GitHub Pages (lot R5 : plus rien n'y est publié)

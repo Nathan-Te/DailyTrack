@@ -53,6 +53,10 @@ on:
         description: "lot R4 : origines permises en plus (recette : l'origine du canal d'aperçu de la PR), séparées par « ; »"
         type: string
         default: ""
+      bascule_le:
+        description: "lot R6 : le jour de bascule de la mise en production (AAAA-MM-JJ) ; re-vérifié après la validation de Nathan : s'il a déjà commencé à Paris, le déploiement s'arrête. Vide : pas de vérification (recette)"
+        type: string
+        default: ""
     outputs:
       enabled:
         description: "« true » si la cible est configurée et déployée"
@@ -125,6 +129,7 @@ jobs:
       RECETTE_PREMIER_JOUR: ${{ vars.RECETTE_PREMIER_JOUR }}
       EXTRA_ORIGINS: ${{ inputs.extra_origins }}
       JOURS_FIGES: ${{ inputs.jours_figes }}
+      BASCULE: ${{ inputs.bascule_le }}
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
       WIF_SERVICE_ACCOUNT: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       HAS_SA_KEY: ${{ secrets.GCP_SA_KEY != '' }}
@@ -132,6 +137,11 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.ref || github.sha }}
+
+      # Lot R6 : la validation de Nathan (environnement `production`) a pu durer : si le jour de bascule a commencé entre-temps, les jours conservés ne le seraient plus.
+      - name: Le jour de bascule n'a pas encore commencé
+        if: ${{ inputs.bascule_le != '' }}
+        run: node scripts/mise-en-production.mjs bascule-valide "$BASCULE"
 
       - name: Configuration présente ?
         id: cfg
