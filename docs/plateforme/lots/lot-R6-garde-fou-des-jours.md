@@ -50,7 +50,8 @@ Lecture : Track « changent » = les jours dès le 04/11 (herbe, identité des t
 - `lancement.md` § 6 : « ne plus cliquer avant le lot R6 » devient « se clique avec la liste du lot R6 ».
 
 ## Runs de CI et verdicts
-_À compléter une fois la PR poussée (voir le fil de la PR)._
+- PR n° 157, run [40379601010](https://github.com/Nathan-Te/DailyTrack/actions/runs/40379601010) sur `ff04ed1` : **CI verte** (`zones`, `scope`, `api-image`, `unit` 4/4, `e2e-pr` 4/4, `test`, `e2e`) en 15,3 min. L'e2e Jump `profil-commun.spec.ts:99`, rouge sur mon poste (avec ou sans mon changement), est **vert en CI** : problème local, pas du lot.
+- `main` n'avait pas avancé : rien à fusionner avant l'arrêt.
 
 ## Ce qui reste risqué à la prochaine mise en production
 1. **Les workflows ne se testent qu'en vrai** : le YAML (expressions `inputs.mode`, `needs.verifier.outputs.bascule_le`, artefacts `empreintes-jours`, `npm ci` de deux dépôts dans le même job, 60 min) n'a été lu que par des tests de texte et exécuté « à la main » commande par commande. **La répétition sur la recette est la vraie preuve : ne cliquer pour de bon qu'après elle.**
