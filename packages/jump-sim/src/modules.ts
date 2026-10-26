@@ -1,13 +1,14 @@
-import { ATTEMPT_DEAD, ATTEMPT_FINISHED, circleHitsBox, stepAttempt, type AttemptState } from "./attempt";
+import { ATTEMPT_DEAD, ATTEMPT_FINISHED, boxesOverlap, circleHitsBox, stepAttempt, type AttemptState } from "./attempt";
 import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
 import { START_AT_SPAWN, encodeReplay, replayStartState, toRuns } from "./replay";
 import { MODULE_PACKED, MODULE_TEXTS } from "./catalog";
+import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
-import { SECTION_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
-import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, sawCenter, type Level } from "./level";
+import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, platformPos, sawCenter, type Level } from "./level";
 
 // Les morceaux (lot 4) : des portions de niveau écrites en texte qui **portent leur solution**, matière première du niveau du jour (lot 5).
 // La source est un fichier texte par morceau (`packages/jump-sim/modules/<id>.txt`) ; le solveur hors ligne (`npm run solve:modules -w
@@ -15,8 +16,8 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //
 // Format d'un fichier, **version 3** (lot 7 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
-//   intention: Monter une cheminée …              une phrase en français
-//   etiquettes: mural vertical                    parmi MODULE_TAGS
+//   intention: Monter une cheminée …              une phrase en français (lot 20 : absente du catalogue embarqué, `apps/jump/public/outils/intentions.json`)
+//   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile)
 //   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
 //                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne` ; lot 13 :
 //                                                 `foret` : `vent`) ; sans cette
@@ -36,6 +37,10 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   vent <c0>-<c1> <r0>-<r1> <sens> <force> [rafale <cycle> <actif> <décalage>]
 //                                                 (lot 13) une zone de vent (syntaxe de `level.ts`) ; colonnes et rangées du gabarit (de la
 //                                                 première copie de `c0`/`r0` à la dernière de `c1`/`r1`), section implicite, `{param}` permis
+//   plateforme <id> <largeur> <h|v> <cycle> <c,r> <c,r>
+//                                                 (lot 20) une plateforme mobile (syntaxe de `level.ts`) : ses deux extrémités (coin haut-gauche), en
+//                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe),
+//                                                 la section est implicite, `{param}` permis ; au niveau du jour l'identifiant prend le nom du morceau
 //   zone <mutateur> …                             et les zones de mutation (ci-dessous)
 //
 // **Mutateurs (lot 7).** Une transformation déclarative du **gabarit** (avant le déroulé des plages répétées : une zone posée sur une plage
@@ -97,7 +102,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme"] as const;
 /** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -105,15 +110,13 @@ export type MutatorName = (typeof MUTATORS)[number];
 export const MAX_MUTATIONS = 2;
 export const MAX_VARIANTS = 10;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
-export const MODULE_ENTRIES = ["arret", "elan"] as const;
-export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
+// Lot 21 : `MODULE_ENTRIES` et `PALIER_LENGTH` sont dans `constants.ts` (lus au premier chargement du jeu, sans le catalogue) ; ré-exportés ici.
+export { MODULE_ENTRIES, PALIER_LENGTH, type ModuleEntry };
 
 /** Hauteur maximale d'un morceau construit, en rangées. */
 export const MODULE_MAX_HEIGHT = 30;
 /** Version du format des fichiers de morceaux (lot 6 : paliers posés, plus dessinés ; lot 7 : famille, mutateurs). */
 export const MODULE_FORMAT = 3;
-/** Longueur du palier standard (lot 6), en tuiles : celle d'un raccord du niveau du jour. */
-export const PALIER_LENGTH = 2;
 /**
  * Colonne de garde devant le palier d'entrée (morceau seul, et début du niveau du jour) : une colonne comme un palier, pour que le départ ne
  * soit jamais à portée de saut mural du bord gauche du niveau. Une reprise sur un point de passage a, à sa gauche, le morceau précédent :
@@ -327,7 +330,8 @@ export function parseModule(text: string): ModuleDef {
   const id = one("id");
   if (!/^[a-z0-9-]{1,24}$/.test(id)) throw new ModuleError(`id « ${id} » invalide (minuscules, chiffres, tirets, 24 au plus)`);
   const where = (s: string) => `Morceau « ${id} » : ${s}`;
-  const intention = one("intention");
+  // Lot 20 : le catalogue embarqué n'a plus la ligne `intention:` (poids du jeu) ; un fichier de morceau, lui, l'a toujours (`tools/files.ts`, `intentions.json`).
+  const intention = meta.intention === undefined ? "" : one("intention");
   const tags = one("etiquettes").split(/\s+/);
   for (const t of tags) if (!(MODULE_TAGS as readonly string[]).includes(t)) throw new ModuleError(where(`étiquette « ${t} » inconnue (${MODULE_TAGS.join(", ")})`));
   if (new Set(tags).size !== tags.length) throw new ModuleError(where("étiquette en double"));
@@ -361,6 +365,8 @@ export function parseModule(text: string): ModuleDef {
   for (; i < lines.length && lines[i]!.trim() !== ""; i++) grid.push(lines[i]!.trim());
   const annexAll = lines.slice(i).map((l) => l.trim()).filter((l) => l !== "" && !l.startsWith("//"));
   const annex = annexAll.filter((l) => !l.startsWith("zone "));
+  // Lot 20 : l'étiquette `plateforme` et une ligne `plateforme` du bloc annexe vont ensemble (comme une mécanique et son thème).
+  if (tags.includes("plateforme") !== annex.some((l) => l.startsWith("plateforme "))) throw new ModuleError(where("l'étiquette « plateforme » et une ligne « plateforme » du bloc annexe vont ensemble"));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
   const width = grid[0]!.length;
   grid.forEach((row, r) => {
@@ -734,11 +740,8 @@ export interface BuildOptions {
   lancement?: number;
 }
 
-export function textHash(text: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0;
-  return h.toString(16).padStart(8, "0");
-}
+// Lot 21 : `textHash` vit dans `texthash.ts` (le premier chargement du jeu l'utilise sans le catalogue) ; ré-exportée ici, pour tous les importeurs d'avant.
+export { textHash };
 
 /** Une colonne de palier standard : du vide au-dessus du sol (jusqu'en haut), le sol à la rangée `floor`, du plein dessous. */
 const palierCell = (r: number, floor: number) => (r < floor ? "." : "#");
@@ -830,7 +833,23 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       annex.push(["vent", `${c0! + lead}-${c1! + lead}`, `${r0}-${r1}`, ...words.slice(3)].join(" "));
       continue;
     }
-    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote » et « vent » sont permis (« ${words[0]} »)`));
+    if (words[0] === "plateforme") {
+      // Lot 20 : une plateforme mobile, ses deux extrémités traduites comme les points d'une scie (première copie, ou dernière avec une apostrophe).
+      annex.push(
+        words
+          .map((w, k) => {
+            const m = k >= 5 ? /^(\d+)('?),(\d+)('?)$/.exec(w) : null;
+            if (!m) return w;
+            const col = (m[2] ? cols.last : cols.first)[Number(m[1])];
+            const row = (m[4] ? rows.last : rows.first)[Number(m[3])];
+            if (col === undefined || row === undefined || col < 0 || row < 0) throw new ModuleError(where(`point ${w} hors de la grille ou retiré par la variante`));
+            return `${col + lead},${row}`;
+          })
+          .join(" "),
+      );
+      continue;
+    }
+    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent » et « plateforme » sont permis (« ${words[0]} »)`));
     annex.push(
       words
         .map((w, k) => {
@@ -909,6 +928,16 @@ export function palierProblems(m: BuiltModule): string[] {
         }
       }
     }
+    // Lot 20 : ni une plateforme mobile (sur tout son cycle) : le palier est un rebord où l'on entre, repart et reprend, jamais un lieu de passage.
+    for (const plat of L.platforms) {
+      for (let t = 0; t < plat.cycle; t++) {
+        const p = platformPos(plat, t);
+        if (boxesOverlap(box, { x: p.x, y: p.y, w: plat.width * T, h: T })) {
+          out.push(`palier d'${name} : la plateforme ${plat.id} y passe`);
+          break;
+        }
+      }
+    }
   }
   if (isSolidTile(at(m.lead, m.entryRow - 1)!)) out.push("première colonne du morceau pleine au ras du sol : on n'y entre pas en courant");
   return out;
@@ -917,7 +946,7 @@ export function palierProblems(m: BuiltModule): string[] {
 // ——— Le catalogue ———
 
 /** Les morceaux du catalogue, dans l'ordre des fichiers (`catalog.ts`, généré par `solve:modules`). */
-export const MODULES: readonly ModuleDef[] = MODULE_TEXTS.map(parseModule);
+export const MODULES: readonly ModuleDef[] = /* @__PURE__ */ MODULE_TEXTS.map(parseModule);
 
 export function moduleDef(id: string): ModuleDef {
   const def = MODULES.find((m) => m.id === id);
@@ -1234,7 +1263,7 @@ export function unpackCatalog(p: PackedCatalog): CatalogFile {
 }
 
 /** Les solutions embarquées, dépliées une fois au chargement (lot 19 : `MODULE_PACKED`). */
-export const MODULE_SOLUTIONS: CatalogFile = unpackCatalog(MODULE_PACKED);
+export const MODULE_SOLUTIONS: CatalogFile = /* @__PURE__ */ unpackCatalog(MODULE_PACKED);
 
 /**
  * Lot 15 : la version de la simulation des **morceaux joués seuls** (`buildModule`) : 3, une horloge par section qui démarre à l'entrée du

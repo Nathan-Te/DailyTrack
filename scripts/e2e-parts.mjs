@@ -8,8 +8,9 @@
 // (`apps/web/e2e/durees.json`, secondes, un seul worker), et les fichiers sont posés du plus long au plus court sur la part la moins chargée.
 // Un fichier absent du tableau pèse `DEFAULT_S` (et le script le signale sur stderr) : aucun spec n'est jamais oublié.
 //
-// Lot R3 (plateforme) — sous-ensemble multi-navigateurs : `node scripts/e2e-parts.mjs multi firefox` (ou `jump-webkit`…) rend la liste des specs
-// de `e2e/multi-navigateurs.json` du jeu : sur une PR, Firefox et WebKit ne lancent qu'eux (comparaison entre navigateurs : rejeu, déterminisme).
+// Lot R10 (plateforme) — `node scripts/e2e-parts.mjs liste chromium web/a.spec.ts jump/b.spec.ts` écrit la liste de tests d'une part de la CI de PR courte
+// (les specs viennent de scripts/ci-zones.mjs) : chaque spec sur le projet de son jeu (`chromium`, `jump-chromium`). Le sous-ensemble multi-navigateurs du
+// lot R3 est retiré : une PR ne lance plus que Chromium, tout tourne sur les trois navigateurs à chaque fusion et la nuit.
 
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -48,22 +49,20 @@ export function assignParts(files, durations, total) {
   return parts;
 }
 
-/** Sous-ensemble multi-navigateurs d'un jeu (lot R3) : `{ fichier: raison }`, lu dans `e2e/multi-navigateurs.json`. */
-export function multiSpecs(dir = E2E) {
-  return JSON.parse(readFileSync(join(dir, "multi-navigateurs.json"), "utf8")).specs;
-}
-
 /** Contenu d'un fichier `--test-list` : une ligne par spec (« [projet] › fichier » = tous les tests du fichier). */
 export function testList(files, project) {
   return files.map((f) => `[${project}] › ${f}`).join("\n") + "\n";
 }
 
 function main(argv) {
-  if (argv[0] === "multi") {
-    const project = argv[1] ?? "firefox";
-    const files = Object.keys(multiSpecs(gameOf(project).dir)).sort();
-    console.error(`e2e-parts : sous-ensemble multi-navigateurs (${project}) — ${files.join(", ")}`);
-    process.stdout.write(testList(files, project));
+  if (argv[0] === "liste") {
+    // liste <projet-web> <jeu/fichier>… : le projet du jeu `jump` est `jump-<navigateur>`.
+    const navigateur = argv[1] ?? "chromium";
+    const lignes = argv.slice(2).filter(Boolean).map((x) => {
+      const [jeu, fichier] = x.split("/");
+      return `[${jeu === "jump" ? `jump-${navigateur}` : navigateur}] › ${fichier}`;
+    });
+    process.stdout.write(lignes.join("\n") + "\n");
     return;
   }
   const [spec, project = "chromium"] = argv;

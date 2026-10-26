@@ -1,3 +1,4 @@
+import "./generationInit";
 import { parisDay, parisDayStart } from "@cdj/clock";
 import { formatDay } from "@cdj/core";
 import {
@@ -36,11 +37,12 @@ import {
   sectionPeriod,
   singleClock,
   cycleMod,
+  platformPositions,
+  sectionClock,
   windActive,
   windPhase,
   windPush,
   windZoneOf,
-  buildModule,
   jumpMedalFor,
   jumpThemeForDay,
   levelNumber,
@@ -72,15 +74,16 @@ import type { DynamicStats } from "./dynamicArt";
 import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
+import type { PlatformStats } from "./platformArt";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
 import { loadCameraTune, loadTuned, mountTunePanel } from "./tune";
-import { LAUNCH_TILES, moduleTheme, nextModule, referenceTicks, solutionReplay } from "./modulesInfo";
 import { archiveHref, dailyHref, homeHref, moduleHref, readUrlOptions, watchFirstHref, type Scenario } from "./urlOptions";
 import { FIRST_GHOST_COLOR, OWN_GHOST_COLOR, checkFirstGhost, firstGhostLabel, showFirstGhost, type FirstGhost } from "./firstGhost";
-import { browserFrozen, browserWorker, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
-import { chooseDay, dayLine, finishMedalText, isPreview, medalWord, newDayText, nextMedal, refusedText, shortDate, type DayChoice } from "./dailyInfo";
+import { browserFrozen, loadDaily, progressMessage, yieldToPaint, type DailyLoad } from "./dailyLoader";
+import { browserWorker } from "./workerNavigateur";
+import { chooseDay, dayLine, finishMedalText, isPreview, originLine, medalWord, newDayText, nextMedal, refusedText, shortDate, type DayChoice } from "./dailyInfo";
 import { FROZEN_DAYS } from "./frozen";
 import { History, mayRecord, type DayRecord } from "./history";
 import { archiveDays, archiveRow, archiveStreakText, arrivalLine, countdownText, etatDuJour, helpSeen, homeHeading, homeStatus, markHelpSeen, medalText, recordTile, streakText, wantsHome } from "./homeLogic";
@@ -101,7 +104,7 @@ import { JumpAudio, type AudioDebug } from "./audio";
 import { AMBIENCES, beltMix, sawMix } from "./audioLogic";
 import { beltRuns } from "./surfaceArt";
 import { textSeed } from "./decor";
-import { NAME_KEY, ProfileSync, createIdentity, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
+import { NAME_KEY, ProfileSync, appliquerGeneration, createIdentity, generationDeReponse, readIdentity, readPlayerId, type KeyValueStore } from "@cdj/profile";
 import { applyJumpProfile, followJumpIdentity, jumpStats, type JumpMe, type JumpMergeResult } from "./jumpProfile";
 import { lireSuite, type Suite } from "@cdj/profile";
 import { HttpRankSource, rankApiBase, type JumpBoard, type RankSource } from "./rankApi";
@@ -235,6 +238,15 @@ export interface WindDebug extends Partial<WindStats> {
   phases: number[];
 }
 
+/** Lot 20 : `__jump.platforms` — ce que le dessin a posé (position, vitesse et sens du chevron, opacité) et l'état des plateformes dans la simulation. */
+export interface PlatformsDebug extends Partial<PlatformStats> {
+  count: number;
+  /** Par plateforme : où elle est dans la simulation (coin haut-gauche, unités), la phase de sa section, laquelle porte le personnage (−1 : aucune). */
+  sim: { x: number; y: number }[];
+  phases: number[];
+  ride: number;
+}
+
 export interface JumpDebug {
   /**
    * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
@@ -243,6 +255,8 @@ export interface JumpDebug {
   readonly profile: { exists: boolean; name: string | null };
   /** Lot 12 : les blocs clignotants et alternés (null : le niveau n'en a pas). */
   readonly blocks: BlocksDebug | null;
+  /** Lot 20 : les plateformes mobiles (null : le niveau n'en a pas) : où elles sont dans la simulation et ce qui est dessiné (position, vitesse et sens du chevron, opacité). */
+  readonly platforms: PlatformsDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -434,8 +448,8 @@ export interface DailyView {
   newDay: boolean;
   /** Message discret affiché (date refusée, nouveau niveau), "" sinon. */
   notice: string;
-  /** Lot 7b : d'où vient le niveau (`cache`, `worker`, `principal`), s'il a été généré pendant ce chargement, pourquoi le cache a été refusé, durée du chargement et temps de fil principal (ms). */
-  load: { source: string; generated: boolean; cacheMiss: string; frozenMiss: string; totalMs: number; blockedMs: number };
+  /** Lot 7b : d'où vient le niveau (`fige`, `cache`, `worker`, `principal`), s'il a été généré pendant ce chargement, lot 21 : où le catalogue et le générateur ont été chargés (`non`, `worker`, `principal`), pourquoi le cache a été refusé, durée du chargement et temps de fil principal (ms). */
+  load: { source: string; generated: boolean; catalog: string; cacheMiss: string; frozenMiss: string; totalMs: number; blockedMs: number };
   /** Ligne du HUD. */
   line: string;
 }
@@ -527,6 +541,11 @@ const rankSource: RankSource | null = apiBase === null ? null : demoRank ? new D
 // Lot P4 (plateforme) : les lectures du jour regroupées (classement, fantôme du premier, carte des morts ; le profil au chargement) en une
 // requête, jamais deux fois en moins de 30 s (`dayReads.ts`).
 const reads = new DayReads({ source: rankSource, now: () => Date.now() });
+// Lot R8 : la lecture regroupée dit la génération de données du serveur ; une plus récente que celle de ce navigateur (remise à zéro du lancement) :
+// ses données de jeu sont effacées (ses réglages gardés) et la page recharge, en joueur neuf (le message le dit une fois, sur l'accueil).
+reads.onLoad((b) => {
+  if (store && appliquerGeneration(store, generationDeReponse(b)) === "efface") location.reload();
+});
 const identity = createIdentity(() => {
   if (!store) throw new Error("stockage indisponible");
   return store;
@@ -705,17 +724,21 @@ accueilDonnees.medals = daily?.medals ?? null;
 // Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
 // couloir de lancement est ajouté devant le palier d'entrée ; la solution, elle, part lancée du départ du morceau (sans couloir).
 const mod = options.module;
-const built = mod ? buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? LAUNCH_TILES : 0 }) : null;
+// Lot 21 : le catalogue des morceaux n'est chargé que pour jouer un morceau (`?module=`), pas pour le niveau du jour ni un scénario.
+const modApi = mod ? await import("./modulesInfo") : null;
+// Lot 21 : les joueurs fictifs du carnage de démonstration d'un jour (qui reprennent bien après une mort) demandent le catalogue : chargés à la demande, avec `?carnage=demo` seulement.
+const demoApi = options.carnageDemo && choice ? await import("./demoFictifs") : null;
+const built = mod && modApi ? modApi.buildModule(mod.id, mod.variant, { lancement: mod.entry === "elan" && !mod.solution ? modApi.LAUNCH_TILES : 0 }) : null;
 const level = built ? built.level : daily ? daily.level : LEVELS[options.scenario ?? "essai"];
-const reference = mod ? referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
-const nextId = mod ? nextModule(mod.id) : null;
-const nextHref = mod && nextId ? moduleHref({ id: nextId, variant: 0, entry: mod.entry, theme: moduleTheme(nextId, 0) ?? undefined }, options) : null;
+const reference = mod && modApi ? modApi.referenceTicks(mod.id, mod.variant, mod.entry, mod.entry === "elan" && !mod.solution) : null;
+const nextId = mod && modApi ? modApi.nextModule(mod.id) : null;
+const nextHref = mod && modApi && nextId ? moduleHref({ id: nextId, variant: 0, entry: mod.entry, theme: modApi.moduleTheme(nextId, 0) ?? undefined }, options) : null;
 
 const dayText = formatDay(today);
 // Lot 9 : le thème du jour, celui de la date du niveau (une archive garde le sien). Lot 11 : le thème est une donnée du générateur : un niveau du
 // jour porte le sien (`daily.theme`, celui de la date ou le thème forcé d'un essai). Un morceau ou un scénario n'a pas de thème : `?theme=` leur en
 // donne un (cosmétique, ils n'ont pas de mécanique de thème). La palette en vient.
-const modTheme = mod ? moduleTheme(mod.id, mod.variant) : null;
+const modTheme = mod && modApi ? modApi.moduleTheme(mod.id, mod.variant) : null;
 // Lot 13 : la galerie des courants d'air (`?scenario=vent`) s'ouvre dans son thème (la forêt).
 const theme = daily ? THEMES[daily.theme] : (themeByName(options.theme) ?? (modTheme ? THEMES[modTheme] : options.scenario === "vent" ? THEMES.foret : themeForDay(today)));
 /** Lot 11 : essai (thème forcé) : rien n'est enregistré, comme avec des réglages modifiés. */
@@ -809,8 +832,8 @@ if (options.watchFirst) await refreshDay();
 // `?module=…&solution` : lecture de la solution stockée du morceau (rejouée par la même simulation).
 // `&solution` sur le niveau du jour (lot 5) : la rediffusion de l'auteur, la preuve du niveau.
 // `?watch=first` (lot P2) : l'essai du premier du classement de ce jour.
-const watchReplay = mod?.solution
-  ? solutionReplay(mod.id, mod.variant, mod.entry)
+const watchReplay = mod?.solution && modApi
+  ? modApi.solutionReplay(mod.id, mod.variant, mod.entry)
   : daily && options.solution
     ? daily.replay
     : options.watchBest
@@ -1352,6 +1375,8 @@ function demoLives(max = 0): JumpReplay[] {
  * héros, les vies des essais fictifs (les joueurs de la démonstration) ; rien n'est gardé ni envoyé. De quoi voir un carnage sans finir le niveau.
  */
 function dayDemoLives(d: DailyLevel): JumpReplay[] {
+  // Lot 21 : avec `?carnage=demo`, les joueurs fictifs qui reprennent bien (`demoFictifs.ts`) ; appelé autrement (`__jump.carnage.demo()`), les essais d'avant.
+  if (demoApi) return demoApi.dayDemoLives(d);
   const lives: JumpReplay[] = [];
   for (const a of demoAttempts(d.level, d.replay, 0xa11, { attempts: 14 })) for (const life of replayAttempt(d.level, a.replay, d.id).lives) lives.push(lifeReplay(a.replay, life));
   return lives;
@@ -1872,6 +1897,7 @@ function updateOverlay(): void {
             : "lecture du meilleur essai (watch=best)"
       : "",
     daily ? dailyOverlay() : "",
+    originLine(loaded, modApi !== null),
     `jour      meilleur ${memory.best ? formatTicks(memory.best.time) : "—"} · vies ${memory.lives.length} · taches ${stains?.count ?? 0}${ghost ? ` · fantôme ${ghostOn ? "montré" : "caché"}` : ""}`,
   ]
     .filter(Boolean)
@@ -1958,8 +1984,8 @@ const info: JumpDebug = {
       newDay,
       notice,
       load: loaded
-        ? { source: loaded.source, generated: loaded.generated, cacheMiss: loaded.cacheMiss, frozenMiss: loaded.frozenMiss, totalMs: loaded.totalMs, blockedMs: loaded.blockedMs }
-        : { source: "aucun", generated: false, cacheMiss: "", frozenMiss: "", totalMs: 0, blockedMs: 0 },
+        ? { source: loaded.source, generated: loaded.generated, catalog: loaded.catalog, cacheMiss: loaded.cacheMiss, frozenMiss: loaded.frozenMiss, totalMs: loaded.totalMs, blockedMs: loaded.blockedMs }
+        : { source: "aucun", generated: false, catalog: modApi ? "principal" : "non", cacheMiss: "", frozenMiss: "", totalMs: 0, blockedMs: 0 },
       line: shownLine,
     };
   },
@@ -2190,6 +2216,18 @@ const info: JumpDebug = {
   },
   get menu() {
     return { open: menuOpen };
+  },
+  /** Lot 20 : les plateformes mobiles (null sans elles) : ce que le dessin a posé, et l'état de la simulation. */
+  get platforms() {
+    if (level.platforms.length === 0) return null;
+    const state = session.state;
+    return {
+      ...(scene?.platforms ?? {}),
+      count: level.platforms.length,
+      sim: platformPositions(level, state),
+      phases: level.platforms.map((p) => sectionClock(level, state.sections, state.time, p.section)),
+      ride: state.ride ?? -1,
+    };
   },
   /** Lot 13 : les courants d'air (null sans eux). */
   get wind() {

@@ -90,6 +90,11 @@ export interface ApiOptions {
    * ne le règle jamais. Un faux jeu n'a pas de tables (le schéma est celui de `GAMES`).
    */
   games?: readonly GameDefinition<never>[];
+  /**
+   * Lot R8 : le jour de la journée n° 1 (jours depuis 1970) ; défaut : celui de `config/lancement.json` (`@cdj/core`). `LANCEMENT_PREMIER_JOUR`
+   * (`config.ts`) le déplace sur la recette et en local ; la production le refuse.
+   */
+  premierJourDuJour?: number;
 }
 
 export function createApi(options: ApiOptions) {
@@ -134,7 +139,13 @@ export function createApi(options: ApiOptions) {
   const portail = createPortailRoutes(
     platform,
     instances.flatMap((g) => (g.instance.portail ? [{ code: g.code, portail: g.instance.portail }] : [])),
+    options.premierJourDuJour,
   );
+  // Lot R8 : la remise à zéro du lancement vide la base ; une instance qui voit la génération changer oublie sa mémoire (comme après un effacement).
+  platform.onGenerationChange(() => {
+    for (const g of instances) g.instance.onErased?.();
+    portail.oublier();
+  });
   const salon = cdj.salon;
   const today = platform.today;
 
@@ -222,6 +233,7 @@ export function createApi(options: ApiOptions) {
       if (path === "/api/health" && req.method === "GET") return await health(reply);
       if (path === "/api/sonde/entetes" && req.method === "GET" && options.environment === "recette") return reply(200, probeHeaders(req, info));
       await ensureSchema();
+      await platform.generation(); // lot R8 : une ligne par instance et par 30 s ; une génération changée vide la mémoire de l'instance
 
       // Les routes communes (pseudo, profil, code), puis celles de chaque jeu du registre, du préfixe le plus long au plus court.
       const common = (await identity.route(path, req, url, info)) ?? (await portail.route(path, req, url, info));

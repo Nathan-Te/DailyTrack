@@ -16,6 +16,7 @@ export const ECRITURES_PERMISES = {
   "deploy-api.yml": ["id-token"],
   "deploy-site.yml": ["id-token"],
   "production.yml": ["contents", "pull-requests", "actions", "id-token"],
+  "lancement-remise-a-zero.yml": ["id-token"],
   "recette-seed.yml": ["id-token"],
   "recette.yml": ["pull-requests", "id-token"],
   "retour-arriere.yml": ["contents", "id-token"],

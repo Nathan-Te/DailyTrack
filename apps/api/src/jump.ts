@@ -240,6 +240,8 @@ export interface JumpBundle {
   board: JumpBoard;
   ghost: JumpFirstGhost | null;
   deaths: unknown;
+  /** Lot R8 : la génération de données (remise à zéro du lancement), `Platform.generation`. */
+  generation: number;
   profile?: JumpMe | null;
   profileError?: string;
 }
@@ -690,7 +692,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
           },
         )
       : Promise.resolve(null);
-    const [b, ghost, deaths, p] = await Promise.all([
+    const [b, ghost, deaths, p, generation] = await Promise.all([
       board(day, me),
       firstGhost(day, me).catch((e: unknown) => {
         if (e instanceof HttpError && e.code === "no_ghost") return null;
@@ -698,8 +700,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       }),
       lives.deathMap(date),
       profile,
+      platform.generation(),
     ]);
-    const body: JumpBundle = { date, open, board: b, ghost, deaths, ...(p ?? {}) };
+    const body: JumpBundle = { date, open, board: b, ghost, deaths, generation, ...(p ?? {}) };
     // Le profil change avec le joueur et ailleurs (un code changé sur un autre appareil) : revalidé à chaque fois. Le reste : la règle commune.
     return new WithHeaders(body, cacheHeaders({ open, perPlayer: true, noCache: wantProfile }));
   }

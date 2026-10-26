@@ -28,7 +28,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
   const info = await jump(page);
   expect(info.phase).toBe("ready");
-  expect(info.simVersion).toBe(4); // lot 15 : le code joue les niveaux v3 et v4 (horloge unique)
+  expect(info.simVersion).toBe(5); // lot 20 : le code joue les niveaux v3, v4 (horloge unique) et v5 (plateformes mobiles)
   expect(info.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
   const canvas = page.locator("canvas");
@@ -38,7 +38,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
   expect(box!.height).toBeGreaterThan(100);
 
   // Le coin affiche la version de la simulation et le jour du jeu (lot I5 : avec ?debug seulement ; sinon, petite, dans la pause).
-  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v4 · ${info.day}`);
+  await expect(page.locator("#stamp")).toHaveText(`Jump · sim v${info.simVersion} · ${info.day}`);
 
   // Les pixels : le fond uni, les tuiles, le personnage et l'arrivée font au moins quatre couleurs, et le fond ne couvre pas tout.
   const pixels = await page.evaluate(() => (window as unknown as { __jump: JumpDebugView }).__jump.probe());

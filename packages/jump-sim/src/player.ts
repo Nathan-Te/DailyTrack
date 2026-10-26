@@ -343,8 +343,11 @@ export interface JumpFlags {
  * au début du pas. Vers le haut, elle **remplace la gravité** : la vitesse verticale va vers −`windRise` (montée), freinée par la gravité si
  * l'on monte plus vite ; sur le côté, la vitesse visée devient commande + `windDrift` dans le sens du vent (sans commande, on dérive à
  * `windAccel`). Rien n'est gardé dans l'état : en sortant de la zone, la vitesse acquise reste et la physique ordinaire reprend.
+ * Lot 19/20 : `platformVx` (0 : aucune plateforme, exactement les calculs d'avant) est la vitesse horizontale de la plateforme mobile qui portait le
+ * personnage (unités/pas) : **un saut qui part (sol ou coyote, pas un saut mural) la lui laisse**, ajoutée à sa vitesse une fois le pas déplacé (ce pas-là
+ * a déjà reçu le déplacement de la plateforme). Jamais sa vitesse verticale.
  */
-export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null, wind: Readonly<WindPush> | null = null): PlayerState {
+export function stepPlayerJump(state: Readonly<PlayerState>, input: number, level: Grid, params: Readonly<JumpParams>, flags: JumpFlags | null, wind: Readonly<WindPush> | null = null, platformVx = 0): PlayerState {
   if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
   const p = params;
   let dir = (input & INPUT_RIGHT ? 1 : 0) - (input & INPUT_LEFT ? 1 : 0); // gauche + droite = neutre
@@ -469,6 +472,7 @@ export function stepPlayerJump(state: Readonly<PlayerState>, input: number, leve
   const mx = sweep(level, x, PLAYER_WIDTH, vx, y, PLAYER_HEIGHT, true);
   x = mx.pos;
   if (mx.blocked) vx = 0;
+  else if (platformVx !== 0 && jumped && !wallJumped) vx = clamp(vx + platformVx, -MAX_SPEED, MAX_SPEED);
 
   let my = sweep(level, y, PLAYER_HEIGHT, vy, x, PLAYER_WIDTH, false);
   if (my.blocked && vy < 0 && p.cornerTolerance > 0) {

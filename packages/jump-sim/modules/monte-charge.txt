@@ -1,0 +1,31 @@
+id: monte-charge
+intention: Monter sur une plateforme qui s'élève dans un puits profond et sauter sur la corniche d'en haut avant qu'elle ne redescende.
+etiquettes: vertical plateforme
+famille: monte-charge
+mutateurs: hausse surface
+format: 3
+paliers: 12 4
+variante: cycle=420
+variante: cycle=480
+variante: cycle=420 +hausse:1
+variante: cycle=480 +surface:glace
+grille:
+..............
+..............
+..............
+..............
+.........#####
+.........#####
+.........#####
+.........#####
+.........#####
+.........#####
+.........#####
+.........#####
+#####....#####
+########.#####
+########.#####
+
+plateforme charge 3 v {cycle} 5,12 5,4
+zone hausse 9-13 4
+zone surface 9-13 4

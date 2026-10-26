@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 4;
+export const JUMP_SIM_VERSION = 5;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -21,6 +21,14 @@ export const JUMP_SIM_VERSION = 4;
  */
 export const SECTION_CLOCK_VERSION = 3;
 export const SINGLE_CLOCK_VERSION = 4;
+/**
+ * Lot 20 : **version 5 = version 4 + plateformes mobiles** (`plateforme` du bloc annexe, `Level.platforms`). Une plateforme est une rangée de 2 à 4
+ * tuiles qui fait un aller-retour (horizontal ou vertical) sur l'horloge de sa section (`f(t + phase)`, entière, ralentie à ses deux extrémités par
+ * une table entière) ; le personnage posé dessus est porté, garde sa vitesse horizontale au saut, la traverse par-dessous et par les côtés. Un niveau
+ * sans plateforme se joue **exactement** comme en v4 (ou en v3) : les golden v3 et v4 n'ont pas bougé. Les niveaux du jour depuis le générateur g15 sont en
+ * v5 ; les morceaux joués seuls restent en v3 (`MODULE_SIM_VERSION`), leurs plateformes suivent l'horloge de leur section comme les scies.
+ */
+export const PLATFORM_VERSION = 5;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -38,9 +46,16 @@ export const SINGLE_CLOCK_VERSION = 4;
  * 13 depuis le lot 18 (chaque phase d'un bloc clignotant, présente ou absente, dure au moins 1,5 s : les variantes de nuit plus rapides sont
  * refusées et remplacées par des variantes plus lentes ; suite de secours de la nuit) ;
  * 14 depuis le lot 19 (variété : un morceau de base ne revient pas avant `VARIETY_DAYS` jours, par époques bornées, à la place du repos par
- * groupes ; tirages prouvés dans l'ordre de leur score estimé ; mutateurs de silhouette et 37 variantes ajoutées au bout de leurs morceaux).
+ * groupes ; tirages prouvés dans l'ordre de leur score estimé ; mutateurs de silhouette et 37 variantes ajoutées au bout de leurs morceaux) ;
+ * 15 depuis le lot 20 (plateformes mobiles : niveaux en sim v5, morceaux à plateformes, règles de trajet).
  */
-export const JUMP_GENERATOR_VERSION = 14;
+export const JUMP_GENERATOR_VERSION = 15;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;
+
+/** Les deux entrées d'un morceau (lot 4) : à l'arrêt, ou en élan. Lot 21 : ici (et non dans `modules.ts`) pour que lire l'adresse du jeu ne charge pas le catalogue. */
+export const MODULE_ENTRIES = ["arret", "elan"] as const;
+export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
+/** Longueur du palier standard (lot 6), en tuiles : celle d'un raccord du niveau du jour. Lot 21 : ici, lue par les joueurs fictifs (`demo.ts`) sans le catalogue. */
+export const PALIER_LENGTH = 2;

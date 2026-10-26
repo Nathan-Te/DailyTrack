@@ -13,6 +13,8 @@ import {
   INPUT_RIGHT,
   JUMP_GENERATOR_VERSION,
   LevelError,
+  PLATFORM_VERSION,
+  SINGLE_CLOCK_GENERATOR,
   MODULES,
   PALIER_GUARD,
   PHASE_REFUSED,
@@ -92,7 +94,7 @@ describe("lot 15 — lecture d'un niveau v4 (bloc annexe)", () => {
 
   it("une phase n'existe qu'en version 4 ; une version inconnue est refusée", () => {
     expect(() => parseLevel(V4_ASCII.replace("version 4\n", ""))).toThrow(LevelError);
-    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 5"))).toThrow(/version/);
+    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 6"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 2"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 4\nversion 4"))).toThrow(/déjà/);
   });
@@ -162,37 +164,48 @@ describe("lot 15 — une seule horloge (v4)", () => {
 
 /** Les jours régénérés par le lot : de J+2 (la PR date du 21/10/2026) sur deux semaines. */
 const FIRST_REGENERATED = parseDay("2026-10-23")!;
+/** Lot 20 : la référence v4 (g14, `dailyLevel(jour, thème, 4)`) et le générateur en vigueur (g15, version 5) passent les mêmes vérifications. */
+const GENERATORS = [
+  { version: SINGLE_CLOCK_VERSION, generator: SINGLE_CLOCK_GENERATOR },
+  { version: PLATFORM_VERSION, generator: JUMP_GENERATOR_VERSION },
+] as const;
+
+/** Les jours régénérés du générateur en vigueur (g15, version 5). */
 const REGENERATED: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST_REGENERATED + k));
 
-describe("lot 15 — les jours régénérés (g10, une seule horloge)", () => {
-  it("sont des niveaux v4 du générateur g10, sans problème (règles, points de reprise sûrs à toute phase)", () => {
-    for (const L of REGENERATED) {
-      expect(L.level.simVersion, L.date).toBe(SINGLE_CLOCK_VERSION);
-      expect(L.id, L.date).toBe(`jour-${L.date}-g${JUMP_GENERATOR_VERSION}`);
-      expect(L.fallback, L.date).toBe(false);
-      expect(dailyProblems(L), L.date).toEqual([]);
-      expect(respawnProblems(L.level), L.date).toEqual([]);
-      for (const p of L.pieces) expect(PHASE_REFUSED[p.id]?.includes(p.variant) ?? false, `${L.date} ${p.id}:${p.variant}`).toBe(false);
-    }
-  });
+for (const { version, generator } of GENERATORS) {
+  const DAYS_OF: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST_REGENERATED + k, null, version));
 
-  it("la référence passe sans attente : les mêmes commandes qu'en v3 (solutions des morceaux bout à bout), au même temps, sans mort", () => {
-    for (const L of REGENERATED) {
-      // Lot 16 : le même assemblage (avec les voies lentes), en version 3.
-      const v3 = reassemble(L);
-      const asV3 = replayAttempt(v3.level, { ...L.replay, simVersion: SECTION_CLOCK_VERSION }, L.id);
-      const asV4 = replayAttempt(L.level, L.replay, L.id);
-      expect([asV4.finished, asV4.deaths.length], L.date).toEqual([true, 0]);
-      expect(asV4.time, L.date).toBe(asV3.time);
-      expect(asV4.time, L.date).toBe(L.authorTicks);
-      // Les phases sont celles qui font tourner chaque section comme la référence la rencontrait en v3 (entrée = départ de son horloge).
-      L.level.sections.forEach((s, i) => {
-        const period = sectionPeriod(L.level, i);
-        if (period > 0) expect(cycleMod(s.phase + asV3.final.sections[i]!, period), `${L.date} section ${i}`).toBe(0);
-      });
-    }
+  describe(`lot 15 — les jours régénérés (g${generator}, une seule horloge, sim v${version})`, () => {
+    it(`sont des niveaux v${version} du générateur g${generator}, sans problème (règles, points de reprise sûrs à toute phase)`, () => {
+      for (const L of DAYS_OF) {
+        expect(L.level.simVersion, L.date).toBe(version);
+        expect(L.id, L.date).toBe(`jour-${L.date}-g${generator}`);
+        expect(L.fallback, L.date).toBe(false);
+        expect(dailyProblems(L), L.date).toEqual([]);
+        expect(respawnProblems(L.level), L.date).toEqual([]);
+        for (const p of L.pieces) expect(PHASE_REFUSED[p.id]?.includes(p.variant) ?? false, `${L.date} ${p.id}:${p.variant}`).toBe(false);
+      }
+    });
+
+    it("la référence passe sans attente : les mêmes commandes qu'en v3 (solutions des morceaux bout à bout), au même temps, sans mort", () => {
+      for (const L of DAYS_OF) {
+        // Lot 16 : le même assemblage (avec les voies lentes), en version 3.
+        const v3 = reassemble(L);
+        const asV3 = replayAttempt(v3.level, { ...L.replay, simVersion: SECTION_CLOCK_VERSION }, L.id);
+        const asV4 = replayAttempt(L.level, L.replay, L.id);
+        expect([asV4.finished, asV4.deaths.length], L.date).toEqual([true, 0]);
+        expect(asV4.time, L.date).toBe(asV3.time);
+        expect(asV4.time, L.date).toBe(L.authorTicks);
+        // Les phases sont celles qui font tourner chaque section comme la référence la rencontrait en v3 (entrée = départ de son horloge).
+        L.level.sections.forEach((s, i) => {
+          const period = sectionPeriod(L.level, i);
+          if (period > 0) expect(cycleMod(s.phase + asV3.final.sections[i]!, period), `${L.date} section ${i}`).toBe(0);
+        });
+      }
+    });
   });
-});
+}
 
 // ——— Validation toutes phases ———
 
@@ -280,11 +293,18 @@ describe("lot 15 — les suites de secours v4 n'ont aucune variante refusée", (
 
 // ——— Déterminisme v4 (référence) ———
 
-const GOLDEN_FILE = join(import.meta.dirname, "fixtures/replay-golden-v4.json");
+/**
+ * Lot 20 : deux références. `replay-golden-v4.json` : **la référence v4, intacte** (g14, écrite au lot 19) — `dailyLevel(jour, thème, 4)` doit encore la rendre au bit près,
+ * et ses rediffusions rejouer les mêmes états ; elle ne se régénère jamais. `replay-golden-v5.json` : le générateur en vigueur (g15, sim v5) ; `UPDATE_GOLDEN=1` n'écrit que celle-là.
+ */
+const GOLDEN_FILES = {
+  [SINGLE_CLOCK_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v4.json"),
+  [PLATFORM_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v5.json"),
+} as const;
 // Lot 18 (g13) : le 25/10 n'a plus de mort avant le premier point de passage parmi les 24 essais fictifs (la couverture « reprise au départ » du test
 // manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas. Lot 19 (g14) : le 31/10 n'en a plus aucune ; le 09/11,
-// une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11).
-const GOLDEN_DAY = parseDay("2026-11-09")!;
+// une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11). Lot 20 : la journée de référence v5 est le 08/11 (une forêt à 2 plateformes : 63 reprises au départ, 40 sur un point parmi les essais fictifs).
+const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")! } as const;
 
 interface GoldenV4 {
   jumpSimVersion: number;
@@ -295,8 +315,8 @@ interface GoldenV4 {
   replays: { name: string; code: string; hash: string; finished: boolean; ticks: number; time: number; deaths: number }[];
 }
 
-function goldenReplays(): GoldenV4["replays"] {
-  const L = dailyLevel(GOLDEN_DAY);
+function goldenReplays(version: 4 | 5): GoldenV4["replays"] {
+  const L = dailyLevel(GOLDEN_DAYS[version], null, version);
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
   const essais = demoAttempts(L.level, L.replay, 15, { attempts: 24, maxLives: 8 });
   essais.forEach((r, i) => codes.push({ name: `essai fictif ${i} (${r.end})`, code: encodeReplay(r.replay) }));
@@ -317,28 +337,33 @@ function goldenReplays(): GoldenV4["replays"] {
 }
 
 if (process.env.UPDATE_GOLDEN) {
-  const golden: GoldenV4 = { jumpSimVersion: SINGLE_CLOCK_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: dailyLevel(GOLDEN_DAY).hash, ascii: dailyLevel(GOLDEN_DAY).ascii, replays: goldenReplays() };
-  writeFileSync(GOLDEN_FILE, JSON.stringify(golden, null, 2) + "\n");
+  const L = dailyLevel(GOLDEN_DAYS[PLATFORM_VERSION], null, PLATFORM_VERSION);
+  const golden: GoldenV4 = { jumpSimVersion: PLATFORM_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(PLATFORM_VERSION) };
+  writeFileSync(GOLDEN_FILES[PLATFORM_VERSION], JSON.stringify(golden, null, 2) + "\n");
 }
 
-describe("lot 15 — déterminisme v4 (fixtures/replay-golden-v4.json)", () => {
-  const golden = JSON.parse(readFileSync(GOLDEN_FILE, "utf8")) as GoldenV4;
+for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, JUMP_GENERATOR_VERSION]] as const) {
+  describe(`lot 15/20 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
+    const golden = JSON.parse(readFileSync(GOLDEN_FILES[version], "utf8")) as GoldenV4;
+    const day = GOLDEN_DAYS[version];
 
-  it(`le niveau du ${formatDay(GOLDEN_DAY)} et ses rediffusions (preuve, essais fictifs, vies reprises au départ et aux points) rejouent les mêmes états`, () => {
-    expect(golden.jumpSimVersion).toBe(SINGLE_CLOCK_VERSION);
-    expect(golden.jumpGeneratorVersion, "JUMP_GENERATOR_VERSION a changé : UPDATE_GOLDEN=1").toBe(JUMP_GENERATOR_VERSION);
-    expect(dailyLevel(GOLDEN_DAY).hash).toBe(golden.level);
-    expect(dailyLevel(GOLDEN_DAY).ascii).toBe(golden.ascii);
-    expect(goldenReplays()).toEqual(golden.replays);
-    // La référence couvre des morts, des reprises au départ (chrono qui continue) et sur un point de passage.
-    expect(golden.replays.some((r) => r.deaths >= 2)).toBe(true);
-    expect(golden.replays.some((r) => r.name.includes("reprise : départ"))).toBe(true);
-    expect(golden.replays.some((r) => r.name.includes("reprise : point"))).toBe(true);
-  }, 60_000); // génération du jour, 24 essais fictifs et ~30 rejeux : ≈ 3 s seul, plus de 5 s sur le runner chargé de la CI
+    it(`le niveau du ${formatDay(day)} et ses rediffusions (preuve, essais fictifs, vies reprises au départ et aux points) rejouent les mêmes états`, () => {
+      expect(golden.jumpSimVersion).toBe(version);
+      expect(golden.jumpGeneratorVersion, "JUMP_GENERATOR_VERSION a changé : UPDATE_GOLDEN=1").toBe(generator);
+      expect(dailyLevel(day, null, version).hash).toBe(golden.level);
+      expect(dailyLevel(day, null, version).ascii).toBe(golden.ascii);
+      expect(goldenReplays(version)).toEqual(golden.replays);
+      // La référence couvre des morts, des reprises au départ (chrono qui continue) et sur un point de passage.
+      expect(golden.replays.some((r) => r.deaths >= 2)).toBe(true);
+      expect(golden.replays.some((r) => r.name.includes("reprise : départ"))).toBe(true);
+      expect(golden.replays.some((r) => r.name.includes("reprise : point"))).toBe(true);
+    }, 60_000); // génération du jour, 24 essais fictifs et ~30 rejeux : ≈ 3 s seul, plus de 5 s sur le runner chargé de la CI
 
-  it("deux rejeux de la même rediffusion donnent les mêmes états, et une rediffusion v3 est refusée sur un niveau v4", () => {
-    const L = dailyLevel(GOLDEN_DAY);
-    expect(replayFingerprint(L.level, L.replay)).toEqual(replayFingerprint(L.level, decodeReplay(L.code)));
-    expect(() => replayAttempt(L.level, { ...L.replay, simVersion: SECTION_CLOCK_VERSION })).toThrow(/version/);
+    it("deux rejeux de la même rediffusion donnent les mêmes états, et une rediffusion d'une autre version est refusée", () => {
+      const L = dailyLevel(day, null, version);
+      expect(replayFingerprint(L.level, L.replay)).toEqual(replayFingerprint(L.level, decodeReplay(L.code)));
+      expect(() => replayAttempt(L.level, { ...L.replay, simVersion: SECTION_CLOCK_VERSION }, L.id)).toThrow(/version/);
+      expect(() => replayAttempt(L.level, { ...L.replay, simVersion: version === PLATFORM_VERSION ? SINGLE_CLOCK_VERSION : PLATFORM_VERSION }, L.id)).toThrow(/version/);
+    });
   });
-});
+}

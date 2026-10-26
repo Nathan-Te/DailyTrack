@@ -65,8 +65,12 @@ jobs:
         if: steps.browsers.outputs.cache-hit == 'true'
       - run: npm run build && npm run build:node -w @cdj/api
         if: matrix.jeu == 'web'
+        env:
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" # lot R8 : les archives des e2e (horloge au 20/10/2026) commencent au circuit n° 1
       - run: npm run build -w @cdj/jump
         if: matrix.jeu == 'jump'
+        env:
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13" # lot R8 : les archives des e2e (horloge au 20/10/2026) commencent au circuit n° 1
       - name: ${{ needs.liste.outputs.repetitions }} passages de suite, sans relance
         env:
           FICHIER: ${{ matrix.fichier }}

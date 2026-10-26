@@ -58,3 +58,46 @@ test("les polices : au plus 150 ko, chemin du site partagé avec le portail et T
   // Le HTML ne porte aucun texte en dur : il est pré-rempli en français à la construction (data-t), titre « Jump — Du Jour ».
   expect(html).toContain("<title data-t=\"page.titre\">Jump — Du Jour</title>");
 });
+
+// Lot 21 : le catalogue des morceaux et le générateur ne sont pas dans le premier chargement (celui du niveau du jour, avec un fichier figé) : ils sont chargés à
+// la demande, par le fil de travail ou par le repli sur le fil principal — **un seul exemplaire** pour les deux (le fil de travail est une entrée de la même
+// construction, `vite.config.ts` `filDuGenerateur`, et partage ses fichiers avec la page). Lu dans la construction, comme le poids : sans navigateur.
+test("le premier chargement ne contient ni le catalogue ni le générateur ; ils n'existent qu'une fois, le fil de travail les partage avec le repli", () => {
+  const CATALOGUE = "etiquettes: scie"; // le texte d'un morceau du catalogue embarqué
+  const GENERATEUR = "un tirage mieux estimé est valide"; // un message du générateur
+  const fichiers = readdirSync(dist).filter((f) => f.endsWith(".js"));
+  const texte = Object.fromEntries(fichiers.map((f) => [f, readFileSync(new URL(f, dist), "utf8")]));
+  const statiques = (f: string) => [...texte[f]!.matchAll(/\bfrom\s*"\.\/([^"]+\.js)"|\bimport\s*"\.\/([^"]+\.js)"/g)].map((m) => (m[1] ?? m[2])!);
+  const dynamiques = (f: string) => [...texte[f]!.matchAll(/import\(\s*["`]\.\/([^"`]+\.js)["`]/g)].map((m) => m[1]!);
+  const fermeture = (racines: string[]) => {
+    const vus = new Set<string>();
+    const file = [...racines];
+    while (file.length) {
+      const f = file.shift()!;
+      if (vus.has(f) || !texte[f]) continue;
+      vus.add(f);
+      file.push(...statiques(f));
+    }
+    return vus;
+  };
+  const html = readFileSync(new URL("../dist/index.html", import.meta.url), "utf8");
+  const entree = [...html.matchAll(/(?:src|href)="\.\/assets\/([^"]+\.js)"/g)].map((m) => m[1]!);
+  // La page + le jeu (le fichier `main-*.js` que l'entrée charge à la demande : le plus gros) = tout ce que charge un joueur dont le niveau est figé.
+  const debut = fermeture(entree);
+  const jeu = [...debut].flatMap(dynamiques).filter((f) => f.startsWith("main-")).sort((a, b) => texte[b]!.length - texte[a]!.length)[0]!;
+  const premier = fermeture([...entree, jeu]);
+  expect(premier.size, "le jeu et sa page sont lus").toBeGreaterThan(5);
+  for (const f of premier) {
+    expect(texte[f]!.includes(CATALOGUE), `${f} : le catalogue des morceaux n'est pas dans le premier chargement`).toBe(false);
+    expect(texte[f]!.includes(GENERATEUR), `${f} : le générateur n'est pas dans le premier chargement`).toBe(false);
+  }
+  // Un seul exemplaire de chacun dans la construction, et le fil de travail (`dailyWorker-*.js`) y mène par ses imports statiques, comme le repli.
+  expect(fichiers.filter((f) => texte[f]!.includes(CATALOGUE)).length, "le catalogue n'existe qu'une fois").toBe(1);
+  expect(fichiers.filter((f) => texte[f]!.includes(GENERATEUR)).length, "le générateur n'existe qu'une fois").toBe(1);
+  const fil = fichiers.find((f) => f.startsWith("dailyWorker-"))!;
+  expect(texte[fil]!.length, "le fil de travail est un petit fichier qui importe le reste").toBeLessThan(2_000);
+  const duFil = fermeture([fil]);
+  expect([...duFil].some((f) => texte[f]!.includes(CATALOGUE)), "le fil de travail charge le catalogue").toBe(true);
+  expect([...duFil].some((f) => texte[f]!.includes(GENERATEUR)), "le fil de travail charge le générateur").toBe(true);
+  expect([...duFil].some((f) => f.startsWith("three-") || f.startsWith("main-")), "le fil de travail n'importe ni Three.js ni le jeu").toBe(false);
+});

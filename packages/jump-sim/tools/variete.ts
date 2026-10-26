@@ -1,6 +1,6 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
 import * as sim from "../src/index";
-import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MODULES, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
+import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MODULES as ALL_MODULES, PLATFORM_VERSION, platformModuleIds, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
 
 // `npm run variete:jump -w @cdj/jump-sim` (lot 19) — **répétition des morceaux de base** d'un jour à l'autre (toutes variantes confondues) :
 // morceaux de base disponibles par thème, fréquence de chacun (les dix plus fréquents), écart moyen et minimal entre deux apparitions du même
@@ -12,19 +12,25 @@ const opt = (name: string) => process.argv.find((a) => a.startsWith(`--${name}=`
 const [y, m, d] = (opt("depuis") ?? "2026-10-27").split("-").map(Number);
 const FROM = daysFromCivil(y!, m!, d!);
 const DAYS = Number(opt("jours") ?? 365);
+// Lot 20 : `--generateur=14` mesure la référence v4 (g14, sans plateformes) au lieu du générateur en vigueur : le comparatif du README.
+const G14 = opt("generateur") === "14";
+const SIM_VERSION = G14 ? SINGLE_CLOCK_VERSION : PLATFORM_VERSION;
+const GEN = G14 ? SINGLE_CLOCK_GENERATOR : JUMP_GENERATOR_VERSION;
+// Les morceaux que le générateur mesuré connaît (la référence g14 ne connaît pas ceux à plateformes).
+const MODULES = G14 ? ALL_MODULES.filter((def) => !platformModuleIds().has(def.id)) : ALL_MODULES;
 const num = (v: number, k = 1) => v.toFixed(k).replace(".", ",");
 
 const t0 = performance.now();
 const days: { day: number; theme: JumpThemeName; ids: string[]; fallback: boolean }[] = [];
 for (let k = 0; k < DAYS; k++) {
-  const L = dailyLevel(FROM + k);
+  const L = dailyLevel(FROM + k, null, SIM_VERSION);
   days.push({ day: FROM + k, theme: L.theme, ids: L.pieces.map((p) => p.id), fallback: L.fallback });
 }
 const ms = performance.now() - t0;
 
 const out: string[] = [];
 const line = (s = "") => out.push(s);
-line(`## Variété des morceaux de base — g${JUMP_GENERATOR_VERSION}, ${DAYS} dates (du ${formatDay(FROM)} au ${formatDay(FROM + DAYS - 1)})`);
+line(`## Variété des morceaux de base — g${GEN}, ${DAYS} dates (du ${formatDay(FROM)} au ${formatDay(FROM + DAYS - 1)})`);
 line();
 line(`Génération : ${num(ms / DAYS / 1000, 2)} s par niveau en moyenne (avec ses dépendances) ; secours : ${days.filter((x) => x.fallback).length}.`);
 line();
@@ -117,6 +123,40 @@ for (const x of days) {
 line(quick.length ? quick.map((s) => `- ${s}`).join("\n") : "aucun");
 
 // ——— Génération à froid ———
+// ——— Réserve : combien de morceaux de base manquent pour tenir un W plus grand (lot 19, méthode gardée au lot 20) ———
+// Sous la règle bornée, le niveau d'un jour écarte les morceaux de ses voisins à moins de W − 1 jours **de chaque côté** (le dernier jour d'une époque
+// écarte jusqu'à 2 × (W − 1) jours). Réserve d'un jour = morceaux permis à son thème − morceaux écartés. Seuil = la plus petite réserve vue à W = 3 (la règle
+// en vigueur, 0 secours) pour ce thème ; manque d'un jour à W = max(0, seuil − sa réserve). Les voisins sont ceux du générateur mesuré (W = 3) : une estimation.
+// **Lot 20 : le seuil est celui de g14** (`G14_THRESHOLD`, mesuré par `--generateur=14` : le catalogue d'avant, 0 secours), pour que g15 se compare à g14 : ajouter des
+// morceaux relève la réserve de tous les jours, donc le manque ; un seuil recalculé sur g15 monterait avec le catalogue et ne dirait rien. (La méthode du lot 19 donnait
+// des seuils de 20 à 25 : son script n'a pas été gardé, celui-ci est gardé ; les chiffres de g14 sont recalculés ici, pas repris.)
+line();
+line("### Réserve : morceaux de base à ajouter pour tenir un W plus grand (jour moyen · pire jour)");
+line("| thème | seuil (réserve minimale de g14 à W = 3) | W = 4 | W = 5 | W = 7 |");
+line("|---|---|---|---|---|");
+const idsOf = new Map(days.map((x) => [x.day, x.ids]));
+/** La plus petite réserve vue à W = 3 par g14 (365 dates à partir du 27/10/2026, 0 secours), par thème : `npm run variete:jump -w @cdj/jump-sim -- --generateur=14`. */
+const G14_THRESHOLD: Readonly<Record<string, number>> = { foret: 17, usine: 12, glace: 14, nuit: 13, neon: 11 };
+const shortage: Record<number, number[]> = { 4: [], 5: [], 7: [] };
+for (const theme of JUMP_THEME_NAMES) {
+  const allowed = MODULES.filter((def) => def.theme === null || def.theme === theme).length;
+  const mine = days.filter((x) => x.theme === theme && x.day >= FROM + 6 && x.day <= FROM + DAYS - 7);
+  const reserve = (day: number, w: number) => {
+    const excluded = new Set<string>();
+    for (let k = 1; k < w; k++) for (const d of [day - k, day + k]) for (const id of idsOf.get(d) ?? []) excluded.add(id);
+    return allowed - excluded.size;
+  };
+  const threshold = G14 ? Math.min(...mine.map((x) => reserve(x.day, 3))) : G14_THRESHOLD[theme]!;
+  const cells = [4, 5, 7].map((w) => {
+    const need = mine.map((x) => Math.max(0, threshold - reserve(x.day, w)));
+    shortage[w]!.push(Math.max(...need));
+    return `${num(need.reduce((a, b) => a + b, 0) / need.length, 0)} · ${Math.max(...need)}`;
+  });
+  line(`| ${theme} | ${threshold} | ${cells.join(" | ")} |`);
+}
+line();
+line(`Un morceau **commun** compte pour tous les thèmes : pour **W = 5**, il manque environ **${Math.max(...shortage[5]!)} morceaux communs** (le pire jour du pire thème ; W = 4 : ${Math.max(...shortage[4]!)}, W = 7 : ${Math.max(...shortage[7]!)}).`);
+
 const COLD = Number(opt("froid") ?? 48);
 const forget = (sim as { forgetDailyLevels?: () => void }).forgetDailyLevels;
 if (COLD > 0 && forget) {
@@ -125,7 +165,7 @@ if (COLD > 0 && forget) {
     const day = FROM + Math.floor((k * DAYS) / COLD);
     forget();
     const t = performance.now();
-    dailyLevel(day);
+    dailyLevel(day, null, SIM_VERSION);
     ms.push({ day, ms: performance.now() - t });
   }
   const sorted = [...ms].sort((a, b) => b.ms - a.ms);
@@ -135,7 +175,7 @@ if (COLD > 0 && forget) {
 } else if (COLD > 0) {
   line();
   line("### Génération à froid");
-  line(`Pas de dépendance entre les jours (g${JUMP_GENERATOR_VERSION}) : ${num(ms / DAYS / 1000, 2)} s par niveau en moyenne (ci-dessus).`);
+  line(`Pas de dépendance entre les jours (g${GEN}) : ${num(ms / DAYS / 1000, 2)} s par niveau en moyenne (ci-dessus).`);
 }
 
 console.log(out.join("\n"));

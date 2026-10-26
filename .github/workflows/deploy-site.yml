@@ -207,6 +207,9 @@ jobs:
           # Lot 31 : la production n'a ni touches N et T, ni circuit à venir, ni ?variant= / ?theme= pour aujourd'hui (apps/web/src/access.ts) ;
           # la recette (main en entier) et les aperçus les gardent.
           VITE_PRODUCTION: ${{ inputs.cible == 'production' && '1' || '' }}
+          # Lot R8 : la recette et les aperçus peuvent essayer « Journée n° 1 » un autre jour (variable du dépôt RECETTE_PREMIER_JOUR, AAAA-MM-JJ) ;
+          # la production lit config/lancement.json seulement (scripts/site.mjs refuse la variable pour elle).
+          VITE_LANCEMENT_PREMIER_JOUR: ${{ inputs.cible == 'recette' && vars.RECETTE_PREMIER_JOUR || '' }}
         run: |
           npm run build
           # Lot I1 : la vitrine des composants (/ui/) n'est jamais publiée en production (recette et aperçus seulement).

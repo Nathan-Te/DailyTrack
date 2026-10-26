@@ -124,6 +124,9 @@ Le portail rend la **même adresse** en deux versions (publique et personnelle) 
 
 **Projection** : `PORTAIL_VISITOR` dans `scripts/platformBudget.ts` (3 requêtes, 350 lignes lues, 0 écrite par visiteur et par jour : 2 chargements de l'accueil et la page du classement) : 1 000 visiteurs par jour ≈ 0,09 M requêtes et 10,5 M lignes lues par mois (`measure:platform -- --portail 1000`) ; à ajouter, le classement du jour (ci-dessus) ; et « Jeu suivant du jour » ajoute **une requête** à l'arrivée de chaque jeu (`JUMP_PLAYER` 13 requêtes, `TRACK_PLAYER` 14).
 
+## 7. La génération de données (lot R8)
+- Chaque instance du serveur lit `meta.generation` **au plus toutes les 30 s** (`GENERATION_TTL_MS`) : **une ligne lue**, aucune écriture, par instance et par fenêtre de 30 s d'activité (au pire 120 lignes par heure et par instance, 2 instances au plus) ; rien ne s'ajoute au nombre de requêtes de Cloud Run ni au joueur type de `platformBudget.ts`. La remise à zéro elle-même (une fois, le jour du partage) lit chaque table pour la compter (une ligne lue par table) et efface ce qu'elle contient : le coût d'un `DELETE` est proportionnel au nombre de lignes de la table (les joueurs de quelques jours : négligeable devant l'offre gratuite).
+
 ## Checklist (une fois)
 - ☐ Budget `plateforme-5-euros` : 50 / 90 / 100 % réels + 100 % prévu, e-mail.
 - ☐ Turso : alerte d'usage activée, ou rappel « Usage chaque lundi » dans ton agenda.

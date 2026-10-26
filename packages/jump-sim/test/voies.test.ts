@@ -128,7 +128,7 @@ describe("lot 16 — une voie lente par portion dure", () => {
         }
       }
     }
-  }, 120_000);
+  }, 300_000); // lot 20 : ≈ 80 s mesurées en local (g15 : des niveaux à plateformes, solveur à horloges), 122 s sur le runner chargé de la CI (limite d'avant : 120 s)
 });
 
 describe("lot 16 — aucun raccourci", () => {

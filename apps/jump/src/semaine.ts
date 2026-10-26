@@ -1,5 +1,5 @@
 import { formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, VARIETY_DAYS, dailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR, VARIETY_DAYS, dailyLevel } from "@cdj/jump-sim";
 import { miniKind, repeatedPieces, semaineDayOf, semaineDays, semaineFromEntry, type MiniKind, type SemaineDay, type SemaineFile } from "./semaineInfo";
 import { themeByName } from "./themes";
 import { semaineHref, type UrlChoices } from "./urlOptions";
@@ -17,11 +17,12 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
 }
 
 /** Les couleurs de la miniature, lues dans les jetons de la charte (aucune couleur écrite ici). */
-function palette(): Record<MiniKind | "fond" | "repete", string> {
+function palette(): Record<MiniKind | "fond" | "repete" | "plateforme", string> {
   const css = getComputedStyle(document.documentElement);
   const v = (name: string) => css.getPropertyValue(name).trim();
   // Le plein en gris, le vide en encre : seuls les dangers sont rouges (couleur réservée), les repères et les morceaux qui reviennent en jaune.
-  return { fond: v("--dj-encre"), vide: v("--dj-encre"), plein: v("--dj-encre-douce"), meca: v("--dj-creme-2"), danger: v("--jump-danger"), repere: v("--jump-jaune"), repete: v("--jump-jaune") };
+  // Lot 20 : les plateformes mobiles en crème (`--dj-papier`, comme leur dalle dans le jeu) : jamais le rouge des dangers.
+  return { fond: v("--dj-encre"), vide: v("--dj-encre"), plein: v("--dj-encre-douce"), meca: v("--dj-creme-2"), danger: v("--jump-danger"), repere: v("--jump-jaune"), repete: v("--jump-jaune"), plateforme: v("--dj-papier") };
 }
 
 /** Taille d'une tuile dans la miniature (pixels du canevas). */
@@ -50,6 +51,18 @@ function miniature(day: SemaineDay, repeated: ReadonlySet<string>): HTMLCanvasEl
       g.fillRect(col * TILE, r * TILE, TILE, TILE);
     }
   }
+  // Lot 20 : une plateforme mobile : son trajet (la bande qu'elle balaie) à demi, sa position de départ en plein.
+  for (const p of day.platforms ?? []) {
+    const c0 = Math.min(p.from[0], p.to[0]);
+    const c1 = Math.max(p.from[0], p.to[0]) + p.width - 1;
+    const r0 = Math.min(p.from[1], p.to[1]);
+    const r1 = Math.max(p.from[1], p.to[1]);
+    g.globalAlpha = 0.4;
+    g.fillStyle = c.plateforme;
+    g.fillRect(c0 * TILE, r0 * TILE, (c1 - c0 + 1) * TILE, (r1 - r0 + 1) * TILE);
+    g.globalAlpha = 1;
+    g.fillRect(p.from[0] * TILE, p.from[1] * TILE, p.width * TILE, TILE);
+  }
   g.fillStyle = c.danger;
   for (const [col, r] of day.saws) g.fillRect(col * TILE - 1, r * TILE - 1, TILE + 2, TILE + 2);
   // Sous la miniature : les colonnes des morceaux qui reviennent dans la semaine.
@@ -69,7 +82,8 @@ export interface SemaineView {
 
 export function mountSemaine(options: UrlChoices): SemaineView {
   const from = options.semaine!;
-  const generator = options.semaineG13 ? 13 : JUMP_GENERATOR_VERSION;
+  // Lot 20 : g13 (fichier), g14 (la référence v4 du générateur, recalculée) ou le générateur en vigueur.
+  const generator = options.semaineG13 ? 13 : options.semaineG14 ? SINGLE_CLOCK_GENERATOR : JUMP_GENERATOR_VERSION;
   document.body.classList.add("semaine");
   document.title = `DailyJump · semaine du ${formatDay(from)}`;
   const root = el("div", "");
@@ -80,14 +94,21 @@ export function mountSemaine(options: UrlChoices): SemaineView {
     el(
       "p",
       "lead",
-      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur g14 : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours.`,
+      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein).`,
     ),
   );
   const status = el("p", "count", "Calcul des niveaux…");
   head.append(status);
-  const other = el("a", "btn", options.semaineG13 ? "Voir avec le générateur en vigueur" : "Comparer avec le générateur g13");
-  other.href = semaineHref(formatDay(from), !options.semaineG13, options);
-  head.append(other);
+  // Lot 20 : les liens vers les autres générateurs (g14 recalculé, g13 lu dans un fichier) et vers celui en vigueur.
+  const link = (text: string, gen: false | 13 | 14) => {
+    const a = el("a", "btn", text);
+    a.href = semaineHref(formatDay(from), gen, options);
+    head.append(a);
+  };
+  const current = !options.semaineG13 && !options.semaineG14;
+  if (!current) link("Voir avec le générateur en vigueur", false);
+  if (!options.semaineG14) link("Comparer avec le générateur g14", 14);
+  if (!options.semaineG13) link("Comparer avec le générateur g13", 13);
   root.append(head);
   const list = el("ol", "jours");
   root.append(list);
@@ -145,11 +166,11 @@ export function mountSemaine(options: UrlChoices): SemaineView {
       });
     return view;
   }
-  // Un niveau à la fois, en rendant la main entre deux : la page montre l'avancement.
+  // Un niveau à la fois, en rendant la main entre deux : la page montre l'avancement. Lot 20 : g14 = la référence v4 du générateur.
   const days = semaineDays(from);
   const next = (k: number) => {
     if (k >= days.length) return finish();
-    view.days.push(semaineDayOf(dailyLevel(days[k]!)));
+    view.days.push(semaineDayOf(dailyLevel(days[k]!, null, options.semaineG14 ? SINGLE_CLOCK_VERSION : undefined)));
     show();
     setTimeout(() => next(k + 1), 0);
   };

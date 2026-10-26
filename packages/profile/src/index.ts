@@ -9,3 +9,4 @@ export * from "./profile";
 export * from "./langue";
 export * from "./jeuSuivant";
 export * from "./apiAdresse";
+export * from "./generation";

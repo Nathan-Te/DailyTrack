@@ -26,6 +26,12 @@ if (process.env.E2E_ALL_BROWSERS) {
 // normalement. Le décalage est calculé une fois (ici, dans le processus principal) puis hérité par les workers.
 process.env.E2E_CLOCK_OFFSET_MS ??= String(Date.parse("2026-10-20T12:00:00Z") - Date.now());
 const TEST_CLOCK_OFFSET_MS = process.env.E2E_CLOCK_OFFSET_MS;
+// Lot R8 : la date du lancement public (config/lancement.json) est le 26/10/2026, après l'horloge des tests (20/10/2026). Les e2e du portail et du serveur
+// (journée n° 2 le 24/10, classement du jour) gardent leur scénario du lot I3 : la journée n° 1 y est le 23/10/2026 (serveurs : `LANCEMENT_PREMIER_JOUR`, portail
+// construit par les specs : `VITE_LANCEMENT_PREMIER_JOUR`, tous deux hérités par les processus lancés). Les jeux, eux, sont construits avec le 13/10 (archives) par
+// `npm run test:e2e` et la CI, jamais avec cette valeur.
+process.env.LANCEMENT_PREMIER_JOUR = "2026-10-23";
+process.env.VITE_LANCEMENT_PREMIER_JOUR = "2026-10-23";
 const CI = !!process.env.CI;
 
 export default defineConfig({

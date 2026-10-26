@@ -39,6 +39,10 @@ export interface Platform {
   /** La date de Paris d'aujourd'hui (numéro de jour) et le temps écoulé depuis minuit de Paris. */
   today(): number;
   sinceMidnight(): number;
+  /** Lot R8 : la génération de données (0 tant que la base n'a jamais été remise à zéro) : voir `GENERATION_KEY` dans `platform.ts`. */
+  generation(): Promise<number>;
+  /** Lot R8 : appelé quand la génération change (remise à zéro du lancement) : oublier ce que l'instance garde en mémoire. */
+  onGenerationChange(fn: () => void): void;
   /** Joueurs, pseudos réservés, codes révoqués (table `players`, commune à tous les jeux). */
   players: Players;
   /** Empreinte salée d'une valeur (adresse, identifiant) pour un compteur : jamais la valeur en clair. */

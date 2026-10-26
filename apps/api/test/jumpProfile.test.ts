@@ -1,14 +1,14 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, repriseParPhase, encodeReplay, jumpMedalFor, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
 import { JUMP_GRACE_MS } from "../src/jump";
 import { DAY as CDJ_DAY, NOON as CDJ_NOON, makeApi, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
 
 // Lot P2 (plateforme) : le fantôme du premier (`GET /api/jump/day/<date>/ghost/first`) et le profil DailyJump (`GET /api/jump/me`) ; le
 // `GET /api/me` de DailyTrack ne change pas. Tourne sur SQLite et sur libSQL.
 
-/** Jour de test fixe : le 29/10/2026 (niveau généré ; lot 19 : le 20/10 en g14 n'a presque plus d'essais fictifs qui arrivent), et son lendemain (pour la série et un jour passé). Midi à Paris. */
-const DAY = daysFromCivil(2026, 10, 29);
+/** Jour de test fixe : le 30/10/2026 (niveau généré ; lot 21 : joueurs fictifs qui reprennent bien, `repriseParPhase` ; au lot 20 il avait fallu le 13/11), et son lendemain (pour la série et un jour passé). Midi à Paris. */
+const DAY = daysFromCivil(2026, 10, 30);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 
@@ -22,7 +22,7 @@ beforeAll(() => {
   D2 = dailyLevel(DAY + 1);
   const seen = new Set<number>();
   runs = [];
-  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 30 }).filter((x) => x.end === "arrivée")) {
+  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 30, reprise: repriseParPhase(D) }).filter((x) => x.end === "arrivée")) {
     const r = replayAttempt(D.level, a.replay, D.id);
     if (!r.finished || seen.has(r.time) || r.time <= D.authorTicks) continue;
     seen.add(r.time);
@@ -31,7 +31,7 @@ beforeAll(() => {
   runs.sort((a, b) => b.ticks - a.ticks);
   runs.push({ code: D.code, ticks: D.authorTicks, deaths: 0 });
   if (runs.length < 3) throw new Error("trop peu d'essais fictifs arrivent");
-});
+}, 60_000); // génération du niveau du jour et des essais fictifs : ≈ 9 s mesurées en local pour le plus long, plus sur le runner de la CI (limite par défaut : 10 s)
 
 async function jumpApi() {
   const t = await makeApi({ seed: false, environment: "recette" });

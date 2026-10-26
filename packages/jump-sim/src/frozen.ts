@@ -1,8 +1,10 @@
 import { formatDay, parseDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
-import { SECTION_CLOCK_GENERATOR, levelNumber, type DailyExigence, type DailyLevel, type DailyPiece, type JumpMedals } from "./daily";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PLATFORM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
+import type { DailyExigence, DailyLevel, DailyPiece } from "./daily";
+import { PLATFORM_GENERATOR, SECTION_CLOCK_GENERATOR, levelNumber, type JumpMedals } from "./jours";
 import { parseLevel } from "./level";
-import { textHash, type Palier } from "./modules";
+import type { Palier } from "./modules";
+import { textHash } from "./texthash";
 import { decodeReplay, encodeReplay, replayAttempt } from "./replay";
 import { jumpThemeForDay } from "./themes";
 import type { SlowRoute } from "./voies";
@@ -158,6 +160,8 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
   if (f.generatorVersion < 1 || f.generatorVersion > JUMP_GENERATOR_VERSION) return "générateur inconnu";
   // Lot 15 : les générateurs jusqu'à g9 produisaient des niveaux en v3, ceux d'après en v4.
   if ((f.simVersion >= SINGLE_CLOCK_VERSION) !== (f.generatorVersion > SECTION_CLOCK_GENERATOR)) return "versions incohérentes";
+  // Lot 20 : la version 5 (plateformes mobiles) est celle du générateur g15 et des suivants, jamais d'un générateur d'avant.
+  if ((f.simVersion >= PLATFORM_VERSION) !== (f.generatorVersion >= PLATFORM_GENERATOR)) return "versions incohérentes";
   const id = `jour-${date}-g${f.generatorVersion}`;
   if (f.id !== id) return "autre identifiant";
   if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || typeof f.preuve !== "string" || !isInt(f.auteur)) return "fichier incomplet";

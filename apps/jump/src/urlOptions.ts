@@ -3,7 +3,8 @@
 // pour construire ses liens, comme `adminLogic.ts` de DailyTrack.
 
 import { parseDay } from "@cdj/core";
-import { MODULES, MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
+import { MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
+import { MODULE_INDEX } from "./moduleIndex";
 import { THEME_NAMES, themeByName, type ThemeName } from "./themes";
 
 export interface UrlOption {
@@ -95,7 +96,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "module",
     description: "Joue un morceau du catalogue (lot 4) au lieu d'un scénario : `?module=cheminee`. Un identifiant inconnu ouvre la galerie.",
-    values: MODULES.map((m) => m.id),
+    values: MODULE_INDEX.map(([id]) => id),
   },
   {
     name: "variante",
@@ -153,8 +154,8 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "generateur",
     description:
-      "Avec `semaine` : `13` montre la même semaine telle que l'aurait faite le générateur g13 (d'avant le lot 19), lue dans `outils/semaine-g13.json` (du 27/10 au 23/11/2026, de quoi comparer à l'œil) au lieu de la calculer.",
-    values: ["13"],
+      "Avec `semaine` : `13` montre la même semaine telle que l'aurait faite le générateur g13 (d'avant le lot 19), lue dans `outils/semaine-g13.json` (du 27/10 au 23/11/2026, de quoi comparer à l'œil) au lieu de la calculer ; `14` (lot 20) : telle que l'aurait faite le générateur g14 (d'avant les plateformes mobiles), recalculée par la référence v4 du générateur (`dailyLevel(jour, thème, 4)`, aucun fichier).",
+    values: ["13", "14"],
   },
   {
     name: "zones",
@@ -204,6 +205,8 @@ export interface UrlChoices {
   /** Lot 19 : l'outil de la variété (`?semaine=AAAA-MM-JJ`, numéro de jour), null sans lui ; `&generateur=13` : la semaine en g13 (fichier). */
   semaine: number | null;
   semaineG13: boolean;
+  /** Lot 20 : `&generateur=14` : la semaine telle que l'aurait faite le générateur g14 (calculée par la référence v4). */
+  semaineG14: boolean;
   /** Le morceau à jouer (`?module=<id>`), sa variante, son entrée, et la lecture de sa solution (`&solution`) ; null : un scénario. */
   module: { id: string; variant: number; entry: ModuleEntry; solution: boolean } | null;
   /** Lot 9 : thème imposé (`?theme=`), null : le thème du jour. Lot 11 : sur le niveau du jour, un thème différent de celui de la date est un **essai** ; sur un morceau ou un scénario, il reste cosmétique. */
@@ -251,6 +254,7 @@ export function readUrlOptions(search: string): UrlChoices {
     gallery,
     semaine,
     semaineG13: semaine !== null && params.get("generateur") === "13",
+    semaineG14: semaine !== null && params.get("generateur") === "14",
     module: mod,
     theme: themeByName(params.get("theme"))?.name ?? null,
     metronome: params.get("metronome") !== "off",
@@ -262,11 +266,12 @@ export function readUrlOptions(search: string): UrlChoices {
 
 function moduleOf(params: URLSearchParams): UrlChoices["module"] {
   const id = params.get("module");
-  const def = MODULES.find((m) => m.id === id);
+  // Lot 21 : l'index léger (identifiant, nombre de variantes), pas le catalogue : lire l'adresse ne charge aucun morceau.
+  const def = MODULE_INDEX.find(([known]) => known === id);
   if (!def) return null;
   const v = Number(params.get("variante") ?? "0");
-  const variant = Number.isInteger(v) && v >= 0 && v < def.variants.length ? v : 0;
-  return { id: def.id, variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
+  const variant = Number.isInteger(v) && v >= 0 && v < def[1] ? v : 0;
+  return { id: def[0], variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
 }
 
 /**
@@ -298,9 +303,13 @@ export function moduleHref(target: { id: string; variant: number; entry: ModuleE
 }
 
 /** Lien vers la galerie des morceaux. */
-/** Lot 19 : l'outil de la variété sur la semaine qui commence à `date` (AAAA-MM-JJ), en g13 (fichier) ou avec le générateur en vigueur. */
-export function semaineHref(date: string, g13: boolean, from: UrlChoices): string {
-  return `?semaine=${date}${g13 ? "&generateur=13" : ""}${from.debug ? "&debug" : ""}`;
+/**
+ * Lot 19 : l'outil de la variété sur la semaine qui commence à `date` (AAAA-MM-JJ), en g13 (fichier) ou avec le générateur en vigueur. Lot 20 : `generator`
+ * peut aussi être 14 (la référence v4) ; `true` vaut 13 et `false` le générateur en vigueur.
+ */
+export function semaineHref(date: string, generator: boolean | 13 | 14, from: UrlChoices): string {
+  const g = generator === true ? 13 : generator === false ? null : generator;
+  return `?semaine=${date}${g ? `&generateur=${g}` : ""}${from.debug ? "&debug" : ""}`;
 }
 
 export function galleryHref(from: UrlChoices): string {

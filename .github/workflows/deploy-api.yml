@@ -122,6 +122,7 @@ jobs:
       RECETTE_ORIGINS: ${{ vars.RECETTE_ALLOWED_ORIGINS }}
       PROD_TRUST_PROXY: ${{ vars.TRUST_PROXY || '1' }}
       RECETTE_TRUST_PROXY: ${{ vars.RECETTE_TRUST_PROXY || '1' }}
+      RECETTE_PREMIER_JOUR: ${{ vars.RECETTE_PREMIER_JOUR }}
       EXTRA_ORIGINS: ${{ inputs.extra_origins }}
       JOURS_FIGES: ${{ inputs.jours_figes }}
       WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
@@ -301,6 +302,12 @@ jobs:
           envs="ENVIRONMENT=recette,TURSO_DATABASE_URL=${{ steps.cfg.outputs.db }},ALLOWED_ORIGINS=${{ steps.cfg.outputs.origins }},TRUST_PROXY=${{ steps.cfg.outputs.trust }},GIT_SHA=${{ steps.cfg.outputs.sha }}"
           if [ -n "$SALON_MINUTES_IN" ]; then envs="$envs,SALON_MINUTES=$SALON_MINUTES_IN"; fi
           if [ -n "$TEST_CLOCK_IN" ]; then envs="$envs,TEST_CLOCK_OFFSET_MS=$TEST_CLOCK_IN"; fi
+          # Lot R8 : la recette peut essayer « Journée n° 1 » un autre jour que config/lancement.json (variable du dépôt RECETTE_PREMIER_JOUR, AAAA-MM-JJ) ;
+          # la production ne reçoit jamais cette variable (le serveur la refuse aussi : apps/api/src/config.ts).
+          if [ -n "$RECETTE_PREMIER_JOUR" ]; then
+            printf '%s' "$RECETTE_PREMIER_JOUR" | grep -Eq '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' || { echo "::error::RECETTE_PREMIER_JOUR : une date AAAA-MM-JJ attendue, reçu « $RECETTE_PREMIER_JOUR »"; exit 1; }
+            envs="$envs,LANCEMENT_PREMIER_JOUR=$RECETTE_PREMIER_JOUR"
+          fi
           traffic=""
           if [ -n "$TAG" ]; then
             # Une révision sans trafic ne peut pas créer le service : la toute première fois, cette révision devient aussi la recette par

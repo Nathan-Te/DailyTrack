@@ -1,0 +1,36 @@
+id: balancier
+intention: Traverser un grand fossé sur une plateforme qui se balance, sous une grande scie qui monte et descend : attendre qu'elle soit en haut pour sauter.
+etiquettes: scie precision plateforme
+famille: balancier
+mutateurs: hausse decale surface
+format: 3
+paliers: 11 11
+variante: cycle=540 tour=270
+variante: cycle=600 tour=300
+variante: cycle=540 tour=180
+variante: cycle=540 tour=270 +hausse:1
+variante: cycle=600 tour=300 +decale:2
+variante: cycle=540 tour=180 +surface:glace
+variante: cycle=540 tour=135
+grille:
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+##.................###
+##.................###
+##.................###
+##.................###
+
+plateforme balancier 3 h {cycle} 3,11 14,11
+scie haute O {tour} aller-retour 10,3 10,6
+zone hausse 19-21 11
+zone decale 10 3-6
+zone surface 19-21 11

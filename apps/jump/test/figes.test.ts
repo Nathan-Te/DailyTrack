@@ -2,7 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PREMIER_JOUR_JUMP, SECTION_CLOCK_GENERATOR, SECTION_CLOCK_VERSION, decodeReplay, replayAttempt, type JumpReplay } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PLATFORM_GENERATOR, PLATFORM_VERSION, PREMIER_JOUR_JUMP, SECTION_CLOCK_GENERATOR, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, decodeReplay, replayAttempt, type JumpReplay } from "@cdj/jump-sim";
 import { thawLevel } from "../src/frozen";
 
 // Lot 11 : **les jours figés ne changent jamais**. Une mécanique s'ajoute (tapis, glace), le générateur passe en g6, mais chaque fichier de
@@ -28,7 +28,9 @@ describe("niveaux figés (public/levels)", () => {
       if (typeof level === "string") return;
       // Figé sous une version du générateur d'avant (ou la même), jamais d'après ; la physique est celle du niveau (lot 15), que le code joue.
       expect(raw.simVersion).toBe(level.level.simVersion);
-      expect(raw.simVersion).toBe(raw.generatorVersion > SECTION_CLOCK_GENERATOR ? JUMP_SIM_VERSION : SECTION_CLOCK_VERSION);
+      // v3 jusqu'à g9, v4 de g10 à g14 (une seule horloge), v5 depuis g15 (plateformes mobiles, lot 20).
+      expect(raw.simVersion).toBe(raw.generatorVersion >= PLATFORM_GENERATOR ? PLATFORM_VERSION : raw.generatorVersion > SECTION_CLOCK_GENERATOR ? SINGLE_CLOCK_VERSION : SECTION_CLOCK_VERSION);
+      expect(raw.simVersion).toBeLessThanOrEqual(JUMP_SIM_VERSION);
       expect(raw.generatorVersion).toBeLessThanOrEqual(JUMP_GENERATOR_VERSION);
       // Un niveau figé est celui de son thème naturel, jamais un essai.
       expect(level.forcedTheme).toBe(false);

@@ -25,8 +25,17 @@ const jump = (page: Page) =>
     return { phase: j.phase, pret: j.pret, attempt: j.attempt };
   });
 
-/** Un jour sans fichier figé dont le niveau (v4) a au moins une scie mobile : de quoi voir un danger bouger avant le départ. */
-function v4DayWithSaw(): string {
+/**
+ * Un jour dont le niveau, de la version demandée, a au moins une scie mobile : de quoi voir un danger bouger avant le départ. La v4 (horloge unique, générateurs
+ * g10 à g14) ne se génère plus depuis le lot 20 : on prend un jour **figé** en v4 ; la v5 (plateformes mobiles, g15) est celle d'un jour sans fichier figé.
+ */
+function dayWithSaw(version: 4 | 5): string {
+  const movingSaw = (date: string) => pageLevel(date).level.saws.some((s) => s.cycle > 0);
+  if (version === 4) {
+    const date = FROZEN_DATES.filter((d) => pageLevel(d).level.simVersion === 4).find(movingSaw);
+    if (!date) throw new Error("aucun jour figé en v4 avec une scie mobile");
+    return date;
+  }
   let day = parseDay(generatedDay())!;
   for (let k = 0; k < 30; k++, day++) if (dailyLevel(day).level.saws.some((s) => s.cycle > 0)) return dailyLevel(day).date;
   throw new Error("aucun jour généré avec une scie mobile");
@@ -39,8 +48,8 @@ async function open(page: Page, date: string): Promise<boolean> {
   return true;
 }
 
-test("niveau v4 : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »", async ({ page }) => {
-  const date = v4DayWithSaw();
+for (const version of [4, 5] as const) test(`niveau v${version} : pendant le « Prêt… » les dangers bougent déjà, puis le chrono part à heure fixe sans commande ; « recommencer » relance le « Prêt… »`, async ({ page }) => {
+  const date = dayWithSaw(version);
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   // Un « Prêt… » neuf : jusqu'à `manual(true)` la boucle tourne en temps réel et a pu en consommer une partie en se chargeant (WebKit : 20 pas).
   await page.evaluate(() => {
@@ -49,7 +58,7 @@ test("niveau v4 : pendant le « Prêt… » les dangers bougent déjà, puis le 
     j.restart();
   });
   const s0 = await jump(page);
-  expect(s0.pret.level).toBe(4);
+  expect(s0.pret.level).toBe(version);
   expect(s0.pret.ticks).toBe(s0.pret.total);
   expect(s0.pret.total).toBe(120);
   expect(s0.attempt.time).toBe(-s0.pret.total);
@@ -77,8 +86,8 @@ test("niveau v4 : pendant le « Prêt… » les dangers bougent déjà, puis le 
   expect([s4.pret.ticks, s4.attempt.time]).toEqual([s0.pret.total, -s0.pret.total]);
 });
 
-test("niveau v4 : la pause fige tout, « Prêt… » compris ; le « Prêt… » reprend à la fermeture", async ({ page }) => {
-  const date = v4DayWithSaw();
+for (const version of [4, 5] as const) test(`niveau v${version} : la pause fige tout, « Prêt… » compris ; le « Prêt… » reprend à la fermeture`, async ({ page }) => {
+  const date = dayWithSaw(version);
   test.skip(!(await open(page, date)), "pas de WebGL dans ce navigateur");
   // Un « Prêt… » neuf (la page a pu le consommer en se chargeant), puis la pause tout de suite, boucle en temps réel.
   await page.evaluate(() => {
