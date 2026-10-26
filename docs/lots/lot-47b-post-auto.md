@@ -19,3 +19,6 @@ Correctif d'urgence avant la mise en production du 27/10. Mesure de Nathan (i7-1
 
 ## Sol autour des vides de saut (même PR, demande de Nathan)
 Sur le Désert, le sol relevé redescendait au sol lointain sur 10 m autour d'un vide de saut : de grands creux de sable. `REPLAT_VIDE` passe de 10 à 4 m (`decor/commun.ts`), la pente (0,4) ne change pas : le creux reste étroit. Rendu seul (golden, rediffusions inchangés) ; `THUMB_VERSION` 7. Non vérifié en jeu sur ton portable : à regarder sur l'aperçu, circuit Désert du 21/10 (`/track/?seed=2026-10-21`).
+
+### Deuxième correction : la falaise au bord du sol relevé
+Le vrai trou de l'aperçu n'était pas (seulement) autour des sauts : le sol relevé s'arrête à 3 cellules de la piste, et sa pente fixe (0,22 après 36 m) ne rejoignait pas le sol lointain quand la route est haute (20 à 40 m) : **falaise de 20 à 25 m au bord**, un creux béant tout autour. La pente est maintenant au moins `(hauteur − sol) / (portée − replat − 8 m)` : le sol relevé rejoint le sol lointain avant son bord. Mesuré sur 8 circuits Rallye : falaise au bord 25 m → 8 m au plus, pente maximale 1,57 → 0,66. Rendu seul. Non vérifié en jeu (le pas à pas ne redessine pas) : à voir sur l'aperçu.

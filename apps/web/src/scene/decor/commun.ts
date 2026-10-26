@@ -35,6 +35,8 @@ export const PENTE_VIDE = 0.4;
 export const PAS_TERRAIN = CELL / 2;
 /** Le sol relevé s'étend à `PORTEE_TERRAIN` cellules de la piste. */
 export const PORTEE_TERRAIN = 3;
+/** Le sol relevé a rejoint le sol lointain `MARGE_BORD` m avant le bord de sa grille. */
+const MARGE_BORD = 8;
 /** Un sommet du sol qui est au sol lointain est enfoncé d'autant (pas de scintillement avec le plan du sol). */
 const SOUS_LE_SOL = 0.3;
 /** Un élément de décor plus enfoui que cela d'un côté (pente forte sous lui) n'est pas posé : 1,6 m, ou le quart de sa hauteur pour un grand (une mesa, un sapin). */
@@ -114,7 +116,10 @@ export function terrainDe(track: Track, sol: number): Terrain {
           const d = ex === 0 ? ez : ez === 0 ? ex : Math.sqrt(ex * ex + ez * ez);
           if (t === 1) {
             const top = dessus[idx]!;
-            haut = Math.max(haut, top - PENTE * Math.max(0, d - REPLAT));
+            // Retouche 47b : la pente est au moins celle qui rejoint le sol lointain avant le bord de la grille (sinon une route haute laissait une falaise de 10 à 25 m
+            // au bord du sol relevé : un grand creux autour du circuit).
+            const descente = Math.max(PENTE, (top - sol) / (PORTEE_TERRAIN * CELL - REPLAT - MARGE_BORD));
+            haut = Math.max(haut, top - descente * Math.max(0, d - REPLAT));
             plafond = Math.min(plafond, top + 0.5 * d);
           } else plafond = Math.min(plafond, sol + PENTE_VIDE * Math.max(0, d - REPLAT_VIDE));
         }
