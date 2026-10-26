@@ -138,9 +138,10 @@ jobs:
           EVENT: ${{ github.event_name }}
           REF: ${{ github.ref }}
           BASE: ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}
+          HEAD_REF: ${{ github.head_ref }}
         run: |
           full=""
-          if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
+          if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ] || [ "$HEAD_REF" = claude/r10-plateforme-complet-essai ]; then full="--full"; fi
           : > "$RUNNER_TEMP/files.txt"
           # Une base introuvable ou une différence illisible = le doute : la CI complète, jamais une CI vide.
           if [ -z "$full" ]; then
