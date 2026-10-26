@@ -137,3 +137,44 @@ test("réglage « Économie » : choisi en course, il attend la fin de la course
   expect((await qualite(page)).aMesurer).toBe(false);
   await context.close();
 });
+
+test("lot 50 : la règle surveille la course — trop lente (simulée), rien ne change en course ; au retour à l'accueil le palier descend et on s'en souvient ; « Maximale » garde sa scène et le dit", async ({ browser }) => {
+  const context = await newClockedContext(browser, { viewport: { width: 640, height: 360 } });
+  try {
+    const page = await context.newPage();
+    // Un ordinateur dont la mesure de la semaine a donné le palier 3 (Auto, sans remesurer).
+    await page.addInitScript(() => {
+      if (sessionStorage.getItem("lot50")) return;
+      sessionStorage.setItem("lot50", "1");
+      localStorage.setItem("cdj:qualite", JSON.stringify({ palier: 3, date: Date.now(), mediane: 10, pixels: innerWidth * innerHeight * devicePixelRatio ** 2, echecs: 0, plafond: null, durable: false }));
+    });
+    await page.goto(`${ACCUEIL}&appareil=ordinateur`);
+    await page.waitForFunction(() => window.__cdj?.socle.palier() === "P3", undefined, { timeout: 90_000 });
+    expect((await qualite(page)).aMesurer).toBe(false);
+    await page.locator("#home-daily").click();
+    await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 60_000 });
+    // 250 ms par image vue par la surveillance : la fenêtre de 5 s est jugée au bout de 20 images de course.
+    await page.evaluate(() => window.__cdj.qualite.ralentir(250));
+    await page.waitForFunction(() => window.__cdj.qualite.descente, undefined, { timeout: 90_000 });
+    expect((await qualite(page)).course).toMatchObject({ mediane: 250 });
+    await page.evaluate(() => window.__cdj.qualite.ralentir(null));
+    await page.keyboard.press("KeyP");
+    await page.waitForTimeout(800); // la pause n'est pas « hors course » : rien ne change
+    expect(await palier(page)).toBe("P3");
+    expect((await qualite(page)).descente).toBe(true);
+    await page.locator("#pause-home").click();
+    if (await page.locator("#pause-leave").isVisible()) await page.locator("#pause-leave").click();
+    await expect(page.locator("#home")).toBeVisible();
+    await page.waitForFunction(() => window.__cdj.socle.palier() === "P2", undefined, { timeout: 60_000 });
+    expect(await palier(page)).toBe("P2+vie+ciel");
+    expect(JSON.parse((await page.evaluate(() => localStorage.getItem("cdj:qualite")))!)).toMatchObject({ palier: 2, plafond: 2, durable: true, trop: true });
+
+    // On s'en souvient (`cdj:qualite`, relu au chargement : `test/qualite.test.ts`) ; « Maximale » garde le palier 3 et les Réglages disent « Trop lourd pour cet appareil ».
+    await page.locator("#home-settings").click();
+    await page.getByRole("radiogroup", { name: "Qualité graphique" }).getByRole("radio", { name: "Maximale", exact: true }).click();
+    await page.waitForFunction(() => window.__cdj.socle.palier() === "P3", undefined, { timeout: 60_000 });
+    await expect(page.locator("#settings")).toContainText("Trop lourd pour cet appareil");
+  } finally {
+    await context.close();
+  }
+});

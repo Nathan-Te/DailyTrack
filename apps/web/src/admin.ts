@@ -87,7 +87,7 @@ $<HTMLInputElement>("date").addEventListener("change", (e) => set({ date: (e.tar
 $("today").addEventListener("click", () => set({ date: "" }));
 $("random").addEventListener("click", () => set({ date: formatDay(PREMIER_JOUR + Math.floor(Math.random() * RANDOM_SPAN)) }));
 
-const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "zones", "home", "howto", "salon", "watch"] as const;
+const checks = ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "banc", "zones", "home", "howto", "salon", "watch"] as const;
 for (const id of checks) $<HTMLInputElement>(id).addEventListener("change", (e) => set({ [id]: (e.target as HTMLInputElement).checked }));
 $<HTMLSelectElement>("camera").addEventListener("change", (e) => set({ camera: (e.target as HTMLSelectElement).value as AdminState["camera"] }));
 $<HTMLSelectElement>("quality").addEventListener("change", (e) => set({ quality: (e.target as HTMLSelectElement).value as AdminState["quality"] }));

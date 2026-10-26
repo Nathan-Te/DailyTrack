@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CHOIX_GRAPHISMES, NIVEAU_DU_CHOIX, VALIDITE_MS, depart, lireMemoire, memoireValable, palierAuChargement, passesPermises, postVoulu, type Appareil, type MemoireQualite } from "../src/qualite";
-import { DESCENDRE_MS, ECARTEES, INTERVALLES, MONTER_MS, MesureImages, SerieMesures, apresMesure, frequenceEcran, mediane, memoireNeuve, seuils, verdict } from "../src/qualiteMesure";
+import { CHOIX_GRAPHISMES, NIVEAU_DU_CHOIX, POST_DANS_AUTO, VALIDITE_MS, chaineAuChargement, depart, lireMemoire, memoireValable, palierAuChargement, passesPermises, postVoulu, type Appareil, type MemoireQualite } from "../src/qualite";
+import { DESCENDRE_MS, ECARTEES, FENETRE_COURSE_MS, INTERVALLES, MONTER_MS, MesureImages, SerieMesures, SurveillanceCourse, apresMesure, descenteCourse, frequenceEcran, mediane, memoireNeuve, seuils, verdict } from "../src/qualiteMesure";
 import { DEFAULT_SETTINGS, parseSettings } from "../src/settings";
 
 // Lot 45 : la règle de qualité automatique (38b, § 5) et le réglage « Qualité graphique ». Des médianes simulées ; le vrai jeu : `e2e/qualite.spec.ts`.
@@ -176,5 +176,59 @@ describe("lot 45 : cdj:qualite", () => {
     expect(s.derniere).toEqual({ mediane: 16, hz: 60, palier: 2 });
     // Deux mesures complètes : chacune une image pour commencer, 30 écartées, 90 gardées.
     expect(images).toBe(2 * (1 + ECARTEES + INTERVALLES));
+  });
+});
+
+describe("lot 50 : la règle surveille aussi la course ; le post-traitement dans Auto seulement s'il est prouvé", () => {
+  const ordinateur: Appareil = { ordinateur: true, logiciel: false, demiFlottants: true, memoire: 8 };
+  const m0: MemoireQualite = { palier: 3, date: 1, mediane: 10, pixels: 2_000_000, echecs: 0, plafond: null, durable: false };
+
+  it("la médiane de 5 s de course au-delà du seuil propose une descente ; en dessous, rien ; une pause recommence la fenêtre", () => {
+    const s = new SurveillanceCourse();
+    let proposee = false;
+    for (let i = 0; i < 400; i++) proposee ||= s.image(16.7);
+    expect(proposee, "60 images/s").toBe(false);
+    expect(s.derniere).toMatchObject({ hz: 60 });
+    expect(s.derniere!.mediane).toBeCloseTo(16.7, 5);
+    const lente = new SurveillanceCourse();
+    let n = 0;
+    while (!lente.image(33.4)) n++;
+    expect(n * 33.4, "jugée au bout de 5 s d'images").toBeGreaterThanOrEqual(FENETRE_COURSE_MS - 34);
+    expect(lente.derniere!.mediane).toBeCloseTo(33.4, 5); // 30 images/s saccadées : la mesure de Nathan avec la chaîne du lot 47
+    const coupee = new SurveillanceCourse();
+    for (let i = 0; i < 100; i++) expect(coupee.image(33.4)).toBe(false); // 3,3 s
+    coupee.interrompre(); // la pause
+    for (let i = 0; i < 100; i++) expect(coupee.image(33.4), "la fenêtre est repartie de zéro").toBe(false);
+    expect(new SurveillanceCourse().image(900), "un onglet en pause n'est pas une mesure").toBe(false);
+  });
+
+  it("la descente : d'abord la chaîne, puis le palier — mémorisée (le post-traitement refusé, un plafond durable), « trop lourd » pour les Réglages", () => {
+    const sansChaine = descenteCourse(m0, { niveau: 3, post: true }, 5, 2_000_000);
+    expect(sansChaine).toMatchObject({ palier: 3, sansPost: true, trop: true });
+    expect(postVoulu("auto", ordinateur, sansChaine, true), "Auto ne la redonne plus à cet appareil").toBe(false);
+    expect(postVoulu("maximale", ordinateur, sansChaine, true), "« Maximale » la garde : choix explicite").toBe(true);
+    const p2 = descenteCourse(sansChaine, { niveau: 3, post: false }, 6, 2_000_000);
+    expect(p2).toMatchObject({ palier: 2, plafond: 2, durable: true, sansPost: true, trop: true });
+    expect(palierAuChargement(ordinateur, p2, 7, 2_000_000).palier, "la remesure ne remonte pas au-dessus").toBeLessThanOrEqual(2);
+    expect(descenteCourse(null, { niveau: 1, post: false }, 5, 1).palier, "jamais sous le palier 1").toBe(1);
+    // On s'en souvient d'une série de mesures à l'autre.
+    expect(memoireNeuve(3, 9, 2_000_000, sansChaine)).toMatchObject({ sansPost: true, trop: true });
+    expect(lireMemoire(JSON.stringify(p2))).toMatchObject({ sansPost: true, trop: true });
+  });
+
+  it("une mesure ratée avec le post-traitement le retire d'abord (le palier 3 est remesuré sans lui)", () => {
+    const r = apresMesure({ ...m0, mediane: null }, 30, 60, 10, 2_000_000, true);
+    expect(r).toMatchObject({ encore: true, memoire: { palier: 3, sansPost: true } });
+    expect(apresMesure({ ...m0, mediane: null }, 30, 60, 10, 2_000_000, false).memoire.palier, "sans lui : le palier descend").toBe(2);
+  });
+
+  it("le post-traitement dans Auto : seulement si POST_DANS_AUTO ; « Maximale » toujours là où il est permis ; le moteur suit", () => {
+    expect(postVoulu("auto", ordinateur, null, false)).toBe(false);
+    expect(postVoulu("auto", ordinateur, null, true)).toBe(true);
+    expect(postVoulu("auto", { ...ordinateur, ordinateur: false }, null, true), "jamais un téléphone").toBe(false);
+    expect(postVoulu("auto", ordinateur, null), "la décision du lot (après le rapport du banc)").toBe(POST_DANS_AUTO);
+    expect(chaineAuChargement({ adresse: null, choix: "auto", ordinateur: true, memoire: m0, dansAuto: true })).toBe(true);
+    expect(chaineAuChargement({ adresse: null, choix: "auto", ordinateur: true, memoire: { ...m0, palier: 2 }, dansAuto: true }), "Auto au palier 2").toBe(false);
+    expect(chaineAuChargement({ adresse: null, choix: "auto", ordinateur: true, memoire: { ...m0, sansPost: true }, dansAuto: true }), "refusé par cet appareil").toBe(false);
   });
 });

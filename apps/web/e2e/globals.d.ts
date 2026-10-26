@@ -128,6 +128,10 @@ interface CdjDebug {
     demande: boolean;
     permis: boolean;
     actif: boolean;
+    /** Lot 50 : la chaîne, le mode copie (moteur sans multi-échantillonnage de l'écran, sans la chaîne) ou rien ; l'écran du moteur ; le halo dessiné. */
+    mode: "chaine" | "copie" | null;
+    ecranMsaa: boolean;
+    halo: boolean;
     coupe: "contexte" | "echecs" | null;
     contexteHS: boolean;
     parties: { halo: boolean; etalonnage: boolean; anticrenelage: boolean } | null;
@@ -144,11 +148,15 @@ interface CdjDebug {
     choix: "auto" | "economie" | "equilibree" | "maximale";
     appareil: { ordinateur: boolean; logiciel: boolean; demiFlottants: boolean; memoire?: number };
     passes: boolean;
-    memoire: { palier: 1 | 2 | 3; date: number; mediane: number | null; pixels: number; echecs: number; plafond: 1 | 2 | 3 | null; durable: boolean } | null;
+    memoire: { palier: 1 | 2 | 3; date: number; mediane: number | null; pixels: number; echecs: number; plafond: 1 | 2 | 3 | null; durable: boolean; sansPost?: boolean; trop?: boolean } | null;
     aMesurer: boolean;
     mesure: number | null;
     derniere: { mediane: number; hz: number; palier: 1 | 2 | 3 } | null;
     enAttente: boolean;
+    /** Lot 50 : la dernière fenêtre de 5 s de course, la descente qui attend l'arrêt ; `ralentir(ms)` impose la durée des images vue par la surveillance. */
+    course: { mediane: number; hz: number } | null;
+    descente: boolean;
+    ralentir(ms: number | null): void;
   };
   socle: {
     composer(track: unknown, palette: string, palier: string, options?: unknown): unknown;

@@ -63,7 +63,6 @@ import { THEMES_3 } from "./themes3";
 import { Chronometre, drapeauxAnimes, ecransDuDepart, fouleAnimee, maillageEcrans, particules, rubanDesEcrans, suivreCamera, type Temps } from "./vie";
 import { avecPost, type Reglages } from "./paliers";
 import type { ReglagesPost } from "./post";
-import { lineariser, lineariserHalos } from "./lineaire";
 import { HORIZONS, type Ambiance, type Calques, type Contexte, type ModuleDecor } from "./types";
 
 export interface ScenePalier extends TrackScene {
@@ -112,7 +111,6 @@ function materiaux(r: Reglages) {
   return { route: make("route"), rebords: make("rebords"), solide: make("solide"), decor: make("decor") };
 }
 
-export { lineariser, lineariserHalos };
 
 export interface OptionsPalier {
   /** Vue aérienne (miniatures) : ni ciel, ni brume, ni bandeaux, ni vie. */
@@ -277,12 +275,9 @@ export function composerPalier(track: Track, paletteName: PaletteName, r: Reglag
   }
   const all = [calques.route, calques.rebords!, calques.solide, calques.lumineux, calques.decor, calques.decorLumineux, calques.dense, rythme];
   const halos = aerien ? null : buildHalos(all.flatMap((b) => b.halos), look.halo);
-  if (halos) {
-    // Le nuanceur des halos (halo.ts, celui du jeu) écrit ses couleurs telles quelles, pour l'écran. Dessinés dans la cible linéaire du
-    // post-traitement puis convertis par la passe de sortie, ils sortiraient beaucoup plus clairs (de gros disques) : on les linéarise ici.
-    if (avecPost(r)) lineariser(halos.points.material as ShaderMaterial);
-    scene.add(halos.points);
-  }
+  // Le nuanceur des halos (halo.ts, celui du jeu) écrit ses couleurs pour l'écran ; dans la cible linéaire du post-traitement, la chaîne le passe en lumière
+  // linéaire par son uniforme partagé (`SORTIE_LINEAIRE`, lot 50).
+  if (halos) scene.add(halos.points);
 
   const backdrop = new Group();
   if (!aerien) backdrop.add(ciel(amb, seeded(`${track.id}:${paletteName}`), nuit, sunDir), silhouettes(amb, seeded(`${track.id}:${paletteName}:loin`)));

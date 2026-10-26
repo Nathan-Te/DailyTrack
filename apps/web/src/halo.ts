@@ -3,6 +3,7 @@
 // la taille d'un point) et le halo s'efface quand il devient trop gros (on passe tout près). Présentation seule.
 import { AdditiveBlending, BufferGeometry, Color, Float32BufferAttribute, Points, ShaderMaterial } from "three";
 import type { HaloSpec } from "./meshKit";
+import { SORTIE_LINEAIRE } from "./scene/socle";
 
 const VERTEX = `
 attribute float size;
@@ -19,13 +20,16 @@ void main() {
 }`;
 
 const FRAGMENT = `
+uniform float uLineaire;
 varying vec3 vColor;
 varying float vFade;
 void main() {
   float d = length(gl_PointCoord - vec2(0.5)) * 2.0;
   float a = pow(max(0.0, 1.0 - d), 2.2);
-  gl_FragColor = vec4(vColor * a * vFade, 1.0);
+  vec3 c = vColor * a * vFade;
+  gl_FragColor = vec4(uLineaire > 0.5 ? pow(c, vec3(2.2)) : c, 1.0);
 }`;
+
 
 export interface Halos {
   points: Points;
@@ -51,7 +55,7 @@ export function buildHalos(specs: readonly HaloSpec[], strength: number): Halos 
   g.setAttribute("color", new Float32BufferAttribute(col, 3));
   g.setAttribute("size", new Float32BufferAttribute(size, 1));
   const material = new ShaderMaterial({
-    uniforms: { scale: { value: 400 } },
+    uniforms: { scale: { value: 400 }, uLineaire: SORTIE_LINEAIRE },
     vertexShader: VERTEX,
     fragmentShader: FRAGMENT,
     vertexColors: true,

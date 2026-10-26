@@ -91,8 +91,8 @@ test("le palier 2, à la demande : 7 ko au plus, rien dans le premier chargement
 });
 
 // Lot 47 : le post-traitement du palier 3 (halo, étalonnage, FXAA ; ordinateur seulement), à la demande, hors du premier chargement : 7 000 o au plus (énoncé du lot :
-// « 7 ko compressés au plus »). Les passes de three.js et leurs nuanceurs restent dans son morceau (`vite.config.ts` : sans cela, rangées avec three.js, elles
-// entraient dans le premier chargement). **Ni occlusion GTAO ni SMAA** : aucun morceau ne les contient, FXAA y est.
+// « 7 ko compressés au plus »). **Ni occlusion GTAO ni SMAA** : aucun morceau ne les contient, FXAA y est. Lot 50 : la ligne ne grossit pas (≈ 5 ko : une seule passe
+// de fin, plus aucune passe de three.js dans le morceau du jeu ; la chaîne du lot 47, gardée le temps du lot pour le banc, est un morceau à part que le jeu ne charge pas).
 test("le post-traitement, à la demande : 7 ko au plus, rien dans le premier chargement, FXAA seul (ni GTAO ni SMAA)", () => {
   const { fichiers: premier } = mesureTrack() as { fichiers: string[] };
   expect(premier.filter((f) => /^(postJeu|post|lineaire|themesPost)-/.test(f)), "rien du post-traitement dans le premier chargement").toEqual([]);
@@ -100,9 +100,10 @@ test("le post-traitement, à la demande : 7 ko au plus, rien dans le premier cha
   const post = aLaDemande(/^postJeu-.*\.js$/);
   test.info().annotations.push({ type: "mesure", description: `post-traitement à la demande : ${post.octets} o (${post.fichiers.join(", ")})` });
   expect(post.fichiers.length, "le module du post-traitement est construit à part").toBeGreaterThanOrEqual(1);
-  expect(post.octets, "le post-traitement, à la demande, compressé").toBeLessThan(7_000); // ≈ 6,8 ko au lot 47
+  expect(post.octets, "le post-traitement, à la demande, compressé").toBeLessThan(7_000); // ≈ 6,8 ko au lot 47, ≈ 5 ko au lot 50
   const code = post.fichiers.map((f) => readFileSync(new URL(f, dist), "utf8")).join("\n");
-  expect(code, "FXAA").toContain("FXAAShader");
+  expect(code, "FXAA (dans la passe de fin)").toContain("#ifdef FXAA");
+  expect(code, "lot 50 : aucune passe de three.js dans le morceau du jeu").not.toMatch(/FXAAShader|UnrealBloomPass|OutputShader|LuminosityHighPass/);
   for (const f of readdirSync(dist).filter((x) => x.endsWith(".js"))) expect(readFileSync(new URL(f, dist), "utf8"), `${f} : ni GTAO ni SMAA`).not.toMatch(/GTAO|SMAA/);
 });
 

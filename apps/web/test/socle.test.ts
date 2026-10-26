@@ -49,7 +49,7 @@ describe("le registre des pas", () => {
     for (const id of new Set([...PAS_DU_PALIER.P3, ...GROUPE_VIE_CIEL])) expect(main).toContain(`PAS_DU_JEU.${id} = () => import("./scene/${modules[id as keyof typeof modules]}")`);
     // Lot 47 : le post-traitement n'est dans aucun palier (il se demande en plus du palier 3, sur ordinateur) : son `import()` est à lui.
     expect([...PAS_DU_PALIER.P3, ...PAS_DU_PALIER.P2, ...GROUPE_VIE_CIEL]).not.toContain("post");
-    expect(main).toContain('PAS_DU_JEU.post = () => import("./scene/postJeu")');
+    expect(main).toContain('PAS_DU_JEU.post = () => Promise.all([import("./scene/postJeu"), chaine47 ? import("./scene/post47") : null])'); // lot 50 : la chaîne 47 sous `?chaine=47`, le temps du lot
   });
 
   it("le premier chargement (main.ts, de proche en proche) ne tire ni l'ancienne scène, ni la vitrine, ni un module des pas, ni le décor (lot 44)", () => {
