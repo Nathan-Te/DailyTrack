@@ -127,7 +127,6 @@
     "jump/modules.spec.ts": ["jump-modules", "jump-sim"],
     "jump/nuit-neon.spec.ts": ["jump-sim", "jump-rendu"],
     "jump/plateformes.spec.ts": ["jump-sim", "jump-rendu"],
-    "jump/presses.spec.ts": ["jump-sim", "jump-rendu", "jump-jour", "jump-modules"],
     "jump/plein-ecran.spec.ts": ["jump-ui", "ui"],
     "jump/poids.spec.ts": ["jump-jour"],
     "jump/profil-commun.spec.ts": ["jump-classement", "api-jump", "api-coeur", "profile-pkg"],
