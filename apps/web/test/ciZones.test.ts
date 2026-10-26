@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
+  BUDGET_E2E_S,
   CIBLE_PART_UNITAIRE_S,
   PARTS_E2E_MAX,
   PARTS_UNITAIRES_MAX,
@@ -83,7 +84,8 @@ describe("la table spec → zones (e2e/zones.json)", () => {
 });
 
 describe("les specs e2e d'une PR", () => {
-  const choix = (files: string[]) => specsPour(files, table, ROOT);
+  // Sans budget : la sélection par zones seule (le budget a ses propres tests plus bas).
+  const choix = (files: string[]) => specsPour(files, table, ROOT, { budget: Infinity });
 
   it("une PR de DailyJump ne lance aucun spec de DailyTrack, et réciproquement", () => {
     const j = choix(["apps/jump/src/hud.ts", "packages/jump-sim/src/level.ts"]);
@@ -122,6 +124,37 @@ describe("les specs e2e d'une PR", () => {
     expect(axe.length).toBeLessThanOrEqual(12);
     expect(choix(["apps/web/e2e/fixtures.ts"])).toMatchObject({ web: [...table.fumee.web].sort() });
     expect(choix(["apps/jump/playwright.config.ts"])).toMatchObject({ web: [], jump: [...table.fumee.jump].sort() });
+  });
+
+  it("le budget : une PR large reste dans ses 900 s de specs (fumée et specs modifiés en plus), les moins liés sont reportés et nommés", () => {
+    const duree = (jeu: "web" | "jump", s: string) => (JSON.parse(read(`apps/${jeu}/e2e/durees.json`)).secondes as Record<string, number>)[s] ?? 60;
+    const large = ["packages/sim/src/car.ts", "apps/web/src/scene/post.ts", "apps/web/src/hud.css", "apps/web/src/salonMode.ts", "apps/web/src/garage.ts", "packages/ui/src/index.ts"];
+    const sansBudget = specsPour(large, table, ROOT, { budget: Infinity });
+    const r = specsPour(large, table, ROOT);
+    const fumee = new Set(table.fumee.web);
+    const horsFumee = r.web.filter((s) => !fumee.has(s));
+    expect(horsFumee.reduce((n, s) => n + duree("web", s), 0)).toBeLessThanOrEqual(BUDGET_E2E_S + Math.max(...horsFumee.map((s) => duree("web", s))));
+    expect(r.web.length).toBeLessThan(sansBudget.web.length);
+    expect(r.reportes!.length).toBe(sansBudget.web.length + sansBudget.jump.length - r.web.length - r.jump.length);
+    for (const nom of table.fumee.web) expect(r.web, "la fumée est toujours lancée").toContain(nom);
+    // Ce qui est reporté est bien un spec de la sélection complète, jamais l'un de ceux qui restent.
+    for (const x of r.reportes!) {
+      const [jeu, nom] = x.split("/") as ["web" | "jump", string];
+      expect(sansBudget[jeu]).toContain(nom);
+      expect(r[jeu]).not.toContain(nom);
+    }
+  });
+
+  it("un spec modifié par la PR n'est jamais reporté, même seul au-delà du budget", () => {
+    const r = specsPour(["apps/web/e2e/thumbnails.spec.ts", "apps/web/e2e/post.spec.ts", "packages/sim/src/car.ts"], table, ROOT, { budget: 100 });
+    expect(r.web).toEqual(expect.arrayContaining(["thumbnails.spec.ts", "post.spec.ts"]));
+  });
+
+  it("le budget privilégie les specs les plus liés aux fichiers modifiés : deux fichiers de la même zone passent avant un seul", () => {
+    const r = specsPour(["apps/web/src/salonMode.ts", "apps/web/src/watch.ts", "packages/sim/src/car.ts"], table, ROOT, { budget: 400 });
+    const tous = specsPour(["apps/web/src/salonMode.ts", "apps/web/src/watch.ts", "packages/sim/src/car.ts"], table, ROOT, { budget: Infinity });
+    expect(r.web).toContain("watch.spec.ts"); // track-salon deux fois (+ track-sim)
+    expect(tous.web.length).toBeGreaterThan(r.web.length);
   });
 
   it("les documents ne lancent aucun spec", () => {
