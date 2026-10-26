@@ -300,3 +300,5 @@ export function mountHud(opts: { onRestart(): void; carnage: CarnageControls }):
   };
   return self;
 }
+
+// Essai de mesure du lot R10 (aucun effet) : une poussée qui ne touche que DailyJump.
