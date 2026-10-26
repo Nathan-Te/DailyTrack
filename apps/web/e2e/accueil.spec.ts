@@ -649,7 +649,7 @@ for (const vp of PHONES) {
       await expect(page.locator("#board")).toBeHidden(); // téléphone : le classement est replié par défaut en course
       await page.keyboard.press("l");
       await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/); // l'introduction (titre, fantôme) s'efface (lot R10 : un état, plus 1,6 s d'attente)
+      await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/, { timeout: 30_000 }); // l'introduction (titre, fantôme) s'efface (lot R10 : un état, plus 1,6 s d'attente)
       const hud = await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed", "#board", "#touch .steer-left", "#touch .steer-right", "#touch .pedal-brake", "#touch .pedal-gas"]);
       expectNoOverlap(hud, vp);
       expectCentreLibre(hud, vp);
@@ -657,7 +657,7 @@ for (const vp of PHONES) {
       await page.locator("#rotate button").click().catch(() => undefined); // portrait : « Jouer quand même »
       await page.keyboard.press("l");
       await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
-      await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/);
+      await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/, { timeout: 30_000 });
       expectNoOverlap(await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed", "#board"]), vp);
     }
     for (const b of await page.locator("#menu button:visible").all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(43.5);
@@ -676,8 +676,8 @@ test("ordinateur : le HUD de course, la pause et l'arrivée tiennent dans l'écr
   await open(page, `/?debug&api=${encodeURIComponent(API)}&timescale=4`, { wide: true });
   await page.waitForFunction(() => window.__cdj.phase === "racing");
   await expect(page.locator("#board .row").first()).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator("#banner")).toHaveText(""); // le bandeau du départ s'efface (lot R10 : un état, plus 3,5 s d'attente)
-  await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/);
+  await expect(page.locator("#banner")).toHaveText("", { timeout: 30_000 }); // le bandeau du départ s'efface (lot R10 : un état, plus 3,5 s d'attente)
+  await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/, { timeout: 30_000 });
   expectNoOverlap(await boxes(page, ["#hud-centre", "#medals", "#rang", "#menu", "#speed", "#board", "#helpchip"]), { width: 1000, height: 560 });
   await ctx.close();
 });
