@@ -4,7 +4,7 @@ Versions : `JUMP_SIM_VERSION` **7** (nouvelle : v3 à v6 se jouent toujours, cha
 
 ## Scénario en 2 clics
 
-`<aperçu>` = l'adresse de l'aperçu de la PR (`https://…--pr-<n>-<empreinte>.web.app/jump/`, lien commenté sur la PR) ; en local : `npm run dev:jump`.
+`<aperçu>` = l'adresse de l'aperçu de la PR (`https://…--pr-<n>-<empreinte>.web.app/jump/`, lien commenté sur la PR) ; en local : `npm run dev:jump`. (Depuis le lot R9, `&solution` et `?semaine` ne fonctionnent que dans les constructions hors production : aperçu, recette, local.)
 
 1. **Le morceau où le rebond renforcé est nécessaire** (`champignon-falaise`, un rebord plus haut que le plus haut rebond simple, paroi hérissée de pics : il faut **tenir le saut au contact du chapeau**) :
    - `<aperçu>?module=champignon-falaise&variante=0&entree=arret` : à jouer ; `&solution` rejoue la solution enregistrée (un rebond renforcé) ; `&debug` montre `__jump.mushrooms` et les limites du morceau ;
@@ -92,7 +92,7 @@ Les chiffres de g16 sont ceux du README du lot 22 (on ne relance pas l'ancien g�
 ## 7. Décisions, vérifié, non vérifié
 
 - **Jours** : g17 commence le 27/10/2026 ; **aucun jour public ni figé touché** (`apps/jump/public/levels/` n'a pas bougé ; `figes:jump -- --verifier` : à jour ; aucun nouveau jour figé, donc rien à refiger). La démonstration `public/demo/` est régénérée (`jump:seed`).
-- **Budget** : Jump 332 291 → 337 760 o (+5 469, plafond 378 490, marge 40 730) ; ligne de `docs/plateforme/budgets.md` mise à jour. Le catalogue n'est pas dans le premier chargement.
+- **Budget** : Jump 332 502 (`main` après le lot R9) → 337 938 o (+5 436, plafond 378 490, marge 40 552) ; ligne de `docs/plateforme/budgets.md` mise à jour. Le catalogue n'est pas dans le premier chargement.
 - **Golden** : v3 à v6 **intacts** ; nouvelles références `daily-golden-v7.json` et `replay-golden-v7.json` (jour de référence le 28/11/2026 : deux morceaux à champignons, des morts avant et sur un point de passage).
 - **Test assoupli, avec sa mesure** : `apps/api/test/jumpHistory.test.ts` exigeait « plus de la moitié » de temps distincts parmi les joueurs fictifs du 30/10 ; le niveau g17 de ce jour en donne 10 pour 21 (reprises identiques après la même faute) : seuil « plus du tiers ». Test e2e de la nuit : `draining` est le dernier rendu, lu en pas à pas sans rendu il dépendait de la composition du jour ; il lit maintenant `simFills` (la simulation).
 - **À décider (Nathan)** : (1) la respiration `champignon-balade` compte les rebonds comme des sauts ; (2) le renfort à 130 % (un seul niveau) ; (3) la loterie : une modification du catalogue de forêt rejoue la composition de dates lointaines (un secours est apparu une fois le 14/09/2027 : surveiller avec `variete:jump` à chaque ajout) ; (4) **index du `CLAUDE.md` racine** (zone partagée, non touchée) : y ajouter « Champignons (lot 23) » sous `packages/jump-sim/CLAUDE.md` et `apps/jump/CLAUDE.md`.
