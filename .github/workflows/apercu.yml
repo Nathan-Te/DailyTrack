@@ -10,6 +10,11 @@ name: Aperçu
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
+    # Lot R10 : une PR qui ne change que des documents (`docs/**`, `*.md`) n'a rien de nouveau à montrer : aucun run (le filtre porte sur toute la PR : une
+    # PR qui touche aussi du code lance toujours l'aperçu, et sa suppression à la fermeture).
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
 
 permissions:
   contents: read
