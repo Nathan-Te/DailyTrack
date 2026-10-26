@@ -13,6 +13,7 @@ import {
 import { AXLE_REAR, NO_GROUND, type SurfaceKind } from "@cdj/sim";
 import { skidLevel } from "./audioLogic";
 import type { Telemetry } from "./telemetry";
+import { SORTIE_LINEAIRE } from "./scene/socle";
 
 // Effets visuels (lot 9) : fumée de pneus, traces au sol, particules par revêtement, flammes de turbo, étincelles contre
 // un rebord, poussière à la réception, flash et confettis. Tout vit dans des tampons de taille fixe (aucune allocation
@@ -50,12 +51,13 @@ void main() {
   gl_Position = projectionMatrix * mv;
 }`;
 const FRAG = /* glsl */ `
+uniform float uLineaire;
 varying vec4 vColor;
 void main() {
   float d = length(gl_PointCoord - 0.5) * 2.0;
   float a = smoothstep(1.0, 0.35, d) * vColor.a;
   if (a < 0.01) discard;
-  gl_FragColor = vec4(vColor.rgb, a);
+  gl_FragColor = vec4(uLineaire > 0.5 ? pow(max(vColor.rgb, vec3(0.0)), vec3(2.2)) : vColor.rgb, a);
 }`;
 
 /** Réserve de particules : un tampon circulaire, la plus ancienne est recyclée. */
@@ -98,7 +100,7 @@ class Pool {
     this.material = new ShaderMaterial({
       vertexShader: VERT,
       fragmentShader: FRAG,
-      uniforms: { uScale: { value: 600 } },
+      uniforms: { uScale: { value: 600 }, uLineaire: SORTIE_LINEAIRE }, // lot 50 : la cible linéaire du post-traitement (halo.ts)
       transparent: true,
       depthWrite: false,
       ...(additive ? { blending: AdditiveBlending } : {}),

@@ -7,12 +7,12 @@ import { buildHalos } from "../src/halo";
 import { LOOKS } from "../src/trackMesh";
 import { geometrieP1 } from "../src/scene/composerP1";
 import { PAS, PAS_IDS } from "../src/scene/paliers";
-import { adapter, restituer } from "../src/scene/lineaire";
 import { POST_3 } from "../src/scene/themesPost";
 import { THEMES_3 } from "../src/scene/themes3";
-import { PIXELS_MSAA, octetsParPixel } from "../src/scene/post";
+import { FORME_JEU, PIXELS_MSAA, SEUIL_HALO_NUIT, avecHalo, echelleScene, formeDuJeu, noyau, octetsParPixel } from "../src/scene/post";
+import { SORTIE_LINEAIRE } from "../src/scene/socle";
 import { GardePost, PostJeu } from "../src/scene/postJeu";
-import { NIVEAU_DU_CHOIX, palierAuChargement, passesPermises, type Appareil } from "../src/qualite";
+import { NIVEAU_DU_CHOIX, chaineAuChargement, palierAuChargement, passesPermises, type Appareil } from "../src/qualite";
 import { apresCoupure } from "../src/qualiteMesure";
 import { DECORS_TEST } from "./decorChecks";
 
@@ -26,10 +26,6 @@ const sources = (dir: string): string[] => readdirSync(dir).flatMap((f) => (stat
 describe("lot 47 : FXAA seul — ni occlusion GTAO ni SMAA", () => {
   it("aucun module du jeu ni de la vitrine n'importe GTAO ou SMAA ; la chaîne prend FXAA", () => {
     for (const f of sources(SRC)) expect(readFileSync(f, "utf8"), f.replace(SRC, "src/")).not.toMatch(/GTAOPass|GTAOShader|SMAAPass|SMAAShader/);
-    const post = readFileSync(join(SRC, "scene/post.ts"), "utf8");
-    expect(post).toContain("FXAAPass");
-    expect(post).toContain("OutputPass");
-    expect(post).toContain("UnrealBloomPass");
   });
 
   it("le pas « occlusion » n'existe plus ; la famille post est l'étalonnage, l'anticrénelage et le halo", () => {
@@ -55,16 +51,18 @@ describe("lot 47 : FXAA seul — ni occlusion GTAO ni SMAA", () => {
   });
 });
 
-describe("lot 47 : la mémoire des cibles", () => {
-  it("1920 × 1080 : le multi-échantillonnage ×4 y est, 1440p et au-delà non ; les octets par pixel", () => {
+describe("lot 50 : la mémoire des cibles", () => {
+  it("1920 × 1080 : le multi-échantillonnage ×4 y est, 1440p et au-delà non ; 4 octets par pixel au lieu de 8, plus de cibles de passes, le halo la Nuit seulement", () => {
     expect(1920 * 1080).toBeLessThan(PIXELS_MSAA);
     expect(2560 * 1440).toBeGreaterThan(PIXELS_MSAA);
-    // Scène résolue 8 + 4 × (8 + 4) (sans multi-échantillonnage : 8 + profondeur 4), deux cibles de passes 2 × 8, halo ≈ 7,6.
-    expect(octetsParPixel(4)).toBeCloseTo(8 + 48 + 16 + 7.6, 5);
-    expect(octetsParPixel(0)).toBeCloseTo(8 + 4 + 16 + 7.6, 5);
+    // Scène résolue 4 + 4 × (4 + 4) (R11F_G11F_B10F et profondeur) ; sans multi-échantillonnage 4 + 4 ; le halo : la moitié de la résolution et ses niveaux.
+    expect(octetsParPixel(4, false)).toBe(36);
+    expect(octetsParPixel(0, false)).toBe(8);
+    expect(octetsParPixel(4, true)).toBeCloseTo(36 + 8 * (2 / 3 + 1 / 4), 5);
+    expect(octetsParPixel(4, false, "demi"), "en demi-flottants (repli)").toBe(8 + 4 * 12);
     const mo = (n: number) => (n * 1920 * 1080) / 1024 / 1024;
-    expect(mo(octetsParPixel(4))).toBeCloseTo(157.5, 0); // le chiffre du README
-    expect(mo(octetsParPixel(0))).toBeCloseTo(70.4, 0);
+    expect(mo(octetsParPixel(4, false))).toBeCloseTo(71.2, 0); // le jour (le chiffre du README ; 157,5 au lot 47)
+    expect(mo(octetsParPixel(4, true))).toBeCloseTo(85.7, 0); // la Nuit
   });
 });
 
@@ -87,7 +85,7 @@ describe("lot 47 : les garde-fous", () => {
     expect(g.image(false), "elle n'est coupée qu'une fois").toBe(false);
   });
 
-  it("une perte de contexte WebGL coupe la chaîne à l'instant, rend les nuanceurs à l'écran direct et le dit une seule fois", () => {
+  it("une perte de contexte WebGL coupe la chaîne à l'instant, laisse les nuanceurs d'écran tels quels et le dit une seule fois", () => {
     const { renderer, toile } = fauxRenderer();
     const coupures: string[] = [];
     const post = new PostJeu(renderer, { halo: true, etalonnage: true, anticrenelage: true }, (r) => coupures.push(r));
@@ -95,14 +93,14 @@ describe("lot 47 : les garde-fous", () => {
     const halos = buildHalos([{ x: 0, y: 0, z: 0, color: 0xffb347, size: 6 }], 1)!;
     scene.add(halos.points);
     const avant = (halos.points.material as ShaderMaterial).fragmentShader;
-    post.forcerEchec = 1; // une image qui échoue : le halo est tout de même passé en linéaire (la chaîne est « en route »)
+    post.forcerEchec = 1;
     expect(post.dessiner(scene, unCamera, "nuit", 1)).toBe(false);
-    expect((halos.points.material as ShaderMaterial).fragmentShader).toContain("vec3(2.2)");
     expect(coupures).toEqual([]);
     toile.dispatchEvent(new Event("webglcontextlost"));
     expect(coupures).toEqual(["contexte"]);
     expect(post.active).toBe(false);
-    expect((halos.points.material as ShaderMaterial).fragmentShader, "revenu à l'écran direct").toBe(avant);
+    expect((halos.points.material as ShaderMaterial).fragmentShader, "lot 50 : rien n'a été réécrit (un uniforme partagé, à 0 hors de la chaîne)").toBe(avant);
+    expect(SORTIE_LINEAIRE.value).toBe(0);
     toile.dispatchEvent(new Event("webglcontextlost"));
     expect(coupures, "l'écouteur est retiré").toEqual(["contexte"]);
     expect(post.dessiner(scene, unCamera, "nuit", 1), "coupée : on dessine directement").toBe(false);
@@ -145,52 +143,30 @@ describe("lot 47 : jamais de passe plein écran sur un profil téléphone", () =
     expect(passesPermises({ ...ordinateur, memoire: 2 })).toBe(false);
     expect(passesPermises({ ...ordinateur, logiciel: true })).toBe(false);
   });
-  it("main.ts ne demande le module du post-traitement qu'avec le palier 3 et passesPermises (un seul endroit, sans autre chemin)", () => {
+  it("main.ts ne demande la chaîne qu'avec le palier 3 et passesPermises (un seul endroit, sans autre chemin) ; le mode copie, seulement sur un moteur créé pour la chaîne", () => {
     const main = readFileSync(join(SRC, "main.ts"), "utf8");
     expect(main).toContain('PAS_DU_JEU.post = () => import("./scene/postJeu")');
-    expect(main).toContain('plus: postPermis() && postVoulu(choix, appareil) ? ["post"] : []');
+    expect(main).toContain('postDemande && postPermis() ? "chaine" : ecranSansMsaa && appareil.demiFlottants');
+    expect(main).toContain('plus: postPermis() && postVoulu(choix, appareil, memoireQualite) ? ["post"] : []');
     expect(main).toContain("const postPermis = () => passesPermises(appareil)");
     expect(main.match(/"post"/g)!.length, "les endroits où « post » est nommé").toBeLessThanOrEqual(8);
   });
 });
 
-describe("lot 47 : les nuanceurs d'écran dans la chaîne (halos, particules des effets)", () => {
-  const ecran = () => new ShaderMaterial({ fragmentShader: "varying vec3 vC;\nvoid main() {\n  gl_FragColor = vec4(vC.rgb, a);\n}" });
-  const avecColorimetrie = () => new ShaderMaterial({ fragmentShader: "void main() {\n  gl_FragColor = vec4(c, 1.0);\n  #include <colorspace_fragment>\n}" });
-
-  it("un halo ou une particule passe en lumière linéaire (le halo de la Nuit ne sort pas en gros disque), une seule fois ; un nuanceur déjà colorimétrique n'est pas touché", () => {
-    const scene = new Scene();
+describe("lot 50 : les nuanceurs d'écran dans la chaîne (halos, particules des effets) — un uniforme, aucun parcours des matériaux", () => {
+  it("les halos et les particules des effets lisent l'uniforme partagé ; plus de module qui réécrit les nuanceurs (lineaire.ts) ; la chaîne ne parcourt pas la scène", () => {
     const halos = buildHalos([{ x: 0, y: 0, z: 0, color: 0xffa94d, size: 6 }], LOOKS.nuit.halo)!;
-    const particules = new Points(undefined, ecran());
-    const sein = new Mesh(new BoxGeometry(), avecColorimetrie());
-    const standard = new Mesh(new BoxGeometry(), new MeshBasicMaterial());
-    scene.add(halos.points, particules, sein, standard);
-    const avant = (sein.material as ShaderMaterial).fragmentShader;
-    adapter(scene);
-    adapter(scene);
-    const h = (halos.points.material as ShaderMaterial).fragmentShader;
-    expect(h).toContain("pow(max(vColor * a * vFade, vec3(0.0)), vec3(2.2))");
-    expect(h.match(/vec3\(2\.2\)/g)).toHaveLength(1);
-    expect((particules.material as ShaderMaterial).fragmentShader).toContain("gl_FragColor = vec4(pow(max(vC.rgb, vec3(0.0)), vec3(2.2)), a);");
-    expect((sein.material as ShaderMaterial).fragmentShader).toBe(avant);
-  });
-
-  it("restituer rend à l'écran direct ce qui avait été adapté, au caractère près, et un effet posé après coup est repris à l'image suivante", () => {
-    const scene = new Scene();
-    const halos = buildHalos([{ x: 0, y: 0, z: 0, color: 0xffa94d, size: 6 }], 1)!;
-    const original = (halos.points.material as ShaderMaterial).fragmentShader;
-    scene.add(halos.points);
-    adapter(scene);
-    const tardif = new Points(undefined, ecran());
-    const origineTardive = (tardif.material as ShaderMaterial).fragmentShader;
-    scene.add(tardif);
-    adapter(scene);
-    expect((tardif.material as ShaderMaterial).fragmentShader).not.toBe(origineTardive);
-    restituer(scene);
-    expect((halos.points.material as ShaderMaterial).fragmentShader).toBe(original);
-    expect((tardif.material as ShaderMaterial).fragmentShader).toBe(origineTardive);
-    restituer(scene); // sans effet la deuxième fois
-    expect((halos.points.material as ShaderMaterial).fragmentShader).toBe(original);
+    expect((halos.points.material as ShaderMaterial).uniforms.uLineaire).toBe(SORTIE_LINEAIRE);
+    expect(readFileSync(join(SRC, "fx.ts"), "utf8")).toContain("uLineaire: SORTIE_LINEAIRE");
+    expect(sources(SRC).some((f) => f.endsWith("scene/lineaire.ts"))).toBe(false);
+    for (const f of ["scene/post.ts", "scene/postJeu.ts"]) {
+      const code = readFileSync(join(SRC, f), "utf8");
+      expect(code, `${f} : rien qui parcourt les objets ou les matériaux`).not.toMatch(/\.traverse\(|adapter\(|lineariser\(/);
+    }
+    // La chaîne le met à 1 le temps de la scène, puis à 0 (même si le dessin échoue : `finally`).
+    const post = readFileSync(join(SRC, "scene/post.ts"), "utf8");
+    expect(post).toMatch(/SORTIE_LINEAIRE\.value = 1;\s*renderer\.render\(scene, camera\);\s*SORTIE_LINEAIRE\.value = 0;/);
+    expect(post).toMatch(/finally \{\s*SORTIE_LINEAIRE\.value = 0;/);
   });
 
   it("la Nuit a ses halos de lampadaires (le nuanceur écrit des couleurs d'écran, donc adapté) ; le jour les a discrets (et le halo de la chaîne y est au seuil haut)", () => {
@@ -201,12 +177,71 @@ describe("lot 47 : les nuanceurs d'écran dans la chaîne (halos, particules des
     expect(nuit.palette).toBe("nuit");
     expect(specs.length, "lampadaires, plaques et portes de la Nuit").toBeGreaterThan(0);
     const points = buildHalos(specs, LOOKS[nuit.palette].halo)!;
-    const scene = new Scene();
-    scene.add(points.points);
-    adapter(scene);
-    expect((points.points.material as ShaderMaterial).fragmentShader).toContain("vec3(2.2)");
+    expect((points.points.material as ShaderMaterial).uniforms.uLineaire).toBe(SORTIE_LINEAIRE);
     // Le jour, les halos en points sont discrets (0 à 0,2 : plaques, turbos, portes) ; la Nuit et le Néon les ont entiers.
     for (const p of ["stade", "desert", "neige", "campagne", "canyon", "alpin", "ville"] as const) expect(LOOKS[p].halo, `${p} : halo en points discret le jour`).toBeLessThanOrEqual(0.2);
     for (const p of ["nuit", "neon"] as const) expect(LOOKS[p].halo, p).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("lot 50 : une seule passe de fin, pas de halo le jour, jamais deux multi-échantillonnages", () => {
+  const post = readFileSync(join(SRC, "scene/post.ts"), "utf8");
+  it("la chaîne n'a plus les passes de three.js : la sortie, l'étalonnage et le FXAA sont un seul nuanceur, dessiné une fois à l'écran", () => {
+    expect(post, "aucune passe de three.js importée").not.toMatch(/from "three\/examples\/jsm\/(postprocessing|shaders)\//);
+    expect(post.match(/setRenderTarget\(null\);\s*renderer\.render\(this\.quad, camera\);/g), "un seul dessin à l'écran").toHaveLength(1);
+    const fin = /const FIN = \/\* glsl \*\/ `([\s\S]*?)`;/.exec(post)![1]!;
+    for (const morceau of ["toneMapping(c)", "linearToOutputTexel", "#ifdef ETALONNAGE", "#ifdef FXAA", "#ifdef HALO"]) expect(fin, morceau).toContain(morceau);
+  });
+  it("le halo seulement la Nuit et au Néon : le jour il ne touchait que le disque du soleil", () => {
+    for (const p of Object.keys(POST_3) as PaletteName[]) expect(avecHalo(POST_3[p]), p).toBe(p === "nuit" || p === "neon");
+    expect(SEUIL_HALO_NUIT).toBeLessThan(2);
+  });
+  it("le flou du halo est celui d'UnrealBloomPass (gaussienne normalisée, prises voisines fusionnées)", () => {
+    for (const [k, paires] of [[6, 3], [10, 5], [14, 7], [18, 9], [22, 11]] as const) {
+      const n = noyau(k);
+      expect(n.decalages.filter((d) => d > 0)).toHaveLength(paires);
+      expect(n.centre + 2 * n.poids.reduce((a, b) => a + b, 0), `noyau ${k}`).toBeCloseTo(1, 1);
+    }
+  });
+  it("jamais deux multi-échantillonnages : un moteur sans le sien quand la chaîne est voulue au chargement ; sinon la scène de la chaîne n'en fait pas", () => {
+    expect(formeDuJeu(false)).toEqual(FORME_JEU);
+    expect(FORME_JEU.echantillons, "rapport 2 du banc : la scène de la chaîne sans multi-échantillonnage (le FXAA lisse)").toBe(0);
+    expect(formeDuJeu(true).echantillons, "écran déjà multi-échantillonné").toBe(0);
+    const o = { adresse: null, choix: "maximale" as const, ordinateur: true };
+    expect(chaineAuChargement(o)).toBe(true);
+    expect(chaineAuChargement({ ...o, choix: "auto", dansAuto: false }), "Auto sans le post-traitement (47b)").toBe(false);
+    expect(chaineAuChargement({ ...o, choix: "auto" }), "lot 50 : Auto l'a (un ordinateur part du palier 3)").toBe(true);
+    expect(chaineAuChargement({ ...o, ordinateur: false }), "jamais un téléphone").toBe(false);
+    expect(chaineAuChargement({ ...o, choix: "auto", adresse: { palier: "P3", coupes: [] } }), "?palier=3").toBe(true);
+    expect(chaineAuChargement({ ...o, adresse: { palier: "P3", coupes: ["post"] } }), "?reglages=3-post").toBe(false);
+    expect(chaineAuChargement({ ...o, adresse: { palier: "P2", coupes: [] } }), "?palier=2 l'emporte sur Maximale").toBe(false);
+    const main = readFileSync(join(SRC, "main.ts"), "utf8");
+    expect(main).toContain("new WebGLRenderer({ antialias: !ecranSansMsaa })");
+    expect(main).toContain("const forme = m.formeDuJeu(!ecranSansMsaa);");
+  });
+});
+
+describe("lot 50 : ce que le premier rapport du banc a changé (Iris Xe, 2560 × 1440)", () => {
+  const post = readFileSync(join(SRC, "scene/post.ts"), "utf8");
+  it("le FXAA juge les bords sur une luminance approchée (une lecture) : la couleur finale n'est calculée que pour les deux pixels mêlés (12 ms → mesuré à nouveau)", () => {
+    const lum = /float lum\(vec2 uv\) \{([\s\S]*?)\n\}/.exec(post)![1]!;
+    expect(lum, "pas la couleur finale de chaque voisin").not.toContain("ecran(");
+    expect(lum.match(/texture2D/g)).toHaveLength(1);
+    const fin = /const FIN = \/\* glsl \*\/ `([\s\S]*?)`;/.exec(post)![1]!;
+    expect(fin.match(/ecran\(/g)!.length, "la définition, le pixel, son voisin").toBe(3);
+  });
+  it("le halo reprend la composition d'UnrealBloomPass de three.js r186 : ×3, et pesé par sa composante la plus forte", () => {
+    expect(post).toContain("3 * t.halo.force * (x + (1.2 - 2 * x) * t.halo.rayon)");
+    expect(post).toContain("gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));");
+    expect(post).toContain("c += h.rgb * h.a;");
+    const unreal = readFileSync(new URL("../../../node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js", import.meta.url), "utf8");
+    expect(unreal, "si three.js change sa composition, celle-ci est à revoir").toContain("vec3 bloom = 3.0 * bloomStrength * (");
+    expect(unreal).toContain("float bloomAlpha = max( bloom.r, max( bloom.g, bloom.b ) );");
+  });
+  it("le plafond de pixels de la scène : une échelle, 1 sous le plafond", () => {
+    expect(echelleScene(1920, 1080, 0)).toBe(1);
+    expect(echelleScene(1920, 1080, 2_073_600)).toBe(1);
+    expect(echelleScene(2560, 1440, 2_073_600)).toBeCloseTo(0.75, 5);
+    expect(FORME_JEU.pixelsMax, "rapport 2 du banc : un 1080p").toBe(1920 * 1080);
   });
 });

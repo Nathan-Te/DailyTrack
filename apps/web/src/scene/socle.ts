@@ -186,3 +186,11 @@ export function creerReconstructeur(o: OptionsReconstructeur): Reconstructeur {
     },
   };
 }
+
+/**
+ * Lot 50 : les nuanceurs qui écrivent des couleurs **d'écran** (les halos de `halo.ts`, les particules de `fx.ts`) lisent cet uniforme, partagé : la chaîne de
+ * post-traitement le met à 1 le temps de dessiner la scène dans sa cible **linéaire** (elle fait elle-même la tonalité et l'espace de l'écran), puis à 0.
+ * Sans lui, un halo sortirait en gros disque pâle. Remplace le parcours des matériaux à chaque image du lot 47 (`lineaire.ts`) : rien à adapter, rien à
+ * rendre, et un objet posé après coup est juste d'emblée.
+ */
+export const SORTIE_LINEAIRE = { value: 0 };

@@ -38,7 +38,7 @@ export interface SettingsHost {
   /** Commandes tactiles (appareil tactile seulement) ; `changed` redessine les aides à l'écran. */
   touch: { pad: TouchPad; changed(): void } | null;
   /** Lot 45 : la « Qualité graphique » — un choix qui attend la fin de la course, le palier de la scène en ce moment (1 à 3). */
-  graphismes(): { enAttente: boolean; niveau: NiveauQualite | null };
+  graphismes(): { enAttente: boolean; niveau: NiveauQualite | null; trop?: boolean };
   openHowto(): void;
 }
 
@@ -232,6 +232,8 @@ export function mountSettings(root: HTMLElement, host: SettingsHost): SettingsUi
     const niveau = g.niveau && CHOIX_GRAPHISMES[g.niveau];
     // En attente : la raison ; en Auto : le palier choisi pour l'appareil ; sinon ce que contient le choix fait.
     graphismesNote.textContent = g.enAttente ? t("reglages.graphismes.attente") : s.graphismes === "auto" ? (niveau ? t("reglages.graphismes.actuel", { niveau: t(`reglages.graphismes.${niveau}`) }) : "") : t(`reglages.graphismes.detail.${s.graphismes}`);
+    // Lot 50 : une course trop lente pour ce qui était dessiné — Auto a déjà allégé l'image ; un autre choix la garde, la note le dit.
+    if (g.trop && !g.enAttente && s.graphismes !== "auto" && s.graphismes !== "economie") graphismesNote.textContent += ` ${t("reglages.graphismes.tropLourd")}`;
     graphismesNote.hidden = !graphismesNote.textContent;
   }
 

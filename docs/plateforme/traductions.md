@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1030 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1031 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -812,6 +812,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.graphismes.maximale` | Maximale | Maximum |
 | `reglages.graphismes.actuel` | Choisie pour cet appareil : {niveau}. | Picked for this device: {niveau}. |
 | `reglages.graphismes.attente` | Appliqué à la fin de la course. | Applied when the race ends. |
+| `reglages.graphismes.tropLourd` | Trop lourd pour cet appareil : Auto allégerait l'image. | Too heavy for this device: Auto would lighten the picture. |
 | `reglages.graphismes.detail.economie` | Décor simple, le plus fluide : pour les appareils modestes ou pour économiser la batterie. | Simple scenery, the smoothest: for modest devices or to save battery. |
 | `reglages.graphismes.detail.equilibree` | Décor soigné et vivant : drapeaux, foule, nuages, reflets. | Polished, lively scenery: flags, crowd, clouds, reflections. |
 | `reglages.graphismes.detail.maximale` | Tout ce que ton appareil supporte : ombres, brume, finitions. | Everything your device can handle: shadows, haze, finishing touches. |

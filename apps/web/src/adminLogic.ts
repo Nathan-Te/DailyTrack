@@ -42,6 +42,8 @@ export interface AdminState {
   ghostOff: boolean;
   /** Lot 43 : l'ancienne scène (`?palier=existant`, chargée à la demande, recette et aperçus seulement) pour la comparer au palier 1. */
   palierExistant: boolean;
+  /** Lot 50 : le banc d'essai du rendu (`?banc`, recette et aperçus seulement) — il prend la page : les autres options n'y font rien. */
+  banc: boolean;
   touch: "" | "1" | "0";
   /** Miniatures des archives : "" normales (3D inclinée), "top" d'aplomb, "2d" repli sans WebGL, "off" aucune. */
   thumbs: "" | "top" | "2d" | "off";
@@ -97,6 +99,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
   shakeOff: false,
   ghostOff: false,
   palierExistant: false,
+  banc: false,
   touch: "",
   thumbs: "",
   steer: "",
@@ -116,6 +119,7 @@ export const DEFAULT_ADMIN: Readonly<AdminState> = Object.freeze({
 
 /** Paramètres d'adresse (sans « ? ») : uniquement ce qui s'écarte de la valeur par défaut. */
 export function buildQuery(s: Readonly<AdminState>): string {
+  if (s.banc) return "banc"; // lot 50 : le banc prend la page (le jeu ne démarre pas)
   const p = new URLSearchParams();
   if (s.scenario !== "jour") p.set("scenario", s.scenario);
   if (s.watch) p.set("watch", "best");
@@ -180,7 +184,7 @@ export function parseAdmin(raw: string | null): AdminState {
     if (o.scenario === "jour" || o.scenario === "essai" || o.scenario === "pilotage" || o.scenario === "surfaces" || o.scenario === "largeurs" || o.scenario === "vitesse" || o.scenario === "glace" || o.scenario === "relief" || o.scenario === "cuves" || o.scenario === "air" || o.scenario === "bas-cotes" || o.scenario === "herbe" || o.scenario === "figures" || o.scenario === "figure" || o.scenario === "plat") s.scenario = o.scenario;
     if (typeof o.date === "string" && /^(\d{4}-\d{2}-\d{2})?$/.test(o.date)) s.date = o.date;
     if (typeof o.theme === "string" && (["", ...THEME_NAMES] as readonly string[]).includes(o.theme)) s.theme = o.theme;
-    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
+    for (const k of ["tune", "debug", "demo", "fxOff", "shakeOff", "ghostOff", "palierExistant", "banc", "zones", "home", "howto", "salon", "watch"] as const) if (typeof o[k] === "boolean") s[k] = o[k] as boolean;
     if (o.quality === "" || o.quality === "0" || o.quality === "1" || o.quality === "2") s.quality = o.quality;
     if (o.scene === "" || (SCENES_ADMIN as readonly unknown[]).includes(o.scene)) s.scene = o.scene as AdminState["scene"];
     if (typeof o.essaiQualite === "string" && (o.essaiQualite === "" || o.essaiQualite in ESSAIS_QUALITE)) s.essaiQualite = o.essaiQualite;

@@ -9,6 +9,8 @@ import { CELL, THEMES, bestPilotRun, cellKey, createAutopilot, createRace, daily
 //   CAPTURES=1 LABEL=sans npx playwright test captures-lot47 --project=chromium      → docs/lots/lot-47/sans/
 //   CAPTURES=1 LABEL=avec npx playwright test captures-lot47 --project=chromium      → docs/lots/lot-47/avec/
 //   CAPTURES=1 PLANCHES=1 npx playwright test captures-lot47 --project=chromium -g planches   → planches/<thème>.jpg, planches/accueil-salon.jpg
+// Lot 50 (avant / après la nouvelle chaîne) : OUT=docs/lots/lot-50 LABEL=sans EXTRA="&appareil=ordinateur&palier=3&chaine=47", LABEL=avec (la chaîne du lot 50), puis
+//   PLANCHES=1 COLONNES="Avant : la chaîne du lot 47|Après : la chaîne du lot 50" (les titres des deux colonnes).
 test.skip(!process.env.CAPTURES, "outil de capture : CAPTURES=1");
 test.skip(({ browserName }) => browserName !== "chromium", "rendu 3D : Chromium seulement");
 test.setTimeout(3_600_000);
@@ -19,6 +21,8 @@ const LABEL = process.env.LABEL ?? "avec";
 /** Ce que l'adresse ajoute : le palier 3 sans la chaîne pour « sans », avec elle pour « avec » (un ordinateur imposé : la chaîne n'est que de l'ordinateur). */
 const EXTRA = process.env.EXTRA ?? (LABEL === "sans" ? "&appareil=ordinateur&reglages=3-post" : "&appareil=ordinateur&palier=3");
 const NAMES = Object.keys(THEMES) as ThemeName[];
+/** Les titres des deux colonnes des planches (lot 50 : avant / après). */
+const COLONNES = (process.env.COLONNES ?? "Sans : palier 3 sans post-traitement (?reglages=3-post)|Avec : palier 3 + halo, étalonnage, FXAA (ordinateur)").split("|");
 const ONLY = process.env.ONLY?.split(",");
 const JOURS = "stade=2026-10-08,rallye=2026-10-21,banquise=2026-10-10,nuit=2026-10-14,campagne=2026-10-14,canyon=2026-10-06,col=2026-10-12,ville=2026-10-16";
 const FIXED = Object.fromEntries(JOURS.split(",").map((s) => s.split("=") as [string, string]));
@@ -133,7 +137,7 @@ async function planche(page: Page, titre: string, lignes: { legende: string; ava
   const data = (f: string) => `data:image/${f.endsWith(".png") ? "png" : "jpeg"};base64,${readFileSync(f).toString("base64")}`;
   const imgs = lignes.map((l) => ({ legende: l.legende, avant: data(l.avant), apres: data(l.apres) }));
   const octets = await page.evaluate(
-    async ([imgs, titre]) => {
+    async ([imgs, titre, colonnes]) => {
       const w = 480;
       const h = 270;
       const pad = 8;
@@ -149,8 +153,8 @@ async function planche(page: Page, titre: string, lignes: { legende: string; ava
       ctx.font = "700 20px sans-serif";
       ctx.fillText(titre as string, pad, 28);
       ctx.font = "600 14px sans-serif";
-      ctx.fillText("Sans : palier 3 sans post-traitement (?reglages=3-post)", pad, tete - 2);
-      ctx.fillText("Avec : palier 3 + halo, étalonnage, FXAA (ordinateur)", pad * 2 + w, tete - 2);
+      ctx.fillText(colonnes![0]!, pad, tete - 2);
+      ctx.fillText(colonnes![1]!, pad * 2 + w, tete - 2);
       let y = tete;
       for (const l of imgs as { legende: string; avant: string; apres: string }[]) {
         ctx.fillStyle = "#2a1e16";
@@ -168,7 +172,7 @@ async function planche(page: Page, titre: string, lignes: { legende: string; ava
       const blob = await new Promise<Blob>((r) => canvas.toBlob((b) => r(b!), "image/jpeg", 0.86));
       return Array.from(new Uint8Array(await blob.arrayBuffer()));
     },
-    [imgs, titre] as const,
+    [imgs, titre, COLONNES] as const,
   );
   writeFileSync(sortie, Buffer.from(octets));
 }

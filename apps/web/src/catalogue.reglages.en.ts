@@ -20,6 +20,7 @@ export const en: Catalogues<typeof fr>["en"] = {
   "reglages.graphismes.maximale": "Maximum",
   "reglages.graphismes.actuel": "Picked for this device: {niveau}.",
   "reglages.graphismes.attente": "Applied when the race ends.",
+  "reglages.graphismes.tropLourd": "Too heavy for this device: Auto would lighten the picture.",
   "reglages.graphismes.detail.economie": "Simple scenery, the smoothest: for modest devices or to save battery.",
   "reglages.graphismes.detail.equilibree": "Polished, lively scenery: flags, crowd, clouds, reflections.",
   "reglages.graphismes.detail.maximale": "Everything your device can handle: shadows, haze, finishing touches.",

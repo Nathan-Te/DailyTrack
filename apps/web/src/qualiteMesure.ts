@@ -51,11 +51,13 @@ export class MesureImages {
  * on s'en souvient (le plafond devient durable : la remesure de la semaine suivante ne remonte pas au-dessus). `encore` : il faut remesurer au nouveau palier.
  * Rien n'est changé en course : `main.ts` applique à l'accueil.
  */
-export function apresMesure(m: MemoireQualite, med: number | null, hz: number, maintenant: number, pixels: number): { memoire: MemoireQualite; encore: boolean } {
+export function apresMesure(m: MemoireQualite, med: number | null, hz: number, maintenant: number, pixels: number, avecPost = false): { memoire: MemoireQualite; encore: boolean } {
   if (med === null) return { memoire: m, encore: true };
   // `mediane` reste `null` tant que le palier atteint n'est pas mesuré : un départ avant la fin de la série la reprend au prochain chargement.
   const base = { ...m, date: maintenant, pixels, mediane: null };
   const v = verdict(med, hz);
+  // Lot 50 : au palier 3 avec le post-traitement (Auto, s'il y est), on descend d'abord la chaîne, et on remesure le palier 3 sans elle.
+  if (v === "descendre" && avecPost) return { memoire: { ...base, sansPost: true }, encore: true };
   const plafond = m.plafond ?? 3;
   if (v === "descendre" && m.palier > 1) {
     const palier = (m.palier - 1) as NiveauQualite;
@@ -72,14 +74,17 @@ export function apresMesure(m: MemoireQualite, med: number | null, hz: number, m
  * palier 2 (avec la vie et le ciel) et s'en souvient — le plafond devient durable, la remesure ne remonte pas au palier 3 sur cet appareil.
  */
 export function apresCoupure(m: MemoireQualite | null, maintenant: number, pixels: number): MemoireQualite {
-  return { palier: 2, date: maintenant, mediane: null, pixels, echecs: m?.echecs ?? 0, plafond: 2, durable: true };
+  return { palier: 2, date: maintenant, mediane: null, pixels, echecs: m?.echecs ?? 0, plafond: 2, durable: true, ...souvenirs(m) };
 }
 
 /** La mémoire d'une série de mesures qui commence (le plafond durable est gardé ; une série pas finie reprend avec son plafond et ses échecs). */
 export function memoireNeuve(palier: NiveauQualite, maintenant: number, pixels: number, avant: MemoireQualite | null): MemoireQualite {
   const suite = avant?.mediane === null;
-  return { palier, date: maintenant, mediane: null, pixels, echecs: suite ? avant!.echecs : 0, plafond: suite || avant?.durable ? avant!.plafond : null, durable: !!avant?.durable };
+  return { palier, date: maintenant, mediane: null, pixels, echecs: suite ? avant!.echecs : 0, plafond: suite || avant?.durable ? avant!.plafond : null, durable: !!avant?.durable, ...souvenirs(avant) };
 }
+
+/** Lot 50 : ce dont on se souvient d'une série à l'autre (le post-traitement refusé, « trop lourd »). */
+const souvenirs = (m: MemoireQualite | null): Pick<MemoireQualite, "sansPost" | "trop"> => ({ ...(m?.sansPost ? { sansPost: true } : {}), ...(m?.trop ? { trop: true } : {}) });
 
 /** Ce que la série de mesures demande au jeu (`main.ts`). */
 export interface HoteMesure {
@@ -93,6 +98,8 @@ export interface HoteMesure {
   imposes: readonly number[] | null;
   /** Garde la mémoire (`cdj:qualite`) et demande le palier (la scène se reconstruit à l'accueil). */
   decider(m: MemoireQualite): void;
+  /** Lot 50 : la scène mesurée a le post-traitement (une mesure ratée le retire d'abord). */
+  post?(): boolean;
 }
 
 /**
@@ -122,7 +129,7 @@ export class SerieMesures {
     const med = mediane(intervalles);
     const hz = h.imposes ? 60 : frequenceEcran(intervalles);
     if (h.imposes) this.imposees++;
-    const r = apresMesure(this.serie, med, hz, Date.now(), h.pixels());
+    const r = apresMesure(this.serie, med, hz, Date.now(), h.pixels(), h.post?.() ?? false);
     this.derniere = { mediane: med, hz, palier: this.serie.palier };
     this.serie = r.memoire;
     h.decider(r.memoire);
@@ -132,4 +139,47 @@ export class SerieMesures {
   interrompre(): void {
     this.mesure = null;
   }
+}
+
+// --- Lot 50 : la règle surveille aussi la course ---------------------------------------------------------------------------------------------------------------
+/** La fenêtre de la surveillance en course (ms d'images cumulées). */
+export const FENETRE_COURSE_MS = 5000;
+
+/**
+ * La surveillance de la course : la médiane des intervalles d'image sur 5 s de course ; au-delà du seuil de descente (22 ms à 60 Hz, ramené à la fréquence de l'écran
+ * estimée sur la fenêtre), une descente est proposée. **Rien ne change en course** : `main.ts` l'applique à la prochaine occasion hors course (`descenteCourse`).
+ */
+export class SurveillanceCourse {
+  private intervalles: number[] = [];
+  private somme = 0;
+  /** La dernière fenêtre jugée (`?debug`). */
+  derniere: { mediane: number; hz: number } | null = null;
+  /** Une image de course (ms) ; vrai quand une fenêtre de 5 s finit au-delà du seuil. */
+  image(ms: number): boolean {
+    if (!(ms > 0) || ms > 500) return false; // un onglet en pause n'est pas une mesure
+    this.intervalles.push(ms);
+    this.somme += ms;
+    if (this.somme < FENETRE_COURSE_MS) return false;
+    const med = mediane(this.intervalles);
+    const hz = frequenceEcran(this.intervalles);
+    this.interrompre();
+    this.derniere = { mediane: med, hz };
+    return med >= seuils(hz).descendre;
+  }
+  /** Pause, arrivée, onglet caché : la fenêtre en cours ne compte pas. */
+  interrompre(): void {
+    this.intervalles = [];
+    this.somme = 0;
+  }
+}
+
+/**
+ * Lot 50 : la descente d'un cran que la course a proposée, **d'abord la chaîne, puis le palier** — et on s'en souvient (`sansPost`, ou un plafond durable) ; `trop` dit aux
+ * Réglages « Trop lourd pour cet appareil » (même en « Maximale », où rien n'est appliqué : c'est `main.ts` qui décide).
+ */
+export function descenteCourse(m: MemoireQualite | null, scene: { niveau: NiveauQualite; post: boolean }, maintenant: number, pixels: number): MemoireQualite {
+  const base: MemoireQualite = m ?? { palier: scene.niveau, date: maintenant, mediane: null, pixels, echecs: 0, plafond: null, durable: false };
+  if (scene.post) return { ...base, sansPost: true, trop: true };
+  const palier = Math.max(1, scene.niveau - 1) as NiveauQualite;
+  return { ...base, palier, plafond: palier, durable: true, trop: true };
 }

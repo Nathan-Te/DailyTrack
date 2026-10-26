@@ -41,8 +41,31 @@ export const depart = (a: Appareil): NiveauQualite => (a.logiciel ? 1 : a.ordina
 /** Passes plein écran permises (lot 47) : un ordinateur, des demi-flottants rendables et 4 Go au moins (quand c'est annoncé). Jamais sur un téléphone (décision du 22/10). */
 export const passesPermises = (a: Appareil): boolean => a.ordinateur && !a.logiciel && a.demiFlottants && (a.memoire ?? 4) >= 4;
 
-/** Lot 47b : le post-traitement ne se donne que sur choix explicite (« Maximale ») là où les passes sont permises ; Auto ne l'allume jamais (en attendant le lot 50). */
-export const postVoulu = (choix: ChoixGraphismes, a: Appareil): boolean => choix === "maximale" && passesPermises(a);
+/**
+ * Lot 50 : le post-traitement revient dans Auto **parce qu'il est prouvé** au banc d'essai (rapport 2 de Nathan, Iris Xe à 2560 × 1440 : la chaîne du lot 50 plafonnée à
+ * 2,1 millions de pixels tient 60 images/s, pire image 17 ms, au Stade et la Nuit ; README du lot 50). Faux : réservé à « Maximale » (retouche 47b).
+ */
+export const POST_DANS_AUTO = true;
+
+/**
+ * Le post-traitement voulu, là où les passes sont permises : « Maximale » ; Auto si `POST_DANS_AUTO` et que cet appareil ne l'a pas refusé (une mesure ratée avec lui, ou
+ * une course trop lente : `sansPost`, on s'en souvient).
+ */
+export const postVoulu = (choix: ChoixGraphismes, a: Appareil, m: MemoireQualite | null = null, dansAuto = POST_DANS_AUTO): boolean =>
+  passesPermises(a) && (choix === "maximale" || (choix === "auto" && dansAuto && !m?.sansPost));
+
+/**
+ * Lot 50 : la chaîne de post-traitement est-elle voulue **dès le chargement** ? Alors le moteur est créé sans multi-échantillonnage de l'écran (jamais deux :
+ * la chaîne lisse elle-même). L'adresse (`?palier=3`, `?reglages=3-post`) l'emporte sur le réglage ; jamais hors d'un ordinateur. `ordinateur` : sans la carte
+ * graphique (lue après la création du moteur) — un ordinateur sans demi-flottants n'aura pas la chaîne et dessinera en mode copie.
+ */
+export function chaineAuChargement(o: { adresse: { palier: string; coupes: readonly string[] } | null; choix: ChoixGraphismes; ordinateur: boolean; memoire?: MemoireQualite | null; dansAuto?: boolean }): boolean {
+  if (!o.ordinateur) return false;
+  if (o.adresse) return o.adresse.palier === "P3" && !o.adresse.coupes.includes("post");
+  // Auto (si le post-traitement y est) : le palier 3 attendu (la mémoire, ou le point de départ d'un ordinateur) et la chaîne pas refusée par cet appareil.
+  if (o.choix === "auto") return (o.dansAuto ?? POST_DANS_AUTO) && (o.memoire?.palier ?? 3) === 3 && !o.memoire?.sansPost;
+  return o.choix === "maximale";
+}
 
 /** Ce qui est gardé sous `cdj:qualite`. */
 export interface MemoireQualite {
@@ -58,6 +81,10 @@ export interface MemoireQualite {
   /** Palier à ne plus dépasser : une descente (le temps de la série de mesures) ou, après deux échecs de suite, durable (« on s'en souvient »). */
   plafond: NiveauQualite | null;
   durable: boolean;
+  /** Lot 50 : le post-traitement refusé par cet appareil en Auto (une mesure ratée avec lui, une course trop lente) : on s'en souvient. */
+  sansPost?: boolean;
+  /** Lot 50 : une course a été trop lente pour ce qui était dessiné (médiane sur 5 s au-delà du seuil) : « Trop lourd pour cet appareil » dans les Réglages. */
+  trop?: boolean;
 }
 
 /** `cdj:qualite` lu ; illisible ou d'un autre format : `null` (on remesure). */
