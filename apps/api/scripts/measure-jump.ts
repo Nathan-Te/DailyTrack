@@ -80,7 +80,7 @@ for (const f of readdirSync(levelsDir).sort()) {
 const frozenDay = Object.keys(frozen)[0];
 const today = daysFromCivil(2026, 10, 19);
 const clock = { now: today * 86_400_000 + 12 * 3_600_000 };
-const make = () => createApi({ db, now: () => clock.now, rateSalt: "mesure", jumpFrozen: frozen, environment: "local" });
+const make = () => createApi({ db, now: () => clock.now, rateSalt: "mesure", jumpFrozen: frozen, environment: "local", allowCopies: true });
 
 const TABLES = ["jump_levels", "jump_results", "jump_lives", "jump_deaths", "players", "rate", "revoked_codes", "meta"];
 for (const t of TABLES) await db.run(`DROP TABLE IF EXISTS ${t}`);

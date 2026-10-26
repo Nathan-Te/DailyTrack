@@ -19,6 +19,7 @@ import {
   type JumpReplay,
   type Level,
 } from "@cdj/jump-sim";
+import { inputsHash, jumpInputs } from "./copies";
 import { WithHeaders, cacheHeaders } from "./cache";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
@@ -100,7 +101,8 @@ export const JUMP_SCHEMA: string[] = [
      theme TEXT NOT NULL,
      source TEXT NOT NULL,
      ascii TEXT NOT NULL,
-     created_at INTEGER NOT NULL
+     created_at INTEGER NOT NULL,
+     author_hash TEXT
    )`,
   // Lot P1 : meilleur essai de chaque joueur pour chaque jour, **rejoué par le serveur** : sa rediffusion (le fantôme du premier, lot P2), son
   // temps en pas et ses morts (ceux du rejeu), les versions qui l'ont rejoué, le premier envoi valide du jour et l'envoi du meilleur (qui
@@ -119,6 +121,7 @@ export const JUMP_SCHEMA: string[] = [
      submitted_at INTEGER NOT NULL,
      final_rank INTEGER,
      final_total INTEGER,
+     inputs_hash TEXT,
      PRIMARY KEY (day, player_id)
    )`,
   `CREATE INDEX IF NOT EXISTS jump_results_by_time ON jump_results (day, ticks, submitted_at, player_id)`,
@@ -150,6 +153,8 @@ export interface JumpDayInfo {
 interface Computed {
   info: JumpDayInfo;
   ascii: string;
+  /** Lot R9 : les entrées de la preuve de l'auteur (`copies.ts`, `jumpInputs`) : le serveur en garde l'empreinte, jamais la preuve ailleurs que dans son image. */
+  authorInputs: string;
 }
 
 /** Une ligne du classement. */
@@ -255,6 +260,9 @@ export interface JumpValidated {
   replay: JumpReplay;
   ticks: number;
   deaths: number;
+  /** Lot R9 : l'empreinte des entrées de l'essai, et celle de l'auteur du niveau (`null` : pas calculée, jour fermé) : la base du refus des copies. */
+  inputsHash: string;
+  authorHash: string | null;
 }
 
 // ——— La règle des niveaux figés : celle du jeu, importée de `@cdj/jump-sim` (lot P1 ; avant, une copie gardée égale par un test) ———
@@ -279,7 +287,7 @@ export function thawFrozen(raw: unknown, day: number): Computed | string {
     simVersion: d.level.simVersion,
     generatorVersion: Number(/-g(\d+)$/.exec(d.id)?.[1] ?? JUMP_GENERATOR_VERSION),
   };
-  return { info, ascii: d.ascii };
+  return { info, ascii: d.ascii, authorInputs: jumpInputs(d.replay.runs) };
 }
 
 /** Le niveau d'une date par la règle du jeu : le fichier figé s'il se vérifie, sinon `dailyLevel(jour)`. `frozenMiss` : pourquoi le figé a été refusé. */
@@ -303,7 +311,7 @@ export function computeJumpDay(day: number, frozen: unknown): Computed & { froze
     simVersion: d.level.simVersion,
     generatorVersion: JUMP_GENERATOR_VERSION,
   };
-  return { info, ascii: d.ascii, frozenMiss };
+  return { info, ascii: d.ascii, authorInputs: jumpInputs(d.replay.runs), frozenMiss };
 }
 
 /** Le niveau d'une date par la règle du jeu et du serveur : le fichier figé s'il se vérifie (`thawLevel`), sinon `dailyLevel`. */
@@ -325,7 +333,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   const frozen = options.frozen ?? {};
   const frozenDays = Object.keys(frozen).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)).sort();
   /** Niveaux connus de cette instance : la règle, ce que rend `/api/jump/day`, le texte, et le niveau lu (au premier rejeu). */
-  const levels = new Map<number, { rule: string; info: JumpDayInfo; ascii: string; level: Level | null }>();
+  const levels = new Map<number, { rule: string; info: JumpDayInfo; ascii: string; level: Level | null; authorHash: string | null }>();
   /** Niveaux en cours de calcul : deux requêtes simultanées n'en font qu'un (≈ 0,2 s de génération). */
   const computing = new Map<number, Promise<JumpDayInfo>>();
 
@@ -349,7 +357,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
   }
 
   /** Le niveau jouable d'une date (pour le rejeu d'un envoi) : celui de `getLevel`, lu une fois par instance. */
-  async function playable(day: number): Promise<{ info: JumpDayInfo; level: Level }> {
+  async function playable(day: number): Promise<{ info: JumpDayInfo; level: Level; authorHash: string | null }> {
     const info = await getLevel(day);
     const memo = levels.get(day)!;
     if (!memo.level) {
@@ -357,18 +365,20 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       if (textHash(memo.ascii) !== info.hash) throw new HttpError(503, "level_unavailable", "Niveau du jour indisponible, réessaie plus tard");
       memo.level = parseLevel(memo.ascii);
     }
-    return { info, level: memo.level };
+    return { info, level: memo.level, authorHash: memo.authorHash };
   }
 
   /** Lu en base si la règle est la même, sinon calculé et gardé. Deux instances peuvent le calculer ensemble : même résultat, même écriture. */
   async function loadLevel(day: number, rule: string): Promise<JumpDayInfo> {
-    const row = await db.first<{ rule: string; level_id: string; hash: string; author_ticks: number; medals: string; theme: string; source: string; ascii: string }>(
-      "SELECT rule, level_id, hash, author_ticks, medals, theme, source, ascii FROM jump_levels WHERE day = ?",
+    const row = await db.first<{ rule: string; level_id: string; hash: string; author_ticks: number; medals: string; theme: string; source: string; ascii: string; author_hash: string | null }>(
+      "SELECT rule, level_id, hash, author_ticks, medals, theme, source, ascii, author_hash FROM jump_levels WHERE day = ?",
       [day],
     );
     let info: JumpDayInfo;
     let ascii: string;
-    if (row && row.rule === rule) {
+    let authorHash: string | null;
+    // Lot R9 : un niveau gardé sans l'empreinte de son auteur (écrit avant le lot) est recalculé tant que son jour accepte des essais ; un jour fermé ne sert plus à rien.
+    if (row && row.rule === rule && (row.author_hash !== null || day < today() - 1)) {
       const generatorVersion = Number(/-g(\d+)$/.exec(row.level_id)?.[1] ?? JUMP_GENERATOR_VERSION);
       info = {
         date: formatDay(day),
@@ -383,19 +393,21 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
         generatorVersion,
       };
       ascii = row.ascii;
+      authorHash = row.author_hash;
     } else {
       const started = performance.now();
       const c = computeJumpDay(day, frozen[formatDay(day)]);
       info = c.info;
       ascii = c.ascii;
+      authorHash = await inputsHash(c.authorInputs);
       await db.run(
-        "INSERT OR REPLACE INTO jump_levels (day, rule, level_id, hash, author_ticks, medals, theme, source, ascii, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [day, rule, info.id, info.hash, info.authorTicks, JSON.stringify(info.medals), info.theme, info.source, c.ascii, now()],
+        "INSERT OR REPLACE INTO jump_levels (day, rule, level_id, hash, author_ticks, medals, theme, source, ascii, created_at, author_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [day, rule, info.id, info.hash, info.authorTicks, JSON.stringify(info.medals), info.theme, info.source, c.ascii, now(), authorHash],
       );
       if (c.frozenMiss) log("WARNING", "DailyJump : niveau figé refusé, niveau généré", { day: info.date, reason: c.frozenMiss.slice(0, 120) });
       log("INFO", "DailyJump : niveau du jour calculé", { day: info.date, id: info.id, source: info.source, ms: Math.round(performance.now() - started) });
     }
-    levels.set(day, { rule, info, ascii, level: null });
+    levels.set(day, { rule, info, ascii, level: null, authorHash });
     return info;
   }
 
@@ -458,7 +470,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       throw new HttpError(400, "invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
     }
     if (replay.simVersion > JUMP_SIM_VERSION) throw versionError(`rediffusion v${replay.simVersion}, serveur v${JUMP_SIM_VERSION}`);
-    const { info, level } = await playable(day);
+    const { info, level, authorHash } = await playable(day);
     // Lot 15 : une rediffusion porte la version de son niveau (3 pour un jour figé en v3, 4 ensuite).
     if (replay.simVersion !== level.simVersion) throw versionError(`rediffusion v${replay.simVersion}, niveau en v${level.simVersion}`);
     if (levelId !== info.id) throw versionError(`niveau ${levelId}, le serveur joue ${info.id}`);
@@ -477,7 +489,7 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       throw new HttpError(400, "invalid_replay", e instanceof JumpReplayError ? e.message : "Rediffusion illisible");
     }
     if (!r.finished) throw new HttpError(422, "not_finished", "Cet essai n'arrive pas au bout du niveau");
-    return { day, info, replay, ticks: r.time, deaths: r.deaths.length };
+    return { day, info, replay, ticks: r.time, deaths: r.deaths.length, inputsHash: await inputsHash(jumpInputs(replay.runs)), authorHash };
   }
 
   // Lot P3 : les vies de tout le monde (envoi, carte des morts, échantillon du carnage, oubli à la fin du jour).
@@ -519,6 +531,14 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
       name = await players.resolveName(playerId, body.name, known);
     });
 
+    // Lot R9 : une copie (les entrées de la preuve de l'auteur, ou d'un essai déjà classé d'un autre joueur ce jour-là) est refusée avant d'écrire quoi que ce soit (pas
+    // même le joueur). Le même joueur qui renvoie son propre essai n'est pas concerné ; l'ordre d'arrivée ne change rien (le premier essai classé garde sa place).
+    if (!platform.allowCopies) {
+      if (v.inputsHash === v.authorHash) throw new HttpError(409, "replay_copy", "Cet essai est la copie de la preuve de l'auteur du niveau");
+      const copy = await db.first<{ n: number }>("SELECT 1 AS n FROM jump_results WHERE day = ? AND inputs_hash = ? AND player_id <> ? LIMIT 1", [v.day, v.inputsHash, playerId]);
+      if (copy) throw new HttpError(409, "replay_copy", "Cet essai est la copie d'un autre");
+    }
+
     const t = now();
     // Le joueur n'existe qu'après un essai valide (table `players` de la plateforme, comme DailyTrack).
     await players.save(playerId, name, known);
@@ -529,11 +549,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     const improved = !previous || v.ticks < previous.ticks;
     if (improved) {
       await db.run(
-        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO jump_results (day, player_id, level_id, ticks, deaths, replay, sim_version, generator_version, first_at, submitted_at, inputs_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET level_id = excluded.level_id, ticks = excluded.ticks, deaths = excluded.deaths, replay = excluded.replay,
-           sim_version = excluded.sim_version, generator_version = excluded.generator_version, submitted_at = excluded.submitted_at
+           sim_version = excluded.sim_version, generator_version = excluded.generator_version, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash
          WHERE excluded.ticks < jump_results.ticks`,
-        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t],
+        [v.day, playerId, v.info.id, v.ticks, v.deaths, body.replay as string, JUMP_SIM_VERSION, JUMP_GENERATOR_VERSION, t, t, v.inputsHash],
       );
     }
     log("INFO", "DailyJump : essai du jour", { day: v.info.date, ticks: v.ticks, deaths: v.deaths, improved });

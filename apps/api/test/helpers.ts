@@ -10,9 +10,11 @@ import {
   type DailyCircuit,
   salonCircuit,
   salonSessionAt,
+  replayTicks,
   type Replay,
   type SalonCircuit,
 } from "@cdj/sim";
+import { inputsHash, trackInputs } from "../src/copies";
 import { createApi, type ApiOptions } from "../src/api";
 import { CODES_ERREUR, estCodeErreur } from "../src/codesErreur";
 import type { SqlDb } from "../src/db";
@@ -97,13 +99,17 @@ export interface TestApi {
 export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } = {}): Promise<TestApi> {
   const db = options.db ? (options.db as TestApi["db"]) : await openTestDb();
   const clock = { now: NOON };
-  const api = createApi({ db, now: () => clock.now, ...options });
+  // Lot R9 : les tests de classement rejouent volontiers **la même course pour plusieurs joueurs** (égalités, débit, profils…) : par défaut le refus des copies est
+  // levé (`allowCopies`) ; `copies.test.ts` passe `allowCopies: false`, le réglage du serveur de production, et prouve la règle.
+  const api = createApi({ db, now: () => clock.now, allowCopies: true, ...options });
   if (options.seed !== false) {
     // On amorce le cache comme le ferait un premier appel, pour ne pas régénérer le circuit à chaque test.
     const { SCHEMA } = await import("../src/db");
     for (const sql of SCHEMA) await db.run(sql);
     const c = circuitOf(DAY);
-    await db.run("INSERT OR IGNORE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+    // Lot R9 : l'empreinte des entrées de l'auteur (le pilote) va avec le circuit gardé : sans elle le serveur le régénérerait.
+    const authorHash = await inputsHash(trackInputs(c.authorReplay.runs, replayTicks(c.authorReplay)));
+    await db.run("INSERT OR IGNORE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at, author_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
       DAY,
       c.track.id,
       c.spec,
@@ -111,6 +117,7 @@ export async function makeApi(options: Partial<ApiOptions> & { seed?: boolean } 
       c.attempt,
       c.palette,
       NOON,
+      authorHash,
     ]);
   }
   return {

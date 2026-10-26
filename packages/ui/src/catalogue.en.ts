@@ -83,6 +83,7 @@ export const en: Catalogues<typeof CATALOGUE_COMMUN_FR>["en"] = {
   "erreur.level_unavailable": "The level isn't available right now. Try again in a moment.",
   "erreur.invalid_replay": "This run couldn't be read: it wasn't counted.",
   "erreur.not_finished": "This run doesn't reach the finish.",
+  "erreur.replay_copy": "This run is a copy of another one.",
   "erreur.track_mismatch": "This run isn't on the right track.",
   "erreur.sim_version": "A new version of the game is out: reload the page.",
   "erreur.version": "A new version of the game is out: reload the page.",

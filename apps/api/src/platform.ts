@@ -60,6 +60,8 @@ export interface PlatformOptions {
   /** Lot R5 : multiple des limites par adresse pour l'adresse de connexion (`PEER_FACTOR` par défaut ; 0 : coupé). */
   peerFactor?: number;
   demoPlayers: boolean;
+  /** Lot R9 : voir `ApiOptions.allowCopies` (défaut : faux, les copies sont refusées). */
+  allowCopies: boolean;
   /** Les lignes des jeux qui suivent un « Changer mon code » (dans la même transaction que la plateforme). */
   rotateStatements: (oldId: string, newId: string) => Statement[];
 }
@@ -245,6 +247,8 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
     now,
     log,
     environment: options.environment,
+    /** Lot R9 : vrai seulement pour les outils qui fabriquent des données fictives (graines, tests) : jamais le serveur de production. */
+    allowCopies: options.allowCopies,
     limits,
     today,
     sinceMidnight,

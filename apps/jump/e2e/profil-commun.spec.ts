@@ -2,11 +2,12 @@ import { randomBytes } from "node:crypto";
 import { expect as baseExpect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
 import { noteIdentityChange, writeIdentity, type ListableStore } from "@cdj/profile";
 import { FIXED_NOW, TODAY, shiftDate } from "./clock";
+import { honestRun } from "./jours";
 import { hasWebGL } from "./phone";
 
 // Lot P2 (plateforme) : le profil commun, sur **deux appareils** (deux contextes de navigateur, stockages séparés) contre le **vrai serveur** de la
 // plateforme (SQLite en mémoire, port 8791 réservé à ce fichier : `playwright.config.ts`), comme `apps/web/e2e/profil.spec.ts` de DailyTrack :
-//   1. l'appareil A finit le niveau du jour (la preuve de l'auteur, en pas à pas), choisit son pseudo : il est premier (pas de doublon de fantôme) ;
+//   1. l'appareil A finit le niveau du jour (une course fictive qui arrive, pas la preuve de l'auteur : lot R9, le serveur refuse les copies ; en pas à pas), choisit son pseudo : il est premier (pas de doublon de fantôme) ;
 //   2. et 3. (lot I5 : plus de profil dans le jeu) son code est chargé sur l'appareil B **comme le fait le portail** (`/profil/`), puis B rouvre Jump ;
 //   4. B retrouve l'historique et la série (fusion « le meilleur gagne »), le même pseudo, et l'identité de la plateforme que DailyTrack lit
 //      (`cdj:player`, `cdj:name`, et `GET /api/me` de DailyTrack rend ce pseudo) ;
@@ -71,17 +72,18 @@ async function auPortail(page: Page, f: (store: ListableStore) => void): Promise
 /** Met une page en sommeil (le jeu ne tourne ni ne dessine plus) : en rendu logiciel, une page qui dessine affame celle qu'on regarde. */
 const sleep = (page: Page) => page.evaluate(() => (window as unknown as { __jump: J }).__jump.manual(true));
 
-async function playAuthor(page: Page): Promise<void> {
-  const ticks = await page.evaluate(() => {
+/** Lot R9 : joue `code` (une course qui n'est pas la preuve de l'auteur : le serveur refuse les copies) comme les commandes du joueur, en pas à pas. */
+async function playRun(page: Page, code: string): Promise<void> {
+  const ticks = await page.evaluate((c) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
-    const n = j.autoplay();
+    const n = j.autoplay(c);
     for (let t = 1; t <= n + 10; t++) {
       j.advance(1);
       if (j.phase === "carnage" || j.phase === "finished") return t;
     }
     return -1;
-  });
+  }, code);
   expect(ticks).toBeGreaterThan(0);
   await page.evaluate(() => {
     const j = (window as unknown as { __jump: J }).__jump;
@@ -112,7 +114,8 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
     expect((await read(a.page, "daily"))!.date).toBe(TODAY);
     // Sans identité, rien n'est lu ni créé : pas de synchronisation.
     expect((await read(a.page, "sync")).status).toBe("idle");
-    await playAuthor(a.page);
+    const run = honestRun(TODAY); // calculée avant : le jeu tourne en temps réel dès qu'il est prêt
+    await playRun(a.page, run.code);
     await expect(a.page.locator("#arrival-rank")).toHaveText("Choisis ton pseudo pour entrer au classement");
     await a.page.locator("#arrival-name").fill(name);
     await a.page.locator("#arrival-name-ok").click();
@@ -137,7 +140,7 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
       ].sort(),
     );
     await expect(a.page.locator("#arrival-next-game")).toHaveText("Jeu suivant du jour : Track ›");
-    const authorTicks = (await read(a.page, "daily"))!.authorTicks;
+    const ticks = run.ticks;
     const idA = await a.page.evaluate(() => localStorage.getItem("cdj:player"));
     expect(idA).toMatch(/^[0-9a-f]{32}$/);
 
@@ -159,7 +162,7 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
 
     // ——— 4. Historique, série, pseudo retrouvés ; l'identité de la plateforme est celle que DailyTrack lit ———
     const history = await read(b.page, "history");
-    expect(history).toEqual([expect.objectContaining({ date: TODAY, best: authorTicks, medal: "author" })]);
+    expect(history).toEqual([expect.objectContaining({ date: TODAY, best: ticks, medal: run.medal })]);
     expect(await read(b.page, "streak")).toBe(1);
     await expect(b.page.locator("#home-streak .tuile__valeur")).toHaveText("1 jour");
     await expect(b.page.locator("#home-record .tuile__valeur")).toHaveText(/^\d+,\d{3}\u00a0s$/);
@@ -183,7 +186,7 @@ test("deux appareils : finir → le code chargé sur l'autre (au portail) → hi
     await expect(a.page.locator("#home-revoked")).toHaveText("Ce code n'est plus valide : il a été remplacé. Charge ton nouveau code.");
     await expect(a.page.locator("#home-revoked")).toHaveAttribute("href", "../profil/?retour=%2F");
     // Rien de perdu sur A : son historique et son pseudo restent.
-    expect(await read(a.page, "history")).toEqual([expect.objectContaining({ date: TODAY, best: authorTicks })]);
+    expect(await read(a.page, "history")).toEqual([expect.objectContaining({ date: TODAY, best: ticks })]);
     expect(await a.page.evaluate(() => localStorage.getItem("cdj:name"))).toBe(name);
   } finally {
     await a.context.close();

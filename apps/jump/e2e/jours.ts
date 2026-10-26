@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { formatDay, parseDay } from "@cdj/core";
-import { dailyLevel, thawLevel, type DailyLevel } from "@cdj/jump-sim";
+import { randomBytes } from "node:crypto";
+import { dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, repriseParPhase, replayAttempt, thawLevel, type DailyLevel, type JumpMedal } from "@cdj/jump-sim";
 
 // Lot R5 (plateforme) : les jours figés (`public/levels/AAAA-MM-JJ.json`) changent à chaque mise en production (`freeze:days -- demain`). Un test
 // qui a besoin d'un niveau **généré** calcule un jour sans fichier figé ; un test qui rejoue le niveau d'une date prend **celui que la page
@@ -42,4 +43,25 @@ export function pageLevel(date: string): DailyLevel {
  */
 export function dayId(date: string): string {
   return pageLevel(date).id;
+}
+
+/**
+ * Lot R9 : une rediffusion qui arrive et qui **n'est pas la preuve de l'auteur** : le serveur refuse les copies (409 `replay_copy`), un test qui envoie « une
+ * course valide » à un vrai serveur ne peut plus jouer la preuve. C'est la plus rapide de `attempts` essais fictifs d'une graine **tirée au hasard** (un essai
+ * relancé sur la même base en mémoire n'envoie donc pas, sous un autre pseudo, la course du premier essai : ce serait une copie). Calculée avant d'ouvrir la
+ * page (le jeu tourne en temps réel dès qu'il est prêt) ; `medal` : celle que le serveur rend pour ce temps.
+ */
+export function honestRun(date: string, attempts = 40): { code: string; ticks: number; deaths: number; medal: JumpMedal | null } {
+  const level = pageLevel(date);
+  const seed = randomBytes(4).readUInt32BE();
+  let best: { code: string; ticks: number; deaths: number } | null = null;
+  for (const a of demoAttempts(level.level, level.replay, seed, { attempts, reprise: repriseParPhase(level) })) {
+    if (a.end !== "arrivée") continue;
+    const code = encodeReplay(a.replay);
+    const r = replayAttempt(level.level, a.replay, level.id);
+    if (!r.finished || code === level.code || (best && r.time >= best.ticks)) continue;
+    best = { code, ticks: r.time, deaths: r.deaths.length };
+  }
+  if (!best) throw new Error(`aucune course fictive n'arrive sur ${date}`);
+  return { ...best, medal: jumpMedalFor(best.ticks, level.medals) };
 }

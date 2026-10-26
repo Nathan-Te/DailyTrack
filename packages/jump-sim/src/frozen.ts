@@ -19,7 +19,10 @@ import type { SlowRoute } from "./voies";
 // (`replayAttempt` : arrivée sans mort au temps de l'auteur). Un fichier refusé laisse le jeu générer le niveau comme d'habitude.
 // **Le jeu (`apps/jump/src/dailyLoader.ts`) et le serveur (`apps/api/src/jump.ts`) importent cette fonction** : avant le lot P1, chacun avait
 // sa copie (`thawLevel` et `thawFrozen`), gardées égales par un test. Fonction pure (aucune lecture de fichier : on lui passe le contenu JSON).
-// **Limite** : un niveau figé sous une physique que le code ne joue plus ne se rejoue plus : il est refusé (décision pour Nathan : voir
+// **Lot R9 : la preuve ne quitte plus le serveur.** Le fichier du dépôt (et celui de l'image du serveur) garde la `preuve` de l'auteur ; **le fichier
+// publié aux joueurs ne l'a plus** (`apps/jump/vite.config.ts` la retire à la construction de production, `scripts/site.mjs` le vérifie) : renvoyer la
+// preuve au serveur donnerait le temps de l'auteur. `thawPublicLevel` lit les deux formes (avec preuve : la vérification entière ; sans : tout sauf le
+// rejeu) ; `thawLevel`, lui, exige la preuve (le serveur). **Limite** : un niveau figé sous une physique que le code ne joue plus ne se rejoue plus : il est refusé (décision pour Nathan : voir
 // docs/jump/lots/lot-10-arrivee.md). Lot 15 : le code joue la version 3 **et** la version 4 (`Level.simVersion`) : les jours figés en v3
 // (jusqu'au 22/10/2026, générateurs g4 à g9) se rejouent tels quels ; un jour figé en v4 vient d'un générateur g10 ou plus.
 
@@ -56,6 +59,9 @@ export interface FrozenLevel {
   voies?: SlowRoute[];
   lent?: number;
 }
+
+/** Le niveau d'un fichier figé publié aux joueurs (lot R9) : `replay` et `code` (la preuve de l'auteur) n'y sont que si le fichier la portait encore. */
+export type PublicDailyLevel = Omit<DailyLevel, "replay" | "code"> & Partial<Pick<DailyLevel, "replay" | "code">>;
 
 /** Une rangée de la grille en plages : `#####...^` → `#5.3^`. Les chiffres n'existent pas dans la légende de la grille : refusés. */
 export function rleRow(row: string): string {
@@ -150,6 +156,19 @@ function isMedals(v: unknown): v is JumpMedals {
  * physique ; un générateur jamais plus récent que le code), l'identifiant, l'empreinte, les médailles, puis **rejoue la preuve**.
  */
 export function thawLevel(raw: unknown, day: number): DailyLevel | string {
+  return thaw(raw, day, true) as DailyLevel | string;
+}
+
+/**
+ * Lot R9 : le niveau d'un fichier figé **publié** (celui que le jeu lit). Avec une `preuve`, la vérification est entière (celle de `thawLevel`, les
+ * constructions hors production gardent le fichier du dépôt) ; sans elle, tout le reste est vérifié (forme, date, versions, identifiant, empreinte du
+ * texte, médailles) et le niveau est rendu sans `replay` ni `code` : le serveur, lui, rejoue toujours l'essai du joueur.
+ */
+export function thawPublicLevel(raw: unknown, day: number): PublicDailyLevel | string {
+  return thaw(raw, day, false);
+}
+
+function thaw(raw: unknown, day: number, proofRequired: boolean): PublicDailyLevel | string {
   if (typeof raw !== "object" || raw === null) return "fichier illisible";
   const f = raw as Partial<Record<keyof FrozenLevel, unknown>>;
   if (f.format !== FROZEN_FORMAT || f.jeu !== "dailyjump") return "format inconnu";
@@ -166,7 +185,9 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
   if ((f.simVersion >= PRESS_VERSION) !== (f.generatorVersion >= PRESS_GENERATOR)) return "versions incohérentes";
   const id = `jour-${date}-g${f.generatorVersion}`;
   if (f.id !== id) return "autre identifiant";
-  if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || typeof f.preuve !== "string" || !isInt(f.auteur)) return "fichier incomplet";
+  if (!isStrings(f.grille) || !isStrings(f.annexe) || typeof f.hash !== "string" || !isInt(f.auteur)) return "fichier incomplet";
+  const proofGiven = f.preuve !== undefined;
+  if (proofGiven ? typeof f.preuve !== "string" : proofRequired) return "fichier incomplet";
   if (!isMedals(f.medailles) || f.medailles.author !== f.auteur) return "médailles illisibles";
   if (!Array.isArray(f.morceaux) || !Array.isArray(f.paliers) || !Array.isArray(f.palierTicks) || !isInt(f.longestRun)) return "fichier incomplet";
   const ex = f.exigence as { sum?: unknown; rate?: unknown; thirds?: unknown } | undefined;
@@ -178,18 +199,20 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
     ascii = decodeAscii(f.grille, f.annexe);
     if (textHash(ascii) !== f.hash) return "empreinte du niveau";
     level = parseLevel(ascii);
-    replay = decodeReplay(f.preuve);
+    if (proofGiven) replay = decodeReplay(f.preuve as string);
     if (level.simVersion !== f.simVersion) return "versions incohérentes";
   } catch (e) {
     return `illisible : ${(e as Error).message}`;
   }
-  try {
-    const r = replayAttempt(level, replay, id);
-    if (!r.finished || r.deaths.length > 0 || r.time !== f.auteur) return "la preuve ne se rejoue pas";
-  } catch (e) {
-    return `la preuve ne se rejoue pas : ${(e as Error).message}`;
+  if (replay) {
+    try {
+      const r = replayAttempt(level, replay, id);
+      if (!r.finished || r.deaths.length > 0 || r.time !== f.auteur) return "la preuve ne se rejoue pas";
+    } catch (e) {
+      return `la preuve ne se rejoue pas : ${(e as Error).message}`;
+    }
+    if (encodeReplay(replay) !== f.preuve) return "preuve non canonique";
   }
-  if (encodeReplay(replay) !== f.preuve) return "preuve non canonique";
   return {
     day,
     date,
@@ -205,8 +228,7 @@ export function thawLevel(raw: unknown, day: number): DailyLevel | string {
     paliers: f.paliers as Palier[],
     palierTicks: f.palierTicks as number[],
     longestRun: f.longestRun,
-    replay,
-    code: f.preuve,
+    ...(replay ? { replay, code: f.preuve as string } : {}),
     authorTicks: f.auteur,
     medals: { ...f.medailles },
     exigence: ex as DailyExigence,

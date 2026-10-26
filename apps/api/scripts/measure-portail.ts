@@ -63,7 +63,7 @@ const db: SqlDb = {
 // Un an après le premier jour des deux jeux : 365 jours d'historique possibles dans chacun.
 const today = daysFromCivil(2027, 10, 20);
 const clock = { now: parisDayStart(today) + 12 * 3_600_000 };
-const make = () => createApi({ db, now: () => clock.now, rateSalt: "mesure", environment: "local" });
+const make = () => createApi({ db, now: () => clock.now, rateSalt: "mesure", environment: "local", allowCopies: true });
 
 for (const sql of SCHEMA) {
   const t = /CREATE TABLE IF NOT EXISTS (\w+)/.exec(sql)?.[1];

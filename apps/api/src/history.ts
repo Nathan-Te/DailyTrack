@@ -128,7 +128,7 @@ export async function seedHistory(options: SeedOptions = {}): Promise<DemoDatase
   await assertDemoOnly(db);
 
   let clock = firstDay * DAY_MS + 12 * HOUR_MS;
-  const api = createApi({ db, now: () => clock, demoPlayers: true, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
+  const api = createApi({ db, now: () => clock, demoPlayers: true, allowCopies: true, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
   const call = async (method: string, path: string, body?: unknown) => {
     const res = await api.handle(new Request(`http://seed.local${path}`, { method, ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {}) }));
     return { status: res.status, body: (await res.json()) as Record<string, unknown> };
