@@ -15,8 +15,6 @@ variante: ecart1=1 ecart2=0 ecart3=1
 variante: ecart1=1 ecart2=1 ecart3=0
 variante: ecart1=2 ecart2=1 ecart3=1
 variante: ecart1=0 ecart2=0 ecart3=0
-variante: ecart1=1 ecart2=1 ecart3=1 +fosse
-variante: ecart1=0 ecart2=1 ecart3=1 +fosse
 grille:
 ...............................
 ...............................

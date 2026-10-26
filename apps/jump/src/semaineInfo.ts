@@ -113,12 +113,13 @@ export function semaineDays(from: number, n = 7): number[] {
   return Array.from({ length: n }, (_, k) => from + k);
 }
 
-/** La famille de couleur d'une tuile dans la miniature : vide, plein, mécanique (surface ou bloc à horloge), danger, repère (départ, arrivée, point). */
+/** La famille de couleur d'une tuile dans la miniature : vide, plein, mécanique (surface, bloc à horloge, lot 23 : champignon), danger, repère (départ, arrivée, point). */
 export type MiniKind = "vide" | "plein" | "meca" | "danger" | "repere";
 
 export function miniKind(ch: string): MiniKind {
   if (ch === "#" || ch === "x" || ch === "*") return "plein";
-  if ("[]~bdAB".includes(ch)) return "meca";
+  // Lot 23 : un champignon (`m` sol, `w` plafond, `)` mur à gauche, `(` mur à droite) est une mécanique : en crème comme les surfaces, jamais le rouge des dangers.
+  if ("[]~bdABmw()".includes(ch)) return "meca";
   if ("^v<>oO".includes(ch)) return "danger";
   if (ch === "S" || ch === "F" || ch === "C") return "repere";
   return "vide";

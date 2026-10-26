@@ -48,16 +48,16 @@ describe("les quatre autres thèmes inchangés", () => {
 describe("morceaux de la forêt", () => {
   const forest = MODULES.filter((d) => d.theme === "foret");
 
-  it("au moins six morceaux `theme: foret`, étiquette `vent` ; un enchaînement long et une respiration", () => {
+  it("au moins six morceaux `theme: foret`, étiquette `vent` (lot 23 : ou `champignon`, la seconde mécanique de la forêt) ; un enchaînement long et une respiration", () => {
     expect(forest.length).toBeGreaterThanOrEqual(6);
-    for (const d of forest) expect(d.tags, d.id).toContain("vent");
+    for (const d of forest) expect(d.tags.includes("vent") || d.tags.includes("champignon"), d.id).toBe(true);
     expect(forest.some((d) => d.long)).toBe(true);
     expect(forest.some((d) => d.tags.includes("respiration"))).toBe(true);
-    for (const d of MODULES) expect(d.tags.includes("vent"), d.id).toBe(d.theme === "foret");
+    for (const d of MODULES) expect(d.tags.includes("vent") || d.tags.includes("champignon"), d.id).toBe(d.theme === "foret");
   });
 
-  it("chaque variante d'un morceau de forêt a des zones de vent, une solution à chaque entrée, et une exigence non nulle", () => {
-    for (const d of forest) {
+  it("chaque variante d'un morceau de vent de la forêt a des zones de vent, une solution à chaque entrée, et une exigence non nulle", () => {
+    for (const d of forest.filter((x) => x.tags.includes("vent"))) {
       for (let v = 0; v < d.variants.length; v++) {
         const m = buildModuleDef(d, v);
         expect(m.level.winds.length, `${d.id} v${v}`).toBeGreaterThan(0);

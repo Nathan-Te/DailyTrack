@@ -1914,6 +1914,15 @@
     }
    ]
   },
+  "champignon-balade": {
+   "variants": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
   "champignon-chapelet": {
    "variants": [
     null,
@@ -1939,17 +1948,6 @@
   "champignon-iles": {
    "variants": [
     null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null
-   ]
-  },
-  "champignon-promenade": {
-   "variants": [
     null,
     null,
     null,

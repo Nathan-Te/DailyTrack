@@ -38,6 +38,8 @@ import {
   singleClock,
   cycleMod,
   platformPositions,
+  MUSHROOM_NAMES,
+  mushroomPad,
   pressBoxes,
   sectionClock,
   windActive,
@@ -76,6 +78,7 @@ import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
 import type { PlatformStats } from "./platformArt";
+import type { MushroomStats } from "./mushroomArt";
 import type { PressStats } from "./pressArt";
 import { pressLook } from "./announce";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
@@ -259,6 +262,15 @@ export interface PressesDebug extends Partial<PressStats> {
   warn: number[];
 }
 
+/**
+ * Lot 23 : `__jump.mushrooms` — ce que le dessin a posé (orientation, écrasement, dernier rebond renforcé) et ce que la simulation sait : la liste des champignons (position, orientation, zone de
+ * contact en unités) et le dernier rebond lu dans l'événement `champignon`.
+ */
+export interface MushroomsDebug extends Partial<MushroomStats> {
+  count: number;
+  list: { col: number; row: number; dir: number; name: string; pad: { x: number; y: number; w: number; h: number } }[];
+}
+
 export interface JumpDebug {
   /**
    * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
@@ -271,6 +283,8 @@ export interface JumpDebug {
   readonly platforms: PlatformsDebug | null;
   /** Lot 22 : les presses (null : le niveau n'en a pas). */
   readonly presses: PressesDebug | null;
+  /** Lot 23 : les champignons (null : le niveau n'en a pas). */
+  readonly mushrooms: MushroomsDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -1360,6 +1374,8 @@ function dispatch(events: readonly GameEvent[]): void {
       else if (e.kind === "glisseFin" || e.kind === "mort" || e.kind === "reapparition" || e.kind === "arrivee") slideSide = 0;
       if (e.kind === "reapparition") trail.clear();
     }
+    // Lot 23 : un champignon rebondit : il s'écrase (les autres vies du carnage ne passent pas ici : seuls la mort et l'arrivée de ces vies sont gardées).
+    if (e.kind === "champignon" && e.source !== "vie") scene?.bounceMushroom(e.index, e.boost);
     // Lot 12 : un éclat bref sur les blocs alternés à chaque bascule (le rendu ne le joue pas sans mouvement).
     if (e.kind === "bascule" && e.source !== "vie") scene?.flashBlocks(e.reset ? 1 : 0.8);
     if (e.kind === "derapage") {
@@ -2254,6 +2270,15 @@ const info: JumpDebug = {
       sim: pressBoxes(level, state),
       phases,
       warn: level.presses.map((p, i) => pressLook(p, phases[i]!).warn),
+    };
+  },
+  /** Lot 23 : les champignons (null sans eux) : ce que le dessin a posé, et la liste de la simulation. */
+  get mushrooms() {
+    if (level.mushrooms.length === 0) return null;
+    return {
+      ...(scene?.mushrooms ?? {}),
+      count: level.mushrooms.length,
+      list: level.mushrooms.map((m) => ({ col: m.col, row: m.row, dir: m.dir, name: MUSHROOM_NAMES[m.dir]!, pad: mushroomPad(m) })),
     };
   },
   /** Lot 13 : les courants d'air (null sans eux). */

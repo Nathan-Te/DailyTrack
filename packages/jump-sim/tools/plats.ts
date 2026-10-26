@@ -43,6 +43,8 @@ function dangerMap(level: Level): Uint8Array {
   for (const p of level.presses) {
     for (let r = p.row; r < p.row + p.travel + PRESS_HEIGHT_TILES; r++) for (let c = p.col; c < p.col + p.width; c++) d[r * W + c] = 1;
   }
+  // Lot 23 : un champignon est un défi (on rebondit en y entrant) : la tuile où il pousse n'est jamais un plat sans défi.
+  for (const m of level.mushrooms) d[m.row * W + m.col] = 1;
   return d;
 }
 

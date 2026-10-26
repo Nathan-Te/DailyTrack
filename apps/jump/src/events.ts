@@ -20,6 +20,8 @@ import {
   TILE_ICE,
   UNITS_PER_TILE,
   groundTile,
+  mushroomHit,
+  mushroomPad,
   type AttemptState,
   type JumpMedal,
   type JumpParams,
@@ -42,6 +44,8 @@ import {
 //   - glisse : `slide` passe de 0 à ±1 (début) ou revient à 0 (fin, aussi à la mort et à l'arrivée).
 //   - mort, réapparition, point de passage, arrivée : transitions de `status` et de `checkpoint`.
 //   - ressort : `springTime` / `springCell` changent ; friable : minuterie lancée (craque), bloc tombé (tombe).
+//   - champignon (lot 23) : `mushroomHit` de la simulation (la boîte du personnage commence à chevaucher le chapeau d'un champignon : exactement la condition du rebond) ;
+//     `boost` : le saut était tenu à ce pas (`held` = 1), donc le rebond est renforcé. Aucune secousse de caméra (règle du lot 14).
 //   - blocs (lot 12) : voir `blocks.ts` — `blocApparait` / `blocDisparait` (un par section et par sens, comparaison des grilles), `blocVacille` (le
 //     groupe plein d'une section passe sous 0,25 s avant de s'éteindre), `bascule` (la parité des alternés change, ou remise à A au point de
 //     passage), `metronome` (un des quatre temps du cycle de la section courante). Aucun n'est gardé pour les autres vies du carnage.
@@ -88,6 +92,11 @@ export type GameEvent =
   | (Base & { kind: "arrivee" })
   /** Position : le haut de la tuile du ressort. */
   | (Base & { kind: "ressort" })
+  /**
+   * Lot 23 : un champignon rebondit. `index` : dans `Level.mushrooms` ; `dir` : son orientation (`MUSHROOM_UP` …) ; `boost` : rebond renforcé (saut tenu au contact).
+   * Position : le centre de son chapeau.
+   */
+  | (Base & { kind: "champignon"; index: number; dir: number; boost: boolean })
   /** Position : le centre du bloc friable. */
   | (Base & { kind: "friableCraque"; index: number })
   | (Base & { kind: "friableTombe"; index: number })
@@ -132,6 +141,7 @@ export const EVENT_KINDS: readonly GameEventKind[] = [
   "pointDePassage",
   "arrivee",
   "ressort",
+  "champignon",
   "friableCraque",
   "friableTombe",
   "medaille",
@@ -232,6 +242,13 @@ export function eventsBetween(
     const col = cur.springCell % level.width;
     const row = (cur.springCell - col) / level.width;
     out.push({ tick, source, kind: "ressort", x: col + 0.5, y: row });
+  }
+  // Lot 23 : un champignon rebondit (rien pour un niveau sans champignon).
+  const bounce = mushroomHit(level, p, c);
+  if (bounce >= 0) {
+    const m = level.mushrooms[bounce]!;
+    const pad = mushroomPad(m);
+    out.push({ tick, source, kind: "champignon", index: bounce, dir: m.dir, boost: c.held === 1, x: (pad.x + pad.w / 2) / T, y: (pad.y + pad.h / 2) / T });
   }
   if (p.ground === 0 && c.ground === 1) {
     const fall = Math.max(0, p.vy);

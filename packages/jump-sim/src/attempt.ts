@@ -364,6 +364,22 @@ export function mushroomBounce(p: Readonly<PlayerState>, dir: number, boost: boo
   }
 }
 
+/**
+ * Lot 23 : l'indice (dans `Level.mushrooms`) du premier champignon dont le chapeau vient d'être touché entre deux positions du personnage, −1 aucun : la boîte `after`
+ * chevauche son chapeau (`mushroomPad`) et la boîte `before` ne le chevauchait pas. **C'est exactement la condition du rebond de `stepAttempt`** (le rebond ne change
+ * pas la position, seulement la vitesse) : l'affichage et les événements savent ainsi qu'un rebond a eu lieu en comparant deux états successifs, sans état de plus.
+ */
+export function mushroomHit(level: Pick<Level, "mushrooms">, before: Readonly<PlayerState>, after: Readonly<PlayerState>): number {
+  if (level.mushrooms.length === 0) return -1;
+  const b = playerBox(before);
+  const a = playerBox(after);
+  for (let i = 0; i < level.mushrooms.length; i++) {
+    const pad = mushroomPad(level.mushrooms[i]!);
+    if (boxesOverlap(a, pad) && !boxesOverlap(b, pad)) return i;
+  }
+  return -1;
+}
+
 /** Lot 22 : le rectangle mortel de la presse `index` (unités) au chrono `time` d'un état de sections `sections` (la même lecture d'horloge que les scies). */
 export function pressAt(level: Level, sections: readonly number[], time: number, index: number): Box {
   const p = level.presses[index]!;
@@ -591,18 +607,13 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
 
   // ——— Lot 23 : champignons — le premier dont le chapeau vient d'être touché rebondit ; un saut tenu à ce pas renforce le rebond ———
   if (level.mushrooms.length > 0) {
-    const before = playerBox(state.player);
-    const after = playerBox(player);
-    for (let i = 0; i < level.mushrooms.length; i++) {
-      const m = level.mushrooms[i]!;
-      const pad = mushroomPad(m);
-      if (!boxesOverlap(after, pad) || boxesOverlap(before, pad)) continue;
-      player = mushroomBounce(player, m.dir, jump === 1);
+    const hit = mushroomHit(level, state.player, player);
+    if (hit >= 0) {
+      player = mushroomBounce(player, level.mushrooms[hit]!.dir, jump === 1);
       if (events) {
-        events.mushroom = i;
+        events.mushroom = hit;
         events.boost = jump;
       }
-      break;
     }
   }
 

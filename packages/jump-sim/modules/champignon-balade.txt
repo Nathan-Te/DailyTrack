@@ -1,16 +1,16 @@
-id: champignon-promenade
-intention: Marcher de champignon en champignon : chaque chapeau lance par-dessus une tour de cinq tuiles, qu'aucun saut ordinaire ne passerait d'un bond, puis une marche à sauter avant la sortie, sans rien risquer.
+id: champignon-balade
+intention: Marcher de champignon en champignon : chaque chapeau lance par-dessus une tour de cinq tuiles, qu'aucun saut ordinaire ne passerait d'un bond, puis deux marches d'une tuile à sauter avant la sortie, sans rien risquer.
 etiquettes: champignon respiration
-famille: champignon-promenade
+famille: champignon-balade
 theme: foret
 format: 3
 paliers: 12 12
 repeter: entre colonnes 14-14
-repeter: fin colonnes 27-27
-variante: entre=1 fin=1
+repeter: fin colonnes 25-25
+variante: entre=0 fin=2
 variante: entre=2 fin=1
 variante: entre=1 fin=2
-variante: entre=2 fin=2
+variante: entre=1 fin=0
 variante: entre=0 fin=1
 grille:
 ......................................
@@ -24,6 +24,6 @@ grille:
 .........###.........###..............
 .........###.........###..............
 .........###.........###..............
-.....m...###.....m...###.......#......
+.....m...###.....m...###...#....#.....
 ######################################
 ######################################

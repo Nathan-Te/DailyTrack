@@ -678,6 +678,176 @@
     }
    ]
   },
+  "champignon-balade": {
+   "variants": [
+    {
+     "grid": "d0cee1df",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjAAggtuqgpG6gY",
+      "ticks": 471,
+      "entryTick": 0,
+      "exitTick": 464,
+      "fastest": 465,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjAEogFm4gJo8gMYtgH6A6YIOj6CBw",
+      "ticks": 497,
+      "entryTick": 17,
+      "exitTick": 490,
+      "fastest": 498,
+      "gigue": [
+       1000,
+       1000,
+       940
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 7
+     }
+    },
+    {
+     "grid": "d92bd600",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjEAogFm4gZGwg1O6gY",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjEEigEghgFxtgFAwgEgQfoBNpIGVBmyBnbSBg",
+      "ticks": 487,
+      "entryTick": 17,
+      "exitTick": 480,
+      "fastest": 461,
+      "gigue": [
+       1000,
+       965,
+       850
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 6
+     }
+    },
+    {
+     "grid": "b4a1222c",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjIAkgGGAdIGRsoNRuoG",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjIEigFO0gIwQYIECF6iAcEBKliSAmBSITJQMjDyBIYBmgc",
+      "ticks": 515,
+      "entryTick": 17,
+      "exitTick": 508,
+      "fastest": 491,
+      "rapide": 485,
+      "gigue": [
+       1000,
+       1000,
+       975
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 9
+     }
+    },
+    {
+     "grid": "17f37f31",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjMA4gg-8gtGmgc",
+      "ticks": 460,
+      "entryTick": 0,
+      "exitTick": 453,
+      "fastest": 454,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 7
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjMEogFm6gIgUaIEEC6CAbkBggFg8gEhsgZ2igY",
+      "ticks": 480,
+      "entryTick": 17,
+      "exitTick": 473,
+      "fastest": 459,
+      "gigue": [
+       1000,
+       950,
+       880
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    },
+    {
+     "grid": "392b0735",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjQA2gqWAaIIPqII",
+      "ticks": 460,
+      "entryTick": 0,
+      "exitTick": 453,
+      "fastest": 454,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 7
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tYmFsYWRlOjQEwgEITjGuAuoBQBGiA8YBsgN2ugc2igc",
+      "ticks": 498,
+      "entryTick": 17,
+      "exitTick": 491,
+      "fastest": 488,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    }
+   ]
+  },
   "champignon-chapelet": {
    "variants": [
     {
@@ -1347,242 +1517,6 @@
       "raccord": 1000,
       "exigence": 1,
       "press": 11
-     }
-    },
-    {
-     "grid": "64ed2783",
-     "arret": {
-      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo2AIIBhgHaFg",
-      "ticks": 395,
-      "entryTick": 0,
-      "exitTick": 388,
-      "fastest": 388,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 16
-     },
-     "elan": {
-      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo2BJoBbtoCIDHqEg",
-      "ticks": 386,
-      "entryTick": 17,
-      "exitTick": 380,
-      "fastest": 363,
-      "gigue": [
-       1000,
-       1000,
-       980
-      ],
-      "raccord": 1000,
-      "exigence": 1,
-      "press": 13
-     }
-    },
-    {
-     "grid": "ba3659ae",
-     "arret": {
-      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo3AIIBhgGiDKYJQg",
-      "ticks": 384,
-      "entryTick": 0,
-      "exitTick": 377,
-      "fastest": 377,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 16
-     },
-     "elan": {
-      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo3BMIBRuoCMDH6EQ",
-      "ticks": 376,
-      "entryTick": 17,
-      "exitTick": 369,
-      "fastest": 352,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": 1000,
-      "exigence": 1,
-      "press": 8
-     }
-    }
-   ]
-  },
-  "champignon-promenade": {
-   "variants": [
-    {
-     "grid": "e4554524",
-     "arret": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjAAggGGAYoTRvIH",
-      "ticks": 471,
-      "entryTick": 0,
-      "exitTick": 465,
-      "fastest": 465,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 8
-     },
-     "elan": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjAE0gFG2gIgMaIDIO4ByQEaqAHyATHaBG6yCg",
-      "ticks": 511,
-      "entryTick": 17,
-      "exitTick": 504,
-      "fastest": 487,
-      "rapide": 470,
-      "gigue": [
-       1000,
-       970,
-       915
-      ],
-      "raccord": 1000,
-      "exigence": 2,
-      "press": 8
-     }
-    },
-    {
-     "grid": "b20a6f83",
-     "arret": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjEAggGGAeIGRsIMRvIH",
-      "ticks": 482,
-      "entryTick": 0,
-      "exitTick": 475,
-      "fastest": 475,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 8
-     },
-     "elan": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjEEugEeLQ5JngF48gFhugIusgxWogc",
-      "ticks": 485,
-      "entryTick": 17,
-      "exitTick": 479,
-      "fastest": 461,
-      "gigue": [
-       1000,
-       990,
-       960
-      ],
-      "raccord": 1000,
-      "exigence": 1,
-      "press": 5
-     }
-    },
-    {
-     "grid": "e1928e27",
-     "arret": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjIAggGGAeIGRqIMRpII",
-      "ticks": 482,
-      "entryTick": 0,
-      "exitTick": 475,
-      "fastest": 475,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 8
-     },
-     "elan": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjIEqgFW4gJoigQQNsoBwQFaWPoBMfIGdvoG",
-      "ticks": 504,
-      "entryTick": 17,
-      "exitTick": 497,
-      "fastest": 481,
-      "gigue": [
-       1000,
-       1000,
-       980
-      ],
-      "raccord": 1000,
-      "exigence": 1,
-      "press": 6
-     }
-    },
-    {
-     "grid": "23e6f5ca",
-     "arret": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjMAggGGAeIGRsIMZqoI",
-      "ticks": 493,
-      "entryTick": 0,
-      "exitTick": 486,
-      "fastest": 486,
-      "gigue": [
-       1000,
-       1000,
-       1000
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 8
-     },
-     "elan": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjMEqgFW4gJIKeoBmAGqAS7CA2GyCDbiBw",
-      "ticks": 495,
-      "entryTick": 17,
-      "exitTick": 488,
-      "fastest": 472,
-      "gigue": [
-       1000,
-       985,
-       950
-      ],
-      "raccord": 1000,
-      "exigence": 1,
-      "press": 5
-     }
-    },
-    {
-     "grid": "d218e0da",
-     "arret": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjQAggGmAdIIhgG6CF7iBw",
-      "ticks": 460,
-      "entryTick": 0,
-      "exitTick": 454,
-      "fastest": 454,
-      "gigue": [
-       1000,
-       1000,
-       975
-      ],
-      "raccord": null,
-      "exigence": 1,
-      "press": 11
-     },
-     "elan": {
-      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjQEwgEgDkUOGe4BWMoBKCmqBT6KC0bSBw",
-      "ticks": 515,
-      "entryTick": 17,
-      "exitTick": 508,
-      "fastest": 488,
-      "gigue": [
-       1000,
-       985,
-       970
-      ],
-      "raccord": 1000,
-      "exigence": 1,
-      "press": 7
      }
     }
    ]

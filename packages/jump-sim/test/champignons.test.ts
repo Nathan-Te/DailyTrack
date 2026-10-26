@@ -1,5 +1,6 @@
 import { Rng } from "@cdj/core";
 import { describe, expect, it } from "vitest";
+import { parseDay } from "@cdj/core";
 import {
   ATTEMPT_DEAD,
   DEFAULT_JUMP_PARAMS,
@@ -23,9 +24,30 @@ import {
   MUSHROOM_VERSION,
   PLAYER_HEIGHT,
   PLAYER_WIDTH,
+  MODULES,
+  PREMIER_JOUR_JUMP,
+  PRESS_GENERATOR,
   PRESS_VERSION,
+  SLOW_MIN_EXIGENCE,
   UNITS_PER_TILE,
+  buildModule,
+  dailyLevel,
+  dailyProblems,
+  decodeReplay,
+  freezeLevel,
+  frozenJson,
+  fromRuns,
   initialAttempt,
+  jumpThemeForDay,
+  moduleSolutions,
+  moduleStart,
+  mushroomContacts,
+  mushroomModuleIds,
+  mushroomPieceProblems,
+  palierProblems,
+  respawnProblems,
+  thawLevel,
+  variantExigence,
   isSolidTile,
   mushroomBounce,
   mushroomPad,
@@ -351,4 +373,174 @@ describe("lot 23 — règles du générateur", () => {
     const L = parseLevel(rows.join("\n") + "\n\nversion 7\nsection s 1-9\n");
     expect(mushroomSweepProblems(L).join()).toMatch(/par le bas/);
   });
+});
+
+// ——— Les morceaux de la forêt à champignons (catalogue) ———
+
+const MUSHROOM_MODULES = MODULES.filter((m) => m.tags.includes("champignon"));
+const presses = (bits: readonly number[]) => bits.filter((b, t) => (b & INPUT_JUMP) !== 0 && (t === 0 || (bits[t - 1]! & INPUT_JUMP) === 0)).length;
+
+describe("lot 23 — les morceaux à champignons du catalogue", () => {
+  it("entre 6 et 8 morceaux de base, tous de la forêt, étiquette `champignon`, réservés à la v7", () => {
+    expect(MUSHROOM_MODULES.length).toBeGreaterThanOrEqual(6);
+    expect(MUSHROOM_MODULES.length).toBeLessThanOrEqual(8);
+    for (const d of MUSHROOM_MODULES) expect(d.theme, d.id).toBe("foret");
+    expect([...mushroomModuleIds()].sort()).toEqual(MUSHROOM_MODULES.map((d) => d.id).sort());
+    // Les champignons de la grille et l'étiquette vont ensemble (`parseModule` le refuse sinon) : chaque variante en a.
+    for (const d of MUSHROOM_MODULES) for (let v = 0; v < d.variants.length; v++) expect(buildModule(d.id, v).level.mushrooms.length, `${d.id} v${v}`).toBeGreaterThan(0);
+  });
+
+  it("une respiration (note 2 au plus), deux morceaux avec des rafales, au moins deux portions dures dont `champignon-falaise`", () => {
+    const rest = MUSHROOM_MODULES.filter((d) => d.tags.includes("respiration"));
+    expect(rest.length).toBeGreaterThanOrEqual(1);
+    for (const d of rest) for (let v = 0; v < d.variants.length; v++) expect(variantExigence(moduleSolutions(d.id, v)), `${d.id} v${v}`).toBeLessThanOrEqual(2);
+    const gusts = MUSHROOM_MODULES.filter((d) => d.tags.includes("vent"));
+    expect(gusts.length).toBeGreaterThanOrEqual(2);
+    for (const d of gusts) {
+      for (let v = 0; v < d.variants.length; v++) {
+        const L = buildModule(d.id, v).level;
+        expect(L.winds.some((w) => w.gust !== null), `${d.id} v${v} : une rafale`).toBe(true);
+        expect(L.mushrooms.length, `${d.id} v${v}`).toBeGreaterThan(0);
+      }
+    }
+    const hard = MUSHROOM_MODULES.filter((d) => d.variants.some((_, v) => variantExigence(moduleSolutions(d.id, v)) >= SLOW_MIN_EXIGENCE));
+    expect(hard.length).toBeGreaterThanOrEqual(2);
+    expect(hard.map((d) => d.id)).toContain("champignon-falaise");
+  });
+
+  it("chaque variante passe les règles : posée sur du plein, rien de mortel dans les 0,3 premières secondes d'un rebond, aucun point de passage dans sa trajectoire, paliers", () => {
+    for (const d of MUSHROOM_MODULES) {
+      for (let v = 0; v < d.variants.length; v++) {
+        const m = buildModule(d.id, v);
+        expect(mushroomProblems(m.level), `${d.id} v${v}`).toEqual([]);
+        expect(mushroomSweepProblems(m.level), `${d.id} v${v}`).toEqual([]);
+        expect(mushroomPieceProblems(d.id, v), `${d.id} v${v}`).toEqual([]);
+        expect(palierProblems(m), `${d.id} v${v}`).toEqual([]);
+        // Une variante a une solution à chaque entrée, jouable (note ≥ 1).
+        const sol = moduleSolutions(d.id, v)!;
+        for (const e of ["arret", "elan"] as const) expect(sol[e]!.exigence, `${d.id} v${v} ${e}`).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it("les solutions gardées rebondissent vraiment : chaque entrée de chaque variante compte au moins un rebond", () => {
+    for (const d of MUSHROOM_MODULES) {
+      for (let v = 0; v < d.variants.length; v++) {
+        const m = buildModule(d.id, v);
+        for (const e of ["arret", "elan"] as const) {
+          const bits = fromRuns(decodeReplay(moduleSolutions(d.id, v)![e]!.code).runs);
+          const contacts = mushroomContacts(m.level, moduleStart(m, e), bits);
+          expect(contacts.length, `${d.id} v${v} ${e}`).toBeGreaterThan(0);
+        }
+      }
+    }
+  });
+
+  it("la respiration compte au moins trois sauts à faire à chaque entrée : des appuis de saut et des rebonds", () => {
+    for (const d of MUSHROOM_MODULES.filter((x) => x.tags.includes("respiration"))) {
+      for (let v = 0; v < d.variants.length; v++) {
+        const m = buildModule(d.id, v);
+        for (const e of ["arret", "elan"] as const) {
+          const bits = fromRuns(decodeReplay(moduleSolutions(d.id, v)![e]!.code).runs);
+          const jumps = presses(bits) + mushroomContacts(m.level, moduleStart(m, e), bits).length;
+          expect(jumps, `${d.id} v${v} ${e}`).toBeGreaterThanOrEqual(3);
+        }
+      }
+    }
+  });
+
+  it("`champignon-falaise` : le rebord est plus haut que tout rebond simple, atteignable par un rebond renforcé, et toute solution tient le saut au contact", () => {
+    const def = MUSHROOM_MODULES.find((d) => d.id === "champignon-falaise")!;
+    for (let v = 0; v < def.variants.length; v++) {
+      const m = buildModule(def.id, v);
+      const mush = m.level.mushrooms[0]!;
+      // Hauteur à gagner : du dessus du chapeau (où le rebond part) au sol du palier de sortie.
+      const need = mush.row * UNITS_PER_TILE - m.exitRow * UNITS_PER_TILE;
+      const apex = (boost: boolean) => {
+        let p = mushroomBounce(initialAttempt(m.level).player, MUSHROOM_UP, boost);
+        let top = p.y;
+        for (let t = 0; t < 200 && p.vy < 0; t++) {
+          p = { ...p, y: p.y + p.vy };
+          p = { ...p, vy: p.vy + DEFAULT_JUMP_PARAMS.gravity };
+          top = Math.min(top, p.y);
+        }
+        return initialAttempt(m.level).player.y - top;
+      };
+      expect(apex(false), `${def.id} v${v} : le rebond simple n'y arrive pas`).toBeLessThan(need);
+      expect(apex(true), `${def.id} v${v} : le rebond renforcé y arrive`).toBeGreaterThan(need);
+      for (const e of ["arret", "elan"] as const) {
+        const bits = fromRuns(decodeReplay(moduleSolutions(def.id, v)![e]!.code).runs);
+        const contacts = mushroomContacts(m.level, moduleStart(m, e), bits);
+        expect(contacts.some((c) => c.boost), `${def.id} v${v} ${e} : un rebond renforcé`).toBe(true);
+      }
+    }
+  });
+});
+
+describe("lot 23 — les niveaux du jour", () => {
+  const forestDays: number[] = [];
+  for (let d = PREMIER_JOUR_JUMP; d < PREMIER_JOUR_JUMP + 90; d++) if (jumpThemeForDay(d) === "foret") forestDays.push(d);
+
+  it("les références v3 à v6 ne connaissent pas les morceaux à champignons ; le générateur en vigueur (g17, v7) les pose, et seulement dans la forêt", () => {
+    const ids = mushroomModuleIds();
+    let withMushrooms = 0;
+    for (let d = parseDay("2026-10-27")!; d < parseDay("2026-10-27")! + 20; d++) {
+      for (const version of [3, 4, 5, PRESS_VERSION]) {
+        const old = dailyLevel(d, null, version);
+        expect(old.pieces.some((p) => ids.has(p.id)), `${old.date} v${version}`).toBe(false);
+        expect(old.level.mushrooms, `${old.date} v${version}`).toEqual([]);
+      }
+      expect(dailyLevel(d, null, PRESS_VERSION).id).toBe(`jour-${dailyLevel(d).date}-g${PRESS_GENERATOR}`);
+      const L = dailyLevel(d);
+      expect(L.level.simVersion).toBe(7);
+      expect(L.fallback, L.date).toBe(false);
+      if (L.pieces.some((p) => ids.has(p.id))) {
+        withMushrooms++;
+        expect(L.theme, L.date).toBe("foret");
+        expect(L.level.mushrooms.length, L.date).toBeGreaterThan(0);
+      } else expect(L.level.mushrooms, L.date).toEqual([]);
+    }
+    expect(withMushrooms).toBeGreaterThanOrEqual(1);
+  }, 240_000);
+
+  it("les jours de forêt à champignons passent toutes les règles (dont les champignons) ; la preuve de l'auteur rebondit sans mourir", () => {
+    const ids = mushroomModuleIds();
+    let n = 0;
+    for (const day of forestDays) {
+      const L = dailyLevel(day);
+      if (!L.pieces.some((p) => ids.has(p.id))) continue;
+      n++;
+      expect(dailyProblems(L), L.date).toEqual([]);
+      expect(respawnProblems(L.level), L.date).toEqual([]);
+      expect(mushroomProblems(L.level), L.date).toEqual([]);
+      let s = initialAttempt(L.level);
+      let bounces = 0;
+      const events = { mushroom: -1, boost: 0 };
+      for (const b of fromRuns(L.replay.runs)) {
+        s = stepAttempt(s, b, L.level, DEFAULT_JUMP_PARAMS, events);
+        if (events.mushroom >= 0) bounces++;
+        expect(s.status, L.date).not.toBe(ATTEMPT_DEAD);
+      }
+      expect(bounces, `${L.date} : la preuve rebondit`).toBeGreaterThan(0);
+      if (n >= 6) break;
+    }
+    expect(n).toBeGreaterThanOrEqual(3);
+  }, 240_000);
+
+  it("un jour à champignons se fige et se relit (versions 7 et g17) ; une version incohérente est refusée", () => {
+    const ids = mushroomModuleIds();
+    const day = forestDays.map((d) => dailyLevel(d)).find((L) => L.pieces.some((p) => ids.has(p.id)));
+    expect(day, "un jour à champignons sur 90").toBeDefined();
+    const raw = JSON.parse(frozenJson(freezeLevel(day!)));
+    expect(raw.simVersion).toBe(7);
+    expect(raw.generatorVersion).toBe(17);
+    const back = thawLevel(raw, day!.day);
+    expect(typeof back).not.toBe("string");
+    if (typeof back === "string") return;
+    expect(back.ascii).toBe(day!.ascii);
+    expect(back.level.mushrooms).toEqual(day!.level.mushrooms);
+    expect(back.code).toBe(day!.code);
+    expect(thawLevel({ ...raw, generatorVersion: PRESS_GENERATOR }, day!.day)).toBe("versions incohérentes");
+    expect(thawLevel({ ...raw, simVersion: PRESS_VERSION }, day!.day)).toBe("versions incohérentes");
+  }, 240_000);
 });
