@@ -128,6 +128,7 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
       const base = [noise(900, 0.22, 0.32, 0, 160, "bandpass", 1.6), tone("sine", 520, 0.22, 0.2, 0, 90), tone("triangle", 260, 0.16, 0.08, 0.02, 120)];
       if (e.cause === "scie") base.push(tone("sawtooth", 1500, 0.12, 0.05, 0, 900));
       else if (e.cause === "chute") base.unshift(tone("sine", 900, 0.25, 0.07, 0, 300));
+      else if (e.cause === "presse") base.unshift(tone("sine", 70, 0.2, 0.2, 0, 40));
       else base.push(noise(4200, 0.05, 0.07, 0, 2500, "highpass", 0.8));
       return spec("mort", 3, base);
     }

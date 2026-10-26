@@ -38,6 +38,7 @@
     "variete.spec.ts": 2,
     "voie-lente.spec.ts": 6,
     "semaine.spec.ts": 10,
-    "plateformes.spec.ts": 10
+    "plateformes.spec.ts": 10,
+    "presses.spec.ts": 12
   }
 }

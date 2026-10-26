@@ -1,6 +1,6 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
 import * as sim from "../src/index";
-import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MODULES as ALL_MODULES, PLATFORM_VERSION, platformModuleIds, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
+import { JUMP_GENERATOR_VERSION, JUMP_THEME_NAMES, MODULES as ALL_MODULES, PLATFORM_GENERATOR, PLATFORM_VERSION, PRESS_VERSION, platformModuleIds, pressModuleIds, SINGLE_CLOCK_GENERATOR, SINGLE_CLOCK_VERSION, dailyLevel, jumpThemeForDay, type JumpThemeName } from "../src/index";
 
 // `npm run variete:jump -w @cdj/jump-sim` (lot 19) — **répétition des morceaux de base** d'un jour à l'autre (toutes variantes confondues) :
 // morceaux de base disponibles par thème, fréquence de chacun (les dix plus fréquents), écart moyen et minimal entre deux apparitions du même
@@ -14,10 +14,12 @@ const FROM = daysFromCivil(y!, m!, d!);
 const DAYS = Number(opt("jours") ?? 365);
 // Lot 20 : `--generateur=14` mesure la référence v4 (g14, sans plateformes) au lieu du générateur en vigueur : le comparatif du README.
 const G14 = opt("generateur") === "14";
-const SIM_VERSION = G14 ? SINGLE_CLOCK_VERSION : PLATFORM_VERSION;
-const GEN = G14 ? SINGLE_CLOCK_GENERATOR : JUMP_GENERATOR_VERSION;
+// Lot 22 : `--generateur=15` mesure la référence v5 (g15, sans presses), le générateur en vigueur est g16 (version 6).
+const G15 = opt("generateur") === "15";
+const SIM_VERSION = G14 ? SINGLE_CLOCK_VERSION : G15 ? PLATFORM_VERSION : PRESS_VERSION;
+const GEN = G14 ? SINGLE_CLOCK_GENERATOR : G15 ? PLATFORM_GENERATOR : JUMP_GENERATOR_VERSION;
 // Les morceaux que le générateur mesuré connaît (la référence g14 ne connaît pas ceux à plateformes).
-const MODULES = G14 ? ALL_MODULES.filter((def) => !platformModuleIds().has(def.id)) : ALL_MODULES;
+const MODULES = G14 ? ALL_MODULES.filter((def) => !platformModuleIds().has(def.id) && !pressModuleIds().has(def.id)) : G15 ? ALL_MODULES.filter((def) => !pressModuleIds().has(def.id)) : ALL_MODULES;
 const num = (v: number, k = 1) => v.toFixed(k).replace(".", ",");
 
 const t0 = performance.now();

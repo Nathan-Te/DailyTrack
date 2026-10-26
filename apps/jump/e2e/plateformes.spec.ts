@@ -95,18 +95,18 @@ test("la galerie `?modules` filtre par l'étiquette « plateforme mobile » : au
   await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
 });
 
-/** Un jour sans fichier figé dont le niveau (v5) a une plateforme. */
+/** Un jour sans fichier figé dont le niveau (v6, g16) a une plateforme. */
 function dayWithPlatform(): string {
   let day = parseDay(generatedDay())!;
   for (let k = 0; k < 40; k++, day++) if (dailyLevel(day).level.platforms.length > 0) return dailyLevel(day).date;
   throw new Error("aucun jour généré avec une plateforme");
 }
 
-test("niveau du jour v5 : la preuve de l'auteur, jouée pas à pas dans la page, est portée par une plateforme et arrive sans mourir", async ({ page }) => {
+test("niveau du jour (v6 depuis le lot 22) à plateformes : la preuve de l'auteur, jouée pas à pas dans la page, est portée par une plateforme et arrive sans mourir", async ({ page }) => {
   const date = dayWithPlatform();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(5);
+  expect(daily.level.simVersion).toBe(6);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);

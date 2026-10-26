@@ -1,0 +1,33 @@
+id: presse-couloir
+intention: Courir dans un couloir de l'usine sous deux presses qui ne tombent pas ensemble : passer sous la première, attendre dans l'entre-deux, passer sous la seconde.
+etiquettes: presse
+famille: presse-couloir
+theme: usine
+format: 3
+paliers: 9 9
+mutateurs: hausse
+variante: a1=240 a2=180 r1=150 r2=210 +hausse:1
+variante: a1=120 a2=180 r1=150 r2=90 +hausse:1
+variante: a1=150 a2=120 r1=180 r2=210 +hausse:1
+variante: a1=240 a2=180 r1=210 r2=270 +hausse:1
+variante: a1=150 a2=180 r1=300 r2=270
+variante: a1=150 a2=120 r1=180 r2=210
+variante: a1=120 a2=120 r1=150 r2=150
+grille:
+.#####################..
+.#####################..
+.#####################..
+........................
+........................
+........................
+........................
+........................
+...#........#...........
+########################
+########################
+########################
+
+presse haute 2 7,3 4 {a1} 30 60 {r1}
+presse basse 3 16,3 4 {a2} 30 60 {r2}
+zone hausse 3 8
+zone hausse 12 8
