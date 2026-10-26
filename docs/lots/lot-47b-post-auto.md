@@ -16,3 +16,6 @@ Correctif d'urgence avant la mise en production du 27/10. Mesure de Nathan (i7-1
 1. Page d'admin, « Effacer les données locales » (efface `cdj:qualite`).
 2. `/track/?debug&home=1`, fin de la mesure : `P3 · auto`, sans `+post` ; course à 60 images/s.
 3. Réglages, « Maximale » : `P3+post` revient.
+
+## Sol autour des vides de saut (même PR, demande de Nathan)
+Sur le Désert, le sol relevé redescendait au sol lointain sur 10 m autour d'un vide de saut : de grands creux de sable. `REPLAT_VIDE` passe de 10 à 4 m (`decor/commun.ts`), la pente (0,4) ne change pas : le creux reste étroit. Rendu seul (golden, rediffusions inchangés) ; `THUMB_VERSION` 7. Non vérifié en jeu sur ton portable : à regarder sur l'aperçu, circuit Désert du 21/10 (`/track/?seed=2026-10-21`).

@@ -28,8 +28,8 @@ export const TALUS_SOUS_ROUTE = 1.5;
 /** Largeur (m) du replat au-delà de la cellule de la piste, puis pente douce (m de descente par m) jusqu'au sol lointain. */
 export const REPLAT = 36;
 export const PENTE = 0.22;
-/** Près d'un bloc sans rebords ou d'un vide de saut : le sol lointain sur `REPLAT_VIDE` m, puis une pente pour rejoindre le talus. */
-export const REPLAT_VIDE = 10;
+/** Près d'un bloc sans rebords ou d'un vide de saut : le sol lointain sur `REPLAT_VIDE` m (4 m : le trou reste étroit, retouche 47b ; 10 m laissait de grands creux de sable autour d'un saut), puis une pente pour rejoindre le talus. */
+export const REPLAT_VIDE = 4;
 export const PENTE_VIDE = 0.4;
 /** Pas de la grille du sol (m) : deux carrés par côté de cellule. */
 export const PAS_TERRAIN = CELL / 2;
