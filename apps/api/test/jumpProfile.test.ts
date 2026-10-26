@@ -7,8 +7,8 @@ import { DAY as CDJ_DAY, NOON as CDJ_NOON, makeApi, parisDayStart, pilotReplay, 
 // Lot P2 (plateforme) : le fantôme du premier (`GET /api/jump/day/<date>/ghost/first`) et le profil DailyJump (`GET /api/jump/me`) ; le
 // `GET /api/me` de DailyTrack ne change pas. Tourne sur SQLite et sur libSQL.
 
-/** Jour de test fixe : le 29/10/2026 (niveau généré ; lot 19 : le 20/10 en g14 n'a presque plus d'essais fictifs qui arrivent), et son lendemain (pour la série et un jour passé). Midi à Paris. */
-const DAY = daysFromCivil(2026, 10, 29);
+/** Jour de test fixe : le 13/11/2026 (niveau généré ; lot 20 : en g15 le 29/10 n a plus que 1 essai fictif qui arrive), et son lendemain (pour la série et un jour passé). Midi à Paris. */
+const DAY = daysFromCivil(2026, 11, 13);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 
@@ -31,7 +31,7 @@ beforeAll(() => {
   runs.sort((a, b) => b.ticks - a.ticks);
   runs.push({ code: D.code, ticks: D.authorTicks, deaths: 0 });
   if (runs.length < 3) throw new Error("trop peu d'essais fictifs arrivent");
-});
+}, 60_000); // génération du niveau du jour et des essais fictifs : ≈ 9 s mesurées en local pour le plus long, plus sur le runner de la CI (limite par défaut : 10 s)
 
 async function jumpApi() {
   const t = await makeApi({ seed: false, environment: "recette" });

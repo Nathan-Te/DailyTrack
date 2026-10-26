@@ -20,6 +20,7 @@ import {
   initialAttempt,
   isRestedModule,
   varietyExcluded,
+  PLATFORM_VERSION,
   SINGLE_CLOCK_VERSION,
   replayAttempt,
   JUMP_THEME_NAMES,
@@ -37,18 +38,20 @@ import { emptyRun, secs, tiles } from "./vide";
 
 const arg = process.argv.find((a) => a.startsWith("--jours="));
 const DAYS = arg ? Number(arg.slice(8)) : 120;
+// Lot 20 : `-- --generateur=14` mesure la référence v4 (g14, le catalogue sans plateformes) au lieu du générateur en vigueur (g15) : le comparatif du README.
+const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : PLATFORM_VERSION;
 const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
 const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 const stats = (xs: number[]) => ({ min: Math.min(...xs), mean: xs.reduce((a, b) => a + b, 0) / xs.length, max: Math.max(...xs) });
 
 // Chauffe : le catalogue (variantes utilisables, morceaux construits) se calcule au premier appel ; on ne le compte pas.
-dailyLevel(PREMIER_JOUR_JUMP - 1000);
+dailyLevel(PREMIER_JOUR_JUMP - 1000, null, SIM_VERSION);
 
 const levels: DailyLevel[] = [];
 const genMs: number[] = [];
 for (let k = 0; k < DAYS; k++) {
   const t0 = performance.now();
-  levels.push(dailyLevel(PREMIER_JOUR_JUMP + k));
+  levels.push(dailyLevel(PREMIER_JOUR_JUMP + k, null, SIM_VERSION));
   genMs.push(performance.now() - t0);
 }
 
@@ -73,7 +76,7 @@ const fallbacks = levels.filter((L) => L.fallback).length;
 line("### Tirages");
 line(`| mesure | valeur |`);
 line(`|---|---|`);
-line(`| tirages essayés (${DAILY_DRAWS} par jour, jusqu'à ${levels[0]?.level.simVersion === SINGLE_CLOCK_VERSION ? DAILY_MAX_ATTEMPTS_V4 : DAILY_MAX_ATTEMPTS} sans tirage valide) | ${all.length} |`);
+line(`| tirages essayés (${DAILY_DRAWS} par jour, jusqu'à ${(levels[0]?.level.simVersion ?? 0) >= SINGLE_CLOCK_VERSION ? DAILY_MAX_ATTEMPTS_V4 : DAILY_MAX_ATTEMPTS} sans tirage valide) | ${all.length} |`);
 line(`| composés (sans impasse) | ${composed} (${num((100 * composed) / all.length)} %) |`);
 // Lot 19 (v4) : les tirages sont prouvés dans l'ordre de leur score estimé ; un tirage composé peut être écarté sans rejeu (un mieux estimé est
 // valide) ou refusé sur l'estimation (exigence, tension, respiration) : le taux qui compte est celui des tirages **rejoués**.
@@ -218,7 +221,7 @@ line(`| morceau | niveaux | disponible | variantes (emplois) |`);
 line(`|---|---|---|---|`);
 for (const m of [...MODULES].sort((a, b) => (used.get(b.id) ?? 0) - (used.get(a.id) ?? 0))) {
   // Lot 19 : en v4, un morceau est disponible quand la règle de variété ne l'écarte pas ; la référence v3 garde le repos par groupes.
-  const avail = levels.filter((L) => (L.level.simVersion === SINGLE_CLOCK_VERSION ? !varietyExcluded(L.day).has(m.id) : !isRestedModule(m.id, L.day))).length;
+  const avail = levels.filter((L) => (L.level.simVersion >= SINGLE_CLOCK_VERSION ? !varietyExcluded(L.day, SIM_VERSION).has(m.id) : !isRestedModule(m.id, L.day))).length;
   const vs = m.variants.map((_, v) => `${v}:${variants.get(`${m.id}:${v}`) ?? 0}`).join(" ");
   line(`| ${m.id} | ${used.get(m.id) ?? 0} | ${avail} | ${vs} |`);
 }
@@ -334,7 +337,7 @@ for (const theme of JUMP_THEME_NAMES as readonly JumpThemeName[]) {
   const ms: number[] = [];
   for (let k = 0; k < FORCED_DATES; k++) {
     const t0 = performance.now();
-    list.push(dailyLevel(FORCED_FROM + k, theme));
+    list.push(dailyLevel(FORCED_FROM + k, theme, SIM_VERSION));
     ms.push(performance.now() - t0);
   }
   const r = rows(list);

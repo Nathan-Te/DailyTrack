@@ -10,8 +10,8 @@ import { makeApi, parisDayStart, pilotReplay, playerId, TEST_DB, DAY as CDJ_DAY 
 // morts, et le profil du jour avec `X-Player-Id` : une seule adresse personnelle par jour), le classement rendu par l'envoi, et les en-têtes de cache des lectures : long pour un jour figé,
 // court pour le jour en cours, **jamais partagés** quand la réponse dépend de `X-Player-Id`. Tourne sur SQLite et sur libSQL.
 
-// Lot 19 : le 29/10/2026 (le 20/10 en g14 n'a presque plus d'essais fictifs qui arrivent).
-const DAY = daysFromCivil(2026, 10, 29);
+// Lot 19 : le 13/11/2026 (lot 20 : en g15 le 29/10 n a plus que 1 essai fictif qui arrive, le 13/11 en a 4).
+const DAY = daysFromCivil(2026, 11, 13);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 
@@ -39,7 +39,7 @@ beforeAll(() => {
   }
   runs.sort((a, b) => b.ticks - a.ticks);
   if (runs.length < 3 || lives.length < 3) throw new Error("trop peu d'essais fictifs");
-});
+}, 60_000); // génération du niveau du jour et des essais fictifs : ≈ 9 s mesurées en local pour le plus long, plus sur le runner de la CI (limite par défaut : 10 s)
 
 const as = (n: number) => ({ headers: { "X-Player-Id": playerId(n) } });
 const submitBody = (code: string, extra: Record<string, unknown> = {}) => ({ levelId: D.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: code, ...extra });

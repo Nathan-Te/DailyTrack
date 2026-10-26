@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { formatDay } from "@cdj/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -19,6 +20,7 @@ import {
   varietyNeighbours,
   varietyPosition,
 } from "../src/index";
+import { figesPath, figesSource, frozenBaseIds } from "../tools/figes";
 
 // Lot 19 — **variété** : un morceau de base ne revient pas avant `VARIETY_DAYS` jours (toutes variantes confondues), par époques bornées,
 // déterministe par date ; les jours figés avant la première époque comptent avec leur contenu réel (`VARIETY_FROZEN`, vérifié contre les
@@ -91,6 +93,28 @@ describe("lot 19 — la règle bornée", () => {
   it("les jours figés d'avant la première époque sont écrits pour chaque jour à moins de VARIETY_DAYS jours de l'origine", () => {
     for (let j = 1; j < VARIETY_DAYS; j++) expect(VARIETY_FROZEN[formatDay(VARIETY_ORIGIN - j)], formatDay(VARIETY_ORIGIN - j)).toBeDefined();
     for (const list of Object.values(VARIETY_FROZEN)) for (const id of list) expect(MODULES.some((m) => m.id === id), id).toBe(true);
+  });
+});
+
+describe("lot 20 — VARIETY_FROZEN est déduit des fichiers figés (plus une table tenue à la main)", () => {
+  it("`src/figes.ts` est exactement celui que `npm run figes:jump` écrirait d'après `apps/jump/public/levels/` (sinon : relancer figes:jump)", () => {
+    expect(readFileSync(figesPath(), "utf8")).toBe(figesSource(frozenBaseIds()));
+  });
+
+  it("la table est le contenu des fichiers figés : chaque jour à moins de VARIETY_DAYS jours d'avant l'origine, morceau pour morceau, dans l'ordre du niveau", () => {
+    const files = frozenBaseIds();
+    expect(VARIETY_FROZEN).toEqual(files);
+    expect(Object.keys(files)).toEqual(Array.from({ length: VARIETY_DAYS - 1 }, (_, k) => formatDay(VARIETY_ORIGIN - (VARIETY_DAYS - 1) + k)));
+    for (const ids of Object.values(files)) expect(ids.length).toBeGreaterThanOrEqual(6);
+  });
+
+  it("la règle lit ces morceaux : le premier jour de la première époque ne reprend aucun morceau des deux jours figés d'avant, et un jour d'avant l'origine rend son contenu figé", () => {
+    const first = dailyLevel(VARIETY_ORIGIN).pieces.map((p) => p.id);
+    for (let j = 1; j < VARIETY_DAYS; j++) {
+      const frozen = dailyBaseIds(VARIETY_ORIGIN - j);
+      expect(frozen).toEqual(VARIETY_FROZEN[formatDay(VARIETY_ORIGIN - j)]);
+      for (const id of first) expect(frozen.includes(id), `${id} (${formatDay(VARIETY_ORIGIN - j)})`).toBe(false);
+    }
   });
 });
 

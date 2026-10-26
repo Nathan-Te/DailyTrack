@@ -1,0 +1,31 @@
+id: radeau
+intention: Traverser un fossé sur un radeau qui va et vient, puis franchir une marche : sauter dessus, se laisser porter, sauter sur l'autre rive.
+etiquettes: respiration plateforme
+famille: radeau
+mutateurs: hausse surface
+format: 3
+paliers: 10 10
+variante: cycle=360
+variante: cycle=300
+variante: cycle=420
+variante: cycle=360 +hausse:1
+variante: cycle=420 +surface:glace
+grille:
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+......................
+..................##..
+###...........########
+###...........########
+###...........########
+###...........########
+
+plateforme radeau 3 h {cycle} 4,10 8,10
+zone hausse 20-21 10
+zone surface 14-17 10

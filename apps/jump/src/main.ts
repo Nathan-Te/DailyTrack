@@ -36,6 +36,8 @@ import {
   sectionPeriod,
   singleClock,
   cycleMod,
+  platformPositions,
+  sectionClock,
   windActive,
   windPhase,
   windPush,
@@ -72,6 +74,7 @@ import type { DynamicStats } from "./dynamicArt";
 import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
+import type { PlatformStats } from "./platformArt";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -235,6 +238,15 @@ export interface WindDebug extends Partial<WindStats> {
   phases: number[];
 }
 
+/** Lot 20 : `__jump.platforms` — ce que le dessin a posé (position, vitesse et sens du chevron, opacité) et l'état des plateformes dans la simulation. */
+export interface PlatformsDebug extends Partial<PlatformStats> {
+  count: number;
+  /** Par plateforme : où elle est dans la simulation (coin haut-gauche, unités), la phase de sa section, laquelle porte le personnage (−1 : aucune). */
+  sim: { x: number; y: number }[];
+  phases: number[];
+  ride: number;
+}
+
 export interface JumpDebug {
   /**
    * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
@@ -243,6 +255,8 @@ export interface JumpDebug {
   readonly profile: { exists: boolean; name: string | null };
   /** Lot 12 : les blocs clignotants et alternés (null : le niveau n'en a pas). */
   readonly blocks: BlocksDebug | null;
+  /** Lot 20 : les plateformes mobiles (null : le niveau n'en a pas) : où elles sont dans la simulation et ce qui est dessiné (position, vitesse et sens du chevron, opacité). */
+  readonly platforms: PlatformsDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -2190,6 +2204,18 @@ const info: JumpDebug = {
   },
   get menu() {
     return { open: menuOpen };
+  },
+  /** Lot 20 : les plateformes mobiles (null sans elles) : ce que le dessin a posé, et l'état de la simulation. */
+  get platforms() {
+    if (level.platforms.length === 0) return null;
+    const state = session.state;
+    return {
+      ...(scene?.platforms ?? {}),
+      count: level.platforms.length,
+      sim: platformPositions(level, state),
+      phases: level.platforms.map((p) => sectionClock(level, state.sections, state.time, p.section)),
+      ride: state.ride ?? -1,
+    };
   },
   /** Lot 13 : les courants d'air (null sans eux). */
   get wind() {

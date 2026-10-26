@@ -1,8 +1,10 @@
 import { Rng, daysFromCivil, formatDay, mixSeed } from "@cdj/core";
 import { ATTEMPT_DEAD, ATTEMPT_FINISHED, ATTEMPT_RUNNING, checkpointAttempt, circleHitsBox, initialAttempt, stepAttempt, type AttemptState, type Box } from "./attempt";
-import { JUMP_GENERATOR_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
+import { JUMP_GENERATOR_VERSION, PLATFORM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION, TICK_RATE, UNITS_PER_TILE } from "./constants";
 import { idiv } from "./idiv";
-import { TILE_EMPTY, TILE_SOLID, cycleMod, parseLevel, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
+import { TILE_EMPTY, TILE_SOLID, cycleMod, parseLevel, platformPos, sawCenter, sectionPeriod, withSingleClock, type Level } from "./level";
+import { FROZEN_BASE_IDS } from "./figes";
+import { platformProblems } from "./plateformes";
 import { PHASE_REFUSED } from "./phases";
 import { PARASITE_CLOSED } from "./parasites";
 import { MODULES, PALIER_GUARD, PALIER_LENGTH, RACCORD_TAIL, blinkRhythmProblems, buildModule, centerCol, isCleanRun, moduleSolutions, textHash, variantExigence, variantTheme, type ModuleEntry, type ModuleTag, type Palier } from "./modules";
@@ -64,14 +66,20 @@ export function levelNumber(day: number): number {
  * Identifiant du niveau d'une date : `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (identifiant des rediffusions et de la mémoire). Un thème
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
-export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): string {
+export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = PLATFORM_VERSION): string {
   const natural = jumpThemeForDay(day);
-  const g = simVersion >= SINGLE_CLOCK_VERSION ? JUMP_GENERATOR_VERSION : SECTION_CLOCK_GENERATOR;
+  const g = simVersion >= PLATFORM_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
   return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }
 
 /** Lot 15 : le dernier générateur des niveaux en version 3 (g9, lot 13) : `dailyLevel(jour, thème, 3)` le rend encore, à l'identique. */
 export const SECTION_CLOCK_GENERATOR = 9;
+/**
+ * Lot 20 : le dernier générateur des niveaux en version 4 (g14, lot 19) : `dailyLevel(jour, thème, 4)` le rend encore, à l'identique (référence v4 : le catalogue
+ * sans les morceaux à plateformes, la même règle de variété). Les niveaux du jour depuis le générateur g15 (`PLATFORM_GENERATOR`) sont en version 5.
+ */
+export const SINGLE_CLOCK_GENERATOR = 14;
+export const PLATFORM_GENERATOR = 15;
 
 // ——— Constantes de la cible (toutes en pas : 120 pas = 1 s) ———
 
@@ -282,13 +290,11 @@ export const VARIETY_EPOCH = 6;
 export const VARIETY_ORIGIN = daysFromCivil(2026, 10, 27);
 /**
  * **Les jours déjà figés comptent avec leur contenu réel** : les morceaux de base des jours qui précèdent `VARIETY_ORIGIN` (figés par la mise
- * en production du 25/10/2026, générateur g10 : `apps/jump/public/levels/`, test `apps/jump/test/figes.test.ts`). Les premiers jours de la
- * première époque les écartent comme s'ils étaient de leur époque.
+ * en production du 25/10/2026, générateur g10 : `apps/jump/public/levels/`). Les premiers jours de la première époque les écartent comme s'ils étaient de
+ * leur époque. **Lot 20 : cette table n'est plus tenue à la main** : `src/figes.ts` est déduit des fichiers figés par `npm run figes:jump -w @cdj/jump-sim`
+ * (un test vérifie qu'il est à jour et qu'il couvre la jonction).
  */
-export const VARIETY_FROZEN: Readonly<Record<string, readonly string[]>> = {
-  "2026-10-25": ["descente-scies", "mur-seul", "nuit-portes", "ressort-plafond", "tunnel", "marelle", "piliers", "ascenseur", "demi-tour", "cheminee-pics", "saut-plafond", "nuit-escalier"],
-  "2026-10-26": ["iles-scie", "pont-friable", "puits", "chute-pics", "saut-long", "mur-trous", "glace-promenade", "glace-cheminee", "demi-tour", "mur-friable", "glace-corniches", "glace-mur"],
-};
+export const VARIETY_FROZEN: Readonly<Record<string, readonly string[]>> = FROZEN_BASE_IDS;
 
 /** Position d'un jour dans son époque (0 à `VARIETY_EPOCH − 1`). */
 export function varietyPosition(day: number): number {
@@ -315,15 +321,15 @@ export function varietyNeighbours(day: number): number[] {
 }
 
 /** Les morceaux de base du niveau du jour `day` (son thème, v4) : le contenu figé avant `VARIETY_ORIGIN`, sinon celui que donne `dailyLevel`. */
-export function dailyBaseIds(day: number): readonly string[] {
+export function dailyBaseIds(day: number, simVersion = PLATFORM_VERSION): readonly string[] {
   const frozen = day < VARIETY_ORIGIN ? VARIETY_FROZEN[formatDay(day)] : undefined;
-  return frozen ?? dailyLevel(day).pieces.map((p) => p.id);
+  return frozen ?? dailyLevel(day, null, simVersion).pieces.map((p) => p.id);
 }
 
 /** Les morceaux de base que le niveau v4 du jour `day` ne peut pas poser (lot 19). */
-export function varietyExcluded(day: number): Set<string> {
+export function varietyExcluded(day: number, simVersion = PLATFORM_VERSION): Set<string> {
   const out = new Set<string>();
-  for (const d of varietyNeighbours(day)) for (const id of dailyBaseIds(d)) out.add(id);
+  for (const d of varietyNeighbours(day)) for (const id of dailyBaseIds(d, simVersion)) out.add(id);
   return out;
 }
 
@@ -448,6 +454,15 @@ export function blinkTooFast(): Readonly<Record<string, readonly number[]>> {
 let catalogAll: Choice[][] | null = null;
 let catalog: Choice[][] | null = null;
 let catalogV4: Choice[][] | null = null;
+let catalogV5: Choice[][] | null = null;
+
+/**
+ * Lot 20 : les morceaux de base à plateformes mobiles (une ligne `plateforme` dans leur bloc annexe) : réservés aux niveaux en version 5. Les catalogues des
+ * versions 3 et 4 ne les connaissent pas (golden v3 et v4 au bit près), comme ils ne connaissent pas les variantes de `V4_ONLY_VARIANTS`.
+ */
+export function platformModuleIds(): ReadonlySet<string> {
+  return new Set(MODULES.filter((def) => def.annex.some((l) => l.startsWith("plateforme "))).map((def) => def.id));
+}
 
 /**
  * Par morceau (ordre du catalogue), ses variantes utilisables. Calculé une fois (déterministe). Lot 15 : en version 4, sans les variantes
@@ -455,13 +470,21 @@ let catalogV4: Choice[][] | null = null;
  */
 function choices(simVersion = SECTION_CLOCK_VERSION): Choice[][] {
   if (simVersion >= SINGLE_CLOCK_VERSION) {
+    const usable = (list: Choice[]) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE }));
+    if (simVersion >= PLATFORM_VERSION) {
+      catalogV5 ??= allChoices().map(usable).filter((list) => list.length > 0);
+      return catalogV5;
+    }
+    // Lot 20 : la référence v4 (g14) ne connaît pas les morceaux à plateformes.
     catalogV4 ??= allChoices()
-      .map((list) => list.filter((c) => !PHASE_REFUSED[c.id]?.includes(c.variant) && !PARASITE_CLOSED[c.id]?.includes(c.variant) && !blinkTooFast()[c.id]?.includes(c.variant)).map((c) => ({ ...c, hard: c.exigence >= SLOW_MIN_EXIGENCE })))
+      .filter((list) => !platformModuleIds().has(list[0]!.id))
+      .map(usable)
       .filter((list) => list.length > 0);
     return catalogV4;
   }
-  // Lots 17 et 18 : la référence v3 ne connaît pas les variantes ajoutées aux g12 et g13.
+  // Lots 17 et 18 : la référence v3 ne connaît pas les variantes ajoutées aux g12 et g13 (lot 20 : ni les morceaux à plateformes).
   catalog ??= allChoices()
+    .filter((list) => !platformModuleIds().has(list[0]!.id))
     .map((list) => list.filter((c) => !V4_ONLY_VARIANTS[c.id]?.includes(c.variant)))
     .filter((list) => list.length > 0);
   return catalog;
@@ -819,6 +842,19 @@ export function assemble(picks: readonly { id: string; variant: number }[], opti
         annex.push(["vent", `${c0}-${c1}`, `${r0}-${r1}`, ...words.slice(3)].join(" "));
         continue;
       }
+      // Lot 20 : une plateforme mobile, identifiant préfixé du morceau, extrémités décalées comme les points d'une scie.
+      if (words[0] === "plateforme") {
+        annex.push(
+          words
+            .map((w, i) => {
+              if (i === 1) return `${p.choice.id}/${w}`;
+              const m = i >= 5 ? /^(\d+),(\d+)$/.exec(w) : null;
+              return m ? `${Number(m[1]) - built.lead + col},${Number(m[2]) + top}` : w;
+            })
+            .join(" "),
+        );
+        continue;
+      }
       if (words[0] !== "scie") continue;
       annex.push(
         words
@@ -1051,6 +1087,8 @@ export function dailyProblems(d: Pick<DailyLevel, "pieces" | "authorTicks" | "le
   if (idle * 1000 >= EMPTY_RUN_MAX * total) out.push(`course à vide sur les paliers ${per(idle, total)} ‰ (moins de ${EMPTY_RUN_MAX} ‰)`);
   // Lot 15 : une seule horloge, rien ne s'arrête à la mort : chaque point de reprise doit être sûr à toute phase.
   if (d.level.simVersion >= SINGLE_CLOCK_VERSION) out.push(...respawnProblems(d.level));
+  // Lot 20 : les règles de trajet des plateformes mobiles (dégagement, jamais poussé, dans son morceau).
+  out.push(...platformProblems(d.level));
   return out;
 }
 
@@ -1088,9 +1126,22 @@ export function respawnProblems(level: Level): string[] {
         }
       }
     }
+    // Lot 20 : ni une plateforme mobile, à aucun pas de son cycle (elle ne porte, ne cache ni ne pousse personne à la reprise).
+    for (const plat of level.platforms) {
+      for (let t = 0; t < plat.cycle; t++) {
+        const at = platformPos(plat, t);
+        if (boxesOverlapUnits(box, { x: at.x, y: at.y, w: plat.width * UNITS_PER_TILE, h: UNITS_PER_TILE })) {
+          out.push(`${name} : la plateforme ${plat.id} y passe (pas ${t} de son cycle)`);
+          break;
+        }
+      }
+    }
   }
   return out;
 }
+
+/** Deux boîtes [x, x + w) × [y, y + h) se chevauchent-elles ? */
+const boxesOverlapUnits = (a: Box, b: Box): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
 
 /**
  * Lot 15 : la phase de chaque section du niveau v4, d'après le pas où la preuve (en v3) y est entrée (`entries`, −1 : jamais) : `−entrée`
@@ -1248,12 +1299,12 @@ function proveOnce(picks: readonly { id: string; variant: number }[], id: string
     const v3Time = result.time;
     let ascii: string;
     try {
-      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections));
+      ascii = withSingleClock(asm.ascii, phasesFromEntries(asm.level, result.final.sections), simVersion >= PLATFORM_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION);
       asm = { ...asm, ascii, level: parseLevel(ascii) };
     } catch (e) {
       return `horloge unique : ${(e as Error).message}`;
     }
-    replay = { ...replay, simVersion: SINGLE_CLOCK_VERSION };
+    replay = { ...replay, simVersion: asm.level.simVersion };
     result = replayAttempt(asm.level, replay, id);
     if (!result.finished || result.deaths.length > 0 || result.time !== v3Time) return "horloge unique : la preuve ne passe plus sans attendre";
   }
@@ -1617,7 +1668,7 @@ const FALLBACK_FORET_V3: readonly { id: string; variant: number }[] = [
 ];
 
 /** La suite de secours d'un thème (lot 16 : celle du néon a changé pour la v4 ; lot 18 : celle de la nuit aussi ; lot 19 : celle de la forêt). */
-export function fallbackFor(theme: JumpThemeName, simVersion = SINGLE_CLOCK_VERSION): readonly { id: string; variant: number }[] {
+export function fallbackFor(theme: JumpThemeName, simVersion = PLATFORM_VERSION): readonly { id: string; variant: number }[] {
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "neon") return FALLBACK_NEON_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "nuit") return FALLBACK_NUIT_V3;
   if (simVersion < SINGLE_CLOCK_VERSION && theme === "foret") return FALLBACK_FORET_V3;
@@ -1636,9 +1687,10 @@ export function forgetDailyLevels(): void {
  * même niveau, partout. Le résultat est gardé en mémoire (même objet pour une même date).
  * Lot 11 : le thème du jour (`jumpThemeForDay`) décide des morceaux permis et du quota de signature ; `forced` impose un autre thème : c'est
  * un **essai** (`forcedTheme`, identifiant suffixé `-t<thème>`), jamais enregistré. Forcer le thème de la date donne le niveau de la date.
- * Lot 15 : `simVersion` 4 (défaut) : le niveau g10 à une seule horloge ; 3 : le niveau g9 d'avant le lot, à l'identique (référence v3).
+ * Lot 15 : `simVersion` 3 : le niveau g9 d'avant le lot, à l'identique (référence v3). Lot 20 : 4 : le niveau g14 d'avant les plateformes, à l'identique (référence v4) ;
+ * 5 (défaut) : le niveau du générateur g15, en version 5.
  */
-export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel {
+export function dailyLevel(day: number, forced: JumpThemeName | null = null, simVersion = PLATFORM_VERSION): DailyLevel {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const isForced = theme !== natural;
@@ -1687,7 +1739,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
     // (durée et exigence de la composition, sans rejeu) par lots de `DAILY_DRAWS` : le premier valide est retenu. Le score estimé suit le score
     // rejoué à quelques pas près (les solutions sont mises bout à bout sans course entre deux) ; on prouve 2 à 3 tirages au lieu de 6 à 8, ce
     // qui paie les niveaux voisins que la règle de variété fait calculer (« une génération d'un niveau sous 2 s »).
-    const excluded = varietyExcluded(day);
+    const excluded = varietyExcluded(day, simVersion);
     for (let from = 0; from < DAILY_MAX_ATTEMPTS_V4 && !best; from += DAILY_DRAWS) {
       const batch: { index: number; picks: Slot[]; estimate: number }[] = [];
       for (let index = from; index < from + DAILY_DRAWS && index < DAILY_MAX_ATTEMPTS_V4; index++) {
@@ -1728,7 +1780,7 @@ export function dailyLevel(day: number, forced: JumpThemeName | null = null, sim
 }
 
 /** Le niveau de secours d'une date (pour les tests et la mesure : il ne sert que si aucun tirage ne passe). */
-export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = SINGLE_CLOCK_VERSION): DailyLevel | string {
+export function fallbackLevel(day: number, forced: JumpThemeName | null = null, simVersion = PLATFORM_VERSION): DailyLevel | string {
   const natural = jumpThemeForDay(day);
   const theme = forced ?? natural;
   const proof = prove(fallbackFor(theme, simVersion), dailyLevelId(day, theme, simVersion), theme, simVersion);

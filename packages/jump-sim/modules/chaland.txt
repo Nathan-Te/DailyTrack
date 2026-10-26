@@ -1,0 +1,34 @@
+id: chaland
+intention: Passer d'un plateau mobile à un autre, plus haut et à contresens, puis sauter sur la rive : deux départs à calculer.
+etiquettes: precision plateforme
+famille: chaland
+mutateurs: hausse surface
+format: 3
+paliers: 11 8
+variante: cycle=390
+variante: cycle=420
+variante: cycle=330
+variante: cycle=480
+variante: cycle=420 +surface:glace
+grille:
+........................
+........................
+........................
+........................
+........................
+........................
+........................
+........................
+..................######
+..................######
+..................######
+##................######
+##................######
+##................######
+##................######
+##................######
+
+plateforme bas 2 h {cycle} 3,11 9,11
+plateforme haut 2 h {cycle} 14,8 8,8
+zone hausse 18-23 8
+zone surface 18-23 8
