@@ -29,6 +29,12 @@ export const CIBLE_PART_E2E_S = 240;
 export const CIBLE_PART_UNITAIRE_S = 150;
 export const DEFAUT_UNITAIRE_S = 5;
 export const MAX_IMPORTEURS = 12;
+/**
+ * Budget de la CI de PR : somme des durées (durees.json) des specs choisis, hors fumée et specs modifiés par la PR (toujours lancés). 900 s en
+ * 4 parts ≈ 4 min de tests + 45 s de préparation. Au-delà, les specs les moins liés aux fichiers modifiés sont reportés à la CI complète de `main`
+ * (et nommés dans le résumé du run) : une PR large reste courte, et rien n'est perdu — c'est reporté.
+ */
+export const BUDGET_E2E_S = 900;
 
 const norm = (p) => String(p).trim().replace(/\\/g, "/").replace(/^(\.\/)+/, "");
 const estOutil = (fichier) => /^(captures|mesure)[-.]/.test(posix.basename(fichier));
@@ -95,12 +101,13 @@ export function importeursDe(jeu, utilitaire, racine = ROOT) {
  *  - un spec modifié se lance ; un utilitaire de test modifié lance ses importeurs (la fumée s'il y en a plus de MAX_IMPORTEURS) ;
  *  - un fichier dans une zone lance les specs de cette zone ; tout fichier de code (hors documents) lance la fumée de son jeu (zone partagée : des deux).
  */
-export function specsPour(files, table, racine = ROOT) {
-  const choix = { web: new Set(), jump: new Set() };
+export function specsPour(files, table, racine = ROOT, { budget = BUDGET_E2E_S } = {}) {
+  const sur = { web: new Set(), jump: new Set() }; // toujours lancés : fumée, specs modifiés, importeurs d'un utilitaire modifié
+  const liens = { web: new Map(), jump: new Map() }; // spec → nombre de couples (fichier modifié, zone) qui le lient à la PR
   const raisons = new Set();
   const tous = { web: specsDuJeu("web", racine), jump: specsDuJeu("jump", racine) };
   const fumee = (jeu, pourquoi) => {
-    for (const s of table.fumee[jeu]) choix[jeu].add(s);
+    for (const s of table.fumee[jeu]) sur[jeu].add(s);
     raisons.add(`fumée ${jeu} (${pourquoi})`);
   };
   for (const brut of files) {
@@ -111,12 +118,12 @@ export function specsPour(files, table, racine = ROOT) {
       const jeu = m[1];
       const nom = m[2];
       if (nom.endsWith(".spec.ts")) {
-        if (!estOutil(nom) && tous[jeu].includes(nom)) choix[jeu].add(nom);
+        if (!estOutil(nom) && tous[jeu].includes(nom)) sur[jeu].add(nom);
         raisons.add(`${jeu}/${nom} (modifié)`);
       } else if (SOURCES.test(nom)) {
         const imp = importeursDe(jeu, nom, racine);
         if (imp.length > 0 && imp.length <= MAX_IMPORTEURS) {
-          imp.forEach((s) => choix[jeu].add(s));
+          imp.forEach((s) => sur[jeu].add(s));
           raisons.add(`${jeu}/${nom} (utilitaire : ${imp.length} importeur(s))`);
         } else fumee(jeu, `${nom} : utilitaire de test`);
       }
@@ -126,7 +133,7 @@ export function specsPour(files, table, racine = ROOT) {
       fumee(f.includes("/web/") ? "web" : "jump", "configuration de Playwright");
       continue;
     }
-    // Un fichier de code : la fumée des jeux qu'il touche, et les specs de ses zones.
+    // Un fichier de code : la fumée des jeux qu'il touche, et les specs de ses zones (une zone partagée — ui, profil, serveur — rejoint les deux jeux).
     const cats = categoriesOf(f);
     if (cats.includes("track")) fumee("web", f);
     if (cats.includes("jump")) fumee("jump", f);
@@ -134,14 +141,25 @@ export function specsPour(files, table, racine = ROOT) {
       for (const [spec, zs] of Object.entries(table.specs)) {
         if (!zs.includes(z)) continue;
         const [jeu, nom] = spec.split("/");
-        if (cats.includes(jeu === "web" ? "track" : "jump") || cats.length === 3) choix[jeu].add(nom);
-        else choix[jeu].add(nom); // une zone partagée (ui, profil, api) rejoint les specs des deux jeux
+        liens[jeu].set(nom, (liens[jeu].get(nom) ?? 0) + 1);
       }
       raisons.add(`zone ${z} (${f})`);
     }
   }
+  // Le budget : les specs de zones, les plus liés aux fichiers modifiés d'abord, à égalité les plus courts (le plus de couverture par seconde).
+  const duree = (jeu, spec) => JSON.parse(readFileSync(join(racine, E2E_DIRS[jeu], "durees.json"), "utf8")).secondes[spec] ?? 60;
+  const candidats = [];
+  for (const jeu of ["web", "jump"]) for (const [nom, n] of liens[jeu]) if (!sur[jeu].has(nom)) candidats.push({ jeu, nom, n, s: duree(jeu, nom) });
+  candidats.sort((a, b) => b.n - a.n || a.s - b.s || (a.nom < b.nom ? -1 : 1));
+  const choix = { web: new Set(sur.web), jump: new Set(sur.jump) };
+  const reportes = [];
+  let total = 0;
+  for (const c of candidats) {
+    if (total + c.s <= budget || total === 0) (choix[c.jeu].add(c.nom), (total += c.s));
+    else reportes.push(`${c.jeu}/${c.nom}`);
+  }
   const trier = (s) => [...s].filter((x) => x).sort();
-  return { web: trier(choix.web), jump: trier(choix.jump), raisons: [...raisons].sort() };
+  return { web: trier(choix.web), jump: trier(choix.jump), raisons: [...raisons].sort(), reportes: reportes.sort() };
 }
 
 /** Les specs de la table pour des zones nommées à la main (`npm run verifier -- --zones=track-sim,jump-rendu`). */
@@ -384,6 +402,7 @@ export function resume(d) {
     for (const s of d.e2e.web) l.push(`  · web/${s}`);
     for (const s of d.e2e.jump) l.push(`  · jump/${s}`);
     for (const r of d.e2e.raisons.slice(0, 12)) l.push(`  ↳ ${r}`);
+    if (d.e2e.reportes?.length) l.push(`Reportés à la CI complète de main (budget de ${BUDGET_E2E_S} s de specs atteint) : ${d.e2e.reportes.join(", ")}`);
   }
   return l.join("\n");
 }
