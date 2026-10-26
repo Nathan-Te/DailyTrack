@@ -28,6 +28,7 @@ export interface CircuitData {
 }
 
 export function computeDaily(day: number, theme: ThemeName | null, variant: number): CircuitData {
-  const { track, figures, ...c } = dailyCircuit(day, variant, theme);
+  // Lot R9 : `authorReplay` (la rediffusion du pilote, que le serveur seul garde pour refuser les copies) ne voyage jamais vers la page.
+  const { track, figures, authorReplay: _authorReplay, ...c } = dailyCircuit(day, variant, theme);
   return { ...c, id: track.id, figures: figures.map((f) => f.name) };
 }
