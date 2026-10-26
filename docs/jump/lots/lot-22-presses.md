@@ -93,7 +93,7 @@ Chiffres du lot 20 (g15) relus dans son README ; la référence g15 relancée pa
 ## 7. Décisions, vérifié, non vérifié
 
 - **Jours** : g16 commence le 27/10/2026 ; **aucun jour public ni figé touché** (`apps/jump/public/levels/` n'a pas bougé, `figes:jump` n'a rien à refaire : aucun nouveau jour figé). La démonstration `public/demo/` est régénérée (`jump:seed`).
-- **Budget** : Jump 327 274 → 332 028 o (+4 754, plafond 378 490, marge 46 462) ; `docs/plateforme/budgets.md` mis à jour. Le catalogue n'est pas dans le premier chargement.
+- **Budget** : Jump 327 459 → 332 291 o (+4 832 sur `main` à jour, plafond 378 490, marge 46 199) ; `docs/plateforme/budgets.md` mis à jour. Le catalogue n'est pas dans le premier chargement.
 - **Golden** : v3, v4 et **v5 intacts** (`daily-golden*.json`, `replay-golden*.json`, test « un niveau sans presse est identique en v5 et en v6 ») ; nouvelles références v6 (`daily-golden-v6.json`, `replay-golden-v6.json`, jour de référence le 03/12 : deux presses et des morts avant et sur un point de passage).
 - **Zones partagées non touchées** (à faire par un lot de la plateforme) : l'index du `CLAUDE.md` racine (« Presses (lot 22) » sous `packages/jump-sim/CLAUDE.md` et `apps/jump/CLAUDE.md`). Étiquette de PR : `jeu:jump`.
 - **À trancher par Nathan** : la fréquence des presses (14 jours d'usine sur 16, un à quatre morceaux ; la part de mécanique des jours d'usine monte à 36 % en moyenne, 40 % au plus) ; si un joueur trouve trop facile une presse dont l'attente en haut dure 2 s, raccourcir l'attente (minimum 1 s) est un changement de catalogue (g17).

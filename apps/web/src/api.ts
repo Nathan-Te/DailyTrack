@@ -1,5 +1,6 @@
-import { ProfileClient, call, type ApiResult, type MeProfile, type NameCheck } from "@cdj/profile";
+import { ProfileClient, apiFromAddress, call, type ApiResult, type MeProfile, type NameCheck } from "@cdj/profile";
 import type { EtatVoiture, ProgresGarage } from "@cdj/sim";
+import { isRestricted } from "./access";
 
 // Client de l'API du classement. Le jeu fonctionne sans elle : si elle n'est pas configurée ou injoignable,
 // on le dit poliment et on continue (le classement est un plus, pas un prérequis).
@@ -61,11 +62,33 @@ export const SAME_ORIGIN_API = "/";
  * Adresse de l'API : `?api=https://…` (essais), sinon `VITE_API_URL` (fixée à la construction du jeu), sinon
  * rien : le classement est alors désactivé. `/` : l'origine de la page (`origin`).
  */
-export function apiBase(search = location.search, env = import.meta.env.VITE_API_URL as string | undefined, origin?: string): string | null {
-  const fromUrl = new URLSearchParams(search).get("api");
+export function apiBase(
+  search = location.search,
+  env = import.meta.env.VITE_API_URL as string | undefined,
+  origin?: string,
+  restricted = isRestricted(search),
+): string | null {
+  // Lot R7 : sur la production, `?api=` ne peut viser qu'elle-même (voir `apiFromAddress`) : un lien piégé n'obtient jamais l'identifiant secret.
+  const fromUrl = apiFromAddress(new URLSearchParams(search).get("api"), restricted, origin ?? safeOrigin());
   const base = fromUrl || env || "";
   if (base === SAME_ORIGIN_API) return (origin ?? location.origin).replace(/\/+$/, "");
   return base ? base.replace(/\/+$/, "") : null;
+}
+
+const safeOrigin = (): string | undefined => (typeof location === "undefined" ? undefined : location.origin);
+
+/**
+ * Lot R7 : l'adresse de l'API des outils d'administration (`/admin/` : planning, médailles), qui envoient le **jeton d'admin**. Même règle que
+ * `apiBase` : sur la production, ni `?api=` ni l'adresse mémorisée (`cdj:admin`) ne peuvent mener le jeton vers un autre serveur.
+ */
+export function adminApiBase(stored: string, search = location.search): string {
+  const restricted = isRestricted(search);
+  const origin = safeOrigin();
+  const pick = (v: string | null) => {
+    const ok = apiFromAddress(v, restricted, origin);
+    return ok === SAME_ORIGIN_API ? (origin ?? "") : ok;
+  };
+  return (pick(new URLSearchParams(search).get("api")) || pick(stored) || apiBase(search) || "").replace(/\/+$/, "");
 }
 
 /** Lot 32 : l'en-tête qui désigne le joueur (une seule définition pour le classement, les fantômes et le Salon). */

@@ -4,6 +4,19 @@ import { LeaderboardApi, apiBase } from "../src/api";
 afterEach(() => vi.restoreAllMocks());
 
 describe("apiBase", () => {
+  it("lot R7 : en production, ?api= ne peut pas mener l'identifiant secret vers un autre serveur", () => {
+    const prod = (search: string, env?: string) => apiBase(search, env, "https://playdujour.com", true);
+    expect(prod("?api=https://pirate.example", "/")).toBe("https://playdujour.com");
+    expect(prod("?api=https://pirate.example")).toBeNull();
+    expect(prod("?api=/")).toBe("https://playdujour.com");
+    expect(prod("?api=demo")).toBe("demo");
+    expect(prod("?api=http://localhost:8787")).toBe("http://localhost:8787");
+    // hors production (recette, aperçus, développement) : comme avant
+    expect(apiBase("?api=https://x.run.app", "/", "https://recette.playdujour.com", false)).toBe("https://x.run.app");
+    // ?prod force le mode restreint depuis l'adresse (il ne peut que restreindre)
+    expect(apiBase("?prod&api=https://pirate.example", undefined, "https://recette.playdujour.com")).toBeNull();
+  });
+
   it("lit ?api=, sinon la variable de construction, sinon rien", () => {
     expect(apiBase("?api=https://exemple.test/", undefined)).toBe("https://exemple.test");
     expect(apiBase("", "https://prod.test")).toBe("https://prod.test");

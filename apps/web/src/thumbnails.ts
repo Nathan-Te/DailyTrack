@@ -7,7 +7,7 @@ import { chargerDecor } from "./scene/decor";
 // (mémoire + IndexedDB). Tout ce qui touche au navigateur est injectable : la logique se teste sans DOM.
 
 /** À incrémenter quand l'aspect des miniatures change (cadrage, caméra, couleurs) : les anciennes images sont ignorées. */
-export const THUMB_VERSION = 6; // lot 48 : l'herbe de course et le sol plus sombre de la Campagne (lot 44 : le décor du palier 1 et son sol relevé (lot 43 : la scène du palier 1 ; lot 37 : tribune sur son socle, décor qui ne touche plus la route))
+export const THUMB_VERSION = 7; // retouche 47b : sol relevé plus près des vides de saut ; lot 48 : l'herbe de course et le sol plus sombre de la Campagne (lot 44 : le décor du palier 1 et son sol relevé (lot 43 : la scène du palier 1 ; lot 37 : tribune sur son socle, décor qui ne touche plus la route))
 
 /** Clé de cache : l'id du circuit (version du générateur, thème forcé, et plus tard variante) + la taille + les versions. */
 export function thumbKey(day: number, theme: ThemeName | null, scale: number, variant = 0): string {

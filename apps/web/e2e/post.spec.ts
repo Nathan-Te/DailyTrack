@@ -41,6 +41,22 @@ test("ordinateur, ?palier=3 : la chaîne est chargée à la demande avant la cou
   expect(e).toEqual([]);
 });
 
+test("lot 47b : Auto sur un ordinateur ne donne jamais le post-traitement et ne charge pas son module ; « Maximale » le donne", async ({ page }) => {
+  await page.setViewportSize({ width: 480, height: 270 });
+  await page.addInitScript(() => localStorage.setItem("cdj:qualite", JSON.stringify({ palier: 3, date: Date.now(), mediane: 10, pixels: 480 * 270 * devicePixelRatio ** 2, echecs: 0, plafond: null, durable: false })));
+  await page.goto(`${ORDINATEUR}&seed=2026-10-14`);
+  await page.waitForFunction(() => window.__cdj?.phase);
+  await page.waitForFunction(() => window.__cdj.render.renderFrames > 3);
+  expect(await scene(page), "la mémoire d'une ancienne chaîne en Auto redonne le palier 3 seul").toEqual({ palier: "P3", plus: [] });
+  expect(await post(page)).toMatchObject({ permis: true, demande: false, actif: false });
+  expect(await morceaux(page), "le module du post-traitement n'est pas chargé en Auto").toEqual([]);
+  await page.evaluate(() => localStorage.setItem("cdj:settings", JSON.stringify({ graphismes: "maximale", version: 1 })));
+  await page.reload();
+  await page.waitForFunction(() => window.__cdj?.phase);
+  await chaineAllumee(page);
+  expect(await scene(page)).toEqual({ palier: "P3", plus: ["post"] });
+});
+
 test("?reglages=3-post et ses parties : sans la chaîne, rien n'est chargé ; le halo, l'étalonnage et le FXAA se coupent un à un ; jamais avec ?prod", async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 270 });
   await page.goto(`${ORDINATEUR}&seed=2026-10-14&reglages=3-post`);

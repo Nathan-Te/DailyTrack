@@ -51,10 +51,10 @@ jobs:
       - name: Sur main seulement
         run: |
           [ "$GITHUB_REF" = refs/heads/main ] || { echo "::error::« Mettre en production » se lance sur main (Run workflow → Branch: main), pas sur $GITHUB_REF_NAME"; exit 1; }
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
       - name: Le commit
@@ -103,15 +103,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ needs.verifier.outputs.reference }}
           path: prod
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ needs.verifier.outputs.sha }}
           path: cible
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
       - name: freeze:days -- demain (code en production)
@@ -124,7 +124,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/cible-levels"
           cp cible/apps/jump/public/levels/*.json "$RUNNER_TEMP/cible-levels/" 2>/dev/null || true
           node cible/scripts/mise-en-production.mjs jours-figes prod/apps/jump/public/levels "$RUNNER_TEMP/cible-levels" | tee -a "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: jours-figes
           path: prod/apps/jump/public/levels/*.json
@@ -170,8 +170,8 @@ jobs:
     outputs:
       url: ${{ steps.smoke.outputs.url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -199,7 +199,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Étiqueter le commit
         env:
           TAG: ${{ needs.verifier.outputs.etiquette }}
@@ -236,11 +236,11 @@ jobs:
       HAS_ROBOT: ${{ secrets.ROBOT_TOKEN != '' }}
       TAG: ${{ needs.verifier.outputs.etiquette }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
           token: ${{ secrets.ROBOT_TOKEN || github.token }}
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: jours-figes
           path: ${{ runner.temp }}/jours-figes

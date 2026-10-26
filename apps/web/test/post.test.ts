@@ -148,7 +148,7 @@ describe("lot 47 : jamais de passe plein écran sur un profil téléphone", () =
   it("main.ts ne demande le module du post-traitement qu'avec le palier 3 et passesPermises (un seul endroit, sans autre chemin)", () => {
     const main = readFileSync(join(SRC, "main.ts"), "utf8");
     expect(main).toContain('PAS_DU_JEU.post = () => import("./scene/postJeu")');
-    expect(main).toContain('plus: postPermis() ? ["post"] : []');
+    expect(main).toContain('plus: postPermis() && postVoulu(choix, appareil) ? ["post"] : []');
     expect(main).toContain("const postPermis = () => passesPermises(appareil)");
     expect(main.match(/"post"/g)!.length, "les endroits où « post » est nommé").toBeLessThanOrEqual(8);
   });

@@ -124,6 +124,7 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
     return `${prefix}:${hex}`;
   }
 
+  let cleanedBucket = -1;
   async function hit(key: string, limit: number): Promise<void> {
     const bucket = Math.floor(now() / limits.windowMs);
     const row = await db.first<{ count: number }>(
@@ -131,7 +132,12 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
       [key, bucket],
     );
     const count = row?.count ?? 1;
-    if (count === 1) await db.run("DELETE FROM rate WHERE bucket < ?", [bucket - RATE_KEEP_WINDOWS]); // ménage au passage
+    // Ménage au passage, **une fois par fenêtre et par instance** (lot R7) : la clé primaire est (key, bucket), `bucket` n'a pas d'index, donc ce
+    // `DELETE` parcourt toute la table ; le faire à la première requête de chaque clé le rendait quadratique avec le nombre de clés actives.
+    if (count === 1 && cleanedBucket !== bucket) {
+      cleanedBucket = bucket;
+      await db.run("DELETE FROM rate WHERE bucket < ?", [bucket - RATE_KEEP_WINDOWS]);
+    }
     if (count > limit) {
       const retry = Math.max(1, Math.ceil(((bucket + 1) * limits.windowMs - now()) / 1000));
       throw new HttpError(429, "rate_limited", "Trop de requêtes, réessaie dans un moment", { "Retry-After": String(retry) });
@@ -169,8 +175,9 @@ export function createPlatform(options: PlatformOptions): PlatformKit {
   }
 
   async function hitAddress(info: RequestInfo, prefix: string, limit: number): Promise<void> {
-    if (info.clientKey) await hit(await hashKey(prefix, info.clientKey), limit);
+    // Lot R7 : l'adresse de connexion (en mémoire) d'abord : un flot d'adresses inventées s'arrête là, avant d'écrire un compteur en base.
     await peerHit(info, prefix, limit);
+    if (info.clientKey) await hit(await hashKey(prefix, info.clientKey), limit);
   }
 
   async function readHitAddress(info: RequestInfo, prefix: string, limit: number): Promise<void> {

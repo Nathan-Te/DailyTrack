@@ -41,6 +41,9 @@ export const depart = (a: Appareil): NiveauQualite => (a.logiciel ? 1 : a.ordina
 /** Passes plein écran permises (lot 47) : un ordinateur, des demi-flottants rendables et 4 Go au moins (quand c'est annoncé). Jamais sur un téléphone (décision du 22/10). */
 export const passesPermises = (a: Appareil): boolean => a.ordinateur && !a.logiciel && a.demiFlottants && (a.memoire ?? 4) >= 4;
 
+/** Lot 47b : le post-traitement ne se donne que sur choix explicite (« Maximale ») là où les passes sont permises ; Auto ne l'allume jamais (en attendant le lot 50). */
+export const postVoulu = (choix: ChoixGraphismes, a: Appareil): boolean => choix === "maximale" && passesPermises(a);
+
 /** Ce qui est gardé sous `cdj:qualite`. */
 export interface MemoireQualite {
   palier: NiveauQualite;

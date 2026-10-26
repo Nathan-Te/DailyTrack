@@ -38,7 +38,7 @@ const SERVICE = /^[a-z]([a-z0-9-]{0,61}[a-z0-9])?$/;
  * La configuration d'un déploiement : `firebase.json` du dépôt (en-têtes, redirections, renvoi `/api/**`) avec le **site** et le **service
  * Cloud Run** de la cible. Production → `cdj-api`, recette et aperçus → `cdj-api-recette` : le renvoi ne croise jamais les deux.
  */
-export function firebaseConfig(template, { site, service, region = REGION, publicDir }) {
+export function firebaseConfig(template, { site, service, region = REGION, publicDir, noindex = false }) {
   if (!SITE_ID.test(site ?? "")) throw new Error(`site Firebase invalide : « ${site} »`);
   if (!SERVICE.test(service ?? "")) throw new Error(`service Cloud Run invalide : « ${service} »`);
   const hosting = structuredClone(template.hosting);
@@ -46,6 +46,8 @@ export function firebaseConfig(template, { site, service, region = REGION, publi
   const api = (hosting.rewrites ?? []).filter((r) => r.source === "/api/**" && r.run);
   if (api.length !== 1) throw new Error("firebase.json : un seul renvoi /api/** vers Cloud Run attendu");
   for (const r of hosting.rewrites) if (r.run) r.run = { serviceId: service, region };
+  // Lot R7 : la recette et les aperçus ne sont jamais indexés (aucun moteur de recherche ne doit montrer des fonctionnalités pas encore sorties).
+  if (noindex) hosting.headers = [{ source: "**", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" }] }, ...(hosting.headers ?? [])];
   return { hosting: { site, ...hosting, ...(publicDir ? { public: publicDir } : {}) } };
 }
 
@@ -151,6 +153,27 @@ export function manifeste(jetonsCss) {
   };
 }
 
+/**
+ * Lot R7 : les jeux de données de démonstration (`track/demo/`, `jump/demo/`, mode `?api=demo`) ne vont pas en production. Chaque fichier d'un jour
+ * à venir y porte la rediffusion « parfaite » du premier — la preuve de l'auteur du niveau que le jeu jouera ce jour-là (constaté le 25/10/2026 :
+ * `jump/demo/2026-10-30.json`, acceptée par le serveur le jour J). La démonstration reste dans la recette et les aperçus. Rend les dossiers retirés.
+ */
+export const DOSSIERS_DEMO = ["track/demo", "jump/demo"];
+export function retirerDemos(out) {
+  const retires = [];
+  for (const d of DOSSIERS_DEMO) {
+    if (!existsSync(join(out, d))) continue;
+    rmSync(join(out, d), { recursive: true, force: true });
+    retires.push(d);
+  }
+  return retires;
+}
+
+/** Lot R7 : le `robots.txt` du site. Production : tout est permis ; recette et aperçus : rien (en plus de l'en-tête `X-Robots-Tag` de Hosting). */
+export function robots({ production = false } = {}) {
+  return production ? "User-agent: *\nAllow: /\n" : "# Recette ou aperçu de PR : rien à indexer.\nUser-agent: *\nDisallow: /\n";
+}
+
 /** Les pages HTML d'un dossier (récursif). */
 function pagesHtml(dir) {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? pagesHtml(join(dir, e.name)) : e.name.endsWith(".html") ? [join(dir, e.name)] : []));
@@ -180,6 +203,7 @@ export async function assembleSite(out, { production = false, origine } = {}) {
   }
   // Lot I1 : la vitrine n'est jamais publiée en production ; ailleurs elle doit y être.
   const vitrine = existsSync(join(out, VITRINE, "index.html"));
+  if (production) retirerDemos(out);
   if (production && vitrine) throw new Error(`la vitrine /${VITRINE}/ ne doit pas être dans le site de production`);
   if (!production && !vitrine) throw new Error(`vitrine /${VITRINE}/ absente du site`);
   // Lot I6 : images de partage et icônes (produites ici), manifeste, adresses absolues ; la page 404 à la racine (servie par Hosting).
@@ -190,6 +214,8 @@ export async function assembleSite(out, { production = false, origine } = {}) {
     if (html.includes(JETON_ORIGINE)) writeFileSync(f, poserOrigine(html, origineSite));
   }
   if (!existsSync(join(out, "404.html"))) throw new Error("page 404 absente du site (apps/portail/404.html)");
+  // Lot R7 : la production s'indexe (le portail et les jeux) ; la recette et les aperçus s'interdisent à tous les robots.
+  writeFileSync(join(out, "robots.txt"), robots({ production }));
   return { niveaux: files.length, images, origine: origineSite };
 }
 
@@ -205,7 +231,7 @@ if (isMain) {
       console.log(`aperçus de partage : ${origine} ; images ${images.map((i) => `${i.nom}.png ${(i.octets / 1024).toFixed(1)} ko`).join(", ")}`);
     } else if (cmd === "firebase") {
       const template = JSON.parse(readFileSync(join(ROOT, "firebase.json"), "utf8"));
-      const config = firebaseConfig(template, { site: option(argv, "--site"), service: option(argv, "--service"), region: option(argv, "--region", REGION), publicDir: option(argv, "--public") });
+      const config = firebaseConfig(template, { site: option(argv, "--site"), service: option(argv, "--service"), region: option(argv, "--region", REGION), publicDir: option(argv, "--public"), noindex: argv.includes("--noindex") });
       const out = option(argv, "--sortie", "firebase.deploy.json");
       writeFileSync(out, JSON.stringify(config, null, 2) + "\n");
       console.log(`configuration Firebase : ${out} (site ${config.hosting.site}, /api/** → ${config.hosting.rewrites.find((r) => r.run).run.serviceId})`);
