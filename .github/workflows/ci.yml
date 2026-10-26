@@ -214,10 +214,11 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ matrix.browser }}
-      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Une installation de paquets (ces deux étapes) qui se bloque (apt) ne doit pas occuper le job 30 min : 5 min par tentative, 3 tentatives (run 40399054124 : webkit, 29 min sur `install-deps`).
+      - run: for i in 1 2 3; do timeout 300 npx playwright install --with-deps ${{ matrix.browser }} && exit 0; echo "tentative $i échouée"; done; exit 1
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps ${{ matrix.browser }}
+      - run: for i in 1 2 3; do timeout 300 npx playwright install-deps ${{ matrix.browser }} && exit 0; echo "tentative $i échouée"; done; exit 1
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit == 'true'
       - run: npm run build && npm run build:node -w @cdj/api
@@ -301,10 +302,11 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-chromium
-      - run: npx playwright install --with-deps chromium
+      # Une installation de paquets (ces deux étapes) qui se bloque (apt) ne doit pas occuper le job 30 min : 5 min par tentative, 3 tentatives (run 40399054124 : webkit, 29 min sur `install-deps`).
+      - run: for i in 1 2 3; do timeout 300 npx playwright install --with-deps chromium && exit 0; echo "tentative $i échouée"; done; exit 1
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit != 'true'
-      - run: npx playwright install-deps chromium
+      - run: for i in 1 2 3; do timeout 300 npx playwright install-deps chromium && exit 0; echo "tentative $i échouée"; done; exit 1
         working-directory: apps/web
         if: steps.browsers.outputs.cache-hit == 'true'
       # DailyTrack a besoin des deux jeux (e2e/deux-jeux.mjs) et du serveur ; DailyJump seul n'a besoin que de lui.
