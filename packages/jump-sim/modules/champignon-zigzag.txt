@@ -1,0 +1,44 @@
+id: champignon-zigzag
+intention: Monter un puits en zigzag : chaque champignon de mur renvoie de l'autre côté en relevant un peu, et un saut tenu au contact renforce le rebond.
+etiquettes: champignon vertical
+famille: champignon-zigzag
+theme: foret
+format: 3
+paliers: 25 6
+repeter: haut rangees 13-13
+repeter: bas rangees 17-17
+variante: haut=0 bas=0
+variante: haut=1 bas=0
+variante: haut=3 bas=0
+variante: haut=0 bas=1
+variante: haut=1 bas=1
+variante: haut=0 bas=2
+variante: haut=2 bas=1
+grille:
+#..........
+#..........
+#..........
+#..........
+#..........
+#..........
+#....######
+#....######
+#...(######
+#....######
+#....######
+#)...######
+#....######
+#....######
+#....######
+#...(######
+#....######
+#....######
+#....######
+#)...######
+#....######
+#....######
+#....######
+#....######
+..m..######
+###########
+###########

@@ -678,6 +678,1567 @@
     }
    ]
   },
+  "champignon-chapelet": {
+   "variants": [
+    {
+     "grid": "18def246",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MADKAghKCApuDA1eFA7SAxAJ6gquAZIN",
+      "ticks": 547,
+      "entryTick": 0,
+      "exitTick": 540,
+      "fastest": 544,
+      "gigue": [
+       1000,
+       965,
+       865
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 21
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MATSAt4D2gyWAbIN",
+      "ticks": 536,
+      "entryTick": 17,
+      "exitTick": 529,
+      "fastest": 512,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 18
+     }
+    },
+    {
+     "grid": "43b50c07",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MQCSA94Dqhc",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 59
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MQTSAt4Dmhc",
+      "ticks": 472,
+      "entryTick": 17,
+      "exitTick": 465,
+      "fastest": 448,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 59
+     }
+    },
+    {
+     "grid": "14c5c75f",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MgCSA94Dqhc",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 59
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MgTKAuYDmhc",
+      "ticks": 472,
+      "entryTick": 17,
+      "exitTick": 465,
+      "fastest": 448,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 60
+     }
+    },
+    {
+     "grid": "745af3f5",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MwCKA94D4gbmA7IG5gPqCg",
+      "ticks": 611,
+      "entryTick": 0,
+      "exitTick": 604,
+      "fastest": 604,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 59
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6MwTCAt4D0gaWBKIR",
+      "ticks": 547,
+      "entryTick": 17,
+      "exitTick": 540,
+      "fastest": 523,
+      "gigue": [
+       890,
+       890,
+       905
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 59
+     }
+    },
+    {
+     "grid": "09d8c974",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NADSAuYDihc",
+      "ticks": 471,
+      "entryTick": 0,
+      "exitTick": 464,
+      "fastest": 464,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 60
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NASiAt4D8hY",
+      "ticks": 461,
+      "entryTick": 17,
+      "exitTick": 454,
+      "fastest": 437,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 59
+     }
+    },
+    {
+     "grid": "d03819be",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NQCKA74EygZeihA",
+      "ticks": 493,
+      "entryTick": 0,
+      "exitTick": 486,
+      "fastest": 540,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 11
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NQTSAt4Dugb2A_IQ",
+      "ticks": 536,
+      "entryTick": 17,
+      "exitTick": 529,
+      "fastest": 512,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 59
+     }
+    },
+    {
+     "grid": "dfd46016",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NgDKAghSCApuDUYcJsoDIIoLlgGaDQ",
+      "ticks": 550,
+      "entryTick": 0,
+      "exitTick": 543,
+      "fastest": 544,
+      "gigue": [
+       975,
+       935,
+       680
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 18
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NgTSAt4D2gz2AhnSCw",
+      "ticks": 539,
+      "entryTick": 17,
+      "exitTick": 532,
+      "fastest": 512,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 46
+     }
+    },
+    {
+     "grid": "b417509d",
+     "arret": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NwCSA94Dqhc",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 59
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOmNoYW1waWdub24tY2hhcGVsZXQ6NwTSAt4Dmhc",
+      "ticks": 472,
+      "entryTick": 17,
+      "exitTick": 465,
+      "fastest": 448,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 59
+     }
+    }
+   ]
+  },
+  "champignon-falaise": {
+   "variants": [
+    {
+     "grid": "60993c7b",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTowALIBhgHCAs4FOjaaAw",
+      "ticks": 231,
+      "entryTick": 0,
+      "exitTick": 224,
+      "fastest": 224,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTowBIoBjgHKAiA9ygg",
+      "ticks": 223,
+      "entryTick": 17,
+      "exitTick": 216,
+      "fastest": 199,
+      "gigue": [
+       690,
+       550,
+       550
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 7
+     }
+    },
+    {
+     "grid": "a67472ee",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZToxALoBfqoCzgVSNvID",
+      "ticks": 242,
+      "entryTick": 0,
+      "exitTick": 235,
+      "fastest": 235,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZToxBJIBfrICEIUBwgk",
+      "ticks": 241,
+      "entryTick": 17,
+      "exitTick": 234,
+      "fastest": 217,
+      "rapide": 210,
+      "gigue": [
+       1000,
+       990,
+       875
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 15
+     }
+    },
+    {
+     "grid": "d9fd2c16",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZToyAGKmDmo",
+      "ticks": 253,
+      "entryTick": 0,
+      "exitTick": 246,
+      "fastest": 246,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 228
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZToyBJIBdtoCGEX6CQ",
+      "ticks": 245,
+      "entryTick": 17,
+      "exitTick": 238,
+      "fastest": 221,
+      "gigue": [
+       895,
+       665,
+       530
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 8
+     }
+    },
+    {
+     "grid": "215c0392",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTozALIBfroCtgUyNsoD",
+      "ticks": 231,
+      "entryTick": 0,
+      "exitTick": 224,
+      "fastest": 224,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTozBJoBdvoCTbII",
+      "ticks": 223,
+      "entryTick": 17,
+      "exitTick": 216,
+      "fastest": 199,
+      "gigue": [
+       710,
+       555,
+       505
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 9
+     }
+    },
+    {
+     "grid": "02e50aaf",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTo0ALIBhgG6Ap4FQjaiBA",
+      "ticks": 242,
+      "entryTick": 0,
+      "exitTick": 235,
+      "fastest": 235,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTo0BIoBhgHiAk2iCQ",
+      "ticks": 234,
+      "entryTick": 17,
+      "exitTick": 227,
+      "fastest": 210,
+      "gigue": [
+       925,
+       750,
+       540
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 9
+     }
+    },
+    {
+     "grid": "70afd1af",
+     "arret": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTo1AGKmDmo",
+      "ticks": 253,
+      "entryTick": 0,
+      "exitTick": 246,
+      "fastest": 246,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 228
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOmNoYW1waWdub24tZmFsYWlzZTo1BJoBdtoCEEX6CQ",
+      "ticks": 245,
+      "entryTick": 17,
+      "exitTick": 238,
+      "fastest": 221,
+      "gigue": [
+       965,
+       660,
+       535
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 8
+     }
+    }
+   ]
+  },
+  "champignon-iles": {
+   "variants": [
+    {
+     "grid": "bdda2b93",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczowAIIBhgHaFg",
+      "ticks": 395,
+      "entryTick": 0,
+      "exitTick": 388,
+      "fastest": 388,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczowBKIBZooDOdIS",
+      "ticks": 386,
+      "entryTick": 17,
+      "exitTick": 379,
+      "fastest": 363,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 12
+     }
+    },
+    {
+     "grid": "f1487a2e",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczoxAIIBhgGiDKYJQg",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczoxBLIBVuoCMDH6EQ",
+      "ticks": 376,
+      "entryTick": 17,
+      "exitTick": 369,
+      "fastest": 352,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 10
+     }
+    },
+    {
+     "grid": "4dc2df70",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczoyAIIBhgGCFg",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczoyBJoBbvoCMYoS",
+      "ticks": 374,
+      "entryTick": 17,
+      "exitTick": 368,
+      "fastest": 352,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 13
+     }
+    },
+    {
+     "grid": "bd355016",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczozAIIBhgGCFg",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczozBKIBXuoCaPIR",
+      "ticks": 375,
+      "entryTick": 17,
+      "exitTick": 368,
+      "fastest": 352,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 11
+     }
+    },
+    {
+     "grid": "418b09d8",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo0AHouWq4EIEFCSAmCASghcCIYqg8",
+      "ticks": 421,
+      "entryTick": 0,
+      "exitTick": 414,
+      "fastest": 414,
+      "gigue": [
+       930,
+       860,
+       825
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo0BKIBZtoCKDm6Ew",
+      "ticks": 398,
+      "entryTick": 17,
+      "exitTick": 391,
+      "fastest": 374,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 12
+     }
+    },
+    {
+     "grid": "427a5eda",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo1AIIBhgHSFA",
+      "ticks": 362,
+      "entryTick": 0,
+      "exitTick": 355,
+      "fastest": 355,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo1BKoBXuICIDnaEA",
+      "ticks": 354,
+      "entryTick": 17,
+      "exitTick": 347,
+      "fastest": 330,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 11
+     }
+    },
+    {
+     "grid": "64ed2783",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo2AIIBhgHaFg",
+      "ticks": 395,
+      "entryTick": 0,
+      "exitTick": 388,
+      "fastest": 388,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo2BJoBbtoCIDHqEg",
+      "ticks": 386,
+      "entryTick": 17,
+      "exitTick": 380,
+      "fastest": 363,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 13
+     }
+    },
+    {
+     "grid": "ba3659ae",
+     "arret": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo3AIIBhgGiDKYJQg",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 16
+     },
+     "elan": {
+      "code": "AQMYbW9kdWxlOmNoYW1waWdub24taWxlczo3BMIBRuoCMDH6EQ",
+      "ticks": 376,
+      "entryTick": 17,
+      "exitTick": 369,
+      "fastest": 352,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 8
+     }
+    }
+   ]
+  },
+  "champignon-promenade": {
+   "variants": [
+    {
+     "grid": "e4554524",
+     "arret": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjAAggGGAYoTRvIH",
+      "ticks": 471,
+      "entryTick": 0,
+      "exitTick": 465,
+      "fastest": 465,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjAE0gFG2gIgMaIDIO4ByQEaqAHyATHaBG6yCg",
+      "ticks": 511,
+      "entryTick": 17,
+      "exitTick": 504,
+      "fastest": 487,
+      "rapide": 470,
+      "gigue": [
+       1000,
+       970,
+       915
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 8
+     }
+    },
+    {
+     "grid": "b20a6f83",
+     "arret": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjEAggGGAeIGRsIMRvIH",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjEEugEeLQ5JngF48gFhugIusgxWogc",
+      "ticks": 485,
+      "entryTick": 17,
+      "exitTick": 479,
+      "fastest": 461,
+      "gigue": [
+       1000,
+       990,
+       960
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    },
+    {
+     "grid": "e1928e27",
+     "arret": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjIAggGGAeIGRqIMRpII",
+      "ticks": 482,
+      "entryTick": 0,
+      "exitTick": 475,
+      "fastest": 475,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjIEqgFW4gJoigQQNsoBwQFaWPoBMfIGdvoG",
+      "ticks": 504,
+      "entryTick": 17,
+      "exitTick": 497,
+      "fastest": 481,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "23e6f5ca",
+     "arret": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjMAggGGAeIGRsIMZqoI",
+      "ticks": 493,
+      "entryTick": 0,
+      "exitTick": 486,
+      "fastest": 486,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjMEqgFW4gJIKeoBmAGqAS7CA2GyCDbiBw",
+      "ticks": 495,
+      "entryTick": 17,
+      "exitTick": 488,
+      "fastest": 472,
+      "gigue": [
+       1000,
+       985,
+       950
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    },
+    {
+     "grid": "d218e0da",
+     "arret": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjQAggGmAdIIhgG6CF7iBw",
+      "ticks": 460,
+      "entryTick": 0,
+      "exitTick": 454,
+      "fastest": 454,
+      "gigue": [
+       1000,
+       1000,
+       975
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 11
+     },
+     "elan": {
+      "code": "AQMdbW9kdWxlOmNoYW1waWdub24tcHJvbWVuYWRlOjQEwgEgDkUOGe4BWMoBKCmqBT6KC0bSBw",
+      "ticks": 515,
+      "entryTick": 17,
+      "exitTick": 508,
+      "fastest": 488,
+      "gigue": [
+       1000,
+       985,
+       970
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 7
+     }
+    }
+   ]
+  },
+  "champignon-rafale": {
+   "variants": [
+    {
+     "grid": "19e636df",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjAAKqgB-gN4wgdG6gQ",
+      "ticks": 309,
+      "entryTick": 0,
+      "exitTick": 302,
+      "fastest": 308,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjAEkgHQApoBELoIXtIE",
+      "ticks": 301,
+      "entryTick": 17,
+      "exitTick": 295,
+      "fastest": 282,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 11
+     }
+    },
+    {
+     "grid": "eb64a198",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjEAggJeIj7SCD7KBQ",
+      "ticks": 288,
+      "entryTick": 0,
+      "exitTick": 281,
+      "fastest": 281,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 7
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjEEigGoGSJQwgg0mAGyAT7iBA",
+      "ticks": 702,
+      "entryTick": 17,
+      "exitTick": 695,
+      "fastest": 694,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "0982055e",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjIAZmpQlgL8DOYBggYmJKABogFG8gQ",
+      "ticks": 534,
+      "entryTick": 0,
+      "exitTick": 527,
+      "fastest": 543,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjIEigGwC3mqClSoAdIBNroF",
+      "ticks": 529,
+      "entryTick": 17,
+      "exitTick": 523,
+      "fastest": 509,
+      "gigue": [
+       1000,
+       850,
+       730
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 6
+     }
+    },
+    {
+     "grid": "4be17302",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjMAXpoBYLYBhBbaB54EYi6CBQ",
+      "ticks": 703,
+      "entryTick": 0,
+      "exitTick": 696,
+      "fastest": 711,
+      "gigue": [
+       1000,
+       995,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjMEigGoBYEB6gp-nAGyAk7iBA",
+      "ticks": 448,
+      "entryTick": 17,
+      "exitTick": 441,
+      "fastest": 424,
+      "gigue": [
+       750,
+       655,
+       540
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 9
+     }
+    },
+    {
+     "grid": "e292412d",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjQAggFe6gJkOCJY6gZG6gQ",
+      "ticks": 300,
+      "entryTick": 0,
+      "exitTick": 293,
+      "fastest": 295,
+      "gigue": [
+       1000,
+       1000,
+       935
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjQE0gHwAoEBggIgehCyASjiBi6KBQ",
+      "ticks": 362,
+      "entryTick": 17,
+      "exitTick": 355,
+      "fastest": 340,
+      "gigue": [
+       1000,
+       1000,
+       970
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    },
+    {
+     "grid": "838aa6a9",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjUAugQIHBVYSXIYCcIGhAGAAYICRooF",
+      "ticks": 372,
+      "entryTick": 0,
+      "exitTick": 365,
+      "fastest": 365,
+      "rapide": 360,
+      "gigue": [
+       800,
+       665,
+       605
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24tcmFmYWxlOjUEygEoCliKAZACKRoQFB5yNnoYGjDSBWbKBQ",
+      "ticks": 346,
+      "entryTick": 17,
+      "exitTick": 339,
+      "fastest": 322,
+      "rapide": 291,
+      "gigue": [
+       965,
+       930,
+       860
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 5
+     }
+    }
+   ]
+  },
+  "champignon-tourbillon": {
+   "variants": [
+    {
+     "grid": "78e97675",
+     "arret": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjowAMoC_gMi7gIingN4tgdS",
+      "ticks": 351,
+      "entryTick": 0,
+      "exitTick": 344,
+      "fastest": 344,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 45
+     },
+     "elan": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjowBPIBrgMq9gIiHO4CkAG-B0I",
+      "ticks": 331,
+      "entryTick": 17,
+      "exitTick": 324,
+      "fastest": 307,
+      "gigue": [
+       1000,
+       1000,
+       920
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 46
+     }
+    },
+    {
+     "grid": "62f83cc2",
+     "arret": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjoxAJICjgM6pgHiAZ4DKIYDhAEylgdK",
+      "ticks": 387,
+      "entryTick": 0,
+      "exitTick": 380,
+      "fastest": 380,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 20
+     },
+     "elan": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjoxBOoBxgIajgMylgNIItYCSCIwlgda",
+      "ticks": 376,
+      "entryTick": 17,
+      "exitTick": 369,
+      "fastest": 352,
+      "gigue": [
+       810,
+       840,
+       770
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 40
+     }
+    },
+    {
+     "grid": "c8d17371",
+     "arret": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjoyAMICLkG1ATCaASjSAe4COhTuAoABxgdK",
+      "ticks": 375,
+      "entryTick": 0,
+      "exitTick": 368,
+      "fastest": 368,
+      "rapide": 361,
+      "gigue": [
+       1000,
+       1000,
+       765
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjoyBOoBPjBJIkh9EPoBhgMangOYAZYHSg",
+      "ticks": 356,
+      "entryTick": 17,
+      "exitTick": 349,
+      "fastest": 332,
+      "gigue": [
+       985,
+       745,
+       635
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 7
+     }
+    },
+    {
+     "grid": "638e32f9",
+     "arret": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjozAMICrgI6ngGSAv4COt4ClAEwlgdS",
+      "ticks": 382,
+      "entryTick": 0,
+      "exitTick": 375,
+      "fastest": 376,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 19
+     },
+     "elan": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjozBMoBhgMabsoCpgEaxgEixgMgNjKmBzo",
+      "ticks": 376,
+      "entryTick": 17,
+      "exitTick": 370,
+      "fastest": 351,
+      "gigue": [
+       970,
+       940,
+       870
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 6
+     }
+    },
+    {
+     "grid": "19aac65b",
+     "arret": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjo0AMIC9gGgAV0OZUDMATruAogBlgda",
+      "ticks": 341,
+      "entryTick": 0,
+      "exitTick": 334,
+      "fastest": 335,
+      "gigue": [
+       1000,
+       965,
+       875
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 24
+     },
+     "elan": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjo0BPIBlgMilgMgjgMyxgJAcpYHWg",
+      "ticks": 380,
+      "entryTick": 17,
+      "exitTick": 373,
+      "fastest": 355,
+      "gigue": [
+       990,
+       940,
+       715
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 40
+     }
+    },
+    {
+     "grid": "d6a77feb",
+     "arret": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjo1AMoC5gIabsoCdrIC7gKIAcYHQg",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       625,
+       570,
+       545
+      ],
+      "raccord": null,
+      "exigence": 5,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMebW9kdWxlOmNoYW1waWdub24tdG91cmJpbGxvbjo1BPIBxgIqLoID1gMqzgJQIjCWB2I",
+      "ticks": 378,
+      "entryTick": 17,
+      "exitTick": 371,
+      "fastest": 354,
+      "rapide": 352,
+      "gigue": [
+       1000,
+       940,
+       740
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 5
+     }
+    }
+   ]
+  },
+  "champignon-zigzag": {
+   "variants": [
+    {
+     "grid": "9fb8c5d9",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjAAugJGKCnsASquASq1ARiuAYoH",
+      "ticks": 276,
+      "entryTick": 0,
+      "exitTick": 270,
+      "fastest": 270,
+      "gigue": [
+       1000,
+       725,
+       625
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjAE6gGOAXE-eK4BKrwBMPYHQg",
+      "ticks": 271,
+      "entryTick": 17,
+      "exitTick": 264,
+      "fastest": 247,
+      "gigue": [
+       1000,
+       925,
+       775
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 7
+     }
+    },
+    {
+     "grid": "5a052e92",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjEAwgJWSCGMAiKeAhquAYgBtgGCBw",
+      "ticks": 310,
+      "entryTick": 0,
+      "exitTick": 304,
+      "fastest": 304,
+      "rapide": 284,
+      "gigue": [
+       1000,
+       995,
+       935
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 10
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjEE8gHGAdECCswBmgHtASL2B0I",
+      "ticks": 308,
+      "entryTick": 17,
+      "exitTick": 301,
+      "fastest": 284,
+      "rapide": 260,
+      "gigue": [
+       1000,
+       1000,
+       970
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 24
+     }
+    },
+    {
+     "grid": "e94211dc",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjIAwgJGKCH8ARruATI9FlGcASKEAUreB1o",
+      "ticks": 327,
+      "entryTick": 0,
+      "exitTick": 320,
+      "fastest": 320,
+      "gigue": [
+       1000,
+       965,
+       670
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjIE8gF2cX5olgIyFqQBad4B0AHGB4oB",
+      "ticks": 351,
+      "entryTick": 17,
+      "exitTick": 345,
+      "fastest": 328,
+      "rapide": 292,
+      "gigue": [
+       1000,
+       1000,
+       995
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 14
+     }
+    },
+    {
+     "grid": "ec47bfbe",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjMAygLOAWFecL4BMjZkMjTGB1o",
+      "ticks": 293,
+      "entryTick": 0,
+      "exitTick": 286,
+      "fastest": 283,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 11
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjME8gG-AWBmoAGUATJ2WJ4IOg",
+      "ticks": 284,
+      "entryTick": 17,
+      "exitTick": 278,
+      "fastest": 261,
+      "rapide": 254,
+      "gigue": [
+       1000,
+       995,
+       905
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 12
+     }
+    },
+    {
+     "grid": "30c4e55b",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjQAwgKmAhqcAWJ-nAFKhgFkIuYHUg",
+      "ticks": 319,
+      "entryTick": 0,
+      "exitTick": 313,
+      "fastest": 313,
+      "rapide": 288,
+      "gigue": [
+       1000,
+       885,
+       785
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 19
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjQE8gGuAhqUAVpuhAEiXoQBGuYHUg",
+      "ticks": 296,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "rapide": 260,
+      "gigue": [
+       1000,
+       810,
+       565
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 18
+     }
+    },
+    {
+     "grid": "e13e1b17",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjUA0gI1iAGaAaYBMCKWATI2lAEy9gdK",
+      "ticks": 303,
+      "entryTick": 0,
+      "exitTick": 296,
+      "fastest": 295,
+      "gigue": [
+       1000,
+       785,
+       610
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjUE8gGGAkpOfEKeATl1LlB-ugc",
+      "ticks": 292,
+      "entryTick": 17,
+      "exitTick": 286,
+      "fastest": 269,
+      "rapide": 259,
+      "gigue": [
+       990,
+       990,
+       950
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 15
+     }
+    },
+    {
+     "grid": "81b55908",
+     "arret": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjYAygKOARhNQtQBGu4BGv4COtYHigE",
+      "ticks": 332,
+      "entryTick": 0,
+      "exitTick": 326,
+      "fastest": 326,
+      "rapide": 307,
+      "gigue": [
+       1000,
+       955,
+       820
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMabW9kdWxlOmNoYW1waWdub24temlnemFnOjYE-gFWOAlKODROuAGOAhrmAiLeB4oB",
+      "ticks": 327,
+      "entryTick": 17,
+      "exitTick": 321,
+      "fastest": 304,
+      "rapide": 275,
+      "gigue": [
+       1000,
+       930,
+       835
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 10
+     }
+    }
+   ]
+  },
   "cheminee-pics": {
    "variants": [
     {
