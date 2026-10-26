@@ -1,4 +1,5 @@
-import { readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig, type Plugin } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
@@ -56,11 +57,43 @@ function filDuGenerateur(): Plugin {
   };
 }
 
+/**
+ * Lot R9 : **la construction de production (`VITE_PRODUCTION=1`) ne publie ni la preuve de l'auteur ni les outils.** Chaque fichier figé de `levels/` y perd
+ * son champ `preuve` (la rediffusion de l'auteur : la renvoyer au serveur donnerait son temps ; le dépôt et l'image du serveur la gardent, c'est le serveur
+ * qui s'en sert) ; `outils/` (`?semaine=` : les sept niveaux suivants, galerie : intentions) et `demo/` (`?api=demo` : la preuve de l'auteur des jours à
+ * venir) ne partent pas. Le jeu lit un fichier sans preuve (`thawPublicLevel`). Fait **ici**, à la construction de Jump, pour que toute construction de
+ * production soit propre quel que soit l'assemblage du site (`scripts/site.mjs` le revérifie) ; testé sur la vraie construction (`test/productionSite.test.ts`).
+ */
+function productionSansPreuve(): Plugin {
+  let sortie = "";
+  let actif = false;
+  return {
+    name: "jump-production-sans-preuve",
+    apply: "build",
+    configResolved(config) {
+      actif = process.env.VITE_PRODUCTION === "1";
+      sortie = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      if (!actif) return;
+      const niveaux = join(sortie, "levels");
+      if (existsSync(niveaux)) {
+        for (const f of readdirSync(niveaux).filter((n) => n.endsWith(".json"))) {
+          const fichier = join(niveaux, f);
+          const { preuve: _preuve, ...publie } = JSON.parse(readFileSync(fichier, "utf8")) as Record<string, unknown>;
+          writeFileSync(fichier, `${JSON.stringify(publie)}\n`);
+        }
+      }
+      for (const dossier of ["outils", "demo"]) rmSync(join(sortie, dossier), { recursive: true, force: true });
+    },
+  };
+}
+
 export default defineConfig({
   // Chemins relatifs, comme DailyTrack : le jeu est publié sous `<site>/jump/` (GitHub Pages : `/DailyTrack/jump/` et, pour une branche,
   // `/DailyTrack/b/<branche>/jump/`) ; une base absolue `/jump/` casserait les aperçus de branche.
   base: "./",
-  plugins: [filDuGenerateur(), pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR, ...CATALOGUE_APERCU.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
+  plugins: [filDuGenerateur(), productionSansPreuve(), pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR, ...CATALOGUE_APERCU.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
   experimental: {
     // Une police est demandée à `/assets/…` (la racine du site, partagée avec le portail et Track), jamais relativement à la page : `/jump/assets/…` ferait un
     // second téléchargement des mêmes octets. Tout le reste reste relatif à la page.

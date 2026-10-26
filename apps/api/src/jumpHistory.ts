@@ -124,7 +124,7 @@ export interface JumpSeedOptions {
 export async function seedJumpDays(options: JumpSeedOptions): Promise<number> {
   if (options.demoOnly) await assertDemoOnly(options.db);
   let clock = 0;
-  const api = createApi({ db: options.db, now: () => clock, demoPlayers: true, jumpFrozen: options.frozen, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
+  const api = createApi({ db: options.db, now: () => clock, demoPlayers: true, allowCopies: true, jumpFrozen: options.frozen, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
   const min = options.players?.min ?? 16;
   const max = options.players?.max ?? 28;
   let total = 0;

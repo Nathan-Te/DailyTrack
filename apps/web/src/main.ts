@@ -166,7 +166,8 @@ if (wantsSalon) {
   const base = apiBase();
   if (!base) salonNotice = t("salon.boot.repli", { raison: t("salon.boot.sansServeur") });
   else {
-    const booted = await salonMod!.bootSalon({ search: location.search, base, startAt: params.has("debug") ? Number(params.get("salonAt")) || null : null, spectator: watchWanted });
+    // Lot R9 : `?salonAt=` (la session du Salon à une autre heure : un circuit à venir) est fermé en production.
+    const booted = await salonMod!.bootSalon({ search: location.search, base, startAt: params.has("debug") && !isRestricted(location.search) ? Number(params.get("salonAt")) || null : null, spectator: watchWanted });
     if (salonMod!.isBootError(booted)) salonNotice = t("salon.boot.repli", { raison: booted.error });
     else salon = booted;
   }
@@ -2852,7 +2853,9 @@ if (params.has("debug")) {
           endMs: sal.endMs,
           stats: { ...sal.stats, ...salonStats },
           /** Fait valoir `ms` comme heure du Salon (l'horloge continue ensuite à avancer). */
-          setNow: (ms: number) => sal.clock.set(ms),
+          setNow: (ms: number) => {
+            if (!restricted) sal.clock.set(ms); // lot R9 : jamais en production (une session du Salon à une autre heure montre un circuit à venir)
+          },
           /** Fantômes affichés : `all`, `top` ou `off` (comme la touche G, sans passer par les autres). */
           setGhostMode(mode: "all" | "top" | "off") {
             sal.ghostMode = mode;

@@ -95,6 +95,7 @@ const fr = {
   "erreur.level_unavailable": "Le niveau n'est pas disponible pour l'instant. Réessaie dans un moment.",
   "erreur.invalid_replay": "Cette course est illisible : elle n'a pas été comptée.",
   "erreur.not_finished": "Cette course ne va pas jusqu'à l'arrivée.",
+  "erreur.replay_copy": "Cette course est la copie d'une autre.",
   "erreur.track_mismatch": "Cette course n'est pas sur le bon circuit.",
   "erreur.sim_version": "Une nouvelle version du jeu est disponible : recharge la page.",
   "erreur.version": "Une nouvelle version du jeu est disponible : recharge la page.",

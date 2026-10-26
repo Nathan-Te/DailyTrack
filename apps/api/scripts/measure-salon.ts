@@ -71,7 +71,7 @@ const db: typeof rawDb = {
   },
 };
 let clock = START;
-const api = createApi({ db, now: () => clock, rateSalt: "mesure" });
+const api = createApi({ db, now: () => clock, rateSalt: "mesure", allowCopies: true });
 await api.handle(new Request("http://load.test/api/health")); // crée les tables
 
 // --- Les joueurs ----------------------------------------------------------------------------------------------------------

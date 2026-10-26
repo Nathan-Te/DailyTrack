@@ -21,7 +21,8 @@
 //   npm run smoke -w @cdj/api -- https://recette.playdujour.com --lecture-seule --environnement recette --par-hosting --joueur-demo   (lot I3 : le cache de Hosting)
 import { appendFileSync, readFileSync, readdirSync } from "node:fs";
 import { dailyCircuit, encodeReplay, formatDay, parseDay, runPilot, salonCircuit } from "@cdj/sim";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, lifeReplay, replayAttempt } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, decodeReplay, demoAttempts, encodeReplay as encodeJump, jumpMedalFor, lifeReplay, repriseParPhase, replayAttempt } from "@cdj/jump-sim";
+import { pointsDe } from "../src/classementDuJour";
 import { jumpDailyOf } from "../src/jump";
 import { DEMO_JOUEUR_ID } from "../src/portailDemo";
 import { readOnlySmoke, smokeRefusal, smokeSummary, varyParHosting, verifierVide } from "./smokeRead";
@@ -100,8 +101,13 @@ const again = await call("GET", `/api/day/${date}`);
 check("deuxième lecture : lu en base, plus de génération", again.body.trackId === info.body.trackId && again.ms < Math.max(300, info.ms), `${again.ms} ms`);
 
 const circuit = dailyCircuit(day);
-const run = runPilot(circuit.track, { grip: 0.9 });
+// Lot R9 : les classements refusent les copies (409 `replay_copy`). Le smoke tourne aussi sur la recette, dont la base garde les courses des passages
+// d'avant : le joueur d'essai court d'une adhérence **tirée au hasard** à chaque passage (une autre course, donc d'autres entrées), jamais celle d'un passage précédent.
+const gripAleatoire = () => Math.round((0.55 + Math.random() * 0.4) * 10_000) / 10_000;
+const run = [gripAleatoire(), gripAleatoire(), gripAleatoire(), 0.9, 0.8].map((grip) => runPilot(circuit.track, { grip })).find((r) => r.valid) ?? runPilot(circuit.track, { grip: 0.9 });
 check("le pilote local finit le circuit du jour", run.valid && circuit.track.id === info.body.trackId);
+const tcopy = await call("POST", "/api/submit", { playerId: player, name: NAME, date, replay: encodeReplay(circuit.authorReplay) });
+check("DailyTrack : la copie de la rediffusion de l'auteur (le pilote) est refusée (409 replay_copy)", tcopy.status === 409 && tcopy.body.error === "replay_copy", `${tcopy.status} ${JSON.stringify(tcopy.body)}`);
 const sub = await call("POST", "/api/submit", { playerId: player, name: NAME, date, replay: encodeReplay(run.replay) });
 check("temps du jour accepté, rejoué par le serveur", sub.status === 200 && sub.body.ms === run.finishMs && sub.body.rank >= 1, `${sub.body.ms} ms, ${sub.ms} ms de requête`);
 const taken = await call("GET", `/api/name?name=${encodeURIComponent(NAME.toUpperCase())}`);
@@ -113,6 +119,10 @@ const board = await call("GET", `/api/day/${date}/leaderboard?player=${player}`)
 check("classement du jour : le joueur y est", board.status === 200 && board.body.me?.name === NAME);
 const ghost = await call("GET", `/api/day/${date}/ghost?kind=first`);
 check("fantôme du premier servi", ghost.status === 200 && typeof ghost.body.replay === "string");
+// Lot R9 : le fantôme du premier est téléchargeable ; le renvoyer tel quel sous un autre identifiant est refusé (le joueur n'est même pas créé).
+const stranger = Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+const tghost = await fetch(`${base}/api/submit`, { method: "POST", headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) }, body: JSON.stringify({ name: `${NAME}Copie`, date, replay: ghost.body.replay }) });
+check("DailyTrack : le fantôme du premier renvoyé sous un autre identifiant est refusé (409 replay_copy)", tghost.status === 409 && ((await tghost.json()) as any).error === "replay_copy", String(tghost.status));
 
 const now = await call("GET", `/api/salon/now?player=${player}`);
 check("Salon : session en cours", now.status === 200 && Number.isInteger(now.body.session), `session ${now.body.session}`);
@@ -164,7 +174,21 @@ try {
   /* sans le dépôt : le niveau généré (un jour figé ne serait alors pas le bon : le serveur le dirait, 409 version) */
 }
 const level = jumpDailyOf(day, frozenFiles);
-const jbody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: level.code };
+// Lot R9 : la preuve de l'auteur est refusée (copie) ; le joueur d'essai envoie **la plus rapide des courses fictives qui arrivent**, d'une graine tirée au hasard à chaque
+// passage (le smoke tourne aussi sur la recette : jamais les mêmes entrées qu'un passage précédent).
+const seed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+let mineJ: { code: string; ticks: number; deaths: number } | null = null;
+for (const a of demoAttempts(level.level, level.replay, seed, { attempts: 40, reprise: repriseParPhase(level) })) {
+  if (a.end !== "arrivée") continue;
+  const code = encodeJump(a.replay);
+  const r = replayAttempt(level.level, a.replay, level.id);
+  if (!r.finished || code === level.code || (mineJ && r.time >= mineJ.ticks)) continue;
+  mineJ = { code, ticks: r.time, deaths: r.deaths.length };
+}
+if (!mineJ) throw new Error("aucune course fictive de DailyJump n'arrive : le smoke n'a rien à envoyer");
+const monEssai = mineJ as { code: string; ticks: number; deaths: number };
+const jmedal = jumpMedalFor(monEssai.ticks, level.medals);
+const jbody = { levelId: level.id, simVersion: JUMP_SIM_VERSION, generatorVersion: JUMP_GENERATOR_VERSION, replay: monEssai.code };
 const jcall = async (method: string, path: string, body?: unknown) => {
   const t0 = performance.now();
   const res = await fetch(base + path, {
@@ -175,16 +199,18 @@ const jcall = async (method: string, path: string, body?: unknown) => {
   return { status: res.status, body: (await res.json()) as any, ms: Math.round(performance.now() - t0), headers: res.headers };
 };
 check("DailyJump : le niveau du jour du serveur est celui du jeu", jday.body.id === level.id && jday.body.hash === level.hash, `${level.id} ${level.hash}`);
+const jcopy = await jcall("POST", "/api/jump/submit", { ...jbody, replay: level.code });
+check("DailyJump : la copie de la preuve de l'auteur est refusée (409 replay_copy)", jcopy.status === 409 && jcopy.body.error === "replay_copy", `${jcopy.status} ${JSON.stringify(jcopy.body)}`);
 const jsub = await jcall("POST", "/api/jump/submit", jbody);
 check(
-  "DailyJump : essai du jour accepté, rejoué par le serveur (temps de l'auteur, sans mort), rang rendu",
-  jsub.status === 200 && jsub.body.ticks === level.authorTicks && jsub.body.deaths === 0 && jsub.body.medal === "author" && jsub.body.rank >= 1 && jsub.body.participants >= jsub.body.rank,
+  "DailyJump : essai du jour accepté, rejoué par le serveur (son temps et ses morts, pas ceux d'un envoi), rang rendu",
+  jsub.status === 200 && jsub.body.ticks === monEssai.ticks && jsub.body.deaths === monEssai.deaths && jsub.body.medal === jmedal && jsub.body.rank >= 1 && jsub.body.participants >= jsub.body.rank,
   `${jsub.status} ${jsub.body.ticks} pas, rang ${jsub.body.rank}/${jsub.body.participants}, ${jsub.ms} ms`,
 );
 const jboard = await jcall("GET", `/api/jump/day/${date}/board`);
 check(
   "DailyJump : classement du jour, la ligne du joueur d'essai (même rang)",
-  jboard.status === 200 && jboard.body.me?.name === NAME && jboard.body.me?.ticks === level.authorTicks && jboard.body.me?.rank === jsub.body.rank && jboard.body.top.length >= 1,
+  jboard.status === 200 && jboard.body.me?.name === NAME && jboard.body.me?.ticks === monEssai.ticks && jboard.body.me?.rank === jsub.body.rank && jboard.body.top.length >= 1,
   `${jboard.body.participants} classé(s), ${jboard.ms} ms`,
 );
 const jold = await jcall("POST", "/api/jump/submit", { ...jbody, generatorVersion: JUMP_GENERATOR_VERSION - 1 });
@@ -208,11 +234,18 @@ check(
     jghost.body.mine === (firstRow?.name === NAME),
   `${jghost.status} premier « ${String(jghost.body.name)} », ${String(jghost.body.ticks)} pas, ${jghost.ms} ms`,
 );
+// Lot R9 : le fantôme du premier est téléchargeable ; le renvoyer tel quel sous un autre identifiant est refusé.
+const jghostCopy = await fetch(`${base}/api/jump/submit`, {
+  method: "POST",
+  headers: { "X-Player-Id": stranger, "Content-Type": "application/json", ...(origin ? { Origin: origin } : {}) },
+  body: JSON.stringify({ ...jbody, replay: jghost.body.replay, name: `${NAME}Copie` }),
+});
+check("DailyJump : le fantôme du premier renvoyé sous un autre identifiant est refusé (409 replay_copy)", jghostCopy.status === 409 && ((await jghostCopy.json()) as any).error === "replay_copy", String(jghostCopy.status));
 const jme = await jcall("GET", "/api/jump/me");
 const meToday = Array.isArray(jme.body.days) ? jme.body.days.find((d: { date: string }) => d.date === date) : null;
 check(
   "DailyJump : /api/jump/me rend le jour classé du joueur d'essai (temps rejoué, médaille, morts)",
-  jme.status === 200 && jme.body.name === NAME && meToday?.ticks === level.authorTicks && meToday?.medal === "author" && meToday?.deaths === 0 && jme.body.stats?.days >= 1,
+  jme.status === 200 && jme.body.name === NAME && meToday?.ticks === monEssai.ticks && (meToday?.medal ?? null) === jmedal && meToday?.deaths === monEssai.deaths && jme.body.stats?.days >= 1,
   `${jme.status} ${jme.body.stats?.days} jour(s), ${jme.ms} ms`,
 );
 
@@ -280,15 +313,15 @@ check(
     etats.cdj?.statut === "fini" &&
     etats.cdj?.tempsMs === run.finishMs &&
     etats.jump?.statut === "fini" &&
-    etats.jump?.medaille === "author" &&
+    (etats.jump?.medaille ?? null) === jmedal &&
     pjour.body.joueur?.serie >= 1 &&
     pjour.body.joueur?.aujourdhuiParfaite === true,
   `${pjour.status} Track ${String(etats.cdj?.statut)} (${String(etats.cdj?.rang)}e sur ${String(etats.cdj?.classes)}), Jump ${String(etats.jump?.statut)}, série ${String(pjour.body.joueur?.serie)}, ${pjour.ms} ms`,
 );
-// Lot I3 : les points du jour et le classement du jour (le joueur d'essai a fini les deux jeux : l'auteur de Jump vaut 4 points au moins).
+// Lot I3 : les points du jour et le classement du jour (le joueur d'essai a fini les deux jeux : la somme des points de ses deux médailles, lot R9).
 check(
   "portail : les points, la place et le nombre de classés du jour ; le numéro de journée commun",
-  pjour.status === 200 && pjour.body.joueur?.points >= 4 && pjour.body.joueur?.rangDuJour >= 1 && pjour.body.joueur?.classesDuJour >= pjour.body.joueur?.rangDuJour && (pjour.body.journee === null || pjour.body.journee >= 1),
+  pjour.status === 200 && pjour.body.joueur?.points === pointsDe(sub.body.medal ?? null) + pointsDe(jmedal) && pjour.body.joueur?.rangDuJour >= 1 && pjour.body.joueur?.classesDuJour >= pjour.body.joueur?.rangDuJour && (pjour.body.journee === null || pjour.body.journee >= 1),
   `${String(pjour.body.joueur?.points)} points, ${String(pjour.body.joueur?.rangDuJour)}e sur ${String(pjour.body.joueur?.classesDuJour)}, journée ${String(pjour.body.journee)}`,
 );
 const pclass = await jcall("GET", "/api/portail/classement");
@@ -299,7 +332,7 @@ check(
     Array.isArray(pclass.body.top) &&
     pclass.body.moi?.pseudo === NAME &&
     pclass.body.moi?.points === pjour.body.joueur?.points &&
-    pclass.body.moi?.resultats?.jump?.medaille === "author" &&
+    (pclass.body.moi?.resultats?.jump?.medaille ?? null) === jmedal &&
     /\bprivate\b/.test(pclass.headers.get("cache-control") ?? "") &&
     !JSON.stringify(pclass.body).includes(player),
   `${pclass.status} ${String(pclass.body.classes)} classé(s), toi : ${String(pclass.body.moi?.rang)}e, ${pclass.ms} ms`,

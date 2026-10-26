@@ -1,15 +1,16 @@
-import type { DailyLevel, JumpThemeName } from "@cdj/jump-sim";
+import type { JumpThemeName, PublicDailyLevel } from "@cdj/jump-sim";
 import { dailyLevelId, jumpThemeForDay } from "@cdj/jump-sim";
 import { formatDay } from "@cdj/core";
 import { dropCache, readCache, writeCache } from "./dailyCache";
-import { thawLevel } from "./frozen";
+import { thawPublicLevel } from "./frozen";
 import { fromPayload, isPayload, type DailyPayload } from "./dailyWork";
 import type { KeyValue } from "./memory";
 import type { WorkerReply, WorkerRequest } from "./dailyWorker";
 
 // Chargement du niveau du jour (lot 7b), **le seul point d'appel** de `main.ts`. Ordre :
 //   0. (lot 10) un **niveau figé** (`levels/AAAA-MM-JJ.json`, seulement pour une date de la liste écrite à la construction) : le fichier est lu
-//      et **sa preuve rejouée** (`thawLevel`) ; refusé (ou absent, illisible), on continue comme avant ;
+//      et vérifié (`thawPublicLevel` : **sa preuve rejouée** s'il la porte ; lot R9 : le fichier publié en production ne la porte plus) ; refusé (ou
+//      absent, illisible), on continue comme avant ;
 //   1. le cache (`jump:niveau:<id>`) : la charge est lue puis **sa preuve rejouée** (quelques ms) ; si elle échoue, le niveau est régénéré ;
 //   2. un worker de module (`dailyWorker.ts`) : la génération (≈ 140 ms, 230 au pire sous Node, ×4 sur téléphone) quitte le fil principal,
 //      qui affiche « Préparation du niveau… » ;
@@ -25,7 +26,8 @@ import type { WorkerReply, WorkerRequest } from "./dailyWorker";
 export type DailySource = "fige" | "cache" | "worker" | "principal";
 
 export interface DailyLoad {
-  level: DailyLevel;
+  /** Lot R9 : `replay` et `code` (la preuve de l'auteur) n'y sont que pour un niveau généré, un cache ou un fichier figé qui la porte encore (hors production). */
+  level: PublicDailyLevel;
   source: DailySource;
   /** Vrai si un calcul de génération a eu lieu pendant ce chargement (worker ou fil principal). */
   generated: boolean;
@@ -122,7 +124,7 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
     if (raw === null) frozenMiss = "fichier absent";
     else {
       const t = now();
-      const level = thawLevel(raw, day);
+      const level = thawPublicLevel(raw, day);
       blocked += now() - t;
       if (typeof level !== "string") return { level, source: "fige", generated: false, catalog: "non", cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
       frozenMiss = level;
