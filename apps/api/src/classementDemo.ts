@@ -40,7 +40,7 @@ export interface ClassementDemoReport {
 /** Crée (ou recrée) les joueurs du classement dans la base donnée, jusqu'au jour `today` (numéro de jour de Paris). */
 export async function seedClassementDemo(o: { db: SqlDb; frozen: Readonly<Record<string, unknown>>; today: number; jours?: number }): Promise<ClassementDemoReport> {
   let clock = parisDayStart(o.today) + 12 * 3_600_000;
-  const api = createApi({ db: o.db, now: () => clock, demoPlayers: true, jumpFrozen: o.frozen, adminToken: ADMIN, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
+  const api = createApi({ db: o.db, now: () => clock, demoPlayers: true, allowCopies: true, jumpFrozen: o.frozen, adminToken: ADMIN, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
   const call = async (path: string, body: unknown, headers: Record<string, string> = {}) => {
     const res = await api.handle(new Request(`http://recette.local${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) }), { clientKey: "192.0.2.11" });
     const text = await res.text();

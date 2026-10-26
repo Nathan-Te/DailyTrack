@@ -13,7 +13,11 @@ export function salonCircuit(session: number): SalonCircuit {
   const theme = themeByName(salonTheme(session))!;
   const id = salonTrackId(session);
   const found = generateCircuit(SALON_SEED_BASE + session, theme, 0, id);
-  if (found) return { session, id, ...found, palette: theme.palette, theme: theme.name, fallback: false };
+  // Lot R9 : la rediffusion du pilote (`authorReplay`) ne fait pas partie du circuit d'une session (elle ne sert qu'au refus des copies du circuit du jour).
+  if (found) {
+    const { authorReplay: _authorReplay, ...circuit } = found;
+    return { session, id, ...circuit, palette: theme.palette, theme: theme.name, fallback: false };
+  }
   const track = createTestTrack();
   const pilot = bestPilotRun(track);
   const authorMs = pilot ? pilot.finishMs : 40_000;

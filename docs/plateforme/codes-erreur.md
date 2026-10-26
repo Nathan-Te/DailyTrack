@@ -61,6 +61,7 @@ Routes : `/api/…` = DailyTrack et routes communes (chemins historiques), `/api
 | `sim_version` | 409 | DailyTrack : rediffusion enregistrée avec une autre version de la simulation (recharger la page). | `POST /api/submit`, `/api/salon/<n>/submit` |
 | `track_mismatch` | 409 | DailyTrack : la rediffusion n'est pas celle du circuit de ce jour ou de cette session. | `POST /api/submit`, `/api/salon/<n>/submit` |
 | `not_finished` | 422 | La rediffusion, rejouée par le serveur, n'arrive pas au bout. | `POST /api/submit`, `/api/salon/<n>/submit`, `/api/jump/submit` |
+| `replay_copy` | 409 | Les entrées de la rediffusion sont identiques à celles de l'auteur du niveau ou d'une course déjà classée d'un autre joueur ce jour-là (une copie) : classements du jour seulement (lot R9). | `POST /api/submit`, `POST /api/jump/submit` |
 | `no_ghost` | 404 | Pas de fantôme : personne de classé, pas de temps pour ce joueur, ou personne devant lui. | `GET /api/day/<j>/ghost`, `GET /api/jump/day/<j>/ghost/first` |
 | `invalid_kind` | 400 | DailyTrack : fantôme demandé avec un `kind` autre que `first` ou `ahead`. | `GET /api/day/<j>/ghost` |
 | `invalid_session` | 400 | Salon : numéro de session (ou adresse) illisible. | `/api/salon/<n>/board`, `/ghosts`, `/submit` |

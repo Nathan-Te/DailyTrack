@@ -25,6 +25,7 @@ import {
   progresGarage,
   ratiosOf,
   replayRace,
+  replayTicks,
   themeByName,
   thresholdsOf,
   themeForDay,
@@ -37,6 +38,7 @@ import {
   type ThemeName,
   type Track,
 } from "@cdj/sim";
+import { inputsHash, trackInputs } from "./copies";
 import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
@@ -80,7 +82,8 @@ export const CDJ_SCHEMA: string[] = [
      author_ms INTEGER NOT NULL,
      attempt INTEGER NOT NULL,
      palette TEXT NOT NULL,
-     created_at INTEGER NOT NULL
+     created_at INTEGER NOT NULL,
+     author_hash TEXT
    )`,
   // Planning (lot 14) : les jours dont le circuit a été remplacé à l'avance par l'admin. Pas de ligne = circuit d'origine
   // (variante 0, thème de la date). `theme` : thème imposé, ou NULL pour celui de la date.
@@ -169,6 +172,11 @@ interface Circuit {
   attempt: number;
   palette: PaletteName;
   track: Track;
+  /**
+   * Lot R9 : l'empreinte des entrées de l'auteur du circuit (le pilote automatique, `copies.ts`) : une course qui en est la copie est refusée. `null` : pas
+   * calculée (ligne d'avant, jour passé : un jour fermé n'accepte plus rien).
+   */
+  authorHash: string | null;
 }
 
 export type CdjInstance = GameInstance & {
@@ -215,12 +223,13 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
    * le résultat est le même (déterministe) et l'écriture identique, donc sans conséquence.
    */
   async function loadCircuit(day: number, variant: number, theme: ThemeName | null, expected: string): Promise<Circuit> {
-    const row = await db.first<{ track_id: string; spec: string; author_ms: number; attempt: number; palette: string }>(
-      "SELECT track_id, spec, author_ms, attempt, palette FROM circuits WHERE day = ?",
+    const row = await db.first<{ track_id: string; spec: string; author_ms: number; attempt: number; palette: string; author_hash: string | null }>(
+      "SELECT track_id, spec, author_ms, attempt, palette, author_hash FROM circuits WHERE day = ?",
       [day],
     );
     let circuit: Circuit;
-    if (row && row.track_id === expected) {
+    // Lot R9 : un circuit gardé sans l'empreinte de son auteur (écrit avant le lot) est recalculé tant que son jour accepte des temps ; un jour fermé ne sert plus à rien.
+    if (row && row.track_id === expected && (row.author_hash !== null || day < today() - 1)) {
       circuit = {
         day,
         trackId: row.track_id,
@@ -231,10 +240,11 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
         attempt: row.attempt,
         palette: row.palette as PaletteName,
         track: parseTrack(row.track_id, row.spec),
+        authorHash: row.author_hash,
       };
     } else {
       const started = performance.now();
-      circuit = generate(day, variant, theme);
+      circuit = await withAuthorHash(generate(day, variant, theme));
       await storeCircuit(circuit);
       log("INFO", "circuit du jour généré", { day: formatDay(day), trackId: circuit.trackId, attempt: circuit.attempt, ms: Math.round(performance.now() - started) });
     }
@@ -242,14 +252,33 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     return circuit;
   }
 
-  function generate(day: number, variant: number, theme: ThemeName | null): Circuit {
+  /** Le circuit généré, et (en plus) le texte des entrées de son auteur : l'empreinte s'en tire à part (`withAuthorHash`, asynchrone). */
+  function generate(day: number, variant: number, theme: ThemeName | null): Circuit & { authorInputs: string } {
     const c = dailyCircuit(day, variant, theme);
     if (c.fallback) throw new HttpError(503, "circuit_unavailable", "Circuit indisponible, réessaie plus tard");
-    return { day, trackId: c.track.id, variant, theme, spec: c.spec, authorMs: c.authorMs, attempt: c.attempt, palette: c.palette, track: c.track };
+    return {
+      day,
+      trackId: c.track.id,
+      variant,
+      theme,
+      spec: c.spec,
+      authorMs: c.authorMs,
+      attempt: c.attempt,
+      palette: c.palette,
+      track: c.track,
+      authorHash: null,
+      authorInputs: trackInputs(c.authorReplay.runs, replayTicks(c.authorReplay)),
+    };
+  }
+
+  /** Lot R9 : le circuit avec l'empreinte des entrées de son auteur (le pilote). */
+  async function withAuthorHash(c: Circuit & { authorInputs: string }): Promise<Circuit> {
+    const { authorInputs, ...circuit } = c;
+    return { ...circuit, authorHash: await inputsHash(authorInputs) };
   }
 
   const storeCircuit = (c: Circuit) =>
-    db.run("INSERT OR REPLACE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", [
+    db.run("INSERT OR REPLACE INTO circuits (day, track_id, spec, author_ms, attempt, palette, created_at, author_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", [
       c.day,
       c.trackId,
       c.spec,
@@ -257,6 +286,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       c.attempt,
       c.palette,
       now(),
+      c.authorHash,
     ]);
 
   function dayOf(date: unknown, mustBeOpen = false): number {
@@ -358,7 +388,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const result = replayRace(circuit.track, replay); // la seule source du temps
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 
-    return { result, circuit };
+    // Lot R9 : l'empreinte des entrées effectivement jouées (jusqu'à l'arrivée) : la base du refus des copies.
+    return { result, circuit, inputsHash: await inputsHash(trackInputs(replay.runs, result.ticks)) };
   }
 
   async function submit(req: Request, info: RequestInfo): Promise<unknown> {
@@ -374,7 +405,14 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const known = await players.find(playerId);
     const name = await players.resolveName(playerId, body.name, known);
 
-    const { result, circuit } = await validateRun(day, body.replay);
+    const { result, circuit, inputsHash: hash } = await validateRun(day, body.replay);
+    // Lot R9 : une copie (les entrées de l'auteur du circuit, ou d'une course déjà classée d'un autre joueur ce jour-là) est refusée avant d'écrire quoi que ce soit.
+    // Le même joueur qui renvoie sa propre course n'est pas concerné ; l'ordre d'arrivée ne change rien à la règle (la première course classée garde sa place).
+    if (!platform.allowCopies) {
+      if (hash === circuit.authorHash) throw new HttpError(409, "replay_copy", "Cette course est la copie de celle de l'auteur du circuit");
+      const same = await db.first<{ n: number }>("SELECT 1 AS n FROM results WHERE day = ? AND inputs_hash = ? AND player_id <> ? LIMIT 1", [day, hash, playerId]);
+      if (same) throw new HttpError(409, "replay_copy", "Cette course est la copie d'une autre");
+    }
 
     const t = now();
     await players.save(playerId, name, known);
@@ -382,10 +420,10 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const improved = !previous || result.finishMs < previous.ms;
     if (improved) {
       await db.run(
-        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET ms = excluded.ms, splits = excluded.splits, replay = excluded.replay,
-           respawns = excluded.respawns, submitted_at = excluded.submitted_at WHERE excluded.ms < results.ms`,
-        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t],
+           respawns = excluded.respawns, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash WHERE excluded.ms < results.ms`,
+        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash],
       );
     }
     log("INFO", "temps du jour", { day: formatDay(day), ms: result.finishMs, improved });

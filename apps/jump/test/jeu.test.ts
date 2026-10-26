@@ -36,7 +36,7 @@ describe("paramètres d'adresse", () => {
       // L'adresse ne se lit que dans urlOptions.ts.
       if (file !== "urlOptions.ts") {
         expect(code, `${file} construit un URLSearchParams`).not.toMatch(/URLSearchParams/);
-        expect(code.replace(/readUrlOptions\(location\.search\)/g, ""), `${file} lit location.search`).not.toMatch(/location\.(search|hash)/);
+        expect(code.replace(/readUrlOptions\(location\.search(?:, BUILD_RESTRICTED)?\)/g, ""), `${file} lit location.search`).not.toMatch(/location\.(search|hash)/);
       }
       for (const m of code.matchAll(/\.(?:get|has|getAll)\(\s*["'`]([^"'`]+)["'`]\s*\)/g)) {
         if (file === "urlOptions.ts") expect(known.has(m[1]!), `${file} lit ?${m[1]}`).toBe(true);

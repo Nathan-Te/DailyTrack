@@ -14,7 +14,7 @@
 //        → la configuration Firebase d'un déploiement : `firebase.json` (en-têtes, renvoi /api/**), avec le site et le service de la cible.
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ADRESSES } from "./domaine.mjs";
 import { DOSSIER_PARTAGE, produireImages } from "./images-partage.mjs";
@@ -169,9 +169,45 @@ export function retirerDemos(out) {
   return retires;
 }
 
+/**
+ * Lot R9 : **la preuve de l'auteur d'un niveau de Jump ne quitte jamais le serveur.** La renvoyer à `POST /api/jump/submit` donnerait le temps de l'auteur
+ * (audit S-08, S-16). La construction de production de Jump (`apps/jump/vite.config.ts`, `VITE_PRODUCTION=1`) retire le champ `preuve` de chaque fichier
+ * figé et supprime `outils/` (`?semaine=`) et `demo/` ; ici on **revérifie le site assemblé** : aucun fichier publié ne contient la preuve d'un jour (le texte
+ * même, lu dans les fichiers du dépôt), et `jump/outils` n'y est pas. Rend les fichiers fautifs (vide : tout va bien).
+ */
+export const DOSSIERS_OUTILS = ["jump/outils"];
+export function fichiersAvecPreuve(out, niveaux = join(ROOT, "apps/jump/public/levels")) {
+  const preuves = existsSync(niveaux)
+    ? readdirSync(niveaux)
+        .filter((f) => f.endsWith(".json"))
+        .map((f) => JSON.parse(readFileSync(join(niveaux, f), "utf8")).preuve)
+        .filter((p) => typeof p === "string" && p.length > 0)
+    : [];
+  const fautifs = [];
+  const parcourir = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const chemin = join(dir, e.name);
+      if (e.isDirectory()) parcourir(chemin);
+      else if (!/\.(png|jpe?g|woff2?|ico|webp|gif)$/i.test(e.name)) {
+        const texte = readFileSync(chemin, "utf8");
+        if (preuves.some((p) => texte.includes(p))) fautifs.push(relative(out, chemin));
+      }
+    }
+  };
+  parcourir(out);
+  for (const d of DOSSIERS_OUTILS) if (existsSync(join(out, d))) fautifs.push(`${d}/`);
+  return fautifs;
+}
+
 /** Lot R7 : le `robots.txt` du site. Production : tout est permis ; recette et aperçus : rien (en plus de l'en-tête `X-Robots-Tag` de Hosting). */
 export function robots({ production = false } = {}) {
   return production ? "User-agent: *\nAllow: /\n" : "# Recette ou aperçu de PR : rien à indexer.\nUser-agent: *\nDisallow: /\n";
+}
+
+/** Lot R9 : le texte d'un fichier figé sans son champ `preuve` (le reste inchangé, même ordre des champs, même fin de ligne : `frozenJson`). */
+export function sansPreuve(texte) {
+  const { preuve: _preuve, ...publie } = JSON.parse(texte);
+  return `${JSON.stringify(publie)}\n`;
 }
 
 /** Les pages HTML d'un dossier (récursif). */
@@ -199,11 +235,19 @@ export async function assembleSite(out, { production = false, origine } = {}) {
   const files = existsSync(levels) ? readdirSync(levels).filter((f) => f.endsWith(".json")) : [];
   for (const f of files) {
     const got = join(out, "jump/levels", f);
-    if (!existsSync(got) || !readFileSync(got).equals(readFileSync(join(levels, f)))) throw new Error(`niveau figé absent ou différent du site : jump/levels/${f}`);
+    if (!existsSync(got)) throw new Error(`niveau figé absent ou différent du site : jump/levels/${f}`);
+    // Lot R9 : la production publie le fichier sans sa `preuve` (le reste, octet pour octet) ; ailleurs il est identique au dépôt.
+    const attendu = production ? sansPreuve(readFileSync(join(levels, f), "utf8")) : readFileSync(join(levels, f), "utf8");
+    if (readFileSync(got, "utf8") !== attendu) throw new Error(`niveau figé absent ou différent du site : jump/levels/${f}`);
   }
   // Lot I1 : la vitrine n'est jamais publiée en production ; ailleurs elle doit y être.
   const vitrine = existsSync(join(out, VITRINE, "index.html"));
-  if (production) retirerDemos(out);
+  if (production) {
+    retirerDemos(out);
+    // Lot R9 : la preuve de l'auteur et les outils de Jump ne sont jamais publiés (ils sont retirés à la construction de Jump ; ici on le vérifie).
+    const fautifs = fichiersAvecPreuve(out, levels);
+    if (fautifs.length > 0) throw new Error(`le site de production publierait la preuve de l'auteur ou les outils de Jump : ${fautifs.join(", ")}`);
+  }
   if (production && vitrine) throw new Error(`la vitrine /${VITRINE}/ ne doit pas être dans le site de production`);
   if (!production && !vitrine) throw new Error(`vitrine /${VITRINE}/ absente du site`);
   // Lot I6 : images de partage et icônes (produites ici), manifeste, adresses absolues ; la page 404 à la racine (servie par Hosting).

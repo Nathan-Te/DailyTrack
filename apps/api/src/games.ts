@@ -36,6 +36,8 @@ export interface Platform {
   log: Logger;
   /** `production`, `recette` ou `local` (`ENVIRONMENT`). */
   environment: string;
+  /** Lot R9 : vrai = les classements du jour laissent passer les copies (outils de données fictives et tests seulement ; jamais le serveur de production). */
+  allowCopies: boolean;
   /** La date de Paris d'aujourd'hui (numéro de jour) et le temps écoulé depuis minuit de Paris. */
   today(): number;
   sinceMidnight(): number;

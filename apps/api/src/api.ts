@@ -68,6 +68,12 @@ export interface ApiOptions {
    */
   demoPlayers?: boolean;
   /**
+   * Lot R9 : **les classements du jour refusent les copies** (409 `replay_copy` : `copies.ts`) ; `true` les laisse passer. Réservé aux outils qui fabriquent des
+   * données fictives (`history:seed`, `jump:seed`, `recette:seed`, le joueur de démonstration : des « Démo » dont l'un a la preuve de l'auteur) et aux tests de
+   * classement qui rejouent une même course pour plusieurs joueurs. Le serveur de production ne le règle jamais, `readConfig` ne le connaît pas (test `copies.test.ts`).
+   */
+  allowCopies?: boolean;
+  /**
    * Jeton de l'admin (lot 14) : donne accès à `/api/admin/*` (planning des circuits). Variable d'environnement `ADMIN_TOKEN`,
    * jamais dans le dépôt. Absent ou de moins de `ADMIN_TOKEN_MIN` caractères : l'admin est désactivé (les routes n'existent pas).
    */
@@ -117,6 +123,7 @@ export function createApi(options: ApiOptions) {
     replaysPerMinute: options.replaysPerMinute,
     peerFactor: options.peerFactor,
     demoPlayers: options.demoPlayers === true,
+    allowCopies: options.allowCopies === true,
     rotateStatements: (oldId, newId) => instances.flatMap((g) => g.instance.rotateStatements?.(oldId, newId) ?? []),
   });
   const ensureSchema = platform.ensureSchema;

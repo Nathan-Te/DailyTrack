@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { expect as baseExpect, test, TODAY, type BrowserContext, type Page, newClockedContext } from "./fixtures";
-import { dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
+import { dailyCircuit, formatDay } from "@cdj/sim";
+import { courseJump, courseTrack } from "./courses";
 import { noteIdentityChange, writeIdentity, type ListableStore } from "@cdj/profile";
 
 // Lot P4 (plateforme) : le scénario « deux appareils » du lot P2, **étendu à DailyTrack**. Un code chargé ailleurs (lot I5 : au portail, `/profil/`,
@@ -27,7 +28,8 @@ const TRACK_GAME = `debug&timescale=6&api=${encodeURIComponent(API)}`;
 const JUMP_GAME = `debug&api=${encodeURIComponent(API)}`;
 const JUMP_DIST = resolve("../jump/dist");
 const circuit = dailyCircuit(TODAY);
-const slowCode = encodeReplay(runPilot(circuit.track, { grip: 0.78 }).replay);
+// Lot R9 : le serveur refuse les copies (409 `replay_copy`) : chaque course envoyée est **une autre** (adhérence et graine tirées au hasard, `courses.ts`) ; ni la preuve
+// de l'auteur de Jump ni la rediffusion du pilote de Track, ni deux fois la même sous deux identités.
 
 interface J {
   phase: string;
@@ -45,19 +47,19 @@ async function device(browser: Parameters<typeof newClockedContext>[0]): Promise
   return { context, page: await context.newPage() };
 }
 
-/** DailyJump : la preuve de l'auteur jouée pas à pas jusqu'à l'écran d'arrivée. */
-async function playJump(page: Page): Promise<void> {
-  await page.evaluate(() => {
+/** DailyJump : une course (pas la preuve de l'auteur) jouée pas à pas jusqu'à l'écran d'arrivée. */
+async function playJump(page: Page, code: string): Promise<void> {
+  await page.evaluate((c) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
-    const n = j.autoplay();
+    const n = j.autoplay(c);
     for (let t = 1; t <= n + 10 && j.phase !== "carnage" && j.phase !== "finished"; t++) j.advance(1);
     j.input(0);
     j.advance(1);
     j.input(2);
     j.advance(1);
     j.input(null);
-  });
+  }, code);
   await expect(page.locator("#arrival")).toBeVisible();
 }
 
@@ -102,10 +104,12 @@ test("deux appareils jusqu'à DailyTrack : un code chargé dans DailyJump vide l
   const sub = `cdj:sub:${circuit.track.id}`;
 
   // ——— 1. A joue DailyJump et choisit son pseudo ———
+  const [pilote1, pilote2] = [courseTrack(TODAY).code, courseTrack(TODAY).code];
+  const courseA = courseJump(formatDay(TODAY)).code; // calculée avant d'ouvrir la page (le jeu tourne en temps réel dès qu'il est prêt)
   const a = await device(browser);
   await a.page.goto(`${SITE}/jump/?${JUMP_GAME}&accueil=0`);
   await a.page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: J }).__jump?.phase ?? ""));
-  await playJump(a.page);
+  await playJump(a.page, courseA);
   await a.page.locator("#arrival-name").fill(nameA);
   await a.page.locator("#arrival-name-ok").click();
   // Classé (lot I5 : le rang au format du socle, « 1er », « 2e » ; un essai relancé partage la base en mémoire du premier : A peut y être 2e).
@@ -117,7 +121,7 @@ test("deux appareils jusqu'à DailyTrack : un code chargé dans DailyJump vide l
   // ——— 2. B joue DailyTrack sous sa propre identité : un record du jour, confirmé par le serveur ———
   const b = await device(browser);
   await b.page.goto(`${SITE}/?${TRACK_GAME}`);
-  await race(b.page, slowCode);
+  await race(b.page, pilote1);
   await b.page.locator("#finish .online input").fill(nameB);
   await b.page.locator("#finish .online button[type=submit]").click();
   await expect(b.page.locator("#finish .online .rank")).toHaveText(/sur/);
@@ -151,7 +155,7 @@ test("deux appareils jusqu'à DailyTrack : un code chargé dans DailyJump vide l
   expect(await b.page.evaluate(() => window.__cdj.sync.status)).toBe("ok"); // le profil d'A, que le serveur connaît (DailyJump)
 
   // ——— 5. Sans changement d'identité : B court sous le profil d'A, recharge DailyTrack, rien n'est vidé ———
-  await race(b.page, slowCode);
+  await race(b.page, pilote2);
   await expect(b.page.locator("#finish .online .rank")).toHaveText(/sur/);
   const record = await storageOf(b.page, [best, sub]);
   expect(record[best]).not.toBeNull();

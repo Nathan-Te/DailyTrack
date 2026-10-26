@@ -79,7 +79,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "carnage",
     description:
-      "`demo` lance tout de suite un carnage de démonstration sur l'essai : le héros est la solution de l'auteur, les autres vies sont des essais fictifs déterministes (perturbations à graine fixe de la solution, rejouées comme des vraies). Rien n'est enregistré.",
+      "`demo` lance tout de suite un carnage de démonstration sur l'essai : le héros est la solution de l'auteur, les autres vies sont des essais fictifs déterministes (perturbations à graine fixe de la solution, rejouées comme des vraies). Rien n'est enregistré. Lot R9 : **absent de la production**.",
     values: ["demo"],
   },
   {
@@ -113,7 +113,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "solution",
     description:
-      "Avec `module` : regarder la solution stockée du morceau ; sur le niveau du jour (sans paramètre ou avec `seed`) : regarder la rediffusion de l'auteur (rejouée par `replayAttempt`, qui donne le temps de l'auteur). Sans jouer (R la relance). Ne lève jamais le refus d'une date future.",
+      "Avec `module` : regarder la solution stockée du morceau ; sur le niveau du jour (sans paramètre ou avec `seed`) : regarder la rediffusion de l'auteur (rejouée par `replayAttempt`, qui donne le temps de l'auteur). Sans jouer (R la relance). Ne lève jamais le refus d'une date future. Lot R9 : **absent de la production** (construction `VITE_PRODUCTION=1`, `readUrlOptions(…, restricted)`).",
     values: [],
   },
   {
@@ -148,13 +148,13 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "semaine",
     description:
-      "Lot 19 : outil de la variété (en français, chargé à la demande, sans Three.js) : les 7 niveaux du jour à partir de cette date (AAAA-MM-JJ), côte à côte — pour chacun une miniature du niveau et la liste de ses morceaux de base ; un morceau présent dans plusieurs des 7 jours est surligné (en jaune, la miniature le marque aussi). Calculé par le générateur en vigueur (aucun fichier figé n'est lu). Exemple : `?semaine=2026-10-27`.",
+      "Lot 19 : outil de la variété (en français, chargé à la demande, sans Three.js) : les 7 niveaux du jour à partir de cette date (AAAA-MM-JJ), côte à côte — pour chacun une miniature du niveau et la liste de ses morceaux de base ; un morceau présent dans plusieurs des 7 jours est surligné (en jaune, la miniature le marque aussi). Calculé par le générateur en vigueur (aucun fichier figé n'est lu). Exemple : `?semaine=2026-10-27`. Lot R9 : **absent de la production** (les sept niveaux suivants calculés dans le navigateur : outil réservé aux constructions hors production, avec `outils/`).",
     values: [],
   },
   {
     name: "generateur",
     description:
-      "Avec `semaine` : `13` montre la même semaine telle que l'aurait faite le générateur g13 (d'avant le lot 19), lue dans `outils/semaine-g13.json` (du 27/10 au 23/11/2026, de quoi comparer à l'œil) au lieu de la calculer ; `14` (lot 20) : telle que l'aurait faite le générateur g14 (d'avant les plateformes mobiles), recalculée par la référence v4 du générateur (`dailyLevel(jour, thème, 4)`, aucun fichier).",
+      "Avec `semaine` : `13` montre la même semaine telle que l'aurait faite le générateur g13 (d'avant le lot 19), lue dans `outils/semaine-g13.json` (du 27/10 au 23/11/2026, de quoi comparer à l'œil) au lieu de la calculer ; `14` (lot 20) : telle que l'aurait faite le générateur g14 (d'avant les plateformes mobiles), recalculée par la référence v4 du générateur (`dailyLevel(jour, thème, 4)`, aucun fichier). Lot R9 : **absent de la production** (comme `semaine`).",
     values: ["13", "14"],
   },
   {
@@ -221,12 +221,19 @@ export interface UrlChoices {
   api: string | null;
 }
 
-export function readUrlOptions(search: string): UrlChoices {
+/**
+ * Lot R9 : `restricted` = la construction de production (`BUILD_RESTRICTED`). **Rien dans l'adresse ne peut lever la restriction** (pas même `?debug`) ;
+ * elle **ferme** ce qui montre la preuve de l'auteur ou les niveaux à venir : `&solution` (niveau du jour comme morceau), `?carnage=demo` (la preuve de
+ * l'auteur en héros), `?semaine=` et `&generateur=` (les sept niveaux suivants calculés dans le navigateur). Le reste (`debug`, `seed` d'un jour passé,
+ * `theme`, `module`…) ne peut ni faire classer un temps (le serveur rejoue tout ; un essai n'est jamais envoyé : `mayRank`) ni révéler un niveau à venir
+ * (`isPreview` refuse une date future) : l'inventaire est au README du lot R9.
+ */
+export function readUrlOptions(search: string, restricted = false): UrlChoices {
   const params = new URLSearchParams(search);
   const scenario = params.get("scenario");
   const debug = params.has("debug");
-  const mod = moduleOf(params);
-  const semaine = parseDay(params.get("semaine") ?? "");
+  const mod = moduleOf(params, restricted);
+  const semaine = restricted ? null : parseDay(params.get("semaine") ?? "");
   const gallery = semaine === null && (params.has("modules") || (params.has("module") && mod === null));
   const chosen = scenario === null ? null : (SCENARIOS as readonly string[]).includes(scenario) ? (scenario as Scenario) : "essai";
   const daily = chosen === null && mod === null && !gallery && semaine === null;
@@ -236,7 +243,7 @@ export function readUrlOptions(search: string): UrlChoices {
     scenario: chosen,
     daily,
     seed: daily ? parseDay(params.get("seed") ?? "") : null,
-    solution: daily && params.has("solution"),
+    solution: !restricted && daily && params.has("solution"),
     debug,
     tune: debug && params.has("tune"),
     sprint: debug && params.has("tune") && params.get("sprint") === "1",
@@ -248,7 +255,7 @@ export function readUrlOptions(search: string): UrlChoices {
     ghostOff: ghost === "off" || ghost === "first",
     firstGhostOff: ghost === "off" || ghost === "best",
     ghost,
-    carnageDemo: params.get("carnage") === "demo",
+    carnageDemo: !restricted && params.get("carnage") === "demo",
     watchBest: params.get("watch") === "best",
     watchFirst: daily && params.get("watch") === "first",
     gallery,
@@ -264,14 +271,14 @@ export function readUrlOptions(search: string): UrlChoices {
   };
 }
 
-function moduleOf(params: URLSearchParams): UrlChoices["module"] {
+function moduleOf(params: URLSearchParams, restricted = false): UrlChoices["module"] {
   const id = params.get("module");
   // Lot 21 : l'index léger (identifiant, nombre de variantes), pas le catalogue : lire l'adresse ne charge aucun morceau.
   const def = MODULE_INDEX.find(([known]) => known === id);
   if (!def) return null;
   const v = Number(params.get("variante") ?? "0");
   const variant = Number.isInteger(v) && v >= 0 && v < def[1] ? v : 0;
-  return { id: def[0], variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
+  return { id: def[0], variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: !restricted && params.has("solution") };
 }
 
 /**

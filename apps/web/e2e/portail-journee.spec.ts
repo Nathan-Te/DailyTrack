@@ -3,7 +3,8 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { dailyCircuit, encodeReplay, runPilot } from "@cdj/sim";
+import { formatDay } from "@cdj/sim";
+import { courseJump, courseTrack } from "./courses";
 import { expect as baseExpect, hasWebGL, newClockedContext, newContextAt, test, TODAY, type BrowserContext, type Page } from "./fixtures";
 import { startSite } from "./domaine-serveurs";
 import { auditAxe } from "./axe";
@@ -386,12 +387,12 @@ test("un jour passé dans /classement/ : « ‹ Veille » et « Lendemain › »
 });
 
 // --- « Jeu suivant du jour » à l'arrivée de chaque jeu (les vrais jeux, le vrai serveur du 20/10, base vide) ------------------------------
-const circuit = dailyCircuit(TODAY);
-const pilote = runPilot(circuit.track, { grip: 0.9 });
-const codeTrack = encodeReplay(pilote.replay);
+// Lot R9 : le serveur refuse les copies (409 `replay_copy`) : chaque joueur d'essai envoie **sa** course (adhérence et graine tirées au hasard, `courses.ts`), jamais la
+// rediffusion du pilote ni la preuve de l'auteur de Jump, jamais la même pour deux pseudos ; calculée avant d'ouvrir la page.
 
-/** DailyTrack : court jusqu'à l'arrivée (rejeu du pilote), choisit un pseudo et attend le classement. */
+/** DailyTrack : court jusqu'à l'arrivée (la rediffusion d'un pilote d'une autre adhérence), choisit un pseudo et attend le classement. */
 async function finirTrack(page: Page, pseudo: string): Promise<void> {
+  const codeTrack = courseTrack(TODAY).code;
   await page.goto(`${SITE_20}/track/?debug&timescale=6&api=/`);
   // Lot I6 : WebGL d'abord — sans lui le jeu ne démarre pas et l'attente de `__cdj` durait jusqu'au délai du test (Firefox de la CI, sur main).
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas");
@@ -403,21 +404,22 @@ async function finirTrack(page: Page, pseudo: string): Promise<void> {
   await expect(page.locator("#finish .online .rank")).toBeVisible();
 }
 
-/** DailyJump : joue la preuve de l'auteur (pas à pas), passe le carnage, et attend l'écran d'arrivée. */
+/** DailyJump : joue une course fictive qui arrive (pas la preuve de l'auteur, pas à pas), passe le carnage, et attend l'écran d'arrivée. */
 async function finirJump(page: Page, pseudo: string | null): Promise<void> {
+  const codeJump = courseJump(formatDay(TODAY)).code;
   await page.goto(`${SITE_20}/jump/?debug&api=/&accueil=0`);
   test.skip(!(await hasWebGL(page)), "ce navigateur n'a pas WebGL : les jeux ne démarrent pas");
   await page.waitForFunction(() => ["ready", "playing"].includes((window as unknown as { __jump?: { phase: string } }).__jump?.phase ?? ""));
-  const ticks = await page.evaluate(() => {
-    const j = (window as unknown as { __jump: { phase: string; manual(on: boolean): void; autoplay(): number; advance(n: number): unknown } }).__jump;
+  const ticks = await page.evaluate((c) => {
+    const j = (window as unknown as { __jump: { phase: string; manual(on: boolean): void; autoplay(code: string): number; advance(n: number): unknown } }).__jump;
     j.manual(true);
-    const n = j.autoplay();
+    const n = j.autoplay(c);
     for (let t = 1; t <= n + 10; t++) {
       j.advance(1);
       if (j.phase === "carnage" || j.phase === "finished") return t;
     }
     return -1;
-  });
+  }, codeJump);
   expect(ticks).toBeGreaterThan(0);
   await page.evaluate(() => {
     const j = (window as unknown as { __jump: { input(bits: number | null): void; advance(n: number): unknown } }).__jump;
