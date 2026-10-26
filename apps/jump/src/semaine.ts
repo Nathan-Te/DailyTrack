@@ -102,7 +102,7 @@ export function mountSemaine(options: UrlChoices): SemaineView {
     el(
       "p",
       "lead",
-      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein).`,
+      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein). Depuis g17, des champignons dans la forêt (en crème, une tuile chacun, comme les autres mécaniques).`,
     ),
   );
   const status = el("p", "count", "Calcul des niveaux…");

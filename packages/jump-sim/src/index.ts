@@ -23,3 +23,5 @@ export * from "./parasites";
 export * from "./voies";
 export * from "./plateformes";
 export * from "./presses";
+export * from "./champignons";
+export * from "./champignonsPieces";

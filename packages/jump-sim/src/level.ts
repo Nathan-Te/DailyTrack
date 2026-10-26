@@ -20,11 +20,15 @@ import { idiv } from "./idiv";
 //       part** (sol, coyote, saut mural, saut gardé dans le tampon qui part vraiment — pas un ressort, pas un simple appui) inverse les deux
 //       jeux. Au départ de l'essai, **A est solide** ; **franchir un point de passage** remet A solide, et la mort ramène l'état du point de
 //       reprise (donc A). Même règle de sortie que les clignotants
+//   `m` `w` `(` `)` **champignons rebonds** (lot 23, thème forêt) : tuiles **traversables** (ni un bloc, ni un danger) posées contre un bloc plein — `m` sur un
+//       sol (le chapeau regarde vers le haut), `w` sous un plafond (vers le bas), `)` contre un mur à sa gauche (le chapeau regarde vers la droite), `(` contre un mur
+//       à sa droite (vers la gauche) : le renflement du signe est du côté du chapeau. **Au contact** de son chapeau (la moitié de la tuile du côté du chapeau, `mushroomPad`),
+//       quand la boîte du personnage commence à la chevaucher, il donne une impulsion entière dans la direction du chapeau (`mushroomBounce`, constantes `MUSHROOM_*`)
 //   `C` point de passage (tuile vide repérée, posée sur un sol sûr ; un seul par colonne) : le centre du personnage qui **franchit sa colonne**
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
-//   version <3|4|5|6>
+//   version <3|4|5|6|7>
 //       (lot 15) la version de la simulation du niveau (`Level.simVersion`) ; absente : 3. **En v3**, chaque section a son horloge, mise en
 //       marche la première fois que le personnage y entre (« phase » d'un élément = pas écoulés depuis, 0 avant) ; **en v4, une seule horloge** :
 //       la phase d'un élément vaut `t + phase de sa section` (`t` : le chrono de l'essai), dès avant le départ et sans jamais revenir à zéro.
@@ -295,6 +299,57 @@ export const PRESS_MAX_CYCLE = 1200;
 /** Déplacement maximal par pas à la fin de la chute : trois quarts de tuile (la presse, haute de 2 tuiles, n'enjambe jamais le personnage entre deux pas). */
 export const MAX_PRESS_STEP = 3 * (UNITS_PER_TILE / 4);
 
+/** Lot 23 : orientation d'un champignon = la direction de son chapeau (il y envoie le personnage). */
+export const MUSHROOM_UP = 1;
+export const MUSHROOM_DOWN = 2;
+export const MUSHROOM_RIGHT = 3;
+export const MUSHROOM_LEFT = 4;
+/** Caractère de la grille de chaque orientation (`m` sol, `w` plafond, `)` mur à gauche, `(` mur à droite) et nom pour l'affichage et les outils. */
+export const MUSHROOM_CHARS = ["", "m", "w", ")", "("] as const;
+export const MUSHROOM_NAMES = ["", "sol", "plafond", "mur gauche", "mur droit"] as const;
+/**
+ * Lot 23 : les impulsions (unités/pas), **fixes et entières**. Au sol : 900 vers le haut (≈ 5,2 tuiles, un saut normal en fait 800 : ≈ 4,2) ; au plafond : 700 vers
+ * le bas ; au mur : 460 à l'opposé du mur (13,5 tuiles/s, au-dessus de la course) et une légère montée de 420 (≈ 1,1 tuile). Un saut **tenu** au contact (le bit de saut
+ * de la commande, à ce pas) multiplie le tout par `MUSHROOM_BOOST_PERCENT` / 100 (×1,3 : 1 170 vers le haut, ≈ 8,8 tuiles, mais la courbe se lit avant tout comme une
+ * hauteur nettement plus grande que celle du rebond simple). Tous restent sous `MAX_SPEED`.
+ */
+export const MUSHROOM_UP_SPEED = 900;
+export const MUSHROOM_DOWN_SPEED = 700;
+export const MUSHROOM_SIDE_SPEED = 460;
+export const MUSHROOM_RISE_SPEED = 420;
+export const MUSHROOM_BOOST_PERCENT = 130;
+/** Lot 23 : le chapeau est la moitié de la tuile du côté de sa direction : c'est là que le contact compte. */
+export const MUSHROOM_PAD = UNITS_PER_TILE / 2;
+
+/** Lot 23 : un champignon (tuile de la grille). `dir` : `MUSHROOM_UP`, `_DOWN`, `_RIGHT` ou `_LEFT`. */
+export interface Mushroom {
+  col: number;
+  row: number;
+  dir: number;
+}
+
+/**
+ * Lot 23 : la zone de contact d'un champignon (unités) : la moitié de sa tuile du côté du chapeau, sur toute la largeur de la tuile. Un champignon de sol est
+ * touché par le haut (on s'y pose) ou en y entrant de côté ; un champignon de mur, en s'en approchant.
+ */
+export function mushroomPad(m: Mushroom): { x: number; y: number; w: number; h: number } {
+  const T = UNITS_PER_TILE;
+  const x = m.col * T;
+  const y = m.row * T;
+  switch (m.dir) {
+    case MUSHROOM_UP:
+      return { x, y, w: T, h: MUSHROOM_PAD };
+    case MUSHROOM_DOWN:
+      return { x, y: y + T - MUSHROOM_PAD, w: T, h: MUSHROOM_PAD };
+    case MUSHROOM_RIGHT:
+      return { x: x + T - MUSHROOM_PAD, y, w: MUSHROOM_PAD, h: T };
+    case MUSHROOM_LEFT:
+      return { x, y, w: MUSHROOM_PAD, h: T };
+    default:
+      throw new RangeError(`mushroomPad : l'orientation ${m.dir} n'existe pas`);
+  }
+}
+
 /**
  * Lot 22 : la **table de chute** d'une presse (entiers, 65 valeurs de 0 à 4 096) : `k²` pour `k` de 0 à 64, la chute libre — la presse part presque à
  * l'arrêt et frappe à pleine vitesse (127 sur 4 096 pour le dernier intervalle, soit 2 fois la moyenne). Écrite par `k * k` : aucun flottant,
@@ -350,6 +405,8 @@ export interface Level {
   platforms: readonly Platform[];
   /** Lot 22 : presses (ordre du bloc annexe) ; vide sans presse. */
   presses: readonly Press[];
+  /** Lot 23 : champignons (ordre de lecture de la grille) ; vide sans champignon. Leur tuile est vide dans `tiles`. */
+  mushrooms: readonly Mushroom[];
 }
 
 export class LevelError extends Error {
@@ -365,6 +422,10 @@ const GRID_CODES: Record<string, number> = {
   S: TILE_EMPTY,
   F: TILE_EMPTY,
   C: TILE_EMPTY,
+  m: TILE_EMPTY,
+  w: TILE_EMPTY,
+  ")": TILE_EMPTY,
+  "(": TILE_EMPTY,
   o: TILE_EMPTY,
   O: TILE_EMPTY,
   x: TILE_CRUMBLE,
@@ -443,6 +504,7 @@ export function parseLevel(text: string): Level {
   const checkpoints: Cell[] = [];
   const blinkCells: { col: number; row: number; group: number }[] = [];
   const alts: AltBlock[] = [];
+  const mushrooms: Mushroom[] = [];
   for (let row = 0; row < height; row++) {
     const line = lines[row]!;
     if (line.length !== width) throw new LevelError(`Ligne ${row + 1} : ${line.length} colonnes au lieu de ${width}`);
@@ -458,6 +520,7 @@ export function parseLevel(text: string): Level {
       if (c === "C") checkpoints.push({ col, row });
       if (c === "b" || c === "d") blinkCells.push({ col, row, group: c === "b" ? 0 : 1 });
       if (c === "A" || c === "B") alts.push({ col, row, set: c === "A" ? 0 : 1 });
+      if (c === "m" || c === "w" || c === ")" || c === "(") mushrooms.push({ col, row, dir: MUSHROOM_CHARS.indexOf(c) });
       if (c === "o" || c === "O") {
         const p = centerOf(col, row);
         saws.push({ id: `${c}${saws.length}`, radius: c === "o" ? SAW_SMALL_RADIUS : SAW_BIG_RADIUS, mode: "fixe", points: [p], cycle: 0, section: -1, nodes: [p], times: [0, 0] });
@@ -663,7 +726,7 @@ export function parseLevel(text: string): Level {
   }
   const clashing = presses.find((p, k) => presses.some((q, j) => j < k && p.col <= q.col + q.width - 1 && q.col <= p.col + p.width - 1 && p.row <= q.row + q.travel + PRESS_HEIGHT_TILES - 1 && q.row <= p.row + p.travel + PRESS_HEIGHT_TILES - 1));
   if (clashing) throw new LevelError(`Annexe : la course de la presse « ${clashing.id} » en recoupe une autre`);
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses };
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses, mushrooms };
 }
 
 /**

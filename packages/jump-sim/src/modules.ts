@@ -17,7 +17,8 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // Format d'un fichier, **version 3** (lot 7 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français (lot 20 : absente du catalogue embarqué, `apps/jump/public/outils/intentions.json`)
-//   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile ; lot 22 : `presse`)
+//   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile ; lot 22 : `presse` ; lot 23 : `champignon`,
+//                                                 un morceau dont la grille a des champignons `m` `w` `(` `)`)
 //   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
 //                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne` ; lot 13 :
 //                                                 `foret` : `vent`) ; sans cette
@@ -106,7 +107,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon"] as const;
 /** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -269,7 +270,7 @@ function parseZone(words: readonly string[], width: number, height: number, fail
       return zone([0, width - 1], [0, height - 1], words.slice(2).join(" "));
   }
 }
-const MODULE_GRID = /^[#.^v<>oOx*[\]~bdAB]+$/;
+const MODULE_GRID = /^[#.^v<>oOx*[\]~bdABmw()]+$/;
 
 /**
  * Lot 12 : les profils de clignotement des mutations `+clignotant:<profil>` — cycle, pas solides de `b`, décalage (pas). `lent` : 3 s, solide
@@ -348,8 +349,9 @@ export function parseModule(text: string): ModuleDef {
   // Lot 11 : l'étiquette d'une mécanique et le thème vont ensemble (un morceau `tapis` est de l'usine, un morceau `glace` de la glace).
   for (const [tag, th] of [["tapis", "usine"], ["glace", "glace"], ["clignotant", "nuit"], ["alterne", "neon"], ["vent", "foret"]] as const) {
     // Lot 22 : les presses sont la seconde mécanique de l'usine : un morceau `presse` est de l'usine, avec ou sans tapis.
-    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse"));
-    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : ""} et « theme: ${th} » vont ensemble`));
+    // Lot 23 : les champignons sont la seconde mécanique de la forêt : un morceau `champignon` est de la forêt, avec ou sans vent.
+    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon"));
+    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : ""} et « theme: ${th} » vont ensemble`));
   }
   const optional = (k: string, value: string) => {
     const v = meta[k];
@@ -376,6 +378,8 @@ export function parseModule(text: string): ModuleDef {
   // Lot 22 : de même pour les presses.
   if (tags.includes("presse") !== annex.some((l) => l.startsWith("presse "))) throw new ModuleError(where("l'étiquette « presse » et une ligne « presse » du bloc annexe vont ensemble"));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
+  // Lot 23 : l'étiquette `champignon` et des champignons dans la grille vont ensemble.
+  if (tags.includes("champignon") !== grid.some((row) => /[mw()]/.test(row))) throw new ModuleError(where("l'étiquette « champignon » et des champignons « m w ( ) » dans la grille vont ensemble"));
   const width = grid[0]!.length;
   grid.forEach((row, r) => {
     if (row.length !== width) throw new ModuleError(where(`rangée ${r} : ${row.length} colonnes au lieu de ${width}`));

@@ -53,6 +53,7 @@ import { createDynamicBlocks, type DynamicStats } from "./dynamicArt";
 import { createWindArt, type WindStats } from "./windArt";
 import { createSawArt } from "./sawArt";
 import { createPlatformArt, type PlatformStats } from "./platformArt";
+import { createMushroomArt, type MushroomStats } from "./mushroomArt";
 import { createPressArt, type PressStats } from "./pressArt";
 import { SLOW_DEBUG, SLOW_MARK, slowMarkQuads, type SlowDebugPath } from "./slowRoute";
 
@@ -181,6 +182,10 @@ export interface JumpScene {
   readonly platforms: PlatformStats | null;
   /** Lot 22 : les presses à la dernière image (position dessinée, annonce, empreinte, poussières, opacité) ; null : le niveau n'en a pas. */
   readonly presses: PressStats | null;
+  /** Lot 23 : les champignons à la dernière image (orientation dessinée, écrasement, dernier rebond renforcé ?) ; null : le niveau n'en a pas. */
+  readonly mushrooms: MushroomStats | null;
+  /** Lot 23 : un champignon vient de rebondir (indice dans `Level.mushrooms`, rebond renforcé ?) : il s'écrase puis revient. Aucune secousse de caméra. */
+  bounceMushroom(index: number, boost: boolean): void;
   /**
    * Lot 17 : l'opacité des éléments qui suivent l'horloge (scies mobiles, blocs clignotants, rafales), 1 = normal. Le carnage la baisse : on lit
    * les morts avant les dangers, dont la phase est celle du héros seul. Les dangers fixes (pics, scies fixes) et le décor ne changent jamais.
@@ -424,6 +429,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
   const platformArt = createPlatformArt(world, level);
   // ——— Lot 22 : presses (corps sombre, face basse rouge, frémissement avant la chute, empreinte qui s'assombrit, poussière à l'impact, aucune secousse) ———
   const pressArt = createPressArt(world, level, { hazard: palette.hazard });
+  // ——— Lot 23 : champignons rebonds (dôme violet, tourné vers où il lance, qui s'écrase au contact ; statique : jamais estompé dans le carnage) ———
+  const mushroomArt = createMushroomArt(world, level);
 
   // ——— Arrivée : une tuile cerclée qui pulse, un mât et un grand drapeau en damier ———
   const finishCell = cellOrigin(level.finish);
@@ -712,6 +719,12 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
     get presses() {
       return pressArt ? pressArt.stats : null;
     },
+    get mushrooms() {
+      return mushroomArt ? mushroomArt.stats : null;
+    },
+    bounceMushroom(index, boost) {
+      mushroomArt?.bounce(index, boost, lastClock);
+    },
     windParticles: 1,
     get wind() {
       return windArt ? windArt.stats : null;
@@ -804,6 +817,8 @@ export function createScene(canvasParent: HTMLElement, level: Level, theme: Them
       platformArt?.update(prev, state, alpha, fade);
       // Lot 22 : presses (estompées dans le carnage).
       pressArt?.update(prev, state, alpha, fade, clock);
+      // Lot 23 : champignons (écrasement au contact, retour tout droit sans mouvement).
+      mushroomArt?.update(clock, animate);
       // Lot 12 : blocs clignotants et alternés.
       dynamic?.update(state, clock, animate, { x: viewX, y: viewY, halfW: frame.halfW, halfH: frame.halfH }, fade);
       // Lot 13 : le vent (particules si les réglages en gardent et que le mouvement n'est pas réduit, sinon flèches fixes).

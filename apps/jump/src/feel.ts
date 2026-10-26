@@ -1,6 +1,8 @@
 import { Color, DynamicDrawUsage, InstancedMesh, Matrix4, MeshBasicMaterial, PlaneGeometry, Vector3, type Object3D } from "three";
 import { BLOCK_STYLE } from "./blocks";
 import { SHAKES } from "./camera";
+import { MUSHROOM_DOWN, MUSHROOM_RIGHT, MUSHROOM_UP } from "@cdj/jump-sim";
+import { MUSHROOM_LOOK } from "./mushroom";
 import { WIND_STYLE } from "./wind";
 import type { GameEvent } from "./events";
 import type { Palette } from "./palette";
@@ -178,6 +180,8 @@ export interface FeelColors {
   altB: readonly number[];
   /** Lot 13 : feuilles et pollen du vent (couleurs réservées de `wind.ts`). */
   wind: readonly number[];
+  /** Lot 23 : spores d'un champignon qui rebondit (le chapeau et ses taches, `mushroomArt.ts` : jamais la couleur d'un danger ni du personnage). */
+  spore: readonly number[];
 }
 
 export function feelColors(p: Palette): FeelColors {
@@ -193,6 +197,7 @@ export function feelColors(p: Palette): FeelColors {
     altA: [BLOCK_STYLE.altA.fill, BLOCK_STYLE.altA.edge, 0xffffff],
     altB: [BLOCK_STYLE.altB.fill, BLOCK_STYLE.altB.edge, 0xffffff],
     wind: [WIND_STYLE.leaf, WIND_STYLE.leafDark, WIND_STYLE.pollen],
+    spore: [MUSHROOM_LOOK.cap, MUSHROOM_LOOK.capLight, MUSHROOM_LOOK.spot],
   };
 }
 
@@ -301,6 +306,13 @@ export function feelEvent(e: GameEvent, pool: Particles, colors: FeelColors, lev
     case "ressort":
       pool.emit({ x, y, count: 10, angle: UP, spread: 1.2, vmin: 4, vmax: 9, life: 0.35, size: 0.12, gravity: -8, drag: 5, colors: colors.spring, jitter: 0.6 });
       break;
+    case "champignon": {
+      // Lot 23 : un nuage de spores lancé dans la direction du chapeau (plus fourni quand le rebond est renforcé) ; **aucune secousse de caméra** (règle du lot 14 : le rebond n'est pas
+      // un moment fort) ni vibration.
+      const a = e.dir === MUSHROOM_UP ? UP : e.dir === MUSHROOM_DOWN ? -UP : e.dir === MUSHROOM_RIGHT ? 0 : Math.PI;
+      pool.emit({ x, y, count: e.boost ? 14 : 8, angle: a, spread: 0.9, vmin: 2, vmax: e.boost ? 7 : 5, life: 0.45, size: 0.1, gravity: -3, drag: 3, colors: colors.spore, jitter: 0.5 });
+      break;
+    }
     case "arrivee":
       pool.emit({ x, y: y + 1, count: 46, angle: UP, spread: 1.1, vmin: 6, vmax: 14, life: 1.7, size: 0.2, gravity: -16, drag: 1.6, colors: colors.confetti, jitter: 0.6 });
       break;

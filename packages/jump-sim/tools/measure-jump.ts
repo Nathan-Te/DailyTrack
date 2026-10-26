@@ -21,6 +21,7 @@ import {
   isRestedModule,
   varietyExcluded,
   PLATFORM_VERSION,
+  MUSHROOM_VERSION,
   PRESS_VERSION,
   SINGLE_CLOCK_VERSION,
   replayAttempt,
@@ -41,7 +42,8 @@ const arg = process.argv.find((a) => a.startsWith("--jours="));
 const DAYS = arg ? Number(arg.slice(8)) : 120;
 // Lot 20 : `-- --generateur=14` mesure la référence v4 (g14, le catalogue sans plateformes) au lieu du générateur en vigueur (g15) : le comparatif du README.
 // Lot 22 : `-- --generateur=15` mesure la référence v5 (g15, le catalogue sans presses) : le comparatif du README du lot 22 ; sans option, le générateur en vigueur (g16).
-const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : PRESS_VERSION;
+// Lot 23 : `-- --generateur=16` mesure la référence v6 (g16, le catalogue sans champignons) ; sans option, le générateur en vigueur (g17).
+const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : MUSHROOM_VERSION;
 const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
 const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 const stats = (xs: number[]) => ({ min: Math.min(...xs), mean: xs.reduce((a, b) => a + b, 0) / xs.length, max: Math.max(...xs) });

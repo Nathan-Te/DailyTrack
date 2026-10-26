@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 6;
+export const JUMP_SIM_VERSION = 7;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -37,6 +37,14 @@ export const PLATFORM_VERSION = 5;
  * seuls restent en v3 (`MODULE_SIM_VERSION`), leurs presses suivent l'horloge de leur section comme les scies.
  */
 export const PRESS_VERSION = 6;
+/**
+ * Lot 23 : **version 7 = version 6 + champignons rebonds** (`m` `w` `(` `)` de la grille, `Level.mushrooms`). Un champignon est une tuile traversable posée sur
+ * un sol, un plafond ou un mur : au contact de son chapeau il donne une impulsion fixe et entière dans la direction du chapeau (vers le haut, le bas, ou
+ * l'opposé du mur avec une légère montée), la vitesse parallèle à sa surface est conservée, et un saut **tenu** au contact renforce le rebond (×1,3).
+ * Ce n'est ni une tuile solide ni un danger, et il n'a ni horloge ni état. Un niveau sans champignon se joue **exactement** comme en v3, v4, v5 ou v6 : les
+ * golden n'ont pas bougé. Les niveaux du jour depuis le générateur g17 sont en v7 ; les morceaux joués seuls restent en v3 (`MODULE_SIM_VERSION`).
+ */
+export const MUSHROOM_VERSION = 7;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -56,9 +64,10 @@ export const PRESS_VERSION = 6;
  * 14 depuis le lot 19 (variété : un morceau de base ne revient pas avant `VARIETY_DAYS` jours, par époques bornées, à la place du repos par
  * groupes ; tirages prouvés dans l'ordre de leur score estimé ; mutateurs de silhouette et 37 variantes ajoutées au bout de leurs morceaux) ;
  * 15 depuis le lot 20 (plateformes mobiles : niveaux en sim v5, morceaux à plateformes, règles de trajet) ;
- * 16 depuis le lot 22 (presses : niveaux en sim v6, morceaux de l'usine à presses, règles du générateur).
+ * 16 depuis le lot 22 (presses : niveaux en sim v6, morceaux de l'usine à presses, règles du générateur) ;
+ * 17 depuis le lot 23 (champignons : niveaux en sim v7, morceaux de la forêt à champignons, règles du générateur).
  */
-export const JUMP_GENERATOR_VERSION = 16;
+export const JUMP_GENERATOR_VERSION = 17;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

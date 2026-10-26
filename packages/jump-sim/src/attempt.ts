@@ -2,6 +2,15 @@ import { SINGLE_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
 import { boxHits, sweep, tileOf, type Grid } from "./collide";
 import { idiv } from "./idiv";
 import {
+  MUSHROOM_BOOST_PERCENT,
+  MUSHROOM_DOWN,
+  MUSHROOM_DOWN_SPEED,
+  MUSHROOM_LEFT,
+  MUSHROOM_RIGHT,
+  MUSHROOM_RISE_SPEED,
+  MUSHROOM_SIDE_SPEED,
+  MUSHROOM_UP,
+  MUSHROOM_UP_SPEED,
   TILE_ALT_OFF,
   TILE_ALT_ON,
   TILE_BLINK_OFF,
@@ -15,6 +24,7 @@ import {
   blinkIsSolid,
   isSolidTile,
   isSpikeTile,
+  mushroomPad,
   PRESS_HEIGHT_TILES,
   platformPos,
   pressBox,
@@ -71,6 +81,11 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // **Presses (lot 22, niveaux de version 6 et morceaux seuls)** : une presse (`Level.presses`) suit l'horloge de sa section (`sectionClock`, comme une scie) ;
 // elle n'est ni solide ni portante : toute sa boîte tue au contact (`deathAt`, `DEATH_PRESS`), à la fin du pas, après l'arrivée (qui l'emporte). Rien dans
 // `AttemptState` : sans presse, ces lignes ne calculent rien.
+//
+// **Champignons (lot 23, niveaux de version 7 et morceaux seuls)** : un champignon (`Level.mushrooms`) n'est ni solide ni un danger et n'a ni horloge ni état. Au pas où la boîte
+// du personnage **commence** à chevaucher son chapeau (`mushroomPad` : elle le chevauche à la fin du pas et ne le chevauchait pas au début), `mushroomBounce` lui donne une
+// impulsion entière dans la direction du chapeau, renforcée (×1,3) si le saut est **tenu** à ce pas ; la vitesse parallèle à la surface du champignon est conservée. Sans
+// champignon, ces lignes ne calculent rien.
 //
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
@@ -322,6 +337,49 @@ export function platformPositions(level: Level, state: Readonly<AttemptState>): 
   return level.platforms.map((_, i) => platformAt(level, state.sections, state.time, i));
 }
 
+/**
+ * Lot 23 : le rebond d'un champignon d'orientation `dir` sur le personnage `p`, `boost` si le saut est tenu au contact. Pure, entière. **Au sol** (`MUSHROOM_UP`) la vitesse
+ * verticale devient −`MUSHROOM_UP_SPEED`, **au plafond** (`MUSHROOM_DOWN`) +`MUSHROOM_DOWN_SPEED` ; la vitesse horizontale, parallèle à la surface, est conservée. **Au mur**
+ * (`MUSHROOM_RIGHT` : mur à gauche, `MUSHROOM_LEFT` : mur à droite) la vitesse horizontale devient ±`MUSHROOM_SIDE_SPEED` (à l'opposé du mur) ; la vitesse verticale, parallèle
+ * au mur, est conservée si elle monte déjà au moins autant que la légère montée (−`MUSHROOM_RISE_SPEED`), sinon elle devient cette montée. Renforcé : chaque valeur ×
+ * `MUSHROOM_BOOST_PERCENT` / 100 (`idiv`). Le personnage quitte le sol et le mur (plus de coyote ni de saut mural gardé), le saut ne se coupe pas (`jumping` à 0), le tampon est vidé.
+ */
+export function mushroomBounce(p: Readonly<PlayerState>, dir: number, boost: boolean): PlayerState {
+  const k = (v: number): number => (boost ? idiv(v * MUSHROOM_BOOST_PERCENT, 100) : v);
+  const left = { ground: 0, air: COUNTER_CAP, jumping: 0, buffer: 0, wallSide: 0, wallAir: COUNTER_CAP, slide: 0 };
+  switch (dir) {
+    case MUSHROOM_UP:
+      return { ...p, ...left, vy: -k(MUSHROOM_UP_SPEED) };
+    case MUSHROOM_DOWN:
+      return { ...p, ...left, vy: k(MUSHROOM_DOWN_SPEED) };
+    case MUSHROOM_RIGHT:
+    case MUSHROOM_LEFT: {
+      // La vitesse horizontale vient du champignon : l'élan d'un tapis (`carry`) n'a plus de sens.
+      const { carry: _belt, ...rest } = p;
+      const rise = -k(MUSHROOM_RISE_SPEED);
+      return { ...rest, ...left, vx: (dir === MUSHROOM_RIGHT ? 1 : -1) * k(MUSHROOM_SIDE_SPEED), vy: p.vy < rise ? p.vy : rise };
+    }
+    default:
+      throw new RangeError(`mushroomBounce : l'orientation ${dir} n'existe pas`);
+  }
+}
+
+/**
+ * Lot 23 : l'indice (dans `Level.mushrooms`) du premier champignon dont le chapeau vient d'être touché entre deux positions du personnage, −1 aucun : la boîte `after`
+ * chevauche son chapeau (`mushroomPad`) et la boîte `before` ne le chevauchait pas. **C'est exactement la condition du rebond de `stepAttempt`** (le rebond ne change
+ * pas la position, seulement la vitesse) : l'affichage et les événements savent ainsi qu'un rebond a eu lieu en comparant deux états successifs, sans état de plus.
+ */
+export function mushroomHit(level: Pick<Level, "mushrooms">, before: Readonly<PlayerState>, after: Readonly<PlayerState>): number {
+  if (level.mushrooms.length === 0) return -1;
+  const b = playerBox(before);
+  const a = playerBox(after);
+  for (let i = 0; i < level.mushrooms.length; i++) {
+    const pad = mushroomPad(level.mushrooms[i]!);
+    if (boxesOverlap(a, pad) && !boxesOverlap(b, pad)) return i;
+  }
+  return -1;
+}
+
 /** Lot 22 : le rectangle mortel de la presse `index` (unités) au chrono `time` d'un état de sections `sections` (la même lecture d'horloge que les scies). */
 export function pressAt(level: Level, sections: readonly number[], time: number, index: number): Box {
   const p = level.presses[index]!;
@@ -415,12 +473,25 @@ function cellIndex(level: Level, col: number, row: number): number {
 }
 
 /**
+ * Lot 23 : ce qu'un pas a déclenché, rempli par `stepAttempt` si on le lui donne (outils, tests, affichage : jamais la simulation elle-même) — `mushroom` : l'indice dans
+ * `Level.mushrooms` du champignon qui vient de rebondir (−1 : aucun), `boost` : 1 si le rebond est renforcé.
+ */
+export interface AttemptEvents {
+  mushroom: number;
+  boost: number;
+}
+
+/**
  * Un pas d'essai (1/120 s). Pur : `state` n'est pas modifié ; un état inchangé est rendu tel quel (même objet). `input` = bits `INPUT_*`.
  */
-export function stepAttempt(state: Readonly<AttemptState>, input: number, level: Level, params: Readonly<JumpParams>): AttemptState {
+export function stepAttempt(state: Readonly<AttemptState>, input: number, level: Level, params: Readonly<JumpParams>, events: AttemptEvents | null = null): AttemptState {
   if (!Number.isInteger(input) || input < 0 || input > INPUT_MASK) throw new RangeError(`Commande invalide : ${input}`);
   const jump = input & INPUT_JUMP ? 1 : 0;
 
+  if (events) {
+    events.mushroom = -1;
+    events.boost = 0;
+  }
   if (state.status === ATTEMPT_FINISHED) return state as AttemptState;
   const single = level.simVersion >= SINGLE_CLOCK_VERSION;
   if (state.status === ATTEMPT_DEAD) {
@@ -531,6 +602,18 @@ export function stepAttempt(state: Readonly<AttemptState>, input: number, level:
       player = { ...player, vy: -speed, ground: 0, air: COUNTER_CAP, jumping: 0, buffer: 0 };
       springCell = hit;
       springTime = state.time + 1;
+    }
+  }
+
+  // ——— Lot 23 : champignons — le premier dont le chapeau vient d'être touché rebondit ; un saut tenu à ce pas renforce le rebond ———
+  if (level.mushrooms.length > 0) {
+    const hit = mushroomHit(level, state.player, player);
+    if (hit >= 0) {
+      player = mushroomBounce(player, level.mushrooms[hit]!.dir, jump === 1);
+      if (events) {
+        events.mushroom = hit;
+        events.boost = jump;
+      }
     }
   }
 

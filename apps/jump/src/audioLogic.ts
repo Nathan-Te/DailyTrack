@@ -33,6 +33,7 @@ export type SoundId =
   | "mort"
   | "reapparition"
   | "ressort"
+  | "champignon"
   | "friableCraque"
   | "friableTombe"
   | "pointDePassage"
@@ -138,6 +139,9 @@ export function soundFor(e: GameEvent, variation = 0.5): SoundSpec | null {
     case "ressort":
       // « Boing » : une note qui monte puis vibre.
       return spec("ressort", 2, [tone("triangle", 160, 0.08, 0.18, 0, 520), tone("sine", 520, 0.28, 0.12, 0.07, 340), tone("sine", 780, 0.2, 0.05, 0.08, 560)]);
+    case "champignon":
+      // Lot 23 : un « boup » rond et mou (pas le « boing » métallique du ressort) ; plus haut et plus long quand le rebond est renforcé.
+      return spec("champignon", 2, e.boost ? [tone("sine", 190, 0.1, 0.17, 0, 520), tone("sine", 620, 0.22, 0.1, 0.05, 460), tone("triangle", 930, 0.16, 0.04, 0.06, 700)] : [tone("sine", 170, 0.09, 0.15, 0, 400), tone("sine", 470, 0.17, 0.09, 0.05, 360)]);
     case "friableCraque":
       // Craquement : deux grains secs.
       return spec("friableCraque", 1, [noise(2400, 0.04, 0.12, 0, 1500, "bandpass", 4), noise(1700, 0.05, 0.1, 0.05, 1100, "bandpass", 4)]);

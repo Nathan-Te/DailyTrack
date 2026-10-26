@@ -1,5 +1,5 @@
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, PLATFORM_VERSION, PRESS_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
+import { JUMP_GENERATOR_VERSION, MUSHROOM_VERSION, PLATFORM_VERSION, PRESS_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
 import { idiv } from "./idiv";
 import { jumpThemeForDay, type JumpThemeName } from "./themes";
 import type { SlowRoute } from "./voies";
@@ -19,9 +19,9 @@ export function levelNumber(day: number): number {
  * Identifiant du niveau d'une date : `jour-AAAA-MM-JJ-g<JUMP_GENERATOR_VERSION>` (identifiant des rediffusions et de la mémoire). Un thème
  * **forcé** (lot 11 : un autre que celui de la date) y ajoute `-t<thème>` : c'est un essai (`forcedTheme`), jamais enregistré.
  */
-export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = PRESS_VERSION): string {
+export function dailyLevelId(day: number, forced: JumpThemeName | null = null, simVersion = MUSHROOM_VERSION): string {
   const natural = jumpThemeForDay(day);
-  const g = simVersion >= PRESS_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
+  const g = simVersion >= MUSHROOM_VERSION ? JUMP_GENERATOR_VERSION : simVersion >= PRESS_VERSION ? PRESS_GENERATOR : simVersion >= PLATFORM_VERSION ? PLATFORM_GENERATOR : simVersion >= SINGLE_CLOCK_VERSION ? SINGLE_CLOCK_GENERATOR : SECTION_CLOCK_GENERATOR;
   return `jour-${formatDay(day)}-g${g}${forced !== null && forced !== natural ? `-t${forced}` : ""}`;
 }
 
@@ -38,6 +38,11 @@ export const PLATFORM_GENERATOR = 15;
  * les morceaux à presses, la même règle de variété). Les niveaux du jour depuis le générateur g16 (`PRESS_GENERATOR`) sont en version 6.
  */
 export const PRESS_GENERATOR = 16;
+/**
+ * Lot 23 : le dernier générateur des niveaux en version 6 est g16 : `dailyLevel(jour, thème, 6)` le rend encore, à l'identique (référence v6 : le catalogue sans les
+ * morceaux à champignons, la même règle de variété). Les niveaux du jour depuis le générateur g17 (`MUSHROOM_GENERATOR`) sont en version 7.
+ */
+export const MUSHROOM_GENERATOR = 17;
 
 /** Médailles : facteurs (en pour cent) du temps de l'auteur, arrondis au pas supérieur. À calibrer sur de vraies parties (seed § 5). */
 export const MEDAL_PERCENT = { gold: 110, silver: 130, bronze: 160 } as const;

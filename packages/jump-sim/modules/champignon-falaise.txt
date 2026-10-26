@@ -1,0 +1,33 @@
+id: champignon-falaise
+intention: Atteindre un rebord plus haut que le plus haut rebond d'un champignon : tenir le saut au contact du chapeau pour le renforcer, car la paroi hérissée de pics interdit tout saut mural.
+etiquettes: champignon vertical precision
+famille: champignon-falaise
+theme: foret
+format: 3
+paliers: 14 7
+repeter: trou colonnes 7-7
+repeter: haut rangees 9-9
+variante: trou=1 haut=1
+variante: trou=2 haut=1
+variante: trou=3 haut=1
+variante: trou=1 haut=2
+variante: trou=2 haut=2
+variante: trou=3 haut=2
+grille:
+................
+................
+................
+................
+................
+................
+................
+..........<#####
+..........<#####
+..........<#####
+..........<#####
+..........<#####
+..........<#####
+.....m....<#####
+######....######
+######....######
+######....######

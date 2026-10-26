@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { dailyLevel, pressModuleIds } from "@cdj/jump-sim";
+import { dailyLevel, moduleSolutions, mushroomModuleIds, pressModuleIds } from "@cdj/jump-sim";
 import { generatedDay } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -106,7 +106,7 @@ test("niveau du jour (v6 depuis le lot 22) à plateformes : la preuve de l'auteu
   const date = dayWithPlatform();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(6);
+  expect(daily.level.simVersion).toBe(7);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
@@ -221,7 +221,7 @@ test("niveau du jour d'usine (v6) : la preuve de l'auteur, jouée pas à pas dan
   const date = dayWithPresses();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await openP(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(6);
+  expect(daily.level.simVersion).toBe(7);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JP }).__jump;
     j.manual(true);
@@ -235,4 +235,100 @@ test("niveau du jour d'usine (v6) : la preuve de l'auteur, jouée pas à pas dan
   }, daily.code);
   expect(result.presses).toBeGreaterThanOrEqual(2);
   expect(result.deaths).toBe(0);
+});
+
+
+// ——— Lot 23 : les champignons (dans ce fichier, pour la même raison) ———
+// Un champignon dessiné où la simulation le met et tourné vers où il lance, qui s'écrase au rebond (plus fort sur un rebond renforcé) **sans secousse de caméra**, la galerie
+// `?modules` qui les filtre, et le niveau du jour de forêt dont la preuve de l'auteur rebondit sur ses champignons sans mourir. Tout se lit en pas à pas.
+
+interface MushroomsDebug {
+  count: number;
+  list: { col: number; row: number; dir: number; name: string }[];
+  rotation?: number[];
+  squash?: number[];
+  boosted?: boolean[];
+  bounces?: number;
+}
+interface JM {
+  phase: string;
+  mushrooms: MushroomsDebug | null;
+  events: { kind: string; index?: number; boost?: boolean }[];
+  attempt: { status: string; time: number };
+  manual(on: boolean): void;
+  advance(n: number): unknown;
+  autoplay(code?: string): number;
+  go?(): void;
+}
+
+test("un morceau à champignon (`?module=champignon-falaise`) : la solution rebondit sur un rebond renforcé, le champignon s'écrase plus fort, aucune secousse", async ({ page }) => {
+  test.skip(!(await open(page, "?module=champignon-falaise&variante=0&entree=arret&debug&accueil=0")), "pas de WebGL dans ce navigateur");
+  const code = moduleSolutions("champignon-falaise", 0)!.arret!.code;
+  const first = await page.evaluate(() => (window as unknown as { __jump: JM }).__jump.mushrooms);
+  expect(first!.count).toBeGreaterThanOrEqual(1);
+  // Chaque champignon est dessiné tourné vers où il lance : sol 0, plafond π, mur de gauche −π/2, mur de droite π/2.
+  const rotations: Record<string, number> = { sol: 0, plafond: Math.PI, "mur gauche": -Math.PI / 2, "mur droit": Math.PI / 2 };
+  const result = await page.evaluate((c) => {
+    const j = (window as unknown as { __jump: JM & { fx?: { shaking?: boolean } } }).__jump;
+    j.manual(true);
+    const total = j.autoplay(c);
+    let deaths = 0;
+    let shaken = 0;
+    for (let t = 0; t < total + 5 && j.phase !== "finished"; t++) {
+      j.advance(1);
+      if (j.attempt.status === "mort") deaths++;
+      shaken += j.fx?.shaking ? 1 : 0;
+    }
+    const bounces = j.events.filter((e) => e.kind === "champignon");
+    return { deaths, drawnBoost: (j.mushrooms?.boosted ?? []).some(Boolean), shaken, bounces: bounces.length, boosted: bounces.filter((e) => e.boost).length, drawn: j.mushrooms?.bounces ?? 0, rotation: j.mushrooms?.rotation ?? [] };
+  }, code);
+  expect(result.deaths).toBe(0);
+  expect(result.bounces).toBeGreaterThanOrEqual(1);
+  expect(result.boosted).toBeGreaterThanOrEqual(1); // la falaise ne se passe qu'avec le rebond renforcé
+  expect(result.drawn).toBe(result.bounces);
+  expect(result.drawnBoost).toBe(true); // le dessin a reçu un rebond renforcé (l'écrasement lui-même est une fonction pure de l'âge : `test/champignons.test.ts`, aucun rendu en pas à pas)
+  expect(result.shaken).toBe(0); // règle du lot 14 : aucune secousse
+  for (const [i, m] of first!.list.entries()) expect(result.rotation[i], m.name).toBeCloseTo(rotations[m.name] ?? 0, 6);
+});
+
+test("la galerie `?modules` filtre par l'étiquette « champignon » : au moins six morceaux", async ({ page }) => {
+  await page.goto("/?modules&debug");
+  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
+  await page.selectOption('select[name="etiquette"]', "champignon");
+  await page.waitForFunction(() => (window as unknown as { __jump: { gallery: { filter: { tag: string | null } } } }).__jump.gallery.filter.tag === "champignon");
+  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
+  expect(shown).toBeGreaterThanOrEqual(6);
+  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
+});
+
+/** Un jour sans fichier figé dont le niveau (g17, v7, forêt) a au moins deux morceaux à champignons. */
+function dayWithMushrooms(): string {
+  let day = parseDay(generatedDay())!;
+  for (let k = 0; k < 90; k++, day++) {
+    const d = dailyLevel(day);
+    if (d.pieces.filter((p) => mushroomModuleIds().has(p.id)).length >= 2) return d.date;
+  }
+  throw new Error("aucun jour généré avec deux morceaux à champignons");
+}
+
+test("niveau du jour de forêt (v7) : la preuve de l'auteur, jouée pas à pas dans la page, rebondit sur ses champignons et arrive sans mourir", async ({ page }) => {
+  const date = dayWithMushrooms();
+  const daily = dailyLevel(parseDay(date)!);
+  test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
+  expect(daily.level.simVersion).toBe(7);
+  const result = await page.evaluate((code) => {
+    const j = (window as unknown as { __jump: JM }).__jump;
+    j.manual(true);
+    const total = j.autoplay(code);
+    let deaths = 0;
+    for (let t = 0; t < total + 5 && j.phase !== "finished"; t++) {
+      j.advance(1);
+      if (j.attempt.status === "mort") deaths++;
+    }
+    return { deaths, phase: j.phase, count: j.mushrooms?.count ?? 0, bounces: j.events.filter((e) => e.kind === "champignon").length };
+  }, daily.code);
+  expect(result.count).toBeGreaterThanOrEqual(2);
+  expect(result.bounces).toBeGreaterThanOrEqual(1);
+  expect(result.deaths).toBe(0);
+  expect(["finished", "carnage"]).toContain(result.phase); // arrivée sans mort : l'écran d'arrivée passe par le carnage
 });

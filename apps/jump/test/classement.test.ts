@@ -433,6 +433,12 @@ describe("démonstration (?api=demo)", () => {
     expect(board).toMatchObject({ ok: true, data: { me: { name: "Moi", rank: today.participants + 1 }, open: true } });
     online = false;
     expect(await src.submit("p", "Moi", e, versions)).toMatchObject({ ok: false, status: 0 });
-    expect(jumpMedalsFor(today.medals.author)).toEqual(today.medals);
+    // Les médailles sont celles de `jumpMedalsFor(auteur)`, ajustées par les voies lentes du niveau (lot 16 : l'or ne dépasse jamais la voie rapide, le bronze couvre toutes les voies lentes) :
+    // l'auteur et l'argent sont ceux de la formule, l'or ne la dépasse pas, le bronze n'est pas en dessous.
+    const plain = jumpMedalsFor(today.medals.author);
+    expect(today.medals.author).toBe(plain.author);
+    expect(today.medals.silver).toBe(plain.silver);
+    expect(today.medals.gold).toBeLessThanOrEqual(plain.gold);
+    expect(today.medals.bronze).toBeGreaterThanOrEqual(plain.bronze);
   });
 });
