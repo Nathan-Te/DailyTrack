@@ -421,7 +421,7 @@ describe("lot 23 — les morceaux à champignons du catalogue", () => {
         for (const e of ["arret", "elan"] as const) expect(sol[e]!.exigence, `${d.id} v${v} ${e}`).toBeGreaterThanOrEqual(1);
       }
     }
-  });
+}, 120_000); // les règles des 0,3 s rejouent la simulation pour chaque variante : plus de 5 s quand la part de CI est chargée (rouge à la CI de PR)
 
   it("les solutions gardées rebondissent vraiment : chaque entrée de chaque variante compte au moins un rebond", () => {
     for (const d of MUSHROOM_MODULES) {

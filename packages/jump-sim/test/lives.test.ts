@@ -59,7 +59,7 @@ describe("checkLife : les vies vécues sont acceptées, rejouées à l'identique
         expect(r.life.startTime).toBe(life.start.time);
         if (life.death) expect(r.life.section).toBe(sectionAt(level, life.death.x));
       }
-    });
+    }, 60_000); // lot 23 : 5 s ne suffisent plus quand la part de CI charge aussi la règle des champignons (mesuré : rouge à la CI de PR, vert seul en 20 s pour tout le fichier)
   }
 });
 
