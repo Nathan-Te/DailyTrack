@@ -310,8 +310,14 @@ jobs:
       # DailyTrack a besoin des deux jeux (e2e/deux-jeux.mjs) et du serveur ; DailyJump seul n'a besoin que de lui.
       - run: npm run build && npm run build:node -w @cdj/api
         if: matrix.web != ''
+        env:
+          # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
       - run: npm run build -w @cdj/jump
         if: matrix.web == '' && matrix.jump != ''
+        env:
+          # Lot R8 : les e2e tournent le 20/10/2026 (horloge maîtrisée) : les archives des jeux commencent au circuit n° 1, pas au lancement public.
+          VITE_LANCEMENT_PREMIER_JOUR: "2026-10-13"
       - name: Tests e2e DailyTrack (Chromium)
         if: matrix.web != ''
         env:
