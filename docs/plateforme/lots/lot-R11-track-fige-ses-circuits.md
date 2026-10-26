@@ -45,4 +45,5 @@ Le garde-fou ne protège que **(a) les jours d'avant la date de lancement, (b) l
 Mesuré contre `main` (`node scripts/budgets.mjs`, `docs/plateforme/budgets.md`) : **+72 o** au premier chargement (289 323 → 289 395, plafond 291 600, marge 2 205), +176 o le fil des circuits (marge 593) et +369 o celui du Salon (marge 419) : le registre est dans `dailyId.ts`, que les deux fils embarquent. Aucune ligne relevée.
 
 ## Runs de CI et verdicts
-(à remplir)
+- PR n° 160, run [40410678709](https://github.com/Nathan-Te/DailyTrack/actions/runs/40410678709) sur `76b85f4` (`main` fusionné une fois, avec le lancement au 27/10) : **CI verte** en 17 min — `scope`, `zones`, `api-image`, `unit` 4/4, `e2e-pr` 4/4, `test`, `e2e` ; 1 job sauté (rien à lancer). Aucun test rouge hors zone.
+- Les workflows de mise en production (`production.yml`, `deploy-*.yml`) ne se lancent pas en PR : voir « Non vérifié ».
