@@ -11,7 +11,7 @@ import { Fingers, hasWebGL, withPhone } from "./phone";
 // Horloge maîtrisée par décalage de `Date` (`clock.ts`), jamais `page.clock.install` ; tout résultat qui dépend du nombre de pas se lit en pas à pas.
 
 const SKIP = "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire";
-const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v6.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
+const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/daily-golden-v7.json", import.meta.url), "utf8")) as { jumpGeneratorVersion: number }).jumpGeneratorVersion;
 
 /** Les thèmes des 400 premières dates du lot 9 (le thème d'une date ne change pas : fixture de `jump-sim`). */
 const THEMES = JSON.parse(readFileSync(new URL("../../../packages/jump-sim/test/fixtures/themes-lot9.json", import.meta.url), "utf8")) as { first: number; count: number; names: string };
@@ -111,7 +111,10 @@ async function playToEnd(page: Page, max = 6000): Promise<{ ticks: number; kinds
       const b = j.blocks;
       if (b) {
         if (b.alt >= 0) alts.add(b.alt);
-        if ((b.draining ?? 0) > maxDraining) maxDraining = b.draining ?? 0;
+        // Lot 23 : la jauge se lit sur la simulation (`simFills`, relue à chaque pas) : `draining` est ce que le dernier rendu a dessiné, et un pas à pas sans rendu n'en
+        // produit pas — il ne montrait la jauge que si l'image du départ tombait dans une annonce, ce qui dépend de la composition du jour.
+        const draining = b.simFills.filter((f) => f > 0 && f < 1).length;
+        if (draining > maxDraining) maxDraining = draining;
       }
       if (j.phase === "finished" || j.phase === "carnage") return { ticks: t, kinds: [...kinds], alts: [...alts], maxDraining };
     }
