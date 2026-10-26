@@ -111,4 +111,21 @@ describe("le sol relevé (lot 44) : du décor, que la simulation ne voit pas", (
       if (!track.cells.has(cellKey(Math.floor((x + dx) / CELL), Math.floor((z + dz) / CELL)))) expect(t.hauteur(x + dx, z + dz)).toBeLessThan(track.voidY - 3);
     }
   });
+
+  it("retouche 47b : le sol comble aussi l'intérieur des cellules de la piste, là où rien ne roule — jamais sous la route roulante, jamais au-dessus du sol relevé voisin", () => {
+    for (const c of circuits.slice(0, 16)) {
+      const { t, sol } = sommets(c.track);
+      const world = trackWorld(c.track);
+      const tris: [number, number, number][][] = [];
+      t.construire({ tri: (a: [number, number, number], b: [number, number, number], d: [number, number, number]) => void tris.push([a, b, d]) } as never, 0);
+      const dedans = tris.filter((tri) => Math.max(tri[0]![1], tri[1]![1], tri[2]![1]) > sol).filter((tri) => c.track.cells.has(cellKey(Math.floor((tri[0]![0] + tri[1]![0] + tri[2]![0]) / 3 / CELL), Math.floor((tri[0]![2] + tri[1]![2] + tri[2]![2]) / 3 / CELL))));
+      expect(dedans.length, `${c.jour} ${c.theme} : des carrés dans les cellules de la piste`).toBeGreaterThan(20);
+      for (const tri of dedans) {
+        const x = (tri[0]![0] + tri[1]![0] + tri[2]![0]) / 3;
+        const z = (tri[0]![2] + tri[1]![2] + tri[2]![2]) / 3;
+        world.sample(x, z, out);
+        expect(out.height, `${c.jour} ${c.theme} : sol sous la surface roulante en ${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(NO_GROUND);
+      }
+    }
+  }, 240_000);
 });
