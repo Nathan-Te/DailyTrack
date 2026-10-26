@@ -36,7 +36,7 @@ Le garde-fou ne protège que **(a) les jours d'avant la date de lancement, (b) l
 4. Premier clic : le code en production est d'avant le registre ; `registre-jours.ts` ne dépend que de `@cdj/sim` et marche avec l'ancien choix par date (répété ci-dessus).
 
 ## Budget de Track
-Voir `docs/plateforme/budgets.md` (ligne `track`) : le registre et la lecture ajoutent ≈ ___ o au premier chargement.
+Mesuré contre `main` (`node scripts/budgets.mjs`, `docs/plateforme/budgets.md`) : **+72 o** au premier chargement (289 323 → 289 395, plafond 291 600, marge 2 205), +176 o le fil des circuits (marge 593) et +369 o celui du Salon (marge 419) : le registre est dans `dailyId.ts`, que les deux fils embarquent. Aucune ligne relevée.
 
 ## Runs de CI et verdicts
 (à remplir)
