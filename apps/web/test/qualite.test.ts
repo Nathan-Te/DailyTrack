@@ -44,8 +44,9 @@ describe("lot 45 : points de départ et garde-fous", () => {
     expect(passesPermises(LOGICIEL)).toBe(false);
   });
 
-  it("lot 47b : le post-traitement seulement sur « Maximale » (jamais en Auto, même au palier 3 mesuré ou mémorisé)", () => {
-    expect(postVoulu("auto", ORDINATEUR)).toBe(false);
+  it("lot 47b, puis lot 50 : le post-traitement sur « Maximale », et dans Auto seulement depuis qu'il est prouvé au banc (POST_DANS_AUTO)", () => {
+    expect(postVoulu("auto", ORDINATEUR, null, false), "47b : jamais en Auto").toBe(false);
+    expect(postVoulu("auto", ORDINATEUR), "lot 50 : prouvé au banc (rapport 2)").toBe(true);
     expect(postVoulu("equilibree", ORDINATEUR)).toBe(false);
     expect(postVoulu("maximale", ORDINATEUR)).toBe(true);
     expect(postVoulu("maximale", { ...ORDINATEUR, demiFlottants: false })).toBe(false);

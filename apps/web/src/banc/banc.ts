@@ -8,7 +8,6 @@ import { NeutralToneMapping, PerspectiveCamera, Vector2, WebGLRenderer, type Obj
 import { TICK_RATE, bestPilotRun, createRace, dailyCircuit, parseDay, stepRace, ReplayPlayer, type PaletteName, type Track } from "@cdj/sim";
 import type { Appareil } from "../qualite";
 import { ChainePost, type ChronoPasses } from "../scene/post";
-import { ChainePost as ChainePost47, parcourirMateriaux } from "../scene/post47";
 import { POST_3 } from "../scene/themesPost";
 import type { TrackScene } from "../trackMesh";
 import { BANC_DEBUT_S, BANC_JOUR, DUREES, VERSION_RAPPORT, configurations, plan, rapportValide, resumer, type ConfigBanc, type EnteteBanc, type MesureBanc, type ModeBanc, type RapportBanc, type ThemeBanc } from "./bancLogique";
@@ -339,20 +338,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
   };
   const ch = config.chaine;
   if (!ch) rendre = direct;
-  else if (ch.version === 47) {
-    const chaine = new ChainePost47(renderer, ch.echantillons);
-    chaine.chrono = chrono;
-    chaine.sansSortie = !ch.sortie;
-    const r = { halo: ch.halo, etalonnage: ch.etalonnage, anticrenelage: ch.anticrenelage, theme: post, exposition: view.look.exposure };
-    rendre = () => {
-      parcourirMateriaux(view.scene); // le lot 47 adaptait les nuanceurs d'écran à chaque image (`lineaire.adapter`)
-      if (!chaine.rendre(view.scene, camera, d.x, d.y, r)) {
-        echec = "cible refusée : dessin direct";
-        direct();
-      }
-    };
-    liberer = () => chaine.dispose();
-  } else {
+  else {
     const chaine = new ChainePost(renderer, ch.forme);
     chaine.chrono = chrono;
     echelle = () => chaine.echelle;

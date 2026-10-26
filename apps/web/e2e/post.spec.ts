@@ -22,7 +22,7 @@ function erreurs(page: Page): string[] {
   return e;
 }
 
-test("ordinateur, ?palier=3 : la chaîne est chargée à la demande avant la course, avec le multi-échantillonnage (l'écran sans le sien), ses parties et sa mémoire calculée", async ({ page }) => {
+test("ordinateur, ?palier=3 : la chaîne est chargée à la demande avant la course (l'écran sans multi-échantillonnage), ses parties et sa mémoire calculée", async ({ page }) => {
   const e = erreurs(page);
   await page.setViewportSize({ width: 480, height: 270 });
   await page.goto(`${ORDINATEUR}&seed=2026-10-14&palier=3`);
@@ -32,27 +32,33 @@ test("ordinateur, ?palier=3 : la chaîne est chargée à la demande avant la cou
   expect(await scene(page)).toEqual({ palier: "P3", plus: ["post"] });
   expect(await morceaux(page)).toEqual(["postJeu"]);
   const p = await post(page);
-  // Lot 50 : jamais deux multi-échantillonnages — la chaîne voulue au chargement, le moteur est créé sans celui de l'écran ; la scène a le sien (×4).
-  expect(p).toMatchObject({ demande: true, permis: true, actif: true, mode: "chaine", ecranMsaa: false, coupe: null, parties: { halo: true, etalonnage: true, anticrenelage: true }, echantillons: 4, echecs: 0 });
+  // Lot 50 : jamais deux multi-échantillonnages — la chaîne voulue au chargement, le moteur est créé sans celui de l'écran ; la scène n'en a pas non plus (le FXAA).
+  expect(p).toMatchObject({ demande: true, permis: true, actif: true, mode: "chaine", ecranMsaa: false, coupe: null, parties: { halo: true, etalonnage: true, anticrenelage: true }, echantillons: 0, echecs: 0 });
   expect(p.halo, "la Nuit (le circuit du 14/10) : le halo").toBe(true);
   const [w, h] = p.taille!;
   expect([w, h], "les cibles ont la taille réelle de l'image (tampon de dessin)").toEqual(await page.evaluate(() => [window.innerWidth * devicePixelRatio, window.innerHeight * devicePixelRatio]));
-  // La scène (R11F_G11F_B10F : 4 + 4 × (4 + 4) octets par pixel), plus de cibles de passes, le halo à la demi-résolution et ses niveaux (≈ 7,3 octets par pixel de l'écran).
-  expect(p.octets).toBeGreaterThan(w! * h! * 36);
-  expect(p.octets).toBeLessThan(w! * h! * (36 + 8));
+  // La scène (R11F_G11F_B10F et sa profondeur : 8 octets par pixel, sous le plafond de 2,1 millions), plus de cibles de passes, le halo (≈ 7,3 octets par pixel de l'écran).
+  expect(p.octets).toBeGreaterThan(w! * h! * 8);
+  expect(p.octets).toBeLessThan(w! * h! * (8 + 8));
   expect(await page.evaluate(() => window.__cdj.render.calls), "la scène et ses passes").toBeGreaterThan(p.appels);
   expect(e).toEqual([]);
 });
 
-test("lot 47b : Auto sur un ordinateur ne donne jamais le post-traitement et ne charge pas son module ; « Maximale » le donne", async ({ page }) => {
+test("lot 50 : Auto sur un ordinateur donne le post-traitement (prouvé au banc) ; refusé par cet appareil (sansPost), le palier 3 seul, sans son module ; « Maximale » le donne", async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 270 });
-  await page.addInitScript(() => localStorage.setItem("cdj:qualite", JSON.stringify({ palier: 3, date: Date.now(), mediane: 10, pixels: 480 * 270 * devicePixelRatio ** 2, echecs: 0, plafond: null, durable: false })));
   await page.goto(`${ORDINATEUR}&seed=2026-10-14`);
   await page.waitForFunction(() => window.__cdj?.phase);
+  await chaineAllumee(page);
+  expect(await scene(page), "un ordinateur en Auto : le palier 3 et la chaîne").toEqual({ palier: "P3", plus: ["post"] });
+  expect(await post(page)).toMatchObject({ ecranMsaa: false, mode: "chaine" });
+  // Une mémoire qui dit que cet appareil l'a refusée (une mesure ratée avec elle, une course trop lente) : le palier 3 seul, le module n'est pas chargé.
+  await page.evaluate(() => localStorage.setItem("cdj:qualite", JSON.stringify({ palier: 3, date: Date.now(), mediane: 10, pixels: 480 * 270 * devicePixelRatio ** 2, echecs: 0, plafond: null, durable: false, sansPost: true })));
+  await page.reload();
+  await page.waitForFunction(() => window.__cdj?.phase);
   await page.waitForFunction(() => window.__cdj.render.renderFrames > 3);
-  expect(await scene(page), "la mémoire d'une ancienne chaîne en Auto redonne le palier 3 seul").toEqual({ palier: "P3", plus: [] });
-  expect(await post(page)).toMatchObject({ permis: true, demande: false, actif: false });
-  expect(await morceaux(page), "le module du post-traitement n'est pas chargé en Auto").toEqual([]);
+  expect(await scene(page)).toEqual({ palier: "P3", plus: [] });
+  expect(await post(page)).toMatchObject({ permis: true, demande: false, actif: false, ecranMsaa: true });
+  expect(await morceaux(page), "le module du post-traitement n'est pas chargé").toEqual([]);
   await page.evaluate(() => localStorage.setItem("cdj:settings", JSON.stringify({ graphismes: "maximale", version: 1 })));
   await page.reload();
   await page.waitForFunction(() => window.__cdj?.phase);
@@ -184,7 +190,7 @@ test("la chaîne ne s'allume ni ne s'éteint en course : demandée ou retirée e
   expect(await post(page)).toMatchObject({ actif: false, demande: false, coupe: null, mode: null });
 });
 
-test("lot 50 : mode copie — un moteur créé pour la chaîne qui ne l'a plus dessine quand même la scène multi-échantillonnée (jamais une image crénelée)", async ({ page }) => {
+test("lot 50 : mode copie — un moteur créé pour la chaîne qui ne l'a plus dessine quand même par elle, tonalité et FXAA (jamais une image crénelée)", async ({ page }) => {
   await page.setViewportSize({ width: 480, height: 270 });
   await page.goto(`${ORDINATEUR}&seed=2026-10-14&palier=3`);
   await chaineAllumee(page);
@@ -192,7 +198,7 @@ test("lot 50 : mode copie — un moteur créé pour la chaîne qui ne l'a plus d
   await page.keyboard.press("KeyP");
   await page.waitForFunction(() => window.__cdj.socle.palier() === "P2" && window.__cdj.post.mode === "copie", undefined, { timeout: 60_000 });
   const p = await post(page);
-  expect(p).toMatchObject({ actif: false, demande: false, mode: "copie", ecranMsaa: false, echantillons: 4, halo: false, parties: { halo: false, etalonnage: false, anticrenelage: false } });
+  expect(p).toMatchObject({ actif: false, demande: false, mode: "copie", ecranMsaa: false, echantillons: 0, halo: false, parties: { halo: false, etalonnage: false, anticrenelage: true } });
   const images = await page.evaluate(() => window.__cdj.render.moteurImages);
   await page.waitForFunction((n) => window.__cdj.render.moteurImages > n + 3, images, { timeout: 30_000 });
 });
@@ -308,7 +314,7 @@ test("lot 50 : le banc d'essai (?banc=court, rendu logiciel) produit un rapport 
   expect(b.erreur).toBeNull();
   expect(b.etat).toBe("fini");
   expect(b.valide, "rapport valide").toBe(true);
-  expect(b.rapport.mesures.map((m) => `${m.config}:${m.theme}`)).toEqual(["p1:stade", "p3-47:stade", "p3-50:nuit"]);
+  expect(b.rapport.mesures.map((m) => `${m.config}:${m.theme}`)).toEqual(["p1:stade", "p3:stade", "p3-50:nuit"]);
   expect(b.rapport.entete.carteGraphique).not.toBe("");
   expect(await page.evaluate(() => typeof (window as unknown as { __cdj?: unknown }).__cdj), "le jeu n'a pas démarré").toBe("undefined");
   // Rien d'écrit par le banc : seulement ce que toute page de la plateforme pose au chargement (langue, génération du « Nouveau départ », révision d'identité).

@@ -145,7 +145,7 @@ describe("lot 47 : jamais de passe plein écran sur un profil téléphone", () =
   });
   it("main.ts ne demande la chaîne qu'avec le palier 3 et passesPermises (un seul endroit, sans autre chemin) ; le mode copie, seulement sur un moteur créé pour la chaîne", () => {
     const main = readFileSync(join(SRC, "main.ts"), "utf8");
-    expect(main).toContain('PAS_DU_JEU.post = () => Promise.all([import("./scene/postJeu")');
+    expect(main).toContain('PAS_DU_JEU.post = () => import("./scene/postJeu")');
     expect(main).toContain('postDemande && postPermis() ? "chaine" : ecranSansMsaa && appareil.demiFlottants');
     expect(main).toContain('plus: postPermis() && postVoulu(choix, appareil, memoireQualite) ? ["post"] : []');
     expect(main).toContain("const postPermis = () => passesPermises(appareil)");
@@ -205,13 +205,13 @@ describe("lot 50 : une seule passe de fin, pas de halo le jour, jamais deux mult
   });
   it("jamais deux multi-échantillonnages : un moteur sans le sien quand la chaîne est voulue au chargement ; sinon la scène de la chaîne n'en fait pas", () => {
     expect(formeDuJeu(false)).toEqual(FORME_JEU);
-    expect(FORME_JEU.echantillons).toBe(4);
+    expect(FORME_JEU.echantillons, "rapport 2 du banc : la scène de la chaîne sans multi-échantillonnage (le FXAA lisse)").toBe(0);
     expect(formeDuJeu(true).echantillons, "écran déjà multi-échantillonné").toBe(0);
     const o = { adresse: null, choix: "maximale" as const, ordinateur: true };
     expect(chaineAuChargement(o)).toBe(true);
-    expect(chaineAuChargement({ ...o, choix: "auto" }), "Auto ne l'allume pas (47b)").toBe(false);
+    expect(chaineAuChargement({ ...o, choix: "auto", dansAuto: false }), "Auto sans le post-traitement (47b)").toBe(false);
+    expect(chaineAuChargement({ ...o, choix: "auto" }), "lot 50 : Auto l'a (un ordinateur part du palier 3)").toBe(true);
     expect(chaineAuChargement({ ...o, ordinateur: false }), "jamais un téléphone").toBe(false);
-    expect(chaineAuChargement({ ...o, chaine47: true }), "?chaine=47 : l'écran d'avant").toBe(false);
     expect(chaineAuChargement({ ...o, choix: "auto", adresse: { palier: "P3", coupes: [] } }), "?palier=3").toBe(true);
     expect(chaineAuChargement({ ...o, adresse: { palier: "P3", coupes: ["post"] } }), "?reglages=3-post").toBe(false);
     expect(chaineAuChargement({ ...o, adresse: { palier: "P2", coupes: [] } }), "?palier=2 l'emporte sur Maximale").toBe(false);
@@ -242,6 +242,6 @@ describe("lot 50 : ce que le premier rapport du banc a changé (Iris Xe, 2560 ×
     expect(echelleScene(1920, 1080, 0)).toBe(1);
     expect(echelleScene(1920, 1080, 2_073_600)).toBe(1);
     expect(echelleScene(2560, 1440, 2_073_600)).toBeCloseTo(0.75, 5);
-    expect(FORME_JEU.pixelsMax).toBeGreaterThanOrEqual(0);
+    expect(FORME_JEU.pixelsMax, "rapport 2 du banc : un 1080p").toBe(1920 * 1080);
   });
 });

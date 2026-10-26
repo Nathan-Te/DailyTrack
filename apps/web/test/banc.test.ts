@@ -7,26 +7,26 @@ import { isRestricted } from "../src/access";
 
 describe("lot 50 : le banc d'essai", () => {
   it("toutes les parties de la chaîne mesurées, avant et après ; les plafonds de pixels seulement s'ils réduisent l'image ; ≤ 2 min", () => {
-    expect(configurations(1, "normal", 1920 * 1080).map((x) => x.id), "un écran 1080p : rien à plafonner à 2,07 millions").not.toContain("50-plafond-2073600");
-    expect(configurations(1, "normal", 2560 * 1440).map((x) => x.id)).toEqual(expect.arrayContaining(["50-plafond-2073600", "50-plafond-2073600-msaa0", "50-plafond-2800000", "50-plafond-2800000-msaa0"]));
+    expect(configurations(1, "normal", 1920 * 1080).map((x) => x.id), "un écran 1080p : la chaîne n'y est pas plafonnée").not.toContain("50-sans-plafond");
+    expect(configurations(1, "normal", 2560 * 1440).map((x) => x.id)).toEqual(expect.arrayContaining(["50-sans-plafond", "50-plafond-2800000"]));
     for (const dpr of [1, 1.25, 2]) {
       const c = configurations(dpr);
       const ids = c.map((x) => x.id);
-      for (const id of ["p1", "p2", "p3", "p3-47", "p3-50", "50-sans-halo", "50-sans-etalonnage", "50-sans-fxaa", "50-copie", "50-msaa0", "50-demi", "50-halo-quart"]) expect(ids, id).toContain(id);
+      for (const id of ["p1", "p2", "p3", "p3-50", "50-sans-halo", "50-sans-etalonnage", "50-sans-fxaa", "50-copie", "50-msaa4", "50-demi", "50-halo-quart"]) expect(ids, id).toContain(id);
       expect(ids.includes("p3-d1"), "densité 1 seulement si l'écran en a une autre").toBe(dpr !== 1);
       const p = plan(c);
       expect(p.length).toBe(c.reduce((n, x) => n + x.themes.length, 0));
       // Les trois thèmes pour les paliers 3 avec et sans les chaînes.
-      for (const id of ["p3", "p3-47", "p3-50"]) expect(p.filter((x) => x.config.id === id).map((x) => x.theme).sort(), id).toEqual([...THEMES_BANC].sort());
+      for (const id of ["p3", "p3-50"]) expect(p.filter((x) => x.config.id === id).map((x) => x.theme).sort(), id).toEqual([...THEMES_BANC].sort());
       const secondes = (p.length * (DUREES.normal.chauffe + DUREES.normal.mesure)) / 1000;
       expect(secondes, "les mesures elles-mêmes, sans la préparation des scènes").toBeLessThan(115);
       // Un moteur puis l'autre (deux contextes) : les mesures d'un même écran se suivent.
       const ecrans = p.map((x) => x.config.ecran);
       expect(ecrans.indexOf("sans")).toBe(ecrans.lastIndexOf("msaa") + 1);
-      // La chaîne du lot 50 ne tourne que sur un écran sans multi-échantillonnage (jamais deux).
-      for (const x of c) if (x.chaine?.version === 50) expect(x.ecran, x.id).toBe("sans");
+      // La chaîne ne tourne que sur un écran sans multi-échantillonnage (jamais deux).
+      for (const x of c) if (x.chaine) expect(x.ecran, x.id).toBe("sans");
     }
-    expect(configurations(1, "court").map((x) => x.id)).toEqual(["p1", "p3-47", "p3-50"]);
+    expect(configurations(1, "court").map((x) => x.id)).toEqual(["p1", "p3", "p3-50"]);
     expect(BANC_JOUR).toBe("2026-10-20");
   });
 

@@ -1,8 +1,8 @@
 // Lot 47 — **le post-traitement du jeu** (palier 3, ordinateur seulement), chargé à la demande (`PAS_DU_JEU.post`, un `import()`) : le halo des lumières fortes
 // (la Nuit et le Néon seulement depuis le lot 50), l'étalonnage de chaque thème et l'anticrénelage FXAA. Lot 50 : la chaîne de `post.ts` (une seule passe de
-// fin, une cible de 4 octets par pixel, le halo sans passe à la taille de l'écran) ; `?chaine=47` (recette, aperçus, le temps du lot) reprend celle du lot 47.
+// fin, une cible de 4 octets par pixel, le halo sans passe à la taille de l'écran, la scène plafonnée à 2,1 millions de pixels).
 // **Mode copie** (lot 50) : un moteur créé sans multi-échantillonnage (la chaîne était voulue au chargement) qui n'a plus la chaîne dessine quand même par elle,
-// toutes parties coupées (`COPIE`) : la scène multi-échantillonnée dans sa cible, puis la tonalité seule — jamais une image crénelée. **Aucune de ces passes sur un téléphone** : `main.ts` ne demande ce module que
+// sans halo ni étalonnage (`COPIE`) : la scène, la tonalité et le FXAA — jamais une image crénelée. **Aucune de ces passes sur un téléphone** : `main.ts` ne demande ce module que
 // si `passesPermises` (qualite.ts : un ordinateur, des demi-flottants rendables, 4 Go) et que la scène est au palier 3 ; le réglage « Maximale » n'y change rien.
 //
 // - **Garde-fous** : une perte de contexte WebGL coupe la chaîne **à l'instant** (ses cibles n'existent plus ; le jeu dessine alors directement, la course
@@ -29,10 +29,10 @@ export interface PartiesPost {
   etalonnage: boolean;
   anticrenelage: boolean;
 }
-/** Lot 50 : le mode copie (moteur sans multi-échantillonnage, chaîne non voulue) : la scène multi-échantillonnée et la tonalité, rien d'autre. */
-export const COPIE: PartiesPost = { halo: false, etalonnage: false, anticrenelage: false };
+/** Lot 50 : le mode copie (moteur sans multi-échantillonnage, chaîne non voulue) : la scène, la tonalité et le FXAA (la chaîne du jeu n'a pas de multi-échantillonnage). */
+export const COPIE: PartiesPost = { halo: false, etalonnage: false, anticrenelage: true };
 
-/** Ce que `PostJeu` demande à une chaîne (`ChainePost` du lot 50, ou celle du lot 47 sous `?chaine=47`). */
+/** Ce que `PostJeu` demande à une chaîne (`ChainePost` ; les essais en donnent une autre). */
 export interface Chaine {
   appels: number;
   triangles: number;

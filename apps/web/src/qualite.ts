@@ -42,10 +42,10 @@ export const depart = (a: Appareil): NiveauQualite => (a.logiciel ? 1 : a.ordina
 export const passesPermises = (a: Appareil): boolean => a.ordinateur && !a.logiciel && a.demiFlottants && (a.memoire ?? 4) >= 4;
 
 /**
- * Lot 50 : le post-traitement revient dans Auto **seulement s'il est prouvé** au banc d'essai (sur l'Iris Xe de Nathan : la fréquence de l'écran, pire image ≤ 25 ms) ;
- * sinon il reste réservé à « Maximale » (retouche 47b).
+ * Lot 50 : le post-traitement revient dans Auto **parce qu'il est prouvé** au banc d'essai (rapport 2 de Nathan, Iris Xe à 2560 × 1440 : la chaîne du lot 50 plafonnée à
+ * 2,1 millions de pixels tient 60 images/s, pire image 17 ms, au Stade et la Nuit ; README du lot 50). Faux : réservé à « Maximale » (retouche 47b).
  */
-export const POST_DANS_AUTO = false;
+export const POST_DANS_AUTO = true;
 
 /**
  * Le post-traitement voulu, là où les passes sont permises : « Maximale » ; Auto si `POST_DANS_AUTO` et que cet appareil ne l'a pas refusé (une mesure ratée avec lui, ou
@@ -56,12 +56,11 @@ export const postVoulu = (choix: ChoixGraphismes, a: Appareil, m: MemoireQualite
 
 /**
  * Lot 50 : la chaîne de post-traitement est-elle voulue **dès le chargement** ? Alors le moteur est créé sans multi-échantillonnage de l'écran (jamais deux :
- * la chaîne a le sien, dans sa cible). L'adresse (`?palier=3`, `?reglages=3-post`) l'emporte sur le réglage ; jamais hors d'un ordinateur ; `?chaine=47` (la chaîne
- * du lot 47, le temps du lot) garde l'écran d'avant. `ordinateur` : sans la carte graphique (lue après la création du moteur) — un ordinateur sans demi-flottants
- * n'aura pas la chaîne et dessinera en mode copie.
+ * la chaîne lisse elle-même). L'adresse (`?palier=3`, `?reglages=3-post`) l'emporte sur le réglage ; jamais hors d'un ordinateur. `ordinateur` : sans la carte
+ * graphique (lue après la création du moteur) — un ordinateur sans demi-flottants n'aura pas la chaîne et dessinera en mode copie.
  */
-export function chaineAuChargement(o: { adresse: { palier: string; coupes: readonly string[] } | null; choix: ChoixGraphismes; ordinateur: boolean; chaine47?: boolean; memoire?: MemoireQualite | null; dansAuto?: boolean }): boolean {
-  if (!o.ordinateur || o.chaine47) return false;
+export function chaineAuChargement(o: { adresse: { palier: string; coupes: readonly string[] } | null; choix: ChoixGraphismes; ordinateur: boolean; memoire?: MemoireQualite | null; dansAuto?: boolean }): boolean {
+  if (!o.ordinateur) return false;
   if (o.adresse) return o.adresse.palier === "P3" && !o.adresse.coupes.includes("post");
   // Auto (si le post-traitement y est) : le palier 3 attendu (la mémoire, ou le point de départ d'un ordinateur) et la chaîne pas refusée par cet appareil.
   if (o.choix === "auto") return (o.dansAuto ?? POST_DANS_AUTO) && (o.memoire?.palier ?? 3) === 3 && !o.memoire?.sansPost;

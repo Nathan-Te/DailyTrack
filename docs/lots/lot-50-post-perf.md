@@ -5,59 +5,60 @@ Branche `claude/gifted-dijkstra-gj0t2y` (nom imposé par la session ; le lot pr�
 `durees.json` et de `packages/ui/test/applications.ts`. **Rien dans `sim`** : golden, rediffusions, classements, identifiants de circuit inchangés. Aucune clé de catalogue
 (le banc est un outil interne en français, exempté comme la page d'admin). Aucune donnée gardée de plus : les mentions légales ne changent pas.
 
-## État : en attente du rapport 2 du banc
+## État : la forme du jeu fixée sur le rapport 2 ; reste le rapport « après » de Nathan
 
-Rapport 1 reçu (plus bas) : la passe de fin et le halo de la première version sont corrigés, un plafond de pixels est proposé ; le banc (rapport version 2) mesure la
-chaîne corrigée, ses parties et ses plafonds. Restent à décider sur le rapport 2 : la forme du jeu (plafond, multi-échantillonnage, halo), `POST_DANS_AUTO`, puis le
-retrait de la chaîne du lot 47 et le rapport « après ».
+Rapport 1 (avant, première version) → passe de fin et halo corrigés, plafond de pixels ajouté. Rapport 2 → **la forme du jeu** : scène sans multi-échantillonnage,
+plafonnée à 2,1 millions de pixels (`FORME_JEU`), halo à la demi-résolution ; **le post-traitement revient dans Auto** (`POST_DANS_AUTO`) ; **la chaîne du lot 47 est
+retirée** (`post47.ts`, `?chaine=47` ; ses mesures restent ici). Reste : le rapport « après » (banc version 3) et la course en « Maximale » et en Auto.
 
 ## À tester (aperçu de la PR, sur le portable Iris Xe, branché, navigateur en plein écran)
 
 | Quoi | Lien |
 |---|---|
-| **Le banc** (≈ 2 min, ne rien toucher ; « Copier le rapport » à la fin, puis le coller dans la session) | `/track/?banc` |
-| La course en « Maximale » avec la nouvelle chaîne (compteur `?debug`) | `/track/?debug` puis Réglages › Graphismes › Maximale, recharger |
-| La même chose, palier 3 imposé, un jour de Nuit (halo) | `/track/?debug&palier=3&theme=nuit` |
-| La chaîne du lot 47 (avant), pour comparer en jeu (le temps du lot) | `/track/?debug&palier=3&chaine=47` |
+| **Le banc** (≈ 1 min 40, ne rien toucher ; « Copier le rapport », puis le coller dans la session) | `/track/?banc` |
+| La course du jour en Auto (le post-traitement y est) ou en « Maximale », compteur `?debug` : 60 images/s sans saccade | `/track/?debug` |
+| Un jour de Nuit (le halo) | `/track/?debug&palier=3&theme=nuit` |
 
 ## Le banc d'essai (`?banc`)
 
 - **Ce qu'il mesure** : `src/banc/bancLogique.ts` (liste, statistiques, rapport : testé, `test/banc.test.ts`) et `src/banc/banc.ts` (le dessin). La voiture suit la course du
   pilote automatique sur le circuit du **20/10/2026** (un jour passé : il ne change jamais), de 2 s à 5,2 s, sur **Stade, Nuit, Ville**, caméra de poursuite « proche » ;
-  0,7 s de mise en route écartée, puis **2,5 s de mesure** par configuration ; ≈ 31 à 35 mesures, **≈ 2 min**.
-- **Deux moteurs, l'un après l'autre** : `antialias` ne se change qu'à la création du contexte. D'abord l'écran multi-échantillonné (le jeu jusqu'ici : paliers 1, 2, 3, chaîne
-  47 et ses parties coupées une à une, densité 1), puis l'écran sans (référence, chaîne 47 sans double multi-échantillonnage, chaîne 50 et ses formes).
+  0,7 s de mise en route écartée, puis **2,5 s de mesure** par configuration ; ≈ 30 mesures, **≈ 1 min 40**.
+- **Deux moteurs, l'un après l'autre** : `antialias` ne se change qu'à la création du contexte. D'abord l'écran multi-échantillonné (paliers 1, 2, 3 sans la chaîne,
+  densité 1), puis l'écran sans (référence, la chaîne du jeu, chacune de ses parties coupée, ses formes : multi-échantillonnage, demi-flottants, halo au quart, sans
+  plafond, plafond de 2,8 Mpx). Versions du rapport : 1 et 2 mesuraient aussi la chaîne du lot 47 et ses parties ; 3 (actuelle) la chaîne du jeu seule.
 - **Par mesure** : temps d'image (médiane, 95ᵉ, 99ᵉ, pire), images/s, **temps de la carte graphique par passe** (`EXT_disjoint_timer_query_webgl2` : `scene`,
-  `halo`, `sortie`, `etalonnage`, `fxaa` pour la 47 ; `scene`, `halo`, `fin` pour la 50), fil principal, appels, programmes, **compilations pendant la mesure**, tâches longues.
+  `halo`, `fin`), fil principal, appels, programmes, **compilations pendant la mesure**, tâches longues.
   En-tête : carte graphique, navigateur, canevas, densité, plein écran, fréquence de l'écran, palier d'Auto, chaîne permise, minuteur disponible.
 - **Aucune course, rien d'écrit** : `main.ts` charge le banc et ne démarre pas le jeu (recette et aperçus seulement : `isRestricted`). Les effets de course (particules) ne
-  sont pas dans la scène du banc ; la chaîne 47 y refait le parcours des matériaux de chaque image du lot 47 (`parcourirMateriaux`).
+  sont pas dans la scène du banc.
 
-## La nouvelle chaîne (première version, à classer par le rapport)
+## La nouvelle chaîne
 
 | Lot 47 | Lot 50 |
 |---|---|
-| scène en demi-flottants ×4 (8 o + 4 × 12 o par pixel) **et** écran multi-échantillonné | scène en `R11F_G11F_B10F` ×4 (4 o + 4 × 8 o ; repli demi-flottants), **écran sans multi-échantillonnage** |
+| scène en demi-flottants ×4 (8 o + 4 × 12 o par pixel) **et** écran multi-échantillonné | scène en `R11F_G11F_B10F` (4 o + profondeur ; repli demi-flottants), **sans multi-échantillonnage** (FXAA), **plafonnée à 2,1 Mpx** ; **écran sans multi-échantillonnage** |
 | `UnrealBloomPass` (dont un mélange additif sur tout l'écran) **tous les thèmes** | halo **la Nuit et le Néon seulement**, mêmes niveaux, flous et poids, **aucune passe à la taille de l'écran** |
 | `OutputPass`, étalonnage, `FXAAPass` : trois passes plein écran en demi-flottants | **une seule passe de fin** (`FIN`) : tonalité, espace de l'écran, étalonnage, FXAA, écrit l'écran |
 | `lineaire.adapter` parcourt la scène à chaque image | un uniforme partagé (`SORTIE_LINEAIRE`), aucun parcours |
 | programmes compilés à la première image | `compileAsync` à l'arrêt (scène dans la cible, passes) |
-| 157,5 Mo de cibles à 1080p | 71,2 Mo le jour, 85,7 la Nuit |
-| module 6 798 o | 5 208 o (`postJeu` + `post`) |
+| 157,5 Mo de cibles à 1080p | 15,8 Mo le jour, 30,3 la Nuit (le plafond les borne à toutes les tailles) |
+| module 6 798 o | 5 216 o (`postJeu` + `post`) |
 
-- **Le FXAA de la passe de fin lit l'image finale** de chaque voisin (tonalité, halo, étalonnage), comme quand il passait en dernier : le résultat est le même à l'ordre de
-  l'étalonnage près. **Mode copie** : un moteur créé sans multi-échantillonnage (la chaîne voulue au chargement) qui la perd (Équilibrée choisie en route, mesure ratée)
-  dessine par la cible ×4 et la tonalité seule — jamais une image crénelée. Un moteur créé avec (la chaîne demandée en cours de page) garde la scène de la chaîne sans
-  multi-échantillonnage jusqu'au prochain chargement : **jamais deux**.
+- **Le FXAA de la passe de fin** juge les bords sur une luminance approchée et mêle les couleurs finales de deux voisins. **Mode copie** : un moteur créé sans
+  multi-échantillonnage (la chaîne voulue au chargement) qui la perd (Équilibrée choisie en route, mesure ratée, course trop lente) dessine par la chaîne, tonalité et
+  FXAA seulement — jamais une image crénelée. **Plafond** : au-delà de 2,1 Mpx (un écran 1440p, 4K…) la scène est dessinée plus petite (×0,75 à 1440p) et la passe de
+  fin l'agrandit ; les halos en points et les particules gardent leur taille (`PostJeu.echelle`).
 - **Planches avant / après** (`captures-lot47` rejoué, rendu logiciel 480 × 270) : [Stade](lot-50/planches/stade.jpg), [Nuit](lot-50/planches/nuit.jpg),
   [Ville](lot-50/planches/ville.jpg), [accueil et Salon](lot-50/planches/accueil-salon.jpg). Le jour : identiques à l'œil (le disque du soleil n'a plus son halo). La
   Nuit : même halo au départ (cibles lues : 0,00388 contre 0,00389) ; au tremplin le halo d'avant paraît plus étendu — à juger sur la planche par Nathan.
 
 ## La règle de qualité
 
-- **Le post-traitement dans Auto** : `POST_DANS_AUTO` (`qualite.ts`), **à décider sur le rapport** (critère du lot : la fréquence de l'écran et une pire image ≤ 25 ms sur
-  l'Iris Xe). Faux en attendant : Auto ne l'allume pas (47b). Vrai : Auto le donne au palier 3 là où les passes sont permises, le moteur est créé sans multi-échantillonnage
-  quand la mémoire dit palier 3, et une mesure ratée à l'accueil **retire d'abord la chaîne** (`sansPost`, le palier 3 remesuré sans elle).
+- **Le post-traitement revient dans Auto** : `POST_DANS_AUTO = true` (`qualite.ts`), parce que le critère du lot est tenu au rapport 2 (fréquence de l'écran, pire image
+  17 ms ≤ 25, Stade et Nuit, forme du jeu). Auto le donne au palier 3 là où les passes sont permises ; le moteur est créé sans multi-échantillonnage quand la mémoire dit
+  palier 3 ; une mesure ratée à l'accueil **retire d'abord la chaîne** (`sansPost`, le palier 3 remesuré sans elle). À confirmer par le rapport « après » (Ville comprise) :
+  sinon `POST_DANS_AUTO` repasse à faux.
 - **La règle surveille la course** (`SurveillanceCourse`, `qualiteMesure.ts`, chargée à la première course) : la médiane des images sur **5 s de course** ; au-delà du seuil
   de descente (22 ms à 60 Hz, ramené à la fréquence estimée), une descente est proposée et **appliquée à la prochaine occasion hors course** (accueil, arrivée, podium ;
   pas la pause) : **d'abord la chaîne, puis le palier** (`descenteCourse`), et on s'en souvient (`cdj:qualite` : `sansPost`, ou un plafond durable ; `trop`). En Auto
@@ -67,13 +68,12 @@ retrait de la chaîne du lot 47 et le rapport « après ».
 
 ## Budget
 
-- **Post-traitement à la demande** : **5 208 o** (6 798 au lot 47 ; plafond 7 000) — `postJeu` + `post` (la passe de fin, le halo léger, la table des thèmes).
-- **Premier chargement : +1 260 o** (289 424 o, plafond 291 600 ; mesuré contre `main` construit à part, `mesureTrack`) — au-delà de la cible de 1 ko, justifié : `main`
-  ≈ +1 150 o pour **le moteur choisi au chargement** (`chaineAuChargement`, jamais deux multi-échantillonnages), **le mode copie**, **la précompilation** à l'arrêt, **la
+- **Post-traitement à la demande** : **5 216 o** (6 798 au lot 47 ; plafond 7 000) — `postJeu` + `post` (la passe de fin, le halo léger, la table des thèmes).
+- **Premier chargement : +1 123 o** (289 287 o, plafond 291 600 ; mesuré contre `main` construit à part, `mesureTrack`) — au-delà de la cible de 1 ko, justifié : `main`
+  ≈ +1 090 o pour **le moteur choisi au chargement** (`chaineAuChargement`, jamais deux multi-échantillonnages), **le mode copie**, **la précompilation** à l'arrêt, **la
   surveillance de la course** et sa descente (le jugement lui-même est à la demande, dans `qualiteMesure`), l'entrée du banc (les outils du premier chargement lui sont
   **prêtés** par `main.ts` : importés par lui, ils sortaient `cameras`, `decor` et `i18n` du morceau principal, +1,3 ko de plus mesuré au premier jet) et les champs de
-  `?debug` ; three.js +50 o. Catalogue anglais +26 o, page d'admin −14 o. Le banc (≈ 6,9 ko) et la chaîne du lot 47 (≈ 6 ko) sont des morceaux à part, hors de toute ligne
-  de joueur.
+  `?debug` ; three.js +33 o. Catalogue anglais +26 o, page d'admin −14 o. Le banc (≈ 6,9 ko) est un morceau à part, hors de toute ligne de joueur.
 
 ## Le regroupement des deux réglages
 
@@ -112,6 +112,25 @@ fil principal ≤ 5 ms partout. Le temps de la carte graphique varie d'une mesur
 4. **Le halo de la v1 était trois fois trop faible** (planche de la Nuit) : la composition d'`UnrealBloomPass` de three.js r186 multiplie par 3 et mêle le halo pesé par
    sa composante la plus forte. **Corrigé (v2)**, vérifié par lecture des cibles : 0,00371 contre 0,00388 en moyenne.
 
-### Rapport 2 — après
+### Rapport 2 — la chaîne corrigée, ses formes (Nathan, 26/10/2026, 14 h 35)
+
+Même machine et même écran (2560 × 1440, densité 1). Cette fois, le palier 3 sans chaîne tient 60 images/s sur les trois thèmes (pire image 17 ms : le rapport 1 avait
+sans doute la puce plus chaude ou moins rapide). Avant (chaîne 47) : **21,5 / 28,8 / 28,1 images/s** (Stade, Nuit, Ville), pire image 50 ms.
+
+| Chaîne du lot 50 (v2) | Stade | Nuit | carte graphique (Stade / Nuit, ms) |
+|---|---|---|---|
+| à la taille de l'écran (la scène n'y a pas de multi-échantillonnage : > 2,8 Mpx) | **60**, pire 17 | 51,9, pire 33,5 · (même forme, mesurée plus tard : 59,9, pire 17) | 12,1 (scène 8,6, fin 3,5) / 15,8 (scène 9,4, halo 2,6, fin 3,5) |
+| plafond 2,1 Mpx (×0,75), ×4 dessous | 59,9, pire 17,1 | 55,5, pire 33,4 | 14,1 / 15,5 |
+| **plafond 2,1 Mpx, sans multi-échantillonnage** | **60**, pire 17,1 | **60**, pire 17 | **9,2** (scène 5,9, fin 3,3) / **9,9** (scène 6,0, halo 1,0, fin 2,9) |
+| plafond 2,8 Mpx (×0,87), ×4 / sans | 53,5 / 60 | 45,4 / 60 | 15,9 / 10,0 · 19,3 / 14,1 |
+| halo au quart (Nuit) | — | 60, pire 17 | — / 11,2 (halo 0,6) |
+| sans étalonnage / sans FXAA / mode copie (Stade) | 60 / 60 / 60 | — | 10,3 / 9,3 (fin 1,1) / 8,8 (fin 0,9) |
+
+**Décisions** : (1) **pas de multi-échantillonnage dans la scène de la chaîne** — une cible ×4 coûte presque le double de la scène sur cet Iris Xe (5,9 → 10,9 ms à 2,1 Mpx),
+le FXAA lisse ; (2) **plafond de 2,1 millions de pixels** — la seule forme qui laisse de la marge la Nuit (9,9 ms pour 16,7) ; à 1440p la scène est à ×0,75, un peu plus
+douce (à juger en jeu) ; à 1080p et en dessous, rien ne change ; (3) **halo à la demi-résolution** (le quart ne gagne qu'≈ 1 ms et change le halo) ; (4) **le
+post-traitement dans Auto**. Le FXAA bon marché a ramené la passe de fin de 12,2 à 3,5 ms ; le halo ne coûte plus que 1 à 2,6 ms.
+
+### Rapport 3 — après (la forme du jeu)
 
 *À venir.*

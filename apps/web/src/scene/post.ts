@@ -1,14 +1,15 @@
 // Lot 50 — la chaîne de post-traitement du palier 3 (ordinateur seulement), réécrite pour une carte graphique intégrée, **à l'image presque identique** à celle du
-// lot 47 (`post47.ts`, gardée le temps du lot pour le banc d'essai). Sur une carte intégrée, ce qui coûte est la **bande passante** : chaque écriture et
+// lot 47 (README du lot 50 : les rapports du banc, les planches). Sur une carte intégrée, ce qui coûte est la **bande passante** : chaque écriture et
 // relecture de tout l'écran. D'où :
 //   - **une seule passe de fin** (`FIN`) : tonalité et espace de l'écran (l'ancienne `OutputPass`), étalonnage et anticrénelage FXAA dans un seul nuanceur
 //     plein écran, qui écrit directement l'écran ; le FXAA y juge les bords sur une luminance approchée et mêle les couleurs finales de deux voisins ;
 //   - **le halo seulement la Nuit** (`avecHalo` : le Néon et la Nuit ; le jour il ne touchait que le disque du soleil) et **sans aucune passe plein écran** :
 //     la chaîne de demi-résolutions floutées d'`UnrealBloomPass` (mêmes niveaux, mêmes flous, mêmes poids), composée à la demi-résolution et lue par la passe
 //     de fin — plus de mélange additif sur tout l'écran ;
-//   - **la scène dans une cible de 4 octets par pixel** en lumière linéaire (`R11F_G11F_B10F` : des flottants sans alpha ; repli en demi-flottants, 8 octets) ;
-//     multi-échantillonnée ×4 sous `PIXELS_MSAA` (réglable au banc), et **l'écran sans multi-échantillonnage** quand la chaîne dessine (`main.ts` crée le
-//     moteur sans `antialias` : jamais deux multi-échantillonnages) ;
+//   - **la scène dans une cible de 4 octets par pixel** en lumière linéaire (`R11F_G11F_B10F` : des flottants sans alpha ; repli en demi-flottants, 8 octets),
+//     **sans multi-échantillonnage** (le FXAA lisse : mesuré au banc, une cible ×4 coûtait presque le double de la scène sur Iris Xe) et **plafonnée à 2,1 millions
+//     de pixels** (un 1080p : au-delà, dessinée plus petite et agrandie par la passe de fin) ; **l'écran sans multi-échantillonnage** quand la chaîne dessine
+//     (`main.ts` crée le moteur sans `antialias` : jamais deux multi-échantillonnages) ;
 //   - **rien par image qui parcourt les matériaux** : les nuanceurs d'écran lisent `SORTIE_LINEAIRE` (halo.ts), mis à 1 le temps de la scène ;
 //   - **les programmes précompilés hors course** (`preparer` : `compileAsync` de la scène dans la cible, et des passes).
 // Commutable partie par partie (halo, étalonnage, FXAA) ; le banc (`?banc`) mesure chaque forme (`FormeChaine`).
@@ -54,7 +55,10 @@ export interface FormeChaine {
   /** Pixels de la scène au plus (0 : la taille de l'écran) : au-delà, la scène est dessinée plus petite et la passe de fin l'agrandit (`echelle`). */
   pixelsMax: number;
 }
-export const FORME_JEU: Readonly<FormeChaine> = { echantillons: 4, format: "r11", haloDepart: 1, haloNiveaux: 5, pixelsMax: 0 };
+/** Le plafond de pixels de la scène de la chaîne : un 1080p (rapport 2 du banc : à 2560 × 1440 sur Iris Xe, 60 images/s au Stade et la Nuit, carte graphique ≈ 9 à 10 ms). */
+export const PIXELS_CHAINE = 1920 * 1080;
+/** La forme du jeu (rapport 2 du banc de Nathan, README du lot 50). */
+export const FORME_JEU: Readonly<FormeChaine> = { echantillons: 0, format: "r11", haloDepart: 1, haloNiveaux: 5, pixelsMax: PIXELS_CHAINE };
 /** L'échelle de la scène pour un écran de `w` × `h` pixels (1 sous le plafond). */
 export const echelleScene = (w: number, h: number, pixelsMax: number): number => (pixelsMax > 0 && w * h > pixelsMax ? Math.sqrt(pixelsMax / (w * h)) : 1);
 /**

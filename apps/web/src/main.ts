@@ -289,16 +289,14 @@ const COUNTDOWN_S = 3;
 
 // Lot 50 : **jamais deux multi-échantillonnages**. Quand la chaîne de post-traitement est voulue dès le chargement (« Maximale », `?palier=3`, sur un ordinateur),
 // le moteur est créé **sans** multi-échantillonnage de l'écran — la chaîne a le sien, dans sa cible ; `antialias` ne se change plus ensuite. Un tel moteur sans la
-// chaîne dessine en « mode copie » (`suivrePost`) : jamais une image crénelée. `?chaine=47` (recette, aperçus, le temps du lot) : la chaîne du lot 47, comme avant.
+// chaîne dessine en « mode copie » (`suivrePost`) : jamais une image crénelée.
 const sceneVoulue = sceneDemandee(location.search, restricted);
 const choixDepart = loadSettings().graphismes;
 const appareilForce = restricted ? null : params.get("appareil");
-const chaine47 = !restricted && params.get("chaine") === "47";
 const ecranSansMsaa = chaineAuChargement({
   adresse: sceneVoulue,
   choix: choixDepart,
   ordinateur: appareilForce ? appareilForce === "ordinateur" : !navigator.webdriver && matchMedia("(pointer: fine)").matches && Math.max(screen.width, screen.height) >= 1024,
-  chaine47,
   memoire: lireMemoireQualite(),
 });
 const renderer = new WebGLRenderer({ antialias: !ecranSansMsaa });
@@ -316,8 +314,7 @@ PAS_DU_JEU.ombres = () => import("./scene/ombres3");
 // Lot 47 : le post-traitement du palier 3 (halo, étalonnage, FXAA ; ordinateur seulement, jamais sans demi-flottants) : un module à la demande, demandé avec le palier 3
 // là où les passes plein écran sont permises (`passesPermises`) et nulle part ailleurs ; `?reglages=3-post` (recette et aperçus) le coupe.
 let moduleCible: typeof import("./scene/postJeu") | null = null;
-let module47: typeof import("./scene/post47") | null = null;
-PAS_DU_JEU.post = () => Promise.all([import("./scene/postJeu"), chaine47 ? import("./scene/post47") : null]).then(([m, m47]) => ((module47 = m47), (moduleCible = m)));
+PAS_DU_JEU.post = () => import("./scene/postJeu").then((m) => (moduleCible = m));
 
 // --- Lot 45 : la qualité graphique (la règle automatique de `qualite.ts`, le réglage du joueur) -------------------------------------------------------
 // Le palier de la scène : `?palier=` l'impose (recette, aperçus) ; sinon le réglage « Qualité graphique » (Économie : 1, Équilibrée : 2 et la vie et le ciel,
@@ -2500,8 +2497,7 @@ function creerPost(mode: "chaine" | "copie") {
   const m = moduleCible;
   // Lot 50 : un moteur créé avec le multi-échantillonnage de l'écran (la chaîne demandée en cours de page) : la scène de la chaîne n'en fait pas (jamais deux).
   const forme = m.formeDuJeu(!ecranSansMsaa);
-  const fabrique = module47 ? (r: typeof renderer) => new module47!.ChainePost(r) : (r: typeof renderer) => new m.ChainePost(r, forme);
-  post = new m.PostJeu(renderer, mode === "copie" ? m.COPIE : partiesPost(), couperPost, fabrique);
+  post = new m.PostJeu(renderer, mode === "copie" ? m.COPIE : partiesPost(), couperPost, (r) => new m.ChainePost(r, forme));
   modePost = mode;
   void post.preparer(view.scene, camera, scenePalette); // les programmes compilés hors course (compileAsync)
 }
