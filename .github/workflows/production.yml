@@ -14,6 +14,16 @@ name: Mettre en production
 #   7. les jours figés entrent dans le dépôt par une PR « robot » fusionnée automatiquement (avec le jeton ROBOT_TOKEN), dans le respect de la
 #      protection de main (statuts `test` et `e2e`) ; sans ROBOT_TOKEN, la PR est ouverte, sa CI lancée, et Nathan la fusionne (un clic) ;
 #   8. résumer : changements, résultat de la vérification, étiquette.
+# Lot R6 (le garde-fou des jours) — une fois des joueurs publics présents, une mise en production ne change JAMAIS un jour déjà ouvert :
+#   - le **jour de bascule** est calculé au clic : le premier jour de Paris qui commence après le déploiement (`scripts/mise-en-production.mjs bascule`) ;
+#   - avant la bascule, la carte de chaque jeu est exactement celle que la production sert : les jours sont figés avec le code en production JUSQU'À LA VEILLE de la
+#     bascule (étape 2), puis l'**empreinte** de chaque jour (depuis la journée n° 1 jusqu'à la veille) est comparée entre ce que sert la production et ce que servira la
+#     nouvelle construction : **la moindre différence arrête la mise en production**, avant tout déploiement, avec la liste des jours dans le résumé ;
+#   - à partir de la bascule, les 14 jours suivants sont régénérés avec le nouveau code et validés (circuit ou niveau valide, jamais de secours), comptés dans le résumé ;
+#   - l'ancien code doit tourner sur la base migrée (retour arrière) : `scripts/base-migree.mjs` ; l'inventaire de ce qui part (« Ce qui part ») est écrit dans le résumé ;
+#   - la validation de Nathan a pu durer : le serveur et le site re-vérifient que le jour de bascule n'a pas commencé (sinon : relancer).
+# **Répétition** (`mode: repetition`) : tout cela contre la RECETTE, avec une heure de déploiement simulée (`heure_simulee`) ; ni étiquette, ni PR des jours figés, ni production ;
+# `smoke` complet à la fin. Le résumé est celui de la vraie production. Liste de contrôle pas à pas : docs/plateforme/mise-en-production.md.
 # Retour arrière : retour-arriere.yml. Pas à pas : docs/plateforme/domaine.md. Sans Firebase configuré, le site est sauté (message clair) et
 # le serveur part seul ; sans production configurée, tout est sauté.
 on:
@@ -24,7 +34,16 @@ on:
         type: string
         default: ""
       reference:
-        description: "Première fois seulement (aucune étiquette prod-…) : le commit du code actuellement en production ; vide : le dernier run réussi de ce workflow"
+        description: "Première fois seulement (aucune étiquette prod-…) : le commit du code actuellement en production ; vide : le dernier run réussi de ce workflow. Répétition : le commit à traiter comme « le code en production » (pour répéter une date lointaine)"
+        type: string
+        default: ""
+      mode:
+        description: "production (le vrai déploiement) ou repetition (tout contre la recette, heure simulée : comparaison des jours, jours figés, recette, smoke complet ; rien n'est étiqueté, rien ne part en production)"
+        type: choice
+        options: [production, repetition]
+        default: production
+      heure_simulee:
+        description: "répétition seulement : l'heure du déploiement à Paris, « demain 10:00 », « aujourdhui 23:30 », « 2026-10-27 23:30 », « 2027-03-28 03:30 » ; vide : maintenant"
         type: string
         default: ""
 
@@ -42,11 +61,17 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
     outputs:
       sha: ${{ steps.sha.outputs.sha }}
       precedente: ${{ steps.ref.outputs.precedente }}
       reference: ${{ steps.ref.outputs.reference }}
       etiquette: ${{ steps.ref.outputs.etiquette }}
+      bascule_le: ${{ steps.bascule.outputs.bascule }}
+      veille: ${{ steps.bascule.outputs.veille }}
+      premier: ${{ steps.bascule.outputs.premier }}
+      dernier_regenere: ${{ steps.bascule.outputs.dernier_regenere }}
+      instant: ${{ steps.bascule.outputs.instant }}
     steps:
       - name: Sur main seulement
         run: |
@@ -67,18 +92,59 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "### Mettre en production \`${sha::7}\` — $(git log -1 --format=%s "$sha")" >> "$GITHUB_STEP_SUMMARY"
       - name: 1. La CI complète de ce commit est-elle verte ?
+        if: ${{ inputs.mode != 'repetition' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/ci-complete.mjs "$GITHUB_REPOSITORY" "${{ steps.sha.outputs.sha }}" --attente-max 60 --resume "$GITHUB_STEP_SUMMARY"
+      - name: "1. La CI complète de ce commit (répétition : pour information, elle ne bloque pas)"
+        if: ${{ inputs.mode == 'repetition' }}
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/ci-complete.mjs "$GITHUB_REPOSITORY" "${{ steps.sha.outputs.sha }}" --attente-max 1 --resume "$GITHUB_STEP_SUMMARY"
+      - name: Ce commit contient-il le garde-fou des jours (lot R6) ?
+        run: |
+          git show "${{ steps.sha.outputs.sha }}:scripts/mise-en-production.mjs" | grep -q "bascule-valide" || { echo "::error::ce commit est antérieur au lot R6 (garde-fou des jours) : mettre en production un commit plus récent de main"; exit 1; }
+      - name: Le jour de bascule (calculé maintenant, au clic)
+        id: bascule
+        env:
+          MODE: ${{ inputs.mode }}
+          SIMULEE: ${{ inputs.heure_simulee }}
+        run: |
+          if [ "$MODE" != repetition ] && [ -n "$SIMULEE" ]; then echo "::error::l'heure simulée est réservée à la répétition"; exit 1; fi
+          args=(); [ -z "$SIMULEE" ] || args=(--simulee "$SIMULEE")
+          node scripts/mise-en-production.mjs bascule "${args[@]}" --sortie "$GITHUB_OUTPUT" > "$RUNNER_TEMP/bascule.txt"
+          . <(sed 's/^/export /' "$RUNNER_TEMP/bascule.txt")
+          {
+            echo "- Jour de bascule : **$bascule** (le premier jour de Paris qui commence après le déploiement${SIMULEE:+, heure simulée « $SIMULEE »} ; jour de Paris du déploiement : $jour_de_paris) — les jours du $premier au $veille restent exactement ceux de la production, les $bascule et suivants sont régénérés avec le nouveau code."
+            [ "$MODE" != repetition ] || echo "- **Répétition** : contre la recette, rien ne part en production."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Aucune PR « Jours figés » n'attend d'être fusionnée
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          ouvertes="$(gh pr list --state open --json number,headRefName --jq '.[] | select(.headRefName | startswith("robot/jours-figes-")) | "#\(.number)"' | tr '\n' ' ')"
+          if [ -n "$ouvertes" ]; then
+            if [ "$MODE" = repetition ]; then echo "::warning::PR des jours figés encore ouverte(s) : $ouvertes (la mise en production la refuserait)"
+            else echo "::error::la PR des jours figés de la mise en production précédente n'est pas fusionnée ($ouvertes) : la fusionner d'abord (les jours servis par la production n'y sont pas encore tous dans main)"; exit 1; fi
+          fi
       - name: Dernière mise en production, code en production, étiquette
         id: ref
         env:
           GH_TOKEN: ${{ github.token }}
           REFERENCE: ${{ inputs.reference }}
+          MODE: ${{ inputs.mode }}
         run: |
           precedente="$(node scripts/mise-en-production.mjs derniere)"
           reference=""
-          if [ -n "$precedente" ]; then
+          if [ "$MODE" = repetition ] && [ -n "$REFERENCE" ]; then
+            # Répétition seulement : traiter ce commit comme « le code en production » (par exemple le commit à déployer lui-même, pour répéter une date lointaine comme la nuit du
+            # 28 mars 2027 sans que les dates de bascule de Track, déjà passées à ce moment-là, fassent s'arrêter le garde-fou à raison).
+            reference="$(git rev-parse --verify "$REFERENCE^{commit}")" || { echo "::error::reference introuvable : « $REFERENCE »"; exit 1; }
+            precedente=""
+            echo "- Code en production (répétition : donné à la main) : \`${reference::7}\`" >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$precedente" ]; then
             reference="$(git rev-parse "$precedente^{commit}")"
             echo "- Code en production : \`$precedente\` (\`${reference::7}\`)" >> "$GITHUB_STEP_SUMMARY"
           elif [ -n "$REFERENCE" ]; then
@@ -95,13 +161,20 @@ jobs:
           echo "- Étiquette prévue : \`$etiquette\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           node scripts/mise-en-production.mjs changements "${precedente:-$reference}" "${{ steps.sha.outputs.sha }}" --resume "$GITHUB_STEP_SUMMARY" > /dev/null
+          # Lot R6 : « Ce qui part » — les PR (titre, lot, zone), les versions, les migrations, les routes, avec l'effet, le risque et la vérification de chacun.
+          node scripts/mise-en-production.mjs inventaire "${precedente:-$reference}" "${{ steps.sha.outputs.sha }}" --resume "$GITHUB_STEP_SUMMARY" > /dev/null
 
-  # 2. Figer avec le code EN PRODUCTION : un jour déjà ouvert aux joueurs (aujourd'hui, et demain qui commence avant la prochaine mise en
-  # production) garde le niveau qu'ils ont vu, même si le commit déployé change le générateur.
+  # 2. Figer avec le code EN PRODUCTION, puis prouver que rien de ce qui précède la bascule ne change (lot R6).
+  # - Les jours figés vont jusqu'à LA VEILLE du jour de bascule (plus « demain » : le jour de bascule est justement celui que le nouveau code régénère).
+  # - Les jours que la production sert (son image : le commit de l'étiquette, plus les PR « Jours figés » fusionnées depuis) sont remis avant de figer, sinon le code en
+  #   production les régénérerait avec son code d'aujourd'hui, autre que celui qui les a figés (le code d'avant).
+  # - Les empreintes de chaque jour (depuis la journée n° 1) sont calculées par le code en production et par la nouvelle construction (jours figés superposés) :
+  #   toute différence avant la bascule arrête la mise en production, avant le moindre déploiement.
+  # - L'ancien code doit tourner sur la base que le nouveau a migrée (retour arrière).
   figer:
     needs: verifier
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -111,23 +184,58 @@ jobs:
         with:
           ref: ${{ needs.verifier.outputs.sha }}
           path: cible
+      # Les outils sont ceux du commit du workflow (main), avec tout l'historique : le code en production n'a pas le garde-fou.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          path: outils
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
-      - name: freeze:days -- demain (code en production)
+      - name: Les jours que la production sert
+        working-directory: outils
+        env:
+          REFERENCE: ${{ needs.verifier.outputs.reference }}
+        run: node scripts/mise-en-production.mjs jours-servis "$REFERENCE" "$GITHUB_WORKSPACE/prod/apps/jump/public/levels" --jusqua origin/main
+      - name: freeze:days -- veille du jour de bascule (code en production)
         working-directory: prod
+        env:
+          VEILLE: ${{ needs.verifier.outputs.veille }}
         run: |
           npm ci --ignore-scripts
-          npm run freeze:days -w @cdj/jump -- demain
+          npm run freeze:days -w @cdj/jump -- "$VEILLE"
       - name: Les jours figés s'accordent-ils avec le commit déployé ?
         run: |
           mkdir -p "$RUNNER_TEMP/cible-levels"
           cp cible/apps/jump/public/levels/*.json "$RUNNER_TEMP/cible-levels/" 2>/dev/null || true
-          node cible/scripts/mise-en-production.mjs jours-figes prod/apps/jump/public/levels "$RUNNER_TEMP/cible-levels" | tee -a "$GITHUB_STEP_SUMMARY"
+          node outils/scripts/mise-en-production.mjs jours-figes prod/apps/jump/public/levels "$RUNNER_TEMP/cible-levels" | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Les empreintes des jours (code en production, puis nouvelle construction) — rien avant la bascule ne doit changer
+        env:
+          PREMIER: ${{ needs.verifier.outputs.premier }}
+          DERNIER: ${{ needs.verifier.outputs.dernier_regenere }}
+          BASCULE: ${{ needs.verifier.outputs.bascule_le }}
+          INSTANT: ${{ needs.verifier.outputs.instant }}
+          MODE: ${{ inputs.mode }}
+        run: |
+          (cd cible && npm ci --ignore-scripts)
+          node outils/scripts/mise-en-production.mjs empreintes prod --du "$PREMIER" --au "$DERNIER" --niveaux prod/apps/jump/public/levels --sortie "$RUNNER_TEMP/empreintes/prod.json"
+          node outils/scripts/mise-en-production.mjs empreintes cible --du "$PREMIER" --au "$DERNIER" --niveaux "$RUNNER_TEMP/cible-levels" --sortie "$RUNNER_TEMP/empreintes/cible.json"
+          simulee=(); [ "$MODE" != repetition ] || simulee=(--simulee)
+          node outils/scripts/mise-en-production.mjs comparer "$RUNNER_TEMP/empreintes/prod.json" "$RUNNER_TEMP/empreintes/cible.json" "$BASCULE" "${simulee[@]}" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" > /dev/null \
+            || { echo "::error title=Mise en production arrêtée::un jour d'avant la bascule changerait (ou un jour régénéré n'est pas valide) : la liste est dans le résumé du run"; exit 1; }
+      - name: L'ancien code tourne-t-il sur la base migrée (le retour arrière) ?
+        run: node outils/scripts/base-migree.mjs cible prod --resume "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: jours-figes
           path: prod/apps/jump/public/levels/*.json
+          retention-days: 30
+          if-no-files-found: error
+      # Les empreintes des jours passés (jusqu'à la veille de la bascule) entrent dans le dépôt avec les jours figés (apps/api/test/jours-passes.json).
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: empreintes-jours
+          path: ${{ runner.temp }}/empreintes/prod.json
           retention-days: 30
           if-no-files-found: error
 
@@ -140,9 +248,12 @@ jobs:
       id-token: write
     uses: ./.github/workflows/deploy-api.yml
     with:
-      target: production
+      # Répétition : la recette (révision par défaut), jamais la production ni la validation de Nathan.
+      target: ${{ inputs.mode == 'repetition' && 'recette' || 'production' }}
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      # Le jour de bascule se re-vérifie après la validation (production seulement : une répétition a une heure simulée).
+      bascule_le: ${{ inputs.mode != 'repetition' && needs.verifier.outputs.bascule_le || '' }}
     secrets: inherit
 
   site:
@@ -153,10 +264,11 @@ jobs:
       id-token: write
     uses: ./.github/workflows/deploy-site.yml
     with:
-      cible: production
+      cible: ${{ inputs.mode == 'repetition' && 'recette' || 'production' }}
       api: /
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      bascule_le: ${{ inputs.mode != 'repetition' && needs.verifier.outputs.bascule_le || '' }}
     secrets: inherit
 
   # 4. Lecture seule (`smoke --lecture-seule`, apps/api/scripts/smokeRead.ts : des GET seulement, aucun identifiant, rien n'est écrit) contre
@@ -175,26 +287,33 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Vérifier la production en lecture seule
+      - name: "Vérifier la production en lecture seule (répétition : la recette, puis le smoke complet)"
         id: smoke
         env:
           SITE_ON: ${{ needs.site.outputs.enabled }}
           SITE_URL: ${{ needs.site.outputs.url }}
           API_URL: ${{ needs.serveur.outputs.url }}
+          MODE: ${{ inputs.mode }}
         run: |
           npm ci -w @cdj/api --ignore-scripts
           if [ "$SITE_ON" = true ]; then url="$SITE_URL"; else url="$API_URL"; echo "- Firebase non configuré : vérification contre l'adresse du service ($url)" >> "$GITHUB_STEP_SUMMARY"; fi
           echo "url=$url" >> "$GITHUB_OUTPUT"
+          cible=production; [ "$MODE" != repetition ] || cible=recette
           retour="Actions → « Retour arrière » → Run workflow (sur main) : serveur et site de la mise en production précédente, puis vérification."
-          if ! npm run smoke -w @cdj/api -- "${url%/}" --lecture-seule --environnement production --origin "$(node scripts/domaine.mjs adresse production)" --resume "$GITHUB_STEP_SUMMARY" --retour "$retour"; then
-            echo "::error title=Production : vérification en échec::Une route de la production ne répond pas comme prévu (détail dans le résumé du run). Retour arrière : workflow « Retour arrière »."
+          if ! npm run smoke -w @cdj/api -- "${url%/}" --lecture-seule --environnement "$cible" --origin "$(node scripts/domaine.mjs adresse "$cible")" --resume "$GITHUB_STEP_SUMMARY" --retour "$retour"; then
+            echo "::error title=Vérification en échec ($cible)::Une route ne répond pas comme prévu (détail dans le résumé du run). En production : retour arrière, workflow « Retour arrière »."
             exit 1
+          fi
+          # Répétition seulement : le smoke complet (il crée des joueurs « Fumée ») — contre la recette, jamais la production.
+          if [ "$MODE" = repetition ]; then
+            npm run smoke -w @cdj/api -- "${url%/}" --origin "$(node scripts/domaine.mjs adresse recette)"
+            echo "- ✅ smoke complet de la recette (envoi d'un temps, classements, Salon, DailyJump) : vert" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   # 5. L'étiquette `prod-AAAA-MM-JJ-HHMM` sur le commit déployé ; son message garde l'image et la version du site (retour-arriere.yml les relit).
   etiquette:
     needs: [verifier, serveur, site, verification]
-    if: ${{ !cancelled() && needs.verification.result == 'success' }}
+    if: ${{ !cancelled() && inputs.mode != 'repetition' && needs.verification.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -208,6 +327,7 @@ jobs:
           API: ${{ needs.serveur.outputs.url }}
           SITE: ${{ needs.site.outputs.site }}
           VERSION: ${{ needs.site.outputs.version }}
+          BASCULE: ${{ needs.verifier.outputs.bascule_le }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -217,6 +337,7 @@ jobs:
             echo "image: ${IMAGE:-}"
             echo "api: ${API:-}"
             echo "site: ${SITE:+$SITE@$VERSION}"
+            echo "basculement: $BASCULE"
           } > message.txt
           git tag -a "$TAG" "$SHA" -F message.txt
           git push origin "refs/tags/$TAG"
@@ -225,7 +346,7 @@ jobs:
   # 7. Les jours figés entrent dans le dépôt (le prochain déploiement et l'image du serveur les gardent).
   depot:
     needs: [verifier, serveur]
-    if: ${{ !cancelled() && needs.serveur.result == 'success' && needs.serveur.outputs.enabled == 'true' }}
+    if: ${{ !cancelled() && inputs.mode != 'repetition' && needs.serveur.result == 'success' && needs.serveur.outputs.enabled == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -244,10 +365,18 @@ jobs:
         with:
           name: jours-figes
           path: ${{ runner.temp }}/jours-figes
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: empreintes-jours
+          path: ${{ runner.temp }}/empreintes-jours
       - name: PR des jours figés
+        env:
+          VEILLE: ${{ needs.verifier.outputs.veille }}
         run: |
           node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
-          if [ -z "$(git status --porcelain apps/jump/public/levels)" ]; then
+          # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
+          node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE"
+          if [ -z "$(git status --porcelain apps/jump/public/levels apps/api/test/jours-passes.json)" ]; then
             echo "### Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -255,10 +384,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add apps/jump/public/levels
-          git commit -q -m "Jours figés de la mise en production $TAG (code en production, freeze:days -- demain)"
+          git add apps/jump/public/levels apps/api/test/jours-passes.json
+          git commit -q -m "Jours figés de la mise en production $TAG (code en production, freeze:days jusqu'à la veille de la bascule)"
           git push -q origin "$branch"
-          body="Jours figés par « Mettre en production » ($TAG, run $GITHUB_RUN_ID) avec **le code qui était en production**. Ils sont déjà dans l'image du serveur et le site déployés ; cette PR les garde dans le dépôt (un jour figé ne change jamais)."
+          body="Jours figés par « Mettre en production » ($TAG, run $GITHUB_RUN_ID) avec **le code qui était en production**. Ils sont déjà dans l'image du serveur et le site déployés ; cette PR les garde dans le dépôt (un jour figé ne change jamais), avec les empreintes des jours passés de DailyTrack et de DailyJump (apps/api/test/jours-passes.json : un jour passé ne change plus jamais)."
           url="$(gh pr create --base main --head "$branch" --title "Jours figés — $TAG" --body "$body")"
           if [ "$HAS_ROBOT" = true ]; then
             if gh pr merge "$url" --auto --merge; then
@@ -284,18 +413,22 @@ jobs:
         env:
           SHA: ${{ needs.verifier.outputs.sha }}
           TAG: ${{ needs.verifier.outputs.etiquette }}
+          MODE: ${{ inputs.mode }}
+          BASCULE: ${{ needs.verifier.outputs.bascule_le }}
         run: |
           r() { case "$1" in success) echo "✅ réussi";; skipped) echo "⏭️ sauté";; cancelled) echo "⏹️ annulé";; failure) echo "❌ échec";; *) echo "$1";; esac; }
           {
-            echo "## Mise en production ${SHA:+\`${SHA::7}\`}"
+            if [ "$MODE" = repetition ]; then echo "## Répétition de la mise en production ${SHA:+\`${SHA::7}\`} — contre la recette, rien n'est parti en production"; else echo "## Mise en production ${SHA:+\`${SHA::7}\`}"; fi
+            echo ""
+            echo "Jour de bascule : **${BASCULE:-?}** (les jours d'avant restent exactement ceux de la production ; le détail est dans « Jours : ce qui est conservé, ce qui est rechargé »)."
             echo ""
             echo "| étape | résultat |"
             echo "|---|---|"
             echo "| 1. CI complète, changements | $(r '${{ needs.verifier.result }}') |"
-            echo "| 2. jours figés (code en production) | $(r '${{ needs.figer.result }}') |"
+            echo "| 2. jours figés, empreintes des jours, ancien code sur la base migrée | $(r '${{ needs.figer.result }}') |"
             echo "| 3a. serveur (validation de Nathan) | $(r '${{ needs.serveur.result }}')$( [ '${{ needs.serveur.outputs.enabled }}' = true ] || echo ' — non configuré' ) |"
             echo "| 3b. site playdujour.com | $(r '${{ needs.site.result }}')$( [ '${{ needs.site.outputs.enabled }}' = true ] || echo ' — Firebase non configuré : voir docs/plateforme/domaine.md' ) |"
-            echo "| 4. vérification en lecture seule (${{ needs.verification.outputs.url }}) | $(r '${{ needs.verification.result }}') |"
+            echo "| 4. vérification (${{ needs.verification.outputs.url }}) | $(r '${{ needs.verification.result }}') |"
             echo "| 5. étiquette \`$TAG\` | $(r '${{ needs.etiquette.result }}') |"
             echo "| 7. jours figés dans le dépôt | $(r '${{ needs.depot.result }}') |"
             echo ""

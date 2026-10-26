@@ -460,8 +460,11 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     const levelId = body.levelId;
     const day = dailyDayOf(levelId);
     // 4. Les versions : celles du code du jeu, puis le niveau que le serveur calcule pour ce jour (figé ou généré).
-    if (body.simVersion !== JUMP_SIM_VERSION) throw versionError(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
-    if (body.generatorVersion !== JUMP_GENERATOR_VERSION) throw versionError(`générateur v${String(body.generatorVersion)}, serveur v${JUMP_GENERATOR_VERSION}`);
+    //    Lot R6 : un onglet resté ouvert pendant une mise en production envoie les versions de SON code. Pour un jour d'avant la bascule, le niveau n'a pas changé
+    //    (fichier figé, même identifiant) : ses versions sont celles du niveau, et l'envoi est accepté ; pour un jour régénéré, ce sont celles du serveur, et un vieil
+    //    onglet reçoit 409 `version` (« recharge la page »), jamais une perte silencieuse.
+    if (typeof body.simVersion !== "number" || typeof body.generatorVersion !== "number") throw versionError(`simulation v${String(body.simVersion)}, générateur v${String(body.generatorVersion)}`);
+    if (body.simVersion > JUMP_SIM_VERSION) throw versionError(`simulation v${String(body.simVersion)}, serveur v${JUMP_SIM_VERSION}`);
     if (typeof body.replay !== "string" || body.replay.length === 0) throw new HttpError(400, "invalid_replay", "Rediffusion manquante");
     let replay: JumpReplay;
     try {
@@ -471,6 +474,9 @@ export function createJump(platform: Platform, options: JumpOptions): GameInstan
     }
     if (replay.simVersion > JUMP_SIM_VERSION) throw versionError(`rediffusion v${replay.simVersion}, serveur v${JUMP_SIM_VERSION}`);
     const { info, level, authorHash } = await playable(day);
+    // Lot R6 : les versions annoncées par le jeu sont celles du serveur, ou celles du niveau de ce jour (un onglet d'avant la mise en production, sur un jour conservé).
+    if (body.simVersion !== JUMP_SIM_VERSION && body.simVersion !== level.simVersion) throw versionError(`simulation v${body.simVersion}, serveur v${JUMP_SIM_VERSION}, niveau en v${level.simVersion}`);
+    if (body.generatorVersion !== JUMP_GENERATOR_VERSION && body.generatorVersion !== info.generatorVersion) throw versionError(`générateur v${body.generatorVersion}, serveur v${JUMP_GENERATOR_VERSION}, niveau en g${info.generatorVersion}`);
     // Lot 15 : une rediffusion porte la version de son niveau (3 pour un jour figé en v3, 4 ensuite).
     if (replay.simVersion !== level.simVersion) throw versionError(`rediffusion v${replay.simVersion}, niveau en v${level.simVersion}`);
     if (levelId !== info.id) throw versionError(`niveau ${levelId}, le serveur joue ${info.id}`);

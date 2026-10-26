@@ -42,8 +42,8 @@ La remise à zéro **efface sans retour** : la sauvegarde est ton seul filet. El
 ## 5. Partager l'adresse
 `https://playdujour.com/` — le portail. C'est tout. (Les aperçus de partage de la page — titre, image — sont prêts.)
 
-## 6. Ensuite : ne plus cliquer sur « Mettre en production » avant le lot R6
-À partir du partage, **un jour fige ce que les joueurs ont** : une mise en production qui changerait un niveau ou un circuit du jour (ou le temps de l'auteur, les médailles) fausserait les classements en cours. Le garde-fou qui l'empêche pour les mises en production suivantes est **le lot R6**. **Tant qu'il n'est pas fusionné, plus de clic sur « Mettre en production »** — la recette (`recette.playdujour.com`) continue de suivre chaque fusion, elle. Après la fusion du lot R6, la procédure habituelle reprend (`CLAUDE.md` racine, « Adresses et mise en production »).
+## 6. Ensuite : « Mettre en production » se clique avec la liste du lot R6
+À partir du partage, **un jour fige ce que les joueurs ont** : une mise en production qui changerait un niveau ou un circuit du jour (ou le temps de l'auteur, les médailles) fausserait les classements en cours. Le garde-fou qui l'empêche est **le lot R6, fusionné** : « Mettre en production » calcule le **jour de bascule** (le premier jour de Paris qui commence après le déploiement), garde **exactement** les cartes de tous les jours d'avant, recharge celles d'après avec le nouveau code, et **s'arrête avant de déployer** si un jour d'avant changeait. **Suis `docs/plateforme/mise-en-production.md`** (sauvegarde, répétition sur la recette, le clic, les vérifications des 10 minutes, le retour arrière). La recette (`recette.playdujour.com`) continue de suivre chaque fusion, elle.
 
 ---
 
