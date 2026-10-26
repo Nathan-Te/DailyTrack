@@ -112,5 +112,5 @@ describe("médailles et textes", () => {
     expect(L.number).toBe(day("2026-10-20") - PREMIER_JOUR_JUMP + 1);
     expect(L.medals.author).toBe(L.authorTicks);
     expect(paletteForDay(L.day).name).toBe(paletteForDay(day("2026-10-20")).name);
-  });
+  }, 60_000); // lot 24 : 5 s ne suffisent plus quand la machine charge aussi le catalogue (mesuré : 6,7 s seul)
 });

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { parseDay } from "@cdj/core";
-import { dailyLevel, moduleSolutions, mushroomModuleIds, pressModuleIds } from "@cdj/jump-sim";
+import { dailyLevel, moduleSolutions, mushroomModuleIds, pressModuleIds, stalactiteModuleIds } from "@cdj/jump-sim";
 import { generatedDay } from "./jours";
 import { hasWebGL } from "./phone";
 
@@ -102,11 +102,11 @@ function dayWithPlatform(): string {
   throw new Error("aucun jour généré avec une plateforme");
 }
 
-test("niveau du jour (v6 depuis le lot 22) à plateformes : la preuve de l'auteur, jouée pas à pas dans la page, est portée par une plateforme et arrive sans mourir", async ({ page }) => {
+test("niveau du jour (v8 depuis le lot 24) à plateformes : la preuve de l'auteur, jouée pas à pas dans la page, est portée par une plateforme et arrive sans mourir", async ({ page }) => {
   const date = dayWithPlatform();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(7);
+  expect(daily.level.simVersion).toBe(8); // lot 24 : le générateur en vigueur (g18) est en v8
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: J }).__jump;
     j.manual(true);
@@ -217,11 +217,11 @@ function dayWithPresses(): string {
   throw new Error("aucun jour généré avec deux morceaux à presses");
 }
 
-test("niveau du jour d'usine (v6) : la preuve de l'auteur, jouée pas à pas dans la page, passe sous les presses et arrive sans mourir", async ({ page }) => {
+test("niveau du jour d'usine (v8 depuis le lot 24) : la preuve de l'auteur, jouée pas à pas dans la page, passe sous les presses et arrive sans mourir", async ({ page }) => {
   const date = dayWithPresses();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await openP(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(7);
+  expect(daily.level.simVersion).toBe(8); // lot 24 : le générateur en vigueur (g18) est en v8
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JP }).__jump;
     j.manual(true);
@@ -301,7 +301,7 @@ test("la galerie `?modules` filtre par l'étiquette « champignon » : au moins 
   await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
 });
 
-/** Un jour sans fichier figé dont le niveau (g17, v7, forêt) a au moins deux morceaux à champignons. */
+/** Un jour sans fichier figé dont le niveau (g18, v8, forêt) a au moins deux morceaux à champignons. */
 function dayWithMushrooms(): string {
   let day = parseDay(generatedDay())!;
   for (let k = 0; k < 90; k++, day++) {
@@ -311,11 +311,11 @@ function dayWithMushrooms(): string {
   throw new Error("aucun jour généré avec deux morceaux à champignons");
 }
 
-test("niveau du jour de forêt (v7) : la preuve de l'auteur, jouée pas à pas dans la page, rebondit sur ses champignons et arrive sans mourir", async ({ page }) => {
+test("niveau du jour de forêt (v8 depuis le lot 24) : la preuve de l'auteur, jouée pas à pas dans la page, rebondit sur ses champignons et arrive sans mourir", async ({ page }) => {
   const date = dayWithMushrooms();
   const daily = dailyLevel(parseDay(date)!);
   test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
-  expect(daily.level.simVersion).toBe(7);
+  expect(daily.level.simVersion).toBe(8);
   const result = await page.evaluate((code) => {
     const j = (window as unknown as { __jump: JM }).__jump;
     j.manual(true);
@@ -329,6 +329,126 @@ test("niveau du jour de forêt (v7) : la preuve de l'auteur, jouée pas à pas d
   }, daily.code);
   expect(result.count).toBeGreaterThanOrEqual(2);
   expect(result.bounces).toBeGreaterThanOrEqual(1);
+  expect(result.deaths).toBe(0);
+  expect(["finished", "carnage"]).toContain(result.phase); // arrivée sans mort : l'écran d'arrivée passe par le carnage
+});
+
+// ——— Lot 24 : les stalactites (dans ce fichier, pour la même raison) ———
+// Une stalactite déclenchée au pas prévu, qui tremble 60 pas (le dessin reçoit son âge, ses gouttes de glace), tombe puis se brise **sans secousse de caméra**, la galerie `?modules` qui
+// les filtre, et le niveau du jour de glace dont la preuve de l'auteur déclenche ses stalactites sans mourir. Tout se lit en pas à pas (l'état dessiné, lui, s'attend).
+
+interface StalactitesDebug {
+  count: number;
+  list: { id: string; col: number; row: number; before: number; after: number; zone: [number, number] }[];
+  ages: number[];
+  age?: number[];
+  shake?: number[];
+  drips?: number[];
+  visible?: boolean[];
+  opacity?: number;
+}
+interface JS {
+  phase: string;
+  stalactites: StalactitesDebug | null;
+  events: { kind: string; index?: number }[];
+  attempt: { status: string; time: number };
+  manual(on: boolean): void;
+  advance(n: number): unknown;
+  autoplay(code?: string): number;
+  go?(): void;
+}
+
+test("un morceau à stalactite (`?module=stalactite-decroche`) : la solution la déclenche, elle tremble 60 pas puis tombe et se brise, sans mourir ni secousse de caméra", async ({ page }) => {
+  test.skip(!(await open(page, "?module=stalactite-decroche&variante=0&entree=arret&debug&accueil=0")), "pas de WebGL dans ce navigateur");
+  const code = moduleSolutions("stalactite-decroche", 0)!.arret!.code;
+  const first = await page.evaluate(() => (window as unknown as { __jump: JS }).__jump.stalactites);
+  expect(first!.count).toBe(1);
+  expect(first!.ages).toEqual([0]);
+  const run = await page.evaluate((c) => {
+    const j = (window as unknown as { __jump: JS & { fx?: { shaking?: boolean } } }).__jump;
+    j.manual(true);
+    const total = j.autoplay(c);
+    const ages: number[] = [];
+    let deaths = 0;
+    let shaken = 0;
+    for (let t = 0; t < total + 5 && j.phase !== "finished"; t++) {
+      j.advance(1);
+      ages.push(j.stalactites!.ages[0]!);
+      if (j.attempt.status === "mort") deaths++;
+      shaken += j.fx?.shaking ? 1 : 0;
+    }
+    return { deaths, shaken, ages, events: j.events.filter((e) => e.kind.startsWith("stalactite")).map((e) => e.kind) };
+  }, code);
+  expect(run.deaths).toBe(0);
+  expect(run.shaken).toBe(0); // règle du lot 14 : ni secousse au déclenchement ni à la casse
+  // L'état : intacte, puis l'âge 1, 2, … 60 (tremblement), la chute, enfin brisée (−1) jusqu'à la fin.
+  const start = run.ages.findIndex((a) => a > 0);
+  expect(start).toBeGreaterThan(0);
+  for (let k = 0; k < 60; k++) expect(run.ages[start + k], `âge ${k + 1}`).toBe(k + 1);
+  const broken = run.ages.indexOf(-1);
+  expect(broken).toBeGreaterThan(start + 60);
+  expect(run.ages.slice(broken).every((a) => a === -1)).toBe(true);
+  expect(run.events).toEqual(["stalactiteTremble", "stalactiteCasse"]);
+});
+
+test("le dessin d'une stalactite qui tremble est celui de la simulation : son âge, son amplitude, ses gouttes de glace (attendus, jamais lus après un délai)", async ({ page }) => {
+  test.skip(!(await open(page, "?module=stalactite-decroche&variante=0&entree=arret&debug&accueil=0")), "pas de WebGL dans ce navigateur");
+  const code = moduleSolutions("stalactite-decroche", 0)!.arret!.code;
+  // On avance jusqu'à l'âge 30 (la moitié du tremblement) et on s'arrête : la page dessine cet état.
+  await page.evaluate((c) => {
+    const j = (window as unknown as { __jump: JS }).__jump;
+    j.manual(true);
+    const total = j.autoplay(c);
+    for (let t = 0; t < total && (j.stalactites!.ages[0] ?? 0) < 30; t++) j.advance(1);
+  }, code);
+  await page.waitForFunction(() => (window as unknown as { __jump: JS }).__jump.stalactites?.age?.[0] === 30);
+  const drawn = await page.evaluate(() => (window as unknown as { __jump: JS }).__jump.stalactites!);
+  expect(drawn.ages).toEqual([30]);
+  expect(drawn.shake![0]).toBeCloseTo(0.5, 9);
+  expect(drawn.drips![0]).toBe(4); // quatre gouttes décalées, toujours : un signe continu
+  expect(drawn.visible![0]).toBe(true);
+  expect(drawn.opacity).toBe(1);
+});
+
+test("la galerie `?modules` filtre par l'étiquette « stalactite » : au moins six morceaux", async ({ page }) => {
+  await page.goto("/?modules&debug");
+  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
+  await page.selectOption('select[name="etiquette"]', "stalactite");
+  await page.waitForFunction(() => (window as unknown as { __jump: { gallery: { filter: { tag: string | null } } } }).__jump.gallery.filter.tag === "stalactite");
+  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
+  expect(shown).toBeGreaterThanOrEqual(6);
+  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
+});
+
+/** Un jour sans fichier figé dont le niveau (g18, v8, glace) a au moins deux morceaux à stalactites. */
+function dayWithStalactites(): string {
+  let day = parseDay(generatedDay())!;
+  for (let k = 0; k < 120; k++, day++) {
+    const d = dailyLevel(day);
+    if (d.pieces.filter((p) => stalactiteModuleIds().has(p.id)).length >= 2) return d.date;
+  }
+  throw new Error("aucun jour généré avec deux morceaux à stalactites");
+}
+
+test("niveau du jour de glace (v8) : la preuve de l'auteur, jouée pas à pas dans la page, déclenche ses stalactites et arrive sans mourir", async ({ page }) => {
+  const date = dayWithStalactites();
+  const daily = dailyLevel(parseDay(date)!);
+  test.skip(!(await open(page, `?seed=${date}&debug&accueil=0`)), "pas de WebGL dans ce navigateur");
+  expect(daily.level.simVersion).toBe(8);
+  expect(daily.theme).toBe("glace");
+  const result = await page.evaluate((code) => {
+    const j = (window as unknown as { __jump: JS }).__jump;
+    j.manual(true);
+    const total = j.autoplay(code);
+    let deaths = 0;
+    for (let t = 0; t < total + 5 && j.phase !== "finished"; t++) {
+      j.advance(1);
+      if (j.attempt.status === "mort") deaths++;
+    }
+    return { deaths, phase: j.phase, count: j.stalactites?.count ?? 0, tremblements: j.events.filter((e) => e.kind === "stalactiteTremble").length };
+  }, daily.code);
+  expect(result.count).toBeGreaterThanOrEqual(2);
+  expect(result.tremblements).toBeGreaterThanOrEqual(2);
   expect(result.deaths).toBe(0);
   expect(["finished", "carnage"]).toContain(result.phase); // arrivée sans mort : l'écran d'arrivée passe par le carnage
 });

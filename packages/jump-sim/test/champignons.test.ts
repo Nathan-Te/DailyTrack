@@ -90,9 +90,9 @@ const GROUND_Y = 12 * T - PLAYER_HEIGHT;
 
 describe("lot 23 — la version de la simulation", () => {
   it("la version 7 est celle des champignons, le générateur g17", () => {
-    expect(JUMP_SIM_VERSION).toBe(7);
+    expect(JUMP_SIM_VERSION).toBeGreaterThanOrEqual(7); // lot 24 : la version 8 (stalactites) garde la 7
     expect(MUSHROOM_VERSION).toBe(7);
-    expect(JUMP_GENERATOR_VERSION).toBe(17);
+    expect(JUMP_GENERATOR_VERSION).toBeGreaterThanOrEqual(17); // lot 24 : g18 (stalactites) garde g17
     expect(MUSHROOM_GENERATOR).toBe(17);
     expect(room().simVersion).toBe(7);
   });
@@ -491,7 +491,7 @@ describe("lot 23 — les niveaux du jour", () => {
         expect(old.level.mushrooms, `${old.date} v${version}`).toEqual([]);
       }
       expect(dailyLevel(d, null, PRESS_VERSION).id).toBe(`jour-${dailyLevel(d).date}-g${PRESS_GENERATOR}`);
-      const L = dailyLevel(d);
+      const L = dailyLevel(d, null, MUSHROOM_VERSION); // lot 24 : la référence v7 (g17)
       expect(L.level.simVersion).toBe(7);
       expect(L.fallback, L.date).toBe(false);
       if (L.pieces.some((p) => ids.has(p.id))) {
@@ -515,7 +515,7 @@ describe("lot 23 — les niveaux du jour", () => {
       expect(mushroomProblems(L.level), L.date).toEqual([]);
       let s = initialAttempt(L.level);
       let bounces = 0;
-      const events = { mushroom: -1, boost: 0 };
+      const events = { mushroom: -1, boost: 0, shake: -1, shatter: -1 };
       for (const b of fromRuns(L.replay.runs)) {
         s = stepAttempt(s, b, L.level, DEFAULT_JUMP_PARAMS, events);
         if (events.mushroom >= 0) bounces++;
@@ -529,7 +529,7 @@ describe("lot 23 — les niveaux du jour", () => {
 
   it("un jour à champignons se fige et se relit (versions 7 et g17) ; une version incohérente est refusée", () => {
     const ids = mushroomModuleIds();
-    const day = forestDays.map((d) => dailyLevel(d)).find((L) => L.pieces.some((p) => ids.has(p.id)));
+    const day = forestDays.map((d) => dailyLevel(d, null, MUSHROOM_VERSION)).find((L) => L.pieces.some((p) => ids.has(p.id)));
     expect(day, "un jour à champignons sur 90").toBeDefined();
     const raw = JSON.parse(frozenJson(freezeLevel(day!)));
     expect(raw.simVersion).toBe(7);

@@ -1,4 +1,4 @@
-import { PRESS_HEIGHT_TILES, TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSpikeTile, sawCenter, type BuiltModule, type Level } from "../src/index";
+import { PRESS_HEIGHT_TILES, TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSolidTile, isSpikeTile, sawCenter, stalactiteFloorRow, stalactiteZone, type BuiltModule, type Level } from "../src/index";
 
 // La **règle des plats** (lot 7), hors de la simulation : dans un morceau, un plat de plus de `FLAT_MAX` tuiles **sans défi** est interdit,
 // sauf si l'élan est le défi lui-même (métadonnée `elan: oui`, `saut-long`) : alors `ELAN_FLAT_MAX` tuiles au plus.
@@ -45,6 +45,21 @@ function dangerMap(level: Level): Uint8Array {
   }
   // Lot 23 : un champignon est un défi (on rebondit en y entrant) : la tuile où il pousse n'est jamais un plat sans défi.
   for (const m of level.mushrooms) d[m.row * W + m.col] = 1;
+  // Lot 24 : une stalactite est un défi sur toute sa colonne (de son corps jusqu'au bloc plein où elle se brise) et sur toute sa zone de déclenchement (le sol de
+  // chaque colonne de la zone : on y court sous la menace, on ne peut pas s'y arrêter).
+  for (const s of level.stalactites) {
+    const floor = stalactiteFloorRow(level, s);
+    for (let r = s.row; r < (floor < 0 ? level.height : floor); r++) d[r * W + s.col] = 1;
+    const [z0, z1] = stalactiteZone(s);
+    for (let c = Math.max(0, z0); c <= Math.min(W - 1, z1); c++) {
+      for (let r = s.row + 2; r < level.height; r++) {
+        if (isSolidTile(level.tiles[r * W + c]!)) {
+          d[(r - 1) * W + c] = 1;
+          break;
+        }
+      }
+    }
+  }
   return d;
 }
 

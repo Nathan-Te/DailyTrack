@@ -18,7 +18,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français (lot 20 : absente du catalogue embarqué, `apps/jump/public/outils/intentions.json`)
 //   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile ; lot 22 : `presse` ; lot 23 : `champignon`,
-//                                                 un morceau dont la grille a des champignons `m` `w` `(` `)`)
+//                                                 un morceau dont la grille a des champignons `m` `w` `(` `)` ; lot 24 : `stalactite`, une ligne `stalactite` du bloc annexe)
 //   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
 //                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne` ; lot 13 :
 //                                                 `foret` : `vent`) ; sans cette
@@ -46,6 +46,10 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //                                                 (lot 22) une presse (syntaxe de `level.ts`) : le coin haut-gauche de sa position haute en
 //                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe),
 //                                                 la section est implicite, `{param}` permis ; au niveau du jour l'identifiant prend le nom du morceau
+//   stalactite <id> <c,r> <avant> <après>
+//                                                 (lot 24) une stalactite (syntaxe de `level.ts`) : la tuile de la pointe haute de son corps (sous un plafond plein), en
+//                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe), et sa zone de
+//                                                 déclenchement en colonnes de chaque côté ; section implicite, `{param}` permis ; au niveau du jour l'identifiant prend le nom du morceau
 //   zone <mutateur> …                             et les zones de mutation (ci-dessous)
 //
 // **Mutateurs (lot 7).** Une transformation déclarative du **gabarit** (avant le déroulé des plages répétées : une zone posée sur une plage
@@ -107,7 +111,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse", "champignon", "stalactite"] as const;
 /** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -350,8 +354,9 @@ export function parseModule(text: string): ModuleDef {
   for (const [tag, th] of [["tapis", "usine"], ["glace", "glace"], ["clignotant", "nuit"], ["alterne", "neon"], ["vent", "foret"]] as const) {
     // Lot 22 : les presses sont la seconde mécanique de l'usine : un morceau `presse` est de l'usine, avec ou sans tapis.
     // Lot 23 : les champignons sont la seconde mécanique de la forêt : un morceau `champignon` est de la forêt, avec ou sans vent.
-    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon"));
-    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : ""} et « theme: ${th} » vont ensemble`));
+    // Lot 24 : les stalactites sont la seconde mécanique de la glace : un morceau `stalactite` est de la glace, avec ou sans glace au sol.
+    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse")) || (th === "foret" && tags.includes("champignon")) || (th === "glace" && tags.includes("stalactite"));
+    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : th === "foret" ? " (ou « champignon »)" : th === "glace" ? " (ou « stalactite »)" : ""} et « theme: ${th} » vont ensemble`));
   }
   const optional = (k: string, value: string) => {
     const v = meta[k];
@@ -377,6 +382,8 @@ export function parseModule(text: string): ModuleDef {
   if (tags.includes("plateforme") !== annex.some((l) => l.startsWith("plateforme "))) throw new ModuleError(where("l'étiquette « plateforme » et une ligne « plateforme » du bloc annexe vont ensemble"));
   // Lot 22 : de même pour les presses.
   if (tags.includes("presse") !== annex.some((l) => l.startsWith("presse "))) throw new ModuleError(where("l'étiquette « presse » et une ligne « presse » du bloc annexe vont ensemble"));
+  // Lot 24 : de même pour les stalactites.
+  if (tags.includes("stalactite") !== annex.some((l) => l.startsWith("stalactite "))) throw new ModuleError(where("l'étiquette « stalactite » et une ligne « stalactite » du bloc annexe vont ensemble"));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
   // Lot 23 : l'étiquette `champignon` et des champignons dans la grille vont ensemble.
   if (tags.includes("champignon") !== grid.some((row) => /[mw()]/.test(row))) throw new ModuleError(where("l'étiquette « champignon » et des champignons « m w ( ) » dans la grille vont ensemble"));
@@ -677,6 +684,12 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
               if (Number(pm[2]) + Number(pm[1]) - 1 >= z.c0) fail(`${where} : une presse y passe`);
               continue;
             }
+            // Lot 24 : ni une stalactite (colonne en 3e mot).
+            const sm = /^stalactite \S+ (\d+)(?:'?),/.exec(line);
+            if (sm) {
+              if (Number(sm[1]) + 8 >= z.c0) fail(`${where} : une stalactite y passe`);
+              continue;
+            }
             for (const w of line.split(/\s+/).slice(5)) {
               const c = Number(/^(\d+)/.exec(w)?.[1] ?? -1);
               if (c >= z.c0) fail(`${where} : une scie y passe`);
@@ -883,7 +896,23 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       );
       continue;
     }
-    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme » et « presse » sont permis (« ${words[0]} »)`));
+    if (words[0] === "stalactite") {
+      // Lot 24 : une stalactite, sa tuile (3e mot) traduite comme un point de scie (première copie, ou dernière avec une apostrophe).
+      annex.push(
+        words
+          .map((w, k) => {
+            const m = k === 2 ? /^(\d+)('?),(\d+)('?)$/.exec(w) : null;
+            if (!m) return w;
+            const col = (m[2] ? cols.last : cols.first)[Number(m[1])];
+            const row = (m[4] ? rows.last : rows.first)[Number(m[3])];
+            if (col === undefined || row === undefined || col < 0 || row < 0) throw new ModuleError(where(`point ${w} hors de la grille ou retiré par la variante`));
+            return `${col + lead},${row}`;
+          })
+          .join(" "),
+      );
+      continue;
+    }
+    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme », « presse » et « stalactite » sont permis (« ${words[0]} »)`));
     annex.push(
       words
         .map((w, k) => {

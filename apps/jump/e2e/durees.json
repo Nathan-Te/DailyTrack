@@ -7,7 +7,7 @@
     "captures-lot-i5.spec.ts": 0,
     "captures-lot-i7.spec.ts": 0,
     "captures-lot-18.spec.ts": 0,
-    "carnage-lisible.spec.ts": 12,
+    "carnage-lisible.spec.ts": 20,
     "carnage.spec.ts": 11,
     "chargement.spec.ts": 10,
     "classement.spec.ts": 13,
@@ -38,6 +38,6 @@
     "variete.spec.ts": 2,
     "voie-lente.spec.ts": 6,
     "semaine.spec.ts": 10,
-    "plateformes.spec.ts": 28
+    "plateformes.spec.ts": 34
   }
 }

@@ -80,6 +80,7 @@ import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
 import type { PlatformStats } from "./platformArt";
 import type { MushroomStats } from "./mushroomArt";
+import type { StalactiteStats } from "./stalactiteArt";
 import type { PressStats } from "./pressArt";
 import { pressLook } from "./announce";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
@@ -272,6 +273,16 @@ export interface MushroomsDebug extends Partial<MushroomStats> {
   list: { col: number; row: number; dir: number; name: string; pad: { x: number; y: number; w: number; h: number } }[];
 }
 
+/**
+ * Lot 24 : `__jump.stalactites` — ce que le dessin a posé (âge dessiné, hauteur, balancement, gouttes, opacité) et ce que la simulation sait : la liste des stalactites (tuile du corps, zone
+ * de déclenchement en colonnes) et leur état courant (`ages` : 0 intacte, âge > 0 déclenchée, −1 brisée).
+ */
+export interface StalactitesDebug extends Partial<StalactiteStats> {
+  count: number;
+  list: { id: string; col: number; row: number; before: number; after: number; zone: [number, number] }[];
+  ages: number[];
+}
+
 export interface JumpDebug {
   /**
    * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
@@ -286,6 +297,8 @@ export interface JumpDebug {
   readonly presses: PressesDebug | null;
   /** Lot 23 : les champignons (null : le niveau n'en a pas). */
   readonly mushrooms: MushroomsDebug | null;
+  /** Lot 24 : les stalactites (null : le niveau n'en a pas). */
+  readonly stalactites: StalactitesDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -2285,6 +2298,16 @@ const info: JumpDebug = {
       ...(scene?.mushrooms ?? {}),
       count: level.mushrooms.length,
       list: level.mushrooms.map((m) => ({ col: m.col, row: m.row, dir: m.dir, name: MUSHROOM_NAMES[m.dir]!, pad: mushroomPad(m) })),
+    };
+  },
+  /** Lot 24 : les stalactites (null sans elles) : ce que le dessin a posé, la liste de la simulation et l'état courant. */
+  get stalactites() {
+    if (level.stalactites.length === 0) return null;
+    return {
+      ...(scene?.stalactites ?? {}),
+      count: level.stalactites.length,
+      list: level.stalactites.map((s) => ({ id: s.id, col: s.col, row: s.row, before: s.before, after: s.after, zone: [s.col - s.before, s.col + s.after] as [number, number] })),
+      ages: [...(session.state.stalactites ?? level.stalactites.map(() => 0))],
     };
   },
   /** Lot 13 : les courants d'air (null sans eux). */

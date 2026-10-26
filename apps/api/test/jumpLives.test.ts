@@ -55,7 +55,7 @@ beforeAll(() => {
     }
   }
   if (deaths.length < 45 || others.length < 1) throw new Error(`trop peu de vies fictives (${deaths.length} morts, ${others.length} autres)`);
-});
+}, 60_000); // lot 24 : 10 s ne suffisent plus quand la part de CI charge aussi le catalogue (mesuré : ≈ 8 s seul)
 
 /** Compte les lignes écrites par table (hors compteurs de débit) : chaque écriture est suivie de `changes()`. */
 function counting(db: SqlDb & { close(): void }) {

@@ -202,7 +202,7 @@ export function buildDeathMap(rows: readonly { lives: readonly StoredLife[] }[],
       deaths++;
       const key = row * 65536 + col;
       let t = byTile.get(key);
-      if (!t) byTile.set(key, (t = { col, row, count: 0, causes: [0, 0, 0, 0, 0] }));
+      if (!t) byTile.set(key, (t = { col, row, count: 0, causes: [0, 0, 0, 0, 0, 0] }));
       t.count++;
       if (cause >= 0 && cause < t.causes.length) t.causes[cause]!++;
     }

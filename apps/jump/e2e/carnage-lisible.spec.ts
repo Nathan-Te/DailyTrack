@@ -19,6 +19,7 @@ interface Stats {
 }
 interface J {
   phase: string;
+  stalactites: { opacity?: number; age?: number[]; visible?: boolean[]; shake?: number[]; drips?: number[] } | null;
   attempt: { status: string; time: number };
   theme: { stats: Stats | null };
   blocks: { blinkFace?: number; altFace?: number; clockFade?: number } | null;
@@ -124,7 +125,8 @@ test("carnage : les scies mobiles sont à 35 %, les scies fixes et le reste à 1
 
 test("carnage de la nuit : les blocs clignotants sont à 35 %, les blocs alternés restent à 100 %", async ({ browser }) => {
   test.setTimeout(120_000);
-  const date = dayWhere("nuit", (d) => d.level.blinks.length > 0);
+  // Lot 24 : des clignotants près de l'arrivée (le carnage s'ouvre sur la fin du niveau : un bloc hors de la vue n'est pas dessiné, `blinkFace` resterait à −1) ; avec le générateur g18, le premier jour de nuit à clignotants n'en avait que dans son milieu.
+  const date = dayWhere("nuit", (d) => d.level.blinks.some((b) => b.col >= d.level.width - 45));
   await atInstant(browser, FIXED_NOW, async (page) => {
     await playToCarnage(page, date);
     await page.waitForFunction(() => {
@@ -154,6 +156,24 @@ test("carnage de la forêt : les rafales sont à 35 %, une zone qui souffle touj
     expect(during.fade).toEqual(zones.map((z) => (z.gust !== null ? FADE : 1)));
     await skipCarnage(page);
     await page.waitForFunction(() => ((window as unknown as { __jump: J }).__jump.wind?.fade ?? [0]).every((f) => f === 1));
+  });
+});
+
+test("carnage de la glace (lot 24) : les stalactites sont dessinées intactes et à 35 %, quelle que soit la vie ; la partie ordinaire est à 100 %", async ({ browser }) => {
+  test.setTimeout(120_000);
+  const date = dayWhere("glace", (d) => d.level.stalactites.length > 0);
+  await atInstant(browser, FIXED_NOW, async (page) => {
+    await playToCarnage(page, date);
+    await page.waitForFunction(() => ((window as unknown as { __jump: J }).__jump.stalactites?.opacity ?? 1) < 1);
+    const during = await page.evaluate(() => (window as unknown as { __jump: J }).__jump.stalactites!);
+    expect(during.opacity).toBe(FADE);
+    // Intactes (jamais en train de trembler ni de tomber, jamais brisées), sans gouttes.
+    expect(during.age!.every((a) => a === 0)).toBe(true);
+    expect(during.visible!.every(Boolean)).toBe(true);
+    expect(during.shake!.every((s) => s === 0)).toBe(true);
+    expect(during.drips!.every((d) => d === 0)).toBe(true);
+    await skipCarnage(page);
+    await page.waitForFunction(() => (window as unknown as { __jump: J }).__jump.stalactites?.opacity === 1);
   });
 });
 
