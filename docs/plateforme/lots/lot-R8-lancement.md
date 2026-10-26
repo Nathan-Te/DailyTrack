@@ -47,7 +47,13 @@ Branche `claude/elegant-gauss-s5mwdj`, PR en brouillon. **Aucun changement de `p
 **Non vérifié** : la remise à zéro de la **production** (jamais lancée par ce lot ; c'est Nathan, le jour du partage) ; le workflow sur la production (ses gardes sont testées en bash, pas dans GitHub) ; la lecture du secret `cdj-turso-token` par le compte de déploiement (une commande à lancer une fois si elle est refusée) ; le comportement de `turso db shell … .dump` (commande de la documentation de Turso, à essayer avant le jour J).
 
 ## 5. La recette
-_À compléter après le lancement du workflow sur la recette._
+**La remise à zéro de la recette n'a pas été lancée par ce lot, et aucun résumé n'est joint.** Un agent n'a pas le droit de lancer un workflow (`workflow_dispatch` répond 403 : « un agent ne valide, ne relance et ne crée ni ressource ni secret ») ; le critère « recette remise à zéro et vérifiée par le lot » n'est donc **pas atteint** et reste à Nathan, en deux clics :
+1. fusionner la PR, attendre le run `recette.yml` de `main` (serveur et site de la recette à jour : la remise à zéro et la génération y sont) ;
+2. **Actions › « Lancement : remise à zéro »** : cible `recette`, base `recette` (le nom de la base de recette), phrase `tout le monde repart de zéro`, sauvegarde confirmée. D'abord avec « essai à blanc » (il liste les tables et les comptes sans rien effacer), puis sans. Le résumé du run donne les tables vidées et gardées et le verdict de `smoke --lecture-seule --vide` ; joindre ce résumé à la PR.
+
+Ce que le lot a vérifié à la place, en local, sur le vrai serveur et le vrai script (§ 4, `nouveau-depart.spec.ts`) : l'effacement, la génération annoncée, les navigateurs qui repartent de zéro, les gardes.
 
 ## 6. CI
-_À compléter._
+- Run 40286551789 (commit `408fb56`, fusion de `main` avec le lot 20 de Jump) : `zones`, `scope`, `api-image`, `unit` 1 à 4 et `test` verts ; `e2e-pr` 1/4, 3/4 (Track puis Jump) et 4/4 verts ; **`e2e-pr` 2/4 : `profil.spec.ts:141` (« un record fait sur un appareil apparaît sur l'autre ») a échoué** — `#archive a.day` introuvable en 30 s sur l'appareil C, sur un runner lent (le test précédent de la part a pris 1,2 min contre 51 s en local). Rejoué en local avec la construction de la CI (`VITE_LANCEMENT_PREMIER_JOUR=2026-10-13`, `CI=1`) : les 7 tests de `profil.spec.ts` passent (le test en cause : 15 s). Relancé par le commit suivant ; le verdict de ce nouveau run est noté ci-dessous.
+- Runs précédents : `ae3061d` annulé par un push ; `25f2929` rouge sur un test unitaire de Jump (`URLSearchParams` hors de `urlOptions.ts`, une erreur du lot, corrigée) ; `classement.spec.ts` de Jump (la démo écrivait `cdj:generation`, corrigé).
+- Verdict final : _à noter_.
