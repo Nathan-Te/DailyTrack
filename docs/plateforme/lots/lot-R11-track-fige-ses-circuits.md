@@ -1,0 +1,42 @@
+# Lot R11 (plateforme) — Track prend son nouveau générateur à la mise en production
+
+Branche `claude/modest-allen-ysa560`, PR en brouillon. **Ce lot ne lance jamais la production** (un agent ne lance aucun workflow). Guide de Nathan : `docs/plateforme/mise-en-production.md`. Ce README est le rapport.
+
+## Ce qui change
+| | |
+|---|---|
+| **Le registre** | `packages/sim/src/jours-track.json` : `{ format: 1, jusqua, plages: [{ du, au, g, sim }] }` — la version du générateur (`g`) et de la simulation (`sim`) de chaque **jour protégé**, en plages de jours consécutifs de même version. Écrit par « Mettre en production » (job `figer`), versé dans `main` par la PR « Jours figés » (avec les niveaux de Jump et `jours-passes.json`). |
+| **Pourquoi un fichier et pas un par jour** | Track a besoin de la version **tout de suite et de façon synchrone** (identifiant du circuit, records, miniatures, serveur) : le fichier est importé par `dailyId.ts` (léger, premier chargement), donc le jeu et le serveur lisent **le même fichier dans la même construction**. Un fichier par jour (comme Jump) demanderait une requête par jour au jeu. Une plage coûte ≈ 100 o : un an de mises en production hebdomadaires ≈ 5 ko brut, ≈ 1 ko compressé, pour une plage par changement de version. |
+| **Lecture** | `generatorVersionOf(jour)` : la plage du jour, sinon `GENERATOR_VERSION` (jour sans résultat, jour de bascule et suivants, Salon). `cdj.ts` et le jeu l'appellent déjà : rien d'autre à brancher. |
+| **Les dates disparaissent** | `BASCULE_LOT_34`, `BASCULE_LOT_48`, `BASCULE_LOT_49` et `generatorVersionOf` par date sont supprimées. Restent : les constantes de version (`GENERATOR_BEFORE_34/48/49` = 15, 16, 17), le code des versions 15 à 18 (le registre peut les nommer), `OLDEST_GENERATOR` = 15, et `BASCULE_LOT_35` (médailles : hors périmètre). |
+| **Registre initial** | `g` = 15, `sim` = 14, du 01/09/2026 (avant tout jour d'essai) au 26/10/2026 : **exactement ce que la production sert** (code de `prod-2026-10-25-0933`). Le 28/10 (v16 chez elle) n'y est pas : tant qu'aucune mise en production n'a eu lieu, la production sert la v16 ce jour-là, et le fichier ne le dit qu'une fois que ce jour est protégé. |
+| **Un détail du générateur v18** | `themeOccurrence` comptait les apparitions d'un thème depuis `BASCULE_LOT_49` : c'est une **ancre de la v18** (`ANCRE_V18`, 04/11/2026, qui ne bouge jamais). Avant l'ancre, les apparitions se comptent maintenant à rebours : une mise en production **avant** le 04/11 sert la v18 dès son jour de bascule avec la variété garantie intacte (avant : `k` = 0 tous les jours). Aucun jour de la v18 de l'ancre ou après ne change (golden). |
+
+## Complément de Nathan : les jours protégés
+Le garde-fou ne protège que **(a) les jours d'avant la date de lancement, (b) les jours déjà figés, (c) les jours qui ont au moins un résultat en production (Track ou Jump)**. Un jour à partir de la journée n° 1 sans aucun résultat est **régénéré avec le code déployé** (Track comme Jump).
+- **Lecture seule** : `GET /api/portail/classement?date=` (route publique existante, `classes` = joueurs qui ont fini au moins un jeu ce jour-là), un `GET` par jour non figé, sans identifiant ni corps ; `429` → attente de la fenêtre ; toute autre réponse inattendue **arrête** (sans cette lecture, les jours à protéger sont inconnus). Prouvé contre le vrai serveur (`apps/api/test/joursProteges.test.ts`) : aucune donnée de joueur écrite (seuls les deux caches déterministes du serveur, comme pour n'importe quel joueur) ; et contre la vraie production (lecture seule, comptes seulement).
+- **Dans le workflow** (`production.yml`, job `figer`) : `proteges` → `jours-servis` (niveaux **et** registre) → `freeze:days` + `jours-figes-filtrer` (les niveaux des jours sans résultat sont retirés) → `registre` (version de chaque jour protégé **par le code en production**) → `registre-fusion` (**toute version différente, ou jour du dépôt au-delà de la veille de la bascule, arrête**) → `empreintes` à partir du plus ancien niveau figé de Jump (les jours d'avant le lancement comptent) → `comparer --proteges`. `deploy-api.yml` / `deploy-site.yml` fusionnent le registre (artefact `registre-track` : `jours-track.json`, `proteges.json`) et **relisent les résultats des jours régénérés** après la validation de Nathan (`proteges-verifier`) : un résultat arrivé entre-temps arrête. La PR « Jours figés » ajoute `packages/sim/src/jours-track.json`. Le résumé du run gagne « Jours protégés et jours sans résultat » et « Registre des jours de Track ».
+- **Décision à connaître** : un jour **déjà figé** reste protégé même sans résultat. Aujourd'hui le 26/10 (journée n° 1) est figé (Jump `2026-10-26.json`, `jours-passes.json`, registre) : il ne sera pas régénéré, même à zéro résultat. Pour le laisser régénérer, retirer ces trois traces dans une PR avant la mise en production (je ne l'ai pas fait : le dire à Nathan).
+
+## Vérifié / non vérifié
+**Vérifié**
+- `npx tsc -b` ; tests : `registreJours.test.ts` (forme, versions connues, plage la plus ancienne se génère, rotation des vedettes continue de part et d'autre de l'ancre, v18 valide avant l'ancre), `golden-daily.test.ts` (**fichier golden inchangé**, régénération identique ; chaque vecteur impose sa version), `miseEnProduction.test.ts` (32 tests : jour avec résultat → protégé, sans résultat → régénéré, d'avant le lancement → inchangé ; lecture seule ; fusion et refus du registre ; lignes de commande), `joursProteges.test.ts`, `jours-passes.test.ts` (SQLite et libSQL), `legerete.test.ts`, `archive.test.ts`.
+- **Répétition locale du garde-fou** (mêmes commandes que le workflow, script de répétition dans la session, code de **`prod-2026-10-25-0933`** comme code en production, résultats lus sur la vraie production en lecture seule), heure simulée `demain 10:00` (bascule mercredi 28/10) : DailyTrack **11 jours conservés (16/10 → 26/10), 0 différence**, 15 régénérés (27/10 → 10/11), 15 valides ; DailyJump idem ; registre : 56 jours du dépôt identiques à ce que la production sert, **0 différence** ; jour sans résultat : 27/10, régénéré. (Le 26/10 n'a aucun résultat aujourd'hui sur la production et reste protégé : déjà figé.)
+- Lecture réelle des résultats (cible vide, 21 → 26/10) : 21/10 : 6 classés (essais d'avant), 22 → 26/10 : 0 — la route et la lecture marchent.
+
+**Non vérifié (à toi, Nathan)**
+- Les workflows ne se testent qu'en vrai (YAML lu, `node scripts/securite-workflows.mjs` : 0 écart ; commandes jouées une à une) : **la répétition sur la recette** (« Mettre en production » › `repetition` › `heure_simulee` = `demain 10:00`) est la vraie preuve. Elle doit montrer, pour Track comme pour Jump, N jours conservés sans différence, les jours sans résultat et ceux à partir de la bascule régénérés avec la dernière version, et « Registre des jours de Track … ✅ ». Sur la recette ensuite : `/track/?seed=<jour de bascule>` = le nouveau générateur, `/track/` (aujourd'hui) = le même circuit qu'en production.
+- Les expressions du YAML (`inputs.registre_track`, artefact en dossier), `jq` sur le runner, l'étape de la PR « Jours figés » avec le registre.
+- Les e2e complets sur trois navigateurs (CI complète de `main`, lancée par la mise en production).
+
+## Risques
+1. **Lecture des résultats** : un `playdujour.com` qui répond mal arrête la mise en production (voulu) ; au-delà d'une centaine de jours à lire (fenêtre de 120 lectures par 10 minutes) la lecture attend : les jours déjà figés ne sont pas relus, donc rare.
+2. **Un jour sans résultat régénéré** peut avoir un onglet ouvert d'avant : à l'envoi il reçoit `409 track_mismatch` (traduit) ; son temps local reste. Voulu par la décision de Nathan.
+3. **La v16 et la v17** ne servent aucun jour tant que le registre ne les nomme pas, mais restent dans le code (le registre peut les nommer : une mise en production après le 28/10 servira la v16 aux jours protégés du 28/10 jusqu'à sa veille).
+4. Premier clic : le code en production est d'avant le registre ; `registre-jours.ts` ne dépend que de `@cdj/sim` et marche avec l'ancien choix par date (répété ci-dessus).
+
+## Budget de Track
+Voir `docs/plateforme/budgets.md` (ligne `track`) : le registre et la lecture ajoutent ≈ ___ o au premier chargement.
+
+## Runs de CI et verdicts
+(à remplir)

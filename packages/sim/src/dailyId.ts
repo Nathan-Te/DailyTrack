@@ -1,6 +1,6 @@
 import { formatDay, parseDay } from "@cdj/core";
 import { GENERATOR_VERSION } from "./constants";
-import registre from "./jours-track.json";
+import registre from "./jours-track.json" with { type: "json" };
 import type { ThemeName } from "./themes";
 
 // Versions et identifiants des circuits du jour (lots 14 et 34) : dans leur propre fichier (lot 36), le jeu en a besoin dès le premier écran (identifiant du
