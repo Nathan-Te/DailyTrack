@@ -23,10 +23,13 @@ Un test ne compare jamais à une date écrite en dur (la source : `config/lancem
 `jours-passes.json` est vide : R11 se met à jour après ce lot (la PR « Jours figés » le remplira à la première mise en production).
 
 ## Vérifié / non vérifié
-Voir « Runs de CI » ci-dessous (rempli à la fin).
+- Vérifié en local (`npm run verifier`, vert) : typecheck, unitaires SQLite et libSQL, e2e DailyTrack (21 specs) et DailyJump (5) ; le spec Salon 3 fois de suite sans relance.
+- Vérifié en CI : voir « Runs de CI ». **Pas encore vérifié** : la CI complète (trois navigateurs) sur la branche, l'étape apt face à un miroir encore plus lent que 10 min, la CI de `main` après fusion.
+- Point de vigilance : une installation apt de 10 min a été observée (limite 15 min) ; un miroir plus lent ferait échouer l'étape.
 
 ## Runs de CI
 - [40399054124](https://github.com/Nathan-Te/DailyTrack/actions/runs/40399054124) (`main`, a12d0ac) : rouge, analysé ci-dessus.
 - [40407200339](https://github.com/Nathan-Te/DailyTrack/actions/runs/40407200339) (PR, 427c082) : rouge — `e2e-pr (3/4)`, `install-deps chromium` : miroir apt lent (≈ 50 ko/s), mon `timeout 300` a tué `npx` mais pas `apt-get` (verrou dpkg), les 2 essais suivants ont échoué ; la construction a été sautée, puis « DailyJump » a échoué en conséquence (`config.webServer` 60 s). Tous les autres jobs verts.
 - [40408167715](https://github.com/Nathan-Te/DailyTrack/actions/runs/40408167715) (déclenchement manuel, 427c082) : annulé après ≈ 90 s, aucun test en échec (je ne sais pas qui l'a annulé).
-- (à compléter : la CI de la PR et la CI complète après la correction d'apt)
+- [40408883311](https://github.com/Nathan-Te/DailyTrack/actions/runs/40408883311) (PR, fce2505, apt réglé par sa configuration) : **annulé à 22:17, pas en échec** — le run 776 (ancien commit) a été relancé à 22:16:51 et, dans le même groupe de concurrence, a annulé celui-ci. Avant l'annulation : `zones`, `scope`, `unit`, `api-image`, `test`, `e2e-pr` 2/4, 3/4 et 4/4 verts ; l'installation apt de 3/4 a pris 3 min 55 s (échec au run précédent), celle de 1/4 **10 min 1 s** (réussie, sous les 15 min), puis ses specs ont été annulés après 7 min sans échec de test.
+- (à compléter : la CI de la PR sur la tête de branche, puis la CI complète lancée à la main)
