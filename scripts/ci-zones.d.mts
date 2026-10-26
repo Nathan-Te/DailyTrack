@@ -1,6 +1,6 @@
 export interface Table { fumee: Record<"web" | "jump", string[]>; zones: Record<string, { globs: string[]; sauf?: string[] }>; specs: Record<string, string[]>; compilees: Record<string, { globs: RegExp[]; sauf: RegExp[] }> }
 export interface Graphe { noeuds: Map<string, { imports: Set<string>; cites: Set<string> }>; tests: string[]; atteint: Map<string, unknown> }
-export interface Choix { web: string[]; jump: string[]; raisons: string[] }
+export interface Choix { web: string[]; jump: string[]; raisons: string[]; reportes?: string[] }
 export interface PartUnitaire { part: string; fichiers: string[]; secondes: number }
 export interface PartE2e { part: string; web: string[]; jump: string[]; secondes: number }
 export interface Decision {
@@ -18,12 +18,13 @@ export const CIBLE_PART_E2E_S: number;
 export const CIBLE_PART_UNITAIRE_S: number;
 export const DEFAUT_UNITAIRE_S: number;
 export const MAX_IMPORTEURS: number;
+export const BUDGET_E2E_S: number;
 export function lister(racine: string, dir: string, filtre?: (f: string) => boolean): string[];
 export function chargerTable(racine?: string): Table;
 export function zonesDuFichier(fichier: string, table: Table): string[];
 export function specsDuJeu(jeu: "web" | "jump", racine?: string): string[];
 export function importeursDe(jeu: "web" | "jump", utilitaire: string, racine?: string): string[];
-export function specsPour(files: string[], table: Table, racine?: string): Choix;
+export function specsPour(files: string[], table: Table, racine?: string, options?: { budget?: number }): Choix;
 export function specsDesZones(zones: string[], table: Table): { web: string[]; jump: string[]; inconnues: string[] };
 export function dossiersDeCode(racine?: string): string[];
 export function chemins(texte: string): string[];
