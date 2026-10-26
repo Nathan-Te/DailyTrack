@@ -174,9 +174,11 @@ test("un morceau à presse (`?module=presse-promenade`) : la presse est dessiné
   const early = await page.evaluate(() => (window as unknown as { __jump: JP }).__jump.presses!.sim[0]!);
   await page.evaluate((n) => (window as unknown as { __jump: JP }).__jump.advance(n), HOLD - 30 - phase);
   // `advance` joue sans rendu : le dessin rattrape la simulation à l'image suivante. On attend cet état (jamais une durée), puis on le lit d'un bloc.
+  // `__jump.presses.warn` est celui de la **simulation** (il écrase celui du dessin) : il est juste dès la fin de `advance` et n'atteste aucune image. C'est donc
+  // l'empreinte, posée par le dessin lui-même, qu'on attend (run 40413669420 : sous WebKit la lecture tombait avant la première image, `footprint` valait encore 0,08).
   await page.waitForFunction((hold) => {
     const p = (window as unknown as { __jump: JP }).__jump.presses;
-    return !!p && p.phases[0] === hold - 30 && Math.abs((p.warn?.[0] ?? -1) - 0.5) < 1e-9;
+    return !!p && p.phases[0] === hold - 30 && Math.abs((p.warn?.[0] ?? -1) - 0.5) < 1e-9 && (p.footprint?.[0] ?? 0) > 0.08;
   }, HOLD);
   const mid = await page.evaluate(() => (window as unknown as { __jump: JP }).__jump.presses!);
   // L'annonce dessinée est celle de la simulation (30 pas sur 60), l'empreinte est plus sombre qu'au repos, la presse n'a pas bougé.
