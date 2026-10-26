@@ -38,6 +38,7 @@ import {
   singleClock,
   cycleMod,
   platformPositions,
+  pressBoxes,
   sectionClock,
   windActive,
   windPhase,
@@ -49,6 +50,7 @@ import {
   replayStartState,
   type AttemptState,
   type DailyLevel,
+  type PublicDailyLevel,
   type JumpMedal,
   type JumpParams,
   type JumpReplay,
@@ -75,6 +77,8 @@ import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
 import type { PlatformStats } from "./platformArt";
+import type { PressStats } from "./pressArt";
+import { pressLook } from "./announce";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -247,6 +251,15 @@ export interface PlatformsDebug extends Partial<PlatformStats> {
   ride: number;
 }
 
+/** Lot 22 : `__jump.presses` — ce que le dessin a posé (position, annonce, empreinte, poussières, opacité) et l'état des presses dans la simulation. */
+export interface PressesDebug extends Partial<PressStats> {
+  count: number;
+  /** Par presse : le rectangle mortel dans la simulation (unités), la phase de sa section et l'annonce de la simulation (0 à 1). */
+  sim: { x: number; y: number; w: number; h: number }[];
+  phases: number[];
+  warn: number[];
+}
+
 export interface JumpDebug {
   /**
    * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
@@ -257,6 +270,8 @@ export interface JumpDebug {
   readonly blocks: BlocksDebug | null;
   /** Lot 20 : les plateformes mobiles (null : le niveau n'en a pas) : où elles sont dans la simulation et ce qui est dessiné (position, vitesse et sens du chevron, opacité). */
   readonly platforms: PlatformsDebug | null;
+  /** Lot 22 : les presses (null : le niveau n'en a pas). */
+  readonly presses: PressesDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -438,7 +453,7 @@ export interface DailyView {
   medals: { author: number; gold: number; silver: number; bronze: number };
   exigence: { sum: number; rate: number; thirds: readonly number[] };
   /** La rediffusion de l'auteur (base64url). */
-  code: string;
+  code?: string | undefined;
   /** Lot 16 : les voies lentes (morceau contourné, zone, temps rapide et lent en pas) et le temps « toutes voies lentes ». */
   slowRoutes: { piece: number; zone: number; entryRow: number; galleryRow: number; fastTicks: number; slowTicks: number; code: string }[];
   slowTicks: number;
@@ -491,7 +506,7 @@ declare global {
   }
 }
 
-const options = readUrlOptions(location.search);
+const options = readUrlOptions(location.search, BUILD_RESTRICTED);
 // Lot I5 : la langue de la plateforme (`cdj:langue`) : l'anglais se charge avant le premier écran (un fichier à part), puis le titre, `<html lang>` et les textes du HTML.
 await chargerLangue();
 demarrerLangue();
@@ -719,7 +734,7 @@ const loaded: DailyLoad | null = choice
       theme: trialTheme,
     })
   : null;
-const daily: DailyLevel | null = loaded ? loaded.level : null;
+const daily: PublicDailyLevel | null = loaded ? loaded.level : null;
 accueilDonnees.medals = daily?.medals ?? null;
 // Lot 4 : un morceau du catalogue (`?module=<id>&variante=<n>&entree=arret|elan[&solution]`). En jeu humain avec l'entrée en élan, un
 // couloir de lancement est ajouté devant le palier d'entrée ; la solution, elle, part lancée du départ du morceau (sans couloir).
@@ -835,7 +850,7 @@ if (options.watchFirst) await refreshDay();
 const watchReplay = mod?.solution && modApi
   ? modApi.solutionReplay(mod.id, mod.variant, mod.entry)
   : daily && options.solution
-    ? daily.replay
+    ? (daily.replay ?? null) // lot R9 : `options.solution` est fermé en production, et le fichier publié n'a plus la preuve
     : options.watchBest
       ? memory.bestReplay()
       : options.watchFirst
@@ -882,7 +897,7 @@ try {
   const pieces = options.pieces && daily ? daily.pieces.map((p, k) => ({ col0: p.col0, col1: p.col1, row: p.entryRow, label: `${p.id} v${p.variant} · ${"●".repeat(p.exigence)}${"○".repeat(5 - p.exigence)} ${p.exigence}/5${clockLabel(k)}` })) : undefined; // i18n-ok: outil ?debug (limites des morceaux et horloge)
   // Lot 16 : le repère d'entrée des voies lentes (toujours) ; avec `?debug`, leurs deux trajets et leurs temps.
   const slowRoutes = daily ? daily.slowRoutes : undefined;
-  const slowDebug = options.pieces && daily ? slowDebugPaths(daily) : undefined;
+  const slowDebug = options.pieces && daily && daily.replay ? slowDebugPaths({ level: daily.level, replay: daily.replay, slowRoutes: daily.slowRoutes, pieces: daily.pieces }) : undefined; // lot R9 : sans preuve (fichier publié), pas de trajets de débogage
   scene = createScene(document.body, level, theme, { hitbox: options.hitbox, burst, pieces, levelId, detail: sceneDetail(levels), slowRoutes, slowDebug });
   scene.animate = levels.animate;
   scene.windParticles = levels.particles;
@@ -1383,7 +1398,12 @@ function dayDemoLives(d: DailyLevel): JumpReplay[] {
 }
 
 function startDemo(max = 0, crowd = false): boolean {
-  if (daily && level === daily.level) return startCarnage(daily.replay, dayDemoLives(daily), true, lastBits);
+  if (daily && level === daily.level) {
+    // Lot R9 : la démonstration d'un jour a besoin de la preuve de l'auteur (héros) : un niveau lu dans un fichier publié sans elle n'en a pas.
+    if (!daily.replay || !daily.code) return false;
+    const withProof = daily as DailyLevel;
+    return startCarnage(withProof.replay, dayDemoLives(withProof), true, lastBits);
+  }
   if (level !== ESSAI_LEVEL) {
     hud.toast(t("toast.demoEssai"));
     return false;
@@ -1977,7 +1997,7 @@ const info: JumpDebug = {
       authorTicks: daily.authorTicks,
       medals: { ...daily.medals },
       exigence: { ...daily.exigence },
-      code: daily.code,
+      code: BUILD_RESTRICTED ? undefined : daily.code, // lot R9 : jamais la preuve de l'auteur dans la page de production
       slowRoutes: daily.slowRoutes.map((r) => ({ piece: r.piece, zone: r.zone, entryRow: r.entryRow, galleryRow: r.galleryRow, fastTicks: r.fastTicks, slowTicks: r.slowTicks, code: r.code })),
       slowTicks: daily.slowTicks,
       lastMedal,
@@ -2229,6 +2249,19 @@ const info: JumpDebug = {
       ride: state.ride ?? -1,
     };
   },
+  /** Lot 22 : les presses (null sans elles) : ce que le dessin a posé, et l'état de la simulation. */
+  get presses() {
+    if (level.presses.length === 0) return null;
+    const state = session.state;
+    const phases = level.presses.map((p) => sectionClock(level, state.sections, state.time, p.section));
+    return {
+      ...(scene?.presses ?? {}),
+      count: level.presses.length,
+      sim: pressBoxes(level, state),
+      phases,
+      warn: level.presses.map((p, i) => pressLook(p, phases[i]!).warn),
+    };
+  },
   /** Lot 13 : les courants d'air (null sans eux). */
   get wind() {
     if (level.winds.length === 0) return null;
@@ -2301,7 +2334,7 @@ const info: JumpDebug = {
     arrival.setSuite(suite);
   },
   autoplay(code?: string) {
-    const c = code ?? daily?.code ?? (level === ESSAI_LEVEL ? ESSAI_SOLUTION_CODE : null);
+    const c = code ?? (BUILD_RESTRICTED ? undefined : daily?.code) ?? (level === ESSAI_LEVEL ? ESSAI_SOLUTION_CODE : null);
     if (!c) throw new Error("rien à jouer : donne une rediffusion");
     autoplayInputs = fromRuns(decodeReplay(c).runs);
     autoplayIndex = 0;

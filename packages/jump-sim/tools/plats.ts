@@ -1,11 +1,11 @@
-import { TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSpikeTile, sawCenter, type BuiltModule, type Level } from "../src/index";
+import { PRESS_HEIGHT_TILES, TILE_CRUMBLE, TILE_SOLID, UNITS_PER_TILE, circleHitsBox, isSpikeTile, sawCenter, type BuiltModule, type Level } from "../src/index";
 
 // La **règle des plats** (lot 7), hors de la simulation : dans un morceau, un plat de plus de `FLAT_MAX` tuiles **sans défi** est interdit,
 // sauf si l'élan est le défi lui-même (métadonnée `elan: oui`, `saut-long`) : alors `ELAN_FLAT_MAX` tuiles au plus.
 //
 // Un **plat sans défi** = des colonnes consécutives **du morceau** (sa grille, pas ses paliers) qui ont un sol à la même rangée — un bloc
 // plein ou friable (un ressort lance : ce n'est pas un plat), la tuile au-dessus vide — et **aucun danger** dans les `FLAT_CLEARANCE` rangées
-// au-dessus de ce sol : ni pic, ni scie (fixe ou mobile, sur tout son cycle). Un plafond bas sans pics n'est pas un défi (un tunnel est un
+// au-dessus de ce sol : ni pic, ni scie (fixe ou mobile, sur tout son cycle), ni presse (lot 22 : toute sa course est un danger). Un plafond bas sans pics n'est pas un défi (un tunnel est un
 // plat). Mesure géométrique, sur chaque variante construite (mutateurs compris), indépendante de la solution.
 
 export const FLAT_MAX = 6;
@@ -20,7 +20,7 @@ export interface Flat {
   row: number;
 }
 
-/** Les tuiles « dangereuses » d'un niveau : pics, et toute tuile qu'une scie touche sur son cycle. `danger[r * w + c]`. */
+/** Les tuiles « dangereuses » d'un niveau : pics, toute tuile qu'une scie touche sur son cycle, et (lot 22) toute la course d'une presse. `danger[r * w + c]`. */
 function dangerMap(level: Level): Uint8Array {
   const W = level.width;
   const T = UNITS_PER_TILE;
@@ -38,6 +38,10 @@ function dangerMap(level: Level): Uint8Array {
         for (let c = c0; c <= c1; c++) if (!d[r * W + c] && circleHitsBox(p.x, p.y, saw.radius, { x: c * T, y: r * T, w: T, h: T })) d[r * W + c] = 1;
       }
     }
+  }
+  // Lot 22 : toute la course d'une presse (colonnes × rangées de sa position haute à sa position basse) est un danger.
+  for (const p of level.presses) {
+    for (let r = p.row; r < p.row + p.travel + PRESS_HEIGHT_TILES; r++) for (let c = p.col; c < p.col + p.width; c++) d[r * W + c] = 1;
   }
   return d;
 }

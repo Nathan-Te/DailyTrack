@@ -15,7 +15,9 @@ import {
   blinkIsSolid,
   isSolidTile,
   isSpikeTile,
+  PRESS_HEIGHT_TILES,
   platformPos,
+  pressBox,
   sawCenter,
   windBlows,
   windZoneAt,
@@ -66,6 +68,10 @@ import { COUNTER_CAP, INPUT_JUMP, INPUT_LEFT, INPUT_MASK, INPUT_RIGHT, MAX_SPEED
 // plus haute plateforme dont il était au-dessus au pas précédent (pied sous le dessus, recouvrement horizontal) : on la traverse donc par-dessous et par les
 // côtés. Sans plateforme, ces lignes ne calculent rien.
 //
+// **Presses (lot 22, niveaux de version 6 et morceaux seuls)** : une presse (`Level.presses`) suit l'horloge de sa section (`sectionClock`, comme une scie) ;
+// elle n'est ni solide ni portante : toute sa boîte tue au contact (`deathAt`, `DEATH_PRESS`), à la fin du pas, après l'arrivée (qui l'emporte). Rien dans
+// `AttemptState` : sans presse, ces lignes ne calculent rien.
+//
 // Ordre d'un pas en course : minuteries des blocs friables (ceux qui arrivent à 0 tombent) → personnage (`stepPlayer`, sur la grille de
 // l'essai) → ressort → contacts avec les blocs friables → chrono et sections → arrivée → morts (bas, pics, scies) → points de passage ;
 // puis l'état des blocs clignotants et alternés pour le pas suivant (lot 12).
@@ -79,8 +85,10 @@ export const DEATH_NONE = 0;
 export const DEATH_SPIKE = 1;
 export const DEATH_SAW = 2;
 export const DEATH_FALL = 3;
+/** Lot 22 : écrasé par une presse (toute la presse tue au contact). */
+export const DEATH_PRESS = 4;
 /** Noms des causes de mort, pour l'affichage (indice = code). */
-export const DEATH_NAMES = ["aucune", "pic", "scie", "chute"] as const;
+export const DEATH_NAMES = ["aucune", "pic", "scie", "chute", "presse"] as const;
 
 /** Pas entre la mort et le nouvel essai : 18 pas = 0,15 s (au plus 0,2 s, seed § 2). Les commandes y sont ignorées. */
 export const RESPAWN_TICKS = 18;
@@ -314,6 +322,17 @@ export function platformPositions(level: Level, state: Readonly<AttemptState>): 
   return level.platforms.map((_, i) => platformAt(level, state.sections, state.time, i));
 }
 
+/** Lot 22 : le rectangle mortel de la presse `index` (unités) au chrono `time` d'un état de sections `sections` (la même lecture d'horloge que les scies). */
+export function pressAt(level: Level, sections: readonly number[], time: number, index: number): Box {
+  const p = level.presses[index]!;
+  return pressBox(p, sectionClock(level, sections, time, p.section));
+}
+
+/** Lot 22 : les rectangles mortels de toutes les presses dans cet état (unités), dans l'ordre de `level.presses` (rendu, tests, solveur). */
+export function pressBoxes(level: Level, state: Readonly<AttemptState>): Box[] {
+  return level.presses.map((_, i) => pressAt(level, state.sections, state.time, i));
+}
+
 /** Lot 13 : phase de la section de la zone de vent `index` dans cet état (0 avant l'entrée, et pour une zone hors section). */
 export function windPhase(level: Level, state: Readonly<AttemptState>, index: number): number {
   const w = level.winds[index]!;
@@ -366,6 +385,14 @@ export function deathAt(level: Level, state: Readonly<AttemptState>): number {
     const saw = level.saws[i]!;
     const at = sawCenter(saw, sawPhase(level, state, i));
     if (circleHitsBox(at.x, at.y, saw.radius, box)) return DEATH_SAW;
+  }
+  // Lot 22 : toute la presse tue au contact (se toucher par un bord ne compte pas, comme pour un pic).
+  for (let i = 0; i < level.presses.length; i++) {
+    // Hors de la course entière (sa boîte fixe, de la position haute à la basse), rien ne peut toucher la presse : on n'en calcule pas la position (le même verdict, bien moins cher).
+    const p = level.presses[i]!;
+    if (box.x >= (p.col + p.width) * UNITS_PER_TILE || box.x + box.w <= p.col * UNITS_PER_TILE) continue;
+    if (box.y >= (p.row + p.travel + PRESS_HEIGHT_TILES) * UNITS_PER_TILE || box.y + box.h <= p.row * UNITS_PER_TILE) continue;
+    if (boxesOverlap(box, pressAt(level, state.sections, state.time, i))) return DEATH_PRESS;
   }
   return DEATH_NONE;
 }

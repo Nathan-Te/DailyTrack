@@ -43,6 +43,7 @@ export const TAG_LABELS: Record<ModuleTag, string> = {
   alterne: "alterné",
   vent: "vent",
   plateforme: "plateforme mobile",
+  presse: "presse",
 };
 
 /**

@@ -10,5 +10,5 @@
     "emitDeclarationOnly": true
   },
   "include": ["./*.ts", "../playwright.config.ts", "../src/verify.ts", "../src/share.ts", "../src/format.ts", "../src/transfer.ts", "../src/profile.ts", "../src/storage.ts", "../src/i18n.ts", "../src/catalogue*.ts"],
-  "references": [{ "path": "../../../packages/sim" }, { "path": "../../../packages/clock" }, { "path": "../../../packages/profile" }, { "path": "../../../packages/ui" }]
+  "references": [{ "path": "../../../packages/sim" }, { "path": "../../../packages/jump-sim" }, { "path": "../../../packages/clock" }, { "path": "../../../packages/profile" }, { "path": "../../../packages/ui" }]
 }

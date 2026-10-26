@@ -6,7 +6,6 @@ import {
   INPUT_JUMP,
   INPUT_LEFT,
   INPUT_RIGHT,
-  JUMP_GENERATOR_VERSION,
   JUMP_SIM_VERSION,
   LevelError,
   MODULES,
@@ -31,6 +30,7 @@ import {
   PLATFORM_EASE,
   PLATFORM_EASE_ONE,
   PLATFORM_EASE_STEPS,
+  PLATFORM_GENERATOR,
   PLATFORM_VERSION,
   PLAYER_HEIGHT,
   SECTION_CLOCK_VERSION,
@@ -111,7 +111,7 @@ function onPlatform(level: Level, index: number, time: number): AttemptState {
 
 describe("lot 20 — la version de la simulation", () => {
   it("la version 5 est celle des plateformes mobiles", () => {
-    expect(JUMP_SIM_VERSION).toBe(5);
+    expect(JUMP_SIM_VERSION).toBeGreaterThanOrEqual(5); // lot 22 : la version 6 est celle des presses
     expect(PLATFORM_VERSION).toBe(5);
     expect(ferryLevel().simVersion).toBe(5);
   });
@@ -612,7 +612,7 @@ describe("lot 20 — les morceaux à plateformes du catalogue", () => {
 });
 
 describe("lot 20 — les niveaux du jour", () => {
-  it("les références v3 et v4 ne connaissent pas les morceaux à plateformes ; le générateur en vigueur (g15, v5) les pose", () => {
+  it("les références v3 et v4 ne connaissent pas les morceaux à plateformes ; le générateur g15 (référence v5, lot 22) les pose, g16 aussi", () => {
     const start = parseDay("2026-10-27")!;
     let withPlatforms = 0;
     for (let d = start; d < start + 20; d++) {
@@ -621,9 +621,10 @@ describe("lot 20 — les niveaux du jour", () => {
         expect(L.pieces.some((p) => platformModuleIds().has(p.id)), `${L.date} v${version}`).toBe(false);
         expect(L.level.platforms, `${L.date} v${version}`).toEqual([]);
       }
-      const L = dailyLevel(d);
+      // Lot 22 : le générateur g15 est la référence v5 (`dailyLevel(jour, thème, 5)`) ; g16 (v6) pose ces morceaux aussi.
+      const L = dailyLevel(d, null, PLATFORM_VERSION);
       expect(L.level.simVersion).toBe(PLATFORM_VERSION);
-      expect(L.id).toBe(`jour-${L.date}-g${JUMP_GENERATOR_VERSION}`);
+      expect(L.id).toBe(`jour-${L.date}-g${PLATFORM_GENERATOR}`);
       expect(L.fallback, L.date).toBe(false);
       expect(dailyProblems(L), L.date).toEqual([]);
       expect(platformProblems(L.level), L.date).toEqual([]);
@@ -648,10 +649,10 @@ describe("lot 20 — les niveaux du jour", () => {
 describe("lot 20 — un jour à plateformes se fige et se relit", () => {
   it("figer puis relire (`thawLevel`, la règle commune du jeu et du serveur) rend le même niveau, les mêmes plateformes, et la preuve se rejoue ; une version incohérente est refusée", () => {
     const start = parseDay("2026-10-27")!;
-    const day = Array.from({ length: 20 }, (_, k) => dailyLevel(start + k)).find((d) => d.level.platforms.length > 0)!;
+    const day = Array.from({ length: 20 }, (_, k) => dailyLevel(start + k, null, PLATFORM_VERSION)).find((d) => d.level.platforms.length > 0)!;
     const raw = JSON.parse(frozenJson(freezeLevel(day)));
     expect(raw.simVersion).toBe(PLATFORM_VERSION);
-    expect(raw.generatorVersion).toBe(JUMP_GENERATOR_VERSION);
+    expect(raw.generatorVersion).toBe(PLATFORM_GENERATOR);
     const back = thawLevel(raw, day.day);
     expect(typeof back).not.toBe("string");
     if (typeof back === "string") return;
@@ -660,6 +661,8 @@ describe("lot 20 — un jour à plateformes se fige et se relit", () => {
     expect(back.code).toBe(day.code);
     // Un fichier v5 sous un générateur d'avant (ou l'inverse) est incohérent.
     expect(thawLevel({ ...raw, generatorVersion: 14 }, day.day)).toBe("versions incohérentes");
+    // Lot 22 : un fichier v5 sous le générateur g16 (version 6) est incohérent aussi.
+    expect(thawLevel({ ...raw, generatorVersion: 16 }, day.day)).toBe("versions incohérentes");
     expect(thawLevel({ ...raw, simVersion: SINGLE_CLOCK_VERSION }, day.day)).toBe("versions incohérentes");
   });
 });

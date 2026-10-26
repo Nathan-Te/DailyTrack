@@ -69,11 +69,11 @@ retirée** (`post47.ts`, `?chaine=47` ; ses mesures restent ici). Reste : le rap
 ## Budget
 
 - **Post-traitement à la demande** : **5 216 o** (6 798 au lot 47 ; plafond 7 000) — `postJeu` + `post` (la passe de fin, le halo léger, la table des thèmes).
-- **Premier chargement : +1 123 o** (289 287 o, plafond 291 600 ; mesuré contre `main` construit à part, `mesureTrack`) — au-delà de la cible de 1 ko, justifié : `main`
-  ≈ +1 090 o pour **le moteur choisi au chargement** (`chaineAuChargement`, jamais deux multi-échantillonnages), **le mode copie**, **la précompilation** à l'arrêt, **la
+- **Premier chargement : +1 130 o** (289 323 o après la fusion de `main` — lot R9 compris —, plafond 291 600 ; mesuré contre `main` construit à part, `mesureTrack`) — au-delà de la cible de 1 ko, justifié : `main`
+  ≈ +1 097 o pour **le moteur choisi au chargement** (`chaineAuChargement`, jamais deux multi-échantillonnages), **le mode copie**, **la précompilation** à l'arrêt, **la
   surveillance de la course** et sa descente (le jugement lui-même est à la demande, dans `qualiteMesure`), l'entrée du banc (les outils du premier chargement lui sont
   **prêtés** par `main.ts` : importés par lui, ils sortaient `cameras`, `decor` et `i18n` du morceau principal, +1,3 ko de plus mesuré au premier jet) et les champs de
-  `?debug` ; three.js +33 o. Catalogue anglais +26 o, page d'admin −14 o. Le banc (≈ 6,9 ko) est un morceau à part, hors de toute ligne de joueur.
+  `?debug` ; three.js +33 o. Catalogue anglais +27 o, page d'admin −13 o. Le banc (≈ 6,9 ko) est un morceau à part, hors de toute ligne de joueur.
 
 ## Le regroupement des deux réglages
 

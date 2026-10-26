@@ -77,7 +77,7 @@ for (const f of readdirSync(levelsDir).sort()) {
 }
 
 let clock = 0;
-const api = createApi({ db, now: () => clock, demoPlayers: true, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
+const api = createApi({ db, now: () => clock, demoPlayers: true, allowCopies: true, limits: { windowMs: 600_000, perClient: 1e9, perPlayer: 1e9 } });
 const submit = async (body: unknown) => {
   const res = await api.handle(new Request("http://recette.local/api/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }));
   return { status: res.status, body: (await res.json()) as Record<string, unknown> };

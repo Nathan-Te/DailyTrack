@@ -10348,6 +10348,1569 @@
     }
    ]
   },
+  "presse-couloir": {
+   "variants": [
+    {
+     "grid": "9c251ddc",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjAAkgLmBSpu0gKJAlgR1gGqBw",
+      "ticks": 375,
+      "entryTick": 0,
+      "exitTick": 368,
+      "fastest": 370,
+      "gigue": [
+       1000,
+       915,
+       835
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjAEigHGBjKGAZoC0QJi1gHyBg",
+      "ticks": 368,
+      "entryTick": 17,
+      "exitTick": 361,
+      "fastest": 344,
+      "gigue": [
+       795,
+       615,
+       640
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 16
+     }
+    },
+    {
+     "grid": "2ac35587",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjEAkgLeBSpuwgKBAnjOAaoH",
+      "ticks": 372,
+      "entryTick": 0,
+      "exitTick": 365,
+      "fastest": 370,
+      "gigue": [
+       1000,
+       975,
+       885
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjEEigHWBhqOAaIC0QJi3gHiBg",
+      "ticks": 368,
+      "entryTick": 17,
+      "exitTick": 361,
+      "fastest": 344,
+      "gigue": [
+       735,
+       625,
+       535
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 17
+     }
+    },
+    {
+     "grid": "1e0195d5",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjIAkgG2BRp-4gJwWtUBTqwDlgjiAQ",
+      "ticks": 437,
+      "entryTick": 0,
+      "exitTick": 431,
+      "fastest": 431,
+      "rapide": 409,
+      "gigue": [
+       1000,
+       980,
+       765
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 15
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjIEmgGOAfoDtgHiArAEyQG6Cg",
+      "ticks": 427,
+      "entryTick": 17,
+      "exitTick": 420,
+      "fastest": 403,
+      "rapide": 382,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 17
+     }
+    },
+    {
+     "grid": "404b9265",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjMAkgLmBSJuugLRAbABCcYBmgc",
+      "ticks": 370,
+      "entryTick": 0,
+      "exitTick": 363,
+      "fastest": 370,
+      "gigue": [
+       1000,
+       945,
+       815
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjMEigG2BjqOAYIC2QJS7gH6Bg",
+      "ticks": 368,
+      "entryTick": 17,
+      "exitTick": 361,
+      "fastest": 344,
+      "gigue": [
+       965,
+       725,
+       645
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 17
+     }
+    },
+    {
+     "grid": "40bab295",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjQA4gKGAaIDIGTiAqABYZoBIOYB0gY",
+      "ticks": 361,
+      "entryTick": 0,
+      "exitTick": 354,
+      "fastest": 354,
+      "gigue": [
+       755,
+       695,
+       550
+      ],
+      "raccord": null,
+      "exigence": 5,
+      "press": 12
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjQEigFm0gU-2gF4qQE6CXo8jgGSBw",
+      "ticks": 350,
+      "entryTick": 17,
+      "exitTick": 343,
+      "fastest": 326,
+      "gigue": [
+       830,
+       680,
+       625
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 7
+     }
+    },
+    {
+     "grid": "16b0964b",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjUAqgOGAeoDXvIC4AOpAeIJ",
+      "ticks": 424,
+      "entryTick": 0,
+      "exitTick": 417,
+      "fastest": 417,
+      "rapide": 409,
+      "gigue": [
+       1000,
+       990,
+       940
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 11
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjUEmgGGAYIFRtICsAShAbIBGJIJ",
+      "ticks": 426,
+      "entryTick": 17,
+      "exitTick": 419,
+      "fastest": 402,
+      "rapide": 382,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 8
+     }
+    },
+    {
+     "grid": "7ee137fe",
+     "arret": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjYA8gJewgNW6gLYBdIJ",
+      "ticks": 413,
+      "entryTick": 0,
+      "exitTick": 406,
+      "fastest": 406,
+      "rapide": 394,
+      "gigue": [
+       1000,
+       995,
+       950
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 10
+     },
+     "elan": {
+      "code": "AQMXbW9kdWxlOnByZXNzZS1jb3Vsb2lyOjYEigGWAeoETtIBLvADqQHiCQ",
+      "ticks": 391,
+      "entryTick": 17,
+      "exitTick": 384,
+      "fastest": 365,
+      "gigue": [
+       1000,
+       1000,
+       980
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    }
+   ]
+  },
+  "presse-ilot": {
+   "variants": [
+    {
+     "grid": "960fd445",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjAAsgROsgM26gk",
+      "ticks": 296,
+      "entryTick": 0,
+      "exitTick": 290,
+      "fastest": 290,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjAE0gFGsgZO6gg",
+      "ticks": 286,
+      "entryTick": 17,
+      "exitTick": 279,
+      "fastest": 262,
+      "gigue": [
+       1000,
+       1000,
+       955
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 8
+     }
+    },
+    {
+     "grid": "6c9440c8",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjEA8gNGogMu8gk",
+      "ticks": 285,
+      "entryTick": 0,
+      "exitTick": 279,
+      "fastest": 279,
+      "gigue": [
+       1000,
+       995,
+       975
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjEEigF26gQukgo",
+      "ticks": 275,
+      "entryTick": 17,
+      "exitTick": 268,
+      "fastest": 251,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 5
+     }
+    },
+    {
+     "grid": "36fa85ab",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjIA8gMuqgMuwgG4AZwBNpoH",
+      "ticks": 312,
+      "entryTick": 0,
+      "exitTick": 305,
+      "fastest": 305,
+      "rapide": 282,
+      "gigue": [
+       1000,
+       970,
+       845
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjIE2gNG2gI-igKgAWROwgc",
+      "ticks": 311,
+      "entryTick": 17,
+      "exitTick": 304,
+      "fastest": 287,
+      "rapide": 254,
+      "gigue": [
+       760,
+       670,
+       510
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 7
+     }
+    },
+    {
+     "grid": "7f9cf163",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjMAsgRGogNFggEojQEkKmWGAYoH",
+      "ticks": 326,
+      "entryTick": 0,
+      "exitTick": 319,
+      "fastest": 319,
+      "rapide": 309,
+      "gigue": [
+       1000,
+       875,
+       695
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjMEigF26gQ--gGxAWCWAYIH",
+      "ticks": 310,
+      "entryTick": 17,
+      "exitTick": 303,
+      "fastest": 286,
+      "rapide": 282,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 7
+     }
+    },
+    {
+     "grid": "c3c60ec5",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjQAsgRGqgNO4gk",
+      "ticks": 296,
+      "entryTick": 0,
+      "exitTick": 290,
+      "fastest": 290,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjQEigGGAboGTuoI",
+      "ticks": 286,
+      "entryTick": 17,
+      "exitTick": 279,
+      "fastest": 262,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 9
+     }
+    },
+    {
+     "grid": "0335c19a",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjUAsgRWkgNO6gk",
+      "ticks": 296,
+      "entryTick": 0,
+      "exitTick": 290,
+      "fastest": 290,
+      "gigue": [
+       1000,
+       980,
+       955
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjUE4gNemgNG4gk",
+      "ticks": 286,
+      "entryTick": 17,
+      "exitTick": 279,
+      "fastest": 262,
+      "gigue": [
+       1000,
+       995,
+       945
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 8
+     }
+    },
+    {
+     "grid": "de3db6f2",
+     "arret": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjYAsgQusgMuggIwUYQBXooH",
+      "ticks": 322,
+      "entryTick": 0,
+      "exitTick": 315,
+      "fastest": 315,
+      "rapide": 293,
+      "gigue": [
+       1000,
+       995,
+       945
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMUbW9kdWxlOnByZXNzZS1pbG90OjYE4gNGqgMuKjAJigF4bU76Bg",
+      "ticks": 303,
+      "entryTick": 17,
+      "exitTick": 296,
+      "fastest": 279,
+      "rapide": 266,
+      "gigue": [
+       1000,
+       875,
+       785
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 5
+     }
+    }
+   ]
+  },
+  "presse-marche": {
+   "variants": [
+    {
+     "grid": "4c893dca",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MADCAYYPWg",
+      "ticks": 275,
+      "entryTick": 0,
+      "exitTick": 268,
+      "fastest": 268,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 240
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MASKAdYOag",
+      "ticks": 264,
+      "entryTick": 17,
+      "exitTick": 257,
+      "fastest": 240,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 234
+     }
+    },
+    {
+     "grid": "0bc2aaa4",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MQDCAYYPWg",
+      "ticks": 275,
+      "entryTick": 0,
+      "exitTick": 268,
+      "fastest": 268,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 240
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MQSKAdYOag",
+      "ticks": 264,
+      "entryTick": 17,
+      "exitTick": 257,
+      "fastest": 240,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 234
+     }
+    },
+    {
+     "grid": "ff9c5698",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MgDCAYYPWg",
+      "ticks": 275,
+      "entryTick": 0,
+      "exitTick": 268,
+      "fastest": 268,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 240
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MgSKAdYOag",
+      "ticks": 264,
+      "entryTick": 17,
+      "exitTick": 257,
+      "fastest": 240,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 234
+     }
+    },
+    {
+     "grid": "09da7b3d",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MwDCAYYPWg",
+      "ticks": 275,
+      "entryTick": 0,
+      "exitTick": 268,
+      "fastest": 268,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 240
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6MwSKAdYOag",
+      "ticks": 264,
+      "entryTick": 17,
+      "exitTick": 257,
+      "fastest": 240,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 234
+     }
+    },
+    {
+     "grid": "32771a44",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6NADCAYYPWg",
+      "ticks": 275,
+      "entryTick": 0,
+      "exitTick": 268,
+      "fastest": 268,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 240
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1tYXJjaGU6NASKAdYOag",
+      "ticks": 264,
+      "entryTick": 17,
+      "exitTick": 257,
+      "fastest": 240,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 234
+     }
+    }
+   ]
+  },
+  "presse-promenade": {
+   "variants": [
+    {
+     "grid": "4975de1e",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MADSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MASKAZYBkgdm0gU2ogc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "eabdfc46",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MQDSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MQSKAZYBkgdm0gU2ogc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "ef951189",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MgDSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MgSKAYYB4gdm4gRGwgc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       960
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 8
+     }
+    },
+    {
+     "grid": "b433c88c",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MwDSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6MwSKAZYBkgdm0gU2ogc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "39cfeed2",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NADSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NASKAZYBkgdm0gU2ogc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "c2ba3263",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NQDSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NQSKAYYB4gdm4gRGwgc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 8
+     }
+    },
+    {
+     "grid": "5b42e705",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NgDSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NgSKAZYBkgdm0gU2ogc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "7432acae",
+     "arret": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NwDSApYB4gY20gU2kgc",
+      "ticks": 384,
+      "entryTick": 0,
+      "exitTick": 377,
+      "fastest": 377,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 6
+     },
+     "elan": {
+      "code": "AQMZbW9kdWxlOnByZXNzZS1wcm9tZW5hZGU6NwSKAZYBkgdm0gU2ogc",
+      "ticks": 373,
+      "entryTick": 17,
+      "exitTick": 366,
+      "fastest": 349,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    }
+   ]
+  },
+  "presse-rythme": {
+   "variants": [
+    {
+     "grid": "0cc99211",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MACaEw",
+      "ticks": 307,
+      "entryTick": 0,
+      "exitTick": 300,
+      "fastest": 300,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 0
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MATKEg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 0
+     }
+    },
+    {
+     "grid": "b8387926",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MQCaEw",
+      "ticks": 307,
+      "entryTick": 0,
+      "exitTick": 300,
+      "fastest": 300,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 0
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MQTKEg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 0
+     }
+    },
+    {
+     "grid": "bfcc9378",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MgDaCyw1FIIH",
+      "ticks": 312,
+      "entryTick": 0,
+      "exitTick": 305,
+      "fastest": 305,
+      "gigue": [
+       1000,
+       825,
+       670
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MgTKBzbaAhB0PuIG",
+      "ticks": 301,
+      "entryTick": 17,
+      "exitTick": 294,
+      "fastest": 276,
+      "gigue": [
+       1000,
+       890,
+       800
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 6
+     }
+    },
+    {
+     "grid": "d42849e0",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MwC6CiByEDx2ygY",
+      "ticks": 313,
+      "entryTick": 0,
+      "exitTick": 306,
+      "fastest": 306,
+      "gigue": [
+       1000,
+       980,
+       910
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 21
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6MwT6CghMJUbSBg",
+      "ticks": 303,
+      "entryTick": 17,
+      "exitTick": 296,
+      "fastest": 279,
+      "rapide": 276,
+      "gigue": [
+       1000,
+       1000,
+       950
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 21
+     }
+    },
+    {
+     "grid": "53f6cb01",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NADaCyQtJIIH",
+      "ticks": 312,
+      "entryTick": 0,
+      "exitTick": 305,
+      "fastest": 305,
+      "gigue": [
+       1000,
+       865,
+       670
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NAT6CggsRVbSBg",
+      "ticks": 305,
+      "entryTick": 17,
+      "exitTick": 298,
+      "fastest": 281,
+      "rapide": 276,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 23
+     }
+    },
+    {
+     "grid": "87d98d64",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NQDaCxwtLCKmBkI",
+      "ticks": 312,
+      "entryTick": 0,
+      "exitTick": 305,
+      "fastest": 305,
+      "gigue": [
+       1000,
+       815,
+       690
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NQTqBy7CAjBURtoG",
+      "ticks": 301,
+      "entryTick": 17,
+      "exitTick": 294,
+      "fastest": 276,
+      "gigue": [
+       910,
+       710,
+       615
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 5
+     }
+    },
+    {
+     "grid": "a5bda669",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NgDaCywtHCKmBkI",
+      "ticks": 312,
+      "entryTick": 0,
+      "exitTick": 305,
+      "fastest": 305,
+      "gigue": [
+       935,
+       790,
+       685
+      ],
+      "raccord": null,
+      "exigence": 4,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NgTyBy66AjhMRtoG",
+      "ticks": 301,
+      "entryTick": 17,
+      "exitTick": 294,
+      "fastest": 276,
+      "gigue": [
+       885,
+       700,
+       565
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 5
+     }
+    },
+    {
+     "grid": "3ad79249",
+     "arret": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NwDaCyw1FIIH",
+      "ticks": 312,
+      "entryTick": 0,
+      "exitTick": 305,
+      "fastest": 305,
+      "gigue": [
+       1000,
+       780,
+       755
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 13
+     },
+     "elan": {
+      "code": "AQMWbW9kdWxlOnByZXNzZS1yeXRobWU6NwTqBy7CAjBURtoG",
+      "ticks": 301,
+      "entryTick": 17,
+      "exitTick": 294,
+      "fastest": 276,
+      "gigue": [
+       915,
+       735,
+       600
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 5
+     }
+    }
+   ]
+  },
+  "presse-tapis-contre": {
+   "variants": [
+    {
+     "grid": "cd709a61",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MACiAZYBmgNOigNWigg",
+      "ticks": 286,
+      "entryTick": 0,
+      "exitTick": 279,
+      "fastest": 279,
+      "gigue": [
+       1000,
+       995,
+       945
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 9
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MASKAZ4BqgNe8gJGygc",
+      "ticks": 275,
+      "entryTick": 17,
+      "exitTick": 268,
+      "fastest": 251,
+      "gigue": [
+       1000,
+       985,
+       965
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 8
+     }
+    },
+    {
+     "grid": "193b6b41",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MQDCAS7yAoYDmgMu0gERCqEBtgHiBA",
+      "ticks": 326,
+      "entryTick": 0,
+      "exitTick": 320,
+      "fastest": 320,
+      "rapide": 307,
+      "gigue": [
+       1000,
+       935,
+       865
+      ],
+      "raccord": null,
+      "exigence": 2,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MQSKAYYBwgOGAfoDLDHSAThlbsoE",
+      "ticks": 310,
+      "entryTick": 17,
+      "exitTick": 303,
+      "fastest": 282,
+      "gigue": [
+       740,
+       605,
+       500
+      ],
+      "raccord": 1000,
+      "exigence": 5,
+      "press": 5
+     }
+    },
+    {
+     "grid": "8a210191",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MgDCAWaiA2aiBEaaCA",
+      "ticks": 307,
+      "entryTick": 0,
+      "exitTick": 301,
+      "fastest": 301,
+      "gigue": [
+       1000,
+       990,
+       955
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MgSKAbYBugM2wgNWmgg",
+      "ticks": 297,
+      "entryTick": 17,
+      "exitTick": 290,
+      "fastest": 273,
+      "gigue": [
+       1000,
+       1000,
+       990
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 6
+     }
+    },
+    {
+     "grid": "4e7ecde7",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MwDqAWaKAy7yAl7yAtABDh08VpIF",
+      "ticks": 327,
+      "entryTick": 0,
+      "exitTick": 320,
+      "fastest": 320,
+      "gigue": [
+       805,
+       675,
+       510
+      ],
+      "raccord": null,
+      "exigence": 5,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6MwSKAYYBwgNmwgMuggHxAcYBygQ",
+      "ticks": 305,
+      "entryTick": 17,
+      "exitTick": 298,
+      "fastest": 282,
+      "gigue": [
+       905,
+       790,
+       740
+      ],
+      "raccord": 1000,
+      "exigence": 3,
+      "press": 5
+     }
+    },
+    {
+     "grid": "ba1a30ae",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6NACiATbiAo4DkgMu8gFwWd4B0gQ",
+      "ticks": 330,
+      "entryTick": 0,
+      "exitTick": 324,
+      "fastest": 324,
+      "rapide": 304,
+      "gigue": [
+       900,
+       880,
+       805
+      ],
+      "raccord": null,
+      "exigence": 3,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6NASKAa4BygNeugMILBWqAXZAYTDOAbIE",
+      "ticks": 325,
+      "entryTick": 17,
+      "exitTick": 319,
+      "fastest": 302,
+      "rapide": 273,
+      "gigue": [
+       1000,
+       905,
+       850
+      ],
+      "raccord": 1000,
+      "exigence": 2,
+      "press": 7
+     }
+    },
+    {
+     "grid": "a2a62880",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6NQCiAS7iAjaSAy7aAjw1RtIE",
+      "ticks": 268,
+      "entryTick": 0,
+      "exitTick": 261,
+      "fastest": 261,
+      "gigue": [
+       895,
+       735,
+       550
+      ],
+      "raccord": null,
+      "exigence": 5,
+      "press": 5
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6NQSKAYYBigUuygLMAfIE",
+      "ticks": 263,
+      "entryTick": 17,
+      "exitTick": 256,
+      "fastest": 239,
+      "rapide": 231,
+      "gigue": [
+       925,
+       765,
+       620
+      ],
+      "raccord": 1000,
+      "exigence": 4,
+      "press": 5
+     }
+    },
+    {
+     "grid": "65344412",
+     "arret": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6NgCiAYYB4gVGggg",
+      "ticks": 264,
+      "entryTick": 0,
+      "exitTick": 257,
+      "fastest": 257,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMcbW9kdWxlOnByZXNzZS10YXBpcy1jb250cmU6NgSKAYYB4gRmogg",
+      "ticks": 253,
+      "entryTick": 17,
+      "exitTick": 246,
+      "fastest": 229,
+      "gigue": [
+       1000,
+       1000,
+       985
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 12
+     }
+    }
+   ]
+  },
+  "presse-tapis-lance": {
+   "variants": [
+    {
+     "grid": "dfc1525c",
+     "arret": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZTowAPoKXooE",
+      "ticks": 251,
+      "entryTick": 0,
+      "exitTick": 245,
+      "fastest": 245,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 11
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZTowBLIKZtoCMXI",
+      "ticks": 241,
+      "entryTick": 17,
+      "exitTick": 235,
+      "fastest": 218,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 12
+     }
+    },
+    {
+     "grid": "3e713a0e",
+     "arret": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZToxAIIMZsIE",
+      "ticks": 276,
+      "entryTick": 0,
+      "exitTick": 269,
+      "fastest": 269,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 12
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZToxBKoLZsIE",
+      "ticks": 265,
+      "entryTick": 17,
+      "exitTick": 258,
+      "fastest": 241,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 12
+     }
+    },
+    {
+     "grid": "c400ebbe",
+     "arret": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZToyAMoLfuIE",
+      "ticks": 276,
+      "entryTick": 0,
+      "exitTick": 270,
+      "fastest": 270,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 15
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZToyBPIKXqIF",
+      "ticks": 269,
+      "entryTick": 17,
+      "exitTick": 262,
+      "fastest": 243,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 11
+     }
+    },
+    {
+     "grid": "86da0e23",
+     "arret": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZTozAIIMRqIE",
+      "ticks": 268,
+      "entryTick": 0,
+      "exitTick": 261,
+      "fastest": 261,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": null,
+      "exigence": 1,
+      "press": 8
+     },
+     "elan": {
+      "code": "AQMbbW9kdWxlOnByZXNzZS10YXBpcy1sYW5jZTozBKoLZuICQVo",
+      "ticks": 256,
+      "entryTick": 17,
+      "exitTick": 250,
+      "fastest": 232,
+      "gigue": [
+       1000,
+       1000,
+       1000
+      ],
+      "raccord": 1000,
+      "exigence": 1,
+      "press": 12
+     }
+    }
+   ]
+  },
   "puits-descente": {
    "variants": [
     {

@@ -12,7 +12,10 @@ import { TICK_RATE } from "./constants";
 export const JUMP_THEME_NAMES = ["foret", "usine", "glace", "nuit", "neon"] as const;
 export type JumpThemeName = (typeof JUMP_THEME_NAMES)[number];
 
-/** Les mécaniques : un morceau porte l'étiquette de sa mécanique (`tapis`, `glace`) et le thème qui la porte. */
+/**
+ * Les mécaniques : un morceau porte l'étiquette de sa mécanique (`tapis`, `glace`) et le thème qui la porte. **Lot 22 : l'usine a deux éléments, les tapis et les
+ * presses** : un morceau à presses (étiquette `presse`) est de l'usine et compte, comme un morceau à tapis, pour le quota de la mécanique de l'usine (`tapis`).
+ */
 export type Mechanic = "tapis" | "glace" | "clignotant" | "alterne" | "vent";
 
 /** Les thèmes qui ont une mécanique, et celle-ci (lot 12 : la nuit a ses blocs clignotants, le néon ses blocs alternés ; lot 13 : la forêt ses courants d'air). */

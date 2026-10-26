@@ -26,7 +26,7 @@ Audit du 25/10/2026, commit de départ `e64045b` (`main`), plateforme ouverte au
 | S-05 | élevée | classement et fantômes de Track sans limite de lecture | **corrigé** |
 | S-06 | élevée | workflows : actions non épinglées, CI sans `permissions:` | **corrigé** |
 | S-07 | élevée | fédération Google limitée au dépôt (toute branche déploie la production) | **à décider** (étape + lot) |
-| S-08 | moyenne | niveau figé de demain (avec la preuve de l'auteur) servi par Hosting | lot proposé |
+| S-08 | moyenne | niveau figé de demain (avec la preuve de l'auteur) servi par Hosting | **preuve retirée (lot R9)** ; la grille de demain reste servie la veille : lot L-FUT |
 | S-09 | moyenne | recette ouverte à tous (fonctions à venir, jours à venir, écriture en base) | **partiel** (noindex) + lot |
 | S-10 | moyenne | l'administration est publique à `/track/admin/` | **partiel** + lot |
 | S-11 | moyenne | pas d'en-têtes de sécurité (Hosting et API) | **partiel** (en-têtes simples) + lot CSP |
@@ -34,8 +34,8 @@ Audit du 25/10/2026, commit de départ `e64045b` (`main`), plateforme ouverte au
 | S-13 | moyenne | adresse de connexion et `clientKey` falsifiables en appel direct à `run.app` (R5, risque connu) | lot proposé |
 | S-14 | moyenne | comptes en masse, mémoire de la carte des morts | lot proposé |
 | S-15 | moyenne | jeton Turso Read & Write sans expiration ; `GCP_SA_KEY` possible | étape manuelle |
-| S-16 | moyenne | robots et TAS : aucune plausibilité des entrées | lot proposé |
-| S-17 | moyenne | `?semaine=` (Jump, lot 19) calcule les 7 prochains niveaux, sans garde | lot proposé |
+| S-16 | moyenne | robots et TAS : aucune plausibilité des entrées | **copies refusées (lot R9)** ; la plausibilité des entrées reste le lot L-ROB |
+| S-17 | moyenne | `?semaine=` (Jump, lot 19) calcule les 7 prochains niveaux, sans garde | **corrigé (lot R9)** : fermé en production, `outils/` non publié |
 | S-18 | moyenne | ménage de `rate` : balayage complet de la table à chaque première clé | **corrigé** |
 | S-19 | faible | `?player=` accepté (transition de DailyTrack, retouche 32b) | lot déjà prévu |
 | S-20 | faible | journal d'administration absent | **corrigé** |
@@ -300,7 +300,7 @@ Réserves : la période est celle du lancement et d'un développement intense pa
 | L-ENT | **Entrée unique** : couper l'accès direct à `run.app` (fin de S-13) | consoles Google, `firebase.json` | M | moyenne |
 | L-CPT | **Comptes en masse** : plafond de créations, agrégation SQL de la carte des morts | `apps/api` | M | moyenne |
 | L-ROB | **Plausibilité des entrées** (signalement, déduplication, indicateurs dans l'administration) | `apps/api`, `packages/*-sim` | M | moyenne |
-| L-SEM | `?semaine=` et `outils/` réservés aux constructions hors production (avant la mise en production du lot 19 de Jump) | `apps/jump` | S | **avant** la prochaine mise en production |
+| L-SEM | `?semaine=` et `outils/` réservés aux constructions hors production (avant la mise en production du lot 19 de Jump) | `apps/jump` | S | **fait au lot R9** (`docs/plateforme/lots/lot-R9-avant-le-partage.md`) |
 | L-T32 | DailyTrack sans `?player=` (retouche 32b : 400 sur l'ancien paramètre) | `apps/web`, `apps/api` | S | déjà prévu |
 | L-PSD | Pseudos : confusables (UTS #39), variantes | `apps/api` | S | faible |
 | L-DEV | Dépendances de développement (`wrangler` — Cloudflare, non utilisé — tire `miniflare`/`undici`/`sharp` : 4 alertes hautes en développement) : retirer `wrangler` ; Dependabot ; Docker épinglé par empreinte ; `npm ci --ignore-scripts` dans les jobs de déploiement | racine, `apps/api`, workflows | S | faible |

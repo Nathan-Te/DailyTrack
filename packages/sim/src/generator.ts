@@ -1,6 +1,8 @@
 import { circuitNumber } from "./calendar";
 import { PILOT_GRIPS, bestPilotRun, runPilot, withCut } from "./autopilot";
 import { DEFAULT_CAR_PARAMS } from "./car";
+import { SIM_VERSION } from "./constants";
+import type { Replay } from "./replay";
 import { createTestTrack } from "./circuits";
 import { Rng, formatDay, mixSeed } from "@cdj/core";
 import { BASCULE_LOT_49, dailyTrackId, generatorVersionOf } from "./dailyId";
@@ -816,6 +818,8 @@ export interface DailyCircuit {
   figures: PlacedFigure[];
   track: Track;
   authorMs: number;
+  /** Lot R9 : la rediffusion du pilote (la « preuve de l'auteur » : le serveur refuse une course qui en est la copie) ; jamais servie aux joueurs. */
+  authorReplay: Replay;
   medals: Medals;
   palette: PaletteName;
   /** Thème du circuit (celui du jour, ou le thème forcé pour les essais). */
@@ -833,6 +837,8 @@ export interface GeneratedCircuit {
   figures: PlacedFigure[];
   track: Track;
   authorMs: number;
+  /** Lot R9 : la rediffusion du pilote retenu. */
+  authorReplay: Replay;
   medals: Medals;
 }
 
@@ -855,7 +861,7 @@ export function generateCircuit(seed: number, theme: Theme, variant: number, id:
     const uncut = bestPilotRun(track, { cut: false, first });
     if (!uncut || uncut.finishMs < AUTHOR_MIN_MS || uncut.finishMs > AUTHOR_MAX_MS || uncut.maxSpeed < FAST_PEAK) continue;
     const pilot = withCut(track, uncut, AUTHOR_MIN_MS);
-    return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, medals: medalsFor(pilot.finishMs, seed) };
+    return { attempt, spec, figures: composed.figures, track, authorMs: pilot.finishMs, authorReplay: pilot.replay, medals: medalsFor(pilot.finishMs, seed) };
   }
   return null;
 }
@@ -881,6 +887,7 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
       figures: found.figures,
       track: found.track,
       authorMs: found.authorMs,
+      authorReplay: found.authorReplay,
       medals: found.medals,
       palette: theme.palette,
       theme: theme.name,
@@ -902,6 +909,7 @@ export function dailyCircuit(day: number, variant = 0, forced?: ThemeName | null
     figures: [],
     track: t,
     authorMs,
+    authorReplay: pilot ? pilot.replay : { simVersion: SIM_VERSION, trackId: t.id, runs: [] },
     medals: medalsFor(authorMs, day),
     palette: theme.palette,
     theme: theme.name,

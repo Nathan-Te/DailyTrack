@@ -1,5 +1,6 @@
 import { expect as baseExpect, test, type Browser, type Page, TODAY, keepOpen, newClockedContext } from "./fixtures";
 import { SIM_VERSION, dailyCircuit, encodeReplay, formatDay, runPilot } from "@cdj/sim";
+import { courseTrack } from "./courses";
 import { encodeTransfer } from "@cdj/profile";
 /** `31,402 s` (le format français du socle, recopié : les tests ne dépendent pas du code qu'ils vérifient). */
 const formatTime = (ms: number) => `${Math.floor(ms / 1000)},${String(ms % 1000).padStart(3, "0")}\u00a0s`;
@@ -23,6 +24,8 @@ const fast = runPilot(circuit.track, { grip: 1 });
 const slow = runPilot(circuit.track, { grip: 0.78 });
 const fastCode = encodeReplay(fast.replay);
 const slowCode = encodeReplay(slow.replay);
+// Lot R9 : le serveur refuse les copies. « Nowy Pro » (B) a couru `fastCode` ; quand Nowy (A) bat son record, il court **une autre** course rapide (adhérence tirée au hasard).
+const fastA = courseTrack(TODAY, [0.97, 1.03]);
 const GAME = `debug&timescale=6&api=${encodeURIComponent(API)}`;
 
 async function newDevice(browser: Browser, url = `/?${GAME}`): Promise<Page> {
@@ -143,26 +146,26 @@ test("un record fait sur un appareil apparaît sur l'autre : temps, fantôme « 
   await wake(a);
   await a.keyboard.press("Enter"); // rejouer
   await a.waitForFunction(() => window.__cdj.phase === "countdown" || window.__cdj.phase === "racing");
-  await race(a, fastCode);
+  await race(a, fastA.code);
   await expect(a.locator("#finish .online .rank")).toBeVisible();
-  await expect.poll(async () => (await board()).top.find((r) => r.name === "Nowy")?.ms).toBe(fast.finishMs);
+  await expect.poll(async () => (await board()).top.find((r) => r.name === "Nowy")?.ms).toBe(fastA.ms);
   expect((await bestOf(c))!.ms).toBe(slow.finishMs);
   await sleep(a);
 
   // C revient à l'accueil après la pause de synchronisation (30 s) : on la saute en rechargeant, ce qui est un nouveau lancement.
   await syncedGoto(c, `/?home=1&${GAME}`);
-  await expect.poll(async () => (await bestOf(c))?.ms, { timeout: 30_000 }).toBe(fast.finishMs);
+  await expect.poll(async () => (await bestOf(c))?.ms, { timeout: 30_000 }).toBe(fastA.ms);
   const record = (await bestOf(c))!;
-  expect(record.replay).toBe(fastCode); // la rediffusion du serveur : le fantôme « ton record » suit
-  expect(record.medal).toBe(fast.finishMs <= circuit.medals.gold ? (fast.finishMs <= circuit.medals.author ? "author" : "gold") : "silver");
-  await expect(c.locator("#home .mine")).toContainText(formatTime(fast.finishMs));
+  expect(record.replay).toBe(fastA.code); // la rediffusion du serveur : le fantôme « ton record » suit
+  expect(record.medal).toBe(fastA.ms <= circuit.medals.gold ? (fastA.ms <= circuit.medals.author ? "author" : "gold") : "silver");
+  await expect(c.locator("#home .mine")).toContainText(formatTime(fastA.ms));
   // Le fantôme de la prochaine course est le nouveau record.
   await c.locator("#home-daily").click();
-  await expect(c.locator("#ghostinfo")).toContainText(`ton record · ${formatTime(fast.finishMs)}`);
+  await expect(c.locator("#ghostinfo")).toContainText(`ton record · ${formatTime(fastA.ms)}`);
   // Les archives montrent la médaille du jour.
   await c.keyboard.press("KeyH");
   const today = c.locator("#archive a.day.current, #archive a.day").first();
-  await expect(today).toContainText(formatTime(fast.finishMs));
+  await expect(today).toContainText(formatTime(fastA.ms));
   await sleep(c);
 });
 
@@ -212,16 +215,18 @@ test("un pseudo changé sur un appareil (dans le profil commun du portail) se vo
 });
 
 test("hors ligne : le cache sert et le dit discrètement ; le record fait hors ligne est envoyé et classé au retour du réseau", async ({ browser }) => {
+  // Lot R9 : le serveur refuse les copies : le Voyageur court **sa** course (lente, d'une adhérence tirée au hasard), pas celle de Nowy ; calculée avant d'ouvrir la page.
+  const lente = courseTrack(TODAY, [0.72, 0.8]);
   const d = await newDevice(browser);
   const ctx = d.context();
   const before = (await board()).participants;
   // Le réseau tombe (le serveur ne répond plus) pendant la course.
   await ctx.route(`${API}/**`, (route) => route.abort());
-  await race(d, slowCode);
+  await race(d, lente.code);
   await chooseName(d, "Voyageur");
   await expect(d.locator("#finish .online .error")).toContainText("Hors ligne");
   expect(await d.evaluate(() => localStorage.getItem("cdj:name"))).toBe("Voyageur"); // retenu en local, vérifié à l'envoi
-  expect((await bestOf(d))!.ms).toBe(slow.finishMs);
+  expect((await bestOf(d))!.ms).toBe(lente.ms);
   // L'accueil, sans réseau : le profil de l'appareil, et une mention discrète.
   await d.goto(`/?home=1&${GAME}`);
   await d.waitForSelector("#splash", { state: "detached", timeout: 60_000 });
@@ -231,7 +236,7 @@ test("hors ligne : le cache sert et le dit discrètement ; le record fait hors l
   // Le réseau revient : au lancement suivant, le record est envoyé, rejoué et classé.
   await ctx.unroute(`${API}/**`);
   await syncedGoto(d, `/?home=1&${GAME}`);
-  await expect.poll(async () => (await board()).top.find((r) => r.name === "Voyageur")?.ms, { timeout: 30_000 }).toBe(slow.finishMs);
+  await expect.poll(async () => (await board()).top.find((r) => r.name === "Voyageur")?.ms, { timeout: 30_000 }).toBe(lente.ms);
   await expect(d.locator("#home .mine .rank")).toContainText(/sur \d+/, { timeout: 20_000 });
   await ctx.close();
 });
@@ -249,8 +254,8 @@ test("un code remplacé ailleurs : l'ancien ne vaut plus rien, le jeu le sait (c
   expect(old.status).toBe(410);
   expect((await old.json()).error).toBe("code_revoked");
   const kept = await (await me(newId)).json();
-  expect(kept).toMatchObject({ name: "Nowy Pro", stats: { days: 1 }, best: { ms: fast.finishMs } });
-  expect((await board()).top.find((r) => r.name === "Nowy Pro")!.ms).toBe(fast.finishMs); // les temps et le pseudo sont conservés
+  expect(kept).toMatchObject({ name: "Nowy Pro", stats: { days: 1 }, best: { ms: fastA.ms } });
+  expect((await board()).top.find((r) => r.name === "Nowy Pro")!.ms).toBe(fastA.ms); // les temps et le pseudo sont conservés
 
   await sleep(c);
   // Sur A (qui a encore l'ancien code) : la synchronisation le voit et ne détruit rien.

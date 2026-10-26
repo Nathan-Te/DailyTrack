@@ -34,6 +34,16 @@ export const MIGRATIONS: string[] = [
   // Lot I2 : la même chose pour DailyJump (meilleure place du profil commun du portail).
   "ALTER TABLE jump_results ADD COLUMN final_rank INTEGER",
   "ALTER TABLE jump_results ADD COLUMN final_total INTEGER",
+  // Lot R9 : le refus des copies (`copies.ts`). `inputs_hash` : l'empreinte des entrées de la rediffusion classée de chaque joueur (une course dont les entrées
+  // sont celles d'un autre joueur du jour est refusée, 409 `replay_copy`) ; `author_hash` : celle de l'auteur du niveau du jour (le pilote de Track, la preuve
+  // de Jump), calculée avec le niveau. NULL pour une ligne d'avant : un niveau sans empreinte d'auteur est recalculé, une course sans empreinte ne bloque personne.
+  // Les index viennent **après** les colonnes (une base d'avant n'a pas encore la colonne quand le schéma est appliqué).
+  "ALTER TABLE results ADD COLUMN inputs_hash TEXT",
+  "ALTER TABLE circuits ADD COLUMN author_hash TEXT",
+  "ALTER TABLE jump_results ADD COLUMN inputs_hash TEXT",
+  "ALTER TABLE jump_levels ADD COLUMN author_hash TEXT",
+  "CREATE INDEX IF NOT EXISTS results_by_inputs ON results (day, inputs_hash)",
+  "CREATE INDEX IF NOT EXISTS jump_results_by_inputs ON jump_results (day, inputs_hash)",
 ];
 
 /** Opérations du schéma qui ne sont pas des instructions SQL fixes (migration des pseudos) : leur identifiant fait partie de l'empreinte. */

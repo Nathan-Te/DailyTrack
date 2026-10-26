@@ -57,7 +57,8 @@ describe("jumpThemeForDay (socle)", () => {
 describe("morceaux d'un thème", () => {
   it("un morceau `theme:` porte l'étiquette de sa mécanique, et inversement", () => {
     for (const def of MODULES) {
-      expect(def.tags.includes("tapis"), def.id).toBe(def.theme === "usine");
+      // Lot 22 : l'usine a deux éléments, les tapis et les presses : l'étiquette de l'un ou de l'autre.
+      expect(def.tags.includes("tapis") || def.tags.includes("presse"), def.id).toBe(def.theme === "usine");
       expect(def.tags.includes("glace"), def.id).toBe(def.theme === "glace");
       expect(def.tags.includes("clignotant"), def.id).toBe(def.theme === "nuit");
       expect(def.tags.includes("alterne"), def.id).toBe(def.theme === "neon");
@@ -68,7 +69,7 @@ describe("morceaux d'un thème", () => {
     for (const [theme, tag] of [["usine", "tapis"], ["glace", "glace"], ["nuit", "clignotant"], ["neon", "alterne"]] as const) {
       const own = MODULES.filter((m) => m.theme === theme);
       expect(own.length, theme).toBeGreaterThanOrEqual(6);
-      expect(own.every((m) => m.tags.includes(tag))).toBe(true);
+      expect(own.every((m) => m.tags.includes(tag) || (theme === "usine" && m.tags.includes("presse")))).toBe(true);
       expect(own.some((m) => m.long), `${theme} : enchaînement long`).toBe(true);
       const rest = own.filter((m) => m.tags.includes("respiration"));
       expect(rest.length, `${theme} : respiration`).toBeGreaterThanOrEqual(1);

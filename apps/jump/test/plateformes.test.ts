@@ -168,7 +168,8 @@ describe("dans la galerie et l'outil de la variété", () => {
   it("?semaine : la miniature connaît les plateformes d'un jour (largeur, extrémités) et les montre en crème", () => {
     // Un jour qui contient des morceaux à plateformes (le 28/10/2026 : va-et-vient et monte-charge, trois plateformes) ; un seul niveau est généré,
     // le test reste court même quand tous les fichiers de test tournent ensemble.
-    const day = dailyLevel(parseDay("2026-10-28")!);
+    // Lot 22 : le niveau g15 (référence v5, `dailyLevel(jour, thème, 5)`), le générateur en vigueur (g16) a d'autres morceaux ce jour-là.
+    const day = dailyLevel(parseDay("2026-10-28")!, null, 5);
     expect(day.level.platforms.length).toBeGreaterThan(0);
     const info = semaineDayOf(day);
     expect(info.platforms).toHaveLength(day.level.platforms.length);

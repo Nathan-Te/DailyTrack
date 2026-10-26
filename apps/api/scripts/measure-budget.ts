@@ -137,7 +137,7 @@ const replayKb = dayReplays.reduce((n, r) => n + r.code.length, 0) / dayReplays.
 async function freshApi(at: number) {
   await reset();
   clock.now = at;
-  const api = createApi({ db, now: () => clock.now });
+  const api = createApi({ db, now: () => clock.now, allowCopies: true });
   await call(null, api, "GET", "/api/health"); // schéma
   return api;
 }
