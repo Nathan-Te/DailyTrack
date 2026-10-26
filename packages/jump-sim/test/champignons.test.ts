@@ -318,7 +318,7 @@ describe("lot 23 — intégrité (fuzz)", () => {
       }
       expect(bounces).toBeGreaterThan(0);
     }
-  });
+  }, 60_000); // lot 24 : 5 s ne suffisent plus sous la charge d'une part de CI (rouge à la vérification locale en parallèle, vert seul)
 });
 
 describe("lot 23 — règles du générateur", () => {

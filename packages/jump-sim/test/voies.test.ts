@@ -102,7 +102,7 @@ describe("lot 16 — une voie lente par portion dure", () => {
         expect(top, where).toBeLessThan(L.pieces[r.piece]!.top * T);
       }
     }
-  });
+  }, 60_000); // lot 24 : idem (génération des niveaux du jour sous charge)
 
   it("difficulté : la voie lente est notée 2 au plus (gigue ±3 ≥ 85 %, appuis humains), à la mesure des morceaux", () => {
     for (const L of DAYS) {
