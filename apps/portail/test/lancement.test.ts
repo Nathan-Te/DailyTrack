@@ -60,11 +60,11 @@ function lancer(env: Record<string, string>) {
 }
 
 describe("la date du lancement", () => {
-  it("config/lancement.json : une seule clé, une date valide (la valeur posée par le lot R8 : le lundi 26/10/2026)", () => {
+  it("config/lancement.json : une seule clé, une date valide (la valeur posée par Nathan : le mardi 27/10/2026 ; lot R8 : le lundi 26/10)", () => {
     const json = JSON.parse(readFileSync(join(ROOT, "config/lancement.json"), "utf8")) as Record<string, unknown>;
     expect(Object.keys(json)).toEqual(["premierJour"]);
-    expect(json.premierJour).toBe("2026-10-26");
-    expect(new Date(`${String(json.premierJour)}T12:00:00Z`).getUTCDay()).toBe(1); // un lundi
+    expect(json.premierJour).toBe("2026-10-27");
+    expect(new Date(`${String(json.premierJour)}T12:00:00Z`).getUTCDay()).toBe(2); // un mardi (le lundi 26/10 du lot R8, déplacé par Nathan)
   });
 
   it("le serveur la reçoit dans l'image et dans les chemins qui déclenchent la recette", () => {

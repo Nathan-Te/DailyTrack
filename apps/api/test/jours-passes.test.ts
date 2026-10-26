@@ -2,7 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseDay } from "@cdj/core";
-import { PREMIER_JOUR_DU_JOUR } from "@cdj/core/lancement";
 import { generatorVersionOf, type RegistreJoursTrack } from "@cdj/sim";
 import { empreinteJump, empreinteTrack } from "../scripts/empreintes";
 
@@ -27,11 +26,10 @@ function aVerifier(jours: string[], tout: boolean): string[] {
 }
 
 describe("jours passés (jours-passes.json)", () => {
-  it("ne garde que des jours protégés, du lancement à la dernière mise en production, les mêmes pour les deux jeux (un jour sans résultat n'y est pas : il est régénéré)", () => {
+  it("ne garde que des jours protégés, jusqu'à la dernière mise en production (le 26/10, d'avant le lancement du 27/10, y est resté), les mêmes pour les deux jeux (un jour sans résultat n'y est pas : il est régénéré)", () => {
     for (const jeu of ["track", "jump"] as const) {
       const dates = Object.keys(gardees[jeu]).sort();
       expect(dates.length, jeu).toBeGreaterThan(0);
-      expect(parseDay(dates[0]!)!, jeu).toBeGreaterThanOrEqual(PREMIER_JOUR_DU_JOUR);
       dates.forEach((d, i) => i > 0 && expect(parseDay(d), `${jeu} ${d}`).toBeGreaterThan(parseDay(dates[i - 1]!)!));
     }
     expect(Object.keys(gardees.track)).toEqual(Object.keys(gardees.jump));

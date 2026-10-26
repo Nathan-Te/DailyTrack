@@ -41,10 +41,10 @@ describe("portail : numéro de journée commun", () => {
 
 // Lot R8 : une seule source pour la date du lancement (`config/lancement.json`), lue par le serveur, le portail et les deux jeux.
 describe("date du lancement : une seule source", () => {
-  it("le fichier est une date valide, posée par le lot R8 (le lundi 26/10/2026) ; la surcharge ne vaut que si elle est une date", () => {
+  it("le fichier est une date valide, posée par le lot R8 (le mardi 27/10/2026, déplacée par Nathan le 26/10 ; lot R8 : 26/10) ; la surcharge ne vaut que si elle est une date", () => {
     expect(PREMIER_JOUR_TEXTE).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect(parseDay(PREMIER_JOUR_TEXTE)).not.toBeNull();
-    expect(PREMIER_JOUR_TEXTE).toBe("2026-10-26");
+    expect(PREMIER_JOUR_TEXTE).toBe("2026-10-27");
     expect(premierJourDuJour("2026-11-02")).toBe(parseDay("2026-11-02")!);
     expect(premierJourDuJour("demain")).toBe(parseDay(PREMIER_JOUR_TEXTE)!); // illisible : ignorée
     expect(premierJourDuJour("")).toBe(parseDay(PREMIER_JOUR_TEXTE)!);
