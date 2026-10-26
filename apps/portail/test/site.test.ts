@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error — module JavaScript du dépôt (scripts/), sans déclarations
-import { LAYOUT, REGION, firebaseConfig, partagerPolices } from "../../../scripts/site.mjs";
+import { DOSSIERS_DEMO, LAYOUT, REGION, firebaseConfig, partagerPolices, retirerDemos, robots } from "../../../scripts/site.mjs";
 
 // Lot R4 : la configuration Firebase (firebase.json du dépôt) et la disposition du site.
 const template = JSON.parse(readFileSync(join(__dirname, "../../../firebase.json"), "utf8"));
@@ -21,6 +21,45 @@ describe("firebase.json", () => {
     // Jamais épinglé à une révision (pinTag est expérimental et suit la dernière révision créée : voir le README du lot R4).
     expect(JSON.stringify(template)).not.toContain("pinTag");
     expect(template.hosting.rewrites[0].run).toEqual({ serviceId: "cdj-api", region: "europe-west1" });
+  });
+
+  it("lot R7 : en-têtes de sécurité sur tout le site (nosniff, Referrer-Policy, pas d'encadrement, droits du navigateur retirés)", () => {
+    const headers: Header[] = template.hosting.headers;
+    const all = headers.find((h) => h.source === "**")!;
+    const get = (k: string) => all.headers.find((x) => x.key === k)?.value ?? "";
+    expect(get("X-Content-Type-Options")).toBe("nosniff");
+    expect(get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    expect(get("X-Frame-Options")).toBe("DENY");
+    expect(get("Content-Security-Policy")).toContain("frame-ancestors 'none'");
+    expect(get("Content-Security-Policy")).toContain("object-src 'none'");
+    for (const feature of ["camera", "microphone", "geolocation", "payment"]) expect(get("Permissions-Policy")).toContain(`${feature}=()`);
+    // la page d'administration de DailyTrack : jamais indexée (en plus de sa balise `noindex`)
+    expect(headers.find((h) => h.source === "/track/admin/**")!.headers[0]).toEqual({ key: "X-Robots-Tag", value: "noindex, nofollow, noarchive" });
+  });
+
+  it("lot R7 : la recette et les aperçus s'interdisent aux moteurs de recherche, la production non", () => {
+    const find = (c: { hosting: { headers: Header[] } }) => c.hosting.headers.find((h) => h.headers.some((x) => x.key === "X-Robots-Tag") && h.source === "**");
+    const recette = firebaseConfig(template, { site: "playdujour-recette", service: "cdj-api-recette", noindex: true });
+    const prod = firebaseConfig(template, { site: "playdujour-prod", service: "cdj-api" });
+    expect(find(recette)!.headers[0]!.value).toContain("noindex");
+    expect(find(prod)).toBeUndefined();
+    expect(robots({ production: false })).toContain("Disallow: /\n");
+    expect(robots({ production: true })).not.toContain("Disallow");
+  });
+
+  it("lot R7 : les données de démonstration (rediffusions des jours à venir) sont retirées du site de production", () => {
+    const out = mkdtempSync(join(tmpdir(), "demos-"));
+    for (const d of DOSSIERS_DEMO) {
+      mkdirSync(join(out, d), { recursive: true });
+      writeFileSync(join(out, d, "2026-10-30.json"), "{}");
+    }
+    mkdirSync(join(out, "jump/levels"), { recursive: true });
+    writeFileSync(join(out, "jump/levels/2026-10-26.json"), "{}");
+    expect(DOSSIERS_DEMO).toEqual(["track/demo", "jump/demo"]);
+    expect(retirerDemos(out)).toEqual(DOSSIERS_DEMO);
+    for (const d of DOSSIERS_DEMO) expect(existsSync(join(out, d)), d).toBe(false);
+    expect(existsSync(join(out, "jump/levels/2026-10-26.json"))).toBe(true); // les niveaux figés, eux, restent
+    expect(retirerDemos(out)).toEqual([]);
   });
 
   it("refuse un site ou un service mal formé", () => {

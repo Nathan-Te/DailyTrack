@@ -27,6 +27,16 @@ export { MAX_BODY_BYTES } from "./platform";
 export { ADMIN_MAX_FAILURES, ADMIN_TOKEN_MIN, GRACE_MS, PLANNING_HORIZON } from "./cdj";
 export type { RequestInfo } from "./games";
 
+/**
+ * Lot R7 : en-têtes de toute réponse de l'API (du JSON, jamais une page) : le navigateur ne doit ni deviner un autre type (`nosniff`), ni
+ * afficher une réponse dans un cadre, ni charger quoi que ce soit si elle était ouverte comme une page.
+ */
+export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
+  "X-Content-Type-Options": "nosniff",
+  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+  "Referrer-Policy": "no-referrer",
+};
+
 export interface ApiOptions {
   db: SqlDb;
   now?: () => number;
@@ -160,7 +170,7 @@ export function createApi(options: ApiOptions) {
       const vary = mergeVary(cors.Vary, extra.Vary);
       return new Response(status === 204 ? null : JSON.stringify(body), {
         status,
-        headers: { ...cors, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra, ...(vary ? { Vary: vary } : {}) },
+        headers: { ...cors, ...SECURITY_HEADERS, "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra, ...(vary ? { Vary: vary } : {}) },
       });
     };
   };

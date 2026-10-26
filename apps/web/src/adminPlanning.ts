@@ -1,7 +1,7 @@
 import { parisDay } from "@cdj/clock";
 import { CATALOGUE_COMMUN_FR } from "@cdj/ui";
 import { BASCULE_LOT_34, BASCULE_LOT_48, THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
-import { DEMO_BASE, apiBase, type ApiResult } from "./api";
+import { DEMO_BASE, adminApiBase, type ApiResult } from "./api";
 import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel } from "./adminPlan";
 import { SURFACE_LABEL, circuitStats, cuvesText, effectsText, figuresText, reliefText, sidesText, widthsText } from "./circuitStats";
@@ -95,7 +95,7 @@ export function planHref(date: string, e: PlanEntry, watch = false): string {
 // --- Page ----------------------------------------------------------------------------------------------------------------
 
 export function mountPlanning(stateApi: () => string): void {
-  const computeBase = () => (new URLSearchParams(location.search).get("api") || stateApi().trim() || apiBase() || "").replace(/\/+$/, "");
+  const computeBase = () => adminApiBase(stateApi());
   let base = computeBase(); // recalculée à chaque « Actualiser » : on peut changer l'adresse de l'API plus bas
   let token = loadToken();
   const backendFor = (): AdminBackend | null => (base === DEMO_BASE ? new DemoAdmin() : base ? new HttpAdmin(base, token) : null);

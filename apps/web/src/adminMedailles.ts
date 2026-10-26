@@ -1,5 +1,5 @@
 import { THEMES, themeByName, type Medal } from "@cdj/sim";
-import { apiBase, apiCall } from "./api";
+import { adminApiBase, apiCall } from "./api";
 import { loadToken } from "./adminBackend";
 import { formatTime } from "./format";
 
@@ -90,7 +90,7 @@ export function mountMedals(stateApi: () => string): void {
     $("med-state").dataset.kind = error ? "error" : "info";
   };
   $("med-load").addEventListener("click", async () => {
-    const base = (new URLSearchParams(location.search).get("api") || stateApi().trim() || apiBase() || "").replace(/\/+$/, "");
+    const base = adminApiBase(stateApi());
     if (!base || base === "demo") return say("Demande le vrai serveur (recette ou production) : pas de médailles en démonstration.", true);
     say("Chargement…");
     const r = await apiCall<unknown>(base, "GET", `/api/admin/medailles${$("med-demo").checked ? "?demo=1" : ""}`, undefined, 20_000, { Authorization: `Bearer ${loadToken()}` });

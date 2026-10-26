@@ -125,12 +125,12 @@ jobs:
           if [ "$CIBLE" = recette ] && [ "$SITE_RECETTE" = "$SITE_PRODUCTION" ]; then echo "::error::FIREBASE_SITE_RECETTE est le site de production"; exit 1; fi
           { echo "enabled=true"; echo "site=$site"; echo "service=$service"; } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         if: steps.cfg.outputs.enabled == 'true'
         with:
           ref: ${{ inputs.ref || github.sha }}
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
         with:
           name: ${{ inputs.jours_figes }}
@@ -141,7 +141,7 @@ jobs:
         if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
         run: node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels | tee -a "$GITHUB_STEP_SUMMARY"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: steps.cfg.outputs.enabled == 'true'
         with:
           node-version: 22
@@ -151,18 +151,18 @@ jobs:
 
       - name: Authentification Google Cloud (fédération d'identité)
         if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
       - name: Authentification Google Cloud (clé JSON)
         if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
-        uses: google-github-actions/auth@v3
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       # Lot I6 : le navigateur qui dessine les images de partage et les icônes (scripts/images-partage.mjs, appelé par scripts/site.mjs).
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         if: steps.cfg.outputs.enabled == 'true'
         id: navigateur
         with:
@@ -214,7 +214,9 @@ jobs:
           npm run build
           # Lot I1 : la vitrine des composants (/ui/) n'est jamais publiée en production (recette et aperçus seulement).
           node scripts/site.mjs site --sortie site ${{ inputs.cible == 'production' && '--production' || '' }} --origine "${{ steps.origine.outputs.origine }}"
-          node scripts/site.mjs firebase --site "${{ steps.cfg.outputs.site }}" --service "${{ steps.cfg.outputs.service }}" --region "$REGION" --public site --sortie firebase.json
+          # Lot R7 : la recette et les aperçus ne sont pas indexés (en-tête X-Robots-Tag et robots.txt « tout interdit »).
+          noindex=""; [ "$CIBLE" = production ] || noindex="--noindex"
+          node scripts/site.mjs firebase --site "${{ steps.cfg.outputs.site }}" --service "${{ steps.cfg.outputs.service }}" --region "$REGION" --public site --sortie firebase.json $noindex
 
       - name: Publier sur Firebase Hosting
         id: deploy
@@ -222,8 +224,9 @@ jobs:
         env:
           SITE: ${{ steps.cfg.outputs.site }}
           EXPIRE: ${{ inputs.expire }}
+          REF: ${{ inputs.ref || github.sha }}
         run: |
-          message="${GITHUB_REPOSITORY}@${{ inputs.ref || github.sha }} (run ${GITHUB_RUN_ID})"
+          message="${GITHUB_REPOSITORY}@${REF} (run ${GITHUB_RUN_ID})"
           if [ -n "$CANAL" ]; then
             npx --yes "$FIREBASE_TOOLS" hosting:channel:deploy "$CANAL" --project "$GCP_PROJECT_ID" --expires "$EXPIRE" --no-authorized-domains --json > deploy.json || { cat deploy.json; exit 1; }
             url="$(jq -r --arg s "$SITE" '.result[$s].url // ([.result[]][0].url) // empty' deploy.json)"

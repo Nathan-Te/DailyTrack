@@ -37,6 +37,7 @@ import {
   type ThemeName,
   type Track,
 } from "@cdj/sim";
+import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
 import type { GameDefinition, GameInstance, Platform, PortailDuJeu, RequestInfo, Statement } from "./games";
 import { DEFAULT_SALON_LIMITS, createSalon, salonSessionMs, type SalonLimits } from "./salon";
@@ -63,6 +64,8 @@ export const CLASSES_MEMO_MS = 30_000;
 export const LEGACY_LOG_MS = 5 * 60_000;
 /** Lot 41 : lectures du Garage (`GET /api/garage`) par adresse et par joueur et par fenêtre, comptées en mémoire (une lecture n'écrit rien). */
 export const GARAGE_READS_PER_CLIENT = 120;
+/** Lot R7 : lectures du classement et des fantômes par adresse et par fenêtre (chacune lit tous les temps du jour : coût proportionnel au nombre de joueurs). */
+export const BOARD_READS_PER_CLIENT = 300;
 export const GARAGE_READS_PER_PLAYER = 60;
 /** Lot 35 : jours lus au plus par l'outil de calibrage des médailles (`GET /api/admin/medailles`), aujourd'hui compris. */
 export const MEDAILLES_JOURS = 120;
@@ -351,7 +354,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const circuit = await getCircuit(day);
     if (replay.trackId !== circuit.trackId) throw new HttpError(409, "track_mismatch", "Cette rediffusion n'est pas celle du circuit de ce jour");
 
-    platform.spendReplays(); // lot R5 : plafond global de rejeux de l'instance (503 au-delà)
+    platform.spendReplays(replayUnits(replay.runs)); // lots R5 et R7 : plafond global de rejeux de l'instance, proportionnel à la durée (503 au-delà)
     const result = replayRace(circuit.track, replay); // la seule source du temps
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 
@@ -583,6 +586,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     const header = req.headers.get("authorization") ?? "";
     const given = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
     if (!(await sameToken(given, adminToken))) {
+      log("WARNING", "admin : jeton refusé"); // lot R7 : jamais le jeton reçu ni l'adresse
       await hit(key, ADMIN_MAX_FAILURES); // compte l'échec (et refuse net au-delà de la limite)
       throw new HttpError(401, "unauthorized", "Jeton d'admin manquant ou incorrect");
     }
@@ -716,6 +720,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     );
     await storeCircuit(circuit);
     circuits.delete(day);
+    log("INFO", "admin : circuit remplacé", { date: formatDay(day), variant: body.variant, theme }); // lot R7 : l'action, jamais le jeton ni l'adresse
     return { date: formatDay(day), variant: body.variant, theme, chosenAt, trackId: circuit.trackId, authorMs: circuit.authorMs };
   }
 
@@ -724,6 +729,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     await db.run("DELETE FROM planning WHERE day = ?", [day]);
     await db.run("DELETE FROM circuits WHERE day = ?", [day]); // régénéré à la demande, avec le circuit d'origine
     circuits.delete(day);
+    log("INFO", "admin : circuit d'origine rétabli", { date: formatDay(day) });
     return { date: formatDay(day), variant: 0, theme: null, chosenAt: null };
   }
 
@@ -842,8 +848,11 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     if (m) {
       if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
       const date = decodeDate(m[1]!);
-      if (m[2] === "leaderboard") return await leaderboard(date, req, url);
-      if (m[2] === "ghost") return await ghost(date, req, url);
+      if (m[2] === "leaderboard" || m[2] === "ghost") {
+        // Lot R7 : ces deux lectures coûtent un parcours des temps du jour ; sans limite, un appel en boucle épuisait la base (réponses `no-store`).
+        await platform.readHitAddress(info, "lb", BOARD_READS_PER_CLIENT);
+        return m[2] === "leaderboard" ? await leaderboard(date, req, url) : await ghost(date, req, url);
+      }
       return await dayInfo(date);
     }
     return undefined;

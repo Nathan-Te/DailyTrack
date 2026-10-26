@@ -65,7 +65,7 @@ jobs:
       branch: ${{ steps.plan.outputs.branch }}
       canal: ${{ steps.plan.outputs.canal }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           sparse-checkout: scripts
       - name: Plan
@@ -125,12 +125,12 @@ jobs:
             echo "### Firebase non configuré : voir docs/plateforme/domaine.md (pas de canal d'aperçu)" >> "$GITHUB_STEP_SUMMARY"
             echo "::notice title=Firebase non configuré::Firebase non configuré : voir docs/plateforme/domaine.md"
           fi
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -205,8 +205,8 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
           cache: npm
@@ -312,16 +312,16 @@ jobs:
             echo "### Recette non configurée : voir docs/plateforme/recette.md (rien à nettoyer)" >> "$GITHUB_STEP_SUMMARY"
             echo "::notice title=Recette non configurée::recette non configurée : voir docs/plateforme/recette.md"
           fi
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         if: steps.cfg.outputs.enabled == 'true' && env.WIF_PROVIDER != '' && env.WIF_SERVICE_ACCOUNT != ''
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
-      - uses: google-github-actions/auth@v3
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
         if: steps.cfg.outputs.enabled == 'true' && (env.WIF_PROVIDER == '' || env.WIF_SERVICE_ACCOUNT == '')
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-      - uses: google-github-actions/setup-gcloud@v3
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
         if: steps.cfg.outputs.enabled == 'true'
       - name: Retirer l'étiquette
         if: steps.cfg.outputs.enabled == 'true'

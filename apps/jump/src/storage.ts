@@ -31,13 +31,14 @@ export function namespacePrefix(flag: string | undefined, mode: string | undefin
 // `import.meta.env` n'existe que sous Vite et Vitest. Vite remplace `import.meta.env.VITE_STORAGE` et `import.meta.env.MODE` par leur
 // valeur à la construction ; sous Node, l'accès lève.
 type Env = { env: Record<string, string | undefined> };
-function buildFlags(): { flag?: string; mode?: string; api?: string } {
+function buildFlags(): { flag?: string; mode?: string; api?: string; production?: string } {
   try {
     // Accès écrits en entier (`import.meta.env.X`) : Vite ne remplace que cette forme à la construction (jamais un `env` rangé dans une variable).
     return {
       flag: (import.meta as unknown as Env).env.VITE_STORAGE,
       mode: (import.meta as unknown as Env).env.MODE,
       api: (import.meta as unknown as Env).env.VITE_API_URL,
+      production: (import.meta as unknown as Env).env.VITE_PRODUCTION,
     };
   } catch {
     return {};
@@ -50,6 +51,8 @@ const flags = buildFlags();
  * touche le serveur ; absente : pas de classement, sauf `?api=`).
  */
 export const BUILD_API_URL: string | undefined = flags.api || undefined;
+/** Lot R7 : cette construction est celle de la production (`VITE_PRODUCTION=1`, posée par `deploy-site.yml` pour playdujour.com) : `?api=` y est restreint. */
+export const BUILD_RESTRICTED: boolean = flags.production === "1";
 /** Préfixe physique de cette construction (`""` en production). */
 export const NAMESPACE_PREFIX = namespacePrefix(flags.flag, flags.mode);
 

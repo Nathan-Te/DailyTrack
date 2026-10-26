@@ -118,7 +118,7 @@ import type { DeathMapData } from "./rankApi";
 import { Ranking, mayRank } from "./ranking";
 import { arrivalRankView, classesText, homeRankText, rowsOf } from "./rankView";
 import { DEMO_TODAY, DemoRankSource } from "./demoRank";
-import { BUILD_API_URL, demoStorage } from "./storage";
+import { BUILD_API_URL, BUILD_RESTRICTED, demoStorage } from "./storage";
 import { BELT_EVERY, Blink, ParticleMesh, Particles, SLIDE_EVERY, Trail, Vibrator, beltSpark, feelColors, feelEvent, slideSpark } from "./feel";
 import { feelLevels, loadSettings, saveSettings, type FeelLevels, type PlayerSettings } from "./settings";
 import { mountPauseMenu, type PauseView } from "./pauseMenu";
@@ -500,7 +500,7 @@ const touchOn = wantsTouch(options.touch, window.matchMedia?.("(pointer: coarse)
 const LEVELS: Record<Scenario, Level> = { essai: ESSAI_LEVEL, dangers: DANGERS_LEVEL, "bac-a-sable": SANDBOX_LEVEL, vent: VENT_LEVEL };
 // Lot P1 (plateforme) : le classement du jour. Adresse du serveur : `?api=` (essais ; `demo` : la démonstration), sinon `VITE_API_URL` de la
 // construction (production pour `main`, recette pour un aperçu), sinon aucune : pas de classement, le jeu marche comme avant.
-const apiBase = rankApiBase(options.api, BUILD_API_URL, location.origin);
+const apiBase = rankApiBase(options.api, BUILD_API_URL, location.origin, BUILD_RESTRICTED);
 const demoRank = apiBase === "demo";
 /** La démonstration joue « son » aujourd'hui (`DEMO_TODAY`, celui du jeu de données) : toutes les dates du jeu sont décalées d'autant. */
 const dayShift = demoRank ? DEMO_TODAY - parisDay(Date.now()) : 0;

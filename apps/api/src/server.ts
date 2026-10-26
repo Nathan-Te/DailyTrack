@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { formatDay } from "@cdj/core";
 import { createApi } from "./api";
-import { ConfigError, readConfig } from "./config";
+import { ConfigError, adminTokenWarning, readConfig } from "./config";
 import { openLibsql } from "./libsql-open";
 import { consoleLog } from "./log";
 import { createNodeServer } from "./node-server";
@@ -23,6 +23,11 @@ try {
   }
   throw e;
 }
+
+// Lot R7 : un `ADMIN_TOKEN` trop court désactive l'administration sans rien dire (404) ; moins de 32 caractères, il se devine plus facilement.
+// Jamais la valeur dans le journal, seulement sa longueur.
+const tokenWarning = adminTokenWarning(config.adminToken);
+if (tokenWarning) consoleLog("WARNING", tokenWarning, { longueur: config.adminToken!.length });
 
 if (config.salonMinutes !== undefined) {
   consoleLog("WARNING", "SALON_MINUTES : sessions du Salon raccourcies (tests et essais locaux seulement, jamais en production)", { salonMinutes: config.salonMinutes });

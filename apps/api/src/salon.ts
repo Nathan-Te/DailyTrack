@@ -12,6 +12,7 @@ import {
   type Track,
 } from "@cdj/sim";
 import type { SqlDb } from "./db";
+import { replayUnits } from "./replayCost";
 import { HttpError } from "./errors";
 import type { Logger } from "./log";
 import type { Players } from "./players";
@@ -435,7 +436,7 @@ export function createSalon(kit: SalonKit) {
     if (replay.trackId !== salonTrackId(session)) throw new HttpError(409, "track_mismatch", "Cette rediffusion n'est pas celle du circuit de cette session");
 
     const circuit = await circuitFor(session);
-    kit.spendReplays(); // lot R5 : plafond global de rejeux de l'instance (503 au-delà)
+    kit.spendReplays(replayUnits(replay.runs)); // lots R5 et R7 : plafond global de rejeux de l'instance, proportionnel à la durée (503 au-delà)
     const result = replayRace(circuit.track, replay); // la seule source du temps
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 
