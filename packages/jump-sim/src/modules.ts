@@ -8,7 +8,7 @@ import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
 import { MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
-import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, platformPos, sawCenter, type Level } from "./level";
+import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, platformPos, pressBox, sawCenter, type Level } from "./level";
 
 // Les morceaux (lot 4) : des portions de niveau écrites en texte qui **portent leur solution**, matière première du niveau du jour (lot 5).
 // La source est un fichier texte par morceau (`packages/jump-sim/modules/<id>.txt`) ; le solveur hors ligne (`npm run solve:modules -w
@@ -17,7 +17,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // Format d'un fichier, **version 3** (lot 7 ; une ligne `clé: valeur` par métadonnée, `//` commente une ligne) :
 //   id: cheminee                                  minuscules, chiffres, tirets ; le nom du fichier
 //   intention: Monter une cheminée …              une phrase en français (lot 20 : absente du catalogue embarqué, `apps/jump/public/outils/intentions.json`)
-//   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile)
+//   etiquettes: mural vertical                    parmi MODULE_TAGS (lot 20 : `plateforme` pour un morceau à plateforme mobile ; lot 22 : `presse`)
 //   theme: usine                                  (lot 11, facultatif) le morceau d'une mécanique : il ne sort que dans ce thème (`usine` : étiquette
 //                                                 `tapis` ; `glace` : `glace` ; lot 12 : `nuit` : `clignotant` ; `neon` : `alterne` ; lot 13 :
 //                                                 `foret` : `vent`) ; sans cette
@@ -39,6 +39,10 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 //                                                 première copie de `c0`/`r0` à la dernière de `c1`/`r1`), section implicite, `{param}` permis
 //   plateforme <id> <largeur> <h|v> <cycle> <c,r> <c,r>
 //                                                 (lot 20) une plateforme mobile (syntaxe de `level.ts`) : ses deux extrémités (coin haut-gauche), en
+//                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe),
+//                                                 la section est implicite, `{param}` permis ; au niveau du jour l'identifiant prend le nom du morceau
+//   presse <id> <largeur> <c,r> <course> <attente> <chute> <pause> <remontée>
+//                                                 (lot 22) une presse (syntaxe de `level.ts`) : le coin haut-gauche de sa position haute en
 //                                                 coordonnées du gabarit (la première copie d'une plage répétée, ou la dernière avec une apostrophe),
 //                                                 la section est implicite, `{param}` permis ; au niveau du jour l'identifiant prend le nom du morceau
 //   zone <mutateur> …                             et les zones de mutation (ci-dessous)
@@ -102,7 +106,7 @@ import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLe
 // L'entrée *élan* d'un morceau seul part du même départ, au sol, à pleine vitesse (drapeau « élan » de la rediffusion) : elle court jusqu'au
 // bord du palier (`entryTick` pas, droite tenue) puis joue.
 
-export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme"] as const;
+export const MODULE_TAGS = ["mural", "precision", "vertical", "scie", "friable", "ressort", "respiration", "tapis", "glace", "clignotant", "alterne", "vent", "plateforme", "presse"] as const;
 /** Les mutateurs (lot 7 ; `surface` : lot 11 ; `clignotant` et `alterne` : lot 12 ; `vent` : lot 13 ; lot 19, silhouette : `hausse`, `ecart`, `decale`, `echange`). */
 export const MUTATORS = ["plafond", "fosse", "sol-friable", "patrouille", "garde", "ressort", "denivele", "surface", "clignotant", "alterne", "vent", "hausse", "ecart", "decale", "echange"] as const;
 export type MutatorName = (typeof MUTATORS)[number];
@@ -343,7 +347,9 @@ export function parseModule(text: string): ModuleDef {
   const theme = themeText as JumpThemeName | null;
   // Lot 11 : l'étiquette d'une mécanique et le thème vont ensemble (un morceau `tapis` est de l'usine, un morceau `glace` de la glace).
   for (const [tag, th] of [["tapis", "usine"], ["glace", "glace"], ["clignotant", "nuit"], ["alterne", "neon"], ["vent", "foret"]] as const) {
-    if (tags.includes(tag) !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} » et « theme: ${th} » vont ensemble`));
+    // Lot 22 : les presses sont la seconde mécanique de l'usine : un morceau `presse` est de l'usine, avec ou sans tapis.
+    const mine = tags.includes(tag) || (th === "usine" && tags.includes("presse"));
+    if (mine !== (theme === th)) throw new ModuleError(where(`l'étiquette « ${tag} »${th === "usine" ? " (ou « presse »)" : ""} et « theme: ${th} » vont ensemble`));
   }
   const optional = (k: string, value: string) => {
     const v = meta[k];
@@ -367,6 +373,8 @@ export function parseModule(text: string): ModuleDef {
   const annex = annexAll.filter((l) => !l.startsWith("zone "));
   // Lot 20 : l'étiquette `plateforme` et une ligne `plateforme` du bloc annexe vont ensemble (comme une mécanique et son thème).
   if (tags.includes("plateforme") !== annex.some((l) => l.startsWith("plateforme "))) throw new ModuleError(where("l'étiquette « plateforme » et une ligne « plateforme » du bloc annexe vont ensemble"));
+  // Lot 22 : de même pour les presses.
+  if (tags.includes("presse") !== annex.some((l) => l.startsWith("presse "))) throw new ModuleError(where("l'étiquette « presse » et une ligne « presse » du bloc annexe vont ensemble"));
   if (grid.length === 0) throw new ModuleError(where("grille vide"));
   const width = grid[0]!.length;
   grid.forEach((row, r) => {
@@ -659,6 +667,12 @@ export function mutateTemplate(def: ModuleDef, mutations: readonly Mutation[]): 
             const vm = /^vent (\d+)-(\d+) /.exec(line);
             if (vm && Number(vm[2]) >= z.c0) fail(`${where} : une zone de vent y passe`);
             if (vm) continue;
+            // Lot 22 : une presse (colonne du coin haut-gauche en 4e mot, largeur en 3e) ne traverse pas non plus la zone.
+            const pm = /^presse \S+ (\d+) (\d+)(?:'?),/.exec(line);
+            if (pm) {
+              if (Number(pm[2]) + Number(pm[1]) - 1 >= z.c0) fail(`${where} : une presse y passe`);
+              continue;
+            }
             for (const w of line.split(/\s+/).slice(5)) {
               const c = Number(/^(\d+)/.exec(w)?.[1] ?? -1);
               if (c >= z.c0) fail(`${where} : une scie y passe`);
@@ -849,7 +863,23 @@ export function buildModuleDef(def: ModuleDef, variant: number, options: BuildOp
       );
       continue;
     }
-    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent » et « plateforme » sont permis (« ${words[0]} »)`));
+    if (words[0] === "presse") {
+      // Lot 22 : une presse, son coin haut-gauche (4e mot) traduit comme un point de scie (première copie, ou dernière avec une apostrophe).
+      annex.push(
+        words
+          .map((w, k) => {
+            const m = k === 3 ? /^(\d+)('?),(\d+)('?)$/.exec(w) : null;
+            if (!m) return w;
+            const col = (m[2] ? cols.last : cols.first)[Number(m[1])];
+            const row = (m[4] ? rows.last : rows.first)[Number(m[3])];
+            if (col === undefined || row === undefined || col < 0 || row < 0) throw new ModuleError(where(`point ${w} hors de la grille ou retiré par la variante`));
+            return `${col + lead},${row}`;
+          })
+          .join(" "),
+      );
+      continue;
+    }
+    if (words[0] !== "scie") throw new ModuleError(where(`bloc annexe : seules les scies, « clignote », « vent », « plateforme » et « presse » sont permis (« ${words[0]} »)`));
     annex.push(
       words
         .map((w, k) => {
@@ -934,6 +964,16 @@ export function palierProblems(m: BuiltModule): string[] {
         const p = platformPos(plat, t);
         if (boxesOverlap(box, { x: p.x, y: p.y, w: plat.width * T, h: T })) {
           out.push(`palier d'${name} : la plateforme ${plat.id} y passe`);
+          break;
+        }
+      }
+    }
+    // Lot 22 : ni une presse, à aucun pas de son cycle (la boîte de sa course entière : un palier n'est jamais traversé par une presse).
+    for (const press of L.presses) {
+      for (let t = 0; t < press.cycle; t++) {
+        const b = pressBox(press, t);
+        if (boxesOverlap(box, b)) {
+          out.push(`palier d'${name} : la presse ${press.id} y passe`);
           break;
         }
       }

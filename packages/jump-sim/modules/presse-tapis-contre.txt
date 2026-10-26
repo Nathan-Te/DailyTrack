@@ -1,0 +1,31 @@
+id: presse-tapis-contre
+intention: Remonter un tapis qui recule jusqu'à une presse, la passer, enjamber un pic puis passer sous une seconde presse : courir sans jamais s'arrêter sur le tapis.
+etiquettes: presse tapis precision
+famille: presse-tapis-contre
+theme: usine
+format: 3
+paliers: 9 9
+repeter: long colonnes 0-0
+variante: long=8 a1=300 a2=240 r1=90 r2=150
+variante: long=10 a1=300 a2=180 r1=90 r2=210
+variante: long=10 a1=300 a2=300 r1=90 r2=90
+variante: long=8 a1=180 a2=180 r1=150 r2=150
+variante: long=10 a1=180 a2=120 r1=90 r2=150
+variante: long=6 a1=120 a2=120 r1=150 r2=150
+variante: long=6 a1=240 a2=240 r1=150 r2=150
+grille:
+..............
+..............
+..............
+..............
+..............
+..............
+..............
+..............
+.......^......
+[#############
+##############
+##############
+
+presse un 2 3,3 4 {a1} 30 60 {r1}
+presse deux 2 10,3 4 {a2} 30 60 {r2}

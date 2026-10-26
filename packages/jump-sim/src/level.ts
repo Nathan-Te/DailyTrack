@@ -24,7 +24,7 @@ import { idiv } from "./idiv";
 //       vers la droite, vivant, à n'importe quelle hauteur, l'active (lot 4) ; à la mort, on reprend sur lui, au sol, chrono qui continue
 //
 // Bloc annexe (une déclaration par ligne, `//` commente la ligne) :
-//   version <3|4>
+//   version <3|4|5|6>
 //       (lot 15) la version de la simulation du niveau (`Level.simVersion`) ; absente : 3. **En v3**, chaque section a son horloge, mise en
 //       marche la première fois que le personnage y entre (« phase » d'un élément = pas écoulés depuis, 0 avant) ; **en v4, une seule horloge** :
 //       la phase d'un élément vaut `t + phase de sa section` (`t` : le chrono de l'essai), dès avant le départ et sans jamais revenir à zéro.
@@ -47,6 +47,13 @@ import { idiv } from "./idiv";
 //       extrémités** par une table entière (`PLATFORM_EASE`). **À sens unique** : on se pose dessus par le haut ; on la traverse par-dessous et
 //       par les côtés, sans saut mural, sans jamais être écrasé. Posé dessus, le personnage est porté (il reçoit son déplacement à chaque pas) ;
 //       au saut il garde sa vitesse horizontale (pas la verticale). Elle n'est pas dans la grille : toutes les tuiles de son trajet sont vides.
+//   presse <id> <largeur> <col,rangée> <course> <attente> <chute> <pause> <remontée>
+//       (lot 22, version 6, thème usine) une **presse** : un bloc de `largeur` (2 ou 3) tuiles sur `PRESS_HEIGHT_TILES` (2) de haut, qui descend et remonte à la
+//       verticale dans une colonne libre. `col,rangée` : le coin haut-gauche de sa position **haute** ; `course` : de combien de tuiles elle descend. Son cycle,
+//       en pas, est `attente` (en haut, au moins 120 : 1 s) + `chute` (rapide, table `PRESS_FALL`) + `pause` (en bas) + `remontée` (lente, au moins
+//       `PRESS_RISE_FACTOR` fois la chute, table de ralenti `PLATFORM_EASE`). Position = `f(phase)` de sa section, **entière et pure**, exactement en haut à la
+//       phase 0 de chaque cycle. **Toute la presse tue au contact** (`DEATH_PRESS`) : on ne monte pas dessus, elle ne pousse ni n'écrase physiquement, elle
+//       n'est pas dans la grille (toute la colonne de sa course est vide). Le sol sous sa position basse est une règle du générateur (`presses.ts`).
 //   vent <col0>-<col1> <rang0>-<rang1> <haut|gauche|droite> <force> [rafale <cycle> <actif> <décalage>]
 //       (lot 13, thème forêt) une **zone de vent** : un rectangle de tuiles (bornes comprises), **traversable** (ce n'est pas un bloc), qui
 //       pousse le personnage tant que **le centre** de sa boîte y est, au sol comme en l'air. `haut` : une accélération verticale qui compense
@@ -268,6 +275,53 @@ export interface Platform {
   section: number;
 }
 
+/** Lot 22 : largeur d'une presse (tuiles), hauteur (tuiles), course (tuiles), durées (pas) et pas maximal de la chute (unités). */
+export const PRESS_MIN_WIDTH = 2;
+export const PRESS_MAX_WIDTH = 3;
+export const PRESS_HEIGHT_TILES = 2;
+export const PRESS_MIN_TRAVEL = 2;
+export const PRESS_MAX_TRAVEL = 8;
+/** Attente en haut : au moins 1 s (le joueur lit l'annonce et passe), au plus 5 s. */
+export const PRESS_MIN_HOLD = 120;
+export const PRESS_MAX_HOLD = 600;
+/** Chute : de 0,15 s à 0,5 s ; pause en bas : de 0,25 s à 2 s ; remontée : au moins `PRESS_RISE_FACTOR` fois la chute (nettement plus lente), au plus 5 s. */
+export const PRESS_MIN_FALL = 18;
+export const PRESS_MAX_FALL = 60;
+export const PRESS_MIN_REST = 30;
+export const PRESS_MAX_REST = 240;
+export const PRESS_RISE_FACTOR = 3;
+export const PRESS_MAX_RISE = 600;
+export const PRESS_MAX_CYCLE = 1200;
+/** Déplacement maximal par pas à la fin de la chute : trois quarts de tuile (la presse, haute de 2 tuiles, n'enjambe jamais le personnage entre deux pas). */
+export const MAX_PRESS_STEP = 3 * (UNITS_PER_TILE / 4);
+
+/**
+ * Lot 22 : la **table de chute** d'une presse (entiers, 65 valeurs de 0 à 4 096) : `k²` pour `k` de 0 à 64, la chute libre — la presse part presque à
+ * l'arrêt et frappe à pleine vitesse (127 sur 4 096 pour le dernier intervalle, soit 2 fois la moyenne). Écrite par `k * k` : aucun flottant,
+ * `test/presses.test.ts` la compare à la formule. La remontée lit `PLATFORM_EASE` (démarrage doux, fin douce), à l'envers.
+ */
+export const PRESS_FALL: readonly number[] = Object.freeze(Array.from({ length: PLATFORM_EASE_STEPS + 1 }, (_, k) => k * k));
+
+/** Lot 22 : une presse (voir l'en-tête). Colonnes et rangées en tuiles (coin haut-gauche de la position haute) ; durées en pas. */
+export interface Press {
+  id: string;
+  /** Largeur en tuiles (2 ou 3). */
+  width: number;
+  col: number;
+  row: number;
+  /** Tuiles de descente. */
+  travel: number;
+  /** Attente en haut, chute, pause en bas, remontée (pas). */
+  hold: number;
+  fall: number;
+  rest: number;
+  rise: number;
+  /** `hold + fall + rest + rise`. */
+  cycle: number;
+  /** Section dont elle suit l'horloge (indice dans `Level.sections`). */
+  section: number;
+}
+
 export interface Level {
   /** Lot 15 : la version de la simulation du niveau (3 : une horloge par section ; 4 : une seule horloge de course). */
   simVersion: number;
@@ -294,6 +348,8 @@ export interface Level {
   winds: readonly WindZone[];
   /** Lot 20 : plateformes mobiles (ordre du bloc annexe) ; vide sans plateforme. */
   platforms: readonly Platform[];
+  /** Lot 22 : presses (ordre du bloc annexe) ; vide sans presse. */
+  presses: readonly Press[];
 }
 
 export class LevelError extends Error {
@@ -424,6 +480,7 @@ export function parseLevel(text: string): Level {
   const blinkLines: { line: number; words: string[] }[] = [];
   const windLines: { line: number; words: string[] }[] = [];
   const platformLines: { line: number; words: string[] }[] = [];
+  const pressLines: { line: number; words: string[] }[] = [];
   for (let i = 0; i < annex.length; i++) {
     const raw = annex[i]!.trim();
     if (raw === "" || raw.startsWith("//")) continue;
@@ -451,7 +508,8 @@ export function parseLevel(text: string): Level {
     else if (words[0] === "clignote") blinkLines.push({ line: end + i + 1, words });
     else if (words[0] === "vent") windLines.push({ line: end + i + 1, words });
     else if (words[0] === "plateforme") platformLines.push({ line: end + i + 1, words });
-    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme)`);
+    else if (words[0] === "presse") pressLines.push({ line: end + i + 1, words });
+    else throw new LevelError(`${where} : déclaration « ${words[0]} » inconnue (version, section, scie, clignote, vent, plateforme, presse)`);
   }
   if (simVersion < SINGLE_CLOCK_VERSION && sections.some((s) => s.phase !== 0)) throw new LevelError("Une phase de section n'existe qu'en version 4 (une seule horloge)");
   // ——— Lot 12 : les cycles des blocs clignotants, par section ———
@@ -566,7 +624,46 @@ export function parseLevel(text: string): Level {
     }
     platforms.push({ id, width: pw, axis, cycle, a, b, section });
   }
-  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms };
+  // ——— Lot 22 : les presses ———
+  const presses: Press[] = [];
+  for (const { line, words } of pressLines) {
+    const where = `Annexe, ligne ${line}`;
+    const usage = "« presse <id> <largeur> <col,rangée> <course> <attente> <chute> <pause> <remontée> » attendu";
+    if (words.length !== 9) throw new LevelError(`${where} : ${usage}`);
+    const [, id, w, at] = words as [string, string, string, string];
+    if (presses.some((q) => q.id === id)) throw new LevelError(`${where} : presse « ${id} » déjà déclarée`);
+    if (!/^\d+$/.test(w) || Number(w) < PRESS_MIN_WIDTH || Number(w) > PRESS_MAX_WIDTH) throw new LevelError(`${where} : largeur de ${PRESS_MIN_WIDTH} à ${PRESS_MAX_WIDTH} tuiles`);
+    const cm = /^(\d+),(\d+)$/.exec(at);
+    if (!cm) throw new LevelError(`${where} : point « ${at} » (col,rangée) attendu`);
+    if (!words.slice(4).every((n) => /^\d+$/.test(n))) throw new LevelError(`${where} : ${usage}`);
+    const [travel, hold, fall, rest, rise] = words.slice(4).map(Number) as [number, number, number, number, number];
+    if (travel < PRESS_MIN_TRAVEL || travel > PRESS_MAX_TRAVEL) throw new LevelError(`${where} : course de ${PRESS_MIN_TRAVEL} à ${PRESS_MAX_TRAVEL} tuiles`);
+    if (hold < PRESS_MIN_HOLD || hold > PRESS_MAX_HOLD) throw new LevelError(`${where} : attente en haut de ${PRESS_MIN_HOLD} à ${PRESS_MAX_HOLD} pas (au moins 1 s)`);
+    if (fall < PRESS_MIN_FALL || fall > PRESS_MAX_FALL) throw new LevelError(`${where} : chute de ${PRESS_MIN_FALL} à ${PRESS_MAX_FALL} pas`);
+    if (rest < PRESS_MIN_REST || rest > PRESS_MAX_REST) throw new LevelError(`${where} : pause en bas de ${PRESS_MIN_REST} à ${PRESS_MAX_REST} pas`);
+    if (rise < PRESS_RISE_FACTOR * fall || rise > PRESS_MAX_RISE) throw new LevelError(`${where} : remontée de ${PRESS_RISE_FACTOR} fois la chute (${PRESS_RISE_FACTOR * fall}) à ${PRESS_MAX_RISE} pas`);
+    const cycle = hold + fall + rest + rise;
+    if (cycle > PRESS_MAX_CYCLE) throw new LevelError(`${where} : cycle de ${cycle} pas (au plus ${PRESS_MAX_CYCLE})`);
+    // La vitesse à la fin de la chute (dernier intervalle de `PRESS_FALL` : 127 / 4 096 de la course en `fall / 64` pas) reste sous `MAX_PRESS_STEP`.
+    if (idiv(travel * UNITS_PER_TILE * (PRESS_FALL[PLATFORM_EASE_STEPS]! - PRESS_FALL[PLATFORM_EASE_STEPS - 1]!) * PLATFORM_EASE_STEPS, PLATFORM_EASE_ONE * fall) + 1 > MAX_PRESS_STEP) {
+      throw new LevelError(`${where} : trop rapide (${travel} tuiles en ${fall} pas)`);
+    }
+    const pw = Number(w);
+    const col = Number(cm[1]);
+    const row = Number(cm[2]);
+    const c1 = col + pw - 1;
+    const r1 = row + travel + PRESS_HEIGHT_TILES - 1;
+    if (c1 >= width || r1 >= height) throw new LevelError(`${where} : sa course sort de la grille`);
+    const section = sections.findIndex((q) => col >= q.c0 && c1 <= q.c1);
+    if (section < 0) throw new LevelError(`${where} : la presse (colonnes ${col}-${c1}) n'est pas dans une seule section`);
+    for (let r = row; r <= r1; r++) {
+      for (let c = col; c <= c1; c++) if (tiles[r * width + c] !== TILE_EMPTY) throw new LevelError(`${where} : la tuile (${c}, ${r}) de sa course n'est pas vide`);
+    }
+    presses.push({ id, width: pw, col, row, travel, hold, fall, rest, rise, cycle, section });
+  }
+  const clashing = presses.find((p, k) => presses.some((q, j) => j < k && p.col <= q.col + q.width - 1 && q.col <= p.col + p.width - 1 && p.row <= q.row + q.travel + PRESS_HEIGHT_TILES - 1 && q.row <= p.row + p.travel + PRESS_HEIGHT_TILES - 1));
+  if (clashing) throw new LevelError(`Annexe : la course de la presse « ${clashing.id} » en recoupe une autre`);
+  return { simVersion, width, height, tiles, start: starts[0]!, finish: finishes[0]!, sections, saws, crumbles, crumbleIndex, checkpoints, blinks, blinkCycles, alts, winds, platforms, presses };
 }
 
 /**
@@ -659,6 +756,43 @@ export function platformPos(p: Platform, phase: number): Point {
   return { x, y: y + idiv((p.b.row - p.a.row) * T * e, PLATFORM_EASE_ONE) };
 }
 
+/**
+ * Lot 22 : la part (0 à 4 096) lue dans une table de 65 valeurs après `step` pas sur `span` : l'interpolation linéaire entière de `platformEase`, pour
+ * n'importe quelle table (`PRESS_FALL` pour la chute, `PLATFORM_EASE` pour la remontée).
+ */
+function tablePart(table: readonly number[], step: number, span: number): number {
+  const s = step * PLATFORM_EASE_STEPS;
+  const k = idiv(s, span);
+  if (k >= PLATFORM_EASE_STEPS) return PLATFORM_EASE_ONE;
+  const lo = table[k]!;
+  return lo + idiv((table[k + 1]! - lo) * (s - k * span), span);
+}
+
+/**
+ * Lot 22 : la part (0 à 4 096) de la course d'une presse déjà faite à la phase `phase` de sa section. Le cycle : `hold` pas en haut (0), `fall` pas de
+ * chute (`PRESS_FALL`), `rest` pas en bas (4 096), `rise` pas de remontée (`PLATFORM_EASE` à l'envers). Entière et pure ; une phase négative (v4+, l'affichage
+ * avant le départ) se lit dans le cycle.
+ */
+export function pressPart(p: Pick<Press, "hold" | "fall" | "rest" | "rise" | "cycle">, phase: number): number {
+  const q = cycleMod(phase, p.cycle);
+  if (q < p.hold) return 0;
+  if (q < p.hold + p.fall) return tablePart(PRESS_FALL, q - p.hold, p.fall);
+  if (q < p.hold + p.fall + p.rest) return PLATFORM_EASE_ONE;
+  return PLATFORM_EASE_ONE - tablePart(PLATFORM_EASE, q - p.hold - p.fall - p.rest, p.rise);
+}
+
+/** Lot 22 : le coin haut-gauche d'une presse à la phase `phase` de sa section (unités) : sa colonne, et sa rangée haute plus la part de sa course. */
+export function pressPos(p: Pick<Press, "col" | "row" | "travel" | "hold" | "fall" | "rest" | "rise" | "cycle">, phase: number): Point {
+  const T = UNITS_PER_TILE;
+  return { x: p.col * T, y: p.row * T + idiv(p.travel * T * pressPart(p, phase), PLATFORM_EASE_ONE) };
+}
+
+/** Lot 22 : le rectangle mortel d'une presse à la phase `phase` (unités) : toute la presse, largeur × `PRESS_HEIGHT_TILES`. */
+export function pressBox(p: Pick<Press, "col" | "row" | "travel" | "width" | "hold" | "fall" | "rest" | "rise" | "cycle">, phase: number): { x: number; y: number; w: number; h: number } {
+  const at = pressPos(p, phase);
+  return { x: at.x, y: at.y, w: p.width * UNITS_PER_TILE, h: PRESS_HEIGHT_TILES * UNITS_PER_TILE };
+}
+
 /** Lot 15 : plus grand commun diviseur (entiers positifs). */
 function gcd(a: number, b: number): number {
   while (b !== 0) {
@@ -671,7 +805,7 @@ function gcd(a: number, b: number): number {
 
 /**
  * Lot 15 : la **période** de la section `i` : le plus petit commun multiple des cycles de ce qui y tourne (scies mobiles, clignotants, rafales),
- * en pas (lot 20 : plateformes comprises) ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
+ * en pas (lot 20 : plateformes comprises ; lot 22 : presses) ; 0 si rien n'y tourne (l'horloge n'y change rien). Bornée par `MAX_PHASE` (au-delà : refusé, le générateur n'en produit pas).
  */
 export function sectionPeriod(level: Level, i: number): number {
   const cycles: number[] = [];
@@ -680,6 +814,7 @@ export function sectionPeriod(level: Level, i: number): number {
   if (blink) cycles.push(blink.cycle);
   for (const w of level.winds) if (w.section === i && w.gust) cycles.push(w.gust.cycle);
   for (const q of level.platforms) if (q.section === i) cycles.push(q.cycle);
+  for (const q of level.presses) if (q.section === i) cycles.push(q.cycle);
   let l = 0;
   for (const c of cycles) {
     l = l === 0 ? c : idiv(l * c, gcd(l, c));

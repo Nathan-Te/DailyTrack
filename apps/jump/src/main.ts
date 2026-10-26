@@ -38,6 +38,7 @@ import {
   singleClock,
   cycleMod,
   platformPositions,
+  pressBoxes,
   sectionClock,
   windActive,
   windPhase,
@@ -76,6 +77,8 @@ import { blockLooks } from "./blocks";
 import { windDirName, windLooks, windMix } from "./wind";
 import type { WindStats } from "./windArt";
 import type { PlatformStats } from "./platformArt";
+import type { PressStats } from "./pressArt";
+import { pressLook } from "./announce";
 import { JumpSession, formatTicks, readyTicks, type SessionEvent } from "./session";
 import { wantsTouch } from "./touch";
 import { mountTouchUi, type TouchUi } from "./touchUi";
@@ -248,6 +251,15 @@ export interface PlatformsDebug extends Partial<PlatformStats> {
   ride: number;
 }
 
+/** Lot 22 : `__jump.presses` — ce que le dessin a posé (position, annonce, empreinte, poussières, opacité) et l'état des presses dans la simulation. */
+export interface PressesDebug extends Partial<PressStats> {
+  count: number;
+  /** Par presse : le rectangle mortel dans la simulation (unités), la phase de sa section et l'annonce de la simulation (0 à 1). */
+  sim: { x: number; y: number; w: number; h: number }[];
+  phases: number[];
+  warn: number[];
+}
+
 export interface JumpDebug {
   /**
    * Lot P0 (plateforme) : l'identité commune lue dans ce navigateur (clés `cdj:*` de la plateforme, même stockage et même préfixe que
@@ -258,6 +270,8 @@ export interface JumpDebug {
   readonly blocks: BlocksDebug | null;
   /** Lot 20 : les plateformes mobiles (null : le niveau n'en a pas) : où elles sont dans la simulation et ce qui est dessiné (position, vitesse et sens du chevron, opacité). */
   readonly platforms: PlatformsDebug | null;
+  /** Lot 22 : les presses (null : le niveau n'en a pas). */
+  readonly presses: PressesDebug | null;
   /** Lot 13 : les courants d'air (null : le niveau n'en a pas). */
   readonly wind: WindDebug | null;
   phase: Phase;
@@ -2233,6 +2247,19 @@ const info: JumpDebug = {
       sim: platformPositions(level, state),
       phases: level.platforms.map((p) => sectionClock(level, state.sections, state.time, p.section)),
       ride: state.ride ?? -1,
+    };
+  },
+  /** Lot 22 : les presses (null sans elles) : ce que le dessin a posé, et l'état de la simulation. */
+  get presses() {
+    if (level.presses.length === 0) return null;
+    const state = session.state;
+    const phases = level.presses.map((p) => sectionClock(level, state.sections, state.time, p.section));
+    return {
+      ...(scene?.presses ?? {}),
+      count: level.presses.length,
+      sim: pressBoxes(level, state),
+      phases,
+      warn: level.presses.map((p, i) => pressLook(p, phases[i]!).warn),
     };
   },
   /** Lot 13 : les courants d'air (null sans eux). */

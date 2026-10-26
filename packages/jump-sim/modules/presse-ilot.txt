@@ -1,0 +1,32 @@
+id: presse-ilot
+intention: Sauter d'îlot en îlot au-dessus du vide, chacun surmonté d'une presse : se poser sur la seule tuile libre devant elle, attendre qu'elle remonte, passer et sauter avant qu'elle retombe.
+etiquettes: presse precision
+famille: presse-ilot
+theme: usine
+format: 3
+paliers: 9 9
+repeter: trou1 colonnes 3-3
+repeter: trou2 colonnes 8-8
+variante: trou1=3 trou2=4 a1=150 a2=180 r1=186 r2=156 pau=90
+variante: trou1=3 trou2=3 a1=120 a2=180 r1=156 r2=96 pau=90
+variante: trou1=3 trou2=3 a1=150 a2=120 r1=156 r2=186 pau=60
+variante: trou1=3 trou2=3 a1=120 a2=150 r1=186 r2=156 pau=60
+variante: trou1=3 trou2=4 a1=180 a2=180 r1=126 r2=126 pau=60
+variante: trou1=4 trou2=3 a1=240 a2=180 r1=96 r2=156 pau=90
+variante: trou1=4 trou2=3 a1=120 a2=120 r1=186 r2=186 pau=60
+grille:
+.................
+.................
+.................
+.................
+.................
+.................
+.................
+.................
+.................
+###.####.########
+###.####.########
+###.####.########
+
+presse un 2 5,3 4 {a1} 24 {pau} {r1}
+presse deux 2 10,3 4 {a2} 24 {pau} {r2}

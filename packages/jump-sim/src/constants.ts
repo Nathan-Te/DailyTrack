@@ -5,7 +5,7 @@ export const TICK_RATE = 120;
  * Version de la simulation du saut. À incrémenter dès que la physique, un élément de niveau ou un niveau d'essai change le résultat d'un essai
  * (même règle que `SIM_VERSION` de DailyTrack) : les rediffusions d'une autre version ne sont plus rejouables.
  */
-export const JUMP_SIM_VERSION = 5;
+export const JUMP_SIM_VERSION = 6;
 
 /**
  * Lot 15 : **la version de la simulation est inscrite dans chaque niveau** (`Level.simVersion`, ligne `version 4` du bloc annexe ; absente : 3).
@@ -29,6 +29,14 @@ export const SINGLE_CLOCK_VERSION = 4;
  * v5 ; les morceaux joués seuls restent en v3 (`MODULE_SIM_VERSION`), leurs plateformes suivent l'horloge de leur section comme les scies.
  */
 export const PLATFORM_VERSION = 5;
+/**
+ * Lot 22 : **version 6 = version 5 + presses** (`presse` du bloc annexe, `Level.presses`). Une presse est un bloc de 2 ou 3 tuiles de large qui descend
+ * et remonte à la verticale sur l'horloge de sa section (`f(t + phase)`, entière, par des tables entières) : attente en haut, chute rapide, pause en
+ * bas, remontée lente. **Toute la presse tue au contact** (on ne monte pas dessus, rien ne pousse ni n'écrase physiquement). Un niveau sans presse se
+ * joue **exactement** comme en v3, v4 ou v5 : les golden n'ont pas bougé. Les niveaux du jour depuis le générateur g16 sont en v6 ; les morceaux joués
+ * seuls restent en v3 (`MODULE_SIM_VERSION`), leurs presses suivent l'horloge de leur section comme les scies.
+ */
+export const PRESS_VERSION = 6;
 
 /**
  * Version du générateur de niveaux du jour. À incrémenter dès que le niveau d'une date change (morceaux, assemblage, règles, solveur) :
@@ -47,9 +55,10 @@ export const PLATFORM_VERSION = 5;
  * refusées et remplacées par des variantes plus lentes ; suite de secours de la nuit) ;
  * 14 depuis le lot 19 (variété : un morceau de base ne revient pas avant `VARIETY_DAYS` jours, par époques bornées, à la place du repos par
  * groupes ; tirages prouvés dans l'ordre de leur score estimé ; mutateurs de silhouette et 37 variantes ajoutées au bout de leurs morceaux) ;
- * 15 depuis le lot 20 (plateformes mobiles : niveaux en sim v5, morceaux à plateformes, règles de trajet).
+ * 15 depuis le lot 20 (plateformes mobiles : niveaux en sim v5, morceaux à plateformes, règles de trajet) ;
+ * 16 depuis le lot 22 (presses : niveaux en sim v6, morceaux de l'usine à presses, règles du générateur).
  */
-export const JUMP_GENERATOR_VERSION = 15;
+export const JUMP_GENERATOR_VERSION = 16;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;

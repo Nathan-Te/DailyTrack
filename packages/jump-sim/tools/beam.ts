@@ -145,13 +145,15 @@ export function sectionClocks(level: Level): number[][] {
     ...level.winds.filter((w) => w.section === i && w.gust !== null).map((w) => w.gust!.cycle),
     // Lot 20 : une plateforme mobile a son cycle (la phase d'une plateforme décide où elle sera au prochain saut).
     ...level.platforms.filter((q) => q.section === i).map((q) => q.cycle),
+    // Lot 22 : une presse a son cycle (la phase d'une presse décide du moment où il faut passer).
+    ...level.presses.filter((q) => q.section === i).map((q) => q.cycle),
   ]);
 }
 
 /** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales ; lot 15 : scies mobiles en v4). */
 export function isDynamicLevel(level: Level): boolean {
   // Lot 15 : à une seule horloge (v4), une scie mobile n'attend plus le joueur : il faut parfois attendre qu'elle passe.
-  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
+  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || level.presses.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
 }
 
 /** Les phases de chaque section modulo chacune de ses horloges (`shift` : grain, en puissance de 2). */
