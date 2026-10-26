@@ -131,6 +131,10 @@ le FXAA lisse ; (2) **plafond de 2,1 millions de pixels** — la seule forme qui
 douce (à juger en jeu) ; à 1080p et en dessous, rien ne change ; (3) **halo à la demi-résolution** (le quart ne gagne qu'≈ 1 ms et change le halo) ; (4) **le
 post-traitement dans Auto**. Le FXAA bon marché a ramené la passe de fin de 12,2 à 3,5 ms ; le halo ne coûte plus que 1 à 2,6 ms.
 
-### Rapport 3 — après (la forme du jeu)
+Un troisième passage du même banc (Nathan, 15 h 26) confirme : **toutes les formes sans multi-échantillonnage tiennent 60 images/s, pire image ≤ 17,2 ms**, Ville
+comprise (chaîne à la taille de l'écran : 11,9 ms) ; la Nuit à 2,1 Mpx : 11,0 ms sans multi-échantillonnage, 13,6 avec ×4 ; à 2,8 Mpx : 10,9 ms (14,1 au rapport 2).
+Avant (chaîne 47) : 31 à 34 images/s ce jour-là. **2,8 Mpx tiendrait aussi** (×0,87, plus net) avec un peu moins de marge la Nuit : à trancher par Nathan en jeu.
+
+### Rapport 4 — après (la forme du jeu, banc version 3)
 
 *À venir.*
