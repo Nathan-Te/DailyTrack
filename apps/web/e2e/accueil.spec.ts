@@ -277,41 +277,35 @@ test.describe("« Comment jouer »", () => {
 });
 
 test.describe("réglages", () => {
-  test("un changement de qualité s'applique tout de suite et survit au rechargement", async ({ browser }) => {
+  test("un seul réglage de qualité : « Qualité graphique » ; la fluidité est automatique, `?quality=` (essais) la fige", async ({ browser }) => {
     const ctx = await fresh(browser);
     const page = await ctx.newPage();
-    await open(page, "/?debug&api=demo"); // sans accueil : derrière l'accueil la scène est plafonnée à « moyenne »
+    await open(page, "/?debug&api=demo");
     await openSettings(page);
     await expect(page.locator("#settings")).toBeVisible();
     await expect(page.locator("#tab-graphics")).toHaveAttribute("aria-selected", "true");
-    await page.getByRole("radio", { name: "Basse", exact: true }).click();
+    // Un seul choix de qualité (plus de « Basse / Moyenne / Haute »).
+    await expect(page.getByRole("radiogroup", { name: "Qualité graphique" })).toBeVisible();
+    await expect(page.getByRole("radiogroup", { name: "Qualité", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("radio", { name: "Basse", exact: true })).toHaveCount(0);
+    // La fluidité est automatique : le régulateur n'est pas figé.
     let state = await ui(page);
-    expect(state.settingsValues.quality).toBe("low");
+    expect(state.qualityLocked).toBe(false);
+    // Un ancien réglage enregistré (« Basse ») est ignoré et disparaît à la prochaine écriture.
+    await page.evaluate(() => localStorage.setItem("cdj:settings", JSON.stringify({ version: 1, quality: "low" })));
+    await open(page, "/?debug&api=demo");
+    state = await ui(page);
+    expect(state.qualityLocked).toBe(false);
+    expect(state.quality).toBe(2);
+    await openSettings(page);
+    await page.getByRole("radio", { name: "Équilibrée", exact: true }).click();
+    expect(await page.evaluate(() => "quality" in JSON.parse(localStorage.getItem("cdj:settings")!))).toBe(false);
+    // `?quality=` (essais) fige la fluidité sans toucher au choix mémorisé.
+    await open(page, "/?debug&api=demo&quality=0");
+    state = await ui(page);
     expect(state.quality).toBe(0);
     expect(state.qualityLocked).toBe(true);
-    expect((await page.evaluate(() => window.__cdj.render)).quality).toBe(0); // le rendu a vraiment changé (décor, ombres, halos)
-    await page.getByRole("radio", { name: "Haute", exact: true }).click();
-    expect((await page.evaluate(() => window.__cdj.render)).quality).toBe(2);
-    await page.getByRole("radio", { name: "Moyenne", exact: true }).click();
-    const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!));
-    expect(saved).toMatchObject({ version: 1, quality: "medium" });
-    await page.reload();
-    await page.waitForFunction(() => window.__cdj?.ui);
-    state = await ui(page);
-    expect(state.settingsValues.quality).toBe("medium");
-    expect(state.quality).toBe(1);
-    expect((await page.evaluate(() => window.__cdj.render)).quality).toBe(1);
-    // `?quality=` (essais) l'emporte, sans toucher au choix mémorisé.
-    await open(page, "/?debug&api=demo&quality=2");
-    expect((await ui(page)).quality).toBe(2);
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem("cdj:settings")!).quality)).toBe("medium");
-    // Retour à l'automatique.
-    await open(page, "/?debug&api=demo");
-    await openSettings(page);
-    await page.getByRole("radio", { name: "Automatique" }).click();
-    state = await ui(page);
-    expect(state.settingsValues.quality).toBe("auto");
-    expect(state.qualityLocked).toBe(false);
+    expect(JSON.parse((await page.evaluate(() => localStorage.getItem("cdj:settings")))!).graphismes).toBe("equilibree");
     await ctx.close();
   });
 

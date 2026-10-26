@@ -2,7 +2,7 @@
 
 Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts/traductions.ts`) : ne pas le modifier à la main, modifier les catalogues puis relancer la commande (le test `packages/ui/test/traductions.test.ts` échoue si ce fichier n'est pas à jour). Pour Nathan : toutes les chaînes anglaises, la clé et le français en face, rangées par application puis par écran (le premier mot de la clé). Commencer par les **choix discutables** listés dans `docs/plateforme/lots/lot-I6-finitions.md`.
 
-1035 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
+1027 clés. Les paramètres (`{n}`, `{temps}`…) sont remplacés à l'affichage ; un pluriel s'écrit `one : …` · `other : …`. Les outils internes (`?debug&tune`, administration, galerie des morceaux) restent en français et ne sont pas ici ; les mentions légales anglaises sont une page statique (`apps/portail/legal/`), la page 404 porte les deux langues (`apps/portail/404.html`).
 
 ## Catalogue commun (`@cdj/ui` : composants, noms des jeux, médailles, erreurs du serveur, répliques de Jump)
 
@@ -797,24 +797,16 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.oui` | Oui | Yes |
 | `reglages.non` | Non | No |
 | `reglages.graphismes.nom` | Qualité graphique | Graphics quality |
-| `reglages.graphismes.aide` | Ne change rien à la course : seulement l'image. | Never changes the race: only the picture. |
+| `reglages.graphismes.aide` | Ne change rien à la course : seulement l'image. En Auto, le jeu allège seul l'image si ça ralentit. | Never changes the race: only the picture. On Auto, the game lightens the picture by itself if it starts to lag. |
 | `reglages.graphismes.auto` | Auto | Auto |
 | `reglages.graphismes.economie` | Économie | Battery saver |
 | `reglages.graphismes.equilibree` | Équilibrée | Balanced |
 | `reglages.graphismes.maximale` | Maximale | Maximum |
 | `reglages.graphismes.actuel` | Choisie pour cet appareil : {niveau}. | Picked for this device: {niveau}. |
 | `reglages.graphismes.attente` | Appliqué à la fin de la course. | Applied when the race ends. |
-| `reglages.qualite.nom` | Qualité | Quality |
-| `reglages.qualite.aide` | Automatique : le jeu baisse seul les détails s'il ramerait, et les remonte ensuite. | Automatic: the game lowers details by itself if it would lag, then raises them again. |
-| `reglages.qualite.auto` | Automatique | Automatic |
-| `reglages.qualite.low` | Basse | Low |
-| `reglages.qualite.medium` | Moyenne | Medium |
-| `reglages.qualite.high` | Haute | High |
-| `reglages.qualite.niveau.0` | basse | low |
-| `reglages.qualite.niveau.1` | moyenne | medium |
-| `reglages.qualite.niveau.2` | haute | high |
-| `reglages.qualite.actuelle` | Niveau actuel : {niveau}. | Current level: {niveau}. |
-| `reglages.qualite.adresse` | La qualité est imposée par l'adresse de la page (?quality=). | Quality is set by the page address (?quality=). |
+| `reglages.graphismes.detail.economie` | Décor simple, le plus fluide : pour les appareils modestes ou pour économiser la batterie. | Simple scenery, the smoothest: for modest devices or to save battery. |
+| `reglages.graphismes.detail.equilibree` | Décor soigné et vivant : drapeaux, foule, nuages, reflets. | Polished, lively scenery: flags, crowd, clouds, reflections. |
+| `reglages.graphismes.detail.maximale` | Tout ce que ton appareil supporte : ombres, brume, finitions. | Everything your device can handle: shadows, haze, finishing touches. |
 | `reglages.particules.nom` | Particules | Particles |
 | `reglages.particules.aide` | Fumée, poussière, étincelles, flammes, confettis. | Smoke, dust, sparks, flames, confetti. |
 | `reglages.traces.nom` | Traces de pneus | Tyre marks |
@@ -827,7 +819,7 @@ Fichier **produit** par `npm run traductions` (lot I6 de la plateforme, `scripts
 | `reglages.sensation.normal` | Normale | Normal |
 | `reglages.sensation.strong` | Forte | Strong |
 | `reglages.ombres.nom` | Ombres | Shadows |
-| `reglages.ombres.aide` | Ombres portées de la voiture (qualité moyenne et haute). | The car's cast shadow (medium and high quality). |
+| `reglages.ombres.aide` | Ombres portées de la voiture (le jeu les retire seul si ça ralentit). | The car's cast shadow (the game drops it by itself if it starts to lag). |
 | `reglages.son.muet.nom` | Muet | Mute |
 | `reglages.son.muet.aide` | La touche M fait de même. | The M key does the same. |
 | `reglages.son.avec` | Son | Sound |
