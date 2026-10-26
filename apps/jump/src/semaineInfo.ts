@@ -19,6 +19,14 @@ export interface SemainePlatform {
   to: [number, number];
 }
 
+/** Lot 22 : une presse de la miniature : colonne, rangée haute, largeur et course (tuiles). */
+export interface SemainePress {
+  col: number;
+  row: number;
+  width: number;
+  travel: number;
+}
+
 /** Un jour de la semaine, tel que l'outil le montre. */
 export interface SemaineDay {
   date: string;
@@ -30,6 +38,8 @@ export interface SemaineDay {
   saws: [number, number][];
   /** Lot 20 : les plateformes mobiles (largeur, extrémités : coin haut-gauche), pour la miniature ; absent des fichiers d'avant le lot. */
   platforms?: SemainePlatform[];
+  /** Lot 22 : les presses (colonne, rangée haute, largeur, course), pour la miniature ; absent des fichiers d'avant le lot. */
+  presses?: SemainePress[];
   pieces: SemainePiece[];
   fallback: boolean;
 }
@@ -45,8 +55,14 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
   const [grid = "", annex = ""] = d.ascii.split("\n\n");
   const saws: [number, number][] = [];
   const platforms: SemainePlatform[] = [];
+  const presses: SemainePress[] = [];
   for (const line of annex.split("\n")) {
     const words = line.trim().split(/\s+/);
+    if (words[0] === "presse") {
+      const at = /^(\d+),(\d+)$/.exec(words[3] ?? "");
+      if (at) presses.push({ col: Number(at[1]), row: Number(at[2]), width: Number(words[2]), travel: Number(words[4]) });
+      continue;
+    }
     if (words[0] === "plateforme") {
       const a = /^(\d+),(\d+)$/.exec(words[5] ?? "");
       const b = /^(\d+),(\d+)$/.exec(words[6] ?? "");
@@ -64,6 +80,7 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
     rows: grid.split("\n"),
     saws,
     platforms,
+    ...(presses.length > 0 ? { presses } : {}),
     pieces: d.pieces.map((p) => ({ id: p.id, variant: p.variant, col0: p.col0, col1: p.col1 })),
     fallback: d.fallback,
   };

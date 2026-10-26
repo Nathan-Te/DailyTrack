@@ -1,0 +1,32 @@
+id: presse-rythme
+intention: Enfiler trois presses qui battent au même rythme mais pas ensemble : passer une presse, attendre dans l'entre-deux que la suivante remonte, ne jamais s'arrêter dessous.
+etiquettes: presse precision
+famille: presse-rythme
+theme: usine
+format: 3
+paliers: 9 9
+variante: a1=240 a2=180 a3=240 r1=96 r2=156 r3=96 pau=120
+variante: a1=180 a2=120 a3=180 r1=126 r2=186 r3=126 pau=90
+variante: a1=120 a2=240 a3=150 r1=216 r2=96 r3=186 pau=120
+variante: a1=120 a2=120 a3=150 r1=216 r2=216 r3=186 pau=60
+variante: a1=240 a2=150 a3=150 r1=96 r2=186 r3=186 pau=120
+variante: a1=120 a2=150 a3=150 r1=126 r2=96 r3=96 pau=90
+variante: a1=120 a2=240 a3=150 r1=246 r2=126 r3=216 pau=90
+variante: a1=120 a2=150 a3=150 r1=126 r2=96 r3=96 pau=60
+grille:
+.#####################.
+.#####################.
+.#####################.
+.......................
+.......................
+.......................
+.......................
+.......................
+.......................
+#######################
+#######################
+#######################
+
+presse un 2 4,3 4 {a1} 24 {pau} {r1}
+presse deux 2 10,3 4 {a2} 24 {pau} {r2}
+presse trois 2 16,3 4 {a3} 24 {pau} {r3}

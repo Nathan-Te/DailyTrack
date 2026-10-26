@@ -1,4 +1,4 @@
-import { TICK_RATE, platformPos, type BlinkCycle, type Gust, type Platform } from "@cdj/jump-sim";
+import { TICK_RATE, cycleMod, pressPart, type BlinkCycle, type Gust, type Platform, type Press, platformPos } from "@cdj/jump-sim";
 
 // L'annonce des éléments à horloge (lot 18) — **affichage seul**, logique pure et testée. Principe : un élément à horloge **annonce chacun de ses
 // changements d'état**, assez tôt, par un signe **continu et simple** (une jauge qui descend ou qui monte, une vitesse qui décroît) ; jamais de
@@ -151,4 +151,33 @@ const axisOf = (p: Platform, at: { x: number; y: number }): number => (p.axis ==
 export function platformLook(p: Platform, phase: number): PlatformLook {
   const step = axisOf(p, platformPos(p, phase + 1)) - axisOf(p, platformPos(p, phase));
   return { dir: step > 0 ? 1 : step < 0 ? -1 : 0, speed: Math.min(1, Math.abs(step) / platformPeak(p)) };
+}
+
+// ——— Presses (lot 22) : le frémissement qui annonce la chute, la poussière de l'impact ———
+
+/** L'annonce d'une chute : 0,5 s (60 pas) avant que la presse parte. */
+export const PRESS_WARN_TICKS = TICK_RATE / 2;
+/** La poussière de l'impact : 0,5 s (60 pas) après que la presse a touché le sol. */
+export const PRESS_DUST_TICKS = TICK_RATE / 2;
+
+/** Ce que la presse annonce à la phase `phase` de sa section. */
+export interface PressLook {
+  /** L'annonce, de 0 (hors annonce) à 1 (au dernier pas de l'attente) : **exactement 0 jusqu'à `hold − PRESS_WARN_TICKS`**, strictement croissante ensuite, 1 au pas où la chute part. */
+  warn: number;
+  /** La part de la course déjà faite (0 à 1), celle de la simulation. */
+  part: number;
+  /** Pas écoulés depuis l'impact (0 au pas où la presse touche le sol), tant que la poussière se voit ; −1 sinon. */
+  dustAge: number;
+}
+
+/**
+ * Le signe continu d'une presse : un frémissement croissant pendant les 0,5 s qui précèdent la chute, et l'empreinte de l'impact qui s'assombrit avec lui —
+ * calculé sur la fonction de la simulation (`pressPart`), jamais sur l'affichage : la chute part au pas qui suit `warn` = 1. Rien ne clignote.
+ */
+export function pressLook(p: Press, phase: number): PressLook {
+  const q = cycleMod(phase, p.cycle);
+  const w = Math.min(PRESS_WARN_TICKS, p.hold);
+  const warn = q <= p.hold - w || q > p.hold ? 0 : (q - (p.hold - w)) / w;
+  const since = q - (p.hold + p.fall);
+  return { warn, part: pressPart(p, phase) / 4096, dustAge: since >= 0 && since < PRESS_DUST_TICKS ? since : -1 };
 }

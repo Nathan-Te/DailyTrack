@@ -26,8 +26,8 @@ Octets **compressés** (gzip) pour le JS, le CSS et le HTML ; octets des fichier
 | `track.qualiteMesure` | Track | mesure de la règle de qualité (`qualiteMesure`, à la demande ; lot 45) | 1 500 | — | 838 | 662 | `apps/web/e2e/perf.spec.ts` |
 | `track.garage` | Track | Garage à la demande (JS : `garage-*.js`, ce qu'il tire hors du premier chargement compris ; lot 41, ligne ajoutée au lot de plateforme « suites de Track 2 ») | 10 000 | — | 8 962 | 1 038 | `apps/web/e2e/perf.spec.ts` |
 | `track.polices` | Track | polices | 153 600 | 139 604 | 139 604 | 13 996 | `apps/web/e2e/perf.spec.ts` |
-| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 327 459 (lot R7 : +185; lot 21 : −50 043 depuis 377 317, marge 51 216 ; lot R8 : +760 ; lot 20 : +2 090, marge 1 933 ; lot 19 : −1 448, 374 469 avant la fusion du lot 49 de Track ; lot 18 : 375 908 ; lot 17 : 377 003) | 51 031 | `apps/jump/e2e/poids.spec.ts` |
-| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 560 | 2 440 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.jsCss` | Jump | JS + CSS du premier chargement | 378 490 | 375 298 | 332 291 (lot 22 : +4 832, les presses — simulation, règles, dessin, annonce —, marge 46 199 ; lot R7 : +185 ; lot 21 : −50 043 depuis 377 317, marge 51 216 ; lot R8 : +760 ; lot 20 : +2 090, marge 1 933 ; lot 19 : −1 448, 374 469 avant la fusion du lot 49 de Track ; lot 18 : 375 908 ; lot 17 : 377 003) | 46 199 | `apps/jump/e2e/poids.spec.ts` |
+| `jump.anglais` | Jump | catalogue anglais (à la demande) | 8 000 | 4 226 | 5 607 (lot 22 : mesuré, aucune clé ajoutée) | 2 393 | `apps/jump/e2e/poids.spec.ts` |
 | `jump.polices` | Jump | polices | 153 600 | 94 212 | 94 212 | 59 388 | `apps/jump/e2e/poids.spec.ts` |
 | `partage.image` | Site | chaque image de partage (1200 × 630, PNG) | 153 600 | — | 42 687 (portail ; Track 28 039, Jump 29 489) | 110 913 | `scripts/images-partage.mjs`, `apps/web/e2e/domaine.spec.ts` |
 

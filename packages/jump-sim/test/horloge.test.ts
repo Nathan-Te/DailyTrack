@@ -13,7 +13,9 @@ import {
   INPUT_RIGHT,
   JUMP_GENERATOR_VERSION,
   LevelError,
+  PLATFORM_GENERATOR,
   PLATFORM_VERSION,
+  PRESS_VERSION,
   SINGLE_CLOCK_GENERATOR,
   MODULES,
   PALIER_GUARD,
@@ -94,7 +96,7 @@ describe("lot 15 — lecture d'un niveau v4 (bloc annexe)", () => {
 
   it("une phase n'existe qu'en version 4 ; une version inconnue est refusée", () => {
     expect(() => parseLevel(V4_ASCII.replace("version 4\n", ""))).toThrow(LevelError);
-    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 6"))).toThrow(/version/);
+    expect(() => parseLevel(V4_ASCII.replace("version 4", "version 7"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 2"))).toThrow(/version/);
     expect(() => parseLevel(V4_ASCII.replace("version 4", "version 4\nversion 4"))).toThrow(/déjà/);
   });
@@ -165,12 +167,14 @@ describe("lot 15 — une seule horloge (v4)", () => {
 /** Les jours régénérés par le lot : de J+2 (la PR date du 21/10/2026) sur deux semaines. */
 const FIRST_REGENERATED = parseDay("2026-10-23")!;
 /** Lot 20 : la référence v4 (g14, `dailyLevel(jour, thème, 4)`) et le générateur en vigueur (g15, version 5) passent les mêmes vérifications. */
+// Lot 22 : la référence v5 (g15) passe aussi les mêmes vérifications ; le générateur en vigueur est g16 (version 6).
 const GENERATORS = [
   { version: SINGLE_CLOCK_VERSION, generator: SINGLE_CLOCK_GENERATOR },
-  { version: PLATFORM_VERSION, generator: JUMP_GENERATOR_VERSION },
+  { version: PLATFORM_VERSION, generator: PLATFORM_GENERATOR },
+  { version: PRESS_VERSION, generator: JUMP_GENERATOR_VERSION },
 ] as const;
 
-/** Les jours régénérés du générateur en vigueur (g15, version 5). */
+/** Les jours régénérés du générateur en vigueur (g16, version 6). */
 const REGENERATED: DailyLevel[] = Array.from({ length: 14 }, (_, k) => dailyLevel(FIRST_REGENERATED + k));
 
 for (const { version, generator } of GENERATORS) {
@@ -300,11 +304,13 @@ describe("lot 15 — les suites de secours v4 n'ont aucune variante refusée", (
 const GOLDEN_FILES = {
   [SINGLE_CLOCK_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v4.json"),
   [PLATFORM_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v5.json"),
+  [PRESS_VERSION]: join(import.meta.dirname, "fixtures/replay-golden-v6.json"),
 } as const;
 // Lot 18 (g13) : le 25/10 n'a plus de mort avant le premier point de passage parmi les 24 essais fictifs (la couverture « reprise au départ » du test
 // manquerait) ; le 31/10, une nuit aussi, en a 28. La couverture exigée ci-dessous ne change pas. Lot 19 (g14) : le 31/10 n'en a plus aucune ; le 09/11,
 // une nuit (46 blocs clignotants, 8 scies), en a 21 (mesuré sur les jours g14 du 27/10 au 19/11). Lot 20 : la journée de référence v5 est le 08/11 (une forêt à 2 plateformes : 63 reprises au départ, 40 sur un point parmi les essais fictifs).
-const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")! } as const;
+// Lot 22 : la journée de référence v6 est le 03/12 (une usine à deux presses, `presse-ilot` : des morts avant le premier point et sur un point parmi les 24 essais fictifs ; les 06/11 et 23/11 n'avaient pas de reprise au départ).
+const GOLDEN_DAYS = { [SINGLE_CLOCK_VERSION]: parseDay("2026-11-09")!, [PLATFORM_VERSION]: parseDay("2026-11-08")!, [PRESS_VERSION]: parseDay("2026-12-03")! } as const;
 
 interface GoldenV4 {
   jumpSimVersion: number;
@@ -315,7 +321,7 @@ interface GoldenV4 {
   replays: { name: string; code: string; hash: string; finished: boolean; ticks: number; time: number; deaths: number }[];
 }
 
-function goldenReplays(version: 4 | 5): GoldenV4["replays"] {
+function goldenReplays(version: 4 | 5 | 6): GoldenV4["replays"] {
   const L = dailyLevel(GOLDEN_DAYS[version], null, version);
   const codes: { name: string; code: string }[] = [{ name: "preuve de l'auteur", code: L.code }];
   const essais = demoAttempts(L.level, L.replay, 15, { attempts: 24, maxLives: 8 });
@@ -337,13 +343,13 @@ function goldenReplays(version: 4 | 5): GoldenV4["replays"] {
 }
 
 if (process.env.UPDATE_GOLDEN) {
-  const L = dailyLevel(GOLDEN_DAYS[PLATFORM_VERSION], null, PLATFORM_VERSION);
-  const golden: GoldenV4 = { jumpSimVersion: PLATFORM_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(PLATFORM_VERSION) };
-  writeFileSync(GOLDEN_FILES[PLATFORM_VERSION], JSON.stringify(golden, null, 2) + "\n");
+  const L = dailyLevel(GOLDEN_DAYS[PRESS_VERSION], null, PRESS_VERSION);
+  const golden: GoldenV4 = { jumpSimVersion: PRESS_VERSION, jumpGeneratorVersion: JUMP_GENERATOR_VERSION, level: L.hash, ascii: L.ascii, replays: goldenReplays(PRESS_VERSION) };
+  writeFileSync(GOLDEN_FILES[PRESS_VERSION], JSON.stringify(golden, null, 2) + "\n");
 }
 
-for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, JUMP_GENERATOR_VERSION]] as const) {
-  describe(`lot 15/20 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
+for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR], [PLATFORM_VERSION, PLATFORM_GENERATOR], [PRESS_VERSION, JUMP_GENERATOR_VERSION]] as const) {
+  describe(`lot 15/20/22 — déterminisme v${version} (fixtures/replay-golden-v${version}.json)`, () => {
     const golden = JSON.parse(readFileSync(GOLDEN_FILES[version], "utf8")) as GoldenV4;
     const day = GOLDEN_DAYS[version];
 
@@ -363,7 +369,7 @@ for (const [version, generator] of [[SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATO
       const L = dailyLevel(day, null, version);
       expect(replayFingerprint(L.level, L.replay)).toEqual(replayFingerprint(L.level, decodeReplay(L.code)));
       expect(() => replayAttempt(L.level, { ...L.replay, simVersion: SECTION_CLOCK_VERSION }, L.id)).toThrow(/version/);
-      expect(() => replayAttempt(L.level, { ...L.replay, simVersion: version === PLATFORM_VERSION ? SINGLE_CLOCK_VERSION : PLATFORM_VERSION }, L.id)).toThrow(/version/);
+      expect(() => replayAttempt(L.level, { ...L.replay, simVersion: version === SINGLE_CLOCK_VERSION ? PLATFORM_VERSION : SINGLE_CLOCK_VERSION }, L.id)).toThrow(/version/);
     });
   });
 }

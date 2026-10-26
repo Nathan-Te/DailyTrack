@@ -1,0 +1,31 @@
+id: presse-promenade
+intention: Longer deux presses lentes en sautant trois marches espacées : prendre le rythme de l'usine, attendre au pied de chaque presse qu'elle remonte, sans se presser.
+etiquettes: respiration presse
+famille: presse-promenade
+theme: usine
+format: 3
+paliers: 9 9
+variante: a1=300 a2=240 r1=150 r2=210
+variante: a1=240 a2=300 r1=210 r2=150
+variante: a1=360 a2=300 r1=150 r2=210
+variante: a1=300 a2=300 r1=150 r2=150
+variante: a1=360 a2=360 r1=90 r2=90
+variante: a1=300 a2=360 r1=210 r2=150
+variante: a1=360 a2=240 r1=90 r2=210
+variante: a1=180 a2=240 r1=210 r2=150
+grille:
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+...#..........#.........#.....
+##############################
+##############################
+##############################
+
+presse une 2 8,3 4 {a1} 30 60 {r1}
+presse deux 2 19,3 4 {a2} 30 60 {r2}

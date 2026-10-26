@@ -63,6 +63,14 @@ function miniature(day: SemaineDay, repeated: ReadonlySet<string>): HTMLCanvasEl
     g.globalAlpha = 1;
     g.fillRect(p.from[0] * TILE, p.from[1] * TILE, p.width * TILE, TILE);
   }
+  // Lot 22 : une presse : sa course à demi, sa position haute (le bloc de 2 rangées) en danger.
+  for (const p of day.presses ?? []) {
+    g.globalAlpha = 0.4;
+    g.fillStyle = c.danger;
+    g.fillRect(p.col * TILE, p.row * TILE, p.width * TILE, (p.travel + 2) * TILE);
+    g.globalAlpha = 1;
+    g.fillRect(p.col * TILE, p.row * TILE, p.width * TILE, 2 * TILE);
+  }
   g.fillStyle = c.danger;
   for (const [col, r] of day.saws) g.fillRect(col * TILE - 1, r * TILE - 1, TILE + 2, TILE + 2);
   // Sous la miniature : les colonnes des morceaux qui reviennent dans la semaine.
@@ -94,7 +102,7 @@ export function mountSemaine(options: UrlChoices): SemaineView {
     el(
       "p",
       "lead",
-      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein).`,
+      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein).`,
     ),
   );
   const status = el("p", "count", "Calcul des niveaux…");
