@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CHOIX_GRAPHISMES, NIVEAU_DU_CHOIX, VALIDITE_MS, depart, lireMemoire, memoireValable, palierAuChargement, passesPermises, type Appareil, type MemoireQualite } from "../src/qualite";
+import { CHOIX_GRAPHISMES, NIVEAU_DU_CHOIX, VALIDITE_MS, depart, lireMemoire, memoireValable, palierAuChargement, passesPermises, postVoulu, type Appareil, type MemoireQualite } from "../src/qualite";
 import { DESCENDRE_MS, ECARTEES, INTERVALLES, MONTER_MS, MesureImages, SerieMesures, apresMesure, frequenceEcran, mediane, memoireNeuve, seuils, verdict } from "../src/qualiteMesure";
 import { DEFAULT_SETTINGS, parseSettings } from "../src/settings";
 
@@ -42,6 +42,17 @@ describe("lot 45 : points de départ et garde-fous", () => {
     expect(passesPermises({ ...ORDINATEUR, memoire: undefined })).toBe(true); // non annoncé (Firefox, Safari) : la mesure décidera
     expect(passesPermises(TELEPHONE)).toBe(false);
     expect(passesPermises(LOGICIEL)).toBe(false);
+  });
+
+  it("lot 47b : le post-traitement seulement sur « Maximale » (jamais en Auto, même au palier 3 mesuré ou mémorisé)", () => {
+    expect(postVoulu("auto", ORDINATEUR)).toBe(false);
+    expect(postVoulu("equilibree", ORDINATEUR)).toBe(false);
+    expect(postVoulu("maximale", ORDINATEUR)).toBe(true);
+    expect(postVoulu("maximale", { ...ORDINATEUR, demiFlottants: false })).toBe(false);
+    expect(postVoulu("maximale", TELEPHONE)).toBe(false);
+    // Une mémoire ancienne (palier 3 en Auto) redonne le palier 3, sans rien de plus.
+    const m: MemoireQualite = { palier: 3, date: 1000, mediane: 10, pixels: 1e6, echecs: 0, plafond: null, durable: false };
+    expect(palierAuChargement(ORDINATEUR, m, 2000, 1e6).palier).toBe(3);
   });
 
   it("le réglage : Auto (la règle), Économie 1, Équilibrée 2, Maximale 3 ; mémorisé dans cdj:settings, Auto par défaut", () => {

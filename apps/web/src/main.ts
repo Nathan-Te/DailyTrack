@@ -123,7 +123,7 @@ import { MEDAL_ICON, shareLine, shareUrl, type ShareResult } from "./share";
 import { RunSession } from "./session";
 import { LOOKS, type TrackScene } from "./trackMesh";
 import { GROUPE_VIE_CIEL, PALIER_DEFAUT, PAS_DU_JEU, PAS_DU_PALIER, brancherComposeur, buildTrackScene, chargerPas, composer, creerReconstructeur, palierBranche, pasVoulus, type Palier } from "./scene/socle";
-import { NIVEAU_DU_CHOIX, QUALITE_KEY, lireMemoire, palierAuChargement, passesPermises, type Appareil, type MemoireQualite, type NiveauQualite } from "./qualite";
+import { NIVEAU_DU_CHOIX, QUALITE_KEY, lireMemoire, palierAuChargement, passesPermises, postVoulu, type Appareil, type ChoixGraphismes, type MemoireQualite, type NiveauQualite } from "./qualite";
 import type { SerieMesures } from "./qualiteMesure";
 import type { PostJeu, RaisonCoupure } from "./scene/postJeu";
 import { chargerDecor, decorPret, instantsDecor } from "./scene/decor";
@@ -302,8 +302,8 @@ let memoireQualite = lireMemoireQualite();
 const choixDepart = loadSettings().graphismes;
 const autoDepart = palierAuChargement(appareil, memoireQualite, Date.now(), pixelsEcran());
 /** La scène d'un palier de qualité : le palier 2 prend la vie et le ciel (décision du 22/10/2026 : sans passe plein écran). */
-const sceneDuNiveau = (n: NiveauQualite): { palier: Palier; plus: readonly string[] } => (n === 1 ? { palier: "P1", plus: [] } : n === 2 ? { palier: "P2", plus: GROUPE_VIE_CIEL } : { palier: "P3", plus: postPermis() ? ["post"] : [] });
-const sceneQualite = sceneDuNiveau(NIVEAU_DU_CHOIX[choixDepart] ?? autoDepart.palier);
+const sceneDuNiveau = (n: NiveauQualite, choix: ChoixGraphismes = settings.graphismes): { palier: Palier; plus: readonly string[] } => (n === 1 ? { palier: "P1", plus: [] } : n === 2 ? { palier: "P2", plus: GROUPE_VIE_CIEL } : { palier: "P3", plus: postPermis() && postVoulu(choix, appareil) ? ["post"] : [] });
+const sceneQualite = sceneDuNiveau(NIVEAU_DU_CHOIX[choixDepart] ?? autoDepart.palier, choixDepart);
 /** La mesure de l'accueil est à faire (Auto, rien d'imposé par l'adresse) ; la série de mesures (`qualiteMesure.ts`, chargé à ce moment-là). */
 let aMesurer = !sceneVoulue && choixDepart === "auto" && autoDepart.mesurer;
 let serieQualite: SerieMesures | null | undefined = null;
