@@ -23,6 +23,9 @@ import {
 // Le catalogue des morceaux vu par le jeu (lot 4), **logique pure** (testée sans DOM) : l'ordre de la galerie, le morceau suivant, la
 // solution à regarder et le temps de référence affiché à l'arrivée.
 
+/** Lot 21 : `buildModule` passe par ce fichier (chargé à la demande par `main.ts`), pour que la page du niveau du jour n'importe pas le catalogue. */
+export { buildModule };
+
 /** Colonnes du couloir de lancement ajoutées devant le palier d'entrée quand on joue un morceau en élan. */
 export const LAUNCH_TILES = 5;
 

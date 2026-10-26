@@ -58,7 +58,7 @@ import {
 } from "../src/index";
 import { MODULE_TEXTS } from "../src/catalog";
 import { MODULE_SOLUTIONS } from "../src/modules";
-import { catalogOf, catalogSource, embeddedText, intentionsPath, intentionsSource, readModules, readSolutions } from "../tools/files";
+import { catalogOf, catalogSource, embeddedText, intentionsPath, intentionsSource, moduleIndexPath, moduleIndexSource, readModules, readSolutions } from "../tools/files";
 import { ELAN_FLAT_MAX, FLAT_MAX, flatLimit, flatsOf, longestFlat } from "../tools/plats";
 
 /** Lot 15 : les solutions complètes (gigue, raccord, plus rapide…), que le jeu n'embarque plus. */
@@ -282,6 +282,8 @@ describe("le catalogue", () => {
     expect(MODULE_TEXTS, `un fichier de morceau a changé : ${STALE}`).toEqual(texts.map(embeddedText));
     for (const t of MODULE_TEXTS) expect(t).not.toMatch(/^intention:/m);
     expect(readFileSync(intentionsPath(), "utf8"), `intentions.json périmé : ${STALE}`).toBe(intentionsSource(texts));
+    // Lot 21 : l'index léger lu par `apps/jump/src/urlOptions.ts` (identifiant et nombre de variantes), pour ne pas charger le catalogue à la lecture de l'adresse.
+    expect(readFileSync(moduleIndexPath(), "utf8"), `apps/jump/src/moduleIndex.ts périmé : ${STALE}`).toBe(moduleIndexSource(texts));
     const stored = JSON.parse(readFileSync(join(DIR, "solutions.json"), "utf8")) as ModuleSolutionsFile;
     expect(MODULE_SOLUTIONS, STALE).toEqual(catalogOf(stored));
     expect(readFileSync(join(import.meta.dirname, "../src/catalog.ts"), "utf8"), STALE).toBe(catalogSource(texts, stored));

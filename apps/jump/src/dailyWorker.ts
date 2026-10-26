@@ -1,5 +1,6 @@
 import type { JumpThemeName } from "@cdj/jump-sim";
-import { generatePayload, type DailyPayload } from "./dailyWork";
+import { generatePayload } from "./dailyGen";
+import type { DailyPayload } from "./dailyWork";
 
 // Worker de module (lot 7b) : génère le niveau d'une date hors du fil principal. Un seul message dans chaque sens ; le calcul est celui de
 // `dailyLevel` (le résultat est identique à l'appel direct, testé), seule sa charge JSON revient.

@@ -4,8 +4,7 @@ import { tileOf } from "./collide";
 import { idiv } from "./idiv";
 import { cycleMod, sectionPeriod, type Level } from "./level";
 import { DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_MASK, PLAYER_WIDTH } from "./player";
-import { PALIER_LENGTH } from "./modules";
-import { SINGLE_CLOCK_VERSION } from "./constants";
+import { PALIER_LENGTH, SINGLE_CLOCK_VERSION } from "./constants";
 import { AttemptRecorder, fromRuns, replayStartState, type JumpReplay, type RecordedAttempt } from "./replay";
 
 // Essais fictifs (lot 3) : des **perturbations à graine fixe** d'une solution, jouées par la vraie simulation et enregistrées comme des
@@ -22,11 +21,27 @@ import { AttemptRecorder, fromRuns, replayStartState, type JumpReplay, type Reco
 // fictif **attend**, comme un vrai joueur qui regarde les scies, que l'horloge retrouve la phase où la solution passait (`alignWait`), puis la
 // reprend. Les niveaux v3 ne changent pas (mêmes essais, mêmes références).
 
+/**
+ * Lot 21 : la reprise d'un joueur fictif après une mort, fournie par l'appelant (`repriseParPhase`, `demoPhases.ts` : elle a besoin du catalogue des morceaux,
+ * que ce fichier — lu par le jeu au premier chargement — n'importe pas). Rend l'attente sur le point de passage (pas, sans commande), les commandes du morceau
+ * qui commence là (jouées après l'attente) et le pas de la preuve où continuer ensuite, ou `null` : la reprise d'avant (rejouer la preuve).
+ */
+export interface DemoReprise {
+  resume(level: Level, state: Readonly<AttemptState>): { wait: number; inputs: readonly number[]; cursor: number } | null;
+}
+
 export interface DemoOptions {
   /** Nombre d'essais. */
   attempts: number;
   /** Vies au plus par essai (au-delà : abandon à la reprise). */
   maxLives?: number;
+  /**
+   * Lot 21 : les joueurs fictifs qui **reprennent bien**. Sans cette option : exactement les essais d'avant (les références `replay-golden*.json`). Avec elle (une
+   * `DemoReprise`, ex. `repriseParPhase(niveau)`) : (1) une faute déjà jouée n'est pas rejouée à la vie suivante (elle recommençait à la même place jusqu'à
+   * l'abandon) ; (2) après une mort sur un point de passage, le joueur attend sur le palier la phase de l'horloge voulue puis joue la solution **du morceau qui
+   * commence là**, valable depuis l'arrêt, au lieu de rejouer la preuve (qui l'a franchi en courant) — voir `demoPhases.ts`.
+   */
+  reprise?: DemoReprise | undefined;
 }
 
 /** Pas sans progrès (colonne la plus à droite atteinte) avant d'abandonner un essai. */
@@ -130,10 +145,14 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
     let far = centerCol(s);
     let since = 0;
     let wait = 0;
+    // Lot 21 : les commandes d'un morceau repris depuis l'arrêt (jouées après l'attente, avant de reprendre la preuve à `cursor`).
+    let pending: readonly number[] = [];
+    let played = 0;
     let done: RecordedAttempt | null = null;
     for (;;) {
-      let bits = wait > 0 ? 0 : (plan.inputs[cursor] ?? 0);
-      if (wait === 0) {
+      const inPending = wait === 0 && played < pending.length;
+      let bits = wait > 0 ? 0 : inPending ? pending[played]! : (plan.inputs[cursor] ?? 0);
+      if (wait === 0 && !inPending) {
         for (const [a, b, c] of cuts) {
           if (cursor < a || cursor >= b) continue;
           // Lot 16 (v4) : une faute ne fait jamais sauter sur le palier d'un point de passage : de là part la voie lente d'une portion dure
@@ -149,7 +168,8 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
         wait--;
         continue;
       }
-      cursor++;
+      if (inPending) played++;
+      else cursor++;
       const col = centerCol(s);
       if (col > far) {
         far = col;
@@ -163,9 +183,20 @@ export function demoAttempts(level: Level, solution: JumpReplay, seed: number, o
           done = recorder.abandon();
           break;
         }
-        cursor = plan.resume[s.checkpoint] ?? 0;
-        if (cursor < 0) cursor = 0;
-        if (level.simVersion >= SINGLE_CLOCK_VERSION) wait = alignWait(level, s, cursor);
+        // Lot 21 : une faute déjà jouée (commencée avant la mort) est passée ; la rejouer à chaque vie tuait le joueur à la même place jusqu'à l'abandon.
+        if (options.reprise) for (let i = cuts.length - 1; i >= 0; i--) if (cuts[i]![0] < cursor) cuts.splice(i, 1);
+        pending = [];
+        played = 0;
+        const again = options.reprise && calm ? options.reprise.resume(level, s) : null;
+        if (again) {
+          pending = again.inputs;
+          cursor = again.cursor;
+          wait = again.wait;
+        } else {
+          cursor = plan.resume[s.checkpoint] ?? 0;
+          if (cursor < 0) cursor = 0;
+          if (level.simVersion >= SINGLE_CLOCK_VERSION) wait = alignWait(level, s, cursor);
+        }
         since = 0;
         far = centerCol(s);
         if (rng.chance(70)) cuts.push(fault(cursor, 360));

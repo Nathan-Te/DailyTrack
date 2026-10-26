@@ -1,5 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
+import { parseDay } from "@cdj/core";
+import { dailyLevel } from "@cdj/jump-sim";
 import { atInstant } from "./clock";
 import { FROZEN_DATES, generatedDay, noonOf } from "./jours";
 import { hasWebGL } from "./phone";
@@ -21,6 +23,7 @@ const GENERATOR = (JSON.parse(readFileSync(new URL("../../../packages/jump-sim/t
 interface Load {
   source: string;
   generated: boolean;
+  catalog: string;
   cacheMiss: string;
   totalMs: number;
   blockedMs: number;
@@ -190,5 +193,99 @@ test("?seed=…&solution finit toujours au temps de l'auteur, que le niveau vien
       const end = await page.evaluate(() => (window as unknown as { __jump: Jump }).__jump.attempt);
       expect(end).toMatchObject({ status: "arrivé", time: d.authorTicks, deaths: 0 });
     }
+  });
+});
+
+// Lot 21 : le catalogue des morceaux et le générateur sont chargés à la demande. Un texte du catalogue embarqué et un message du générateur servent de
+// marques : on lit le corps de **tout** JavaScript que la page (et son fil de travail) reçoit.
+const CATALOGUE = "etiquettes: scie";
+const GENERATEUR = "un tirage mieux estimé est valide";
+
+/** Garde, pour chaque fichier JavaScript reçu (page et fil de travail), son adresse et s'il porte le catalogue ou le générateur. */
+function surveillerJs(page: Page): { catalogue: string[]; generateur: string[]; recus: string[] } {
+  const vu = { catalogue: [] as string[], generateur: [] as string[], recus: [] as string[] };
+  page.context().on("response", async (r) => {
+    if (!/\.js(\?|$)/.test(r.url())) return;
+    vu.recus.push(r.url());
+    const corps = await r.text().catch(() => "");
+    if (corps.includes(CATALOGUE)) vu.catalogue.push(r.url());
+    if (corps.includes(GENERATEUR)) vu.generateur.push(r.url());
+  });
+  return vu;
+}
+const overlay = (page: Page) => page.evaluate(() => document.getElementById("debug")!.textContent ?? "");
+
+test("un jour figé : ni le catalogue ni le générateur ne sont reçus, et ?debug le dit", async ({ browser }) => {
+  const frozen = FROZEN_DATES.at(-1)!;
+  await atInstant(browser, noonOf(frozen), async (page) => {
+    const vu = surveillerJs(page);
+    await page.goto("/?debug&accueil=0");
+    if (!(await hasWebGL(page))) {
+      test.skip(true, SKIP);
+      return;
+    }
+    await ready(page);
+    const d = await daily(page);
+    expect(d.load).toMatchObject({ source: "fige", generated: false, catalog: "non", cacheMiss: "" });
+    expect(vu.recus.length, "du JavaScript a bien été reçu").toBeGreaterThan(3);
+    expect(vu.catalogue, "le catalogue des morceaux n'est pas reçu").toEqual([]);
+    expect(vu.generateur, "le générateur n'est pas reçu").toEqual([]);
+    expect(vu.recus.filter((u) => /dailyWorker/.test(u)), "le fil de travail n'est pas demandé").toEqual([]);
+    await expect.poll(() => overlay(page)).toContain("origine   fichier figé, catalogue non chargé");
+  });
+});
+
+test("un jour sans fichier figé : le catalogue et le générateur sont reçus à la demande, par le fil de travail ; ?debug le dit", async ({ browser }) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
+    const vu = surveillerJs(page);
+    await page.goto("/?debug&accueil=0");
+    if (!(await hasWebGL(page))) {
+      test.skip(true, SKIP);
+      return;
+    }
+    await ready(page);
+    expect((await daily(page)).load).toMatchObject({ source: "worker", generated: true, catalog: "worker" });
+    expect(vu.catalogue.length, "le catalogue arrive").toBe(1);
+    expect(vu.generateur.length, "le générateur arrive").toBe(1);
+    await expect.poll(() => overlay(page)).toContain("origine   généré (worker), catalogue chargé (worker)");
+  });
+});
+
+test("sans worker : le générateur est chargé à la demande sur le fil principal, même niveau ; ?debug le dit", async ({ browser }) => {
+  await atInstant(browser, GENERATED_NOW, async (page) => {
+    const vu = surveillerJs(page);
+    await page.addInitScript(() => void delete (window as unknown as { Worker?: unknown }).Worker);
+    await page.goto("/?debug&accueil=0");
+    if (!(await hasWebGL(page))) {
+      test.skip(true, SKIP);
+      return;
+    }
+    await ready(page);
+    const d = await daily(page);
+    expect(d.load).toMatchObject({ source: "principal", generated: true, catalog: "principal" });
+    expect(d.id).toBe(`jour-${GENERATED}-g${GENERATOR}`);
+    expect(vu.catalogue.length).toBe(1);
+    expect(vu.generateur.length).toBe(1);
+    await expect.poll(() => overlay(page)).toContain("origine   généré (fil principal), catalogue chargé");
+  });
+});
+
+test("le fichier figé n'arrive pas : le jeu génère le niveau (repli fiable), celui du générateur en vigueur", async ({ browser }) => {
+  const frozen = FROZEN_DATES.at(-1)!;
+  await atInstant(browser, noonOf(frozen), async (page) => {
+    await page.route(/\/levels\/\d{4}-\d{2}-\d{2}\.json/, (route) => route.abort());
+    await page.goto("/?debug&accueil=0");
+    if (!(await hasWebGL(page))) {
+      test.skip(true, SKIP);
+      return;
+    }
+    await ready(page);
+    const d = await daily(page);
+    expect(d.load).toMatchObject({ source: "worker", generated: true, catalog: "worker", frozenMiss: "fichier absent" });
+    // Le même niveau que celui du générateur appelé directement (un jour figé sous un ancien générateur, lui, garde le niveau de son fichier : ce n'est pas le cas ici).
+    const direct = dailyLevel(parseDay(frozen)!);
+    expect(d.id).toBe(direct.id);
+    expect(d.hash).toBe(direct.hash);
+    expect(d.authorTicks).toBe(direct.authorTicks);
   });
 });

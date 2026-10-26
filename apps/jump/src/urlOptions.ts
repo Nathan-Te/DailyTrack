@@ -3,7 +3,8 @@
 // pour construire ses liens, comme `adminLogic.ts` de DailyTrack.
 
 import { parseDay } from "@cdj/core";
-import { MODULES, MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
+import { MODULE_ENTRIES, type ModuleEntry } from "@cdj/jump-sim";
+import { MODULE_INDEX } from "./moduleIndex";
 import { THEME_NAMES, themeByName, type ThemeName } from "./themes";
 
 export interface UrlOption {
@@ -95,7 +96,7 @@ export const URL_OPTIONS: readonly UrlOption[] = [
   {
     name: "module",
     description: "Joue un morceau du catalogue (lot 4) au lieu d'un scénario : `?module=cheminee`. Un identifiant inconnu ouvre la galerie.",
-    values: MODULES.map((m) => m.id),
+    values: MODULE_INDEX.map(([id]) => id),
   },
   {
     name: "variante",
@@ -265,11 +266,12 @@ export function readUrlOptions(search: string): UrlChoices {
 
 function moduleOf(params: URLSearchParams): UrlChoices["module"] {
   const id = params.get("module");
-  const def = MODULES.find((m) => m.id === id);
+  // Lot 21 : l'index léger (identifiant, nombre de variantes), pas le catalogue : lire l'adresse ne charge aucun morceau.
+  const def = MODULE_INDEX.find(([known]) => known === id);
   if (!def) return null;
   const v = Number(params.get("variante") ?? "0");
-  const variant = Number.isInteger(v) && v >= 0 && v < def.variants.length ? v : 0;
-  return { id: def.id, variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
+  const variant = Number.isInteger(v) && v >= 0 && v < def[1] ? v : 0;
+  return { id: def[0], variant, entry: params.get("entree") === "elan" ? "elan" : "arret", solution: params.has("solution") };
 }
 
 /**

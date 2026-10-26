@@ -3,7 +3,7 @@ import { dailyLevelId, jumpThemeForDay } from "@cdj/jump-sim";
 import { formatDay } from "@cdj/core";
 import { dropCache, readCache, writeCache } from "./dailyCache";
 import { thawLevel } from "./frozen";
-import { fromPayload, generatePayload, isPayload, type DailyPayload } from "./dailyWork";
+import { fromPayload, isPayload, type DailyPayload } from "./dailyWork";
 import type { KeyValue } from "./memory";
 import type { WorkerReply, WorkerRequest } from "./dailyWorker";
 
@@ -17,6 +17,9 @@ import type { WorkerReply, WorkerRequest } from "./dailyWorker";
 // Lot 11 : un **thème forcé** (`options.theme` différent de celui de la date : un essai, identifiant `…-t<thème>`) ne lit jamais un niveau figé
 // (les fichiers de `public/levels/` sont ceux des thèmes naturels) ; le cache le range sous son identifiant, le worker le génère.
 // Le résultat est gardé dans le cache. Rien ici ne touche à la simulation : le niveau est celui de `dailyLevel`, à l'empreinte près.
+// Lot 21 : **le catalogue des morceaux et le générateur ne sont pas dans le premier chargement** (`dailyGen.ts`). Avec un niveau figé (ou un cache
+// valide) la partie ne les charge jamais ; ils ne le sont qu'à la demande — par le worker (`dailyWorker.ts`) ou, à son défaut, par le repli sur le fil
+// principal (`import("./dailyGen")`). `DailyLoad.catalog` dit où ils ont été chargés (« non », « worker », « principal »).
 
 /** D'où vient le niveau chargé (`fige` : un niveau figé, lot 10). */
 export type DailySource = "fige" | "cache" | "worker" | "principal";
@@ -30,10 +33,15 @@ export interface DailyLoad {
   cacheMiss: string;
   /** Lot 10 : pourquoi un niveau figé annoncé pour cette date a été refusé (fichier absent, autre physique, preuve…), sinon "". */
   frozenMiss: string;
+  /** Lot 21 : où le catalogue et le générateur ont été chargés (`non` pour un niveau figé ou un cache valide). */
+  catalog: CatalogWhere;
   /** Durée totale du chargement (ms) et temps pendant lequel le **fil principal** a travaillé (génération en repli, sinon rejeu de la preuve et reconstruction). */
   totalMs: number;
   blockedMs: number;
 }
+
+/** Lot 21 : où le catalogue des morceaux et le générateur ont été chargés pendant ce chargement (`non` : nulle part, le niveau n'a rien demandé de tel). */
+export type CatalogWhere = "non" | "worker" | "principal";
 
 /** Un worker vu de loin (de quoi passer un faux dans les tests). */
 export interface WorkerLike {
@@ -54,6 +62,8 @@ export interface LoaderOptions {
   showProgress?: (on: boolean) => void;
   /** Laisse le navigateur dessiner avant un calcul long du fil principal. */
   yieldToPaint?: () => Promise<void>;
+  /** Lot 21 : la génération sur le fil principal (repli), chargée à la demande ; par défaut `import("./dailyGen")`. Un test y met la sienne. */
+  generate?: ((day: number, theme: JumpThemeName | null) => Promise<DailyPayload>) | undefined;
   /** Horloge (ms) ; `performance.now` par défaut. */
   now?: () => number;
   /** Délai au-delà duquel on abandonne le worker (ms). */
@@ -65,6 +75,9 @@ export interface LoaderOptions {
 }
 
 export const WORKER_TIMEOUT_MS = 20_000;
+
+/** Le repli : le générateur est chargé à la demande (un fichier à part) puis appelé sur le fil principal. */
+const defaultGenerate = async (day: number, theme: JumpThemeName | null): Promise<DailyPayload> => (await import("./dailyGen")).generatePayload(day, theme);
 
 /** Demande la charge au worker ; rejette si le worker échoue ou ne répond pas. */
 function viaWorker(worker: WorkerLike, day: number, timeoutMs: number, theme: JumpThemeName | null): Promise<DailyPayload> {
@@ -111,7 +124,7 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
       const t = now();
       const level = thawLevel(raw, day);
       blocked += now() - t;
-      if (typeof level !== "string") return { level, source: "fige", generated: false, cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
+      if (typeof level !== "string") return { level, source: "fige", generated: false, catalog: "non", cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
       frozenMiss = level;
     }
   }
@@ -122,7 +135,7 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
     const t = now();
     const level = fromPayload(cached, day, { proof: true, theme: forced });
     blocked += now() - t;
-    if (typeof level !== "string") return { level, source: "cache", generated: false, cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
+    if (typeof level !== "string") return { level, source: "cache", generated: false, catalog: "non", cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
     cacheMiss = level;
     dropCache(options.store, id);
   }
@@ -149,8 +162,10 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
     if (!payload) {
       source = "principal";
       await options.yieldToPaint?.();
+      // Lot 21 : le générateur n'est chargé (puis calculé) qu'ici ; le chargement du fichier n'est pas du calcul du fil principal, mais le calcul l'est.
+      const generate = options.generate ?? defaultGenerate;
       const t = now();
-      payload = generatePayload(day, forced);
+      payload = await generate(day, forced);
       blocked += now() - t;
     }
     const t = now();
@@ -158,19 +173,14 @@ export async function loadDaily(day: number, options: LoaderOptions): Promise<Da
     blocked += now() - t;
     if (typeof level === "string") throw new Error(`niveau du jour invalide : ${level}`);
     writeCache(options.store, payload, options.today);
-    return { level, source, generated: true, cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
+    return { level, source, generated: true, catalog: source === "worker" ? "worker" : "principal", cacheMiss, frozenMiss, totalMs: now() - t0, blockedMs: blocked };
   } finally {
     options.showProgress?.(false);
   }
 }
 
 // ——— Le navigateur ———
-
-/** Le worker de module du jeu (Vite le compile à part) ; null s'il n'existe pas dans ce navigateur. */
-export function browserWorker(): WorkerLike | null {
-  if (typeof Worker === "undefined") return null;
-  return new Worker(new URL("./dailyWorker.ts", import.meta.url), { type: "module" }) as unknown as WorkerLike;
-}
+// (Le worker lui-même est créé par `workerNavigateur.ts`, seul fichier à connaître le chemin du fil de travail construit.)
 
 /** Lot 10 : lit le fichier figé d'une date (`levels/AAAA-MM-JJ.json`, à côté de la page) ; null s'il manque, n'est pas du JSON ou tarde. */
 export async function browserFrozen(date: string): Promise<unknown> {

@@ -43,6 +43,28 @@ export function embeddedText(text: string): string {
 
 export const intentionsPath = () => join(packageDir(), "..", "..", "apps", "jump", "public", "outils", "intentions.json");
 
+/**
+ * Lot 21 (le catalogue hors du premier chargement) : l'**index léger** du catalogue — l'identifiant et le nombre de variantes de chaque morceau — que lit
+ * `apps/jump/src/urlOptions.ts` (qui valide `?module=` et `?variante=` sans embarquer les morceaux ni leurs solutions : ≈ 100 ko de texte). Écrit avec le catalogue.
+ */
+export const moduleIndexPath = () => join(packageDir(), "..", "..", "apps", "jump", "src", "moduleIndex.ts");
+
+/** Le texte de `apps/jump/src/moduleIndex.ts` : un morceau = `[identifiant, nombre de variantes]`, dans l'ordre des fichiers. */
+export function moduleIndexSource(texts: readonly string[]): string {
+  return [
+    "// Généré par `npm run solve:modules -w @cdj/jump-sim` avec le catalogue : ne pas modifier à la main (un test vérifie qu'il est à jour).",
+    "// Lot 21 : l'identifiant et le nombre de variantes de chaque morceau, de quoi lire `?module=` et `?variante=` (`urlOptions.ts`) sans charger le catalogue.",
+    "",
+    "export const MODULE_INDEX: readonly (readonly [id: string, variantes: number])[] = [",
+    ...texts.map((t) => {
+      const def = parseModule(t);
+      return `  [${JSON.stringify(def.id)}, ${def.variants.length}],`;
+    }),
+    "];",
+    "",
+  ].join("\n");
+}
+
 /** Le texte de `intentions.json` : l'intention de chaque morceau, par identifiant (ordre des fichiers). */
 export function intentionsSource(texts: readonly string[]): string {
   const out: Record<string, string> = {};
@@ -102,4 +124,5 @@ export function writeCatalog(texts: readonly string[], solutions: ModuleSolution
   writeFileSync(solutionsPath(), JSON.stringify(solutions, null, 1) + "\n");
   writeFileSync(catalogPath(), catalogSource(texts, solutions));
   writeFileSync(intentionsPath(), intentionsSource(texts));
+  writeFileSync(moduleIndexPath(), moduleIndexSource(texts));
 }

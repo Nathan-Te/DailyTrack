@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, encodeReplay, lifeReplay, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, repriseParPhase, encodeReplay, lifeReplay, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
 import { CACHE_CLOSED_S, CACHE_OPEN_S, cacheHeaders, mergeVary } from "../src/cache";
 import { JUMP_GRACE_MS } from "../src/jump";
 import { JUMP_MAP_REFRESH_MS } from "../src/jumpLives";
@@ -10,8 +10,8 @@ import { makeApi, parisDayStart, pilotReplay, playerId, TEST_DB, DAY as CDJ_DAY 
 // morts, et le profil du jour avec `X-Player-Id` : une seule adresse personnelle par jour), le classement rendu par l'envoi, et les en-têtes de cache des lectures : long pour un jour figé,
 // court pour le jour en cours, **jamais partagés** quand la réponse dépend de `X-Player-Id`. Tourne sur SQLite et sur libSQL.
 
-// Lot 19 : le 13/11/2026 (lot 20 : en g15 le 29/10 n a plus que 1 essai fictif qui arrive, le 13/11 en a 4).
-const DAY = daysFromCivil(2026, 11, 13);
+// Lot 21 : le 30/10/2026 (joueurs fictifs qui reprennent bien, `repriseParPhase` ; au lot 20 il avait fallu le 13/11).
+const DAY = daysFromCivil(2026, 10, 30);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 
@@ -25,13 +25,13 @@ beforeAll(() => {
   lives = [];
   const seen = new Set<number>();
   // Les essais qui arrivent (les graines des tests du P1) et des vies qui finissent par une mort (celles du P3).
-  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 40 }).filter((x) => x.end === "arrivée")) {
+  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 40, reprise: repriseParPhase(D) }).filter((x) => x.end === "arrivée")) {
     const r = replayAttempt(D.level, a.replay, D.id);
     if (!r.finished || seen.has(r.time) || r.time <= D.authorTicks) continue;
     seen.add(r.time);
     runs.push({ code: encodeReplay(a.replay), ticks: r.time, deaths: r.deaths.length });
   }
-  for (const a of demoAttempts(D.level, D.replay, 0x11fe, { attempts: 40, maxLives: 8 })) {
+  for (const a of demoAttempts(D.level, D.replay, 0x11fe, { attempts: 40, maxLives: 8, reprise: repriseParPhase(D) })) {
     for (const life of replayAttempt(D.level, a.replay, D.id).lives) {
       const code = encodeReplay(lifeReplay(a.replay, life));
       if (life.end === "mort" && lives.length < 8 && !lives.includes(code)) lives.push(code);

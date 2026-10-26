@@ -1,8 +1,10 @@
 import { formatDay, parseDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, PLATFORM_VERSION, SECTION_CLOCK_VERSION, SINGLE_CLOCK_VERSION } from "./constants";
-import { PLATFORM_GENERATOR, SECTION_CLOCK_GENERATOR, levelNumber, type DailyExigence, type DailyLevel, type DailyPiece, type JumpMedals } from "./daily";
+import type { DailyExigence, DailyLevel, DailyPiece } from "./daily";
+import { PLATFORM_GENERATOR, SECTION_CLOCK_GENERATOR, levelNumber, type JumpMedals } from "./jours";
 import { parseLevel } from "./level";
-import { textHash, type Palier } from "./modules";
+import type { Palier } from "./modules";
+import { textHash } from "./texthash";
 import { decodeReplay, encodeReplay, replayAttempt } from "./replay";
 import { jumpThemeForDay } from "./themes";
 import type { SlowRoute } from "./voies";
