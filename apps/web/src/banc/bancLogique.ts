@@ -2,10 +2,10 @@
 // les statistiques d'une mesure (temps d'image : médiane, 95ᵉ et 99ᵉ centiles, pire image ; carte graphique par passe ; fil principal) et le rapport (JSON).
 // Le module qui fait rouler la voiture et dessine est `banc.ts`, chargé à la demande comme lui.
 import type { PaletteName } from "@cdj/sim";
-import type { FormeChaine } from "../scene/post";
+import { FORME_JEU, type FormeChaine } from "../scene/post";
 
 /** Version du format du rapport (à incrémenter si ses champs changent : les rapports se comparent d'un lot à l'autre). */
-export const VERSION_RAPPORT = 1;
+export const VERSION_RAPPORT = 2;
 /** Le bout de circuit mesuré : départ du circuit de ce jour (un jour passé ne change jamais), dans la course du pilote automatique, à partir de 2 s. */
 export const BANC_JOUR = "2026-10-20";
 export const BANC_DEBUT_S = 2;
@@ -50,43 +50,49 @@ export interface ConfigBanc {
 }
 
 const C47: Chaine47 = { version: 47, echantillons: 4, halo: true, etalonnage: true, anticrenelage: true, sortie: true };
-const F50: FormeChaine = { echantillons: 4, format: "r11", haloDepart: 1, haloNiveaux: 5 };
+const F50: FormeChaine = { ...FORME_JEU };
 const C50: Chaine50 = { version: 50, forme: F50, halo: true, etalonnage: true, anticrenelage: true };
 const TOUS = THEMES_BANC;
 const SN: readonly ThemeBanc[] = ["stade", "nuit"];
 const S: readonly ThemeBanc[] = ["stade"];
 const N: readonly ThemeBanc[] = ["nuit"];
 const P2_PLUS = ["vie", "ciel"];
+/** Les plafonds de pixels essayés : un 1080p (2,07 millions) et `PIXELS_MSAA` (2,8 millions : le multi-échantillonnage y reste). */
+export const PLAFONDS = [2_073_600, 2_800_000] as const;
 
-/** Toutes les configurations, dans l'ordre de passage (par moteur, puis par thème : une scène par thème et par palier). `dpr` : la densité de l'appareil. */
-export function configurations(dpr: number, mode: ModeBanc = "normal"): ConfigBanc[] {
+/**
+ * Toutes les configurations, dans l'ordre de passage (par moteur, puis par thème : une scène par thème et par palier). `dpr` : la densité de l'appareil ; `pixels` : ceux
+ * de l'écran à cette densité (les plafonds ne se mesurent que s'ils réduisent l'image). Version 2 (après le premier rapport de Nathan, 26/10/2026) : la chaîne du lot 47
+ * n'est plus que l'« avant » (ses parties sont mesurées dans le README), la chaîne du lot 50 a ses parties et ses formes.
+ */
+export function configurations(dpr: number, mode: ModeBanc = "normal", pixels = 0): ConfigBanc[] {
   const c = (id: string, libelle: string, o: Partial<ConfigBanc> & Pick<ConfigBanc, "ecran" | "themes">): ConfigBanc => ({ id, libelle, palier: "P3", plus: [], chaine: null, densite: "native", ...o });
   const natif = Math.min(dpr, 2);
+  const forme = (f: Partial<FormeChaine>): Chaine50 => ({ ...C50, forme: { ...F50, ...f } });
   const liste: ConfigBanc[] = [
-    // Moteur avec multi-échantillonnage de l'écran (le jeu jusqu'ici).
+    // Moteur avec multi-échantillonnage de l'écran (le jeu sans la chaîne, et l'avant).
     c("p1", "Palier 1", { ecran: "msaa", palier: "P1", themes: SN }),
     c("p2", "Palier 2 + vie et ciel", { ecran: "msaa", palier: "P2", plus: P2_PLUS, themes: SN }),
     c("p3", "Palier 3", { ecran: "msaa", themes: TOUS }),
     c("p3-47", "Palier 3 + chaîne du lot 47 (avant)", { ecran: "msaa", chaine: C47, themes: TOUS }),
-    c("47-sans-msaa", "Chaîne 47 : scène sans multi-échantillonnage", { ecran: "msaa", chaine: { ...C47, echantillons: 0 }, themes: SN }),
-    c("47-sans-halo", "Chaîne 47 : sans halo", { ecran: "msaa", chaine: { ...C47, halo: false }, themes: SN }),
-    c("47-sans-etalonnage", "Chaîne 47 : sans étalonnage", { ecran: "msaa", chaine: { ...C47, etalonnage: false }, themes: S }),
-    c("47-sans-fxaa", "Chaîne 47 : sans FXAA", { ecran: "msaa", chaine: { ...C47, anticrenelage: false }, themes: S }),
-    c("47-sans-sortie", "Chaîne 47 : sans sortie (coût seul, image fausse)", { ecran: "msaa", chaine: { ...C47, sortie: false }, themes: S }),
-    ...(natif !== 1
-      ? [c("p3-d1", "Palier 3, densité 1", { ecran: "msaa", densite: 1, themes: S }), c("47-d1", "Chaîne 47, densité 1", { ecran: "msaa", chaine: C47, densite: 1, themes: S })]
-      : []),
+    ...(natif !== 1 ? [c("p3-d1", "Palier 3, densité 1", { ecran: "msaa", densite: 1, themes: S })] : []),
     // Moteur sans multi-échantillonnage de l'écran (la chaîne du lot 50 : jamais deux multi-échantillonnages).
     c("p3-sans-msaa", "Palier 3, écran sans multi-échantillonnage (référence)", { ecran: "sans", themes: S }),
-    c("47-ecran-sans", "Chaîne 47 sans double multi-échantillonnage", { ecran: "sans", chaine: C47, themes: SN }),
     c("p3-50", "Palier 3 + chaîne du lot 50 (après)", { ecran: "sans", chaine: C50, themes: TOUS }),
-    c("50-msaa2", "Chaîne 50 : scène ×2", { ecran: "sans", chaine: { ...C50, forme: { ...F50, echantillons: 2 } }, themes: S }),
-    c("50-msaa0", "Chaîne 50 : scène sans multi-échantillonnage (FXAA seul)", { ecran: "sans", chaine: { ...C50, forme: { ...F50, echantillons: 0 } }, themes: SN }),
-    c("50-demi", "Chaîne 50 : scène en demi-flottants (8 octets)", { ecran: "sans", chaine: { ...C50, forme: { ...F50, format: "demi" } }, themes: N }),
-    c("50-halo-quart", "Chaîne 50 : halo au quart de la résolution", { ecran: "sans", chaine: { ...C50, forme: { ...F50, haloDepart: 2 } }, themes: N }),
     c("50-sans-halo", "Chaîne 50 : sans halo", { ecran: "sans", chaine: { ...C50, halo: false }, themes: N }),
+    c("50-sans-etalonnage", "Chaîne 50 : sans étalonnage", { ecran: "sans", chaine: { ...C50, etalonnage: false }, themes: S }),
     c("50-sans-fxaa", "Chaîne 50 : sans FXAA", { ecran: "sans", chaine: { ...C50, anticrenelage: false }, themes: S }),
     c("50-copie", "Chaîne 50 réduite à la tonalité (mode copie)", { ecran: "sans", chaine: { ...C50, halo: false, etalonnage: false, anticrenelage: false }, themes: S }),
+    c("50-msaa0", "Chaîne 50 : scène sans multi-échantillonnage (FXAA seul)", { ecran: "sans", chaine: forme({ echantillons: 0 }), themes: SN }),
+    c("50-demi", "Chaîne 50 : scène en demi-flottants (8 octets)", { ecran: "sans", chaine: forme({ format: "demi" }), themes: N }),
+    c("50-halo-quart", "Chaîne 50 : halo au quart de la résolution", { ecran: "sans", chaine: forme({ haloDepart: 2 }), themes: N }),
+    ...PLAFONDS.filter((p) => pixels === 0 || pixels > p).flatMap((p) => {
+      const mp = `${(p / 1e6).toFixed(1).replace(".", ",")} Mpx`;
+      return [
+        c(`50-plafond-${p}`, `Chaîne 50 : scène plafonnée à ${mp} (×4 dessous)`, { ecran: "sans", chaine: forme({ pixelsMax: p }), themes: SN }),
+        c(`50-plafond-${p}-msaa0`, `Chaîne 50 : scène plafonnée à ${mp}, sans multi-échantillonnage`, { ecran: "sans", chaine: forme({ pixelsMax: p, echantillons: 0 }), themes: SN }),
+      ];
+    }),
     ...(natif !== 1 ? [c("50-d1", "Chaîne 50, densité 1", { ecran: "sans", chaine: C50, densite: 1, themes: S })] : []),
     ...(natif > 1.5 ? [c("50-d15", "Chaîne 50, densité 1,5 au plus", { ecran: "sans", chaine: C50, densite: 1.5, themes: S })] : []),
   ];

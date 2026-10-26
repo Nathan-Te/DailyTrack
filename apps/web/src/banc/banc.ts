@@ -214,7 +214,7 @@ async function executer(racine: HTMLElement, page: HTMLElement, sortie: HTMLElem
   for (const th of ["stade", "nuit", "ville"] as const) await chargerDecor(th).catch(() => undefined);
 
   const dpr = window.devicePixelRatio || 1;
-  const configs = configurations(dpr, mode);
+  const configs = configurations(dpr, mode, Math.round(innerWidth * innerHeight * Math.min(dpr, 2) ** 2));
   const passages = plan(configs);
   etat.total = passages.length;
   const mesures: MesureBanc[] = [];
@@ -328,6 +328,8 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
   let echec: string | undefined;
   let rendre: () => void;
   let liberer = () => undefined as void;
+  /** L'échelle de la scène de la chaîne (plafond de pixels) : les halos en points et les particules s'y règlent, comme en jeu. */
+  let echelle = () => 1;
   const d = renderer.getDrawingBufferSize(new Vector2());
   const direct = () => {
     renderer.toneMappingExposure = view.look.exposure;
@@ -353,6 +355,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
   } else {
     const chaine = new ChainePost(renderer, ch.forme);
     chaine.chrono = chrono;
+    echelle = () => chaine.echelle;
     const r = { halo: ch.halo, etalonnage: ch.etalonnage, anticrenelage: ch.anticrenelage, theme: post, exposition: view.look.exposure };
     await chaine.preparer(view.scene, camera, d.x, d.y, r);
     rendre = () => {
@@ -438,7 +441,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
         camera.fov = fov;
         camera.updateProjectionMatrix();
       }
-      const h = innerHeight * renderer.getPixelRatio();
+      const h = innerHeight * renderer.getPixelRatio() * echelle();
       view.followGround(x, z);
       view.followCar(x, y, z, yaw, false);
       view.setView(h, camera.fov);

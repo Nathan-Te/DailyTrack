@@ -38,6 +38,8 @@ export interface Chaine {
   triangles: number;
   /** La cible de la scène (`?debug` : ses échantillons). */
   scene: { samples: number } | null;
+  /** Lot 50 : l'échelle de la scène par rapport à l'écran (plafond de pixels) ; absente : 1. */
+  readonly echelle?: number;
   rendre(scene: Object3D, camera: PerspectiveCamera, w: number, h: number, r: ReglagesPost): boolean;
   octets(r: Pick<ReglagesPost, "halo" | "theme">): number;
   preparer?(scene: Object3D, camera: PerspectiveCamera, w: number, h: number, r: Omit<ReglagesPost, "exposition">): Promise<void>;
@@ -90,6 +92,11 @@ export class PostJeu {
 
   get active(): boolean {
     return this.vivante;
+  }
+
+  /** Lot 50 : l'échelle de la scène par rapport à l'écran (1 sans plafond de pixels) : la taille à l'écran de ce qui est dessiné en pixels s'y règle. */
+  get echelle(): number {
+    return this.vivante ? (this.chaine.echelle ?? 1) : 1;
   }
 
   /** Lot 50 : le halo est-il dessiné (la Nuit et le Néon seulement, et pas coupé) ? */

@@ -2332,8 +2332,10 @@ function frame(now: number) {
 
   view.followGround(x, z);
   view.followCar(x, y, z, yaw, hood, (carModel as { phare?: { y: number; z: number } }).phare);
-  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
-  effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio());
+  // Lot 50 : une scène dessinée plus petite par la chaîne (plafond de pixels) : les halos en points et les particules gardent leur taille à l'écran.
+  const echelleImage = post?.echelle ?? 1;
+  view.setView(window.innerHeight * renderer.getPixelRatio() * echelleImage, camera.fov);
+  effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio() * echelleImage);
   effects.update({ dt: elapsed, x, y, z, yaw, tel, braking: wheelPose.braking, boost: car.boost > 0, turbo: car.turbo > 0, racing: phase !== "countdown" });
   gameAudio.update({
     speed,
@@ -2367,7 +2369,7 @@ function frame(now: number) {
     // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
     const t0 = performance.now();
     // Lot 46 : la vie et le ciel (drapeaux, foule, écrans, particules, nuages) bougent sur le temps d'affichage de l'image, jamais sur l'état de la course.
-    view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio());
+    view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio() * echelleImage);
     // Lot 47 : la chaîne dessine l'image (halo, étalonnage, FXAA) ; elle rend faux si elle n'a pas pu, ou n'existe plus : on dessine alors directement.
     if (!post?.dessiner(view.scene, camera, scenePalette, view.look.exposure)) renderer.render(view.scene, camera);
     renderCost.ms += performance.now() - t0;

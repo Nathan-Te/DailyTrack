@@ -9,7 +9,7 @@ import { geometrieP1 } from "../src/scene/composerP1";
 import { PAS, PAS_IDS } from "../src/scene/paliers";
 import { POST_3 } from "../src/scene/themesPost";
 import { THEMES_3 } from "../src/scene/themes3";
-import { FORME_JEU, PIXELS_MSAA, SEUIL_HALO_NUIT, avecHalo, formeDuJeu, noyau, octetsParPixel } from "../src/scene/post";
+import { FORME_JEU, PIXELS_MSAA, SEUIL_HALO_NUIT, avecHalo, echelleScene, formeDuJeu, noyau, octetsParPixel } from "../src/scene/post";
 import { SORTIE_LINEAIRE } from "../src/scene/socle";
 import { GardePost, PostJeu } from "../src/scene/postJeu";
 import { NIVEAU_DU_CHOIX, chaineAuChargement, palierAuChargement, passesPermises, type Appareil } from "../src/qualite";
@@ -218,5 +218,30 @@ describe("lot 50 : une seule passe de fin, pas de halo le jour, jamais deux mult
     const main = readFileSync(join(SRC, "main.ts"), "utf8");
     expect(main).toContain("new WebGLRenderer({ antialias: !ecranSansMsaa })");
     expect(main).toContain("const forme = m.formeDuJeu(!ecranSansMsaa);");
+  });
+});
+
+describe("lot 50 : ce que le premier rapport du banc a changé (Iris Xe, 2560 × 1440)", () => {
+  const post = readFileSync(join(SRC, "scene/post.ts"), "utf8");
+  it("le FXAA juge les bords sur une luminance approchée (une lecture) : la couleur finale n'est calculée que pour les deux pixels mêlés (12 ms → mesuré à nouveau)", () => {
+    const lum = /float lum\(vec2 uv\) \{([\s\S]*?)\n\}/.exec(post)![1]!;
+    expect(lum, "pas la couleur finale de chaque voisin").not.toContain("ecran(");
+    expect(lum.match(/texture2D/g)).toHaveLength(1);
+    const fin = /const FIN = \/\* glsl \*\/ `([\s\S]*?)`;/.exec(post)![1]!;
+    expect(fin.match(/ecran\(/g)!.length, "la définition, le pixel, son voisin").toBe(3);
+  });
+  it("le halo reprend la composition d'UnrealBloomPass de three.js r186 : ×3, et pesé par sa composante la plus forte", () => {
+    expect(post).toContain("3 * t.halo.force * (x + (1.2 - 2 * x) * t.halo.rayon)");
+    expect(post).toContain("gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));");
+    expect(post).toContain("c += h.rgb * h.a;");
+    const unreal = readFileSync(new URL("../../../node_modules/three/examples/jsm/postprocessing/UnrealBloomPass.js", import.meta.url), "utf8");
+    expect(unreal, "si three.js change sa composition, celle-ci est à revoir").toContain("vec3 bloom = 3.0 * bloomStrength * (");
+    expect(unreal).toContain("float bloomAlpha = max( bloom.r, max( bloom.g, bloom.b ) );");
+  });
+  it("le plafond de pixels de la scène : une échelle, 1 sous le plafond", () => {
+    expect(echelleScene(1920, 1080, 0)).toBe(1);
+    expect(echelleScene(1920, 1080, 2_073_600)).toBe(1);
+    expect(echelleScene(2560, 1440, 2_073_600)).toBeCloseTo(0.75, 5);
+    expect(FORME_JEU.pixelsMax).toBeGreaterThanOrEqual(0);
   });
 });

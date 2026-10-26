@@ -6,11 +6,13 @@ import { isRestricted } from "../src/access";
 // Lot 50 : le banc d'essai du rendu (`?banc`) — la liste des mesures, les statistiques, le rapport. Le banc lui-même tourne dans `e2e/post.spec.ts` (rendu logiciel).
 
 describe("lot 50 : le banc d'essai", () => {
-  it("toutes les parties de la chaîne mesurées, avant et après ; ≤ 2 min", () => {
+  it("toutes les parties de la chaîne mesurées, avant et après ; les plafonds de pixels seulement s'ils réduisent l'image ; ≤ 2 min", () => {
+    expect(configurations(1, "normal", 1920 * 1080).map((x) => x.id), "un écran 1080p : rien à plafonner à 2,07 millions").not.toContain("50-plafond-2073600");
+    expect(configurations(1, "normal", 2560 * 1440).map((x) => x.id)).toEqual(expect.arrayContaining(["50-plafond-2073600", "50-plafond-2073600-msaa0", "50-plafond-2800000", "50-plafond-2800000-msaa0"]));
     for (const dpr of [1, 1.25, 2]) {
       const c = configurations(dpr);
       const ids = c.map((x) => x.id);
-      for (const id of ["p1", "p2", "p3", "p3-47", "47-sans-msaa", "47-sans-halo", "47-sans-etalonnage", "47-sans-fxaa", "47-sans-sortie", "p3-50", "50-msaa0", "50-sans-halo", "50-copie"]) expect(ids, id).toContain(id);
+      for (const id of ["p1", "p2", "p3", "p3-47", "p3-50", "50-sans-halo", "50-sans-etalonnage", "50-sans-fxaa", "50-copie", "50-msaa0", "50-demi", "50-halo-quart"]) expect(ids, id).toContain(id);
       expect(ids.includes("p3-d1"), "densité 1 seulement si l'écran en a une autre").toBe(dpr !== 1);
       const p = plan(c);
       expect(p.length).toBe(c.reduce((n, x) => n + x.themes.length, 0));

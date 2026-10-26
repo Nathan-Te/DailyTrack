@@ -2,7 +2,7 @@
 // lot 47 (`post47.ts`, gardée le temps du lot pour le banc d'essai). Sur une carte intégrée, ce qui coûte est la **bande passante** : chaque écriture et
 // relecture de tout l'écran. D'où :
 //   - **une seule passe de fin** (`FIN`) : tonalité et espace de l'écran (l'ancienne `OutputPass`), étalonnage et anticrénelage FXAA dans un seul nuanceur
-//     plein écran, qui écrit directement l'écran ; le FXAA y lit l'image **finale** de chaque voisin (tonalité, étalonnage), comme quand il passait en dernier ;
+//     plein écran, qui écrit directement l'écran ; le FXAA y juge les bords sur une luminance approchée et mêle les couleurs finales de deux voisins ;
 //   - **le halo seulement la Nuit** (`avecHalo` : le Néon et la Nuit ; le jour il ne touchait que le disque du soleil) et **sans aucune passe plein écran** :
 //     la chaîne de demi-résolutions floutées d'`UnrealBloomPass` (mêmes niveaux, mêmes flous, mêmes poids), composée à la demi-résolution et lue par la passe
 //     de fin — plus de mélange additif sur tout l'écran ;
@@ -51,8 +51,12 @@ export interface FormeChaine {
   haloDepart: 1 | 2;
   /** Niveaux du halo (5 : comme `UnrealBloomPass`). */
   haloNiveaux: number;
+  /** Pixels de la scène au plus (0 : la taille de l'écran) : au-delà, la scène est dessinée plus petite et la passe de fin l'agrandit (`echelle`). */
+  pixelsMax: number;
 }
-export const FORME_JEU: Readonly<FormeChaine> = { echantillons: 4, format: "r11", haloDepart: 1, haloNiveaux: 5 };
+export const FORME_JEU: Readonly<FormeChaine> = { echantillons: 4, format: "r11", haloDepart: 1, haloNiveaux: 5, pixelsMax: 0 };
+/** L'échelle de la scène pour un écran de `w` × `h` pixels (1 sous le plafond). */
+export const echelleScene = (w: number, h: number, pixelsMax: number): number => (pixelsMax > 0 && w * h > pixelsMax ? Math.sqrt(pixelsMax / (w * h)) : 1);
 /**
  * **Jamais deux multi-échantillonnages** : la forme du jeu selon l'écran du moteur. Un moteur créé avec le sien (la chaîne demandée en cours de page : `antialias`
  * ne change plus après la création) garde la scène de la chaîne sans multi-échantillonnage (le FXAA lisse) jusqu'au prochain chargement.
@@ -89,8 +93,7 @@ void main() {
 #else
   vec3 t = texture2D(tScene, vUv).rgb;
 #endif
-  float v = dot(t, vec3(0.2126, 0.7152, 0.0722));
-  gl_FragColor = vec4(t * smoothstep(uSeuil, uSeuil + 0.01, v), 1.0);
+  gl_FragColor = vec4(t * smoothstep(uSeuil, uSeuil + 0.01, dot(t, vec3(0.2126, 0.7152, 0.0722))), 1.0);
 }`;
 
 /** Le flou séparable d'un niveau (celui d'`UnrealBloomPass` : gaussienne, prises voisines fusionnées en une lecture filtrée). */
@@ -112,7 +115,10 @@ void main() {
   gl_FragColor = vec4(s, 1.0);
 }`;
 
-/** La composition des niveaux du halo (`lerpBloomFactor` d'`UnrealBloomPass`), à la première résolution du halo. */
+/**
+ * La composition des niveaux du halo, à la première résolution du halo : celle d'`UnrealBloomPass` (r186) — `3 × force × Σ lerpBloomFactor × niveau`, et en alpha sa
+ * composante la plus forte : il se mêle à la scène par `SRC_ALPHA, ONE`, donc pesé par elle (la passe de fin fait `rgb × a`).
+ */
 const COMPOSE = /* glsl */ `
 uniform sampler2D tN0;
 uniform sampler2D tN1;
@@ -135,12 +141,12 @@ void main() {
 #if NIVEAUX > 4
   c += uN[4] * texture2D(tN4, vUv).rgb;
 #endif
-  gl_FragColor = vec4(c, 1.0);
+  gl_FragColor = vec4(c, max(c.r, max(c.g, c.b)));
 }`;
 
 /**
- * **La passe de fin** : pour chaque pixel lu, la scène (et le halo) → tonalité du moteur (exposition comprise) → espace de l'écran → étalonnage (`ecran`) ;
- * puis le FXAA (l'algorithme de `FXAAShader` de three.js, NVIDIA / Jasper Flick) sur ces couleurs finales : le mélange de deux pixels voisins le long d'un bord.
+ * **La passe de fin** : la scène (et le halo) → tonalité du moteur (exposition comprise) → espace de l'écran → étalonnage (`ecran`) ; puis le FXAA (l'algorithme de
+ * `FXAAShader` de three.js, NVIDIA / Jasper Flick) : il cherche les bords sur une luminance approchée (`lum`), et mêle les couleurs finales de deux pixels voisins.
  */
 const FIN = /* glsl */ `
 uniform sampler2D tScene;
@@ -154,7 +160,8 @@ varying vec2 vUv;
 vec3 ecran(vec2 uv) {
   vec3 c = texture2D(tScene, uv).rgb;
 #ifdef HALO
-  c += texture2D(tHalo, uv).rgb;
+  vec4 h = texture2D(tHalo, uv);
+  c += h.rgb * h.a;
 #endif
 #ifdef TONE_MAPPING
   c = toneMapping(c);
@@ -170,14 +177,22 @@ vec3 ecran(vec2 uv) {
   return c;
 }
 #ifdef FXAA
-float lum(vec2 uv) { return dot(ecran(uv), vec3(0.3, 0.59, 0.11)); }
+// La luminance que juge le FXAA : celle de la scène, comprimée comme le fait la tonalité neutre au-delà de 0,76, puis à peu près dans l'espace de l'écran (racine) — une
+// lecture, aucune puissance : le FXAA en lit jusqu'à 21 par pixel (mesuré au banc : la couleur finale de chaque voisin coûtait 10 ms à 1440p sur Iris Xe).
+float lum(vec2 uv) {
+  float l = dot(texture2D(tScene, uv).rgb, vec3(0.3, 0.59, 0.11));
+#ifdef TONE_MAPPING
+  l *= toneMappingExposure;
+#endif
+  return sqrt(l < 0.76 ? max(l, 0.0) : 1.0 - 0.0576 / (l - 0.52));
+}
 const float PAS[6] = float[6](1.0, 1.5, 2.0, 2.0, 2.0, 4.0);
 #endif
 void main() {
   vec3 m = ecran(vUv);
 #ifdef FXAA
   vec2 t = uTexel;
-  float lm = dot(m, vec3(0.3, 0.59, 0.11));
+  float lm = lum(vUv);
   float ln = lum(vUv + vec2(0.0, t.y)), le = lum(vUv + vec2(t.x, 0.0)), ls = lum(vUv - vec2(0.0, t.y)), lw = lum(vUv - vec2(t.x, 0.0));
   float hi = max(max(max(max(ln, le), ls), lw), lm);
   float contraste = hi - min(min(min(min(ln, le), ls), lw), lm);
@@ -318,7 +333,7 @@ class Halo {
     });
     const u = this.compose.uniforms;
     this.niveaux.forEach(([, ver], i) => (u[`tN${i}`]!.value = ver.texture));
-    u.uN!.value = FACTEURS.map((x) => t.halo.force * (x + (1.2 - 2 * x) * t.halo.rayon));
+    u.uN!.value = FACTEURS.map((x) => 3 * t.halo.force * (x + (1.2 - 2 * x) * t.halo.rayon));
     dessiner(this.compose, this.niveaux[0]![0]);
   }
 
@@ -342,6 +357,9 @@ export class ChainePost {
   private readonly quad: Mesh;
   private w = 0;
   private h = 0;
+  /** La taille de la scène (celle de l'écran, ou plus petite au-delà de `pixelsMax`). */
+  private sw = 0;
+  private sh = 0;
   /** Les cibles à essayer, dans l'ordre : celle de la forme, puis en demi-flottants, puis sans multi-échantillonnage. */
   private essais: { format: FormeChaine["format"]; echantillons: number }[];
   private verifiee = false;
@@ -368,18 +386,28 @@ export class ChainePost {
     return { format: this.essais[0]!.format, echantillons: this.scene?.samples ?? 0 };
   }
 
+  /** L'échelle de la scène par rapport à l'écran (1 : la même taille) : ce qui est dessiné en pixels (halos en points, particules) s'y règle (`main.ts`). */
+  get echelle(): number {
+    return this.w > 0 ? this.sw / this.w : 1;
+  }
+
   private taille(w: number, h: number) {
     const e = this.essais[0]!;
-    const n = w * h > PIXELS_MSAA ? 0 : e.echantillons;
+    const k = echelleScene(w, h, this.forme.pixelsMax);
+    const sw = Math.max(1, Math.round(w * k));
+    const sh = Math.max(1, Math.round(h * k));
+    const n = sw * sh > PIXELS_MSAA ? 0 : e.echantillons;
     if (w === this.w && h === this.h && this.scene && this.scene.samples === n) return;
     this.w = w;
     this.h = h;
+    this.sw = sw;
+    this.sh = sh;
     if (!this.scene || this.scene.samples !== n) {
       this.scene?.dispose();
-      this.scene = cibleScene(w, h, e.format, n);
+      this.scene = cibleScene(sw, sh, e.format, n);
       this.verifiee = false;
-    } else this.scene.setSize(w, h);
-    this.halo?.taille(w, h);
+    } else this.scene.setSize(sw, sh);
+    this.halo?.taille(sw, sh);
   }
 
   /** La cible est-elle acceptée par la carte graphique ? Sinon la suivante (demi-flottants, puis sans multi-échantillonnage) ; plus rien : faux. */
@@ -427,7 +455,7 @@ export class ChainePost {
     const halo = r.halo && avecHalo(r.theme);
     if (halo && !this.halo) {
       this.halo = new Halo(this.forme);
-      this.halo.taille(w, h);
+      this.halo.taille(this.sw, this.sh);
     }
     const autoClear = renderer.autoClear;
     // Les compteurs du moteur couvrent toute l'image (la scène et ses passes) ; la scène seule : `appels`.
@@ -447,7 +475,7 @@ export class ChainePost {
       this.triangles = renderer.info.render.triangles;
       if (halo) {
         this.chrono?.debut("halo");
-        this.halo!.rendre(renderer, this.quad, camera, this.scene!.texture, w, h, r.theme);
+        this.halo!.rendre(renderer, this.quad, camera, this.scene!.texture, this.sw, this.sh, r.theme);
         this.chrono?.fin();
       }
       this.chrono?.debut("fin");
@@ -455,7 +483,7 @@ export class ChainePost {
       const u = m.uniforms;
       u.tScene!.value = this.scene!.texture;
       u.tHalo!.value = halo ? this.halo!.texture : null;
-      u.uTexel!.value = [1 / w, 1 / h];
+      u.uTexel!.value = [1 / this.sw, 1 / this.sh]; // le FXAA cherche les bords dans les pixels de la scène
       const e = r.theme.etalonnage;
       u.uContraste!.value = e.contraste;
       u.uSaturation!.value = e.saturation;
@@ -484,7 +512,7 @@ export class ChainePost {
     const halo = r.halo && avecHalo(r.theme);
     if (halo && !this.halo) {
       this.halo = new Halo(this.forme);
-      this.halo.taille(w, h);
+      this.halo.taille(this.sw, this.sh);
     }
     const promesses: Promise<unknown>[] = [];
     const avec = (cible: WebGLRenderTarget | null, s: Object3D) => {
@@ -523,7 +551,7 @@ export class ChainePost {
     this.scene = null;
     this.halo = null;
     this.fins.clear();
-    this.w = this.h = 0;
+    this.w = this.h = this.sw = this.sh = 0;
     this.verifiee = false;
   }
 }
