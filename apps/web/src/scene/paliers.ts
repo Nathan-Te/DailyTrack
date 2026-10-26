@@ -5,12 +5,12 @@
 // - Palier 1, « base » : le mélange recommandé du lot 38, nettoyé (lumière de C intégrée, ombres de contact des seuls rebords, mur de pneus allégé).
 // - Palier 2, « finition » : même chemin de rendu (aucune passe de plus), plus de soin — géométrie, variété, matière (sobre : décision de Nathan,
 //   38c), traces de pneus, reflets (lot 45 : ciblés, sur le métal et la voiture). La « matière détaillée » (l'ancienne matière du 38b) est retirée au lot 45.
-// - Palier 3, « vitrine » : le plafond — lumière (ombres, occlusion, brume, nuages), vie (drapeaux, foule, écrans, particules), post-traitement
-//   (étalonnage, anticrénelage, halo), chacun commutable séparément.
+// - Palier 3, « vitrine » : le plafond — lumière (ombres, brume, nuages), vie (drapeaux, foule, écrans, particules), post-traitement
+//   (étalonnage, anticrénelage FXAA, halo : lot 47), chacun commutable séparément. **Pas d'occlusion GTAO** (décision de Nathan du 22/10/2026, lot 47).
 
 export type Palier = 1 | 2 | 3;
 
-export const PAS_IDS = ["geometrie", "variete", "matiere", "traces", "reflets", "ombres", "occlusion", "brume", "nuages", "drapeaux", "foule", "ecrans", "particules", "etalonnage", "anticrenelage", "halo"] as const;
+export const PAS_IDS = ["geometrie", "variete", "matiere", "traces", "reflets", "ombres", "brume", "nuages", "drapeaux", "foule", "ecrans", "particules", "etalonnage", "anticrenelage", "halo"] as const;
 export type PasId = (typeof PAS_IDS)[number];
 
 /** Les réglages d'une scène : chaque pas allumé ou non. */
@@ -35,7 +35,6 @@ export const PAS: readonly Pas[] = [
   { id: "traces", palier: 2, famille: "finition" },
   { id: "reflets", palier: 2, famille: "finition" },
   { id: "ombres", palier: 3, famille: "lumiere" },
-  { id: "occlusion", palier: 3, famille: "lumiere", passe: true },
   { id: "brume", palier: 3, famille: "lumiere" },
   { id: "nuages", palier: 3, famille: "lumiere" },
   { id: "drapeaux", palier: 3, famille: "vie" },
@@ -68,7 +67,7 @@ export function avecPost(r: Reglages): boolean {
   return PAS.some((p) => p.passe && r[p.id]);
 }
 
-/** Les réglages en texte court (adresse, légendes) : « 2 », ou « 1+matiere+halo », « 3-occlusion ». */
+/** Les réglages en texte court (adresse, légendes) : « 2 », ou « 1+matiere+halo », « 3-halo ». */
 export function texteReglages(r: Reglages): string {
   const p = palierDe(r);
   if (p) return String(p);

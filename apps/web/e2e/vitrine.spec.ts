@@ -61,8 +61,9 @@ test("paliers, ordinateur : chaque section se construit et se dessine à chaque 
   // Le résumé des coûts (une ligne par colonne, le poids ajouté au jeu lu dans poids-parties.json) et le coût de chaque pas.
   await expect(page.locator("#resume-corps tr")).toHaveCount(5);
   await expect(page.locator("#resume-corps tr").nth(1).locator("td").first()).toHaveText(/ko \(net \+/);
-  // Seize pas des paliers (38c : « traces » a sa case ; lot 45 : « matière détaillée », la comparaison avec l'ancienne matière, est retirée).
-  await expect(page.locator("#pas-corps tr")).toHaveCount(16);
+  // Quinze pas des paliers (38c : « traces » a sa case ; lot 45 : « matière détaillée », la comparaison avec l'ancienne matière, est retirée ; lot 47 : « occlusion »
+  // (GTAO) est retirée — le palier 3 se passe de l'occlusion — et l'anticrénelage est FXAA).
+  await expect(page.locator("#pas-corps tr")).toHaveCount(15);
 });
 
 test("paliers : la colonne « à la carte » suit les cases, et l'adresse garde les réglages", async ({ page }) => {

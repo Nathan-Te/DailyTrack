@@ -16,7 +16,6 @@ export const TEXTES_PAS: Record<PasId, TextePas> = {
   traces: { titre: "Traces", detail: "Traces de pneus discrètes dans les virages, traces de freinage et barres de repère avant les virages serrés (en géométrie, aucun appel de plus)." },
   reflets: { titre: "Reflets", detail: "Carte d'environnement calculée à partir du ciel du thème, ciblée (lot 45) : le métal des portiques et la voiture la reflètent, ni la route ni le décor." },
   ombres: { titre: "Ombres nettes et loin", detail: "Carte d'ombres 2048 posée devant la voiture (120 m au lieu de 84 m, plus fine), le décor projette aussi." },
-  occlusion: { titre: "Occlusion ambiante", detail: "Occlusion calculée à l'écran (GTAO) : les creux, les pieds de mur et les recoins s'assombrissent." },
   brume: { titre: "Brume de profondeur", detail: "Brouillard par thème qui s'épaissit en contrebas et se teinte du soleil quand on le regarde.", charte: "un dégradé (de la lumière, pas de l'interface)" },
   nuages: { titre: "Ciel et nuages", detail: "Un dôme de ciel dessiné au chargement : dégradé, lueur du soleil, nuages par thème qui dérivent." },
   drapeaux: { titre: "Drapeaux qui flottent", detail: "Les drapeaux ondulent (déformés sur la carte graphique, un seul appel de rendu)." },
@@ -24,7 +23,7 @@ export const TEXTES_PAS: Record<PasId, TextePas> = {
   ecrans: { titre: "Panneaux lumineux", detail: "Écrans à diodes qui font défiler les sponsors, chronomètre qui tourne : lisibles de jour comme de nuit." },
   particules: { titre: "Particules d'ambiance", detail: "Poussière (Rallye, Canyon), neige (Banquise, Col), lucioles (Nuit), pollen (Campagne), confettis (Stade), poussière de ville.", charte: "petits points translucides" },
   etalonnage: { titre: "Étalonnage", detail: "Couleurs travaillées par thème (contraste, saturation, teinte des ombres et des lumières)." },
-  anticrenelage: { titre: "Anticrénelage", detail: "SMAA en plus du MSAA du jeu : les câbles fins, les textures et les bords lointains scintillent moins." },
+  anticrenelage: { titre: "Anticrénelage", detail: "FXAA en plus du MSAA du jeu : les câbles fins, les textures et les bords lointains scintillent moins." },
   halo: { titre: "Halo des lumières", detail: "Les lumières fortes débordent (surtout la Nuit : lampes, néons, écrans).", charte: "un flou lumineux" },
 };
 
