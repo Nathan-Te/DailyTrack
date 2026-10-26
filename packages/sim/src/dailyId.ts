@@ -1,5 +1,6 @@
-import { daysFromCivil, formatDay } from "@cdj/core";
+import { formatDay, parseDay } from "@cdj/core";
 import { GENERATOR_VERSION } from "./constants";
+import registre from "./jours-track.json";
 import type { ThemeName } from "./themes";
 
 // Versions et identifiants des circuits du jour (lots 14 et 34) : dans leur propre fichier (lot 36), le jeu en a besoin dès le premier écran (identifiant du
@@ -12,39 +13,38 @@ export const MAX_VARIANT = 99;
 export const isVariant = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n <= MAX_VARIANT;
 
 /**
- * Lot 34 — **date de bascule** : les règles « freinage possible après un boost » (générateur v16) valent à partir du **28/10/2026**, le
- * premier jour qui n'est ni passé, ni en cours, ni déjà joué à la mise en production du lot ; les jours d'avant gardent le générateur v15,
- * bit pour bit (texte, temps de l'auteur, identifiant `jour-…-g15` : classements, rediffusions et records intacts). **Versionnement par
- * date** : la version d'un jour est `generatorVersionOf(jour)`, dans son identifiant ; le Salon (graines au-delà de tous les jours) suit
- * toujours la dernière. Déplacer la bascule (mise en production plus tardive) : cette constante, puis `UPDATE_GOLDEN=1` sur `golden-daily.test.ts`.
+ * Lot R11 — **le registre des jours** (`jours-track.json`) : pour chaque jour **protégé**, la version du générateur (`g`) et celle de la simulation (`sim`) qui ont fait son
+ * circuit, en plages `du`–`au` de jours consécutifs de même version. Sont protégés : les jours d'avant le lancement public, les jours qui ont au moins un résultat en
+ * production (Track ou Jump) et ceux que le registre nommait déjà ; **un jour sans résultat n'y est pas** (il n'a pas été « servi » : la mise en production le régénère avec
+ * son code). **Plus aucune date de bascule écrite par un lot** : le fichier est écrit par « Mettre en production » (job `figer`, avec le code alors en production, jusqu'à la
+ * veille du jour de bascule) et versé dans `main` par la PR « Jours figés », comme les niveaux de Jump. Un jour du registre garde sa version pour toujours ; **un jour absent**
+ * (jour sans résultat, jour de bascule et suivants, le Salon) **prend la dernière** (`GENERATOR_VERSION`). Changer le générateur = monter `GENERATOR_VERSION`
+ * (constants.ts) et **garder l'ancienne version dans le code tant qu'un jour du registre s'en sert**.
  */
-export const BASCULE_LOT_34 = daysFromCivil(2026, 10, 28);
-/** Générateur des jours d'avant la bascule du lot 34. */
+export interface RegistreJoursTrack {
+  format: 1;
+  /** Dernier jour que la dernière mise en production a décidé (AAAA-MM-JJ) : la veille de son jour de bascule. Un jour au-delà prend la dernière version. */
+  jusqua: string;
+  plages: { du: string; au: string; g: number; sim: number }[];
+}
+const REGISTRE = registre as RegistreJoursTrack;
+/** Les plages du registre en numéros de jours (calculées au premier besoin). */
+let plages: { du: number; au: number; g: number }[] | null = null;
+
+/** La plus ancienne version du générateur que le code sait encore faire (`composeFigures` & co. : `generator >= 16`, `>= 17`, `>= 18` ; la v15 est la base). Le registre ne peut pas la dépasser vers le bas. */
+export const OLDEST_GENERATOR = 15;
+/** Générateur ayant servi les versions 15 à 17, que le registre peut nommer (leur code reste dans `generator.ts` et `themesVersion.ts`) ; v15 : avant le 28/10/2026. */
 export const GENERATOR_BEFORE_34 = 15;
-
-/**
- * Lot 48 — **date de bascule** de l'herbe de course (générateur v17 : la Campagne roule sur l'herbe de course, trois figures d'herbe) : le
- * **mercredi 04/11/2026**, proposée par le lot, **à confirmer par Nathan selon la date de mise en production** (le premier jour ni passé, ni
- * en cours, ni joué à ce moment-là). Les jours du 28/10 au 03/11 gardent le générateur v16, bit pour bit. Déplacer la bascule : cette
- * constante, puis `UPDATE_GOLDEN=1` sur `golden-daily.test.ts` (qui refuse de réécrire un jour d'avant).
- */
-export const BASCULE_LOT_48 = daysFromCivil(2026, 11, 4);
-/** Générateur des jours d'avant la bascule du lot 48 (à partir de celle du lot 34). */
+/** v16 : freinage possible après un boost (lot 34), les jours du 28/10/2026 que la production a servis avec elle. */
 export const GENERATOR_BEFORE_48 = 16;
-
-/**
- * Lot 49 — **date de bascule** de l'identité des thèmes (générateur v18 : les fiches d'identité, les douze nouvelles figures, la variété garantie).
- * Le lot 48 n'étant pas encore en production au moment du lot, **la même date que lui** (mercredi 04/11/2026) : la v17 ne sert alors à aucun jour.
- * **À confirmer par Nathan selon la date de mise en production** : si le lot 48 part seul avant, cette constante passe au premier jour ni passé, ni en
- * cours, ni joué à la mise en production du lot 49 (et `UPDATE_GOLDEN=1` sur `golden-daily.test.ts`, qui refuse de réécrire un jour d'avant).
- */
-export const BASCULE_LOT_49 = BASCULE_LOT_48;
-/** Générateur des jours d'avant la bascule du lot 49 (à partir de celle du lot 48). */
+/** v17 : l'herbe de course (lot 48) ; aucun jour n'a été servi avec elle tant que le registre ne la nomme pas. */
 export const GENERATOR_BEFORE_49 = 17;
 
-/** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : 15 avant la bascule du lot 34, 16 avant celle du lot 48, 17 avant celle du lot 49, la dernière ensuite. */
-export const generatorVersionOf = (day: number): number =>
-  day < BASCULE_LOT_34 ? GENERATOR_BEFORE_34 : day < BASCULE_LOT_48 ? GENERATOR_BEFORE_48 : day < BASCULE_LOT_49 ? GENERATOR_BEFORE_49 : GENERATOR_VERSION;
+/** Version du générateur qui a fait (ou fera) le circuit de ce jour (ou de cette graine du Salon) : celle du registre pour un jour protégé, la dernière sinon. */
+export const generatorVersionOf = (day: number): number => {
+  plages ??= REGISTRE.plages.map((p) => ({ du: parseDay(p.du) ?? 0, au: parseDay(p.au) ?? 0, g: p.g }));
+  return plages.find((p) => day >= p.du && day <= p.au)?.g ?? GENERATOR_VERSION;
+};
 
 /**
  * Identifiant du circuit d'un jour. La variante 0 (le circuit d'origine) n'a pas de suffixe : les circuits d'avant le lot 14

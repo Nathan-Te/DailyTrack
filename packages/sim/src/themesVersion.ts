@@ -8,7 +8,7 @@ import { THEMES, type Theme, type ThemeName } from "./themes";
 export const TURF_FIGURES = ["ample-herbe", "chicane-herbe", "droite-herbe"] as const;
 
 /**
- * Lot 48 (générateur v17, à partir de `BASCULE_LOT_48`, dailyId.ts) : ce qui change dans un thème à partir de cette version. **Campagne** :
+ * Lot 48 (générateur v17) : ce qui change dans un thème à partir de cette version. **Campagne** :
  * l'herbe de course remplace l'herbe de ses zones de revêtement et en devient le revêtement principal (poids 3 contre 1 à la terre), et
  * l'une de ses trois figures d'herbe de course est toujours là (`requireAlso`). Les zones d'herbe de course se posent là où trois blocs de suite
  * peuvent la porter (`turfZone`, generator.ts) : les approches protégées par le lot 34 gardent la route. Les autres thèmes ne changent pas ; un jour d'avant la bascule garde son thème tel quel.
@@ -21,7 +21,7 @@ const THEMES_48: Partial<Record<ThemeName, Partial<Theme>>> = {
 export const TURBO_FIGURES = ["chaine-turbo", "turbo-epingle", "turbo-courbe", "turbo-saut-releve"] as const;
 
 /**
- * Lot 49 (générateur v18, à partir de `BASCULE_LOT_49`, dailyId.ts) : **les fiches d'identité validées par Nathan** (`docs/lots/lot-49-identite/fiches.md`).
+ * Lot 49 (générateur v18) : **les fiches d'identité validées par Nathan** (`docs/lots/lot-49-identite/fiches.md`).
  * Pour chaque thème : ses nouvelles figures favorites (poids ×4), ses **vedettes** (une par circuit, à tour de rôle) et ce qu'il ne fait jamais ;
  * Rallye et Banquise : un peu plus de terre et de glace. Ces listes s'ajoutent à celles du thème (et du lot 48 pour la Campagne).
  */

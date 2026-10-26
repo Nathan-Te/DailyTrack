@@ -24,6 +24,9 @@ name: Mettre en production
 #   - la validation de Nathan a pu durer : le serveur et le site re-vérifient que le jour de bascule n'a pas commencé (sinon : relancer).
 # **Répétition** (`mode: repetition`) : tout cela contre la RECETTE, avec une heure de déploiement simulée (`heure_simulee`) ; ni étiquette, ni PR des jours figés, ni production ;
 # `smoke` complet à la fin. Le résumé est celui de la vraie production. Liste de contrôle pas à pas : docs/plateforme/mise-en-production.md.
+# Lot R11 — Track fige ses circuits comme Jump : le registre des jours de Track (`packages/sim/src/jours-track.json`, la version du générateur de chaque jour servi) est écrit ici, avec le
+#   code en production, jusqu'à la veille de la bascule ; il rejoint le serveur et le site (artefact `registre-track`) et le dépôt (PR « Jours figés »). Un jour du registre ne change
+#   jamais (toute différence avec ce que la production sert arrête la mise en production) ; à partir de la bascule, les jours prennent la dernière version du code déployé.
 # Retour arrière : retour-arriere.yml. Pas à pas : docs/plateforme/domaine.md. Sans Firebase configuré, le site est sauté (message clair) et
 # le serveur part seul ; sans production configurée, tout est sauté.
 on:
@@ -105,6 +108,9 @@ jobs:
       - name: Ce commit contient-il le garde-fou des jours (lot R6) ?
         run: |
           git show "${{ steps.sha.outputs.sha }}:scripts/mise-en-production.mjs" | grep -q "bascule-valide" || { echo "::error::ce commit est antérieur au lot R6 (garde-fou des jours) : mettre en production un commit plus récent de main"; exit 1; }
+      - name: Ce commit contient-il le registre des jours de Track (lot R11) ?
+        run: |
+          git cat-file -e "${{ steps.sha.outputs.sha }}:packages/sim/src/jours-track.json" 2>/dev/null || { echo "::error::ce commit est antérieur au lot R11 (registre des jours de Track) : mettre en production un commit plus récent de main"; exit 1; }
       - name: Le jour de bascule (calculé maintenant, au clic)
         id: bascule
         env:
@@ -192,11 +198,22 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
+      # Lot R11 (décision de Nathan) : le garde-fou ne protège que les jours d'avant le lancement, ceux qui sont déjà figés et ceux qui ont au moins un résultat en production (Track ou Jump).
+      # Les résultats se lisent en LECTURE SEULE (GET /api/portail/classement?date=, route publique) ; un jour à partir de la journée n° 1 sans aucun résultat est régénéré avec le code déployé.
+      - name: Les jours protégés (lecture seule des résultats de la production)
+        env:
+          PREMIER: ${{ needs.verifier.outputs.premier }}
+          VEILLE: ${{ needs.verifier.outputs.veille }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/registre-track"
+          node outils/scripts/mise-en-production.mjs proteges --origine "$(node outils/scripts/domaine.mjs adresse production)" --cible cible --premier "$PREMIER" --veille "$VEILLE" \
+            --sortie "$RUNNER_TEMP/registre-track/proteges.json" --resume "$GITHUB_STEP_SUMMARY" \
+            || { echo "::error title=Mise en production arrêtée::les résultats de la production n'ont pas pu être lus (lecture seule) : sans eux, les jours à protéger sont inconnus"; exit 1; }
       - name: Les jours que la production sert
         working-directory: outils
         env:
           REFERENCE: ${{ needs.verifier.outputs.reference }}
-        run: node scripts/mise-en-production.mjs jours-servis "$REFERENCE" "$GITHUB_WORKSPACE/prod/apps/jump/public/levels" --jusqua origin/main
+        run: node scripts/mise-en-production.mjs jours-servis "$REFERENCE" "$GITHUB_WORKSPACE/prod/apps/jump/public/levels" --jusqua origin/main --registre "$GITHUB_WORKSPACE/prod/packages/sim/src/jours-track.json"
       - name: freeze:days -- veille du jour de bascule (code en production)
         working-directory: prod
         env:
@@ -204,24 +221,39 @@ jobs:
         run: |
           npm ci --ignore-scripts
           npm run freeze:days -w @cdj/jump -- "$VEILLE"
+      - name: Les jours sans résultat ne sont pas figés (le nouveau code les régénère)
+        run: node outils/scripts/mise-en-production.mjs jours-figes-filtrer prod/apps/jump/public/levels --proteges "$RUNNER_TEMP/registre-track/proteges.json" | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Les jours figés s'accordent-ils avec le commit déployé ?
         run: |
           mkdir -p "$RUNNER_TEMP/cible-levels"
           cp cible/apps/jump/public/levels/*.json "$RUNNER_TEMP/cible-levels/" 2>/dev/null || true
           node outils/scripts/mise-en-production.mjs jours-figes prod/apps/jump/public/levels "$RUNNER_TEMP/cible-levels" | tee -a "$GITHUB_STEP_SUMMARY"
+      # Lot R11 : le registre des jours de Track. Ce que la production sert pour chaque jour jusqu'à la veille de la bascule (son code : la date de ses lots, ou son registre) s'ajoute à celui du
+      # dépôt ; un jour qui diffère (ou un jour du dépôt au-delà de la veille) arrête la mise en production. La construction (cible) l'a ensuite : ses empreintes sont celles de la production.
+      - name: Le registre des jours de Track (code en production) — rien avant la bascule ne doit changer
+        env:
+          VEILLE: ${{ needs.verifier.outputs.veille }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/registre"
+          debut="$(node -e 'console.log(JSON.parse(require("fs").readFileSync("cible/packages/sim/src/jours-track.json","utf8")).plages[0].du)')"
+          node outils/scripts/mise-en-production.mjs registre prod --du "$debut" --au "$VEILLE" --proteges "$RUNNER_TEMP/registre-track/proteges.json" --sortie "$RUNNER_TEMP/registre/prod.json"
+          node outils/scripts/mise-en-production.mjs registre-fusion cible/packages/sim/src/jours-track.json "$RUNNER_TEMP/registre/prod.json" --resume "$GITHUB_STEP_SUMMARY" \
+            || { echo "::error title=Mise en production arrêtée::un jour du registre de Track ne s'accorde pas avec ce que la production sert : la liste est dans le résumé du run"; exit 1; }
+          cp cible/packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json"
       - name: Les empreintes des jours (code en production, puis nouvelle construction) — rien avant la bascule ne doit changer
         env:
-          PREMIER: ${{ needs.verifier.outputs.premier }}
           DERNIER: ${{ needs.verifier.outputs.dernier_regenere }}
           BASCULE: ${{ needs.verifier.outputs.bascule_le }}
           INSTANT: ${{ needs.verifier.outputs.instant }}
           MODE: ${{ inputs.mode }}
         run: |
           (cd cible && npm ci --ignore-scripts)
+          # Les jours d'avant le lancement « restent tels quels » : la comparaison part du plus ancien niveau figé de Jump (lot R11), pas de la journée n° 1.
+          PREMIER="$(jq -r .debut "$RUNNER_TEMP/registre-track/proteges.json")"
           node outils/scripts/mise-en-production.mjs empreintes prod --du "$PREMIER" --au "$DERNIER" --niveaux prod/apps/jump/public/levels --sortie "$RUNNER_TEMP/empreintes/prod.json"
           node outils/scripts/mise-en-production.mjs empreintes cible --du "$PREMIER" --au "$DERNIER" --niveaux "$RUNNER_TEMP/cible-levels" --sortie "$RUNNER_TEMP/empreintes/cible.json"
           simulee=(); [ "$MODE" != repetition ] || simulee=(--simulee)
-          node outils/scripts/mise-en-production.mjs comparer "$RUNNER_TEMP/empreintes/prod.json" "$RUNNER_TEMP/empreintes/cible.json" "$BASCULE" "${simulee[@]}" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" > /dev/null \
+          node outils/scripts/mise-en-production.mjs comparer "$RUNNER_TEMP/empreintes/prod.json" "$RUNNER_TEMP/empreintes/cible.json" "$BASCULE" "${simulee[@]}" --proteges "$RUNNER_TEMP/registre-track/proteges.json" --instant "$INSTANT" --resume "$GITHUB_STEP_SUMMARY" > /dev/null \
             || { echo "::error title=Mise en production arrêtée::un jour d'avant la bascule changerait (ou un jour régénéré n'est pas valide) : la liste est dans le résumé du run"; exit 1; }
       - name: L'ancien code tourne-t-il sur la base migrée (le retour arrière) ?
         run: node outils/scripts/base-migree.mjs cible prod --resume "$GITHUB_STEP_SUMMARY"
@@ -229,6 +261,13 @@ jobs:
         with:
           name: jours-figes
           path: prod/apps/jump/public/levels/*.json
+          retention-days: 30
+          if-no-files-found: error
+      # Lot R11 : le registre des jours de Track (celui du dépôt, complété de ce que la production sert) part avec le serveur, le site et le dépôt.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: registre-track
+          path: ${{ runner.temp }}/registre-track
           retention-days: 30
           if-no-files-found: error
       # Les empreintes des jours passés (jusqu'à la veille de la bascule) entrent dans le dépôt avec les jours figés (apps/api/test/jours-passes.json).
@@ -252,6 +291,7 @@ jobs:
       target: ${{ inputs.mode == 'repetition' && 'recette' || 'production' }}
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      registre_track: registre-track
       # Le jour de bascule se re-vérifie après la validation (production seulement : une répétition a une heure simulée).
       bascule_le: ${{ inputs.mode != 'repetition' && needs.verifier.outputs.bascule_le || '' }}
     secrets: inherit
@@ -268,6 +308,7 @@ jobs:
       api: /
       ref: ${{ needs.verifier.outputs.sha }}
       jours_figes: jours-figes
+      registre_track: registre-track
       bascule_le: ${{ inputs.mode != 'repetition' && needs.verifier.outputs.bascule_le || '' }}
     secrets: inherit
 
@@ -369,14 +410,20 @@ jobs:
         with:
           name: empreintes-jours
           path: ${{ runner.temp }}/empreintes-jours
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: registre-track
+          path: ${{ runner.temp }}/registre-track
       - name: PR des jours figés
         env:
           VEILLE: ${{ needs.verifier.outputs.veille }}
         run: |
           node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels
+          # Lot R11 : le registre des jours de Track (jusqu'à la veille de la bascule) rejoint le dépôt avec les niveaux figés de Jump ; les jours d'avant ne changent jamais.
+          node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
           # Lot R6 : les empreintes des jours passés (jusqu'à la veille de la bascule) rejoignent le test `jours-passes.test.ts` : un jour passé ne change plus jamais.
-          node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE"
-          if [ -z "$(git status --porcelain apps/jump/public/levels apps/api/test/jours-passes.json)" ]; then
+          node scripts/mise-en-production.mjs empreintes-fusion apps/api/test/jours-passes.json "$RUNNER_TEMP/empreintes-jours/prod.json" --jusqua "$VEILLE" --proteges "$RUNNER_TEMP/registre-track/proteges.json"
+          if [ -z "$(git status --porcelain apps/jump/public/levels apps/api/test/jours-passes.json packages/sim/src/jours-track.json)" ]; then
             echo "### Jours figés : déjà dans main, rien à ajouter" >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -384,10 +431,10 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add apps/jump/public/levels apps/api/test/jours-passes.json
+          git add apps/jump/public/levels apps/api/test/jours-passes.json packages/sim/src/jours-track.json
           git commit -q -m "Jours figés de la mise en production $TAG (code en production, freeze:days jusqu'à la veille de la bascule)"
           git push -q origin "$branch"
-          body="Jours figés par « Mettre en production » ($TAG, run $GITHUB_RUN_ID) avec **le code qui était en production**. Ils sont déjà dans l'image du serveur et le site déployés ; cette PR les garde dans le dépôt (un jour figé ne change jamais), avec les empreintes des jours passés de DailyTrack et de DailyJump (apps/api/test/jours-passes.json : un jour passé ne change plus jamais)."
+          body="Jours figés par « Mettre en production » ($TAG, run $GITHUB_RUN_ID) avec **le code qui était en production**. Ils sont déjà dans l'image du serveur et le site déployés ; cette PR les garde dans le dépôt (un jour figé ne change jamais), avec les empreintes des jours passés de DailyTrack et de DailyJump (apps/api/test/jours-passes.json : un jour passé ne change plus jamais) et le registre des jours de DailyTrack (packages/sim/src/jours-track.json : la version du générateur de chaque jour servi)."
           url="$(gh pr create --base main --head "$branch" --title "Jours figés — $TAG" --body "$body")"
           if [ "$HAS_ROBOT" = true ]; then
             if gh pr merge "$url" --auto --merge; then

@@ -3,6 +3,7 @@ import {
   AUTHOR_MIN_MS,
   FAST_PEAK,
   GENERATOR_VERSION,
+  PREMIER_JOUR,
   MAX_ATTEMPTS,
   SIM_VERSION,
   THEME_NAMES,
@@ -36,8 +37,6 @@ import {
   humanRun,
   composeFigures,
   generatorVersionOf,
-  BASCULE_LOT_34,
-  BASCULE_LOT_48,
   themeForDay,
   medalsFor,
   type BlockSurface,
@@ -131,15 +130,17 @@ function sectionHerbe() {
     }
     return on / 120;
   };
-  for (const [label, surface, from, step] of [["avant la bascule (herbe d'avant)", "grass", BASCULE_LOT_48 - 1, -1], ["après la bascule (herbe de course)", "turf", BASCULE_LOT_48, 1]] as const) {
+  // Lot R11 : plus de date de bascule dans le code — les deux versions se comparent sur les mêmes jours de Campagne à partir du 04/11/2026, chacune imposée.
+  const DEPART_HERBE = daysFromCivil(2026, 11, 4);
+  for (const [label, surface, from, step, version] of [["v16 (herbe d'avant)", "grass", DEPART_HERBE, 1, 16], ["v17+ (herbe de course)", "turf", DEPART_HERBE, 1, GENERATOR_VERSION]] as const) {
     const rows: { date: string; g: number; share: number; on: number; lost: number; author: number; gold: number }[] = [];
     for (let d = from; rows.length < 20; d += step) {
       if (themeForDay(d).name !== "campagne") continue;
-      const c = dailyCircuit(d);
+      const c = dailyCircuit(d, 0, null, version);
       const n = c.track.blocks.filter((b) => b.surface === surface).length;
       const best = bestPilotRun(c.track, { cut: false })!;
       const road = n > 0 ? bestPilotRun(parseTrack("sans", surfaceOff(c.spec, letter[surface])), { cut: false }) : best;
-      rows.push({ date: formatDay(d), g: generatorVersionOf(d), share: n / c.track.blocks.length, on: n > 0 ? onSurface(c.track, surface, best.grip, best.wall) : 0, lost: road ? (best.finishMs - road.finishMs) / 1000 : NaN, author: c.authorMs, gold: medalsFor(c.authorMs, d).gold });
+      rows.push({ date: formatDay(d), g: version, share: n / c.track.blocks.length, on: n > 0 ? onSurface(c.track, surface, best.grip, best.wall) : 0, lost: road ? (best.finishMs - road.finishMs) / 1000 : NaN, author: c.authorMs, gold: medalsFor(c.authorMs, d).gold });
     }
     console.log(`\n4. Lot 48 — Campagne ${label}, 20 circuits`);
     console.log("  date        v   part des blocs  temps dessus  perdu   auteur (pilote)  or");
@@ -178,7 +179,7 @@ function jumpApproach(blocks: Block[], kick: number): JumpKindLot49 {
 }
 const blockLength = (b: Block) => (isCurve(b.kind) ? (CELL * ((isWide(b.kind) ? (b.kind.startsWith("grand") ? 3 : 2) : 1) - 0.5) * Math.PI) / 2 : CELL);
 function sectionIdentite() {
-  const [iy = 2026, im = 11, id = 4] = (process.env.IDENTITE_FROM ?? formatDay(BASCULE_LOT_48)).split("-").map(Number);
+  const [iy = 2026, im = 11, id = 4] = (process.env.IDENTITE_FROM ?? "2026-11-04").split("-").map(Number);
   const from = daysFromCivil(iy, im, id);
   const per = Number(process.env.IDENTITE_N ?? 25);
   const forced = process.env.IDENTITE_GEN ? Number(process.env.IDENTITE_GEN) : null;
@@ -266,7 +267,7 @@ if (process.env.IDENTITE) {
   process.exit(0);
 }
 
-console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} (sections 1 et 2 : v${GENERATOR} imposée ; bascule du lot 34 : ${formatDay(BASCULE_LOT_34)}, v${generatorVersionOf(BASCULE_LOT_34 - 1)} avant) · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
+console.log(`SIM_VERSION ${SIM_VERSION} · GENERATOR_VERSION ${GENERATOR_VERSION} (sections 1 et 2 : v${GENERATOR} imposée ; jour sans entrée au registre : v${generatorVersionOf(PREMIER_JOUR + 10_000)}) · fenêtre ${AUTHOR_MIN_MS / 1000}–${AUTHOR_MAX_MS / 1000} s\n`);
 
 // --- 1. Soixante dates -------------------------------------------------------------------------
 

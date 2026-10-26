@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   AUTHOR_MAX_MS,
   AUTHOR_MIN_MS,
-  BASCULE_LOT_49,
+  ANCRE_V18,
   FIGURES_LOT49,
   SALON_SEED_BASE,
   THEMES,
@@ -28,7 +28,7 @@ export const PER_THEME = 60;
 /** Les `n` premiers jours de chaque thème à partir de la bascule, en marchant de jour en jour (de vrais jours : les jours consécutifs d'un thème en font partie). */
 export function themeDays(n: number): Map<ThemeName, number[]> {
   const out = new Map<ThemeName, number[]>(THEME_NAMES.map((t) => [t, []]));
-  for (let d = BASCULE_LOT_49; [...out.values()].some((l) => l.length < n); d++) {
+  for (let d = ANCRE_V18; [...out.values()].some((l) => l.length < n); d++) {
     const l = out.get(themeForDay(d).name)!;
     if (l.length < n) l.push(d);
   }

@@ -16,10 +16,18 @@
 //   node scripts/mise-en-production.mjs comparer <prod.json> <cible.json> <bascule> [--resume <fichier>]
 //                                                                                     → compare les empreintes des jours ; la moindre différence AVANT la bascule arrête
 //   node scripts/mise-en-production.mjs empreintes-fusion <existant.json> <nouveau.json> [--jusqua <jour>]  → ajoute les jours nouveaux, refuse un jour qui change
+// Lot R11 (Track fige ses circuits comme Jump) :
+//   node scripts/mise-en-production.mjs proteges --origine <url> --cible <dépôt> --premier <jour> --veille <jour> --sortie <fichier>  → les jours qui ne changent jamais : d'avant le lancement, déjà
+//                                                                                     figés, ou avec au moins un résultat en production (lecture seule du classement du jour) ; les autres sont régénérés
+//   node scripts/mise-en-production.mjs proteges-verifier <proteges.json> --origine <url>  → relit (lecture seule) les jours régénérés : aucun ne doit avoir reçu de résultat depuis
+//   node scripts/mise-en-production.mjs jours-figes-filtrer <dossier de niveaux> --proteges <fichier>  → retire les niveaux figés de Jump des jours sans résultat
+//   node scripts/mise-en-production.mjs registre <dépôt> --du <jour> --au <jour> --sortie <fichier> [--proteges <fichier>]  → le registre des jours de Track tel que le code de <dépôt> les sert (le script y est copié)
+//   node scripts/mise-en-production.mjs registre-fusion <registre du dépôt> <registre de la production> [--resume <fichier>]  → ajoute les jours nouveaux au registre du dépôt (écrit en place),
+//                                                                                     refuse un jour qui change ou un jour du dépôt au-delà de la veille de la bascule
 //   node scripts/mise-en-production.mjs inventaire <de> <à> [--resume <fichier>]     → « Ce qui part » : PR, versions, migrations, routes
 import { execFileSync } from "node:child_process";
-import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const TAG_PREFIX = "prod-";
@@ -181,21 +189,24 @@ export const nomDuJour = (date) => {
 /**
  * Compare les empreintes de ce que sert la production (`prod`) et de ce que servira la nouvelle construction (`cible`) : `{ track: { AAAA-MM-JJ: { id, h, ok } }, jump: … }`.
  * **Avant la bascule, aucune différence n'est permise** (jour passé ou en cours : temps, fantômes, archives en dépendent) ; à partir de la bascule, les jours sont régénérés avec
- * le nouveau code : on compte les jours validés (`ok`) et ceux qui changent. `premier` : les jours d'avant le lancement ne comptent pas.
+ * le nouveau code : on compte les jours validés (`ok`) et ceux qui changent. `premier` : les jours d'avant le lancement ne comptent pas — sauf avec `proteges` (lot R11 : la liste
+ * des jours protégés, `joursProteges`) : les jours d'avant le lancement et ceux qui ont un résultat sont comparés, **un jour sans résultat ne l'est pas** (il est régénéré, `sansResultat`).
  */
-export function comparerEmpreintes(prod, cible, bascule, premier = "0000-00-00") {
+export function comparerEmpreintes(prod, cible, bascule, premier = "0000-00-00", proteges = null) {
   const jeux = {};
   for (const jeu of new Set([...Object.keys(prod), ...Object.keys(cible)].filter((k) => !["version", "du", "au"].includes(k)))) {
     const p = prod[jeu] ?? {};
     const c = cible[jeu] ?? {};
-    const dates = [...new Set([...Object.keys(p), ...Object.keys(c)])].filter((d) => d >= premier).sort();
-    const r = { conserves: [], differences: [], regeneres: [], valides: 0, invalides: [], changes: [] };
+    // Lot R11 : avec la liste des jours protégés, les jours d'avant le lancement comptent aussi (ils « restent tels quels »), et un jour sans aucun résultat n'est pas protégé.
+    const dates = [...new Set([...Object.keys(p), ...Object.keys(c)])].filter((d) => proteges || d >= premier).sort();
+    const r = { conserves: [], differences: [], regeneres: [], valides: 0, invalides: [], changes: [], sansResultat: [] };
     for (const date of dates) {
-      if (date < bascule) {
+      if (date < bascule && (!proteges || estProtege(proteges, date))) {
         if (!p[date] || !c[date]) r.differences.push({ date, prod: p[date]?.id ?? null, cible: c[date]?.id ?? null, raison: !p[date] ? "absent de la production" : "absent de la construction" });
         else if (p[date].h !== c[date].h) r.differences.push({ date, prod: p[date].id, cible: c[date].id, raison: p[date].id !== c[date].id ? "autre identifiant" : "autre contenu, même identifiant" });
         else r.conserves.push(date);
       } else if (c[date]) {
+        if (date < bascule) r.sansResultat.push(date);
         r.regeneres.push(date);
         if (c[date].ok) r.valides++;
         else r.invalides.push(date);
@@ -214,7 +225,7 @@ const plage = (l) => (l.length ? `${l[0]} → ${l.at(-1)}` : "aucun");
 export function resumeBascule({ plan, comparaison, simulee = false }) {
   const l = [`### Jours : ce qui est conservé, ce qui est rechargé${simulee ? " — **répétition** (heure simulée)" : ""}`, ""];
   l.push(`- Déploiement : \`${plan.jourDeParis}\` (heure de Paris${simulee ? ", simulée" : ""}) → **jour de bascule : ${nomDuJour(plan.bascule)}** (le premier jour de Paris qui commence après le déploiement).`);
-  l.push(`- Avant la bascule (${plan.premier} → ${plan.veille}) : **la carte de chaque jeu est exactement celle que la production sert** ; à partir du ${plan.bascule}, le nouveau code.`, "");
+  l.push(`- Avant la bascule (${plan.premier} → ${plan.veille}) : **la carte de chaque jour protégé (d'avant le lancement, déjà figé ou avec un résultat) est exactement celle que la production sert** ; un jour sans aucun résultat et, à partir du ${plan.bascule}, tous les jours, ont le nouveau code.`, "");
   l.push("| jeu | jours conservés (identiques) | jours en différence | jours régénérés | validés | qui changent |", "|---|---|---|---|---|---|");
   for (const [jeu, r] of Object.entries(comparaison.jeux)) {
     l.push(`| ${NOMS_JEUX[jeu] ?? jeu} | ${r.conserves.length} (${plage(r.conserves)}) | ${r.differences.length} | ${r.regeneres.length} (${plage(r.regeneres)}) | ${r.valides} | ${r.changes.length} |`);
@@ -223,26 +234,28 @@ export function resumeBascule({ plan, comparaison, simulee = false }) {
   for (const [jeu, r] of Object.entries(comparaison.jeux)) {
     for (const d of r.differences) l.push(`- ❌ **${NOMS_JEUX[jeu] ?? jeu} ${d.date}** : ${d.raison} (production \`${d.prod ?? "—"}\`, construction \`${d.cible ?? "—"}\`)`);
     for (const d of r.invalides) l.push(`- ❌ **${NOMS_JEUX[jeu] ?? jeu} ${d}** : le nouveau code ne produit pas de niveau valide (circuit ou niveau de secours)`);
+    if (r.sansResultat?.length) l.push(`- ${NOMS_JEUX[jeu] ?? jeu} : ${r.sansResultat.length} jour(s) d'avant la bascule **sans aucun résultat**, régénérés avec le nouveau code (${r.sansResultat.join(", ")}).`);
   }
   l.push(
     comparaison.ok
-      ? "- ✅ Aucun jour d'avant la bascule ne change ; tous les jours régénérés sont valides."
-      : "- ⛔ **La mise en production s'arrête** : un jour d'avant la bascule changerait (ou un jour régénéré n'est pas valide). Corriger (date de bascule du générateur, jour figé) puis relancer ; voir `docs/plateforme/mise-en-production.md`.",
+      ? "- ✅ Aucun jour protégé ne change ; tous les jours régénérés sont valides."
+      : "- ⛔ **La mise en production s'arrête** : un jour protégé changerait (ou un jour régénéré n'est pas valide). Corriger (version du générateur, jour figé) puis relancer ; voir `docs/plateforme/mise-en-production.md`.",
   );
   return l.join("\n") + "\n";
 }
 
 /**
  * Fusion des empreintes de jours **passés** gardées dans le dépôt (`apps/api/test/jours-passes.json`) : un jour absent s'ajoute, un jour présent doit être identique
- * (un jour passé ne change jamais). `existant`, `nouveau` : `{ track: { date: { id, h } }, jump: … }`.
+ * (un jour passé ne change jamais). Lot R11 : avec `proteges`, seuls les jours protégés à partir du lancement entrent (un jour sans résultat n'est pas « passé »). `existant`, `nouveau` : `{ track: { date: { id, h } }, jump: … }`.
  */
-export function fusionnerEmpreintes(existant, nouveau, jusqua = "9999-12-31") {
+export function fusionnerEmpreintes(existant, nouveau, jusqua = "9999-12-31", proteges = null) {
   const out = JSON.parse(JSON.stringify(existant));
   const conflits = [];
   const ajoutes = [];
   for (const jeu of ["track", "jump"]) {
     out[jeu] ??= {};
     for (const [date, e] of Object.entries(nouveau[jeu] ?? {})) {
+      if (proteges && (date < proteges.premier || !estProtege(proteges, date))) continue; // lot R11 : seuls les jours protégés du lancement à la veille de la bascule sont « passés » : un jour sans résultat est régénéré
       if (date > jusqua) continue; // à partir de la bascule, le jour n'est pas encore « passé » : le prochain code peut le changer
       const avant = out[jeu][date];
       if (!avant) {
@@ -254,6 +267,148 @@ export function fusionnerEmpreintes(existant, nouveau, jusqua = "9999-12-31") {
   }
   return { fusion: out, ajoutes, conflits };
 }
+
+// ——— Les jours protégés et le registre des jours de Track (lot R11) ——————————————————————————————————————————————————————————
+
+/**
+ * **Quels jours la mise en production protège** (décision de Nathan) : les jours d'avant le lancement public (`config/lancement.json`), les jours déjà figés (une plage du registre de
+ * Track, un fichier de Jump : ils ne changent jamais) et **les jours qui ont au moins un résultat en production** (Track ou Jump). Un jour à partir de la journée n° 1 qui n'a aucun
+ * résultat est traité comme non servi : la mise en production le régénère avec le code déployé. `figes` : les jours déjà figés (dates) ; `resultats` : `{ date: nombre de classés }`.
+ * Rend `{ premier, veille, jours: { date: raison } }` (les jours à partir de `premier` seulement : ceux d'avant le sont tous).
+ */
+export function joursProteges({ premier, veille, figes = [], resultats = {} }) {
+  const jours = {};
+  for (let d = premier; d <= veille; d = ajouterJours(d, 1)) {
+    if (figes.includes(d)) jours[d] = "déjà figé";
+    else if ((resultats[d] ?? 0) > 0) jours[d] = `${resultats[d]} classé(s)`;
+  }
+  return { format: 1, premier, veille, jours, resultats };
+}
+
+/** Vrai si le jour est protégé : d'avant le lancement, ou nommé par `proteges.jours`. */
+export const estProtege = (proteges, date) => date < proteges.premier || date in proteges.jours;
+
+/** Les jours (de `du` à `au`) qui ne sont pas protégés : ceux que la mise en production régénère. */
+export const joursRegeneres = (proteges, du, au) => {
+  const l = [];
+  for (let d = du; d <= au; d = ajouterJours(d, 1)) if (!estProtege(proteges, d)) l.push(d);
+  return l;
+};
+
+/**
+ * Lit, **en lecture seule**, combien de joueurs ont fini au moins un jeu chaque jour (`GET /api/portail/classement?date=` : route publique, des `GET` sans identifiant ni corps,
+ * que le serveur répond par le classement prouvé de la journée). Un `429` attend la fenêtre (le serveur compte les lectures par adresse) ; tout ce qui n'est pas la réponse
+ * attendue (un serveur injoignable, une route absente) **arrête** : sans cette lecture, la mise en production ne sait pas quels jours protéger. `unknown_day` (jour d'avant
+ * le lancement du serveur lu) : aucun résultat. `jours` : les dates à lire ; `fetchImpl`, `attendre` : pour les tests.
+ */
+export async function lireResultats(origine, jours, { fetchImpl = fetch, attendre = (ms) => new Promise((r) => setTimeout(r, ms)), essais = 6 } = {}) {
+  const base = origine.replace(/\/+$/, "");
+  const resultats = {};
+  for (const date of jours) {
+    for (let essai = 1; ; essai++) {
+      let res;
+      try {
+        res = await fetchImpl(`${base}/api/portail/classement?date=${date}`, { method: "GET", headers: { Accept: "application/json" } });
+      } catch (e) {
+        if (essai >= essais) throw new Error(`lecture des résultats du ${date} impossible (${e instanceof Error ? e.message : e})`);
+        await attendre(2000 * essai);
+        continue;
+      }
+      if (res.status === 200) {
+        const corps = await res.json();
+        if (!Number.isInteger(corps?.classes)) throw new Error(`lecture des résultats du ${date} : réponse inattendue (pas de nombre de classés)`);
+        resultats[date] = corps.classes;
+        break;
+      }
+      if (res.status === 404 && (await res.json().catch(() => null))?.error === "unknown_day") {
+        resultats[date] = 0;
+        break;
+      }
+      if ((res.status === 429 || res.status >= 500) && essai < essais) {
+        const apres = Number(res.headers?.get?.("Retry-After"));
+        await attendre(res.status === 429 && Number.isFinite(apres) && apres > 0 ? apres * 1000 : 2000 * essai);
+        continue;
+      }
+      throw new Error(`lecture des résultats du ${date} : le serveur répond ${res.status}`);
+    }
+  }
+  return resultats;
+}
+
+/**
+ * Le registre des jours de Track (`packages/sim/src/jours-track.json`) : `{ format: 1, jusqua, plages: [{ du, au, g, sim }] }` — la version du générateur (`g`) et de la simulation
+ * (`sim`) de chaque jour **protégé**, par plages de jours consécutifs de même version ; `jusqua` : le dernier jour que la dernière mise en production a décidé. Jump fige ses
+ * niveaux dans `apps/jump/public/levels/` ; Track a ce seul fichier : `generatorVersionOf` (packages/sim/src/dailyId.ts) le lit, un jour absent prend la dernière version.
+ * `joursDuRegistre` le déplie en `{ AAAA-MM-JJ: "g/sim" }`.
+ */
+export function joursDuRegistre(registre) {
+  const jours = {};
+  for (const p of registre?.plages ?? []) for (let d = p.du; d <= p.au; d = ajouterJours(d, 1)) jours[d] = `${p.g}/${p.sim}`;
+  return jours;
+}
+
+/** Le contraire : des jours `{ date: "g/sim" }` en registre (jours consécutifs de même version fondus en une plage ; un trou, une nouvelle plage). */
+export function registreDesJours(jours, jusqua) {
+  const dates = Object.keys(jours).sort();
+  const plages = [];
+  for (const date of dates) {
+    const [g, sim] = jours[date].split("/").map(Number);
+    const derniere = plages.at(-1);
+    if (derniere && derniere.g === g && derniere.sim === sim && ajouterJours(derniere.au, 1) === date) derniere.au = date;
+    else plages.push({ du: date, au: date, g, sim });
+  }
+  return { format: 1, jusqua: jusqua ?? dates.at(-1), plages };
+}
+
+/**
+ * Fusion du registre du dépôt (`existant`) avec celui que la production sert pour ses jours protégés (`nouveau`, calculé par le code en production jusqu'à la veille de la bascule) :
+ * un jour absent s'ajoute, un jour présent doit avoir **la même version** (un jour protégé ne change jamais), et le dépôt ne doit nommer **aucun jour au-delà de la veille de la
+ * bascule** (ces jours-là prennent la dernière version). `conflits` : les jours en cause, avec la raison.
+ */
+export function fusionnerRegistre(existant, nouveau) {
+  const avant = joursDuRegistre(existant);
+  const prod = joursDuRegistre(nouveau);
+  const conflits = [];
+  const ajoutes = [];
+  let conserves = 0;
+  const v = (x) => x.replace("/", " (sim ") + ")";
+  for (const date of Object.keys(avant)) {
+    if (date > nouveau.jusqua) conflits.push({ date, raison: `dans le dépôt, au-delà de la veille de la bascule (${nouveau.jusqua}) : ce jour-là prend la dernière version` });
+    else if (!prod[date]) conflits.push({ date, raison: "dans le dépôt, absent de ce que la production sert" });
+    else if (prod[date] !== avant[date]) conflits.push({ date, raison: `v${v(avant[date])} dans le dépôt, v${v(prod[date])} en production` });
+    else conserves++;
+  }
+  for (const date of Object.keys(prod)) if (!avant[date]) ajoutes.push(date);
+  const jours = { ...avant, ...prod };
+  return { fusion: registreDesJours(Object.fromEntries(Object.entries(jours).filter(([d]) => d <= nouveau.jusqua)), nouveau.jusqua), conserves, ajoutes: ajoutes.sort(), conflits };
+}
+
+/** Le résumé du registre de Track pour le run (comparaison : « même règle que Jump », toute différence d'un jour protégé arrête la mise en production). */
+export function resumeRegistre({ conserves, ajoutes, conflits, fusion }) {
+  const l = ["### Registre des jours de Track", ""];
+  l.push(`- ${conserves} jour(s) du dépôt identiques à ce que la production sert, **${conflits.length} différence(s)**, ${ajoutes.length} jour(s) ajouté(s)${ajoutes.length ? ` (${ajoutes[0]} → ${ajoutes.at(-1)})` : ""} ; le registre décide maintenant jusqu'au ${fusion.jusqua} (${fusion.plages.length} plage(s)).`);
+  for (const c of conflits) l.push(`- ❌ **DailyTrack ${c.date}** : ${c.raison}`);
+  l.push(conflits.length ? "- ⛔ **La mise en production s'arrête** : un jour du registre ne s'accorde pas avec ce que la production sert." : "- ✅ Aucun jour du registre ne change.");
+  return l.join("\n") + "\n";
+}
+
+/** Le résumé des jours protégés : combien, pourquoi, et lesquels sont régénérés (aucun résultat). */
+export function resumeProteges(proteges, du, au) {
+  const raisons = Object.values(proteges.jours);
+  const par = (prefixe) => raisons.filter((r) => r.startsWith(prefixe)).length;
+  const regeneres = joursRegeneres(proteges, proteges.premier, au);
+  const l = ["### Jours protégés et jours sans résultat", ""];
+  l.push(`- Protégés (ils ne changent jamais) : tous les jours d'avant le lancement (${proteges.premier}), ${par("déjà figé")} jour(s) déjà figé(s), ${raisons.length - par("déjà figé")} jour(s) avec au moins un résultat en production (lecture seule du classement du jour).`);
+  l.push(regeneres.length ? `- **Sans aucun résultat, donc régénérés avec le nouveau code** (${regeneres.length}, du ${proteges.premier} à la veille de la bascule ${proteges.veille}) : ${regeneres.join(", ")}.` : `- Aucun jour d'avant la bascule n'est sans résultat : tous restent tels quels.`);
+  void du;
+  return l.join("\n") + "\n";
+}
+
+/**
+ * Les fichiers de niveaux de Jump à garder après `freeze:days` (qui fige tout jusqu'à la veille de la bascule) : les jours protégés seulement. Un jour sans résultat n'est pas
+ * figé : le nouveau code le régénère.
+ */
+export const niveauxAEffacer = (fichiers, proteges) => fichiers.filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f) && !estProtege(proteges, f.slice(0, 10)));
 
 // ——— L'inventaire : « Ce qui part » ————————————————————————————————————————————————————————————————————————————————————————
 
@@ -350,12 +505,12 @@ export function inventaire({ de, a, prs, versionsAvant, versionsApres, baseAvant
   };
   vers("JUMP_GENERATOR_VERSION", "Jump", "Les niveaux de Jump **à partir du jour de bascule** changent (autres morceaux) ; avant, rien.", "Un jour passé qui changerait arrête la mise en production.", "Résumé « Jours » : 0 différence, N jours régénérés et valides.");
   vers("JUMP_SIM_VERSION", "Jump", "La physique de Jump change pour les niveaux d'après la bascule ; les jours figés se rejouent comme avant.", "Un onglet resté ouvert envoie l'ancienne version : accepté pour un jour d'avant la bascule, sinon « recharge la page ».", "Tests `jumpVieuxOnglets` ; les archives se rejouent (liste de contrôle).");
-  vers("GENERATOR_VERSION", "Track", "Les circuits de Track **à partir du jour de bascule du générateur** changent ; les jours d'avant gardent leur circuit au bit près.", "Une date de bascule du générateur qui précède le jour de bascule de la mise en production changerait un jour déjà joué.", "Résumé « Jours » : 0 différence ; `jours-passes.json`.");
+  vers("GENERATOR_VERSION", "Track", "Les circuits de Track **à partir du jour de bascule de la mise en production** changent (le registre des jours garde la version de chaque jour servi) ; les jours d'avant gardent leur circuit au bit près.", "Un jour servi que le registre ne nommerait pas prendrait la nouvelle version : le registre est écrit par ce workflow, avant le déploiement.", "Résumé « Jours » et « Registre des jours de Track » : 0 différence ; `jours-passes.json`.");
   vers("SIM_VERSION", "Track", "La physique de Track change : les anciennes rediffusions ne se rejouent plus.", "Un onglet ouvert reçoit « recharge la page » à l'envoi ; le fantôme d'avant est ignoré.", "Golden régénérés par le lot ; un temps envoyé après le déploiement.");
   for (const nom of new Set([...Object.keys(versionsAvant.bascules ?? {}), ...Object.keys(versionsApres.bascules ?? {})])) {
     const x = versionsAvant.bascules?.[nom];
     const y = versionsApres.bascules?.[nom];
-    if (x !== y) lignes.push([`${nom} : ${x ?? "—"} → ${y ?? "—"}`, "Date à partir de laquelle une règle de Track vaut.", "Une date d'avant le jour de bascule de la mise en production changerait un jour déjà joué.", "Le garde-fou des jours (empreintes) le dit avant le déploiement."]);
+    if (x !== y) lignes.push([`${nom} : ${x ?? "—"} → ${y ?? "—"}`, "Date à partir de laquelle une règle de Track vaut (médailles : lot 35 ; le générateur n'a plus de date, lot R11).", "Une date d'avant le jour de bascule de la mise en production changerait un jour déjà joué.", "Le garde-fou des jours (empreintes) le dit avant le déploiement."]);
   }
   const nouvellesMigrations = baseApres.migrations.filter((m) => !baseAvant.migrations.includes(m));
   for (const m of nouvellesMigrations) lignes.push([`migration : \`${m.slice(0, 110)}\``, "Aucun changement visible (la base gagne une colonne ou un index).", "Le retour arrière doit tourner sur la base migrée : colonne vide ou valeur par défaut seulement.", "Test des migrations ; « ancien code sur base migrée » (workflow)."]);
@@ -422,6 +577,17 @@ if (isMain) {
         }
       }
       console.log(remis.length ? `jours servis par la production, remis : ${remis.join(" ")}` : "aucun jour servi hors du commit de l'étiquette");
+      // Lot R11 : le registre des jours de Track que la production sert est celui de son image : le fichier du commit de l'étiquette, plus ce que les PR « Jours figés » y ont ajouté depuis
+      // (même raison que les niveaux de Jump). Un code en production d'avant le registre n'a pas le fichier : rien à remettre (il choisit la version par une date).
+      const registre = opt("--registre");
+      if (registre && existsSync(dirname(registre))) {
+        const chemin = "packages/sim/src/jours-track.json";
+        const dernier = git("log", "--format=%H", "-1", "-E", "--grep=^Jours figés de la mise en production", `${a}..${jusqua}`, "--", chemin).trim();
+        if (dernier) {
+          writeFileSync(registre, git("show", `${dernier}:${chemin}`));
+          console.log(`registre des jours de Track servi par la production : celui de ${dernier.slice(0, 7)}`);
+        } else console.log("registre des jours de Track : celui du commit de l'étiquette");
+      }
     } else if (cmd === "empreintes") {
       // Le script d'empreintes est celui de CE dépôt, copié dans le dépôt visé (le code en production ne l'a pas) : il ne dépend que des paquets @cdj/*.
       const depot = resolve(a);
@@ -433,6 +599,64 @@ if (isMain) {
       execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/empreintes-jours.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/empreintes-jours.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
       const donnees = ["--du", "--au", "--niveaux", "--sortie", "--jeux"].flatMap((o) => (opt(o) ? [o, o === "--niveaux" || o === "--sortie" ? resolve(opt(o)) : opt(o)] : []));
       execFileSync(process.execPath, ["dist/empreintes-jours.mjs", ...donnees], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
+    } else if (cmd === "proteges") {
+      // Les jours à partir du lancement (`--premier`) jusqu'à la veille de la bascule : déjà figés (registre de Track, niveaux de Jump du dépôt visé) ou avec un résultat en production.
+      const cible = resolve(opt("--cible"));
+      const figes = new Set();
+      const regFichier = join(cible, "packages/sim/src/jours-track.json");
+      if (existsSync(regFichier)) for (const d of Object.keys(joursDuRegistre(JSON.parse(readFileSync(regFichier, "utf8"))))) figes.add(d);
+      const niveaux = join(cible, "apps/jump/public/levels");
+      const datesJump = existsSync(niveaux) ? readdirSync(niveaux).filter((f) => /^\d{4}-\d{2}-\d{2}\.json$/.test(f)).map((f) => f.slice(0, 10)) : [];
+      for (const d of datesJump) figes.add(d);
+      const premier = opt("--premier");
+      const veille = opt("--veille");
+      const alire = [];
+      for (let d = premier; d <= veille; d = ajouterJours(d, 1)) if (!figes.has(d)) alire.push(d);
+      const resultats = await lireResultats(opt("--origine"), alire);
+      const proteges = joursProteges({ premier, veille, figes: [...figes], resultats });
+      // Le premier jour comparé : le plus ancien niveau figé de Jump (les jours d'avant le lancement « restent tels quels »).
+      proteges.debut = datesJump.filter((d) => d < premier).sort()[0] ?? premier;
+      proteges.origine = opt("--origine");
+      writeFileSync(resolve(opt("--sortie")), JSON.stringify(proteges, null, 1) + "\n");
+      const text = resumeProteges(proteges, premier, veille);
+      if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      process.stdout.write(text);
+    } else if (cmd === "proteges-verifier") {
+      // Après la validation de Nathan (qui peut durer), un jour que la mise en production régénère ne doit pas avoir reçu de résultat entre-temps : ce serait un jour joué qui change.
+      const proteges = JSON.parse(readFileSync(a, "utf8"));
+      const regeneres = joursRegeneres(proteges, proteges.premier, proteges.veille);
+      const maintenant = await lireResultats(opt("--origine") ?? proteges.origine, regeneres);
+      const nouveaux = Object.entries(maintenant).filter(([, n]) => n > 0).map(([d, n]) => `${d} (${n} classé(s))`);
+      if (nouveaux.length) throw new Error(`un jour que cette mise en production régénère a reçu des résultats depuis la vérification : ${nouveaux.join(", ")}. Relancer « Mettre en production » (les jours protégés se relisent au clic).`);
+      console.log(regeneres.length ? `les ${regeneres.length} jour(s) régénérés (${regeneres.join(", ")}) n'ont toujours aucun résultat` : "aucun jour sans résultat à régénérer avant la bascule");
+    } else if (cmd === "jours-figes-filtrer") {
+      const proteges = JSON.parse(readFileSync(opt("--proteges"), "utf8"));
+      const retires = niveauxAEffacer(existsSync(a) ? readdirSync(a) : [], proteges);
+      for (const f of retires) rmSync(join(a, f));
+      console.log(retires.length ? `niveaux de Jump retirés (jours sans résultat, régénérés par le nouveau code) : ${retires.join(" ")}` : "aucun niveau de Jump à retirer");
+    } else if (cmd === "registre") {
+      // Le script est celui de CE dépôt, copié dans le dépôt visé (le code en production ne l'a pas) ; il ne dépend que de `@cdj/sim`.
+      const depot = resolve(a);
+      const ici = fileURLToPath(new URL("../apps/api/scripts/", import.meta.url));
+      const dossier = join(depot, "apps/api/scripts");
+      mkdirSync(dossier, { recursive: true });
+      copyFileSync(join(ici, "registre-jours.ts"), join(dossier, "registre-jours.ts"));
+      const api = join(depot, "apps/api");
+      execFileSync(join(depot, "node_modules/.bin/esbuild"), ["scripts/registre-jours.ts", "--bundle", "--platform=node", "--format=esm", "--target=node22", "--outfile=dist/registre-jours.mjs", "--log-level=warning"], { cwd: api, stdio: "inherit" });
+      const brut = resolve(opt("--sortie") + ".jours");
+      execFileSync(process.execPath, ["dist/registre-jours.mjs", "--du", opt("--du"), "--au", opt("--au"), "--sortie", brut], { cwd: api, stdio: "inherit", env: { ...process.env, NODE_NO_WARNINGS: "1" } });
+      const { jours } = JSON.parse(readFileSync(brut, "utf8"));
+      // Seuls les jours protégés entrent au registre (lot R11) : un jour sans résultat prend la version du code déployé.
+      const proteges = opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null;
+      const gardes = Object.entries(jours).filter(([d]) => !proteges || estProtege(proteges, d)).map(([d, [g, sim]]) => [d, `${g}/${sim}`]);
+      writeFileSync(resolve(opt("--sortie")), JSON.stringify(registreDesJours(Object.fromEntries(gardes), opt("--au")), null, 1) + "\n");
+    } else if (cmd === "registre-fusion") {
+      const { fusion, conserves, ajoutes, conflits } = fusionnerRegistre(JSON.parse(readFileSync(a, "utf8")), JSON.parse(readFileSync(b, "utf8")));
+      const text = resumeRegistre({ conserves, ajoutes, conflits, fusion });
+      if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      process.stdout.write(text);
+      if (conflits.length) process.exit(1);
+      writeFileSync(a, JSON.stringify(fusion, null, 1) + "\n");
     } else if (cmd === "bascule-valide") {
       const ms = opt("--maintenant") ? Date.parse(opt("--maintenant")) : Date.now();
       if (basculeCommencee(a, ms)) throw new Error(`le jour de bascule (${a}) a déjà commencé à Paris (nous sommes le ${jourDeParis(ms)}) : la mise en production aurait changé un jour que les joueurs ont ouvert. Relancer « Mettre en production » (le jour de bascule se recalcule au clic).`);
@@ -442,14 +666,15 @@ if (isMain) {
       const cible = JSON.parse(readFileSync(b, "utf8"));
       const bascule = rest[0];
       const premier = JSON.parse(readFileSync(new URL("../config/lancement.json", import.meta.url), "utf8")).premierJour;
-      const comparaison = comparerEmpreintes(prod, cible, bascule, premier);
+      const proteges = opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null;
+      const comparaison = comparerEmpreintes(prod, cible, bascule, premier, proteges);
       const plan = planDesJours(opt("--instant") ? Number(opt("--instant")) : Date.now(), premier);
       const text = resumeBascule({ plan: { ...plan, bascule, veille: ajouterJours(bascule, -1) }, comparaison, simulee: all.includes("--simulee") });
       if (opt("--resume")) appendFileSync(opt("--resume"), text);
       process.stdout.write(text);
       if (!comparaison.ok) process.exit(1);
     } else if (cmd === "empreintes-fusion") {
-      const { fusion, ajoutes, conflits } = fusionnerEmpreintes(existsSync(a) ? JSON.parse(readFileSync(a, "utf8")) : { track: {}, jump: {} }, JSON.parse(readFileSync(b, "utf8")), opt("--jusqua"));
+      const { fusion, ajoutes, conflits } = fusionnerEmpreintes(existsSync(a) ? JSON.parse(readFileSync(a, "utf8")) : { track: {}, jump: {} }, JSON.parse(readFileSync(b, "utf8")), opt("--jusqua"), opt("--proteges") ? JSON.parse(readFileSync(opt("--proteges"), "utf8")) : null);
       if (conflits.length) throw new Error(`jour(s) passé(s) dont l'empreinte change : ${conflits.join(", ")} (un jour passé ne change jamais)`);
       writeFileSync(a, JSON.stringify(fusion, null, 1) + "\n");
       console.log(ajoutes.length ? `empreintes ajoutées : ${ajoutes.length} (${ajoutes[0]} … ${ajoutes.at(-1)})` : "aucune empreinte à ajouter");
@@ -497,7 +722,7 @@ if (isMain) {
       process.stdout.write(text);
     } else {
       void rest;
-      console.error("usage : node scripts/mise-en-production.mjs etiquette | derniere | changements <de> <à> | jours-figes <figés> <cible> | bascule | bascule-valide <jour> | comparer <prod> <cible> <bascule> | empreintes-fusion <fichier> <nouveau> | inventaire <de> <à>");
+      console.error("usage : node scripts/mise-en-production.mjs etiquette | derniere | changements <de> <à> | jours-figes <figés> <cible> | bascule | bascule-valide <jour> | comparer <prod> <cible> <bascule> | empreintes-fusion <fichier> <nouveau> | proteges | proteges-verifier <fichier> | jours-figes-filtrer <dossier> | registre <dépôt> | registre-fusion <registre> <production> | inventaire <de> <à>");
       process.exit(2);
     }
   } catch (e) {
