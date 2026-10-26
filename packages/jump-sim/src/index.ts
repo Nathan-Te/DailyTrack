@@ -12,6 +12,7 @@ export * from "./levels";
 export * from "./replay";
 export * from "./solutions";
 export * from "./demo";
+export * from "./demoPhases";
 export * from "./themes";
 export * from "./modules";
 export * from "./daily";

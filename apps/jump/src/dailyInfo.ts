@@ -125,3 +125,15 @@ export function finishMedalText(time: number, medals: JumpMedals): { medal: Jump
   const got = medal ? t(`arrivee.medaille.${medal}`) : t("bandeau.sansMedaille", { temps: fTicks(medals.bronze) });
   return { medal, text: t("bandeau.medailleAuteur", { medaille: got, auteur: fTicks(medals.author) }) };
 }
+
+/**
+ * Lot 21 (`?debug`) : d'où vient le niveau et si le catalogue des morceaux (avec le générateur) a été chargé — « fichier figé, catalogue non chargé » pour un jour
+ * figé, « généré (worker), catalogue chargé (worker) » quand le fichier manquait. Sans niveau du jour : un scénario ne charge rien, un morceau (`?module=`) charge
+ * le catalogue sur le fil principal. Pur, testé.
+ */
+export function originLine(load: { source: string; catalog: string } | null, moduleOpened: boolean): string {
+  const catalog = (where: string) => (where === "non" ? "catalogue non chargé" : where === "worker" ? "catalogue chargé (worker)" : "catalogue chargé");
+  if (!load) return `origine   ${moduleOpened ? "morceau du catalogue" : "scénario"}, ${catalog(moduleOpened ? "principal" : "non")}`;
+  const from = load.source === "fige" ? "fichier figé" : load.source === "cache" ? "cache" : load.source === "worker" ? "généré (worker)" : "généré (fil principal)";
+  return `origine   ${from}, ${catalog(load.catalog)}`;
+}

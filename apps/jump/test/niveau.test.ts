@@ -3,7 +3,8 @@ import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, JUMP_THEME_NAMES, dailyLevel,
 import { describe, expect, it } from "vitest";
 import { cacheKey, readCache, sweepCache, writeCache } from "../src/dailyCache";
 import { loadDaily, type LoaderOptions, type WorkerLike } from "../src/dailyLoader";
-import { fromPayload, generatePayload, toPayload } from "../src/dailyWork";
+import { fromPayload, toPayload } from "../src/dailyWork";
+import { generatePayload } from "../src/dailyGen";
 import type { KeyValue } from "../src/memory";
 import type { WorkerReply, WorkerRequest } from "../src/dailyWorker";
 

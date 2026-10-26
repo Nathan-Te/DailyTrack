@@ -124,6 +124,7 @@
     "jump/mobile.spec.ts": ["jump-ui", "ui"],
     "jump/modules.spec.ts": ["jump-modules", "jump-sim"],
     "jump/nuit-neon.spec.ts": ["jump-sim", "jump-rendu"],
+    "jump/plateformes.spec.ts": ["jump-sim", "jump-rendu"],
     "jump/plein-ecran.spec.ts": ["jump-ui", "ui"],
     "jump/poids.spec.ts": ["jump-jour"],
     "jump/profil-commun.spec.ts": ["jump-classement", "api-jump", "api-coeur", "profile-pkg"],

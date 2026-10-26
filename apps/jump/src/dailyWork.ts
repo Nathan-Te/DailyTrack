@@ -3,7 +3,6 @@ import {
   JUMP_GENERATOR_VERSION,
   JUMP_SIM_VERSION,
   JUMP_THEME_NAMES,
-  dailyLevel,
   dailyLevelId,
   decodeReplay,
   encodeReplay,
@@ -87,11 +86,6 @@ export function toPayload(d: DailyLevel): DailyPayload {
     slowRoutes: d.slowRoutes.map((r) => ({ ...r, ledges: r.ledges.map((l) => ({ ...l })) })),
     slowTicks: d.slowTicks,
   };
-}
-
-/** Génère le niveau d'une date (le travail du worker : `dailyLevel`, puis sa charge) ; `forced` : un thème imposé (essai). */
-export function generatePayload(day: number, forced: JumpThemeName | null = null): DailyPayload {
-  return toPayload(dailyLevel(day, forced));
 }
 
 const isInt = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v);

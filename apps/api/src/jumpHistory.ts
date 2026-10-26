@@ -5,6 +5,7 @@ import {
   JUMP_SIM_VERSION,
   PREMIER_JOUR_JUMP,
   demoAttempts,
+  repriseParPhase,
   encodeReplay,
   lifeReplay,
   replayAttempt,
@@ -81,7 +82,8 @@ export function fictionalJumps(d: DailyLevel, count: number): { name: string; co
   }
   // Un seul lot d'essais fictifs par jour (leur préparation coûte cher : une fois par niveau), réparti entre les joueurs : chacun en reçoit
   // quelques-uns et envoie son meilleur arrivé ; plus il en reçoit, plus il a de chances d'être rapide.
-  const pool = demoAttempts(d.level, d.replay, mixSeed(d.day, 0x51), { attempts: count * 16, maxLives: 8 });
+  // Lot 21 : des joueurs fictifs qui reprennent bien après une mort (`repriseParPhase`) : bien plus d'essais arrivent, donc plus de joueurs classés, sur tous les jours.
+  const pool = demoAttempts(d.level, d.replay, mixSeed(d.day, 0x51), { attempts: count * 16, maxLives: 8, reprise: repriseParPhase(d) });
   const out: { name: string; code: string; ticks: number; lives: string[] }[] = [{ name: names[0]!, code: d.code, ticks: d.authorTicks, lives: [] }];
   let cursor = 0;
   for (let p = 1; p < names.length && out.length < count && cursor < pool.length; p++) {

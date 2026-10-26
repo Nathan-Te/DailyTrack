@@ -1,14 +1,14 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { daysFromCivil, formatDay } from "@cdj/core";
-import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, encodeReplay, jumpMedalFor, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
+import { JUMP_GENERATOR_VERSION, JUMP_SIM_VERSION, dailyLevel, demoAttempts, repriseParPhase, encodeReplay, jumpMedalFor, replayAttempt, type DailyLevel } from "@cdj/jump-sim";
 import { JUMP_GRACE_MS } from "../src/jump";
 import { DAY as CDJ_DAY, NOON as CDJ_NOON, makeApi, parisDayStart, pilotReplay, playerId, TEST_DB } from "./helpers";
 
 // Lot P2 (plateforme) : le fantôme du premier (`GET /api/jump/day/<date>/ghost/first`) et le profil DailyJump (`GET /api/jump/me`) ; le
 // `GET /api/me` de DailyTrack ne change pas. Tourne sur SQLite et sur libSQL.
 
-/** Jour de test fixe : le 13/11/2026 (niveau généré ; lot 20 : en g15 le 29/10 n a plus que 1 essai fictif qui arrive), et son lendemain (pour la série et un jour passé). Midi à Paris. */
-const DAY = daysFromCivil(2026, 11, 13);
+/** Jour de test fixe : le 30/10/2026 (niveau généré ; lot 21 : joueurs fictifs qui reprennent bien, `repriseParPhase` ; au lot 20 il avait fallu le 13/11), et son lendemain (pour la série et un jour passé). Midi à Paris. */
+const DAY = daysFromCivil(2026, 10, 30);
 const DATE = formatDay(DAY);
 const NOON = parisDayStart(DAY) + 12 * 3_600_000;
 
@@ -22,7 +22,7 @@ beforeAll(() => {
   D2 = dailyLevel(DAY + 1);
   const seen = new Set<number>();
   runs = [];
-  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 30 }).filter((x) => x.end === "arrivée")) {
+  for (const a of demoAttempts(D.level, D.replay, 0x5eed, { attempts: 30, reprise: repriseParPhase(D) }).filter((x) => x.end === "arrivée")) {
     const r = replayAttempt(D.level, a.replay, D.id);
     if (!r.finished || seen.has(r.time) || r.time <= D.authorTicks) continue;
     seen.add(r.time);

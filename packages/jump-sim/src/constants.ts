@@ -53,3 +53,9 @@ export const JUMP_GENERATOR_VERSION = 15;
 
 /** Unités entières par tuile : 16 px × 256 sous-pixels. Tout l'état de la simulation (positions, vitesses par tick) est en unités. */
 export const UNITS_PER_TILE = 4096;
+
+/** Les deux entrées d'un morceau (lot 4) : à l'arrêt, ou en élan. Lot 21 : ici (et non dans `modules.ts`) pour que lire l'adresse du jeu ne charge pas le catalogue. */
+export const MODULE_ENTRIES = ["arret", "elan"] as const;
+export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
+/** Longueur du palier standard (lot 6), en tuiles : celle d'un raccord du niveau du jour. Lot 21 : ici, lue par les joueurs fictifs (`demo.ts`) sans le catalogue. */
+export const PALIER_LENGTH = 2;

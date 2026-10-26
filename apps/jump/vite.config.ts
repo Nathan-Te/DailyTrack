@@ -1,5 +1,6 @@
 import { readdirSync } from "node:fs";
-import { defineConfig } from "vite";
+import { fileURLToPath } from "node:url";
+import { defineConfig, type Plugin } from "vite";
 import { CATALOGUE_COMMUN } from "../../packages/ui/src/catalogue";
 import { pagesDuSocle } from "../../packages/ui/outils/vite";
 import { CATALOGUE_APERCU } from "./src/catalogue.apercu";
@@ -27,11 +28,39 @@ function frozenDays(): string[] {
   }
 }
 
+/**
+ * Lot 21 : le fil de travail du générateur (`src/dailyWorker.ts`) est une **entrée de la même construction** que le jeu, et non plus un « worker Vite »
+ * construit à part. Une construction à part recopiait dans le fil tout ce qu'il partage avec la page (le catalogue des morceaux, le générateur, la
+ * simulation : 56 ko compressés en double) ; en entrée de la construction, le fil et le repli sur le fil principal (`import("./dailyGen")`) ne chargent
+ * qu'**un seul** fichier du générateur, et le fil partage avec la page les morceaux de simulation qu'elle a déjà. `virtual:jump-fil-generateur` donne
+ * l'adresse de ce fil (`workerNavigateur.ts`). Le nom du fichier reste `dailyWorker-<empreinte>.js` (le test de chargement l'intercepte par son nom).
+ * En développement, Vite sert la source TypeScript elle-même.
+ */
+function filDuGenerateur(): Plugin {
+  const VIRTUEL = "virtual:jump-fil-generateur";
+  let construction = false;
+  return {
+    name: "jump-fil-generateur",
+    configResolved(config) {
+      construction = config.command === "build";
+    },
+    resolveId(id) {
+      return id === VIRTUEL ? `\0${VIRTUEL}` : null;
+    },
+    load(id) {
+      if (id !== `\0${VIRTUEL}`) return null;
+      if (!construction) return `export default new URL("/src/dailyWorker.ts", location.href).href;`;
+      const ref = this.emitFile({ type: "chunk", id: fileURLToPath(new URL("./src/dailyWorker.ts", import.meta.url)), name: "dailyWorker" });
+      return `export default import.meta.ROLLUP_FILE_URL_${ref};`;
+    },
+  };
+}
+
 export default defineConfig({
   // Chemins relatifs, comme DailyTrack : le jeu est publié sous `<site>/jump/` (GitHub Pages : `/DailyTrack/jump/` et, pour une branche,
   // `/DailyTrack/b/<branche>/jump/`) ; une base absolue `/jump/` casserait les aperçus de branche.
   base: "./",
-  plugins: [pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR, ...CATALOGUE_APERCU.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
+  plugins: [filDuGenerateur(), pagesDuSocle({ catalogue: { ...CATALOGUE_COMMUN.fr, ...CATALOGUE_FR, ...CATALOGUE_APERCU.fr }, prechargees: FACES_PRECHARGEES, absolues: true })],
   experimental: {
     // Une police est demandée à `/assets/…` (la racine du site, partagée avec le portail et Track), jamais relativement à la page : `/jump/assets/…` ferait un
     // second téléchargement des mêmes octets. Tout le reste reste relatif à la page.

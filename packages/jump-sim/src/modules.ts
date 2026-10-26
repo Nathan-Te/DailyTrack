@@ -4,8 +4,9 @@ import { idiv } from "./idiv";
 import { COUNTER_CAP, DEFAULT_JUMP_PARAMS, INPUT_JUMP, INPUT_RIGHT, PLAYER_WIDTH, type PlayerState } from "./player";
 import { START_AT_SPAWN, encodeReplay, replayStartState, toRuns } from "./replay";
 import { MODULE_PACKED, MODULE_TEXTS } from "./catalog";
+import { textHash } from "./texthash";
 import { fromBase64Url, pushVarint, toBase64Url } from "@cdj/core";
-import { SECTION_CLOCK_VERSION, UNITS_PER_TILE } from "./constants";
+import { MODULE_ENTRIES, PALIER_LENGTH, SECTION_CLOCK_VERSION, UNITS_PER_TILE, type ModuleEntry } from "./constants";
 import { JUMP_THEME_NAMES, MECHANIC_THEMES, type JumpThemeName } from "./themes";
 import { LevelError, MAX_SAW_CYCLE, TILE_EMPTY, TILE_SOLID, isSolidTile, parseLevel, platformPos, sawCenter, type Level } from "./level";
 
@@ -109,15 +110,13 @@ export type MutatorName = (typeof MUTATORS)[number];
 export const MAX_MUTATIONS = 2;
 export const MAX_VARIANTS = 10;
 export type ModuleTag = (typeof MODULE_TAGS)[number];
-export const MODULE_ENTRIES = ["arret", "elan"] as const;
-export type ModuleEntry = (typeof MODULE_ENTRIES)[number];
+// Lot 21 : `MODULE_ENTRIES` et `PALIER_LENGTH` sont dans `constants.ts` (lus au premier chargement du jeu, sans le catalogue) ; ré-exportés ici.
+export { MODULE_ENTRIES, PALIER_LENGTH, type ModuleEntry };
 
 /** Hauteur maximale d'un morceau construit, en rangées. */
 export const MODULE_MAX_HEIGHT = 30;
 /** Version du format des fichiers de morceaux (lot 6 : paliers posés, plus dessinés ; lot 7 : famille, mutateurs). */
 export const MODULE_FORMAT = 3;
-/** Longueur du palier standard (lot 6), en tuiles : celle d'un raccord du niveau du jour. */
-export const PALIER_LENGTH = 2;
 /**
  * Colonne de garde devant le palier d'entrée (morceau seul, et début du niveau du jour) : une colonne comme un palier, pour que le départ ne
  * soit jamais à portée de saut mural du bord gauche du niveau. Une reprise sur un point de passage a, à sa gauche, le morceau précédent :
@@ -741,11 +740,8 @@ export interface BuildOptions {
   lancement?: number;
 }
 
-export function textHash(text: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619) >>> 0;
-  return h.toString(16).padStart(8, "0");
-}
+// Lot 21 : `textHash` vit dans `texthash.ts` (le premier chargement du jeu l'utilise sans le catalogue) ; ré-exportée ici, pour tous les importeurs d'avant.
+export { textHash };
 
 /** Une colonne de palier standard : du vide au-dessus du sol (jusqu'en haut), le sol à la rangée `floor`, du plein dessous. */
 const palierCell = (r: number, floor: number) => (r < floor ? "." : "#");
@@ -950,7 +946,7 @@ export function palierProblems(m: BuiltModule): string[] {
 // ——— Le catalogue ———
 
 /** Les morceaux du catalogue, dans l'ordre des fichiers (`catalog.ts`, généré par `solve:modules`). */
-export const MODULES: readonly ModuleDef[] = MODULE_TEXTS.map(parseModule);
+export const MODULES: readonly ModuleDef[] = /* @__PURE__ */ MODULE_TEXTS.map(parseModule);
 
 export function moduleDef(id: string): ModuleDef {
   const def = MODULES.find((m) => m.id === id);
@@ -1267,7 +1263,7 @@ export function unpackCatalog(p: PackedCatalog): CatalogFile {
 }
 
 /** Les solutions embarquées, dépliées une fois au chargement (lot 19 : `MODULE_PACKED`). */
-export const MODULE_SOLUTIONS: CatalogFile = unpackCatalog(MODULE_PACKED);
+export const MODULE_SOLUTIONS: CatalogFile = /* @__PURE__ */ unpackCatalog(MODULE_PACKED);
 
 /**
  * Lot 15 : la version de la simulation des **morceaux joués seuls** (`buildModule`) : 3, une horloge par section qui démarre à l'entrée du
