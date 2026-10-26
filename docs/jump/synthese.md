@@ -62,7 +62,7 @@ Versions en vigueur : `JUMP_SIM_VERSION` **6** (le code joue aussi les v3, v4 et
 
 ## 6. Jours figés et procédure
 - `apps/jump/public/levels/AAAA-MM-JJ.json` : niveau + preuve + versions, lu en premier par `loadDaily` et **rejoué** ; jamais réécrit — [lot 10](lots/lot-10-arrivee.md).
-- **Règle : figer avant de changer de version.** Dans un worktree sur `main` à jour : `npm run freeze:days -w @cdj/jump -- demain`, copier `public/levels/` dans la branche, commiter — [lot 10](lots/lot-10-arrivee.md), [11](lots/lot-11-themes-jouables.md). Test `apps/jump/test/figes.test.ts` : chaque jour figé se rejoue.
+- **Règle : figer avant de changer de version.** *(Lot R6 : c'est désormais « Mettre en production » qui fige, jusqu'à la veille du jour de bascule, avec le code en production — [guide](../plateforme/mise-en-production.md) ; ce qui suit est l'ancienne procédure d'un lot.)* Dans un worktree sur `main` à jour : `npm run freeze:days -w @cdj/jump -- demain`, copier `public/levels/` dans la branche, commiter — [lot 10](lots/lot-10-arrivee.md), [11](lots/lot-11-themes-jouables.md). Test `apps/jump/test/figes.test.ts` : chaque jour figé se rejoue.
 - **Une seule règle des niveaux figés** (lot P1 de la plateforme) : `thawLevel` vit dans `jump-sim` (`src/frozen.ts`), le jeu et le serveur l'importent — [P1](../plateforme/lots/lot-P1-classement.md).
 - Lot 16 : le 23/10/2026 figé par la mise en production du 22/10 (g9, v3, le code en production) ; les jours régénérés en g11 commencent le 24/10 — [lot 16](lots/lot-16-seconde-voie.md).
 - Lot 17 : aucun jour public ni figé touché ; le 23/10 était déjà figé (g9), les jours g12 commencent le 24/10 (9 niveaux sur 120 diffèrent de g11) — [lot 17](lots/lot-17-ajustements.md).

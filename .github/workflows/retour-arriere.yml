@@ -16,6 +16,10 @@ on:
         description: "Étiquette prod-… à remettre en production (vide : celle d'avant la dernière)"
         type: string
         default: ""
+      apres_le_jour_j:
+        description: "Lot R6 : cocher pour revenir en arrière APRÈS le début du jour de bascule de la dernière mise en production (les cartes de ce jour et des suivants repasseront à celles de l'ancien code : à éviter, mieux vaut corriger en avant)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,9 +51,16 @@ jobs:
         id: plan
         env:
           WANTED: ${{ inputs.etiquette }}
+          APRES: ${{ inputs.apres_le_jour_j }}
         run: |
           derniere="$(node scripts/mise-en-production.mjs derniere)"
           [ -n "$derniere" ] || { echo "::error::aucune étiquette prod-… : rien à remettre"; exit 1; }
+          # Lot R6 : tant que le jour de bascule de la dernière mise en production n'a pas commencé, aucun joueur n'a vu la carte du nouveau code : le retour arrière ne change aucun jour
+          # ouvert. Après, il rendrait au jour de bascule (et aux suivants) les cartes de l'ancien code : refusé sauf demande explicite.
+          bascule="$(git tag -l --format='%(contents)' "$derniere" | sed -n 's/^basculement: *//p' | head -n1)"
+          if [ -n "$bascule" ] && [ "$APRES" != true ]; then
+            node scripts/mise-en-production.mjs bascule-valide "$bascule" || { echo "::error title=Retour arrière refusé::le jour de bascule ($bascule) de $derniere a commencé : des joueurs ont joué les cartes du nouveau code. Corriger en avant (nouvelle mise en production) ou, en connaissance de cause, relancer en cochant « apres_le_jour_j »."; exit 1; }
+          fi
           if [ -n "$WANTED" ]; then target="$WANTED"; else target="$(node scripts/mise-en-production.mjs derniere --avant "$derniere")"; fi
           if [ -z "$target" ] || ! git rev-parse -q --verify "refs/tags/$target" >/dev/null; then
             echo "::error::étiquette introuvable : « ${target:-celle d’avant $derniere} »"; exit 1
