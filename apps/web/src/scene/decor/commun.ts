@@ -9,7 +9,7 @@
 //     l'assemblage (`construireDecor`) : un thème ne donne que ses recettes (`decor/<thème>.ts`).
 // Règles de pose du lot 37 (apps/web/CLAUDE.md, « Décor : règles de pose ») : un appui, rien au-dessus du vide, rien dans le passage ni devant la caméra, un
 // rôle par élément ; tout passe par le relevé (`PoseLog`), le test de pose (`test/decorPose.test.ts`) le vérifie contre la simulation. **Rendu seul.**
-import { CELL, NO_GROUND, blockHalfWidth, cellKey, createSurface, trackWorld, turnsLeft, type Block, type Track, type World } from "@cdj/sim";
+import { CELL, NO_GROUND, blockHalfWidth, blockHeight, canonQ, cellKey, createSurface, trackWorld, turnsLeft, type Block, type Track, type World } from "@cdj/sim";
 import { mix, seeded, shade, world as auMonde, type Box, type Builder, type V3 } from "../../meshKit";
 import { MARGE_DECOR, type PoseKind, type PoseLog } from "../../decorPose";
 import { boite, boiteChanfreinee, pt, repereBloc, tube, type Repere } from "../outils";
@@ -31,10 +31,16 @@ export const PENTE = 0.22;
 /** Près d'un bloc sans rebords ou d'un vide de saut : le sol lointain sur `REPLAT_VIDE` m (4 m : le trou reste étroit, retouche 47b ; 10 m laissait de grands creux de sable autour d'un saut), puis une pente pour rejoindre le talus. */
 export const REPLAT_VIDE = 4;
 export const PENTE_VIDE = 0.4;
+/** Autour d'un vide de saut seulement (retouche 47b) : le sable remonte vite (3 m par m) — le vide qu'on franchit se voit, pas un creux de 25 m autour de la rampe. */
+export const PENTE_SAUT = 3;
+/** Un bloc ne retient le sol qu'à cette pente (m par m) au-dessus de son point bas : 0,5 laissait de longs creux le long d'une rampe de 12 m (retouche 47b). */
+export const PENTE_PLAFOND = 1.5;
 /** Pas de la grille du sol (m) : deux carrés par côté de cellule. */
 export const PAS_TERRAIN = CELL / 2;
+/** Côté (m) des carrés qui comblent l'intérieur des cellules de la piste, hors de ce que roule la voiture (retouche 47b). */
+const BORDURE = 4;
 /** Le sol relevé s'étend à `PORTEE_TERRAIN` cellules de la piste. */
-export const PORTEE_TERRAIN = 3;
+export const PORTEE_TERRAIN = 5;
 /** Le sol relevé a rejoint le sol lointain `MARGE_BORD` m avant le bord de sa grille. */
 const MARGE_BORD = 8;
 /** Un sommet du sol qui est au sol lointain est enfoncé d'autant (pas de scintillement avec le plan du sol). */
@@ -89,7 +95,7 @@ export function terrainDe(track: Track, sol: number): Terrain {
   const dessus = new Float32Array(nc * mc);
   for (const [key, b] of track.cells) {
     const idx = (Math.floor(key / 4096) - 1024 - c0x) + ((key % 4096) - 1024 - c0z) * nc;
-    sorte[idx] = releve(b) ? 1 : 2;
+    sorte[idx] = releve(b) ? 1 : b.kind === "gap" ? 3 : 2;
     dessus[idx] = bas(b) - TALUS_SOUS_ROUTE;
   }
   for (let k = k0; k <= k1; k++) {
@@ -120,8 +126,8 @@ export function terrainDe(track: Track, sol: number): Terrain {
             // au bord du sol relevé : un grand creux autour du circuit).
             const descente = Math.max(PENTE, (top - sol) / (PORTEE_TERRAIN * CELL - REPLAT - MARGE_BORD));
             haut = Math.max(haut, top - descente * Math.max(0, d - REPLAT));
-            plafond = Math.min(plafond, top + 0.5 * d);
-          } else plafond = Math.min(plafond, sol + PENTE_VIDE * Math.max(0, d - REPLAT_VIDE));
+            plafond = Math.min(plafond, top + PENTE_PLAFOND * d);
+          } else plafond = Math.min(plafond, sol + (t === 3 ? PENTE_SAUT : PENTE_VIDE) * Math.max(0, d - REPLAT_VIDE));
         }
       }
       const v = Math.min(Math.max(sol, haut), plafond);
@@ -138,11 +144,7 @@ export function terrainDe(track: Track, sol: number): Terrain {
       carres.push([i, k]);
     }
   }
-  return {
-    sol,
-    sommet,
-    carres,
-    hauteur(x, z) {
+  const hauteur = (x: number, z: number): number => {
       const fx = x / P;
       const fz = z / P;
       const i = Math.floor(fx);
@@ -154,7 +156,12 @@ export function terrainDe(track: Track, sol: number): Terrain {
       const c = sommet(i + 1, k + 1);
       const y = u >= v ? a + (sommet(i + 1, k) - a) * u + (c - sommet(i + 1, k)) * v : a + (sommet(i, k + 1) - a) * v + (c - sommet(i, k + 1)) * u;
       return Math.max(sol, y);
-    },
+  };
+  return {
+    sol,
+    sommet,
+    carres,
+    hauteur,
     construire(g, couleur, garder) {
       for (const [i, k] of carres) {
         if (garder && !garder(Math.floor((i * P) / CELL), Math.floor((k * P) / CELL))) continue;
@@ -162,6 +169,43 @@ export function terrainDe(track: Track, sol: number): Terrain {
         // Une seule teinte (le relief se lit par l'ombrage) : un damier de 16 m se voyait d'en haut, dans les miniatures.
         g.tri(p(0, 0), p(1, 1), p(1, 0), couleur);
         g.tri(p(0, 0), p(0, 1), p(1, 1), couleur);
+      }
+      // Retouche 47b : le sol dans les cellules de la piste, là où rien ne roule (entre le rebord et le bord de la cellule : sans lui on voyait le sol lointain, 10 à 25 m plus
+      // bas, comme un fossé le long de tout le circuit). Carrés de 4 m, sous la route (hauteur de la route − `TALUS_SOUS_ROUTE`) et au plus à la hauteur du sol relevé voisin :
+      // sans marche avec lui. Rendu seul ; jamais sous un bloc sans rebords ni un vide.
+      const monde = trackWorld(track);
+      const sortie = createSurface();
+      const N = CELL / BORDURE;
+      for (const [key, b] of track.cells) {
+        if (!releve(b)) continue;
+        const cx = Math.floor(key / 4096) - 1024;
+        const cz = (key % 4096) - 1024;
+        if (garder && !garder(cx, cz)) continue;
+        const h = (x: number, z: number): number => {
+          const u = x - cx * CELL;
+          const v = z - cz * CELL;
+          const route = blockHeight(b, canonQ(b.dir, u, v)) - TALUS_SOUS_ROUTE;
+          const horsX = Math.min(u, CELL - u) <= Math.min(v, CELL - v);
+          const voisin = horsX ? hauteur(u < CELL / 2 ? cx * CELL - 0.1 : (cx + 1) * CELL + 0.1, z) : hauteur(x, v < CELL / 2 ? cz * CELL - 0.1 : (cz + 1) * CELL + 0.1);
+          return Math.min(route, voisin);
+        };
+        for (let i = 0; i < N; i++) {
+          for (let k = 0; k < N; k++) {
+            const x0 = cx * CELL + i * BORDURE;
+            const z0 = cz * CELL + k * BORDURE;
+            let libre = true;
+            for (const [u, v] of [[0.5, 0.5], [0.05, 0.05], [0.95, 0.05], [0.05, 0.95], [0.95, 0.95]] as const) {
+              monde.sample(x0 + u * BORDURE, z0 + v * BORDURE, sortie);
+              if (sortie.height !== NO_GROUND) libre = false;
+            }
+            if (!libre) continue;
+            const brut = [h(x0, z0), h(x0 + BORDURE, z0), h(x0, z0 + BORDURE), h(x0 + BORDURE, z0 + BORDURE)] as const;
+            if (Math.max(...brut) <= sol) continue;
+            const y = brut.map((v) => (v <= sol + 0.01 ? sol - SOUS_LE_SOL : v)) as unknown as readonly [number, number, number, number];
+            g.tri([x0, y[0], z0], [x0 + BORDURE, y[3], z0 + BORDURE], [x0 + BORDURE, y[1], z0], couleur);
+            g.tri([x0, y[0], z0], [x0, y[2], z0 + BORDURE], [x0 + BORDURE, y[3], z0 + BORDURE], couleur);
+          }
+        }
       }
     },
   };
