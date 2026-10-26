@@ -416,7 +416,7 @@ for (const viewport of [
     await page.addStyleTag({ content: "* { font-family: 'DejaVu Sans', Verdana, sans-serif !important; }" });
     await page.waitForFunction(() => window.__cdj.phase === "racing", undefined, { timeout: 30_000 });
     // Charte rév. 7 : la bande du haut, les boutons de 44 px, le compte à rebours du Salon (pastille compacte) ; le titre n'est là qu'au départ ; le centre reste libre.
-    await page.waitForTimeout(1700);
+    await expect(page.locator("#intro")).not.toHaveClass(/\bon\b/, { timeout: 30_000 }); // le titre n'est là qu'au départ (lot R10 : un état, plus 1,7 s d'attente)
     const paysage = viewport.width > viewport.height;
     const hud = await boxes(page, ["#hud-centre", "#medals", "#menu", "#speed"]);
     expectNoOverlap(hud, viewport);
