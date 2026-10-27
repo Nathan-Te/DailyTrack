@@ -177,6 +177,6 @@ describe(`GET /api/me de DailyTrack inchangé (${TEST_DB})`, () => {
     };
     const [alone, both] = [await play(false), await play(true)];
     expect(both).toEqual(alone);
-    expect(Object.keys(both).sort()).toEqual(["best", "name", "past", "renameRequired", "simVersion", "stats", "today"]);
+    expect(Object.keys(both).sort()).toEqual(["best", "garage", "name", "past", "renameRequired", "simVersion", "stats", "today"]);
   });
 });

@@ -3,6 +3,8 @@ import { DEFAULT_CAR_PARAMS, ReplayPlayer, SIM_VERSION, copyCar, createCar, crea
 import type { CarModel, WheelPose } from "./carMesh";
 import { construireFantome } from "./voiture/modele";
 import { PLAN_CIVILE } from "./voiture/modeleCivile";
+import { fantomeDe, libererFantome } from "./voiture/fantomes";
+import { CHOIX_DEFAUT, type ChoixVoiture } from "./voiture/choix";
 import { CarPose } from "./carPose";
 import { t } from "./i18n";
 import { GHOST_COLORS, MAX_GHOSTS, MY_GHOST_COLOR, ghostShown, type SalonGhostMode } from "./salon";
@@ -19,6 +21,8 @@ export interface GhostEntry {
   name: string;
   ms: number;
   replay: string;
+  /** Lot 51 : la voiture de cette course (le modèle, en version simple, à la couleur de la place) ; absente : la Sparrow en orange. */
+  voiture?: ChoixVoiture;
 }
 
 interface Active {
@@ -33,6 +37,11 @@ interface Active {
 
 interface Slot {
   model: CarModel;
+  /** Lot 51 : le modèle de voiture que porte cette place, celui qu'on lui a demandé, et la couleur de la place (le fantôme est d'une seule teinte). */
+  carId: string;
+  carVoulu: string;
+  couleur: number;
+  group: Group;
   pose: CarPose;
   label: Sprite;
   texture: CanvasTexture;
@@ -51,9 +60,10 @@ const HIDE_AFTER_FINISH_TICKS = 240; // 2 s sur la ligne, puis il s'efface
 
 const css = (hex: number) => `#${hex.toString(16).padStart(6, "0")}`;
 
-function makeSlot(color: number): Slot {
+function makeSlot(color: number, group: Group): Slot {
   // La version simple de la civile (retouche 40b : un maillage, ≈ 400 triangles, translucide, sans livrée, teinte unie, liseré lumineux) : cinq
-  // voitures de plus ne doivent pas coûter cinq fois la voiture du joueur. Les autres joueurs ne montrent pas encore leur voiture (plus tard).
+  // voitures de plus ne doivent pas coûter cinq fois la voiture du joueur. Lot 51 : la place prend le modèle de la voiture de la course qu'elle montre (`poserVoiture`) ;
+  // la civile est là tout de suite, les autres modèles se chargent à la demande.
   const model = construireFantome(PLAN_CIVILE, color);
   model.group.visible = false;
   const canvas = document.createElement("canvas");
@@ -67,7 +77,7 @@ function makeSlot(color: number): Slot {
   label.visible = false;
   label.renderOrder = 5;
   model.group.add(label);
-  return { model, pose: new CarPose(), label, texture, canvas, wheel: { forward: 0, steerAngle: 0, braking: false, droop: [0, 0, 0, 0], dt: 0 }, shown: "", near: false };
+  return { model, carId: CHOIX_DEFAUT.id, carVoulu: CHOIX_DEFAUT.id, couleur: color, group, pose: new CarPose(), label, texture, canvas, wheel: { forward: 0, steerAngle: 0, braking: false, droop: [0, 0, 0, 0], dt: 0 }, shown: "", near: false };
 }
 
 /** Dessine le pseudo (et le rang) sur l'étiquette d'un fantôme. */
@@ -132,14 +142,15 @@ export class GhostField {
   private pending: GhostEntry[] = [];
   private mode: SalonGhostMode = "all";
   /** Étiquettes et voitures dessinées à la dernière image (outil de test, mesures). */
-  stats = { shown: 0, labels: 0, loaded: 0, rejected: 0 };
+  stats = { shown: 0, labels: 0, loaded: 0, rejected: 0, models: 0 };
   /** Coût mesuré sur le fil principal (ms cumulées) : simulation des fantômes (`step`) et placement des voitures et étiquettes (`place`). */
   readonly cost = { stepMs: 0, steps: 0, placeMs: 0, frames: 0 };
 
   constructor() {
     // Une voiture par place : cinq couleurs pour les autres joueurs, une teinte froide pour ton propre tour.
-    this.slots = [...GHOST_COLORS.slice(0, MAX_GHOSTS).map(makeSlot), makeSlot(MY_GHOST_COLOR)];
+    this.slots = [...GHOST_COLORS.slice(0, MAX_GHOSTS), MY_GHOST_COLOR].map((c) => makeSlot(c, this.group));
     for (const s of this.slots) this.group.add(s.model.group);
+    // (lot 51 : `poserVoiture` change le modèle d'une place sans changer le groupe)
   }
 
   get names(): string[] {
@@ -189,6 +200,7 @@ export class GhostField {
         }
         copyCar(race.car, previous);
         this.active.push({ entry, slot, race, player, previous, finishedTicks: 0 });
+        this.poserVoiture(this.slots[slot]!, entry.voiture?.id ?? CHOIX_DEFAUT.id); // lot 51 : la voiture de sa course
         if (entry.rank !== null) others++;
         this.stats.loaded++;
       } catch {
@@ -197,6 +209,31 @@ export class GhostField {
     }
     for (const s of this.slots) s.pose.reset();
     this.applyVisibility();
+  }
+
+  /**
+   * Lot 51 : la place montre le modèle de cette voiture — chargé à la demande (un plan par modèle, gardé), construit en version simple à la couleur de la place, puis
+   * posé à la place du précédent (position, visibilité et pseudo repris). Au plus six modèles à la fois (une place chacun) : autant d'appels de rendu qu'avant.
+   */
+  private poserVoiture(s: Slot, id: string): void {
+    s.carVoulu = id;
+    if (s.carId === id) return;
+    void fantomeDe(id, s.couleur)
+      .then((m) => {
+        if (s.carVoulu !== id || s.carId === id) return libererFantome(m);
+        const vieux = s.model;
+        m.group.position.copy(vieux.group.position);
+        m.group.rotation.copy(vieux.group.rotation);
+        m.group.visible = vieux.group.visible;
+        m.group.add(s.label);
+        s.group.remove(vieux.group);
+        s.group.add(m.group);
+        libererFantome(vieux);
+        s.model = m;
+        s.carId = id;
+        this.stats.models++;
+      })
+      .catch(() => undefined); // hors ligne : la place garde son modèle
   }
 
   /** Efface tout (changement de circuit). */

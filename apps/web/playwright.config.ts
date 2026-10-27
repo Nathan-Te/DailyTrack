@@ -112,5 +112,12 @@ export default defineConfig({
       reuseExistingServer: false,
       env: { PORT: "8792", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
     },
+    {
+      // Lot 51 : réservé à e2e/voiture-course.spec.ts (deux appareils, le même profil : la voiture de la course et le choix du Garage gardés par le serveur).
+      command: "node ../api/dist/server.mjs",
+      url: "http://127.0.0.1:8799/api/health",
+      reuseExistingServer: false,
+      env: { PORT: "8799", DB_PATH: ":memory:", ALLOW_ORIGIN: "*", NODE_NO_WARNINGS: "1", TEST_CLOCK_OFFSET_MS },
+    },
   ],
 });

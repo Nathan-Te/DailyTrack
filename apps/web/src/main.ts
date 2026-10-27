@@ -97,7 +97,7 @@ import { ambienceFor, landingQuality, volumeIcon } from "./audioLogic";
 import { CAMERAS, HOOD_GHOST_CLEARANCE, HOOD_MAX_TILT, cameraIndexOf, nextCameraIndex } from "./cameras";
 import { createShadow, placeShadow, type CarModel, type WheelPose } from "./carMesh";
 import { VoitureEnJeu } from "./voiture/enJeu";
-import { CHOIX_DEFAUT, choixDeLAdresse, voitureChoisie, voituresNouvelles } from "./voiture/choix";
+import { CHOIX_DEFAUT, choixDeLAdresse, lireChoix, voitureChoisie, voituresNouvelles, type ChoixVoiture } from "./voiture/choix";
 import type { GarageUi } from "./garage";
 import { chargerMateriaux2 } from "./voiture/modeles";
 import { CarPose } from "./carPose";
@@ -301,7 +301,7 @@ const ecranSansMsaa = chaineAuChargement({
   memoire: lireMemoireQualite(),
 });
 const renderer = new WebGLRenderer({ antialias: !ecranSansMsaa });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // lot 51 : la résolution native de l'écran (plafonnée à 2, `densiteDeRendu`), à tous les paliers : jamais de scène plus petite
 document.body.appendChild(renderer.domElement);
 
 // La scène (lot 43) : le palier 1 par défaut. `?palier=existant` (recette et aperçus seulement : `sceneDemandee`) montre l'ancienne scène, chargée à la demande,
@@ -418,24 +418,20 @@ const garage = new VoitureEnJeu({
   // Lot 45 : la peinture à deux couches suit le palier de la scène (2 et 3), que choisissent la règle de qualité et le réglage « Qualité graphique ».
   palier: () => (/^P[23]$/.test(reconstructeur.palier()) ? 2 : 1),
   nuit: () => LOOKS[scenePalette].headlights > 0,
-  peutChanger: () => !watch && (isFrozen() || phase !== "racing"),
-  adopter: (voiture, fantome) => {
-    for (const [ancien, nouveau] of [
-      [carMesh, voiture.group],
-      [ghostMesh, fantome.group],
-    ] as const) {
-      nouveau.position.copy(ancien.position);
-      nouveau.rotation.copy(ancien.rotation);
-      nouveau.visible = ancien.visible;
-      view.scene.remove(ancien);
-      view.scene.add(nouveau);
-    }
+  // Lot 51 : une rediffusion regardée peut aussi changer de voiture (celle de la course regardée), son pseudo la suit.
+  peutChanger: () => isFrozen() || phase !== "racing" || !!watch,
+  adopter: (voiture) => {
+    const ancien = carMesh;
+    voiture.group.position.copy(ancien.position);
+    voiture.group.rotation.copy(ancien.rotation);
+    voiture.group.visible = ancien.visible;
+    if (nameLabel) voiture.group.add(nameLabel.sprite); // lot 51 : le pseudo reste au-dessus de la voiture regardée quand elle change
+    view.scene.remove(ancien);
+    view.scene.add(voiture.group);
     carModel = voiture;
     carMesh = voiture.group;
     castShadows(carMesh);
     (view as Partial<TrackScene>).reflets?.(renderer, carMesh); // lot 45 : les reflets ciblés du palier 2 (la voiture et le métal des portiques)
-    ghostModel = fantome;
-    ghostMesh = fantome.group;
   },
   materiaux2: chargerMateriaux2,
 });
@@ -455,6 +451,25 @@ let ghostModel: CarModel = garage.fantome;
 let ghostMesh = ghostModel.group;
 ghostMesh.visible = false;
 view.scene.add(ghostMesh);
+// Lot 51 : le fantôme a la voiture de sa course (le modèle, en version simple), pas la tienne : la Sparrow en orange d'une course d'avant. Les autres modèles se chargent à la
+// demande (`voiture/fantomes.ts`) ; le fantôme par défaut, lui, est déjà là (`garage.fantome`, la civile).
+let fantomeId = CHOIX_DEFAUT.id;
+let fantomeVoulu = CHOIX_DEFAUT.id;
+const hoteFantome = {
+  scene: () => view.scene,
+  modele: () => ghostModel,
+  defaut: garage.fantome,
+  voulu: () => fantomeVoulu,
+  poser: (m: CarModel, id: string) => {
+    ghostModel = m;
+    ghostMesh = m.group;
+    fantomeId = id;
+  },
+};
+function voitureDuFantome(c: ChoixVoiture | undefined) {
+  fantomeVoulu = c?.id ?? CHOIX_DEFAUT.id;
+  if (fantomeVoulu !== fantomeId) void import("./voiture/fantomes").then((f) => f.poserFantome(hoteFantome, fantomeVoulu)).catch(() => undefined); // hors ligne : le fantôme garde son modèle
+}
 // Fantômes du Salon (lot 26) : plusieurs voitures translucides colorées, avec leur pseudo.
 const ghostField = salonMod && salon ? new salonMod.GhostField() : null;
 if (ghostField) view.scene.add(ghostField.group);
@@ -806,6 +821,7 @@ let ghostTag: GhostTag = { mode: "mine" };
 const ghostText = (g: GhostTag): string => g.custom ?? (g.mode === "mine" ? t("course.fantome.tonRecord") : g.mode === "off" ? t("course.fantome.aucun") : t(g.mode === "first" ? "course.fantome.premier" : "course.fantome.devantToi", { nom: g.name ?? "" }));
 let ghostBusy = false;
 let session: RunSession | null = track ? new RunSession(track, ghostSource, carParams) : null;
+voitureDuFantome(session?.ghost && ghostSource ? ghostSource.voiture : undefined); // lot 51 : le fantôme de ton record a la voiture de ce record (la Sparrow en orange d'un record d'avant)
 // Vrai si cette tentative a roulé, ne serait-ce qu'un instant, avec des réglages modifiés : ni record, ni classement.
 let tunedRun = !isDefaultParams(carParams);
 // Le fantôme qui roule vraiment dans cette tentative, et celui choisi en cours de course (effectif au prochain départ).
@@ -893,7 +909,19 @@ async function ouvrirGarage(voir?: string) {
     garageUi ??= (await import("./garage")).monterGarage({
       outils: { el: elDuSocle, creerCadre, t, onLangue, ajouterTextes, icone: iconeDeTraces, moteur: sharedRenderer, liberer: releaseThumbnailRenderer },
       demo: online.demo,
-      voiture: garage, statut: () => online.profileApi?.garage?.(online.playerId) ?? null, camera, toile: renderer.domElement, scene: view.scene,
+      voiture: garage,
+      // Lot 51 : le choix de voiture du serveur arrive avec les déblocages ; l'appareil s'y recale avant que le Garage ne relise sa voiture.
+      statut: () => {
+        const p = online.profileApi?.garage?.(online.playerId);
+        return p
+          ? p.then(async (r) => {
+              if (r.ok && r.data.choix !== undefined) await synchroVoiture(r.data.choix);
+              return r;
+            })
+          : null;
+      },
+      envoyer: () => void import("./voiture/synchro").then((m) => m.envoyerChoix(online.profileApi, online.playerId)).then((change) => change && garage.relire()).catch(() => undefined),
+      camera, toile: renderer.domElement, scene: view.scene,
       ferme: () => homeUi.refresh(),
     });
     garageUi.ouvrir(voir);
@@ -1067,7 +1095,7 @@ const boardScreen = mountBoardScreen({
 function applySyncedRecord() {
   if (!track || salon || watch) return;
   const fresh = loadBest(track.id);
-  if (fresh && (!best || fresh.ms !== best.ms || fresh.replay !== best.replay)) {
+  if (fresh && (!best || fresh.ms !== best.ms || fresh.replay !== best.replay || fresh.voiture?.id !== best.voiture?.id)) {
     best = fresh;
     if (ghostMode === "mine") {
       ghostSource = best;
@@ -1078,11 +1106,24 @@ function applySyncedRecord() {
   settingsPanel?.sync();
 }
 
+/** Lot 51 : recale la voiture sur le choix du serveur (`voiture/synchro.ts`, chargé à la demande) ; remplacée hors course, comme au Garage (`garage.tick`). */
+async function synchroVoiture(serveur: unknown): Promise<void> {
+  try {
+    const m = await import("./voiture/synchro");
+    if (await m.synchroniserChoix(serveur, online.profileApi, online.playerId)) garage.relire();
+  } catch {
+    /* hors ligne, morceau introuvable : le choix local sert, il repartira */
+  }
+}
+addEventListener("online", () => void syncProfile(true)); // lot 51 : un choix fait hors connexion part dès que le réseau revient
+
 async function syncProfile(force = false) {
   if (!track || !daily || trial || salon || watch || online.demo || !online.profileApi) return;
   const o = await online.sync.run({ force });
   if (!o.ran) return;
   if (o.merged && (o.merged.todayChanged || o.merged.pastChanged > 0 || o.merged.nameChanged)) applySyncedRecord();
+  // Lot 51 : la voiture gardée par le serveur arrive avec ce profil (aucune requête de plus) ; le plus récent des choix gagne, l'autre est envoyé. Après le premier écran, à la demande.
+  if (o.merged && o.merged.garage !== undefined) void synchroVoiture(o.merged.garage);
   // Un record local que le serveur n'a pas (fait hors ligne, ou avant que le serveur ne réponde) part maintenant : il le rejoue et le classe.
   if (o.status !== "revoked" && submitAllowed && best && online.name && online.needsSubmit(best)) {
     const r = await online.submit(best, online.name);
@@ -1219,6 +1260,7 @@ function startAttempt(force = false) {
   if (track) {
     session = new RunSession(track, ghostSource, carParams);
     ghostField?.restart(track); // Salon : les fantômes des autres repartent avec toi
+    voitureDuFantome(session.ghost && ghostSource ? ghostSource.voiture : undefined); // lot 51 : la voiture de sa course
     activeGhost = session.ghost && ghostSource ? { tag: ghostTag, ms: ghostSource.ms } : null;
     pendingGhost = null;
     race = session.race;
@@ -1614,7 +1656,7 @@ function finishSalonRun() {
   const ms = race.finishMs;
   const counted = !tunedRun && !demo && !voitureEssai; // réglages modifiés, démo du pilote ou voiture d'essai (`?voiture=`) : jamais classé
   const sessionNo = sal.session;
-  const result: SalonRunResult = { session: sessionNo, ms, splits: [...race.splits], respawns: race.respawns, replay: encodeReplay(session.toReplay()) };
+  const result: SalonRunResult = { session: sessionNo, ms, splits: [...race.splits], respawns: race.respawns, replay: encodeReplay(session.toReplay()), voiture: garage.affichee };
   const improved = counted && sal.recordRun(result);
   const prior = sal.best && !improved ? sal.best.ms : null;
   // Le cadre de l'arrivée (barre « ‹ DU JOUR », étiquette Track) et son contenu : salonArrivee.ts ; ici les décisions (record, envoi, pseudo, partage).
@@ -1663,7 +1705,8 @@ function finishRun() {
   const isRecord = counted && (!best || ms < best.ms);
   const previousBest = best;
   if (isRecord) {
-    best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION, medal: daily ? medalFor(ms, daily.medals) : null };
+    // Lot 51 : la voiture avec laquelle ce temps est fait (celle qu'on voit) part avec le record : au fantôme « ton record », à l'envoi et sur les autres appareils.
+    best = { ms, splits: [...race.splits], replay: encodeReplay(session.toReplay()), simVersion: SIM_VERSION, medal: daily ? medalFor(ms, daily.medals) : null, voiture: garage.affichee };
     saveBest(track.id, best);
     if (ghostMode === "mine") ghostSource = best; // le prochain fantôme sera ce nouveau record
     renderObjective();
@@ -1808,8 +1851,8 @@ function beginWatch(entry: WatchEntry): boolean {
   if (replay.trackId !== track.id || replay.simVersion !== SIM_VERSION) return false;
   watch = { entry, replay, total: replayTicks(replay), speed: 1, paused: false };
   document.body.classList.add("watch");
-  // La voiture du tour regardé : ta voiture (retouche 40b), pleine, à la couleur du joueur regardé, son pseudo au-dessus.
-  garage.imposerTeinte(entry.color);
+  // La voiture du tour regardé (lot 51 : celle de sa course, en version complète : modèle, couleur, motif et teinte), son pseudo au-dessus ; la Sparrow en orange d'une course d'avant.
+  garage.regarder(entry.voiture ?? { ...CHOIX_DEFAUT });
   nameLabel = salonMod!.createNameLabel();
   nameLabel.set(entry.name, entry.color);
   carMesh.add(nameLabel.sprite);
@@ -1839,7 +1882,7 @@ function endWatch() {
   if (nameLabel) carMesh.remove(nameLabel.sprite);
   nameLabel = null;
   setFreeCamera(false);
-  garage.imposerTeinte(null); // ta voiture reprend sa couleur
+  garage.regarder(null); // ta voiture revient
   watch = null;
   autoplay = null;
   pendingSeek = null;
@@ -1861,7 +1904,7 @@ function raceAgainstWatched() {
   const e = w.entry;
   endWatch();
   if (e.mode === "mine" && best) setGhost("mine", best, "ton record");
-  else setGhost("first", { ms: e.ms, splits: e.splits, replay: e.replay, simVersion: e.simVersion }, e.label);
+  else setGhost("first", { ms: e.ms, splits: e.splits, replay: e.replay, simVersion: e.simVersion, ...(e.voiture ? { voiture: e.voiture } : {}) }, e.label);
 }
 
 /** Fin de la rediffusion : le temps recalculé par la simulation, puis rejouer ou courir contre ce fantôme. */
@@ -1880,13 +1923,13 @@ function finishWatch() {
 async function loadWatchEntry(): Promise<WatchEntry | null> {
   if (salon) {
     const g = await salon.bestGhost();
-    return g ? { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: salonMod!.GHOST_COLORS[0]! } : null;
+    return g ? { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: salonMod!.GHOST_COLORS[0]!, voiture: lireChoix(g.voiture) ?? undefined } : null;
   }
   if (online.enabled) {
     const c = await online.remoteGhost("first");
-    if (c?.source?.replay) return { name: c.name ?? t("revoir.premierNom"), ms: c.source.ms, splits: c.source.splits, replay: c.source.replay, simVersion: c.source.simVersion ?? 0, mode: "first", label: t("course.fantome.premier", { nom: c.name ?? "" }), color: salonMod!.MY_GHOST_COLOR };
+    if (c?.source?.replay) return { name: c.name ?? t("revoir.premierNom"), ms: c.source.ms, splits: c.source.splits, replay: c.source.replay, simVersion: c.source.simVersion ?? 0, mode: "first", label: t("course.fantome.premier", { nom: c.name ?? "" }), color: salonMod!.MY_GHOST_COLOR, voiture: c.source.voiture };
   }
-  if (best?.replay) return { name: getName() ?? t("commun.toi"), ms: best.ms, splits: best.splits, replay: best.replay, simVersion: best.simVersion ?? 0, mode: "mine", label: t("course.fantome.tonRecord"), color: salonMod!.MY_GHOST_COLOR };
+  if (best?.replay) return { name: getName() ?? t("commun.toi"), ms: best.ms, splits: best.splits, replay: best.replay, simVersion: best.simVersion ?? 0, mode: "mine", label: t("course.fantome.tonRecord"), color: salonMod!.MY_GHOST_COLOR, voiture: best.voiture };
   return null;
 }
 
@@ -2096,6 +2139,8 @@ function frame(now: number) {
   const alpha = phase === "countdown" ? 0 : accumulator / DT;
   // Feux de départ (lot 43) : l'affichage lit l'état du décompte, rien de plus (le départ ne dépend que de `countdown`).
   view.feux?.(etatFeux(phase, countdown, COUNTDOWN_S));
+  // Lot 51 : le chronomètre du portique montre le temps de la course en cours (lecture seule, comme les feux) : 0 au décompte, au « recommencer » et sans course.
+  view.chrono?.(race && phase !== "countdown" ? raceElapsedMs(race) / 1000 : 0);
   if (compteurImages) {
     // Lot 45 : le palier choisi (et s'il est en train d'être mesuré), pour Nathan sur son téléphone.
     compteurImages.etiquette = `${[reconstructeur.palier(), ...reconstructeur.plus()].join("+")} · ${settings.graphismes}${mesureEnCours() ? " · mesure" : ""}`;
@@ -2330,10 +2375,8 @@ function frame(now: number) {
 
   view.followGround(x, z);
   view.followCar(x, y, z, yaw, hood, (carModel as { phare?: { y: number; z: number } }).phare);
-  // Lot 50 : une scène dessinée plus petite par la chaîne (plafond de pixels) : les halos en points et les particules gardent leur taille à l'écran.
-  const echelleImage = post?.echelle ?? 1;
-  view.setView(window.innerHeight * renderer.getPixelRatio() * echelleImage, camera.fov);
-  effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio() * echelleImage);
+  view.setView(window.innerHeight * renderer.getPixelRatio(), camera.fov);
+  effects.setViewport(window.innerHeight, camera.fov, renderer.getPixelRatio());
   effects.update({ dt: elapsed, x, y, z, yaw, tel, braking: wheelPose.braking, boost: car.boost > 0, turbo: car.turbo > 0, racing: phase !== "countdown" });
   gameAudio.update({
     speed,
@@ -2367,7 +2410,7 @@ function frame(now: number) {
     // pas à pas (outil de test) : pas de rendu, seulement la simulation et l'interface
     const t0 = performance.now();
     // Lot 46 : la vie et le ciel (drapeaux, foule, écrans, particules, nuages) bougent sur le temps d'affichage de l'image, jamais sur l'état de la course.
-    view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio() * echelleImage);
+    view.animer?.(now / 1000, camera, window.innerHeight * renderer.getPixelRatio());
     // Lot 47 : la chaîne dessine l'image (halo, étalonnage, FXAA) ; elle rend faux si elle n'a pas pu, ou n'existe plus : on dessine alors directement.
     if (!post?.dessiner(view.scene, camera, scenePalette, view.look.exposure)) renderer.render(view.scene, camera);
     renderCost.ms += performance.now() - t0;
@@ -2746,7 +2789,7 @@ if (watchWanted && track) {
         watchWait = false;
         hudBanner.textContent = "";
         bannerTimer = 0;
-        const e: WatchEntry = { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: salonMod!.GHOST_COLORS[0]! };
+        const e: WatchEntry = { name: g.name, ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, mode: "salon", label: t("salon.premier", { nom: g.name }), color: salonMod!.GHOST_COLORS[0]!, voiture: lireChoix(g.voiture) ?? undefined };
         if (!beginWatch(e)) location.replace(unwatchHref(location.search));
       });
     }, 2500);
@@ -2816,7 +2859,21 @@ if (params.has("debug")) {
       /** Le socle par paliers (lot 39) : essais seulement (`e2e/socle.spec.ts` : un pas factice, un palier demandé en course puis à la pause). */
       /** La voiture (retouche 40b) : le choix en vigueur, la voiture d'essai, ce qui est construit, et si la voiture vue est celle voulue. */
       get voiture() {
-        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null, fantome: ghostMesh.visible };
+        return { choix: { ...garage.choix }, essai: voitureEssai, aJour: garage.aJour, stats: { ...garage.stats }, maillages: carMesh.children.length, triangles: (carModel as { triangles?: number }).triangles ?? 0, counted: !tunedRun && !demo && !voitureEssai, garage: garageUi?.etat() ?? null, fantome: ghostMesh.visible, fantomeVoiture: fantomeId, affichee: garage.affichee };
+      },
+      /**
+       * Lot 51 : la résolution — le tampon du canevas, la densité (celle de l’appareil, plafonnée à 2), la taille des cibles de la chaîne (la scène est à la
+       * taille du tampon, jamais plus petite ; le halo est plus petit) et le FXAA (coupé à partir de la densité 1,75).
+       */
+      get resolution() {
+        const t = post?.tailles() ?? null;
+        return {
+          tampon: [renderer.domElement.width, renderer.domElement.height] as [number, number],
+          densite: renderer.getPixelRatio(),
+          sceneCible: t?.scene ?? null,
+          haloCibles: t?.halo ?? [],
+          fxaa: post?.fxaaActif ?? false,
+        };
       },
       /**
        * Lot 47 : le post-traitement — voulu par la scène, permis par l'appareil, allumé, ce qui l'a coupé ; ses parties, les échantillons de la cible, sa mémoire (octets,

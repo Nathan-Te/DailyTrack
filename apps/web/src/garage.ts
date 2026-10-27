@@ -25,7 +25,8 @@ import { creerStudio, type Studio } from "./garageStudio";
 import { vignetteMotif } from "./garageMotifs";
 import { enSilhouette, vignette } from "./garageVignettes";
 import { VOITURES, VOITURE_DEFAUT, ficheVoiture, type FicheVoiture } from "./voiture/catalogue";
-import { choisirVoiture, marquerVues, noterDeblocages, voitureChoisie, voituresDebloquees, voituresNouvelles } from "./voiture/choix";
+import { choisirVoiture, marquerVues, noterDeblocages, voitureChoisie, voituresDebloquees, voituresNouvelles, type ChoixVoiture } from "./voiture/choix";
+import { noterChoixLocal } from "./voiture/synchro";
 import type { VoitureEnJeu } from "./voiture/enJeu";
 import { LIVREE, MOTIFS, PALETTE, TEINTES_MOTIF, luminance, teinteLisible, type MotifLivree } from "./voiture/livree";
 
@@ -59,6 +60,8 @@ export interface GarageHost {
   voiture: VoitureEnJeu;
   /** `GET /api/garage` (`LeaderboardApi.garage`, l'identifiant dans l'en-tête) ; `null` : pas de serveur (ni démonstration). */
   statut(): Promise<ApiResult<GarageStatut>> | null;
+  /** Lot 51 : un choix vient d'être fait (et noté localement) : le jeu l'envoie au serveur, qui le garde pour tous les appareils de ce profil (hors connexion, il repart plus tard). */
+  envoyer(): void;
   /** La caméra de la scène (le Garage la pose autour de la voiture) et la toile où l'on glisse le doigt. */
   camera: PerspectiveCamera;
   toile: HTMLElement;
@@ -256,11 +259,20 @@ export function monterGarage(host: GarageHost): GarageUi {
    * Montre une voiture : débloquée, touchée, elle devient la tienne (enregistré) ; `choisir: false` (le Garage ouvert sur une voiture que la course
    * vient de débloquer) la montre sans la choisir ; verrouillée, sa silhouette.
    */
+  /** Lot 51 : enregistre le choix (il ne compte, et n'est envoyé, que s'il change : toucher la voiture déjà choisie ne doit pas écraser un choix plus récent fait ailleurs). */
+  function enregistrer(nouveau: ChoixVoiture, ancien: ChoixVoiture) {
+    if (nouveau.id === ancien.id && nouveau.couleur === ancien.couleur && nouveau.motif === ancien.motif && nouveau.teinteMotif === ancien.teinteMotif) return;
+    if (choisirVoiture(nouveau)) {
+      noterChoixLocal();
+      host.envoyer();
+    }
+  }
+
   function regarder(id: string, choisir = true) {
     regardee = id;
     const c = voitureChoisie();
     if (debloquees().has(id) && (choisir || id === c.id)) {
-      if (id !== c.id) choisirVoiture({ ...c, id });
+      if (id !== c.id) enregistrer({ ...c, id }, c);
       host.voiture.relire();
       host.voiture.apercu(null);
     } else host.voiture.apercu({ ...c, id }, debloquees().has(id) ? undefined : enSilhouette);
@@ -270,7 +282,7 @@ export function monterGarage(host: GarageHost): GarageUi {
   /** Couleur, motif ou couleur du motif de ta voiture : enregistré, et la voiture repeinte sur la scène (on la regarde de nouveau). */
   function personnaliser(maj: { couleur?: number; motif?: MotifLivree; teinteMotif?: number }) {
     const c = voitureChoisie();
-    choisirVoiture({ ...c, ...maj });
+    enregistrer({ ...c, ...maj }, c);
     regardee = c.id;
     host.voiture.relire();
     host.voiture.apercu(null);

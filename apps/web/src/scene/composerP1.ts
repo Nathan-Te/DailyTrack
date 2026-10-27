@@ -377,6 +377,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
   const lin = new Color();
   const lineaire = (hex: number): [number, number, number] => (lin.set(hex), [lin.r, lin.g, lin.b]);
   let etatFeux: EtatFeux = FEUX_ETEINTS;
+  let chronoVu = 0; // lot 51 : le dernier temps donné au chronomètre du portique (`?debug`)
 
   let shadowSize = 0;
   let currentLevel: 0 | 1 | 2 = 2;
@@ -481,7 +482,7 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
         if (o.userData.level === 2 && o.visible) hills = true;
       });
       const fog = scene.fog as Fog | null;
-      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: !!poseDecor?.dense.visible && !!poseDecor.dense.parent, decor: !!poseDecor, hills, signs: geo.signs, fog: fog ? { near: fog.near, far: fog.far } : null, ...(geo.feux ? { feux: etatFeux } : {}), ...(options.pas?.length && !aerien ? { pas: Object.fromEntries(options.pas.map((p) => [p.id, animations.find(([id]) => id === p.id)?.[1].stats?.() ?? {}])) } : {}) };
+      return { quality: currentLevel, shadowMap: sun.castShadow ? shadowSize : 0, headlights: head.visible ? head.intensity : 0, halos: { count: halos ? halos.points.geometry.getAttribute("position").count : 0, visible: !!halos?.points.visible }, denseDecor: !!poseDecor?.dense.visible && !!poseDecor.dense.parent, decor: !!poseDecor, hills, signs: geo.signs, fog: fog ? { near: fog.near, far: fog.far } : null, ...(geo.feux ? { feux: etatFeux, chrono: chronoVu } : {}), ...(options.pas?.length && !aerien ? { pas: Object.fromEntries(options.pas.map((p) => [p.id, animations.find(([id]) => id === p.id)?.[1].stats?.() ?? {}])) } : {}) };
     },
     followGround(px, pz) {
       backdrop.position.set(px, floorY, pz);
@@ -517,6 +518,10 @@ export function composerP1(track: Track, palette: PaletteName, options: TrackSce
           },
           arrivee(t: number) {
             for (const [, a] of animations) a.arrivee?.(t);
+          },
+          chrono(secondes: number) {
+            chronoVu = secondes;
+            for (const [, a] of animations) a.chrono?.(secondes);
           },
         }
       : {}),

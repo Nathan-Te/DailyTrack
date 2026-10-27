@@ -95,3 +95,63 @@ export function etatGarage(p: ProgresGarage): EtatVoiture[] {
 export function nouvellesVoitures(avant: ProgresGarage, apres: ProgresGarage): IdVoiture[] {
   return VOITURES_GARAGE.filter((id) => !estDebloquee(DEBLOCAGES[id], avant) && estDebloquee(DEBLOCAGES[id], apres));
 }
+
+// --- La voiture d'une course (lot 51) ------------------------------------------------------------------------------------------------------------
+// Chaque course classée (circuit du jour, Salon) garde la voiture avec laquelle elle a été courue : le modèle, la couleur, le motif et la teinte du motif.
+// **Une donnée à part** : jamais dans la rediffusion ni dans la simulation (golden et rediffusions ne bougent pas). Le jeu la joint à l'envoi ; le serveur
+// vérifie qu'elle est débloquée pour ce joueur (les règles ci-dessus) et, sinon, garde la Sparrow en orange. Le choix du Garage (voiture, couleur, motif,
+// teinte) est gardé par le serveur, par joueur : même type.
+
+/** Le nombre de couleurs de caisse du Garage, les motifs de livrée, le nombre de teintes de motif : ceux de `apps/web/src/voiture/livree.ts` (testé : `voitureChoix.test.ts`). */
+export const COULEURS_VOITURE = 8;
+export const MOTIFS_VOITURE = ["course", "flancs", "filet", "bicolore", "chevrons", "damier", "rond", "unie"] as const;
+export type MotifVoiture = (typeof MOTIFS_VOITURE)[number];
+export const TEINTES_VOITURE = 4;
+
+/** Une voiture : le modèle (`VOITURES_GARAGE`), le rang de la couleur de caisse, le motif de la livrée et le rang de la teinte du motif (0 : automatique). */
+export interface VoitureDeCourse {
+  id: IdVoiture;
+  couleur: number;
+  motif: MotifVoiture;
+  teinteMotif: number;
+}
+
+/** La voiture de repli : la civile (la Sparrow), en orange de Track, au motif par défaut. Celle des courses d'avant le lot 51 et d'un choix illisible ou verrouillé. */
+export const VOITURE_PAR_DEFAUT: Readonly<VoitureDeCourse> = Object.freeze({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
+
+/** Une voiture lue d'une donnée quelconque (corps d'une requête, base) : `null` si elle est illisible (voiture inconnue, couleur ou teinte hors des listes, motif inconnu). */
+export function voitureLue(brut: unknown): VoitureDeCourse | null {
+  if (!brut || typeof brut !== "object" || Array.isArray(brut)) return null;
+  const o = brut as Record<string, unknown>;
+  if (typeof o.id !== "string" || !(VOITURES_GARAGE as readonly string[]).includes(o.id)) return null;
+  if (typeof o.couleur !== "number" || !Number.isInteger(o.couleur) || o.couleur < 0 || o.couleur >= COULEURS_VOITURE) return null;
+  if (typeof o.motif !== "string" || !(MOTIFS_VOITURE as readonly string[]).includes(o.motif)) return null;
+  const t = o.teinteMotif ?? 0;
+  if (typeof t !== "number" || !Number.isInteger(t) || t < 0 || t >= TEINTES_VOITURE) return null;
+  return { id: o.id as IdVoiture, couleur: o.couleur, motif: o.motif as MotifVoiture, teinteMotif: t };
+}
+
+/** La voiture gardée en base : `id.couleur.motif.teinte` (`civile.0.course.0`) ; une ligne d'avant le lot 51 n'en a pas (`NULL`). */
+export const coderVoiture = (v: VoitureDeCourse): string => `${v.id}.${v.couleur}.${v.motif}.${v.teinteMotif}`;
+
+/** La voiture lue en base : celle de la ligne, ou la Sparrow en orange (ligne d'avant le lot 51, valeur abîmée). */
+export function decoderVoiture(code: string | null | undefined): VoitureDeCourse {
+  if (typeof code === "string") {
+    const morceaux = code.split(".");
+    if (morceaux.length === 4) {
+      const v = voitureLue({ id: morceaux[0], couleur: Number(morceaux[1]), motif: morceaux[2], teinteMotif: Number(morceaux[3]) });
+      if (v) return v;
+    }
+  }
+  return { ...VOITURE_PAR_DEFAUT };
+}
+
+/**
+ * La voiture qu'un joueur a le droit de garder : celle qu'il annonce si elle est lisible **et débloquée** pour cette progression (`ouvert` : tout est
+ * débloqué, le joueur de démonstration de la recette), sinon la Sparrow en orange (rien d'annoncé, illisible ou verrouillée : le repli de l'envoi d'une course).
+ */
+export function voitureAutorisee(brut: unknown, progres: ProgresGarage, ouvert = false): VoitureDeCourse {
+  const v = voitureLue(brut);
+  if (!v) return { ...VOITURE_PAR_DEFAUT };
+  return ouvert || estDebloquee(DEBLOCAGES[v.id], progres) ? v : { ...VOITURE_PAR_DEFAUT };
+}

@@ -148,7 +148,7 @@ export function rubanDesEcrans(palette: PaletteName): CanvasTexture {
   return t;
 }
 
-/** Le chronomètre à diodes (256 × 128), redessiné dix fois par seconde au plus. */
+/** Le chronomètre à diodes (256 × 128), redessiné dix fois par seconde au plus. Lot 51 : `afficher(s)` montre le temps `s` (secondes) en minutes, secondes et dixièmes. */
 export class Chronometre {
   readonly texture: CanvasTexture;
   private readonly ctx: CanvasRenderingContext2D;
@@ -162,8 +162,8 @@ export class Chronometre {
     this.texture.colorSpace = SRGBColorSpace;
     this.afficher(0);
   }
-  afficher(s: number) {
-    const d = Math.floor((s % 60) * 10);
+  afficher = (s: number) => {
+    const d = (s * 10) | 0;
     if (d === this.dernier) return;
     this.dernier = d;
     const c = this.ctx;
@@ -173,7 +173,7 @@ export class Chronometre {
     c.font = "700 64px 'JetBrains Mono', monospace";
     c.textAlign = "center";
     c.textBaseline = "middle";
-    c.fillText(`0:${String(Math.floor(d / 10)).padStart(2, "0")}.${d % 10}`, 128, 68);
+    c.fillText(`${(d / 600) | 0}:${String(((d / 10) | 0) % 60).padStart(2, "0")}.${d % 10}`, 128, 68); // M:SS.d
     diodes(c, 256, 128);
     this.texture.needsUpdate = true;
   }

@@ -244,6 +244,8 @@ export interface AnimationPas {
   animer?(t: number, camera: PerspectiveCamera, hauteurPx: number): void;
   /** La voiture passe la ligne (temps d'affichage). */
   arrivee?(t: number): void;
+  /** Lot 51 : le temps de la course en cours (s) pour le chronomètre du portique — **lecture seule** de l'état de la course, comme les feux (`main.ts` le donne à chaque image). */
+  chrono?(secondes: number): void;
   /** Ce qu'il tient qui n'est pas libéré avec la scène (ou ce qu'elle ne doit pas libérer : une texture partagée). */
   dispose?(): void;
   /** Ce qu'il dit de lui (`?debug` : `__cdj.render.pas`). */

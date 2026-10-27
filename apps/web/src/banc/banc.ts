@@ -7,7 +7,7 @@
 import { NeutralToneMapping, PerspectiveCamera, Vector2, WebGLRenderer, type Object3D } from "three";
 import { TICK_RATE, bestPilotRun, createRace, dailyCircuit, parseDay, stepRace, ReplayPlayer, type PaletteName, type Track } from "@cdj/sim";
 import type { Appareil } from "../qualite";
-import { ChainePost, type ChronoPasses } from "../scene/post";
+import { ChainePost, densiteDeRendu, fxaaVoulu, type ChronoPasses } from "../scene/post";
 import { POST_3 } from "../scene/themesPost";
 import type { TrackScene } from "../trackMesh";
 import { BANC_DEBUT_S, BANC_JOUR, DUREES, VERSION_RAPPORT, configurations, plan, rapportValide, resumer, type ConfigBanc, type EnteteBanc, type MesureBanc, type ModeBanc, type RapportBanc, type ThemeBanc } from "./bancLogique";
@@ -213,7 +213,7 @@ async function executer(racine: HTMLElement, page: HTMLElement, sortie: HTMLElem
   for (const th of ["stade", "nuit", "ville"] as const) await chargerDecor(th).catch(() => undefined);
 
   const dpr = window.devicePixelRatio || 1;
-  const configs = configurations(dpr, mode, Math.round(innerWidth * innerHeight * Math.min(dpr, 2) ** 2));
+  const configs = configurations(dpr, mode);
   const passages = plan(configs);
   etat.total = passages.length;
   const mesures: MesureBanc[] = [];
@@ -248,9 +248,10 @@ async function executer(racine: HTMLElement, page: HTMLElement, sortie: HTMLElem
         navigateur: navigator.userAgent,
         canevas: [innerWidth, innerHeight],
         densite: dpr,
+        tampon: [Math.floor(innerWidth * densiteDeRendu(dpr)), Math.floor(innerHeight * densiteDeRendu(dpr))],
         pleinEcran: !!document.fullscreenElement,
         frequence: 60,
-        palierAuto: o.qualite.palierAuChargement(app, memoire, Date.now(), Math.round(innerWidth * innerHeight * Math.min(dpr, 2) ** 2)).palier,
+        palierAuto: o.qualite.palierAuChargement(app, memoire, Date.now(), Math.round(innerWidth * innerHeight * densiteDeRendu(dpr) ** 2)).palier,
         passesPermises: o.qualite.passesPermises(app),
         minuteurGpu: chrono.disponible,
       };
@@ -318,7 +319,7 @@ interface Contexte {
 async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: number[] }> {
   const { renderer, camera, view, car, tr, config, theme, chrono, durees, o } = c;
   const { flatRatio } = o;
-  const densite = config.densite === "native" ? Math.min(devicePixelRatio || 1, 2) : Math.min(devicePixelRatio || 1, config.densite);
+  const densite = config.densite === "native" ? densiteDeRendu(devicePixelRatio || 1) : Math.min(densiteDeRendu(devicePixelRatio || 1), config.densite);
   renderer.setPixelRatio(densite);
   renderer.setSize(innerWidth, innerHeight);
   camera.aspect = innerWidth / innerHeight;
@@ -327,8 +328,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
   let echec: string | undefined;
   let rendre: () => void;
   let liberer = () => undefined as void;
-  /** L'échelle de la scène de la chaîne (plafond de pixels) : les halos en points et les particules s'y règlent, comme en jeu. */
-  let echelle = () => 1;
+  let cibles = (): MesureBanc["cibles"] => null;
   const d = renderer.getDrawingBufferSize(new Vector2());
   const direct = () => {
     renderer.toneMappingExposure = view.look.exposure;
@@ -341,8 +341,12 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
   else {
     const chaine = new ChainePost(renderer, ch.forme);
     chaine.chrono = chrono;
-    echelle = () => chaine.echelle;
-    const r = { halo: ch.halo, etalonnage: ch.etalonnage, anticrenelage: ch.anticrenelage, theme: post, exposition: view.look.exposure };
+    cibles = () => {
+      const t = chaine.tailles();
+      return t.scene ? { scene: t.scene, halo: t.halo } : null;
+    };
+    // Comme en jeu : le FXAA est coupé à partir de la densité 1,75.
+    const r = { halo: ch.halo, etalonnage: ch.etalonnage, anticrenelage: ch.anticrenelage && fxaaVoulu(densite), theme: post, exposition: view.look.exposure };
     await chaine.preparer(view.scene, camera, d.x, d.y, r);
     rendre = () => {
       if (!chaine.rendre(view.scene, camera, d.x, d.y, r)) {
@@ -427,7 +431,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
         camera.fov = fov;
         camera.updateProjectionMatrix();
       }
-      const h = innerHeight * renderer.getPixelRatio() * echelle();
+      const h = innerHeight * renderer.getPixelRatio();
       view.followGround(x, z);
       view.followCar(x, y, z, yaw, false);
       view.setView(h, camera.fov);
@@ -450,6 +454,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
   }
   observateur?.disconnect();
   const compilations = programmes() - programmesAvant;
+  const tailles = cibles();
   liberer();
   const r = resumer({ intervalles, fil, appels, gpu: chrono.disponible ? chrono.resultats : null });
   return {
@@ -464,6 +469,7 @@ async function mesurer(c: Contexte): Promise<{ mesure: MesureBanc; intervalles: 
       tachesLongues: taches,
       tampon: [d.x, d.y],
       densite,
+      cibles: tailles,
       ...(echec ? { echec } : {}),
     },
   };
@@ -478,7 +484,7 @@ function afficher(sortie: HTMLElement, r: RapportBanc) {
   ajouter(
     sortie,
     "p",
-    `${e.carteGraphique} · canevas ${e.canevas[0]} × ${e.canevas[1]} · densité ${e.densite} · ${e.pleinEcran ? "plein écran" : "pas en plein écran"} · écran ${e.frequence} Hz · Auto : palier ${e.palierAuto}${e.passesPermises ? " (chaîne permise)" : " (chaîne non permise)"} · minuteur de la carte graphique : ${e.minuteurGpu ? "oui" : "non (temps par passe indisponible)"} · ${r.dureeS} s`,
+    `${e.carteGraphique} · canevas ${e.canevas[0]} × ${e.canevas[1]} (tampon ${e.tampon[0]} × ${e.tampon[1]}) · densité ${e.densite} · ${e.pleinEcran ? "plein écran" : "pas en plein écran"} · écran ${e.frequence} Hz · Auto : palier ${e.palierAuto}${e.passesPermises ? " (chaîne permise)" : " (chaîne non permise)"} · minuteur de la carte graphique : ${e.minuteurGpu ? "oui" : "non (temps par passe indisponible)"} · ${r.dureeS} s`,
   );
   const copier = ajouter(sortie, "button", "Copier le rapport");
   copier.type = "button";
@@ -502,7 +508,7 @@ function afficher(sortie: HTMLElement, r: RapportBanc) {
   const table = ajouter(sortie, "table");
   table.style.borderCollapse = "collapse";
   const tete = ajouter(table, "tr");
-  for (const h of ["Configuration", "Thème", "Médiane (ms)", "95ᵉ", "99ᵉ", "Pire", "Images/s", "Carte graphique (ms)", "Par passe (ms)", "Fil principal (ms)", "Appels", "Compilations", "Tâches longues"]) ajouter(tete, "th", h);
+  for (const h of ["Configuration", "Thème", "Médiane (ms)", "95ᵉ", "99ᵉ", "Pire", "Images/s", "Carte graphique (ms)", "Par passe (ms)", "Fil principal (ms)", "Appels", "Compilations", "Tâches longues", "Tampon", "Cibles (scène · halo)"]) ajouter(tete, "th", h);
   for (const m of r.mesures) {
     const l = ajouter(table, "tr");
     const cellules = m.echec && !m.images
@@ -521,6 +527,8 @@ function afficher(sortie: HTMLElement, r: RapportBanc) {
           String(m.appels),
           String(m.compilations),
           String(m.tachesLongues),
+          `${m.tampon[0]} × ${m.tampon[1]}`,
+          m.cibles ? `${m.cibles.scene[0]} × ${m.cibles.scene[1]} · ${m.cibles.halo.length ? m.cibles.halo.map((c) => `${c[0]}×${c[1]}`).join(" ") : "pas de halo"}` : "dessin direct",
         ];
     for (const c of cellules) {
       const td = ajouter(l, "td", c);

@@ -34,7 +34,7 @@ unset ADMIN_TOKEN CODE
 ```
 
 - **Tu dois voir** `{"efface":true,"pseudo":"…",…}`. Relancer la même commande rend alors `404` : il n'y a plus rien.
-- Ce qui est effacé, **en une transaction** : le joueur (identifiant secret et pseudo — **le pseudo est libéré**), ses anciens codes remplacés, ses temps et rediffusions de DailyTrack et de DailyJump (tous les jours), ses courses du Salon en cours, sa présence au Salon, ses vies de DailyJump pas encore oubliées.
+- Ce qui est effacé, **en une transaction** : le joueur (identifiant secret et pseudo — **le pseudo est libéré**), ses anciens codes remplacés, ses temps et rediffusions de DailyTrack et de DailyJump (tous les jours), ses courses du Salon en cours, **son choix de voiture** (lot 51 : la voiture et sa personnalisation, gardées par joueur ; la voiture de chaque course s'efface avec la course), sa présence au Salon, ses vies de DailyJump pas encore oubliées.
 - **Classements des jours passés** : sa ligne est **retirée** (les suivants montent d'une place ; les places finales gardées sont recalculées à la prochaine lecture du profil des autres) ; son fantôme de premier n'est plus servi : c'est le suivant qui devient le premier.
 - **Ce qui reste** (sans aucun lien avec lui) : la carte des morts et l'échantillon du carnage figés des jours passés (des cases comptées et des rediffusions de vies sans identifiant ni pseudo), et les compteurs de débit (empreintes, effacés d'eux-mêmes en moins d'une heure).
 

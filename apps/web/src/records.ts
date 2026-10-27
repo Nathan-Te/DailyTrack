@@ -1,5 +1,6 @@
 import { SIM_VERSION, generatorVersionOf, parseDay, type Medal } from "@cdj/sim";
 import { gameStorage } from "./storage";
+import type { ChoixVoiture } from "./voiture/choix";
 
 export interface BestRun {
   ms: number;
@@ -10,6 +11,8 @@ export interface BestRun {
   simVersion?: number;
   /** Médaille obtenue avec ce temps (circuits du jour). */
   medal?: Medal | null;
+  /** Lot 51 : la voiture avec laquelle ce temps a été fait (modèle, couleur, motif, teinte du motif) — une donnée à part, jamais dans la rediffusion. Absente d'un record d'avant : la Sparrow en orange. */
+  voiture?: ChoixVoiture;
 }
 
 /** Meilleur temps local d'un jour, pour la liste des archives. */

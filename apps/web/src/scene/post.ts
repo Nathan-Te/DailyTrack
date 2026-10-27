@@ -7,9 +7,11 @@
 //     la chaîne de demi-résolutions floutées d'`UnrealBloomPass` (mêmes niveaux, mêmes flous, mêmes poids), composée à la demi-résolution et lue par la passe
 //     de fin — plus de mélange additif sur tout l'écran ;
 //   - **la scène dans une cible de 4 octets par pixel** en lumière linéaire (`R11F_G11F_B10F` : des flottants sans alpha ; repli en demi-flottants, 8 octets),
-//     **sans multi-échantillonnage** (le FXAA lisse : mesuré au banc, une cible ×4 coûtait presque le double de la scène sur Iris Xe) et **plafonnée à 2,1 millions
-//     de pixels** (un 1080p : au-delà, dessinée plus petite et agrandie par la passe de fin) ; **l'écran sans multi-échantillonnage** quand la chaîne dessine
-//     (`main.ts` crée le moteur sans `antialias` : jamais deux multi-échantillonnages) ;
+//     **sans multi-échantillonnage** (le FXAA lisse : mesuré au banc, une cible ×4 coûtait presque le double de la scène sur Iris Xe) ; **l'écran sans
+//     multi-échantillonnage** quand la chaîne dessine (`main.ts` crée le moteur sans `antialias` : jamais deux multi-échantillonnages) ;
+//   - **la scène à la résolution native, toujours** (lot 51) : la cible de la scène a la taille du tampon de dessin (fenêtre × densité). Le lot 50 l'avait plafonnée à
+//     2,1 millions de pixels puis agrandie : à 1440p et en 4K, l'image était molle. Seule la cible du halo est plus petite (floue par nature) ;
+//   - **le FXAA coupé à partir de la densité 1,75** (`fxaaVoulu`) : à cette finesse il floute plus qu'il n'aide ;
 //   - **rien par image qui parcourt les matériaux** : les nuanceurs d'écran lisent `SORTIE_LINEAIRE` (halo.ts), mis à 1 le temps de la scène ;
 //   - **les programmes précompilés hors course** (`preparer` : `compileAsync` de la scène dans la cible, et des passes).
 // Commutable partie par partie (halo, étalonnage, FXAA) ; le banc (`?banc`) mesure chaque forme (`FormeChaine`).
@@ -52,15 +54,16 @@ export interface FormeChaine {
   haloDepart: 1 | 2;
   /** Niveaux du halo (5 : comme `UnrealBloomPass`). */
   haloNiveaux: number;
-  /** Pixels de la scène au plus (0 : la taille de l'écran) : au-delà, la scène est dessinée plus petite et la passe de fin l'agrandit (`echelle`). */
-  pixelsMax: number;
 }
-/** Le plafond de pixels de la scène de la chaîne : un 1080p (rapport 2 du banc : à 2560 × 1440 sur Iris Xe, 60 images/s au Stade et la Nuit, carte graphique ≈ 9 à 10 ms). */
-export const PIXELS_CHAINE = 1920 * 1080;
-/** La forme du jeu (rapport 2 du banc de Nathan, README du lot 50). */
-export const FORME_JEU: Readonly<FormeChaine> = { echantillons: 0, format: "r11", haloDepart: 1, haloNiveaux: 5, pixelsMax: PIXELS_CHAINE };
-/** L'échelle de la scène pour un écran de `w` × `h` pixels (1 sous le plafond). */
-export const echelleScene = (w: number, h: number, pixelsMax: number): number => (pixelsMax > 0 && w * h > pixelsMax ? Math.sqrt(pixelsMax / (w * h)) : 1);
+/** La forme du jeu (rapport 2 du banc de Nathan, README du lot 50 ; lot 51 : plus de plafond de pixels, la scène est à la résolution native). */
+export const FORME_JEU: Readonly<FormeChaine> = { echantillons: 0, format: "r11", haloDepart: 1, haloNiveaux: 5 };
+
+/** Lot 51 : la densité de dessin du jeu — celle de l'appareil, plafonnée à 2 comme avant le lot 50 (`main.ts` : `Math.min(devicePixelRatio, 2)`, testé) — la même partout : moteur, banc. */
+export const DENSITE_MAX = 2;
+export const densiteDeRendu = (dpr: number): number => Math.min(dpr > 0 ? dpr : 1, DENSITE_MAX);
+/** Lot 51 : à partir de cette densité de dessin, le FXAA floute plus qu'il n'aide : la passe de fin ne le fait plus. */
+export const DENSITE_SANS_FXAA = 1.75;
+export const fxaaVoulu = (densite: number): boolean => densite < DENSITE_SANS_FXAA;
 /**
  * **Jamais deux multi-échantillonnages** : la forme du jeu selon l'écran du moteur. Un moteur créé avec le sien (la chaîne demandée en cours de page : `antialias`
  * ne change plus après la création) garde la scène de la chaîne sans multi-échantillonnage (le FXAA lisse) jusqu'au prochain chargement.
@@ -303,6 +306,11 @@ class Halo {
     }
   }
 
+  /** Lot 51 : la taille de chaque cible du halo (la première, puis les deux de chaque niveau). */
+  tailles(): [number, number][] {
+    return [this.clair, ...this.niveaux.flat()].map((c) => [c.width, c.height]);
+  }
+
   /** Pixels de toutes les cibles du halo (mémoire). */
   pixels(): number {
     return [this.clair, ...this.niveaux.flat()].reduce((s, c) => s + c.width * c.height, 0);
@@ -361,9 +369,6 @@ export class ChainePost {
   private readonly quad: Mesh;
   private w = 0;
   private h = 0;
-  /** La taille de la scène (celle de l'écran, ou plus petite au-delà de `pixelsMax`). */
-  private sw = 0;
-  private sh = 0;
   /** Les cibles à essayer, dans l'ordre : celle de la forme, puis en demi-flottants, puis sans multi-échantillonnage. */
   private essais: { format: FormeChaine["format"]; echantillons: number }[];
   private verifiee = false;
@@ -390,28 +395,23 @@ export class ChainePost {
     return { format: this.essais[0]!.format, echantillons: this.scene?.samples ?? 0 };
   }
 
-  /** L'échelle de la scène par rapport à l'écran (1 : la même taille) : ce qui est dessiné en pixels (halos en points, particules) s'y règle (`main.ts`). */
-  get echelle(): number {
-    return this.w > 0 ? this.sw / this.w : 1;
+  /** Lot 51 : la taille de chaque cible (pixels), pour `?debug` et le banc : la scène (toujours celle du tampon de dessin) et celles du halo (plus petites : floues). */
+  tailles(): { scene: [number, number, number] | null; halo: [number, number][] } {
+    return { scene: this.scene ? [this.scene.width, this.scene.height, this.scene.samples] : null, halo: this.halo?.tailles() ?? [] };
   }
 
   private taille(w: number, h: number) {
     const e = this.essais[0]!;
-    const k = echelleScene(w, h, this.forme.pixelsMax);
-    const sw = Math.max(1, Math.round(w * k));
-    const sh = Math.max(1, Math.round(h * k));
-    const n = sw * sh > PIXELS_MSAA ? 0 : e.echantillons;
+    const n = w * h > PIXELS_MSAA ? 0 : e.echantillons;
     if (w === this.w && h === this.h && this.scene && this.scene.samples === n) return;
     this.w = w;
     this.h = h;
-    this.sw = sw;
-    this.sh = sh;
     if (!this.scene || this.scene.samples !== n) {
       this.scene?.dispose();
-      this.scene = cibleScene(sw, sh, e.format, n);
+      this.scene = cibleScene(w, h, e.format, n);
       this.verifiee = false;
-    } else this.scene.setSize(sw, sh);
-    this.halo?.taille(sw, sh);
+    } else this.scene.setSize(w, h);
+    this.halo?.taille(w, h);
   }
 
   /** La cible est-elle acceptée par la carte graphique ? Sinon la suivante (demi-flottants, puis sans multi-échantillonnage) ; plus rien : faux. */
@@ -459,7 +459,7 @@ export class ChainePost {
     const halo = r.halo && avecHalo(r.theme);
     if (halo && !this.halo) {
       this.halo = new Halo(this.forme);
-      this.halo.taille(this.sw, this.sh);
+      this.halo.taille(w, h);
     }
     const autoClear = renderer.autoClear;
     // Les compteurs du moteur couvrent toute l'image (la scène et ses passes) ; la scène seule : `appels`.
@@ -479,7 +479,7 @@ export class ChainePost {
       this.triangles = renderer.info.render.triangles;
       if (halo) {
         this.chrono?.debut("halo");
-        this.halo!.rendre(renderer, this.quad, camera, this.scene!.texture, this.sw, this.sh, r.theme);
+        this.halo!.rendre(renderer, this.quad, camera, this.scene!.texture, w, h, r.theme);
         this.chrono?.fin();
       }
       this.chrono?.debut("fin");
@@ -487,7 +487,7 @@ export class ChainePost {
       const u = m.uniforms;
       u.tScene!.value = this.scene!.texture;
       u.tHalo!.value = halo ? this.halo!.texture : null;
-      u.uTexel!.value = [1 / this.sw, 1 / this.sh]; // le FXAA cherche les bords dans les pixels de la scène
+      u.uTexel!.value = [1 / w, 1 / h]; // le FXAA cherche les bords dans les pixels de la scène (ceux de l'écran)
       const e = r.theme.etalonnage;
       u.uContraste!.value = e.contraste;
       u.uSaturation!.value = e.saturation;
@@ -516,7 +516,7 @@ export class ChainePost {
     const halo = r.halo && avecHalo(r.theme);
     if (halo && !this.halo) {
       this.halo = new Halo(this.forme);
-      this.halo.taille(this.sw, this.sh);
+      this.halo.taille(w, h);
     }
     const promesses: Promise<unknown>[] = [];
     const avec = (cible: WebGLRenderTarget | null, s: Object3D) => {
@@ -555,7 +555,7 @@ export class ChainePost {
     this.scene = null;
     this.halo = null;
     this.fins.clear();
-    this.w = this.h = this.sw = this.sh = 0;
+    this.w = this.h = 0;
     this.verifiee = false;
   }
 }

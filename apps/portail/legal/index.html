@@ -67,13 +67,18 @@
         </li>
         <li data-tables="results jump_results">
           <h3>Your results and your replays</h3>
-          <p>For each day: your best time and its replay (the sequence of your inputs, which the server replays to check the time), in DailyTrack and in DailyJump, and your rank once the day is over. A fingerprint of these inputs is kept with it (a short code with nothing personal in it), used to refuse the same run being sent by two players.</p>
-          <p>Purpose: the daily and archive leaderboards, the leader's ghost, your medals, your best rank, your streak and your perfect days (portal and shared profile).</p>
+          <p>For each day: your best time and its replay (the sequence of your inputs, which the server replays to check the time), in DailyTrack and in DailyJump, and your rank once the day is over. A fingerprint of these inputs is kept with it (a short code with nothing personal in it), used to refuse the same run being sent by two players, and, in DailyTrack, the car you made this time with (the model, its colour, its pattern and the pattern colour: a cosmetic choice, unrelated to the replay).</p>
+          <p>Purpose: the daily and archive leaderboards, the leader's ghost (with the car of their run), your medals, your best rank, your streak and your perfect days (portal and shared profile).</p>
           <p class="duree">Kept: until you ask for erasure (past leaderboards remain viewable).</p>
+        </li>
+        <li data-tables="garage_choices">
+          <h3>Your car in DailyTrack</h3>
+          <p>The car you pick in the Garage, with its colour, its pattern and the pattern colour, so that you find it again on all your devices (those that have your code). The server keeps only this last choice and the time you made it, to the minute.</p>
+          <p class="duree">Kept: until you ask for erasure.</p>
         </li>
         <li data-tables="salon_runs salon_sessions">
           <h3>Your Room races</h3>
-          <p>Your best time of the session, its replay and your nickname.</p>
+          <p>Your best time of the session, its replay, your nickname and the car you made it with.</p>
           <p class="duree">Kept: forgotten <span data-constante="SALON_SERVE_MS" data-valeur="20000">20 seconds</span> after the end of the session (a session lasts <span data-constante="SALON_SESSION_MS" data-valeur="600000">10 minutes</span>).</p>
         </li>
         <li data-tables="jump_lives jump_deaths">

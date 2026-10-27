@@ -6,7 +6,7 @@ import { getName, getPlayerId, getSubmittedBest, identity, setPlayerId, setSubmi
 import { ProfileSync } from "./profileSync";
 import { listDayBests, type BestRun } from "./records";
 import { gameStorage } from "./storage";
-import { noterDeblocages } from "./voiture/choix";
+import { lireChoix, noterDeblocages } from "./voiture/choix";
 
 export type GhostMode = "mine" | "first" | "ahead" | "off";
 
@@ -72,11 +72,12 @@ export class Online {
   /** Envoie le meilleur temps (sa rediffusion) ; le serveur le rejoue et répond avec SON temps et le rang. */
   async submit(best: BestRun, name: string): Promise<ApiResult<SubmitResult>> {
     if (!this.api || !this.date || !this.trackId || !best.replay) return { ok: false, status: 0, code: "disabled", message: "Classement désactivé" };
-    const r = await this.api.submit(this.playerId, name, this.date, best.replay);
+    const r = await this.api.submit(this.playerId, name, this.date, best.replay, best.voiture); // lot 51 : la voiture de ce record, pas celle d'aujourd'hui
     if (r.ok) {
       setSubmittedBest(this.trackId, r.data.bestMs);
       this.sync.noteServerKnows();
       if (r.data.garage) noterDeblocages(r.data.garage.voitures.filter((v) => v.debloquee).map((v) => v.id)); // lot 41 : le Garage arrive avec la réponse de l'envoi
+      void import("./voiture/synchro").then((m) => m.envoyerChoix(this.profileApi, this.playerId)).catch(() => undefined); // lot 51 : le joueur est connu du serveur : son choix de voiture, fait avant, part
     }
     return r;
   }
@@ -109,7 +110,9 @@ export class Online {
 }
 
 function ghostChoice(kind: "first" | "ahead", g: GhostData): GhostChoice {
-  return { mode: kind, name: g.name, source: { ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion } };
+  // Lot 51 : la voiture de sa course (illisible ou absente : la Sparrow en orange, côté affichage).
+  const voiture = lireChoix(g.voiture);
+  return { mode: kind, name: g.name, source: { ms: g.ms, splits: g.splits, replay: g.replay, simVersion: g.simVersion, ...(voiture ? { voiture } : {}) } };
 }
 
 /** Modes de fantôme proposés, dans l'ordre où `G` les parcourt. */

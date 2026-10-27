@@ -310,6 +310,8 @@ export interface TrackScene {
   stats(): SceneStats;
   /** Lot 43 : les feux de départ du portique (palier 1), allumés selon le décompte ; absents de l'existant. Lecture seule de l'état de la course. */
   feux?(etat: EtatFeux): void;
+  /** Lot 51 : le chronomètre du portique montre le temps de la course en cours (s ; 0 au décompte et à l'accueil) ; lecture seule, comme les feux. Absent de l'existant. */
+  chrono?(secondes: number): void;
   /**
    * Lot 44 : ajoute le décor du thème (son module chargé à la demande) à une scène construite sans lui ; une seule fois. **Jamais pendant une course** : c'est
    * l'appelant (`main.ts`) qui choisit le moment (accueil, pause, arrivée, podium). Absent de l'existant (son décor est le sien).

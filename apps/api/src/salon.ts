@@ -9,7 +9,10 @@ import {
   salonSessionEnd,
   salonSessionStart,
   salonTrackId,
+  coderVoiture,
+  decoderVoiture,
   type Track,
+  type VoitureDeCourse,
 } from "@cdj/sim";
 import type { SqlDb } from "./db";
 import { replayUnits } from "./replayCost";
@@ -22,7 +25,7 @@ import type { Players } from "./players";
 //   GET  /api/salon/now                                    heure du serveur, session en cours, présents
 //   GET  /api/salon/<session>/board?since=<v>              classement de la session (`unchanged` si la version est la même)
 //   GET  /api/salon/<session>/ghosts?refs=a,b              rediffusions demandées par référence publique
-//   POST /api/salon/<session>/submit { playerId, name, replay }
+//   POST /api/salon/<session>/submit { playerId, name, replay, voiture? }   (lot 51 : la voiture de la course, gardée avec elle, rendue avec le fantôme)
 //
 // **Une session finie est oubliée** (lot 27b) : une fois le circuit changé (fin de session + minute de grâce), ses courses, son classement
 // et son circuit sont effacés, sans podium gardé ni route d'historique. Le nettoyage se fait **à la demande** (la première requête qui voit une
@@ -110,6 +113,8 @@ export interface SalonKit {
   playerOf: (req: Request, url: URL, route: string) => string | null;
   /** Joueurs (lot 30) : pseudos réservés et codes révoqués, mêmes règles que le classement du jour. */
   players: Players;
+  /** Lot 51 : la voiture à garder avec une course — celle qu'annonce le jeu si elle est débloquée pour ce joueur, sinon la Sparrow en orange (`cdj.ts`). */
+  voitureDe: (playerId: string, annoncee: unknown) => Promise<VoitureDeCourse>;
   limits: SalonLimits;
   /** Marque `demo` les joueurs créés (jamais réglé par le serveur de production). */
   demoPlayers: boolean;
@@ -385,8 +390,8 @@ export function createSalon(kit: SalonKit) {
     await limitReads(info);
     const ghosts = [];
     for (const ref of refs) {
-      const row = await db.first<{ name: string; ms: number; splits: string; replay: string; submitted_at: number }>(
-        "SELECT name, ms, splits, replay, submitted_at FROM salon_runs WHERE session = ? AND ref = ?",
+      const row = await db.first<{ name: string; ms: number; splits: string; replay: string; submitted_at: number; car: string | null }>(
+        "SELECT name, ms, splits, replay, submitted_at, car FROM salon_runs WHERE session = ? AND ref = ?",
         [session, ref],
       );
       if (!row) continue; // inconnue (purgée, ou d'une autre session) : le jeu s'en passe
@@ -398,6 +403,7 @@ export function createSalon(kit: SalonKit) {
         splits: JSON.parse(row.splits) as number[],
         replay: row.replay,
         simVersion: SIM_VERSION,
+        voiture: decoderVoiture(row.car), // lot 51 : la voiture de cette course (la Sparrow en orange pour une course d'avant)
       });
     }
     return { ghosts };
@@ -441,6 +447,8 @@ export function createSalon(kit: SalonKit) {
     if (!result.finished) throw new HttpError(422, "not_finished", "Cette rediffusion ne franchit pas la ligne d'arrivée");
 
     const at = now();
+    // Lot 51 : la voiture de la course — celle que le jeu annonce si elle est débloquée pour ce joueur, sinon la Sparrow en orange. Une donnée à part, jamais dans la rediffusion.
+    const car = coderVoiture(await kit.voitureDe(playerId, body.voiture));
     // Le joueur n'existe qu'après une course valide ; son pseudo est celui du classement du jour (même identité).
     await kit.players.save(playerId, name, known);
     const ref = await refOf(session, playerId);
@@ -448,10 +456,10 @@ export function createSalon(kit: SalonKit) {
     const improved = !previous || result.finishMs < previous.ms;
     if (improved) {
       await db.run(
-        `INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO salon_runs (session, player_id, ref, name, ms, splits, replay, submitted_at, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (session, player_id) DO UPDATE SET name = excluded.name, ms = excluded.ms, splits = excluded.splits,
-           replay = excluded.replay, submitted_at = excluded.submitted_at WHERE excluded.ms < salon_runs.ms`,
-        [session, playerId, ref, name, result.finishMs, JSON.stringify(result.splits), body.replay, at],
+           replay = excluded.replay, submitted_at = excluded.submitted_at, car = excluded.car WHERE excluded.ms < salon_runs.ms`,
+        [session, playerId, ref, name, result.finishMs, JSON.stringify(result.splits), body.replay, at, car],
       );
       await bump(session);
     } else if (previous.name !== name) {

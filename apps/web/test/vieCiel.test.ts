@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { PerspectiveCamera, Points, Scene, Vector3, type Mesh } from "three";
 import { NO_GROUND, createSurface, dailyCircuit, daysFromCivil, trackWorld, type PaletteName, type Track } from "@cdj/sim";
@@ -180,5 +181,20 @@ describe("lot 46 : les nuanceurs resserrés à la construction", () => {
   it("seuls les gabarits marqués `/* glsl */` (sans `${…}`) sont touchés", () => {
     const code = "const A = /* glsl */ `\n  a;   // x\n`;\nconst B = `\n  b;   // y\n`;\nconst C = /* glsl */ `\n ${z}\n`;";
     expect(resserrerModule(code)).toBe("const A = `\na;\n`;\nconst B = `\n  b;   // y\n`;\nconst C = /* glsl */ `\n ${z}\n`;");
+  });
+});
+
+describe("lot 51 : le chronomètre du portique", () => {
+  it("il lit le temps de la course (en lecture seule), jamais le temps d'affichage", () => {
+    const vieJeu = readFileSync(new URL("../src/scene/vieJeu.ts", import.meta.url), "utf8");
+    const animer = /animer\(t, camera, hauteurPx\) \{[\s\S]*?\n      \},/.exec(vieJeu)![0];
+    expect(animer, "le temps d'affichage n'anime plus le chronomètre").not.toContain("chrono");
+    expect(vieJeu).toContain("chrono: chrono?.afficher,");
+    const main = readFileSync(new URL("../src/main.ts", import.meta.url), "utf8");
+    expect(main).toContain('view.chrono?.(race && phase !== "countdown" ? raceElapsedMs(race) / 1000 : 0);');
+    // Il s'écrit M:SS.d (au-delà de la minute, les minutes s'allongent) ; le calcul est celui de `afficher`.
+    const format = (d: number) => `${(d / 600) | 0}:${String(((d / 10) | 0) % 60).padStart(2, "0")}.${d % 10}`;
+    expect([0, 1, 9, 10, 599, 600, 612, 6001].map(format)).toEqual(["0:00.0", "0:00.1", "0:00.9", "0:01.0", "0:59.9", "1:00.0", "1:01.2", "10:00.1"]);
+    expect(readFileSync(new URL("../src/scene/vie.ts", import.meta.url), "utf8")).toContain("`${(d / 600) | 0}:${String(((d / 10) | 0) % 60).padStart(2, \"0\")}.${d % 10}`");
   });
 });
