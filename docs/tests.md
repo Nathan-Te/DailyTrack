@@ -1,6 +1,6 @@
 # Les tests : quatre familles (lot R13)
 
-Chaque test du dépôt est dans **une** famille. La famille décide **où** il tourne. Les chiffres viennent de `node scripts/inventaire-tests.mjs` (`--specs` : une ligne par spec) ; les durées e2e sont celles de Chromium en CI, un test à la fois (run 40472051036, 27/10/2026), les durées unitaires celles de `scripts/unit-durees.json`.
+Chaque test du dépôt est dans **une** famille. La famille décide **où** il tourne. Les chiffres viennent de `node scripts/inventaire-tests.mjs` (`--specs` : une ligne par spec) ; les durées e2e sont celles de Chromium en CI, un test à la fois (CI complète verte de la PR du lot, run 40493310181, 27/10/2026 ; avant le lot : run 40472051036), les durées unitaires celles de `scripts/unit-durees.json`.
 
 | Famille | Ce qu'on y met | Où ça tourne |
 |---|---|---|
@@ -11,8 +11,8 @@ Chaque test du dépôt est dans **une** famille. La famille décide **où** il t
 
 | Famille | Specs e2e | Tests e2e | Durée Chromium | Fichiers unitaires | Tests unitaires | Durée unitaires |
 |---|---|---|---|---|---|---|
-| Essentiel | 41 | 115 | 990 s | 239 | 3 689 | 887 s |
-| Régression | 64 | 260 | 3 741 s | 2 | 7 | 68 s |
+| Essentiel | 41 | 115 | 1 017 s | 239 | 3 689 | 887 s |
+| Régression | 64 | 260 | 3 686 s | 2 | 7 | 68 s |
 | Outil | 42 | jamais en CI | — | — | — | — |
 | *Doublons supprimés* | 3 specs entiers | 138 tests | ≈ 1 330 s | — | 4 (tests de texte) | — |
 
