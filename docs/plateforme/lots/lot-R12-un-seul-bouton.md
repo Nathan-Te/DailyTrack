@@ -6,7 +6,7 @@ Branche `claude/production-one-click-lu174w`, PR en brouillon. **Décision de Na
 | # | job | ce qu'il fait | durée (estimée, à confirmer au premier run) |
 |---|---|---|---|
 | 0 | `verifier` | sur `main` (sauf `essai`), lancé par le propriétaire du dépôt ; commit, jour de bascule, ce qui part ; **une CI complète verte de ce commit existe-t-elle ?** | ≈ 1 min |
-| 1 | `ci` | **ci.yml appelé** (`workflow_call`, mode `complet`, `ref` = le commit déployé) — sauté si reprise | mesure § 3 (≈ 13 min visé) |
+| 1 | `ci` | **ci.yml appelé** (`workflow_call`, mode `complet`, `ref` = le commit déployé) — sauté si reprise | ≈ 12,5 min (mesuré, § 3) ; 0 si reprise |
 | 2 | `ci-verdict` | `scripts/ci-complete.mjs verdict` : un run `complet` vert de ce commit, sinon ⛔ | < 1 min |
 | 3 | `figer` | garde-fou des jours (R6, R11), inchangé | ≈ 6 à 10 min (comme avant) |
 | 4 | `recette-serveur`, `recette-site`, `recette-verification` | **répétition** à l'heure réelle : la même construction (jours figés, registre) sur la recette, `smoke --lecture-seule` puis `smoke` complet | ≈ 8 min |
@@ -24,15 +24,20 @@ Un arrêt survient toujours **avant** de toucher la production, sauf à l'étape
 - `ci.yml` « Run workflow » propose `complet` (défaut) ou `pr` (comme une PR, par rapport à `main` : sert au commit des jours figés).
 
 ## 3. Plus court : cache des paquets plutôt qu'image Docker
-**Choix : un cache des paquets système** (`scripts/paquets-playwright.sh`, jobs `e2e-parts` et `e2e-pr`). Clé : image du runner (`ImageOS`, `ImageVersion`), version de Playwright, navigateur. Présent : `dpkg -i` des paquets gardés, **sans apt ni réseau** ; absent (≈ une fois par semaine et par navigateur, à chaque nouvelle image du runner) : `install-deps` comme avant, apt réglé pour garder les paquets, que le job enregistre (`actions/cache/save`, même empreinte d'action que `actions/cache`).
+**Choix : un cache des paquets système** (`scripts/paquets-playwright.sh`, jobs `e2e-parts` et `e2e-pr`). Clé : navigateur, version de Playwright, image du runner (`ImageOS`, `ImageVersion` ; `restore-keys` sur l'image : plusieurs images tournent en même temps). Présent : `dpkg -i` des seuls paquets que le runner n'a pas déjà (absents ou plus anciens : **jamais une rétrogradation**), **sans apt ni réseau** ; absent, ou qui ne s'accorde pas : `install-deps` comme avant, apt réglé pour garder les paquets téléchargés, que le job enregistre (`actions/cache/restore` et `save`, même empreinte que `actions/cache`).
 **Pourquoi pas l'image officielle** (`mcr.microsoft.com/playwright:v1.63.0-noble`, lue dans son Dockerfile) : elle n'installe pas **DejaVu Sans**, la « police large de la CI » que les specs de mise en page imposent (`accueil`, `mobile`, `hud-compact`, `scene`… : sans elle, ils retombent sur une police plus étroite et ne prouvent plus l'absence de débordement — un test affaibli) ; elle passe Node à **24** (le dépôt : 22) ; et elle se tire à chaque job (≈ 2 Go). Le cache garde **exactement** le runner d'avant.
 **Matrice** : `complet` et `nuit` repassent à **8 parts** de Track (6 au lot R13) : ≈ 560 s de specs par part au lieu de ≈ 745 s (`durees.json`), pour tenir ≤ 15 min de mur.
 
-| mesure (mode `complet`) | avant (lot R13) | après (ce lot) |
-|---|---|---|
-| mur | 24,8 min (run 40493310181 ; `install-deps` 586 et 614 s sur deux parts) | _à remplir_ |
-| `install-deps` / paquets par job | 13 s d'ordinaire, jusqu'à 10 min (un runner sur cinq) | _à remplir_ |
-| minutes de jobs | 137 | _à remplir_ |
+Mesuré sur la PR (le mode `complet` forcé le temps de trois runs, variable `MESURE_R12` de `scope`, **retirée** au dernier commit ; `npm run mesure-ci -- --run <id>` et la durée de chaque étape) :
+
+| run `complet` | cache des paquets | « Paquets système » par job | mur | minutes de jobs |
+|---|---|---|---|---|
+| avant, lot R13 ([40493310181](https://github.com/Nathan-Te/DailyTrack/actions/runs/40493310181)), 6 parts | — (apt) | 13 s d'ordinaire ; **586 et 614 s** sur deux parts | 24,8 min | 137 |
+| [40512741627](https://github.com/Nathan-Te/DailyTrack/actions/runs/40512741627), 8 parts | vide : apt partout | 11 à 46 s ; **789, 338 s**, et Firefox **coupé à 15 min** (miroir à 25 ko/s) | 20,1 min (rouge : Firefox) | 151 |
+| [40516087502](https://github.com/Nathan-Te/DailyTrack/actions/runs/40516087502) | trouvé, mais `apt-get --no-download` le refusait (corrigé : `dpkg -i`) | 13 à 35 s ; **217 et 816 s** | 15,3 min | 137 |
+| **[40518895226](https://github.com/Nathan-Te/DailyTrack/actions/runs/40518895226)** | **présent** | **3 à 15 s, sans réseau** (Chromium 17 paquets, Firefox 40, WebKit 187) | **12,5 min ✅** | **118** |
+
+Les deux premiers runs montrent le « avant » réel : 3 runners sur 11, puis 2 sur 11, ont eu le miroir lent. Avec le cache, plus aucun job n'attend apt ; la part la plus longue (Chromium 5/8, 711 s) fixe le mur. Le cache absent (une nouvelle version de Playwright, ou une image du runner dont les dépendances ne s'accordent plus) repasse une fois par apt, comme avant.
 
 ## 4. La sauvegarde (job `sauvegarde`)
 - **Où** : `gs://dailytrack-511513-sauvegardes/production/AAAA-MM-JJ-HHMM-<base>-run<n>.sql.gz` (essai : `…/recette/…`), `europe-west1`, accès uniforme, accès public interdit, **effacement au bout de 30 jours** (`config/sauvegarde-cycle.json` = `SAUVEGARDE_JOURS`, testé ; dit dans les deux pages des mentions légales et `docs/plateforme/effacement.md`).

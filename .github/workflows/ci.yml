@@ -176,8 +176,6 @@ jobs:
           full=""
           if [ "$EVENT" = schedule ] || [ "$EVENT" = workflow_dispatch ] || [ "$REF" = refs/heads/main ]; then full="--full"; fi
           if [ "$EVENT" = workflow_dispatch ] && [ "$MODE_DEMANDE" = pr ]; then full=""; fi
-          # MESURE_R12 — TEMPORAIRE (lot R12, retiré avant la fin, comme MESURE_R13) : la PR lance une CI `complet` pour mesurer son mur après le cache des paquets.
-          if [ "$EVENT" = pull_request ]; then full="--full"; fi
           : > "$RUNNER_TEMP/files.txt"
           # Une base introuvable ou une différence illisible = le doute : la CI complète, jamais une CI vide.
           if [ -z "$full" ]; then
