@@ -2,7 +2,7 @@
 // (apps/portail/test/miseEnProduction.test.ts). Ligne de commande :
 //   node scripts/mise-en-production.mjs etiquette [--maintenant <ISO>]              → `prod-AAAA-MM-JJ-HHMM` (heure de Paris)
 //   node scripts/mise-en-production.mjs derniere [--avant <étiquette>]              → la dernière étiquette `prod-*` du dépôt (vide s'il n'y en a pas)
-//   node scripts/mise-en-production.mjs changements <de> <à> [--resume <fichier>]   → PR et commits de <de> (exclu ; vide : tout) à <à>, en Markdown
+//   node scripts/mise-en-production.mjs changements <de> <à> [--resume <fichier>] [--sortie <fichier>]   → PR et commits de <de> (exclu ; vide : tout) à <à>, en Markdown
 //   node scripts/mise-en-production.mjs jours-figes <dossier figé> <dossier cible>  → copie les jours figés absents de la cible ; refuse un
 //                                                                                     fichier différent (un jour figé ne change jamais)
 // Lot R6 (le garde-fou des jours) :
@@ -13,7 +13,7 @@
 //   node scripts/mise-en-production.mjs empreintes <dépôt> --du <jour> --au <jour> --niveaux <dossier> --sortie <fichier>
 //                                                                                     → les empreintes des jours du code de <dépôt> (le script d'empreintes y est copié)
 //   node scripts/mise-en-production.mjs bascule-valide <AAAA-MM-JJ>                  → refuse (code 1) si le jour de bascule a déjà commencé
-//   node scripts/mise-en-production.mjs comparer <prod.json> <cible.json> <bascule> [--resume <fichier>]
+//   node scripts/mise-en-production.mjs comparer <prod.json> <cible.json> <bascule> [--resume <fichier>] [--sortie <fichier> : jours_track, jours_jump]
 //                                                                                     → compare les empreintes des jours ; la moindre différence AVANT la bascule arrête
 //   node scripts/mise-en-production.mjs empreintes-fusion <existant.json> <nouveau.json> [--jusqua <jour>]  → ajoute les jours nouveaux, refuse un jour qui change
 // Lot R11 (Track fige ses circuits comme Jump) :
@@ -219,6 +219,13 @@ export function comparerEmpreintes(prod, cible, bascule, premier = "0000-00-00",
 }
 
 const NOMS_JEUX = { track: "DailyTrack", jump: "DailyJump" };
+
+/** Lot R12 : la ligne courte d'un jeu pour le haut du résumé du bouton (« 12 conservés, 14 régénérés dont 3 changent »). */
+export function ligneJours(r) {
+  const l = `${r.conserves.length} conservé${r.conserves.length > 1 ? "s" : ""}, ${r.regeneres.length} régénéré${r.regeneres.length > 1 ? "s" : ""} (${r.changes.length} change${r.changes.length > 1 ? "nt" : ""})`;
+  const pb = r.differences.length + r.invalides.length;
+  return pb ? `${l}, ⛔ ${r.differences.length} en différence, ${r.invalides.length} invalide${r.invalides.length > 1 ? "s" : ""}` : l;
+}
 const plage = (l) => (l.length ? `${l[0]} → ${l.at(-1)}` : "aucun");
 
 /** Le résumé du run : jour de bascule, jours conservés (sans différence), jours régénérés et validés, et — s'il y en a — la liste des jours en cause. */
@@ -543,7 +550,10 @@ if (isMain) {
     else if (cmd === "changements") {
       const range = a ? `${a}..${b}` : b;
       const log = git("log", "--format=%H%x09%P%x09%s", range).split("\n");
-      const text = changesSummary({ from: a || null, to: git("rev-parse", b).trim(), repo: process.env.GITHUB_REPOSITORY, ...changesFromLog(log) });
+      const changements = changesFromLog(log);
+      const text = changesSummary({ from: a || null, to: git("rev-parse", b).trim(), repo: process.env.GITHUB_REPOSITORY, ...changements });
+      // Lot R12 : l'inventaire court du haut du résumé du bouton (nombre de PR et leurs numéros).
+      if (opt("--sortie")) appendFileSync(opt("--sortie"), `nb_pr=${changements.prs.length}\nprs=${changements.prs.map((p) => `#${p.number}`).join(" ")}\nnb_commits=${changements.commits.length}\n`);
       const out = opt("--resume");
       if (out) appendFileSync(out, text);
       process.stdout.write(text);
@@ -672,6 +682,8 @@ if (isMain) {
       const plan = planDesJours(opt("--instant") ? Number(opt("--instant")) : Date.now(), premier);
       const text = resumeBascule({ plan: { ...plan, bascule, veille: ajouterJours(bascule, -1) }, comparaison, simulee: all.includes("--simulee") });
       if (opt("--resume")) appendFileSync(opt("--resume"), text);
+      // Lot R12 : une ligne par jeu pour le haut du résumé de « Mettre en production » (jours_track, jours_jump).
+      if (opt("--sortie")) appendFileSync(opt("--sortie"), Object.entries(comparaison.jeux).map(([jeu, r]) => `jours_${jeu}=${ligneJours(r)}\n`).join(""));
       process.stdout.write(text);
       if (!comparaison.ok) process.exit(1);
     } else if (cmd === "empreintes-fusion") {

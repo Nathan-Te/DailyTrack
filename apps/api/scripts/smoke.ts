@@ -109,7 +109,8 @@ check("le pilote local finit le circuit du jour", run.valid && circuit.track.id 
 const tcopy = await call("POST", "/api/submit", { playerId: player, name: NAME, date, replay: encodeReplay(circuit.authorReplay) });
 check("DailyTrack : la copie de la rediffusion de l'auteur (le pilote) est refusée (409 replay_copy)", tcopy.status === 409 && tcopy.body.error === "replay_copy", `${tcopy.status} ${JSON.stringify(tcopy.body)}`);
 const sub = await call("POST", "/api/submit", { playerId: player, name: NAME, date, replay: encodeReplay(run.replay) });
-check("temps du jour accepté, rejoué par le serveur", sub.status === 200 && sub.body.ms === run.finishMs && sub.body.rank >= 1, `${sub.body.ms} ms, ${sub.ms} ms de requête`);
+// Lot R12 : en cas de refus, le statut et le code d'erreur (jamais d'identifiant) — un « undefined ms » seul ne disait pas pourquoi (recette, run 40522211852).
+check("temps du jour accepté, rejoué par le serveur", sub.status === 200 && sub.body.ms === run.finishMs && sub.body.rank >= 1, sub.status === 200 ? `${sub.body.ms} ms (pilote : ${run.finishMs} ms), ${sub.ms} ms de requête` : `${sub.status} ${sub.body.error ?? ""}, ${sub.ms} ms de requête`);
 const taken = await call("GET", `/api/name?name=${encodeURIComponent(NAME.toUpperCase())}`);
 check("pseudo réservé : le même, en majuscules, est pris (et rien d'autre n'est dit)", taken.status === 200 && taken.body.available === false && Object.keys(taken.body).every((k) => k === "available" || k === "suggestions"));
 const mine = await fetch(`${base}/api/me`, { headers: { "X-Player-Id": player } });

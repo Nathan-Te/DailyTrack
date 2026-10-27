@@ -42,6 +42,7 @@ unset ADMIN_TOKEN CODE
 - **Mémoire du serveur** : l'instance qui a traité la demande oublie tout de suite ; une autre instance peut encore montrer son fantôme de premier d'un jour passé **jusqu'à 10 minutes** (`CLOSED_GHOST_TTL_MS`), et la carte des morts du jour **jusqu'à 3 minutes**.
 - **Cache de Firebase** : les lectures publiques d'un jour **passé** (classement, fantôme du premier, carte) sont gardées par le réseau de Firebase **jusqu'à 24 heures** (`CACHE_CLOSED_S`, lot P4). Pour vider ce cache tout de suite, une nouvelle mise en production du site suffit (Firebase vide son cache à chaque publication).
 - **Journaux de Google** : les journaux de requêtes de Cloud Run (adresse IP, adresse demandée) sont gardés **30 jours** par Google (durée par défaut de Cloud Logging), puis effacés ; on ne peut pas y effacer une ligne seule.
+- **Sauvegardes de la base** (lot R12) : chaque mise en production garde une copie complète de la base dans un bucket privé, **effacée au bout de 30 jours** (`SAUVEGARDE_JOURS`) ; on n'efface pas une ligne d'une copie : ses données en disparaissent au plus tard 30 jours après l'effacement (c'est ce que disent les mentions légales). Ne jamais restaurer une copie antérieure à un effacement sans refaire l'effacement ensuite.
 - **Son navigateur** : le serveur n'y touche pas. S'il veut tout effacer chez lui aussi : effacer les données du site `playdujour.com` dans son navigateur. **Sinon, son prochain temps envoyé recrée un profil** (nouveau, vide) avec le même identifiant.
 
 ## 5. Répondre

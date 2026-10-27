@@ -171,29 +171,55 @@ describe("le garde-fou des jours (lot R6)", () => {
     return prod.slice(debut, suite < 0 ? undefined : debut + 1 + suite);
   };
 
-  it("deux modes : la production, et la répétition contre la recette avec une heure simulée (jamais interpolée dans un script)", () => {
-    expect(prod).toMatch(/mode:\n(?:.*\n)*?\s+options: \[production, repetition\]/);
+  it("trois modes : la production, l'essai (tout contre la recette) et la répétition seule (heure simulée, jamais interpolée dans un script)", () => {
+    expect(prod).toMatch(/mode:\n(?:.*\n)*?\s+options: \[production, essai, repetition\]/);
     expect(prod).toContain("heure_simulee:");
-    expect(job("serveur")).toContain("target: ${{ inputs.mode == 'repetition' && 'recette' || 'production' }}");
-    expect(job("site")).toContain("cible: ${{ inputs.mode == 'repetition' && 'recette' || 'production' }}");
-    // Rien ne s'étiquette ni ne se fusionne en répétition.
-    expect(job("etiquette")).toContain("inputs.mode != 'repetition'");
-    expect(job("depot")).toContain("inputs.mode != 'repetition'");
-    // La répétition ne passe jamais par la validation de la production : le jour de bascule se re-vérifie en production seulement.
-    expect(job("serveur")).toContain("bascule_le: ${{ inputs.mode != 'repetition' && needs.verifier.outputs.bascule_le || '' }}");
-    expect(job("verification")).toContain("smoke -w @cdj/api -- \"${url%/}\" --origin \"$(node scripts/domaine.mjs adresse recette)\""); // le smoke complet, recette seulement
+    // Lot R12 : la répétition sur la recette est faite à chaque mise en production (à l'heure réelle), et seule elle touche la recette.
+    expect(job("recette-serveur")).toContain("target: recette");
+    expect(job("recette-site")).toContain("cible: recette");
+    expect(job("serveur")).toContain("target: production");
+    expect(job("site")).toContain("cible: production");
+    // Seule la production déploie et étiquette ; jamais un essai ni une répétition.
+    for (const j of ["serveur", "etiquette"]) expect(job(j), j).toContain("inputs.mode == 'production'");
+    // Les jours figés ne sont versés dans main que par la production, ou par un essai lancé sur main.
+    expect(job("depot")).toContain("inputs.mode == 'essai' && github.ref == 'refs/heads/main'");
+    // Le jour de bascule se re-vérifie au déploiement de la production seulement (la recette n'a pas de jour à protéger).
+    expect(job("serveur")).toContain("bascule_le: ${{ needs.verifier.outputs.bascule_le }}");
+    expect(job("recette-serveur")).not.toContain("bascule_le");
+    expect(job("recette-verification")).toContain("smoke -w @cdj/api -- \"${url%/}\" --origin \"$origine\""); // le smoke complet, recette seulement
+    expect(job("verification")).not.toMatch(/smoke -w @cdj\/api -- "\$\{url%\/\}" --origin/);
   });
 
-  it("avant tout déploiement : jours servis, jours figés jusqu'à la veille de la bascule, empreintes comparées, ancien code sur la base migrée", () => {
+  it("avant tout déploiement : jours servis, jours figés jusqu'à la veille de la bascule, empreintes comparées, ancien code sur la base migrée ; puis répétition et sauvegarde", () => {
     const figer = job("figer");
     const ordre = ["jours-servis", "freeze:days -w @cdj/jump -- \"$VEILLE\"", "mise-en-production.mjs empreintes prod", "mise-en-production.mjs empreintes cible", "mise-en-production.mjs comparer", "base-migree.mjs cible prod"].map((x) => figer.indexOf(x));
     expect(ordre.every((i) => i > 0), JSON.stringify(ordre)).toBe(true);
     expect([...ordre].sort((a, b) => a - b)).toEqual(ordre);
     expect(figer).not.toContain("freeze:days -w @cdj/jump -- demain");
     expect(figer).toContain("exit 1"); // la comparaison arrête le run
-    expect(job("serveur")).toContain("needs: [verifier, figer]");
+    expect(job("recette-serveur")).toContain("needs: [verifier, figer]");
+    expect(job("serveur")).toContain("needs: [verifier, figer, sauvegarde]");
     expect(job("verifier")).toContain("mise-en-production.mjs bascule \"${args[@]}\" --sortie \"$GITHUB_OUTPUT\"");
     expect(job("verifier")).toContain("mise-en-production.mjs inventaire");
+  });
+
+  it("lot R12 : la sauvegarde lit la base en lecture seule par un compte et un environnement à elle, et ne laisse ni artefact ni journal", () => {
+    const s = job("sauvegarde");
+    expect(s).toContain("environment: sauvegarde");
+    expect(s).toContain("service_account: ${{ steps.cfg.outputs.sa }}");
+    expect(s).toContain("cdj-turso-lecture");
+    expect(s).toContain("::add-mask::$token");
+    expect(s).toContain("npm run -s base:sauvegarde");
+    expect(s).toContain("gcloud storage cp");
+    expect(s).not.toMatch(/upload-artifact|cdj-turso-token\b|GCP_SERVICE_ACCOUNT|GCP_SA_KEY/);
+  });
+
+  it("lot R12 : plus de validation à attendre, mais la production n'est lancée que par le propriétaire du dépôt, sur main", () => {
+    const v = job("verifier");
+    expect(v).toContain("ACTEUR: ${{ github.triggering_actor }}");
+    expect(v).toContain('[ "$MODE" != essai ] && [ "$GITHUB_REF" != refs/heads/main ]');
+    // L'environnement `production` (limité à main, S-07) reste celui du déploiement du serveur.
+    expect(yml("deploy-api.yml")).toContain("name: ${{ inputs.target == 'production' && 'production' || 'recette' }}");
   });
 
   it("la validation de Nathan a pu durer : le serveur et le site re-vérifient que le jour de bascule n'a pas commencé", () => {

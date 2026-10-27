@@ -28,6 +28,7 @@ import {
   jourDeBascule,
   jourDeParis,
   latestProdTag,
+  ligneJours,
   lotDe,
   nomDuJour,
   planDesJours,
@@ -486,5 +487,14 @@ describe("la lecture des résultats de la production (lecture seule)", () => {
     await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => reponse(200, { autre: 1 })) as unknown as typeof fetch, attendre: sansAttente })).rejects.toThrow("réponse inattendue");
     await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => { throw new Error("ECONNREFUSED"); }) as unknown as typeof fetch, attendre: sansAttente, essais: 2 })).rejects.toThrow("ECONNREFUSED");
     await expect(lireResultats("https://x", ["2026-10-26"], { fetchImpl: (async () => reponse(500, {})) as unknown as typeof fetch, attendre: sansAttente, essais: 2 })).rejects.toThrow("répond 500");
+  });
+});
+
+// Lot R12 : la ligne courte de chaque jeu en haut du résumé du bouton.
+describe("la ligne des jours d'un jeu (résumé du bouton)", () => {
+  const r = (o: object) => ({ conserves: [], differences: [], regeneres: [], valides: 0, invalides: [], changes: [], sansResultat: [], ...o });
+  it("conservés, régénérés, qui changent ; un problème est dit", () => {
+    expect(ligneJours(r({ conserves: ["a", "b"], regeneres: ["c"], changes: [] }))).toBe("2 conservés, 1 régénéré (0 change)");
+    expect(ligneJours(r({ conserves: ["a"], regeneres: ["c", "d"], changes: ["c", "d"], differences: [{ date: "a" }] }))).toBe("1 conservé, 2 régénérés (2 changent), ⛔ 1 en différence, 0 invalide");
   });
 });
