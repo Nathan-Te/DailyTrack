@@ -161,7 +161,7 @@ jobs:
           {
             echo "### Portée de la CI"
             echo
-            echo "Événement : \`$EVENT\` — mode \`$mode\` ${full:+(CI complète : main = l'Essentiel de tous les specs ; complet et nuit = tout ; Firefox et WebKit : le petit ensemble)}"
+            echo "Événement : \`$EVENT\` — mode \`$mode\` ${full:+(CI complète : main = Essentiel de tous les specs ; complet et nuit = tout ; Firefox et WebKit = petit ensemble)}"
             echo
             echo '```'; cat "$RUNNER_TEMP/zones.txt"; echo; cat "$RUNNER_TEMP/scope.txt"; echo '```'
             echo "Fichiers changés : $(wc -l < "$RUNNER_TEMP/files.txt")"
