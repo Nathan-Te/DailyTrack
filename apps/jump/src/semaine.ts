@@ -1,3 +1,4 @@
+import { BRIDGE_LOOK } from "./bridge";
 import { formatDay } from "@cdj/core";
 import { JUMP_GENERATOR_VERSION, SINGLE_CLOCK_VERSION, SINGLE_CLOCK_GENERATOR, VARIETY_DAYS, dailyLevel } from "@cdj/jump-sim";
 import { miniKind, repeatedPieces, semaineDayOf, semaineDays, semaineFromEntry, type MiniKind, type SemaineDay, type SemaineFile } from "./semaineInfo";
@@ -101,6 +102,12 @@ function miniature(day: SemaineDay, repeated: ReadonlySet<string>): HTMLCanvasEl
       g.fillRect(c0 * TILE + TILE / 2 - 0.5, r0 * TILE, 1, b.length * TILE);
     }
   }
+  // Lot 26 : un pont à interrupteur : ses tuiles en trait fin de la lumière du pont (éteintes, on ne voit que leur place), l'interrupteur en plein.
+  for (const q of day.ponts ?? []) {
+    g.fillStyle = `#${BRIDGE_LOOK.fill.toString(16).padStart(6, "0")}`;
+    for (const [col, r] of q.tiles) g.fillRect(col * TILE + 1, r * TILE + 1, TILE - 2, 2);
+    g.fillRect(q.switchAt[0] * TILE, q.switchAt[1] * TILE, TILE, TILE);
+  }
   g.fillStyle = c.danger;
   for (const [col, r] of day.saws) g.fillRect(col * TILE - 1, r * TILE - 1, TILE + 2, TILE + 2);
   // Sous la miniature : les colonnes des morceaux qui reviennent dans la semaine.
@@ -132,7 +139,7 @@ export function mountSemaine(options: UrlChoices): SemaineView {
     el(
       "p",
       "lead",
-      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein). Depuis g17, des champignons dans la forêt (en crème, une tuile chacun, comme les autres mécaniques). Depuis g18, des stalactites dans la glace (leur zone de déclenchement en crème pâle, leur corps en crème, leur pointe en rouge). Depuis g19, des lasers dans le néon (un rayon fixe : un fin trait rouge ; une barre coulissante : son trajet en pointillé crème et sa position de départ en rouge).`,
+      `Les 7 niveaux du jour à partir de cette date, avec leurs morceaux de base (toutes variantes confondues). En jaune : un morceau présent dans plusieurs de ces jours (la bande sous la miniature marque ses colonnes). Règle du générateur (depuis g14) : aucun morceau de base ne revient avant ${VARIETY_DAYS} jours. Depuis g15, des plateformes mobiles (en crème sur la miniature : leur trajet à demi, leur départ en plein). Depuis g16, des presses dans l'usine (en rouge : leur course à demi, leur position haute en plein). Depuis g17, des champignons dans la forêt (en crème, une tuile chacun, comme les autres mécaniques). Depuis g18, des stalactites dans la glace (leur zone de déclenchement en crème pâle, leur corps en crème, leur pointe en rouge). Depuis g19, des lasers dans le néon (un rayon fixe : un fin trait rouge ; une barre coulissante : son trajet en pointillé crème et sa position de départ en rouge). Depuis g20, des ponts à interrupteur dans la nuit (cyan : un trait fin sur chaque tuile du pont, et l'interrupteur en plein) ; et une règle d'équilibre : au plus deux morceaux à élément par jour de thème, au moins un morceau de la mécanique d'origine.`,
     ),
   );
   const status = el("p", "count", "Calcul des niveaux…");

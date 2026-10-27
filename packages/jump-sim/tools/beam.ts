@@ -156,7 +156,7 @@ export function sectionClocks(level: Level): number[][] {
 /** Lot 13 : vrai si le niveau a quelque chose qui change avec le temps ou les sauts (blocs clignotants ou alternés, rafales ; lot 15 : scies mobiles en v4). */
 export function isDynamicLevel(level: Level): boolean {
   // Lot 15 : à une seule horloge (v4), une scie mobile n'attend plus le joueur : il faut parfois attendre qu'elle passe.
-  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || level.presses.length > 0 || level.lasers.length > 0 || level.laserBars.length > 0 || level.stalactites.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
+  return level.blinks.length > 0 || level.alts.length > 0 || level.winds.some((w) => w.gust !== null) || level.platforms.length > 0 || level.presses.length > 0 || level.lasers.length > 0 || level.laserBars.length > 0 || level.stalactites.length > 0 || level.bridges.length > 0 || (level.simVersion >= SINGLE_CLOCK_VERSION && level.saws.some((s) => s.cycle > 0));
 }
 
 /** Les phases de chaque section modulo chacune de ses horloges (`shift` : grain, en puissance de 2). */
@@ -180,7 +180,7 @@ function key(level: Level, clocks: readonly (readonly number[])[], s: AttemptSta
     dyn = `|${s.alt ?? 0}|${phases}|${codes}`;
   }
   // Lot 20 : la plateforme qui porte le personnage compte (deux états au même endroit, l'un porté et l'autre non, n'ont pas le même avenir).
-  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}|${s.ride ?? ""}${s.stalactites ? `|${s.stalactites.join(",")}` : ""}${dyn}`;
+  return `${on}|${off}|${p.x >> 8}|${p.y >> 8}|${p.vx >> 4}|${p.vy >> 4}|${p.ground}|${p.held}|${p.wallSide}|${Math.min(p.wallAir, 8)}|${p.jumping}|${s.crumbles.join("")}|${s.springCell}|${s.ride ?? ""}${s.stalactites ? `|${s.stalactites.join(",")}` : ""}${s.bridges ? `|${s.bridges.map((a) => (a > 0 ? a >> 2 : a)).join(",")}` : ""}${dyn}`;
 }
 
 /**
@@ -269,7 +269,7 @@ function beamSearch(level: Level, options: BeamOptions, reserve: boolean): numbe
     const take = (n: Node): boolean => {
       const p = n.state.player;
       // Lot 12 : avec des blocs qui clignotent ou s'alternent, deux branches à la même case mais à des phases différentes n'ont pas le même avenir.
-      const dyn = reserve ? `|${n.state.alt ?? 0}|${clockKey(level, clocks, n.state, 4)}${n.state.stalactites ? `|${n.state.stalactites.map((a) => (a > 0 ? a >> 3 : a)).join(",")}` : ""}` : "";
+      const dyn = reserve ? `|${n.state.alt ?? 0}|${clockKey(level, clocks, n.state, 4)}${n.state.stalactites ? `|${n.state.stalactites.map((a) => (a > 0 ? a >> 3 : a)).join(",")}` : ""}${n.state.bridges ? `|${n.state.bridges.map((a) => (a > 0 ? a >> 3 : a)).join(",")}` : ""}` : "";
       const cell = `${p.x >> 10}|${p.y >> 10}|${p.vx >> 7}|${p.ground}|${p.vy < 0 ? 1 : 0}|${p.wallAir === 0 ? p.wallSide : 0}|${p.held}|${Math.min(n.on, pressMin)}${dyn}`;
       const used = cells.get(cell) ?? 0;
       if (used >= perCell) return false;

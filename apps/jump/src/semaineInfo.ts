@@ -51,6 +51,12 @@ export interface SemaineBarre {
   to: [number, number];
 }
 
+/** Lot 26 : un pont à interrupteur de la miniature : l'interrupteur (colonne, rangée) et ses tuiles dans l'ordre d'extinction. */
+export interface SemainePont {
+  switchAt: [number, number];
+  tiles: [number, number][];
+}
+
 /** Un jour de la semaine, tel que l'outil le montre. */
 export interface SemaineDay {
   date: string;
@@ -69,6 +75,8 @@ export interface SemaineDay {
   /** Lot 25 : les lasers fixes et les barres coulissantes, pour la miniature ; absents des fichiers d'avant le lot. */
   lasers?: SemaineLaser[];
   barres?: SemaineBarre[];
+  /** Lot 26 : les ponts à interrupteur, pour la miniature ; absents des fichiers d'avant le lot. */
+  ponts?: SemainePont[];
   pieces: SemainePiece[];
   fallback: boolean;
 }
@@ -88,8 +96,25 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
   const stalactites: SemaineStalactite[] = [];
   const lasers: SemaineLaser[] = [];
   const barres: SemaineBarre[] = [];
+  const ponts: SemainePont[] = [];
   for (const line of annex.split("\n")) {
     const words = line.trim().split(/\s+/);
+    if (words[0] === "pont") {
+      const at = /^(\d+),(\d+)$/.exec(words[3] ?? "");
+      if (!at) continue;
+      const tiles: [number, number][] = [];
+      for (const w of words.slice(4)) {
+        const m = /^(\d+)(?:-(\d+))?,(\d+)(?:-(\d+))?$/.exec(w);
+        if (!m) continue;
+        const c0 = Number(m[1]);
+        const r0 = Number(m[3]);
+        if (m[2] !== undefined) for (let c = c0; c !== Number(m[2]) + (Number(m[2]) >= c0 ? 1 : -1); c += Number(m[2]) >= c0 ? 1 : -1) tiles.push([c, r0]);
+        else if (m[4] !== undefined) for (let r = r0; r !== Number(m[4]) + (Number(m[4]) >= r0 ? 1 : -1); r += Number(m[4]) >= r0 ? 1 : -1) tiles.push([c0, r]);
+        else tiles.push([c0, r0]);
+      }
+      ponts.push({ switchAt: [Number(at[1]), Number(at[2])], tiles });
+      continue;
+    }
     if (words[0] === "laser") {
       const at = /^(\d+),(\d+)$/.exec(words[3] ?? "");
       if (at && (words[2] === "h" || words[2] === "v")) lasers.push({ axis: words[2], col: Number(at[1]), row: Number(at[2]), length: Number(words[4]) });
@@ -132,6 +157,7 @@ export function semaineDayOf(d: Pick<DailyLevel, "date" | "theme" | "id" | "asci
     ...(stalactites.length > 0 ? { stalactites } : {}),
     ...(lasers.length > 0 ? { lasers } : {}),
     ...(barres.length > 0 ? { barres } : {}),
+    ...(ponts.length > 0 ? { ponts } : {}),
     pieces: d.pieces.map((p) => ({ id: p.id, variant: p.variant, col0: p.col0, col1: p.col1 })),
     fallback: d.fallback,
   };

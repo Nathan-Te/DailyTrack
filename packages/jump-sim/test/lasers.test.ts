@@ -89,12 +89,12 @@ function running(level: Level, col: number, row: number, time: number): AttemptS
 const step = (s: AttemptState, bits: number, level: Level) => stepAttempt(s, bits, level, P);
 
 describe("lot 25 — la version de la simulation", () => {
-  it("la version 9 est celle des lasers, le générateur g19 (lot 24 : la version 8 et g18 les gardent)", () => {
+  it("la version 9 est celle des lasers, le générateur g19 (lot 24 : la version 8 et g18 les gardent ; lot 26 : la version 10 et g20 sont celles des ponts)", () => {
     expect(LASER_VERSION).toBe(9);
     expect(STALACTITE_VERSION).toBe(8);
     expect(LASER_GENERATOR).toBe(19);
-    expect(JUMP_SIM_VERSION).toBe(9);
-    expect(JUMP_GENERATOR_VERSION).toBe(19);
+    expect(JUMP_SIM_VERSION).toBe(10);
+    expect(JUMP_GENERATOR_VERSION).toBe(20);
     expect(gate().simVersion).toBe(9);
     expect(DEATH_LASER).toBe(6);
     expect(DEATH_NAMES[DEATH_LASER]).toBe("laser");
@@ -500,7 +500,7 @@ describe("lot 25 — les morceaux du catalogue", () => {
 });
 
 describe("lot 25 — les niveaux du jour", () => {
-  it("les références v3 à v8 ne connaissent pas les morceaux à lasers ; le générateur en vigueur (g19, v9) les pose, et seulement dans le néon", () => {
+  it("les références v3 à v8 ne connaissent pas les morceaux à lasers ; la référence g19 (v9) les pose, et seulement dans le néon", () => {
     const ids = laserModuleIds();
     const start = parseDay("2026-10-27")!;
     let withLasers = 0;
@@ -511,9 +511,9 @@ describe("lot 25 — les niveaux du jour", () => {
         expect(old.level.lasers, `${old.date} v${version}`).toEqual([]);
         expect(old.level.laserBars, `${old.date} v${version}`).toEqual([]);
       }
-      const L = dailyLevel(d);
+      const L = dailyLevel(d, null, LASER_VERSION);
       expect(L.level.simVersion).toBe(9);
-      expect(L.id).toBe(`jour-${L.date}-g${JUMP_GENERATOR_VERSION}`);
+      expect(L.id).toBe(`jour-${L.date}-g${LASER_GENERATOR}`);
       expect(L.fallback, L.date).toBe(false);
       if (L.pieces.some((p) => ids.has(p.id))) {
         withLasers++;
@@ -530,7 +530,7 @@ describe("lot 25 — les niveaux du jour", () => {
     let two = 0;
     for (let d = parseDay("2026-10-27")!; d < parseDay("2026-10-27")! + 120 && n < 10; d++) {
       if (jumpThemeForDay(d) !== "neon") continue;
-      const L = dailyLevel(d);
+      const L = dailyLevel(d, null, LASER_VERSION);
       const mine = L.pieces.filter((p) => ids.has(p.id));
       if (mine.length === 0) continue;
       n++;
@@ -552,7 +552,7 @@ describe("lot 25 — les niveaux du jour", () => {
   it("un jour à lasers se fige et se relit (versions 9 et g19) ; une version incohérente est refusée", () => {
     const ids = laserModuleIds();
     const day = parseDay("2026-11-14")!;
-    const L = dailyLevel(day);
+    const L = dailyLevel(day, null, LASER_VERSION);
     expect(L.pieces.filter((p) => ids.has(p.id)).length).toBeGreaterThanOrEqual(2);
     const raw = JSON.parse(frozenJson(freezeLevel(L)));
     expect(raw.simVersion).toBe(9);
@@ -569,7 +569,7 @@ describe("lot 25 — les niveaux du jour", () => {
   }, 240_000);
 
   it(`le ${formatDay(parseDay("2026-11-14")!)}, la preuve de l'auteur traverse chaque laser éteint et croise chaque barre sans mourir (rejeu rejoué pas à pas)`, () => {
-    const L = dailyLevel(parseDay("2026-11-14")!);
+    const L = dailyLevel(parseDay("2026-11-14")!, null, LASER_VERSION);
     let s = initialAttempt(L.level);
     let crossed = 0;
     for (const b of fromRuns(L.replay.runs)) {

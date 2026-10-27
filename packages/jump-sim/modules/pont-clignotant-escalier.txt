@@ -1,0 +1,27 @@
+id: pont-clignotant-escalier
+intention: Un escalier moitié lumière, moitié clignotant : deux marches de pont qui s'éteignent, puis deux marches de blocs qui se relaient, jusqu'à la corniche.
+etiquettes: vertical precision pont clignotant
+famille: pont-clignotant-escalier
+theme: nuit
+format: 3
+paliers: 8 4
+variante: delai=240 cycle=360 solide=180 decalage=0
+variante: delai=270 cycle=360 solide=180 decalage=180
+variante: delai=240 cycle=420 solide=210 decalage=105
+variante: delai=300 cycle=400 solide=200 decalage=0
+grille:
+............................
+............................
+............................
+............................
+......................######
+..................dd..######
+..............bb......######
+......................######
+#####.................######
+#####.................######
+#####^^^^^^^^^^^^^^^^^######
+############################
+
+pont esc {delai} 2,8 6-7,7 10-11,6
+clignote {cycle} {solide} {decalage}

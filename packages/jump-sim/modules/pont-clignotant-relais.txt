@@ -1,0 +1,27 @@
+id: pont-clignotant-relais
+intention: Longer un pont qui s'éteint puis traverser des blocs qui clignotent : il faut être sur la bonne rive du clignotement quand la lumière du pont s'épuise.
+etiquettes: precision pont clignotant
+famille: pont-clignotant-relais
+theme: nuit
+format: 3
+paliers: 8 7
+variante: delai=240 cycle=360 solide=180 decalage=0
+variante: delai=270 cycle=360 solide=180 decalage=180
+variante: delai=240 cycle=400 solide=200 decalage=100
+variante: delai=300 cycle=420 solide=210 decalage=0
+grille:
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+..............................
+...................ddd..######
+#####.........bbb.......######
+#####...................######
+#####^^^^^^^^^^^^^^^^^^^######
+##############################
+
+pont rel {delai} 2,8 6-12,8
+clignote {cycle} {solide} {decalage}

@@ -87,7 +87,7 @@ function standing(level: Level, col: number, row: number): AttemptState {
   return { ...s, status: ATTEMPT_RUNNING, time: 1000, player: { ...s.player, x, y, ground: 1, air: 0 } };
 }
 const step = (s: AttemptState, bits: number, level: Level, events: AttemptEvents | null = null) => stepAttempt(s, bits, level, P, events);
-const events = (): AttemptEvents => ({ mushroom: -1, boost: 0, shake: -1, shatter: -1 });
+const events = (): AttemptEvents => ({ mushroom: -1, boost: 0, shake: -1, shatter: -1, bridge: -1 });
 
 describe("lot 24 — la version de la simulation", () => {
   it("la version 8 est celle des stalactites, le générateur g18", () => {

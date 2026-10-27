@@ -515,7 +515,7 @@ describe("lot 23 — les niveaux du jour", () => {
       expect(mushroomProblems(L.level), L.date).toEqual([]);
       let s = initialAttempt(L.level);
       let bounces = 0;
-      const events = { mushroom: -1, boost: 0, shake: -1, shatter: -1 };
+      const events = { mushroom: -1, boost: 0, shake: -1, shatter: -1, bridge: -1 };
       for (const b of fromRuns(L.replay.runs)) {
         s = stepAttempt(s, b, L.level, DEFAULT_JUMP_PARAMS, events);
         if (events.mushroom >= 0) bounces++;

@@ -1,0 +1,26 @@
+id: pont-ilots
+intention: Une rangée d'îlots lumineux au-dessus des pics : on se pose sur l'interrupteur, le pont s'allume, et l'on saute d'îlot en îlot sans traîner (leur lumière dure plusieurs secondes).
+etiquettes: respiration pont
+famille: pont-ilots
+theme: nuit
+format: 3
+paliers: 8 8
+variante: delai=300
+variante: delai=270
+variante: delai=330
+variante: delai=360
+grille:
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+............................
+#####..................#####
+#####..................#####
+#####^^^^^^^^^^^^^^^^^^#####
+############################
+
+pont ilots {delai} 3,8 7-8,8 11-12,8 15-16,8 19-20,8

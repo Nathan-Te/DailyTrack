@@ -740,7 +740,7 @@ describe("événements, secousse, particules, son", () => {
   const levels = feelLevels(defaultSettings());
 
   it("les lasers n'ajoutent aucun évènement (la liste est celle du lot 24) : seule la mort dit « laser »", () => {
-    expect(EVENT_KINDS).toHaveLength(31);
+    expect(EVENT_KINDS).toHaveLength(32); // lot 26 : `pontAllume` s'ajoute ; les lasers, eux, n'ont toujours aucun événement
     expect(EVENT_KINDS.some((k) => /laser/i.test(k))).toBe(false);
     expect(causeName(DEATH_LASER)).toBe("laser");
   });

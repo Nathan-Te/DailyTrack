@@ -23,6 +23,7 @@ import {
   PLATFORM_VERSION,
   MUSHROOM_VERSION,
   STALACTITE_VERSION,
+  BRIDGE_VERSION,
   LASER_VERSION,
   PRESS_VERSION,
   SINGLE_CLOCK_VERSION,
@@ -31,6 +32,9 @@ import {
   mechanicOf,
   type DailyLevel,
   type JumpThemeName,
+  ELEMENT_TAG,
+  isElementPiece,
+  isOriginPiece,
 } from "../src/index";
 import { emptyRun, secs, tiles } from "./vide";
 
@@ -46,8 +50,9 @@ const DAYS = arg ? Number(arg.slice(8)) : 120;
 // Lot 22 : `-- --generateur=15` mesure la référence v5 (g15, le catalogue sans presses) : le comparatif du README du lot 22 ; sans option, le générateur en vigueur (g16).
 // Lot 23 : `-- --generateur=16` mesure la référence v6 (g16, le catalogue sans champignons) ; sans option, le générateur en vigueur (g17).
 // Lot 24 : `-- --generateur=17` mesure la référence v7 (g17, le catalogue sans stalactites) ; sans option, le générateur en vigueur (g18).
+// Lot 26 : `-- --generateur=19` mesure la référence v9 (g19, sans ponts ni équilibre des mécaniques) ; sans option, le générateur en vigueur (g20).
 // Lot 25 : `-- --generateur=18` mesure la référence v8 (g18, le catalogue sans lasers, W = 3) ; sans option, le générateur en vigueur (g19).
-const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : LASER_VERSION;
+const SIM_VERSION = process.argv.includes("--generateur=14") ? SINGLE_CLOCK_VERSION : process.argv.includes("--generateur=15") ? PLATFORM_VERSION : process.argv.includes("--generateur=16") ? PRESS_VERSION : process.argv.includes("--generateur=17") ? MUSHROOM_VERSION : process.argv.includes("--generateur=18") ? STALACTITE_VERSION : process.argv.includes("--generateur=19") ? LASER_VERSION : BRIDGE_VERSION;
 const sec = (t: number) => (t / TICK_RATE).toFixed(2).replace(".", ",");
 const num = (v: number, d = 1) => v.toFixed(d).replace(".", ",");
 const stats = (xs: number[]) => ({ min: Math.min(...xs), mean: xs.reduce((a, b) => a + b, 0) / xs.length, max: Math.max(...xs) });
@@ -330,6 +335,21 @@ for (const theme of JUMP_THEME_NAMES) {
     return [L.pieces.filter((p) => prev.has(p.id)).length];
   });
   line(`| ${theme} (${mechanicOf(theme) ?? "—"}) | ${r.n} | ${num(r.valid)} % | ${r.fallback} | ${sec(r.time.min)} · ${sec(r.time.mean)} · ${sec(r.time.max)} s | ${r.rate.min} · ${num(r.rate.mean, 0)} · ${r.rate.max} | ${num(100 * r.mech.min, 0)} · ${num(100 * r.mech.mean, 0)} · ${num(100 * r.mech.max, 0)} % | ${num(stats(commonT).mean, 2)} (max ${stats(commonT).max}) |`);
+}
+line();
+
+// ——— Équilibre des mécaniques (lot 26) : la part des jours qui contiennent l'élément du lot de chaque thème, et ce qu'il laisse à la mécanique d'origine ———
+line("## Équilibre des mécaniques (élément du lot et mécanique d'origine, par thème)");
+line();
+line("| thème | élément | jours | jours avec l'élément | part | morceaux à élément par jour (moy · max) | jours sans mécanique d'origine seule | morceaux d'origine seule (moy · min) |");
+line("|---|---|---|---|---|---|---|---|");
+for (const theme of JUMP_THEME_NAMES) {
+  const list = levels.filter((L) => L.theme === theme);
+  if (list.length === 0) continue;
+  const els = list.map((L) => L.pieces.filter((p) => isElementPiece(p.tags, theme)).length);
+  const orgs = list.map((L) => L.pieces.filter((p) => isOriginPiece(p, theme)).length);
+  const withEl = els.filter((n) => n > 0).length;
+  line(`| ${theme} | ${ELEMENT_TAG[theme]} | ${list.length} | ${withEl} | ${num((100 * withEl) / list.length, 0)} % | ${num(els.reduce((a, b) => a + b, 0) / list.length, 2)} · ${Math.max(...els)} | ${orgs.filter((n) => n === 0).length} | ${num(orgs.reduce((a, b) => a + b, 0) / list.length, 2)} · ${Math.min(...orgs)} |`);
 }
 line();
 

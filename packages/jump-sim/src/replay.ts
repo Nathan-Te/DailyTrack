@@ -552,6 +552,8 @@ export function replayFingerprint(level: Level, replay: JumpReplay): { hash: str
     for (const v of s.sections) h = fnv(h, v);
     // Lot 24 : l'état des stalactites (absent sans stalactite : les empreintes des autres niveaux ne changent pas).
     if (s.stalactites) for (const v of s.stalactites) h = fnv(h, v);
+    // Lot 26 : l'état des ponts (absent sans pont : les empreintes des autres niveaux ne changent pas).
+    if (s.bridges) for (const v of s.bridges) h = fnv(h, v);
     if (s.status === ATTEMPT_DEAD && runner.prev.status !== ATTEMPT_DEAD) deaths++;
   }
   return { hash: h.toString(16).padStart(8, "0"), finished: runner.state.status === ATTEMPT_FINISHED, ticks: runner.tick, time: runner.state.time, deaths };
