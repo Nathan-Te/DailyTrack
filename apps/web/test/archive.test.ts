@@ -100,9 +100,9 @@ describe("listDayBests", () => {
         [`cdj:best:jour-2026-10-07-g${G15}`]: JSON.stringify({ ms: 39000, splits: [], simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-08-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION - 1 }), // ancienne physique
         "cdj:best:jour-2026-10-08-g99": JSON.stringify({ ms: 1, splits: [], simVersion: SIM_VERSION }), // autre générateur : autre circuit
-        // Lot 34 : un jour d'avant la bascule garde la v15 (la dernière version y serait un autre circuit) ; un jour d'après prend la dernière.
+        // Lot R11 : un jour du registre (jusqu'au 27/10/2026) garde sa version, la v15 (la dernière version y serait un autre circuit) ; un jour que le registre ne nomme pas prend la dernière.
         [`cdj:best:jour-2026-10-09-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
-        // Lot 48 : du 28/10 au 03/11 la v16 ; à partir du 04/11 la dernière (v17).
+        // Hors du registre, la v16 d'avant n'est plus la version du jour : son record n'est pas celui du circuit d'aujourd'hui.
         [`cdj:best:jour-2026-10-29-g${G16}`]: JSON.stringify({ ms: 38000, splits: [], simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-30-g${G15}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
         [`cdj:best:jour-2026-10-31-g${G}`]: JSON.stringify({ ms: 30000, splits: [], simVersion: SIM_VERSION }),
@@ -112,7 +112,7 @@ describe("listDayBests", () => {
         "cdj:name": "Alice",
       }),
     );
-    expect([...m.keys()].sort()).toEqual(["2026-10-06", "2026-10-07", "2026-10-29", "2026-11-05"]);
+    expect([...m.keys()].sort()).toEqual(["2026-10-06", "2026-10-07", "2026-10-31", "2026-11-05"]);
     expect(m.get("2026-10-06")).toEqual({ date: "2026-10-06", ms: 40123, medal: "silver" });
     expect(m.get("2026-10-07")!.medal).toBeNull();
   });

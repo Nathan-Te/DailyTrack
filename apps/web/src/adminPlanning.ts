@@ -1,6 +1,6 @@
 import { parisDay } from "@cdj/clock";
 import { CATALOGUE_COMMUN_FR } from "@cdj/ui";
-import { BASCULE_LOT_34, BASCULE_LOT_48, THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
+import { THEMES, THEME_NAMES, circuitNumber, dailyTrackId, formatDay, medalsFor, parseDay, themeForDay, type ThemeName } from "@cdj/sim";
 import { DEMO_BASE, adminApiBase, type ApiResult } from "./api";
 import { DemoAdmin, HttpAdmin, loadToken, saveToken, type AdminBackend, type AdminOverview, type DayRow } from "./adminBackend";
 import { CANDIDATES, candidateVariants, hasMoreCandidates, histogram, imposedTheme, planningDays, relativeLabel } from "./adminPlan";
@@ -207,10 +207,9 @@ export function mountPlanning(stateApi: () => string): void {
     row("Cuves", cuvesText(s));
     row("Bas-côtés", sidesText(s));
     if (c.figures && c.figures.length > 0) row("Figures", figuresText(c.figures));
-    // Lot 34 : la version du générateur du jour (dans l'identifiant du circuit) : les jours d'avant la bascule gardent la v15.
+    // Lot R11 : la version du générateur du jour (dans l'identifiant du circuit) vient du registre des jours (`generatorVersionOf`), jamais d'une date écrite ici.
     const g = Number(/-g(\d+)/.exec(c.track.id)?.[1] ?? 0);
-    // Lot 48 : la v17 (l'herbe de course de la Campagne) à partir de sa bascule ; lot 49 : la v18 (identité des thèmes, même bascule tant que le lot 48 n'est pas en production).
-    row("Générateur", g >= 18 ? `v${g} · identité des thèmes (lot 49) et herbe de course (lot 48)` : g >= 17 ? `v${g} · herbe de course (lot 48)` : g >= 16 ? `v${g} · freinage après les boosts (lot 34), avant la bascule du lot 48 (${formatDay(BASCULE_LOT_48)})` : `v${g} · avant la bascule du lot 34 (${formatDay(BASCULE_LOT_34)})`);
+    row("Générateur", g >= 18 ? `v${g} · identité des thèmes (lot 49) et herbe de course (lot 48)` : g >= 17 ? `v${g} · herbe de course (lot 48)` : g >= 16 ? `v${g} · freinage après les boosts (lot 34)` : `v${g} · avant le lot 34`);
     return dl;
   }
 

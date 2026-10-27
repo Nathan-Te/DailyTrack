@@ -1,11 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  BASCULE_LOT_34,
   FAST_APPROACH,
   GENERATOR_BEFORE_34,
+  PREMIER_JOUR,
+  parseDay,
   GENERATOR_VERSION,
-  BASCULE_LOT_48,
-  BASCULE_LOT_49,
   MAX_BRAKING_ADD,
   SIGNATURE_FIGURE,
   TRAP_SLACK,
@@ -25,11 +24,12 @@ import {
   turnReports,
   type DailyCircuit,
 } from "../src/index";
+import { JOUR_V16 } from "./helpers/versions";
 
 // Lot 34 — freinage possible après un boost. Règles du générateur v16 (à partir du 28/10/2026), chacune comptée ici et mesurée par
 // `npm run measure:generator` (section 3 : virages-pièges et contacts du pilote « humain correct », v15 contre v16 ; README du lot).
 
-const AFTER = Array.from({ length: 24 }, (_, i) => BASCULE_LOT_34 + 4 + i * 5);
+const AFTER = Array.from({ length: 24 }, (_, i) => JOUR_V16 + 4 + i * 5);
 const circuits = new Map<number, DailyCircuit>();
 const circuit = (day: number) => {
   let c = circuits.get(day);
@@ -37,24 +37,22 @@ const circuit = (day: number) => {
   return c;
 };
 
-describe("versionnement par date (lot 34)", () => {
-  it("les jours d'avant la bascule gardent le générateur v15, les suivants v16 jusqu'à la bascule du lot 48, puis le Salon et les jours d'après la dernière version (lot 49 : v18, même bascule que le lot 48)", () => {
+describe("la version du générateur d'un jour (lot 34, registre du lot R11)", () => {
+  it("un jour du registre garde sa version (v15 jusqu'au 27/10/2026), un jour absent et le Salon prennent la dernière, une version imposée change l'identifiant", () => {
     expect(GENERATOR_BEFORE_34).toBe(15);
-    expect(GENERATOR_VERSION).toBe(18); // lot 49 : l'identité des thèmes, à partir du 04/11/2026 (la bascule du lot 48 : la v17 ne sert à aucun jour)
-    expect(generatorVersionOf(BASCULE_LOT_34 - 1)).toBe(15);
-    expect(generatorVersionOf(BASCULE_LOT_34)).toBe(16);
-    expect(dailyTrackId(BASCULE_LOT_34 - 1)).toBe("jour-2026-10-27-g15");
-    expect(dailyTrackId(BASCULE_LOT_34, "ville", 2)).toBe("jour-2026-10-28-g16-v2-ville");
-    expect(generatorVersionOf(BASCULE_LOT_48 - 1)).toBe(16);
-    expect(BASCULE_LOT_49).toBe(BASCULE_LOT_48);
-    expect(generatorVersionOf(BASCULE_LOT_49)).toBe(18);
-    expect(dailyTrackId(BASCULE_LOT_48 - 1)).toBe("jour-2026-11-03-g16");
-    expect(dailyTrackId(BASCULE_LOT_49)).toBe("jour-2026-11-04-g18");
+    expect(GENERATOR_VERSION).toBe(18); // lot 49 : l'identité des thèmes ; la v16 et la v17 ne restent dans le code que pour les jours que le registre leur donnerait
+    expect(generatorVersionOf(PREMIER_JOUR)).toBe(15);
+    expect(generatorVersionOf(parseDay("2026-10-26")!)).toBe(15);
+    expect(dailyTrackId(parseDay("2026-10-26")!)).toBe("jour-2026-10-26-g15");
+    // Absent du registre : la dernière version (la mise en production écrira ces jours-là, avec le code alors en production, jusqu'à la veille de sa bascule).
+    expect(generatorVersionOf(JOUR_V16)).toBe(GENERATOR_VERSION);
+    expect(dailyTrackId(JOUR_V16)).toBe("jour-2026-10-28-g18");
+    expect(dailyTrackId(JOUR_V16, "ville", 2, 16)).toBe("jour-2026-10-28-g16-v2-ville");
     expect(salonCircuit(2_946_000).id).toBe("salon-2946000-g18");
   });
 
-  it("une date d'avant la bascule rejoue son circuit v15 même si l'on impose la dernière version (sinon ce ne serait pas le même jour)", () => {
-    const day = BASCULE_LOT_34 - 2;
+  it("un jour du registre rejoue son circuit v15 même si l'on impose la dernière version (sinon ce ne serait pas le même jour)", () => {
+    const day = parseDay("2026-10-24")!;
     const old = dailyCircuit(day);
     expect(old.track.id).toBe(dailyTrackId(day));
     expect(old.track.id.endsWith("-g15")).toBe(true);

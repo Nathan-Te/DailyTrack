@@ -14,7 +14,9 @@ test("le navigateur régénère les circuits du jour de référence : même text
   await page.goto("/verify.html");
   await page.waitForSelector("html[data-ready=true]");
   for (const expected of golden.circuits) {
-    const got = await page.evaluate((date) => window.__daily(date), expected.date);
+    // Lot R11 : chaque circuit de référence porte sa version (son identifiant) : les anciennes (v15, v16) ne sont plus celles du jour par défaut.
+    const generator = Number(/-g(\d+)/.exec(expected.trackId)?.[1]);
+    const got = await page.evaluate(([date, g]) => window.__daily(date, g), [expected.date, generator] as [string, number]);
     const { date, ...rest } = expected;
     expect(got, date).toEqual(rest);
   }
@@ -71,7 +73,7 @@ test.describe("jeu (rendu 3D)", () => {
   // texte, tentative, temps de l'auteur, palette, thème, identifiant — les circuits de référence.
   test("le circuit calculé dans le fil de travail du jeu est celui de Node, au bit près", async ({ page }) => {
     test.setTimeout(240_000);
-    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-10-28", "2026-12-25"].includes(c.date))) {
+    for (const expected of golden.circuits.filter((c) => ["2026-10-06", "2026-10-21", "2026-11-05", "2026-12-25"].includes(c.date))) {
       await page.goto(`/?debug&seed=${expected.date}`);
       await page.waitForFunction(() => window.__cdj?.phase === "racing", undefined, { timeout: 60_000 });
       const got = await page.evaluate(() => window.__cdj.circuit);

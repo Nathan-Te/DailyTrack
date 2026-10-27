@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   AUTHOR_MAX_MS,
   AUTHOR_MIN_MS,
-  BASCULE_LOT_48,
   FIGURES,
   THEMES,
   TURF_FIGURES,
@@ -30,6 +29,7 @@ import {
   type World,
   generatorVersionOf,
 } from "../src/index";
+import { JOUR_V18 } from "./helpers/versions";
 
 // Tests chiffrés du lot 48 : l'herbe de course (`turf`, notation `S/z`). Les seuils sont recopiés dans docs/lots/lot-48-herbe.md :
 // s'ils changent, c'est que la sensation sur l'herbe de course a changé.
@@ -303,7 +303,7 @@ describe("lot 48 : aucun blocage", () => {
   });
 });
 
-describe("lot 48 : générateur v17, la Campagne sur l'herbe de course à partir du 04/11/2026", () => {
+describe("lot 48 : générateur v17, la Campagne sur l'herbe de course (jours de test à partir du 04/11/2026, sans entrée au registre)", () => {
   const hasTurf = (spec: string) => spec.split(" ").some((t) => /\/[^@]*z/.test(t.replace(/~./g, "")));
 
   it("les figures d'herbe de course n'existent que pour la Campagne et à partir de la v17", () => {
@@ -319,7 +319,7 @@ describe("lot 48 : générateur v17, la Campagne sur l'herbe de course à partir
     let found = 0;
     let turfBlocks = 0;
     let blocks = 0;
-    for (let d = BASCULE_LOT_48; found < 20; d++) {
+    for (let d = JOUR_V18; found < 20; d++) {
       if (themeForDay(d).name !== "campagne") continue;
       const c = dailyCircuit(d);
       expect(c.fallback, formatDay(d)).toBe(false);
@@ -338,7 +338,7 @@ describe("lot 48 : générateur v17, la Campagne sur l'herbe de course à partir
   }, 120_000);
 
   it("les autres thèmes ne changent pas en v17 (à l'identifiant près), et la Campagne d'avant la bascule n'a pas d'herbe de course", () => {
-    for (let d = BASCULE_LOT_48; d < BASCULE_LOT_48 + 16; d++) {
+    for (let d = JOUR_V18; d < JOUR_V18 + 16; d++) {
       for (const name of ["stade", "rallye", "nuit", "ville"] as const) expect(composeSpec(d, 0, THEMES[name], 0, 17)).toBe(composeSpec(d, 0, THEMES[name], 0, 16));
       expect(hasTurf(composeSpec(d, 0, THEMES.campagne, 0, 16) ?? "")).toBe(false);
     }

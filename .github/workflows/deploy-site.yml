@@ -40,6 +40,10 @@ on:
         description: "artefact de jours figés à ajouter avant la construction (production.yml) ; vide : aucun"
         type: string
         default: ""
+      registre_track:
+        description: "lot R11 : artefact du registre des jours de Track (jours-track.json), fusionné dans packages/sim/src/jours-track.json avant la construction (production.yml) ; vide : aucun"
+        type: string
+        default: ""
       expire:
         description: "durée d'un canal d'aperçu"
         type: string
@@ -150,6 +154,20 @@ jobs:
       - name: Jours figés de la mise en production
         if: steps.cfg.outputs.enabled == 'true' && inputs.jours_figes != ''
         run: node scripts/mise-en-production.mjs jours-figes "$RUNNER_TEMP/jours-figes" apps/jump/public/levels | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # Lot R11 : le registre des jours de Track rejoint le site (le jeu calcule le circuit du jour avec la version que le registre note pour ce jour).
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: steps.cfg.outputs.enabled == 'true' && inputs.registre_track != ''
+        with:
+          name: ${{ inputs.registre_track }}
+          path: ${{ runner.temp }}/registre-track
+      - name: Registre des jours de Track
+        if: steps.cfg.outputs.enabled == 'true' && inputs.registre_track != ''
+        run: node scripts/mise-en-production.mjs registre-fusion packages/sim/src/jours-track.json "$RUNNER_TEMP/registre-track/jours-track.json" --resume "$GITHUB_STEP_SUMMARY"
+      # Lot R11 : la validation de Nathan a pu durer. Un jour que cette mise en production régénère (aucun résultat à la lecture du garde-fou) ne doit pas en avoir reçu depuis (lecture seule).
+      - name: Les jours sans résultat n'en ont toujours pas
+        if: ${{ steps.cfg.outputs.enabled == 'true' && inputs.registre_track != '' && inputs.bascule_le != '' }}
+        run: node scripts/mise-en-production.mjs proteges-verifier "$RUNNER_TEMP/registre-track/proteges.json"
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         if: steps.cfg.outputs.enabled == 'true'
