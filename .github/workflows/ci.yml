@@ -245,8 +245,7 @@ jobs:
         id: paquets
         run: |
           pw="$(node -p 'require("./node_modules/@playwright/test/package.json").version')"
-          # MESURE_R12 — TEMPORAIRE : la 2e ligne reprend les caches du 1er run de la PR (ancienne forme de clé), pour mesurer un cache présent.
-          { echo "prefixe<<FIN"; echo "paquets-${{ runner.os }}-${{ matrix.browser }}-pw$pw-$ImageOS-"; echo "paquets-${{ runner.os }}-$ImageOS-$ImageVersion-pw$pw-${{ matrix.browser }}"; echo FIN; } >> "$GITHUB_OUTPUT"
+          echo "prefixe=paquets-${{ runner.os }}-${{ matrix.browser }}-pw$pw-$ImageOS-" >> "$GITHUB_OUTPUT"
           echo "cle=paquets-${{ runner.os }}-${{ matrix.browser }}-pw$pw-$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: paquets-cache
@@ -377,8 +376,7 @@ jobs:
         id: paquets
         run: |
           pw="$(node -p 'require("./node_modules/@playwright/test/package.json").version')"
-          # MESURE_R12 — TEMPORAIRE : la 2e ligne reprend les caches du 1er run de la PR (ancienne forme de clé), pour mesurer un cache présent.
-          { echo "prefixe<<FIN"; echo "paquets-${{ runner.os }}-chromium-pw$pw-$ImageOS-"; echo "paquets-${{ runner.os }}-$ImageOS-$ImageVersion-pw$pw-chromium"; echo FIN; } >> "$GITHUB_OUTPUT"
+          echo "prefixe=paquets-${{ runner.os }}-chromium-pw$pw-$ImageOS-" >> "$GITHUB_OUTPUT"
           echo "cle=paquets-${{ runner.os }}-chromium-pw$pw-$ImageOS-$ImageVersion" >> "$GITHUB_OUTPUT"
       - uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         id: paquets-cache

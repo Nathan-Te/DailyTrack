@@ -3,8 +3,8 @@
 #   bash scripts/paquets-playwright.sh <chromium|firefox|webkit> <dossier du cache>
 # `playwright install-deps` passe par apt, dont le miroir est parfois très lent (jusqu'à 10 min sur un runner sur cinq, lot R13). Le job restaure
 # d'abord <dossier> (actions/cache, clé : navigateur + version de Playwright + image du runner) :
-#   - cache présent (fichier `fait`) : `apt-get install --no-download` des paquets gardés, sans réseau ; même image du runner, ou la précédente (`restore-keys`)
-#     tant qu'aucun paquet n'est à rétrograder ni à télécharger ;
+#   - cache présent (fichier `fait`) : `dpkg -i` des paquets gardés que le runner n'a pas déjà (jamais une rétrogradation), sans réseau ; même image du
+#     runner, ou une précédente (`restore-keys`) tant que les dépendances s'accordent ;
 #   - sinon (une fois par image du runner, ≈ chaque semaine) : `install-deps` comme avant, apt réglé pour GARDER les paquets téléchargés dans <dossier>,
 #     que le job enregistre ensuite (actions/cache/save).
 # Pourquoi pas l'image Docker officielle de Playwright : elle n'a pas DejaVu Sans, la « police large de la CI » dont les specs de mise en page ont
@@ -15,18 +15,29 @@ dossier="$2"
 debut=$(date +%s)
 cd "$(dirname "$0")/../apps/web"
 
+# Les paquets gardés que le runner n'a pas déjà (absents, ou dans une version plus ancienne) : jamais une rétrogradation.
+manquants() {
+  local f nom version installe
+  for f in "$@"; do
+    nom="$(dpkg-deb -f "$f" Package)"
+    version="$(dpkg-deb -f "$f" Version)"
+    installe="$(dpkg-query -W -f='${Status} ${Version}' "$nom" 2>/dev/null || true)"
+    if [[ "$installe" == "install ok installed "* ]] && dpkg --compare-versions "${installe##* }" ge "$version"; then continue; fi
+    echo "$f"
+  done
+}
+
 if [ -f "$dossier/fait" ]; then
   shopt -s nullglob
-  paquets=("$dossier"/*.deb)
-  # apt-get sur les fichiers gardés, sans rien télécharger (`--no-download`) et sans jamais rétrograder un paquet du runner (sans `--allow-downgrades`, apt
-  # refuse) : un cache d'une image précédente du runner (`restore-keys`) sert s'il s'accorde encore, sinon apt comme avant.
-  if [ "${#paquets[@]}" -eq 0 ] || sudo apt-get install -y --no-download --no-install-recommends "${paquets[@]}" > "${RUNNER_TEMP:-/tmp}/paquets.log" 2>&1; then
-    echo "paquets de $navigateur : ${#paquets[@]} depuis le cache, sans téléchargement ($(($(date +%s) - debut)) s)"
+  mapfile -t paquets < <(manquants "$dossier"/*.deb)
+  # `dpkg -i`, sans réseau : même image du runner, ou une précédente (`restore-keys`) tant que les dépendances s'accordent ; sinon apt, comme avant.
+  if [ "${#paquets[@]}" -eq 0 ] || sudo dpkg -i "${paquets[@]}" > "${RUNNER_TEMP:-/tmp}/paquets.log" 2>&1; then
+    echo "paquets de $navigateur : ${#paquets[@]} installés depuis le cache, sans réseau ($(($(date +%s) - debut)) s)"
     exit 0
   fi
   echo "::warning title=Paquets de Playwright::le cache ne s'accorde pas avec ce runner ($navigateur) : installation par apt"
   tail -n 20 "${RUNNER_TEMP:-/tmp}/paquets.log" || true
-  sudo apt-get -f install -y > /dev/null 2>&1 || true
+  sudo apt-get update -qq && sudo apt-get -f install -y -qq || true
 fi
 sudo rm -rf "$dossier"
 
