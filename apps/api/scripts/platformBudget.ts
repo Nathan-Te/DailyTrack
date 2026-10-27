@@ -60,8 +60,12 @@ export const JUMP_DAY = { rebuilds: 480, readPerPlayerPerRebuild: 1, readPerPlay
  * (`GET /api/garage`, une ouverture par joueur et par jour comptée) : 15 requêtes ; la requête indexée du Garage lit ≈ 2 lignes par jour joué (14 jours
  * d'historique comptés : 28), et **l'envoi garde son nombre de requêtes** avec la même requête indexée de plus (28 lignes) : + 56 lignes, 1 878 lues.
  * Aucune écriture de plus, calcul négligeable (README du lot 41, § 5).
+ * **Lot 51 (la voiture sur tous les appareils)** : **zéro requête de plus par chargement** — le choix gardé par le serveur arrive avec le profil que le jeu lit déjà
+ * (`GET /api/me`, 2 par jour comptées : +1 ligne lue chacune) et avec l'ouverture du Garage (+1 ligne) ; la voiture de la course est jointe à l'envoi (lue avant l'écriture,
+ * la même requête indexée qu'avant : rien de plus). Seul ajout : **un enregistrement du choix par jour** (`PUT /api/garage`, un joueur qui change de voiture une fois) :
+ * 16 requêtes ; 3 lectures fixes + la requête indexée du Garage (≈ 28 lignes pour 14 jours) ; 1 ligne écrite + 2 compteurs de débit. Total : + 33 lignes lues, + 3 écrites.
  */
-export const TRACK_PLAYER: UnitCost = { requests: 15, read: 1878, written: 42, cpuS: 0.52, billedS: 3.1 };
+export const TRACK_PLAYER: UnitCost = { requests: 16, read: 1911, written: 45, cpuS: 0.52, billedS: 3.2 };
 /**
  * **Salon de DailyTrack**, 30 minutes d'un joueur (3 sessions ; `measure:budget` : 558 requêtes, 12 763 lignes lues à 10 présents — 63 025 à 50 —,
  * 265 écrites, 5,8 s de calcul, 97 vCPU-s au plus ; `measure:salon` : 0,64 ms de calcul par joueur et par seconde, une instance tient ≈ 770

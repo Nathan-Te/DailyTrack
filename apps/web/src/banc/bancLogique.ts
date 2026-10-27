@@ -5,7 +5,7 @@ import type { PaletteName } from "@cdj/sim";
 import { FORME_JEU, type FormeChaine } from "../scene/post";
 
 /** Version du format du rapport (à incrémenter si ses champs changent : les rapports se comparent d'un lot à l'autre). */
-export const VERSION_RAPPORT = 3;
+export const VERSION_RAPPORT = 4;
 /** Le bout de circuit mesuré : départ du circuit de ce jour (un jour passé ne change jamais), dans la course du pilote automatique, à partir de 2 s. */
 export const BANC_JOUR = "2026-10-20";
 export const BANC_DEBUT_S = 2;
@@ -47,15 +47,14 @@ const N: readonly ThemeBanc[] = ["nuit"];
 const P2_PLUS = ["vie", "ciel"];
 
 /**
- * Toutes les configurations, dans l'ordre de passage (par moteur, puis par thème : une scène par thème et par palier). `dpr` : la densité de l'appareil ; `pixels` : ceux
- * de l'écran à cette densité (les variantes du plafond ne se mesurent que s'il réduit l'image). Version 3 (après le rapport 2 de Nathan) : la chaîne du jeu (`FORME_JEU`),
- * ses parties et ses variantes ; la chaîne du lot 47 n'existe plus (ses mesures sont dans le README).
+ * Toutes les configurations, dans l'ordre de passage (par moteur, puis par thème : une scène par thème et par palier). `dpr` : la densité de l'appareil. Version 3 (après
+ * le rapport 2 de Nathan) : la chaîne du jeu (`FORME_JEU`), ses parties et ses variantes ; la chaîne du lot 47 n'existe plus (ses mesures sont dans le README du lot 50).
+ * Version 4 (lot 51) : **la scène est toujours à la résolution native** — plus de variantes de plafond de pixels — et le rapport dit la taille du canevas et de chaque cible.
  */
-export function configurations(dpr: number, mode: ModeBanc = "normal", pixels = 0): ConfigBanc[] {
+export function configurations(dpr: number, mode: ModeBanc = "normal"): ConfigBanc[] {
   const c = (id: string, libelle: string, o: Partial<ConfigBanc> & Pick<ConfigBanc, "ecran" | "themes">): ConfigBanc => ({ id, libelle, palier: "P3", plus: [], chaine: null, densite: "native", ...o });
   const natif = Math.min(dpr, 2);
   const forme = (f: Partial<FormeChaine>): Chaine50 => ({ ...C50, forme: { ...F50, ...f } });
-  const plafonne = F50.pixelsMax > 0 && (pixels === 0 || pixels > F50.pixelsMax);
   const liste: ConfigBanc[] = [
     // Moteur avec multi-échantillonnage de l'écran (le jeu sans la chaîne).
     c("p1", "Palier 1", { ecran: "msaa", palier: "P1", themes: SN }),
@@ -72,12 +71,6 @@ export function configurations(dpr: number, mode: ModeBanc = "normal", pixels = 
     c("50-halo-quart", "Chaîne : halo au quart de la résolution", { ecran: "sans", chaine: forme({ haloDepart: 2 }), themes: N }),
     c("50-demi", "Chaîne : scène en demi-flottants (8 octets)", { ecran: "sans", chaine: forme({ format: "demi" }), themes: N }),
     c("50-msaa4", "Chaîne : scène multi-échantillonnée ×4", { ecran: "sans", chaine: forme({ echantillons: 4 }), themes: SN }),
-    ...(plafonne
-      ? [
-          c("50-sans-plafond", "Chaîne : scène à la taille de l'écran (sans plafond)", { ecran: "sans", chaine: forme({ pixelsMax: 0 }), themes: TOUS }),
-          c("50-plafond-2800000", "Chaîne : scène plafonnée à 2,8 Mpx", { ecran: "sans", chaine: forme({ pixelsMax: 2_800_000 }), themes: SN }),
-        ]
-      : []),
     ...(natif !== 1 ? [c("50-d1", "Chaîne, densité 1", { ecran: "sans", chaine: C50, densite: 1, themes: S })] : []),
     ...(natif > 1.5 ? [c("50-d15", "Chaîne, densité 1,5 au plus", { ecran: "sans", chaine: C50, densite: 1.5, themes: S })] : []),
   ];
@@ -126,6 +119,8 @@ export interface MesureBanc {
   /** Taille du tampon de dessin (pixels) et densité. */
   tampon: [number, number];
   densite: number;
+  /** Lot 51 : la taille de chaque cible de la chaîne (la scène : largeur, hauteur, échantillons ; puis celles du halo) ; `null` : dessin direct, sans cible. */
+  cibles: { scene: [number, number, number]; halo: [number, number][] } | null;
   /** La chaîne a refusé ses cibles (dessin direct) ; ou une erreur. */
   echec?: string;
 }
@@ -160,6 +155,8 @@ export interface EnteteBanc {
   /** Taille du canevas (CSS) et densité de l'appareil. */
   canevas: [number, number];
   densite: number;
+  /** Lot 51 : le tampon de dessin du jeu (pixels) : le canevas × la densité du jeu (celle de l'appareil, plafonnée à 2). */
+  tampon: [number, number];
   pleinEcran: boolean;
   /** Fréquence de l'écran estimée (Hz). */
   frequence: number;
@@ -182,13 +179,29 @@ export interface RapportBanc {
   dureeS: number;
 }
 
+/** Lot 51 : le tampon de dessin d'un canevas de `w` × `h` (CSS) à la densité `d` — ce que fait `WebGLRenderer.setSize` (partie entière). */
+export const tamponAttendu = (w: number, h: number, d: number): [number, number] => [Math.floor(w * d), Math.floor(h * d)];
+
+/**
+ * Lot 51 : la résolution d'une mesure est la bonne — son tampon vaut le canevas × la densité de la mesure, et, quand la chaîne dessine, la cible de la scène a **cette taille**
+ * (jamais moins : la netteté ne se paie pas en pixels), son halo est plus petit ou égal.
+ */
+export function resolutionConforme(m: MesureBanc, canevas: readonly [number, number]): boolean {
+  const [w, h] = tamponAttendu(canevas[0], canevas[1], m.densite);
+  if (m.tampon[0] !== w || m.tampon[1] !== h) return false;
+  if (!m.cibles) return true;
+  return m.cibles.scene[0] === w && m.cibles.scene[1] === h && m.cibles.halo.every(([x, y]) => x <= w && y <= h);
+}
+
 /** Un rapport bien formé : chaque mesure a ses images et des temps positifs et ordonnés (médiane ≤ 95ᵉ ≤ 99ᵉ ≤ pire). */
 export function rapportValide(r: unknown): r is RapportBanc {
   const x = r as RapportBanc;
   if (!x || x.version !== VERSION_RAPPORT || !x.entete || !Array.isArray(x.mesures) || x.mesures.length === 0) return false;
   if (typeof x.entete.carteGraphique !== "string" || !(x.entete.frequence > 0) || !(x.entete.densite > 0)) return false;
+  if (!Array.isArray(x.entete.tampon)) return false;
   return x.mesures.every((m) => {
     if (m.echec) return typeof m.echec === "string";
+    if (!resolutionConforme(m, x.entete.canevas)) return false;
     const i = m.image;
     return m.images > 0 && i.mediane > 0 && i.mediane <= i.p95 && i.p95 <= i.p99 && i.p99 <= i.pire && m.ips > 0 && m.compilations >= 0 && m.tachesLongues >= 0 && THEMES_BANC.includes(m.theme);
   });

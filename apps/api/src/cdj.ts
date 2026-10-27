@@ -8,10 +8,15 @@ import {
   PREMIER_JOUR,
   ReplayError,
   SIM_VERSION,
+  DEBLOCAGES,
+  VOITURE_PAR_DEFAUT,
   circuitNumber,
+  coderVoiture,
   dailyCircuit,
   dailyTrackId,
   decodeReplay,
+  decoderVoiture,
+  estDebloquee,
   etatGarage,
   formatDay,
   isVariant,
@@ -29,6 +34,8 @@ import {
   themeByName,
   thresholdsOf,
   themeForDay,
+  voitureAutorisee,
+  voitureLue,
   type EtatVoiture,
   type Medal,
   type MedalRatios,
@@ -37,6 +44,7 @@ import {
   type ResultatDuJour,
   type ThemeName,
   type Track,
+  type VoitureDeCourse,
 } from "@cdj/sim";
 import { inputsHash, trackInputs } from "./copies";
 import { replayUnits } from "./replayCost";
@@ -69,6 +77,9 @@ export const GARAGE_READS_PER_CLIENT = 120;
 /** Lot R7 : lectures du classement et des fantômes par adresse et par fenêtre (chacune lit tous les temps du jour : coût proportionnel au nombre de joueurs). */
 export const BOARD_READS_PER_CLIENT = 300;
 export const GARAGE_READS_PER_PLAYER = 60;
+/** Lot 51 : enregistrements du choix de voiture (`PUT /api/garage`) par adresse et par joueur et par fenêtre de débit, comptés en base (une écriture). */
+export const GARAGE_WRITES_PER_CLIENT = 60;
+export const GARAGE_WRITES_PER_PLAYER = 30;
 /** Lot 35 : jours lus au plus par l'outil de calibrage des médailles (`GET /api/admin/medailles`), aujourd'hui compris. */
 export const MEDAILLES_JOURS = 120;
 
@@ -104,11 +115,19 @@ export const CDJ_SCHEMA: string[] = [
      submitted_at INTEGER NOT NULL,
      final_rank INTEGER,
      final_total INTEGER,
+     car TEXT,
      PRIMARY KEY (day, player_id)
    )`,
   `CREATE INDEX IF NOT EXISTS results_by_time ON results (day, ms, submitted_at)`,
   // Lot 30 : « mes temps » (GET /api/me) lit les résultats d'un joueur sans parcourir toute la table.
   `CREATE INDEX IF NOT EXISTS results_by_player ON results (player_id, day)`,
+  // Lot 51 : la voiture et sa personnalisation, choisies au Garage, **gardées par joueur** pour les retrouver sur tous ses appareils (même identifiant). `car` :
+  // `id.couleur.motif.teinte` (`coderVoiture`) ; `minute` : l'instant du choix, en minutes (le dernier choix l'emporte, à la minute près). Effacé avec le joueur.
+  `CREATE TABLE IF NOT EXISTS garage_choices (
+     player_id TEXT PRIMARY KEY,
+     car TEXT NOT NULL,
+     minute INTEGER NOT NULL
+   )`,
   // --- Le Salon (lot 27) ---
   // Meilleur temps de chaque joueur pour chaque session, avec la rediffusion qui l'a produit (sert de fantôme). `ref` : référence
   // publique du joueur pour cette session (empreinte salée : l'identifiant secret ne sort jamais du serveur). Effacé à la fin de la session (+ minute de grâce : lot 27b).
@@ -121,6 +140,7 @@ export const CDJ_SCHEMA: string[] = [
      splits TEXT NOT NULL,
      replay TEXT NOT NULL,
      submitted_at INTEGER NOT NULL,
+     car TEXT,
      PRIMARY KEY (session, player_id)
    )`,
   `CREATE UNIQUE INDEX IF NOT EXISTS salon_runs_by_ref ON salon_runs (session, ref)`,
@@ -342,6 +362,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     playerOf,
     limits: { ...DEFAULT_SALON_LIMITS, ...options.salonLimits },
     demoPlayers: options.demoPlayers === true,
+    voitureDe: voitureDeCourse,
     log,
   });
 
@@ -418,24 +439,28 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     await players.save(playerId, name, known);
     const previous = await db.first<{ ms: number; submitted_at: number }>("SELECT ms, submitted_at FROM results WHERE day = ? AND player_id = ?", [day, playerId]);
     const improved = !previous || result.finishMs < previous.ms;
+    // Lot 41 : le statut du Garage arrive avec la réponse (aucune requête de plus au jeu) ; `nouvelles` = les voitures que cette course débloque. Lot 51 : lu **avant**
+    // l'écriture (la même requête qu'avant, un temps plus tôt) : la progression d'après se déduit de celle d'avant, le meilleur temps de ce jour remplacé par le nouveau ; elle
+    // sert aussi à vérifier la voiture de la course (le meilleur temps de ce jour avec).
+    const avantRows = await resultatsGarage(playerId);
+    const apresRows = improved ? avantRows.filter((r) => r.day !== day).concat([{ day, ms: result.finishMs, authorMs: circuit.authorMs }]) : avantRows;
+    const pAvant = progresGarage(avantRows);
+    const pApres = progresGarage(apresRows);
+    const ouvert = await garageOuvert(playerId);
+    // Lot 51 : la voiture de cette course — celle que le jeu annonce si elle est débloquée pour ce joueur, sinon la Sparrow en orange. Une donnée à part : jamais dans la rediffusion.
+    const car = coderVoiture(voitureAutorisee(body.voiture, pApres, ouvert));
     if (improved) {
       await db.run(
-        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO results (day, player_id, ms, splits, replay, respawns, submitted_at, inputs_hash, car) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (day, player_id) DO UPDATE SET ms = excluded.ms, splits = excluded.splits, replay = excluded.replay,
-           respawns = excluded.respawns, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash WHERE excluded.ms < results.ms`,
-        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash],
+           respawns = excluded.respawns, submitted_at = excluded.submitted_at, inputs_hash = excluded.inputs_hash, car = excluded.car WHERE excluded.ms < results.ms`,
+        [day, playerId, result.finishMs, JSON.stringify(result.splits), body.replay, result.respawns, t, hash, car],
       );
     }
     log("INFO", "temps du jour", { day: formatDay(day), ms: result.finishMs, improved });
     const bestMs = improved ? result.finishMs : previous!.ms;
     const bestAt = improved ? t : previous!.submitted_at;
     const medals = medalsFor(circuit.authorMs, day);
-    // Lot 41 : le statut du Garage arrive avec la réponse (aucune requête de plus au jeu) ; `nouvelles` = les voitures que cette course débloque
-    // (la progression d'avant se déduit de celle d'après, le meilleur temps de ce jour remplacé par l'ancien, ou retiré s'il n'y en avait pas).
-    const apres = await resultatsGarage(playerId);
-    const avant = improved ? apres.filter((r) => r.day !== day).concat(previous ? [{ day, ms: previous.ms, authorMs: circuit.authorMs }] : []) : apres;
-    const pApres = progresGarage(apres);
-    const ouvert = await garageOuvert(playerId);
     return {
       accepted: true,
       improved,
@@ -448,7 +473,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       medal: medalFor(result.finishMs, medals) as Medal | null,
       garage: ouvert
         ? { progres: pApres, voitures: toutDebloque(etatGarage(pApres)), nouvelles: [] }
-        : { progres: pApres, voitures: etatGarage(pApres), nouvelles: nouvellesVoitures(progresGarage(avant), pApres) },
+        : { progres: pApres, voitures: etatGarage(pApres), nouvelles: nouvellesVoitures(pAvant, pApres) },
     };
   }
 
@@ -478,11 +503,28 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
   const toutDebloque = (voitures: EtatVoiture[]): EtatVoiture[] => voitures.map((v) => ({ ...v, debloquee: true }));
 
   /**
+   * Lot 51 : la voiture à garder avec une course du Salon — celle qu'annonce le jeu si elle est débloquée pour ce joueur, sinon la Sparrow en orange. La civile (toujours
+   * à lui) et un choix illisible ne coûtent aucune lecture ; les autres une requête indexée (celle du Garage).
+   */
+  async function voitureDeCourse(id: string, annoncee: unknown): Promise<VoitureDeCourse> {
+    const v = voitureLue(annoncee);
+    if (!v) return { ...VOITURE_PAR_DEFAUT };
+    if (v.id === VOITURE_PAR_DEFAUT.id) return v;
+    return voitureAutorisee(v, progresGarage(await resultatsGarage(id)), await garageOuvert(id));
+  }
+
+  /** Lot 51 : le choix de voiture gardé pour ce joueur (`voiture` + sa `minute`), ou `null` s'il n'en a jamais enregistré. */
+  async function choixGarde(id: string): Promise<{ voiture: VoitureDeCourse; minute: number } | null> {
+    const row = await db.first<{ car: string; minute: number }>("SELECT car, minute FROM garage_choices WHERE player_id = ?", [id]);
+    return row ? { voiture: decoderVoiture(row.car), minute: row.minute } : null;
+  }
+
+  /**
    * `GET /api/garage` (identifiant **obligatoire** dans l'en-tête `X-Player-Id`) : `{ progres { jours, or, auteur }, voitures [{ id, debloquee,
    * progres { fait, nombre } | null }] }`. Un joueur jamais classé a tout à zéro (la civile seulement) ; code remplacé : 410. Lectures limitées en
    * mémoire, aucune écriture.
    */
-  async function garage(req: Request, info: RequestInfo): Promise<{ progres: ProgresGarage; voitures: ReturnType<typeof etatGarage> }> {
+  async function garage(req: Request, info: RequestInfo): Promise<{ progres: ProgresGarage; voitures: ReturnType<typeof etatGarage>; choix: Awaited<ReturnType<typeof choixGarde>> }> {
     const header = req.headers.get("x-player-id");
     if (header === null) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
     const id = playerIdOf(header);
@@ -491,14 +533,46 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     await players.assertActive(id);
     const progres = progresGarage(await resultatsGarage(id));
     const voitures = etatGarage(progres);
-    return { progres, voitures: (await garageOuvert(id)) ? toutDebloque(voitures) : voitures };
+    // Lot 51 : le choix de voiture gardé par le serveur (le Garage s'y recale à l'ouverture), `null` si le joueur n'en a pas enregistré.
+    return { progres, voitures: (await garageOuvert(id)) ? toutDebloque(voitures) : voitures, choix: await choixGarde(id) };
+  }
+
+  /**
+   * Lot 51 — `PUT /api/garage` : enregistre le choix de voiture du joueur (identifiant **obligatoire** en `X-Player-Id`), corps `{ voiture { id, couleur, motif, teinteMotif }, minute }`.
+   * Le serveur le garde pour tous les appareils de ce profil (même identifiant). **Une voiture non débloquée est refusée** (rien n'est enregistré : `enregistre: false`) ;
+   * un choix illisible donne la Sparrow en orange. Le dernier choix l'emporte, à la minute près : `minute` (l'instant du choix sur l'appareil, en minutes) plus ancienne que celle
+   * déjà gardée = refusée aussi. La réponse rend toujours ce que le serveur garde (`voiture`, `minute`) : l'appareil s'y recale. Joueur jamais classé : 404 `unknown_player`
+   * (l'appareil garde son choix et l'envoie après sa première course). Écrit une ligne (débit compté en base).
+   */
+  async function enregistrerChoix(req: Request, info: RequestInfo): Promise<{ enregistre: boolean; voiture: VoitureDeCourse | null; minute: number | null }> {
+    const body = await readJson(req);
+    const header = req.headers.get("x-player-id");
+    if (header === null) throw new HttpError(400, "invalid_player", "Identifiant de joueur manquant (en-tête X-Player-Id)");
+    const id = playerIdOf(header);
+    await platform.hitAddress(info, "garw", GARAGE_WRITES_PER_CLIENT);
+    await hit(await hashKey("garw", id), GARAGE_WRITES_PER_PLAYER);
+    await players.assertActive(id);
+    if (!(await players.find(id))) throw new HttpError(404, "unknown_player", "Joueur inconnu");
+    const maintenant = Math.floor(now() / 60_000);
+    // La minute annoncée : un entier d'aujourd'hui ou d'avant, jamais plus d'une minute dans le futur (une horloge fausse ne gèle pas le choix des autres appareils).
+    const annoncee = typeof body.minute === "number" && Number.isInteger(body.minute) && body.minute >= 0 ? Math.min(body.minute, maintenant + 1) : maintenant;
+    const demandee = voitureLue(body.voiture) ?? { ...VOITURE_PAR_DEFAUT };
+    const gardee = await choixGarde(id);
+    const progres = progresGarage(await resultatsGarage(id));
+    const permise = (await garageOuvert(id)) || estDebloquee(DEBLOCAGES[demandee.id], progres);
+    if (!permise || (gardee && gardee.minute > annoncee)) return { enregistre: false, voiture: gardee?.voiture ?? null, minute: gardee?.minute ?? null };
+    await db.run(
+      "INSERT INTO garage_choices (player_id, car, minute) VALUES (?, ?, ?) ON CONFLICT (player_id) DO UPDATE SET car = excluded.car, minute = excluded.minute WHERE excluded.minute >= garage_choices.minute",
+      [id, coderVoiture(demandee), annoncee],
+    );
+    return { enregistre: true, voiture: demandee, minute: annoncee };
   }
 
   /**
    * Le contenu du profil (`GET /api/me`, lot 30) : les temps de DailyTrack de ce joueur, ses médailles, sa meilleure place, sa série, son
    * record du jour avec sa rediffusion. La plateforme a déjà vérifié l'identité (en-tête, débit, code révoqué, joueur connu).
    */
-  async function profile(id: string): Promise<Record<string, unknown>> {
+  async function profile(id: string, avecChoix = true): Promise<Record<string, unknown>> {
     const t = today();
     const rows = await db.all<{ day: number; ms: number; submitted_at: number; track_id: string | null; author_ms: number | null; final_rank: number | null; final_total: number | null }>(
       `SELECT r.day AS day, r.ms AS ms, r.submitted_at AS submitted_at, c.track_id AS track_id, c.author_ms AS author_ms, r.final_rank AS final_rank, r.final_total AS final_total
@@ -545,7 +619,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
 
     let best: unknown = null;
     if (todayRow) {
-      const full = await db.first<{ splits: string; replay: string }>("SELECT splits, replay FROM results WHERE day = ? AND player_id = ?", [t, id]);
+      const full = await db.first<{ splits: string; replay: string; car: string | null }>("SELECT splits, replay, car FROM results WHERE day = ? AND player_id = ?", [t, id]);
       let simVersion: number | null = null;
       try {
         simVersion = full ? decodeReplay(full.replay).simVersion : null;
@@ -559,6 +633,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
         medal: todayRow.author_ms === null ? null : medalFor(todayRow.ms, medalsFor(todayRow.author_ms, t)),
         splits: full ? (JSON.parse(full.splits) as number[]) : [],
         ...(full && simVersion !== null ? { replay: full.replay, simVersion } : {}),
+        // Lot 51 : la voiture de ce record (le fantôme « ton record » la montre, pas celle d'aujourd'hui) ; la Sparrow en orange pour un record d'avant.
+        voiture: decoderVoiture(full?.car),
       };
     }
     return {
@@ -567,6 +643,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       stats: { days: rows.length, medals: counts, bestRank, streak },
       best,
       past,
+      // Lot 51 : le choix de voiture gardé par le serveur, rendu avec le profil que le jeu lit déjà au chargement (aucune requête de plus pour lui) ; `null` : jamais enregistré.
+      ...(avecChoix ? { garage: await choixGarde(id) } : {}),
     };
   }
 
@@ -806,12 +884,13 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       if (rank <= 1) throw new HttpError(404, "no_ghost", "Personne devant toi : tu es premier");
       offset = rank - 2;
     }
-    const row = await db.first<{ ms: number; splits: string; replay: string; name: string }>(
-      "SELECT r.ms AS ms, r.splits AS splits, r.replay AS replay, p.name AS name FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ms ASC, r.submitted_at ASC LIMIT 1 OFFSET ?",
+    const row = await db.first<{ ms: number; splits: string; replay: string; name: string; car: string | null }>(
+      "SELECT r.ms AS ms, r.splits AS splits, r.replay AS replay, p.name AS name, r.car AS car FROM results r JOIN players p ON p.id = r.player_id WHERE r.day = ? ORDER BY r.ms ASC, r.submitted_at ASC LIMIT 1 OFFSET ?",
       [day, offset],
     );
     if (!row) throw new HttpError(404, "no_ghost", "Aucun temps enregistré pour ce jour");
-    return { name: row.name, rank: offset + 1, ms: row.ms, splits: JSON.parse(row.splits) as number[], replay: row.replay, simVersion: SIM_VERSION };
+    // Lot 51 : la voiture de cette course, à part de la rediffusion (la Sparrow en orange pour une course d'avant).
+    return { name: row.name, rank: offset + 1, ms: row.ms, splits: JSON.parse(row.splits) as number[], replay: row.replay, simVersion: SIM_VERSION, voiture: decoderVoiture(row.car) };
   }
 
   /**
@@ -837,7 +916,8 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
       return await publicPlanning();
     }
     if (path === "/api/garage") {
-      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET attendu");
+      if (req.method === "PUT") return await enregistrerChoix(req, info);
+      if (req.method !== "GET") throw new HttpError(405, "method_not_allowed", "GET ou PUT attendu");
       return await garage(req, info);
     }
     if (path.startsWith("/api/admin/")) {
@@ -938,7 +1018,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     },
     // Le même calcul que `GET /api/me` (places des jours fermés gardées une fois calculées) : le profil commun dit la même chose que le jeu.
     async profil(id) {
-      const stats = (await profile(id)).stats as { days: number; medals: Record<Medal, number>; bestRank: { date: string; rank: number; participants: number } | null };
+      const stats = (await profile(id, false)).stats as { days: number; medals: Record<Medal, number>; bestRank: { date: string; rank: number; participants: number } | null };
       return {
         joursFinis: stats.days,
         medailles: stats.medals,
@@ -962,6 +1042,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
     rotateStatements: (oldId, newId): Statement[] => [
       { sql: "UPDATE results SET player_id = ? WHERE player_id = ?", params: [newId, oldId] },
       { sql: "DELETE FROM salon_runs WHERE player_id = ?", params: [oldId] },
+      { sql: "UPDATE garage_choices SET player_id = ? WHERE player_id = ?", params: [newId, oldId] }, // lot 51 : le choix de voiture suit le joueur
     ],
     // Lot R5 — effacement d'un joueur : ses temps (le classement d'un jour passé est recalculé sans lui : places finales oubliées, recalculées à
     // la prochaine lecture du profil des autres), ses courses du Salon (version de la session avancée : le classement se recharge), sa présence
@@ -977,6 +1058,7 @@ export function createCdj(platform: Platform, options: CdjOptions): CdjInstance 
         statements: [
           { sql: "UPDATE results SET final_rank = NULL, final_total = NULL WHERE day IN (SELECT day FROM results WHERE player_id = ?)", params: [playerId] },
           { sql: "DELETE FROM results WHERE player_id = ?", params: [playerId] },
+          { sql: "DELETE FROM garage_choices WHERE player_id = ?", params: [playerId] }, // lot 51 : son choix de voiture
           { sql: "UPDATE salon_sessions SET version = version + 1 WHERE session IN (SELECT session FROM salon_runs WHERE player_id = ?)", params: [playerId] },
           { sql: "DELETE FROM salon_runs WHERE player_id = ?", params: [playerId] },
           { sql: "DELETE FROM salon_presence WHERE key = ?", params: [presence] },
@@ -994,7 +1076,7 @@ export const CDJ_GAME: GameDefinition<CdjOptions> = {
   code: "cdj",
   name: "DailyTrack",
   prefix: "/api",
-  tables: ["circuits", "planning", "results", "salon_runs", "salon_sessions", "salon_circuits", "salon_presence", "salon_throttle"],
+  tables: ["circuits", "planning", "results", "garage_choices", "salon_runs", "salon_sessions", "salon_circuits", "salon_presence", "salon_throttle"],
   schema: CDJ_SCHEMA,
   versions: () => ({ simVersion: SIM_VERSION, generatorVersion: GENERATOR_VERSION }),
   create: createCdj,

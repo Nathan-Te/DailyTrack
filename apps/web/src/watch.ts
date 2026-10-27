@@ -1,5 +1,6 @@
 import { TICK_RATE, replayTicks, type Replay } from "@cdj/sim";
 import { fNombre, fTemps, t } from "./i18n";
+import type { ChoixVoiture } from "./voiture/choix";
 
 // Revoir le meilleur tour (lot 27b) : logique pure du mode spectateur (aucun DOM, aucun rendu), testée par Vitest. La lecture rejoue la
 // rediffusion avec le **même code** que le serveur et que le fantôme (`RunSession` + `ReplayPlayer`) : `packages/sim` n'a pas bougé et
@@ -26,8 +27,10 @@ export interface WatchEntry {
   mode: "first" | "mine" | "salon";
   /** Étiquette du fantôme quand on court contre lui (« premier : Alice »). */
   label: string;
-  /** Couleur de la voiture (celle du fantôme). */
+  /** Couleur du pseudo au-dessus de la voiture (celle du fantôme). */
   color: number;
+  /** Lot 51 : la voiture de cette course, montrée en version complète (modèle, couleur, motif, teinte) ; absente : la Sparrow en orange. */
+  voiture?: ChoixVoiture;
 }
 
 /** « Rediffusion de Alice — 31,456 s » / “Replay of Alice — 31.456 s”. */

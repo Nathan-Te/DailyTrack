@@ -69,13 +69,18 @@
         </li>
         <li data-tables="results jump_results">
           <h3>Tes résultats et tes rediffusions</h3>
-          <p>Pour chaque jour : ton meilleur temps et sa rediffusion (la suite de tes commandes, que le serveur rejoue pour vérifier le temps), dans DailyTrack et dans DailyJump, et ta place une fois le jour fini. S'y ajoute une empreinte de ces commandes (un code court, sans rien de personnel) qui sert à refuser qu'une même course soit envoyée par deux joueurs.</p>
-          <p>But : les classements du jour et des archives, le fantôme du premier, tes médailles, ta meilleure place, ta série et tes journées parfaites (portail et profil commun).</p>
+          <p>Pour chaque jour : ton meilleur temps et sa rediffusion (la suite de tes commandes, que le serveur rejoue pour vérifier le temps), dans DailyTrack et dans DailyJump, et ta place une fois le jour fini. S'y ajoute une empreinte de ces commandes (un code court, sans rien de personnel) qui sert à refuser qu'une même course soit envoyée par deux joueurs, et, dans DailyTrack, la voiture avec laquelle tu as fait ce temps (le modèle, sa couleur, son motif et la couleur du motif : un choix de décor, sans lien avec la rediffusion).</p>
+          <p>But : les classements du jour et des archives, le fantôme du premier (avec la voiture de sa course), tes médailles, ta meilleure place, ta série et tes journées parfaites (portail et profil commun).</p>
           <p class="duree">Durée : tant que tu ne demandes pas l'effacement (les classements passés restent consultables).</p>
+        </li>
+        <li data-tables="garage_choices">
+          <h3>Ta voiture dans DailyTrack</h3>
+          <p>La voiture que tu choisis au Garage, avec sa couleur, son motif et la couleur du motif, pour que tu la retrouves sur tous tes appareils (ceux qui ont ton code). Le serveur ne garde que ce dernier choix et l'heure à laquelle tu l'as fait, à la minute près.</p>
+          <p class="duree">Durée : tant que tu ne demandes pas l'effacement.</p>
         </li>
         <li data-tables="salon_runs salon_sessions">
           <h3>Tes courses du Salon</h3>
-          <p>Ton meilleur temps de la session, sa rediffusion et ton pseudo.</p>
+          <p>Ton meilleur temps de la session, sa rediffusion, ton pseudo et la voiture avec laquelle tu l'as fait.</p>
           <p class="duree">Durée : oubliées <span data-constante="SALON_SERVE_MS" data-valeur="20000">20 secondes</span> après la fin de la session (une session dure <span data-constante="SALON_SESSION_MS" data-valeur="600000">10 minutes</span>).</p>
         </li>
         <li data-tables="jump_lives jump_deaths">

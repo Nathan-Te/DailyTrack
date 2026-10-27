@@ -83,6 +83,8 @@
     "web/figures.spec.ts": ["track-sim", "track-circuit"],
     "web/futur.spec.ts": ["track-admin"],
     "web/garage.spec.ts": ["track-voiture", "api-track"],
+    "web/rendu.spec.ts": ["track-scene", "track-coeur"],
+    "web/voiture-course.spec.ts": ["track-voiture", "track-profil", "track-salon", "api-track", "api-coeur"],
     "web/ghost.spec.ts": ["track-sim", "track-salon"],
     "web/graphismes.spec.ts": ["track-scene", "track-camera"],
     "web/hud-compact.spec.ts": ["track-hud", "ui", "track-coeur"],

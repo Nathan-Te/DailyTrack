@@ -42,6 +42,10 @@ export const MIGRATIONS: string[] = [
   "ALTER TABLE circuits ADD COLUMN author_hash TEXT",
   "ALTER TABLE jump_results ADD COLUMN inputs_hash TEXT",
   "ALTER TABLE jump_levels ADD COLUMN author_hash TEXT",
+  // Lot 51 : la voiture de chaque course classée (circuit du jour, Salon), à part de la rediffusion : `id.couleur.motif.teinte` (`coderVoiture`, packages/sim/src/garage.ts).
+  // NULL pour une ligne d'avant : le jeu y voit la Sparrow en orange. (La table `garage_choices` — le choix du Garage de chaque joueur — est nouvelle : `CDJ_SCHEMA`.)
+  "ALTER TABLE results ADD COLUMN car TEXT",
+  "ALTER TABLE salon_runs ADD COLUMN car TEXT",
   "CREATE INDEX IF NOT EXISTS results_by_inputs ON results (day, inputs_hash)",
   "CREATE INDEX IF NOT EXISTS jump_results_by_inputs ON jump_results (day, inputs_hash)",
 ];

@@ -21,6 +21,7 @@ export interface ChoixVoiture {
   teinteMotif: number;
 }
 
+export type { Garde };
 export const CLE_GARAGE = "cdj:track:garage";
 export const CHOIX_DEFAUT: Readonly<ChoixVoiture> = Object.freeze({ id: VOITURE_DEFAUT, couleur: 0, motif: MOTIF_DEFAUT, teinteMotif: 0 });
 
@@ -38,9 +39,15 @@ interface Garde {
   debloquees?: unknown;
   /** Lot 41 : les voitures déjà vues au Garage. */
   vues?: unknown;
+  /** Lot 51 : l'instant du dernier choix fait sur cet appareil (minutes depuis 1970) ; le dernier choix l'emporte, à la minute près. Absent : jamais envoyé au serveur. */
+  minute?: unknown;
+  /** Lot 51 : la minute du choix que le serveur connaît (envoyé, ou reçu de lui). */
+  envoye?: unknown;
+  /** Lot 51 : vrai tant qu'un choix fait sur cet appareil n'est pas parti (plusieurs choix dans la même minute ne se distinguent pas par `minute` seule). */
+  attente?: unknown;
 }
 
-function lire(stockage: Lecture): Garde {
+export function lire(stockage: Lecture): Garde {
   try {
     const brut = JSON.parse(stockage().getItem(CLE_GARAGE) ?? "null") as unknown;
     return brut && typeof brut === "object" && !Array.isArray(brut) ? (brut as Garde) : {};
@@ -49,7 +56,7 @@ function lire(stockage: Lecture): Garde {
   }
 }
 
-function ecrire(stockage: Ecriture, maj: Partial<Garde>): boolean {
+export function ecrire(stockage: Ecriture, maj: Partial<Garde>): boolean {
   try {
     stockage().setItem(CLE_GARAGE, JSON.stringify({ ...lire(stockage), ...maj }));
     return true;

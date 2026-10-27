@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BASCULE_LOT_35, DEBLOCAGES, VOITURES_GARAGE, avancement, estDebloquee, etatGarage, medalsFor, nouvellesVoitures, progresGarage, type ResultatDuJour } from "../src";
+import { BASCULE_LOT_35, COULEURS_VOITURE, DEBLOCAGES, TEINTES_VOITURE, VOITURES_GARAGE, VOITURE_PAR_DEFAUT, avancement, coderVoiture, decoderVoiture, estDebloquee, etatGarage, medalsFor, nouvellesVoitures, progresGarage, voitureAutorisee, voitureLue, type ResultatDuJour } from "../src";
 
 // Lot 41 : les règles du Garage (une seule table, lue par le serveur et par le jeu) et le calcul de la progression.
 
@@ -97,5 +97,32 @@ describe("etatGarage et nouvellesVoitures", () => {
     expect(nouvellesVoitures({ jours: 29, or: 0, auteur: 0 }, { jours: 30, or: 0, auteur: 0 })).toEqual(["muscle"]);
     expect(nouvellesVoitures({ jours: 30, or: 6, auteur: 2 }, { jours: 30, or: 6, auteur: 3 })).toEqual(["monoplace"]);
     expect(nouvellesVoitures({ jours: 0, or: 0, auteur: 0 }, { jours: 0, or: 0, auteur: 0 })).toEqual([]);
+  });
+});
+
+describe("la voiture d'une course (lot 51)", () => {
+  const GT = { id: "gt", couleur: 3, motif: "chevrons", teinteMotif: 2 };
+  it("lue strictement : voiture, couleur, motif et teinte connus ; le reste est illisible", () => {
+    expect(voitureLue(GT)).toEqual(GT);
+    expect(voitureLue({ ...GT, teinteMotif: undefined })).toEqual({ ...GT, teinteMotif: 0 });
+    for (const mauvais of [null, undefined, "gt", [], 3, { ...GT, id: "tank" }, { ...GT, id: 4 }, { ...GT, couleur: COULEURS_VOITURE }, { ...GT, couleur: -1 }, { ...GT, couleur: 1.5 }, { ...GT, motif: "zèbre" }, { ...GT, teinteMotif: TEINTES_VOITURE }, { ...GT, teinteMotif: "1" }]) {
+      expect(voitureLue(mauvais), JSON.stringify(mauvais)).toBeNull();
+    }
+  });
+  it("gardée en base sous la forme `id.couleur.motif.teinte` ; une valeur absente ou abîmée donne la Sparrow en orange", () => {
+    expect(coderVoiture(voitureLue(GT)!)).toBe("gt.3.chevrons.2");
+    expect(decoderVoiture("gt.3.chevrons.2")).toEqual(GT);
+    for (const rien of [null, undefined, "", "gt", "gt.3.chevrons", "tank.0.course.0", "gt.9.course.0", "gt.x.course.0", "gt.3.chevrons.2.1"]) expect(decoderVoiture(rien), String(rien)).toEqual(VOITURE_PAR_DEFAUT);
+    expect(VOITURE_PAR_DEFAUT).toEqual({ id: "civile", couleur: 0, motif: "course", teinteMotif: 0 });
+  });
+  it("autorisée seulement si elle est débloquée pour ce joueur (ou ouverte à tous : la recette) ; sinon la Sparrow en orange", () => {
+    const rien = progresGarage([]);
+    expect(voitureAutorisee(GT, rien)).toEqual(VOITURE_PAR_DEFAUT);
+    expect(voitureAutorisee(GT, { jours: 10, or: 0, auteur: 0 })).toEqual(GT);
+    expect(voitureAutorisee(GT, rien, true)).toEqual(GT);
+    const civile = { id: "civile", couleur: 6, motif: "rond", teinteMotif: 1 };
+    expect(voitureAutorisee(civile, rien), "la civile est toujours à lui, dans toutes les couleurs").toEqual(civile);
+    expect(voitureAutorisee("n'importe quoi", rien, true)).toEqual(VOITURE_PAR_DEFAUT);
+    expect(voitureAutorisee(undefined, rien)).toEqual(VOITURE_PAR_DEFAUT);
   });
 });

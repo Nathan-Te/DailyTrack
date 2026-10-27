@@ -1,9 +1,10 @@
 import { SIM_VERSION } from "@cdj/sim";
 import { ProfileSync as PlatformSync, mergeName, type SyncDeps as PlatformSyncDeps, type SyncOutcome as PlatformOutcome } from "@cdj/profile";
-import type { LeaderboardSource, MeProfile } from "./api";
+import type { LeaderboardSource, MeProfile, MeTrack } from "./api";
 import { clearNextId, pendingNextId } from "./identity";
 import { rememberRank } from "./profile";
 import type { BestRun } from "./records";
+import { lireChoix } from "./voiture/choix";
 
 // Synchronisation du profil (lot 30) : le serveur fait foi, le stockage du navigateur n'est qu'un cache.
 //
@@ -29,6 +30,8 @@ export interface MergeResult {
   todayChanged: boolean;
   /** Jours passés écrits ou améliorés (médailles des archives). */
   pastChanged: number;
+  /** Lot 51 : le choix de voiture gardé par le serveur (`null` : jamais enregistré ; `undefined` : un serveur plus ancien n'en parle pas). Recalé ensuite par `voiture/synchro.ts` (à la demande). */
+  garage?: unknown;
 }
 
 function readRecord(storage: Store, trackId: string): BestRun | null {
@@ -45,8 +48,9 @@ function readRecord(storage: Store, trackId: string): BestRun | null {
  * fait hors ligne attend d'être envoyé). `cdj:sub:<circuit>` (« meilleur temps confirmé par le serveur ») prend la valeur du serveur : tant qu'un record local
  * lui est meilleur, `needsSubmit` reste vrai et le jeu l'envoie.
  */
-export function mergeProfile(me: MeProfile, storage: Store): MergeResult {
-  const result: MergeResult = { nameChanged: mergeName(me, storage), todayChanged: false, pastChanged: 0 };
+export function mergeProfile(profil: MeProfile, storage: Store): MergeResult {
+  const me = profil as MeTrack;
+  const result: MergeResult = { nameChanged: mergeName(me, storage), todayChanged: false, pastChanged: 0, garage: me.garage };
 
   const t = me.best;
   if (t && t.trackId && DAY_TRACK.test(t.trackId) && Number.isFinite(t.ms) && t.ms > 0) {
@@ -54,9 +58,14 @@ export function mergeProfile(me: MeProfile, storage: Store): MergeResult {
       const local = readRecord(storage, t.trackId);
       const usable = t.replay !== undefined && t.simVersion === SIM_VERSION;
       const better = !local || t.ms < local.ms || (t.ms === local.ms && !local.replay && usable);
+      // Lot 51 : la voiture de ce record (celle de sa course, pas celle d'aujourd'hui) vient avec lui ; un record local de même temps qui ne la connaît pas l'apprend.
+      const voiture = lireChoix(t.voiture);
       if (better && (usable || !local)) {
-        const rec: BestRun = { ms: t.ms, splits: t.splits, simVersion: usable ? SIM_VERSION : (t.simVersion ?? 0), medal: t.medal ?? null, ...(usable ? { replay: t.replay } : {}) };
+        const rec: BestRun = { ms: t.ms, splits: t.splits, simVersion: usable ? SIM_VERSION : (t.simVersion ?? 0), medal: t.medal ?? null, ...(usable ? { replay: t.replay } : {}), ...(voiture ? { voiture } : {}) };
         storage.setItem(BEST + t.trackId, JSON.stringify(rec));
+        result.todayChanged = true;
+      } else if (local && voiture && t.ms === local.ms && !local.voiture) {
+        storage.setItem(BEST + t.trackId, JSON.stringify({ ...local, voiture }));
         result.todayChanged = true;
       }
       storage.setItem(SUB + t.trackId, String(t.ms));

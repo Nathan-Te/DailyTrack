@@ -1,6 +1,7 @@
 import { ProfileClient, apiFromAddress, call, type ApiResult, type MeProfile, type NameCheck } from "@cdj/profile";
 import type { EtatVoiture, ProgresGarage } from "@cdj/sim";
 import { isRestricted } from "./access";
+import type { ChoixVoiture } from "./voiture/choix";
 
 // Client de l'API du classement. Le jeu fonctionne sans elle : si elle n'est pas configurée ou injoignable,
 // on le dit poliment et on continue (le classement est un plus, pas un prérequis).
@@ -36,10 +37,28 @@ export interface SubmitResult {
   garage?: GarageStatut & { nouvelles: string[] };
 }
 
+/** Lot 51 : le choix de voiture gardé par le serveur (voiture, couleur, motif, teinte) et la minute où il a été fait. */
+export interface ChoixServeur {
+  voiture: ChoixVoiture;
+  minute: number;
+}
+
+/** Lot 51 : `PUT /api/garage` — `enregistre` faux : refusé (voiture verrouillée, ou un choix plus récent est gardé) ; `voiture` et `minute` : ce que le serveur garde. */
+export interface ReponseChoix {
+  enregistre: boolean;
+  voiture: ChoixVoiture | null;
+  minute: number | null;
+}
+
+/** Lot 51 : le profil (`GET /api/me`) tel que DailyTrack le lit — le record porte la voiture de sa course, et le choix de voiture du serveur arrive avec lui. */
+export type MeTrack = MeProfile & { best: (NonNullable<MeProfile["best"]> & { voiture?: unknown }) | null; garage?: { voiture?: unknown; minute?: unknown } | null };
+
 /** Lot 41 : `GET /api/garage` — la progression du joueur et l'état de chaque voiture, calculés par le serveur. */
 export interface GarageStatut {
   progres: ProgresGarage;
   voitures: EtatVoiture[];
+  /** Lot 51 : le choix de voiture gardé par le serveur (`null` : jamais enregistré ; absent d'un serveur plus ancien). */
+  choix?: { voiture?: unknown; minute?: unknown } | null;
 }
 
 export interface GhostData {
@@ -49,6 +68,8 @@ export interface GhostData {
   splits: number[];
   replay: string;
   simVersion: number;
+  /** Lot 51 : la voiture de cette course (absente d'un serveur plus ancien et de la démonstration : la Sparrow en orange). Illisible : à passer par `lireChoix`. */
+  voiture?: unknown;
 }
 
 /**
@@ -99,7 +120,7 @@ export const apiCall = call;
 
 /** Ce que le jeu demande à un classement : l'API réelle (`LeaderboardApi`) ou le jeu de données statique du mode démo. */
 export interface LeaderboardSource {
-  submit(playerId: string, name: string | null, date: string, replay: string): Promise<ApiResult<SubmitResult>>;
+  submit(playerId: string, name: string | null, date: string, replay: string, voiture?: ChoixVoiture): Promise<ApiResult<SubmitResult>>;
   rename(playerId: string, name: string): Promise<ApiResult<{ name: string }>>;
   leaderboard(date: string, playerId: string, limit?: number): Promise<ApiResult<Leaderboard>>;
   ghost(date: string, kind: "first" | "ahead", playerId: string): Promise<ApiResult<GhostData>>;
@@ -111,6 +132,8 @@ export interface LeaderboardSource {
   rotateCode(oldId: string, newId: string): Promise<ApiResult<{ rotated: true }>>;
   /** Lot 41 : les déblocages du Garage (calculés par le serveur ; l'identifiant dans l'en-tête). La démonstration n'en a pas : son joueur est dans le Garage. */
   garage?(playerId: string): Promise<ApiResult<GarageStatut>>;
+  /** Lot 51 : enregistre le choix de voiture (gardé par le serveur pour tous les appareils de ce profil). */
+  choisirVoiture?(playerId: string, voiture: ChoixVoiture, minute: number): Promise<ApiResult<ReponseChoix>>;
 }
 
 /** `?api=demo` : le jeu lit le jeu de données statique de `public/demo/` au lieu d'une API (voir `demo.ts`). */
@@ -119,8 +142,8 @@ export const DEMO_BASE = "demo";
 /** L'API réelle : classement et fantômes de DailyTrack ; profil, pseudo et code viennent du client de la plateforme (`ProfileClient`). */
 export class LeaderboardApi extends ProfileClient implements LeaderboardSource {
   // Lot 32 : l'identifiant secret du joueur voyage dans l'en-tête `X-Player-Id`, jamais dans l'adresse (qui finit dans les journaux de l'hébergeur).
-  submit(playerId: string, name: string | null, date: string, replay: string) {
-    return this.call<SubmitResult>("POST", "/api/submit", { ...(name ? { name } : {}), date, replay }, asPlayer(playerId));
+  submit(playerId: string, name: string | null, date: string, replay: string, voiture?: ChoixVoiture) {
+    return this.call<SubmitResult>("POST", "/api/submit", { ...(name ? { name } : {}), date, replay, ...(voiture ? { voiture } : {}) }, asPlayer(playerId));
   }
 
   leaderboard(date: string, playerId: string, limit = 10) {
@@ -133,5 +156,9 @@ export class LeaderboardApi extends ProfileClient implements LeaderboardSource {
 
   garage(playerId: string) {
     return this.call<GarageStatut>("GET", "/api/garage", undefined, asPlayer(playerId));
+  }
+
+  choisirVoiture(playerId: string, voiture: ChoixVoiture, minute: number) {
+    return this.call<ReponseChoix>("PUT", "/api/garage", { voiture, minute }, asPlayer(playerId));
   }
 }

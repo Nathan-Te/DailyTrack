@@ -5,7 +5,8 @@
 //
 // Règles (direction.md § 9, lot 46) :
 //   - **un appel de rendu au plus par famille** : un maillage de drapeaux, un pour la foule, un maillage pour tous les écrans, un nuage de points ;
-//   - **tout s'anime sur un temps d'affichage** (`animer(t)`), jamais sur l'état de la course ; seuls les feux de départ du lot 43 lisent le décompte ;
+//   - **tout s'anime sur un temps d'affichage** (`animer(t)`), jamais sur l'état de la course ; seuls les feux de départ du lot 43 lisent le décompte, et (lot 51)
+//     le chronomètre du portique le temps de la course en cours (`chrono(s)`, en lecture seule : 0 au décompte, au « recommencer » et à l'accueil) ;
 //   - **rien ne bouge dans le champ de la piste devant la voiture** : drapeaux, foule et écrans sont à côté de la piste ou au-dessus du passage (≥ 11 m),
 //     les drapeaux ne projettent pas d'ombre (elle onduleraient sur la route), les particules s'effacent dans le couloir de la piste devant la caméra et
 //     près de l'objectif (jamais une particule plein écran).
@@ -142,8 +143,9 @@ export const VIE: PasScene = {
           }
         }
         if (ecrans) ecrans.material.uniforms.uDefile!.value = (t * 0.06) % 1;
-        chrono?.afficher(t);
       },
+      // Lot 51 : le chronomètre du portique montre le temps de la course en cours (il tournait sur le temps d'affichage, sans jamais revenir à zéro au « recommencer »).
+      chrono: chrono?.afficher,
       arrivee(t) {
         if (!salve || !pts) return;
         debutSalve = t;

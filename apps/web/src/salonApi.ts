@@ -1,4 +1,5 @@
 import { apiCall, asPlayer, type ApiResult } from "./api";
+import type { ChoixVoiture } from "./voiture/choix";
 
 // Contrat de l'API du Salon (lot 26) : ce que le jeu demande, ce que le serveur (lot 27) ou le mode démo (`salonDemo.ts`) répondent.
 //
@@ -61,6 +62,8 @@ export interface SalonGhost {
   splits: number[];
   replay: string;
   simVersion: number;
+  /** Lot 51 : la voiture de cette course (absente d'un serveur plus ancien : la Sparrow en orange). Illisible : à passer par `lireChoix`. */
+  voiture?: unknown;
 }
 
 export interface SalonSubmitResult {
@@ -79,7 +82,7 @@ export interface SalonApi {
   now(playerId: string | null): Promise<ApiResult<SalonNow>>;
   board(session: number, playerId: string | null, since?: number): Promise<ApiResult<SalonBoard>>;
   ghosts(session: number, refs: string[]): Promise<ApiResult<{ ghosts: SalonGhost[] }>>;
-  submit(session: number, playerId: string, name: string, replay: string): Promise<ApiResult<SalonSubmitResult>>;
+  submit(session: number, playerId: string, name: string, replay: string, voiture?: ChoixVoiture): Promise<ApiResult<SalonSubmitResult>>;
 }
 
 /** Client de l'API réelle (serveur du lot 27). Sans serveur qui répond, chaque appel échoue proprement. */
@@ -98,7 +101,7 @@ export class HttpSalonApi implements SalonApi {
     return apiCall<{ ghosts: SalonGhost[] }>(this.base, "GET", `/api/salon/${session}/ghosts?refs=${refs.map(encodeURIComponent).join(",")}`);
   }
 
-  submit(session: number, playerId: string, name: string, replay: string) {
-    return apiCall<SalonSubmitResult>(this.base, "POST", `/api/salon/${session}/submit`, { name, replay }, undefined, asPlayer(playerId));
+  submit(session: number, playerId: string, name: string, replay: string, voiture?: ChoixVoiture) {
+    return apiCall<SalonSubmitResult>(this.base, "POST", `/api/salon/${session}/submit`, { name, replay, ...(voiture ? { voiture } : {}) }, undefined, asPlayer(playerId));
   }
 }

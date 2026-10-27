@@ -24,8 +24,8 @@ export interface OptionsVoitureEnJeu {
   nuit(): boolean;
   /** Le jeu permet-il de changer de voiture maintenant (jamais en course) ? */
   peutChanger(): boolean;
-  /** Pose la nouvelle voiture et le nouveau fantôme à la place des anciens (ils sont libérés ensuite). */
-  adopter(voiture: Voiture, fantome: CarModel): void;
+  /** Pose la nouvelle voiture à la place de l'ancienne (elle est libérée ensuite). Lot 51 : plus de fantôme ici — chaque fantôme a la voiture de sa course (`fantomes.ts`). */
+  adopter(voiture: Voiture): void;
   /** Les matériaux des paliers 2 et 3 (`import()`). */
   materiaux2(): Promise<FabriqueMateriaux>;
 }
@@ -34,21 +34,24 @@ const cleDe = (c: ChoixVoiture, palier: number, silhouette = false) => `${c.id}|
 
 export class VoitureEnJeu {
   voiture: Voiture;
-  fantome: CarModel;
+  /** La version simple de la civile (la Sparrow) : le fantôme par défaut, celui d'une course sans voiture connue. Lot 51 : les autres voitures des fantômes viennent de `fantomes.ts`. */
+  readonly fantome: CarModel;
   /** Le modèle construit (sa clé : voiture, couleur, motif, palier). */
   private cle: string;
   private choixCourant: ChoixVoiture;
   /** Lot 41 : la voiture regardée au Garage, si ce n'est pas la tienne, et sa retouche (une voiture verrouillée : sa silhouette) ; `null` : ta voiture. */
   private regardee: { choix: ChoixVoiture; retouche?: (v: Voiture) => void } | null = null;
   /** Une voiture prête, en attente du moment où le jeu permet de changer. */
-  private prete: { cle: string; voiture: Voiture; fantome: CarModel } | null = null;
+  private prete: { cle: string; voiture: Voiture; choix: ChoixVoiture } | null = null;
+  /** Lot 51 : la voiture qu'on voit (le choix qui l'a construite) — celle qui court : elle part avec le temps. */
+  private vue: ChoixVoiture;
+  /** Lot 51 : la voiture d'un autre, montrée en rediffusion (« revoir le meilleur tour », spectateur) ; `null` : la tienne. */
+  private imposee: ChoixVoiture | null = null;
   private enCours: string | null = null;
   /** Un chargement raté (hors ligne) : on ne le retente qu'au prochain choix. */
   private echec: string | null = null;
   private numeroPeint: string;
   private nuitPeinte = false;
-  /** Couleur imposée (le spectateur : la couleur du joueur regardé), ou `null`. */
-  private teinte: number | null = null;
   /** Compteurs (outil `?debug`, mesures) : voitures construites, remplacements, chargements ; durée de construction de la civile au démarrage ;
    *  heure (`performance.now()`) du dernier remplacement. */
   readonly stats = { construites: 0, remplacees: 0, chargements: 0, civileMs: 0, remplaceeA: 0 };
@@ -61,7 +64,22 @@ export class VoitureEnJeu {
     this.voiture = this.construire(PLAN_CIVILE, this.choixCourant, 1);
     this.fantome = construireFantome(PLAN_CIVILE, TEINTE_FANTOME);
     this.stats.civileMs = performance.now() - t0;
-    this.cle = cleDe({ ...this.choixCourant, id: VOITURE_DEFAUT }, 1);
+    this.vue = { ...this.choixCourant, id: VOITURE_DEFAUT };
+    this.cle = cleDe(this.vue, 1);
+  }
+
+  /** Lot 51 : la voiture qu'on voit, avec sa couleur, son motif et sa teinte — celle d'une course qui s'arrête ici (le fantôme de ton record, l'envoi, le Salon). */
+  get affichee(): ChoixVoiture {
+    return { ...this.vue };
+  }
+
+  /**
+   * Lot 51 : montre la voiture d'un autre (la version complète : modèle, couleur, motif, teinte), pour revoir sa course ; `null` : la tienne. Remplacée quand le jeu le permet
+   * (`peutChanger`), comme au Garage. Rien n'est enregistré.
+   */
+  regarder(choix: ChoixVoiture | null): void {
+    this.imposee = choix;
+    this.echec = null;
   }
 
   /** Relit le choix (le jeu le fait à l'accueil ; le Garage, après un changement). */
@@ -86,7 +104,7 @@ export class VoitureEnJeu {
 
   /** La voiture qu'on veut voir : celle regardée au Garage, sinon la tienne. */
   private get vise(): ChoixVoiture {
-    return this.regardee?.choix ?? this.choixCourant;
+    return this.regardee?.choix ?? this.imposee ?? this.choixCourant;
   }
 
   private get silhouette(): boolean {
@@ -96,12 +114,6 @@ export class VoitureEnJeu {
   /** La voiture prête ou voulue est-elle celle qu'on voit ? (outil des tests) */
   get aJour(): boolean {
     return this.cle === cleDe(this.vise, this.o.palier(), this.silhouette) && !this.prete;
-  }
-
-  /** Le spectateur repeint la voiture à la couleur du joueur regardé ; `null` : sa couleur. */
-  imposerTeinte(hex: number | null): void {
-    this.teinte = hex;
-    this.peindre(this.voiture);
   }
 
   /** À chaque image : charge ce qu'il faut, remplace la voiture quand le jeu le permet, suit le numéro et la Nuit. */
@@ -132,7 +144,7 @@ export class VoitureEnJeu {
   }
 
   private couleurDe(c: ChoixVoiture): number {
-    return this.teinte ?? PALETTE[c.couleur]?.hex ?? PALETTE[0]!.hex;
+    return PALETTE[c.couleur]?.hex ?? PALETTE[0]!.hex;
   }
 
   private peindre(v: Voiture) {
@@ -157,7 +169,7 @@ export class VoitureEnJeu {
       .then(([plan, mat]) => {
         if (this.enCours !== cle) return; // un autre choix est passé entre-temps
         this.enCours = null;
-        this.prete = { cle, voiture: this.construire(plan, c, palier, mat, retouche), fantome: construireFantome(plan, TEINTE_FANTOME) };
+        this.prete = { cle, voiture: this.construire(plan, c, palier, mat, retouche), choix: c };
         if (this.o.peutChanger()) this.adopter(this.prete);
       })
       .catch((e: unknown) => {
@@ -168,26 +180,21 @@ export class VoitureEnJeu {
       });
   }
 
-  private adopter(p: { cle: string; voiture: Voiture; fantome: CarModel }) {
-    const vieille = { voiture: this.voiture, fantome: this.fantome };
+  private adopter(p: { cle: string; voiture: Voiture; choix: ChoixVoiture }) {
+    const vieille = { voiture: this.voiture };
     this.voiture = p.voiture;
-    this.fantome = p.fantome;
+    this.vue = { ...p.choix };
     this.cle = p.cle;
     this.prete = null;
     this.peindre(this.voiture);
     this.voiture.nuit(this.nuitPeinte);
     this.stats.remplacees++;
     this.stats.remplaceeA = performance.now();
-    this.o.adopter(p.voiture, p.fantome);
+    this.o.adopter(p.voiture);
     this.liberer(vieille);
   }
 
-  private liberer(p: { voiture: Voiture; fantome: CarModel }) {
+  private liberer(p: { voiture: Voiture }) {
     p.voiture.dispose();
-    p.fantome.group.traverse((o) => {
-      const m = o as { geometry?: { dispose(): void }; material?: { dispose(): void } };
-      m.geometry?.dispose();
-      m.material?.dispose();
-    });
   }
 }

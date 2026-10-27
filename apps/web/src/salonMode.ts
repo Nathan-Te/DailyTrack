@@ -1,5 +1,6 @@
 import { salonSessionAt, salonSessionEnd } from "@cdj/sim";
 import { DEMO_BASE, apiBase, type ApiResult } from "./api";
+import { lireChoix, type ChoixVoiture } from "./voiture/choix";
 import { messageErreur, nomTheme, onLangue, t } from "./i18n";
 import { getName, getPlayerId } from "./identity";
 import {
@@ -73,6 +74,8 @@ export interface SalonRunResult {
   splits: number[];
   respawns: number;
   replay: string;
+  /** Lot 51 : la voiture de cette course (celle qu'on voit), jointe à l'envoi et montrée au fantôme « ton tour ». */
+  voiture?: ChoixVoiture;
 }
 
 export interface SalonBootError {
@@ -105,7 +108,7 @@ export class SalonController {
   circuit: LoadedSalonCircuit;
   board: SalonBoard | null = null;
   /** Ton meilleur tour de la session (en mémoire : le Salon ne touche pas aux records). */
-  best: { ms: number; replay: string; splits: number[] } | null = null;
+  best: { ms: number; replay: string; splits: number[]; voiture?: ChoixVoiture } | null = null;
   ghostMode: SalonGhostMode = "all";
   players = 0;
   lastError = "";
@@ -321,14 +324,14 @@ export class SalonController {
     const entries: GhostEntry[] = [];
     for (const w of wanted) {
       const gh = this.ghostCache.get(w.key);
-      if (gh) entries.push({ key: w.key, rank: w.rank, name: w.rank === null ? t("commun.toi") : gh.name, ms: gh.ms, replay: gh.replay });
+      if (gh) entries.push({ key: w.key, rank: w.rank, name: w.rank === null ? t("commun.toi") : gh.name, ms: gh.ms, replay: gh.replay, voiture: lireChoix(gh.voiture) ?? undefined });
     }
     this.pushGhosts(entries);
   }
 
   private pushGhosts(others: GhostEntry[]): void {
     const entries = [...others];
-    if (this.best) entries.push({ key: `mine:${this.best.ms}`, rank: null, name: t("commun.toi"), ms: this.best.ms, replay: this.best.replay });
+    if (this.best) entries.push({ key: `mine:${this.best.ms}`, rank: null, name: t("commun.toi"), ms: this.best.ms, replay: this.best.replay, voiture: this.best.voiture });
     const signature = entries.map((e) => e.key).join("|");
     if (signature === this.ghostSignature) return;
     this.ghostSignature = signature;
@@ -372,7 +375,7 @@ export class SalonController {
   /** Ta course est finie : est-ce ton meilleur tour de la session ? (le premier temps l'est toujours) */
   recordRun(r: SalonRunResult): boolean {
     if (this.best && r.ms >= this.best.ms) return false;
-    this.best = { ms: r.ms, replay: r.replay, splits: r.splits };
+    this.best = { ms: r.ms, replay: r.replay, splits: r.splits, voiture: r.voiture };
     this.ghostSignature = ""; // ton tour change : le prochain départ le prend
     void this.refreshGhosts();
     return true;
@@ -386,7 +389,7 @@ export class SalonController {
   /** Envoie la course ; le serveur la rejoue et répond avec SON temps et ta place. */
   submit(r: SalonRunResult, name: string): Promise<ApiResult<SalonSubmitResult>> {
     this.stats.submits++;
-    const p = this.api.submit(r.session, this.playerId, name, r.replay).then((res) => {
+    const p = this.api.submit(r.session, this.playerId, name, r.replay, r.voiture).then((res) => {
       if (res.ok && this.old && r.session === this.old.session) {
         this.old.board = res.data.board; // course terminée juste avant la fin : elle monte au podium
         if (this.state === "podium") this.drawPodium(this.podiumLeft());

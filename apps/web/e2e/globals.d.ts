@@ -122,6 +122,9 @@ interface CdjDebug {
     garage: { regardee: string; debloquees: string[]; horsLigne: boolean; statut: unknown } | null;
     /** Le fantôme du record est-il dessiné (dernière image) ? */
     fantome: boolean;
+    /** Lot 51 : le modèle du fantôme affiché (celui de la voiture de sa course) et la voiture qu'on voit (celle qui part avec le temps, ou celle d'une rediffusion regardée). */
+    fantomeVoiture: string;
+    affichee: { id: string; couleur: number; motif: string; teinteMotif: number };
   };
   /** Lot 47 : le post-traitement du palier 3 (ordinateur) — voulu par la scène, permis par l'appareil, allumé, ce qui l'a coupé ; essais : `echouer(n)`, `chaine` (lecture). */
   post: {
@@ -175,8 +178,10 @@ interface CdjDebug {
   };
   /** Lot 43 : les feux de départ, lus dans l'état du décompte. */
   feux: { rouges: number; vert: boolean };
+  /** Lot 51 : la résolution — le tampon, la densité, les cibles de la chaîne (la scène : largeur, hauteur, échantillons ; le halo) et le FXAA. */
+  resolution: { tampon: [number, number]; densite: number; sceneCible: [number, number, number] | null; haloCibles: [number, number][]; fxaa: boolean };
   /** Rendu (lot 23) : qualité, ombres, phares, halos, décor dense, panneaux, brume. */
-  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; pas?: Record<string, Record<string, unknown>>; programs: number; textures: number; calls: number; triangles: number; renderMs: number; renderFrames: number; moteurImages: number };
+  render: { quality: number; shadowMap: number; headlights: number; halos: { count: number; visible: boolean }; denseDecor: boolean; decor?: boolean; hills: boolean; signs: number; fog: { near: number; far: number } | null; feux?: { rouges: number; vert: boolean }; chrono?: number; pas?: Record<string, Record<string, unknown>>; programs: number; textures: number; calls: number; triangles: number; renderMs: number; renderFrames: number; moteurImages: number };
   /** Caméra active (lot 23). */
   camera: { name: string; carVisible: boolean; fov: number };
   cycleCamera(): void;

@@ -9,7 +9,7 @@ import { geometrieP1 } from "../src/scene/composerP1";
 import { PAS, PAS_IDS } from "../src/scene/paliers";
 import { POST_3 } from "../src/scene/themesPost";
 import { THEMES_3 } from "../src/scene/themes3";
-import { FORME_JEU, PIXELS_MSAA, SEUIL_HALO_NUIT, avecHalo, echelleScene, formeDuJeu, noyau, octetsParPixel } from "../src/scene/post";
+import { DENSITE_MAX, DENSITE_SANS_FXAA, FORME_JEU, PIXELS_MSAA, SEUIL_HALO_NUIT, avecHalo, densiteDeRendu, formeDuJeu, fxaaVoulu, noyau, octetsParPixel } from "../src/scene/post";
 import { SORTIE_LINEAIRE } from "../src/scene/socle";
 import { GardePost, PostJeu } from "../src/scene/postJeu";
 import { NIVEAU_DU_CHOIX, chaineAuChargement, palierAuChargement, passesPermises, type Appareil } from "../src/qualite";
@@ -69,7 +69,7 @@ describe("lot 50 : la mémoire des cibles", () => {
 /** Un faux moteur de rendu : de quoi construire la chaîne et écouter la perte du contexte (le dessin n'est pas essayé). */
 function fauxRenderer() {
   const toile = new EventTarget();
-  return { renderer: { domElement: toile, getDrawingBufferSize: (v: Vector2) => v.set(640, 360), info: {} } as unknown as WebGLRenderer, toile };
+  return { renderer: { domElement: toile, getDrawingBufferSize: (v: Vector2) => v.set(640, 360), getPixelRatio: () => 1, info: {} } as unknown as WebGLRenderer, toile };
 }
 const unCamera = new PerspectiveCamera();
 
@@ -238,10 +238,19 @@ describe("lot 50 : ce que le premier rapport du banc a changé (Iris Xe, 2560 ×
     expect(unreal, "si three.js change sa composition, celle-ci est à revoir").toContain("vec3 bloom = 3.0 * bloomStrength * (");
     expect(unreal).toContain("float bloomAlpha = max( bloom.r, max( bloom.g, bloom.b ) );");
   });
-  it("le plafond de pixels de la scène : une échelle, 1 sous le plafond", () => {
-    expect(echelleScene(1920, 1080, 0)).toBe(1);
-    expect(echelleScene(1920, 1080, 2_073_600)).toBe(1);
-    expect(echelleScene(2560, 1440, 2_073_600)).toBeCloseTo(0.75, 5);
-    expect(FORME_JEU.pixelsMax, "rapport 2 du banc : un 1080p").toBe(1920 * 1080);
+  it("lot 51 : la scène est à la résolution native — plus de plafond de pixels, de mise à l'échelle ni de cible plus petite que le tampon", () => {
+    expect(FORME_JEU).not.toHaveProperty("pixelsMax");
+    expect(post, "la cible de la scène a la taille du tampon : aucune échelle").not.toMatch(/pixelsMax|echelleScene|PIXELS_CHAINE|get echelle/);
+    expect(readFileSync(join(SRC, "scene/postJeu.ts"), "utf8"), "plus d'échelle dans le jeu").not.toMatch(/echelle/);
+    const main = readFileSync(join(SRC, "main.ts"), "utf8");
+    expect(main, "la densité du moteur est celle de l'appareil, plafonnée à 2 (DENSITE_MAX), comme avant le lot 50").toContain(`renderer.setPixelRatio(Math.min(window.devicePixelRatio, ${DENSITE_MAX}));`);
+    expect(main).not.toMatch(/echelleImage/);
+  });
+  it("lot 51 : la densité de dessin (celle de l'appareil, plafonnée à 2) et le FXAA coupé à partir de 1,75", () => {
+    expect([1, 1.25, 1.5, 2, 2.5, 3].map(densiteDeRendu)).toEqual([1, 1.25, 1.5, 2, 2, 2]);
+    expect(densiteDeRendu(0), "une densité absente ou nulle : 1").toBe(1);
+    expect([1, 1.25, 1.5, 1.74].map(fxaaVoulu)).toEqual([true, true, true, true]);
+    expect([1.75, 2].map(fxaaVoulu), "à cette finesse le FXAA floute plus qu'il n'aide").toEqual([false, false]);
+    expect(DENSITE_SANS_FXAA).toBe(1.75);
   });
 });

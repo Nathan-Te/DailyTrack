@@ -1,6 +1,7 @@
 // Lot 47 — **le post-traitement du jeu** (palier 3, ordinateur seulement), chargé à la demande (`PAS_DU_JEU.post`, un `import()`) : le halo des lumières fortes
 // (la Nuit et le Néon seulement depuis le lot 50), l'étalonnage de chaque thème et l'anticrénelage FXAA. Lot 50 : la chaîne de `post.ts` (une seule passe de
-// fin, une cible de 4 octets par pixel, le halo sans passe à la taille de l'écran, la scène plafonnée à 2,1 millions de pixels).
+// fin, une cible de 4 octets par pixel, le halo sans passe à la taille de l'écran). Lot 51 : la scène est à la résolution native (plus de plafond de pixels), le FXAA
+// est coupé à partir de la densité 1,75.
 // **Mode copie** (lot 50) : un moteur créé sans multi-échantillonnage (la chaîne était voulue au chargement) qui n'a plus la chaîne dessine quand même par elle,
 // sans halo ni étalonnage (`COPIE`) : la scène, la tonalité et le FXAA — jamais une image crénelée. **Aucune de ces passes sur un téléphone** : `main.ts` ne demande ce module que
 // si `passesPermises` (qualite.ts : un ordinateur, des demi-flottants rendables, 4 Go) et que la scène est au palier 3 ; le réglage « Maximale » n'y change rien.
@@ -15,7 +16,7 @@
 import { Vector2, type Object3D, type PerspectiveCamera, type WebGLRenderer } from "three";
 import type { PaletteName } from "@cdj/sim";
 import { brancherPas } from "./socle";
-import { ChainePost, avecHalo, type ReglagesPost } from "./post";
+import { ChainePost, avecHalo, fxaaVoulu, type ReglagesPost } from "./post";
 
 export { ChainePost, formeDuJeu } from "./post";
 import { POST_3 } from "./themesPost";
@@ -38,8 +39,8 @@ export interface Chaine {
   triangles: number;
   /** La cible de la scène (`?debug` : ses échantillons). */
   scene: { samples: number } | null;
-  /** Lot 50 : l'échelle de la scène par rapport à l'écran (plafond de pixels) ; absente : 1. */
-  readonly echelle?: number;
+  /** Lot 51 : la taille de chaque cible (pixels ; la scène : largeur, hauteur, échantillons), pour `?debug`. */
+  tailles?(): { scene: [number, number, number] | null; halo: [number, number][] };
   rendre(scene: Object3D, camera: PerspectiveCamera, w: number, h: number, r: ReglagesPost): boolean;
   octets(r: Pick<ReglagesPost, "halo" | "theme">): number;
   preparer?(scene: Object3D, camera: PerspectiveCamera, w: number, h: number, r: Omit<ReglagesPost, "exposition">): Promise<void>;
@@ -94,9 +95,19 @@ export class PostJeu {
     return this.vivante;
   }
 
-  /** Lot 50 : l'échelle de la scène par rapport à l'écran (1 sans plafond de pixels) : la taille à l'écran de ce qui est dessiné en pixels s'y règle. */
-  get echelle(): number {
-    return this.vivante ? (this.chaine.echelle ?? 1) : 1;
+  /** Lot 51 : les parties de la chaîne telles qu'elles sont dessinées — le FXAA coupé à partir de la densité 1,75 (il floute plus qu'il n'aide). */
+  private effectives(): PartiesPost {
+    return { ...this.parties, anticrenelage: this.parties.anticrenelage && fxaaVoulu(this.renderer.getPixelRatio()) };
+  }
+
+  /** Lot 51 : le FXAA est-il dessiné (voulu, et la densité de dessin sous 1,75) ? (`?debug`) */
+  get fxaaActif(): boolean {
+    return this.vivante && this.effectives().anticrenelage;
+  }
+
+  /** Lot 51 : la taille de chaque cible de la chaîne (`?debug`). */
+  tailles(): { scene: [number, number, number] | null; halo: [number, number][] } | null {
+    return this.vivante ? this.chaine.tailles?.() ?? null : null;
   }
 
   /** Lot 50 : le halo est-il dessiné (la Nuit et le Néon seulement, et pas coupé) ? */
@@ -109,7 +120,7 @@ export class PostJeu {
     if (!this.vivante) return false;
     this.palette = palette;
     const d = this.renderer.getDrawingBufferSize(tampon);
-    const r: ReglagesPost = { ...this.parties, theme: POST_3[palette], exposition };
+    const r: ReglagesPost = { ...this.effectives(), theme: POST_3[palette], exposition };
     const ok = this.forcerEchec > 0 ? (this.forcerEchec--, false) : this.chaine.rendre(scene, camera, d.x, d.y, r);
     if (this.garde.image(ok)) {
       this.lacher();
@@ -122,7 +133,7 @@ export class PostJeu {
   preparer(scene: Object3D, camera: PerspectiveCamera, palette: PaletteName): Promise<void> {
     if (!this.vivante || !this.chaine.preparer) return Promise.resolve();
     const d = this.renderer.getDrawingBufferSize(tampon);
-    return this.chaine.preparer(scene, camera, d.x, d.y, { ...this.parties, theme: POST_3[palette] }).catch(() => undefined);
+    return this.chaine.preparer(scene, camera, d.x, d.y, { ...this.effectives(), theme: POST_3[palette] }).catch(() => undefined);
   }
 
   /** Mémoire des cibles (octets, calculée), pour `?debug`. */
