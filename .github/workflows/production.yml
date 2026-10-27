@@ -80,6 +80,7 @@ jobs:
       instant: ${{ steps.bascule.outputs.instant }}
       ci_reprise: ${{ steps.ci.outputs.reprise }}
       ci_run: ${{ steps.ci.outputs.run }}
+      ci_appele: ${{ steps.ci.outputs.appele }}
     steps:
       - name: Qui, où, quel mode
         env:
@@ -226,9 +227,10 @@ jobs:
           SHA: ${{ needs.verifier.outputs.sha }}
           REPRISE: ${{ needs.verifier.outputs.ci_reprise }}
           RUN_REPRIS: ${{ needs.verifier.outputs.ci_run }}
+          APPELE: ${{ needs.verifier.outputs.ci_appele }}
           ECHECS: ${{ needs.ci.outputs.echecs }}
         run: |
-          if [ "$REPRISE" = true ]; then args=(--reprise "$RUN_REPRIS"); else args=(--run "$GITHUB_RUN_ID"); fi
+          if [ "$REPRISE" = true ]; then args=(--reprise "$RUN_REPRIS"); [ "$APPELE" != true ] || args+=(--appele); else args=(--run "$GITHUB_RUN_ID"); fi
           node scripts/ci-complete.mjs verdict "$GITHUB_REPOSITORY" "$SHA" "${args[@]}" --echecs-e2e "${ECHECS:-[]}" --resume "$GITHUB_STEP_SUMMARY" --sortie "$GITHUB_OUTPUT"
 
   # 3. Figer avec le code EN PRODUCTION, puis prouver que rien de ce qui précède la bascule ne change (lots R6 et R11).

@@ -6,7 +6,7 @@
 // jours figés) non plus : sa matrice n'a pas de job `e2e-parts`.
 //   GITHUB_TOKEN=… node scripts/ci-complete.mjs reprise <owner/dépôt> <sha> [--sortie <fichier>]
 //     → un run complet VERT existe-t-il déjà pour ce commit exact ? `reprise=true|false`, `run`, `url`, `duree` (jamais en échec : sans réponse, on relance).
-//   GITHUB_TOKEN=… node scripts/ci-complete.mjs verdict <owner/dépôt> <sha> (--run <id du run courant> | --reprise <id>) [--echecs-e2e <json>] [--resume f] [--sortie f]
+//   GITHUB_TOKEN=… node scripts/ci-complete.mjs verdict <owner/dépôt> <sha> (--run <id du run courant> | --reprise <id> [--appele]) [--echecs-e2e <json>] [--resume f] [--sortie f]
 //     → code 0 si la CI complète (celle du bouton ou celle reprise) est verte ; 1 sinon, avec les jobs et tests rouges et la phrase à suivre.
 //   GITHUB_TOKEN=… node scripts/ci-complete.mjs statuts <owner/dépôt> <sha> test,e2e [--attente-max <minutes>]
 //     → attend que les statuts nommés du commit soient finis ; code 0 s'ils sont tous verts (le commit des jours figés avant sa fusion).
@@ -107,7 +107,7 @@ async function reprise(repo, sha, token, sortie) {
       if (jugerJobs(jobs).state !== "vert") continue;
       const duree = dureeMin(jobs);
       console.log(`CI complète verte trouvée : run ${run.id} (${run.event}) ${run.html_url}`);
-      ecrire(sortie, ["reprise=true", `run=${run.id}`, `url=${run.html_url}`, `duree=${duree ?? ""}`]);
+      ecrire(sortie, ["reprise=true", `run=${run.id}`, `appele=${run.appele}`, `url=${run.html_url}`, `duree=${duree ?? ""}`]);
       return;
     }
     console.log(`aucun run complet vert pour ${sha.slice(0, 7)} : le bouton lance la CI complète`);
@@ -119,7 +119,9 @@ async function reprise(repo, sha, token, sortie) {
 
 async function verdict(repo, sha, token, opt) {
   const id = opt("--reprise") || opt("--run");
-  const appele = !opt("--reprise");
+  // Le run du bouton (courant, ou un run de production.yml repris) : ses jobs de CI s'appellent « ci / … » ; un run de ci.yml repris : sans préfixe.
+  const reprise = Boolean(opt("--reprise"));
+  const appele = !reprise || argv.includes("--appele");
   const url = `https://github.com/${repo}/actions/runs/${id}`;
   let jobs = [];
   let v;
@@ -137,9 +139,9 @@ async function verdict(repo, sha, token, opt) {
     /* sortie illisible : les jobs rouges suffisent */
   }
   const duree = dureeMin(jobs);
-  const texte = resumeVerdict({ ...v, echecsE2e, url, duree, reprise: !appele, sha });
+  const texte = resumeVerdict({ ...v, echecsE2e, url, duree, reprise, sha });
   if (opt("--resume")) appendFileSync(opt("--resume"), texte);
-  ecrire(opt("--sortie"), [`etat=${v.state}`, `url=${url}`, `duree=${duree ?? ""}`, `qui=${appele ? "relancée" : "reprise"}`]);
+  ecrire(opt("--sortie"), [`etat=${v.state}`, `url=${url}`, `duree=${duree ?? ""}`, `qui=${reprise ? "reprise" : "relancée"}`]);
   process.stdout.write(texte);
   if (v.state !== "vert") console.log(`::error title=CI complète rouge::${PHRASE_ROUGE} : ${url}`);
   return v.state === "vert" ? 0 : 1;
