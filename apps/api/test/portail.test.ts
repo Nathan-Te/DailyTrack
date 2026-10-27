@@ -27,12 +27,16 @@ let track: { code: string; finishMs: number };
 beforeAll(() => {
   J = dailyLevel(TODAY);
   lives = [];
-  for (const a of demoAttempts(J.level, J.replay, 0x5eed, { attempts: 40 }).filter((x) => x.end === "arrivée")) {
-    const r = replayAttempt(J.level, a.replay, J.id);
-    if (r.finished && r.time > J.authorTicks) {
-      jumpRun = { code: encodeReplay(a.replay), ticks: r.time };
-      break;
+  // Lot 26 : le niveau du jour (g20) peut n'offrir aucun essai fictif plus lent que l'auteur avec la première graine : on en essaie quelques-unes (le contrat est « une course qui arrive, plus lente »).
+  for (const seed of [0x5eed, 0x5eee, 0x5eef, 0x5ef0, 0x5ef1, 0x5ef2]) {
+    for (const a of demoAttempts(J.level, J.replay, seed, { attempts: 40 }).filter((x) => x.end === "arrivée")) {
+      const r = replayAttempt(J.level, a.replay, J.id);
+      if (r.finished && r.time > J.authorTicks) {
+        jumpRun = { code: encodeReplay(a.replay), ticks: r.time };
+        break;
+      }
     }
+    if (jumpRun) break;
   }
   for (const a of demoAttempts(J.level, J.replay, 0x11fe, { attempts: 40, maxLives: 8 })) {
     for (const life of replayAttempt(J.level, a.replay, J.id).lives) {
