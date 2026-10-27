@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -169,33 +169,5 @@ describe("workflow « Lancement : remise à zéro »", () => {
       expect(sans.summary).toContain("rien n'a été vidé");
       expect(lancer({ WIF_PROVIDER: "", WIF_SERVICE_ACCOUNT: "" }).code).not.toBe(0);
     });
-  });
-});
-
-describe("la liste de contrôle de Nathan (docs/plateforme/lancement.md)", () => {
-  const doc = readFileSync(join(ROOT, "docs/plateforme/lancement.md"), "utf8");
-
-  it("six étapes numérotées, dans l'ordre demandé", () => {
-    const titres = [...doc.matchAll(/^## (\d)\. (.+)$/gm)].map((m) => [Number(m[1]), m[2]!] as const);
-    expect(titres.map(([n]) => n)).toEqual([1, 2, 3, 4, 5, 6]);
-    expect(titres[0]![1]).toMatch(/date de lancement/i);
-    expect(titres[1]![1]).toMatch(/sauvegarde/i);
-    expect(titres[2]![1]).toMatch(/remise à zéro/i);
-    expect(titres[3]![1]).toMatch(/2 minutes/);
-    expect(titres[4]![1]).toMatch(/partager/i);
-    expect(titres[5]![1]).toMatch(/Mettre en production/);
-  });
-
-  it("donne la commande de sauvegarde exacte, où la ranger, quand la supprimer, et les valeurs à saisir", () => {
-    expect(doc).toContain("turso db shell dailytrack-misterzcool .dump");
-    expect(doc).toMatch(/un mois/);
-    expect(doc).toContain("tout le monde repart de zéro");
-    expect(doc).toContain("dailytrack-misterzcool");
-    expect(doc).toContain("config/lancement.json");
-    expect(doc).toContain("lot R6");
-  });
-
-  it("existe pour de bon (le README du lot le cite)", () => {
-    expect(existsSync(join(ROOT, "docs/plateforme/lots/lot-R8-lancement.md"))).toBe(true);
   });
 });

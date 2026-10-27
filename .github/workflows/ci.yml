@@ -62,7 +62,7 @@ jobs:
         run: |
           npx vitest run --project sqlite $FICHIERS
           api=$(printf '%s\n' $FICHIERS | grep '^apps/api/test/' || true)
-          if [ -n "$api" ]; then npx vitest run --project libsql $api; fi
+          if [ -n "$api" ]; then npx vitest run --project libsql --passWithNoTests $api; fi
       - run: npm run build
         if: matrix.verif
         env:
@@ -128,6 +128,7 @@ jobs:
       unit_matrice: ${{ steps.scope.outputs.unit_matrice }}
       e2e_pr_actif: ${{ steps.scope.outputs.e2e_pr_actif }}
       e2e_pr_matrice: ${{ steps.scope.outputs.e2e_pr_matrice }}
+      e2e_complet_matrice: ${{ steps.scope.outputs.e2e_complet_matrice }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -149,15 +150,15 @@ jobs:
           if [ -z "$full" ]; then
             { git fetch --no-tags origin "$BASE" && git diff --name-only "origin/$BASE...HEAD" > "$RUNNER_TEMP/files.txt"; } || full="--full"
           fi
-          # pr (filtré, Chromium, quarantaine non bloquante) | complet (main, « Run workflow ») | nuit.
-          mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = schedule ] && mode=nuit
+          # pr (filtré, Chromium, quarantaine non bloquante) | main (chaque fusion : l'Essentiel de tout, lot R13) | complet (« Run workflow ») | nuit.
+          mode=pr; [ -n "$full" ] && mode=complet; [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ] && mode=main; [ "$EVENT" = schedule ] && mode=nuit
           echo "mode=$mode" >> "$GITHUB_OUTPUT"
           node scripts/ci-scope.mjs $full < "$RUNNER_TEMP/files.txt" | tee -a "$GITHUB_OUTPUT" > "$RUNNER_TEMP/scope.txt"
           node scripts/ci-zones.mjs --mode "$mode" < "$RUNNER_TEMP/files.txt" >> "$GITHUB_OUTPUT" 2> "$RUNNER_TEMP/zones.txt"
           {
             echo "### Portée de la CI"
             echo
-            echo "Événement : \`$EVENT\` — mode \`$mode\` ${full:+(CI complète : aucun filtre, trois navigateurs)}"
+            echo "Événement : \`$EVENT\` — mode \`$mode\` ${full:+(CI complète : main = Essentiel de tous les specs ; complet et nuit = tout ; Firefox et WebKit = petit ensemble)}"
             echo
             echo '```'; cat "$RUNNER_TEMP/zones.txt"; echo; cat "$RUNNER_TEMP/scope.txt"; echo '```'
             echo "Fichiers changés : $(wc -l < "$RUNNER_TEMP/files.txt")"
@@ -175,31 +176,16 @@ jobs:
   e2e-parts:
     needs: scope
     if: needs.scope.outputs.mode != 'pr'
-    name: e2e-parts (${{ matrix.suite == 'jump' && 'jump ' || '' }}${{ matrix.browser }} ${{ matrix.shard }})
+    name: e2e-parts (${{ matrix.suite == 'jump' && 'jump ' || '' }}${{ matrix.browser }}${{ matrix.suite == 'navigateurs' && ', petit ensemble' || format(' {0}', matrix.shard) }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { browser: chromium, shard: "1/8" }
-          - { browser: chromium, shard: "2/8" }
-          - { browser: chromium, shard: "3/8" }
-          - { browser: chromium, shard: "4/8" }
-          - { browser: chromium, shard: "5/8" }
-          - { browser: chromium, shard: "6/8" }
-          - { browser: chromium, shard: "7/8" }
-          - { browser: chromium, shard: "8/8" }
-          - { browser: firefox, shard: "1/2" }
-          - { browser: firefox, shard: "2/2" }
-          - { browser: webkit, shard: "1/2" }
-          - { browser: webkit, shard: "2/2" }
-          # Lot R3 : trois parts Chromium pour DailyJump (deux avant : 3 min 31 s pour la plus longue, run 39316002232).
-          - { suite: jump, shard: "1/3", browser: chromium }
-          - { suite: jump, shard: "2/3", browser: chromium }
-          - { suite: jump, shard: "3/3", browser: chromium }
-          - { suite: jump, shard: "1/1", browser: firefox }
-          - { suite: jump, shard: "1/1", browser: webkit }
+      # Lot R13 (docs/tests.md) : la matrice vient de `scope` (scripts/ci-zones.mjs, `matriceComplete`) — `main` : Chromium en 3 parts et DailyJump en 1, l'Essentiel
+      # seulement (`--essentiel`, `--grep-invert @regression`) ; `complet` et `nuit` : tout, Chromium en 6 parts. Firefox et WebKit : un job chacun, le petit
+      # ensemble `@navigateurs` des deux jeux (rediffusion bit à bit, chargement, une partie ; `grep` de leurs projets Playwright). Avant le lot R13 : 17 jobs,
+      # dont 6 de Firefox et WebKit pour des specs sautés aux trois quarts (sans WebGL).
+      matrix: ${{ fromJSON(needs.scope.outputs.e2e_complet_matrice) }}
     env:
       E2E_ALL_BROWSERS: "1"
     steps:
@@ -241,37 +227,57 @@ jobs:
       - name: Nom de la part
         run: |
           blob="$(echo '${{ matrix.suite == 'jump' && 'jump-' || '' }}${{ matrix.browser }}-${{ matrix.shard }}' | sed 's#/#sur#')"
+          # Lot R13 : `--essentiel` (CI de main) écarte les specs « Régression » ; `--grep-invert` les tests `@regression` des autres.
+          if [ "${{ matrix.essentiel }}" = true ]; then echo "PARTS_OPT=--essentiel" >> "$GITHUB_ENV"; echo "PW_OPT=--grep-invert=@regression" >> "$GITHUB_ENV"; fi
           echo "blob=$blob" >> "$GITHUB_ENV"
-          echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
+          # Le petit ensemble (lot R13) nomme le rapport de chacune de ses deux étapes.
+          [ "${{ matrix.suite }}" = navigateurs ] || echo "E2E_BLOB_NAME=report-$blob.zip" >> "$GITHUB_ENV"
       # Chromium (retouche 31b) : parts composées par DURÉE (scripts/e2e-parts.mjs, apps/web/e2e/durees.json) et UN test à la fois.
       # Le runner a 2 cœurs : deux pages en WebGL logiciel côte à côte s'y affament (miniatures + spectateur : × 3 à × 6 sur les durées),
-      # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté. Firefox et WebKit (rapides, sans WebGL lourd) gardent `--shard`.
+      # et `--shard` (coupe au nombre de tests) changeait de voisins à chaque spec ajouté.
       - name: Tests e2e (${{ matrix.browser }}, part ${{ matrix.shard }})
-        if: matrix.suite != 'jump'
+        if: matrix.suite != 'jump' && matrix.suite != 'navigateurs'
         run: |
-          if [ "${{ matrix.browser }}" = chromium ]; then
-            node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium > "$RUNNER_TEMP/part.txt"
-            npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt"
-          else
-            npm run e2e -w @cdj/web -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}
-          fi
+          node scripts/e2e-parts.mjs ${{ matrix.shard }} chromium $PARTS_OPT > "$RUNNER_TEMP/part.txt"
+          npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt" $PW_OPT
+      # Lot R13 : le petit ensemble `@navigateurs` (la configuration de Playwright filtre Firefox et WebKit) des deux jeux, l'un après l'autre (un rapport chacun).
+      - name: Tests e2e DailyTrack, petit ensemble (${{ matrix.browser }})
+        if: matrix.suite == 'navigateurs'
+        env:
+          E2E_BLOB_NAME: report-${{ matrix.browser }}-web.zip
+        run: npm run e2e -w @cdj/web -- --project=${{ matrix.browser }}
+      - name: Tests e2e DailyJump, petit ensemble (${{ matrix.browser }})
+        if: always() && matrix.suite == 'navigateurs'
+        env:
+          E2E_BLOB_NAME: report-${{ matrix.browser }}-jump.zip
+        run: npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }}
       # DailyJump (lot 3c) : mêmes règles que DailyTrack. Chromium : parts composées par durée (apps/jump/e2e/durees.json) et un test à la fois
-      # (même runner à 2 cœurs, même rendu logiciel) ; Firefox et WebKit : `--shard`. Les outils de mesure et de captures (MESURE, CAPTURES) se
-      # sautent d'eux-mêmes avec leur motif (« outil de mesure : MESURE=1 ») : ni l'un ni l'autre n'est défini ici.
+      # (même runner à 2 cœurs, même rendu logiciel). Les outils de mesure et de captures (MESURE, CAPTURES) ne sont pas listés sans leur variable
+      # (`testIgnore` des configurations de Playwright, lot R13) : ni l'une ni l'autre n'est définie ici.
       - name: Tests e2e DailyJump (${{ matrix.browser }}, part ${{ matrix.shard }})
         if: matrix.suite == 'jump'
         run: |
-          if [ "${{ matrix.browser }}" = chromium ]; then
-            node scripts/e2e-parts.mjs ${{ matrix.shard }} jump-chromium > "$RUNNER_TEMP/part.txt"
-            npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt"
-          else
-            npm run e2e -w @cdj/jump -- --project=jump-${{ matrix.browser }} --shard=${{ matrix.shard }}
-          fi
+          node scripts/e2e-parts.mjs ${{ matrix.shard }} jump-chromium $PARTS_OPT > "$RUNNER_TEMP/part.txt"
+          npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part.txt" $PW_OPT
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        if: always()
+        if: always() && matrix.suite != 'navigateurs'
         with:
           name: blob-${{ env.blob }}
           path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/blob-report/
+          retention-days: 7
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.suite == 'navigateurs'
+        with:
+          name: blob-${{ env.blob }}-web
+          path: apps/web/blob-report/
+          retention-days: 7
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && matrix.suite == 'navigateurs'
+        with:
+          name: blob-${{ env.blob }}-jump
+          path: apps/jump/blob-report/
           retention-days: 7
           if-no-files-found: warn
       # Traces des essais ratés (même ceux d'un test réussi à la relance) : de quoi trouver la cause d'une instabilité.
@@ -279,7 +285,9 @@ jobs:
         if: always()
         with:
           name: resultats-${{ env.blob }}
-          path: ${{ matrix.suite == 'jump' && 'apps/jump' || 'apps/web' }}/test-results/
+          path: |
+            apps/web/test-results/
+            apps/jump/test-results/
           retention-days: 7
           if-no-files-found: ignore
 
@@ -340,14 +348,15 @@ jobs:
           E2E_BLOB_NAME: report-pr-web-${{ strategy.job-index }}.zip
         run: |
           node scripts/e2e-parts.mjs liste chromium $(printf 'web/%s ' $SPECS_WEB) > "$RUNNER_TEMP/part-web.txt"
-          npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part-web.txt"
+          # Lot R13 : les tests `@regression` (famille « Régression », docs/tests.md) ne tournent que dans la CI complète.
+          npm run e2e -w @cdj/web -- --project=chromium --workers=1 --test-list "$RUNNER_TEMP/part-web.txt" --grep-invert=@regression
       - name: Tests e2e DailyJump (Chromium)
         if: always() && matrix.jump != ''
         env:
           E2E_BLOB_NAME: report-pr-jump-${{ strategy.job-index }}.zip
         run: |
           node scripts/e2e-parts.mjs liste chromium $(printf 'jump/%s ' $SPECS_JUMP) > "$RUNNER_TEMP/part-jump.txt"
-          npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part-jump.txt"
+          npm run e2e -w @cdj/jump -- --project=jump-chromium --workers=1 --test-list "$RUNNER_TEMP/part-jump.txt" --grep-invert=@regression
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && matrix.web != ''
         with:

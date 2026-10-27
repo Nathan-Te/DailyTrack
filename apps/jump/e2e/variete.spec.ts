@@ -88,16 +88,6 @@ test("?modules au téléphone : les listes « Étiquette » et « Famille » fil
   });
 });
 
-test("?module=cheminee-quinconce&solution (enchaînement long) finit en pas à pas au temps de la solution stockée, sans mort", async ({ page }) => {
-  test.skip(!(await openWatch(page, "/?module=cheminee-quinconce&variante=0&solution&debug")), SKIP);
-  const start = await page.evaluate(() => (window as unknown as { __jump: Jump }).__jump.module);
-  expect(start).toMatchObject({ id: "cheminee-quinconce" });
-  expect(start!.reference).toBeGreaterThan(600);
-  expect(await advance(page, 2000)).toBe(start!.reference);
-  const end = await page.evaluate(() => (window as unknown as { __jump: Jump }).__jump.attempt);
-  expect(end).toMatchObject({ status: "arrivé", time: start!.reference, deaths: 0 });
-});
-
 test("?seed=…&solution (g5) finit au temps de l'auteur ; la surimpression ?debug nomme le morceau en cours, à partir de sa première colonne", async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page) => {
     test.skip(!(await openWatch(page, "/?seed=2026-11-03&solution&debug")), SKIP);

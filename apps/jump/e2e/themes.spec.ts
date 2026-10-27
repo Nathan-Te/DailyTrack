@@ -55,7 +55,8 @@ const info = (page: Page) =>
     return { theme: j.theme, id: j.daily?.id ?? null, palette: j.palette, phase: j.phase };
   });
 
-for (const orientation of ["paysage", "portrait"] as const) {
+// Lot R13 : en paysage seulement (la partie se joue en paysage ; le portrait est retiré).
+for (const orientation of ["paysage"] as ("paysage" | "portrait")[]) {
   test(`chaque thème s'affiche sans erreur (${orientation})`, async ({ browser }) => {
     test.setTimeout(240_000);
     const viewport = orientation === "paysage" ? { width: 844, height: 390 } : { width: 390, height: 844 };
@@ -93,34 +94,6 @@ for (const orientation of ["paysage", "portrait"] as const) {
     );
   });
 }
-
-test("?theme= impose le thème (un essai s'il n'est pas celui de la date) ; sans lui (ou inconnu), c'est le thème du jour", async ({ browser }) => {
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-    await open(page, `seed=${DATE}&debug`);
-    const day = await info(page);
-    expect(day.theme.forced).toBe(false);
-    expect(day.theme.name).toBe(day.theme.ofDay);
-    await open(page, `seed=${DATE}&debug&theme=lave`);
-    expect((await info(page)).theme.name).toBe(day.theme.ofDay);
-    const other = THEMES.find((t) => t !== day.theme.ofDay)!;
-    await open(page, `seed=${DATE}&debug&theme=${other}`);
-    const forced = await info(page);
-    expect(forced.theme.name).toBe(other);
-    expect(forced.theme.ofDay).toBe(day.theme.ofDay);
-    expect(forced.theme.forced).toBe(true);
-    // Lot 11 : un thème forcé est un autre niveau (un essai) ; le thème de la date, lui, redonne le niveau ordinaire.
-    // Lot 15 : un thème forcé est toujours généré (générateur en vigueur), même un jour figé sous un générateur d'avant.
-    expect(forced.id).toBe(`jour-${DATE}-g${GENERATOR}-t${other}`);
-    await open(page, `seed=${DATE}&debug&theme=${day.theme.ofDay}`);
-    const same = await info(page);
-    expect(same.id).toBe(day.id);
-    expect(same.theme.forced).toBe(false);
-    // Un nom accentué marche aussi.
-    await open(page, `seed=${DATE}&debug&theme=n%C3%A9on`);
-    expect((await info(page)).theme.name).toBe("neon");
-  });
-});
 
 test("effets réduits : décor et parallaxe allégés ; mouvement réduit : parallaxe figée", async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page) => {

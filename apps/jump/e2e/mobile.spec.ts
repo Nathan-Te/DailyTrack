@@ -41,11 +41,11 @@ const JUMP = 4;
 
 const PORTRAIT = { width: 390, height: 844 };
 const LANDSCAPE = { width: 844, height: 390 };
-const SMALL = { width: 320, height: 568 };
+// Lot R13 (docs/tests.md) : le paysage (Jump s'y joue) et le portrait (l'écran qu'on ouvre, avec l'invitation à tourner) ; le petit écran en portrait est
+// retiré, et la logique des doigts (toucher, glisser, bande haute, cadrage) est dans test/touch.test.ts.
 const FORMATS = [
   { name: "portrait", viewport: PORTRAIT },
   { name: "paysage", viewport: LANDSCAPE },
-  { name: "petit écran en portrait", viewport: SMALL },
 ] as const;
 
 /** Ouvre le bac à sable en pas à pas. `extra` : paramètres d'adresse en plus (ex. `&touch=1`). Rend faux si WebGL manque. */
@@ -62,89 +62,7 @@ for (const format of FORMATS) {
   // Points de pose (sous la bande haute) : ← dans le premier quart, → dans le deuxième, saut dans la moitié droite.
   const at = { left: [W * 0.12, H * 0.75], right: [W * 0.37, H * 0.75], jump: [W * 0.75, H * 0.75], band: [W * 0.5, 20] } as const;
 
-  test.describe(format.name, () => {
-    test("toucher → fait avancer le personnage, le saut tenu le fait sauter, lever arrête (pas à pas)", async ({ browser }) => {
-      await withPhone(browser, format.viewport, async (page) => {
-        test.skip(!(await open(page, "&touch=1")) , "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-        const fingers = await Fingers.on(page);
-        const start = await player(page);
-        expect(start.ground).toBe(true);
-
-        await fingers.down(1, ...at.right);
-        expect((await touchView(page)).bits).toBe(RIGHT);
-        const ran = await advance(page, 60);
-        expect(ran.x).toBeGreaterThan(start.x + 3);
-        expect(ran.vx).toBeCloseTo(11, 0);
-
-        // Deuxième doigt : le saut, pendant que la direction reste tenue.
-        await fingers.down(2, ...at.jump);
-        expect((await touchView(page)).bits).toBe(RIGHT | JUMP);
-        const up = await advance(page, 1);
-        expect(up.ground).toBe(false);
-        expect(up.vy).toBeLessThan(0);
-        let top = up.y;
-        for (let i = 0; i < 12; i++) top = Math.min(top, (await advance(page, 1)).y);
-        expect(start.y - top).toBeGreaterThan(1); // le saut tenu monte
-
-        // Lever le doigt de direction : plus de poussée, le personnage ralentit puis s'arrête.
-        await fingers.up(1);
-        expect((await touchView(page)).bits).toBe(JUMP);
-        await fingers.up(2);
-        expect((await touchView(page)).bits).toBe(0);
-        await advance(page, 400);
-        const rest = await player(page);
-        expect(rest.ground).toBe(true);
-        expect(Math.abs(rest.vx)).toBeLessThan(0.01);
-      });
-    });
-
-    test("glisser de ← à → puis ←, sans lever le doigt, change la direction aussitôt ; sortir de la moitié gauche garde la direction", async ({ browser }) => {
-      await withPhone(browser, format.viewport, async (page) => {
-        test.skip(!(await open(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-        const fingers = await Fingers.on(page);
-        await fingers.down(1, ...at.left);
-        expect((await touchView(page)).bits).toBe(LEFT);
-        await fingers.move(1, ...at.right);
-        expect((await touchView(page)).bits).toBe(RIGHT);
-        const moved = await advance(page, 30);
-        expect(moved.vx).toBeGreaterThan(0);
-        await fingers.move(1, W * 0.8, H * 0.75); // dans la moitié du saut : toujours →, pas de saut
-        expect((await touchView(page)).bits).toBe(RIGHT);
-        await fingers.move(1, W * 0.1, H * 0.9);
-        expect((await touchView(page)).bits).toBe(LEFT);
-        expect((await touchView(page)).fingers).toHaveLength(1);
-        await fingers.up(1);
-        expect((await touchView(page)).bits).toBe(0);
-      });
-    });
-
-    test("un doigt posé dans la bande haute ne commande rien", async ({ browser }) => {
-      await withPhone(browser, format.viewport, async (page) => {
-        test.skip(!(await open(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-        const fingers = await Fingers.on(page);
-        await fingers.down(1, W * 0.6, 12);
-        await fingers.move(1, W * 0.6, H * 0.7);
-        expect(await touchView(page)).toMatchObject({ bits: 0, fingers: [] });
-        await fingers.up(1);
-      });
-    });
-
-    test("le bouton « recommencer » ramène au départ", async ({ browser }) => {
-      await withPhone(browser, format.viewport, async (page) => {
-        test.skip(!(await open(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-        const start = await player(page);
-        await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.input(2));
-        await advance(page, 50);
-        expect((await player(page)).x).toBeGreaterThan(start.x + 2);
-        await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.input(null));
-        // Lot I5 : « Tout recommencer » est dans la pause (en haut à gauche) ; la bande haute ne porte plus que la pause.
-        await page.locator("#pausebtn").tap();
-        await page.locator("#menu-restart").tap();
-        await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.ticks === 0);
-        expect((await player(page)).x).toBe(start.x);
-        expect(await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.phase)).toBe("ready");
-      });
-    });
+  test.describe(format.name, { tag: "@regression" }, () => {
 
     test("toutes les cibles font au moins 44 px, réglages ouverts compris", async ({ browser }) => {
       await withPhone(browser, format.viewport, async (page) => {
@@ -223,17 +141,6 @@ for (const format of FORMATS) {
       });
     });
 
-    test("cadrage : paysage de 12 à 14 tuiles de haut, portrait d'au moins 10 tuiles de large", async ({ browser }) => {
-      await withPhone(browser, format.viewport, async (page) => {
-        test.skip(!(await open(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-        const { viewTiles } = await touchView(page);
-        if (W > H) {
-          expect(viewTiles).toBeGreaterThanOrEqual(12);
-          expect(viewTiles).toBeLessThanOrEqual(14);
-        } else expect(viewTiles * (W / H)).toBeGreaterThanOrEqual(10 - 1e-6);
-      });
-    });
-
     test("l'invitation à tourner le téléphone n'apparaît qu'en portrait, sans rien bloquer", async ({ browser }) => {
       await withPhone(browser, format.viewport, async (page) => {
         test.skip(!(await open(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
@@ -253,7 +160,7 @@ for (const format of FORMATS) {
   });
 }
 
-test.describe("réglages au doigt (?debug&tune)", () => {
+test.describe("réglages au doigt (?debug&tune)", { tag: "@regression" }, () => {
   test("le panneau est replié derrière ⚙ ; ouvert, il met la partie en pause et la couche de jeu ne capte plus rien", async ({ browser }) => {
     await withPhone(browser, LANDSCAPE, async (page) => {
       test.skip(!(await open(page, "&touch=1&tune")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
@@ -324,7 +231,7 @@ test.describe("réglages au doigt (?debug&tune)", () => {
   });
 
   test("la surimpression de debug est lisible : sous la bande haute, dans l'écran, sans toucher les boutons", async ({ browser }) => {
-    for (const viewport of [PORTRAIT, LANDSCAPE, SMALL]) {
+    for (const viewport of [LANDSCAPE]) {
       await withPhone(browser, viewport, async (page) => {
         test.skip(!(await open(page, "&touch=1&tune")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
         const debug = (await page.locator("#debug").boundingBox())!;
@@ -358,15 +265,7 @@ test.describe("détection de l'écran tactile", () => {
     });
   });
 
-  test("?touch=0 coupe l'interface tactile, même sur un téléphone", async ({ browser }) => {
-    await withPhone(browser, LANDSCAPE, async (page) => {
-      test.skip(!(await open(page, "&touch=0")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-      expect((await touchView(page)).active).toBe(false);
-      await expect(page.locator("#touch")).toHaveCount(0);
-    });
-  });
-
-  test("?zones=1 dessine les zones et un point par doigt", async ({ browser }) => {
+  test("?zones=1 dessine les zones et un point par doigt", { tag: "@regression" }, async ({ browser }) => {
     await withPhone(browser, LANDSCAPE, async (page) => {
       test.skip(!(await open(page, "&touch=1&zones=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
       await expect(page.locator("#zones .zone")).toHaveCount(4); // bande, ←, →, saut

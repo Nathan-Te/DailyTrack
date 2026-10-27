@@ -156,7 +156,7 @@ test("portail plein (joueur de démonstration) : compte à rebours, Track fini (
   await capture(paysage, "portail-plein-paysage-en");
 });
 
-test("le lien de démonstration demande confirmation quand une autre identité est là ; « Garder mon profil » ne change rien", async ({ browser }) => {
+test("le lien de démonstration demande confirmation quand une autre identité est là ; « Garder mon profil » ne change rien", { tag: "@regression" }, async ({ browser }) => {
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
   await context.addInitScript(() => {
     if (!sessionStorage.getItem("deja")) {
@@ -213,7 +213,7 @@ test("serveur injoignable : cartouches sans statut, compte à rebours sur l'heur
   }
 });
 
-test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, série, statistiques par jeu, langue", async ({ browser }) => {
+test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, série, statistiques par jeu, langue", { tag: "@regression" }, async ({ browser }) => {
   for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
     const page = await avecDemo(await newClockedContext(browser, { ...options, locale: "fr-FR" }));
     await page.locator(".dj-avatar").click();
@@ -236,7 +236,7 @@ test("profil commun (/profil/) : l'avatar y mène ; pseudo, code de transfert, s
   }
 });
 
-test("profil commun : ?retour= ramène au jeu d'où l'on vient (un chemin du site seulement, jamais une adresse extérieure)", async ({ browser }) => {
+test("profil commun : ?retour= ramène au jeu d'où l'on vient (un chemin du site seulement, jamais une adresse extérieure)", { tag: "@regression" }, async ({ browser }) => {
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
   const page = await context.newPage();
   const retour = page.locator(".dj-barre-jeu__retour");

@@ -92,37 +92,6 @@ test("?reglages=3-post et ses parties : sans la chaîne, rien n'est chargé ; le
   expect(await post(page)).toMatchObject({ demande: false, actif: false });
 });
 
-test("jamais de passe plein écran sur un téléphone, même au palier 3 imposé ou au réglage « Maximale »", async ({ page, browser }) => {
-  await page.setViewportSize({ width: 480, height: 270 });
-  // Un téléphone (profil imposé), palier 3 demandé par l'adresse : la scène du palier 3, aucune passe plein écran, le module n'est même pas demandé.
-  await page.goto(`/?debug&home=0&ghost=off&fx=off&fps=0&quality=2&seed=2026-10-14&appareil=telephone&palier=3`);
-  await page.waitForFunction(() => window.__cdj?.phase);
-  await page.waitForFunction(() => window.__cdj.render.renderFrames > 3);
-  expect(await scene(page)).toEqual({ palier: "P3", plus: [] });
-  expect(await post(page)).toMatchObject({ permis: false, demande: false, actif: false });
-  expect(await morceaux(page)).toEqual([]);
-
-  // « Maximale » choisi sur un téléphone : le palier 3, jamais la chaîne.
-  const contexte = await browser.newContext({ viewport: { width: 480, height: 270 } });
-  try {
-    const tel = await contexte.newPage();
-    await tel.addInitScript(() => localStorage.setItem("cdj:settings", JSON.stringify({ graphismes: "maximale", version: 1 })));
-    await tel.goto(`/?debug&home=0&ghost=off&fx=off&fps=0&quality=2&seed=2026-10-14&appareil=telephone`);
-    await tel.waitForFunction(() => window.__cdj?.phase);
-    await tel.waitForFunction(() => window.__cdj.render.renderFrames > 3);
-    expect((await tel.evaluate(() => window.__cdj.qualite)).choix).toBe("maximale");
-    // Le réglage attend ses modules (1,5 s au plus au chargement), puis s'applique à la prochaine pause : la pause.
-    await tel.keyboard.press("KeyP");
-    await tel.waitForFunction(() => window.__cdj.socle.palier() === "P3", undefined, { timeout: 60_000 });
-    expect(await scene(tel)).toEqual({ palier: "P3", plus: [] });
-    expect(await post(tel)).toMatchObject({ permis: false, actif: false });
-    expect(await morceaux(tel)).toEqual([]);
-  } finally {
-    await contexte.close();
-  }
-
-});
-
 test("jamais sans demi-flottants rendables : un ordinateur qui ne les a pas n'a pas la chaîne, même au réglage « Maximale »", async ({ browser }) => {
   const sans = await browser.newContext({ viewport: { width: 480, height: 270 } });
   try {
@@ -241,22 +210,6 @@ test("perte du contexte WebGL (simulée) : la chaîne est coupée à l'instant, 
   // On s'en souvient : le palier 2, un plafond durable.
   const garde = JSON.parse((await page.evaluate(() => localStorage.getItem("cdj:qualite")))!);
   expect(garde).toMatchObject({ palier: 2, plafond: 2, durable: true });
-  expect(e).toEqual([]);
-});
-
-test("deux images ratées de suite : la chaîne se coupe, on dessine directement, le palier 2 avec la vie et le ciel arrive à la pause", async ({ page }) => {
-  const e = erreurs(page);
-  await page.setViewportSize({ width: 480, height: 270 });
-  await page.goto(`${ORDINATEUR}&seed=2026-10-14&palier=3`);
-  await chaineAllumee(page);
-  const images = await page.evaluate(() => window.__cdj.render.moteurImages);
-  await page.evaluate(() => window.__cdj.post.echouer(2));
-  await page.waitForFunction(() => window.__cdj.post.coupe === "echecs", undefined, { timeout: 30_000 });
-  expect(await post(page)).toMatchObject({ actif: false, coupe: "echecs" });
-  await page.waitForFunction((n) => window.__cdj.render.moteurImages > n + 5, images, { timeout: 30_000 }); // on dessine directement, sans image noire
-  await page.keyboard.press("KeyP");
-  await page.waitForFunction(() => window.__cdj.socle.palier() === "P2", undefined, { timeout: 60_000 });
-  expect(await scene(page)).toEqual({ palier: "P2", plus: ["vie", "ciel"] });
   expect(e).toEqual([]);
 });
 

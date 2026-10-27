@@ -7,9 +7,9 @@ import { boxes, expectCentreLibre, expectNoOverlap } from "./layout";
 test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
 test.setTimeout(150_000);
 
+// Lot R13 (docs/tests.md) : deux formats (téléphone en paysage, ordinateur) et le portrait là où l'écran s'y affiche ; 740×360 et 360×640 sont retirés.
 for (const viewport of [
   { width: 844, height: 390 },
-  { width: 740, height: 360 },
 ]) {
   test(`paysage ${viewport.width}×${viewport.height} : titre au départ seulement, aide d'une ligne, commandes par défaut = boutons, centre libre`, async ({ browser }) => {
     const context = await newClockedContext(browser, { viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });

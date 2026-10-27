@@ -62,9 +62,9 @@ async function enPartie(context: BrowserContext, avecBouton = true): Promise<Pag
   return page;
 }
 
+// Lot R13 (docs/tests.md) : deux formats (téléphone en paysage, ordinateur) et le portrait là où l'écran s'y affiche ; 740×360 et 360×640 sont retirés.
 for (const viewport of [
   { width: 844, height: 390 },
-  { width: 740, height: 360 },
 ]) {
   test(`paysage ${viewport.width}×${viewport.height} : en partie, le plein écran est juste après la pause, à 44 px, hors du centre, sans rien chevaucher ; il bascule`, async ({ browser }) => {
     const context = await telephone(browser, viewport);
@@ -107,42 +107,8 @@ for (const viewport of [
   });
 }
 
-test("anglais : « Full screen », « Exit full screen »", async ({ browser }) => {
-  const context = await telephone(browser, { width: 844, height: 390 }, { locale: "en-US" });
-  try {
-    const page = await enPartie(context);
-    await expect(page.locator("#fullscreenbtn")).toHaveAttribute("aria-label", "Full screen");
-    await page.locator("#fullscreenbtn").click();
-    await expect(page.locator("#fullscreenbtn")).toHaveAttribute("aria-label", "Exit full screen");
-  } finally {
-    await context.close();
-  }
-});
-
-test("sans API plein écran ou en mode application : aucun bouton plein écran (ni en partie, ni à l'accueil, ni dans la pause)", async ({ browser }) => {
-  for (const cache of [sansPleinEcran, commeApplication]) {
-    const context = await telephone(browser, { width: 844, height: 390 });
-    try {
-      await cache(context);
-      const page = await enPartie(context, false);
-      await expect(page.locator("#fullscreenbtn")).toBeHidden();
-      await page.locator("#pausebtn").click();
-      await expect(page.locator("#menu")).toBeVisible();
-      await expect(page.locator("#menu-fullscreen")).toBeHidden();
-      await page.goto("/?debug");
-      await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
-      await expect(page.locator("#home")).toBeVisible();
-      await expect(page.locator("#home .dj-plein-ecran")).toBeHidden();
-      await expect(page.locator("#home .dj-astuce")).toHaveCount(0); // ni l'astuce : ce n'est pas un iPhone
-    } finally {
-      await context.close();
-    }
-  }
-});
-
 for (const viewport of [
   { width: 844, height: 390 },
-  { width: 740, height: 360 },
 ]) {
   test(`accueil ${viewport.width}×${viewport.height} : le plein écran est dans la barre des jeux, à côté de la date ; il bascule`, async ({ browser }) => {
     const context = await telephone(browser, viewport);
@@ -175,28 +141,9 @@ for (const viewport of [
   });
 }
 
-test("axe : l'accueil avec son bouton plein écran, la partie avec le sien — aucune violation grave", async ({ browser }) => {
-  const context = await telephone(browser, { width: 844, height: 390 });
-  try {
-    const page = await context.newPage();
-    await page.goto("/?debug");
-    test.skip(!(await hasWebGL(page)), "WebGL indisponible");
-    test.skip(!(await pleinEcranDisponible(page)), SANS_API);
-    await page.waitForFunction(() => (window as unknown as { __jump?: J }).__jump?.home.ready === true);
-    await expect(page.locator("#home .dj-plein-ecran")).toBeVisible();
-    await auditAxe(page, "jump-plein-ecran-accueil");
-    await page.locator("#home-play").click();
-    await expect(page.locator("#home")).toBeHidden();
-    await expect(page.locator("#fullscreenbtn")).toBeVisible();
-    await auditAxe(page, "jump-plein-ecran-partie");
-  } finally {
-    await context.close();
-  }
-});
-
 for (const [langue, locale, ligne, fermer] of [
+  // Lot R13 : le français seulement (l'anglais des mêmes clés : packages/ui/test/catalogues.test.ts et langue.spec.ts).
   ["fr", "fr-FR", "Pour jouer en plein écran : Partager › Sur l'écran d'accueil", "Fermer cette astuce"],
-  ["en", "en-US", "To play full screen: Share › Add to Home Screen", "Dismiss this tip"],
 ] as const) {
   test(`iPhone (${langue}) : pas de bouton plein écran ; la ligne « Partager › Sur l'écran d'accueil » s'affiche une fois, se ferme et ne revient pas`, async ({ browser }) => {
     const context = await telephone(browser, { width: 844, height: 390 }, { locale, userAgent: IPHONE_UA });

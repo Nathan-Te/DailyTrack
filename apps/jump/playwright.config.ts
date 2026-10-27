@@ -23,12 +23,19 @@ const projects: Project[] = [
     },
   },
 ];
+// Lot R13 (docs/tests.md) : Firefox et WebKit ne lancent que le petit ensemble étiqueté `@navigateurs` ; Chromium porte le reste.
 if (process.env.E2E_ALL_BROWSERS) {
-  projects.push({ name: name("firefox"), use: { ...devices["Desktop Firefox"] } }, { name: name("webkit"), use: { ...devices["Desktop Safari"] } });
+  projects.push(
+    { name: name("firefox"), grep: /@navigateurs/, use: { ...devices["Desktop Firefox"] } },
+    { name: name("webkit"), grep: /@navigateurs/, use: { ...devices["Desktop Safari"] } },
+  );
 }
+// Lot R13 : les outils (captures, mesures) ne sont jamais dans la CI : ils ne sont même pas listés sans leur variable.
+const OUTIL = ["CAPTURES", "MESURE", "PLANCHES", "COMPARER", "AVANT"].some((v) => process.env[v]);
 
 export default defineConfig({
   testDir: "e2e",
+  testIgnore: OUTIL ? [] : ["**/captures*.spec.ts", "**/mesure*.spec.ts"],
   timeout: 60_000,
   // CI : une seule relance, comme DailyTrack ; une réussite à la relance est SIGNALÉE (« instable », résumé du job `e2e`), jamais cachée.
   retries: CI ? 1 : 0,

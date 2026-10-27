@@ -21,7 +21,7 @@ const hasWebGL = (page: Page): Promise<boolean> =>
     return !!(c.getContext("webgl2") || c.getContext("webgl"));
   });
 
-test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en coin", async ({ page }) => {
+test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en coin", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/?debug");
   test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
 
@@ -48,7 +48,7 @@ test("DailyJump s'ouvre : scène construite, canvas rendu, version et jour en co
 });
 
 // Lot P0 (plateforme) : DailyJump lit l'identité commune (clés `cdj:*` de DailyTrack, même origine donc même stockage) sans rien afficher ni créer.
-test("?debug : __jump.profile dit si une identité de la plateforme existe et son pseudo, sans en créer", async ({ page }) => {
+test("?debug : __jump.profile dit si une identité de la plateforme existe et son pseudo, sans en créer", { tag: "@regression" }, async ({ page }) => {
   type ProfileView = { exists: boolean; name: string | null };
   const profile = () => page.evaluate(() => (window as unknown as { __jump: { profile: ProfileView } }).__jump.profile);
   await page.goto("/?scenario=bac-a-sable&debug");
@@ -65,7 +65,7 @@ test("?debug : __jump.profile dit si une identité de la plateforme existe et so
   await expect(page.locator("body")).not.toContainText("Nowy"); // rien n'est affiché
 });
 
-test("sans ?debug, aucun accès de débogage n'est exposé", async ({ page }) => {
+test("sans ?debug, aucun accès de débogage n'est exposé", { tag: "@navigateurs" }, async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("#stamp")).toBeHidden();
   expect(await page.evaluate(() => "__jump" in window)).toBe(false);
@@ -112,41 +112,6 @@ const advance = (page: Page, bits: number | null, n: number) =>
     [bits, n] as const,
   );
 
-test("le personnage court, saute, quitte le sol et y revient (commandes injectées, pas à pas)", async ({ page }) => {
-  await openSandbox(page);
-  const start = await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.player);
-  expect(start.ground).toBe(true);
-  expect(start.mode).toBe("sol");
-
-  const ran = await advance(page, RIGHT, 60);
-  expect(ran.x).toBeGreaterThan(start.x + 3);
-  expect(ran.vx).toBeCloseTo(11, 0); // pleine vitesse, en tuiles/s
-  expect(ran.ground).toBe(true);
-  expect(await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.phase)).toBe("playing");
-
-  const jumped = await advance(page, RIGHT | JUMP, 1);
-  expect(jumped.ground).toBe(false);
-  expect(jumped.vy).toBeLessThan(0);
-  let top = jumped.y;
-  let landed = false;
-  for (let i = 0; i < 200 && !landed; i++) {
-    const p = await advance(page, RIGHT | JUMP, 1);
-    top = Math.min(top, p.y);
-    landed = p.ground;
-  }
-  expect(landed).toBe(true);
-  expect(start.y - top).toBeGreaterThan(3.5); // un saut complet : environ 4 tuiles
-  // Recommencer : retour au départ.
-  const back = await page.evaluate(() => {
-    const j = (window as unknown as { __jump: JumpPlay }).__jump;
-    j.restart();
-    return { player: j.player, phase: j.phase, ticks: j.ticks };
-  });
-  expect(back.player.x).toBe(start.x);
-  expect(back.phase).toBe("ready");
-  expect(back.ticks).toBe(0);
-});
-
 test("le clavier commande le personnage ; un appui bref entre deux pas n'est pas perdu", async ({ page }) => {
   await openSandbox(page);
   const start = await page.evaluate(() => (window as unknown as { __jump: JumpPlay }).__jump.player);
@@ -166,7 +131,7 @@ test("le clavier commande le personnage ; un appui bref entre deux pas n'est pas
   expect((await advance(page, null, 1)).vy).toBeLessThan(0);
 });
 
-test("?debug&tune : un curseur par réglage, un réglage modifié marque la partie, « Réinitialiser » l'enlève", async ({ page }) => {
+test("?debug&tune : un curseur par réglage, un réglage modifié marque la partie, « Réinitialiser » l'enlève", { tag: "@regression" }, async ({ page }) => {
   await openSandbox(page, "&tune");
   await page.evaluate(() => localStorage.removeItem("jump:tune"));
   const sliders = page.locator("#tune input[type=range]");

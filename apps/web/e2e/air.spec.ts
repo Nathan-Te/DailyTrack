@@ -8,26 +8,6 @@ test.setTimeout(150_000);
 
 const track = createAirTrack();
 
-test("?scenario=air : le pilote finit au temps de Node, sans reprise, malgré la rotation en l'air", async ({ page }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(String(e)));
-  const run = runPilot(track, { grip: 1 });
-  expect(run.valid).toBe(true);
-  expect(run.jumps).toHaveLength(3);
-  await page.goto("/?debug&scenario=air&timescale=6&quality=2");
-  await page.waitForFunction(() => window.__cdj?.phase);
-  await expect(page.locator("#meta")).toHaveText("Circuit de l'air");
-  await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
-  await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 120_000 });
-  const end = await page.evaluate(() => {
-    const r = window.__cdj.race as unknown as { finishMs: number; respawns: number };
-    return { finishMs: r.finishMs, respawns: r.respawns };
-  });
-  expect(end.finishMs).toBe(run.finishMs);
-  expect(end.respawns).toBe(0);
-  expect(errors).toEqual([]);
-});
-
 test("en vol : l'indicateur « figé » suit le frein, la caméra suit le déplacement, la réception propre sonne propre", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));

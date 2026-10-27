@@ -1,10 +1,13 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_S, assignParts, specFiles, testList } from "../../../scripts/e2e-parts.mjs";
+import { DEFAULT_S, assignParts, durees as dureesDe, specFiles, specsRegression, testList } from "../../../scripts/e2e-parts.mjs";
+import { PARTS_COMPLETES, matriceComplete } from "../../../scripts/ci-zones.mjs";
 
 // Répartition des specs entre les parts Chromium de la CI (retouche 31b) : par durée mesurée, jamais un fichier oublié ni compté deux fois.
 const durees = JSON.parse(readFileSync(new URL("../e2e/durees.json", import.meta.url), "utf8")).secondes as Record<string, number>;
-const PARTS = Number(/browser: chromium, shard: "\d+\/(\d+)"/.exec(readFileSync(new URL("../../../.github/workflows/ci.yml", import.meta.url), "utf8"))?.[1]);
+// Lot R13 : la matrice de la CI complète vient de scripts/ci-zones.mjs (`matriceComplete`) ; ci.yml la lit dans les sorties du job `scope`.
+const PARTS = PARTS_COMPLETES.nuit.web;
+const ci = readFileSync(new URL("../../../.github/workflows/ci.yml", import.meta.url), "utf8");
 
 describe("parts e2e", () => {
   it("chaque spec est dans exactement une part", () => {
@@ -12,6 +15,20 @@ describe("parts e2e", () => {
     const parts = assignParts(files, durees, PARTS);
     expect(parts).toHaveLength(PARTS);
     expect(parts.flatMap((p) => p.files).sort()).toEqual(files);
+  });
+
+  it("lot R13 : la CI de main lance l'Essentiel de chaque spec qui n'est pas tout entier « Régression », en parts équilibrées", () => {
+    const regression = specsRegression("web");
+    const files = specFiles().filter((f) => !regression.includes(f));
+    const parts = assignParts(files, dureesDe(undefined, { essentiel: true }), PARTS_COMPLETES.main.web);
+    expect(parts.flatMap((p) => p.files).sort()).toEqual(files);
+    expect(parts.every((p) => p.files.length > 0)).toBe(true);
+    expect(ci).toContain("matrix: ${{ fromJSON(needs.scope.outputs.e2e_complet_matrice) }}");
+    expect(ci).toContain("--grep-invert=@regression");
+    const m = matriceComplete("main").include;
+    expect(m.filter((x) => x.suite === "web").every((x) => x.essentiel)).toBe(true);
+    expect(matriceComplete("nuit").include.some((x) => x.essentiel)).toBe(false);
+    expect(m.filter((x) => x.browser !== "chromium").map((x) => [x.suite, x.browser])).toEqual([["navigateurs", "firefox"], ["navigateurs", "webkit"]]);
   });
 
   it("chaque spec a sa durée mesurée (un nouveau spec s'ajoute à e2e/durees.json)", () => {

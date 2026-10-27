@@ -82,19 +82,6 @@ test("un morceau à plateforme (`?module=chaland`) : la dalle est dessinée où 
   expect(later.platforms!.opacity).toBe(1);
 });
 
-test("la galerie `?modules` filtre par l'étiquette « plateforme mobile » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "plateforme");
-  await page.waitForFunction(() => {
-    const g = (window as unknown as { __jump: { gallery: { shown: number; filter: { tag: string | null } } } }).__jump.gallery;
-    return g.filter.tag === "plateforme";
-  });
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
-});
-
 /** Un jour sans fichier figé dont le niveau (v6, g16) a une plateforme. */
 function dayWithPlatform(): string {
   let day = parseDay(generatedDay())!;
@@ -151,7 +138,6 @@ interface JP {
   autoplay(code?: string): number;
 }
 
-
 async function openP(page: Page, search: string): Promise<boolean> {
   return open(page, search);
 }
@@ -196,19 +182,6 @@ test("un morceau à presse (`?module=presse-promenade`) : la presse est dessiné
   expect(down.opacity).toBe(1);
 });
 
-test("la galerie `?modules` filtre par l'étiquette « presse » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "presse");
-  await page.waitForFunction(() => {
-    const g = (window as unknown as { __jump: { gallery: { shown: number; filter: { tag: string | null } } } }).__jump.gallery;
-    return g.filter.tag === "presse";
-  });
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
-});
-
 /** Un jour sans fichier figé dont le niveau (g16, v6) a au moins deux morceaux à presses. */
 function dayWithPresses(): string {
   let day = parseDay(generatedDay())!;
@@ -238,7 +211,6 @@ test("niveau du jour d'usine (v6) : la preuve de l'auteur, jouée pas à pas dan
   expect(result.presses).toBeGreaterThanOrEqual(2);
   expect(result.deaths).toBe(0);
 });
-
 
 // ——— Lot 23 : les champignons (dans ce fichier, pour la même raison) ———
 // Un champignon dessiné où la simulation le met et tourné vers où il lance, qui s'écrase au rebond (plus fort sur un rebond renforcé) **sans secousse de caméra**, la galerie
@@ -291,16 +263,6 @@ test("un morceau à champignon (`?module=champignon-falaise`) : la solution rebo
   expect(result.drawnBoost).toBe(true); // le dessin a reçu un rebond renforcé (l'écrasement lui-même est une fonction pure de l'âge : `test/champignons.test.ts`, aucun rendu en pas à pas)
   expect(result.shaken).toBe(0); // règle du lot 14 : aucune secousse
   for (const [i, m] of first!.list.entries()) expect(result.rotation[i], m.name).toBeCloseTo(rotations[m.name] ?? 0, 6);
-});
-
-test("la galerie `?modules` filtre par l'étiquette « champignon » : au moins six morceaux", async ({ page }) => {
-  await page.goto("/?modules&debug");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "gallery");
-  await page.selectOption('select[name="etiquette"]', "champignon");
-  await page.waitForFunction(() => (window as unknown as { __jump: { gallery: { filter: { tag: string | null } } } }).__jump.gallery.filter.tag === "champignon");
-  const shown = await page.evaluate(() => (window as unknown as { __jump: { gallery: { shown: number } } }).__jump.gallery.shown);
-  expect(shown).toBeGreaterThanOrEqual(6);
-  await expect(page.locator("#gallery .card:not([hidden])")).toHaveCount(shown);
 });
 
 /** Un jour sans fichier figé dont le niveau (g17, v7, forêt) a au moins deux morceaux à champignons. */

@@ -61,12 +61,12 @@ test("la vue capot est plus large et plus basse que les vues poursuite (champ de
 
 const PHONES = [
   { name: "Android (Pixel 7)", viewport: { width: 851, height: 393 }, deviceScaleFactor: 2.625, userAgent: "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36" },
-  { name: "iPhone 14", viewport: { width: 844, height: 390 }, deviceScaleFactor: 3, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1" },
 ] as const;
 
 // Retouche 2 du lot I4 : la barre du bas n'existe plus ; la caméra se change depuis la pause (`#pause-camera`), et plus aucun appui sur l'écran de jeu n'y touche.
 for (const p of PHONES) {
-  for (const auto of [true, false]) {
+  // Lot R13 : un gabarit et un mode (le mode des pédales ne change rien à ce qui est vérifié ; l'iPhone sous Chromium n'en diffère que par la taille).
+  for (const auto of [false as boolean]) {
     test(`${p.name}, ${auto ? "gaz automatique" : "deux pédales"} — la caméra se change depuis la pause, et aucun appui sur l'écran ne la change (?zones=1)`, async ({ browser }) => {
       const context = await browser.newContext({ ...p, isMobile: true, hasTouch: true });
       const page = await context.newPage();

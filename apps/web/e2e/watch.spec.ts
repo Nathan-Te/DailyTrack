@@ -13,7 +13,7 @@ const ready = (page: Page) => page.waitForFunction(() => window.__cdj?.watch, un
 const state = (page: Page) => page.evaluate(() => window.__cdj.watch!);
 const finished = (page: Page) => page.waitForFunction(() => window.__cdj.watch?.phase === "finished", undefined, { timeout: 120_000 });
 
-test("depuis les archives (démo) : la lecture finit sur exactement le temps du premier", async ({ page }) => {
+test("depuis les archives (démo) : la lecture finit sur exactement le temps du premier", { tag: "@regression" }, async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(String(e)));
   const requests: string[] = [];
@@ -49,7 +49,7 @@ test("depuis les archives (démo) : la lecture finit sur exactement le temps du 
   expect(errors).toEqual([]);
 });
 
-test("pause, ralenti, accéléré et retour de 5 s ne changent pas le temps final", async ({ page }) => {
+test("pause, ralenti, accéléré et retour de 5 s ne changent pas le temps final", { tag: "@regression" }, async ({ page }) => {
   await page.goto(`${DAY_URL}&timescale=6`);
   await ready(page);
   const announced = (await state(page)).announcedMs!;
@@ -98,7 +98,7 @@ test("pause, ralenti, accéléré et retour de 5 s ne changent pas le temps fina
   expect((await state(page)).finishMs).toBe(announced);
 });
 
-test("la barre de progression saute n'importe où ; Entrée et « Rejouer la rediffusion » repartent du début", async ({ page }) => {
+test("la barre de progression saute n'importe où ; Entrée et « Rejouer la rediffusion » repartent du début", { tag: "@regression" }, async ({ page }) => {
   // timescale=2 et non 6 : une image fait avancer la lecture de 0,5 s × timescale au plus (120 pas ici, 360 à ×6) ; à ×6 une image enjambait
   // toute la fenêtre « pas < 200 » du départ, qu'on ne voyait donc jamais (test bloqué 180 s en CI, à chaque essai).
   await page.goto(`${DAY_URL}&timescale=2`);
@@ -120,7 +120,7 @@ test("la barre de progression saute n'importe où ; Entrée et « Rejouer la red
   expect((await state(page)).finishMs).toBe(announcedMs);
 });
 
-test("« Courir contre ce fantôme » lance une course normale avec le bon fantôme", async ({ page }) => {
+test("« Courir contre ce fantôme » lance une course normale avec le bon fantôme", { tag: "@regression" }, async ({ page }) => {
   await page.goto(`${DAY_URL}&timescale=8`);
   await ready(page);
   const { name, announcedMs } = await state(page);
@@ -140,7 +140,7 @@ test("« Courir contre ce fantôme » lance une course normale avec le bon fant�
   await page.keyboard.up("ArrowUp");
 });
 
-test("caméras : proche, loin, capot, puis la caméra libre (glisser tourne, molette zoome) ; le pseudo flotte au-dessus", async ({ page }) => {
+test("caméras : proche, loin, capot, puis la caméra libre (glisser tourne, molette zoome) ; le pseudo flotte au-dessus", { tag: "@regression" }, async ({ page }) => {
   await page.goto(`${DAY_URL}&timescale=1`);
   await ready(page);
   // La touche est lue à l'image suivante : un appui à la fois, puis on ATTEND que la caméra ait changé (jamais une durée : en rendu logiciel
@@ -187,7 +187,7 @@ test("caméras : proche, loin, capot, puis la caméra libre (glisser tourne, mol
   expect((await state(page)).label).toBe(false);
 });
 
-test("classement du jour : le lien « Revoir le meilleur tour » mène à la rediffusion du premier", async ({ page }) => {
+test("classement du jour : le lien « Revoir le meilleur tour » mène à la rediffusion du premier", { tag: "@regression" }, async ({ page }) => {
   await page.goto(`/?api=demo&day=${DAY}&debug`);
   await page.waitForFunction(() => window.__cdj?.phase);
   const link = page.locator("#board .watchlink");
@@ -219,7 +219,7 @@ test("écran d'arrivée : « Revoir le meilleur tour » (sans API : ton record) 
   expect((await state(page)).finishMs).toBe(pilot.finishMs);
 });
 
-test("rien à revoir : course normale et un mot d'explication (pas de blocage)", async ({ page }) => {
+test("rien à revoir : course normale et un mot d'explication (pas de blocage)", { tag: "@regression" }, async ({ page }) => {
   await page.goto("/?debug&seed=2026-10-02&watch=best");
   await page.waitForFunction(() => window.__cdj?.phase, undefined, { timeout: 60_000 });
   expect(await page.evaluate(() => window.__cdj.watch)).toBeNull();
@@ -236,7 +236,7 @@ const START = SESSION * LONG;
 const salon = salonCircuit(SESSION);
 const salonUrl = (extra = "") => `/?mode=salon&api=demo&debug&salonMinutes=10&salonAt=${START + 300_000}&timescale=8${extra}`;
 
-test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le premier du classement, sans autre fantôme", async ({ page }) => {
+test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le premier du classement, sans autre fantôme", { tag: "@regression" }, async ({ page }) => {
   await page.goto(salonUrl());
   await page.waitForFunction(() => (window.__cdj?.salon?.board?.rows.length ?? 0) >= 1, undefined, { timeout: 120_000, polling: 500 });
   const link = page.locator("#board .watchlink");
@@ -259,7 +259,7 @@ test("Salon (démo) : « Revoir le meilleur tour » d'une session en cours ; le 
   expect((await state(page)).finishMs).toBe((await state(page)).announcedMs);
 });
 
-test("Salon (démo) : ?mode=salon&watch=best attend le premier temps de la session s'il n'y en a pas encore", async ({ page }) => {
+test("Salon (démo) : ?mode=salon&watch=best attend le premier temps de la session s'il n'y en a pas encore", { tag: "@regression" }, async ({ page }) => {
   await page.goto(`/?mode=salon&api=demo&debug&salonMinutes=10&salonAt=${START + 1000}&timescale=8&watch=best`);
   await page.waitForFunction(() => window.__cdj?.watch, undefined, { timeout: 60_000 });
   const first = await state(page);
@@ -270,7 +270,7 @@ test("Salon (démo) : ?mode=salon&watch=best attend le premier temps de la sessi
   expect((await state(page)).mode).toBe("salon");
 });
 
-test("Salon (démo, sessions de 2 minutes) : la session regardée finit, retour au Salon normal sans rediffusion", async ({ page }) => {
+test("Salon (démo, sessions de 2 minutes) : la session regardée finit, retour au Salon normal sans rediffusion", { tag: "@regression" }, async ({ page }) => {
   const SHORT = 2 * 60_000;
   const s2 = Math.floor(T0 / SHORT);
   const start2 = s2 * SHORT;
@@ -284,11 +284,10 @@ test("Salon (démo, sessions de 2 minutes) : la session regardée finit, retour 
   expect(new URL(page.url()).searchParams.get("mode")).toBe("salon");
 });
 
-test("téléphone : barre de lecture dans l'écran, aucune commande de conduite (donc aucune zone tactile), rien ne se chevauche", async ({ browser }) => {
+test("téléphone : barre de lecture dans l'écran, aucune commande de conduite (donc aucune zone tactile), rien ne se chevauche", { tag: "@regression" }, async ({ browser }) => {
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 844, height: 390 },
-    { width: 360, height: 640 },
   ]) {
     const context = await browser.newContext({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
     const page = await context.newPage();

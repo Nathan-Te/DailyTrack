@@ -108,7 +108,7 @@ const formatTicks = (ticks: number): string => {
   return `${Math.floor(ms / 1000)},${String(ms % 1000).padStart(3, "0")}\u00a0s`;
 };
 
-test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-papiers) → Accueil qui montre le résultat", async ({ browser }) => {
+test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-papiers) → Accueil qui montre le résultat", { tag: "@navigateurs" }, async ({ browser }) => {
   test.setTimeout(90_000);
   await atInstant(browser, FIXED_NOW, async (page, context) => {
     await stubSharing(context);
@@ -208,7 +208,7 @@ test("accueil → Jouer → arrivée → écran d'arrivée → Partager (presse-
   });
 });
 
-test("« Comment jouer » s'ouvre de lui-même à la première visite seulement, puis depuis l'accueil", async ({ browser }) => {
+test("« Comment jouer » s'ouvre de lui-même à la première visite seulement, puis depuis l'accueil", { tag: "@regression" }, async ({ browser }) => {
   await atInstant(browser, FIXED_NOW, async (page) => {
     await page.goto("/");
     await expect(page.locator("#help")).toBeVisible();
@@ -237,7 +237,7 @@ test("« Comment jouer » s'ouvre de lui-même à la première visite seulement,
   });
 });
 
-test("archives : la liste (n° 1 à hier), une archive se joue (mode archive) et ne touche ni l'historique du jour ni la série", async ({ browser }) => {
+test("archives : la liste (n° 1 à hier), une archive se joue (mode archive) et ne touche ni l'historique du jour ni la série", { tag: "@regression" }, async ({ browser }) => {
   test.setTimeout(120_000);
   await atInstant(browser, FIXED_NOW, async (page, context) => {
     await stubSharing(context);
@@ -288,27 +288,13 @@ test("archives : la liste (n° 1 à hier), une archive se joue (mode archive) et
   });
 });
 
-test("compte à rebours jusqu'au prochain niveau (minuit, heure de Paris)", async ({ browser }) => {
-  // 23:59:50 à Paris le 20/10/2026 (UTC+2).
-  await atInstant(browser, Date.parse("2026-10-20T21:59:50Z"), async (page) => {
-    await page.goto("/?debug");
-    await expect(page.locator("#home-countdown")).toHaveText(/^Prochain niveau dans 00:00:(0\d|10)$/);
-    const first = await page.locator("#home-countdown").textContent();
-    await expect(page.locator("#home-countdown")).not.toHaveText(first!, { timeout: 5000 });
-  });
-  await atInstant(browser, FIXED_NOW, async (page) => {
-    await page.goto("/");
-    await expect(page.locator("#home-countdown")).toHaveText(/^Prochain niveau dans (09:5\d|10:00):\d\d$/);
-  });
-});
-
 const FORMATS = [
   { name: "portrait", viewport: { width: 390, height: 844 } },
   { name: "paysage", viewport: { width: 844, height: 390 } },
 ] as const;
 
 for (const format of FORMATS) {
-  test(`au doigt (${format.name}) : accueil, archives, Jouer, carnage passé d'un doigt, écran d'arrivée, Partager, Accueil — cibles ≥ 44 px`, async ({ browser }) => {
+  test(`au doigt (${format.name}) : accueil, archives, Jouer, carnage passé d'un doigt, écran d'arrivée, Partager, Accueil — cibles ≥ 44 px`, { tag: "@regression" }, async ({ browser }) => {
     test.setTimeout(120_000);
     const chromium = browser.browserType().name() === "chromium";
     const { viewport } = format;

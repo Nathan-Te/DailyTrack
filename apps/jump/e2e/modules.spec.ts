@@ -50,8 +50,8 @@ async function until(page: Page, phases: string[], max = 1200): Promise<number> 
   );
 }
 
+// Lot R13 : la galerie (outil de développement) en paysage seulement ; le portrait est retiré.
 for (const format of [
-  { name: "portrait", viewport: { width: 390, height: 844 } },
   { name: "paysage", viewport: { width: 844, height: 390 } },
 ]) {
   test(`?modules (${format.name}) : la galerie liste les morceaux et leurs variantes, cibles d'au moins 44 px, sans débordement`, async ({ browser }) => {

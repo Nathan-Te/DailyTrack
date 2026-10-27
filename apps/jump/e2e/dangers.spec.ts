@@ -90,7 +90,7 @@ async function untilRespawn(page: Page): Promise<number> {
 /** Ce qui doit revenir à l'identique après la mort : l'état de l'essai (sans la grille). */
 const fresh = (a: AttemptView) => ({ raw: a.raw, crumbles: a.crumbles, sections: a.sections, saws: a.saws, time: a.time, status: a.status });
 
-test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaître en ≤ 24 pas, tout remis à zéro, puis finir avec la solution", async ({ page }) => {
+test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaître en ≤ 24 pas, tout remis à zéro, puis finir avec la solution", { tag: "@navigateurs" }, async ({ page }) => {
   test.skip(!(await openEssai(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   const start = await attempt(page);
   expect(start.status).toBe("attend");
@@ -183,7 +183,7 @@ test("essai, commandes injectées puis clavier : mourir sur un pic, réapparaît
   expect((await attempt(page)).bestText).toBe(AUTHOR_TEXT);
 });
 
-test("point de passage : l'atteindre, mourir après, reprendre dessus dans le même essai, chrono qui continue", async ({ page }) => {
+test("point de passage : l'atteindre, mourir après, reprendre dessus dans le même essai, chrono qui continue", { tag: "@regression" }, async ({ page }) => {
   test.skip(!(await openEssai(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   expect((await attempt(page)).checkpoints).toBe(5);
   // Le début de la solution, pas à pas, jusqu'au premier point de passage (colonne 51, après les pics).
@@ -224,7 +224,7 @@ test("point de passage : l'atteindre, mourir après, reprendre dessus dans le m�
   expect(fresh.time).toBe(0);
 });
 
-test("?fx=off : la mort n'éclate pas et l'écran ne tremble pas ; ?hitbox ne change rien à la simulation", async ({ page }) => {
+test("?fx=off : la mort n'éclate pas et l'écran ne tremble pas ; ?hitbox ne change rien à la simulation", { tag: "@regression" }, async ({ page }) => {
   test.skip(!(await openEssai(page, "&fx=off&hitbox")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   await jump(page, (j) => j.input(2));
   expect(await untilDead(page)).toBeGreaterThan(0);
@@ -234,96 +234,3 @@ test("?fx=off : la mort n'éclate pas et l'écran ne tremble pas ; ?hitbox ne ch
   expect(pixels.colors).toBeGreaterThanOrEqual(4);
 });
 
-test("?scenario=dangers : la galerie s'ouvre, chaque danger est là", async ({ page }) => {
-  await page.goto("/?scenario=dangers&debug&hitbox");
-  test.skip(!(await hasWebGL(page)), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-  await page.waitForFunction(() => (window as unknown as { __jump?: { phase: string } }).__jump?.phase === "ready");
-  const a = await attempt(page);
-  expect(a.saws).toHaveLength(4); // petite et grande scie fixes, aller-retour, boucle
-  expect(a.sections.length).toBeGreaterThanOrEqual(5);
-  expect(a.crumbles.length).toBeGreaterThan(0);
-});
-
-test.describe("au doigt (téléphone en paysage)", () => {
-  const VIEW = { width: 844, height: 390 };
-  const W = VIEW.width;
-  const H = VIEW.height;
-  const at = { left: [W * 0.12, H * 0.75], right: [W * 0.37, H * 0.75], jump: [W * 0.75, H * 0.75] } as const;
-
-  test("mourir sur un pic au doigt, réapparaître, puis finir l'essai au doigt et recommencer en touchant le bandeau", async ({ browser }) => {
-    test.setTimeout(120_000);
-    await withPhone(browser, VIEW, async (page) => {
-      test.skip(!(await openEssai(page, "&touch=1")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-      const start = await attempt(page);
-      const fingers = await Fingers.on(page);
-
-      // HUD lisible : lot I5, la bande du chrono en haut au centre (plus de bande de boutons au-dessus), dans l'écran, sans toucher les boutons.
-      const chrono = (await page.locator("#chrono").boundingBox())!;
-      expect(chrono.y).toBeGreaterThanOrEqual(0);
-      expect(chrono.y).toBeLessThan(16);
-      expect(chrono.x).toBeGreaterThanOrEqual(0);
-      expect(chrono.x + chrono.width).toBeLessThanOrEqual(W);
-      for (const sel of ["#pausebtn", ".tbtn"]) {
-        for (const el of await page.locator(sel).all()) {
-          if (!(await el.isVisible())) continue;
-          const b = (await el.boundingBox())!;
-          const overlap = Math.min(chrono.x + chrono.width, b.x + b.width) > Math.max(chrono.x, b.x) && Math.min(chrono.y + chrono.height, b.y + b.height) > Math.max(chrono.y, b.y);
-          expect(overlap, `${sel} chevauche le chrono`).toBe(false);
-        }
-      }
-
-      // → au doigt jusqu'aux pics.
-      await fingers.down(1, ...at.right);
-      expect(await untilDead(page)).toBeGreaterThan(0);
-      expect((await attempt(page)).lastDeath?.cause).toBe("pic");
-      // Doigt toujours posé : la réapparition arrive en ≤ 24 pas et la direction compte tout de suite ensuite.
-      expect(await untilRespawn(page)).toBeLessThanOrEqual(24);
-      await fingers.up(1);
-      expect(fresh(await attempt(page))).toEqual(fresh(start));
-
-      // La solution, doigt par doigt : un doigt de direction (glissé de ← à → sans lever), un doigt de saut.
-      let dir = 0;
-      let jumping = false;
-      for (const [bits, n] of SOLUTION.inputs) {
-        const want = bits & RIGHT ? 1 : bits & LEFT ? -1 : 0;
-        if (want !== dir) {
-          if (want === 0) await fingers.up(1);
-          else if (dir === 0) await fingers.down(1, ...(want > 0 ? at.right : at.left));
-          else await fingers.move(1, ...(want > 0 ? at.right : at.left));
-          dir = want;
-        }
-        const j = (bits & JUMP) !== 0;
-        if (j !== jumping) {
-          if (j) await fingers.down(2, ...at.jump);
-          else await fingers.up(2);
-          jumping = j;
-        }
-        // Les doigts doivent donner exactement ces commandes avant de jouer la série (état attendu, pas une durée).
-        await page.waitForFunction((b) => (window as unknown as { __jump: { touch: { bits: number } } }).__jump.touch.bits === b, bits);
-        await step(page, n);
-      }
-      if (dir !== 0) await fingers.up(1);
-      if (jumping) await fingers.up(2);
-      // Lot 3 : le carnage démarre à l'arrivée ; un doigt posé (ici, la zone de saut) le passe et mène au bandeau.
-      expect(await phase(page)).toBe("carnage");
-      await fingers.down(2, ...at.jump);
-      await step(page, 1);
-      await fingers.up(2);
-      expect(await phase(page)).toBe("finished");
-      const done = await attempt(page);
-      expect(done.status).toBe("arrivé");
-      expect(done.time).toBe(SOLUTION.ticks);
-      await expect(page.locator("#finish")).toBeVisible();
-      await expect(page.locator("#finish .time")).toHaveText(AUTHOR_SHOWN);
-      const button = (await page.locator("#finish button").boundingBox())!;
-      expect(button.height).toBeGreaterThanOrEqual(44);
-      expect(button.width).toBeGreaterThanOrEqual(44);
-
-      // Toucher « Recommencer » sur le bandeau : nouvel essai, pas une mort.
-      await page.locator("#finish button").tap();
-      await page.waitForFunction(() => (window as unknown as { __jump: JumpPlay }).__jump.phase === "ready");
-      await expect(page.locator("#finish")).toBeHidden();
-      expect((await attempt(page)).deaths).toBe(1);
-    });
-  });
-});

@@ -53,7 +53,7 @@ async function capture(page: Page, nom: string, zone?: string): Promise<void> {
   await test.info().attach(nom, { body: png, contentType: "image/png" });
 }
 
-test("portail en français : barre, date, une cartouche par jeu (numéro du jour, bouton vers le jeu), pied et mentions", async ({ browser }) => {
+test("portail en français : barre, date, une cartouche par jeu (numéro du jour, bouton vers le jeu), pied et mentions", { tag: "@navigateurs" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("html")).toHaveAttribute("lang", "fr");
@@ -116,7 +116,7 @@ test("première visite : langue du navigateur (en-US → anglais, fr-CA → fran
   }
 });
 
-test("avatar : les initiales du pseudo du profil commun", async ({ browser }) => {
+test("avatar : les initiales du pseudo du profil commun", { tag: "@regression" }, async ({ browser }) => {
   const context = await newClockedContext(browser, { ...PORTRAIT, locale: "fr-FR" });
   await context.addInitScript(() => {
     localStorage.setItem("cdj:player", "0123456789abcdef0123456789abcdef");
@@ -128,7 +128,7 @@ test("avatar : les initiales du pseudo du profil commun", async ({ browser }) =>
   await expect(page.locator(".dj-avatar")).toHaveAccessibleName("Ton profil : Nathan");
 });
 
-test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec un focus visible", async ({ browser }) => {
+test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec un focus visible", { tag: "@regression" }, async ({ browser }) => {
   const page = await (await newClockedContext(browser, { viewport: { width: 1024, height: 768 }, locale: "fr-FR" })).newPage();
   await page.goto(`${SITE}/`);
   await expect(page.locator("#jeux .dj-cartouche")).toHaveCount(2);
@@ -150,7 +150,7 @@ test("clavier : tout le portail joignable à la tabulation, dans l'ordre, avec u
   await vers;
 });
 
-test("aucune cible tactile sous 44 px sur le portail, en portrait et en paysage", async ({ browser }) => {
+test("aucune cible tactile sous 44 px sur le portail, en portrait et en paysage", { tag: "@regression" }, async ({ browser }) => {
   for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
     const page = await (await newClockedContext(browser, { ...options, locale: "fr-FR" })).newPage();
     await page.goto(`${SITE}/`);
@@ -180,7 +180,7 @@ test("aucune cible tactile sous 44 px sur le portail, en portrait et en paysage"
   }
 });
 
-test("vitrine /ui/ : chaque composant en français et en anglais, sur crème et sur asphalte, médailles, couleurs, contrastes qui passent", async ({ browser }) => {
+test("vitrine /ui/ : chaque composant en français et en anglais, sur crème et sur asphalte, médailles, couleurs, contrastes qui passent", { tag: "@regression" }, async ({ browser }) => {
   for (const [nom, options] of [["portrait", PORTRAIT], ["paysage", PAYSAGE]] as const) {
     for (const locale of ["fr-FR", "en-US"] as const) {
       const page = await (await newClockedContext(browser, { ...options, locale })).newPage();

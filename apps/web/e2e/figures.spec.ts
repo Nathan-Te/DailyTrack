@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { FIGURES, FIGURES_LOT49, createFigureTrack, createFiguresTrack, encodeReplay, runPilot } from "@cdj/sim";
+import { FIGURES, FIGURES_LOT49, createFigureTrack, encodeReplay, runPilot } from "@cdj/sim";
 import { openAdmin } from "./adminPage";
 
 // Lot 20 : scénarios `figures` (le tour des figures marquantes) et `figure` (une seule figure, en boucle), et l'admin qui les propose.
@@ -7,31 +7,6 @@ test.setTimeout(150_000);
 
 test.describe("jeu (WebGL : Chromium seulement)", () => {
   test.skip(({ browserName }) => browserName !== "chromium", "WebGL : Chromium seulement");
-
-  test("?scenario=figures : le pilote finit le tour au temps de Node, sans reprise", async ({ page }) => {
-    const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(String(e)));
-    const track = createFiguresTrack();
-    const run = runPilot(track, { grip: 1 });
-    expect(run.valid).toBe(true);
-    await page.goto("/?debug&scenario=figures&timescale=8&quality=0");
-    await page.waitForFunction(() => window.__cdj?.phase);
-    // Lot 49 : la page des nouvelles figures s'ouvre sur le tour ; « Rouler le tour des figures » la ferme.
-    await expect(page.locator("#figures-index")).toBeVisible();
-    await page.locator("#figures-tour").click();
-    await expect(page.locator("#figures-index")).toBeHidden();
-    await expect(page.locator("#meta")).toHaveText("Les figures");
-    expect(await page.evaluate(() => window.__cdj.trackId)).toBe("figures");
-    await page.evaluate((c) => window.__cdj.autoplay(c), encodeReplay(run.replay));
-    await page.waitForFunction(() => window.__cdj.phase === "finished", undefined, { timeout: 140_000 });
-    const end = await page.evaluate(() => {
-      const r = window.__cdj.race as unknown as { finishMs: number; respawns: number };
-      return { finishMs: r.finishMs, respawns: r.respawns };
-    });
-    expect(end.finishMs).toBe(run.finishMs);
-    expect(end.respawns).toBe(0);
-    expect(errors).toEqual([]);
-  });
 
   test("lot 49 : ?scenario=figures liste les nouveautés ; deux touchers mènent à une figure, que le pilote finit au temps de Node", async ({ page }) => {
     const errors: string[] = [];
@@ -98,6 +73,16 @@ test.describe("jeu (WebGL : Chromium seulement)", () => {
     await page.goto("/?debug&scenario=figure&f=n-importe-quoi&quality=0");
     await page.waitForFunction(() => window.__cdj?.phase);
     await expect(page.locator("#meta")).toHaveText("Circuit d'essai");
+    // Lot R13 : repris de daily.spec « le circuit d'essai reste accessible avec ?scenario=essai » (supprimé) : le repli est bien le circuit d'essai.
+    expect(await page.evaluate(() => (window.__cdj.race as { track: { id: string } }).track.id)).toBe("essai");
+    // Lot R13 : repris de « ?scenario=figures : le pilote finit le tour… » (supprimé ; le tour : packages/sim/test/figures.test.ts) — la page des
+    // nouveautés s'ouvre sur le tour, « Rouler le tour des figures » la ferme et le tour se charge.
+    await page.goto("/?debug&scenario=figures&quality=0");
+    await expect(page.locator("#figures-index")).toBeVisible();
+    await page.locator("#figures-tour").click();
+    await expect(page.locator("#figures-index")).toBeHidden();
+    await expect(page.locator("#meta")).toHaveText("Les figures");
+    expect(await page.evaluate(() => window.__cdj.trackId)).toBe("figures");
     expect(errors).toEqual([]);
   });
 });

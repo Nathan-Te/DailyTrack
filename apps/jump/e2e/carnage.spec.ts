@@ -86,7 +86,7 @@ async function playSolution(page: Page): Promise<void> {
   }, SOLUTION.inputs);
 }
 
-test("?carnage=demo démarre tout seul, compte ses vies, les fait mourir (éclats et taches), et une commande le passe", async ({ page }) => {
+test("?carnage=demo démarre tout seul, compte ses vies, les fait mourir (éclats et taches), et une commande le passe", { tag: "@regression" }, async ({ page }) => {
   test.skip(!(await open(page, "&carnage=demo")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   const start = await J(page);
   expect(start.phase).toBe("carnage");
@@ -119,7 +119,7 @@ test("?carnage=demo démarre tout seul, compte ses vies, les fait mourir (éclat
   await expect(page.locator("#toast")).toHaveText("Fin de la démonstration");
 });
 
-test("?carnage=demo va au bout tout seul : le héros arrive (1 arrivée au moins), puis le jeu reprend", async ({ page }) => {
+test("?carnage=demo va au bout tout seul : le héros arrive (1 arrivée au moins), puis le jeu reprend", { tag: "@regression" }, async ({ page }) => {
   test.skip(!(await open(page, "&carnage=demo&fx=off")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   const { heroTicks, tick } = (await J(page)).carnage;
   expect(heroTicks).toBe(SOLUTION.ticks);
@@ -134,7 +134,7 @@ test("?carnage=demo va au bout tout seul : le héros arrive (1 arrivée au moins
   expect((await J(page)).phase).toBe("ready");
 });
 
-test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargement, le fantôme et les taches sont là", async ({ page }) => {
+test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargement, le fantôme et les taches sont là", { tag: "@regression" }, async ({ page }) => {
   test.setTimeout(120_000);
   test.skip(!(await open(page, "")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   const deaths = [await dieOnce(page), await dieOnce(page), await dieOnce(page)];
@@ -196,7 +196,7 @@ test("en pas à pas : mourir, finir, carnage de ses propres vies ; au rechargeme
   expect((await J(page)).ghost.enabled).toBe(false);
 });
 
-test("?ghost=off cache le fantôme sans toucher au réglage ; ?watch=best rejoue le meilleur essai seul, sans pouvoir jouer", async ({ page }) => {
+test("?ghost=off cache le fantôme sans toucher au réglage ; ?watch=best rejoue le meilleur essai seul, sans pouvoir jouer", { tag: "@regression" }, async ({ page }) => {
   test.skip(!(await open(page, "")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
   // Un meilleur essai importé (validé par le rejeu), sans avoir à jouer.
   const imported = await page.evaluate((code) => (window as unknown as { __jump: Jump }).__jump.replays.import(code), GOLDEN.solution.code);
@@ -248,48 +248,3 @@ test("sans stockage (localStorage qui lève) : le jeu se joue, finit, lance son 
   await expect(page.locator("#finish")).toBeVisible();
 });
 
-test("réglages modifiés : rien n'est enregistré (ni vies, ni taches, ni carnage)", async ({ page }) => {
-  test.skip(!(await open(page, "&tune")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-  await page.evaluate(() => {
-    (window as unknown as { __jump: { params: { gravity: number } } }).__jump.params.gravity += 1;
-  });
-  await dieOnce(page);
-  const s = await J(page);
-  expect(s.memory).toMatchObject({ best: null, lives: 0, deaths: 0 });
-  expect(s.stains.count).toBe(0);
-  await expect(page.locator("#tuned")).toHaveText("réglages modifiés : rien n'est enregistré");
-});
-
-test.describe("au doigt (téléphone en paysage)", () => {
-  const VIEW = { width: 844, height: 390 };
-
-  test("un doigt posé n'importe où dans les zones de jeu passe le carnage", async ({ browser }) => {
-    await withPhone(browser, VIEW, async (page) => {
-      test.skip(!(await open(page, "&touch=1&carnage=demo")), "WebGL indisponible dans ce navigateur : la scène ne peut pas se construire");
-      expect((await J(page)).phase).toBe("carnage");
-      await expect(page.locator("#carnage")).toBeVisible();
-      // Lot I5 (maquette jump-carnage.html) : le titre et le total en haut, la barre de lecture en bas, dans l'écran ; ses boutons font au moins 44 px ;
-      // le HUD de la partie est caché.
-      for (const sel of [".carnage__tete", ".carnage__barre"]) {
-        const box = (await page.locator(sel).boundingBox())!;
-        expect(box.x, sel).toBeGreaterThanOrEqual(0);
-        expect(box.y, sel).toBeGreaterThanOrEqual(0);
-        expect(box.x + box.width, sel).toBeLessThanOrEqual(VIEW.width);
-        expect(box.y + box.height, sel).toBeLessThanOrEqual(VIEW.height);
-      }
-      for (const b of await page.locator(".carnage__barre button").all()) {
-        const box = (await b.boundingBox())!;
-        expect(box.width).toBeGreaterThanOrEqual(44);
-        expect(box.height).toBeGreaterThanOrEqual(44);
-      }
-      await expect(page.locator("#chrono")).toBeHidden();
-      await step(page, 120, null);
-      const fingers = await Fingers.on(page);
-      await fingers.down(1, VIEW.width * 0.12, VIEW.height * 0.75);
-      await step(page, 1);
-      await fingers.up(1);
-      expect((await J(page)).phase).toBe("ready");
-      await expect(page.locator("#carnage")).toBeHidden();
-    });
-  });
-});

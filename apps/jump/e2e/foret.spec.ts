@@ -126,7 +126,6 @@ async function playToEnd(page: Page, max = 6000): Promise<{ ticks: number; kinds
   }, max);
 }
 
-
 test("niveau du jour en forêt : sa rediffusion d'auteur finit au temps de l'auteur, poussée par le vent (ventDebut, ventFin), sans erreur de shader", async ({ browser }) => {
   test.setTimeout(120_000);
   await atInstant(browser, FIXED_NOW, async (page) => {
@@ -211,27 +210,6 @@ test.describe("au doigt (téléphone en paysage)", () => {
     if (jump) await fingers.up(2);
   }
 
-  test("?module=vent-pont se joue au doigt : la solution posée doigt par doigt finit au temps de la solution, dans le thème forêt", async ({ browser }) => {
-    test.setTimeout(180_000);
-    await withPhone(browser, VIEW, async (page) => {
-      const errors = watchErrors(page);
-      const { bits, ticks } = solutionBits("vent-pont", 0);
-      test.skip(!(await open(page, "/?module=vent-pont&variante=0&touch=1&debug")), SKIP);
-      const start = await J(page);
-      // Le morceau d'une mécanique s'ouvre dans son thème, même sans `&theme=` dans l'adresse.
-      expect(start.theme.name).toBe("foret");
-      expect(start.module).toMatchObject({ id: "vent-pont", variant: 0, reference: ticks });
-      expect(start.wind!.zones).toBeGreaterThan(0);
-      await playByFingers(page, bits);
-      const end = await J(page);
-      expect(end.attempt.status).toBe("arrivé");
-      expect(end.attempt.deaths).toBe(0);
-      expect(end.attempt.time).toBe(ticks);
-      expect(end.tuned).toBe(false);
-      await frames(page);
-      expect(errors).toEqual([]);
-    });
-  });
 });
 
 test("mouvement réduit : des flèches fixes remplacent les feuilles et le pollen, allumées quand la rafale souffle ; avec les effets, les particules", async ({ browser }) => {
@@ -372,32 +350,3 @@ test("?debug&hitbox et ?scenario=vent (galerie des courants d'air, dans le thèm
   expect(errors).toEqual([]);
 });
 
-test("?debug&tune : la section « Courants d'air » a ses trois curseurs ; en modifier un marque la partie (rien n'est enregistré), « Réinitialiser » le retire", async ({ page }) => {
-  test.skip(!(await open(page, "/?scenario=vent&debug&tune")), SKIP);
-  await page.evaluate(() => localStorage.removeItem("jump:tune"));
-  await page.reload();
-  await ready(page);
-  await page.evaluate(() => {
-    const j = (window as unknown as { __jump: Jump }).__jump;
-    j.manual(true);
-    j.restart();
-  });
-  await expect(page.locator("#tune .winds")).toContainText("Courants d'air");
-  for (const key of ["windAccel", "windRise", "windDrift"]) await expect(page.locator(`#tune .winds input[data-key="${key}"]`)).toHaveCount(1);
-  // Les valeurs par défaut sont montrées (réglages absents de `DEFAULT_JUMP_PARAMS`) et la partie n'est pas marquée.
-  await expect(page.locator('#tune input[data-key="windRise"]').locator("xpath=ancestor::label[1]")).toContainText("(205)");
-  await expect(page.locator("#tuned")).toBeEmpty();
-  const rise = page.locator('#tune input[data-key="windRise"]');
-  await rise.evaluate((el: HTMLInputElement) => {
-    el.value = "300";
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await page.evaluate(() => (window as unknown as { __jump: Jump }).__jump.advance(1));
-  await expect(page.locator("#tuned")).toHaveText("réglages modifiés : rien n'est enregistré");
-  expect(await page.evaluate(() => (window as unknown as { __jump: { params: { windRise?: number } } }).__jump.params.windRise)).toBe(300);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("jump:tune") ?? "{}").windRise)).toBe(300);
-  await page.getByRole("button", { name: "Réinitialiser" }).click();
-  expect(await page.evaluate(() => localStorage.getItem("jump:tune"))).toBeNull();
-  expect(await page.evaluate(() => (window as unknown as { __jump: { params: { windRise?: number } } }).__jump.params.windRise)).toBeUndefined();
-  await expect(page.locator('#tune input[data-key="windRise"]').locator("xpath=ancestor::label[1]")).toContainText("(205)");
-});

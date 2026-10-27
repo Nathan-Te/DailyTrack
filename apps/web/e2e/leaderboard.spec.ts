@@ -98,7 +98,7 @@ test("deux appareils, deux temps, un classement", async ({ browser }) => {
   await bob.context().close();
 });
 
-test("un classement injoignable ne gêne pas le jeu : message clair et bouton pour réessayer", async ({ browser }) => {
+test("un classement injoignable ne gêne pas le jeu : message clair et bouton pour réessayer", { tag: "@regression" }, async ({ browser }) => {
   // Le planning du jour répond (sinon le jeu est « hors ligne, non classé », lot 14) ; ensuite plus personne n'écoute.
   const context = await newClockedContext(browser, { viewport: { width: 1000, height: 560 } });
   const info = { date: circuit.date, variant: 0, theme: null, trackId: circuit.track.id };
@@ -123,7 +123,7 @@ test("un classement injoignable ne gêne pas le jeu : message clair et bouton po
   await page.context().close();
 });
 
-test("sans adresse d'API, aucun classement n'apparaît", async ({ browser }) => {
+test("sans adresse d'API, aucun classement n'apparaît", { tag: "@regression" }, async ({ browser }) => {
   const context = await newClockedContext(browser);
   const page = await context.newPage();
   await page.goto("/?debug&timescale=6");

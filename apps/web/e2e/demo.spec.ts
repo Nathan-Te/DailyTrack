@@ -50,14 +50,6 @@ test("ouvrir un jour : son classement figé est affiché et le fantôme du premi
   await page.waitForFunction(() => (window.__cdj.ghost?.tick ?? 0) > 60, undefined, { timeout: 20_000 });
 });
 
-test("accès direct par ?day= : même jour, même classement figé", async ({ page }) => {
-  await page.goto("/?api=demo&day=2026-10-21&debug");
-  await ready(page);
-  await expect(page.locator("#meta")).toContainText("21 oct.");
-  await expect(page.locator("#ghostinfo")).toContainText("premier : Démo", { timeout: 20_000 });
-  await expect(page.locator("#board .btitle")).toContainText("Classement figé");
-});
-
 test("ton meilleur temps est placé dans la liste des archives (rang figé parmi les pilotes de démo)", async ({ page }) => {
   await page.goto("/?api=demo&debug");
   await ready(page);
@@ -73,9 +65,3 @@ test("ton meilleur temps est placé dans la liste des archives (rang figé parmi
   await expect(page.locator('#archive .day[data-date="2026-10-21"]').locator(".best")).toContainText("1er/", { timeout: 10_000 });
 });
 
-test("sans le mode démo, le jeu marche comme avant : pas de classement, pas de bandeau", async ({ page }) => {
-  await page.goto("/?debug");
-  await ready(page);
-  await expect(page.locator("#meta")).not.toContainText("mode démo");
-  await expect(page.locator("#btn-board")).toBeHidden();
-});

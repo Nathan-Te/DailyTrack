@@ -16,11 +16,10 @@ const API = "http://api.test";
 const CORS = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type, X-Player-Id", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS" };
 const json = (body: unknown, status = 200) => ({ status, headers: CORS, contentType: "application/json", body: JSON.stringify(body) });
 
+// Lot R13 (docs/tests.md) : deux formats (téléphone en paysage, ordinateur) et le portrait là où l'écran s'y affiche ; 740×360 et 360×640 sont retirés.
 for (const viewport of [
   { name: "portrait", width: 390, height: 844 },
   { name: "paysage", width: 844, height: 390 },
-  { name: "paysage compact", width: 740, height: 360 },
-  { name: "petit portrait", width: 360, height: 640 },
 ]) {
   test(`téléphone ${viewport.name} (${viewport.width}×${viewport.height}) : en course puis à l'arrivée, rien ne se chevauche`, async ({ browser }) => {
     const context = await newClockedContext(browser, { viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
