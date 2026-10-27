@@ -7,6 +7,7 @@ import {
   DEATH_NONE,
   DEFAULT_JUMP_PARAMS,
   INPUT_RIGHT,
+  LASER_MIN_OFF,
   LASER_THICKNESS,
   MODULES,
   MODULE_TAGS,
@@ -30,9 +31,9 @@ import {
   type AttemptState,
   type Level,
 } from "@cdj/jump-sim";
-import { Box3, Group, Line, LineDashedMaterial, Mesh, MeshBasicMaterial } from "three";
+import { AdditiveBlending, Box3, Group, Line, LineDashedMaterial, Mesh, MeshBasicMaterial } from "three";
 import { describe, expect, it } from "vitest";
-import { FLICKER_MAX_HZ, LASER_BAR_SMOOTH, LASER_WARN_TICKS, laserBarLook, laserBarPeak, laserBarSpeed, laserLook } from "../src/announce";
+import { FLICKER_MAX_HZ, LASER_BAR_SMOOTH, LASER_COOL_TICKS, LASER_FLASH_TICKS, LASER_WARN_TICKS, laserBarLook, laserBarPeak, laserBarSpeed, laserGlow, laserLook } from "../src/announce";
 import { soundFor } from "../src/audioLogic";
 import { SHAKES } from "../src/camera";
 import { contrastRatio, hueDistance, hueOf } from "../src/contrast";
@@ -43,14 +44,28 @@ import {
   AIM_OPACITY,
   BAR_GLOW_REST,
   CORE,
+  FLASH_HALF,
+  GUIDE_OPACITY,
+  HALO_GROW,
+  HALO_HALF,
+  HALO_OPACITY,
+  AIM_GROW,
   LASER_LOOK,
+  ORB_FLASH,
+  ORB_ON,
   LENS_DIM,
   NOSE,
   NOSE_HALF,
   RAY,
   barGlow,
+  barOrbRadius,
   barTrack,
   buildAimArt,
+  buildFlashArt,
+  buildHaloArt,
+  buildOrbArt,
+  haloColor,
+  orbLook,
   buildEmitterArt,
   buildLensArt,
   buildRayArt,
@@ -568,7 +583,7 @@ describe("carnage (lot 17) : estompé à 35 %, opaque et sans mélange hors carn
       for (const u of art.units) {
         u.group.traverse((o) => {
           const m = (o as Mesh).material as MeshBasicMaterial | undefined;
-          if ((o as Mesh).isMesh && m && o !== u.aim) out.push(m);
+          if ((o as Mesh).isMesh && m && o !== u.aim && o !== u.guide && m.blending !== AdditiveBlending) out.push(m);
         });
       }
       return out;
@@ -591,6 +606,132 @@ describe("carnage (lot 17) : estompé à 35 %, opaque et sans mélange hors carn
     for (const m of solid()) expect([m.opacity, m.transparent]).toEqual([1, false]);
     for (const m of lines()) expect(m.opacity).toBeCloseTo(0.6, 12);
     expect(art.stats.opacity).toBe(1);
+  });
+});
+
+describe("allumage et extinction lisibles : aura, éclair, lueur des émetteurs, fil du trajet (lumière seule)", () => {
+  const world = new Group();
+  const art = createLaserArt(world, level, { hazard: HAZARD })!;
+  const unit = art.units[1]!;
+  const lit = (t: number) => {
+    const s = at(t);
+    art.update(s, s, 1, 1);
+  };
+
+  it("l'éclair part pleine au premier pas allumé et retombe à 0 en LASER_FLASH_TICKS pas ; la retombée de l'extinction en LASER_COOL_TICKS pas ; jamais en même temps", () => {
+    for (let q = 0; q < trait.cycle; q++) {
+      const g = laserGlow(trait, q - trait.shift);
+      const on = laserOn(trait, q - trait.shift);
+      if (on) {
+        expect(g.cool, `q ${q}`).toBe(0);
+        expect(g.flash).toBeCloseTo(Math.max(0, 1 - q / LASER_FLASH_TICKS), 12);
+      } else {
+        expect(g.flash, `q ${q}`).toBe(0);
+        expect(g.cool).toBeCloseTo(Math.max(0, 1 - (q - trait.on) / LASER_COOL_TICKS), 12);
+      }
+    }
+    expect(laserGlow(trait, -trait.shift)).toEqual({ flash: 1, cool: 0 });
+    expect(laserGlow(trait, LASER_FLASH_TICKS - trait.shift).flash).toBe(0);
+    expect(laserGlow(trait, trait.on - trait.shift)).toEqual({ flash: 0, cool: 1 });
+    expect(laserGlow(trait, trait.on + LASER_COOL_TICKS - trait.shift).cool).toBe(0);
+    // L'annonce (60 pas) ne rencontre jamais la retombée : la phase éteinte minimale est de 120 pas.
+    expect(LASER_COOL_TICKS).toBeLessThan(LASER_MIN_OFF - 60);
+  });
+
+  it("l'aura n'est dessinée que rayon allumé, derrière lui, plus large que la bande mortelle et sans la déborder : elle ne tue pas", () => {
+    for (let t = 0; t < 2 * trait.cycle; t++) {
+      lit(t);
+      const look = laserLook(trait, phaseAt(t));
+      expect(unit.halo.visible, `t ${t}`).toBe(look.on);
+      expect(unit.guide!.visible, `t ${t}`).toBe(!look.on);
+    }
+    expect(HALO_HALF * 2).toBeGreaterThan(RAY);
+    expect(FLASH_HALF).toBeGreaterThan(RAY / 2);
+    const mat = unit.halo.material as MeshBasicMaterial;
+    expect([mat.blending, mat.transparent, mat.depthWrite]).toEqual([AdditiveBlending, true, false]);
+    // Derrière le rayon : la bande mortelle reste la seule à tuer (z plus bas que le rayon).
+    const z = (o: Mesh) => o.parent!.position.z + o.position.z;
+    expect(z(unit.halo)).toBeLessThan(unit.ray.position.z);
+    expect(z(unit.flash!)).toBeLessThan(unit.ray.position.z);
+  });
+
+  it("l'éclair grossit l'aura et s'éteint avec flash ; la visée grossit avec l'annonce (jamais plus fine qu'au repos)", () => {
+    for (let t = 0; t < trait.cycle; t++) {
+      lit(t);
+      const look = laserLook(trait, phaseAt(t));
+      const g = laserGlow(trait, phaseAt(t));
+      expect(art.stats.flash[1]).toBe(g.flash);
+      expect(art.stats.cool[1]).toBe(g.cool);
+      expect(unit.halo.scale.y).toBeCloseTo(1 + HALO_GROW * g.flash, 12);
+      expect(unit.flash!.visible).toBe(g.flash > 0);
+      expect(art.stats.aimScale[1]).toBeCloseTo(1 + AIM_GROW * look.warn, 12);
+    }
+  });
+
+  it("la lueur des émetteurs se charge avec l'annonce (cyan), explose à l'allumage (chaude), reste pleine, retombe à l'extinction ; sans saut à l'annonce", () => {
+    lit(0);
+    let last = 0;
+    for (let t = 0; t < trait.cycle; t++) {
+      lit(t);
+      const look = laserLook(trait, phaseAt(t));
+      const g = laserGlow(trait, phaseAt(t));
+      const want = orbLook(look.on, look.warn, g.flash, g.cool);
+      expect(art.stats.orb[1]).toBe(want.radius);
+      expect(unit.orbs.every((m) => m.visible === want.radius > 0)).toBe(true);
+      if (look.warn > 0) {
+        expect(want.hot).toBe(false);
+        expect(want.radius).toBeGreaterThan(last);
+        expect(want.radius).toBeLessThanOrEqual(ORB_ON);
+      }
+      last = look.warn > 0 ? want.radius : 0;
+    }
+    expect(orbLook(true, 0, 1, 0).radius).toBe(ORB_ON + ORB_FLASH);
+    expect(orbLook(true, 0, 0, 0).radius).toBe(ORB_ON);
+    expect(orbLook(false, 0, 0, 0).radius).toBe(0);
+    expect(orbLook(false, 0, 0, 1).radius).toBe(ORB_ON);
+  });
+
+  it("aucun clignotement : l'éclair, la retombée et la lueur varient doucement (un pic par cycle, bien sous FLICKER_MAX_HZ)", () => {
+    const orb: number[] = [];
+    const flash: number[] = [];
+    for (let t = 0; t < 3 * trait.cycle; t++) {
+      lit(t);
+      orb.push(art.stats.orb[1]!);
+      flash.push(art.stats.flash[1]!);
+    }
+    expect(peaksPerSecond(orb)).toBeLessThanOrEqual(FLICKER_MAX_HZ);
+    expect(peaksPerSecond(flash)).toBeLessThanOrEqual(FLICKER_MAX_HZ);
+  });
+
+  it("carnage : l'aura, l'éclair, les lueurs et le fil sont estompés à 35 % ; le fil est neutre (jamais rouge)", () => {
+    lit(20);
+    art.update(at(20), at(20), 1, 0.35);
+    expect((unit.halo.material as MeshBasicMaterial).opacity).toBeCloseTo(HALO_OPACITY * 0.35, 12);
+    expect((unit.guide!.material as MeshBasicMaterial).opacity).toBeCloseTo(GUIDE_OPACITY * 0.35, 12);
+    expect(unit.orbMat.opacity).toBeCloseTo(0.35, 12);
+    art.update(at(20), at(20), 1, 1);
+    expect((unit.halo.material as MeshBasicMaterial).opacity).toBe(HALO_OPACITY);
+    expect((unit.guide!.material as MeshBasicMaterial).color.getHex()).toBe(LASER_LOOK.aim);
+  });
+
+  it("l'aura, l'éclair et la lueur : pièces d'un dégradé vers le noir (additives), le centre en rouge éclairci pour l'aura", () => {
+    for (const art2 of [buildHaloArt(4, HAZARD), buildFlashArt(4), buildOrbArt()]) {
+      const cols = art2.col;
+      expect(Math.min(...cols)).toBe(0);
+    }
+    expect(haloColor(HAZARD)).not.toBe(HAZARD);
+    expect(buildHaloArt(4, HAZARD).bounds().maxY).toBeCloseTo(HALO_HALF, 9);
+    expect(buildFlashArt(4).bounds().maxY).toBeCloseTo(FLASH_HALF, 9);
+  });
+
+  it("une barre est toujours lumineuse : aura toujours là, lueur de ses émetteurs au rythme de sa vitesse, pas d'éclair ni de fil", () => {
+    lit(30);
+    const bar = art.units[2]!;
+    expect(bar.halo.visible).toBe(true);
+    expect(bar.flash).toBeNull();
+    expect(bar.guide).toBeNull();
+    expect(art.stats.orb[2]).toBeCloseTo(barOrbRadius(art.stats.barGlow[0]!), 12);
+    expect(art.stats.orb[2]).toBeGreaterThan(0);
   });
 });
 

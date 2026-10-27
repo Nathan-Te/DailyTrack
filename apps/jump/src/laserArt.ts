@@ -1,8 +1,29 @@
-import { BufferGeometry, Float32BufferAttribute, Group, Line, LineDashedMaterial, Mesh, MeshBasicMaterial, Vector3 } from "three";
+import { AdditiveBlending, BufferGeometry, Float32BufferAttribute, Group, Line, LineDashedMaterial, Mesh, MeshBasicMaterial, Vector3 } from "three";
 import { LASER_THICKNESS, UNITS_PER_TILE, laserBarAt, sectionClock, type AttemptState, type Level } from "@cdj/jump-sim";
-import { laserBarLook, laserLook } from "./announce";
+import { laserBarLook, laserGlow, laserLook } from "./announce";
 import type { Art } from "./artKit";
-import { AIM_OPACITY, LASER_LOOK, barGlow, barTrack, buildAimArt, buildEmitterArt, buildLensArt, buildRayArt, lensColor, rayLayout } from "./laser";
+import {
+  AIM_GROW,
+  AIM_OPACITY,
+  GUIDE_OPACITY,
+  HALO_GROW,
+  HALO_OPACITY,
+  LASER_LOOK,
+  barGlow,
+  barOrbRadius,
+  barTrack,
+  buildAimArt,
+  buildEmitterArt,
+  buildFlashArt,
+  buildHaloArt,
+  buildLensArt,
+  buildOrbArt,
+  buildRayArt,
+  coreColor,
+  lensColor,
+  orbLook,
+  rayLayout,
+} from "./laser";
 
 // Les lasers (lot 25), **affichage seul** : le rayon allumé (rouge des dangers, cœur clair, exactement la bande mortelle), la visée neutre qui s'intensifie pendant les 0,5 s qui
 // précèdent l'allumage, les émetteurs du néon (museau et lentille posés sur les tuiles pleines qui bornent un rayon fixe, ou à chaque bout d'une barre coulissante) et le trajet
@@ -17,6 +38,9 @@ const DASH = 0.22;
 const Z_EMITTER = 0.06;
 const Z_AIM = 0.125;
 const Z_RAY = 0.13;
+/** L'aura et l'éclair, additifs, derrière le rayon (le rayon opaque les masque : aucune surcharge sur la bande mortelle). */
+const Z_HALO = 0.12;
+const Z_ORB = 0.065;
 const Z_RAIL = 0.011;
 
 export interface LaserStats {
@@ -33,6 +57,13 @@ export interface LaserStats {
   barGlow: number[];
   /** Pour chaque laser fixe puis chaque barre : la lueur des lentilles (0 à 1). */
   glow: number[];
+  /** Pour chaque laser fixe : l'éclair de l'allumage et la retombée de l'extinction (0 à 1), l'opacité du fil qui montre le trajet éteint ; l'épaisseur de la visée (× l'épaisseur de base). */
+  flash: number[];
+  cool: number[];
+  guideOpacity: number[];
+  aimScale: number[];
+  /** Pour chaque laser fixe puis chaque barre : le rayon (tuiles) de la lueur posée sur ses émetteurs (0 : cachée). */
+  orb: number[];
   /** L'opacité dessinée (1 : normale ; 0,35 dans le carnage). */
   opacity: number;
 }
@@ -45,6 +76,12 @@ export interface LaserUnit {
   aim: Mesh | null;
   lenses: Mesh[];
   lensMat: MeshBasicMaterial;
+  /** L'aura additive du rayon allumé (toujours pour une barre), l'éclair de l'allumage et le fil du trajet éteint (laser fixe seulement), les lueurs des deux émetteurs. */
+  halo: Mesh;
+  flash: Mesh | null;
+  guide: Mesh | null;
+  orbs: Mesh[];
+  orbMat: MeshBasicMaterial;
 }
 
 export interface LaserArt {
@@ -68,6 +105,15 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
   const rayMat = new MeshBasicMaterial({ vertexColors: true });
   const emitterMat = new MeshBasicMaterial({ vertexColors: true });
   const solidMats = [rayMat, emitterMat];
+  // L'aura, l'éclair et les lueurs sont additifs (le noir n'ajoute rien) : toujours « transparents » pour le moteur, leur opacité suit l'estompage du carnage.
+  const additive = (opacity: number): MeshBasicMaterial => new MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: AdditiveBlending, opacity });
+  const haloMat = additive(HALO_OPACITY);
+  const guideMat = new MeshBasicMaterial({ color: LASER_LOOK.aim, transparent: true, opacity: GUIDE_OPACITY, depthWrite: false });
+  const flashMats: MeshBasicMaterial[] = [];
+  const orbMats: MeshBasicMaterial[] = [];
+  const haloGeometries = new Map<number, BufferGeometry>();
+  const flashGeometries = new Map<number, BufferGeometry>();
+  const orbGeometry = geometryOf(buildOrbArt());
   const emitterGeometry = geometryOf(buildEmitterArt());
   const lensGeometry = geometryOf(buildLensArt());
   const lensMats: MeshBasicMaterial[] = [];
@@ -79,12 +125,35 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
     ray.position.set(lay.ray.x, lay.ray.y, Z_RAY);
     ray.rotation.z = lay.ray.rotation;
     ray.add(new Mesh(geometryOf(buildRayArt(length, colors.hazard)), rayMat));
+    const haloGroup = new Group();
+    haloGroup.position.set(lay.ray.x, lay.ray.y, Z_HALO);
+    haloGroup.rotation.z = lay.ray.rotation;
+    let haloGeometry = haloGeometries.get(length);
+    if (!haloGeometry) haloGeometries.set(length, (haloGeometry = geometryOf(buildHaloArt(length, colors.hazard))));
+    const halo = new Mesh(haloGeometry, haloMat);
+    halo.visible = !withAim;
+    haloGroup.add(halo);
+    let flash: Mesh | null = null;
+    if (withAim) {
+      let flashGeometry = flashGeometries.get(length);
+      if (!flashGeometry) flashGeometries.set(length, (flashGeometry = geometryOf(buildFlashArt(length))));
+      const flashMat = additive(0);
+      flashMats.push(flashMat);
+      flash = new Mesh(flashGeometry, flashMat);
+      flash.position.z = 0.001;
+      flash.visible = false;
+      haloGroup.add(flash);
+    }
     const aimGroup = new Group();
     aimGroup.position.set(lay.ray.x, lay.ray.y, Z_AIM);
     aimGroup.rotation.z = lay.ray.rotation;
     // Une visée par laser fixe, avec son propre matériau (son opacité est celle de son annonce) ; une barre est toujours allumée, elle n'en a pas.
     let aim: Mesh | null = null;
+    let guide: Mesh | null = null;
     if (withAim) {
+      guide = new Mesh(geometryOf(buildAimArt(length)), guideMat);
+      guide.position.z = -0.001;
+      aimGroup.add(guide);
       aim = new Mesh(geometryOf(buildAimArt(length)), new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity: 0 }));
       aim.visible = false;
       aimGroup.add(aim);
@@ -92,6 +161,10 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
     // La lentille a son propre matériau : sa couleur suit la lueur.
     const lensMat = new MeshBasicMaterial({ color: lensColor(0) });
     lensMats.push(lensMat);
+    const orbMat = additive(1);
+    orbMat.color.setHex(0xffffff);
+    orbMats.push(orbMat);
+    const orbs: Mesh[] = [];
     const lenses: Mesh[] = [];
     for (const e of lay.emitters) {
       const pod = new Group();
@@ -100,12 +173,16 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
       const lens = new Mesh(lensGeometry, lensMat);
       lens.position.z = 0.001;
       lenses.push(lens);
-      pod.add(new Mesh(emitterGeometry, emitterMat), lens);
+      const orb = new Mesh(orbGeometry, orbMat);
+      orb.position.z = Z_ORB - Z_EMITTER;
+      orb.visible = false;
+      orbs.push(orb);
+      pod.add(new Mesh(emitterGeometry, emitterMat), lens, orb);
       group.add(pod);
     }
-    group.add(ray, aimGroup);
+    group.add(haloGroup, ray, aimGroup);
     world.add(group);
-    return { group, ray, aim, lenses, lensMat };
+    return { group, ray, aim, lenses, lensMat, halo, flash, guide, orbs, orbMat };
   };
   const nF = level.lasers.length;
   const nB = level.laserBars.length;
@@ -120,6 +197,11 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
     barDir: Array(nB).fill(0),
     barGlow: Array(nB).fill(0),
     glow: Array(nF + nB).fill(0),
+    flash: Array(nF).fill(0),
+    cool: Array(nF).fill(0),
+    guideOpacity: Array(nF).fill(0),
+    aimScale: Array(nF).fill(1),
+    orb: Array(nF + nB).fill(0),
     opacity: 1,
   };
   const fixed = level.lasers.map((l) => {
@@ -166,6 +248,9 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
           m.transparent = v < 1;
           m.opacity = v;
         }
+        haloMat.opacity = HALO_OPACITY * v;
+        guideMat.opacity = GUIDE_OPACITY * v;
+        orbMats.forEach((m) => (m.opacity = v));
         lineMats[0]!.opacity = lineMats[1]!.opacity = RAIL_OPACITY * v;
         stats.opacity = v;
       }
@@ -184,6 +269,25 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
         const glow = look.on ? 1 : look.warn;
         stats.glow[i] = glow;
         u.lensMat.color.setHex(lensColor(glow));
+        // L'allumage et l'extinction : l'aura gonfle et un éclair blanc retombe à l'allumage ; la lueur des émetteurs se charge avec la visée, explose, puis retombe. Le fil discret montre le trajet éteint.
+        const g = laserGlow(l, sectionClock(level, state.sections, state.time, l.section));
+        u.halo.visible = look.on;
+        u.halo.scale.y = 1 + HALO_GROW * g.flash;
+        u.flash!.visible = g.flash > 0;
+        (u.flash!.material as MeshBasicMaterial).opacity = g.flash * v;
+        u.guide!.visible = !look.on;
+        u.aim!.scale.y = 1 + AIM_GROW * look.warn;
+        const orb = orbLook(look.on, look.warn, g.flash, g.cool);
+        u.orbMat.color.setHex(orb.hot ? coreColor(colors.hazard) : LASER_LOOK.lens);
+        for (const m of u.orbs) {
+          m.visible = orb.radius > 0;
+          m.scale.set(orb.radius, orb.radius, 1);
+        }
+        stats.flash[i] = g.flash;
+        stats.cool[i] = g.cool;
+        stats.guideOpacity[i] = look.on ? 0 : GUIDE_OPACITY * v;
+        stats.aimScale[i] = u.aim!.scale.y;
+        stats.orb[i] = orb.radius;
       });
       level.laserBars.forEach((b, i) => {
         const u = bars[i]!;
@@ -208,6 +312,13 @@ export function createLaserArt(world: Group, level: Level, colors: { hazard: num
         stats.barGlow[i] = g;
         stats.glow[nF + i] = g;
         u.lensMat.color.setHex(lensColor(g));
+        const r = barOrbRadius(g);
+        u.orbMat.color.setHex(coreColor(colors.hazard));
+        for (const m of u.orbs) {
+          m.visible = true;
+          m.scale.set(r, r, 1);
+        }
+        stats.orb[nF + i] = r;
       });
     },
   };

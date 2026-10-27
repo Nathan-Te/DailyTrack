@@ -23,11 +23,25 @@ function mixColor(a: number, b: number, t: number): number {
 /** Épaisseur du rayon rouge (tuiles) : exactement la bande mortelle de la simulation. */
 export const RAY = LASER_THICKNESS / UNITS_PER_TILE;
 /** Épaisseur du cœur clair du rayon (tuiles), au milieu : les deux bandes rouges se partagent le reste. */
-export const CORE = 0.09;
+export const CORE = 0.11;
 /** Épaisseur de la visée (tuiles) : plus fine que le rayon. */
 export const AIM = 0.06;
 /** Opacité de la visée à l'annonce pleine (elle croît avec `warn` depuis 0). */
 export const AIM_OPACITY = 0.85;
+/** L'aura du rayon allumé (demi-hauteur, tuiles, de chaque côté de la ligne médiane) : un dégradé additif qui s'éteint vers le noir ; purement lumineux, **la mort reste la bande `RAY`**. */
+export const HALO_HALF = 0.5;
+/** Opacité de l'aura (additive) et son grossissement à l'allumage (× `1 + HALO_GROW` à l'instant de l'allumage, retombe avec `flash`). */
+export const HALO_OPACITY = 0.9;
+export const HALO_GROW = 0.9;
+/** Demi-hauteur de l'éclair blanc de l'allumage (tuiles) : il retombe en `LASER_FLASH_TICKS` pas (`announce.ts`). */
+export const FLASH_HALF = 0.5;
+/** La visée grossit avec l'annonce : épaisseur × `1 + AIM_GROW × warn`. */
+export const AIM_GROW = 1.5;
+/** Le fil discret qui montre où passera le rayon tant qu'il est éteint : opacité fixe, neutre. */
+export const GUIDE_OPACITY = 0.2;
+/** Rayon (tuiles) de la lueur posée sur chaque émetteur : pleine allumée, plus grande à l'allumage (éclair). */
+export const ORB_ON = 0.46;
+export const ORB_FLASH = 0.34;
 /** Profondeur du museau d'un émetteur (tuiles, le long du rayon) et sa demi-hauteur ; liseré rose en haut et en bas. */
 export const NOSE = 0.3;
 export const NOSE_HALF = 0.34;
@@ -56,6 +70,25 @@ export const lensColor = (glow: number): number => mixColor(LENS_DIM, LASER_LOOK
 /** La lueur d'une barre à la vitesse `speed` (part de sa pointe) : jamais éteinte, pleine à pleine vitesse. */
 export const barGlow = (speed: number): number => BAR_GLOW_REST + (1 - BAR_GLOW_REST) * Math.max(0, Math.min(1, speed));
 
+/** L'état de la lueur d'un émetteur : son rayon (0 : cachée) et sa teinte (`hot` : rouge éclairci du rayon ; sinon le cyan de la lentille qui se charge). */
+export interface OrbLook {
+  radius: number;
+  hot: boolean;
+}
+
+/**
+ * La lueur d'un émetteur de laser fixe : elle **se charge** avec l'annonce (rayon proportionnel à `warn`, cyan), **explose** à l'allumage (`ORB_ON` + `ORB_FLASH × flash`, chaud),
+ * reste pleine tant que le rayon est allumé et **retombe** après l'extinction (`cool`, de 1 à 0). Continue sauf à l'allumage et à l'extinction elle-même.
+ */
+export function orbLook(on: boolean, warn: number, flash: number, cool: number): OrbLook {
+  if (on) return { radius: ORB_ON + ORB_FLASH * flash, hot: true };
+  if (warn > 0) return { radius: ORB_ON * warn, hot: false };
+  return { radius: ORB_ON * cool, hot: true };
+}
+
+/** La lueur d'un émetteur de barre : toujours là, au rythme de sa vitesse (`barGlow`). */
+export const barOrbRadius = (glow: number): number => ORB_ON * 0.8 * glow;
+
 /** La couleur du cœur clair, tirée du rouge du thème. */
 export const coreColor = (hazard: number): number => mixColor(hazard, 0xffffff, 0.8);
 
@@ -69,6 +102,42 @@ export function buildRayArt(length: number, hazard: number): Art {
   art.rect(0, CORE / 2, length, CORE / 2 + edge, 0, hazard);
   art.rect(0, -CORE / 2, length, CORE / 2, 0, coreColor(hazard));
   art.rect(0, -CORE / 2 - edge, length, -CORE / 2, 0, hazard);
+  return art;
+}
+
+/** La couleur du centre de l'aura : le rouge du thème, éclairci. */
+export const haloColor = (hazard: number): number => mixColor(hazard, 0xffffff, 0.2);
+
+/**
+ * L'aura du rayon, à plat comme `buildRayArt` : un dégradé à trois paliers de chaque côté de la ligne médiane (rouge éclairci, puis 60 % à un quart de la hauteur, puis noir). **Additive** : le noir n'ajoute rien, donc l'aura
+ * s'éteint en douceur sans bord ; elle se pose derrière le rayon, qui reste la seule bande qui tue.
+ */
+export function buildHaloArt(length: number, hazard: number): Art {
+  const art = new Art();
+  const c = haloColor(hazard);
+  const mid = mixColor(c, 0x000000, 0.4);
+  const k = HALO_HALF * 0.25;
+  art.rect(0, 0, length, k, 0, [c, c, mid, mid]);
+  art.rect(0, k, length, HALO_HALF, 0, [mid, mid, 0x000000, 0x000000]);
+  art.rect(0, -k, length, 0, 0, [mid, mid, c, c]);
+  art.rect(0, -HALO_HALF, length, -k, 0, [0x000000, 0x000000, mid, mid]);
+  return art;
+}
+
+/** L'éclair de l'allumage, à plat : le même dégradé, en blanc, sur `FLASH_HALF`. */
+export function buildFlashArt(length: number): Art {
+  const art = new Art();
+  art.rect(0, 0, length, FLASH_HALF, 0, [0xffffff, 0xffffff, 0x000000, 0x000000]);
+  art.rect(0, -FLASH_HALF, length, 0, 0, [0x000000, 0x000000, 0xffffff, 0xffffff]);
+  return art;
+}
+
+/** La lueur d'un émetteur : un disque de rayon 1 (à l'échelle de `OrbLook.radius`), blanc au centre, noir au bord ; additif, teinté par son matériau. */
+export function buildOrbArt(): Art {
+  const art = new Art();
+  // Un dodécagone écrit en dur (pas de trigonométrie dans ce fichier : rien ne varie avec l'horloge de la scène).
+  const pts = [1, 0, 0.866, 0.5, 0.5, 0.866, 0, 1, -0.5, 0.866, -0.866, 0.5, -1, 0, -0.866, -0.5, -0.5, -0.866, 0, -1, 0.5, -0.866, 0.866, -0.5];
+  art.fan(0, 0, pts, 0, 0xffffff, Array.from({ length: pts.length / 2 }, () => 0x000000));
   return art;
 }
 

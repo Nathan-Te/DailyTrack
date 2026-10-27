@@ -212,6 +212,28 @@ export function laserLook(l: Pick<Laser, "cycle" | "on" | "shift">, phase: numbe
   return { on: false, warn };
 }
 
+/** L'éclair de l'allumage et la retombée de l'extinction (pas) : 18 pas = 0,15 s, 30 pas = 0,25 s, tous deux sous la phase éteinte minimale (120 pas) moins l'annonce (60 pas). */
+export const LASER_FLASH_TICKS = 18;
+export const LASER_COOL_TICKS = 30;
+
+/** Ce que l'allumage et l'extinction d'un laser fixe ajoutent à l'affichage (aucun effet sur la simulation). */
+export interface LaserGlow {
+  /** 1 au premier pas allumé, décroît linéairement jusqu'à 0 au pas `LASER_FLASH_TICKS` ; 0 éteint. */
+  flash: number;
+  /** 1 au premier pas éteint, décroît jusqu'à 0 au pas `LASER_COOL_TICKS` après l'extinction ; 0 allumé. */
+  cool: number;
+}
+
+/**
+ * Le **flash** à l'allumage et la **retombée** de l'extinction d'un laser fixe, calculés sur la même fonction que la simulation. Ce sont des signes continus et uniques (un par
+ * cycle, jamais un clignotement) qui rendent l'allumage et l'extinction lisibles ; le rayon rouge, lui, reste exactement aux pas de `laserOn`.
+ */
+export function laserGlow(l: Pick<Laser, "cycle" | "on" | "shift">, phase: number): LaserGlow {
+  const q = cycleMod(phase + l.shift, l.cycle);
+  if (q < l.on) return { flash: Math.max(0, 1 - q / LASER_FLASH_TICKS), cool: 0 };
+  return { flash: 0, cool: Math.max(0, 1 - (q - l.on) / LASER_COOL_TICKS) };
+}
+
 /** Ce que la barre coulissante annonce : le sens de son glissement (−1 gauche ou haut, 1 droite ou bas, 0 à l'arrêt) et sa vitesse en part de sa pointe (0 à 1). */
 export interface LaserBarLook {
   dir: -1 | 0 | 1;
